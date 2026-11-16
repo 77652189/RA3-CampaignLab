@@ -538,9 +538,10 @@ NOTES = {
         'C复核：旧配方Surface未显式指定，SDK移动器差异不能独立证明实际路径可达性；'
         'C断桥两组aipcland/aipcamph同模板切NORMAL地面/SUPERSONIC地面+水面：'
         's22-24仍均兵营1/电厂0，s40-44控制车均存活未到岸，两栖阳性未建立。'
-        'tests/test_simai_pathbanks_c.py独立断言控制读数，建筑选择两strict xfail；'
-        '两局后停止，待D提供同帧条件/移动器/选点/路径返回分类。'
-        '保持gap不晋升，未改模型；见 work/re/c_pathbanks_report.md、c_pathcond_gate_report.md'),
+        'tests/test_simai_pathbanks_c.py独立断言控制读数；'
+        'D108/D175：开局f4抽签时未登记基地，启发early:nobase直接"判不了"、不看测试模板，'
+        'B217模拟器开局同样判不了，建筑选择各局按名回放通过——但这些局都没走到条件/移动器，'
+        '保持gap不晋升；见 work/re/c_pathbanks_report.md、c_pathcond_gate_report.md、d175_gap_b216.md'),
     **{f'启发条件/{k}': (BENCHED,
         'E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，'
         'true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。'

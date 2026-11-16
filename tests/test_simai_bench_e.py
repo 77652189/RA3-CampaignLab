@@ -102,19 +102,15 @@ def test_friendly_unit_target(build, friendly, enemy):
     assert (samples[0]['到友车'], samples[0]['到敌车']) == (friendly, enemy), samples
 
 
-@pytest.mark.xfail(strict=True, reason='B round 216: red since public fa33d088 (A round 252, DEEP_WATER read as '
-                   'water; bisected: that commit with the model fixed at e2b8d1d red, the one before with a51aa8b '
-                   'green). The tester JapanAntiAirShip was routed as ground before; now its NORMAL locomotor is '
-                   'water, simai.Brain.path_to_target finds no water route between the two land spots on Niagara -> '
-                   'PathExists false -> Island opening (power plant s22-24, barracks 0). The bench gave barracks 1 / '
-                   'power 0 in both runs: the game finds a way for a water-only tester here (rule not read; '
-                   'SUPERSONIC is not modelled either).')
 @pytest.mark.parametrize('build', ['aiopwater', 'aiopair'])
 def test_path_locomotor_condition(build):
     """E84 engine_aiopathcond a: both conditions gave barracks=1, power=0.
 
     The water check retains its failed Island prediction. Equal observations
     cannot verify condition selection; see work/re/e_pathcond_e84.md.
+    B round 217 (D175): the opening is drawn before any base is registered, so PathToTarget answers "cannot judge"
+    without looking at the tester -> the PathExists="true" line (barracks first) whatever its locomotor is
+    (simai.Brain.path_to_target). Red B216 (water tester routed after A252) was the model asking too early.
     """
     w = simai.run(build, 'a', 25, lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]

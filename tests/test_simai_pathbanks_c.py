@@ -21,12 +21,10 @@ def path_rows(request):
     return {t: dict(zip(labels, values)) for t, values in w.sim.series}
 
 
-@pytest.mark.xfail(strict=True, reason='Bank probes choose barracks=1/power=0 at s22-24; '
-                   'D108 and the early-registration follow-up observe a pre-wake nobase return. '
-                   'The simulator evaluates after registration and chooses 0/1; startup timing '
-                   'is outside this condition probe. See work/re/handoff-c.md and '
-                   'work/re/c_pathready_report.md. Amphibious reachability remains unproven.')
 def test_path_condition_disconnected_banks(path_rows):
+    """Bank probes choose barracks=1/power=0 at s22-24: D108 and the early-registration follow-up observe a
+    pre-wake nobase return. B round 217: the simulator's opening draw now answers "cannot judge" too
+    (simai.Brain.path_to_target); amphibious reachability remains unproven (work/re/c_pathready_report.md)."""
     rows = path_rows
     assert all((rows[t]['兵营'], rows[t]['电厂']) == (1, 0)
                for t in (22, 23, 24)), {t: rows[t] for t in (22, 23, 24)}

@@ -476,7 +476,13 @@ class Brain:
         with one); False when a spot is not found; True when the template has no locomotor (bench aiopath1 /
         aiopathr, checks/engine_aiopath.py: AlliedPowerPlant as the tester picks the PathExists="true" opening in
         either order -- the program read "no locomotor -> no way" is wrong or misread); else whether the simulator's
-        grid of the template's surface joins the two spots. cond: the simulator knows only NORMAL (INFERRED: same)."""
+        grid of the template's surface joins the two spots. cond: the simulator knows only NORMAL (INFERRED: same).
+        The opening draw ('make base', the AI's start not set yet) always gets None: on the bench the engine draws
+        it at f4 before any base is registered and the heuristic returns "cannot judge" before it looks at the
+        tester (D108 / D175 ptt rows why=early:nobase on aipathx, aipclandy; aiopwater and aiopath1 the same
+        bench kind; INFERRED that every opening draw is that early). The later states do route (D108 f158)."""
+        if self.ai.start is None:
+            return None
         key = (surface, template, cond)
         got = self.paths.get(key)
         if got is not None and self.frame - got[0] < PATH_EVERY:
