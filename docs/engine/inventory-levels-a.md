@@ -2,13 +2,13 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 137 / 201**（不涉及的不算）。
+**已对拍 138 / 201**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 57 | 21 | 35 | 20 |
+| 物体模块 | 58 | 21 | 34 | 20 |
 | 武器效果 | 18 | 4 | 4 | 2 |
 
 按原版用量加权：已对拍 100%，已有（已对拍+推断）100%。
@@ -25,7 +25,6 @@
 | 未做 | 物体模块 | `Behaviors/AttackAssistResponseBehavior` | 5 | a1 a2 a4 a5 a6 a7 a9 | E144派发诊断：engine_attackassist a两次准备运行均进关前崩溃，无台上读数；最终原版光谱塔宿主配方已修本地模块引用及结构武器掩码，尚未上台，暂停追加运行直至启动原因解释。tests/test_simattackassist.py严格xfail仅保留待验预测，不作已对拍证据；响应武器派发/原版增伤/时序均gap，模型未改；见work/re/e144_attackassist.md；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
 | 未做 | 物体模块 | `Behaviors/CaptureSpecialAbilityUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | E151 engine_capture:a原版工程师对CaptureFlag中立/敌方/己方和删模块中立四路：归属100、存活1111、前置1，f45..575未换主。原预测111保留；具名测试仅回放负基线，不登记模块效果已对拍。缺命令被模块接受及同帧阶段证据（INFERRED），暂停同输入重跑；见work/re/e151_capture.md；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | 物体模块 | `Behaviors/EmotionTrackerUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
-| 未做 | 物体模块 | `Behaviors/ParkingPlaceBehavior` | 4 | a4 a5 a7 a8 | E157两局实测生产差异：engine_parking:a五次原版阿波罗生产请求后原机场4/仅删Parking机场0；交换玩家engine_parkingswap:a为1/0，排除该玩家归属混淆。场区数量仅测位置，不冒充机位占用；队伍飞离预测失败，返航未成立，原预测保留。tests/test_parking_bench_e.py按名回放f194、f982、交换侧f196，物体模型生产按钮入口产出0/0，strict xfail；生产绑定/配额、返航预约/占用/释放、航母Contain仍gap，不登记已对拍、不改猜测模型。两局已用完，暂停同类台，详work/re/e157_parking.md；例：AlliedAirfield, AlliedAntiStructureShip |
 | 未做 | 物体模块 | `Behaviors/AssistedPlacementBehavior` | 3 | a1 a2 a4 a5 a6 a7 | E169 assistpon:a / assistpoff:a原版与删模块两局均资金8000、矿场总数0、提示位数量0、采样完成0；红色预览未落地，原吸附预测保留。当前计数器无放置接受/拒因字段，不能归因于模块；同输入暂停。tests/test_assistplace_bench_e.py具名回放资金负基线strict xfail：Sim未消费侧栏排队/放置点击；吸附、朝向、迷雾资格和精确距离均gap，不登记已对拍；见work/re/e169_assistplace.md；例：AlliedRefinery, JapanRefinery |
 | 未做 | 物体模块 | `Behaviors/LoseHealthUpdate` | 3 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md；例：CNV_Liberty, SovietBomberAircraft |
 | 未做 | 物体模块 | `Behaviors/ReturnToProducerSpecialPower` | 3 | a1 a2 a3 a4 a5 a6 a7 a8 | E173 engine_returnon_e:a / engine_returnoff_e:a两局均f660冻结660/7/11/1：原生生产后具名引用，f405到离场区，返航后曾USER_1，最终存活回机场区且施放1。a遗漏显式原版资产替换，两局实际都保留原版飞机，删模块预测FAIL；不据相同读数判模块无效。b补显式replaces，仅静态/构建验证、未上台；原失败预测保留。tests/test_returnproducer_bench_e.py具名物体模型回放出发位0对实测7，2 strict xfail：生产按钮/引用前置未闭合，不手放飞机绕过。producerId、命令接受/拒因、机位/停靠阶段未量到，DOCKING未置位；暂停同输入，修正台须新预算，未实现返航、不登记已对拍；见work/re/e173_returnproducer.md；例：AlliedFighterAircraft, SovietFighterAircraft |
@@ -191,6 +190,7 @@
 | 已对拍 | 物体模块 | `Behaviors/EngineerContain:三国ALLIES` | 6 | a1 a2 a4 a5 a6 a7 a9 | tests/test_simengineer.py::test_engineer_allied_defence_refusal_soviet_japan_as_on_the_bench；已测范围：engine_engineer a/e/f普通进入，三国工程师友军半血防御修满并消耗、满血及敌方拒入且存活，目标归属不变；按完整配置匹配登记6用量/7模板；gap：精确进入帧仍INFERRED；日本单人ALLIES和桥配置保留在未对拍残余行，不借本组登记；例：AlliedBaseDefenseAdvanced, JapanBaseDefenseAdvanced |
 | 已对拍 | 物体模块 | `Behaviors/OCLSpecialPower` | 6 | a1 a2 a4 a6 a7 | tests/test_simocl.py::test_iron_curtain_zero_count_ocl_reference；总控第四切片按已测边界收尾：tests/test_simocl.py具名回放engine_oclcurtain/engine_oclnone/engine_oclwrong a，铁幕宿主匹配模块才保护并记事件，删除/改绑模块无保护/事件；engine_oclempty a空声明无保护且事件1；engine_oclcopy a完整原版载荷改名仍保护100/100且事件1；engine_oclzero a仅外层Count=0无保护且事件1。只闭合铁幕派发和零数量不保护边界，未测生成数量/通用生成；其他非零数量/载荷/超武、位置/过滤、按钮/冷却仍gap，继承、等价空声明及格式等价INFERRED，不表示全模块全字段验证；见 work/re/e_ocl_e65.md；例：SovietCommandoTech1 |
 | 已对拍 | 物体模块 | `Behaviors/InfiltratorContain:ENERGY` | 4 | a2 a4 a5 a6 a7 a8 | tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench；总控11-11授权按配置组收尾：engine_infiltrator a/b/c/d按名字重放，盟军间谍对盟/苏/帝普通电厂及帝国忍者对盟军电厂，敌方进入者消耗、建筑满血不换主、100电量停电约20秒并恢复，友军拒入且存活；gap：其他电量/苏联超级电厂、重复进入续期、精确时序和默认状态分支仍未对拍，不表示全字段全模板已验证；例：AlliedPowerPlant, JapanPowerPlant |
+| 已对拍 | 物体模块 | `Behaviors/ParkingPlaceBehavior` | 4 | a4 a5 a7 a8 | tests/test_parking_bench_e.py::test_parking_named_object_model_observations；E188复用E157两局旧台，tests/test_parking_bench_e.py按名字回放原机场/仅删模块f194=1/0、f982=4/0及交换玩家f196=1/0全部通过；消费LIMITED_PRODUCTION_AIRCRAFT及配置配额4，修空闲队列后续唤醒。只覆盖本机场Apollo生产差异；准入发生在下单阶段、排队/出场预留为INFERRED，精确生产帧、筛选、物理机位、返航预约/占用/释放、航母及其他机型仍gap；旧队伍飞离预测失败仍保留，不追加实机；见work/re/e188_parking.md；例：AlliedAirfield, AlliedAntiStructureShip |
 | 已对拍 | 物体模块 | `Behaviors/SpecialDisguiseUpdate` | 4 | a1 a4 a6 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_spndisguise.py；例：AlliedAntiVehicleVehicleTech3, JapanLightTransportVehicle |
 | 已对拍 | 物体模块 | `Behaviors/StealthDetectorUpdate` | 3 | a2 a6 | tests/test_detector_bench_e.py::test_detector_named_object_model_observations；已测范围：engine_detector:a原版军犬/仅删模块/超半径三路，距离150/150/450；目标INVISIBLE_DETECTED在f151为1/0/0，删除军犬后f310均0，目标始终存活；tests/test_detector_bench_e.py按名用私有物体模型回放同帧读数，原有实现无需修改；gap：公开Sim未接反隐（strict xfail），精确首扫/清除帧、半径边界、移动/驻军/多探测器/其他宿主及过滤配置未对拍；见work/re/e156_detector.md；例：AlliedScoutInfantry |
 | 已对拍 | 物体模块 | `Behaviors/InvisibilityBroadcastUpdate` | 2 | a1 a4 a6 a7 | tests/test_simbench_c.py::test_invisibility_broadcast_the_aura_holds_its_guardian_at_full_health_and_the_control_dies；例：AlliedAntiVehicleVehicleTech3 |

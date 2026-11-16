@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 189 | 18 | 129 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
-| 物体模块 | **98%** | **98%** | 57 / 113 | 189 | 58 | 21 | 84 | 26 | 99% |
+| 物体模块 | **98%** | **98%** | 58 / 113 | 189 | 59 | 21 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **98%** | **98%** | 198 / 357 | 428 | 217 | 86 | 91 | 34 | 100% |
 
@@ -652,7 +652,7 @@
 | 推断 | `Behaviors/SpecialAbilityUpdate` | 4 (5) | a1 a4 a6 a7 | E176 engine_specialability_e:a原版忍者/仅删模块对照一局PASS，f240冻结240/13/4/4：两侧曾有NON_AUTOACQUIRABLE，只有原版曾有UNATTACKABLE，最终均清状态且存活。tests/test_specialability_bench_e.py按名字回放四行实测，现有公开Sim无需改规则。仅此烟雾弹Pack状态设置/清除边界；精确开始/到期帧及Pack起算INFERRED，旧命令恢复、其他选项/宿主、重复施放、受击/死亡打断仍gap，不晋升整模块，不新增拆分用量；见work/re/e176_specialability.md；例：JapanAntiInfantryInfantry, JapanAntiVehicleVehicleTech1 |
 | 推断 | `Behaviors/TechUpgradeReceiver` | 4 (5) | a2 a4 a5 a7 a8 | E167 engine_techrecvon/engine_techrecvoff:a原版工厂/仅删二级接收模块两局PASS，均完整f330；f60/f180/f300冻结15/15/15，f180近侧300距离持有数2/1、远侧750距离1/1（含各自建造场来源），f210删除来源后f300双方均0、两工厂存活。tests/test_simtechreceiver_e.py按名字回放台上读数；公开Sim补读链接覆盖GameObject XML，未改传播规则。仅此Tech2/建造场/工厂配置，精确传播时钟及矩形角点距离INFERRED；三级、其他宿主/来源、关系/换主/半径边界/生产仍gap，不晋升整模块、不拆分用量；见work/re/e167_techreceiver.md；例：AlliedAirfield, AlliedBarracks |
 | 未做 | `Behaviors/HealCrateCollide` | 4 (4) |  | E146 engine_objectbatch:a/b有/无模块均未治疗，步兵始终50/50；b中立箱且到位成立，仍无效，两轮后暂停；不把负结果登记成效果已对拍。SecretFile原XML含当前schema不接受的属性，未冒充普通HealCrate等价；碰撞派发前置待查；见work/re/e146_objectbatch.md；例：SS_SecretFile1, SS_SecretFile2 |
-| 未做 | `Behaviors/ParkingPlaceBehavior` | 4 (4) | a4 a5 a7 a8 | E157两局实测生产差异：engine_parking:a五次原版阿波罗生产请求后原机场4/仅删Parking机场0；交换玩家engine_parkingswap:a为1/0，排除该玩家归属混淆。场区数量仅测位置，不冒充机位占用；队伍飞离预测失败，返航未成立，原预测保留。tests/test_parking_bench_e.py按名回放f194、f982、交换侧f196，物体模型生产按钮入口产出0/0，strict xfail；生产绑定/配额、返航预约/占用/释放、航母Contain仍gap，不登记已对拍、不改猜测模型。两局已用完，暂停同类台，详work/re/e157_parking.md；例：AlliedAirfield, AlliedAntiStructureShip |
+| 已对拍 | `Behaviors/ParkingPlaceBehavior` | 4 (4) | a4 a5 a7 a8 | tests/test_parking_bench_e.py::test_parking_named_object_model_observations；E188复用E157两局旧台，tests/test_parking_bench_e.py按名字回放原机场/仅删模块f194=1/0、f982=4/0及交换玩家f196=1/0全部通过；消费LIMITED_PRODUCTION_AIRCRAFT及配置配额4，修空闲队列后续唤醒。只覆盖本机场Apollo生产差异；准入发生在下单阶段、排队/出场预留为INFERRED，精确生产帧、筛选、物理机位、返航预约/占用/释放、航母及其他机型仍gap；旧队伍飞离预测失败仍保留，不追加实机；见work/re/e188_parking.md；例：AlliedAirfield, AlliedAntiStructureShip |
 | 已对拍 | `Behaviors/SpecialDisguiseUpdate` | 4 (4) | a1 a4 a6 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_spndisguise.py；例：AlliedAntiVehicleVehicleTech3, AlliedInfiltrationInfantry |
 | 推断 | `Behaviors/AttachUpdate` | 3 (24) | a1 a2 a4 a5 a6 a7 a9 | 部分：engine_attach a验证瞬移/跟随/父子状态；engine_attach_parent a验证简单模块脚本杀父后子活/清理链接，NO_COLLISIONS读数差异为严格xfail；原版模块死亡前无稳定链接，不推广死亡规则；子死/直接删除/维修/吸血/解除/自主扫描仍gap；例：ChronoTargetMarker, AlliedAirfieldRepairDrone |
 | 已对拍 | `Behaviors/StealthDetectorUpdate` | 3 (8) | a2 a6 | tests/test_detector_bench_e.py::test_detector_named_object_model_observations；已测范围：engine_detector:a原版军犬/仅删模块/超半径三路，距离150/150/450；目标INVISIBLE_DETECTED在f151为1/0/0，删除军犬后f310均0，目标始终存活；tests/test_detector_bench_e.py按名用私有物体模型回放同帧读数，原有实现无需修改；gap：公开Sim未接反隐（strict xfail），精确首扫/清除帧、半径边界、移动/驻军/多探测器/其他宿主及过滤配置未对拍；见work/re/e156_detector.md；例：AlliedScoutInfantry, A08_Dog1 |
