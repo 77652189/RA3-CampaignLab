@@ -7,8 +7,10 @@ E60 second run: cleanup below did not remove the spawned miners. No-miner
 bits stayed zero: s1-s9 11100/11100/1000/5000; s10-s13
 1100/11100/3000/3000; s18-s30 1100/11100/3000/3250;
 s35+ 1100/11100/3000/3500. Predictions deliberately remain failing.
-Paused after two engine runs; see work/re/e_infmoney_e60.md. The named replay
-is strict xfail; this diagnostic is not evidence for implemented STEAL_MONEY.
+E193 implements the observed single 2000 transfer; named amount replay uses
+the s13 reading. Original predictions, full counters and late-income replay
+remain failing/strict xfail: no-miner cleanup and exact entry clock are gaps.
+No new engine run; see work/re/e193_money.md and e_infmoney_e60.md.
 """
 from parts import Script, Test, counted, kindof, square
 

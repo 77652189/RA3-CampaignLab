@@ -1,4 +1,4 @@
-"""InfiltratorContain ENERGY, VISION, PARALYZE and crane KILL survival slices.
+"""InfiltratorContain ENERGY, VISION, PARALYZE, money and crane KILL slices.
 
 One retail Allied plant: 20 seconds of zero supply, spy consumed, owner unchanged.
 Travel/entry reach and Amount * eligible energy duration scaling are INFERRED;
@@ -58,6 +58,20 @@ class Infiltrators:
         self.attack_until = {}
         self.paralyzed_hosts = set()
         self.kill_hosts = set()
+        self.money_hosts = set()
+
+    def money_rule(self, target, rule):
+        """E193: one retail Allied refinery transfer; income blocking is a gap."""
+        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
+        return (target.template == 'AlliedRefinery'
+                and config == {'Effect': 'STEAL_MONEY', 'Amount': '2000',
+                               'BlockedDuration': '30s'})
+
+    def money_entry_measured(self, spy, target):
+        s = self.sim
+        return (spy.owner == s.human and spy.template == 'AlliedInfiltrationInfantry'
+                and id(target) not in self.money_hosts
+                and s.money.get(target.owner, 0) >= 2000)
 
     def vision_rule(self, target, rule):
         return (target.template in ('AlliedConstructionYard', 'SovietConstructionYard')
@@ -119,8 +133,11 @@ class Infiltrators:
         energy = (rule.get('Effect') == 'ENERGY' and rule.get('ObjectRef') == 'EnergyDisabler'
                   and not rule.get('ReplaceWith'))
         if not any((energy, self.vision_rule(target, rule), self.paralyze_rule(target, rule),
-                    self.kill_rule(target, rule))):
-            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE及起重机KILL进入存活切片已实现')
+                    self.kill_rule(target, rule), self.money_rule(target, rule))):
+            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY及起重机KILL存活切片已实现')
+            return
+        if self.money_rule(target, rule) and not self.money_entry_measured(spy, target):
+            s.gap('InfiltratorContain', target.template, 'STEAL_MONEY其他间谍/玩家、重复进入及余额不足未对拍')
             return
         if self.kill_rule(target, rule) and (
                 spy.owner != s.human or spy.template != 'AlliedInfiltrationInfantry'
@@ -168,6 +185,19 @@ class Infiltrators:
                 # not the fling trajectory, death animation or death-module dispatch.
                 self.kill_hosts.add(id(target))
                 s.destroy(spy, '起重机拒绝渗透')
+                s.change()
+                continue
+            if self.money_rule(target, rule):
+                if not self.money_entry_measured(spy, target):
+                    s.gap('InfiltratorContain', target.template, 'STEAL_MONEY入楼时资格变化未对拍')
+                    continue
+                amount = int(rule['Amount'])
+                s.money[target.owner] -= amount
+                s.money[spy.owner] = s.money.get(spy.owner, 0) + amount
+                self.money_hosts.add(id(target))
+                # E60 observed subsequent miner income. Do not invent a 30s
+                # income freeze from BlockedDuration; its consumer remains a gap.
+                s.destroy(spy, '进楼渗透', delete=True)
                 s.change()
                 continue
             if self.vision_rule(target, rule):

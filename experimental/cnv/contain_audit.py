@@ -63,6 +63,23 @@ def infiltrator_energy_share(with_templates=False):
     return share
 
 
+def infiltrator_money_share(with_templates=False):
+    """Coordinator's per-configuration closure: E193 measured transfer only.
+
+    Income blocking, other hosts and exact entry clock remain explicit gaps.
+    Match every field so other economic variants receive no bench credit.
+    """
+    measured = rm.ET.fromstring('''<InfiltratorContain id="ModuleTag_InfiltratorContain"
+        Effect="STEAL_MONEY" Amount="2000" BlockedDuration="30s"/>''')
+    wanted = (signature(measured),)
+    rows = [r for r in engineer_audit.audit('InfiltratorContain')['rows']
+            if tuple(sorted(signature(rm.ET.fromstring(m['xml'])) for m in r['modules'])) == wanted]
+    share = dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+    if with_templates:
+        share['template_ids'] = [r['template'] for r in rows]
+    return share
+
+
 def audit():
     result = {}
     for kind in ('EngineerContain', 'InfiltratorContain'):

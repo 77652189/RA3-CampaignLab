@@ -132,13 +132,13 @@ def test_infiltrator_energy_split_preserves_weight_and_other_effect_gaps():
     assert contain_audit.infiltrator_energy_share() == {'campaign': 4, 'templates': 6}
     rows = [r for r in inventory.collect((inventory.MODULE,))
             if r['name'].startswith('Behaviors/InfiltratorContain')]
-    assert len(rows) == 2
+    assert len(rows) == 3
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
     measured = next(r for r in rows if r['name'].endswith(':ENERGY'))
     gap = next(r for r in rows if r['name'] == 'Behaviors/InfiltratorContain')
     assert (measured['uses'], measured['all'], measured['state']) == (4, 6, inventory.BENCHED)
-    assert (gap['uses'], gap['all'], gap['state']) == (30, 32, inventory.GUESSED)
+    assert (gap['uses'], gap['all'], gap['state']) == (27, 28, inventory.GUESSED)
     assert measured['why'].startswith('tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench')
     import inventory_levels
     scope, _ = inventory_levels.expand_forms(rows, {
@@ -159,12 +159,47 @@ def test_infiltrator_energy_split_does_not_credit_changed_fields(monkeypatch):
     assert contain_audit.infiltrator_energy_share() == {'campaign': 0, 'templates': 0}
 
 
+def test_infiltrator_money_split_preserves_weight_and_level_scope():
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    assert contain_audit.infiltrator_money_share() == {'campaign': 3, 'templates': 4}
+    rows = [r for r in inventory.collect((inventory.MODULE,))
+            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    assert sum(r['uses'] for r in rows) == 34
+    assert sum(r['all'] for r in rows) == 38
+    money = next(r for r in rows if r['name'].endswith(':STEAL_MONEY'))
+    assert (money['uses'], money['all'], money['state']) == (3, 4, inventory.BENCHED)
+    assert money['why'].startswith('tests/test_siminfiltrator.py::test_spy_refinery_transfer_amount_as_on_the_bench')
+    assert 'BlockedDuration收入阻断' in money['why']
+    assert 'strict xfail' in money['why']
+    import inventory_levels
+    scope, _ = inventory_levels.expand_forms(rows, {
+        (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
+            'a1': {'AlliedRefinery', 'JapanPowerPlant', 'AlliedBarracks'}}})
+    assert scope[(inventory.MODULE, money['name'])]['a1'] == {'AlliedRefinery'}
+    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain')]['a1'] == {'AlliedBarracks'}
+
+
+@pytest.mark.parametrize('field, value', [('Amount', '1999'), ('BlockedDuration', '29s')])
+def test_infiltrator_money_split_rejects_changed_fields(monkeypatch, field, value):
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    raw = contain_audit.engineer_audit.audit('InfiltratorContain')
+    monkeypatch.setattr(contain_audit.engineer_audit, 'audit', lambda kind: raw)
+    for row in raw['rows']:
+        for module in row['modules']:
+            element = retailmodules.ET.fromstring(module['xml'])
+            if element.get('Effect') == 'STEAL_MONEY':
+                element.set(field, value)
+                module['xml'] = retailmodules.ET.tostring(element, encoding='unicode')
+    assert contain_audit.infiltrator_money_share() == {'campaign': 0, 'templates': 0}
+
+
 @pytest.mark.parametrize('effect, selector, uses, templates, boundary', [
     ('KILL', '', 1, 1, 'KILL 1用量/1模板部分已测'),
     ('PARALYZE', '', 3, 3, 'PARALYZE 3用量/3模板部分已测'),
     ('VISION', '', 5, 5, '普通VISION 5用量/5模板部分已测且暂停扩宿主'),
     ('VISION', '9999999s', 1, 1, '港口阻断VISION 1用量/1模板未测'),
-    ('STEAL_MONEY', '', 3, 4, 'STEAL_MONEY 3用量/4模板暂停'),
     ('VISION_UNITS', 'InfiltrationVehicleObjectFilter', 4, 4, '车辆VISION_UNITS 4用量/4模板暂停'),
     ('VISION_UNITS', 'InfiltrationAircraftObjectFilter', 2, 2, '飞机VISION_UNITS 2用量/2模板未测'),
     ('VISION_UNITS', 'InfiltrationInfantryObjectFilter', 3, 3, '步兵VISION_UNITS 3用量/3模板未测'),
@@ -176,7 +211,7 @@ def test_infiltrator_residual_closure_preserves_each_configuration_gap(
     """A successful PARALYZE replay cannot grant the other forms bench credit.
 
     Static counts only: actual readings stay in the named siminfiltrator tests.
-    Match all ten remaining forms against the SDK census and their public scope.
+    Match the nine remaining forms against the SDK census and their public scope.
     """
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')

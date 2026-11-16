@@ -224,12 +224,101 @@ def test_spy_superweapon_reset_as_on_the_bench(check, until, windows):
         assert not s.short_of_power(building.owner)
 
 
-@pytest.mark.xfail(strict=True, reason='E60 STEAL_MONEY转账与矿车收入未闭环，清除匿名矿车无效；见 work/re/handoff-e.md 和 e_infmoney_e60.md')
+@pytest.mark.xfail(strict=True, reason='E193入楼晚于台上s11稳定窗；不调通用移动/进入距离，见 work/re/e193_money.md')
+def test_spy_refinery_transfer_window_as_on_the_bench():
+    """engine_infmon:a E60: exact 2000 transfer, hostile consumed, ally refused.
+
+    Replay the measured pre-income window with the original mission. The
+    failed engine cleanup differs from Sim: compare only the published
+    HP/owner/spy digits here. The full counter (including the no-miner bit)
+    and later income keep their original assertions in the strict xfail.
+    Entry reach/clock remain INFERRED; see work/re/e193_money.md.
+    """
+    import build
+    import sim
+    import siminfiltrator
+    m, t, mod = build.resolve('engine_infmon', 'a')
+    assert len(mod) <= 15 and '_' not in mod
+    rule = siminfiltrator.spec('AlliedRefinery')
+    assert (rule['Effect'], rule['Amount'], rule['BlockedDuration']) == ('STEAL_MONEY', '2000', '30s')
+    s = sim.Sim(m, t).run(13)
+    for start, end, wanted in ((2, 7, [11100, 11100, 1000, 5000]),
+                               (11, 13, [1100, 11100, 3000, 3000])):
+        rows = [[values[0] % 100000, values[1] % 100000, *values[2:]]
+                for second, values in s.series if start <= second <= end]
+        assert rows and all(row == wanted for row in rows), rows
+    assert not s.body(m.role('enemy spy').name).alive
+    assert s.body(m.role('ally spy').name).alive
+    for role, side in (('enemy', 's1'), ('ally', 's2')):
+        refinery = s.body(m.role(role).name)
+        assert refinery.owner == m.player(side) and refinery.hp == refinery.max_hp
+    assert s.money[m.player('s2')] == 5000
+    assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
+
+
+def test_spy_refinery_transfer_amount_as_on_the_bench():
+    """engine_infmon:a s13: exact balances and entry effects, not arrival clock.
+
+    E60 reads p1=3000/s1=3000 at s13, with hostile spy consumed,
+    friendly spy alive and both refinery HP/owners unchanged. The window
+    replay above keeps the unresolved earlier arrival as strict xfail.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infmon', 'a')
+    s = sim.Sim(m, t).run(13)
+    rows = [values[2:] for second, values in s.series if second == 13]
+    assert rows == [[3000, 3000]]
+    assert s.money[m.player('s2')] == 5000
+    for role, side, alive in (('enemy', 's1', False), ('ally', 's2', True)):
+        refinery = s.body(m.role(role).name)
+        spy = s.body(m.role(role + ' spy').name)
+        assert spy.alive == alive
+        assert refinery.owner == m.player(side) and refinery.hp == refinery.max_hp
+    assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
+
+
+@pytest.mark.parametrize('variant', ['amount', 'blocked', 'host', 'spy', 'player', 'repeat', 'poor', 'poor_at_entry'])
+def test_spy_refinery_unmeasured_money_variants_report_gap(variant):
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infmon', 'a')
+    s = sim.Sim(m, t)
+    spy, target = s.body(m.role('enemy spy').name), s.body(m.role('enemy').name)
+    s.money[target.owner] = 5000
+    s.money[spy.owner] = 1000
+    if variant == 'amount':
+        s.infiltrators.spec(target)['Amount'] = '1999'
+    elif variant == 'blocked':
+        s.infiltrators.spec(target)['BlockedDuration'] = '29s'
+    elif variant == 'host':
+        target.template = 'SovietRefinery'
+    elif variant == 'spy':
+        spy.template = 'JapanInfiltrationInfantry'
+    elif variant == 'player':
+        spy.owner = m.player('s3')
+        s.relations[target.owner, spy.owner] = 'Enemy'
+    elif variant == 'repeat':
+        s.infiltrators.money_hosts.add(id(target))
+    elif variant == 'poor':
+        s.money[target.owner] = 1999
+    s.infiltrators.send(spy, target)
+    if variant == 'poor_at_entry':
+        assert spy.mode == 'infiltrate'
+        s.money[target.owner] = 1999
+        spy.x, spy.y, spy.path = target.x, target.y, []
+        s.infiltrators.tick()
+    assert ('InfiltratorContain', target.template) in s.unmodeled
+    assert spy.alive and not s.infiltrators.going
+    assert s.money[s.human] == 1000
+
+
+@pytest.mark.xfail(strict=True, reason='E193已接2000转账；E60后续矿车收入时序与清除匿名矿车仍未闭环；见 work/re/e193_money.md')
 def test_spy_refinery_money_as_on_the_bench():
     """engine_infmon:a: 2000 transfer followed by miner income, failed cleanup.
 
     Measured second run: no-miner bits stay zero; enemy bank recovers 250 twice.
-    Both transfer and the failed unnamed-miner cleanup remain unimplemented.
+    Transfer is covered separately; keep every original late-income assertion.
     """
     import build
     import sim
