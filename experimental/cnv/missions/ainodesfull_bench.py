@@ -7,6 +7,7 @@ inside its build radius. Three builds differ only in the AI refineries placed on
   ainf0  none                      -> both nodes open
   ainf1  one, on the field's pad   -> the front node served, the side one open
   ainf2  two, one facing each node -> both served
+  ainf3  ainf2 + two more AI Ore Collectors beside each refinery (B209: is 'full' counted in miners?)
 Prediction (simai Brain.open_nodes: a node is served by an own refinery within 300 whose nearest node it is,
 INFERRED; the engine's per-node taken / capacity wrapper is unread): the Peacekeepers stay home on ainf0 and ainf1
 and leave on ainf2; the Guardians leave on all three.
@@ -18,7 +19,7 @@ from missions import aistate_bench as setup
 PAD2 = (150.0 * math.sqrt(0.5), 150.0 * math.sqrt(0.5))   # the side node's pad: PAIR_GAP beside the field's pad
 
 
-def mission(name, refineries):
+def mission(name, refineries, miners=0):
     m = setup.mission(name, near=True)
     filename, xml, asset = m.assets[0]
     states = [setup._state('CNVNodesFull', '', setup.INF, gate='const').replace(
@@ -40,10 +41,16 @@ def mission(name, refineries):
     if refineries >= 2:
         m.put('AlliedRefinery', 'east refinery', *PAD2, side='s1', name='UNIT - CNV AI Refinery 2',
               role='ai refinery 2')
+    for r, pad in enumerate(((0.0, 0.0), PAD2)[:refineries]):
+        for k in range(miners):                  # B209 H1: extra AI miners beside each refinery (taken / capacity?)
+            m.put('AlliedMiner', 'east refinery', pad[0] - 160.0, pad[1] - 60.0 + 120.0 * k, side='s1',
+                  name=f'UNIT - CNV AI Miner {r} {k}', role=f'ai miner {r} {k}')
     m.facts['ai refineries'] = refineries
+    m.facts['ai miners'] = miners
     return m
 
 
 MISSION = {'ainf0': lambda: mission('CampNodesFull0', 0),
            'ainf1': lambda: mission('CampNodesFull1', 1),
-           'ainf2': lambda: mission('CampNodesFull2', 2)}
+           'ainf2': lambda: mission('CampNodesFull2', 2),
+           'ainf3': lambda: mission('CampNodesFull3', 2, miners=2)}

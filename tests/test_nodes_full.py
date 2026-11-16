@@ -4,7 +4,8 @@ Bench 2026-11-15 (run_queue, work/logs/b208_bench.log; counters 满态在家 / �
 Peacekeepers / the constant state's Guardians at home):
   ainf0 (no refinery)        s1-s63 4 4, s73-s173 4 0   -- the Guardians leave, the Peacekeepers stay
   ainf2 (two refineries)     s1-s174 4 4, s194-s279 4 0 -- the Peacekeepers stay too: not 'full'
-  ainf1 (one refinery)       not run (bench menus stuck)
+  ainf1 (one refinery)       s2-s273 4 4 .. s245 4 0 -- the Peacekeepers stay (B209, work/logs/b209_bench.log)
+  ainf3 (ainf2 + 2 miners per refinery)  s1-s113 4 4, s116 0 3, s126 0 0 -- full: miners count (B209)
 The simulator's rule (simai Brain.open_nodes: an own refinery within 300 serves its nearest node, INFERRED) says
 ainf2 is full; the engine's per-node taken / capacity wrapper is unread.
 """
@@ -38,9 +39,25 @@ def test_open_nodes_keep_the_nodes_full_state_off():
 
 @pytest.mark.xfail(strict=True, reason='bench ainf2: two refinery pads facing the two east nodes, the Peacekeepers '
                    'stay home to s279 (4) while the Guardians leave (s194 0); the simulator serves both nodes '
-                   '(a refinery within 300, its nearest node) -> full -> 0 from s20. What fills a node (miners per '
-                   'node? the wrapper state) is unread -- B208 handoff hypothesis table')
+                   '(a refinery within 300, its nearest node) -> full -> 0 from s20. Bench ainf3 (two more miners '
+                   'beside each refinery) fills them: it counts miners, threshold unread -- handoff-b 209')
 def test_two_refineries_still_leave_a_node_open():
     rows = _rows('ainf2')
     for second in range(80, 120):
         assert rows[second]['满态在家'] == 4, second
+
+
+def test_one_refinery_leaves_the_side_node_open():
+    """ainf1 (bench B209, work/logs/b209_bench.log): one refinery on the field's pad -> s2-s273 the Peacekeepers stay
+    home (4) while the Guardians leave (s245 0)."""
+    rows = _rows('ainf1')
+    for second in range(80, 120):
+        assert rows[second]['满态在家'] == 4, second
+
+
+def test_extra_miners_fill_the_nodes():
+    """ainf3 = ainf2 + two AI Ore Collectors beside each refinery (bench B209): s116 the Peacekeepers leave with the
+    Guardians (0 3, s126 on 0 0) -- 'full' counts miners (handoff-b 209, H1). The bench's late start (both groups
+    sit to s113, also the control) is unexplained; the simulator leaves from s20, so only the end is asserted."""
+    rows = _rows('ainf3')
+    assert rows[119]['满态在家'] == 0

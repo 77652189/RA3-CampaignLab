@@ -23,4 +23,4 @@ def a(m):
     return t
 
 
-CHECKS = {'ainf0': {'a': a}, 'ainf1': {'a': a}, 'ainf2': {'a': a}}
+CHECKS = {'ainf0': {'a': a}, 'ainf1': {'a': a}, 'ainf2': {'a': a}, 'ainf3': {'a': a}}
