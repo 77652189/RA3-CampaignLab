@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 194 | 15 | 127 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 195 | 15 | 126 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 58 / 113 | 189 | 59 | 21 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -258,7 +258,7 @@
 | 未做 | `NAMED_SET_SPECIAL_POWER_COUNTDOWN` | 12 |  | C两局engine_namedcount:a/engine_namedvac:a：三独立玩家宿主，1秒0/2、7秒2/0交换，第三方不操作；铁幕f43..143就绪0、f153..315为7，真空弹f41..148为0、f155..300为3，宿主位均7、零余电位均0。旧零/非零预测被否定；缺真实剩余冷却/READY刷新与宿主初始化同帧字段，秒数与作用域未闭环。两个按名逐31实读帧回放strict xfail，未改模型、未晋升；假设表及字段缺口见work/re/c_namedcount_report.md |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAfterburners` | 12 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 不涉及 | `OPTIONS_SET_OCCLUSION_MODE` | 12 |  | 纯表现（名字规则） |
-| 未做 | `PLAYER_SELL_EVERYTHING` | 12 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_SELL_EVERYTHING` | 12 |  | tests/test_sellall_bench_c.py::test_sellall_owner_refund_and_repeat_match_bench；C engine_sellall:a/b显式玩家交换对照：所属普通盟军电厂退款400一次、SOLD后消失，三方守护者及异玩家电厂保留；空玩家与重复调用无额外退款。tests/test_sellall_bench_c.py按名逐实读逻辑帧回放资金码/存活位/出售位/逻辑帧。仅显式玩家单电厂切片已量，多建筑枚举和其他模板推广INFERRED；不可售/受损/展开中/队列/驻军及This Player、All Players仍gap；见work/re/c_sellall_report.md |
 | 已对拍 | `SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER` | 12 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
 | 未做 | `TEAM_GARRISON_NEAREST_BUILDING` | 12 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_KINDOF_OWNED_BY_PLAYER` | 12 |  | Sim.act / Sim.cond 不认识 |
