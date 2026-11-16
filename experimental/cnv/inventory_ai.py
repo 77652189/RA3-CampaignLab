@@ -164,10 +164,14 @@ NOTES = {
         '原预测FAIL另strict xfail。资格对照已测，实时基地/搜索范围参考仍gap，不晋升；'
         '见work/re/c_techkind_report.md、handoff-c.md'),
     '目标/AITargetingHeuristic.UnderAttack': (GUESSED,
-        'C 静态核对27关：SDK五宿主，仅a08 Player_2可达ClosestAllyUnitUnderAttackHeuristic；'
-        '未上台。simai以最近两秒掉血代替逐对象受攻击状态，真实置位/撤销语义未证；'
-        'target_picks有候选资格，但缺同帧逐对象受攻击事实，基地hit不能替代对象状态。'
-        '门禁暂停，保持推断；见work/re/c_underattack_gate_report.md及c_underattack_scope.json'),
+        'C重开复用D164：满血电厂f5记录、f16门true并选中；last33/clear109来源活，'
+        '另一对象last146/clear222来源已删，clr不等于同帧门。新aiuagate两局，'
+        '修正旗标空作用域后普通对照f49/f139选建筑，UnderAttack两路无目标；'
+        '受伤电厂已不在候选，仅另三座last=-1的f49门false，缺该对象后命中/清除门。'
+        'tests/test_underattack_gate_c.py断言原始读数、实际消费者和具名aiunderatk回放；'
+        '三strict xfail：后命中门证据、FriendlyStructure绕过布尔、具名选择差异。'
+        '世界层缺真实受伤时钟，HP差两秒不能替代；两局耗完、暂停不晋升；'
+        '见work/re/c_underattack_reopen_report.md；27关范围仍见c_underattack_scope.json'),
     '目标/AITargetingHeuristic.VitalObjectStatus': (GUESSED,
         'C engine_aivital aivitalon/off:a：四原名宿主、脚本状态置/清对照；'
         's55-60原打包状态*100+目标区*10+家中计数分别24/4/4/140与24/4/4/4。'
