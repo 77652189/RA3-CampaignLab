@@ -22,6 +22,12 @@ recruited, it is not a team that does not move. aitransr (the Riptide alone): th
 aitransw0 / aitransw1 / aitransrw (the plant on the west bank's landing 'front' instead): the same in all three
 (..._1116_133119 / 132835 / 132645). aiteamfilter's aitfamph took Riptides at a land target on the east bank (with
 bridges, AllowedLocomotorTypes AMPHIBIOUS only). Not explained in two layouts: stopped (work/re handoff-b 222).
+RESULTS (2026-11-16, B round 223): aitransre (the Riptide alone, no bridges, the plant back at aiteamfilter's
+'east gate' on the east bank) PASS: 激流在岛 1 from s60 (CampAITransREA_mcp_1116_134740) -- the Riptide is taken and
+goes. So this map (no bridges, no library, LAND AMPHIBIOUS) does not turn it away; what does is the target being
+somewhere the east bank has no ground way to (the island, the west bank): the recruit turns the Riptide away there
+too. A passenger is paired only when it cannot reach the target itself, and such a unit is not recruited, so no
+layout of this bench forms a pair and UseTransports stays untold apart. Stopped, not registered (handoff-b 223).
 """
 from parts import Script, Test, counted, square, status
 
@@ -38,7 +44,7 @@ def a(m):
     if m.facts['target on island']:
         t.areas[ISLAND] = [(X0, Y0), (X1, Y0), (X1, Y1), (X0, Y1)]
     else:
-        t.areas[ISLAND] = square(*m.site('front'), 350.0)
+        t.areas[ISLAND] = square(m.facts['target x'], m.facts['target y'], 350.0)   # 'front' / B223 'east gate'
     counted('CNV_TR_In', '车内步兵', t, status=status('ENCLOSED'), player=s1)
     counted('CNV_TR_Isle', '岛上步兵', t, template='AlliedAntiInfantryInfantry', area=ISLAND, player=s1)
     counted('CNV_TR_Boat', '激流在岛', t, named='UNIT - CNV AI Riptide', area=ISLAND)
@@ -55,4 +61,4 @@ def a(m):
 
 
 CHECKS = {name: {'a': a} for name in ('aitrans0', 'aitrans1', 'aitransr', 'aitransw0', 'aitransw1',
-                                              'aitransrw')}
+                                              'aitransrw', 'aitransre')}

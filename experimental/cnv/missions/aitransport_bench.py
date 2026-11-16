@@ -27,7 +27,8 @@ def mission(use, inf=4, name=None, site='station'):
     assert all(o.template == 'HB_Bridge_02' for o in m.map.OBJECTS[:6])
     m.map.OBJECTS = m.map.OBJECTS[6:]                       # no bridges: the east bank is cut off
     target = next(o for o in m.objects if o.name == 'UNIT - CNV AI Player Target')
-    target.x, target.y = m.site(site)
+    if site:                                                # None: aiteamfilter's 'east gate' plant (B223)
+        target.x, target.y = m.site(site)
     m.put(RIPTIDE, 'east base', -350.0, -160.0, side='s1', angle=3.1416, name='UNIT - CNV AI Riptide',
           role='ai riptide')
     m.spawns |= {RIPTIDE}
@@ -35,7 +36,8 @@ def mission(use, inf=4, name=None, site='station'):
     m.ext, m.ext_logs = True, ('target',)
     m.units.append(host_unit())
     m.put(HOST, 'east base', 250, 400, side='s1', role='teams host')
-    m.facts |= {'use transports': int(use), 'target on island': int(site == 'station')}
+    m.facts |= {'use transports': int(use), 'target on island': int(site == 'station'),
+                'target x': target.x, 'target y': target.y}
     filename, xml, asset = m.assets[0]
     assert TACTIC in xml
     xml = xml.replace(TACTIC, f'{TACTIC} UseTransports="{str(use).lower()}"')
@@ -53,4 +55,8 @@ MISSION = {'aitrans0': lambda: mission(False), 'aitrans1': lambda: mission(True)
            # same three with the plant on the west bank's bridge landing ('front'): water-only for both
            'aitransw0': lambda: mission(False, name='CampAITransW0', site='front'),
            'aitransw1': lambda: mission(True, name='CampAITransW1', site='front'),
-           'aitransrw': lambda: mission(True, inf=0, name='CampAITransRW', site='front')}
+           'aitransrw': lambda: mission(True, inf=0, name='CampAITransRW', site='front'),
+           # B223: the Riptide alone, still no bridges, the plant back on the east bank's land ('east gate', where
+           # aitfamph took Riptides): taken -> "no way there" turns it away on the island / west bank; not taken ->
+           # this bench itself (no bridges, no library, LAND AMPHIBIOUS) turns the Riptide away
+           'aitransre': lambda: mission(True, inf=0, name='CampAITransRE', site=None)}
