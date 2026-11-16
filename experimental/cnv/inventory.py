@@ -51,6 +51,8 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
 BENCHED_TESTS = {
+    (ACTION, 'TEAM_GARRISON_NEAREST_BUILDING'):
+        'tests/test_teamgarr_bench_c.py::test_teamgarr_nearest_and_team_scope_match_bench',
     (ACTION, 'PLAYER_SELL_EVERYTHING'):
         'tests/test_sellall_bench_c.py::test_sellall_owner_refund_and_repeat_match_bench',
     (ACTION, 'TEAM_EXIT_ALL_BUILDINGS'):
@@ -399,6 +401,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (ACTION, 'TEAM_GARRISON_NEAREST_BUILDING'): (BENCHED, 'C engine_teamgarr:a/b两栋空公寓最近选择：建筑摆放顺序不变，仅步兵东移；本队两名征召兵进最近楼，同玩家异队留外，空队伍/重复调用无误伤。最终进驻位/楼归属/存活位分别3/1/31与3/2/31；tests/test_teamgarr_bench_c.py按名回放实读逻辑帧的动作前及稳定窗口。仅显式普通步兵与空楼选择切片；逐成员距离及其他模板推广INFERRED，队伍中心/等距/搜索范围、容量/敌属/损坏楼/AI实例和入门时序仍gap；见work/re/c_teamgarr_report.md'),
     (ACTION, 'PLAYER_SELL_EVERYTHING'): (BENCHED, 'C engine_sellall:a/b显式玩家交换对照：所属普通盟军电厂退款400一次、SOLD后消失，三方守护者及异玩家电厂保留；空玩家与重复调用无额外退款。tests/test_sellall_bench_c.py按名逐实读逻辑帧回放资金码/存活位/出售位/逻辑帧。仅显式玩家单电厂切片已量，多建筑枚举和其他模板推广INFERRED；不可售/受损/展开中/队列/驻军及This Player、All Players仍gap；见work/re/c_sellall_report.md'),
     (MODULE, 'AI/AnimalAIUpdate'): (TODO, 'E192 engine_animal_e:a原版女性平民近敌100/仅删模块/远敌700三路，f240四行240/0/7/7，六物体存活但均未离开起点。engine_animalfire_e:a增加敌兵攻击旁电厂，仍240/0/7/7，三路受击前置未成立；两局原逃跑预测FAIL保留。tests/test_animal_bench_e.py按名字回放实读负基线，开火接受Sim63对台7保留strict xfail。ra3ext tgt0/inc3/ua0无fleeTrigger/attackAccepted/rejectReason，触发资格未闭合（INFERRED），不实现猜测规则、不登记效果覆盖；同输入暂停，需合法触发或接受证据与新预算，见work/re/e192_animal.md'),
     (ACTION, 'NAMED_SET_SPECIAL_POWER_COUNTDOWN'): (TODO, 'C两局engine_namedcount:a/engine_namedvac:a：三独立玩家宿主，1秒0/2、7秒2/0交换，第三方不操作；铁幕f43..143就绪0、f153..315为7，真空弹f41..148为0、f155..300为3，宿主位均7、零余电位均0。旧零/非零预测被否定；缺真实剩余冷却/READY刷新与宿主初始化同帧字段，秒数与作用域未闭环。两个按名逐31实读帧回放strict xfail，未改模型、未晋升；假设表及字段缺口见work/re/c_namedcount_report.md'),

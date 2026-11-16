@@ -4185,6 +4185,16 @@ class Sim:
                 # game, but s01's intro then needs CONTAINER_OCCUPIED, the eject and the flyby's relation, not modelled
                 # (Natasha would ride a Bullfrog the simulator lets die) -- round 213 handoff
                 self.send(b, a[1])
+        elif name == 'TEAM_GARRISON_NEAREST_BUILDING':
+            # engine_teamgarr:a/b: only this crew, nearest of two empty apartments.
+            # Per-member distance, candidate eligibility beyond this contrast,
+            # capacity and exact walk/entry timing are INFERRED, not benched.
+            # See work/re/c_teamgarr_report.md; use the existing walk-in consumer.
+            for b in self.members(a[0]):
+                places = self.garrison.places(b, False)
+                if places:
+                    g = min(places, key=lambda g: math.hypot(g.x-b.x, g.y-b.y))
+                    self.garrison.send(b, g)
         elif name == 'TEAM_GARRISON_SPECIFIC_BUILDING':
             # (team, building or transport) each member walks there and goes in, the room asked (bench 11-13
             # engine_acts_tel: five of six into the five-place Bullfrog, one a second; unlike _INSTANTLY)
