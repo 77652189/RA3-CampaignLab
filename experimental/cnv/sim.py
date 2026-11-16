@@ -4027,6 +4027,12 @@ class Sim:
                 self.act('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', [b.name, a[1], a[2]], script)
         elif name == 'SELL_OBJECT':              # (object) engine_sell: sell(), refused while unpacking
             self.sell(self.body(a[0]))
+        elif name == 'PLAYER_SELL_EVERYTHING':
+            # engine_sellall: owned plant sells/refunds once; Guardians and other owners stay.
+            # Other sellable structures use existing sell() rules (INFERRED); see work/re/c_sellall_report.md.
+            for b in list(self.living()):
+                if b.owner == a[0]:
+                    self.sell(b)
         elif name == 'NAMED_DAMAGE':             # (object, amount) health points off, no armour; engine_sell b / e
             b = self.body(a[0])                  # the Indestructible panel flag does not stop it (engine_scripts7 panel)
             if b and b.alive:
