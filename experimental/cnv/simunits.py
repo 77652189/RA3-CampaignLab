@@ -763,6 +763,17 @@ def _resolve(w, weapons):
                     weapons.get(w.get('warhead'), {}).get('unmodeled_effects', []))))
 
 
+def queue_dock(template, own=None):
+    """Whether the effective template supplies QueueDock (E164, work/re/e164_queuedock.md).
+
+    Only module presence is consumed here; bone positions and waiting places remain gaps.
+    """
+    def read(xml):
+        text = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        return bool(list(_blocks(text, 'QueueDockBehavior')))
+    return _inherited(template, own, read, False)
+
+
 def lift_module(template, own=None):
     """D50 timing interface, see work/re/d50_lift_release.md.
 

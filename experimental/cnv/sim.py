@@ -1910,6 +1910,12 @@ class Sim:
                 m['due'] = fr + MINE_RETRY
                 return
             m['ref'] = r.name
+            # E164 / D165: selection still finds a refinery lacking QueueDock, but
+            # native delivery faults immediately, before moving or paying. Reject
+            # this configuration rather than simulating a successful delivery.
+            # See work/re/e164_queuedock.md; absolute path timing remains a gap.
+            if not simunits.queue_dock(r.template, self.own):
+                raise ValueError(f'QueueDock missing on refinery {r.name!r} selected by miner {b.name!r}')
             self._leg(b, fr, (r.x, r.y), 'to refinery')
         elif st == 'to refinery':
             m['leg'] = None
@@ -1940,6 +1946,9 @@ class Sim:
             self.earn(b.owner, give)
             m['due'] = fr + 1
             if m['n'] >= MINE_DOCK:
+                # D165 / E164: native cargo clears when Unload finishes, not
+                # when the next ore node begins loading.
+                m['load'] = 0
                 m['state'] = 'locate'
 
     def _claimed(self, n, b, node):

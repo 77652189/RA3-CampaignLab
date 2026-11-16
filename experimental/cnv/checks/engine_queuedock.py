@@ -1,7 +1,7 @@
 """E152 QueueDock prediction: named miner harvests, returns, pays 250 and leaves.
 
 Both arms remove the refinery's SpawnBehavior to avoid a second miner claiming
-the node. Only off removes QueueDock. UNMEASURED: off should not unload; no
+the node. Only off removes QueueDock. Original prediction: off should not unload; no
 timing or bone/path calibration is assumed. Native DOCKING object status is
 observed separately from the XML's DOCKING_ACTIVE model animation condition.
 
@@ -13,9 +13,12 @@ MEASURED E152: on f329=250, f351 left pad, f597=500; both alive,
 DOCKING/HARVESTING bits always zero through f1139. Off capture ended at f197
 with money/progress=0, before on's first payment. Its old wallet-only judge
 said PASS despite truncation; the frame gate below rejects that record.
-No module-effect coverage: legal internal stage observation and a complete
-off control are gaps. Paused; see work/re/e152_queuedock.md. The on f786
-snapshot replay is strict xfail; no path or bone timing was fitted.
+D165/E164 supersedes the off interpretation: native faults on its first
+delivery to the refinery without QueueDock. It is not a zero-income control;
+judge that diagnostic with teamlog.dock_phases faults, not these wallet rules.
+On native Unload lasts 30 frames and delivers 250; the simulator rejects the
+missing dock at selection. See work/re/e164_queuedock.md. The on f786 snapshot
+remains strict xfail; no path or bone timing was fitted.
 """
 from parts import NOT, Script, Test, square, status
 

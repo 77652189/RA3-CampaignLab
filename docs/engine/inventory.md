@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 181 | 20 | 135 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
-| 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 16 | 90 | 26 | 99% |
+| 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 17 | 89 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **97%** | **97%** | 193 / 357 | 428 | 211 | 93 | 90 | 34 | 100% |
 
@@ -644,7 +644,7 @@
 | 未做 | `Behaviors/AttackAssistResponseBehavior` | 5 (5) | a1 a2 a4 a5 a6 a7 a9 | E144派发诊断：engine_attackassist a两次准备运行均进关前崩溃，无台上读数；最终原版光谱塔宿主配方已修本地模块引用及结构武器掩码，尚未上台，暂停追加运行直至启动原因解释。tests/test_simattackassist.py严格xfail仅保留待验预测，不作已对拍证据；响应武器派发/原版增伤/时序均gap，模型未改；见work/re/e144_attackassist.md；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
 | 未做 | `Behaviors/CaptureSpecialAbilityUpdate` | 5 (5) | a1 a2 a3 a4 a6 a7 a9 | E151 engine_capture:a原版工程师对CaptureFlag中立/敌方/己方和删模块中立四路：归属100、存活1111、前置1，f45..575未换主。原预测111保留；具名测试仅回放负基线，不登记模块效果已对拍。缺命令被模块接受及同帧阶段证据（INFERRED），暂停同输入重跑；见work/re/e151_capture.md；例：AlliedCommandoTech1, AlliedEngineer |
 | 推断 | `Behaviors/CommandSetUpgrade` | 5 (5) | a1 a4 a5 a7 | E145单图engine_modulebatch:a：空初始菜单的兵营，授Tech2前产物0/0、授后有/无模块产物1/0。菜单切换解析已有；整链路具名回放strict xfail：生产层factories按未持升级的初始菜单识别工厂，故模型仍0/0，需B接口修复。未晋升整项；见work/re/e145_modulebatch.md；例：AlliedConstructionYard, AlliedOutpost |
-| 未做 | `Behaviors/QueueDockBehavior` | 4 (12) | a1 a2 a4 a5 a6 a7 a9 | E152 engine_queuedock:a具名原版矿车对矿场，双方删自动生成避免争矿：on f329收250、f351离pad、f597累计500，两者存活；车/场DOCKING及HARVESTING状态始终0。queuedockoff:a仅到f197即截帧停止、钱包0，早于on首笔，不能证明删模块效果；已加750逻辑帧完整性门拒绝该短记录。on f786实测快照回放strict xfail；缺内部阶段接口和完整off对照，暂停，不登记已对拍、不调路径时序；见work/re/e152_queuedock.md；例：AlliedRefinery, AlliedRefinery_NoHarvester |
+| 推断 | `Behaviors/QueueDockBehavior` | 4 (12) | a1 a2 a4 a5 a6 a7 a9 | E164消费D165 dockphase:a/off阶段证据：on装货f156..186、卸货f289..319各30帧，货量250→0；off首次交矿f200同帧异常，不是无效果对照。公开Sim已按继承读取码头模块，矿车选中缺码头矿场时明确报错、禁止模拟成功交矿；卸货结束清空货量。具名tests/test_simqueuedock.py回放拒绝边界、30帧卸250及清货；整模块不晋升，骨骼/队列/绝对路径时钟仍gap，E152 f786快照保留strict xfail；见work/re/e164_queuedock.md；例：AlliedRefinery, AlliedRefinery_NoHarvester |
 | 推断 | `Behaviors/AutoDepositUpdate` | 4 (8) | a1 a4 a5 a7 | E147 engine_bankcapture:a：中立SwissBank有/无模块两路普通工程师占领，换主并消耗工程师；on奖金750、随后每15游戏帧+5至770，off全0，帧锁定证据1023；具名测试test_simbankcapture按实际读数回放。E146已有归属产钱60/0仍有效；再占领/驻军/上限/修理仍gap，不晋升整项；见work/re/e147_bankcapture.md；例：GE_SwissBank, NY_NYStockExchange |
 | 已对拍 | `Behaviors/InfiltratorContain:ENERGY` | 4 (6) | a2 a4 a5 a6 a7 a8 | tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench；总控11-11授权按配置组收尾：engine_infiltrator a/b/c/d按名字重放，盟军间谍对盟/苏/帝普通电厂及帝国忍者对盟军电厂，敌方进入者消耗、建筑满血不换主、100电量停电约20秒并恢复，友军拒入且存活；gap：其他电量/苏联超级电厂、重复进入续期、精确时序和默认状态分支仍未对拍，不表示全字段全模板已验证；例：JapanPowerPlant |
 | 推断 | `Behaviors/ActivateModuleSpecialPower` | 4 (5) | a1 a2 a4 a6 a7 | E153 engine_activate:a 原版雅典娜宿主/仅删本模块对照，合法按钮激活链接ShieldSphereUpdate；f76..371状态111/100，f379消退100/100，证据7。tests/test_simactivate.py按名回放并断言实测f152/f379；仅实现SELF_POSITION、InitiallyActive=false链接的ObjectStatus/Duration。吸收伤害、上限、提前终止、重复激活及其他链接仍gap；不晋升整项，不表示C的SpecialPowerNugget派发覆盖；见work/re/e153_activate.md；例：AlliedAntiStructureVehicle, JapanAntiVehicleVehicleTech1 |
