@@ -1,9 +1,10 @@
 """UnderAttackBy land/water contrast after a real hit on the aiunderatk plant.
 
 INFERRED prediction: the land slot selects the attacking Hammer, the water
-slot does not. Wake at 4s, after the early automatic hits measured by D164;
-verify the actual hit and selection frames rather than assuming this timing.
-Evidence: work/re/c_underattackby_fight_report.md.
+slot does not. Wake is set to 4s, but the measured first selection precedes it:
+Land has no target at f16, takes a real hit source at f19 after the f18 hit.
+Water only publishes f16, so its post-hit rejection remains unproved.
+Evidence: work/re/c_underattackby_resume_report.md.
 """
 from missions.aiunderattack_bench import mission as underattack
 
