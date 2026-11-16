@@ -4072,6 +4072,15 @@ class Sim:
                     self.set_model_condition(b, f'USER_{int(a[1])}')
                 else:
                     b.model_conditions.pop(f'USER_{int(a[1])}', None)
+        elif name == 'UNIT_SET_MODELCONDITION_FOR_DURATION':
+            b = self.body(a[0])
+            condition = a[1][2] if isinstance(a[1], tuple) else a[1]
+            if float(a[2]) <= 0 or float(a[3]) != 1.:
+                self.gap(GAP_ACTION, name, '仅已量正持续时间和第四参数1.0；见work/re/c_modeldur_report.md')
+            elif self.present(b):
+                # engine_modeldur:a: 3/7 seconds query true for 46/106 frames.
+                # Include the duration boundary; do not change other producers.
+                b.model_conditions[condition] = self.frame_now() + math.ceil(float(a[2]) * simunits.LIFE_FPS) + 1
         elif name in ('UNIT_SET_MODELCONDITION_GENERIC', 'UNIT_CLEAR_MODELCONDITION'):
             b = self.body(a[0])
             condition = a[1][2] if isinstance(a[1], tuple) else a[1]
