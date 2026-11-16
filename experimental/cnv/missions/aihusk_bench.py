@@ -13,7 +13,7 @@ def husk(named=False):
     heuristic = 'CNVHuskNamed' if named else 'LandHuskHeuristic'
     m = mission('CampHuskNamed' if named else 'CampHuskNone',
                 [(heuristic, None)], (0, 0, 0, 4))
-    m.ext = True
+    m.ext, m.ext_logs = True, ('target',)  # D174: ra3ext tgt: lines (costly, on demand)
     m.units.append(host_unit())
     m.put(HOST, 'east base', 250, 400, side='s1', role='teams host')
     m.put('OilDerrick', 'east gate', -250, 0, side='neutral',

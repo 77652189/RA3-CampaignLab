@@ -347,7 +347,8 @@ def ext_wanted(args):
     return os.path.isfile(os.path.join(os.path.dirname(args[args.index('-modConfig') + 1]), 'ra3ext.allow'))
 
 
-EXT_LOGS = {'dock': 'RA3EXT_DOCK'}      # ra3ext.allow word -> the variable the dll turns that log on by (D173)
+EXT_LOGS = {'dock': 'RA3EXT_DOCK',      # ra3ext.allow word -> the variable the dll turns that log on by (D173)
+            'target': 'RA3EXT_TARGET'}  # D174: the tgt: hooks cut aiexpb50 from f2078 to ~f830; Mission.ext_logs
 
 
 def ext_logs(args):

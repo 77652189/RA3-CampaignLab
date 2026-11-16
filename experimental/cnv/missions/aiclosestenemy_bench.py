@@ -38,7 +38,7 @@ def mission():
     m.put('AlliedPowerPlant', 'carrier home', 800, -400, name='UNIT - Closest Enemy', role='closest enemy')
     yard = m.find(m.role('player yard').name)
     yard.x, yard.y = m.site('carrier home', 800, -700)
-    m.ext = True
+    m.ext, m.ext_logs = True, ('target',)  # D174: ra3ext tgt: lines (costly, on demand)
     m.units.append(host_unit())
     m.put(HOST, 'east base', 250, 400, side='s1', role='teams host')
     m.cnv_units = UNITS

@@ -12,7 +12,7 @@ from parts import Script
 def enemy_garrison(real=True):
     m = mission('CampEGarrOn' if real else 'CampEGarrOff',
                 [('EnemyGarrisonHeuristic', None)], (0, 0, 0, 4))
-    m.ext = True
+    m.ext, m.ext_logs = True, ('target',)  # D174: ra3ext tgt: lines (costly, on demand)
     m.units.append(host_unit())
     m.put(HOST, 'east base', 250, 400, side='s1', role='teams host')
     m.put('AM_RowHouse01' if real else 'AlliedPowerPlant', 'east gate', -250, 0,

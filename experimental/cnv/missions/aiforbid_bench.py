@@ -12,7 +12,7 @@ from model import Script
 def forbid(name, filtered, flagged, mask=None, status_name='UNDER_IRON_CURTAIN'):
     expected = (0, 4, 0, 0) if filtered and flagged else (4, 0, 0, 0)
     m = mission(name, [('CNVForbid', None)], expected)
-    m.ext = True
+    m.ext, m.ext_logs = True, ('target',)  # D174: ra3ext tgt: lines (costly, on demand)
     m.units.append(host_unit())
     m.put(HOST, 'east base', 250.0, 400.0, side='s1', role='teams host')
     statuses = status_name.split()

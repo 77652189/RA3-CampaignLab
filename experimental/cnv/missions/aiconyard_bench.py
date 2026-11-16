@@ -16,6 +16,7 @@ def mission(minimum):
                       f'MinDistanceFromConyardEntrance="{minimum}"')
     m.assets[0] = filename, xml, asset
     m.facts['conyard entrance minimum'] = minimum
+    m.ext_logs = ('target',)  # D174: ra3ext tgt: lines (costly, on demand)
     return m
 
 

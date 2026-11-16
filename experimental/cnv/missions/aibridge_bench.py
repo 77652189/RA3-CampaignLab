@@ -21,7 +21,7 @@ from parts import square
 def bridge(real=True):
     m = mission('CampBrTarget' if real else 'CampBrControl',
                 [('BridgeHeuristic', None)], (0, 0, 0, 4))
-    m.ext = True
+    m.ext, m.ext_logs = True, ('target',)  # D174: ra3ext tgt: lines (costly, on demand)
     m.map = SimpleNamespace(**vars(m.map))
     m.map.OBJECTS = m.map.OBJECTS[6:]  # no inherited bridges in either control
     m.map.PLAYERS = {**m.map.PLAYERS, **island.NEUTRAL}

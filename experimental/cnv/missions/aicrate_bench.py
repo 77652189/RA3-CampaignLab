@@ -13,7 +13,7 @@ from missions.aiteams_bench import HOST, host_unit
 def crate(real=True):
     m = mission('CampCrateOn' if real else 'CampCrateOff',
                 [('CrateHeuristic', None)], (0, 0, 0, 4))
-    m.ext = True
+    m.ext, m.ext_logs = True, ('target',)  # D174: ra3ext tgt: lines (costly, on demand)
     m.units.append(host_unit())
     m.put(HOST, 'east base', 250, 400, side='s1', role='teams host')
     m.put('HealCrate' if real else 'OilDerrick', 'east gate', -250, 0,
