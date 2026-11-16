@@ -226,7 +226,7 @@
 | 已对拍 | `SELECT_OBJECT` | 21 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_eyes.py |
 | 已对拍 | `TEAM_FOLLOW_WAYPOINTS_EXACT` | 21 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 不涉及 | `MOVE_CAMERA_TO_NAMED` | 20 | a5 a7 | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
-| 未做 | `REDALERT_DISABLE_THREAT_LEVEL_BONUS` | 20 |  | Sim.act / Sim.cond 不认识 |
+| 未做 | `REDALERT_DISABLE_THREAT_LEVEL_BONUS` | 20 |  | C两局engine_threatbonus:a/b：A仅到第三批损失，不能用捕获秒作任务秒；B改逻辑帧闸门并交换禁用方，实测双方均第2893帧升二级（含禁用方），模型均5400。tests/test_threatbonus_bench_c.py具名阶段读数回放通过，协议升级读数strict xfail保留。未证明动作关闭协议经验倍率，不写无操作实现；缺同帧玩家threat/等级/倍率及单位经验奖励消费，整项未晋升。见work/re/c_threatbonus_report.md |
 | 不涉及 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_COPY` | 20 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `CAMERA_FOLLOW_NAMED` | 19 |  | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
 | 已对拍 | `COUNTER_MATH_COUNTER` | 19 | a1 a2 a3 a6 a7 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_attach.py |
