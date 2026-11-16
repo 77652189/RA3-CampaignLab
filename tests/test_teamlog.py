@@ -256,6 +256,9 @@ def test_target_picks_state_id_and_income_evals(tmp_path):
     old = tmp_path / 'old.log'
     old.write_text(TGT)
     assert {(r['state_id'], r['index']) for r in teamlog.target_picks(str(old))} == {(None, None)}
+    red = tmp_path / 'redacted.log'    # public logs write sid=redacted
+    red.write_text(TGT159.replace('sid=2ee151d8', 'sid=redacted'))
+    assert [r['state_id'] for r in teamlog.target_picks(str(red))] == [None, 'd2df3ca3', '019dcc78']
     a, b = teamlog.income_evals(str(p))
     assert (a['own'], a['enemy'], a['own_in'], a['enemy_in'], a['value'], a['above'], a['result'], a['why']) == \
         (8, 2, 0.0, 0.0, 4.0, True, 1.0, 'zero')

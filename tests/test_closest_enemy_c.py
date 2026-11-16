@@ -87,6 +87,7 @@ def test_closest_enemy_same_frame_native_selection():
         for r in original:
             for key in ('brain', 'state', 'heuristic'):
                 r[key] = 'redacted'
+            r['state_id'] = r['index'] = None    # the fixture writes sid=redacted and drops hi=
         assert rows == original
 
 

@@ -534,6 +534,14 @@ def expansion_candidates(run):
 SORTS = ('Distance', 'ThreatToGround', 'ThreatToAir', 'ThreatToWater', 'Random', 'ClosestToEnemy')
 
 
+def _state_id(sid):
+    """The sid field as 8 lower-case hex; None when absent or not hex (public logs write sid=redacted)."""
+    try:
+        return f"{int(sid, 16):08x}"
+    except (TypeError, ValueError):
+        return None
+
+
 def target_picks(run, brain=None):
     """D158 strategic target picks: one row per call of a target heuristic's find (ra3ext `tgt:` lines).
 
@@ -574,7 +582,7 @@ def target_picks(run, brain=None):
             sort = int(d['sort'])
             hi = int(d['hi']) if 'hi' in d else -1
             out.append(dict(frame=int(d['frame']), brain=d['brain'], slot=int(d['slot']), state=sid,
-                            state_id=f"{int(d['sid'], 16):08x}" if 'sid' in d else None,
+                            state_id=_state_id(d.get('sid')),
                             index=None if hi < 0 else hi, heuristic=d['vt'],
                             sort=SORTS[sort] if 0 <= sort < len(SORTS) else sort, found=d['found'] == '1',
                             target=None if tid == '-1' else int(tid),
