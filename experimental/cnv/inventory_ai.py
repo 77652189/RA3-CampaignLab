@@ -127,6 +127,14 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.HeuristicType=NeutralGarrison': (BENCHED,
+        'C engine_aineutralgarr aigarron/off:a原版排屋/油井同位对照；'
+        'tests/test_garrison_target_c.py按名回放并断言原生选择、对象与坐标：'
+        '两组均选原图HV_Shop01(3180,2760)，排屋候选ok=true，油井不入候选。'
+        '补目标视图漏掉的可驻军地图建筑；GARRISON资格代理仍INFERRED，'
+        '完整容器/容量/占领/进入/撤销/排序/范围及BaseSelection仍gap；'
+        '阴性局原存活判定因s2–s3无采样FAIL，原始值及原因保留，未重跑；'
+        '见work/re/c_garrison_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=Crate': (BENCHED,
         'C engine_aicrate aicrateon/off:a同位原版HealCrate与普通中立油井对照；'
         'tests/test_crate_target_c.py按名回放并断言原生Crate槽与独立NamedObject槽的选择/对象/坐标。'

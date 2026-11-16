@@ -556,7 +556,7 @@ class Brain:
         return [b for b in self.sim.living() if getattr(b, 'spawn_parent', None) is None]
 
     def look(self, frame):
-        """The view's things (every living body but scenery and slaves, self.living: the AI sees the whole map,
+        """The view's things (living bodies, including garrisonable scenery, but not other scenery or slaves; the whole map,
         INFERRED) and who got hurt. Rebuilt once a DT tick (bodies move and fight once a tick)."""
         s, tg = self.sim, self.host.mod['targets']
         if self.seen_t == s.t:
@@ -564,7 +564,11 @@ class Brain:
         self.seen_t = s.t
         things = []
         for b in self.living():
-            if b.scenery:
+            # NeutralGarrison's native candidate scan includes retail map houses
+            # (aigarron/off); scenery is a placement category, not ineligibility.
+            # Other scenery stays outside the target view. Full occupancy and
+            # containment eligibility remain gaps; see work/re/c_garrison_report.md.
+            if b.scenery and 'GARRISON' not in b.kinds:
                 continue
             i = self.tid(b)
             if b.hp < self.hp.get(b.name, b.hp):
