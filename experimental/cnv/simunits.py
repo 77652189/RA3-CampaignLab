@@ -309,7 +309,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v37.json')    # v37: immediate horizontal inversion; v36: filtered MetaImpact; v35: armours' side / rear scalars; v34: ai_parts; v33: lift dispatch
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v38.json')    # v38: measured magnetic ground filter; v37: immediate horizontal inversion
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -447,7 +447,7 @@ def _weapons(texts, base_table=None):
                 # landing phases remain unresolved, as do other variants.
                 unsupported.append('MetaImpactNugget')
                 fields = set(re.findall(r'(\w+)\s*=', h))
-                # Only the measured Sickle filter spelling is enabled. Other
+                # Only the measured Sickle / magnetic ground filter spellings are enabled. Other
                 # predicates and delayed filtered shocks remain explicit gaps.
                 target_filter = None
                 forbidden = _attr(h, 'ForbiddenTargetModelCondition', '').split()
@@ -464,6 +464,18 @@ def _weapons(texts, base_table=None):
                                            '', inner, flags=re.S).strip()
                             and 'ShockwaveDelaySeconds' not in fields):
                         target_filter = dict(relation=relation, forbidden=forbidden)
+                    things = re.findall(r'<IncludeThing>\s*([^<>\s]+)\s*</IncludeThing>', fi)
+                    if (attrs == dict(Rule='ALL', Exclude='AIRCRAFT INFANTRY',
+                                      StatusBitFlagsExclude='UNDER_IRON_CURTAIN')
+                            and set(things) == {'SovietScoutVehicle', 'SovietHeavyAntiVehicleInfantry'}
+                            and len(things) == 2 and not forbidden
+                            and not re.sub(r'<IncludeThing>\s*[^<>\s]+\s*</IncludeThing>', '', fi).strip()
+                            and len(children) == 1
+                            and not re.sub(r'<SpecialObjectFilter\b[^>]*>.*?</SpecialObjectFilter>',
+                                           '', inner, flags=re.S).strip()
+                            and 'ShockwaveDelaySeconds' not in fields
+                            and _num(_attr(h, 'ShockWaveZMult', '1')) == 0):
+                        target_filter = dict(magnetic_ground=True, include_templates=things)
                 if ((not (inner or '').strip() and not forbidden) or target_filter) and fields <= {
                         'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff',
                         'ShockwaveDelaySeconds', 'InvertShockWave',
@@ -475,8 +487,9 @@ def _weapons(texts, base_table=None):
                         continue
                     invert = _attr(h, 'InvertShockWave', 'false')
                     if invert not in ('true', 'false') or ('InvertShockWave' in fields and (
-                            seconds > 0 or target_filter or _num(_attr(h, 'ShockWaveZMult', '1')) != 0)):
-                        continue  # Only the measured immediate, unfiltered spelling.
+                            seconds > 0 or (target_filter and not target_filter.get('magnetic_ground'))
+                            or _num(_attr(h, 'ShockWaveZMult', '1')) != 0)):
+                        continue  # Only measured immediate horizontal inversion spellings.
                     effect = dict(amount=_num(_attr(h, 'ShockWaveAmount')),
                                   radius=_num(_attr(h, 'ShockWaveRadius')),
                                   zmult=_num(_attr(h, 'ShockWaveZMult', '1')),
@@ -1029,7 +1042,9 @@ def meta_impact_body(template, own=None):
     def height(xml):
         geometry = next(_blocks(xml, 'Geometry'), None)
         shape = next(_blocks(geometry[1] or '', 'Shape'), None) if geometry else None
-        return _num(_attr(shape[0], 'Height')) if shape and _attr(shape[0], 'Height') is not None else None
+        # Retail Tesla Trooper spells this as Height = "15.0".
+        value = re.search(r'\bHeight\s*=\s*"([^"]*)"', shape[0]) if shape else None
+        return _num(value.group(1)) if value else None
     return _inherited(template, own, height, None)
 
 

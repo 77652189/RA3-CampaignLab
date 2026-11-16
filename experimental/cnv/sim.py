@@ -5541,11 +5541,26 @@ class Sim:
                 self.gap(GAP_WEAPON, 'MetaImpactNugget', '非正冲击半径的选人范围未建模')
                 continue
             target_filter = effect.get('target_filter')
-            if target_filter and attacker is None:
+            magnetic = target_filter and target_filter.get('magnetic_ground')
+            if target_filter and not magnetic and attacker is None:
                 self.gap(GAP_WEAPON, 'MetaImpactNugget', '筛选缺少发射者关系，未派发冲击')
                 continue
             for b in self.living():
-                if target_filter:
+                # CampKFilter: amphibious Terror Drone is grounded on this land
+                # site. Water launches remain outside the measured slice.
+                grounded = b.surface == 'ground' or (b.surface == 'both'
+                            and self.ground.stand('ground', b.x, b.y))
+                if magnetic:
+                    # CampKFilter a/b: explicit identities override INFANTRY,
+                    # but UNDER_IRON_CURTAIN wins over explicit inclusion.
+                    # Airborne eligibility remains a gap, never a kind-only guess.
+                    if not grounded or 'AIRCRAFT' in b.kinds:
+                        self.gap(GAP_WEAPON, 'MetaImpactNugget', '磁力筛选的飞机资格尚未对拍')
+                        continue
+                    if ('UNDER_IRON_CURTAIN' in b.status or ('INFANTRY' in b.kinds
+                            and b.template not in target_filter['include_templates'])):
+                        continue
+                elif target_filter:
                     if (self.relation(attacker.owner, b.owner) != target_filter['relation']
                             or 'INFANTRY' not in b.kinds or 'NO_COLLISIONS' in b.status):
                         continue
@@ -5568,7 +5583,7 @@ class Sim:
                     # ShockwaveResistance, no shock at all (no ra3ext `shock` line); equal to it still flies
                     self.used.add('knock resistance gate')
                     continue
-                if height is None or b.surface != 'ground' or b.name in self.attachments or id(b) in flights:
+                if height is None or not grounded or b.name in self.attachments or id(b) in flights:
                     self.gap(GAP_WEAPON, 'MetaImpactNugget', '仅默认Physics的未附着地面起飞已接通；筛选/重入待核')
                     continue
                 velocity = simunits.meta_impact_velocity(effect, position, centre, height, detonation=True)

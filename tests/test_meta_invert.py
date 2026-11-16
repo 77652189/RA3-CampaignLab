@@ -71,7 +71,8 @@ def test_meta_invert_plain_probe_retains_unsupported_filter_and_vertical_variant
     gun = next(u for u in m.units if u.id == 'CNV_KnockYuri')
     payload, = re.findall(r'<MetaImpactNugget\b.*?</MetaImpactNugget>', gun.xml, re.S)
     assert 'SpecialObjectFilter' not in payload
-    for unsupported in (retail_shock(), payload.replace('ShockWaveZMult="0.00"', 'ShockWaveZMult="1"'),
+    for unsupported in (retail_shock().replace('Rule="ALL"', 'Rule="ANY"'),
+                        payload.replace('ShockWaveZMult="0.00"', 'ShockWaveZMult="1"'),
                         payload.replace('InvertShockWave="true"', 'InvertShockWave="unknown"'),
                         payload.replace('<MetaImpactNugget', '<MetaImpactNugget ShockwaveDelaySeconds="1s"')):
         weapon = simunits._weapons(['<WeaponTemplate id="gap"><Nuggets>' + unsupported +
@@ -125,10 +126,8 @@ def test_meta_invert_collision_replays_native_neighbour_frames(lane, collision, 
     ('yuri', 173, (789.53571,3730.99951,218.10666), (870,3750)),
     ('rocket', 174, (2304.41748,3730.99951,218.03758), (2390,3750)),
 ])
-@pytest.mark.xfail(strict=True, reason='Retail MagneticSingularity template/status filter remains unsupported; '
-                   'see work/re/handoff-c.md and work/re/c_meta_invert_report.md')
 def test_meta_invert_retail_filter_replays_native_landing(lane, collision, centre, landing):
-    """Original filtered check a also moved both neighbours; parser rejection is a gap."""
+    """Original filtered check a moved both neighbours; ground eligibility now replays."""
     import build
     import sim
     from checks.engine_knock_probe import name
