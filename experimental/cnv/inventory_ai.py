@@ -138,10 +138,10 @@ NOTES = {
         '当前目标View没有队伍候选提供者，target_picks公开接口未提供队伍目标身份/同帧成员资格；'
         '缺B/D事实入口，0局，暂停且不晋升；见work/re/c_team_gate_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=UnderAttackBy': (GUESSED,
-        'C核对SDK陆地/水面两原名启发及编译EmergencyDefense六状态引用；仅静态范围核验。'
-        'D161受击日志已有来源字段，但旧台仅出生来源0，未证真实交战；UnderAttack布尔门不等于来源目标选择。'
-        'simai未供attacking_us，simproxy按当前攻击目标推测，缺同帧来源候选/资格/置清事实；'
-        '0局，暂停且不晋升；见work/re/c_underattackby_gate_report.md'),
+        'SDK陆/水两原名与编译EmergencyDefense六引用已核验；D164有真实受击来源，尚非来源目标选择对拍。'
+        'C新增aiuabl/aiuabw:a对照，延后选槽；两次启动分别图形设备失败、外部RA3进程阻塞，未取得tgt/ua读数。'
+        'simai未供attacking_us，simproxy当前目标仍是推测；来源候选/资格/置清保持gap，不晋升；'
+        '见work/re/c_underattackby_fight_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=Husk': (GUESSED,
         'C aihusknone/aihusknamed:a同位普通中立油井，LandHusk阴性与NamedObject阳性；'
         '两局f16分别found=0/1，阳性选(2900,3300)，s20两组总数4，均PASS。'
