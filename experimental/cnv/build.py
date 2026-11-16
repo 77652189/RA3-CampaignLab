@@ -154,8 +154,15 @@ WATCH_MAX = 120.0                       # bench_watch's longest single run
 
 def steps(mod, t):
     """The ra3bench calls that run the check: start, the check's own steps, the counters read as text."""
-    out = [['bench_start', {'mod': mod, 'look': False}]]
-    for n, a in t.bench:
+    bench = list(t.bench)
+    start = {'mod': mod, 'look': False}
+    # A placement cursor is cancelled by the default Esc pause between calls.
+    # Let a check configure its single start without launching a second game.
+    if bench and bench[0][0] == 'bench_start':
+        start.update(bench.pop(0)[1])
+        start['mod'] = mod
+    out = [['bench_start', start]]
+    for n, a in bench:
         left = a.get('seconds', 0) if n == 'bench_watch' else 0
         while left > WATCH_MAX:             # one watch runs at most 120 s (bench 2026-10-23: j4 lose asked 153)
             out.append([n, dict(a, seconds=WATCH_MAX)])

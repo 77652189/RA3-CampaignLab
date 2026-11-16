@@ -189,6 +189,18 @@ def test_judge_until_and_the_bench_round_trip():
     assert 'liberty_riders --check jump -> CampLibRJump' in build.listing()
 
 
+def test_placement_start_keeps_cursor_and_starts_only_one_game():
+    t = parts.Test(bench=[('bench_start', {'hold': False, 'mod': 'WrongMod'}),
+                          ('bench_click', {'x': 10, 'y': 20})])
+    plan = build.steps('CampPlace', t)
+    assert plan == [['bench_start', {'mod': 'CampPlace', 'look': False, 'hold': False}],
+                    ['bench_click', {'x': 10, 'y': 20}]]
+    assert t.bench[0][0] == 'bench_start'  # repeated resolution keeps the same start
+    assert build.steps('CampPlace', t) == plan
+    assert build.steps('CampOld', parts.Test()) == [
+        ['bench_start', {'mod': 'CampOld', 'look': False}]]
+
+
 def test_every_build_name_fits():
     """Mod names over 15 characters crash the game before the main menu (bench 2026-10-21), and so does one with an
     underscore (bench 2026-10-25: CampA7East_What, from a check named east_what)."""
