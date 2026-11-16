@@ -51,6 +51,8 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
 BENCHED_TESTS = {
+    (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackSovietMCV'):
+        'tests/test_sovdeploy_bench_c.py::test_sovdeploy_waypoint_and_untouched_control_match_bench',
     (ACTION, 'TEAM_GARRISON_NEAREST_BUILDING'):
         'tests/test_teamgarr_bench_c.py::test_teamgarr_nearest_and_team_scope_match_bench',
     (ACTION, 'PLAYER_SELL_EVERYTHING'):
@@ -403,6 +405,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackSovietMCV'): (BENCHED, 'C engine_sovdeploy:a一局：两辆普通苏联MCV到东400路径点展开，未下令第三车留家；f220..468目标区建造场/名称存活/原处MCV位码3/7/4。tests/test_sovdeploy_bench_c.py按名回放34个动作前及稳定窗口实读逻辑帧四计数器；现有order_unpack即可匹配，未调模型或阈值。仅普通活宿主空地切片；精确到达/展开时序、地形阻挡、伤害继承、重复/死亡/缺失宿主仍gap，其他宿主推广INFERRED；见work/re/c_sovdeploy_report.md'),
     (ACTION, 'TEAM_GARRISON_NEAREST_BUILDING'): (BENCHED, 'C engine_teamgarr:a/b两栋空公寓最近选择：建筑摆放顺序不变，仅步兵东移；本队两名征召兵进最近楼，同玩家异队留外，空队伍/重复调用无误伤。最终进驻位/楼归属/存活位分别3/1/31与3/2/31；tests/test_teamgarr_bench_c.py按名回放实读逻辑帧的动作前及稳定窗口。仅显式普通步兵与空楼选择切片；逐成员距离及其他模板推广INFERRED，队伍中心/等距/搜索范围、容量/敌属/损坏楼/AI实例和入门时序仍gap；见work/re/c_teamgarr_report.md'),
     (ACTION, 'PLAYER_SELL_EVERYTHING'): (BENCHED, 'C engine_sellall:a/b显式玩家交换对照：所属普通盟军电厂退款400一次、SOLD后消失，三方守护者及异玩家电厂保留；空玩家与重复调用无额外退款。tests/test_sellall_bench_c.py按名逐实读逻辑帧回放资金码/存活位/出售位/逻辑帧。仅显式玩家单电厂切片已量，多建筑枚举和其他模板推广INFERRED；不可售/受损/展开中/队列/驻军及This Player、All Players仍gap；见work/re/c_sellall_report.md'),
     (MODULE, 'AI/AnimalAIUpdate'): (TODO, 'E192 engine_animal_e:a原版女性平民近敌100/仅删模块/远敌700三路，f240四行240/0/7/7，六物体存活但均未离开起点。engine_animalfire_e:a增加敌兵攻击旁电厂，仍240/0/7/7，三路受击前置未成立；两局原逃跑预测FAIL保留。tests/test_animal_bench_e.py按名字回放实读负基线，开火接受Sim63对台7保留strict xfail。ra3ext tgt0/inc3/ua0无fleeTrigger/attackAccepted/rejectReason，触发资格未闭合（INFERRED），不实现猜测规则、不登记效果覆盖；同输入暂停，需合法触发或接受证据与新预算，见work/re/e192_animal.md'),
