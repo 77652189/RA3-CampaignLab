@@ -80,6 +80,21 @@ def infiltrator_money_share(with_templates=False):
     return share
 
 
+def infiltrator_vehicle_share(with_templates=False):
+    """E194 complete vehicle configuration; entry coverage does not close sight."""
+    measured = rm.ET.fromstring('''<InfiltratorContain id="ModuleTag_InfiltratorContain"
+        Effect="VISION_UNITS" Duration="30s" UnitDuration="30s"
+        ObjectRef="UnitVisionObserver" UnitFilter="InfiltrationVehicleObjectFilter"
+        StructureFilter="InfiltrationVehicleStructuresFilter"/>''')
+    wanted = (signature(measured),)
+    rows = [r for r in engineer_audit.audit('InfiltratorContain')['rows']
+            if tuple(sorted(signature(rm.ET.fromstring(m['xml'])) for m in r['modules'])) == wanted]
+    share = dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+    if with_templates:
+        share['template_ids'] = [r['template'] for r in rows]
+    return share
+
+
 def audit():
     result = {}
     for kind in ('EngineerContain', 'InfiltratorContain'):

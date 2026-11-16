@@ -10,8 +10,8 @@ _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
 
-@pytest.mark.xfail(strict=True, reason='E77 VISION_UNITS进入/揭示未实现，实测车辆可见位间歇1/0，'
-                   '不能当连续30秒揭示；见 work/re/handoff-e.md 和 e_infveh_e77.md')
+@pytest.mark.xfail(strict=True, reason='E194已接车辆工厂入楼；E77可见位间歇1/0的调度未闭合，'
+                   '不拟合连续30秒揭示；见 work/re/e194_vehicle.md')
 def test_spy_vehicle_factory_as_on_the_bench():
     """engine_infveh:a measured intermittent discovery, not the failed prediction.
 
@@ -44,6 +44,159 @@ def test_spy_vehicle_factory_as_on_the_bench():
     assert not s.body(m.role('enemy spy').name).alive
     assert s.body(m.role('ally spy').name).alive
     assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
+
+
+@pytest.mark.xfail(strict=True, reason='E194原台s10已消耗，Sim到s13才完成进入；'
+                   '不调通用移动/进入距离，见 work/re/e194_vehicle.md')
+def test_spy_vehicle_factory_entry_window_as_on_the_bench():
+    """E77 original mission: enemy consumed, friendly refused, neither captured.
+
+    Keep the early and late measured entry windows. Discovery assertions stay
+    unchanged in the strict xfail above; this test grants no reveal coverage.
+    Travel/entry clock remains INFERRED.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infveh', 'a')
+    s = sim.Sim(m, t).run(35)
+    for start, end, wanted in ((1, 7, [11100, 11100]), (10, 35, [1100, 11100])):
+        rows = [values[:2] for second, values in s.series if start <= second <= end]
+        assert rows and all(row == wanted for row in rows), rows
+    assert not s.body(m.role('enemy spy').name).alive
+    assert s.body(m.role('ally spy').name).alive
+    for role, side in (('enemy', 's1'), ('ally', 's2')):
+        factory = s.body(m.role(role).name)
+        assert factory.owner == m.player(side) and factory.hp == factory.max_hp
+    assert ('InfiltratorContain', 'AlliedWarFactory') in s.unmodeled
+    assert not s.infiltrators.observers  # no invented continuous sight
+
+
+@pytest.mark.parametrize('check', ['a', 'b', 'c'])
+def test_spy_vehicle_factory_entry_as_on_the_bench(check):
+    """E77 measured s19-s25 and s34-s35 entry state, independently of discovery.
+
+    Earlier entry-window failure remains intact above. This comparison of
+    existing late samples does not claim the entry clock or reveal effect.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infveh', check)
+    s = sim.Sim(m, t).run(35)
+    for start, end, wanted in ((1, 7, [11100, 11100]),
+                               (19, 25, [1100, 11100]), (34, 35, [1100, 11100])):
+        rows = [values[:2] for second, values in s.series if start <= second <= end]
+        assert rows and all(row == wanted for row in rows), rows
+    assert not s.body(m.role('enemy spy').name).alive
+    assert s.body(m.role('ally spy').name).alive
+    for role, side in (('enemy', 's1'), ('ally', 's2')):
+        factory = s.body(m.role(role).name)
+        assert factory.owner == m.player(side) and factory.hp == factory.max_hp
+    assert ('InfiltratorContain', 'AlliedWarFactory') in s.unmodeled
+    assert not s.infiltrators.observers
+
+
+@pytest.mark.xfail(strict=True, reason='E194 b直接SET计数仍间歇1/0，观察者调度与进入时钟未闭合；'
+                   '见 work/re/e194_vehicle.md')
+def test_spy_vehicle_direct_readback_as_on_the_bench():
+    """engine_infveh:b same-frame raw and direct discovery masks agree.
+
+    s1-s15=11100/11100/0/0; s17=1100/11100/1/1;
+    s18=1100/11100/0/0; s19-s21=1100/11100/1/1;
+    s22=1100/11100/0/0; s23-s26=1100/11100/1/1;
+    s27=1100/11100/0/0; s28-s47=1100/11100/1/1.
+    Missing s16 is not interpolated. Both original continuous predictions fail.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infveh', 'b')
+    s = sim.Sim(m, t).run(47)
+    for start, end, wanted in ((1, 15, [11100, 11100, 0, 0]),
+                               (17, 17, [1100, 11100, 1, 1]),
+                               (18, 18, [1100, 11100, 0, 0]),
+                               (19, 21, [1100, 11100, 1, 1]),
+                               (22, 22, [1100, 11100, 0, 0]),
+                               (23, 26, [1100, 11100, 1, 1]),
+                               (27, 27, [1100, 11100, 0, 0]),
+                               (28, 47, [1100, 11100, 1, 1])):
+        rows = [values for second, values in s.series if start <= second <= end]
+        assert rows and all(row == wanted for row in rows), rows
+
+
+def test_spy_vehicle_stationary_positions_as_on_the_bench():
+    """engine_infveh:c all three named markers remain in their 40-unit windows.
+
+    This is the measured position mask, not proof of observer lifetime or
+    exact coordinates. Direct visibility still flickers at mask=111.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infveh', 'c')
+    s = sim.Sim(m, t).run(46)
+    assert s.series and all(values[3] == 111 for _, values in s.series)
+
+
+@pytest.mark.xfail(strict=True, reason='E194 c位置掩码111时可见位仍间歇1/0，观察者调度/寿命未闭合；'
+                   '两局后停止，见 work/re/e194_vehicle.md')
+def test_spy_vehicle_stationary_discovery_as_on_the_bench():
+    """engine_infveh:c measured direct bits with position=111 in every sample.
+
+    Missing s13/s23/s31 impose no constraint; continuous prediction remains
+    failed. Enemy/ally counters are 1100/11100 from sampled s14 onward.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infveh', 'c')
+    s = sim.Sim(m, t).run(46)
+    for start, end, wanted in ((1, 12, [11100, 11100, 0, 111]),
+                               (14, 17, [1100, 11100, 1, 111]),
+                               (18, 18, [1100, 11100, 0, 111]),
+                               (19, 21, [1100, 11100, 1, 111]),
+                               (22, 22, [1100, 11100, 0, 111]),
+                               (24, 28, [1100, 11100, 1, 111]),
+                               (29, 30, [1100, 11100, 0, 111]),
+                               (32, 34, [1100, 11100, 1, 111]),
+                               (35, 36, [1100, 11100, 0, 111]),
+                               (37, 44, [1100, 11100, 1, 111]),
+                               (45, 45, [1100, 11100, 0, 111]),
+                               (46, 46, [1100, 11100, 1, 111])):
+        rows = [values for second, values in s.series if start <= second <= end]
+        assert rows and all(row == wanted for row in rows), rows
+
+
+@pytest.mark.parametrize('variant', ['duration', 'unit_duration', 'filter', 'structure_filter',
+                                     'observer', 'host', 'spy', 'player', 'repeat', 'player_at_entry'])
+def test_spy_vehicle_unmeasured_entry_reports_gap(variant):
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infveh', 'a')
+    s = sim.Sim(m, t)
+    spy, target = s.body(m.role('enemy spy').name), s.body(m.role('enemy').name)
+    fields = {'duration': ('Duration', '29s'), 'unit_duration': ('UnitDuration', '29s'),
+              'filter': ('UnitFilter', 'InfiltrationInfantryObjectFilter'),
+              'structure_filter': ('StructureFilter', 'InfiltrationEnergyStructuresFilter'),
+              'observer': ('ObjectRef', 'VisionObserver')}
+    if variant in fields:
+        key, value = fields[variant]
+        s.infiltrators.spec(target)[key] = value
+    elif variant == 'host':
+        target.template = 'SovietWarFactory'
+    elif variant == 'spy':
+        spy.template = 'JapanInfiltrationInfantry'
+    elif variant == 'player':
+        spy.owner = m.player('s3')
+        s.relations[target.owner, spy.owner] = 'Enemy'
+    elif variant == 'repeat':
+        s.infiltrators.vehicle_hosts.add(id(target))
+    s.infiltrators.send(spy, target)
+    if variant == 'player_at_entry':
+        assert spy.mode == 'infiltrate'
+        spy.owner = m.player('s3')
+        s.relations[target.owner, spy.owner] = 'Enemy'
+        spy.x, spy.y, spy.path = target.x, target.y, []
+        s.infiltrators.tick()
+    assert ('InfiltratorContain', target.template) in s.unmodeled
+    assert spy.alive and not s.infiltrators.going
+    assert not s.infiltrators.observers
 
 
 @pytest.mark.parametrize('check, template, plant_template', [

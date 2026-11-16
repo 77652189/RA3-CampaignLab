@@ -132,13 +132,13 @@ def test_infiltrator_energy_split_preserves_weight_and_other_effect_gaps():
     assert contain_audit.infiltrator_energy_share() == {'campaign': 4, 'templates': 6}
     rows = [r for r in inventory.collect((inventory.MODULE,))
             if r['name'].startswith('Behaviors/InfiltratorContain')]
-    assert len(rows) == 3
+    assert len(rows) == 4
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
     measured = next(r for r in rows if r['name'].endswith(':ENERGY'))
     gap = next(r for r in rows if r['name'] == 'Behaviors/InfiltratorContain')
     assert (measured['uses'], measured['all'], measured['state']) == (4, 6, inventory.BENCHED)
-    assert (gap['uses'], gap['all'], gap['state']) == (27, 28, inventory.GUESSED)
+    assert (gap['uses'], gap['all'], gap['state']) == (23, 24, inventory.GUESSED)
     assert measured['why'].startswith('tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench')
     import inventory_levels
     scope, _ = inventory_levels.expand_forms(rows, {
@@ -200,7 +200,6 @@ def test_infiltrator_money_split_rejects_changed_fields(monkeypatch, field, valu
     ('PARALYZE', '', 3, 3, 'PARALYZE 3用量/3模板部分已测'),
     ('VISION', '', 5, 5, '普通VISION 5用量/5模板部分已测且暂停扩宿主'),
     ('VISION', '9999999s', 1, 1, '港口阻断VISION 1用量/1模板未测'),
-    ('VISION_UNITS', 'InfiltrationVehicleObjectFilter', 4, 4, '车辆VISION_UNITS 4用量/4模板暂停'),
     ('VISION_UNITS', 'InfiltrationAircraftObjectFilter', 2, 2, '飞机VISION_UNITS 2用量/2模板未测'),
     ('VISION_UNITS', 'InfiltrationInfantryObjectFilter', 3, 3, '步兵VISION_UNITS 3用量/3模板未测'),
     ('VISION_UNITS', 'InfiltrationShipObjectFilter', 3, 3, '舰船VISION_UNITS 3用量/3模板未测'),
@@ -211,7 +210,7 @@ def test_infiltrator_residual_closure_preserves_each_configuration_gap(
     """A successful PARALYZE replay cannot grant the other forms bench credit.
 
     Static counts only: actual readings stay in the named siminfiltrator tests.
-    Match the nine remaining forms against the SDK census and their public scope.
+    Match the eight remaining forms against the SDK census and their public scope.
     """
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')
@@ -229,3 +228,41 @@ def test_infiltrator_residual_closure_preserves_each_configuration_gap(
     assert state == inventory.GUESSED and key not in inventory.BENCHED_TESTS
     assert boundary in why
     assert 'work/re/e142_infiltrator_closure.md' in why
+
+
+def test_infiltrator_vehicle_configuration_stays_guessed_until_discovery_replays():
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    assert contain_audit.infiltrator_vehicle_share() == {'campaign': 4, 'templates': 4}
+    rows = [r for r in inventory.collect((inventory.MODULE,))
+            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    vehicle = next(r for r in rows if r['name'].endswith(':VISION_UNITS_VEHICLE'))
+    assert (vehicle['uses'], vehicle['all'], vehicle['state']) == (4, 4, inventory.GUESSED)
+    assert (inventory.MODULE, vehicle['name']) not in inventory.BENCHED_TESTS
+    assert sum(r['uses'] for r in rows) == 34
+    assert sum(r['all'] for r in rows) == 38
+    assert 'strict xfail' in vehicle['why'] and 'work/re/e194_vehicle.md' in vehicle['why']
+    import inventory_levels
+    scope, _ = inventory_levels.expand_forms(rows, {
+        (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
+            'a1': {'AlliedWarFactory', 'AlliedRefinery', 'AlliedBarracks'}}})
+    assert scope[(inventory.MODULE, vehicle['name'])]['a1'] == {'AlliedWarFactory'}
+    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain')]['a1'] == {'AlliedBarracks'}
+
+
+@pytest.mark.parametrize('field, value', [
+    ('Duration', '29s'), ('UnitDuration', '29s'), ('ObjectRef', 'VisionObserver'),
+    ('UnitFilter', 'InfiltrationInfantryObjectFilter'),
+    ('StructureFilter', 'InfiltrationEnergyStructuresFilter')])
+def test_infiltrator_vehicle_configuration_rejects_changed_fields(monkeypatch, field, value):
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    raw = contain_audit.engineer_audit.audit('InfiltratorContain')
+    monkeypatch.setattr(contain_audit.engineer_audit, 'audit', lambda kind: raw)
+    for row in raw['rows']:
+        for module in row['modules']:
+            element = retailmodules.ET.fromstring(module['xml'])
+            if element.get('Effect') == 'VISION_UNITS' and element.get('UnitFilter') == 'InfiltrationVehicleObjectFilter':
+                element.set(field, value)
+                module['xml'] = retailmodules.ET.tostring(element, encoding='unicode')
+    assert contain_audit.infiltrator_vehicle_share() == {'campaign': 0, 'templates': 0}

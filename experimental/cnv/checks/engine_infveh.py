@@ -11,7 +11,7 @@ is intermittent: s10-s16=1, s18=0, s19-s25=1, s26-s27=0, s28-s29=1,
 s30=0, s32=1, s33=0, s34-s38=1. Original continuous window FAIL retained.
 Only vehicle bit appears; exact observer scheduling/expiry remain unexplained.
 """
-from parts import Script, Test, counted
+from parts import NOT, Script, Test, counted, square
 
 
 def check(m):
@@ -48,4 +48,61 @@ def check(m):
     return t
 
 
-CHECKS = {'engine_infveh': {'a': check}}
+def direct_readback(m):
+    """E194 single-variable counter diagnostic, same mission and spy order.
+
+    Keep a's reset/increment counter. A fourth line SETs the whole discovery
+    mask using eight mutually exclusive conditions, with no unconditional
+    reset. Predict direct=1 in s20-s30 if the old zeros are sampling artifacts;
+    if both flicker, observer/visibility scheduling remains unresolved.
+    This is not a prediction of expiry or a change to a's failed threshold.
+    """
+    t = check(m)
+    c = 'Vehicle direct'
+    t.counters.append((c, 'direct'))
+    for mask in range(8):
+        conditions, value = [], 0
+        for index, (role, bit) in enumerate((('vehicle', 1), ('infantry', 10), ('third', 100))):
+            discovered = bool(mask & (1 << index))
+            condition = ('NAMED_DISCOVERED', m.player('p1'), m.role(role).name)
+            conditions.append(condition if discovered else condition + (NOT,))
+            value += bit if discovered else 0
+        t.scripts.append(Script('Test - direct ' + str(mask), conditions,
+                                [('SET_COUNTER', c, value)], once=False))
+    t.expect += [('direct', 0, '==', 0, 7), ('direct', 20, '==', 1, 30)]
+    t.bench = [('bench_watch', dict(seconds=40, every=1, sheet=False, lines=4))]
+    return t
+
+
+def stationary_readback(m):
+    """E194 second/final run: hold the three markers and publish their positions.
+
+    Predict position mask=111 throughout. If movement alone explained b,
+    direct should stay 1 in s20-s30; a flicker at position=111 rejects that
+    explanation within the 40-unit position windows, not at sub-window scale.
+    Observer identities, lifetime and exact positions remain unobserved.
+    """
+    t = direct_readback(m)
+    t.counters = [(name, label) for name, label in t.counters if label != 'seen']
+    t.expect = [e for e in t.expect if e[0] != 'seen']
+    for role in ('vehicle', 'infantry', 'third'):
+        t.scripts[0].do.append(('UNIT_CHANGE_OBJECT_STATUS', m.role(role).name,
+                                     'IMMOBILE_ALLOW_ROTATE', 1))
+        marker = m.role(role)
+        t.areas['Vehicle position ' + role] = square(*m.site(marker.site), 40)
+    c = 'Vehicle position'
+    t.counters.append((c, 'position'))
+    for mask in range(8):
+        conditions, value = [], 0
+        for index, (role, bit) in enumerate((('vehicle', 1), ('infantry', 10), ('third', 100))):
+            inside = bool(mask & (1 << index))
+            condition = ('NAMED_INSIDE_AREA', m.role(role).name, 'Vehicle position ' + role)
+            conditions.append(condition if inside else condition + (NOT,))
+            value += bit if inside else 0
+        t.scripts.append(Script('Test - position ' + str(mask), conditions,
+                                [('SET_COUNTER', c, value)], once=False))
+    t.expect.append(('position', 0, '==', 111))
+    return t
+
+
+CHECKS = {'engine_infveh': {'a': check, 'b': direct_readback, 'c': stationary_readback}}

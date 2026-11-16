@@ -1,4 +1,4 @@
-"""InfiltratorContain ENERGY, VISION, PARALYZE, money and crane KILL slices.
+"""InfiltratorContain ENERGY, VISION, PARALYZE, money, crane KILL and vehicle entry.
 
 One retail Allied plant: 20 seconds of zero supply, spy consumed, owner unchanged.
 Travel/entry reach and Amount * eligible energy duration scaling are INFERRED;
@@ -10,6 +10,8 @@ mapping the whole local radius to yard XML and parent-death cleanup are INFERRED
 Observer lifetime, other templates/players/spies and repeated entry remain gaps.
 E138 KILL only removes the hostile Allied spy at a retail Soviet crane;
 fling distance, exact entry clock and death-module dispatch remain gaps.
+E194 vehicle VISION_UNITS only consumes the hostile spy; discovery scheduling
+is not implemented. The measured intermittent 1/0 sequence remains a gap.
 """
 import math
 import os
@@ -59,6 +61,20 @@ class Infiltrators:
         self.paralyzed_hosts = set()
         self.kill_hosts = set()
         self.money_hosts = set()
+        self.vehicle_hosts = set()
+
+    def vehicle_rule(self, target, rule):
+        """E194: measured factory entry only; intermittent discovery stays a gap."""
+        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
+        return (target.template == 'AlliedWarFactory'
+                and config == {'Effect': 'VISION_UNITS', 'Duration': '30s',
+                               'UnitDuration': '30s', 'ObjectRef': 'UnitVisionObserver',
+                               'UnitFilter': 'InfiltrationVehicleObjectFilter',
+                               'StructureFilter': 'InfiltrationVehicleStructuresFilter'})
+
+    def vehicle_entry_measured(self, spy, target):
+        return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
+                and id(target) not in self.vehicle_hosts)
 
     def money_rule(self, target, rule):
         """E193: one retail Allied refinery transfer; income blocking is a gap."""
@@ -133,8 +149,12 @@ class Infiltrators:
         energy = (rule.get('Effect') == 'ENERGY' and rule.get('ObjectRef') == 'EnergyDisabler'
                   and not rule.get('ReplaceWith'))
         if not any((energy, self.vision_rule(target, rule), self.paralyze_rule(target, rule),
-                    self.kill_rule(target, rule), self.money_rule(target, rule))):
-            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY及起重机KILL存活切片已实现')
+                    self.kill_rule(target, rule), self.money_rule(target, rule),
+                    self.vehicle_rule(target, rule))):
+            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活及车辆入楼切片已实现')
+            return
+        if self.vehicle_rule(target, rule) and not self.vehicle_entry_measured(spy, target):
+            s.gap('InfiltratorContain', target.template, '车辆VISION_UNITS其他间谍/玩家或重复进入未对拍')
             return
         if self.money_rule(target, rule) and not self.money_entry_measured(spy, target):
             s.gap('InfiltratorContain', target.template, 'STEAL_MONEY其他间谍/玩家、重复进入及余额不足未对拍')
@@ -179,6 +199,18 @@ class Infiltrators:
                     or (entry[1] and s.relation(target.owner, spy.owner) not in entry[1])
                     or target.status & set(rule.get('InfiltratedStatusFilter',
                                                    'DESTROYED UNDER_CONSTRUCTION SOLD UNPACKING').split())):
+                continue
+            if self.vehicle_rule(target, rule):
+                if not self.vehicle_entry_measured(spy, target):
+                    s.gap('InfiltratorContain', target.template, '车辆VISION_UNITS入楼时资格变化未对拍')
+                    continue
+                self.vehicle_hosts.add(id(target))
+                # E77 measures consumption/refusal, but not a continuous reveal.
+                # Do not turn Duration/UnitDuration into an invented sight clock.
+                s.gap('InfiltratorContain', target.template,
+                      '车辆VISION_UNITS间歇可见的观察者调度/到期未闭合，见 work/re/e194_vehicle.md')
+                s.destroy(spy, '进楼渗透', delete=True)
+                s.change()
                 continue
             if self.kill_rule(target, rule):
                 # INFERRED: ordinary lethal cleanup; E138 only observes survival,
