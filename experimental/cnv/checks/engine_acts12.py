@@ -125,17 +125,22 @@ BOMBER = 'CAMP_AlliedBomberAircraft_Infantry_1'
 DROPS = {'DP': (2400.0, 4300.0, 'p1', (2400.0, 4700.0)), 'DS': (3600.0, 4000.0, 's4', (3600.0, 4700.0)),
          'DA': (1200.0, 4000.0, 's5', (1200.0, 4700.0))}
 LATE = 12.0
+# hypothesis D (round 266): the retail stores stand on / past the map's edge (s08 (1338, -157), ep01 (-303, 666));
+# probe_range's level ground runs -300 .. 5300, the border 0 .. 5000
+EDGE = {'DP': (2400.0, 4950.0, 'p1', (2400.0, 4300.0)), 'DS': (3600.0, -157.0, 's4', (3600.0, 700.0)),
+        'DA': (-250.0, 2900.0, 's5', (600.0, 2900.0))}
 
 
-def drop_mission(allied=False):
+def drop_mission(allied=False, edge=False):
     """engine_acts_drop: s4 / s5 as the map has them (Soviet); engine_acts_ally: both PlayerTemplate:Allies (the
     retail stores' owners are all Allied players)."""
-    m = Mission(name='CampActsAlly' if allied else 'CampActsDrop', map=probe_border, units=[], facts={})
+    m = Mission(name='CampActsEdg' if edge else 'CampActsAlly' if allied else 'CampActsDrop', map=probe_border,
+                units=[], facts={})
     if allied:
         for side in ('s4', 's5'):
             m.sides[side] = dict(m.sides.get(side, {}), playerFaction='PlayerTemplate:Allies')
     m.spawns |= {'CAMP_PowerStore_AlliedBomberDrop', BOMBER, GI, JAV}
-    for row, (x, y, side, (sx, sy)) in DROPS.items():
+    for row, (x, y, side, (sx, sy)) in (EDGE if edge else DROPS).items():
         m.put('CAMP_PowerStore_AlliedBomberDrop', 'stop row', x - O[0], y - O[1], side=side, angle=0.0, name=_n(row),
               role=row.lower())
         m.waypoint(f'spot {row}', f'CNV A12 Spot {row}', 'stop row', sx - O[0], sy - O[1])
@@ -160,6 +165,18 @@ def own(m):
         0 0 0 0
     Ruled out: the owner (human / computer, Soviet / Allied), the time (3 s / 12 s), the action (button / by name),
     the AI transfer, the countdown. Not explained (work/re/handoff.md round 225's table)."""
+    return _own(m, DROPS)
+
+
+def edge(m):
+    """Hypothesis D: own's three presses with the stores on the map's edge / past it (EDGE: DP at y 4950 inside the
+    border, DS at y -157 as s08's, DA at x -250 as ep01's), each spot 650-850 inside.
+    BENCH 11-16 (round 266, run_queue; CampActsEdgEdge_mcp_1116_081513): 机 兵 敌 援 0 0 0 0 every second s1-s39 --
+    no bomber, no GI. D ruled out: where the store stands is not the gate either."""
+    return _own(m, EDGE)
+
+
+def _own(m, drops):
     t = Test()
     s8.at(t, 'reveal', 0.1, [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('UNIT_AI_TRANSFER', _n('DA'), 1),
                              ('NAMED_SET_SPECIAL_POWER_COUNTDOWN', _n('DP'), 'SpecialPowerCAMPAlliedBomberDrop2', 0)])
@@ -169,8 +186,8 @@ def own(m):
     s8.at(t, 'late', LATE, [button('DP'), button('DA'),
                             ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', _n('DS'), 'SpecialPowerCAMPAlliedBomberDrop2',
                              m.mark('spot DS'))])
-    t.areas['Test A12 Whole'] = square(2500.0, 2500.0, 2500.0)
-    for r, (_x, _y, _side, spot) in DROPS.items():
+    t.areas['Test A12 Whole'] = square(2500.0, 2500.0, 2800.0)
+    for r, (_x, _y, _side, spot) in drops.items():
         t.areas[f'Test A12 Spot {r}'] = square(*spot, 400.0)
     has = lambda side, tmpl, k, area: ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', m.player(side), 3, k,  # noqa
                                        tmpl, area)
@@ -178,7 +195,7 @@ def own(m):
                                        for side, w in (('p1', 1), ('s4', 10), ('s5', 100)) for k in (1, 2)])
     for r, counter, label in (('DP', 'CNV_A12_DropP', '兵'), ('DS', 'CNV_A12_DropS', '敌'),
                               ('DA', 'CNV_A12_DropA', '援')):
-        side = DROPS[r][2]
+        side = drops[r][2]
         s8.total(t, counter, label, [(w, has(side, tmpl, k, f'Test A12 Spot {r}'))
                                      for tmpl, w, top in ((GI, 1, 6), (JAV, 10, 4)) for k in range(1, top + 1)])
     s8.watch(t, 30.0)
@@ -186,5 +203,6 @@ def own(m):
 
 
 MISSION = {'engine_acts_mix': mission, 'engine_acts_drop': drop_mission,
-           'engine_acts_ally': lambda: drop_mission(allied=True)}
-CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own}, 'engine_acts_ally': {'own': own}}
+           'engine_acts_ally': lambda: drop_mission(allied=True), 'engine_acts_edge': lambda: drop_mission(edge=True)}
+CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own}, 'engine_acts_ally': {'own': own},
+          'engine_acts_edge': {'edge': edge}}
