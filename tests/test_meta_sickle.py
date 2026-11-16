@@ -31,7 +31,25 @@ def test_meta_sickle_controls_preserve_real_leap_and_only_remove_meta():
         assert enemy.template == friend.template == s.PROBE
 
 
-@pytest.mark.parametrize('check', ['a', 'b'])
+def test_meta_sickle_cease_fire_controls_preserve_damage_and_repeat_after_leap():
+    import build
+    from checks import engine_knock_sickle as s
+
+    for baseline, held in [('a', 'c'), ('b', 'd')]:
+        old, _, _ = build.resolve('engine_knock_sickle', baseline)
+        m, t, _ = build.resolve('engine_knock_sickle', held)
+        assert [u.xml for u in old.units] == [u.xml for u in m.units]
+        assert old.objects == m.objects
+        hold = next(x for x in t.scripts if x.name == 'Test - hold fire')
+        assert not hold.once
+        assert hold.when == [('TIMER_EXPIRED', 'Sickle cease fire')]
+        assert hold.do == [('UNIT_CHANGE_OBJECT_STATUS', s.name(lane, 'gun'), 'NO_ATTACK', 1)
+                           for lane in s.LANES]
+        start = next(x for x in t.scripts if x.name == 'Test - start')
+        assert ('SET_MILLISECOND_TIMER', 'Sickle cease fire', 7.4) in start.do
+
+
+@pytest.mark.parametrize('check', ['a', 'b', 'c', 'd'])
 @pytest.mark.parametrize('lane,x', [('removed', 840), ('switch', 2340)])
 def test_meta_sickle_replays_real_landing_dispatch_and_path(check, lane, x, monkeypatch):
     """Observed f114 landing is an input; f115 dispatch and f116..118 are assertions.
@@ -67,7 +85,7 @@ def test_meta_sickle_replays_real_landing_dispatch_and_path(check, lane, x, monk
     assert (gun.x, gun.y) == (x - 39, 3561)
     e.eng.frame = 115
     e.self_power_due(115)
-    assert len(calls) == (1 if check == 'a' else 0)
+    assert len(calls) == (1 if check in ('a', 'c') else 0)
     if calls:
         assert calls[0][0] == (x, 3550, 212.5)
         assert calls[0][1] == (x - 39, 3561, 212.5)
@@ -75,7 +93,7 @@ def test_meta_sickle_replays_real_landing_dispatch_and_path(check, lane, x, monk
     assert id(friend) not in e.__dict__.get('impact_flights', {})
     assert (friend.x, friend.y) == (x - 80, 3550)
     samples = ([(x,3546.7,213.40), (x,3543.4,213.40), (x,3540,212.5)]
-               if check == 'a' else [(x,3550,212.5)] * 3)
+               if check in ('a', 'c') else [(x,3550,212.5)] * 3)
     for frame, xyz in enumerate(samples, 116):
         e.eng.frame = frame
         e.meta_impact_tick()
@@ -83,7 +101,7 @@ def test_meta_sickle_replays_real_landing_dispatch_and_path(check, lane, x, monk
         assert (enemy.x, enemy.y, z) == pytest.approx(xyz, abs=.051)
     assert id(enemy) not in e.impact_flights
     e.self_power_due(118)
-    assert len(calls) == (1 if check == 'a' else 0)
+    assert len(calls) == (1 if check in ('a', 'c') else 0)
     assert any('落地伤害' in row['what'] for row in e.unmodeled.values())
 
 
@@ -116,3 +134,54 @@ def test_meta_sickle_named_landing_counters_match_bench(check):
     rows = [values for sec, values in e.series if 10 <= sec <= 15]
     assert rows
     assert all((v[1], v[3]) == (1, 1) for v in rows)
+
+
+@pytest.mark.parametrize('check', ['c', 'd'])
+def test_meta_sickle_cease_fire_named_health_and_landing_match_bench(check):
+    """Frozen c/d readings: s10..15 HP=100%, land=1 in both lanes.
+
+    See work/re/c_sickle_damage_report.md. This measures no health loss at
+    these actual landing positions, not general DamageNugget correctness.
+    The explicit landing-damage gap must remain even with matching counters.
+    """
+    import build
+    import sim
+
+    m, t, _ = build.resolve('engine_knock_sickle', check)
+    e = sim.Sim(m, t).run(16.)
+    rows = [values for sec, values in e.series if 10 <= sec <= 15]
+    assert rows
+    assert all(tuple(v) == (100, 1, 100, 1) for v in rows)
+    assert any('落地伤害' in row['what'] for row in e.unmodeled.values())
+
+
+@pytest.mark.parametrize('check,source', [
+    pytest.param('c', True, marks=pytest.mark.xfail(
+        strict=True, reason='零扣血的受伤来源通知未接到模型，见 work/re/c_sickle_damage_report.md')),
+    ('d', False),
+])
+def test_meta_sickle_zero_health_notification_source_replay(check, source):
+    """c: f115 ua source is each launcher, hp=150/150, hits=1; d: no ua.
+
+    Replay the receiver's source attribution, not an UnderAttack predicate or
+    a per-nugget damage amount. Its zero-health notification is still a gap.
+    """
+    import build
+    import sim
+    from checks import engine_knock_sickle as s
+
+    m, t, _ = build.resolve('engine_knock_sickle', check)
+    e = sim.Sim(m, t)
+    for lane, x in [('removed', 801), ('switch', 2301)]:
+        gun = e.bodies[s.name(lane, 'gun')]
+        e.eng.frame = 90
+        e.leap_press(gun, 'Command_ActivateLeapSpecialPower', m.point(lane))
+        e._leaps_due[-1] = (114, gun, (x, 3561))
+    for frame in (114, 115):
+        e.eng.frame = frame
+        e.self_power_due(frame)
+    for lane in s.LANES:
+        enemy, friend = (e.bodies[s.name(lane, p)] for p in ('enemy', 'friend'))
+        assert enemy.hp == friend.hp == 150
+        assert friend.last_by is None
+        assert enemy.last_by == (s.name(lane, 'gun') if source else None)

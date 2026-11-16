@@ -5,6 +5,8 @@ infantry 40 west of the landing waypoint. No KindOf or locomotion edits.
 Prediction: both land and damage enemies equally; only a shocks enemy infantry.
 Friendly infantry must not receive shock. Landing dispatch/time are measured,
 not supplied by a V4. Native stunned-state lifecycle remains outside this slice.
+c/d repeat NO_ATTACK from 7.4 s to isolate landing health from the machine gun;
+the two retail DamageNuggets, armour and KindOf remain identical to a/b.
 """
 import os
 import re
@@ -58,11 +60,15 @@ def mission():
     return m
 
 
-def check(m, without_meta=False):
+def check(m, without_meta=False, hold_fire=False):
     m.units = [sickle(without_meta), probe_man()]
     t = Test()
     start = [('MAP_REVEAL_ALL_PERM', m.player('p1')),
              ('SET_MILLISECOND_TIMER', 'Sickle jump', 6.)]
+    if hold_fire:
+        # Before the observed f114 landing, and every script pass afterwards.
+        # Leap can clear the initial NO_ATTACK; do not alter its retail weapon.
+        start.append(('SET_MILLISECOND_TIMER', 'Sickle cease fire', 7.4))
     for lane in LANES:
         start += [('UNIT_CHANGE_OBJECT_STATUS', name(lane, part), 'NO_ATTACK', 1)
                   for part in ('gun', 'enemy', 'friend')]
@@ -77,13 +83,22 @@ def check(m, without_meta=False):
             Script(name(lane, 'count'), [('NAMED_INSIDE_AREA', name(lane, 'gun'), area)],
                    [('SET_COUNTER', land, 1)], once=False)]
         t.expect += [(lane + ' land', 10, '==', 1, 16)]
+        if hold_fire:
+            t.expect += [(lane + ' hp', 10, '==', 100, 16)]
     t.scripts.insert(0, Script('Test - start', [], start))
     t.scripts.append(Script('Test - leap', [('TIMER_EXPIRED', 'Sickle jump')], [
         ('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', name(lane, 'gun'),
          'Command_ActivateLeapSpecialPower', m.mark(lane)) for lane in LANES]))
+    if hold_fire:
+        t.scripts.append(Script('Test - hold fire', [('TIMER_EXPIRED', 'Sickle cease fire')], [
+            ('UNIT_CHANGE_OBJECT_STATUS', name(lane, 'gun'), 'NO_ATTACK', 1)
+            for lane in LANES], once=False))
     t.bench = [('bench_watch', dict(seconds=16., every=.5, sheet=False, lines=4))]
     return t
 
 
 MISSION = {'engine_knock_sickle': mission}
-CHECKS = {'engine_knock_sickle': {'a': check, 'b': lambda m: check(m, True)}}
+CHECKS = {'engine_knock_sickle': {
+    'a': check, 'b': lambda m: check(m, True),
+    'c': lambda m: check(m, hold_fire=True),
+    'd': lambda m: check(m, True, hold_fire=True)}}
