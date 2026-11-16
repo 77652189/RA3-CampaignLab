@@ -54,6 +54,13 @@ def h(m):
     # Guardians; the miner unpacks the first frame it is within Distance of the Expansion node (400: f995 at
     # (3887, 2717), outpost (3885, 2733) counted s95; 200: f1061 at (3998, 2903), outpost (4012, 2903) s106); with
     # 50 the team's destination is 98 from the node, the miner never gets within 50 and never unpacks (to f1936).
+    elif m.facts.get('gap node removed'):
+        # D round 172 (aiexpb50n): the reading is the miner's stop in the teams host's log (it arrives ~f1150). The
+        # watch is long (bench_watch runs at most 120 s a call): on 11-16 this map ran 1.6-6 logic frames a bench
+        # second (11-15 02:52: 15), so 130 s ended near f800 with the miner still on its way.
+        t.expect += [('前哨', 30, '==', 0, 480)]
+        t.bench = [('bench_watch', dict(seconds=120, every=2, sheet=False, lines=4))] * 4
+        return t
     elif m.facts['tactic distance'] == 50:
         t.expect += [('前哨', 30, '==', 0, 130), ('矿车近', 80, '==', 1, 130)]
     else:
@@ -64,4 +71,4 @@ def h(m):
 
 
 CHECKS = {key: {'a': a} for key in ('aiexpse', 'aiexpd50', 'aiexpd400')}
-CHECKS |= {key: {'a': h} for key in ('aiexph200', 'aiexph50', 'aiexph400', 'aiexpb200', 'aiexpb50', 'aiexpb400')}
+CHECKS |= {key: {'a': h} for key in ('aiexph200', 'aiexph50', 'aiexph400', 'aiexpb200', 'aiexpb50', 'aiexpb400', 'aiexpb50n')}

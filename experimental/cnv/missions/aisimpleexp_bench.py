@@ -10,7 +10,9 @@ the AI needs no money or refinery. The four AI Guardians stay (the template's ge
 Only Distance differs across the three builds (B's Tactic.Distance: what it governs in SimpleExpansion is the
 question): aiexpse = retail 200, aiexpd50 = 50, aiexpd400 = 400. Checks: checks/engine_aisimpleexp.py.
 """
+import math
 import re
+import types
 
 from missions.aiexpansion_bench import mission as expansion_mission
 
@@ -84,9 +86,29 @@ def built(distance=200, build=False):
     return m
 
 
+# D round 172 (d171's gap): aiexpb50 with node 45 taken away. There the miner's slot (4215, 3039) sits in the gap
+# between node 44 (the pick) and node 45, 150 apart; the bench miner stopped at (4201, 3081), 98 from 44, not at its
+# slot 67. With 44 alone: a stop at the slot says the narrow gap held it off; 98 again says it is node 44 alone.
+GAP_NODE = (4279.0, 3093.0)
+
+
+def lone_node():
+    m = built(50, build=True)
+    m.name = 'CampAIExpB50N'
+    cp = types.ModuleType(m.map.__name__)
+    cp.__dict__.update({k: v for k, v in vars(m.map).items() if not k.startswith('__')})
+    gone = [o for o in cp.OBJECTS
+            if o.template == 'OreNode' and math.hypot(o.x - GAP_NODE[0], o.y - GAP_NODE[1]) < 5.0]
+    assert len(gone) == 1, gone
+    cp.OBJECTS = [o for o in cp.OBJECTS if o is not gone[0]]
+    m.map = cp
+    m.facts['gap node removed'] = GAP_NODE
+    return m
+
+
 # D round 156 (d155's H4): the same probe, its opener also orders one AlliedMiner (aiteamfilter_bench's aiar* form)
 # -- is a miner built after the SimpleExpansion team exists taken into it? One build, retail Distance 200.
 MISSION = {'aiexpse': lambda: mission(200), 'aiexpd50': lambda: mission(50), 'aiexpd400': lambda: mission(400),
            'aiexph200': lambda: built(200), 'aiexph50': lambda: built(50), 'aiexph400': lambda: built(400),
            'aiexpb200': lambda: built(200, build=True), 'aiexpb50': lambda: built(50, build=True),
-           'aiexpb400': lambda: built(400, build=True)}
+           'aiexpb400': lambda: built(400, build=True), 'aiexpb50n': lambda: lone_node()}
