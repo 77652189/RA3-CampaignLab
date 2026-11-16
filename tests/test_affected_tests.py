@@ -1,11 +1,14 @@
 """The affected-tests picker (experimental/testbench/affected_tests.py): selection logic on a fake coverage map and
 fake diffs -- never the real work/testmap/coverage.db."""
+import importlib.util
 import os
 import sqlite3
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'experimental', 'testbench'))
-import affected_tests as at   # noqa: E402
+_spec = importlib.util.spec_from_file_location('affected_tests', os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'experimental', 'testbench', 'affected_tests.py'))
+at = sys.modules['affected_tests'] = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(at)
 
 SRC = '''X = 1
 

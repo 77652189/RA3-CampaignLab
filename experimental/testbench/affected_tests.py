@@ -44,9 +44,11 @@ import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-sys.path.insert(0, os.path.join(ROOT, 'experimental', 'campaign'))
-try:
-    import labpaths
+try:                                                # labpaths by file path, so this file does not edit sys.path (G4)
+    import importlib.util
+    _spec = importlib.util.spec_from_file_location('labpaths', os.path.join(ROOT, 'experimental', 'campaign', 'labpaths.py'))
+    labpaths = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(labpaths)
     WORK, ENGINE_MODEL = labpaths.WORK, labpaths.ENGINE_MODEL
 except Exception:                                   # pragma: no cover - the tool must work on a bare clone
     WORK, ENGINE_MODEL = os.path.join(ROOT, 'work'), os.path.join(os.path.dirname(ROOT), 'RA3-EngineModel')
