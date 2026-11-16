@@ -8,7 +8,7 @@
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 16 | 90 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **97%** | **97%** | 192 / 357 | 428 | 210 | 91 | 93 | 34 | 100% |
+| AI | **97%** | **97%** | 193 / 357 | 428 | 211 | 93 | 90 | 34 | 100% |
 
 ## 脚本动作
 
@@ -853,7 +853,7 @@
 | 已对拍 | `组队招人/TeamTemplate.RegisteredObjectSet` | 179 | a4 a5 a7 | docs/engine/aistate.md#移动方式和对象集（第 81 轮） |
 | 已对拍 | `组队招人/CreateUnits.UnitName` | 174 | a4 a5 a7 | engine_aicreate aicr1c/aicr3c：最低1是一名新成员加两名已知预摆维和，最低3等三名新成员；tests/test_simai_bench_c.py按名回放首次组成；新成员兵种由固定生产归属仍INFERRED；仅指定最低数优先再普通补位，不是排他过滤；其他兵种/多槽位/替补仍gap；见 work/re/e_create_e88.md |
 | 不涉及 | `表现/FeedbackEntry.Video` | 168 |  | 纯表现（语音、视频、画面） |
-| 已对拍 | `人格/AIPersonalityDefinition.Side` | 166 | a4 a5 a7 | B184 engine_aiskirm sd（work/re/d123_side.md 第3节；s1 阵营 Japan，人格 CNVSideX 只写 Side Soviet）：aisksd1 SkirmishPersonality=false（27 关全是这样）人格位 9 = 照用 CNVSideX，Side 不符不管；aisksd2 =true → 136 = 换成随机的日本人格（2JapanMechaWarfare）。27 关 Side 不起作用；test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side 按名回放。gap：门开着时的随机换人格模拟器没建（strict xfail，原版关不走这条） |
+| 已对拍 | `人格/AIPersonalityDefinition.Side` | 166 | a4 a5 a7 | B184 engine_aiskirm sd（work/re/d123_side.md 第3节；s1 阵营 Japan，人格 CNVSideX 只写 Side Soviet）：aisksd1 SkirmishPersonality=false（27 关全是这样）人格位 9 = 照用 CNVSideX，Side 不符不管；aisksd2 =true → 136 = 换成随机的日本人格（2JapanMechaWarfare）。27 关 Side 不起作用；test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side 按名回放；门开着换人格 B207 进模拟器（模型 AIData.assigned_personality，随机抽签对不齐，只断言"不是 CNVSideX、是日本人格"）：test_a_skirmish_personality_of_another_side_is_replaced |
 | 已对拍 | `人格/AIPersonalityDefinition.UsePlayerPowersAtDifficulty` | 154 |  | B181 engine_aispecial aispecoff / aispechb:t（1AlliedBalanced 子人格只改这个字段，台上 MEDIUM）："" 和 "HARD BRUTAL" 两局技能第 2 帧就绪、到第 950 帧放帧 0；对照 aispecial t（XSD 缺省四档全开）第 61 帧放。模型 RA3-EngineModel tests/test_ai_bench.py::test_special_use_at_difficulty 按名回放（None / "" / HB / MEDIUM）。gap：simai 不放超武，只在模型层对拍 |
 | 已对拍 | `目标/AITargetingHeuristic.RequireUniqueTarget` | 154 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | `人格/AIPersonalityDefinition.RepairBuildingsAtDifficulty` | 153 | a4 a5 a7 | B181 engine_repair_ai repairoff / repairmed:a（repair_bench 只改这个字段，USE_REPAIRS 开、钱 10000）："" 整局 50 / 50 / 10000 不修；"MEDIUM" 每秒 +1%，s49 起 100 / 50 / 9900（同 repairai 四档全开）。tests/test_simrepair_ai.py 按名回放两局 |
@@ -990,7 +990,7 @@
 | 已对拍 | `微操/AIMicroManagerData.EnterBaseDefensesWhenIdle` | 23 | a4 a5 a7 | D132 engine_aibasedef aibdi1/0/2（守点队状态8、无敌人、己方4座炮塔）：两开关都开时进基地防御那段程序发进驻令（f50四条、f98三条），s2起进炮塔、s6起2人；只开一个时该程序不发令；tests/test_simai_basedef_whenidle.py 按名回放：都开进炮塔、关一个时该程序不送人，正常断言；台上f50开局即发令、2人，模型s12.5、1人，strict xfail；两对照各有1人经另一段不受开关管的程序进炮塔（f80），模型没有这条路，strict xfail；见work/re/d132_whenidle.md。旧读数：engine_aibasedef aibd1 是战斗中总开关开、idle关的正例（s21起1人进炮塔）；aibd0/aibdidle 总开关均关且无人进驻，不是idle分支正例；tests/test_simai_basedef_idle.py 直接计数回放，aibd1仍strict xfail；独立回放其余三计数：s21台上炮塔3/远厂步兵4，模型1/0，三组strict xfail；模型有idle状态但三组均无双开关开启更新；实机idle/成员观测与到达/存活仍gap；见work/re/e112_basedef_idle.md |
 | 已对拍 | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=None` | 23 | a4 a5 a7 | D152 engine_aipathcheck aipfdef/aipfatk/aipfpath/aipfnone:a（去桥尼亚加拉，SimpleAttack 打对岸玩家基地，四局只差这个字段）：不写 / QuickDoesAttackPathExist / QuickDoesPathExist 三局 4 个维和从不出门，CNVTeams 每 90 帧建一支空队、约 75 帧后过期；None 一局 f21 招满 4 人、s6 出门。走不到的单位招人时就不招（模型 TeamMaker.reach，缺省按战术类 data.PATH_CHECK）；tests/test_ai_pathcheck.py 按名断言台上读数并回放。gap：AttackPath 与 Path 在"岸边射程内"时的区别没测；出门后路断的周期踢人读到没上台；见 work/re/d152_pathcheck.md |
 | 已对拍 | `微操/AIMicroManagerData.EnterGarrisonableStructureDistance` | 21 | a4 a5 a7 | engine_aigarrison aigar1/aigar0/aigarfar：默认150、旧楼EAST=40，近楼归AI、关闭或远楼不进；tests/test_simai_garrison_distance.py::test_garrison_distance_replays_recorded_near_far_and_disabled；仅现成近远行为回放，精确边界、其他配置值和进门死亡时序未量；距离0仅模型敏感性守卫 |
-| 未做 | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | a4 a5 a7 | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | a4 a5 a7 | B207：aisksd1 / aisksd2 只差这一项（engine_aiskirm sd，2026-11-14 两局 PASS，work/re/d123_side.md 1.2）：false（27 关全是默认 false）人格位 9 = 照用地图写的 CNVSideX；true 且 Side 不含玩家阵营 → 136 = 换成随机的本阵营遭遇战人格。模拟器 simai SimAI.assigned → 模型 AIData.assigned_personality（库 = SkirmishPersonality 的人格、Side 随继承，INFERRED）；按名回放 test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side、test_a_skirmish_personality_of_another_side_is_replaced |
 | 未做 | `人格/AIPersonalityDefinition.CanBuildInAlliedBuildRadii` | 18 |  | AI 模型代码里没有这个名字 |
 | 已对拍 | `战略状态/AIStrategicStateDefinition.MaxRunningCopies` | 18 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | `组队招人/TeamTemplate.Priority=LOW` | 18 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
@@ -1092,8 +1092,8 @@
 | 推断 | `微操/IgnoreTargets.Exclude` | 4 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `目标/AITargetingHeuristic.VitalObjectStatus` | 4 | a4 a5 a7 | C engine_aivital aivitalon/off:a：四原名宿主、脚本状态置/清对照；s55-60原打包状态*100+目标区*10+家中计数分别24/4/4/140与24/4/4/4。ATTACHED置位到目标4、清位留家4，按名回放吻合；仅脚本位子集。三地面样本的AIRBORNE_TARGET始终读0，模型却保留；路0区域重叠且位置差异未解。tests/test_vital_status_c.py断言原图读数，四strict xfail保留状态/位置差异；缺真实飞行/落地状态入口、同帧候选资格及原附着生命周期，整字段不晋升。见work/re/c_vital_report.md |
 | 未做 | `人格/AIPersonalityDefinition.EmergencyManagerHandleConyardInDangerAtDifficulty` | 3 | a4 a5 a7 | AI 模型代码里没有这个名字 |
-| 未做 | `人格/PersonalityMap.Personality` | 3 |  | AI 模型代码里没有这个名字 |
-| 未做 | `人格/PersonalityMap.Side` | 3 |  | AI 模型代码里没有这个名字 |
+| 推断 | `人格/PersonalityMap.Personality` | 3 |  | AI 模型代码里读了这个名字 |
+| 推断 | `人格/PersonalityMap.Side` | 3 |  | AI 模型代码里读了这个名字 |
 | 未做 | `战术/Tactic.AestheticsManagerMinDistanceFromHarvester` | 3 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 未做 | `战术/Tactic.AestheticsManagerPatrolIdleTime` | 3 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 已对拍 | `战术/Tactic.CombatLeashSlack` | 3 |  | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aidefense.py |
