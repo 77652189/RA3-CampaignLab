@@ -1933,12 +1933,15 @@ class Sim:
             m['state'], m['due'] = 'docked', max(fr + 1, n['free'])
         elif st == 'docked':                        # the node's first loading frame
             n = self.nodes[m['node']]
-            m['load'] = MINE_LOAD if n['gathered'] < MINE_FULL else MINE_EMPTY
+            # E180 / D165: reserve the batch here, but cargo becomes visible
+            # only when loading finishes. See work/re/e180_queuedock_load.md.
+            m['pending_load'] = MINE_LOAD if n['gathered'] < MINE_FULL else MINE_EMPTY
             if n['gathered'] < MINE_FULL:
                 n['gathered'] += MINE_LOAD
             m['state'], m['due'] = 'loading', fr + MINE_DOCK - 1
         elif st == 'loading':                       # full on its last loading frame: off the frame after (the trip
             n = self.nodes[m['node']]               # 2 x 104 + 61 = 269 of engine_mining a)
+            m['load'] = m.pop('pending_load')
             n['at'], n['free'], n['claim'] = None, fr + MINE_REST + 1, None
             m['state'], m['due'] = 'find refinery', fr + 1
         elif st == 'find refinery':

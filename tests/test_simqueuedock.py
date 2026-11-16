@@ -111,3 +111,48 @@ def test_queuedock_presence_follows_parent_and_ignores_comments():
            'NoDock': '<GameObject id="NoDock"><!-- <QueueDockBehavior id="fake"/> --></GameObject>'}
     assert simunits.queue_dock('DockChild', own)
     assert not simunits.queue_dock('NoDock', own)
+
+
+def test_queuedock_load_lands_only_when_loading_finishes():
+    """dockphase:a D165/E164: WaitLoad cargo 0; SetPad2 cargo 250.
+
+    Replay the measured cargo transition at the simulator's own arrival time;
+    absolute path and loading duration are tested separately, not calibrated.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('dockphase', 'a')
+    s = sim.Sim(m, t)
+    miner = s.bodies[m.role('miner').name]
+    samples = []
+    for frame in range(600):
+        s.mine_due(frame)
+        samples.append((miner.mine['state'], miner.mine['load']))
+        if miner.mine['state'] == 'find refinery':
+            break
+    assert any(state == 'loading' for state, _ in samples)
+    assert all(cargo == 0 for state, cargo in samples if state in ('docked', 'loading'))
+    assert samples[-1] == ('find refinery', 250)
+    assert 'pending_load' not in miner.mine
+
+
+@pytest.mark.xfail(strict=True, reason='E180: D165 Load f156..186 spans 30 frames; '
+                   'legacy simulator loading timer spans 29. Path/phase timing needs '
+                   'independent closure; see work/re/e180_queuedock_load.md')
+def test_queuedock_measured_loading_elapsed_frames():
+    """dockphase:a: node enters Load f156 and leaves f186, elapsed 30."""
+    import build
+    import sim
+    m, t, _ = build.resolve('dockphase', 'a')
+    s = sim.Sim(m, t)
+    miner = s.bodies[m.role('miner').name]
+    start = None
+    for frame in range(600):
+        s.mine_due(frame)
+        if miner.mine['state'] == 'loading' and start is None:
+            start = frame
+        if miner.mine['state'] == 'find refinery':
+            assert start is not None
+            assert frame - start == 186 - 156
+            return
+    pytest.fail('named miner never completed its first loading phase')
