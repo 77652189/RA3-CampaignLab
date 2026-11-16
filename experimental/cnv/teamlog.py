@@ -581,7 +581,36 @@ def target_picks(run, brain=None):
                             point=tuple(map(float, tpt.split(':'))), count=int(d['n']),
                             more=int(re.search(r' more=(\d+)', line).group(1)) if ' more=' in line else 0,
                             candidates=cands))
+            ps = _point_search(line)
+            if ps is not None:                  # D166: only on Point rows (older recorded rows stay equal)
+                out[-1]['point_search'] = ps
     return out
+
+
+def _point_search(line):
+    """D166: the Point heuristic's own fields of a `tgt:` line, row key point_search (absent on other heuristics / older logs).
+
+    point (x, y, z): the slot's picked point (target id stays 0 -- the old `target=0@0:0` is not a point);
+    new: written by this call (else an older pick kept); base / anchor: the base 0x-selection chose by the heuristic's
+    BaseSelection (base id, its anchor object id; None = no base -> nothing picked); origin: that base's centre, the
+    search origin; range: SearchRange; mask: Location bits (1 water, 2 land); tries: random tries made (max 40, stops
+    at 10 kept); candidates: every try inside the map, in order: point, ok (the game's Location verdict = kept),
+    threat (ThreatTo* sorts, kept ones only). The tries are random (angle uniform, radius uniform over the disc).
+    """
+    m = re.search(r' pt=(\S+) new=(\d) base=(-?\d+):(-?\d+)@(\S+?):(\S+) r=(\S+) mask=([0-9a-f]+) tries=(\d+) pc=(\S+)',
+                  line)
+    if not m:
+        return None
+    cands = []
+    for item in ([] if m.group(10) == '-' else m.group(10).split(',')):
+        x, y, ok, *extra = item.split(':')
+        t = dict(kv.split('=', 1) for kv in extra if '=' in kv)
+        cands.append(dict(point=(float(x), float(y)), ok=ok == '1', threat=float(t['t']) if 't' in t else None))
+    base, anchor = int(m.group(3)), int(m.group(4))
+    return dict(point=tuple(map(float, m.group(1).split(':'))), new=m.group(2) == '1',
+                base=None if base < 0 else base, anchor=None if base < 0 else anchor,
+                origin=(float(m.group(5)), float(m.group(6))), range=float(m.group(7)), mask=int(m.group(8), 16),
+                tries=int(m.group(9)), candidates=cands)
 
 
 def state_hash(name):

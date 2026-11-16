@@ -374,3 +374,27 @@ def test_dock_phases_bench_rows(tmp_path):
                     (289, 'deliver', 'UpdatePad1', 'Unload', 1, 250), (319, 'deliver', 'Unload', 'SetPad2', 1, 0)]
     assert [(f['frame'], f['code'], f['rw']) for f in r['faults']] == [(200, 'xc0000005', 0)]
     assert [x['frame'] for x in teamlog.dock_phases(str(p), obj=10)['phases']] == [156]
+
+
+# D round 166: copied from bench CampPointTinyA_mcp_1115_202922 (aipointtiny:a, the bench meant to set SearchRange 1;
+# the game read 1500 there). The Point heuristic writes a point, not an object: target id 0, the point and its search
+# are the pt= fields.
+TGT166 = """tgt: frame=16 brain=0844D5E8 slot=0 state=0898A828 sid=ab309529 hi=0 vt=c6832c sort=3 uniq=0 found=1 kind=0 target=0@0:0 n=0 cand=- pt=2890:3011:162 new=1 base=0:3163@3850:3400 r=1500 mask=1 tries=40 pc=2809:3955:1,4461:3123:0,3386:2972:0,4487:3847:0,3302:2098:0,3457:3737:0,4708:2470:0,3509:3506:0,4367:3750:0,2970:4286:0,2492:3635:1,4383:4231:0,4075:2049:0,4111:4850:0,4577:3080:0,4771:2486:0,2486:3248:0,4322:2450:0,3917:3998:0,3079:2419:0,3069:3945:0,3801:3643:0,2626:3668:1,2433:3074:1,2690:3739:1,3452:3275:0,2494:3469:1,3495:4687:0,3738:4097:0,4943:3867:0,2626:2837:0,3301:2046:0,2792:4145:1,2890:3011:1,3093:4103:0,4438:3021:0,3872:2841:0,3239:2200:0
+"""
+
+
+def test_target_picks_point_search(tmp_path):
+    """D166: Point heuristic -- picked point, search origin (selected base), range, Location mask, random candidates."""
+    p = tmp_path / 'ra3ext.log'
+    p.write_text(TGT166 + TGT159)
+    rows = [r for r in teamlog.target_picks(str(p))]
+    ps = rows[0]['point_search']
+    assert rows[0]['target'] == 0 and rows[0]['found']
+    assert (ps['point'], ps['new'], ps['base'], ps['anchor'], ps['origin'], ps['range'], ps['mask'], ps['tries']) == (
+        (2890.0, 3011.0, 162.0), True, 0, 3163, (3850.0, 3400.0), 1500.0, 1, 40)
+    kept = [c['point'] for c in ps['candidates'] if c['ok']]
+    assert len(ps['candidates']) == 38 and len(kept) == 8 and all(c['threat'] is None for c in ps['candidates'])
+    # ThreatToWater with no threat samples falls back to the kept point nearest the origin
+    ox, oy = ps['origin']
+    assert min(kept, key=lambda q: (q[0] - ox) ** 2 + (q[1] - oy) ** 2) == ps['point'][:2]
+    assert all('point_search' not in r for r in rows[1:])
