@@ -201,7 +201,7 @@ def test_infiltrator_money_split_rejects_changed_fields(monkeypatch, field, valu
     ('VISION', '', 5, 5, '普通VISION 5用量/5模板部分已测且暂停扩宿主'),
     ('VISION', '9999999s', 1, 1, '港口阻断VISION 1用量/1模板未测'),
     ('VISION_UNITS', 'InfiltrationAircraftObjectFilter', 2, 2, '飞机VISION_UNITS单列仅入楼已接'),
-    ('VISION_UNITS', 'InfiltrationInfantryObjectFilter', 3, 3, '步兵VISION_UNITS 3用量/3模板未测'),
+    ('VISION_UNITS', 'InfiltrationInfantryObjectFilter', 3, 3, '步兵VISION_UNITS单列仅入楼已接'),
     ('VISION_UNITS', 'InfiltrationShipObjectFilter', 3, 3, '舰船VISION_UNITS 3用量/3模板未测'),
     ('RESET', '', 5, 6, 'RESET单列仅入楼已接'),
 ])
@@ -311,3 +311,17 @@ def test_infiltrator_aircraft_configuration_keeps_discovery_gap():
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
     assert 'strict xfail' in aircraft['why'] and 'work/re/e197_aircraft.md' in aircraft['why']
+
+
+def test_infiltrator_infantry_configuration_keeps_discovery_gap():
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    assert contain_audit.infiltrator_infantry_share() == {'campaign': 3, 'templates': 3}
+    rows = [r for r in inventory.collect((inventory.MODULE,))
+            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    infantry = next(r for r in rows if r['name'].endswith(':VISION_UNITS_INFANTRY'))
+    assert (infantry['uses'], infantry['all'], infantry['state']) == (3, 3, inventory.GUESSED)
+    assert (inventory.MODULE, infantry['name']) not in inventory.BENCHED_TESTS
+    assert sum(r['uses'] for r in rows) == 34
+    assert sum(r['all'] for r in rows) == 38
+    assert 'strict xfail' in infantry['why'] and 'work/re/e198_infantry.md' in infantry['why']

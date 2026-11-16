@@ -14,7 +14,7 @@ E194 vehicle VISION_UNITS only consumes the hostile spy; discovery scheduling
 is not implemented. The measured intermittent 1/0 sequence remains a gap.
 E195 RESET only consumes the hostile spy at a Soviet Iron Curtain; readiness
 and actual cooldown remain unresolved. Entry reach/clock remain INFERRED.
-E197 aircraft VISION_UNITS entry only; observer/filter scheduling remains a gap.
+E197 aircraft and E198 infantry VISION_UNITS entry only; observer/filter scheduling remains a gap.
 """
 import math
 import os
@@ -67,6 +67,7 @@ class Infiltrators:
         self.vehicle_hosts = set()
         self.reset_hosts = set()
         self.aircraft_hosts = set()
+        self.infantry_hosts = set()
 
     def aircraft_rule(self, target, rule):
         """E197 complete retail airfield configuration; no reveal assumption."""
@@ -80,6 +81,19 @@ class Infiltrators:
     def aircraft_entry_measured(self, spy, target):
         return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
                 and id(target) not in self.aircraft_hosts)
+
+    def infantry_rule(self, target, rule):
+        """E198 complete retail barracks configuration; no reveal assumption."""
+        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
+        return (target.template == 'AlliedBarracks'
+                and config == {'Effect': 'VISION_UNITS', 'Duration': '30s',
+                               'UnitDuration': '30s', 'ObjectRef': 'UnitVisionObserver',
+                               'UnitFilter': 'InfiltrationInfantryObjectFilter',
+                               'StructureFilter': 'InfiltrationInfantryStructuresFilter'})
+
+    def infantry_entry_measured(self, spy, target):
+        return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
+                and id(target) not in self.infantry_hosts)
 
     def reset_rule(self, target, rule):
         """E195 retail Iron Curtain entry only; cooldown/ready remain gaps."""
@@ -179,11 +193,14 @@ class Infiltrators:
         if not any((energy, self.vision_rule(target, rule), self.paralyze_rule(target, rule),
                     self.kill_rule(target, rule), self.money_rule(target, rule),
                     self.vehicle_rule(target, rule), self.reset_rule(target, rule),
-                    self.aircraft_rule(target, rule))):
-            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、车辆、飞机及RESET入楼切片已实现')
+                    self.aircraft_rule(target, rule), self.infantry_rule(target, rule))):
+            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、车辆、飞机、步兵及RESET入楼切片已实现')
             return
         if self.aircraft_rule(target, rule) and not self.aircraft_entry_measured(spy, target):
             s.gap('InfiltratorContain', target.template, '飞机VISION_UNITS其他间谍/玩家或重复进入未对拍')
+            return
+        if self.infantry_rule(target, rule) and not self.infantry_entry_measured(spy, target):
+            s.gap('InfiltratorContain', target.template, '步兵VISION_UNITS其他间谍/玩家或重复进入未对拍')
             return
         if self.reset_rule(target, rule) and not self.reset_entry_measured(spy, target):
             s.gap('InfiltratorContain', target.template, 'RESET其他间谍/玩家或重复进入未对拍')
@@ -242,6 +259,16 @@ class Infiltrators:
                 self.aircraft_hosts.add(id(target))
                 s.gap('InfiltratorContain', target.template,
                       '飞机VISION_UNITS观察者/筛选/到期未闭合，见 work/re/e197_aircraft.md')
+                s.destroy(spy, '进楼渗透', delete=True)
+                s.change()
+                continue
+            if self.infantry_rule(target, rule):
+                if not self.infantry_entry_measured(spy, target):
+                    s.gap('InfiltratorContain', target.template, '步兵VISION_UNITS入楼时资格变化未对拍')
+                    continue
+                self.infantry_hosts.add(id(target))
+                s.gap('InfiltratorContain', target.template,
+                      '步兵VISION_UNITS观察者/筛选/到期未闭合，见 work/re/e198_infantry.md')
                 s.destroy(spy, '进楼渗透', delete=True)
                 s.change()
                 continue
