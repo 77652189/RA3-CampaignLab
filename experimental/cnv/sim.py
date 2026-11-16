@@ -212,10 +212,15 @@ PACK_FRAMES = 0                # the yard is its MCV from the press frame on (en
 WFIRE_LAG = 0                  # frames between a weapon-fire ability's UnpackTime and its weapon (engine_wfire)
 # a TargetType NONE ability (the bear's roar) pressed _ON_NAMED: it goes off this much later once the caster is up to
 # the target (engine_acts_wet RN 60 off / RF 300 off both a reading or so behind the plain roar: INFERRED, fitted).
-# Both benches with it (acts_wet, acts_mix) pass for 16-28 frames (A round 251 scan; 15 was the band's lower edge and
-# fell off once R8's UNDERSIZE let acts_mix's melee bear chase onto its conscript's own path node before the hold, a
-# frame nearer at the press); the band's middle taken
-NONE_TARGET_LAG = 22
+# Refitted in A round 253 once the bears no longer chase in the opening frame (IDLE_SCAN_FROM): acts_mix passes for
+# any lag 0-31, acts_wet for 15-20 (14: C4 out of its hold a reading early; 21: the roars' cast count a reading
+# late); the band's middle taken. (Before, 16-28 / 22 was fitted on that opening walk, engine_dam showed none.)
+NONE_TARGET_LAG = 18
+# an idle unit takes nothing by itself in the mission's first logic frame (bench 11-15 engine_dam BR: a bear 60 from an
+# enemy conscript, NO_ATTACK from 0.1 s = frame 2, never left its 8-half start square; the simulator had it chase from
+# frame 1 and stand at the conscript's feet by frame 15). INFERRED: the program's first idle scan not read -- 2 is the
+# least the bench allows; with one acquisition pass a tick, any value up to the second tick's frame (8) acts the same
+IDLE_SCAN_FROM = 2
 BUILD_STEP = 5.0               # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
@@ -5311,8 +5316,8 @@ class Sim:
                 a.auto_to = a.dest
             return
         a.chase = None
-        if 'YES' not in a.acquire:              # AutoAcquireEnemiesWhenIdle NO / none: idle, it takes nothing
-            near = []
+        if 'YES' not in a.acquire or self.frame_now() < IDLE_SCAN_FROM:
+            near = []                           # AutoAcquireEnemiesWhenIdle NO / none, or the opening frame: nothing
         for dist, t in near:
             if dist - t.radius > sight:
                 break                           # sorted by centre; a radius over 0 only cuts more

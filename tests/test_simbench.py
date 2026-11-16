@@ -1778,10 +1778,11 @@ def test_dam_all_as_the_bench():
     assert all(v[0] // 100 == 10 for v in at.values()), at       # DQ in the south pool, never in its square
 
 
-@pytest.mark.xfail(strict=True, reason='round 252, engine_dam BR: on the bench the bear never left its start square '
-                   '(熊 1, 走 0 the whole run) -- no idle chase before NO_ATTACK at 0.1 s; the simulator walks it to '
-                   "the conscript's feet by frame 15 (Sim.idle_chase), and NONE_TARGET_LAG (22) is fitted on that walk")
 def test_dam_bear_stands_in_the_opening():
+    """engine_dam BR (round 252 bench): the bear never left its start square (熊 1, 走 0 the whole run) -- no idle
+    chase before NO_ATTACK at 0.1 s (frame 2). The simulator had walked it to the conscript's feet by frame 15; since
+    round 253 an idle unit takes nothing in the opening frame (sim.IDLE_SCAN_FROM, INFERRED) and NONE_TARGET_LAG was
+    refitted without that walk (18)."""
     at = dict(_sim_run('engine_dam', 'all', 10.0).series)
     assert all(v[2] == 1 and v[3] == 0 for v in at.values()), at
 

@@ -182,7 +182,7 @@
 | 已对拍 | `NAMED_ATTACK_TEAM` | 32 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts9.py |
 | 已对拍 | `UNIT_KILL_ALL_IN_AREA` | 32 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
 | 已对拍 | `ATTACK_MOVE_TEAM_TO_NAMED_OBJECT` | 31 |  | tests/test_simbench.py::test_acts_more_as_the_bench |
-| 推断 | `CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION` | 31 |  | Sim.act / Sim.cond 有分支 |
+| 推断 | `CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION` | 31 |  | A253：和 CREATE_REINFORCEMENT_TEAM 同一分支、按名字物体的位置当路点（推断）；台图 checks/engine_reinfat.py go 已写、还没上台 |
 | 已对拍 | `SKIRMISH_AI_SET_FAVORED_ENEMY` | 31 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aifav.py |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT` | 30 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_waypath.py |
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_TAKE` | 30 |  | tests/test_simbench.py::test_acts_u_as_the_bench |
