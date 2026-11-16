@@ -2,7 +2,7 @@ r"""What the plan simulator (sim.py) needs of a unit, from the game's own data: 
 water, both, air), how far it sees, its KindOf. Retail templates from the SDK's SageXML (the index mapstudy keeps:
 work\sagexml_gameobjects.json gives each template's file and KindOf; the file its LocomotorSet's NORMAL Speed and its
 VisionRange / ShroudClearingRange, defines resolved; each field from the nearest template up the inheritFrom chain that
-writes it, resolve()), cached in work\sim_units_v6.json. Our own units (a mission's Unit: its XML) are read the same
+writes it, resolve()), cached in work\sim_units_v7.json. Our own units (a mission's Unit: its XML) are read the same
 way, over the retail templates they inherit from; a template found nowhere gets its kind's default (DEFAULTS) and is
 listed as guessed.
 """
@@ -18,9 +18,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
 import labpaths  # noqa: E402
 
-CACHE = os.path.join(labpaths.WORK, 'sim_units_v6.json')     # v2: defines resolved (2026-10-29); v3: + ShroudClearingHeight;
+CACHE = os.path.join(labpaths.WORK, 'sim_units_v7.json')     # v2: defines resolved (2026-10-29); v3: + ShroudClearingHeight;
                                                             # v4: + radius (R8); v5: radius read through 'Type= "BOX"'
                                                             # v6: inherited fields resolved up inheritFrom (eggs, 11-10)
+                                                            # v7: DEEP_WATER is water (round 252)
 CLEAR_HEIGHT = 50.0             # ShroudClearingHeight when a unit does not write one (docs/engine/vision.md: retail units
                                 # nearly all leave it out)
 INDEX = os.path.join(labpaths.WORK, 'sagexml_gameobjects.json')
@@ -224,12 +225,16 @@ def radius(text):
 
 
 def surface_of(surf, kinds):
+    """A locomotor's Surfaces as a routing grid. DEEP_WATER is water: the ships' and the dolphin's locomotors write
+    DEEP_WATER alone (round 252, engine_dam: read as 'ground' before, the dolphin was routed over the bank and a dry
+    dam). The routing's water grid does not tell deep from shallow (INFERRED)."""
     s = set(surf)
+    wet = bool(s & {'WATER', 'DEEP_WATER'})
     if 'AIRCRAFT' in kinds or 'AIR' in s:
         return 'air'
-    if 'AMPHIBIOUS' in kinds or {'GROUND', 'WATER'} <= s:
+    if 'AMPHIBIOUS' in kinds or ('GROUND' in s and wet):
         return 'both'
-    if 'WATER' in s and 'GROUND' not in s:
+    if wet:
         return 'water'
     return 'ground'
 

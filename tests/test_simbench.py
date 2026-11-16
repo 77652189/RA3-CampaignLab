@@ -1764,6 +1764,28 @@ def test_acts_wet_all_as_the_bench():
     assert all(v[3] == 0 for v in at.values())
 
 
+def test_dam_all_as_the_bench():
+    """all, bench 11-15 `run_queue engine_dam:all` (CampDamAll_mcp_1115_204351, round 252; maps/probe_dam.py: a dry dam
+    across probe_air's trench): 跳 1010 for the first four readings (both dolphins in the south pool), 1000 for two (DJ
+    out of the pool and not yet down: in the air over the dam), then 1001 to the end -- the jump crosses the dam, the
+    swimmer told to the same 250 north stays in the south pool (DQ: 1000 throughout, never in its square). The
+    simulator lands the jump at once (Sim.leap_press: no in-flight reading, INFERRED) and needed DEEP_WATER read as
+    water (simunits.surface_of; before, the dolphin routed as a land unit over the bank and the dam). The landing frame
+    is not compared: 帧 grew only 8-10 a reading on the bench (not explained)."""
+    at = dict(_sim_run('engine_dam', 'all', 10.0).series)
+    assert all(at[k][0] == 1010 for k in range(0, 4)), at
+    assert at[10][0] == 1001 and at[10][1] > 0, at
+    assert all(v[0] // 100 == 10 for v in at.values()), at       # DQ in the south pool, never in its square
+
+
+@pytest.mark.xfail(strict=True, reason='round 252, engine_dam BR: on the bench the bear never left its start square '
+                   '(熊 1, 走 0 the whole run) -- no idle chase before NO_ATTACK at 0.1 s; the simulator walks it to '
+                   "the conscript's feet by frame 15 (Sim.idle_chase), and NONE_TARGET_LAG (22) is fitted on that walk")
+def test_dam_bear_stands_in_the_opening():
+    at = dict(_sim_run('engine_dam', 'all', 10.0).series)
+    assert all(v[2] == 1 and v[3] == 0 for v in at.values()), at
+
+
 def test_share_all_as_the_bench():
     """all, bench 11-14 `run_queue engine_share:all` (CampShareAll, round 222; the bench's seconds 1-2 ahead): 甲 / 乙 /
     丙钱 125 125 0 after the first load (Player_1 and Soviet_5 sharing), 249 188 63 after the second (Soviet_6 sharing

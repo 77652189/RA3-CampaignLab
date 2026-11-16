@@ -202,10 +202,13 @@ BENCHED_TESTS = {
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower',
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateRoarSpecialPower',
         'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower')},
-    # round 226 (checks/engine_acts13.py all): the roar _ON_NAMED (the bear walks up to the target, then roars); the
-    # dolphin's jump is in NOTES since round 249 (the readout does not tell it from swimming)
+    # round 226 (checks/engine_acts13.py all): the roar _ON_NAMED (the bear walks up to the target, then roars)
     **{(ACTION, n): 'tests/test_simbench.py::test_acts_wet_all_as_the_bench' for n in (
         'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower',)},
+    # round 252 (checks/engine_dam.py all): the dolphin's jump over a dry dam its swimming twin cannot pass (round
+    # 249 had it in NOTES: engine_acts_wet's readout did not tell the jump from swimming)
+    (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower'):
+        'tests/test_simbench.py::test_dam_all_as_the_bench',
     # round 222 (checks/engine_share.py all): mining income split among sharing Friends (the earner keeps the rest);
     # NAMED_SELECTED after SELECT_OBJECT (TYPE_SELECTED in NOTES: never true there)
     (ACTION, 'PLAYER_TOGGLE_RESOURCE_SHARING'): 'tests/test_simbench.py::test_share_all_as_the_bench',
@@ -366,7 +369,6 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
-    (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower'): (GUESSED, 'A226 engine_acts_wet:all：跳的海豚和游过去的对照都在 s4 到目标格，读数分不出跳和游（台图说明自己写了 not telling）；A249 压回推断。转正要能区分的布局：中间隔一条只有跳才过得去的窄地，或逐秒记位置'),
     (MODULE, 'Behaviors/QueueDockBehavior'): (GUESSED, 'E164消费D165 dockphase:a/off阶段证据：on装货f156..186、卸货f289..319各30帧，货量250→0；off首次交矿f200同帧异常，不是无效果对照。公开Sim已按继承读取码头模块，矿车选中缺码头矿场时明确报错、禁止模拟成功交矿；卸货结束清空货量。具名tests/test_simqueuedock.py回放拒绝边界、30帧卸250及清货；整模块不晋升，骨骼/队列/绝对路径时钟仍gap，E152 f786快照保留strict xfail；见work/re/e164_queuedock.md'),
     (MODULE, 'Behaviors/CaptureSpecialAbilityUpdate'): (TODO, 'E151 engine_capture:a原版工程师对CaptureFlag中立/敌方/己方和删模块中立四路：归属100、存活1111、前置1，f45..575未换主。原预测111保留；具名测试仅回放负基线，不登记模块效果已对拍。缺命令被模块接受及同帧阶段证据（INFERRED），暂停同输入重跑；见work/re/e151_capture.md'),
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2'): (GUESSED, 'A224-A226 engine_acts_mix:all、engine_acts_drop / _ally:own、engine_acts_wet:all：六局都没出轰炸机；A226 PLAYER_TRIGGERED_SPECIAL_POWER 看到按钮和按名字放都算放了（人类、电脑的 store 都是），所以卡在 OCL 生成那步（CREATE_AT_EDGE_NEAR_SOURCE），原因未明；模拟器只记施放、不出东西'),
