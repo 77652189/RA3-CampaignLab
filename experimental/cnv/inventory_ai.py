@@ -170,12 +170,13 @@ NOTES = {
         '不以KindOf或模板名字猜登记。原版残骸创建/候选资格/水域阳性仍gap，'
         '不晋升整项；见work/re/c_husk_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=Point': (TODO,
-        'C engine_aipoint aipointwater/aipointtiny:a 原名NearbyWaterPointHeuristic仅切范围1500/1；'
-        '两局f16均found=1、target id=0，s25总数/在家均4/0，存活控制PASS。'
-        'tests/test_point_target_c.py复读原记录并按名回放，模型两组均无目标、两strict xfail，'
-        '原范围1无点预测另strict xfail；现观测按对象ID取坐标，Point的0:0不是实际选点。'
-        '缺槽内真实点/搜索原点/候选生成与威胁输入，模型未实现，不晋升；'
-        '27关静态14关45条玩家宿主引用，见work/re/c_point_report.md及c_point_scope.json'),
+        'C engine_aipoint新ID CNVPointWater/CNVPointTiny，真实范围1500/1：'
+        'f16同原点3850,3400；1500有38候选/8合格，选2890,3011；1有40候选/0合格，不选。'
+        'tests/test_point_target_c.py按任务名用原生候选回放TargetsBlock，选择与槽坐标吻合；'
+        '模型新增Point搜索提供者入口及无威胁样本退回最近点；未提供输入时不代用普通对象。'
+        '整项保持TODO：随机生成/基地世界输入/非空威胁及高度未闭环，整局阳性strict xfail；'
+        '旧同名范围1实际加载1500；新1500局计数窄窗缺帧FAIL，1局PASS。'
+        '见work/re/c_point_resume_report.md；27关静态14关45条宿主引用见c_point_scope.json'),
     '目标/AITargetingHeuristic.HeuristicType=TechBuilding': (GUESSED,
         'C aitechkind/aitechnon:a 原名ClosestTechBuildingHeuristic、敌距0、空VitalKindOf，'
         '同位中立油井/普通电厂；f16油井ok并选中，普通电厂不在科技候选集合，'

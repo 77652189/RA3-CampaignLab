@@ -1,4 +1,4 @@
-"""Native Point selection and named model replay; work/re/c_point_report.md."""
+"""Native Point selection and named replay; work/re/c_point_resume_report.md."""
 import importlib.util
 import json
 from pathlib import Path
@@ -34,18 +34,14 @@ def test_point_native_water_search_finds_a_non_object_target(build):
 
 @pytest.mark.parametrize('build', [
     pytest.param('aipointwater', marks=pytest.mark.xfail(strict=True,
-        reason='Native Point finds a location; model has no Point candidate provider. '
-               'Actual point coordinates/search inputs are unavailable; '
-               'see work/re/handoff-c.md and work/re/c_point_report.md.')),
-    pytest.param('aipointtiny', marks=pytest.mark.xfail(strict=True,
-        reason='Native range-1 Point also succeeds; model selects nothing. '
-               'Search origin/candidate generation unresolved; '
-               'see work/re/handoff-c.md and work/re/c_point_report.md.')),
+        reason='Point selector replays observed candidates, but the world still has no '
+               'random Point search provider. See work/re/c_point_resume_report.md.')),
+    'aipointtiny',
 ])
 def test_point_named_selection_matches_native(build):
     if not simai.available():
         pytest.skip('no private AI model')
-    native = native_picks(build)
+    native = resumed_picks(build)
     assert native
     w = simai.run(build, 'a', until=3)
     brain = w.brains['Soviet_1']
@@ -73,10 +69,81 @@ def test_point_original_controls_and_public_records(build):
     assert json.loads(json.dumps(native_picks(build))) == original
 
 
-@pytest.mark.xfail(strict=True, reason='Pre-run range-1 no-point prediction failed: '
-    'native found=1 at frame 16; real search origin and point not observed. '
-    'See work/re/handoff-c.md and work/re/c_point_report.md.')
-def test_point_original_tiny_range_negative_prediction():
-    rows = native_picks('aipointtiny')
-    assert rows
-    assert all(not row['found'] for row in rows)
+def resumed_picks(build):
+    import teamlog
+    return teamlog.target_picks(str(FIXTURES / f'{build}_point_resume.txt'))
+
+
+@pytest.mark.parametrize('build,radius,found', [
+    ('aipointwater', 1500, True), ('aipointtiny', 1, False),
+])
+def test_point_resume_native_search_and_named_slot_replay(build, radius, found):
+    """Replay the named mission with native candidates, not the selected point."""
+    if not simai.available():
+        pytest.skip('no private AI model')
+    import build as builds
+    import teamlog
+    from types import SimpleNamespace
+    targets = simai.model()['targets']
+    mission, _, _ = builds.resolve(build, 'a')
+    data = targets.TargetData()
+    for _, xml, _ in mission.assets:
+        data.add_text(xml)
+    hid = 'CNVPointTiny' if radius == 1 else 'CNVPointWater'
+    heuristic = data.heuristic(hid)
+    assert heuristic.type == 'Point' and heuristic.search_range == radius
+    assert heuristic.location == frozenset({'Water'})
+    rows = resumed_picks(build)
+    assert rows and rows[0]['frame'] == 16
+    assert rows[0]['point_search']['anchor'] == 3163
+    states = simai.model()['data'].AIData()
+    for _, xml, _ in mission.assets:
+        states.add_text(xml)
+    for row in rows:
+        assert row['state_id'] == teamlog.state_hash('CNVStateTP')
+        assert row['index'] == row['slot'] == 0 and row['frame'] >= 16
+        assert row['found'] == found
+        assert row['target'] == (0 if found else None)
+        ps = row['point_search']
+        assert ps['range'] == radius and ps['mask'] == 1
+        assert ps['origin'] == (3850, 3400)
+        # Anchor identity is world-owned: tiny switches to 0 at f151 while
+        # the supplied search origin remains unchanged; no lifecycle inferred.
+        assert ps['tries'] == 40
+        assert all(c['threat'] is None for c in ps['candidates'])
+        kept = [c for c in ps['candidates'] if c['ok']]
+        assert bool(kept) == found and ps['new'] == found
+        assert len(ps['candidates']) == (38 if found else 40)
+        assert len(kept) == (8 if found else 0)
+        search = targets.PointSearch(ps['origin'], tuple(
+            targets.PointCandidate(c['point'], c['ok'], c['threat'])
+            for c in ps['candidates']))
+        calls = []
+        def provider(h):
+            calls.append(h.id)
+            return search
+        # No output coordinates are given to the selector. Ordinary objects and
+        # the caller origin are deliberately unrelated to the selected base.
+        view = targets.View('s1', [], point_search=provider)
+        block = targets.TargetsBlock(data, lambda ai, frame: ['CNVStateTP'],
+                                     lambda ai, frame: view, lambda ai, sid: (0, 0))
+        ai = SimpleNamespace(data=states, rng=None, log=[])
+        block.tick(ai, row['frame'])
+        tid = block.slot_target('CNVStateTP')
+        got = block.points.get(tid)
+        assert calls == [hid]
+        assert (got is not None) == found
+        if found:
+            assert (got.x, got.y) == ps['point'][:2]
+            assert got.kindof == frozenset({'POINT'})
+        else:
+            assert kept == []
+
+
+def test_point_without_world_search_never_uses_an_object():
+    if not simai.available():
+        pytest.skip('no private AI model')
+    targets = simai.model()['targets']
+    h = targets.TargetHeuristic('point', 'Point')
+    view = targets.View('s1', [targets.Thing(42, 's1', x=1, y=1)])
+    assert targets.find(h, view, (0, 0)) is None
