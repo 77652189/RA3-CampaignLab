@@ -181,9 +181,66 @@ def death_check(m):
     return t
 
 
+def transfer_mission(incoming=False):
+    """E162: reciprocal scripted owner transfer, NOT engineer capture.
+
+    INFERRED prediction: outgoing local HUD terrain -> emblem; incoming
+    emblem -> terrain. Both owners retain live yards/plants and power.
+    Two runs observe the local HUD as old and new owner respectively;
+    no claim about the unobserved Soviet_4 HUD. See work/re/e162_radar_owner.md.
+    MEASURED: out f91 owner1 terrain -> f312 owner2 emblem;
+    in f87 owner2 emblem -> f282 owner1 terrain; alive/support=1 throughout.
+    Exact transfer callback timing and engineer capture remain gaps.
+    """
+    m = mission()
+    m.name = 'CampRadarInE' if incoming else 'CampRadarOutE'
+    m.facts['incoming'] = incoming
+    if incoming:
+        m.objects[0].side = 's4'
+        m.cast['dish'].side = 's4'
+    m.put('AlliedConstructionYard', 'high gun', 0, 650, side='s4',
+          role='other yard', name='E162 other yard')
+    m.put('AlliedPowerPlant', 'high gun', 400, 0, side='s4',
+          role='other power', name='E162 other power')
+    return m
+
+
+def transfer_check(m):
+    t = Test()
+    dish = m.role('dish').name
+    t.counters = [('E162Frame', '帧数'), ('E162Owner', '归属量'),
+                  ('E162Alive', '存活量'), ('E162Support', '供电前置')]
+    t.scripts = [
+        Script('Test - E162 start', [], [('SET_MILLISECOND_TIMER', 'E162 swap', 12.)]),
+        Script('Test - E162 frame', [], [('INCREMENT_COUNTER', 1, 'E162Frame')], once=False),
+        Script('Test - E162 clear', [], [('SET_COUNTER', c, 0) for c, _ in t.counters[1:]], once=False),
+        Script('Test - E162 alive', [('NAMED_NOT_DESTROYED', dish)],
+               [('SET_COUNTER', 'E162Alive', 1)], once=False),
+        Script('Test - E162 support', [('PLAYER_HAS_POWER', m.player(s)) for s in ('p1', 's4')]
+               + [('NAMED_NOT_DESTROYED', m.role(r).name)
+                  for r in ('yard', 'power', 'other yard', 'other power')],
+               [('SET_COUNTER', 'E162Support', 1)], once=False),
+    ]
+    for value, side in ((1, 'p1'), (2, 's4')):
+        t.scripts.append(Script('Test - E162 owner ' + side,
+                                [('NAMED_OWNED_BY_PLAYER', m.player(side), dish)],
+                                [('SET_COUNTER', 'E162Owner', value)], once=False))
+    t.scripts.append(Script('Test - E162 transfer', [('TIMER_EXPIRED', 'E162 swap')],
+                            [('NAMED_TRANSFER_OWNERSHIP_PLAYER', dish,
+                              m.player('p1' if m.facts['incoming'] else 's4'))]))
+    before, after = (2, 1) if m.facts['incoming'] else (1, 2)
+    t.expect = [('归属量', 0, 'ever>=', before, 40),
+                ('归属量', 0, 'ever==', after, 40),
+                ('存活量', 0, '==', 1, 40), ('供电前置', 0, '==', 1, 40)]
+    t.bench = [('bench_watch', dict(seconds=40, every=1, sheet=False, lines=4))]
+    return t
+
+
 MISSION = {'engine_radar': mission, 'engine_radaroff': lambda: mission(False),
            'engine_radarlow': low_power_mission, 'engine_radartwo': two_provider_mission,
-           'engine_radardeath': death_mission}
+           'engine_radardeath': death_mission, 'engine_radarout': transfer_mission,
+           'engine_radarin': lambda: transfer_mission(True)}
 CHECKS = {name: {'a': {'engine_radarlow': low_power_check,
                       'engine_radartwo': two_provider_check,
+                      'engine_radarout': transfer_check, 'engine_radarin': transfer_check,
                       'engine_radardeath': death_check}.get(name, check)} for name in MISSION}
