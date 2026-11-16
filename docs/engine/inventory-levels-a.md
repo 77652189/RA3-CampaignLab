@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 56 | 18 | 39 | 20 |
+| 物体模块 | 56 | 19 | 38 | 20 |
 | 武器效果 | 18 | 4 | 4 | 2 |
 
 按原版用量加权：已对拍 100%，已有（已对拍+推断）100%。
@@ -29,7 +29,6 @@
 | 未做 | 物体模块 | `Behaviors/AssistedPlacementBehavior` | 3 | a1 a2 a4 a5 a6 a7 | E169 assistpon:a / assistpoff:a原版与删模块两局均资金8000、矿场总数0、提示位数量0、采样完成0；红色预览未落地，原吸附预测保留。当前计数器无放置接受/拒因字段，不能归因于模块；同输入暂停。tests/test_assistplace_bench_e.py具名回放资金负基线strict xfail：Sim未消费侧栏排队/放置点击；吸附、朝向、迷雾资格和精确距离均gap，不登记已对拍；见work/re/e169_assistplace.md；例：AlliedRefinery, JapanRefinery |
 | 未做 | 物体模块 | `Behaviors/HitReactionBehavior` | 3 | a1 a2 a3 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, CNV_Beacon |
 | 未做 | 物体模块 | `Behaviors/LoseHealthUpdate` | 3 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md；例：CNV_Liberty, SovietBomberAircraft |
-| 未做 | 物体模块 | `Behaviors/MovementSpecialPower` | 3 | a1 a4 a6 a7 | 模拟器代码里没有这个名字；例：JapanAntiVehicleVehicleTech3 |
 | 未做 | 物体模块 | `Behaviors/ReturnToProducerSpecialPower` | 3 | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedFighterAircraft, SovietFighterAircraft |
 | 未做 | 物体模块 | `Behaviors/SecondaryObjectListenerModule` | 3 | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedBaseDefense |
 | 未做 | 物体模块 | `Behaviors/SlaughterHordeContain` | 3 | a5 a7 a8 | E170 engine_slaughter_e:a/b航母原版/仅删模块两局完成f600、宿主存活11，f180攻击期/f600返航后数量编码均0；a误用DRONE分类，b改AIRCRAFT后仍0。tests/test_slaughter_bench_e.py按名字回放负基线；快照未定位出机/吞入，不能以0判模块无效或借起重机AI撤退晋升。缺同帧命令接受、子机父体/存活轨迹及enterAccepted/停车阶段；同输入暂停，原数量预测FAIL保留，不推猜测模型，不登记已对拍；见work/re/e170_slaughter.md；例：AlliedAntiStructureShip, CNV_Liberty |
@@ -76,6 +75,7 @@
 | 推断 | 物体模块 | `Behaviors/TechUpgradeReceiver` | 4 | a2 a4 a5 a7 a8 | E167 engine_techrecvon/engine_techrecvoff:a原版工厂/仅删二级接收模块两局PASS，均完整f330；f60/f180/f300冻结15/15/15，f180近侧300距离持有数2/1、远侧750距离1/1（含各自建造场来源），f210删除来源后f300双方均0、两工厂存活。tests/test_simtechreceiver_e.py按名字回放台上读数；公开Sim补读链接覆盖GameObject XML，未改传播规则。仅此Tech2/建造场/工厂配置，精确传播时钟及矩形角点距离INFERRED；三级、其他宿主/来源、关系/换主/半径边界/生产仍gap，不晋升整模块、不拆分用量；见work/re/e167_techreceiver.md；例：AlliedAirfield, AlliedBarracks |
 | 推断 | 物体模块 | `Behaviors/AttachUpdate` | 3 | a1 a2 a4 a5 a6 a7 a9 | 部分：engine_attach a验证瞬移/跟随/父子状态；engine_attach_parent a验证简单模块脚本杀父后子活/清理链接，NO_COLLISIONS读数差异为严格xfail；原版模块死亡前无稳定链接，不推广死亡规则；子死/直接删除/维修/吸血/解除/自主扫描仍gap；例：AlliedCommandoTech1, SovietScoutVehicle |
 | 推断 | 物体模块 | `Behaviors/LiftObjectUpdate` | 3 | a1 a2 a4 a6 a7 | 部分：显式TimeIncrement/MaxTimeLifted的开火者举升表计时接口；tests/test_lift_nugget.py回放engine_lift a状态计数，逐帧计时来自模块证据、未上台逐帧量表；垂直运动/死亡/飞机/落地武器/清位仍gap，落地清位INFERRED，不登记整模块已对拍；例：AlliedAntiAirVehicleTech1, AlliedBaseDefense |
+| 推断 | 物体模块 | `Behaviors/MovementSpecialPower` | 3 | a1 a4 a6 a7 | E171 engine_movement_e:a原版鬼王/仅删模块对照，f210冻结完成210、曾激活位1、离开起点位1、最终清状态且存活11；tests/test_movement_bench_e.py按名字回放台上读数。公开Sim消费TARGETED静态地点、ObjectStatus、Duration、LocomotorSet及自身AttributeModifier；仅覆盖合法范围内单次施放。INFERRED：从按键起算Duration及到期停走；gap：精确起止帧、对象目标/跟踪、超距接近、冷却/重复命令、碰撞伤害/反弹、舰船及其他配置。不登记整模块已对拍，见work/re/e171_movement.md；例：JapanAntiVehicleVehicleTech3 |
 | 推断 | 物体模块 | `Behaviors/EngineerContain` | 1 | a4 a5 a8 | 总控11-11授权工程师组收尾、不再上台；已测通用三国63用量及三国ALLIES6用量分别登记；gap：日本单人ALLIES型TH_TombBuilding02为1用量/1模板，筛选与维修未对拍；间接可达桥头堡为0用量/10模板，桥修复未对拍；本行共1用量/11模板。ReplaceWith和ObjectStatusToSet无原版显式声明；精确进入帧仍INFERRED，不登记整模块已对拍（tests/test_simengineer.py、tests/test_inventory_contain.py、tests/test_inventory_engineer.py）；例：CNVA4AlliedBarracks, CNVA4AlliedConstructionYard |
 | 推断 | 物体模块 | `Behaviors/FireWeaponUpdate` | 1 | a1 a2 a4 a5 a6 a7 | 部分：simunits.ocl_round 把召出物的 FireWeaponNugget + LifetimeUpdate 折成伤害，不模拟召出物本身；例：SovietHeavyAntiVehicleInfantry |
 | 推断 | 物体模块 | `Behaviors/GarrisonContain` | 1 | a6 a7 | simgarrison 同一套规则（不可争夺）；没单独上台对拍；例：AlliedBaseDefense |

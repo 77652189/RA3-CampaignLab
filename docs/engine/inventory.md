@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 184 | 17 | 135 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
-| 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 18 | 88 | 26 | 99% |
+| 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 19 | 87 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **98%** | **98%** | 198 / 357 | 428 | 217 | 86 | 91 | 34 | 100% |
 
@@ -660,7 +660,7 @@
 | 未做 | `AI/AnimalAIUpdate` | 3 (4) |  | 模拟器代码里没有这个名字；例：BaseCivilian, CivilianFemale1 |
 | 未做 | `Behaviors/AssistedPlacementBehavior` | 3 (4) | a1 a2 a4 a5 a6 a7 | E169 assistpon:a / assistpoff:a原版与删模块两局均资金8000、矿场总数0、提示位数量0、采样完成0；红色预览未落地，原吸附预测保留。当前计数器无放置接受/拒因字段，不能归因于模块；同输入暂停。tests/test_assistplace_bench_e.py具名回放资金负基线strict xfail：Sim未消费侧栏排队/放置点击；吸附、朝向、迷雾资格和精确距离均gap，不登记已对拍；见work/re/e169_assistplace.md；例：AlliedRefinery, AlliedRefinery_NoHarvester |
 | 未做 | `Behaviors/LoseHealthUpdate` | 3 (4) | 全部 | E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md；例：SovietAntiStructureShip, SovietBomberAircraft |
-| 未做 | `Behaviors/MovementSpecialPower` | 3 (4) | a1 a4 a6 a7 | 模拟器代码里没有这个名字；例：JapanAntiStructureShip, JapanAntiVehicleVehicleTech3 |
+| 推断 | `Behaviors/MovementSpecialPower` | 3 (4) | a1 a4 a6 a7 | E171 engine_movement_e:a原版鬼王/仅删模块对照，f210冻结完成210、曾激活位1、离开起点位1、最终清状态且存活11；tests/test_movement_bench_e.py按名字回放台上读数。公开Sim消费TARGETED静态地点、ObjectStatus、Duration、LocomotorSet及自身AttributeModifier；仅覆盖合法范围内单次施放。INFERRED：从按键起算Duration及到期停走；gap：精确起止帧、对象目标/跟踪、超距接近、冷却/重复命令、碰撞伤害/反弹、舰船及其他配置。不登记整模块已对拍，见work/re/e171_movement.md；例：JapanAntiStructureShip, JapanAntiVehicleVehicleTech3 |
 | 未做 | `Behaviors/SecondaryObjectListenerModule` | 3 (4) | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedBaseDefense, AlliedAntiAirVehicleTech1 |
 | 未做 | `Behaviors/StructurePlacementBehavior` | 3 (4) | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
 | 未做 | `Behaviors/HitReactionBehavior` | 3 (3) | a1 a2 a3 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, JapanEmperor |
