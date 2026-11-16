@@ -348,3 +348,29 @@ def test_under_attack_inferred_clear_at_log_end(tmp_path):
     assert (eps[3172]['clear'], eps[3172]['src_alive'], eps[3172]['inferred']) == (419, None, True)
     p.write_text(UA164.replace('frame=500', 'frame=400'))
     assert teamlog.under_attack(str(p), obj=3172)['episodes'][0]['clear'] is None
+
+
+DOCK165 = """\
+dock: frame=155 obj=12 kind=withnode old=2006 new=2009 goal=10 pos=1 cargo=0
+dock: frame=156 obj=10 kind=node old=2002 new=2003 goal=0 pos=-1 cargo=-1
+dock: frame=186 obj=12 kind=withnode old=2009 new=2007 goal=10 pos=1 cargo=250
+dock: frame=200 obj=12 kind=other old=2001 new=14 goal=11 pos=2000 cargo=250 vt=x1
+dock: frame=289 obj=12 kind=deliver old=2011 new=2001 goal=11 pos=1 cargo=250
+dock: frame=319 obj=12 kind=deliver old=2001 new=2012 goal=11 pos=1 cargo=0
+exc: frame=200 code=xc0000005 eip=x1 addr=x8 rw=0
+"""
+
+
+def test_dock_phases_bench_rows(tmp_path):
+    """D165 bench (dockphase:a): the miner waits at node pad 1 f155..186 (load 250 lands when WaitLoad ends, the node
+    in Load f156..186), unloads at refinery pad 1 f289..319 (cargo 250 -> 0). The off arm faulted at f200, the frame
+    the miner's machine entered DeliverOre toward a refinery without QueueDock."""
+    p = tmp_path / 'ra3ext.log'
+    p.write_text(DOCK165)
+    r = teamlog.dock_phases(str(p))
+    rows = [(x['frame'], x['kind'], x['old_name'], x['new_name'], x['pos'], x['cargo']) for x in r['phases']]
+    assert rows == [(155, 'withnode', 'UpdatePad1', 'WaitLoad', 1, 0), (156, 'node', 'WaitForMiner', 'Load', -1, -1),
+                    (186, 'withnode', 'WaitLoad', 'SetPad2', 1, 250), (200, 'other', None, None, 2000, 250),
+                    (289, 'deliver', 'UpdatePad1', 'Unload', 1, 250), (319, 'deliver', 'Unload', 'SetPad2', 1, 0)]
+    assert [(f['frame'], f['code'], f['rw']) for f in r['faults']] == [(200, 'xc0000005', 0)]
+    assert [x['frame'] for x in teamlog.dock_phases(str(p), obj=10)['phases']] == [156]

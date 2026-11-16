@@ -671,3 +671,51 @@ def under_attack(run, obj=None):
         if end > e['last'] + e['win']:
             e.update(clear=e['last'] + e['win'] + 1, inferred=True)
     return dict(episodes=episodes, gates=gates)
+
+
+# D165 dock phase names per machine (state tables read from the machines' defineState lists; work/re/d165_dock.md).
+# top = the miner's AI machine; withnode / deliver = its dock sub-machines (ore node / refinery); node = the ore
+# node's own machine. 9998 = the sub-machine finished, 9999 = it failed.
+DOCK_STATES = {
+    'top': {2000: 'LocateNode', 2002: 'IdleNode', 105: 'DockWithNode', 2001: 'LocateRefinery',
+            2003: 'IdleRefinery', 14: 'DeliverOre'},
+    'withnode': {2001: 'CanGoDirect', 2010: 'BestBone', 2011: 'MoveQueue', 2012: 'UpdateQueue', 2000: 'SetPad0',
+                 2002: 'MovePad0', 2003: 'UpdatePad0', 2004: 'SetPad1', 2005: 'MovePad1', 2006: 'UpdatePad1',
+                 2009: 'WaitLoad', 2007: 'SetPad2', 2008: 'MovePad2', 9998: 'done', 9999: 'fail'},
+    'deliver': {2002: 'CanGoDirect', 2003: 'BestBone', 2004: 'MoveQueue', 2005: 'UpdateQueue', 2006: 'SetPad0',
+                2007: 'MovePad0', 2008: 'UpdatePad0', 2009: 'SetPad1', 2010: 'MovePad1', 2011: 'UpdatePad1',
+                2001: 'Unload', 2012: 'SetPad2', 2013: 'MovePad2', 2014: 'KillMiner', 9998: 'done', 9999: 'fail'},
+    'node': {2002: 'WaitForMiner', 2003: 'Load', 2004: 'MoveToExtract', 2000: 'Extract', 2001: 'MoveToDeliver'},
+}
+
+
+def dock_phases(run, obj=None):
+    """D165 ore miner / ore node / refinery state changes (ra3ext `dock:` lines), one row per setState.
+
+    Row: frame, obj, kind ('top' / 'withnode' / 'deliver' / 'node' / 'dock' / 'other'), old, new (state ids; 999999 =
+    no state before), old_name / new_name (DOCK_STATES, None when not in the table), goal (the machine's goal object
+    id), pos (where obj stands in the goal's QueueDock: 0..2 pads, 1000+i waiting list, 2000 not in it, -1 no goal /
+    the goal has no QueueDock), cargo (the miner's load; -1 not a miner).
+    Also returns the run's first-chance faults (ra3ext `exc:` lines): {'phases': [...], 'faults': [...]}, fault rows
+    frame, code, eip, addr, rw (0 read, 1 write, 8 execute).
+    """
+    phases, faults = [], []
+    with open(_log(run), encoding='utf-8', errors='replace') as f:
+        for line in f:
+            if line.startswith('exc: '):
+                d = dict(re.findall(r'(\w+)=(\S+)', line))
+                faults.append(dict(frame=int(d['frame']), code=d['code'], eip=d['eip'], addr=d['addr'],
+                                   rw=int(d['rw'])))
+                continue
+            if not line.startswith('dock: '):
+                continue
+            d = dict(re.findall(r'(\w+)=(\S+)', line))
+            o = int(d['obj'])
+            if obj is not None and o != obj:
+                continue
+            names = DOCK_STATES.get(d['kind'], {})
+            old, new = int(d['old']), int(d['new'])
+            phases.append(dict(frame=int(d['frame']), obj=o, kind=d['kind'], old=old, new=new,
+                               old_name=names.get(old), new_name=names.get(new), goal=int(d['goal']),
+                               pos=int(d['pos']), cargo=int(d['cargo'])))
+    return dict(phases=phases, faults=faults)
