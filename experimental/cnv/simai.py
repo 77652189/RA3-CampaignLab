@@ -835,10 +835,10 @@ class Brain:
             return rate
 
         def fighter(b, i):
-            # reach = the engine's longest-range read: the weapon's AttackRange less 5, no radii (work/re/d131_triggers.md 1, read; its
-            # height and range-bonus terms not modelled); a member with no weapon 0
+            # reach = the engine's longest-range read: the weapon's AttackRange less 5 (sim.Sim.reach_of), no radii
+            # (work/re/d131_triggers.md 1, read; its height and range-bonus terms not modelled); a member with no weapon 0
             f = tc.Fighter(i, (b.x, b.y), b.hp, b.max_hp, b.speed,
-                           max((w['range'] - 5.0 for w in b.weapons if w.get('range')), default=0.0),
+                           max((s.reach_of(w) for w in b.weapons if w.get('range')), default=0.0),
                            b.sight or b.vision,
                            'STRUCTURE' in b.kinds, rate_of(b))
             f.body = b

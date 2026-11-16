@@ -143,6 +143,9 @@ WON, LOST = 'Mission Won', 'Mission Lost'
 LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
 ATTACK_SLACK = 10.0             # R3: an attacker stops this far inside its range of the target (a guess)
+# R8: a weapon reaches (AttackRange - UNDERSIZE) x its range multiplier, not the full AttackRange (Generals UNDERSIZE,
+# a quarter of a 20-unit path cell): read for both the AI hostile gate and the firing check (work/re D162, not benched)
+UNDERSIZE = 5.0
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
 # HOOKS 7, ore mining (docs/engine/mining.md, bench 2026-11-05 engine_mining a-e): a load 250 (retail miners'
 # DeliveryCapacity), loaded at the node in 30 frames starting the frame after the miner docks, unloaded at the refinery
@@ -208,8 +211,11 @@ PACK_POWER = 'SpecialPower_PackReplaceSelf'         # a construction yard's pack
 PACK_FRAMES = 0                # the yard is its MCV from the press frame on (engine_pack a / s / j)
 WFIRE_LAG = 0                  # frames between a weapon-fire ability's UnpackTime and its weapon (engine_wfire)
 # a TargetType NONE ability (the bear's roar) pressed _ON_NAMED: it goes off this much later once the caster is up to
-# the target (engine_acts_wet RN 60 off / RF 300 off both a reading or so behind the plain roar: INFERRED, fitted)
-NONE_TARGET_LAG = 15
+# the target (engine_acts_wet RN 60 off / RF 300 off both a reading or so behind the plain roar: INFERRED, fitted).
+# Both benches with it (acts_wet, acts_mix) pass for 16-28 frames (A round 251 scan; 15 was the band's lower edge and
+# fell off once R8's UNDERSIZE let acts_mix's melee bear chase onto its conscript's own path node before the hold, a
+# frame nearer at the press); the band's middle taken
+NONE_TARGET_LAG = 22
 BUILD_STEP = 5.0               # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
@@ -2247,7 +2253,8 @@ class Sim:
             shroud = simunits.stats(b.template, self.own)['shroud'] or 0.0
             b.vision = max(b.vision, shroud * level_shroud)
         held = simunits.pick_weapons(b.slots, st, self.weapon_upgrades(b)) if b.slots else b.base['weapons']       # the status picks the guns
-        b.weapons = held if e['RANGE'] == 1.0 else [dict(w, range=w['range'] * e['RANGE']) for w in held]
+        b.weapons = held if e['RANGE'] == 1.0 else [dict(w, range=w['range'] * e['RANGE'], undersize=UNDERSIZE * e['RANGE'])
+                                                    for w in held]
         b.shielded = e['shielded']
         # Suppression ARMOR75%: EXPLOSIVE40 on150HP reads80%; UNRESISTABLE bypasses it.
         b.taken, b.dealt = e['ARMOR'], e['DAMAGE_MULT'] * e['RATE_OF_FIRE']
@@ -2651,8 +2658,14 @@ class Sim:
         """R3: how near (centre to centre) an attacker goes to its target: the longest range of its weapons that can
         hit it, plus both bounding radii (R8, `in_range`), less ATTACK_SLACK (0: it has none -- it goes to the target
         itself)."""
-        r = [w['range'] for w in b.weapons if self.can_hit(w, target)]
+        r = [self.reach_of(w) for w in b.weapons if self.can_hit(w, target)]
         return max(max(r) + b.radius + target.radius - ATTACK_SLACK, 1.0) if r else 0.0
+
+    @staticmethod
+    def reach_of(w):
+        """R8: how far weapon w reaches edge to edge: (AttackRange - UNDERSIZE) x the range multiplier (D162 read);
+        the minimum range, the height bonus and UseCenterForRangeCheck are not modelled."""
+        return max(w['range'] - w.get('undersize', UNDERSIZE), 0.0)
 
     @staticmethod
     def in_range(a, t, w, d=None):
@@ -2661,7 +2674,7 @@ class Sim:
         distance when known. Bench 2026-11-07 engine_acquire: a Guardian (150, radius 23.3) fires at one 180 off."""
         if d is None:
             d = math.hypot(t.x - a.x, t.y - a.y)
-        return d - a.radius - t.radius <= w['range']
+        return d - a.radius - t.radius <= Sim.reach_of(w)
 
     def send(self, b, target, by='', reach=0.0, face=None):
         """Put b on a way to target (a point, or a waypoint / area name); face: the facing (radians) to turn to at the
@@ -4911,7 +4924,7 @@ class Sim:
         ws = [w for w in a.weapons if self.can_hit(w, t) and w.get('los')]
         if not ws or t.surface == 'air':
             return None
-        far = max(w['range'] for w in ws) + a.radius + t.radius - 1.0
+        far = max(self.reach_of(w) for w in ws) + a.radius + t.radius - 1.0
         cands = []
         for f in (1.0, 0.8, 0.6, 0.4):
             r = max(far * f, t.radius + a.radius + 1.0)
@@ -5036,7 +5049,7 @@ class Sim:
                 pick = a.goal
             elif self.auto_acquires(a):
                 for j in order:
-                    if d[j] - a.radius - pad > w['range']:      # sorted by centre: nobody nearer after this
+                    if d[j] - a.radius - pad > self.reach_of(w):   # sorted by centre: nobody nearer after this
                         break
                     t = targets[idx[j]]
                     if not self.in_range(a, t, w, d[j]):
@@ -5114,7 +5127,7 @@ class Sim:
                 continue
             for w in b.weapons:
                 if self.can_hit(w, t) and not self.in_range(b, t, w):
-                    out.append((t, w, w['range'] + b.radius + t.radius))
+                    out.append((t, w, self.reach_of(w) + b.radius + t.radius))
         return out
 
     def range_entry(self, b, reach, tx, ty, length):

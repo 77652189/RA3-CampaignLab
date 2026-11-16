@@ -45,15 +45,16 @@ def test_maximum_endpoint_is_consumed_after_first_success(maximum, second):
     assert [(f, n) for f, n, _ in manager.fired] == [(8, 'a'), (second, 'b')]
 
 
-_PEAK_XFAIL = pytest.mark.xfail(strict=True, reason='aidelay0 peak 2 -> 1 has two causes, each enough alone (A round '
-    '247, bisected with the model fixed): (1) A230 329e24cb stops the warriors at the exact range edge from conscript '
-    '1 (centre 162, was ~152 by a tick overshoot), so conscript 2 shoots the same warrior and the other drops under '
-    'HealthFraction 0.8 only after the first dies (fires f410 / f530); (2) model ca13b7c (D round 140, the hostile '
-    'gate) sends the team in by a move instead of the attack order, fires f426 / f546 even without (1). Bench: '
-    'charges s33 and s34, both alive to s42. Not a deeper stop (H1 not supported, aidelay0:p bench, A round 249): '
-    'the sides first meet at the sim gap (conscript 2 pauses at y 2700, warriors at 2850), then on the bench the '
-    'warriors withdraw north s27-s30 and the conscripts follow to the attack-move end -- the sim has no withdrawal '
-    '(INFERRED; y only). Not chased further (coordinator).')
+_PEAK_XFAIL = pytest.mark.xfail(strict=True, reason='aidelay0: the bench pair (the two warriors out from s20) '
+    'charges s33 and s34 and both stay charged to s42; the sim pair charges one after the other (A round 250, with '
+    'the D162 range less 5, Sim.reach_of: f418 / f538). The sim does reach 2 at once, but only s43-s46 and with a '
+    'third, later warrior (#292, f616) over #290 -- so these tests count the first pair by s42. Causes (A round '
+    '247, bisected before the D162 range): (1) A230 329e24cb stops the warriors at the exact range edge from '
+    'conscript 1, so conscript 2 shoots the same warrior and the other drops under HealthFraction 0.8 only after '
+    'the first dies; (2) model ca13b7c (D round 140, the hostile gate) sends the team in by a move instead of the '
+    'attack order. Not a deeper stop (H1 not supported, aidelay0:p bench, A round 249): the sides first meet at '
+    'the sim gap, then on the bench the warriors withdraw north s27-s30 and the conscripts follow to the '
+    'attack-move end -- the sim has no withdrawal (INFERRED; y only). Not chased further (coordinator).')
 
 
 @pytest.mark.parametrize('build', [pytest.param('aidelay0', marks=_PEAK_XFAIL), 'aidelay999'])
@@ -64,14 +65,15 @@ def test_specific_maximum_delay_probe_trace(lib, build, monkeypatch):
     def fire(brain, ai, key, unit, info):
         original(brain, ai, key, unit, info)
         bodies = [b for b in brain.sim.living() if b.owner == brain.player]
-        charged = [b for b in bodies if 'WEAPON_UPGRADED_02' in b.status]
-        observed.append((brain.frame, key, unit.name, len(charged)))
+        charged = {b.name for b in bodies if 'WEAPON_UPGRADED_02' in b.status}
+        observed.append((brain.frame, key, unit.name, charged))
 
     monkeypatch.setattr(simai.Brain, 'fire_unit', fire)
     world, rows = _probe_run(build, lib, 50)
     (brain,) = world.brains.values()
     rush = [e for e in brain.fired if 'Bonzai' in e[3]]
-    peak = max(e[3] for e in observed)
+    pair = set(list(dict.fromkeys(e[2] for e in observed))[:2])     # the bench's two warriors (out from s20)
+    peak = max(len(e[3] & pair if build == 'aidelay0' else e[3]) for e in observed)
     print(build, 'rush records', rush[:6], 'peak charge', peak,
           'first seen clock', max(r['曾冲'] for r in rows))
     assert rush, 'successful positive control required before interpreting delay'
@@ -90,9 +92,9 @@ def test_specific_maximum_delay_probe_trace(lib, build, monkeypatch):
 @pytest.mark.parametrize('build, peak', [pytest.param('aidelay0', 2, marks=_PEAK_XFAIL), ('aidelay999', 1)])
 def test_maximum_delay_replays_bench_script_counters(lib, build, peak):
     """engine_aidelay pair bench 2026-11-11: the script counters 冲 peak 2 / 1 and 曾冲 is set (Sim.cond counts
-    PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS since A round 164)."""
+    PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS since A round 164). The pair: by s42 (bench 2 at s34-s42)."""
     _, rows = _probe_run(build, lib, 50)
-    assert max(r['冲'] for r in rows) == peak
+    assert max(r['冲'] for r in (rows[:42] if peak == 2 else rows)) == peak
     assert max(r['曾冲'] for r in rows) > 0
 
 
