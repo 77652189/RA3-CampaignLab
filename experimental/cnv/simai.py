@@ -1454,7 +1454,12 @@ class Brain:
         refinery' and the heuristic). miners (the heuristic, B210): a served node is taken only while the AI's own
         collectors cover NODE_MINERS for it, pooled over the served nodes (INFERRED: ainf3's placed collectors stand
         nearer the other refinery; which node a collector counts at is unread). The refinery search keeps miners
-        off: its 'no third' runs (aiskirm) are benched with one collector a refinery."""
+        off: its 'no third' runs (aiskirm) are benched with one collector a refinery. B214 (bench aiskuc7 / aiskuc
+        uc: the AI's collectors stay 2 from s73 to s218 with aiskirm's build times; aiskirm rp no third refinery to
+        s252, while aiskin* order one at s148): counted at NODE_MINERS the refinery decision would want a third from
+        s73 -- forced on, the simulator builds aiskirm's third at s152 and aiskuc7's collectors reach 4 with 14
+        structures (bench 2 / 11; off: 2 / 11) -- so it does not count collectors (INFERRED: the wrapper's state 2 =
+        'a refinery registered' skips it)."""
         reach = NODE_REACH if reach is None else reach
         bodies = self.sim.living() if bodies is None else bodies
         nodes = [b for b in bodies if 'orenode' in b.template.lower()]
