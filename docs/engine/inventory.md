@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 182 | 19 | 135 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 181 | 20 | 135 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 16 | 90 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -294,7 +294,7 @@
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_CivilianStructureEvacuate` | 8 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAlliedEngineerHeal` | 8 |  | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanBaseDefenseEgg` | 8 |  | 只记进时间线，没有效果 |
-| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower` | 8 |  | tests/test_simbench.py::test_acts_wet_all_as_the_bench |
+| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower` | 8 |  | A226 engine_acts_wet:all：跳的海豚和游过去的对照都在 s4 到目标格，读数分不出跳和游（台图说明自己写了 not telling）；A249 压回推断。转正要能区分的布局：中间隔一条只有跳才过得去的窄地，或逐秒记位置 |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower` | 8 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
 | 已对拍 | `RESTART_TIMER` | 8 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aimicro.py |
