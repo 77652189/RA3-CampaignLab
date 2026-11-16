@@ -88,4 +88,25 @@ def timing(m):
     return t
 
 
-CHECKS.update({name: {'r': timing} for name in ('aidodgezero', 'aidodgetwo')})
+def death(m):
+    """timing, the fourth line the first frame a warrior is gone (A round 258).
+
+    Prediction (model after A round 230, attack-movers aim from the frame they get in range): both conscripts
+    shoot the nearer warrior from ~f392, 2 x ~10.6 dps on its 160 HP, dead ~f505 -- before the beacon ends
+    (~f511), so 'two''s first-leave latch is that death, not a departure. The bench kept both alive while the
+    beacon lived (timing: bad 0), so its death latch is > ~f511 or 0 (none by s45).
+    """
+    t = timing(m)
+    frame, dead = 'CNV_Dodge_Frame', 'CNV_Dodge_Dead'
+    t.scripts.append(Script('Dodge - death latch', [('COUNTER', frame, 3, 405),
+                                                    ('COUNTER', 'CNV_Dodge_Own', 0, 2)],
+                            [('SET_COUNTER_TO_COUNTER', dead, frame)]))
+    t.counters = t.counters[:3] + [(dead, '阵亡')]
+    # Bench 11-16 (A258): the game ran ~5 frames a second, the frame counter was at f301 by s73 -- no reading.
+    # Watch long enough to pass the beacon even when the bench runs slow.
+    t.expect = [('出现', 1, 'ever>=', 1, 130), ('离开', 1, 'ever>=', 1, 130)]
+    t.bench = [('bench_watch', dict(seconds=130, every=1, sheet=False, lines=4))]
+    return t
+
+
+CHECKS.update({name: {'r': timing, 'd': death} for name in ('aidodgezero', 'aidodgetwo')})
