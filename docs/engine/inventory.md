@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 202 | 11 | 123 | 115 | 99% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 203 | 11 | 122 | 115 | 99% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 59 / 118 | 195 | 60 | 26 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -298,7 +298,7 @@
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower` | 8 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
 | 已对拍 | `RESTART_TIMER` | 8 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `SET_COUNTER_TO_COUNTER` | 8 | 全部 | 引擎模型核心；台上量过、测试对拍：checks/engine_aicombat.py |
-| 未做 | `SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER` | 8 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER` | 8 |  | tests/test_killcount_bench_c.py::test_killcount_native_type_and_player_match_bench；C engine_killcount:a/b原生守护者击杀两征召兵/一守护者，交换Player_1与Soviet_5为击杀者；DISPLAY_COUNTER主步兵/主坦克/另步兵开局0/0/0、末2/1/0，独立脚本杀死未受伤征召兵后不增计数，存活码末240。每帧先写77再查询，证明覆盖；tests/test_killcount_bench_c.py按名回放四读数。原s22存活码窗口差异保留strict xfail，不改门槛。仅具名玩家/单模板/原生直接武器致死和无归属脚本死阴性；列表并集INFERRED，This Player/All Players、换主、友军/间接伤害、争夺最后击和精确帧仍gap，见work/re/c_killcount_report.md |
 | 不涉及 | `CAMERA_STOP_FOLLOW` | 7 |  | 纯表现（名字规则） |
 | 不涉及 | `FIRE_SPECIAL_POWER_ON_UNIT` | 7 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `NAMED_FACE_NAMED` | 7 |  | Sim.act / Sim.cond 不认识 |
