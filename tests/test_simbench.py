@@ -2451,3 +2451,27 @@ def test_area_all_as_the_bench():
     assert all(at[k][1] == 30 for k in range(9, 23)) and all(at[k][1] == 15 for k in range(25, 31)), at
     assert all(at[k][2] == 13 for k in range(3, 10)) and all(at[k][2] == 4 for k in range(11, 31)), at
     assert all(at[k][3] == 31 for k in range(4, 31)), at
+
+
+def test_mark_objective_as_the_bench():
+    """engine_markobj goals (bench 11-16 CampMarkGoals_mcp_1116_124443, the menu at s16.5): MARK_MISSION_OBJECTIVE_
+    COMPLETED is status 2 from any status (shown, failed, hidden -> ticked), ..._NOT_COMPLETED status 1 (shown, done,
+    bonus -> an empty box, never the failed mark). Before, the engine model's core kept them and Sim.objectives (the
+    timeline's) never saw them."""
+    _, _, s = _sim_resolve('engine_markobj', 'goals')
+    s.run(12.0)
+    got = {k.split()[-1]: v for k, v in s.objectives.items()}
+    assert got == {'M1': 2, 'M2': 2, 'M3': 1, 'M4': 1, 'M5': 2, 'M6': 1}, got
+
+
+def test_objective_status_and_links_as_the_bench():
+    """engine_scripts5 goals (bench 11-09 CampScr5Goals_mcp_1109_095326, the menu at s14): O1 1 -> 2 done, O2 1 -> 3
+    failed, O3 1 -> 0 hidden again, O4 2 listed done, O5 1 -> 7 still shown (7 ignored), O6 bonus shown; markers: O1
+    left on the tank, O2 unlinked, O6 on the east waypoint. (Until round 267 no test replayed this probe -- only
+    test_inventory's fixture string named it.)"""
+    _, _, s = _sim_resolve('engine_scripts5', 'goals')
+    s.run(12.0)
+    got = {k.split()[-1]: v for k, v in s.objectives.items()}
+    assert got == {'O1': 2, 'O2': 3, 'O3': 0, 'O4': 2, 'O5': 1, 'O6': 1}, got
+    marks = {k.split()[-1]: sorted(v) for k, v in s.markers.items() if v}
+    assert marks == {'O1': ['UNIT - CNV S5 Tank'], 'O6': ['CNV S5 East']}, marks

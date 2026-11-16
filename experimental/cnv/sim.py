@@ -424,7 +424,8 @@ IGNORED = {'DISPLAY_COUNTER', 'HIDE_COUNTER',
 
 # ---- the engine line's script engine (ADR 0019 layer 1). Where it is not on this computer (a clean clone) the
 # simulator runs its own older loop: every DT tick each script once, timers as seconds, NOT as a plain negation.
-SEEN_CORE = {'SET_FLAG', 'SET_MISSION_OBJECTIVE_STATUS', 'DISPLAY_COUNTDOWN_TIMER'}   # the timeline's notes on them
+SEEN_CORE = {'SET_FLAG', 'SET_MISSION_OBJECTIVE_STATUS', 'DISPLAY_COUNTDOWN_TIMER',   # the timeline's notes on them
+             'MARK_MISSION_OBJECTIVE_COMPLETED', 'MARK_MISSION_OBJECTIVE_NOT_COMPLETED'}
 CHANGES = {'INCREMENT_COUNTER', 'DECREMENT_COUNTER', 'SET_MILLISECOND_TIMER', 'SET_RANDOM_MSEC_TIMER'}
 _MODEL = {}
 
@@ -4217,6 +4218,10 @@ class Sim:
             # existing garrison approximation (work/re/c_teamexit_report.md).
             for b in self.members(a[0]):
                 self.garrison.out(b)
+        elif name in ('MARK_MISSION_OBJECTIVE_COMPLETED', 'MARK_MISSION_OBJECTIVE_NOT_COMPLETED'):
+            # bench 11-16 checks/engine_markobj.py goals: status 2 / 1 from any status -- a hidden one listed done, a
+            # failed one done, a done one unticked; NOT_COMPLETED never draws the failed mark (j07 'failed bonus 2')
+            self.act('SET_MISSION_OBJECTIVE_STATUS', [a[0], 1 if 'NOT' in name else 2], script)
         elif name == 'SET_MISSION_OBJECTIVE_STATUS':
             if a[1] not in (0, 1, 2, 3):                # script-semantics.md 8: only 0..3, any other does nothing
                 return                                  # (inferred; checks/engine_scripts5.py goals O5 asks the bench)

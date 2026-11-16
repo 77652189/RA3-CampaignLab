@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 198 | 13 | 125 | 115 | 99% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 200 | 11 | 125 | 115 | 99% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 59 / 115 | 192 | 60 | 23 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -24,7 +24,7 @@
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_OBJECT` | 950 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 已对拍 | `NAMED_DELETE` | 908 | a2 a4 a5 a6 a7 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aipullback.py |
 | 已对拍 | `CREATE_REINFORCEMENT_TEAM` | 753 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_conds.py:team |
-| 已对拍 | `SET_MISSION_OBJECTIVE_STATUS` | 732 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
+| 已对拍 | `SET_MISSION_OBJECTIVE_STATUS` | 732 | 全部 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_markobj.py |
 | 不涉及 | `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT` | 640 | a4 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `CALL_SUBROUTINE` | 533 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 已对拍 | `UNIT_IDLE_FOR_FRAMECOUNT` | 504 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
@@ -241,7 +241,7 @@
 | 已对拍 | `TEAM_UPGRADE` | 15 |  | tests/test_teamup_bench_c.py::test_teamup_real_query_and_consumer_apply_only_to_current_team；C engine_teamup:a真实玩家升级查询+守护者状态位：f150本队/异队/查询0/0/0，f157授予后3/0/3，f248移除一人后2/0/1，f332再授予3/0/3；同玩家异队和敌方异队均无位。tests/test_teamup_bench_c.py按名逐实读帧回放；仅当前存活显式队伍OBJECT升级派发/消费者切片，j05地图私有升级效果、未来成员、死/缺队伍和AI队伍实例仍gap；其他宿主推广INFERRED；见work/re/c_teamup_report.md |
 | 已对拍 | `UNIT_SET_HEALTH` | 15 | a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aibuilding.py |
 | 已对拍 | `GIVE_PLAYER_UPGRADE` | 14 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_spngp.py |
-| 推断 | `MARK_MISSION_OBJECTIVE_COMPLETED` | 14 |  | 引擎模型核心 |
+| 已对拍 | `MARK_MISSION_OBJECTIVE_COMPLETED` | 14 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_markobj.py |
 | 不涉及 | `MOVIE_PLAY_FULLSCREEN` | 14 |  | 纯表现（名字规则） |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower` | 14 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg` | 14 |  | tests/test_eggcmd_bench_c.py::test_eggcmd_naval_legacy_and_concrete_buttons_match_display_counters；C engine_eggcmd:a与engine_eggnav:a两局：零售使用的防御/电厂/船厂三种核心，旧通用按钮均留原处；专用防御/船厂按钮到点展开，未下令对照留家。地面f249/393/560建筑位/存活位/原处位4/15/11，水域f247/390/496为2/7/5；tests/test_eggcmd_bench_c.py按名逐实读帧回放。Sim.act仅三种实测宿主且无地图本地定义时显式无操作，不映射专用展开；地图局部按钮、缺失/死亡宿主及其他宿主仍gap，跨宿主推广INFERRED；见work/re/c_eggcmd_report.md、work/re/c_eggnav_report.md |
@@ -412,7 +412,7 @@
 | 不涉及 | `CAMERA_TETHER_NAMED` | 1 |  | 纯表现（名字规则） |
 | 未做 | `DAMAGE_MEMBERS_OF_TEAM` | 1 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `FREEZE_TIME` | 1 |  | 纯表现（名字规则） |
-| 推断 | `MARK_MISSION_OBJECTIVE_NOT_COMPLETED` | 1 |  | 引擎模型核心 |
+| 已对拍 | `MARK_MISSION_OBJECTIVE_NOT_COMPLETED` | 1 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_markobj.py |
 | 不涉及 | `MOVE_TEAM_TO_UNIT` | 1 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `MUSIC_SET_TRACK` | 1 |  | 纯表现（名字规则） |
 | 不涉及 | `MUSIC_SET_VOLUME` | 1 |  | 纯表现（名字规则） |
