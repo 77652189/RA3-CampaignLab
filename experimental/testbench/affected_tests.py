@@ -13,7 +13,7 @@ Use (from the repository root; the map lives in <WORK>/testmap/, outside git):
 
 Build / refresh the map (a parallel full run with per-test coverage contexts, then store it):
 
-    python -X utf8 -m pytest tests -n <workers> --timeout 900 -p no:cacheprovider --cov=experimental \
+    python -X utf8 -m pytest tests -n <workers> --timeout 3000 -p no:cacheprovider --cov=experimental \
         --cov=<engine model dir> --cov-context=test --cov-report= -q --junitxml=work/logs/junit.xml
     python -X utf8 experimental/testbench/affected_tests.py --save-coverage .coverage --save-durations work/logs/junit.xml
 
@@ -29,6 +29,8 @@ How a changed line is matched (always "more rather than fewer"):
     module or file name, and the output says so;
   * a test file with no coverage record at all (the map is partial) is always picked: nothing says what it touches;
   * the guard tests (docs, architecture, no program addresses, inventory) are always added;
+  * keep --timeout at 3000 or more: on Windows pytest-timeout's default method ends the WHOLE xdist worker when one test
+    passes the limit ("node down: Not properly terminated"), and single simulator tests run 15-50 min under load;
   * --cmd prints a full pytest command with -n min(8, free GB / 1.5): a simulator-test worker needs about 1.5 GB.
 """
 import argparse
@@ -529,7 +531,7 @@ def main(argv=None):
     out = sorted(tests)
     n = workers()
     if args.cmd:
-        print('python -X utf8 -m pytest -n %d --timeout 900 -p no:cacheprovider -q %s' % (n, ' '.join(out)))
+        print('python -X utf8 -m pytest -n %d --timeout 3000 -p no:cacheprovider -q %s' % (n, ' '.join(out)))
     else:
         for t in out:
             print(t)
