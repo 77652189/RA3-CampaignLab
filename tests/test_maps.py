@@ -150,7 +150,12 @@ def test_every_refinery_by_its_ore():
 # bench readings were taken there. A new probe goes clear of the scenery instead of joining this list.
 ON_SCENERY_AS_BENCHED = {'aibd0', 'aibd1', 'aibdidle', 'aibdwho', 'aibdpre',
                          # C's ThreatToWater guard stands on a bush as it was benched (c_water_report.md)
-                         'aiwaterdist', 'aiwaterthreat', 'aiwaternear', 'aiwaterfar'}
+                         'aiwaterdist', 'aiwaterthreat', 'aiwaternear', 'aiwaterfar',
+                         # C's 11-15 target-pick benches on niagara: the control at (2900, 3300) / the plant at
+                         # (4500, 2000) stand by an MR_Tree04 as benched (tests/fixtures/<build>_target_picks.txt,
+                         # aiuab*_fight.txt, underattack_*_c.txt; moving them drops the readings)
+                         'aiclosest', 'aicrateoff', 'aicrateon', 'aiegarroff', 'aiegarron', 'aigarroff', 'aigarron',
+                         'aihusknamed', 'aihusknone', 'aiuabl', 'aiuabw', 'aiuagate', 'aiunderatk'}
 
 
 def test_nothing_a_build_places_stands_on_scenery():

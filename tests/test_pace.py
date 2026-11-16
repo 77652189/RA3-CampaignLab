@@ -110,9 +110,11 @@ def test_placed_troops_sent_off_together_are_placed_as_paced_copies_and_released
 
 
 def test_the_simulator_walks_a_slowed_unit_at_the_slowed_speed_and_back_at_full_when_released():
-    """A tank (75) and a walker (50) sent together from the start to the west field: unpaced the tank is there well
-    ahead; paced both stand in the goal within a couple of seconds, and the tank's speed is its own again after."""
-    a, b = festival.SITES['start'], festival.SITES['west field']
+    """A tank (75) and a walker (50) sent together from the convoy start to the west field: unpaced the tank is there
+    well ahead; paced both stand in the goal within a couple of seconds, and the tank's speed is its own again after.
+    (From 'start' (143 away, its corner 1 off the goal) both were in on the first 0.5 s tick once units turn before
+    they drive (A228): the walk has to be several ticks long to tell the speeds apart.)"""
+    a, b = festival.SITES['convoy start'], festival.SITES['west field']
     up = pace.paced(TANK, pace.percent(75, 50))
     straight = ((a.x - b.x) ** 2 + (a.y - b.y) ** 2) ** 0.5
 
