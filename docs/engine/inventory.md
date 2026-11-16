@@ -262,7 +262,7 @@
 | 已对拍 | `SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER` | 12 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acts.py |
 | 已对拍 | `TEAM_GARRISON_NEAREST_BUILDING` | 12 |  | tests/test_teamgarr_bench_c.py::test_teamgarr_nearest_and_team_scope_match_bench；C engine_teamgarr:a/b两栋空公寓最近选择：建筑摆放顺序不变，仅步兵东移；本队两名征召兵进最近楼，同玩家异队留外，空队伍/重复调用无误伤。最终进驻位/楼归属/存活位分别3/1/31与3/2/31；tests/test_teamgarr_bench_c.py按名回放实读逻辑帧的动作前及稳定窗口。仅显式普通步兵与空楼选择切片；逐成员距离及其他模板推广INFERRED，队伍中心/等距/搜索范围、容量/敌属/损坏楼/AI实例和入门时序仍gap；见work/re/c_teamgarr_report.md |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_KINDOF_OWNED_BY_PLAYER` | 12 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `DISABLE_JOYPAD_COMMANDBAR_BUTTON` | 11 |  | Sim.act / Sim.cond 不认识 |
+| 未做 | `DISABLE_JOYPAD_COMMANDBAR_BUTTON` | 11 |  | C engine_joypad:a一局17组读数f40..182，原版buttonopenplayertechstore/buttonaiassaultdirective未操作、禁用、分步恢复的脚本阶段0/1/2/3均出现，未操作电厂始终1，末3/1/182。tests/test_joypad_bench_c.py仅锚定具名原始读数，不冒充完整模型回放或原生输入接受。cnv_result仅脚本阶段/存活/逻辑帧，index仅id/second/note/view，无Joypad元素enabled、输入accepted/rejected字段；台子仅键鼠注入，XInput四槽未连接。PC路径无消费者仅INFERRED，不用鼠标或余额替代阳性，不登记纯表现。一局后缺真实入口/观测而暂停，不耗相同第二局；见work/re/c_joypad_report.md |
 | 不涉及 | `FLASH_JOYPAD_COMMANDBAR_BUTTON` | 11 |  | 纯表现（名字规则） |
 | 不涉及 | `FLASH_JOYPAD_HUD_FIXED_ELEMENT` | 11 |  | 纯表现（名字规则） |
 | 已对拍 | `NAMED_REMOVE_UPGRADE` | 11 | a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
