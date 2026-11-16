@@ -132,13 +132,13 @@ def test_infiltrator_energy_split_preserves_weight_and_other_effect_gaps():
     assert contain_audit.infiltrator_energy_share() == {'campaign': 4, 'templates': 6}
     rows = [r for r in inventory.collect((inventory.MODULE,))
             if r['name'].startswith('Behaviors/InfiltratorContain')]
-    assert len(rows) == 5
+    assert len(rows) == 6
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
     measured = next(r for r in rows if r['name'].endswith(':ENERGY'))
     gap = next(r for r in rows if r['name'] == 'Behaviors/InfiltratorContain')
     assert (measured['uses'], measured['all'], measured['state']) == (4, 6, inventory.BENCHED)
-    assert (gap['uses'], gap['all'], gap['state']) == (18, 18, inventory.GUESSED)
+    assert (gap['uses'], gap['all'], gap['state']) == (13, 13, inventory.GUESSED)
     assert measured['why'].startswith('tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench')
     import inventory_levels
     scope, _ = inventory_levels.expand_forms(rows, {
