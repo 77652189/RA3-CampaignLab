@@ -303,3 +303,48 @@ def test_under_attack_bench_rows(tmp_path):
         (3181, 4, 5, -1, 5, 81, 1, False)
     assert [(g['obj'], g['result'], g['expect']) for g in ua['gates']] == [(3163, False, False), (3181, True, True)]
     assert teamlog.under_attack(str(p), obj=3163)['episodes'] == []
+
+
+UA164 = """\
+ua: frame=125 ev=set obj=3187 own=4 last=125 prev=-1 src=3186 hp=143.0/150.0 win=75
+ua: frame=153 ev=set obj=3177 own=4 last=153 prev=-1 src=3191 hp=96.5/100.0 win=75
+ua: frame=230 ev=clr obj=3177 at=229 last=153 src=3191 alive=0 hits=1
+ua: frame=310 ev=clr obj=3187 at=310 last=234 src=3186 alive=1 hits=8
+ua: frame=343 ev=set obj=3172 own=4 last=343 prev=-1 src=3215 hp=443.2/480.0 win=75
+tgt: frame=500 brain=0 slot=0
+"""
+
+
+UA164_FIGHT = """\
+ua: frame=5 ev=set obj=3181 own=4 last=5 prev=-1 src=0 hp=1000.0/1000.0 win=75
+ua: frame=18 ev=src obj=3181 last=18 src=3185
+ua: frame=18 ev=set obj=3187 own=4 last=18 prev=-1 src=3185 hp=143.0/150.0 win=75
+ua: frame=110 ev=clr obj=3181 at=109 last=33 src=3185 alive=1 hits=3
+ua: frame=222 ev=clr obj=3187 at=222 last=146 src=3185 alive=0 hits=9
+"""
+
+
+def test_under_attack_fight_ceasefire_and_deleted_source(tmp_path):
+    """D164 bench (aiunderatk:a run 1115_165521): tank 3185 opens on the plant at f18 (inside the birth record's window:
+    a source change, not a new set), turns to AI unit 3187, last plant hit f33 -> clear f109 with the tank alive (the
+    ceasefire); 3187's last hit f146, the tank deleted f150, still cleared only at f222 = 146 + 75 + 1 (source gone)."""
+    p = tmp_path / 'ra3ext.log'
+    p.write_text(UA164_FIGHT)
+    eps = {e['obj']: e for e in teamlog.under_attack(str(p))['episodes']}
+    assert (eps[3181]['srcs'], eps[3181]['last'], eps[3181]['clear'], eps[3181]['src_alive']) == ([0, 3185], 33, 109, True)
+    assert (eps[3187]['set'], eps[3187]['prev'], eps[3187]['last'], eps[3187]['clear'], eps[3187]['src_alive'],
+            eps[3187]['hits']) == (18, -1, 146, 222, False, 9)
+    assert all(e['clear'] == e['last'] + e['win'] + 1 and not e['inferred'] for e in eps.values())
+
+
+def test_under_attack_inferred_clear_at_log_end(tmp_path):
+    """D164 bench rows (aiunderatk:a run 1115_164206): ra3ext writes a clear only at the next hit anywhere; an episode
+    still open when the log (any line's frame) runs past last + win gets clear = last + win + 1, inferred, alive None."""
+    p = tmp_path / 'ra3ext.log'
+    p.write_text(UA164)
+    eps = {e['obj']: e for e in teamlog.under_attack(str(p))['episodes']}
+    assert (eps[3177]['clear'], eps[3177]['src_alive'], eps[3177]['inferred']) == (229, False, False)
+    assert (eps[3187]['clear'], eps[3187]['last'], eps[3187]['src_alive'], eps[3187]['inferred']) == (310, 234, True, False)
+    assert (eps[3172]['clear'], eps[3172]['src_alive'], eps[3172]['inferred']) == (419, None, True)
+    p.write_text(UA164.replace('frame=500', 'frame=400'))
+    assert teamlog.under_attack(str(p), obj=3172)['episodes'][0]['clear'] is None

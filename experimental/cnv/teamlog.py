@@ -630,14 +630,18 @@ def under_attack(run, obj=None):
     episode: obj, own (player index), set (first hit frame), prev (the hit before it, -1 = never), last (last hit
       frame), clear (first frame no longer under attack = last + win + 1; None if the log ends inside the window),
       src (last hit's source object id), src_alive (it still resolved when the clear was written), hits, win, srcs
-      (every source in order).
+      (every source in order), inferred (True: ra3ext never wrote the clear -- it writes one only at the next hit
+      anywhere -- and the log runs past last + win, so clear is last + win + 1 by the rule and src_alive is None).
     gate: one row per change of the game's own UnderAttack test on a candidate (change-only per object, beat 450):
       frame, obj, secs, win, last, src, alive, path ('b' = body record; 'a' = the container path, not read),
       result (the game's answer) and expect (last != -1 and frame <= last + win).
     """
-    episodes, gates, open_ = [], [], {}
+    episodes, gates, open_, end = [], [], {}, -1
     with open(_log(run), encoding='utf-8', errors='replace') as f:
         for line in f:
+            fm = re.search(r'\bframe=(\d+)', line)
+            if fm:
+                end = max(end, int(fm.group(1)))
             if not line.startswith('ua: '):
                 continue
             d = dict(re.findall(r'(\w+)=(\S+)', line))
@@ -648,7 +652,7 @@ def under_attack(run, obj=None):
             if ev == 'set':
                 e = dict(obj=o, own=int(d['own']), set=int(d['last']), prev=int(d['prev']), last=int(d['last']),
                          clear=None, src=int(d['src']), src_alive=None, hits=None, win=int(d['win']),
-                         srcs=[int(d['src'])])
+                         srcs=[int(d['src'])], inferred=False)
                 episodes.append(e)
                 open_[o] = e
             elif ev == 'src' and o in open_:
@@ -663,4 +667,7 @@ def under_attack(run, obj=None):
                 gates.append(dict(frame=frame, obj=o, secs=int(d['secs']), win=win, last=last, src=int(d['src']),
                                   alive=d['alive'] == '1', path=d['path'], result=d['res'] == '1',
                                   expect=last != -1 and frame <= last + win))
+    for e in open_.values():
+        if end > e['last'] + e['win']:
+            e.update(clear=e['last'] + e['win'] + 1, inferred=True)
     return dict(episodes=episodes, gates=gates)
