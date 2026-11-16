@@ -163,3 +163,18 @@ def test_lift_zero_damage_dispatch_and_filter(excluded):
         victim = e.body('Lift ' + lane + ' victim')
         assert victim.hp == victim.max_hp
         assert ('LIFTED_INTO_AIR' in victim.status) == (not excluded)
+
+
+@pytest.mark.parametrize('mission,observed', [
+    ('engine_liftground', (11, 111, 111, 10)),
+    ('engine_liftair', (0, 100, 100, 10)),
+])
+@pytest.mark.xfail(strict=True, reason='Native Lift activation is measured but retail complex filters remain unsupported; aircraft also remain unsupported. See work/re/c_liftretail_report.md')
+def test_lift_native_consumers_replay(mission, observed):
+    """Native Yuriko, occupied IFV/turret and deleted-nugget control."""
+    import build
+    import sim
+    m, t, _ = build.resolve(mission, 'a')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    assert tuple(e.run(19).series[-1][1]) == observed
