@@ -126,6 +126,8 @@ def split(m):
     simulator's radial escape, INFERRED) or elsewhere.
     Simulator (model RA3-EngineModel-a, work/logs/a260_s.py): zero 511 / 867, band 2 at s33, 1 at s34..35, then 0;
     two 511 / 918.
+    RESULTS A260 zero (PASS, 235 s, ~15 frames a second): deaths 706 / 724 -- 18 frames apart: split fire (or both
+    hit together), not the simulator's focus fire; the band 0 every second (s1..s218): no warrior dodged north.
     """
     t = death(m)
     frame, dead, dead2, band = 'CNV_Dodge_Frame', 'CNV_Dodge_Dead', 'CNV_Dodge_Dead2', 'CNV_Dodge_North'
