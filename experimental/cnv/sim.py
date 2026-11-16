@@ -1833,8 +1833,18 @@ class Sim:
             if owner in self.sharing else []
         cut = amount // (len(mates) + 1)
         for p in mates:
-            self.money[p] = self.money.get(p, 0) + cut
-        self.money[owner] = self.money.get(owner, 0) + amount - cut * len(mates)
+            self._pay(p, cut)
+        self._pay(owner, amount - cut * len(mates))
+
+    def _pay(self, player, amount):
+        """One deposit under PLAYER_SET_MONEY_CAP: not paid at all if it would take the money over the cap (bench 11-15
+        mineturn0 cap: cap 400, 8 a frame of the second load paid to 394, nothing after; capz: cap 0, no income ever).
+        Scripts' money is not held to it (engine_acts_tel). A shared cut checked by its receiver's cap: INFERRED."""
+        have = self.money.get(player, 0)
+        cap = self.money_cap.get(player)
+        if cap is not None and have + amount > cap:
+            return
+        self.money[player] = have + amount
 
     # ---- mining: HOOKS 7 (simai: after the opening the AI lives on its miners' income)
     def mine_due(self, frame):
@@ -3635,10 +3645,17 @@ class Sim:
             self.note('出现', f'{a[0]}（{self.who(b.owner)}）在 {a[2]}'
                       + ('' if b.owner == self.human or self.sees(b.x, b.y, b.surface == 'air') else '，玩家看不见'))
             self.change()
-        elif name in ('CREATE_REINFORCEMENT_TEAM', 'CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION'):
-            # (team, waypoint) / (team, named unit): one handler for both (work/re actions_map.json); the
-            # unit's position as the waypoint is INFERRED (Sim.point reads a named object's)
+        elif name == 'CREATE_REINFORCEMENT_TEAM':
             self.reinforce(a[0], a[1], script)
+        elif name == 'CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION':
+            # (team, named unit): at where the unit stands now, on a building too (not pushed off it); nothing at a
+            # dead one (bench 11-15 engine_reinfat go: 3 inside 60 of a house, 3 at a tank's goal after it drove
+            # there, none at a tank killed 2 s before)
+            b = self.body(a[1])
+            if b is None or not b.alive:
+                self.used.add('reinforcement unit dead')
+            else:
+                self.reinforce(a[0], a[1], script)
         elif name in ('MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_NAMED_UNIT_TO'):
             self.order_move(self.body(a[0]), a[1], name == 'ATTACK_MOVE_NAMED_UNIT_TO')
         elif name in ('NAMED_FOLLOW_WAYPOINTS', 'NAMED_FOLLOW_WAYPOINTS_EXACT', 'NAMED_ATTACK_FOLLOW_WAYPOINTS',
@@ -4108,7 +4125,7 @@ class Sim:
             self.money[a[0]] = self.money.get(a[0], 0) + a[1]
         elif name == 'PLAYER_SET_MONEY_CAP':
             # (player, cap): bench 11-13 engine_acts_tel -- no script's money is held to it (give 5000 over a 3000 cap,
-            # a 500 cap under 6000, set 10000 over it: all kept); what it caps (harvest income, INFERRED) not modelled
+            # a 500 cap under 6000, set 10000 over it: all kept); harvest income is held to it (Sim._pay, bench 11-15 mineturn0 cap / capz)
             self.money_cap[a[0]] = int(a[1])
         elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING':
             b, g = self.body(a[0]), self.body(a[1])

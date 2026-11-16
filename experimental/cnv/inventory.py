@@ -155,7 +155,12 @@ BENCHED_TESTS = {
     **{(ACTION, n): 'tests/test_simbench.py::test_acts_more_as_the_bench' for n in (
         'TEAM_GARRISON_TEAM_INSTANTLY', 'NAMED_FORCE_ATTACK_WAYPOINT', 'UNIT_KILL_ALL_IN_AREA',
         'ATTACK_MOVE_TEAM_TO_NAMED_OBJECT', 'MAP_REVEAL_PERMANENTLY_IN_TRIGGER', 'MAP_UNDO_REVEAL_PERMANENTLY_IN_TRIGGER')},
-    # round 213: batch 3 (checks/engine_acts3.py tel; PLAYER_SET_MONEY_CAP in NOTES: only "scripts' money not capped")
+    # round 254: checks/engine_reinfat.py go (on a house, at a moved tank's place now, none at a dead one)
+    (ACTION, 'CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION'):
+        'tests/test_simbench.py::test_reinforcement_at_a_unit_as_the_bench',
+    # round 254: checks/engine_mining.py mineturn0 cap / capz (harvest income held; scripts' money not: acts_tel)
+    (ACTION, 'PLAYER_SET_MONEY_CAP'): 'tests/test_simbench.py::test_money_cap_holds_harvest_income_as_the_bench',
+    # round 213: batch 3 (checks/engine_acts3.py tel)
     **{(ACTION, n): 'tests/test_simbench.py::test_acts_tel_as_the_bench' for n in (
         'TEAM_TELEPORT_TO_WAYPOINT', 'TEAM_GARRISON_SPECIFIC_BUILDING',
         'TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE', 'UNIT_ALLOW_AI_AUTOACQUIRE')},
@@ -374,8 +379,6 @@ NOTES = {
     (MODULE, 'Behaviors/QueueDockBehavior'): (GUESSED, 'E164消费D165 dockphase:a/off阶段证据：on装货f156..186、卸货f289..319各30帧，货量250→0；off首次交矿f200同帧异常，不是无效果对照。公开Sim已按继承读取码头模块，矿车选中缺码头矿场时明确报错、禁止模拟成功交矿；卸货结束清空货量。具名tests/test_simqueuedock.py回放拒绝边界、30帧卸250及清货；整模块不晋升，骨骼/队列/绝对路径时钟仍gap，E152 f786快照保留strict xfail；见work/re/e164_queuedock.md'),
     (MODULE, 'Behaviors/CaptureSpecialAbilityUpdate'): (TODO, 'E151 engine_capture:a原版工程师对CaptureFlag中立/敌方/己方和删模块中立四路：归属100、存活1111、前置1，f45..575未换主。原预测111保留；具名测试仅回放负基线，不登记模块效果已对拍。缺命令被模块接受及同帧阶段证据（INFERRED），暂停同输入重跑；见work/re/e151_capture.md'),
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2'): (GUESSED, 'A224-A226 engine_acts_mix:all、engine_acts_drop / _ally:own、engine_acts_wet:all：六局都没出轰炸机；A226 PLAYER_TRIGGERED_SPECIAL_POWER 看到按钮和按名字放都算放了（人类、电脑的 store 都是），所以卡在 OCL 生成那步（CREATE_AT_EDGE_NEAR_SOURCE），原因未明；模拟器只记施放、不出东西'),
-    (ACTION, 'CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION'): (GUESSED, 'A253：和 CREATE_REINFORCEMENT_TEAM 同一分支、按名字物体的位置当路点（推断）；台图 checks/engine_reinfat.py go 已写、还没上台'),
-    (ACTION, 'PLAYER_SET_MONEY_CAP'): (GUESSED, 'A213 engine_acts_tel:tel：脚本的钱不受上限管（上限 3000 时给 5000 → 6000；上限 500 仍 6000；设 10000 照设）；它管的（推断是采矿收入）没上台、模拟器只记不用'),
     (MODULE, 'Behaviors/AutoDepositUpdate'): (GUESSED, 'E147 engine_bankcapture:a：中立SwissBank有/无模块两路普通工程师占领，换主并消耗工程师；on奖金750、随后每15游戏帧+5至770，off全0，帧锁定证据1023；具名测试test_simbankcapture按实际读数回放。E146已有归属产钱60/0仍有效；再占领/驻军/上限/修理仍gap，不晋升整项；见work/re/e147_bankcapture.md'),
     (MODULE, 'Behaviors/HealCrateCollide'): (TODO, 'E146 engine_objectbatch:a/b有/无模块均未治疗，步兵始终50/50；b中立箱且到位成立，仍无效，两轮后暂停；不把负结果登记成效果已对拍。SecretFile原XML含当前schema不接受的属性，未冒充普通HealCrate等价；碰撞派发前置待查；见work/re/e146_objectbatch.md'),
     (MODULE, 'Behaviors/LoseHealthUpdate'): (TODO, 'E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md'),

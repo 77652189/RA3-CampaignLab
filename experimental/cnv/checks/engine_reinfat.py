@@ -11,6 +11,9 @@ Counters: 兵A (how many A the player owns), 楼A (A within 250 of HS), 楼内A 
 footprint), 远处A (A within 200 of MV's goal).
 What the simulator predicts (Sim.reinforce on a grid of SPREAD round the point): 兵A 3 from s2, 6 from s12, 9 from
 s19; 楼A 3 from s2; 楼内A 3 (the grid stands on the house; does the game push them out?); 远处A 3 from s12.
+Bench 2026-11-15 (round 254, CampReinfAtGo_mcp_1115_235514): s1-s10 3 3 3 0, s11-s27 6 3 3 3 -- on the house and not
+pushed off, at the tank's place now, nothing at the dead tank (兵A stays 6). Sim now: no team at a dead unit
+(tests/test_simbench.py::test_reinforcement_at_a_unit_as_the_bench).
 """
 import resources
 from maps import niagara

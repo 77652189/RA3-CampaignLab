@@ -2028,6 +2028,27 @@ def test_reinforcement_teams_as_the_bench():
     assert by[1] == [3, 3, 0, 0] and by[13] == [3, 0, 3, 0] and by[44] == [6, 3, 0, 3], by
 
 
+def test_money_cap_holds_harvest_income_as_the_bench():
+    """PLAYER_SET_MONEY_CAP on income, bench 11-15 `run_queue mineturn0:cap mineturn0:capz` (A round 254; 资金 首笔 二笔
+    三笔): cap 400 -- the first load paid (250 from frame 111), the second 8 a frame to 394 (二笔 262 as without a
+    cap), then nothing: a deposit that would pass the cap is not paid, not cut to it; 三笔 counts on to the end. Cap 0
+    -- no money at all (a07's allies: money 0, cap 0). Sim.earn / Sim._pay."""
+    cap = _sim_run('mineturn0', 'cap', 30.0).series
+    assert cap[-1][1][:3] == [394, 111, 262] and cap[-1][1][3] > 400, cap[-1]
+    assert max(v[0] for _, v in cap) == 394
+    capz = _sim_run('mineturn0', 'capz', 30.0).series
+    assert all(v[0] == 0 for _, v in capz) and capz[-1][1][1] > 400, capz[-1]
+
+
+def test_reinforcement_at_a_unit_as_the_bench():
+    """CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION, bench 11-15 `run_queue engine_reinfat:go` (CampReinfAtGo_mcp_1115_
+    235514, A round 254): 兵A 楼A 楼内A 远处A s1-s10 3 3 3 0, s11-s27 6 3 3 3 -- made on a house (all three inside 60 of
+    it: not pushed off), at a tank's place now (it had driven 500 north: all three at its goal), and not at all at a
+    tank killed 2 s before (兵A stays 6). The bench seconds run 1-2 ahead of the script timers (know-how)."""
+    by = {s: v for s, v in _sim_run('engine_reinfat', 'go', 26.0).series}
+    assert by[10] == [3, 3, 3, 0] and by[18] == [6, 3, 3, 3] and by[25] == [6, 3, 3, 3], by
+
+
 def test_mcv_deploys_at_a_far_waypoint_as_the_bench():
     """NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT(mcv, Command_UnPackAlliedMCV, 400 east) (bench 11-10 engine_unpack
     mcv): the MCV drives there and is the yard from frame 121 on (sim 128), the yard on the point, the name passed on

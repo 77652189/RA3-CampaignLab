@@ -197,7 +197,29 @@ def turned_test(m):
     return t
 
 
-FAR = 38.0              # minefar: the refinery this much further back from its node (contract: 180 +- 40, AXIS_SLACK)
+CAP = {'cap': 400, 'capz': 0}
+
+
+def cap_test(m, which):
+    """PLAYER_SET_MONEY_CAP on harvest income (A round 254; 25 uses in the retail missions: a07 sets its allies' cap 0
+    at the start with their money 0, the AI's 9999 with 3000). engine_acts_tel showed no script's money is held to it;
+    what it caps was not read. p's start (mineturn0: a load of 250 every 151 frames from 111) with the player's cap
+    CAP[which] set beside the money 0 in the first script: cap  400 -- does the second load stop the money at 400, keep
+    it at 250 (a load not paid that would pass it), or pass it?  capz  0 -- no money at all, or 0 = no cap?
+    Counters as p's: 资金, 首笔 / 二笔 / 三笔 frames while the money is below 1 / LOAD + 1 / 2 LOAD + 1.
+    The simulator then (cap stored, not used): p's 111 / 262 / 413, money 1000 by s30.
+    Bench 2026-11-15 (work/bench_results/mineturn0__cap / __capz.json): cap 250 from 111, then 8 a frame of the second
+    load to 394 (二笔 262) and nothing more; capz 0 to the end. A deposit that would pass the cap is not paid (Sim._pay;
+    tests/test_simbench.py::test_money_cap_holds_harvest_income_as_the_bench)."""
+    t = turned_test(m)
+    start = next(s for s in t.scripts if s.name == 'Test - start')
+    start.do.append(('PLAYER_SET_MONEY_CAP', m.player('p1'), CAP[which]))
+    t.expect = []
+    t.bench = [('bench_watch', dict(every=0.5, sheet=False, lines=len(t.counters), seconds=30.0))]
+    return t
+
+
+FAR = 38.0             # minefar: the refinery this much further back from its node (contract: 180 +- 40, AXIS_SLACK)
 
 
 def far_mission():
@@ -275,3 +297,4 @@ CHECKS = {'engine_mining': {w: (lambda m, w=w: mining_test(m, w)) for w in 'abcd
           'mineaway': {'g': lambda m: mining_test(m, 'g')}, 'mineniag': {'p': turned_test},
           'minefar': {'p': turned_test, 'q': legs_test},
           **{f'mineturn{_tag(k)}': {'p': turned_test, 'q': legs_test} for k in TURNS}}
+CHECKS['mineturn0'] |= {w: (lambda m, w=w: cap_test(m, w)) for w in CAP}
