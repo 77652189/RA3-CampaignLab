@@ -4753,8 +4753,11 @@ class Sim:
         order below is INFERRED: the plate counts recipients, not identities.
         E163 adds explicit bilateral cross-player Friend eligibility. Enemy
         exclusion is retained; the changed-relation snapshot was not reached.
+        E165: the source stays exactly half-health while a nearby inactive
+        engineer and infantry heal fully; exclude the source itself, not the
+        engineer template. See work/re/e165_areaself.md.
         Implicit alliances, neutral/asymmetric relations, overlapping auras and
-        self-healing remain gaps. See work/re/e163_areaally.md.
+        self/beneficiary-cap interaction remain gaps. See work/re/e163_areaally.md.
         """
         cache = self.__dict__.setdefault('_passive_area_of', {})
         sources = []
@@ -4797,8 +4800,12 @@ class Sim:
                         if source.owner == target.owner or
                         (self.relations.get((source.owner, target.owner)),
                          self.relations.get((target.owner, source.owner))) == ('Friend', 'Friend')]
-            if len(eligible) > 1 or any(source is target for source, _ in eligible):
-                self.gap('物体模块', 'PassiveAreaEffectBehavior overlap/self', '重叠范围和自身受益未测')
+            if len(eligible) > 1:
+                self.gap('物体模块', 'PassiveAreaEffectBehavior overlap', '重叠范围未测')
+                continue
+            # E165 measures a single active source only; retain the overlap gap
+            # above even when one of several sources is the wounded target.
+            if eligible and eligible[0][0] is target:
                 continue
             if eligible:
                 source, rule = eligible[0]
