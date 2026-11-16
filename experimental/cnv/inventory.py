@@ -55,6 +55,8 @@ BENCHED_TESTS = {
         'tests/test_basegate_bench_a.py::test_aibgate_disabled_ai_spends_nothing_and_builds_nothing_until_enabled',
     (ACTION, 'PLAYER_ENABLE_BASE_CONSTRUCTION'):
         'tests/test_basegate_bench_a.py::test_aibgate_enable_starts_the_ai_base',
+    (ACTION, 'SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER'):
+        'tests/test_killcount_bench_c.py::test_killcount_native_type_and_player_match_bench',
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanMCV'):
         'tests/test_jpndeploy_bench_c.py::test_jpndeploy_waypoint_and_untouched_control_match_bench',
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackSovietMCV'):
@@ -411,6 +413,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (ACTION, 'SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER'): (BENCHED, 'C engine_killcount:a/b原生守护者击杀两征召兵/一守护者，交换Player_1与Soviet_5为击杀者；DISPLAY_COUNTER主步兵/主坦克/另步兵开局0/0/0、末2/1/0，独立脚本杀死未受伤征召兵后不增计数，存活码末240。每帧先写77再查询，证明覆盖；tests/test_killcount_bench_c.py按名回放四读数。原s22存活码窗口差异保留strict xfail，不改门槛。仅具名玩家/单模板/原生直接武器致死和无归属脚本死阴性；列表并集INFERRED，This Player/All Players、换主、友军/间接伤害、争夺最后击和精确帧仍gap，见work/re/c_killcount_report.md'),
     (ACTION, 'DISABLE_JOYPAD_COMMANDBAR_BUTTON'): (TODO, 'C engine_joypad:a一局17组读数f40..182，原版buttonopenplayertechstore/buttonaiassaultdirective未操作、禁用、分步恢复的脚本阶段0/1/2/3均出现，未操作电厂始终1，末3/1/182。tests/test_joypad_bench_c.py仅锚定具名原始读数，不冒充完整模型回放或原生输入接受。cnv_result仅脚本阶段/存活/逻辑帧，index仅id/second/note/view，无Joypad元素enabled、输入accepted/rejected字段；台子仅键鼠注入，XInput四槽未连接。PC路径无消费者仅INFERRED，不用鼠标或余额替代阳性，不登记纯表现。一局后缺真实入口/观测而暂停，不耗相同第二局；见work/re/c_joypad_report.md'),
     (ACTION, 'DISABLE_MOUSE_HUD_FIXED_ELEMENT'): (TODO, 'C engine_mousehud:a/b两局SellButton禁用/开场禁用后恢复对照：末f356/f414均存活位5、资金2400；脚本出售位2消失、原生点击位1和未操作位4保留。B原生出售阳性预测4/2800未成立，tests/test_mousehud_bench_c.py保留一strict xfail；具名全三计数器负基线回放不能证明UI门。存档画面A按钮灰/B按钮亮且目标被选中；每次bench_click间Esc可能取消卖出模式（INFERRED）。cnv_result只有点击坐标及三计数器，没有SellButton enabled、卖出模式接受或拒绝字段；其他固定元素未量，不据余额或负基线登记纯表现。两局耗完，保持未做；见work/re/c_mousehud_report.md'),
     (ACTION, 'SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING'): (TODO, 'C aiallbuildon/off:a两局原生候选/订单对照：共同窗口前6次成功订单同帧同种（两警犬后四标枪），非空候选31/16条、订单307/156条。捕获末逻辑帧598/459，均未到70秒转友闸门；不能比较捕获秒数的存量差。tests/test_allbuild_bench_c.py只锚定具名原生读数，不声称模型等价。bpick/border缺同帧敌方玩家集合、动作开关及参与评分的兵力/资格输入，无法区分默认全敌或消费者未触发；倾向先补观测（INFERRED）。两局耗完，保持未做；见work/re/c_allbuild_report.md'),

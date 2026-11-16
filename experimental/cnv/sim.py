@@ -4218,6 +4218,12 @@ class Sim:
                                       (b.template.lower() == name or simunits.equivalent_to(b.template, self.own) == name))
         elif name == 'SET_PLAYER_MONEY_TO_COUNTER':
             self.counters[a[1]] = int(self.money.get(a[0], 0))
+        elif name == 'SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER':
+            # Native weapon-credit/type/player contrast: engine_killcount a/b.
+            # Lists use the existing type resolver; list unions remain INFERRED.
+            want = self.of_types(a[1])
+            self.counters[a[2]] = sum(1 for owner, _, template, _ in self.kills
+                                       if owner == a[0] and template.lower() in want)
         elif name == 'PLAYER_SET_MONEY':
             self.money[a[0]] = a[1]
         elif name == 'PLAYER_GIVE_MONEY':
