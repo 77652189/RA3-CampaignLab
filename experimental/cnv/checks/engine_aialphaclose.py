@@ -38,7 +38,10 @@ def observe(m):
     sampled second. See work/re/e99_alpha_observer.md.
     """
     t = probe(m)
-    hp, home, live = (34, 0, 0) if m.facts['alpha high'] else (59, 4, 4)
+    alpha = m.facts['alpha high'] and m.facts.get('alpha kill', 1000.0) > 1.0
+    # aialobttk (B219): the high lane with AlphaStrikeTargetTimeToKill 0.01. Prediction (model): health x kill
+    # time never under 0.01, so no alpha strike -> the low lane's retreat plateau.
+    hp, home, live = (34, 0, 0) if alpha else (59, 4, 4)
     t.expect = [('目标血量', 1, '==', 70, 29), ('到远厂', 17, '==', 4, 27)]
     t.expect += [(label, 39, '==', value, 55) for label, value in
                  (('目标血量', hp), ('步兵在家', home), ('步兵数', live))]
@@ -46,4 +49,4 @@ def observe(m):
 
 
 CHECKS = {b: {'a': probe} for b in ('aialcloselo', 'aialclosehi')}
-CHECKS.update({b: {'a': observe} for b in ('aialobslo', 'aialobshi')})
+CHECKS.update({b: {'a': observe} for b in ('aialobslo', 'aialobshi', 'aialobttk')})

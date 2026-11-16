@@ -681,7 +681,7 @@ def test_path_to_target_is_asked_on_the_simulators_grid(lib):
     b.paths.clear()
     assert b.path_to_target('Land', 'AlliedAntiInfantryInfantry', 'NORMAL') is True
     assert b.path_to_target('Water', 'AlliedAntiNavalScout', 'NORMAL') is False
-    assert b.path_to_target('Land', 'AlliedPowerPlant', 'NORMAL') is True       # no locomotor: a way (aiopath1)
+    assert b.path_to_target('Land', 'AlliedPowerPlant', 'NORMAL') is False      # no locomotor: no way (D175 noloco)
 
 
 def test_path_to_target_cannot_judge_without_an_enemy_base(skirmish):

@@ -5,6 +5,10 @@ differ only in the threshold (0.9 / 0.01). Fixtures tests/fixtures/d_alpha/*_sta
 state samples. Bench: high 8 -> 6 f230 -> 0 (alpha strike) f290 -> 8 f575 (team gone); low 8 -> 6 f230 -> 1 (retreat)
 f470 and never 0. The model: high 6 f240 -> 0 f270; low 6 f240 -> 1 f480, never 0. The exact frames and the low side's
 later 8 / 6 / 1 loop (bench f650 / f950 / f980) stay INFERRED (the alpha-close outcome xfails in test_simai_bench_c).
+
+AlphaStrikeTargetTimeToKill (B round 219): aialobttk is aialobshi with the kill-time gate 1000 -> 0.01, nothing else.
+Predicted from the model before the run (health share x kill time never under 0.01: no alpha strike), bench
+CampAlObsHiKA_mcp_1116_070902 PASS: the low side's sequence frame for frame (8 -> 6 f230 -> 1 f470, never 0).
 """
 import importlib.util
 from pathlib import Path
@@ -29,7 +33,7 @@ def _sequence(states):
     return out
 
 
-@pytest.mark.parametrize('build', ['aialobshi', 'aialobslo'])
+@pytest.mark.parametrize('build', ['aialobshi', 'aialobslo', 'aialobttk'])
 def test_bench_alpha_state_only_with_the_high_threshold(build):
     rows = teamlog.states(str(OBSERVED / (build + '_states.txt')))['T']
     seq = _sequence([r['mstate'] for r in rows])
@@ -43,7 +47,7 @@ def test_bench_alpha_state_only_with_the_high_threshold(build):
 
 
 @pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
-@pytest.mark.parametrize('build', ['aialobshi', 'aialobslo'])
+@pytest.mark.parametrize('build', ['aialobshi', 'aialobslo', 'aialobttk'])
 def test_model_alpha_state_only_with_the_high_threshold(build):
     w = simai.run(build, 'a', until=40, lib=simai.model()['xmldata'].Library(), record=True)
     brain, = w.brains.values()

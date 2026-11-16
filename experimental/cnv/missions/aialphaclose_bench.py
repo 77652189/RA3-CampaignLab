@@ -15,12 +15,13 @@ from missions import airetreat_bench as ar
 from parts import Script, Unit
 
 
-def mission(high, observe=False):
+def mission(high, observe=False, kill='1000.0'):
+    """kill: AlphaStrikeTargetTimeToKill. aialobttk is aialobshi with it 0.01 (B219): only the kill-time gate differs."""
     m = ar.mission('CampAlCloseHi' if high else 'CampAlCloseLo',
                    RetreatPowerAdvantage='0.2', AlphaStrikeTargetHealthPct='0.9' if high else '0.01',
-                   AlphaStrikeTargetTimeToKill='1000.0', Crush='false')
+                   AlphaStrikeTargetTimeToKill=kill, Crush='false')
     plant = m.role('far plant').name
-    m.facts.update({'alpha target': plant, 'guards at': 30.0, 'alpha high': float(high)})
+    m.facts.update({'alpha target': plant, 'guards at': 30.0, 'alpha high': float(high), 'alpha kill': float(kill)})
     m.spawns.add(ar.at.INF)
     actions = []
     for k in range(ar.GUARDS):
@@ -47,10 +48,11 @@ def mission(high, observe=False):
             '<Behaviors>', '<Behaviors>\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>')
         m.units.append(Unit(host, xml, names=dict(unit=host), what='原建造厂附带变化日志与每秒心跳', params=dict(every=15)))
         m.find(yard.name).template = yard.template = host
-        m.name = 'CampAlObsHi' if high else 'CampAlObsLo'
+        m.name = ('CampAlObsHi' if high else 'CampAlObsLo') + ('' if kill == '1000.0' else 'K')
         m.ext = True
     return m
 
 
 MISSION = {'aialcloselo': lambda: mission(False), 'aialclosehi': lambda: mission(True),
-           'aialobslo': lambda: mission(False, observe=True), 'aialobshi': lambda: mission(True, observe=True)}
+           'aialobslo': lambda: mission(False, observe=True), 'aialobshi': lambda: mission(True, observe=True),
+           'aialobttk': lambda: mission(True, observe=True, kill='0.01')}

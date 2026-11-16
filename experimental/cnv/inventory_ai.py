@@ -735,6 +735,10 @@ NOTES = {
         'engine_aialphahp 旧固定70%对照；engine_aialphaclose 独立延迟守军、仅阈值0.01/0.9不同；'
         'tests/test_simai_bench_c.py 保留读数回放，有限诊断不等于字段闭环；'
         '目标适用条件与回放差异仍gap，见 work/re/c_alpha_close_report.md'),
+    '微操/AIMicroManagerData.AlphaStrikeTargetTimeToKill': (BENCHED,
+        'B219：tests/test_ai_alpha_switch.py 按名跑 aialobttk（= aialobshi 只把 TimeToKill 1000 改 0.01，CNVTeams宿主，'
+        '台上 PASS）：上台前模型预测"血量比×击杀时间 < 0.01 不成立→不集火"，台上 8→6 f230→1 f470、从不进0，'
+        '与低阈值 aialobslo 逐帧相同；模型 6 f240→1 f480、从不进0，正常断言；击杀时间本身的算法（中间值）没上台'),
     '微操/AIMicroManagerData.ReverseMove': (BENCHED,
         'engine_aipullback airev1/0台上s1–10坦克4、s19–22近厂2；tests/test_simai_bench_b.py按名回放，'
         '存活前置正常断言、近厂计数strict xfail；airevp近厂4不能证明没有倒车；'

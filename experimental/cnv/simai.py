@@ -473,10 +473,10 @@ class Brain:
 
     def path_to_target(self, surface, template, cond):
         """ctx 'path to target' (read, work/re/l4_states.md 3): None when it cannot judge (no base of ours, no enemy
-        with one); False when a spot is not found; True when the template has no locomotor (bench aiopath1 /
-        aiopathr, checks/engine_aiopath.py: AlliedPowerPlant as the tester picks the PathExists="true" opening in
-        either order -- the program read "no locomotor -> no way" is wrong or misread); else whether the simulator's
-        grid of the template's surface joins the two spots. cond: the simulator knows only NORMAL (INFERRED: same).
+        with one); False when a spot is not found or the template has no locomotor for the condition (read, D175
+        why=noloco; bench aiopath1 / aiopathr picked the PathExists="true" opening only because that draw is the
+        early one below); else whether the simulator's grid of the template's surface joins the two spots.
+        cond: the simulator knows only NORMAL (INFERRED: same).
         The opening draw ('make base', the AI's start not set yet) always gets None: on the bench the engine draws
         it at f4 before any base is registered and the heuristic returns "cannot judge" before it looks at the
         tester (D108 / D175 ptt rows why=early:nobase on aipathx, aipclandy; aiopwater and aiopath1 the same
@@ -496,7 +496,7 @@ class Brain:
         else:
             stats = simunits.stats(template, s.own) if template else {'speed': None}
             if not stats.get('speed'):
-                answer = True                                    # bench aiopath1 / aiopathr: no locomotor -> a way
+                answer = False                                   # read (D175 why=noloco): no locomotor -> no way
             else:
                 grid = 'water' if surface == 'Water' else 'ground'   # read: cell type Water 7 / Land 0
                 ok = lambda p: s.ground.open(grid, *p)           # noqa: E731
