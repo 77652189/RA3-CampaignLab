@@ -8,7 +8,7 @@
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 17 | 89 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **97%** | **98%** | 196 / 357 | 428 | 214 | 89 | 91 | 34 | 100% |
+| AI | **97%** | **98%** | 196 / 357 | 428 | 214 | 88 | 92 | 34 | 100% |
 
 ## 脚本动作
 
@@ -1216,7 +1216,7 @@
 | 已对拍 | `战术/Tactic.EndBehavior=PICK_NEW_TARGET` | 1 |  | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aitargetpick.py |
 | 推断 | `战略状态/AIStrategicStateDefinition.MaxInactiveCopies` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 已对拍 | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=QuickDoesAttackPathExist` | 1 | a4 a5 a7 | D152 engine_aipathcheck aipfdef/aipfatk/aipfpath/aipfnone:a（去桥尼亚加拉，SimpleAttack 打对岸玩家基地，四局只差这个字段）：不写 / QuickDoesAttackPathExist / QuickDoesPathExist 三局 4 个维和从不出门，CNVTeams 每 90 帧建一支空队、约 75 帧后过期；None 一局 f21 招满 4 人、s6 出门。走不到的单位招人时就不招（模型 TeamMaker.reach，缺省按战术类 data.PATH_CHECK）；tests/test_ai_pathcheck.py 按名断言台上读数并回放。gap：AttackPath 与 Path 在"岸边射程内"时的区别没测；出门后路断的周期踢人读到没上台；见 work/re/d152_pathcheck.md |
-| 推断 | `目标/AITargetingHeuristic.HeuristicType=Bridge` | 1 |  | AI 模型代码里读了这个名字 |
+| 未做 | `目标/AITargetingHeuristic.HeuristicType=Bridge` | 1 |  | C engine_aibridge aibridgeon/off:a原生700长桥/普通中立电厂两局PASS；桥部件编码322/33与111/11，起终点存活1/0与1/1。两局f16 Bridge槽均found=0/n=0；真桥起点NamedObject选对象1(2250,4200)，终点不选。tests/test_bridge_target_c.py按名回放并断言原生读数与具名消费；模型仍选真桥终点且保留已消失终点，两strict xfail。缺桥登记/资格/状态及登记后求值与端点生命周期事实，不据空列表改模型；两局耗完，不晋升，见work/re/c_bridge_report.md |
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType=Crate` | 1 | a4 a5 a7 | C engine_aicrate aicrateon/off:a同位原版HealCrate与普通中立油井对照；tests/test_crate_target_c.py按名回放并断言原生Crate槽与独立NamedObject槽的选择/对象/坐标。真实箱子阳性、普通中立物阴性；只验恒定状态下选择，原版CratePickup的29秒间隔、捡取/治疗/撤销、多箱排序、所有权与范围仍gap；原始证据见work/re/c_crate_report.md |
 | 未做 | `目标/AITargetingHeuristic.HeuristicType=EnemyGarrison` | 1 |  | C engine_aienemygarr aiegarron/off:a真进驻敌方排屋/同位敌电厂，tests/test_enemy_garrison_target_c.py具名回放；归属和ENCLOSED已独立观测，但原生EnemyGarrison两组候选为空，NamedObject能选控制物。未取得有效阳性，不据空候选修改模型；两组模型选普通电厂而原生无目标，strict xfail；缺登记后有效重求值/敌方搜索资格及驻军候选登记事实，不晋升，见work/re/c_enemygarr_report.md |
 | 未做 | `目标/AITargetingHeuristic.HeuristicType=Help` | 1 |  | AI 模型代码里没有这个名字 |
