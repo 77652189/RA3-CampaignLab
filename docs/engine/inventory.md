@@ -54,7 +54,7 @@
 | 已对拍 | `CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT` | 196 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_ref.py |
 | 已对拍 | `LINK_MISSION_OBJECTIVE_TO_WAYPOINT` | 194 | a1 a3 a4 a5 a6 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts5.py |
 | 已对拍 | `NAMED_FOLLOW_WAYPOINTS` | 192 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
-| 已对拍 | `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 186 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_transport.py |
+| 已对拍 | `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY` | 186 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_spncancel.py |
 | 已对拍 | `TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS` | 184 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_wayatk.py |
 | 不涉及 | `FADE_OUT_TO_BLACK` | 177 |  | 纯表现（名字规则） |
 | 不涉及 | `FADE_IN_FROM_BLACK` | 176 |  | 纯表现（名字规则） |
@@ -781,7 +781,7 @@
 | 已对拍 | `DamageContainedNugget` | 2 | a1 a2 a3 a5 | tests/test_simbench_c.py::test_damage_contained_limits_eligible_passengers_without_damaging_the_others；例：SovietAntiInfantryInfantryMolotovCocktailWarhead, Weapon_DesolatorBombFieldUpdate |
 | 已对拍 | `LeechPercentMaxHealthDamageNugget` | 2 | a1 a3 a4 a6 a7 a9 | tests/test_simbench_c.py::test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum；例：SovietCrushWeapon, SovietHarpoonCrushWeapon |
 | 不涉及 | `ReportWeaponFiredStatNugget` | 2 |  | 纯统计（C线工单允许排除）：只记录玩家武器开火次数；原版两份空配置附于SovietVacuumBomb / ParticleCannonWeapon，伤害与创建物体由独立WeaponOCLNugget负责。保留用量2，不登记已对拍；未上台，不模拟战后统计；证据见work/re/c_reportstat_report.md；例：SovietVacuumBomb, ParticleCannonWeapon |
-| 推断 | `SpecialPowerNugget:变装消费者` | 2 | a4 | 2用量：间谍/迅雷直接命中DISGUISED位及INFANTRY/VEHICLE/恐怖机器人排除已测；engine_spndisguise/spnspyx/spnspyex/spntrans/spntrfilter a均1111/1110/1110/1111，tests/test_special_power_nugget.py按名回放；gap：身份/外观/索敌/换目标/取消，迅雷展开时序strict xfail，即时位应用INFERRED；engine_spnrelations a间谍/迅雷各Friend与Neutral四路s6-15全1111，独立命中且无脚本变装位；身份/时序缺口见work/re/c_spnclosure_report.md，不登记完整消费者；例：AlliedInfiltrationInfantryDisguiser, JapanLightTransportVehicleDisguiser |
+| 推断 | `SpecialPowerNugget:变装消费者` | 2 | a4 | 2用量：间谍/迅雷直接命中DISGUISED位及INFANTRY/VEHICLE/恐怖机器人排除已测；engine_spndisguise/spnspyx/spnspyex/spntrans/spntrfilter a均1111/1110/1110/1111，tests/test_special_power_nugget.py按名回放；gap：身份/外观/索敌/换目标/取消，迅雷展开时序strict xfail，即时位应用INFERRED；engine_spnrelations a间谍/迅雷各Friend与Neutral四路s6-15全1111，独立命中且无脚本变装位；engine_spncancel a四路真变装保留/空载撤离/删SPN/仅脚本位稳定1101/1101/1110/1111：普通征召兵自动攻击仅伤后两路，空载撤离不取消；engine_spncargo a有载撤离high从111101到101100再101110，实测出舱/清位后才受伤，原截图时间窗预测FAIL不改阈值；两原生消费者回放strict xfail，脚本位不等于真实身份。身份/时序缺口见work/re/c_spnclosure_report.md、c_spncancel_report.md，不登记完整消费者；例：AlliedInfiltrationInfantryDisguiser, JapanLightTransportVehicleDisguiser |
 | 未做 | `ActivateCircularDamageNugget` | 1 |  | C线前置门禁：原版TeslaNova的Lifetime决定扩散速度，伤害来自宿主CircularDamageUpdate的SweepWeapon；E线模块消费接口尚缺，不能用直伤或DOT代替。0局、无台上读数，不登记已对拍；接口需求与假设表见work/re/c_circular_gate_report.md；例：SovietAntiNavyShipTech1TeslaNova |
 | 已对拍 | `DOTNugget` | 1 |  | tests/test_simbench_c.py::test_dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame；例：PlayerPowerIrradiateTargetWeapon |
 | 未做 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | engine_grapple a最小消费者诊断；GrapplingHookUpdate派发/拉拽/释放未解释，显式报告gap；tests/test_grapple_nugget.py守卫直接命中/继承/弹头及原版缓存，不登记已对拍；例：SovietAntiVehicleVehicleTech3Harpoon |
