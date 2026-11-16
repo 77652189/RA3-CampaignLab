@@ -4194,6 +4194,13 @@ class Sim:
                 self.garrison.put(b, g, script=True)
         elif name == 'NAMED_EXIT_BUILDING':      # (unit) engine_garrison base: out where the building stands
             self.garrison.out(self.body(a[0]))
+        elif name == 'TEAM_EXIT_ALL_BUILDINGS':
+            # engine_teamexit:a: only this crew exits, including Bullfrog passengers;
+            # other crew sharing the same hosts stays in. Empty/repeated calls harmless.
+            # Other templates/AI instances are INFERRED; exit positions remain the
+            # existing garrison approximation (work/re/c_teamexit_report.md).
+            for b in self.members(a[0]):
+                self.garrison.out(b)
         elif name == 'SET_MISSION_OBJECTIVE_STATUS':
             if a[1] not in (0, 1, 2, 3):                # script-semantics.md 8: only 0..3, any other does nothing
                 return                                  # (inferred; checks/engine_scripts5.py goals O5 asks the bench)
