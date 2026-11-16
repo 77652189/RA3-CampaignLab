@@ -34,7 +34,7 @@
 | 未做 | 物体模块 | `Behaviors/AimWeapon` | 2 | a1 a4 a7 a8 a9 | 模拟器代码里没有这个名字；例：AlliedAntiVehicleInfantry, SovietAntiVehicleInfantry |
 | 未做 | 物体模块 | `Behaviors/ConvergingLaserState` | 2 | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiStructureVehicle, SovietAntiVehicleVehicleTech1 |
 | 未做 | 物体模块 | `Behaviors/NotifyWhenAttackingBehavior` | 2 | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_attackassist.py），可能用别的名字实现了；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
-| 未做 | 物体模块 | `Behaviors/PowerUpgrade` | 2 | a5 | 模拟器代码里没有这个名字；例：SovietPowerPlant |
+| 未做 | 物体模块 | `Behaviors/PowerUpgrade` | 2 | a5 | E175 engine_powerupgrade_e:a/b两局：a冻结330/11/10/11，b精确供电始终100/100/500/350，授予期升级持有位均0。高级原版500来自战役覆盖，删模块克隆为SDK350，不能拿基线差归因于模块。TriggeredBy的Upgrade_PowerPlantTurbine在SDK Upgrade.xml无定义；合法授予/接受拒因未闭合，倾向未解析引用（INFERRED），两局后暂停同输入。tests/test_powerupgrade_bench_e.py具名实际读数回放2 strict xfail，模型未改、不登记已对拍；原预测保留，购买升级、加电/撤销和其他升级门均gap；见work/re/e175_powerupgrade.md；例：SovietPowerPlant |
 | 未做 | 物体模块 | `Behaviors/PrematureDischargeSpecialPower` | 2 | a4 | 模拟器代码里没有这个名字；例：JapanBaseDefenseAdvanced |
 | 未做 | 物体模块 | `Behaviors/RecallUnitsSpecialPower` | 2 | a4 a7 | 模拟器代码里没有这个名字；例：AlliedAirfield |
 | 未做 | 物体模块 | `Behaviors/SpiderHoleUpdate` | 2 | a4 | 模拟器代码里没有这个名字；例：JapanAntiVehicleInfantry |
