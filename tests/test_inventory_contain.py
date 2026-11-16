@@ -132,20 +132,22 @@ def test_infiltrator_energy_split_preserves_weight_and_other_effect_gaps():
     assert contain_audit.infiltrator_energy_share() == {'campaign': 4, 'templates': 6}
     rows = [r for r in inventory.collect((inventory.MODULE,))
             if r['name'].startswith('Behaviors/InfiltratorContain')]
-    assert len(rows) == 7
+    assert len(rows) == 8
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
     measured = next(r for r in rows if r['name'].endswith(':ENERGY'))
     gap = next(r for r in rows if r['name'] == 'Behaviors/InfiltratorContain')
     assert (measured['uses'], measured['all'], measured['state']) == (4, 6, inventory.BENCHED)
-    assert (gap['uses'], gap['all'], gap['state']) == (11, 11, inventory.GUESSED)
+    assert (gap['uses'], gap['all'], gap['state']) == (8, 8, inventory.GUESSED)
     assert measured['why'].startswith('tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench')
     import inventory_levels
     scope, _ = inventory_levels.expand_forms(rows, {
         (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
             'a1': {'JapanPowerPlant', 'AlliedBarracks', 'UnknownPlant'}}})
     assert scope[(inventory.MODULE, measured['name'])]['a1'] == {'JapanPowerPlant'}
-    assert scope[(inventory.MODULE, gap['name'])]['a1'] == {'AlliedBarracks', 'UnknownPlant'}
+    infantry = next(r for r in rows if r['name'].endswith(':VISION_UNITS_INFANTRY'))
+    assert scope[(inventory.MODULE, infantry['name'])]['a1'] == {'AlliedBarracks'}
+    assert scope[(inventory.MODULE, gap['name'])]['a1'] == {'UnknownPlant'}
 
 
 def test_infiltrator_energy_split_does_not_credit_changed_fields(monkeypatch):
