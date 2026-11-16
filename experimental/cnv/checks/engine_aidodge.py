@@ -104,8 +104,13 @@ def death(m):
     t.counters = t.counters[:3] + [(dead, '阵亡')]
     # Bench 11-16 (A258): the game ran ~5 frames a second, the frame counter was at f301 by s73 -- no reading.
     # Watch long enough to pass the beacon even when the bench runs slow.
-    t.expect = [('出现', 1, 'ever>=', 1, 130), ('离开', 1, 'ever>=', 1, 130)]
-    t.bench = [('bench_watch', dict(seconds=130, every=1, sheet=False, lines=4))]
+    # 11-16 (A259): 200 s, the CPU was still at 100 % (other lines' tests); the game ran ~12 frames a second.
+    # RESULTS A259 (PASS, 257 s): born 451, left 454, first warrior gone at f706 -- the simulator's f511 is ~195
+    # frames early. Simulator (a259_hp): both conscripts shoot warrior 289 from f398 (2 x 10.6 dps, 160 HP), the
+    # beacon (3850, 2900) sends it radially north to (3842, 2700), into the conscripts (2709), dead f510. Unsplit:
+    # later first shot, split fire, or another escape direction (the radial escape is INFERRED, micro.dodge_tick).
+    t.expect = [('出现', 1, 'ever>=', 1, 200), ('离开', 1, 'ever>=', 1, 200)]
+    t.bench = [('bench_watch', dict(seconds=200, every=1, sheet=False, lines=4))]
     return t
 
 
