@@ -114,4 +114,34 @@ def death(m):
     return t
 
 
-CHECKS.update({name: {'r': timing, 'd': death} for name in ('aidodgezero', 'aidodgetwo')})
+def split(m):
+    """death's mission unchanged; tells apart the three readings of its f706 (A round 260).
+
+    Named, handed-over warriors would not do: the recruiters refuse handed-over units (engine_aimicro, round 18),
+    so the AI-built pair stays and the check latches both deaths instead of reading health. Lines: frame, the first
+    and the second warrior gone (Own 2 -> 1, Own -> 0, from f405), and how many warriors stand in a band north of the
+    sample square (150 deep, toward the conscripts), every second.
+    Focus fire (both conscripts on one warrior, 2 x 10.6 dps, 160 HP) puts the second death >= ~110 frames after the
+    first; split fire (one each) puts them close together. The band tells whether the dodge goes north (the
+    simulator's radial escape, INFERRED) or elsewhere.
+    Simulator (model RA3-EngineModel-a, work/logs/a260_s.py): zero 511 / 867, band 2 at s33, 1 at s34..35, then 0;
+    two 511 / 918.
+    """
+    t = death(m)
+    frame, dead, dead2, band = 'CNV_Dodge_Frame', 'CNV_Dodge_Dead', 'CNV_Dodge_Dead2', 'CNV_Dodge_North'
+    x, y = m.point('dodge spot')
+    half = m.facts['sample half size']
+    area = 'CNV Dodge North'
+    t.areas = {area: [(x - half, y - half - 150), (x + half, y - half - 150), (x + half, y - half),
+                      (x - half, y - half)], **t.areas}
+    t.scripts.append(Script('Dodge - second death latch', [('COUNTER', frame, 3, 405),
+                                                           ('COUNTER', 'CNV_Dodge_Own', 2, 0)],
+                            [('SET_COUNTER_TO_COUNTER', dead2, frame)]))
+    counted(band, '北带', t, template=m.cnv_units[0], player=m.player('s1'), area=area)
+    t.counters = [(frame, '帧数'), (dead, '阵亡'), (dead2, '再亡'), (band, '北带')]
+    t.expect = [('阵亡', 1, 'ever>=', 1, 200)]
+    t.bench = [('bench_watch', dict(seconds=200, every=1, sheet=False, lines=4))]
+    return t
+
+
+CHECKS.update({name: {'r': timing, 'd': death, 's': split} for name in ('aidodgezero', 'aidodgetwo')})
