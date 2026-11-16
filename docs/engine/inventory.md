@@ -278,7 +278,7 @@
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleHarpoonSpecialPower` | 9 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLaserGlaiveBlastSpecialPower` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackAlliedMiner` | 9 |  | Sim.act / Sim.cond 有分支 |
-| 已对拍 | `PLAYER_DISABLE_UNIT_CONSTRUCTION` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_basegate.py |
+| 已对拍 | `PLAYER_DISABLE_UNIT_CONSTRUCTION` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unitban.py |
 | 未做 | `PLAYER_TOGGLE_SKIRMISH_AI` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `SET_COUNTER_TO_NUMBER_OBJECTS_PLAYER_OWNS_WITH_KINDOF` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `SKIRMISH_AI_START` | 9 |  | Sim.act / Sim.cond 不认识 |

@@ -5,13 +5,12 @@ Here the Allied yard's CONSTRUCTION_YARD_CONSTRUCT button (Command_ConstructAlli
 10 s) is pressed by script on both sides; each side also has a powered barracks (engineer, 500).
 a: p1 base-disabled from the start, both yards press at 2 s, p1 enabled at 10 s.
    Prediction: s5 pays 800 over the build; p1 holds 2000 until 10 s, then pays (as the unit gate does).
-b: categories crossed -- p1 unit-disabled presses the power plant, s5 base-disabled presses the
-   engineer, both at 2 s. Prediction: neither gate holds the other category; both pay in full.
+(A crossed-category variant was planned and dropped unrun: the press itself queues nothing.)
 Counters: p1 money, s5 money, made code, script logic frame. Made code: p1 plants >= 2 adds 1,
 s5 plants >= 2 adds 10, p1 engineer adds 100, s5 engineer adds 1000 (a finished structure waits
 unplaced, so the plant digits only say whether a press placed one by itself).
 BENCH 11-16 (A269): a 2000/2000/0 from f44 to f377 on BOTH sides -- a script's press of the yard's
-CONSTRUCTION_YARD_CONSTRUCT button queues nothing, so this map reads no gate (b not run).
+CONSTRUCTION_YARD_CONSTRUCT button queues nothing, so this map reads no gate.
 aibgate:a: 50000 / 1 structure from the wake (f163) to f1054; paying from f1054, 2 at f1208 --
 the base-disabled AI orders nothing till the 70 s enable, then starts as at a wake.
 """
@@ -21,7 +20,7 @@ from checks import engine_scripts8 as s8
 from checks import engine_aiskirm as ak
 
 PLANT, ENGINEER = 'AlliedPowerPlant', 'AlliedEngineer'
-PLANT_BUTTON, ENGINEER_BUTTON = 'Command_ConstructAlliedPowerPlant', 'Command_ConstructAlliedEngineer'
+PLANT_BUTTON = 'Command_ConstructAlliedPowerPlant'
 
 
 def mission():
@@ -36,15 +35,13 @@ def mission():
     return m
 
 
-def check(m, which):
+def a(m):
     t = Test()
-    first = [('PLAYER_DISABLE_BASE_CONSTRUCTION', m.player('p1'))] if which == 'a' else [
-        ('PLAYER_DISABLE_UNIT_CONSTRUCTION', m.player('p1')),
-        ('PLAYER_DISABLE_BASE_CONSTRUCTION', m.player('s5'))]
     t.scripts.append(Script('Test - basegate setup', [], [
         ('MAP_REVEAL_ALL_PERM', m.player('p1')),
         ('PLAYER_SET_MONEY', m.player('p1'), 2000),
-        ('PLAYER_SET_MONEY', m.player('s5'), 2000)] + first))
+        ('PLAYER_SET_MONEY', m.player('s5'), 2000),
+        ('PLAYER_DISABLE_BASE_CONSTRUCTION', m.player('p1'))]))
     for side, label in (('p1', '甲资金'), ('s5', '乙资金')):
         counter = f'CNV_BaseGate_{side}'
         t.counters.append((counter, label))
@@ -55,24 +52,11 @@ def check(m, which):
         for side, template, n, w in (('p1', PLANT, 2, 1), ('s5', PLANT, 2, 10),
                                      ('p1', ENGINEER, 1, 100), ('s5', ENGINEER, 1, 1000))])
     s8.frames(t, 'CNV_BaseGate_Clock', '逻辑帧', [])
-    if which == 'a':
-        presses = [('NAMED_USE_COMMANDBUTTON_ABILITY', f'CNV BaseGate {side} yard', PLANT_BUTTON)
-                   for side in ('p1', 's5')]
-        s8.at(t, 'basegate enable', 10., [('PLAYER_ENABLE_BASE_CONSTRUCTION', m.player('p1'))])
-    else:
-        presses = [('NAMED_USE_COMMANDBUTTON_ABILITY', 'CNV BaseGate p1 yard', PLANT_BUTTON),
-                   ('NAMED_USE_COMMANDBUTTON_ABILITY', 'CNV BaseGate s5 barracks', ENGINEER_BUTTON)]
-    s8.at(t, 'basegate press', 2., presses)
+    s8.at(t, 'basegate enable', 10., [('PLAYER_ENABLE_BASE_CONSTRUCTION', m.player('p1'))])
+    s8.at(t, 'basegate press', 2., [('NAMED_USE_COMMANDBUTTON_ABILITY', f'CNV BaseGate {side} yard', PLANT_BUTTON)
+                                    for side in ('p1', 's5')])
     t.bench = [('bench_watch', dict(seconds=32., every=1., sheet=False, lines=4))]
     return t
-
-
-def a(m):
-    return check(m, 'a')
-
-
-def b(m):
-    return check(m, 'b')
 
 
 def ai(m):
@@ -95,4 +79,4 @@ def ai(m):
 
 
 MISSION = {'engine_basegate': mission}
-CHECKS = {'engine_basegate': {'a': a, 'b': b}, 'aibgate': {'a': ai}}
+CHECKS = {'engine_basegate': {'a': a}, 'aibgate': {'a': ai}}
