@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 197 | 14 | 125 | 115 | 99% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 198 | 13 | 125 | 115 | 99% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 59 / 114 | 190 | 60 | 21 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -268,7 +268,7 @@
 | 已对拍 | `NAMED_REMOVE_UPGRADE` | 11 | a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_invuln.py |
 | 不涉及 | `ORE_NODE_SET_MAX_GATHER_VALUE` | 11 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ArcherArrowBarrageSpecialPower` | 10 |  | Sim.act / Sim.cond 不认识 |
-| 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanMCV` | 10 |  | Sim.act / Sim.cond 有分支 |
+| 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanMCV` | 10 |  | tests/test_jpndeploy_bench_c.py::test_jpndeploy_waypoint_and_untouched_control_match_bench；C engine_jpndeploy:a一局：两辆普通日本MCV到东400路径点展开，未下令第三车留家；f256..501目标区建造场/名称存活/原处MCV位码3/7/4。tests/test_jpndeploy_bench_c.py按名回放动作前及事前预测f300之后稳定窗口实读逻辑帧四计数器；现有order_unpack匹配，无模型或阈值修改。仅普通活宿主空地切片；精确到达/展开时序、地形阻挡、伤害继承、重复/死亡/缺失宿主仍gap，其他宿主推广INFERRED；见work/re/c_jpndeploy_report.md |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackSovietMCV` | 10 |  | tests/test_sovdeploy_bench_c.py::test_sovdeploy_waypoint_and_untouched_control_match_bench；C engine_sovdeploy:a一局：两辆普通苏联MCV到东400路径点展开，未下令第三车留家；f220..468目标区建造场/名称存活/原处MCV位码3/7/4。tests/test_sovdeploy_bench_c.py按名回放34个动作前及稳定窗口实读逻辑帧四计数器；现有order_unpack即可匹配，未调模型或阈值。仅普通活宿主空地切片；精确到达/展开时序、地形阻挡、伤害继承、重复/死亡/缺失宿主仍gap，其他宿主推广INFERRED；见work/re/c_sovdeploy_report.md |
 | 未做 | `PLAYER_ENABLE_BASE_CONSTRUCTION` | 10 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `ROTATE_CAMERA` | 10 |  | 纯表现（名字规则） |
