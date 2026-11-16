@@ -4744,7 +4744,11 @@ class Sim:
 
     def lose_health(self, frame):
         """LoseHealthUpdate gated by an ObjectStatusValidation (simunits.lose_health): DamagePerSecond / fps a frame
-        while the body carries every RequiredStatus (engine_acts_tgl KV: the Kirov's afterburners)."""
+        while the body's own toggle (its ToggleState's bits) carries every RequiredStatus and it has no ForbiddenStatus
+        (engine_acts_tgl KV: the Kirov's afterburners, pressed, drained 200/s). A script's UNIT_CHANGE_OBJECT_STATUS bit
+        alone starts nothing (E146 engine_objectbatch a / b: the dreadnought's drain on a tank, GENERIC_TOGGLE_STATE
+        given by script at 8 s and read back true, held 100 % to s25 with HealthTrigger 101 % and 0 % alike) --
+        INFERRED that the press is what wakes the update; the host (aircraft against tank) was not separated."""
         cache = self.__dict__.setdefault('_lose_of', {})
         for b in self.bodies.values():
             if not b.alive:
@@ -4752,7 +4756,12 @@ class Sim:
             if b.template not in cache:
                 cache[b.template] = simunits.lose_health(b.template, self.own)
             rule = cache[b.template]
-            if rule and rule[0] and rule[1] <= set(b.status):
+            if not (rule and rule[0]) or rule[2] & set(b.status):
+                continue
+            toggled = set()
+            for i, tm in enumerate(self.toggles_of(b)):
+                toggled |= tm['states'][b.toggle_at.get(i, 0) % len(tm['states'])]['status']
+            if rule[1] <= toggled & set(b.status):
                 b.damage(rule[0] / self.fps)
                 self.used.add('lose health')
 

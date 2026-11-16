@@ -112,6 +112,11 @@ def test_clicks_replay_to_the_same_run():
     assert snapshot(plain) == snapshot(s)
 
 
+@pytest.mark.xfail(strict=True, reason=(
+    "plays/a4.txt no longer reaches stage 2: it was hill-climbed (2026-11-08) on a simulator whose infantry turned "
+    "before walking; since 54a14eb0 (A231, bench airevit: infantry walk off at once) the venue loses two trucks "
+    "(truck 1 at 211.5 s, truck 2 at 217.0 s, both to CNV A4 HV2 V1 JapanAntiVehicleInfantry-1) -> Lose 1 at 226.4 s. "
+    "The engine change is benched; the play script wants re-climbing (work/re/scripts/a4climb.py), see A256 handoff"))
 def test_a_stage_jump_hands_over_at_its_flag():
     se = game.Session('a4')
     assert se.stages[:2] == ['CNV_A4_Phase_1', 'CNV_A4_Phase_2']
