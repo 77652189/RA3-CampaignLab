@@ -148,6 +148,53 @@ def test_radar_two_providers_named_script_prerequisite():
     assert engine.value('E158Power') == 1
 
 
+def test_radar_death_damage_entry_and_isolation():
+    import build
+    from contract import contract
+    from model import merged
+    m, t, _ = build.resolve('engine_radardeath', 'a')
+    assert not contract(merged(m, t))
+    assert '<RadarBehavior' not in m.assets[0][1]
+    actions = [a for s in t.scripts for a in s.do]
+    assert [a for a in actions if a[0] == 'NAMED_DAMAGE'] == [
+        ('NAMED_DAMAGE', m.role('dish').name, 250),
+        ('NAMED_DAMAGE', m.role('dish').name, 1000)]
+    assert not any(a[0] in ('NAMED_DELETE', 'NAMED_KILL', 'UNIT_SET_HEALTH')
+                   or 'RADAR' in a[0] or 'REVEAL' in a[0] for a in actions)
+
+
+def test_radar_death_named_health_lifetime_and_hud():
+    # CampRadarDeadEA_mcp_1115_170508: 0007/0008/0017 terrain;
+    # 0018 at f182 is the off transition, 0019/0041 Allied emblem.
+    engine, world, m = replay('engine_radardeath')
+    from ra3model.objects import radar
+    from ra3model.objects.rules import power_of
+    world.logic.power = 'objects'
+    previous = 0
+    for frame, gone, hp, visible in [(87, 0, 100, True), (95, 0, 50, True),
+                                     (173, 0, 50, True), (182, 1, 0, False),
+                                     (192, 1, 0, False), (374, 1, 0, False)]:
+        engine.run(frames=frame - previous)
+        previous = frame
+        assert (engine.value('E161Gone'), engine.value('E161HP')) == (gone, hp)
+        assert power_of(world.logic, m.player('p1')) == (150, 0)
+        assert all(world.named(m.role(r).name).alive for r in ('yard', 'power'))
+        assert radar.available(world.logic, m.player('p1')) is visible
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'E161 measured power AND yard/plant survival=1 at f87/f95/f173/f182/f192/f374; '
+    'PLAYER_HAS_POWER object-world condition is unimplemented. '
+    'See work/re/e161_radar_death.md and work/re/handoff-e.md.'))
+def test_radar_death_named_script_prerequisite():
+    engine, world, m = replay('engine_radardeath')
+    previous = 0
+    for frame in (87, 95, 173, 182, 192, 374):
+        engine.run(frames=frame - previous)
+        previous = frame
+        assert engine.value('E161Support') == 1
+
+
 def replay(name):
     import build
     import labpaths

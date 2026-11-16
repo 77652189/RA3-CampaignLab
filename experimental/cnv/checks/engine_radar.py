@@ -139,7 +139,51 @@ def two_provider_check(m):
     return t
 
 
+def death_mission():
+    """E161: retail 500 HP dish, 250 damage at 6s, 1000 damage at 12s.
+
+    NAMED_DAMAGE is the measured health-changing entry in engine_immortal.
+    INFERRED prediction: 100 -> 50 percent while alive, then destroyed;
+    terrain before the lethal hit, emblem afterwards. Retail SlowDeath has
+    an 8s destruction delay: this does not predict its exact unregister frame.
+    No delete, forced health, reveal, or radar toggle. See work/re/e161_radar_death.md.
+    MEASURED: f87=0/100, f95/f173=0/50 (gone/HP), terrain;
+    f182=1/0 HUD shutdown transition, f192/f374=1/0 emblem. Support=1.
+    Queue expectations PASS; exact unregister frame remains unmeasured.
+    """
+    m = mission()
+    m.name = 'CampRadarDeadE'
+    return m
+
+
+def death_check(m):
+    t = Test()
+    dish = m.role('dish').name
+    t.counters = [('E161Frame', '帧数'), ('E161Gone', '死亡'),
+                  ('E161HP', '血量'), ('E161Support', '供电前置')]
+    t.scripts = [
+        Script('Test - E161 start', [], [('SET_MILLISECOND_TIMER', 'E161 hurt', 6.),
+                                        ('SET_MILLISECOND_TIMER', 'E161 lethal', 12.)]),
+        Script('Test - E161 frame', [], [('INCREMENT_COUNTER', 1, 'E161Frame')], once=False),
+        Script('Test - E161 hp', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', dish, 'E161HP')], once=False),
+        Script('Test - E161 gone', [('NAMED_DESTROYED', dish)], [('SET_COUNTER', 'E161Gone', 1)]),
+        Script('Test - E161 clear support', [], [('SET_COUNTER', 'E161Support', 0)], once=False),
+        Script('Test - E161 support', [('PLAYER_HAS_POWER', m.player('p1')),
+                                      ('NAMED_NOT_DESTROYED', m.role('yard').name),
+                                      ('NAMED_NOT_DESTROYED', m.role('power').name)],
+               [('SET_COUNTER', 'E161Support', 1)], once=False),
+        Script('Test - E161 hurt', [('TIMER_EXPIRED', 'E161 hurt')], [('NAMED_DAMAGE', dish, 250)]),
+        Script('Test - E161 lethal', [('TIMER_EXPIRED', 'E161 lethal')], [('NAMED_DAMAGE', dish, 1000)]),
+    ]
+    t.expect = [('血量', 0, 'ever<=', 50, 40), ('死亡', 0, 'ever>=', 1, 40),
+                ('供电前置', 0, '==', 1, 40)]
+    t.bench = [('bench_watch', dict(seconds=40, every=1, sheet=False, lines=4))]
+    return t
+
+
 MISSION = {'engine_radar': mission, 'engine_radaroff': lambda: mission(False),
-           'engine_radarlow': low_power_mission, 'engine_radartwo': two_provider_mission}
+           'engine_radarlow': low_power_mission, 'engine_radartwo': two_provider_mission,
+           'engine_radardeath': death_mission}
 CHECKS = {name: {'a': {'engine_radarlow': low_power_check,
-                      'engine_radartwo': two_provider_check}.get(name, check)} for name in MISSION}
+                      'engine_radartwo': two_provider_check,
+                      'engine_radardeath': death_check}.get(name, check)} for name in MISSION}
