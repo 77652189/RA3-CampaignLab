@@ -216,6 +216,42 @@ def test_scrambler_expiry_resumes_kept_order_bench_replay():
     assert all(tuple(row) == expected for sec, row in result.series if sec >= 14)
 
 
+@pytest.mark.xfail(strict=True, reason='NAMED_STOP did not bound real victim fire; '
+                   'original b prediction retained, see work/re/c_spnscr_active_report.md')
+def test_scrambler_stop_only_window_prediction():
+    """engine_spnscr b: lock HP before expiry, cancel orders with NAMED_STOP.
+
+    Original prediction failed on the real bench and is retained. This tests
+    actual victim fire, not the caster's marker. The SPN companion stays gap.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spnscr', 'b')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(16)
+    expected = (301000090, 301000090, 300999080, 300999080)
+    assert tuple(result.series[-1][1]) == expected
+    assert all(tuple(row) == expected for sec, row in result.series if sec >= 14)
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') in e.unmodeled
+
+
+def test_scrambler_sealed_active_window_bench_replay():
+    """engine_spnscr c: bound the exposure at the target, same retail damage."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_spnscr', 'c')
+    e = sim.Sim(m, t)
+    e.shot_clock = True
+    result = e.run(16)
+    expected = (301000090, 301000090, 300999080, 300999080)
+    assert tuple(result.series[-1][1]) == expected
+    assert all(tuple(row) == expected for sec, row in result.series if sec >= 14)
+    # The actual blocked-fire contrast is AttributeModifier-dependent;
+    # equality of SPN-present/absent lanes does not validate an extra consumer.
+    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') in e.unmodeled
+
+
 def test_special_power_nugget_retail_scrambler_unresolved_consumers_remain_gaps():
     """engine_spnscr a: measured fire-delay differs, final HP alone hides it.
 

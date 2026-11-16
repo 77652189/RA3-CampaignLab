@@ -24,6 +24,20 @@ phase and the active SPN companion remain gaps. Predictions below intentionally
 remain diagnostic FAIL; do not register this check as a passing replay.
 Earlier runs had minimum-range/geometry and possible idle-pursuit confounders;
 evidence and hypothesis table live in the private C handoff.
+
+b: active-window control. Keep the original retail four-way ablation,
+but replace victim stop-status writes with NAMED_STOP and snapshot at6.9s,
+before the1s modifier expires. PREDICT early100/100/90/90 and final
+90/90/80/80, packed301000090/301000090/300999080/300999080.
+This can distinguish blocked victim fire from the10-damage marker;
+it cannot establish an unobserved extra SPN activity as a no-op.
+MEASURED b: early100/100/90/90, but fire continues after NAMED_STOP;
+all sinks eventually die. Original final prediction remains diagnostic FAIL.
+c closes each exposure by setting the sink UNATTACKABLE at each stop,
+reopening only for the late window. Same pre-bench HP prediction as b.
+MEASURED c: CampSPNScrC_mcp_1115_235123 PASS, final four counters
+301000090/301000090/300999080/300999080. Only the modifier-dependent
+blocked-fire window is closed; the additional SPN consumer remains a gap.
 """
 import re
 from pathlib import Path
@@ -85,7 +99,7 @@ def mission():
     return m
 
 
-def check(m):
+def check(m, active=False, sealed=False):
     t = Test()
     start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
     for lane in CASES:
@@ -101,11 +115,19 @@ def check(m):
         event('mark',6,[('UNIT_CHANGE_OBJECT_STATUS',caster,'NO_ATTACK',0),('NAMED_ATTACK_NAMED',caster,victim)])
         event('mark stop',6+4/15,[('UNIT_CHANGE_OBJECT_STATUS',caster,'NO_ATTACK',1)])
         event('early',6.5,[('UNIT_CHANGE_OBJECT_STATUS',sink,'UNATTACKABLE',0),('NAMED_ATTACK_NAMED',victim,sink)])
-        event('early stop',6.5+4/15,[('UNIT_CHANGE_OBJECT_STATUS',victim,'NO_ATTACK',1)])
+        # b requests a stop before expiry; it never overwrites the victim's
+        # modifier-owned NO_ATTACK bit. a preserves its historical scripts.
+        stop = [('NAMED_STOP',victim)] if active else [('UNIT_CHANGE_OBJECT_STATUS',victim,'NO_ATTACK',1)]
+        if sealed:
+            stop = stop + [('UNIT_CHANGE_OBJECT_STATUS',sink,'UNATTACKABLE',1)]
+        event('early stop',6.5+4/15,stop)
         early = 'SCR snapshot '+lane
-        event('snapshot',8,[('SET_COUNTER',early,0),('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER',sink,early)])
-        event('late',9,[('UNIT_CHANGE_OBJECT_STATUS',victim,'NO_ATTACK',0),('NAMED_ATTACK_NAMED',victim,sink)])
-        event('late stop',9+4/15,[('UNIT_CHANGE_OBJECT_STATUS',victim,'NO_ATTACK',1)])
+        event('snapshot',6.9 if active else 8,[('SET_COUNTER',early,0),('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER',sink,early)])
+        late = [('UNIT_CHANGE_OBJECT_STATUS',victim,'NO_ATTACK',0),('NAMED_ATTACK_NAMED',victim,sink)]
+        if sealed:
+            late.insert(0,('UNIT_CHANGE_OBJECT_STATUS',sink,'UNATTACKABLE',0))
+        event('late',9,late)
+        event('late stop',9+4/15,stop)
         c = 'CNV_SCR_'+lane
         t.counters.append((c,lane+' packed'))
         t.scripts.append(Script('Test - pack '+lane,[],[
@@ -124,4 +146,5 @@ def check(m):
 
 
 MISSION = {'engine_spnscr': mission}
-CHECKS = {'engine_spnscr': {'a': check}}
+CHECKS = {'engine_spnscr': {'a': check, 'b': lambda m: check(m, active=True),
+                           'c': lambda m: check(m, active=True, sealed=True)}}
