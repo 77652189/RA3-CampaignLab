@@ -58,7 +58,7 @@
 | 未做 | 物体模块 | `Behaviors/TeleportStoredObjectsUpdate` | 1 | a7 a8 | 已核（11-08）：模拟器没有这个效果（UNIT_TELEPORT_TO_WAYPOINT 另算）；例：CNV_Liberty |
 | 未做 | 物体模块 | `Behaviors/HeightDieUpdate` | 0 | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：JapanBalloonBomb |
 | 未做 | 物体模块 | `Behaviors/ProjectileUpdate` | 0 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体飞行时间）；例：AlliedAntiVehicleVehicleTech1Projectile, AlliedBomberAircraftBombProjectile |
-| 未做 | 武器效果 | `MetaImpactNugget` | 11 | a1 a2 a3 a4 a5 a6 a7 a9 | 剩余复杂写法：延迟、筛选、Arc、Invert等；普通延迟仅解析payload及隔离到期队列，engine_knock_delay碰撞输入174/173→到期204/192；Physics观察/落地相位未解，不晋升整项。ShockWaveSpeed/Cyclonic本轮原版用量为0也未建模。非默认Physics、坡地及V4曲线弹到达仍gap；例：AAAVT1_ShotgunWeapon, ABD_ShotgunWeapon |
+| 未做 | 武器效果 | `MetaImpactNugget` | 11 | a1 a2 a3 a4 a5 a6 a7 a9 | 剩余复杂写法：延迟、筛选、Arc、Invert等；engine_knock_invert a/b反向邻车880→870、普通2380→2390，b健康99/100/99/100；tests/test_meta_invert.py具名逐帧回放仅无筛选、无延迟、Z=0反向路径，原版模板/状态筛选strict xfail，整项不晋升，见work/re/c_meta_invert_report.md。普通延迟仅解析payload及隔离到期队列，engine_knock_delay碰撞输入174/173→到期204/192；Physics观察/落地相位未解。ShockWaveSpeed/Cyclonic未建模；非默认Physics、坡地及V4曲线弹到达仍gap；例：AAAVT1_ShotgunWeapon, ABD_ShotgunWeapon |
 | 未做 | 武器效果 | `GrapplingHookNugget` | 1 | a1 a3 a4 a6 a7 a9 | engine_grapple a最小消费者诊断；GrapplingHookUpdate派发/拉拽/释放未解释，显式报告gap；tests/test_grapple_nugget.py守卫直接命中/继承/弹头及原版缓存，不登记已对拍；例：SovietAntiVehicleVehicleTech3Harpoon |
 | 未做 | 武器效果 | `InformTargetNugget` | 0 | a3 a7 a8 a9 | 未覆盖的自制或未知武器写法；原版字段分片另行登记；例：CNV_ChronoLag_Shell, CNV_LibertyDrones |
 | 未做 | 武器效果 | `SpecialPowerNugget` | 0 | a7 a8 | 未覆盖的自制或未知武器写法；原版字段分片另行登记；例：CNV_DeckSendTrigger, CNV_DeckStoreTrigger |
