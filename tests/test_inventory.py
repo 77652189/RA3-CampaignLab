@@ -315,6 +315,39 @@ def test_only_a_probe_a_test_holds_the_simulator_to_makes_an_item_benched(tmp_pa
     assert items[1]['state'] == inventory.BENCHED and 'engine_scripts5' in items[1]['why']
 
 
+def test_a_probe_named_only_by_a_test_of_the_inventory_tools_is_no_replay(tmp_path):
+    """A round 267: engine_scripts5 was 已对拍 (SET_MISSION_OBJECTIVE_STATUS and two more) only because the test above
+    writes its name into a fixture. A function that calls an inventory tool (any alias of an inventory* module) feeds
+    it names as data: they count for nothing; the same name in a replay, or a register read, still counts."""
+    checks, tests = tmp_path / 'checks', tmp_path / 'tests'
+    checks.mkdir()
+    tests.mkdir()
+    for p in ('engine_fake', 'engine_fakelv', 'engine_real', 'engine_reg'):
+        (checks / f'{p}.py').write_text('', encoding='utf-8')
+    (tests / 'test_tool.py').write_text(
+        'import inventory_levels as lv\n'
+        "inventory = load('inventory')\n\n\n"
+        "@pytest.mark.parametrize('p', ['engine_fake_move'])\n"
+        'def test_fixture(tmp_path, p):\n'
+        "    (tmp_path / 't.py').write_text(\"_sim_resolve('engine_fake', c)  # bench engine_fake e\")\n"
+        '    assert inventory.tested_probes(str(tmp_path))\n\n\n'
+        'class TestLevels:\n'
+        '    def test_levels(self):\n'
+        "        assert lv.level_items('engine_fakelv')\n\n\n"
+        'def test_register():\n'
+        "    assert inventory.BENCHED_TESTS['engine_reg']\n\n\n"
+        'def test_replay():\n'
+        "    _sim_resolve('engine_real', 'a')\n", encoding='utf-8')
+    tested = inventory.tested_probes(str(tests), str(checks))
+    assert tested == {'checks/engine_real.py', 'checks/engine_reg.py'}
+    src = [('checks/engine_fake.py', 'SET_MISSION_OBJECTIVE_STATUS read'), ('checks/engine_real.py', 'NAMED_KILL read')]
+    items = [dict(part=inventory.ACTION, name='SET_MISSION_OBJECTIVE_STATUS', state=inventory.GUESSED, why='w'),
+             dict(part=inventory.ACTION, name='NAMED_KILL', state=inventory.GUESSED, why='w')]
+    inventory.benched(items, src, tested)
+    assert items[0]['state'] == inventory.GUESSED and '没有测试跑这个台子' in items[0]['why']
+    assert items[1]['state'] == inventory.BENCHED
+
+
 def test_a_reading_of_one_check_counts_only_when_a_test_runs_that_check(tmp_path):
     """engine_aiskirm has thirty checks; MinTime was read only in check mt's docstring (B round 151-152: not matched),
     yet a test running checks c / y made it 已对拍. A probe of several checks is split by check (probe_parts): the

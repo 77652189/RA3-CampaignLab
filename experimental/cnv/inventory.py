@@ -967,6 +967,42 @@ def bench_sources():
 
 TESTS = os.path.join(ROOT, 'tests')
 PROBE_NAME = re.compile(r'(?<![A-Za-z0-9_])(engine_[A-Za-z0-9_]+)')
+_TOOL = re.compile(r'inventory(?:_\w+)?$')
+
+
+def without_tool_tests(text):
+    """`text` with the functions that test the inventory tools themselves blanked out: a function that calls one
+    (inventory.tested_probes(..), I.collect(), levels.level_items(..)) feeds it probe names as data -- a fake tests
+    folder, a fixture string, an expected 'why' -- and replays no bench. test_inventory's fixture
+    "_sim_resolve('engine_seal_move', c)  # bench engine_scripts5 e" made engine_scripts5's readings
+    (SET_MISSION_OBJECTIVE_STATUS and two more) 已对拍 with no test replaying it (A round 267). A tool is a name bound
+    to an inventory* module (import inventory_levels as levels; inventory = module_from_spec(..)); reading a register
+    (inventory.BENCHED_TESTS[..]) is no call. A file that does not parse is kept whole."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return text
+    tools = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            tools |= {a.asname or a.name for a in node.names if _TOOL.match(a.name)}
+        elif isinstance(node, ast.Name) and _TOOL.match(node.id):
+            tools.add(node.id)
+
+    def calls_tool(fn):
+        return any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                   and isinstance(n.func.value, ast.Name) and n.func.value.id in tools for n in ast.walk(fn))
+
+    fns = (ast.FunctionDef, ast.AsyncFunctionDef)
+    defs = [n for n in tree.body if isinstance(n, fns)]
+    defs += [m for c in tree.body if isinstance(c, ast.ClassDef) for m in c.body if isinstance(m, fns)]
+    cut = set()
+    for fn in defs:
+        if calls_tool(fn):
+            cut.update(range(min([fn.lineno] + [d.lineno for d in fn.decorator_list]) - 1, fn.end_lineno))
+    if not cut:
+        return text
+    return ''.join('\n' if i in cut else x for i, x in enumerate(text.splitlines(keepends=True)))
 
 
 def tested_probes(tests=TESTS, checks=CHECKS):
@@ -976,14 +1012,15 @@ def tested_probes(tests=TESTS, checks=CHECKS):
     its bench mission (simai.run('aiskirm') -- 'bench engine_aiskirm c' in the test) or by its layout rebuilt
     (engine_mining's), and each cites the probe whose readings it asserts. A probe no test names is a reading only.
     For a probe of several checks (probe_parts) also 'checks/engine_X.py:<key>' for each check the naming test file
-    runs (tested_checks); naming the probe alone runs none of its checks' own readings."""
+    runs (tested_checks); naming the probe alone runs none of its checks' own readings. A test of the inventory tools
+    themselves names probes as its data and counts for none (without_tool_tests)."""
     stems = {f[:-3] for f in os.listdir(checks) if f.startswith('engine_') and f.endswith('.py')}
     info = {}
     out = set()
     for f in sorted(os.listdir(tests)):
         if not f.endswith('.py'):
             continue
-        text = open(os.path.join(tests, f), encoding='utf-8').read()
+        text = without_tool_tests(open(os.path.join(tests, f), encoding='utf-8').read())
         named = {}
         for name in PROBE_NAME.findall(text):
             full = name
