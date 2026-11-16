@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 56 | 19 | 38 | 20 |
+| 物体模块 | 56 | 20 | 37 | 20 |
 | 武器效果 | 18 | 4 | 4 | 2 |
 
 按原版用量加权：已对拍 100%，已有（已对拍+推断）100%。
@@ -27,7 +27,6 @@
 | 未做 | 物体模块 | `Behaviors/EmotionTrackerUpdate` | 5 | a1 a2 a3 a4 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedCommandoTech1, AlliedEngineer |
 | 未做 | 物体模块 | `Behaviors/ParkingPlaceBehavior` | 4 | a4 a5 a7 a8 | E157两局实测生产差异：engine_parking:a五次原版阿波罗生产请求后原机场4/仅删Parking机场0；交换玩家engine_parkingswap:a为1/0，排除该玩家归属混淆。场区数量仅测位置，不冒充机位占用；队伍飞离预测失败，返航未成立，原预测保留。tests/test_parking_bench_e.py按名回放f194、f982、交换侧f196，物体模型生产按钮入口产出0/0，strict xfail；生产绑定/配额、返航预约/占用/释放、航母Contain仍gap，不登记已对拍、不改猜测模型。两局已用完，暂停同类台，详work/re/e157_parking.md；例：AlliedAirfield, AlliedAntiStructureShip |
 | 未做 | 物体模块 | `Behaviors/AssistedPlacementBehavior` | 3 | a1 a2 a4 a5 a6 a7 | E169 assistpon:a / assistpoff:a原版与删模块两局均资金8000、矿场总数0、提示位数量0、采样完成0；红色预览未落地，原吸附预测保留。当前计数器无放置接受/拒因字段，不能归因于模块；同输入暂停。tests/test_assistplace_bench_e.py具名回放资金负基线strict xfail：Sim未消费侧栏排队/放置点击；吸附、朝向、迷雾资格和精确距离均gap，不登记已对拍；见work/re/e169_assistplace.md；例：AlliedRefinery, JapanRefinery |
-| 未做 | 物体模块 | `Behaviors/HitReactionBehavior` | 3 | a1 a2 a3 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, CNV_Beacon |
 | 未做 | 物体模块 | `Behaviors/LoseHealthUpdate` | 3 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | E146 engine_objectbatch:a/b：原船完整模块移植480HP坦克，HealthTrigger=101%/0%均无耗血，两路100/100；b已确认toggle/铁幕状态成立。两轮后暂停，移植激活资格待查，未推猜测实现、不晋升整项；见work/re/e146_objectbatch.md；例：CNV_Liberty, SovietBomberAircraft |
 | 未做 | 物体模块 | `Behaviors/ReturnToProducerSpecialPower` | 3 | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedFighterAircraft, SovietFighterAircraft |
 | 未做 | 物体模块 | `Behaviors/SecondaryObjectListenerModule` | 3 | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiAirVehicleTech1, AlliedBaseDefense |
@@ -74,6 +73,7 @@
 | 推断 | 物体模块 | `Behaviors/SpecialAbilityUpdate` | 4 | a1 a4 a6 a7 | 模拟器代码里有这个名字；台上量过（checks/engine_acts12.py），没有测试跑这个台子；例：JapanAntiInfantryInfantry, JapanAntiVehicleVehicleTech1 |
 | 推断 | 物体模块 | `Behaviors/TechUpgradeReceiver` | 4 | a2 a4 a5 a7 a8 | E167 engine_techrecvon/engine_techrecvoff:a原版工厂/仅删二级接收模块两局PASS，均完整f330；f60/f180/f300冻结15/15/15，f180近侧300距离持有数2/1、远侧750距离1/1（含各自建造场来源），f210删除来源后f300双方均0、两工厂存活。tests/test_simtechreceiver_e.py按名字回放台上读数；公开Sim补读链接覆盖GameObject XML，未改传播规则。仅此Tech2/建造场/工厂配置，精确传播时钟及矩形角点距离INFERRED；三级、其他宿主/来源、关系/换主/半径边界/生产仍gap，不晋升整模块、不拆分用量；见work/re/e167_techreceiver.md；例：AlliedAirfield, AlliedBarracks |
 | 推断 | 物体模块 | `Behaviors/AttachUpdate` | 3 | a1 a2 a4 a5 a6 a7 a9 | 部分：engine_attach a验证瞬移/跟随/父子状态；engine_attach_parent a验证简单模块脚本杀父后子活/清理链接，NO_COLLISIONS读数差异为严格xfail；原版模块死亡前无稳定链接，不推广死亡规则；子死/直接删除/维修/吸血/解除/自主扫描仍gap；例：AlliedCommandoTech1, SovietScoutVehicle |
+| 推断 | 物体模块 | `Behaviors/HitReactionBehavior` | 3 | a1 a2 a3 a4 a5 a6 a7 a9 | E172 engine_hitreaction_e:b原版维和步兵/仅删模块对照，f180冻结完成180、血量99/99、位895：两侧举盾/合法受击/留在原位，只有原版曾出现HIT_REACTION，最终均清除；tests/test_hitreaction_bench_e.py按名字回放台上读数。公开Sim补零阈值heavy分支、配置状态门及条件时长；INFERRED：正实伤起算/刷新和精确到期。gap：受击转向、动画、非零阈值/light/medium、GoIdle/死亡类型门、其他伤害入口/宿主、精确时钟及状态门切换；不登记整模块已对拍。a诊断帧比较/持续采样错误保留，未拿其血量差推模块规则；见work/re/e172_hitreaction.md；例：AlliedAntiInfantryInfantry, CNV_Beacon |
 | 推断 | 物体模块 | `Behaviors/LiftObjectUpdate` | 3 | a1 a2 a4 a6 a7 | 部分：显式TimeIncrement/MaxTimeLifted的开火者举升表计时接口；tests/test_lift_nugget.py回放engine_lift a状态计数，逐帧计时来自模块证据、未上台逐帧量表；垂直运动/死亡/飞机/落地武器/清位仍gap，落地清位INFERRED，不登记整模块已对拍；例：AlliedAntiAirVehicleTech1, AlliedBaseDefense |
 | 推断 | 物体模块 | `Behaviors/MovementSpecialPower` | 3 | a1 a4 a6 a7 | E171 engine_movement_e:a原版鬼王/仅删模块对照，f210冻结完成210、曾激活位1、离开起点位1、最终清状态且存活11；tests/test_movement_bench_e.py按名字回放台上读数。公开Sim消费TARGETED静态地点、ObjectStatus、Duration、LocomotorSet及自身AttributeModifier；仅覆盖合法范围内单次施放。INFERRED：从按键起算Duration及到期停走；gap：精确起止帧、对象目标/跟踪、超距接近、冷却/重复命令、碰撞伤害/反弹、舰船及其他配置。不登记整模块已对拍，见work/re/e171_movement.md；例：JapanAntiVehicleVehicleTech3 |
 | 推断 | 物体模块 | `Behaviors/EngineerContain` | 1 | a4 a5 a8 | 总控11-11授权工程师组收尾、不再上台；已测通用三国63用量及三国ALLIES6用量分别登记；gap：日本单人ALLIES型TH_TombBuilding02为1用量/1模板，筛选与维修未对拍；间接可达桥头堡为0用量/10模板，桥修复未对拍；本行共1用量/11模板。ReplaceWith和ObjectStatusToSet无原版显式声明；精确进入帧仍INFERRED，不登记整模块已对拍（tests/test_simengineer.py、tests/test_inventory_contain.py、tests/test_inventory_engineer.py）；例：CNVA4AlliedBarracks, CNVA4AlliedConstructionYard |

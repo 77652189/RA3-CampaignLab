@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 184 | 17 | 135 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
-| 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 19 | 87 | 26 | 99% |
+| 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 20 | 86 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **98%** | **98%** | 198 / 357 | 428 | 217 | 86 | 91 | 34 | 100% |
 
@@ -491,7 +491,7 @@
 | 已对拍 | `MISSION_HOT_SPOT_ACTIVE` | 110 |  | tests/test_simbench.py::test_conds_sight_as_the_bench |
 | 已对拍 | `NAMED_DISCOVERED` | 104 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_eyes.py |
 | 已对拍 | `TEAM_ATTACKED_BY_PLAYER` | 93 |  | tests/test_simbench.py::test_conds_fight_as_the_bench |
-| 已对拍 | `UNIT_HAS_MODELCONDITION` | 88 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_infpara.py |
+| 已对拍 | `UNIT_HAS_MODELCONDITION` | 88 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_hitreaction_e.py |
 | 已对拍 | `TEAM_INSIDE_AREA_PARTIALLY` | 80 |  | tests/test_simbench.py::test_conds_team_as_the_bench |
 | 已对拍 | `ENEMY_SIGHTED_BY_TEAM` | 69 |  | tests/test_simbench.py::test_conds_sight_as_the_bench |
 | 不涉及 | `IS_OBJECT_OF_TYPE` | 69 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -663,7 +663,7 @@
 | 推断 | `Behaviors/MovementSpecialPower` | 3 (4) | a1 a4 a6 a7 | E171 engine_movement_e:a原版鬼王/仅删模块对照，f210冻结完成210、曾激活位1、离开起点位1、最终清状态且存活11；tests/test_movement_bench_e.py按名字回放台上读数。公开Sim消费TARGETED静态地点、ObjectStatus、Duration、LocomotorSet及自身AttributeModifier；仅覆盖合法范围内单次施放。INFERRED：从按键起算Duration及到期停走；gap：精确起止帧、对象目标/跟踪、超距接近、冷却/重复命令、碰撞伤害/反弹、舰船及其他配置。不登记整模块已对拍，见work/re/e171_movement.md；例：JapanAntiStructureShip, JapanAntiVehicleVehicleTech3 |
 | 未做 | `Behaviors/SecondaryObjectListenerModule` | 3 (4) | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedBaseDefense, AlliedAntiAirVehicleTech1 |
 | 未做 | `Behaviors/StructurePlacementBehavior` | 3 (4) | a1 a2 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedRefinery, AlliedRefinery_NoHarvester |
-| 未做 | `Behaviors/HitReactionBehavior` | 3 (3) | a1 a2 a3 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：AlliedAntiInfantryInfantry, JapanEmperor |
+| 推断 | `Behaviors/HitReactionBehavior` | 3 (3) | a1 a2 a3 a4 a5 a6 a7 a9 | E172 engine_hitreaction_e:b原版维和步兵/仅删模块对照，f180冻结完成180、血量99/99、位895：两侧举盾/合法受击/留在原位，只有原版曾出现HIT_REACTION，最终均清除；tests/test_hitreaction_bench_e.py按名字回放台上读数。公开Sim补零阈值heavy分支、配置状态门及条件时长；INFERRED：正实伤起算/刷新和精确到期。gap：受击转向、动画、非零阈值/light/medium、GoIdle/死亡类型门、其他伤害入口/宿主、精确时钟及状态门切换；不登记整模块已对拍。a诊断帧比较/持续采样错误保留，未拿其血量差推模块规则；见work/re/e172_hitreaction.md；例：AlliedAntiInfantryInfantry, JapanEmperor |
 | 推断 | `Behaviors/LiftObjectUpdate` | 3 (3) | a1 a2 a4 a6 a7 | 部分：显式TimeIncrement/MaxTimeLifted的开火者举升表计时接口；tests/test_lift_nugget.py回放engine_lift a状态计数，逐帧计时来自模块证据、未上台逐帧量表；垂直运动/死亡/飞机/落地武器/清位仍gap，落地清位INFERRED，不登记整模块已对拍；例：AlliedBaseDefense, AlliedAntiAirVehicleTech1 |
 | 未做 | `Behaviors/ReturnToProducerSpecialPower` | 3 (3) | a1 a2 a3 a4 a5 a6 a7 a8 | 模拟器代码里没有这个名字；例：AlliedAntiGroundAircraft, AlliedFighterAircraft |
 | 未做 | `Behaviors/SubStructureBehavior` | 2 (11) |  | 模拟器代码里没有这个名字；例：AlliedConstructionYardRepairBay, AlliedCrane |
