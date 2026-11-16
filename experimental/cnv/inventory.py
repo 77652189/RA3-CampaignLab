@@ -51,6 +51,8 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
 BENCHED_TESTS = {
+    (ACTION, 'PLAYER_KILL'):
+        'tests/test_playerkill_bench_c.py::test_playerkill_owned_units_and_buildings_match_bench',
     (MODULE, 'Behaviors/ParkingPlaceBehavior'):
         'tests/test_parking_bench_e.py::test_parking_named_object_model_observations',
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg'):
@@ -390,6 +392,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (ACTION, 'PLAYER_KILL'): (BENCHED, 'C engine_playerkill:a一局：目标Soviet_4守护者/电厂死亡，Player_1与Soviet_5同类对照保留；空Soviet_6调用和重复调用未误伤。f45/61/75单位位/建筑位/死亡位7/7/0，f83/152/287为5/5/0；tests/test_playerkill_bench_c.py按名逐实读逻辑帧回放四计数器。仅所属普通对象清理切片已对拍；玩家失败/淘汰、保护对象、容器/子体、死亡瞬间和其他模板推广仍gap或INFERRED；见work/re/c_playerkill_report.md'),
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg'): (BENCHED, 'C engine_eggcmd:a与engine_eggnav:a两局：零售使用的防御/电厂/船厂三种核心，旧通用按钮均留原处；专用防御/船厂按钮到点展开，未下令对照留家。地面f249/393/560建筑位/存活位/原处位4/15/11，水域f247/390/496为2/7/5；tests/test_eggcmd_bench_c.py按名逐实读帧回放。Sim.act仅三种实测宿主且无地图本地定义时显式无操作，不映射专用展开；地图局部按钮、缺失/死亡宿主及其他宿主仍gap，跨宿主推广INFERRED；见work/re/c_eggcmd_report.md、work/re/c_eggnav_report.md'),
     (ACTION, 'TEAM_UPGRADE'): (BENCHED, 'C engine_teamup:a真实玩家升级查询+守护者状态位：f150本队/异队/查询0/0/0，f157授予后3/0/3，f248移除一人后2/0/1，f332再授予3/0/3；同玩家异队和敌方异队均无位。tests/test_teamup_bench_c.py按名逐实读帧回放；仅当前存活显式队伍OBJECT升级派发/消费者切片，j05地图私有升级效果、未来成员、死/缺队伍和AI队伍实例仍gap；其他宿主推广INFERRED；见work/re/c_teamup_report.md'),
     (ACTION, 'UNIT_STOP_SEQUENTIAL_SCRIPT'): (BENCHED, 'C engine_seqstop:a真实继续/停止对照：f282步骤111/1、到达码3，f308新排脚本后111/1001/3，f360保持。停止清当前及后排脚本，不取消已发移动，新脚本可再执行；tests/test_seqstop_bench_c.py按名回放四计数器。仅存活具名单车移动切片；精确移动/idle时序、自停、循环、死亡/缺失单位及其他订单仍gap；其他宿主推广INFERRED；见work/re/c_seqstop_report.md'),

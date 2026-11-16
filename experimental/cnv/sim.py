@@ -4043,6 +4043,14 @@ class Sim:
                 if name == 'NAMED_KILL':
                     b.last_hit = b.last_by = None   # the game's kill damage comes from nobody (INVALID_ID)
                 self.destroy(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉', delete=name == 'NAMED_DELETE')
+        elif name == 'PLAYER_KILL':
+            # engine_playerkill:a: owned Guardian + plant die; other owners survive, empty/repeated calls harmless.
+            # Only the object cleanup slice measured; player defeat state and protected bodies remain gaps.
+            # Ordinary lethal dispatch for other templates is INFERRED (work/re/c_playerkill_report.md).
+            for b in list(self.living()):
+                if b.owner == a[0]:
+                    b.last_hit = b.last_by = None
+                    self.destroy(b, '玩家脚本清理')
         elif name == 'PLAYER_SET_ALL_UNITS_TO_FLEE':     # (player) engine_runoffmap: every one with RunOffMapBehavior runs
             for b in self.living():
                 if b.owner == a[0]:
