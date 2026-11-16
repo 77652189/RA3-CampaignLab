@@ -201,6 +201,7 @@ COLUMN_GAP = 44.0              # infantry column march's ends, across and back (
 HOLD_SPOTS = True              # every move's goal kept off other units' spots (Sim.claims): the game's (bench 11-09,
                                # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
+ORE_PLATE = (60.0, 45.0)        # an ore node's base plate, half-extents (OreNode.xml's last BOX): Sim.goal_off_nodes
 UNPACK_POWER = 'SpecialPower_UnpackReplaceSelf'     # the deploy buttons' power (LogicCommand.xml: MCVs, eggs, miner)
 REPLACE_FRAMES = 6             # a ReplaceSelfSpecialAbility at its point: the replacement 6 frames on (engine_build a)
 RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's NaturalRallyPoint, on the line from
@@ -829,6 +830,7 @@ class Ground:
                               fold(land | water | shallow).all(axis=(1, 3)))
         self.cache = {}
         self.blocked = np.zeros(self.grids['ground'].shape, bool)
+        self.placed = self.blocked          # what a new structure's placement sees as taken (set_blocks' place)
         self.version = 0
         # a bridge's deck: what stands on it blocks nobody (bench 2026-10-27, reroute: the warriors walked through an
         # ice wall on the deck)
@@ -850,9 +852,18 @@ class Ground:
         v = -(x - p[0]) * uy + (y - p[1]) * ux
         return (u >= -over) & (u <= n + over) & (abs(v) <= width / 2)
 
-    def set_blocks(self, shapes):
+    def set_blocks(self, shapes, place=None):
         """What stands in the way now: [(x, y, angle, length, thick) a bar, or (x, y, r) a round building]; off a
-        bridge's deck. Routes are worked out anew."""
+        bridge's deck. Routes are worked out anew. place: the shapes a structure's placement sees (open(place=True)),
+        None = the same."""
+        m = self._mask(shapes)
+        self.placed = m if place is None else self._mask(place)
+        if (m != self.blocked).any():
+            self.blocked, self.version, self.cache = m, self.version + 1, {}
+            return True
+        return False
+
+    def _mask(self, shapes):
         x, y = self.xy
         m = np.zeros_like(self.blocked)
         for s in shapes:
@@ -863,18 +874,16 @@ class Ground:
                 u = (x - cx) * math.cos(a) + (y - cy) * math.sin(a)
                 v = -(x - cx) * math.sin(a) + (y - cy) * math.cos(a)
                 m |= (abs(u) <= length / 2) & (abs(v) <= thick / 2)
-        m &= ~self.deck
-        if (m != self.blocked).any():
-            self.blocked, self.version, self.cache = m, self.version + 1, {}
-            return True
-        return False
+        return m & ~self.deck
 
-    def open(self, surface, x, y):
-        """A world point a unit of that surface may stand on now (its routing cell walkable and not blocked)."""
+    def open(self, surface, x, y, place=False):
+        """A world point a unit of that surface may stand on now (its routing cell walkable and not blocked); place:
+        a structure's placement's view (set_blocks' place)."""
         if surface == 'air':
             return True
         c, g = self.cell(x, y), self.grids[surface]
-        return 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and bool(g[c]) and not self.blocked[c]
+        return (0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and bool(g[c])
+                and not (self.placed if place else self.blocked)[c])
 
     def stand(self, surface, x, y):
         """A ground unit may stand in the CELL cell [x, x + CELL) x [y, y + CELL): its four corners dry (as 'ground'
@@ -1263,8 +1272,9 @@ class Sim:
             if any(c and c[-1] == parts.NOT for s in self.mm.scripts for c in s.when):
                 self.used.add('inverted')
 
-    def blocks(self, b):
-        """What of the way a body takes up: a wall of ours its bar (or disc, square), a building its round."""
+    def blocks(self, b, place=False):
+        """What of the way a body takes up: a wall of ours its bar (or disc, square), a building its round. place:
+        what a new structure's placement keeps clear of instead (an ore node's round, not its routing plate)."""
         if b.topple:
             return None                    # engine_topple: vehicles drive straight through, infantry can pass too
         if b.template in self.walls:
@@ -1275,9 +1285,15 @@ class Sim:
         if 'ORE_NODE' in b.kinds and b.radius:
             # its own bounding circle (box 33 x 41 -> 52.6), not the 40 a building out of platprops gets: with 40 the
             # SimpleExpansion miner's way to its slot 67 behind the node slid past it 45 off and unpacked inside
-            # Distance 50 (aiexpb50); the bench miner goes round, never nearer than 89 (D round 168/169). INFERRED:
-            # the game's own clearance (node footprint + the miner's size) not read, 53 is a floor
-            return (b.x, b.y, b.radius)
+            # Distance 50 (aiexpb50); the bench miner goes round, never nearer than 89 (D round 168/169). D176: its
+            # base plate (ORE_PLATE) grown by GRID, a 2-cell unit's half footprint (goal_off_nodes' rule on the
+            # routing grid's corners); with the circle aiexpb200's miner came at the node from the south and
+            # unpacked at (4127, 2788), with the plate from the west, (4014, 2847) -- the bench (4012, 2903).
+            # INFERRED: one clearance for every unit's size. A structure's placement keeps the round (place): with
+            # the plate the refinery search found no third refinery's spot (test_simai_bench_b third_refinery)
+            if place:
+                return (b.x, b.y, b.radius)
+            return (b.x, b.y, b.angle, 2 * (ORE_PLATE[0] + GRID), 2 * (ORE_PLATE[1] + GRID))
         if 'STRUCTURE' in b.kinds and 'bridge' not in b.template.lower():
             import platprops
             return (b.x, b.y, platprops.radius(b.template) if b.template in platprops.CATALOG else 40.0)
@@ -1289,7 +1305,9 @@ class Sim:
         IFV ordered a second before its row of bunkers was made drove straight through it, s4, not round by the gap).
         A new order goes round a building made in the run, infantry's as a vehicle's (bench 2026-11-08 engine_block
         foot: the IFV and a peacekeeper ordered 3 s after the row was made both went round by the gap, s13 / s22)."""
-        self.ground.set_blocks([s for s in (self.blocks(b) for b in self.living()) if s])
+        bodies = self.living()
+        self.ground.set_blocks([s for s in (self.blocks(b) for b in bodies) if s],
+                               [s for s in (self.blocks(b, place=True) for b in bodies) if s])
 
     # ---- the world
     def owner_of(self, side):
@@ -1599,7 +1617,7 @@ class Sim:
             b.mode = 'attack' if attacking else 'move'
             p = self.point(where) if isinstance(where, str) else where
             if p is not None and b.alive and b.speed > 0:
-                spot = self.free_spot(b, p, self.claims(b, skip) + list(given))
+                spot = self.free_spot(b, self.goal_off_nodes(b, p), self.claims(b, skip) + list(given))
                 where = where if spot == p else spot
             self.send(b, where, face=face)
             b.move_to = b.dest if not attacking else None
@@ -1703,6 +1721,40 @@ class Sim:
             want = (p[0] + side * nx - r * COLUMN_GAP * ex, p[1] + side * ny - r * COLUMN_GAP * ey)
             self.order_move(b, want, attacking, given, skip)
             given.append(tuple(b.dest or (b.x, b.y)) + (b.radius,))
+
+    def goal_off_nodes(self, b, want):
+        """A ground move's goal whose footprint touches an ore node's: the nearest goal clear of every node, on the
+        pathfinder's GRID cells (D round 176). The footprint is the unit's diam = floor(2 r / GRID + 0.3) cells
+        (Generals' pathfinder size rule, INFERRED for RA3), an even one round a cell corner, an odd one round a cell
+        centre; a node's is its base plate (OreNode.xml's 60 x 45 half-extent box, every other shape of it inside),
+        turned with the node, and a cell touching it is shut. Bench aiexpb50n (only node 44 by the slot, D175): the
+        miner sent to its slot (4215, 3039), 7 off the plate's edge, turned off its straight way 37 short and stood
+        at (4221, 3061) -- this rule's (4220, 3060), the nearest corner whose four cells clear the plate. Not yet
+        explained: aiexpb50 (node 45 too) stood at (4201, 3081), the rule's (4180, 3060)."""
+        if b.surface == 'air' or 'ORE_NODE' in b.kinds:
+            return want
+        nodes = [(o.x, o.y, o.angle) for o in self.living() if 'ORE_NODE' in o.kinds]
+        if not nodes:
+            return want
+        hx, hy = ORE_PLATE
+        diam = max(1, math.floor(2 * b.radius / GRID + 0.3))
+        m, off = diam * GRID / 2, 0.0 if diam % 2 == 0 else GRID / 2
+
+        def clear(x, y):
+            for nx, ny, a in nodes:
+                u = (x - nx) * math.cos(a) + (y - ny) * math.sin(a)
+                v = -(x - nx) * math.sin(a) + (y - ny) * math.cos(a)
+                if abs(u) < hx + m and abs(v) < hy + m:
+                    return False
+            return True
+        if clear(*want):
+            return want
+        cx, cy = round((want[0] - off) / GRID), round((want[1] - off) / GRID)
+        spots = [((cx + i) * GRID + off, (cy + j) * GRID + off) for i in range(-8, 9) for j in range(-8, 9)]
+        spots = [s for s in spots if clear(*s) and self.ground.open(b.surface, *s)]
+        if not spots:
+            return want
+        return min(spots, key=lambda s: (s[0] - want[0]) ** 2 + (s[1] - want[1]) ** 2)
 
     def free_spot(self, b, want, held):
         """Pathfinder::adjustDestination over 10-unit cells: `want` or the first spot of the spiral round it (400

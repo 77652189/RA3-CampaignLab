@@ -1,5 +1,6 @@
 """C Expansion interface checks and named bench replay; see work/re/c_expansion_probe_report.md."""
 import importlib.util
+import math
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -276,11 +277,24 @@ def test_simple_expansion_unpacks_within_distance_named_bench_replay(build):
     # bench engine_aisimpleexp aiexpb400 / aiexpb200 / aiexpb50 (only Tactic.Distance differs).
     # D round 169, aiexpb50: the ore node blocks by its own bounding circle (Sim.blocks, 53; with the 40 a building
     # gets the miner's way to its slot slid 45 past it and unpacked) and a miner armed to unpack starts no ore trip
-    # (Sim._mine: standing at its slot it was drawn onto the node). Gap left: it stands at its slot 67 from the node,
-    # the bench 98 (the game's clearance round the node not read).
+    # (Sim._mine: standing at its slot it was drawn onto the node). Gap left: it stands at (4180, 3060) (D176's
+    # goal_off_nodes; before, its slot 67 from the node), the bench (4201, 3081), 98 -- node 45 by the slot not
+    # explained (aiexpb50n without it: test_simple_expansion_miner_goal_moved_off_the_node_named_bench_replay).
     # D round 157: the opener's unit Build kept (opening.kept_orders, structures only), a HARVESTER the AI's
     # production made offered to teams, and the miner armed to unpack where it stands within Tactic.Distance
     # (TacticsBlock.approach, Sim.order_unpack here=True): simulator 400 unpacks s64, 200 s68 (bench s66 / s71).
     w = simai.run(build, 'a', until=130)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     assert (row['前哨'], row['前哨近'], row['矿车近']) == OPENER_MINER_BENCH[build], row
+
+
+def test_simple_expansion_miner_goal_moved_off_the_node_named_bench_replay():
+    # bench engine_aisimpleexp aiexpb50n (aiexpb50 without node 45; D175 run CampAIExpB50NA_mcp_1116_030239, ra3ext
+    # team rows): the miner, sent to its slot (4215, 3039) 7 off node 44's base plate, turned off its straight way
+    # at (4252, 3039) and stood at (4221, 3061) from f1116 to the end, no outpost. D176: Sim.goal_off_nodes moves the
+    # goal to the nearest GRID corner whose 2 x 2 cells clear the plate, (4220, 3060).
+    w = simai.run('aiexpb50n', 'a', until=130)
+    row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
+    assert row['前哨'] == 0, row
+    miner, = [b for b in w.sim.living() if b.template == 'AlliedMiner' and b.name.startswith('#made')]
+    assert math.hypot(miner.x - 4221, miner.y - 3061) <= 5, (miner.x, miner.y)

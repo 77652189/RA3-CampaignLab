@@ -1286,7 +1286,7 @@ class Brain:
         xs = [b.x for b in s.living()] or [yard.x]
         ys = [b.y for b in s.living()] or [yard.y]
         away = math.atan2(yard.y - (min(ys) + max(ys)) / 2, yard.x - (min(xs) + max(xs)) / 2)
-        taken = [t for t in (s.blocks(b) for b in s.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
+        taken = [t for t in (s.blocks(b, place=True) for b in s.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
         for ring in RING:
             n = max(8, int(2 * math.pi * ring / (2 * r + GAP)))
             for k in range(n):
@@ -1333,7 +1333,7 @@ class Brain:
         facing = math.atan2((y0 + y1) / 2 - yard.y, (x0 + x1) / 2 - yard.x)
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
         mine = [b for b in s.living() if b.owner == self.player and 'STRUCTURE' in b.kinds]
-        taken = [q for q in (s.blocks(b) for b in s.living() if 'STRUCTURE' in b.kinds) if q and len(q) == 3]
+        taken = [q for q in (s.blocks(b, place=True) for b in s.living() if 'STRUCTURE' in b.kinds) if q and len(q) == 3]
         block = self.placer(df)
         rng = self.place_rng
         comp = float(df.personality_attr(self.ai, 'BaseCompactness', df.COMPACTNESS))
@@ -1367,7 +1367,7 @@ class Brain:
         if df is None:
             return None
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
-        taken = [t for t in (s.blocks(b) for b in s.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
+        taken = [t for t in (s.blocks(b, place=True) for b in s.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
         angle = df.SPREAD_STEP * self.tower_rng.randint(0, 9)
         block = self.placer(df)
         for x, y in block.tower_spots(self.ai, (yard.x, yard.y), angle, rng=self.tower_rng):
@@ -1409,7 +1409,7 @@ class Brain:
         mine = [b for b in bodies if b.owner == self.player and 'REFINERY' in b.kinds]
         if not self.open_nodes(reach, bodies):
             return None
-        taken = [t for t in (s.blocks(b) for b in bodies if 'STRUCTURE' in b.kinds and b not in nodes)
+        taken = [t for t in (s.blocks(b, place=True) for b in bodies if 'STRUCTURE' in b.kinds and b not in nodes)
                  if t and len(t) == 3]
         memo = self.__dict__.setdefault('_refinery_spots', {})
         mk = (template, tuple(taken), tuple((y.x, y.y) for y in yards))
@@ -1439,14 +1439,14 @@ class Brain:
         import platprops
         s = self.sim
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
-        taken = [q for q in (s.blocks(b) for b in s.living() if 'STRUCTURE' in b.kinds or b in nodes)
+        taken = [q for q in (s.blocks(b, place=True) for b in s.living() if 'STRUCTURE' in b.kinds or b in nodes)
                  if q and len(q) == 3]
         n = min(nodes, key=lambda n: math.hypot(n.x - yard.x, n.y - yard.y))
         a, step = math.atan2(n.y - yard.y, n.x - yard.x), df.SPREAD_STEP
         rr = df.TOWER_LIST_R
         for k in (0, 1, -1, 2, -2):
             x, y = yard.x + rr * math.cos(a + k * step), yard.y + rr * math.sin(a + k * step)
-            if s.ground.open('ground', x, y) and all(math.hypot(x - tx, y - ty) >= r + tr + GAP
+            if s.ground.open('ground', x, y, place=True) and all(math.hypot(x - tx, y - ty) >= r + tr + GAP
                                                      for tx, ty, tr in taken):
                 return x, y
         return None
@@ -1550,7 +1550,7 @@ class Brain:
 
         def fits(x, y, n):                          # the footprint inside the active border (INFERRED)
             if not (x0 + reach <= x <= x1 - reach and y0 + reach <= y <= y1 - reach
-                    and s.ground.open('ground', x, y)
+                    and s.ground.open('ground', x, y, place=True)
                     and all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken)
                     and self.allied_ok(x, y)):
                 return False
