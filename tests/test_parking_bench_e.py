@@ -24,10 +24,6 @@ def test_parking_single_module_control():
     assert not contract(merged(m, t))
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E185 build-button production is wired, but Parking admission/capacity is missing; '
-    'the removal airport also produces versus bench 0. See work/re/e185_production.md '
-    'and work/re/handoff-e.md.'))
 @pytest.mark.parametrize('name,frame,expected', [
     ('engine_parking', 194, (1, 0)),
     ('engine_parking', 982, (4, 0)),

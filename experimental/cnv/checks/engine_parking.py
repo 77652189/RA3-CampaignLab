@@ -11,7 +11,8 @@ MEASURED 2026-11-15: a PASS, f194=1/0, f982=4/0 after five
 presses. Swapped players: f196=1/0; production control agrees. The
 team sortie prediction FAILED: near count stays 1 at f438..513, so the
 later near=1 does not establish a return. Expectations remain unchanged.
-Named object-world replays remain strict xfail (no aircraft produced).
+E188 named object-world replays pass the three production samples. Admission
+at order time and queue reservations are INFERRED; parking/return remain gaps.
 """
 import re
 from pathlib import Path
