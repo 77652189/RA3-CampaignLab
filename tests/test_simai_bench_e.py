@@ -269,6 +269,11 @@ def test_specific_unit_cap(build, active):
         assert max(row['维和总数'] for _, row in late) == 9, late
 
 
+@pytest.mark.xfail(strict=True, reason='B round 217: both runs alike but 2 Peacekeepers by s150 (needs > 2). '
+                   'Bisected (public + time-synced model): first red at model 05d99e0 (C, Husk targets get no '
+                   'generic neutral fallback); with that reverted, first red at public 1afb989a (D169, ore nodes '
+                   'block by their own circle / an unpacking miner starts no ore trip). Each alone turns it red: '
+                   'the AI builds slower, not the cap rule. Owners C / D (work/re/handoff-b.md 217).')
 def test_a_child_cap_under_the_parents_line_does_not_bind():
     """engine_aicap b (E80): a MEDIUM Peacekeeper Cap 2 in a personality inheriting 1AlliedBalanced does not hold --
     the bench's MEDIUM run made 5 Peacekeepers by s150 (9 by s199), on the control's track (5 -> 9). SpecificUnitCap

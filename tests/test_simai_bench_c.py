@@ -268,12 +268,10 @@ def _release_first(rows, log):
     return first
 
 
-@pytest.mark.xfail(strict=True, reason='B round 205: since B202 (46a1188e, simai.Brain.general_spot puts the '
-                  'barracks FRONT toward the map centre) the model\'s ninth defender (retail has 8, the xfail below) '
-                  'comes out at s130, one sample before the transfer (defense 8 s125-129, 9 s130, 0 s131), so the '
-                  '"steady before the transfer" row fails; with general_spot off the rows are 9 from s125 and pass. '
-                  'The extra unit is the production gap, not the transfer.')
 def test_release_to_priority_named_transfer_skips_the_pool(release_m_rows):
+    # B round 217: strict xfail since B205 (the model's ninth defender at s130) removed -- it passes since model
+    # 05d99e0 (C: no generic neutral fallback for Husk targets, bench aihusknone); with that change reverted on
+    # today's main it is the old xfail again (bisected, work/re/handoff-b.md 217).
     """aiskirm:m by name, retail 11-11 (CampAISkirmM_mcp_1111_221811, work/re/c_release_report.md): defense 8 /
     Cleanup 99 s125-128, 0 / 8 at s129, the pool's CAN_ATTACK members 0 and its per-frame peak 1 -- the DEFENSE team's
     RELEASE_TO_PRIORITY men go to the STANDARD Cleanup team in one sample, every one Cleanup has out of defense, none
