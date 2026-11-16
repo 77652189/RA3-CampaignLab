@@ -3,9 +3,9 @@
 One retail Allied plant: 20 seconds of zero supply, spy consumed, owner unchanged.
 Travel/entry reach and Amount * eligible energy duration scaling are INFERRED;
 only Amount=.2 and eligible energy=100 have been measured.
-engine_infvis:a/b measure Allied/Soviet yards' local vision.
+engine_infvis:a/b/c measure Allied/Soviet/Japan yards' local vision.
 VISION activation delay of five seconds is INFERRED from second-spaced samples;
-Soviet first discovery is later; only stable windows replay, exact timing is a gap.
+Soviet/Japan first discovery is later; only stable windows replay, exact timing is a gap.
 mapping the whole local radius to yard XML and parent-death cleanup are INFERRED.
 Observer lifetime, other templates/players/spies and repeated entry remain gaps.
 E138 KILL only removes the hostile Allied spy at a retail Soviet crane;
@@ -102,7 +102,8 @@ class Infiltrators:
                 and s.money.get(target.owner, 0) >= 2000)
 
     def vision_rule(self, target, rule):
-        return (target.template in ('AlliedConstructionYard', 'SovietConstructionYard')
+        return (target.template in ('AlliedConstructionYard', 'SovietConstructionYard',
+                                    'JapanConstructionYard')
                 and rule.get('Effect') == 'VISION' and rule.get('Duration') == '-1s'
                 and rule.get('ObjectRef') == 'VisionObserver' and not rule.get('ReplaceWith'))
 

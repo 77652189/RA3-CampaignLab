@@ -299,16 +299,14 @@ def test_unmeasured_infiltration_effect_reports_gap_instead_of_capture():
 
 @pytest.mark.parametrize('check, template', [
     ('a', 'AlliedConstructionYard'), ('b', 'SovietConstructionYard'),
-    pytest.param('c', 'JapanConstructionYard', marks=pytest.mark.xfail(
-        strict=True, reason='E76日本宿主s18视野仍0、s19起1，原窗口未通过；'
-        '激活时序未解释且未扩展宿主模型，见 work/re/handoff-e.md 和 e_infvis_e76.md'))])
+    ('c', 'JapanConstructionYard')])
 def test_spy_ordinary_vision_as_on_the_bench(check, template):
     """engine_infvis:a/b/c: actual discovered markers, consumed enemy, refused ally.
 
     a: s1-s10 11100/11100/0; s11-s15 1100/11100/0; s16-s37 1100/11100/1.
     b: s1-s10 11100/11100/0; s11-s17 1100/11100/0; s18-s38 1100/11100/1.
     c: s1-s10 11100/11100/0; s11-s18 1100/11100/0; s19-s39 1100/11100/1.
-    c failed the unchanged s18 window; host support remains a strict expected gap.
+    c failed the unchanged s18 bench window; its exact timing is tested separately.
     Stable windows only; exact arrival/activation mechanism, other templates,
     observer destruction, radar freeze and repeated infiltration remain gaps.
     """
@@ -330,9 +328,6 @@ def test_spy_ordinary_vision_as_on_the_bench(check, template):
         assert rows and all(row == wanted for row in rows), rows
     early = [values[2] for second, values in s.series if 12 <= second <= 14]
     assert early and all(value == 0 for value in early)
-    if check == 'c':
-        at18 = [values for second, values in s.series if second == 18]
-        assert at18 and all(row == [1100, 11100, 0] for row in at18)
     assert not s.body(m.role('enemy spy').name).alive
     assert s.body(m.role('ally spy').name).alive
     for role, side in (('enemy', 's1'), ('ally', 's2')):
@@ -340,6 +335,19 @@ def test_spy_ordinary_vision_as_on_the_bench(check, template):
         assert yard.owner == m.player(side) and yard.hp == yard.max_hp
     assert not s.infiltrators.off_until
     assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
+
+
+@pytest.mark.xfail(strict=True, reason='E196日本VISION稳定窗已接，s18实测仍0而模型提前揭示；'
+                   '不拟合延迟，见 work/re/e196_vision.md')
+def test_spy_ordinary_vision_japan_activation_as_on_the_bench():
+    """E76 c: preserve s18=0/s19=1 independently of the stable host replay."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infvis', 'c')
+    s = sim.Sim(m, t).run(20)
+    for second, wanted in ((18, [1100, 11100, 0]), (19, [1100, 11100, 1])):
+        rows = [values for at, values in s.series if at == second]
+        assert rows and all(row == wanted for row in rows), rows
 
 
 @pytest.mark.parametrize('check, until, entered', [('a', 35, 11), ('b', 55, 31)])

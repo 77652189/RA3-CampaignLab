@@ -95,6 +95,21 @@ def infiltrator_vehicle_share(with_templates=False):
     return share
 
 
+def infiltrator_vision_share(with_templates=False):
+    """E196 yard configuration; VISION timing and sibling RADAR_FREEZE stay gaps."""
+    measured = rm.ET.fromstring('''<InfiltratorContain id="ModuleTag_InfiltratorContain"
+        Effect="VISION" Duration="-1s" ObjectRef="VisionObserver"/>''')
+    radar = rm.ET.fromstring('''<InfiltratorContain id="ModuleTag_InfiltratorContainRadarFreeze"
+        Effect="RADAR_FREEZE" Duration="60s"/>''')
+    wanted = tuple(sorted((signature(measured), signature(radar))))
+    rows = [r for r in engineer_audit.audit('InfiltratorContain')['rows']
+            if tuple(sorted(signature(rm.ET.fromstring(m['xml'])) for m in r['modules'])) == wanted]
+    share = dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+    if with_templates:
+        share['template_ids'] = [r['template'] for r in rows]
+    return share
+
+
 def infiltrator_reset_share(with_templates=False):
     """E195 complete RESET configuration; entry does not prove cooldown reset."""
     measured = rm.ET.fromstring('<InfiltratorContain id="ModuleTag_InfiltratorContain" Effect="RESET"/>')

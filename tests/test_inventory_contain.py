@@ -280,3 +280,20 @@ def test_infiltrator_vehicle_configuration_rejects_changed_fields(monkeypatch, f
                 element.set(field, value)
                 module['xml'] = retailmodules.ET.tostring(element, encoding='unicode')
     assert contain_audit.infiltrator_vehicle_share() == {'campaign': 0, 'templates': 0}
+
+
+def test_infiltrator_ordinary_vision_configuration_keeps_timing_gap():
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    share = contain_audit.infiltrator_vision_share(with_templates=True)
+    assert (share['campaign'], share['templates']) == (5, 5)
+    assert 'JapanConstructionYard' in share['template_ids']
+    assert 'AlliedNavalYard' not in share['template_ids']
+    rows = [r for r in inventory.collect((inventory.MODULE,))
+            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    vision = next(r for r in rows if r['name'].endswith(':VISION'))
+    assert (vision['uses'], vision['all'], vision['state']) == (5, 5, inventory.GUESSED)
+    assert (inventory.MODULE, vision['name']) not in inventory.BENCHED_TESTS
+    assert 'strict xfail' in vision['why'] and 'work/re/e196_vision.md' in vision['why']
+    assert sum(r['uses'] for r in rows) == 34
+    assert sum(r['all'] for r in rows) == 38
