@@ -272,7 +272,7 @@
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackSovietMCV` | 10 |  | tests/test_sovdeploy_bench_c.py::test_sovdeploy_waypoint_and_untouched_control_match_bench；C engine_sovdeploy:a一局：两辆普通苏联MCV到东400路径点展开，未下令第三车留家；f220..468目标区建造场/名称存活/原处MCV位码3/7/4。tests/test_sovdeploy_bench_c.py按名回放34个动作前及稳定窗口实读逻辑帧四计数器；现有order_unpack即可匹配，未调模型或阈值。仅普通活宿主空地切片；精确到达/展开时序、地形阻挡、伤害继承、重复/死亡/缺失宿主仍gap，其他宿主推广INFERRED；见work/re/c_sovdeploy_report.md |
 | 未做 | `PLAYER_ENABLE_BASE_CONSTRUCTION` | 10 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `ROTATE_CAMERA` | 10 |  | 纯表现（名字规则） |
-| 未做 | `SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING` | 10 |  | Sim.act / Sim.cond 不认识 |
+| 未做 | `SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING` | 10 |  | C aiallbuildon/off:a两局原生候选/订单对照：共同窗口前6次成功订单同帧同种（两警犬后四标枪），非空候选31/16条、订单307/156条。捕获末逻辑帧598/459，均未到70秒转友闸门；不能比较捕获秒数的存量差。tests/test_allbuild_bench_c.py只锚定具名原生读数，不声称模型等价。bpick/border缺同帧敌方玩家集合、动作开关及参与评分的兵力/资格输入，无法区分默认全敌或消费者未触发；倾向先补观测（INFERRED）。两局耗完，保持未做；见work/re/c_allbuild_report.md |
 | 不涉及 | `ZOOM_CAMERA` | 10 |  | 纯表现（名字规则） |
 | 已对拍 | `MAP_SHROUD_SET_RESHROUD_TIME` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleHarpoonSpecialPower` | 9 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
