@@ -12,6 +12,8 @@ E138 KILL only removes the hostile Allied spy at a retail Soviet crane;
 fling distance, exact entry clock and death-module dispatch remain gaps.
 E194 vehicle VISION_UNITS only consumes the hostile spy; discovery scheduling
 is not implemented. The measured intermittent 1/0 sequence remains a gap.
+E195 RESET only consumes the hostile spy at a Soviet Iron Curtain; readiness
+and actual cooldown remain unresolved. Entry reach/clock remain INFERRED.
 """
 import math
 import os
@@ -62,6 +64,16 @@ class Infiltrators:
         self.kill_hosts = set()
         self.money_hosts = set()
         self.vehicle_hosts = set()
+        self.reset_hosts = set()
+
+    def reset_rule(self, target, rule):
+        """E195 retail Iron Curtain entry only; cooldown/ready remain gaps."""
+        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
+        return target.template == 'SovietSuperWeapon' and config == {'Effect': 'RESET'}
+
+    def reset_entry_measured(self, spy, target):
+        return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
+                and id(target) not in self.reset_hosts)
 
     def vehicle_rule(self, target, rule):
         """E194: measured factory entry only; intermittent discovery stays a gap."""
@@ -150,8 +162,11 @@ class Infiltrators:
                   and not rule.get('ReplaceWith'))
         if not any((energy, self.vision_rule(target, rule), self.paralyze_rule(target, rule),
                     self.kill_rule(target, rule), self.money_rule(target, rule),
-                    self.vehicle_rule(target, rule))):
-            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活及车辆入楼切片已实现')
+                    self.vehicle_rule(target, rule), self.reset_rule(target, rule))):
+            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、车辆及RESET入楼切片已实现')
+            return
+        if self.reset_rule(target, rule) and not self.reset_entry_measured(spy, target):
+            s.gap('InfiltratorContain', target.template, 'RESET其他间谍/玩家或重复进入未对拍')
             return
         if self.vehicle_rule(target, rule) and not self.vehicle_entry_measured(spy, target):
             s.gap('InfiltratorContain', target.template, '车辆VISION_UNITS其他间谍/玩家或重复进入未对拍')
@@ -199,6 +214,18 @@ class Infiltrators:
                     or (entry[1] and s.relation(target.owner, spy.owner) not in entry[1])
                     or target.status & set(rule.get('InfiltratedStatusFilter',
                                                    'DESTROYED UNDER_CONSTRUCTION SOLD UNPACKING').split())):
+                continue
+            if self.reset_rule(target, rule):
+                if not self.reset_entry_measured(spy, target):
+                    s.gap('InfiltratorContain', target.template, 'RESET入楼时资格变化未对拍')
+                    continue
+                self.reset_hosts.add(id(target))
+                # E61 observes entry, not an independent remaining cooldown.
+                # Never interpret the short ready interruption as a reload time.
+                s.gap('InfiltratorContain', target.template,
+                      'RESET真实冷却与就绪条件未闭环，见 work/re/e195_reset.md')
+                s.destroy(spy, '进楼渗透', delete=True)
+                s.change()
                 continue
             if self.vehicle_rule(target, rule):
                 if not self.vehicle_entry_measured(spy, target):

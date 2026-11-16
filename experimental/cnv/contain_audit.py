@@ -95,6 +95,18 @@ def infiltrator_vehicle_share(with_templates=False):
     return share
 
 
+def infiltrator_reset_share(with_templates=False):
+    """E195 complete RESET configuration; entry does not prove cooldown reset."""
+    measured = rm.ET.fromstring('<InfiltratorContain id="ModuleTag_InfiltratorContain" Effect="RESET"/>')
+    wanted = (signature(measured),)
+    rows = [r for r in engineer_audit.audit('InfiltratorContain')['rows']
+            if tuple(sorted(signature(rm.ET.fromstring(m['xml'])) for m in r['modules'])) == wanted]
+    share = dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+    if with_templates:
+        share['template_ids'] = [r['template'] for r in rows]
+    return share
+
+
 def audit():
     result = {}
     for kind in ('EngineerContain', 'InfiltratorContain'):

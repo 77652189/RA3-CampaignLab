@@ -132,13 +132,13 @@ def test_infiltrator_energy_split_preserves_weight_and_other_effect_gaps():
     assert contain_audit.infiltrator_energy_share() == {'campaign': 4, 'templates': 6}
     rows = [r for r in inventory.collect((inventory.MODULE,))
             if r['name'].startswith('Behaviors/InfiltratorContain')]
-    assert len(rows) == 4
+    assert len(rows) == 5
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
     measured = next(r for r in rows if r['name'].endswith(':ENERGY'))
     gap = next(r for r in rows if r['name'] == 'Behaviors/InfiltratorContain')
     assert (measured['uses'], measured['all'], measured['state']) == (4, 6, inventory.BENCHED)
-    assert (gap['uses'], gap['all'], gap['state']) == (23, 24, inventory.GUESSED)
+    assert (gap['uses'], gap['all'], gap['state']) == (18, 18, inventory.GUESSED)
     assert measured['why'].startswith('tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench')
     import inventory_levels
     scope, _ = inventory_levels.expand_forms(rows, {
@@ -203,7 +203,7 @@ def test_infiltrator_money_split_rejects_changed_fields(monkeypatch, field, valu
     ('VISION_UNITS', 'InfiltrationAircraftObjectFilter', 2, 2, '飞机VISION_UNITS 2用量/2模板未测'),
     ('VISION_UNITS', 'InfiltrationInfantryObjectFilter', 3, 3, '步兵VISION_UNITS 3用量/3模板未测'),
     ('VISION_UNITS', 'InfiltrationShipObjectFilter', 3, 3, '舰船VISION_UNITS 3用量/3模板未测'),
-    ('RESET', '', 5, 6, 'RESET 5用量/6模板暂停'),
+    ('RESET', '', 5, 6, 'RESET单列仅入楼已接'),
 ])
 def test_infiltrator_residual_closure_preserves_each_configuration_gap(
         effect, selector, uses, templates, boundary):
@@ -228,6 +228,20 @@ def test_infiltrator_residual_closure_preserves_each_configuration_gap(
     assert state == inventory.GUESSED and key not in inventory.BENCHED_TESTS
     assert boundary in why
     assert 'work/re/e142_infiltrator_closure.md' in why
+
+
+def test_infiltrator_reset_configuration_stays_guessed_until_cooldown_replays():
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    assert contain_audit.infiltrator_reset_share() == {'campaign': 5, 'templates': 6}
+    rows = [r for r in inventory.collect((inventory.MODULE,))
+            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    reset = next(r for r in rows if r['name'].endswith(':RESET'))
+    assert (reset['uses'], reset['all'], reset['state']) == (5, 6, inventory.GUESSED)
+    assert (inventory.MODULE, reset['name']) not in inventory.BENCHED_TESTS
+    assert sum(r['uses'] for r in rows) == 34
+    assert sum(r['all'] for r in rows) == 38
+    assert 'strict xfail' in reset['why'] and 'work/re/e195_reset.md' in reset['why']
 
 
 def test_infiltrator_vehicle_configuration_stays_guessed_until_discovery_replays():

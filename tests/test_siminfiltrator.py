@@ -342,7 +342,83 @@ def test_spy_ordinary_vision_as_on_the_bench(check, template):
     assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
 
 
-@pytest.mark.xfail(strict=True, reason='E61 RESET就绪条件与真实冷却未闭环；见 work/re/handoff-e.md 和 e_infreset_e61.md')
+@pytest.mark.parametrize('check, until, entered', [('a', 35, 11), ('b', 55, 31)])
+@pytest.mark.xfail(strict=True, reason='E195入楼晚于E61 s11/s31；不调通用移动或进入距离，见 work/re/e195_reset.md')
+def test_spy_superweapon_reset_entry_window_as_on_the_bench(check, until, entered):
+    """E61 a/b: replay HP, owner, spy and power independently of ready.
+
+    Remove only the separately observed ready digit, preserving all other
+    published digits. This does not assert a reset duration or ready clock.
+    """
+    import build
+    import sim
+    import siminfiltrator
+    m, t, _ = build.resolve('engine_infreset', check)
+    rule = siminfiltrator.spec('SovietSuperWeapon')
+    assert {k: v for k, v in rule.items() if k not in ('xmlns', 'id')} == {'Effect': 'RESET'}
+    s = sim.Sim(m, t).run(until)
+    for start, end, wanted in ((1, entered - 1, [1011100, 1011100]),
+                               (entered, until, [1001100, 1011100])):
+        rows = [[value - (value // 100000 % 10) * 100000 for value in values]
+                for second, values in s.series if start <= second <= end]
+        assert rows and all(row == wanted for row in rows), rows
+    for role, side, alive in (('enemy', 's1', False), ('ally', 's2', True)):
+        target = s.body(m.role(role).name)
+        assert s.body(m.role(role + ' spy').name).alive == alive
+        assert target.owner == m.player(side) and target.hp == target.max_hp
+        assert not s.short_of_power(target.owner)
+    assert ('InfiltratorContain', 'SovietSuperWeapon') in s.unmodeled
+
+
+@pytest.mark.parametrize('check, until, entered', [('a', 35, 21), ('b', 55, 41)])
+def test_spy_superweapon_reset_entry_as_on_the_bench(check, until, entered):
+    """E61's final stable samples: consumed enemy, refused ally, HP/owner/power.
+
+    The earlier entry-window comparison above stays unchanged as strict xfail.
+    These existing samples establish neither arrival nor cooldown timing.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infreset', check)
+    s = sim.Sim(m, t).run(until)
+    for start, end, wanted in ((1, 7, [1011100, 1011100]),
+                               (entered, until, [1001100, 1011100])):
+        rows = [[value - (value // 100000 % 10) * 100000 for value in values]
+                for second, values in s.series if start <= second <= end]
+        assert rows and all(row == wanted for row in rows), rows
+    for role, side, alive in (('enemy', 's1', False), ('ally', 's2', True)):
+        target = s.body(m.role(role).name)
+        assert s.body(m.role(role + ' spy').name).alive == alive
+        assert target.owner == m.player(side) and target.hp == target.max_hp
+        assert not s.short_of_power(target.owner)
+    assert ('InfiltratorContain', 'SovietSuperWeapon') in s.unmodeled
+
+
+@pytest.mark.parametrize('variant', ['config', 'host', 'spy', 'player', 'repeat'])
+def test_spy_superweapon_reset_unmeasured_entry_reports_gap(variant):
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_infreset', 'a')
+    s = sim.Sim(m, t)
+    spy, target = s.body(m.role('enemy spy').name), s.body(m.role('enemy').name)
+    if variant == 'config':
+        s.infiltrators.spec(target)['BlockedDuration'] = '3s'
+    elif variant == 'host':
+        target.template = 'AlliedSuperWeapon'
+    elif variant == 'spy':
+        spy.template = 'JapanInfiltrationInfantry'
+    elif variant == 'player':
+        spy.owner = m.player('s3')
+        s.relations[target.owner, spy.owner] = 'Enemy'
+    else:
+        s.infiltrators.reset_hosts.add(id(target))
+    s.infiltrators.send(spy, target)
+    assert not s.infiltrators.going
+    assert spy.alive
+    assert ('InfiltratorContain', target.template) in s.unmodeled
+
+
+@pytest.mark.xfail(strict=True, reason='E195仅接RESET入楼；E61就绪条件与真实冷却未闭环；见 work/re/e195_reset.md')
 @pytest.mark.parametrize('check, until, windows', [
     ('a', 35, ((1, 8, [1011100, 1011100]), (9, 10, [1111100, 1111100]),
                (11, 20, [1001100, 1111100]), (21, 35, [1101100, 1111100]))),
