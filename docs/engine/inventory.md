@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 184 | 17 | 135 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 186 | 17 | 133 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 21 | 85 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -232,7 +232,7 @@
 | 已对拍 | `COUNTER_MATH_COUNTER` | 19 | a1 a2 a3 a6 a7 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower` | 19 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
 | 未做 | `PLAYER_DISABLE_BASE_CONSTRUCTION` | 16 |  | C两局engine_baseban交换禁用玩家，对照日本基地的原生核心按钮和脚本按键；禁用人类仍扣800并出核心。UNIT_BUILD核心不能代表盟军/苏联建筑队列或AI基地建造；不写无操作分支、不晋升。tests/test_baseban_bench_c.py按名回放最终读数，核心逐帧扣款差异strict xfail；缺实际基地队列的开关消费/资格/拒绝字段及This Player、All Players范围证据，见work/re/c_baseban_report.md |
-| 未做 | `PLAYER_ENABLE_UNIT_CONSTRUCTION` | 16 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_ENABLE_UNIT_CONSTRUCTION` | 16 |  | tests/test_unitban_bench_c.py::test_unitban_enable_resumes_partly_paid_engineer；C两局engine_unitban:a/b具名玩家盟军工程师原生按钮：禁用期可排队但不扣款；恢复后付款/进度续跑，不退款不重置。a第150帧甲2000/乙1603，恢复后第198帧1843/1500/10，末1000/1000/33；b第101至180帧甲保持1800，第195帧1753/1500/10、第285帧1500/1500/11。tests/test_unitban_bench_c.py按名回放实读；第二笔队列付款提前10帧留strict xfail。仅此玩家/工程师切片已量，其他模板门禁INFERRED，UI拒绝、升级、建筑、AI及This Player/All Players范围仍gap；见work/re/c_unitban_report.md |
 | 不涉及 | `PLAY_SOUND_EFFECT_AT_TEAM` | 16 |  | 纯表现（名字规则） |
 | 不涉及 | `TOGGLE_LOCK_CURRENT_SELECTION` | 16 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 未做 | `UNIT_SET_MODELCONDITION_FOR_DURATION` | 16 |  | Sim.act / Sim.cond 不认识 |
@@ -278,7 +278,7 @@
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleHarpoonSpecialPower` | 9 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLaserGlaiveBlastSpecialPower` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackAlliedMiner` | 9 |  | Sim.act / Sim.cond 有分支 |
-| 未做 | `PLAYER_DISABLE_UNIT_CONSTRUCTION` | 9 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_DISABLE_UNIT_CONSTRUCTION` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unitban.py |
 | 未做 | `PLAYER_TOGGLE_SKIRMISH_AI` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `SET_COUNTER_TO_NUMBER_OBJECTS_PLAYER_OWNS_WITH_KINDOF` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `SKIRMISH_AI_START` | 9 |  | Sim.act / Sim.cond 不认识 |
