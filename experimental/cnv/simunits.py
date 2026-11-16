@@ -309,7 +309,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v38.json')    # v38: measured magnetic ground filter; v37: immediate horizontal inversion
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v39.json')    # v39: Sickle XML status exclusions; v38: magnetic ground filter
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
