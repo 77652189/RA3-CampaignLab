@@ -101,6 +101,45 @@ def low_power_check(m):
     return t
 
 
+def two_provider_mission():
+    """E160: same retail providers, delete first at 12s and last at 24s.
+
+    INFERRED prediction before bench: terrain -> terrain -> emblem.
+    Independent named survival/power counters establish prerequisites; the
+    saved HUD frames decide radar output. See work/re/e160_radar_multi.md.
+    MEASURED: f114=1/1/1 terrain, f197=0/1/1 terrain, f386=0/0/1 emblem.
+    Slow-run wall-time expectations failed; retained without widening them.
+    Named logic-frame replays assert the measured lifetime and HUD instead.
+    """
+    m = mission()
+    m.name = 'CampRadarTwoE'
+    m.put('CNVE158Radar', 'base gun', -500, 0, role='second', name='E160 second')
+    return m
+
+
+def two_provider_check(m):
+    t = check(m)
+    t.counters.insert(2, ('E160Second', '第二宿主'))
+    t.counters = [(c, label) for c, label in t.counters if c != 'E158Support']
+    t.scripts[0].do.append(('SET_MILLISECOND_TIMER', 'E160 last', 24.))
+    t.scripts[2].do.append(('SET_COUNTER', 'E160Second', 0))
+    t.scripts[2].do = [a for a in t.scripts[2].do if a[1] != 'E158Support']
+    t.scripts.insert(4, Script('Test - E160 second',
+                              [('NAMED_NOT_DESTROYED', m.role('second').name)],
+                              [('SET_COUNTER', 'E160Second', 1)], once=False))
+    # Four HUD lines: the last line proves power AND both support hosts.
+    support = t.scripts.pop(5)
+    t.scripts[5].when.extend(support.when)
+    t.scripts.append(Script('Test - E160 last', [('TIMER_EXPIRED', 'E160 last')],
+                            [('NAMED_DELETE', m.role('second').name)]))
+    t.expect = [('宿主量', 5, '==', 1, 10), ('宿主量', 16, '==', 0, 32),
+                ('第二宿主', 5, '==', 1, 20), ('第二宿主', 28, '==', 0, 32),
+                ('供电量', 5, '==', 1, 32)]
+    t.bench = [('bench_watch', dict(seconds=36, every=1, sheet=False, lines=4))]
+    return t
+
+
 MISSION = {'engine_radar': mission, 'engine_radaroff': lambda: mission(False),
-           'engine_radarlow': low_power_mission}
-CHECKS = {name: {'a': low_power_check if name == 'engine_radarlow' else check} for name in MISSION}
+           'engine_radarlow': low_power_mission, 'engine_radartwo': two_provider_mission}
+CHECKS = {name: {'a': {'engine_radarlow': low_power_check,
+                      'engine_radartwo': two_provider_check}.get(name, check)} for name in MISSION}
