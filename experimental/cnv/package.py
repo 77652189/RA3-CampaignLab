@@ -223,6 +223,7 @@ class ModSpec:
     launcher: bool = True           # Play_<name>.bat next to the skudef (the shell has its own: launcher.py)
     ext: bool = False               # ra3ext.allow next to the skudef (Mission.ext; ADR 0028): only then is ra3ext.dll
                                     # injected; every other build removes the file
+    ext_logs: tuple = ()            # Mission.ext_logs: one word each in ra3ext.allow (the bench turns those logs on)
     inject: tuple = ()              # ra3ext plan lines (Mission.inject): ra3ext_plan.txt next to ra3ext.allow, only with ext
     bench: dict = field(default_factory=dict)           # more for the bench in the sidecar (a check on the shell: the
                                                         # slot to walk into); a release build has none
@@ -279,7 +280,7 @@ def spec_of(mission, test=None, shell=False, name=None, layers=()):
                    templates=templates, extra_all=tuple(extra_all), extra_own=tuple(extra_own), replaces=replaces,
                    strings=strings,
                    packs=packs, goals=goal_points(mm), ext=bool(getattr(mm, 'ext', False)),
-                   inject=tuple(getattr(mm, 'inject', ())))
+                   ext_logs=tuple(getattr(mm, 'ext_logs', ())), inject=tuple(getattr(mm, 'inject', ())))
     if shell:
         import shell as shell_layer
         spec = shell_layer.contribute(spec, shell if isinstance(shell, str) else 'zh')
@@ -507,7 +508,7 @@ def build_mod(spec, out):
         _restore(held)
     if not spec.launcher and os.path.isfile(os.path.join(out, f'Play_{name}.bat')):
         os.remove(os.path.join(out, f'Play_{name}.bat'))
-    mark_ext(out, spec.ext)
+    mark_ext(out, spec.ext, spec.ext_logs)
     mark_plan(out, spec.inject if spec.ext else ())
     more = dict(spec.bench)
     if spec.slot:                               # a shell build: the bench walks its chapter list (I18), not the faction menu
@@ -522,11 +523,14 @@ def build_mod(spec, out):
     return out
 
 
-def mark_ext(out, on):
-    """ra3ext.allow in the mod folder `out` exactly when `on` (ADR 0028: the launcher and the bench inject by it)."""
+def mark_ext(out, on, logs=()):
+    """ra3ext.allow in the mod folder `out` exactly when `on` (ADR 0028: the launcher and the bench inject by it);
+    it lists `logs`, one word a line (the costly ra3ext logs the bench turns on: harness.ext_logs)."""
     path = os.path.join(out, 'ra3ext.allow')
     if on:
-        open(path, 'w').close()
+        assert all(isinstance(x, str) and x.isalnum() and x.isascii() for x in logs), logs
+        with open(path, 'w', encoding='ascii', newline='\n') as f:
+            f.write(''.join(f'{x}\n' for x in logs))
     elif os.path.isfile(path):
         os.remove(path)
 

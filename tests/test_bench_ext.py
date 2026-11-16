@@ -148,6 +148,20 @@ def test_a_build_marks_ext_exactly_when_asked(tmp_path):
     assert package.ModSpec(name='x').ext is False
 
 
+def test_costly_ext_logs_are_on_only_when_the_mod_names_them(tmp_path):
+    # D173: the dock log runs on every setState of every unit; only a mod that names it turns it on
+    import package
+    sku = tmp_path / 'x.skudef'
+    sku.write_text('')
+    args = ['RA3_1.13.game', '-modConfig', str(sku)]
+    package.mark_ext(str(tmp_path), True)
+    assert harness.ext_wanted(args) and harness.ext_logs(args) == {}
+    package.mark_ext(str(tmp_path), True, ('dock',))
+    assert harness.ext_logs(args) == {'RA3EXT_DOCK': '1'}
+    from missions.dockphase_bench import mission
+    assert mission().ext_logs == ('dock',)
+
+
 def test_ext_summary_counts_the_dll_lines(tmp_path):
     log = tmp_path / 'ra3ext.log'
     assert harness.ext_summary(None) is None and harness.ext_summary(str(log)) is None

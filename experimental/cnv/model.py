@@ -311,6 +311,9 @@ class Mission(Part):
                                         # its own id replaces retail's there (splice_assets; D 85: the UI hotkeys)
     ext: bool = False                  # engine line D (ADR 0027/0028): it uses a module of ra3ext.dll -- the build
                                         # writes ra3ext.allow next to the skudef, and the bench / launcher inject the dll
+    ext_logs: tuple = ()               # ra3ext's costly logs this mission reads, one word each in ra3ext.allow; the bench
+                                        # turns each on (harness.EXT_LOGS). 'dock': D165's `dock:` lines (D173: off by
+                                        # default; it runs on every setState of every unit)
 
     def find(self, name):
         return next(o for o in self.objects if o.name == name)

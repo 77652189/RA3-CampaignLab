@@ -6,7 +6,7 @@ from missions.queuedock_bench import mission as _queuedock
 def mission(enabled=True):
     m = _queuedock(enabled)
     m.name = 'CampDockD' if enabled else 'CampDockOffD'
-    m.ext = True
+    m.ext, m.ext_logs = True, ('dock',)
     return m
 
 

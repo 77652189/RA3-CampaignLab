@@ -347,6 +347,17 @@ def ext_wanted(args):
     return os.path.isfile(os.path.join(os.path.dirname(args[args.index('-modConfig') + 1]), 'ra3ext.allow'))
 
 
+EXT_LOGS = {'dock': 'RA3EXT_DOCK'}      # ra3ext.allow word -> the variable the dll turns that log on by (D173)
+
+
+def ext_logs(args):
+    """{variable: '1'} for each costly ra3ext log the mod's ra3ext.allow names (package.mark_ext), else {}."""
+    path = os.path.join(os.path.dirname(args[args.index('-modConfig') + 1]), 'ra3ext.allow')
+    with open(path, encoding='ascii', errors='replace') as f:
+        words = f.read().split()
+    return {EXT_LOGS[w]: '1' for w in words if w in EXT_LOGS}
+
+
 def hand_plan(args, run_dir):
     """The mod's ra3ext plan ("注入摆": ra3ext_plan.txt next to the skudef, written by the build) copied into the run
     folder as ra3ext_cmd.txt, where the map's CNVCmd host reads it on its first update. True when there was one."""
@@ -565,6 +576,8 @@ class Session:
         self.ext_log = os.path.join(self.run_dir, 'ra3ext.log')
         if hand_plan(args, self.run_dir):
             self._say('ra3ext plan handed to CNVCmd (ra3ext_plan.txt -> ra3ext_cmd.txt)')
+        env = {k: v for k, v in env.items() if k not in EXT_LOGS.values()}
+        env.update(ext_logs(args))
         r = subprocess.run(ext_command(args, self.ext_log), capture_output=True, text=True, errors='replace', env=env,
                            timeout=60)
         got = parse_launch(r.stdout)
