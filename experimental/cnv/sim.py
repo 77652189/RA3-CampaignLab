@@ -4756,8 +4756,11 @@ class Sim:
         E165: the source stays exactly half-health while a nearby inactive
         engineer and infantry heal fully; exclude the source itself, not the
         engineer template. See work/re/e165_areaself.md.
-        Implicit alliances, neutral/asymmetric relations, overlapping auras and
-        self/beneficiary-cap interaction remain gaps. See work/re/e163_areaally.md.
+        E166 tests two identical unlimited full-health sources against a single
+        source. Use one contribution for that shape; source identity is INFERRED
+        (identical rates, no cap). See work/re/e166_areaoverlap.md.
+        Implicit alliances, neutral/asymmetric relations, other overlap shapes
+        and self/beneficiary-cap interaction remain gaps.
         """
         cache = self.__dict__.setdefault('_passive_area_of', {})
         sources = []
@@ -4801,10 +4804,18 @@ class Sim:
                         (self.relations.get((source.owner, target.owner)),
                          self.relations.get((target.owner, source.owner))) == ('Friend', 'Friend')]
             if len(eligible) > 1:
-                self.gap('物体模块', 'PassiveAreaEffectBehavior overlap', '重叠范围未测')
-                continue
-            # E165 measures a single active source only; retain the overlap gap
-            # above even when one of several sources is the wounded target.
+                if (len(eligible) == 2 and eligible[0][1] == eligible[1][1]
+                        and not eligible[0][1][2]
+                        and all(source is not target and source.hp >= source.max_hp
+                                for source, _ in eligible)):
+                    # E166: same-rule full-health pair, unlimited beneficiaries.
+                    # One rate only; which identical source owns it is INFERRED.
+                    eligible = eligible[:1]
+                else:
+                    self.gap('物体模块', 'PassiveAreaEffectBehavior overlap',
+                             '仅测双满血同规则无限人数源；其他重叠/受伤源/人数上限交互未测')
+                    continue
+            # E165 excludes the source itself; E166 does not test wounded sources.
             if eligible and eligible[0][0] is target:
                 continue
             if eligible:
