@@ -499,6 +499,12 @@ def inert_xml(fields=INERT, pid=INERT_PID):
         '</AssetDeclaration>', ''])
 
 
+# acbr0 / acbr1 (B213, work/re/l4_allied_radii.md): the player's yard 700 south-west of the AI's, friends both ways;
+# its 600 radius covers the AI's first structures' spots (aiskin0 rpb: power s19 at ~(3625,3225), 419 from it)
+ACBR_AT = (-495.0, -495.0)
+FRIEND = (2, 0.0, 'Friend')
+
+
 SIDE_PID = 'CNVSideX'                 # aisksd1 / aisksd2 (check sd): work/re d123_side.md 3, S1 / S2
 SIDE_FACTION = 'PlayerTemplate:Japan'   # s1's faction: neither CNVSideX's own Side (Soviet) nor what it may inherit
 SIDE_JAPAN = ('1JapanBalanced', '2JapanAmbushDivision', '3JapanFleetCommand', '2JapanMechaWarfare')
@@ -528,7 +534,8 @@ ARMY_N = 10                            # aiskvinf / aiskvveh (check z): what the
 def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, umod=None, account=None,
             buffer=None, new=None, army=None, two=None, observe=False, cap=None, block=None, off=False,
             ptype=None, mintime=None, aidata=None, dear=None, dear_cost=DEAR_COST, power_more=None, mt_secs=300.0,
-            carrier=None, unitcap=None, inert=False, power_adv=None, side=None, inert2=False, flip=False, defpref=None):
+            carrier=None, unitcap=None, inert=False, power_adv=None, side=None, inert2=False, flip=False, defpref=None,
+            allied=None):
     base = resources.measured(niagara)
     m = Mission(name=name, map=ai_map(flipped(base) if flip else base, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
@@ -589,6 +596,14 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
             'seven': INERT2[4:], 'start': INERT2[:1], 'ticks': INERT2[2:3]}[inert2]
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{INERT2_PID}'
         m.assets.append((f'{INERT2_PID}.xml', inert_xml(fields, INERT2_PID), f'AIPersonalityDefinition:{INERT2_PID}'))
+    if allied is not None:               # acbr0 / acbr1 (check rpb, B213): a friendly yard over the AI's front
+        pid = f'CNVAcbr{int(allied)}'
+        m.facts['allied radii'] = int(allied)
+        m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{pid}'
+        m.assets.append((f'{pid}.xml', inert_xml((('CanBuildInAlliedBuildRadii', 'true' if allied else 'false'),), pid),
+                         f'AIPersonalityDefinition:{pid}'))
+        m.put('AlliedConstructionYard', 'east base', ACBR_AT[0], ACBR_AT[1], angle=0.7854,
+              name='UNIT - CNV AI Ally Yard', role='ally yard')
     if buffer is not None:               # aiskpw0 / aiskpw3 (check x): DesiredExcessPowerBuffer = buffer
         m.facts['power buffer'] = buffer
         m.sides['s1']['aiPersonality'] = f'AIPersonalityDefinition:{POWER_PID}'
@@ -685,6 +700,9 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
                [('UNIT_AI_TRANSFER_ALL', s1, 1), ('SKIRMISH_AI_MAKE_BASE', s1, base),
                 ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20), ('SKIRMISH_AI_USE_REPAIRS', s1, 0),
                 ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, money)])]
+    if allied is not None:               # the player and s1 friends both ways from frame 0 (plan.relates)
+        p1 = m.player('p1')
+        next(x for x in m.scripts if x.name == 'CNV AI - Start').do += [('PLAYER_RELATES_PLAYER', s1, p1, FRIEND), ('PLAYER_RELATES_PLAYER', p1, s1, FRIEND)]
     return m
 
 
@@ -767,6 +785,9 @@ MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
            # builder's uniform draws -> Peacekeepers appear, far fewer Javelins.
            'aiskvd0': lambda: mission('CampAISkVD0', army=ARMY_VEH, defpref='0%'),
            'aiskvd9': lambda: mission('CampAISkVD9', army=ARMY_VEH, defpref='1000%'),
+           # CanBuildInAlliedBuildRadii false / true under a friendly yard (check rpb): l4_allied_radii H1 / H2
+           'acbr0': lambda: mission('CampAIAcbr0', allied=False),
+           'acbr1': lambda: mission('CampAIAcbr1', allied=True),
            'aiskad': lambda: mission('CampAISkAD', aidata=AIDATA_RUNS['aiskad']),      # check a: AIData canary
            'aiskfon': lambda: mission('CampAISkFOn', aidata=AIDATA_RUNS['aiskfon']),   # check fm: UseFormations true
            'aiskfof': lambda: mission('CampAISkFOff', aidata=AIDATA_RUNS['aiskfof'])}  # check fm: false

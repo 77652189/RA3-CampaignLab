@@ -114,6 +114,8 @@ SERVED = 300.0
 NODE_REACH = 75.0                   # D138 2 / B208 (read): the constant both terms of that scan add
 NODE_MINERS = 3                     # B210 (bench ainf2 / ainf4 / ainf3: 1 / 2 / 3 own collectors a refinery, its own
                                     # included -> full only at 3): INFERRED the node wrapper's capacity, unread
+ALLY_OVERLAP_OK = True              # B213 allied_ok: an own radius over a friend's lets the spot through (H2, INFERRED:
+                                    # the cell passes if any of its records does, read); bench acbr0 = acbr1 refutes H1
 DIFFICULTY = {'easy': 'EASY', 'normal': 'MEDIUM', 'hard': 'HARD', 'brutal': 'BRUTAL'}
 BLOCKS = ('targets', 'defense', 'micro', 'specials')
 PATH_EVERY = 10 * FPS               # INFERRED: a PathToTargetHeuristic answer is kept 10 s (the engine asks every
@@ -1276,7 +1278,7 @@ class Brain:
             for k in range(n):
                 a = away + 2 * math.pi * k / n
                 x, y = yard.x + ring * math.cos(a), yard.y + ring * math.sin(a)
-                if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken):
+                if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken) and self.allied_ok(x, y):
                     return x, y
         return yard.x + RING[-1], yard.y
 
@@ -1336,7 +1338,7 @@ class Brain:
                 cx, cy = cx + far * math.cos(angle), cy + far * math.sin(angle)
             c = min(mine, key=lambda b: math.hypot(b.x - cx, b.y - cy), default=yard)
             for x, y in block.tower_spots(self.ai, (c.x, c.y), angle, centre_location=where == 'CENTER', rng=rng):
-                if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken):
+                if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken) and self.allied_ok(x, y):
                     return x, y
         return None
 
@@ -1355,7 +1357,7 @@ class Brain:
         angle = df.SPREAD_STEP * self.tower_rng.randint(0, 9)
         block = self.placer(df)
         for x, y in block.tower_spots(self.ai, (yard.x, yard.y), angle, rng=self.tower_rng):
-            if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken):
+            if all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken) and self.allied_ok(x, y):
                 return x, y
         return None
 
@@ -1467,6 +1469,26 @@ class Brain:
             served = set(sorted(served)[:have // NODE_MINERS])
         return [n for n in nodes if n.name not in served and self._near_builder(n, reach, bodies)]
 
+    def allied_ok(self, x, y):
+        """CanBuildInAlliedBuildRadii (B212 read, work/re l4_allied_radii.md): unless the personality says true, the
+        AI's placement search carries a flag that makes the cell check refuse a friend's buildable-area record. So
+        false (the default; every retail personality) = a spot inside the build radius of another player whom the AI
+        calls Friend is not buildable, unless an own build-radius structure covers it too and ALLY_OVERLAP_OK. True =
+        any spot (the simulator before B213)."""
+        memo = self.__dict__.setdefault('_allied_radii', {})
+        if 'on' not in memo:
+            df = (model() or {}).get('defense')
+            v = df.personality_attr(self.ai, 'CanBuildInAlliedBuildRadii', 'false') if df is not None else 'true'
+            memo['on'] = str(v).lower() != 'true'
+        if not memo['on']:
+            return True
+        s = self.sim
+        near = [(b, self._build_radius(b.template)) for b in s.living() if 'STRUCTURE' in b.kinds]
+        near = [(b, br) for b, br in near if br > 0 and math.hypot(b.x - x, b.y - y) < br]
+        if not any(b.owner != self.player and s.relations.get((self.player, b.owner)) == 'Friend' for b, _ in near):
+            return True
+        return ALLY_OVERLAP_OK and any(b.owner == self.player for b, _ in near)
+
     def _build_radius(self, template):
         """A structure's build radius: its ProjectedBuildabilityInfo Radius (the largest), 0 = none (retail Allied:
         the yard and the outpost, 600; D138 2 reads the AI's 'wants a refinery' scan over these)."""
@@ -1510,7 +1532,8 @@ class Brain:
         def fits(x, y, n):                          # the footprint inside the active border (INFERRED)
             if not (x0 + reach <= x <= x1 - reach and y0 + reach <= y <= y1 - reach
                     and s.ground.open('ground', x, y)
-                    and all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken)):
+                    and all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken)
+                    and self.allied_ok(x, y)):
                 return False
             face = math.atan2(n.y - y, n.x - x)     # the candidate faces its node (FACING_TOWARDS; INFERRED)
             for sx, sy, sa, px, py in table:        # the pre-check (D138 1, read; the shape test INFERRED)

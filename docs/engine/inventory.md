@@ -8,7 +8,7 @@
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 18 | 88 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **97%** | **98%** | 196 / 357 | 428 | 214 | 88 | 92 | 34 | 100% |
+| AI | **97%** | **98%** | 196 / 357 | 428 | 215 | 88 | 91 | 34 | 100% |
 
 ## 脚本动作
 
@@ -991,7 +991,7 @@
 | 已对拍 | `战略状态/AIStrategicStateDefinition.PathfindingCheckType=None` | 23 | a4 a5 a7 | D152 engine_aipathcheck aipfdef/aipfatk/aipfpath/aipfnone:a（去桥尼亚加拉，SimpleAttack 打对岸玩家基地，四局只差这个字段）：不写 / QuickDoesAttackPathExist / QuickDoesPathExist 三局 4 个维和从不出门，CNVTeams 每 90 帧建一支空队、约 75 帧后过期；None 一局 f21 招满 4 人、s6 出门。走不到的单位招人时就不招（模型 TeamMaker.reach，缺省按战术类 data.PATH_CHECK）；tests/test_ai_pathcheck.py 按名断言台上读数并回放。gap：AttackPath 与 Path 在"岸边射程内"时的区别没测；出门后路断的周期踢人读到没上台；见 work/re/d152_pathcheck.md |
 | 已对拍 | `微操/AIMicroManagerData.EnterGarrisonableStructureDistance` | 21 | a4 a5 a7 | engine_aigarrison aigar1/aigar0/aigarfar：默认150、旧楼EAST=40，近楼归AI、关闭或远楼不进；tests/test_simai_garrison_distance.py::test_garrison_distance_replays_recorded_near_far_and_disabled；仅现成近远行为回放，精确边界、其他配置值和进门死亡时序未量；距离0仅模型敏感性守卫 |
 | 已对拍 | `人格/AIPersonalityDefinition.SkirmishPersonality` | 20 | a4 a5 a7 | B207：aisksd1 / aisksd2 只差这一项（engine_aiskirm sd，2026-11-14 两局 PASS，work/re/d123_side.md 1.2）：false（27 关全是默认 false）人格位 9 = 照用地图写的 CNVSideX；true 且 Side 不含玩家阵营 → 136 = 换成随机的本阵营遭遇战人格。模拟器 simai SimAI.assigned → 模型 AIData.assigned_personality（库 = SkirmishPersonality 的人格、Side 随继承，INFERRED）；按名回放 test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side、test_a_skirmish_personality_of_another_side_is_replaced |
-| 未做 | `人格/AIPersonalityDefinition.CanBuildInAlliedBuildRadii` | 18 |  | AI 模型代码里没有这个名字 |
+| 已对拍 | `人格/AIPersonalityDefinition.CanBuildInAlliedBuildRadii` | 18 |  | B212-B213 engine_aiskirm acbr0 / acbr1:rpb（都 PASS）：玩家盟军建造厂放在 AI 建造厂西南 700、两向 Friend，只差这一项 false / true：兵营 s49 都在 x10 y17（在盟友 600 半径内）、电厂都在其后 +21 +17，两局相同；tests/test_simai_bench_b.py::test_allied_build_radius_over_the_ais_own_does_not_move_its_structures。程序（l4_allied_radii，读到）：false 时放置搜索多带一位，格子可建区检查拒绝盟友的那条记录；台上否掉"重叠处也挡"，模拟器 simai.allied_ok 只挡"只有盟友半径盖住"的落点（任一记录过就过，INFERRED）。gap：只在盟友半径里的落点（AI 建造厂挪到盟友半径边上）没上台；盟友是 AI 时挡不挡没测 |
 | 已对拍 | `战略状态/AIStrategicStateDefinition.MaxRunningCopies` | 18 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aistate.py |
 | 已对拍 | `组队招人/TeamTemplate.Priority=LOW` | 18 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 已对拍 | `人格/BaseSelection.PreferredNotBaseTypes` | 17 | a4 a5 a7 | C aibn2old/aibn2new:b初始双基地固定OLD，仅切反偏好OLDEST/MOST_RECENT；f274两基地均合格，分数0/1选1与1/0选0，f284点命令崖矿/东矿。s55–65东/崖队员/双厂分别0/0/1/1与4/0/1/1；tests/test_expansion_target.py按名断言类型、分数、选择点和原计数。仅年龄类型反偏好命中子集；自动注册、死亡清理和矿点资格仍gap，旧CAPTURED单基地只回放计数，不证明类型；见work/re/c_bn2_report.md |

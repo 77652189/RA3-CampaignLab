@@ -306,6 +306,13 @@ NOTES = {
            ('ResourceNodeValueRemainingForExpansion', 'D125 第 2 节只拷贝不读'),
            ('DefaultThreatFindRadius', 'D127 只写进目标槽、零读者'),
            ('MaxWallDestroyTimeToCountAsGoThroughWalls', 'D127 读它的循环遍历的列表从不被填'))},
+    '人格/AIPersonalityDefinition.CanBuildInAlliedBuildRadii': (BENCHED,
+        'B212-B213 engine_aiskirm acbr0 / acbr1:rpb（都 PASS）：玩家盟军建造厂放在 AI 建造厂西南 700、两向 Friend，'
+        '只差这一项 false / true：兵营 s49 都在 x10 y17（在盟友 600 半径内）、电厂都在其后 +21 +17，两局相同；'
+        'tests/test_simai_bench_b.py::test_allied_build_radius_over_the_ais_own_does_not_move_its_structures。'
+        '程序（l4_allied_radii，读到）：false 时放置搜索多带一位，格子可建区检查拒绝盟友的那条记录；台上否掉"重叠处也挡"，'
+        '模拟器 simai.allied_ok 只挡"只有盟友半径盖住"的落点（任一记录过就过，INFERRED）。gap：只在盟友半径里的落点'
+        '（AI 建造厂挪到盟友半径边上）没上台；盟友是 AI 时挡不挡没测'),
     '人格/AIPersonalityDefinition.ResourceNodeSearchRadius': (BENCHED,
         'B185 engine_aiskirm aiskind:ib vs aiskirm:ib（都 PASS）：1AlliedBalanced 子人格只把它从 700 改成 5000，'
         '建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::'

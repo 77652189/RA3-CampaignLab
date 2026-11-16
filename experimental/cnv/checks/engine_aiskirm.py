@@ -1413,6 +1413,7 @@ CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j
           'aiskin1': {'rp': rp, 'rpx': rpx},
           'aiskin0': {'rp': rp, 'rpx': rpx, 'rpb': rpb},
           'aiskin0r': {'rpx': rpx, 'rpb': rpb},
+          'acbr0': {'rpb': rpb, 'rpx': rpx}, 'acbr1': {'rpb': rpb, 'rpx': rpx},   # B213 CanBuildInAlliedBuildRadii
           'aiskirmr': {'rpx': rpx},
           'aiskst40': {'rpx': rpx}, 'aiskst20': {'rpx': rpx},   # B192: StartDistanceDelta -40 / -20
           'aiskins': {'ib': ib},

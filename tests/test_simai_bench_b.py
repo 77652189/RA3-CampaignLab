@@ -902,6 +902,22 @@ def test_turned_east_nodes_turn_the_first_refinery_to_the_west_side(lib):
     assert 17 <= x <= 18 and y == 15 and (x, y) != (19, 12)
 
 
+def test_allied_build_radius_over_the_ais_own_does_not_move_its_structures(lib):
+    """engine_aiskirm rpb acbr0 / acbr1 (B213, both PASS, work/bench_results/acbr*__rpb.json): the player's yard 700
+    south-west of the AI's, friends both ways, CanBuildInAlliedBuildRadii false / true. Both runs read the same: the
+    barracks s49 at strips x10 y17 (~3575,3225: ~420 from the friend's yard, inside its 600), the power plant next at
+    +x21 +y17 (31 34). So false does not refuse a spot the AI's own yard covers too (l4_allied_radii H1 refuted; H2:
+    a cell passes when any of its buildable-area records does). The simulator's allied_ok keeps those spots
+    (ALLY_OVERLAP_OK) and matches but for the barracks' strip (x11, one strip east, as aiskin0's)."""
+    runs = {b: _probe_run(b, lib, 40.0, check='rpb')[1] for b in ('acbr0', 'acbr1')}
+    assert runs['acbr0'] == runs['acbr1']
+    rows = runs['acbr0']
+    first = _first_row(rows, '其他X')
+    assert rows[first]['建筑码'] == 100 and 10 <= rows[first]['其他X'] <= 11 and rows[first]['其他Y'] == 17
+    second = next(r for r in rows if r['其他X'] > rows[first]['其他X'])
+    assert (second['其他X'] - rows[first]['其他X'], second['其他Y'] - rows[first]['其他Y']) == (21, 17)
+
+
 @pytest.mark.xfail(strict=True, reason='B190: the bench puts aiskirmr\'s first on strip x17 (sim x18: ring 6, not 5?) '
                                        'and its second on node B (x19 y17, 146.25 degrees, ~285), no third; the '
                                        'simulator takes A again (180 degrees) and keeps building (B unserved); unread')
