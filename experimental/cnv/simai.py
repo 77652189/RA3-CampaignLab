@@ -30,7 +30,7 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
               the last enemy with a structure, both base objects by states.base_object, spots by states.spot on
               the simulator's grids, a route for the test template's surface; cached PATH_EVERY), 'harvesters',
               'money', 'opponent funds' (the first enemy's), 'income' (each side's harvesters while a refinery
-              stands -- INFERRED), 'beacons' (none), 'tech buildings' (SimAI.tech_buildings), 'power advantage' (tactics'
+              stands -- INFERRED), 'beacons' (none), 'tech buildings' (SimAI.tech_buildings), 'nodes full' (Brain.open_nodes empty), 'power advantage' (tactics'
               rule over the whole armies -- INFERRED); the other strategic facts stay unmodelled (states.strategic).
   blocks      A's TargetsBlock + TacticsBlock (orders: 'move' / 'attack-move' -> Sim.order_move, 'enter' -> Garrisons;
               houses / defenses = Brain.garrisons, full ones listed too), DefenseBlock (one
@@ -104,6 +104,7 @@ PASSAGE_CLEAR = 150.0
 # -> no third; aiskin0 / aiskin1: the yard-placed ones stand 366+ from the west east node -> more keep coming;
 # aiskind: the far fields (>= ~1280 from the yard) are beyond 600 + 75 of it -> never wanted.
 SERVED = 300.0
+NODE_REACH = 75.0                   # D138 2 / B208 (read): the constant both terms of that scan add
 DIFFICULTY = {'easy': 'EASY', 'normal': 'MEDIUM', 'hard': 'HARD', 'brutal': 'BRUTAL'}
 BLOCKS = ('targets', 'defense', 'micro', 'specials')
 PATH_EVERY = 10 * FPS               # INFERRED: a PathToTargetHeuristic answer is kept 10 s (the engine asks every
@@ -614,6 +615,7 @@ class Brain:
                'beacons': set(),                                                     # no beacons in the simulator
                'power advantage': self.power_advantage,
                'tech buildings': self.tech_buildings(),
+               'nodes full': not self.open_nodes(),                       # AllNearbyNodesFull (B208)
                'attacked': self.attacked, 'energy': self.energy,
                # the private AIPlayer.available: no income -> the budget share pays nothing (bench engine_aitower e).
                # A refinery counts: the retail one brings its own miner (SpawnBehavior SpawnOnUnpack), which the
@@ -1337,20 +1339,7 @@ class Brain:
         bodies = s.living()
         nodes = [b for b in bodies if 'orenode' in b.template.lower()]
         mine = [b for b in bodies if b.owner == self.player and 'REFINERY' in b.kinds]
-
-        served = set()                          # each own refinery serves its nearest node within SERVED (INFERRED)
-        for b in mine:
-            n = min(nodes, key=lambda n: math.hypot(n.x - b.x, n.y - b.y), default=None)
-            if n is not None and math.hypot(n.x - b.x, n.y - b.y) <= SERVED:
-                served.add(n.name)
-        builders = [(b, self._build_radius(b.template)) for b in bodies
-                    if b.owner == self.player and 'STRUCTURE' in b.kinds]
-        builders = [(b, br) for b, br in builders if br > 0]
-
-        def wanted(n):                          # D138 2: the point ahead of the node within a build radius + R
-            qx, qy = n.x + ((n.radius or 0.0) + reach) * math.cos(n.angle), n.y + ((n.radius or 0.0) + reach) * math.sin(n.angle)
-            return any(math.hypot(b.x - qx, b.y - qy) < br + reach for b, br in builders)
-        if not any(n.name not in served and wanted(n) for n in nodes):
+        if not self.open_nodes(reach, bodies):
             return None
         taken = [t for t in (s.blocks(b) for b in bodies if 'STRUCTURE' in b.kinds and b not in nodes)
                  if t and len(t) == 3]
@@ -1360,7 +1349,7 @@ class Brain:
             memo.clear()
             yard = min(yards, key=lambda y: min((math.hypot(n.x - y.x, n.y - y.y) for n in nodes), default=0.0))
             memo[mk] = (self._refinery_search(s, r, reach, near, start, inc, int(ticks), yards, nodes, mine, taken,
-                                              shape, [n for n in nodes if wanted(n)])
+                                              shape, [n for n in nodes if self._near_builder(n, reach, bodies)])
                         or self.node_side_spot(yard, template, nodes)
                         or self.spot(yard, template))
         return memo[mk]
@@ -1393,6 +1382,32 @@ class Brain:
                                                      for tx, ty, tr in taken):
                 return x, y
         return None
+
+    def _near_builder(self, n, reach, bodies):
+        """D138 2 (read): the point (the node's radius + reach) ahead of the node is within an own build-radius
+        structure's radius + reach."""
+        qx = n.x + ((n.radius or 0.0) + reach) * math.cos(n.angle)
+        qy = n.y + ((n.radius or 0.0) + reach) * math.sin(n.angle)
+        return any(math.hypot(b.x - qx, b.y - qy) < br + reach for b, br in
+                   ((b, self._build_radius(b.template)) for b in bodies
+                    if b.owner == self.player and 'STRUCTURE' in b.kinds) if br > 0)
+
+    def open_nodes(self, reach=None, bodies=None):
+        """The ore nodes the AI could still use (D138 2 / B208, read): not served, and near one of its build-radius
+        structures (_near_builder; reach: the scan's constant NODE_REACH, read). Served (INFERRED: the engine skips
+        a node whose wrapper's taken count reached its capacity, the wrapper unread): an own refinery within SERVED
+        of it, the node that refinery's nearest. Empty = AllNearbyNodesFull true (the same scan answers 'wants a
+        refinery' and the heuristic)."""
+        reach = NODE_REACH if reach is None else reach
+        bodies = self.sim.living() if bodies is None else bodies
+        nodes = [b for b in bodies if 'orenode' in b.template.lower()]
+        served = set()
+        for b in bodies:
+            if b.owner == self.player and 'REFINERY' in b.kinds:
+                n = min(nodes, key=lambda n: math.hypot(n.x - b.x, n.y - b.y), default=None)
+                if n is not None and math.hypot(n.x - b.x, n.y - b.y) <= SERVED:
+                    served.add(n.name)
+        return [n for n in nodes if n.name not in served and self._near_builder(n, reach, bodies)]
 
     def _build_radius(self, template):
         """A structure's build radius: its ProjectedBuildabilityInfo Radius (the largest), 0 = none (retail Allied:

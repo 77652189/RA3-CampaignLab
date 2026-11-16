@@ -197,10 +197,9 @@ NOTES = {
         '真实扩张后时间戳来源/重置消费者未测，初始时间戳0保持INFERRED，整条件保持推断；'
         '见work/re/c_lastexp_report.md'),
     '启发条件/AllNearbyNodesFullHeuristic': (GUESSED,
-        'C入口门禁：SDK及原版编译状态29处均无参数；模型消费nodes full，'
-        'SimAI.facts未提供该事实，缺矿点资格、占用和nearby范围语义。'
-        '需B提供世界事实接口或总控授权适配；本轮0局，无按名台上对拍，不晋升；'
-        '见work/re/c_nodesfull_gate_report.md'),
+        'B208：simai facts 给 nodes full（Brain.open_nodes，与"还要不要矿场"同一扫描，已读）；'
+        '台子 engine_ainodesfull ainf0/ainf2：无矿场时该状态不出兵（对），两座矿场对着两矿点仍不出兵'
+        '（模拟器认为满，strict xfail）。"矿点满"的占用定义没读，不晋升；tests/test_nodes_full.py'),
     '启发条件/PowerAdvantageHeuristic.IncludeEnemyDefenses': (BENCHED,
         'C engine_aipowerenemy aipenoff/aipenon:a：同图8对4守护者、一座玩家光谱塔及电厂，'
         '固定Value=2.0/Above=true/IncludeOwnDefenses=false，仅IncludeEnemyDefenses=false/true；'
