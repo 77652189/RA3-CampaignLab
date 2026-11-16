@@ -130,7 +130,7 @@ def test_substructure_storage_gate_keeps_unmeasured_weight_and_runtime_gap():
     assert (rows[0]['state'], rows[0]['uses'], rows[0]['all']) == (inventory.TODO, 6, 6)
     assert rows[0]['levels'] == ['a1', 'a4', 'a5', 'a6', 'a7', 'a9']
     assert key not in inventory.BENCHED_TESTS
-    for boundary in ('未上台', '不登记已对拍', '不据此排除运行时用途', 'work/re/e_substorage_e57.md'):
+    for boundary in ('空载荷', '不登记已对拍', '不据此排除运行时用途', 'work/re/e182_substorage.md'):
         assert boundary in rows[0]['why']
 
 
