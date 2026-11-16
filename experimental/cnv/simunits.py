@@ -309,7 +309,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v39.json')    # v39: Sickle XML status exclusions; v38: magnetic ground filter
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v40.json')    # v40: isolated forbidden object-status gate; v39: Sickle XML status exclusions
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -483,9 +483,18 @@ def _weapons(texts, base_table=None):
                             and 'ShockwaveDelaySeconds' not in fields
                             and _num(_attr(h, 'ShockWaveZMult', '1')) == 0):
                         target_filter = dict(magnetic_ground=True, include_templates=things)
+                # CampKOG a/b isolates this one scripted status, with Arc,
+                # model conditions and the retail infantry filter removed.
+                # Their combinations and native leech lifecycle remain gaps.
+                object_gate = (_attr(h, 'ForbiddenTargetObjectStatus') == 'LEECHED_TARGET_ACTIVE'
+                               and not target_filter and not forbidden
+                               and not (inner or '').strip()
+                               and 'ShockwaveDelaySeconds' not in fields
+                               and 'InvertShockWave' not in fields)
                 if ((not (inner or '').strip() and not forbidden) or target_filter) and fields <= {
                         'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff',
                         'ShockwaveDelaySeconds', 'InvertShockWave',
+                        *(['ForbiddenTargetObjectStatus'] if object_gate else []),
                         *(['ForbiddenTargetModelCondition'] if target_filter else [])} and all(
                         _attr(h, field) is not None for field in
                         ('ShockWaveAmount', 'ShockWaveRadius')):
@@ -501,6 +510,8 @@ def _weapons(texts, base_table=None):
                                   radius=_num(_attr(h, 'ShockWaveRadius')),
                                   zmult=_num(_attr(h, 'ShockWaveZMult', '1')),
                                   taper=_num(_attr(h, 'ShockWaveTaperOff', '0')))
+                    if object_gate:
+                        effect['forbidden_status'] = ['LEECHED_TARGET_ACTIVE']
                     if 'InvertShockWave' in fields:
                         effect['invert'] = invert == 'true'
                     if target_filter:

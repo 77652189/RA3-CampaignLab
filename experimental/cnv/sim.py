@@ -5556,6 +5556,10 @@ class Sim:
                 self.gap(GAP_WEAPON, 'MetaImpactNugget', '筛选缺少发射者关系，未派发冲击')
                 continue
             for b in self.living():
+                # CampKOG a/b: the explicit forbidden object-status field.
+                # Only the isolated measured spelling is parsed by simunits.
+                if any(flag in b.status for flag in effect.get('forbidden_status', [])):
+                    continue
                 # CampKFilter: amphibious Terror Drone is grounded on this land
                 # site. Water launches remain outside the measured slice.
                 grounded = b.surface == 'ground' or (b.surface == 'both'
