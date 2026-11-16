@@ -1147,7 +1147,7 @@ class Sim:
         self.own = {u.id: u.xml for u in self.mm.units}
         # Retail objects replaced by linked assets must use the same XML as
         # the built mod (E167 removes only the factory's Tech2 receiver).
-        for _, xml, link in self.mm.assets:
+        for _, xml, link in getattr(self.mm, 'assets', ()):    # a retail map (Merged) links none
             if link.startswith('GameObject:'):
                 self.own[link.split(':', 1)[1]] = xml
         import simrepair
@@ -1200,7 +1200,8 @@ class Sim:
             b = self.add(o.name or f'#{k}', o.template, self.owner_of(o.side), o.x, o.y)
             # a bare object is on its player's default team (island.like writes 'Soviet_5/teamSoviet_5'; the container
             # has teamSoviet_2 .. 6 too): bench 11-14 engine_acts_x own, PLAYER_TRANSFER_OWNERSHIP_PLAYER leaves it
-            b.team = teams.get(o.side) or (self.mm.team(o.side) if o.side in getattr(mission.map, 'PLAYERS', {}) else '')
+            b.team = teams.get(o.side) or (self.mm.team(o.side) if hasattr(self.mm, 'team')    # a retail map (Merged)
+                                           and o.side in getattr(mission.map, 'PLAYERS', {}) else '')  # names no teams
             health = (getattr(o, 'props', None) or {}).get('objectInitialHealth')
             if isinstance(health, (int, float)) and 0 < health < 100:     # the map's starting health, in percent
                 b.hp = b.max_hp * health / 100.0                            # (a7 win: the carrier placed at 1 %)
