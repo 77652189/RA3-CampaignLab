@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 192 | 16 | 128 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 193 | 16 | 127 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 58 / 113 | 189 | 59 | 21 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -252,7 +252,7 @@
 | 未做 | `UNIT_EXECUTE_SEQUENTIAL_SCRIPT_LOOPING` | 14 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `DISABLE_MOUSE_HUD_FIXED_ELEMENT` | 13 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `SET_LAST_CREATED_UNIT_TO_REFERENCE` | 13 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
-| 未做 | `TEAM_EXIT_ALL_BUILDINGS` | 13 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_EXIT_ALL_BUILDINGS` | 13 |  | tests/test_teamexit_bench_c.py::test_teamexit_mixed_building_and_transport_match_bench；C engine_teamexit:a混装建筑/运输车一局：本队征召兵退出公寓和牛蛙，同容器异队保留；队外成员/两宿主均存活，空队伍与重复调用无误伤。f44..74本队驻/异队驻/存活位3/3/127，f82..287为0/3/127；tests/test_teamexit_bench_c.py按名逐33个实读逻辑帧回放四计数器。仅显式存活队伍普通退出切片；精确出门位置/时序、运输抛射、取消进驻中订单、死/缺队伍及AI实例仍gap，其他模板推广INFERRED；见work/re/c_teamexit_report.md |
 | 未做 | `GATE_CLOSE` | 12 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_GARRISON_NEAREST_BUILDING` | 12 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_SET_SPECIAL_POWER_COUNTDOWN` | 12 |  | Sim.act / Sim.cond 不认识 |
