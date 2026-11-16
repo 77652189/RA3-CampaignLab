@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 191 | 16 | 129 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 192 | 16 | 128 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 58 / 113 | 189 | 59 | 21 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -245,7 +245,7 @@
 | 不涉及 | `MOVIE_PLAY_FULLSCREEN` | 14 |  | 纯表现（名字规则） |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower` | 14 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg` | 14 |  | tests/test_eggcmd_bench_c.py::test_eggcmd_naval_legacy_and_concrete_buttons_match_display_counters；C engine_eggcmd:a与engine_eggnav:a两局：零售使用的防御/电厂/船厂三种核心，旧通用按钮均留原处；专用防御/船厂按钮到点展开，未下令对照留家。地面f249/393/560建筑位/存活位/原处位4/15/11，水域f247/390/496为2/7/5；tests/test_eggcmd_bench_c.py按名逐实读帧回放。Sim.act仅三种实测宿主且无地图本地定义时显式无操作，不映射专用展开；地图局部按钮、缺失/死亡宿主及其他宿主仍gap，跨宿主推广INFERRED；见work/re/c_eggcmd_report.md、work/re/c_eggnav_report.md |
-| 未做 | `PLAYER_KILL` | 14 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_KILL` | 14 |  | tests/test_playerkill_bench_c.py::test_playerkill_owned_units_and_buildings_match_bench；C engine_playerkill:a一局：目标Soviet_4守护者/电厂死亡，Player_1与Soviet_5同类对照保留；空Soviet_6调用和重复调用未误伤。f45/61/75单位位/建筑位/死亡位7/7/0，f83/152/287为5/5/0；tests/test_playerkill_bench_c.py按名逐实读逻辑帧回放四计数器。仅所属普通对象清理切片已对拍；玩家失败/淘汰、保护对象、容器/子体、死亡瞬间和其他模板推广仍gap或INFERRED；见work/re/c_playerkill_report.md |
 | 已对拍 | `PLAYER_SET_ALL_UNITS_TO_FLEE` | 14 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_runoffmap.py |
 | 不涉及 | `SET_REFERENCE_TO_FIRST_TEAM_MEMBER_IN_AREA` | 14 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 已对拍 | `SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES` | 14 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aiswitch.py |
