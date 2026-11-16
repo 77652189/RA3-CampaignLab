@@ -98,6 +98,13 @@ REFINERY_NEAR = 200.0               # an own refinery within this of a node: the
 # condition; bench rpx's ring 5 at k -3 (~183 from P) stands, so the AI's is 150.
 PASSAGE_GAP = 20.0
 PASSAGE_CLEAR = 150.0
+# SimpleExpansion's go is one formation move (0x22c) to the node itself, faced at the nearest enemy object a member
+# can hit (D167/D168: bench aiexpb50/200/400 f473 facing -2.248 = node -> the player's barracks, -128.9 deg, 754
+# away); the game splits it one destination a member: the escorts one row through the node, EXPANSION_ROW apart,
+# the miner a row behind (bench: four Guardians at side +-33 / +-100, the miner 67 straight back). INFERRED: the row
+# step for other templates (other benches: Guardians 67, infantry 35, the formation shape a random pick -- line,
+# column, box, wedge; the line is the common one), the search radius (>= 754), no enemy -> facing the way walked.
+EXPANSION_ROW = 67.0
 # when the AI wants a refinery (D138 2, read): some node not yet served has, R + its own radius ahead of it, a point
 # within an own build-radius structure's ProjectedBuildabilityInfo Radius + R. Served (INFERRED: the node wrapper's
 # state is unread): an own refinery within SERVED of the node, the node its nearest. aiskirm: both east nodes served
@@ -760,7 +767,38 @@ class Brain:
             return
         b.goal = None
         face = float(arg[2]) if len(arg) > 2 and arg[2] is not None else None
+        slot = self.__dict__.get('_exp_slots', {}).get(b.name)
+        if kind == 'move' and slot is not None and math.hypot(float(arg[0]) - slot[0][0],
+                                                              float(arg[1]) - slot[0][1]) < 1.0:
+            _, arg, face = slot                 # SimpleExpansion's formation move: this member's slot (D168)
         self.sim.order_move(b, (float(arg[0]), float(arg[1])), kind == 'attack-move', face=face)
+
+    def expansion_slots(self, team, p):
+        """SimpleExpansion's formation move to node p (EXPANSION_ROW): {member name: (p, slot, facing)}, every living
+        member ordered to its slot once."""
+        live = [u.body for u in team.members if u.body.alive]
+        if not live:
+            return {}
+        foes = [t for t in self.living() if not t.scenery and t.owner != self.player and t.owner in self.view.enemies
+                and any(self.sim.can_hit(w, t) for b in live for w in b.weapons)]
+        o = min(foes, key=lambda t: math.hypot(t.x - p[0], t.y - p[1]), default=None)
+        if o is not None:
+            a = math.atan2(o.y - p[1], o.x - p[0])
+        else:
+            cx, cy = sum(b.x for b in live) / len(live), sum(b.y for b in live) / len(live)
+            a = math.atan2(p[1] - cy, p[0] - cx)
+        fx, fy = math.cos(a), math.sin(a)
+        back = [b for b in live if not b.weapons]           # the miner: the row behind
+        row = [b for b in live if b.weapons] or back
+        back = [b for b in back if b not in row]
+        slots = {}
+        for i, b in enumerate(row):
+            s = (i - (len(row) - 1) / 2) * EXPANSION_ROW
+            slots[b.name] = (p, (p[0] - s * fy, p[1] + s * fx), a)
+        for i, b in enumerate(back):
+            s = (i - (len(back) - 1) / 2) * EXPANSION_ROW
+            slots[b.name] = (p, (p[0] - EXPANSION_ROW * fx - s * fy, p[1] - EXPANSION_ROW * fy + s * fx), a)
+        return slots
 
     def fight(self, ai, team):
         """TacticsBlock's fight hook (the team state, work/re/l4_gather.md): the members and every living enemy body as
@@ -810,6 +848,14 @@ class Brain:
         if kind != 'SimpleExpansion' or thing is None:
             return True
         p = (float(thing.x), float(thing.y))
+        made = self.__dict__.setdefault('_exp_teams', {})
+        if made.get(id(team)) != p:             # the go order's formation split, once a node (D168)
+            made[id(team)] = p
+            slots = self.expansion_slots(team, p)
+            self.__dict__.setdefault('_exp_slots', {}).update(slots)
+            for u in team.members:
+                if u.body.alive and u.body.name in slots:
+                    self.order(u, 'move', p)
         armed = was = False
         for u in team.members:
             b = u.body

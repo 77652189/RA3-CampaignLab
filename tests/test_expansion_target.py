@@ -274,8 +274,10 @@ OPENER_MINER_BENCH = {'aiexpb400': (1, 0, 0), 'aiexpb200': (1, 0, 0), 'aiexpb50'
 @pytest.mark.parametrize('build', [
     'aiexpb200', 'aiexpb400',
     pytest.param('aiexpb50', marks=pytest.mark.xfail(strict=True, reason=(
-        'D round 157: the simulator team walks to the Expansion node itself and gets within 50; the bench team is '
-        'sent to (4215, 3039), 67 from node 44, and stops 98 away -- how that destination is chosen is not read'))),
+        'D round 168: the formation split now matches the bench (miner slot (4215, 3039), 67 behind node 44), but '
+        'the simulator miner drives straight over the ore node on its way there (16 from it -> unpacks); the bench '
+        'miner goes round the node (never nearer than 89) and stops 98 away -- ore nodes do not block the '
+        "simulator's ground paths"))),
 ])
 def test_simple_expansion_unpacks_within_distance_named_bench_replay(build):
     # D round 157: the opener's unit Build kept (opening.kept_orders, structures only), a HARVESTER the AI's
