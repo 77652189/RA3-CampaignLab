@@ -14,6 +14,7 @@ E194 vehicle VISION_UNITS only consumes the hostile spy; discovery scheduling
 is not implemented. The measured intermittent 1/0 sequence remains a gap.
 E195 RESET only consumes the hostile spy at a Soviet Iron Curtain; readiness
 and actual cooldown remain unresolved. Entry reach/clock remain INFERRED.
+E197 aircraft VISION_UNITS entry only; observer/filter scheduling remains a gap.
 """
 import math
 import os
@@ -65,6 +66,20 @@ class Infiltrators:
         self.money_hosts = set()
         self.vehicle_hosts = set()
         self.reset_hosts = set()
+        self.aircraft_hosts = set()
+
+    def aircraft_rule(self, target, rule):
+        """E197 complete retail airfield configuration; no reveal assumption."""
+        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
+        return (target.template == 'AlliedAirfield'
+                and config == {'Effect': 'VISION_UNITS', 'Duration': '30s',
+                               'UnitDuration': '30s', 'ObjectRef': 'UnitVisionObserver',
+                               'UnitFilter': 'InfiltrationAircraftObjectFilter',
+                               'StructureFilter': 'InfiltrationAircraftStructuresFilter'})
+
+    def aircraft_entry_measured(self, spy, target):
+        return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
+                and id(target) not in self.aircraft_hosts)
 
     def reset_rule(self, target, rule):
         """E195 retail Iron Curtain entry only; cooldown/ready remain gaps."""
@@ -163,8 +178,12 @@ class Infiltrators:
                   and not rule.get('ReplaceWith'))
         if not any((energy, self.vision_rule(target, rule), self.paralyze_rule(target, rule),
                     self.kill_rule(target, rule), self.money_rule(target, rule),
-                    self.vehicle_rule(target, rule), self.reset_rule(target, rule))):
-            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、车辆及RESET入楼切片已实现')
+                    self.vehicle_rule(target, rule), self.reset_rule(target, rule),
+                    self.aircraft_rule(target, rule))):
+            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、车辆、飞机及RESET入楼切片已实现')
+            return
+        if self.aircraft_rule(target, rule) and not self.aircraft_entry_measured(spy, target):
+            s.gap('InfiltratorContain', target.template, '飞机VISION_UNITS其他间谍/玩家或重复进入未对拍')
             return
         if self.reset_rule(target, rule) and not self.reset_entry_measured(spy, target):
             s.gap('InfiltratorContain', target.template, 'RESET其他间谍/玩家或重复进入未对拍')
@@ -215,6 +234,16 @@ class Infiltrators:
                     or (entry[1] and s.relation(target.owner, spy.owner) not in entry[1])
                     or target.status & set(rule.get('InfiltratedStatusFilter',
                                                    'DESTROYED UNDER_CONSTRUCTION SOLD UNPACKING').split())):
+                continue
+            if self.aircraft_rule(target, rule):
+                if not self.aircraft_entry_measured(spy, target):
+                    s.gap('InfiltratorContain', target.template, '飞机VISION_UNITS入楼时资格变化未对拍')
+                    continue
+                self.aircraft_hosts.add(id(target))
+                s.gap('InfiltratorContain', target.template,
+                      '飞机VISION_UNITS观察者/筛选/到期未闭合，见 work/re/e197_aircraft.md')
+                s.destroy(spy, '进楼渗透', delete=True)
+                s.change()
                 continue
             if self.reset_rule(target, rule):
                 if not self.reset_entry_measured(spy, target):

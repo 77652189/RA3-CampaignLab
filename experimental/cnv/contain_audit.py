@@ -95,6 +95,21 @@ def infiltrator_vehicle_share(with_templates=False):
     return share
 
 
+def infiltrator_aircraft_share(with_templates=False):
+    """E197 aircraft signature; entry alone grants no observer/filter credit."""
+    measured = rm.ET.fromstring('''<InfiltratorContain id="ModuleTag_InfiltratorContain"
+        Effect="VISION_UNITS" Duration="30s" UnitDuration="30s"
+        ObjectRef="UnitVisionObserver" UnitFilter="InfiltrationAircraftObjectFilter"
+        StructureFilter="InfiltrationAircraftStructuresFilter"/>''')
+    wanted = (signature(measured),)
+    rows = [r for r in engineer_audit.audit('InfiltratorContain')['rows']
+            if tuple(sorted(signature(rm.ET.fromstring(m['xml'])) for m in r['modules'])) == wanted]
+    share = dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+    if with_templates:
+        share['template_ids'] = [r['template'] for r in rows]
+    return share
+
+
 def infiltrator_vision_share(with_templates=False):
     """E196 yard configuration; VISION timing and sibling RADAR_FREEZE stay gaps."""
     measured = rm.ET.fromstring('''<InfiltratorContain id="ModuleTag_InfiltratorContain"
