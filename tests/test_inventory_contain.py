@@ -179,7 +179,8 @@ def test_infiltrator_money_split_preserves_weight_and_level_scope():
         (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
             'a1': {'AlliedRefinery', 'JapanPowerPlant', 'AlliedBarracks'}}})
     assert scope[(inventory.MODULE, money['name'])]['a1'] == {'AlliedRefinery'}
-    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain')]['a1'] == {'AlliedBarracks'}
+    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain:VISION_UNITS_INFANTRY')]['a1'] == {'AlliedBarracks'}
+    assert (inventory.MODULE, 'Behaviors/InfiltratorContain') not in scope
 
 
 @pytest.mark.parametrize('field, value', [('Amount', '1999'), ('BlockedDuration', '29s')])
@@ -263,7 +264,8 @@ def test_infiltrator_vehicle_configuration_stays_guessed_until_discovery_replays
         (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
             'a1': {'AlliedWarFactory', 'AlliedRefinery', 'AlliedBarracks'}}})
     assert scope[(inventory.MODULE, vehicle['name'])]['a1'] == {'AlliedWarFactory'}
-    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain')]['a1'] == {'AlliedBarracks'}
+    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain:VISION_UNITS_INFANTRY')]['a1'] == {'AlliedBarracks'}
+    assert (inventory.MODULE, 'Behaviors/InfiltratorContain') not in scope
 
 
 @pytest.mark.parametrize('field, value', [
