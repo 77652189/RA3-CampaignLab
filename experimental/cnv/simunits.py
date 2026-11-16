@@ -3051,6 +3051,32 @@ def weapon_fire_ability(template, button, own=None):
     return _chain(template, own, read)
 
 
+def hit_reaction(template, own=None):
+    """E172: zero-threshold heavy HIT_REACTION with status validation.
+
+    Only the retail shielded Peacekeeper condition producer is measured.
+    Nonzero thresholds, light/medium reactions, death-type gates and GoIdle
+    are unsupported. Facing is deliberately left to a future measured slice.
+    """
+    def read(xml):
+        for head, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'HitReactionBehavior'):
+            if (_attr(head, 'xai:joinAction') == 'Remove'
+                    or _num(_attr(head, 'HeavyDamageHitReactionThreshold', '0')) != 0
+                    or any(_num(_attr(head, k, '0')) != 0 for k in
+                           ('LightDamageHitReactionThreshold', 'MediumDamageHitReactionThreshold'))
+                    or any(_secs(_attr(head, k, '0s')) != 0 for k in
+                           ('LightDamageHitReactionLifeTimer', 'MediumDamageHitReactionLifeTimer'))
+                    or _attr(head, 'GoIdleWhenDamaged', 'false') != 'false'
+                    or _attr(head, 'RequiredDeathTypes', '')):
+                return False
+            validation = next(_blocks(inner, 'ObjectStatusValidation'), ('', ''))[0]
+            return dict(seconds=_secs(_attr(head, 'HeavyDamageHitReactionLifeTimer', '0s')),
+                        required=set(_attr(validation, 'RequiredStatus', '').split()),
+                        forbidden=set(_attr(validation, 'ForbiddenStatus', '').split()))
+        return None
+    return _chain(template, own, read) or None
+
+
 def movement_power(template, button, own=None):
     """Targeted MovementSpecialPower data for a waypoint press (E171 Oni rush).
 

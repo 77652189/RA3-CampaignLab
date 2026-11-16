@@ -5949,6 +5949,7 @@ class Sim:
                 continue
             before_hp = t.hp
             t.damage(dmg)
+            self.hit_reaction_damage(t, before_hp - t.hp)
             events = leech_events.get(id(t), [])
             if events:
                 if len(events) == 1:
@@ -5971,6 +5972,26 @@ class Sim:
                     self.first_death = (self.t, t, by)
                 self.destroy(t, f'被 {self.label(by)} 打掉')
         self.chill(dt)
+
+    def hit_reaction_damage(self, target, damage):
+        """E172 gun-hit condition only; rotation/animation are unmodelled.
+
+        INFERRED: start/refresh the SDK lifetime on positive applied damage,
+        using the common expiry store. The bench asserts ever-on and final
+        clear, not the precise first/last frame or repeated-hit refresh rule.
+        Script health changes, death blasts and other damage paths are gaps.
+        """
+        if damage <= 0 or target.hp <= 0:
+            return
+        cache = self.__dict__.setdefault('_hit_reaction_of', {})
+        if target.template not in cache:
+            cache[target.template] = simunits.hit_reaction(target.template, self.own)
+        rule = cache[target.template]
+        if (rule and rule['seconds'] > 0 and rule['required'] <= set(target.status)
+                and not rule['forbidden'] & set(target.status)):
+            self.set_model_condition(target, 'HIT_REACTION', rule['seconds'])
+            self.used.add('hit reaction')
+            self.guessed.add('HitReactionBehavior: exact timing/refresh INFERRED; rotation unmodelled')
 
     def attachment_tick(self):
         """engine_attach a: teleport the child and keep it with its moving parent.
