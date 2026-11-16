@@ -164,7 +164,7 @@
 | 推断 | AI | `启发条件/CanBuildBuildingsOnSurfaceHeuristic.Surfaces` | 2 | a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `微操/AIMicroManagerData.MaxUnitIdleDistanceChange` | 2 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `目标/AITargetingHeuristic.HeuristicType=Husk` | 2 | a4 a5 a7 | C aihusknone/aihusknamed:a同位普通中立油井，LandHusk阴性与NamedObject阳性；两局f16分别found=0/1，阳性选(2900,3300)，s20两组总数4，均PASS。tests/test_husk_target_c.py按名回放并断言原选择记录及存活计数。模型移除Husk通用中立物回退；缺真实残骸候选提供者时不选目标，不以KindOf或模板名字猜登记。原版残骸创建/候选资格/水域阳性仍gap，不晋升整项；见work/re/c_husk_report.md |
-| 推断 | AI | `目标/AITargetingHeuristic.HeuristicType=UnderAttackBy` | 2 | a4 a5 a7 | SDK陆/水两原名与编译EmergencyDefense六引用已核验；D164有真实受击来源，尚非来源目标选择对拍。C新增aiuabl/aiuabw:a对照，延后选槽；两次启动分别图形设备失败、外部RA3进程阻塞，未取得tgt/ua读数。simai未供attacking_us，simproxy当前目标仍是推测；来源候选/资格/置清保持gap，不晋升；见work/re/c_underattackby_fight_report.md |
+| 推断 | AI | `目标/AITargetingHeuristic.HeuristicType=UnderAttackBy` | 2 | a4 a5 a7 | SDK陆/水两原名与编译EmergencyDefense六引用已核验；C两具名交战局：f18真实来源3185，Land f19选中同源。Water仅f16命中前空目标，日志至f137无命中后直接选择行；来源候选列表未发布，不能据此证明Location拒绝。simai未供attacking_us，Land具名回放与Water直接拒绝证据各一strict xfail；来源资格/置清保持gap，不晋升；见work/re/c_underattackby_resume_report.md |
 | 推断 | AI | `组队招人/ObjectFilter.Exclude` | 2 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyDistance` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | AI | `人格/AIPersonalityDefinition.UnitBuilderEnemyNearbyMultiplier` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
