@@ -55,6 +55,12 @@ def test_a_card_player_with_a_steady_hand_plays_the_plan_itself():
     assert len(run.lines) == 16
 
 
+@pytest.mark.xfail(strict=True, reason=(
+    "same cause as test_simui's stage jump (A256): the steady card player plays plays/a4.txt, hill-climbed 2026-11-08 "
+    "on a simulator whose infantry turned before walking; since 54a14eb0 (A231, bench airevit: infantry walk off at "
+    "once) truck 1 (211.5 s) and truck 2 (217.0 s) fall to CNV A4 HV2 V1 JapanAntiVehicleInfantry-1 -> Lose 1 at "
+    "226.4 s (A265, work/logs/a265_ap.py). The engine change is benched; the play wants re-climbing "
+    "(work/re/scripts/a4climb.py)"))
 def test_the_card_player_on_a4_wins_with_a_steady_hand():
     run, _ = autoplay.play('a4', 'card', 1, style=STEADY)
     # plays/a4.txt: 14:48 (handoff-phase4); 888.x -> 889.0 at A round 174's benched ore-point heading (1a745b63)

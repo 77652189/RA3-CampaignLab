@@ -183,4 +183,50 @@ def unpowered(m):
     return t
 
 
-CHECKS.update({name: {'r': timing, 'd': death, 's': split, 'n': unpowered} for name in ('aidodgezero', 'aidodgetwo')})
+BANDS = (2550.0, 2750.0, 2850.0, 2950.0, 3050.0, 3150.0, 3350.0)
+
+
+def where(m):
+    """timing's latches with s1's powers off (as unpowered), plus where the two warriors stand (A round 265, H7).
+
+    The simulator cannot cast the AI's player powers (A round 262), so timing's bench reading (powers on) is not
+    the simulator's mission. Lines: frame, born, left (timing's latches) and the warriors' y bands as digits --
+    digit k (units = k 0) = how many of s1's warriors stand in band k, north to south: y 2550-2750 (toward the
+    conscripts), 2750-2850, 2850-2950 (the beacon at 2900), 2950-3050, 3050-3150, 3150-3350; x 3600-4100. So 1100
+    = one in 2850-2950 and one in 2950-3050. The sample square is y 2750-3050 (bands 1..3).
+    Simulator (model RA3-EngineModel-a 8f5d7c3, work/logs/a265_y.py): before the beacon one warrior at y 2841, one
+    at 2863 (110); both in 2750-2850 by f465 (20); zero leaves f482, two's first warrior dies f511 at y 2818 (the
+    latch is the death).
+    RESULTS A265 (zero 183 s -- the run's judge crashed on a stale expectation, the frames re-read with
+    work/logs/a265_reread.py; two PASS 165 s): both born f451; before it both warriors in 2850-2950 (200) from f339;
+    zero: 20 by f466, left f490, 11 at f504, 2 at f526, one gone by f535, none by f777; two: 20 at f497, one gone
+    and left f506, the other alone at 10, none by f785. So H7 is false: without the power the warriors stand where
+    the simulator puts them (within one band) and both dodge north; e117's three-frame departure was the freeze.
+    """
+    t = timing(m)
+    s1 = m.player('s1')
+    x, _ = m.point('dodge spot')
+    band = 'CNV_Dodge_Band'
+    areas = {}
+    parts = []
+    for k, (y0, y1) in enumerate(zip(BANDS, BANDS[1:])):
+        area = f'CNV Dodge Band {k}'
+        areas[area] = [(x - 250, y0), (x + 250, y0), (x + 250, y1), (x - 250, y1)]
+        parts += [Script(f'Dodge - band {k} {n}',
+                         [('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', s1, 2, n,
+                           m.cnv_units[0], area)],
+                         [('INCREMENT_COUNTER', n * 10 ** k, band)], once=False) for n in (1, 2)]
+    # non-overlapping bands first: a type-in-area count keeps only the first ~7 declared areas (know-how, H5)
+    t.areas = {**areas, **t.areas}
+    t.scripts.insert(0, Script('Dodge - no powers', [], [('PLAYER_SET_MAX_PLAYER_POWER_POINTS', s1, 0),
+                                                         ('PLAYER_SET_PLAYER_POWER_POINTS', s1, 0)]))
+    t.scripts.append(Script('Dodge - band zero', [], [('SET_COUNTER', band, 0)], once=False))
+    t.scripts += parts
+    t.counters = t.counters[:3] + [(band, '武士带')]
+    t.expect = [('出现', 1, 'ever>=', 1, 55), ('离开', 1, 'ever>=', 1, 55)]
+    t.bench = [('bench_watch', dict(seconds=60, every=0.5, sheet=False, lines=4))]
+    return t
+
+
+CHECKS.update({name: {'r': timing, 'd': death, 's': split, 'n': unpowered, 'y': where}
+               for name in ('aidodgezero', 'aidodgetwo')})

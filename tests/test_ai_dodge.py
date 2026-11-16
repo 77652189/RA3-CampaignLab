@@ -101,20 +101,18 @@ def test_micro_dodge_timing_fixture_changes_only_fixed_wait():
 
 
 def test_micro_dodge_fixed_wait_replays_latched_order():
-    # Native: both born f451, zero left f454, two left f486, bad always 0.
-    # Evidence and scope: work/re/e117_dodge_clock.md.
-    # Compare first square departures; these include walking, not just reaction.
+    # Bench A265, check y (timing's latches with s1's player powers off -- the simulator casts none; e117's r
+    # reading, zero left f454, was s1's freezing power, A262/A263): both born f451, warriors in y 2850-2950 before;
+    # zero: both into 2750-2850 by f466, first leaves the square f490; two: a warrior dies ~f500-506 before any
+    # leaves, the latch is that death, f506. Simulator: 482 / 511. Departures include walking, not just reaction.
     if not simai.available():
         pytest.skip('no ra3model.ai (labpaths.ENGINE_MODEL)')
-    delays = []
-    births = []
-    for name in ('aidodgezero', 'aidodgetwo'):
-        run = simai.run(name, 'r', until=36.0)
+    lefts = []
+    for name, bench in (('aidodgezero', 490), ('aidodgetwo', 506)):
+        run = simai.run(name, 'y', until=36.0)
         rows = [v for _, v in run.sim.series]
-        assert rows and all(v[3] == 0 for v in rows), rows
         _, born, left, _ = rows[-1]
-        assert 0 < born < left, rows
-        births.append(born)
-        delays.append(left - born)
-    assert births[0] == births[1], births
-    assert delays[0] < delays[1], delays
+        assert born == 451, rows
+        assert abs(left - bench) <= 10, (name, left, bench)
+        lefts.append(left)
+    assert lefts[0] < lefts[1], lefts
