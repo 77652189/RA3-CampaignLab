@@ -309,7 +309,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v36.json')    # v36: immediate filtered MetaImpact; v35: armours' side / rear scalars; v34: ai_parts (a weapon's nuggets + warhead for the AI's rate); v33: lift dispatch
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v37.json')    # v37: immediate horizontal inversion; v36: filtered MetaImpact; v35: armours' side / rear scalars; v34: ai_parts; v33: lift dispatch
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -466,16 +466,23 @@ def _weapons(texts, base_table=None):
                         target_filter = dict(relation=relation, forbidden=forbidden)
                 if ((not (inner or '').strip() and not forbidden) or target_filter) and fields <= {
                         'id', 'ShockWaveAmount', 'ShockWaveRadius', 'ShockWaveZMult', 'ShockWaveTaperOff',
-                        'ShockwaveDelaySeconds', *(['ForbiddenTargetModelCondition'] if target_filter else [])} and all(
+                        'ShockwaveDelaySeconds', 'InvertShockWave',
+                        *(['ForbiddenTargetModelCondition'] if target_filter else [])} and all(
                         _attr(h, field) is not None for field in
                         ('ShockWaveAmount', 'ShockWaveRadius')):
                     seconds = _secs(_attr(h, 'ShockwaveDelaySeconds', '0s'))
                     if not math.isfinite(seconds) or seconds < 0:
                         continue
+                    invert = _attr(h, 'InvertShockWave', 'false')
+                    if invert not in ('true', 'false') or ('InvertShockWave' in fields and (
+                            seconds > 0 or target_filter or _num(_attr(h, 'ShockWaveZMult', '1')) != 0)):
+                        continue  # Only the measured immediate, unfiltered spelling.
                     effect = dict(amount=_num(_attr(h, 'ShockWaveAmount')),
                                   radius=_num(_attr(h, 'ShockWaveRadius')),
                                   zmult=_num(_attr(h, 'ShockWaveZMult', '1')),
                                   taper=_num(_attr(h, 'ShockWaveTaperOff', '0')))
+                    if 'InvertShockWave' in fields:
+                        effect['invert'] = invert == 'true'
                     if target_filter:
                         effect['target_filter'] = target_filter
                     if seconds > 0:
@@ -872,6 +879,10 @@ def meta_impact_velocity(effect, position, centre, height, *, detonation, resist
         return (0.0, 0.0, 0.0)
     delta = [position[i] - centre[i] for i in range(3)]
     delta[2] += height / 2
+    if effect.get('invert'):
+        # engine_knock_invert a/b: inverse direction, same radial attenuation.
+        # Only horizontal (ZMult=0), immediate unfiltered XML is enabled.
+        delta = [-x for x in delta]
     if all(abs(x) <= 1e-4 for x in delta):
         delta = [0.0, 0.0, 1.0]
     length = math.sqrt(sum(x * x for x in delta))
