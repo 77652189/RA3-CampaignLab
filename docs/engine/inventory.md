@@ -8,7 +8,7 @@
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 17 | 89 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **97%** | **97%** | 194 / 357 | 428 | 212 | 92 | 90 | 34 | 100% |
+| AI | **97%** | **97%** | 195 / 357 | 428 | 213 | 91 | 90 | 34 | 100% |
 
 ## 脚本动作
 
@@ -1220,7 +1220,7 @@
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType=Crate` | 1 | a4 a5 a7 | C engine_aicrate aicrateon/off:a同位原版HealCrate与普通中立油井对照；tests/test_crate_target_c.py按名回放并断言原生Crate槽与独立NamedObject槽的选择/对象/坐标。真实箱子阳性、普通中立物阴性；只验恒定状态下选择，原版CratePickup的29秒间隔、捡取/治疗/撤销、多箱排序、所有权与范围仍gap；原始证据见work/re/c_crate_report.md |
 | 推断 | `目标/AITargetingHeuristic.HeuristicType=EnemyGarrison` | 1 |  | AI 模型代码里读了这个名字 |
 | 未做 | `目标/AITargetingHeuristic.HeuristicType=Help` | 1 |  | AI 模型代码里没有这个名字 |
-| 推断 | `目标/AITargetingHeuristic.HeuristicType=NeutralGarrison` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
+| 已对拍 | `目标/AITargetingHeuristic.HeuristicType=NeutralGarrison` | 1 | a4 a5 a7 | C engine_aineutralgarr aigarron/off:a原版排屋/油井同位对照；tests/test_garrison_target_c.py按名回放并断言原生选择、对象与坐标：两组均选原图HV_Shop01(3180,2760)，排屋候选ok=true，油井不入候选。补目标视图漏掉的可驻军地图建筑；GARRISON资格代理仍INFERRED，完整容器/容量/占领/进入/撤销/排序/范围及BaseSelection仍gap；阴性局原存活判定因s2–s3无采样FAIL，原始值及原因保留，未重跑；见work/re/c_garrison_report.md |
 | 未做 | `组队招人/TeamTemplate.BaseDefenseMaxDistance` | 1 | a4 a5 a7 | AI 模型代码里没有这个名字 |
 | 推断 | `组队招人/TeamTemplate.IsBaseDefenseTeam` | 1 | a4 a5 a7 | AI 模型代码里读了这个名字 |
 | 推断 | `造兵/BuildEntry.Score` | 1 |  | AI 模型代码里读了这个名字 |
