@@ -2210,8 +2210,8 @@ class Sim:
 
     def weapon_upgrades(self, b):
         """The upgrade names a <Weapon Upgrade="X"> line tests (simunits.pick_weapons): the object's and its
-        player's (INFERRED: the engine's object test also takes the player's upgrades, as Generals'). Passenger-granted
-        upgrades (the IFV's Uprade_IFV_*) are not modelled, so an IFV holds only its own missiles."""
+        player's (INFERRED: the engine's object test also takes the player's upgrades, as Generals').
+        simgarrison handles the bounded single-passenger SecondaryObjectListener grant."""
         return set(b.upgrades) | set(getattr(self, 'player_ups', {}).get(b.owner, ()))
 
     def modify(self, b):

@@ -137,6 +137,7 @@ class Garrisons:
         self.log = []               # (sim seconds, passenger name, building name, script)
         self.ejecting = {}          # transport name -> [the spot, seconds between, reach, next out at]
         self.flying = []            # [lands at, passenger body, the spot]
+        self.secondary_added = {}  # host name -> upgrades granted only by its listener
 
     def spec(self, b):
         """A building's garrison (what the AI and the walk-in look at)."""
@@ -195,6 +196,49 @@ class Garrisons:
         return u.name in self.going or u.name in self.where
 
     # ---- in and out
+    def secondary(self, g):
+        """E174: one contained secondary grants matching explicit-template upgrades.
+
+        Bench engine_secondon_e/off_e:a measures AlliedEngineer in a multigunner
+        turret, then its exit. Immediate notification is INFERRED; weapon/visual
+        dispatch, SelfValidation, kind filters and multiple secondaries remain gaps.
+        Keep upgrades that were already present before the listener granted them.
+        """
+        s = self.sim
+        for up in self.secondary_added.pop(g.name, set()):
+            s._upgrade(g, up, False)
+        held = self.inside.get(g.name, [])
+        if len(held) != 1:
+            return
+
+        def read(xml):
+            text = re.sub(r'<!--.*?-->', '', simunits._with_includes(xml or ''), flags=re.S)
+            modules = list(simunits._blocks(text, 'SecondaryObjectListenerModule'))
+            if not modules:
+                return None
+            upgrades = set()
+            for head, inner in modules:
+                if simunits._attr(head, 'Flags') != 'NOTIFY_WEAPON_SET_UPDATE' or '<SelfValidation' in inner:
+                    continue
+                for _, effect in simunits._blocks(inner, 'ObjectEffectTuple'):
+                    filt = next(simunits._blocks(effect, 'ObjectFilter'), None)
+                    if not filt or dict(re.findall(r'(\w+)="([^"]*)"', filt[0])) != {'Rule': 'NONE'}:
+                        continue
+                    names = re.findall(r'<IncludeThing>\s*([^<]+?)\s*</IncludeThing>', filt[1])
+                    # Only the explicit allowlist form; do not guess mixed filters.
+                    rest = re.sub(r'<IncludeThing>.*?</IncludeThing>', '', filt[1], flags=re.S).strip()
+                    if rest or held[0].template.lower() not in {n.lower() for n in names}:
+                        continue
+                    upgrades.update(re.findall(r'<UpgradeSelf>\s*([^<]+?)\s*</UpgradeSelf>', effect))
+            return upgrades
+
+        upgrades = simunits._chain(g.template, s.own, read) or set()
+        added = upgrades - g.upgrades
+        for up in added:
+            s._upgrade(g, up, True)
+        if added:
+            self.secondary_added[g.name] = added
+
     def put(self, u, g, script=False):
         """u into g now; True when it is inside. script: the script's ..._INSTANTLY (no relation, no room)."""
         s = self.sim
@@ -223,6 +267,7 @@ class Garrisons:
         u.script_status |= self.added[u.name]
         if house:
             g.owner = held[0].owner
+        self.secondary(g)
         s.modify(u)
         s.note('驻军', f'{s.label(u)} 进 {s.label(g)}')
         s.change()
@@ -244,6 +289,7 @@ class Garrisons:
             g.owner = held[0].owner
         elif g.name in self.home:
             g.owner = self.home.pop(g.name)
+        self.secondary(g)
         self.sim.change()
         return True
 
