@@ -3994,6 +3994,12 @@ class Sim:
                             self.garrison.put(m, g, script=True):
                         self.stand(m)
                         break
+        elif name == 'UNIT_STOP_SEQUENTIAL_SCRIPT':
+            # engine_seqstop:a: clear both active and queued scripts; leave the
+            # already issued move running, and allow a fresh script afterwards.
+            b = self.body(a[0])
+            if b is not None:
+                self.seq[:] = [r for r in self.seq if r['b'] is not b]
         elif name == 'UNIT_EXECUTE_SEQUENTIAL_SCRIPT':
             # (unit, script) d115 14: queued on the unit (behind its others), one action a frame once it is idle
             # (seq_due); the script becomes a subroutine. The record's loop count is 0 here (one run; the catalog's
