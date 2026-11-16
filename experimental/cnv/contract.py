@@ -40,6 +40,7 @@ RETAIL_COMMANDS = {'Command_CaptureBuilding',           # an engineer takes a bu
                    'Command_ActivatePilotSnipeSpecialPower',    # engine_wfire); Natasha's pilot snipe
                    'Command_ActivateBarkSpecialPower',          # the dog's bark
                    'Command_DisguisedEvacuate', 'Command_CivilianStructureEvacuate',  # EVACUATE (engine_acts_tgl)
+                   'Command_AlliedAntiInfantryVehicleEvacuate',  # retail Riptide (engine_ifvevac_e)
                    'Command_JapanBaseDefenseToggleBinaryWeapon',   # the Japanese tower's air / ground toggle
                    'Command_ToggleHarpoonSpecialPower', 'Command_ToggleAfterburners',  # Apocalypse / Kirov toggles
                    'Command_SmokeBombSpecialPower', 'Command_ToggleEnergizedArmorSpecialPower',  # engine_acts_mix:

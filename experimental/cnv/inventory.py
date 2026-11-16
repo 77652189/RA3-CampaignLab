@@ -192,6 +192,8 @@ BENCHED_TESTS = {
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleSpiderHole',
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAIV_Transform',
         'TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT')},
+    (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY:Command_AlliedAntiInfantryVehicleEvacuate'):
+        'tests/test_ifvevac_bench_e.py::test_ifvevac_named_measured_snapshots',
     # round 223 (checks/engine_acts11.py all): EVACUATE on a ground transport / a civilian block (out at once), the
     # Apocalypse's harpoon, both mirage fields, the Kirov's afterburners (its LoseHealthUpdate while on)
     **{(ACTION, f'NAMED_USE_COMMANDBUTTON_ABILITY:{n}'): 'tests/test_simbench.py::test_acts_tgl_all_as_the_bench'
