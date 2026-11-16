@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 182 | 19 | 135 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
-| 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 17 | 89 | 26 | 99% |
+| 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 18 | 88 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **97%** | **98%** | 196 / 357 | 428 | 214 | 88 | 92 | 34 | 100% |
 
@@ -630,7 +630,7 @@
 | 已对拍 | `Behaviors/SpawnBehavior` | 10 (16) | a1 a2 a4 a5 a6 a7 a8 | tests/test_simspawn.py::test_spawn_initial_burst_and_parent_kill_delete_match_named_bench；已测范围：engine_spawn:spawn开局3架及母体死亡/删除清随从；engine_spawn_refill:refill两架分别死亡10秒后补回（tests/test_simspawn.py显式预置贴车位置）；engine_spawn_power:power缺电及复电期间总数/厂旁均3；gap：自主维修飞行、子体直接删除、真正禁用/占领、缺电时死亡补充、展开时机及其他完整配置，生成位置和秒内相位INFERRED；按总控11-11三切片收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母；例：AlliedAirfield, AlliedConstructionYardRepairBay |
 | 不涉及 | `Behaviors/ProductionUpdateInfo` | 9 (9) | a1 a4 a5 a6 a7 a9 | 纯界面状态：保存七个生产类别的侧栏子页签编号；读写限于侧栏编号维护、变形时保留编号和存档传递，没有游戏逻辑读者，模拟器不建模；9用量/9模板保留；读者闭包证据见 work/re/e_production_e56.md，非上台对拍；例：AlliedConstructionYard, AlliedMCV |
 | 已对拍 | `Behaviors/EjectPassengersSpecialAbilityUpdate` | 7 (8) | a2 a5 a9 | tests/test_simbench.py::test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men；例：AlliedBomberAircraft, A08_CenturyTransportAircraft |
-| 未做 | `Behaviors/BezierProjectile` | 6 (78) | 全部 | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
+| 推断 | `Behaviors/BezierProjectile` | 6 (78) | 全部 | E168 engine_bezier_e:a单发原版V4火箭/仅删Bezier模块对照，f60满血编码3、f240冻结目标HP95/100；tests/test_bezier_bench_e.py按名字以私有物体模型回放，修复无飞行模块仍直接伤害目标的退化分支。公开Sim曲线弹接线、精确飞行/命中帧、追踪/移动目标、碰撞/地形、其他配置仍gap；无模块立即清理为INFERRED，不登记整个模块已对拍。两局原录像秒窗口FAIL保留，冻结帧判定见work/re/e168_bezier.md；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 推断 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 (10) | a2 a4 a5 a7 a8 | 模拟器代码里有这个名字；台上量过（checks/engine_assignslaves.py），没有测试跑这个台子；例：AlliedConstructionYardRepairBay, AlliedNavalYard |
 | 未做 | `Behaviors/TrackDamage` | 6 (9) | a1 a2 a3 a4 a5 a6 a7 a8 | E69静态核实：6个SDK配置均InstantWeaponsOnly=true，TimeToTrack为0/1/2s；现有expected_damage只接来弹，历史伤害仍gap。与C线瞬发历史接口工单重叠，E暂停独立探针；尚无本模块具名实测回放，不登记已对拍、不改分母；见work/re/e_trackdamage_e69.md；例：AlliedAntiNavalScout, AlliedFighterAircraft |
 | 未做 | `Behaviors/TrackIncomingWeaponFireBehavior` | 6 (9) | a1 a2 a3 a4 a5 a6 a7 a8 | 部分：engine_inform_probe a/off通知记录回放验证录入、30帧窗口、来源与武器匹配删除和过期清理；精确过期边界INFERRED，原版完整调度/历史伤害仍gap，不靠名字命中晋升整项；例：AlliedAntiNavalScout, AlliedFighterAircraft |

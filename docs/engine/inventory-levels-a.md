@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 56 | 17 | 40 | 20 |
+| 物体模块 | 56 | 18 | 39 | 20 |
 | 武器效果 | 18 | 4 | 4 | 2 |
 
 按原版用量加权：已对拍 100%，已有（已对拍+推断）100%。
@@ -19,7 +19,6 @@
 
 | 状态 | 部分 | 项 | 原版用量 | 关 | 说明 |
 |---|---|---|---|---|---|
-| 未做 | 物体模块 | `Behaviors/BezierProjectile` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | 已核（11-08）：模拟器没有这个效果（开火按每秒伤害直接扣血，没有弹体）；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 未做 | 物体模块 | `Behaviors/SubStructureStorageBehavior` | 6 | a1 a4 a5 a6 a7 a9 | 6用量/6模板为三国MCV及海军继承型，模块无专用字段；有效配置没有SubStructureBuild，未找到可生成待存子结构的原版入口；gap：保存/恢复专属读数及合法触发待接口核实，未上台、不登记已对拍，也不据此排除运行时用途；普通展开及COPY_UPGRADES不能归因；见 work/re/e_substorage_e57.md；例：AlliedMCV, JapanMCV |
 | 未做 | 物体模块 | `Behaviors/TrackDamage` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 | E69静态核实：6个SDK配置均InstantWeaponsOnly=true，TimeToTrack为0/1/2s；现有expected_damage只接来弹，历史伤害仍gap。与C线瞬发历史接口工单重叠，E暂停独立探针；尚无本模块具名实测回放，不登记已对拍、不改分母；见work/re/e_trackdamage_e69.md；例：AlliedAntiNavalScout, AlliedFighterAircraft |
 | 未做 | 物体模块 | `Behaviors/TrackIncomingWeaponFireBehavior` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 | 部分：engine_inform_probe a/off通知记录回放验证录入、30帧窗口、来源与武器匹配删除和过期清理；精确过期边界INFERRED，原版完整调度/历史伤害仍gap，不靠名字命中晋升整项；例：AlliedAntiNavalScout, AlliedFighterAircraft |
@@ -65,6 +64,7 @@
 | 未做 | 武器效果 | `SpecialPowerNugget` | 0 | a7 a8 | 未覆盖的自制或未知武器写法；原版字段分片另行登记；例：CNV_DeckSendTrigger, CNV_DeckStoreTrigger |
 | 推断 | 物体模块 | `Behaviors/InfiltratorContain` | 30 | a1 a2 a4 a5 a6 a7 a8 | E142整项收束，不再细切宿主；ENERGY独立已对拍4用量/6模板，本行10配置30用量/32模板仍待闭合，不登记整组或整模块已对拍。逐配置边界：KILL 1用量/1模板部分已测（engine_infkill a，敌消耗/友拒入、满血不换主；tests/test_siminfiltrator_kill.py）；PARALYZE 3用量/3模板部分已测（三国engine_infpara a/b、engine_infpsov a、engine_infpjap a移动及engine_infpatk/engine_infasov/engine_infajap a攻击，tests/test_siminfiltrator_paralyze.py）；普通VISION 5用量/5模板部分已测且暂停扩宿主（engine_infvis a/b稳定窗通过，c实测s18=0/s19起1但模型未支持，严格xfail）；港口阻断VISION 1用量/1模板未测；STEAL_MONEY 3用量/4模板暂停（engine_infmon a量到2000转账后有矿车收入，未实现、严格xfail）；车辆VISION_UNITS 4用量/4模板暂停（engine_infveh a量到可见位间歇1/0，未实现、严格xfail）；飞机VISION_UNITS 2用量/2模板未测；步兵VISION_UNITS 3用量/3模板未测；舰船VISION_UNITS 3用量/3模板未测；RESET 5用量/6模板暂停（engine_infreset a/b就绪与真实冷却未闭环、严格xfail）。VISION/STEAL_MONEY/VISION_UNITS/RESET具名回放见tests/test_siminfiltrator.py。INFERRED：进入距离/生效和精确到期、VISION约5秒延迟/半径映射/宿主死亡清理、KILL致死清理；gap：其他间谍/模板、PARALYZE生产/重复进入/旧攻击订单、KILL抛飞/死亡效果、VISION持久性/重复进入及未测配置。已测PARALYZE不代表其余配置已测；完整逐配置证据与原始读数指针见work/re/e142_infiltrator_closure.md；例：AlliedAirfield, AlliedBarracks |
 | 推断 | 物体模块 | `Behaviors/AssignSlavesTargetObjectSpecialPower` | 6 | a2 a4 a5 a7 a8 | 模拟器代码里有这个名字；台上量过（checks/engine_assignslaves.py），没有测试跑这个台子；例：AlliedWarFactory, JapanNavalYard |
+| 推断 | 物体模块 | `Behaviors/BezierProjectile` | 6 | a1 a2 a3 a4 a5 a6 a7 a8 a9 | E168 engine_bezier_e:a单发原版V4火箭/仅删Bezier模块对照，f60满血编码3、f240冻结目标HP95/100；tests/test_bezier_bench_e.py按名字以私有物体模型回放，修复无飞行模块仍直接伤害目标的退化分支。公开Sim曲线弹接线、精确飞行/命中帧、追踪/移动目标、碰撞/地形、其他配置仍gap；无模块立即清理为INFERRED，不登记整个模块已对拍。两局原录像秒窗口FAIL保留，冻结帧判定见work/re/e168_bezier.md；例：AlliedAntiAirMissileProjectile, AlliedAntiAirMissileProjectile_Veteran |
 | 推断 | 物体模块 | `Behaviors/WallBuilderBehavior` | 6 | a1 a2 a4 a6 a7 a9 | 部分：engine_wallinit:a有/无模块对照10/11/10，仅StartInSecondaryModel默认WALL_SEGMENT初始化；6/6权重保留，建墙/连接/段数上限/生死联动及自定义配置仍gap，未登记完整已对拍；见 work/re/e_wallbuilder_e58.md；例：AlliedWallPiece, JapanWallPiece |
 | 推断 | 物体模块 | `Behaviors/CommandSetUpgrade` | 5 | a1 a4 a5 a7 | E145单图engine_modulebatch:a：空初始菜单的兵营，授Tech2前产物0/0、授后有/无模块产物1/0。菜单切换解析已有；整链路具名回放strict xfail：生产层factories按未持升级的初始菜单识别工厂，故模型仍0/0，需B接口修复。未晋升整项；见work/re/e145_modulebatch.md；例：AlliedConstructionYard, CNVA4AlliedConstructionYard |
 | 推断 | 物体模块 | `Behaviors/PassiveAreaEffectBehavior` | 5 | a3 a4 a7 | E70范围/兵种/状态开关和E74分批治疗具名回放保留。E145单图engine_modulebatch:a：MaxBeneficiaries=1/0两组，早期受益人数1/3、后期3/3，敌方均50%不回血；已补0/1上限，tests/test_simmodulebatch.py按名断言台上读数。E163 engine_areaally:a跨玩家双向友军伤员与己方同步50→100、inactive保持50；b脚本f240友军快照15（己方/友军满血、inactive半血、源满血），tests/test_simareaally_e.py按名回放该快照。已补显式双向Friend治疗资格；两局原捕获秒断言FAIL保留，b末帧448未到f450，敌对/位置快照未测，不据零值推规则。见work/re/e163_areaally.md。具体受益身份次序、共用任务帧相位和SDK换算跳幅INFERRED；E165 engine_areaself:a原自疗预测失败，f61半血快照7/f210满血快照6/存活7；engine_areaselfpeer:a完整PASS，f210源/远端对照/旁步兵/旁工程师HP=50/50/100/100、存活15。已明确排除治疗源自身，允许另一工程师受益；tests/test_simareaself_e.py按名断言两局台上快照，原a预测保留，见work/re/e165_areaself.md。E166 engine_areaoverlap:a叠加满血预测失败，f61/f100/f210=31/29/31；b完整PASS，三快照31/31/31，f100单源与双源均75..80%、关闭50%，四源满血且七物体存活。已支持双满血同规则无限人数源重叠按一次贡献回放，tests/test_simareaoverlap_e.py按名断言两局读数，原a预测保留，见work/re/e166_areaoverlap.md；同规则源身份选择INFERRED。时钟来源/动态创建与重开/调查周期/其他重叠或受伤源/隐式联盟或中立单向关系/自身与人数上限交互/附着无人机/更大上限仍gap，不登记整项已对拍；见work/re/e145_modulebatch.md、e_passive_e74.md；例：AlliedEngineer, CNV_IceEngineer |
