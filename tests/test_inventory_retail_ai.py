@@ -61,6 +61,36 @@ def test_decoded_sdk_states_write_nothing_their_xml_does_not():
 
 
 @needs_states
+def test_underattackby_original_heuristics_and_compiled_consumers():
+    """Static scope only; no claim about an attacker's live candidate eligibility.
+
+    The distinct UnderAttack boolean is not set on these two original assets.
+    Live selection remains gated: see work/re/c_underattackby_gate_report.md.
+    """
+    import inventory_ai as A
+    assets = A.assets()
+    if 'UnderAttackByLandEnemyHeuristic' not in assets:
+        pytest.skip('no SDK target heuristic library')
+    expected = {}
+    for domain in ('Land', 'Water'):
+        hid = f'UnderAttackBy{domain}EnemyHeuristic'
+        h = assets[hid]
+        assert h.get('HeuristicType') == 'UnderAttackBy'
+        assert h.get('Location') == domain
+        assert h.get('UnderAttack') is None
+        assert h.get('VitalKindOf') == h.get('ForbiddenKindOf') == ''
+        for suffix in ('', '_EASY', '_MEDIUM'):
+            expected[f'{domain}EmergencyDefense{suffix}'] = [hid]
+    actual = {}
+    for sid, state in R.compiled_states().items():
+        refs = [h.get('TargetHeuristic') for h in state.findall('TargetHeuristic')
+                if h.get('TargetHeuristic') in {v[0] for v in expected.values()}]
+        if refs:
+            actual[sid] = refs
+    assert actual == expected
+
+
+@needs_states
 def test_the_maps_own_ai_assets_are_all_read_back():
     """Every personality / state the 27 maps carry themselves (no SDK xml) is decoded from the compiled stream: none
     is left counted only by the SDK assets it references (engine line B round 171: 92 personalities, 44 build and 5
