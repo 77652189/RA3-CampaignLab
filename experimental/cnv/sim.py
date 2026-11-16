@@ -210,6 +210,7 @@ RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's 
 PACK_POWER = 'SpecialPower_PackReplaceSelf'         # a construction yard's pack button (Command_Pack...MCV)
 PACK_FRAMES = 0                # the yard is its MCV from the press frame on (engine_pack a / s / j)
 WFIRE_LAG = 0                  # frames between a weapon-fire ability's UnpackTime and its weapon (engine_wfire)
+WFIRE_REAIM = 20                # a target this far off the spot its caster walks to: the caster re-aimed (INFERRED)
 # a TargetType NONE ability (the bear's roar) pressed _ON_NAMED: it goes off this much later once the caster is up to
 # the target (engine_acts_wet RN 60 off / RF 300 off both a reading or so behind the plain roar: INFERRED, fitted).
 # Refitted in A round 253 once the bears no longer chase in the opening frame (IDLE_SCAN_FROM): acts_mix passes for
@@ -6429,7 +6430,11 @@ class Sim:
                 # the range to the target's edge (INFERRED: engine_wfire far, 74 frames; to its centre 81)
                 if math.hypot(t.x - b.x, t.y - b.y) - t.radius <= ab['range']:
                     self.wfire_start(job)
-                elif not b.path:
+                elif not b.path or (b.dest is not None and
+                                    math.hypot(t.x - b.dest[0], t.y - b.dest[1]) > WFIRE_REAIM):
+                    # the target walked off the spot the caster was sent to: after it where it is now (a01's
+                    # intro bears, StartAbilityRange 0, sent at Peacekeepers that set off on a path 10 s later
+                    # never got there to roar; INFERRED: re-aimed once it is a path node off)
                     self.send(b, (t.x, t.y))
                 continue
             if frame < job['fire_at']:
