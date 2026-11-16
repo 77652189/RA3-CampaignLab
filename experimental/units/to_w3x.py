@@ -15,6 +15,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
 import w3x                                      # noqa: E402
+sys.path.insert(0, HERE)
+import faction_grade                            # noqa: E402
 from PIL import Image                           # noqa: E402
 
 
@@ -36,7 +38,7 @@ def tint(m):
 
 def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale=1.0, level=72, grade=True,
             retail_maps=False, edge_gain=1.0, edge_spec=110, plate_spec=18, plate_share=12, body_spec=18, contrast=1.0,
-            glow_margin=60, glow_floor=0, glow_lift=False, cool=1.0):
+            glow_margin=60, glow_floor=0, glow_lift=False, cool=1.0, faction=None):
     """spec: specular (SPM red) as a fraction of the diffuse luminance -- retail Allied SPM red averages ~21;
     a flat 110 made the whole tank mirror the warm environment map (tan / pink in game, CampNew23 first run).
     scale: uniform size factor for vertices and pivots (the first in-game run read ~0.6 of a Guardian).
@@ -49,7 +51,10 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
     reach the floor -- 60 / 0 caught 0.9 % of the chrono-lag's bake, its pale cyan rings were left out and in game
     the lights could not be seen (user 2026-10-26: "青色光要看得见"; 30 / 120 catch 1.3 %). glow_lift: glowing texels
     recoloured a saturated bright cyan at their own hue's strength. cool: the non-glow, non-team body's blue x cool,
-    red / cool (the chrono-lag read brown beside the Guardian)."""
+    red / cool (the chrono-lag read brown beside the Guardian).
+    faction: 'soviet' / 'allied' / 'japan' (retail_maps only) -- last, the body onto that faction's retail
+    brightness and colour (faction_grade.grade); team texels brightened to retail's (team_gain), still grey. It sets
+    brightness, contrast and tint itself, so level / grade / contrast / cool matter little beside it."""
     with open(os.path.join(src, 'parts.json'), encoding='utf-8') as f:
         parts = json.load(f)
     index = {name: k + 1 for k, (name, _, _) in enumerate(pivots)}          # ROOTTRANSFORM is 0
@@ -138,6 +143,11 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
             out = np.where(is_glow[..., None], out, np.clip(out * (curve / r), 0, 240))
         if cool != 1.0:
             out = np.where(body[..., None], out * (1 / cool, 1.0, cool), out)
+        if faction:
+            graded, _ = faction_grade.grade(out, body, faction)
+            gain = faction_grade.team_gain(out, used & ~is_glow & (soft > 0.5), faction)
+            team = used & ~is_glow & ~body
+            out = np.where(team[..., None], np.clip(out * (1 + soft[..., None] * (gain - 1)), 0, 235), graded)
         if glow_lift:
             # the lights a saturated cyan as bright as their own green / blue allow (never below 3/4): pale baked
             # cyan (110, 181, 205) went grey in game
@@ -157,6 +167,7 @@ def convert(src, model, pivots, part_bones, src_name='CNTankL', spec=0.45, scale
               f'edges {edge.mean():.3f}, plates {plate.mean():.3f}, '
               f'matte {dark.mean():.3f}')
     else:
+        assert not faction, 'faction grading needs retail_maps'
         w3x.write_texture(model, w, h, diffuse_px)
 
         def spm(x, y):

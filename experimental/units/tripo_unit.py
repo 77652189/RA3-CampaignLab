@@ -39,6 +39,12 @@ UNITS = {
     'chronolag': dict(glb='units/chronolag/tripo/chronolag_v2_hd.glb', width=25.3,
                       TURRET=[0, 8, 15, 16, 18], BARREL=[5],
                       budget=dict(HULL=2500, TURRET=1100, BARREL=400), tex=1024, model='CNChrono'),
+    # Soviet, the first two through faction_grade (2026-11-15). Turret / barrel are look-test guesses (the hook tank's
+    # winch drum and boom, the burrower's hatch and drill): neither turns yet, the mechanics are the levels line's
+    'hooktank': dict(glb='units/hooktank/tripo/hooktank_v1.glb', width=30, TURRET=[1], BARREL=[3],
+                     budget=dict(HULL=3000, TURRET=600, BARREL=400), tex=1024, model='CNHook'),
+    'burrower': dict(glb='units/burrower/tripo/burrower_v1.glb', width=24, TURRET=[4], BARREL=[1],
+                     budget=dict(HULL=3000, TURRET=400, BARREL=600), tex=1024, model='CNBurrow'),
     # a map prop (prop_main): one piece, width = its larger side on the ground; no team colour, no bones
     'icesculpture': dict(glb='units/icesculpture/tripo/icesculpture_v1.glb', kind='prop', width=38,
                          budget=dict(PROP=1600), tex=512, model='CNIceSculpt'),

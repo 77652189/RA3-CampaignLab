@@ -64,6 +64,7 @@ Tripo 订阅：用户买的是包月（专业版，推测），2026-10-20 04:00�
 | 按钮和头像 | `button_icon.py compose button|portrait` 出图 → `ui_kit.py`（写进 `Art/`，新单位在 `ui_kit.UNITS` 加一行，`dress()` 照 `chronolag.dress` 引用） |
 | 写 W3X | `to_w3x.py`（车辆，含亮度、冷色、发光参数）、`campaign/w3x.py` 的 `rig_model`、`lathe`、`write_texture` |
 | 离线检查 | `check_model.py <w3x> [单位 xml] [--budget N]`（`tests/test_check_model.py` 证明每项都能抓到问题） |
+| 风格统一（11-15） | `faction_grade.py`：按阵营把 Tripo 烘焙贴图往原版同阵营车辆靠（亮度按分位数对齐、颜色按亮度段移到原版中位色、保留各自的点缀色；阵营色区提亮到原版亮度——我们的只有原版一半亮，游戏里阵营色发灰看不出）。`to_w3x.convert(..., retail_maps=True, faction='soviet')` 调用；`faction_grade.py check <贴图> <SPM> <阵营>` 查亮度、饱和度、阵营色亮度是否落在原版范围（`tests/test_faction_grade.py`）；`measure` 从 `work/reference` 重算参数表。台上对比：`grade_look.py models` 再 `grade_look.py` 编 `CampGradeLook`（原版锤子、牛蛙、天启和调色前后的磁钩坦克、钻地车一排），图 `work/units/grade/soviet_ingame_1115.png` |
 | 看外观 | 测试关 `ice_look.py`（`CampIceLook`）、`convoy_look.py`（`CampConvoyLook`）、`liberty_look.py`（`CampLibLook`：充能再跃迁）、`build.py chronolag --check hit`（`CampLagHit`） |
 
 出图标准（`concept_gpt.py`）：一张方图分四格（正、侧、背三张同比例正交视图 + 一张斜视图），同一次生成，背景 `#D0D0D0`，不要文字；阵营色画成饱和蓝色、只在凸起的顶部装甲上。
