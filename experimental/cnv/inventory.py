@@ -53,6 +53,8 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 BENCHED_TESTS = {
     (ACTION, 'TEAM_UPGRADE'):
         'tests/test_teamup_bench_c.py::test_teamup_real_query_and_consumer_apply_only_to_current_team',
+    (MODULE, 'Behaviors/RecallUnitsSpecialPower'):
+        'tests/test_recall_bench_e.py::test_recall_named_object_model_bench',
     (ACTION, 'UNIT_STOP_SEQUENTIAL_SCRIPT'):
         'tests/test_seqstop_bench_c.py::test_seqstop_clears_pending_scripts_keeps_move_and_accepts_fresh_script',
     (ACTION, 'UNIT_SET_MODELCONDITION_FOR_DURATION'):
@@ -388,7 +390,7 @@ NOTES = {
     (ACTION, 'UNIT_STOP_SEQUENTIAL_SCRIPT'): (BENCHED, 'C engine_seqstop:a真实继续/停止对照：f282步骤111/1、到达码3，f308新排脚本后111/1001/3，f360保持。停止清当前及后排脚本，不取消已发移动，新脚本可再执行；tests/test_seqstop_bench_c.py按名回放四计数器。仅存活具名单车移动切片；精确移动/idle时序、自停、循环、死亡/缺失单位及其他订单仍gap；其他宿主推广INFERRED；见work/re/c_seqstop_report.md'),
     (ACTION, 'UNIT_SET_MODELCONDITION_FOR_DURATION'): (BENCHED, 'C engine_modeldur:a真实UNIT_HAS_MODELCONDITION查询：3/7秒USER_1分别为真46/106逻辑帧，b的1/2秒为真16/31帧，均含到期边界；空白阴性始终无位，永久阳性保持，状态码11→10→8。tests/test_modeldur_bench_c.py按名回放同帧四计数器。仅正持续时间、第四参数1.0、独立USER_1写入/到期切片；其他位推广INFERRED，重复/覆盖、零时长、第四参数其他值及原生生产者均gap；见work/re/c_modeldur_report.md'),
     (ACTION, 'PLAYER_ENABLE_UNIT_CONSTRUCTION'): (BENCHED, 'C两局engine_unitban:a/b具名玩家盟军工程师原生按钮：禁用期可排队但不扣款；恢复后付款/进度续跑，不退款不重置。a第150帧甲2000/乙1603，恢复后第198帧1843/1500/10，末1000/1000/33；b第101至180帧甲保持1800，第195帧1753/1500/10、第285帧1500/1500/11。tests/test_unitban_bench_c.py按名回放实读；第二笔队列付款提前10帧留strict xfail。仅此玩家/工程师切片已量，其他模板门禁INFERRED，UI拒绝、升级、建筑、AI及This Player/All Players范围仍gap；见work/re/c_unitban_report.md'),
-    (MODULE, 'Behaviors/RecallUnitsSpecialPower'): (TODO, 'E184 recallon_e:a/recalloff_e:a原版机场/仅删召回模块两局PASS，f660冻结660/7/3/1与660/7/5/0；两边原生生产Apollo并具名引用，f255近场、f405远场，f420按机场召回后仅原版回近场且事件1。tests/test_recall_bench_e.py按名物体模型回放2 strict xfail：生产/引用前置出发0对台7；不手放飞机绕过绑定、不猜召回实现。内部producerId/召回成员选择、数量上限、精确帧、其他机型/机场及停靠仍gap，不登记整模块已对拍；见work/re/e184_recall.md'),
+    (MODULE, 'Behaviors/RecallUnitsSpecialPower'): (BENCHED, 'E187按名回放E184原版机场/仅删模块旧台，两路完整读数660/7/3/1与660/7/5/0通过；单架原生生产Apollo由机场按钮召回回近场并记录施放，使用模板速度移动，未改原预测。已测限本机场/机型单架；生产者筛选、选择顺序、回机场中心的路径为INFERRED，数量上限、精确帧、其他机型/机场、换主、降落及Parking仍gap；见work/re/e187_recall.md'),
     (ACTION, 'PLAYER_DISABLE_BASE_CONSTRUCTION'): (TODO, 'C两局engine_baseban交换禁用玩家，对照日本基地的原生核心按钮和脚本按键；禁用人类仍扣800并出核心。UNIT_BUILD核心不能代表盟军/苏联建筑队列或AI基地建造；不写无操作分支、不晋升。tests/test_baseban_bench_c.py按名回放最终读数，核心逐帧扣款差异strict xfail；缺实际基地队列的开关消费/资格/拒绝字段及This Player、All Players范围证据，见work/re/c_baseban_report.md'),
     (MODULE, 'Behaviors/StructurePlacementBehavior'): (TODO, 'E183 structpon:a/structpoff:a原版矿场/仅删模块两局，前方120放电厂；总数及前方区域始终0，资金从10000采矿增长到11750/12000，未到9200付费哨兵。原禁建/允许预测FAIL保留，未建立合法排队/放置接受事实；tests/test_structureplace_bench_e.py仅按名字回放零电厂负基线，不登记模块效果已对拍。queueAccepted/queueReady/placementAccepted/rejectReason缺失，同输入暂停；几何消费/旋转/边缘仍gap，见work/re/e183_structureplace.md'),
     (MODULE, 'Behaviors/AssignSlavesTargetObjectSpecialPower'): (GUESSED, 'E181 engine_assignrace:b一局PASS：f150两组前三受伤目标UNDERGOING_REPAIR编码33，f180只给原版模块组指定第四辆，f360冻结第四辆HP70/20；tests/test_simassignslaves.py::test_repair_assignment_frame_snapshot_matches_named_bench按名回放同帧血量通过，占用模型0对台33保留strict xfail。原版480HP/20HP每秒预测成立，未改治疗率/时间窗；off同时删模块且不发令，不能单独归因模块删除。E66/E67旧捕获时序xfail保留；自动获取、单架子体派发/抢占、状态清理、其他宿主/筛选及精确启动帧仍gap，INFERRED启动相位未扩展，不登记整模块已对拍；见work/re/e181_assignframes.md'),

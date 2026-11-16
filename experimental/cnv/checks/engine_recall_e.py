@@ -6,9 +6,9 @@ back only with the original module: f660 live/near/far = 3 versus 5.
 Cast events are observed separately (predicted 1/0), not command acceptance.
 Producer identity, selected recall members and parking phases remain gaps.
 MEASURED: both predictions PASS, on 660/7/3/1 and off 660/7/5/0.
-E186 object-model replay departure=7 matches both existing runs; the off
-replay passes fully, while on recall dispatch remains strict xfail.
-No recall implementation is claimed. See work/re/e186_movement.md.
+E187 named object-model replays match both complete existing readings.
+Single produced Apollo return and cast only; selection, exact return timing,
+other aircraft/airports and parking remain gaps. See work/re/e187_recall.md.
 """
 import re
 from pathlib import Path

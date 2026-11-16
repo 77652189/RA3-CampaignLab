@@ -55,10 +55,7 @@ def _replay(name):
 
 
 @pytest.mark.parametrize('name,final,casts', [
-    pytest.param('recallon_e', 3, 1, marks=pytest.mark.xfail(
-        strict=True, raises=AssertionError, reason=(
-            'E186 departure reaches bench 7; recall dispatch remains a gap. '
-            'See work/re/e186_movement.md and work/re/handoff-e.md.'))),
+    ('recallon_e', 3, 1),
     ('recalloff_e', 5, 0),
 ])
 def test_recall_named_object_model_bench(name, final, casts):
