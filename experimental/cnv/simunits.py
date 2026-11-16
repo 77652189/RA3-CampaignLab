@@ -3036,6 +3036,33 @@ def weapon_fire_ability(template, button, own=None):
     return _chain(template, own, read)
 
 
+def movement_power(template, button, own=None):
+    """Targeted MovementSpecialPower data for a waypoint press (E171 Oni rush).
+
+    Only the in-range static-point path is measured. Object targeting, approach,
+    cooldowns, collision/bounce and exact activation/exit timing remain gaps.
+    """
+    power = command_power(button, own)
+    if not power:
+        return None
+
+    def read(xml):
+        xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
+        for head, _ in _blocks(xml, 'MovementSpecialPower'):
+            if _attr(head, 'SpecialPowerTemplate') != power or _attr(head, 'MovementType') != 'TARGETED':
+                continue
+            tpl = _retail_power_heads().get(power, '')
+            return dict(duration=_frames(_secs(expand(_attr(head, 'Duration', '0s')))),
+                        bits=set((_attr(head, 'ObjectStatus') or '').split()),
+                        locomotor=_attr(head, 'LocomotorSet'),
+                        modifier=_attr(head, 'AttributeModifier') if
+                        _attr(head, 'AttributeModifierAffectsSelf', 'false') == 'true' else '',
+                        minimum=float(_attr(tpl, 'MinCastRange', '0')),
+                        maximum=float(_attr(tpl, 'MaxCastRange', '0')))
+        return None
+    return _chain(template, own, read)
+
+
 def self_module_power(template, button, own=None):
     """The template's ActivateModuleSpecialPower the button fires with AttributeModifierAffectsSelf="true": dict(
     modifier (its AttributeModifier id), trigger (the SpecialAbilityUpdate of that power: SetObjectStatusOnTrigger

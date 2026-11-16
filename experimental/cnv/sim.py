@@ -4363,6 +4363,9 @@ class Sim:
                 and simunits.self_projectile_speed(
                     simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own)['weapon'], self.own):
             self.leap_press(self.body(a[0]), a[1], self.point(a[2]))
+        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and self.body(a[0]) and self.body(a[0]).alive and \
+                self.point(a[2]) is not None and simunits.movement_power(self.body(a[0]).template, a[1], self.own):
+            self.movement_power_press(self.body(a[0]), a[1], self.point(a[2]))
         elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.body(a[0]).alive and \
                 simunits.self_module_power(self.body(a[0]).template, a[1], self.own):
             self.self_power_press(self.body(a[0]), a[1])
@@ -6239,6 +6242,40 @@ class Sim:
                         self.first_death = (self.t, t, by)
                     self.destroy(t, f'被 {self.label(by)} 的超武打掉')
 
+    def movement_power_press(self, b, button, point):
+        """E171: in-range static waypoint rush; ordinary path movement with SDK speed.
+
+        INFERRED: status/speed last Duration from the press, expiry stops movement;
+        the bench proves activation, displacement and final exit, not those exact
+        boundaries. Turning/acceleration, collision and repeated orders remain gaps.
+        """
+        sp = simunits.movement_power(b.template, button, self.own)
+        distance = math.hypot(point[0] - b.x, point[1] - b.y)
+        if distance < sp['minimum'] or (sp['maximum'] and distance > sp['maximum']):
+            self.guessed.add('MovementSpecialPower: out-of-range approach unmodelled')
+            return
+        jobs = self.__dict__.setdefault('_movement_powers_due', {})
+        if b.name in jobs:
+            self.guessed.add('MovementSpecialPower: repeated press unmodelled')
+            return
+        now = self.frame_now()
+        new = sp['bits'] - b.script_status
+        old_speed = b.base['speed'] if b.base is not None else b.speed
+        jobs[b.name] = (now + sp['duration'], b, new, old_speed)
+        b.script_status |= new
+        speed = simunits.locomotor_speed(b.template, self.own, sp['locomotor']) if sp['locomotor'] else None
+        if speed is not None and b.base is not None:
+            b.base['speed'] = speed
+        xml = self.xml_of(b.template)
+        mod = simunits.modifier(xml, sp['modifier']) if sp['modifier'] else None
+        if mod and mod['frames']:
+            b.auras_on[sp['modifier']] = (now + mod['frames'], xml)
+        self.modify(b)
+        b.goal, b.mode = None, 'move'
+        self.send(b, point)
+        self.used.add('movement special power')
+        self.guessed.add('MovementSpecialPower: exact phase timing, cooldown and collisions unmodelled')
+
     def self_power_press(self, b, button):
         """An ActivateModuleSpecialPower on self (simunits.self_module_power): its AttributeModifier hangs on b for its
         Duration from the press (b.auras_on, so modify() takes its bits and SPEED and drops them when it runs out); the
@@ -6288,6 +6325,15 @@ class Sim:
         self.note('技能', f'{self.label(b)} 按 {button} 跳到 ({p[0]:.0f}, {p[1]:.0f})')
 
     def self_power_due(self, frame):
+        movement = self.__dict__.get('_movement_powers_due', {})
+        for key, (due, b, bits, old_speed) in list(movement.items()):
+            if frame >= due:
+                del movement[key]
+                b.script_status.difference_update(bits)
+                if b.base is not None:
+                    b.base['speed'] = old_speed
+                b.path, b.dest = [], None
+                self.modify(b)
         for job in list(self.__dict__.get('_leaps_due') or ()):
             if frame >= job[0]:
                 self._leaps_due.remove(job)
