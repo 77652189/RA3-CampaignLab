@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 200 | 11 | 125 | 115 | 99% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 202 | 11 | 123 | 115 | 99% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 59 / 118 | 195 | 60 | 26 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -231,7 +231,7 @@
 | 不涉及 | `CAMERA_FOLLOW_NAMED` | 19 |  | 纯表现（名字规则）；Sim.act / Sim.cond 有分支 |
 | 已对拍 | `COUNTER_MATH_COUNTER` | 19 | a1 a2 a3 a6 a7 a9 | 引擎模型核心；台上量过、测试对拍：checks/engine_attach.py |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower` | 19 |  | tests/test_simbench.py::test_acts_mix_all_as_the_bench |
-| 未做 | `PLAYER_DISABLE_BASE_CONSTRUCTION` | 16 |  | C两局engine_baseban交换禁用玩家，对照日本基地的原生核心按钮和脚本按键；禁用人类仍扣800并出核心。UNIT_BUILD核心不能代表盟军/苏联建筑队列或AI基地建造；不写无操作分支、不晋升。tests/test_baseban_bench_c.py按名回放最终读数，核心逐帧扣款差异strict xfail；缺实际基地队列的开关消费/资格/拒绝字段及This Player、All Players范围证据，见work/re/c_baseban_report.md |
+| 已对拍 | `PLAYER_DISABLE_BASE_CONSTRUCTION` | 16 |  | tests/test_basegate_bench_a.py::test_aibgate_disabled_ai_spends_nothing_and_builds_nothing_until_enabled；A269 aibgate:a（B的aiskirm图，s1盟军AI 10秒醒、50000）：开局禁用，醒后到第1054帧钱50000、建筑数1，不下任何建筑单；70秒恢复后f1054起付款、f1208第二栋（对照aiskirm d醒后11秒第二栋）。模拟simai.build拒结构单：f1065/f1215。tests/test_basegate_bench_a.py按名回放。C的engine_baseban：日本核心（UNIT_BUILD）不受此门；A的engine_basegate:a：脚本按盟军建造厂电厂按钮两边都不扣钱，玩家建造厂队列量不到（未模拟）。This Player/All Players范围仍gap |
 | 已对拍 | `PLAYER_ENABLE_UNIT_CONSTRUCTION` | 16 |  | tests/test_unitban_bench_c.py::test_unitban_enable_resumes_partly_paid_engineer；C两局engine_unitban:a/b具名玩家盟军工程师原生按钮：禁用期可排队但不扣款；恢复后付款/进度续跑，不退款不重置。a第150帧甲2000/乙1603，恢复后第198帧1843/1500/10，末1000/1000/33；b第101至180帧甲保持1800，第195帧1753/1500/10、第285帧1500/1500/11。tests/test_unitban_bench_c.py按名回放实读；第二笔队列付款提前10帧留strict xfail。仅此玩家/工程师切片已量，其他模板门禁INFERRED，UI拒绝、升级、建筑、AI及This Player/All Players范围仍gap；见work/re/c_unitban_report.md |
 | 不涉及 | `PLAY_SOUND_EFFECT_AT_TEAM` | 16 |  | 纯表现（名字规则） |
 | 不涉及 | `TOGGLE_LOCK_CURRENT_SELECTION` | 16 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
@@ -270,7 +270,7 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ArcherArrowBarrageSpecialPower` | 10 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanMCV` | 10 |  | tests/test_jpndeploy_bench_c.py::test_jpndeploy_waypoint_and_untouched_control_match_bench；C engine_jpndeploy:a一局：两辆普通日本MCV到东400路径点展开，未下令第三车留家；f256..501目标区建造场/名称存活/原处MCV位码3/7/4。tests/test_jpndeploy_bench_c.py按名回放动作前及事前预测f300之后稳定窗口实读逻辑帧四计数器；现有order_unpack匹配，无模型或阈值修改。仅普通活宿主空地切片；精确到达/展开时序、地形阻挡、伤害继承、重复/死亡/缺失宿主仍gap，其他宿主推广INFERRED；见work/re/c_jpndeploy_report.md |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackSovietMCV` | 10 |  | tests/test_sovdeploy_bench_c.py::test_sovdeploy_waypoint_and_untouched_control_match_bench；C engine_sovdeploy:a一局：两辆普通苏联MCV到东400路径点展开，未下令第三车留家；f220..468目标区建造场/名称存活/原处MCV位码3/7/4。tests/test_sovdeploy_bench_c.py按名回放34个动作前及稳定窗口实读逻辑帧四计数器；现有order_unpack即可匹配，未调模型或阈值。仅普通活宿主空地切片；精确到达/展开时序、地形阻挡、伤害继承、重复/死亡/缺失宿主仍gap，其他宿主推广INFERRED；见work/re/c_sovdeploy_report.md |
-| 未做 | `PLAYER_ENABLE_BASE_CONSTRUCTION` | 10 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_ENABLE_BASE_CONSTRUCTION` | 10 |  | tests/test_basegate_bench_a.py::test_aibgate_enable_starts_the_ai_base；A269 aibgate:a：禁用的AI在70秒恢复后立即开始下建筑单，f1054付款、f1208第二栋，节奏同刚醒（模拟f1065/f1215）。tests/test_basegate_bench_a.py按名回放；范围同DISABLE（具名AI玩家；玩家建造厂队列、This Player/All Players未量） |
 | 不涉及 | `ROTATE_CAMERA` | 10 |  | 纯表现（名字规则） |
 | 未做 | `SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING` | 10 |  | C aiallbuildon/off:a两局原生候选/订单对照：共同窗口前6次成功订单同帧同种（两警犬后四标枪），非空候选31/16条、订单307/156条。捕获末逻辑帧598/459，均未到70秒转友闸门；不能比较捕获秒数的存量差。tests/test_allbuild_bench_c.py只锚定具名原生读数，不声称模型等价。bpick/border缺同帧敌方玩家集合、动作开关及参与评分的兵力/资格输入，无法区分默认全敌或消费者未触发；倾向先补观测（INFERRED）。两局耗完，保持未做；见work/re/c_allbuild_report.md |
 | 不涉及 | `ZOOM_CAMERA` | 10 |  | 纯表现（名字规则） |
@@ -278,7 +278,7 @@
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleHarpoonSpecialPower` | 9 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLaserGlaiveBlastSpecialPower` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackAlliedMiner` | 9 |  | Sim.act / Sim.cond 有分支 |
-| 已对拍 | `PLAYER_DISABLE_UNIT_CONSTRUCTION` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unitban.py |
+| 已对拍 | `PLAYER_DISABLE_UNIT_CONSTRUCTION` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_basegate.py |
 | 未做 | `PLAYER_TOGGLE_SKIRMISH_AI` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `SET_COUNTER_TO_NUMBER_OBJECTS_PLAYER_OWNS_WITH_KINDOF` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `SKIRMISH_AI_START` | 9 |  | Sim.act / Sim.cond 不认识 |

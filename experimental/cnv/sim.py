@@ -1089,6 +1089,7 @@ class Sim:
         self.done, self.disabled = set(), set()
         self.banned = set()                 # (player, template in lower case): ALLOW_DISALLOW_ONE_BUILDING 0
         self.unit_construction_disabled = set()  # named players; engine_unitban a/b native engineer queues
+        self.base_construction_disabled = set()  # named players; aibgate:a the skirmish AI's structure orders (simai)
         self.buildable = {}                 # template lower -> BuildableStatus 0-3: TECHTREE_MODIFY_BUILDABILITY_OBJECT (all players)
         self.banned_ups = set()             # (player, upgrade in lower case): ALLOW_DISALLOW_ONE_UPGRADE 0
         self.border = 0
@@ -4244,6 +4245,16 @@ class Sim:
                  else self.unit_construction_disabled.discard)(a[0])
             else:
                 self.gap('ScriptAction', name, '单位生产开关仅具名玩家原生工程师队列已量；玩家范围未量')
+        elif name in ('PLAYER_DISABLE_BASE_CONSTRUCTION', 'PLAYER_ENABLE_BASE_CONSTRUCTION'):
+            # aibgate:a (A269): a base-disabled skirmish AI orders no structure and spends nothing until enabled,
+            # then starts as at its wake (simai build_offers). engine_baseban: a Japanese core (UNIT_BUILD) is not
+            # held. A player's yard queue is not simulated (engine_basegate:a: a script's press queues nothing);
+            # This Player / All Players remain gaps.
+            if a[0] in self.players.values():
+                (self.base_construction_disabled.add if name == 'PLAYER_DISABLE_BASE_CONSTRUCTION'
+                 else self.base_construction_disabled.discard)(a[0])
+            else:
+                self.gap('ScriptAction', name, '基地建造开关仅具名 AI 玩家的建筑订单已量；玩家范围未量')
         elif name == 'ALLOW_DISALLOW_ONE_BUILDING':     # the AI's production is not simulated; the player's 造 is
             (self.banned.discard if a[2] else self.banned.add)((a[0], str(a[1]).lower()))
         elif name == 'GIVE_PLAYER_UPGRADE':             # (player, upgrade): a PLAYER upgrade; an OBJECT one (the tiers)

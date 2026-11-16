@@ -708,6 +708,7 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
 
 # the builds this module makes (cnv/registry.py): build name -> mission factory
 MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
+           'aibgate': lambda: mission('CampAIBGate'),  # A269: base construction gate on the AI (checks/engine_basegate.py)
            'aiskxn': lambda: mission('CampAISkXN', carrier='name'),   # D 105: the carrier's rename alone
            'aiskxo': lambda: mission('CampAISkXO', carrier='ext'),    # D 105: ra3ext loaded, stock yard, no host
            'aiskirmlow': lambda: mission('CampAISkLow', money=15000),

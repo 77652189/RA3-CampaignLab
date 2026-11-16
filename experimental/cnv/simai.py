@@ -1091,7 +1091,7 @@ class Brain:
         nothing waiting in that template's queue (one order a queue at a time, INFERRED) -- as (template, cost,
         kinds)."""
         s, ys = self.sim, self.yards()
-        if not ys:
+        if not ys or self.player in s.base_construction_disabled:   # bench aibgate:a (A269)
             return []
         out = []
         for t in templates:
@@ -1117,8 +1117,8 @@ class Brain:
         s = self.sim
         if self.is_structure(template):
             ys = self.yards()
-            if not ys or not s.can_build(self.player, template):
-                return False
+            if not ys or self.player in s.base_construction_disabled or not s.can_build(self.player, template):
+                return False        # base-disabled: bench aibgate:a (A269), no structure order taken till enabled
             q = self.queue_of(template)
             y = min(ys, key=lambda y: len(self.yard_q.get(q(y), [])))
             cost, secs = simunits.production(template, s.own)
