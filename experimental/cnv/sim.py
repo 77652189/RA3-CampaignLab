@@ -4118,6 +4118,12 @@ class Sim:
                         b.indestructible = bool(a[2])
             else:
                 self.gap(GAP_ACTION, f'{name}:{flag}', f'面板标志 {flag} 没模拟（只认 Indestructible）')
+        elif name == 'TEAM_UPGRADE':
+            # Living current members, with the ordinary object-upgrade consumers.
+            # engine_teamup:a measures two Guardians and untouched other teams;
+            # future members, absent/dead teams and map-local upgrades remain gaps.
+            for b in self.members(a[0]):
+                self.give_upgrade(b, a[1])
         elif name in ('NAMED_RECEIVE_UPGRADE', 'NAMED_REMOVE_UPGRADE'):     # (upgrade, object): recorded; of what an upgrade
             b = self.body(a[1])                                              # does to a unit only the SPEED modifier is
             if b:                                                            # simulated (units/pace.py's 齐步); a range,
