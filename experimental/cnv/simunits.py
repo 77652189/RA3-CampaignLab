@@ -456,14 +456,21 @@ def _weapons(texts, base_table=None):
                     fh, fi = children[0]
                     attrs = dict(re.findall(r'(\w+)\s*=\s*"([^"]*)"', fh))
                     relation = attrs.get('Relationship')
-                    if (not fi.strip() and attrs == dict(Rule='ANY', Relationship=relation,
-                            Include='INFANTRY', StatusBitFlagsExclude='NO_COLLISIONS')
+                    status_exclude = attrs.get('StatusBitFlagsExclude')
+                    sickle_attrs = dict(Rule='ANY', Relationship=relation, Include='INFANTRY')
+                    if status_exclude is not None:
+                        sickle_attrs['StatusBitFlagsExclude'] = status_exclude
+                    if (not fi.strip() and attrs == sickle_attrs
+                            and status_exclude in (None, 'NO_COLLISIONS')
                             and relation in ('ENEMIES', 'ALLIES')
+                            # CampKSG b removed only the ENEMIES exclusion.
+                            and (status_exclude is not None or relation == 'ENEMIES')
                             and set(forbidden) == {'STUNNED', 'STUNNED_STANDING_UP', 'STUNNED_FLAILING'}
                             and not re.sub(r'<SpecialObjectFilter\b[^>]*>.*?</SpecialObjectFilter>',
                                            '', inner, flags=re.S).strip()
                             and 'ShockwaveDelaySeconds' not in fields):
-                        target_filter = dict(relation=relation, forbidden=forbidden)
+                        target_filter = dict(relation=relation, forbidden=forbidden,
+                                             status_exclude=(status_exclude or '').split())
                     things = re.findall(r'<IncludeThing>\s*([^<>\s]+)\s*</IncludeThing>', fi)
                     if (attrs == dict(Rule='ALL', Exclude='AIRCRAFT INFANTRY',
                                       StatusBitFlagsExclude='UNDER_IRON_CURTAIN')

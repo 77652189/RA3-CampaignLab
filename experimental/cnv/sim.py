@@ -5571,8 +5571,11 @@ class Sim:
                             and b.template not in target_filter['include_templates'])):
                         continue
                 elif target_filter:
+                    # CampKSG a/b: NO_COLLISIONS rejects only when the XML
+                    # excludes it; no independent status gate in this slice.
                     if (self.relation(attacker.owner, b.owner) != target_filter['relation']
-                            or 'INFANTRY' not in b.kinds or 'NO_COLLISIONS' in b.status):
+                            or 'INFANTRY' not in b.kinds
+                            or any(s in b.status for s in target_filter.get('status_exclude', []))):
                         continue
                     if any(self.has_model_condition(b, c) for c in target_filter['forbidden']):
                         continue
