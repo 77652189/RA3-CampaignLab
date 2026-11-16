@@ -127,6 +127,11 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '目标/AITargetingHeuristic.HeuristicType=FriendlyStructure': 'docs/engine/aitactics.md#读数（FriendlyLandStructureHeuristic：engine_aidefense 守自家建造厂）'}
 # name -> (state, why): where the name rule is wrong (read but switched off, read under another name ...)
 NOTES = {
+    '目标/AITargetingHeuristic.HeuristicType=Crate': (BENCHED,
+        'C engine_aicrate aicrateon/off:a同位原版HealCrate与普通中立油井对照；'
+        'tests/test_crate_target_c.py按名回放并断言原生Crate槽与独立NamedObject槽的选择/对象/坐标。'
+        '真实箱子阳性、普通中立物阴性；只验恒定状态下选择，原版CratePickup的29秒间隔、'
+        '捡取/治疗/撤销、多箱排序、所有权与范围仍gap；原始证据见work/re/c_crate_report.md'),
     '目标/AITargetingHeuristic.MinDistanceFromConyardEntrance': (TODO,
         'C engine_aiconyard aicyard0/300:a仅切出口距离0/300、保留原15s豁免，两局核心/电厂/近处电厂/宿主均1/0/0/1。'
         'CNVStateTP队伍均无成员、目标-1，tgt未发布该状态记录；不能以无行推断未调用或以基地锚点代出口。'
