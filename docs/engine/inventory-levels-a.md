@@ -2,13 +2,13 @@
 
 由 `experimental/cnv/inventory_levels.py --write` 生成，**别手改**。范围：9 关（`missions/a1.py`～`a9.py`）编出的全部脚本（`parts.merged`，含目标显示脚本）里的动作和条件；地图和任务摆的物体、我们自己的单位、脚本点名的模板，连同模块点名的武器、武器点名的物体（抛射体）和武器，取生效的模块（继承、include、同 id 覆盖）和武器效果。没跟：模块点名的别的物体（多是能变成 / 能装的东西：多功能步兵车的乘客、锤子坦克吸来的车）、物体生成表（死亡碎片、OCL 技能）和命令表（工厂能造什么）。AI 部分（引擎 B）在 [inventory-levels.md](inventory-levels.md)。状态和原版用量取自 [inventory.md](inventory.md)。停止条件①：下表全部已对拍。
 
-**已对拍 136 / 201**（不涉及的不算）。
+**已对拍 137 / 201**（不涉及的不算）。
 
 | 部分 | 已对拍 | 推断 | 未做 | 不涉及 |
 |---|---|---|---|---|
 | 脚本动作 | 50 | 0 | 0 | 14 |
 | 脚本条件 | 12 | 0 | 0 | 0 |
-| 物体模块 | 56 | 21 | 36 | 20 |
+| 物体模块 | 57 | 21 | 35 | 20 |
 | 武器效果 | 18 | 4 | 4 | 2 |
 
 按原版用量加权：已对拍 100%，已有（已对拍+推断）100%。
@@ -36,7 +36,6 @@
 | 未做 | 物体模块 | `Behaviors/NotifyWhenAttackingBehavior` | 2 | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；**待核**：台上量过（checks/engine_attackassist.py），可能用别的名字实现了；例：AlliedBaseDefenseAdvanced, SovietBaseDefenseAdvanced |
 | 未做 | 物体模块 | `Behaviors/PowerUpgrade` | 2 | a5 | E175 engine_powerupgrade_e:a/b两局：a冻结330/11/10/11，b精确供电始终100/100/500/350，授予期升级持有位均0。高级原版500来自战役覆盖，删模块克隆为SDK350，不能拿基线差归因于模块。TriggeredBy的Upgrade_PowerPlantTurbine在SDK Upgrade.xml无定义；合法授予/接受拒因未闭合，倾向未解析引用（INFERRED），两局后暂停同输入。tests/test_powerupgrade_bench_e.py具名实际读数回放2 strict xfail，模型未改、不登记已对拍；原预测保留，购买升级、加电/撤销和其他升级门均gap；见work/re/e175_powerupgrade.md；例：SovietPowerPlant |
 | 未做 | 物体模块 | `Behaviors/PrematureDischargeSpecialPower` | 2 | a4 | E177 dischargeon_e:a/dischargeoff_e:a两局原版波能坦克/仅删模块对照，f45攻击、f75按键；f210冻结原版210/76/0/1、删模块210/0/109/0，首伤提前33脚本帧、施放事件1/0。删模块原施放1预测FAIL保留。tests/test_discharge_bench_e.py具名回放2 strict xfail：Sim两侧首伤47，且原版漏施放；武器PER_SHOT前摇及提前放电派发未闭合，不硬调模型、不登记已对拍。内部充能、伤害缩放、重复/取消、其他宿主与绝对帧均gap；见work/re/e177_discharge.md；例：JapanBaseDefenseAdvanced |
-| 未做 | 物体模块 | `Behaviors/RecallUnitsSpecialPower` | 2 | a4 a7 | E184 recallon_e:a/recalloff_e:a原版机场/仅删召回模块两局PASS，f660冻结660/7/3/1与660/7/5/0；两边原生生产Apollo并具名引用，f255近场、f405远场，f420按机场召回后仅原版回近场且事件1。tests/test_recall_bench_e.py按名物体模型回放2 strict xfail：生产/引用前置出发0对台7；不手放飞机绕过绑定、不猜召回实现。内部producerId/召回成员选择、数量上限、精确帧、其他机型/机场及停靠仍gap，不登记整模块已对拍；见work/re/e184_recall.md；例：AlliedAirfield |
 | 未做 | 物体模块 | `Behaviors/SpiderHoleUpdate` | 2 | a4 | E178 spideron_e:a/spideroff_e:a原版反坦克步兵/仅删模块两局PASS，f45合法入洞、f120隔离者出洞；f90/f180具名状态及存活编码两侧均1515/1508，施放事件均3。tests/test_spider_bench_e.py具名回放状态通过，施放事件2 strict xfail（Sim为0）。手动切换由ToggleStatus提供，不据相同状态晋升扫描模块；同点载具实际距离/扫描接受与内部阶段未测，自动出洞假设未成立，_Ambush/精确扫描时钟/移动载具/攻击碾压仍gap，不拟合规则、不改分母；见work/re/e178_spider.md；例：JapanAntiVehicleInfantry |
 | 未做 | 物体模块 | `Behaviors/AssistedPlacementInfoBehavior` | 1 | a1 a2 a4 a5 a6 a7 a9 | 模拟器代码里没有这个名字；例：OreNode |
 | 未做 | 物体模块 | `Behaviors/ChargeWeaponUpdate` | 1 | a4 | 模拟器代码里没有这个名字；例：JapanBaseDefenseAdvanced |
@@ -195,6 +194,7 @@
 | 已对拍 | 物体模块 | `Behaviors/SpecialDisguiseUpdate` | 4 | a1 a4 a6 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_spndisguise.py；例：AlliedAntiVehicleVehicleTech3, JapanLightTransportVehicle |
 | 已对拍 | 物体模块 | `Behaviors/StealthDetectorUpdate` | 3 | a2 a6 | tests/test_detector_bench_e.py::test_detector_named_object_model_observations；已测范围：engine_detector:a原版军犬/仅删模块/超半径三路，距离150/150/450；目标INVISIBLE_DETECTED在f151为1/0/0，删除军犬后f310均0，目标始终存活；tests/test_detector_bench_e.py按名用私有物体模型回放同帧读数，原有实现无需修改；gap：公开Sim未接反隐（strict xfail），精确首扫/清除帧、半径边界、移动/驻军/多探测器/其他宿主及过滤配置未对拍；见work/re/e156_detector.md；例：AlliedScoutInfantry |
 | 已对拍 | 物体模块 | `Behaviors/InvisibilityBroadcastUpdate` | 2 | a1 a4 a6 a7 | tests/test_simbench_c.py::test_invisibility_broadcast_the_aura_holds_its_guardian_at_full_health_and_the_control_dies；例：AlliedAntiVehicleVehicleTech3 |
+| 已对拍 | 物体模块 | `Behaviors/RecallUnitsSpecialPower` | 2 | a4 a7 | tests/test_recall_bench_e.py::test_recall_named_object_model_bench；E187按名回放E184原版机场/仅删模块旧台，两路完整读数660/7/3/1与660/7/5/0通过；单架原生生产Apollo由机场按钮召回回近场并记录施放，使用模板速度移动，未改原预测。已测限本机场/机型单架；生产者筛选、选择顺序、回机场中心的路径为INFERRED，数量上限、精确帧、其他机型/机场、换主、降落及Parking仍gap；见work/re/e187_recall.md；例：AlliedAirfield |
 | 已对拍 | 物体模块 | `Behaviors/TechUpgrade` | 2 | a1 a4 a5 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_tech.py；例：AlliedConstructionYard, CNVA4AlliedConstructionYard |
 | 已对拍 | 物体模块 | `Behaviors/AssembleStructureSpecialAbilityUpdate` | 1 | a4 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_skill.py；例：CNV_IceEngineer |
 | 已对拍 | 物体模块 | `Behaviors/LifetimeUpdate` | 1 | a1 a2 a3 a4 a5 a6 a7 | 模拟器代码里有这个名字；台上量过、测试对拍：checks/engine_crush.py；例：CNV_A4IceSeed, CNV_A4IceWall |
