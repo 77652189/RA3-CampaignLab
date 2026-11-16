@@ -4,8 +4,10 @@ r"""Close one item of a Codex engine line in one command: rebase on origin/main,
 
 Run it from the line's own worktree after committing. The closing tests are the files named on the command line
 (the ones the item touched -- narrowed to the test functions the item changed in them, the whole file when it
-changed a shared helper), the two guards (tests/test_architecture.py, tests/test_docs.py) and -- only when the
-item changed the inventory or its generated pages -- the inventory tests. The output goes to
+changed a shared helper), the two guards (tests/test_architecture.py, tests/test_docs.py), -- only when the
+item changed the inventory or its generated pages -- the inventory tests, and -- only when the item moved the model
+pin (experimental/cnv/inventory_model.rev) -- the private model's whole suite (a red also red at the old pin is
+reported, not blocking). The output goes to
 work/logs/<lane>_close_<stamp>.log; the screen gets the last lines only. Exit 0 = pushed; 1 = red tests (fix and run
 again); 2 = uncommitted changes or a rebase conflict (resolve as AGENTS.md says, then run again); 3 = push refused. A refused push (another line landed first) is retried by itself after a rebase, without
 rerunning the tests, unless what landed touched a file the item changed.
@@ -116,6 +118,40 @@ def narrow(test_file, base):
     return [f'{test_file}::{n}' for n in sorted(names)] or [test_file]
 
 
+MODEL_REV = 'experimental/cnv/inventory_model.rev'
+
+
+def model_tests(base, log):
+    """The private model's whole suite (~2.5 min at -n 4) when the item moved the model pin: on 11-16 E186 left
+    three model tests red (a layer outside the whitelist, two object benches) past a green close, since the close
+    ran public tests only. A test also red at the old pin is someone else's and only reported. True = no new red."""
+    model = _paths.ENGINE_MODEL
+    old = git('show', f'{base}:{MODEL_REV}').stdout.strip()
+    run = lambda where, *ids: subprocess.run(
+        [sys.executable, '-X', 'utf8', '-m', 'pytest', '-q', '-p', 'no:cacheprovider', '-rf', *ids]
+        + ([] if ids else ['-n', '4']), cwd=where, capture_output=True, text=True, encoding='utf-8', errors='replace')
+    r = run(model)
+    with open(log, 'a', encoding='utf-8') as f:
+        f.write('\n== model suite ==\n' + r.stdout[-20000:])
+    red = sorted(set(re.findall(r'^FAILED (\S+)', r.stdout, re.M)))
+    if not r.returncode or not red:
+        return not r.returncode
+    if not old:
+        return False
+    tmp = os.path.join(_paths.WORK, 'tmp', f'model_old_{os.getpid()}')
+    subprocess.run(['git', '-C', model, 'worktree', 'add', '-q', '--detach', tmp, old], capture_output=True)
+    try:
+        was = set(re.findall(r'^FAILED (\S+)', run(tmp, *red).stdout, re.M)) if os.path.isdir(tmp) else set()
+    finally:
+        subprocess.run(['git', '-C', model, 'worktree', 'remove', '--force', tmp], capture_output=True)
+    new = [t for t in red if t not in was]
+    if was:
+        print('模型测试红（旧 pin 上也红，不是本项的）：' + ' '.join(sorted(was)))
+    if new:
+        print('模型测试本项新红：' + ' '.join(new))
+    return not new
+
+
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ('c', 'e', 'a', 'b', 'd'):
         sys.exit(__doc__)
@@ -152,6 +188,9 @@ def main():
     print(f'收尾测试（{len(tests)} 个文件，日志 {log}）：')
     print('\n'.join(tail))
     if r.returncode:
+        sys.exit(1)
+    if MODEL_REV in changed and not model_tests(base, log):
+        print(f'模型仓库（{_paths.ENGINE_MODEL}）有本项新红的测试：先在模型里修好推送，再跑本命令')
         sys.exit(1)
     # a refused push is another line landing first (11-12 E closed three times, ~4 min of tests each): rebase and
     # push again without rerunning the tests -- unless what landed touched a file this item changed
