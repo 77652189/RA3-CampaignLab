@@ -105,6 +105,8 @@ PASSAGE_CLEAR = 150.0
 # aiskind: the far fields (>= ~1280 from the yard) are beyond 600 + 75 of it -> never wanted.
 SERVED = 300.0
 NODE_REACH = 75.0                   # D138 2 / B208 (read): the constant both terms of that scan add
+NODE_MINERS = 3                     # B210 (bench ainf2 / ainf4 / ainf3: 1 / 2 / 3 own collectors a refinery, its own
+                                    # included -> full only at 3): INFERRED the node wrapper's capacity, unread
 DIFFICULTY = {'easy': 'EASY', 'normal': 'MEDIUM', 'hard': 'HARD', 'brutal': 'BRUTAL'}
 BLOCKS = ('targets', 'defense', 'micro', 'specials')
 PATH_EVERY = 10 * FPS               # INFERRED: a PathToTargetHeuristic answer is kept 10 s (the engine asks every
@@ -619,7 +621,7 @@ class Brain:
                'beacons': set(),                                                     # no beacons in the simulator
                'power advantage': self.power_advantage,
                'tech buildings': self.tech_buildings(),
-               'nodes full': not self.open_nodes(),                       # AllNearbyNodesFull (B208)
+               'nodes full': not self.open_nodes(miners=True),            # AllNearbyNodesFull (B208 / B210)
                'attacked': self.attacked, 'energy': self.energy,
                # the private AIPlayer.available: no income -> the budget share pays nothing (bench engine_aitower e).
                # A refinery counts: the retail one brings its own miner (SpawnBehavior SpawnOnUnpack), which the
@@ -1396,12 +1398,15 @@ class Brain:
                    ((b, self._build_radius(b.template)) for b in bodies
                     if b.owner == self.player and 'STRUCTURE' in b.kinds) if br > 0)
 
-    def open_nodes(self, reach=None, bodies=None):
+    def open_nodes(self, reach=None, bodies=None, miners=False):
         """The ore nodes the AI could still use (D138 2 / B208, read): not served, and near one of its build-radius
         structures (_near_builder; reach: the scan's constant NODE_REACH, read). Served (INFERRED: the engine skips
         a node whose wrapper's taken count reached its capacity, the wrapper unread): an own refinery within SERVED
         of it, the node that refinery's nearest. Empty = AllNearbyNodesFull true (the same scan answers 'wants a
-        refinery' and the heuristic)."""
+        refinery' and the heuristic). miners (the heuristic, B210): a served node is taken only while the AI's own
+        collectors cover NODE_MINERS for it, pooled over the served nodes (INFERRED: ainf3's placed collectors stand
+        nearer the other refinery; which node a collector counts at is unread). The refinery search keeps miners
+        off: its 'no third' runs (aiskirm) are benched with one collector a refinery."""
         reach = NODE_REACH if reach is None else reach
         bodies = self.sim.living() if bodies is None else bodies
         nodes = [b for b in bodies if 'orenode' in b.template.lower()]
@@ -1411,6 +1416,9 @@ class Brain:
                 n = min(nodes, key=lambda n: math.hypot(n.x - b.x, n.y - b.y), default=None)
                 if n is not None and math.hypot(n.x - b.x, n.y - b.y) <= SERVED:
                     served.add(n.name)
+        if miners:
+            have = sum(b.owner == self.player and 'HARVESTER' in b.kinds for b in bodies)
+            served = set(sorted(served)[:have // NODE_MINERS])
         return [n for n in nodes if n.name not in served and self._near_builder(n, reach, bodies)]
 
     def _build_radius(self, template):

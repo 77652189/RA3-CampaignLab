@@ -220,10 +220,12 @@ NOTES = {
         'C engine_ailastexp的60s/240s首次计时已对拍，Time字段单独登记；'
         '真实扩张后时间戳来源/重置消费者未测，初始时间戳0保持INFERRED，整条件保持推断；'
         '见work/re/c_lastexp_report.md'),
-    '启发条件/AllNearbyNodesFullHeuristic': (GUESSED,
-        'B208：simai facts 给 nodes full（Brain.open_nodes，与"还要不要矿场"同一扫描，已读）；'
-        '台子 engine_ainodesfull ainf0/ainf2：无矿场时该状态不出兵（对），两座矿场对着两矿点仍不出兵'
-        '（模拟器认为满，strict xfail）。"矿点满"的占用定义没读，不晋升；tests/test_nodes_full.py'),
+    '启发条件/AllNearbyNodesFullHeuristic': (BENCHED,
+        'B208-B210：simai facts 给 nodes full（Brain.open_nodes，与"还要不要矿场"同一扫描，已读）；'
+        '台子 engine_ainodesfull ainf0-ainf5（0/1/2 座矿场，每座矿场连自带共 1/2/3 辆矿车）：'
+        '只有两座矿场各 3 辆矿车（ainf3）该状态出兵，其余都在家；模拟器每个矿点 3 辆矿车算满（NODE_MINERS，'
+        '阈值由台上夹出、引擎的矿点占用表没读，INFERRED），矿车跨矿点合算也是 INFERRED；'
+        'tests/test_nodes_full.py 六局按名回放'),
     '启发条件/PowerAdvantageHeuristic.IncludeEnemyDefenses': (BENCHED,
         'C engine_aipowerenemy aipenoff/aipenon:a：同图8对4守护者、一座玩家光谱塔及电厂，'
         '固定Value=2.0/Above=true/IncludeOwnDefenses=false，仅IncludeEnemyDefenses=false/true；'

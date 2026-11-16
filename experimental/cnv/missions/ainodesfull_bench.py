@@ -8,9 +8,11 @@ inside its build radius. Three builds differ only in the AI refineries placed on
   ainf1  one, on the field's pad   -> the front node served, the side one open
   ainf2  two, one facing each node -> both served
   ainf3  ainf2 + two more AI Ore Collectors beside each refinery (B209: is 'full' counted in miners?)
-Prediction (simai Brain.open_nodes: a node is served by an own refinery within 300 whose nearest node it is,
-INFERRED; the engine's per-node taken / capacity wrapper is unread): the Peacekeepers stay home on ainf0 and ainf1
-and leave on ainf2; the Guardians leave on all three.
+  ainf4  ainf2 + one AI Ore Collector beside each refinery (B210: how many miners make a node full)
+  ainf5  ainf1 + two AI Ore Collectors beside it (B210: do two miners at one refinery fill the side node too)
+A placed refinery brings its own collector. Bench (B209 / B210): the Peacekeepers leave only on ainf3 -- a node is
+full at 3 own collectors (simai NODE_MINERS, INFERRED: the engine's per-node taken / capacity wrapper is unread); the
+Guardians leave on every build.
 """
 import math
 
@@ -53,4 +55,6 @@ def mission(name, refineries, miners=0):
 MISSION = {'ainf0': lambda: mission('CampNodesFull0', 0),
            'ainf1': lambda: mission('CampNodesFull1', 1),
            'ainf2': lambda: mission('CampNodesFull2', 2),
-           'ainf3': lambda: mission('CampNodesFull3', 2, miners=2)}
+           'ainf3': lambda: mission('CampNodesFull3', 2, miners=2),
+           'ainf4': lambda: mission('CampNodesFull4', 2, miners=1),
+           'ainf5': lambda: mission('CampNodesFull5', 1, miners=2)}

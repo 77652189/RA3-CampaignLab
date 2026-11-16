@@ -6,8 +6,11 @@ Peacekeepers / the constant state's Guardians at home):
   ainf2 (two refineries)     s1-s174 4 4, s194-s279 4 0 -- the Peacekeepers stay too: not 'full'
   ainf1 (one refinery)       s2-s273 4 4 .. s245 4 0 -- the Peacekeepers stay (B209, work/logs/b209_bench.log)
   ainf3 (ainf2 + 2 miners per refinery)  s1-s113 4 4, s116 0 3, s126 0 0 -- full: miners count (B209)
-The simulator's rule (simai Brain.open_nodes: an own refinery within 300 serves its nearest node, INFERRED) says
-ainf2 is full; the engine's per-node taken / capacity wrapper is unread.
+  ainf4 (ainf2 + 1 miner per refinery)   s1-s69 4 4, s80-s184 4 0 -- not full (B210, work/logs/b210_bench.log)
+  ainf5 (ainf1 + 2 miners)               s1-s68 4 4, s76-s168 4 0 -- the side node stays open (B210)
+A placed refinery brings its own collector, so a refinery's node holds 1 / 2 / 3 collectors on ainf2 / ainf4 / ainf3:
+full at 3 (simai NODE_MINERS, INFERRED the engine's per-node taken / capacity wrapper, unread; the simulator pools the
+collectors over the served nodes).
 """
 import importlib.util
 from pathlib import Path
@@ -37,12 +40,11 @@ def test_open_nodes_keep_the_nodes_full_state_off():
         assert tuple(rows[second][k] for k in LABELS) == (4, 0), second
 
 
-@pytest.mark.xfail(strict=True, reason='bench ainf2: two refinery pads facing the two east nodes, the Peacekeepers '
-                   'stay home to s279 (4) while the Guardians leave (s194 0); the simulator serves both nodes '
-                   '(a refinery within 300, its nearest node) -> full -> 0 from s20. Bench ainf3 (two more miners '
-                   'beside each refinery) fills them: it counts miners, threshold unread -- handoff-b 209')
-def test_two_refineries_still_leave_a_node_open():
-    rows = _rows('ainf2')
+@pytest.mark.parametrize('build', ['ainf2', 'ainf4', 'ainf5'])
+def test_too_few_miners_leave_a_node_open(build):
+    """Bench ainf2 (s1-s279 4), ainf4 (s1-s184 4), ainf5 (s1-s168 4): the Peacekeepers stay home -- one or two
+    collectors a refinery (ainf2 / ainf4), or three at one refinery with the side node unserved (ainf5)."""
+    rows = _rows(build)
     for second in range(80, 120):
         assert rows[second]['满态在家'] == 4, second
 

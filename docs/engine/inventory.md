@@ -8,7 +8,7 @@
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 17 | 89 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **97%** | **97%** | 195 / 357 | 428 | 213 | 90 | 91 | 34 | 100% |
+| AI | **97%** | **98%** | 196 / 357 | 428 | 214 | 89 | 91 | 34 | 100% |
 
 ## 脚本动作
 
@@ -996,7 +996,7 @@
 | 已对拍 | `组队招人/TeamTemplate.Priority=LOW` | 18 | a4 a5 a7 | docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮） |
 | 已对拍 | `人格/BaseSelection.PreferredNotBaseTypes` | 17 | a4 a5 a7 | C aibn2old/aibn2new:b初始双基地固定OLD，仅切反偏好OLDEST/MOST_RECENT；f274两基地均合格，分数0/1选1与1/0选0，f284点命令崖矿/东矿。s55–65东/崖队员/双厂分别0/0/1/1与4/0/1/1；tests/test_expansion_target.py按名断言类型、分数、选择点和原计数。仅年龄类型反偏好命中子集；自动注册、死亡清理和矿点资格仍gap，旧CAPTURED单基地只回放计数，不证明类型；见work/re/c_bn2_report.md |
 | 已对拍 | `人格/BaseSelection.SortOrder` | 17 | a4 a5 a7 | C aibs3old/aibs3new:b初始双厂：f274两个合格基地0/1均分1，OLD pick/model=0/0、NEW=1/1；点命令分别东矿/崖矿。s55–65东/崖队员与双厂OLD=4/0/1/1、NEW=0/0/1/1；tests/test_expansion_target.py按名回放断言选择点和计数。仅OLD/NEW按基地编号排序；其他排序、注册顺序和矿点资格仍gap，见work/re/c_bs3_report.md |
-| 推断 | `启发条件/AllNearbyNodesFullHeuristic` | 17 | a4 a5 a7 | B208：simai facts 给 nodes full（Brain.open_nodes，与"还要不要矿场"同一扫描，已读）；台子 engine_ainodesfull ainf0/ainf2：无矿场时该状态不出兵（对），两座矿场对着两矿点仍不出兵（模拟器认为满，strict xfail）。"矿点满"的占用定义没读，不晋升；tests/test_nodes_full.py |
+| 已对拍 | `启发条件/AllNearbyNodesFullHeuristic` | 17 | a4 a5 a7 | B208-B210：simai facts 给 nodes full（Brain.open_nodes，与"还要不要矿场"同一扫描，已读）；台子 engine_ainodesfull ainf0-ainf5（0/1/2 座矿场，每座矿场连自带共 1/2/3 辆矿车）：只有两座矿场各 3 辆矿车（ainf3）该状态出兵，其余都在家；模拟器每个矿点 3 辆矿车算满（NODE_MINERS，阈值由台上夹出、引擎的矿点占用表没读，INFERRED），矿车跨矿点合算也是 INFERRED；tests/test_nodes_full.py 六局按名回放 |
 | 已对拍 | `启发条件/ConstantHeuristic.Weight` | 17 | a4 a5 a7 | C engine_aiconstweight aicwzero/aicwone:a：同人格单战略状态，仅Weight=0/1；s40步兵在家/总数/未登记坦克在家为4/4/4与0/4/4，tests/test_simai_constweight_c.py按名回放两组实测。仅验证零排除及正值可进入；多个正权重的抽样比例、随机分布和预算/造兵消费者仍gap；见work/re/c_constweight_report.md |
 | 已对拍 | `战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction` | 17 | a4 a5 a7 | engine_aicannot aicantig/di/su:r：Ignore保留两人和空靶；Disband f95清空/f97重招；TreatLikeSuccess f92换地面厂/f500进入攻击态。tests/test_ai_cannot_reaction.py按名回放生命周期；仅显式三值、SimpleAttack/RAMPAGE；精确周期、模板资格、缺省、回家和多队仍gap；见work/re/c_cannot_report.md、e122_cannot.md |
 | 已对拍 | `人格/BaseSelection.PreferredBaseTypes` | 15 | a4 a5 a7 | C aibp1old/aibp1new:b初始双基地固定OLD、反偏好为空，仅切偏好OLDEST/MOST_RECENT；f274两基地均合格，分数1/0选0与0/1选1；f284点命令东矿/崖矿。s55–65东/崖队员/双厂分别4/0/1/1与0/0/1/1；tests/test_expansion_target.py按名断言类型、分数、选择点与原计数。仅年龄类型偏好命中子集；自动注册、死亡清理和矿点资格仍gap；见work/re/c_bp1_report.md |
