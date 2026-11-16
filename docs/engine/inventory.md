@@ -8,7 +8,7 @@
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 18 | 88 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **97%** | **98%** | 196 / 357 | 428 | 215 | 88 | 91 | 34 | 100% |
+| AI | **98%** | **98%** | 198 / 357 | 428 | 217 | 86 | 91 | 34 | 100% |
 
 ## 脚本动作
 
@@ -878,7 +878,7 @@
 | 已对拍 | `人格/DefaultTacticHomeBaseCriteria.PreferredNotBaseTypes` | 148 | a4 a5 a7 | B201 engine_aihome aihmgno：同上，PREFER_CLOSEST + PreferredNotBaseTypes OLDEST_OF_TYPE → 不回近的 A、回 B（s30 起家B 4），反偏好压过排序；同一测试按名回放。原版写的 CAPTURED 要占领来的基地才分得出，没量 |
 | 已对拍 | `人格/DefaultTacticHomeBaseCriteria.SortOrder` | 148 | a4 a5 a7 | B201 engine_aihome aihmgcl/aihmgnw：两座初始建造厂（A 先放、B 在北 1350），SimpleAttack 打 A 西 ~700 的具名电厂、RETURN_HOME_AND_DISBAND，仅人格这条不同；PREFER_NEWEST 电厂没后全员回 B（s36 起家B 4），PREFER_CLOSEST 选 A、队伍中心已在 600 内 → 原地解散不走（到电厂 4 到 s88）；tests/test_simai_bench_b.py::test_return_home_picks_the_base_by_the_personality_criteria 按名回放。CLOSEST 的量点（队伍中心）是推断，OLDEST/SMALLEST 等其余排序没量 |
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType=NamedObject` | 145 |  | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_ainamed.py |
-| 推断 | `战术/Tactic.Distance` | 144 | a4 a5 a7 | 专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；s65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md |
+| 已对拍 | `战术/Tactic.Distance` | 144 | a4 a5 a7 | D169晋升：bench engine_aisimpleexp aiexpb400/aiexpb200/aiexpb50只差SimpleExpansion的Distance，台上400/200在离矿点397/194处原地展开前哨、50走到离矿点98停下不展开；tests/test_expansion_target.py三局按名回放、正常断言（矿点按自身外接圆53挡路后50那局也对上）。旧记录：专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；s65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md |
 | 已对拍 | `启发条件/TimerHeuristic` | 138 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `启发条件/TimerHeuristic.StartTime` | 137 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
 | 已对拍 | `启发条件/IntervalHeuristic` | 132 | a4 a5 a7 | docs/engine/aistate.md#启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮） |
@@ -972,7 +972,7 @@
 | 已对拍 | `微操/AIMicroManagerData.RetreatMinDistanceToFallback` | 38 | a4 a5 a7 | engine_aifallback aifbshort100/aifblong500：四人存活回齐、在家约18秒、长组先于短组再出发；tests/test_simai_fallback.py::test_fallback_distance_first_return_and_departure；仅此固定FromBase=300场景的行为回放，未量内部退出位置、精确距离边界或其他基地选择 |
 | 已对拍 | `目标/AITargetingHeuristic.SortType=Distance` | 37 | a4 a5 a7 | docs/engine/aitactics.md#目标挑哪个（aitpnear 挑最近、aitpmt2 第二槽挑次近、aitpvk 显式写 Distance） |
 | 已对拍 | `经济/AccountShare.Account` | 37 | a4 a5 a7 | tests/test_slush_account.py::test_slush_defense_named_bench_replay（C 的 engine_aislush aislddef / aislsdef：同一预算只把 100% 从 DEFENSE 挪到 SLUSH_FUND，台上炮塔 s28/48/68 1/2/3 座 vs 全程 0 座，模拟器按名回放 s60 2 / 0——Account 决定份额进哪个池、造防御只花 DEFENSE 池；PRODUCTION / DEFENSE 两值另有台子；SLUSH_FUND 自己花在哪单列未做；D 第 151 轮） |
-| 推断 | `战术/Tactic.Tactic=SimpleExpansion` | 36 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过（checks/engine_aisimpleexp.py），没有测试跑这个台子 |
+| 已对拍 | `战术/Tactic.Tactic=SimpleExpansion` | 36 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aisimpleexp.py |
 | 已对拍 | `启发条件/IsBuildingHeuristic` | 30 | a4 a5 a7 | E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。C补充活跃连续电厂队列false反向对照：匹配组s40到陆厂/在家0/4，不匹配4/0，两组电厂4/基地1、各一次PASS；模型匹配组4/0，test_simai_buildkind_c为strict xfail，队列/求值时序未解；取消/挂起/等待仍gap；见 work/re/c_buildkind_false_report.md、e_building_e83.md |
 | 已对拍 | `启发条件/IsBuildingHeuristic.KindOf` | 30 | a4 a5 a7 | C engine_aibuildkind a：同一连续电厂开局，FS_POWER匹配时s40到陆厂4/在家0，FS_BARRACKS不匹配时0/4；两组电厂4/基地1，两局PASS；多token aibkindoryes/aibkindorno各一次PASS：FS_BARRACKS FS_POWER仅第二token匹配时4/0，FS_BARRACKS FS_TECHNOLOGY均不匹配时0/4，两组电厂4/基地1；tests/test_simai_buildkind_c.py按名回放单token和多token四组，验证活跃队列KindOf按OR匹配。false反向两组各一次PASS：匹配0/4、不匹配4/0，均电厂4/基地1；模型匹配false组4/0，strict xfail，见 work/re/c_buildkind_false_report.md。仅连续电厂开局，队列挂起/取消/等待阶段仍gap；见 work/re/c_buildkind_or_report.md、c_buildkind_report.md；空队列边界见 work/re/e_building_e83.md |
 | 已对拍 | `启发条件/IsBuildingHeuristic.PassIfBuilding` | 30 | a4 a5 a7 | E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。C补充活跃连续电厂队列false反向对照：匹配组s40到陆厂/在家0/4，不匹配4/0，两组电厂4/基地1、各一次PASS；模型匹配组4/0，test_simai_buildkind_c为strict xfail，队列/求值时序未解；取消/挂起/等待仍gap；见 work/re/c_buildkind_false_report.md、e_building_e83.md |

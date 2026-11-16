@@ -271,15 +271,13 @@ def test_simple_expansion_built_miner_named_bench_replay(build):
 OPENER_MINER_BENCH = {'aiexpb400': (1, 0, 0), 'aiexpb200': (1, 0, 0), 'aiexpb50': (0, 0, 1)}
 
 
-@pytest.mark.parametrize('build', [
-    'aiexpb200', 'aiexpb400',
-    pytest.param('aiexpb50', marks=pytest.mark.xfail(strict=True, reason=(
-        'D round 168: the formation split now matches the bench (miner slot (4215, 3039), 67 behind node 44), but '
-        'the simulator miner drives straight over the ore node on its way there (16 from it -> unpacks); the bench '
-        'miner goes round the node (never nearer than 89) and stops 98 away -- ore nodes do not block the '
-        "simulator's ground paths"))),
-])
+@pytest.mark.parametrize('build', ['aiexpb200', 'aiexpb400', 'aiexpb50'])
 def test_simple_expansion_unpacks_within_distance_named_bench_replay(build):
+    # bench engine_aisimpleexp aiexpb400 / aiexpb200 / aiexpb50 (only Tactic.Distance differs).
+    # D round 169, aiexpb50: the ore node blocks by its own bounding circle (Sim.blocks, 53; with the 40 a building
+    # gets the miner's way to its slot slid 45 past it and unpacked) and a miner armed to unpack starts no ore trip
+    # (Sim._mine: standing at its slot it was drawn onto the node). Gap left: it stands at its slot 67 from the node,
+    # the bench 98 (the game's clearance round the node not read).
     # D round 157: the opener's unit Build kept (opening.kept_orders, structures only), a HARVESTER the AI's
     # production made offered to teams, and the miner armed to unpack where it stands within Tactic.Distance
     # (TacticsBlock.approach, Sim.order_unpack here=True): simulator 400 unpacks s64, 200 s68 (bench s66 / s71).

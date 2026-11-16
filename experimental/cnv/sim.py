@@ -1267,6 +1267,12 @@ class Sim:
             if p.get('shape') == 'disc':
                 return (b.x, b.y, p['length'] / 2)
             return (b.x, b.y, b.angle, p['length'], p['length'] if p.get('shape') == 'square' else p['thick'])
+        if 'ORE_NODE' in b.kinds and b.radius:
+            # its own bounding circle (box 33 x 41 -> 52.6), not the 40 a building out of platprops gets: with 40 the
+            # SimpleExpansion miner's way to its slot 67 behind the node slid past it 45 off and unpacked inside
+            # Distance 50 (aiexpb50); the bench miner goes round, never nearer than 89 (D round 168/169). INFERRED:
+            # the game's own clearance (node footprint + the miner's size) not read, 53 is a floor
+            return (b.x, b.y, b.radius)
         if 'STRUCTURE' in b.kinds and 'bridge' not in b.template.lower():
             import platprops
             return (b.x, b.y, platprops.radius(b.template) if b.template in platprops.CATALOG else 40.0)
@@ -1874,6 +1880,12 @@ class Sim:
             if m is not None:
                 self._undock(b)
                 b.mine = None
+            return
+        if m is None and b.building is not None:
+            # told to unpack (order_unpack; the SimpleExpansion miner armed to unpack within Distance): it does not
+            # set off for ore while that order stands. aiexpb50 (D169): the miner standing at its slot 67 behind the
+            # node was drawn onto the node by a new trip and unpacked 38 from it; the bench miner stands 98 away
+            # idle to s130 (D156). INFERRED: the game's reason (the order's state, the team's hold) not read
             return
         if m is None:
             m = b.mine = {'state': 'locate', 'node': None, 'ref': None, 'due': fr, 'load': 0, 'n': 0, 'leg': None,

@@ -690,7 +690,10 @@ NOTES = {
         'tests/test_simai_bench_c.py按名回放首次组成；新成员兵种由固定生产归属仍INFERRED；'
         '仅指定最低数优先再普通补位，不是排他过滤；其他兵种/多槽位/替补仍gap；'
         '见 work/re/e_create_e88.md'),
-    '战术/Tactic.Distance': (GUESSED,
+    '战术/Tactic.Distance': (BENCHED,
+        'D169晋升：bench engine_aisimpleexp aiexpb400/aiexpb200/aiexpb50只差SimpleExpansion的Distance，'
+        '台上400/200在离矿点397/194处原地展开前哨、50走到离矿点98停下不展开；'
+        'tests/test_expansion_target.py三局按名回放、正常断言（矿点按自身外接圆53挡路后50那局也对上）。旧记录：'
         '专用engine_aidistance aidist250/aidist2000保留AI队、同次传送1200，仅Distance不同；'
         's65小组圈300/900=1/1，大组0/0，存活均1；两组各5条PASS、模型末态匹配；'
         '大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；'
