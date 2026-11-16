@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 186 | 17 | 133 | 115 | 98% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 187 | 17 | 132 | 115 | 98% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 56 / 113 | 189 | 57 | 21 | 85 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -235,7 +235,7 @@
 | 已对拍 | `PLAYER_ENABLE_UNIT_CONSTRUCTION` | 16 |  | tests/test_unitban_bench_c.py::test_unitban_enable_resumes_partly_paid_engineer；C两局engine_unitban:a/b具名玩家盟军工程师原生按钮：禁用期可排队但不扣款；恢复后付款/进度续跑，不退款不重置。a第150帧甲2000/乙1603，恢复后第198帧1843/1500/10，末1000/1000/33；b第101至180帧甲保持1800，第195帧1753/1500/10、第285帧1500/1500/11。tests/test_unitban_bench_c.py按名回放实读；第二笔队列付款提前10帧留strict xfail。仅此玩家/工程师切片已量，其他模板门禁INFERRED，UI拒绝、升级、建筑、AI及This Player/All Players范围仍gap；见work/re/c_unitban_report.md |
 | 不涉及 | `PLAY_SOUND_EFFECT_AT_TEAM` | 16 |  | 纯表现（名字规则） |
 | 不涉及 | `TOGGLE_LOCK_CURRENT_SELECTION` | 16 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
-| 未做 | `UNIT_SET_MODELCONDITION_FOR_DURATION` | 16 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `UNIT_SET_MODELCONDITION_FOR_DURATION` | 16 |  | tests/test_modeldur_bench_c.py::test_modeldur_real_bits_expire_after_measured_frames；C engine_modeldur:a真实UNIT_HAS_MODELCONDITION查询：3/7秒USER_1分别为真46/106逻辑帧，b的1/2秒为真16/31帧，均含到期边界；空白阴性始终无位，永久阳性保持，状态码11→10→8。tests/test_modeldur_bench_c.py按名回放同帧四计数器。仅正持续时间、第四参数1.0、独立USER_1写入/到期切片；其他位推广INFERRED，重复/覆盖、零时长、第四参数其他值及原生生产者均gap；见work/re/c_modeldur_report.md |
 | 未做 | `UNIT_STOP_SEQUENTIAL_SCRIPT` | 16 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `NAMED_EXIT_BUILDING` | 15 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_enter.py |
 | 未做 | `TEAM_UPGRADE` | 15 |  | Sim.act / Sim.cond 不认识 |
