@@ -34,16 +34,7 @@ def test_returnproducer_only_module_removed_and_produced_reference():
     assert re.sub(r'<ReturnToProducerSpecialPower\b[^>]*/>', '', fixed_on.assets[0][1], flags=re.S) == fixed_off.assets[0][1]
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E185 production/reference is wired, but generic object-world movement is missing; '
-    'departure flags remain 3 versus bench 7, before return dispatch. '
-    'Do not bypass production to infer return semantics. See work/re/e185_production.md '
-    'and work/re/handoff-e.md.'))
-@pytest.mark.parametrize('name,final,casts', [
-    ('engine_returnon_e', 11, 1),
-    ('engine_returnoff_e', 11, 1),
-])
-def test_returnproducer_named_object_model_bench(name, final, casts):
+def _replay(name):
     import build
     import labpaths
     import simproxy
@@ -73,9 +64,31 @@ def test_returnproducer_named_object_model_bench(name, final, casts):
     engine = scripts.Engine(scripts.from_cnv(unnot(setup.scripts)), world,
                             difficulty=1, honor_inverted=False)
     engine.run(frames=660)
+    return engine
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'E186 departure reaches bench 7; return dispatch remains a gap. '
+    'See work/re/e186_movement.md and work/re/handoff-e.md.'))
+@pytest.mark.parametrize('name,final,casts', [
+    ('engine_returnon_e', 11, 1), ('engine_returnoff_e', 11, 1),
+])
+def test_returnproducer_named_object_model_bench(name, final, casts):
+    engine = _replay(name)
     assert engine.value('E173Frame') == 660
     # Both measurements use the same direct reference to a genuinely produced
     # aircraft; do not replace this prerequisite with a manually placed plane.
     assert engine.value('E173Depart') == 7
     assert engine.value('E173Final') == final
     assert engine.value('E173Cast') == casts
+
+
+@pytest.mark.parametrize('name', ['engine_returnon_e', 'engine_returnoff_e'])
+def test_returnproducer_departure_bench_prerequisite(name):
+    engine = _replay(name)
+    # a's two native observations both reached the sortie at f405 (bit 4).
+    assert engine.value('E173Frame') == 660
+    assert engine.value('E173Depart') == 7
+    plane = engine.world.named('UNITRef - E173 Plane')
+    assert plane is not None
+    assert plane.producer is engine.world.named('E173 Airport')

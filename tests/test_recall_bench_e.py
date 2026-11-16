@@ -54,12 +54,12 @@ def _replay(name):
     return engine
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E185 production/reference passes early bits 3; generic object-world movement is missing '
-    '(departure 3 versus bench 7), then recall dispatch remains a gap. See work/re/e185_production.md '
-    'and work/re/handoff-e.md.'))
 @pytest.mark.parametrize('name,final,casts', [
-    ('recallon_e', 3, 1), ('recalloff_e', 5, 0),
+    pytest.param('recallon_e', 3, 1, marks=pytest.mark.xfail(
+        strict=True, raises=AssertionError, reason=(
+            'E186 departure reaches bench 7; recall dispatch remains a gap. '
+            'See work/re/e186_movement.md and work/re/handoff-e.md.'))),
+    ('recalloff_e', 5, 0),
 ])
 def test_recall_named_object_model_bench(name, final, casts):
     engine = _replay(name)
@@ -71,11 +71,10 @@ def test_recall_named_object_model_bench(name, final, casts):
 
 
 @pytest.mark.parametrize('name', ['recallon_e', 'recalloff_e'])
-def test_recall_production_reference_bench_prerequisite(name):
+def test_recall_production_reference_departure_bench_prerequisite(name):
     engine = _replay(name)
-    # The original f255 live/near observations are bits 1 and 2. The full
-    # departure=7 assertion above still covers the unimplemented move phase.
-    assert engine.value('E184Depart') & 3 == 3
+    # Original f255 live/near bits 1/2 and f405 sortie bit 4, unchanged.
+    assert engine.value('E184Depart') == 7
     plane = engine.world.named('UNITRef - E184 Plane')
     assert plane is not None
     assert plane.producer is engine.world.named('E184 Airport')
