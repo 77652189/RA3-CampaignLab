@@ -14,7 +14,7 @@ in tests/test_ai_dodge.py. A clock-stable engine acceptance check remains a gap,
 the bounded single-beacon consumer is replayed there. Exact timing, safety-circle
 boundaries, general filters and multi-threat choice remain gaps (work/re/e116_dodge.md).
 """
-from model import Script, Test, counted, square
+from model import Script, Test, counted, square, status
 
 
 def probe(m):
@@ -146,4 +146,41 @@ def split(m):
     return t
 
 
-CHECKS.update({name: {'r': timing, 'd': death, 's': split} for name in ('aidodgezero', 'aidodgetwo')})
+def unpowered(m):
+    """split's mission with s1's protocol points taken away; tells whether H6 makes the bench's f706 (A round 263).
+
+    A round 262: on the bench s1 (Allied, starting point 1) put a freezing power on the east conscript (red f382,
+    frozen white f397, ice and a sky beam f427..f503); the simulator's AI casts no player power. The program buys
+    from frame 10 (simtech.Book.ai_buy), so a frame-0 script with points and their cap at 0 (as plan.py's
+    '技能 否') leaves it nothing to buy or cast. Lines: the first and second warrior gone (as split), how many
+    frames any p1 object is UNDER_FROZEN (AttributeModifer_CryoBeam_10's status; only adds), and how many
+    conscripts stand deep, past the simulator's stop (y >= 2780, up to the sample square's far edge).
+    H6 holds if the first death comes back near the simulator's ~511, frozen stays 0 and deep stays 0 before it.
+    Simulator (powers never cast): deaths 511 / 867, frozen 0, deep 0 (conscripts stop at ~2710).
+    RESULTS A263 zero (PASS, 221 s): deaths 527 / 777, frozen 0 all 204 s, deep 1 from s31 (s36-37 0), 2 from s52.
+    H6 holds: without s1's power the first death is back to 527 (split's 706 was the freeze); focus fire (250
+    frames apart). Left: one conscript stands past 2780 before the first death (the simulator's stop ~2710), and
+    the second death is 90 frames before the simulator's -- the H5a gap (start / speed / stop depth), not H6.
+    """
+    t = split(m)
+    s1, p1 = m.player('s1'), m.player('p1')
+    frame, frozen, deep = 'CNV_Dodge_Frame', 'CNV_Dodge_Frozen', 'CNV_Dodge_Deep'
+    x, y = m.point('dodge spot')
+    half = m.facts['sample half size']
+    area = 'CNV Dodge Deep'
+    t.areas.pop('CNV Dodge North')
+    t.areas = {area: [(x - half, 2780.0), (x + half, 2780.0), (x + half, y + half), (x - half, y + half)],
+               **t.areas}
+    t.scripts = [s for s in t.scripts if 'CNV_Dodge_North' not in str(s)]
+    t.scripts.insert(0, Script('Dodge - no powers', [], [('PLAYER_SET_MAX_PLAYER_POWER_POINTS', s1, 0),
+                                                         ('PLAYER_SET_PLAYER_POWER_POINTS', s1, 0)]))
+    t.scripts.append(Script('Dodge - frozen frames',
+                            [('PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', p1, 3, 1, status('UNDER_FROZEN'))],
+                            [('INCREMENT_COUNTER', 1, frozen)], once=False))
+    counted(deep, '深入', t, template='SovietAntiInfantryInfantry', player=p1, area=area)
+    t.counters = [('CNV_Dodge_Dead', '阵亡'), ('CNV_Dodge_Dead2', '再亡'), (frozen, '冻住'), (deep, '深入')]
+    assert frame in str(t.scripts)
+    return t
+
+
+CHECKS.update({name: {'r': timing, 'd': death, 's': split, 'n': unpowered} for name in ('aidodgezero', 'aidodgetwo')})
