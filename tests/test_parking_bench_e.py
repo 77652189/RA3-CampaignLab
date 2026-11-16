@@ -25,8 +25,8 @@ def test_parking_single_module_control():
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E157 object-world build-button replay produces no aircraft versus measured '
-    'retail/removal counts 1/0 or 4/0; airport production/Parking integration remains a gap. See work/re/e157_parking.md '
+    'E185 build-button production is wired, but Parking admission/capacity is missing; '
+    'the removal airport also produces versus bench 0. See work/re/e185_production.md '
     'and work/re/handoff-e.md.'))
 @pytest.mark.parametrize('name,frame,expected', [
     ('engine_parking', 194, (1, 0)),

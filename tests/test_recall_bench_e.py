@@ -55,8 +55,8 @@ def _replay(name):
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E184 native production/reference replay yields departure 0 versus bench 7; '
-    'recall dispatch and producer binding remain gaps. See work/re/e184_recall.md '
+    'E185 production/reference passes early bits 3; generic object-world movement is missing '
+    '(departure 3 versus bench 7), then recall dispatch remains a gap. See work/re/e185_production.md '
     'and work/re/handoff-e.md.'))
 @pytest.mark.parametrize('name,final,casts', [
     ('recallon_e', 3, 1), ('recalloff_e', 5, 0),
@@ -68,3 +68,17 @@ def test_recall_named_object_model_bench(name, final, casts):
     assert engine.value('E184Final') == final
     assert engine.value('E184Cast') == casts
 
+
+
+@pytest.mark.parametrize('name', ['recallon_e', 'recalloff_e'])
+def test_recall_production_reference_bench_prerequisite(name):
+    engine = _replay(name)
+    # The original f255 live/near observations are bits 1 and 2. The full
+    # departure=7 assertion above still covers the unimplemented move phase.
+    assert engine.value('E184Depart') & 3 == 3
+    plane = engine.world.named('UNITRef - E184 Plane')
+    assert plane is not None
+    assert plane.producer is engine.world.named('E184 Airport')
+    assert plane.owner == plane.producer.owner
+    assert plane.team == plane.producer.team
+    assert len([o for o in engine.world.living() if o.template == 'AlliedFighterAircraft']) == 1

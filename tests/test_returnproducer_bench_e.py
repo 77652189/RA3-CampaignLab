@@ -35,9 +35,9 @@ def test_returnproducer_only_module_removed_and_produced_reference():
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E173 produced-aircraft replay has departure flags 0 versus bench 7; '
-    'generic production button/reference/producer integration is missing. '
-    'Do not bypass production to infer return semantics. See work/re/e173_returnproducer.md '
+    'E185 production/reference is wired, but generic object-world movement is missing; '
+    'departure flags remain 3 versus bench 7, before return dispatch. '
+    'Do not bypass production to infer return semantics. See work/re/e185_production.md '
     'and work/re/handoff-e.md.'))
 @pytest.mark.parametrize('name,final,casts', [
     ('engine_returnon_e', 11, 1),

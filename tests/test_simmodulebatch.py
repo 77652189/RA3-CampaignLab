@@ -11,9 +11,7 @@ spec.loader.exec_module(bootstrap)
 
 
 @pytest.mark.parametrize('family', [
-    pytest.param('products', marks=pytest.mark.xfail(strict=True, raises=AssertionError,
-        reason='E145: factories() checks the base menu without held upgrades; an empty-base factory stays excluded '
-               'after CommandSetUpgrade. B production gate; see work/re/e145_modulebatch.md and work/re/handoff-e.md')),
+    'products',
     pytest.param('ready', marks=pytest.mark.xfail(strict=True, raises=AssertionError,
         reason='E145: countdown script action and MonitorSpecialPowerTimerUpdate ready-condition output are missing. '
                'A countdown interface required; see work/re/e145_modulebatch.md and work/re/handoff-e.md')),

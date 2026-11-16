@@ -2018,7 +2018,7 @@ class Sim:
     def factories(self, owner):
         """The owner's living structures that build units (their CommandSet has UNIT_BUILD buttons)."""
         return [b for b in self.living() if b.owner == owner and 'STRUCTURE' in b.kinds and not b.scenery
-                and simunits.menu(b.template, self.own)]
+                and simunits.menu(b.template, self.own, b.upgrades)]
 
     def holds_upgrade(self, owner, up, factory=None):
         """Whether `factory` (else any of owner's structures) has the upgrade a unit's NeededUpgrade asks for. A PLAYER
