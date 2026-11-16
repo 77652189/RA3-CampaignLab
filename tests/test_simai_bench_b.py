@@ -81,15 +81,12 @@ def test_threat_to_ground_sends_the_team_to_the_far_plant_first(lib, build):
     assert far is not None and (near is None or far < near)
 
 
-@pytest.mark.xfail(strict=True, reason='since A round 230 (329e24cb) an attack-mover stops at the exact range edge '
-    '(Sim.range_targets): the peacekeepers stop on the plant at (3299,3439), 325 from turret 1 -- just outside its '
-    'reach -- and two live to the end (near 2). Before, they overshot ~27 a tick into turret 1 and died (the old '
-    'green was luck: s14-s29 neither version looks like the bench, where both turrets fire from the start). '
-    'Pending a bench reading of where units really stop on a structure (H1; the infantry-on-infantry stop on '
-    'aidelay0:p matched the sim, work/re/handoff.md round 249).')
 def test_closest_structure_sends_the_team_to_the_near_plant_and_never_the_far_one(lib):
     """checks/engine_aitarget.py aitargetnear (ClosestStructure, Distance): 到近厂 4 from s14, shot down to 0 by
-    s35; 到远厂 0 all 76 s."""
+    s35; 到远厂 0 all 76 s. Green again with R8's UNDERSIZE (D162 read, A round 251): from A round 230 (exact
+    range-edge stops) to round 250 the peacekeepers stopped on the plant just outside turret 1's full AttackRange and
+    two lived to the end; each side's reach less 5 brings them inside it. UNDERSIZE 4-8 all pass, 0-3 fail (round 251
+    scan) -- not a fitted value. Where units really stop on a structure is still not benched (H1)."""
     _, rows = _probe_run('aitargetnear', lib, 76.0)
     assert _first_row(rows, '到近厂') is not None and all(r['到远厂'] == 0 for r in rows)
     assert rows[40]['到近厂'] == 0 and rows[-1]['到近厂'] == 0
