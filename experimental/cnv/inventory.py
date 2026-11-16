@@ -759,7 +759,7 @@ def nugget_form_slice(ntype, forms):
 NUGGET_SCOPES = {
     'SpecialPowerNugget:涂靶升级门槛': '仅原版守护者普通/高科技两种升级门槛与空PaintTarget消费者边界；engine_spnret a保留/删除SPN晚段74/69/74/69%血，增伤来自伴随AttributeModifierNugget。非通用技能执行；原版涂靶开关/持续光束/重复开火未测，其他消费者另列gap',
     'MetaImpactNugget:普通无延迟显式Z': '仅普通弹头碰撞事件→默认Physics轨迹；engine_knock_probe land/late邻人5帧落(2380,3740)、目标99%/邻人100%。到达帧为台上输入，非完整V4曲线弹回放；直击方向/落点网格/选人仍INFERRED',
-    'MetaImpactNugget:镰刀敌我筛选': '仅镰刀无延迟筛选写法的发射者敌我关系→默认Physics；engine_knock_relation a健康99/100/99/100，ENEMIES仅敌/ALLIES仅友，逐帧位置回放。碰撞帧/爆心由台上输入；倒地状态及NO_COLLISIONS/非步兵拒绝未单独上台，Physics状态映射INFERRED；不覆盖原版落地入口、延迟、Arc',
+    'MetaImpactNugget:镰刀敌我筛选': '仅镰刀无延迟筛选写法的发射者敌我关系→默认Physics；engine_knock_relation a健康99/100/99/100，ENEMIES仅敌/ALLIES仅友，逐帧位置回放。碰撞帧/爆心由台上输入；tests/test_meta_nocoll.py具名回放engine_knock_nocoll a/b：99/99/1/0与99/99/0/1，仅无NO_COLLISIONS位邻人收到冲击并三帧落到y3740。仅脚本置位；XML筛选与独立原生状态门尚未隔离，原生位生命周期/倒地状态/非步兵拒绝仍gap，Physics状态映射INFERRED；不覆盖原版落地入口、延迟、Arc',
     'MetaImpactNugget:省略Z默认值': '仅普通无延迟弹头省略ShockWaveZMult→SDK默认1及默认Physics轨迹；engine_knock_z a高度93邻人14帧落(2420,3740)、目标99%/邻人100%。碰撞时刻/爆心为台上输入；直击噪声方向/网格/选人仍INFERRED，完整曲线弹/坡地/筛选未对拍',
     'InformTargetNugget:默认系数目标通知': '仅默认Min=.85/Max=1.15的目标通知→来弹表/矿车预计伤害开甲；engine_inform_probe a/off录入302、hit377、exp404、删除389，347帧入窗。半径/历史/海啸/忍者及完整AI调度不在本登记范围，完整脚本仍xfail',
     'InformTargetNugget:Max1.6目标通知': '仅Min=.85/Max=1.6目标通知→来弹表；engine_inform_max a单变量对照录入302、hit377不变、exp444（默认404）、受伤389删除，矿车提前开甲。自然过期清理边界/半径/历史/海啸/忍者/完整AI调度未对拍，完整脚本仍xfail',
