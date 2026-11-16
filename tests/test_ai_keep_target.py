@@ -52,7 +52,7 @@ def test_keep_target_named_clock_replay(build, seconds):
     run.mem = [tc.Fighter(i, (0, 0), 100, rate=lambda _: 10, unit=u) for i, u in units.items()]
     block = tc.TacticsBlock(None, None, None, lambda _: (0, 0), micro=md)
     issued = []
-    # 0x8ec700 (_attack_one) writes the keep record itself (model D round 139): keep it, capture only its order.
+    # _attack_one writes the keep record itself (model D round 139; see work/re): keep it, capture only its order.
     fid = {id(f.unit): f.id for f in run.mem}
     block.order = lambda u, kind, arg: issued.append(fid[id(u)])
     held = reassigned = 0
@@ -115,7 +115,7 @@ def test_keep_target_named_death_replay():
     block = tc.TacticsBlock(None, None, None, lambda _: (0, 0), micro=md)
     block._view = NS()  # a supplied live-object world, as in SimAI.look
     issued = []
-    # 0x8ec700 (_attack_one) writes the keep record itself (model D round 139): keep it, capture only its order.
+    # _attack_one writes the keep record itself (model D round 139; see work/re): keep it, capture only its order.
     fid = {id(f.unit): f.id for f in run.mem}
     block.order = lambda u, kind, arg: issued.append(fid[id(u)])
     # Anchor observed assignments before the continuous validity window.
