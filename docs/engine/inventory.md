@@ -255,7 +255,7 @@
 | 已对拍 | `TEAM_EXIT_ALL_BUILDINGS` | 13 |  | tests/test_teamexit_bench_c.py::test_teamexit_mixed_building_and_transport_match_bench；C engine_teamexit:a混装建筑/运输车一局：本队征召兵退出公寓和牛蛙，同容器异队保留；队外成员/两宿主均存活，空队伍与重复调用无误伤。f44..74本队驻/异队驻/存活位3/3/127，f82..287为0/3/127；tests/test_teamexit_bench_c.py按名逐33个实读逻辑帧回放四计数器。仅显式存活队伍普通退出切片；精确出门位置/时序、运输抛射、取消进驻中订单、死/缺队伍及AI实例仍gap，其他模板推广INFERRED；见work/re/c_teamexit_report.md |
 | 未做 | `GATE_CLOSE` | 12 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `NAMED_GARRISON_NEAREST_BUILDING` | 12 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `NAMED_SET_SPECIAL_POWER_COUNTDOWN` | 12 |  | Sim.act / Sim.cond 不认识 |
+| 未做 | `NAMED_SET_SPECIAL_POWER_COUNTDOWN` | 12 |  | C两局engine_namedcount:a/engine_namedvac:a：三独立玩家宿主，1秒0/2、7秒2/0交换，第三方不操作；铁幕f43..143就绪0、f153..315为7，真空弹f41..148为0、f155..300为3，宿主位均7、零余电位均0。旧零/非零预测被否定；缺真实剩余冷却/READY刷新与宿主初始化同帧字段，秒数与作用域未闭环。两个按名逐31实读帧回放strict xfail，未改模型、未晋升；假设表及字段缺口见work/re/c_namedcount_report.md |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAfterburners` | 12 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
 | 不涉及 | `OPTIONS_SET_OCCLUSION_MODE` | 12 |  | 纯表现（名字规则） |
 | 未做 | `PLAYER_SELL_EVERYTHING` | 12 |  | Sim.act / Sim.cond 不认识 |
