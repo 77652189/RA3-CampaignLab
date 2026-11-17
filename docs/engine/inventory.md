@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 203 | 11 | 122 | 115 | 99% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 204 | 11 | 121 | 115 | 99% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 59 / 118 | 195 | 60 | 26 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -288,7 +288,7 @@
 | 已对拍 | `TEAM_IDLE_FOR_FRAMECOUNT` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts8.py |
 | 未做 | `TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE_OWNED_BY_PLAYER` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 已对拍 | `COUNTER_MATH_VALUE` | 8 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_attachc4.py:a |
-| 未做 | `EXIT_SPECIFIC_BUILDING` | 8 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `EXIT_SPECIFIC_BUILDING` | 8 |  | tests/test_exitbld_bench_c.py::test_exitbld_named_host_and_mixed_crews_match_bench；C engine_exitbld:a/b两座公寓各装同玩家两队征召兵，交换具名目标西/东；指定楼两队均退出、另一楼仍驻，重复调用无误伤。进驻位15→12/3、区域码始终22、五兵两楼存活位127；tests/test_exitbld_bench_c.py逐实读逻辑帧按名回放四计数器。区域人数包含楼内人员，原仅室外预测2/20保留strict xfail，不改原门槛；仅存活公寓具名退出切片，出门位置沿现有INFERRED近似，精确时序、其他容器/模板、缺名/死亡目标、取消进门仍gap；见work/re/c_exitbld_report.md |
 | 不涉及 | `FLASH_UI_PLAYER_POWER_BUTTON` | 8 |  | 纯表现（名字规则） |
 | 已对拍 | `MAP_REVEAL_AT_WAYPOINT` | 8 | a1 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_vision.py |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_CivilianStructureEvacuate` | 8 |  | tests/test_simbench.py::test_acts_tgl_all_as_the_bench |
