@@ -94,7 +94,10 @@ _PROXY = {}
 
 def _package(folder):
     """The engine model's ra3model package, loaded by file as sim.engine_model does (nothing added to sys.path, guard
-    G4): its submodules then import by name through the package's own path."""
+    G4): its submodules then import by name through the package's own path. Only the commit inventory_model.rev
+    pins loads (modelpin.check, ADR 0030): simai.model and proxy come through here."""
+    import modelpin
+    modelpin.check(os.path.dirname(os.path.abspath(folder)))
     if 'ra3model' in sys.modules:
         return sys.modules['ra3model']
     spec = importlib.util.spec_from_file_location('ra3model', os.path.join(folder, '__init__.py'),

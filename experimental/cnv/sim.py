@@ -308,9 +308,12 @@ _MODEL = {}
 def engine_model():
     """RA3-EngineModel's ra3model/scripts.py (labpaths.ENGINE_MODEL, CNV_ENGINE_MODEL overrides it) as a module, or
     None where it is not there. Loaded by file: this adds nothing to sys.path, and the model's code stays in its own
-    private repository (ADR 0018)."""
+    private repository (ADR 0018). Only the commit inventory_model.rev pins loads (modelpin.check, ADR 0030)."""
     import labpaths
+    import modelpin
     path = os.path.join(labpaths.ENGINE_MODEL, 'ra3model', 'scripts.py')
+    if os.path.isfile(path):
+        modelpin.check(labpaths.ENGINE_MODEL)
     if path not in _MODEL:
         mod = None
         if os.path.isfile(path):
