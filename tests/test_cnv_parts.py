@@ -103,13 +103,19 @@ def test_a8_lose_moves_the_carrier():
 
 def test_every_build_keeps_the_contract():
     """Every object placed by a map site, every name a script uses published (offline: what assemble asserts)."""
+    failures = []
     for n, (_, checks) in build.MISSIONS.items():
         for c in [''] + list(checks):
             m, t, _ = build.resolve(n, c)
-            assert parts.contract(parts.merged(m, t)) == [], (n, c)
+            errors = parts.contract(parts.merged(m, t))
+            if errors:
+                failures.append(f'{n}:{c or "<base>"}: {errors}')
     for n in build.PAIRS:
         m, t, _ = build.resolve(n, '')
-        assert parts.contract(parts.merged(m, t)) == [], n
+        errors = parts.contract(parts.merged(m, t))
+        if errors:
+            failures.append(f'{n}:<pair>: {errors}')
+    assert not failures, '\n'.join(failures)
     assert build.show('a8_rough', 'assault').endswith('contract: ok')
 
 

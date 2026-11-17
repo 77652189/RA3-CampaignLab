@@ -40,17 +40,9 @@ def mission(enabled=True):
     m.spawns.add('AlliedFighterAircraft')
     m.cast['plane'] = Role('AlliedFighterAircraft', 'UNITRef - E184 Plane', 'p1', ['base gun'])
     m.waypoint('sortie', 'E184 Sortie', 'base gun', 0, 850)
-    return m
-
-
-def check(m):
-    t = Test()
+    # Production and reference naming belong to the base mission, too.
     plane = m.role('plane').name
-    t.areas['E184 Airport'] = square(*m.site(m.role('airport').site), 250)
-    t.areas['E184 Sortie'] = square(*m.point('sortie'), 180)
-    t.counters = [('E184Frame', '完成帧'), ('E184Depart', '出发位'),
-                  ('E184Final', '结束位'), ('E184Cast', '施放数')]
-    t.scripts = [
+    m.scripts = [
         Script('Test - clock', [('COUNTER', 'E184Frame', 0, 660)],
                [('INCREMENT_COUNTER', 1, 'E184Frame')], once=False),
         Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player()),
@@ -64,7 +56,18 @@ def check(m):
         Script('Test - depart', [('COUNTER', 'E184Frame', 2, 270)], [
             ('MOVE_NAMED_UNIT_TO', plane, m.mark('sortie'))]),
         Script('Test - recall', [('COUNTER', 'E184Frame', 2, 420)], [
-            ('NAMED_USE_COMMANDBUTTON_ABILITY', m.role('airport').name, COMMAND)]),
+            ('NAMED_USE_COMMANDBUTTON_ABILITY', m.role('airport').name, COMMAND)])]
+    return m
+
+
+def check(m):
+    t = Test()
+    plane = m.role('plane').name
+    t.areas['E184 Airport'] = square(*m.site(m.role('airport').site), 250)
+    t.areas['E184 Sortie'] = square(*m.point('sortie'), 180)
+    t.counters = [('E184Frame', '完成帧'), ('E184Depart', '出发位'),
+                  ('E184Final', '结束位'), ('E184Cast', '施放数')]
+    t.scripts = [
         Script('Test - cast', [('PLAYER_TRIGGERED_SPECIAL_POWER', m.player(), POWER)],
                [('INCREMENT_COUNTER', 1, 'E184Cast')], once=False)]
     for label, frame, counter, bit, cond in [

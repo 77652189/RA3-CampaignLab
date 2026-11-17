@@ -21,7 +21,7 @@ def test_returnproducer_only_module_removed_and_produced_reference():
         assert not any(o.template == 'AlliedFighterAircraft' for o in m.objects)
         assert not contract(merged(m, t))
         assert ('MOVE_NAMED_UNIT_TO', m.role('plane').name, m.mark('sortie')) in [
-            action for script in t.scripts for action in script.do]
+            action for script in merged(m, t).scripts for action in script.do]
     # Corrected b must override the retail id through the explicit linker
     # path. It is prepared only; no b engine measurement is claimed.
     from package import spec_of
@@ -32,6 +32,29 @@ def test_returnproducer_only_module_removed_and_produced_reference():
         assert spec_of(m, t).replaces == ('GameObject:AlliedFighterAircraft',)
         assert m.assets[0][0] == m.units[0].id + '.xml'
     assert re.sub(r'<ReturnToProducerSpecialPower\b[^>]*/>', '', fixed_on.assets[0][1], flags=re.S) == fixed_off.assets[0][1]
+
+
+@pytest.mark.parametrize('name', ['engine_returnon_e', 'engine_returnoff_e'])
+@pytest.mark.parametrize('check', ['', 'a', 'b'])
+def test_returnproducer_runtime_cast_keeps_contract(name, check):
+    import build
+    from contract import contract
+    from model import merged
+
+    m, t, _ = build.resolve(name, check)
+    setup = merged(m, t)
+    assert contract(setup) == []
+    plane = m.role('plane').name
+    assert plane not in {obj.name for obj in setup.objects}
+    # Preserve real production, naming and orders, without a dummy placed plane.
+    expected = {'Test - clock', 'Test - start', 'Test - produce',
+                'Test - reference', 'Test - depart', 'Test - return'}
+    assert {s.name for s in m.scripts} == expected
+    assert all(sum(s.name == label for s in setup.scripts) == 1 for label in expected)
+    reference = next(s for s in setup.scripts if s.name == 'Test - reference')
+    assert reference.when == [('COUNTER', 'E173Frame', 2, 240)]
+    assert reference.do == [('TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE',
+                             m.role('plane').template, m.team(), plane)]
 
 
 def _replay(name):

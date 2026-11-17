@@ -44,6 +44,23 @@ def mission(enabled=True):
     m.put('AlliedPowerPlant', 'base gun', 400, 0, role='power')
     m.cast['plane'] = Role('AlliedFighterAircraft', 'UNITRef - E173 Plane', 'p1', ['base gun'])
     m.waypoint('sortie', 'E173 Sortie', 'base gun', 0, 850)
+    # Production and reference naming belong to the base mission, too.
+    plane = m.role('plane').name
+    m.scripts = [
+        Script('Test - clock', [('COUNTER', 'E173Frame', 0, 660)],
+               [('INCREMENT_COUNTER', 1, 'E173Frame')], once=False),
+        Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player()),
+                                  ('PLAYER_SET_MONEY', m.player(), 20000)]),
+        Script('Test - produce', [('COUNTER', 'E173Frame', 2, 30)], [
+            ('NAMED_USE_COMMANDBUTTON_ABILITY', m.role('airport').name,
+             'Command_ConstructAlliedFighterAircraft')]),
+        Script('Test - reference', [('COUNTER', 'E173Frame', 2, 240)], [
+            ('TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE', m.role('plane').template,
+             m.team(), plane)]),
+        Script('Test - depart', [('COUNTER', 'E173Frame', 2, 270)], [
+            ('MOVE_NAMED_UNIT_TO', plane, m.mark('sortie'))]),
+        Script('Test - return', [('COUNTER', 'E173Frame', 2, 420)], [
+            ('NAMED_USE_COMMANDBUTTON_ABILITY', plane, m.facts['return'])])]
     return m
 
 
@@ -61,20 +78,6 @@ def check(m, corrected=False):
     t.counters = [('E173Frame', '完成帧'), ('E173Depart', '出发位'),
                   ('E173Final', '结束位'), ('E173Cast', '施放数')]
     t.scripts = [
-        Script('Test - clock', [('COUNTER', 'E173Frame', 0, 660)],
-               [('INCREMENT_COUNTER', 1, 'E173Frame')], once=False),
-        Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player()),
-                                  ('PLAYER_SET_MONEY', m.player(), 20000)]),
-        Script('Test - produce', [('COUNTER', 'E173Frame', 2, 30)], [
-            ('NAMED_USE_COMMANDBUTTON_ABILITY', m.role('airport').name,
-             'Command_ConstructAlliedFighterAircraft')]),
-        Script('Test - reference', [('COUNTER', 'E173Frame', 2, 240)], [
-            ('TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE', m.role('plane').template,
-             m.team(), plane)]),
-        Script('Test - depart', [('COUNTER', 'E173Frame', 2, 270)], [
-            ('MOVE_NAMED_UNIT_TO', plane, m.mark('sortie'))]),
-        Script('Test - return', [('COUNTER', 'E173Frame', 2, 420)], [
-            ('NAMED_USE_COMMANDBUTTON_ABILITY', plane, m.facts['return'])]),
         Script('Test - cast', [('PLAYER_TRIGGERED_SPECIAL_POWER', m.player(), m.facts['power'])],
                [('INCREMENT_COUNTER', 1, 'E173Cast')], once=False)]
     for name, frame, counter, bit, condition in [

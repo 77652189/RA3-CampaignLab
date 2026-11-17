@@ -26,6 +26,29 @@ def test_recall_only_airport_module_removed():
 
 
 
+@pytest.mark.parametrize('name', ['recallon_e', 'recalloff_e'])
+@pytest.mark.parametrize('check', ['', 'a'])
+def test_recall_runtime_cast_keeps_contract(name, check):
+    import build
+    from contract import contract
+    from model import merged
+
+    m, t, _ = build.resolve(name, check)
+    setup = merged(m, t)
+    assert contract(setup) == []
+    plane = m.role('plane').name
+    assert plane not in {obj.name for obj in setup.objects}
+    # Preserve real production, naming and orders, without a dummy placed plane.
+    expected = {'Test - clock', 'Test - start', 'Test - produce',
+                'Test - reference', 'Test - depart', 'Test - recall'}
+    assert {s.name for s in m.scripts} == expected
+    assert all(sum(s.name == label for s in setup.scripts) == 1 for label in expected)
+    reference = next(s for s in setup.scripts if s.name == 'Test - reference')
+    assert reference.when == [('COUNTER', 'E184Frame', 2, 240)]
+    assert reference.do == [('TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE',
+                             m.role('plane').template, m.team(), plane)]
+
+
 def _replay(name):
     import build
     import labpaths
