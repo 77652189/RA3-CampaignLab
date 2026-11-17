@@ -33,7 +33,8 @@ How a changed line is matched (always "more rather than fewer"):
     passes the limit ("node down: Not properly terminated"), and single simulator tests run 15-50 min under load;
   * --cmd prints a full pytest command with -n min(8, free GB / 1.5): a simulator-test worker needs about 1.5 GB.
 
-The simulator's files (simcoverage.sim_files(): sim.py, simproxy.py and the sim* parts they import) go by import
+The simulator's files (simcoverage.sim_files(): sim.py, simproxy.py and the parts they import -- sim*.py, or
+experimental/cnv/engine/... once step 10 moves them; cnv/enginefiles.py says which files those are) go by import
 instead (ADR 0029 consequence 3; the map was recorded before the blocks moved out of sim.py, and it counts "ran it" as
 "depends on it"): ImportGraph reads every import (and every 'x.py' string) of experimental/ and tests/ as they are now;
   * a part module is picked for the tests that import it, directly or through other files -- but not through the
@@ -72,6 +73,10 @@ try:                                                # labpaths by file path, so 
     WORK, ENGINE_MODEL = labpaths.WORK, labpaths.ENGINE_MODEL
 except Exception:                                   # pragma: no cover - the tool must work on a bare clone
     WORK, ENGINE_MODEL = os.path.join(ROOT, 'work'), os.path.join(os.path.dirname(ROOT), 'RA3-EngineModel')
+# which files are the simulator's and how a module name maps to one (sim*, engine.x.y): one place, by file path too
+_spec = importlib.util.spec_from_file_location('enginefiles', os.path.join(ROOT, 'experimental', 'cnv', 'enginefiles.py'))
+enginefiles = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(enginefiles)
 
 MAPDIR = os.path.join(WORK, 'testmap')
 COVDB = os.path.join(MAPDIR, 'coverage.db')
@@ -457,11 +462,11 @@ class ImportGraph:
         """{part module: names on Sim that lead to it} off the facade as it is now: its forwarders' names and the Sim
         attributes holding the part (self.heal = simheal.Heal()) -- what a test of the facade calls the part by."""
         if '_handles' not in self.__dict__:
-            parts = {p.rsplit('/', 1)[1][:-3] for p in self.sim_files()} - {'sim'}
             try:
                 src = Source(open(os.path.join(self.root, FACADE), encoding='utf-8').read())
             except OSError:
                 src = None
+            parts = self.part_names(src)
             found, _ = facade_parts(src, set(range(1, len(src.lines) + 1)) if src else set(), parts)
             for node in ast.walk(src.tree) if src and src.tree else ():
                 if isinstance(node, ast.Assign):
@@ -476,26 +481,54 @@ class ImportGraph:
     def users(self, target):
         """Test files a change to the simulator's file `target` can affect: its importers, and the tests of the facade
         that name a handle of it (simheal.py: the tests that call .autoheal or .heal on a Sim)."""
-        stem = target.rsplit('/', 1)[1][:-3]
-        return merge_nodes(self.importers(target) | naming(self.facade_tests(), self.handles().get(stem, ()), self.root))
+        return merge_nodes(self.importers(target) |
+                           naming(self.facade_tests(), self.handles().get(module_name(target), ()), self.root))
 
     def sim_files(self):
         """simcoverage.sim_files() as paths, read off the same imports (tests/test_affected_tests.py checks they agree):
-        RUN_ENDS and every experimental/cnv/sim* module they reach by import, except one that imports sim itself."""
+        RUN_ENDS and every simulator module (enginefiles: experimental/cnv/sim*.py, experimental/cnv/engine/...) they
+        reach by import, except one that imports sim itself."""
         if '_sim' not in self.__dict__:
             def sims(p):
-                return {x for x in self.imports.get(p, ()) if x.startswith(CNV + '/sim') and x.count('/') == 2}
-            seen, todo = set(), [CNV + '/%s.py' % m for m in RUN_ENDS]
+                return {x for x in self.imports.get(p, ()) if is_sim_path(x)}
+            ends = [CNV + '/%s.py' % m for m in RUN_ENDS]
+            seen, todo = set(), list(ends)
             while todo:
                 m = todo.pop()
                 if m in seen or m not in self.paths:
                     continue
-                if m.rsplit('/', 1)[1][:-3] not in RUN_ENDS and FACADE in self.imports.get(m, ()):
+                if m not in ends and FACADE in self.imports.get(m, ()):
                     continue
                 seen.add(m)
                 todo += sorted(sims(m))
             self._sim = frozenset(seen)
         return self._sim
+
+    def part_names(self, facade_source):
+        """{name in sim.py: part module} for the parts (sim_files but the facade): a bare part under its own name
+        (simheal), and every name the facade binds to a part (`from engine.objects import heal as simheal`)."""
+        names = {module_name(p) for p in self.sim_files()} - {'sim'}
+        out = {n: n for n in names if '.' not in n}
+        if facade_source is not None and facade_source.tree is not None:
+            bound = enginefiles.bindings(facade_source.tree, os.path.join(self.root, CNV))
+            out.update({local: m for local, m in bound.items() if m in names})
+        return out
+
+
+def is_sim_path(path):
+    """Is this repository path (experimental/cnv/...) one of the simulator's files (enginefiles.is_engine_rel)?"""
+    return path.startswith(CNV + '/') and enginefiles.is_engine_rel(path[len(CNV) + 1:])
+
+
+def module_name(path):
+    """The module name of a file of experimental/cnv: experimental/cnv/simheal.py -> simheal,
+    experimental/cnv/engine/objects/heal.py -> engine.objects.heal."""
+    return enginefiles.name_of(path, CNV)
+
+
+def module_path(name, sim_files):
+    """The path of a simulator module among sim_files, by its module name."""
+    return next((p for p in sim_files if module_name(p) == name), '%s/%s.py' % (CNV, name.replace('.', '/')))
 
 
 def new_side_lines(hunks):
@@ -520,7 +553,8 @@ def _sim_methods(source):
 
 
 def _part_names(node, parts):
-    return {x.id for x in ast.walk(node) if isinstance(x, ast.Name) and x.id in parts}
+    """The part modules a node names, through the names sim.py holds them by (parts: {name: module})."""
+    return {parts[x.id] for x in ast.walk(node) if isinstance(x, ast.Name) and x.id in parts}
 
 
 def facade_parts(source, lines, parts):
@@ -529,10 +563,14 @@ def facade_parts(source, lines, parts):
     Returns ({part module: {names}}, lines left). A line of a forwarder -- a Sim method of at most FORWARDER_STMTS
     statements (docstring left out) that names a part module, itself or through one self._helper() -- lives in that
     part module, under the method's name; a module-level `import simX` / `from simX import ...` line lives in simX,
-    under the imported names. Every other non-blank line is code still in sim.py: left for the coverage map."""
+    under the imported names (`from engine.objects import heal` lives in engine.objects.heal, under no name). Every
+    other non-blank line is code still in sim.py: left for the coverage map. parts: {name in sim.py: part module}
+    (ImportGraph.part_names), or a set of bare part names (each its own module)."""
     found, left = {}, set()
     if source is None or source.tree is None:
         return found, set(lines)
+    parts = parts if isinstance(parts, dict) else {p: p for p in parts}
+    modules = set(parts.values())
     methods = _sim_methods(source)
     by_name = {name: node for name, node in methods.values()}
     top = {}
@@ -545,10 +583,15 @@ def facade_parts(source, lines, parts):
             continue
         if n in top:
             node = top[n]
-            mods = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or '']
-            hit = [m for m in mods if m in parts]
+            names = set()
+            if isinstance(node, ast.Import):
+                mods = [a.name for a in node.names]
+            elif (node.module or '') in modules:                # from simtoggle import LAG: names of the part
+                mods, names = [node.module], {a.asname or a.name for a in node.names}
+            else:                                               # from engine.objects import heal: the part itself
+                mods = ['%s.%s' % (node.module, a.name) for a in node.names]
+            hit = [m for m in mods if m in modules]
             if hit and len(hit) == len(mods):
-                names = {a.asname or a.name for a in node.names} if isinstance(node, ast.ImportFrom) else set()
                 for m in hit:
                     found.setdefault(m, set()).update(names)
                 continue
@@ -716,14 +759,14 @@ def pick(cov, changes, sources, remaps, fallback, graph=None, facade=(None, None
             add({shown}, 'changed test')
             continue
         if key == FACADE and hunks is not None and graph and not deleted:
-            parts = {p.rsplit('/', 1)[1][:-3] for p in sim_files} - {'sim'}
+            old_parts, new_parts = graph.part_names(facade[0]), graph.part_names(facade[1])
             left = []
             for h in hunks:
                 a, b, c, d = h
-                old_found, old_left = facade_parts(facade[0], set(range(a, a + b)), parts)
-                new_found, new_left = facade_parts(facade[1], set(range(c, c + d)), parts)
+                old_found, old_left = facade_parts(facade[0], set(range(a, a + b)), old_parts)
+                new_found, new_left = facade_parts(facade[1], set(range(c, c + d)), new_parts)
                 for m, names in list(old_found.items()) + list(new_found.items()):
-                    path = '%s/%s.py' % (CNV, m)
+                    path = module_path(m, sim_files)
                     add(graph.importers(path), 'imports %s (sim.py forwards to it)' % m)
                     add(naming(graph.facade_tests(), names, graph.root), 'tests Sim.%s' % '/'.join(sorted(names)))
                 if old_left or new_left or not (old_found or new_found):
@@ -734,7 +777,7 @@ def pick(cov, changes, sources, remaps, fallback, graph=None, facade=(None, None
         if key in sim_files and not deleted:
             found = graph.users(key)
             if found:
-                add(found, 'imports ' + key.rsplit('/', 1)[1][:-3])
+                add(found, 'imports ' + module_name(key))
                 continue
         by_coverage(key, shown, hunks)
     tests = merge_nodes(tests)

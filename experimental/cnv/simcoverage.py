@@ -41,6 +41,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
+import enginefiles  # noqa: E402
 import parts  # noqa: E402
 import sim  # noqa: E402
 import simunits  # noqa: E402
@@ -78,44 +79,44 @@ STATUS_TEST = re.compile(r"'([A-Z_]+)' (?:not )?in \w+\.status")       # `'X' in
 RUN_ENDS =('sim', 'simproxy')          # the player-style run: the simulator and the proxy that gives the player's orders
 
 
-def _imported(name):
-    """The sim* modules a module of this folder imports, at the top or inside a function (a lazy import counts)."""
-    out = set()
-    for n in ast.walk(ast.parse(open(os.path.join(HERE, name + '.py'), encoding='utf-8').read())):
-        names = [a.name for a in n.names] if isinstance(n, ast.Import) else \
-            [n.module] if isinstance(n, ast.ImportFrom) and n.module and not n.level else []
-        out |= {m.split('.')[0] for m in names if m.startswith('sim')}
-    return {m for m in out if os.path.exists(os.path.join(HERE, m + '.py'))}
+def _imported(name, cnv=HERE):
+    """The simulator modules (enginefiles: sim*, engine.*) a module imports, at the top or inside a function (a lazy
+    import counts), by full name -- the packages on the way included (their __init__ runs too)."""
+    return {m for m in enginefiles.imports(enginefiles.parse(name, cnv), cnv, packages=True)
+            if enginefiles.is_engine_rel(os.path.relpath(enginefiles.file_of(m, cnv), cnv).replace('\\', '/'))}
 
 
-def sim_files():
-    """The modules the player-style run is made of: RUN_ENDS and every sim* module they reach by import, except one
-    that imports sim itself -- it sits on top of the simulator (simshow, simchecks), it is not a part of it. Derived,
-    never a list of names: a block moved out of sim.py (ADR 0029) is counted the moment sim.py imports it."""
-    if 'files' not in _code:
+def sim_files(cnv=HERE):
+    """The modules the player-style run is made of: RUN_ENDS and every simulator module (sim*, engine.*) they reach by
+    import, except one that imports sim itself -- it sits on top of the simulator (simshow, simchecks), it is not a
+    part of it. Derived, never a list of names: a block moved out of sim.py (ADR 0029) is counted the moment sim.py
+    imports it, under the name it is imported by (simheal, or engine.objects.heal once step 10 moves it)."""
+    key = ('files', cnv)
+    if key not in _code:
         seen, todo = set(), list(RUN_ENDS)
         while todo:
             m = todo.pop()
             if m in seen:
                 continue
-            imports = _imported(m)
+            imports = _imported(m, cnv)
             if m not in RUN_ENDS and 'sim' in imports:
                 continue
             seen.add(m)
             todo += sorted(imports)
-        _code['files'] = tuple(sorted(seen))
-    return _code['files']
+        _code[key] = tuple(sorted(seen))
+    return _code[key]
 
 
-def _source(name):
-    return open(os.path.join(HERE, name + '.py'), encoding='utf-8').read()
+def _source(name, cnv=HERE):
+    return open(enginefiles.file_of(name, cnv), encoding='utf-8').read()
 
 
-def sim_code():
+def sim_code(cnv=HERE):
     """The string constants of the modules the player-style run is made of (sim_files)."""
-    if 'all' not in _code:
-        _code['all'] = set().union(*(code_strings(os.path.join(HERE, m + '.py')) for m in sim_files()))
-    return _code['all']
+    key = ('all', cnv)
+    if key not in _code:
+        _code[key] = set().union(*(code_strings(enginefiles.file_of(m, cnv)) for m in sim_files(cnv)))
+    return _code[key]
 
 
 def status_modelled():
@@ -127,7 +128,7 @@ def status_modelled():
 
 def issuable_kinds():
     """The order kinds simproxy's SimWorld.issue gives (`o.kind == 'x'` / `o.kind in (...)`): what a player proxy can do."""
-    tree = ast.parse(open(os.path.join(HERE, 'simproxy.py'), encoding='utf-8').read())
+    tree = enginefiles.parse('simproxy')
     fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == 'issue')
     kinds = set()
     for n in ast.walk(fn):

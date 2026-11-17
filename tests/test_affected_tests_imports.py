@@ -145,7 +145,7 @@ def test_the_real_tree():
     sc_spec = importlib.util.spec_from_file_location('simcoverage', ROOT / 'experimental' / 'cnv' / 'simcoverage.py')
     sc = importlib.util.module_from_spec(sc_spec)
     sc_spec.loader.exec_module(sc)
-    assert {p.rsplit('/', 1)[1][:-3] for p in g.sim_files()} == set(sc.sim_files())
+    assert {at.module_name(p) for p in g.sim_files()} == set(sc.sim_files())
     users = g.users('experimental/cnv/simheal.py')
     assert 'tests/test_simheal.py' in {at.file_of(u) for u in users}
     assert not {u for u in users if os.path.basename(at.file_of(u)).startswith('test_simai_bench')}

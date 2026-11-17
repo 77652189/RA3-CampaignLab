@@ -32,6 +32,7 @@ def _load(name, path):
 
 _layers = _load('test_sim_layers_registry', ROOT / 'tests' / 'test_sim_layers.py')
 LAYERED = sorted(set(_layers.LAYER_OF) | _layers.WORLD_TAKERS | _layers.PEER_TAKERS)
+enginefiles = _layers.enginefiles     # module name -> file (simX, or engine.<layer>.<part> after step 10)
 
 # (module, forwarder) -> calls, 11-17 (R2). Who calls: the script actions (simact_*), the frame table (simloop), the
 # Peers loans (simdamage, simorder, simpullback, simsweep, simgarrison, siminfiltrator: `peers.X` is the Sim's
@@ -81,14 +82,14 @@ _CONTAINER = set(dir(dict)) | set(dir(list)) | set(dir(set))   # self.players.ge
 
 
 def _src(name):
-    return (CNV / f'{name}.py').read_text(encoding='utf-8')
+    return Path(enginefiles.file_of(name)).read_text(encoding='utf-8')
 
 
 def block_functions():
-    """Names of the functions and methods defined in the moved blocks (every sim*.py but sim.py)."""
+    """Names of the functions and methods defined in the moved blocks (every simulator file but sim.py)."""
     out = set()
-    for p in CNV.glob('sim*.py'):
-        if p.stem != 'sim':
+    for p in map(Path, enginefiles.files()):
+        if enginefiles.name_of(p) != 'sim':
             out |= {n.name for n in ast.walk(ast.parse(p.read_text(encoding='utf-8')))
                     if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
     return out
@@ -96,9 +97,12 @@ def block_functions():
 
 def forwarders(source=None, modules=None, functions=None):
     """Sim method -> the call it forwards to (its body, the docstring aside, is one call into a moved block)."""
-    modules = modules if modules is not None else {p.stem for p in CNV.glob('sim*.py')}
     functions = functions if functions is not None else block_functions()
     tree = ast.parse(source if source is not None else _src('sim'))
+    if modules is None:          # the names sim.py holds the moved blocks by: simX, or `from engine.L import x as simX`
+        engine = {enginefiles.name_of(p) for p in enginefiles.files()}
+        modules = {m for m in engine if '.' not in m} | \
+            {local for local, m in enginefiles.bindings(tree).items() if m in engine}
     cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'Sim')
     out = {}
     for fn in cls.body:

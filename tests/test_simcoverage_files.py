@@ -35,7 +35,7 @@ def uncounted(code, status):
     given reading (sim_code, status_modelled) does not hold."""
     out = []
     for m in simulator_modules():
-        path = CNV / f'{m}.py'
+        path = Path(sc.enginefiles.file_of(m))          # simX, or engine.<layer>.<part> after step 10
         out += [(m, 'status', s) for s in sorted(set(sc.STATUS_TEST.findall(path.read_text(encoding='utf-8'))) - status)]
         out += [(m, 'string', s) for s in sorted(sc.code_strings(path) - code)]
     return out
@@ -51,7 +51,7 @@ def test_reading_sim_py_by_name_would_be_caught():
     """The pre-11-17 reading (sim.py, simunits.py, simproxy.py by name) misses status bits and module names that moved
     out of sim.py: the guard above sees it."""
     old = ('sim', 'simunits', 'simproxy')
-    code = set().union(*(sc.code_strings(CNV / f'{m}.py') for m in old))
+    code = set().union(*(sc.code_strings(sc.enginefiles.file_of(m)) for m in old))
     status = set(sc.STATUS_TEST.findall((CNV / 'sim.py').read_text(encoding='utf-8'))) | {'IN_STASIS'}
     missed = uncounted(code, status)
     assert ('simcond_vision', 'status', 'SHROUD_REVEAL_TO_ALL') in missed

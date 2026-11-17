@@ -15,6 +15,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CNV = ROOT / 'experimental' / 'cnv'
+# module name -> file (bare simX or full engine.<layer>.<part>, ADR 0029 step 10-0): one place, loaded by file path
+_ef_spec = importlib.util.spec_from_file_location('enginefiles', CNV / 'enginefiles.py')
+enginefiles = importlib.util.module_from_spec(_ef_spec)
+_ef_spec.loader.exec_module(enginefiles)
 
 # module -> layer (0 world, 1 data, 2 object modules, 3 combat, 4 player systems, 5 unit orders, 6 scripts,
 # 7 frame loop, 8 skirmish AI, 9 report)
@@ -82,22 +86,20 @@ FIELD_OWNER = {'heal_at': 'simheal', 'heal_seen': 'simheal',
 
 
 def _load(name):
-    spec = importlib.util.spec_from_file_location(name, CNV / f'{name}.py')
+    spec = importlib.util.spec_from_file_location(name, enginefiles.file_of(name))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
 
 def _tree(name):
-    return ast.parse((CNV / f'{name}.py').read_text(encoding='utf-8'))
+    return enginefiles.parse(name)
 
 
 def _imports(tree):
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            yield from (a.name.split('.')[0] for a in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
-            yield node.module.split('.')[0]
+    """The modules of experimental/cnv a tree imports, by full name (enginefiles.imports: `import engine.a.b` and
+    `from engine.a import b` are engine.a.b, not engine); the standard library, numpy, experimental/campaign are not."""
+    yield from sorted(enginefiles.imports(tree))
 
 
 def import_breaks(layer_of=LAYER_OF):
@@ -105,8 +107,6 @@ def import_breaks(layer_of=LAYER_OF):
     out = []
     for mod, layer in layer_of.items():
         for name in _imports(_tree(mod)):
-            if not (CNV / f'{name}.py').exists() and not (CNV / name / '__init__.py').exists():
-                continue                                   # the standard library, numpy, experimental/campaign
             if name not in layer_of:
                 out.append((mod, name, 'not layered'))
             elif layer_of[name] > layer:
@@ -139,15 +139,16 @@ def world_breaks(takers=WORLD_TAKERS, source=None):
 def owner_breaks(owners=FIELD_OWNER):
     """(file, field) for each assignment `<x>.field = / += / [k] =` outside the field's owner."""
     out = []
-    for path in sorted(CNV.glob('sim*.py')):
+    for path in map(Path, enginefiles.files()):
+        stem = enginefiles.name_of(path)
         for node in ast.walk(ast.parse(path.read_text(encoding='utf-8'))):
             targets = node.targets if isinstance(node, ast.Assign) else \
                 [node.target] if isinstance(node, (ast.AugAssign, ast.AnnAssign)) else []
             for t in targets:
                 while isinstance(t, ast.Subscript):
                     t = t.value
-                if isinstance(t, ast.Attribute) and t.attr in owners and path.stem != owners[t.attr]:
-                    out.append((path.stem, t.attr))
+                if isinstance(t, ast.Attribute) and t.attr in owners and stem != owners[t.attr]:
+                    out.append((stem, t.attr))
     return out
 
 
@@ -308,8 +309,8 @@ def test_frame_orders_share_one_roster():
     assert set(loop.FRAME) <= set(loop.CELLS) and len(set(loop.FRAME)) == len(loop.FRAME)
     assert loop.FRAME.index('tech') < loop.FRAME.index('scripts') < loop.FRAME.index('lose_health')
     assert loop.FRAME[-1] == 'deal'                    # damage last, after the frame's scripts (R6)
-    for path in sorted(CNV.glob('sim*.py')):
-        if path.stem != 'simloop':
+    for path in map(Path, enginefiles.files()):
+        if enginefiles.name_of(path) != 'simloop':
             assert 'eng.step()' not in path.read_text(encoding='utf-8'), path.name
 
 
