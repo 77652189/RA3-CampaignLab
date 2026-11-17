@@ -4271,6 +4271,14 @@ class Sim:
                 self.garrison.put(b, g, script=True)
         elif name == 'NAMED_EXIT_BUILDING':      # (unit) engine_garrison base: out where the building stands
             self.garrison.out(self.body(a[0]))
+        elif name == 'EXIT_SPECIFIC_BUILDING':
+            # engine_exitbld:a/b: all occupants of the named apartment, across
+            # crews; the other apartment stays occupied. Repeating is harmless.
+            # Other container types and exact exit positions/timing remain gaps;
+            # the existing garrison exit position is INFERRED.
+            g = self.body(a[0])
+            if g and g.alive:
+                self.garrison.empty(g)
         elif name == 'TEAM_EXIT_ALL_BUILDINGS':
             # engine_teamexit:a: only this crew exits, including Bullfrog passengers;
             # other crew sharing the same hosts stays in. Empty/repeated calls harmless.
