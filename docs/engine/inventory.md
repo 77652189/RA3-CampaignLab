@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 204 | 11 | 121 | 115 | 99% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 205 | 11 | 120 | 115 | 99% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 59 / 119 | 196 | 60 | 27 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -311,7 +311,7 @@
 | 已对拍 | `UNIT_CHANGE_OBJECT_STATUS:UNATTACKABLE` | 7 | a4 a5 a7 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_attach.py |
 | 未做 | `ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER` | 6 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `DISABLE_COUNTDOWN_TIMER_DISPLAY` | 6 |  | 纯表现（名字规则） |
-| 未做 | `NAMED_FACE_WAYPOINT` | 6 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `NAMED_FACE_WAYPOINT` | 6 |  | tests/test_facewp_bench_c.py::test_facewp_named_heading_and_untouched_control_match_bench；C engine_facewp:a及engine_facewpai:b两局；a仅人类玩家存活位7，无team/tstate朝向，b换AI观察宿主，原生hd甲0→180、乙0→117、未操作0，分别朝西/西北路点。tests/test_facewp_bench_c.py按名回放24组原始稳定朝向（全圈1度容差对应hd整数舍入），并断言存活位7；没有用位置不变替代朝向。转身复用既有移动器速率，精确命令/起转相位、移动中打断、缺名/死亡目标和其他模板仍gap或INFERRED；仅存活静止守护者的具名路点朝向切片，见work/re/c_facewp_report.md |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleBinaryWeapon` | 6 |  | tests/test_simbench.py::test_acts_twr_t_as_the_bench |
 | 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanPowerPlantEgg` | 6 |  | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower` | 6 |  | tests/test_simbench.py::test_acts_wet_all_as_the_bench |
