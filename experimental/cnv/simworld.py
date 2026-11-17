@@ -35,3 +35,7 @@ def inside(pts, x, y):
         if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
             c = not c
     return c
+
+
+def mmss(t):
+    return f'{int(t // 60)}:{int(t % 60):02d}'

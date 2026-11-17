@@ -6,6 +6,14 @@ import re
 SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')       # ctx.Talk.show: a 功能 line's caption is asked for
 SCENE_FLAG = re.compile(r'CNV_\w+_InScene')       # ctx.Talk.scening
 WON, LOST = 'Mission Won', 'Mission Lost'
+# actions that change nothing the scripts ask about: logged on the timeline (the player sees or hears them)
+SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档', 'PATH_MUSIC_PLAY_EVENT': '音乐',
+         'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM': '战况音乐', 'NAMED_FLASH': '闪烁', 'NAMED_SHOW_INFOBOX': '信息框',
+         'OBJECT_CREATE_RADAR_EVENT': '小地图闪点', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT': '原版播报',
+         'PLAY_SOUND_EFFECT': '配音', 'MOVIE_PLAY_RADAR': '头像'}
+IGNORED = {'DISPLAY_COUNTER', 'HIDE_COUNTER',
+           'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END',
+           'SET_COOP_AI_COMMAND_UI_ENABLED'}
 
 TEAM_FOLLOWS = ('TEAM_FOLLOW_WAYPOINTS', 'TEAM_FOLLOW_WAYPOINTS_EXACT', 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS',
                 'TEAM_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT')      # Sim.order_follow

@@ -3,16 +3,19 @@
 The action files are grouped by the layer an action works on (simact_vision: L3 visibility, simact_player: L4
 player systems, ...); each holds `ACTIONS = {name: fn}` with `fn(sim, name, a, script)`. A name has one function in
 one file (tests/test_sim_layers.py). `act` runs the name's function; False back (a guarded action whose guard failed)
-or no function: not taken, and Sim.act's chain of the actions not yet moved goes on as before.
+or no function: not taken, and the action is an unknown one (Sim.unknown, a gap), as the old chain's last else had it.
 """
 import simact_ability
 import simact_object
 import simact_order
 import simact_player
+import simact_show
 import simact_vision
 import simact_world
+from simscript import refined
+from simworld import GAP_ACTION
 
-GROUPS = (simact_vision, simact_player, simact_order, simact_object, simact_ability, simact_world)
+GROUPS = (simact_vision, simact_player, simact_order, simact_object, simact_ability, simact_world, simact_show)
 
 
 def table(groups=GROUPS):
@@ -31,6 +34,11 @@ ACTIONS = table()
 
 
 def act(sim, name, a, script):
-    """Run the action `name` if a group has it; True where it was taken."""
+    """Run the action `name` if a group has it; True where it was taken. Not taken (no group has it, or its guarded
+    function declined): counted in sim.unknown and logged as a gap, False back."""
     fn = ACTIONS.get(name)
-    return fn is not None and fn(sim, name, a, script) is not False
+    if fn is not None and fn(sim, name, a, script) is not False:
+        return True
+    sim.unknown[name] = sim.unknown.get(name, 0) + 1
+    sim.gap(GAP_ACTION, refined(name, a), 'Sim.act 不认识：没效果')
+    return False

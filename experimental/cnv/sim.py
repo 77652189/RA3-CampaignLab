@@ -292,11 +292,7 @@ from simstatus import ACTED_STATUS, AI_ONLY_STATUS  # noqa: E402,F401  (status b
 from simscript import BUTTON_ACTIONS, refined  # noqa: E402,F401  (an action's refined name, L6)
 
 
-# actions that change nothing the scripts ask about: logged on the timeline (the player sees or hears them)
-SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档', 'PATH_MUSIC_PLAY_EVENT': '音乐',
-         'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM': '战况音乐', 'NAMED_FLASH': '闪烁', 'NAMED_SHOW_INFOBOX': '信息框',
-         'OBJECT_CREATE_RADAR_EVENT': '小地图闪点', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT': '原版播报',
-         'PLAY_SOUND_EFFECT': '配音', 'MOVIE_PLAY_RADAR': '头像'}
+from simscript import SHOWN, IGNORED  # noqa: E402,F401  (logged-only / dropped actions, L6)
 # HAS_FINISHED_AUDIO / _VIDEO (work/re/l2_scripts1.md 2.3 / 2.4): the game waits for the clients' end-of-play report,
 # not a time; we place it. A dubbed line, x1 as a player hears it (bench 11-04 checks/engine_dialog.py): heard
 # AUDIO_LEAD s after the play, done at its length after that (4.34 s line -> 5.3 s). A radar clip (bench movie.py
@@ -305,9 +301,6 @@ SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档
 AUDIO_LEAD, AUDIO_GUESS, VIDEO_GUESS = 0.9, 2.5, 4.0
 SOUND_PLAYS = ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT')
 from simact_player import AI_SWITCHES  # noqa: E402,F401  (simai reads sim.AI_SWITCHES)
-IGNORED = {'DISPLAY_COUNTER', 'HIDE_COUNTER',
-           'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END',
-           'SET_COOP_AI_COMMAND_UI_ENABLED'}
 
 # ---- the engine line's script engine (ADR 0019 layer 1). Where it is not on this computer (a clean clone) the
 # simulator runs its own older loop: every DT tick each script once, timers as seconds, NOT as a plain negation.
@@ -652,8 +645,7 @@ def power_factor(supply, demand, rules=LOW_POWER):
     return f32(f) if f > 0 else f32(0.01)
 
 
-def mmss(t):
-    return f'{int(t // 60)}:{int(t % 60):02d}'
+from simworld import mmss  # noqa: E402,F401  (m:ss, L0; autoplay / offline / batch read sim.mmss)
 
 
 def seconds(s):
@@ -3357,50 +3349,7 @@ class Sim:
             self.ra3_only.add(name)
         if name in SOUND_PLAYS or name.startswith('MOVIE_PLAY_'):
             self.played(name, a)
-        if simact.act(self, name, a, script):          # the actions moved to the lookup table (ADR 0029 step 3)
-            return
-        elif name == 'MAP_SHROUD_SET_RESHROUD_TIME':
-            self.reshroud = float(a[0])
-        elif name in ('MOVE_CAMERA_TO', 'MOVE_CAMERA_TO_NAMED', 'CAMERA_FOLLOW_NAMED'):
-            p = self.point(a[0])
-            if p:
-                # the way there counts (engine_eyes all: a 0.1 s move from the start across M latched M; INFERRED:
-                # the straight line, sampled every 20)
-                was = self.camera or self.start_camera()
-                steps = max(1, int(math.hypot(p[0] - was[0], p[1] - was[1]) // 20))
-                for k in range(steps + 1):
-                    x, y = was[0] + (p[0] - was[0]) * k / steps, was[1] + (p[1] - was[1]) * k / steps
-                    self.camera_been |= {n for n, pts in self.areas.items() if inside(pts, x, y)}
-                self.camera = p
-                self.note('镜头', f'到 {a[0]}')
-        elif name in ('DISABLE_INPUT', 'ENABLE_INPUT'):
-            self.input = name == 'ENABLE_INPUT'
-            self.note('过场', '交还控制' if self.input else '锁住操作')
-        elif name == 'DISPLAY_COUNTDOWN_TIMER':
-            if a[0] not in self.countdowns:
-                self.countdowns.add(a[0])
-                left = self.timers.get(a[0], self.t) - self.t
-                self.note('倒计时', f'{self.text(a[1])} {mmss(max(0.0, left))}')
-        elif name == 'HIDE_COUNTDOWN_TIMER':
-            self.countdowns.discard(a[0])
-        elif name in SHOWN:
-            text = self.text(a[0]) if isinstance(a[0], str) else str(a[0])
-            self.note(SHOWN[name], text)
-            if name == 'SHOW_MILITARY_CAPTION':
-                self.show_caption(text, a[1])
-            elif name == 'PLAY_SOUND_EFFECT' and a[0] in self.mm.subtitles:
-                self.show_subtitle(self.text(self.mm.subtitles[a[0]]))
-        elif name == 'SET_MISSION_HOT_SPOT_ACTIVENESS':    # (hot spot, on): one the map has, else nothing (D 116)
-            if str(a[0]) in self.hotspots:
-                self.hotspots[str(a[0])] = bool(a[1])
-        elif name in ('SET_MISSION_HOT_SPOT_VISIBILITY', 'LINK_MISSION_HOT_SPOT_TO_OBJECT',
-                      'LINK_MISSION_HOT_SPOT_TO_WAYPOINT'):
-            pass                                            # the marker only: the on bit stays (D 116, 码)
-        elif name in IGNORED or name == 'CAMERA_STOP_FOLLOW':
-            pass
-        else:
-            self.unknown[name] = self.unknown.get(name, 0) + 1
-            self.gap(GAP_ACTION, refined(name, a), 'Sim.act 不认识：没效果')
+        simact.act(self, name, a, script)              # the actions as a lookup table (ADR 0029 step 3)
 
     def text(self, key):
         return self.mm.strings.get(key, key)
