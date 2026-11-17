@@ -10,7 +10,7 @@ mapping the whole local radius to yard XML and parent-death cleanup are INFERRED
 Observer lifetime, other templates/players/spies and repeated entry remain gaps.
 E138 KILL only removes the hostile Allied spy at a retail Soviet crane;
 fling distance, exact entry clock and death-module dispatch remain gaps.
-E199 VISION_UNITS: existing measured vehicle/aircraft/infantry markers have
+E199/E200 VISION_UNITS: existing measured vehicle/aircraft/infantry/ship markers have
 a five-pass discovery cycle, 0/1/1/1/1 from first observed spy disappearance.
 Only the first 300 passes and stationary measured templates are implemented;
 expiry, new units, movement and observer internals remain explicit gaps.
@@ -71,6 +71,7 @@ class Infiltrators:
         self.reset_hosts = set()
         self.aircraft_hosts = set()
         self.infantry_hosts = set()
+        self.ship_hosts = set()
 
     def aircraft_rule(self, target, rule):
         """E197 complete retail airfield configuration; no reveal assumption."""
@@ -97,6 +98,19 @@ class Infiltrators:
     def infantry_entry_measured(self, spy, target):
         return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
                 and id(target) not in self.infantry_hosts)
+
+    def ship_rule(self, target, rule):
+        """E200 complete retail naval yard configuration; no reveal assumption."""
+        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
+        return (target.template == 'AlliedNavalYard'
+                and config == {'Effect': 'VISION_UNITS', 'Duration': '30s',
+                               'UnitDuration': '30s', 'ObjectRef': 'UnitVisionObserver',
+                               'UnitFilter': 'InfiltrationShipObjectFilter',
+                               'StructureFilter': 'InfiltrationShipStructuresFilter'})
+
+    def ship_entry_measured(self, spy, target):
+        return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
+                and id(target) not in self.ship_hosts)
 
     def reset_rule(self, target, rule):
         """E195 retail Iron Curtain entry only; cooldown/ready remain gaps."""
@@ -184,6 +198,9 @@ class Infiltrators:
         INFERRED: using that anchor outside the measured entry frames. The
         three entries differ by five, so a global modulo-five phase is not
         distinguished by E199. See work/re/e199_vision_clock.md.
+        E200 independently adds the ship: entry 182 (different modulo five),
+        with the same relative sequence. This supports the disappearance anchor,
+        but accepted entry and observer lifetime remain unobserved.
         No observer birth/death rule follows from this measured readout.
         """
         now = self.sim.frame_now()
@@ -200,18 +217,19 @@ class Infiltrators:
         return False
 
     def unit_vision(self, spy, target, rule):
-        """Select only the existing same-owner templates measured by E199.
+        """Select only the existing same-owner templates measured by E199/E200.
 
         Filtering beyond these templates and later production remain gaps;
         do not turn a complete retail filter into unmeasured reveal coverage.
         """
         measured = {'AlliedWarFactory': 'AlliedAntiVehicleVehicleTech1',
                     'AlliedAirfield': 'AlliedSupportAircraft',
-                    'AlliedBarracks': 'AlliedEngineer'}
-        # These three complete configurations use a KindOf Include, not the
+                    'AlliedBarracks': 'AlliedEngineer',
+                    'AlliedNavalYard': 'AlliedAntiAirShip'}
+        # These measured complete configurations use a KindOf Include, not the
         # IncludeThing-only helper above. Do not broaden that helper's contract.
         kind = {'AlliedWarFactory': 'VEHICLE', 'AlliedAirfield': 'AIRCRAFT',
-                'AlliedBarracks': 'INFANTRY'}[target.template]
+                'AlliedBarracks': 'INFANTRY', 'AlliedNavalYard': 'SHIP'}[target.template]
         for body in self.sim.living():
             if body.owner != target.owner:
                 continue
@@ -245,14 +263,18 @@ class Infiltrators:
         if not any((energy, self.vision_rule(target, rule), self.paralyze_rule(target, rule),
                     self.kill_rule(target, rule), self.money_rule(target, rule),
                     self.vehicle_rule(target, rule), self.reset_rule(target, rule),
-                    self.aircraft_rule(target, rule), self.infantry_rule(target, rule))):
-            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、车辆、飞机、步兵及RESET入楼切片已实现')
+                    self.aircraft_rule(target, rule), self.infantry_rule(target, rule),
+                    self.ship_rule(target, rule))):
+            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、车辆、飞机、步兵、舰船及RESET入楼切片已实现')
             return
         if self.aircraft_rule(target, rule) and not self.aircraft_entry_measured(spy, target):
             s.gap('InfiltratorContain', target.template, '飞机VISION_UNITS其他间谍/玩家或重复进入未对拍')
             return
         if self.infantry_rule(target, rule) and not self.infantry_entry_measured(spy, target):
             s.gap('InfiltratorContain', target.template, '步兵VISION_UNITS其他间谍/玩家或重复进入未对拍')
+            return
+        if self.ship_rule(target, rule) and not self.ship_entry_measured(spy, target):
+            s.gap('InfiltratorContain', target.template, '舰船VISION_UNITS其他间谍/玩家或重复进入未对拍')
             return
         if self.reset_rule(target, rule) and not self.reset_entry_measured(spy, target):
             s.gap('InfiltratorContain', target.template, 'RESET其他间谍/玩家或重复进入未对拍')
@@ -323,6 +345,17 @@ class Infiltrators:
                 self.unit_vision(spy, target, rule)
                 s.gap('InfiltratorContain', target.template,
                       '步兵VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
+                s.destroy(spy, '进楼渗透', delete=True)
+                s.change()
+                continue
+            if self.ship_rule(target, rule):
+                if not self.ship_entry_measured(spy, target):
+                    s.gap('InfiltratorContain', target.template, '舰船VISION_UNITS入楼时资格变化未对拍')
+                    continue
+                self.ship_hosts.add(id(target))
+                self.unit_vision(spy, target, rule)
+                s.gap('InfiltratorContain', target.template,
+                      '舰船VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e200_ship.md')
                 s.destroy(spy, '进楼渗透', delete=True)
                 s.change()
                 continue

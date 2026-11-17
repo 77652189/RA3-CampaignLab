@@ -132,13 +132,13 @@ def test_infiltrator_energy_split_preserves_weight_and_other_effect_gaps():
     assert contain_audit.infiltrator_energy_share() == {'campaign': 4, 'templates': 6}
     rows = [r for r in inventory.collect((inventory.MODULE,))
             if r['name'].startswith('Behaviors/InfiltratorContain')]
-    assert len(rows) == 8
+    assert len(rows) == 9
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
     measured = next(r for r in rows if r['name'].endswith(':ENERGY'))
     gap = next(r for r in rows if r['name'] == 'Behaviors/InfiltratorContain')
     assert (measured['uses'], measured['all'], measured['state']) == (4, 6, inventory.BENCHED)
-    assert (gap['uses'], gap['all'], gap['state']) == (8, 8, inventory.GUESSED)
+    assert (gap['uses'], gap['all'], gap['state']) == (5, 5, inventory.GUESSED)
     assert measured['why'].startswith('tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench')
     import inventory_levels
     scope, _ = inventory_levels.expand_forms(rows, {
@@ -205,7 +205,7 @@ def test_infiltrator_money_split_rejects_changed_fields(monkeypatch, field, valu
     ('VISION', '9999999s', 1, 1, '港口阻断VISION 1用量/1模板未测'),
     ('VISION_UNITS', 'InfiltrationAircraftObjectFilter', 2, 2, '飞机VISION_UNITS单列已接E199前300帧周期'),
     ('VISION_UNITS', 'InfiltrationInfantryObjectFilter', 3, 3, '步兵VISION_UNITS单列已接E199前300帧周期'),
-    ('VISION_UNITS', 'InfiltrationShipObjectFilter', 3, 3, '舰船VISION_UNITS 3用量/3模板未测'),
+    ('VISION_UNITS', 'InfiltrationShipObjectFilter', 3, 3, '舰船VISION_UNITS已独立分区，实测边界见该行'),
     ('RESET', '', 5, 6, 'RESET单列仅入楼已接'),
 ])
 def test_infiltrator_residual_closure_preserves_each_configuration_gap(
@@ -329,3 +329,23 @@ def test_infiltrator_infantry_configuration_keeps_discovery_gap():
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
     assert 'strict xfail' in infantry['why'] and 'work/re/e198_infantry.md' in infantry['why']
+
+
+def test_infiltrator_ship_configuration_keeps_discovery_gap():
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    assert contain_audit.infiltrator_ship_share() == {'campaign': 3, 'templates': 3}
+    rows = [r for r in inventory.collect((inventory.MODULE,))
+            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    ship = next(r for r in rows if r['name'].endswith(':VISION_UNITS_SHIP'))
+    assert (ship['uses'], ship['all'], ship['state']) == (3, 3, inventory.GUESSED)
+    assert (inventory.MODULE, ship['name']) not in inventory.BENCHED_TESTS
+    assert sum(r['uses'] for r in rows) == 34
+    assert sum(r['all'] for r in rows) == 38
+    assert 'work/re/e200_ship.md' in ship['why']
+    import inventory_levels
+    scope, _ = inventory_levels.expand_forms(rows, {
+        (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
+            'a1': {'AlliedNavalYard', 'UnknownPlant'}}})
+    assert scope[(inventory.MODULE, ship['name'])]['a1'] == {'AlliedNavalYard'}
+    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain')]['a1'] == {'UnknownPlant'}
