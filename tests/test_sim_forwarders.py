@@ -76,6 +76,9 @@ FORWARDER_CALLS = {
     ('simai', 'expected_damage'): 1, ('simai', 'modify'): 1, ('simai', 'order_attack'): 1,
     ('simai', 'order_capture'): 1, ('simai', 'order_move'): 4, ('simai', 'order_unpack'): 1,
     ('simai', 'expire'): 2, ('simai', 'stand'): 1,
+    # simproxy's Peers loan (step 9d, R3: SimWorld.issue's orders on self.sim before, counted since it joined)
+    ('simproxy', 'order_attack'): 1, ('simproxy', 'order_group'): 1, ('simproxy', 'order_power'): 1,
+    ('simproxy', 'order_transform'): 1,
 }
 
 _CONTAINER = set(dir(dict)) | set(dir(list)) | set(dir(set))   # self.players.get(...) is a lookup, not a forwarder
