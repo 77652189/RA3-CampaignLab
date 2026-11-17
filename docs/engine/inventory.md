@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 205 | 11 | 120 | 115 | 99% |
+| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 206 | 11 | 119 | 115 | 99% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 59 / 119 | 197 | 61 | 27 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -326,7 +326,7 @@
 | 不涉及 | `HIDE_UI` | 5 |  | 纯表现（名字规则） |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleDeployWeapon` | 5 |  | 只记进时间线，没有效果 |
 | 已对拍 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleRiotShieldSpecialPower` | 5 |  | tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press |
-| 未做 | `TEAM_SET_HEALTH` | 5 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `TEAM_SET_HEALTH` | 5 |  | tests/test_teamhp_bench_c.py::test_teamhp_current_mixed_members_and_controls_match_bench；C engine_teamhp:a/b显式目标队守护者/征召兵血量100→25→75及100→75→25，同玩家异队/另一玩家守护者均保持100；四计数器为两成员实际血量百分比、异队血量组合码100100和逻辑帧。tests/test_teamhp_bench_c.py按名字逐实读帧回放；仅当前存活显式队伍成员的百分比设置切片，未来/死亡/缺名成员、AI实例、边界数值和精确派发相位仍gap，其他模板推广INFERRED；见work/re/c_teamhp_report.md |
 | 未做 | `TEAM_SET_MODELCONDITION_FOR_DURATION` | 5 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_SET_SLEEP_STATUS` | 5 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `ENABLE_COUNTDOWN_TIMER_DISPLAY` | 4 |  | 纯表现（名字规则） |
