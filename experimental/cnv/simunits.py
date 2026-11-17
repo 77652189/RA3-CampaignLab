@@ -535,18 +535,20 @@ def _weapons(texts, base_table=None):
                 got['delayed_meta_impacts'] = delayed_impacts
             informs = []
             for h, inner in _blocks(bare, 'InformTargetNugget'):
-                # Ordinary target-only launch notification. Radius/filter variants
-                # and the whole AI response remain explicitly incomplete.
+                # engine_inform_radius: plain radius broadcasts launch data.
+                # Filters and the whole AI response remain incomplete.
                 if not (inner or '').strip() and set(re.findall(r'(\w+)\s*=', h)) <= {
-                        'id', 'MinTimeToImpactFudgeFactor', 'MaxTimeToImpactFudgeFactor'}:
+                        'id', 'MinTimeToImpactFudgeFactor', 'MaxTimeToImpactFudgeFactor', 'Radius'}:
                     informs.append(dict(min=_num(_attr(h, 'MinTimeToImpactFudgeFactor', '0.85')),
                                         max=_num(_attr(h, 'MaxTimeToImpactFudgeFactor', '1.15'))))
+                    if _attr(h, 'Radius') is not None:
+                        informs[-1]['radius'] = _num(_attr(h, 'Radius'))
             if informs:
                 got['inform'] = informs
             if any(_blocks(bare, 'InformTargetNugget')):
                 # engine_inform_ai: an AI miner can react before the slow shell hits.
                 # Partial launch/table/armor execution is modeled; full replay,
-                # history and radius/filter variants remain gaps.
+                # history, radius boundaries and filter variants remain gaps.
                 unsupported.append('InformTargetNugget')
             for h, inner in _blocks(bare, 'AttributeModifierNugget'):
                 target_filter = None

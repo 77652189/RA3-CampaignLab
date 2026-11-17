@@ -5646,11 +5646,21 @@ class Sim:
         duration = distance / speed if speed >= 1e-4 else 0.0
         armor = 1.0 if weapon['type'] == 'UNRESISTABLE' else simunits.percent(target.armor, weapon['type']) / 100 * target.taken
         for effect in weapon.get('inform', []):
-            for _ in range(count):
-                self.incoming_add(target, id(attacker), weapon.get('weapon_key'),
-                                  weapon['dmg'] * attacker.dealt * armor,
-                                  self.frame_now() + int(duration * effect['min']),
-                                  self.frame_now() + int(duration * effect['max'] + 0.99))
+            recipients = [target]
+            if effect.get('radius', 0) > 0:
+                # engine_inform_radius: neighbours receive the primary's tuple,
+                # even though the single-target warhead never damages them.
+                # INFERRED boundary: centre sphere; extents/height/other armour
+                # and relation eligibility remain gaps, not retail coverage.
+                recipients = [b for b in self.living()
+                              if math.dist((b.x, b.y, b.z or 0),
+                                           (target.x, target.y, target.z or 0)) <= effect['radius']]
+            for recipient in recipients:
+                for _ in range(count):
+                    self.incoming_add(recipient, id(attacker), weapon.get('weapon_key'),
+                                      weapon['dmg'] * attacker.dealt * armor,
+                                      self.frame_now() + int(duration * effect['min']),
+                                      self.frame_now() + int(duration * effect['max'] + 0.99))
 
     def toggles_of(self, b):
         """simunits.template_toggles for b's template, kept."""

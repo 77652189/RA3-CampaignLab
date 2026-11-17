@@ -1,0 +1,130 @@
+{
+  "run": "CampIRadB_mcp_1116_194152",
+  "verdict": "NOEXPECT",
+  "readings": "counters (base info, high info, order info, removed info): s1-s9: 0 0 0 0 | s10-s18: 100 100 100 100 | s19-s24: 100 100 68 100 | s25-s55: 68 68 68 89",
+  "events": [
+    {
+      "target": "base main",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "high main",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "order main",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "removed main",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "base near",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "base far",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "high near",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "high far",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "order near",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "order far",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "removed near",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "removed far",
+      "frame": 166,
+      "entries": []
+    },
+    {
+      "target": "base main",
+      "frame": 302,
+      "entries": [
+        {
+          "source": 12,
+          "damage": 150.0,
+          "hit": 376,
+          "expiry": 404
+        }
+      ]
+    },
+    {
+      "target": "high main",
+      "frame": 302,
+      "entries": [
+        {
+          "source": 13,
+          "damage": 150.0,
+          "hit": 376,
+          "expiry": 404
+        }
+      ]
+    },
+    {
+      "target": "order main",
+      "frame": 302,
+      "entries": [
+        {
+          "source": 14,
+          "damage": 150.0,
+          "hit": 302,
+          "expiry": 302
+        }
+      ]
+    },
+    {
+      "target": "high near",
+      "frame": 302,
+      "entries": [
+        {
+          "source": 13,
+          "damage": 150.0,
+          "hit": 376,
+          "expiry": 404
+        }
+      ]
+    },
+    {
+      "target": "order main",
+      "frame": 304,
+      "entries": []
+    },
+    {
+      "target": "base main",
+      "frame": 389,
+      "entries": []
+    },
+    {
+      "target": "high main",
+      "frame": 389,
+      "entries": []
+    }
+  ]
+}
