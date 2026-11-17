@@ -13,6 +13,7 @@ WORLD_API = frozenset({
     'bodies',          # name -> Body, every body made (dead too), in the order made
     'living',          # () -> the bodies alive now, in bodies' order
     'own',             # the template data handle (simunits)
+    'xml_of',          # template -> its XML (the mission's own, else retail; '' where none), kept
     'fps',             # engine frames a second
     'frame_now',       # the engine frame now
     'relations',       # (player, player) -> 'Friend' / 'Enemy' / 'Neutral'

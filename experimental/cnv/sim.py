@@ -67,6 +67,7 @@ import simcond  # noqa: E402
 import simgarrison  # noqa: E402
 import simheal  # noqa: E402
 import simmine  # noqa: E402
+import simmodifier  # noqa: E402
 import simmoney  # noqa: E402
 import siminfiltrator  # noqa: E402
 import simsweep  # noqa: E402
@@ -96,9 +97,7 @@ from simscript import CMP, SURFACES, RELATION_OF  # noqa: E402,F401  (a conditio
 LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
 ATTACK_SLACK = 10.0             # R3: an attacker stops this far inside its range of the target (a guess)
-# R8: a weapon reaches (AttackRange - UNDERSIZE) x its range multiplier, not the full AttackRange (Generals UNDERSIZE,
-# a quarter of a 20-unit path cell): read for both the AI hostile gate and the firing check (work/re D162, not benched)
-UNDERSIZE = 5.0
+from simmodifier import UNDERSIZE  # noqa: E402,F401  (a weapon reach less this, L2)
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 SPREAD = 30.0                   # a reinforcement team's units this far apart round its waypoint (Sim.reinforce, INFERRED)
@@ -1954,90 +1953,15 @@ class Sim:
         return set(b.upgrades) | set(getattr(self, 'player_ups', {}).get(b.owner, ()))
 
     def modify(self, b):
-        """Sets b's acting values from the attribute modifiers on it (simunits.effect): the upgrades it holds (an
-        AttributeModifierUpgrade's modifier, until its Duration runs out from the giving: bench upgrades.md 4; a
-        StatusBitsUpgrade's bits) and what auras hung on it (aura_tick, each until its frame). SPEED x the speed,
-        RANGE x the weapons' range only, VISION x vision and sight (upgrades.md 1, 2); the status = the script's bits
-        + the modifiers', IN_STASIS meaning IMMOBILE NO_ATTACK UNATTACKABLE (INFERRED: the measured stasis modifier
-        sets them all); shielded, ARMOR (taken), DAMAGE_MULT x RATE_OF_FIRE (dealt)."""
-        now = self.frame_now()
-        xml = self.xml_of(b.template)
-        mods = []
-        level_mods = simlevel.damage_modifiers(self, b, xml)
-        b.level_rate = simunits.stack([v for m in level_mods for v in m['types'].get('RATE_OF_FIRE', [])])
-        level_shroud = simunits.stack([v for m in level_mods for v in m['types'].get('SHROUD_CLEARING', [])])
-        b.level_vision = simunits.stack([v for m in level_mods for v in m['types'].get('VISION', [])])
-        # Measured rank ROF belongs to the clip clock. Other modifiers retain
-        # their existing continuous-DPS approximation until separately benched.
-        mods.extend(dict(m, types={ty: values for ty, values in m['types'].items()
-                                  if ty not in {'RATE_OF_FIRE', 'SHROUD_CLEARING', 'VISION'}})
-                    for m in level_mods)
-        if b.suppression_rule and b.suppressed:
-            mods.append(simunits.modifier(xml, b.suppression_rule['modifier']))
-        for up, mid in simunits.upgrade_mods(xml, b.upgrades):
-            m = simunits.modifier(xml, mid)
-            if m and (m['frames'] is None or now < b.up_since.get(up, now) + m['frames']):
-                mods.append(m)
-        for mid, (until, src) in list(b.auras_on.items()):
-            if now >= until:
-                # Expiry clears the template's bits even if a script set the
-                # same bit later; it is not source-counted. This isolated
-                # timed-modifier path makes no attack-order retention claim.
-                expired = simunits.modifier(src, mid)
-                if expired:
-                    b.script_status.difference_update(expired['status'])
-                del b.auras_on[mid]
-            else:
-                mods.append(simunits.modifier(src, mid))
-        toggle_bits = set()
-        for i, tm in enumerate(self.toggles_of(b)):              # each toggle module's current ToggleState
-            st = tm['states'][b.toggle_at.get(i, 0) % len(tm['states'])]
-            toggle_bits |= st['status']
-            if st['modifier'] and simunits.modifier(xml, st['modifier']):
-                mods.append(simunits.modifier(xml, st['modifier']))
-        step = self.cold_of(b)[0]['steps'][b.cold_step] if b.cold_step >= 0 else None
-        if step and step[1]:
-            mods.append(simunits.modifier(xml, step[1]))
-        # engine_spngp a: a PLAYER grant triggers the owner's StatusBitsUpgrade.
-        player_bits = {up for up in self.player_ups.get(b.owner, ())
-                       if simunits.upgrade_type(up, self.own) == 'PLAYER'}
-        on, off = simunits.status_bits(xml, b.upgrades | player_bits)
-        e = simunits.effect(mods, on | b.script_status | b.attachment_status | b.lift_status | toggle_bits, off)
-        if not mods and not on and not off and b.base is None:
-            b.status = set(b.script_status | b.attachment_status | b.lift_status | toggle_bits)
-            if b.slots:
-                b.weapons = simunits.pick_weapons(b.slots, b.status, self.weapon_upgrades(b))
-            return
-        if b.base is None:
-            b.base = {'speed': b.speed, 'vision': b.vision, 'sight': b.sight, 'weapons': b.weapons, 'armor': b.armor}
-        st = e['status']
-        if 'IN_STASIS' in st:
-            st = st | {'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE'}
-        if 'UNDER_FROZEN' in st or (step and step[2]):          # frozen (OnEnterDisable): stopped and silent
-            st = st | {'IMMOBILE', 'NO_ATTACK'}
-        b.armor = self.cold_of(b)[1] if step and step[3] and self.cold_of(b)[1] else b.base['armor']
-        b.status = st
-        # Suppression SPEED75%:50->37.5 (bench44->59); retain fractional speed.
-        b.speed = b.base['speed'] * e['SPEED']
-        b.vision, b.sight = b.base['vision'] * e['VISION'], b.base['sight'] * e['VISION']
-        if level_shroud != 1.0:
-            # engine_levelshroud a measures discovery, not VISION/auto-acquire.
-            # Recompute from retail shroud, never from last frame's scaled value.
-            shroud = simunits.stats(b.template, self.own)['shroud'] or 0.0
-            b.vision = max(b.vision, shroud * level_shroud)
-        held = simunits.pick_weapons(b.slots, st, self.weapon_upgrades(b)) if b.slots else b.base['weapons']       # the status picks the guns
-        b.weapons = held if e['RANGE'] == 1.0 else [dict(w, range=w['range'] * e['RANGE'], undersize=UNDERSIZE * e['RANGE'])
-                                                    for w in held]
-        b.shielded = e['shielded']
-        # Suppression ARMOR75%: EXPLOSIVE40 on150HP reads80%; UNRESISTABLE bypasses it.
-        b.taken, b.dealt = e['ARMOR'], e['DAMAGE_MULT'] * e['RATE_OF_FIRE']
-        if mods or on:
-            self.used.add('modifier')
-        for m in mods:
-            for ty in sorted(set(m['types']) - simunits.ACTING_TYPES) if m else ():
-                self.gap(GAP_UPGRADE, m['id'], f'修正类型 {ty} 没模拟')
-        for bit in sorted(e['status'] - b.script_status - b.attachment_status - b.lift_status - ACTED_STATUS - ({'UNDER_IRON_CURTAIN'} if b.shielded else set())):
-            self.gap(GAP_STATUS, bit, f'{b.template} 身上的修正 / 升级给的，只记下来')
+        """simmodifier.Modifiers.modify (L2): b's acting values from the attribute modifiers on it."""
+        self._modifiers().modify(self, b, self.toggles_of, self.cold_of, self.weapon_upgrades, self.player_ups)
+
+    def _modifiers(self):
+        """The simmodifier.Modifiers (L2), made on first use (a Sim built without __init__ has none yet)."""
+        m = self.__dict__.get('modifiers')
+        if m is None:
+            m = self.modifiers = simmodifier.Modifiers()
+        return m
 
     def relation(self, a, b):
         """ENEMIES / NEUTRAL / ALLIES: how owner b stands to owner a (an aura's ObjectFilter Relationship)."""
@@ -2048,43 +1972,8 @@ class Sim:
         return 'ALLIES'
 
     def aura_tick(self):
-        """Once a tick before the fight: every living aura object (simunits.auras, active, holding the bits it needs)
-        hangs its modifier on what its filter takes within Range, centre to centre, once every RefreshDelay (the first
-        at once), until then + the modifier's Duration (none: the refresh); then every body with a modifier is re-set
-        (modify). Bench upgrades.md 5 / 5.1 (engine_stasis_edge / _leave): the edge is the unit's centre (a Guardian
-        at 190 from a 200 zone held, at 205 not, though its box is 20 x 12); a unit out of the zone keeps it Duration
-        after the last refresh (hold 2 s: 26 frames after the teleport); a hold shorter than the refresh flickers
-        (refresh 1 s, hold 0.2 s: on 22 of 150 frames) -- a 0.5 s tick shows that only as on at a refresh tick."""
-        now = self.frame_now()
-        live = self.living()
-        cache = self.__dict__.setdefault('_auras', {})
-        for e in live:
-            if e.template not in cache:
-                cache[e.template] = simunits.auras(self.xml_of(e.template))
-            for a in cache[e.template]:
-                if not a['active'] or not a['needs'] <= e.status:
-                    continue
-                m = simunits.modifier(self.xml_of(e.template), a['mod'])
-                if m is None:
-                    continue
-                beat = self.__dict__.setdefault('_aura_beat', {})
-                k = (e.name, a['mod'])
-                if k in beat and now - beat[k] < a['refresh']:
-                    continue
-                beat[k] = now if k not in beat else beat[k] + (now - beat[k]) // a['refresh'] * a['refresh']
-                until = now + (m['frames'] or a['refresh'])
-                for t in live:
-                    if t is e and not a['self']:
-                        continue
-                    if t.scenery or (a['include'] and not a['include'] & t.kinds) or a['exclude'] & t.kinds:
-                        continue
-                    if self.relation(e.owner, t.owner) not in a['relation']:
-                        continue
-                    if math.hypot(t.x - e.x, t.y - e.y) <= a['range']:
-                        t.auras_on[a['mod']] = (until, self.xml_of(e.template))
-        for b in live:
-            if b.auras_on or b.base is not None:
-                self.modify(b)
+        """simmodifier.Modifiers.aura_tick (L2): the auras hang their modifiers, then every modified body is re-set."""
+        self._modifiers().aura_tick(self, self.relation, self.modify)
 
     def power(self, owner):
         """(supply, demand) of the owner: its living objects' EnergyProduction, > 0 summed into the supply, < 0 into
