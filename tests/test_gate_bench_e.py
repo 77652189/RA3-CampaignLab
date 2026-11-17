@@ -10,6 +10,25 @@ bootstrap = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bootstrap)
 
 
+@pytest.mark.parametrize('check', ['', 'a'])
+def test_gate_runtime_cast_keeps_contract(check):
+    import build
+    from contract import contract
+    from model import merged
+
+    m, t, _ = build.resolve('engine_gate_e', check)
+    setup = merged(m, t)
+    assert contract(setup) == []
+    # Doors must stay runtime creations: placing them reintroduces the SDK failure.
+    assert [obj.name for obj in setup.objects] == ['E190 anchor']
+    creates = [s for s in setup.scripts if s.name.startswith('Test - create ')]
+    assert len(creates) == 3
+    assert all(s.when == [('COUNTER', 'E190Frame', 2, 30)] for s in creates)
+    assert {s.do[0][1] for s in creates} == {
+        m.role(tag).name for tag in ('Romania', 'Sanitarium', 'Sentinel')}
+    assert sum(s.name == 'Test - clock' for s in setup.scripts) == 1
+
+
 def _replay():
     import build
     import labpaths

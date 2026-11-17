@@ -20,12 +20,18 @@ from model import Mission, Role, Script, Test
 def mission():
     m = Mission(name='CampGateNatE', map=probe_range, units=[])
     m.put('AlliedConstructionYard', 'base factory', role='anchor', name='E190 anchor')
+    # Runtime cast creation belongs to the mission, including builds without a check.
+    m.scripts = [Script('Test - clock', [('COUNTER', 'E190Frame', 0, 180)],
+                        [('INCREMENT_COUNTER', 1, 'E190Frame')], once=False)]
     for template, tag, site in [
         ('RM_AlliedBlastDoor', 'Romania', 'base gun'),
         ('SS_Door', 'Sanitarium', 'high gun'),
         ('AlliedPowerPlant', 'Sentinel', 'removed gun')]:
         m.cast[tag] = Role(template, 'E190 ' + tag, 'p1', [site])
         m.waypoint(tag, 'E190 point ' + tag, site)
+        m.scripts.append(Script('Test - create ' + tag, [('COUNTER', 'E190Frame', 2, 30)],
+            [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', m.role(tag).name,
+              m.role(tag).template, m.team(), m.mark(tag))]))
     return m
 
 
@@ -33,12 +39,7 @@ def check(m):
     t = Test()
     t.counters = [('E190Frame', 'frame'), ('E190Romania', 'Romania'),
                   ('E190Sanitarium', 'Sanitarium'), ('E190Sentinel', 'sentinel')]
-    t.scripts = [Script('Test - clock', [('COUNTER', 'E190Frame', 0, 180)],
-                        [('INCREMENT_COUNTER', 1, 'E190Frame')], once=False)]
     for tag in ('Romania', 'Sanitarium', 'Sentinel'):
-        t.scripts.append(Script('Test - create ' + tag, [('COUNTER', 'E190Frame', 2, 30)],
-            [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', m.role(tag).name,
-              m.role(tag).template, m.team(), m.mark(tag))]))
         t.scripts.append(Script('Test - live ' + tag, [
             ('COUNTER', 'E190Frame', 2, 180),
             ('NAMED_NOT_DESTROYED', m.role(tag).name)],
