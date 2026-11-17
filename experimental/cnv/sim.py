@@ -3800,6 +3800,15 @@ class Sim:
             # 100 in from its edge) and stayed there, the area's middle never reached; an enemy put in the area 600
             # from them: see the module docstring for what they did. Taken as a group move to the waypoint
             self.order_group(self.members(a[0]), a[2], False)
+        elif name == 'NAMED_FACE_WAYPOINT':
+            # Native hull headings: engine_facewpai:b, west 180 / north-west 117,
+            # untouched 0. Reuse the measured locomotor turn rate. Exact order
+            # phase, moving hosts and missing/dead names remain gaps (INFERRED).
+            b, p = self.body(a[0]), self.point(a[1])
+            if b and b.alive and p is not None:
+                self.stand(b)
+                b.face = math.atan2(p[1] - b.y, p[0] - b.x)
+                self.change()
         elif name == 'UNIT_TELEPORT_TO_WAYPOINT':
             b, p = self.body(a[0]), self.point(a[1])
             if b and p:
