@@ -87,51 +87,7 @@ DRIVE_WITHIN = 9.0              # ordered from standing, a unit drives on the fr
 UNTIL = 1800.0                  # a run stops here at the latest (30 minutes)
 QUIET = 120.0                   # nothing pending this long and no ending: stuck
 
-# A script's superweapon at a waypoint: [(frames after the cast, [(centre distance, damage)])], nothing past the last
-# distance. Proton collider: bench 2026-11-07 engine_super p / q (base defenses of 1000 at 0 / 150 / 240 / 300): the
-# first hit 56 frames after the cast (+-1), the others in rows ~7 frames apart (INFERRED +15 / +45); the one at 300
-# untouched (XML Radius 250); the centre hit once only (the beams sweep: not a taper, not modelled further).
-SUPERWEAPON_HITS = {
-    'SpecialPowerParticleCannon': [
-        (56, [(0.0, 560.0), (150.0, 500.0), (240.0, 390.0), (250.0, 390.0)]),
-        (71, [(0.0, 0.0), (150.0, 440.0), (240.0, 340.0), (250.0, 340.0)]),
-        (101, [(0.0, 0.0), (150.0, 0.0), (240.0, 150.0), (250.0, 150.0)]),
-    ],
-    # Vacuum Imploder: engine_super v / w (base defenses at 0 / 150 / 280 / 350): the first loss 62 frames after the cast
-    # (the 4 s seed), then gradual in rows ~7 frames apart (~16 % / 11 % / 8 % a row) until 5 / 1 / 1 % are left (the
-    # centre after 6 rows, 150 after 9, 280 after ~13); 350 untouched (XML Radius 300). Rows of 7 frames: INFERRED.
-    'SpecialPowerVacuumBomb': [
-        (62 + 7 * k, [(0.0, 158.0 if k < 6 else 0.0), (150.0, 110.0 if k < 9 else 0.0), (280.0, 76.0), (300.0, 76.0)])
-        for k in range(13)
-    ],
-    # Psionic Decimator (the Empire's): engine_super d / e (base defenses of 1000 at 0 / 150 / 250 / 350): all within 250
-    # dead 61 frames after the cast, 350 whole (XML: 4 s, damage 2000, radius 300 -- one hit, flat inside, INFERRED).
-    'SpecialPowerTelekineticProjectorDevice': [(61, [(0.0, 2000.0), (300.0, 2000.0)])],
-}
-# Iron Curtain: engine_super j -- a scripted cast keeps tanks at 0 and 150 from the waypoint whole against enemy fire for
-# ~355 frames (the 20 s modifier + the 3 s effect); NAMED_DAMAGE goes through (i). XML: vehicles and structures, aura
-# 100, yet g / a (each tank shot by one enemy of its own, NAMED_ATTACK_NAMED, open ground): tanks at 100 / 300 / 500 /
-# 800 whole till ~354, at 850 / 950 / 1050 / 1150 hit from frame ~20 -- the reach between 800 and 850 (800 taken; k / l /
-# m / o / s were muddled by the enemies picking other targets).
-# Nanoswarm Hive: engine_super n -- tanks at 0 and 150 untouched by enemy fire 497+ frames (the run's end), 250 hit from
-# frame ~27 (XML radius 200, IN_STASIS 20 s; the end of the stasis not seen -- INFERRED 497); NAMED_DAMAGE goes through.
-# Name -> (reach by centre, frames, kinds covered or None for all).
-# Frames a superweapon's script cast takes over its ReloadTime before it is ready again: engine_super f -- the proton
-# collider ready 5550 frames after the cast (ReloadTime 360 s = 5400; the 150 maybe the cast's own delay: INFERRED,
-# the others not measured).
-RELOAD_LAG = {'SpecialPowerParticleCannon': 150}
-CURTAIN = {'SpecialPowerIronCurtain': (800.0, 355, {'VEHICLE', 'STRUCTURE'}),
-           'SpecialPowerNanoSwarmHive': (200.0, 497, None)}
-
-
-def hit_at(table, d):
-    """The damage of one hit's table at centre distance `d`: linear between its distances, 0 past the last."""
-    if d > table[-1][0]:
-        return 0.0
-    for (d0, v0), (d1, v1) in zip(table, table[1:]):
-        if d <= d1:
-            return v0 + (v1 - v0) * (d - d0) / (d1 - d0) if d1 > d0 else v1
-    return table[-1][1]
+from simpower import SUPERWEAPON_HITS, RELOAD_LAG, CURTAIN, hit_at, UNPACK_POWER, PACK_POWER, PACK_FRAMES  # noqa: E402,F401  (special powers, L2)
 CIV = simworld.CIV
 # The container's (Heidelberg, retail a03's SidesList) sides with aiTactical 255 (aiTeamBuilder alike); StartingUnits
 # and Soviet_5 are 240 (retail data read 11-14, round 216): Sim.tactical
@@ -162,14 +118,11 @@ HOLD_SPOTS = True              # every move's goal kept off other units' spots (
                                # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
 ORE_PLATE = (60.0, 45.0)        # an ore node's base plate, half-extents (OreNode.xml's last BOX): Sim.goal_off_nodes
-UNPACK_POWER = 'SpecialPower_UnpackReplaceSelf'     # the deploy buttons' power (LogicCommand.xml: MCVs, eggs, miner)
 REPLACE_FRAMES = 6             # a ReplaceSelfSpecialAbility at its point: the replacement 6 frames on (engine_build a)
 RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's NaturalRallyPoint, on the line from
                                # the factory's centre through it: INFERRED, fitted to bench 11-11 engine_production
                                # h / i (barracks, (40, 18): stops ~(75-80, 24-33)) and engine_rally tank (war
                                # factory, (80, 20): ~(112-127, 25-34); x 1.9 from the centre would be (152, 38))
-PACK_POWER = 'SpecialPower_PackReplaceSelf'         # a construction yard's pack button (Command_Pack...MCV)
-PACK_FRAMES = 0                # the yard is its MCV from the press frame on (engine_pack a / s / j)
 WFIRE_LAG = 0                  # frames between a weapon-fire ability's UnpackTime and its weapon (engine_wfire)
 WFIRE_REAIM = 20                # a target this far off the spot its caster walks to: the caster re-aimed (INFERRED)
 # a TargetType NONE ability (the bear's roar) pressed _ON_NAMED: it goes off this much later once the caster is up to
@@ -3488,8 +3441,6 @@ class Sim:
                 self.used.add('reinforcement unit dead')
             else:
                 self.reinforce(a[0], a[1], script)
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and a[1] == 'Command_CaptureBuilding':
-            self.order_capture(self.body(a[0]), a[2])
         elif name == 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER':
             self.nearest_ref(*a[:4])
         elif name == 'SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER':     # INFERRED: the same, named ones too
@@ -3527,17 +3478,6 @@ class Sim:
                 spot = f'SIM spawn spot {len(self.waypoints)}'
                 self.waypoints[spot] = (at.x, at.y)
                 self.act('CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', [a[0], a[1], a[2], spot, at.angle], script)
-        elif name == 'PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT':
-            # (player, power, waypoint) INFERRED: the player's first living object that has the power casts it, as
-            # NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT (a script's cast: no reload asked); none, nothing. Retail fires
-            # protocols this way mostly (orbital refuse, final squadron): those have no source object, not simulated
-            power = next((k for k in (*SUPERWEAPON_HITS, *CURTAIN) if k.lower() == str(a[1]).lower()), a[1])
-            src = next((b for b in self.living() if b.owner == a[0]
-                        and simunits.power_rules(b.template, power, self.own)), None)
-            if src:
-                self.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [src.name, power, a[2]], script)
-            else:
-                self.gap(GAP_ACTION, refined(name, a), f'{a[0]} 没有带 {a[1]} 的物体（协议类不模拟）')
         elif name == 'TEAM_TRANSFER_TO_PLAYER':
             # (team, player) l2_scripts1 6: each member goes to the player's own team, its order cleared. Bench 11-08
             # engine_scripts1 xfer: owned by the new player at once, the move it was on dropped, the team left empty
@@ -3563,16 +3503,6 @@ class Sim:
                 self.seq.append({'b': b, 'script': sc, 'step': -1, 'loops': int(a[2]) if len(a) > 2 else 0})
             elif b and self.eng is None:
                 self.gap(GAP_ACTION, name, '没有引擎模型的运行不模拟顺序脚本')
-        elif name == 'TEAM_USE_COMMANDBUTTON_ABILITY':
-            # (team, button) l2_scripts1 8: the button on every living member, no target. Bench 11-08 button: both
-            # Peacekeepers of the crew raised their shields
-            for b in self.members(a[0]):
-                self.act('NAMED_USE_COMMANDBUTTON_ABILITY', [b.name, a[1]], script)
-        elif name == 'TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT':
-            # (team, button, waypoint): the button at the spot on every living member (engine_acts_btn TB: the crew's
-            # Bullfrog threw its passengers at the waypoint, as NAMED_..._AT_WAYPOINT did in round 152)
-            for b in self.members(a[0]):
-                self.act('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', [b.name, a[1], a[2]], script)
         elif name == 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER':
             b = self.body(a[0])
             if b:
@@ -3651,168 +3581,6 @@ class Sim:
                 self.note('倒计时', f'{self.text(a[1])} {mmss(max(0.0, left))}')
         elif name == 'HIDE_COUNTDOWN_TIMER':
             self.countdowns.discard(a[0])
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.body(a[0]).alive and \
-                simunits.built(self.body(a[0]).template, a[1], self.own, self.body(a[0]).upgrades):
-            # a factory's build button: queued there as the player's click (bench engine_production e); a banned unit
-            # queued all the same and waits (g); refused where the player's click would be for the rest (can_build:
-            # tier, a factory still unpacking -- INFERRED, not measured)
-            f = self.body(a[0])
-            tmpl = simunits.built(f.template, a[1], self.own, f.upgrades)
-            if not self.order_build(f.owner, tmpl, factory=f, press=True):
-                self.note('生产', f'{self.label(f)} 按 {a[1]}：现在造不了 {tmpl}')
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and simgarrison.ejects(a[1], self.own):
-            # a transport's eject at the spot (simgarrison; bench 11-10 engine_transport load 跳)
-            b, p = self.body(a[0]), self.point(a[2])
-            if not (b and p is not None and self.garrison.eject(b, a[1], p)):
-                self.note('技能', f'{a[0]} 按 {a[1]}：没有能弹出乘员的载具或路点')
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and simgarrison.ejects(a[1], self.own):
-            # the untargeted eject (a01's intro bombers, SovietSupportBomber_S07): out where it is (engine_acts_btn EJ)
-            b = self.body(a[0])
-            if not (b and self.garrison.eject(b, a[1], (b.x, b.y))):
-                self.note('技能', f'{a[0]} 按 {a[1]}：没有能弹出乘员的载具')
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and \
-                (simunits._commands(self.own)[1].get(a[1]) or ('',))[0] == 'EVACUATE':
-            # the Twinblade's evacuate (s09's Hinds): lands, all out together where it is (engine_acts_btn EV)
-            if not self.garrison.evacuate(self.body(a[0])):
-                self.note('技能', f'{a[0]} 按 {a[1]}：没有载着人的载具')
-        elif (name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and a[1] == 'Command_UnPackJapanEgg'
-              and simunits.command_power(a[1], self.own) is None
-              and self.body(a[0]) and self.body(a[0]).template in
-              ('JapanBaseDefenseEgg', 'JapanPowerPlantEgg', 'JapanNavalYardEgg')):
-            # engine_eggcmd:a / engine_eggnav:a: legacy id leaves these cores home; concrete buttons deploy.
-            # Other hosts and map-local command definitions remain gaps, not aliases for UnpackReplaceSelf.
-            pass
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and \
-                simunits.command_power(a[1], self.own) == UNPACK_POWER:
-            # an MCV / a Japanese egg deploys at the point: drives there, then turns into its replacement (bench
-            # engine_unpack mcv / egg: the yard stands on the point, the name passes on)
-            b, p = self.body(a[0]), self.point(a[2])
-            if not (b and p is not None and self.order_unpack(b, p, a[1], a[2])):
-                self.note('技能', f'{a[0]} 按 {a[1]}：没有能展开的单位或路点')
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.body(a[0]).alive and \
-                simunits.command_power(a[1], self.own) == PACK_POWER and \
-                simunits.replace_self(self.body(a[0]).template, a[1], self.own):
-            # a construction yard packs back into its MCV where it stands (engine_pack a / s / j)
-            b = self.body(a[0])
-            _, into = simunits.replace_self(b.template, a[1], self.own)
-            self.used.add('unpack')
-            b.replace = True
-            self.__dict__.setdefault('pack_hold', {})[b.name] = simunits.replace_unpack_frames(b.template, a[1], self.own)
-            self.due.append((self.frame_now() + PACK_FRAMES, into, b.owner, b.team, b.x, b.y, b.name))
-            self.note('技能', f'{self.label(b)} 收起成 {into}')
-            self.build_due(self.frame_now())        # the press frame's later scripts already see the MCV
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and \
-                self.body(a[0]) and self.body(a[0]).alive and \
-                self.assignments.press(self.body(a[0]), a[1], self.body(a[2])):
-            self.note('技能', f'{a[0]} 显式派发维修到 {a[2]}')
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and self.body(a[0]) and self.body(a[0]).alive and \
-                self.point(a[2]) is not None and simunits.ocl_power(
-                    self.body(a[0]).template, simunits.command_power(a[1], self.own) or '', self.own):
-            # engine_acts_wet DP / DS (round 226): the campaign bomber drop store's button is seen cast
-            # (PLAYER_TRIGGERED_SPECIAL_POWER) the player's and the computer's alike -- and nobody comes, in six
-            # runs (its OCL's CREATE_AT_EDGE_NEAR_SOURCE not explained: inventory NOTES)
-            b = self.body(a[0])
-            self.casts.append((self.frame_now(), b.owner, simunits.command_power(a[1], self.own).lower(), b.name,
-                               self.point(a[2])))
-            self.note('技能', f'{self.label(b)} 按 {a[1]}：算放了，没出东西（推断）')
-        elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and \
-                self.body(a[0]) and self.body(a[0]).alive and \
-                simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own):
-            self.wfire_press(self.body(a[0]), a[1], a[2] if len(a) > 2 else None)
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and self.body(a[0]) and self.body(a[0]).alive and \
-                self.point(a[2]) is not None and simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own) \
-                and simunits.self_projectile_speed(
-                    simunits.weapon_fire_ability(self.body(a[0]).template, a[1], self.own)['weapon'], self.own):
-            self.leap_press(self.body(a[0]), a[1], self.point(a[2]))
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and self.body(a[0]) and self.body(a[0]).alive and \
-                self.point(a[2]) is not None and simunits.movement_power(self.body(a[0]).template, a[1], self.own):
-            self.movement_power_press(self.body(a[0]), a[1], self.point(a[2]))
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.body(a[0]).alive and \
-                simunits.self_module_power(self.body(a[0]).template, a[1], self.own):
-            self.self_power_press(self.body(a[0]), a[1])
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.toggle_press(self.body(a[0]), a[1]):
-            self.note('技能', f'{a[0]} 按 {a[1]} 切换状态')
-        elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and self.body(a[0]) and self.body(a[0]).alive and \
-                simunits.press_records(self.body(a[0]).template, a[1], self.own):
-            # engine_cast (round 242): Tanya's time belt seen cast twice (simunits.press_records); her jump back in
-            # time is not simulated
-            b = self.body(a[0])
-            power, n = simunits.press_records(b.template, a[1], self.own)
-            self.used.add('special power')
-            self.casts += [(self.frame_now(), b.owner, power.lower(), b.name, None)] * n
-            self.note('技能', f'{self.label(b)} 按 {a[1]}：记 {n} 次施放')
-        elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
-            b = self.body(a[0])
-            # engine_oclnone / engine_oclwrong: no matching host module means
-            # neither protection nor PLAYER_TRIGGERED_SPECIAL_POWER event.
-            if b and b.alive and a[1] == 'SpecialPowerIronCurtain' and \
-                    not simunits.ocl_power(b.template, a[1], self.own):
-                self.note('技能', f'{self.label(b)} 没有匹配的铁幕 OCLSpecialPower')
-                return
-            if b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT':
-                # bench 11-09 engine_scripts8b pfire / pdis: every script cast (the player-level one too, a second
-                # one in the reload that hurts nobody) is seen by PLAYER_TRIGGERED_SPECIAL_POWER for one frame
-                self.casts.append((self.frame_now(), b.owner, str(a[1]).lower(), b.name,
-                                   self.point(a[2]) if len(a) > 2 else None))
-            got = b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' and \
-                simunits.assemble(b.template, a[1], self.own)
-            p = self.point(a[2]) if got and got[1] else None
-            if p is not None:                       # R5: he walks there and builds (the ice engineer's core)
-                self.used.add('assemble')           # a script's cast heeds neither reload nor placing rules
-                rules = simunits.power_rules(b.template, a[1], self.own)    # (bench engine_skill a-c, w); it
-                if rules and rules['reload']:                               # starts the reload all the same
-                    b.ready_at[a[1]] = self.frame_now() + rules['reload']   # (RA3 1.13, read, work/re/l2_ability.md)
-                b.building, b.goal, b.mode = (got[1], p, got[0]), None, 'move'
-                self.note('技能', f'{self.label(b)} 去 {a[2]} 造 {got[1]}')
-                if not self.at_site(b, 0.0):
-                    self.send(b, p)
-            else:
-                self.used.add('special power')
-                self.note('技能', f'{a[0]} 用 {a[1]}' + (f' 打 {a[2]}' if len(a) > 2 else ''))
-                q = self.point(a[2]) if len(a) > 2 and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' else None
-                rules = simunits.power_rules(b.template, a[1], self.own) if b and b.alive else None
-                # bench 11-09 engine_scripts8b pdis: a second script cast ~20 s after the first (the collider's
-                # reload, set by that cast, not over) is seen as triggered but hurts nobody; the first cast of a
-                # collider never cast went though its power was not charged (engine_super p / q). INFERRED: a cast
-                # in the reload a cast started brings no blast
-                cooling = bool(b and b.alive and b.ready_at.get(a[1], 0) > self.frame_now())
-                if rules and rules['reload']:       # every cast starts the reload anew (RA3 1.13, read, work/re/l2_ability.md;
-                    b.ready_at[a[1]] = self.frame_now() + rules['reload'] + RELOAD_LAG.get(a[1], 0)   # SDK GlobalData)
-                hits = SUPERWEAPON_HITS.get(a[1]) if b and b.alive else None
-                if hits and q is not None and cooling:
-                    self.used.add('superweapon')
-                    self.note('技能', f'{self.label(b)} 的 {a[1]} 还在重装：没打出来')
-                elif hits and q is not None:       # a script's cast fires though the power is not ready
-                    self.used.add('superweapon')
-                    now = self.frame_now()
-                    for after, table in hits:
-                        self.blasts.append((now + after, q[0], q[1], table, b.owner, b))
-                curtain_host = True
-                if a[1] == 'SpecialPowerIronCurtain' and b and b.alive:
-                    module = simunits.ocl_power(b.template, a[1], self.own)
-                    curtain_host = bool(module and simunits.iron_curtain_ocl(module['OCL'], self.own) and
-                                        module['CreateLocation'] == 'CREATE_AT_LOCATION' and
-                                        module['CanAffectObjectFilter'] ==
-                                        'SovietIronCurtainSpecialPowerObjectFilter')
-                    empty_dispatch = bool(module and
-                                          (simunits.empty_ocl(module['OCL'], self.own) or
-                                           simunits.iron_curtain_ocl(module['OCL'], self.own, zero_count=True)) and
-                                          module['CreateLocation'] == 'CREATE_AT_LOCATION' and
-                                          module['CanAffectObjectFilter'] ==
-                                          'SovietIronCurtainSpecialPowerObjectFilter')
-                    if module and not curtain_host and not empty_dispatch:
-                        self.gap(GAP_ACTION, refined(name, a), 'OCLSpecialPower 配置未对拍，见 work/re/e_ocl_e62.md')
-                if a[1] in CURTAIN and q is not None and b and b.alive and curtain_host:
-                    self.used.add('superweapon')
-                    reach, lasts, kinds = CURTAIN[a[1]]
-                    for t in self.living():
-                        # the reach to the object's bounding circle (bench engine_super o: a tank 807 off covered,
-                        # 832 not; 800 + its 23.3 radius -- INFERRED, R8's measure)
-                        if (kinds is None or t.kinds & kinds) and \
-                                math.hypot(t.x - q[0], t.y - q[1]) - t.radius <= reach:
-                            t.immune_until = self.frame_now() + lasts
-                if b and b.alive and not ((hits or a[1] in CURTAIN) and q is not None):
-                    self.gap(GAP_ACTION, refined(name, a), f'{a[1]} 只记进时间线（special power），没有效果')
         elif name in ('ENABLE_SCRIPT', 'DISABLE_SCRIPT'):
             # a once-script that fired is only switched off: ENABLE_SCRIPT arms it again (SE enableScript)
             if name == 'ENABLE_SCRIPT':

@@ -20,9 +20,9 @@ CNV = ROOT / 'experimental' / 'cnv'
 LAYER_OF = {
     'simworld': 0,
     'simunits': 1,
-    'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2, 'simmine': 2, 'simstatus': 2,
+    'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2, 'simmine': 2, 'simstatus': 2, 'simpower': 2, 'simgarrison': 2,
     'simtech': 4, 'simmoney': 4,
-    'simact': 6, 'simact_vision': 6, 'simact_player': 6, 'simact_order': 6, 'simact_object': 6, 'simscript': 6,
+    'simact': 6, 'simact_vision': 6, 'simact_player': 6, 'simact_order': 6, 'simact_object': 6, 'simact_ability': 6, 'simscript': 6,
     'simloop': 7,
 }
 
