@@ -46,6 +46,10 @@ instead (ADR 0029 consequence 3; the map was recorded before the blocks moved ou
   * a part no test imports or names falls back to the coverage map, then to name matching;
   * the always-picked tests without a coverage record are picked only when some change went to the coverage map;
   * a range A..B is read against the tree as it is now; --coverage-only gives the pick before ADR 0029.
+
+The daily pick leaves out the replay tests (tests/replay_tests.txt: whole-game and bench-mission replays, marked
+`replay` by tests/conftest.py) unless the change edits that test file itself; --with-replays keeps them. The full run
+(pytest tests) still runs them all; `pytest -m "not replay"` is the daily full set.
 """
 import argparse
 import ast
@@ -76,6 +80,7 @@ DURATIONS = os.path.join(MAPDIR, 'durations.json')
 GUARDS = ['tests/test_docs.py', 'tests/test_architecture.py', 'tests/test_no_program_addresses.py']
 GUARD_GLOBS = ['tests/test_inventory*.py']
 ENGINE_KEY = 'ENGINE:'          # a key prefix: files of the engine model repository
+REPLAYS = os.path.join(ROOT, 'tests', 'replay_tests.txt')
 MAX_WORKERS = 8
 GB_PER_WORKER = 1.5          # a simulator test worker peaks around here; the full run lost workers when memory ran out
 
@@ -621,6 +626,30 @@ def merge_nodes(picked):
     return {x for x in picked if '::' not in x or file_of(x) not in picked}
 
 
+def replay_files(path=REPLAYS):
+    """{'tests/test_x.py': kind} from the replay list: one file name per line, '[kind]' starts a group, '#' comments."""
+    out, kind = {}, ''
+    try:
+        with open(path, encoding='utf-8') as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return out
+    for line in lines:
+        line = line.split('#', 1)[0].strip()
+        if line.startswith('[') and line.endswith(']'):
+            kind = line[1:-1].strip()
+        elif line:
+            out['tests/' + line] = kind
+    return out
+
+
+def drop_replays(tests, replays, changed):
+    """The daily pick: the picked tests minus those in a replay file, unless the change edits that test file itself.
+    Returns (kept, left out)."""
+    out = {t for t in tests if file_of(t) in replays and file_of(t) not in changed}
+    return tests - out, out
+
+
 # ---------------------------------------------------------------- git glue
 
 def git(repo, *args):
@@ -834,6 +863,8 @@ def main(argv=None):
     ap.add_argument('--no-guards', action='store_true')
     ap.add_argument('--coverage-only', action='store_true', help="pick the simulator's files by the coverage map too "
                     '(the pick before ADR 0029: the map was recorded before the blocks moved out of sim.py)')
+    ap.add_argument('--with-replays', action='store_true', help='keep the replay tests (tests/replay_tests.txt) in '
+                    'the pick; the daily pick leaves them out unless the change edits them')
     ap.add_argument('--cmd', action='store_true', help='print the whole pytest command instead of the file list '
                     '(workers = min(8, free GB / 1.5))')
     args = ap.parse_args(argv)
@@ -868,6 +899,15 @@ def main(argv=None):
             why.setdefault(t, []).append('no coverage record: always')
         print('always selected (no coverage record): %d test files' % len(unrecorded(cov)), file=sys.stderr)
     tests = merge_nodes({t for t in tests if os.path.exists(os.path.join(ROOT, file_of(t)))})
+    if not args.with_replays:
+        replays = replay_files()
+        tests, dropped = drop_replays(tests, replays, {c[0] for c in changes})
+        if dropped:
+            kinds = {}
+            for t in dropped:
+                kinds[replays[file_of(t)]] = kinds.get(replays[file_of(t)], 0) + 1
+            print('left out %d replay tests (%s; tests/replay_tests.txt): --with-replays runs them'
+                  % (len(dropped), ', '.join('%s %d' % kv for kv in sorted(kinds.items()))), file=sys.stderr)
     out = sorted(tests)
     n = workers()
     if args.cmd:
