@@ -8,6 +8,7 @@ touching the subsystems.) The minimal world for rule tests is simsmall.small_wor
 """
 
 CIV = 'PlyrCivilian'   # the neutral side: owns the map's scenery and civilians; pays and is paid nothing
+GRID = 20.0            # routing cells (world units): the ground's grid (sim.Ground) and the orders' arrival slack
 
 WORLD_API = frozenset({
     'bodies',          # name -> Body, every body made (dead too), in the order made
@@ -32,6 +33,12 @@ WORLD_API = frozenset({
     'blocks',          # does a body block the ground's paths
     'reblock',         # re-read the blocked ground
     'body',            # a script's object name -> its Body (a reference followed, dead or not), None where none
+    'relation',        # (player, player) -> 'ALLIES' / 'ENEMIES' / 'NEUTRAL'
+    'hostile',         # (body, body) -> does the first take the second as an enemy (team overrides first)
+    'who',             # player -> its name as the log shows it
+    'waypoints',       # the map's waypoint name -> (x, y) (an order may add a spot of its own)
+    'areas',           # the map's trigger area name -> its polygon
+    'mm',              # the merged map: its waypoint labels and links (the paths)
 })
 
 # Sim.gap's kinds: what a run met and the simulator does not act on (any layer reports one). The names are

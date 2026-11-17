@@ -1,0 +1,500 @@
+"""L5 unit orders: what a unit is told to do and how its standing orders run on (ADR 0029, docs/engine/sim-layers.md).
+
+The order entries set a body's mode and goal and hand the walk to L2 (`peers.send`): a plain or attack move
+(`order_move`, a group's `order_group`), an attack (`order_attack`), an engineer's capture (`order_capture`), a guard,
+a ground power (`power_refusal`, `order_power`, `order_transform`), stop / stand, a waypoint path (`order_follow`,
+`path_start`, `path_next`, `follow_leg`), a run off the map (`flee_start`), an unpack (`order_unpack`). The dues are
+their frame parts: a capture at the building's side, the next leg of a path, a sequential script's next step, a hunt's
+next pick, a runner's walk out (`capture_due`, `follow_due`, `seq_due`, `hunt_due`, `flee_due`).
+All over the world it is given (simworld.WORLD_API only). Its host's other parts come in as `peers` (`Peers`, the
+names in PEERS only, read when used): L2 locomotion (send, claims, free_spot, goal_off_nodes, column_ends), L2
+bodies (destroy, modify, engineer_entry, at_site, the garrison, toggles_of / toggle_press), L3 reach, L4 money
+(wallet) and power switches (powers_off), L6 act, and the order queues the scripts fill (seq, hunts). This module
+never imports them. The fight (attack state machine and chases) is still on the Sim (step 8b).
+"""
+import math
+
+import simunits
+from simpower import UNPACK_POWER
+from simworld import CIV, GRID, inside
+
+CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
+ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
+FLEE_GONE = 3
+HUNT_REPICK = 45                    # frames from a hunted target's death to the crew's next pick (fit, hunt_due)
+
+PEERS = frozenset({'act', 'at_site', 'claims', 'column_ends', 'destroy', 'engineer_entry', 'free_spot', 'garrison', 'goal_off_nodes', 'hunts', 'modify', 'powers_off', 'reach', 'send', 'seq', 'toggle_press', 'toggles_of', 'wallet'})
+
+
+class Peers:
+    """What the orders may reach on their host (the Sim) beyond the world: the names in PEERS, read when used."""
+    __slots__ = ('host',)
+
+    def __init__(self, host):
+        self.host = host
+
+    def __getattr__(self, name):
+        if name not in PEERS:
+            raise AttributeError(f'simorder.Peers: {name} is not lent (PEERS)')
+        return getattr(self.host, name)
+
+
+def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None):
+    """A plain move (attacking: an attack-move). The spot is adjusted first (free_spot: Generals'
+    AIInternalMoveToState::onEnter adjusts every move's goal off the spots other units hold); `given` are spots
+    already handed out to a group being ordered, `skip` that group (its members' old goals are dropped first).
+    face: the facing (radians) it turns to once there (the AI's form-up slots; send)."""
+    if b:
+        b.flee = None                       # INFERRED: any move order takes the run over, as STOP does
+        b.follow = None                     # ... and a waypoint path (order_follow sets it again after its legs)
+        b.ground_fire = None                # ... and a fire at the ground
+        b.mode = 'attack' if attacking else 'move'
+        p = world.point(where) if isinstance(where, str) else where
+        if p is not None and b.alive and b.speed > 0:
+            spot = peers.free_spot(b, peers.goal_off_nodes(b, p), peers.claims(b, skip) + list(given))
+            where = where if spot == p else spot
+        peers.send(b, where, face=face)
+        b.move_to = b.dest if not attacking else None
+
+
+def order_group(world, peers, bodies, where, attacking):
+    """A move order to several units at once (a team's MOVE_TEAM_TO, a selection's click): Generals'
+    AIGroup::groupMoveToPosition without a formation (GL/AI/AIGroup.cpp; work/re/generals-source-map.md). The unit
+    nearest the goal is the centre and walks to the point; the others, nearest first, each to the point plus where
+    it stands from that centre, the offset cut to 6 times its radius (computeIndividualDestination), then moved
+    off spots already held (free_spot). Bench 2026-11-08 acceptance question 1 (a01's squad, 4 Peacekeepers + 2
+    dogs): the squad's middle ~18-23 short of the point, the units apart -- the simulator had all six on the point.
+    INFERRED for RA3 (its group move not read, docs/engine/pathing.md 5: the script's MOVE_TEAM_TO hands the team
+    to one group command): Generals' column march for a big, far group (friend_moveInfantryToPos) and the line
+    check from the group's goal to the spot are left out."""
+    movers = [b for b in bodies if b and b.alive and b.speed > 0 and 'IMMOBILE' not in b.status]
+    p = world.point(where) if isinstance(where, str) else where
+    if len(movers) < 2 or p is None:
+        for b in bodies:
+            order_move(world, peers, b, where, attacking)
+        return
+    world.used.add('group move')
+    movers.sort(key=lambda b: (b.x - p[0]) ** 2 + (b.y - p[1]) ** 2)
+    given = []                                  # (x, y, radius) spots handed out to the group so far
+    foot = [b for b in movers if 'INFANTRY' in b.kinds]
+    if len(foot) >= 3 and math.hypot(movers[0].x - p[0], movers[0].y - p[1]) >= 100:
+        world.used.add('column march')
+        peers.column_ends(foot, p, attacking, given, movers)
+        movers = [b for b in movers if b not in foot]
+    if not movers:
+        return
+    cx, cy = movers[0].x, movers[0].y
+    for b in movers:
+        vx, vy = b.x - cx, b.y - cy
+        n = math.hypot(vx, vy)
+        cap = 6 * b.radius
+        if n > cap:
+            vx, vy = vx * cap / n, vy * cap / n
+        order_move(world, peers, b, (p[0] + vx, p[1] + vy), attacking, given, movers)
+        given.append(tuple(b.dest or (b.x, b.y)) + (b.radius,))
+
+
+def held_up(b):
+    """A plain move whose way ended short of where it was sent (blocked: a wall across the street) is still on
+    that move: it neither fires nor goes after anyone until its next order. Bench 2026-11-07 `a4 demoeng`: the
+    opening demo's pair, sent to the engineer's clear mark and stopped by the ice ~157 from him (centre to centre,
+    in the simulator), never shot him in the 2 s before their turn order; the simulator, counting them idle once
+    stopped, had him dead at 61.7 s. INFERRED (RA3's AI move state not read); not told apart on the bench: that
+    they stop farther off than the simulator's wall lets them (out of reach)."""
+    return b.mode == 'move' and not b.path and b.goal is None and b.move_to is not None and \
+        b.dest == b.move_to and math.hypot(b.dest[0] - b.x, b.dest[1] - b.y) > ARRIVE
+
+
+def order_attack(world, peers, b, target_name, force=False):
+    world.used.add('attack')
+    target = world.body(target_name)
+    if b and target and not force and world.relation(b.owner, target.owner) == 'ALLIES':
+        return      # bench 11-13 engine_acts flow 友血: NAMED_ATTACK_NAMED on one of its own side, no shot (d115 13:
+                    # FORCE_ATTACK_NAMED is the order that takes any relation); a neutral one not benched, kept
+    if b and target and target.alive and b.alive:
+        b.hold_paused = False               # an order given under HOLD_FIRE fires (stance.md b)
+    if b and target and target.alive and b.alive and b.goal is not target:
+        b.goal, b.mode, b.follow, b.ground_fire = target, 'attack', None, None
+        peers.send(b, (target.x, target.y), reach=peers.reach(b, target))
+
+
+def order_capture(world, peers, b, target_name):
+    """R4: NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED with Command_CaptureBuilding: the engineer goes to the
+    building; at its side it takes it (capture_due)."""
+    world.used.add('capture')
+    target = world.body(target_name)
+    if b and b.alive and target and target.alive and peers.engineer_entry(b, target):
+        b.goal, b.mode = target, 'capture'
+        peers.send(b, (target.x, target.y))
+
+
+def capture_due(world, peers):
+    """R4 / E15: an engineer at the building's side (reach and travel timing INFERRED).
+    EngineerContain admits capture or allied repair; the entering engineer is consumed
+    (engine_engineer:a/c, all three nations). Capture preserves HP, allied repair fills HP without changing owner.
+    A deposit building pays its bonus now and its next
+    deposit an interval on (Generals' AutoDepositUpdate.awardInitialCaptureBonus). Bench 2026-11-07 a4 derrick:
+    the derrick the player's at the first reading after the order (s4), 500, then 15 every 2 s (s7 515 -> s46 800)."""
+    for b in world.living():
+        g = b.goal
+        if b.mode != 'capture' or not isinstance(g, type(b)):
+            continue
+        if not g.alive:
+            b.goal, b.mode, b.path = None, 'move', []
+            continue
+        rule = peers.engineer_entry(b, g)
+        if not rule:
+            b.goal, b.mode, b.path = None, 'move', []
+            continue
+        shape = world.blocks(g)
+        r = (shape[2] if shape and len(shape) == 3 else 40.0) + CAPTURE_REACH
+        d = math.hypot(g.x - b.x, g.y - b.y)
+        if d > r and (b.path or d > 2 * r):
+            continue
+        if world.relation(g.owner, b.owner) == 'ALLIES':
+            if g.hp >= g.max_hp:
+                # engine_engineer:b: full-health allies keep their owner/HP
+                # and all three nations' engineers survive. Travel INFERRED.
+                b.goal, b.mode, b.path = None, 'move', []
+                continue
+            g.hp = g.max_hp
+            world.note('修理', f'{world.label(b)} 修复 {world.label(g)}')
+            peers.destroy(b, '进楼修理', delete=True)
+            world.change()
+            continue
+        g.owner = b.owner
+        world.note('占领', f'{world.label(b)} 占下 {world.label(g)}，归 {world.who(b.owner)}')
+        if g.deposit:
+            peers.wallet.credit(b.owner, g.deposit[0])
+            g.deposit_at = world.frame_now() + g.deposit[2]
+        peers.destroy(b, '进楼占领', delete=True)
+        world.change()
+
+
+def order_guard(world, peers, b, area):
+    world.used.add('guard')
+    if b:
+        b.follow = None
+    if b and not inside(world.areas[area], b.x, b.y):
+        peers.send(b, area)
+
+
+def power_refusal(world, peers, b, power, x, y):
+    """Why the player's click of `power` on (x, y) for unit b would be refused, None if it goes (order_power). A
+    script's cast (engine_skill a-c, w) skips all of this. The click, bench 2026-11-07 engine_skill d (clicked by
+    hand, the ice engineer): its reload not over (ready_at: refused 8 s after his cast, went 21 s after); PATHABLE_ONLY
+    and the spot not ground he can walk (a point in the sea and one on the cliff refused); within ForbiddenObjectRange
+    (32) of the edge of an object that does not move (an ore node, box 33 x 41, refused 75 from its centre and not
+    123: its bounding circle 53 + 32 lies between) -- a unit does not count (our own tank 20 / 40 / 60 from the spot,
+    inside its 23 radius, the core came all the same; a click right on the tank's centre took nothing, left out);
+    MaxCastRange with LIMIT_DISTANCE and the spot farther from him (not measured)."""
+    rules = simunits.power_rules(b.template, power, world.own)
+    if rules is None:
+        return 'not a power of his'
+    if b.ready_at.get(power, 0) > world.frame_now():
+        return 'reloading'
+    if any(peers.powers_off.get((p, power.lower()), 'Available') != 'Available' for p in (b.owner, '<All Players>')):
+        return 'disabled'                   # PLAYER_SPECIAL_POWER_AVAILABILITY (INFERRED)
+    if 'PATHABLE_ONLY' in rules['flags']:
+        g, c = world.ground.grids.get(b.surface, world.ground.grids['ground']), world.ground.cell(x, y)
+        if not (0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and g[c]):
+            return 'not pathable'
+    if rules['forbidden'] and any(o is not b and not o.speed
+                                  and math.hypot(o.x - x, o.y - y) - o.radius < rules['forbidden']
+                                  for o in world.living()):
+        return 'too near an object'
+    if 'LIMIT_DISTANCE' in rules['flags'] and rules['reach'] and math.hypot(b.x - x, b.y - y) > rules['reach']:
+        return 'out of reach'
+    return None
+
+
+def order_power(world, peers, b, power, pos):
+    """The player's ground power (simproxy's): (True, None) and cast as the scripts' way does (at a waypoint of its
+    own), or (False, why) -- power_refusal."""
+    x, y = float(pos[0]), float(pos[1])
+    why = power_refusal(world, peers, b, power, x, y) if b and b.alive else 'gone'
+    if why:
+        world.note('技能', f'{world.label(b) if b else "?"} 用 {power} 不行：{why}')
+        return False, why
+    spot = f'SIM power spot {len(world.waypoints)}'
+    world.waypoints[spot] = (x, y)
+    peers.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [b.name, power, spot], None)
+    return True, None
+
+
+def order_transform(world, peers, b, power):
+    """E206: player's untargeted Tengu transform; reuse the measured button effect.
+
+    Reload/availability use the existing player-power gate. The 15 s reload
+    is XML-derived (INFERRED for this input); this bench measures the state
+    and locomotor, not a player's cooldown or animation-frame boundaries.
+    """
+    if power != 'SpecialPower_JAIV_Transform':
+        return False, 'unmeasured self power'
+    if not b or not b.alive:
+        return False, 'gone'
+    if not any(tm['power'] == power for tm in peers.toggles_of(b)):
+        return False, 'not a toggle of his'
+    why = power_refusal(world, peers, b, power, b.x, b.y)
+    if why:
+        return False, why
+    if not peers.toggle_press(b, 'Command_JAIV_Transform'):
+        return False, 'not a toggle of his'
+    b.ready_at[power] = world.frame_now() + simunits.power_rules(b.template, power, world.own)['reload']
+    return True, None
+
+
+def order_stop(b):
+    if b:
+        b.path, b.goal, b.follow, b.ground_fire = [], None, None, None
+        b.flee = None                       # a later order takes the run over (engine_runoffmap d; the status stays)
+
+
+def stand(b):
+    """Its order dropped, nothing new: idle where it is (the AI's command 5: l2_scripts1 3, 6)."""
+    b.path, b.goal, b.mode, b.move_to, b.follow = [], None, 'idle', None, None
+    b.ground_fire = None
+
+
+def idle(peers, b):
+    """The unit's AI has nothing to do (a sequential script's next step waits for it, d115 14): no way to walk,
+    no living target, no path, not firing at the ground, not running off."""
+    return not b.path and not (isinstance(b.goal, type(b)) and b.goal.alive) and not b.follow \
+        and not getattr(b, 'ground_fire', None) and not getattr(b, 'flee', None) \
+        and b.name not in peers.garrison.going
+
+
+def seq_due(world, peers):
+    """UNIT_EXECUTE_SEQUENTIAL_SCRIPT's frame (d115 14, the engine's "Advancing SeqScript"): of each unit's queue
+    only the head moves -- the unit idle, its next action run (with <This Object> = the unit); past the last one
+    it is done (loops 0), or goes to the back of the unit's queue to run again (loops - 1; -1 for ever). A dead
+    unit's records go. Bench 11-13 engine_acts_seq: 跑 1 -> 11 at P -> 111 back and no more (one run, each step
+    after the move before it), 排 0 -> 11 (the second script after the first's move). d115 14's wait frames
+    (IDLE_FOR_* writing them) are not kept: 等 11 from the first second -- UNIT_IDLE_FOR_SECONDS 5 on the standing
+    unit held the next step back not at all (what writes the wait: not known)."""
+    heads = set()
+    for r in list(peers.seq):
+        b = r['b']
+        if id(b) in heads:
+            continue
+        heads.add(id(b))
+        if not b.alive:
+            peers.seq.remove(r)
+            continue
+        if not idle(peers, b):
+            continue
+        r['step'] += 1
+        acts = [x for x in r['script'].actions if x.enabled]
+        if r['step'] >= len(acts):
+            peers.seq.remove(r)
+            if r['loops']:
+                r['loops'] -= r['loops'] != -1
+                r['step'] = -1
+                peers.seq.append(r)
+            continue
+        act = acts[r['step']]
+        args = [b.name if x == '<This Object>' else (b.team if x == '<This Team>' else x) for x in act.args]
+        world.eng.action(act.name, args, r['script'])
+        if not b.alive and r in peers.seq:
+            peers.seq.remove(r)
+
+
+def path_start(world, label, at):
+    """The waypoint a path is joined at: of the waypoints carrying `label`, the nearest to `at` (2D; strictly
+    nearer replaces, so the first in map order wins a tie) -- Generals' TerrainLogic::getClosestWaypointOnPath.
+    None if no waypoint carries it."""
+    best, bd = None, None
+    for n, labels in world.mm.labels.items():
+        if label in labels and n in world.waypoints:
+            x, y = world.waypoints[n]
+            d = (x - at[0]) ** 2 + (y - at[1]) ** 2
+            if bd is None or d < bd:
+                best, bd = n, d
+    return best
+
+
+def path_next(world, at):
+    """The waypoint after `at` on its path (the map's WaypointsList, one way, whatever the next one's label),
+    None at the path's end. Of several links the game takes either (Generals' getNextWaypoint: at random; bench
+    11-10 engine_waypath: two runs of one map forked two ways); this takes the first (the runs stay repeatable)
+    and marks the run. A loop goes round and round (bench 11-10 engine_waypath loop)."""
+    nxt = [z for a, z in world.mm.links if a == at]
+    if len(nxt) > 1:
+        world.used.add('path fork')
+    return nxt[0] if nxt else None
+
+
+def order_follow(world, peers, bodies, label, attacking, exact=False, start=None, as_team=False):
+    """NAMED_ / TEAM_ (ATTACK_) FOLLOW_WAYPOINTS (_EXACT, _STARTING_AT_WAYPOINT): each unit goes waypoint by
+    waypoint along the path `label`, from `start`, or else the path's waypoint nearest to it (a team: to its
+    middle, Generals' doTeamFollowWaypoints joins at getClosestWaypointOnPath of the team's estimated position);
+    at a waypoint it takes the next (path_next) and stops at the path's end. Each leg is a move (order_move;
+    attacking: an attack-move, it stops to fight and goes on). as_team (Generals AIFollowWaypointPathState with
+    m_moveAsGroup): each member keeps where it stood from the team's middle (the mean, AIGroup::getCenter) when
+    ordered -- every leg's goal is the waypoint plus that, uncut -- and the team shares one waypoint: the first
+    member to get there sends them all on to the next (the team's current waypoint). Bench 11-10 engine_waypath
+    (checks/engine_waypath.py 读数): line = exact (both reach B within 10: no corner cut), a loop goes round and
+    round, a fork takes either link (random, the two runs took different ones), links lead on through waypoints
+    without the label, joined at the nearest; team: both trucks 75 off every waypoint, the one ahead on the last
+    leg there 3 s first. INFERRED: the team version's fourth flag, BiDirectional, the group's speed (the slowest
+    member's, AIGroup::getSpeed: the bench's trucks are one kind)."""
+    movers = [b for b in bodies if b and b.alive and b.speed > 0 and 'IMMOBILE' not in b.status]
+    if not movers:
+        return
+    world.used.add('follow path')
+    if start is None:
+        n = len(movers)
+        start = path_start(world, label, (sum(b.x for b in movers) / n, sum(b.y for b in movers) / n))
+    if start is None or start not in world.waypoints:
+        for b in movers:
+            world.note('卡住', f'{world.label(b)} 找不到路 {label}')
+        return
+    how = {'label': label, 'at': start, 'attacking': attacking, 'exact': exact, 'team': as_team}
+    if as_team and len(movers) > 1:
+        n = len(movers)
+        cx, cy = sum(b.x for b in movers) / n, sum(b.y for b in movers) / n
+        how['offset'] = {id(b): (b.x - cx, b.y - cy) for b in movers}
+        world.used.add('team path')
+    follow_leg(world, peers, movers, how)
+
+
+def follow_leg(world, peers, movers, how):
+    """Sends `movers` to how['at'] and marks them as on the path (a team as one: one shared dict; each member
+    to the waypoint plus its own offset from the team's middle when ordered)."""
+    if how['team'] and len(movers) > 1:
+        wx, wy = world.waypoints[how['at']]
+        given = []
+        for b in movers:
+            ox, oy = how['offset'].get(id(b), (0.0, 0.0))
+            order_move(world, peers, b, (wx + ox, wy + oy), how['attacking'], given=given, skip=movers)
+            given.append((wx + ox, wy + oy, b.radius))
+            b.follow = how
+    else:
+        for b in movers:
+            order_move(world, peers, b, how['at'], how['attacking'])
+            b.follow = dict(how, team=False)
+
+
+def follow_due(world, peers):
+    """The path followers that got where their leg went (no way left, not fighting): on to the next waypoint,
+    or off the path at its end. One waypoint per tick at most."""
+    done = set()
+    for b in world.living():
+        how = b.follow
+        if how is None or id(how) in done:
+            continue
+        if how['team']:                     # the first member there moves the team's waypoint on
+            group = [o for o in world.living() if o.follow is how]
+            if all(o.path or o.engaged or o.resume is not None or isinstance(o.goal, type(o)) for o in group):
+                continue
+            done.add(id(how))
+        else:
+            if b.path or b.engaged or b.resume is not None or isinstance(b.goal, type(b)):
+                continue                    # resume: turned aside to fight (attack_chase), the leg not done
+            group = [b]
+        nxt = path_next(world, how['at'])
+        if nxt is None or nxt not in world.waypoints:
+            for o in group:
+                o.follow = None
+            continue
+        leg = dict(how, at=nxt)
+        done.add(id(leg))
+        follow_leg(world, peers, group, leg)
+
+
+def flee_start(world, peers, b):
+    """RunOffMapBehavior (simunits.run_off_map; engine line C round 8, engine_runoffmap a-d, bench 11-06): from the
+    order's frame the body walks straight to the waypoint named `RunOffMap` (none: 1000 along its facing), at its
+    speed, carrying FLEE_OFF_MAP, and FLEE_GONE frames after it arrives it is removed without a death (not dying).
+    The counting scripts' frames give 64064 / 304304 and the 15 frames in the end's area at lag 0, gone 3 (a grid
+    of lag 0-4 x gone 0-5 had that one fit). Not modelled: the path (a straight line),
+    a way that cannot be walked, flying off."""
+    name = simunits.run_off_map(b.template, world.own)
+    if name is None or not b.alive or b.speed <= 0:
+        return
+    goal = world.waypoints.get(name or 'RunOffMap')
+    if goal is None:
+        goal = (b.x + 1000.0 * math.cos(b.angle), b.y + 1000.0 * math.sin(b.angle))
+    d = math.hypot(goal[0] - b.x, goal[1] - b.y)
+    b.flee = (world.frame_now(), b.x, b.y, goal[0], goal[1], d, b.speed / simunits.LIFE_FPS)
+    b.path, b.goal, b.mode, b.move_to = [], None, 'idle', None
+    b.script_status.add('FLEE_OFF_MAP')
+    peers.modify(b)
+    world.used.add('flee off map')
+    world.change()
+
+
+def hunt_due(world, peers, frame):
+    """TEAM_HUNT's crews (Sim.act): one with no living target, its re-pick frame come, attack-moves to the
+    hostile object (unit or structure, not civilian) nearest its middle. Bench 11-14 engine_acts_y hunt: an
+    engineer died at s15, the crew by the next one (566 on) at s21; that one died at s29, the crew out of its
+    spot at s39 and back past home (s49) for the barracks; another crew's bait died at s13, the next attacked at
+    s29 -- HUNT_REPICK 45 frames (3 s) has each a second later, the bench's usual lag (0: the same but the
+    second bait 2 s early; 75: 2-3 s late). INFERRED: a fit, the program's re-pick rule not read. A crew's members dying, joining other teams: not followed (the crew as ordered)."""
+    for h in list(peers.hunts):
+        movers = [b for b in h[0] if b.alive]
+        if not movers:
+            peers.hunts.remove(h)
+            continue
+        if h[1] is not None and h[1].alive:
+            continue
+        if h[1] is not None:                # its target just died: the re-pick waits
+            h[1], h[2] = None, frame + HUNT_REPICK
+        if frame < h[2]:
+            continue
+        mx, my = sum(b.x for b in movers) / len(movers), sum(b.y for b in movers) / len(movers)
+        goal = min((o for o in world.living() if o.owner != CIV and world.hostile(movers[0], o)),
+                   key=lambda o: (math.hypot(o.x - mx, o.y - my), o.name), default=None)
+        if goal is None:
+            peers.hunts.remove(h)
+            continue
+        h[1] = goal
+        order_group(world, peers, movers, (goal.x, goal.y), True)
+
+
+def flee_due(world, peers, frame):
+    """One frame of every runner: its place on the straight line, the removal when its time comes."""
+    for b in world.living():
+        f = getattr(b, 'flee', None)
+        if not f:
+            continue
+        f0, x0, y0, x1, y1, d, step = f
+        k = frame - f0
+        walked = min(d, max(0, k) * step) / d if d else 1.0
+        b.x, b.y = x0 + (x1 - x0) * walked, y0 + (y1 - y0) * walked
+        if walked >= 1.0 and k - math.ceil(d / step - 1e-9) >= FLEE_GONE:
+            b.flee = None
+            peers.destroy(b, '逃出地图', delete=True)
+        else:
+            world.change()
+
+
+def order_unpack(world, peers, b, p, button=None, where=None, stand=None, here=False, send=True):
+    """b drives to point p and turns into its ReplaceSelfSpecialAbility's replacement there (the script's
+    NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT with an unpack button).
+    button None = the first unpack button of b's CommandSet (AlliedMiner: Command_UnPackAlliedMiner). False when
+    b is dead or has no such button. The AI's SimpleExpansion (simai approach) arms it instead: stand = the
+    Tactic's Distance (in place of the replacement's stand), here = the structure goes where b stands when it
+    first comes within stand of p (at_site), send=False = b is not driven to p (its team's orders walk it)."""
+    if not b.alive:
+        return False
+    if button is None:
+        sets, _ = simunits._commands(world.own)
+        button = next((c for c in sets.get(simunits.command_set(b.template, (), world.own), [])
+                       if simunits.command_power(c, world.own) == UNPACK_POWER
+                       and simunits.replace_self(b.template, c, world.own)), None)
+    got = button is not None and simunits.command_power(button, world.own) == UNPACK_POWER and \
+        simunits.replace_self(b.template, button, world.own)
+    if not got:
+        return False
+    own_stand, into = got
+    world.used.add('unpack')
+    b.building, b.replace = (into, p, own_stand if stand is None else stand), True
+    b.unpack_here = here
+    if send:
+        b.goal, b.mode = None, 'move'
+    world.note('技能', f'{world.label(b)} 去 {where or "(%.0f, %.0f)" % tuple(p)} 展开成 {into}'
+              + (f'（{stand:g} 内原地）' if here else ''))
+    if not peers.at_site(b, 0.0) and send:
+        peers.send(b, p)
+    return True

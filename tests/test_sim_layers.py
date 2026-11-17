@@ -25,6 +25,7 @@ LAYER_OF = {
     'simbody': 2,
     'simtoggle': 2,
     'simspecial': 2,
+    'simorder': 5,
     'simtech': 4, 'simmoney': 4,
     'simact': 6, 'simact_vision': 6, 'simact_player': 6, 'simact_order': 6, 'simact_object': 6, 'simact_ability': 6, 'simact_world': 6, 'simact_show': 6, 'simscript': 6,
     'simcond': 6, 'simcond_world': 6, 'simcond_object': 6, 'simcond_vision': 6, 'simcond_player': 6, 'simcond_show': 6,
@@ -35,7 +36,11 @@ LAYER_OF = {
 WORLD_TAKERS = {'simheal', 'simmine', 'simmoney', 'simmodifier', 'simlocomotion',
                 'simbody',
                 'simtoggle',
-                'simspecial'}
+                'simspecial',
+                'simorder'}
+
+# modules that reach their host beyond the world through a Peers loan: every `peers.X` they read is in their PEERS
+PEER_TAKERS = {'simorder'}
 
 # field -> the one file that may assign it (rule 3), for the blocks moved so far. Not yet the money dicts (money,
 # income, money_cap): scripts, selling, production, repairs, spies and simai still write them directly (simmoney.py)
@@ -48,7 +53,8 @@ FIELD_OWNER = {'heal_at': 'simheal', 'heal_seen': 'simheal',
                'deleted': 'simbody', 'died_at': 'simbody', 'sell_end': 'simbody', 'lose_of': 'simbody',
                'toggle_at': 'simtoggle', 'armor_up': 'simtoggle', 'toggler': 'sim',
                'wfires': 'simspecial', 'leaps_due': 'simspecial', 'leap_ground_hits': 'simspecial',
-               'movement_due': 'simspecial', 'self_bits_due': 'simspecial'}
+               'movement_due': 'simspecial', 'self_bits_due': 'simspecial',
+               'flee': 'simorder', 'follow': 'simorder', 'move_to': 'simorder', 'unpack_here': 'simorder'}
 # (a body's `alive` is assigned only in simbody too, but simai's teams.alive callback shares the name)
 
 
@@ -129,6 +135,22 @@ def test_world_takers_reach_only_the_world_api():
 
 def test_field_owners():
     assert not owner_breaks()
+
+
+def peer_breaks(takers=PEER_TAKERS):
+    """(module, name) for each `peers.X` a module reads that its PEERS does not lend."""
+    out = []
+    for mod in takers:
+        tree = _tree(mod)              # PEERS = frozenset({...}), read from the source (no sys.path for its imports)
+        lent = next(ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
+                    and getattr(n.targets[0], 'id', '') == 'PEERS')
+        out += [(mod, n.attr) for n in ast.walk(tree) if isinstance(n, ast.Attribute)
+                and isinstance(n.value, ast.Name) and n.value.id == 'peers' and n.attr not in lent]
+    return out
+
+
+def test_peer_takers_reach_only_their_loan():
+    assert not peer_breaks()
 
 
 def chain_names(source=None, method='act'):
