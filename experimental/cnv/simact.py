@@ -5,11 +5,12 @@ player systems, ...); each holds `ACTIONS = {name: fn}` with `fn(sim, name, a, s
 one file (tests/test_sim_layers.py). `act` runs the name's function; False back (a guarded action whose guard failed)
 or no function: not taken, and Sim.act's chain of the actions not yet moved goes on as before.
 """
+import simact_object
 import simact_order
 import simact_player
 import simact_vision
 
-GROUPS = (simact_vision, simact_player, simact_order)
+GROUPS = (simact_vision, simact_player, simact_order, simact_object)
 
 
 def table(groups=GROUPS):

@@ -25,3 +25,13 @@ WORLD_API = frozenset({
 # bit an upgrade sets; a script's bit is a 脚本动作 under its refined name, as simcoverage reports it)
 GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
     '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
+
+
+def inside(pts, x, y):
+    """Point in polygon (even-odd)."""
+    c, n = False, len(pts)
+    for k in range(n):
+        (x0, y0), (x1, y1) = pts[k], pts[(k + 1) % n]
+        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+            c = not c
+    return c

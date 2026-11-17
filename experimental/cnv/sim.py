@@ -337,26 +337,8 @@ RA3_ONLY = {'ATTACK_MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_TEAM_TO', 'CREATE_NAMED_ON
             'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', 'SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER'}
 
 from simworld import GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS  # noqa: E402,F401
-# the object statuses sim.py acts on (tested with `in b.status`; IN_STASIS = IMMOBILE NO_ATTACK UNATTACKABLE in
-# Sim.modify); tests/test_sim.py checks the list against the source
-ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN', 'ATTACHED', 'SHROUD_REVEAL_TO_ALL',
-                          'NO_COLLISIONS', 'UNDER_IRON_CURTAIN'})   # MetaImpact: XML collision exclusion / magnetic status gate (line C)
-# bits only a woken skirmish AI's own target choice reads (d115 10: its micro-manager), no gap here: the unit's own
-# take, a script's order, the player's are untouched (bench 11-13 engine_acts flow 旗&2: an idle enemy fires on it)
-AI_ONLY_STATUS = frozenset({'SKIRMISH_AI_DO_NOT_ATTACK', 'SKIRMISH_AI_DO_NOT_TAKE'})   # DO_NOT_TAKE: an engineer still takes it (bench 11-13 engine_acts_u)
-# a script's power or button by itself, as simcoverage.refined names it
-BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
-                  'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED')
-
-
-def refined(name, a):
-    """An action's name told apart by what it is told to do where that matters: the status bit, the power, the button
-    (simcoverage.refined's spelling: NAME:ARG)."""
-    if name == 'UNIT_CHANGE_OBJECT_STATUS' and len(a) > 1:
-        return f'{name}:{a[1][2] if isinstance(a[1], tuple) else a[1]}'
-    if name in BUTTON_ACTIONS and len(a) > 1:
-        return f'{name}:{a[1]}'
-    return name
+from simstatus import ACTED_STATUS, AI_ONLY_STATUS  # noqa: E402,F401  (status bits acted on, L2)
+from simscript import BUTTON_ACTIONS, refined  # noqa: E402,F401  (an action's refined name, L6)
 
 
 # actions that change nothing the scripts ask about: logged on the timeline (the player sees or hears them)
@@ -642,14 +624,7 @@ def same_team(have, asked):
     return have == asked or ('/' not in asked and have.split('/', 1)[-1] == asked)
 
 
-def inside(pts, x, y):
-    """Point in polygon (even-odd)."""
-    c, n = False, len(pts)
-    for k in range(n):
-        (x0, y0), (x1, y1) = pts[k], pts[(k + 1) % n]
-        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
-            c = not c
-    return c
+from simworld import inside  # noqa: E402,F401  (point in polygon, L0)
 
 
 class Areas(dict):
@@ -3532,16 +3507,6 @@ class Sim:
             crew = self.members(a[1])
             if crew:
                 self.nearest_ref(a[0], crew[0].owner, a[1], a[2], unnamed=False)
-        elif name in ('TEAM_DELETE', 'TEAM_KILL', 'TEAM_DELETE_LIVING'):
-            # (team) INFERRED (Generals doTeamDelete / doTeamKill): every living member removed / killed, as
-            # NAMED_DELETE / NAMED_KILL one by one; TEAM_DELETE_LIVING as TEAM_DELETE. engine_scripts8 team asks
-            for b in self.members(a[0]):
-                if name == 'TEAM_KILL':
-                    b.last_hit = b.last_by = None
-                self.destroy(b, '脚本' if name == 'TEAM_KILL' else '脚本删掉', delete=name != 'TEAM_KILL')
-        elif name == 'TEAM_CHANGE_OBJECT_STATUS':     # (team, status, on) INFERRED: the unit version on every member
-            for b in self.members(a[0]):
-                self.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, *a[1:]], script)
         elif name == 'TEAM_MERGE_INTO_TEAM':          # (source, target) INFERRED (Generals doMergeTeamIntoTeam): the
             for b in self.members(a[0]):              # source's members join the target, their orders kept
                 b.team = a[1]
@@ -3573,11 +3538,6 @@ class Sim:
                 self.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [src.name, power, a[2]], script)
             else:
                 self.gap(GAP_ACTION, refined(name, a), f'{a[0]} 没有带 {a[1]} 的物体（协议类不模拟）')
-        elif name == 'TECHTREE_MODIFY_BUILDABILITY_OBJECT':
-            # (template, BuildableStatus 0 YES 1 IGNORE_PREREQUISITES 2 NO 3 ONLY_BY_AI): one table for every player
-            # (d115 25); read by can_build
-            self.buildable[str(a[0]).lower()] = int(a[1])
-            self.change()
         elif name == 'TEAM_TRANSFER_TO_PLAYER':
             # (team, player) l2_scripts1 6: each member goes to the player's own team, its order cleared. Bench 11-08
             # engine_scripts1 xfer: owned by the new player at once, the move it was on dropped, the team left empty
@@ -3586,45 +3546,6 @@ class Sim:
                 self.stand(b)
                 self.note('易主', f'{self.label(b)} 归 {self.who(a[1])}（命令清掉）')
             self.change()
-        elif name == 'NAMED_SET_DISABLED':
-            # (object, type, on) d115 20: on = disabled for ever by that type, off = that type cleared. Every type
-            # holds a unit as EMP does (emp_disabled; benched for EMP only, the others INFERRED)
-            b = self.body(a[0])
-            if b:
-                kinds = self.script_disabled.setdefault(id(b), set())
-                (kinds.add if int(a[2]) else kinds.discard)(str(a[1]))
-                if not kinds:
-                    self.script_disabled.pop(id(b))
-        elif name == 'UNIT_KILL_ALL_IN_AREA':
-            # (player, area) d115 27: every object of the player's inside the area killed (death type 6, INFERRED a
-            # plain death); a drone is passed by (engine_spawn), modelled as no other kind is
-            if a[1] in self.areas:
-                for b in [b for b in self.living() if b.owner == a[0] and inside(self.areas[a[1]], b.x, b.y)
-                          and 'DRONE' not in b.kinds and a[0] != '']:
-                    b.last_hit = b.last_by = None
-                    self.destroy(b, '脚本')
-        elif name == 'TEAM_GARRISON_TEAM_INSTANTLY':
-            # (passengers, containers[, c]) d115 12: each passenger not inside yet into the next container of B that
-            # may hold it, one cursor going round B (shared between passengers: they are dealt out, not one filled
-            # first). The room is not asked: bench 11-13 engine_acts_more 驻 767 (six into the five-place Bullfrog, as
-            # TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY; d115's c true for retail's two-argument form) -> 363 (seven
-            # dealt 4 + 3, the first Bullfrog 4: its kill took 4)
-            boxes = [g for g in self.members(a[1]) if self.garrison.box(g) is not None]
-            free = not (len(a) > 2 and not int(a[2]))
-            k = 0
-            for m in self.members(a[0]):
-                if m.name in self.garrison.where or not boxes:
-                    continue
-                for _ in range(len(boxes)):
-                    g = boxes[k % len(boxes)]
-                    k += 1
-                    if g is m:
-                        continue
-                    sp = self.garrison.box(g)
-                    if (free or len(self.garrison.inside.get(g.name, [])) < sp['max']) and \
-                            self.garrison.put(m, g, script=True):
-                        self.stand(m)
-                        break
         elif name == 'UNIT_STOP_SEQUENTIAL_SCRIPT':
             # engine_seqstop:a: clear both active and queued scripts; leave the
             # already issued move running, and allow a fresh script afterwards.
@@ -3642,8 +3563,6 @@ class Sim:
                 self.seq.append({'b': b, 'script': sc, 'step': -1, 'loops': int(a[2]) if len(a) > 2 else 0})
             elif b and self.eng is None:
                 self.gap(GAP_ACTION, name, '没有引擎模型的运行不模拟顺序脚本')
-        elif name == 'SELECT_OBJECT':           # (player, object): bench 11-14 engine_share all -- replaces the
-            self.selected = a[1]                # selection, an enemy's object too; DESELECT changed nothing there
         elif name == 'TEAM_USE_COMMANDBUTTON_ABILITY':
             # (team, button) l2_scripts1 8: the button on every living member, no target. Bench 11-08 button: both
             # Peacekeepers of the crew raised their shields
@@ -3654,105 +3573,6 @@ class Sim:
             # Bullfrog threw its passengers at the waypoint, as NAMED_..._AT_WAYPOINT did in round 152)
             for b in self.members(a[0]):
                 self.act('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', [b.name, a[1], a[2]], script)
-        elif name == 'SELL_OBJECT':              # (object) engine_sell: sell(), refused while unpacking
-            self.sell(self.body(a[0]))
-        elif name == 'PLAYER_SELL_EVERYTHING':
-            # engine_sellall: owned plant sells/refunds once; Guardians and other owners stay.
-            # Other sellable structures use existing sell() rules (INFERRED); see work/re/c_sellall_report.md.
-            for b in list(self.living()):
-                if b.owner == a[0]:
-                    self.sell(b)
-        elif name == 'NAMED_DAMAGE':             # (object, amount) health points off, no armour; engine_sell b / e
-            b = self.body(a[0])                  # the Indestructible panel flag does not stop it (engine_scripts7 panel)
-            if b and b.alive:
-                b.last_hit = b.last_by = None
-                b.damage(float(a[1]))
-                if b.hp <= 0.0:
-                    self.destroy(b, '脚本伤害')
-                    b.read_until = self.frame_now()
-                else:                           # under REALLYDAMAGED: out in this frame (engine_garrison 伤争敌 1230)
-                    self.garrison.hurt(b)
-        elif name in ('NAMED_KILL', 'NAMED_DELETE'):
-            b = self.body(a[0])
-            if b:
-                if name == 'NAMED_KILL':
-                    b.last_hit = b.last_by = None   # the game's kill damage comes from nobody (INVALID_ID)
-                self.destroy(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉', delete=name == 'NAMED_DELETE')
-        elif name == 'PLAYER_KILL':
-            # engine_playerkill:a: owned Guardian + plant die; other owners survive, empty/repeated calls harmless.
-            # Only the object cleanup slice measured; player defeat state and protected bodies remain gaps.
-            # Ordinary lethal dispatch for other templates is INFERRED (work/re/c_playerkill_report.md).
-            for b in list(self.living()):
-                if b.owner == a[0]:
-                    b.last_hit = b.last_by = None
-                    self.destroy(b, '玩家脚本清理')
-        elif name == 'UNIT_SET_HEALTH':
-            b = self.body(a[0])
-            if b and b.alive:
-                b.health = float(a[1])
-        elif name == 'TEAM_SET_HEALTH':
-            # Current living explicit-team members; engine_teamhp a/b.
-            # Other templates/AI instances and boundary values remain INFERRED;
-            # see work/re/c_teamhp_report.md for measured scope.
-            for b in self.members(a[0]):
-                b.health = float(a[1])
-        elif name == 'NAMED_SET_MAX_HEALTH':
-            # (name, INT max, full too): retail Iga's trucks by difficulty. RA3 (work/re/ra3-script-reference.md): setMaxHealth(max,
-            # SAME_CURRENTHEALTH) -- the hit points stay (clamped to a lower max), then 100 % if `full`. Bench 11-10
-            # engine_maxhealth mh: 480 -> 240 hp, max 960 full 0: 25 %; full 1: 100 %; max 240 full 0, 120 off: 50 %
-            b = self.body(a[0])
-            if b and b.alive:
-                b.max_hp = float(a[1])
-                b.hp = b.max_hp if a[2] else min(b.hp, b.max_hp)
-        elif name == 'UNIT_SET_MODELCONDITION':
-            # (unit, n, on): ModelState USER_<n> set / cleared, held till cleared. Bench 11-13 engine_acts_v mc: 1 -> USER_1,
-            # 2 -> USER_2, 3 -> USER_3 (a08's saluting conscripts: USER_2 is the conscript's STATE_Saluting), 0 clears
-            b = self.body(a[0])
-            if self.present(b):
-                if int(a[2]):
-                    self.set_model_condition(b, f'USER_{int(a[1])}')
-                else:
-                    b.model_conditions.pop(f'USER_{int(a[1])}', None)
-        elif name == 'UNIT_SET_MODELCONDITION_FOR_DURATION':
-            b = self.body(a[0])
-            condition = a[1][2] if isinstance(a[1], tuple) else a[1]
-            if float(a[2]) <= 0 or float(a[3]) != 1.:
-                self.gap(GAP_ACTION, name, '仅已量正持续时间和第四参数1.0；见work/re/c_modeldur_report.md')
-            elif self.present(b):
-                # engine_modeldur:a: 3/7 seconds query true for 46/106 frames.
-                # Include the duration boundary; do not change other producers.
-                b.model_conditions[condition] = self.frame_now() + math.ceil(float(a[2]) * simunits.LIFE_FPS) + 1
-        elif name in ('UNIT_SET_MODELCONDITION_GENERIC', 'UNIT_CLEAR_MODELCONDITION'):
-            b = self.body(a[0])
-            condition = a[1][2] if isinstance(a[1], tuple) else a[1]
-            if self.present(b):
-                if name == 'UNIT_CLEAR_MODELCONDITION':
-                    b.model_conditions.pop(condition, None)
-                else:
-                    self.set_model_condition(b, condition, float(a[2]))
-        elif name == 'UNIT_CHANGE_OBJECT_STATUS':
-            b = self.body(a[0])
-            st = a[1][2] if isinstance(a[1], tuple) else a[1]
-            if b:
-                (b.script_status.add if a[2] else b.script_status.discard)(st)
-                self.modify(b)
-            if st not in ACTED_STATUS | AI_ONLY_STATUS:
-                self.gap(GAP_ACTION, refined(name, a), f'状态位 {st} 只记下来；模拟器只认 {"、".join(sorted(ACTED_STATUS))}')
-        elif name in ('UNIT_AFFECT_OBJECT_PANEL_FLAGS', 'TEAM_AFFECT_OBJECT_PANEL_FLAGS'):
-            # (unit or team, flag, on). Indestructible: the body takes no damage at all (Generals ScriptActions
-            # changeObjectPanelFlagForSingleObject -> ActiveBody::setIndestructible; attemptDamage returns at once;
-            # not read in RA3). Bench 2026-11-09 engine_scripts7 panel: NAMED_DAMAGE and NAMED_KILL go through it (UNIT
-            # and TEAM alike); a weapon's damage not measured -- still refused here (INFERRED).
-            # Retail s01 keeps Natasha alive so ('Emergency - Natasha Indestructible'); the other
-            # flags (Selectable, Enabled, AI Recruitable ...) are only noted
-            flag = str(a[1][2] if isinstance(a[1], tuple) else a[1])
-            if flag.lower() == 'indestructible':
-                bodies = [self.body(a[0])] if name.startswith('UNIT') else self.members(a[0])
-                for b in bodies:
-                    if b:
-                        b.indestructible = bool(a[2])
-            else:
-                self.gap(GAP_ACTION, f'{name}:{flag}', f'面板标志 {flag} 没模拟（只认 Indestructible）')
         elif name == 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER':
             b = self.body(a[0])
             if b:
@@ -3779,59 +3599,6 @@ class Sim:
             want = self.of_types(a[1])
             self.counters[a[2]] = sum(1 for owner, _, template, _ in self.kills
                                        if owner == a[0] and template.lower() in want)
-        elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING':
-            b, g = self.body(a[0]), self.body(a[1])
-            if b and g and 'INFILTRATOR' in b.kinds and self.infiltrators.spec(g) is not None:
-                self.infiltrators.send(b, g)
-            elif b and g and simunits.engineer_contain(g.template, self.own) is not None:
-                self.order_capture(b, a[1])
-            elif b and g and self.garrison.spec(g) is not None:      # walks to it, in if it may (simgarrison; INFERRED)
-                self.garrison.send(b, g)
-            elif b and g:
-                # a transport: walked to only. The team's version goes in (bench engine_acts_tel); this one too in the
-                # game, but s01's intro then needs CONTAINER_OCCUPIED, the eject and the flyby's relation, not modelled
-                # (Natasha would ride a Bullfrog the simulator lets die) -- round 213 handoff
-                self.send(b, a[1])
-        elif name == 'TEAM_GARRISON_NEAREST_BUILDING':
-            # engine_teamgarr:a/b: only this crew, nearest of two empty apartments.
-            # Per-member distance, candidate eligibility beyond this contrast,
-            # capacity and exact walk/entry timing are INFERRED, not benched.
-            # See work/re/c_teamgarr_report.md; use the existing walk-in consumer.
-            for b in self.members(a[0]):
-                places = self.garrison.places(b, False)
-                if places:
-                    g = min(places, key=lambda g: math.hypot(g.x-b.x, g.y-b.y))
-                    self.garrison.send(b, g)
-        elif name == 'TEAM_GARRISON_SPECIFIC_BUILDING':
-            # (team, building or transport) each member walks there and goes in, the room asked (bench 11-13
-            # engine_acts_tel: five of six into the five-place Bullfrog, one a second; unlike _INSTANTLY)
-            g = self.body(a[1])
-            for b in self.members(a[0]):
-                if g and self.garrison.box(g) is not None:
-                    self.garrison.send(b, g)
-        elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY':      # (unit, building) engine_garrison: no
-            self.garrison.put(self.body(a[0]), self.body(a[1]), script=True)    # relation, no room (garrison.md 1)
-        elif name == 'TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY':     # (team, building or transport) each member as
-            g = self.body(a[1])                                         # the named one (bench 11-10 engine_transport
-            for b in self.members(a[0]):                                # load: six into the five-place Bullfrog)
-                self.garrison.put(b, g, script=True)
-        elif name == 'NAMED_EXIT_BUILDING':      # (unit) engine_garrison base: out where the building stands
-            self.garrison.out(self.body(a[0]))
-        elif name == 'EXIT_SPECIFIC_BUILDING':
-            # engine_exitbld:a/b: all occupants of the named apartment, across
-            # crews; the other apartment stays occupied. Repeating is harmless.
-            # Other container types and exact exit positions/timing remain gaps;
-            # the existing garrison exit position is INFERRED.
-            g = self.body(a[0])
-            if g and g.alive:
-                self.garrison.empty(g)
-        elif name == 'TEAM_EXIT_ALL_BUILDINGS':
-            # engine_teamexit:a: only this crew exits, including Bullfrog passengers;
-            # other crew sharing the same hosts stays in. Empty/repeated calls harmless.
-            # Other templates/AI instances are INFERRED; exit positions remain the
-            # existing garrison approximation (work/re/c_teamexit_report.md).
-            for b in self.members(a[0]):
-                self.garrison.out(b)
         elif name in ('MARK_MISSION_OBJECTIVE_COMPLETED', 'MARK_MISSION_OBJECTIVE_NOT_COMPLETED'):
             # bench 11-16 checks/engine_markobj.py goals: status 2 / 1 from any status -- a hidden one listed done, a
             # failed one done, a done one unticked; NOT_COMPLETED never draws the failed mark (j07 'failed bonus 2')
@@ -3849,25 +3616,6 @@ class Sim:
         elif name in ('LINK_MISSION_OBJECTIVE_TO_OBJECT', 'LINK_MISSION_OBJECTIVE_TO_WAYPOINT'):
             s = self.markers.setdefault(a[0], set())
             (s.add if a[2] else s.discard)(a[1])
-        elif name in ('PLAYER_DISABLE_UNIT_CONSTRUCTION', 'PLAYER_ENABLE_UNIT_CONSTRUCTION'):
-            # engine_unitban: the native scripted button still queues; payment/progress wait until enabled.
-            # Only named players and engineer unit queues measured. UI rejection, upgrades, other production
-            # categories and player masks remain gaps; do not infer a ban on all construction.
-            if a[0] in self.players.values():
-                (self.unit_construction_disabled.add if name == 'PLAYER_DISABLE_UNIT_CONSTRUCTION'
-                 else self.unit_construction_disabled.discard)(a[0])
-            else:
-                self.gap('ScriptAction', name, '单位生产开关仅具名玩家原生工程师队列已量；玩家范围未量')
-        elif name in ('PLAYER_DISABLE_BASE_CONSTRUCTION', 'PLAYER_ENABLE_BASE_CONSTRUCTION'):
-            # aibgate:a (A269): a base-disabled skirmish AI orders no structure and spends nothing until enabled,
-            # then starts as at its wake (simai build_offers). engine_baseban: a Japanese core (UNIT_BUILD) is not
-            # held. A player's yard queue is not simulated (engine_basegate:a: a script's press queues nothing);
-            # This Player / All Players remain gaps.
-            if a[0] in self.players.values():
-                (self.base_construction_disabled.add if name == 'PLAYER_DISABLE_BASE_CONSTRUCTION'
-                 else self.base_construction_disabled.discard)(a[0])
-            else:
-                self.gap('ScriptAction', name, '基地建造开关仅具名 AI 玩家的建筑订单已量；玩家范围未量')
         elif name == 'PLAYER_RELATES_PLAYER':           # (index, 0, name): the game reads the index (plan.relates)
             r = a[2]
             self.relations[(a[0], a[1])] = r if isinstance(r, str) else \
