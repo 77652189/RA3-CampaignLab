@@ -31,6 +31,7 @@ WORLD_API = frozenset({
     'add',             # make a body (the registry)
     'blocks',          # does a body block the ground's paths
     'reblock',         # re-read the blocked ground
+    'body',            # a script's object name -> its Body (a reference followed, dead or not), None where none
 })
 
 # Sim.gap's kinds: what a run met and the simulator does not act on (any layer reports one). The names are

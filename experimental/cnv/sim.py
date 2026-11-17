@@ -72,6 +72,7 @@ import simmine  # noqa: E402
 import simmodifier  # noqa: E402
 import simmoney  # noqa: E402
 import siminfiltrator  # noqa: E402
+import simspecial  # noqa: E402
 import simsweep  # noqa: E402
 import simtech  # noqa: E402
 import simtoggle  # noqa: E402
@@ -119,14 +120,7 @@ RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's 
                                # the factory's centre through it: INFERRED, fitted to bench 11-11 engine_production
                                # h / i (barracks, (40, 18): stops ~(75-80, 24-33)) and engine_rally tank (war
                                # factory, (80, 20): ~(112-127, 25-34); x 1.9 from the centre would be (152, 38))
-WFIRE_LAG = 0                  # frames between a weapon-fire ability's UnpackTime and its weapon (engine_wfire)
-WFIRE_REAIM = 20                # a target this far off the spot its caster walks to: the caster re-aimed (INFERRED)
-# a TargetType NONE ability (the bear's roar) pressed _ON_NAMED: it goes off this much later once the caster is up to
-# the target (engine_acts_wet RN 60 off / RF 300 off both a reading or so behind the plain roar: INFERRED, fitted).
-# Refitted in A round 253 once the bears no longer chase in the opening frame (IDLE_SCAN_FROM): acts_mix passes for
-# any lag 0-31, acts_wet for 15-20 (14: C4 out of its hold a reading early; 21: the roars' cast count a reading
-# late); the band's middle taken. (Before, 16-28 / 22 was fitted on that opening walk, engine_dam showed none.)
-NONE_TARGET_LAG = 18
+from simspecial import WFIRE_LAG, WFIRE_REAIM, NONE_TARGET_LAG  # noqa: E402,F401  (weapon-fire abilities, L2)
 # an idle unit takes nothing by itself in the mission's first logic frame (bench 11-15 engine_dam BR: a bear 60 from an
 # enemy conscript, NO_ATTACK from 0.1 s = frame 2, never left its 8-half start square; the simulator had it chase from
 # frame 1 and stand at the conscript's feet by frame 15). INFERRED: the program's first idle scan not read -- 2 is the
@@ -1061,7 +1055,6 @@ class Sim:
         self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
         self.due = []                       # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
         self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
-        self.wfires = []                    # a WeaponFireSpecialAbilityUpdate press waiting to go off (wfire_due)
         self.casts = []                     # (frame, owner, power, caster, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
         self.power_at = {}                  # (player, spellbook power lower) -> the frame it is ready from (spellbook_ready)
         self.queues = {}                    # factory name -> [job]: production (order_build, produce_due)
@@ -4198,233 +4191,49 @@ class Sim:
                 self.reblock()
 
     def blast_due(self, frame):
-        """A superweapon's hits landing by `frame` (SUPERWEAPON_HITS): every living object, friend or foe, within the
-        table's reach loses the damage read off its centre distance (linear between the measured distances)."""
-        for d in [d for d in self.blasts if d[0] <= frame]:
-            self.blasts.remove(d)
-            _, x, y, table, owner, by = d
-            for t in self.living():
-                dmg = hit_at(table, math.hypot(t.x - x, t.y - y))
-                if dmg <= 0 or frame < t.immune_until or t.shielded or t.indestructible:
-                    continue
-                t.damage(dmg)
-                t.last_hit, t.last_by = owner, by.name
-                if t.hp <= 0 and t.alive:
-                    if self.first_death is None:
-                        self.first_death = (self.t, t, by)
-                    self.destroy(t, f'被 {self.label(by)} 的超武打掉')
+        """simspecial.Specials.blast_due (L2): a superweapon's hits landing by `frame` (SUPERWEAPON_HITS)."""
+        self._specials().blast_due(self, frame, self.blasts, self.mark_first_death, self.destroy)
+
+    def mark_first_death(self, t, by):
+        """The fight's first death (first_death: run time, body, killer), kept once."""
+        if self.first_death is None:
+            self.first_death = (self.t, t, by)
+
+    def emp_book(self):
+        """{id(body): frame}: who stands still (EMP'd, casting, leaping) till when, made on first use."""
+        return self.__dict__.setdefault('emp_until', {})
+
+    def _specials(self):
+        """The simspecial.Specials (L2), made on first use (a Sim built without __init__ has none yet)."""
+        m = self.__dict__.get('specials')
+        if m is None:
+            m = self.specials = simspecial.Specials()
+        return m
 
     def movement_power_press(self, b, button, point):
-        """E171: in-range static waypoint rush; ordinary path movement with SDK speed.
-
-        INFERRED: status/speed last Duration from the press, expiry stops movement;
-        the bench proves activation, displacement and final exit, not those exact
-        boundaries. Turning/acceleration, collision and repeated orders remain gaps.
-        """
-        sp = simunits.movement_power(b.template, button, self.own)
-        distance = math.hypot(point[0] - b.x, point[1] - b.y)
-        if distance < sp['minimum'] or (sp['maximum'] and distance > sp['maximum']):
-            self.guessed.add('MovementSpecialPower: out-of-range approach unmodelled')
-            return
-        jobs = self.__dict__.setdefault('_movement_powers_due', {})
-        if b.name in jobs:
-            self.guessed.add('MovementSpecialPower: repeated press unmodelled')
-            return
-        now = self.frame_now()
-        new = sp['bits'] - b.script_status
-        old_speed = b.base['speed'] if b.base is not None else b.speed
-        jobs[b.name] = (now + sp['duration'], b, new, old_speed)
-        b.script_status |= new
-        speed = simunits.locomotor_speed(b.template, self.own, sp['locomotor']) if sp['locomotor'] else None
-        if speed is not None and b.base is not None:
-            b.base['speed'] = speed
-        xml = self.xml_of(b.template)
-        mod = simunits.modifier(xml, sp['modifier']) if sp['modifier'] else None
-        if mod and mod['frames']:
-            b.auras_on[sp['modifier']] = (now + mod['frames'], xml)
-        self.modify(b)
-        b.goal, b.mode = None, 'move'
-        self.send(b, point)
-        self.used.add('movement special power')
-        self.guessed.add('MovementSpecialPower: exact phase timing, cooldown and collisions unmodelled')
+        """simspecial.Specials.movement_power_press (L2): a MovementSpecialPower's rush to a point in range."""
+        self._specials().movement_power_press(self, b, button, point, self.modify, self.send)
 
     def self_power_press(self, b, button):
-        """An ActivateModuleSpecialPower on self (simunits.self_module_power): its AttributeModifier hangs on b for its
-        Duration from the press (b.auras_on, so modify() takes its bits and SPEED and drops them when it runs out); the
-        power's SpecialAbilityUpdate SetObjectStatusOnTrigger bits through its PackTime (engine_acts_mix SB / EA)."""
-        sp = simunits.self_module_power(b.template, button, self.own)
-        xml = self.xml_of(b.template)
-        mod = simunits.modifier(xml, sp['modifier'])
-        now = self.frame_now()
-        self.used.add('self power')
-        if mod and mod['frames']:
-            b.auras_on[sp['modifier']] = (now + mod['frames'], xml)
-        if sp['trigger'] and sp['pack']:
-            new = sp['trigger'] - b.script_status
-            b.script_status |= new
-            self.__dict__.setdefault('_self_bits_due', []).append((now + sp['pack'], b, new))
-        for bits, duration in sp.get('shields', ()):
-            # E153 engine_activate: only the linked consumer's status lifetime.
-            # Projectile interception, damage cap and early termination remain gaps.
-            # INFERRED: overlapping/repeated activations use the same bit ownership
-            # convention as the existing pack phase; only a single press is measured.
-            self.guessed.add('ShieldSphereUpdate: projectile absorption and early termination unmodelled')
-            new = bits - b.script_status
-            b.script_status |= new
-            self.__dict__.setdefault('_self_bits_due', []).append((now + duration, b, new))
-        self.modify(b)
-        self.note('技能', f'{self.label(b)} 按 {button}：{sp["modifier"]}')
+        """simspecial.Specials.self_power_press (L2): an ActivateModuleSpecialPower on self."""
+        self._specials().self_power_press(self, b, button, self.modify)
 
     def leap_press(self, b, button, p):
-        """A WeaponFireSpecialAbilityUpdate whose weapon is ProjectileSelf (the Sickle's leap, AT_WAYPOINT): b stands
-        its UnpackTime, then flies to the point at the WeaponSpeed and lands there (engine_acts_mix LP: 250 off, in its
-        square by the second reading after the press). Beyond StartAbilityRange: drives there instead (INFERRED, not
-        measured: FAIL_WITH_INVALID_APPROACH)."""
-        ab = simunits.weapon_fire_ability(b.template, button, self.own)
-        speed = simunits.self_projectile_speed(ab['weapon'], self.own)
-        d = math.hypot(p[0] - b.x, p[1] - b.y)
-        self.used.add('weapon fire ability')
-        if d > ab['range']:
-            self.note('技能', f'{self.label(b)} 按 {button}：超出 {ab["range"]:.0f}，开过去')
-            b.goal, b.mode = None, 'move'
-            self.send(b, p)
-            return
-        land = self.frame_now() + ab['unpack'] + int(math.ceil(d / speed * simunits.LIFE_FPS))
-        b.path, b.dest = [], None
-        deadlines = self.__dict__.setdefault('emp_until', {})       # holds still till it lands (INFERRED)
-        deadlines[id(b)] = max(deadlines.get(id(b), 0), land)
-        self.__dict__.setdefault('_leaps_due', []).append((land, b, p))
-        self.note('技能', f'{self.label(b)} 按 {button} 跳到 ({p[0]:.0f}, {p[1]:.0f})')
+        """simspecial.Specials.leap_press (L2): a ProjectileSelf leap (the Sickle's) to a point."""
+        self._specials().leap_press(self, b, button, p, self.send, self.emp_book)
 
     def self_power_due(self, frame):
-        for job in list(self.__dict__.get('_leap_ground_hits') or ()):
-            due, b, weapon, centre = job
-            if frame >= due:
-                self._leap_ground_hits.remove(job)
-                if b.alive:
-                    self.projectile_detonate(weapon, b, centre, b)
-                    self.used.add('leap ground hit')
-        movement = self.__dict__.get('_movement_powers_due', {})
-        for key, (due, b, bits, old_speed) in list(movement.items()):
-            if frame >= due:
-                del movement[key]
-                b.script_status.difference_update(bits)
-                if b.base is not None:
-                    b.base['speed'] = old_speed
-                b.path, b.dest = [], None
-                self.modify(b)
-        for job in list(self.__dict__.get('_leaps_due') or ()):
-            if frame >= job[0]:
-                self._leaps_due.remove(job)
-                if job[1].alive:
-                    b = job[1]
-                    b.x, b.y = job[2]
-                    ground_weapon = simunits.self_projectile_ground_weapon(b.template, self.own)
-                    if ground_weapon:
-                        # CampKSickle a/b: first grounded probe f114, shock f115.
-                        # Position/time of the leap itself remain INFERRED.
-                        weapon = simunits.weapon_table(self.own).get(ground_weapon)
-                        if weapon is None:
-                            self.gap(GAP_WEAPON, ground_weapon, '跳跃落地武器未解析')
-                        else:
-                            centre = (b.x, b.y, self.impact_ground_z(b.x, b.y))
-                            self.__dict__.setdefault('_leap_ground_hits', []).append(
-                                (frame + 1, b, weapon, centre))
-                            if weapon.get('dmg') or weapon.get('damage'):
-                                self.gap(GAP_WEAPON, ground_weapon, '落地伤害筛选及衰减未对拍，仅派发冲击')
-                    self.change()
-        due = self.__dict__.get('_self_bits_due')
-        for job in list(due or ()):
-            if frame >= job[0]:
-                due.remove(job)
-                job[1].script_status.difference_update(job[2])
-                self.modify(job[1])
+        """simspecial.Specials.self_power_due (L2): leaps landing, rushes and self powers' bits running out."""
+        self._specials().self_power_due(self, frame, self.modify, self.projectile_detonate, self.impact_ground_z)
 
     def wfire_press(self, b, button, target=None):
-        """A WeaponFireSpecialAbilityUpdate's button (simunits.weapon_fire_ability; bench 11-11 engine_wfire): the
-        caster walks to within StartAbilityRange of a named target first, then stands UnpackTime and the SpecialWeapon
-        goes off once (wfire_due); it stands on through PackTime when BUSY_DURING_PACK, FreezeAfterTriggerDuration
-        always. A target gone or missing: nothing."""
-        ab = simunits.weapon_fire_ability(b.template, button, self.own)
-        t = self.body(target) if target else None
-        if target and not (t and t.alive):
-            self.note('技能', f'{self.label(b)} 按 {button}：目标 {target} 不在')
-            return
-        self.used.add('weapon fire ability')
-        job = dict(by=b, ab=ab, eff=simunits.special_weapon(ab['weapon'], self.own), target=t, button=button,
-                   fire_at=None)
-        if t and simunits.power_target_type(simunits.command_power(button, self.own)) == 'NONE':
-            job['lag'] = NONE_TARGET_LAG
-        self.wfires.append(job)
-        self.note('技能', f'{self.label(b)} 按 {button}' + (f' 对 {self.label(t)}' if t else ''))
-        if t and math.hypot(t.x - b.x, t.y - b.y) - t.radius > ab['range']:
-            b.goal, b.mode = None, 'move'
-            self.send(b, (t.x, t.y))
-        else:
-            self.wfire_start(job)
-
-    def wfire_start(self, job):
-        b, ab = job['by'], job['ab']
-        now = self.frame_now()
-        job['fire_at'] = now + ab['unpack'] + WFIRE_LAG + job.get('lag', 0)
-        b.path, b.dest = [], None
-        hold = job['fire_at'] + max(ab['freeze'], ab['pack'] if ab['busy_pack'] else 0)
-        deadlines = self.__dict__.setdefault('emp_until', {})       # stands still (INFERRED: as EMP'd)
-        deadlines[id(b)] = max(deadlines.get(id(b), 0), hold)
+        """simspecial.Specials.wfire_press (L2): a WeaponFireSpecialAbilityUpdate's button."""
+        self._specials().wfire_press(self, b, button, target, self.send, self.emp_book)
 
     def wfire_due(self, frame):
-        """The weapon-fire abilities going off by `frame` (wfire_press): the weapon's DamageNuggets as a death blast
-        round the caster (radius, delay, RadiusDamageAffects), its ParalyzeNuggets on the target (radius 0) or on
-        what the filter takes within the radius: EMP pauses it (emp_until), UNMANNED hands a vehicle to the
-        civilian side (the pilot shot out)."""
-        for job in list(self.wfires):
-            b, ab, t = job['by'], job['ab'], job['target']
-            if not b.alive or (t is not None and not t.alive):
-                self.wfires.remove(job)
-                continue
-            if job['fire_at'] is None:
-                # the range to the target's edge (INFERRED: engine_wfire far, 74 frames; to its centre 81)
-                if math.hypot(t.x - b.x, t.y - b.y) - t.radius <= ab['range']:
-                    self.wfire_start(job)
-                elif not b.path or (b.dest is not None and
-                                    math.hypot(t.x - b.dest[0], t.y - b.dest[1]) > WFIRE_REAIM):
-                    # the target walked off the spot the caster was sent to: after it where it is now (a01's
-                    # intro bears, StartAbilityRange 0, sent at Peacekeepers that set off on a path 10 s later
-                    # never got there to roar; INFERRED: re-aimed once it is a path node off)
-                    self.send(b, (t.x, t.y))
-                continue
-            if frame < job['fire_at']:
-                continue
-            self.wfires.remove(job)
-            # engine_acts_wet (round 226): each bear's roar seen cast once by PLAYER_TRIGGERED_SPECIAL_POWER, the
-            # ones pressed _ON_NAMED when the bear has walked up to its target
-            self.casts.append((frame, b.owner, ab['power'].lower(), b.name, None))
-            eff = job['eff']
-            for dmg, typ, reach, after in eff['damage']:
-                self.death_blasts.append((frame + simunits._frames(after), b.x, b.y, dmg, typ, reach,
-                                          eff['affects'], b.owner, b))
-            ups = {u.lower() for u in b.upgrades | self.player_ups.get(b.owner, set())}
-            for p in eff['paralyze']:
-                if (p['required_upgrade'] and p['required_upgrade'].lower() not in ups) or \
-                        (p['forbidden_upgrade'] and p['forbidden_upgrade'].lower() in ups):
-                    continue
-                pool = [t] if t is not None and not p['radius'] else \
-                    [o for o in self.living() if math.hypot(o.x - b.x, o.y - b.y) <= p['radius']]
-                for o in pool:
-                    if o is b or (p['include'] and not o.kinds & p['include']) or o.template.lower() in p['exclude']:
-                        continue
-                    if p['relation'] and self.relation(b.owner, o.owner) != p['relation']:
-                        continue
-                    if p['kind'] == 'EMP':
-                        deadlines = self.__dict__.setdefault('emp_until', {})
-                        deadlines[id(o)] = max(deadlines.get(id(o), 0), frame + simunits._frames(p['seconds']))
-                    elif p['kind'] == 'UNMANNED' and o.owner != CIV:
-                        o.owner, o.path, o.dest, o.goal = CIV, [], None, None
-                        self.note('易主', f'{self.label(o)} 的驾驶员被打掉，归中立')
-                        self.change()
-                    else:
-                        self.gap(GAP_WEAPON, 'ParalyzeNugget', f'{p["kind"]} 没模拟')
-            self.note('技能', f'{self.label(b)} 的 {ab["weapon"]} 打出')
+        """simspecial.Specials.wfire_due (L2): the weapon-fire abilities going off by `frame`."""
+        self._specials().wfire_due(self, frame, self.casts, self.death_blasts, self.player_ups, self.relation,
+                                   self.send, self.emp_book)
 
     def death_blast_due(self, frame):
         """A death weapon going off by `frame` (destroy, simunits.death_weapons): every living object within its

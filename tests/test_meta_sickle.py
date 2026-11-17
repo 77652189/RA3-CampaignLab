@@ -69,7 +69,7 @@ def test_meta_sickle_replays_real_landing_dispatch_and_path(check, lane, x, monk
     e.leap_press(gun, 'Command_ActivateLeapSpecialPower', m.point(lane))
     # Replace only the arrival event with the observed event, as collision replays
     # do. The native flight clock and endpoint must not be claimed as reproduced.
-    e._leaps_due[:] = [(114, gun, (x - 39, 3561))]
+    e.specials.leaps_due[:] = [(114, gun, (x - 39, 3561))]
     calls = []
     original = simunits.meta_impact_velocity
 
@@ -116,7 +116,7 @@ def test_meta_sickle_native_leap_arrival_remains_gap():
     gun = e.bodies[s.name('removed', 'gun')]
     e.eng.frame = 90
     e.leap_press(gun, 'Command_ActivateLeapSpecialPower', m.point('removed'))
-    due, _, point = e._leaps_due[0]
+    due, _, point = e.specials.leaps_due[0]
     assert (due, point) == (114, (801, 3561))
 
 
@@ -176,7 +176,7 @@ def test_meta_sickle_zero_health_notification_source_replay(check, source):
         gun = e.bodies[s.name(lane, 'gun')]
         e.eng.frame = 90
         e.leap_press(gun, 'Command_ActivateLeapSpecialPower', m.point(lane))
-        e._leaps_due[-1] = (114, gun, (x, 3561))
+        e.specials.leaps_due[-1] = (114, gun, (x, 3561))
     for frame in (114, 115):
         e.eng.frame = frame
         e.self_power_due(frame)
