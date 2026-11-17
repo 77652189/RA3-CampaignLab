@@ -161,3 +161,79 @@ def test_paralyze_attack_as_on_the_bench(mission_name):
             assert 1000 < third < 1100
     assert not s.body(m.role('enemy spy').name).alive
     assert s.body(m.role('ally spy').name).alive
+
+
+@pytest.mark.parametrize('movement, variant, attack, host', [
+    ('engine_infpara', 'b', 'engine_infpatk', 'AlliedTechStructure'),
+    ('engine_infpsov', 'a', 'engine_infasov', 'SovietTechStructure'),
+    ('engine_infpjap', 'a', 'engine_infajap', 'JapanTechStructure')])
+def test_paralyze_complete_configuration_as_on_the_bench(movement, variant, attack, host):
+    """E202 complete retail configuration, replaying both measured consumers.
+
+    Stable movement and damage/no-damage windows were fixed before the runs.
+    Exact arrival and damage counters have a separate regression below;
+    production, repeated entry and retained orders remain gaps.
+    See work/re/e202_paralyze.md and E128/E129/E133/E139/E140/E141.
+    """
+    import build
+    import sim
+    import siminfiltrator
+    for name, check, until in [(movement, variant, 50), (attack, 'a', 55)]:
+        m, t, _ = build.resolve(name, check)
+        s = sim.Sim(m, t)
+        target = s.body(m.role('enemy').name)
+        assert target.template == host
+        rule = siminfiltrator.spec(host)
+        assert {k: v for k, v in rule.items() if k not in ('id', 'xmlns')} == {
+            'Effect': 'PARALYZE', 'Duration': '30s',
+            'UnitFilter': 'InfiltrationParalyzeObjectFilter'}
+        assert siminfiltrator.Infiltrators(s).paralyze_rule(target, rule)
+        s.run(until)
+        for start, end, wanted in (
+                [(1, 7, [11100, 11100, 0, 0]),
+                 (30, 35, [1100, 11100, 0, 110]),
+                 (49, 50, [1100, 11100, 0, 111])] if name == movement else
+                [(8, 9, None), (26, 40, None), (54, 55, None)]):
+            rows = [v for second, v in s.series if start <= second <= end]
+            assert rows
+            for values in rows:
+                if wanted is not None:
+                    assert values == wanted
+                else:
+                    entry, included, excluded, third = values
+                    assert entry == (111111 if start == 8 else 111011)
+                    assert included == 1100 if start == 26 else 1000 < included < 1100
+                    assert 1000 < excluded < 1100 and 1000 < third < 1100
+        assert not s.body(m.role('enemy spy').name).alive
+        assert s.body(m.role('ally spy').name).alive
+        assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
+
+
+@pytest.mark.xfail(strict=True, reason='三国原台基线HP76/95/76，模型80/95/80；精确武器时钟仍gap，见 work/re/e202_paralyze.md')
+@pytest.mark.parametrize('name', ['engine_infpatk', 'engine_infasov', 'engine_infajap'])
+def test_paralyze_exact_attack_readings_as_on_the_bench(name):
+    """Preserve original HP counters without fitting the weapon clock."""
+    import build
+    import sim
+    m, t, _ = build.resolve(name, 'a')
+    s = sim.Sim(m, t).run(55)
+    for start, end, wanted in [(8, 9, [111111, 1076, 1095, 1076]),
+                               (26, 40, [111011, 1100, 1092, 1068]),
+                               (54, 55, [111011, 1068, 1092, 1068])]:
+        rows = [v for second, v in s.series if start <= second <= end]
+        assert rows and all(v == wanted for v in rows), (name, start, rows)
+
+
+@pytest.mark.xfail(strict=True, reason='台上到达秒21/21/22与45/46/45，模型23与47；精确移动/进入时钟gap，见 work/re/e202_paralyze.md')
+@pytest.mark.parametrize('name, variant, control, included', [
+    ('engine_infpara', 'b', 21, 45), ('engine_infpsov', 'a', 21, 46),
+    ('engine_infpjap', 'a', 22, 45)])
+def test_paralyze_exact_arrival_readings_as_on_the_bench(name, variant, control, included):
+    """Original compressed seconds are retained, not claimed as frame boundaries."""
+    import build
+    import sim
+    m, t, _ = build.resolve(name, variant)
+    s = sim.Sim(m, t).run(50)
+    first = [next(second for second, values in s.series if values[3] // scale % 10)
+             for scale in (1, 10, 100)]
+    assert first == [included, control, control]

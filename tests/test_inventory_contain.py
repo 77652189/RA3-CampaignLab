@@ -132,13 +132,13 @@ def test_infiltrator_energy_split_preserves_weight_and_other_effect_gaps():
     assert contain_audit.infiltrator_energy_share() == {'campaign': 4, 'templates': 6}
     rows = [r for r in inventory.collect((inventory.MODULE,))
             if r['name'].startswith('Behaviors/InfiltratorContain')]
-    assert len(rows) == 10
+    assert len(rows) == 11
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
     measured = next(r for r in rows if r['name'].endswith(':ENERGY'))
     gap = next(r for r in rows if r['name'] == 'Behaviors/InfiltratorContain')
     assert (measured['uses'], measured['all'], measured['state']) == (4, 6, inventory.BENCHED)
-    assert (gap['uses'], gap['all'], gap['state']) == (4, 4, inventory.GUESSED)
+    assert (gap['uses'], gap['all'], gap['state']) == (1, 1, inventory.GUESSED)
     assert measured['why'].startswith('tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench')
     import inventory_levels
     scope, _ = inventory_levels.expand_forms(rows, {
@@ -200,7 +200,7 @@ def test_infiltrator_money_split_rejects_changed_fields(monkeypatch, field, valu
 
 @pytest.mark.parametrize('effect, selector, uses, templates, boundary', [
     ('KILL', '', 1, 1, 'KILL 1用量/1模板部分已测'),
-    ('PARALYZE', '', 3, 3, 'PARALYZE 3用量/3模板部分已测'),
+    ('PARALYZE', '', 3, 3, 'PARALYZE单列3用量/3模板已对拍'),
     ('VISION', '', 5, 5, '普通VISION 5用量/5模板部分已测且暂停扩宿主'),
     ('VISION', '9999999s', 1, 1, '港口阻断VISION单列1用量/1模板，实测边界见该行'),
     ('VISION_UNITS', 'InfiltrationAircraftObjectFilter', 2, 2, '飞机VISION_UNITS单列已接E199前300帧周期'),
@@ -254,7 +254,7 @@ def test_infiltrator_vehicle_configuration_stays_guessed_until_discovery_replays
     rows = [r for r in inventory.collect((inventory.MODULE,))
             if r['name'].startswith('Behaviors/InfiltratorContain')]
     vehicle = next(r for r in rows if r['name'].endswith(':VISION_UNITS_VEHICLE'))
-    assert (vehicle['uses'], vehicle['all'], vehicle['state']) == (4, 4, inventory.GUESSED)
+    assert (vehicle['uses'], vehicle['all'], vehicle['state']) == (1, 1, inventory.GUESSED)
     assert (inventory.MODULE, vehicle['name']) not in inventory.BENCHED_TESTS
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
@@ -370,3 +370,40 @@ def test_infiltrator_port_configuration_partition():
             'a1': {'CA_PortStructure', 'UnknownPlant'}}})
     assert scope[(inventory.MODULE, port['name'])]['a1'] == {'CA_PortStructure'}
     assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain')]['a1'] == {'UnknownPlant'}
+
+
+def test_infiltrator_paralyze_configuration_partition(monkeypatch):
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    share = contain_audit.infiltrator_paralyze_share(with_templates=True)
+    assert (share['campaign'], share['templates']) == (3, 3)
+    assert set(share['template_ids']) == {
+        'AlliedTechStructure', 'SovietTechStructure', 'JapanTechStructure'}
+    rows = [r for r in inventory.collect((inventory.MODULE,))
+            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    form = next(r for r in rows if r['name'].endswith(':PARALYZE'))
+    assert (form['uses'], form['all'], form['state']) == (3, 3, inventory.BENCHED)
+    assert inventory.BENCHED_TESTS[inventory.MODULE, form['name']] == (
+        'tests/test_siminfiltrator_paralyze.py::test_paralyze_complete_configuration_as_on_the_bench')
+    assert sum(r['uses'] for r in rows) == 34 and sum(r['all'] for r in rows) == 38
+    assert 'strict xfail' in form['why'] and 'work/re/e202_paralyze.md' in form['why']
+    import inventory_levels
+    scope, _ = inventory_levels.expand_forms(rows, {
+        (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
+            'a1': {'AlliedTechStructure', 'SovietCrane'}}})
+    assert scope[(inventory.MODULE, form['name'])]['a1'] == {'AlliedTechStructure'}
+    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain')]['a1'] == {'SovietCrane'}
+    raw = contain_audit.engineer_audit.audit('InfiltratorContain')
+    monkeypatch.setattr(contain_audit.engineer_audit, 'audit', lambda kind: raw)
+    from copy import deepcopy
+    original = deepcopy(raw)
+    for field, value in [('Duration', '29s'), ('UnitFilter', 'OtherFilter'),
+                         ('BlockedDuration', '1s'), ('Effect', 'RESET')]:
+        raw['rows'] = deepcopy(original['rows'])
+        for row in raw['rows']:
+            for module in row['modules']:
+                element = retailmodules.ET.fromstring(module['xml'])
+                if element.get('Effect') == 'PARALYZE':
+                    element.set(field, value)
+                    module['xml'] = retailmodules.ET.tostring(element, encoding='unicode')
+        assert contain_audit.infiltrator_paralyze_share() == {'campaign': 0, 'templates': 0}, field
