@@ -19,10 +19,12 @@ LAG = 0.0                        # the readings' clock: mission seconds, as the 
 
 
 class Tick:
-    __slots__ = ('t0', 'moved')
+    """`moved`: the tick's first-frame block ran; `coarse`: the frame whose coarse move (non-precise Sim.move) ran,
+    so the cells after it (follow ... auto_kill) run on that frame only, as move's tail did."""
+    __slots__ = ('t0', 'moved', 'coarse')
 
     def __init__(self, t0):
-        self.t0, self.moved = t0, False
+        self.t0, self.moved, self.coarse = t0, False, None
 
 
 # ---- cells (the rules stay in their owners; a cell only calls one and holds its gate)
@@ -161,11 +163,34 @@ def tick_first(s, frame, tick):
             s.fight()
         if not s.shot_clock:
             s.move()
+            tick.coarse = frame
 
 
 def shot_clock(s, frame, tick):
     if s.shot_clock:             # the opt-in shot_clock integrates movement each frame
         s.move(1.0 / s.fps)
+        tick.coarse = frame
+
+
+# ---- right after a coarse move, on its frame only (tick_first / shot_clock / motion_old): what move's tail was
+def follow(s, frame, tick):
+    if tick.coarse == frame:
+        s.follow_due()
+
+
+def capture(s, frame, tick):
+    if tick.coarse == frame:
+        s.capture_due()
+
+
+def infiltrate(s, frame, tick):
+    if tick.coarse == frame:
+        s.infiltrators.tick()
+
+
+def auto_kill(s, frame, tick):
+    if tick.coarse == frame:
+        s.auto_kill_due()
 
 
 def aim(s, frame, tick):
@@ -206,21 +231,23 @@ def motion_old(s, frame, tick):
     if s.combat:
         s.fight()
     s.move()
+    tick.coarse = frame
 
 
 CELLS = {f.__name__: f for f in (
     release, events, tech, scripts, seq, handed, lose_health, autoheal, passive_area_heal, repairs, assignments,
     suppression, flee, hunt, toggles, self_power, expire, garrison, frame_movers, build, blast, wfire, death_blast,
-    spawn, sweeps, deposit, mine, produce, counters, tick_first, shot_clock, aim, deal,
+    spawn, sweeps, deposit, mine, produce, counters, tick_first, shot_clock, follow, capture, infiltrate, auto_kill,
+    aim, deal,
     events_old, scripts_old, tech_old, motion_old)}
 
 FRAME = ('release', 'events', 'tech', 'scripts', 'seq', 'handed', 'lose_health', 'autoheal', 'passive_area_heal',
          'repairs', 'assignments', 'suppression', 'flee', 'hunt', 'toggles', 'self_power', 'expire', 'garrison',
          'frame_movers', 'build', 'blast', 'wfire', 'death_blast', 'spawn', 'sweeps', 'deposit', 'mine', 'produce',
-         'counters', 'tick_first', 'shot_clock', 'aim', 'deal')
+         'counters', 'tick_first', 'shot_clock', 'follow', 'capture', 'infiltrate', 'auto_kill', 'aim', 'deal')
 
 OLD = ('release', 'events_old', 'scripts_old', 'expire', 'spawn', 'garrison', 'suppression', 'hunt', 'build',
-       'deposit', 'mine', 'produce', 'tech_old', 'motion_old')
+       'deposit', 'mine', 'produce', 'tech_old', 'motion_old', 'follow', 'capture', 'infiltrate', 'auto_kill')
 
 _FRAME = tuple(CELLS[n] for n in FRAME)
 _OLD = tuple(CELLS[n] for n in OLD)

@@ -10,6 +10,7 @@
 LAYER_OF grows by one entry per block moved (work/re/handoff-r.md 进度)."""
 import ast
 import importlib.util
+import types
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -256,8 +257,19 @@ def test_condition_home_guard_bites():
                        f"        if name == '{name}':\n            return True\n", method='cond') == {name}
 
 
+def _loop():
+    """simloop's CELLS (names), FRAME and OLD, read from the source: importing it needs simworld on sys.path."""
+    out = {}
+    for n in _tree('simloop').body:
+        if isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name) and n.targets[0].id in ('FRAME', 'OLD'):
+            out[n.targets[0].id] = ast.literal_eval(n.value)
+        elif isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name) and n.targets[0].id == 'CELLS':
+            out['CELLS'] = {e.id for gen in n.value.generators for e in gen.iter.elts}
+    return types.SimpleNamespace(**out)
+
+
 def test_frame_orders_share_one_roster():
-    loop = _load('simloop')
+    loop = _loop()
     assert set(loop.FRAME) <= set(loop.CELLS) and set(loop.OLD) <= set(loop.CELLS)
     assert len(set(loop.FRAME)) == len(loop.FRAME) and len(set(loop.OLD)) == len(loop.OLD)
     assert loop.FRAME.index('tech') < loop.FRAME.index('scripts') < loop.FRAME.index('lose_health')
@@ -265,3 +277,38 @@ def test_frame_orders_share_one_roster():
     for path in sorted(CNV.glob('sim*.py')):
         if path.stem != 'simloop':
             assert 'eng.step()' not in path.read_text(encoding='utf-8'), path.name
+
+
+MOVE_TAIL = ('follow', 'capture', 'infiltrate', 'auto_kill')     # cells after a coarse move (step 8c)
+MOVE_TAIL_CALLS = {'follow_due', 'capture_due', 'tick', 'auto_kill_due'}
+
+
+def move_tail_breaks(frame, old, source=None):
+    """What breaks 'a move is only a move': the tail cells right after the moving cells in both orders, and
+    Sim.move calling none of what they run."""
+    out = []
+    for order, after in ((frame, 'shot_clock'), (old, 'motion_old')):
+        i = order.index(after) + 1
+        if tuple(order[i:i + len(MOVE_TAIL)]) != MOVE_TAIL:
+            out.append(('order', after))
+    tree = ast.parse(source if source is not None else (CNV / 'sim.py').read_text(encoding='utf-8'))
+    cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'Sim')
+    move = next(fn for fn in cls.body if isinstance(fn, ast.FunctionDef) and fn.name == 'move')
+    out += [('move calls', n.func.attr) for n in ast.walk(move) if isinstance(n, ast.Call)
+            and isinstance(n.func, ast.Attribute) and n.func.attr in MOVE_TAIL_CALLS]
+    return out
+
+
+def test_move_is_only_a_move():
+    loop = _loop()
+    assert not move_tail_breaks(loop.FRAME, loop.OLD)
+
+
+def test_move_tail_guard_bites():
+    """Mutation check: a tail cell moved off its place, or the tail called from Sim.move again, is caught."""
+    loop = _loop()
+    frame = tuple(n for n in loop.FRAME if n != 'capture')
+    assert move_tail_breaks(frame[:2] + ('capture',) + frame[2:], loop.OLD) == [('order', 'shot_clock')]
+    src = ("class Sim:\n    def move(self, dt=1, precise=False):\n        self.attachment_tick()\n"
+           "        self.infiltrators.tick()\n")
+    assert move_tail_breaks(loop.FRAME, loop.OLD, src) == [('move calls', 'tick')]

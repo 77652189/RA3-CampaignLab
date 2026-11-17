@@ -3349,21 +3349,23 @@ class Sim:
                             o.topple_end = self.frame_now() + fall + o.topple['delay']
             self.change()
         self.attachment_tick()
-        if precise:
+        # what follows a coarse move in the frame (follow_due, capture_due, infiltrators.tick, auto_kill_due) are
+        # simloop's cells right after the moving cell (sim layers step 8c), no longer this method's tail
+
+    def auto_kill_due(self):
+        """A check's '自动打掉' (auto_kill s): an enemy unit within REACH of the player's things that long dies.
+        After each coarse move (simloop cell auto_kill)."""
+        if self.auto_kill is None:
             return
-        self.follow_due()
-        self.capture_due()
-        self.infiltrators.tick()
-        if self.auto_kill is not None:
-            mine = [b for b in self.living() if b.owner == self.human]
-            for b in self.living():
-                if not self.enemy(self.human, b.owner) or b.scenery or b.speed <= 0 or 'UNATTACKABLE' in b.status:
-                    continue
-                close = any(math.hypot(b.x - o.x, b.y - o.y) <= REACH for o in mine)
-                b.close_since = (b.close_since if b.close_since is not None else self.t) if close else None
-                if close and self.t - b.close_since >= self.auto_kill:
-                    b.last_hit, b.last_by = self.human, None
-                    self.destroy(b, f'自动打掉：在玩家 {REACH:g} 以内 {self.auto_kill:g} 秒')
+        mine = [b for b in self.living() if b.owner == self.human]
+        for b in self.living():
+            if not self.enemy(self.human, b.owner) or b.scenery or b.speed <= 0 or 'UNATTACKABLE' in b.status:
+                continue
+            close = any(math.hypot(b.x - o.x, b.y - o.y) <= REACH for o in mine)
+            b.close_since = (b.close_since if b.close_since is not None else self.t) if close else None
+            if close and self.t - b.close_since >= self.auto_kill:
+                b.last_hit, b.last_by = self.human, None
+                self.destroy(b, f'自动打掉：在玩家 {REACH:g} 以内 {self.auto_kill:g} 秒')
 
     def sample(self):
         """Every second: a check's counters; every 10: the threat; every 30: what the player has seen."""
