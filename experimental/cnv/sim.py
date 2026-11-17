@@ -74,6 +74,7 @@ import simmoney  # noqa: E402
 import siminfiltrator  # noqa: E402
 import simsweep  # noqa: E402
 import simtech  # noqa: E402
+import simtoggle  # noqa: E402
 import simunits  # noqa: E402
 import simlevel  # noqa: E402
 import simloop  # noqa: E402
@@ -103,7 +104,7 @@ from simmodifier import UNDERSIZE  # noqa: E402,F401  (a weapon reach less this,
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 SPREAD = 30.0                   # a reinforcement team's units this far apart round its waypoint (Sim.reinforce, INFERRED)
-TOGGLE_UNPACK_LAG = 0          # frames past UnpackTime x 15 a toggle's new state is first read (engine_toggle d: 16)
+from simtoggle import TOGGLE_UNPACK_LAG  # noqa: E402,F401  (a toggle's unpack lag, L2)
 LINGER = 0.0                   # a killed unit's death (its slow death): still in the game's name cache, where it fell
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
@@ -3393,61 +3394,26 @@ class Sim:
         return cache[b.template]
 
     def toggle_press(self, b, command):
-        """A toggle button (ToggleStatusSpecialAbilityUpdate whose SpecialPowerTemplate the button fires): the module
-        goes to its next ToggleState, the old state's ObjectStatus and AttributeModifier off, the new one's on
-        (Sim.modify). False when b has no toggle for that button.
-        Bench 11-11 engine_toggle a-f: the new state's bits are read the press's frame (as here) with PackTime 0 or
-        1 s alike (b); UnpackTime 1 s puts them off 16 frames (d: the engineer's tent); a state with a DisabledType
-        (the engineer's tent, the Tesla trooper's short circuit: HELD) takes no further press (d, f: presses 45 and
-        60 frames later change nothing; INFERRED that DisabledType is the cause, not read in the program)."""
-        power = simunits.command_power(command, self.own)
-        i = next((i for i, tm in enumerate(self.toggles_of(b)) if power and tm['power'] == power), None)
-        if not b.alive or i is None:
-            return False
-        tm = self.toggles_of(b)[i]
-        if 'POWERED' in b.kinds and self.short_of_power(b.owner):
-            # engine_acts_tgl JB / engine_acts_twr (round 223): a Japanese tower of a player with no plant took
-            # neither press (3 s, 15 s); with a SovietPowerPlant the same press at 3 s toggled it
-            self.note('技能', f'{self.label(b)} 按 {command}：缺电，不切换')
-            return True
-        if tm['states'][b.toggle_at.get(i, 0) % len(tm['states'])]['disabled'] or (b.name, i) in self.toggles_due:
-            self.note('技能', f'{self.label(b)} 按 {command}：当前状态不接受（DisabledType / 正在展开）')
-            return True
-        delay = int(round(tm['unpack'] * simunits.LIFE_FPS))
-        if delay:
-            self.toggles_due[(b.name, i)] = (self.frame_now() + delay + TOGGLE_UNPACK_LAG, b, command)
-            return True
-        self.toggle_enter(b, i, power)
-        return True
+        """simtoggle.Toggles.press (L2): a toggle button steps b's toggle module to its next ToggleState. False when
+        b has no toggle for that button."""
+        return self._toggle_book().press(self, b, command, self.toggles_of, self.short_of_power, self.modify)
 
     @property
     def toggles_due(self):
         """{(body name, toggle module index): (frame, body, button)}: presses waiting out their UnpackTime."""
-        return self.__dict__.setdefault('_toggles_due', {})
+        return self._toggle_book().due
 
     def toggles_run(self, frame):
-        """The toggles whose UnpackTime ran out by this frame enter their next state."""
-        for key, (due, b, command) in list(self.toggles_due.items()):
-            if frame >= due:
-                del self.toggles_due[key]
-                if b.alive:
-                    self.toggle_enter(b, key[1], simunits.command_power(command, self.own))
+        """simtoggle.Toggles.run (L2): the toggles whose UnpackTime ran out by this frame enter their next state."""
+        self._toggle_book().run(self, frame, self.toggles_of, self.modify)
 
-    def toggle_enter(self, b, i, power):
-        tm = self.toggles_of(b)[i]
-        b.toggle_at[i] = (b.toggle_at.get(i, 0) + 1) % len(tm['states'])
-        if power == 'SpecialPower_ToggleArmorUp':
-            b.armor_up = b.toggle_at[i] == 1
-            self.used.add('miner armor')
-        self.modify(b)
-        loc = tm['states'][b.toggle_at[i]].get('locomotor')
-        speed = simunits.locomotor_speed(b.template, self.own, loc) if loc else None
-        if speed:           # the state's LocomotorSet (engine_acts_btn TT / VT: the Tengu's jet, the VX's flight)
-            if b.base is not None:
-                b.base['speed'] = speed
-            b.speed = speed
-        self.used.add('toggle')
-        self.change()
+    def _toggle_book(self):
+        """The simtoggle.Toggles (L2), made on first use (a Sim built without __init__ has none yet). Not `_toggles`:
+        that is toggles_of's cache in the instance dict."""
+        t = self.__dict__.get('toggler')
+        if t is None:
+            t = self.toggler = simtoggle.Toggles()
+        return t
 
     toggle_miner_armor = toggle_press           # simai's name (the AI micro's toggles)
 
