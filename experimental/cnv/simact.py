@@ -10,8 +10,9 @@ import simact_object
 import simact_order
 import simact_player
 import simact_vision
+import simact_world
 
-GROUPS = (simact_vision, simact_player, simact_order, simact_object, simact_ability)
+GROUPS = (simact_vision, simact_player, simact_order, simact_object, simact_ability, simact_world)
 
 
 def table(groups=GROUPS):

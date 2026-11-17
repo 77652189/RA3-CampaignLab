@@ -1,6 +1,11 @@
 """L6 script vocabulary (ADR 0029, docs/engine/sim-layers.md): the name sets and spellings the script actions and
 conditions share, moved out of sim.py so the action files (simact_*) can read them without importing sim. sim
 re-exports each (`sim.TEAM_COMMANDS` still works)."""
+import re
+
+SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')       # ctx.Talk.show: a 功能 line's caption is asked for
+SCENE_FLAG = re.compile(r'CNV_\w+_InScene')       # ctx.Talk.scening
+WON, LOST = 'Mission Won', 'Mission Lost'
 
 TEAM_FOLLOWS = ('TEAM_FOLLOW_WAYPOINTS', 'TEAM_FOLLOW_WAYPOINTS_EXACT', 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS',
                 'TEAM_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT')      # Sim.order_follow

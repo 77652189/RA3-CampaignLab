@@ -78,8 +78,7 @@ from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
 
 from simscript import TEAM_FOLLOWS, TEAM_COMMANDS  # noqa: E402,F401  (the script vocabulary, L6)
-SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')       # ctx.Talk.show: a 功能 line's caption is asked for
-SCENE_FLAG = re.compile(r'CNV_\w+_InScene')       # ctx.Talk.scening
+from simscript import SHOW_FLAG, SCENE_FLAG, WON, LOST  # noqa: E402,F401  (flags SET_FLAG reads, L6)
 
 DT = simloop.DT                 # seconds a tick (the frame loop's, simloop.DT)
 DRIVE_WITHIN = 9.0              # ordered from standing, a unit drives on the frame that starts this near its way (deg;
@@ -98,7 +97,6 @@ CMP = {0: lambda a, b: a < b, 1: lambda a, b: a <= b, 2: lambda a, b: a == b, 3:
 SURFACES = ('GROUND', 'WATER', 'CLIFF', 'AIR', 'RUBBLE', 'OBSTACLE', 'IMPASSABLE', 'DEEP_WATER')
 # a script's relation argument (its name, or the index retail writes) -> Sim.relation's word (D 115 5, INFERRED order)
 RELATION_OF = {'Enemy': 'ENEMIES', 0: 'ENEMIES', 'Neutral': 'NEUTRAL', 1: 'NEUTRAL', 'Friend': 'ALLIES', 2: 'ALLIES'}
-WON, LOST = 'Mission Won', 'Mission Lost'
 LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
 ATTACK_SLACK = 10.0             # R3: an attacker stops this far inside its range of the target (a guess)
@@ -3361,202 +3359,6 @@ class Sim:
             self.played(name, a)
         if simact.act(self, name, a, script):          # the actions moved to the lookup table (ADR 0029 step 3)
             return
-        if name == 'SET_FLAG':
-            if SCENE_FLAG.fullmatch(str(a[0])):         # the player's input is off: nothing is late for a scene's length
-                if a[1]:
-                    self.scenes.append([self.t, None])
-                elif self.scenes and self.scenes[-1][1] is None:
-                    self.scenes[-1][1] = self.t
-            if SHOW_FLAG.fullmatch(str(a[0])):          # a 功能 line's caption: asked for, then up (ctx.Talk `Now k`)
-                if a[1]:
-                    self.asked.setdefault(a[0], self.t)
-                elif a[0] in self.asked:
-                    self.up.append((a[0], self.asked.pop(a[0]), self.t))
-            if int(self.flags.get(a[0], 0)) != int(a[1]):
-                self.flags[a[0]] = int(a[1])
-                self.change()
-                if a[0] == WON and a[1]:
-                    self.end('赢', script)
-                elif a[0] == LOST and a[1]:
-                    self.end('输', script)
-        elif name == 'SET_COUNTER':
-            self.counters[a[0]] = a[1]
-        elif name == 'SET_COUNTER_TO_COUNTER':
-            self.counters[a[0]] = self.counters.get(a[1], 0)
-        elif name == 'COUNTER_MATH_COUNTER':        # retail: 0 adds (a total of per-player kills), 1 takes away (what is
-            dst, op, src = a                        # left of the transports spawned); other codes were never seen used
-            if op not in (0, 1):
-                self.used.add(f'COUNTER_MATH_COUNTER code {op}')
-            self.counters[dst] = self.counters.get(dst, 0) + (-1 if op == 1 else 1) * self.counters.get(src, 0)
-        elif name in ('INCREMENT_COUNTER', 'DECREMENT_COUNTER'):
-            self.counters[a[1]] = self.counters.get(a[1], 0) + (a[0] if name == 'INCREMENT_COUNTER' else -a[0])
-            self.change()
-        elif name == 'SET_MILLISECOND_TIMER':
-            self.timers[a[0]] = self.t + float(a[1])
-            self.change()
-        elif name == 'SET_RANDOM_MSEC_TIMER':       # [lo, hi] at random (源码): the latest, as the beat sheet counts
-            self.timers[a[0]] = self.t + float(a[2])
-            self.change()
-        elif name in ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION'):
-            p = self.point(a[3])
-            if p is None:
-                return
-            old = self.bodies.get(a[0])
-            if old and old.alive:
-                return                                  # one object to a name (the game makes no second)
-            b = self.add(a[0], a[1], a[2].split('/')[0], *p, by=script.name, at=self.t)
-            b.team = a[2]
-            self.active.add(a[2])
-            b.angle = float(a[4]) if len(a) > 4 else 0.0
-            if self.blocks(b):
-                self.reblock()
-            self.note('出现', f'{self.label(b)}（{a[1]}，{self.who(b.owner)}）在 {a[3]}'
-                      + ('' if b.owner == self.human or self.sees(b.x, b.y, b.surface == 'air') else '，玩家看不见'))
-            self.change()
-        elif name in ('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION'):
-            # (type, team, waypoint[, angle]): the named one's maker without a name (RA3 1.13: both run the same three
-            # calls, work/re actions_map.json), a new object every time it runs, on the team; no name, so '#' (an
-            # unnamed one for SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER) -- bench 2026-11-09 ref_d
-            self.used.add('create unnamed')
-            p = self.point(a[2])
-            if p is None:
-                return
-            b = self.add(f'#created {len(self.bodies)} {a[0]}', a[0], a[1].split('/')[0], *p, by=script.name, at=self.t)
-            b.team = a[1]
-            self.active.add(a[1])
-            b.angle = float(a[3]) if len(a) > 3 else 0.0
-            if self.blocks(b):
-                self.reblock()
-            self.note('出现', f'{a[0]}（{self.who(b.owner)}）在 {a[2]}'
-                      + ('' if b.owner == self.human or self.sees(b.x, b.y, b.surface == 'air') else '，玩家看不见'))
-            self.change()
-        elif name == 'CREATE_REINFORCEMENT_TEAM':
-            self.reinforce(a[0], a[1], script)
-        elif name == 'CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION':
-            # (team, named unit): at where the unit stands now, on a building too (not pushed off it); nothing at a
-            # dead one (bench 11-15 engine_reinfat go: 3 inside 60 of a house, 3 at a tank's goal after it drove
-            # there, none at a tank killed 2 s before)
-            b = self.body(a[1])
-            if b is None or not b.alive:
-                self.used.add('reinforcement unit dead')
-            else:
-                self.reinforce(a[0], a[1], script)
-        elif name == 'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER':
-            self.nearest_ref(*a[:4])
-        elif name == 'SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER':     # INFERRED: the same, named ones too
-            self.used.add('nearest ref any')
-            self.nearest_ref(*a[:4], unnamed=False)
-        elif name == 'OBJECTLIST_ADDOBJECTTYPE':    # (type, list): the list grows by that type (types read lower case)
-            self.object_lists.setdefault(str(a[1]).lower(), set()).add(str(a[0]).lower())
-        elif name == 'UNIT_SET_TEAM':               # the unit joins the team (K6: ctx.order does it before every whole-team order)
-            b = self.body(a[0])
-            self.active.add(a[1])                   # ... and the team has an instance from then on, the unit there or not (E3)
-            if b and b.alive:
-                b.team = a[1]
-        elif name == 'TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE':
-            # (type, team, ref) INFERRED: SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER with the team's player
-            crew = self.members(a[1])
-            if crew:
-                self.nearest_ref(a[0], crew[0].owner, a[1], a[2], unnamed=False)
-        elif name == 'TEAM_MERGE_INTO_TEAM':          # (source, target) INFERRED (Generals doMergeTeamIntoTeam): the
-            for b in self.members(a[0]):              # source's members join the target, their orders kept
-                b.team = a[1]
-            self.active.add(a[1])
-            self.change()
-        elif name in ('TEAM_SET_OVERRIDE_RELATION_TO_TEAM', 'TEAM_SET_OVERRIDE_RELATION_TO_PLAYER',
-                      'PLAYER_SET_OVERRIDE_RELATION_TO_TEAM'):
-            # (team / player, team / player, Enemy / Neutral / Friend) INFERRED (Generals doTeam / doPlayer override
-            # relation): how the first takes the second from then on, over the players' relation (hostile)
-            table = {'TEAM_SET_OVERRIDE_RELATION_TO_TEAM': self.team_team_rel,
-                     'TEAM_SET_OVERRIDE_RELATION_TO_PLAYER': self.team_player_rel}.get(name, self.player_team_rel)
-            table[(a[0], a[1])] = a[2] if isinstance(a[2], str) else {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[a[2][0]]
-            self.change()
-        elif name == 'UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION':
-            # (name, type, team, object) INFERRED: CREATE_NAMED_ON_TEAM_AT_WAYPOINT at the object's place, its facing
-            at = self.body(a[3])
-            if at and self.present(at):
-                spot = f'SIM spawn spot {len(self.waypoints)}'
-                self.waypoints[spot] = (at.x, at.y)
-                self.act('CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', [a[0], a[1], a[2], spot, at.angle], script)
-        elif name == 'TEAM_TRANSFER_TO_PLAYER':
-            # (team, player) l2_scripts1 6: each member goes to the player's own team, its order cleared. Bench 11-08
-            # engine_scripts1 xfer: owned by the new player at once, the move it was on dropped, the team left empty
-            for b in self.members(a[0]):
-                b.owner, b.team = a[1], f'{a[1]}/team{a[1]}'
-                self.stand(b)
-                self.note('易主', f'{self.label(b)} 归 {self.who(a[1])}（命令清掉）')
-            self.change()
-        elif name == 'UNIT_STOP_SEQUENTIAL_SCRIPT':
-            # engine_seqstop:a: clear both active and queued scripts; leave the
-            # already issued move running, and allow a fresh script afterwards.
-            b = self.body(a[0])
-            if b is not None:
-                self.seq[:] = [r for r in self.seq if r['b'] is not b]
-        elif name == 'UNIT_EXECUTE_SEQUENTIAL_SCRIPT':
-            # (unit, script) d115 14: queued on the unit (behind its others), one action a frame once it is idle
-            # (seq_due); the script becomes a subroutine. The record's loop count is 0 here (one run; the catalog's
-            # action has no third argument)
-            b = self.body(a[0])
-            sc = getattr(self.eng, '_scripts', {}).get(a[1]) if self.eng is not None else None
-            if b and b.alive and sc is not None:
-                sc.subroutine = True
-                self.seq.append({'b': b, 'script': sc, 'step': -1, 'loops': int(a[2]) if len(a) > 2 else 0})
-            elif b and self.eng is None:
-                self.gap(GAP_ACTION, name, '没有引擎模型的运行不模拟顺序脚本')
-        elif name == 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER':
-            b = self.body(a[0])
-            if b:
-                self.used.add('health of the dead')
-                if b.alive:                     # whole percent, rounded down (engine_garrison hp: 200 of 3000 reads 6)
-                    self.counters[a[1]] = math.floor(b.health + 1e-6)
-                elif b.died_at == self.t and not b.deleted:
-                    # killed by a script earlier this frame: it is still there, at 0 (a NAMED_DELETE leaves the last
-                    # value: engine_immortal b, bench 11-09, health 1 beside gone 1)
-                    self.counters[a[1]] = 0
-                # dead before this frame (a weapon's kill lands after the frame's scripts): the counter keeps the last
-                # value read (bench 11-09 pend_scripts9 rel: 12 to the end, the tank gone on the minimap; engine_float,
-                # engine_spawn, engine_super saw the same freeze)
-        elif name == 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER':
-            # a template's EquivalentTo counts under that name too (simunits.equivalent_to; bench engine_aiopen b)
-            name = a[0].lower()
-            self.counters[a[2]] = sum(1 for b in self.living() if b.owner == a[1] and
-                                      (b.template.lower() == name or simunits.equivalent_to(b.template, self.own) == name))
-        elif name == 'SET_PLAYER_MONEY_TO_COUNTER':
-            self.counters[a[1]] = int(self.money.get(a[0], 0))
-        elif name == 'SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER':
-            # Native weapon-credit/type/player contrast: engine_killcount a/b.
-            # Lists use the existing type resolver; list unions remain INFERRED.
-            want = self.of_types(a[1])
-            self.counters[a[2]] = sum(1 for owner, _, template, _ in self.kills
-                                       if owner == a[0] and template.lower() in want)
-        elif name in ('MARK_MISSION_OBJECTIVE_COMPLETED', 'MARK_MISSION_OBJECTIVE_NOT_COMPLETED'):
-            # bench 11-16 checks/engine_markobj.py goals: status 2 / 1 from any status -- a hidden one listed done, a
-            # failed one done, a done one unticked; NOT_COMPLETED never draws the failed mark (j07 'failed bonus 2')
-            self.act('SET_MISSION_OBJECTIVE_STATUS', [a[0], 1 if 'NOT' in name else 2], script)
-        elif name == 'SET_MISSION_OBJECTIVE_STATUS':
-            if a[1] not in (0, 1, 2, 3):                # script-semantics.md 8: only 0..3, any other does nothing
-                return                                  # (inferred; checks/engine_scripts5.py goals O5 asks the bench)
-            old = self.objectives.get(a[0], 0)
-            self.objectives[a[0]] = a[1]
-            if a[1] != old and a[1]:
-                g = next((g for g in self.m.objectives if g.name == a[0]), None)
-                title = self.text(g.title) if g else a[0]
-                self.note('目标', f'{"奖励" if g and g.bonus else ""}目标{["", "亮出", "完成", "失败"][a[1]]}：{title}')
-                self.change()
-        elif name in ('LINK_MISSION_OBJECTIVE_TO_OBJECT', 'LINK_MISSION_OBJECTIVE_TO_WAYPOINT'):
-            s = self.markers.setdefault(a[0], set())
-            (s.add if a[2] else s.discard)(a[1])
-        elif name == 'PLAYER_RELATES_PLAYER':           # (index, 0, name): the game reads the index (plan.relates)
-            r = a[2]
-            self.relations[(a[0], a[1])] = r if isinstance(r, str) else \
-                {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[r[0]]
-        elif name == 'MAP_SWITCH_BORDER':
-            if self.all_revealed() or self.reveals:
-                self.used.add('border reveal')
-            self.border = int(a[0])
-            names = list(getattr(self.m.map, 'BORDERS', {}))
-            self.note('边界', f'可玩区换成 {names[self.border] if self.border < len(names) else self.border}')
-            self.change()
         elif name == 'MAP_SHROUD_SET_RESHROUD_TIME':
             self.reshroud = float(a[0])
         elif name in ('MOVE_CAMERA_TO', 'MOVE_CAMERA_TO_NAMED', 'CAMERA_FOLLOW_NAMED'):
@@ -3581,13 +3383,6 @@ class Sim:
                 self.note('倒计时', f'{self.text(a[1])} {mmss(max(0.0, left))}')
         elif name == 'HIDE_COUNTDOWN_TIMER':
             self.countdowns.discard(a[0])
-        elif name in ('ENABLE_SCRIPT', 'DISABLE_SCRIPT'):
-            # a once-script that fired is only switched off: ENABLE_SCRIPT arms it again (SE enableScript)
-            if name == 'ENABLE_SCRIPT':
-                self.disabled.discard(a[0])
-                self.done.discard(a[0])
-            else:
-                self.disabled.add(a[0])
         elif name in SHOWN:
             text = self.text(a[0]) if isinstance(a[0], str) else str(a[0])
             self.note(SHOWN[name], text)
