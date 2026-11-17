@@ -16,6 +16,17 @@ _spec.loader.exec_module(_module)
 import simai
 
 
+@pytest.mark.parametrize('name', ['aiallbuildon', 'aiallbuildoff'])
+@pytest.mark.parametrize('check', ['', 'a'])
+def test_allbuild_named_contract(name, check):
+    """Check each AllBuild publication even if another build's contract fails first."""
+    import build
+    import parts
+
+    m, t, _ = build.resolve(name, check)
+    assert parts.contract(parts.merged(m, t)) == [], (name, check)
+
+
 @pytest.mark.parametrize('name,last,picks,orders,successes', [
     ('aiallbuildon', [0, 4, 20, 598], 31, 307, 7),
     ('aiallbuildoff', [0, 1, 20, 459], 16, 156, 6),
