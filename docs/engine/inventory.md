@@ -330,7 +330,7 @@
 | 未做 | `TEAM_SET_MODELCONDITION_FOR_DURATION` | 5 |  | Sim.act / Sim.cond 不认识 |
 | 未做 | `TEAM_SET_SLEEP_STATUS` | 5 |  | Sim.act / Sim.cond 不认识 |
 | 不涉及 | `ENABLE_COUNTDOWN_TIMER_DISPLAY` | 4 |  | 纯表现（名字规则） |
-| 未做 | `NAMED_ATTACK_AREA` | 4 |  | Sim.act / Sim.cond 不认识 |
+| 未做 | `NAMED_ATTACK_AREA` | 4 |  | C engine_attackarea:a/b原版无畏舰对北/南电厂区域两局：禁自动索敌，b揭图并交换区域；区域段实际HP均100/100、对照血量与原位码3100，18秒点名阳性靶HP100→75→50→25。tests/test_attackarea_bench_c.py按名回放阴性窗口，两完整回放strict xfail；无命中不能证明区域命令无操作，尚缺区域候选/接受拒绝/实际弹着点，禁自动索敌与建筑目标类别仍未区分，单纯揭图不足以解释。原版a02四舰同区域；两局预算耗完，不实现猜测规则、不晋升；见work/re/c_attackarea_report.md |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ConstructJapanMinerFromRefinery` | 4 |  | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ConstructSovietAntiVehicleVehicleTech2` | 4 |  | 只记进时间线，没有效果 |
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleJapanFortressShipTransformMode` | 4 |  | 只记进时间线，没有效果 |
