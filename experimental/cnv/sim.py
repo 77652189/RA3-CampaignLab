@@ -1171,6 +1171,13 @@ class Sim:
     def owner_of(self, side):
         return self.players.get(side, CIV)
 
+    def proto(self, name, template, owner):
+        """A Body of the template that is not in the world (made by add, then taken out of the registry again):
+        what the skirmish AI reads a template's figures off (simai Brain._proto)."""
+        b = self.add(name, template, owner, -1e6, -1e6)
+        self.bodies.pop(name, None)
+        return b
+
     def add(self, name, template, owner, x, y, by='', at=0.0):
         st = simunits.stats(template, self.own)
         b = Body(name, template, owner, float(x), float(y), st['speed'], st['surface'],
@@ -1330,6 +1337,18 @@ class Sim:
         crew = [b for b in self.living() if same_team(b.team, team)]
         first = min((b.instance for b in crew), default=0)
         return [b for b in crew if b.instance == first]
+
+    def add_team_lookup(self, look):
+        """An AI's team-name lookup (team -> (exists, living members) or None), asked by named_team (simai Brain)."""
+        self.team_names.append(look)
+
+    def take_personality(self, player, personality):
+        """The personality an AI player took when not the map's aiPersonality (simai; PLAYER_HAS_PERSONALITY reads it)."""
+        self.personality_of[player] = personality
+
+    def forget_sight(self):
+        """This moment's sight cleared (side_sees' per-tick cache; fight clears it each tick too): the proxy's look."""
+        self.seen = {}
 
     def named_team(self, team):
         """(exists, living members) of a team only a name gives (self.team_names: an AI's), None for any other."""

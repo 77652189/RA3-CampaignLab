@@ -216,7 +216,7 @@ class Brain:
         # ResourceMultiplierCheat: the AI's deposits x the line for its difficulty (Sim.mine_due; data.resource_multiplier)
         mult = getattr(host.data, 'resource_multiplier', lambda *a: 1.0)(personality, self.ai.difficulty)
         if mult != 1.0:
-            self.sim.income[player] = (mult, 0.0)
+            self.sim.wallet.multiply_income(player, mult)         # simmoney (L4)
         self.paths = {}                 # (surface, template, condition) -> (frame asked, answer)
         self.path_rng = random.Random(host.seed)    # the spot's start angles (the engine: the logic random)
         self.tower_rng = random.Random(host.seed)   # a base defence's angle and radius jitter (its own: no other draw moves)
@@ -258,7 +258,7 @@ class Brain:
         self.rec = {'frames': [], 'orders': [], 'deaths': {}}   # HOOKS 9: filled only with SimAI(record=True)
         self._rec_runs, self._rec_mem, self._rec_bodies = {}, {}, {}
         self._team_names = None         # engine team name -> the model's team key (state, tactic id, template index)
-        self.sim.team_names.append(self.team_named)
+        self.sim.add_team_lookup(self.team_named)
         yards = self.yards()
         self.home = (yards[0].x, yards[0].y) if yards else (0.0, 0.0)
         # Dual-yard probe: the initial AI base exists before the scripted yard.
@@ -1240,9 +1240,7 @@ class Brain:
     def _proto(self, template):
         """A Body of the template that is not in the world (Sim.add, then taken out again)."""
         name = f'__proto_{self.player}_{template}'
-        b = self.sim.add(name, template, self.player, -1e6, -1e6)
-        self.sim.bodies.pop(name, None)
-        return b
+        return self.sim.proto(name, template, self.player)
 
     def units(self, ai, frame):
         out = []
@@ -1624,10 +1622,10 @@ class Brain:
             step = f32(100.0 / job['frames'])
             nxt = f32(job['progress'] + step)
             owe = min(job['cost'], math.ceil(round(job['cost'] * nxt / 100.0, 9))) - job['paid']
-            have = s.money.get(self.player, 0)
+            have = s.wallet.held(self.player)                     # simmoney (L4)
             if owe > have:
                 continue
-            s.money[self.player] = have - owe
+            s.wallet.charge(self.player, owe)
             job['paid'] += owe
             job['progress'] = nxt
             if nxt >= 100.0:
@@ -2038,7 +2036,7 @@ class SimAI:
         faction = simtech.faction_of(player, (getattr(self.sim.m, 'sides', {}) or {}).get(side))
         got = pick(pid, faction and f'PlayerTemplate:{faction}', random.Random(self.seed + 11)) or pid
         if got != pid:
-            self.sim.personality_of[player] = got
+            self.sim.take_personality(player, got)
         return got
 
     def attach(self):

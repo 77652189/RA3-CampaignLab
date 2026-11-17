@@ -58,3 +58,17 @@ class Money:
     def credit(self, player, amount):
         """Money paid that is no income (a sale's refund, simbody.Life.sell): never split, never held to the cap."""
         self.money[player] = self.money.get(player, 0) + amount
+
+    def held(self, player):
+        """A player's money now (none: 0)."""
+        return self.money.get(player, 0)
+
+    def charge(self, player, amount):
+        """Money taken that the caller has checked is there (held): the skirmish AI's instalments on a structure it
+        builds (simai Brain). A player with no money entry ends at -amount (the AI pays only what it holds)."""
+        self.money[player] = self.money.get(player, 0) - amount
+
+    def multiply_income(self, player, mult):
+        """An AI player's income multiplier (ResourceMultiplierCheat: simai sets it as the brain starts; collect
+        applies it), the fraction carried reset."""
+        self.income[player] = (mult, 0.0)

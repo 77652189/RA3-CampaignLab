@@ -340,3 +340,59 @@ def test_move_tail_guard_bites():
     src = ("class Sim:\n    def move(self, dt=1, precise=False):\n        self.attachment_tick()\n"
            "        self.infiltrators.tick()\n")
     assert move_tail_breaks(loop.FRAME, src) == [('move calls', 'tick')]
+
+
+# the skirmish AI and the player proxy (L8, step 9d): they play the Sim through its methods; a field of it they
+# changed would bypass the field's owner (simmoney's wallet, the team registry, the AI's personalities, the sight)
+HOST_USERS = ('simai', 'simproxy')
+MUTATORS = {'append', 'pop', 'update', 'add', 'setdefault', 'remove', 'discard', 'clear', 'extend', 'insert'}
+
+
+def host_write_breaks(mods=HOST_USERS, source=None):
+    """(module, field) for each write on the Sim a module holds (`self.sim`, or a name bound to it): an assignment,
+    augmented assignment or item set on one of its fields, or a mutating call (append, pop, ...) on one."""
+    out = []
+    for mod in mods:
+        tree = ast.parse(source) if source is not None else _tree(mod)
+        for fn in [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.Lambda))]:
+            def is_sim(e):
+                return isinstance(e, ast.Attribute) and e.attr == 'sim'
+
+            handles = {t.id for st in ast.walk(fn) if isinstance(st, ast.Assign)
+                       for tgt, val in ([(st.targets[0], st.value)] if len(st.targets) == 1 else [])
+                       for t, v in (zip(tgt.elts, val.elts) if isinstance(tgt, ast.Tuple) and isinstance(val, ast.Tuple)
+                                    else [(tgt, val)])
+                       if isinstance(t, ast.Name) and is_sim(v)}
+
+            def field(e):
+                while isinstance(e, ast.Subscript):
+                    e = e.value
+                if isinstance(e, ast.Attribute) and (is_sim(e.value) or
+                                                     isinstance(e.value, ast.Name) and e.value.id in handles):
+                    return e.attr
+                return None
+            for n in ast.walk(fn):
+                targets = n.targets if isinstance(n, ast.Assign) else \
+                    [n.target] if isinstance(n, (ast.AugAssign, ast.AnnAssign)) else []
+                for t in targets:
+                    for x in (t.elts if isinstance(t, ast.Tuple) else [t]):
+                        if field(x) and not (isinstance(x, ast.Attribute) and x.attr == 'sim'):
+                            out.append((mod, field(x)))
+                if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in MUTATORS \
+                        and field(n.func.value):
+                    out.append((mod, field(n.func.value)))
+    return sorted(set(out))
+
+
+def test_the_ai_and_the_proxy_write_no_field_of_the_sim():
+    assert not host_write_breaks()
+
+
+def test_host_write_guard_bites():
+    """Mutation check: the writes step 9d took out (income, money, the team registry, the proto's pop, the sight)."""
+    src = ("class Brain:\n    def f(self):\n        s, x = self.sim, 1\n        s.money[p] = 3\n"
+           "        self.sim.income[p] = (1, 0)\n        self.sim.team_names.append(g)\n"
+           "        s.bodies.pop(n, None)\n        s.seen = {}\n        s.t += 1\n"
+           "        s.wallet.charge(p, 3)\n        self.sim = s\n")
+    assert host_write_breaks(('simai',), src) == [('simai', f) for f in
+                                                   ('bodies', 'income', 'money', 'seen', 't', 'team_names')]

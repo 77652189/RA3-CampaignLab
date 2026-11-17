@@ -244,7 +244,7 @@ class SimWorld:
 
     def observe(self):
         s = self.sim
-        s.seen = {}                             # this moment's sight (Sim.fight clears it each tick too)
+        s.forget_sight()                        # this moment's sight (Sim.fight clears it each tick too)
         mine = [self._mine(b) for b in s.living() if b.owner == self.me and self._is_unit(b)]
         seen = [self._thing(b) for b in s.living() if not b.scenery and b.owner != self.me
                 and (b.owner == sim.CIV or s.enemy(self.me, b.owner)) and s.side_sees(self.me, b)]
