@@ -374,7 +374,8 @@ RA3_ONLY = {'ATTACK_MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_TEAM_TO', 'CREATE_NAMED_ON
             'PLAYER_SET_PLAYER_POWER_POINTS', 'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'SET_PLAYER_MONEY_TO_COUNTER',
             'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'ALLOW_DISALLOW_ONE_BUILDING', 'ALLOW_DISALLOW_ONE_UPGRADE',
             'SKIRMISH_AI_MAKE_BASE', 'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_TRANSFER_ALL', 'SKIRMISH_AI_USE_REBUILD_SYSTEM',
-            'SKIRMISH_AI_USE_REPAIRS', 'UNIT_AI_TRANSFER_ALL', 'PATH_MUSIC_PLAY_EVENT',
+            'SKIRMISH_AI_USE_REPAIRS', 'UNIT_AI_TRANSFER_ALL', 'PATH_MUSIC_PLAY_EVENT', 'SKIRMISH_AI_START',
+            'PLAYER_TOGGLE_SKIRMISH_AI',
             'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', 'CAMERA_ENTERED_AREA',
             'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', 'SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER'}
 
@@ -1099,6 +1100,7 @@ class Sim:
         self.banned = set()                 # (player, template in lower case): ALLOW_DISALLOW_ONE_BUILDING 0
         self.unit_construction_disabled = set()  # named players; engine_unitban a/b native engineer queues
         self.base_construction_disabled = set()  # named players; aibgate:a the skirmish AI's structure orders (simai)
+        self.ai_paused = set()              # named players PLAYER_TOGGLE_SKIRMISH_AI(p, 0) paused (simai Brain.tick)
         self.buildable = {}                 # template lower -> BuildableStatus 0-3: TECHTREE_MODIFY_BUILDABILITY_OBJECT (all players)
         self.banned_ups = set()             # (player, upgrade in lower case): ALLOW_DISALLOW_ONE_UPGRADE 0
         self.border = 0
@@ -1122,6 +1124,7 @@ class Sim:
         self.last_change = 0.0
         self.ai = {}                        # player -> woken at
         self.handed = ()                    # skirmish_setup: players taken off their teams after the first frame
+        self.library_ai = frozenset()       # the same players, kept (the wake: Sim.act SKIRMISH_AI_MAKE_BASE)
         self.ai_switches = {}               # player -> {AI_SWITCHES name: value} (simai.Brain reads them)
         self.ai_priorities = {}             # player -> [(enemy, n)] SET_ENEMY_PLAYER_PRIORITY calls (simai.Brain)
         self.hidden_home = set()            # players whose hidden object SKIRMISH_AI_TRANSFER_ALL(p, 0) put on the
@@ -1265,6 +1268,7 @@ class Sim:
             lists = mission.script_lists(mod) if self.retail else mod.from_cnv(parts.unnot(self.mm.scripts))
             if not self.retail:
                 self.handed = skirmish_setup(mission.map, set(self.players.values()))
+                self.library_ai = frozenset(self.handed)    # kept: their MAKE_BASE stands in for the library's wake
             # a retail map's own scripts keep their inverted bit (the engine model: honored for retail's compiled
             # scripts; a02's 'NOT units in the convention center' completed objective 1 at 0:04 with it ignored)
             self.eng = cls(lists, world=self, difficulty=self.level, honor_inverted=self.retail)
@@ -4385,11 +4389,25 @@ class Sim:
                     if b.owner == a[0] and not b.team and home:
                         b.team = home
                         self.active.add(home)
-        elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE'):
+        elif name == 'PLAYER_TOGGLE_SKIRMISH_AI':
+            # (player, on): the AI's paused byte = not on (program, work/re a270_skirmish_start.md); its per-frame
+            # update does nothing while paused -- simai Brain.tick (bench aipause:a)
+            if a[0] in self.players.values():
+                (self.ai_paused.discard if int(a[1]) else self.ai_paused.add)(a[0])
+            else:
+                self.gap('ScriptAction', name, '开关遭遇战 AI 仅具名玩家已量；玩家范围未量')
+        elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE', 'SKIRMISH_AI_START'):
+            # SKIRMISH_AI_START = UNIT_AI_TRANSFER_ALL's wake alone, no team step (program, work/re
+            # a270_skirmish_start.md). MAKE_BASE wakes nobody (program; bench ainowake:a / aixfer:a, no library:
+            # MAKE_BASE + money, with or without the team step, never spends): it stands in for the wake only for
+            # the library's players (Lib_Skirmish_Setup's frame-0 UNIT_AI_TRANSFER_ALL; engine line B's simai is
+            # fitted to the mission's own wake). Building also needs a yard handed to the AI: simai Brain.yards.
             self.used.add('ai')
             if name == 'UNIT_AI_TRANSFER_ALL' and int(a[1]):
                 self.off_teams((a[0],))
-            if a[0] not in self.ai:
+            woke = (name in ('SKIRMISH_AI_START', 'UNIT_AI_TRANSFER_ALL')    # TRANSFER_ALL wakes either way (a219)
+                    or name == 'SKIRMISH_AI_MAKE_BASE' and a[0] in self.library_ai)
+            if woke and a[0] not in self.ai:
                 self.ai[a[0]] = self.t
                 self.note('AI', f'{self.who(a[0])} 交给遭遇战 AI（造兵、进攻不模拟）')
         elif name == 'MAP_SWITCH_BORDER':

@@ -1088,7 +1088,11 @@ class Brain:
                 and self.host.menu(b.template)]
 
     def yards(self):
-        return [b for b in self.sim.living() if b.owner == self.player and 'CONSTRUCTION_YARD' in b.kinds]
+        """The player's yards handed to the AI: on no map team (bench aistart:a, no library, woken by SKIRMISH_AI_START
+        alone: the yard left on teamSoviet_1 builds nothing in 60 s; aistartx:a, the yard handed by UNIT_AI_TRANSFER
+        first, opens as aiskirm)."""
+        return [b for b in self.sim.living() if b.owner == self.player and 'CONSTRUCTION_YARD' in b.kinds
+                and not b.team]
 
     def queue_of(self, template):
         """fn(yard) -> the yard_q key a structure goes in: a base defence (FS_BASE_DEFENSE) in the yard's own
@@ -1608,7 +1612,9 @@ class Brain:
                 continue
             job = q[0]
             if job['full'] is not None:
-                if frame >= job['full'] + PLACE_DELAY:
+                # a paused AI (PLAYER_TOGGLE_SKIRMISH_AI 0) places nothing: aipause:a's third structure, done while
+                # paused, came down at f1280, just after the 85 s resume
+                if frame >= job['full'] + PLACE_DELAY and self.player not in s.ai_paused:
                     q.pop(0)
                     self.put(y, job['template'], frame)
                     self.yard_rest[name] = frame + 1
@@ -1690,6 +1696,8 @@ class Brain:
         self.later_due(frame)
         self.yard_due(frame)
         self.unit_due(frame)
+        if self.player in self.sim.ai_paused:   # PLAYER_TOGGLE_SKIRMISH_AI(p, 0): the brain's update skips the
+            return                              # whole frame (program, work/re a270_skirmish_start.md; aipause:a)
         if self.seen_t != self.sim.t:           # the world changes once a DT tick: look and facts then
             self.look(frame)
             self.ai.ctx.update(self.facts())

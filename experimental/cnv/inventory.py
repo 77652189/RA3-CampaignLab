@@ -61,6 +61,10 @@ BENCHED_TESTS = {
         'tests/test_basegate_bench_a.py::test_aibgate_disabled_ai_spends_nothing_and_builds_nothing_until_enabled',
     (ACTION, 'PLAYER_ENABLE_BASE_CONSTRUCTION'):
         'tests/test_basegate_bench_a.py::test_aibgate_enable_starts_the_ai_base',
+    (ACTION, 'SKIRMISH_AI_START'):
+        'tests/test_aistart_bench_a.py::test_skirmish_ai_start_opens_an_ai_whose_yard_was_handed',
+    (ACTION, 'PLAYER_TOGGLE_SKIRMISH_AI'):
+        'tests/test_aistart_bench_a.py::test_toggle_skirmish_ai_off_freezes_the_ai_and_on_resumes_it',
     (ACTION, 'SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER'):
         'tests/test_killcount_bench_c.py::test_killcount_native_type_and_player_match_bench',
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanMCV'):
@@ -447,6 +451,8 @@ NOTES = {
     (MODULE, 'Behaviors/RecallUnitsSpecialPower'): (BENCHED, 'E187按名回放E184原版机场/仅删模块旧台，两路完整读数660/7/3/1与660/7/5/0通过；单架原生生产Apollo由机场按钮召回回近场并记录施放，使用模板速度移动，未改原预测。已测限本机场/机型单架；生产者筛选、选择顺序、回机场中心的路径为INFERRED，数量上限、精确帧、其他机型/机场、换主、降落及Parking仍gap；见work/re/e187_recall.md'),
     (ACTION, 'PLAYER_DISABLE_BASE_CONSTRUCTION'): (BENCHED, 'A269 aibgate:a（B的aiskirm图，s1盟军AI 10秒醒、50000）：开局禁用，醒后到第1054帧钱50000、建筑数1，不下任何建筑单；70秒恢复后f1054起付款、f1208第二栋（对照aiskirm d醒后11秒第二栋）。模拟simai.build拒结构单：f1065/f1215。tests/test_basegate_bench_a.py按名回放。C的engine_baseban：日本核心（UNIT_BUILD）不受此门；A的engine_basegate:a：脚本按盟军建造厂电厂按钮两边都不扣钱，玩家建造厂队列量不到（未模拟）。This Player/All Players范围仍gap'),
     (ACTION, 'PLAYER_ENABLE_BASE_CONSTRUCTION'): (BENCHED, 'A269 aibgate:a：禁用的AI在70秒恢复后立即开始下建筑单，f1054付款、f1208第二栋，节奏同刚醒（模拟f1065/f1215）。tests/test_basegate_bench_a.py按名回放；范围同DISABLE（具名AI玩家；玩家建造厂队列、This Player/All Players未量）'),
+    (ACTION, 'SKIRMISH_AI_START'): (BENCHED, 'A270 B的aiskirm图去脚本库四局（s1盟军AI，10秒给50000）：只START（建造厂留在teamSoviet_1）、只MAKE_BASE、只SKIRMISH_AI_TRANSFER_ALL（交队不唤醒）都整局50000/建筑1；UNIT_AI_TRANSFER(建造厂)+START（原版a07写法）f169前付款、f290-f312第二栋（模拟f158/f308）。程序：START=TRANSFER_ALL的唤醒半步。模拟器：MAKE_BASE只对脚本库玩家代唤醒，simai只用交给AI的建造厂。tests/test_aistart_bench_a.py按名回放'),
+    (ACTION, 'PLAYER_TOGGLE_SKIRMISH_AI'): (BENCHED, 'A270 aipause:a（aiskirm带库，25秒关、85秒开）：关后在造的付清到48300（f457）就冻结到f1262，暂停中造好的第3栋恢复后f1280才放下，f1300起又花钱。程序：写AI脑暂停字节，每帧更新整帧跳过。模拟器Sim.ai_paused：Brain.tick跳过思考、yard_due暂停时不放建筑。tests/test_aistart_bench_a.py按名回放；具名玩家，玩家掩码范围gap'),
     (MODULE, 'Behaviors/StructurePlacementBehavior'): (TODO, 'E183 structpon:a/structpoff:a原版矿场/仅删模块两局，前方120放电厂；总数及前方区域始终0，资金从10000采矿增长到11750/12000，未到9200付费哨兵。原禁建/允许预测FAIL保留，未建立合法排队/放置接受事实；tests/test_structureplace_bench_e.py仅按名字回放零电厂负基线，不登记模块效果已对拍。queueAccepted/queueReady/placementAccepted/rejectReason缺失，同输入暂停；几何消费/旋转/边缘仍gap，见work/re/e183_structureplace.md'),
     (MODULE, 'Behaviors/AssignSlavesTargetObjectSpecialPower'): (GUESSED, 'E181 engine_assignrace:b一局PASS：f150两组前三受伤目标UNDERGOING_REPAIR编码33，f180只给原版模块组指定第四辆，f360冻结第四辆HP70/20；tests/test_simassignslaves.py::test_repair_assignment_frame_snapshot_matches_named_bench按名回放同帧血量通过，占用模型0对台33保留strict xfail。原版480HP/20HP每秒预测成立，未改治疗率/时间窗；off同时删模块且不发令，不能单独归因模块删除。E66/E67旧捕获时序xfail保留；自动获取、单架子体派发/抢占、状态清理、其他宿主/筛选及精确启动帧仍gap，INFERRED启动相位未扩展，不登记整模块已对拍；见work/re/e181_assignframes.md'),
     (ACTION, 'REDALERT_DISABLE_THREAT_LEVEL_BONUS'): (TODO, 'C两局engine_threatbonus:a/b：A仅到第三批损失，不能用捕获秒作任务秒；B改逻辑帧闸门并交换禁用方，实测双方均第2893帧升二级（含禁用方），模型均5400。tests/test_threatbonus_bench_c.py具名阶段读数回放通过，协议升级读数strict xfail保留。未证明动作关闭协议经验倍率，不写无操作实现；缺同帧玩家threat/等级/倍率及单位经验奖励消费，整项未晋升。见work/re/c_threatbonus_report.md'),
