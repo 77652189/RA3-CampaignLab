@@ -68,6 +68,7 @@ import simsweep  # noqa: E402
 import simtech  # noqa: E402
 import simunits  # noqa: E402
 import simlevel  # noqa: E402
+import simloop  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
 
@@ -78,7 +79,7 @@ TEAM_COMMANDS = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO', 'TEAM_ATTACK_NAMED', 'TE
 SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')       # ctx.Talk.show: a 功能 line's caption is asked for
 SCENE_FLAG = re.compile(r'CNV_\w+_InScene')       # ctx.Talk.scening
 
-DT = 0.5                        # seconds a tick
+DT = simloop.DT                 # seconds a tick (the frame loop's, simloop.DT)
 DRIVE_WITHIN = 9.0              # ordered from standing, a unit drives on the frame that starts this near its way (deg;
                                 # bench airev1t / airevgt / airevat, A round 227: 8 drove, 10 / 15 did not; INFERRED 9)
 UNTIL = 1800.0                  # a run stops here at the latest (30 minutes)
@@ -228,10 +229,7 @@ HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does 
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
                                 # no line of sight; ENEMY_SIGHTED is a range query and ignores it
 FIRE_SEEN = 3.0                 # a bombarder (a weapon longer than its own vision) that fired this lately is seen
-LAG = 0.0                       # the readings' clock: mission seconds, as the bench's since 4aed60f (ADR 0007: the
-                                # bench counts mission time, at 8x). Expectations written before that counted wall
-                                # seconds from the menus' end; the simulator's versions of the checks carry their own
-                                # ending (simchecks.py) and judge the counters only where they are wiring
+LAG = simloop.LAG               # the readings' clock (simloop.LAG)
 
 # what the simulator assumes of the engine ("待对齐清单"): printed with every run that leans on one of them. Settled
 # by the Generals / Zero Hour source (docs/engine/script-semantics.md, the section given) unless marked 未对齐: those
@@ -4822,70 +4820,9 @@ class Sim:
 
     # ---- running
     def step(self):
-        """One DT tick from self.t (the caller moves self.t on). With the engine model: the tick's frames (those
-        before self.t + DT, 7 or 8), the run script's events at the first frame at or after their second, a check's
-        counters read on each whole second's frame. Default movement and acquisition run
-        after the tick's first frame. The opt-in shot_clock integrates movement each frame:
-        suppression controls ceil(145 / speed * 15) = 44 (50), 40 (55)."""
-        if self.eng is None:
-            return self.step_old()
-        t0, eng = self.t, self.eng
-        last = math.ceil(round((t0 + DT) * self.fps, 6))
-        moved = False
-        while eng.frame < last and self.ending is None:
-            self.t = eng.frame / self.fps
-            self.release()
-            while self.events and self.events[0][0] <= self.t + 1e-9:
-                self.happen(self.events.pop(0))
-            self.tech_due(eng.frame + 1)        # before the frame's scripts (bench 11-08 engine_protocol rank: rank
-            eng.step()                          # 2 read by the scripts of frame 5400 = 360 s x 15)
-            if self.seq:
-                self.seq_due()
-            if self.handed:                     # the container's Lib_Skirmish_Setup, after the first frame's scripts
-                self.off_teams(self.handed)
-                self.handed = ()
-            self.lose_health(eng.frame)
-            self.autoheal(eng.frame)
-            self.passive_area_heal()
-            self.repairs.due(eng.frame)
-            self.assignments.due(eng.frame)
-            self.suppression_tick()
-            self.flee_due(eng.frame)
-            if self.hunts:
-                self.hunt_due(eng.frame)
-            self.toggles_run(eng.frame)
-            self.self_power_due(eng.frame)
-            self.expire(eng.frame)
-            self.garrison.due()
-            if self.frame_movers:
-                self.move(1.0 / self.fps, precise=True)
-            self.build_due(eng.frame)
-            self.blast_due(eng.frame)
-            self.wfire_due(eng.frame)
-            self.death_blast_due(eng.frame)
-            self.spawn_due(eng.frame)
-            self.sweeps.due(eng.frame)
-            self.deposit_due(eng.frame)
-            self.mine_due(eng.frame)
-            self.produce_due(eng.frame)
-            if self.test and self.test.counters and (eng.frame - 1) % self.fps == 0 and self.t >= LAG:
-                # DISPLAY_COUNTER shows the table's value, a running timer's frames left too (bench 11-10
-                # engine_timer stop: 109 94 80 ... after RESTART_TIMER; self.counters hides running timers)
-                self.series.append((int(round(self.t - LAG)), [eng.value(c) for c, _ in self.test.counters]))
-            if not moved and self.ending is None and self.t >= t0 - 1e-9:
-                moved = True
-                self.aura_tick()
-                if self.combat:
-                    self.fight()
-                if not self.shot_clock:
-                    self.move()
-            if self.shot_clock:
-                self.move(1.0 / self.fps)
-            if self.mid_aims and self.combat and self.ending is None:
-                self.aim_due()
-            if self.combat and self.ending is None:
-                self.deal(1.0 / self.fps)       # R6: the aimed fire frame by frame, after the frame's scripts
-        self.t = t0
+        """One DT tick from self.t (the caller moves self.t on): the frame loop's table (simloop.FRAME with the
+        engine model, simloop.OLD without it)."""
+        return simloop.step(self)
 
     FLEE_GONE = 3
 
@@ -5103,34 +5040,7 @@ class Sim:
                 self.events.sort(key=lambda x: x[0])
 
     def step_old(self):
-        self.release()
-        while self.events and self.events[0][0] <= self.t:
-            self.happen(self.events.pop(0))
-        for s in self.mm.scripts:
-            if s.name in self.done or s.name in self.disabled or not s.levels[self.level]:
-                continue
-            if all(self.holds(c) for c in s.when):
-                for name, *a in s.do:
-                    self.act(name, a, s)
-                if s.once:
-                    self.done.add(s.name)
-        self.expire(self.frame_now())
-        self.spawn_due(self.frame_now())
-        self.garrison.due()
-        self.suppression_tick()
-        if self.hunts:
-            self.hunt_due(self.frame_now())
-        self.build_due(self.frame_now())
-        self.deposit_due(self.frame_now())
-        self.mine_due(self.frame_now())
-        self.produce_due(self.frame_now())
-        self.tech_due(self.frame_now())
-        if self.ending:
-            return
-        self.aura_tick()
-        if self.combat:
-            self.fight()
-        self.move()
+        return simloop.step_old(self)
 
     def can_hit(self, w, t):
         """A weapon's anti mask against a target: aircraft need ANTI_AIRBORNE, buildings ANTI_STRUCTURE (or
