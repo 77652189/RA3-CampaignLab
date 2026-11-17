@@ -300,7 +300,7 @@ class Brain:
                                        act=self.act, micro=h.data_of('tactics micro'), fight=self.fight,
                                        houses=lambda ai, u: self.garrisons(u, False),
                                        defenses=lambda ai, u: self.garrisons(u, True),
-                                       crush=lambda ai, f, foe: simcrush.eligible(self.sim, f, foe),
+                                       crush=lambda ai, f, foe: simcrush.eligible(self.sim, f, foe, self.sim.attachments),
                                        pullback=lambda ai, u: h.pullback.query(self, u),
                                        # GatherWaypoint: the map's waypoint by name, None when absent (D148)
                                        gather_point=lambda ai, tac: self.sim.waypoints.get(getattr(tac, 'gather', '')
@@ -1067,7 +1067,7 @@ class Brain:
         if b and b.owner == self.player and self.sim.toggle_miner_armor(b, info.command):
             self.sim.note('AI', f'{u.name} 执行 {info.command}')
             return
-        if b and b.owner == self.player and simmicro.fire(self.sim, b, info.command):
+        if b and b.owner == self.player and simmicro.fire(self.sim, b, info.command, self.sim.modify):
             state = self.__dict__.get('_hunt_goals', {}).get(b.name)
             if (state is not None and state.state == 33
                     and info.command == simmicro.COMMAND):

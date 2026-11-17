@@ -39,6 +39,11 @@ WORLD_API = frozenset({
     'waypoints',       # the map's waypoint name -> (x, y) (an order may add a spot of its own)
     'areas',           # the map's trigger area name -> its polygon
     'mm',              # the merged map: its waypoint labels and links (the paths)
+    'enemy',           # (player a, player b) -> a takes b as an enemy
+    'human',           # the human player
+    'm',               # the mission (sides, assets, cast)
+    'players',         # the map's side -> its player
+    'shot_clock',      # the run's opt-in frame clock (a setting, read only)
 })
 
 # Sim.gap's kinds: what a run met and the simulator does not act on (any layer reports one). The names are

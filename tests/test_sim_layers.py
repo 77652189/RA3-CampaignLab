@@ -30,14 +30,18 @@ LAYER_OF = {
     'simact': 6, 'simact_vision': 6, 'simact_player': 6, 'simact_order': 6, 'simact_object': 6, 'simact_ability': 6, 'simact_world': 6, 'simact_show': 6, 'simscript': 6,
     'simcond': 6, 'simcond_world': 6, 'simcond_object': 6, 'simcond_vision': 6, 'simcond_player': 6, 'simcond_show': 6,
     'simloop': 7,
+    'simassign': 2,
 }
+# (simmicro, L5, waits for simai: reached only through simai, which still imports sim, so the inventory's
+# simcoverage.sim_files does not count it yet -- test_simcoverage_files would be red. It is a WORLD_TAKER already.)
 
 # modules that take the world as an argument (rule 2): they reach it only through WORLD_API
 WORLD_TAKERS = {'simheal', 'simmine', 'simmoney', 'simmodifier', 'simlocomotion',
                 'simbody',
                 'simtoggle',
                 'simspecial',
-                'simorder'}
+                'simorder',
+                'simcrush', 'simjet', 'simmicro', 'simassign'}
 
 # modules that reach their host beyond the world through a Peers loan: every `peers.X` they read is in their PEERS
 PEER_TAKERS = {'simorder'}

@@ -5,6 +5,8 @@ The existing modifier engine selects the sword and applies/ends its status
 and speed. ArmorSetType, suppression immunity, garrison contest and bark
 immunity remain explicit gaps; this does not establish full Bonzai combat.
 Other commands retain their explicit unmodeled execution path.
+L5 orders (ADR 0029): reaches the world only through simworld.WORLD_API; the modifiers' re-set (`modify`, L2) is
+handed in by the caller (simai).
 """
 import simunits
 
@@ -39,7 +41,7 @@ def ready(world, body, command):
     return command != COMMAND or body.ready_at.get(command, 0) <= world.frame_now()
 
 
-def fire(world, body, command):
+def fire(world, body, command, modify):
     got = recipe(world, body, command)
     if got is None or not body.alive or not ready(world, body, command):
         return False
@@ -47,7 +49,7 @@ def fire(world, body, command):
     now = world.frame_now()
     body.auras_on[mid] = (now + duration, xml)
     body.ready_at[command] = now + reload
-    world.modify(body)
+    modify(body)
     world.gap('升级', mid, '冲锋仅接状态、速度、武器选择；ArmorSetType护甲切换未模拟')
     world.change()
     world.note('AI', f'{body.name} 执行 {command}')
