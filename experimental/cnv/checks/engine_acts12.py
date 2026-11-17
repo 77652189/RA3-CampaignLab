@@ -167,7 +167,13 @@ def own(m):
       5 engine_acts_drop:own + DP's NAMED_SET_SPECIAL_POWER_COUNTDOWN 0 at 0.1 s (engine_super's "0 makes it ready"):
         0 0 0 0
     Ruled out: the owner (human / computer, Soviet / Allied), the time (3 s / 12 s), the action (button / by name),
-    the AI transfer, the countdown. Not explained (work/re/handoff.md round 225's table)."""
+    the AI transfer, the countdown. Not explained (work/re/handoff.md round 225's table).
+    Explained 11-16 (D180): the build left CAMP_AlliedBomberAircraft_Infantry_1 out of the mod's stream, the OCL found
+    no template and made nothing. BENCH 11-17 (round 272, run_queue; CampActsDropOwn_mcp_1117_*), the build fixed
+    (mapxml.map_xml made= includes a spawned retail template's file type="all", make_campnew7.spawn_names links it):
+      机 兵 敌 援  s1 0 0 0 0 | s2-s12 0 46 0 0 | s13-s31 0 46 46 46 -- every store drops a full load (6 GIs +
+      4 Javelins) at its spot, DP after the first press, DS / DA after 12 s; 机 stays 0 (the bombers not counted
+      in Test A12 Whole at any whole second: gone at once, or the comparison does not see them -- open)."""
     return _own(m, DROPS)
 
 

@@ -205,6 +205,8 @@ class ModSpec:
     unit_files: tuple = ()          # (file name, text) written into the SDK's CNVUnits/Data before the compile
     templates: dict = field(default_factory=dict)       # GameObject id -> make_campnew7.EXTRA_TEMPLATES entry
     extra_all: tuple = ()           # XML files included type="all" (make_campnew7.EXTRA_ALL)
+    spawns: tuple = ()              # templates the scripts / OCLs make by name, placed or not (make_campnew7.SPAWNS:
+                                    # a retail one the static stream lacks is included type="all", mapxml.map_xml)
     extra_own: tuple = ()           # names linked though nothing references them (bytes, make_campnew7.EXTRA_OWN)
     replaces: tuple = ()            # retail instances ('Type:id') recompiled under the same id, linked over retail's
                                     # (make_campnew7.OVERRIDE; Mission.replaces)
@@ -278,7 +280,7 @@ def spec_of(mission, test=None, shell=False, name=None, layers=()):
                    map_name=mm.map.__name__.split('.')[-1], map_edits=(edit,),
                    border_names=tuple(getattr(mm.map, 'BORDERS', {})), unit_files=tuple(unit_files),
                    templates=templates, extra_all=tuple(extra_all), extra_own=tuple(extra_own), replaces=replaces,
-                   strings=strings,
+                   spawns=tuple(sorted(mm.spawns)), strings=strings,
                    packs=packs, goals=goal_points(mm), ext=bool(getattr(mm, 'ext', False)),
                    ext_logs=tuple(getattr(mm, 'ext_logs', ())), inject=tuple(getattr(mm, 'inject', ())))
     if shell:
@@ -386,7 +388,7 @@ def check_layer(mission, test):
 
     def layer(spec):
         return with_more(spec, map_edits=(edit,), unit_files=unit_files, templates=templates, extra_all=extra_all,
-                         extra_own=extra_own, strings=strings, bench={'slot': spec.slot['slot']} if spec.slot else {})
+                         extra_own=extra_own, spawns=sorted(set(whole.spawns) - set(plain.spawns)), strings=strings, bench={'slot': spec.slot['slot']} if spec.slot else {})
     return layer
 
 
@@ -567,6 +569,7 @@ def _map_part(spec, c4, c6, c7, sdk):
             f.write(text.replace('\r\n', '\n'))
     c7.EXTRA_TEMPLATES.update(spec.templates)
     c7.EXTRA_ALL += list(spec.extra_all)
+    c7.SPAWNS += list(spec.spawns)
     c7.EXTRA_OWN += list(spec.extra_own)
     c7.OVERRIDE += list(spec.replaces)
     borders, drawn = [], []

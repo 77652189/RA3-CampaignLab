@@ -349,23 +349,33 @@ def atlas_xml(m, gid):
             + '\n'.join(rows) + '\n\t</TerrainTextureAtlas>\n')
 
 
-def map_xml(m, gid, extra=None, atlas=False, also=()):
+def map_xml(m, gid, extra=None, atlas=False, also=(), made=()):
     """(map.xml text, [templates without a SageXML definition]): Includes of the object XMLs the map places that
     the static streams lack (reference includes resolve everything else against the retail streams) + GameMap.
     `extra`: our own templates, {id: {'file': 'DATA:<path under the SDK's Mods folder>', 'EditorSorting': ...}}.
     `also`: more of our XML files, included type="all" -- assets nothing references (a UnitAbilityButtonTemplate
-    points at its LogicCommand, not the other way round), which type="instance" leaves out of the stream."""
+    points at its LogicCommand, not the other way round), which type="instance" leaves out of the stream.
+    `made`: templates the game makes at run time by name (a script's spawn, an object creation list) that the map
+    does not place: a retail one the static stream lacks gets its SageXML file included type="all", as retail's
+    AlliedMapSpecific.xml does -- a type="instance" chain from a placed object brings in the OCL but not the
+    GameObject it names (bench 2026-11-16, D180: CAMP_PowerStore_AlliedBomberDrop's OCL found no
+    CAMP_AlliedBomberAircraft_Infantry_1 and made nothing). Our own templates are `also`'s business."""
     index, static = dict(sage_index()), stream_names()
+    ours = {k.lower() for k in (extra or {})}
     index.update({k.lower(): v for k, v in (extra or {}).items()})
     used = sorted(set(object_templates(m)), key=str.lower)
     need = [t for t in used if 'gameobject:' + t.lower() not in static]
-    files = sorted({index[t.lower()]['file'] for t in need if t.lower() in index}, key=str.lower)
+    placed = {t.lower() for t in used}
+    run_time = sorted({index[t.lower()]['file'] for t in made
+                       if t.lower() in index and t.lower() not in placed | ours
+                       and 'gameobject:' + t.lower() not in static} - set(also), key=str.lower)
+    files = sorted({index[t.lower()]['file'] for t in need if t.lower() in index} - set(run_time), key=str.lower)
     unknown = [t for t in need if t.lower() not in index]
     inc = ['\t\t<Include type="reference" source="DATA:static.xml"/>',
            '\t\t<Include type="reference" source="DATA:global.xml"/>',
            '\t\t<Include type="reference" source="DATA:audio.xml"/>']
     inc += [f'\t\t<Include type="instance" source="{s}"/>' for s in files]
-    inc += [f'\t\t<Include type="all" source="{s}"/>' for s in also]
+    inc += [f'\t\t<Include type="all" source="{s}"/>' for s in list(also) + run_time]
     text = ('<?xml version="1.0" encoding="UTF-8"?>\n'
             '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n'
             '\t<Tags/>\n\t<Includes>\n' + '\n'.join(inc) + '\n\t</Includes>\n' + game_map(m, gid, index)

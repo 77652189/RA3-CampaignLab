@@ -518,3 +518,51 @@ def test_contract_g6c_placed_ai_units_take_no_team_order():
                                                 'Soviet_1/teamSoviet_1', 'W')])
     assert broken('s1', made, placed=False)                    # made in the first frame: taken off alike
     assert broken('s1', placed=False) == []
+
+
+def test_a_retail_template_made_at_run_time_is_compiled_whole(monkeypatch):
+    """D180 (bench 11-16): a placed CAMP_PowerStore_AlliedBomberDrop's type="instance" include brought its OCL into the
+    stream but not CAMP_AlliedBomberAircraft_Infantry_1, the GameObject the OCL makes by name, so the drop made nothing.
+    A mission's spawns reach the build (ModSpec.spawns -> make_campnew7.SPAWNS -> map_xml made=): a retail one the
+    static stream lacks and the map does not place is included type="all", as retail's AlliedMapSpecific.xml does (a
+    file a placed object shares goes in once, whole); a placed one stays instance, one in the static stream or ours
+    (extra / also) adds nothing."""
+    import mapxml
+    import package
+    from checks import engine_acts12 as a12
+    m = a12.drop_mission()
+    assert a12.BOMBER in package.spec_of(m, a12.own(m)).spawns
+    store, bomber = 'DATA:A/Store.xml', 'DATA:A/Bomber.xml'
+    index = {'store': {'file': store}, 'bomber': {'file': bomber}, 'gi': {'file': 'DATA:A/GI.xml'},
+             'shared': {'file': 'DATA:A/Shared.xml'}}
+    monkeypatch.setattr(mapxml, 'sage_index', lambda: index)
+    monkeypatch.setattr(mapxml, 'stream_names', lambda: {'gameobject:gi'})
+    monkeypatch.setattr(mapxml, 'game_map', lambda *a: '')
+
+    def includes(placed, made, extra=None, also=()):
+        monkeypatch.setattr(mapxml, 'object_templates', lambda _m: list(placed))
+        text, _ = mapxml.map_xml(None, 'G', extra, also=also, made=made)
+        return re.findall(r'<Include type="(\w+)" source="([^"]+)"/>', text)[3:]
+    assert includes(['Store'], []) == [('instance', store)]                    # before: the bomber never came
+    assert includes(['Store'], ['Bomber', 'GI', 'Store']) == [('instance', store), ('all', bomber)]
+    assert includes(['Shared', 'Store'], ['Shared']) == [('instance', 'DATA:A/Shared.xml'), ('instance', store)]
+    index['pilot'] = {'file': store}                    # made by name, its file one a placed object's: whole, once
+    assert includes(['Store'], ['Pilot']) == [('all', store)]
+    ours = {'CNV_X': {'file': 'DATA:CNVUnits/Data/CNV_X.xml'}}
+    assert includes(['Store'], ['CNV_X'], extra=ours, also=['DATA:CNVUnits/Data/CNV_X.xml']) == \
+        [('instance', store), ('all', 'DATA:CNVUnits/Data/CNV_X.xml')]
+
+
+def test_a_spawned_template_is_linked_by_name_unless_the_static_stream_has_it(monkeypatch):
+    """A272 (bench 11-17): with the bomber's file included type="all" the drop still made nothing -- the link keeps
+    what the GameMap references, and nothing references a template an OCL names. make_campnew7.spawn_names links a
+    SPAWNS GameObject from the library by name; one the static stream has (a GI) or one already linked is left be."""
+    import make_campnew7 as c7
+    import mapxml
+    inst = lambda name, k: mapxml.Inst([k, k], None, [], name.encode(), b'', 'sdk')  # noqa: E731
+    bomber, gi, store = inst('GameObject:CAMP_Bomber', 1), inst('GameObject:GI', 2), inst('GameObject:Store', 3)
+    monkeypatch.setattr(c7, 'SPAWNS', ['camp_bomber', 'GI', 'Store'])
+    monkeypatch.setattr(mapxml, 'stream_names', lambda: {'gameobject:gi'})
+    assert c7.spawn_names([bomber, gi, store], own=[store]) == [bomber]
+    monkeypatch.setattr(c7, 'SPAWNS', [])
+    assert c7.spawn_names([bomber], own=[]) == []
