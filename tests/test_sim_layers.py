@@ -20,16 +20,18 @@ CNV = ROOT / 'experimental' / 'cnv'
 LAYER_OF = {
     'simworld': 0,
     'simunits': 1,
-    'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2,
-    'simtech': 4,
+    'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2, 'simmine': 2,
+    'simtech': 4, 'simmoney': 4,
     'simloop': 7,
 }
 
 # modules that take the world as an argument (rule 2): they reach it only through WORLD_API
-WORLD_TAKERS = {'simheal'}
+WORLD_TAKERS = {'simheal', 'simmine', 'simmoney'}
 
-# field -> the one file that may assign it (rule 3), for the blocks moved so far
-FIELD_OWNER = {'heal_at': 'simheal', 'heal_seen': 'simheal'}
+# field -> the one file that may assign it (rule 3), for the blocks moved so far. Not yet the money dicts (money,
+# income, money_cap): scripts, selling, production, repairs, spies and simai still write them directly (simmoney.py)
+FIELD_OWNER = {'heal_at': 'simheal', 'heal_seen': 'simheal',
+               'mine': 'simmine', 'nodes': 'simmine', 'mined_to': 'simmine'}
 
 
 def _load(name):

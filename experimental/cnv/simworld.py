@@ -7,8 +7,11 @@ this list. (Today the world is the Sim itself; the list is the contract that let
 touching the subsystems.) The minimal world for rule tests is simsmall.small_world.
 """
 
+CIV = 'PlyrCivilian'   # the neutral side: owns the map's scenery and civilians; pays and is paid nothing
+
 WORLD_API = frozenset({
     'bodies',          # name -> Body, every body made (dead too), in the order made
+    'living',          # () -> the bodies alive now, in bodies' order
     'own',             # the template data handle (simunits)
     'fps',             # engine frames a second
     'frame_now',       # the engine frame now

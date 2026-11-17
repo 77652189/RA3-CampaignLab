@@ -162,7 +162,7 @@ def mining_test(m, which='a'):
 # Bench 2026-11-12 (work/bench_results/mineturn*__p.json, runs CampMineT<k>P_mcp_1112_01*): 首笔 / 二笔 / 三笔
 #   0: 111 / 262 / 413 (trip 151)    45: 156 / 342 / 528 (186)    -45: 157 / 344 / 531 (187)
 #   90: 214 / 455 / 696 (241)        -90: 214 / 455 / 696 (241)   180: 296 / 619 / 942 (323)
-# with a's 269 at 135: the drive round a node turned away (sim.MINE_TURN_EXTRA; tests/test_simbench.py mining).
+# with a's 269 at 135: the drive round a node turned away (simmine.MINE_TURN_EXTRA; tests/test_simbench.py mining).
 TURNS = (0, 45, 90, 180, -45, -90)
 
 

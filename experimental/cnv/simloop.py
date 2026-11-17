@@ -134,11 +134,11 @@ def sweeps(s, frame, tick):
 
 
 def deposit(s, frame, tick):
-    s.deposit_due(frame)
+    s.wallet.deposit_due(s, frame)
 
 
 def mine(s, frame, tick):
-    s.mine_due(frame)
+    s.mining.mine_due(s, frame, lambda owner, give: s.wallet.collect(s, owner, give))   # L2 pays through L4
 
 
 def produce(s, frame, tick):

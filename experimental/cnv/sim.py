@@ -64,12 +64,15 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import parts  # noqa: E402
 import simgarrison  # noqa: E402
 import simheal  # noqa: E402
+import simmine  # noqa: E402
+import simmoney  # noqa: E402
 import siminfiltrator  # noqa: E402
 import simsweep  # noqa: E402
 import simtech  # noqa: E402
 import simunits  # noqa: E402
 import simlevel  # noqa: E402
 import simloop  # noqa: E402
+import simworld  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
 
@@ -131,7 +134,7 @@ def hit_at(table, d):
         if d <= d1:
             return v0 + (v1 - v0) * (d - d0) / (d1 - d0) if d1 > d0 else v1
     return table[-1][1]
-CIV = 'PlyrCivilian'
+CIV = simworld.CIV
 # The container's (Heidelberg, retail a03's SidesList) sides with aiTactical 255 (aiTeamBuilder alike); StartingUnits
 # and Soviet_5 are 240 (retail data read 11-14, round 216): Sim.tactical
 TACTICAL_SIDES = {'Player_1', 'Player_2', 'Soviet_1', 'Soviet_2', 'Soviet_3', 'Soviet_4', 'Soviet_6'}
@@ -149,49 +152,6 @@ ATTACK_SLACK = 10.0             # R3: an attacker stops this far inside its rang
 # a quarter of a 20-unit path cell): read for both the AI hostile gate and the firing check (work/re D162, not benched)
 UNDERSIZE = 5.0
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
-# HOOKS 7, ore mining (docs/engine/mining.md, bench 2026-11-05 engine_mining a-e): a load 250 (retail miners'
-# DeliveryCapacity), loaded at the node in 30 frames starting the frame after the miner docks, unloaded at the refinery
-# in 30 frames from its arrival, 8 a frame and the rest on the last; past MaximumGatheredValue (30000) a load is 60.
-# The node then plays MINE_REST frames before it takes the next miner, a load every 30 + 121 = 151 frames: what
-# bounds retail's facing (mineturn0 p / mineniag p trip 151, the drive alone 133; round 179 below). The data's 60 +
-# 30 + 60 (move to extract, extract, move to deliver) + 1 is 151 when they start with the loading (INFERRED: that
-# overlap, not read)
-MINE_LOAD, MINE_DOCK, MINE_REST, MINE_FULL, MINE_EMPTY = 250, 30, 121, 30000, 60
-MINE_RETRY = 15                # no node / refinery found: the miner idles 1 s and looks again
-# A leg (node <-> refinery) takes straight distance / speed + MINE_TURN_EXTRA frames, by how far the node is turned off
-# facing the leg's other end (degrees, either way alike): the miner docks at the node's front, so a node turned away
-# is driven round. Retail stands every node facing its refinery (node angle = refinery's + 180: heidelberg,
-# gibraltar, north sea). Bench 2026-11-12 checks/engine_mining.py mineturn<k> p (probe_range's pad, refinery 180 from
-# its node, an Allied miner at 50 = 54 frames straight): trips 151 / 186-187 / 241 / 323 at 0 / 45 / 90 / 180, and
-# engine_mining a 269 at 135 (its node at angle 0); a trip = 2 legs + 30 + 30 + 1. Between readings linear (INFERRED);
-# niagara's east pad (45 off) trips 185 on the bench (aitowerinc5 f, an AI's miner): the same rule, 45's 8 set to it.
-# Round 179 (checks/engine_mining.py mineturn0 q, minefar p): at 0 the trip is the node's (151, MINE_REST), not the
-# drive's -- the first visit, at a node that waits, is in c's node square 73 frames (2 x 36 + 1), the later ones 91;
-# so the leg there is 36 (-18), not the 45 (-9) a drive-bound 151 gave.
-MINE_TURN_EXTRA = ((0.0, -18.0), (45.0, 8.0), (90.0, 36.0), (135.0, 50.0), (180.0, 77.0))
-# A refinery's own collector's first leg, from where it fades in (the refinery's spot, INFERRED) rather than from the
-# refinery's dock: mineturn0 q has it in the node square at 23, the later legs at 15 from the dock (+8; its first
-# money 111 = +7); from 45 on the first money is the period's - 29 within 2 (0). Between linear (INFERRED).
-MINE_SPAWN_EXTRA = ((0.0, 7.0), (45.0, 0.0))
-
-
-def _turned_off(node, far):
-    """How far (degrees, 0 .. 180) `node`'s facing is turned off the direction to `far`."""
-    want = math.degrees(math.atan2(far[1] - node.y, far[0] - node.x))
-    return abs((math.degrees(node.angle) - want + 180.0) % 360.0 - 180.0)
-
-
-def _by_turn(table, turn):
-    for (k0, v0), (k1, v1) in zip(table, table[1:]):
-        if turn <= k1:
-            return v0 + (v1 - v0) * (turn - k0) / (k1 - k0)
-    return table[-1][1]
-
-
-def mine_extra(node, far):
-    """Frames (float) a miner's leg to or from `node` takes beyond straight distance / speed: by how far the node's
-    facing is turned off the direction to the leg's other end `far` (MINE_TURN_EXTRA)."""
-    return _by_turn(MINE_TURN_EXTRA, _turned_off(node, far))
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 SPREAD = 30.0                   # a reinforcement team's units this far apart round its waypoint (Sim.reinforce, INFERRED)
 TOGGLE_UNPACK_LAG = 0          # frames past UnpackTime x 15 a toggle's new state is first read (engine_toggle d: 16)
@@ -1130,9 +1090,9 @@ class Sim:
                                             # map default team (one more member there; engine_acts_z all)
         self.audio_end = {}                 # sound event -> when HAS_FINISHED_AUDIO holds again (Sim.played)
         self.video_end = {}                 # clip -> when HAS_FINISHED_VIDEO holds (None: never, a full-screen one)
-        self.money = {}
-        self.income = {}                    # player -> (AI income multiplier, fraction carried) (simai: ResourceMultiplierCheat)
-        self.sharing = set()                # players sharing income (PLAYER_TOGGLE_RESOURCE_SHARING)
+        self.wallet = simmoney.Money()      # the players' money (L4); the four names below are its dicts, shared
+        self.money, self.income = self.wallet.money, self.wallet.income
+        self.sharing, self.money_cap = self.wallet.sharing, self.wallet.money_cap
         self.selected = None                # the object SELECT_OBJECT selected last (NAMED_SELECTED)
         self.script_disabled = {}           # id(body) -> NAMED_SET_DISABLED types on (emp_disabled)
         self.kills = []                     # (killer's player, killer's name, template, name) by weapon (cond_retail)
@@ -1140,8 +1100,7 @@ class Sim:
         self.cond_memory = {}               # a condition's reading the frame before (NAMED_EXITED_AREA)
         self.made_frame = {}                # team template -> frame its last instance was made by a script (TEAM_CREATED)
         self._engineer_rules = {}           # template -> EngineerContain rule (mission XML is fixed)
-        self.nodes = {}                     # ore node name -> {'free': frame it takes a miner from, 'gathered', 'at'}
-        self.mined_to = None                # the last frame mine_due ran
+        self.mining = simmine.Mining()      # ore nodes and the harvesters' trips (L2)
         self.relations = dict(getattr(mission, 'relations', {}))   # (a, b) -> Enemy / Neutral / Friend
         self.team_team_rel, self.team_player_rel, self.player_team_rel = {}, {}, {}   # the overrides (hostile)
         self.team_targets = {}                  # id(body) -> the team it was told to attack (TEAM_ATTACK_TEAM)
@@ -1182,7 +1141,6 @@ class Sim:
         self.suppression_fields = []        # (end, value, x, y, radius): stationary hit contributions
         self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
         self.frame_movers = {}              # topple contact paths and measured Jet startup
-        self.money_cap = {}                 # PLAYER_SET_MONEY_CAP: player -> cap (scripts' money not held to it)
         self.refs = {}                      # reference name (UNITRef - ...) -> the Body a SET_REF_TO_... pointed it at
         self.object_lists = {}              # OBJECTLIST_ADDOBJECTTYPE: list name -> {template}, both lower case
         self.base_power = {}                # PLAYER_SET_BASE_POWER: player -> supply added to its objects' (INFERRED)
@@ -1878,199 +1836,13 @@ class Sim:
             self.change()
 
     def deposit_due(self, frame):
-        """R4: the deposit buildings a player (not the neutral side) holds pay `amount` each `frames` (Generals'
-        AutoDepositUpdate.update: the clock runs for the neutral too, it just pays nobody)."""
-        for b in self.living():
-            if b.deposit and b.deposit_at is not None and frame >= b.deposit_at:
-                b.deposit_at = frame + b.deposit[2]
-                if b.owner != CIV and b.deposit[1] > 0:
-                    self.money[b.owner] = self.money.get(b.owner, 0) + b.deposit[1]
+        self.wallet.deposit_due(self, frame)            # simmoney.Money (L4)
 
     def earn(self, owner, amount):
-        """Income (a collector's deposit) with PLAYER_TOGGLE_RESOURCE_SHARING (d115 19, bench 11-14 engine_share all):
-        a sharing earner gives each Friend that shares too amount // (k + 1) of every deposit and keeps the rest (one
-        sharer: 125 / 125 a load; two: 124 / 63 / 63). Scripts' money is never split (engine_acts flow)."""
-        mates = [p for p in sorted(self.sharing) if p != owner and self.relations.get((owner, p)) == 'Friend'] \
-            if owner in self.sharing else []
-        cut = amount // (len(mates) + 1)
-        for p in mates:
-            self._pay(p, cut)
-        self._pay(owner, amount - cut * len(mates))
+        self.wallet.earn(self, owner, amount)
 
-    def _pay(self, player, amount):
-        """One deposit under PLAYER_SET_MONEY_CAP: not paid at all if it would take the money over the cap (bench 11-15
-        mineturn0 cap: cap 400, 8 a frame of the second load paid to 394, nothing after; capz: cap 0, no income ever).
-        Scripts' money is not held to it (engine_acts_tel). A shared cut checked by its receiver's cap: INFERRED."""
-        have = self.money.get(player, 0)
-        cap = self.money_cap.get(player)
-        if cap is not None and have + amount > cap:
-            return
-        self.money[player] = have + amount
-
-    # ---- mining: HOOKS 7 (simai: after the opening the AI lives on its miners' income)
     def mine_due(self, frame):
-        """Every player's harvester (KindOf HARVESTER, not the neutral side's) up to `frame`, a frame at a time, the
-        collector's loop of docs/engine/mining.md: locate a node -> drive -> dock (the node loads it MINE_DOCK frames,
-        from the frame after it docked, once the node waits for a miner) -> the nearest unpacked refinery of its
-        owner's -> drive -> unload MINE_DOCK frames into the owner's money, load // MINE_DOCK a frame and the rest on the
-        last -> again. The node: its last one first (sticky), else the nearest (INFERRED: 'the first one found', the
-        search order not read). A miner coming to a node where another is docked waits there for good (the retail node
-        has no queue place: bench engine_mining b / e); one coming while the node plays its MINE_REST frames docks and
-        waits for it. A refinery unloads one miner at a time, the next waiting (INFERRED: its queue places not read).
-        A leg is straight distance at the miner's speed + mine_extra (by the node's facing, no path finding); the miner is
-        drawn along it. A harvester given a path (a script's move) drops its trip and starts over once it stands."""
-        start = frame if self.mined_to is None else self.mined_to + 1
-        self.mined_to = frame
-        miners = [b for b in self.living() if 'HARVESTER' in b.kinds and b.owner != CIV and b.speed > 0]
-        if not miners:
-            return
-        nodes = [b for b in self.living() if 'orenode' in b.template.lower()]
-        # a refinery's own collector, not yet started, looks for its node after the miners already there (it fades
-        # in after the map's objects are made; round 189: the placed one claims the node first)
-        miners.sort(key=lambda b: b.mine is None and b.unpack_parent is not None)
-        for fr in range(start, frame + 1):
-            for b in miners:
-                if b.alive:
-                    self._mine(b, fr, nodes)
-
-    def _leg(self, b, fr, to, state):
-        """Off to `to`: there mine_extra + distance / speed frames on, in `state` meanwhile."""
-        d = math.hypot(to[0] - b.x, to[1] - b.y)
-        node = self.bodies.get(b.mine['node']) if b.mine.get('node') else None
-        far = (b.x, b.y) if state == 'to node' else to          # the leg's end away from the node
-        extra = mine_extra(node, far) if node else 0.0
-        if b.mine.pop('spawned', False) and node and state == 'to node':     # from where it faded in
-            extra += _by_turn(MINE_SPAWN_EXTRA, _turned_off(node, far))
-        frames = int(round(d / b.speed * simunits.LIFE_FPS + extra))
-        b.mine.update(state=state, due=fr + frames, leg=((b.x, b.y), to, fr, fr + frames))
-
-    def _mine(self, b, fr, nodes):
-        """One frame of a harvester's trip (mine_due)."""
-        m = b.mine
-        if b.path:                                  # moved by someone else: start over once it stands
-            if m is not None:
-                self._undock(b)
-                b.mine = None
-            return
-        if m is None and b.building is not None:
-            # told to unpack (order_unpack; the SimpleExpansion miner armed to unpack within Distance): it does not
-            # set off for ore while that order stands. aiexpb50 (D169): the miner standing at its slot 67 behind the
-            # node was drawn onto the node by a new trip and unpacked 38 from it; the bench miner stands 98 away
-            # idle to s130 (D156). INFERRED: the game's reason (the order's state, the team's hold) not read
-            return
-        if m is None:
-            m = b.mine = {'state': 'locate', 'node': None, 'ref': None, 'due': fr, 'load': 0, 'n': 0, 'leg': None,
-                          'spawned': b.unpack_parent is not None
-                          and (b.x, b.y) == (b.unpack_parent.x, b.unpack_parent.y)}
-        if m['leg']:                                # drawn along its drive
-            (x0, y0), (x1, y1), f0, f1 = m['leg']
-            k = min(1.0, (fr - f0) / max(1, f1 - f0))
-            b.x, b.y = x0 + (x1 - x0) * k, y0 + (y1 - y0) * k
-        if fr < m['due']:
-            return
-        st = m['state']
-        if st == 'locate':
-            node = self.bodies.get(m['node']) if m['node'] else None
-            if node is None or not node.alive:
-                node = min(nodes, key=lambda n: math.hypot(n.x - b.x, n.y - b.y), default=None)
-            if node is None:
-                m['due'] = fr + MINE_RETRY
-                return
-            m['node'] = node.name
-            n = self.nodes.setdefault(node.name, {'free': 0, 'gathered': 0, 'at': None})
-            if not self._claimed(n, b, node.name):
-                n['claim'] = b.name                 # the first to look for it holds it (round 189)
-            self._leg(b, fr, (node.x, node.y), 'to node')
-        elif st == 'to node':
-            m['leg'] = None
-            n = self.nodes.setdefault(m['node'], {'free': 0, 'gathered': 0, 'at': None})
-            if (n['at'] is not None and n['at'] != b.name and self._docked(n['at'], m['node'])) \
-                    or self._claimed(n, b, m['node']):
-                m['state'], m['due'] = 'stuck', 10 ** 9     # no queue place: it never gets in
-                return
-            n['at'] = b.name
-            m['state'], m['due'] = 'docked', max(fr + 1, n['free'])
-        elif st == 'docked':                        # the node's first loading frame
-            n = self.nodes[m['node']]
-            # E180 / D165: reserve the batch here, but cargo becomes visible
-            # only when loading finishes. See work/re/e180_queuedock_load.md.
-            m['pending_load'] = MINE_LOAD if n['gathered'] < MINE_FULL else MINE_EMPTY
-            if n['gathered'] < MINE_FULL:
-                n['gathered'] += MINE_LOAD
-            m['state'], m['due'] = 'loading', fr + MINE_DOCK - 1
-        elif st == 'loading':                       # full on its last loading frame: off the frame after (the trip
-            n = self.nodes[m['node']]               # 2 x 104 + 61 = 269 of engine_mining a)
-            m['load'] = m.pop('pending_load')
-            n['at'], n['free'], n['claim'] = None, fr + MINE_REST + 1, None
-            m['state'], m['due'] = 'find refinery', fr + 1
-        elif st == 'find refinery':
-            now = self.frame_now()
-            refs = [r for r in self.living() if r.owner == b.owner and 'REFINERY' in r.kinds
-                    and not (r.unpack_end is not None and now < r.unpack_end)]
-            r = min(refs, key=lambda r: math.hypot(r.x - b.x, r.y - b.y), default=None)
-            if r is None:
-                m['due'] = fr + MINE_RETRY
-                return
-            m['ref'] = r.name
-            # E164 / D165: selection still finds a refinery lacking QueueDock, but
-            # native delivery faults immediately, before moving or paying. Reject
-            # this configuration rather than simulating a successful delivery.
-            # See work/re/e164_queuedock.md; absolute path timing remains a gap.
-            if not simunits.queue_dock(r.template, self.own):
-                raise ValueError(f'QueueDock missing on refinery {r.name!r} selected by miner {b.name!r}')
-            self._leg(b, fr, (r.x, r.y), 'to refinery')
-        elif st == 'to refinery':
-            m['leg'] = None
-            r = self.bodies.get(m['ref'])
-            if r is None or not r.alive:
-                m['state'] = 'find refinery'
-                return
-            busy = next((o for o in self.living() if o is not b and o.mine and o.mine['state'] == 'unloading'
-                         and o.mine['ref'] == r.name), None)
-            if busy is not None:                    # one at a time: wait for it to finish
-                m['due'] = busy.mine['due'] + MINE_DOCK - busy.mine['n']
-                return
-            m['state'], m['n'] = 'unloading', 0
-            self._mine(b, fr, nodes)
-        elif st == 'unloading':                     # money on the arrival frame and the next MINE_DOCK - 1
-            r = self.bodies.get(m['ref'])
-            if r is None or not r.alive:
-                m['state'] = 'find refinery'
-                return
-            m['n'] += 1
-            step = m['load'] // MINE_DOCK
-            give = step if m['n'] < MINE_DOCK else m['load'] - step * (MINE_DOCK - 1)
-            if b.owner in self.income:      # an AI's multiplier: x it, whole units paid, the fraction kept (l2_mining 4)
-                mult, frac = self.income[b.owner]
-                frac += give * mult
-                give = int(frac)
-                self.income[b.owner] = (mult, frac - give)
-            self.earn(b.owner, give)
-            m['due'] = fr + 1
-            if m['n'] >= MINE_DOCK:
-                # D165 / E164: native cargo clears when Unload finishes, not
-                # when the next ore node begins loading.
-                m['load'] = 0
-                m['state'] = 'locate'
-
-    def _claimed(self, n, b, node):
-        """Whether another miner than `b` holds node `n` (named `node`): it looked for it first and is on its way
-        there, docked or loading (bench round 189, checks/engine_mining.py g / mineaway g: the placed collector works,
-        the refinery's own waits for good, whether or not their drives meet)."""
-        o = self.bodies.get(n.get('claim')) if n.get('claim') not in (None, b.name) else None
-        return o is not None and o.alive and o.mine is not None and o.mine['node'] == node \
-            and o.mine['state'] in ('to node', 'docked', 'loading')
-
-    def _docked(self, miner, node):
-        """Whether `miner` stands docked at (or is being loaded by) `node`."""
-        o = self.bodies.get(miner)
-        return o is not None and o.alive and o.mine is not None and o.mine['node'] == node \
-            and o.mine['state'] in ('docked', 'loading')
-
-    def _undock(self, b):
-        n = self.nodes.get(b.mine['node']) if b.mine and b.mine['node'] else None
-        if n and n['at'] == b.name:
-            n['at'] = None
+        self.mining.mine_due(self, frame, lambda owner, give: self.wallet.collect(self, owner, give))   # simmine (L2)
 
     # ---- production: the second hook for simproxy's player (docs/engine/production.md, bench 2026-11-05)
     def factories(self, owner):
