@@ -4,7 +4,7 @@ an OCL weapon read as no weapon, the time-stop zone, a unit firing for ever at w
 that the quick `win` check had hidden).
 
 For every level as built (build.LEVELS, the level as played: no check's scripts) it lists what the level makes and the
-simulator (sim.py, simunits.py, simproxy.py: read here, never changed) does not model. Nothing is run -- only the levels
+simulator (sim_files: sim.py, simproxy.py and the sim* modules they import; read here, never changed) does not model. Nothing is run -- only the levels
 are compiled and a probe Sim is poked (about 10 s for all of them). Six kinds of item:
 
   武器          a template in the level whose XML declares a weapon, and simunits.fight() reads it as none (an OCL
@@ -18,7 +18,7 @@ are compiled and a probe Sim is poked (about 10 s for all of them). Six kinds of
   脚本动作(忽略)  names sim.IGNORED drops on purpose: may hide play
   脚本条件      a condition name Sim.cond does not know (it reads false)
   设备          a device's mechanism (MECHANISMS below: the table is the register, each with its source) whose probe
-                finds no code in sim.py / simunits.py / simproxy.py
+                finds no code in the simulator's files (sim_files)
   命令          orders the player gives that simproxy cannot issue (capture, stop, guard, stance), and the abilities of the
                 player's units that order_power / simproxy only log
   对打不动      a pair (shooter, target) where the shooter's every weapon that may fire at the target does nothing to it:
@@ -74,20 +74,54 @@ def code_strings(path):
 
 
 _code = {}
+STATUS_TEST = re.compile(r"'([A-Z_]+)' (?:not )?in \w+\.status")       # `'X' in b.status`: a status bit acted on
+RUN_ENDS =('sim', 'simproxy')          # the player-style run: the simulator and the proxy that gives the player's orders
+
+
+def _imported(name):
+    """The sim* modules a module of this folder imports, at the top or inside a function (a lazy import counts)."""
+    out = set()
+    for n in ast.walk(ast.parse(open(os.path.join(HERE, name + '.py'), encoding='utf-8').read())):
+        names = [a.name for a in n.names] if isinstance(n, ast.Import) else \
+            [n.module] if isinstance(n, ast.ImportFrom) and n.module and not n.level else []
+        out |= {m.split('.')[0] for m in names if m.startswith('sim')}
+    return {m for m in out if os.path.exists(os.path.join(HERE, m + '.py'))}
+
+
+def sim_files():
+    """The modules the player-style run is made of: RUN_ENDS and every sim* module they reach by import, except one
+    that imports sim itself -- it sits on top of the simulator (simshow, simchecks), it is not a part of it. Derived,
+    never a list of names: a block moved out of sim.py (ADR 0029) is counted the moment sim.py imports it."""
+    if 'files' not in _code:
+        seen, todo = set(), list(RUN_ENDS)
+        while todo:
+            m = todo.pop()
+            if m in seen:
+                continue
+            imports = _imported(m)
+            if m not in RUN_ENDS and 'sim' in imports:
+                continue
+            seen.add(m)
+            todo += sorted(imports)
+        _code['files'] = tuple(sorted(seen))
+    return _code['files']
+
+
+def _source(name):
+    return open(os.path.join(HERE, name + '.py'), encoding='utf-8').read()
 
 
 def sim_code():
-    """The string constants of sim.py, simunits.py, simproxy.py -- the three files the player-style run is made of."""
-    if not _code:
-        _code['all'] = set().union(*(code_strings(os.path.join(HERE, f)) for f in ('sim.py', 'simunits.py',
-                                                                                   'simproxy.py')))
+    """The string constants of the modules the player-style run is made of (sim_files)."""
+    if 'all' not in _code:
+        _code['all'] = set().union(*(code_strings(os.path.join(HERE, m + '.py')) for m in sim_files()))
     return _code['all']
 
 
 def status_modelled():
-    """The object statuses sim.py acts on (a `'X' in b.status` test)."""
-    src = open(os.path.join(HERE, 'sim.py'), encoding='utf-8').read()
-    return set(re.findall(r"'([A-Z_]+)' (?:not )?in \w+\.status", src)) | {'IN_STASIS'}    # Sim.modify: IN_STASIS
+    """The object statuses the simulator acts on (a `'X' in b.status` test in any of sim_files)."""
+    src = '\n'.join(_source(m) for m in sim_files())
+    return set(STATUS_TEST.findall(src)) | {'IN_STASIS'}                                    # Sim.modify: IN_STASIS
                                                                                             # = IMMOBILE NO_ATTACK UNATTACKABLE
 
 
@@ -438,8 +472,8 @@ def script_items(inf):
 
 
 # ---- 4. devices: device -> the mechanism it leans on -> is there code for it
-# (device, mechanism) -> dict(what, source, probe): a probe is a list of strings; the mechanism is modelled when sim.py /
-# simunits.py / simproxy.py holds a string constant containing any of them (None: it is plain scripts, modelled by the
+# (device, mechanism) -> dict(what, source, probe): a probe is a list of strings; the mechanism is modelled when one of the
+# simulator's files (sim_files) holds a string constant containing any of them (None: it is plain scripts, modelled by the
 # script actions above). The table is the register; add a row when a device gains a mechanism.
 MECHANISMS = {
     ('时停区', '冻结+无敌'): dict(

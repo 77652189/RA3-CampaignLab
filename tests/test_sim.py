@@ -299,17 +299,14 @@ def test_a_placed_objects_starting_health():
 # ---- Sim.unmodeled: what a run met and the simulator does not act on, recorded in one place (Sim.gap)
 
 def test_acted_status_is_what_the_source_tests():
-    """sim.ACTED_STATUS (what a status-bit gap is measured against) holds every `'X' in b.status` test in sim.py and
-    the action and condition files simact*.py / simcond*.py (IN_STASIS, UNDER_FROZEN: tested on the modifiers' bits in Sim.modify; SOLD: set by Sim.sell; GENERIC_TOGGLE_STATE:
+    """sim.ACTED_STATUS (what a status-bit gap is measured against) holds every `'X' in b.status` test in the
+    simulator's files (simcoverage.status_modelled reads them: simcoverage.sim_files) (IN_STASIS, UNDER_FROZEN: tested
+    on the modifiers' bits in Sim.modify; SOLD: set by Sim.sell; GENERIC_TOGGLE_STATE:
     the mirage aura's ObjectStatusValidation, Sim.cloaked, tested through the module's own set;
     NO_COLLISIONS: the MetaImpact XML status_exclude list, consumed through a variable;
     native keep/remove-exclusion replays live in tests/test_meta_statusgate.py)."""
-    import re
-    cnv = ROOT / 'experimental' / 'cnv'
-    src = '\n'.join(p.read_text(encoding='utf-8') for p in [cnv / 'sim.py', *sorted(cnv.glob('simact*.py')),
-                                                             *sorted(cnv.glob('simcond*.py'))])
-    assert set(re.findall(r"'([A-Z_]+)' (?:not )?in \w+\.status", src)) | \
-        {'IN_STASIS', 'UNDER_FROZEN', 'SOLD', 'GENERIC_TOGGLE_STATE', 'NO_COLLISIONS'} == \
+    import simcoverage
+    assert simcoverage.status_modelled() | {'UNDER_FROZEN', 'SOLD', 'GENERIC_TOGGLE_STATE', 'NO_COLLISIONS'} == \
         sim.ACTED_STATUS
 
 

@@ -18,7 +18,7 @@ the test); 推断 -- the simulator has code for it, no bench comparison yet; 未
 How "has code" is told:
   script names    simcoverage.name_state: the engine model's core, a Sim.act / Sim.cond branch (probed with a retail
                   use's own arguments), sim.SHOWN; sim.IGNORED is 未做 (dropped on purpose, may hide play)
-  modules, nuggets  the type's name is a string constant in sim.py / simunits.py / simproxy.py (simcoverage.sim_code)
+  modules, nuggets  the type's name is a string constant in the simulator's files (simcoverage.sim_code / sim_files)
                   -- a first cut: a module read under another name shows as 未做 until NOTES says otherwise
 
   python -I -X utf8 experimental/cnv/inventory.py            generate docs/engine/inventory.md, print the summary
