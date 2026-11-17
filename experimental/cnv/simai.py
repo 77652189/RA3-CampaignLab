@@ -692,8 +692,8 @@ class Brain:
             kinds = set(kinds.split())
             return [b for b in self.living() if not b.scenery and b.owner == owner
                     and (b.weapons and defenses if 'STRUCTURE' in b.kinds else not kinds or kinds & set(b.kinds))]
-        mine = self.fighters(side(self.player, own_kindof, own_defenses))
-        theirs = self.fighters(side(foes[0], enemy_kindof, enemy_defenses))
+        mine = self.fighters(side(self.player, own_kindof, own_defenses), True)
+        theirs = self.fighters(side(foes[0], enemy_kindof, enemy_defenses), True)
         return tc.army_time(theirs, mine), tc.army_time(mine, theirs)
 
     def attacked(self, seconds):

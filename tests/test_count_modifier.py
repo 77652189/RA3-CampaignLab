@@ -56,12 +56,22 @@ def test_both_groups_stop_with_100_of_the_deposit_left(build):
 
 
 @pytest.mark.skipif(not simai.available(), reason='no private AI model')
-def test_the_opening_deposit_never_pays_part_of_a_unit():
-    """aicmfour: the model's Deposit stops at 100 as the bench's (DEPOSIT_ONLY_PRICE_GATE) -- before, the fifth
-    copied Peacekeeper took the last 100 (9/2 by s51)."""
+def test_the_opening_deposit_never_pays_part_of_a_unit(monkeypatch):
+    """aicmfour: the model's Deposit pays whole prices only (DEPOSIT_ONLY_PRICE_GATE) -- before, the fifth copied
+    Peacekeeper took the last 100 (9/2 by s51). The rule, not the balance: what is left at the end depends on the
+    retail barracks' mix (test_count_modifier_high_group_stops_after_three_builds, strict xfail); since the model's
+    05d99e0 (a Husk target no longer falls back to a neutral object) that mix is 4 dogs + 2 Peacekeepers, all 200,
+    and it spends the Deposit to 0 without a part payment (the bench's 2 dogs + 3 Javelins leave 100)."""
+    player = simai.model()['player'].AIPlayer
+    paid, spend = [], player.spend
+
+    def record(self, account, cost):
+        paid.append((account, cost))
+        return spend(self, account, cost)
+    monkeypatch.setattr(player, 'spend', record)
     w = simai.run('aicmfour', 'b', until=60)
-    ai = next(iter(w.brains.values())).ai
-    assert ai.accounts.get('PRODUCTION') == 100.0
+    production = [c for a, c in paid if a == 'PRODUCTION']
+    assert production and all(c in set(COST['aicmfour']) for c in production), production
     assert max(v[0] for _, v in w.sim.series) == 8
 
 
