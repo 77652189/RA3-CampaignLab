@@ -12,7 +12,8 @@
 
 | 单位 | 外观从哪来 | 接进 `experimental/cnv` |
 |---|---|---|
-| 时滞炮车 `CNChrono` | GPT 四格图 → Tripo（分部件）→ `tripo_unit.py chronolag` → `make_campchrono.py`；按钮、头像 `ui_kit.py` | `chronolag.py`（`dress()` 默认穿：模型、按钮、头像、名字、展开时的青色光）；检查 `chronolag hit` / `packed` 在测试台上 PASS |
+| 时滞炮车 `CNChrono` | GPT 四格图 → Tripo（分部件）→ `tripo_unit.py chronolag` → `chrono_kit.py`；按钮、头像 `ui_kit.py` | `chronolag.py`（`dress()` 默认穿：模型、按钮、头像、名字、展开时的青色光）；检查 `chronolag hit` / `packed` 在测试台上 PASS |
+| 时滞炮车展开形态 `CNChronoDep`（2026-11-17 接） | Tripo 线交的混元模型，已切成 Hull + Turret（`work/units/chronolag_dep/split/`）→ `tripo_unit.py chronolag_dep`（`kind='split'`：转轴放到收拢模型的 `Bone_Turret` 上，炮管只转向、仰角固定；阵营色按 `panels` 里三块预留面板的盒子选，`mark_panels` + `panel_mask`）→ `chrono_kit.py` | `chronolag.dress` 把带 USER_1 的三个模型状态（展开、展开受损、展开重伤）换成它；`tests/test_chronolag_look.py`；`chronolag hit` PASS，台上看过：展开后换成新模型，炮管跟着目标转。炮塔下那块方形蓝板和侧面蓝块不在三块里，保持蓝色 |
 | 冰幕工兵：冰墙 `CNIceWall` / 长条 `CNIceBar`、冰核 `CNIceSeed`、碎冰 `CNIceRubble`、工兵贴图 `CNIceEngineer` | 原版冰岛冰川 `IL_GLACIER*` 拼装（`ice_kit.py`），工兵只换贴图；按钮、头像是原版工程师的改色加雪花（`ice_kit.engineer_icons` → `ui_kit.py CNIceEngineer`） | `icewall.py` 默认穿（`dress_engineer` 贴图；名字、按钮、头像、冻冰按钮走 `look.py`）；`ice_block`、`ice_build` PASS，`a4 --check hold` PASS（2026-10-29） |
 | 冰雕 `CNIceSculpt`（冰龙） | GPT 四格图 → Tripo 多视图 → `tripo_unit.py` 道具分支 → `ice_kit.prop` | `festival.sculpture` 默认穿 |
 | 加固冰雕 `CNIceSculptHard`（A4 的 2、3 号广场，打不碎） | 同一条冰龙的烘焙图，压暗偏灰、放大 1.15 倍（`ice_kit.VARIANTS`） | `festival.reinforced`；`devices/ice_plazas.py` 给 `无敌` 的广场摆它（关卡线文件，改了两行）；`a4 --check hold` PASS |
@@ -53,6 +54,7 @@ Tripo 订阅：用户买的是包月（专业版，推测），2026-10-20 04:00�
 2. 自由号可选：玩家自己跃迁时的闪光要给跃迁加约 1 秒准备时间（机制，归关卡线定）；跃迁取消时让充能立刻熄灭，可以把 `carrier.py` 改用 `liberty.discharged`（要关卡线同意）；五个炮塔座骨骼 `TURRET01..05` 还没接线（总控：炮塔仍是跟着飘的无人机）。
 3. 时滞炮车可以改进：UV 小块太多、概念图没画展开支腿、履带没有滚动贴图。A3 时停区机关和它是不是一回事，等策划线定。
 4. 雪堆还偏光滑，像枕头，可以加脚印、铲痕。
+5. Tripo 线 11-17 交的其余模型，等用到的那一关再接（清单、文件路径在共享笔记 `tripo-to-units-1117.md` 和 `docs/units/tripo-plan.md`）：超级要塞海上 `gfsea_v5`、空中 `gfair_v1`，巨石阵 `stonehenge_v1`（地标，走 `kind='prop'`），巨人手臂 `giant_arm_v2` 和刀 `giant_sword_hy1`。阵营色都走 `panels`（按预留面板），盒子先用 `chronolag_dep` 那种探针找（面朝上 + 偏蓝的连片区域的包围盒），再渲一张阵营色涂品红的图核对。
 
 ## 流程和工具
 

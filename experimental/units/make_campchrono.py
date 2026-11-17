@@ -37,10 +37,8 @@ UNIT, MODEL = c35.UNIT, 'CNChrono'
 SRC = os.path.join(labpaths.WORK, 'units', 'chronolag', 'game')
 BUTTON, PORTRAIT = f'Button_{UNIT}_on', f'Portrait_{UNIT}'
 PARTS = {'HULL': 'BODY', 'TURRET': 'Bone_Turret', 'BARREL': 'Bone_Turret_Pitch'}
-LEVEL = int(os.environ.get('CNV_CHRONO_LEVEL', 85))     # diffuse median (retail Allied vehicles 62..80); the bake's
-# own is 84 and level only darkens: 62 read dark and brown beside the Guardian (user 2026-10-26: "太暗了，调亮一点，
-# 青色光要看得见"), so the bake as it is, cooled, its cyan lights caught wider and lifted
-LOOK = dict(glow_margin=30, glow_floor=120, glow_lift=True, cool=1.08)
+sys.path.insert(0, HERE)
+from chrono_kit import LEVEL, LOOK              # noqa: E402  (the look, shared with chrono_kit.py)
 c7.EXTRA_OWN += [b'LogicCommand:Command_Construct' + UNIT.encode()] + \
     [p + n.encode() for n in (BUTTON, PORTRAIT) for p in (b'PackedTextureImage:', b'Texture:')]
 c4.c3.STRINGS.update({

@@ -52,6 +52,18 @@ UNITS = {
     # first guess (the deck jump's radius is 150; the final size is the levels line's call)
     'libertyisle': dict(glb='units/libertyisle/tripo/libertyisle_v1.glb', kind='platform', width=400,
                         budget=dict(BODY=12000), tex=2048, model='CNLiberty'),
+    # 时滞炮车 deployed (split_main; user 2026-11-17 "可以，用这版，交给单位线"): the Hunyuan model the Tripo line cut
+    # into Hull + Turret (work/units/tripo_batch/split_turret.py), the Turret's origin on its yaw axis; barrel to -Y
+    # at a fixed ~25 deg (yaw only). Same width over the tracks as the packed chronolag, its yaw axis put on the
+    # packed model's Bone_Turret so the gun pivot stays where it was when the model switches. Team colour by the
+    # three reserved panels (user rule 2026-11-16, docs/units/tripo-plan.md): (object, glTF-space box) -- the plates
+    # on the two track pods and the octagon on the turret roof, located by probe (blue, facing up) on 2026-11-17
+    'chronolag_dep': dict(glb='units/chronolag_dep/split/chronolag_dep_hy1_split.glb', kind='split', width=25.3,
+                          HULL='Hull', TURRET='Turret', axis=(0.0, -0.02, 0.24), align='chronolag',
+                          panels=[('Hull', (-0.205, -0.315, 0.06), (-0.085, -0.185, 0.175)),
+                                  ('Hull', (0.083, -0.315, 0.12), (0.17, -0.185, 0.175)),
+                                  ('Turret', (-0.075, -0.035, 0.22), (0.078, 0.118, 0.275))],
+                          budget=dict(HULL=4000, TURRET=1200), tex=1024, model='CNChronoDep'),
 }
 SHARP = math.radians(35)
 
@@ -322,6 +334,177 @@ def platform_main(unit, cfg, out_dir):
     print('done', out_dir, f'height {height:.1f}, core top {top:.1f}')
 
 
+PANEL_UP, PANEL_LIFT = 0.6, 8      # a panel face looks up and is at least faintly blue (drops the grey rim in its box)
+
+
+def mark_panels(ob, boxes):
+    """Team colour by reserved panels (user rule 2026-11-16), not by how blue the bake is: the faces of `ob` inside one
+    of `boxes` (min, max in the object's current space), facing up and faintly blue in its own texture -- the box
+    bounds the area, so a texture the generator darkened or brightened cannot shrink or spread it. Kept as the FACE
+    attribute 'team' (survives join and transforms); returns the faces marked."""
+    me = ob.data
+    n = len(me.polygons)
+    cen, nrm = np.zeros(n * 3), np.zeros(n * 3)
+    me.polygons.foreach_get('center', cen)
+    me.polygons.foreach_get('normal', nrm)
+    cen, nrm = cen.reshape(n, 3), nrm.reshape(n, 3)
+    inside = np.zeros(n, bool)
+    for lo, hi in boxes:
+        inside |= np.all((cen >= lo) & (cen <= hi), axis=1)
+    sel = inside & (nrm[:, 2] > PANEL_UP)
+    img = next(nd.image for m in me.materials if m and m.use_nodes for nd in m.node_tree.nodes
+               if nd.type == 'TEX_IMAGE' and nd.image and nd.image.colorspace_settings.name == 'sRGB')
+    w, h = img.size
+    px = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, 4)[..., :3] * 255
+    uv = np.zeros(len(me.loops) * 2)
+    me.uv_layers.active.data.foreach_get('uv', uv)
+    uv = uv.reshape(-1, 2)
+    start, total = np.zeros(n, int), np.zeros(n, int)
+    me.polygons.foreach_get('loop_start', start)
+    me.polygons.foreach_get('loop_total', total)
+    owner = np.repeat(np.arange(n), total)
+    u = np.zeros((n, 2))
+    np.add.at(u, owner, uv[np.concatenate([np.arange(s, s + t) for s, t in zip(start, total)])])
+    u /= total[:, None]
+    c = px[np.clip((u[:, 1] % 1) * h, 0, h - 1).astype(int), np.clip((u[:, 0] % 1) * w, 0, w - 1).astype(int)]
+    sel &= (c[:, 2] - np.maximum(c[:, 0], c[:, 1])) > PANEL_LIFT
+    att = me.attributes.new('team', 'INT', 'FACE')
+    att.data.foreach_set('value', sel.astype(int))
+    print(f'panels on {ob.name}: {int(sel.sum())} faces in {len(boxes)} boxes')
+    return int(sel.sum())
+
+
+def panel_mask(groups, size, out_png):
+    """Bake the 'team' face attribute of the high parts onto the low atlas (emission white / black) -> <model>_mask.png,
+    the file to_w3x reads for the team colour."""
+    sc = bpy.context.scene
+    sc.render.bake.target = 'IMAGE_TEXTURES'
+    img = bpy.data.images.new('mask', size, size, alpha=False)
+    img.colorspace_settings.name = 'Non-Color'
+    mats = []
+    for v in (0.0, 1.0):
+        m = bpy.data.materials.new(f'team{int(v)}')
+        m.use_nodes = True
+        nt = m.node_tree
+        nt.nodes.remove(nt.nodes['Principled BSDF'])
+        e = nt.nodes.new('ShaderNodeEmission')
+        e.inputs['Color'].default_value = (v, v, v, 1)
+        nt.links.new(e.outputs['Emission'], nt.nodes['Material Output'].inputs['Surface'])
+        mats.append(m)
+    lm = bpy.data.materials.new('mask_target')
+    lm.use_nodes = True
+    tex = lm.node_tree.nodes.new('ShaderNodeTexImage')
+    tex.image = img
+    lm.node_tree.nodes.active = tex
+    for k, (hi, lo) in enumerate(groups):
+        me = hi.data.copy()
+        tmp = bpy.data.objects.new(hi.name + '_team', me)
+        sc.collection.objects.link(tmp)
+        me.materials.clear()
+        for m in mats:
+            me.materials.append(m)
+        vals = np.zeros(len(me.polygons), int)
+        if 'team' in me.attributes:
+            me.attributes['team'].data.foreach_get('value', vals)
+        me.polygons.foreach_set('material_index', vals)
+        saved = list(lo.data.materials)
+        lo.data.materials.clear()
+        lo.data.materials.append(lm)
+        bpy.ops.object.select_all(action='DESELECT')
+        tmp.select_set(True)
+        lo.select_set(True)
+        bpy.context.view_layer.objects.active = lo
+        size_ = max(lo.dimensions)
+        sc.render.bake.cage_extrusion = 0.02 * size_
+        sc.render.bake.max_ray_distance = 0.06 * size_
+        bpy.ops.object.bake(type='EMIT', use_clear=(k == 0))
+        lo.data.materials.clear()
+        for m in saved:
+            lo.data.materials.append(m)
+        bpy.data.objects.remove(tmp)
+    img.filepath_raw = out_png
+    img.file_format = 'PNG'
+    img.save()
+    m = np.array(img.pixels[:], dtype=np.float32).reshape(size, size, 4)[..., 0]
+    print(f'team mask (panels): {(m > 0.5).mean():.3f} of the atlas')
+
+
+def split_main(unit, cfg, out_dir):
+    """A model already cut into named objects (HULL / TURRET, the turret's origin on its yaw axis): team panels marked
+    in glTF space, then turned +X forward (the barrel points to -Y), scaled to the width over the tracks (the hull's
+    x extent), its yaw axis put on the `align` unit's Bone_Turret (from that unit's parts.json) and the ground at 0;
+    collapsed, baked, the panel mask baked; bones as main()'s with no pitch part (the barrel's elevation is fixed: the
+    pitch bone sits on the yaw axis, the muzzle bones at the barrel's tip)."""
+    bpy.ops.import_scene.gltf(filepath=os.path.join(WORK, cfg['glb']))
+    obs = {o.name: o for o in bpy.context.scene.objects if o.type == 'MESH'}
+    for o in obs.values():
+        o.data.transform(o.matrix_world)
+        o.parent = None
+        o.matrix_world.identity()
+    for o in list(bpy.context.scene.objects):
+        if o.type != 'MESH':
+            bpy.data.objects.remove(o)
+    his = {g: obs[cfg[g]] for g in ('HULL', 'TURRET')}
+    for g, ob in his.items():
+        mark_panels(ob, [(Vector(lo), Vector(hi)) for name, lo, hi in cfg['panels'] if name == ob.name])
+    for g, ob in his.items():
+        ob.name = ob.data.name = 'HI_' + g
+    axis = Vector(cfg['axis'])
+    hl, hh = bbox([his['HULL']])
+    s = cfg['width'] / (hh.x - hl.x)
+    with open(os.path.join(WORK, 'units', cfg['align'], 'game', 'parts.json'), encoding='utf-8') as f:
+        at = dict((n, a) for n, p, a in json.load(f)['_pivots'])['Bone_Turret']
+    move = (Matrix.Translation(Vector((at[0], at[1], 0))) @ Matrix.Scale(s, 4) @ Matrix.Rotation(math.pi / 2, 4, 'Z')
+            @ Matrix.Translation(Vector((-axis.x, -axis.y, 0))))
+    for ob in his.values():
+        ob.data.transform(move)
+    lo_all, _ = bbox(list(his.values()))
+    for ob in his.values():
+        ob.data.transform(Matrix.Translation(Vector((0, 0, -lo_all.z))))
+    turret_at = Vector((at[0], at[1], axis.z * s - lo_all.z))
+    weld = 1e-4 * cfg['width']
+    lows = {g: low_copy(his[g], g, cfg['budget'][g], weld) for g in ('HULL', 'TURRET')}
+    uv_atlas(list(lows.values()))
+    name = cfg['model']
+    groups = [(his[g], lows[g]) for g in ('HULL', 'TURRET')]
+    images, mat = bake(groups, cfg['tex'], out_dir, name)
+    panel_mask(groups, cfg['tex'], os.path.join(out_dir, name + '_mask.png'))
+    tv = np.array([v.co[:] for v in his['TURRET'].data.vertices])
+    tip = tv[tv[:, 0] > tv[:, 0].max() - 0.04 * cfg['width']]
+    muzzle_at = Vector((tv[:, 0].max(), tip[:, 1].mean(), tip[:, 2].mean()))
+    for o in his.values():
+        bpy.data.objects.remove(o)
+    set_origin(lows['TURRET'], turret_at)
+    hl, hh = bbox([lows['HULL']])
+    th = bbox([lows['TURRET']])[1]
+    tr = cfg['width'] / 2 - 1.5
+    pv = [('BODY', None, (0, 0, 0)),
+          ('Bone_Turret', None, tuple(turret_at)), ('Bone_Turret_Pitch', 'Bone_Turret', (0.0, 0.0, 0.0)),
+          ('BONE_GUN_MUZZLE', 'Bone_Turret_Pitch', tuple(muzzle_at - turret_at)),
+          ('FXBone_Muzzle', 'Bone_Turret_Pitch', tuple(muzzle_at - turret_at + Vector((0.7, 0, 0)))),
+          ('FX_Laser', 'Bone_Turret', (0.0, 0.0, th.z - turret_at.z)), ('FX_Damage01', None, (0.0, 0.0, hh.z)),
+          ('FXTracksL', None, (hl.x, tr, 0)), ('FXTracksR', None, (hl.x, -tr, 0))] + \
+         [(f'Bone_{kind}_{fr}_{side}', None, (0.45 * (hh.x if fr == 'Front' else hl.x), tr if side == 'Left' else -tr, 2.4))
+          for kind in ('Tread', 'Tracks') for fr in ('Front', 'Rear') for side in ('Left', 'Right')]
+    export(lows, pv, out_dir)
+    renders(list(lows.values()), mat, out_dir, cfg['width'])
+    lows['TURRET'].rotation_euler.z = math.radians(60)          # the gun turned: the hull below it, the panel with it
+    sc = bpy.context.scene
+    sc.render.film_transparent = False
+    sc.render.image_settings.color_mode = 'RGB'
+    sc.render.filepath = os.path.join(out_dir, 'preview_rot60.png')
+    cam = sc.camera
+    a, e, dist = math.radians(35), math.radians(35), cfg['width'] * 3.6
+    cam.location = Vector((0, 0, 8)) + Vector((dist * math.cos(e) * math.cos(a), dist * math.cos(e) * math.sin(a),
+                                               dist * math.sin(e)))
+    cam.rotation_euler = (Vector((0, 0, 8)) - cam.location).to_track_quat('-Z', 'Y').to_euler()
+    bpy.ops.render.render(write_still=True)
+    lows['TURRET'].rotation_euler.z = 0
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out_dir, unit + '.blend'))
+    print('done', out_dir, f'scale {s:.1f}, turret at {tuple(round(c, 2) for c in turret_at)}, '
+                           f'muzzle at {tuple(round(c, 2) for c in muzzle_at)}')
+
+
 def main(unit):
     cfg = UNITS[unit]
     out_dir = os.path.join(WORK, 'units', unit, 'game')
@@ -331,6 +514,8 @@ def main(unit):
         return prop_main(unit, cfg, out_dir)
     if cfg.get('kind') == 'platform':
         return platform_main(unit, cfg, out_dir)
+    if cfg.get('kind') == 'split':
+        return split_main(unit, cfg, out_dir)
     parts = import_parts(os.path.join(WORK, cfg['glb']))
     picked = {g: [parts[i] for i in cfg[g]] for g in ('TURRET', 'BARREL')}
     used = {i for g in ('TURRET', 'BARREL') for i in cfg[g]}

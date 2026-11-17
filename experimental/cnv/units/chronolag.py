@@ -30,7 +30,8 @@ RETAIL = 'AlliedAntiVehicleVehicleTech1'        # the Guardian
 TOGGLE_COMMAND = 'Command_ToggleTargetPainter'   # its painter toggle: deploy / pack up
 COOLDOWN_BIT = 'DOES_CONTAIN_TIBERIUM'           # a C&C3 bit no RA3 XML uses (as in CampNew34)
 PHASE_STATUS = 'UNATTACKABLE NO_ATTACK NON_AUTOACQUIRABLE IN_STASIS'
-LOOK = 'CNChrono'                               # experimental/units/make_campchrono.py's model
+LOOK = 'CNChrono'                               # experimental/units/chrono_kit.py's models (written into the SDK's Art)
+DEPLOYED = 'CNChronoDep'                        # deployed: tripo_unit.py chronolag_dep (user 2026-11-17), its gun turns
 
 
 def sub1(x, old, new):
@@ -47,12 +48,19 @@ def nugget(modifier, include, owner=None):
 '''
 
 
-def dress(unit, model=LOOK):
+def dress(unit, model=LOOK, deployed=DEPLOYED):
     """The tank wearing `model` (make_campnew23.unit_xml's swap): every model of the Guardian's, its still idle
     animation, no tread scrolling (the model has no tread texture of its own); its own production button and
     selection portrait (Button_<model> / Portrait_<model>, written into the SDK's Art by experimental/units/ui_kit.py);
-    its name and description. Look only: weapons, turret, toggle, locomotor, health stay."""
+    its name and description. Look only: weapons, turret, toggle, locomotor, health stay. deployed: the model of the
+    states with USER_1 (the toggle's: deployed, also damaged), the user's 2026-11-17 展开形态 -- the same bone names, so
+    its turret (Bone_Turret, yaw only) keeps aiming at the target; None keeps `model` there."""
     x = re.sub(r'(<Model\s+Name=")[^"]*(")', lambda m: m.group(1) + model.upper() + m.group(2), unit.xml)
+    if deployed:
+        x, n = re.subn(r'<ModelConditionState\b[^>]*ConditionsYes="[^"]*\bUSER_1\b[^"]*".*?</ModelConditionState>',
+                       lambda m: m.group(0).replace(f'"{model.upper()}"', f'"{deployed.upper()}"'), x, flags=re.S)
+        assert n == 3, n                        # USER_1, USER_1 DAMAGED, USER_1 REALLYDAMAGED
+        x = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{deployed}.w3x" />')
     x = re.sub(r'AnimationName="[^"]*"', f'AnimationName="{model.upper()}_IDLE"', x)
     x = re.sub(r'\s*<TreadScrollingMap\b[^>]*/>', '', x)
     x = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{model}.w3x" />'
@@ -121,11 +129,13 @@ def dress(unit, model=LOOK):
     x = sub1(x, f'Description="Desc:{RETAIL}"', f'Description="Desc:{unit.id}"')
     x = sub1(x, f'TypeDescription="Type:{RETAIL}"', f'TypeDescription="Type:{unit.id}"')
     x = sub1(x, f'>Name:{RETAIL}<', f'>Name:{unit.id}<')
-    assert set(re.findall(r'<Model\s+Name="([^"]*)"', x)) == {model.upper()}, re.findall(r'<Model\s+Name="([^"]*)"', x)
+    models = {model.upper()} | ({deployed.upper()} if deployed else set())
+    assert set(re.findall(r'<Model\s+Name="([^"]*)"', x)) == models, re.findall(r'<Model\s+Name="([^"]*)"', x)
     unit.xml = x
     unit.strings.update({f'Name:{unit.id}': '时滞炮车', f'Type:{unit.id}': '时滞支援炮车',
                          f'Desc:{unit.id}': '不造成伤害：时滞弹把目标暂时推出时间，期间它不能移动、不能开火，也打不坏。'})
     unit.params['look'] = model
+    unit.params['deployed_look'] = deployed
     return unit
 
 
