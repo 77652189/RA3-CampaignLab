@@ -15,13 +15,31 @@ assembly (activate, update and total; work/re/handoff-archive.md) and held to th
   the end      walked out; the shooter dead or gone takes its line with it (round 17, check c: 9 / 158 / 167, the killed
                one's mid / far never hit); a stop does not cut a line already out (round 16, check b: 9 / 18 / 26)
 Not modelled: FollowTerrain (flat maps), SweepFXList, ObjectStatusValidation, a second line while one walks (a new shot
-starts another; retail has one per module -- INFERRED harmless at the bench's reload)."""
+starts another; retail has one per module -- INFERRED harmless at the bench's reload).
+
+L3 (combat). It is given the world (simworld.WORLD_API only); its host's other parts come in as `peers` (`Peers`, the
+names in PEERS only, read when used): L2 bodies' removal (destroy) and the fight's first death (mark_first_death)."""
 import math
 import re
 
 import simunits
 
 _memo, _weapon_blocks = {}, None
+
+PEERS = frozenset({'destroy', 'mark_first_death'})
+
+
+class Peers:
+    """What the lines may reach on their host (the Sim) beyond the world: the names in PEERS, read when used."""
+    __slots__ = ('host',)
+
+    def __init__(self, host):
+        self.host = host
+
+    def __getattr__(self, name):
+        if name not in PEERS:
+            raise AttributeError(f'simsweep.Peers: {name} is not lent (PEERS)')
+        return getattr(self.host, name)
 
 
 def _weapon(wid, own):
@@ -72,14 +90,15 @@ def linear_damage(template, own=None):
 class Sweeps:
     """The lines walking: started by Sim.deal on a shot, walked once a frame by due()."""
 
-    def __init__(self, sim):
-        self.sim, self.lines = sim, []
+    def __init__(self, world, peers):
+        self.world, self.peers, self.lines = world, peers, []
 
     def fire(self, by, target, life):
         """A shot of `by` at `target` whose weapon's ActivateLinearDamageNugget has Lifetime `life` s."""
-        d = linear_damage(by.template, self.sim.own)
+        world = self.world
+        d = linear_damage(by.template, world.own)
         if d is None or d['speed'] <= 0 or d['radius'] <= 0:
-            self.sim.gap('weapon', 'ActivateLinearDamageNugget', '射手没有可用的 LinearDamageUpdate')
+            world.gap('weapon', 'ActivateLinearDamageNugget', '射手没有可用的 LinearDamageUpdate')
             return
         dx, dy = target.x - by.x, target.y - by.y
         n = math.hypot(dx, dy)
@@ -89,11 +108,10 @@ class Sweeps:
         total = min(round(life * simunits.LIFE_FPS), math.ceil(d['length'] / d['speed']))
         nodes = math.ceil(d['length'] / (2 * d['radius']))
         self.lines.append(dict(by=by, x=by.x + ux * d['start'], y=by.y + uy * d['start'], ux=ux, uy=uy,
-                               frame=self.sim.frame_now(), total=max(total, 1), nodes=nodes, done=0, d=d))
-        self.sim.used.add('linear damage')
+                               frame=world.frame_now(), total=max(total, 1), nodes=nodes, done=0, d=d))
+        world.used.add('linear damage')
 
     def due(self, frame):
-        sim = self.sim
         for line in list(self.lines):
             by, d = line['by'], line['d']
             if not by.alive:                                    # round 17: the killed one's line stops with it
@@ -109,11 +127,11 @@ class Sweeps:
                 self.lines.remove(line)
 
     def hit(self, by, x, y, d, frame):
-        sim = self.sim
-        for t in sim.living():
+        world, peers = self.world, self.peers
+        for t in world.living():
             if t is by or frame < t.immune_until or t.shielded or t.indestructible:
                 continue
-            rel = sim.relation(by.owner, t.owner)
+            rel = world.relation(by.owner, t.owner)
             if (rel + 'S' if rel == 'NEUTRAL' else rel) not in d['affects']:
                 continue
             dist = math.hypot(t.x - x, t.y - y)
@@ -126,6 +144,5 @@ class Sweeps:
                 t.damage(dmg * armor * by.dealt)
                 t.last_hit, t.last_by = by.owner, by.name
                 if t.hp <= 0 and t.alive:
-                    if sim.first_death is None:
-                        sim.first_death = (sim.t, t, by)
-                    sim.destroy(t, f'被 {sim.label(by)} 的伤害线打掉')
+                    peers.mark_first_death(t, by)
+                    peers.destroy(t, f'被 {world.label(by)} 的伤害线打掉')

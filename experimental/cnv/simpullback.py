@@ -5,6 +5,10 @@ owns the threshold and nearest-place decision. This adapter supplies live
 health, faction repair places and the return order. Recycling, repair and
 air/naval entry are not implemented. Arrival geometry is INFERRED from the
 existing garrison approach; exact return seconds are not claimed.
+
+L8 (the skirmish AI's tactics adapter: it orders units, it is not an object module). It is given the world
+(simworld.WORLD_API only); its host's other parts come in as `peers` (`Peers`, the names in PEERS only, read when
+used): L5's move order (order_move).
 """
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -12,10 +16,25 @@ import xml.etree.ElementTree as ET
 import simgarrison
 import simunits
 
+PEERS = frozenset({'order_move'})
+
+
+class Peers:
+    """What the pullbacks may reach on their host (the Sim) beyond the world: the names in PEERS, read when used."""
+    __slots__ = ('host',)
+
+    def __init__(self, host):
+        self.host = host
+
+    def __getattr__(self, name):
+        if name not in PEERS:
+            raise AttributeError(f'simpullback.Peers: {name} is not lent (PEERS)')
+        return getattr(self.host, name)
+
 
 class Pullbacks:
-    def __init__(self, world):
-        self.sim = world
+    def __init__(self, world, peers):
+        self.world, self.peers = world, peers
         self.returning = {}             # unit name -> (facility, destination, owner, path object)
         self.log = []                   # seconds, unit name, facility name
         self.armies = {}
@@ -32,13 +51,14 @@ class Pullbacks:
                     for head, body in simunits._blocks(inner, 'CanAlwaysEnterObjectFilter'):
                         return head, body
                 return None
-            self.filters[template] = simunits._inherited(template, self.sim.own, read, None)
+            world = self.world
+            self.filters[template] = simunits._inherited(template, world.own, read, None)
         return self.filters[template]
 
     def accepts(self, u, g):
-        s = self.sim
+        world = self.world
         if (not u.alive or not g.alive or u.surface != 'ground'
-                or 'STRUCTURE' not in g.kinds or s.relation(u.owner, g.owner) != 'ALLIES'):
+                or 'STRUCTURE' not in g.kinds or world.relation(u.owner, g.owner) != 'ALLIES'):
             return False
         flt = self._filter(g.template)
         if flt is None:
@@ -60,22 +80,23 @@ class Pullbacks:
         return (bool(include & kinds) or named) and not (exclude & kinds or no_status & status)
 
     def reach(self, g):
-        shape = self.sim.blocks(g)
+        world = self.world
+        shape = world.blocks(g)
         return (shape[2] if shape and len(shape) == 3 else 40.0) + simgarrison.ENTER_REACH
 
     def query(self, brain, member):
         """Tactics' pullback hook: health ratio and reachable, enterable repair places."""
-        u, s = member.body, self.sim
+        u, world = member.body, self.world
         if not u.alive or u.max_hp <= 0 or u.surface != 'ground':
             return None
-        side = next((side for side, owner in s.players.items() if owner == brain.player), '')
-        faction = (s.m.sides.get(side) or {}).get('playerFaction')
+        side = next((side for side, owner in world.players.items() if owner == brain.player), '')
+        faction = (world.m.sides.get(side) or {}).get('playerFaction')
         template = self.armies.get(faction)
         places = []
-        for g in s.living():
+        for g in world.living():
             if g.template != template or not self.accepts(u, g):
                 continue
-            route = s.ground.within(u.surface, (u.x, u.y), (g.x, g.y), self.reach(g))
+            route = world.ground.within(u.surface, (u.x, u.y), (g.x, g.y), self.reach(g))
             if route is not None:
                 places.append((brain.tid(g), (g.x, g.y), True))
         return u.hp / u.max_hp, places
@@ -83,10 +104,11 @@ class Pullbacks:
     def send(self, u, g):
         if not self.accepts(u, g):
             return False
+        world, peers = self.world, self.peers
         u.goal = None
-        self.sim.order_move(u, (g.x, g.y), False)
+        peers.order_move(u, (g.x, g.y), False)
         self.returning[u.name] = (g, u.move_to, u.owner, u.path)
-        self.log.append((self.sim.t, u.name, g.name))
+        self.log.append((world.t, u.name, g.name))
         return True
 
     def busy(self, u):

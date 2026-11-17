@@ -1101,7 +1101,7 @@ class Sim:
         self._field = ((), (), ())          # this tick's fight_field (fight)
         self.first_death = None             # (t, body, killer): the fight's first death
         self.death_blasts = []              # (frame, x, y, damage, type, radius, affects, owner, by): FireWeaponWhenDead
-        self.sweeps = simsweep.Sweeps(self)  # ActivateLinearDamageNugget + LinearDamageUpdate: the lines walking
+        self.sweeps = simsweep.Sweeps(self, simsweep.Peers(self))  # ActivateLinearDamageNugget + LinearDamageUpdate: the lines walking
         self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
         self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
         self.areas = Areas(self.mm.areas)
@@ -1835,7 +1835,7 @@ class Sim:
             b.up_since[up] = self.frame_now()
         else:
             b.up_since.pop(up, None)
-        simlevel.receive(self, b, up, on, newly_held)
+        simlevel.receive(self, b, up, on, newly_held, self.__dict__.setdefault('_levelup_rules', {}))
         self.modify(b)
 
     def xml_of(self, template):

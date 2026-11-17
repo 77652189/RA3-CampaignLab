@@ -1903,7 +1903,7 @@ class SimAI:
         self._data, self._cost, self._menu, self._cs, self._kinds, self._std = {}, {}, {}, {}, {}, {}
         self.garrison = s.garrison      # HOOKS 8: the simulator's garrisons (simgarrison) take the 'enter' orders
         import simpullback
-        self.pullback = simpullback.Pullbacks(s)
+        self.pullback = simpullback.Pullbacks(s, simpullback.Peers(s))
         self.record = record            # HOOKS 9: each Brain.rec gets the read-only trail (Brain.snap); off: none
         self._assigned = {}             # player -> its personality, settled before the first frame (the engine does
         for side, info in (getattr(s.m, 'sides', None) or {}).items():   # it as it makes the player; bench aisksd2
