@@ -686,7 +686,7 @@ def test_path_to_target_is_asked_on_the_simulators_grid(lib):
 
 def test_path_to_target_cannot_judge_without_an_enemy_base(skirmish):
     (b,) = skirmish.brains.values()
-    s = b.sim
+    s = b.host.sim
     if any(x.owner != b.player and 'STRUCTURE' in x.kinds and s.enemy(b.player, x.owner) for x in s.living()):
         pytest.skip('an enemy structure still stands at 300 s')
     b.paths.clear()
@@ -700,8 +700,8 @@ def test_strategic_facts_the_brain_gives(lib):
     (b,) = w.brains.values()
     f = b.facts()
     st = b.host.mod['states']
-    assert f['harvesters'] == sum('HARVESTER' in x.kinds for x in b.sim.living() if x.owner == b.player)
-    assert f['money'](0) == b.sim.money.get(b.player, 0)
+    assert f['harvesters'] == sum('HARVESTER' in x.kinds for x in b.host.sim.living() if x.owner == b.player)
+    assert f['money'](0) == b.host.sim.money.get(b.player, 0)
     assert f['beacons'] == set()
     assert st.value('BeaconExistsHeuristic', {'Type': 'Assault', 'Exists': 'false'}, f) == 1.0
     assert st.value('MoneyHeuristic', {'Money': '0', 'Above': 'true'}, f) == float(f['money'](0) > 0)
@@ -711,7 +711,7 @@ def test_strategic_facts_the_brain_gives(lib):
     assert st.value('PowerAdvantageHeuristic', {'Value': '-1'}, f) == want                # the engine's caps (work/re/l4_states.md)
     assert st.value('RedAlertHeuristic', {}, f) is None
     # 'energy': ours by SAME_PLAYER, else the first enemy's; 'attacked': a structure / harvester of ours hurt lately
-    sup, dem = b.sim.power(b.player)
+    sup, dem = b.host.sim.power(b.player)
     assert f['energy']('SAME_PLAYER') == sup - dem
     assert st.value('EnergyHeuristic', {'Relationship': 'SAME_PLAYER', 'ExcessEnergy': str(sup - dem - 1),
                                         'Above': 'true'}, f) == 1.0

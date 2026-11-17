@@ -48,13 +48,18 @@ WORLD_TAKERS = {'simheal', 'simmine', 'simmoney', 'simmodifier', 'simlocomotion'
                 'simcrush', 'simjet', 'simmicro', 'simassign',
                 'simdamage',
                 'simlevel', 'simpullback', 'simsweep',
-                'simgarrison', 'siminfiltrator', 'simrepair'}
+                'simgarrison', 'siminfiltrator', 'simrepair',
+                'simai'}
 # (simpullback, L8 -- the AI tactics' pullback adapter -- is not in LAYER_OF for simmicro's reason: only simai imports it)
 
 # modules that reach their host beyond the world through a Peers loan: every `peers.X` they read is in their PEERS
 PEER_TAKERS = {'simorder', 'simdamage',
                'simpullback', 'simsweep',
-               'simgarrison', 'siminfiltrator'}
+               'simgarrison', 'siminfiltrator',
+               'simai'}
+# (simai, step 9d-2: a world and peers taker holding them as self.world / self.peers; it still names sim for sim.Body
+# and run()'s sim.Sim until step 10 moves Body below it -- SIM_NAMES_UNTIL_10)
+SIM_NAMES_UNTIL_10 = {'simai': {'Body', 'Sim'}}
 
 # field -> the one file that may assign it (rule 3), for the blocks moved so far. Not yet the money dicts (money,
 # income, money_cap): scripts, selling, production, repairs, spies and simai still write them directly (simmoney.py)
@@ -109,16 +114,25 @@ def import_breaks(layer_of=LAYER_OF):
     return out
 
 
-def world_breaks(takers=WORLD_TAKERS):
+def _held(e, name):
+    """`name` or `self.name` (a handle passed in, or one an object keeps)."""
+    return (isinstance(e, ast.Name) and e.id == name) or \
+        (isinstance(e, ast.Attribute) and e.attr == name and isinstance(e.value, ast.Name) and e.value.id == 'self')
+
+
+def world_breaks(takers=WORLD_TAKERS, source=None):
     api = _load('simworld').WORLD_API
     out = []
     for mod in takers:
-        for node in ast.walk(_tree(mod)):
-            if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == 'world' \
-                    and node.attr not in api:
+        tree = ast.parse(source) if source is not None else _tree(mod)
+        parent = {c: n for n in ast.walk(tree) for c in ast.iter_child_nodes(n)}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute) and _held(node.value, 'world') and node.attr not in api:
                 out.append((mod, node.attr))
             if isinstance(node, ast.Name) and node.id in ('sim', 'Sim'):
-                out.append((mod, node.id))
+                p = parent.get(node)
+                if not (isinstance(p, ast.Attribute) and p.attr in SIM_NAMES_UNTIL_10.get(mod, ())):
+                    out.append((mod, node.id))
     return out
 
 
@@ -165,7 +179,7 @@ def peer_breaks(takers=PEER_TAKERS, source=None):
                  and getattr(n.targets[0], 'id', '') in ('PEERS', 'WRITES')}
         lent, writes = table['PEERS'], table.get('WRITES', set())
         for n in ast.walk(tree):
-            if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == 'peers':
+            if isinstance(n, ast.Attribute) and _held(n.value, 'peers'):
                 if n.attr not in lent or (isinstance(n.ctx, ast.Store) and n.attr not in writes):
                     out.append((mod, n.attr))
     return out
@@ -363,8 +377,8 @@ def host_write_breaks(mods=HOST_USERS, source=None):
     for mod in mods:
         tree = ast.parse(source) if source is not None else _tree(mod)
         for fn in [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.Lambda))]:
-            def is_sim(e):
-                return isinstance(e, ast.Attribute) and e.attr == 'sim'
+            def is_sim(e):          # the Sim, or what simai holds of it since step 9d-2 (world, peers)
+                return isinstance(e, ast.Attribute) and e.attr in ('sim', 'world', 'peers')
 
             handles = {t.id for st in ast.walk(fn) if isinstance(st, ast.Assign)
                        for tgt, val in ([(st.targets[0], st.value)] if len(st.targets) == 1 else [])
@@ -384,7 +398,7 @@ def host_write_breaks(mods=HOST_USERS, source=None):
                     [n.target] if isinstance(n, (ast.AugAssign, ast.AnnAssign)) else []
                 for t in targets:
                     for x in (t.elts if isinstance(t, ast.Tuple) else [t]):
-                        if field(x) and not (isinstance(x, ast.Attribute) and x.attr == 'sim'):
+                        if field(x) and not (isinstance(x, ast.Attribute) and x.attr in ('sim', 'world', 'peers')):
                             out.append((mod, field(x)))
                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in MUTATORS \
                         and field(n.func.value):
@@ -404,3 +418,41 @@ def test_host_write_guard_bites():
            "        s.wallet.charge(p, 3)\n        self.sim = s\n")
     assert host_write_breaks(('simai',), src) == [('simai', f) for f in
                                                    ('bodies', 'income', 'money', 'seen', 't', 'team_names')]
+
+
+# step 9d-2: simai reads its host only through the world API and its Peers loan; the raw Sim it is handed is kept as
+# SimAI.sim for its callers (main, tests) and read nowhere else (SimAI.__init__ makes world and peers; run() makes it)
+AI_RAW_SIM = {'SimAI.__init__', 'run', 'main'}
+
+
+def ai_sim_breaks(source=None):
+    """(function, line) for each `<x>.sim` in simai outside AI_RAW_SIM."""
+    tree = ast.parse(source) if source is not None else _tree('simai')
+    out = []
+    for top in tree.body:
+        fns = [(top.name, top)] if isinstance(top, ast.FunctionDef) else \
+            [(f'{top.name}.{f.name}', f) for f in top.body if isinstance(f, ast.FunctionDef)] \
+            if isinstance(top, ast.ClassDef) else []
+        for q, fn in fns:
+            if q not in AI_RAW_SIM:
+                out += [(q, n.lineno) for n in ast.walk(fn) if isinstance(n, ast.Attribute) and n.attr == 'sim']
+    return out
+
+
+def test_the_ai_reads_its_host_through_world_and_peers():
+    assert not ai_sim_breaks()
+
+
+def test_ai_read_guard_bites():
+    """Mutation check: the raw Sim read again, a world read outside the API, a peers read not lent, a write through
+    world, and sim named beyond SIM_NAMES_UNTIL_10 are each caught."""
+    assert ai_sim_breaks("class Brain:\n    def f(self):\n        return self.sim.money\n") == [('Brain.f', 3)]
+    assert ai_sim_breaks("class SimAI:\n    def __init__(self, s):\n        self.sim = s\n") == []
+    src = "PEERS = frozenset({'money'})\nclass Brain:\n    def f(self):\n        return self.peers.money\n"
+    assert not peer_breaks(['simai'], src)
+    assert peer_breaks(['simai'], src.replace('peers.money', 'peers.order_move')) == [('simai', 'order_move')]
+    assert world_breaks(['simai'], "def f(self):\n    return self.world.order_move, sim.Body\n") == \
+        [('simai', 'order_move')]
+    assert world_breaks(['simai'], "def f(self):\n    return sim.Thing\n") == [('simai', 'sim')]
+    assert host_write_breaks(('simai',), "class B:\n    def f(self):\n        self.world.money[p] = 3\n") == \
+        [('simai', 'money')]

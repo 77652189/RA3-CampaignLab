@@ -76,6 +76,30 @@ import sim  # noqa: E402
 import simproxy  # noqa: E402
 import simunits  # noqa: E402
 import simmicro  # noqa: E402
+import simworld  # noqa: E402
+
+# What the skirmish AI reads on its host (the Sim) beyond the world (simworld.WORLD_API): the orders it gives, the
+# mission's AI settings, the player systems it asks (money, power, production) and the combat reads its blocks lean on.
+# It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
+PEERS = frozenset({'add_team_lookup', 'advance', 'ai', 'ai_paused', 'ai_priorities', 'ai_switches', 'attachments',
+                   'base_construction_disabled', 'border', 'can_build', 'can_hit', 'ending', 'engineer_entry',
+                   'expected_damage', 'firing', 'flags', 'in_range', 'modify', 'money', 'offers', 'order_attack',
+                   'order_build', 'order_capture', 'order_move', 'order_unpack', 'power', 'proto', 'queues',
+                   'reach_of', 'take_personality', 'toggle_miner_armor', 'upgrade_sellers', 'volleys', 'wallet'})
+
+
+class Peers:
+    """What the skirmish AI may read on its host (the Sim) beyond the world: the names in PEERS, read when used."""
+    __slots__ = ('host',)
+
+    def __init__(self, host):
+        self.host = host
+
+    def __getattr__(self, name):
+        if name not in PEERS:
+            raise AttributeError(f'simai.Peers: {name} is not lent (PEERS)')
+        return getattr(self.host, name)
+
 
 FPS = 15
 # the engine's word for a tactic type in its team names where it is not the type itself (C's team log
@@ -160,8 +184,8 @@ class Unit:
     """One of the AI's movers as teams.py wants it: template, kindof, surface, pos, team (TeamMaker writes it).
     One object a body for the whole run (teams test membership by identity)."""
 
-    def __init__(self, body, sim=None):
-        self.body, self.sim = body, sim
+    def __init__(self, body, peers=None):
+        self.body, self.peers = body, peers     # peers: the host's loan (Peers), for in_combat's firing / volleys
         self.template = body.template
         self.kindof = set(body.kinds)
         self.surface = 'AIR' if 'AIRCRAFT' in body.kinds else 'AMPHIBIOUS' if 'AMPHIBIOUS' in body.kinds else \
@@ -190,8 +214,8 @@ class Unit:
         """What TeamTemplate.AllowRecruitUnitsInCombat false keeps out (teams.recruit, work/re b220): a live target
         within the current weapon's range. Here: the body aimed at someone last tick (Sim.aim picks only targets in
         range) -- INFERRED: the engine keeps the target between shots; this sees it only on the ticks it fires."""
-        s = self.sim
-        return s is not None and any(a is self.body for _, _, a in s.firing + s.volleys)
+        peers = self.peers
+        return peers is not None and any(a is self.body for _, _, a in peers.firing + peers.volleys)
 
     def __repr__(self):
         return f'Unit({self.template} {self.body.name})'
@@ -201,12 +225,12 @@ class Brain:
     """One AI player of the simulator's: the AIPlayer and the world it is given (yard, factories, units, the view)."""
 
     def __init__(self, host, player, side, personality, frame):
-        self.host, self.sim, self.player = host, host.sim, player
+        self.host, self.world, self.peers, self.player = host, host.world, host.peers, player
         m = host.mod
         import simtech
         # the player's faction (the map's playerFaction, else by name) for the openings' Side (d66_b_fields.md:
         # an opening of another faction is skipped; none left = the opening is complete at once)
-        faction = simtech.faction_of(player, (getattr(self.sim.m, 'sides', {}) or {}).get(side))
+        faction = simtech.faction_of(player, (getattr(self.world.m, 'sides', {}) or {}).get(side))
         self.ai = m['player'].AIPlayer(host.data, personality, DIFFICULTY.get(host.level, 'MEDIUM'),
                                        ctx={'path to target': self.path_to_target}, rng=random.Random(host.seed),
                                        index=side_index(side), side=faction and f'PlayerTemplate:{faction}')
@@ -216,7 +240,7 @@ class Brain:
         # ResourceMultiplierCheat: the AI's deposits x the line for its difficulty (Sim.mine_due; data.resource_multiplier)
         mult = getattr(host.data, 'resource_multiplier', lambda *a: 1.0)(personality, self.ai.difficulty)
         if mult != 1.0:
-            self.sim.wallet.multiply_income(player, mult)         # simmoney (L4)
+            self.peers.wallet.multiply_income(player, mult)         # simmoney (L4)
         self.paths = {}                 # (surface, template, condition) -> (frame asked, answer)
         self.path_rng = random.Random(host.seed)    # the spot's start angles (the engine: the logic random)
         self.tower_rng = random.Random(host.seed)   # a base defence's angle and radius jitter (its own: no other draw moves)
@@ -232,7 +256,7 @@ class Brain:
         self.ai.build_offers = self.build_offers
         if hasattr(self.ai, 'power'):       # an engine model with the structure build states (POWER / TECH)
             self.ai.power = self.power_now
-            self.ai.energy_of = lambda t: simunits.energy(t, self.sim.own)
+            self.ai.energy_of = lambda t: simunits.energy(t, self.world.own)
         self.ai.near_factory = self.near_factory
         self.ai.upgrade_offers = self.upgrade_offers
         self.ai.upgrader = self.upgrade
@@ -258,7 +282,7 @@ class Brain:
         self.rec = {'frames': [], 'orders': [], 'deaths': {}}   # HOOKS 9: filled only with SimAI(record=True)
         self._rec_runs, self._rec_mem, self._rec_bodies = {}, {}, {}
         self._team_names = None         # engine team name -> the model's team key (state, tactic id, template index)
-        self.sim.add_team_lookup(self.team_named)
+        self.peers.add_team_lookup(self.team_named)
         yards = self.yards()
         self.home = (yards[0].x, yards[0].y) if yards else (0.0, 0.0)
         # Dual-yard probe: the initial AI base exists before the scripted yard.
@@ -267,16 +291,16 @@ class Brain:
         self.expansion_anchor = yards[0] if len(yards) == 1 else None
         # Initial-yard registration order is INFERRED from the two-base probe;
         # retain stable ids when a yard disappears, never enumerate live yards.
-        self.expansion_initial_yards = tuple(yards) if self.sim.m.facts.get('initial dual bases') else ()
+        self.expansion_initial_yards = tuple(yards) if self.world.m.facts.get('initial dual bases') else ()
         tg = m['targets']
-        foes = frozenset(p for p in self.sim.players.values() if p != player and self.sim.enemy(player, p))
-        self.view = tg.View(player, [], enemies=foes, waypoints=self.sim.waypoints,
+        foes = frozenset(p for p in self.world.players.values() if p != player and self.world.enemy(player, p))
+        self.view = tg.View(player, [], enemies=foes, waypoints=self.world.waypoints,
                             # E81/E87: Location uses terrain, including stationary water structures.
                             # INFERRED at shorelines, bridges and for airborne targets.
-                            water_at=lambda x, y: self.sim.ground.z(x, y) < self.sim.ground.water,
+                            water_at=lambda x, y: self.world.ground.z(x, y) < self.world.ground.water,
                             expansion_candidates=(self.expansion_candidates
-                                                  if (self.sim.m.facts.get('dual bases')
-                                                      or self.sim.m.facts.get('expansion')) else None))
+                                                  if (self.world.m.facts.get('dual bases')
+                                                      or self.world.m.facts.get('expansion')) else None))
         self.base = self.powers = None
         self.attach(host.blocks)
 
@@ -300,10 +324,10 @@ class Brain:
                                        act=self.act, micro=h.data_of('tactics micro'), fight=self.fight,
                                        houses=lambda ai, u: self.garrisons(u, False),
                                        defenses=lambda ai, u: self.garrisons(u, True),
-                                       crush=lambda ai, f, foe: simcrush.eligible(self.sim, f, foe, self.sim.attachments),
+                                       crush=lambda ai, f, foe: simcrush.eligible(self.world, f, foe, self.peers.attachments),
                                        pullback=lambda ai, u: h.pullback.query(self, u),
                                        # GatherWaypoint: the map's waypoint by name, None when absent (D148)
-                                       gather_point=lambda ai, tac: self.sim.waypoints.get(getattr(tac, 'gather', '')
+                                       gather_point=lambda ai, tac: self.world.waypoints.get(getattr(tac, 'gather', '')
                                                                                            or None))
         self.tactics.rng = random.Random(h.seed)    # state 2's RandomTargetScoreModifier / TimeToKeepTarget
         self.tactics.reach = self.reach             # PathfindingCheckType's kick (a model that has it; D152)
@@ -359,7 +383,7 @@ class Brain:
         """The mission's SKIRMISH_AI_* switches (sim.AI_SWITCHES, kept by Sim.act) told to the AI as they change
         (work/re l4_aiswitches.md): enemy priorities over the enemies now, repairs, rebuild with a snapshot of the
         own structures."""
-        got = self.sim.ai_switches.get(self.player, {})
+        got = self.peers.ai_switches.get(self.player, {})
         seen = getattr(self, '_switched', {})
         Command = self.host.mod['player'].Command
         for name, v in got.items():
@@ -370,13 +394,13 @@ class Brain:
             elif name == 'SKIRMISH_AI_USE_REPAIRS':
                 self.ai.tell(Command('use repairs', {'on': v}))
             elif name == 'SKIRMISH_AI_USE_REBUILD_SYSTEM':
-                own = [(b.template, b.x, b.y) for b in self.sim.living()
+                own = [(b.template, b.x, b.y) for b in self.world.living()
                        if b.owner == self.player and 'STRUCTURE' in b.kinds and not b.scenery]
                 self.ai.tell(Command('use rebuild', {'on': v, 'structures': own}))
         self._switched = dict(got)
         # SET_ENEMY_PLAYER_PRIORITY, each call once in order (bench 11-10 checks/engine_aiprio.py); a frame's calls
         # after its SET_ALL (one before it in the same frame is not ordered: INFERRED rare)
-        calls = self.sim.ai_priorities.get(self.player, [])
+        calls = self.peers.ai_priorities.get(self.player, [])
         for enemy, n in calls[getattr(self, '_prio_seen', 0):]:
             if enemy is None:       # SET_FAVORED_ENEMY's clear (sim.py, A 220 bench engine_aifav: the table emptied)
                 self.ai.tell(Command('enemy priorities', {'n': 0}))
@@ -385,7 +409,7 @@ class Brain:
         self._prio_seen = len(calls)
 
     def base_of(self, player):
-        ys = [b for b in self.sim.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery]
+        ys = [b for b in self.world.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery]
         y = next((b for b in ys if 'CONSTRUCTION_YARD' in b.kinds), ys[0] if ys else None)
         return (y.x, y.y) if y else None
 
@@ -406,13 +430,13 @@ class Brain:
         # CAPTURED cannot be resolved from current ownership. Do not claim this
         # provider tests that flag; this hypothesis covers ordinary own yards.
         tg = self.host.mod['targets']
-        nodes = [b for b in self.sim.living() if b.template == 'OreNode']
+        nodes = [b for b in self.world.living() if b.template == 'OreNode']
         anchor = self.expansion_anchor
         registered = self.expansion_initial_yards or ((anchor,) if anchor is not None else ())
         yards = [(bid, yard) for bid, yard in enumerate(registered)
                  if (yard in self.yards()
                      and not yard.scenery
-                     and (getattr(yard, 'unpack_end', None) or 0) <= self.sim.frame_now())]
+                     and (getattr(yard, 'unpack_end', None) or 0) <= self.world.frame_now())]
         candidates = []
         for bid, yard in yards:
             base_types = {'MAIN_BASE'}
@@ -441,8 +465,8 @@ class Brain:
     def base_object(self, player):
         """states.base_object over a player's living, unpacked structures: preferred = CONSTRUCTION_YARD, rank = cost
         (INFERRED: which template bit / value the engine reads is not known)."""
-        st, now = self.host.mod['states'], self.sim.frame_now()
-        ys = [b for b in self.sim.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery
+        st, now = self.host.mod['states'], self.world.frame_now()
+        ys = [b for b in self.world.living() if b.owner == player and 'STRUCTURE' in b.kinds and not b.scenery
               and (getattr(b, 'unpack_end', None) or 0) <= now]
         return st.base_object(ys, lambda b: 'CONSTRUCTION_YARD' in b.kinds, lambda b: self.host.cost(b.template))
 
@@ -451,7 +475,7 @@ class Brain:
         QuickDoesPathExist = the simulator's grid of the member's surface joins it to the point (its nearest open
         cell, Ground.snap); QuickDoesAttackPathExist = to some open spot within its longest weapon's range of the
         point (INFERRED: sixteen bearings at half and nine tenths of the range stand for the engine's search)."""
-        b, g = u.body, self.sim.ground
+        b, g = u.body, self.world.ground
         if b.surface == 'air' or not b.alive:
             return True
         here = (b.x, b.y)
@@ -495,23 +519,23 @@ class Brain:
         got = self.paths.get(key)
         if got is not None and self.frame - got[0] < PATH_EVERY:
             return got[1]
-        st, s = self.host.mod['states'], self.sim
+        st, world = self.host.mod['states'], self.world
         mine = self.base_object(self.player)
-        foes = [p for p in s.players.values() if p != self.player and s.enemy(self.player, p)]
+        foes = [p for p in world.players.values() if p != self.player and world.enemy(self.player, p)]
         them = st.target_player(foes, self.base_object)
         if mine is None or them is None:
             answer = None
         else:
-            stats = simunits.stats(template, s.own) if template else {'speed': None}
+            stats = simunits.stats(template, world.own) if template else {'speed': None}
             if not stats.get('speed'):
                 answer = False                                   # read (D175 why=noloco): no locomotor -> no way
             else:
                 grid = 'water' if surface == 'Water' else 'ground'   # read: cell type Water 7 / Land 0
-                ok = lambda p: s.ground.open(grid, *p)           # noqa: E731
+                ok = lambda p: world.ground.open(grid, *p)           # noqa: E731
                 theirs = self.base_object(them)
                 a = st.spot((mine.x, mine.y), ok, self.path_rng)
                 b = st.spot((theirs.x, theirs.y), ok, self.path_rng)
-                answer = a is not None and b is not None and s.ground.route(stats['surface'], a, b) is not None
+                answer = a is not None and b is not None and world.ground.route(stats['surface'], a, b) is not None
         self.paths[key] = (self.frame, answer)
         return answer
 
@@ -522,7 +546,7 @@ class Brain:
 
     def body_of(self, tid):
         name = next((k for k, v in self.ids.items() if v == tid), None)
-        return self.sim.bodies.get(name) if name else None
+        return self.world.bodies.get(name) if name else None
 
     def engine_team_names(self):
         """{engine name: model team key}: the name table the engine builds once when the AI is made -- every strategic
@@ -562,7 +586,7 @@ class Brain:
         if key is None:
             parts = bare.rsplit('_', 2)
             if not (owner and len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit()) or \
-                    any(sim.same_team(b.team, team) for b in self.sim.living()):
+                    any(simworld.same_team(b.team, team) for b in self.world.living()):
                 return None
             return False, []
         teams = [t for k, t in self.ai.teams.teams.items() if k[:3] == key]
@@ -578,15 +602,15 @@ class Brain:
         they were not there; since sim.py spawns them (Codex E 7b9bb57) counting them turned the Peacekeeper's
         expected efficiency against conscripts 0.033 -> 1e-5 (nothing it has hits them) and moved the Cleanup
         attack. Whether the engine's unit category and the target scan skip slaves (work/re/l4_efficiency.md) is NOT READ."""
-        return [b for b in self.sim.living() if getattr(b, 'spawn_parent', None) is None]
+        return [b for b in self.world.living() if getattr(b, 'spawn_parent', None) is None]
 
     def look(self, frame):
         """The view's things (living bodies, including garrisonable scenery, but not other scenery or slaves; the whole map,
         INFERRED) and who got hurt. Rebuilt once a DT tick (bodies move and fight once a tick)."""
-        s, tg = self.sim, self.host.mod['targets']
-        if self.seen_t == s.t:
+        world, tg = self.world, self.host.mod['targets']
+        if self.seen_t == world.t:
             return
-        self.seen_t = s.t
+        self.seen_t = world.t
         things = []
         for b in self.living():
             # NeutralGarrison's native candidate scan includes retail map houses
@@ -599,7 +623,7 @@ class Brain:
             if b.hp < self.hp.get(b.name, b.hp):
                 self.hurt_at[i] = frame
             self.hp[b.name] = b.hp
-            owner = b.owner if b.owner != sim.CIV else ''
+            owner = b.owner if b.owner != simworld.CIV else ''
             things.append(tg.Thing(i, owner, b.template, frozenset(b.kinds), frozenset(b.status), b.x, b.y,
                                    water=b.surface == 'water', value=float(self.host.cost(b.template)),
                                    hits=simproxy._hits(b.weapons) if b.weapons else frozenset(),
@@ -640,7 +664,7 @@ class Brain:
                'has neutral': {t.template for t in self.view.things if not t.owner},
                'kindof': self.host.kinds,                # an ObjectFilter's KindOf Include / Exclude (D61 3)
                'harvesters': sum('HARVESTER' in b.kinds for b in mine),               # INFERRED category 0x14
-               'money': lambda account: self.sim.money.get(self.player, 0),          # one account in the simulator
+               'money': lambda account: self.peers.money.get(self.player, 0),          # one account in the simulator
                'beacons': set(),                                                     # no beacons in the simulator
                'power advantage': self.power_advantage,
                'tech buildings': self.tech_buildings(),
@@ -651,7 +675,7 @@ class Brain:
                # simulator's skirmish runs (aiskirm) do not show -- B handoff 137
                'own income': int(any('REFINERY' in b.kinds for b in mine)) or self.income(self.player)}
         if foes:                                     # INFERRED (work/re/l4_states.md): the engine's enemy = the first of the enemies here
-            out['opponent funds'] = self.sim.money.get(foes[0], 0)
+            out['opponent funds'] = self.peers.money.get(foes[0], 0)
             out['income'] = (self.income(self.player), self.income(foes[0]))
         if 'targets' in self.host.blocks:
             out['target'] = self.has_target
@@ -674,7 +698,7 @@ class Brain:
         RegisteredObjectSets.xml; the player's one SAME_PLAYER). players: the game's count is not read: INFERRED the
         players owning something alive, the civilians not counted (it only matters once the player owns one)."""
         tech = [b for b in self.living() if {'CAPTUREFLAG', 'NEUTRAL_TECH'} & set(b.kinds)]
-        players = {b.owner for b in self.living() if b.owner != sim.CIV and not b.scenery}
+        players = {b.owner for b in self.living() if b.owner != simworld.CIV and not b.scenery}
         return sum(b.owner == self.player for b in tech), len(tech), len(players)
 
     def power_advantage(self, own_kindof, enemy_kindof, own_defenses, enemy_defenses):
@@ -715,7 +739,7 @@ class Brain:
             if not foes:
                 return None
             who = foes[0]
-        sup, dem = self.sim.power(who)
+        sup, dem = self.peers.power(who)
         return sup - dem
 
     def has_target(self, st):
@@ -758,7 +782,7 @@ class Brain:
         if kind == 'hunt':
             state.command(t)
             b.goal = None
-            self.sim.order_move(b, (t.x, t.y), True)
+            self.peers.order_move(b, (t.x, t.y), True)
             return
         if kind == 'attack':                    # the team state's 0 / 6: attack the current enemy (a Thing id)
             if getattr(b, 'unpack_here', False) and b.building is not None:
@@ -773,7 +797,7 @@ class Brain:
                     # at the AI's own turret, bench aibdi0 / aibdi2)
                     self.host.garrison.send(b, t)
                     return
-                self.sim.order_attack(b, t.name)
+                self.peers.order_attack(b, t.name)
             return
         if kind == 'enter':                     # EnterGarrisons / EnterBaseDefenses: into a building (a Thing id)
             t = self.body_of(arg)
@@ -787,7 +811,7 @@ class Brain:
         if kind == 'move' and slot is not None and math.hypot(float(arg[0]) - slot[0][0],
                                                               float(arg[1]) - slot[0][1]) < 1.0:
             _, arg, face = slot                 # SimpleExpansion's formation move: this member's slot (D168)
-        self.sim.order_move(b, (float(arg[0]), float(arg[1])), kind == 'attack-move', face=face)
+        self.peers.order_move(b, (float(arg[0]), float(arg[1])), kind == 'attack-move', face=face)
 
     def expansion_slots(self, team, p):
         """SimpleExpansion's formation move to node p (EXPANSION_ROW): {member name: (p, slot, facing)}, every living
@@ -796,7 +820,7 @@ class Brain:
         if not live:
             return {}
         foes = [t for t in self.living() if not t.scenery and t.owner != self.player and t.owner in self.view.enemies
-                and any(self.sim.can_hit(w, t) for b in live for w in b.weapons)]
+                and any(self.peers.can_hit(w, t) for b in live for w in b.weapons)]
         o = min(foes, key=lambda t: math.hypot(t.x - p[0], t.y - p[1]), default=None)
         if o is not None:
             a = math.atan2(o.y - p[1], o.x - p[0])
@@ -846,10 +870,10 @@ class Brain:
         t = self.body_of(thing.id) if thing is not None else None
         if t is None or not t.alive or t.owner == self.player:
             return True
-        live = [u.body for u in team.members if u.body.alive and self.sim.engineer_entry(u.body, t)]
+        live = [u.body for u in team.members if u.body.alive and self.peers.engineer_entry(u.body, t)]
         for b in live:
             if b.mode != 'capture' or b.goal is not t:
-                self.sim.order_capture(b, t.name)
+                self.peers.order_capture(b, t.name)
         return not live
 
     def approach(self, team, kind, thing, distance):
@@ -882,7 +906,7 @@ class Brain:
             if b.building is not None and getattr(b, 'unpack_ordered', False):
                 armed = True
             elif not getattr(b, 'unpack_ordered', False) and \
-                    self.sim.order_unpack(b, p, stand=distance, here=distance is not None,
+                    self.peers.order_unpack(b, p, stand=distance, here=distance is not None,
                                             send=distance is None):
                 b.unpack_ordered = was = True
                 armed = b.building is not None or armed
@@ -893,14 +917,14 @@ class Brain:
         template: the rate counts the weapons the AI's template-against-template rate takes (simunits.template_weapons:
         one per slot, none that needs an upgrade or an ObjectStatus; engine line B round 227, read), not the ones
         the body holds -- the expected efficiency's."""
-        tc, s = self.host.mod['tactics'], self.sim
+        tc, world, peers = self.host.mod['tactics'], self.world, self.peers
         memo = self.__dict__.setdefault('_template_guns', {})
 
         def guns_of(b):
             if not template:
                 return b.weapons
             if b.template not in memo:
-                memo[b.template] = simunits.template_weapons(b.template, s.own)
+                memo[b.template] = simunits.template_weapons(b.template, world.own)
             return b.weapons if memo[b.template] is None else memo[b.template]
 
         def rate_of(b):
@@ -910,22 +934,22 @@ class Brain:
                 t = o.body
                 # each damage part its own armour percent (simunits ai_parts: the AI sums a weapon's nuggets and
                 # its warhead's, l4_efficiency.md 3, read); a weapon without parts as fight does
-                return sum(sum(d * sim.simunits.percent(t.armor, ty) / 100.0 for d, ty in w['ai_parts'])
-                           if w.get('ai_parts') else w['dps'] * sim.simunits.percent(t.armor, w['type']) / 100.0
-                           for w in guns if s.can_hit(w, t))
+                return sum(sum(d * simunits.percent(t.armor, ty) / 100.0 for d, ty in w['ai_parts'])
+                           if w.get('ai_parts') else w['dps'] * simunits.percent(t.armor, w['type']) / 100.0
+                           for w in guns if peers.can_hit(w, t))
             return rate
 
         def fighter(b, i):
             # reach = the engine's longest-range read: the weapon's AttackRange less 5 (sim.Sim.reach_of), no radii
             # (work/re/d131_triggers.md 1, read; its height and range-bonus terms not modelled); a member with no weapon 0
             f = tc.Fighter(i, (b.x, b.y), b.hp, b.max_hp, b.speed,
-                           max((s.reach_of(w) for w in b.weapons if w.get('range')), default=0.0),
+                           max((peers.reach_of(w) for w in b.weapons if w.get('range')), default=0.0),
                            b.sight or b.vision,
                            'STRUCTURE' in b.kinds, rate_of(b))
             f.body = b
             f.template, f.kinds = b.template, frozenset(b.kinds)
             f.radius = b.radius                     # the search circle reaches its edge (work/re d149, bench airett)
-            f.can_fire = lambda other: any(s.can_hit(w, other.body) and s.in_range(b, other.body, w)
+            f.can_fire = lambda other: any(peers.can_hit(w, other.body) and peers.in_range(b, other.body, w)
                                            for w in b.weapons)
             return f
         return [fighter(b, self.tid(b)) for b in bodies]
@@ -970,7 +994,7 @@ class Brain:
 
     def radius_of(self, tid):
         b = self.body_of(tid)
-        sh = self.sim.blocks(b) if b else None
+        sh = self.world.blocks(b) if b else None
         return sh[2] if sh and len(sh) == 3 else 40.0
 
     def ordered_aim(self, b):
@@ -1012,17 +1036,17 @@ class Brain:
             if 'Command_ToggleArmorUp' in self.host.command_set(b.template):
                 cache = self.__dict__.setdefault('_miner_toggles', {})
                 if b.template not in cache:
-                    inner = next((inner for h, inner in simunits._blocks(self.sim.xml_of(b.template),
+                    inner = next((inner for h, inner in simunits._blocks(self.world.xml_of(b.template),
                                   'ToggleStatusSpecialAbilityUpdate') if simunits._attr(h, 'SpecialPowerTemplate') ==
                                   'SpecialPower_ToggleArmorUp'), '')
                     cache[b.template] = mc.parse_toggle(ET.fromstring('<update>' + inner + '</update>'))
                 toggles = cache[b.template]
             units.append(mc.Unit(b.name, (b.x, b.y), b.hp, b.max_hp,
                                  [powers[c] for c in self.host.command_set(b.template)
-                                  if c in powers and simmicro.ready(self.sim, b, c)],
+                                  if c in powers and simmicro.ready(self.world, b, c)],
                                  target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=t.name),
                                  weapon_range=reach, cost=self.host.cost(b.template),
-                                 damage=lambda behind, ahead, b=b: self.sim.expected_damage(b, behind, ahead, now=frame),
+                                 damage=lambda behind, ahead, b=b: self.peers.expected_damage(b, behind, ahead, now=frame),
                                  toggles=toggles, toggle_index=int(b.armor_up)))
         enemies = [sp.Thing((t.x, t.y), t.kindof, int(t.value), name=str(t.id)) for t in self.view.things
                    if t.owner in self.view.enemies]
@@ -1032,7 +1056,7 @@ class Brain:
                 continue
             # Bounded native-beacon contract: reject unsupported filters rather than
             # treating all enemies as threats. Multi-threat selection remains a gap.
-            root = ET.fromstring(self.sim.xml_of(b.template))
+            root = ET.fromstring(self.world.xml_of(b.template))
             info = next((e for e in root.iter() if e.tag.endswith('}SkirmishAIInformation')
                          or e.tag == 'SkirmishAIInformation'), None)
             if info is None or 'DodgeSafetyDistance' not in info.attrib:
@@ -1063,20 +1087,20 @@ class Brain:
     def fire_unit(self, ai, key, u, info):
         """Execute toggles and C's bounded self-power bridge; otherwise record intent."""
         self.fired.append((self.frame, key, u.name, info.command))
-        b = self.sim.body(u.name)
-        if b and b.owner == self.player and self.sim.toggle_miner_armor(b, info.command):
-            self.sim.note('AI', f'{u.name} 执行 {info.command}')
+        b = self.world.body(u.name)
+        if b and b.owner == self.player and self.peers.toggle_miner_armor(b, info.command):
+            self.world.note('AI', f'{u.name} 执行 {info.command}')
             return
-        if b and b.owner == self.player and simmicro.fire(self.sim, b, info.command, self.sim.modify):
+        if b and b.owner == self.player and simmicro.fire(self.world, b, info.command, self.peers.modify):
             state = self.__dict__.get('_hunt_goals', {}).get(b.name)
             if (state is not None and state.state == 33
                     and info.command == simmicro.COMMAND):
                 state.charge_finished()
                 b.goal = None
                 if state.pursuit is not None and state.pursuit.alive:
-                    self.sim.order_move(b, (state.pursuit.x, state.pursuit.y), True)
+                    self.peers.order_move(b, (state.pursuit.x, state.pursuit.y), True)
             return
-        self.sim.note('AI', f'{self.sim.who(self.player)} 微操想用 {info.command}（{u.name}；模拟器未接技能）')
+        self.world.note('AI', f'{self.world.who(self.player)} 微操想用 {info.command}（{u.name}；模拟器未接技能）')
 
     # ---- what the AI asks of the world
     def is_structure(self, t):
@@ -1084,14 +1108,14 @@ class Brain:
 
     def factories(self):
         """Sim.factories with the menus cached (simunits.menu parses the XML on each call)."""
-        return [b for b in self.sim.living() if b.owner == self.player and 'STRUCTURE' in b.kinds and not b.scenery
+        return [b for b in self.world.living() if b.owner == self.player and 'STRUCTURE' in b.kinds and not b.scenery
                 and self.host.menu(b.template)]
 
     def yards(self):
         """The player's yards handed to the AI: on no map team (bench aistart:a, no library, woken by SKIRMISH_AI_START
         alone: the yard left on teamSoviet_1 builds nothing in 60 s; aistartx:a, the yard handed by UNIT_AI_TRANSFER
         first, opens as aiskirm)."""
-        return [b for b in self.sim.living() if b.owner == self.player and 'CONSTRUCTION_YARD' in b.kinds
+        return [b for b in self.world.living() if b.owner == self.player and 'CONSTRUCTION_YARD' in b.kinds
                 and not b.team]
 
     def queue_of(self, template):
@@ -1107,44 +1131,44 @@ class Brain:
         """AIPlayer.build_offers: of `templates`, the structures the AI could order now -- a yard, can_build, and
         nothing waiting in that template's queue (one order a queue at a time, INFERRED) -- as (template, cost,
         kinds)."""
-        s, ys = self.sim, self.yards()
-        if not ys or self.player in s.base_construction_disabled:   # bench aibgate:a (A269)
+        world, peers, ys = self.world, self.peers, self.yards()
+        if not ys or self.player in peers.base_construction_disabled:   # bench aibgate:a (A269)
             return []
         out = []
         for t in templates:
-            if not self.is_structure(t) or not s.can_build(self.player, t):
+            if not self.is_structure(t) or not peers.can_build(self.player, t):
                 continue
             q = self.queue_of(t)
             if all(self.yard_q.get(q(y)) for y in ys):
                 continue
-            out.append((t, simunits.production(t, s.own)[0], frozenset(self.host.kinds(t))))
+            out.append((t, simunits.production(t, world.own)[0], frozenset(self.host.kinds(t))))
         return out
 
     def power_now(self, ai, frame):
         """AIPlayer.power: (supply, demand) as Sim.power (a structure still unpacking on neither side), the energy of
         everything in the AI's yard queues (built or not, till it is placed), and the structure templates it owns."""
-        s = self.sim
-        sup, dem = s.power(self.player)
-        queued = sum(simunits.energy(j['template'], s.own) for q in self.yard_q.values() for j in q)
-        owned = {b.template for b in s.living() if b.owner == self.player and 'STRUCTURE' in b.kinds}
+        world, peers = self.world, self.peers
+        sup, dem = peers.power(self.player)
+        queued = sum(simunits.energy(j['template'], world.own) for q in self.yard_q.values() for j in q)
+        owned = {b.template for b in world.living() if b.owner == self.player and 'STRUCTURE' in b.kinds}
         return sup, dem, queued, owned
 
     def build(self, template):
         """AIPlayer.builder: True once the order is taken (queued), False when nothing of the AI's can make it now."""
-        s = self.sim
+        world, peers = self.world, self.peers
         if self.is_structure(template):
             ys = self.yards()
-            if not ys or self.player in s.base_construction_disabled or not s.can_build(self.player, template):
+            if not ys or self.player in peers.base_construction_disabled or not peers.can_build(self.player, template):
                 return False        # base-disabled: bench aibgate:a (A269), no structure order taken till enabled
             q = self.queue_of(template)
             y = min(ys, key=lambda y: len(self.yard_q.get(q(y), [])))
-            cost, secs = simunits.production(template, s.own)
+            cost, secs = simunits.production(template, world.own)
             self.yard_q.setdefault(q(y), []).append(
                 {'template': template, 'cost': cost, 'frames': max(1, int(round(secs * FPS))), 'progress': 0.0,
                  'paid': 0, 'full': None})
-            s.note('AI', f'{s.who(self.player)} 建造场排 {template}（{cost}，{secs:g} 秒）')
+            world.note('AI', f'{world.who(self.player)} 建造场排 {template}（{cost}，{secs:g} 秒）')
             return True
-        if not s.can_build(self.player, template) or \
+        if not peers.can_build(self.player, template) or \
                 not any(template in self.host.menu(f.template) for f in self.factories()):
             return False
         self.unit_q.append(template)
@@ -1153,12 +1177,12 @@ class Brain:
     def upgrade_offers(self, ai, frame, upgrades):
         """AIPlayer.upgrade_offers: {upgrade: cost} of `upgrades` a structure of the AI's buys now (Sim.upgrade_sellers:
         its GameDependency met, not held, not in a queue)."""
-        s = self.sim
-        return {u: simunits.upgrade_cost(u)[0] for u in upgrades if s.upgrade_sellers(self.player, u)}
+        peers = self.peers
+        return {u: simunits.upgrade_cost(u)[0] for u in upgrades if peers.upgrade_sellers(self.player, u)}
 
     def upgrade(self, upgrade):
         """AIPlayer.upgrader: queue the upgrade at the structure that buys it (Sim.order_build; paid as it builds)."""
-        return bool(self.sim.upgrade_sellers(self.player, upgrade)) and self.sim.order_build(self.player, upgrade)
+        return bool(self.peers.upgrade_sellers(self.player, upgrade)) and self.peers.order_build(self.player, upgrade)
 
     def offers(self, ai, frame):
         """AIPlayer.offers: the units the AI's live factories can build now (Sim.offers), as teams.Offer with the unit
@@ -1166,14 +1190,14 @@ class Brain:
         unit_q it would take, 1 = all such factories are busy; a unit only unpacking factories make is left out
         (state 2, cannot build now)."""
         tm = self.host.mod['teams']
-        s, frame = self.sim, self.frame
+        peers, frame = self.peers, self.frame
         ready = [f for f in self.factories() if frame >= self.made.get(f.name, -10 ** 9) + self.host.unpack(f.template)]
         out = []
-        for t, _, _ in s.offers(self.player):
+        for t, _, _ in peers.offers(self.player):
             fs = [f for f in ready if t in self.host.menu(f.template)]
             if not fs:
                 continue
-            idles = tuple(f.name for f in fs if not s.queues.get(f.name)
+            idles = tuple(f.name for f in fs if not peers.queues.get(f.name)
                           and not any(q in self.host.menu(f.template) for q in self.unit_q))
             idle = bool(idles)
             kinds = self.host.kinds(t)
@@ -1190,10 +1214,10 @@ class Brain:
         itself too, scenery not) whose 2D distance to its centre <= distance + their radius, each with its
         relationship to the player: SAME_PLAYER, NEUTRAL (the civilian player or a Neutral relation), ENEMIES,
         else ALLIES. bench 2026-11-12 engine_aiskirm y aiskblkn / aiskblkf / aiskblkr."""
-        s = self.sim
+        world, peers = self.world, self.peers
         ready = [f for f in self.factories() if self.frame >= self.made.get(f.name, -10 ** 9)
                  + self.host.unpack(f.template) and template in self.host.menu(f.template)
-                 and not s.queues.get(f.name) and not any(q in self.host.menu(f.template) for q in self.unit_q)]
+                 and not peers.queues.get(f.name) and not any(q in self.host.menu(f.template) for q in self.unit_q)]
         if not ready:
             return []
         live = [b for b in self.living() if not b.scenery]
@@ -1201,7 +1225,7 @@ class Brain:
         def rel(owner):
             if owner == self.player:
                 return 'SAME_PLAYER'
-            if owner == sim.CIV or s.relations.get((self.player, owner)) == 'Neutral':
+            if owner == simworld.CIV or world.relations.get((self.player, owner)) == 'Neutral':
                 return 'NEUTRAL'
             return 'ENEMIES' if owner in self.view.enemies else 'ALLIES'
         return [[(b.template, rel(b.owner)) for b in live
@@ -1232,7 +1256,7 @@ class Brain:
             if t not in self._protos:
                 self._protos[t] = self._proto(t)
             cand = self.fighters([self._protos[t]], True)[0]
-            cost, secs = simunits.production(t, self.sim.own)
+            cost, secs = simunits.production(t, self.world.own)
             off, dfn = mods.get(t, (1.0, 1.0))
             out[t] = tc.expected_efficiency(cand, mine, foes, defences, p, cost, secs, off, dfn)
         return out
@@ -1240,7 +1264,7 @@ class Brain:
     def _proto(self, template):
         """A Body of the template that is not in the world (Sim.add, then taken out again)."""
         name = f'__proto_{self.player}_{template}'
-        return self.sim.proto(name, template, self.player)
+        return self.peers.proto(name, template, self.player)
 
     def units(self, ai, frame):
         out = []
@@ -1259,7 +1283,7 @@ class Brain:
             if self.host.garrison.busy(b) or self.host.pullback.busy(b):
                 continue
             if b.name not in self.wrappers:
-                self.wrappers[b.name] = Unit(b, self.sim)
+                self.wrappers[b.name] = Unit(b, self.peers)
             out.append(self.wrappers[b.name])
         return out
 
@@ -1285,8 +1309,8 @@ class Brain:
 
     def team_point(self, ai, frame):
         hx, hy = self.home
-        foes = [b for b in self.sim.living() if 'STRUCTURE' in b.kinds and not b.scenery
-                and self.sim.enemy(self.player, b.owner)]
+        foes = [b for b in self.world.living() if 'STRUCTURE' in b.kinds and not b.scenery
+                and self.world.enemy(self.player, b.owner)]
         if not foes:
             return None
         f = min(foes, key=lambda b: math.hypot(b.x - hx, b.y - hy))
@@ -1296,12 +1320,12 @@ class Brain:
     def spot(self, yard, template):
         """Where a structure goes: the first free point on the rings round the yard (INFERRED)."""
         import platprops
-        s = self.sim
+        world = self.world
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
-        xs = [b.x for b in s.living()] or [yard.x]
-        ys = [b.y for b in s.living()] or [yard.y]
+        xs = [b.x for b in world.living()] or [yard.x]
+        ys = [b.y for b in world.living()] or [yard.y]
         away = math.atan2(yard.y - (min(ys) + max(ys)) / 2, yard.x - (min(xs) + max(xs)) / 2)
-        taken = [t for t in (s.blocks(b, place=True) for b in s.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
+        taken = [t for t in (world.blocks(b, place=True) for b in world.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
         for ring in RING:
             n = max(8, int(2 * math.pi * ring / (2 * r + GAP)))
             for k in range(n):
@@ -1338,17 +1362,17 @@ class Brain:
         if df is None or where not in ('FRONT', 'SIDE', 'BACK', 'SPREAD', 'CENTER'):
             return None
         import platprops
-        s = self.sim
-        rects = list(getattr(s.m.map, 'BORDERS', {}).values())
+        world = self.world
+        rects = list(getattr(world.m.map, 'BORDERS', {}).values())
         if rects:
             x0, y0, x1, y1 = max(rects, key=lambda q: (q[2] - q[0]) * (q[3] - q[1]))
         else:
-            xs, ys = [b.x for b in s.living()] or [yard.x], [b.y for b in s.living()] or [yard.y]
+            xs, ys = [b.x for b in world.living()] or [yard.x], [b.y for b in world.living()] or [yard.y]
             x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
         facing = math.atan2((y0 + y1) / 2 - yard.y, (x0 + x1) / 2 - yard.x)
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
-        mine = [b for b in s.living() if b.owner == self.player and 'STRUCTURE' in b.kinds]
-        taken = [q for q in (s.blocks(b, place=True) for b in s.living() if 'STRUCTURE' in b.kinds) if q and len(q) == 3]
+        mine = [b for b in world.living() if b.owner == self.player and 'STRUCTURE' in b.kinds]
+        taken = [q for q in (world.blocks(b, place=True) for b in world.living() if 'STRUCTURE' in b.kinds) if q and len(q) == 3]
         block = self.placer(df)
         rng = self.place_rng
         comp = float(df.personality_attr(self.ai, 'BaseCompactness', df.COMPACTNESS))
@@ -1377,12 +1401,12 @@ class Brain:
         first angle k x 36 deg (bench engine_aitower 11-07: round the yard, not toward the enemy -- the model's
         "no enemy found" branch); the first try clear of every structure, None = the yard's rings."""
         import platprops
-        s = self.sim
+        world = self.world
         df = (model() or {}).get('defense')
         if df is None:
             return None
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
-        taken = [t for t in (s.blocks(b, place=True) for b in s.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
+        taken = [t for t in (world.blocks(b, place=True) for b in world.living() if 'STRUCTURE' in b.kinds) if t and len(t) == 3]
         angle = df.SPREAD_STEP * self.tower_rng.randint(0, 9)
         block = self.placer(df)
         for x, y in block.tower_spots(self.ai, (yard.x, yard.y), angle, rng=self.tower_rng):
@@ -1405,7 +1429,7 @@ class Brain:
         strips x26 y9 / x28 y11 (k -3, r ~250 of the east nodes 4173,2987 / 4279,3093, facing 0), no third; aiskin0
         (Ticks 0) = aiskin1 (StartDistanceDelta 1000): x27 y18, x16 y8, x27 y25, then two more by the yard."""
         import platprops
-        s = self.sim
+        world, peers = self.world, self.peers
         a = self.ai.personality.attrs
         near, start, inc, ticks = (float(a.get(k)) if a.get(k) is not None else d for k, d in REFINERY_FIELDS)
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
@@ -1419,19 +1443,19 @@ class Brain:
         reach = (math.hypot(float(shape.get('MajorRadius', 0)), float(shape.get('MinorRadius', 0)))
                  if shape and shape.get('Type', '').upper() == 'BOX' else float(shape.get('MajorRadius', r)) if shape
                  else r)
-        bodies = s.living()
+        bodies = world.living()
         nodes = [b for b in bodies if 'orenode' in b.template.lower()]
         mine = [b for b in bodies if b.owner == self.player and 'REFINERY' in b.kinds]
         if not self.open_nodes(reach, bodies):
             return None
-        taken = [t for t in (s.blocks(b, place=True) for b in bodies if 'STRUCTURE' in b.kinds and b not in nodes)
+        taken = [t for t in (world.blocks(b, place=True) for b in bodies if 'STRUCTURE' in b.kinds and b not in nodes)
                  if t and len(t) == 3]
         memo = self.__dict__.setdefault('_refinery_spots', {})
         mk = (template, tuple(taken), tuple((y.x, y.y) for y in yards))
         if mk not in memo:
             memo.clear()
             yard = min(yards, key=lambda y: min((math.hypot(n.x - y.x, n.y - y.y) for n in nodes), default=0.0))
-            memo[mk] = (self._refinery_search(s, r, reach, near, start, inc, int(ticks), yards, nodes, mine, taken,
+            memo[mk] = (self._refinery_search(world, peers, r, reach, near, start, inc, int(ticks), yards, nodes, mine, taken,
                                               shape, [n for n in nodes if self._near_builder(n, reach, bodies)])
                         or self.node_side_spot(yard, template, nodes)
                         or self.spot(yard, template))
@@ -1452,16 +1476,16 @@ class Brain:
         if df is None or not nodes:
             return None
         import platprops
-        s = self.sim
+        world = self.world
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
-        taken = [q for q in (s.blocks(b, place=True) for b in s.living() if 'STRUCTURE' in b.kinds or b in nodes)
+        taken = [q for q in (world.blocks(b, place=True) for b in world.living() if 'STRUCTURE' in b.kinds or b in nodes)
                  if q and len(q) == 3]
         n = min(nodes, key=lambda n: math.hypot(n.x - yard.x, n.y - yard.y))
         a, step = math.atan2(n.y - yard.y, n.x - yard.x), df.SPREAD_STEP
         rr = df.TOWER_LIST_R
         for k in (0, 1, -1, 2, -2):
             x, y = yard.x + rr * math.cos(a + k * step), yard.y + rr * math.sin(a + k * step)
-            if s.ground.open('ground', x, y, place=True) and all(math.hypot(x - tx, y - ty) >= r + tr + GAP
+            if world.ground.open('ground', x, y, place=True) and all(math.hypot(x - tx, y - ty) >= r + tr + GAP
                                                      for tx, ty, tr in taken):
                 return x, y
         return None
@@ -1490,7 +1514,7 @@ class Brain:
         structures (bench 2 / 11; off: 2 / 11) -- so it does not count collectors (INFERRED: the wrapper's state 2 =
         'a refinery registered' skips it)."""
         reach = NODE_REACH if reach is None else reach
-        bodies = self.sim.living() if bodies is None else bodies
+        bodies = self.world.living() if bodies is None else bodies
         nodes = [b for b in bodies if 'orenode' in b.template.lower()]
         served = set()
         for b in bodies:
@@ -1516,10 +1540,10 @@ class Brain:
             memo['on'] = str(v).lower() != 'true'
         if not memo['on']:
             return True
-        s = self.sim
-        near = [(b, self._build_radius(b.template)) for b in s.living() if 'STRUCTURE' in b.kinds]
+        world = self.world
+        near = [(b, self._build_radius(b.template)) for b in world.living() if 'STRUCTURE' in b.kinds]
         near = [(b, br) for b, br in near if br > 0 and math.hypot(b.x - x, b.y - y) < br]
-        if not any(b.owner != self.player and s.relations.get((self.player, b.owner)) == 'Friend' for b, _ in near):
+        if not any(b.owner != self.player and world.relations.get((self.player, b.owner)) == 'Friend' for b, _ in near):
             return True
         return ALLY_OVERLAP_OK and any(b.owner == self.player for b, _ in near)
 
@@ -1543,9 +1567,9 @@ class Brain:
             memo[n.template] = float(off.get('x', 180.0))
         return memo[n.template]
 
-    def _refinery_search(self, s, r, reach, near, start, inc, ticks, yards, nodes, mine, taken, shape, tried):
-        rects = list(getattr(s.m.map, 'BORDERS', {}).values())
-        x0, y0, x1, y1 = rects[s.border] if s.border < len(rects) else (-1e9, -1e9, 1e9, 1e9)
+    def _refinery_search(self, world, peers, r, reach, near, start, inc, ticks, yards, nodes, mine, taken, shape, tried):
+        rects = list(getattr(world.m.map, 'BORDERS', {}).values())
+        x0, y0, x1, y1 = rects[peers.border] if peers.border < len(rects) else (-1e9, -1e9, 1e9, 1e9)
         hx, hy = ((float(shape.get('MajorRadius', reach)), float(shape.get('MinorRadius', reach)))
                   if shape else (reach, reach))
         # every node's default spot S, facing its node, and its passage point P (D138 1, read)
@@ -1565,7 +1589,7 @@ class Brain:
 
         def fits(x, y, n):                          # the footprint inside the active border (INFERRED)
             if not (x0 + reach <= x <= x1 - reach and y0 + reach <= y <= y1 - reach
-                    and s.ground.open('ground', x, y, place=True)
+                    and world.ground.open('ground', x, y, place=True)
                     and all(math.hypot(x - tx, y - ty) >= r + tr + GAP for tx, ty, tr in taken)
                     and self.allied_ok(x, y)):
                 return False
@@ -1602,9 +1626,9 @@ class Brain:
         return None
 
     def yard_due(self, frame):
-        s = self.sim
+        world, peers = self.world, self.peers
         for name in list(self.yard_q):
-            y, q = s.bodies.get(name[0] if isinstance(name, tuple) else name), self.yard_q[name]
+            y, q = world.bodies.get(name[0] if isinstance(name, tuple) else name), self.yard_q[name]
             if y is None or not y.alive or not q:
                 del self.yard_q[name]
                 continue
@@ -1612,7 +1636,7 @@ class Brain:
             if job['full'] is not None:
                 # a paused AI (PLAYER_TOGGLE_SKIRMISH_AI 0) places nothing: aipause:a's third structure, done while
                 # paused, came down at f1280, just after the 85 s resume
-                if frame >= job['full'] + PLACE_DELAY and self.player not in s.ai_paused:
+                if frame >= job['full'] + PLACE_DELAY and self.player not in peers.ai_paused:
                     q.pop(0)
                     self.put(y, job['template'], frame)
                     self.yard_rest[name] = frame + 1
@@ -1622,17 +1646,17 @@ class Brain:
             step = f32(100.0 / job['frames'])
             nxt = f32(job['progress'] + step)
             owe = min(job['cost'], math.ceil(round(job['cost'] * nxt / 100.0, 9))) - job['paid']
-            have = s.wallet.held(self.player)                     # simmoney (L4)
+            have = peers.wallet.held(self.player)                     # simmoney (L4)
             if owe > have:
                 continue
-            s.wallet.charge(self.player, owe)
+            peers.wallet.charge(self.player, owe)
             job['paid'] += owe
             job['progress'] = nxt
             if nxt >= 100.0:
                 job['full'] = frame
 
     def put(self, yard, template, frame):
-        s = self.sim
+        world = self.world
         spot = None
         if 'REFINERY' in self.host.kinds(template) and hasattr(self.ai, 'refinery_spot'):
             spot = self.refinery_spot(template)     # the search's spot, or the yard's (F1)
@@ -1641,32 +1665,32 @@ class Brain:
         else:
             spot = self.general_spot(yard, template)
         x, y = spot or self.spot(yard, template)
-        b = s.add(f'#ai {len(s.bodies)} {template}', template, self.player, x, y, by='skirmish AI', at=s.t)
+        b = world.add(f'#ai {len(world.bodies)} {template}', template, self.player, x, y, by='skirmish AI', at=world.t)
         b.team = yard.team
         self.made[b.name] = frame
         self.trace.append((frame, 'own', template))
-        s.note('AI', f'{s.who(self.player)} 放下 {template}')
-        if s.blocks(b):
-            s.reblock()
+        world.note('AI', f'{world.who(self.player)} 放下 {template}')
+        if world.blocks(b):
+            world.reblock()
         miner = self.host.free_unit(template)
         if miner:
             self.later.append((frame + self.host.unpack(template), miner, (x, y), yard.team))
-        s.change()
+        world.change()
 
     def later_due(self, frame):
-        s = self.sim
+        world = self.world
         for job in [j for j in self.later if j[0] <= frame]:
             self.later.remove(job)
             _, t, (x, y), team = job
-            b = s.add(f'#ai {len(s.bodies)} {t}', t, self.player, x, y + 60.0, by='skirmish AI', at=s.t)
+            b = world.add(f'#ai {len(world.bodies)} {t}', t, self.player, x, y + 60.0, by='skirmish AI', at=world.t)
             b.team = team
             self.made[b.name] = frame
             self.trace.append((frame, 'out', t))
 
     # ---- units, one at a time a factory
     def unit_due(self, frame):
-        s = self.sim
-        for b in s.living():                    # what came out of a factory since: the trace
+        world, peers = self.world, self.peers
+        for b in world.living():                    # what came out of a factory since: the trace
             if b.owner == self.player and b.name.startswith('#made') and b.name not in self.made:
                 self.made[b.name] = frame
                 self.trace.append((frame, 'out', b.template))
@@ -1674,8 +1698,8 @@ class Brain:
         for t in list(self.unit_q):
             free = [f for f in self.factories() if t in self.host.menu(f.template)
                     and frame >= self.made.get(f.name, -10 ** 9) + self.host.unpack(f.template)
-                    and not s.queues.get(f.name)]
-            if free and s.order_build(self.player, t):
+                    and not peers.queues.get(f.name)]
+            if free and peers.order_build(self.player, t):
                 self.unit_q.remove(t)
 
     @property
@@ -1686,7 +1710,7 @@ class Brain:
     def earn(self):
         """AIPlayer.money: the player's money now (AIPlayer.available: an account spends its Deposits + its budget
         share of the money -- INFERRED, bench engine_aiskirm d / f; the income is in it, Sim.mine_due, HOOKS 7)."""
-        self.ai.money = self.sim.money.get(self.player, 0)
+        self.ai.money = self.peers.money.get(self.player, 0)
 
     def tick(self, frame):
         self.frame = frame
@@ -1694,9 +1718,9 @@ class Brain:
         self.later_due(frame)
         self.yard_due(frame)
         self.unit_due(frame)
-        if self.player in self.sim.ai_paused:   # PLAYER_TOGGLE_SKIRMISH_AI(p, 0): the brain's update skips the
+        if self.player in self.peers.ai_paused:   # PLAYER_TOGGLE_SKIRMISH_AI(p, 0): the brain's update skips the
             return                              # whole frame (program, work/re a270_skirmish_start.md; aipause:a)
-        if self.seen_t != self.sim.t:           # the world changes once a DT tick: look and facts then
+        if self.seen_t != self.world.t:           # the world changes once a DT tick: look and facts then
             self.look(frame)
             self.ai.ctx.update(self.facts())
         self.ai.tick(frame)
@@ -1715,7 +1739,7 @@ class Brain:
         cells = self.__dict__.setdefault('_hunt_cells', {})
         cell = lambda b: (int(b.x * .05), int(b.y * .05))
         for name, state in states.items():
-            b = self.sim.body(name)
+            b = self.world.body(name)
             if b is None or not b.alive:
                 continue
             arrived = self.hunt_arrived(b, state)
@@ -1726,7 +1750,7 @@ class Brain:
                 # Continue toward the pursuit's last position, without a new
                 # team command or a fabricated current target.
                 b.goal = None
-                self.sim.order_move(b, (state.pursuit.x, state.pursuit.y), True)
+                self.peers.order_move(b, (state.pursuit.x, state.pursuit.y), True)
             here = cell(b)
             previous = cells.get(name)
             cells[name] = here
@@ -1874,7 +1898,7 @@ class Brain:
             b = m.unit.body if m.unit is not None else getattr(m, 'body', None)
             if b is None:
                 continue
-            gar['members'][b.name] = {kind: [(gn, math.hypot(gx - b.x, gy - b.y), self.sim.bodies[gn].hp)
+            gar['members'][b.name] = {kind: [(gn, math.hypot(gx - b.x, gy - b.y), self.world.bodies[gn].hp)
                                              for gn, gx, gy in self._places(b, own)]
                                       for kind, own in (('defenses', True), ('houses', False))}
         out['garrisons'] = gar
@@ -1894,7 +1918,8 @@ class SimAI:
         mod = model()
         if mod is None:
             raise RuntimeError(f'ra3model.ai not found under {labpaths.ENGINE_MODEL}')
-        self.sim, self.mod, self.level, self.seed = s, mod, level, seed
+        self.sim, self.mod, self.level, self.seed = s, mod, level, seed   # sim: for the callers (main, tests)
+        self.world, self.peers = s, Peers(s)    # all the AI reads of its host: the world API and its loan (PEERS)
         self.lib = lib if lib is not None else mod['xmldata'].Library()
         self.data = data if data is not None else mod['data'].AIData()
         self.blocks = tuple(blocks)     # which of A's blocks the brains get (() = opening, states and teams only)
@@ -1914,15 +1939,15 @@ class SimAI:
 
     @property
     def frame(self):
-        s = self.sim
-        return s.eng.frame if s.eng is not None else int(round(s.t * FPS))
+        world = self.world
+        return world.eng.frame if world.eng is not None else int(round(world.t * FPS))
 
     def flags(self, player):
         """The mission's flags as states.py keys them: cnv's scripts run in a player's script list, so a bare SET_FLAG
         name is that list owner's and 'scope/name' sets the scope by hand ('/name' the empty one, which
         ScriptedFlagHeuristic reads -- l4_states.md 7; bench aistateplain: bare names unseen, aistateslash: seen)."""
         st = self.mod['states']
-        return {st.flag_key(k, SCRIPT_SCOPE): bool(v) for k, v in (self.sim.flags or {}).items()}
+        return {st.flag_key(k, SCRIPT_SCOPE): bool(v) for k, v in (self.peers.flags or {}).items()}
 
     def data_of(self, what):
         """The blocks' SDK data, read once a run."""
@@ -1937,27 +1962,27 @@ class SimAI:
 
     def cost(self, template):
         if template not in self._cost:
-            self._cost[template] = int(simunits.production(template, self.sim.own)[0] or 0) if template else 0
+            self._cost[template] = int(simunits.production(template, self.world.own)[0] or 0) if template else 0
         return self._cost[template]
 
     def menu(self, template):
         if template not in self._menu:
-            self._menu[template] = simunits.menu(template, self.sim.own)
+            self._menu[template] = simunits.menu(template, self.world.own)
         return self._menu[template]
 
     def command_set(self, template):
         """The template's CommandSet's commands (simunits' reading of the SDK's GlobalData), cached."""
         if template not in self._cs:
-            cs = simunits._inherited(template, self.sim.own,
+            cs = simunits._inherited(template, self.world.own,
                                      lambda xml: (re.findall(r'\bCommandSet="([^"]+)"', xml) or [''])[0], '')
-            self._cs[template] = simunits._commands(self.sim.own)[0].get(cs, [])
+            self._cs[template] = simunits._commands(self.world.own)[0].get(cs, [])
         return self._cs[template]
 
     def standard(self, template):
         """UnitBuilderStandardCombatUnit of a template (the unit builder's candidates, INFERRED), cached."""
         if template not in self._std:
             self._std[template] = simunits._inherited(
-                template, self.sim.own,
+                template, self.world.own,
                 lambda xml: (re.findall(r'\bUnitBuilderStandardCombatUnit="(\w+)"', xml) or [''])[0], '') == 'true'
         return self._std[template]
 
@@ -1971,7 +1996,7 @@ class SimAI:
     def kinds(self, template):
         """KindOf of a template: simunits', else the model's library's (HOOKS 6)."""
         if template not in self._kinds:
-            st = simunits.stats(template, self.sim.own)
+            st = simunits.stats(template, self.world.own)
             tpl = None if st['kinds'] else self.lib.template(template)
             self._kinds[template] = set(st['kinds']) if st['kinds'] else set(tpl.kinds) if tpl is not None else set()
         return self._kinds[template]
@@ -1992,7 +2017,7 @@ class SimAI:
         b.surface = 'both' if 'AMPHIBIOUS' in tpl.kinds else 'air' if 'AIRCRAFT' in tpl.kinds else b.surface
         base = b.template.rsplit('_', 1)[0]
         if base != b.template:
-            st, f = simunits.stats(base, self.sim.own), simunits.fight(base, self.sim.own)
+            st, f = simunits.stats(base, self.world.own), simunits.fight(base, self.world.own)
             if f['hp']:
                 b.max_hp = b.hp = f['hp']
                 b.armor, b.weapons = f['armor'], f['weapons']
@@ -2001,7 +2026,7 @@ class SimAI:
 
     def free_unit(self, template):
         """The unit a structure brings along (a refinery's miner; INFERRED by name, bench aiopen 采矿车)."""
-        if 'REFINERY' in simunits.stats(template, self.sim.own)['kinds']:
+        if 'REFINERY' in simunits.stats(template, self.world.own)['kinds']:
             miner = template.replace('Refinery', 'Miner')
             return miner if simunits.table().get(miner.lower()) else None
         return None
@@ -2012,7 +2037,7 @@ class SimAI:
         if getattr(self, '_own_done', False):
             return
         self._own_done = True
-        for a in getattr(self.sim.m, 'assets', None) or []:
+        for a in getattr(self.world.m, 'assets', None) or []:
             if len(a) >= 3 and str(a[2]).startswith('AIPersonalityDefinition:'):
                 self.data.add_text(a[1])
                 if 'defense' in self.blocks:
@@ -2033,10 +2058,10 @@ class SimAI:
         if pick is None:
             return pid
         import simtech
-        faction = simtech.faction_of(player, (getattr(self.sim.m, 'sides', {}) or {}).get(side))
+        faction = simtech.faction_of(player, (getattr(self.world.m, 'sides', {}) or {}).get(side))
         got = pick(pid, faction and f'PlayerTemplate:{faction}', random.Random(self.seed + 11)) or pid
         if got != pid:
-            self.sim.take_personality(player, got)
+            self.peers.take_personality(player, got)
         return got
 
     def attach(self):
@@ -2044,31 +2069,31 @@ class SimAI:
         side with an aiPersonality has its brain from the first frame: its states and teams run before the wake
         (bench aialobsw, B round 161: the wake held to ~s28, its team still 4 at f21 as with the wake at s10); a side
         handed over without one gets the default personality then."""
-        s = self.sim
-        sides = {v: k for k, v in s.players.items()}
-        for side, info in (getattr(s.m, 'sides', None) or {}).items():
-            player = s.players.get(side)
+        world, peers = self.world, self.peers
+        sides = {v: k for k, v in world.players.items()}
+        for side, info in (getattr(world.m, 'sides', None) or {}).items():
+            player = world.players.get(side)
             pid = ((info or {}).get('aiPersonality') or '').split(':')[-1]
-            if pid and player is not None and player != s.human and player not in self.brains:
+            if pid and player is not None and player != world.human and player not in self.brains:
                 self.own_personalities()
                 pid = self._assigned.get(player) or self.assigned(player, side, pid)
                 # INFERRED (D round 137): a side in the map with its personality thinks from frame 0, though the
                 # first DT tick lands at frame 8 (bench aibdi0 / aibdi2: the team's rounds at f50 / f80 = mission
                 # s2 / s4, the man inside from s4)
                 self.brains[player] = Brain(self, player, side, pid, 0 if self.done_to is None else self.frame)
-        for player in s.ai:
+        for player in peers.ai:
             if player not in self.brains:
                 side = sides.get(player, '')
-                pid = (s.m.sides.get(side) or {}).get('aiPersonality', '').split(':')[-1] or '1AlliedBalanced'
+                pid = (world.m.sides.get(side) or {}).get('aiPersonality', '').split(':')[-1] or '1AlliedBalanced'
                 self.own_personalities()
-                self.brains[player] = Brain(self, player, side, pid, int(round(s.ai[player] * FPS)))
-            self.brains[player].wake(int(round(s.ai[player] * FPS)))
+                self.brains[player] = Brain(self, player, side, pid, int(round(peers.ai[player] * FPS)))
+            self.brains[player].wake(int(round(peers.ai[player] * FPS)))
 
     def advance(self, frames):
         """The mission `frames` frames on (Sim.advance a DT tick at a time), the AI ticked for each frame after."""
         target = self.frame + frames
-        while self.frame < target and self.sim.ending is None:
-            self.sim.advance(1)
+        while self.frame < target and self.peers.ending is None:
+            self.peers.advance(1)
             self.attach()
             for b in self.brains.values():
                 b.switches()
@@ -2082,7 +2107,7 @@ class SimAI:
         return self
 
     def thoughts(self):
-        return {self.sim.who(p): b.ai.thoughts() for p, b in self.brains.items()}
+        return {self.world.who(p): b.ai.thoughts() for p, b in self.brains.items()}
 
 
 def run(build, check='', until=200.0, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS, record=False):

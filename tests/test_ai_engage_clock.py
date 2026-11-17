@@ -140,8 +140,8 @@ def test_engage_dead_pursuit_continues_cancelled_path():
                            path=[], goal=retained)
     brain = simai.Brain.__new__(simai.Brain)
     moves = []
-    brain.sim = SimpleNamespace(body=lambda name: body,
-                                order_move=lambda *args: moves.append(args))
+    brain.world = brain.peers = SimpleNamespace(body=lambda name: body,
+                                               order_move=lambda *args: moves.append(args))
     brain._hunt_goals = {'member': state}
     brain.hunt_threats(1)  # no partition scan before the first eligible frame
     assert state.state == 33 and state.target is retained

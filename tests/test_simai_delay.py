@@ -64,7 +64,7 @@ def test_specific_maximum_delay_probe_trace(lib, build, monkeypatch):
 
     def fire(brain, ai, key, unit, info):
         original(brain, ai, key, unit, info)
-        bodies = [b for b in brain.sim.living() if b.owner == brain.player]
+        bodies = [b for b in brain.host.sim.living() if b.owner == brain.player]
         charged = {b.name for b in bodies if 'WEAPON_UPGRADED_02' in b.status}
         observed.append((brain.frame, key, unit.name, charged))
 

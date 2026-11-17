@@ -276,7 +276,7 @@ def test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe(check
     assert (12 in observed) == (check_name == 'a')
     host = simai.SimAI(e)
     brain = object.__new__(simai.Brain)
-    brain.host, brain.sim, brain.player = host, e, ai
+    brain.host, brain.world, brain.peers, brain.player = host, e, host.peers, ai
     brain.view = SimpleNamespace(things=[], enemies=frozenset())
     brain.aim_of = lambda b, reach: None
     brain.fired = []
