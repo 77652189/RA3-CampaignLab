@@ -46,3 +46,31 @@
 - 不许让工具按文件名读模拟器源码来判断"做了什么"（11-17 清单工具因此在搬家后少算 401 项）：模拟器能处理的动作、条件、状态位、模块名由各层自己的登记表公布，工具只读登记表。
 - 不许在交接、提示词里写 `sim.py` 行号或"某方法在某文件"：写能搜到的名字，位置以代码为准。
 - 新规则必须带一个最小世界测试（`simsmall.small_world`）；整局回放只当对拍证据，不当日常回归。
+
+## 新规则放哪个文件（给恢复的引擎线和 Codex）
+
+先问"这条事实长在引擎的哪个部件上"，再按下表落位。只写模块名和登记表名，位置以代码为准（搜 `def 名字`、`名字 = `）。登记表都在模块里或守卫测试里，**只追加**；rebase 时别线也在末尾加行，冲突两边都留。
+
+| 要加 | 改哪个模块（层） | 在哪张登记表加一行 | 配什么测试 |
+|---|---|---|---|
+| 脚本动作 | 按它作用的层挑一组：`simact_vision`（视野）`simact_player`（钱、电、科技、技能）`simact_order`（给单位下命令）`simact_object`（对象状态）`simact_ability`（技能按钮）`simact_world`（旗标、计时器、队伍）`simact_show`（字幕、镜头、音视频）（L6）。函数 `fn(sim, name, a, script)` 只把参数翻译成下层接口的调用，规则本身写进下层模块 | 那组的 `ACTIONS`（`simact.table` 合并，重名报错；清单靠它认名字）。新开一组：加进 `simact.GROUPS` + `LAYER_OF` 记 6 | 最小世界摆好对象，跑这个动作，断言世界的变化；做不到的参数分支 `return False`（自动记成缺口） |
+| 脚本条件 | 同上，`simcond_world` / `simcond_object` / `simcond_vision` / `simcond_player` / `simcond_show`（L6），`fn(sim, name, a)` 回真假 | 那组的 `CONDITIONS`；新开一组加进 `simcond.GROUPS` + `LAYER_OF` | 同上；不认得的情形回 `None`（记缺口、当不成立） |
+| 物体模块（AutoHeal、Toggle 这类 XML 模块） | L2。已有部件的规则加进它的模块（`simheal` `simtoggle` `simbody` `simgarrison` `simlocomotion` `simmodifier`……）；新部件新开 `sim<部件>.py`，写成"收世界句柄 + 参数"的类或函数，状态放在自己的对象里 | `LAYER_OF` 记 2；收世界句柄 → `WORLD_TAKERS`；用到世界的新能力 → `simworld.WORLD_API`；独占字段 → `FIELD_OWNER`；还要借 sim.py 里没搬的方法 → 模块自己的 `PEERS` + `PEER_TAKERS` | 最小世界 + 只推进这个部件几帧（样板：`test_simheal`） |
+| 武器伤害规则（各种 Nugget、MetaImpact） | L3 `simdamage.Damage`（`deal` 按 Nugget 派发）。索敌、瞄准、开火节奏也归 L3，但还没全搬（搜 `def can_hit`、`def shots_due`）；追击和攻击状态机归 L5 | 新缓存字段 → `FIELD_OWNER` 记 `simdamage`；要销毁、改修改器、改模型状态等 L2 动作 → `simdamage.PEERS`（只借还在 sim.py 的；已搬的直接导入调用） | 最小世界里一个开火方一个挨打方，断言血量 / 状态；只做了一部分的 Nugget 写 `world.gap(GAP_WEAPON, 'XxxNugget', 缺什么)` |
+| 单位命令（移动、攻击、警戒、跟随、撤退……） | L5 `simorder`：下命令 `order_*(world, peers, b, ...)`，每帧推进 `*_due`。移动的物理调 L2，开火的数值调 L3；扣钱加钱调 L4 `simmoney.Money` | 单位的目标和模式字段只由 `simorder` 写（`FIELD_OWNER`）；借的名字进 `simorder.PEERS`；玩家能下的命令另看 `simproxy.issue` 和 `simcoverage.PLAYER_ORDERS` | 最小世界里下命令、推进几帧，断言位置 / 目标；脚本动作那一层只测"翻译对了" |
+| AI 规则 | L8 `simai` 和它的适配器（样板 `simpullback`、`simmicro`）：只通过 L4（`simmoney`、`simtech`）和 L5（`simorder`）的接口下指令，不直接改对象字段 | 适配器进 `WORLD_TAKERS`、`PEER_TAKERS`；暂不进 `LAYER_OF`（`simai` 还导入 sim，只被它导入的文件清单不数，`test_simcoverage_files` 会红） | 直接喂适配器一个小局面断言它的决定；AI 回放只当对拍证据 |
+| 每帧要做的事 | 规则写在主人模块（`due` / `tick` 一类方法）；L7 `simloop` 只加一个格子 `fn(s, frame, tick)`：一句调用 + 门控，调主人对象（`s.heal.autoheal`、`s.repairs.due`），不调 Sim 的转调 | `simloop.CELLS` + `simloop.FRAME`（位置 = 引擎里的先后，没台上证据标 INFERRED）。两种跑法共用这一张；只推进名单里有这个部件的对象，不每帧全扫 | 格子的规则在主人模块测；改 `FRAME` 顺序会改所有录制，要拿对拍回放当证据 |
+
+每件都要：
+
+- **一个最小世界测试**（`simsmall.small_world`，几秒），测试名写行为。整局回放只当"已对拍"的证据，不当日常回归。
+- **没做的分支记缺口**：`world.gap(GAP_*, 名字, 缺什么)`（种类在 `simworld`），清单才看得到，不静默。
+- **清单怎么数到你**：清单只读登记表和导入链（`simcoverage.sim_files` 从 sim.py 按 import 算）。XML 模块名、Nugget 名要作为字符串出现在导入链能到的文件里；状态位写成 `'X' in b.status` 才算"有作用"。所以新文件必须被导入链导入，别只被测试导入。
+- **分层模块不调 Sim 的转调**：调规则的真身（同层或下层模块的函数、世界 API、`Peers` 借来的还没搬的方法）。`test_sim_forwarders.FORWARDER_CALLS` 只减不增。Sim 上的转调只给 sim.py 里的旧代码和测试用，新规则别再加。
+- **守卫**：`test_sim_layers`（导入方向、世界句柄、字段主人、帧顺序）、`test_sim_forwarders`、`test_simcoverage_files`、`test_architecture`。
+
+### 拿已搬的三块核一遍
+
+- **⑥ `simbody`（物体模块那一行）**：死亡、移除、卖楼、坠机、按时掉血是 L2 的血量部件 → 新文件 `simbody.Life`，独占缓存 `lose_of` 进 `FIELD_OWNER`；用到的世界能力（`kills note label change add blocks reblock`）补进 `WORLD_API`；卖楼退款不写钱字典，调 L4 的 `simmoney.Money.credit`；每帧格子 `lose_health`、`expire` 各一句调用。
+- **⑦ `simdamage`（武器伤害那一行）**：伤害结算和各 Nugget → L3 `simdamage.Damage`，十个独占缓存进 `FIELD_OWNER`；要的 L2 动作（`destroy`、`modify`、`set_model_condition`……）当时都还在 sim.py，所以走 `simdamage.Peers`，名单 `PEERS`，登记 `PEER_TAKERS`；攻击状态机 `fight` 归 L5，没跟着搬；每帧格子 `deal`。
+- **⑨c `simgarrison` / `siminfiltrator` / `simrepair`（旧模块改接口）**：旧写法拿整个 Sim 读写（`self.sim.X`）→ 世界 API 有的改 `world.X`，其余改 `peers.X`；维修扣钱、间谍偷钱改走 `simmoney.Money` 的 `held` / `charge`。登记成分层模块后，守卫才数到它们原有的转调调用（`siminfiltrator` 的 `destroy`、`send`），在 `FORWARDER_CALLS` 补登一次，之后只减。
