@@ -140,6 +140,19 @@ def infiltrator_ship_share(with_templates=False):
     return share
 
 
+def infiltrator_kill_share(with_templates=False):
+    """E205 complete KILL signature; entry readings do not grant effect credit."""
+    measured = rm.ET.fromstring('''<InfiltratorContain id="ModuleTag_InfiltratorContain"
+        Effect="KILL" Amount="1.5" EvaEventForInfiltratedPlayer=""/>''')
+    wanted = (signature(measured),)
+    rows = [r for r in engineer_audit.audit('InfiltratorContain')['rows']
+            if tuple(sorted(signature(rm.ET.fromstring(m['xml'])) for m in r['modules'])) == wanted]
+    share = dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+    if with_templates:
+        share['template_ids'] = [r['template'] for r in rows]
+    return share
+
+
 def infiltrator_paralyze_share(with_templates=False):
     """E202 complete retail signature; credit requires named consumer replays."""
     measured = rm.ET.fromstring('''<InfiltratorContain id="ModuleTag_InfiltratorContain"

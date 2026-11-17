@@ -132,13 +132,13 @@ def test_infiltrator_energy_split_preserves_weight_and_other_effect_gaps():
     assert contain_audit.infiltrator_energy_share() == {'campaign': 4, 'templates': 6}
     rows = [r for r in inventory.collect((inventory.MODULE,))
             if r['name'].startswith('Behaviors/InfiltratorContain')]
-    assert len(rows) == 11
+    assert len(rows) == 12
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
     measured = next(r for r in rows if r['name'].endswith(':ENERGY'))
     gap = next(r for r in rows if r['name'] == 'Behaviors/InfiltratorContain')
     assert (measured['uses'], measured['all'], measured['state']) == (4, 6, inventory.BENCHED)
-    assert (gap['uses'], gap['all'], gap['state']) == (1, 1, inventory.GUESSED)
+    assert (gap['uses'], gap['all'], gap['state']) == (0, 0, inventory.GUESSED)
     assert measured['why'].startswith('tests/test_siminfiltrator.py::test_spy_power_plant_as_on_the_bench')
     import inventory_levels
     scope, _ = inventory_levels.expand_forms(rows, {
@@ -199,7 +199,7 @@ def test_infiltrator_money_split_rejects_changed_fields(monkeypatch, field, valu
 
 
 @pytest.mark.parametrize('effect, selector, uses, templates, boundary', [
-    ('KILL', '', 1, 1, 'KILL 1用量/1模板部分已测'),
+    ('KILL', '', 1, 1, 'KILL单列1用量/1模板仅存活已测'),
     ('PARALYZE', '', 3, 3, 'PARALYZE单列3用量/3模板已对拍'),
     ('VISION', '', 5, 5, '普通VISION 5用量/5模板部分已测且暂停扩宿主'),
     ('VISION', '9999999s', 1, 1, '港口阻断VISION单列1用量/1模板，实测边界见该行'),
@@ -392,7 +392,7 @@ def test_infiltrator_paralyze_configuration_partition(monkeypatch):
         (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
             'a1': {'AlliedTechStructure', 'SovietCrane'}}})
     assert scope[(inventory.MODULE, form['name'])]['a1'] == {'AlliedTechStructure'}
-    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain')]['a1'] == {'SovietCrane'}
+    assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain:KILL')]['a1'] == {'SovietCrane'}
     raw = contain_audit.engineer_audit.audit('InfiltratorContain')
     monkeypatch.setattr(contain_audit.engineer_audit, 'audit', lambda kind: raw)
     from copy import deepcopy
@@ -407,3 +407,47 @@ def test_infiltrator_paralyze_configuration_partition(monkeypatch):
                     element.set(field, value)
                     module['xml'] = retailmodules.ET.tostring(element, encoding='unicode')
         assert contain_audit.infiltrator_paralyze_share() == {'campaign': 0, 'templates': 0}, field
+
+
+def test_infiltrator_kill_complete_configuration_partition(monkeypatch):
+    """Complete static signature, preserving the unmeasured effect gap (E205)."""
+    if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
+        pytest.skip('needs SDK and retail placement cache')
+    share = contain_audit.infiltrator_kill_share(with_templates=True)
+    assert share == {'campaign': 1, 'templates': 1, 'template_ids': ['SovietCrane']}
+    rows = [r for r in inventory.collect((inventory.MODULE,))
+            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    form = next(r for r in rows if r['name'].endswith(':KILL'))
+    assert (form['uses'], form['all'], form['state']) == (1, 1, inventory.GUESSED)
+    assert (inventory.MODULE, form['name']) not in inventory.BENCHED_TESTS
+    assert '抛飞或死亡派发' in form['why'] and 'work/re/e205_kill.md' in form['why']
+    assert sum(r['uses'] for r in rows) == 34 and sum(r['all'] for r in rows) == 38
+    import inventory_levels
+    scope, _ = inventory_levels.expand_forms(rows, {
+        (inventory.MODULE, 'Behaviors/InfiltratorContain'): {
+            'a1': {'SovietCrane', 'UnknownCrane'}}})
+    assert scope[inventory.MODULE, form['name']]['a1'] == {'SovietCrane'}
+    assert scope[inventory.MODULE, 'Behaviors/InfiltratorContain']['a1'] == {'UnknownCrane'}
+    raw = contain_audit.engineer_audit.audit('InfiltratorContain')
+    monkeypatch.setattr(contain_audit.engineer_audit, 'audit', lambda kind: raw)
+    from copy import deepcopy
+    original = deepcopy(raw)
+    for field, value in [('Amount', '1'), ('EvaEventForInfiltratedPlayer', 'OtherEvent'),
+                         ('Duration', '1s'), ('Effect', 'RESET'),
+                         ('EvaEventForInfiltratedPlayer', None), ('child', None), ('sibling', None)]:
+        raw['rows'] = deepcopy(original['rows'])
+        for row in raw['rows']:
+            for module in list(row['modules']):
+                element = retailmodules.ET.fromstring(module['xml'])
+                if element.get('Effect') != 'KILL':
+                    continue
+                if field == 'child':
+                    retailmodules.ET.SubElement(element, 'CanEnterFilter', {'Rule': 'ANY'})
+                elif field == 'sibling':
+                    row['modules'].append({'xml': '<InfiltratorContain Effect="RESET"/>'})
+                elif value is None:
+                    element.attrib.pop(field)
+                else:
+                    element.set(field, value)
+                module['xml'] = retailmodules.ET.tostring(element, encoding='unicode')
+        assert contain_audit.infiltrator_kill_share() == {'campaign': 0, 'templates': 0}, field

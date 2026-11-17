@@ -8,7 +8,7 @@ VISION activation delay of five seconds is INFERRED from second-spaced samples;
 Soviet/Japan first discovery is later; only stable windows replay, exact timing is a gap.
 mapping the whole local radius to yard XML and parent-death cleanup are INFERRED.
 Observer lifetime, other templates/players/spies and repeated entry remain gaps.
-E138 KILL only removes the hostile Allied spy at a retail Soviet crane;
+E138/E205 KILL removes the hostile Allied spy and credits the crane owner;
 fling distance, exact entry clock and death-module dispatch remain gaps.
 E199/E200 VISION_UNITS: existing measured vehicle/aircraft/infantry/ship markers have
 a five-pass discovery cycle, 0/1/1/1/1 from first observed spy disappearance.
@@ -34,8 +34,18 @@ def spec(template, own=None):
             path = os.path.join(simunits.SAGEXML, *m.group(1).split('/'))
             return open(path, encoding='utf-8').read() if os.path.isfile(path) else ''
         text = re.sub(r'<xi:include\b[^>]*href="DATA:([^"]+)"[^>]*/>', include, text)
-        head = next(simunits._blocks(text, 'InfiltratorContain'), None)
-        return dict(re.findall(r'(\w+)="([^"]*)"', head[0])) if head else None
+        modules = list(simunits._blocks(text, 'InfiltratorContain'))
+        head = modules[0] if modules else None
+        if head is None:
+            return None
+        rule = dict(re.findall(r'(\w+)="([^"]*)"', head[0]))
+        if rule.get('Effect') == 'KILL' and head[1].strip():
+            # E205: the measured KILL module has no children. Preserve an
+            # explicit rejection marker rather than silently dropping a filter.
+            rule['_unmeasured_children'] = head[1]
+        if rule.get('Effect') == 'KILL' and len(modules) != 1:
+            rule['_unmeasured_siblings'] = len(modules)
+        return rule
     return simunits._chain(template, own, read)
 
 
@@ -180,7 +190,7 @@ class Infiltrators:
                                'UnitFilter': 'InfiltrationParalyzeObjectFilter'})
 
     def kill_rule(self, target, rule):
-        """E138 entry survival only; fling and death effects remain gaps."""
+        """E205 complete signature; survival/player credit, not fling/death dispatch."""
         config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
         return (target.template == 'SovietCrane'
                 and config == {'Effect': 'KILL', 'Amount': '1.5',
@@ -425,7 +435,17 @@ class Infiltrators:
                 # INFERRED: ordinary lethal cleanup; E138 only observes survival,
                 # not the fling trajectory, death animation or death-module dispatch.
                 self.kill_hosts.add(id(target))
+                s.gap('InfiltratorContain', target.template,
+                      'KILL存活及玩家击杀归属已接，抛飞/死亡模块派发未对拍，见 work/re/e205_kill.md')
+                prior_attacker = spy.last_by is not None
                 s.destroy(spy, '起重机拒绝渗透')
+                if not spy.alive and not prior_attacker:
+                    # E205 c measures the host player's named-victim credit.
+                    # No named killer was measured: do not invent one here.
+                    s.kills.append((target.owner, None, spy.template, spy.name))
+                else:
+                    s.gap('InfiltratorContain', target.template,
+                          'KILL已有伤害来源/免死进入者的击杀归属未对拍')
                 s.change()
                 continue
             if self.money_rule(target, rule):

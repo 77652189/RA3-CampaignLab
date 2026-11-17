@@ -8,7 +8,7 @@ exact timing are INFERRED; fling distance, death effects and repeat entry gap.
 Bench: s1..10 enemy/ally=11100/11100; s11..31=1100/11100 (3/3 PASS).
 These are survival/HP/owner counters, not a death-animation measurement.
 """
-from parts import Script, Test, counted
+from parts import Script, Test, counted, square
 
 
 def check(m):
@@ -38,4 +38,52 @@ def check(m):
     return t
 
 
-CHECKS = {'engine_infkill': {'a': check}}
+def credit_check(m):
+    """E205 diagnostic: hostile entry/refusal plus independent kill credit.
+
+    Predict the hostile crane owner receives named kill credit (1); neither
+    the spy owner nor friendly crane owner does (10/100). This prediction
+    does not measure fling, death-animation or internal dispatch directly.
+    MEASURED E205 b: s1..47=11100/11100/0; no accepted entry observed.
+    """
+    t = check(m)
+    counter = 'Kill credit'
+    t.counters.append((counter, 'credit'))
+    t.scripts.append(Script('Test - credit reset', [],
+                            [('SET_COUNTER', counter, 0)], once=False))
+    for side, weight in [('s1', 1), ('p1', 10), ('s2', 100)]:
+        t.scripts.append(Script('Test - credit ' + side,
+            [('PLAYER_HAS_KILLED_NAMED_UNIT', m.player(side), m.role('enemy spy').name)],
+            [('INCREMENT_COUNTER', weight, counter)], once=False))
+    t.expect.append(('credit', 18, '==', 1, 30))
+    t.bench = [('bench_watch', dict(seconds=30, every=1, sheet=False, lines=3))]
+    return t
+
+
+def phase_check(m):
+    """E205 second run distinguishes script dispatch from approach/entry.
+
+    Predict phase=111: start=1, enter-command dispatched=10, hostile spy has
+    reached the host's inner 40-unit square=100. Region uses the mission's
+    published host position. b's original expectations remain unchanged.
+    MEASURED E205 c: s1..34=11100/11100/0/1, s36..45=11100/11100/0/11,
+    s46..52=1100/11100/1/111. Original early-window prediction FAIL; only
+    final player kill credit is established, not fling or death dispatch.
+    """
+    t = credit_check(m)
+    counter, area = 'Kill phase', 'Kill approach'
+    host = m.role('enemy')
+    placed = next(obj for obj in m.objects if obj.name == host.name)
+    t.areas[area] = square(placed.x, placed.y, 40)
+    t.counters.append((counter, 'phase'))
+    t.scripts[0].do.append(('SET_COUNTER', counter, 1))
+    t.scripts[1].do.append(('INCREMENT_COUNTER', 10, counter))
+    t.scripts.append(Script('Test - approach latch',
+        [('NAMED_INSIDE_AREA', m.role('enemy spy').name, area)],
+        [('INCREMENT_COUNTER', 100, counter)]))
+    t.expect.append(('phase', 18, '==', 111, 30))
+    t.bench = [('bench_watch', dict(seconds=30, every=1, sheet=False, lines=4))]
+    return t
+
+
+CHECKS = {'engine_infkill': {'a': check, 'b': credit_check, 'c': phase_check}}
