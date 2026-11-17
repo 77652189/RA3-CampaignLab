@@ -14,18 +14,15 @@ import simunits
 
 def rules(template, own):
     """Effective LevelUpUpgrade modules, by id, including BaseVehicle/Infantry."""
-    found, seen = {}, set()
-    while template and template.lower() not in seen:
-        seen.add(template.lower())
-        xml = simunits._xml(template, own) or ''
-        for head, inner in simunits._blocks(xml, 'LevelUpUpgrade'):
+    found = {}
+    for _, xml in simunits.xml_chain(template, own, steps=10):
+        for head, inner in simunits._blocks(xml or '', 'LevelUpUpgrade'):
             mid = simunits._attr(head, 'id')
             if mid not in found:
                 found[mid] = (simunits._triggers(inner),
                               int(simunits._attr(head, 'LevelsToGain', '0')),
                               int(simunits._attr(head, 'LevelCap', '0')),
                               simunits._attr(head, 'Permanent', 'false').lower() == 'true')
-        template = simunits.parent(xml, template)
     return found
 
 

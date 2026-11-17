@@ -237,8 +237,7 @@ def nuggets_of(wid, own=None):
 def declared_picks(template, own):
     """The weapon template of each slot as simunits.read_fight takes it (the PRIMARY one), from the unit's XML or what it
     inherits from; None when the XML names no weapon."""
-    xml = simunits._xml(template, own)
-    for _ in range(5):
+    for _, xml in simunits.xml_chain(template, own):
         picks = []
         for head, body in simunits._blocks(xml, 'WeaponSetUpdate'):
             for slot in re.finditer(r'<WeaponSlot\w*\b.*?</WeaponSlot\w*>', body, re.S):
@@ -249,10 +248,6 @@ def declared_picks(template, own):
                     picks.append(pick)
         if picks:
             return picks
-        up = simunits.parent(xml, template)
-        if not up or up.lower() == template.lower():
-            break
-        xml = simunits._xml(up, own)
     return None
 
 
@@ -492,14 +487,7 @@ PLAYER_ORDERS = {
 
 
 def inherited_text(template, own):
-    xml, out = simunits._xml(template, own), []
-    for _ in range(5):
-        out.append(xml)
-        up = simunits.parent(xml, template)
-        if not up or up.lower() == template.lower():
-            break
-        xml = simunits._xml(up, own)
-    return '\n'.join(out)
+    return '\n'.join(xml for _, xml in simunits.xml_chain(template, own))
 
 
 def needs_capture(inf):
@@ -683,6 +671,9 @@ KNOWN = {
     ('命令', '技能 SpecialPower_CNV_Beacon_Pull'): first('a5', '技能 SpecialPower_CNV_Beacon_Pull', 'CNV_Beacon 的"pull"：玩家能点，但模拟器只记日志、没有效果（order_power 只对造结构 / 超武'),
     ('命令', '技能 SpecialPower_CNV_ChronoDeck'): first('a8', '技能 SpecialPower_CNV_ChronoDeck', 'CNV_Liberty 的"jump"：玩家能点，但模拟器只记日志、没有效果（order_power 只对造结构 / 超'),
     ('命令', '技能 SpecialPower_JapanAntiInfantryInfantryBonzai'): first('j4', '技能 SpecialPower_JapanAntiInfantryInfantryBonzai', 'JapanAntiInfantryInfantry 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
+    # B round 229: the campaign overrides' abilities, hidden while inherited_text stopped at the override
+    ('命令', '技能 SpecialPower_JAIV_Transform'): first('j7', '技能 SpecialPower_JAIV_Transform', 'JapanAntiInfantryVehicle 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
+    ('命令', '技能 SpecialPower_ToggleLeechBeam'): first('s2', '技能 SpecialPower_ToggleLeechBeam', 'SovietAntiVehicleVehicleTech1 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
     ('命令', '技能 SpecialPower_MolotovCocktail'): first('s2', '技能 SpecialPower_MolotovCocktail', 'SovietAntiInfantryInfantry 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
     ('命令', '技能 SpecialPower_PackReplaceSelf'): first('a1', '技能 SpecialPower_PackReplaceSelf', 'AlliedConstructionYard 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
     ('命令', '技能 SpecialPower_PaintTargetTrigger'): first('a1', '技能 SpecialPower_PaintTargetTrigger', 'AlliedAntiVehicleVehicleTech1 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),

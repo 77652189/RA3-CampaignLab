@@ -1577,10 +1577,10 @@ def declared_weapons(template, own=None):
     inherits from (5 steps); [] when the XML names none. Sim.add asks it when fight() reads no weapon (a gap, not a
     unit without guns); simcoverage.declared_picks reads the same."""
     try:
-        xml = _xml(template, own)
+        chain = list(xml_chain(template, own))
     except (OSError, ValueError):
         return []
-    for _ in range(5):
+    for _, xml in chain:
         picks = []
         for head, body in _blocks(xml or '', 'WeaponSetUpdate'):
             for slot in re.finditer(r'<WeaponSlot\w*\b.*?</WeaponSlot\w*>', body, re.S):
@@ -1590,13 +1590,6 @@ def declared_weapons(template, own=None):
                     picks.append(pick)
         if picks:
             return picks
-        up = parent(xml, template)
-        if not up or up.lower() == template.lower():
-            break
-        try:
-            xml = _xml(up, own)
-        except (OSError, ValueError):
-            break
     return []
 
 
@@ -1611,10 +1604,10 @@ def weapon_sets(template, own=None):
     132). None where no weapon line carries a status or upgrade condition (the unit's weapons are read_fight's,
     whatever its status). Walks the inheritance like declared_weapons."""
     try:
-        xml, table = _xml(template, own), weapon_table(own)
+        chain, table = list(xml_chain(template, own)), weapon_table(own)
     except (OSError, ValueError):
         return None
-    for _ in range(5):
+    for _, xml in chain:
         slots = []
         for head, body in _blocks(xml or '', 'WeaponSetUpdate'):
             for slot in re.finditer(r'<WeaponSlot\w*\b.*?</WeaponSlot\w*>', body, re.S):
@@ -1628,13 +1621,6 @@ def weapon_sets(template, own=None):
                 return None
             return [[(need, forbid, prim, _resolve(table[t], table) if t in table else None)
                      for need, forbid, prim, t in s] for s in slots]
-        up = parent(xml, template)
-        if not up or up.lower() == template.lower():
-            break
-        try:
-            xml = _xml(up, own)
-        except (OSError, ValueError):
-            break
     return None
 
 
@@ -1652,11 +1638,11 @@ def template_weapons(template, own=None):
     leech beam and not its gun (the gun needs GENERIC_TOGGLE_STATE). None where the XML (walked up like
     weapon_sets) has no WeaponSetUpdate: the caller keeps the unit's own weapons."""
     try:
-        xml, table = _xml(template, own), weapon_table(own)
+        chain, table = list(xml_chain(template, own)), weapon_table(own)
     except (OSError, ValueError):
         return None
     rank = {o: i for i, o in enumerate(ORDERING)}
-    for _ in range(5):
+    for _, xml in chain:
         found, guns = False, []
         for head, body in _blocks(xml or '', 'WeaponSetUpdate'):
             found = True
@@ -1677,14 +1663,6 @@ def template_weapons(template, own=None):
                         break
         if found:
             return guns
-        up = parent(xml, template)
-        if not up:
-            break
-        try:    # a file that patches the template inherits from itself: the retail one next (as _chain)
-            xml = retail_xml(template) if up.lower() == template.lower() else _xml(up, own)
-        except (OSError, ValueError):
-            break
-        template = up
     return None
 
 
@@ -1757,19 +1735,29 @@ _crush_memo = {}
 
 
 def _chain(template, own, first):
-    """Walk the template's XML up its inheritFrom chain (5 steps, as _inherited) calling first(xml) on each; the first
-    non-None answer, else None."""
-    xml = _xml(template, own)
-    for _ in range(5):
+    """Walk the template's XML up its inheritFrom chain (xml_chain) calling first(xml) on each; the first non-None
+    answer, else None."""
+    for _, xml in xml_chain(template, own):
         got = first(xml)
         if got is not None:
             return got
+    return None
+
+
+def xml_chain(template, own=None, steps=5):
+    """(template, xml) of the template and of what it inherits from (inheritFrom), up to `steps` texts: the one walk
+    up the chain the readers share. A campaign override (CampaignOverrides.xml: the same id inheriting itself, the
+    file the index names) is followed by the file of the template's own name, not ended there: the Hammer and seven
+    more armed units keep their WeaponSetUpdate only in that file (B round 229: weapon_sets and declared_weapons
+    stopped at the override and read no weapons). _xml may raise OSError / ValueError."""
+    xml = _xml(template, own)
+    for _ in range(steps):
+        yield template, xml
         up = parent(xml, template)
         if not up:
-            break
+            return
         xml = retail_xml(template) if up.lower() == template.lower() else _xml(up, own)
         template = up
-    return None
 
 
 def crush(template, own=None):
@@ -2863,18 +2851,12 @@ def parent(xml, template=None):
 
 
 def _inherited(template, own, read, empty):
-    """read(xml) of the template, else of what it inherits from (inheritFrom), up to 5 steps. A campaign override
-    (CampaignOverrides.xml: the same id inheriting itself) is read first, then the file of the template's own name."""
-    xml = _xml(template, own)
-    for _ in range(5):
+    """read(xml) of the template, else of what it inherits from (xml_chain: a campaign override first, then the file
+    of the template's own name); empty when none answers."""
+    for _, xml in xml_chain(template, own):
         got = read(xml)
         if got != empty:
             return got
-        up = parent(xml, template)
-        if not up:
-            break
-        xml = retail_xml(template) if up.lower() == template.lower() else _xml(up, own)
-        template = up
     return empty
 
 
