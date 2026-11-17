@@ -22,6 +22,7 @@ LAYER_OF = {
     'simunits': 1,
     'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2, 'simmine': 2, 'simstatus': 2, 'simpower': 2, 'simgarrison': 2,
     'simmodifier': 2, 'simlevel': 2, 'simlocomotion': 2,
+    'simbody': 2,
     'simtech': 4, 'simmoney': 4,
     'simact': 6, 'simact_vision': 6, 'simact_player': 6, 'simact_order': 6, 'simact_object': 6, 'simact_ability': 6, 'simact_world': 6, 'simact_show': 6, 'simscript': 6,
     'simcond': 6, 'simcond_world': 6, 'simcond_object': 6, 'simcond_vision': 6, 'simcond_player': 6, 'simcond_show': 6,
@@ -29,7 +30,8 @@ LAYER_OF = {
 }
 
 # modules that take the world as an argument (rule 2): they reach it only through WORLD_API
-WORLD_TAKERS = {'simheal', 'simmine', 'simmoney', 'simmodifier', 'simlocomotion'}
+WORLD_TAKERS = {'simheal', 'simmine', 'simmoney', 'simmodifier', 'simlocomotion',
+                'simbody'}
 
 # field -> the one file that may assign it (rule 3), for the blocks moved so far. Not yet the money dicts (money,
 # income, money_cap): scripts, selling, production, repairs, spies and simai still write them directly (simmoney.py)
@@ -38,7 +40,9 @@ FIELD_OWNER = {'heal_at': 'simheal', 'heal_seen': 'simheal',
                'aura_cache': 'simmodifier', 'aura_beat': 'simmodifier', 'level_rate': 'simmodifier',
                'level_vision': 'simmodifier', 'shielded': 'simmodifier', 'taken': 'simmodifier', 'dealt': 'simmodifier',
                'stood_for': 'simlocomotion', 'set_off': 'simlocomotion', 'jet_motion': 'simlocomotion',
-               'frame_move': 'simlocomotion'}
+               'frame_move': 'simlocomotion',
+               'deleted': 'simbody', 'died_at': 'simbody', 'sell_end': 'simbody', 'lose_of': 'simbody'}
+# (a body's `alive` is assigned only in simbody too, but simai's teams.alive callback shares the name)
 
 
 def _load(name):

@@ -67,6 +67,7 @@ import simcond  # noqa: E402
 import simgarrison  # noqa: E402
 import simheal  # noqa: E402
 import simlocomotion  # noqa: E402
+import simbody  # noqa: E402
 import simmine  # noqa: E402
 import simmodifier  # noqa: E402
 import simmoney  # noqa: E402
@@ -1321,26 +1322,8 @@ class Sim:
                     self.spawn_child(parent, mid, template, self.t)
 
     def expire(self, frame):
-        """R1: whatever's lifetime is up by `frame` dies (killed, as the game's LifetimeUpdate: NAMED_DESTROYED, gone
-        from areas at once -- bench 2026-11-07 engine_life, no body lingers) and leaves what its death makes, made
-        that frame (the ice core's wall)."""
-        for b in self.living():
-            if b.topple_end is not None and frame >= b.topple_end:
-                self.destroy(b, '倒伏后消失', delete=True)     # PropBody never exposes NAMED_DYING, even for one frame
-                continue
-            if b.sell_end is not None and frame >= b.sell_end:
-                self.destroy(b, '卖掉了', delete=True)          # StructureSellUpdate: deleted, no death, no ruin
-                continue
-            if b.life_end is None or frame < b.life_end:
-                continue
-            self.used.add('lifetime')
-            self.destroy(b, '寿命到了')
-            for tmpl in b.leaves:
-                n = self.add(f'#left {len(self.bodies)} of {b.name}', tmpl, b.owner, b.x, b.y, by=b.name, at=self.t)
-                n.team, n.angle = b.team, b.angle
-                self.note('留下', f'{tmpl}（{self.label(b)} 寿命到了）')
-                if self.blocks(n):
-                    self.reblock()
+        """simbody.Life.expire (L2): whatever's lifetime (a topple's delay, a sale's) is up by `frame` goes."""
+        self._life().expire(self, frame, self.destroy)
 
     def living(self):
         return [b for b in self.bodies.values() if b.alive]
@@ -2419,117 +2402,24 @@ class Sim:
         SlowDeath's DestructionDelay (bench 11-06 engine_crush: 127 frames; a plant killed by script: one frame)."""
         return b is not None and not b.alive and not b.deleted and self.t - b.died_at <= b.linger + 1e-9
 
-    SELL_PERCENT, SELL_FRAMES = 0.5, 30          # SellPercentage (SDK default) and SellTime 2 s x 15 (BuildingBehavior)
-
     def sell(self, b):
-        """SELL_OBJECT (bench 2026-11-06 engine_sell, docs/engine/sell.md): a living structure that is not unpacking
-        and not already sold is paid at once -- round(round(cost x 50%) x health share) -- and carries SOLD; 30 frames
-        later it is deleted (no death, no ruin); meanwhile it still counts as power and can still be killed (then the
-        money stays paid and it is just dead). Anything else: nothing happens. Not read: a template's RefundValue,
-        NOT_SELLABLE, the factory's queue. The garrison empties (simgarrison, INFERRED: Generals' onSelling)."""
-        if b is None or not b.alive or 'STRUCTURE' not in b.kinds or b.sell_end is not None:
-            return
-        self.garrison.empty(b)
-        if b.unpack_end is not None and self.frame_now() < b.unpack_end:
-            return                                                  # engine_sell c: refused while it unpacks
-        self.used.add('sell')
-        cost = simunits.production(b.template, self.own)[0]
-        refund = math.floor(math.floor(cost * self.SELL_PERCENT + 0.5) * (b.hp / b.max_hp if b.max_hp else 1.0) + 0.5)
-        self.money[b.owner] = self.money.get(b.owner, 0) + refund
-        b.script_status.add('SOLD')
-        self.modify(b)
-        b.sell_end = self.frame_now() + self.SELL_FRAMES
-        self.note('出售', f'{self.label(b)}（退 {refund}）')
+        """simbody.Life.sell (L2): SELL_OBJECT -- the refund paid at once (simmoney.Money.credit), deleted 30 frames on."""
+        self._life().sell(self, b, self.garrison, self.modify, self.wallet.credit)
 
     def destroy(self, b, why, delete=False):
-        if not b.alive:
-            return
-        if b.immortal and not delete:
-            # Object::kill (also script KILL, crushing etc.) is lethal damage;
-            # only direct deletion bypasses the body's internalChangeHealth.
-            b.damage(b.max_hp)
-            return
-        if b.prop and not delete and (b.topple or b.prop == 'stays'):
-            # engine_propbody b (bench 11-10): a killed topple prop falls where it stands (no fall time) and is gone
-            # its delay later, never dying (expire; 61 / 121 frames counted with the kill's); a PropBody with nothing
-            # to take its death stays for good
-            if b.topple and b.topple_end is None:
-                b.toppled, b.topple_end = True, self.frame_now() + b.topple['delay']
-            return
-        b.alive, b.deleted, b.path, b.died_at = False, delete, [], self.t
-        if not delete and b.last_by is not None and b.last_hit is not None:
-            self.kills.append((b.last_hit, b.last_by, b.template, b.name))     # cond_retail: who killed what
-        b.spawn_refills.clear()
-        parent = b.spawn_parent
-        if parent is not None and parent.alive:
-            if delete:
-                self.gap('SpawnBehavior', parent.template, '子体直接删除是否补充未测；不作为死亡通知')
-            else:
-                # The complete accepted configuration fixes SpawnReplaceDelayData at 10s.
-                parent.spawn_refills.append((self.frame_now() + simunits._frames(10.0),
-                                             b.spawn_module, b.template))
-        for child in b.spawned_children:
-            # engine_spawn: both script kill and delete remove all three in the same sample.
-            # Removal via deletion (rather than a lethal hit) is INFERRED; child death effects unmeasured.
-            self.destroy(child, 'SpawnedRequireSpawner', delete=True)
-        self.garrison.died(b, delete)       # passengers out alive / killed with it (simgarrison, garrison.md 4)
-        if not delete:
-            b.hp = 0.0
-            # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
-            # died; a deletion fires nothing (INFERRED, as Generals' destroyObject skips the die modules)
-            for dmg, typ, reach, after, affects, ally in simunits.death_weapons(b.template, self.own, scalars=True):
-                self.used.add('death weapon')
-                self.death_blasts.append((self.frame_now() + simunits._frames(after), b.x, b.y, dmg, typ, reach,
-                                          affects, b.owner, b, ally, False))
-            if b.surface == 'air':
-                self.air_crash(b)
-        self.note('删除' if delete else '摧毁', f'{self.label(b)}（{why}）')
-        self.change()
-        if self.blocks(b):
-            self.reblock()
+        """simbody.Life.destroy (L2): b killed (or deleted): its spawn, garrison, death weapons and air crash."""
+        self._life().destroy(self, b, why, delete, self.garrison, self.death_blasts, self.impact_ground_z)
 
-    HOVER_DRIFT = 0.2               # a frame: a hovering plane's velocity (air_crash)
+    def _life(self):
+        """The simbody.Life (L2), made on first use (a Sim built without __init__ has none yet)."""
+        m = self.__dict__.get('life')
+        if m is None:
+            m = self.life = simbody.Life()
+        return m
 
     def air_crash(self, b):
-        """Physics P5 (checks/engine_crash_fall.py): an aircraft killed in the air is gone at once and its airborne
-        CreateObjectDie (simunits.air_wrecks) makes a wreck LIKE_EXISTING with its velocity x the OCL's VelocityScale;
-        a wreck that falls (KillWhenRestingOnGround) dies where it comes to rest (simunits.crash_frames: the fall's
-        curve, its own GravityMultiplier) and its FireWeaponWhenDead goes off there (the Apollo's / MiG's
-        NormalAircraftDeathWeapon: 150 EXPLOSIVE radius 20, allies 50 %), on the ground only. The plane is at its
-        locomotor's PreferredHeight over the ground (simunits.fly_height; bench 174.94), flying at its speed towards
-        its path's next point, else still (a hovering one). Of a CHOOSE_ONE list (the game draws one: the Apollo's
-        Collapse or Dying) the first that falls and has a weapon (INFERRED choice: the crash that can hurt, the run
-        repeatable). INFERRED: level ground (the landing's own height not looked up), the death on the frame it rests,
-        the nugget's MetaImpact (ShockWave 50, radius 50) not dispatched."""
-        got = simunits.air_wrecks(b.template, self.own)
-        if not got:
-            return
-        choose, wrecks = got
-        hits = [w for w in wrecks if w['falls'] and w['weapons']]
-        if choose and len(wrecks) > 1:
-            self.used.add('crash choice')
-            hits = hits[:1]
-        if not hits:
-            return
-        ground = self.impact_ground_z(b.x, b.y)
-        z = b.z if b.z is not None else ground + simunits.fly_height(b.template, self.own)
-        # still (hovering): HOVER_DRIFT along its facing (bench 11-12 engine_crash_hit: both hovering Apollos' wrecks
-        # logged v (0.1, 0, 0) = 0.5 x 0.2 facing east; INFERRED for other planes and facings)
-        vx, vy = self.HOVER_DRIFT * math.cos(b.angle), self.HOVER_DRIFT * math.sin(b.angle)
-        if b.path and b.speed > 0 and not b.engaged:
-            tx, ty = b.path[0]
-            d = math.hypot(tx - b.x, ty - b.y)
-            if d > 0:
-                vx, vy = (tx - b.x) / d * b.speed / simunits.LIFE_FPS, (ty - b.y) / d * b.speed / simunits.LIFE_FPS
-        for w in hits:
-            frames, end = simunits.crash_frames((b.x, b.y, z), (vx * w['scale'], vy * w['scale'], 0.0), ground,
-                                                w['gravity'])
-            if abs(self.impact_ground_z(end[0], end[1]) - ground) > 1e-3:
-                self.gap('Physics', w['template'], '坠机残骸落到不同高度的地面：落点和时刻按起点地面算')
-            self.used.add('air crash')
-            for dmg, typ, reach, after, affects, ally in w['weapons']:
-                self.death_blasts.append((self.frame_now() + frames + simunits._frames(after), end[0], end[1], dmg,
-                                          typ, reach, affects, b.owner, b, ally, True, (end[0] - b.x, end[1] - b.y)))
+        """simbody.Life.air_crash (L2): an aircraft killed in the air leaves its falling wreck's death weapon."""
+        self._life().air_crash(self, b, self.death_blasts, self.impact_ground_z)
 
     # ---- the engine model's World: what its script engine asks of the objects (the rest it does itself)
     def condition(self, eng, name, args):
@@ -2945,27 +2835,8 @@ class Sim:
                 self.change()
 
     def lose_health(self, frame):
-        """LoseHealthUpdate gated by an ObjectStatusValidation (simunits.lose_health): DamagePerSecond / fps a frame
-        while the body's own toggle (its ToggleState's bits) carries every RequiredStatus and it has no ForbiddenStatus
-        (engine_acts_tgl KV: the Kirov's afterburners, pressed, drained 200/s). A script's UNIT_CHANGE_OBJECT_STATUS bit
-        alone starts nothing (E146 engine_objectbatch a / b: the dreadnought's drain on a tank, GENERIC_TOGGLE_STATE
-        given by script at 8 s and read back true, held 100 % to s25 with HealthTrigger 101 % and 0 % alike) --
-        INFERRED that the press is what wakes the update; the host (aircraft against tank) was not separated."""
-        cache = self.__dict__.setdefault('_lose_of', {})
-        for b in self.bodies.values():
-            if not b.alive:
-                continue
-            if b.template not in cache:
-                cache[b.template] = simunits.lose_health(b.template, self.own)
-            rule = cache[b.template]
-            if not (rule and rule[0]) or rule[2] & set(b.status):
-                continue
-            toggled = set()
-            for i, tm in enumerate(self.toggles_of(b)):
-                toggled |= tm['states'][b.toggle_at.get(i, 0) % len(tm['states'])]['status']
-            if rule[1] <= toggled & set(b.status):
-                b.damage(rule[0] / self.fps)
-                self.used.add('lose health')
+        """simbody.Life.lose_health (L2): LoseHealthUpdate while the body's own toggle carries its statuses."""
+        self._life().lose_health(self, frame, self.toggles_of)
 
     def autoheal(self, frame):
         self.heal.autoheal(self, frame)                 # simheal.Heal (L2)

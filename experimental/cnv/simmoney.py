@@ -54,3 +54,7 @@ class Money:
             give = int(frac)
             self.income[owner] = (mult, frac - give)
         self.earn(world, owner, give)
+
+    def credit(self, player, amount):
+        """Money paid that is no income (a sale's refund, simbody.Life.sell): never split, never held to the cap."""
+        self.money[player] = self.money.get(player, 0) + amount

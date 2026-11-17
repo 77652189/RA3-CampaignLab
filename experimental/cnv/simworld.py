@@ -26,6 +26,11 @@ WORLD_API = frozenset({
     'ground',          # the pathing grid (within / route)
     'eng',             # the private engine model's handle, None without it
     'change',          # () -> note that something changed now (last_change)
+    't',               # the run's time now, seconds
+    'kills',           # (killer's player, killer's name, template, name) by weapon, append only
+    'add',             # make a body (the registry)
+    'blocks',          # does a body block the ground's paths
+    'reblock',         # re-read the blocked ground
 })
 
 # Sim.gap's kinds: what a run met and the simulator does not act on (any layer reports one). The names are
