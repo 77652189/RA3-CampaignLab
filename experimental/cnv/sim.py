@@ -121,11 +121,7 @@ RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's 
                                # h / i (barracks, (40, 18): stops ~(75-80, 24-33)) and engine_rally tank (war
                                # factory, (80, 20): ~(112-127, 25-34); x 1.9 from the centre would be (152, 38))
 from simspecial import WFIRE_LAG, WFIRE_REAIM, NONE_TARGET_LAG  # noqa: E402,F401  (weapon-fire abilities, L2)
-# an idle unit takes nothing by itself in the mission's first logic frame (bench 11-15 engine_dam BR: a bear 60 from an
-# enemy conscript, NO_ATTACK from 0.1 s = frame 2, never left its 8-half start square; the simulator had it chase from
-# frame 1 and stand at the conscript's feet by frame 15). INFERRED: the program's first idle scan not read -- 2 is the
-# least the bench allows; with one acquisition pass a tick, any value up to the second tick's frame (8) acts the same
-IDLE_SCAN_FROM = 2
+from simorder import IDLE_SCAN_FROM  # noqa: E402,F401  (an idle unit's first scan frame, bench engine_dam BR; L5)
 BUILD_STEP = 5.0               # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
@@ -2642,59 +2638,8 @@ class Sim:
         return x0 <= b.x <= x1 and y0 <= b.y <= y1
 
     def fight(self):
-        """One tick of the fight model (未对齐, docs: the 'combat' align entry): every armed body fires each of its
-        weapons at the nearest enemy in that weapon's range it can hit (its NAMED_ATTACK target first, when in
-        range); the damage rate = the weapon's damage per second x the target's armour percent for its damage type;
-        an attack-mover with an enemy in range holds while it fights; a plain move goes on firing; an idle unit goes
-        after an enemy within its sight and comes back (`idle_chase`, R8). The reach is measured between the bounding
-        circles (`in_range`, R8). The aim is taken once a tick; the damage is dealt frame by frame (`deal`, R6)."""
-        self.seen = {}
-        self.firing = []
-        self.volleys = []
-        self.chilling = []
-        self.mid_aims = {}
-        self._fire_obstacles = None             # `shot_blocked`'s footprints, taken once a tick when first asked
-        live, armed, targets = self.fight_field()
-        self._field = (live, armed, targets)
-        if not armed or not targets:
-            return
-        aimable = {id(t) for t in targets}
-        tx = np.array([b.x for b in targets])
-        ty = np.array([b.y for b in targets])
-        for a in armed:                         # an attack on a team goes on to its next member (TEAM_ATTACK_TEAM)
-            if id(a) in self.team_targets and not (isinstance(a.goal, Body) and a.goal.alive):
-                them = self.members(self.team_targets[id(a)])
-                if them:
-                    self.order_attack(a, min(them, key=lambda t: math.hypot(t.x - a.x, t.y - a.y)).name)
-                else:
-                    del self.team_targets[id(a)]
-        for a in armed:
-            a.engaged = False
-            if self.held_up(a):                 # stopped short on a plain move: still moving (DEMO_KILL)
-                continue
-            got = self.aim(a, targets, aimable, tx, ty)
-            if got is None:
-                self.chase_step(a, False, [])
-                continue
-            fired, d, idx = got
-            g = a.goal
-            if not fired and isinstance(g, Body) and g.alive and not a.path and id(g) in aimable and \
-                    (a.spot is None or a.spot[0] != id(g) or math.hypot(g.x - a.spot[1], g.y - a.spot[2]) > 150) and \
-                    any(self.can_hit(w, g) and self.shot_blocked(a, g, w) for w in a.weapons) and \
-                    not any(self.can_hit(w, g) and self.in_range(a, g, w) and not self.shot_blocked(a, g, w)
-                            for w in a.weapons):
-                a.spot = (id(g), g.x, g.y)          # told to attack, the line blocked: round to a clear spot
-                p = self.fire_spot(a, g)
-                if p is not None:
-                    self.note('绕位', f'{self.label(a)} 打不着 {self.label(g)}（中间有建筑），绕到 ({p[0]:.0f},{p[1]:.0f})')
-                    self.send(a, p)
-            self.chase_step(a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d, kind='stable')])
-        if self.firing or self.volleys:
-            self.used.add('combat')
-        if self.chilling:
-            self.used.add('freeze')
-        if self.eng is None:                    # no frames: the tick's damage at once
-            self.deal(DT)
+        """simorder.fight (L5)."""
+        return simorder.fight(self, self._order_peers())
 
     def fight_field(self):
         """(live, armed, targets) for this moment's fight: who is in it, who can fire, who can be shot."""
@@ -2882,119 +2827,6 @@ class Sim:
         if out:
             self.used.add('stealth')
         return out
-
-    def chase_step(self, a, fired, near):
-        """An attack-mover on its way (or turned aside) chases as `attack_chase`; anyone else as `idle_chase`."""
-        if a.mode == 'attack' and not isinstance(a.goal, Body) and (a.path or a.resume is not None):
-            self.attack_chase(a, fired, near)
-        else:
-            self.idle_chase(a, fired, near)
-
-    def attack_chase(self, a, fired, near):
-        """An attack-mover's own chase (bench 2026-11-10 engine_wayatk atk2, checks/engine_wayatk.py: a Guardian on an
-        attack path, an enemy 220 beside the leg -- beyond the weapon's 196.6 from the path, within VisionRange 200 +
-        its radius 23.3 -- steps up to it, fires from s6 (atk's, 150 off: s4), and goes on to B once it is dead (s22,
-        atk s21); engine_acquire am260 / am400: 260 / 400 beside the path, no turn). Generals AIAttackMoveToState /
-        AIAttackFollowWaypointPathState::update take getNextMoodTarget every frame their attack machine is idle: the
-        mood scan within the vision range (calledDuringIdle false: AutoAcquireEnemiesWhenIdle not asked), an attack on
-        what it finds, and the move again once that is done. The same reach as idle_chase's (the centre distance less
-        the target's radius within its VisionRange); Generals limits a human player's units to attack range
-        (WITHIN_ATTACK_RANGE) -- RA3 does not (the bench's tank is the human player's). It walks to `reach`, the fight
-        holds it there (engaged), and with nothing left it is sent on to where the move was going (`resume`).
-        A team on an attack path shares no target: each member takes only what its own scan finds (bench 11-10
-        engine_wayatk3 cut: tank 2 fights an enemy 150 off its leg alone, ~13.5 % a shot; tank 3, never within 351 of
-        it, goes on to P and Q meanwhile -- round 146's reading of engine_wayatk team, the team's target taken at any
-        distance (Team::getTeamTargetObject), was wrong: there tank 3 walked to A itself, 212 from the enemy, within
-        its own scan 223.3; order_follow keeps no places for the attack version).
-        INFERRED: the scan's rate (MoodAttackCheckRate) and the way back (straight to the leg's end, not to the path)."""
-        if a.chase is not None and a.path and a.dest != a.auto_to:      # an order since: its own way, not ours
-            a.chase = a.resume = a.auto_to = None
-        if a.building or a.speed <= 0 or 'IMMOBILE' in a.status or fired:
-            return
-        c = a.chase
-        if c is not None and c.alive and self.side_sees(a.owner, c) and \
-                math.hypot(c.x - a.x, c.y - a.y) - c.radius <= a.sight:
-            if not a.path:                      # got there and it is still out of reach: after it again
-                self.send(a, (c.x, c.y), reach=self.reach(a, c))
-                a.auto_to = a.dest
-            return
-        a.chase = None
-        for dist, t in near:
-            if dist - t.radius > a.sight:
-                break                           # sorted by centre
-            if t.template in self.unshot or not self.takes_by_itself(a, t) or not self.side_sees(a.owner, t) or \
-                    'NON_AUTOACQUIRABLE' in t.status:
-                continue
-            if not any(self.can_hit(w, t) and not self.shot_blocked(a, t, w) for w in a.weapons):
-                continue
-            if a.resume is None:
-                a.resume = a.dest
-            a.chase = t
-            self.used.add('acquire')
-            self.send(a, (t.x, t.y), reach=self.reach(a, t))
-            a.auto_to = a.dest
-            return
-        if a.resume is not None:                # nothing left: on to where the move was going
-            r, a.resume, a.auto_to = a.resume, None, None
-            self.send(a, r)
-
-    def idle_chase(self, a, fired, near):
-        """R8, bench 2026-11-07 engine_acquire (a Guardian, weapon 150, VisionRange 200, both tanks radius 23.3): an
-        idle unit fires where it stands at 180 (centre to centre); at 200 and 220 it walks up, fires, and once its
-        target is done walks back to where it stood (within 15); at 240 and beyond, nothing -- likewise when guarding
-        (260) or attack-moving past (260 / 400). Read as: an idle unit takes the nearest enemy it can hit and its side
-        sees, when the centre distance less the target's radius is within its own VisionRange (220 < limit < 240:
-        200 + 23.3; INFERRED, the scan itself not read), walks to `reach` of it, and goes home when it has none left.
-        Idle = not building, no goal, no way of its own (a way this rule gave it does not count); any order since
-        (another way) drops the chase and the home. `near`: [(centre distance, enemy)] nearest first.
-        Stances (bench 2026-11-10 engine_acquire hold180 / hold220 / agg220 / agg240 / agg260): HOLD_POSITION fires
-        in place at 180 as GUARD does but at 220 never moves nor fires -- it walks after nothing; AGGRESSIVE takes the
-        same reach (220 yes, 240 / 260 nothing) but stays where the chase ended, never walking back (near 1 to s26
-        against GUARD's home at s16). A stance set in the middle of a chase: INFERRED from these."""
-        mine = a.path and a.dest is not None and a.dest == a.auto_to
-        if a.path and not mine:                 # an order of its own since: not idle, nothing of ours to keep
-            a.chase = a.home = a.auto_to = None
-            return
-        if a.goal is not None or a.building or a.speed <= 0 or 'IMMOBILE' in a.status:
-            return
-        if a.home is not None and a.chase is None and not a.path:
-            a.home = a.auto_to = None           # back home
-        if fired:
-            return
-        if a.stance == 2:                       # HOLD_POSITION: goes after nothing (hold220)
-            return
-        sight = a.sight
-        c = a.chase
-        if c is not None and c.alive and self.side_sees(a.owner, c) and \
-                math.hypot(c.x - a.x, c.y - a.y) - c.radius <= sight:
-            if not a.path:                      # got there and it is still out of reach: after it again
-                self.send(a, (c.x, c.y), reach=self.reach(a, c))
-                a.auto_to = a.dest
-            return
-        a.chase = None
-        if 'YES' not in a.acquire or self.frame_now() < IDLE_SCAN_FROM:
-            near = []                           # AutoAcquireEnemiesWhenIdle NO / none, or the opening frame: nothing
-        for dist, t in near:
-            if dist - t.radius > sight:
-                break                           # sorted by centre; a radius over 0 only cuts more
-            if t.template in self.unshot or not self.takes_by_itself(a, t) or not self.side_sees(a.owner, t) or \
-                    'NON_AUTOACQUIRABLE' in t.status:
-                continue
-            if not any(self.can_hit(w, t) and not self.shot_blocked(a, t, w) for w in a.weapons):
-                continue                        # bench engine_seal row: a target behind a structure is not gone after
-            if a.home is None:
-                a.home = (a.x, a.y)
-            a.chase = t
-            self.used.add('acquire')
-            self.send(a, (t.x, t.y), reach=self.reach(a, t))
-            a.auto_to = a.dest
-            return
-        if a.stance == 1:                       # AGGRESSIVE: stays where the chase ended (agg220)
-            a.home = None
-        if a.home is not None and (a.path or math.hypot(a.home[0] - a.x, a.home[1] - a.y) > 1.0):
-            if a.dest != a.home:
-                self.send(a, a.home)
-                a.auto_to = a.dest
 
     def incoming_add(self, target, source, key, damage, hit, expiry):
         """simdamage.Damage.incoming_add (L3): one observed/predicted notification on a tracking target."""

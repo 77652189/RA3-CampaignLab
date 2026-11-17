@@ -6,37 +6,62 @@ a ground power (`power_refusal`, `order_power`, `order_transform`), stop / stand
 `path_start`, `path_next`, `follow_leg`), a run off the map (`flee_start`), an unpack (`order_unpack`). The dues are
 their frame parts: a capture at the building's side, the next leg of a path, a sequential script's next step, a hunt's
 next pick, a runner's walk out (`capture_due`, `follow_due`, `seq_due`, `hunt_due`, `flee_due`).
+The fight (`fight`, once a tick) is the attack state machine: a team attack goes on to the next member, each armed
+body aims (L3 `aim`) and fires, rounds a blocked line, and chases by itself (`chase_step`: an attack-mover's
+`attack_chase`, anyone else's `idle_chase`).
 All over the world it is given (simworld.WORLD_API only). Its host's other parts come in as `peers` (`Peers`, the
 names in PEERS only, read when used): L2 locomotion (send, claims, free_spot, goal_off_nodes, column_ends), L2
-bodies (destroy, modify, engineer_entry, at_site, the garrison, toggles_of / toggle_press), L3 reach, L4 money
-(wallet) and power switches (powers_off), L6 act, and the order queues the scripts fill (seq, hunts). This module
-never imports them. The fight (attack state machine and chases) is still on the Sim (step 8b).
+bodies (destroy, modify, engineer_entry, at_site, the garrison, toggles_of / toggle_press), L3 targeting and fire
+(reach, fight_field, aim, can_hit, in_range, shot_blocked, fire_spot, side_sees, takes_by_itself, the unshot
+templates), L3 damage (deal), L4 money (wallet) and power switches (powers_off), L6 act, the team registry
+(members, team_targets) and the order queues the scripts fill (seq, hunts). The fight's per-tick state on the host
+(WRITES: seen, firing, volleys, chilling, mid_aims, the fire obstacles, the field) is reset through `peers` too --
+the only names it may set. This module never imports them.
 """
 import math
 
+import numpy as np
+
 import simunits
 from simpower import UNPACK_POWER
-from simworld import CIV, GRID, inside
+from simworld import CIV, DT, GRID, inside
 
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
 FLEE_GONE = 3
 HUNT_REPICK = 45                    # frames from a hunted target's death to the crew's next pick (fit, hunt_due)
+# an idle unit takes nothing by itself in the mission's first logic frame (bench 11-15 engine_dam BR: a bear 60 from an
+# enemy conscript, NO_ATTACK from 0.1 s = frame 2, never left its 8-half start square; the simulator had it chase from
+# frame 1 and stand at the conscript's feet by frame 15). INFERRED: the program's first idle scan not read -- 2 is the
+# least the bench allows; with one acquisition pass a tick, any value up to the second tick's frame (8) acts the same
+IDLE_SCAN_FROM = 2
 
-PEERS = frozenset({'act', 'at_site', 'claims', 'column_ends', 'destroy', 'engineer_entry', 'free_spot', 'garrison', 'goal_off_nodes', 'hunts', 'modify', 'powers_off', 'reach', 'send', 'seq', 'toggle_press', 'toggles_of', 'wallet'})
+WRITES = frozenset({'_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims', 'seen', 'volleys'})
+PEERS = frozenset({'act', 'at_site', 'claims', 'column_ends', 'destroy', 'engineer_entry', 'free_spot', 'garrison',
+                   'goal_off_nodes', 'hunts', 'modify', 'powers_off', 'reach', 'send', 'seq', 'toggle_press',
+                   'toggles_of', 'wallet',
+                   'aim', 'can_hit', 'deal', 'fight_field', 'fire_spot', 'in_range', 'members', 'shot_blocked',
+                   'side_sees', 'takes_by_itself', 'team_targets', 'unshot',
+                   '_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims', 'seen', 'volleys'})
 
 
 class Peers:
-    """What the orders may reach on their host (the Sim) beyond the world: the names in PEERS, read when used."""
+    """What the orders may reach on their host (the Sim) beyond the world: the names in PEERS, read when used; and
+    the fight's per-tick state it may set there (WRITES)."""
     __slots__ = ('host',)
 
     def __init__(self, host):
-        self.host = host
+        object.__setattr__(self, 'host', host)
 
     def __getattr__(self, name):
         if name not in PEERS:
             raise AttributeError(f'simorder.Peers: {name} is not lent (PEERS)')
         return getattr(self.host, name)
+
+    def __setattr__(self, name, value):
+        if name not in WRITES:
+            raise AttributeError(f'simorder.Peers: {name} may not be set (WRITES)')
+        setattr(self.host, name, value)
 
 
 def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None):
@@ -498,3 +523,175 @@ def order_unpack(world, peers, b, p, button=None, where=None, stand=None, here=F
     if not peers.at_site(b, 0.0) and send:
         peers.send(b, p)
     return True
+
+
+def fight(world, peers):
+    """One tick of the fight model (未对齐, docs: the 'combat' align entry): every armed body fires each of its
+    weapons at the nearest enemy in that weapon's range it can hit (its NAMED_ATTACK target first, when in
+    range); the damage rate = the weapon's damage per second x the target's armour percent for its damage type;
+    an attack-mover with an enemy in range holds while it fights; a plain move goes on firing; an idle unit goes
+    after an enemy within its sight and comes back (`idle_chase`, R8). The reach is measured between the bounding
+    circles (`in_range`, R8). The aim is taken once a tick; the damage is dealt frame by frame (`deal`, R6)."""
+    peers.seen = {}
+    peers.firing = []
+    peers.volleys = []
+    peers.chilling = []
+    peers.mid_aims = {}
+    peers._fire_obstacles = None             # `shot_blocked`'s footprints, taken once a tick when first asked
+    live, armed, targets = peers.fight_field()
+    peers._field = (live, armed, targets)
+    if not armed or not targets:
+        return
+    aimable = {id(t) for t in targets}
+    tx = np.array([b.x for b in targets])
+    ty = np.array([b.y for b in targets])
+    for a in armed:                         # an attack on a team goes on to its next member (TEAM_ATTACK_TEAM)
+        if id(a) in peers.team_targets and not (isinstance(a.goal, type(a)) and a.goal.alive):
+            them = peers.members(peers.team_targets[id(a)])
+            if them:
+                order_attack(world, peers, a, min(them, key=lambda t: math.hypot(t.x - a.x, t.y - a.y)).name)
+            else:
+                del peers.team_targets[id(a)]
+    for a in armed:
+        a.engaged = False
+        if held_up(a):                 # stopped short on a plain move: still moving (DEMO_KILL)
+            continue
+        got = peers.aim(a, targets, aimable, tx, ty)
+        if got is None:
+            chase_step(world, peers, a, False, [])
+            continue
+        fired, d, idx = got
+        g = a.goal
+        if not fired and isinstance(g, type(a)) and g.alive and not a.path and id(g) in aimable and \
+                (a.spot is None or a.spot[0] != id(g) or math.hypot(g.x - a.spot[1], g.y - a.spot[2]) > 150) and \
+                any(peers.can_hit(w, g) and peers.shot_blocked(a, g, w) for w in a.weapons) and \
+                not any(peers.can_hit(w, g) and peers.in_range(a, g, w) and not peers.shot_blocked(a, g, w)
+                        for w in a.weapons):
+            a.spot = (id(g), g.x, g.y)          # told to attack, the line blocked: round to a clear spot
+            p = peers.fire_spot(a, g)
+            if p is not None:
+                world.note('绕位', f'{world.label(a)} 打不着 {world.label(g)}（中间有建筑），绕到 ({p[0]:.0f},{p[1]:.0f})')
+                peers.send(a, p)
+        chase_step(world, peers, a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d, kind='stable')])
+    if peers.firing or peers.volleys:
+        world.used.add('combat')
+    if peers.chilling:
+        world.used.add('freeze')
+    if world.eng is None:                    # no frames: the tick's damage at once
+        peers.deal(DT)
+
+
+def chase_step(world, peers, a, fired, near):
+    """An attack-mover on its way (or turned aside) chases as `attack_chase`; anyone else as `idle_chase`."""
+    if a.mode == 'attack' and not isinstance(a.goal, type(a)) and (a.path or a.resume is not None):
+        attack_chase(world, peers, a, fired, near)
+    else:
+        idle_chase(world, peers, a, fired, near)
+
+
+def attack_chase(world, peers, a, fired, near):
+    """An attack-mover's own chase (bench 2026-11-10 engine_wayatk atk2, checks/engine_wayatk.py: a Guardian on an
+    attack path, an enemy 220 beside the leg -- beyond the weapon's 196.6 from the path, within VisionRange 200 +
+    its radius 23.3 -- steps up to it, fires from s6 (atk's, 150 off: s4), and goes on to B once it is dead (s22,
+    atk s21); engine_acquire am260 / am400: 260 / 400 beside the path, no turn). Generals AIAttackMoveToState /
+    AIAttackFollowWaypointPathState::update take getNextMoodTarget every frame their attack machine is idle: the
+    mood scan within the vision range (calledDuringIdle false: AutoAcquireEnemiesWhenIdle not asked), an attack on
+    what it finds, and the move again once that is done. The same reach as idle_chase's (the centre distance less
+    the target's radius within its VisionRange); Generals limits a human player's units to attack range
+    (WITHIN_ATTACK_RANGE) -- RA3 does not (the bench's tank is the human player's). It walks to `reach`, the fight
+    holds it there (engaged), and with nothing left it is sent on to where the move was going (`resume`).
+    A team on an attack path shares no target: each member takes only what its own scan finds (bench 11-10
+    engine_wayatk3 cut: tank 2 fights an enemy 150 off its leg alone, ~13.5 % a shot; tank 3, never within 351 of
+    it, goes on to P and Q meanwhile -- round 146's reading of engine_wayatk team, the team's target taken at any
+    distance (Team::getTeamTargetObject), was wrong: there tank 3 walked to A itself, 212 from the enemy, within
+    its own scan 223.3; order_follow keeps no places for the attack version).
+    INFERRED: the scan's rate (MoodAttackCheckRate) and the way back (straight to the leg's end, not to the path)."""
+    if a.chase is not None and a.path and a.dest != a.auto_to:      # an order since: its own way, not ours
+        a.chase = a.resume = a.auto_to = None
+    if a.building or a.speed <= 0 or 'IMMOBILE' in a.status or fired:
+        return
+    c = a.chase
+    if c is not None and c.alive and peers.side_sees(a.owner, c) and \
+            math.hypot(c.x - a.x, c.y - a.y) - c.radius <= a.sight:
+        if not a.path:                      # got there and it is still out of reach: after it again
+            peers.send(a, (c.x, c.y), reach=peers.reach(a, c))
+            a.auto_to = a.dest
+        return
+    a.chase = None
+    for dist, t in near:
+        if dist - t.radius > a.sight:
+            break                           # sorted by centre
+        if t.template in peers.unshot or not peers.takes_by_itself(a, t) or not peers.side_sees(a.owner, t) or \
+                'NON_AUTOACQUIRABLE' in t.status:
+            continue
+        if not any(peers.can_hit(w, t) and not peers.shot_blocked(a, t, w) for w in a.weapons):
+            continue
+        if a.resume is None:
+            a.resume = a.dest
+        a.chase = t
+        world.used.add('acquire')
+        peers.send(a, (t.x, t.y), reach=peers.reach(a, t))
+        a.auto_to = a.dest
+        return
+    if a.resume is not None:                # nothing left: on to where the move was going
+        r, a.resume, a.auto_to = a.resume, None, None
+        peers.send(a, r)
+
+
+def idle_chase(world, peers, a, fired, near):
+    """R8, bench 2026-11-07 engine_acquire (a Guardian, weapon 150, VisionRange 200, both tanks radius 23.3): an
+    idle unit fires where it stands at 180 (centre to centre); at 200 and 220 it walks up, fires, and once its
+    target is done walks back to where it stood (within 15); at 240 and beyond, nothing -- likewise when guarding
+    (260) or attack-moving past (260 / 400). Read as: an idle unit takes the nearest enemy it can hit and its side
+    sees, when the centre distance less the target's radius is within its own VisionRange (220 < limit < 240:
+    200 + 23.3; INFERRED, the scan itself not read), walks to `reach` of it, and goes home when it has none left.
+    Idle = not building, no goal, no way of its own (a way this rule gave it does not count); any order since
+    (another way) drops the chase and the home. `near`: [(centre distance, enemy)] nearest first.
+    Stances (bench 2026-11-10 engine_acquire hold180 / hold220 / agg220 / agg240 / agg260): HOLD_POSITION fires
+    in place at 180 as GUARD does but at 220 never moves nor fires -- it walks after nothing; AGGRESSIVE takes the
+    same reach (220 yes, 240 / 260 nothing) but stays where the chase ended, never walking back (near 1 to s26
+    against GUARD's home at s16). A stance set in the middle of a chase: INFERRED from these."""
+    mine = a.path and a.dest is not None and a.dest == a.auto_to
+    if a.path and not mine:                 # an order of its own since: not idle, nothing of ours to keep
+        a.chase = a.home = a.auto_to = None
+        return
+    if a.goal is not None or a.building or a.speed <= 0 or 'IMMOBILE' in a.status:
+        return
+    if a.home is not None and a.chase is None and not a.path:
+        a.home = a.auto_to = None           # back home
+    if fired:
+        return
+    if a.stance == 2:                       # HOLD_POSITION: goes after nothing (hold220)
+        return
+    sight = a.sight
+    c = a.chase
+    if c is not None and c.alive and peers.side_sees(a.owner, c) and \
+            math.hypot(c.x - a.x, c.y - a.y) - c.radius <= sight:
+        if not a.path:                      # got there and it is still out of reach: after it again
+            peers.send(a, (c.x, c.y), reach=peers.reach(a, c))
+            a.auto_to = a.dest
+        return
+    a.chase = None
+    if 'YES' not in a.acquire or world.frame_now() < IDLE_SCAN_FROM:
+        near = []                           # AutoAcquireEnemiesWhenIdle NO / none, or the opening frame: nothing
+    for dist, t in near:
+        if dist - t.radius > sight:
+            break                           # sorted by centre; a radius over 0 only cuts more
+        if t.template in peers.unshot or not peers.takes_by_itself(a, t) or not peers.side_sees(a.owner, t) or \
+                'NON_AUTOACQUIRABLE' in t.status:
+            continue
+        if not any(peers.can_hit(w, t) and not peers.shot_blocked(a, t, w) for w in a.weapons):
+            continue                        # bench engine_seal row: a target behind a structure is not gone after
+        if a.home is None:
+            a.home = (a.x, a.y)
+        a.chase = t
+        world.used.add('acquire')
+        peers.send(a, (t.x, t.y), reach=peers.reach(a, t))
+        a.auto_to = a.dest
+        return
+    if a.stance == 1:                       # AGGRESSIVE: stays where the chase ended (agg220)
+        a.home = None
+    if a.home is not None and (a.path or math.hypot(a.home[0] - a.x, a.home[1] - a.y) > 1.0):
+        if a.dest != a.home:
+            peers.send(a, a.home)
+            a.auto_to = a.dest

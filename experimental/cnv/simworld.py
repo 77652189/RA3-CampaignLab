@@ -9,6 +9,7 @@ touching the subsystems.) The minimal world for rule tests is simsmall.small_wor
 
 CIV = 'PlyrCivilian'   # the neutral side: owns the map's scenery and civilians; pays and is paid nothing
 GRID = 20.0            # routing cells (world units): the ground's grid (sim.Ground) and the orders' arrival slack
+DT = 0.5               # seconds a tick (simloop.DT, sim.DT)
 
 WORLD_API = frozenset({
     'bodies',          # name -> Body, every body made (dead too), in the order made

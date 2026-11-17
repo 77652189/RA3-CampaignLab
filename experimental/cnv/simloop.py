@@ -11,7 +11,7 @@ expire first). Unifying it would change the clean-clone runs, so it waits for it
 """
 import math
 
-DT = 0.5                         # seconds a tick (sim.DT)
+from simworld import DT          # seconds a tick (sim.DT; the fight's damage step reads it too, L0)
 LAG = 0.0                        # the readings' clock: mission seconds, as the bench's since 4aed60f (ADR 0007: the
                                  # bench counts mission time, at 8x). Expectations written before that counted wall
                                  # seconds from the menus' end; the simulator's versions of the checks carry their own

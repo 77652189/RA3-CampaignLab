@@ -62,7 +62,8 @@ FIELD_OWNER = {'heal_at': 'simheal', 'heal_seen': 'simheal',
                'movement_due': 'simspecial', 'self_bits_due': 'simspecial',
                'flee': 'simorder', 'follow': 'simorder', 'move_to': 'simorder', 'unpack_here': 'simorder',
                **dict.fromkeys(('incoming', 'projectile_hits', 'projectile_speeds', 'impact_body', 'knock_drowns',
-                                'dots', 'cold_on', 'lift_modules', 'nugget_powers', 'hit_reaction_of'), 'simdamage')}
+                                'dots', 'cold_on', 'lift_modules', 'nugget_powers', 'hit_reaction_of'), 'simdamage'),
+               'spot': 'simorder'}
 # (a body's `alive` is assigned only in simbody too, but simai's teams.alive callback shares the name)
 
 
@@ -145,20 +146,32 @@ def test_field_owners():
     assert not owner_breaks()
 
 
-def peer_breaks(takers=PEER_TAKERS):
-    """(module, name) for each `peers.X` a module reads that its PEERS does not lend."""
+def peer_breaks(takers=PEER_TAKERS, source=None):
+    """(module, name) for each `peers.X` a module reads that its PEERS does not lend, or sets that its WRITES (none
+    where it has no WRITES) does not allow."""
     out = []
     for mod in takers:
-        tree = _tree(mod)              # PEERS = frozenset({...}), read from the source (no sys.path for its imports)
-        lent = next(ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
-                    and getattr(n.targets[0], 'id', '') == 'PEERS')
-        out += [(mod, n.attr) for n in ast.walk(tree) if isinstance(n, ast.Attribute)
-                and isinstance(n.value, ast.Name) and n.value.id == 'peers' and n.attr not in lent]
+        tree = ast.parse(source) if source is not None else _tree(mod)   # read from the source (no sys.path)
+        table = {n.targets[0].id: ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
+                 and getattr(n.targets[0], 'id', '') in ('PEERS', 'WRITES')}
+        lent, writes = table['PEERS'], table.get('WRITES', set())
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == 'peers':
+                if n.attr not in lent or (isinstance(n.ctx, ast.Store) and n.attr not in writes):
+                    out.append((mod, n.attr))
     return out
 
 
 def test_peer_takers_reach_only_their_loan():
     assert not peer_breaks()
+
+
+def test_peer_guard_bites():
+    src = ("PEERS = frozenset({'send', 'seen'})\nWRITES = frozenset({'seen'})\n"
+           "def f(peers):\n    peers.seen = {}\n    peers.send(1)\n")
+    assert not peer_breaks(['m'], src)
+    assert peer_breaks(['m'], src + "    peers.send = None\n") == [('m', 'send')]      # lent to read, not to set
+    assert peer_breaks(['m'], src + "    peers.aim()\n") == [('m', 'aim')]             # not lent
 
 
 def chain_names(source=None, method='act'):
