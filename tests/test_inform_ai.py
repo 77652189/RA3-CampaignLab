@@ -10,6 +10,111 @@ _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
 
+def test_inform_expiry_changes_prediction_speed_without_changing_shell_flight():
+    import build
+
+    m, t, _ = build.resolve('engine_inform_expiry', 'a')
+    control, original, _ = build.resolve('engine_inform_probe', 'a')
+    for i, lane in enumerate(('base', 'high', 'order', 'removed')):
+        unit, baseline = m.units[i], control.units[i]
+        speed = {'base': 750, 'removed': 7500}.get(lane)
+        assert unit.xml == (baseline.xml.replace('WeaponSpeed="75"', f'WeaponSpeed="{speed}"', 1)
+                            if speed else baseline.xml)
+        assert unit.files == baseline.files
+    assert m.objects == control.objects and m.waypoints == control.waypoints
+    for script, before in zip(t.scripts, original.scripts):
+        assert script.name == before.name and script.when == before.when
+        assert script.do == (before.do[:2] if script.name.startswith('Test - display ') else before.do)
+    assert t.expect == [(lane + ' info', 31, '==', hp, 34)
+                        for lane, hp in zip(('base', 'high', 'order', 'removed'), (68, 68, 68, 89))]
+
+
+def _inform_expiry_observed(check_name):
+    """Sanitized incoming-table observations; raw object identities stay private."""
+    import labpaths
+    import re
+
+    runs = {'a': 'CampIExpA_mcp_1116_183537', 'b': 'CampIExpB_mcp_1116_184048'}
+    # source -> (damage, predicted hit, expiry, physical table removal)
+    expected = {12: (150, 309, 313, 336), 13: (150, 377, 404, 389),
+                14: (150, 302, 302, 304), 15: (50, 302, 304, 312)}
+    if check_name == 'b':
+        expected.update({12: (150, 302, 303, 336), 15: (50, 302, 317, 320)})
+    log = Path(labpaths.WORK) / 'testbench/runs' / runs[check_name] / 'ra3ext.log'
+    if log.exists():
+        actual, objects = {}, {}
+        for line in log.read_text(encoding='utf-8').splitlines():
+            if not line.startswith('incoming '):
+                continue
+            row = re.search(r'object=(\w+) frame=(\d+) n=(\d+)', line)
+            assert row
+            obj, frame, count = row.groups()
+            if count == '1':
+                entry = re.search(r'src=(\d+) .*dmg=([\d.]+) hit=(\d+) exp=(\d+)', line)
+                assert entry and int(frame) == 302
+                source, damage, hit, expiry = entry.groups()
+                objects[obj] = int(source)
+                actual[int(source)] = (float(damage), int(hit), int(expiry))
+            elif count == '0' and obj in objects:
+                source = objects[obj]
+                actual[source] += (int(frame),)
+        assert actual == expected
+    return expected
+
+
+@pytest.mark.parametrize('check_name', ['a', 'b'])
+def test_inform_expiry_replays_observed_launch_deadlines(check_name, monkeypatch):
+    import build
+    import sim
+
+    observed = _inform_expiry_observed(check_name)
+    m, t, _ = build.resolve('engine_inform_expiry', check_name)
+    e = sim.Sim(m, t)
+    monkeypatch.setattr(e, 'frame_now', lambda: 302)
+    for source, lane in zip((12, 13, 14, 15), ('base', 'high', 'order', 'removed')):
+        gun = e.body('Info gun ' + lane)
+        # Existing timing interval permits 442; actual muzzle geometry remains INFERRED.
+        e.add('Expiry ' + lane, 'SovietMiner', m.player('s1'), gun.x, gun.y + 442)
+        target = e.body('Expiry ' + lane)
+        weapon, = gun.weapons
+        e.inform_launch(target, gun, weapon)
+        assert e.incoming[id(target)] == [(id(gun), weapon['weapon_key'], *observed[source][:3])]
+        assert target.hp == 500
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError,
+                   reason='Autonomous incoming-table expiry schedule is missing; see work/re/c_inform_expiry_report.md')
+@pytest.mark.parametrize('check_name', ['a', 'b'])
+@pytest.mark.parametrize('lane,source', [('base', 12), ('removed', 15)])
+def test_inform_expiry_replays_observed_autonomous_table_cleanup(check_name, lane, source, monkeypatch):
+    """Check physical list lifecycle only, not unobserved damage-query output."""
+    import build
+    import sim
+
+    observed = _inform_expiry_observed(check_name)
+    m, t, _ = build.resolve('engine_inform_expiry', check_name)
+    for script in t.scripts:
+        script.active = False
+    e = sim.Sim(m, t)
+    assert e.eng is not None
+    e.combat = False
+    monkeypatch.setattr(sim, 'DT', 1 / 15)
+    gun = e.body('Info gun ' + lane)
+    e.add('Expiry cleanup', 'SovietMiner', m.player('s1'), gun.x, gun.y + 442)
+    target = e.body('Expiry cleanup')
+    damage, hit, expiry, removal = observed[source]
+    e.eng.frame = 302
+    e.t = 302 / 15
+    e.incoming_add(target, id(gun), 'observed', damage, hit, expiry)
+    while e.eng.frame < removal - 1:
+        e.step()
+        e.t = e.eng.frame / 15
+    assert e.incoming[id(target)]
+    e.step()
+    assert e.eng.frame == removal
+    assert not e.incoming[id(target)]
+
+
 @pytest.mark.parametrize('check_name', ['a', 'off'])
 def test_inform_ai_has_one_slow_projectile_and_instant_player_low_controls(check_name):
     import build

@@ -5575,7 +5575,10 @@ class Sim:
 
         This slice supplies incoming damage only. History remains a gap; the
         miner's TrackDamage.InstantWeaponsOnly path is not inferred from HP loss.
-        INFERRED expiry boundary: keep entries on expiry, remove strictly after.
+        INFERRED query policy: keep entries on expiry, remove strictly after.
+        This is not the engine's autonomous table-cleanup schedule: the
+        engine_inform_expiry probe retains expired rows until later frames.
+        See work/re/c_inform_expiry_report.md; query output is not measured.
         """
         now = self.frame_now() if now is None else now
         rows = self.__dict__.setdefault('incoming', {}).get(id(target), [])
