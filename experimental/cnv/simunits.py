@@ -309,7 +309,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v41.json')    # v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v42.json')    # v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -629,6 +629,9 @@ def _weapons(texts, base_table=None):
                         or _num(_attr(h, 'Radius', '0'), float('nan')) != 0
                         or _secs(_attr(h, 'DelayTimeSeconds', '0s'))):
                     unsupported.append('LeechHealthDamageNugget')
+                    # the AI's template rate still counts it as a plain damage nugget, its Damage x the target's
+                    # armour for its DamageType, filter or not (engine line B round 226, read): the Hammer's beam
+                    got.setdefault('ai_damage', []).append((_num(_attr(h, 'Damage')), _attr(h, 'DamageType', 'UNDEFINED')))
                 else:
                     dmg.append((_num(_attr(h, 'Damage')), _attr(h, 'DamageType', 'UNDEFINED')))
                     got['leech_health'] = _num(_attr(h, 'PercentDamageToHeal', '100%').rstrip('%')) / 100
@@ -782,6 +785,7 @@ def _resolve(w, weapons):
     if w['warhead'] in weapons and weapons[w['warhead']]['damage']:
         h = weapons[w['warhead']]
         parts.append((h['damage'], h['type']))
+    parts += [p for p in w.get('ai_damage', []) if p[0]]    # nuggets only the AI's rate counts (the leech beam)
     if not dmg and w['warhead'] in weapons:
         h = weapons[w['warhead']]
         dmg, typ = h['damage'], h['type']
@@ -1635,6 +1639,53 @@ def weapon_sets(template, own=None):
 
 
 UPGRADE_BIT = 'UPGRADE:'            # weapon_sets: a <Weapon Upgrade="X"> line's need
+ORDERING = ('PRIMARY_WEAPON', 'SECONDARY_WEAPON', 'TERTIARY_WEAPON', 'QUATERNARY_WEAPON', 'QUINARY_WEAPON',
+            'NO_WEAPON')            # the SDK's WeaponSlotType enumeration, the order the asset sorts a slot's lines by
+
+
+def template_weapons(template, own=None):
+    """The weapons the skirmish AI's template-against-template rate counts for a unit (the expected efficiency's
+    rates; engine line B round 227, read): per WeaponSlot (Hardpoint, Turret, HierarchicalTurret, Contained -- in
+    that order) only one, the first <Weapon> line by Ordering (the asset is sorted by it; XML order among equals)
+    that names no Upgrade and no ObjectStatus, or one with ConquerMetricsAlwaysCount="true"; ForbiddenObjectStatus
+    is not looked at. A line so picked that cannot hurt or reach still ends its slot. So the Hammer counts its
+    leech beam and not its gun (the gun needs GENERIC_TOGGLE_STATE). None where the XML (walked up like
+    weapon_sets) has no WeaponSetUpdate: the caller keeps the unit's own weapons."""
+    try:
+        xml, table = _xml(template, own), weapon_table(own)
+    except (OSError, ValueError):
+        return None
+    rank = {o: i for i, o in enumerate(ORDERING)}
+    for _ in range(5):
+        found, guns = False, []
+        for head, body in _blocks(xml or '', 'WeaponSetUpdate'):
+            found = True
+            slots = []
+            for kind in ('WeaponSlotHardpoint', 'WeaponSlotTurret', 'WeaponSlotHierarchicalTurret',
+                         'WeaponSlotContained'):
+                slots += re.findall(rf'<{kind}\b.*?</{kind}>', body, re.S)
+            for slot in slots:
+                lines = sorted(_blocks(slot, 'Weapon'), key=lambda e: rank.get(_attr(e[0], 'Ordering'), 0))
+                for h, _ in lines:
+                    if _attr(h, 'ConquerMetricsAlwaysCount') == 'true' or \
+                            not (_attr(h, 'Upgrade') or '').strip() and not (_attr(h, 'ObjectStatus') or '').strip():
+                        t = _attr(h, 'Template')
+                        w = _resolve(table[t], table) if t in table else None
+                        if w and (w['dps'] > 0 or w.get('ai_parts') or w.get('sdps', 0) > 0 or w.get('dot')
+                                  or w.get('lift')) and w['range'] > 0:
+                            guns.append(w)
+                        break
+        if found:
+            return guns
+        up = parent(xml, template)
+        if not up:
+            break
+        try:    # a file that patches the template inherits from itself: the retail one next (as _chain)
+            xml = retail_xml(template) if up.lower() == template.lower() else _xml(up, own)
+        except (OSError, ValueError):
+            break
+        template = up
+    return None
 
 
 def pick_weapons(slots, status, upgrades=()):

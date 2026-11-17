@@ -419,11 +419,13 @@ NOTES = {
         '750 全程不动（家300 4、敌存活 1 到 s80），1200 s8 全员出门、s20 敌人死；'
         'tests/test_simai_bench_b.py::test_reactive_defense_radius_gates_the_chase 按名回放（模拟器 s10 出门、s23 打死）。'
         '原版 27 关没有状态用 ReactiveDefense（只有 PCG 演示状态），只证半径门；精确边界、R×1.25 到位、美学站位没量'),
-    '人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference': (GUESSED,
+    '人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference': (BENCHED,
         'B199 engine_aiskirm z aiskvd9（aiskvveh 布局，仅此项 1000%）：维和 s30 起到 s196 共 14、标枪 s151 才有、s222 共 7；'
         '原版 25% 的 aiskvveh 和 aiskvd0（0%）都只造标枪（0%：s29 起到 s169 共 11、维和 0）。'
-        '模型把它当候选血量的线性系数（排序不变、0% 全零分）——台上不符，待读它怎么进打分；'
-        '见 work/re/handoff-b.md 第 199 节'),
+        'B228：只乘候选血量（读到）；再按读到的两条——K 的建造时间是帧（×15）、模板对打每槽只算一把不要升级 / 状态的武器'
+        '（锤子只算吸血光束）——模拟器首发 d9 维和、d0 / vveh 标枪，'
+        'tests/test_simai_bench_b.py::test_the_defensive_preference_turns_the_first_pick_against_tanks 按名回放。'
+        '没对上：d9 模拟器标枪 s60 左右就出（台上 s151）'),
     '人格/DefaultTacticHomeBaseCriteria.SortOrder': (BENCHED,
         'B201 engine_aihome aihmgcl/aihmgnw：两座初始建造厂（A 先放、B 在北 1350），SimpleAttack 打 A 西 ~700 的具名电厂、'
         'RETURN_HOME_AND_DISBAND，仅人格这条不同；PREFER_NEWEST 电厂没后全员回 B（s36 起家B 4），'

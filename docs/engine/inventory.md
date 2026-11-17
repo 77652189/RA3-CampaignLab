@@ -8,7 +8,7 @@
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 59 / 118 | 195 | 60 | 26 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
-| AI | **98%** | **98%** | 200 / 357 | 428 | 219 | 84 | 91 | 34 | 100% |
+| AI | **98%** | **98%** | 201 / 357 | 428 | 220 | 83 | 91 | 34 | 100% |
 
 ## 脚本动作
 
@@ -880,7 +880,7 @@
 | 已对拍 | `人格/AIPersonalityDefinition.ResourceNodeSearchRadius` | 148 | a4 a5 a7 | B185 engine_aiskirm aiskind:ib vs aiskirm:ib（都 PASS）：1AlliedBalanced 子人格只把它从 700 改成 5000，建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::test_a_resource_node_search_radius_of_5000_changes_nothing_on_a_plain_skirmish。D125 第 1 节：只给矿点排先后（半径内先试），不排除远处矿点。gap：台上只有基地旁的矿，两个矿点的排序台子（d125 第 1 节）没上 |
 | 已对拍 | `人格/AIPersonalityDefinition.ResourceNodeValueRemainingForExpansion` | 148 | a4 a5 a7 | B181 一局证一批 engine_aiskirm aiskinb:ib vs aiskirm:ib（同一次排队，都 PASS）：七个字段一次改成极端值（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。为什么不起作用：D125 第 2 节只拷贝不读。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用" |
 | 已对拍 | `人格/AIPersonalityDefinition.SecondsTillTargetsExpire` | 148 | a4 a5 a7 | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_aiskirm.py |
-| 推断 | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 148 | a4 a5 a7 | B199 engine_aiskirm z aiskvd9（aiskvveh 布局，仅此项 1000%）：维和 s30 起到 s196 共 14、标枪 s151 才有、s222 共 7；原版 25% 的 aiskvveh 和 aiskvd0（0%）都只造标枪（0%：s29 起到 s169 共 11、维和 0）。模型把它当候选血量的线性系数（排序不变、0% 全零分）——台上不符，待读它怎么进打分；见 work/re/handoff-b.md 第 199 节 |
+| 已对拍 | `人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference` | 148 | a4 a5 a7 | B199 engine_aiskirm z aiskvd9（aiskvveh 布局，仅此项 1000%）：维和 s30 起到 s196 共 14、标枪 s151 才有、s222 共 7；原版 25% 的 aiskvveh 和 aiskvd0（0%）都只造标枪（0%：s29 起到 s169 共 11、维和 0）。B228：只乘候选血量（读到）；再按读到的两条——K 的建造时间是帧（×15）、模板对打每槽只算一把不要升级 / 状态的武器（锤子只算吸血光束）——模拟器首发 d9 维和、d0 / vveh 标枪，tests/test_simai_bench_b.py::test_the_defensive_preference_turns_the_first_pick_against_tanks 按名回放。没对上：d9 模拟器标枪 s60 左右就出（台上 s151） |
 | 已对拍 | `人格/DefaultTacticHomeBaseCriteria.PreferredNotBaseTypes` | 148 | a4 a5 a7 | B201 engine_aihome aihmgno：同上，PREFER_CLOSEST + PreferredNotBaseTypes OLDEST_OF_TYPE → 不回近的 A、回 B（s30 起家B 4），反偏好压过排序；同一测试按名回放。原版写的 CAPTURED 要占领来的基地才分得出，没量 |
 | 已对拍 | `人格/DefaultTacticHomeBaseCriteria.SortOrder` | 148 | a4 a5 a7 | B201 engine_aihome aihmgcl/aihmgnw：两座初始建造厂（A 先放、B 在北 1350），SimpleAttack 打 A 西 ~700 的具名电厂、RETURN_HOME_AND_DISBAND，仅人格这条不同；PREFER_NEWEST 电厂没后全员回 B（s36 起家B 4），PREFER_CLOSEST 选 A、队伍中心已在 600 内 → 原地解散不走（到电厂 4 到 s88）；tests/test_simai_bench_b.py::test_return_home_picks_the_base_by_the_personality_criteria 按名回放。CLOSEST 的量点（队伍中心）是推断，OLDEST/SMALLEST 等其余排序没量 |
 | 已对拍 | `目标/AITargetingHeuristic.HeuristicType=NamedObject` | 145 |  | AI 模型代码里读了这个名字；台上量过、测试对拍：checks/engine_ainamed.py |

@@ -598,15 +598,32 @@ def test_a_level_personality_lists_our_units_in_a_build_state_of_its_own():
 def test_the_expected_efficiency_ranks_the_counter_first(lib, build, best, other):
     """aiskvinf (the player owns 10 conscripts): bench Peacekeepers only; aiskvveh (10 Hammers): Javelins only.
     The simulator's expected efficiency (work/re/l4_efficiency.md: B/A with the unit over B/A without) ranks the
-    same one first (the orders it gives: the two tests below)."""
-    w = simai.run(build, 'z', 25, lib=lib)
+    same one first (the orders it gives: the two tests below) -- the barracks' first pick, made once the AI owns
+    its dog. B round 228: asked at s25 instead (the AI owning nothing yet, no bench reading) the ranking is only
+    the candidates' health once the Hammer counts its leech beam alone (MAGIC, 100% on both), and the
+    Peacekeeper led there."""
+    w = simai.run(build, 'z', 40, lib=lib)
     b = next(iter(w.brains.values()))
     # the player's map-placed war factory has its 3 repair drones (sim.py SpawnBehavior, Codex E 7b9bb57) and the
     # AI does not count them (SimAI.living; counted, nothing of the barracks hits them and the ranking flips)
     slaves = [x for x in w.sim.living() if getattr(x, 'spawn_parent', None) is not None]
     assert len(slaves) == 3 and not set(map(id, slaves)) & set(map(id, b.living())), slaves
-    ex = b.expected(b.ai, 0, [best, other])
-    assert ex[best] > ex[other] > 0
+    outs = [t for f, what, t in b.trace if what == 'out' and t in (best, other)]
+    assert outs and outs[0] == best, outs
+
+
+@pytest.mark.parametrize('build, best, other', [('aiskvd9', 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'),
+                                                ('aiskvd0', 'AlliedAntiVehicleInfantry', 'AlliedAntiInfantryInfantry')])
+def test_the_defensive_preference_turns_the_first_pick_against_tanks(lib, build, best, other):
+    """aiskvd9 / aiskvd0 (aiskvveh's ten Hammers, only UnitBuilderOverallDefensivePreference 1000% / 0%): bench B199
+    -- d9 维和 first (s30), 标枪 only from s151; d0 标枪 only. The first barracks pick after the dog (the AI owns only
+    the dog then) turns on the two rules read in B rounds 225 / 227: K's time in frames (75 for a 5 s unit, not 5)
+    and the template rate's weapons (one per slot, none needing an upgrade or an ObjectStatus: the Hammer counts
+    its leech beam, 20 MAGIC, and not its gun). With either one alone d9 still builds a Javelin first."""
+    w = simai.run(build, 'z', 40, lib=lib)
+    b = next(iter(w.brains.values()))
+    outs = [t for f, what, t in b.trace if what == 'out' and t in (best, other)]
+    assert outs and outs[0] == best, outs
 
 
 # the build states order by the expected efficiency (SimAI.efficiency, on by default since B round 131; set here so

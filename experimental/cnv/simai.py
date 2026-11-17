@@ -888,18 +888,31 @@ class Brain:
                 armed = b.building is not None or armed
         return not armed if was else True
 
-    def fighters(self, bodies):
-        """Bodies as tactics.Fighter (fight's rule: rate by Sim.can_hit and the armour, vision = VisionRange)."""
+    def fighters(self, bodies, template=False):
+        """Bodies as tactics.Fighter (fight's rule: rate by Sim.can_hit and the armour, vision = VisionRange).
+        template: the rate counts the weapons the AI's template-against-template rate takes (simunits.template_weapons:
+        one per slot, none that needs an upgrade or an ObjectStatus; engine line B round 227, read), not the ones
+        the body holds -- the expected efficiency's."""
         tc, s = self.host.mod['tactics'], self.sim
+        memo = self.__dict__.setdefault('_template_guns', {})
+
+        def guns_of(b):
+            if not template:
+                return b.weapons
+            if b.template not in memo:
+                memo[b.template] = simunits.template_weapons(b.template, s.own)
+            return b.weapons if memo[b.template] is None else memo[b.template]
 
         def rate_of(b):
+            guns = guns_of(b)
+
             def rate(o):
                 t = o.body
                 # each damage part its own armour percent (simunits ai_parts: the AI sums a weapon's nuggets and
                 # its warhead's, l4_efficiency.md 3, read); a weapon without parts as fight does
                 return sum(sum(d * sim.simunits.percent(t.armor, ty) / 100.0 for d, ty in w['ai_parts'])
                            if w.get('ai_parts') else w['dps'] * sim.simunits.percent(t.armor, w['type']) / 100.0
-                           for w in b.weapons if s.can_hit(w, t))
+                           for w in guns if s.can_hit(w, t))
             return rate
 
         def fighter(b, i):
@@ -1202,19 +1215,19 @@ class Brain:
         near, mult = p['UnitBuilderEnemyNearbyDistance'], p['UnitBuilderEnemyNearbyMultiplier']
         live = [b for b in self.living() if not b.scenery]
         hx, hy = self.home
-        mine = self.fighters([b for b in live if b.owner == self.player and 'STRUCTURE' not in b.kinds])
+        mine = self.fighters([b for b in live if b.owner == self.player and 'STRUCTURE' not in b.kinds], True)
         foe_units = [b for b in live if b.owner in self.view.enemies and 'STRUCTURE' not in b.kinds]
         foes = [(f, mult if math.hypot(b.x - hx, b.y - hy) < near else 1.0)
-                for f, b in zip(self.fighters(foe_units), foe_units)]
+                for f, b in zip(self.fighters(foe_units, True), foe_units)]
         defences = self.fighters([b for b in live if b.owner in self.view.enemies and 'STRUCTURE' in b.kinds
-                                  and b.weapons])
+                                  and b.weapons], True)
         ub = getattr(ai, 'unit_builder', None)
         mods = ub.rules.get('modifiers', {}) if ub else {}
         out = {}
         for t in templates:
             if t not in self._protos:
                 self._protos[t] = self._proto(t)
-            cand = self.fighters([self._protos[t]])[0]
+            cand = self.fighters([self._protos[t]], True)[0]
             cost, secs = simunits.production(t, self.sim.own)
             off, dfn = mods.get(t, (1.0, 1.0))
             out[t] = tc.expected_efficiency(cand, mine, foes, defences, p, cost, secs, off, dfn)
