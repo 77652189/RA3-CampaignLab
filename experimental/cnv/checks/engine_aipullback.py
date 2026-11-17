@@ -93,6 +93,12 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   airevkp1 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-17 4 3 1 | s18-85 4 2 1; f272 both members back up to 135 (R - 10)
            from foe 2 <- ReverseMove, 19 back-up orders in the run = d133's airevk2
   airevkp0 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-85 4 3 1; the same poke, no back-up order (tests/test_ai_reverse_poke.py)
+  (11-16, D round 182) airevkh PASS (airevk1, 坦克数 swapped for the foes' health % read BEFORE the frame's keep):
+           血1 血2 近敌 敌坦  s2-54 100 100|92 4 2 | s56 4 1 | s60-142 3 1 -- the keep holds (a read before it is 100, or
+           92 = one 35 shell); here the near foe lived to s56, yet members 3170 / 3171 joined the team f213 exactly as in
+           airevk1. The host: f166 the AI casts a special power (cmd 1ff, its own power hash, at 3545:3340 = the near foe),
+           f212 the strike (object 3228) hits the foe and the AI's own 3170 / 3171 (3170 to 316 / 550); f213 they join.
+           So the s13 death in airevk1 is that strike outdoing the keep in one frame; the simulator's AI casts no power.
 """
 import inject
 from checks import engine_aitarget as at
@@ -128,7 +134,8 @@ def a(m, build):
                                                        'CNV_PB_Health')], once=False))
     elif not build.startswith(('airevp', 'airevt', 'airevk')):  # no guards
         counted('CNV_PB_Guards', '守军数', t, template=inf, player=p1, most=13)
-    counted('CNV_PB_Tanks', '坦克数', t, template=tank, player=s1)
+    if build != 'airevkh':               # airevkh: the foes' two health % instead (four counters at most)
+        counted('CNV_PB_Tanks', '坦克数', t, template=tank, player=s1)
     if build.startswith('aipull'):
         f = m.find(m.role('ai factory').name)
         t.areas[at.HOME] = square(f.x, f.y, 300.0)
@@ -157,6 +164,11 @@ def a(m, build):
         # frame so the target stays; 近敌 = s1 tanks within NEAR_FOE of the foes' midpoint (start: all 4 inside;
         # backed off to R - 10 = 135 from a foe: outside)
         foes = [m.role(f'rev foe {k}').name for k in (1, 2)]
+        if build == 'airevkh':           # D round 182: read before the keep -- the health the frame's fire left
+            for k, n in enumerate(foes, 1):
+                t.counters.append((f'CNV_PB_FoeHp{k}', f'血{k}'))
+                t.scripts.append(Script(f'Test - foe health {k}', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', n,
+                                                                         f'CNV_PB_FoeHp{k}')], once=False))
         t.scripts.append(Script('Test - keep', [], [('UNIT_SET_HEALTH', n, 100.0) for n in foes + tanks], once=False))
         fx = sum(m.find(n).x for n in foes) / 2
         fy = sum(m.find(n).y for n in foes) / 2
@@ -216,4 +228,4 @@ def a(m, build):
 
 CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
                                                            'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevgt', 'airevat', 'airevit', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
-                                                           'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0')}
+                                                           'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0', 'airevkh')}

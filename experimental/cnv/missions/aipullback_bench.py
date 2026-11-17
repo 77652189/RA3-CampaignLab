@@ -172,6 +172,9 @@ MISSION = {
                                UseGatherState='false'),
     'airevk0': lambda: mission('CampAIRevK0', close='unit', observe=True, CleanupPowerAdvantage='1000.0',
                                UseGatherState='false', ReverseMove='false'),
+    # D round 182: airevk1 with the two foes' health % read before the frame's keep (how the near foe dies s13)
+    'airevkh': lambda: mission('CampAIRevKH', close='unit', observe=True, CleanupPowerAdvantage='1000.0',
+                               UseGatherState='false'),
     # the same with the AI's own Guardians (another weapon template: d131 1 gate 4, the weapon field not read)
     'airevkg1': lambda: guardians(mission('CampAIRevKG1', close='unit', observe=True,
                                           CleanupPowerAdvantage='1000.0', UseGatherState='false')),
