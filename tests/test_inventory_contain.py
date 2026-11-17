@@ -203,8 +203,8 @@ def test_infiltrator_money_split_rejects_changed_fields(monkeypatch, field, valu
     ('PARALYZE', '', 3, 3, 'PARALYZE 3用量/3模板部分已测'),
     ('VISION', '', 5, 5, '普通VISION 5用量/5模板部分已测且暂停扩宿主'),
     ('VISION', '9999999s', 1, 1, '港口阻断VISION 1用量/1模板未测'),
-    ('VISION_UNITS', 'InfiltrationAircraftObjectFilter', 2, 2, '飞机VISION_UNITS单列仅入楼已接'),
-    ('VISION_UNITS', 'InfiltrationInfantryObjectFilter', 3, 3, '步兵VISION_UNITS单列仅入楼已接'),
+    ('VISION_UNITS', 'InfiltrationAircraftObjectFilter', 2, 2, '飞机VISION_UNITS单列已接E199前300帧周期'),
+    ('VISION_UNITS', 'InfiltrationInfantryObjectFilter', 3, 3, '步兵VISION_UNITS单列已接E199前300帧周期'),
     ('VISION_UNITS', 'InfiltrationShipObjectFilter', 3, 3, '舰船VISION_UNITS 3用量/3模板未测'),
     ('RESET', '', 5, 6, 'RESET单列仅入楼已接'),
 ])
