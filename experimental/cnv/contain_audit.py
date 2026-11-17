@@ -140,6 +140,20 @@ def infiltrator_ship_share(with_templates=False):
     return share
 
 
+def infiltrator_port_share(with_templates=False):
+    """E201 complete blocked-port signature; static matching grants no credit."""
+    measured = rm.ET.fromstring('''<InfiltratorContain id="ModuleTag_InfiltratorContain"
+        Effect="VISION" Duration="-1s" BlockedDuration="9999999s"
+        ObjectRef="VisionObserver"/>''')
+    wanted = (signature(measured),)
+    rows = [r for r in engineer_audit.audit('InfiltratorContain')['rows']
+            if tuple(sorted(signature(rm.ET.fromstring(m['xml'])) for m in r['modules'])) == wanted]
+    share = dict(campaign=sum(bool(r['maps']) for r in rows), templates=len(rows))
+    if with_templates:
+        share['template_ids'] = [r['template'] for r in rows]
+    return share
+
+
 def infiltrator_vision_share(with_templates=False):
     """E196 yard configuration; VISION timing and sibling RADAR_FREEZE stay gaps."""
     measured = rm.ET.fromstring('''<InfiltratorContain id="ModuleTag_InfiltratorContain"

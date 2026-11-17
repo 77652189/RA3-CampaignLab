@@ -14,6 +14,8 @@ E199/E200 VISION_UNITS: existing measured vehicle/aircraft/infantry/ship markers
 a five-pass discovery cycle, 0/1/1/1/1 from first observed spy disappearance.
 Only the first 300 passes and stationary measured templates are implemented;
 expiry, new units, movement and observer internals remain explicit gaps.
+E201 port VISION measures local same/third-owner sight and a blocked second spy.
+Exact activation and the XML blocking expiry remain INFERRED.
 E195 RESET only consumes the hostile spy at a Soviet Iron Curtain; readiness
 and actual cooldown remain unresolved. Entry reach/clock remain INFERRED.
 Entry reach/clock remain INFERRED; the discovery trace uses an entry-relative clock.
@@ -72,6 +74,7 @@ class Infiltrators:
         self.aircraft_hosts = set()
         self.infantry_hosts = set()
         self.ship_hosts = set()
+        self.port_blocked_until = {}
 
     def aircraft_rule(self, target, rule):
         """E197 complete retail airfield configuration; no reveal assumption."""
@@ -112,6 +115,17 @@ class Infiltrators:
         return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
                 and id(target) not in self.ship_hosts)
 
+    def port_rule(self, target, rule):
+        """E201 complete retail port signature, independent of ordinary yards."""
+        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
+        return (target.template == 'CA_PortStructure'
+                and config == {'Effect': 'VISION', 'Duration': '-1s',
+                               'BlockedDuration': '9999999s', 'ObjectRef': 'VisionObserver'})
+
+    def port_entry_measured(self, spy):
+        return (spy.owner == self.sim.human
+                and spy.template == 'AlliedInfiltrationInfantry')
+
     def reset_rule(self, target, rule):
         """E195 retail Iron Curtain entry only; cooldown/ready remain gaps."""
         config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
@@ -148,10 +162,11 @@ class Infiltrators:
                 and s.money.get(target.owner, 0) >= 2000)
 
     def vision_rule(self, target, rule):
+        config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
         return (target.template in ('AlliedConstructionYard', 'SovietConstructionYard',
                                     'JapanConstructionYard')
-                and rule.get('Effect') == 'VISION' and rule.get('Duration') == '-1s'
-                and rule.get('ObjectRef') == 'VisionObserver' and not rule.get('ReplaceWith'))
+                and config == {'Effect': 'VISION', 'Duration': '-1s',
+                               'ObjectRef': 'VisionObserver'})
 
     def paralyze_rule(self, target, rule):
         """E128/E129/E133 retail hosts and complete explicit module configuration.
@@ -264,9 +279,15 @@ class Infiltrators:
                     self.kill_rule(target, rule), self.money_rule(target, rule),
                     self.vehicle_rule(target, rule), self.reset_rule(target, rule),
                     self.aircraft_rule(target, rule), self.infantry_rule(target, rule),
-                    self.ship_rule(target, rule))):
+                    self.ship_rule(target, rule), self.port_rule(target, rule))):
             s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、车辆、飞机、步兵、舰船及RESET入楼切片已实现')
             return
+        if self.port_rule(target, rule):
+            if not self.port_entry_measured(spy):
+                s.gap('InfiltratorContain', target.template, '港口其他间谍/玩家未对拍')
+                return
+            if s.frame_now() < self.port_blocked_until.get(id(target), 0):
+                return  # E201 a: second remains alive; b checks the same order is legal.
         if self.aircraft_rule(target, rule) and not self.aircraft_entry_measured(spy, target):
             s.gap('InfiltratorContain', target.template, '飞机VISION_UNITS其他间谍/玩家或重复进入未对拍')
             return
@@ -325,6 +346,24 @@ class Infiltrators:
                     or (entry[1] and s.relation(target.owner, spy.owner) not in entry[1])
                     or target.status & set(rule.get('InfiltratedStatusFilter',
                                                    'DESTROYED UNDER_CONSTRUCTION SOLD UNPACKING').split())):
+                continue
+            if self.port_rule(target, rule):
+                if not self.port_entry_measured(spy):
+                    s.gap('InfiltratorContain', target.template, '港口入楼时资格变化未对拍')
+                    continue
+                if s.frame_now() < self.port_blocked_until.get(id(target), 0):
+                    continue
+                # INFERRED: XML duration beyond the measured second-entry window;
+                # E201 observes blocking through 41s, not its distant expiry.
+                self.port_blocked_until[id(target)] = (s.frame_now()
+                    + simunits._frames(float(rule['BlockedDuration'][:-1])))
+                # INFERRED: attach local sight at accepted entry; exact activation
+                # phase/observer identity were not measured. Keep ordinary yards' delay.
+                self.observers.append((spy.owner, target, s.frame_now()))
+                s.gap('InfiltratorContain', target.template,
+                      '港口精确入楼/观察者/死亡清理/阻断到期未对拍，见 work/re/e201_port.md')
+                s.destroy(spy, '进港渗透', delete=True)
+                s.change()
                 continue
             if self.aircraft_rule(target, rule):
                 if not self.aircraft_entry_measured(spy, target):
