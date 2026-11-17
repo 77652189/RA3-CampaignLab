@@ -19,6 +19,13 @@ WORLD_API = frozenset({
     'relations',       # (player, player) -> 'Friend' / 'Enemy' / 'Neutral'
     'used',            # the audit set: rules the run leaned on (append only)
     'gap',             # an unmodelled rule met (Sim.gap)
+    'guessed',         # the audit set of guessed template data a run leaned on (append only)
+    'note',            # (kind, text) -> a line in the run's log
+    'label',           # body -> its name as the log shows it (its cast role, else name, else template)
+    'point',           # a waypoint / area / site / mark / named object / '@x,y' -> its (x, y), None where none
+    'ground',          # the pathing grid (within / route)
+    'eng',             # the private engine model's handle, None without it
+    'change',          # () -> note that something changed now (last_change)
 })
 
 # Sim.gap's kinds: what a run met and the simulator does not act on (any layer reports one). The names are

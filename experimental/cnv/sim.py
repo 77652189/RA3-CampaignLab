@@ -66,6 +66,7 @@ import simact  # noqa: E402
 import simcond  # noqa: E402
 import simgarrison  # noqa: E402
 import simheal  # noqa: E402
+import simlocomotion  # noqa: E402
 import simmine  # noqa: E402
 import simmodifier  # noqa: E402
 import simmoney  # noqa: E402
@@ -2365,49 +2366,8 @@ class Sim:
     def send(self, b, target, by='', reach=0.0, face=None):
         """Put b on a way to target (a point, or a waypoint / area name); face: the facing (radians) to turn to at the
         way's end (move), None for none -- a new way drops an old one's. From standing it first turns in place toward
-        its way (move, Sim.turn), whoever gave the order."""
-        if b.guessed:                               # its speed matters now: say when it is only a guess
-            self.guessed.add(f'{b.template}: {", ".join(b.guessed)}')
-        if not b.alive or b.speed <= 0:
-            return
-        b.face = face
-        p = self.point(target) if isinstance(target, str) else target
-        if p is None:
-            self.note('卡住', f'{self.label(b)} 找不到要去的地方 {target}')
-            return
-        path = self.ground.within(b.surface, (b.x, b.y), p, reach) if reach else None
-        stands = False
-        if path is None:
-            path = self.ground.route(b.surface, (b.x, b.y), p, closest=True)
-            stands = path == []
-        if not b.path:
-            b.set_off = self.frame_now()
-        b.dest = p
-        if path is None:
-            self.note('卡住', f'{self.label(b)} 到不了 {target if isinstance(target, str) else "目标"}'
-                              f'（{b.surface} 没有路）')
-            b.path = []
-            return
-        if stands and b.dest != b.stood_for:
-            # walled in, where it stands is the nearest it gets: it stays (bench engine_seal move); not stuck
-            self.note('够不着', f'{self.label(b)} 走不到 {target if isinstance(target, str) else "目标"}，'
-                                f'原地就是能到的最近处，站着')
-            b.stood_for = b.dest
-        import simtopple
-        import simjet
-        b.jet_motion = simjet.start(self, b, path)
-        points = [(b.x, b.y)] + path
-        b.frame_move = self.eng is not None and (b.jet_motion is not None or any(o.alive and simtopple.crosses(b, o, a, z, self.own)
-                                                  for o in self.topples if o is not b
-                                                  for a, z in zip(points, points[1:])))
-        if b.frame_move:
-            if not b.path:
-                b.drive_speed = 0.0
-            self.frame_movers[b.name] = b
-        else:
-            self.frame_movers.pop(b.name, None)
-        b.path = path
-        self.change()
+        its way (move, Sim.turn), whoever gave the order. The rule is simlocomotion.go_to (L2); `by` is unused."""
+        simlocomotion.go_to(self, b, target, reach, face, self.frame_movers, self.topples)
 
     def turn(self, b, want, dt, within=0.0):
         """Turn b in place toward the facing `want` (radians) for up to dt seconds, at its turn_rate a frame (bench
