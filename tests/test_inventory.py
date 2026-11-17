@@ -1,9 +1,11 @@
 """The retail feature inventory (experimental/cnv/inventory.py -> docs/engine/inventory.md, ADR 0026) is generated,
-current, complete and only uses legal states."""
+complete and only uses legal states. The pages are generated on demand and not committed (ADR 0030): the tests check
+that the generators run and agree with the items, never what a file on disk says."""
 import importlib.util
 import json
 import os
 import re
+import sys
 
 import pytest
 
@@ -26,10 +28,23 @@ def items():
     return _items['all']
 
 
-def test_the_committed_inventory_is_current():
-    want = inventory.render(items())
-    got = open(inventory.OUT, encoding='utf-8').read() if os.path.exists(inventory.OUT) else ''
-    assert got == want, 'docs/engine/inventory.md is stale: python -I -X utf8 experimental/cnv/inventory.py'
+def test_the_generator_writes_the_page_it_renders(tmp_path, monkeypatch):
+    """inventory.py writes render(collect()) to OUT; every item is a row of it."""
+    xs, out = items(), tmp_path / 'inventory.md'
+    monkeypatch.setattr(inventory, 'OUT', str(out))
+    monkeypatch.setattr(inventory, 'collect', lambda *a, **k: xs)
+    assert inventory.main() == 0
+    text = out.read_text(encoding='utf-8')
+    assert text == inventory.render(xs)
+    rows = set(re.findall(r'^\|[^|]*\| `([^`]+)` \|', text, re.M))
+    assert {i['name'] for i in xs} <= rows
+
+
+def test_the_generated_pages_are_not_bench_sources():
+    """Read back, a generated page's notes made the next run depend on which pages that checkout had generated."""
+    assert {os.path.basename(p) for p in (inventory.OUT, inventory_levels.OUT, inventory_ai.LEVELS_OUT)} \
+        == set(inventory.PAGES)
+    assert not {s for s, _ in inventory.bench_sources()} & {f'docs/engine/{p}' for p in inventory.PAGES}
 
 
 def test_states_are_legal_and_parts_are_all_there():
@@ -211,6 +226,10 @@ def test_a_missing_source_stops_it_instead_of_an_empty_list(monkeypatch, tmp_pat
 _spec_ai = importlib.util.spec_from_file_location('inventory_ai', os.path.join(ROOT, 'experimental', 'cnv', 'inventory_ai.py'))
 inventory_ai = importlib.util.module_from_spec(_spec_ai)
 _spec_ai.loader.exec_module(inventory_ai)
+_spec_lv = importlib.util.spec_from_file_location('inventory_levels',
+                                                  os.path.join(ROOT, 'experimental', 'cnv', 'inventory_levels.py'))
+inventory_levels = importlib.util.module_from_spec(_spec_lv)
+_spec_lv.loader.exec_module(inventory_levels)
 
 
 def test_every_retail_tactic_and_heuristic_kind_is_an_ai_item():
@@ -232,15 +251,29 @@ def test_the_ai_registers_point_at_real_items_and_sources():
 
 
 def test_the_ai_part_has_no_decompiler_addresses():
-    text = open(inventory.OUT, encoding='utf-8').read()
-    assert not re.search(r'0x[0-9a-fA-F]{5,}', text)
+    assert not re.search(r'0x[0-9a-fA-F]{5,}', inventory.render(items()))
 
 
-def test_the_committed_level_scope_is_current():
-    # docs/engine/inventory-levels.md: what our 9 levels' enemy AI uses ("AI done" point 1); regenerate with
-    # python -I -X utf8 experimental/cnv/inventory_ai.py levels --write
-    want = inventory_ai.render_levels(items(), inventory_ai.level_scope())
-    assert open(inventory_ai.LEVELS_OUT, encoding='utf-8').read() == want
+def page_rows(text):
+    """{(part, name): state} of a levels page's item rows (| 状态 | 部分 | `项` | ...)."""
+    return {(m[2], m[3]): m[1] for m in re.finditer(r'^\| (\S+) \| (\S+) \| `([^`]+)` \|', text, re.M)}
+
+
+def test_the_ai_level_scope_page_is_generated_from_the_items(tmp_path, monkeypatch):
+    # docs/engine/inventory-levels.md: what our 9 levels' enemy AI uses ("AI done" point 1), generated on demand with
+    # python -I -X utf8 experimental/cnv/inventory_ai.py levels --write; its rows carry the inventory's states
+    xs, scope = items(), inventory_ai.level_scope()
+    want = inventory_ai.render_levels(xs, scope)
+    state = {(i['part'], i['name']): i['state'] for i in xs}
+    rows = page_rows(want)
+    assert rows and all(state[k] == s for k, s in rows.items())
+    out = tmp_path / 'inventory-levels.md'
+    monkeypatch.setattr(inventory_ai, 'LEVELS_OUT', str(out))
+    monkeypatch.setattr(inventory_ai, 'level_scope', lambda *a, **k: scope)
+    monkeypatch.setattr(inventory, 'collect', lambda *a, **k: xs)
+    monkeypatch.setitem(sys.modules, 'inventory', inventory)     # main_levels imports it by name
+    inventory_ai.main_levels(write=True)
+    assert out.read_text(encoding='utf-8') == want
 
 
 def test_the_ai_part_reads_the_private_model_at_the_pinned_commit_not_its_working_tree(tmp_path, monkeypatch):

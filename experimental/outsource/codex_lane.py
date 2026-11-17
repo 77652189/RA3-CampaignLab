@@ -36,7 +36,7 @@ PROMPT = """你是引擎 {L} 线。工作区 {wt}（这是你的独立工作区�
 开工只读 AGENTS.md 和 work/re/handoff-{lane}.md（存档 handoff-{lane}-archive.md、别的线的交接都不读；要查历史用
 Select-String 按关键词搜，只看命中的几行），做交接"工单"里的**一项**，做完就停，不接下一项。
 工单写了入口和证据位置：先照它去读，别全仓库摸索；工单里缺的才去搜。
-交接没写明下一项、或写着"由总控安排"时，不要停下等：自己按用量从清单（docs/engine/inventory.md 你这一块）
+交接没写明下一项、或写着"由总控安排"时，不要停下等：自己按用量从清单（`python -I -X utf8 experimental/cnv/inventory.py` 生成 docs/engine/inventory.md，看你这一块）
 挑用量最大、没被暂停、不归别的线的一项，在报告里说为什么挑它。只有真被卡住（需要别的线的东西、要用户拍板）才停。
 
 这一项的规矩（总控定的，压过别处）：
@@ -58,9 +58,9 @@ Select-String 按关键词搜，只看命中的几行），做交接"工单"里�
 - 改了私有模型（CNV_ENGINE_MODEL 指的那个工作区）：在那里提交，`git pull --rebase origin main` 后
   `git push origin HEAD:main`，**要在跑 lane_close 之前推**——公开测试按名回放模型，模型不推，别人 main 上就红。
   推完模型再跑 `python -I -X utf8 experimental/cnv/inventory_ai.py pin`（清单钉在模型的固定提交上，不 pin 就看不到
-  你的改动），把 `experimental/cnv/inventory_model.rev` 提交进公开仓库，lane_close 会重新生成清单页。
+  你的改动），把 `experimental/cnv/inventory_model.rev` 提交进公开仓库（清单页不提交，要看就按需生成，ADR 0030）。
 - 收尾：提交后跑 `python -I -X utf8 experimental/outsource/lane_close.py {lane} <改到的测试文件...>`（它跑收尾测试、
-  rebase、推 main，只打末几行；红了就修了再跑，生成的清单冲突照 AGENTS.md 重跑生成器）→ 改写交接 → 推私有仓库
+  rebase、推 main，只打末几行；红了就修了再跑）→ 改写交接 → 推私有仓库
   work/re → 停。
 - 交接限 60 行，只放：**工单**（下一项：做什么、为什么、入口文件和行、已有证据在哪、怎么判、上不上台、验收、
   什么算卡住）、没答的问题（每条 ≤ 3 行，细节放报告文件）、当前状态（几行）、固定指针。做完的轮次、答过的

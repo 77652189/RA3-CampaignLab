@@ -28,9 +28,16 @@ def commits(repo, hours):
 
 
 def inventory():
-    """The summary rows of the committed inventory (tests/test_inventory.py keeps it fresh), read only: running
-    inventory.py here rewrote docs/engine/inventory.md in whatever checkout the report ran in."""
-    out = (ROOT / 'docs' / 'engine' / 'inventory.md').read_text(encoding='utf-8', errors='replace')
+    """The summary rows of the inventory, rendered here in memory (~1 min): the page is not committed (ADR 0030), and
+    a docs/engine/inventory.md on disk is whatever this checkout last generated."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('inventory', ROOT / 'experimental' / 'cnv' / 'inventory.py')
+    inv = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(inv)
+        out = inv.render(inv.collect())
+    except SystemExit as e:                     # a source missing here (the retail cache, the SDK, the model)
+        return [f'  (清单生成不了：{e})']
     return ['  ' + line for line in out.splitlines()
             if line.startswith('| 部分 |') or re.match(r'\| \S+ \| \*\*\d+%\*\*', line)]
 

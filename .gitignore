@@ -2,6 +2,9 @@
 # the game stay out (work/ is the local data folder, see experimental/campaign/labpaths.py)
 /work/
 __pycache__/
+
+# the generated inventory pages: generated on demand, never committed (ADR 0030)
+/docs/engine/inventory*.md
 *.pyc
 
 # build outputs of the experimental shims

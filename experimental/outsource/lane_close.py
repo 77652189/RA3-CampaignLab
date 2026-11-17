@@ -5,7 +5,7 @@ r"""Close one item of a Codex engine line in one command: rebase on origin/main,
 Run it from the line's own worktree after committing. The closing tests are the files named on the command line
 (the ones the item touched -- narrowed to the test functions the item changed in them, the whole file when it
 changed a shared helper), the two guards (tests/test_architecture.py, tests/test_docs.py), -- only when the
-item changed the inventory or its generated pages -- the inventory tests, and -- only when the item moved the model
+item changed the inventory scripts -- the inventory tests (the pages they generate are not committed: ADR 0030), and -- only when the item moved the model
 pin (experimental/cnv/inventory_model.rev) -- the private model's whole suite (a red also red at the old pin is
 reported, not blocking). The output goes to
 work/logs/<lane>_close_<stamp>.log; the screen gets the last lines only. Exit 0 = pushed; 1 = red tests (fix and run
@@ -21,9 +21,8 @@ _spec.loader.exec_module(_paths)
 
 GUARDS = ['tests/test_architecture.py', 'tests/test_docs.py',
           'tests/test_no_program_addresses.py']   # 11-13 an address reached simai.py past a Claude line's close
-INVENTORY_PATHS = ('experimental/cnv/inventory', 'docs/engine/inventory')
-GENERATORS = [['experimental/cnv/inventory.py'], ['experimental/cnv/inventory_levels.py', '--write'],
-              ['experimental/cnv/inventory_ai.py', 'levels', '--write']]   # AGENTS.md's order
+INVENTORY_PATHS = ('experimental/cnv/inventory',)
+PAGES = 'docs/engine/inventory'   # the generated pages: gitignored, generated on demand, never committed (ADR 0030)
 # the architecture guards that build or walk the levels (each 5-100 s): they judge content, so they run only when the
 # item touched content (a map, a level mission, a play, a device, the story); the coordinator's
 # full runs cover them otherwise
@@ -53,36 +52,20 @@ def inventory_tests():
 
 
 def rebase_on_main():
-    """Rebase on origin/main. A conflict only in the generated pages (two lines both regenerated them) is settled
-    here -- take main's copy and let regenerate() rewrite them -- so it no longer stops the close. True = done."""
+    """Rebase on origin/main. The inventory pages are no longer committed (ADR 0030): a conflict only in them (an
+    item that still regenerated them, against main that removed them) is settled here by dropping them -- they are
+    generated on demand -- so it does not stop the close. True = done."""
     r = git('rebase', '-q', 'origin/main')
     for _ in range(20):
         if not r.returncode:
             return True
         conflicts = git('diff', '--name-only', '--diff-filter=U').stdout.split()
-        if not conflicts or not all(c.startswith('docs/engine/inventory') for c in conflicts):
+        if not conflicts or not all(c.startswith(PAGES) for c in conflicts):
             return False
-        git('checkout', '--ours', '--', *conflicts)   # during a rebase "ours" is main
-        git('add', '--', *conflicts)
+        git('rm', '-q', '-f', '--', *conflicts)
         empty = not git('diff', '--cached', '--quiet').returncode   # a regenerate-only commit with nothing left
         r = git('rebase', '--skip') if empty else git('-c', 'core.editor=true', 'rebase', '--continue')
     return False
-
-
-def regenerate():
-    """The generated pages go stale whenever main moved under the item: regenerate them, never hand-edit."""
-    for gen in GENERATORS:
-        subprocess.run([sys.executable, '-I', '-X', 'utf8', *gen], capture_output=True)
-    git('add', '--', 'docs/engine', check=True)
-    # staged text, not `status`: a rewrite that only changes line endings stages nothing and an empty commit
-    # failed the whole close (exit 1)
-    if git('diff', '--cached', '--quiet', '--', 'docs/engine').returncode:
-        msg = 'Regenerate the inventory pages on top of main'
-        again = git('log', '-1', '--format=%s').stdout.strip() == msg   # a rerun after a refused push: one commit
-        git('commit', '-q', *(['--amend', '--no-edit'] if again else ['-m', msg]), check=True)
-        print('清单页面已按最新 main 重新生成并提交')
-    else:
-        git('checkout', '--', 'docs/engine')   # nothing but line endings: leave the tree clean
 
 
 def narrow(test_file, base):
@@ -165,11 +148,9 @@ def main():
     changed = git('diff', '--name-only', base, 'HEAD').stdout.split()
     if not rebase_on_main():
         conflicts = git('diff', '--name-only', '--diff-filter=U').stdout.split()
-        print('rebase 冲突（生成的清单取一边重跑三个生成器，其余照 AGENTS.md）：', ' '.join(conflicts) or '?')
+        print('rebase 冲突（照 AGENTS.md 解决）：', ' '.join(conflicts) or '?')
         sys.exit(2)
     inv = any(c.startswith(INVENTORY_PATHS) for c in changed)
-    if inv:
-        regenerate()
     picked = [n for f in touched for n in (narrow(f, base) if '::' not in f and f.endswith('.py') else [f])]
     tests = list(dict.fromkeys(picked + GUARDS + (inventory_tests() if inv else [])))
     # an engine line's own bench mission (missions/*_bench.py) is not level content: the content guards cost ~6 min
@@ -204,11 +185,9 @@ def main():
         if not rebase_on_main():
             print('推送被拒后 rebase 冲突，照 AGENTS.md 解决后再跑本命令')
             sys.exit(2)
-        if landed & (set(changed) - {c for c in changed if c.startswith('docs/engine/')}):
+        if landed & set(changed):
             print('推送被拒，别人刚改了本项也改的文件，再跑一次本命令（会重跑测试）：' + ' '.join(sorted(landed & set(changed))))
             sys.exit(3)
-        if inv:
-            regenerate()
         print('推送被拒（别人刚推过），已 rebase，不重跑测试，再推一次')
     else:
         print('推送连续被拒，再跑一次本命令：\n' + p.stderr.strip()[-400:])

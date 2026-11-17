@@ -1,7 +1,8 @@
 """Our 9 levels' share of the inventory, engine A's parts (experimental/cnv/inventory_levels.py ->
-docs/engine/inventory-levels-a.md, ADR 0026 stop condition 1): generated and current."""
+docs/engine/inventory-levels-a.md, ADR 0026 stop condition 1): generated on demand from the inventory's items."""
 import importlib.util
 import os
+import re
 
 import pytest
 
@@ -19,11 +20,22 @@ pytestmark = pytest.mark.skipif(
     reason='needs the retail scripts cache, the SDK data and the private engine model: the states depend on them')
 
 
-def test_the_committed_level_scope_a_is_current():
-    # regenerate with: python -I -X utf8 experimental/cnv/inventory_levels.py --write
+def test_the_level_scope_a_page_is_generated_from_the_items(tmp_path, monkeypatch):
+    # generated on demand (not committed, ADR 0030): python -I -X utf8 experimental/cnv/inventory_levels.py --write;
+    # its rows carry the inventory's states (plus 0-use rows for a weapon form the inventory has no refinement of)
     items = [i for i in inventory.collect() if i['part'] in inventory_levels.PARTS]
-    want = inventory_levels.render(items, *inventory_levels.level_scope())
-    assert open(inventory_levels.OUT, encoding='utf-8').read() == want
+    scope, missing = inventory_levels.level_scope()
+    want = inventory_levels.render(items, scope, missing)
+    state = {(i['part'], i['name']): i['state'] for i in items}
+    rows = {(m[2], m[3]): m[1] for m in re.finditer(r'^\| (\S+) \| (\S+) \| `([^`]+)` \|', want, re.M)}
+    known = {k: s for k, s in rows.items() if k in state}
+    assert len(known) > len(rows) / 2 and all(state[k] == s for k, s in known.items())
+    out = tmp_path / 'inventory-levels-a.md'
+    monkeypatch.setattr(inventory_levels, 'OUT', str(out))
+    monkeypatch.setattr(inventory_levels, 'level_scope', lambda *a, **k: (scope, missing))
+    monkeypatch.setattr(inventory, 'collect', lambda *a, **k: items)
+    inventory_levels.main(write=True)
+    assert out.read_text(encoding='utf-8') == want
 
 
 def test_an_objects_words_naming_another_object_are_not_followed():

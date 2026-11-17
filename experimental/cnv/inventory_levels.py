@@ -1,5 +1,5 @@
 r"""Our 9 levels' share of the retail feature inventory, engine A's parts (ADR 0026 stop condition 1: every item our
-levels use is 已对拍). Generated, never written by hand, into docs/engine/inventory-levels-a.md; the AI part (engine
+levels use is 已对拍). Generated on demand into docs/engine/inventory-levels-a.md (not committed: ADR 0030); the AI part (engine
 B's) is inventory_ai.py levels -> inventory-levels.md. States and uses come from inventory.collect().
 
 What a level uses, statically (all it could run, not one playthrough):
@@ -13,7 +13,7 @@ What a level uses, statically (all it could run, not one playthrough):
   武器效果          the Nugget types of the weapons reached that way (a weapon's own nuggets after its parents')
 
   python -I -X utf8 experimental/cnv/inventory_levels.py            print the summary
-  python -I -X utf8 experimental/cnv/inventory_levels.py --write    regenerate docs/engine/inventory-levels-a.md
+  python -I -X utf8 experimental/cnv/inventory_levels.py --write    generate docs/engine/inventory-levels-a.md
 """
 import collections
 import importlib

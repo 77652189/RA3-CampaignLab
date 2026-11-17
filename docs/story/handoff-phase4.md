@@ -66,7 +66,7 @@
 ## 指针（只给位置，不抄正文）
 
 - 总方向：`docs/adr/0022-simulator-before-levels.md`、`0023-simulator-as-daily-verifier.md`、`0024-playable-simulator.md`、`0025-playtest-in-game-replays-check-sim.md`、`0026-engine-first-retail-inventory.md`；归类修法 `0015`；一类一个出口 `0016`；分层移植 `0019`。
-- 引擎清单：`docs/engine/inventory.md`（脚本生成，勿手改）。
+- 引擎清单：跑 `python -I -X utf8 experimental/cnv/inventory.py` 生成到 docs/engine/inventory.md（不提交，ADR 0030）。
 - A4：`docs/story/plans/a4.md`（规则）、`experimental/cnv/plays/a4.txt`（全程剧本）、`experimental/cnv/checks/a4.py`、`experimental/cnv/playcheck.py`、`experimental/cnv/simbench.py`、`docs/story/sim-vs-bench-a4.md`、`docs/story/sim-vs-bench-plays.md`、`docs/story/map-diagnosis-a4.md`（地图设计感诊断）。
 - 设计：`docs/design/principles.md`（P36 地形）、`docs/design/draft-inventory.md`、`docs/story/map-language.md`、`docs/story/graybox-cards.md`。
 - 缺陷台账：`docs/issues.md`（I19 A4 不操作约 60 秒战败仍等用户，不动）。

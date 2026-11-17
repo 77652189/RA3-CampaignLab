@@ -1,6 +1,7 @@
 r"""The retail feature inventory (ADR 0026): everything the retail game uses that the simulator should be able to do,
 each item with a state, ordered by how much retail uses it. Generated from retail data -- never written by hand --
-into docs/engine/inventory.md; tests/test_inventory.py fails when the file is stale (a new item, a changed state).
+on demand into docs/engine/inventory.md, which is not committed (ADR 0030: PAGES are gitignored); tests/test_inventory.py
+checks that the page renders and is self-consistent, not what a file on disk says.
 
 Parts (the engine A line's share of ADR 0026; AI is the B line's):
   脚本动作 / 脚本条件  every action and condition name the retail campaign scripts use (script_catalog.json), with the
@@ -20,8 +21,7 @@ How "has code" is told:
   modules, nuggets  the type's name is a string constant in sim.py / simunits.py / simproxy.py (simcoverage.sim_code)
                   -- a first cut: a module read under another name shows as 未做 until NOTES says otherwise
 
-  python -I -X utf8 experimental/cnv/inventory.py            regenerate docs/engine/inventory.md, print the summary
-  python -I -X utf8 experimental/cnv/inventory.py --check    exit 1 when the file is stale
+  python -I -X utf8 experimental/cnv/inventory.py            generate docs/engine/inventory.md, print the summary
 
 Our 9 levels (LEVEL_COLUMN): each item is marked with the levels that use it -- engine A's parts as inventory_levels.py
 counts them (the scripts as built, the templates and weapons reached), the AI part as inventory_ai.py levels (what the
@@ -43,6 +43,10 @@ import labpaths  # noqa: E402
 CATALOG = os.path.join(ROOT, 'experimental', 'campaign', 'script_catalog.json')
 RETAIL_SCRIPTS = os.path.join(labpaths.WORK, 'retailref')
 OUT = os.path.join(ROOT, 'docs', 'engine', 'inventory.md')
+# the generated pages (this one, inventory_levels.OUT, inventory_ai.LEVELS_OUT): gitignored, generated on demand
+# (ADR 0030), and never a bench source -- read back, their item notes made the next run depend on whether and in
+# which order the pages had been generated in that checkout
+PAGES = ('inventory.md', 'inventory-levels.md', 'inventory-levels-a.md')
 
 BENCHED, GUESSED, TODO, NA = '已对拍', '推断', '未做', '不涉及'
 STATES = (BENCHED, GUESSED, TODO, NA)
@@ -1023,7 +1027,7 @@ def measured(text):
 def bench_sources():
     """[(source, text)] where bench measurements live: the engine probes (checks/engine_*.py, run with cnv_check on the
     bench, their readings in the docstrings; a probe of several checks split by check, probe_parts) and the lines of
-    docs/engine/*.md marked measured (**测**). In both a line NOT_MEASURED marks is left out (engine_aiupgrade's
+    docs/engine/*.md marked measured (**测**), the generated PAGES left out. In both a line NOT_MEASURED marks is left out (engine_aiupgrade's
     'Retail tech entries have MinTime >=180s, outside the observation' made MinTime 已对拍)."""
     need(CHECKS, 'the bench checks')
     need(ENGINE_DOCS, 'the engine docs')
@@ -1033,7 +1037,7 @@ def bench_sources():
             text = open(os.path.join(CHECKS, f), encoding='utf-8').read()
             out += [(s, measured(t)) for s, t in probe_parts(f[:-3], text)]
     for f in sorted(os.listdir(ENGINE_DOCS)):
-        if f.endswith('.md') and f != os.path.basename(OUT):
+        if f.endswith('.md') and f not in PAGES:
             lines = [x for x in open(os.path.join(ENGINE_DOCS, f), encoding='utf-8')
                      if '测' in x.replace('未实测', '').replace('推断', '')]
             out.append((f'docs/engine/{f}', measured(''.join(lines))))
@@ -1307,13 +1311,8 @@ def gaps(items, k=20, ours=False):
 
 
 def main():
-    check = '--check' in sys.argv
     items = collect()
     text = render(items)
-    old = open(OUT, encoding='utf-8').read() if os.path.exists(OUT) else ''
-    if check:
-        print('inventory: up to date' if old == text else 'inventory: STALE (run experimental/cnv/inventory.py)')
-        return 0 if old == text else 1
     with open(OUT, 'w', encoding='utf-8', newline='\n') as f:
         f.write(text)
     print('\n'.join(text.splitlines()[4:4 + 2 + len(PARTS)]))

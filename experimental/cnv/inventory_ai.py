@@ -1,6 +1,6 @@
 r"""The AI part of the retail feature inventory (ADR 0026; the engine B line's share): everything the retail skirmish AI
 data can tell the AI to do, each item with a state, by how often the retail data says it. Called by inventory.py, which
-puts the items into docs/engine/inventory.md as the last part; never written by hand.
+puts the items into docs/engine/inventory.md (generated on demand, not committed: ADR 0030) as the last part.
 
 Source: every xml under the SDK's SageXML/SkirmishAI (65 files: personalities, strategic / build / budget states, opening
 moves, target heuristics, micro managers, army definitions, AIData). The retail campaign's own AI states (AITarget_*,
@@ -994,7 +994,8 @@ def pin(rev='origin/main'):
     full = _git('rev-parse', f'{rev}^{{commit}}').decode().strip()
     with open(MODEL_REV_FILE, 'w', encoding='utf-8', newline='\n') as f:
         f.write(full + '\n')
-    print(f'{MODEL_REV_FILE}: {full}\nnow: inventory.py; inventory_levels.py --write; inventory_ai.py levels --write')
+    print(f'{MODEL_REV_FILE}: {full}\ncommit it; to look at the pages (not committed, ADR 0030): '
+          'inventory.py; inventory_levels.py --write; inventory_ai.py levels --write')
     return full
 
 
