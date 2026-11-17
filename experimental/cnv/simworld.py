@@ -37,5 +37,11 @@ def inside(pts, x, y):
     return c
 
 
+def same_team(have, asked):
+    """A team as a script names it: 'player/team' or the bare team name (the game looks either up: work/re
+    l2_scripts1.md 1); a body's team is kept as 'player/team' where the map or the script gave the player."""
+    return have == asked or ('/' not in asked and have.split('/', 1)[-1] == asked)
+
+
 def mmss(t):
     return f'{int(t // 60)}:{int(t % 60):02d}'

@@ -35,7 +35,7 @@ maps/probe_border.py (level ground), every place absolute. Clear of probe_range'
     buildings; a man counts at once on NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY but is dropped ~3.5 s after
     NAMED_EXIT_BUILDING (NAMED_BUILDING_IS_EMPTY flipped at once, engine_sighted: INFERRED he counts while climbing
     out; the simulator drops him at once, not modelled). The kills came 2-4 s earlier than the simulator's (死).
-    Simulator: sim.Sim.cond_retail4 (tests/test_simbench.py test_razed_all_as_the_bench).
+    Simulator: simcond (tests/test_simbench.py test_razed_all_as_the_bench).
 """
 from maps import probe_border
 from parts import Mission, Script, Test, status

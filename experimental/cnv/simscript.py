@@ -22,6 +22,13 @@ TEAM_COMMANDS = ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO', 'TEAM_ATTACK_NAMED', 'TE
 # a script's power or button by itself, as simcoverage.refined names it
 BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY',
                   'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED')
+# a condition's comparison argument (0 <, 1 <=, 2 ==, 3 >=, 4 >, 5 !=)
+CMP = {0: lambda a, b: a < b, 1: lambda a, b: a <= b, 2: lambda a, b: a == b, 3: lambda a, b: a >= b,
+       4: lambda a, b: a > b, 5: lambda a, b: a != b}
+# AssetTypeLocomotorTemplate.xsd's Surface, in order: TEAM_INSIDE_AREA_*'s third argument is an index into it (D 119)
+SURFACES = ('GROUND', 'WATER', 'CLIFF', 'AIR', 'RUBBLE', 'OBSTACLE', 'IMPASSABLE', 'DEEP_WATER')
+# a script's relation argument (its name, or the index retail writes) -> Sim.relation's word (D 115 5, INFERRED order)
+RELATION_OF = {'Enemy': 'ENEMIES', 0: 'ENEMIES', 'Neutral': 'NEUTRAL', 1: 'NEUTRAL', 'Friend': 'ALLIES', 2: 'ALLIES'}
 
 
 def refined(name, a):

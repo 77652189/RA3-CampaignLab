@@ -44,7 +44,7 @@ freezes their counts, round 236).
     not go 1 leaving F (~s12); F: go 1 s7, go 2 s11, go 1 again s21 (go 1, sent home at 12 s, never got there before
     it was sent back: no Home entry). k 1 never. OUTSIDE as Generals (Home stays empty while go 1 is away: 30, not
     26). GARRISONNED drops the man the moment he is ordered out (not ~3.5 s late as the garrison count). COMPLETELY_
-    BUILT counts the script's plant at once, unpacking (31 at s2). Simulator: sim.Sim.cond_retail5 / team_entered
+    BUILT counts the script's plant at once, unpacking (31 at s2). Simulator: simcond / team_entered
     (INFERRED: an entry seen on the first frame stays marked until the member leaves); tests/test_simbench.py
     test_area_all_as_the_bench.
 """

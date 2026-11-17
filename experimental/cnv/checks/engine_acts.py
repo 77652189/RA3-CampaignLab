@@ -36,7 +36,7 @@ second 150 east). What the simulator predicts is in brackets.
     The bench's seconds run 1-2 s ahead of the scripts' timers. Against the prediction: SHROUD_REVEAL_TO_ALL makes the
     far 'hide' discovered by the player from the second it is set (旗&1; 'hide 2' never: &512), not only redrawn; the
     plain NAMED_ATTACK_NAMED on one of its own side fires nothing (友血 100 until the force attack at 8 s). The rest as
-    predicted. The simulator fixed to both (sim.Sim.cond_retail2 TEAM_DISCOVERED, Sim.order_attack). A first run with
+    predicted. The simulator fixed to both (simcond TEAM_DISCOVERED, Sim.order_attack). A first run with
     the Calm row off the map's 5000 border and rows across probe_range's lanes read nothing usable (dropped).
 """
 from maps import probe_border

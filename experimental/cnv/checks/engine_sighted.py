@@ -35,7 +35,7 @@ maps/probe_border.py (level ground), every place absolute; every unit NO_ATTACK.
     So: TYPE_SIGHTED as predicted except &16 -- a list made by OBJECTLIST_ADDOBJECTTYPE never matched (the same
     list PLAYER_HAS_OBJECT_COMPARISON reads, engine_scripts7); NAMED_BUILDING_IS_EMPTY as predicted; BUILT_BY_PLAYER
     as predicted (placed ones count, a state), but the killed engineer still counted until ~s27 (~7 s after the
-    kill: while it lies; the simulator's LINGER 0 drops it at once). Simulator: sim.Sim.cond_retail4
+    kill: while it lies; the simulator's LINGER 0 drops it at once). Simulator: simcond
     (tests/test_simbench.py test_sighted_all_as_the_bench).
 """
 from maps import probe_border

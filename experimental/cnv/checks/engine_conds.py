@@ -15,7 +15,7 @@ checks/engine_scripts9.py). The enemy crew is on Soviet_4: placed units on a Sov
             64 PLAYER_HAS_CREDITS(Player_1, <, 4500) 128 PARTIALLY(Go, F, 1)
           离开 (only added) = frames NAMED_EXITED_AREA(go 1, Home) held; 建队帧 (only added) = frames TEAM_CREATED(Spawn)
           held (1 = an edge; growing = a state)
-          [simulator 11-13 (sim.Sim.cond_retail): 队形 36 to s2 (Go has units 4, Go created 32: a map team is active
+          [simulator 11-13 (simcond): 队形 36 to s2 (Go has units 4, Go created 32: a map team is active
           from the start); 60 from s3 (Spawn made: 8 + 16); s8 53 (go 1 in F: +1; Spawn killed, its units gone: -8);
           117 from s9 (TEAM_DESTROYED(Spawn) from the next frame, still created); 119 from s13 (go 2 in F: entirely);
           112 from s24 (Go killed: neither inside nor with units, still created).
@@ -50,7 +50,7 @@ checks/engine_scripts9.py). The enemy crew is on Soviet_4: placed units on a Sov
           海军 = 1 PARTIALLY(Navy, N, 0) 2 (Navy, N, 1) 4 (Navy, N, 3) 8 (Navy, N, 7) 16 TEAM_HAS_UNITS(Navy)
             32 PARTIALLY(Watch, W, 1) 64 PARTIALLY(Watch, W, 0)
           热点 = 1 MISSION_HOT_SPOT_ACTIVE(H1) 2 (H2) 4 (Nope) 8 (h1, lower case)
-          [simulator 11-13 (sim.Sim.cond_retail2): 视野 13 (1 near inside the circles' reach, 4 watch itself, 8 near sees
+          [simulator 11-13 (simcond): 视野 13 (1 near inside the circles' reach, 4 watch itself, 8 near sees
           watch; INFERRED the member itself counts) / 4 from s5 (near at 300) / 13 from s10 / 4 from s14 (near dead).
           发现 13 (Near seen, Soviet_4 sees Watch, the player's own) / 15 from s10 (spy within the player's sight 500) /
           14 from s14. 海军 88 all along (k 7 + alive + watch k 0: the ship never for k 0, D 119's prediction).
@@ -60,7 +60,7 @@ checks/engine_scripts9.py). The enemy crew is on Soviet_4: placed units on a Sov
     s13 5 14 88 0 | s14-s24 5 14 88 2 | s25 4 14 88 2. Against the prediction: near at 230 unseen (视野&1, &8 off until
     it stands at 180: centre to centre, not + both radii); its wreck seen ~11 s after the kill (&1 s13-s24); near off
     for 发现&1 while it moves (s3, s8-s9); the lower-case hot spot name never on (&8). The rest as predicted -- D 119's
-    ship never for k 0. The simulator fixed to the first, third and fourth (sim.Sim.cond_retail2); the wreck's time
+    ship never for k 0. The simulator fixed to the first, third and fourth (simcond); the wreck's time
     is the Guardian's SlowDeath (0 s in the simulator), left to the module lines.
 
 BENCH 11-13 (round 208, run_queue; tests/test_simbench.py test_conds_team_as_the_bench / _fight_):
@@ -68,7 +68,7 @@ BENCH 11-13 (round 208, run_queue; tests/test_simbench.py test_conds_team_as_the
     s22-s31 128 74; 离开 1, 建队帧 1. Against the prediction: TEAM_CREATED holds one frame after the making (建队帧
     1) and never for the map team Go (32 never); TEAM_DESTROYED(Spawn) never after its TEAM_KILL while
     TEAM_DESTROYED(Go) holds after Go's (128); PARTIALLY with k 3 / 7 / 1 never for the Guardians (16 / 32 / 128).
-    The rest as predicted (ALL_HAS on the emptied Go: 74). The simulator fixed to all three (sim.Sim.cond_retail,
+    The rest as predicted (ALL_HAS on the emptied Go: 74). The simulator fixed to all three (simcond,
     TEAM_DESTROYED); the bench's seconds run a second or two before the simulator's.
   fight: 被打 / 击杀 s1-s2 0 0 | s3-s15 21 0 | s16-s38 4 43 | s39-s52 53 43 | s53-s71 4 31; 甲 87 at s3 .. 12 at s14,
     kept 12; 乙 87 at s39 .. 12 at s52, kept. Every bit as predicted (the fire sooner than the simulator's).
