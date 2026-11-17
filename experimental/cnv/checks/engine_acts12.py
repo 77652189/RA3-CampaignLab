@@ -131,11 +131,14 @@ EDGE = {'DP': (2400.0, 4950.0, 'p1', (2400.0, 4300.0)), 'DS': (3600.0, -157.0, '
         'DA': (-250.0, 2900.0, 's5', (600.0, 2900.0))}
 
 
-def drop_mission(allied=False, edge=False):
+def drop_mission(allied=False, edge=False, entry=False):
     """engine_acts_drop: s4 / s5 as the map has them (Soviet); engine_acts_ally: both PlayerTemplate:Allies (the
-    retail stores' owners are all Allied players)."""
-    m = Mission(name='CampActsEdg' if edge else 'CampActsAlly' if allied else 'CampActsDrop', map=probe_border,
-                units=[], facts={})
+    retail stores' owners are all Allied players); engine_acts_dropx: engine_acts_drop with ra3ext logging the hits of
+    the private entry set 'bomberdrop' (D179: the special power's fire and the OCL's create, inject.py kind 'entry')."""
+    m = Mission(name='CampActsEdg' if edge else 'CampActsAlly' if allied else 'CampActsDrX' if entry
+                else 'CampActsDrop', map=probe_border, units=[], facts={})
+    if entry:
+        m.ext, m.ext_logs = True, ('entrybomberdrop',)
     if allied:
         for side in ('s4', 's5'):
             m.sides[side] = dict(m.sides.get(side, {}), playerFaction='PlayerTemplate:Allies')
@@ -203,6 +206,7 @@ def _own(m, drops):
 
 
 MISSION = {'engine_acts_mix': mission, 'engine_acts_drop': drop_mission,
-           'engine_acts_ally': lambda: drop_mission(allied=True), 'engine_acts_edge': lambda: drop_mission(edge=True)}
+           'engine_acts_ally': lambda: drop_mission(allied=True), 'engine_acts_edge': lambda: drop_mission(edge=True),
+           'engine_acts_dropx': lambda: drop_mission(entry=True)}
 CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own}, 'engine_acts_ally': {'own': own},
-          'engine_acts_edge': {'edge': edge}}
+          'engine_acts_edge': {'edge': edge}, 'engine_acts_dropx': {'own': own}}

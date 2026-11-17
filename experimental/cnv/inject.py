@@ -39,6 +39,8 @@ KINDS = {
     'assign': ('kassign:', 'the team assigning a member a target'),
     'threat': ('thr:', 'a member picking a threat'),
     'poke': ('poke:', 'a plan line carried out ("注入摆", pos())'),
+    'entry': ('ent:', 'a program entry ran (D179: the entry set the map names, Mission.ext_logs entry<name>; unit = '
+                      'the entry, source = its caller)'),
 }
 
 
@@ -174,6 +176,11 @@ def look(run, kinds=None, unit=None, frames=None):
                 ev = Event(fr, kind, d.get('id', '?'), what, '?')
             elif kind == 'threat':
                 ev = Event(fr, kind, d.get('mem', '?'), f"挑威胁 {d.get('pick')}", _source(d))
+            elif kind == 'entry':
+                if 'at' not in d:           # 'ent: armed ...' (which threads got the breakpoints)
+                    continue
+                ev = Event(fr, kind, d['at'], f"入口第 {d.get('hit')} 次 this={d.get('ecx')} 参数 {d.get('a') or '-'} "
+                           f"链 {d.get('chain', '-')}", d.get('ra', '?'))
             elif kind == 'team':
                 key = (d.get('mstate'), d.get('tgt'), d.get('tact'))
                 if last_team.get(d.get('team')) == key:

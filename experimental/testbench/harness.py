@@ -351,12 +351,31 @@ EXT_LOGS = {'dock': 'RA3EXT_DOCK',      # ra3ext.allow word -> the variable the 
             'target': 'RA3EXT_TARGET'}  # D174: the tgt: hooks cut aiexpb50 from f2078 to ~f830; Mission.ext_logs
 
 
+ENTRIES = os.path.join(labpaths.WORK, 're', 'inject_entries.json')   # private: entry set name -> RA3EXT_ENTRY spec
+
+
+def entry_spec(name, path=None):
+    """The RA3EXT_ENTRY spec of the entry set `name` (D179: ra3ext logs each hit of those program entries, `ent:`
+    lines, inject.py kind 'entry'), from the private table; None without it (the addresses stay out of public files)."""
+    path = path or ENTRIES
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding='utf-8') as f:
+        spec = json.load(f).get(name)
+    return spec if isinstance(spec, str) and spec else None
+
+
 def ext_logs(args):
-    """{variable: '1'} for each costly ra3ext log the mod's ra3ext.allow names (package.mark_ext), else {}."""
+    """{variable: value} for each costly ra3ext log the mod's ra3ext.allow names (package.mark_ext), else {}. A word
+    entry<name> (Mission.ext_logs) turns the entry-hit log on for the private entry set <name> (entry_spec)."""
     path = os.path.join(os.path.dirname(args[args.index('-modConfig') + 1]), 'ra3ext.allow')
     with open(path, encoding='ascii', errors='replace') as f:
         words = f.read().split()
-    return {EXT_LOGS[w]: '1' for w in words if w in EXT_LOGS}
+    out = {EXT_LOGS[w]: '1' for w in words if w in EXT_LOGS}
+    specs = [entry_spec(w[len('entry'):]) for w in words if w.startswith('entry') and len(w) > len('entry')]
+    if any(specs):
+        out['RA3EXT_ENTRY'] = ','.join(x for x in specs if x)
+    return out
 
 
 def hand_plan(args, run_dir):
@@ -577,7 +596,7 @@ class Session:
         self.ext_log = os.path.join(self.run_dir, 'ra3ext.log')
         if hand_plan(args, self.run_dir):
             self._say('ra3ext plan handed to CNVCmd (ra3ext_plan.txt -> ra3ext_cmd.txt)')
-        env = {k: v for k, v in env.items() if k not in EXT_LOGS.values()}
+        env = {k: v for k, v in env.items() if k not in EXT_LOGS.values() and k != 'RA3EXT_ENTRY'}
         env.update(ext_logs(args))
         r = subprocess.run(ext_command(args, self.ext_log), capture_output=True, text=True, errors='replace', env=env,
                            timeout=60)

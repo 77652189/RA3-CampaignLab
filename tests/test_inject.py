@@ -92,3 +92,39 @@ def test_poke_lines_read_back_as_records(tmp_path):
         (250, '3177', '摆 UNIT - CNV AI Rev Foe 2 3505.0,3420.0 -> 3553.0,3304.0')]
     assert inject.look(str(tmp_path), kinds=('command',)) == []        # the dll's own 'cmd: at' line is no order
 
+
+ENTRIES = """\
+ent: armed n=2 threads=31 failed=0 frame=1
+ent: frame=180 at=xA1 hit=1 tid=7 ecx=xC1 edx=x0 ra=xR1 a=xP1,x0 chain=-
+ent: frame=180 at=xA2 hit=1 tid=7 ecx=xC2 edx=x0 ra=xR2 a=xS1,xP1,xP2,x0 chain=xF1
+"""
+
+
+def test_entry_hits_read_back_as_records(tmp_path):
+    """D179: the dll's entry-hit lines (RA3EXT_ENTRY) -> kind 'entry': unit = the entry, source = its caller; the
+    'armed' line is no hit."""
+    (tmp_path / 'ra3ext.log').write_text(ENTRIES, encoding='utf-8')
+    evs = inject.look(str(tmp_path), kinds=('entry',))
+    assert [(e.frame, e.unit, e.source) for e in evs] == [(180, 'xA1', 'xR1'), (180, 'xA2', 'xR2')]
+    assert evs[1].what == '入口第 1 次 this=xC2 参数 xS1,xP1,xP2,x0 链 xF1'
+    assert inject.text(evs, names={'xR2': 'OCL caller'}).splitlines()[1].endswith('<- OCL caller')
+
+
+def test_entry_word_turns_on_the_private_entry_set(tmp_path, monkeypatch):
+    """ra3ext.allow word entry<name> -> RA3EXT_ENTRY from the private table; a name the table lacks, or no table, adds
+    nothing (the bench then runs without the entry log)."""
+    spec = importlib.util.spec_from_file_location(
+        'harness_d179', Path(__file__).resolve().parent.parent / 'experimental' / 'testbench' / 'harness.py')
+    harness = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(harness)
+    table = tmp_path / 'entries.json'
+    table.write_text('{"_": "x", "one": "SPEC1", "two": "SPEC2"}', encoding='utf-8')
+    monkeypatch.setattr(harness, 'ENTRIES', str(table))
+    (tmp_path / 'ra3ext.allow').write_text('dock\nentryone\nentrytwo\nentrynone\n', encoding='ascii')
+    args = ['game.exe', '-modConfig', str(tmp_path / 'x.skudef')]
+    assert harness.ext_logs(args) == {'RA3EXT_DOCK': '1', 'RA3EXT_ENTRY': 'SPEC1,SPEC2'}
+    (tmp_path / 'ra3ext.allow').write_text('entrynone\n', encoding='ascii')
+    assert harness.ext_logs(args) == {}
+    monkeypatch.setattr(harness, 'ENTRIES', str(tmp_path / 'missing.json'))
+    assert harness.entry_spec('one') is None
+
