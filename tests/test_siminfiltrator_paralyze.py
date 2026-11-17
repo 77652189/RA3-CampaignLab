@@ -80,7 +80,7 @@ def test_paralyze_soviet_unmeasured_configuration_stays_a_gap():
     m, t, _ = build.resolve('engine_infpsov', 'a')
     s = sim.Sim(m, t)
     host = s.body(m.role('enemy').name)
-    effect = siminfiltrator.Infiltrators(s)
+    effect = s.infiltrators
     rule = siminfiltrator.spec(host.template)
     assert effect.paralyze_rule(host, rule)
     for key, value in [('ImmediatelyEnabled', 'true'), ('BlockedDuration', '0s'),
@@ -120,7 +120,7 @@ def test_paralyze_japanese_unmeasured_configuration_stays_a_gap():
     m, t, _ = build.resolve('engine_infpjap', 'a')
     s = sim.Sim(m, t)
     host = s.body(m.role('enemy').name)
-    effect = siminfiltrator.Infiltrators(s)
+    effect = s.infiltrators
     rule = siminfiltrator.spec(host.template)
     assert effect.paralyze_rule(host, rule)
     for key, value in [('ImmediatelyEnabled', 'true'), ('BlockedDuration', '0s'),
@@ -187,7 +187,7 @@ def test_paralyze_complete_configuration_as_on_the_bench(movement, variant, atta
         assert {k: v for k, v in rule.items() if k not in ('id', 'xmlns')} == {
             'Effect': 'PARALYZE', 'Duration': '30s',
             'UnitFilter': 'InfiltrationParalyzeObjectFilter'}
-        assert siminfiltrator.Infiltrators(s).paralyze_rule(target, rule)
+        assert s.infiltrators.paralyze_rule(target, rule)
         s.run(until)
         for start, end, wanted in (
                 [(1, 7, [11100, 11100, 0, 0]),

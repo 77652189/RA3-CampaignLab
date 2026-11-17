@@ -34,8 +34,8 @@ _layers = _load('test_sim_layers_registry', ROOT / 'tests' / 'test_sim_layers.py
 LAYERED = sorted(set(_layers.LAYER_OF) | _layers.WORLD_TAKERS | _layers.PEER_TAKERS)
 
 # (module, forwarder) -> calls, 11-17 (R2). Who calls: the script actions (simact_*), the frame table (simloop), the
-# Peers loans (simdamage, simorder, simpullback, simsweep: `peers.X` is the Sim's forwarder X today), the garrison
-# (simgarrison, still on the whole Sim until R3's ⑨c).
+# Peers loans (simdamage, simorder, simpullback, simsweep, simgarrison, siminfiltrator: `peers.X` is the Sim's
+# forwarder X today).
 FORWARDER_CALLS = {
     # simact_ability: the ability buttons the scripts press
     ('simact_ability', 'leap_press'): 1, ('simact_ability', 'movement_power_press'): 1,
@@ -55,9 +55,11 @@ FORWARDER_CALLS = {
     # simdamage's Peers loan
     ('simdamage', 'destroy'): 4, ('simdamage', 'modify'): 5, ('simdamage', 'projectile_detonate'): 2,
     ('simdamage', 'queue_projectile_hit'): 1,
-    # simgarrison (`s` and `self.sim`: the whole Sim)
+    # simgarrison's Peers loan (R3 ⑨c)
     ('simgarrison', 'destroy'): 1, ('simgarrison', 'modify'): 3, ('simgarrison', 'order_move'): 2,
     ('simgarrison', 'send'): 1,
+    # siminfiltrator's Peers loan (R3 ⑨c: the calls it made on the whole Sim before, counted once it was layered)
+    ('siminfiltrator', 'destroy'): 11, ('siminfiltrator', 'send'): 1,
     # simloop: the frame table's cells, each the Sim's forwarder of its block
     **dict.fromkeys([('simloop', n) for n in (
         'aura_tick', 'blast_due', 'capture_due', 'deal', 'death_blast_due', 'expire', 'fight', 'flee_due',

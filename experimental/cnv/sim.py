@@ -1021,13 +1021,13 @@ class Sim:
             if link.startswith('GameObject:'):
                 self.own[link.split(':', 1)[1]] = xml
         import simrepair
-        self.repairs = simrepair.Repairs(self)
+        self.repairs = simrepair.Repairs(self, self.wallet, self.ai_switches, self.level)
         import simassign
         self.assignments = simassign.Assignments(self)
         self.heal = simheal.Heal()          # AutoHeal / PassiveAreaEffect (L2)
         self.hunts = []                     # TEAM_HUNT's crews: [movers, target, frame to re-pick at] (Sim.hunt_due)
-        self.garrison = simgarrison.Garrisons(self)    # GarrisonContain / ContestableGarrisonContain
-        self.infiltrators = siminfiltrator.Infiltrators(self)
+        self.garrison = simgarrison.Garrisons(self, simgarrison.Peers(self))    # GarrisonContain / ContestableGarrisonContain
+        self.infiltrators = siminfiltrator.Infiltrators(self, siminfiltrator.Peers(self), self.wallet)
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
         self.attachments = {}              # child name -> (child, parent, module rule)
         self.lift_timers = simunits.LiftTimers()

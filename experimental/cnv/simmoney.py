@@ -1,8 +1,9 @@
 """L4 money (ADR 0029, docs/engine/sim-layers.md): the players' money, the AI's income multiplier, income sharing and
 the money cap, with the rules that pay into them from below: the deposit buildings' clock, a collector's unloading
 (collect: handed to simmine), a deposit split between sharing friends (earn). It reads the world only through
-simworld.WORLD_API. Other writers of the money (scripts, selling, production, repairs, spies) still write the dicts
-directly; Sim.money / income / sharing / money_cap are these same dicts.
+simworld.WORLD_API. A sale's refund, a repair's cost and a spy's theft go through credit / held / charge; other writers
+of the money (scripts, production, simai) still write the dicts directly; Sim.money / income / sharing / money_cap are
+these same dicts.
 """
 from simworld import CIV
 
@@ -56,7 +57,8 @@ class Money:
         self.earn(world, owner, give)
 
     def credit(self, player, amount):
-        """Money paid that is no income (a sale's refund, simbody.Life.sell): never split, never held to the cap."""
+        """Money paid that is no income (a sale's refund, simbody.Life.sell; what a spy takes, siminfiltrator): never
+        split, never held to the cap."""
         self.money[player] = self.money.get(player, 0) + amount
 
     def held(self, player):
@@ -65,7 +67,8 @@ class Money:
 
     def charge(self, player, amount):
         """Money taken that the caller has checked is there (held): the skirmish AI's instalments on a structure it
-        builds (simai Brain). A player with no money entry ends at -amount (the AI pays only what it holds)."""
+        builds (simai Brain), a repair's cost (simrepair), what a spy steals (siminfiltrator). A player with no money
+        entry ends at -amount (the AI pays only what it holds)."""
         self.money[player] = self.money.get(player, 0) - amount
 
     def multiply_income(self, player, mult):

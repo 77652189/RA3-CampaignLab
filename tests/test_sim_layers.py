@@ -34,6 +34,7 @@ LAYER_OF = {
     'simloop': 7,
     'simassign': 2,
     'simsweep': 3,
+    'siminfiltrator': 2, 'simrepair': 2,
 }
 # (simmicro, L5, waits for simai: reached only through simai, which still imports sim, so the inventory's
 # simcoverage.sim_files does not count it yet -- test_simcoverage_files would be red. It is a WORLD_TAKER already.)
@@ -46,12 +47,14 @@ WORLD_TAKERS = {'simheal', 'simmine', 'simmoney', 'simmodifier', 'simlocomotion'
                 'simorder',
                 'simcrush', 'simjet', 'simmicro', 'simassign',
                 'simdamage',
-                'simlevel', 'simpullback', 'simsweep'}
+                'simlevel', 'simpullback', 'simsweep',
+                'simgarrison', 'siminfiltrator', 'simrepair'}
 # (simpullback, L8 -- the AI tactics' pullback adapter -- is not in LAYER_OF for simmicro's reason: only simai imports it)
 
 # modules that reach their host beyond the world through a Peers loan: every `peers.X` they read is in their PEERS
 PEER_TAKERS = {'simorder', 'simdamage',
-               'simpullback', 'simsweep'}
+               'simpullback', 'simsweep',
+               'simgarrison', 'siminfiltrator'}
 
 # field -> the one file that may assign it (rule 3), for the blocks moved so far. Not yet the money dicts (money,
 # income, money_cap): scripts, selling, production, repairs, spies and simai still write them directly (simmoney.py)

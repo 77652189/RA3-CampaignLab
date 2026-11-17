@@ -19,6 +19,9 @@ Exact activation and the XML blocking expiry remain INFERRED.
 E195 RESET only consumes the hostile spy at a Soviet Iron Curtain; readiness
 and actual cooldown remain unresolved. Entry reach/clock remain INFERRED.
 Entry reach/clock remain INFERRED; the discovery trace uses an entry-relative clock.
+L2 (ADR 0029, docs/engine/sim-layers.md): the world is reached only through simworld.WORLD_API (`world`), the host's
+other parts through `peers` (Peers: the names in PEERS, read when used), the money through simmoney.Money (`wallet`:
+held / charge / credit). This module never imports sim.
 """
 import math
 import os
@@ -66,9 +69,27 @@ def filter_spec(name):
     return None
 
 
+PEERS = frozenset({'destroy', 'looks', 'send'})
+
+
+class Peers:
+    """What the spies may reach on their host (the Sim) beyond the world: the names in PEERS, read when used -- the
+    body's end (destroy, L2), its walk (send, L2) and sight (looks)."""
+    __slots__ = ('host',)
+
+    def __init__(self, host):
+        object.__setattr__(self, 'host', host)
+
+    def __getattr__(self, name):
+        if name not in PEERS:
+            raise AttributeError(f'siminfiltrator.Peers: {name} is not lent (PEERS)')
+        return getattr(self.host, name)
+
+
 class Infiltrators:
-    def __init__(self, sim):
-        self.sim = sim
+    def __init__(self, world, peers, wallet):
+        # simworld.WORLD_API only; the host's other parts (Peers); the players' money (simmoney.Money, L4)
+        self.world, self.peers, self.wallet = world, peers, wallet
         self.rules = {}
         self.going = {}
         self.off_until = {}
@@ -96,7 +117,8 @@ class Infiltrators:
                                'StructureFilter': 'InfiltrationAircraftStructuresFilter'})
 
     def aircraft_entry_measured(self, spy, target):
-        return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
+        world = self.world
+        return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
                 and id(target) not in self.aircraft_hosts)
 
     def infantry_rule(self, target, rule):
@@ -109,7 +131,8 @@ class Infiltrators:
                                'StructureFilter': 'InfiltrationInfantryStructuresFilter'})
 
     def infantry_entry_measured(self, spy, target):
-        return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
+        world = self.world
+        return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
                 and id(target) not in self.infantry_hosts)
 
     def ship_rule(self, target, rule):
@@ -122,7 +145,8 @@ class Infiltrators:
                                'StructureFilter': 'InfiltrationShipStructuresFilter'})
 
     def ship_entry_measured(self, spy, target):
-        return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
+        world = self.world
+        return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
                 and id(target) not in self.ship_hosts)
 
     def port_rule(self, target, rule):
@@ -133,7 +157,8 @@ class Infiltrators:
                                'BlockedDuration': '9999999s', 'ObjectRef': 'VisionObserver'})
 
     def port_entry_measured(self, spy):
-        return (spy.owner == self.sim.human
+        world = self.world
+        return (spy.owner == world.human
                 and spy.template == 'AlliedInfiltrationInfantry')
 
     def reset_rule(self, target, rule):
@@ -142,7 +167,8 @@ class Infiltrators:
         return target.template == 'SovietSuperWeapon' and config == {'Effect': 'RESET'}
 
     def reset_entry_measured(self, spy, target):
-        return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
+        world = self.world
+        return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
                 and id(target) not in self.reset_hosts)
 
     def vehicle_rule(self, target, rule):
@@ -155,7 +181,8 @@ class Infiltrators:
                                'StructureFilter': 'InfiltrationVehicleStructuresFilter'})
 
     def vehicle_entry_measured(self, spy, target):
-        return (spy.owner == self.sim.human and spy.template == 'AlliedInfiltrationInfantry'
+        world = self.world
+        return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
                 and id(target) not in self.vehicle_hosts)
 
     def money_rule(self, target, rule):
@@ -166,10 +193,10 @@ class Infiltrators:
                                'BlockedDuration': '30s'})
 
     def money_entry_measured(self, spy, target):
-        s = self.sim
-        return (spy.owner == s.human and spy.template == 'AlliedInfiltrationInfantry'
+        world = self.world
+        return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
                 and id(target) not in self.money_hosts
-                and s.money.get(target.owner, 0) >= 2000)
+                and self.wallet.held(target.owner) >= 2000)
 
     def vision_rule(self, target, rule):
         config = {key: value for key, value in rule.items() if key not in ('xmlns', 'id')}
@@ -198,7 +225,8 @@ class Infiltrators:
 
     def movement_blocked(self, body):
         """E128 movement only; no PARALYZED model-condition bit was observed."""
-        return self.sim.frame_now() < self.paralyzed_until.get(id(body), 0)
+        world = self.world
+        return world.frame_now() < self.paralyzed_until.get(id(body), 0)
 
     def attack_blocked(self, body):
         """E139/E140/E141: existing Mirage fire, three retail tech hosts.
@@ -206,12 +234,14 @@ class Infiltrators:
         Exact application/expiry phase is INFERRED from the XML duration.
         Other templates' attack consumers and retained orders remain gaps.
         """
-        return self.sim.frame_now() < self.attack_until.get(id(body), 0)
+        world = self.world
+        return world.frame_now() < self.attack_until.get(id(body), 0)
 
     def sees(self, side, x, y, air=False):
         """Measured local yard shroud. Parent-death cleanup is INFERRED."""
-        return any(owner == side and target.alive and self.sim.frame_now() >= start
-                   and self.sim.looks(target, x, y, air)
+        world, peers = self.world, self.peers
+        return any(owner == side and target.alive and world.frame_now() >= start
+                   and peers.looks(target, x, y, air)
                    for owner, target, start in self.observers)
 
     def unit_discovered(self, side, body):
@@ -228,13 +258,14 @@ class Infiltrators:
         but accepted entry and observer lifetime remain unobserved.
         No observer birth/death rule follows from this measured readout.
         """
-        now = self.sim.frame_now()
+        world = self.world
+        now = world.frame_now()
         for owner, target, start, position in self.unit_observers:
             if owner != side or target is not body:
                 continue
             age = now - start
             if not body.alive or (body.x, body.y) != position or age >= 300:
-                self.sim.gap('InfiltratorContain', body.template,
+                world.gap('InfiltratorContain', body.template,
                              'VISION_UNITS移动/死亡/300帧后到期未对拍，见 work/re/e199_vision_clock.md')
                 continue
             if age >= 0 and age % 5 != 0:
@@ -247,6 +278,7 @@ class Infiltrators:
         Filtering beyond these templates and later production remain gaps;
         do not turn a complete retail filter into unmeasured reveal coverage.
         """
+        world = self.world
         measured = {'AlliedWarFactory': 'AlliedAntiVehicleVehicleTech1',
                     'AlliedAirfield': 'AlliedSupportAircraft',
                     'AlliedBarracks': 'AlliedEngineer',
@@ -255,33 +287,35 @@ class Infiltrators:
         # IncludeThing-only helper above. Do not broaden that helper's contract.
         kind = {'AlliedWarFactory': 'VEHICLE', 'AlliedAirfield': 'AIRCRAFT',
                 'AlliedBarracks': 'INFANTRY', 'AlliedNavalYard': 'SHIP'}[target.template]
-        for body in self.sim.living():
+        for body in world.living():
             if body.owner != target.owner:
                 continue
             if kind not in body.kinds:
                 continue
             if body.template != measured[target.template]:
-                self.sim.gap('InfiltratorContain', body.template,
+                world.gap('InfiltratorContain', body.template,
                              'VISION_UNITS其他匹配模板未对拍，见 work/re/e199_vision_clock.md')
                 continue
-            self.unit_observers.append((spy.owner, body, self.sim.frame_now() + 1,
+            self.unit_observers.append((spy.owner, body, world.frame_now() + 1,
                                         (body.x, body.y)))
 
     def spec(self, target):
+        world = self.world
         if target.template not in self.rules:
-            self.rules[target.template] = spec(target.template, self.sim.own)
+            self.rules[target.template] = spec(target.template, world.own)
         return self.rules[target.template]
 
     def send(self, spy, target):
-        s, rule = self.sim, self.spec(target)
+        world, peers = self.world, self.peers
+        rule = self.spec(target)
         if not rule or not spy.alive or not target.alive:
             return
         entry = filter_spec(rule.get('CanEnterFilter', 'InfiltrationCanEnterObjectFilter'))
         if entry is None:
-            s.gap('InfiltratorContain', target.template, '复杂进入筛选未对拍')
+            world.gap('InfiltratorContain', target.template, '复杂进入筛选未对拍')
             return
         things, relations = entry
-        if spy.template.lower() not in things or (relations and s.relation(target.owner, spy.owner) not in relations):
+        if spy.template.lower() not in things or (relations and world.relation(target.owner, spy.owner) not in relations):
             return
         energy = (rule.get('Effect') == 'ENERGY' and rule.get('ObjectRef') == 'EnergyDisabler'
                   and not rule.get('ReplaceWith'))
@@ -290,61 +324,61 @@ class Infiltrators:
                     self.vehicle_rule(target, rule), self.reset_rule(target, rule),
                     self.aircraft_rule(target, rule), self.infantry_rule(target, rule),
                     self.ship_rule(target, rule), self.port_rule(target, rule))):
-            s.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、车辆、飞机、步兵、舰船及RESET入楼切片已实现')
+            world.gap('InfiltratorContain', target.template, '仅已测ENERGY、普通VISION、原版PARALYZE、单次STEAL_MONEY、起重机KILL存活、车辆、飞机、步兵、舰船及RESET入楼切片已实现')
             return
         if self.port_rule(target, rule):
             if not self.port_entry_measured(spy):
-                s.gap('InfiltratorContain', target.template, '港口其他间谍/玩家未对拍')
+                world.gap('InfiltratorContain', target.template, '港口其他间谍/玩家未对拍')
                 return
-            if s.frame_now() < self.port_blocked_until.get(id(target), 0):
+            if world.frame_now() < self.port_blocked_until.get(id(target), 0):
                 return  # E201 a: second remains alive; b checks the same order is legal.
         if self.aircraft_rule(target, rule) and not self.aircraft_entry_measured(spy, target):
-            s.gap('InfiltratorContain', target.template, '飞机VISION_UNITS其他间谍/玩家或重复进入未对拍')
+            world.gap('InfiltratorContain', target.template, '飞机VISION_UNITS其他间谍/玩家或重复进入未对拍')
             return
         if self.infantry_rule(target, rule) and not self.infantry_entry_measured(spy, target):
-            s.gap('InfiltratorContain', target.template, '步兵VISION_UNITS其他间谍/玩家或重复进入未对拍')
+            world.gap('InfiltratorContain', target.template, '步兵VISION_UNITS其他间谍/玩家或重复进入未对拍')
             return
         if self.ship_rule(target, rule) and not self.ship_entry_measured(spy, target):
-            s.gap('InfiltratorContain', target.template, '舰船VISION_UNITS其他间谍/玩家或重复进入未对拍')
+            world.gap('InfiltratorContain', target.template, '舰船VISION_UNITS其他间谍/玩家或重复进入未对拍')
             return
         if self.reset_rule(target, rule) and not self.reset_entry_measured(spy, target):
-            s.gap('InfiltratorContain', target.template, 'RESET其他间谍/玩家或重复进入未对拍')
+            world.gap('InfiltratorContain', target.template, 'RESET其他间谍/玩家或重复进入未对拍')
             return
         if self.vehicle_rule(target, rule) and not self.vehicle_entry_measured(spy, target):
-            s.gap('InfiltratorContain', target.template, '车辆VISION_UNITS其他间谍/玩家或重复进入未对拍')
+            world.gap('InfiltratorContain', target.template, '车辆VISION_UNITS其他间谍/玩家或重复进入未对拍')
             return
         if self.money_rule(target, rule) and not self.money_entry_measured(spy, target):
-            s.gap('InfiltratorContain', target.template, 'STEAL_MONEY其他间谍/玩家、重复进入及余额不足未对拍')
+            world.gap('InfiltratorContain', target.template, 'STEAL_MONEY其他间谍/玩家、重复进入及余额不足未对拍')
             return
         if self.kill_rule(target, rule) and (
-                spy.owner != s.human or spy.template != 'AlliedInfiltrationInfantry'
+                spy.owner != world.human or spy.template != 'AlliedInfiltrationInfantry'
                 or id(target) in self.kill_hosts):
-            s.gap('InfiltratorContain', target.template, 'KILL其他间谍/玩家或重复进入未对拍')
+            world.gap('InfiltratorContain', target.template, 'KILL其他间谍/玩家或重复进入未对拍')
             return
         if self.paralyze_rule(target, rule) and (
-                spy.owner != s.human or spy.template != 'AlliedInfiltrationInfantry'
+                spy.owner != world.human or spy.template != 'AlliedInfiltrationInfantry'
                 or id(target) in self.paralyzed_hosts):
-            s.gap('InfiltratorContain', target.template, 'PARALYZE其他间谍/玩家或重复进入未对拍')
+            world.gap('InfiltratorContain', target.template, 'PARALYZE其他间谍/玩家或重复进入未对拍')
             return
         if self.vision_rule(target, rule) and (
-                spy.owner != s.human or spy.template != 'AlliedInfiltrationInfantry'
+                spy.owner != world.human or spy.template != 'AlliedInfiltrationInfantry'
                 or any(parent is target for _, parent, _ in self.observers)):
-            s.gap('InfiltratorContain', target.template, 'VISION其他玩家/间谍或重复渗透未对拍')
+            world.gap('InfiltratorContain', target.template, 'VISION其他玩家/间谍或重复渗透未对拍')
             return
         if target.status & set(rule.get('InfiltratedStatusFilter', 'DESTROYED UNDER_CONSTRUCTION SOLD UNPACKING').split()):
             return
         self.going[spy.name] = target
         spy.goal, spy.mode = target, 'infiltrate'
-        s.send(spy, (target.x, target.y))
+        peers.send(spy, (target.x, target.y))
 
     def tick(self):
-        s = self.sim
+        world, peers = self.world, self.peers
         for name, target in list(self.going.items()):
-            spy = s.body(name)
+            spy = world.body(name)
             if not spy or not spy.alive or not target.alive or spy.mode != 'infiltrate' or spy.goal is not target:
                 self.going.pop(name)
                 continue
-            shape = s.blocks(target)
+            shape = world.blocks(target)
             reach = (shape[2] if shape and len(shape) == 3 else 40.0) + 20.0
             distance = math.hypot(spy.x - target.x, spy.y - target.y)
             if distance > reach and (spy.path or distance > 2 * reach):
@@ -353,157 +387,158 @@ class Infiltrators:
             rule = self.spec(target)
             entry = filter_spec(rule.get('CanEnterFilter', 'InfiltrationCanEnterObjectFilter'))
             if (not entry or spy.template.lower() not in entry[0]
-                    or (entry[1] and s.relation(target.owner, spy.owner) not in entry[1])
+                    or (entry[1] and world.relation(target.owner, spy.owner) not in entry[1])
                     or target.status & set(rule.get('InfiltratedStatusFilter',
                                                    'DESTROYED UNDER_CONSTRUCTION SOLD UNPACKING').split())):
                 continue
             if self.port_rule(target, rule):
                 if not self.port_entry_measured(spy):
-                    s.gap('InfiltratorContain', target.template, '港口入楼时资格变化未对拍')
+                    world.gap('InfiltratorContain', target.template, '港口入楼时资格变化未对拍')
                     continue
-                if s.frame_now() < self.port_blocked_until.get(id(target), 0):
+                if world.frame_now() < self.port_blocked_until.get(id(target), 0):
                     continue
                 # INFERRED: XML duration beyond the measured second-entry window;
                 # E201 observes blocking through 41s, not its distant expiry.
-                self.port_blocked_until[id(target)] = (s.frame_now()
+                self.port_blocked_until[id(target)] = (world.frame_now()
                     + simunits._frames(float(rule['BlockedDuration'][:-1])))
                 # INFERRED: attach local sight at accepted entry; exact activation
                 # phase/observer identity were not measured. Keep ordinary yards' delay.
-                self.observers.append((spy.owner, target, s.frame_now()))
-                s.gap('InfiltratorContain', target.template,
+                self.observers.append((spy.owner, target, world.frame_now()))
+                world.gap('InfiltratorContain', target.template,
                       '港口精确入楼/观察者/死亡清理/阻断到期未对拍，见 work/re/e201_port.md')
-                s.destroy(spy, '进港渗透', delete=True)
-                s.change()
+                peers.destroy(spy, '进港渗透', delete=True)
+                world.change()
                 continue
             if self.aircraft_rule(target, rule):
                 if not self.aircraft_entry_measured(spy, target):
-                    s.gap('InfiltratorContain', target.template, '飞机VISION_UNITS入楼时资格变化未对拍')
+                    world.gap('InfiltratorContain', target.template, '飞机VISION_UNITS入楼时资格变化未对拍')
                     continue
                 self.aircraft_hosts.add(id(target))
                 self.unit_vision(spy, target, rule)
-                s.gap('InfiltratorContain', target.template,
+                world.gap('InfiltratorContain', target.template,
                       '飞机VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
-                s.destroy(spy, '进楼渗透', delete=True)
-                s.change()
+                peers.destroy(spy, '进楼渗透', delete=True)
+                world.change()
                 continue
             if self.infantry_rule(target, rule):
                 if not self.infantry_entry_measured(spy, target):
-                    s.gap('InfiltratorContain', target.template, '步兵VISION_UNITS入楼时资格变化未对拍')
+                    world.gap('InfiltratorContain', target.template, '步兵VISION_UNITS入楼时资格变化未对拍')
                     continue
                 self.infantry_hosts.add(id(target))
                 self.unit_vision(spy, target, rule)
-                s.gap('InfiltratorContain', target.template,
+                world.gap('InfiltratorContain', target.template,
                       '步兵VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
-                s.destroy(spy, '进楼渗透', delete=True)
-                s.change()
+                peers.destroy(spy, '进楼渗透', delete=True)
+                world.change()
                 continue
             if self.ship_rule(target, rule):
                 if not self.ship_entry_measured(spy, target):
-                    s.gap('InfiltratorContain', target.template, '舰船VISION_UNITS入楼时资格变化未对拍')
+                    world.gap('InfiltratorContain', target.template, '舰船VISION_UNITS入楼时资格变化未对拍')
                     continue
                 self.ship_hosts.add(id(target))
                 self.unit_vision(spy, target, rule)
-                s.gap('InfiltratorContain', target.template,
+                world.gap('InfiltratorContain', target.template,
                       '舰船VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e200_ship.md')
-                s.destroy(spy, '进楼渗透', delete=True)
-                s.change()
+                peers.destroy(spy, '进楼渗透', delete=True)
+                world.change()
                 continue
             if self.reset_rule(target, rule):
                 if not self.reset_entry_measured(spy, target):
-                    s.gap('InfiltratorContain', target.template, 'RESET入楼时资格变化未对拍')
+                    world.gap('InfiltratorContain', target.template, 'RESET入楼时资格变化未对拍')
                     continue
                 self.reset_hosts.add(id(target))
                 # E61 observes entry, not an independent remaining cooldown.
                 # Never interpret the short ready interruption as a reload time.
-                s.gap('InfiltratorContain', target.template,
+                world.gap('InfiltratorContain', target.template,
                       'RESET真实冷却与就绪条件未闭环，见 work/re/e195_reset.md')
-                s.destroy(spy, '进楼渗透', delete=True)
-                s.change()
+                peers.destroy(spy, '进楼渗透', delete=True)
+                world.change()
                 continue
             if self.vehicle_rule(target, rule):
                 if not self.vehicle_entry_measured(spy, target):
-                    s.gap('InfiltratorContain', target.template, '车辆VISION_UNITS入楼时资格变化未对拍')
+                    world.gap('InfiltratorContain', target.template, '车辆VISION_UNITS入楼时资格变化未对拍')
                     continue
                 self.vehicle_hosts.add(id(target))
                 self.unit_vision(spy, target, rule)
-                s.gap('InfiltratorContain', target.template,
+                world.gap('InfiltratorContain', target.template,
                       '车辆VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
-                s.destroy(spy, '进楼渗透', delete=True)
-                s.change()
+                peers.destroy(spy, '进楼渗透', delete=True)
+                world.change()
                 continue
             if self.kill_rule(target, rule):
                 # INFERRED: ordinary lethal cleanup; E138 only observes survival,
                 # not the fling trajectory, death animation or death-module dispatch.
                 self.kill_hosts.add(id(target))
-                s.gap('InfiltratorContain', target.template,
+                world.gap('InfiltratorContain', target.template,
                       'KILL存活及玩家击杀归属已接，抛飞/死亡模块派发未对拍，见 work/re/e205_kill.md')
                 prior_attacker = spy.last_by is not None
-                s.destroy(spy, '起重机拒绝渗透')
+                peers.destroy(spy, '起重机拒绝渗透')
                 if not spy.alive and not prior_attacker:
                     # E205 c measures the host player's named-victim credit.
                     # No named killer was measured: do not invent one here.
-                    s.kills.append((target.owner, None, spy.template, spy.name))
+                    world.kills.append((target.owner, None, spy.template, spy.name))
                 else:
-                    s.gap('InfiltratorContain', target.template,
+                    world.gap('InfiltratorContain', target.template,
                           'KILL已有伤害来源/免死进入者的击杀归属未对拍')
-                s.change()
+                world.change()
                 continue
             if self.money_rule(target, rule):
                 if not self.money_entry_measured(spy, target):
-                    s.gap('InfiltratorContain', target.template, 'STEAL_MONEY入楼时资格变化未对拍')
+                    world.gap('InfiltratorContain', target.template, 'STEAL_MONEY入楼时资格变化未对拍')
                     continue
                 amount = int(rule['Amount'])
-                s.money[target.owner] -= amount
-                s.money[spy.owner] = s.money.get(spy.owner, 0) + amount
+                self.wallet.charge(target.owner, amount)
+                self.wallet.credit(spy.owner, amount)
                 self.money_hosts.add(id(target))
                 # E60 observed subsequent miner income. Do not invent a 30s
                 # income freeze from BlockedDuration; its consumer remains a gap.
-                s.destroy(spy, '进楼渗透', delete=True)
-                s.change()
+                peers.destroy(spy, '进楼渗透', delete=True)
+                world.change()
                 continue
             if self.vision_rule(target, rule):
                 # INFERRED: sampled consumption at s11, first local discovery at s16.
                 # No engine mechanism or exact first-frame claim follows from this fit.
-                self.observers.append((spy.owner, target, s.frame_now() + 5 * simunits.LIFE_FPS))
-                s.destroy(spy, '进楼渗透', delete=True)
-                s.change()
+                self.observers.append((spy.owner, target, world.frame_now() + 5 * simunits.LIFE_FPS))
+                peers.destroy(spy, '进楼渗透', delete=True)
+                world.change()
                 continue
             if self.paralyze_rule(target, rule):
                 selected = filter_spec(rule['UnitFilter'])
                 if selected is None:
-                    s.gap('InfiltratorContain', target.template, 'PARALYZE复杂目标筛选未对拍')
+                    world.gap('InfiltratorContain', target.template, 'PARALYZE复杂目标筛选未对拍')
                     continue
                 # INFERRED: apply once to existing units at entry, for the XML duration.
                 # E128 b/E129 a/E133 a support stable movement windows, not exact expiry or new units.
-                end = s.frame_now() + simunits._frames(float(rule['Duration'][:-1]))
+                end = world.frame_now() + simunits._frames(float(rule['Duration'][:-1]))
                 self.paralyzed_hosts.add(id(target))
-                for body in s.living():
+                for body in world.living():
                     if body.owner != target.owner or body.template.lower() not in selected[0]:
                         continue
                     if body.template != 'AlliedAntiVehicleVehicleTech3':
-                        s.gap('InfiltratorContain', body.template, 'PARALYZE其他匹配模板未对拍')
+                        world.gap('InfiltratorContain', body.template, 'PARALYZE其他匹配模板未对拍')
                         continue
                     self.paralyzed_until[id(body)] = end
                     if target.template in ('AlliedTechStructure', 'SovietTechStructure', 'JapanTechStructure'):
                         self.attack_until[id(body)] = end
-                s.destroy(spy, '进楼渗透', delete=True)
-                s.change()
+                peers.destroy(spy, '进楼渗透', delete=True)
+                world.change()
                 continue
             structure = filter_spec(rule.get('StructureFilter', ''))
             if structure is None:
-                s.gap('InfiltratorContain', target.template, '复杂电力建筑筛选未对拍')
+                world.gap('InfiltratorContain', target.template, '复杂电力建筑筛选未对拍')
                 continue
-            energy = sum(max(0, simunits.energy(b.template, s.own)) for b in s.living()
+            energy = sum(max(0, simunits.energy(b.template, world.own)) for b in world.living()
                          if b.owner == target.owner and b.template.lower() in structure[0])
             duration = float(rule.get('Amount', '0')) * energy
             if energy != 100 or float(rule.get('Amount', '0')) != .2:
-                s.gap('InfiltratorContain', target.template, '停电时长缩放INFERRED，仅0.2乘100电量已对拍')
+                world.gap('InfiltratorContain', target.template, '停电时长缩放INFERRED，仅0.2乘100电量已对拍')
             if self.disabled(target.owner):
-                s.gap('InfiltratorContain', target.template, '重复渗透续期INFERRED，未对拍')
-            end = s.frame_now() + round(duration * simunits.LIFE_FPS)
+                world.gap('InfiltratorContain', target.template, '重复渗透续期INFERRED，未对拍')
+            end = world.frame_now() + round(duration * simunits.LIFE_FPS)
             self.off_until[target.owner] = max(self.off_until.get(target.owner, 0), end)
-            s.destroy(spy, '进楼渗透', delete=True)
-            s.change()
+            peers.destroy(spy, '进楼渗透', delete=True)
+            world.change()
 
     def disabled(self, owner):
-        return self.sim.frame_now() < self.off_until.get(owner, 0)
+        world = self.world
+        return world.frame_now() < self.off_until.get(owner, 0)
