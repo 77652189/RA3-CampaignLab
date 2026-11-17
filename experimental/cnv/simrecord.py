@@ -2,7 +2,8 @@
 frame's record identical (docs/engine/sim-layers.md "搬迁不改行为").
 
     python -X utf8 experimental/cnv/simrecord.py record <dir>            # every task, one subprocess each
-    python -X utf8 experimental/cnv/simrecord.py compare <base> <new>    # first differing line per task
+    python -X utf8 experimental/cnv/simrecord.py compare <base> <new>    # first differing line per task, then
+                                                                         # each task's run time before and after
 
 A task's record is one text line per engine frame (and one per DT tick): the frame, every body's attributes (sorted,
 other bodies by name), and the Sim's observable state (log, flags, counters, timers, objectives, money, power, the
@@ -11,8 +12,10 @@ Records are gzip text under the caller's folder (work/logs/simrecord/...), never
 import argparse
 import gzip
 import os
+import json
 import subprocess
 import sys
+import time
 
 
 # name -> (kind, args, seconds). kind: bench = build.resolve(build, check) then Sim.run; old = the same without the
@@ -34,6 +37,8 @@ TASKS = {
 SIM_FIELDS = ('log', 'flags', 'counters', 'timers', 'objectives', 'money', 'income', 'ending', 'used', 'unknown',
               'series', 'done', 'disabled', 'events')
 SKIP_BODY = frozenset()
+SLOWER = 0.10                  # compare flags a task whose run got more than this much slower (ADR 0029 "搬完" (d))
+SHORTEST = 1.0                 # ... and only a run of at least this many seconds (shorter ones are noise)
 
 
 def canon(v, depth=0):
@@ -63,8 +68,14 @@ class Recorder:
     def __init__(self, s, out):
         self.s, self.out, self.n = s, out, 0
         self.logged = 0
+        self.spent = 0.0                # seconds spent writing the record (taken off the run's time)
 
     def line(self, where):
+        t0 = time.perf_counter()
+        self._line(where)
+        self.spent += time.perf_counter() - t0
+
+    def _line(self, where):
         s = self.s
         parts = [f'{where} t={s.t!r}']
         for b in s.bodies.values():
@@ -109,12 +120,14 @@ def run_task(name, out):
         s = sim.Sim(retail.RetailMission(args[0]))
         rec = Recorder(s, out)
         rec.attach()
+        t0 = time.perf_counter()
         s.run(until)
     elif kind in ('bench', 'old'):
         m, t, _ = build.resolve(*args)
         s = sim.Sim(m, t, model=kind == 'bench')
         rec = Recorder(s, out)
         rec.attach()
+        t0 = time.perf_counter()
         s.run(until)
     elif kind == 'ai':
         import simai
@@ -123,9 +136,11 @@ def run_task(name, out):
         rec = Recorder(s, out)
         rec.attach()
         w = simai.SimAI(s, 'normal', 1, None, None, simai.BLOCKS, False)
+        t0 = time.perf_counter()
         w.advance(int(until * simai.FPS))
+    rec.ran = time.perf_counter() - t0 - rec.spent     # the run alone: no imports, map build or record writing
     rec.line('end')
-    return s
+    return s, rec
 
 
 def main():
@@ -143,8 +158,12 @@ def main():
     c.add_argument('new')
     a = ap.parse_args()
     if a.cmd == 'one':
+        t0 = time.perf_counter()
         with gzip.open(a.path, 'wt', encoding='utf-8') as out:
-            s = run_task(a.name, out)
+            s, rec = run_task(a.name, out)
+        total = time.perf_counter() - t0
+        with open(timing_path(a.path), 'w', encoding='utf-8') as f:
+            json.dump({'total': total, 'record': rec.spent, 'run': rec.ran}, f)
         print(a.name, 'used:', ' / '.join(sorted(s.used)))
         return 0
     if a.cmd == 'record':
@@ -195,7 +214,47 @@ def main():
                 if not lx:
                     print(f[:-3], 'same', n - 1, 'lines')
                     break
+    timing(a.base, a.new)
     return 1 if bad else 0
+
+
+def timing_path(gz):
+    return gz[:-3] + '.time.json' if gz.endswith('.gz') else gz + '.time.json'
+
+
+def timing(base, new, slower=SLOWER, shortest=SHORTEST):
+    """Each task's run time before and after (ADR 0029 "搬完" (d): a step more than `slower` slower is to be
+    explained); `run` is the simulated run alone (Sim.run / SimAI.advance less the record's own writing), `total` the
+    subprocess's whole time (imports, map build, the engine model's load, the record). Tasks run side by side (-j),
+    so a few percent is noise, and a run under `shortest` seconds is not flagged at all (measured 11-17: the same
+    code's 0.04 s run read +54%); rerun the two with `record --only <task> -j 1` before explaining one. Skips tasks
+    where either side has no timing (older records). Returns the task names flagged slower."""
+    rows, flagged = [], []
+    for f in sorted(os.listdir(base)):
+        if not f.endswith('.gz'):
+            continue
+        try:
+            with open(timing_path(os.path.join(base, f)), encoding='utf-8') as x, \
+                    open(timing_path(os.path.join(new, f)), encoding='utf-8') as y:
+                jb, jn = json.load(x), json.load(y)
+            tb, tn, ab, an = jb['run'], jn['run'], jb['total'], jn['total']
+        except (OSError, ValueError, KeyError):
+            continue
+        rows.append((f[:-3], tb, tn, ab, an))
+    if not rows:
+        print('timing: no timings on both sides (records made before simrecord timed its runs)')
+        return flagged
+    print('timing, seconds (run: the simulated run alone; total: the whole subprocess):')
+    for name, tb, tn, ab, an in rows:
+        change = (tn - tb) / tb if tb else 0.0
+        mark = '  short' if tb < shortest else '  SLOWER' if change > slower else ''
+        if mark == '  SLOWER':
+            flagged.append(name)
+        print(f'   {name:14} run {tb:7.2f} -> {tn:7.2f} {change:+6.1%}   total {ab:6.1f} -> {an:6.1f}{mark}')
+    sb, sn = sum(r[1] for r in rows), sum(r[2] for r in rows)
+    ab, an = sum(r[3] for r in rows), sum(r[4] for r in rows)
+    print(f'   {"all":14} run {sb:7.2f} -> {sn:7.2f} {(sn - sb) / sb if sb else 0.0:+6.1%}   total {ab:6.1f} -> {an:6.1f}')
+    return flagged
 
 
 if __name__ == '__main__':
