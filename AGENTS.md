@@ -30,7 +30,7 @@
 ## 地图
 | 要做 | 先读 |
 |---|---|
-| 引擎线 A 脚本 / B AI / C 武器 / D 注入 / E 物体模块 | `work/re/handoff.md` / `handoff-b.md` / `handoff-c.md` / `handoff-d.md` / `handoff-e.md` |
+| 引擎线 A 脚本 / B AI / C 武器 / D 注入 / E 物体模块 / R 模拟器分层重构（ADR 0029，搬完前只有 R 改模拟器） | `work/re/handoff.md` / `handoff-b.md` / `handoff-c.md` / `handoff-d.md` / `handoff-e.md` / `handoff-r.md` |
 | 台子怎么跑、坑 | `docs/engine/know-how.md` |
 | 清单和进度 | `python -I -X utf8 experimental/cnv/inventory.py`；原版 27 关：`experimental/cnv/inventory_retail.py` |
 | 其他各线（shell、units、story、music、render、simui） | `docs/<线>/handoff.md` |
