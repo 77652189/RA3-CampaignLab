@@ -39,9 +39,21 @@ LAYER_OF = {
     'simassign': 2,
     'simsweep': 3,
     'siminfiltrator': 2, 'simrepair': 2,
+    'simmicro': 5, 'simpullback': 8,
 }
-# (simmicro, L5, waits for simai: reached only through simai, which still imports sim, so the inventory's
-# simcoverage.sim_files does not count it yet -- test_simcoverage_files would be red. It is a WORLD_TAKER already.)
+# the skirmish AI's side (step 9d): simai and the parts only it imports. The inventory counts the player's run
+# (simcoverage.sim_files walks down from sim and simproxy, never into simai; inventory_ai counts the AI apart), so
+# test_simcoverage_files leaves these out; no other simulator module imports them (test_nothing_else_imports_the_ai).
+# simai itself is not in LAYER_OF until step 10: it still imports sim (SIM_NAMES_UNTIL_10).
+AI_SIDE = {'simai', 'simmicro', 'simpullback'}
+
+
+def ai_import_breaks(mods=None, source=None):
+    """(module, imported) for each simulator module outside AI_SIDE that imports one inside it (lazily too)."""
+    mods = sorted((set(LAYER_OF) | {'sim', 'simproxy'}) - AI_SIDE) if mods is None else mods
+    return [(m, n) for m in mods for n in _imports(ast.parse(source) if source is not None else _tree(m))
+            if n in AI_SIDE]
+
 
 # modules that take the world as an argument (rule 2): they reach it only through WORLD_API
 WORLD_TAKERS = {'simheal', 'simmine', 'simmoney', 'simmodifier', 'simlocomotion',
@@ -457,3 +469,71 @@ def test_ai_read_guard_bites():
     assert world_breaks(['simai'], "def f(self):\n    return sim.Thing\n") == [('simai', 'sim')]
     assert host_write_breaks(('simai',), "class B:\n    def f(self):\n        self.world.money[p] = 3\n") == \
         [('simai', 'money')]
+
+
+def test_nothing_else_imports_the_ai():
+    assert not ai_import_breaks()
+
+
+def test_ai_import_guard_bites():
+    """Mutation check: a simulator module importing simmicro at its top or simai inside a function is caught."""
+    assert ai_import_breaks(['sim'], "import simmicro\ndef f():\n    import simai\n") == \
+        [('sim', 'simai'), ('sim', 'simmicro')]
+
+
+# step 9d: the skirmish AI writes no field of a body either (rule "L8 changes no object field"): a goal, a team, a
+# lifetime, the stats of a body simunits does not know go through their owners (simorder.drop_goal / set_goal,
+# world.add(team=), simbody.last_until / fill); what it marks for itself it keeps (Brain._unpack_ordered). Its own
+# records it may write: a tactics Fighter (`f`) and a hunt goal's state (`state`).
+AI_RECORDS = {'f', 'state'}
+
+
+def ai_object_write_breaks(source=None):
+    """(function, line, target) for each write in simai on an attribute of anything but itself and AI_RECORDS: an
+    assignment, augmented assignment or item set, a mutating call (append, add, ...) or a setattr."""
+    tree = ast.parse(source) if source is not None else _tree('simai')
+    out = []
+
+    def outside(e):
+        while isinstance(e, (ast.Attribute, ast.Subscript)):
+            e = e.value
+        return not (isinstance(e, ast.Name) and e.id in AI_RECORDS | {'self'})
+
+    def walk(node, q):
+        for c in ast.iter_child_nodes(node):
+            cq = f'{q}.{c.name}' if q and isinstance(c, (ast.FunctionDef, ast.ClassDef)) else \
+                c.name if isinstance(c, (ast.FunctionDef, ast.ClassDef)) else q
+            targets = c.targets if isinstance(c, ast.Assign) else \
+                [c.target] if isinstance(c, (ast.AugAssign, ast.AnnAssign)) else []
+            for t in targets:
+                for x in (t.elts if isinstance(t, ast.Tuple) else [t]):
+                    while isinstance(x, ast.Subscript):
+                        x = x.value
+                    if q and isinstance(x, ast.Attribute) and outside(x):
+                        out.append((q, c.lineno, ast.unparse(x)))
+            if q and isinstance(c, ast.Call):
+                f = c.func
+                if isinstance(f, ast.Name) and f.id == 'setattr' and c.args and outside(c.args[0]):
+                    out.append((q, c.lineno, 'setattr ' + ast.unparse(c.args[0])))
+                if isinstance(f, ast.Attribute) and f.attr in MUTATORS and isinstance(f.value, ast.Attribute) \
+                        and outside(f.value):
+                    out.append((q, c.lineno, ast.unparse(f.value)))
+            walk(c, cq)
+    walk(tree, '')
+    return out
+
+
+def test_the_ai_writes_no_field_of_a_body():
+    assert not ai_object_write_breaks()
+
+
+def test_ai_object_write_guard_bites():
+    """Mutation check: the writes step 9d took out (a goal, a team, a lifetime, a fill, the unpack mark), a status
+    set's add and a setattr are each caught; the AI's own records and itself are not."""
+    src = ("class Brain:\n    def f(self, u, t):\n        b = u.body\n        b.goal = None\n        b.team = t\n"
+           "        u.body.life_end = 9\n        b.max_hp = b.hp = 3\n        b.unpack_ordered = was = True\n"
+           "        b.status.add('X')\n        setattr(b, 'speed', 1)\n"
+           "        f.kinds, state.target = (), t\n        self.made[b.name] = 1\n")
+    assert [w for _, _, w in ai_object_write_breaks(src)] == \
+        ['b.goal', 'b.team', 'u.body.life_end', 'b.max_hp', 'b.hp', 'b.unpack_ordered', 'b.status',
+         'setattr b']

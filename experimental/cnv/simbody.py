@@ -8,7 +8,10 @@ lose_health): the garrison (simgarrison, L2), the death-blast queue (L2 queues, 
 ground's height, the template's toggles and the modifiers (L2), `destroy` itself for expire, and the money's
 `credit` (L4) for a sale's refund -- this module never imports them.
 Fields it owns: its own `lose_of`; on a body `alive`, `deleted`, `died_at`, `sell_end`.
+Two entries for the skirmish AI, which writes no body field itself: `last_until` (a lifetime the reader missed) and
+`fill` (the stats of a body simunits does not know, from the model's library).
 """
+import importlib
 import math
 
 import simunits
@@ -173,3 +176,35 @@ class Life:
             if rule[1] <= toggled & set(b.status):
                 b.damage(rule[0] / world.fps)
                 world.used.add('lose health')
+
+
+def last_until(b, frame):
+    """A lifetime the template's bounded reader (simunits.lifetime) left out, set from outside: the body dies at
+    `frame` as any other (`Life.expire`). The skirmish AI's dodge read of a retail fixed LifetimeUpdate does this
+    (simai.Brain.micro_team; INFERRED: the frame it first sees the body as its birth)."""
+    b.life_end = frame
+
+
+def fill(b, lib, own):
+    """A body simunits knows nothing of (its table misses the second GameObject of a file, such as the Riptide's
+    AlliedAntiInfantryVehicle_Ground the war factory's button makes: speed 0, no KindOf -- HOOKS 6): KindOf and
+    speed from the model's library `lib`, health / armour / weapons from the template of the name without its last
+    '_' part when simunits knows that one (INFERRED: the same unit). The skirmish AI calls it for what its factories
+    made (simai.Brain.unit_due); `own` is the world's own templates (WORLD_API own)."""
+    if 'all' not in (b.guessed or []):
+        return
+    tpl = lib.template(b.template)
+    if tpl is None:
+        return
+    ro = importlib.import_module('ra3model.objects.runoffmap')
+    b.kinds = frozenset(tpl.kinds)
+    b.speed = float(ro.normal_speed(lib, tpl) or 0.0)
+    b.surface = 'both' if 'AMPHIBIOUS' in tpl.kinds else 'air' if 'AIRCRAFT' in tpl.kinds else b.surface
+    base = b.template.rsplit('_', 1)[0]
+    if base != b.template:
+        st, f = simunits.stats(base, own), simunits.fight(base, own)
+        if f['hp']:
+            b.max_hp = b.hp = f['hp']
+            b.armor, b.weapons = f['armor'], f['weapons']
+        b.surface, b.sight = st['surface'], st['vision'] or b.sight
+    b.guessed = ['all: simai.fill']

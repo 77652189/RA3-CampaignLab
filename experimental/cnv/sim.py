@@ -1178,7 +1178,7 @@ class Sim:
         self.bodies.pop(name, None)
         return b
 
-    def add(self, name, template, owner, x, y, by='', at=0.0):
+    def add(self, name, template, owner, x, y, by='', at=0.0, team=''):
         st = simunits.stats(template, self.own)
         b = Body(name, template, owner, float(x), float(y), st['speed'], st['surface'],
                  max(st['vision'] or 0.0, st['shroud'] or 0.0), frozenset(st['kinds']), made_by=by, made_at=at)
@@ -1280,6 +1280,7 @@ class Sim:
                 self.__dict__.setdefault('_spawn_parents', []).append(b)
             for i in range(3):
                 self.spawn_child(b, mid, child_template, at)
+        b.team = team                   # the team it is made into, set last (its spawn and unpack children keep '')
         return b
 
     def spawn_child(self, parent, mid, template, at):

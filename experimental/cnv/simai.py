@@ -76,6 +76,8 @@ import sim  # noqa: E402
 import simproxy  # noqa: E402
 import simunits  # noqa: E402
 import simmicro  # noqa: E402
+import simbody  # noqa: E402
+import simorder  # noqa: E402
 import simworld  # noqa: E402
 
 # What the skirmish AI reads on its host (the Sim) beyond the world (simworld.WORLD_API): the orders it gives, the
@@ -781,7 +783,7 @@ class Brain:
             return
         if kind == 'hunt':
             state.command(t)
-            b.goal = None
+            simorder.drop_goal(b)
             self.peers.order_move(b, (t.x, t.y), True)
             return
         if kind == 'attack':                    # the team state's 0 / 6: attack the current enemy (a Thing id)
@@ -805,7 +807,7 @@ class Brain:
                 if not self.host.pullback.send(b, t):
                     self.host.garrison.send(b, t)
             return
-        b.goal = None
+        simorder.drop_goal(b)
         face = float(arg[2]) if len(arg) > 2 and arg[2] is not None else None
         slot = self.__dict__.get('_exp_slots', {}).get(b.name)
         if kind == 'move' and slot is not None and math.hypot(float(arg[0]) - slot[0][0],
@@ -897,18 +899,20 @@ class Brain:
                 if u.body.alive and u.body.name in slots:
                     self.order(u, 'move', p)
         armed = was = False
-        for u in team.members:
+        ordered = self.__dict__.setdefault('_unpack_ordered', {})   # id -> body: the members armed once (kept, so
+        for u in team.members:                                        # an id is not reused)
             b = u.body
-            if getattr(b, 'unpack_ordered', False):
+            if id(b) in ordered:
                 was = True
             if not b.alive:
                 continue
-            if b.building is not None and getattr(b, 'unpack_ordered', False):
+            if b.building is not None and id(b) in ordered:
                 armed = True
-            elif not getattr(b, 'unpack_ordered', False) and \
+            elif id(b) not in ordered and \
                     self.peers.order_unpack(b, p, stand=distance, here=distance is not None,
                                             send=distance is None):
-                b.unpack_ordered = was = True
+                ordered[id(b)] = b
+                was = True
                 armed = b.building is not None or armed
         return not armed if was else True
 
@@ -1070,7 +1074,7 @@ class Brain:
                     continue
                 # Retail fixed lifetime was not loaded by simunits' bounded reader.
                 # INFERRED first-seen birth frame; Sim owns expiry/deletion thereafter.
-                b.life_end = frame + mc.frames(mc.seconds(life.get('MinLifetime')))
+                simbody.last_until(b, frame + mc.frames(mc.seconds(life.get('MinLifetime'))))
             eligible = frozenset(u.body.name for u in team.members if u.body.alive
                                  and 'AIRCRAFT' not in u.body.kinds
                                  and not (getattr(u.body, 'z', None) or 0) > 0)
@@ -1096,7 +1100,7 @@ class Brain:
             if (state is not None and state.state == 33
                     and info.command == simmicro.COMMAND):
                 state.charge_finished()
-                b.goal = None
+                simorder.drop_goal(b)
                 if state.pursuit is not None and state.pursuit.alive:
                     self.peers.order_move(b, (state.pursuit.x, state.pursuit.y), True)
             return
@@ -1665,8 +1669,8 @@ class Brain:
         else:
             spot = self.general_spot(yard, template)
         x, y = spot or self.spot(yard, template)
-        b = world.add(f'#ai {len(world.bodies)} {template}', template, self.player, x, y, by='skirmish AI', at=world.t)
-        b.team = yard.team
+        b = world.add(f'#ai {len(world.bodies)} {template}', template, self.player, x, y, by='skirmish AI', at=world.t,
+                      team=yard.team)
         self.made[b.name] = frame
         self.trace.append((frame, 'own', template))
         world.note('AI', f'{world.who(self.player)} 放下 {template}')
@@ -1682,8 +1686,8 @@ class Brain:
         for job in [j for j in self.later if j[0] <= frame]:
             self.later.remove(job)
             _, t, (x, y), team = job
-            b = world.add(f'#ai {len(world.bodies)} {t}', t, self.player, x, y + 60.0, by='skirmish AI', at=world.t)
-            b.team = team
+            b = world.add(f'#ai {len(world.bodies)} {t}', t, self.player, x, y + 60.0, by='skirmish AI', at=world.t,
+                          team=team)
             self.made[b.name] = frame
             self.trace.append((frame, 'out', t))
 
@@ -1694,7 +1698,7 @@ class Brain:
             if b.owner == self.player and b.name.startswith('#made') and b.name not in self.made:
                 self.made[b.name] = frame
                 self.trace.append((frame, 'out', b.template))
-                self.host.fill(b)
+                simbody.fill(b, self.host.lib, world.own)     # a body simunits does not know (HOOKS 6)
         for t in list(self.unit_q):
             free = [f for f in self.factories() if t in self.host.menu(f.template)
                     and frame >= self.made.get(f.name, -10 ** 9) + self.host.unpack(f.template)
@@ -1749,7 +1753,7 @@ class Brain:
                 # INFERRED bridge: a dead combat goal can have cancelled the path.
                 # Continue toward the pursuit's last position, without a new
                 # team command or a fabricated current target.
-                b.goal = None
+                simorder.drop_goal(b)
                 self.peers.order_move(b, (state.pursuit.x, state.pursuit.y), True)
             here = cell(b)
             previous = cells.get(name)
@@ -1776,7 +1780,7 @@ class Brain:
             if selected is not None:
                 state.target = selected
                 # Direct object-goal write, not a fresh team attack order.
-                b.goal = selected
+                simorder.set_goal(b, selected)
 
     # ---- HOOKS 9: the read-only trail (SimAI(record=True)); nothing below changes the run
     def _name(self, tid):
@@ -2000,29 +2004,6 @@ class SimAI:
             tpl = None if st['kinds'] else self.lib.template(template)
             self._kinds[template] = set(st['kinds']) if st['kinds'] else set(tpl.kinds) if tpl is not None else set()
         return self._kinds[template]
-
-    def fill(self, b):
-        """A body simunits knows nothing of (its table misses the second GameObject of a file, such as the Riptide's
-        AlliedAntiInfantryVehicle_Ground the war factory's button makes: speed 0, no KindOf -- HOOKS 6): KindOf and
-        speed from the model's library, health / armour / weapons from the template of the name without its last
-        '_' part when simunits knows that one (INFERRED: the same unit)."""
-        if 'all' not in (b.guessed or []):
-            return
-        tpl = self.lib.template(b.template)
-        if tpl is None:
-            return
-        ro = importlib.import_module('ra3model.objects.runoffmap')
-        b.kinds = frozenset(tpl.kinds)
-        b.speed = float(ro.normal_speed(self.lib, tpl) or 0.0)
-        b.surface = 'both' if 'AMPHIBIOUS' in tpl.kinds else 'air' if 'AIRCRAFT' in tpl.kinds else b.surface
-        base = b.template.rsplit('_', 1)[0]
-        if base != b.template:
-            st, f = simunits.stats(base, self.world.own), simunits.fight(base, self.world.own)
-            if f['hp']:
-                b.max_hp = b.hp = f['hp']
-                b.armor, b.weapons = f['armor'], f['weapons']
-            b.surface, b.sight = st['surface'], st['vision'] or b.sight
-        b.guessed = ['all: simai.fill']
 
     def free_unit(self, template):
         """The unit a structure brings along (a refinery's miner; INFERRED by name, bench aiopen 采矿车)."""

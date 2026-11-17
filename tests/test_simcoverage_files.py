@@ -23,11 +23,13 @@ def _load(name, path):
 
 # loaded by file: simcoverage.py puts the cnv folders on the path itself (no new sys.path edit here: guard G4's ceiling)
 sc = _load('simcoverage', CNV / 'simcoverage.py')
-LAYER_OF = _load('test_sim_layers_registry', ROOT / 'tests' / 'test_sim_layers.py').LAYER_OF
+_LAYERS = _load('test_sim_layers_registry', ROOT / 'tests' / 'test_sim_layers.py')
+LAYER_OF = _LAYERS.LAYER_OF
 
 
 def simulator_modules():
-    return sorted(set(LAYER_OF) | {'sim', 'simunits', 'simproxy'})
+    """The player's run: the AI's side (test_sim_layers.AI_SIDE) is counted apart, by inventory_ai."""
+    return sorted((set(LAYER_OF) | {'sim', 'simunits', 'simproxy'}) - _LAYERS.AI_SIDE)
 
 
 def uncounted(code, status):
