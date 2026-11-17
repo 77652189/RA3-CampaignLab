@@ -4,7 +4,7 @@
 
 | 部分 | 按用量已对拍 | 9 关用到的按用量已对拍 | 9 关用到（已对拍 / 项） | 项数 | 已对拍 | 推断 | 未做 | 不涉及 | 按用量已有（已对拍+推断） |
 |---|---|---|---|---|---|---|---|---|---|
-| 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 206 | 11 | 119 | 115 | 99% |
+| 脚本动作 | **99%** | **100%** | 50 / 50 | 451 | 208 | 11 | 117 | 115 | 99% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
 | 物体模块 | **98%** | **98%** | 60 / 120 | 199 | 62 | 28 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
@@ -76,7 +76,7 @@
 | 已对拍 | `ENABLE_INPUT` | 132 | a4 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts3.py |
 | 已对拍 | `NO_OP` | 130 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_scripts6.py |
 | 已对拍 | `TEAM_AFFECT_OBJECT_PANEL_FLAGS` | 130 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts7.py |
-| 已对拍 | `UNIT_AI_TRANSFER` | 129 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aixfer.py |
+| 已对拍 | `UNIT_AI_TRANSFER` | 129 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_aistart.py |
 | 不涉及 | `TELEPORT_STRUCTURE` | 128 |  | 起义时刻专有：动作 / 条件号在 RA3 1.13 的脚本分派里没有，RA3 的 mod 用不了 |
 | 不涉及 | `CAMPAIGN_CREATE_AUTO_SAVE` | 127 | 全部 | 纯表现（名字规则）；只记进时间线（sim.SHOWN） |
 | 已对拍 | `UNIT_SET_STANCE` | 124 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_acquire.py |
@@ -279,9 +279,9 @@
 | 未做 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLaserGlaiveBlastSpecialPower` | 9 |  | Sim.act / Sim.cond 不认识 |
 | 推断 | `NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackAlliedMiner` | 9 |  | Sim.act / Sim.cond 有分支 |
 | 已对拍 | `PLAYER_DISABLE_UNIT_CONSTRUCTION` | 9 |  | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_unitban.py |
-| 未做 | `PLAYER_TOGGLE_SKIRMISH_AI` | 9 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `PLAYER_TOGGLE_SKIRMISH_AI` | 9 |  | tests/test_aistart_bench_a.py::test_toggle_skirmish_ai_off_freezes_the_ai_and_on_resumes_it；A270 aipause:a（aiskirm带库，25秒关、85秒开）：关后在造的付清到48300（f457）就冻结到f1262，暂停中造好的第3栋恢复后f1280才放下，f1300起又花钱。程序：写AI脑暂停字节，每帧更新整帧跳过。模拟器Sim.ai_paused：Brain.tick跳过思考、yard_due暂停时不放建筑。tests/test_aistart_bench_a.py按名回放；具名玩家，玩家掩码范围gap |
 | 未做 | `SET_COUNTER_TO_NUMBER_OBJECTS_PLAYER_OWNS_WITH_KINDOF` | 9 |  | Sim.act / Sim.cond 不认识 |
-| 未做 | `SKIRMISH_AI_START` | 9 |  | Sim.act / Sim.cond 不认识 |
+| 已对拍 | `SKIRMISH_AI_START` | 9 |  | tests/test_aistart_bench_a.py::test_skirmish_ai_start_opens_an_ai_whose_yard_was_handed；A270 B的aiskirm图去脚本库四局（s1盟军AI，10秒给50000）：只START（建造厂留在teamSoviet_1）、只MAKE_BASE、只SKIRMISH_AI_TRANSFER_ALL（交队不唤醒）都整局50000/建筑1；UNIT_AI_TRANSFER(建造厂)+START（原版a07写法）f169前付款、f290-f312第二栋（模拟f158/f308）。程序：START=TRANSFER_ALL的唤醒半步。模拟器：MAKE_BASE只对脚本库玩家代唤醒，simai只用交给AI的建造厂。tests/test_aistart_bench_a.py按名回放 |
 | 不涉及 | `SOUND_ENABLE_TYPE` | 9 |  | 纯表现（名字规则） |
 | 已对拍 | `SUB_FROM_MSEC_TIMER` | 9 |  | 引擎模型核心；台上量过、测试对拍：checks/engine_timer.py |
 | 已对拍 | `TEAM_GUARD_AREA` | 9 | a1 a4 a5 a6 a7 a8 a9 | Sim.act / Sim.cond 有分支；台上量过、测试对拍：checks/engine_scripts4.py |
