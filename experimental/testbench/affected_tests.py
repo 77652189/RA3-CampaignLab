@@ -32,6 +32,20 @@ How a changed line is matched (always "more rather than fewer"):
   * keep --timeout at 3000 or more: on Windows pytest-timeout's default method ends the WHOLE xdist worker when one test
     passes the limit ("node down: Not properly terminated"), and single simulator tests run 15-50 min under load;
   * --cmd prints a full pytest command with -n min(8, free GB / 1.5): a simulator-test worker needs about 1.5 GB.
+
+The simulator's files (simcoverage.sim_files(): sim.py, simproxy.py and the sim* parts they import) go by import
+instead (ADR 0029 consequence 3; the map was recorded before the blocks moved out of sim.py, and it counts "ran it" as
+"depends on it"): ImportGraph reads every import (and every 'x.py' string) of experimental/ and tests/ as they are now;
+  * a part module is picked for the tests that import it, directly or through other files -- but not through the
+    facade sim.py: a whole-game replay that only imports sim is not a test of simheal -- and for the tests of the
+    facade (they reach sim, by themselves or through simsmall) that name a handle of it on Sim: a forwarder
+    (`.autoheal`) or the attribute holding it (`.heal`); found inside one test, only that test is run ('file::test');
+  * in sim.py, a changed forwarder (a Sim method of at most 3 statements naming a part module) or an import line of
+    a part picks that part's importers and the facade tests naming the changed method; code still in sim.py goes to
+    the coverage map as before (it did not move);
+  * a part no test imports or names falls back to the coverage map, then to name matching;
+  * the always-picked tests without a coverage record are picked only when some change went to the coverage map;
+  * a range A..B is read against the tree as it is now; --coverage-only gives the pick before ADR 0029.
 """
 import argparse
 import ast
@@ -333,6 +347,280 @@ def name_fallback(path, tests_dir_files):
     return found
 
 
+# ---------------------------------------------------------------- the import graph (ADR 0029: the simulator's files)
+
+FACADE = 'experimental/cnv/sim.py'      # the Sim facade: importing it does not count as importing the parts it imports
+CNV = 'experimental/cnv'
+RUN_ENDS = ('sim', 'simproxy')          # simcoverage.RUN_ENDS: the player-style run
+SEARCH = (CNV, 'experimental/campaign', '', 'tests')    # where a bare import is looked for after the importer's folder
+SKIP_DIRS = {'__pycache__', 'archive', 'node_modules'}
+PY_STRING = re.compile(r'^(?:[\w./\\-]*[/\\])?([A-Za-z_]\w*)\.py$')     # 'simai.py', 'experimental/cnv/simai.py'
+FORWARDER_STMTS = 3                     # a Sim method this short that reaches a part module is that module's forwarder
+
+
+class ImportGraph:
+    """Who imports whom among the Python files of experimental/ and tests/ (as they are in the working tree).
+
+    An edge is an import (top level or inside a function: a lazy import counts), or a string constant naming a .py
+    file (importlib.util.spec_from_file_location(..., 'simai.py'), a script a subprocess runs). Bare names resolve
+    the way the folders' sys.path edits do: the importer's own folder, then experimental/cnv, experimental/campaign,
+    the repository root, tests/; a name found nowhere is not ours (stdlib, the engine model, numpy)."""
+
+    def __init__(self, root=None):
+        self.root = root or ROOT
+        self.paths = set()
+        for top in ('experimental', 'tests'):
+            for d, dirs, fs in os.walk(os.path.join(self.root, top)):
+                dirs[:] = [x for x in dirs if x not in SKIP_DIRS and not x.startswith('.')]
+                rel = os.path.relpath(d, self.root).replace('\\', '/')
+                self.paths.update(rel + '/' + f for f in fs if f.endswith('.py'))
+        self.imports, self.strings, self._reach = {}, {}, {}
+        for p in self.paths:
+            self.imports[p], self.strings[p] = self._edges(p)
+
+    def _file(self, base, dotted):
+        """base/a/b.py or base/a/b/__init__.py, if it is one of ours."""
+        stem = '/'.join(x for x in (base, dotted.replace('.', '/')) if x)
+        for cand in (stem + '.py', stem + '/__init__.py'):
+            if cand in self.paths:
+                return cand
+        return None
+
+    def resolve(self, dotted, frm):
+        for base in (os.path.dirname(frm),) + SEARCH:
+            f = self._file(base, dotted)
+            if f:
+                return f
+        return None
+
+    def _edges(self, p):
+        try:
+            tree = ast.parse(open(os.path.join(self.root, p), encoding='utf-8').read())
+        except (OSError, SyntaxError, ValueError):
+            return set(), set()
+        imp, strs = set(), set()
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Import):
+                for a in n.names:
+                    imp.add(self.resolve(a.name, p))
+            elif isinstance(n, ast.ImportFrom):
+                if n.level:                                 # relative: from the package folder up
+                    base = p.rsplit('/', n.level)[0]
+                    mod = self._file(base, n.module) if n.module else self._file(base, '')
+                    subs = [self._file(base, '.'.join(x for x in (n.module, a.name) if x)) for a in n.names]
+                else:
+                    mod = self.resolve(n.module, p)
+                    subs = [self.resolve(n.module + '.' + a.name, p) for a in n.names]
+                imp.add(mod)
+                imp.update(subs)                            # from checks import a1: the submodule checks/a1.py
+            elif isinstance(n, ast.Constant) and isinstance(n.value, str) and len(n.value) < 200:
+                m = PY_STRING.match(n.value.strip())
+                if m:
+                    whole = n.value.strip().replace('\\', '/')
+                    strs.add(whole if whole in self.paths else self.resolve(m.group(1), p))
+        return imp - {None, p}, strs - {None, p}
+
+    def edges(self, p):
+        return self.imports.get(p, set()) | self.strings.get(p, set())
+
+    def reach(self, start):
+        """Every file `start` reaches by import; the facade is reached but not walked through (unless it is start)."""
+        if start not in self._reach:
+            seen, todo = set(), [start]
+            while todo:
+                f = todo.pop()
+                if f in seen:
+                    continue
+                seen.add(f)
+                if f != FACADE or f == start:
+                    todo += sorted(self.edges(f))
+            self._reach[start] = seen
+        return self._reach[start]
+
+    def test_files(self):
+        return sorted(p for p in self.paths if re.match(r'tests/test_[^/]*\.py$', p))
+
+    def importers(self, target):
+        """Test files that import `target`, directly or through files other than the facade."""
+        return {t for t in self.test_files() if t != target and target in self.reach(t)}
+
+    def facade_tests(self):
+        """Test files that reach the facade (they build a Sim -- themselves or through simsmall -- and test it)."""
+        return {t for t in self.test_files() if FACADE in self.reach(t)}
+
+    def handles(self):
+        """{part module: names on Sim that lead to it} off the facade as it is now: its forwarders' names and the Sim
+        attributes holding the part (self.heal = simheal.Heal()) -- what a test of the facade calls the part by."""
+        if '_handles' not in self.__dict__:
+            parts = {p.rsplit('/', 1)[1][:-3] for p in self.sim_files()} - {'sim'}
+            try:
+                src = Source(open(os.path.join(self.root, FACADE), encoding='utf-8').read())
+            except OSError:
+                src = None
+            found, _ = facade_parts(src, set(range(1, len(src.lines) + 1)) if src else set(), parts)
+            for node in ast.walk(src.tree) if src and src.tree else ():
+                if isinstance(node, ast.Assign):
+                    mods = _part_names(node.value, parts)
+                    for t in node.targets:
+                        if isinstance(t, ast.Attribute) and isinstance(t.value, ast.Name) and t.value.id == 'self':
+                            for m in mods:
+                                found.setdefault(m, set()).add(t.attr)
+            self._handles = found
+        return self._handles
+
+    def users(self, target):
+        """Test files a change to the simulator's file `target` can affect: its importers, and the tests of the facade
+        that name a handle of it (simheal.py: the tests that call .autoheal or .heal on a Sim)."""
+        stem = target.rsplit('/', 1)[1][:-3]
+        return merge_nodes(self.importers(target) | naming(self.facade_tests(), self.handles().get(stem, ()), self.root))
+
+    def sim_files(self):
+        """simcoverage.sim_files() as paths, read off the same imports (tests/test_affected_tests.py checks they agree):
+        RUN_ENDS and every experimental/cnv/sim* module they reach by import, except one that imports sim itself."""
+        if '_sim' not in self.__dict__:
+            def sims(p):
+                return {x for x in self.imports.get(p, ()) if x.startswith(CNV + '/sim') and x.count('/') == 2}
+            seen, todo = set(), [CNV + '/%s.py' % m for m in RUN_ENDS]
+            while todo:
+                m = todo.pop()
+                if m in seen or m not in self.paths:
+                    continue
+                if m.rsplit('/', 1)[1][:-3] not in RUN_ENDS and FACADE in self.imports.get(m, ()):
+                    continue
+                seen.add(m)
+                todo += sorted(sims(m))
+            self._sim = frozenset(seen)
+        return self._sim
+
+
+def new_side_lines(hunks):
+    """Changed lines in the NEW file's numbering (a pure deletion: the lines on both sides of the cut)."""
+    lines = set()
+    for a, b, c, d in hunks:
+        lines.update(range(c, c + d) if d else (c, c + 1))
+    return {n for n in lines if n >= 1}
+
+
+def _sim_methods(source):
+    """{line: (method name, its def node)} for the lines of each method defined directly in a class of `source`."""
+    out = {}
+    for node in getattr(source.tree, 'body', []):
+        if isinstance(node, ast.ClassDef):
+            for m in node.body:
+                if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    start = min([m.lineno] + [x.lineno for x in m.decorator_list])
+                    for n in range(start, m.end_lineno + 1):
+                        out[n] = (m.name, m)
+    return out
+
+
+def _part_names(node, parts):
+    return {x.id for x in ast.walk(node) if isinstance(x, ast.Name) and x.id in parts}
+
+
+def facade_parts(source, lines, parts):
+    """Sort the changed `lines` of the facade (sim.py) by where the code they change lives.
+
+    Returns ({part module: {names}}, lines left). A line of a forwarder -- a Sim method of at most FORWARDER_STMTS
+    statements (docstring left out) that names a part module, itself or through one self._helper() -- lives in that
+    part module, under the method's name; a module-level `import simX` / `from simX import ...` line lives in simX,
+    under the imported names. Every other non-blank line is code still in sim.py: left for the coverage map."""
+    found, left = {}, set()
+    if source is None or source.tree is None:
+        return found, set(lines)
+    methods = _sim_methods(source)
+    by_name = {name: node for name, node in methods.values()}
+    top = {}
+    for node in source.tree.body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            for n in range(node.lineno, node.end_lineno + 1):
+                top[n] = node
+    for n in sorted(lines):
+        if source.inert(n):
+            continue
+        if n in top:
+            node = top[n]
+            mods = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or '']
+            hit = [m for m in mods if m in parts]
+            if hit and len(hit) == len(mods):
+                names = {a.asname or a.name for a in node.names} if isinstance(node, ast.ImportFrom) else set()
+                for m in hit:
+                    found.setdefault(m, set()).update(names)
+                continue
+        elif n in methods:
+            name, node = methods[n]
+            body = [s for s in node.body if not (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant))]
+            if len(body) <= FORWARDER_STMTS and not name.startswith('__'):
+                mods = _part_names(node, parts)
+                for x in ast.walk(node):                    # self._life(): the helper that makes the part
+                    if (isinstance(x, ast.Call) and isinstance(x.func, ast.Attribute) and isinstance(x.func.value, ast.Name)
+                            and x.func.value.id == 'self' and x.func.attr in by_name and x.func.attr != name):
+                        mods |= _part_names(by_name[x.func.attr], parts)
+                if mods:
+                    for m in mods:
+                        found.setdefault(m, set()).add(name)
+                    continue
+        left.add(n)
+    return found, left
+
+
+def test_nodes(text, path):
+    """[(first line, last line, pytest node id)] of the tests in a test file's text: module-level test_* functions
+    and the test_* methods of Test* classes (decorators included)."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return []
+    out = []
+
+    def span(n):
+        return min([n.lineno] + [d.lineno for d in n.decorator_list]), n.end_lineno
+
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith('test'):
+            out.append(span(node) + ('%s::%s' % (path, node.name),))
+        elif isinstance(node, ast.ClassDef) and node.name.startswith('Test'):
+            for m in node.body:
+                if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef)) and m.name.startswith('test'):
+                    out.append(span(m) + ('%s::%s::%s' % (path, node.name, m.name),))
+    return out
+
+
+def naming(test_files, names, root=None):
+    """Where the test files name one of `names` as an attribute or a string (`.expire(`, 'expire'): the pytest node
+    id of the test it sits in, or the whole file when it sits outside any test (a helper, a fixture, module level)."""
+    if not names:
+        return set()
+    pat = re.compile(r"\.(?:%s)\b|['\"](?:%s)['\"]" % (('|'.join(map(re.escape, sorted(names))),) * 2))
+    out = set()
+    for t in test_files:
+        try:
+            text = open(os.path.join(root or ROOT, t), encoding='utf-8').read()
+        except OSError:
+            continue
+        hits = {text.count('\n', 0, m.start()) + 1 for m in pat.finditer(text)}
+        if not hits:
+            continue
+        nodes = test_nodes(text, t)
+        for n in hits:
+            inside = [node for first, last, node in nodes if first <= n <= last]
+            if not inside:
+                out.add(t)
+                break
+            out.add(inside[0])
+    return {x for x in out if '::' not in x or x.split('::', 1)[0] not in out}
+
+
+def file_of(selector):
+    """'tests/test_x.py::test_y' -> 'tests/test_x.py'."""
+    return selector.split('::', 1)[0]
+
+
+def merge_nodes(picked):
+    """A file picked whole drops its single tests."""
+    return {x for x in picked if '::' not in x or file_of(x) not in picked}
+
+
 # ---------------------------------------------------------------- git glue
 
 def git(repo, *args):
@@ -366,10 +654,15 @@ def untracked(repo):
 
 # ---------------------------------------------------------------- the driver
 
-def pick(cov, changes, sources, remaps, fallback):
+def pick(cov, changes, sources, remaps, fallback, graph=None, facade=(None, None), decided=None):
     """changes: [(key, display path, hunks or None for an added file, deleted?)];
     sources[key] -> Source at the coverage commit; remaps[key](lines) -> lines in coverage numbering.
-    Returns (tests, reasons {test: [why]}, fallbacks [display path])."""
+    graph: an ImportGraph -- a change to one of the simulator's files (graph.sim_files()) picks by import (ADR 0029):
+    the test files that import that module; for the facade sim.py, the importers of the part module a changed forwarder
+    or import line lives in, plus the tests that import sim and name the changed method; code still in sim.py, and a
+    module no test imports, go to the coverage map as before. facade: (Source of sim.py at the diff base, Source now).
+    decided: a list the changes that went to the coverage map or name matching are appended to.
+    Returns (tests -- files, or 'file::test' -- , reasons {test: [why]}, fallbacks [display path])."""
     tests, why, fell = set(), {}, []
 
     def add(found, reason):
@@ -379,16 +672,43 @@ def pick(cov, changes, sources, remaps, fallback):
             if reason not in why[t] and len(why[t]) < 3:
                 why[t].append(reason)
 
-    for key, shown, hunks, _deleted in changes:
+    def by_coverage(key, shown, hunks):
+        if decided is not None:
+            decided.append(shown)
+        if hunks is not None and cov is not None and cov.has(key) and key in sources:
+            add(select(cov, key, remaps[key](old_side_lines(hunks)), sources[key]), 'lines of ' + shown)
+        else:
+            fell.append(shown)
+            add(fallback(shown), 'by name: ' + shown)
+
+    sim_files = graph.sim_files() if graph else ()
+    for key, shown, hunks, deleted in changes:
         if shown.startswith('tests/') and re.search(r'tests/test_[^/]*\.py$', shown):
             add({shown}, 'changed test')
             continue
-        if hunks is not None and cov is not None and cov.has(key) and key in sources:
-            lines = remaps[key](old_side_lines(hunks))
-            add(select(cov, key, lines, sources[key]), 'lines of ' + shown)
+        if key == FACADE and hunks is not None and graph and not deleted:
+            parts = {p.rsplit('/', 1)[1][:-3] for p in sim_files} - {'sim'}
+            left = []
+            for h in hunks:
+                a, b, c, d = h
+                old_found, old_left = facade_parts(facade[0], set(range(a, a + b)), parts)
+                new_found, new_left = facade_parts(facade[1], set(range(c, c + d)), parts)
+                for m, names in list(old_found.items()) + list(new_found.items()):
+                    path = '%s/%s.py' % (CNV, m)
+                    add(graph.importers(path), 'imports %s (sim.py forwards to it)' % m)
+                    add(naming(graph.facade_tests(), names, graph.root), 'tests Sim.%s' % '/'.join(sorted(names)))
+                if old_left or new_left or not (old_found or new_found):
+                    left.append(h)
+            if left:
+                by_coverage(key, shown, left)
             continue
-        fell.append(shown)
-        add(fallback(shown), 'by name: ' + shown)
+        if key in sim_files and not deleted:
+            found = graph.users(key)
+            if found:
+                add(found, 'imports ' + key.rsplit('/', 1)[1][:-3])
+                continue
+        by_coverage(key, shown, hunks)
+    tests = merge_nodes(tests)
     return tests, why, fell
 
 
@@ -409,13 +729,24 @@ def guards():
     return {g for g in out if os.path.exists(os.path.join(ROOT, g))}
 
 
-def estimate(files, durations, n=MAX_WORKERS):
-    """(serial seconds, parallel seconds over n workers) from per-file durations; unknown files get the median."""
+def estimate(files, durations, n=MAX_WORKERS, tests_in=None):
+    """(serial seconds, parallel seconds over n workers) from per-file durations; unknown files get the median.
+    A single test ('file::test') counts its file's time over tests_in(file), the file's number of tests (a guess:
+    the map keeps files only)."""
     known = sorted(durations.values())
     med = known[len(known) // 2] if known else 30.0
-    ds = [durations.get(f, med) for f in files]
+    ds = [durations.get(file_of(f), med) / (max(1, tests_in(file_of(f))) if tests_in and '::' in f else 1)
+          for f in files]
     serial = sum(ds)
-    return serial, max(serial / n, max(ds) if ds else 0.0), sum(1 for f in files if f not in durations)
+    return serial, max(serial / n, max(ds) if ds else 0.0), sum(1 for f in files if file_of(f) not in durations)
+
+
+def tests_in(path):
+    """How many tests a test file holds (test_nodes; a parametrized test counts once)."""
+    try:
+        return len(test_nodes(open(os.path.join(ROOT, path), encoding='utf-8').read(), path))
+    except OSError:
+        return 1
 
 
 def save_durations(junit_path):
@@ -455,9 +786,10 @@ def load_json(path):
 
 
 def gather(spec):
-    """Real changes from git: [(key, shown, hunks|None, deleted)], plus per-repo coverage-commit tools."""
+    """Real changes from git: [(key, shown, hunks|None, deleted)], plus per-repo coverage-commit tools and the
+    facade (sim.py) at the diff base and now (the working tree, or the range's end)."""
     meta = load_json(META)
-    changes, sources, remaps = [], {}, {}
+    changes, sources, remaps, facade = [], {}, {}, (None, None)
     repos = [('', ROOT, spec, meta.get('commit'))]
     if os.path.isdir(os.path.join(ENGINE_MODEL, '.git')) or os.path.isfile(os.path.join(ENGINE_MODEL, '.git')):
         repos.append((ENGINE_KEY, ENGINE_MODEL, None, meta.get('engine_commit')))
@@ -468,6 +800,10 @@ def gather(spec):
             changes.append((key, path if not prefix else 'RA3-EngineModel/' + path, hunks, False))
             c = covc or base
             old = git_show(repo, base, path)
+            if not prefix and path == FACADE and old is not None and hunks is not None:
+                end = sp.split('..', 1)[1].lstrip('.') or 'HEAD' if sp and '..' in sp else None
+                new = git_show(repo, end, path) if end else open(os.path.join(ROOT, path), encoding='utf-8').read()
+                facade = (Source(old), Source(new) if new is not None else None)
             if old is None or hunks is None:
                 continue
             at_c = old if c == base else git_show(repo, c, path)
@@ -485,7 +821,7 @@ def gather(spec):
         if not prefix and sp is None:
             for path in untracked(repo):
                 changes.append((path, path, None, False))
-    return changes, sources, remaps, meta
+    return changes, sources, remaps, meta, facade
 
 
 def main(argv=None):
@@ -496,6 +832,8 @@ def main(argv=None):
     ap.add_argument('--save-coverage', metavar='.coverage', help='store a coverage file as the map')
     ap.add_argument('--save-durations', metavar='junit.xml', help='store per-file durations from a junit report')
     ap.add_argument('--no-guards', action='store_true')
+    ap.add_argument('--coverage-only', action='store_true', help="pick the simulator's files by the coverage map too "
+                    '(the pick before ADR 0029: the map was recorded before the blocks moved out of sim.py)')
     ap.add_argument('--cmd', action='store_true', help='print the whole pytest command instead of the file list '
                     '(workers = min(8, free GB / 1.5))')
     args = ap.parse_args(argv)
@@ -511,23 +849,25 @@ def main(argv=None):
     else:
         print('no coverage map at %s: every file falls back to name matching (build it: see --help)' % COVDB,
               file=sys.stderr)
-    changes, sources, remaps, meta = gather(args.range)
+    changes, sources, remaps, meta, facade = gather(args.range)
     if cov and meta.get('commit'):
         behind = git(ROOT, 'rev-list', '--count', '%s..HEAD' % meta['commit']).strip()
         if behind.isdigit() and int(behind) > 100:
             print('warning: the coverage map is %s commits old (see the rebuild advice)' % behind, file=sys.stderr)
     elif cov:
         print('warning: meta.json missing: coverage line numbers assumed to match the diff base', file=sys.stderr)
-    tests, why, fell = pick(cov, changes, sources, remaps, lambda p: name_fallback(p, None))
+    graph = None if args.coverage_only else ImportGraph()
+    decided = []
+    tests, why, fell = pick(cov, changes, sources, remaps, lambda p: name_fallback(p, None), graph, facade, decided)
     for g in guards() if not args.no_guards else ():
         tests.add(g)
         why.setdefault(g, []).append('guard')
-    if cov:
+    if cov and (decided or graph is None):         # the import graph sees every test file: only what it left
         for t in unrecorded(cov):                   # no coverage record: we cannot tell, so always run
             tests.add(t)
             why.setdefault(t, []).append('no coverage record: always')
         print('always selected (no coverage record): %d test files' % len(unrecorded(cov)), file=sys.stderr)
-    tests = {t for t in tests if os.path.exists(os.path.join(ROOT, t))}
+    tests = merge_nodes({t for t in tests if os.path.exists(os.path.join(ROOT, file_of(t)))})
     out = sorted(tests)
     n = workers()
     if args.cmd:
@@ -542,10 +882,12 @@ def main(argv=None):
             print('  %s <- %s' % (t, '; '.join(why.get(t, []))), file=sys.stderr)
     if args.stats:
         durations = load_json(DURATIONS)
-        serial, par, unknown = estimate(out, durations, n)
+        serial, par, unknown = estimate(out, durations, n, tests_in)
         total = len(durations) or None
-        print('%d test files picked%s; %d changed files (%d by name); ~%.0f min serial, ~%.0f min with %d workers%s'
-              % (len(out), ' of %d' % total if total else '', len(changes), len(fell), serial / 60, par / 60, n,
+        nodes = sum(1 for t in out if '::' in t)
+        print('%d test files picked%s%s; %d changed files (%d by name); ~%.0f min serial, ~%.0f min with %d workers%s'
+              % (len(out) - nodes, ' of %d' % total if total else '', ' and %d single tests' % nodes if nodes else '',
+                 len(changes), len(fell), serial / 60, par / 60, n,
                  ' (%d files without a recorded duration)' % unknown if unknown else ''), file=sys.stderr)
     return 0
 
