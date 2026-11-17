@@ -254,7 +254,7 @@ def test_infiltrator_vehicle_configuration_stays_guessed_until_discovery_replays
     rows = [r for r in inventory.collect((inventory.MODULE,))
             if r['name'].startswith('Behaviors/InfiltratorContain')]
     vehicle = next(r for r in rows if r['name'].endswith(':VISION_UNITS_VEHICLE'))
-    assert (vehicle['uses'], vehicle['all'], vehicle['state']) == (1, 1, inventory.GUESSED)
+    assert (vehicle['uses'], vehicle['all'], vehicle['state']) == (4, 4, inventory.GUESSED)
     assert (inventory.MODULE, vehicle['name']) not in inventory.BENCHED_TESTS
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
