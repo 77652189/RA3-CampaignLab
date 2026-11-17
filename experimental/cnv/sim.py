@@ -64,6 +64,7 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import parts  # noqa: E402
 import simact  # noqa: E402
 import simcond  # noqa: E402
+import simdamage  # noqa: E402
 import simgarrison  # noqa: E402
 import simheal  # noqa: E402
 import simlocomotion  # noqa: E402
@@ -2996,70 +2997,41 @@ class Sim:
                 a.auto_to = a.dest
 
     def incoming_add(self, target, source, key, damage, hit, expiry):
-        """Record one observed/predicted notification on a tracking target."""
-        if '<TrackIncomingWeaponFireBehavior' not in self.xml_of(target.template):
-            return
-        table = self.__dict__.setdefault('incoming', {})
-        table.setdefault(id(target), []).append((source, key, damage, hit, expiry))
+        """simdamage.Damage.incoming_add (L3): one observed/predicted notification on a tracking target."""
+        self._harm().incoming_add(self, target, source, key, damage, hit, expiry)
+
+    @property
+    def incoming(self):
+        """{id(target): [(source, weapon key, damage, hit frame, expiry frame)]}: simdamage.Damage's notifications."""
+        return self._harm().incoming
+
+    @property
+    def projectile_hits(self):
+        """[(frame, target, damage, attacker, weapon, centre)]: simdamage.Damage's projectile arrivals to come."""
+        return self._harm().projectile_hits
+
+    def _harm(self):
+        """The simdamage.Damage (L3), made on first use (a Sim built without __init__ has none yet)."""
+        h = self.__dict__.get('harm')
+        if h is None:
+            h = self.harm = simdamage.Damage()
+        return h
 
     def incoming_hit(self, target, source, key):
-        """Damage notification deletes matching source + weapon entries."""
-        table = self.__dict__.setdefault('incoming', {})
-        rows = table.get(id(target), [])
-        rows[:] = [r for r in rows if r[:2] != (source, key)]
+        """simdamage.Damage.incoming_hit (L3): a damage notification deletes matching source + weapon entries."""
+        self._harm().incoming_hit(target, source, key)
 
     def expected_damage(self, target, behind, ahead, now=None):
-        """Micro damage callback, seconds -> ceil frames; no facing multiplier.
-
-        This slice supplies incoming damage only. History remains a gap; the
-        miner's TrackDamage.InstantWeaponsOnly path is not inferred from HP loss.
-        INFERRED query policy: keep entries on expiry, remove strictly after.
-        This is not the engine's autonomous table-cleanup schedule: the
-        engine_inform_expiry probe retains expired rows until later frames.
-        See work/re/c_inform_expiry_report.md; query output is not measured.
-        """
-        now = self.frame_now() if now is None else now
-        rows = self.__dict__.setdefault('incoming', {}).get(id(target), [])
-        rows[:] = [r for r in rows if now <= r[4]]
-        if behind:
-            self.gap(GAP_WEAPON, 'InformTargetNugget', '历史伤害入口未接；当前只提供来弹预计伤害')
-        return sum(r[2] for r in rows if r[3] <= now + math.ceil(ahead * simunits.LIFE_FPS)) if ahead > 0 else 0.0
+        """simdamage.Damage.expected_damage (L3): the micro's incoming-damage callback."""
+        return self._harm().expected_damage(self, target, behind, ahead, now)
 
     def flank_of(self, victim, attacker):
-        """The side / rear scalar of a direct hit (simunits.flank) by where the attacker stands as it fires
-        (docs/engine/weapons.md 4, bench engine_shot flank 40 / 40 / 42 / 44 %), UNRESISTABLE too (bench
-        engine_inform_ai: the side-facing miners at 68 % after a 150 UNRESISTABLE shell of their 500)."""
-        return simunits.flank(victim.armor, victim.angle, attacker.x - victim.x, attacker.y - victim.y)
+        """simdamage.flank_of (L3): the side / rear scalar of a direct hit by where the attacker stands."""
+        return simdamage.flank_of(victim, attacker)
 
     def inform_launch(self, target, attacker, weapon, count=1):
-        """Ordinary launch notification. INFERRED: centre positions, time scale 1.
-
-        WeaponSpeed is units/second, independent of projectile muzzle speed.
-        The default fudge factors deliberately predict earlier than collision.
-        """
-        if not weapon.get('inform'):
-            return
-        speed = weapon.get('weapon_speed', 999999.0) / simunits.LIFE_FPS
-        distance = math.dist((attacker.x, attacker.y, attacker.z or 0),
-                             (target.x, target.y, target.z or 0))
-        duration = distance / speed if speed >= 1e-4 else 0.0
-        armor = 1.0 if weapon['type'] == 'UNRESISTABLE' else simunits.percent(target.armor, weapon['type']) / 100 * target.taken
-        for effect in weapon.get('inform', []):
-            recipients = [target]
-            if effect.get('radius', 0) > 0:
-                # engine_inform_radius: neighbours receive the primary's tuple,
-                # even though the single-target warhead never damages them.
-                # INFERRED boundary: centre sphere; extents/height/other armour
-                # and relation eligibility remain gaps, not retail coverage.
-                recipients = [b for b in self.living()
-                              if math.dist((b.x, b.y, b.z or 0),
-                                           (target.x, target.y, target.z or 0)) <= effect['radius']]
-            for recipient in recipients:
-                for _ in range(count):
-                    self.incoming_add(recipient, id(attacker), weapon.get('weapon_key'),
-                                      weapon['dmg'] * attacker.dealt * armor,
-                                      self.frame_now() + int(duration * effect['min']),
-                                      self.frame_now() + int(duration * effect['max'] + 0.99))
+        """simdamage.Damage.inform_launch (L3): ordinary launch notification."""
+        self._harm().inform_launch(self, target, attacker, weapon, count)
 
     def toggles_of(self, b):
         """simunits.template_toggles for b's template, kept."""
@@ -3093,143 +3065,20 @@ class Sim:
     toggle_miner_armor = toggle_press           # simai's name (the AI micro's toggles)
 
     def queue_projectile_hit(self, when, target, damage, attacker, weapon, centre=None):
-        """A projectile's arrival event, also usable to replay an observed collision.
-
-        Damage is the existing launch-time snapshot. An explicit collision centre
-        overrides the static target half-height fallback (INFERRED). Curved flight
-        cannot generate this event yet; an observed arrival does not model flight.
-        """
-        self.__dict__.setdefault('projectile_hits', []).append(
-            (when, target, damage, attacker, weapon, centre))
+        """simdamage.Damage.queue_projectile_hit (L3): a projectile's arrival event."""
+        self._harm().queue_projectile_hit(when, target, damage, attacker, weapon, centre)
 
     def impact_ground_z(self, x, y):
-        """Physics uses world z; routing heights retain mapterrain's legacy /16.
-
-        docs/engine/terrain.md: world height = legacy height * 0.625.
-        """
-        import terrain_rules
-        return float(terrain_rules.world(self.ground.z(x, y)))
+        """simdamage.impact_ground_z (L3): world z of the ground at (x, y) for physics."""
+        return simdamage.impact_ground_z(self, x, y)
 
     def projectile_detonate(self, weapon, target, centre=None, attacker=None):
-        """Dispatch the non-damage payload of a projectile arrival."""
-        if not weapon.get('meta_impacts'):
-            return
-        if centre is None and target.alive:
-            height = simunits.meta_impact_body(target.template, self.own)
-            if height is not None:
-                centre = (target.x, target.y, self.impact_ground_z(target.x, target.y) + height/2)
-        if centre is None:
-            self.gap(GAP_WEAPON, 'MetaImpactNugget', '缺少弹体实际爆心，未派发冲击')
-        else:
-            self.meta_impact_detonate(weapon, centre, attacker)
+        """simdamage.Damage.projectile_detonate (L3): the non-damage payload of a projectile arrival."""
+        self._harm().projectile_detonate(self, weapon, target, centre, attacker, simdamage.Peers(self))
 
     def meta_impact_detonate(self, weapon, centre, attacker=None):
-        """Dispatch ordinary immediate warhead shocks, separately from damage radius.
-
-        First slice: default Physics, grounded bodies, landings on level, lower or higher ground (Physics P3: a landing
-        moved off the water, a vehicle's drowning, knock_landing / knock_landing_vehicle). Other cases
-        stay explicit gaps; no airborne relaunch. After landing the body keeps still meta_impact_landing_hold frames
-        (meta_impact_tick: knock_hold, read by move).
-        INFERRED selection: feet-centre sphere. Sickle relation uses the launcher; arc remains a gap.
-        The whole nugget therefore retains its unmodeled registration.
-        """
-        import terrain_rules
-        flights = self.__dict__.setdefault('impact_flights', {})
-        cache = self.__dict__.setdefault('_impact_body', {})
-        for effect in weapon.get('meta_impacts', []):
-            if effect['radius'] <= 0:
-                self.gap(GAP_WEAPON, 'MetaImpactNugget', '非正冲击半径的选人范围未建模')
-                continue
-            target_filter = effect.get('target_filter')
-            magnetic = target_filter and target_filter.get('magnetic_ground')
-            if target_filter and not magnetic and attacker is None:
-                self.gap(GAP_WEAPON, 'MetaImpactNugget', '筛选缺少发射者关系，未派发冲击')
-                continue
-            for b in self.living():
-                # CampKOG a/b: the explicit forbidden object-status field.
-                # Only the isolated measured spelling is parsed by simunits.
-                if any(flag in b.status for flag in effect.get('forbidden_status', [])):
-                    continue
-                # CampKFilter: amphibious Terror Drone is grounded on this land
-                # site. Water launches remain outside the measured slice.
-                grounded = b.surface == 'ground' or (b.surface == 'both'
-                            and self.ground.stand('ground', b.x, b.y))
-                if magnetic:
-                    # CampKFilter a/b: explicit identities override INFANTRY,
-                    # but UNDER_IRON_CURTAIN wins over explicit inclusion.
-                    # Airborne eligibility remains a gap, never a kind-only guess.
-                    if not grounded or 'AIRCRAFT' in b.kinds:
-                        self.gap(GAP_WEAPON, 'MetaImpactNugget', '磁力筛选的飞机资格尚未对拍')
-                        continue
-                    if ('UNDER_IRON_CURTAIN' in b.status or ('INFANTRY' in b.kinds
-                            and b.template not in target_filter['include_templates'])):
-                        continue
-                elif target_filter and target_filter.get('rush_infantry'):
-                    # CampKKG a/b: independently measured kind/status gates.
-                    if 'INFANTRY' not in b.kinds:
-                        continue
-                elif target_filter:
-                    # CampKSG a/b: NO_COLLISIONS rejects only when the XML
-                    # excludes it; no independent status gate in this slice.
-                    if (self.relation(attacker.owner, b.owner) != target_filter['relation']
-                            or 'INFANTRY' not in b.kinds
-                            or any(s in b.status for s in target_filter.get('status_exclude', []))):
-                        continue
-                    if any(self.has_model_condition(b, c) for c in target_filter['forbidden']):
-                        continue
-                    # INFERRED: Physics flights / landing hold represent the three
-                    # forbidden knock states; their native bit timing is still a gap.
-                    if id(b) in flights or self.__dict__.get('knock_hold', {}).get(id(b), -1) > self.frame_now():
-                        continue
-                ground = self.impact_ground_z(b.x, b.y)
-                position = (b.x, b.y, ground if b.z is None else b.z)
-                if math.dist(position, centre) > effect['radius']:
-                    continue
-                if b.template not in cache:
-                    cache[b.template] = (simunits.meta_impact_body(b.template, self.own),
-                                         simunits.meta_impact_resistance(b.template, self.own))
-                height, resistance = cache[b.template]
-                if effect['amount'] < resistance:
-                    # Physics P3 gate (bench 11-11, engine_knock_water gate89/90/91): under the body's
-                    # ShockwaveResistance, no shock at all (no ra3ext `shock` line); equal to it still flies
-                    self.used.add('knock resistance gate')
-                    continue
-                if height is None or not grounded or b.name in self.attachments or id(b) in flights:
-                    self.gap(GAP_WEAPON, 'MetaImpactNugget', '仅默认Physics的未附着地面起飞已接通；筛选/重入待核')
-                    continue
-                velocity = simunits.meta_impact_velocity(effect, position, centre, height, detonation=True)
-                end = simunits.meta_impact_ground_launch(position, velocity)['landing']
-                landing, drowns = None, False
-                if 'INFANTRY' not in b.kinds:
-                    landing = self.knock_landing_vehicle(end)
-                    if landing is None:
-                        continue
-                    drowns = self.ground.drowns(landing[0], landing[1])
-                elif not self.ground.stand(b.surface, end[0], end[1]):
-                    landing = self.knock_landing(b, end)
-                    if landing is None:
-                        continue
-                points = simunits.meta_impact_trajectory(position, velocity, landing)
-                if len(points) < 2:
-                    continue
-                if drowns:
-                    # gone the frame it lands, whatever the curve passes over (tank: the wet one 178, the direct
-                    # hit 192 = 173 + its points - 1; meta_impact_tick)
-                    self.__dict__.setdefault('knock_drowns', set()).add(id(b))
-                    self.used.add('knock landing drowns')
-                else:
-                    # the curve may cross lower ground (far: over the trench to the far bank), end lower (ramp:
-                    # down the slope) or higher (climb: up the table's ramp, simunits.meta_impact_trajectory); one
-                    # off its landing's ground (a man's own landing on other ground) or dipping into the terrain
-                    # needs the engine's height queries
-                    end_ground = self.impact_ground_z(*points[-1][:2])
-                    if (abs(points[-1][2] - end_ground) > 1e-5 or
-                            any(z < terrain_rules.world(self.ground.z_smooth(x, y)) - 1e-5 for x, y, z in points)):
-                        self.gap(GAP_WEAPON, 'MetaImpactNugget', '坡地轨迹和地形查询未建模')
-                        continue
-                flights[id(b)] = (b, self.frame_now(), points)
-                b.z = position[2]
-                self.used.add('meta impact')
+        """simdamage.Damage.meta_impact_detonate (L3): a warhead's shocks (MetaImpactNugget)."""
+        self._harm().meta_impact_detonate(self, weapon, centre, attacker, simdamage.Peers(self))
 
     KNOCK_SEARCH = 15               # lattice steps the nearest-standable search reaches (INFERRED: the search routine is unread, work/re/handoff.md)
 
@@ -3266,343 +3115,12 @@ class Sim:
         return (best[1], best[2], self.impact_ground_z(best[1], best[2]))
 
     def meta_impact_tick(self):
-        """Advance each active trajectory by one sample per simulation frame."""
-        flights = self.__dict__.setdefault('impact_flights', {})
-        for key, (b, start, points) in list(flights.items()):
-            if not b.alive:
-                flights.pop(key)
-                continue
-            k = min(len(points)-1, max(0, self.frame_now()-start))
-            b.x, b.y, b.z = points[k]
-            if k == len(points)-1:
-                flights.pop(key)
-                b.z = None
-                if key in self.__dict__.get('knock_drowns', ()):
-                    self.knock_drowns.discard(key)
-                    self.destroy(b, '击飞落水')     # Ground.drowns: gone the frame it lands
-                    self.change()
-                    continue
-                # on the ground: lies, then gets up (Physics ShockStunnedTime + ShockStandingTime); a kept move
-                # order resumes after it (bench 11-11 engine_knock_probe stand)
-                self.__dict__.setdefault('knock_hold', {})[key] = self.frame_now() + simunits.meta_impact_landing_hold()
-            self.change()
+        """simdamage.Damage.meta_impact_tick (L3): each knocked body one trajectory sample on."""
+        self._harm().meta_impact_tick(self, simdamage.Peers(self))
 
     def deal(self, dt):
-        """R6: `dt` seconds of the aimed fire (`fight`) from shooters and at targets still alive. With the engine model
-        once a frame, after that frame's scripts (Generals GameLogic::update runs the script engine before the objects'
-        updates): a script's health top-up (UNIT_SET_HEALTH every frame, the a4 checks' trucks) lands before the
-        frame's damage, so only a frame's fire of the whole maximum kills (A4 win: bench 2026-11-07 against the 0.5 s
-        tick that killed the trucks at 4:23). Bodies at 0 die, the last hit their killer's."""
-        self.lift_timers.tick()
-        hurt = {}
-        leech_events = {}
-        self.meta_impact_tick()
-        pending = self.__dict__.setdefault('projectile_hits', [])
-        due = [hit for hit in pending if self.frame_now() >= hit[0]]
-        pending[:] = [hit for hit in pending if self.frame_now() < hit[0]]
-        for when, target, damage, attacker, weapon, centre in due:
-            self.projectile_detonate(weapon, target, centre, attacker)
-            if target.alive:
-                self.incoming_hit(target, id(attacker), weapon.get('weapon_key'))
-                h = hurt.setdefault(id(target), [target, 0.0, attacker])
-                h[1] += damage
-        # A cached aim is not permission to fire after a script/modifier stops
-        # the shooter. Keep its order; expiry lets fight select it again.
-        # Existing-order evidence: work/re/d50_scramble_expiry3.md.
-        # INFERRED: exact within-tick stop phase; the bench has coarse snapshots.
-        for t, rate, by in self.firing:
-            if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not self.emp_disabled(by)
-                    and not self.infiltrators.attack_blocked(by)
-                    and self.t >= self.fire_gate.get((id(by), id(t)), 0.0) - 1e-9):
-                h = hurt.setdefault(id(t), [t, 0.0, by])
-                h[1] += rate * dt
-                h[2] = by
-        for t, w, by in self.volleys:           # engine line C round 2: a shot lands when its clock says (shots_due)
-            if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not self.emp_disabled(by)
-                    and not self.infiltrators.attack_blocked(by)
-                    and self.t >= self.fire_gate.get((id(by), id(t)), 0.0) - 1e-9):
-                n = self.shots_due(by, w, dt)
-                if n:
-                    self.inform_launch(t, by, w, n)
-                    projectile = w.get('projectile')
-                    if projectile:
-                        speeds = self.__dict__.setdefault('projectile_speeds', {})
-                        if projectile not in speeds:
-                            try:
-                                xml = simunits._xml(projectile, self.own)
-                                update = next(simunits._blocks(xml or '', 'ProjectileUpdate'), ('', ''))
-                                movement = next(simunits._blocks(update[1] or '', 'MoveInStraightLine'), ('', ''))
-                                speeds[projectile] = (simunits._num(simunits._attr(movement[0], 'MuzzleVelocity'))
-                                    if simunits._attr(update[0], 'StateMachine') == 'StraightLineProjectile' else 0)
-                            except (OSError, ValueError):
-                                speeds[projectile] = 0
-                        speed = speeds[projectile]
-                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd', 'dot', 'contained', 'special_powers', 'attach', 'lift'))
-                        if speed > 0 and not complex_effect:
-                            # GUESSED collision boundary, rechecked for the two probe distances: full
-                            # distance steps before impact. No fitted per-distance delays.
-                            frames = int(math.hypot(t.x - by.x, t.y - by.y) / speed)
-                            armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(t.armor, w['type']) / 100 * t.taken
-                            # GUESSED until dynamic-armor bench: snapshot scalars at launch (the flank too:
-                            # bench engine_inform_ai, the side-facing miners' 68 %, from the launch).
-                            armor *= self.flank_of(t, by)
-                            damage = n * w['dmg'] * by.dealt * armor
-                            if frames:
-                                self.queue_projectile_hit(self.frame_now() + frames, t, damage, by, w)
-                            else:
-                                self.projectile_detonate(w, t, attacker=by)
-                                self.incoming_hit(t, id(by), w.get('weapon_key'))
-                                h = hurt.setdefault(id(t), [t, 0.0, by])
-                                h[1] += damage
-                            continue
-                        self.gap(GAP_WEAPON, 'ProjectileNugget', '仅无复合效果的直线弹飞行已建模；曲线弹/复合弹/自制弹体待核')
-                    if not projectile:
-                        self.incoming_hit(t, id(by), w.get('weapon_key'))
-                    for effect in w.get('dot', []):
-                        dots = self.__dict__.setdefault('dots', [])
-                        if projectile or n != 1 or any(d['target'] is t for d in dots):
-                            self.gap(GAP_WEAPON, 'DOTNugget', '仅直接单发首次DOT已对拍；弹体/叠加/刷新未建模')
-                        else:
-                            dots.append(dict(target=t, by=by, effect=effect, next=self.frame_now(),
-                                             end=self.frame_now() + effect['duration'], hp=t.hp))
-                    # DamageContainedNugget damages eligible passengers, not the house.
-                    # GUESSED priority: entry order; the bench asserts only aggregate HP.
-                    for effect in w.get('contained', []):
-                        eligible = [p for p in self.garrison.inside.get(t.name, []) if p.alive
-                                    and (not effect['include'] or set(effect['include']) & p.kinds)
-                                    and not set(effect['exclude']) & p.kinds]
-                        for passenger in eligible[:max(0, effect['maximum'])]:
-                            armor = (1.0 if effect['type'] == 'UNRESISTABLE' else
-                                     simunits.percent(passenger.armor, effect['type']) / 100 * passenger.taken)
-                            h = hurt.setdefault(id(passenger), [passenger, 0.0, by])
-                            h[1] += n * effect['damage'] * by.dealt * armor
-                    # SecondaryDamageNugget.Amount is per hit, not a partial clip's mean DPS.
-                    if w.get('sd'):
-                        if projectile:
-                            self.gap(GAP_WEAPON, 'SecondaryDamageNugget', '弹体冷冻值的到达事件尚未建模')
-                        elif not t.shielded and self.cold_of(t)[0] is not None:
-                            t.cold += n * w['sd'] * by.dealt
-                            self.__dict__.setdefault('_cold_on', {})[id(t)] = (t, by)
-                            self.used.add('freeze')
-                    for radius, value, seconds in w.get('suppression', []):
-                        self.suppression_fields.extend(
-                            (self.frame_now() + simunits._frames(seconds), value, t.x, t.y, radius)
-                            for _ in range(n))
-                    for seconds in w.get('emp_seconds', []):
-                        deadlines = self.__dict__.setdefault('emp_until', {})
-                        deadlines[id(t)] = max(deadlines.get(id(t), 0), self.frame_now() + simunits._frames(seconds))
-                    if w.get('sweep'):
-                        self.sweeps.fire(by, t, w['sweep'])
-                    victims = [t]
-                    # GUESSED edge geometry: circle extent; round 1 centres avoid edges.
-                    line = w.get('line')
-                    if line and line['dynamic']:
-                        dx, dy = t.x - by.x, t.y - by.y
-                        length = math.hypot(dx, dy)
-                        if length:
-                            ux, uy = dx / length, dy / length
-                            victims = []
-                            for candidate in self.living():
-                                if candidate is by or not self.hostile(by, candidate) or not self.can_hit(w, candidate):
-                                    continue
-                                cx, cy = candidate.x - by.x, candidate.y - by.y
-                                along, across = cx * ux + cy * uy, abs(cx * uy - cy * ux)
-                                if -line['lead'] <= along <= length + line['out'] and across <= line['width'] / 2 + candidate.radius:
-                                    victims.append(candidate)
-                    for victim in victims:
-                        h = hurt.setdefault(id(victim), [victim, 0.0, by])
-                        side = self.flank_of(victim, by)
-                        armor = (1.0 if w['type'] == 'UNRESISTABLE' else
-                                 simunits.percent(victim.armor, w['type']) / 100.0 * victim.taken) * side
-                        h[1] += n * w['dmg'] * by.dealt * armor
-                        if w.get('leech_percent'):
-                            leech_events.setdefault(id(victim), []).append((by, 'maximum', w['leech_percent'], 0.0))
-                        if w.get('leech_health'):
-                            leech_events.setdefault(id(victim), []).append((by, 'damage', w['leech_health'], n * w['dmg'] * by.dealt * armor))
-                        for fraction, damage_type in w.get('strip_max_health', []):
-                            scalar = (1.0 if damage_type == 'UNRESISTABLE' else       # the flank: INFERRED
-                                      simunits.percent(victim.armor, damage_type) / 100 * victim.taken) * side
-                            h[1] += n * victim.max_hp * fraction * by.dealt * scalar
-                        h[2] = by
-                    for effect in w.get('lift', []):
-                        if ((effect['include'] and not set(effect['include']) & t.kinds)
-                                or set(effect['exclude']) & t.kinds):
-                            continue
-                        cache = self.__dict__.setdefault('_lift_modules', {})
-                        if by.template not in cache:
-                            cache[by.template] = simunits.lift_module(by.template, self.own)
-                        rule = cache[by.template]
-                        if rule is None:  # missing caster module: native no-op
-                            continue
-                        if rule is False or projectile or n != 1 or t.surface != 'ground':
-                            self.gap(GAP_WEAPON, 'ActivateLiftObjectNugget', '仅直接单发、显式计时字段和地面目标已接通')
-                            continue
-                        self.lift_timers.hit(by.name, t.name, rule['increment'], rule['maximum'])
-                        t.lift_status.add('LIFTED_INTO_AIR')
-                        self.modify(t)
-                        self.gap(GAP_WEAPON, 'ActivateLiftObjectNugget', '计时释放不清状态；SoftLanding自击及修正器到期清位缺Lift接地事件，垂直运动/落地武器未接通；见work/re/c_lift_landing_gate_report.md')
-                    for effect in w.get('attach', []):
-                        if (set(effect['forbidden']) & t.status
-                                or (effect['include'] and not set(effect['include']) & t.kinds)
-                                or set(effect['exclude']) & t.kinds):
-                            continue
-                        rule = by.attachment_rules.get(effect['module'])
-                        if not rule or projectile or n != 1:
-                            self.gap(GAP_WEAPON, 'AttachNugget', '仅匹配已发布模块的直接单发附着已对拍；复杂模块/弹体未建模')
-                            continue
-                        if 'VEHICLE' not in t.kinds or t.surface != 'ground':
-                            self.gap(GAP_WEAPON, 'AttachNugget', '目前仅地面车辆父对象已对拍')
-                            continue
-                        if by is t or t.name in self.attachments or by.name in self.attachments:
-                            self.gap(GAP_WEAPON, 'AttachNugget', '重复、换父与嵌套附着未对拍')
-                            continue
-                        if math.hypot(t.x - by.x, t.y - by.y) > rule['range']:
-                            self.gap(GAP_WEAPON, 'AttachNugget', 'AttachUpdate距离边界未对拍')
-                            continue
-                        if 'ONE_ATTACH_PER_PARENT' in rule['flags'] and any(p is t for _, p, _ in self.attachments.values()):
-                            continue
-                        self.attachments[by.name] = (by, t, rule)
-                        self.attachment_tick()
-                    for effect in w.get('special_powers', []):
-                        # engine_spng / engine_spngp: a single gate reads caster/object or owner.
-                        required = effect.get('required_upgrade', '')
-                        forbidden = effect.get('forbidden_upgrade', '')
-                        gate_type = simunits.upgrade_type(required or forbidden, self.own) if required or forbidden else 'OBJECT'
-                        if gate_type not in ('OBJECT', 'PLAYER'):
-                            self.gap(GAP_WEAPON, 'SpecialPowerNugget', '升级门槛未知类型待核')
-                            continue
-                        held = {up.lower() for up in (self.player_ups.get(by.owner, ())
-                                                     if gate_type == 'PLAYER' else by.upgrades)}
-                        if (required and required.lower() not in held) or (forbidden and forbidden.lower() in held):
-                            continue
-                        if ((effect['include'] and not set(effect['include']) & t.kinds)
-                                or set(effect['exclude']) & t.kinds):
-                            continue
-                        cache = self.__dict__.setdefault('_nugget_powers', {})
-                        key = (by.template, effect['power'])
-                        if key not in cache:
-                            cache[key] = simunits.nugget_self_power(by.template, effect['power'], self.own)
-                        power = cache[key]
-                        if power is None:      # no matching module on caster: engine_spn order
-                            continue
-                        if not power or projectile or n != 1 or (power['reach'] and
-                                math.hypot(t.x - by.x, t.y - by.y) > power['reach']):
-                            self.gap(GAP_WEAPON, 'SpecialPowerNugget', '仅直接单发、零冷却自身修正已对拍；其他技能处理器/弹体/范围待核')
-                            continue
-                        if power.get('noop'):
-                            continue
-                        if power.get('disguise'):
-                            if (not set(power['include']) & t.kinds
-                                    or t.template.lower() in power['exclude_templates']):
-                                continue
-                            self.set_model_condition(by, 'DISGUISED')
-                            self.gap(GAP_WEAPON, 'SpecialDisguiseUpdate',
-                                     '仅直接命中DISGUISED位已对拍；身份/外观/索敌/换目标/取消未测')
-                            continue
-                        xml = self.xml_of(by.template)
-                        modifier = simunits.modifier(xml, power['modifier'])
-                        if (modifier and modifier['frames'] is not None and not modifier['status']
-                                and set(modifier['types']) <= {'ARMOR'}):
-                            by.auras_on[power['modifier']] = (self.frame_now() + modifier['frames'], xml)
-                            self.modify(by)
-                        else:
-                            self.gap(GAP_WEAPON, 'SpecialPowerNugget', '仅有Duration的自身ARMOR修正已对拍')
-                    for hit_modifier in w.get('hit_modifiers', []):
-                        mid = hit_modifier
-                        if isinstance(hit_modifier, dict):
-                            required = hit_modifier['required_upgrade']
-                            forbidden = hit_modifier['forbidden_upgrade']
-                            gate_type = simunits.upgrade_type(required or forbidden, self.own) if required or forbidden else None
-                            if (required or forbidden) and gate_type != 'PLAYER':
-                                self.gap(GAP_WEAPON, 'AttributeModifierNugget', '仅PLAYER升级门槛已对拍')
-                                continue
-                            held = {up.lower() for up in self.player_ups.get(by.owner, ())}
-                            if (required and required.lower() not in held) or (forbidden and forbidden.lower() in held):
-                                continue
-                            flt = hit_modifier.get('target_filter')
-                            if flt and (not self.garrison.fits(t, dict(flt, kinds=set(flt['kinds']),
-                                                                 unkinds=set(flt['unkinds'])))
-                                    or set(flt['status_exclude']) & (t.status | t.script_status)):
-                                continue
-                            mid = hit_modifier['modifier']
-                        xml = self.xml_of(by.template)
-                        modifier = simunits.modifier(xml, mid)
-                        if modifier and modifier['frames'] is not None:
-                            t.auras_on[mid] = (self.frame_now() + modifier['frames'], xml)
-                            self.modify(t)
-                        else:
-                            self.gap(GAP_WEAPON, mid, '命中修正未找到或缺少已解释的Duration')
-        dots = self.__dict__.setdefault('dots', [])
-        keep = []
-        for dot in dots:
-            t, by, effect = dot['target'], dot['by'], dot['effect']
-            if not t.alive:
-                continue
-            # GUESSED outside the no-healing probe: detect healing from a net HP increase.
-            if t.hp > dot['hp'] + 1e-6:
-                self.gap(GAP_WEAPON, 'DOTNugget', '治疗取消与再次施加未对拍')
-                if effect['remove_healed']:
-                    continue
-            # Inclusive expiry: floor(duration / interval) + 1 ticks, starting on impact.
-            while dot['next'] <= self.frame_now() and dot['next'] <= dot['end']:
-                # GUESSED for changing modifiers / dead casters: read scalars on each tick.
-                armor = (1.0 if effect['type'] == 'UNRESISTABLE' else
-                         simunits.percent(t.armor, effect['type']) / 100 * t.taken)
-                h = hurt.setdefault(id(t), [t, 0.0, by])
-                h[1] += effect['damage'] * by.dealt * armor
-                dot['next'] += effect['interval']
-            dot['hp'] = t.hp
-            if dot['next'] <= dot['end']:
-                keep.append(dot)
-        dots[:] = keep
-        for t, dmg, by in hurt.values():
-            if self.frame_now() < t.immune_until or t.shielded or t.indestructible:
-                continue
-            before_hp = t.hp
-            t.damage(dmg)
-            self.hit_reaction_damage(t, before_hp - t.hp)
-            events = leech_events.get(id(t), [])
-            if events:
-                if len(events) == 1:
-                    healer, basis, fraction, raw = events[0]
-                    amount = 0.0
-                    if basis == 'maximum' and t.hp <= 0:
-                        amount = t.max_hp * fraction
-                    elif basis == 'damage' and t.hp > 0:
-                        amount = min(raw, max(0.0, before_hp - t.hp)) * fraction
-                    else:
-                        tag = 'LeechPercentMaxHealthDamageNugget' if basis == 'maximum' else 'LeechHealthDamageNugget'
-                        self.gap(GAP_WEAPON, tag, '最大血量吸取仅致死、实伤吸取仅非致死场景已验证')
-                    if healer.alive:
-                        healer.hp = min(healer.max_hp, healer.hp + amount)
-                else:
-                    self.gap(GAP_WEAPON, 'leech', '并发吸取的伤害归属与回补尚未建模')
-            t.last_hit, t.last_by = by.owner, by.name
-            if t.hp <= 0 and t.alive:
-                if self.first_death is None:
-                    self.first_death = (self.t, t, by)
-                self.destroy(t, f'被 {self.label(by)} 打掉')
-        self.chill(dt)
-
-    def hit_reaction_damage(self, target, damage):
-        """E172 gun-hit condition only; rotation/animation are unmodelled.
-
-        INFERRED: start/refresh the SDK lifetime on positive applied damage,
-        using the common expiry store. The bench asserts ever-on and final
-        clear, not the precise first/last frame or repeated-hit refresh rule.
-        Script health changes, death blasts and other damage paths are gaps.
-        """
-        if damage <= 0 or target.hp <= 0:
-            return
-        cache = self.__dict__.setdefault('_hit_reaction_of', {})
-        if target.template not in cache:
-            cache[target.template] = simunits.hit_reaction(target.template, self.own)
-        rule = cache[target.template]
-        if (rule and rule['seconds'] > 0 and rule['required'] <= set(target.status)
-                and not rule['forbidden'] & set(target.status)):
-            self.set_model_condition(target, 'HIT_REACTION', rule['seconds'])
-            self.used.add('hit reaction')
-            self.guessed.add('HitReactionBehavior: exact timing/refresh INFERRED; rotation unmodelled')
+        """simdamage.Damage.deal (L3, R6): `dt` seconds of aimed fire, projectiles and DOTs dealt; bodies at 0 die."""
+        self._harm().deal(self, dt, simdamage.Peers(self))
 
     def attachment_tick(self):
         """engine_attach a: teleport the child and keep it with its moving parent.
@@ -3646,33 +3164,8 @@ class Sim:
         self._attachment_marked = set(bits)
 
     def suppression_tick(self):
-        """engine_suppress_probe tail/lifetime/duration/expiry (bench 2026-11-10).
-
-        Hits leave stationary 2D fields with individual lifetimes. Samples run
-        on the body's birth phase. Entering suppression leaves the old end
-        untouched; an already suppressed high sample refreshes it. Only a low
-        sample strictly after the end clears the condition. Fractional lifetime
-        ceil vs nearest is still INFERRED outside the measured 1.1s case.
-        """
-        now = self.frame_now()
-        self.suppression_fields[:] = [p for p in self.suppression_fields if now < p[0]]
-        for b in self.living():
-            rule = b.suppression_rule
-            if not rule:
-                continue
-            b.suppression_hits[:] = [(end, v) for end, v, x, y, radius in self.suppression_fields
-                                    if math.hypot(b.x - x, b.y - y) <= radius]
-            before = b.suppressed
-            if now >= b.suppression_next:
-                b.suppression_next += ((now - b.suppression_next) // rule['every'] + 1) * rule['every']
-                if sum(v for _, v in b.suppression_hits) >= rule['threshold']:
-                    if b.suppressed:
-                        b.suppressed_until = now + rule['duration']
-                    b.suppressed = True
-                elif now > b.suppressed_until:
-                    b.suppressed = False
-            if before != b.suppressed:
-                self.modify(b)
+        """simdamage.suppression_tick (L3): the suppression fields sampled on each body."""
+        simdamage.suppression_tick(self, simdamage.Peers(self))
 
     def shots_due(self, b, w, dt):
         """How many of weapon `w`'s clip-clock shots of body `b` land in [self.t, self.t + dt): the clip is a
@@ -3726,33 +3219,8 @@ class Sim:
         return cache[b.template]
 
     def chill(self, dt):
-        """`dt` seconds of the cryo beams aimed this tick (fight's `chilling`) and of melting (ALIGN 'freeze'): the
-        cold goes up by the beams' rate, down by DissipateAmount / UpdateDuration, stays within 0 .. cap x max health;
-        a change of the highest step reached re-sets the body (modify); a DIE_ON_ENTER step kills."""
-        cold = self.__dict__.setdefault('_cold_on', {})
-        for t, rate, by in getattr(self, 'chilling', ()):
-            if not (t.alive and by.alive) or self.emp_disabled(by) or t.shielded:     # shielded: the Iron Curtain (the nugget's filter)
-                continue
-            if self.cold_of(t)[0] is None:
-                continue
-            t.cold += rate * dt
-            cold[id(t)] = (t, by)
-        for k, (t, by) in list(cold.items()):
-            tr = self.cold_of(t)[0]
-            if not t.alive:
-                del cold[k]
-                continue
-            t.cold = min(max(t.cold - tr['melt'] / max(tr['every'], 1e-6) * dt, 0.0), tr['cap'] * t.max_hp)
-            step = max((i for i, st in enumerate(tr['steps']) if t.cold >= st[0] * t.max_hp), default=-1)
-            if t.cold <= 0:
-                del cold[k]
-            if step != t.cold_step:
-                t.cold_step = step
-                self.modify(t)
-                if step >= 0:
-                    self.note('冷冻', f'{self.label(t)} 冷冻到第 {step + 1} 档（{tr["steps"][step][0]:.0%} 生命值）')
-                if step >= 0 and tr['steps'][step][4] and t.alive:
-                    self.destroy(t, f'被 {self.label(by)} 冻死')
+        """simdamage.Damage.chill (L3): `dt` seconds of cryo beams and melting."""
+        self._harm().chill(self, dt, simdamage.Peers(self))
 
     def peeking(self):
         """The MAP_REVEAL_AT_WAYPOINT reveals still open this frame, as (x, y, r)."""
@@ -3892,40 +3360,8 @@ class Sim:
                                    self.send, self.emp_book)
 
     def death_blast_due(self, frame):
-        """A death weapon going off by `frame` (destroy, simunits.death_weapons): every living object within its
-        radius, centre to centre, whose owner stands to the dead one's as the weapon's RadiusDamageAffects takes
-        (ENEMIES / NEUTRALS / ALLIES, its own owner counted an ally), loses the damage through its armor. A death it
-        causes fires that one's weapon in turn (a chain of exploding props). The armour's side / rear scalar
-        (simunits.flank) by where the blast is from the victim; a crashing wreck resting on its victim's centre
-        counts as coming in along its fall (bench 11-12 engine_crash_face; INFERRED: the wreck's last point a hair
-        short of the landing), a still one as at the same place (front)."""
-        for d in [d for d in self.death_blasts if d[0] <= frame]:
-            self.death_blasts.remove(d)
-            _, x, y, dmg, typ, reach, affects, owner, by, *rest = d
-            ally, ground_only, approach = tuple(rest) + (1.0, False, None)[len(rest):]
-            for t in self.living():
-                if math.hypot(t.x - x, t.y - y) > reach or frame < t.immune_until or t.shielded or t.indestructible:
-                    continue
-                if ground_only and t.surface == 'air':
-                    continue                    # a crash on the ground; the planes 175 over it are out of its 20
-                rel = self.relation(owner, t.owner)
-                if (rel + 'S' if rel == 'NEUTRAL' else rel) not in affects:
-                    continue
-                armor = 1.0 if typ == 'UNRESISTABLE' else simunits.percent(t.armor, typ) / 100.0 * t.taken
-                if rel == 'ALLIES':
-                    armor *= ally
-                dx, dy = x - t.x, y - t.y
-                if math.hypot(dx, dy) < 1e-6 and approach:
-                    dx, dy = -approach[0], -approach[1]
-                armor *= simunits.flank(t.armor, t.angle, dx, dy)
-                if dmg * armor <= 0:
-                    continue
-                t.damage(dmg * armor)
-                t.last_hit, t.last_by = owner, by.name
-                if t.hp <= 0 and t.alive:
-                    if self.first_death is None:
-                        self.first_death = (self.t, t, by)
-                    self.destroy(t, f'被 {self.label(by)} 的死亡武器炸掉')
+        """simdamage.death_blast_due (L3): the death weapons going off by `frame`."""
+        simdamage.death_blast_due(self, frame, simdamage.Peers(self))
 
     def crush_along(self, b, x0, y0):
         """R9: a driving crusher kills what its footprint passes over that is a lower level (docs/engine/crush.md,

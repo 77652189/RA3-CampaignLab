@@ -44,6 +44,7 @@ WORLD_API = frozenset({
     'm',               # the mission (sides, assets, cast)
     'players',         # the map's side -> its player
     'shot_clock',      # the run's opt-in frame clock (a setting, read only)
+    'first_death',     # (t, body, killer): the run's first death, set once (None before)
 })
 
 # Sim.gap's kinds: what a run met and the simulator does not act on (any layer reports one). The names are

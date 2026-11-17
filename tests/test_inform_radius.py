@@ -36,11 +36,11 @@ def test_inform_radius_launch_replays_measured_neighbours(check_name, monkeypatc
         gun = e.body('Info gun ' + lane)
         weapon, = gun.weapons
         e.inform_launch(bodies[lane + ' main'], gun, weapon)
-        primary = e.__dict__.get('incoming', {}).get(id(bodies[lane + ' main']), [])
+        primary = e.incoming.get(id(bodies[lane + ' main']), [])
         assert len(primary) == len(observed[lane + ' main'])
         for label in ('main', 'near', 'far'):
             name = lane + ' ' + label
-            actual = e.__dict__.get('incoming', {}).get(id(bodies[name]), [])
+            actual = e.incoming.get(id(bodies[name]), [])
             expected = [(id(gun), weapon['weapon_key'], row['damage'], *primary[0][3:])
                         for row in observed[name]]
             assert all(row['source'] == source for row in observed[name])

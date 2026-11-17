@@ -26,6 +26,7 @@ LAYER_OF = {
     'simtoggle': 2,
     'simspecial': 2,
     'simorder': 5,
+    'simdamage': 3,
     'simtech': 4, 'simmoney': 4,
     'simact': 6, 'simact_vision': 6, 'simact_player': 6, 'simact_order': 6, 'simact_object': 6, 'simact_ability': 6, 'simact_world': 6, 'simact_show': 6, 'simscript': 6,
     'simcond': 6, 'simcond_world': 6, 'simcond_object': 6, 'simcond_vision': 6, 'simcond_player': 6, 'simcond_show': 6,
@@ -41,10 +42,11 @@ WORLD_TAKERS = {'simheal', 'simmine', 'simmoney', 'simmodifier', 'simlocomotion'
                 'simtoggle',
                 'simspecial',
                 'simorder',
-                'simcrush', 'simjet', 'simmicro', 'simassign'}
+                'simcrush', 'simjet', 'simmicro', 'simassign',
+                'simdamage'}
 
 # modules that reach their host beyond the world through a Peers loan: every `peers.X` they read is in their PEERS
-PEER_TAKERS = {'simorder'}
+PEER_TAKERS = {'simorder', 'simdamage'}
 
 # field -> the one file that may assign it (rule 3), for the blocks moved so far. Not yet the money dicts (money,
 # income, money_cap): scripts, selling, production, repairs, spies and simai still write them directly (simmoney.py)
@@ -58,7 +60,9 @@ FIELD_OWNER = {'heal_at': 'simheal', 'heal_seen': 'simheal',
                'toggle_at': 'simtoggle', 'armor_up': 'simtoggle', 'toggler': 'sim',
                'wfires': 'simspecial', 'leaps_due': 'simspecial', 'leap_ground_hits': 'simspecial',
                'movement_due': 'simspecial', 'self_bits_due': 'simspecial',
-               'flee': 'simorder', 'follow': 'simorder', 'move_to': 'simorder', 'unpack_here': 'simorder'}
+               'flee': 'simorder', 'follow': 'simorder', 'move_to': 'simorder', 'unpack_here': 'simorder',
+               **dict.fromkeys(('incoming', 'projectile_hits', 'projectile_speeds', 'impact_body', 'knock_drowns',
+                                'dots', 'cold_on', 'lift_modules', 'nugget_powers', 'hit_reaction_of'), 'simdamage')}
 # (a body's `alive` is assigned only in simbody too, but simai's teams.alive callback shares the name)
 
 

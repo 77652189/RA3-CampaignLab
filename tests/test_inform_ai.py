@@ -475,7 +475,7 @@ def test_inform_normal_fire_records_launch_and_deletes_on_arrival(check_name, mo
     clock[0] += 1
     e.t += 1/15
     e.deal(1/15)
-    notified = {b.name for b in e.bodies.values() if e.__dict__.get('incoming', {}).get(id(b))}
+    notified = {b.name for b in e.bodies.values() if e.incoming.get(id(b))}
     assert notified == {'Dispatch high', 'Dispatch removed'} | ({'Dispatch base'} if check_name == 'a' else set())
     for target, weapon, gun in e.volleys:
         rows = e.incoming.get(id(target), [])
