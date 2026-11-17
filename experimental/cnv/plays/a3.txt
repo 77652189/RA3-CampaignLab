@@ -1,0 +1,25 @@
+# A3 as a player plays it (docs/story/plans/a3.md): the simulator's script for simshow --script / simchecks ('a3', 'play').
+# Nothing is razed or deleted by the script, the fight is the simulator's. NOT tested here (the simulator does not model
+# them): a time-stop zone's edge cases the plan lists as untested (centre or hull at the edge, aircraft, buildings).
+# 0. the church's four are the player's from the first second: out of the lane the Soviet tanks will come up (the
+#    church lane runs from Blackheath past the church to the junction), west to the engineers' spot
+2 派 civ c 去 engineers
+# 1. the crowd on the hill down the east gap to the first pier, the squad with them
+2 派 civ a 去 east gap
+2 派 guardian 去 east gap
+2 派 peace 去 east gap
+20 派 civ a 去 greenwich pier
+20 派 guardian 去 greenwich pier
+20 派 peace 去 greenwich pier
+# 2. one peacekeeper down the strip to the trapped squad (ring four's circle takes it 3:30 in), the engineers from the
+#    town to the dock by the west gap, the army with them along the strip
+CNV_A3_Phase_2+2 派 peace 去 trapped squad
+CNV_A3_Phase_2+2 派 guardian 去 trapped squad
+CNV_A3_Phase_2+2 派 eng 去 west gap
+CNV_A3_Phase_2+30 派 eng 去 deptford dock
+CNV_A3_Phase_2+10 派 名字含 Give 去 deptford dock
+CNV_A3_Phase_2+10 派 peace 去 deptford dock
+CNV_A3_Phase_2+10 派 guardian 去 deptford dock
+# 3. the church's four to the dock by the west gap
+CNV_A3_Phase_3+2 派 civ c 去 west gap
+CNV_A3_Phase_3+30 派 civ c 去 deptford dock

@@ -19,3 +19,9 @@ def mission(name='CampBeacon', **unit):
     m.waypoint('squad', 'CNV Beacon Squad', 'west field', X, SQUAD_Y)
     m.waypoint('beacon', 'CNV Beacon Stand', 'west field', X, BEACON_Y)
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'beacon': lambda: mission(),
+}

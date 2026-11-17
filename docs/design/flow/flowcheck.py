@@ -19,6 +19,11 @@ HERE = pathlib.Path(__file__).resolve().parent
 NOT_SCRIPTS = ('README.md', 'cast.md', 'mechanics.md', 'style.md')    # the folder's other documents
 TOP = ('关', '关名', '阵营', '类型', '位置', '基地', '地点', '新东西', '出场单位', '用到的机制', '一句话', '体验目标',
        '取舍', '张力', '接上一关', '引出下一关', '简报', '段', '胜利', '失败', '示意图')
+# A first-pass script (稿: 第一遍, README section 2 "两遍"): the shape of the level for the user to read through --
+# segments, verbs, armies, story, surprise, backup, key lines, how it ends. Line-by-line dialogue, 摆放要求, the
+# player's prompts (下一步靠什么, 卡住了, objective 说明) and the empty-ground measure wait for the second pass.
+DRAFT = '第一遍'
+DRAFT_SKIPS = ('体验目标', '取舍', '张力', '简报')
 TYPES = ('护送', '突击', '基地对抗', '守', '潜入', '海战', '限时', '打自己人')
 GOAL_KINDS = ('主', '奖励')
 # voice-script rules (RA3-ChineseVoice lines/GLOSSARY.md): no digits, no Latin letters, no brackets
@@ -37,6 +42,20 @@ def cast():
         elif part is not None and line.startswith('| ') and not line.startswith('| 键') and '---' not in line:
             part.add(line.split('|')[1].strip())
     return speak, retail
+
+
+VOICED_BEFORE_0013 = {'a4'}       # its Chinese character lines were recorded before ADR 0013 and stay for the trial
+
+
+def prompters():
+    """Who may say lines that carry play information (ADR 0013): 播报 and cast.md's 情报官 rows -- the only voices
+    the Chinese edition speaks in Chinese; story characters talk in their own language with subtitles."""
+    keys = {'播报'}
+    for line in (HERE / 'cast.md').read_text(encoding='utf-8').splitlines():
+        cells = [c.strip() for c in line.split('|')]
+        if len(cells) > 4 and '情报官' in cells[4]:
+            keys.add(cells[1])
+    return keys
 
 
 VOICE_GLOSSARY = HERE.parents[3] / 'RA3-ChineseVoice' / 'lines' / 'GLOSSARY.md'
@@ -114,8 +133,9 @@ def check(path, speak, retail, units=None, mech=None):
     if not isinstance(p, dict):
         return [f'{path.name}: no yaml block']
     out = []
+    draft = p.get('稿') == DRAFT
     for k in TOP:
-        if p.get(k) in (None, '', [], {}):
+        if p.get(k) in (None, '', [], {}) and not (draft and k in DRAFT_SKIPS):
             out.append(f'{path.name}: missing {k}')
     if str(p.get('关', '')).lower() != path.stem.lower():
         out.append(f'{path.name}: 关 {p.get("关")} does not match the file name')
@@ -127,14 +147,24 @@ def check(path, speak, retail, units=None, mech=None):
             out.append(f'{name}: missing 结束')
         goals = seg.get('目标') or []
         for g in goals:
-            if g.get('种') not in GOAL_KINDS or not g.get('题') or not g.get('说明'):
-                out.append(f'{name}: objective {g.get("题")} needs 种 (主/奖励), 题 and 说明')
+            if g.get('种') not in GOAL_KINDS or not g.get('题') or not (draft or g.get('说明')):
+                out.append(f'{name}: objective {g.get("题")} needs 种 (主/奖励), 题' + ('' if draft else ' and 说明'))
             elif g.get('种') == '奖励' and not g.get('回报'):
                 out.append(f'{name}: bonus {g.get("题")} needs 回报, what the player gets for it (P16){REVIEW[3]}')
+        if draft:
+            continue
         if goals and not seg.get('下一步靠什么'):
             out.append(f'{name}: has objectives but no 下一步靠什么')
         if any(g.get('种') == '主' for g in goals) and not seg.get('卡住了'):
             out.append(f'{name}: has a main objective but no 卡住了')
+        if path.stem.lower() not in VOICED_BEFORE_0013:
+            for st in seg.get('卡住了') or []:
+                for line in st.get('台词') or []:
+                    who = next(iter(line), None) if isinstance(line, dict) else None
+                    if who is not None and who not in prompters():
+                        out.append(f'{name} 卡住了: {who} gives a hint -- only 播报 and the intelligence officers '
+                                   f'({"/".join(sorted(prompters() - {"播报"}))}) speak the player\'s language '
+                                   f'(ADR 0013); story characters keep to story and jokes')
     for f in p.get('失败') or []:
         if not f.get('原因') or not f.get('台词'):
             out.append(f'{path.name} 失败: every failure needs 原因 and 台词')
@@ -246,8 +276,9 @@ def check_review(path, p, cast_keys, mech):
         if k >= LINES_FOR_ROLE and who != '播报' and who not in roles:
             out.append(f'{n} 人物: {who} has {k} lines in this level but no entry in 人物{REVIEW[1]}')
 
+    draft = p.get('稿') == DRAFT
     segs = [s.get('名') for s in p.get('段') or []]
-    if segs and (p.get('示意图') or {}).get('可玩区'):
+    if segs and (p.get('示意图') or {}).get('可玩区') and not draft:
         gap = flowmap.empty(p).get(segs[-1])
         if gap and gap['占'] > EMPTY_LAST:
             out.append(f'{n} 示意图: in the last segment ({segs[-1]}) {gap["占"]:.0%} of the ground is one empty patch '
@@ -314,7 +345,7 @@ def check_review(path, p, cast_keys, mech):
             out.append(f'{name}: 从哪来 {b["从哪来"]} is not a place of the sketch (示意图){REVIEW[5]}')
     if p.get('保底') and mech is not None and BACKUP_MECH not in (p.get('用到的机制') or []):
         out.append(f'{n} 用到的机制: a 保底 promises {BACKUP_MECH} -- list it{REVIEW[5]}')
-    return out + check_placing(path, p)
+    return out if draft else out + check_placing(path, p)
 
 
 def check_placing(path, p):
@@ -351,7 +382,8 @@ def check_placing(path, p):
         return res
     for kind, point in (('资源点', 3), ('伏击点', 3), ('援军', 5)):
         entries = want.get(kind) or []
-        if kind != '援军' and not entries:
+        no_base = kind == '资源点' and str(p.get('基地')).startswith('无')    # no base, nothing to spend money on
+        if kind != '援军' and not entries and not no_base:
             out.append(f'{n} 摆放要求: no {kind} -- name at least one for the level line to place{REVIEW[point]}')
         for e in entries:
             out += spot(kind, e, point)

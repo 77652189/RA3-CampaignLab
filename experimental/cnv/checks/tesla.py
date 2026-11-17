@@ -30,3 +30,11 @@ def surge(m):
     t.expect += [('A 血量', 0, '>=', 95), ('B 血量', 0, 'ever<', 95)]
     t.bench = [('bench_watch', dict(seconds=30, every=3, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'tesla': {'fight': fight},
+    'tesla_surge': {'surge': surge},
+    'tesla_surge_retail': {'surge': surge},
+}

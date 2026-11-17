@@ -14,14 +14,18 @@ import sys
 
 import numpy as np
 from PIL import Image
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DIGITS = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'testbench', 'nav', 'digits')
+DIGITS = os.path.join(labpaths.WORK, 'testbench', 'nav', 'digits')
 TOP, LINE, HEIGHT = 578, 16, 15                # the first line's top row, the pitch, a line's height
 MAX_LINES = 4
 LEFT, RIGHT = 0, 330
 TEXT = 170                                      # text pixels (yellow or white): red and green both above this
-GAP = 4                                         # columns of no text between the label and the value
+GAP = 5                                         # columns of no text between the label and the value (the space
+                                                # is 7; two narrow 1s stand 4 apart, so "11" read as 1 at GAP 4,
+                                                # bench 2026-11-04, CampGroundWalk)
 END_GAP = 12                                    # a wider gap: the line's text has ended
 START_BY = 30                                   # a counter line's text starts left of this
 MIN_HEIGHT = 6                                  # text columns shorter than this are specks (digits are 13 tall; a
@@ -67,8 +71,8 @@ def glyphs(img, box):
             while x < len(cols) and cols[x]:
                 x += 1
             ys = np.where(a[:, s:x].any(1))[0]
-            if ys[-1] - ys[0] + 1 >= MIN_HEIGHT:    # a sparkle on the ground next to the value is no glyph
-                runs.append([s, x])
+            if ys[-1] - ys[0] + 1 >= MIN_HEIGHT or minus(a[ys[0]:ys[-1] + 1, s:x], ys[0]):
+                runs.append([s, x])                 # a sparkle on the ground next to the value is no glyph
         x += 1
     if not runs:
         return []
@@ -95,6 +99,13 @@ def glyphs(img, box):
     return out
 
 
+def minus(mask, top):
+    """A minus sign: a bar 1-2 px tall, 3-6 wide, at mid height (bench 2026-11-09, CampScr3Math: "-1" stood 4 px
+    right of the bar; the bar, dropped as a speck, left 13 px between the label and the 1, past END_GAP, and the
+    line read nothing). Only as a value's first glyph, a digit after it (read_line)."""
+    return len(mask) <= 2 and 3 <= mask.shape[1] <= 6 and 5 <= top <= 10
+
+
 def norm(mask):
     return np.asarray(Image.fromarray((mask * 255).astype(np.uint8)).resize(SIZE)).astype(float) / 255
 
@@ -119,11 +130,17 @@ def read_line(img, box):
     gs = glyphs(img, box)
     if not gs or len(tpl) < 10:
         return None
+    sign = ''
+    if len(gs[0][2]) <= 2:                      # a bar (minus()): a sign before the digits, nothing alone
+        sign, gs = '-', gs[1:]
+    gs = [g for g in gs if len(g[2]) > 2]       # a bar after a digit: a speck, as before 11-09
+    if not gs:
+        return None
     digits = []
     for _, _, m in gs:
         g = norm(m)
         digits.append(min(tpl, key=lambda d: np.abs(tpl[d] - g).sum()))
-    return int(''.join(map(str, digits)))
+    return int(sign + ''.join(map(str, digits)))
 
 
 def read(img, n):

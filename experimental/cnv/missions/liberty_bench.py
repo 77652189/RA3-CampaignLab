@@ -57,3 +57,12 @@ def mission(riders=False, ride_flags=lib.RIDE_FLAGS, tag='', name='CampLiberty')
     for dx in (-80, 0, 80):
         m.put('SovietAntiVehicleVehicleTech1', 'west field', dx, 390, side='s1', role='hammer')
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'liberty': lambda: mission(),
+    'liberty_turrets': lambda: turrets(),
+    'liberty_loose': lambda: loose(),
+    'liberty_riders': lambda: mission(riders=True, name='CampLibR'),
+}

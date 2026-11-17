@@ -15,6 +15,7 @@ A condition compiles to alternatives, [[script condition, ...], ...]: any one al
 """
 import dataclasses
 import importlib
+import math
 import os
 import re
 import sys
@@ -23,16 +24,28 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import glossary                                 # noqa: E402
+import model                                    # noqa: E402
+import langs                                    # noqa: E402
+from ctx import CHAT, FUNC, STRIP_HOLD, STRIP_MAX, Ctx    # noqa: E402
+from contract import ENDING_LIBRARY_AT, MUSIC_DYNAMIC, unresumed_cues   # noqa: E402
 from parts import NOT, Goal, Mission, Script, square   # noqa: E402
+from plantime import (ALL, ONE, TAGS, PlanError, by_level, counts, number, per, seconds, spans,   # noqa: E402,F401
+                      times)                                                                # re-exported: tests, checks
 
 PLANS = os.path.join(ROOT, 'docs', 'story', 'plans')
 LEVELS = ('简单', '普通', '困难')
-TAGS = ('easy', 'normal', 'hard')          # in script names: the map stores names as Latin-1
-ALL = (True, True, True)
-ONE = ((True, False, False), (False, True, False), (False, False, True))
 SPACING = 60.0                                  # between units placed together
-DEFAULT_AREA = 150.0                            # half-side of a site's trigger area when the site has no radius
-CAPTION = 6.0                                   # seconds a caption stays
+PACE_ARRIVE = 250.0                             # half-side of the area a 齐步 force is released in (a wave stops short of the point)
+DEFAULT_AREA = 150.0                           # half-side of a site's trigger area when the site has no radius
+CHRONO_FLASH = 'fxprop_chronoflash'             # retail's chrono flash prop (its FX plays on create, lives 1 s)
+EASE = 1.0                                     # seconds a pan eases in / out (retail's most used eased pan: 1/1)
+PAN_SPEED = 250.0                               # map units a second at most between two sites of a 过场
+VIEW_HALF = model.VIEW_HALF                     # half the ground the screen shows at the default zoom (model.py, K5)
+CAPTION_TURN = 4.0                             # seconds a caption-only line holds the floor outside a 过场
+CAPTION_TAIL = 0.3                              # a dubbed line's caption stays this long after its recording ends
+EVA_TURN = 2.5                                 # ... a retail announcer line (its length is not known)
+SPEECH_GAP = 0.6                              # seconds of quiet after a dubbed line in a 过场
+CAPTION = 6.0                                  # seconds a caption stays
 REVEAL_FIRST, REVEAL_GAP = 2.0, 4.0             # a phase's objectives: the first this long after it starts, then apart
 RELATIONS = {'盟友': 'Friend', '中立': 'Neutral', '敌人': 'Enemy'}     # 阵营 其他's 对我 / 对敌
 # a relation argument carries its index as well as its name, and the game reads the index (retail's 290
@@ -47,15 +60,13 @@ def relates(a, b, relation):
     return ('PLAYER_RELATES_PLAYER', a, b, (RELATION_INDEX[relation], 0.0, relation))
 CAMERA_MOVE, FOLLOW = 3.0, 4.0                 # a 镜头's move, a 跟随's hold (seconds) when the plan gives none
 FOLLOW_AT = 300.0                               # CAMERA_FOLLOW_NAMED's distance (retail: 300 behind Yuriko, 13 of 17)
-SIGHT = 300.0                                   # 揭开's radius when the site has none (retail: 100 .. 750, mostly 200 / 300)
+LOOK_MAX = 600.0
+LOOK_MIN = 400.0                               # a 过场 镜头's own reveal at its site: at least this radius (the camera sees ~500)
+SIGHT = 300.0                                  # 揭开's radius when the site has none (retail: 100 .. 750, mostly 200 / 300)
 FLASHES = 5                                     # NAMED_FLASH's count (retail: 5 at the hand-back, Stalingrad)
 INFO_SECONDS = 20.0                             # an info box stays this long (retail A01: 20)
 INFO_ICON = 'Button_AlliedEngineer_on'          # its picture: a retail build button (A01's hospital box shows this one)
 AUTOSAVE = 'AUTOSAVE:CNVCAMPAIGN'
-
-
-class PlanError(ValueError):
-    pass
 
 
 MUSIC = os.path.join(ROOT, 'experimental', 'music')
@@ -103,68 +114,6 @@ def load(level_or_path):
     return out
 
 
-def per(v):
-    """A value easy/normal/hard: '3000/2000/1500' or [3000, 2000, 1500] -> its three; one value -> three times."""
-    if isinstance(v, (list, tuple)):
-        vs = list(v)
-    elif isinstance(v, str) and '/' in v:
-        vs = [x.strip() for x in v.split('/')]
-    else:
-        vs = [v]
-    if len(vs) == 1:
-        vs = vs * 3
-    if len(vs) != 3:
-        raise PlanError(f'{v!r}: one value, or three (简单/普通/困难)')
-    return tuple(vs)
-
-
-def seconds(v):
-    """'3:00' 180, '90' 90, '90秒' 90, '4分钟' 240, 1.5 1.5."""
-    if isinstance(v, (int, float)):
-        return float(v)
-    s = str(v).strip().replace('秒', '')
-    if '~' in s:
-        raise PlanError(f'{v!r}: a random time (a~b) only after a condition, `X + 0:15~0:30`')
-    if s.endswith('分钟'):
-        return float(s[:-2]) * 60
-    if ':' in s:
-        mi, sec = s.split(':')
-        return int(mi) * 60 + float(sec)
-    return float(s)
-
-
-def number(v):
-    return float(str(v).strip().lstrip('+'))
-
-
-def counts(v):
-    return tuple(int(number(x)) for x in per(v))
-
-
-def times(v):
-    return tuple(seconds(x) for x in per(v))
-
-
-def spans(v):
-    """Per difficulty (earliest, latest): '0:15~0:30' a random time between (retail SET_RANDOM_MSEC_TIMER), a plain
-    time both the same. '0:15~0:30/0:10~0:20/5' by difficulty."""
-    out = []
-    for x in per(v):
-        lo, _, hi = str(x).partition('~')
-        a, b = seconds(lo), seconds(hi) if hi else seconds(lo)
-        if b < a:
-            raise PlanError(f'{v!r}: a random time is earliest~latest')
-        out.append((a, b))
-    return tuple(out)
-
-
-def by_level(values):
-    """[(difficulty bits, value)]: one entry when the three are the same, else one per difficulty."""
-    if values[0] == values[1] == values[2]:
-        return [(ALL, values[0])]
-    return [(ONE[k], v) for k, v in enumerate(values)]
-
-
 def start_time(c):
     """The three times when a condition is `开局 + t` (or any of several with one such: then the latest, the player
     may bring it forward), else None."""
@@ -176,6 +125,17 @@ def start_time(c):
         if mm:
             return times(mm.group(1))
     return None
+
+
+def on_event(c):
+    """Whether a rule's condition hangs on something that happens in the game, not just on the clock (`开局 + 0:30`): a
+    list needs one such leaf (the others only narrow it), an `任一` needs every branch to (K2: a line said at a bare
+    time is said over whatever the player is looking at)."""
+    if isinstance(c, dict):
+        return all(on_event(x) for x in c.get('任一', []))
+    if isinstance(c, list):
+        return any(on_event(x) for x in c)
+    return not re.match(r'^开局\s*\+', str(c).strip())
 
 
 # ---------------------------------------------------------------- compiling
@@ -191,8 +151,9 @@ class Compiler:
     """One plan -> one Mission. A condition compiles to alternatives, [[script condition, ...], ...]: any one
     alternative, all of its conditions; what happens once something held is latched in a flag."""
 
-    def __init__(self, data, name=None):
+    def __init__(self, data, name=None, lang='zh'):
         self.d = data
+        self.lang = lang                # the edition (langs.py): zh, or intl (English subtitles, dubbed in each side's language)
         self.level = str(data.get('关卡', 'x'))
         self.tag = re.sub(r'[^A-Za-z0-9]', '', self.level).upper()
         mapmod = importlib.import_module(f'maps.{data["地图"]}')
@@ -210,7 +171,9 @@ class Compiler:
                 raise PlanError(f'阵营 其他 {who}: 对我 / 对敌 is one of {sorted(RELATIONS)}')
             self.side[who], self.faction[f's{k}'] = f's{k}', spec.get('阵营')
             self.relation[f's{k}'] = tuple(rel)
-        self.m = Mission(name=name or f'Camp{self.tag}', map=mapmod)
+        self.m = Mission(name=name or langs.mod_name(self.tag, lang), map=mapmod)
+        self.ctx = Ctx(self)            # what a device (devices/) is given instead of this compiler and the mission
+        self.m.missing = []             # what the edition lacks (audio, subtitle text, translations): the build lists it
         self.n = 0
         self.conds = {}             # condition text -> alternatives
         self.timers = {}            # condition text with a time -> (timer, its started flag)
@@ -222,18 +185,24 @@ class Compiler:
         self.made = {}              # retail template -> the player's copy that builds ours too (可造)
         self.phases, self.waves, self.goals = [], {}, {}
         self.last = []              # the scripts the last when() made
+        self.view = None            # the border a 过场's camera keeps to (view_point); None: every border the level uses
         self.counted = {}           # group -> the counter of its losses (摧毁 <group> <n> 个)
         self.troop_counters = {}    # kinds counted together -> their counter (兵少于 <n> <units>)
         self.music = self.load_music(data.get('音乐'))
-        self.voice = self.load_voice(data.get('语音'))
+        self.voice = self.load_voice(data.get('语音'), data.get('头像'))
+        self.captioned = set()      # voice events a 功能 caption stands for: their recording carries no subtitle
 
-    def load_voice(self, levels):
+    def load_voice(self, levels, heads=None):
         """语音: [A4, ICEENG] -> the delivered dubbed lines of those folders (voice_link.Later): a 通报 with 说 whose
-        speaker and words are one of them plays it instead of showing a caption (the subtitle comes with the line)."""
+        speaker and words are one of them plays it instead of showing a caption (the subtitle comes with the line).
+        头像: [CNV_A4_008, ...] -> the lines that also show the speaker's talking head (clips.py); only these, never
+        every line that has an mp4. No list, no heads."""
         if not levels:
             return None
         import voice_link
-        self.m.voice = voice_link.Later(levels if isinstance(levels, list) else [levels])
+        self.m.voice = voice_link.Later(levels if isinstance(levels, list) else [levels], self.lang, list(heads or []))
+        self.m.video = self.m.voice.clips
+        self.m.missing += [f'voice {x}' for x in self.m.voice.missing]
         return self.m.voice
 
     def load_music(self, name):
@@ -408,6 +377,10 @@ class Compiler:
             mm = re.match(r'^(.+?)\s+(\d+)\s*个$', rest)
             if mm:                                  # n of a group, whichever (retail: Havana's launch sites)
                 return [[('COUNTER', self.losses(mm.group(1)), 3, int(mm.group(2)))]]
+            if re.search(r'[、,，]', rest):          # a list without its count: say the syntax (not "no named part")
+                raise PlanError(f'{s!r}: several parts need a count -- write 摧毁 <part>、<part>、<part> <n> 个 '
+                                '(parts joined with 、, then how many of them must fall, e.g. 摧毁 dam w、dam m、dam e 2 个); '
+                                'for one part or a group write 摧毁 <part> (all of it)')
             return [[('NAMED_DESTROYED', n) for n in self.part_names(rest)]]
         if head == '冻住':                           # frozen now (retail: Iga's objectives, freeze, never kill)
             return [[('UNIT_HAS_OBJECT_STATUS', n, 'UNDER_FROZEN')] for n in self.part_names(rest)]
@@ -524,6 +497,8 @@ class Compiler:
         out = []
         for a in acts or []:
             out += self.action(a)
+            if not self.is_line(a):
+                self.ctx.talk.anchored = True       # a line after a camera move or any act reports what that shows
         return out
 
     def action(self, a):
@@ -531,17 +506,24 @@ class Compiler:
         if isinstance(a, str):
             head, _, rest = a.strip().partition(' ')
             if head == '通报':
-                return [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', rest.strip()), CAPTION)]
+                return self.ctx.line((), self.text('SCRIPT', rest.strip()), CAPTION, turn=CAPTION_TURN, tier=CHAT)
+            if head == '副指挥官':                   # the co-commander's panel (retail Cannes hides it at the start)
+                if rest.strip() not in ('开', '关'):
+                    raise PlanError(f'action {a!r}: 副指挥官 开 / 关 (the panel at the top left; Player_2 stays)')
+                return [('SET_COOP_AI_COMMAND_UI_ENABLED', int(rest.strip() == '开'))]
             if head == '存档':
                 m.strings.setdefault(AUTOSAVE, '新战役（自动存档）')
                 return [('CAMPAIGN_CREATE_AUTO_SAVE', AUTOSAVE)]
-            if head == '胜利':                       # with the level's music, its win music first
-                return (self.cue('胜利') if self.music else []) + [('SET_FLAG', 'Mission Won', 1)]
+            if head == '胜利':                       # the library's Mission Won plays S_EndMissionWin itself (E7-7)
+                return [('SET_FLAG', 'Mission Won', 1)]
             if head == '音乐':
                 return self.cue(rest.strip())
             if head == '战况音乐':                   # the game's own combat music states (sdk SageXML/PathMusic)
+                # no off: any 音乐 cue suspends it (PATH_MUSIC_PLAY_EVENT, E7-6), and resume_music() switches it on
+                # again after every cue that comes later
                 if rest.strip() != '开':
-                    raise PlanError(f'action {a!r}: 战况音乐 开 (there is no off: the game has no such action)')
+                    raise PlanError(f'action {a!r}: 战况音乐 开 (a cue after it suspends it, the compiler switches it '
+                                    f'on again after the cue; there is no off)')
                 if not self.music:
                     raise PlanError(f'action {a!r}: the plan names no music (音乐: <名字> at the top)')
                 return [('PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', self.music.DYNAMIC_SYSTEM)]
@@ -554,23 +536,46 @@ class Compiler:
         if not isinstance(a, dict):
             raise PlanError(f'action {a!r}: a string or a mapping')
         if '通报' in a:
+            tier = FUNC if a.get('功能') in (True, '是') else CHAT      # 功能: 是 marks a line that must not be dropped
             words, who = str(a['通报']), a.get('说')
             if '原文' in a and not who:
                 raise PlanError(f'action {a!r}: 原文 is a speaker\'s words: 说 <who> goes with it')
             shown = f'{who}：{words}' if who else words
-            dubbed = self.voice.find(who, a.get('原文', words)) if who and self.voice else None
+            said = a.get('原文', words)
+            dubbed = self.voice.find(who, said) if who and self.voice is not None else None
             if dubbed:                              # the dubbed line: its subtitle comes with it
-                self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=dubbed))
-                return [('PLAY_SOUND_EFFECT', dubbed)]
+                self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=dubbed))
+                clip = self.voice.clips.find(dubbed)        # the speaker's talking head, when the voice line made one
+                n = self.voice.length(who, said) or EVA_TURN
+                # a line goes by one channel (E6): a 功能 line is a caption for the length of the recording, its voice has
+                # no subtitle; any other dubbed line (and every one in a 过场) carries its own subtitle into the dialogue
+                # panel and shows no caption
+                words = self.text('SCRIPT', self.voice.texts[f'DIALOGEVENT:{dubbed}'])
+                head = [('MOVIE_PLAY_RADAR', clip)] if clip else []
+                as_caption = tier == FUNC and not self.ctx.talk.scene
+                if dubbed in (self.m.subtitles if as_caption else self.captioned):
+                    raise PlanError(f'action {a!r}: the recording {dubbed} is said twice, once as a caption (功能) and '
+                                    f'once with its own subtitle: its subtitle is one or the other')
+                if as_caption:
+                    self.captioned.add(dubbed)
+                    return self.ctx.line([('PLAY_SOUND_EFFECT', dubbed)], words, n + CAPTION_TAIL, head,
+                                         turn=n + SPEECH_GAP, tier=tier)
+                self.voice.subtitled.add(dubbed)
+                self.m.subtitles[dubbed] = words
+                return self.ctx.line([('PLAY_SOUND_EFFECT', dubbed)], None, 0.0, head, turn=n + SPEECH_GAP, tier=tier)
+            retail = self.voice.eva(who, said) if who and self.voice is not None else None
+            if retail:                              # retail's own announcer line: its event, no caption (as retail)
+                self.m.lines.append(dict(说话人=str(who), 原文=str(said), 通报=shown, 字串=retail))
+                return self.ctx.line([('PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT', retail)], None, 0.0, turn=EVA_TURN, tier=tier)
             key = self.text('SCRIPT', shown)
+            if who and self.voice is not None:      # said by someone, but no recording of it: listed (langs.py)
+                self.m.missing.append(f'caption only, no recording of it: {shown}')
             if who:                                 # a flow-script line: the dubbed line is found by who and what
                 self.m.lines.append(dict(说话人=str(who), 原文=str(a.get('原文', words)), 通报=shown, 字串=key))
-            return [('SHOW_MILITARY_CAPTION', key, float(a.get('秒', CAPTION)))]
+            secs = float(a.get('秒', CAPTION))
+            return self.ctx.line((), key, secs, turn=min(secs, CAPTION_TURN), tier=tier)
         if '镜头' in a:                             # to a site, or to one of the plan's own (retail: the statue)
-            secs, ps = float(a.get('秒', CAMERA_MOVE)), self.parts(str(a['镜头']))
-            if ps:
-                return [('MOVE_CAMERA_TO_NAMED', self.m.cast[ps[0]].name, secs, 0.0, 1.0, 1.0)]
-            return [('MOVE_CAMERA_TO', self.mark(a['镜头']), secs, 0.0, 1.0, 1.0)]
+            return self.camera(a, float(a.get('秒', CAMERA_MOVE)), EASE, EASE)
         if '跟随' in a:
             raise PlanError(f'action {a!r}: 跟随 only in a 过场 (it is stopped at the hand-back)')
         if '闪烁' in a:                             # retail: the hand-back flashes the player's MCV
@@ -595,6 +600,11 @@ class Compiler:
                 raise PlanError(f'action {a!r}: 揭全图 看一眼 only in a 过场 (shrouded again at the hand-back); '
                                 f'elsewhere 揭全图 永久, and 收回 全图 when it should go')
             return [('MAP_REVEAL_ALL_PERM', p1)]
+        if '特效' in a:                             # a retail effect prop at a site (Cannes A02: the chrono flash, then
+            if a['特效'] != '超时空':                #   the reinforcements)
+                raise PlanError(f'action {a!r}: 特效 超时空 (the only effect there is)')
+            self.m.spawns.add(CHRONO_FLASH)
+            return [('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', CHRONO_FLASH, self.m.team('p1'), self.mark(a['在']))]
         if '给' in a:
             return self.give(a['给'], a['在'])
         if '资金' in a:
@@ -636,7 +646,12 @@ class Compiler:
                 raise PlanError(f'action {a!r}: 出动 <role> with 打 <site / role / 猎杀> or 守 <site>')
             if a.get('打') in self.devices:
                 raise PlanError(f'action {a!r}: 出动 can not 打 a device (a wave can)')
-            return self.orders(a, self.part_names(a['出动']), dict(names=[]))
+            groups = a['出动'] if isinstance(a['出动'], list) else [a['出动']]
+            names = [n for g in groups for n in self.part_names(g)]
+            side = self.m.cast[self.parts(groups[0])[0]].side
+            if a.get('齐步') in (True, '是'):
+                return self.pace_placed(a, groups, names, side)
+            return self.orders(a, names, dict(names=[]), side)
         if '禁造' in a or '准造' in a:              # the player may (not) build it (retail Brighton Beach)
             return self.bans(a['禁造' if '禁造' in a else '准造'], int('准造' in a))
         if '转给我' in a:
@@ -647,9 +662,107 @@ class Compiler:
                 raise PlanError(f'翻脸 {a["翻脸"]!r}: a side of 阵营 其他 ({sorted(self.side)})')
             return [relates(m.player(x), p1, 'Enemy'), relates(p1, m.player(x), 'Enemy')]
         if '失败' in a:
-            return (self.cue('失败') if self.music else []) + [
-                ('SHOW_MILITARY_CAPTION', self.text('SCRIPT', a['失败']), 10.0), ('SET_FLAG', 'Mission Lost', 1)]
+            # the library's Mission Lost plays S_EndMissionLose itself and ends the mission in 3 s (E7-7): the line
+            # stays up no longer than that (contract.ending_line_fits holds the words to it: 9 CJK chars a second)
+            return self.ctx.ending_begin() + [
+                self.ctx.final(self.text('SCRIPT', a['失败']), ENDING_LIBRARY_AT['Mission Lost']),
+                ('SET_FLAG', 'Mission Lost', 1)]
         raise PlanError(f'action {a!r}: no such action (plan.py lists them)')
+
+    def camera(self, a, secs, ease_in, ease_out, tight=False):
+        """MOVE_CAMERA_TO / _NAMED (waypoint, seconds, stutter 0, ease in, ease out). Retail runs a pan linear or eased
+        only at its ends (retailref: 144 of 240 moves 0/0/0, the rest 1-5 s eases on pans of 3-12 s). `tight`: a camera
+        of a staged piece of a scene (letterbox on, zoomed in): held by the scene's picture, not by play's."""
+        ps = self.parts(str(a['镜头']))
+        if ps:
+            return [('MOVE_CAMERA_TO_NAMED', self.m.cast[ps[0]].name, secs, 0.0, ease_in, ease_out)]
+        return [('MOVE_CAMERA_TO', self.view_point(str(a['镜头']), tight), secs, 0.0, ease_in, ease_out)]
+
+    def border_rect(self, name):
+        borders = getattr(self.m.map, 'BORDERS', {})
+        if name not in borders:
+            raise PlanError(f'边界 {name!r}: map {self.m.map.__name__} has {list(borders)}')
+        return borders[name]
+
+    def border_at(self, ph):
+        """The name of the playable area a phase runs in: its own 边界, else the last phase's, else the level's."""
+        name = self.d.get('边界') or 'whole'
+        for p in self.phases[:ph.k + 1]:
+            name = p.spec.get('边界') or name
+        return name
+
+    def view_rect(self, names, half=None):
+        """Where a camera centre may be while the playable area is (the intersection of) the named borders: inside
+        them, VIEW_HALF (or `half`) from their edges (the middle when a border is narrower than the screen)."""
+        return model.view_rect([self.border_rect(n) for n in names], half)
+
+    def opening_camera(self):
+        """K5 (I23): the camera the game starts with looks at the map's `start` site -- wherever it is, even nearer the
+        playable border than half a screen (A2: 430 from the west edge, 70 past the north one; A9, A1, A6 too), which
+        shows the black beyond the map for as long as the player does not scroll. So the first thing Phase 1 does,
+        when `start` is outside the view rect of the opening border, is move the camera to the view point of it
+        (0.1 s: a cut). Nothing when it is inside, or when the map has no borders (a plan on a map without any)."""
+        borders = getattr(self.m.map, 'BORDERS', {})
+        start = getattr(self.m.map, 'SITES', {}).get('start')
+        name = self.d.get('边界') or 'whole'
+        if start is None or name not in borders:
+            return []
+        x0, y0, x1, y1 = self.view_rect([name])
+        if x0 - 1e-6 <= start.x <= x1 + 1e-6 and y0 - 1e-6 <= start.y <= y1 + 1e-6:
+            return []
+        self.view = name
+        try:
+            return [('MOVE_CAMERA_TO', self.view_point('start'), 0.1, 0.0, 0.0, 0.0)]
+        finally:
+            self.view = None
+
+    def view_point(self, site, tight=False):
+        """The waypoint a camera move aims at: the site, held inside the view rect of the playable area in force (K5).
+        A 过场 aims by its phase's border (self.view); any other camera by every border the level uses, since a rule
+        can fire in any phase. Published as `CNV <tag> Cam <site> <x> <y>` with its rect in m.views."""
+        if self.view is not None:
+            names = [self.view]
+        else:
+            names = sorted({self.d.get('边界') or 'whole'} | {p.spec['边界'] for p in self.phases if p.spec.get('边界')})
+        rect = self.view_rect(names, model.LETTERBOX_UNDER if tight else None)
+        x, y = self.m.waypoints[self.m.marks[site]] if site in self.m.marks else self.m.where(site).at()
+        x, y = min(max(x, rect[0]), rect[2]), min(max(y, rect[1]), rect[3])
+        name = f'CNV {self.tag} Cam {site} {x:.0f} {y:.0f}'      # (an asset id: letters, digits and spaces only)
+        self.m.waypoints[name] = (x, y)
+        self.m.views[name] = rect
+        return name
+
+    def pan_seconds(self, a, prev):
+        """A 镜头's seconds: the plan's own, but never so short that the camera flies from the last site faster than
+        PAN_SPEED map units a second (a 2 s pan across 800 units looked like a jerk)."""
+        secs = float(a.get('秒', CAMERA_MOVE))
+        site = str(a['镜头'])
+        if prev is None or self.parts(site) or self.parts(prev) or site == prev:
+            return secs
+        s0, s1 = self.m.where(prev), self.m.where(site)
+        return max(secs, math.hypot(s1.x - s0.x, s1.y - s0.y) / PAN_SPEED)
+
+    def compile_talk(self):
+        """The scripts that play every queued line (ctx.talk): one at a time, whoever asked."""
+        self.m.scripts += self.ctx.talk_scripts()
+
+    @staticmethod
+    def is_line(step):
+        """A 通报 (a line said or captioned): inside a 过场 it takes the floor like one outside (see say)."""
+        if isinstance(step, dict):
+            return '通报' in step
+        return isinstance(step, str) and step.strip().startswith('通报')
+
+    def chained(self, rest):
+        """True when the next thing in a 过场 that takes time is another 镜头 (the pans run into each other)."""
+        for s in rest:
+            if isinstance(s, dict) and ('停' in s or '跟随' in s):
+                return False
+            if self.is_line(s):
+                return False
+            if isinstance(s, dict) and '镜头' in s:
+                return True
+        return False
 
     def bans(self, names, allow):
         """ALLOW_DISALLOW_ONE_BUILDING on the player for each (a building or a unit: retail Brighton Beach bans both
@@ -672,19 +785,37 @@ class Compiler:
         if self.d.get('禁造') is not None:
             self.m.scripts.append(Script(f'CNV {self.tag} - Bans', [], self.bans(self.d['禁造'], 0)))
 
+    def look_name(self, site):
+        """The name a 过场 镜头's reveal at a site goes by (undone when the scene ends; not sight()'s, which a plan's own
+        永久 揭开 may hold)."""
+        return f'CNV {self.tag} Look {site}'
+
     def sight(self, site):
         """The name a permanent reveal at a site goes by (MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT undoes it)."""
         self.m.where(site)
         return f'CNV {self.tag} Sight {site}'
 
     def scene(self, ph):
+        talk = self.ctx.talk
+        talk.scene = talk.scened = True
+        self.view = self.border_at(ph)
+        try:
+            return self.scene_steps(ph)
+        finally:
+            talk.scene, self.view = False, None
+
+    def scene_steps(self, ph):
         """A phase's 过场 (retail: 36 of 40 missions open with one): the player's input off and the letterbox on
         from the phase's start; its steps one after another -- 镜头 (a move: its 秒), 跟随 (the camera on one of the
         plan's own for 秒), 停 (秒 of nothing), 揭全图 看一眼 (the whole map, shrouded again at the end), any other
         action at once (a caption, a device's, a 技能: what the camera is to see); then the input back. Returns the
         phase-start actions and the scene's length; the later steps are timed scripts on `段 <phase> + t`."""
         at, t, look, follow = {}, 0.0, False, False
-        for step in ph.spec['过场']:
+        run, last = 0, -STRIP_HOLD                   # lines in the strip now (this scene's own), when the last came up
+        talk, said = self.ctx.talk, []               # said: (when, actions) of each line, a script of its own
+        looked = []                                # sites a 镜头 lifted the shroud at: shrouded again at the hand-back
+        steps, prev, joined = list(ph.spec['过场']), None, False
+        for i, step in enumerate(steps):
             if isinstance(step, dict) and '停' in step:
                 t += seconds(step['停'])
                 continue
@@ -701,19 +832,71 @@ class Compiler:
                 at.setdefault(t, []).append(('MAP_REVEAL_ALL_PERM', self.m.player('p1')))
                 look = True
                 continue
-            at.setdefault(t, []).extend(self.action(step))
             if isinstance(step, dict) and '镜头' in step:
-                t += float(step.get('秒', CAMERA_MOVE))
+                secs = self.pan_seconds(step, prev)
+                nxt = self.chained(steps[i + 1:])
+                # pans that run into each other are linear at the join: eased only at the first start and last stop
+                at.setdefault(t, []).extend(self.camera(step, secs, 0.0 if joined else EASE, 0.0 if nxt else EASE))
+                site = str(step['镜头'])
+                if not self.parts(site) and site not in looked and step.get('不揭') not in (True, '是'):
+                    # the camera sees what the player has not explored (user 2026-11-02: the north camp showed no
+                    # buildings or troops): a reveal there while the scene runs, not the whole map
+                    looked.append(site)
+                    radius = float(step.get('半径') or 0) or min(max(self.m.where(site).r * 1.6, LOOK_MIN), LOOK_MAX)
+                    at.setdefault(t, []).append(('MAP_REVEAL_PERMANENTLY_AT_WAYPOINT', self.mark(site), radius,
+                                                 self.m.player('p1'), self.look_name(site)))
+                t, prev, joined = t + secs, str(step['镜头']), nxt
+                continue
+            if self.is_line(step):
+                # one line at a time, as outside a 过场 (user 2026-11-03: "一句说完了之后再继续说"): a line takes the floor
+                # for its own turn (the recording and a gap, or the caption's own reading time; no floor longer than
+                # that, E6) and the next starts after it. It is a script of its own that takes the queue's floor
+                # (ctx.talk): what was being said when the scene began is finished first
+                # and never more than STRIP_MAX lines in the strip at once (I1, 2026-11-05): a third line waits until the
+                # strip has cleared (the scene idles; the line's script also waits for room, for what came before)
+                if run >= STRIP_MAX and t < last + STRIP_HOLD:
+                    t = last + STRIP_HOLD
+                if t >= last + STRIP_HOLD:
+                    run = 0
+                talk.turn = 0.0
+                said.append((t, talk.floor(self.action(step), talk.turn)))
+                run, last = run + 1, t
+                t, joined = t + talk.turn, False
+                continue
+            at.setdefault(t, []).extend(self.action(step))
         if t <= 0:
             raise PlanError(f'段 {ph.name} 过场: it takes no time -- a 镜头, 跟随 or 停 gives it its length')
-        end = [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',)] + ([('CAMERA_STOP_FOLLOW',)] if follow else []) + \
+        fire, fire_end = self.ceasefire(ph) if ph.spec.get('停火') else ([], [])
+        guard, guard_end = [], []
+        for part in ph.spec.get('保护') or []:
+            guard += [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 1) for n in self.part_names(part)]
+            guard_end += [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 0) for n in self.part_names(part)]
+        end = [('SET_FLAG', talk.scening, 0), ('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',)] + ([('CAMERA_STOP_FOLLOW',)] if follow else []) + \
             ([('MAP_REVEAL_ALL_UNDO_PERM', self.m.player('p1'))] if look else []) + \
+            [('MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT', self.look_name(x)) for x in looked] + fire_end + guard_end + \
             [('SET_FLAG', self.scene_flag(ph), 1)]
         at.setdefault(t, []).extend(end)
-        now = [('DISABLE_INPUT',), ('CAMERA_LETTERBOX_BEGIN',)] + at.pop(0.0, [])
+        now = [('SET_FLAG', talk.scening, 1), ('DISABLE_INPUT',), ('CAMERA_LETTERBOX_BEGIN',)] + fire + guard + \
+            at.pop(0.0, [])
         for k, (when, acts) in enumerate(sorted(at.items())):
             self.when(f'Phase {ph.k + 1} scene {k + 1}', f'段 {ph.name} + {when:g}', acts)
+        for k, (when, acts) in enumerate(said):         # a line starts when its time is up and the floor is free
+            self.when(f'Phase {ph.k + 1} line {k + 1}', f'段 {ph.name} + {when:g}' if when else f'段 {ph.name}', acts,
+                      gate=[('FLAG', talk.busy, 0), talk.strip_room()])
         return now, t
+
+    def ceasefire(self, ph):
+        """A 过场 with 停火: 是 -- the sides at war with each other are neutral for its length (retail does this in 14
+        of its scenes, PLAYER_RELATES_PLAYER 'Neutral'), so nobody is shot while the player cannot act; war again at
+        the hand-back. War is the plan's own at the start: the enemy against the player and against every side of 阵营
+        其他 that is its enemy (a later 翻脸 is not followed; the 敌方AI's side is compiled after the phases, and asleep
+        while a scene runs, so it is left alone)."""
+        m, p1, s1 = self.m, self.m.player('p1'), self.m.player('s1')
+        pairs = [(s1, p1)] + [(s1, m.player(x)) for x, rel in self.relation.items() if rel[1] == 'Enemy'] + \
+            [(m.player(x), p1) for x, rel in self.relation.items() if rel[0] == 'Enemy']
+        pairs = list(dict.fromkeys(pairs))
+        return ([relates(b, a, 'Neutral') for a, b in pairs] + [relates(a, b, 'Neutral') for a, b in pairs],
+                [relates(b, a, 'Enemy') for a, b in pairs] + [relates(a, b, 'Enemy') for a, b in pairs])
 
     def scene_flag(self, ph):
         """1 once the phase's 过场 handed the input back (过场 <phase> 结束)."""
@@ -789,9 +972,19 @@ class Compiler:
                 m.scripts.append(Script(f'CNV {self.tag} - Unattackable {base}', [],
                                         [('UNIT_CHANGE_OBJECT_STATUS', g, 'UNATTACKABLE', 1) for g in objs]))
             if spec.get('守') and role:
-                for nm in self.part_names(role):
-                    m.scripts.append(Script(f'CNV {self.tag} - Guard {nm}', [],
-                                            [('UNIT_GUARD_AREA', nm, self.area(spec['守']))]))
+                m.scripts.append(Script(f'CNV {self.tag} - Guard {base}', [],
+                                        self.ctx.order('guard', self.part_names(role), self.area(spec['守']), side)))
+
+    def place_scenery(self):
+        """布景: [{单位, 在: <地点>, 偏移: [[dx, dy], ...], 阵营: 平民, 朝向}] -- unnamed props placed by a site, one per
+        offset (festival decoration: small ice sculptures, stalls). Units a device publishes (小冰雕) or retail templates."""
+        for spec in self.d.get('布景') or []:
+            who = spec.get('阵营', '平民')
+            if who not in self.side:
+                raise PlanError(f'布景 {spec}: 阵营 {who!r} is none of {sorted(self.side)}')
+            tmpl = self.unit(spec['单位'], self.side[who])
+            for dx, dy in spec.get('偏移') or [(0, 0)]:
+                self.m.put(tmpl, spec['在'], float(dx), float(dy), side=self.side[who], angle=spec.get('朝向'))
 
     def setup_devices(self):
         from devices import registry
@@ -800,7 +993,7 @@ class Compiler:
             kind = spec.get('类型')
             if kind not in DEVICES:
                 raise PlanError(f'机关 {name}: no device type {kind!r}: {sorted(DEVICES)}')
-            dev = DEVICES[kind](self, name, spec)
+            dev = DEVICES[kind](self.ctx, name, spec)
             self.devices[name] = dev
             self.m.units += [u for u in dev.units if u not in self.m.units]
             self.dev_units.update(dev.names)
@@ -877,6 +1070,9 @@ class Compiler:
                 if self.d.get('边界'):                  # the playable area the mission starts with
                     acts = self.action({'边界': self.d['边界']}) + acts
                 self.m.scripts.append(Script(f'CNV {self.tag} - Phase 1', [], acts))
+                cut = self.opening_camera()
+                if cut:
+                    self.when('Opening camera', f'段 {ph.name} + 0.5', cut)
             else:
                 prev = self.phases[ph.k - 1]
                 if not prev.spec.get('结束'):
@@ -923,22 +1119,34 @@ class Compiler:
         sooner = times(extra['每隔']) if extra.get('每隔') is not None else gaps
         if extra.get('每隔') is not None and not every:
             raise PlanError(f'进攻 {spec["名字"]}: 加码 每隔 on a wave without 每隔')
-        warn = [('SHOW_MILITARY_CAPTION', self.text('SCRIPT', spec['预警']), CAPTION)] if spec.get('预警') else []
+        warn = [self.ctx.say(self.text('SCRIPT', spec['预警']), CAPTION)] if spec.get('预警') else []
+        copies, arrive = self.pace_plan(spec, [self.unit(u, 's1') for u in [*troops, *more]], f'进攻 {spec["名字"]}') if spec.get('齐步') in (True, '是') else ({}, None)
         for i in range(1, most + 1):
             for lv, levels in enumerate(ONE):
                 for bonus in ([False, True] if stepped else [False]):
-                    names, acts = [], []
+                    names, acts, slowed = [], [], []
                     for group, tag in ((troops, ''), (more if bonus else {}, 'x')):
                         for u, ns in group.items():
                             tmpl = self.unit(u, 's1')
-                            m.spawns.add(tmpl)
+                            made = copies.get(tmpl)
+                            if not made:
+                                m.spawns.add(tmpl)
                             for j in range(ns[lv]):
                                 obj = f'UNIT - CNV {self.tag} W{k}-{i} {tmpl} {tag}{j + 1}'
                                 names.append(obj)
-                                acts.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', obj, tmpl, m.team('s1'), wp))
+                                acts.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', obj, made.id if made else tmpl,
+                                             m.team('s1'), wp))
+                                if made:
+                                    slowed.append((obj, made.names['pace']))
                     if not names:
                         continue
+                    acts += [('NAMED_RECEIVE_UPGRADE', up, obj) for obj, up in slowed]
                     acts += self.orders(spec, names, w) + [('INCREMENT_COUNTER', 1, sent)] + warn
+                    if slowed:                  # released as the first of them gets there (one script each: it may fall)
+                        free = [('NAMED_REMOVE_UPGRADE', up, obj) for obj, up in slowed]
+                        for n, (obj, _) in enumerate(slowed):
+                            m.scripts.append(Script(f'CNV {self.tag} - Pace {k} {i}{"+" if bonus else ""} {TAGS[lv]} {n + 1}',
+                                                    [('NAMED_INSIDE_AREA', obj, arrive)], free, levels=levels))
                     if every:
                         acts.append(('SET_MILLISECOND_TIMER', timer, (sooner if bonus else gaps)[lv]))
                     gate = [('FLAG', w['on'], 1), ('TIMER_EXPIRED', timer), ('COUNTER', sent, 2, i - 1)]
@@ -952,23 +1160,75 @@ class Compiler:
         if target in self.devices and not spec.get('守'):
             m.scripts += self.devices[target].attack(sorted(set(w['names'])))
 
-    def orders(self, spec, names, w):
+    def pace_placed(self, a, groups, names, side):
+        """齐步 for placed troops sent off (出动): every faster one is placed as its paced copy from the start (the bench
+        placed the copy and granted the upgrade on it: checks/engine_pace.py `pace`, docs/engine/pathing.md 5b), granted
+        the upgrade as it is sent and released inside the area round where it goes, like a wave's."""
+        m = self.m
+        parts = [p for g in groups for p in self.parts(g)]
+        copies, arrive = self.pace_plan(a, [m.cast[p].template for p in parts], f'出动 {groups}')
+        slowed = []
+        for p in parts:
+            r = m.cast[p]
+            made = copies.get(r.template)
+            if not made:
+                continue
+            for o in m.objects:
+                if o.name == r.name and o.template == r.template:
+                    o.template = made.id
+            r.template = made.id
+            slowed.append((r.name, made.names['pace']))
+        k = self.uid()
+        for n, (obj, up) in enumerate(slowed):
+            m.scripts.append(Script(f'CNV {self.tag} - Pace placed {k} {n + 1}',
+                                    [('NAMED_INSIDE_AREA', obj, arrive)], [('NAMED_REMOVE_UPGRADE', up, obj)]))
+        return ([('NAMED_RECEIVE_UPGRADE', up, obj) for obj, up in slowed]
+                + self.orders(a, names, dict(names=[]), side))
+
+    def pace_plan(self, spec, templates, what):
+        """齐步 for a force: ({template: the paced copy of it (a Unit, added to the mission)}, the area it is released in).
+        The slowest mover of the force keeps its own speed, every faster one gets a copy slowed to it (units/pace.py);
+        they are released when one gets inside the area round where the force is sent (打 / 守: a place or a role)."""
+        from units import pace
+        to = spec.get('守') or spec.get('打')
+        if not to or to == '猎杀' or to in self.devices:
+            raise PlanError(f'{what}: 齐步 needs 打 or 守 with a place or a role -- the force goes together to somewhere '
+                            f'(the upgrades are taken away there)')
+        group = self.parts(to)
+        site = self.m.cast[group[0]].site if group else to
+        w = self.m.where(site)
+        area = f'CNV {self.tag} Pace {site}'
+        self.m.areas.setdefault(area, square(w.x, w.y, max(w.r or 0.0, PACE_ARRIVE)))
+        own = {u.id: u.xml for u in self.m.units}
+        speeds = pace.movers(templates, own)
+        copies = {}
+        if len(speeds) > 1:
+            slowest = min(speeds.values())
+            for t, v in speeds.items():
+                if slowest / v < pace.SAME:
+                    unit = pace.paced(t, pace.percent(v, slowest), own.get(t))
+                    if unit.id not in own:
+                        self.m.units.append(unit)
+                    copies[t] = unit
+        return copies, area
+
+    def orders(self, spec, names, w, side='s1'):
         w['names'] += names
         target = spec.get('打')
+        order = lambda kind, at=None: self.ctx.order(kind, names, at, side)      # (a wave is the enemy's)
         if spec.get('守'):
-            return [('UNIT_GUARD_AREA', n, self.area(spec['守'])) for n in names]
+            return order('guard', self.area(spec['守'])) if names else []    # (the area is made only for someone)
         if not target or target == '猎杀':
-            return [('NAMED_HUNT', n) for n in names]
+            return order('hunt')
         if target in self.devices:
             return []                               # the device's attack scripts (after all the waves are made)
         if self.parts(target):
             group = self.parts(target)
             if len(group) == 1:
-                t = self.part_names(target)[0]
-                return [('NAMED_ATTACK_NAMED', n, t) for n in names]
+                return order('attack', self.part_names(target)[0])
             # a group: attack-move to where it stands (one named target would leave them idle once it fell)
-            return [('ATTACK_MOVE_NAMED_UNIT_TO', n, self.mark(self.m.cast[group[0]].site)) for n in names]
-        return [('ATTACK_MOVE_NAMED_UNIT_TO', n, self.mark(target)) for n in names]
+            return order('attack_move', self.mark(self.m.cast[group[0]].site))
+        return order('attack_move', self.mark(target))
 
     def compile_rules(self):
         for k, r in enumerate(self.d.get('规则') or []):
@@ -979,10 +1239,21 @@ class Compiler:
                 raise PlanError(f'规则 {k + 1}: 次数 {r["次数"]!r} -- a rule happens once, or again every so often '
                                 f'while it holds (每隔)')
             levels = self.difficulty(r, f'规则 {k + 1}')
+            talk = self.ctx.talk
+            talk.anchored = on_event(r['当'])          # a line in 做 needs an event in 当, or a 镜头 before it (actions)
+            try:
+                acts = self.actions(r.get('做'))
+            except PlanError as e:
+                raise PlanError(f'规则 {k + 1} (当 {r["当"]!r}): {e}')
+            finally:
+                talk.anchored = True
             if r.get('每隔') is None:
-                self.when(f'Rule {k + 1}', r['当'], self.actions(r.get('做')), levels=levels)
+                ends = any(isinstance(a, dict) and '失败' in a for a in r.get('做') or [])    # says its own last line
+                made = self.when(f'Rule {k + 1}', r['当'], acts, levels=levels,
+                                 gate=self.ctx.ending_gate() if ends else ())
+                self.m.endings += [s.name for s in made] if ends else []
                 continue
-            timer, acts = f'CNV {self.tag} Rule {k + 1}', self.actions(r.get('做'))
+            timer = f'CNV {self.tag} Rule {k + 1}'
             self.m.scripts.append(Script(f'CNV {self.tag} - Rule {k + 1} clock', [],
                                          [('SET_MILLISECOND_TIMER', timer, 0.0)]))     # run out: the first is now
             for lv, gap in by_level(times(r['每隔'])):
@@ -1108,10 +1379,23 @@ class Compiler:
             # before the mission ends (simstatic: a main objective nothing ticks is a wiring fault, 2026-10-27)
             held = [g for g in m.objectives if not g.bonus and not g.spec.get('完成')]
             tick = [a for g in held for a in m.done(g.name) + [('SET_FLAG', self.goal_flag(g, '完成'), 1)]]
-            m.endings += [s.name for s in self.when('Win', self.d['胜利'], tick + self.action('胜利'))]
+            m.endings += [s.name for s in self.when('Win', self.d['胜利'], tick + self.action('胜利'),
+                                                    gate=self.ctx.ending_gate())]
         for k, lose in enumerate(self.d.get('失败') or []):
             m.endings += [s.name for s in self.when(f'Lose {k + 1}', lose['当'],
-                                                    self.action({'失败': lose.get('原因', '任务失败')}))]
+                                                    self.action({'失败': lose.get('原因', '任务失败')}),
+                                                    gate=self.ctx.ending_gate())]
+
+    def resume_music(self):
+        """E7-6: a music cue suspends the combat music for good, so once a script switches it on, every cue in a script
+        that runs in or after that phase is followed by the switch-on again, in the same action list (cue first, then
+        ENABLE: the order the bench heard work, music_dyn.py). contract.music_resumes holds the product to it; which
+        scripts those are is contract.unresumed_cues (phase scripts and rules gated by a phase's flag; a rule waiting
+        for a device's event alone is tied to no phase and is left as written)."""
+        if not self.music:
+            return
+        for s, k in unresumed_cues(self.m.scripts):
+            s.do.insert(k + 1, (MUSIC_DYNAMIC, self.music.DYNAMIC_SYSTEM))
 
     def compile_countdowns(self):
         for timer, label in self.shown.items():
@@ -1136,6 +1420,7 @@ class Compiler:
         self.place()
         for dev in self.devices.values():
             dev.place()
+        self.place_scenery()
         self.setup_goals()
         self.compile_bans()
         self.compile_goals()
@@ -1150,19 +1435,34 @@ class Compiler:
             self.m.scripts += dev.scripts()
         for dev in self.devices.values():
             self.m.scripts += dev.last()
+        self.resume_music()
         self.compile_countdowns()
+        self.compile_talk()
         for ph in self.phases[1:]:                  # facts: a phase's start, when it is a time from the start
             t = start_time(self.phases[ph.k - 1].spec.get('结束'))
             if t:
                 self.m.facts[f'段 {ph.name}'] = t[1]
         for dev in self.devices.values():
             self.m.facts.update(dev.facts())
+        if self.d.get('简报'):                      # the briefing screen's mission name and summary (the container's own
+            name = str(self.d.get('名字', self.level))      # are the pipeline's test texts)
+            self.m.strings.update({'MissionName:CNV01': name, 'MissionName:CNV01_Short': name,
+                                   'BriefingSummary:CNV01': str(self.d['简报'])})
+        self.m.strings, left = langs.translate(self.m.strings, self.level, self.lang)
+        self.m.missing += [f'string {x}' for x in left]
+        if self.lang != 'zh':                       # our units' names and tips (the ice engineer's) are in the edition's
+            units = []                              # language too; a copy, the unit may be shared with a Chinese build
+            for u in self.m.units:
+                text, left = langs.translate(u.strings, self.level, self.lang)
+                units.append(dataclasses.replace(u, strings=text) if u.strings else u)
+                self.m.missing += [f'unit string {x}' for x in left]
+            self.m.units = units
         return self.m
 
 
-def mission(level, name=None):
-    """The level's mission, compiled from its plan."""
-    return Compiler(load(level), name).compile()
+def mission(level, name=None, lang='zh'):
+    """The level's mission, compiled from its plan, in edition `lang` (langs.py)."""
+    return Compiler(load(level), name, lang).compile()
 
 
 if __name__ == '__main__':

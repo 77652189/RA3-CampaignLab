@@ -12,6 +12,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/context_nudge.py\"",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

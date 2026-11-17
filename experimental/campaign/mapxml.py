@@ -28,8 +28,7 @@ from ra3voice import big, refpack              # noqa: E402
 import labpaths                                # noqa: E402
 SDK = labpaths.SDK3                            # Mod SDK v3.0, see make_campnew2
 SAGE = os.path.join(SDK, 'SageXML')
-INDEX = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work',
-                     'sagexml_gameobjects.json' if SDK.rstrip('\\').endswith('RA3ModSDK') else
+INDEX = os.path.join(labpaths.WORK, 'sagexml_gameobjects.json' if SDK.rstrip('\\').endswith('RA3ModSDK') else
                      f'sagexml_gameobjects_{os.path.basename(SDK.rstrip(chr(92)))}.json')
 GAME_ALL_TYPES_HASH = 1424942948
 
@@ -82,6 +81,46 @@ def set_player(m, name, **props):
     for k, v in props.items():
         pr[k] = (pr[k][0] if k in pr else 5, v)
     node.head = d[:p] + encode_props(m, pr) + d[end:]
+
+
+TEAM_UNIT_SLOTS = 7        # a team template's unit lines (teamUnitType1..7), as every retail one has
+
+
+def add_team(m, name, owner, units=None, instances=1):
+    """A singleton team `name` of player `owner` added to the map's Teams chunk (u32 count, then one property dictionary
+    per team: teamName, teamOwner, teamIsSingleton -- retail's player teams are exactly these three). A script names it
+    'owner/name' (CREATE_NAMED_ON_TEAM_AT_WAYPOINT, MOVE_TEAM_TO ...), a placed object by originalOwner 'owner/name'.
+    With `units` [(template, min, max)], a team template instead (what CREATE_REINFORCEMENT_TEAM makes whole): not a
+    singleton, teamMaxInstances `instances`, the unit lines and the rest of a retail template's properties at retail's
+    most common values (a01 'TEAM - Wave 02 - Infantry Invaders 01'; work/logs/a137_teamkeys.log counts them all)."""
+    node = next(x for _, x in m.walk() if x.name == 'Teams')
+    d = node.head
+    if any(t.get('teamName', (0, None))[1] == name for t in teams(m)):
+        raise KeyError(f'team {name!r} is already in the map')
+    pr = {'teamName': (3, name), 'teamOwner': (3, owner), 'teamIsSingleton': (0, 0 if units else 1)}
+    if units:
+        assert len(units) <= TEAM_UNIT_SLOTS, f'team {name!r}: {len(units)} unit lines, a template has {TEAM_UNIT_SLOTS}'
+        pr['teamProductionPriority'] = (1, 0)
+        for k in range(1, TEAM_UNIT_SLOTS + 1):
+            lo, hi = units[k - 1][1:] if k <= len(units) else (0, 0)
+            pr[f'teamUnitMaxCount{k}'], pr[f'teamUnitMinCount{k}'] = (1, hi), (1, lo)
+        pr.update({'teamDescription': (3, ''), 'teamMaxInstances': (1, instances),
+                   'teamProductionPrioritySuccessIncrease': (1, 0), 'teamProductionPriorityFailureDecrease': (1, 0),
+                   'teamInitialIdleSeconds': (1, 0), 'teamExecutesActionsOnCreate': (0, 0)})
+        for k, (template, _, _) in enumerate(units, 1):
+            pr[f'teamUnitType{k}'] = (5, f'GameObject:{template}')
+            pr[f'teamUnitUpgradeList{k}'], pr[f'teamUnitExperienceLevel{k}'] = (3, ''), (1, 1)
+    node.head = struct.pack('<I', struct.unpack_from('<I', d, 0)[0] + 1) + d[4:] + encode_props(m, pr)
+
+
+def teams(m):
+    """The map's teams, one {property: (type, value)} each."""
+    node = next(x for _, x in m.walk() if x.name == 'Teams')
+    d, p, out = node.head, 4, []
+    for _ in range(struct.unpack_from('<I', d, 0)[0]):
+        pr, p = _typed_props_end(m, d, p)
+        out.append(pr)
+    return out
 
 
 def environment(m):
@@ -241,7 +280,7 @@ def stream_names(stem='static.12', archive=sa.DATA + r'\Core12.big'):
     """Lower-case asset names ('gameobject:foo') in a retail stream's table (the top stream sees the whole chain)."""
     name = f'data\\{stem}.manifest'
     m = big.read_files(archive, [name])[name]
-    m = refpack.decompress(m) if refpack.is_refpack(m) else m
+    m = refpack.unpack(m)
     h = struct.unpack_from(sa.HEADER, m, 0)
     o = 48 + 48 * h[5] + h[10] + h[11]
     return {s.decode('latin-1').lower() for s in m[o:o + h[12]].split(b'\0') if s}
@@ -310,23 +349,33 @@ def atlas_xml(m, gid):
             + '\n'.join(rows) + '\n\t</TerrainTextureAtlas>\n')
 
 
-def map_xml(m, gid, extra=None, atlas=False, also=()):
+def map_xml(m, gid, extra=None, atlas=False, also=(), made=()):
     """(map.xml text, [templates without a SageXML definition]): Includes of the object XMLs the map places that
     the static streams lack (reference includes resolve everything else against the retail streams) + GameMap.
     `extra`: our own templates, {id: {'file': 'DATA:<path under the SDK's Mods folder>', 'EditorSorting': ...}}.
     `also`: more of our XML files, included type="all" -- assets nothing references (a UnitAbilityButtonTemplate
-    points at its LogicCommand, not the other way round), which type="instance" leaves out of the stream."""
+    points at its LogicCommand, not the other way round), which type="instance" leaves out of the stream.
+    `made`: templates the game makes at run time by name (a script's spawn, an object creation list) that the map
+    does not place: a retail one the static stream lacks gets its SageXML file included type="all", as retail's
+    AlliedMapSpecific.xml does -- a type="instance" chain from a placed object brings in the OCL but not the
+    GameObject it names (bench 2026-11-16, D180: CAMP_PowerStore_AlliedBomberDrop's OCL found no
+    CAMP_AlliedBomberAircraft_Infantry_1 and made nothing). Our own templates are `also`'s business."""
     index, static = dict(sage_index()), stream_names()
+    ours = {k.lower() for k in (extra or {})}
     index.update({k.lower(): v for k, v in (extra or {}).items()})
     used = sorted(set(object_templates(m)), key=str.lower)
     need = [t for t in used if 'gameobject:' + t.lower() not in static]
-    files = sorted({index[t.lower()]['file'] for t in need if t.lower() in index}, key=str.lower)
+    placed = {t.lower() for t in used}
+    run_time = sorted({index[t.lower()]['file'] for t in made
+                       if t.lower() in index and t.lower() not in placed | ours
+                       and 'gameobject:' + t.lower() not in static} - set(also), key=str.lower)
+    files = sorted({index[t.lower()]['file'] for t in need if t.lower() in index} - set(run_time), key=str.lower)
     unknown = [t for t in need if t.lower() not in index]
     inc = ['\t\t<Include type="reference" source="DATA:static.xml"/>',
            '\t\t<Include type="reference" source="DATA:global.xml"/>',
            '\t\t<Include type="reference" source="DATA:audio.xml"/>']
     inc += [f'\t\t<Include type="instance" source="{s}"/>' for s in files]
-    inc += [f'\t\t<Include type="all" source="{s}"/>' for s in also]
+    inc += [f'\t\t<Include type="all" source="{s}"/>' for s in list(also) + run_time]
     text = ('<?xml version="1.0" encoding="UTF-8"?>\n'
             '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n'
             '\t<Tags/>\n\t<Includes>\n' + '\n'.join(inc) + '\n\t</Includes>\n' + game_map(m, gid, index)
@@ -340,7 +389,7 @@ def read_stream(prefix, get):
     raw = []
     for x in ('manifest', 'bin', 'relo', 'imp'):
         v = get(prefix + x)
-        raw.append(refpack.decompress(v) if refpack.is_refpack(v) else v)
+        raw.append(refpack.unpack(v))
     return sa.parse(*raw), raw
 
 
@@ -430,7 +479,7 @@ def table(layers):
     for arc, prefix in layers:
         name = prefix + 'manifest'
         m = big.read_files(os.path.join(sa.DATA, arc), [name])[name]
-        m = refpack.decompress(m) if refpack.is_refpack(m) else m
+        m = refpack.unpack(m)
         h = struct.unpack_from(sa.HEADER, m, 0)
         for k in range(h[5]):
             e = struct.unpack_from(sa.ENTRY, m, 48 + 48 * k)

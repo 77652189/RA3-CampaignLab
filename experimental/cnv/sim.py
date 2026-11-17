@@ -2,9 +2,11 @@ r"""The plan simulator: a level's timeline and ending in seconds, without the ga
 完整，先把开发效率提升上去，最后再把游戏实际和策划案模拟器对齐").
 
 It runs the mission as built -- parts.merged(mission, check): the scripts the compiler wrote (plan.py and the
-devices), the objectives' reveal scripts, a check's own -- the way the game runs a map's scripts: every tick each
-active script in order, all its conditions true, its actions at once (later scripts see them in the same tick), a
-once-script then off. The world is what those scripts ask about: named objects and their owners, health, positions;
+devices), the objectives' reveal scripts, a check's own -- the way the game runs a map's scripts: every frame each
+active script in order, all its conditions true, its actions at once (later scripts see them in the same frame), a
+once-script then off. Where the engine line's script engine model is on this computer (ADR 0019 layer 1,
+labpaths.ENGINE_MODEL) it runs them, 15 frames a second; elsewhere (a clean clone) an older loop does, a DT tick a
+frame. The world is what those scripts ask about: named objects and their owners, health, positions;
 flags, counters, timers; objectives; the border, reveals, the camera. Units move along the map's walkable ground
 (water for ships, both for amphibians, a straight line for aircraft) at their game speed (simunits.py), routed on the
 map's own height field. They fight by a deterministic model from the game's data (Sim.fight: the nearest enemy in
@@ -17,28 +19,42 @@ not simulated (only what the scripts send). Whatever the engine does that the si
                                              [--level easy|normal|hard] [--until <seconds>]
 
 A script (剧本), one event a line (or ';' between them), times in seconds or m:ss:
-  <t> 派 <谁> 去 <地点>     move (a map site, a mark, a trigger area, a named object)
+  <t> 派 <谁> 去 <地点>     attack-move (a map site, a mark, a trigger area, a named object, '@x,y' map coordinates)
+  <t> 走 <谁> 去 <地点>     a plain move (MOVE_NAMED_UNIT_TO / order_move(..., attacking=False)): fires on the way, does
+                            not stop to fight
   <t> 摧毁 <谁>             destroyed (killed by the player)
   <t> 删除 <谁>             gone without dying
   <t> 血量 <谁> <百分比>     health set
   <t> 打 <谁>               attacked by the player (NAMED_ATTACKED_BY_PLAYER)
   <t> 占领 <谁>             now the player's
+  <t> 占领 <谁> 进 <建筑>    the player's capture order (NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding,
+                            order_capture): the engineer walks to the building and takes it at its side
   <t> 旗标 <名字> <值>       a flag set outright (a check's or a device's)
+  <t> 生产 <单位> 在 <工厂>   the player's build order at that factory (NAMED_USE_COMMANDBUTTON_ABILITY with its build
+                            button): paid as it builds, the build time, out at its door -- '30 生产 AlliedEngineer 在
+                            barracks' (bench 2026-11-08 engine_production e: a script's press = the player's click)
   <t> 造 <单位> 在 <地点> [角度]  the player makes one (a unit id of the mission's, a cast part's template, a retail
                             template): an engineer's ice -- '40 造 CNV_IceWall 在 inside 1 1.57'
+  <t> 买 <协议>             the player buys a protocol (simtech.Book.buy: known, not held, not locked, its dependencies
+                            held, the points there) -- '400 买 PlayerTech_Allied_SatelliteSweep'
   自动打掉 <秒>             every enemy that has been that long within REACH (300) of something of the player's is
                             destroyed (the player fights back where the enemy comes to them)
   不打                      the fight model off (a check of the wiring alone)
   高地不挡                  the high-ground rule off: low ground sees high ground (the Generals way)
   <谁>: a cast part ('yuriko'), a group of them ('tank' = tank 1, tank 2 ...), an object's name, 名字含 <text>
-  (every object whose name holds it: '名字含 W1-' a plan's first wave), 敌人 在 <地点> (the enemy's there).
+  (every object whose name holds it: '名字含 W1-' a plan's first wave), 敌人 在 <地点> (the enemy's there), 队 <队名>
+  (a team's members: 'player/team' or the bare name -- a retail map's unnamed units, retail.py).
 """
 import argparse
+import collections.abc
 import dataclasses
+import importlib.util
 import math
 import os
 import re
+import struct
 import sys
+import types
 
 import numpy as np
 
@@ -46,34 +62,82 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
 import parts  # noqa: E402
+import simact  # noqa: E402
+import simcond  # noqa: E402
+import simdamage  # noqa: E402
+import simgarrison  # noqa: E402
+import simheal  # noqa: E402
+import simlocomotion  # noqa: E402
+import simbody  # noqa: E402
+import simmine  # noqa: E402
+import simmodifier  # noqa: E402
+import simmoney  # noqa: E402
+import siminfiltrator  # noqa: E402
+import simorder  # noqa: E402
+import simspecial  # noqa: E402
+import simsweep  # noqa: E402
+import simtech  # noqa: E402
+import simtoggle  # noqa: E402
 import simunits  # noqa: E402
+import simlevel  # noqa: E402
+import simloop  # noqa: E402
+import simworld  # noqa: E402
+from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
+from model import coord, facing  # noqa: E402
 
-DT = 0.5                        # seconds a tick
+from simscript import TEAM_FOLLOWS, TEAM_COMMANDS  # noqa: E402,F401  (the script vocabulary, L6)
+from simscript import SHOW_FLAG, SCENE_FLAG, WON, LOST  # noqa: E402,F401  (flags SET_FLAG reads, L6)
+
+DT = simloop.DT                 # seconds a tick (the frame loop's, simloop.DT)
+DRIVE_WITHIN = 9.0              # ordered from standing, a unit drives on the frame that starts this near its way (deg;
+                                # bench airev1t / airevgt / airevat, A round 227: 8 drove, 10 / 15 did not; INFERRED 9)
 UNTIL = 1800.0                  # a run stops here at the latest (30 minutes)
 QUIET = 120.0                   # nothing pending this long and no ending: stuck
-CIV = 'PlyrCivilian'
-CMP = {0: lambda a, b: a < b, 1: lambda a, b: a <= b, 2: lambda a, b: a == b, 3: lambda a, b: a >= b,
-       4: lambda a, b: a > b, 5: lambda a, b: a != b}
-WON, LOST = 'Mission Won', 'Mission Lost'
+
+from simpower import SUPERWEAPON_HITS, RELOAD_LAG, CURTAIN, hit_at, UNPACK_POWER, PACK_POWER, PACK_FRAMES  # noqa: E402,F401  (special powers, L2)
+CIV = simworld.CIV
+# The container's (Heidelberg, retail a03's SidesList) sides with aiTactical 255 (aiTeamBuilder alike); StartingUnits
+# and Soviet_5 are 240 (retail data read 11-14, round 216): Sim.tactical
+TACTICAL_SIDES = {'Player_1', 'Player_2', 'Soviet_1', 'Soviet_2', 'Soviet_3', 'Soviet_4', 'Soviet_6'}
+from simscript import CMP, SURFACES, RELATION_OF  # noqa: E402,F401  (a condition's comparison / surface / relation, L6)
 LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
-REACH = 300.0                   # 自动打掉: an enemy this close to something of the player's is being fought
-LINGER = 0.0                    # a killed unit's death (its slow death): still in the game's name cache, where it fell
+ATTACK_SLACK = 10.0             # R3: an attacker stops this far inside its range of the target (a guess)
+from simmodifier import UNDERSIZE  # noqa: E402,F401  (a weapon reach less this, L2)
+REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
+SPREAD = 30.0                   # a reinforcement team's units this far apart round its waypoint (Sim.reinforce, INFERRED)
+from simtoggle import TOGGLE_UNPACK_LAG  # noqa: E402,F401  (a toggle's unpack lag, L2)
+LINGER = 0.0                   # a killed unit's death (its slow death): still in the game's name cache, where it fell
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
-GRID = 20.0                     # routing cells (world units)
-HIGH_STEP = 40.0                # ground this much above a viewer's is high ground it cannot see (the terrain card's
-                                # "高出 40" measure; a guess for the game's own)
+from simworld import GRID  # noqa: E402,F401  (routing cells, world units; L0)
+COLUMN_GAP = 44.0              # infantry column march's ends, across and back (bench 11-09 a01: ~44-50; Generals 22)
+HOLD_SPOTS = True              # every move's goal kept off other units' spots (Sim.claims): the game's (bench 11-09,
+                               # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
+ORE_PLATE = (60.0, 45.0)        # an ore node's base plate, half-extents (OreNode.xml's last BOX): Sim.goal_off_nodes
+REPLACE_FRAMES = 6             # a ReplaceSelfSpecialAbility at its point: the replacement 6 frames on (engine_build a)
+RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's NaturalRallyPoint, on the line from
+                               # the factory's centre through it: INFERRED, fitted to bench 11-11 engine_production
+                               # h / i (barracks, (40, 18): stops ~(75-80, 24-33)) and engine_rally tank (war
+                               # factory, (80, 20): ~(112-127, 25-34); x 1.9 from the centre would be (152, 38))
+from simspecial import WFIRE_LAG, WFIRE_REAIM, NONE_TARGET_LAG  # noqa: E402,F401  (weapon-fire abilities, L2)
+from simorder import IDLE_SCAN_FROM  # noqa: E402,F401  (an idle unit's first scan frame, bench engine_dam BR; L5)
+BUILD_STEP = 5.0               # a builder on his way (R5) moves in steps this long, to see where he gets within range
+HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
+                                # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
+                                # no line of sight; ENEMY_SIGHTED is a range query and ignores it
 FIRE_SEEN = 3.0                 # a bombarder (a weapon longer than its own vision) that fired this lately is seen
-LAG = 0.0                       # the readings' clock: mission seconds, as the bench's since 4aed60f (ADR 0007: the
-                                # bench counts mission time, at 8x). Expectations written before that counted wall
-                                # seconds from the menus' end; the simulator's versions of the checks carry their own
-                                # ending (simchecks.py) and judge the counters only where they are wiring
+LAG = simloop.LAG               # the readings' clock (simloop.LAG)
 
 # what the simulator assumes of the engine ("待对齐清单"): printed with every run that leans on one of them. Settled
 # by the Generals / Zero Hour source (docs/engine/script-semantics.md, the section given) unless marked 未对齐: those
 # the source cannot tell for RA3, for the bench to settle last
 ALIGN = {
+    'levelup': '部分对齐：创建升级触发升阶、移除重给、等级伤害/血量、英雄射程RANGE125%及幻影英雄离散射速120%有效周期25→20帧（engine_levelup a/b/c、engine_leveldamage a、engine_levelhealth a/b、engine_levelrange a、engine_levelrate a）；其他武器射速、计时分段、其余等级属性与经验成长未模拟',
+    'protocols': '未对齐: protocol points as the program keeps them (simtech.py: rank experience 1 a second, 360 a '
+                 'rank, the cap, the set-points rule; bench 11-08 engine_protocol pts / ailock); no experience from '
+                 'kills, no red alert multiplier; a computer player spends its points at once on a protocol of its '
+                 'faction, which one a guess (its personality\'s choice: engine line B)',
     'timer unset': 'TIMER_EXPIRED of a timer never set: false (源码 3)',
     'destroyed unborn': 'NAMED_DESTROYED / NAMED_NOT_DESTROYED of a named object never made: both false (源码 4.2)',
     'deleted': 'NAMED_DELETE: destroyed for NAMED_DESTROYED from the next frame, never "attacked" (源码 4.2)',
@@ -85,6 +149,10 @@ ALIGN = {
     'discovered': '未对齐: NAMED_DISCOVERED: inside the player\'s sight (vision / shroud range) or a reveal; on the '
                   'bench 2026-10-27 (sight look) it read 1 for every target, 400 off too (the source: ALWAYS_VISIBLE '
                   'objects and ones out of the partition count as clear -- a guess why)',
+    'group move': 'units ordered together stop apart, each where it stood from the one nearest the goal (cut to 6 '
+                  'radii) on a free spot (Generals AIGroup::groupMoveToPosition; RA3 not read)',
+    'column march': '3+ infantry sent 100+ off stop in 3 columns 22 apart, rows 22 back (Generals '
+                    'friend_moveInfantryToPos, its ends only; the thresholds 3 / 100 INFERRED; RA3 not read)',
     'death linger': 'a killed unit is gone from areas and counts from the next reading: LINGER 0 (bench 2026-10-28, '
                     'probe death; the Generals source keeps it while it dies, 源码 4.2)',
     'both endings': '未对齐: won and lost in one frame: Generals runs the frame\'s later scripts and takes the last; '
@@ -95,37 +163,102 @@ ALIGN = {
     'frame rate': 'a tick is DT 0.5 s; RA3 runs about 15 script frames a mission second (bench 2026-10-28, probe '
                   'align; Generals 30; a timer runs out ceil(seconds x rate) frames on: 源码 3) -- the timeline is '
                   'good to about half a second',
-    'difficulty side': '未对齐: a script\'s difficulty bits are taken at the level the run is given; the game takes '
+    'engine model': 'the scripts run in the engine line\'s script engine model (ADR 0019 layer 1: RA3-EngineModel '
+                    'ra3model/scripts.py, labpaths.ENGINE_MODEL): 15 frames a mission second, a timer ceil(seconds x '
+                    '15) frames counted down before the scripts, counters and timers in one table, ENABLE_SCRIPT arms '
+                    'a fired once-script again, a NOT read off the flags parts.unnot writes (as the game runs them); '
+                    'units move and fight once a DT tick, on its first frame',
+    'difficulty side':'未对齐: a script\'s difficulty bits are taken at the level the run is given; the game takes '
                        'the difficulty of the side the script list belongs to, that side\'s AI\'s if it has one '
                        '(源码 1) -- which side our scripts belong to is to check',
     'border reveal': 'a permanent reveal made before MAP_SWITCH_BORDER covers the new ground too (bench 2026-10-28, '
                      'probe reveal; the Generals source says the two go badly together: 源码 4.4)',
     'ra3 only': '未对齐: actions RA3 has and Generals does not, as we understand them (源码 6): ',
+    'superweapon': 'a script\'s superweapon cast (SUPERWEAPON_HITS rows, CURTAIN): fires though the power is not '
+                   'charged (bench engine_super p / q), but not again in the reload its own last cast started '
+                   '(bench engine_scripts8b pdis; INFERRED rule)',
+    'unpack': 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT with a ReplaceSelfSpecialAbility button (an MCV, a Japanese '
+              'egg): it drives to the point, 6 frames after it is there the replacement stands there with its name and '
+              'health share (bench engine_unpack mcv / egg, engine_build a)',
     'special power': 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT / NAMED_USE_COMMANDBUTTON_ABILITY: logged, no effect '
                      '(a jump, a carrier\'s drop: the device\'s own scripts say what follows)',
     'ai': 'a skirmish AI (UNIT_AI_TRANSFER_ALL, SKIRMISH_AI_*): woken and logged; what it builds and when it '
           'attacks is not simulated (bench 2026-10-27 aistep: it may never build a kind it is let to)',
+    'lifetime': 'an object with a LifetimeUpdate (our ice walls, cores, smoke) is killed seconds x 15 frames (cut '
+                'down) after the frame it was made, and its CreateObjectDie for that death type makes what it lists '
+                'there that frame (bench 2026-11-07 engine_life: a 30 s wall lived 450 frames, a 5.5 s core 82, the '
+                'core\'s wall there at once; nothing of the dead lingers in an area). Min and Max apart: their '
+                'middle (a guess); retail templates\' lifetimes are not read',
+    'freeze': 'the cryo beam (SecondaryDamageNugget, simunits.freeze): its Amount a shot (x RATE_OF_FIRE) adds to '
+              'the target\'s cold, DissipateAmount comes off a second (spread over the second), held up to '
+              'MaxDamageClampScaler x max health; the highest EffectInfo Fraction x max health reached hangs its '
+              'modifier (0.2 .. 0.8: speed and rate of fire 80 .. 20 %), 1.0 freezes: UNDER_FROZEN, stopped and '
+              'silent (OnEnterDisable), the ArmorSet of Conditions SECONDARY_DAMAGE (CryoBeamFrozenArmor, Default '
+              '90000 %: any hit breaks it), DIE_ON_ENTER kills. INFERRED from the SDK data (the tracker\'s update '
+              'not read in the program, not benched): Fraction of max health, only the highest step\'s modifier, '
+              'no armour on the Amount, the Iron Curtain keeps it off',
+    'modifier': 'attribute modifiers (simunits.effect, Sim.modify / aura_tick) from upgrades held and aura objects '
+                'near: SPEED x speed, RANGE x weapon range only, VISION x sight, INVULNERABLE + UNDER_IRON_CURTAIN '
+                'no damage, a Duration runs out (bench docs/engine/upgrades.md 1, 2, 4); an aura hangs its modifier '
+                'on its filter\'s units within Range for the Duration, IN_STASIS stops, silences, shields (5: the '
+                'stasis zone). INFERRED: ARMOR / DAMAGE_MULT / RATE_OF_FIRE x damage (weapons.md, read), '
+                'StatusBitsUpgrade, NON_AUTOACQUIRABLE not taken by itself, the aura edge by centre. Not read: '
+                'modifiers a ToggleState or a weapon nugget hangs',
+    'assemble': 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT to a unit with an AssembleStructureSpecialAbilityUpdate for it '
+                '(the ice engineer): he walks till within its StartAbilityRange of the spot, stops, and the structure '
+                'is made there the next frame (bench 2026-11-07 engine_life: within range, the core one frame after '
+                'the order). A script\'s cast heeds neither the power\'s reload nor its placing rules (bench '
+                '2026-11-07 engine_skill: again 8 s into a 20 s reload, 20 from a tank, on a cliff, in the sea -- '
+                'all built), it starts the reload anew. The player\'s click (Sim.order_power) is refused while '
+                'reloading, off pathable ground, within ForbiddenObjectRange of an object (INFERRED: not measured). '
+                'Not modelled: his being busy while it builds',
+    'capture': 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_CaptureBuilding: at its side the building changes hands, '
+               'a deposit building pays its bonus then its amount each interval (R4, bench 2026-11-07 a4 derrick)',
+    'nearest ref':'SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER: the unnamed one nearest the team\'s middle (R2, bench 2026-11-07 engine_ref)',
+    'create unnamed': '未对齐: CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT (_WITH_ORIENTATION): the named one\'s maker without a '
+                      'name, a new object each run, on the team (RA3 1.13: the same three calls as the named one); '
+                      'not benched',
+    'nearest ref any': '未对齐:SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER: as the unnamed one\'s (nearest ref), '
+                       'named objects too; not read, not benched',
+    'team destroyed': '未对齐: TEAM_DESTROYED: no object of the team left, the dying counted (Generals '
+                      'evaluateIsDestroyed; not read in RA3, not benched); a team nobody was ever in is not destroyed',
+    'production': 'Sim.order_build (simproxy\'s player): BuildTime x 15 frames, paid frame by frame up to '
+                  'ceil(cost x progress) (single-float progress), a frame it cannot pay does not go on, the unit out '
+                  'DoorOpeningTime (10 frames) after it is full at UnitCreatePoint, walking to NaturalRallyPoint '
+                  '(bench 2026-11-05 engine_production a-d); short of power (supply < demand: EnergyProduction of the '
+                  'owner\'s living objects) 15 x trunc(BuildTime / f), f 0.3 to 0.5 (engine_production c / d). Not '
+                  'modelled: the factory\'s veterancy',
+    'power': 'PLAYER_EXCESS_POWER_COMPARE_VALUE: supply - demand of the player\'s living objects (EnergyProduction; '
+             'not measured)',
     'attack': 'NAMED_ATTACK_NAMED: the attacker goes to its target; the fight is the script\'s (摧毁)',
     'guard': 'UNIT_GUARD_AREA: goes to the area\'s middle and stays',
     'bridge deck': 'a bridge is walkable deck from its start to its end object (BRIDGE_DECK wide); bench '
                    '2026-10-27 (reroute): a wall on a deck stops nobody',
-    'health of the dead': 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of a dead object: 0 (bench 2026-10-28, probe death)',
+    'health of the dead': 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of a dead object: 0 in the frame a script killed it '
+                          '(bench 2026-10-28, probe death), else the counter keeps its last value (bench 11-09 '
+                          'pend_scripts9 rel; engine_float / engine_spawn / engine_super)',
     'combat': '未对齐: the fight model -- each armed unit fires each weapon (its PRIMARY one a slot) at the nearest '
               'enemy in that weapon\'s range it can hit, damage per second (one clip, then the reload) x the '
               'target\'s armour percent (a type its armour does not name: 100 %); an attack-mover holds while it '
-              'fights, a plain move goes on; nobody chases, no veterancy, no splash, no garrisons, no abilities; '
+              'fights, a plain move goes on (stopped short of where it was sent, it holds its fire till its next '
+              'order: held_up, bench 2026-11-07 a4 demoeng); the range is measured between the two bounding circles (R8, bench '
+              '2026-11-07 engine_acquire: a Guardian 150 fires at a tank 180 off, centre to centre); '
+              'no veterancy, no splash, no garrisons, no abilities; '
               'health, damage, range, rate, armour from SageXML (simunits.fight); a script\'s 摧毁 / 自动打掉 '
               'overrides it, 不打 turns it off -- to be tuned on the bench at the end. One rule measured: nobody '
               'fires at our ice walls unless ordered to (bench 2026-10-28, a4 hold: four tank busters let out '
               'behind plaza 2\'s ice left the 1500-health wall whole its 30 s; the fight model had it down in 7 s)',
-    'high ground': '未对齐: the high-ground rule -- a unit does not see ground HIGH_STEP (40) above its own (aircraft '
-                   'see and are seen anyhow); nobody fires at what its side does not see; a bombarder that fired in '
-                   'the last FIRE_SEEN s is seen by all; 高地不挡 turns it off. Two statements: the design line\'s '
-                   'terrain card (docs/design/teardowns/terrain.md 2, the user 2026-10-27): RA3 has StarCraft 2\'s '
-                   'rule, low ground does not see high ground, a bombarder firing shows itself (high ground seeing '
-                   'farther: not modelled); the Generals source: sight is a plain circle '
-                   '(PartitionManager::doShroudReveal), terrain only stops a direct-fire weapon\'s line '
-                   '(Weapon::isClearFiringLineOfSightTerrain); the bench (2026-10-27, sight look) could not tell',
+    'acquire': 'an idle unit goes after the nearest enemy within its VisionRange plus the enemy\'s radius, fires, and '
+               'walks back to where it stood (bench 2026-11-07 engine_acquire: a Guardian, vision 200, goes at 200 '
+               'and 220, not at 240; guarding or attack-moving past at 260 / 400: nothing); the exact limit, and how '
+               'near it stops (beyond 11.6 inside its reach at 200), are not read',
+    'high ground': '未对齐: the discovery rule is the bench\'s (docs/engine/vision.md): a unit does not discover a '
+                   'cell its own ShroudClearingHeight (default 50) or more above the one it stands on, cell by cell, '
+                   'no line of sight (aircraft see anyhow); 高地不挡 turns it off. Not aligned: nobody fires at what '
+                   'its side does not see, a bombarder that fired in the last FIRE_SEEN s is seen by all (guesses, '
+                   'the design line\'s terrain card, docs/design/teardowns/terrain.md 2); a script\'s reveal that '
+                   'shuts again (about 9 s by default) and ENEMY_SIGHTED (a range query: true on the high ground '
+                   'where NAMED_DISCOVERED is not) are not modelled',
 }
 # RA3's own actions and conditions (docs/engine/script-semantics.md 6: in neither source): run as we understand them,
 # each run that uses one lists it under 'ra3 only'
@@ -135,19 +268,131 @@ RA3_ONLY = {'ATTACK_MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_TEAM_TO', 'CREATE_NAMED_ON
             'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', 'SET_MISSION_OBJECTIVE_STATUS', 'LINK_MISSION_OBJECTIVE_TO_OBJECT',
             'LINK_MISSION_OBJECTIVE_TO_WAYPOINT', 'CAMPAIGN_CREATE_AUTO_SAVE', 'MOVE_CAMERA_TO_NAMED',
             'PLAYER_SET_PLAYER_POWER_POINTS', 'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'SET_PLAYER_MONEY_TO_COUNTER',
-            'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'ALLOW_DISALLOW_ONE_BUILDING', 'SKIRMISH_AI_MAKE_BASE',
-            'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_TRANSFER_ALL', 'SKIRMISH_AI_USE_REBUILD_SYSTEM',
-            'SKIRMISH_AI_USE_REPAIRS', 'UNIT_AI_TRANSFER_ALL', 'PATH_MUSIC_PLAY_EVENT',
+            'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'ALLOW_DISALLOW_ONE_BUILDING', 'ALLOW_DISALLOW_ONE_UPGRADE',
+            'SKIRMISH_AI_MAKE_BASE', 'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_TRANSFER_ALL', 'SKIRMISH_AI_USE_REBUILD_SYSTEM',
+            'SKIRMISH_AI_USE_REPAIRS', 'UNIT_AI_TRANSFER_ALL', 'PATH_MUSIC_PLAY_EVENT', 'SKIRMISH_AI_START',
+            'PLAYER_TOGGLE_SKIRMISH_AI',
             'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', 'CAMERA_ENTERED_AREA',
             'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', 'SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER'}
 
-# actions that change nothing the scripts ask about: logged on the timeline (the player sees or hears them)
-SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档', 'PATH_MUSIC_PLAY_EVENT': '音乐',
-         'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM': '战况音乐', 'NAMED_FLASH': '闪烁', 'NAMED_SHOW_INFOBOX': '信息框',
-         'OBJECT_CREATE_RADAR_EVENT': '小地图闪点'}
-IGNORED = {'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'PLAYER_SET_PLAYER_POWER_POINTS', 'DISPLAY_COUNTER', 'HIDE_COUNTER',
-           'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES',
-           'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM', 'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END'}
+from simworld import GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS  # noqa: E402,F401
+from simstatus import ACTED_STATUS, AI_ONLY_STATUS  # noqa: E402,F401  (status bits acted on, L2)
+from simscript import BUTTON_ACTIONS, refined  # noqa: E402,F401  (an action's refined name, L6)
+
+
+from simscript import SHOWN, IGNORED  # noqa: E402,F401  (logged-only / dropped actions, L6)
+# HAS_FINISHED_AUDIO / _VIDEO (work/re/l2_scripts1.md 2.3 / 2.4): the game waits for the clients' end-of-play report,
+# not a time; we place it. A dubbed line, x1 as a player hears it (bench 11-04 checks/engine_dialog.py): heard
+# AUDIO_LEAD s after the play, done at its length after that (4.34 s line -> 5.3 s). A radar clip (bench movie.py
+# play): done its own length after the play (CNVTEST01, 95 frames at 23.976 = 3.96 s: 63 game frames, 4.2 s);
+# a full-screen one never reads done. Lengths we cannot read (a retail line, a retail clip) take the guesses below.
+AUDIO_LEAD, AUDIO_GUESS, VIDEO_GUESS = 0.9, 2.5, 4.0
+SOUND_PLAYS = ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT')
+from simact_player import AI_SWITCHES  # noqa: E402,F401  (simai reads sim.AI_SWITCHES)
+
+# ---- the engine line's script engine (ADR 0019 layer 1). Where it is not on this computer (a clean clone) the
+# simulator runs its own older loop: every DT tick each script once, timers as seconds, NOT as a plain negation.
+SEEN_CORE = {'SET_FLAG', 'SET_MISSION_OBJECTIVE_STATUS', 'DISPLAY_COUNTDOWN_TIMER',   # the timeline's notes on them
+             'MARK_MISSION_OBJECTIVE_COMPLETED', 'MARK_MISSION_OBJECTIVE_NOT_COMPLETED'}
+CHANGES = {'INCREMENT_COUNTER', 'DECREMENT_COUNTER', 'SET_MILLISECOND_TIMER', 'SET_RANDOM_MSEC_TIMER'}
+_MODEL = {}
+
+
+def engine_model():
+    """RA3-EngineModel's ra3model/scripts.py (labpaths.ENGINE_MODEL, CNV_ENGINE_MODEL overrides it) as a module, or
+    None where it is not there. Loaded by file: this adds nothing to sys.path, and the model's code stays in its own
+    private repository (ADR 0018). Only the commit inventory_model.rev pins loads (modelpin.check, ADR 0030)."""
+    import labpaths
+    import modelpin
+    path = os.path.join(labpaths.ENGINE_MODEL, 'ra3model', 'scripts.py')
+    if os.path.isfile(path):
+        modelpin.check(labpaths.ENGINE_MODEL)
+    if path not in _MODEL:
+        mod = None
+        if os.path.isfile(path):
+            name = 'ra3model_scripts'
+            spec = importlib.util.spec_from_file_location(name, path)
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[name] = mod             # dataclasses look their module up while the file runs
+            spec.loader.exec_module(mod)
+        _MODEL[path] = mod and (mod, _engine_class(mod))
+    return _MODEL[path]
+
+
+def skirmish_setup(map_module, players):
+    """The published players the container gives Lib_Skirmish_Setup (model.handed_to_ai: Soviet_1 / 2 / 3 unless the
+    map module changes them). Its start-up UNIT_AI_TRANSFER_ALL takes their units off every team after the first
+    frame's mission scripts -- the container's SidesList has our list (Player_1's) before theirs (bench 11-09
+    engine_scripts9 memb2: a start-up UNIT_SET_TEAM does not survive it): Sim.off_teams. The library's other start-up
+    scripts (SKIRMISH_AI_MAKE_BASE ...) are not run: engine line B's simai wakes an AI at the mission's own wake, as
+    its bench readings were matched (tests/test_simai); the container's other libraries (Lib_End_Mission ...) neither."""
+    from model import handed_to_ai
+    return tuple(sorted(p for p in handed_to_ai(map_module) if p in players))
+
+
+def _engine_class(scripts):
+    class SimEngine(scripts.Engine):
+        """The model's engine with the simulator as its World, watching the core actions it reports on (a flag's
+        scene, caption, ending; an objective; a countdown shown; something changed). A random timer runs to its
+        latest, as the beat sheet counts."""
+        script = None
+
+        def action(self, name, a, s=None):
+            sim, self.script = self.world, s
+            if name in SEEN_CORE:
+                sim.act(name, list(a), s)
+            elif name in CHANGES:
+                sim.change()
+            if name == 'SET_RANDOM_MSEC_TIMER':
+                name, a = 'SET_MILLISECOND_TIMER', (a[0], a[2])
+            elif name == 'COUNTER_MATH_COUNTER' and scripts.as_int(a[1]) not in (0, 1):
+                sim.used.add(f'COUNTER_MATH_COUNTER code {a[1]}')
+            super().action(name, a, s)
+    return SimEngine
+
+
+class Counters(collections.abc.MutableMapping):
+    """The engine's one counter / timer table as the simulator's counters: a plain counter's value by name."""
+
+    def __init__(self, eng):
+        self.eng = eng
+
+    def __getitem__(self, k):
+        c = self.eng.counters[k]
+        if c[1]:
+            raise KeyError(k)
+        return c[0]
+
+    def __setitem__(self, k, v):
+        self.eng.counter(k)[0] = v
+
+    def __delitem__(self, k):
+        del self.eng.counters[k]
+
+    def __iter__(self):
+        return (k for k, c in self.eng.counters.items() if not c[1])
+
+    def __len__(self):
+        return sum(1 for _ in self)
+
+
+class Timers(collections.abc.Mapping):
+    """... and as its timers: a running countdown's mission second it runs out at (at or before now once out)."""
+
+    def __init__(self, sim, fps):
+        self.sim, self.fps = sim, fps
+
+    def __getitem__(self, k):
+        c = self.sim.eng.counters[k]
+        if not c[1]:
+            raise KeyError(k)
+        return self.sim.t + c[0] / self.fps
+
+    def __iter__(self):
+        return (k for k, c in self.sim.eng.counters.items() if c[1])
+
+    def __len__(self):
+        return sum(1 for _ in self)
 
 
 @dataclasses.dataclass
@@ -162,10 +407,22 @@ class Body:
     surface: str = 'ground'
     vision: float = 0.0
     kinds: frozenset = frozenset()
+    immortal: bool = False          # body module: health changes cannot take it below 1 HP
+    prop: str = None                # PropBody (simunits.prop_body): no health; 'stays' / 'dies' to a script kill
     max_hp: float = 100.0
     hp: float = 100.0
+    immune_until: int = -1          # the frame an Iron Curtain's protection ends (weapons and superweapons, not scripts)
     armor: dict = dataclasses.field(default_factory=dict)      # damage type -> percent taken (simunits.fight)
     weapons: list = dataclasses.field(default_factory=list)    # [{range, dps, type, anti}]
+    acquire: frozenset = frozenset({'YES'})                     # AutoAcquireEnemiesWhenIdle words (simunits.acquire)
+    radius: float = 0.0                                         # R8: Geometry's bounding circle (simunits.radius)
+    sight: float = 0.0                                          # R8: its VisionRange alone (vision: with the shroud)
+    chase: object = None                                        # R8 idle_chase: the enemy it went after by itself,
+    home: tuple = None                                          # where it stood then (it walks back),
+    auto_to: tuple = None                                       # and the way's end that rule gave it
+    resume: tuple = None                                        # attack_chase: where the attack-move was going
+    stood_for: tuple = None                                     # the goal it was told and stands short of (send)
+    spot: tuple = None                                          # (goal id, goal x, y): sent to a fire_spot for it
     engaged: bool = False                                       # an attack-mover with an enemy in range: holds
     alive: bool = True
     deleted: bool = False
@@ -177,40 +434,203 @@ class Body:
     made_at: float = 0.0
     scenery: bool = False
     team: str = ''
+    instance: int = 0                   # which instance of a team template (CREATE_REINFORCEMENT_TEAM: 1, 2, ...)
     guessed: list = dataclasses.field(default_factory=list)    # what of its numbers simunits only guessed
+    clear_height: float = HIGH_STEP                             # its ShroudClearingHeight (simunits: 50 unless written)
     angle: float = 0.0
+    turn_rate: float = None                                     # deg a second it turns (simunits.turning; None: at once)
+    turn_first: bool = False                                    # turns in place before it drives off (its Locomotor
+                                                                # has a TurnThresholdHS: bench airev1t / gt / at; the
+                                                                # infantry's has none and walks off turning, airevit)
+    face: float = None                                          # the facing (radians) to turn to once it arrives
+    rolling: bool = False                                       # it drove the last tick (a new way: no turn in place)
+    carry: float = 0.0                                          # seconds of the last tick left when its leg ended on a
+                                                                # waypoint path (follow_due gives the next leg after
+                                                                # the tick): driven on the next tick, none lost
     dest: object = None                                         # where it was sent (rerouted when the way changes)
+    set_off: int = -1                                           # the frame it was sent from standing (Sim.on_the_move)
+    stops_at: float = -1.0                                      # mission seconds its last way ended, within the tick
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
+    attachment_status: set = dataclasses.field(default_factory=set)  # owned by direct attachment links, not scripts
+    lift_status: set = dataclasses.field(default_factory=set)  # survives timer release; landing is unresolved
+    attachment_rules: dict = dataclasses.field(default_factory=dict)
+    indestructible: bool = False                                # the Indestructible panel flag: takes no damage
+    upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (modify)
+    up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
+    level_rank: int = 1                                      # LevelUpUpgrade creation grants; not combat XP
+    level_modules: set = dataclasses.field(default_factory=set)  # active creation modules; removal rearms, keeps rank
+    script_status: set = dataclasses.field(default_factory=set)  # persistent script/startup bits; `status` is these
+                                                                # + the modifiers' (modify)
+    slots: object = None                                        # simunits.weapon_sets: the weapons chosen by status (None: fixed)
+    auras_on: dict = dataclasses.field(default_factory=dict)   # modifier id -> (until frame, xml) an aura hung on it
+    armor_up: bool = False                                    # retail miner toggle, owned separately from script bits
+    toggle_at: dict = dataclasses.field(default_factory=dict)  # toggle module index -> its ToggleState (0 at the start)
+    shielded: bool = False                                      # INVULNERABLE + Iron Curtain bits on it (simunits.effect)
+    taken: float = 1.0                                          # ARMOR factor: damage taken x (INFERRED)
+    cold: float = 0.0                                           # the cryo beam's secondary damage held (deal, R freeze)
+    cold_step: int = -1                                         # ... the highest EffectInfo reached (-1: none)
+    suppression_rule: object = None
+    suppression_hits: list = dataclasses.field(default_factory=list)  # (expiry frame, value)
+    suppressed: bool = False                                    # sampled model condition; may outlive end frame
+    suppressed_until: int = -1                                  # model condition, NOT an object status
+    suppression_next: int = 0
+    model_conditions: dict = dataclasses.field(default_factory=dict)  # condition -> expiry frame or None
+    dealt: float = 1.0                                          # DAMAGE_MULT x RATE_OF_FIRE: damage dealt x (INFERRED)
+    level_rate: float = 1.0                                     # measured heroic Mirage clip rate; never per-hit damage
+    level_vision: float = 1.0                                   # ENEMY_SIGHTED only; heroic auto-acquire not benched
+    base: dict = None                                           # speed, vision, sight, weapons before modifiers
+    deposit: tuple = None                                       # R4: its AutoDepositUpdate (bonus, amount, frames)
+    deposit_at: int = None                                      # ... the frame of its next deposit
     died_at: float = None                                       # killed or deleted then
     last_hit: str = None                                        # the player whose damage came last (None: a
                                                                 # script's NAMED_KILL, or never hit)
+    last_by: str = None                                         # the object whose damage came last (E2: the game
+                                                                # keeps its id, and "attacked by the player" holds
+                                                                # only while that object stands and is the player's);
+                                                                # None: no object of ours (a run script's hit)
     mode: str = 'idle'                                          # 'move' (a plain move: fires, does not stop) or
                                                                 # 'attack' (attack-move, attack named: stops to fight)
+    move_to: tuple = None                                       # where its last plain move sent it (held_up)
     fired_at: float = None                                      # a bombarder's last shot (seen by all a while)
+    life_end: int = None                                        # its LifetimeUpdate kills it after this frame's
+                                                                # scripts (simunits.lifetime, R1)
+    leaves: list = dataclasses.field(default_factory=list)      # what that death makes where it stood
+    building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
+    replace: bool = False                                       # building = its ReplaceSelfSpecialAbility: it turns into it
+    unpack_end: int = None                                      # a structure made in the run: unpacking until then
+    read_until: int = None                                      # killed by NAMED_DAMAGE in this frame: bits still read
+    sell_end: int = None                                        # SELL_OBJECT: the frame the sale deletes it (sell)
+    mine: dict = None                                           # a harvester's trip (mine_due): state, node,
+                                                                # refinery, due frame, load, paid, leg
+    ready_at: dict = dataclasses.field(default_factory=dict)   # special power -> the frame its reload ends (a cast,
+                                                                # the script's too, starts it anew: order_power)
+    crusher: int = 0                                            # CrusherInfo (simunits.crush): drives over what is
+    crushable: object = None                                    # of a lower level; None: cannot be crushed
+    lies: float = 0.0                                           # seconds it lies dying once killed (SlowDeath's
+                                                                # DestructionDelay), the crush's death only (R9)
+    linger: float = 0.0                                         # ... the lie this death has (LINGER, or `lies`)
+    topple: object = None                                       # simtopple.rules: prop removal after contact / settling
+    toppled: bool = False
+    topple_end: int = None
+    follow: dict = None                                         # on a waypoint path (order_follow): label, the waypoint
+                                                                # it is going to, how; shared by a team that goes as one
+    frame_move: bool = False                                    # topple contact / measured Jet startup need frame-sized steps
+    drive_speed: float = 0.0
+    jet_motion: dict = None                                     # simjet: measured first eastbound startup only
+    jet_started: bool = False
+    health_floor: float = 1.0                               # ManagerBody proxy: inferred 1% effective HP; normal immortal 1 HP
+    hold_fire: bool = False                                     # UNIT_SET_STANCE 3 (HOLD_FIRE): fires only at a
+                                                                # target it was ordered on (stance.md a / b / d / e)
+    hold_paused: bool = False                                   # an attack order taken BEFORE HOLD_FIRE: kept, not
+                                                                # fired; back to another stance it fires again (a / f)
+    stance: int = 0                                             # UNIT_SET_STANCE: GUARD 0, AGGRESSIVE 1, HOLD_POSITION
+                                                                # 2, HOLD_FIRE 3 (idle_chase reads 1 / 2)
+    ai_acquire: bool = False                                    # TEAM_ALLOW_AI_AUTOACQUIRE (takes_by_itself)
+    z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
+    spawned_children: list = dataclasses.field(default_factory=list)
+    spawn_parent: object = None
+    spawn_module: str = ''
+    spawn_refills: list = dataclasses.field(default_factory=list)
+    unpack_parent: object = None                                # the refinery whose SpawnOnUnpack made it (not a
+                                                                # slave: outlives it, never replaced)
+
+    def damage(self, amount):
+        """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
+        if self.prop:
+            return
+        self.hp = max(self.health_floor if self.immortal else 0.0, self.hp - amount)
 
     @property
     def health(self):
-        """Health in percent of its maximum (what the scripts read)."""
-        return 100.0 * self.hp / self.max_hp if self.max_hp else 0.0
+        """Health in percent of its maximum (what the scripts read); a PropBody's reads 0 (engine_propbody a)."""
+        return 100.0 * self.hp / self.max_hp if self.max_hp and not self.prop else 0.0
 
     @health.setter
     def health(self, pct):
         self.hp = self.max_hp * float(pct) / 100.0
+        if self.immortal:
+            self.hp = max(self.health_floor, self.hp)
 
 
-def inside(pts, x, y):
-    """Point in polygon (even-odd)."""
-    c, n = False, len(pts)
-    for k in range(n):
-        (x0, y0), (x1, y1) = pts[k], pts[(k + 1) % n]
-        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
-            c = not c
-    return c
+from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
 
 
-def mmss(t):
-    return f'{int(t // 60)}:{int(t % 60):02d}'
+class Areas(dict):
+    """The map's trigger areas by name. A name the map does not have reads as an empty area (nobody is inside it)
+    and is noted in `missing`: retail s01's 'Introduction - Delete Planes' names 'AREA - P2 Delete Aircraft',
+    which the map does not define, and the game plays on (bench 2026-11-08, retail-q4-q5.md). INFERRED: the
+    game's behaviour for an unknown area name is not read from the program, only that it does not stop."""
+
+    def __init__(self, areas):
+        super().__init__(areas)
+        self.missing = set()
+
+    def __missing__(self, name):
+        self.missing.add(name)
+        return ()
+
+
+def _local(s, x, y):
+    """A point in a bar's own frame (u along its length, v across)."""
+    cx, cy, a = s[0], s[1], s[2]
+    dx, dy = x - cx, y - cy
+    return dx * math.cos(a) + dy * math.sin(a), -dx * math.sin(a) + dy * math.cos(a)
+
+
+def _in_shape(s, x, y):
+    """Whether a point is within a `Sim.blocks` footprint: (x, y, r) a round, (x, y, angle, length, thick) a bar."""
+    if len(s) == 3:
+        return (x - s[0]) ** 2 + (y - s[1]) ** 2 <= s[2] ** 2
+    u, v = _local(s, x, y)
+    return abs(u) <= s[3] / 2 and abs(v) <= s[4] / 2
+
+
+def _line_hits(s, x0, y0, x1, y1):
+    """Whether the segment (x0, y0)-(x1, y1) crosses a `Sim.blocks` footprint."""
+    if len(s) == 3:
+        cx, cy, r = s
+        dx, dy = x1 - x0, y1 - y0
+        n = dx * dx + dy * dy
+        k = 0.0 if n == 0 else min(max(((cx - x0) * dx + (cy - y0) * dy) / n, 0.0), 1.0)
+        return (x0 + k * dx - cx) ** 2 + (y0 + k * dy - cy) ** 2 <= r * r
+    (u0, v0), (u1, v1) = _local(s, x0, y0), _local(s, x1, y1)
+    lo, hi = 0.0, 1.0                                   # Liang-Barsky clip against |u| <= L/2, |v| <= T/2
+    for p0, p1, h in ((u0, u1, s[3] / 2), (v0, v1, s[4] / 2)):
+        d = p1 - p0
+        if d == 0:
+            if abs(p0) > h:
+                return False
+            continue
+        ta, tb = (-h - p0) / d, (h - p0) / d
+        lo, hi = max(lo, min(ta, tb)), min(hi, max(ta, tb))
+        if lo > hi:
+            return False
+    return True
+
+
+def f32(x):
+    """x as a single float (the game's production progress, docs/engine/production.md)."""
+    return float(np.float32(x))
+
+
+LOW_POWER = {'penalty': 1.0, 'min': 0.3, 'max': 0.5}   # GameData LowEnergyPenaltyModifier, Min / Max-
+                                                        # LowEnergyProductionSpeed (retail; work/re/l2_production.md)
+
+
+def power_factor(supply, demand, rules=LOW_POWER):
+    """A player's low-power speed (RA3 1.13, work/re/l2_production.md; docs/engine/production.md): 1 - (1 - min(1, supply / demand))
+    x penalty, at least min, and while short at most max (retail: short of power is 0.3 to 0.5 whatever the
+    shortfall); <= 0 -> 0.01. 1.0 with enough power."""
+    r = 1.0 if demand == 0 else min(1.0, f32(supply / demand))
+    f = 1.0 - (1.0 - r) * rules['penalty']
+    f = max(f, rules['min'])
+    if r < 1.0:
+        f = min(f, rules['max'])
+    return f32(f) if f > 0 else f32(0.01)
+
+
+from simworld import mmss  # noqa: E402,F401  (m:ss, L0; autoplay / offline / batch read sim.mmss)
 
 
 def seconds(s):
@@ -227,17 +647,27 @@ class Ground:
 
     def __init__(self, mapmod):
         import platmap
-        dims = platmap.CONTAINER
+        dims = getattr(mapmod, 'DIMS', platmap.CONTAINER)       # a retail map's own size (retail.Terrain)
         w, h, b = dims
         if hasattr(mapmod, 'LAYOUT'):
             e, _ = platmap.heights(mapmod.LAYOUT, w, h, b)
             walk = platmap.walkable(mapmod.LAYOUT, getattr(mapmod, 'OBJECTS', []), dims, e)
+            bridge = walk & ~platmap.walkable(mapmod.LAYOUT, [], dims, e)    # walkable only for a bridge laid on it
         else:
             e = mapmod.ground().e
             import newmap
-            walk = (e > newmap.WATERLINE + 10) & (platmap.slope_of(e) <= platmap.STEEP)
+            walk = (e > getattr(mapmod, 'WATERLINE', newmap.WATERLINE) + 10) & (platmap.slope_of(e) <= platmap.STEEP)
+            if hasattr(mapmod, 'impassable'):                   # a probe's field-0 cells (maps/probe_block.py)
+                walk &= ~mapmod.impassable()
+            bridge = np.zeros_like(walk)
         import newmap
-        water = e < newmap.WATERLINE - 5
+        import terrain_rules
+        waterline = getattr(mapmod, 'WATERLINE', newmap.WATERLINE)
+        self.waterline = waterline
+        # the water's logic edge in our height units (terrain_rules: 320 on our maps, not the routing's WATERLINE);
+        # a retail map's (DIMS, retail.Terrain) own water height is not read (INFERRED: its WATERLINE)
+        self.water = waterline if hasattr(mapmod, 'DIMS') else float(terrain_rules.ours(terrain_rules.WATER_WORLD))
+        water = e < waterline - 5
         d = int(GRID // platmap.CELL)
         hh, ww = h // d, w // d
         fold = lambda a: a[:hh * d, :ww * d].reshape(hh, d, ww, d)            # noqa: E731
@@ -245,9 +675,18 @@ class Ground:
         self.e = e                                                          # ground height (CELL cells)
         self.zgrid = e[:hh * d:d, :ww * d:d]                                # the same at each GRID cell's corner
         self.grids ={'ground': fold(walk).all(axis=(1, 3)), 'water': fold(water).all(axis=(1, 3))}
-        self.grids['both'] = self.grids['ground'] | self.grids['water'] | fold(walk | water).all(axis=(1, 3))
+        # the shore's shallows (between the water's edge and 'dry'): platmap.apply blocks only steep ground, so an
+        # amphibian goes ashore through them; left out they cut every slip (a5, 2026-11-04)
+        shallow = (e >= waterline - 5) & (e <= waterline + 10) & (platmap.slope_of(e) <= platmap.STEEP)
+        # R7: an amphibian does not take a bridge -- its deck is up over the water, it swims under (bench 2026-11-07
+        # engine_land: the A4 transport went straight at the quay, 89 frames to the shore area, where the simulator
+        # had it drive out of the water onto the southern bridge's deck and round, 346)
+        land = walk & ~bridge
+        self.grids['both'] = (fold(land).all(axis=(1, 3)) | self.grids['water'] |
+                              fold(land | water | shallow).all(axis=(1, 3)))
         self.cache = {}
         self.blocked = np.zeros(self.grids['ground'].shape, bool)
+        self.placed = self.blocked          # what a new structure's placement sees as taken (set_blocks' place)
         self.version = 0
         # a bridge's deck: what stands on it blocks nobody (bench 2026-10-27, reroute: the warriors walked through an
         # ice wall on the deck)
@@ -269,9 +708,18 @@ class Ground:
         v = -(x - p[0]) * uy + (y - p[1]) * ux
         return (u >= -over) & (u <= n + over) & (abs(v) <= width / 2)
 
-    def set_blocks(self, shapes):
+    def set_blocks(self, shapes, place=None):
         """What stands in the way now: [(x, y, angle, length, thick) a bar, or (x, y, r) a round building]; off a
-        bridge's deck. Routes are worked out anew."""
+        bridge's deck. Routes are worked out anew. place: the shapes a structure's placement sees (open(place=True)),
+        None = the same."""
+        m = self._mask(shapes)
+        self.placed = m if place is None else self._mask(place)
+        if (m != self.blocked).any():
+            self.blocked, self.version, self.cache = m, self.version + 1, {}
+            return True
+        return False
+
+    def _mask(self, shapes):
         x, y = self.xy
         m = np.zeros_like(self.blocked)
         for s in shapes:
@@ -282,11 +730,64 @@ class Ground:
                 u = (x - cx) * math.cos(a) + (y - cy) * math.sin(a)
                 v = -(x - cx) * math.sin(a) + (y - cy) * math.cos(a)
                 m |= (abs(u) <= length / 2) & (abs(v) <= thick / 2)
-        m &= ~self.deck
-        if (m != self.blocked).any():
-            self.blocked, self.version, self.cache = m, self.version + 1, {}
+        return m & ~self.deck
+
+    def open(self, surface, x, y, place=False):
+        """A world point a unit of that surface may stand on now (its routing cell walkable and not blocked); place:
+        a structure's placement's view (set_blocks' place)."""
+        if surface == 'air':
             return True
-        return False
+        c, g = self.cell(x, y), self.grids[surface]
+        return (0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and bool(g[c])
+                and not (self.placed if place else self.blocked)[c])
+
+    def stand(self, surface, x, y):
+        """A ground unit may stand in the CELL cell [x, x + CELL) x [y, y + CELL): its four corners dry (as 'ground'
+        walk) and within STEEP of each other, and not blocked now -- the engine's own 10-cell test of a knocked
+        body's landing (Physics P3, bench 11-11 engine_knock_water far: (2500, 3280) at the top of the far bank's
+        slope is standable, which the 20 routing cell round it is not). Other surfaces: open()."""
+        import platmap
+        if surface != 'ground':
+            return self.open(surface, x, y)
+        corners, free = self.corners(x, y)
+        return bool(corners is not None and corners.min() > self.waterline + 10 and
+                    corners.max() - corners.min() <= platmap.STEEP and free)
+
+    def corners(self, x, y):
+        """(the four corner heights of the CELL cell [x, x + CELL) x [y, y + CELL) or None off the map, not blocked now)."""
+        import platmap
+        j, i = math.floor(y / platmap.CELL + self.b), math.floor(x / platmap.CELL + self.b)
+        if not (0 <= j < self.e.shape[0] - 1 and 0 <= i < self.e.shape[1] - 1):
+            return None, False
+        c = self.cell(x, y)
+        free = not (0 <= c[0] < self.blocked.shape[0] and 0 <= c[1] < self.blocked.shape[1]) or not self.blocked[c]
+        return self.e[j:j + 2, i:i + 2], free
+
+    def stand_vehicle(self, x, y):
+        """A knocked vehicle may land in the CELL cell at (x, y): its four corners over the water, no slope limit
+        (Physics P3, bench 11-11 engine_knock_water tank: the landing in the trench went to (2490, 3330), the bank's
+        slope cell 325 / 340 ours, 15 a cell -- not 2470 (295 / 310) nor 2480 (310 / 325); the threshold between 310
+        and 325 is INFERRED as the water itself), and not blocked now."""
+        corners, free = self.corners(x, y)
+        return bool(corners is not None and corners.min() > self.water and free)
+
+    def drowns(self, x, y):
+        """A knocked vehicle landing in the CELL cell at (x, y) is gone the frame it lands: a corner within 10 of the
+        water (bench 11-11 engine_knock_water: tank's 2490, 5 over, dies; edge's 2510, 20 over, and ramp's 2470 on a
+        dry slope, 65 over, live -- so not the slope, not a footprint round the cell; the 10 is INFERRED, the men's
+        stand margin)."""
+        corners, _ = self.corners(x, y)
+        return corners is None or bool(corners.min() <= self.water + 10)
+
+    def z_smooth(self, x, y):
+        """The ground's height at a world point, bilinear between the CELL corners (a curve's terrain test)."""
+        import platmap
+        fy, fx = y / platmap.CELL + self.b, x / platmap.CELL + self.b
+        j = min(max(math.floor(fy), 0), self.e.shape[0] - 2)
+        i = min(max(math.floor(fx), 0), self.e.shape[1] - 2)
+        v, u = min(max(fy - j, 0.0), 1.0), min(max(fx - i, 0.0), 1.0)
+        q = self.e[j:j + 2, i:i + 2]
+        return float((q[0, 0] * (1 - u) + q[0, 1] * u) * (1 - v) + (q[1, 0] * (1 - u) + q[1, 1] * u) * v)
 
     def cell(self, x, y):
         import platmap
@@ -313,10 +814,30 @@ class Ground:
         k = int(np.argmin((jj + max(0, c[0] - 15) - c[0]) ** 2 + (ii + max(0, c[1] - 15) - c[1]) ** 2))
         return (int(jj[k] + max(0, c[0] - 15)), int(ii[k] + max(0, c[1] - 15)))
 
-    def route(self, surface, p, q):
-        """World points from p to q (None: no way); aircraft fly straight."""
+    def route(self, surface, p, q, closest=False):
+        """World points from p to q (None: no way); aircraft fly straight. closest: no way to q -- the way to the
+        nearest point it can reach instead (a unit's move, R7; the static checks ask for q itself)."""
         if surface == 'air':
             return [q]
+        got = self.way(surface, p, q, False)
+        if got is None and surface == 'both':
+            # R7: an amphibian on dry land may take a bridge from its end (the 'both' grid has no decks: from the
+            # water nothing climbs onto one); one starting on land and not reaching q by water goes by land. "On
+            # land" is the terrain's, not the free cells': a unit just out of a factory stands on its footprint's
+            # edge (way snaps it off); aiskirm:et, line A round 205: the engineer out of the barracks at
+            # (4067,3562) took the 'both' grid's closest way and stood at (2900,3280), the derrick never reached
+            # A bridge's deck is land too: aiskirm:et, line A round 239: the engineer crossing the bridge at
+            # (2929, 2952) stood on a deck cell neither grid holds (ground False, both False) and its team's
+            # periodic path check (QuickDoesPathExist) found no way and kicked it, s165; the bench walks it on to
+            # the derrick and captures it s222
+            c, g = self.cell(*p), self.grids['ground']
+            if 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and (g[c] or self.deck[c]):
+                got = self.way('ground', p, q, False)
+        if got is None and closest:
+            got = self.way(surface, p, q, True)
+        return got
+
+    def way(self, surface, p, q, closest):
         from skimage import graph
         g = self.grids[surface] & ~self.blocked
         a, z = self.snap(g, self.cell(*p)), self.snap(g, self.cell(*q))
@@ -329,32 +850,127 @@ class Ground:
             self.cache[key] = (m, cost)
         m, cost = self.cache[key]
         if not np.isfinite(cost[a]):
-            return None
+            return self.closest(g, a, z) if closest else None
         cells = m.traceback(a)[::-1]                # traceback runs from the goal (the costs' source) to a
-        pts = [self.world(c) for c in cells]
-        return pts[1::3] + [q] if len(pts) > 3 else [q]
+        pts = [self.world(c) for c in self.pull(g, cells)]
+        if pts and math.hypot(pts[-1][0] - q[0], pts[-1][1] - q[1]) <= GRID:
+            pts.pop()                               # the goal's own cell: q itself ends the way
+        return pts + [q]
+
+    def pull(self, g, cells):
+        """Generals' Path::optimize (AIPathfind.cpp 474; work/re/generals-source-map.md): from each anchor the way
+        goes straight to the farthest cell it can see over walkable cells, the cells between left out; the cells
+        after the start, `cells[0]`. Without it a way ran on the grid's rows: a goal moved 30 aside (HOLD_SPOTS) put
+        the unit on the next row from early on and kept it there the whole way, where the game goes in one slant
+        line (a4's trucks 2 and 3 on the halt area's edges, 2026-11-09). Generals' extra cases (a diagonal
+        neighbour, a straight run along a row or a 45 degree line taken as passable) need no rule here: the next cell
+        is always kept."""
+        out, a, n = [], 0, len(cells)
+        while a < n - 1:
+            j = a + 1
+            while j + 1 < n and self.clear(g, cells[a], cells[j + 1]):
+                j += 1
+            out.append(cells[j])
+            a = j
+        return out
+
+    @staticmethod
+    def clear(g, c0, c1):
+        """Every grid cell the straight line between the centres of cells c0 and c1 passes (sampled every quarter
+        cell) walkable in g."""
+        k = 4 * max(abs(c1[0] - c0[0]), abs(c1[1] - c0[1])) + 1
+        jj = np.rint(np.linspace(c0[0], c1[0], k)).astype(int)
+        ii = np.rint(np.linspace(c0[1], c1[1], k)).astype(int)
+        return bool(g[jj, ii].all())
+
+    def closest(self, g, a, z):
+        """R7: the goal out of reach -- the way to the cell it can reach nearest the goal (bench 2026-11-07
+        engine_land: the A4 transport sent to the quay's top went straight to its foot and stayed; the Generals
+        pathfinder's closest path; bench 2026-11-08 engine_seal move: a peacekeeper walled in, sent 600 out, walked
+        to the wall's inside nearest the goal and stood). [] when that is where it stands: it stays (not stuck)."""
+        from skimage import graph
+        m = graph.MCP_Geometric(np.where(g, 1.0, np.inf))
+        cost, _ = m.find_costs([a])
+        jj, ii = np.nonzero(np.isfinite(cost))
+        k = int(np.argmin((jj - z[0]) ** 2 + (ii - z[1]) ** 2))
+        end = (int(jj[k]), int(ii[k]))
+        if end == tuple(a):
+            return []
+        return [self.world(c) for c in self.pull(g, m.traceback(end))] or [self.world(end)]
+
+    def within(self, surface, p, q, reach):
+        """R3: an attacker's way -- to the cell it reaches soonest from which q is within `reach` (Generals' attack
+        path: the way to a spot in range, not to the target; bench 2026-11-07 a4 smash: the Ghost King at the ice wall
+        12 s after landing, not round the wall to its far side). [] when p is in range already, None when no cell is."""
+        import platmap
+        if math.hypot(q[0] - p[0], q[1] - p[1]) <= reach:
+            return []
+        if surface == 'air':
+            return [q]
+        from skimage import graph
+        g = self.grids[surface] & ~self.blocked
+        a = self.snap(g, self.cell(*p))
+        if a is None:
+            return None
+        m = graph.MCP_Geometric(np.where(g, 1.0, np.inf))
+        cost, _ = m.find_costs([a])
+        jj, ii = np.nonzero(np.isfinite(cost))
+        x = (ii * self.d - self.b) * platmap.CELL
+        y = (jj * self.d - self.b) * platmap.CELL
+        ok = np.hypot(x - q[0], y - q[1]) <= reach
+        if not ok.any():
+            return None
+        k = int(np.flatnonzero(ok)[np.argmin(cost[jj[ok], ii[ok]])])
+        end = (int(jj[k]), int(ii[k]))
+        return [self.world(c) for c in self.pull(g, m.traceback(end))] or [self.world(end)]
 
 
 class Sim:
-    def __init__(self, mission, test=None, level='normal', script=''):
+    shot_clock = False                  # opt-in frame clock: discrete shots and movement between script frames;
+                                        # default movement retains its benched coarse tick (work/re/handoff-c.md)
+    player_ups = types.MappingProxyType({})     # read-only "nothing granted" for a Sim built without __init__ (the
+                                                # tests' bare worlds); __init__ gives each Sim its own dict
+
+    def __init__(self, mission, test=None, level='normal', script='', model=True):
+        """model: run the scripts in the engine line's model where it is on this computer (False: the older loop)."""
         self.m = mission
-        self.mm = parts.merged(mission, test)
+        self.retail = getattr(mission, 'RETAIL', False)      # a retail campaign map (retail.py): its own scripts
+        self.mm = mission.merged(test) if self.retail else parts.merged(mission, test)
         self.test = test
         self.level = LEVELS[level]
         self.t = 0.0
         self.log = []                       # (t, kind, text)
+        self.box_log = []                   # [start, end, text]: the caption box holds one line; a new one ends the one up
+        self.panel_log = []                 # groups of (t, text): the dialogue panel stacks subtitles, a group clears together
+        self.asked, self.up = {}, []        # a 功能 caption asked for (flag -> t), and shown: (flag, asked, shown)
+        self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
         self.used = set()                   # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
+        self.unmodeled = {}                 # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
+        self.declared = {}                  # template -> the weapons its XML names (simunits.declared_weapons), asked once
         self.flags, self.counters, self.timers = {}, {}, {}
         self.objectives = {}                # name -> status (0 hidden, 1 shown, 2 done, 3 failed)
         self.markers = {}                   # objective -> {object / waypoint}
         self.done, self.disabled = set(), set()
         self.banned = set()                 # (player, template in lower case): ALLOW_DISALLOW_ONE_BUILDING 0
+        self.unit_construction_disabled = set()  # named players; engine_unitban a/b native engineer queues
+        self.base_construction_disabled = set()  # named players; aibgate:a the skirmish AI's structure orders (simai)
+        self.ai_paused = set()              # named players PLAYER_TOGGLE_SKIRMISH_AI(p, 0) paused (simai Brain.tick)
+        self.buildable = {}                 # template lower -> BuildableStatus 0-3: TECHTREE_MODIFY_BUILDABILITY_OBJECT (all players)
+        self.banned_ups = set()             # (player, upgrade in lower case): ALLOW_DISALLOW_ONE_UPGRADE 0
         self.border = 0
-        self.reveal_all = False
+        self.reveal_all = False             # the player's MAP_REVEAL_ALL_PERM
+        self.reveal_all_until = -1          # the player's MAP_REVEAL_ALL: the whole map open until this frame
+        self.revealed_to = set()            # other players given MAP_REVEAL_ALL (side_sees: they see everything)
         self.reveals = {}                   # name -> (x, y, r)
-        self.peeks = []                     # (x, y, r): a reveal that is not permanent (taken as for this tick on)
+        self.peeks = []                     # (x, y, r, until frame): MAP_REVEAL_AT_WAYPOINT, back to fog at `until`
+        self.reveal_areas = {}              # reveal name -> area: the player's MAP_REVEAL_PERMANENTLY_IN_TRIGGER
+        self.seq = []                       # UNIT_EXECUTE_SEQUENTIAL_SCRIPT records, in queue order (seq_due)
+        self.reshroud = 10.0                # MAP_SHROUD_SET_RESHROUD_TIME seconds (retail default holds as 10)
         self.camera = None
+        self.camera_been = set()            # areas the camera's point has been in (CAMERA_ENTERED_AREA latches)
+        self.personality_of = {}            # player -> the personality its AI took when not the map's aiPersonality
+        #                                     (simai SimAI.assigned, work/re d123 1.2: an open skirmish gate)
         self.input = True
         self.countdowns = set()
         self.ending = None
@@ -362,14 +978,70 @@ class Sim:
         self.ra3_only = set()               # RA3-only action / condition names the run used
         self.last_change = 0.0
         self.ai = {}                        # player -> woken at
-        self.money = {}
-        self.relations = {}
+        self.handed = ()                    # skirmish_setup: players taken off their teams after the first frame
+        self.library_ai = frozenset()       # the same players, kept (the wake: Sim.act SKIRMISH_AI_MAKE_BASE)
+        self.ai_switches = {}               # player -> {AI_SWITCHES name: value} (simai.Brain reads them)
+        self.ai_priorities = {}             # player -> [(enemy, n)] SET_ENEMY_PLAYER_PRIORITY calls (simai.Brain)
+        self.hidden_home = set()            # players whose hidden object SKIRMISH_AI_TRANSFER_ALL(p, 0) put on the
+                                            # map default team (one more member there; engine_acts_z all)
+        self.audio_end = {}                 # sound event -> when HAS_FINISHED_AUDIO holds again (Sim.played)
+        self.video_end = {}                 # clip -> when HAS_FINISHED_VIDEO holds (None: never, a full-screen one)
+        self.wallet = simmoney.Money()      # the players' money (L4); the four names below are its dicts, shared
+        self.money, self.income = self.wallet.money, self.wallet.income
+        self.sharing, self.money_cap = self.wallet.sharing, self.wallet.money_cap
+        self.selected = None                # the object SELECT_OBJECT selected last (NAMED_SELECTED)
+        self.script_disabled = {}           # id(body) -> NAMED_SET_DISABLED types on (emp_disabled)
+        self.kills = []                     # (killer's player, killer's name, template, name) by weapon (cond_retail)
+        self.attacked_by = set()            # (player hit, player hitting): SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER
+        self.cond_memory = {}               # a condition's reading the frame before (NAMED_EXITED_AREA)
+        self.made_frame = {}                # team template -> frame its last instance was made by a script (TEAM_CREATED)
+        self._engineer_rules = {}           # template -> EngineerContain rule (mission XML is fixed)
+        self.mining = simmine.Mining()      # ore nodes and the harvesters' trips (L2)
+        self.relations = dict(getattr(mission, 'relations', {}))   # (a, b) -> Enemy / Neutral / Friend
+        self.team_team_rel, self.team_player_rel, self.player_team_rel = {}, {}, {}   # the overrides (hostile)
+        self.team_targets = {}                  # id(body) -> the team it was told to attack (TEAM_ATTACK_TEAM)
         self.players = dict(mission.map.PLAYERS)
         self.human = self.players['p1']
         self.foe = self.players.get('s1')
+        import simtech
+        sides = getattr(mission, 'sides', {}) if self.retail else {}
+        self.books = {}                     # player -> simtech.Book: protocols, protocol points (a playable faction's)
+        for p in dict.fromkeys(self.players.values()):
+            f = simtech.faction_of(p, sides.get(p))
+            if f:
+                self.books[p] = simtech.Book(f, simunits.LIFE_FPS,    # its personality's PowerChoice lottery
+                                             (sides.get(p) or {}).get('aiPersonality'))
+        self.tech_to = 0                    # the last frame tech_due ran
+        self.tech_read = False              # a script has read the points or the protocols (pending: a rank to come)
         self.ground = Ground(mission.map)
         self.own = {u.id: u.xml for u in self.mm.units}
+        # Retail objects replaced by linked assets must use the same XML as
+        # the built mod (E167 removes only the factory's Tech2 receiver).
+        for _, xml, link in getattr(self.mm, 'assets', ()):    # a retail map (Merged) links none
+            if link.startswith('GameObject:'):
+                self.own[link.split(':', 1)[1]] = xml
+        import simrepair
+        self.repairs = simrepair.Repairs(self, self.wallet, self.ai_switches, self.level)
+        import simassign
+        self.assignments = simassign.Assignments(self)
+        self.heal = simheal.Heal()          # AutoHeal / PassiveAreaEffect (L2)
+        self.hunts = []                     # TEAM_HUNT's crews: [movers, target, frame to re-pick at] (Sim.hunt_due)
+        self.garrison = simgarrison.Garrisons(self, simgarrison.Peers(self))    # GarrisonContain / ContestableGarrisonContain
+        self.infiltrators = siminfiltrator.Infiltrators(self, siminfiltrator.Peers(self), self.wallet)
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
+        self.attachments = {}              # child name -> (child, parent, module rule)
+        self.lift_timers = simunits.LiftTimers()
+        self._attachment_rules = {}
+        self._attachment_marked = set()
+        self.attachment_known_status = {'ATTACHED'}
+        self.suppression_fields = []        # (end, value, x, y, radius): stationary hit contributions
+        self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
+        self.frame_movers = {}              # topple contact paths and measured Jet startup
+        self.refs = {}                      # reference name (UNITRef - ...) -> the Body a SET_REF_TO_... pointed it at
+        self.object_lists = {}              # OBJECTLIST_ADDOBJECTTYPE: list name -> {template}, both lower case
+        self.base_power = {}                # PLAYER_SET_BASE_POWER: player -> supply added to its objects' (INFERRED)
+        self.powers_off = {}                # PLAYER_SPECIAL_POWER_AVAILABILITY: (player, power lower) -> its word
+                                            # (one table for every player, names any case: retail.SCOPED_ARGS)
         self.series = []                    # (t, counter values) for a check's counters
         self.threat = []                    # (t, enemies near, countdowns) every 10 s
         self.first_threat = None
@@ -377,11 +1049,36 @@ class Sim:
         self.known_at = []                  # (t, km2 known)
         self.guessed = set()
         self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
+        self.due = []                       # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
+        self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
+        self.casts = []                     # (frame, owner, power, caster, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
+        self.power_at = {}                  # (player, spellbook power lower) -> the frame it is ready from (spellbook_ready)
+        self.queues = {}                    # factory name -> [job]: production (order_build, produce_due)
+        self.produced_to = None             # the last frame produce_due ran
+        self.energies = {}                  # template -> EnergyProduction (simunits.energy; power)
+        self.player_ups = {}                # player -> upgrades GIVE_PLAYER_UPGRADE gave (a unit's NeededUpgrade)
+        self.templates = getattr(self.mm, 'templates', None) or {}     # team templates (Sim.reinforce)
+        self.instances = {}                 # team template -> instances made so far
+        # callables name -> (exists, [Body]) or None (not theirs): teams scripts read by a name no map gives -- the
+        # AI's strategic-state teams and its pool (simai.Brain.team_named); the first that answers is the team
+        self.team_names = []
         teams = getattr(mission.map, 'TEAMS', {})
+        self.active = set(teams.values())               # teams with an instance: a whole-team order to any other is lost (E3)
+        self.lost_orders = []                           # (t, script, order, team) given to a team nobody had joined
         for k, o in enumerate(list(getattr(mission.map, 'OBJECTS', [])) + self.mm.objects):
             b = self.add(o.name or f'#{k}', o.template, self.owner_of(o.side), o.x, o.y)
-            b.team = teams.get(o.side, '')
-            b.angle = o.angle or 0.0
+            # a bare object is on its player's default team (island.like writes 'Soviet_5/teamSoviet_5'; the container
+            # has teamSoviet_2 .. 6 too): bench 11-14 engine_acts_x own, PLAYER_TRANSFER_OWNERSHIP_PLAYER leaves it
+            b.team = teams.get(o.side) or (self.mm.team(o.side) if hasattr(self.mm, 'team')    # a retail map (Merged)
+                                           and o.side in getattr(mission.map, 'PLAYERS', {}) else '')  # names no teams
+            health = (getattr(o, 'props', None) or {}).get('objectInitialHealth')
+            if isinstance(health, (int, float)) and 0 < health < 100:     # the map's starting health, in percent
+                b.hp = b.max_hp * health / 100.0                            # (a7 win: the carrier placed at 1 %)
+            crew = (getattr(o, 'props', None) or {}).get('originalOwner')
+            if isinstance(crew, str):                   # placed in a team of the mission's own (K6): that team has a member
+                b.team = crew
+                self.active.add(crew)
+            b.angle = facing(o)                         # as the built map puts it (the player's north, others' south)
         import platprops
         for k, o in enumerate(getattr(mission.map, 'SCENERY', [])):
             if o.template in platprops.STRUCTURE:
@@ -395,62 +1092,929 @@ class Sim:
         # what nobody shoots unless ordered: our ice walls (units with a lifetime; bench 2026-10-28, a4 hold)
         self.unshot = {u.id for u in self.mm.units if 'lifetime' in (getattr(u, 'params', None) or {})}
         self.seen = {}                      # this tick: (side, id(body)) -> whether that side sees it
+        self.firing = []                    # this tick's aimed fire: (target, damage per second, shooter) (fight, deal)
+        self.mid_aims = {}                  # id -> (second, body): an attack-mover that got in range mid-tick (move)
+        self.pre_locks = {}                 # (id(shooter), weapon key) -> (target, second): a PER_TARGET weapon's
+                                            # last target and when its first shot at it is due (first_shot); not
+                                            # `locks`: simshow.ShowSim keeps its input locks under that name
+        self.fire_gate = {}                 # (id(shooter), id(target)) -> no fire dealt before this second (deal)
+        self._field = ((), (), ())          # this tick's fight_field (fight)
         self.first_death = None             # (t, body, killer): the fight's first death
-        self.events = sorted((e for e in self.script if e[0] is not None), key=lambda e: e[0])
-        self.areas = self.mm.areas
+        self.death_blasts = []              # (frame, x, y, damage, type, radius, affects, owner, by): FireWeaponWhenDead
+        self.sweeps = simsweep.Sweeps(self, simsweep.Peers(self))  # ActivateLinearDamageNugget + LinearDamageUpdate: the lines walking
+        self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
+        self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
+        self.areas = Areas(self.mm.areas)
+        # the map's hot spots (MissionHotSpots): name -> on; off at the start, only SET_..._ACTIVENESS (and the player's
+        # popup, not simulated) turns one on or off (d115_script_semantics.md 4). The name as written: bench 11-13
+        # engine_conds sight 热点&8, the lower-case name never on
+        self.hotspots = {str(k): False for k in getattr(self.mm, 'hotspots', {}) or {}}
         self.waypoints = self.mm.waypoints
         self.reblock()
+        self.eng = None
+        self.fps = simunits.LIFE_FPS     # the frame loop's rate, the model's FPS when there is one
+        got = engine_model() if model else None
+        if got:
+            # the scripts as the game runs them: the compiler's NOT flags (package.py writes unnot's), the inverted
+            # bit ignored; one list, the run's difficulty; this Sim is the engine's World (condition / action)
+            mod, cls = got
+            self.fps = mod.FPS
+            lists = mission.script_lists(mod) if self.retail else mod.from_cnv(parts.unnot(self.mm.scripts))
+            if not self.retail:
+                self.handed = skirmish_setup(mission.map, set(self.players.values()))
+                self.library_ai = frozenset(self.handed)    # kept: their MAKE_BASE stands in for the library's wake
+            # a retail map's own scripts keep their inverted bit (the engine model: honored for retail's compiled
+            # scripts; a02's 'NOT units in the convention center' completed objective 1 at 0:04 with it ignored)
+            self.eng = cls(lists, world=self, difficulty=self.level, honor_inverted=self.retail)
+            self.flags, self.counters, self.timers = self.eng.flags, Counters(self.eng), Timers(self, mod.FPS)
+            if any(c and c[-1] == parts.NOT for s in self.mm.scripts for c in s.when):
+                self.used.add('inverted')
 
-    def blocks(self, b):
-        """What of the way a body takes up: a wall of ours its bar (or disc, square), a building its round."""
+    def blocks(self, b, place=False):
+        """What of the way a body takes up: a wall of ours its bar (or disc, square), a building its round. place:
+        what a new structure's placement keeps clear of instead (an ore node's round, not its routing plate)."""
+        if b.topple:
+            return None                    # engine_topple: vehicles drive straight through, infantry can pass too
         if b.template in self.walls:
             p = self.walls[b.template]
             if p.get('shape') == 'disc':
                 return (b.x, b.y, p['length'] / 2)
             return (b.x, b.y, b.angle, p['length'], p['length'] if p.get('shape') == 'square' else p['thick'])
+        if 'ORE_NODE' in b.kinds and b.radius:
+            # its own bounding circle (box 33 x 41 -> 52.6), not the 40 a building out of platprops gets: with 40 the
+            # SimpleExpansion miner's way to its slot 67 behind the node slid past it 45 off and unpacked inside
+            # Distance 50 (aiexpb50); the bench miner goes round, never nearer than 89 (D round 168/169). D176: its
+            # base plate (ORE_PLATE) grown by GRID, a 2-cell unit's half footprint (goal_off_nodes' rule on the
+            # routing grid's corners); with the circle aiexpb200's miner came at the node from the south and
+            # unpacked at (4127, 2788), with the plate from the west, (4014, 2847) -- the bench (4012, 2903).
+            # INFERRED: one clearance for every unit's size. A structure's placement keeps the round (place): with
+            # the plate the refinery search found no third refinery's spot (test_simai_bench_b third_refinery)
+            if place:
+                return (b.x, b.y, b.radius)
+            return (b.x, b.y, b.angle, 2 * (ORE_PLATE[0] + GRID), 2 * (ORE_PLATE[1] + GRID))
         if 'STRUCTURE' in b.kinds and 'bridge' not in b.template.lower():
             import platprops
             return (b.x, b.y, platprops.radius(b.template) if b.template in platprops.CATALOG else 40.0)
         return None
 
     def reblock(self):
-        """The way as it stands now; whoever is on the move takes it anew."""
-        shapes = [s for s in (self.blocks(b) for b in self.living()) if s]
-        if self.ground.set_blocks(shapes):
-            for b in self.living():
-                if b.path and b.dest is not None:
-                    self.send(b, b.dest)
+        """The way as it stands now, for the orders given from now on: whoever is on the move keeps the way it was
+        given and goes through what came up since (docs/engine/pathing.md 6, bench 2026-11-04 engine_block wall: the
+        IFV ordered a second before its row of bunkers was made drove straight through it, s4, not round by the gap).
+        A new order goes round a building made in the run, infantry's as a vehicle's (bench 2026-11-08 engine_block
+        foot: the IFV and a peacekeeper ordered 3 s after the row was made both went round by the gap, s13 / s22)."""
+        bodies = self.living()
+        self.ground.set_blocks([s for s in (self.blocks(b) for b in bodies) if s],
+                               [s for s in (self.blocks(b, place=True) for b in bodies) if s])
 
     # ---- the world
     def owner_of(self, side):
         return self.players.get(side, CIV)
 
-    def add(self, name, template, owner, x, y, by='', at=0.0):
+    def proto(self, name, template, owner):
+        """A Body of the template that is not in the world (made by add, then taken out of the registry again):
+        what the skirmish AI reads a template's figures off (simai Brain._proto)."""
+        b = self.add(name, template, owner, -1e6, -1e6)
+        self.bodies.pop(name, None)
+        return b
+
+    def add(self, name, template, owner, x, y, by='', at=0.0, team=''):
         st = simunits.stats(template, self.own)
         b = Body(name, template, owner, float(x), float(y), st['speed'], st['surface'],
                  max(st['vision'] or 0.0, st['shroud'] or 0.0), frozenset(st['kinds']), made_by=by, made_at=at)
         b.guessed = st['guessed']
+        b.clear_height = st['clear_height']
+        b.radius = st.get('radius') or 0.0
+        b.sight = st['vision'] or 0.0
+        if b.speed > 0 and b.surface != 'air':      # aircraft bank as they fly: not benched, they turn at once
+            b.turn_rate, limit = simunits.turning(template, self.own)
+            b.turn_first = limit is not None
         f = simunits.fight(template, self.own)
-        if f['hp']:
-            b.max_hp = b.hp = f['hp']
+        b.immortal, immortal_hp = simunits.immortal_body(template, self.own)
+        if simunits.manager_body(template, self.own):
+            proxy_hp = simunits.manager_proxy_health(template, self.own)
+            if proxy_hp:
+                b.immortal, immortal_hp = True, proxy_hp
+                b.health_floor = proxy_hp * 0.01
+            self.gap('ManagerBody', template, '仅HB_Bridge_02整体代理脚本伤害已量；有效HP/内部下限映射INFERRED，其他配置、桥段生成、共享血量与维修未建模')
+        wall_start = simunits.wall_builder_start(template, self.own)
+        if wall_start:
+            if not by and wall_start['secondary'] and wall_start['status'] == 'WALL_SEGMENT':
+                b.script_status.add('WALL_SEGMENT')
+                b.status.add('WALL_SEGMENT')
+            self.gap('WallBuilderBehavior', template,
+                     '仅预摆墙默认WALL_SEGMENT初始状态已量；运行时生成/建墙/连接/段数上限/生死联动、自定义状态与模型条件未建模；其他继承覆盖默认值INFERRED，脚本改位交互未测')
+        b.suppression_rule = simunits.suppression(template, self.own)
+        if template not in self._attachment_rules:
+            self._attachment_rules[template] = simunits.attach_modules(template, self.own)
+        b.attachment_rules = self._attachment_rules[template]
+        for rule in b.attachment_rules.values():
+            if rule:
+                self.attachment_known_status.update(rule['child'] | rule['parent'])
+        if b.suppression_rule:
+            b.suppressed_until = 0
+            b.suppression_next = max(1, self.eng.frame if getattr(self, 'eng', None)
+                                     else int(round(at * simunits.LIFE_FPS)))
+        hp = immortal_hp if b.immortal else (f['hp'] or simunits.max_health(template, self.own))
+        if hp:
+            b.max_hp = b.hp = hp
         else:                                   # no health in the data: a building's or a unit's usual (a guess)
             b.max_hp = b.hp = 2000.0 if 'STRUCTURE' in b.kinds else 300.0
         b.armor, b.weapons = f['armor'], f['weapons']
+        if template not in self.__dict__.setdefault('_wsets', {}):
+            self._wsets[template] = simunits.weapon_sets(template, self.own)
+        b.slots = self._wsets[template] if b.weapons else None    # guns not read at all stay a gap (below)
+        for tm in self.toggles_of(b):         # a first ToggleState's bits hold from the start (engine_toggle c / e;
+            b.status = set(b.status) | tm['states'][0]['status']      # Sim.modify keeps them; retail first states
+                                                                      # have no AttributeModifier)
+        if b.slots:                           # the weapon lines name a status: the held one is chosen from it
+            b.weapons = simunits.pick_weapons(b.slots, b.status, self.weapon_upgrades(b))
+        b.crusher, b.crushable = simunits.crush(template, self.own)
+        b.lies = simunits.slow_death(template, self.own)
+        b.linger = LINGER
+        b.prop = simunits.prop_body(template, self.own)
+        import simtopple
+        b.topple = simtopple.rules(template, self.own)
+        if b.topple:
+            a, c, _, _ = simtopple.shape(template, self.own)
+            b.radius = math.hypot(a, c)
+            b.vision = b.sight = 0.0         # a prop has no sight (stats' unit-only table otherwise guesses 100)
+            self.topples.append(b)
+        if not b.weapons:                     # its XML names guns and none was read: a gap, not a unit without guns
+            if template not in self.declared:
+                self.declared[template] = simunits.declared_weapons(template, self.own)
+            if self.declared[template]:
+                self.gap(GAP_WEAPON, template, f'XML 有 {", ".join(self.declared[template])}，读成没有武器')
+        b.acquire =frozenset(simunits.acquire(template, self.own)) if b.weapons else frozenset()
+        frames, b.leaves = simunits.lifetime(template, self.own)
+        if frames is not None:                  # made in this frame's scripts (or, by a run event, at its start)
+            made = self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))
+            b.life_end = made + frames
+        unpack = simunits.unpack_frames(template, self.own) if by and 'STRUCTURE' in b.kinds else 0
+        if unpack:                              # made in the run (a map's own skip it): unpacks first -- adds no power
+            v = np.float32(power_factor(*self.power(owner)))       # and does not fire meanwhile; RA3 1.13, work/re/l2_construction.md:
+            extra = np.float32(np.float32(1.0) - v) * np.float32(unpack)   # trunc((1 - v) F + F), v the owner's
+            b.unpack_end = self.frame_now() + int(np.float32(extra + np.float32(unpack)))   # factor then
+        b.deposit = simunits.deposit(template, self.own)
+        if b.deposit:                           # Generals: the first deposit an interval after it is made
+            b.deposit_at = (self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))) \
+                + b.deposit[2]
         self.bodies[name] = b
+        rules = self.__dict__.setdefault('_spawn_rules', {})
+        if template not in rules:
+            rules[template] = simunits.spawn_modules(template, self.own), simunits.unpack_spawn(template, self.own)
+        for mid, child_template in rules[template][1].items():
+            if by:                      # built (simai gives the AI's its own, put) or a script's: not benched here
+                self.gap('SpawnBehavior', template, '建成或脚本创建的矿场自带矿车（SpawnOnUnpack）出车时机未对拍')
+                continue
+            self.unpack_child(b, child_template, at)
+        for mid, child_template in rules[template][0].items():
+            if mid in rules[template][1]:
+                continue
+            self.gap('SpawnBehavior', template,
+                     '仅盟军战车工厂配置开局3架、死亡10秒补充、母体清随从及缺电保持3架已量；子体直接删除、真正禁用、占领、缺电时死亡补充、'
+                     '展开时机、其他配置未建模；生成位置INFERRED；不含SlavedUpdate/AttachUpdate维修')
+            if not child_template or by:  # construction/unpack and scripted creation have not been measured
+                continue
+            if not b.spawned_children:
+                self.__dict__.setdefault('_spawn_parents', []).append(b)
+            for i in range(3):
+                self.spawn_child(b, mid, child_template, at)
+        b.team = team                   # the team it is made into, set last (its spawn and unpack children keep '')
         return b
+
+    def spawn_child(self, parent, mid, template, at):
+        """Measured drone group only; centre placement remains INFERRED (no autonomous repair flight)."""
+        name = f'#spawn {parent.name} {mid} {len(parent.spawned_children)}'
+        while name in self.bodies:
+            name += '#'
+        child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
+        child.spawn_parent, child.spawn_module = parent, mid
+        parent.spawned_children.append(child)
+        return child
+
+    def unpack_child(self, parent, template, at):
+        """SpawnOnUnpack (simunits.unpack_spawn): a refinery the map places gives its one collector at the start, on
+        its own spot (bench 2026-11-12 mineturn<k> / mineniag p: the first money by the drive from there; the spot and
+        the 1 s fade INFERRED). Its own unit: it outlives the refinery (no SpawnedRequireSpawner)."""
+        name = f'#unpack {parent.name}'
+        while name in self.bodies:
+            name += '#'
+        child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
+        child.unpack_parent = parent                # the owner's default team, as Generals' createSpawn (team '')
+        return child
+
+    def spawn_due(self, frame):
+        """engine_spawn_refill: independent death + 10s replacements; subsecond phase INFERRED.
+
+        engine_spawn_power: a supply shortage alone leaves the factory's drone
+        count at three. Do not equate short_of_power with KillSpawnsOnDisabled. Real module
+        disabling and death/refill during an outage are still unmeasured gaps.
+        """
+        for parent in self.__dict__.get('_spawn_parents', ()):
+            if not parent.alive:
+                continue
+            for item in list(parent.spawn_refills):
+                due, mid, template = item
+                if due <= frame:
+                    parent.spawn_refills.remove(item)
+                    self.spawn_child(parent, mid, template, self.t)
+
+    def expire(self, frame):
+        """simbody.Life.expire (L2): whatever's lifetime (a topple's delay, a sale's) is up by `frame` goes."""
+        self._life().expire(self, frame, self.destroy)
 
     def living(self):
         return [b for b in self.bodies.values() if b.alive]
+
+    # ---- orders: one unit's, and a team's (the same for each member: ctx.order gives teams only)
+    def members(self, team):
+        """A team's living members; a team template's (several instances: CREATE_REINFORCEMENT_TEAM) the OLDEST
+        instance's that still has any (bench 11-10 engine_reinf old: the order by the name moved the first instance,
+        not the one made since; an emptied instance giving the name to the next is INFERRED)."""
+        named = self.named_team(team)
+        if named is not None:
+            return named[1]
+        crew = [b for b in self.living() if same_team(b.team, team)]
+        first = min((b.instance for b in crew), default=0)
+        return [b for b in crew if b.instance == first]
+
+    def add_team_lookup(self, look):
+        """An AI's team-name lookup (team -> (exists, living members) or None), asked by named_team (simai Brain)."""
+        self.team_names.append(look)
+
+    def take_personality(self, player, personality):
+        """The personality an AI player took when not the map's aiPersonality (simai; PLAYER_HAS_PERSONALITY reads it)."""
+        self.personality_of[player] = personality
+
+    def forget_sight(self):
+        """This moment's sight cleared (side_sees' per-tick cache; fight clears it each tick too): the proxy's look."""
+        self.seen = {}
+
+    def named_team(self, team):
+        """(exists, living members) of a team only a name gives (self.team_names: an AI's), None for any other."""
+        for look in self.team_names:
+            got = look(team)
+            if got is not None:
+                return got
+        return None
+
+    def absent_team(self, team):
+        """A named AI team with no instance now: the game finds no team by that name and the team conditions read
+        false (bench 11-11 aiskirm:m, CampAISkirmM_mcp_1111_221811: BalancedCleanup_SimpleAttack_0_0's
+        TEAM_COMPARE_NUM_MEMBERS == n holds for no n -- the counter stays 99 -- until the team is made; the same
+        name's TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF likewise, checks/engine_aiskirm.py _kind_members)."""
+        named = self.named_team(team)
+        if named is not None and not named[0]:
+            self.used.add('ai team absent')
+            return True
+        return False
+
+    def reinforce(self, team, waypoint, script):
+        """CREATE_REINFORCEMENT_TEAM(team, waypoint): a new instance of the team template (mission.templates:
+        {'Owner/name': {'units': [(template, min, max)], 'instances': n}}), every line's MAX count of its template, at
+        the waypoint -- made again on every call, teamMaxInstances or not (bench 11-10 engine_reinf two: 3 A + 2 B of
+        a min 2 / max 3, min 1 / max 2 template, a second call 6 / 4 with teamMaxInstances 1). The units stand on a
+        grid of SPREAD round the waypoint (INFERRED: the bench counts them inside 250 of it)."""
+        key = next((k for k in self.templates if same_team(k, team)), None)
+        p = self.point(waypoint)
+        if key is None or p is None:
+            self.used.add('reinforcement team unknown' if key is None else 'reinforcement waypoint unknown')
+            return
+        owner = key.split('/')[0]
+        self.instances[key] = k = self.instances.get(key, 0) + 1
+        self.made_frame[key] = self.frame_now()
+        made = [t for t, _, hi in self.templates[key]['units'] for _ in range(hi)]
+        side = math.ceil(math.sqrt(len(made)))
+        for i, t in enumerate(made):
+            dx, dy = (i % side - (side - 1) / 2) * SPREAD, (i // side - (side - 1) / 2) * SPREAD
+            b = self.add(f'#reinforcement {len(self.bodies)} {t}', t, owner, p[0] + dx, p[1] + dy, by=script.name,
+                         at=self.t)
+            b.team, b.instance = key, k
+            if self.blocks(b):
+                self.reblock()
+        self.active.add(key)
+        self.note('出现', f'增援 {key.split("/", 1)[-1]} 第 {k} 队（{len(made)} 个，{self.who(owner)}）在 {waypoint}')
+        self.change()
+
+    def off_teams(self, players):
+        """UNIT_AI_TRANSFER_ALL(p, 1): p's units now are taken off every team (its default one too); units made later
+        join theirs as ever (bench 11-09 engine_scripts9 memb3: teamSoviet_1 counts 0 while its placed dummy lives;
+        memb11 / memb12: with Lib_Skirmish_Setup the crews go empty, without it they die)."""
+        for b in self.living():
+            if b.owner in players:
+                b.team = ''
+        self.hidden_home -= set(players)
+
+    def hidden_members(self, team):
+        """The hidden objects on a map default team (Sim.hidden_home), for the member counts."""
+        return sum(1 for s, p in self.players.items() if p in self.hidden_home and same_team(self.mm.team(s), team))
+
+    def tactical(self, player):
+        """The player's SidesList aiTactical switch is on (255): its TEAM_HUNT hunts (bench 11-14 engine_acts_w). A
+        retail map's own sides; ours: the mission's side props (Mission.sides) over the container's (TACTICAL_SIDES)."""
+        if player == self.human:            # bench 11-08 engine_scripts1 hunt: the player's own team stayed
+            return False
+        sides = getattr(self.m, 'sides', None) or {}
+        key = player if self.retail else next((s for s, p in self.players.items() if p == player), None)
+        got = (sides.get(key) or {}).get('aiTactical')
+        if got is not None:
+            return int(got) == 255
+        return not self.retail and player in TACTICAL_SIDES
+
+    def team_active(self, team):
+        return any(same_team(t, team) for t in self.active)
+
+    def books_of(self, player):
+        """The protocol books a script's player names (the game's player mask: work/re l2_scripts1.md 1); a player
+        without one (civilian, neutral) or a name that is no player: none."""
+        names = list(self.books) if player == '<All Players>' else \
+            [self.human] if player in ('<All Human Players>', '<1st Human Player>') else [player]
+        return [self.books[n] for n in names if n in self.books]
+
+    def book_players(self, player):
+        """The players (with a protocol book) a script's player argument names, as books_of."""
+        names = list(self.books) if player == '<All Players>' else \
+            [self.human] if player in ('<All Human Players>', '<1st Human Player>') else [player]
+        return [n for n in names if n in self.books]
+
+    def spellbook_ready(self, player, power):
+        """SKIRMISH_SPECIAL_POWER_READY for a PlayerSpellBook power (its RequiredPlayerTech, simtech.power_needs): held,
+        its countdown run out, its GameDependency's RequiredObject standing. Bench 11-13 engine_acts_u: ready the
+        frame PLAYER_GRANT_SPECIAL_POWER gives it; false once the player's SovietConstructionYard was deleted (the
+        protocol kept); a countdown of 5 s false for 5 s. A protocol bought or held from the start: ready (INFERRED)."""
+        tech, objs = simtech.power_needs(power)
+        for p in self.book_players(player):
+            have = {b.template.lower() for b in self.living() if b.owner == p}
+            if self.books[p].has(tech) and self.frame_now() >= self.power_at.get((p, power.lower()), 0) and \
+                    all(o in have for o in objs):
+                return True
+        return False
+
+    def tech_due(self, frame):
+        """Rank experience frame by frame up to `frame` (simtech.Book.frame); the player's rank goes on the timeline
+        where the scripts deal in protocols."""
+        for f in range(self.tech_to + 1, frame + 1):
+            for p, book in self.books.items():
+                n = len(book.log)
+                book.frame(f)
+                if p != self.human:
+                    book.ai_buy(f)
+                if p == self.human and 'protocols' in self.used:
+                    for _, what in book.log[n:]:
+                        self.note('协议', f'玩家：{what}')
+        self.tech_to = max(self.tech_to, frame)
+
+    def order_move(self, b, where, attacking, given=(), skip=(), face=None):
+        """simorder.order_move (L5)."""
+        return simorder.order_move(self, self._order_peers(), b, where, attacking, given, skip, face)
+
+    def _order_peers(self):
+        """simorder.Peers: what the unit orders (L5) may reach on this Sim beyond the world, made on first use."""
+        p = self.__dict__.get('order_peers')
+        if p is None:
+            p = self.order_peers = simorder.Peers(self)
+        return p
+
+    def claims(self, b, skip=()):
+        """The spots other mobile ground units hold (x, y, radius): where they are going, or where they stand (the
+        pathfinder's goal cells, Pathfinder::updateGoal); none for aircraft in the air or for `skip`; none unless
+        HOLD_SPOTS. Benched 11-09: the rule is the game's (a01, two infantry sent alone to one point stood ~22 apart),
+        and the game's a4 gets all trucks to the 80-wide halt area (checks/a4.py hold PASS). The simulator's trucks
+        2 and 3, their goals moved 30 aside, ran on grid rows 40 off the road's middle the whole way, on the halt
+        area's edges, and drove past it: its ways were not pulled straight (Ground.pull since; now 2854,2479 and
+        2794,2521 at the halt at s315, like the switch off). On since bench 11-09 checks/engine_spots.py: three
+        trucks on teams of their own sent to one point (at once, or 20 s apart) end one on it, two 10-80 off (the
+        simulator 0 / 50 / 44.7). With it the a4 proxy's army stands apart, beats the second wave at x~1950 (off: all
+        three trucks shot there at s232-240, lost at s248), the convoy halts alive, and the run goes to the clock:
+        the proxy has no base-vehicle deploy, builds nothing and never takes 北营's command post (the level line's
+        to-do, docs/story/handoff-phase4.md). j7 / a3's compiled plays ended 0.5-3.6 s off their own scripts
+        (j7 126.9 vs 130.5): the script's 派 went straight to `send`, past this; it is order_move now, as its compiled
+        ATTACK_MOVE_NAMED_UNIT_TO (test_playcheck). The script's 走 is a group move (order_group) but compiles to one
+        MOVE_NAMED_UNIT_TO per unit -- no play has 走 for several units yet.
+        Whose spots (Generals' Pathfinder::checkDestination, refs AIPathfind.cpp 4924): an ally's (own units too) goal
+        always; an enemy's or a neutral's only where it stands still (UNIT_PRESENT_FIXED) and b cannot crush it --
+        a moving enemy's goal and a crushable one's spot are b's to take. Until 11-11 every unit's spot was held:
+        aicrush1's first Crush move (checks/engine_aicrush.py, work/re/c_crush_path_report.md) had its goal, the
+        guard's own spot, moved 31.6 aside, and the tank drove past the guard it was sent over. INFERRED for RA3
+        (its adjustDestination not read)."""
+        if b.surface == 'air' or not HOLD_SPOTS:
+            return []
+        out = []
+        for o in self.living():
+            if o is b or o in skip or o.speed <= 0 or o.surface == 'air' or o.scenery:
+                continue
+            moving = bool(o.path and o.dest)
+            if self.relation(b.owner, o.owner) != 'ALLIES' and (
+                    moving or (b.crusher is not None and o.crushable is not None and b.crusher > o.crushable)):
+                continue
+            out.append(tuple(o.dest if moving else (o.x, o.y)) + (o.radius,))
+        return out
+
+    def order_group(self, bodies, where, attacking):
+        """simorder.order_group (L5)."""
+        return simorder.order_group(self, self._order_peers(), bodies, where, attacking)
+
+    def column_ends(self, foot, p, attacking, given, skip):
+        """Generals' infantry column march (AIGroup::friend_moveInfantryToPos), its ends only: 3 columns (5 from 16
+        men) across the way in, COLUMN_GAP apart, filled by where the men stand across it; in each column the front man
+        at the point's row, the next COLUMN_GAP behind. Bench 2026-11-09 (testbench/retail_q1_spots.py, a01's squad):
+        3 columns x 2 rows, ~44-50 across and ~48 back, no side step on the second row -- Generals' 2.2 cells and its
+        every-other-one cell aside read as RA3 with 20-unit cells and no side step. The way in is taken straight from
+        the man nearest the group's middle (Generals: the last leg of one wide ground path); the column's own way
+        there and the conditions' constants (AIData MinDistanceForGroup, here 100; MinInfantryForGroup, here 3) are
+        INFERRED. Bench 2026-11-08 question 1: the squad's middle ~18-23 short of the point."""
+        mx, my = sum(b.x for b in foot) / len(foot), sum(b.y for b in foot) / len(foot)
+        mid = min(foot, key=lambda b: (b.x - mx) ** 2 + (b.y - my) ** 2)
+        ex, ey = p[0] - mid.x, p[1] - mid.y
+        n = math.hypot(ex, ey) or 1.0
+        ex, ey = ex / n, ey / n
+        nx, ny = -ey, ex
+        cols = 5 if len(foot) >= 16 else 3
+        across = sorted(foot, key=lambda b: -((b.x - mid.x) * nx + (b.y - mid.y) * ny))
+        size = max(len(foot) // cols if cols == 5 else (len(foot) + 1) // 3, 1)
+        column = {id(b): min(k // size, cols - 1) - cols // 2 for k, b in enumerate(across)}
+        rows = collections.Counter()
+        for b in sorted(foot, key=lambda b: -((b.x - mid.x) * ex + (b.y - mid.y) * ey)):    # front first
+            c = column[id(b)]
+            r = rows[c]
+            rows[c] += 1
+            side = COLUMN_GAP * c
+            want = (p[0] + side * nx - r * COLUMN_GAP * ex, p[1] + side * ny - r * COLUMN_GAP * ey)
+            self.order_move(b, want, attacking, given, skip)
+            given.append(tuple(b.dest or (b.x, b.y)) + (b.radius,))
+
+    def goal_off_nodes(self, b, want):
+        """A ground move's goal whose footprint touches an ore node's: the nearest goal clear of every node, on the
+        pathfinder's GRID cells (D round 176). The footprint is the unit's diam = floor(2 r / GRID + 0.3) cells
+        (Generals' pathfinder size rule, INFERRED for RA3), an even one round a cell corner, an odd one round a cell
+        centre; a node's is its base plate (OreNode.xml's 60 x 45 half-extent box, every other shape of it inside),
+        turned with the node, and a cell touching it is shut. Bench aiexpb50n (only node 44 by the slot, D175): the
+        miner sent to its slot (4215, 3039), 7 off the plate's edge, turned off its straight way 37 short and stood
+        at (4221, 3061) -- this rule's (4220, 3060), the nearest corner whose four cells clear the plate. Not yet
+        explained: aiexpb50 (node 45 too) stood at (4201, 3081), the rule's (4180, 3060)."""
+        if b.surface == 'air' or 'ORE_NODE' in b.kinds:
+            return want
+        nodes = [(o.x, o.y, o.angle) for o in self.living() if 'ORE_NODE' in o.kinds]
+        if not nodes:
+            return want
+        hx, hy = ORE_PLATE
+        diam = max(1, math.floor(2 * b.radius / GRID + 0.3))
+        m, off = diam * GRID / 2, 0.0 if diam % 2 == 0 else GRID / 2
+
+        def clear(x, y):
+            for nx, ny, a in nodes:
+                u = (x - nx) * math.cos(a) + (y - ny) * math.sin(a)
+                v = -(x - nx) * math.sin(a) + (y - ny) * math.cos(a)
+                if abs(u) < hx + m and abs(v) < hy + m:
+                    return False
+            return True
+        if clear(*want):
+            return want
+        cx, cy = round((want[0] - off) / GRID), round((want[1] - off) / GRID)
+        spots = [((cx + i) * GRID + off, (cy + j) * GRID + off) for i in range(-8, 9) for j in range(-8, 9)]
+        spots = [s for s in spots if clear(*s) and self.ground.open(b.surface, *s)]
+        if not spots:
+            return want
+        return min(spots, key=lambda s: (s[0] - want[0]) ** 2 + (s[1] - want[1]) ** 2)
+
+    def free_spot(self, b, want, held):
+        """Pathfinder::adjustDestination over 10-unit cells: `want` or the first spot of the spiral round it (400
+        tries) on ground b may stand on and clear of the spots `held` (centres at least the two radii apart);
+        aircraft in the air take `want` as it is. None found, or `want` off its ground (the way finder's closest
+        point decides, R7): `want`."""
+        if b.surface == 'air' or not held:
+            return want
+        step = 10.0
+
+        def ok(x, y):
+            return self.ground.open(b.surface, x, y) and \
+                all(math.hypot(x - gx, y - gy) >= max(b.radius + gr, 1.0) for gx, gy, gr in held)
+        if ok(*want) or not self.ground.open(b.surface, *want):
+            return want
+        i = j = 0
+        delta, left = 1, 400
+        while left > 0:
+            for di, dj, k in ((1, 0, delta), (0, 1, delta), (-1, 0, delta + 1), (0, -1, delta + 1)):
+                for _ in range(k):
+                    i, j, left = i + di, j + dj, left - 1
+                    x, y = want[0] + i * step, want[1] + j * step
+                    if ok(x, y):
+                        return (x, y)
+            delta += 2
+        return want
+
+    def held_up(self, b):
+        """simorder.held_up (L5)."""
+        return simorder.held_up(b)
+
+    def order_attack(self, b, target_name, force=False):
+        """simorder.order_attack (L5)."""
+        return simorder.order_attack(self, self._order_peers(), b, target_name, force)
+
+    def order_capture(self, b, target_name):
+        """simorder.order_capture (L5)."""
+        return simorder.order_capture(self, self._order_peers(), b, target_name)
+
+    def engineer_entry(self, b, target):
+        """The target building's EngineerContain admits the entering template/relation.
+        Unmeasured replacement/filters are gaps, never unconditional captures."""
+        cache = self._engineer_rules
+        if target.template not in cache:
+            cache[target.template] = simunits.engineer_contain(target.template, self.own)
+        rule = cache[target.template]
+        if rule is None or not rule['enabled']:
+            return None
+        if not rule['supported']:
+            self.gap('EngineerContain', target.template, '替换或复杂进入筛选未对拍')
+            return None
+        if b.template.lower() not in rule['allowed']:
+            return None
+        if rule['relations'] and self.relation(target.owner, b.owner) not in rule['relations']:
+            return None
+        return rule
+
+    def capture_due(self):
+        """simorder.capture_due (L5)."""
+        return simorder.capture_due(self, self._order_peers())
+
+    def deposit_due(self, frame):
+        self.wallet.deposit_due(self, frame)            # simmoney.Money (L4)
+
+    def earn(self, owner, amount):
+        self.wallet.earn(self, owner, amount)
+
+    def mine_due(self, frame):
+        self.mining.mine_due(self, frame, lambda owner, give: self.wallet.collect(self, owner, give))   # simmine (L2)
+
+    # ---- production: the second hook for simproxy's player (docs/engine/production.md, bench 2026-11-05)
+    def factories(self, owner):
+        """The owner's living structures that build units (their CommandSet has UNIT_BUILD buttons)."""
+        return [b for b in self.living() if b.owner == owner and 'STRUCTURE' in b.kinds and not b.scenery
+                and simunits.menu(b.template, self.own, b.upgrades)]
+
+    def holds_upgrade(self, owner, up, factory=None):
+        """Whether `factory` (else any of owner's structures) has the upgrade a unit's NeededUpgrade asks for. A PLAYER
+        upgrade: owner holds it (GIVE_PLAYER_UPGRADE). An OBJECT upgrade (the tiers): a factory with a
+        TechUpgradeReceiver for it (the Allied ones) has it while a yard / outpost of owner's holding it stands within
+        the radius (600, RECTANGULAR: |dx| and |dy| both, an inference); one without (Japan's) holds it itself
+        (bench 2026-11-07 engine_tech: GIVE_PLAYER_UPGRADE Tech2 builds no Guardian, the yard's Tech2 lets a factory
+        300 off build and not one 750 off, the factory's own Tech2 builds nothing, with or without the yard's)."""
+        low = up.lower()
+        if simunits.upgrade_type(up) != 'OBJECT':
+            return low in {u.lower() for u in self.player_ups.get(owner, ())}
+        fs = [factory] if factory is not None else \
+            [b for b in self.living() if b.owner == owner and 'STRUCTURE' in b.kinds and not b.scenery]
+        return any(self._tier_held(owner, f, low) for f in fs)
+
+    def _tier_held(self, owner, f, low):
+        recv = [r for r in simunits.tech_receivers(f.template, self.own) if low in r[0]]
+        if not recv:
+            return low in {u.lower() for u in f.upgrades}
+        for _, radius, rect, sources in recv:
+            for b in self.living():
+                if b.owner == owner and b.template.lower() in sources and low in {u.lower() for u in b.upgrades}:
+                    dx, dy = abs(b.x - f.x), abs(b.y - f.y)
+                    if (max(dx, dy) if rect else math.hypot(dx, dy)) <= radius:
+                        return True
+        return False
+
+    def can_build(self, owner, template, factory=None, ban=True):
+        """Whether owner's sidebar button for `template` is lit (at `factory`, else at any of owner's that builds it):
+        not banned (ALLOW_DISALLOW_ONE_BUILDING; ban=False: the ban not asked), every RequiredObject standing, every
+        NeededUpgrade held there (holds_upgrade; all of them is an inference)."""
+        if ban and (owner, template.lower()) in self.banned:
+            return False
+        status = self.buildable.get(template.lower(), 0)
+        if status == 1:                     # IGNORE_PREREQUISITES (bench 11-13 engine_acts_u: the press built a spy
+            return True                     # without Upgrade_AlliedTech2, the press before it refused)
+        if ban and status in (2, 3):        # NO / ONLY_BY_AI: a script's press builds all the same (bench, same run);
+            return False                    # the player's button refused (INFERRED, not benched)
+        objs, ups = simunits.needs(template, self.own)
+        have = {b.template.lower() for b in self.living() if b.owner == owner}
+        if not all(o.lower() in have for o in objs):
+            return False
+        if not ups:
+            return True
+        fs = [factory] if factory is not None else \
+            [f for f in self.factories(owner) if template in simunits.menu(f.template, self.own, f.upgrades)] or [None]
+        return any(all(self.holds_upgrade(owner, u, f) for u in ups) for f in fs)
+
+    def upgrade_sellers(self, owner, up):
+        """The owner's living structures whose buttons buy `up` now: not banned (ALLOW_DISALLOW_ONE_UPGRADE 0), its
+        GameDependency met (RequiredObject owned; NeededUpgrade held by the structure: inference), not held yet
+        (OBJECT: by that structure; PLAYER: by the owner), not in any of the owner's queues already."""
+        low = up.lower()
+        if (owner, low) in self.banned_ups or ('<All Players>', low) in self.banned_ups:
+            return []
+        objs, ups = simunits.upgrade_needs(up)
+        have = {b.template.lower() for b in self.living() if b.owner == owner}
+        if not all(o.lower() in have for o in objs):
+            return []
+        queued = any(j.get('upgrade', '').lower() == low for q in self.queues.values() for j in q
+                     if j['owner'] == owner)
+        out = []
+        for b in self.living():
+            if b.owner != owner or 'STRUCTURE' not in b.kinds or b.scenery or queued:
+                continue
+            for u, kind in simunits.upgrade_menu(b.template, self.own, b.upgrades):
+                if u.lower() == low and all(n in b.upgrades for n in ups) and not (
+                        u in b.upgrades if kind == 'OBJECT' else u in self.player_ups.get(owner, ())):
+                    out.append(b)
+        return out
+
+    def offers(self, owner):
+        """[(template or upgrade, cost, seconds)] owner can build or buy now, each once: the factories' units in their
+        sidebar order, then the upgrades its structures' buttons buy (Upgrade_AlliedTech2 at the yard)."""
+        out = {}
+        for f in self.factories(owner):
+            for t in simunits.menu(f.template, self.own, f.upgrades):
+                if t not in out and self.can_build(owner, t, f):
+                    out[t] = (t,) + simunits.production(t, self.own)
+        for b in self.living():
+            if b.owner == owner and 'STRUCTURE' in b.kinds and not b.scenery:
+                for u, _ in simunits.upgrade_menu(b.template, self.own, b.upgrades):
+                    if u not in out and self.upgrade_sellers(owner, u):
+                        out[u] = (u,) + simunits.upgrade_cost(u)
+        return list(out.values())
+
+    def order_build(self, owner, template, factory=None, press=False):
+        """Queue `template` at the owner's factory that builds it with the shortest queue (`factory`: that one only, a
+        Body -- a script's press of its build button, which bench 2026-11-08 engine_production e measured the same
+        as the player's click: paid as it builds, 160 frames to the engineer) -- or an upgrade at the structure
+        whose button buys it; nothing is paid now (produce_due pays frame by frame, an upgrade as a unit).
+        press: a script's press, queued even while the unit is banned (ALLOW_DISALLOW_ONE_BUILDING 0) -- it waits
+        unbuilt until let go (bench 2026-11-09 engine_production g); the player's click is not (the button is locked).
+        False: nothing of the owner's builds / buys it now."""
+        sellers = self.upgrade_sellers(owner, template)
+        if sellers:
+            b = min(sellers, key=lambda b: len(self.queues.get(b.name, [])))
+            cost, secs = simunits.upgrade_cost(template)
+            kind = dict(simunits.upgrade_menu(b.template, self.own, b.upgrades))[template]
+            self.queues.setdefault(b.name, []).append(
+                {'template': template, 'upgrade': template, 'kind': kind, 'owner': owner, 'cost': cost,
+                 'secs': secs, 'progress': 0.0, 'paid': 0, 'full': None})
+            self.used.add('production')
+            self.note('生产', f'{self.who(owner)} 在 {self.label(b)} 买 {template}（{cost}，{secs:g} 秒）')
+            return True
+        fs = [f for f in self.factories(owner) if template in simunits.menu(f.template, self.own, f.upgrades)
+              and self.can_build(owner, template, f, ban=not press) and (factory is None or f is factory)]
+        if not fs:
+            return False
+        f = min(fs, key=lambda f: len(self.queues.get(f.name, [])))
+        cost, secs = simunits.production(template, self.own)
+        self.queues.setdefault(f.name, []).append(
+            {'template': template, 'owner': owner, 'cost': cost, 'secs': secs, 'progress': 0.0, 'paid': 0,
+             'full': None})
+        self.used.add('production')
+        self.note('生产', f'{self.who(owner)} 在 {self.label(f)} 排 {template}（{cost}，{secs:g} 秒）')
+        return True
+
+    def produce_due(self, frame):
+        """Each factory's queue up to `frame`, a frame at a time: the first job not yet full goes on 100 / frames
+        (single float, so a 150-frame build fills at the 151st), paying up to ceil(cost x progress / 100) -- a frame
+        the owner cannot pay the difference stands still; the next job starts the frame after one fills; a full one
+        comes out DoorOpeningTime later at the factory's UnitCreatePoint (turned with it), on the factory's team,
+        and walks to its NaturalRallyPoint (bench 2026-11-05 engine_production a-d: 150 / 151 frames, 54 paid at
+        the 16th, a 250 budget stalls at 3 left, out 10 frames after full). A banned unit's job
+        (ALLOW_DISALLOW_ONE_BUILDING 0) stands, keeps what it paid and goes on when let go -- not cancelled, not
+        refunded (bench 2026-11-09 engine_production g). A factory gone takes its queue along."""
+        start = frame if self.produced_to is None else self.produced_to + 1
+        self.produced_to = frame
+        if not self.queues:
+            return
+        for fr in range(start, frame + 1):
+            for name in list(self.queues):
+                f, q = self.bodies.get(name), self.queues[name]
+                if f is None or not f.alive or not q:
+                    del self.queues[name]
+                    continue
+                create, rally, door = simunits.exit_of(f.template, self.own)
+                for job in [j for j in q if j['full'] is not None and fr >= j['full'] + (0 if 'upgrade' in j else door)]:
+                    q.remove(job)
+                    if 'upgrade' in job:
+                        self.upgrade_done(f, job)
+                    else:
+                        self.produce_out(f, job, create, rally)
+                job = next((j for j in q if j['full'] is None), None)
+                # Global unit gate measured with AlliedEngineer only; applying it to other unit templates
+                # is INFERRED. Upgrade queues and UI request eligibility have not been measured here.
+                if job is None or 'upgrade' not in job and (
+                        (job['owner'], job['template'].lower()) in self.banned or
+                        job['owner'] in self.unit_construction_disabled):
+                    continue                # banned: the first job stands, paid so far kept, the queue behind it too
+                step = f32(100.0 / self.build_frames(job['secs'], job['owner']))
+                nxt = f32(job['progress'] + step)
+                owe = min(job['cost'], math.ceil(round(job['cost'] * nxt / 100.0, 9))) - job['paid']
+                have = self.money.get(job['owner'], 0)
+                if owe > have:
+                    continue
+                self.money[job['owner']] = have - owe
+                job['paid'] += owe
+                job['progress'] = nxt
+                if nxt >= 100.0:
+                    job['full'] = fr
+
+    def upgrade_done(self, b, job):
+        """A bought upgrade arrives: OBJECT on the structure that bought it, PLAYER on its owner."""
+        up = job['upgrade']
+        if job['kind'] == 'OBJECT':
+            self.give_upgrade(b, up)
+        else:
+            self.player_ups.setdefault(job['owner'], set()).add(up)
+        self.note('生产', f'{self.who(job["owner"])} 的 {self.label(b)} 买好 {up}')
+        self.change()
+
+    def give_upgrade(self, b, up):
+        """An object upgrade on b (bought, or NAMED_RECEIVE_UPGRADE): a SPEED modifier acts on a unit."""
+        self._upgrade(b, up, True)
+
+    def _upgrade(self, b, up, on):
+        newly_held = up not in b.upgrades
+        (b.upgrades.add if on else b.upgrades.discard)(up)
+        if on:
+            b.up_since[up] = self.frame_now()
+        else:
+            b.up_since.pop(up, None)
+        simlevel.receive(self, b, up, on, newly_held, self.__dict__.setdefault('_levelup_rules', {}))
+        self.modify(b)
+
+    def xml_of(self, template):
+        """The template's XML (a mission's own, else retail; '' where none), kept."""
+        cache = self.__dict__.setdefault('_xmls', {})
+        if template not in cache:
+            try:
+                cache[template] = simunits._xml(template, self.own) or ''
+            except (OSError, ValueError):
+                cache[template] = ''
+        return cache[template]
+
+    def weapon_upgrades(self, b):
+        """The upgrade names a <Weapon Upgrade="X"> line tests (simunits.pick_weapons): the object's and its
+        player's (INFERRED: the engine's object test also takes the player's upgrades, as Generals').
+        simgarrison handles the bounded single-passenger SecondaryObjectListener grant."""
+        return set(b.upgrades) | set(getattr(self, 'player_ups', {}).get(b.owner, ()))
+
+    def modify(self, b):
+        """simmodifier.Modifiers.modify (L2): b's acting values from the attribute modifiers on it."""
+        self._modifiers().modify(self, b, self.toggles_of, self.cold_of, self.weapon_upgrades, self.player_ups)
+
+    def _modifiers(self):
+        """The simmodifier.Modifiers (L2), made on first use (a Sim built without __init__ has none yet)."""
+        m = self.__dict__.get('modifiers')
+        if m is None:
+            m = self.modifiers = simmodifier.Modifiers()
+        return m
+
+    def relation(self, a, b):
+        """ENEMIES / NEUTRAL / ALLIES: how owner b stands to owner a (an aura's ObjectFilter Relationship)."""
+        if self.enemy(a, b):
+            return 'ENEMIES'
+        if a != b and CIV in (a, b):
+            return 'NEUTRAL'
+        return 'ALLIES'
+
+    def aura_tick(self):
+        """simmodifier.Modifiers.aura_tick (L2): the auras hang their modifiers, then every modified body is re-set."""
+        self._modifiers().aura_tick(self, self.relation, self.modify)
+
+    def power(self, owner):
+        """(supply, demand) of the owner: its living objects' EnergyProduction, > 0 summed into the supply, < 0 into
+        the demand (RA3 1.13 (work/re/l2_construction.md) leaves out an object under construction or powered down: the simulator has
+        neither -- a building stands built from the frame it appears)."""
+        sup, dem = self.base_power.get(owner, 0), 0
+        now = self.frame_now()
+        for b in self.living():
+            if b.owner == owner and not (b.unpack_end is not None and now < b.unpack_end):
+                e = self.energies.get(b.template)
+                if e is None:
+                    e = self.energies[b.template] = simunits.energy(b.template, self.own)
+                sup, dem = (sup + e, dem) if e > 0 else (sup, dem - e)
+        return (0 if self.infiltrators.disabled(owner) else sup), dem
+
+    def short_of_power(self, owner):
+        sup, dem = self.power(owner)
+        return self.infiltrators.disabled(owner) or sup < dem
+
+    def unpowered(self, b):
+        """Holds its fire: still unpacking, or POWERED while its owner is short of power (bench 2026-11-07
+        engine_powerdef: a Tesla coil of a player with supply 0 < 75 never fires; the plant deleted, it stops within a
+        shot's interval; a plant made by script unpacks 255 frames short of power, the coil's next kill 70 frames
+        after that)."""
+        if b.unpack_end is not None and self.frame_now() < b.unpack_end:
+            return True
+        return 'POWERED' in b.kinds and self.short_of_power(b.owner)
+
+    def build_frames(self, secs, owner):
+        """A unit's build frames, worked out again every frame (RA3 1.13, work/re/l2_construction.md): BuildTime x 15 with enough power;
+        short of it 15 x trunc(BuildTime / power_factor) -- the division and its truncation on the seconds (bench
+        2026-11-05 engine_production c: supply 0, f 0.3, 10 s -> 495 frames; d: 50 / 75, f 0.5 -> 300)."""
+        f = power_factor(*self.power(owner))
+        if f >= 1.0:
+            return max(1, int(round(secs * simunits.LIFE_FPS)))
+        return max(1, math.trunc(secs / f) * simunits.LIFE_FPS)
+
+    def produce_out(self, f, job, create, rally):
+        c, s = math.cos(f.angle), math.sin(f.angle)
+
+        def at(p):
+            return f.x + p[0] * c - p[1] * s, f.y + p[0] * s + p[1] * c
+        b = self.add(f'#made {len(self.bodies)} {job["template"]}', job['template'], job['owner'], *at(create),
+                     by=f.name, at=self.t)
+        b.team, b.angle = f.team, f.angle
+        self.note('生产', f'{self.label(f)} 出 {job["template"]}')
+        if rally is not None:               # pushed out RALLY_PUSH along the factory's centre -> rally line
+            r = math.hypot(*rally)
+            k = (r + RALLY_PUSH) / r if r else 1.0
+            b.mode = 'move'
+            self.send(b, at((rally[0] * k, rally[1] * k)))
+        self.change()
+
+    def order_guard(self, b, area):
+        """simorder.order_guard (L5)."""
+        return simorder.order_guard(self, self._order_peers(), b, area)
+
+    def power_refusal(self, b, power, x, y):
+        """simorder.power_refusal (L5)."""
+        return simorder.power_refusal(self, self._order_peers(), b, power, x, y)
+
+    def order_power(self, b, power, pos):
+        """simorder.order_power (L5)."""
+        return simorder.order_power(self, self._order_peers(), b, power, pos)
+
+    def order_transform(self, b, power):
+        """simorder.order_transform (L5)."""
+        return simorder.order_transform(self, self._order_peers(), b, power)
+
+    def order_stop(self, b):
+        """simorder.order_stop (L5)."""
+        return simorder.order_stop(b)
+
+    def stand(self, b):
+        """simorder.stand (L5)."""
+        return simorder.stand(b)
+
+    def idle(self, b):
+        """simorder.idle (L5)."""
+        return simorder.idle(self._order_peers(), b)
+
+    def seq_due(self):
+        """simorder.seq_due (L5)."""
+        return simorder.seq_due(self, self._order_peers())
+
+    def path_start(self, label, at):
+        """simorder.path_start (L5)."""
+        return simorder.path_start(self, label, at)
+
+    def path_next(self, at):
+        """simorder.path_next (L5)."""
+        return simorder.path_next(self, at)
+
+    def order_follow(self, bodies, label, attacking, exact=False, start=None, as_team=False):
+        """simorder.order_follow (L5)."""
+        return simorder.order_follow(self, self._order_peers(), bodies, label, attacking, exact, start, as_team)
+
+    def follow_leg(self, movers, how):
+        """simorder.follow_leg (L5)."""
+        return simorder.follow_leg(self, self._order_peers(), movers, how)
+
+    def follow_due(self):
+        """simorder.follow_due (L5)."""
+        return simorder.follow_due(self, self._order_peers())
 
     def enemy(self, a, b):
         """Player a takes player b as an enemy."""
         if (a, b) in self.relations:
             return self.relations[(a, b)] == 'Enemy'
+        # the container (Heidelberg, maps/island.py) has Soviet_1..6 all in Player_1's playerEnemies, and they fire
+        # unprompted, woken or not (bench 11-09 engine_scripts9b rel 丁: Soviet_4's tank, no AI script, shoots at s1)
+        players = set(self.players.values())
         return {a, b} == {self.human, self.foe} or (a != b and CIV not in (a, b) and self.human in (a, b)
-                                                   and (a in self.ai or b in self.ai))
+                                                   and (a in self.ai or b in self.ai or {a, b} <= players))
+
+    def hostile(self, a, t):
+        """Body a takes body t as an enemy: the team overrides first, then the players (Generals Team::getRelationship:
+        a's team to t's team, a's team to t's owner, a's owner to t's team, the players). INFERRED; pending_scripts9 rel"""
+        at, tt = a.team or '', t.team or ''
+        tests = ((self.team_team_rel, lambda x, y: same_team(at, x) and same_team(tt, y)),
+                 (self.team_player_rel, lambda x, y: same_team(at, x) and t.owner == y),
+                 (self.player_team_rel, lambda x, y: a.owner == x and same_team(tt, y)))
+        for table, hit in tests:
+            for (x, y), r in table.items():
+                if hit(x, y):
+                    return r == 'Enemy'
+        return self.enemy(a.owner, t.owner)
+
+    def start_camera(self):
+        """Where the camera looks before a script moves it: the map's start site (contract K5), else the middle."""
+        start = (getattr(self.m.map, 'SITES', None) or {}).get('start')
+        return (start.x, start.y) if start is not None else (2500.0, 2500.0)
 
     def point(self, name):
-        """A waypoint, a trigger area's middle, a site, a mark, a named object."""
+        """A waypoint, a trigger area's middle, a site, a mark, a named object, map coordinates '@x,y' (model.coord)."""
+        c = coord(name)
+        if c is not None:
+            return c
         if name in self.waypoints:
             return self.waypoints[name]
         if name in self.areas:
@@ -469,27 +2033,105 @@ class Sim:
     def note(self, kind, text):
         self.log.append((self.t, kind, text))
 
+    def gap(self, kind, name, what=''):
+        """Records what this run met and the simulator does not act on -- one place for every such skip, so a gap shows
+        when a play meets it instead of being passed over in silence (the user's rule 11-08: fix by class). kind: a
+        GAP_* name; Sim.unmodeled[(kind, name)] = {'n' times, 't' the first time, 'what' the first note}."""
+        g = self.unmodeled.get((kind, name))
+        if g is None:
+            self.unmodeled[(kind, name)] = {'n': 1, 't': self.t, 'what': what}
+        else:
+            g['n'] += 1
+
+    def show_caption(self, text, secs):
+        """The military caption box (E6): one line, replaced by the next, gone after its own seconds."""
+        if self.box_log and self.box_log[-1][1] > self.t:
+            self.box_log[-1][1] = self.t
+        self.box_log.append([self.t, self.t + float(secs), text])
+
+    def show_subtitle(self, text):
+        """The dialogue panel (E6): a dubbed line's subtitle joins the stack; PANEL_CLEAR after the last the stack goes."""
+        if not self.panel_log or self.t >= self.panel_log[-1][-1][0] + PANEL_CLEAR:
+            self.panel_log.append([])
+        self.panel_log[-1].append((self.t, text))
+
+    def late_captions(self):
+        """The 功能 captions that came up more than FUNC_LATE after their event (K1: none may), and the ones still waiting
+        (the run ended, or a scene held them) as (flag, asked, None)."""
+        def wait(a, b):                         # the seconds from a to b the player could see (no scene running)
+            return (b - a) - sum(max(0.0, min(b, e if e is not None else b) - max(a, s)) for s, e in self.scenes)
+        return [x for x in self.up if wait(x[1], x[2]) > FUNC_LATE + 1e-6] + \
+            [(f, t, None) for f, t in self.asked.items() if wait(t, self.t) > FUNC_LATE]
+
+    def box_at(self, t):
+        """The caption up at t, or None."""
+        return next((x for a, b, x in self.box_log if a <= t < b), None)
+
+    def panel_at(self, t):
+        """The subtitles stacked in the panel at t."""
+        return [x for g in self.panel_log if g[0][0] <= t < g[-1][0] + PANEL_CLEAR for a, x in g if a <= t]
+
     def change(self):
         self.last_change = self.t
 
-    def send(self, b, target, by=''):
-        if b.guessed:                               # its speed matters now: say when it is only a guess
-            self.guessed.add(f'{b.template}: {", ".join(b.guessed)}')
-        if not b.alive or b.speed <= 0:
-            return
-        p = self.point(target) if isinstance(target, str) else target
-        if p is None:
-            self.note('卡住', f'{self.label(b)} 找不到要去的地方 {target}')
-            return
-        path = self.ground.route(b.surface, (b.x, b.y), p)
-        b.dest = p
-        if path is None:
-            self.note('卡住', f'{self.label(b)} 到不了 {target if isinstance(target, str) else "目标"}'
-                              f'（{b.surface} 没有路）')
-            b.path = []
-            return
-        b.path = path
+    def reach(self, b, target):
+        """R3: how near (centre to centre) an attacker goes to its target: the longest range of its weapons that can
+        hit it, plus both bounding radii (R8, `in_range`), less ATTACK_SLACK (0: it has none -- it goes to the target
+        itself)."""
+        r = [self.reach_of(w) for w in b.weapons if self.can_hit(w, target)]
+        return max(max(r) + b.radius + target.radius - ATTACK_SLACK, 1.0) if r else 0.0
+
+    @staticmethod
+    def reach_of(w):
+        """R8: how far weapon w reaches edge to edge: (AttackRange - UNDERSIZE) x the range multiplier (D162 read);
+        the minimum range, the height bonus and UseCenterForRangeCheck are not modelled."""
+        return max(w['range'] - w.get('undersize', UNDERSIZE), 0.0)
+
+    @staticmethod
+    def in_range(a, t, w, d=None):
+        """R8: a weapon reaches when the 2D gap between the two bounding circles is within its range (Generals
+        Weapon::isWithinAttackRange, FROM_BOUNDINGSPHERE_2D: the centre distance less both radii); `d` the centre
+        distance when known. Bench 2026-11-07 engine_acquire: a Guardian (150, radius 23.3) fires at one 180 off."""
+        if d is None:
+            d = math.hypot(t.x - a.x, t.y - a.y)
+        return d - a.radius - t.radius <= Sim.reach_of(w)
+
+    def send(self, b, target, by='', reach=0.0, face=None):
+        """Put b on a way to target (a point, or a waypoint / area name); face: the facing (radians) to turn to at the
+        way's end (move), None for none -- a new way drops an old one's. From standing it first turns in place toward
+        its way (move, Sim.turn), whoever gave the order. The rule is simlocomotion.go_to (L2); `by` is unused."""
+        simlocomotion.go_to(self, b, target, reach, face, self.frame_movers, self.topples)
+
+    def turn(self, b, want, dt, within=0.0):
+        """Turn b in place toward the facing `want` (radians) for up to dt seconds, at its turn_rate a frame (bench
+        airev1t / airevgt / airevat, A round 227, tests/test_turn_rate.py: 360 / the Locomotor's TurnTimeSeconds a
+        second from the order frame; TurnThresholdHS is not seen -- a 51 deg turn is made in place too). Stops
+        `within` degrees short (DRIVE_WITHIN: the rest is made as it drives). Returns the seconds it took (dt: not
+        there yet). Turning to its face (within 0) drops the face once it is reached: Unit.moving is false from then.
+        turn_rate None (aircraft, no locomotor): at once."""
+        off = math.degrees(math.atan2(math.sin(want - b.angle), math.cos(want - b.angle)))
+        need = abs(off) - within
+        if need <= 1e-9 or b.turn_rate is None:
+            if within <= 0:
+                b.angle, b.face = want, None
+            return 0.0
+        per_frame = b.turn_rate / simunits.LIFE_FPS
+        frames = math.ceil(need / per_frame - 1e-9)
+        took = frames / simunits.LIFE_FPS
+        if dt <= 0:
+            return dt
+        if took <= dt + 1e-9:
+            if within <= 0:
+                b.angle, b.face = want, None
+            else:
+                a = b.angle + math.radians(math.copysign(min(abs(off), frames * per_frame), off))
+                b.angle = math.atan2(math.sin(a), math.cos(a))
+            self.change()
+            return took
+        a = b.angle + math.radians(math.copysign(b.turn_rate * dt, off))
+        b.angle = math.atan2(math.sin(a), math.cos(a))
         self.change()
+        return dt
 
     def label(self, b):
         role = next((k for k, r in self.m.cast.items() if r.name == b.name and b.name), '')
@@ -503,18 +2145,53 @@ class Sim:
         if b.deleted:
             return self.t <= b.died_at
         self.used.add('death linger')
-        return self.t - b.died_at <= LINGER
+        return self.t - b.died_at <= b.linger + 1e-9
+
+    def dying(self, b):
+        """NAMED_DYING: killed (not deleted) and still lying -- the kill frame at least; a crushed infantryman its
+        SlowDeath's DestructionDelay (bench 11-06 engine_crush: 127 frames; a plant killed by script: one frame)."""
+        return b is not None and not b.alive and not b.deleted and self.t - b.died_at <= b.linger + 1e-9
+
+    def sell(self, b):
+        """simbody.Life.sell (L2): SELL_OBJECT -- the refund paid at once (simmoney.Money.credit), deleted 30 frames on."""
+        self._life().sell(self, b, self.garrison, self.modify, self.wallet.credit)
 
     def destroy(self, b, why, delete=False):
-        if not b.alive:
-            return
-        b.alive, b.deleted, b.path, b.died_at = False, delete, [], self.t
-        if not delete:
-            b.hp = 0.0
-        self.note('删除' if delete else '摧毁', f'{self.label(b)}（{why}）')
-        self.change()
-        if self.blocks(b):
-            self.reblock()
+        """simbody.Life.destroy (L2): b killed (or deleted): its spawn, garrison, death weapons and air crash."""
+        self._life().destroy(self, b, why, delete, self.garrison, self.death_blasts, self.impact_ground_z)
+
+    def _life(self):
+        """The simbody.Life (L2), made on first use (a Sim built without __init__ has none yet)."""
+        m = self.__dict__.get('life')
+        if m is None:
+            m = self.life = simbody.Life()
+        return m
+
+    def air_crash(self, b):
+        """simbody.Life.air_crash (L2): an aircraft killed in the air leaves its falling wreck's death weapon."""
+        self._life().air_crash(self, b, self.death_blasts, self.impact_ground_z)
+
+    # ---- the engine model's World: what its script engine asks of the objects (the rest it does itself)
+    def condition(self, eng, name, args):
+        if name in RA3_ONLY:
+            self.ra3_only.add(name)
+        return self.cond(name, self.this_player(eng, args))
+
+    def action(self, eng, name, args):
+        self.act(name, self.this_player(eng, args), eng.script)
+
+    @staticmethod
+    def this_player(eng, args):
+        """'<This Player>' as the game reads it: the player whose script list the script is in (the engine's side;
+        retail maps' lists are per player, ours have one unnamed list and never use it)."""
+        side = getattr(eng, '_side', '')
+        return [side if a == '<This Player>' and side else a for a in args]
+
+    def update(self, eng):
+        """Units move and fight in step(), once a DT tick."""
+
+    def difficulty(self, side):
+        return None                             # the run's level ('difficulty side')
 
     # ---- conditions
     def holds(self, c):
@@ -529,72 +2206,93 @@ class Sim:
         return (not v) if neg else v
 
     def body(self, name):
+        if name in self.refs:                       # R2: a reference reads as the object it points at, dead or not
+            return self.refs[name]
         return self.bodies.get(name)
 
+    def of_types(self, name):
+        """A script's object type argument (type 61): an object list's types (any player's list, any case) or that
+        one type, lower case."""
+        return self.object_lists.get(str(name).lower()) or {str(name).lower()}
+
+    def nearest_ref(self, template, owner, team, ref, unnamed=True):
+        """R2: SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER -- point `ref` at the living `template` of
+        `owner` nearest to `team`'s middle (its members' mean place; bench 2026-11-07 engine_ref a / a2: not the first
+        member's nor any member's nearest, whatever order they were made in), objects with a script name skipped
+        (ref_b); an empty team's middle reads (0, 0) (ref_c: the wall nearest the map's corner was picked -- a
+        guess as to why). None of the type: `ref` left as it was (not read on the bench)."""
+        self.used.add('nearest ref')
+        crew = self.members(team)
+        want = self.of_types(template)
+        cands = [b for b in self.living() if b.owner == owner and b.template.lower() in want
+                 and (b.name.startswith('#') or not unnamed)]
+        if not cands:
+            return
+        mx = sum(m.x for m in crew) / len(crew) if crew else 0.0
+        my = sum(m.y for m in crew) / len(crew) if crew else 0.0
+        self.refs[ref] = min(cands, key=lambda c: math.hypot(c.x - mx, c.y - my))
+
     def cond(self, name, a):
-        if name == 'FLAG':
-            return int(self.flags.get(a[0], 0)) == int(a[1])
-        if name == 'TIMER_EXPIRED':
-            if a[0] not in self.timers:
-                self.used.add('timer unset')
-                return False
-            return self.t >= self.timers[a[0]]
-        if name == 'COUNTER':
-            return CMP[a[1]](self.counters.get(a[0], 0), a[2])
-        if name in ('NAMED_DESTROYED', 'NAMED_NOT_DESTROYED'):
-            b = self.body(a[0])
-            if b is None:
-                self.used.add('destroyed unborn')
-                return False
-            # killed: destroyed at once; deleted: only from the next frame (the game's destroy list at the frame's end)
-            dead = not b.alive and not (b.deleted and self.t <= b.died_at)
-            return dead if name == 'NAMED_DESTROYED' else not dead
-        if name in ('NAMED_INSIDE_AREA', 'NAMED_OUTSIDE_AREA'):
-            # the game asks no question of life: a dying unit is where it fell; a removed one is outside every area
-            b = self.body(a[0])
-            within = bool(self.present(b) and inside(self.areas[a[1]], b.x, b.y))
-            return within if name == 'NAMED_INSIDE_AREA' else not within
-        if name == 'PLAYER_HAS_OBJECT_COMPARISON':
-            # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false)
-            n = sum(1 for b in self.bodies.values() if self.present(b) and b.owner == a[0]
-                    and b.template.lower() == a[3].lower())
-            return CMP[a[1]](n, a[2])
-        if name == 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA':
-            n = sum(1 for b in self.living() if b.owner == a[0] and b.template.lower() == a[3].lower()
-                    and inside(self.areas[a[4]], b.x, b.y))
-            return CMP[a[1]](n, a[2])
-        if name == 'PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA':
-            self.used.add('kind all players')
-            kind = a[3][2] if isinstance(a[3], tuple) else a[3]
-            n = sum(1 for b in self.living() if kind in b.kinds and inside(self.areas[a[4]], b.x, b.y))
-            return CMP[a[1]](n, a[2])
-        if name == 'SKIRMISH_PLAYER_HAS_UNITS_IN_AREA':
-            self.used.add('units in area')
-            return any(b.owner == a[0] and not b.scenery and inside(self.areas[a[1]], b.x, b.y) for b in self.living())
-        if name == 'NAMED_OWNED_BY_PLAYER':
-            b = self.body(a[1])
-            return bool(self.present(b) and b.owner == a[0])
-        if name == 'NAMED_ATTACKED_BY_PLAYER':
-            # the last damage's player only (ActiveBody's m_lastDamageInfo): a script's kill or another's hit clears it
-            b = self.body(a[0])
-            return bool(self.present(b) and b.last_hit == a[1])
-        if name == 'UNIT_HEALTH':
-            b = self.body(a[0])                 # a dying unit reads 0 %
-            return bool(self.present(b) and CMP[a[1]](b.health if b.alive else 0.0, a[2]))
-        if name == 'NAMED_DISCOVERED':
-            self.used.add('discovered')
-            b = self.body(a[1])
-            return bool(b and self.sees(b.x, b.y, b.surface == 'air'))
-        if name == 'CAMERA_ENTERED_AREA':
-            return bool(self.camera and inside(self.areas[a[0]], *self.camera))
-        self.unknown[name] = self.unknown.get(name, 0) + 1
-        return False
+        return simcond.cond(self, name, a)             # the conditions as a lookup table (ADR 0029 step 3)
+
+    def team_entered(self, a):
+        """TEAM_ENTERED_AREA_PARTIALLY (team, area, k): one frame as a member (living, not INERT / MOVE_ONLY, on
+        surface k) comes into the area (Generals Team::didPartialEnter). engine_enter all, 进入 10000 / 20000 / 30001 /
+        30002 / 30003: the Guardians count on the first frame (placed inside Home), AGAIN on the frame each leaves Home
+        -- but not on leaving F, entered later. INFERRED: an entry seen on the first frame stays marked until the
+        member leaves (the program's area record of a placed unit; a 'stale mark' rule, every exit counting once after an
+        entry, needs go 1's exit from F and go 2's entry to share a frame: the hypothesis table, round 245)."""
+        key = ('entered', a[0], a[1], int(a[2]))
+        st = self.cond_memory.setdefault(key, {'frame': None, 'val': False, 'was': {}, 'start': set()})
+        now = self.frame_now()
+        if st['frame'] == now:
+            return st['val']
+        face = SURFACES[int(a[2])] if 0 <= int(a[2]) < len(SURFACES) else None
+        crew = [b for b in self.members(a[0]) if not ({'INERT', 'MOVE_ONLY'} & set(b.kinds)) and face in self.surfaces(b)]
+        val = False
+        for b in crew:
+            ins = inside(self.areas[a[1]], b.x, b.y)
+            was = st['was'].get(id(b))
+            if was is None:
+                hit = ins
+                if ins:
+                    st['start'].add(id(b))
+            else:
+                hit = (ins and not was) or (was and not ins and id(b) in st['start'])
+                if was and not ins:
+                    st['start'].discard(id(b))
+            st['was'][id(b)] = ins
+            val = val or hit
+        st['frame'], st['val'] = now, val
+        return val
+
+    def surfaces(self, b):
+        """The Locomotor Surfaces of a body's NORMAL set (TEAM_INSIDE_AREA_*'s k reads their bits, D 119); a body
+        without one (a building) the ground only."""
+        cache = self.__dict__.setdefault('_surfaces', {})
+        if b.template not in cache:
+            try:
+                got = simunits.resolve(b.template, self.own, simunits._surfaces())['surf']
+            except (OSError, ValueError, KeyError, TypeError):
+                got = None
+            # an amphibious one's NORMAL set reads GROUND only (the Bullfrog): its water INFERRED from the KindOf
+            cache[b.template] = (frozenset(got) if got else frozenset({'GROUND'})) | (
+                {'WATER'} if 'AMPHIBIOUS' in b.kinds else set())
+        return cache[b.template]
+
+    def all_revealed(self):
+        """Whether the whole map is open to the player this frame (MAP_REVEAL_ALL_PERM, or a MAP_REVEAL_ALL not lapsed)."""
+        return self.reveal_all or self.frame_now() < self.reveal_all_until
 
     def sees(self, x, y, air=False):
         """Whether the player sees a point (a body there, airborne or not)."""
-        if self.reveal_all:
+        if self.all_revealed():
             return True
-        if any(math.hypot(x - rx, y - ry) <= r for rx, ry, r in list(self.reveals.values()) + self.peeks):
+        if any(math.hypot(x - rx, y - ry) <= r for rx, ry, r in list(self.reveals.values()) + self.peeking()):
+            return True
+        if any(inside(self.areas[k], x, y) for k in self.reveal_areas.values() if k in self.areas):
+            return True
+        if self.infiltrators.sees(self.human, x, y, air):
             return True
         return any(b.owner == self.human and self.looks(b, x, y, air) for b in self.living())
 
@@ -607,7 +2305,7 @@ class Sim:
         if not self.high or air or v.surface == 'air':
             return True
         self.used.add('high ground')
-        return self.ground.z(x, y) <= self.ground.z(v.x, v.y) + HIGH_STEP
+        return self.ground.z(x, y) <= self.ground.z(v.x, v.y) + v.clear_height
 
     def side_sees(self, side, t):
         """Whether a side (it or a friend of it) sees body t, this tick; the player's reveals count for the player."""
@@ -618,6 +2316,8 @@ class Sim:
                 ok = True
             elif side == self.human:
                 ok = self.sees(t.x, t.y, air)
+            elif side in self.revealed_to:
+                ok = True
             else:
                 ok = any(not self.enemy(side, v.owner) and v.owner != CIV and self.looks(v, t.x, t.y, air)
                          for v in self.living())
@@ -625,202 +2325,62 @@ class Sim:
         return self.seen[key]
 
     # ---- actions
+    def played(self, name, a):
+        """A sound or a movie started: when HAS_FINISHED_AUDIO / _VIDEO will hold (AUDIO_LEAD ...)."""
+        if name in SOUND_PLAYS:
+            n = self.audio_len(a[0])
+            if n is None:
+                self.gap(GAP_ACTION, name, f'{a[0]} 时长读不到：按 {AUDIO_GUESS} 秒算播完')
+                n = AUDIO_GUESS
+            self.audio_end[a[0]] = self.t + AUDIO_LEAD + n
+        elif name == 'MOVIE_PLAY_RADAR':
+            n = self.video_len(a[0])
+            if n is None:
+                self.gap(GAP_ACTION, name, f'{a[0]} 时长读不到：按 {VIDEO_GUESS} 秒算播完')
+                n = VIDEO_GUESS
+            self.video_end[a[0]] = self.t + n
+        elif name == 'MOVIE_PLAY_FULLSCREEN':
+            self.video_end[a[0]] = None
+
+    def audio_len(self, event):
+        """Seconds one of our dubbed lines plays (its recording in the mission's voice pack), else None (a retail
+        line, a unit's voice)."""
+        items = getattr(getattr(self.m, 'voice', None), 'items', None) or ()
+        wav = next((it[1] for it in items if it[0] == event and not it[3]), None)
+        if not wav:
+            return None
+        import wave
+        try:
+            with wave.open(wav) as w:
+                return w.getnframes() / w.getframerate()
+        except (wave.Error, OSError, EOFError):
+            return None
+
+    def video_len(self, clip):
+        """Seconds a radar clip plays: its VP6 header (frames, rate) -- ours from the mission's clips, a retail one
+        from the game's loose <GAME>/Data/Movies/<clip>.vp6 -- else None. Bench 11-09 (checks/movie.py retail at x1):
+        A02TH06 291 frames (header 18.9 s), J01TH05 169 (10.8 s): a retail clip reads finished after its own length
+        (at x8 the shim's clock hook does not reach the clip: it plays in real time, 100+ mission s)."""
+        path = (getattr(getattr(self.m, 'video', None), 'clips', None) or {}).get(clip)
+        if not path:
+            import labpaths
+            path = os.path.join(labpaths.GAME, 'Data', 'Movies', f'{clip}.vp6')
+        try:
+            with open(path, 'rb') as f:
+                head = f.read(32)
+        except (OSError, TypeError):
+            return None
+        if head[:4] != b'MVhd':
+            return None
+        frames, _, den, num = struct.unpack('<IIII', head[16:32])
+        return frames * num / den if den else None
+
     def act(self, name, a, script):
         if name in RA3_ONLY:
             self.ra3_only.add(name)
-        if name == 'SET_FLAG':
-            if int(self.flags.get(a[0], 0)) != int(a[1]):
-                self.flags[a[0]] = int(a[1])
-                self.change()
-                if a[0] == WON and a[1]:
-                    self.end('赢', script)
-                elif a[0] == LOST and a[1]:
-                    self.end('输', script)
-        elif name == 'SET_COUNTER':
-            self.counters[a[0]] = a[1]
-        elif name == 'SET_COUNTER_TO_COUNTER':
-            self.counters[a[0]] = self.counters.get(a[1], 0)
-        elif name == 'COUNTER_MATH_COUNTER':        # retail: 0 adds (a total of per-player kills), 1 takes away (what is
-            dst, op, src = a                        # left of the transports spawned); other codes were never seen used
-            if op not in (0, 1):
-                self.used.add(f'COUNTER_MATH_COUNTER code {op}')
-            self.counters[dst] = self.counters.get(dst, 0) + (-1 if op == 1 else 1) * self.counters.get(src, 0)
-        elif name in ('INCREMENT_COUNTER', 'DECREMENT_COUNTER'):
-            self.counters[a[1]] = self.counters.get(a[1], 0) + (a[0] if name == 'INCREMENT_COUNTER' else -a[0])
-            self.change()
-        elif name == 'SET_MILLISECOND_TIMER':
-            self.timers[a[0]] = self.t + float(a[1])
-            self.change()
-        elif name == 'SET_RANDOM_MSEC_TIMER':       # [lo, hi] at random (源码): the latest, as the beat sheet counts
-            self.timers[a[0]] = self.t + float(a[2])
-            self.change()
-        elif name in ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION'):
-            p = self.point(a[3])
-            if p is None:
-                return
-            old = self.bodies.get(a[0])
-            if old and old.alive:
-                return                                  # one object to a name (the game makes no second)
-            b = self.add(a[0], a[1], a[2].split('/')[0], *p, by=script.name, at=self.t)
-            b.team = a[2]
-            b.angle = float(a[4]) if len(a) > 4 else 0.0
-            if self.blocks(b):
-                self.reblock()
-            self.note('出现', f'{self.label(b)}（{a[1]}，{self.who(b.owner)}）在 {a[3]}'
-                      + ('' if b.owner == self.human or self.sees(b.x, b.y, b.surface == 'air') else '，玩家看不见'))
-            self.change()
-        elif name in ('MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_NAMED_UNIT_TO'):
-            b = self.body(a[0])
-            if b:
-                b.mode = 'attack' if name == 'ATTACK_MOVE_NAMED_UNIT_TO' else 'move'
-                self.send(b, a[1])
-        elif name == 'NAMED_ATTACK_NAMED':
-            self.used.add('attack')
-            b, target = self.body(a[0]), self.body(a[1])
-            if b and target and target.alive and b.alive and b.goal is not target:
-                b.goal, b.mode = target, 'attack'
-                self.send(b, (target.x, target.y))
-        elif name == 'UNIT_GUARD_AREA':
-            self.used.add('guard')
-            b = self.body(a[0])
-            if b and not inside(self.areas[a[1]], b.x, b.y):
-                self.send(b, a[1])
-        elif name == 'NAMED_STOP':
-            b = self.body(a[0])
-            if b:
-                b.path, b.goal = [], None
-        elif name == 'UNIT_TELEPORT_TO_WAYPOINT':
-            b, p = self.body(a[0]), self.point(a[1])
-            if b and p:
-                b.x, b.y, b.path = p[0], p[1], []
-                self.change()
-        elif name == 'NAMED_TRANSFER_OWNERSHIP_PLAYER':
-            b = self.body(a[0])
-            if b and b.owner != a[1]:
-                b.owner = a[1]
-                self.note('易主', f'{self.label(b)} 归 {self.who(a[1])}')
-                self.change()
-        elif name in ('NAMED_KILL', 'NAMED_DELETE'):
-            b = self.body(a[0])
-            if b:
-                if name == 'NAMED_KILL':
-                    b.last_hit = None               # the game's kill damage comes from nobody (INVALID_ID)
-                self.destroy(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉', delete=name == 'NAMED_DELETE')
-        elif name == 'UNIT_SET_HEALTH':
-            b = self.body(a[0])
-            if b and b.alive:
-                b.health = float(a[1])
-        elif name == 'NAMED_SET_MAX_HEALTH':
-            b = self.body(a[0])                 # (name, max, full too): retail Iga's trucks by difficulty
-            if b and b.alive:
-                pct = b.health
-                b.max_hp = float(a[1])
-                b.health = 100.0 if a[2] else pct
-        elif name == 'UNIT_CHANGE_OBJECT_STATUS':
-            b = self.body(a[0])
-            st = a[1][2] if isinstance(a[1], tuple) else a[1]
-            if b:
-                (b.status.add if a[2] else b.status.discard)(st)
-        elif name == 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER':
-            b = self.body(a[0])
-            if b:
-                self.used.add('health of the dead')
-                self.counters[a[1]] = int(round(b.health)) if b.alive else 0
-        elif name == 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER':
-            self.counters[a[2]] = sum(1 for b in self.living() if b.owner == a[1] and
-                                      b.template.lower() == a[0].lower())
-        elif name == 'SET_PLAYER_MONEY_TO_COUNTER':
-            self.counters[a[1]] = int(self.money.get(a[0], 0))
-        elif name == 'PLAYER_SET_MONEY':
-            self.money[a[0]] = a[1]
-        elif name == 'PLAYER_GIVE_MONEY':
-            self.money[a[0]] = self.money.get(a[0], 0) + a[1]
-        elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING':
-            b = self.body(a[0])
-            if b and self.body(a[1]):
-                self.send(b, a[1])
-        elif name == 'ATTACK_MOVE_TEAM_TO':
-            for b in self.living():
-                if b.team == a[0]:
-                    b.mode = 'attack'
-                    self.send(b, a[1])
-        elif name == 'SET_MISSION_OBJECTIVE_STATUS':
-            old = self.objectives.get(a[0], 0)
-            self.objectives[a[0]] = a[1]
-            if a[1] != old and a[1]:
-                g = next((g for g in self.m.objectives if g.name == a[0]), None)
-                title = self.text(g.title) if g else a[0]
-                self.note('目标', f'{"奖励" if g and g.bonus else ""}目标{["", "亮出", "完成", "失败"][a[1]]}：{title}')
-                self.change()
-        elif name in ('LINK_MISSION_OBJECTIVE_TO_OBJECT', 'LINK_MISSION_OBJECTIVE_TO_WAYPOINT'):
-            s = self.markers.setdefault(a[0], set())
-            (s.add if a[2] else s.discard)(a[1])
-        elif name == 'ALLOW_DISALLOW_ONE_BUILDING':     # the AI's production is not simulated; the player's 造 is
-            (self.banned.discard if a[2] else self.banned.add)((a[0], str(a[1]).lower()))
-        elif name == 'PLAYER_RELATES_PLAYER':           # (index, 0, name): the game reads the index (plan.relates)
-            r = a[2]
-            self.relations[(a[0], a[1])] = r if isinstance(r, str) else \
-                {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[r[0]]
-        elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE'):
-            self.used.add('ai')
-            if a[0] not in self.ai:
-                self.ai[a[0]] = self.t
-                self.note('AI', f'{self.who(a[0])} 交给遭遇战 AI（造兵、进攻不模拟）')
-        elif name == 'MAP_SWITCH_BORDER':
-            if self.reveal_all or self.reveals:
-                self.used.add('border reveal')
-            self.border = int(a[0])
-            names = list(getattr(self.m.map, 'BORDERS', {}))
-            self.note('边界', f'可玩区换成 {names[self.border] if self.border < len(names) else self.border}')
-            self.change()
-        elif name in ('MAP_REVEAL_ALL', 'MAP_REVEAL_ALL_PERM'):
-            self.reveal_all = True
-            self.note('揭图', '全图')
-        elif name == 'MAP_REVEAL_ALL_UNDO_PERM':
-            self.reveal_all = False
-            self.note('揭图', '全图收回')
-        elif name in ('MAP_REVEAL_PERMANENTLY_AT_WAYPOINT', 'MAP_REVEAL_AT_WAYPOINT'):
-            p = self.point(a[0])
-            if p:
-                if name == 'MAP_REVEAL_AT_WAYPOINT':
-                    self.peeks.append((p[0], p[1], float(a[1])))
-                else:
-                    self.reveals[a[3]] = (p[0], p[1], float(a[1]))
-                self.note('揭图', f'{a[0]} 半径 {a[1]:g}')
-        elif name == 'MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT':
-            self.reveals.pop(a[0], None)
-        elif name in ('MOVE_CAMERA_TO', 'MOVE_CAMERA_TO_NAMED', 'CAMERA_FOLLOW_NAMED'):
-            p = self.point(a[0])
-            if p:
-                self.camera = p
-                self.note('镜头', f'到 {a[0]}')
-        elif name in ('DISABLE_INPUT', 'ENABLE_INPUT'):
-            self.input = name == 'ENABLE_INPUT'
-            self.note('过场', '交还控制' if self.input else '锁住操作')
-        elif name == 'DISPLAY_COUNTDOWN_TIMER':
-            if a[0] not in self.countdowns:
-                self.countdowns.add(a[0])
-                left = self.timers.get(a[0], self.t) - self.t
-                self.note('倒计时', f'{self.text(a[1])} {mmss(max(0.0, left))}')
-        elif name == 'HIDE_COUNTDOWN_TIMER':
-            self.countdowns.discard(a[0])
-        elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
-            self.used.add('special power')
-            self.note('技能', f'{a[0]} 用 {a[1]}' + (f' 打 {a[2]}' if len(a) > 2 else ''))
-        elif name in ('ENABLE_SCRIPT', 'DISABLE_SCRIPT'):
-            # a once-script that fired is only switched off: ENABLE_SCRIPT arms it again (SE enableScript)
-            if name == 'ENABLE_SCRIPT':
-                self.disabled.discard(a[0])
-                self.done.discard(a[0])
-            else:
-                self.disabled.add(a[0])
-        elif name in SHOWN:
-            text = self.text(a[0]) if isinstance(a[0], str) else str(a[0])
-            self.note(SHOWN[name], text)
-        elif name in IGNORED or name == 'CAMERA_STOP_FOLLOW':
-            pass
-        else:
-            self.unknown[name] = self.unknown.get(name, 0) + 1
+        if name in SOUND_PLAYS or name.startswith('MOVIE_PLAY_'):
+            self.played(name, a)
+        simact.act(self, name, a, script)              # the actions as a lookup table (ADR 0029 step 3)
 
     def text(self, key):
         return self.mm.strings.get(key, key)
@@ -849,6 +2409,8 @@ class Sim:
         if who.startswith('名字含 '):
             part = who[4:].strip()
             return [b for b in self.living() if part in b.name]
+        if who.startswith('队 '):                    # a team's living members ('player/team' or the bare name)
+            return self.members(who[2:].strip())
         if who.startswith('敌人 在 '):
             p = self.point(who[5:].strip())
             sites = getattr(self.m.map, 'SITES', {})
@@ -869,28 +2431,66 @@ class Sim:
         self.note('剧本', ' '.join([verb] + [str(x) for x in rest]))
         if verb == '派':
             who, where = rest
-            for b in self.pick(who):
-                b.mode = 'attack'                   # the player's units go attack-moving, fighting on the way
-                self.send(b, where)
+            for b in self.pick(who):                # the player's units go attack-moving, fighting on the way: one
+                self.order_move(b, where, True)     # unit's order as ATTACK_MOVE_NAMED_UNIT_TO (its goal off held spots)
+        elif verb == '走':
+            who, where = rest
+            self.order_group(self.pick(who), where, False)  # as MOVE_NAMED_UNIT_TO; several at once, a group move
+        elif verb == '攻击':
+            who, target = rest                      # an attack order on a thing (NAMED_ATTACK_NAMED): units take no building by themselves
+            targets = self.pick(target)
+            if targets:
+                for b in self.pick(who):
+                    self.order_attack(b, targets[0].name)
         elif verb in ('摧毁', '删除'):
             for b in self.pick(rest[0]):
                 if verb == '摧毁' and 'UNATTACKABLE' in b.status:
                     self.note('剧本', f'{self.label(b)} 打不动（UNATTACKABLE），没摧毁')
                     continue
-                b.last_hit = self.human
+                b.last_hit, b.last_by = self.human, None
                 self.destroy(b, '剧本', delete=verb == '删除')
         elif verb == '血量':
             for b in self.pick(rest[0]):
                 b.health = float(rest[1])
-                b.last_hit = self.human
+                b.last_hit, b.last_by = self.human, None
+        elif verb == '买':                          # the player buys a protocol (simtech.Book.buy: points, not locked)
+            book = self.books.get(self.human)
+            if book and book.buy(rest[0], self.frame_now()):
+                self.note('协议', f'玩家买了 {rest[0]}（剩 {book.points} 点）')
+                self.change()
+            else:
+                self.note('剧本', f'买不了 {rest[0]}' + (f'（{book.points} 点）' if book else '（玩家没有协议）'))
         elif verb == '打':
             for b in self.pick(rest[0]):
-                b.last_hit = self.human
+                b.last_hit, b.last_by = self.human, None
+        elif verb == '放':
+            who, ability, where = rest              # a ground power of the player's (order_power): `放 engineer freeze 在 inside 1`
+            p = self.point(where)
+            for b in self.pick(who):
+                u = next((u for u in self.mm.units if u.id == b.template), None)
+                if p is None:
+                    self.note('剧本', f'找不到地点 {where}')
+                else:
+                    self.order_power(b, (u.abilities.get(ability) if u else None) or ability, p)
+        elif verb == '占领' and len(rest) == 2:
+            targets = self.pick(rest[1])            # the player's order: the engineer goes and takes it (capture_due)
+            if targets:
+                for b in self.pick(rest[0]):
+                    self.order_capture(b, targets[0].name)
         elif verb == '占领':
             for b in self.pick(rest[0]):
                 b.owner = self.human
         elif verb == '旗标':
             self.flags[rest[0]] = int(rest[1])
+        elif verb == '生产':                         # the player's build order at a named factory: paid as it builds, the
+            what, where = rest                      # build time, out at the factory's door (order_build / produce_due)
+            tmpl = next((u.id for u in self.mm.units if u.id == what), None) or \
+                next((r.template for k, r in self.m.cast.items() if k == what), what)
+            f = next(iter(self.pick(where)), None)
+            if f is None:
+                self.note('剧本', f'找不到工厂 {where}')
+            elif not self.order_build(self.human, tmpl, factory=f):
+                self.note('剧本', f'{self.label(f)} 现在造不了 {tmpl}（不是玩家的、不造它、科技或禁造）')
         elif verb == '造':
             what, where, angle = rest
             tmpl = next((u.id for u in self.mm.units if u.id == what), None) or \
@@ -912,25 +2512,48 @@ class Sim:
 
     # ---- running
     def step(self):
-        while self.events and self.events[0][0] <= self.t:
-            self.happen(self.events.pop(0))
-        for s in self.mm.scripts:
-            if s.name in self.done or s.name in self.disabled or not s.levels[self.level]:
-                continue
-            if all(self.holds(c) for c in s.when):
-                for name, *a in s.do:
-                    self.act(name, a, s)
-                if s.once:
-                    self.done.add(s.name)
-        if self.ending:
-            return
-        if self.combat:
-            self.fight()
-        self.move()
+        """One DT tick from self.t (the caller moves self.t on): the frame loop's table (simloop.FRAME, frame by
+        frame, with the engine model or without it)."""
+        return simloop.step(self)
+
+    def flee_start(self, b):
+        """simorder.flee_start (L5)."""
+        return simorder.flee_start(self, self._order_peers(), b)
+
+    def hunt_due(self, frame):
+        """simorder.hunt_due (L5)."""
+        return simorder.hunt_due(self, self._order_peers(), frame)
+
+    def flee_due(self, frame):
+        """simorder.flee_due (L5)."""
+        return simorder.flee_due(self, self._order_peers(), frame)
+
+    def lose_health(self, frame):
+        """simbody.Life.lose_health (L2): LoseHealthUpdate while the body's own toggle carries its statuses."""
+        self._life().lose_health(self, frame, self.toggles_of)
+
+    def autoheal(self, frame):
+        self.heal.autoheal(self, frame)                 # simheal.Heal (L2)
+
+    def passive_area_heal(self):
+        self.heal.passive_area_heal(self)
+
+    def release(self):
+        """The script events anchored to a flag that is up now: due `delta` after this moment."""
+        for e in list(self.anchored):
+            if self.flags.get(e[0][1]) == 1:
+                self.anchored.remove(e)
+                self.events.append((round(self.t + e[0][2], 6),) + tuple(e[1:]))
+                self.events.sort(key=lambda x: x[0])
 
     def can_hit(self, w, t):
         """A weapon's anti mask against a target: aircraft need ANTI_AIRBORNE, buildings ANTI_STRUCTURE (or
-        ground), the rest ground or water."""
+        ground), the rest ground or water. A weapon that does nothing to the target's armour (its damage type at 0 %:
+        Tanya's pistol, SNIPER, at every faction building) cannot take it at all, ordered or not (Generals
+        WeaponSet::getAbleToUseWeaponAgainstTarget: estimateWeaponDamage 0 -> ATTACKRESULT_INVALID_SHOT; the a6
+        Tanya who stood firing at a building, 2026-11-08)."""
+        if simunits.percent(t.armor, w['type']) <= 0:
+            return False
         anti = w['anti']
         if not anti:
             return True
@@ -940,83 +2563,766 @@ class Sim:
             return 'ANTI_STRUCTURE' in anti or 'ANTI_GROUND' in anti
         return 'ANTI_GROUND' in anti or 'ANTI_WATER' in anti
 
-    def fight(self):
-        """One tick of the fight model (未对齐, docs: the 'combat' align entry): every armed body fires each of its
-        weapons at the nearest enemy in that weapon's range it can hit (its NAMED_ATTACK target first, when in
-        range); damage = the weapon's damage per second x the target's armour percent for its damage type, all at
-        once; an attack-mover with an enemy in range holds while it fights; a plain move goes on firing; nobody
-        chases. Bodies at 0 die, the last hit their killer's."""
-        self.seen = {}
-        live = [b for b in self.living() if not b.scenery]
-        armed = [b for b in live if b.weapons]
-        if not armed:
-            return
-        targets = [b for b in live if 'UNATTACKABLE' not in b.status]
-        if not targets:
-            return
-        aimable = {id(t) for t in targets}
-        tx = np.array([b.x for b in targets])
-        ty = np.array([b.y for b in targets])
-        hurt = {}
-        for a in armed:
-            a.engaged = False
-            foes = [k for k, t in enumerate(targets) if t is not a and self.enemy(a.owner, t.owner)]
-            if not foes:
-                continue
-            idx = np.array(foes)
-            d = np.hypot(tx[idx] - a.x, ty[idx] - a.y)
-            for w in a.weapons:
-                order = np.argsort(d)
-                pick = None
-                if isinstance(a.goal, Body) and a.goal.alive and id(a.goal) in aimable and \
-                        math.hypot(a.goal.x - a.x, a.goal.y - a.y) <= w['range'] and self.can_hit(w, a.goal) and \
-                        self.side_sees(a.owner, a.goal):
-                    pick = a.goal
-                else:
-                    for j in order:
-                        if d[j] > w['range']:
-                            break
-                        t = targets[idx[j]]
-                        if t.template in self.unshot:       # our ice: only when ordered (the bench, a4 hold)
-                            continue
-                        if self.can_hit(w, t) and self.side_sees(a.owner, t):
-                            pick = t
-                            break
-                if pick is None:
-                    continue
-                if a.vision and w['range'] > a.vision:
-                    a.fired_at = self.t                 # a bombarder firing shows itself
-                dmg = w['dps'] * DT * pick.armor.get(w['type'], simunits.ARMOR_DEFAULT) / 100.0
-                h = hurt.setdefault(id(pick), [pick, 0.0, a])
-                h[1] += dmg
-                h[2] = a
-                if a.mode == 'attack':
-                    a.engaged = True
-        if hurt:
-            self.used.add('combat')
-        for t, dmg, by in hurt.values():
-            t.hp -= dmg
-            t.last_hit = by.owner
-            if t.hp <= 0 and t.alive:
-                if self.first_death is None:
-                    self.first_death = (self.t, t, by)
-                self.destroy(t, f'被 {self.label(by)} 打掉')
+    def takes_by_itself(self, a, t):
+        """Whether `a` may take `t` with no order naming it (idle, firing on a plain move, attack-moving, going after:
+        Generals AIUpdateInterface::getNextMoodTarget -> AI::findClosestEnemy, every such path): never a structure
+        (PartitionFilterRejectBuildings) unless `a` is ATTACK_BUILDINGS or `t` a base defence (FS_BASE_DEFENSE; a
+        garrisoned building that can fire is the other exception, not modelled: no garrisons here), never a
+        NOT_AUTOACQUIRABLE one (INFERRED by its name). Bench 2026-11-08 engine_seal: the player's idle peacekeeper
+        leaves the enemy's bunkers alone (erow), the enemy's (a computer player's: Generals would let it take
+        buildings) idle and attack-moving past leaves the player's bunker and plant alone (ebld / ebldam) -- RA3 drops
+        Generals' computer exception; the a4 ice nobody shoots (2026-10-28) is the same rule. An order naming the
+        target (`a.goal`) is not filtered here. A side run by the skirmish AI (`self.ai`, woken) keeps Generals'
+        exception and takes buildings (INFERRED: the bench's s1 had no AI; a skirmish AI's attack does pull down
+        buildings -- tests/test_simai)."""
+        if 'NOT_AUTOACQUIRABLE' in t.kinds and not ('AUTO_ACQUIRABLE_BY_AI' in t.kinds and a.ai_acquire):
+            return False
+        if 'STRUCTURE' in t.kinds and not a.ai_acquire:
+            return ('ATTACK_BUILDINGS' in a.acquire or 'FS_BASE_DEFENSE' in t.kinds
+                    or a.owner in getattr(self, 'ai', ()))
+        return True
 
-    def move(self):
-        for b in self.living():
+    def auto_acquires(self, a):
+        """Whether `a` takes targets by itself now: an attack-mover always; idle or on a plain move (Generals'
+        calledDuringIdle: the idle state and the turret's scan) only with AutoAcquireEnemiesWhenIdle YES."""
+        return a.mode == 'attack' or 'YES' in a.acquire
+
+    def shot_blocked(self, a, t, w):
+        """Line of fire (docs/engine/pathing.md 7c; bench 2026-11-08 engine_seal idle / row / cut): a weapon with
+        ATTACK_NEEDS_LINE_OF_SIGHT in its Flags (simunits `los`: the peacekeeper's shotgun, tank cannons, the IFV's
+        missiles; not the Athena's lob) does not shoot through a structure's footprint, whoever owns it; terrain in
+        between does not stop it. Generals Pathfinder::isAttackViewBlockedByObstacle walks the pathfinding cells along
+        the line: an obstacle cell blocks unless it is the shooter's own, the target's, or one the shooter or the
+        target stands inside (its container; a target within another's bounds). Here the footprints are `blocks`'s
+        shapes and the line is tested against them exactly (INFERRED: the cell walk, not read in RA3's program).
+        A target in the air is never blocked (bench 2026-11-08 engine_seal aa / aaopen: an IFV's missiles at a
+        Twinblade over the player's row the same as with no row)."""
+        if not w.get('los') or t.surface == 'air':
+            return False
+        return self.line_blocked(a.x, a.y, t, a)
+
+    def line_blocked(self, x, y, t, a=None):
+        """A structure's footprint on the line from (x, y) to t (shot_blocked's test from any point)."""
+        if getattr(self, '_fire_obstacles', None) is None:
+            self._fire_obstacles = [(b, s) for b in self.living() for s in (self.blocks(b),) if s]
+        for b, s in self._fire_obstacles:
+            if b is a or b is t or _in_shape(s, x, y) or _in_shape(s, t.x, t.y):
+                continue
+            if _line_hits(s, x, y, t.x, t.y):
+                return True
+        return False
+
+    def fire_spot(self, a, t):
+        """Where an attacker told to attack t goes when every weapon of its that can hit t has its line blocked (bench
+        2026-11-08 engine_seal attack: a peacekeeper ordered onto an MCV behind the player's row walks round the
+        row's north end and fires from there, s10; the row's far side never reached). Generals AIAttackState asks
+        Pathfinder::findAttackPath for a cell in range with a clear view. Here: points on rings round t inside its
+        longest such weapon's reach, the line clear and a way there, the shortest way taken (INFERRED: rings, 10
+        degree steps; a tie goes north). None: no such point."""
+        ws = [w for w in a.weapons if self.can_hit(w, t) and w.get('los')]
+        if not ws or t.surface == 'air':
+            return None
+        far = max(self.reach_of(w) for w in ws) + a.radius + t.radius - 1.0
+        cands = []
+        for f in (1.0, 0.8, 0.6, 0.4):
+            r = max(far * f, t.radius + a.radius + 1.0)
+            for k in range(36):
+                x, y = t.x + r * math.cos(math.radians(10 * k)), t.y + r * math.sin(math.radians(10 * k))
+                if not self.line_blocked(x, y, t, a) and \
+                        not any(b is not t and _in_shape(sh, x, y) for b, sh in self._fire_obstacles):
+                    cands.append((math.hypot(x - a.x, y - a.y), -y, x, y))
+        best = None
+        for _, _, x, y in sorted(cands)[:12]:
+            way = self.ground.route(a.surface, (a.x, a.y), (x, y))
+            if way is None:
+                continue
+            n = sum(math.hypot(q[0] - p[0], q[1] - p[1]) for p, q in zip([(a.x, a.y)] + way[:-1], way))
+            if best is None or (round(n / 10.0), -y) < best[0]:
+                best = ((round(n / 10.0), -y), (x, y))
+        return best and best[1]
+
+    def on_map(self, b):
+        """Within the active border (MAP_SWITCH_BORDER). Bench 2026-11-09 engine_scripts4 border: while the border is
+        the west half, a Guardian pair across its edge (ours inside, theirs 60 outside) and a pair both outside hold
+        their fire, a pair inside fights; the border opened, both pairs fight at once. An object off the border is
+        neither a shooter nor a target (the Generals source marks it OFF_MAP); it lives on and the area conditions
+        see it. Taken by its centre (INFERRED: the pairs stood well clear of the edge)."""
+        if not self.border:
+            return True
+        rect = list(getattr(self.m.map, 'BORDERS', {}).values())
+        if self.border >= len(rect):
+            return True
+        x0, y0, x1, y1 = rect[self.border]
+        return x0 <= b.x <= x1 and y0 <= b.y <= y1
+
+    def fight(self):
+        """simorder.fight (L5)."""
+        return simorder.fight(self, self._order_peers())
+
+    def fight_field(self):
+        """(live, armed, targets) for this moment's fight: who is in it, who can fire, who can be shot."""
+        live = [b for b in self.living() if not b.scenery and self.on_map(b)]     # off the border: out of the fight
+        flying = self.__dict__.get('impact_flights', {})
+        # a knocked body fires its kept order lying (landing hold: feet only), not in the air (Physics P4, bench 11-11
+        # engine_knock_probe fire: first hit ~300-316, the landing 300; bench 11-11 engine_knock_water farfire: ~20 up
+        # and in 2-D reach for frames ~182..196, no fire in the air)
+        armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
+                 and id(b) not in flying
+                 and not getattr(b, 'ground_fire', None)     # NAMED_FORCE_ATTACK_WAYPOINT: busy at the ground
+                 and not self.emp_disabled(b) and not self.unpowered(b)
+                 and not self.infiltrators.attack_blocked(b)
+                 and not (b.hold_fire and (b.hold_paused or not isinstance(b.goal, Body)))]
+        cloaked = self.cloaked(live)
+        targets = [b for b in live if 'UNATTACKABLE' not in b.status and id(b) not in cloaked]
+        return live, armed, targets
+
+    def aim(self, a, targets, aimable, tx, ty):
+        """`a`'s pick for each of its weapons where it stands (fight): the aimed fire into self.firing / volleys /
+        chilling, engaged when it is attack-moving. None: no foe at all; else (fired, the foes' centre distances,
+        their indexes in targets)."""
+        foes = [k for k, t in enumerate(targets) if t is not a and self.hostile(a, t)]
+        if not foes:
+            return None
+        idx = np.array(foes)
+        d = np.hypot(tx[idx] - a.x, ty[idx] - a.y)
+        pad = max(targets[k].radius for k in foes)          # the biggest foe's radius: the scan's cut-off (R8)
+        fired = False
+        for w in a.weapons:
+            order = np.argsort(d, kind='stable')    # ties (two foes made on one point) by list order: the
+            pick = None                              # default quicksort broke them by the array's length (a4 r121)
+            if isinstance(a.goal, Body) and a.goal.alive and id(a.goal) in aimable and \
+                    self.in_range(a, a.goal, w) and self.can_hit(w, a.goal) and \
+                    self.side_sees(a.owner, a.goal) and not self.shot_blocked(a, a.goal, w):
+                pick = a.goal
+            elif self.auto_acquires(a):
+                for j in order:
+                    if d[j] - a.radius - pad > self.reach_of(w):   # sorted by centre: nobody nearer after this
+                        break
+                    t = targets[idx[j]]
+                    if not self.in_range(a, t, w, d[j]):
+                        continue
+                    if t.template in self.unshot or not self.takes_by_itself(a, t) or \
+                            'NON_AUTOACQUIRABLE' in t.status:
+                        continue                # a building / our ice: only when ordered (takes_by_itself)
+                    if self.can_hit(w, t) and self.side_sees(a.owner, t) and not self.shot_blocked(a, t, w):
+                        pick = t
+                        break
+            if pick is None:
+                continue
+            if a.vision and w['range'] > a.vision:
+                a.fired_at = self.t                 # a bombarder firing shows itself
+            for effect in w.get('unmodeled_effects', []):
+                self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
+            if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
+                                       or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts')):
+                self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
+            self.first_shot(a, w, pick)
+            if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts'))):
+                if 'sched' in w and self.shot_clock:
+                    self.volleys.append((pick, w, a))
+                else:
+                    # Continuous DPS has no individual hit events. Do not run a second
+                    # clip clock just for pressure (A4 guardians falsely suppressed at F1980).
+                    if w.get('suppression'):
+                        self.gap(GAP_WEAPON, 'SuppressionNugget',
+                                 '连续DPS没有逐发命中事件；压制贡献仅在离散命中时钟中模拟')
+                    self.firing.append((pick, w['dps'] * a.dealt * (1.0 if w['type'] == 'UNRESISTABLE' else
+                                        simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken)
+                                        * self.flank_of(pick, a), a))
+            if w.get('sdps') and not self.shot_clock:
+                self.chilling.append((pick, w['sdps'] * a.dealt, a))
+            fired = True
+            if a.mode == 'attack':
+                a.engaged = True
+        return fired, d, idx
+
+    def first_shot(self, a, w, pick):
+        """A PreAttackType PER_TARGET weapon waits its PreAttackDelay (whole frames, simunits._frames) before its first
+        shot at a new target, not before every shot (simunits._pre_per_clip keeps it out of the cycle; Generals
+        Weapon::getPreAttackDelay). Bench 2026-11-07 `cnv_check a4 smash`: the King Oni's beam (PER_TARGET 0.75 s,
+        a 175 shot every 1.8 s, 11.7 % of the wall) took it 100 -> 76 -> 53 -> 41 -> 18 -> 6 at s67 / 70 / 73 / 76 /
+        79 / 82: its first shot falls in s67.0-67.6, more than the delay after it had the wall in range (A round 233).
+        INFERRED: the gate is per shooter and target (deal), a shooter's other weapons on that target wait with it."""
+        wt = simunits.weapon_table(self.own).get(w.get('weapon_key'), {})
+        if wt.get('pretype') != 'PER_TARGET' or not wt.get('pre'):
+            return
+        key = (id(a), w.get('weapon_key'))
+        held = self.pre_locks.get(key)
+        if held is None or held[0] is not pick:
+            ready = self.t + simunits._frames(wt['pre']) / simunits.FPS
+            self.pre_locks[key] = (pick, ready)
+            self.fire_gate[(id(a), id(pick))] = ready
+
+    def range_targets(self, b):
+        """For move: the foes an attack-mover on its way would stop for, [(foe, the centre distance it fires
+        from)], out of reach where it stands (the tick's fight found nothing for it); None when it does not stop
+        for any (not attack-moving, not in the tick's fight, no frames). Bench 2026-11-10 engine_wayatk team (A
+        round 230): the tanks get in range mid-tick; held for the next tick's fight they hit a tick late (s7, the
+        bench s4: LAG 2). Generals AIAttackMoveToState looks for a target every frame its attack machine is idle.
+        The same picks as aim's (the order's target, or one it takes by itself); INFERRED: the foe stands still for
+        the tick, the line of fire is taken where it would stop."""
+        if (self.eng is None or not self.combat or b.mode != 'attack' or b.engaged or b.speed <= 0
+                or not any(a is b for a in self._field[1])):
+            return None
+        out = []
+        for t in self._field[2]:
+            if t is b or not t.alive or not self.hostile(b, t) or not self.side_sees(b.owner, t):
+                continue
+            ordered = isinstance(b.goal, Body) and b.goal is t
+            if not ordered and (t.template in self.unshot or not self.takes_by_itself(b, t)
+                                or 'NON_AUTOACQUIRABLE' in t.status):
+                continue
+            for w in b.weapons:
+                if self.can_hit(w, t) and not self.in_range(b, t, w):
+                    out.append((t, w, self.reach_of(w) + b.radius + t.radius))
+        return out
+
+    def range_entry(self, b, reach, tx, ty, length):
+        """How far b goes toward (tx, ty), at most `length`, before a foe of range_targets is in range and its line
+        of fire is clear from there; None: none on this stretch. It stops a hair inside (fight's in_range holds)."""
+        dx, dy = (tx - b.x) / math.hypot(tx - b.x, ty - b.y), (ty - b.y) / math.hypot(tx - b.x, ty - b.y)
+        hits = []
+        for t, w, r in reach:
+            r -= 1e-6
+            fx, fy = b.x - t.x, b.y - t.y
+            half = fx * dx + fy * dy                    # |f + s u| = r: s^2 + 2 half s + (|f|^2 - r^2) = 0
+            c = fx * fx + fy * fy - r * r
+            disc = half * half - c
+            if c <= 0 or disc < 0:
+                continue
+            s = -half - math.sqrt(disc)
+            if 0 <= s <= length:
+                hits.append((s, t, w))
+        x, y = b.x, b.y
+        try:
+            for s, t, w in sorted(hits, key=lambda h: h[0]):
+                b.x, b.y = x + dx * s, y + dy * s
+                if not self.shot_blocked(b, t, w):
+                    return s
+        finally:
+            b.x, b.y = x, y
+        return None
+
+    def aim_due(self):
+        """The attack-movers move stopped in range mid-tick aim from their frame (aim), not the next tick's."""
+        for key, (at, b) in list(self.mid_aims.items()):
+            if self.t < at - 1e-9:
+                continue
+            del self.mid_aims[key]
+            if not b.alive or b.engaged or any(a is b for _, _, a in self.firing + self.volleys):
+                continue                        # already firing this tick (a plain mover fires on its way)
+            targets = [t for t in self._field[2] if t.alive]
+            if not targets:
+                continue
+            self.aim(b, targets, {id(t) for t in targets},
+                     np.array([t.x for t in targets]), np.array([t.y for t in targets]))
+            if self.firing or self.volleys:
+                self.used.add('combat')
+
+    def cloaked(self, live):
+        """ids of the bodies an InvisibilityBroadcastUpdate hides this tick (simunits.invis_broadcast; engine line C
+        round 9, engine_stealth a / b, bench 11-05, docs/engine/stealth.md 1-2): a broadcaster carrying the status its
+        ObjectStatusValidation wants (the mirage tank: GENERIC_TOGGLE_STATE, which a script gives) hides what its filter
+        takes within BroadcastRange, centre to centre (relation, KindOf, status exclusions; not itself unless AffectsSelf).
+        A hidden body is no target for the other side while the aura holds -- an attack order on it stays, fire starts
+        the moment it shows and stops the moment it hides (bench 开关血 / 后隐血). Taken every tick, not on the
+        UpdatePeriod (0.2 s, finer than the tick; the entry's own lifetime not read). Not modelled: a detector's
+        reveal (StealthDetectorUpdate, ~6 s in on the bench), the garrison's stealth template."""
+        cache = self.__dict__.setdefault('_invis', {})
+        out = set()
+        for e in live:
+            if e.template not in cache:
+                cache[e.template] = simunits.invis_broadcast(e.template, self.own)
+            r = cache[e.template]
+            if not r or not r['needs'] <= e.status:
+                continue
+            for t in live:
+                if (t is e and not r['self']) or t.scenery or (r['include'] and not r['include'] & t.kinds) \
+                        or r['exclude'] & t.status or self.relation(e.owner, t.owner) not in r['relation']:
+                    continue
+                if math.hypot(t.x - e.x, t.y - e.y) <= r['range']:
+                    out.add(id(t))
+        if out:
+            self.used.add('stealth')
+        return out
+
+    def incoming_add(self, target, source, key, damage, hit, expiry):
+        """simdamage.Damage.incoming_add (L3): one observed/predicted notification on a tracking target."""
+        self._harm().incoming_add(self, target, source, key, damage, hit, expiry)
+
+    @property
+    def incoming(self):
+        """{id(target): [(source, weapon key, damage, hit frame, expiry frame)]}: simdamage.Damage's notifications."""
+        return self._harm().incoming
+
+    @property
+    def projectile_hits(self):
+        """[(frame, target, damage, attacker, weapon, centre)]: simdamage.Damage's projectile arrivals to come."""
+        return self._harm().projectile_hits
+
+    def _harm(self):
+        """The simdamage.Damage (L3), made on first use (a Sim built without __init__ has none yet)."""
+        h = self.__dict__.get('harm')
+        if h is None:
+            h = self.harm = simdamage.Damage()
+        return h
+
+    def incoming_hit(self, target, source, key):
+        """simdamage.Damage.incoming_hit (L3): a damage notification deletes matching source + weapon entries."""
+        self._harm().incoming_hit(target, source, key)
+
+    def expected_damage(self, target, behind, ahead, now=None):
+        """simdamage.Damage.expected_damage (L3): the micro's incoming-damage callback."""
+        return self._harm().expected_damage(self, target, behind, ahead, now)
+
+    def flank_of(self, victim, attacker):
+        """simdamage.flank_of (L3): the side / rear scalar of a direct hit by where the attacker stands."""
+        return simdamage.flank_of(victim, attacker)
+
+    def inform_launch(self, target, attacker, weapon, count=1):
+        """simdamage.Damage.inform_launch (L3): ordinary launch notification."""
+        self._harm().inform_launch(self, target, attacker, weapon, count)
+
+    def toggles_of(self, b):
+        """simunits.template_toggles for b's template, kept."""
+        cache = self.__dict__.setdefault('_toggles', {})
+        if b.template not in cache:
+            cache[b.template] = simunits.template_toggles(b.template, self.own)
+        return cache[b.template]
+
+    def toggle_press(self, b, command):
+        """simtoggle.Toggles.press (L2): a toggle button steps b's toggle module to its next ToggleState. False when
+        b has no toggle for that button."""
+        return self._toggle_book().press(self, b, command, self.toggles_of, self.short_of_power, self.modify)
+
+    @property
+    def toggles_due(self):
+        """{(body name, toggle module index): (frame, body, button)}: presses waiting out their UnpackTime."""
+        return self._toggle_book().due
+
+    def toggles_run(self, frame):
+        """simtoggle.Toggles.run (L2): the toggles whose UnpackTime ran out by this frame enter their next state."""
+        self._toggle_book().run(self, frame, self.toggles_of, self.modify)
+
+    def _toggle_book(self):
+        """The simtoggle.Toggles (L2), made on first use (a Sim built without __init__ has none yet). Not `_toggles`:
+        that is toggles_of's cache in the instance dict."""
+        t = self.__dict__.get('toggler')
+        if t is None:
+            t = self.toggler = simtoggle.Toggles()
+        return t
+
+    toggle_miner_armor = toggle_press           # simai's name (the AI micro's toggles)
+
+    def queue_projectile_hit(self, when, target, damage, attacker, weapon, centre=None):
+        """simdamage.Damage.queue_projectile_hit (L3): a projectile's arrival event."""
+        self._harm().queue_projectile_hit(when, target, damage, attacker, weapon, centre)
+
+    def impact_ground_z(self, x, y):
+        """simdamage.impact_ground_z (L3): world z of the ground at (x, y) for physics."""
+        return simdamage.impact_ground_z(self, x, y)
+
+    def projectile_detonate(self, weapon, target, centre=None, attacker=None):
+        """simdamage.Damage.projectile_detonate (L3): the non-damage payload of a projectile arrival."""
+        self._harm().projectile_detonate(self, weapon, target, centre, attacker, simdamage.Peers(self))
+
+    def meta_impact_detonate(self, weapon, centre, attacker=None):
+        """simdamage.Damage.meta_impact_detonate (L3): a warhead's shocks (MetaImpactNugget)."""
+        self._harm().meta_impact_detonate(self, weapon, centre, attacker, simdamage.Peers(self))
+
+    KNOCK_SEARCH = 15               # lattice steps the nearest-standable search reaches (INFERRED: the search routine is unread, work/re/handoff.md)
+
+    def knock_landing(self, b, end):
+        """Physics P3 (bench 11-11 engine_knock_water, work/re/a_physics_plan.md): a knocked body's own landing
+        point that it cannot stand on (water, a cliff) is moved to the nearest one it can -- not back along the
+        line: man 2220 -> 2080 on his bank, far 2420 -> 2500 the far bank's top. Men, on their 20 landing grid
+        (a vehicle's: knock_landing_vehicle). None: not modelled (gap recorded)."""
+        return self._knock_nearest(end, lambda x, y: self.ground.stand(b.surface, x, y))
+
+    def knock_landing_vehicle(self, end):
+        """Physics P3 for a vehicle (bench 11-11 engine_knock_water tank / ramp / edge, ra3ext.log `build ... land=`):
+        its landing is the men's 20 grid point + 10 in x and y (2460.5 -> 2470, 3338.5 -> 3330; all nine landings);
+        one it cannot land on (Ground.stand_vehicle: the water) goes to the nearest one it can on that lattice (tank:
+        2410 in the trench -> 2490 on the far bank's slope; the lattice INFERRED -- the 10 grid gives the same).
+        Whether it then drowns is Ground.drowns. None: no cell (gap recorded)."""
+        end = (math.floor(end[0] / 20) * 20 + 10, math.floor(end[1] / 20) * 20 + 10)
+        if self.ground.stand_vehicle(*end):
+            return (end[0], end[1], self.impact_ground_z(*end))
+        return self._knock_nearest(end, self.ground.stand_vehicle)
+
+    def _knock_nearest(self, end, ok):
+        step, best = 20.0, None
+        for j in range(-self.KNOCK_SEARCH, self.KNOCK_SEARCH + 1):
+            for i in range(-self.KNOCK_SEARCH, self.KNOCK_SEARCH + 1):
+                x, y = end[0] + i * step, end[1] + j * step
+                d = math.hypot(x - end[0], y - end[1])
+                if (best is None or d < best[0]) and ok(x, y):
+                    best = (d, x, y)
+        if best is None:
+            self.gap(GAP_WEAPON, 'MetaImpactNugget', '击飞落点附近没有能站的格')
+            return None
+        self.used.add('knock landing moved')
+        return (best[1], best[2], self.impact_ground_z(best[1], best[2]))
+
+    def meta_impact_tick(self):
+        """simdamage.Damage.meta_impact_tick (L3): each knocked body one trajectory sample on."""
+        self._harm().meta_impact_tick(self, simdamage.Peers(self))
+
+    def deal(self, dt):
+        """simdamage.Damage.deal (L3, R6): `dt` seconds of aimed fire, projectiles and DOTs dealt; bodies at 0 die."""
+        self._harm().deal(self, dt, simdamage.Peers(self))
+
+    def attachment_tick(self):
+        """engine_attach a: teleport the child and keep it with its moving parent.
+
+        engine_attach_parent a confirms a script-killed simple parent leaves
+        its child alive and clears the link. engine_attach_child a confirms
+        script-killing the simple child clears VEHICLE_ATTACHED on its living
+        parent (ENCLOSED/UNATTACKABLE fixture). engine_attach_child_delete a
+        confirms the same survivor status after NAMED_DELETE of that child.
+        engine_attach_parent_delete a confirms its surviving child clears
+        ATTACHED/ENCLOSED/UNATTACKABLE after NAMED_DELETE of the parent.
+        Other child-status combinations and deletion without a survivor remain gaps;
+        no detach/leech/repair contract is claimed.
+        Extending these script-kill results to other lethal causes is INFERRED;
+        a dead parent's queried status does not reveal its internal bits.
+        NO_COLLISIONS visibility remains a separate strict-xfail gap.
+        Attachment status has its own owner so ordinary
+        modifier recalculation cannot erase it or pollute script-set bits.
+        """
+        if not self.attachments and not self._attachment_marked:
+            return
+        bits = {}
+        for key, (child, parent, rule) in list(self.attachments.items()):
+            if not child.alive or not parent.alive:
+                del self.attachments[key]
+                measured_delete = (rule['child'] == {'ATTACHED', 'ENCLOSED', 'UNATTACKABLE'}
+                                   and rule['parent'] == {'VEHICLE_ATTACHED'}
+                                   and ((child.deleted and parent.alive)
+                                        or (parent.deleted and child.alive)))
+                if (parent.deleted or child.deleted) and not measured_delete:
+                    self.gap(GAP_WEAPON, 'AttachNugget', '仅ENCLOSED/UNATTACKABLE简单模块单端直接删除后的存活另一端状态已量；其他删除清理INFERRED')
+                continue
+            child.x, child.y, child.path = parent.x, parent.y, []
+            bits.setdefault(child.name, set()).update(rule['child'])
+            bits.setdefault(parent.name, set()).update(rule['parent'])
+        for name in self._attachment_marked | set(bits):
+            b = self.bodies.get(name)
+            if b and b.attachment_status != bits.get(name, set()):
+                b.attachment_status = bits.get(name, set())
+                self.modify(b)
+        self._attachment_marked = set(bits)
+
+    def suppression_tick(self):
+        """simdamage.suppression_tick (L3): the suppression fields sampled on each body."""
+        simdamage.suppression_tick(self, simdamage.Peers(self))
+
+    def shots_due(self, b, w, dt):
+        """How many of weapon `w`'s clip-clock shots of body `b` land in [self.t, self.t + dt): the clip is a
+        schedule (simunits._shot_times, then the reload), each cycle `w['cycle']` long, one shot after another as
+        long as the weapon has a target every window. After an idle gap (no target in the previous window) a
+        cycle that has run out starts anew now, pre-attack first; one still running (a reload, a part-spent clip)
+        goes on by the clock. Round 2 of engine line C (bench: the coil one tank per ~125 frames)."""
+        t0, t1 = self.t, self.t + dt
+        eps = 1e-6
+        clocks = self.__dict__.setdefault('clocks', {})
+        # Attribute refresh may copy a weapon to scale its range. Keep that
+        # weapon's clip running across copies; distinct retail guns stay apart.
+        key = (id(b), w.get('weapon_key') or id(w))
+        c = clocks.get(key)
+        cycle = w['cycle']
+        if b.level_rate != 1.0:
+            if (w.get('weapon_key') == 'AlliedAntiVehicleVehicleTech3PrismCannon_Veteran'
+                    and w['sched'] == [0.0] and abs(cycle * 15 - 25) < eps):
+                # engine_levelrate a measures the effective cycle only. The
+                # 25 -> 20 frames does not identify which sub-timer scales or
+                # how it rounds. Pre-delays, other clips and mid-cycle changes
+                # are unmeasured; do not extrapolate a general rounding rule.
+                cycle = 20 / 15
+            else:
+                self.gap(GAP_UPGRADE, 'LevelUpUpgrade/rate-clock', '该武器的等级射速计时未对拍')
+        if c is None or (t0 - c[1] > dt * 1.5 and c[0] + cycle <= t0 + eps):
+            c = [t0 + 1 / 15, t0]                       # [this cycle's start, the last window with a target]; the first
+            #                                             object hit is1 frame after order; scripts observe it next frame (engine_emp)
+        else:
+            c[1] = t0
+            while c[0] + cycle <= t0 + eps:             # chained: the next cycle starts where this one ends
+                c[0] += cycle
+        clocks[key] = c
+        n = 0
+        while True:
+            for at in w['sched']:
+                when = c[0] + at
+                if t0 - eps <= when < t1 - eps:
+                    n += 1
+            if c[0] + cycle < t1 - eps:                 # the window reaches into the next cycle
+                c[0] += cycle
+                continue
+            break
+        return n
+
+    def cold_of(self, b):
+        """(simunits.freeze tracker, frozen armour) of b's template, read once a template."""
+        cache = self.__dict__.setdefault('_cold', {})
+        if b.template not in cache:
+            cache[b.template] = simunits.freeze(b.template, self.own)
+        return cache[b.template]
+
+    def chill(self, dt):
+        """simdamage.Damage.chill (L3): `dt` seconds of cryo beams and melting."""
+        self._harm().chill(self, dt, simdamage.Peers(self))
+
+    def peeking(self):
+        """The MAP_REVEAL_AT_WAYPOINT reveals still open this frame, as (x, y, r)."""
+        now = self.frame_now()
+        self.peeks = [q for q in self.peeks if now < q[3]]
+        return [q[:3] for q in self.peeks]
+
+    def set_model_condition(self, b, condition, seconds=None):
+        """Shared minimal script/consumer store; separate from ObjectStatus.
+
+        engine_spndisguise measures DISGUISED held for 20s. INFERRED: expiry
+        at the first frame at/after duration, zero duration holds until cleared.
+        Other native producers (including suppression) are not merged here.
+        """
+        b.model_conditions[condition] = (self.frame_now() + math.ceil(seconds * simunits.LIFE_FPS)
+                                         if seconds and seconds > 0 else None)
+
+    def has_model_condition(self, b, condition):
+        if not self.present(b) or condition not in b.model_conditions:
+            return False
+        until = b.model_conditions[condition]
+        if until is not None and self.frame_now() >= until:
+            b.model_conditions.pop(condition, None)
+            return False
+        return True
+
+    def frame_now(self):
+        return self.eng.frame if self.eng else int(round(self.t * simunits.LIFE_FPS))
+
+    def on_the_move(self, b):
+        """b physically moves this frame, as the program's own clock has it (TEAM_DISCOVERED): from the frame after
+        the order that set it off from standing (its locomotor's first update) until one frame after the moment
+        within the tick its way ended -- the simulator moves a whole tick at the tick's first frame, so its path is
+        empty up to a tick early. Bench 11-13 engine_conds sight 发现&1 (A round 232; the bench's sN is the
+        simulator's s(N+2) sample, as its hot spot / kill / sight readings line up): near off at one sample after its
+        180 deg turn + 70 (order 60, off 75, on 90; 13 at the order's own frame) and at two after the turn + 120 (off
+        150 and 165 -- the turn 0.5 s, 1.5 s driving: its way ends at 11.0, the frame of 165 still moving)."""
+        if b.path and b.dest:
+            return self.frame_now() > b.set_off
+        fps = self.fps if self.eng is not None else simunits.LIFE_FPS
+        return self.t < b.stops_at + 1.0 / fps - 1e-9
+
+    def emp_disabled(self, b):
+        """EMP pauses movement and new fire (engine_emp phase / engine_empfire a).
+
+        Recheck at each damage frame too: fight's cached aim may predate the hit.
+        Already launched projectiles and DOTs keep their own delivery events.
+        """
+        return (self.frame_now() < self.__dict__.get('emp_until', {}).get(id(b), 0)
+                or id(b) in self.__dict__.get('script_disabled', {}))
+
+    def order_unpack(self, b, p, button=None, where=None, stand=None, here=False, send=True):
+        """simorder.order_unpack (L5)."""
+        return simorder.order_unpack(self, self._order_peers(), b, p, button, where, stand, here, send)
+
+    def at_site(self, b, walked):
+        """R5: a builder within his stand of the spot he was told to build at stops; the structure is made there the
+        frame after he got there (`walked` this tick before that: bench 2026-11-07 engine_life, the ice core one frame
+        after an order given within range). False while he is still short of it."""
+        structure, (x, y), stand = b.building
+        if math.hypot(b.x - x, b.y - y) > stand + 1e-6:
+            return False
+        if getattr(b, 'unpack_here', False):    # order_unpack here=True: the structure where b stands (D157)
+            x, y = b.x, b.y
+        got = self.frame_now() + (math.ceil(round(walked / b.speed * simunits.LIFE_FPS, 6)) if walked else 0)
+        self.due.append((got + (REPLACE_FRAMES if b.replace else 1), structure, b.owner, b.team, x, y, b.name))
+        b.building, b.path, b.dest = None, [], None
+        self.note('技能', f'{self.label(b)} 到位，造 {structure}')
+        return True
+
+    def build_due(self, frame):
+        """The structures builders put down by `frame` (at_site)."""
+        for d in [d for d in self.due if d[0] <= frame]:
+            self.due.remove(d)
+            _, structure, owner, team, x, y, by = d
+            was = self.bodies.get(by)
+            if was is not None and was.replace:     # engine_unpack: the replacement takes its name and health share
+                if not was.alive:
+                    continue
+                share = was.hp / was.max_hp if was.max_hp else 1.0
+                self.destroy(was, f'展开成 {structure}', delete=True)
+                self.bodies[f'#packed {len(self.bodies)} {by}'] = self.bodies.pop(by)
+                n = self.add(by, structure, owner, was.x, was.y, by=by, at=self.t)
+                n.hp = n.max_hp * share
+                hold = self.__dict__.get('pack_hold', {}).pop(by, 0)
+                if hold:                    # DISABLE_NEW_OBJECT_DURING_UNPACK: stands still (engine_pack), as EMP'd
+                    self.__dict__.setdefault('emp_until', {})[id(n)] = self.frame_now() + hold
+            else:
+                n = self.add(f'#built {len(self.bodies)} by {by}', structure, owner, x, y, by=by, at=self.t)
+            n.team = team
+            if self.blocks(n):
+                self.reblock()
+
+    def blast_due(self, frame):
+        """simspecial.Specials.blast_due (L2): a superweapon's hits landing by `frame` (SUPERWEAPON_HITS)."""
+        self._specials().blast_due(self, frame, self.blasts, self.mark_first_death, self.destroy)
+
+    def mark_first_death(self, t, by):
+        """The fight's first death (first_death: run time, body, killer), kept once."""
+        if self.first_death is None:
+            self.first_death = (self.t, t, by)
+
+    def emp_book(self):
+        """{id(body): frame}: who stands still (EMP'd, casting, leaping) till when, made on first use."""
+        return self.__dict__.setdefault('emp_until', {})
+
+    def _specials(self):
+        """The simspecial.Specials (L2), made on first use (a Sim built without __init__ has none yet)."""
+        m = self.__dict__.get('specials')
+        if m is None:
+            m = self.specials = simspecial.Specials()
+        return m
+
+    def movement_power_press(self, b, button, point):
+        """simspecial.Specials.movement_power_press (L2): a MovementSpecialPower's rush to a point in range."""
+        self._specials().movement_power_press(self, b, button, point, self.modify, self.send)
+
+    def self_power_press(self, b, button):
+        """simspecial.Specials.self_power_press (L2): an ActivateModuleSpecialPower on self."""
+        self._specials().self_power_press(self, b, button, self.modify)
+
+    def leap_press(self, b, button, p):
+        """simspecial.Specials.leap_press (L2): a ProjectileSelf leap (the Sickle's) to a point."""
+        self._specials().leap_press(self, b, button, p, self.send, self.emp_book)
+
+    def self_power_due(self, frame):
+        """simspecial.Specials.self_power_due (L2): leaps landing, rushes and self powers' bits running out."""
+        self._specials().self_power_due(self, frame, self.modify, self.projectile_detonate, self.impact_ground_z)
+
+    def wfire_press(self, b, button, target=None):
+        """simspecial.Specials.wfire_press (L2): a WeaponFireSpecialAbilityUpdate's button."""
+        self._specials().wfire_press(self, b, button, target, self.send, self.emp_book)
+
+    def wfire_due(self, frame):
+        """simspecial.Specials.wfire_due (L2): the weapon-fire abilities going off by `frame`."""
+        self._specials().wfire_due(self, frame, self.casts, self.death_blasts, self.player_ups, self.relation,
+                                   self.send, self.emp_book)
+
+    def death_blast_due(self, frame):
+        """simdamage.death_blast_due (L3): the death weapons going off by `frame`."""
+        simdamage.death_blast_due(self, frame, simdamage.Peers(self))
+
+    def crush_along(self, b, x0, y0):
+        """R9: a driving crusher kills what its footprint passes over that is a lower level (docs/engine/crush.md,
+        bench 11-06 engine_crush: strictly greater kills, 20 against 20 and 30 against 30 live; the crushed does not
+        step aside; the dead lie their SlowDeath out). The segment this tick passing within the CRUSHED's own radius
+        of its centre (FITTED to two readings: Hammer / conscript at frame 43, Apocalypse / guardian at 69 -- touching
+        at the radii's sum would be ~12 and ~30 frames earlier still; the simulator has no acceleration). Whose
+        units: the crusher's enemies' only (INFERRED: crushing one's own / neutral units was not measured)."""
+        dx, dy = b.x - x0, b.y - y0
+        seg = dx * dx + dy * dy
+        pool = self._crushable_pool
+        if pool is None:                        # once a tick: the crushable ones, as arrays (a big map's tanks all drive)
+            low = [o for o in self.living() if o.crushable is not None and not o.scenery and not o.topple
+                   and o.surface == 'ground' and o.name not in self.attachments]
+            pool = self._crushable_pool = (low, np.array([o.x for o in low]), np.array([o.y for o in low]),
+                                           np.array([o.radius for o in low]), np.array([o.crushable for o in low]))
+        low, ox, oy, orad, olevel = pool
+        if not low:
+            return
+        k = np.clip(((ox - x0) * dx + (oy - y0) * dy) / seg, 0.0, 1.0) if seg else np.zeros(len(low))
+        near = np.hypot(ox - (x0 + k * dx), oy - (y0 + k * dy)) <= orad
+        for j in np.nonzero(near & (olevel < b.crusher))[0]:
+            o = low[j]
+            if o is b or not o.alive or not self.enemy(b.owner, o.owner):
+                continue
+            self.used.add('crush')
+            o.last_hit, o.last_by = b.owner, b.name
+            o.linger = o.lies
+            self.destroy(o, f'被 {self.label(b)} 压死')
+
+    _crushable_pool = None
+
+    def move(self, dt=DT, precise=False):
+        """Move a coarse tick, or one frame for topple collisions / measured Jet startup."""
+        self._crushable_pool = None
+        for b in list(self.frame_movers.values()) if precise else self.living():
+            if not b.alive or b.frame_move != precise:
+                continue
+            if id(b) in self.__dict__.get('impact_flights', {}):
+                continue
+            hold = self.__dict__.get('knock_hold', {}).get(id(b))
+            if hold is not None and self.frame_now() < hold + (simunits.KNOCK_ATTACK_WAIT
+                                                               if isinstance(b.goal, Body) else 0):
+                continue
+            if 'ATTACHED' in b.status and b.name in self.attachments:
+                continue
             if isinstance(b.goal, Body):
                 g = b.goal
                 if not g.alive:
                     b.goal, b.path = None, []
+                elif b.spot and b.spot[0] == id(g) and math.hypot(g.x - b.spot[1], g.y - b.spot[2]) <= 150:
+                    pass                            # at / on the way to its fire_spot while the goal stays near it
                 elif not b.path or math.hypot(b.path[-1][0] - g.x, b.path[-1][1] - g.y) > 150:
                     if int(self.t / DT) % 8 == 0:                    # re-aimed every 4 s
-                        self.send(b, (g.x, g.y))
-            if not b.path or 'IMMOBILE' in b.status or b.engaged:
+                        self.send(b, (g.x, g.y), reach=self.reach(b, g) if b.mode == 'attack' else 0.0)
+            if b.building and self.at_site(b, 0.0):
                 continue
-            left = b.speed * DT
+            if b.frame_move != precise:          # chasing a moving target may have replanned into / out of prop contact
+                continue
+            if ('IMMOBILE' in b.status or b.engaged or self.emp_disabled(b)
+                    or self.infiltrators.movement_blocked(b)):
+                b.rolling, b.carry = False, 0.0
+                continue
+            if not b.path:
+                b.rolling, b.carry = False, 0.0
+                if b.face is not None:                  # arrived: turns in place to the facing it was given
+                    self.turn(b, b.face, dt)
+                continue
+            spent, extra, b.carry = 0.0, (b.carry if not precise else 0.0), 0.0
+            if not b.rolling and b.jet_motion is None and b.turn_first:     # from standing: turns in place until
+                # near its way. Infantry (TestReactiveLocomotorHUMAN, no TurnThresholdHS) walk off at once, turning as
+                # they go: bench airevit (A round 231) -- Conscripts' form-up order f26, each moved ~3.2 a frame from
+                # f26 on (full speed) while the heading went -180 -135 -90 -72 (45 a frame)
+                way = next(((tx, ty) for tx, ty in b.path if (tx, ty) != (b.x, b.y)), None)
+                if way is not None:
+                    spent = self.turn(b, math.atan2(way[1] - b.y, way[0] - b.x), dt, DRIVE_WITHIN)
+                if spent >= dt:
+                    continue
+            left = b.speed * (dt - spent + extra)
+            if precise and b.jet_motion is not None:
+                import simjet
+                left = simjet.distance(self, b)
+            elif precise:
+                import simtopple
+                speed, acceleration = simtopple.motion(b.template, self.own)
+                base = simunits.stats(b.template, self.own)['speed']
+                speed = speed * b.speed / base if speed is not None and base else b.speed
+                b.drive_speed = min(speed, b.drive_speed + speed * dt / acceleration) if acceleration else speed
+                left = b.drive_speed * (dt - spent)
+            walked = left
+            x0, y0 = b.x, b.y
+            reach = None if precise else self.range_targets(b)
             while left > 0 and b.path:
                 tx, ty = b.path[0]
                 d = math.hypot(tx - b.x, ty - b.y)
+                step = min(BUILD_STEP, left)
+                if b.building and d > step:                 # a builder: in short steps, to see where he reaches it
+                    b.x += (tx - b.x) * step / d
+                    b.y += (ty - b.y) * step / d
+                    left -= step
+                    if self.at_site(b, walked - left):
+                        break
+                    continue
+                if reach and d > 0:                         # an attack-mover stops where it gets a foe in range
+                    s = self.range_entry(b, reach, tx, ty, min(d, left))
+                    if s is not None:
+                        b.x += (tx - b.x) * s / d
+                        b.y += (ty - b.y) * s / d
+                        left -= s
+                        self.mid_aims[id(b)] = (self.t + max(spent + (walked - left) / b.speed - extra, 0.0), b)
+                        break
                 if d <= left:
                     b.x, b.y, left = tx, ty, left - d
                     b.path.pop(0)
@@ -1024,21 +3330,64 @@ class Sim:
                     b.x += (tx - b.x) * left / d
                     b.y += (ty - b.y) * left / d
                     left = 0
+            if not b.path and not precise and b.speed > 0:      # where in the tick its way ended (Sim.on_the_move)
+                b.stops_at = math.floor(self.t / DT + 1e-6) * DT + max(spent + (walked - left) / b.speed - extra, 0.0)
+            if not b.path and not precise and self.eng is not None and self.combat and id(b) not in self.mid_aims \
+                    and any(a is b for a in self._field[1]):
+                # its way ended mid-tick (an idle chase's walk to reach, an order's end): it aims from that frame,
+                # not the next tick's fight (bench engine_acquire idle220, A round 231)
+                self.mid_aims[id(b)] = (self.t + max(spent + (walked - left) / b.speed - extra, 0.0), b)
+            b.rolling = True       # it drove this tick: a next leg given at once (follow_due) is driven on, no stop
+                                    # (bench engine_waypath line / exact: no time lost at the 90 deg corners)
+            if (b.x, b.y) != (x0, y0):
+                # once it drives, the hull faces its way: the last DRIVE_WITHIN of a turn from standing, a turn on a
+                # new way while it drives (bench airevgt f170: no stop, 24 deg a frame on moving frames) and the
+                # bends taken at once (INFERRED; bench engine_hull, round 187: no reversing)
+                b.angle = math.atan2(b.y - y0, b.x - x0)
+            if not b.path and b.follow is not None and not precise and b.speed > 0:
+                b.carry = min(left / b.speed, dt)
+            if not b.path and b.face is not None:      # arrived this tick: from the next frame on it turns
+                rate = b.drive_speed if precise and b.jet_motion is None else b.speed
+                self.turn(b, b.face, (left / rate if rate > 0 else 0.0) - 1.0 / simunits.LIFE_FPS)
+            if b.building:
+                self.at_site(b, walked - left)
+            if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):
+                self.crush_along(b, x0, y0)
+                if precise or self.eng is None:
+                    import simtopple
+                    for o in self.topples:
+                        if not o.alive or o.toppled or o.crushable is None or b.crusher <= o.crushable:
+                            continue
+                        if not simtopple.crosses(b, o, (x0, y0), (b.x, b.y), self.own):
+                            continue
+                        o.toppled = True
+                        speed = b.drive_speed if precise else b.speed
+                        fall = simtopple.fall_frames(speed / simunits.LIFE_FPS, o.topple)
+                        if fall is not None and (o.topple['start'] or o.topple['finish']):
+                            o.topple_end = self.frame_now() + fall + o.topple['delay']
             self.change()
-        if self.auto_kill is not None:
-            mine = [b for b in self.living() if b.owner == self.human]
-            for b in self.living():
-                if not self.enemy(self.human, b.owner) or b.scenery or b.speed <= 0 or 'UNATTACKABLE' in b.status:
-                    continue
-                close = any(math.hypot(b.x - o.x, b.y - o.y) <= REACH for o in mine)
-                b.close_since = (b.close_since if b.close_since is not None else self.t) if close else None
-                if close and self.t - b.close_since >= self.auto_kill:
-                    b.last_hit = self.human
-                    self.destroy(b, f'自动打掉：在玩家 {REACH:g} 以内 {self.auto_kill:g} 秒')
+        self.attachment_tick()
+        # what follows a coarse move in the frame (follow_due, capture_due, infiltrators.tick, auto_kill_due) are
+        # simloop's cells right after the moving cell (sim layers step 8c), no longer this method's tail
+
+    def auto_kill_due(self):
+        """A check's '自动打掉' (auto_kill s): an enemy unit within REACH of the player's things that long dies.
+        After each coarse move (simloop cell auto_kill)."""
+        if self.auto_kill is None:
+            return
+        mine = [b for b in self.living() if b.owner == self.human]
+        for b in self.living():
+            if not self.enemy(self.human, b.owner) or b.scenery or b.speed <= 0 or 'UNATTACKABLE' in b.status:
+                continue
+            close = any(math.hypot(b.x - o.x, b.y - o.y) <= REACH for o in mine)
+            b.close_since = (b.close_since if b.close_since is not None else self.t) if close else None
+            if close and self.t - b.close_since >= self.auto_kill:
+                b.last_hit, b.last_by = self.human, None
+                self.destroy(b, f'自动打掉：在玩家 {REACH:g} 以内 {self.auto_kill:g} 秒')
 
     def sample(self):
         """Every second: a check's counters; every 10: the threat; every 30: what the player has seen."""
-        if self.test and self.test.counters and self.t >= LAG:
+        if self.eng is None and self.test and self.test.counters and self.t >= LAG:     # the model's: in step
             self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
         if int(round(self.t)) % 10 == 0:
             # can the player hold: the enemy's fire within NEAR of the player's things against the player's own
@@ -1067,29 +3416,31 @@ class Sim:
             jj, ii = np.mgrid[0:g.shape[0], 0:g.shape[1]]
             self._xy = self.ground.world((jj, ii))
         x, y = self._xy
-        if self.reveal_all:
+        if self.all_revealed():
             self.known[:] = True
-        for rx, ry, r in list(self.reveals.values()) + self.peeks:
+        for rx, ry, r in list(self.reveals.values()) + self.peeking():
             self.known |= (x - rx) ** 2 + (y - ry) ** 2 <= r * r
         for b in self.living():
             if b.owner == self.human and b.vision:
                 seen = (x - b.x) ** 2 + (y - b.y) ** 2 <= b.vision ** 2
                 if self.high and b.surface != 'air':
-                    seen &= self.ground.zgrid[:seen.shape[0], :seen.shape[1]] <= self.ground.z(b.x, b.y) + HIGH_STEP
+                    seen &= self.ground.zgrid[:seen.shape[0], :seen.shape[1]] <= self.ground.z(b.x, b.y) + b.clear_height
                 self.known |= seen
-        self.peeks = []
         rect = list(getattr(self.m.map, 'BORDERS', {'': (0, 0, 1e9, 1e9)}).values())
         x0, y0, x1, y1 = rect[self.border] if self.border < len(rect) else rect[0]
         inb = (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
         self.known_at.append((self.t, round(float((self.known & inb).sum()) * GRID * GRID / 1e6, 2)))
 
     def pending(self):
-        """Something still to come: a timer running, a unit moving, a script event."""
-        return bool(self.events) or any(v > self.t for v in self.timers.values()) or \
-            any(b.path for b in self.living())
+        """Something still to come: a timer running, a unit moving, a script event, a rank to come where a script
+        reads the points or the protocols."""
+        return bool(self.events) or bool(self.anchored) or any(v > self.t for v in self.timers.values()) or \
+            bool(self.due) or any(b.path or b.building or b.life_end is not None or b.topple_end is not None
+                                 for b in self.living()) or \
+            (self.tech_read and any(b.grows() for b in self.books.values()))
 
     def run(self, until=UNTIL):
-        self.used |= {'frame rate', 'difficulty side'}
+        self.used |= {'engine model' if self.eng else 'frame rate', 'difficulty side'}
         while self.t <= until and self.ending is None:
             self.step()
             if abs(self.t - round(self.t)) < 1e-6:
@@ -1100,6 +3451,19 @@ class Sim:
             self.t = round(self.t + DT, 3)
         if self.ending and self.test and self.test.counters:   # the counters go with the mission
             self.series += [(int(self.t - LAG) + k, [None] * len(self.test.counters)) for k in range(1, 4)]
+        return self
+
+    def advance(self, frames):
+        """The mission `frames` frames on, for a caller that plays it a slice at a time (simproxy's player gives its
+        orders between slices): run's DT ticks (step, each whole second's sample) up to the first tick at or past them,
+        stopping at the mission's end. No quiet check and no end-of-run counters (run's). Returns self."""
+        fps = self.fps if self.eng is not None else simunits.LIFE_FPS
+        target = round(self.t + frames / fps, 6)
+        while self.t < target - 1e-9 and self.ending is None:
+            self.step()
+            if abs(self.t - round(self.t)) < 1e-6:
+                self.sample()
+            self.t = round(self.t + DT, 3)
         return self
 
     # ---- the report
@@ -1152,8 +3516,11 @@ class Sim:
         if self.used:
             out.append('待对齐（这次推演用到的假设）：' + '；'.join(
                 ALIGN[k] + (', '.join(sorted(self.ra3_only)) if k == 'ra3 only' else '') for k in sorted(self.used)))
-        if self.unknown:
-            out.append('不认识的条件 / 动作（当成不成立 / 没效果）：' + ', '.join(f'{k}×{v}' for k, v in self.unknown.items()))
+        if self.unmodeled:                  # Sim.unknown's names are among them
+            out.append('这次碰到、模拟器没模拟的（Sim.unmodeled）：' + '；'.join(
+                f'[{k}] {n}×{g["n"]}（{mmss(g["t"])} 起）{g["what"]}' for (k, n), g in self.unmodeled.items()))
+        if self.areas.missing:
+            self.guessed.add('地图里没有的区域（按空区域算）：' + ', '.join(sorted(self.areas.missing)))
         if self.guessed:
             out.append('数据里没有、用了默认值：' + '；'.join(sorted(self.guessed)))
         return out
@@ -1195,6 +3562,14 @@ def parse_script(text):
     if text and os.path.exists(text):
         text = open(text, encoding='utf-8').read()
     out = []
+
+    def when(t):
+        """A time: seconds or m:ss, or `<flag>+<time>` -- that long after the flag first reads 1 (an event of the plan: a
+        phase's flag, a scene's), so a script follows the level when an opening gets longer (ADR 0015)."""
+        if '+' in t and not re.fullmatch(r'[\d:.]+', t):
+            flag, _, delta = t.rpartition('+')
+            return ('@', flag, seconds(delta))
+        return seconds(t)
     for line in re.split(r'[;\n]', text or ''):
         line = line.split('#')[0].strip()
         if not line or line == '不动':
@@ -1208,24 +3583,40 @@ def parse_script(text):
         t, rest = line.split(None, 1)
         if rest.startswith('派 '):
             who, _, where = rest[2:].rpartition(' 去 ')
-            out.append((seconds(t), '派', who.strip(), where.strip()))
+            out.append((when(t), '派', who.strip(), where.strip()))
+        elif rest.startswith('走 ') and ' 去 ' in rest:
+            who, _, where = rest[2:].rpartition(' 去 ')
+            out.append((when(t), '走', who.strip(), where.strip()))
+        elif rest.startswith('攻击 '):
+            who, _, target = rest[3:].rpartition(' 打 ')
+            out.append((when(t), '攻击', who.strip(), target.strip()))
+        elif rest.startswith('放 ') and ' 在 ' in rest:
+            who_power, _, where = rest[2:].rpartition(' 在 ')
+            who, _, power = who_power.strip().rpartition(' ')
+            out.append((when(t), '放', who.strip(), power.strip(), where.strip()))
+        elif rest.startswith('占领 ') and ' 进 ' in rest:
+            who, _, target = rest[3:].rpartition(' 进 ')
+            out.append((when(t), '占领', who.strip(), target.strip()))
         elif rest.startswith('血量 '):
             who, pct = rest[3:].rsplit(None, 1)
-            out.append((seconds(t), '血量', who.strip(), float(pct.rstrip('%'))))
+            out.append((when(t), '血量', who.strip(), float(pct.rstrip('%'))))
         elif rest.startswith('旗标 '):
             name, v = rest[3:].rsplit(None, 1)
-            out.append((seconds(t), '旗标', name.strip(), int(v)))
+            out.append((when(t), '旗标', name.strip(), int(v)))
+        elif rest.startswith('生产 ') and ' 在 ' in rest:
+            what, _, where = rest[3:].rpartition(' 在 ')
+            out.append((when(t), '生产', what.strip(), where.strip()))
         elif rest.startswith('造 '):
             what, _, where = rest[2:].partition(' 在 ')
             angle = 0.0
             if re.fullmatch(r'-?[\d.]+', where.split()[-1]) and len(where.split()) > 1:
                 where, angle = where.rsplit(None, 1)[0], float(where.split()[-1])
-            out.append((seconds(t), '造', what.strip(), where.strip(), angle))
+            out.append((when(t), '造', what.strip(), where.strip(), angle))
         else:
             verb, _, who = rest.partition(' ')
-            if verb not in ('摧毁', '删除', '打', '占领'):
-                raise ValueError(f'剧本 {line!r}: 动作是 派 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 造 之一')
-            out.append((seconds(t), verb, who.strip()))
+            if verb not in ('摧毁', '删除', '打', '占领', '买'):
+                raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 放 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 生产 / 造 / 买 之一')
+            out.append((when(t), verb, who.strip()))
     return out
 
 

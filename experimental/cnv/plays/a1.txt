@@ -1,0 +1,37 @@
+# A1 as a player plays it (docs/story/plans/a1.md): the simulator's script for simshow --script / simchecks ('a1', 'play').
+# Not a check's shortcut: nothing is razed or deleted by the script, the fight is the simulator's. Times follow the
+# plan's phases (a phase flag + seconds), so the script keeps up when a phase's opening gets longer (ADR 0015).
+#
+# 1. 摸上北塔: everybody wades up the bay channel (out of both towers' sight), the guardians and peacekeepers clear the
+#    two air-defence posts under the north tower, Tanya climbs the tower and takes the north bomber.
+2 派 tanya 去 bay channel
+2 派 hawk 去 bay channel
+2 派 peace 去 bay channel
+40 派 hawk 去 aa post 1
+40 派 peace 去 aa post 1
+50 派 tanya 去 north tower
+# 2. 拆南塔: Tanya back down the shoals and round by the south ore (south of the patrol's reach: patrol watch is r 450
+#    round (2000, 760)), up to the south tower, the rest of the squad waits at the start, not on the bridge.
+CNV_A1_Phase_2+2 派 tanya 去 bay channel
+CNV_A1_Phase_2+25 派 tanya 去 start
+CNV_A1_Phase_2+50 派 tanya 去 south ore 2 refinery
+CNV_A1_Phase_2+50 派 hawk 去 start
+CNV_A1_Phase_2+50 派 peace 去 start
+CNV_A1_Phase_2+80 派 tanya 去 south tower
+# 3. 过桥: the base vehicle is given at the south camp: deploy it at once (the made yard stands for it), the army holds
+#    the bridgehead, a guardian from the new yard every 30 s, the first two tank raids are met there. The push over
+#    the bridge goes with the anti-air vehicles (the twin blades come over the deck) once the second raid is down.
+CNV_A1_Phase_3+8 派 tanya 去 south camp
+CNV_A1_Phase_3+8 派 hawk 去 south bridgehead
+CNV_A1_Phase_3+8 派 peace 去 south bridgehead
+CNV_A1_Phase_3+8 删除 名字含 AlliedMCV
+CNV_A1_Phase_3+8 造 AlliedConstructionYard 在 south camp
+CNV_A1_Phase_3+43 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A1_Phase_3+43 派 名字含 SIM Made 去 south bridgehead
+CNV_A1_Phase_3+73 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A1_Phase_3+103 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A1_Phase_3+133 造 AlliedAntiVehicleVehicleTech1 在 south camp
+CNV_A1_Phase_3+223 派 hawk 去 north dock
+CNV_A1_Phase_3+223 派 peace 去 north dock
+CNV_A1_Phase_3+223 派 名字含 AlliedAntiAir 去 north dock
+CNV_A1_Phase_3+223 派 名字含 SIM Made 去 north dock

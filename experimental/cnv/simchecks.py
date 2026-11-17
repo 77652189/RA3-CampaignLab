@@ -27,10 +27,29 @@ CHECKS = {
     ('a4_before', 'placed'): dict(script='', ending=None, counters=True),
     ('a4_before', 'smash'): dict(script='不打', ending=None, counters=True),
     ('a4_before', 'ambush'): dict(script='不打', ending=None, counters=True),
+    # A1: the squad walks to the south bridgehead and no patrol falls (I20); the mission goes on
+    ('a1', 'walk'): dict(script='', ending=None, counters=False),
+    # A1, A8 as a player plays them (check '' = the level as played; plays/<level>.txt: orders only, nothing razed by the
+    # script, the fight is the simulator's -- the quick `win` of the bench just razes the targets): won
+    ('a1', ''): dict(script=os.path.join(HERE, 'plays', 'a1.txt'), ending='赢', counters=False),
+    ('a8', ''): dict(script=os.path.join(HERE, 'plays', 'a8.txt'), ending='赢', counters=False),
+    # A3, A6, A7, A9, J7 the same way (11-08): won in the simulator; what it does not model is in handoff-phase4
+    # (a3 stasis zones, a6 Athena cannon, a7 capture order, a9 dark-orb shield, j7 jamming)
+    ('a3', ''): dict(script=os.path.join(HERE, 'plays', 'a3.txt'), ending='赢', counters=False),
+    ('a6', ''): dict(script=os.path.join(HERE, 'plays', 'a6.txt'), ending='赢', counters=False),
+    ('a7', ''): dict(script=os.path.join(HERE, 'plays', 'a7.txt'), ending='赢', counters=False),
+    # a9: with the dark balls' shield simulated (engine line B, 11-08) this play razed only 6 of the 9 balls in 15 min;
+    # since the ground ways are pulled straight (engine line A round 112, Ground.pull) it razes all 9 and wins at 12:15
+    ('a9', ''): dict(script=os.path.join(HERE, 'plays', 'a9.txt'), ending='赢', counters=False),
+    ('j7', ''): dict(script=os.path.join(HERE, 'plays', 'j7.txt'), ending='赢', counters=False),
     # A5: the gates hold the fleet till the guards are dead, then it sails and two at the sea win
     ('a5', 'hold'): dict(script='', ending=None, counters=True),
     ('a5', 'win'): dict(script='', ending='赢', counters=True),
     # A7: the nag repeats, the gate's guard is reinforced on revenge and on the pincer
+    # A8: the swell's beat (节律 device) turns the three platform groups on in turn, 25 s of every 60, 20 s apart
+    # (不打: nothing the player does is tested, only the timers and flags; the upgrades are not simulated; the run is
+    # past the 12-minute countdown, so it ends lost -- the counters are read before)
+    ('a8', 'beat'): dict(script='不打', ending='输', counters=True),
     ('a7', 'nag'): dict(script='', ending=None, counters=True),
     ('a7', 'revenge'): dict(script='', ending=None, counters=True),
     ('a7', 'pincer'): dict(script='', ending=None, counters=True),
@@ -82,7 +101,7 @@ def main():
     for level, check in CHECKS:
         ok, lines = run(level, check)
         bad += not ok
-        print(f'{"PASS" if ok else "FAIL"} {level} {check}: {lines[0]}')
+        print(f'{"PASS" if ok else "FAIL"} {level} {check or "(全程)"}: {lines[0]}')
         for x in lines[1:]:
             if x.startswith('FAIL'):
                 print('   ', x)

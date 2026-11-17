@@ -25,3 +25,9 @@ def mission(name='CampBan'):
     m = plan.Compiler(dict(PLAN), name).compile()
     m.facts['let go'] = LET_GO
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'ban': lambda: mission(),
+}

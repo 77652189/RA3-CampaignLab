@@ -47,3 +47,10 @@ def unmended(m):
     t = setup(m)
     t.expect += [('1号车归盟友', 1, 'ever==', 1), ('3号车血量', 1, '<=', 55), ('自己坦克血量', 1, '<=', 55)]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'ally': {'mended': mended},
+    'ally_bare': {'unmended': unmended},
+}

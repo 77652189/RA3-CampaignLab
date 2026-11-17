@@ -20,6 +20,8 @@ from mcp.server.mcpserver import Image, MCPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import harness  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 server = MCPServer('ra3bench', instructions=(
     'Red Alert 3 test bench: one game at a time. Design through interfaces: cnv_show(name, check) tells, without '
@@ -83,14 +85,27 @@ def guard(fn):
 
 @server.tool(structured_output=False)
 @guard
-def bench_start(mod: str, visible: bool = False, hold: bool = True, look: bool = True) -> list:
+def bench_start(mod: str, visible: bool = False, hold: bool = True, look: bool = True, chapter: int = 0,
+                menu_frames: float = 0.0, retail_map: str = '') -> list:
     """Start the bench game with a built mod (a folder name under Documents/Red Alert 3/Mods, e.g. CampNew38) and
     walk the menus into its mission. Refuses while RA3 runs (the user may be playing) or the bench lock is held.
     visible=true leaves the window on the desktop (default: parked off screen, muted). hold=true (default): the
     mission is paused (its Esc menu) between tool calls and only runs while a tool acts or waits. look=false: no
-    first frame (a scripted test that only needs bench_watch)."""
-    r = S.start(mod, visible=visible, hold=hold)
+    first frame (a scripted test that only needs bench_watch). The campaign shell (CampShell / CampShellEn, every
+    Allied level): chapter=N walks its chapter list into level N (default: the slot its build names, 1 for the
+    release shell). menu_frames=S (e.g. 2): also archive the menu walk -- a half-size frame every S seconds and one
+    of each menu screen before its click (chapter list, briefing cards, mission briefing, the opening cutscene till
+    the HUD is up); they are frames 1..N (mission second None, listed in the reply), bench_inspect reads them with
+    the box in 1280x720 screen pixels as usual. mod="" starts the plain game (no mod) in the retail campaign: the
+    first Allied mission (retail_map: its map's name, default camp_a01_brightonbeach_smith; the map's borders and
+    terrain are read from the game's own files and the camera mapping fitted for it is used: calib.py fit_retail)."""
+    r = S.start(mod, visible=visible, hold=hold, chapter=chapter or None, menu_frames=menu_frames,
+                retail_map=retail_map or None)
     msg = f'started {r["mod"]} (pid {r["pid"]}); frames archived in {r["run_dir"]}; ' + '; '.join(r['log'])
+    walk = [f for f in S.frames if f['second'] is None]
+    if walk:
+        msg += (f'; menu walk: frames 1..{len(walk)}, menu screens at '
+                + ', '.join(f'{f["id"]} {f["note"][6:].split(" (")[0]}' for f in walk if '(before' in f['note']))
     return [msg] + looked('start', settle=1.0) if look else after(msg, False)
 
 
@@ -99,7 +114,7 @@ def bench_start(mod: str, visible: bool = False, hold: bool = True, look: bool =
 def bench_look(note: str = '', scale: float = 0.5) -> list:
     """The current frame (scale 0.5 = 640x360; full size stays in the archive). Paused (hold mode): the last frame,
     the game has not moved since."""
-    if S.paused and S.frames:
+    if S.paused and S.frames and S.frames[-1]['second'] is not None:
         fid = S.frames[-1]['id']
         return [f'frame {fid} at mission second {S.second()} (paused: nothing moved since)', view(S.archived(fid), scale)]
     S.window()
@@ -120,18 +135,24 @@ def after(msg, look):
 def bench_inspect(frame: int, x0: float, y0: float, x1: float, y1: float, world: bool = False,
                   zoom: float = 2.0) -> list:
     """Crop an archived frame and enlarge it. Box in screen pixels (1280x720), or world units with world=true
-    (converted with that frame's camera)."""
+    (converted with that frame's camera). Menu-walk frames (bench_start menu_frames) are kept at half size: the box
+    is scaled to them."""
     img = S.archived(frame)
+    meta = S.frames[frame - 1]
+    if world and meta['second'] is None:
+        return 'BENCH: a menu-walk frame has no camera: give the box in screen pixels'
     if world:
         keep = S.view
         S.view = S.frames[frame - 1]['view']
         (u0, v0), (u1, v1) = S.to_screen(x0, y0), S.to_screen(x1, y1)
         S.view = keep
         x0, y0, x1, y1 = min(u0, u1), min(v0, v1), max(u0, u1), max(v0, v1)
+    k = meta.get('scale', 1.0)
+    x0, y0, x1, y1 = x0 * k, y0 * k, x1 * k, y1 * k
     box = tuple(int(max(0, min(lim, c))) for c, lim in zip((x0, y0, x1, y1), (img.width, img.height) * 2))
     if box[2] <= box[0] or box[3] <= box[1]:
         return f'BENCH: empty box {box}'
-    return [f'frame {frame} box {box} x{zoom}', view(img.crop(box), zoom, 'PNG')]
+    return [f'frame {frame} box {box} x{zoom}', view(img.crop(box), zoom / k, 'PNG')]
 
 
 @server.tool(structured_output=False)
@@ -140,7 +161,7 @@ def bench_caption(frame: int = 0) -> list:
     """The military-caption strip (where mission scripts report test signals) of a frame, enlarged; frame 0 = a new
     frame now."""
     if not frame:
-        if S.paused and S.frames:
+        if S.paused and S.frames and S.frames[-1]['second'] is not None:
             frame = S.frames[-1]['id']
         else:
             frame, _ = S.frame('caption')
@@ -162,11 +183,14 @@ def bench_click(x: float, y: float, world: bool = True, right: bool = False, air
 @server.tool(structured_output=False)
 @guard
 def bench_box(x0: float, y0: float, x1: float, y1: float, world: bool = True, air: bool = False,
-              look: bool = True) -> list:
-    """Box-select between two corners (world units, or screen pixels with world=false)."""
+              look: bool = True, right: bool = False, both: bool = False) -> list:
+    """Box-select between two corners (world units, or screen pixels with world=false). right=true: a right-button
+    drag instead (RA3 pans the camera with it; the bench's posted drag pans nothing). both=true: right and left held
+    together while dragging -- a try at the formation preview, the line from the first point to the second its front."""
     (u0, v0), (u1, v1) = ((S.to_screen(x0, y0, air), S.to_screen(x1, y1, air)) if world else ((x0, y0), (x1, y1)))
-    harness.drag(go(), u0, v0, u1, v1)
-    return after(f'box select screen ({u0:.0f}, {v0:.0f})-({u1:.0f}, {v1:.0f})', look)
+    harness.drag(go(), u0, v0, u1, v1, right, both)
+    what = 'two-button drag' if both else 'right drag' if right else 'box select'
+    return after(f'{what} screen ({u0:.0f}, {v0:.0f})-({u1:.0f}, {v1:.0f})', look)
 
 
 @server.tool(structured_output=False)
@@ -189,6 +213,16 @@ def bench_key(vk: int, look: bool = True) -> list:
         return 'BENCH: Esc is the hold-mode pause; start with hold=false to send it'
     harness.key(go(), vk)
     return after(f'key {vk}', look)
+
+
+@server.tool(structured_output=False)
+@guard
+def bench_view(x: float, y: float, look: bool = True) -> list:
+    """Tell the bench the camera now stands on a world point because the MISSION put it there (a MOVE_CAMERA_TO of a
+    test script, exact where bench_camera's minimap click is off by ~100 units): later world clicks follow it."""
+    go()
+    S.scripted_view(x, y)
+    return after(f'camera set by the mission on ({x}, {y})', look)
 
 
 @server.tool(structured_output=False)
@@ -322,7 +356,7 @@ def bench_counters(lines: int, frames: str = 'all') -> str:
     no image, the game untouched. lines: how many counters the map shows (top to bottom). frames as bench_strip.
     '?' = nothing read there (no digit templates yet: counters.py calibrate)."""
     import counters
-    ids = [f['id'] for f in S.frames]
+    ids = [f['id'] for f in S.frames if f['second'] is not None]        # not the menu walk's frames (I22)
     if frames.startswith('last'):
         ids = ids[-int(frames[4:] or 5):]
     elif frames != 'all':
@@ -343,7 +377,7 @@ def bench_strip(x0: float = harness.COUNTER_BOX[0], y0: float = harness.COUNTER_
     a timeline in one small image, the game untouched. Default box: the script counters (DISPLAY_COUNTER, bottom
     left), so a test map that counts what it checks reads as numbers over time. frames: 'all', 'last5' or '3,7,10'."""
     from PIL import Image as PImage, ImageDraw
-    ids = [f['id'] for f in S.frames]
+    ids = [f['id'] for f in S.frames if f['second'] is not None]        # not the menu walk's frames (I22)
     if frames.startswith('last'):
         ids = ids[-int(frames[4:] or 5):]
     elif frames != 'all':
@@ -385,7 +419,8 @@ def bench_status() -> str:
 def bench_stop() -> str:
     """Close the bench game and free the bench lock (frames stay in the run folder)."""
     r = S.stop()
-    return f'stopped {r["mod"]}: {r["frames"]} frames in {r["run_dir"]}'
+    return f'stopped {r["mod"]}: {r["frames"]} frames in {r["run_dir"]}' + (f' -- WARNING {r["warning"]}'
+                                                                          if r.get('warning') else '')
 
 
 # ------------------------------------------------------------- the decoupled builds (experimental/cnv), one call each
@@ -423,7 +458,7 @@ def capped(text, name, cap=CAP):
     text = text.strip()
     if len(text) <= cap:
         return text
-    log = os.path.join(ROOT, 'work', 'logs', f'mcp_{name}.log')
+    log = os.path.join(labpaths.WORK, 'logs', f'mcp_{name}.log')
     os.makedirs(os.path.dirname(log), exist_ok=True)
     with open(log, 'w', encoding='utf-8') as f:
         f.write(text + '\n')
@@ -525,17 +560,23 @@ def plan_vocab(map: str = '') -> str:
 
 @server.tool(structured_output=False)
 @guard
-def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False, retry: bool = True) -> str:
+def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False, retry: bool = True,
+              shell: bool = False, unit: bool = False) -> str:
     """Build a mission with one of its checks (cnv_list), run it on the bench and judge it -- one call, no clicks, no
     pictures: the map's scripts act, its counters report, the counters are read as numbers and held against the
     check's expectations. Returns the build summary, the watch rows, the readings and PASS / FAIL per expectation.
     build=false: the mod already built. keep=true: the game stays up (inspect frames, bench_stop when done). Takes
     ~2-3 min (build ~70 s, menus ~40 s, the check's own run). retry=true: a run the capture dropped out of
-    (BENCH DROPOUT) is run once more by itself, without building again."""
-    out = _cnv_check(name, check, build, keep)
+    (BENCH DROPOUT) is run once more by itself, without building again. shell=true: the check rides on the campaign
+    shell (build.py --shell --check: the mod CampShellT, the release CampShell untouched) and the bench walks the chapter
+    list into the mission's slot -- the same check on what the player gets; only a check that only observes
+    (contract.observes) builds so. unit=true (with shell): one that acts, as a device unit test (机关单测, CampShellU) --
+    no acceptance."""
+    shell = ['--shell'] + (['--unit'] if unit else []) if shell else []
+    out = _cnv_check(name, check, build, keep, shell)
     if retry and 'BENCH DROPOUT' in out:
         # bench 2026-10-23: 3 of 14 runs dropped out, every rerun read through
-        out = out + '\n\n--- run again (dropout) ---\n' + _cnv_check(name, check, False, keep)
+        out = out + '\n\n--- run again (dropout) ---\n' + _cnv_check(name, check, False, keep, shell)
     return out
 
 
@@ -545,18 +586,18 @@ def cnv_check(name: str, check: str = '', build: bool = True, keep: bool = False
 CHECK_SPEED = float(os.environ.get('RA3_BENCH_SPEED') or 8)
 
 
-def _cnv_check(name, check, build, keep):
+def _cnv_check(name, check, build, keep, shell=()):
     was = harness.SPEED
     harness.SPEED = CHECK_SPEED         # before bench_start: the shim hooks the clocks only when the game starts sped up
     try:
-        return _cnv_run(name, check, build, keep)
+        return _cnv_run(name, check, build, keep, shell)
     finally:
         harness.SPEED = was
 
 
-def _cnv_run(name, check, build, keep):
+def _cnv_run(name, check, build, keep, shell=()):
     import json
-    args = [BUILD, name] + (['--check', check] if check else [])
+    args = [BUILD, name] + (['--check', check] if check else []) + list(shell)
     code, out = lab(*args, '--plan', *([] if build else ['--no-build']))
     plan = next((json.loads(x[5:]) for x in out.splitlines() if x.startswith('PLAN ')), None)
     if code or plan is None:
@@ -566,7 +607,7 @@ def _cnv_run(name, check, build, keep):
         return '\n'.join(built + ['RA3 is running: built to work/staging, no bench run'])
     if not plan['steps']:
         return '\n'.join(built + ['built (no check: nothing to run)'])
-    lines, counted, done = built, '', ''
+    lines, counted, done, verdict = built, '', '', ''
     try:
         for tool, a in plan['steps']:
             # the condition came: the waits for it go; a watch without one (a look after it) still runs
@@ -582,14 +623,37 @@ def _cnv_run(name, check, build, keep):
                 counted = text
             if tool == 'bench_watch':           # nothing more to wait for: the condition came, or the game ended
                 done = next((w for w in ('UNTIL met', 'mission has ended', 'stopped:') if w in text), '')
+        ext = harness.ext_summary(S.ext_log)    # engine line D: the dll's create / update lines, read before the stop
+        if ext:
+            lines.append(ext)
+        # judged and written down while the game is still up: a stop that goes wrong (bench 2026-11-10: the game not
+        # out 10 s after its kill, TimeoutExpired) must not take the readings and the verdict with it
+        code, out = lab(*args, '--judge', counted, timeout=120)
+        if done == 'stopped:' and 'RESULT FAIL' in out:     # bench 2026-10-22: the shim went quiet, the rerun passed
+            out += ('\nBENCH DROPOUT: the capture stopped before the check was over -- "no reading" FAILs say nothing '
+                    'about the mission; run again with build=false')
+        verdict = out.strip()
+        save_result(S.run_dir, lines + [verdict])
     finally:
         if not keep and S.p is not None:
-            lines.append(bench_stop())
-    code, out = lab(*args, '--judge', counted, timeout=120)
-    if done == 'stopped:' and 'RESULT FAIL' in out:     # bench 2026-10-22: the shim went quiet at s11.6, the rerun passed
-        out += ('\nBENCH DROPOUT: the capture stopped before the check was over -- "no reading" FAILs say nothing '
-                'about the mission; run again with build=false')
-    return '\n'.join(lines + [out.strip()])
+            lines.append(safe_stop())
+    return '\n'.join(lines + [verdict])
+
+
+def safe_stop():
+    """bench_stop at cnv_check's end: whatever goes wrong in the stop is a warning line, never the run's result."""
+    try:
+        return bench_stop()
+    except Exception as e:      # noqa: BLE001 -- the verdict is already out; the stop only reports
+        return f'bench_stop: WARNING {type(e).__name__}: {e}'
+
+
+def save_result(run_dir, lines):
+    """cnv_check's steps, readings and verdict as run_dir/cnv_result.txt -- written before the stop."""
+    if not run_dir or not os.path.isdir(run_dir):
+        return
+    with open(os.path.join(run_dir, 'cnv_result.txt'), 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines) + '\n')
 
 
 @server.tool(structured_output=False)
@@ -597,7 +661,7 @@ def cnv_map(mod: str, x: float = 0, y: float = 0, r: float = 0, px: int = 2) -> 
     """A built mod's map from above, without the game (maprender): terrain, objects coloured by owner, waypoints,
     trigger areas, a world grid -- to check where a mission placed things. x, y, r (world units): only that square
     around (x, y). px: pixels per map cell."""
-    out_png = os.path.join(ROOT, 'work', 'maps', f'{mod}_mcp.png')
+    out_png = os.path.join(labpaths.WORK, 'maps', f'{mod}_mcp.png')
     code, out = lab(MAPRENDER, mod, '-o', out_png, '--px', str(px), *(['--around', str(x), str(y), str(r)] if r else []),
                     timeout=300)
     if code or not os.path.exists(out_png):
@@ -651,7 +715,7 @@ def map_study(target: str) -> list:
     rows = [x for x in out.splitlines() if x.startswith('|')]
     if not ours and len(rows) == 1:
         short = rows[0].split('|')[1].strip()
-        path = os.path.join(ROOT, 'work', 'mapstudy', short + '.png')
+        path = os.path.join(labpaths.WORK, 'mapstudy', short + '.png')
         return picture(path, out.strip()) if os.path.exists(path) else [out.strip()]
     pic = next((x[8:] for x in out.splitlines() if x.startswith('PICTURE ')), None)
     text = '\n'.join(x for x in out.splitlines() if not x.startswith('PICTURE '))
@@ -674,6 +738,40 @@ def retail_objects(pattern: str, maps: str = '', limit: int = 20) -> str:
     name, ground height under it (world units; water at 200)."""
     code, out = lab(RETAILREF, 'objects', pattern, '--maps', maps, '--limit', str(limit), timeout=600)
     return out.strip() if code == 0 else 'RETAIL: ' + tail(out)
+
+
+def _inject():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        'inject', os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'cnv', 'inject.py'))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@server.tool(structured_output=False)
+def inject_look(run: str = '', kinds: str = '', unit: str = '', first: int = 0, last: int = 0, cap: int = 200) -> str:
+    """注入看: what the game's insides did in a bench run with ra3ext (a map carrying the CNVTeams host), as text --
+    one line per record: frame, unit (object id or team:<name>), kind, what, and the program piece that did it.
+    run: a run folder name under work/testbench/runs (default: the newest one with a ra3ext.log). kinds:
+    comma-separated, of command (orders entering the queue, with the unit), dispatch, goal, state, team, assign,
+    threat (default all). unit: one object id. first / last: a frame range (0 = open)."""
+    inj = _inject()
+    root = os.path.join(labpaths.WORK, 'testbench', 'runs')
+    if not run:
+        have = [d for d in os.listdir(root) if os.path.isfile(os.path.join(root, d, 'ra3ext.log'))]
+        if not have:
+            return 'no run with a ra3ext.log'
+        run = max(have, key=lambda d: os.path.getmtime(os.path.join(root, d)))
+    path = run if os.path.isabs(run) else os.path.join(root, run)
+    if not os.path.isfile(os.path.join(path, 'ra3ext.log')):
+        return f'{run}: no ra3ext.log'
+    ks = [k.strip() for k in kinds.split(',') if k.strip()] or None
+    try:
+        evs = inj.look(path, kinds=ks, unit=unit or None, frames=(first, last or 10 ** 9) if first or last else None)
+    except AssertionError as e:
+        return str(e)
+    return f'{os.path.basename(path)}: {len(evs)} records\n' + inj.text(evs, cap=cap)
 
 
 @server.tool(structured_output=False)

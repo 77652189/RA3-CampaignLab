@@ -15,6 +15,7 @@ the base; the hawks (Soviet, s1) three Hammers at `front` (west end of the islan
 
 Facts: money, give every, order every.
 """
+import resources
 from maps import niagara
 from parts import Mission
 
@@ -23,7 +24,7 @@ MONEY, GIVE_EVERY, ORDER_EVERY = 6000, 20.0, 8.0
 
 
 def mission(name='CampDrive', hammers=3, who='drive'):
-    m = Mission(name=name, map=niagara, facts={'money': MONEY, 'give every': GIVE_EVERY, 'order every': ORDER_EVERY})
+    m = Mission(name=name, map=resources.measured(niagara), facts={'money': MONEY, 'give every': GIVE_EVERY, 'order every': ORDER_EVERY})
     m.spawns |= {BARRACKS, GUARDIAN, 'AlliedPowerPlant'}        # what the AI may build, the checks count
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard')
     m.put('AlliedPowerPlant', 'base power', angle=0.0, role='power')
@@ -34,3 +35,13 @@ def mission(name='CampDrive', hammers=3, who='drive'):
         m.put(HAMMER, 'front', 0, -80 + 80 * k, side='s1', name=f'UNIT - CNV {who} Hammer {k + 1}',
               role=f'hammer {k + 1}')
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'drive_idle': lambda: mission('CampDrvI'),
+    'drive_ai': lambda: mission('CampDrvA'),
+    'drive_enable': lambda: mission('CampDrvE'),
+    'drive_cmd': lambda: mission('CampDrvM', hammers=1),
+    'drive_run': lambda: mission('CampDrvR'),
+}

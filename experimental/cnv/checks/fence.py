@@ -27,3 +27,9 @@ def bar(m):
                                      look=False)),
                ('bench_watch', dict(seconds=RUN, every=3, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'fence': {'bar': bar},
+}

@@ -12,6 +12,7 @@ construction yard at the east base and three guardians by it, the player with a 
 
 Facts: wake at, attack at, money.
 """
+import resources
 from maps import niagara
 from parts import Mission, Script
 
@@ -20,7 +21,7 @@ PERSONALITY = 'AIPersonalityDefinition:AIP_A06_AlliedPresident'
 
 
 def mission(name='CampAI', wake=True):
-    m = Mission(name=name, map=niagara, facts={'wake at': WAKE_AT, 'attack at': ATTACK_AT, 'money': MONEY})
+    m = Mission(name=name, map=resources.measured(niagara), facts={'wake at': WAKE_AT, 'attack at': ATTACK_AT, 'money': MONEY})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
     m.spawns |= {'AlliedPowerPlant', 'AlliedBarracks'}                 # what the AI builds, the check counts
     s1 = m.player('s1')
@@ -42,3 +43,10 @@ def mission(name='CampAI', wake=True):
                     ('SKIRMISH_AI_USE_REBUILD_SYSTEM', s1, 0), ('PLAYER_SET_MONEY', s1, MONEY)]),
             Script('CNV AI - Attack', [('TIMER_EXPIRED', 'CNV AI Attack')], [('SKIRMISH_AI_TRANSFER_ALL', s1, 1)])]
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'ai': lambda: mission(),
+    'ai_asleep': lambda: mission(name='CampAIS', wake=False),
+}

@@ -18,11 +18,13 @@ import sys
 
 import numpy as np
 from PIL import Image
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-DIR = os.path.join(ROOT, 'work', 'testbench', 'calib')
-OUT = os.path.join(ROOT, 'work', 'testbench', 'calib.json')
+DIR = os.path.join(labpaths.WORK, 'testbench', 'calib')
+OUT = os.path.join(labpaths.WORK, 'testbench', 'calib.json')
 UI = [(1040, 0, 1280, 270), (1100, 575, 1280, 720), (0, 0, 140, 100), (0, 650, 200, 720),
       (345, 135, 835, 175)]                                  # minimap, panels, caption bar: never markers
 
@@ -102,7 +104,99 @@ def fit(base, grid, radius=70):
           f'max {np.max(err):.1f} px -> {OUT}')
 
 
+# A retail campaign map's start camera is not the CNV island's (its scripts zoom the camera), so the mapping is fitted
+# again from landmarks read off a frame of that map. A profile is retail_cam/<map>.json (in the repo): the landmarks
+# ("points", written by hand off a frame: world (x, y) from retail_objects, screen (u, v) of the same thing) and what
+# fit_retail derived from them: a pinhole camera facing north (look-at point, pitch, distance, focal length), its
+# ground-plane homography H and `start_view`, the look-at point (a minimap jump moves the same camera over the ground,
+# so a point at world p is drawn where p - view + start_view was at the start). set_profile(name) switches H and
+# START_VIEW to it, set_profile(None) back to the CNV island's (harness.Session does so at every start).
+PROFILE = None
+DEFAULT_VIEW = None
+RETAIL_CAM = os.path.join(HERE, 'retail_cam')
+
+
+def profile_path(name):
+    return os.path.join(RETAIL_CAM, f'{name}.json')
+
+
+def set_profile(name):
+    """Use the camera fitted for retail map `name` (True: found and used; False: none fitted, the CNV island's
+    mapping stays -- then clicks on that map are not to be trusted)."""
+    global PROFILE, START_VIEW, DEFAULT_VIEW
+    if DEFAULT_VIEW is None:
+        DEFAULT_VIEW = START_VIEW
+    PROFILE, START_VIEW = None, DEFAULT_VIEW
+    if not name or not os.path.exists(profile_path(name)):
+        return False
+    with open(profile_path(name), encoding='utf-8') as f:
+        d = json.load(f)
+    if 'H' not in d:
+        return False
+    PROFILE, START_VIEW = d, tuple(d['start_view'])
+    return True
+
+
+def pinhole(p, x, y, z=0.0):
+    """Screen (u, v) of world point (x, y, z) for a camera facing north: p = (look-at x, look-at y, pitch, distance
+    to the look-at point, focal length in px); the look-at point stands at the centre of the 1280x720 screen."""
+    cx, cy, th, dist, f = p[:5]
+    cam = np.array([cx, cy - dist * np.cos(th), dist * np.sin(th)])
+    fwd = np.array([0, np.cos(th), -np.sin(th)])
+    up = np.array([0, np.sin(th), np.cos(th)])
+    q = np.array([x, y, z]) - cam
+    zc = fwd @ q
+    return 640 + f * q[0] / zc, 360 - f * (up @ q) / zc
+
+
+def fit_retail(name):
+    """Fit retail map `name`'s camera from the landmarks of its profile file (needs scipy): "points" lists
+    {"what", "world": [x, y], "screen": [u, v], "raised": true when the screen point is the top of something
+    `height` world units tall (a fence post: the height is fitted, shared by all raised points)}; "corners" (optional,
+    same shape, weak prior) the screen corners' world points read off the minimap's view trapezoid."""
+    from scipy.optimize import least_squares
+    with open(profile_path(name), encoding='utf-8') as f:
+        d = json.load(f)
+    pts, corners = d['points'], d.get('corners', [])
+
+    def res(p, wc=0.5):
+        r = []
+        for q in pts:
+            u, v = pinhole(p, *q['world'], z=p[5] if q.get('raised') else 0.0)
+            r += [u - q['screen'][0], v - q['screen'][1]]
+        for q in corners:
+            u, v = pinhole(p, *q['world'])
+            r += [wc * (u - q['screen'][0]), wc * (v - q['screen'][1])]
+        return np.asarray(r)
+
+    cx = float(np.mean([q['world'][0] for q in pts]))
+    cy = float(np.mean([q['world'][1] for q in pts]))
+    best = None
+    for th in (0.7, 0.9, 1.1):                      # a few starts: the focal length / distance trade off
+        for dist in (800, 1500, 2500):
+            s = least_squares(res, [cx, cy, th, dist, 0.7 * dist + 300, 25.0], x_scale=[100, 100, 0.2, 300, 200, 10],
+                              bounds=([-500, 0, 0.2, 200, 200, 0], [5000, 5000, 1.5, 8000, 6000, 80]))
+            if best is None or s.cost < best.cost:
+                best = s
+    p = best.x
+    r = res(p, 1.0)[:2 * len(pts)].reshape(-1, 2)
+    world = [(x, y) for x in np.linspace(p[0] - 400, p[0] + 400, 5) for y in np.linspace(p[1] - 300, p[1] + 300, 5)]
+    H = homography(world, [pinhole(p, *w) for w in world])
+    d.update(H=H.tolist(), start_view=[round(float(p[0]), 1), round(float(p[1]), 1)], height=round(float(p[5]), 1),
+             pinhole=dict(look_at=[round(float(p[0]), 1), round(float(p[1]), 1)],
+                          pitch_deg=round(float(np.degrees(p[2])), 1), distance=round(float(p[3]), 1),
+                          focal_px=round(float(p[4]), 1)),
+             residual_px=dict(rms=round(float(np.sqrt((r ** 2).mean())), 1), max=round(float(np.abs(r).max()), 1)),
+             note=f'ground plane (map units) -> 1280x720 screen at the start camera of retail map {name}')
+    with open(profile_path(name), 'w', encoding='utf-8') as f:
+        json.dump(d, f, indent=1, ensure_ascii=False)
+    print(f'{len(pts)} landmarks; pinhole {d["pinhole"]}, post height {d["height"]}; residual {d["residual_px"]} px '
+          f'-> {profile_path(name)}')
+
+
 def _H():
+    if PROFILE:
+        return np.asarray(PROFILE['H'])
     with open(OUT, encoding='utf-8') as f:
         return np.asarray(json.load(f)['H'])
 
@@ -176,6 +270,64 @@ def world_to_screen(x, y):
     return round(u), round(v)
 
 
+# -- terrain under the camera (engine line round 8, checks/engine_camera.py, run CampCameraWhere_mcp_1104_150834) --
+# The mapping above is a flat ground plane. The game's camera looks at a height of its own: over flat ground the
+# ground's, but near higher ground it looks higher (A4's back lane V1, a terrace edge 40-60 south: 43 of our units
+# up, the engineer drawn 26 px low); lower ground around does not pull it down. A point HEIGHT_Y world units north
+# per unit of our height (ours = stored / 16) above that look height is drawn where that flat-ground point is (solved
+# from four heights under one camera: ~52 deg down). The look height is fitted, not read from the game: the ground at
+# the point plus the root mean square of what rises above it within PIVOT_R (13 probes, rows within 12 px, RMS 6 --
+# as close as the flat mapping itself gets on flat ground; the old flat-only mapping was 66 px off at worst).
+HEIGHT_Y = 0.48
+PIVOT_R = 100
+
+
+def _load_file(name, path):
+    import importlib.util
+    if name in sys.modules:
+        return sys.modules[name]
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class Ground:
+    """A map's terrain heights (our units), bilinear between cells, and the height the camera looks at. `mod`: a
+    built mod's name, a .map / .big path, or a retail campaign map's name (maprender.load)."""
+
+    def __init__(self, mod):
+        maprender = _load_file('maprender', os.path.join(ROOT, 'experimental', 'campaign', 'maprender.py'))
+        hm = sys.modules['mapterrain'].HeightMap(maprender.load(mod))
+        self.w, self.h, self.border = hm.width, hm.height, hm.border
+        self.e = np.asarray(hm.elev, dtype=np.float64).reshape(hm.height, hm.width) / sys.modules['mapterrain'].SCALE
+        self._pivots = {}
+
+    def at(self, x, y):
+        fx = min(max(x / 10.0 + self.border, 0.0), self.w - 1.001)
+        fy = min(max(y / 10.0 + self.border, 0.0), self.h - 1.001)
+        i, j = int(fx), int(fy)
+        a, b = fx - i, fy - j
+        e = self.e
+        return float(e[j, i] * (1 - a) * (1 - b) + e[j, i + 1] * a * (1 - b) + e[j + 1, i] * (1 - a) * b +
+                     e[j + 1, i + 1] * a * b)
+
+    def pivot(self, x, y):
+        key = (round(x, 1), round(y, 1))
+        if key not in self._pivots:
+            g = self.at(x, y)
+            rise = [max(self.at(x + dx, y + dy) - g, 0.0) ** 2 for dx in range(-PIVOT_R, PIVOT_R + 1, 10)
+                    for dy in range(-PIVOT_R, PIVOT_R + 1, 10) if dx * dx + dy * dy <= PIVOT_R * PIVOT_R]
+            self._pivots[key] = g + (sum(rise) / len(rise)) ** 0.5
+        return self._pivots[key]
+
+    def lift(self, x, y, view):
+        """World y to add to (x, y) before the flat mapping, the camera on `view`: negative (drawn lower) where the
+        ground at (x, y) is below the height the camera looks at."""
+        return HEIGHT_Y * (self.at(x, y) - self.pivot(*view))
+
+
 def screen_to_world(u, v):
     x, y = _apply(np.linalg.inv(_H()), u, v)
     return round(x, 1), round(y, 1)
@@ -185,6 +337,8 @@ if __name__ == '__main__':
     cmd = sys.argv[1]
     if cmd == 'fit':
         fit(*(sys.argv[2:4] or [os.path.join(DIR, 'base.png'), os.path.join(DIR, 'grid.png')]))
+    elif cmd == 'fit_retail':       # fit_retail <map>: from retail_cam/<map>.json's landmarks
+        fit_retail(sys.argv[2])
     elif cmd == 'screen':
         print(*world_to_screen(float(sys.argv[2]), float(sys.argv[3])))
     elif cmd == 'world':

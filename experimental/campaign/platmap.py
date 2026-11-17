@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw
 
 import mapterrain
 import newmap
+import terrain_rules
 
 CELL = mapterrain.CELL
 TIER = {0: 220.0, 1: 340.0, 2: 455.0, 3: 570.0}
@@ -63,10 +64,13 @@ BACKDROP_MOST = 0.01            # km2 of a 远景 block the player may still wal
 class Block:
     """A part of the playable area and what it is for (docs/design/principles.md P24): use 前线 (the enemy or the
     main objective), 支线 (a bonus, a tech building, a strongpoint), 通道 (the way between), 后方 (the base), 远景
-    (backdrop: nobody can walk there). at: a Shape, or a rectangle (x0, y0, x1, y1)."""
+    (backdrop: nobody can walk there). at: a Shape, or a rectangle (x0, y0, x1, y1). high: why the ground here needs
+    the view from above (G15: raised ground costs the player the way and the sight; retail raises it only where the
+    level plays on what is seen from it) -- a block covering raised ground says it, or is 远景."""
     at: object
     use: str
     what: str = ''
+    high: str = ''
 
 
 @dataclasses.dataclass
@@ -89,6 +93,51 @@ class Layout:
     cliff: int = 2                      # smoothing passes (3 x 3 box): a tier step becomes a cliff ~2 * cliff cells wide
     blocks: list = dataclasses.field(default_factory=list)     # [Block]: lint holds the map to them (P24)
     gaps: list = dataclasses.field(default_factory=list)       # [Gap]: lint measures each
+    brushes: list = dataclasses.field(default_factory=list)    # height strokes laid last (brush(); the map page's)
+
+
+BRUSH_OPS = ('raise', 'lower', 'flatten')
+
+
+def _dab_points(d):
+    """A stroke's dabs as stored: flat [x0, y0, x1, y1, ...] (the page's store takes no array of arrays), or pairs."""
+    d = list(d)
+    if d and isinstance(d[0], (list, tuple)):
+        return [(float(x), float(y)) for x, y in d]
+    return [(float(d[k]), float(d[k + 1])) for k in range(0, len(d) - 1, 2)]
+
+
+def brush(e, stroke, b, cell=CELL):
+    """One height stroke on e (a float64 height field, rows j, columns i; changed in place and returned). A stroke is
+    {op: raise | lower | flatten, r: radius (world units), s: strength (elevation / 16 per dab at the centre, falling
+    off linearly to 0 at r), dabs: [x0, y0, x1, y1, ...] world points in the order laid, height: flatten's level}:
+    each dab moves the cells closer than r to its centre, flatten pulls them toward height by at most s * weight.
+    The map page's terrain editor (experimental/mappage/terrain_edit.py, its preview terrain.js) lays strokes by this
+    rule; a map drawn on the page's new-map mode keeps its strokes in Layout.brushes."""
+    op, r, s = stroke['op'], float(stroke['r']), float(stroke.get('s', 0.0))
+    if op not in BRUSH_OPS:
+        raise ValueError(f'unknown brush op {op!r}')
+    h, w = e.shape
+    for x, y in _dab_points(stroke['dabs']):
+        i0, i1 = max(0, math.floor((x - r) / cell) + b), min(w - 1, math.ceil((x + r) / cell) + b)
+        j0, j1 = max(0, math.floor((y - r) / cell) + b), min(h - 1, math.ceil((y + r) / cell) + b)
+        if i0 > i1 or j0 > j1:
+            continue
+        dx = (np.arange(i0, i1 + 1) - b) * cell - x
+        dy = (np.arange(j0, j1 + 1) - b) * cell - y
+        dist = np.sqrt(dx[None, :] * dx[None, :] + dy[:, None] * dy[:, None])
+        near = dist < r
+        amt = s * (1.0 - dist / r)
+        sub = e[j0:j1 + 1, i0:i1 + 1]
+        if op == 'raise':
+            sub[near] = sub[near] + amt[near]
+        elif op == 'lower':
+            sub[near] = sub[near] - amt[near]
+        else:
+            want = float(stroke['height']) - sub[near]
+            sub[near] = sub[near] + np.maximum(-amt[near], np.minimum(amt[near], want))
+        e[j0:j1 + 1, i0:i1 + 1] = sub
+    return e
 
 
 def rect(x0, y0, x1, y1, tier, what=''):
@@ -180,6 +229,11 @@ def heights(layout, w, h, b):
             problems.append(f'ramp {r.what or r.low}: both ends on one level ({lo:.0f} / {hi:.0f})')
         near, t = _strip(r.low, r.high, r.width, w, h, b)
         e[near] = (lo + (hi - lo) * t)[near]
+    if layout.brushes:                                      # hand strokes, on the ground the tiers and ramps made
+        e = e.astype(np.float64)
+        for st in layout.brushes:
+            brush(e, st, b)
+        e = e.astype(np.float32)
     return e, problems
 
 
@@ -189,8 +243,10 @@ def slope_of(e):
     return np.maximum.reduce([abs(p[1:-1, 2:] - c), abs(p[1:-1, :-2] - c), abs(p[2:, 1:-1] - c), abs(p[:-2, 1:-1] - c)])
 
 
-def apply(m, layout, seed=11):
+def apply(m, layout, seed=11, swap=None):
     """Write the layout into the container map: heights, textures, passability, water area, radar pictures.
+    swap: {ground texture: another} for the ground the generator picks (a winter map: grass -> snow); the others
+    must be in SDK v3's Terrain.xml and need our own atlas (make_campnew7.OWN_ATLAS, which the caller turns on).
     Returns (previews {'art', 'small'}, problems)."""
     hm = mapterrain.HeightMap(m)
     w, h, b = hm.width, hm.height, hm.border
@@ -202,6 +258,9 @@ def apply(m, layout, seed=11):
     tiles = mapterrain.Tiles(m, w)
     for f in range(8):
         tiles.fill_field(f, f == 4)                         # field 4 is set nearly everywhere on retail maps
+    swap = swap or {}
+    for t in dict.fromkeys(swap.values()):
+        tiles.add_texture(t)
     slope = slope_of(e)
     patch = newmap.value_noise(seed, 150.0)
     road = np.zeros((h, w), object)
@@ -214,10 +273,10 @@ def apply(m, layout, seed=11):
         for i in range(w):
             v, s = float(e[j, i]), float(slope[j, i])
             grid[(i, j)] = road[j, i] if road[j, i] and s <= STEEP and v > newmap.WATERLINE + 10 else \
-                newmap.texture_for(v, s, (i - b) * CELL, (j - b) * CELL, patch)
+                swap.get(*[newmap.texture_for(v, s, (i - b) * CELL, (j - b) * CELL, patch)] * 2)
             if s > STEEP and v > newmap.WATERLINE:
                 tiles.set_bit(0, i, j, True)
-    newmap.paint_grid(tiles, grid, newmap.RANK + sorted({r.texture for r in layout.roads}))
+    newmap.paint_grid(tiles, grid, [swap.get(t, t) for t in newmap.RANK] + sorted({r.texture for r in layout.roads}))
     tiles.store()
     size = (w - 2 * b) * CELL
     newmap.set_water(m, -300.0, -300.0, size + 300.0, size + 300.0)
@@ -225,8 +284,8 @@ def apply(m, layout, seed=11):
 
 
 CONTAINER = (560, 560, 30)      # Heidelberg's height map (the container every generated map is written into)
-FLAT = 8.0                      # elevation / 16 a building's square may rise across and still be built on (newmap
-                                # flags 9 per cell impassable; bench 2026-10-23: nothing built mid-ramp)
+FLAT = 8.0                      # elevation / 16 the map's own objects (ore, tech, bridge ends) may rise across; the sites a
+                                # player builds or casts on use level_enough (the game's 3 world units = 4.8 of ours)
 
 
 def relief(e, x, y, side, b=CONTAINER[2]):
@@ -235,6 +294,14 @@ def relief(e, x, y, side, b=CONTAINER[2]):
     i, j = int(round(x / CELL)) + b, int(round(y / CELL)) + b
     win = e[max(0, j - h):j + h + 1, max(0, i - h):i + h + 1]
     return float(win.max() - win.min())
+
+
+def level_enough(e, x, y, side, b=CONTAINER[2]):
+    """Whether a building `side` across may be put down at (x, y): the game lets the ground under it vary by
+    BuildSystemSettings.AllowedHeightVariationForBuildingPlacement (3 world units = 4.8 of ours, terrain_rules), which is
+    stricter than FLAT (the older, looser figure the map's own objects are still held to)."""
+    i, j = int(round(x / CELL)) + b, int(round(y / CELL)) + b
+    return terrain_rules.flat_enough(e, i, j, side)
 
 
 def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
@@ -246,9 +313,10 @@ def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
     e, out = heights(layout, w, h, b)
     dry = lambda x, y: e[int(round(y / CELL)) + b, int(round(x / CELL)) + b] > newmap.WATERLINE + 10   # noqa: E731
     for name, s in (sites or {}).items():
-        if getattr(s, 'build', 0) and relief(e, s.x, s.y, s.build, b) > FLAT:
-            out.append(f'site {name}: the {s.build:g} square to build on rises {relief(e, s.x, s.y, s.build, b):.0f}'
-                       f' (most {FLAT:g})')
+        if getattr(s, 'build', 0) and not level_enough(e, s.x, s.y, s.build, b):
+            out.append(f'site {name}: the {s.build:g} square to build on rises '
+                       f'{terrain_rules.world(relief(e, s.x, s.y, s.build, b)):.1f} world units '
+                       f'(the game allows {terrain_rules.BUILD_VARIATION:g})')
     objs = list(objects)
     k = 0
     while k < len(objs):
@@ -272,6 +340,7 @@ def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
             out.append(f'{o.template} at ({o.x:g}, {o.y:g}): not on flat dry ground')
         k += 1
     walk = walkable(layout, objs, dims, e)
+    out += cast_lint(sites, e, walk, objs, dims)
     out += block_lint(layout, sites, walk, dims) + gap_lint(layout, walk, dims)
     if scenery:
         import platprops
@@ -279,10 +348,70 @@ def lint(layout, sites=None, objects=(), scenery=(), dims=CONTAINER):
     return out
 
 
+CAST_CLEAR = 52.0               # a spell's cast circle: the power's ForbiddenObjectRange (32) + the seed it drops (20)
+                                # (units/icewall.py; tests/test_architecture.py G13 holds the numbers together)
+
+
+def cast_lint(sites, e, walk, objects, dims=CONTAINER):
+    """Every site a spell is cast on (Site.cast, K3) as the placement rules want it: the whole circle walkable (the power
+    is PATHABLE_ONLY), the ground across it level (nothing is put down mid-ramp: bench 2026-11-03, the back lane's foot sat
+    on a ramp and the ice never went down, the five level spots did), no map object within it (the power forbids any
+    within 32 of the target). The circle's own scenery is kept off by platprops.clearance."""
+    w, h, b = dims
+    x, y = _cells(dims)
+    out = []
+    for name, s in (sites or {}).items():
+        r = getattr(s, 'cast', 0.0)
+        if not r:
+            continue
+        if not level_enough(e, s.x, s.y, 2 * r, b):
+            out.append(f'site {name}: the {2 * r:g} square a spell is cast on rises '
+                       f'{terrain_rules.world(relief(e, s.x, s.y, 2 * r, b)):.1f} world units (the game allows '
+                       f'{terrain_rules.BUILD_VARIATION:g}): it is on a slope')
+        off = ((x - s.x) ** 2 + (y - s.y) ** 2 <= r * r) & ~walk
+        if off.any():
+            out.append(f'site {name}: {int(off.sum())} cells of its cast circle ({r:g}) are not walkable (cliff, water '
+                       f'or a wall)')
+        for o in objects:
+            d = _gap_to(o, s.x, s.y)
+            if d < r:
+                out.append(f'site {name}: {o.template} at ({o.x:g}, {o.y:g}) stands {d:.0f} from it, inside its cast '
+                           f'circle ({r:g})')
+    return out
+
+
+def _gap_to(o, px, py):
+    """How far (px, py) is from the edge of map object o: a wall piece as its rectangle, anything else as a point
+    less its catalog radius."""
+    box = bar_box(o.template)
+    if box:
+        a = o.angle or 0.0
+        u = (px - o.x) * math.cos(a) + (py - o.y) * math.sin(a)
+        v = -(px - o.x) * math.sin(a) + (py - o.y) * math.cos(a)
+        return math.hypot(max(abs(u) - box[0], 0.0), max(abs(v) - box[1], 0.0))
+    import platprops
+    rad = platprops.radius(o.template) if o.template in platprops.CATALOG else 0.0
+    return max(math.dist((o.x, o.y), (px, py)) - rad, 0.0)
+
+
 # ---- what the player can walk to, the blocks' use, the gaps' width
-WALLS = {'MJ_PalaceWall01': (60.0, 20.0)}       # wall pieces that bar the way (bench 2026-10-27 fence bar: the palace
+WALLS ={'MJ_PalaceWall01': (60.0, 20.0)}       # wall pieces that bar the way (bench 2026-10-27 fence bar: the palace
                                                 # wall held infantry, retail's fences did not): length, thickness
+# civilian buildings that bar the way as a row (K7, P36): the box half sides in the object's own frame (SageXML Geometry
+# MajorRadius, MinorRadius of the retail GameObject; bench check: tests/test_housing.py). Only near-square ones: a row
+# is laid so either side may lie along the line.
+HOUSES = {'MJ_Structure_02': (26.4, 25.5), 'HA_Building16_02': (26.9, 31.0), 'HA_Building16_03': (26.9, 31.0),
+          'TH_SushiBar_01': (23.1, 28.6)}
+HOUSE_OVERLAP = 0.97                            # a row's houses stand this fraction of their shorter side apart (touching)
 BRIDGE_DECK = 120.0                             # a bridge's walkable width laid over the water
+
+
+def bar_box(template):
+    """The half sides (along, across) of the box a map object blocks the ground with: a wall piece or a house; None for
+    anything that does not bar the way."""
+    if template in WALLS:
+        return WALLS[template][0] / 2, WALLS[template][1] / 2
+    return HOUSES.get(template)
 
 
 def _cells(dims):
@@ -305,12 +434,12 @@ def walkable(layout, objects=(), dims=CONTAINER, e=None):
             ok |= near
     x, y = _cells(dims)
     for o in objs:
-        if o.template in WALLS:
-            length, thick = WALLS[o.template]
+        box = bar_box(o.template)
+        if box:
             a = o.angle or 0.0
             u = (x - o.x) * math.cos(a) + (y - o.y) * math.sin(a)
             v = -(x - o.x) * math.sin(a) + (y - o.y) * math.cos(a)
-            ok &= ~((abs(u) <= length / 2) & (abs(v) <= thick / 2))
+            ok &= ~((abs(u) <= box[0]) & (abs(v) <= box[1]))
     return ok
 
 
@@ -369,6 +498,37 @@ def block_lint(layout, sites, walk, dims=CONTAINER):
                    f'(empty; most {EMPTY_MOST:.0%}): give it a use, or make it backdrop (water, cliff, the border)')
     out += [f'block {k} (远景): {v:g} km2 of it can be walked to (most {BACKDROP_MOST:g})'
             for k, v in use['backdrop'].items() if v > BACKDROP_MOST]
+    return out + high_lint(layout, dims)
+
+
+HIGH_TIER = 2                   # a shape of this tier or above is raised ground a level plays on or does not (G15)
+HIGH_UNSAID_MOST = 0.1          # of a raised shape, at most this share outside the blocks that say what it is for
+
+
+def high_lint(layout, dims=CONTAINER):
+    """G15: raised ground says what it is for. In a layout that declares blocks, every shape of tier HIGH_TIER or above
+    must lie (all but HIGH_UNSAID_MOST of it) inside blocks that either carry a Block.high -- why the level needs the view
+    from above there -- or are 远景 (backdrop, nobody walks there; raising it is scenery). Otherwise the height is a
+    free-for-all: it costs the player the way and the sight and buys nothing (the street blocks of A4 were raised
+    only to bar the convoy)."""
+    if not layout.blocks:
+        return []
+    w, h, b = dims
+    said, out = None, []
+    for s in layout.shapes:
+        if s.tier < HIGH_TIER:
+            continue
+        mk = _mask(s, w, h, b)
+        if said is None:                    # the ground the blocks that say it cover
+            said = np.zeros_like(mk)
+            for bl in layout.blocks:
+                if bl.high or bl.use == '远景':
+                    said |= block_mask(bl, dims)
+        n = int(mk.sum())
+        loose = float((mk & ~said).sum()) / n if n else 0.0
+        if loose > HIGH_UNSAID_MOST:
+            out.append(f'high ground {s.what or s.at}: tier {s.tier}, {loose:.0%} of it in no block that says why the view '
+                       f'from above is needed (Block.high) or is 远景 (most {HIGH_UNSAID_MOST:.0%})')
     return out
 
 
@@ -469,7 +629,55 @@ def wall_line(points, gaps=(), template=WALL_PIECE):
     return out
 
 
-REFINERY_REACH = 250.0      # retail (Tokyo Harbor, Heidelberg, Havana): each refinery ~180 from the ore node it faces
+def house_row(points, gaps=(), templates=('MJ_Structure_02',), seed=0):
+    """A row of houses along a polyline (world points), one touching the next (HOUSES' boxes, HOUSE_OVERLAP), an
+    opening of the given width left at each gap ((x, y, width): the point projected onto the line, the opening that wide
+    between the houses' ends) -- the way P36 shuts a street without a hill. Returns (template, x, y, angle). A corner
+    gets its own house. The walkable model (walkable) counts every one as a block."""
+    import random
+    rnd = random.Random(seed)
+    segs, s0 = [], 0.0
+    for p, q in zip(points, points[1:]):
+        d = math.hypot(q[0] - p[0], q[1] - p[1])
+        segs.append((p, q, s0, d))
+        s0 += d
+    total = s0
+
+    def along(x, y):
+        best = (math.inf, 0.0)
+        for p, q, s, d in segs:
+            t = max(0.0, min(1.0, ((x - p[0]) * (q[0] - p[0]) + (y - p[1]) * (q[1] - p[1])) / max(d * d, 1e-9)))
+            best = min(best, (math.hypot(x - p[0] - (q[0] - p[0]) * t, y - p[1] - (q[1] - p[1]) * t), s + t * d))
+        return best[1]
+
+    holes = sorted((along(x, y) - wd / 2, along(x, y) + wd / 2) for x, y, wd in gaps)
+
+    def at(s):
+        p, q, s_, d = next((sg for sg in segs if sg[2] <= s <= sg[2] + sg[3] + 1e-6), segs[-1])
+        t = (s - s_) / max(d, 1e-9)
+        return p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, math.atan2(q[1] - p[1], q[0] - p[0])
+
+    out, s = [], 0.0
+    while s < total - 1e-6:
+        t = rnd.choice(templates)
+        length = 2 * min(HOUSES[t]) * HOUSE_OVERLAP
+        hole = next(((a, b_) for a, b_ in holes if s < b_ and s + length > a), None)
+        if hole:                                    # the house would reach into an opening: one flush against it, then
+            if hole[0] - s > 1.0:                   # start again past it (the opening is as wide as asked, to the unit)
+                out.append((t, *at(hole[0] - length / 2)))
+            s = max(s, hole[1])
+            continue
+        c = min(s + length / 2, total - length / 2) if total >= length else total / 2
+        out.append((t, *at(max(c, 0.0))))
+        s += length
+    for k in range(1, len(segs)):                   # a house on each corner not in an opening
+        cx, cy = segs[k][0]
+        if not any(a <= segs[k][2] <= b_ for a, b_ in holes):
+            out.append((rnd.choice(templates), cx, cy, at(segs[k][2])[2]))
+    return out
+
+
+REFINERY_REACH = 250.0     # retail (Tokyo Harbor, Heidelberg, Havana): each refinery ~180 from the ore node it faces
 
 
 def ore_lint(objects):

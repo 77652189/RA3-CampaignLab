@@ -16,9 +16,11 @@ import struct
 import sys
 
 import numpy as np
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FONT = os.path.join(ROOT, 'work', 'music', 'musescore', 'MuseScore_General.sf2')
+FONT = os.path.join(labpaths.WORK, 'music', 'musescore', 'MuseScore_General.sf2')
 RATE = 44100
 
 # generator numbers (SoundFont 2.01, 8.1.2)

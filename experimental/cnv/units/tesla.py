@@ -9,11 +9,11 @@ Published: abilities surge (its toggle's command button: NAMED_USE_COMMANDBUTTON
 """
 import os
 
-import make_campnew2 as c2
+import labpaths
 from parts import Unit
 from units import look
 
-SAGE = os.path.join(c2.SDK, 'SageXML', 'Soviet', 'Units')
+SAGE = os.path.join(labpaths.SDK3, 'SageXML', 'Soviet', 'Units')
 SURGE_COMMAND = 'Command_ToggleShortCircuitTank'
 TOGGLE_END = '</ToggleStatusSpecialAbilityUpdate>'
 FIRE = '''

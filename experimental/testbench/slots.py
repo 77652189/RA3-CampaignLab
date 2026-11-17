@@ -21,10 +21,13 @@ import os
 import re
 import subprocess
 import time
+import sys
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-BENCH = os.environ.get('RA3_BENCH_DIR') or os.path.join(ROOT, 'work', 'testbench', 'RA3')    # the game copy
+BENCH = os.environ.get('RA3_BENCH_DIR') or os.path.join(labpaths.WORK, 'testbench', 'RA3')    # the game copy
 def lab(root=ROOT):
     """The folder the repository sits in (RA3Modding, where shared\\ is). From a git worktree, the main checkout's:
     the worktree's .git is a file 'gitdir: <main>/.git/worktrees/<name>' (2026-10-27: a build in the units line's
@@ -47,6 +50,8 @@ SLOTS = int(os.environ.get('RA3_BENCH_SLOTS', '2'))
 WAIT = float(os.environ.get('RA3_BENCH_WAIT') or 600)     # seconds take_waiting queues for a slot
 INSTANCE_MUTEX = '41DAF790-16F5-4881-8754-59FD8CF3B8D2'
 GAME = re.compile(r'^(ra3_1\.\d+\.game|ra3\.exe|ra3ep1.*\.exe)$', re.I)
+# the user's other full-screen games (Red Alert 2 / Yuri's Revenge): never ours, they keep the bench out like a user RA3
+USER_GAME = re.compile(r'^(gamemd\.exe|game\.exe|ra2\.exe|ra2md\.exe|yuri\.exe)$', re.I)
 
 
 def lock_path(i):
@@ -58,8 +63,16 @@ def shots_dir(i):
 
 
 def _tasks():
-    """{pid: image name} of every process."""
-    out = subprocess.run(['tasklist', '/FO', 'CSV', '/NH'], capture_output=True, text=True, errors='replace').stdout
+    """{pid: image name} of every process. psutil reads the process list directly (0.02 s); a full `tasklist` hung
+    for minutes inside Codex's sessions (11-11: filtered queries fine, the full listing never returned), so it is
+    only the fallback, with a timeout."""
+    try:
+        import psutil
+        return {p.info['pid']: p.info['name'] or '' for p in psutil.process_iter(['pid', 'name'])}
+    except ImportError:
+        pass
+    out = subprocess.run(['tasklist', '/FO', 'CSV', '/NH'], capture_output=True, text=True, errors='replace',
+                         timeout=60).stdout
     procs = {}
     for line in out.splitlines():
         cols = [c.strip('"') for c in line.split('","')]
@@ -97,10 +110,12 @@ def games(tasks=None):
 
 
 def foreign_games():
-    """RA3 processes no bench slot started (the user playing, or an older tool's game)."""
+    """RA3 processes no bench slot started (the user playing, or an older tool's game), and any other game of the
+    user's that holds the screen (USER_GAME: 2026-11-09 the user's Red Alert 2 was up and every bench start ended in a
+    DirectX error box, 6 runs in a row): the bench keeps out while they play."""
     tasks = _tasks()
     ours = {h.get('game') for i in range(1, SLOTS + 1) if (h := holder(i, tasks))}
-    return games(tasks) - ours
+    return (games(tasks) - ours) | {pid for pid, name in tasks.items() if USER_GAME.match(name)}
 
 
 def take(owner, note=''):

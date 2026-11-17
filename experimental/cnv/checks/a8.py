@@ -1,104 +1,140 @@
-"""A8 tests (were make_campa8.py's CNV_TEST=1 / lose). They ask the mission for everything: its cast (carrier,
-guardian, platform 1-3, hammer ...), the carrier's published jump, the sites its parts stand on, the map's players.
+"""A8 checks (the plan's, docs/story/plans/a8.md; the old rough's are checks/a8_rough.py).
 
-jump: the player's carrier jumps next to platform 1 at 5 s and should carry the four Guardians there and fight
-  (a trigger area around the landing point counts the Guardians that arrived).
-lose: the carrier starts at 1 % health next to platform 1's Bullfrog: shot down within seconds, Mission Lost.
+beat: the swell's wiring, read as counters (no pictures): the three platform groups turn on one after another, each on
+  for 25 s of every 60, 20 s apart, starting 10 s in (devices/rhythm.py: the flag each group sets while it is on).
+  Reads from the mission's own scripts, so it proves the beat is wired and paced, not what the upgrade does to a
+  turret's reach (that is `swell`, still to write on the bench: it needs a unit in range to measure).
 """
-from parts import Script, Test, counted, square
-from checks.liberty import EARLY, jumps
+import re
+
+from parts import Obj, Script, Test
 
 
-def near(m, part):
-    """The point west of a cast part (a platform) an assault aims at: 250 west, 50 north of its site."""
-    return m.site(m.role(part).site, -250, -50)
+def on_flag(m, k):
+    """The flag group k of the swell sets while it is on, read off the mission's own scripts (a check asks the mission,
+    it does not import the device): the group's `on` script (devices/rhythm.py) sets it to 1."""
+    s = next(s for s in m.scripts if re.search(rf' - Beat\w+ {k} on$', s.name))
+    return next(a[1] for a in s.do if a[0] == 'SET_FLAG' and a[2] == 1)
+
+START, PERIOD, ON, PHASES = 10.0, 60.0, 25.0, (0.0, 20.0, 40.0)
+GROUPS = ('北', '中', '南')                     # gun north / mid / south
+SLACK = 3.0                                    # the bench's seconds start some seconds after the mission's
 
 
-def jump(m):
+def beat(m):
     t = Test()
-    to = near(m, 'platform 1')
-    jumps(t, m.role('carrier').name, m.ability('carrier', 'jump'), 'Test Jump Target', to, at=5.0)
-    guardian = m.role('guardian').template
-    counted('Test Guardians', '守护者', t, template=guardian)
-    counted('Test Carrier', '自由号', t, template=m.role('carrier').template)
-    t.areas['Test Platform 1'] = square(*to, 250.0)
-    counted('Test At P1', '守护者到平台', t, template=guardian, area='Test Platform 1')
-    t.expect += [('自由号', 20, '==', 1), ('守护者', 20, '>=', 3), ('守护者到平台', 0, '==', 0, 5.0 - EARLY),
-                 ('守护者到平台', 12, 'ever>=', 3)]
-    t.bench = [('bench_watch', dict(seconds=25, every=5, sheet=False))]
+    for k, label in enumerate(GROUPS):
+        counter = f'Test Swell {k}'
+        t.counters.append((counter, f'浪高{label}'))
+        t.scripts += [Script(f'Test - {counter} zero', [], [('SET_COUNTER', counter, 0)], once=False),
+                      Script(f'Test - {counter} on', [('FLAG', on_flag(m, k), 1)],
+                             [('SET_COUNTER', counter, 1)], once=False)]
+    # sample well inside each group's on and off stretches (after the bench's start slack)
+    for k, label in enumerate(GROUPS):
+        on_from = START + PHASES[k]
+        mid_on = on_from + ON / 2
+        mid_off = on_from + ON + (PERIOD - ON) / 2
+        t.expect += [(f'浪高{label}', mid_on + SLACK, '==', 1, mid_on + SLACK + 2),
+                     (f'浪高{label}', mid_off + SLACK, '==', 0, mid_off + SLACK + 2)]
+    t.bench = [('bench_watch', dict(seconds=START + PERIOD + 25, every=3, sheet=False, lines=len(t.counters)))]
     return t
 
 
-WHOLE = 'Test Whole Island'
-ORDER_EVERY = 8.0                               # seconds between repeated attack-move orders (new units join in)
-JUMP_RELOAD = 46.0                              # the A8 carrier's 45 s reload, plus a second
-GUARD_AREA = 350.0                              # half-side of the area around a platform its escort is counted in
+SHOW_LOW, SHOW_HIGH, RUN = 15.0, 33.0, 55.0
+TARGET = 'AlliedEngineer'
 
 
-def assault(m):
-    """units.md 5.6 check: the same scripted assault with and without the carrier (a8 / a8_control), compared on
-    time and losses. Every ORDER_EVERY seconds the player's whole team attack-moves to the first platform still
-    standing -- and once no Hammer is left in the area around it, attacks the platform by name; with the carrier,
-    it also jumps there each time its reload allows. The mission's own endings are taken out, so the counters
-    stay up: platforms left, enemy vehicles, our vehicles, the carrier."""
-    carrier = 'carrier' in m.cast
-    m.drop_endings()
-    team, enemy, hammer = m.team('p1'), m.player('s1'), m.role('hammer').template
-    platforms = m.roles('platform')
+def swell(m):
+    """The swell on the real mission: what the beat does to a platform's guns (docs/engine/upgrades.md: RANGE moves the
+    weapon, VISION the picking; a removed upgrade's modifier goes). Two neutral engineers stand west of the middle
+    platform's first gun, 250 and 450 from it (retail's sentry gun: reach 300, sight 310). The middle group is on
+    (high: reach x2, sight x2) from 30 s to 55 s of the beat and off (low: reach x0.6 = 180) before.
+      SHOW_LOW  s15  the 250 one is handed to the player: the gun sees it but cannot reach it (180) -- not hurt while low
+      SHOW_HIGH s33  the 450 one is handed over, the beat is on high: reach 600, sight 600 -- the gun picks it and
+                     hurts it; the 250 one, in reach now, is hurt too.
+    Counters (a target counts once hurt or dead, latched): 受伤250, 受伤450, and the middle group's high flag."""
     t = Test()
-    island = m.where('island')
-    t.areas[WHOLE] = square(island.x, island.y, island.r + 300)
-    order, ready = 'Test - order tick', 'Test - jump ready'
-    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1')),
-                                                 ('SET_MILLISECOND_TIMER', order, 6.0),
-                                                 ('SET_MILLISECOND_TIMER', ready, 5.0)]))
-    for k, p in enumerate(platforms):
-        wp, area = f'Test Platform {k + 1}', f'Test Around Platform {k + 1}'
-        t.waypoints[wp] = near(m, f'platform {k + 1}')
-        t.areas[area] = square(*m.site(p.site), GUARD_AREA)
-        stage = [('NAMED_NOT_DESTROYED', p.name)] + [('NAMED_DESTROYED', q.name) for q in platforms[:k]]
-        hammers = lambda op: ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', enemy, op, 0, hammer, area)  # noqa: E731
-        # attack-move only engages units (bench 2026-10-21: the escort died, then everyone idled at the waypoint,
-        # the platform untouched): fight the escort first, then attack the platform itself by name
-        t.scripts += [Script(f'Test - attack {k + 1}', [('TIMER_EXPIRED', order), hammers(4)] + stage,
-                             [('ATTACK_MOVE_TEAM_TO', team, wp)], once=False),
-                      Script(f'Test - attack {k + 1} platform', [('TIMER_EXPIRED', order), hammers(2)] + stage,
-                             [('TEAM_ATTACK_NAMED', team, p.name)], once=False)]
-        if carrier:
-            t.scripts.append(Script(f'Test - jump {k + 1}', [('TIMER_EXPIRED', ready)] + stage,
-                                    [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', m.role('carrier').name,
-                                      m.ability('carrier', 'jump'), wp),
-                                     ('SET_MILLISECOND_TIMER', ready, JUMP_RELOAD),
-                                     ('SHOW_MILITARY_CAPTION', 'SCRIPT:CNVTEST_JUMP', 5.0)]))
-    t.scripts.append(Script('Test - order again', [('TIMER_EXPIRED', order)],
-                            [('SET_MILLISECOND_TIMER', order, ORDER_EVERY)], once=False))   # after the orders above
-    t.strings['SCRIPT:CNVTEST_JUMP'] = 'TEST：自由号跃迁'
-    # by template owned (the KindOf-in-area counts read 20 for 12 vehicles on the first run: see build.kinds)
-    counted('Test Platforms', '平台剩余', t, template=platforms[0].template, player=enemy)
-    counted('Test Hammers', '敌方铁锤', t, template=hammer, player=enemy)
-    counted('Test Guardians', '守护者', t, template=m.role('guardian').template)
-    if carrier:
-        counted('Test Carrier', '自由号', t, template=m.role('carrier').template)
-    else:
-        counted('Test IFVs', '多功能车', t, template=m.role('ifv').template)
-    t.expect += [('平台剩余', 0, 'ever==', 0)]               # 5.6: winnable with and without it
-    watch = dict(seconds=100, every=5, sheet=False, lines=len(t.counters), until='c1==0')
-    # the camera on platform 1: a frame shows what happens there, should the numbers need explaining
-    x, y = m.site(platforms[0].site)
-    t.bench = [('bench_camera', dict(x=x - 150, y=y, look=False))]
-    t.bench += [('bench_watch', watch)] * 3
+    gun = m.find(m.roles('gun mid')[0].name)
+    p1 = m.player('p1')
+    site = m.roles('gun mid')[0].site
+    names = {}
+    for d in (250, 450):
+        names[d] = f'UNIT - Test Swell Target {d}'
+        t.objects.append(Obj(TARGET, gun.x - d, gun.y, side='neutral', name=names[d], site=site))
+    t.scripts += [
+        Script('Test - swell start', [], [('MAP_REVEAL_ALL_PERM', p1), ('SET_MILLISECOND_TIMER', 'Test Swell Low', SHOW_LOW),
+                                          ('SET_MILLISECOND_TIMER', 'Test Swell High', SHOW_HIGH)]),
+        Script('Test - swell hand low', [('TIMER_EXPIRED', 'Test Swell Low')],
+               [('NAMED_TRANSFER_OWNERSHIP_PLAYER', names[250], p1)]),
+        Script('Test - swell hand high', [('TIMER_EXPIRED', 'Test Swell High')],
+               [('NAMED_TRANSFER_OWNERSHIP_PLAYER', names[450], p1)])]
+    for d, label in ((250, '受伤250'), (450, '受伤450')):
+        counter, flag = f'Test Swell Hurt {d}', f'Test Swell Hit {d}'
+        t.counters.append((counter, label))
+        t.scripts += [Script(f'Test - swell hurt {d}', [('UNIT_HEALTH', names[d], 0, 100)], [('SET_FLAG', flag, 1)]),
+                      Script(f'Test - swell dead {d}', [('NAMED_DESTROYED', names[d])], [('SET_FLAG', flag, 1)]),
+                      Script(f'Test - swell zero {d}', [], [('SET_COUNTER', counter, 0)], once=False),
+                      Script(f'Test - swell hit {d}', [('FLAG', flag, 1)], [('SET_COUNTER', counter, 1)], once=False)]
+    t.counters.append(('Test Swell Mid', '浪高中'))
+    t.scripts += [Script('Test - swell mid zero', [], [('SET_COUNTER', 'Test Swell Mid', 0)], once=False),
+                  Script('Test - swell mid on', [('FLAG', on_flag(m, 1), 1)],
+                         [('SET_COUNTER', 'Test Swell Mid', 1)], once=False)]
+    # the bench's seconds start some seconds after the mission's (SLACK): low is judged late in its stretch, high late too
+    t.expect += [('受伤250', SHOW_LOW + 8 + SLACK, '==', 0, 28 + SLACK),
+                 ('受伤450', 0, '==', 0, SHOW_HIGH - 2),                 # hurt at s34 on the bench: right after the hand-over
+                 ('受伤450', SHOW_HIGH + 4 + SLACK, 'ever==', 1, RUN),
+                 ('受伤250', SHOW_HIGH + 4 + SLACK, 'ever==', 1, RUN)]
+    t.bench = [('bench_watch', dict(seconds=RUN, every=3, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+KILLS = (10.0, 15.0, 20.0)                      # win: when each platform is razed by test script (one phase each)
+WIN_BY = 40.0
+LOSE_TIMER = 40.0                               # lose: the 12-minute warm-up countdown, cut to this
+LOSE_BY = 60.0
+
+
+def lost_counter(t):
+    """A counter for the lost flag the plan's Lose scripts set ('Mission Lost'), so an end reads as won or lost."""
+    t.counters.append(('Test Lost', '输了'))
+    t.scripts += [Script('Test - lost zero', [], [('SET_COUNTER', 'Test Lost', 0)], once=False),
+                  Script('Test - lost on', [('FLAG', 'Mission Lost', 1)], [('SET_COUNTER', 'Test Lost', 1)], once=False)]
+
+
+def win(m):
+    """The whole run in a few seconds: the three platforms razed one after another by test script (the player's tool,
+    the carrier and army, is not exercised: `swell` and the live play do that); the three phases follow, the goal
+    completes, the mission is won (ended, and no lost flag)."""
+    t = Test()
+    for k, at in enumerate(KILLS):
+        timer = f'Test Raze {k}'
+        t.scripts += [Script(f'Test - raze set {k}', [], [('SET_MILLISECOND_TIMER', timer, at)]),
+                      Script(f'Test - raze {k}', [('TIMER_EXPIRED', timer)],
+                             [('NAMED_KILL', m.role(f'platform {k + 1}').name)])]
+    lost_counter(t)
+    # the counters vanish when the mission ends (bench 2026-11-04: s17 last read, ended by s19, 3 s of slack after the last
+    # raze at 20): the lost flag can only be read before the end, and nothing but the three razes can end this run
+    t.expect += [('输了', 0, '==', 0, KILLS[-1] - 4), ('ENDED', WIN_BY, '', None)]
+    t.bench = [('bench_watch', dict(seconds=WIN_BY, every=2, sheet=False, lines=len(t.counters)))]
     return t
 
 
 def lose(m):
-    """At 1 % health the carrier waits at home, then jumps next to platform 1's Bullfrog at 5 s (starting there,
-    it died before the bench was in the mission). Read: it is there first, then the mission ends (Mission Lost
-    ends it at once, the counters go with it: a 0 is never shown; nothing else ends it within 20 s)."""
-    m.find(m.role('carrier').name).props['objectInitialHealth'] = 1
+    """The warm-up runs out: the plan's 12-minute countdown timer is cut to LOSE_TIMER s, and the mission must end
+    lost (the machine is warm, the launch was a success) with the platforms still up."""
+    for s in m.scripts:
+        s.do = [(a[0], a[1], LOSE_TIMER) if a[0] == 'SET_MILLISECOND_TIMER' and a[1] == 'CNV A8 Wait 15' else a
+                for a in s.do]
     t = Test()
-    jumps(t, m.role('carrier').name, m.ability('carrier', 'jump'), 'Test Bullfrog',
-          m.site(m.role('platform 1').site, -60, -120), at=5.0)
-    counted('Test Carrier', '自由号', t, template=m.role('carrier').template)
-    t.expect += [('自由号', 0, 'ever==', 1), ('ENDED', 5, '', None)]
-    t.bench = [('bench_watch', dict(seconds=20, every=1, sheet=False))]
+    lost_counter(t)
+    # the counter is gone when the mission has ended, so: still running (counter 0) well into the cut countdown, ended
+    # after it (nothing else can end this run: no army moves, the carrier is untouched)
+    t.expect += [('输了', 0, '==', 0, LOSE_TIMER - 8), ('ENDED', LOSE_BY, '', None)]
+    t.bench = [('bench_watch', dict(seconds=LOSE_BY, every=3, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'a8': {'beat': beat, 'swell': swell, 'win': win, 'lose': lose},
+}

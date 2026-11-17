@@ -47,3 +47,10 @@ def cover(m):
                  ('B 要人血量', SHOOT_AT, 'ever<', 100)]
     t.bench = [('bench_watch', dict(seconds=35, every=3, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'shikigami': {'cover': cover},
+    'shikigami_shells': {'bend': bend},
+}

@@ -4,6 +4,7 @@ win: the tower razed by test script at RAZE_AT -- the mission is over (won) at o
 late: nothing is done -- the countdown runs out and the mission is over (lost).
 """
 import plan
+import playcheck
 from parts import Script, Test, counted
 
 RAZE_AT = 10.0
@@ -38,3 +39,9 @@ def late(m):
     t.expect += [('ENDED', end - 10, '', None)]
     t.bench = [('bench_watch', dict(seconds=end + 30, every=6, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'j7': {'win': win, 'late': late, 'play': playcheck.make('j7')},
+}

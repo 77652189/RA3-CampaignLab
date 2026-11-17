@@ -1,0 +1,708 @@
+"""C-line replays of named AI bench counters; evidence: work/re/c_release_report.md."""
+import importlib.util
+from collections import Counter
+from functools import lru_cache
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
+simai = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai)
+
+pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
+
+
+def test_engineer_pair_isolates_tactic_with_named_capture_candidate():
+    """The experiment fixes candidates, geometry, micro and the wake clock."""
+    from missions.aiengineer_bench import mission
+    engineer, control = mission(True), mission(False)
+    assert engineer.assets[0][1].replace('Tactic="Engineer"', 'Tactic="SimpleAttack"') == control.assets[0][1]
+    assert engineer.objects == control.objects
+    assert engineer.scripts == control.scripts
+    assert engineer.waypoints == control.waypoints
+    candidates = [o for o in engineer.objects if o.template == 'AlliedEngineer']
+    assert len(candidates) == 1
+    assert candidates[0].name == engineer.cnv_named['engineer']
+
+
+@pytest.mark.parametrize('build', ['aieng', 'aiengctl'])
+def test_engineer_replays_observed_no_capture_without_claiming_recruitment(build):
+    """Retail s1-63 / s1-74 plateau; shared absence does not prove a tactic."""
+    w = simai.run(build, 'a', until=63, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+    observed = [row for t, row in rows if 1 <= t <= 62]
+    assert observed
+    assert {tuple(row[k] for k in ('目标归属', '到目标量', '工程师量', '目标血量'))
+            for row in observed} == {(0, 0, 1, 100)}, build
+
+
+def test_never_release_pair_changes_only_release_type():
+    """Fixed candidates, states, target and clock; only release policy changes."""
+    from missions.airelease_bench import mission
+    never, priority = mission(True), mission(False)
+    assert never.assets[0][1].replace('NEVER_RELEASE', 'RELEASE_TO_PRIORITY') == priority.assets[0][1]
+    assert never.objects == priority.objects
+    assert never.scripts == priority.scripts
+
+
+@pytest.mark.parametrize('build', ['airelnever', 'airelprio'])
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'Legacy script-team counters remain unresolved: retail '
+    'defense/attack counters 99/99, model 0/0. This does not establish release '
+    'behavior. CNVTeams follow-up resolves actual membership; legacy script counters remain a naming gap. '
+    'See work/re/handoff-c.md and work/re/c_never_release_report.md.'))
+def test_never_release_named_team_observation_replays_bench(build):
+    """Replay raw diagnostic readings; absent instances cannot prove retention."""
+    w = simai.run(build, 'a', until=66, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+    for second in (25, 55, 65):
+        row = next(row for t, row in rows if second <= t < second + 1)
+        assert tuple(row[k] for k in ('防御人数', '进攻人数', '坦克总数', '曾防御量')) == (99, 99, 2, 0), (build, second, row)
+
+
+@pytest.fixture(scope='module', params=['aialcloselo', 'aialclosehi'])
+def alpha_close_rows(request):
+    w = simai.run(request.param, 'a', until=66, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    return request.param, [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+
+
+def test_alpha_close_pair_has_only_one_changed_field():
+    """Independent pair: the guard schedule, health hold and units are identical."""
+    from missions.aialphaclose_bench import mission
+    low, high = mission(False), mission(True)
+    assert low.assets[0][1] == high.assets[0][1].replace(
+        'AlphaStrikeTargetHealthPct="0.9"', 'AlphaStrikeTargetHealthPct="0.01"')
+    assert low.objects == high.objects
+    assert low.scripts == high.scripts
+
+
+@pytest.mark.parametrize('high', [False, True])
+def test_alpha_observer_preserves_the_measured_scenario(high):
+    """Observe on the existing yard without changing any tactical or combat input."""
+    from dataclasses import replace
+    import labpaths
+    from missions.aialphaclose_bench import mission
+    from checks.engine_aialphaclose import observe
+    stock, observed = mission(high), mission(high, observe=True)
+    assert observed.ext and not stock.ext
+    assert len(observed.objects) == len(stock.objects)
+    assert observed.assets == stock.assets
+    assert observed.scripts == stock.scripts
+    assert observed.waypoints == stock.waypoints
+    assert observed.facts == stock.facts
+    yard = stock.role('ai yard')
+    assert [replace(o, template=yard.template) if o.name == yard.name else o
+            for o in observed.objects] == stock.objects
+    host, = observed.units
+    original = (Path(labpaths.SDK3) / 'SageXML/Allied/Structures' / (yard.template + '.xml')).read_text(encoding='utf-8')
+    behavior = '\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>'
+    assert host.xml.count(behavior) == 1
+    assert host.xml.replace(behavior, '').replace(f'id="{host.id}"', f'id="{yard.template}"') == original
+    assert observed.role('ai yard').template == observed.find(yard.name).template == host.id
+    test = observe(observed)
+    assert ('目标血量', 39, '==', 34 if high else 59, 55) in test.expect
+
+
+@pytest.mark.parametrize('build', ['aialobslo', 'aialobshi'])
+def test_alpha_observer_replays_measured_early_team_membership(build):
+    """Earliest nonempty named-team sample, on the original shared logic frame (E99 / E101: 4 at f21). The
+    personality side runs its states and teams from the first frame, not from the wake (bench aialobsw, B round
+    161), so the model's team fills before the wake too."""
+    w = simai.run(build, 'a', until=11, lib=simai.model()['xmldata'].Library(), record=True)
+    brain, = w.brains.values()
+    rows = [r for r in brain.rec['frames'] if r['frame'] == 21]
+    assert len(rows) == 1, ('missing measured team at frame 21',
+                            min((r['frame'] for r in brain.rec['frames']), default=None))
+    assert len(rows[0]['members']) == 4
+
+
+@pytest.mark.parametrize('build', ['aialobslo', 'aialobshi'])
+def test_alpha_observer_forms_up_then_leaves_then_attacks(build):
+    """E99 command log (work/re e99_compare.json, aialobslo): the SimpleAttack first forms up beside itself (f26 a
+    formation move to 3601.6 / 3294.6, the members idle again one by one f48-f71), then the move to the target (f74),
+    then state 6 (f230). The model (B round 194 form-up) runs the same order; its frames are the strict xfail below."""
+    w = simai.run(build, 'a', until=16, lib=simai.model()['xmldata'].Library(), record=True)
+    brain, = w.brains.values()
+    first = {}
+    for r in brain.rec['frames']:
+        first.setdefault(r['phase'], r['frame'])
+        if r['state'] == 6:
+            first.setdefault('state 6', r['frame'])
+    assert first['form'] < first['go'] < first['state 6'], first
+    at_go, = [r for r in brain.rec['frames'] if r['frame'] == first['go']]
+    centre_y = sum(m['pos'][1] for m in at_go['members']) / len(at_go['members'])
+    assert abs(centre_y - 3294.6) < 25.0, centre_y
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'B round 200: E99 frames form f26 / go f74 / state 6 f230; the model since its form-up (model b830b09) form f2 / '
+    'go f55 / state 6 f240 -- its team fills at f1 (bench f21) and the walk to state 6 takes 185 frames (bench 156); '
+    'passed before only because the model had no form-up. Needs the bench members positions on the walk, not a '
+    'constant.'))
+@pytest.mark.parametrize('build', ['aialobslo', 'aialobshi'])
+def test_alpha_observer_replays_measured_same_frame_state(build):
+    """Assert the qualified observer reading on its original shared logic frame (E99: micro state 6 at f230; the
+    model had 8 while its team formed only at the wake, right with the team filling before it)."""
+    w = simai.run(build, 'a', until=16, lib=simai.model()['xmldata'].Library(), record=True)
+    brain, = w.brains.values()
+    row, = [r for r in brain.rec['frames'] if r['frame'] == 230]
+    assert row['state'] == 6
+
+
+def test_alpha_close_arrives_with_target_at_seventy_percent(alpha_close_rows):
+    """Named delayed-guard bench controls; this alone does not close AlphaStrike."""
+    build, rows = alpha_close_rows
+    assert any(row['到远厂'] == 4 and row['步兵数'] == 4 and row['目标血量'] == 70
+               for t, row in rows if 17 <= t <= 29), build
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'Delayed-guard retail pair: low target HP59/home4/live4; high HP34/home0/live0. '
+    'E90 shares actual firing geometry with Alpha eligibility: high HP37/home0/live0; '
+    'low remains HP64/home3/live3. Exact firing/retreat chronology still needs '
+    'same-frame engine target/member/eligibility evidence. No threshold fitting or '
+    'inventory promotion. E99 observer qualification restores guard/retreat coverage; '
+    'the same-frame target/dispatch gap remains. See work/re/handoff-e.md, '
+    'work/re/e_alpha_e90.md and work/re/e99_alpha_observer.md.'))
+def test_alpha_close_replays_measured_outcome(alpha_close_rows):
+    """Stable s39-55 bench plateaus; no exact dispatch-frame inference."""
+    build, rows = alpha_close_rows
+    expected = (59, 4, 4) if build == 'aialcloselo' else (34, 0, 0)
+    plateau = [row for t, row in rows if 39 <= t <= 55]
+    assert plateau
+    assert {tuple(row[k] for k in ('目标血量', '步兵在家', '步兵数'))
+            for row in plateau} == {expected}, (build, plateau)
+
+
+@pytest.mark.parametrize('alpha_close_rows', ['aialclosehi'], indirect=True)
+def test_alpha_close_high_replays_measured_no_survivors(alpha_close_rows):
+    """Measured high-threshold counts only; exact target HP remains a separate gap."""
+    build, rows = alpha_close_rows
+    assert build == 'aialclosehi'
+    plateau = [row for t, row in rows if 39 <= t <= 55]
+    assert plateau
+    assert {(row['步兵在家'], row['步兵数']) for row in plateau} == {(0, 0)}
+
+
+@pytest.fixture(scope='module', params=['aimicupfast', 'aimicupslow'])
+def micro_update_rows(request):
+    build = request.param
+    w = simai.run(build, 'a', until=56, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [dict(zip(labels, values)) for _, values in w.sim.series]
+    return build, rows
+
+
+def test_micro_update_time_pair_changes_only_micro_period():
+    """Keep the measured pair independent of tactical clocks and scripted powers."""
+    from missions.aimicro_bench import update_time
+    fast, slow = update_time('CampMicUpFast', 0.5), update_time('CampMicUpSlow', 4)
+    assert len(fast.assets) == len(slow.assets)
+    changed = 0
+    for (path, text, key), (other_path, other_text, other_key) in zip(fast.assets, slow.assets):
+        assert (path, key) == (other_path, other_key)
+        if text != other_text:
+            changed += 1
+            assert text.count('UpdateTime="0.5s"') == 1
+            assert other_text.count('UpdateTime="4s"') == 1
+            assert text == other_text.replace('UpdateTime="4s"', 'UpdateTime="0.5s"')
+    assert changed == 1
+    assert fast.objects == slow.objects
+    assert fast.scripts == slow.scripts
+    assert fast.waypoints == slow.waypoints
+    observed_fast = update_time('CampMicObsFast', 0.5, observe=True)
+    observed_slow = update_time('CampMicObsSlow', 4, observe=True)
+    assert not fast.ext and not slow.ext
+    assert observed_fast.ext and observed_slow.ext
+    assert observed_fast.units == observed_slow.units
+    assert observed_fast.objects == observed_slow.objects
+    assert observed_fast.scripts == fast.scripts == observed_slow.scripts
+    assert observed_fast.assets == fast.assets
+    assert observed_slow.assets == slow.assets
+    hosts = [u for u in observed_fast.units if 'ModuleTag_CNVTeams' in u.xml]
+    assert len(hosts) == 1
+    assert 'MinFrames="15"' in hosts[0].xml
+
+
+def test_micro_update_time_charge_and_survival(micro_update_rows):
+    """Named micro-period pair; first skill and live units use the map clock."""
+    build, rows = micro_update_rows
+    charged = [r for r in rows if r['首冲帧'] > 0]
+    print(build, 'first', charged[:1], 'final', rows[-1])
+    assert charged, rows[-1]
+    assert {r['首活'] for r in charged} == {2}
+    assert max(r['造出'] for r in rows) >= 2
+
+
+@pytest.mark.xfail(strict=True, reason='Micro UpdateTime-only pair: retail first-charge latch fast363/slow317, '
+                  'model271/309; both model fires use the low-health branch outside charge distance. '
+                  'Health eligibility remains unresolved; the D78 observer run did not reproduce '
+                  'the scripted wake. See work/re/handoff-c.md and work/re/c_update_state_report.md.')
+def test_micro_update_time_first_clock_replays_bench(micro_update_rows):
+    """Assert the measured script latch, independent of capture wall time."""
+    build, rows = micro_update_rows
+    expected = 363 if build == 'aimicupfast' else 317
+    seen = {r['首冲帧'] for r in rows if r['首冲帧']}
+    assert seen == {expected}, (build, seen)
+
+
+@pytest.fixture(scope='module')
+def release_m_rows():
+    """aiskirm:m replayed by name to 170 s: [(second, {label: counter})] and the AI's teams log."""
+    lib = simai.model()['xmldata'].Library()
+    w = simai.run('aiskirm', 'm', until=170, lib=lib)
+    labels = [label for _, label in w.sim.test.counters]
+    (brain,) = w.brains.values()
+    return [(t, dict(zip(labels, values))) for t, values in w.sim.series], brain.ai.teams.log
+
+
+def _release_first(rows, log):
+    first = next((i for i, (_, row) in enumerate(rows) if row['清扫'] not in (0, 99)), None)
+    observed = {label: sorted({row[label] for _, row in rows}) for label in rows[0][1]}
+    assert first is not None, (observed, [e for e in log if e[1] == 'go'])
+    return first
+
+
+def test_release_to_priority_named_transfer_skips_the_pool(release_m_rows):
+    # B round 217: strict xfail since B205 (the model's ninth defender at s130) removed -- it passes since model
+    # 05d99e0 (C: no generic neutral fallback for Husk targets, bench aihusknone); with that change reverted on
+    # today's main it is the old xfail again (bisected, work/re/handoff-b.md 217).
+    """aiskirm:m by name, retail 11-11 (CampAISkirmM_mcp_1111_221811, work/re/c_release_report.md): defense 8 /
+    Cleanup 99 s125-128, 0 / 8 at s129, the pool's CAN_ATTACK members 0 and its per-frame peak 1 -- the DEFENSE team's
+    RELEASE_TO_PRIORITY men go to the STANDARD Cleanup team in one sample, every one Cleanup has out of defense, none
+    through the pool. The team names now read (sim.Sim.team_names, simai.Brain.team_named). The exact numbers (retail
+    8, the model 9 by then) are the strict xfail below; no exact-second fit.
+    B round 200: 防御型 99 after the transfer = no LandDefense team that sample, i.e. 0 men -- the model ends the
+    emptied team (f1953, a one-man copy f1957) and makes the next at f1967, so its s131 sample (f1965) falls in the
+    gap; the bench's sample found the new empty team (0). When the slot refills is the xfail's exact timing, not the
+    transfer; the same rows on models 12dfca8-349454b and on public b645b61f~1."""
+    rows, log = release_m_rows
+    first = _release_first(rows, log)
+    (t0, before), (t1, after) = rows[first - 1], rows[first]
+    after = dict(after, 防御型=0 if after['防御型'] == 99 else after['防御型'])
+    assert before['清扫'] == 99 and before['防御型'] >= 8, rows[max(0, first - 2):first + 2]
+    assert all(row['防御型'] == before['防御型'] for _, row in rows[first - 4:first]), rows[first - 5:first + 1]
+    assert before['防御型'] - after['防御型'] == after['清扫'], (before, after)
+    assert before['池兵'] == after['池兵'] == 0 and after['池峰'] == 1, (before, after)
+    assert abs(t1 - 129) <= 3, t1
+
+
+@pytest.mark.xfail(strict=True, reason='A round 202 (model fca219e): the names read now -- defense steady, then '
+                  '9 -> 0 and Cleanup 99 -> 9 in one sample at s131, pool 0, peak 1 to 170 s; retail 8 -> 0, '
+                  '99 -> 8 at s129 and the pool peaks 2 at s134. The whole team goes as on the bench; the model has '
+                  'one unit more by then (production, B), not ReleaseType. '
+                  'See work/re/handoff.md 202 and work/re/c_release_report.md.')
+def test_release_to_priority_transfers_defense_without_a_pool_round_trip(release_m_rows):
+    """aiskirm:m: defense 8 -> 0, Cleanup 99 -> 8, pool peak 1 at transfer.
+
+    This observes the stock DEFENSE -> STANDARD release path only. Other release
+    modes and recruitment distance ordering remain gaps; no exact-second fit.
+    """
+    rows, log = release_m_rows
+    first = _release_first(rows, log)
+    before, after = rows[first - 1][1], rows[first][1]
+    assert (before['防御型'], before['清扫']) == (8, 99), rows[max(0, first - 2):first + 2]
+    assert (after['防御型'], after['清扫']) == (0, 8), rows[max(0, first - 2):first + 2]
+    assert after['池峰'] == 1
+    assert any(row['池峰'] == 2 for _, row in rows[first:])
+
+
+def test_release_eight_carrier_only_adds_passive_logging_to_existing_yard():
+    import labpaths
+    from missions.aiskirm_bench import mission
+    m = mission(observe=True)
+    # D round 105: the yard keeps its retail id (a renamed copy changed the AI: aiskxn vs aiskxo on check l)
+    assert m.units == []
+    (fname, xml, link), = m.assets
+    assert link == 'GameObject:AlliedConstructionYard' and m.replaces == [link]
+    original = (Path(labpaths.SDK3) / 'SageXML/Allied/Structures/AlliedConstructionYard.xml').read_text(encoding='utf-8')
+    behavior = '\n  <DeletionUpdate id="ModuleTag_CNVTeams" MinFrames="15" MaxFrames="4000"/>'
+    assert xml.count(behavior) == 1 and xml.replace(behavior, '') == original
+    assert m.ext
+    assert len(m.objects) == 4
+    assert {o.template for o in m.objects if 'Yard' in o.template} == {'AlliedConstructionYard'}
+    stock = mission()
+    assert stock.units == [] and not stock.ext
+
+
+def _release_eight_transition():
+    import teamlog
+    source = ROOT / 'tests/fixtures/c_release_teams/aiskirm_m.txt'
+    defense = teamlog._wants('LandDefense_MEDIUM_StaticDefense_0_0')
+    cleanup = teamlog._wants('BalancedCleanup_SimpleAttack_0_0')
+    previous = None
+    for frame, teams in teamlog.samples(source):
+        defenders = [t for t in teams if teamlog._named(t, defense) and t['active'] and t['n']]
+        attackers = [t for t in teams if teamlog._named(t, cleanup) and t['n'] > 0]
+        if attackers:
+            assert previous is not None and len(attackers) == 1
+            return previous, (frame, defenders, attackers[0])
+        previous = frame, defenders
+    pytest.fail('No populated retail Cleanup team in recorded samples')
+
+
+def test_release_eight_carrier_diagnostic_records_partial_transfer():
+    before, after = _release_eight_transition()
+    frame, defenders = before
+    next_frame, remaining, cleanup = after
+    assert (frame, next_frame) == (1951, 1966)
+    assert next_frame - frame == 15
+    assert len(defenders) == 1
+    defense, = defenders
+    assert defense['active'] == 1 and defense['n'] == 9
+    assert cleanup['active'] == 1 and cleanup['n'] == 7
+    original = {m[0] for m in defense['ids']}
+    assert original == set(range(3171, 3180))
+    assert {m[0] for m in cleanup['ids']} == set(range(3173, 3180))
+    assert len(remaining) == 1 and remaining[0]['active'] == 1 and remaining[0]['n'] == 2
+    assert {m[0] for m in remaining[0]['ids']} == {3171, 3172}
+
+
+def test_release_eight_kept_pair_goes_to_the_capture_tech_team_with_its_new_engineer():
+    """Where the two Cleanup left behind go (A round 190): AlliedCaptureTech_MEDIUM (Engineer tactic, CreateUnits
+    AlliedEngineer 1, MaxUnits 4, NEVER_RELEASE) first appears, empty, in the same sample as Cleanup; the two stay
+    in defense, unclaimed by Cleanup, until the team commits three at once -- a new id (the engineer, which carries
+    IGNORES_SELECT_ALL and no CAN_ATTACK) and the kept pair."""
+    import teamlog
+    source = ROOT / 'tests/fixtures/c_release_teams/aiskirm_m.txt'
+    capture = teamlog._wants('AlliedCaptureTech_MEDIUM_EngineerTactic_0_0')
+    defense = teamlog._wants('LandDefense_MEDIUM_StaticDefense_0_0')
+    seen = [(f, t) for f, teams in teamlog.samples(source) for t in teams if teamlog._named(t, capture)]
+    assert seen[0][0] == 1966 and seen[0][1]['n'] == 0
+    frame, first = next((f, t) for f, t in seen if t['n'])
+    assert frame == 2206 and first['active'] == 1
+    assert {m[0] for m in first['ids']} == {3171, 3172, 3181}
+    kept = {f: {m[0] for t in teams if teamlog._named(t, defense) for m in t['ids']}
+            for f, teams in teamlog.samples(source) if 1966 <= f <= 2206}
+    assert all(ids == {3171, 3172} for f, ids in kept.items() if f < 2206), kept
+    assert not kept[2206]
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'The unique-yard carrier diagnostic measures defense 9 -> 2, Cleanup 0 -> 7; '
+    'stock model predicts an entire eight-member transfer. The original eight-member '
+    'scenario is not validated by this carrier. See work/re/handoff-c.md and '
+    'work/re/c_release_eight_report.md.'))
+def test_release_eight_named_model_replays_carrier_partial_transfer():
+    """Assert the measured carrier result; do not change the stock model or clock."""
+    before, after = _release_eight_transition()
+    w = simai.run('aiskirmc', 'm', until=170, record=True, lib=simai.model()['xmldata'].Library())
+    brain, = w.brains.values()
+    rows = brain.rec['frames']
+    first = next((r for r in rows if r['state_key'] == 'BalancedCleanup' and r['members']), None)
+    assert first is not None
+    defenders = [r for r in rows if r['state_key'] == 'LandDefense_MEDIUM'
+                 and r['frame'] < first['frame'] and r['members']]
+    assert defenders, 'No populated model defense before Cleanup'
+    defense = defenders[-1]
+    original = {m['name'] for m in defense['members']}
+    assert len(original) == before[1][0]['n'] == 9, (first['frame'], sorted(original))
+    transferred = {m['name'] for m in first['members']}
+    assert len(transferred) == after[2]['n'] == 7
+    assert transferred < original
+    retained = [r for r in rows if r['state_key'] == 'LandDefense_MEDIUM'
+                and r['frame'] == first['frame'] and r['phase'] != 'done']
+    assert {m['name'] for r in retained for m in r['members']} == original - transferred
+    activated = next(r for r in rows if r['run'] == first['run'] and r['phase'] == 'go')
+    assert {m['name'] for m in activated['members']} == transferred
+
+
+@pytest.mark.parametrize('build', ['aicr1', 'aicr3'])
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
+    'CreateUnits membership/activation now replay, but s70 production remains four Guardians '
+    'instead of retail three (one extra at home in both builds). Production consumer remains '
+    'a separate B gap; see work/re/handoff-e.md and work/re/e_create_e88.md.'))
+def test_create_units_slot_replays_observed_counters(build):
+    """Replay the dedicated CreateUnits check; exact counters, no timing fit.
+
+    The two builds differ only in slot MinUnits. The opener supplies Guardians;
+    this does not assert that CreateUnits manufactures them. Team identity and
+    the exclusive-filter interpretation of UnitName were unestablished by this
+    original counter probe; the c variants below add direct member observations.
+    """
+    w = simai.run(build, 'a', until=71, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+    at70 = next(row for t, row in rows if 70 <= t < 71)
+    expected = (3, 2, 2) if build == 'aicr1' else (3, 0, 4)
+    assert tuple(at70[k] for k in ('坦克总数', '坦克在家', '步兵在家')) == expected, at70
+    if build == 'aicr1':
+        assert any(row['坦克总数'] == 1 and row['坦克在家'] == 0 for _, row in rows)
+    else:
+        partial = [row for _, row in rows if row['坦克总数'] in (1, 2)]
+        assert partial, 'the replay never exposed partial production'
+        assert all(row['坦克总数'] == row['坦克在家'] for row in partial)
+
+
+def _create_units_observation(build):
+    """Selected complete engine samples; pointer fields removed, values unchanged."""
+    import teamlog
+    rows = teamlog.samples(ROOT / 'tests/fixtures/c_create_teams' / (build + '.txt'))
+    return [(frame, next(t for t in teams if t['names'][1] == '7203be5f_SimpleAttack_0_0'))
+            for frame, teams in rows]
+
+
+@pytest.mark.parametrize('build, expected', [
+    ('aicr1c', [(31, 0, 0), (316, 3, 1)]),
+    ('aicr3c', [(31, 0, 0), (316, 1, 0), (481, 2, 0), (646, 3, 1)]),
+])
+def test_create_units_engine_team_samples(build, expected):
+    """Assert logged counts/active bits; exact conversion lies between samples."""
+    rows = _create_units_observation(build)
+    changes = []
+    for frame, team in rows:
+        assert len(team['ids']) == team['n']
+        state = (team['n'], team['active'])
+        if not changes or state != changes[-1][1:]:
+            changes.append((frame, *state))
+    assert changes == expected
+    assert {i for i, _, _ in rows[-1][1]['ids']} == (
+        {3176, 3166, 3167} if build == 'aicr1c' else {3176, 3177, 3178})
+
+
+@lru_cache(maxsize=2)
+def _create_units_team_go(build):
+    w = simai.run(build, 'a', until=45, lib=simai.model()['xmldata'].Library())
+    brain, = w.brains.values()
+    return next(e for e in brain.ai.teams.log if e[1] == 'go' and e[2][0] == 'CNVStateTF')
+
+
+@pytest.mark.parametrize('build', ['aicr1c', 'aicr3c'])
+def test_create_units_replays_observed_activation_interval(build):
+    rows = _create_units_observation(build)
+    first = next(i for i, (_, team) in enumerate(rows) if team['active'])
+    assert rows[first - 1][0] < _create_units_team_go(build)[0] <= rows[first][0]
+
+
+@pytest.mark.parametrize('build', ['aicr1c', 'aicr3c'])
+def test_create_units_replays_observed_first_members(build):
+    # Initial Peacekeeper IDs are fixed by their placed positions; new Guardian
+    # attribution uses the isolated opener and total counters (INFERRED).
+    expected = ['AlliedAntiVehicleVehicleTech1'] * (1 if build == 'aicr1c' else 3)
+    if build == 'aicr1c':
+        expected += ['AlliedAntiInfantryInfantry'] * 2
+    assert Counter(_create_units_team_go(build)[3]) == Counter(expected)
+
+
+@pytest.mark.parametrize('build, expected', [('aisort0', (0, 1, 1)), ('aisort1', (1, 0, 2))])
+def test_sort_by_distance_replays_named_departure(build, expected):
+    """Fixed candidates, capacity one: compare identities, not departure totals.
+
+    Named departure is indirect recruitment evidence. Dynamic team membership,
+    the engine's distance metric and ties remain gaps (work/re/c_sort_report.md).
+    Exact timing is intentionally not fitted to the engine's departure frame.
+    """
+    w = simai.run(build, 'a', until=36, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+    before = [row for t, row in rows if 1 <= t < 9]
+    assert before
+    assert all((row['远在原位'], row['近在原位'], row['首离身份']) == (1, 1, 0) for row in before)
+    at35 = next(row for t, row in rows if 35 <= t < 36)
+    assert tuple(at35[k] for k in ('远在原位', '近在原位', '首离身份')) == expected, at35
+    assert at35['首离帧'] > 0
+
+
+@pytest.mark.parametrize('build, home', [('aidist250', 1), ('aidist2000', 0)])
+def test_tactic_distance_replays_displaced_guardian(build, home):
+    """Observed s20/s65 endpoints only; aesthetics trajectory has a separate gap."""
+    w = simai.run(build, 'a', until=67, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series]
+    at20 = next(row for t, row in rows if 20 <= t < 21)
+    at65 = next(row for t, row in rows if 65 <= t < 66)
+    assert at20['圈900'] == 1, at20
+    assert at65['曾出圈'] == 1, at65
+    assert at65['坦克总数'] == 1, at65
+    assert (at65['圈300'], at65['圈900']) == (home, home), at65
+
+
+@pytest.mark.parametrize('build, expected_before, expected_after', [
+    ('aidist250', [(1, 1)], [(0, 0), (0, 1), (1, 1)]),
+    pytest.param('aidist2000', [(1, 1), (0, 1)], [(0, 0), (0, 1), (0, 0)],
+                 marks=pytest.mark.xfail(
+                     condition=not (simai.available() and hasattr(simai.model()['tactics'].TacticsBlock, 'stand')),
+                     strict=True, raises=AssertionError, reason=(
+                     'Legacy EngineModel lacks the E108 stand consumer: retail leaves the 300 square '
+                     'before displacement, returns to the 900 square, then leaves again. '
+                     'CNVTeams confirms the same Guardian at frames 166/256/451/541/871: '
+                     '11->01->00->01->00, while the model only has 11->00. '
+                     'Stand-point, order source and readiness remain unobserved; '
+                     'see work/re/e_distance_e92.md.'))),
+])
+def test_tactic_distance_replays_observed_excursion(build, expected_before, expected_after):
+    """Assert measured location transitions, independent of capture-clock seconds."""
+    w = simai.run(build, 'a', until=76, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [dict(zip(labels, values)) for _, values in w.sim.series]
+    # Original retail sequences: work/re/c_distance_report.md and the two
+    # aidist*__a.json recordings. Keep displacement and survival in every row.
+    assert rows
+    assert all(row['坦克总数'] == 1 for row in rows)
+    for displaced, expected in ((False, expected_before), (True, expected_after)):
+        transitions = []
+        for row in rows:
+            if bool(row['曾出圈']) != displaced:
+                continue
+            pos = row['圈300'], row['圈900']
+            if not transitions or pos != transitions[-1]:
+                transitions.append(pos)
+        assert transitions == expected, (build, displaced, transitions)
+
+
+@pytest.mark.parametrize('build', ['aiaeson', 'aiaesoff'])
+def test_tactic_aesthetics_displacement_and_survival(build):
+    """Both switch settings expose a successful displacement and one live tank."""
+    w = simai.run(build, 'a', until=67, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    at65 = next(dict(zip(labels, values)) for t, values in w.sim.series if 65 <= t < 66)
+    assert (at65['传送出圈'], at65['坦克总数']) == (1, 1), at65
+
+
+@pytest.mark.parametrize('build', [
+    'aiaeson',      # B round 205: passes on main bddb0af4 (model 9880258 and b57fd2d), strict xfail (D145) lifted
+    'aiaesoff',
+])
+def test_tactic_aesthetics_replays_named_location_transitions(build):
+    """Compare ordered occupancy changes, without fitting capture seconds."""
+    w = simai.run(build, 'a', until=76, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [dict(zip(labels, values)) for _, values in w.sim.series]
+    before = [row for row in rows if not row['传送出圈']]
+    pre_positions = {(row['圈300'], row['圈900']) for row in before}
+    expected_pre = {(1, 1), (0, 1)} if build == 'aiaeson' else {(1, 1)}
+    assert pre_positions == expected_pre, pre_positions
+    transitions = []
+    for row in rows:
+        if not row['传送出圈']:
+            continue
+        pos = row['圈300'], row['圈900']
+        if not transitions or pos != transitions[-1]:
+            transitions.append(pos)
+    expected = [(0, 0), (0, 1), (0, 0)] if build == 'aiaeson' else [(0, 0), (0, 1), (1, 1)]
+    assert transitions == expected, transitions
+
+
+@pytest.mark.parametrize('build', ['aiaeson', 'aiaesoff'])
+def test_tactic_aesthetics_switch_after_displacement(build):
+    """UseAestheticsManager (D round 145), the part after the push out of 900 (engine_aiaesthetics a, both PASS,
+    work/re/c_aesthetics_report.md): on -> back into 900, then away to the aesthetics stand point (300 / 900 = 0 / 0
+    at s65); off -> back into both squares (1 / 1). The model does the same since B194's form-up. Before the push
+    the model also leaves 900 on the enabled side (bench stays inside it): the strict xfail above."""
+    w = simai.run(build, 'a', until=76, lib=simai.model()['xmldata'].Library())
+    labels = [label for _, label in w.sim.test.counters]
+    rows = [dict(zip(labels, values)) for _, values in w.sim.series]
+    transitions = []
+    for row in rows:
+        if not row['传送出圈']:
+            continue
+        pos = row['圈300'], row['圈900']
+        if not transitions or pos != transitions[-1]:
+            transitions.append(pos)
+    expected = [(0, 0), (0, 1), (0, 0)] if build == 'aiaeson' else [(0, 0), (0, 1), (1, 1)]
+    assert transitions == expected, transitions
+    at65 = next(r for (t, _), r in zip(w.sim.series, rows) if 65 <= t < 66)
+    home = int(build == 'aiaesoff')
+    assert (at65['圈300'], at65['圈900'], at65['坦克总数']) == (home, home, 1), at65
+
+
+@pytest.mark.parametrize('build', ['airelnever', 'airelprio'])
+def test_never_release_engine_members_and_model_replay(build):
+    """Same retail member IDs first defend, then stay/transfer; no HUD-name inference."""
+    import teamlog
+    source = ROOT / 'tests/fixtures/c_release_teams' / (build + '.txt')
+    defense = 'CNVStateTF_StaticDefense'
+    attack = 'CNVReleaseAttack_SimpleAttack'
+    initial = teamlog.members(source, defense, 301)
+    assert len(initial) == 1 and {m[0] for m in initial[0]} == {3166, 3167}
+    never = build == 'airelnever'
+    for frame in (601, 976):
+        assert teamlog.team_sizes(source, defense if never else attack, frame) == [2]
+        # Empty instances are periodically removed; absence is not the primary evidence.
+        assert teamlog.team_sizes(source, attack if never else defense, frame) in ([], [0])
+        held = teamlog.members(source, defense if never else attack, frame)
+        assert {m[0] for m in held[0]} == {3166, 3167}
+        teams = teamlog.at(source, frame)
+        actual = [t for t in teams if t['names'][1].lower().startswith(teamlog._hashed(defense if never else attack))]
+        assert len(actual) == 1 and actual[0]['active'] == 1
+    w = simai.run(build, 'a', until=66, record=True, lib=simai.model()['xmldata'].Library())
+    brain, = w.brains.values()
+    original = {'UNIT - CNV AI Tank 1', 'UNIT - CNV AI Tank 2'}
+    for frame in (301, 601, 976):
+        observed = {state: set() for state in ('CNVStateTF', 'CNVReleaseAttack')}
+        for row in brain.rec['frames']:
+            if row['frame'] == frame and row['phase'] != 'done':
+                observed[row['state_key']].update(m['name'] for m in row['members'])
+        destination = 'CNVStateTF' if frame == 301 or never else 'CNVReleaseAttack'
+        assert observed[destination] == original
+        assert observed['CNVReleaseAttack' if destination == 'CNVStateTF' else 'CNVStateTF'] == set()
+
+
+def test_capture_tech_opens_with_the_cleanup_on_the_tech_building_share():
+    """aiskirmc:m (C's live log, tests/fixtures/c_release_teams/aiskirm_m.txt): AlliedCaptureTech_MEDIUM's team is
+    absent at f1951 and present (empty, inactive) at f1966, the same sample as BalancedCleanup's first team. Its
+    TechBuildingShare (100%, Above false) reads simai's 'tech buildings' (own, all, players): the map's one
+    neutral OilDerrick (KindOf NEUTRAL_TECH) owned by nobody -> share 0 -> on. Without the fact the state never
+    opened (A round 191)."""
+    w = simai.run('aiskirmc', 'm', until=132, lib=simai.model()['xmldata'].Library())
+    brain, = w.brains.values()
+    own, total, players = brain.facts()['tech buildings']
+    assert (own, total) == (0, 1) and players >= 2
+    made = {}
+    for frame, what, key, *_ in brain.ai.teams.log:
+        if what == 'team':
+            made.setdefault(key[0], frame)
+    assert 'AlliedCaptureTech_MEDIUM' in made
+    assert made['AlliedCaptureTech_MEDIUM'] == made['BalancedCleanup']
+    assert 1951 < made['AlliedCaptureTech_MEDIUM'] <= 1966
+
+
+def test_capture_tech_holds_two_escorts_out_of_the_cleanup():
+    """aiskirmc:m (tests/fixtures/c_release_teams/aiskirm_m.txt, A round 193): Cleanup's first commit (f1966) leaves
+    exactly two in defense -- the two lowest ids, held by AlliedCaptureTech_MEDIUM while it has no engineer (model
+    teams.escort_count, INFERRED 2 = MaxUnits 4 - the CreateUnits slot's 1 + 1); the model's Cleanup commits at
+    f1953. Only the hold at that commit is asserted: in the model the capture team expires at f2028 and Cleanup then
+    takes the pair (retail keeps them held to f2206), and nobody builds the named engineer yet.
+    A round 194: the team orders its engineer itself (model AIPlayer.order_wanted, D round 96's read of the team maker's missing-unit order) and,
+    waiting for it, does not expire; at f2206 it has gone with the engineer and the same pair, as retail (3181,
+    3172, 3171). The engineer was ordered once. Retail commits between f2191 and f2206 (its barracks made 3180,
+    f1966-f2041, before the 10 s engineer); the model's barracks is idle at the order and it commits at f2116 -- the
+    unit builder's draw upstream, not asserted. The AlliedScout teams are not asserted (A round 199): on this carrier
+    (CNVSkirmTeamsYard) they never get a dog and defense keeps both, while on the stock yard, same head and hour, one
+    takes a dog from defense at s72 (aiskirmc l / aiskirm l, bench 2026-11-13) -- the carrier changes them.
+    A round 200: the pair held are the two lowest ids wherever they are (model teams.recruit, INFERRED) -- on stock
+    aiskirm m Cleanup takes all of defense (8 -> 0 at s129) with both dogs in the scout teams. The simulator does not
+    model the carrier's scouts, so here its scouts hold the dogs and the hold falls on them: asserted is the rule
+    (the two lowest ids stay out of Cleanup's commit, and whoever of them was in defense stays there), not retail's
+    two left in defense."""
+    w = simai.run('aiskirmc', 'm', until=148, record=True, lib=simai.model()['xmldata'].Library())
+    brain, = w.brains.values()
+    rows = brain.rec['frames']
+    first = next(r for r in rows if r['state_key'] == 'BalancedCleanup' and r['members'])
+    left = [m['name'] for r in rows if r['state_key'] == 'LandDefense_MEDIUM' and r['frame'] == first['frame']
+            and r['phase'] != 'done' for m in r['members']]
+
+    def ids(names):                     # '#made <id> <template>'
+        return sorted(int(n.split()[1]) for n in names)
+    every = {m['name'] for r in rows if r['frame'] == first['frame'] and r['phase'] != 'done' for m in r['members']}
+    low = ids(every)[:2]                # the hold: the two lowest ids wherever they are (A round 200)
+    assert not set(low) & set(ids(m['name'] for m in first['members'])), (low, first['members'])
+    assert set(ids(left)) <= set(low), (first['frame'], left, low)
+    at = [r for r in rows if r['state_key'] == 'AlliedCaptureTech_MEDIUM' and r['frame'] == 2206]
+    assert len(at) == 1 and at[0]['phase'] != 'done', at       # a tactic run's row: the team has gone
+    got = [m['name'] for m in at[0]['members']]
+    # the size is not asserted (A round 199): retail's pool held no free unit at its commit, the model's a Riptide
+    # made the moment before, which the team takes -- whether retail would, that run cannot tell
+    assert set(left) <= set(got) and sum(n.endswith(' AlliedEngineer') for n in got) == 1, (got, left)
+    assert [e[2] for e in brain.ai.log if e[1] == 'team order'].count('AlliedEngineer') == 1
+    gone = next(r['frame'] for r in rows if r['state_key'] == 'AlliedCaptureTech_MEDIUM' and r['members'])
+    home = {}                           # frame -> names in defense
+    for r in rows:
+        if r['state_key'] == 'LandDefense_MEDIUM' and r['phase'] != 'done' and first['frame'] <= r['frame'] < gone:
+            home.setdefault(r['frame'], set()).update(m['name'] for m in r['members'])
+    assert (home or not left) and all(set(left) <= names for names in home.values()), gone

@@ -37,7 +37,12 @@ if os.environ.get('CNV_PROBE_MAP') == 'retail':
     SRC_DIR = os.path.join(SDK, 'Mods', NAME, 'data', 'additionalmaps')
     BUILT = os.path.join(SDK, 'BuiltMods', 'mods', NAME.lower(), 'data', 'additionalmaps')
     OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
-GAME_ALL_TYPES_HASH = 1424942948      # manifest header field 4 of static.12 / global.12 ... and of Arsenal's stream
+PREFIX_OVERRIDES = {}   # label prefix -> text for every retail label that starts with it
+STRINGS_BASE = 'CNVoice_text.big'   # the game's string table the csf starts from (Data\<this>): the installed CNVoice
+                                    # table (Chinese); an English edition starts from retail English (langs.EDITIONS:
+                                    # Lang-English11.big) -- on a plain English game a Chinese retail label shows dashes
+OVERRIDES = {}      # retail labels the mod rewrites (the campaign shell: the faction card's text), label -> text
+GAME_ALL_TYPES_HASH = 1424942948     # manifest header field 4 of static.12 / global.12 ... and of Arsenal's stream
 STRINGS = {
     'MissionName:CNV01': 'CNV01 新关卡测试：海德堡',
     'MissionName:CNV01_Short': 'CNV01 新关卡',
@@ -123,9 +128,12 @@ def map_files():
 
 def strings():
     name = 'data\\gamestrings.csf'
-    data = big.read_files(os.path.join(GAME, 'Data', 'CNVoice_text.big'), [name])[name]
+    data = big.read_files(os.path.join(GAME, 'Data', STRINGS_BASE), [name])[name]
     header, entries = csf.parse_full(data)
     have = {e[0] for e in entries}
+    entries = [(e[0], OVERRIDES[e[0]], None, 1) if e[0] in OVERRIDES else e for e in entries]
+    for prefix, text in PREFIX_OVERRIDES.items():            # every retail label starting so (the commanders' names)
+        entries = [(e[0], text, None, 1) if e[0].startswith(prefix) else e for e in entries]
     entries += [(k, v, None, 1) for k, v in STRINGS.items() if k not in have]
     return [(name, refpack.compress_literal(csf.write(header, entries)))]
 

@@ -1,0 +1,110 @@
+# A4 as a player plays it (docs/story/plans/a4.md): the simulator's script for simshow --script. Part 1 = the festival
+# (stage 会场), found 2026-11-08 by hill-climbing play styles in the simulator (work/re/scripts/a4climb.py, a4plays.py),
+# the venue ends with ONE truck lost (the bonus goal is for perfect play), the two others reach `halt` at 5:11.
+# Why this and not the earlier forward-army script (lost at 4:00): (1) the trucks drive at 12 a second, x 1200 (the back
+# lane) at 2:49: the second horn (2:45) makes the lane's troops at the trucks themselves, nothing but a wall on the lane
+# stops them (an army cannot, a truck dies in a few seconds), (2) a street BEHIND the trucks sends its troops at their tail
+# with the army ahead -- freeze the lane and plaza 1 every horn, leave plaza 2 (ahead of the trucks) open and put the army
+# at its gate: every wave, the rerouted ones too, then comes to the army first, (3) troops sent at a truck ignore the army
+# on the way: the army must be where they spawn or will pass, not beside the trucks (an army that escorts the trucks lost at
+# 2:35), (4) the ice engineers go back to a quiet place as soon as their wall stands (the first one died at the lane).
+# Without ice: lost at 3:12 (the lane at the trucks, 2:54). 320 random plays: none survives, the best 4:13.
+# Order times: a cast starts ~25 s before the horn (walk ~13 s, build 5 s, the wall stands 30 s, reload 40 s, one cast per
+# engineer per horn), the horn: 1:55 lane + plaza 1, 2:45 + plaza 2, 3:25, 4:15, 4:55. The relief (3 guardians, 4
+# peacekeepers, 2 javelins at the 2nd and 4th horn) is at the west end: every order below goes to it too (-AlliedAnti).
+# 1. the army: the first junction, then plaza 1's road, from the third horn on the open street's gate (plaza 2)
+95 派 guardian 去 view start
+95 派 peacekeeper 去 view start
+95 派 javelin 去 view start
+95 派 名字含 -AlliedAnti 去 view start
+125 派 guardian 去 approach 1
+125 派 peacekeeper 去 approach 1
+125 派 javelin 去 approach 1
+125 派 名字含 -AlliedAnti 去 approach 1
+155 派 guardian 去 approach 1
+155 派 peacekeeper 去 approach 1
+155 派 javelin 去 approach 1
+155 派 名字含 -AlliedAnti 去 approach 1
+185 派 guardian 去 approach 1
+185 派 peacekeeper 去 approach 1
+185 派 javelin 去 approach 1
+185 派 名字含 -AlliedAnti 去 approach 1
+215 派 guardian 去 halt
+215 派 peacekeeper 去 halt
+215 派 javelin 去 halt
+215 派 名字含 -AlliedAnti 去 halt
+245 派 guardian 去 halt
+245 派 peacekeeper 去 halt
+245 派 javelin 去 halt
+245 派 名字含 -AlliedAnti 去 halt
+275 派 guardian 去 halt
+275 派 peacekeeper 去 halt
+275 派 javelin 去 halt
+275 派 名字含 -AlliedAnti 去 halt
+# 2. the ice: the first engineer (a cast role) takes the lane at every horn and waits at the first junction between casts,
+#    the second (comes in at the west end at 1:39) takes plaza 1 from the second horn on and waits at plaza 1's road
+90 放 engineer freeze 在 lane foot
+110 派 engineer 去 view start
+140 放 engineer freeze 在 lane foot
+140 放 名字含 IceEngineer freeze 在 inside 1
+160 派 engineer 去 view start
+160 派 名字含 IceEngineer 去 approach 1
+180 放 engineer freeze 在 lane foot
+180 放 名字含 IceEngineer freeze 在 inside 1
+200 派 engineer 去 view start
+200 派 名字含 IceEngineer 去 approach 1
+230 放 engineer freeze 在 lane foot
+230 放 名字含 IceEngineer freeze 在 inside 1
+250 派 engineer 去 view start
+250 派 名字含 IceEngineer 去 approach 1
+270 放 engineer freeze 在 inside 1
+270 放 名字含 IceEngineer freeze 在 inside 2
+290 派 engineer 去 view start
+290 派 名字含 IceEngineer 去 approach 1
+# Part 2: north camp, defence, last leg (drafted by a Sonnet sub-agent, checked in the simulator 11-08: Win (2) at 13:56). The last leg
+# here is held by three groups at the mouths, the ice engineers are NOT used there yet (the intended play: freeze the mouth a truck passes).
+# TAIL of A4: stage 北营 = Phase_3, 布防 = Phase_4, 最后一程 = Phase_5 (no semicolons in comments: the parser splits on them)
+# groups: the relief (名字含 -AlliedAnti), the cast ones left (名字含 A4 peacekeeper / A4 javelin), made ones (名字含 SIM Made)
+# beware 名字含 A4 alone: it matches the trucks too
+CNV_A4_Phase_3+2 删除 名字含 AlliedMCV
+CNV_A4_Phase_3+2 造 AlliedConstructionYard 在 south base
+# 1. clear the bridgehead guards (the 4 warriors of the harbour guard), then come back west
+CNV_A4_Phase_3+4 派 名字含 -AlliedAnti 去 road exit
+CNV_A4_Phase_3+4 派 名字含 A4 peacekeeper 去 road exit
+CNV_A4_Phase_3+4 派 名字含 A4 javelin 去 road exit
+CNV_A4_Phase_3+50 派 名字含 -AlliedAnti 去 ridge ramp
+CNV_A4_Phase_3+50 派 名字含 A4 peacekeeper 去 ridge ramp
+CNV_A4_Phase_3+50 派 名字含 A4 javelin 去 ridge ramp
+# 2. the economy: a unit every 10-15 s, all gather at the ridge ramp (out of the towers' reach, west of the back ramp)
+CNV_A4_Phase_3+10 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+25 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+25 造 AlliedAntiInfantryInfantry 在 south base
+CNV_A4_Phase_3+35 造 AlliedAntiInfantryInfantry 在 south base
+CNV_A4_Phase_3+40 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+40 造 AlliedAntiAirVehicleTech1 在 south base
+CNV_A4_Phase_3+45 造 AlliedAntiInfantryInfantry 在 south base
+CNV_A4_Phase_3+55 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+55 造 AlliedAntiInfantryInfantry 在 south base
+CNV_A4_Phase_3+70 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+70 造 AlliedAntiVehicleInfantry 在 south base
+CNV_A4_Phase_3+80 造 AlliedAntiVehicleVehicleTech1 在 south base
+CNV_A4_Phase_3+80 造 AlliedAntiVehicleInfantry 在 south base
+CNV_A4_Phase_3+60 派 名字含 SIM Made 去 ridge ramp
+CNV_A4_Phase_3+95 派 名字含 SIM Made 去 ridge ramp
+# 3. all together up the back ramp, razing the power plant first (the ramp towers lose their power), then the command post
+CNV_A4_Phase_3+190 派 名字含 -AlliedAnti 去 back ramp
+CNV_A4_Phase_3+190 派 名字含 A4 peacekeeper 去 back ramp
+CNV_A4_Phase_3+190 派 名字含 A4 javelin 去 back ramp
+CNV_A4_Phase_3+190 派 名字含 SIM Made 去 back ramp
+CNV_A4_Phase_3+215 攻击 名字含 -AlliedAnti 打 north power
+CNV_A4_Phase_3+215 攻击 名字含 SIM Made 打 north power
+CNV_A4_Phase_3+250 攻击 名字含 -AlliedAnti 打 north command
+CNV_A4_Phase_3+250 攻击 名字含 SIM Made 打 north command
+# 4. 布防: after the cutscene (Phase_4+47) three groups to the three gun pads, one at each mouth, the engineers to the halt
+CNV_A4_Phase_4+50 派 名字含 Give 149 去 gun north
+CNV_A4_Phase_4+50 派 名字含 SIM Made 去 gun plaza 3
+CNV_A4_Phase_4+50 派 名字含 Give 146 去 gun east
+CNV_A4_Phase_4+50 派 名字含 A4 peacekeeper 去 gun east
+CNV_A4_Phase_4+50 派 名字含 A4 javelin 去 gun east
+CNV_A4_Phase_4+50 派 名字含 IceEngineer 去 halt
+CNV_A4_Phase_4+50 派 名字含 A4 engineer 去 halt

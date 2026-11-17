@@ -1,0 +1,210 @@
+"""L2 body: health lost by itself, death and removal (ADR 0029, docs/engine/sim-layers.md; bench docs/engine/sell.md).
+
+`Life` kills or deletes a body (`destroy`: its spawn's refill, its garrison, its FireWeaponWhenDead and an aircraft's
+falling wreck queued as death blasts), ends what has a lifetime (`expire`: the lifetime, a toppled prop's delay, a
+sale's), sells a structure (`sell`) and runs LoseHealthUpdate (`lose_health`), over the world it is given
+(simworld.WORLD_API only). The peers it needs are handed in by the caller (Sim.destroy / expire / sell / air_crash /
+lose_health): the garrison (simgarrison, L2), the death-blast queue (L2 queues, L3's death_blast_due fires them), the
+ground's height, the template's toggles and the modifiers (L2), `destroy` itself for expire, and the money's
+`credit` (L4) for a sale's refund -- this module never imports them.
+Fields it owns: its own `lose_of`; on a body `alive`, `deleted`, `died_at`, `sell_end`.
+Two entries for the skirmish AI, which writes no body field itself: `last_until` (a lifetime the reader missed) and
+`fill` (the stats of a body simunits does not know, from the model's library).
+"""
+import importlib
+import math
+
+import simunits
+
+SELL_PERCENT, SELL_FRAMES = 0.5, 30          # SellPercentage (SDK default) and SellTime 2 s x 15 (BuildingBehavior)
+HOVER_DRIFT = 0.2               # a frame: a hovering plane's velocity (air_crash)
+
+
+class Life:
+    def __init__(self):
+        self.lose_of = {}              # template -> simunits.lose_health rule
+
+    def expire(self, world, frame, destroy):
+        """R1: whatever's lifetime is up by `frame` dies (killed, as the game's LifetimeUpdate: NAMED_DESTROYED, gone
+        from areas at once -- bench 2026-11-07 engine_life, no body lingers) and leaves what its death makes, made
+        that frame (the ice core's wall)."""
+        for b in world.living():
+            if b.topple_end is not None and frame >= b.topple_end:
+                destroy(b, '倒伏后消失', delete=True)     # PropBody never exposes NAMED_DYING, even for one frame
+                continue
+            if b.sell_end is not None and frame >= b.sell_end:
+                destroy(b, '卖掉了', delete=True)          # StructureSellUpdate: deleted, no death, no ruin
+                continue
+            if b.life_end is None or frame < b.life_end:
+                continue
+            world.used.add('lifetime')
+            destroy(b, '寿命到了')
+            for tmpl in b.leaves:
+                n = world.add(f'#left {len(world.bodies)} of {b.name}', tmpl, b.owner, b.x, b.y, by=b.name, at=world.t)
+                n.team, n.angle = b.team, b.angle
+                world.note('留下', f'{tmpl}（{world.label(b)} 寿命到了）')
+                if world.blocks(n):
+                    world.reblock()
+
+    def sell(self, world, b, garrison, modify, credit):
+        """SELL_OBJECT (bench 2026-11-06 engine_sell, docs/engine/sell.md): a living structure that is not unpacking
+        and not already sold is paid at once -- round(round(cost x 50%) x health share) -- and carries SOLD; 30 frames
+        later it is deleted (no death, no ruin); meanwhile it still counts as power and can still be killed (then the
+        money stays paid and it is just dead). Anything else: nothing happens. Not read: a template's RefundValue,
+        NOT_SELLABLE, the factory's queue. The garrison empties (simgarrison, INFERRED: Generals' onSelling)."""
+        if b is None or not b.alive or 'STRUCTURE' not in b.kinds or b.sell_end is not None:
+            return
+        garrison.empty(b)
+        if b.unpack_end is not None and world.frame_now() < b.unpack_end:
+            return                                                  # engine_sell c: refused while it unpacks
+        world.used.add('sell')
+        cost = simunits.production(b.template, world.own)[0]
+        refund = math.floor(math.floor(cost * SELL_PERCENT + 0.5) * (b.hp / b.max_hp if b.max_hp else 1.0) + 0.5)
+        credit(b.owner, refund)
+        b.script_status.add('SOLD')
+        modify(b)
+        b.sell_end = world.frame_now() + SELL_FRAMES
+        world.note('出售', f'{world.label(b)}（退 {refund}）')
+
+    def destroy(self, world, b, why, delete, garrison, death_blasts, ground_z):
+        if not b.alive:
+            return
+        if b.immortal and not delete:
+            # Object::kill (also script KILL, crushing etc.) is lethal damage;
+            # only direct deletion bypasses the body's internalChangeHealth.
+            b.damage(b.max_hp)
+            return
+        if b.prop and not delete and (b.topple or b.prop == 'stays'):
+            # engine_propbody b (bench 11-10): a killed topple prop falls where it stands (no fall time) and is gone
+            # its delay later, never dying (expire; 61 / 121 frames counted with the kill's); a PropBody with nothing
+            # to take its death stays for good
+            if b.topple and b.topple_end is None:
+                b.toppled, b.topple_end = True, world.frame_now() + b.topple['delay']
+            return
+        b.alive, b.deleted, b.path, b.died_at = False, delete, [], world.t
+        if not delete and b.last_by is not None and b.last_hit is not None:
+            world.kills.append((b.last_hit, b.last_by, b.template, b.name))     # cond_retail: who killed what
+        b.spawn_refills.clear()
+        parent = b.spawn_parent
+        if parent is not None and parent.alive:
+            if delete:
+                world.gap('SpawnBehavior', parent.template, '子体直接删除是否补充未测；不作为死亡通知')
+            else:
+                # The complete accepted configuration fixes SpawnReplaceDelayData at 10s.
+                parent.spawn_refills.append((world.frame_now() + simunits._frames(10.0),
+                                             b.spawn_module, b.template))
+        for child in b.spawned_children:
+            # engine_spawn: both script kill and delete remove all three in the same sample.
+            # Removal via deletion (rather than a lethal hit) is INFERRED; child death effects unmeasured.
+            self.destroy(world, child, 'SpawnedRequireSpawner', True, garrison, death_blasts, ground_z)
+        garrison.died(b, delete)       # passengers out alive / killed with it (simgarrison, garrison.md 4)
+        if not delete:
+            b.hp = 0.0
+            # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
+            # died; a deletion fires nothing (INFERRED, as Generals' destroyObject skips the die modules)
+            for dmg, typ, reach, after, affects, ally in simunits.death_weapons(b.template, world.own, scalars=True):
+                world.used.add('death weapon')
+                death_blasts.append((world.frame_now() + simunits._frames(after), b.x, b.y, dmg, typ, reach,
+                                     affects, b.owner, b, ally, False))
+            if b.surface == 'air':
+                self.air_crash(world, b, death_blasts, ground_z)
+        world.note('删除' if delete else '摧毁', f'{world.label(b)}（{why}）')
+        world.change()
+        if world.blocks(b):
+            world.reblock()
+
+    def air_crash(self, world, b, death_blasts, ground_z):
+        """Physics P5 (checks/engine_crash_fall.py): an aircraft killed in the air is gone at once and its airborne
+        CreateObjectDie (simunits.air_wrecks) makes a wreck LIKE_EXISTING with its velocity x the OCL's VelocityScale;
+        a wreck that falls (KillWhenRestingOnGround) dies where it comes to rest (simunits.crash_frames: the fall's
+        curve, its own GravityMultiplier) and its FireWeaponWhenDead goes off there (the Apollo's / MiG's
+        NormalAircraftDeathWeapon: 150 EXPLOSIVE radius 20, allies 50 %), on the ground only. The plane is at its
+        locomotor's PreferredHeight over the ground (simunits.fly_height; bench 174.94), flying at its speed towards
+        its path's next point, else still (a hovering one). Of a CHOOSE_ONE list (the game draws one: the Apollo's
+        Collapse or Dying) the first that falls and has a weapon (INFERRED choice: the crash that can hurt, the run
+        repeatable). INFERRED: level ground (the landing's own height not looked up), the death on the frame it rests,
+        the nugget's MetaImpact (ShockWave 50, radius 50) not dispatched."""
+        got = simunits.air_wrecks(b.template, world.own)
+        if not got:
+            return
+        choose, wrecks = got
+        hits = [w for w in wrecks if w['falls'] and w['weapons']]
+        if choose and len(wrecks) > 1:
+            world.used.add('crash choice')
+            hits = hits[:1]
+        if not hits:
+            return
+        ground = ground_z(b.x, b.y)
+        z = b.z if b.z is not None else ground + simunits.fly_height(b.template, world.own)
+        # still (hovering): HOVER_DRIFT along its facing (bench 11-12 engine_crash_hit: both hovering Apollos' wrecks
+        # logged v (0.1, 0, 0) = 0.5 x 0.2 facing east; INFERRED for other planes and facings)
+        vx, vy = HOVER_DRIFT * math.cos(b.angle), HOVER_DRIFT * math.sin(b.angle)
+        if b.path and b.speed > 0 and not b.engaged:
+            tx, ty = b.path[0]
+            d = math.hypot(tx - b.x, ty - b.y)
+            if d > 0:
+                vx, vy = (tx - b.x) / d * b.speed / simunits.LIFE_FPS, (ty - b.y) / d * b.speed / simunits.LIFE_FPS
+        for w in hits:
+            frames, end = simunits.crash_frames((b.x, b.y, z), (vx * w['scale'], vy * w['scale'], 0.0), ground,
+                                                w['gravity'])
+            if abs(ground_z(end[0], end[1]) - ground) > 1e-3:
+                world.gap('Physics', w['template'], '坠机残骸落到不同高度的地面：落点和时刻按起点地面算')
+            world.used.add('air crash')
+            for dmg, typ, reach, after, affects, ally in w['weapons']:
+                death_blasts.append((world.frame_now() + frames + simunits._frames(after), end[0], end[1], dmg,
+                                     typ, reach, affects, b.owner, b, ally, True, (end[0] - b.x, end[1] - b.y)))
+
+    def lose_health(self, world, frame, toggles_of):
+        """LoseHealthUpdate gated by an ObjectStatusValidation (simunits.lose_health): DamagePerSecond / fps a frame
+        while the body's own toggle (its ToggleState's bits) carries every RequiredStatus and it has no ForbiddenStatus
+        (engine_acts_tgl KV: the Kirov's afterburners, pressed, drained 200/s). A script's UNIT_CHANGE_OBJECT_STATUS bit
+        alone starts nothing (E146 engine_objectbatch a / b: the dreadnought's drain on a tank, GENERIC_TOGGLE_STATE
+        given by script at 8 s and read back true, held 100 % to s25 with HealthTrigger 101 % and 0 % alike) --
+        INFERRED that the press is what wakes the update; the host (aircraft against tank) was not separated."""
+        cache = self.lose_of
+        for b in world.bodies.values():
+            if not b.alive:
+                continue
+            if b.template not in cache:
+                cache[b.template] = simunits.lose_health(b.template, world.own)
+            rule = cache[b.template]
+            if not (rule and rule[0]) or rule[2] & set(b.status):
+                continue
+            toggled = set()
+            for i, tm in enumerate(toggles_of(b)):
+                toggled |= tm['states'][b.toggle_at.get(i, 0) % len(tm['states'])]['status']
+            if rule[1] <= toggled & set(b.status):
+                b.damage(rule[0] / world.fps)
+                world.used.add('lose health')
+
+
+def last_until(b, frame):
+    """A lifetime the template's bounded reader (simunits.lifetime) left out, set from outside: the body dies at
+    `frame` as any other (`Life.expire`). The skirmish AI's dodge read of a retail fixed LifetimeUpdate does this
+    (simai.Brain.micro_team; INFERRED: the frame it first sees the body as its birth)."""
+    b.life_end = frame
+
+
+def fill(b, lib, own):
+    """A body simunits knows nothing of (its table misses the second GameObject of a file, such as the Riptide's
+    AlliedAntiInfantryVehicle_Ground the war factory's button makes: speed 0, no KindOf -- HOOKS 6): KindOf and
+    speed from the model's library `lib`, health / armour / weapons from the template of the name without its last
+    '_' part when simunits knows that one (INFERRED: the same unit). The skirmish AI calls it for what its factories
+    made (simai.Brain.unit_due); `own` is the world's own templates (WORLD_API own)."""
+    if 'all' not in (b.guessed or []):
+        return
+    tpl = lib.template(b.template)
+    if tpl is None:
+        return
+    ro = importlib.import_module('ra3model.objects.runoffmap')
+    b.kinds = frozenset(tpl.kinds)
+    b.speed = float(ro.normal_speed(lib, tpl) or 0.0)
+    b.surface = 'both' if 'AMPHIBIOUS' in tpl.kinds else 'air' if 'AIRCRAFT' in tpl.kinds else b.surface
+    base = b.template.rsplit('_', 1)[0]
+    if base != b.template:
+        st, f = simunits.stats(base, own), simunits.fight(base, own)
+        if f['hp']:
+            b.max_hp = b.hp = f['hp']
+            b.armor, b.weapons = f['armor'], f['weapons']
+        b.surface, b.sight = st['surface'], st['vision'] or b.sight
+    b.guessed = ['all: simai.fill']

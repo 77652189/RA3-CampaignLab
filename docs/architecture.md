@@ -4,26 +4,33 @@
 
 ## 分层
 
-```
-units/ (Blender 建模、贴图、图标)  ─┐
-campaign/ (地图、脚本、地形、光照) ─┼─> campaign/mapxml + make_campnew7 (编译 + 链接成 map.* 流)
-                                    │        └─> sdk\RA3ModSDK3 的 BinaryAssetBuilder
-testbench/ (隔离的游戏副本 + 截帧/输入 shim) <── 只读消费上面的产物，验证在游戏里的效果
-music/ (Pathfinder 曲谱图 .mpf + 音轨 .mus) ──> pack.py ──> cnv/parts.Mission.music ──> 关卡 mod 的 static 流和 big
-```
+**目标分层**来自 2026-11-03 的架构评审（[reviews/architecture-2026-11-03.md](reviews/architecture-2026-11-03.md) 第 2.4 节）。下表是边界；现状离目标有多远、按什么顺序收，以 [plan.md](plan.md) 为准。从下往上依次是：
+
+| 层 | 内容 | 对外接口 | 不许 |
+|---|---|---|---|
+| L0 格式库 | `labpaths`、`ra3voice/*`，以及 map、big、脚本、地形、光照的读写 | 读写函数 | 知道"关卡""外壳"这些概念 |
+| L1 内容 | `cnv/maps`、`cnv/units`、`cnv/devices`，音乐、配音、视频的打包 | 地点 `SITES`、单位对象、机关、资源包 | import 编译器或打包层 |
+| L2 编译 | `plan.py`（手写关卡也走同一个上下文） | 策划稿 → 纯数据的 Mission | 碰文件系统，碰打包层的全局变量 |
+| L3 打包 | `parts.assemble` 背后的 `make_campnew*`，以及外壳 | 一个入口：按清单（ModSpec）出 mod | 读模块级的可变全局变量。外壳只往清单里加东西 |
+| L4 编排 | `build.py` | 命令行入口；关卡和检查各自注册 | 手写注册表 |
+| L5 验收 | `parts.contract` 的规则检查、`testbench/` | 只读最终产物；动态检查只加观测 | import L1、L2 的常量，改动被测行为 |
+
+**现状**（评审第 1、2 节）：打包层是 `make_campnew18→7→6→4→{2,3}` 一串复制出来的版本，靠 import 时改别人模块的全局变量拼在一起；检查不能在 CampShell 上跑，还会改动被测的关卡；台词和单兵命令都有多个出口。音乐只通过 `cnv/parts.Mission.music` 进关卡 mod 的 static 流和 big（见下面"不许怎么做"）。
 
 ## 各线负责的文件（用户 2026-10-26 定按线分会话开发）
 
-每个文件只归一条线改。共用文件（`experimental/cnv/build.py`、`parts.py`）要改先打招呼，只改自己那几行。各线做完一件事向总控报告，总控核对实际改动和测试结果后再更新 `docs/plan.md`。
+每个文件只归一条线改。`parts.py` 已按层拆成三份（[ADR 0016](adr/0016-one-outlet-per-class.md)）：`model.py`（关卡数据）归关卡线，`contract.py`（产物规则）归总控，`package.py`（打包）归外壳线。`parts.py` 本身只剩转手导出，新代码直接 import 这三份。`build.py` 仍是共用文件，要改先打招呼，只改自己那几行。守卫测试在 `tests/test_architecture.py`，由总控维护。各线做完一件事向总控报告，总控核对实际改动和测试结果后再更新 `docs/plan.md`。
 
 | 线 | 负责 | 文件 |
 |---|---|---|
 | 总控 | 路线和优先级、各线接口、审查与合并、测试台工具、执行计划和需求 / 架构 / ADR | `docs/plan.md`、`requirements.md`、`architecture.md`、`docs/adr/`、`docs/engine/`、`HANDOFF.md`、`experimental/testbench/` |
 | 关卡 | 策划案语言和编译器、模拟器、机关、关卡检查、各关玩法、地图（地图线 2026-10-26 结束，新关卡的地图跟着关卡一起设计）；单位的尺寸、血量和机制 | `docs/story/`、`experimental/cnv/`（`units/` 里的外观接线除外）、`experimental/campaign/platmap.py`、`platprops.py` |
+| 外壳（2026-11-03 从关卡线拆出） | 战役外壳（替换原版三个战役的卡片、章节、播报、局势介绍、界面，[ADR 0014](adr/0014-replace-retail-campaigns-in-mod.md)）、启动器 | `experimental/cnv/shell.py`、`shell_missions*.json`、`play.hta`、`launcher.py`、外壳用到的 `experimental/campaign/make_campnew*.py`、`experimental/testbench/shell_shots.py`；`build.py` 只改 `--shell` 那段；能改的地图页 `experimental/mappage/`（[ADR 0017](adr/0017-engine-layers-and-map-page.md)：只读地图模块和策划稿，页面只存改动提议，地图模块仍归关卡线改） |
 | 单位 | 新单位建模（先出一个样品给用户定风格，再批量），在自己的分支上做 | `experimental/units/`、`docs/units/`；`experimental/cnv/units/` 里只改外观（模型、贴图、按钮头像、残骸、死亡特效的接线） |
 | 策划（2026-10-27 开） | 游戏设计这一层：原版任务拆解、设计总纲和准则、战役总表、各关的纸面设计 | `docs/design/` |
 | 音乐 | 自制配乐、曲谱图、战况音乐 | `experimental/music/`、`docs/music/` |
 | 配音 | AI 中文配音 mod | 另一个仓库 RA3-ChineseVoice |
+| 引擎 | 引擎各层的还原（[ADR 0017](adr/0017-engine-layers-and-map-page.md)、[0018](adr/0018-engine-model-private-repo.md)）：反编译笔记、可执行模型、引擎探针 | 本机私有仓库 RA3-EngineModel（不推送）、`work/re/`（不进 git）；本仓库里 `experimental/cnv/checks/engine_*.py` 和 `maps/probe_*.py`（探针只 import 地图）、`experimental/campaign/terrain_rules.py`。`docs/engine/` 仍归总控，引擎线写实测结论 |
 
 ## 不许怎么做
 

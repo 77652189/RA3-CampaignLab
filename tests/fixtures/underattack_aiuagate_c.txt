@@ -1,0 +1,18 @@
+ua: frame=5 ev=set obj=3181 own=4 last=5 prev=-1 src=0 hp=1000.0/1000.0 win=75
+ua: frame=18 ev=src obj=3181 last=18 src=3185
+ua: frame=18 ev=set obj=3187 own=4 last=18 prev=-1 src=3185 hp=143.0/150.0 win=75
+ua: frame=20 ev=set obj=3185 own=2 last=20 prev=-1 src=3187 hp=537.0/550.0 win=75
+ua: frame=47 ev=src obj=3187 last=47 src=3190
+ua: frame=49 ev=gate obj=3163 secs=5 win=75 last=-1 src=0 alive=0 path=a res=0
+ua: frame=49 ev=gate obj=3182 secs=5 win=75 last=-1 src=0 alive=0 path=a res=0
+ua: frame=49 ev=gate obj=3184 secs=5 win=75 last=-1 src=0 alive=0 path=a res=0
+tgt: frame=49 brain=redacted slot=0 state=redacted sid=19dcc78 hi=0 vt=redacted sort=0 uniq=0 found=0 kind=0 target=-1@0:0 n=3 cand=3163@3850:3400:0:other,3182@3700:2400:0:other,3184@4100:3800:0:other
+tgt: frame=49 brain=redacted slot=1 state=redacted sid=d2df3ca3 hi=0 vt=redacted sort=0 uniq=0 found=1 kind=3 target=3182@3700:2400 n=3 cand=3163@3850:3400:1:-,3182@3700:2400:1:-,3184@4100:3800:1:-
+ua: frame=108 ev=clr obj=3181 at=108 last=32 src=3185 alive=0 hits=3
+ua: frame=119 ev=clr obj=3185 at=119 last=43 src=3187 alive=1 hits=2
+ua: frame=123 ev=clr obj=3187 at=123 last=47 src=3190 alive=0 hits=3
+tgt: frame=139 brain=redacted slot=2 state=redacted sid=acdd62e1 hi=0 vt=redacted sort=0 uniq=0 found=1 kind=3 target=3184@4100:3800 n=3 cand=3163@3850:3400:1:-,3182@3700:2400:1:-,3184@4100:3800:1:-
+tgt: frame=139 brain=redacted slot=3 state=redacted sid=2ee151d8 hi=0 vt=redacted sort=0 uniq=0 found=0 kind=0 target=-1@0:0 n=3 cand=3163@3850:3400:0:other,3182@3700:2400:0:other,3184@4100:3800:0:other
+ua: frame=212 ev=set obj=3186 own=2 last=212 prev=-1 src=3191 hp=0.0/550.0 win=75
+ua: frame=212 ev=set obj=3193 own=4 last=212 prev=-1 src=3191 hp=0.0/100.0 win=75
+ua: frame=232 ev=set obj=3191 own=4 last=232 prev=-1 src=0 hp=0.0/2000.0 win=75

@@ -128,3 +128,40 @@ def test_the_walk_resumes_from_the_screen(monkeypatch):
     assert harness.seen_step(STEPS, 'f', 3, back=True) == 0
     on['name'] = 'none'
     assert harness.seen_step(STEPS, 'f', 1, back=True) is None       # the bright step alone moves nothing
+
+
+def _a4_back_lane():
+    """A calib.Ground shaped like A4's back lane at x 1200 (maps/sapporo.py, our units): the lane at 340 from y 2380,
+    a terrace at 455 south of y 2340 (the edge between), flat everywhere else."""
+    import numpy as np
+    g = object.__new__(calib.Ground)
+    g.w = g.h = 560
+    g.border = 30
+    rows = np.arange(560)[:, None]                                   # cell row j: world y = (j - 30) * 10
+    y = (rows - 30) * 10.0
+    g.e = np.broadcast_to(np.interp(y, [2340, 2380], [455, 340]), (560, 560)).astype(float)
+    g._pivots = {}
+    return g
+
+
+def test_the_camera_looks_higher_beside_a_terrace_and_clicks_follow():
+    # bench 2026-11-04 (engine line round 8, checks/engine_camera.py): with the mission's camera on A4's V1
+    # (1200, 2400), 20-60 units north of a terrace edge, the engineer there was drawn at row 376, not 350; 50 further
+    # north, at (1200, 2450), the ground looked at is the lane's own and he was at 352
+    s = harness.Session()
+    s.mod, s._ground = 'CampA4Place', _a4_back_lane()
+    s.scripted_view(1200, 2400)
+    u, v = s.to_screen(1200, 2400)
+    assert u == pytest.approx(640, abs=5) and v == pytest.approx(376, abs=10)
+    assert s.to_world(u, v) == pytest.approx((1200, 2400), abs=1)   # and back
+    s.scripted_view(1200, 2450)
+    assert s.to_screen(1200, 2450)[1] == pytest.approx(352, abs=5)
+
+
+def test_a_map_that_cannot_be_read_clicks_as_on_flat_ground(monkeypatch):
+    s = harness.Session()
+    s.mod = 'CampNoSuchMod'
+    monkeypatch.setattr(calib, 'Ground', lambda mod: (_ for _ in ()).throw(SystemExit(f'not found: {mod}')))
+    s.scripted_view(1200, 2400)
+    assert s.to_screen(1200, 2400) == pytest.approx((640, 350), abs=0.5)
+    assert any('not read' in line for line in s.log)

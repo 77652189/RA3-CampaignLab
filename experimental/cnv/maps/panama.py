@@ -12,6 +12,9 @@ levels need.
     where a boat can land. No bridge crosses the canal: a bridge bars ships (bench 2026-10-27: the fleet stood at
     its piers), and the fleet must sail its length (A5 out to the sea, S5 down from the lake). Across the water go
     what swims (the Riptide, the Bullfrog, the burrower) and whom the beacon pulls.
+  - A back stair climbs the bluff's south face at its west end, out of the east ramp's guns' sight: the way the
+    beacon takes (A5's draft: the card's "side they are not watching"; the card's water level that lifts a boat
+    to the bluff's edge is not done -- no script action changes water or terrain, docs/story/handoff-phase4.md).
   - Borders: the west bank and the canal (phase 1), then the whole map.
 
 Published: SITES, PLAYERS, TEAMS, OBJECTS (ore, a derrick), SCENERY (retail jungle trees, rocks ...:
@@ -20,6 +23,7 @@ platprops, kept off every way and place), LAYOUT, BORDERS.
 import make_campnew18 as c18
 import platmap
 import platprops
+import resources
 from platmap import Layout, Ramp, Road, poly, wobble
 from platprops import area, cliff_feet, scatter, shore
 from maps import island
@@ -35,8 +39,6 @@ SITES = {k: island.SITES[k] for k in ('island', 'start', 'base factory', 'base p
 SITES.update({
     'base yard': Site(1250.0, 2500.0, 0.0, "the construction yard's pad on the player's start", build=200.0),
     'base barracks': Site(1250.0, 2800.0, 0.0, "a barracks' pad north of the yard", build=160.0),
-    'base refinery': Site(1130.0, 2060.0, 0.0, "a refinery's pad by the player's own ore (~180 from the nearer "
-                                               'node, as retail)', build=200.0),
     'west quay': Site(2150.0, 2500.0, 150.0, "the west bank by the lock chamber: the player's side of the water"),
     'chamber': Site(2500.0, 2500.0, 180.0, 'the lock chamber, between the gates: the fleet is shut in here'),
     'south gate': Site(2500.0, CHAMBER[2], 0.0, "the chamber's south gate, across the canal (200 of water)"),
@@ -46,15 +48,21 @@ SITES.update({
     'control room': Site(3000.0, 2500.0, 0.0, "the lock's control room on the bluff over the chamber", build=200.0),
     'control yard': Site(3000.0, 2500.0, 220.0, "the bluff's top round the control room: its guards stand here"),
     'bluff ramp': Site(3450.0, 2500.0, 120.0, "the foot of the bluff's one ramp, on its east side"),
-    'east beach': Site(2780.0, 1850.0, 120.0, 'low ground on the east bank south of the bluff, at the water: a '
-                                              'boat lands here'),
+    'back stair': Site(2780.0, 2330.0, 90.0, "the head of the bluff's back stair: its south-west corner, out of the "
+                                              "guns' and the guards' sight (the guns face the east ramp)"),
+    'north bank': Site(2690.0, 2880.0, 120.0, "the east bank's low ground by the chamber's north-east corner, 320 from "
+                                              "the fleet and in its sight: where the Soviet rockets stand to fire "
+                                              "across the water"),
+    'dig out': Site(2150.0, 1850.0, 150.0, 'the west bank south of the chamber: where the Soviet burrowers come up '
+                                           'out of the ground'),
+    'east beach': Site(2740.0, 1850.0, 120.0, 'low ground on the east bank south of the bluff, at the water: a '
+                                              'boat lands here (the beach slip comes up to it)'),
+    'west slip': Site(2260.0, 1850.0, 100.0, "the west bank's slip: the Riptide goes down to the water here"),
     'east shore': Site(2900.0, SOUTH_Y, 150.0, 'the east bank by the water, far south: the Soviets guard it'),
     'east base': Site(4000.0, 3500.0, 450.0, 'the Soviet base on the east bank by the lake'),
     'east barracks': Site(3750.0, 3300.0, 0.0, 'the Soviet barracks', build=160.0),
     'east factory': Site(4100.0, 3250.0, 0.0, 'the Soviet war factory', build=200.0),
     'east power': Site(4300.0, 3650.0, 0.0, 'the Soviet power plant', build=120.0),
-    'east refinery': Site(4380.0, 2900.0, 0.0, 'the Soviet refinery, by their ore (~180 from the nearer node)',
-                          build=200.0),
     'east gate': Site(3600.0, 2900.0, 200.0, 'open ground between the Soviet base and the bluff: their army forms '
                                              'up here'),
     'lake': Site(2600.0, 4300.0, 400.0, 'the lake north of the lock: the Soviet boats'),
@@ -93,7 +101,13 @@ LAYOUT = Layout(
         poly(SE_HILLS, 2, 'the south-east hills'),
         poly(EAST_RIDGE, 2, 'the east ridge'),
     ],
-    ramps=[Ramp((3500.0, 2500.0), (3230.0, 2500.0), 200.0, 'the bluff, east side')],
+    ramps=[Ramp((3500.0, 2500.0), (3230.0, 2500.0), 200.0, 'the bluff, east side'),
+           Ramp((2780.0, 2040.0), (2780.0, 2330.0), 110.0, 'the bluff, back stair (south side)'),
+           # the banks are steep everywhere (22..35 a cell, most 9): an amphibian cannot leave the water but where a
+           # slip is cut -- one each side, south of the chamber, facing each other (the canal there is 200 wide;
+           # the notches widen it, the fleet's way out stays open)
+           Ramp((2490.0, 1850.0), (2290.0, 1850.0), 120.0, 'the west bank, slip for the Riptide'),
+           Ramp((2510.0, 1850.0), (2710.0, 1850.0), 120.0, 'the east bank, the beach slip')],
     roads=[Road(((1250, 2380), (1500, 1600), (1900, SOUTH_Y), (CANAL[0] - 60, SOUTH_Y)), 110.0),
            Road(((CANAL[1] + 60, SOUTH_Y), (3100, 1300), (3500, 2000), (3600, 2500), (3500, 2500)), 110.0),
            Road(((3600, 2500), (3700, 3000), (3800, 3300)), 110.0),
@@ -101,17 +115,24 @@ LAYOUT = Layout(
            Road(((3250, 2500), (2950, 2500)), 90.0, 'Dirt_Yucatan04')])
 
 
+# ore and oil as relations (resources.py, K4): a refinery pad, the way it faces, the base it serves; the ore is
+# made from that (180 straight ahead, a second node beside it), never typed
+FIELDS = [
+    resources.Field('base', 1130.0, 2060.0, 225.0, -1, base='start', owner='p1', build=resources.PAD),
+    resources.Field('east', 4380.0, 2900.0, 135.0, -1, build=resources.PAD),
+    resources.Field('west south', 1927.0, 1123.0, 135.0, 1),
+    resources.Field('bluff', 3173.0, 1073.0, 45.0, 0),
+]
+DERRICKS = [(700.0, 3000.0)]
+SITES.update(resources.sites(FIELDS))
+
+
 def _objects():
     out = []
     for p, q in BRIDGES:
         for x, y, a, flags in platmap.bridge(p, q, 'HB_Bridge_02'):
             out.append(Obj('HB_Bridge_02', x, y, side='neutral', angle=a, flags=flags, site='map'))
-    ore = [(850, 2050), (1010, 1930),               # the player's own, ~550 from the start
-           (1650, 1150), (1800, 1250),              # the west bank south
-           (4250, 3050), (4450, 3150),              # the Soviets' own
-           (3300, 1200)]                            # one on the east bank south
-    out += [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for x, y in ore]
-    out.append(Obj('OilDerrick', 700, 3000, side='neutral', angle=0.0, site='map'))
+    out += resources.objects(FIELDS, DERRICKS)
     return out
 
 

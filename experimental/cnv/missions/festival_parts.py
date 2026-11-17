@@ -16,44 +16,45 @@ from units import convoy
 SEAL_IN = 0.0                                   # ice across a gate stands on the gate line, across the ramp's head
 
 
-def north(m, k):
+def north(ctx, k):
     """+1 when plaza k lies north of its gate, -1 when south."""
-    return 1 if m.site(f'plaza {k}')[1] > m.site(f'gate {k}')[1] else -1
+    return 1 if ctx.site(f'plaza {k}')[1] > ctx.site(f'gate {k}')[1] else -1
 
 
-def plazas(m, tag, at='gate'):
+def plazas(ctx, tag, at='gate'):
     """at: the site each seal mark stands on -- 'gate' (across the gap: ice placed by the map) or 'inside' (the
     flat ground behind it: ice an engineer builds)."""
-    ks = sorted(int(k.split()[1]) for k in m.map.SITES if k.startswith('gate '))
+    ks = sorted(int(k.split()[1]) for k in ctx.site_names() if k.startswith('gate '))
     for k in ks:
-        s = north(m, k)
-        m.waypoint(f'seal {k}', f'CNV {tag} Seal {k}', f'{at} {k}', 0, -s * SEAL_IN)
+        s = north(ctx, k)
+        ctx.waypoint(f'seal {k}', f'CNV {tag} Seal {k}', f'{at} {k}', 0, -s * SEAL_IN)
     return ks
 
 
 class Convoy:
-    def __init__(self, m, tag, side, leave, tick, enter=False, speed=50.0):
-        self.m, self.tag, self.code = m, tag, f'CNV{tag}'
+    def __init__(self, ctx, tag, side, leave, tick, enter=False, speed=50.0):
+        self.ctx, self.tag, self.code = ctx, tag, f'CNV{tag}'
         self.trucks = [f'UNIT - CNV {tag} Truck {j}' for j in (1, 2, 3)]
         self.exit, self.exit_area = f'CNV {tag} Exit', f'CNV {tag} Exit Area'
         self.timer, self.go_timer, self.rolling = f'CNV {tag} Tick', f'CNV {tag} Go', f'CNV_{tag}_Rolling'
         self.arrived, self.losses = f'CNV_{tag}_Arrived', f'CNV_{tag}_Lost'  # ASCII: names go through Latin-1
+        self.crew = 'Convoy' + ''.join(c for c in tag if c.isalnum())      # the key of the trucks' team
         self.leave, self.tick, self.side, self.enter = leave, tick, side, enter
-        m.waypoint('exit', self.exit, 'road exit')
-        m.areas[self.exit_area] = square(*m.site('road exit'), m.where('road exit').r)
+        self.split = False                      # the device sets it when the trucks leave one by one (分批)
+        ctx.waypoint('exit', self.exit, 'road exit')
+        ctx.add_area(self.exit_area, square(*ctx.site('road exit'), ctx.where('road exit').r))
         self.truck = convoy.truck(speed=speed)
-        m.units.append(self.truck)
+        ctx.add_unit(self.truck)
         self.spawns = []
         for j, t in enumerate(self.trucks):
             if enter:                           # created by go (contract: by that script)
                 spawn = f'CNV {tag} Truck Spawn {j + 1}'
-                m.waypoints[spawn] = m.site('convoy start', 60 - 60 * j, 0)
+                ctx.add_point(spawn, ctx.site('convoy start', 60 - 60 * j, 0))
                 self.spawns.append(spawn)
-                m.cast[f'truck {j + 1}'] = Role(self.truck.id, t, side, ['convoy start'])
-                m.later.add(f'truck {j + 1}')
+                ctx.add_role(f'truck {j + 1}', Role(self.truck.id, t, side, ['convoy start']), later=True)
             else:
-                m.put(self.truck.id, 'convoy start', 60 - 60 * j, 0, side=side, name=t, role=f'truck {j + 1}',
-                      angle=0.0)
+                ctx.put(self.truck.id, 'convoy start', 60 - 60 * j, 0, side=side, name=t, role=f'truck {j + 1}',
+                        angle=0.0)
 
     def start(self):
         """The action that sets the convoy's departure (for the mission's intro script)."""
@@ -63,31 +64,41 @@ class Convoy:
         """The action that shows the time to the departure on screen (retail: DISPLAY_COUNTDOWN_TIMER with a
         SCRIPT: label, as A01's waves); go hides it. For the intro script, after start()."""
         self.shown = True
-        self.m.countdowns.append(self.go_timer)
+        self.ctx.countdown(self.go_timer)
         return ('DISPLAY_COUNTDOWN_TIMER', self.go_timer, label)
 
     def go(self):
-        made = [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', t, self.truck.id, self.m.team(self.side), w, 0.0)
+        made = [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', t, self.truck.id, self.ctx.team(self.side), w, 0.0)
                 for t, w in zip(self.trucks, self.spawns)]
         if made:
-            made += self.m.made([f'truck {j}' for j in (1, 2, 3)])
+            made += self.ctx.made([f'truck {j}' for j in (1, 2, 3)])
         if getattr(self, 'shown', False):
             made.append(('HIDE_COUNTDOWN_TIMER', self.go_timer))
         return [Script(f'CNV {self.tag} - Go', [('TIMER_EXPIRED', self.go_timer)],
-                       made + [('SHOW_MILITARY_CAPTION', f'SCRIPT:{self.code}_GO', 5.0), ('SET_FLAG', self.rolling, 1),
+                       made + [self.ctx.say(f'SCRIPT:{self.code}_GO', 5.0), ('SET_FLAG', self.rolling, 1),
                                ('SET_MILLISECOND_TIMER', self.timer, 0.0)])]
 
     def roll(self):
         return [Script(f'CNV {self.tag} - Roll', [('FLAG', self.rolling, 1), ('TIMER_EXPIRED', self.timer)],
-                       [('MOVE_NAMED_UNIT_TO', t, self.exit) for t in self.trucks] +
+                       self.order('move', self.trucks, self.exit) +
                        [('SET_MILLISECOND_TIMER', self.timer, self.tick)], once=False)]
+
+    def order(self, kind, trucks, target=None):
+        """The convoy's trucks (or some of them) told what to do: one team for the convoy, so a truck lost leaves the
+        rest all going (I7: two left, one drove) and one let go later joins whoever is driving (ctx.order)."""
+        if not self.split:
+            return self.ctx.order(kind, trucks, target, self.side, crew=self.crew)
+        out = []                                # staggered (分批): a team a truck, else the first one's order sweeps the
+        for t in trucks:                        # later ones along (sim a4 --check win: all three arrived 5 s apart)
+            out += self.ctx.order(kind, [t], target, self.side, crew=f'{self.crew}{self.trucks.index(t) + 1}')
+        return out
 
     def tail(self):
         out = []
         for j, t in enumerate(self.trucks, 1):
             out += [Script(f'CNV {self.tag} - Safe {j}', [('NAMED_INSIDE_AREA', t, self.exit_area)],
                            [('SET_FLAG', f'CNV_{self.tag}_Safe_{j}', 1), ('INCREMENT_COUNTER', 1, self.arrived),
-                            ('SHOW_MILITARY_CAPTION', f'SCRIPT:{self.code}_SAFE', 4.0), ('NAMED_DELETE', t)]),
+                            self.ctx.say(f'SCRIPT:{self.code}_SAFE', 4.0), ('NAMED_DELETE', t)]),
                     Script(f'CNV {self.tag} - Hit {j}', [('NAMED_DESTROYED', t), ('FLAG', f'CNV_{self.tag}_Safe_{j}', 0)] +
                            ([('FLAG', self.rolling, 1)] if self.enter else []),     # not "destroyed" before it exists
                            [('INCREMENT_COUNTER', 1, self.losses)])]

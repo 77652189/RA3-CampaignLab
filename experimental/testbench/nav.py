@@ -16,9 +16,11 @@ import os
 import sys
 
 from PIL import Image, ImageStat
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'work', 'testbench', 'nav')
+OUT = os.path.join(labpaths.WORK, 'testbench', 'nav')
 
 # (name, how, reference frame, box (x0, y0, x1, y1), threshold, actions); how: 'tpl' = patch matches the template
 # (diff below threshold), 'dark' / 'bright' = mean brightness of the box below / above threshold.

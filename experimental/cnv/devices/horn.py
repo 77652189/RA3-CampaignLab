@@ -20,30 +20,69 @@ Waves go for the convoy (the convoy device's attack). 鬼王 (last leg, from the
 2026-10-31, checks/icewall.py ghost: it does not do it on its own, an attack order at the wall does it), else it goes
 for the convoy.
 
-演示 (the opening scene's demonstration, an action of its own): an engineer made at the demo street's clear mark ices
-the street, a pair of troops made behind the ice turn back (deleted, "into the tunnel") and a pair is made at the
-detour street instead -- what the horn will do, shown once. `演示收` takes it all away again.
+演示 (the opening scene's demonstration, actions of their own): an engineer walks in to the demo street's clear mark and
+ices the street, a pair of troops comes out of the street's sculpture in smoke, meets the ice, turns and goes down the
+sculpture again in smoke (`演示`); then the detour street's pair comes up its sculpture in smoke and walks off
+(`演示绕`) -- what the horn will do, shown once. `演示收` takes it all away again. It is staged (K8, I4): each piece has
+a camera of its own that frame_for solves, so nothing appears or vanishes in the picture without smoke and the cast is
+in it (contract.demo_unframed, tests/test_architecture G14).
 
 Every wave's first troop (and a landed Ghost King) gets a minimap blip (OBJECT_CREATE_RADAR_EVENT, mechanics.md 小地图
 闪点), so a horn is seen on the minimap where the way is open.
 
 Units: 冰幕工兵 (the engineer). Marks spawn <street or mouth> (where its wave is made), ice <name> (where the ice
 goes); areas hold the ice (GATE_AREA round the ice mark). Events: 号角 <n> (the n-th horn of the streets sounded),
-口号角 <n> (of the mouths), 冻住 <name> (ice stands there now). Actions: 开 街 / 开 口 (the horns start, counting from
+口号角 <n> (of the mouths), 冻住 <name> (ice stands there now), 冰快化 (an ice wall has MELT_WARN seconds left; holds
+until it is gone, so a rule with 每隔 speaks once per melt). Actions: 开 街 / 开 口 (the horns start, counting from
 the first), 停 (they stop; what is made or kept goes on).
 """
 import itertools
+import math
 
+import model
 from devices import Device, ice_plazas
 from parts import Script, square
-from units import icewall as iw
+from units import festival as fest, icewall as iw, smoke as sg
 
+SIGN_WARN = 10.0                                # 信号烟: the smoke stands this many seconds before the horn
 GATE_AREA = ice_plazas.GATE_AREA                # half-side of the area an ice wall must stand in to hold a way
 CLEAR_MARGIN = ice_plazas.CLEAR_MARGIN
 WALL_SIDE = ice_plazas.WALL_SIDE
 RELOAD = ice_plazas.RELOAD
-MIN_APART = 10.0                                # two waves shut streets send to one open street arrive this far apart
+# the core the engineer places is this square: the engine refuses a building where the ground rises across it more than
+# 3 world units (BuildSystemSettings.AllowedHeightVariationForBuildingPlacement = 4.8 in our elevation / 16;
+# platmap.level_enough, docs/engine/terrain.md), and the lane's ramp rises 7 in 20 units but 14 in 40 (user 2026-11-02:
+# the placement preview was red all over the slope at the street mouth)
+SEED_SIZE = 20
+MIN_APART = 10.0                               # two waves shut streets send to one open street arrive this far apart
+DEMO_BACK = 7.0                                 # the demonstration's foes are taken away this long after they turn at the latest
+                                                # (normally the moment they stand at the sculpture's mouth)
+DEMO_ARM = 2.5                                  # ... and not before this long after they turn (they have to leave the mouth first)
+DEMO_PAN, DEMO_EASE = 2.0, 1.0                 # the demonstration's own camera moves (seconds, ease)
+STAND_AREA = 40.0                               # half-side of the area round the clear mark: the engineer casts once in it
+HOLE_AREA = 45.0                                # half-side of the area round the spawn mark the foes are taken away in
+MELT_WARN = 8.0                                # 冰快化: this many seconds before an ice wall's lifetime is up
 MODES = {'街': 'V', '口': 'L'}                  # the two sets, and the letter in their names
+
+
+def frame_for(see, hide):
+    """The camera centre (x, y) of a scene's staged piece: every point of `see` stands STAGE_MARGIN inside the picture
+    (the band model.LETTERBOX_BAND about it), every point of `hide` STAGE_MARGIN outside it; the one with the most room
+    left over (nearest the middle of `see` on a tie), or None when there is none. contract.demo_unframed holds the
+    product to the same rule."""
+    reach = model.LETTERBOX_BAND['half_top']
+    north, south = model.LETTERBOX_BAND['north'], model.LETTERBOX_BAND['south']
+    k = model.STAGE_MARGIN
+    mx, my = sum(p[0] for p in see) / len(see), sum(p[1] for p in see) / len(see)
+    best = None
+    for cx in range(int(min(p[0] for p in see) - reach), int(max(p[0] for p in see) + reach) + 1, 10):
+        for cy in range(int(min(p[1] for p in see) - north), int(max(p[1] for p in see) + south) + 1, 10):
+            room = min([model.letterbox_depth(x - cx, y - cy) - k for x, y in see] +
+                       [-model.letterbox_depth(x - cx, y - cy) - k for x, y in hide])
+            key = (room, -math.hypot(cx - mx, cy - my))
+            if best is None or key > best[0]:
+                best = (key, (float(cx), float(cy)))
+    return best[1] if best and best[0][0] >= 0 else None
 
 
 def route(delay, order, avail, shut, origin):
@@ -76,39 +115,68 @@ class Horn(Device):
     WHAT = '号角按间隔表一声声响，每响一声开着的地道口各出一波扑车；冰墙把出口封住：街口的兵绕路晚到，最后一程口子的兵攒在墙后'
     PARAMS = {'车队': '哪个车队机关（兵扑它）', '间隔': '每声号角的间隔（秒，可按难度写），一个数一声；开头那个是开始到第一声',
               '每街一波': '每个开着的口一声出多少兵，{兵种: 数量}（可按难度）', '冷却': '冰幕工兵放一次冰后多少秒才能再放（默认 40）',
-              '街': '会场的街：{名: {点: 冰放的地方, 出: 兵出生的地方, 偏移: [dx, dy], 从: 第几声起开}}',
+              '每口一波': '最后一程每个口每声出多少兵，{兵种: 数量}（可按难度；不写就同每街一波）',
+              '冰墙寿命': '一道冰墙立多少秒后化掉（默认 30，ice 单位的寿命）',
+              '街': '会场的街：{名: {点: 冰放的地方, 出: 兵出生的地方, 偏移: [dx, dy], 从: 第几声起开, 止: 第几声起关（车队过了它，不出兵也不接兵）, '
+                    '冰雕: {偏移: [dx, dy]}（兵出生处往后挪这么多立一座出兵冰雕，当这个口子的标志：打不坏，口子的第一声号角把它震碎、'
+                    '留下裂开的冰雕；写了就多一个单位名 小冰雕 给 布景 用）, '
+                    '标志: {物件: 现成的场景物件, 偏移: [dx, dy], 朝向}}}。写了 标志 的口子立一个有名字的物件（角色 "标志 <名>"，目标的标记可以挂），'
+                    '每声号角前 10 秒这一声要出兵的口子在标志上冒红烟、小地图闪一圈（街：冻着的不冒；口：都冒）',
               '绕路': '冻住的街的兵去开着的街晚多少秒：{冻住的街: {开着的街: 时间}}，每两条街去同一条街的差 ≥ 10 秒',
               '口': '最后一程的口子：{名: {点, 出, 偏移}}，冻住的口子这一波攒着，冰没了一起出',
               '鬼王': '{从: 第几声起, 数量: 每声几台, 运输车: 单位, 海: 运输车出现的地方, 岸: 靠岸的地方}',
-              '演示': '开场演示：{街: 工兵冻住的街, 绕去: 兵掉头去的街, 等: 冰起后几秒兵掉头（默认 4）, 兵: 冻住前出的人数（默认 2）}'}
+              '演示': '开场演示：{街: 工兵冻住的街, 绕去: 兵掉头去的街, 等: 冰起后几秒兵掉头（默认 4）, 兵: 冻住前出的人数（默认 2）, '
+                    '工兵: {角色: 玩家自己的工兵演示、不再另造, 回: 演示完他回到的地点, 偏移: [东, 北]}}'}
     EVENTS = {'号角 <n>': '街的第 n 声号角响了', '口号角 <n>': '口的第 n 声号角响了', '冻住 <名>': '这个口子现在有冰',
-              '鬼王上岸': '第一个鬼王上岸了', '放出': '口子后攒着的兵放出来过（冰化了或被砸开）'}
+              '绕路': '冻住的街的兵第一次在别的街出生（掉头绕路）', '都在歇': '至少两道冰墙放出去还没满冷却（冰幕工兵都在歇）',
+               '鬼王砸墙': '鬼王被派去砸一道冰墙', '鬼王砸开': '鬼王去砸的那道墙没了',
+               '鬼王上岸': '第一个鬼王上岸了', '放出': '口子后攒着的兵放出来过（冰化了或被砸开）',
+              '冰快化': f'某道冰墙只剩 {MELT_WARN:g} 秒就化了（那道墙没了就不成立；配 每隔 一个融化说一次）'}
     ACTIONS = {'开 <街|口>': '号角从头开始响（先显示倒计时）', '停': '号角停（倒计时收起）；已经出的、攒着的照旧',
-               '演示': '开场演示开始：工兵冻住演示的街，兵掉头绕去另一条街（只在过场里用）', '演示收': '演示的人都收走'}
+               '收': '号角停，已经出来的兵也撤回地道（删掉；中场休息时用，免得过场一结束他们就在车边）',
+               '演示': '开场演示开始：工兵冻住演示的街，兵掉头绕去另一条街（只在过场里用）', '演示收': '演示的人都收走',
+               '裂 <街|口>': '这个口子的冰雕脚下掉一堆碎冰（冰雕没倒，像裂了一道缝）'}
 
-    def __init__(self, c, name, spec):
-        super().__init__(c, name, spec)
-        import plan
-        from plan import PlanError
-        self.plan = plan
-        tag = c.tag
-        self.wall = iw.wall(f'CNV_{tag}IceWall', length=WALL_SIDE, shape='square')
-        self.core = iw.seed(f'CNV_{tag}IceSeed', self.wall.id)
+    def __init__(self, ctx, name, spec):
+        super().__init__(ctx, name, spec)
+        import plantime
+        from plantime import PlanError
+        self.plan = plantime
+        tag = ctx.tag
+        wall_kw = {'lifetime': float(spec['冰墙寿命'])} if '冰墙寿命' in spec else {}   # default: iw.wall's 30 s
+        self.wall = iw.wall(f'CNV_{tag}IceWall', length=WALL_SIDE, shape='square', **wall_kw)
+        self.core = iw.seed(f'CNV_{tag}IceSeed', self.wall.id, size=SEED_SIZE)
+        # his own voice events come with the voice pack; a pack that lacks them (an edition whose dub of his lines has
+        # not been delivered, langs.py) leaves him retail's voice rather than naming events that are not there
+        voiced = ctx.voice_has(iw.VOICE + '_VoiceSelect')
         self.eng = iw.engineer(wall_id=self.core.id, stand=iw.clear_of(self.wall),
-                               reload=f'{float(spec.get("冷却", RELOAD)):g}s')
+                               reload=f'{float(spec.get("冷却", RELOAD)):g}s', voice=iw.VOICE if voiced else None)
         self.units = [self.eng, self.core, self.wall]
         self.names = {'冰幕工兵': self.eng}
-        self.gaps = [plan.times(g) for g in spec['间隔']]
+        self.gaps = [plantime.times(g) for g in spec['间隔']]
         if not self.gaps:
             raise PlanError(f'{name}: 间隔 needs at least one time')
-        self.troops = {u: plan.counts(n) for u, n in (spec.get('每街一波') or {}).items()}
+        self.troops = {u: plantime.counts(n) for u, n in (spec.get('每街一波') or {}).items()}
         if not self.troops:
             raise PlanError(f'{name}: 每街一波 lists the troops of a wave')
+        mouth = spec.get('每口一波')              # the last leg's mouths: their own wave, else the streets' one
+        self.troops_L = {u: plantime.counts(n) for u, n in mouth.items()} if mouth else self.troops
         self.ways = {'V': dict(spec.get('街') or {}), 'L': dict(spec.get('口') or {})}
         for k, v in self.ways.items():
             if any(len(str(w)) == 0 for w in v):
                 raise PlanError(f'{name}: empty way name')
-        self.delay = {s: {o: plan.seconds(t) for o, t in row.items()} for s, row in (spec.get('绕路') or {}).items()}
+        self.signed = any(k in w for v in self.ways.values() for w in v.values() for k in ('标志', '冰雕'))
+        if self.signed:                                 # 标志: a sign at every way, and the smoke the horn warns with
+            self.smoke = sg.smoke(f'CNV_{tag}_SignalSmoke', life=SIGN_WARN + 1.0)
+            self.units.append(self.smoke)
+        self.sculpted = any('冰雕' in w for v in self.ways.values() for w in v.values())
+        if self.sculpted:                               # 冰雕: the sign is a spawn sculpture the first horn splits
+            self.sculpt = fest.spawn_sculpture(f'CNV_{tag}SpawnSculpture')
+            self.display = fest.display(f'CNV_{tag}IceDisplay')
+            self.chips = fest.chips(f'CNV_{tag}IceChips')
+            self.units += [self.sculpt, self.display, self.chips]
+            self.names['小冰雕'] = self.display
+        self.delay = {s: {o: plantime.seconds(t) for o, t in row.items()} for s, row in (spec.get('绕路') or {}).items()}
         if self.ways['V']:
             check_delays(self.delay, list(self.ways['V']))
         self.ghost = spec.get('鬼王')
@@ -124,30 +192,43 @@ class Horn(Device):
             raise PlanError(f'{name}: 鬼王 comes with 口')
         self.horns = len(self.gaps)
         self.timer = f'CNV {tag} Horn'
+        self.warn = f'CNV {tag} Horn Warn'               # runs out SIGN_WARN seconds before the horn's timer
         self.on = {m: f'CNV_{tag}_Horn_{m}_On' for m in 'VL'}
         self.start = {m: f'CNV_{tag}_Horn_{m}_Start' for m in 'VL'}
         self.count = {m: f'CNV_{tag}_Horn_{m}_N' for m in 'VL'}
         self.label = f'SCRIPT:CNV{tag}_HORN_TIMER'
         self.alert = f'SCRIPT:CNV{tag}_HORN'
-        self.c.m.strings[self.label] = '下一声号角'
-        self.c.m.strings[self.alert] = '号角响了！'
+        self.ctx.string(self.label, '下一声号角')
+        self.ctx.string(self.alert, '号角响了！')
         self.kings = f'CNV_{tag}_Kings'              # Ghost Kings landed so far
         self.released = f'CNV_{tag}_Released'        # a kept wave of a mouth was made (its ice went)
+        self.melting = f'CNV_{tag}_Melting'          # an ice wall is in its last MELT_WARN seconds
         self.demo_on, self.demo_off = f'CNV_{tag}_Demo_On', f'CNV_{tag}_Demo_Off'
+        self.demo_to = f'CNV_{tag}_Demo_To'          # the scene went on to the detour street (演示绕)
+        self.detoured = f'CNV_{tag}_Detoured'        # a shut street's wave was made at another street
+        self.smashing = f'CNV_{tag}_Smashing'        # a Ghost King was sent at an ice wall (until that wall is gone)
+        self.smashed = f'CNV_{tag}_Smashed'          # a wall the Ghost King was sent at is gone
+        self.cool = float(spec.get('冷却', RELOAD))
 
     # ---- names
     def ids(self, mode):
         """{way name: id} -- V1, V2 ... / L1, L2 ... in the order the plan lists them."""
         return {w: f'{mode}{k}' for k, w in enumerate(self.ways[mode], 1)}
 
+    def rest(self, wid):
+        return f'CNV_{self.ctx.tag}_Rest_{wid}'
+
     def frozen(self, wid):
-        return f'CNV_{self.c.tag}_Frozen_{wid}'
+        return f'CNV_{self.ctx.tag}_Frozen_{wid}'
 
     def blow(self, mode, n):
-        return f'CNV_{self.c.tag}_Blow_{mode}{n}'
+        return f'CNV_{self.ctx.tag}_Blow_{mode}{n}'
+
+    def sign(self, wid):
+        return f'UNIT - CNV {self.ctx.tag} Sign {wid}'
 
     def troop(self, mode, n, wid, u, j):
-        return f'UNIT - CNV {self.c.tag} H{mode}{n} {wid} {u}-{j}'
+        return f'UNIT - CNV {self.ctx.tag} H{mode}{n} {wid} {u}-{j}'
 
     # ---- the plan's words
     def cond(self, event, args):
@@ -162,19 +243,30 @@ class Horn(Device):
             return [[('COUNTER', self.kings, 3, 1)]]
         if event == '放出':
             return [[('FLAG', self.released, 1)]]
+        if event == '冰快化':
+            return [[('FLAG', self.melting, 1)]]
+        if event == '绕路':
+            return [[('FLAG', self.detoured, 1)]]
+        if event == '鬼王砸墙':
+            return [[('FLAG', self.smashing, 1)]]
+        if event == '鬼王砸开':
+            return [[('FLAG', self.smashed, 1)]]
+        if event == '都在歇':
+            rests = [self.rest(w) for mode in 'VL' for w in self.ids(mode).values()]
+            return [[('FLAG', a, 1), ('FLAG', b, 1)] for a, b in itertools.combinations(rests, 2)]
         return super().cond(event, args)
 
     def ids_by_name(self, name):
         for mode in 'VL':
             if name in self.ids(mode):
                 return self.ids(mode)[name]
-        from plan import PlanError
+        from plantime import PlanError
         raise PlanError(f'{self.name}.冻住 {name!r}: no street or mouth of that name: '
                         f'{[*self.ids("V"), *self.ids("L")]}')
 
     def action(self, what, args):
         if what == '开':
-            from plan import PlanError
+            from plantime import PlanError
             if len(args) != 1 or args[0] not in MODES:
                 raise PlanError(f'{self.name}.开 {" ".join(args)!r}: 街 or 口')
             mode = MODES[args[0]]
@@ -182,52 +274,84 @@ class Horn(Device):
                 raise PlanError(f'{self.name}.开 {args[0]}: the device has no {args[0]}')
             return [('SET_COUNTER', self.count[mode], 0), ('SET_FLAG', self.on[mode], 1),
                     ('SET_FLAG', self.start[mode], 1)]
-        if what in ('演示', '演示收'):
+        if what in ('演示', '演示绕', '演示收'):
             if not self.demo:
-                from plan import PlanError
+                from plantime import PlanError
                 raise PlanError(f'{self.name}.{what}: the device has no 演示')
-            return [('SET_FLAG', self.demo_on if what == '演示' else self.demo_off, 1)]
+            return [('SET_FLAG', {'演示': self.demo_on, '演示绕': self.demo_to, '演示收': self.demo_off}[what], 1)]
+        if what == '裂':
+            if not self.sculpted:
+                from plantime import PlanError
+                raise PlanError(f'{self.name}.裂: the device has no 冰雕')
+            wid = self.ids_by_name(' '.join(args))
+            self.ctx.spawns_add(self.chips.id)
+            return [('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', self.chips.id, self.ctx.team('s1'), self.ctx.mark_of(f'chips {wid}'))]
         if what == '停':
             return [('SET_FLAG', self.on['V'], 0), ('SET_FLAG', self.on['L'], 0), ('HIDE_COUNTDOWN_TIMER', self.timer)]
+        if what == '收':                    # the horn stops and the troops out go back down: in a cutscene the trucks are safe,
+            return [('SET_FLAG', self.on['V'], 0), ('SET_FLAG', self.on['L'], 0), ('HIDE_COUNTDOWN_TIMER', self.timer)] + \
+                   [('NAMED_DELETE', n) for n in self.names_of_waves()]     # troops left at them kill them when it ends (a4, 11-08)
         return super().action(what, args)
 
     # ---- the map side: marks and areas
     def place(self):
-        m, tag = self.m, self.c.tag
-        p1 = m.player('p1')
+        ctx, tag = self.ctx, self.ctx.tag
+        p1 = ctx.player('p1')
         self.walled = {}
         for mode in 'VL':
             for w, wid in self.ids(mode).items():
                 way = self.ways[mode][w]
                 dx, dy = way.get('偏移', (0, 0))
-                m.waypoint(f'spawn {wid}', f'CNV {tag} Spawn {wid}', way['出'], dx, dy)
-                m.waypoint(f'ice {wid}', f'CNV {tag} IceAt {wid}', way['点'])
+                ctx.waypoint(f'spawn {wid}', f'CNV {tag} Spawn {wid}', way['出'], dx, dy)
+                ctx.waypoint(f'ice {wid}', f'CNV {tag} IceAt {wid}', way['点'], cast=True)
+                sculpt = way.get('冰雕')
+                if sculpt is not None:                  # the way's spawn sculpture, behind the spot the troops come out at
+                    sx0, sy0 = (float(v) for v in sculpt.get('偏移', (0, 0)))
+                    ctx.put(self.sculpt.id, way['出'], dx + sx0, dy + sy0, role=f'标志 {w}', side='s1',
+                          name=self.sign(wid), angle=sculpt.get('朝向'))
+                    ctx.waypoint(f'sign {wid}', f'CNV {tag} Sign {wid}', way['出'], dx + sx0, dy + sy0)
+                    ctx.waypoint(f'chips {wid}', f'CNV {tag} Chips {wid}', way['出'], dx + sx0 + 55.0, dy + sy0)
+                sign = way.get('标志')
+                if sign:                                # the way's sign: a named retail prop beside the ice mark
+                    dx, dy = sign.get('偏移', (0, 0))
+                    ctx.put(str(sign['物件']), way['点'], dx, dy, role=f'标志 {w}', side='civ',
+                          name=self.sign(wid), angle=sign.get('朝向'))
+                    ctx.waypoint(f'sign {wid}', f'CNV {tag} Sign {wid}', way['点'], dx, dy)
                 area = f'CNV {tag} Way {wid}'
-                m.areas[area] = square(*m.point(f'ice {wid}'), GATE_AREA)
-                sx, sy = m.point(f'ice {wid}')
-                px, py = m.point(f'spawn {wid}')
-                far = iw.clear_of(self.wall) / max(1.0, ((sx - px) ** 2 + (sy - py) ** 2) ** 0.5)
-                m.areas[f'CNV {tag} Block {wid}'] = square(sx, sy, WALL_SIDE / 2 + CLEAR_MARGIN)
-                m.waypoints[f'CNV {tag} Clear {wid}'] = (sx + (sx - px) * far, sy + (sy - py) * far)
+                ctx.add_area(area, square(*ctx.point(f'ice {wid}'), GATE_AREA))
+                sx, sy = ctx.point(f'ice {wid}')
+                ctx.add_area(f'CNV {tag} Block {wid}', square(sx, sy, WALL_SIDE / 2 + CLEAR_MARGIN))
+                ctx.add_point(f'CNV {tag} Clear {wid}', self.clear_at(wid))
                 self.walled[wid] = ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 3, 1, self.wall.id, area)
-        self.cdev = self.c.devices[self.spec['车队']]
+        self.cdev = self.ctx.device(self.spec['车队'])
         self.convoy = self.cdev.cv
         if self.ghost:
             g = self.ghost
-            m.waypoint('sea', f'CNV {tag} Sea', g.get('海', 'sea east'))
-            m.waypoint('shore', f'CNV {tag} Shore', g.get('岸', 'beach'))
-            m.areas[f'CNV {tag} Shore'] = square(*m.point('shore'), max(60.0, m.where(g.get('岸', 'beach')).r))
+            ctx.waypoint('sea', f'CNV {tag} Sea', g.get('海', 'sea east'))
+            ctx.waypoint('shore', f'CNV {tag} Shore', g.get('岸', 'beach'))
+            ctx.add_area(f'CNV {tag} Shore', square(*ctx.point('shore'), max(60.0, ctx.where(g.get('岸', 'beach')).r)))
+
+    def clear_at(self, wid):
+        """Where an engineer stands to ice the street `wid` without being in the block: past the ice mark, away from
+        the spawn mark."""
+        sx, sy = self.ctx.point(f'ice {wid}')
+        px, py = self.ctx.point(f'spawn {wid}')
+        far = iw.clear_of(self.wall) / max(1.0, ((sx - px) ** 2 + (sy - py) ** 2) ** 0.5)
+        return sx + (sx - px) * far, sy + (sy - py) * far
 
     # ---- scripts
     def opens(self, mode, n):
-        """The way ids of the set that take part in horn n (a street opens from its 从)."""
-        return [wid for w, wid in self.ids(mode).items() if int(self.ways[mode][w].get('从', 1)) <= n]
+        """The way ids of the set that take part in horn n (a street opens from its 从 and is shut from its 止: the
+        convoy is past it, its tunnel sends no wave and takes none)."""
+        return [wid for w, wid in self.ids(mode).items()
+                if int(self.ways[mode][w].get('从', 1)) <= n < int(self.ways[mode][w].get('止', 10 ** 6))]
 
     def variants(self, many=None):
         """[(levels, level index)]: one entry when the waves (or `many`, one number per difficulty) are the same on all
         difficulties, else one per level."""
         plan = self.plan
-        keys = [tuple(n[lv] for n in self.troops.values()) for lv in range(3)] if many is None else list(many)
+        keys = [tuple(n[lv] for t in (self.troops, self.troops_L) for n in t.values()) for lv in range(3)] \
+            if many is None else list(many)
         if keys[0] == keys[1] == keys[2]:
             return [(plan.ALL, 0)]
         return [(plan.ONE[lv], lv) for lv in range(3)]
@@ -237,13 +361,13 @@ class Horn(Device):
 
     def make_at(self, mode, n, origin, target, lv):
         """Actions that make the wave of horn n of way `origin` (named after it) at the spawn mark of `target`."""
-        m = self.m
+        ctx = self.ctx
         acts = []
-        for u, ns in self.troops.items():
-            tmpl = self.c.unit(u, 's1')
-            m.spawns.add(tmpl)
-            acts += [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', self.troop(mode, n, origin, tmpl, j), tmpl, m.team('s1'),
-                      m.mark(f'spawn {target}')) for j in range(1, ns[lv] + 1)]
+        for u, ns in (self.troops_L if mode == 'L' else self.troops).items():
+            tmpl = self.ctx.unit(u, 's1')
+            ctx.spawns_add(tmpl)
+            acts += [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', self.troop(mode, n, origin, tmpl, j), tmpl, ctx.team('s1'),
+                      ctx.mark_of(f'spawn {target}')) for j in range(1, ns[lv] + 1)]
         first = next((a[1] for a in acts), None)
         return acts + ([('OBJECT_CREATE_RADAR_EVENT', first, 0)] if first else [])
 
@@ -254,34 +378,34 @@ class Horn(Device):
                 for n in range(1, self.horns + 1):
                     if wid not in self.opens(mode, n):
                         continue                    # a street not open yet makes no wave
-                    for u, ns in self.troops.items():
-                        out += [self.troop(mode, n, wid, self.c.unit(u, 's1'), j) for j in range(1, max(ns) + 1)]
+                    for u, ns in (self.troops_L if mode == 'L' else self.troops).items():
+                        out += [self.troop(mode, n, wid, self.ctx.unit(u, 's1'), j) for j in range(1, max(ns) + 1)]
         return out
 
     def scripts(self):
-        m = self.m
+        ctx = self.ctx
         out = []
         # what the ice stands on now, read off every frame (zero, then one if a wall stands there), before the rest
         for mode in 'VL':
             for wid in self.ids(mode).values():
                 f = self.frozen(wid)
-                out += [Script(f'CNV {self.c.tag} - Frozen {wid} zero', [], [('SET_FLAG', f, 0)], once=False),
-                        Script(f'CNV {self.c.tag} - Frozen {wid} holds', [self.walled[wid]], [('SET_FLAG', f, 1)],
+                out += [Script(f'CNV {self.ctx.tag} - Frozen {wid} zero', [], [('SET_FLAG', f, 0)], once=False),
+                        Script(f'CNV {self.ctx.tag} - Frozen {wid} holds', [self.walled[wid]], [('SET_FLAG', f, 1)],
                                once=False)]
-        out += self.horn_scripts()
+        out += self.horn_scripts() + self.smoke_scripts() + self.sculpt_scripts()
         for n in range(1, self.horns + 1):
             out += self.street_scripts(n) + self.mouth_scripts(n)
         out += self.ghost_scripts() + self.ice_scripts() + self.demo_scripts()
         names = self.names_of_waves()
         if names:
             out += self.cdev.attack(names)
-        m.countdowns.append(self.timer)
+        ctx.countdown(self.timer)
         return out
 
     def horn_scripts(self):
         """The countdown and the horns: `开` sets a Start flag, the script of its set sets the first time; each horn
         counts, sets the next time (the table's next, by difficulty), and flags its blow for the scripts after."""
-        plan, tag = self.plan, self.c.tag
+        plan, tag = self.plan, self.ctx.tag
         out = []
         for mode in 'VL':
             if not self.ways[mode]:
@@ -289,10 +413,11 @@ class Horn(Device):
             for levels, gap in plan.by_level(self.gaps[0]):
                 out.append(Script(f'CNV {tag} - Horn {mode} start{self.lvname(levels)}', [('FLAG', self.start[mode], 1)],
                                   [('SET_FLAG', self.start[mode], 0), ('SET_MILLISECOND_TIMER', self.timer, gap),
-                                   ('DISPLAY_COUNTDOWN_TIMER', self.timer, self.label)], once=False, levels=levels))
+                                   ('DISPLAY_COUNTDOWN_TIMER', self.timer, self.label)] + self.warns(gap),
+                                  once=False, levels=levels))
             for n in range(1, self.horns + 1):
                 base = [('SET_FLAG', self.blow(mode, n), 1), ('INCREMENT_COUNTER', 1, self.count[mode]),
-                        ('SHOW_MILITARY_CAPTION', self.alert, 3.0)]
+                        self.ctx.say(self.alert, 3.0)]
                 when = [('FLAG', self.on[mode], 1), ('COUNTER', self.count[mode], 2, n - 1), ('TIMER_EXPIRED', self.timer)]
                 if n == self.horns:
                     out.append(Script(f'CNV {tag} - Horn {mode}{n}', when, base + [('HIDE_COUNTDOWN_TIMER', self.timer)]))
@@ -300,17 +425,67 @@ class Horn(Device):
                 for levels, gap in plan.by_level(self.gaps[n]):
                     out.append(Script(f'CNV {tag} - Horn {mode}{n}{self.lvname(levels)}', when,
                                       base + [('SET_MILLISECOND_TIMER', self.timer, gap),
-                                              ('DISPLAY_COUNTDOWN_TIMER', self.timer, self.label)], levels=levels))
+                                              ('DISPLAY_COUNTDOWN_TIMER', self.timer, self.label)] + self.warns(gap),
+                                      levels=levels))
+        return out
+
+    def warns(self, gap):
+        """The warning timer set with the horn's: SIGN_WARN short of it (none when no way has a sign)."""
+        return [('SET_MILLISECOND_TIMER', self.warn, max(float(gap) - SIGN_WARN, 0.0))] if self.signed else []
+
+    def smoke_scripts(self):
+        """SIGN_WARN seconds before horn n the ways that send a wave smoke (a signal smoke at the sign, a minimap
+        blip on it): the streets that take part and are not iced just now, every mouth (a shut one keeps its wave,
+        and the ice is no reason to leave it unmarked). The smoke lives to the horn and goes."""
+        if not self.signed:
+            return []
+        ctx, tag = self.ctx, self.ctx.tag
+        out = []
+        for mode in 'VL':
+            for n in range(1, self.horns + 1):
+                for wid in self.opens(mode, n):
+                    if not ctx.has_mark(f'sign {wid}'):
+                        continue
+                    name = f'UNIT - CNV {tag} Smoke {mode}{n} {wid}'
+                    when = [('FLAG', self.on[mode], 1), ('COUNTER', self.count[mode], 2, n - 1),
+                            ('TIMER_EXPIRED', self.warn)]
+                    if mode == 'V':
+                        when.append(('FLAG', self.frozen(wid), 0))
+                    out.append(Script(f'CNV {tag} - Smoke {mode}{n} {wid}', when,
+                                      [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', name, self.smoke.id, ctx.team('s1'),
+                                        ctx.mark_of(f'sign {wid}')),
+                                       ('OBJECT_CREATE_RADAR_EVENT', name, 0)]))
+                    ctx.spawns_add(self.smoke.id)
+        return out
+
+    def sculpt_scripts(self):
+        """The spawn sculptures: nothing can aim at them from the first frame (a script can kill them), and the first
+        horn of the way splits its sculpture (NAMED_KILL; it leaves the cracked one, which lies for good) whether or not
+        the way is iced -- the crack is the tunnel opening, not the wave."""
+        if not self.sculpted:
+            return []
+        tag = self.ctx.tag
+        names = {wid: self.sign(wid) for mode in 'VL' for wid in self.ids(mode).values()
+                 if self.ctx.has_mark(f'chips {wid}')}
+        out = [Script(f'CNV {tag} - Sculptures tough', [],
+                      [('UNIT_CHANGE_OBJECT_STATUS', n, 'UNATTACKABLE', 1) for n in names.values()])]
+        for mode in 'VL':
+            for w, wid in self.ids(mode).items():
+                if wid not in names:
+                    continue
+                first = int(self.ways[mode][w].get('从', 1))
+                out.append(Script(f'CNV {tag} - Sculpture {wid} splits', [('FLAG', self.blow(mode, first), 1)],
+                                  [('NAMED_KILL', names[wid])]))
         return out
 
     def to(self, n, origin, target):
-        return f'CNV_{self.c.tag}_To_V{n}_{origin}_{target}'
+        return f'CNV_{self.ctx.tag}_To_V{n}_{origin}_{target}'
 
     def wait(self, n, origin):
-        return f'CNV {self.c.tag} Wait V{n} {origin}'
+        return f'CNV {self.ctx.tag} Wait V{n} {origin}'
 
     def send(self, n, origin, target, secs, conds, label):
-        return Script(f'CNV {self.c.tag} - Route V{n} {label}', conds,
+        return Script(f'CNV {self.ctx.tag} - Route V{n} {label}', conds,
                       [('SET_FLAG', self.to(n, origin, target), 1), ('SET_MILLISECOND_TIMER', self.wait(n, origin), secs)])
 
     def street_scripts(self, n):
@@ -336,15 +511,16 @@ class Horn(Device):
                 conds = [blow, ('FLAG', self.frozen(origin), 1)] + [('FLAG', self.frozen(w), b)
                                                                      for w, b in zip(others, bits)]
                 out.append(self.send(n, origin, res[0], res[1], conds, f'{origin} shut {"".join(map(str, bits))}'))
-        out.append(Script(f'CNV {self.c.tag} - Blow V{n} done', [blow], [('SET_FLAG', self.blow('V', n), 0)]))
+        out.append(Script(f'CNV {self.ctx.tag} - Blow V{n} done', [blow], [('SET_FLAG', self.blow('V', n), 0)]))
         # made when the wait is over, wherever it was sent
         for origin in avail:
             for target in avail:
                 flag, timer = self.to(n, origin, target), self.wait(n, origin)
                 for levels, lv in self.variants():
-                    out.append(Script(f'CNV {self.c.tag} - Out V{n} {origin} at {target}{self.lvname(levels)}',
+                    out.append(Script(f'CNV {self.ctx.tag} - Out V{n} {origin} at {target}{self.lvname(levels)}',
                                       [('FLAG', flag, 1), ('TIMER_EXPIRED', timer)],
-                                      self.make_at('V', n, origin, target, lv) + [('SET_FLAG', flag, 0)],
+                                      self.make_at('V', n, origin, target, lv) + [('SET_FLAG', flag, 0)] +
+                                      ([('SET_FLAG', self.detoured, 1)] if origin != target else []),
                                       levels=levels))
         return out
 
@@ -354,7 +530,7 @@ class Horn(Device):
         ids = self.ids('L')
         if not ids:
             return []
-        tag = self.c.tag
+        tag = self.ctx.tag
         out = []
         blow = ('FLAG', self.blow('L', n), 1)
         for wid in ids.values():
@@ -376,118 +552,244 @@ class Horn(Device):
     # ---- the Ghost King
     def boats(self, n):
         """Transports made at the sea on the blow of horn n (many by difficulty), sent to the shore."""
-        g, m, tag = self.ghost, self.m, self.c.tag
+        g, ctx, tag = self.ghost, self.ctx, self.ctx.tag
         if not g or n < int(g.get('从', 3)):
             return []
         many = self.plan.counts(g.get('数量', 1))
-        boat = self.c.unit(g.get('运输车', '突击运输车'), 's1')
-        m.spawns.add(boat)
+        boat = self.ctx.unit(g.get('运输车', '突击运输车'), 's1')
+        ctx.spawns_add(boat)
         out = []
         for levels, lv in self.variants(many):
             names = [f'UNIT - CNV {tag} Boat {n}-{j}' for j in range(1, many[lv] + 1)]
             out.append(Script(f'CNV {tag} - Boats {n}{self.lvname(levels)}', [('FLAG', self.blow('L', n), 1)],
-                              [a for b in names for a in (
-                                  ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', b, boat, m.team('s1'), m.mark('sea')),
-                                  ('MOVE_NAMED_UNIT_TO', b, m.mark('shore')))], levels=levels))
+                              [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', b, boat, ctx.team('s1'), ctx.mark_of('sea'))
+                               for b in names] + ctx.order('move', names, ctx.mark_of('shore'), 's1'), levels=levels))
         return out
 
     def ghost_scripts(self):
         """Where a transport gets to the shore the Ghost King lands. It smashes the nearest ice wall (a flag says the
         pointer points at one; it is picked again after that wall is gone), else it goes for the convoy."""
-        g, m, tag, cv = self.ghost, self.m, self.c.tag, self.convoy
+        g, ctx, tag, cv = self.ghost, self.ctx, self.ctx.tag, self.convoy
         if not g:
             return []
         many = self.plan.counts(g.get('数量', 1))
-        king = self.c.unit('鬼王', 's1')
-        m.spawns.add(king)
-        p1, wall = m.player('p1'), self.wall.id
+        king = self.ctx.unit('鬼王', 's1')
+        ctx.spawns_add(king)
+        p1, wall = ctx.player('p1'), self.wall.id
         ref = f'UNITRef - CNV {tag} Nearest Wall'
         walls, picked, kings = f'CNV_{tag}_Walls', f'CNV_{tag}_Picked', self.kings
+        hits = [f'CNV_{tag}_Hit_{n}_{j}' for n in range(int(g.get('从', 3)), self.horns + 1)
+                for j in range(1, max(many) + 1)]
         out = [Script(f'CNV {tag} - Walls counted', [], [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', wall, p1, walls)],
                       once=False),
                Script(f'CNV {tag} - Ghost pick', [('COUNTER', kings, 3, 1), ('FLAG', picked, 0), ('COUNTER', walls, 3, 1)],
-                      [('SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER', wall, p1, m.team('s1'), ref),
+                      [('SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER', wall, p1, ctx.team('s1'), ref),
                        ('SET_FLAG', picked, 1)], once=False),
+               Script(f'CNV {tag} - Ghost broke', [('FLAG', picked, 1), ('NAMED_DESTROYED', ref),
+                                                   ('FLAG', self.smashing, 1)],
+                      [('SET_FLAG', self.smashed, 1), ('SET_FLAG', self.smashing, 0)], once=False),
+               # the wall is gone: every King is told afresh at the next pick (see `smashes`)
                Script(f'CNV {tag} - Ghost dropped', [('FLAG', picked, 1), ('NAMED_DESTROYED', ref)],
-                      [('SET_FLAG', picked, 0)], once=False)]
+                      [('SET_FLAG', picked, 0)] + [('SET_FLAG', h, 0) for h in hits], once=False)]
         for n in range(int(g.get('从', 3)), self.horns + 1):
             for j in range(1, max(many) + 1):
                 b, k = f'UNIT - CNV {tag} Boat {n}-{j}', f'UNIT - CNV {tag} King {n}-{j}'
-                landed = f'CNV_{tag}_Landed_{n}_{j}'
+                landed, hit = f'CNV_{tag}_Landed_{n}_{j}', f'CNV_{tag}_Hit_{n}_{j}'
                 out.append(Script(f'CNV {tag} - King {n}-{j} lands',
                                   [('NAMED_INSIDE_AREA', b, f'CNV {tag} Shore'), ('FLAG', landed, 0)],
                                   [('SET_FLAG', landed, 1), ('INCREMENT_COUNTER', 1, kings),
-                                   ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', k, king, m.team('s1'), m.mark('shore')),
+                                   ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', k, king, ctx.team('s1'), ctx.mark_of('shore')),
                                    ('OBJECT_CREATE_RADAR_EVENT', k, 0)]))
                 out.append(Script(f'CNV {tag} - King {n}-{j} smashes',
-                                  [('FLAG', landed, 1), ('FLAG', picked, 1), ('NAMED_NOT_DESTROYED', ref),
-                                   ('NAMED_NOT_DESTROYED', k)], [('NAMED_ATTACK_NAMED', k, ref)], once=False))
+                                  [('FLAG', landed, 1), ('FLAG', picked, 1), ('FLAG', hit, 0), ('NAMED_NOT_DESTROYED', ref),
+                                   ('NAMED_NOT_DESTROYED', k)],
+                                  # told once per wall (smash PASSed on the bench after this; but A's engine_reorder
+                                  # probe shows re-telling every frame does not stop a unit, so why the King stood
+                                  # there before is open: a SET_REF target? the water's-edge landing?)
+                                  ctx.order('attack', [k], ref, 's1') + [('SET_FLAG', self.smashing, 1),
+                                                                         ('SET_FLAG', hit, 1)], once=False))
                 out += [Script(f'CNV {tag} - King {n}-{j} hunts at {t + 1}',
                                [('FLAG', landed, 1), ('COUNTER', walls, 2, 0), ('NAMED_NOT_DESTROYED', k),
-                                ('TIMER_EXPIRED', cv.timer)] + cv.chase(t), [('NAMED_ATTACK_NAMED', k, target)],
+                                ('TIMER_EXPIRED', cv.timer)] + cv.chase(t), ctx.order('attack', [k], target, 's1'),
                                once=False) for t, target in enumerate(cv.trucks)]
         return out
 
-    # ---- the opening scene's demonstration
+    # ---- the opening scene's demonstration (K8, I4: nothing appears or vanishes in the picture, the cast is in it)
     def demo_scripts(self):
-        """The engineer is made and sent to ice the demo street; once the ice stands (the Frozen flag, so it waits as
-        long as the building takes) the pair of troops behind it is made and sent at it; `等` seconds on, they are
-        deleted and a pair is made at the detour street's mark. `演示收` deletes what is left."""
+        """The demonstration is staged in three pieces, each with a camera of its own (a view point `frame_for` solves
+        so the picture shows what must be seen and hides what must not; the scene's picture is a letterbox band only
+        ~345 map units tall, the street from the sculpture to the engineer is longer than that):
+        A1, the engineer: the camera goes to the shut street, the engineer is made out of the picture and WALKS in to
+          the clear mark and ices the street from there, so the cast is on screen.
+        A2, the troops: once the ice stands the camera goes up to the sculpture, the pair comes out of it in smoke and
+          ice chips, walks to the ice, meets it, turns and walks back, and goes down the sculpture in smoke again.
+        B, `演示绕`: the camera goes to the detour street, a pair comes up its sculpture in smoke and walks out of the
+          picture (taken away there by `演示收`, with the engineer's trip home).
+        contract.demo_unframed holds the geometry on the product: what is to be seen stands inside each picture, what
+        is made or taken away unseen stands outside it, what is made or taken away in it carries smoke made in it, and
+        every script of the demonstration that makes, takes away or moves a unit belongs to a stage."""
         d = self.demo
         if not d:
             return []
-        m, tag = self.m, self.c.tag
+        ctx, tag = self.ctx, self.ctx.tag
         ids = self.ids('V')
         shut, to = ids[str(d['街'])], ids[str(d['绕去'])]
+        way_a, way_b = self.ways['V'][str(d['街'])], self.ways['V'][str(d['绕去'])]
+        for wid in (shut, to):
+            if not (self.sculpted and ctx.has_mark(f'chips {wid}')):
+                from plantime import PlanError
+                raise PlanError(f'{self.name}: 演示 needs a 冰雕 on both its streets (the troops come out of it and go '
+                                f'down it in smoke: nothing may appear or vanish in the picture without it, K8)')
         eng, foes, outs = f'UNIT - CNV {tag} Demo Engineer', [], []
-        tmpl = self.c.unit('冰幕工兵')
-        m.spawns.add(tmpl)
-        kind = self.c.unit(next(iter(self.troops)), 's1')
-        m.spawns.add(kind)
+        tmpl = self.ctx.unit('冰幕工兵')
+        ctx.spawns_add(tmpl)
+        home = d.get('工兵')                # the player's own engineer plays the demo, and goes back where he stood
+        home_at = None
+        if home:
+            eng = self.ctx.part_names(str(home['角色']))[0]
+            site = str(home['回'])
+            ctx.waypoint('demo home', f'CNV {tag} Demo Home', site, *[float(x) for x in home.get('偏移', (0, 0))])
+            home_at = ctx.point('demo home')
+        kind = self.ctx.unit(next(iter(self.troops)), 's1')
+        ctx.spawns_add(kind)
         for j in range(1, int(d.get('兵', 2)) + 1):
             foes.append(f'UNIT - CNV {tag} Demo Foe {j}')
             outs.append(f'UNIT - CNV {tag} Demo Out {j}')
-        started, iced, turned = (f'CNV_{tag}_Demo_{x}' for x in ('Started', 'Iced', 'Turned'))
-        fire, turn = f'CNV {tag} Demo Fire', f'CNV {tag} Demo Turn'
-        team = m.team('s1')
+        started, iced, turned, to_started = (f'CNV_{tag}_Demo_{x}' for x in ('Started', 'Iced', 'Turned', 'ToStarted'))
+        turn, gone, emerge, made, arm = (f'CNV {tag} Demo {x}' for x in ('Turn', 'Gone', 'Emerge', 'Made', 'Arm'))
+        down, armed = f'CNV_{tag}_Demo_Down', f'CNV_{tag}_Demo_Armed'
+        team = ctx.team('s1')
+        # ---- the stages' geometry
+        ice_a, spawn_a, spawn_b = ctx.point(f'ice {shut}'), ctx.point(f'spawn {shut}'), ctx.point(f'spawn {to}')
+        sign_a = ctx.point(f'sign {shut}') if ctx.has_mark(f'sign {shut}') else spawn_a
+        sign_b = ctx.point(f'sign {to}') if ctx.has_mark(f'sign {to}') else spawn_b
+        clear_a, clear_b = self.clear_at(shut), self.clear_at(to)
+        back = (clear_a[0] - ice_a[0], clear_a[1] - ice_a[1])
+        norm = math.hypot(*back) or 1.0
+        view_a1 = None
+        for far in (100.0, 150.0, 200.0, 250.0, 300.0, 400.0):          # the engineer's way in, out of the picture
+            approach = (clear_a[0] + back[0] / norm * far, clear_a[1] + back[1] / norm * far)
+            view_a1 = frame_for([clear_a, ice_a], [approach])
+            if view_a1:
+                break
+        view_a2 = frame_for([sign_a, spawn_a, ice_a], [])
+        view_b = frame_for([sign_b, spawn_b], [clear_b, clear_a] + ([home_at] if home_at else []))
+        for view, what in ((view_a1, 'the engineer at the clear mark and the ice'),
+                           (view_a2, 'the sculpture, the spawn mark and the ice'), (view_b, 'the detour sculpture')):
+            if not view:
+                from plantime import PlanError
+                raise PlanError(f'{self.name}: 演示 can not be framed: no camera centre shows {what} and keeps what must '
+                                f'not be seen out of a picture {2 * model.LETTERBOX_BAND["half_bottom"]:g}-'
+                                f'{2 * model.LETTERBOX_BAND["half_top"]:g} wide and '
+                                f'{model.LETTERBOX_BAND["north"] + model.LETTERBOX_BAND["south"]:g} tall')
+        ctx.add_point(f'CNV {tag} Demo Approach', approach)
+        ctx.add_area(f'CNV {tag} Demo Stand', square(*clear_a, STAND_AREA))
+        ctx.add_area(f'CNV {tag} Demo Hole', square(*spawn_a, HOLE_AREA))
+        for key, name, way, wid, at in (('demo view A1', f'CNV {tag} Demo View A1', way_a, shut, view_a1),
+                                        ('demo view A2', f'CNV {tag} Demo View A2', way_a, shut, view_a2),
+                                        ('demo view B', f'CNV {tag} Demo View B', way_b, to, view_b)):
+            ice = ctx.point(f'ice {wid}')
+            ctx.waypoint(key, name, way['点'], at[0] - ice[0], at[1] - ice[1])
+        cam = {k: ctx.camera({'镜头': f'demo view {k}'}, DEMO_PAN, DEMO_EASE, DEMO_EASE, tight=True)
+               for k in ('A1', 'A2', 'B')}
+        names = {k: f'CNV {tag} - Demo {k}' for k in ('engineer', 'foes', 'down', 'down late', 'out', 'over')}
+
+        def fx(wid, smoke=True, crack=True):
+            """The street's spawn sculpture smokes and drops a little ice at its foot (it is split by the real horn
+            only: a sculpture cannot be put back)."""
+            if not self.sculpted or not ctx.has_mark(f'chips {wid}'):
+                return []
+            ctx.spawns_add(self.smoke.id, self.chips.id)
+            return ([('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', self.smoke.id, team, ctx.mark_of(f'sign {wid}'))] if smoke else []) + \
+                ([('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', self.chips.id, team, ctx.mark_of(f'chips {wid}'))] if crack else [])
+        ctx.stage('demonstration, the engineer', cam['A1'][0][1],
+                  see=[('the engineer at the clear mark', clear_a), ('the ice', ice_a)],
+                  hide=[('the engineer comes in', approach)], scripts=[names['engineer']])
+        ctx.stage('demonstration, the troops at the shut street', cam['A2'][0][1],
+                  see=[('the sculpture', sign_a), ('the spawn mark', spawn_a), ('the ice', ice_a)], hide=[],
+                  scripts=[names[k] for k in ('foes', 'down', 'down late')],
+                  smoke=[names[k] for k in ('foes', 'down', 'down late')])
+        ctx.stage('demonstration, the pair at the detour street', cam['B'][0][1],
+                  see=[('the sculpture', sign_b), ('the spawn mark', spawn_b)],
+                  hide=[('the pair is taken away', clear_b), ('the engineer is sent home', clear_a)] +
+                       ([('the engineer is at home', home_at)] if home_at else []),
+                  scripts=[names['out'], names['over']], smoke=[names['out']])
+
+        def take_away():
+            return [('SET_FLAG', down, 1)] + [('NAMED_DELETE', f) for f in foes] + fx(shut, crack=False)
+        in_hole = [('NAMED_INSIDE_AREA', f, f'CNV {tag} Demo Hole') for f in foes]
         return [
-            Script(f'CNV {tag} - Demo engineer', [('FLAG', self.demo_on, 1), ('FLAG', started, 0)],
-                   [('SET_FLAG', started, 1),
-                    ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', eng, tmpl, m.team('p1'), f'CNV {tag} Clear {shut}'),
-                    ('SET_MILLISECOND_TIMER', fire, 1.0)]),
-            Script(f'CNV {tag} - Demo ice', [('TIMER_EXPIRED', fire)],
+            # A1: the camera goes to the street and the engineer walks in from out of the picture ...
+            Script(names['engineer'], [('FLAG', self.demo_on, 1), ('FLAG', started, 0)],
+                   [('SET_FLAG', started, 1)] + cam['A1'] + [
+                    (('UNIT_TELEPORT_TO_WAYPOINT', eng, f'CNV {tag} Demo Approach') if home else
+                     ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', eng, tmpl, ctx.team('p1'), f'CNV {tag} Demo Approach'))] +
+                   ctx.order('move', [eng], f'CNV {tag} Clear {shut}', 'p1')),
+            # ... and ices the street from the clear mark, in the picture, as soon as he stands there
+            Script(f'CNV {tag} - Demo ice', [('FLAG', started, 1), ('NAMED_INSIDE_AREA', eng, f'CNV {tag} Demo Stand')],
                    [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', eng, self.eng.abilities['freeze'],
-                     m.mark(f'ice {shut}'))]),
-            Script(f'CNV {tag} - Demo foes', [('FLAG', started, 1), ('FLAG', self.frozen(shut), 1), ('FLAG', iced, 0),
-                                              ('FLAG', self.demo_off, 0)],
-                   [('SET_FLAG', iced, 1), ('SET_MILLISECOND_TIMER', turn, float(d.get('等', 4.0)))] +
-                   [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', f, kind, team, m.mark(f'spawn {shut}')) for f in foes] +
-                   [('MOVE_NAMED_UNIT_TO', f, f'CNV {tag} Clear {shut}') for f in foes]),
+                     ctx.mark_of(f'ice {shut}'))]),
+            # A2: once the ice stands (the Frozen flag, so it waits as long as the building takes) the camera goes up to
+            # the sculpture and, when it is there, the pair comes out of it in smoke
+            Script(f'CNV {tag} - Demo pan', [('FLAG', started, 1), ('FLAG', self.frozen(shut), 1), ('FLAG', iced, 0),
+                                             ('FLAG', self.demo_off, 0)],
+                   [('SET_FLAG', iced, 1), ('SET_MILLISECOND_TIMER', made, DEMO_PAN + 0.3)] + cam['A2']),
+            Script(names['foes'], [('TIMER_EXPIRED', made), ('FLAG', self.demo_off, 0)],
+                   fx(shut) + [('SET_MILLISECOND_TIMER', turn, float(d.get('等', 3.5)))] +
+                   [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', f, kind, team, ctx.mark_of(f'spawn {shut}')) for f in foes] +
+                   ctx.order('move', foes, f'CNV {tag} Clear {shut}', 's1')),
+            # they meet the ice, turn and walk back to the sculpture they came out of
             Script(f'CNV {tag} - Demo turn', [('TIMER_EXPIRED', turn), ('FLAG', turned, 0), ('FLAG', self.demo_off, 0)],
-                   [('SET_FLAG', turned, 1)] + [('NAMED_DELETE', f) for f in foes] +
-                   [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', o, kind, team, m.mark(f'spawn {to}')) for o in outs] +
+                   [('SET_FLAG', turned, 1), ('SET_MILLISECOND_TIMER', gone, float(d.get('退', DEMO_BACK))),
+                    ('SET_MILLISECOND_TIMER', arm, DEMO_ARM)] +
+                   ctx.order('move', foes, ctx.mark_of(f'spawn {shut}'), 's1')),
+            Script(f'CNV {tag} - Demo armed', [('TIMER_EXPIRED', arm)], [('SET_FLAG', armed, 1)]),
+            # there they go down it, in smoke (the moment they stand at its mouth, which is DEMO_ARM seconds after they
+            # turned at the earliest -- they have not left it yet before -- else `退` seconds on at the latest)
+            Script(names['down'], [('FLAG', armed, 1), ('FLAG', down, 0), ('FLAG', self.demo_off, 0)] + in_hole,
+                   take_away()),
+            Script(names['down late'], [('TIMER_EXPIRED', gone), ('FLAG', turned, 1), ('FLAG', down, 0),
+                                        ('FLAG', self.demo_off, 0)], take_away()),
+            # B: the camera goes to the detour street, and once it is there the pair comes up in smoke and walks off
+            Script(f'CNV {tag} - Demo to', [('FLAG', self.demo_to, 1), ('FLAG', to_started, 0), ('FLAG', self.demo_off, 0)],
+                   [('SET_FLAG', to_started, 1), ('SET_MILLISECOND_TIMER', emerge, DEMO_PAN + 0.4)] + cam['B']),
+            Script(names['out'], [('TIMER_EXPIRED', emerge), ('FLAG', self.demo_off, 0)],
+                   fx(to) +
+                   [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', o, kind, team, ctx.mark_of(f'spawn {to}')) for o in outs] +
+                   ctx.order('move', outs, f'CNV {tag} Clear {to}', 's1') +
                    [('OBJECT_CREATE_RADAR_EVENT', outs[0], 0)]),
-            Script(f'CNV {tag} - Demo over', [('FLAG', self.demo_off, 1), ('FLAG', started, 1)],
-                   [('NAMED_DELETE', eng)] + [('NAMED_DELETE', n) for n in foes + outs]),
+            Script(names['over'], [('FLAG', self.demo_off, 1), ('FLAG', started, 1)],
+                   [('UNIT_TELEPORT_TO_WAYPOINT', eng, f'CNV {tag} Demo Home') if home else ('NAMED_DELETE', eng)] +
+                   [('NAMED_DELETE', n) for n in foes + outs]),
         ]
 
     # ---- the ice: its time left on screen, an engineer shut in the block taken out
     def ice_scripts(self):
-        m, tag = self.m, self.c.tag
+        ctx, tag = self.ctx, self.ctx.tag
         life = self.wall.params['lifetime']
         out = []
         for mode in 'VL':
             for w, wid in self.ids(mode).items():
                 timer, up = f'CNV {tag} Ice {wid}', f'CNV_{tag}_Ice_{wid}'
+                warn = f'CNV {tag} Melt {wid}'
                 label = f'SCRIPT:CNV{tag}_ICE{wid}'
-                m.strings[label] = f'{w}的冰墙'
+                ctx.string(label, f'{w}的冰墙')
                 f = self.frozen(wid)
                 out += [Script(f'CNV {tag} - Ice {wid} up', [('FLAG', f, 1), ('FLAG', up, 0)],
-                               [('SET_FLAG', up, 1), ('SET_MILLISECOND_TIMER', timer, float(life)),
+                               [('SET_FLAG', up, 1), ('SET_FLAG', self.rest(wid), 1),
+                                ('SET_MILLISECOND_TIMER', f'CNV {tag} Rest {wid}', self.cool),
+                                ('SET_MILLISECOND_TIMER', timer, float(life)),
+                                ('SET_MILLISECOND_TIMER', warn, max(float(life) - MELT_WARN, 0.0)),
                                 ('DISPLAY_COUNTDOWN_TIMER', timer, label)], once=False),
+                        Script(f'CNV {tag} - Ice {wid} rested', [('FLAG', self.rest(wid), 1),
+                                                                 ('TIMER_EXPIRED', f'CNV {tag} Rest {wid}')],
+                               [('SET_FLAG', self.rest(wid), 0)], once=False),
+                        Script(f'CNV {tag} - Ice {wid} melting', [('TIMER_EXPIRED', warn), ('FLAG', f, 1)],
+                               [('SET_FLAG', self.melting, 1)], once=False),
                         Script(f'CNV {tag} - Ice {wid} gone', [('FLAG', f, 0), ('FLAG', up, 1)],
-                               [('SET_FLAG', up, 0), ('HIDE_COUNTDOWN_TIMER', timer)], once=False)]
-                m.countdowns.append(timer)
+                               [('SET_FLAG', up, 0), ('SET_FLAG', self.melting, 0), ('HIDE_COUNTDOWN_TIMER', timer)],
+                               once=False)]
+                ctx.countdown(timer)
                 out += [Script(f'CNV {tag} - Clear {wid} of {j + 1}',
                                [('FLAG', f, 1), ('NAMED_INSIDE_AREA', e, f'CNV {tag} Block {wid}')],
                                [('UNIT_TELEPORT_TO_WAYPOINT', e, f'CNV {tag} Clear {wid}')], once=False)

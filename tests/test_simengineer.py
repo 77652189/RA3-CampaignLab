@@ -1,0 +1,194 @@
+"""EngineerContain: replay the four ordinary-entry routes, not instant garrison."""
+import importlib.util
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+_spec = importlib.util.spec_from_file_location('simbench_engineer', ROOT / 'experimental/cnv/simbench.py')
+_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_module)
+
+
+def test_engineer_four_routes_as_on_the_bench():
+    """engine_engineer:a 2026-11-10 PASS: s12-s38 1050/1050/100/10050;
+    baseline s1-s11 all 10050. Exact arrival time remains INFERRED."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_engineer', 'a')
+    s = sim.Sim(m, t).run(36)
+    assert s.series[0][1] == [10050] * 4
+    assert s.series[-1][1] == [1050, 1050, 100, 10050]
+    assert s.body(m.role('ally').name).owner == m.player('s2')
+    assert s.body(m.role('refused').name).owner == m.player('s1')
+    assert [s.body(m.role(role + ' man').name).alive
+            for role in ('neutral', 'enemy', 'ally', 'refused')] == [False, False, False, True]
+
+
+def test_engineer_full_health_allies_as_on_the_bench():
+    """engine_engineer:b PASS 2026-11-10: s12-s37 10100/10100/10100/100.
+    Three nations, full-health allies and damaged control; travel INFERRED."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_engineer', 'b')
+    s = sim.Sim(m, t).run(36)
+    assert s.series[0][1] == [10100, 10100, 10100, 10050]
+    assert s.series[-1][1] == [10100, 10100, 10100, 100]
+    window = [values for second, values in s.series if 30 <= second <= 34]
+    assert window and all(values == [10100, 10100, 10100, 100] for values in window)
+    for role in ('neutral', 'enemy', 'ally', 'refused'):
+        assert s.body(m.role(role).name).owner == m.player('s2')
+        assert s.body(m.role(role).name).hp == s.body(m.role(role).name).max_hp
+        assert s.body(m.role(role + ' man').name).alive == (role != 'refused')
+    assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
+
+
+def test_engineer_damaged_allies_three_nations_as_on_the_bench():
+    """engine_engineer:c PASS 2026-11-10: s12-s38 100/100/100/10100.
+
+    Arrival timing is INFERRED; assert the stable endpoint window only.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_engineer', 'c')
+    roles = ('neutral', 'enemy', 'ally', 'refused')
+    assert [m.role(role + ' man').template for role in roles] == [
+        'AlliedEngineer', 'SovietEngineer', 'JapanEngineer', 'AlliedEngineer']
+    s = sim.Sim(m, t).run(36)
+    assert s.series[0][1] == [10050, 10050, 10050, 10100]
+    window = [values for second, values in s.series if 30 <= second <= 34]
+    assert window and all(values == [100, 100, 100, 10100] for values in window)
+    assert s.series[-1][1] == [100, 100, 100, 10100]
+    for role in roles:
+        target, man = s.body(m.role(role).name), s.body(m.role(role + ' man').name)
+        assert target.owner == m.player('s2')
+        assert target.hp == target.max_hp
+        assert man.alive == (role == 'refused')
+    assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
+
+
+def test_engineer_soviet_japan_captures_as_on_the_bench():
+    """engine_engineer:d: stable endpoints, exact arrival timing INFERRED."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_engineer', 'd')
+    roles = ('neutral', 'enemy', 'ally', 'refused')
+    assert [m.role(role + ' man').template for role in roles] == [
+        'SovietEngineer', 'SovietEngineer', 'JapanEngineer', 'JapanEngineer']
+    assert [m.role(role).side for role in roles] == ['neutral', 's1', 'neutral', 's1']
+    assert all(m.role(role).template == 'AlliedPowerPlant' for role in roles)
+    s = sim.Sim(m, t).run(36)
+    assert s.series[0][1] == [10050] * 4
+    window = [values for second, values in s.series if 30 <= second <= 34]
+    assert window and all(values == [1050] * 4 for values in window)
+    assert s.series[-1][1] == [1050] * 4
+    for role in roles:
+        target, man = s.body(m.role(role).name), s.body(m.role(role + ' man').name)
+        assert target.owner == m.player('p1')
+        assert target.hp == target.max_hp / 2
+        assert not man.alive
+    assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
+
+
+def test_engineer_allied_defence_repair_three_nations_as_on_the_bench():
+    """engine_engineer:e PASS 2026-11-11: s13-s37 100/100/100/10100.
+
+    Stable endpoints only; exact arrival timing INFERRED.
+    """
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_engineer', 'e')
+    roles = ('neutral', 'enemy', 'ally', 'refused')
+    assert [m.role(role + ' man').template for role in roles] == [
+        'AlliedEngineer', 'SovietEngineer', 'JapanEngineer', 'AlliedEngineer']
+    assert all(m.role(role).template == 'SovietBaseDefenseGround' for role in roles)
+    assert all(m.role(role).side == 's2' for role in roles)
+    s = sim.Sim(m, t).run(36)
+    assert s.series[0][1] == [10050, 10050, 10050, 10100]
+    window = [values for second, values in s.series if 30 <= second <= 34]
+    assert window and all(values == [100, 100, 100, 10100] for values in window)
+    assert s.series[-1][1] == [100, 100, 100, 10100]
+    for role in roles:
+        target, man = s.body(m.role(role).name), s.body(m.role(role + ' man').name)
+        assert target.owner == m.player('s2')
+        assert target.hp == target.max_hp
+        assert man.alive == (role == 'refused')
+    assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
+
+
+def test_engineer_allied_defence_refusal_soviet_japan_as_on_the_bench():
+    """engine_engineer:f: stable refusal endpoints; exact entry timing INFERRED."""
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_engineer', 'f')
+    roles = ('neutral', 'enemy', 'ally', 'refused')
+    assert [m.role(role + ' man').template for role in roles] == [
+        'SovietEngineer', 'JapanEngineer', 'SovietEngineer', 'JapanEngineer']
+    assert [m.role(role).side for role in roles] == ['s2', 's2', 's1', 's1']
+    assert all(m.role(role).template == 'SovietBaseDefenseGround' for role in roles)
+    start = t.scripts[0].do
+    assert all(('UNIT_CHANGE_OBJECT_STATUS', m.role(name).name, 'NO_ATTACK', 1) in start
+               for role in roles for name in (role, role + ' man'))
+    entry = next(script for script in t.scripts if script.name == 'Test - enter')
+    assert entry.when == [('TIMER_EXPIRED', 'Engineer enter')]
+    assert entry.do == [('NAMED_GARRISON_SPECIFIC_BUILDING', m.role(role + ' man').name,
+                         m.role(role).name) for role in roles]
+    for role in roles:
+        owner = next(script for script in t.scripts if script.name == 'Test - owner ' + role)
+        from parts import NOT
+        assert owner.when == [('NAMED_OWNED_BY_PLAYER', m.player(m.role(role).side),
+                                m.role(role).name, NOT)]
+    s = sim.Sim(m, t).run(36)
+    expected = [10100, 10100, 10050, 10050]
+    assert s.series[0][1] == expected
+    window = [values for second, values in s.series if 30 <= second <= 34]
+    assert window and all(values == expected for values in window)
+    assert s.series[-1][1] == expected
+    for role in roles:
+        target, man = s.body(m.role(role).name), s.body(m.role(role + ' man').name)
+        assert target.owner == m.player(m.role(role).side)
+        assert target.hp == target.max_hp * (1 if role in roles[:2] else .5)
+        assert man.alive
+    assert not any(key[0] == 'EngineerContain' for key in s.unmodeled)
+
+
+def test_engineer_filters_reject_wrong_template_and_enemy_defence_and_report_replacements():
+    import build
+    import sim
+    import simunits
+    m, t, _ = build.resolve('engine_engineer', 'a')
+    s = sim.Sim(m, t)
+    man = s.body(m.role('neutral man').name)
+    tower = s.body(m.role('refused').name)
+    assert not s.engineer_entry(man, tower)
+    tower.owner = man.owner
+    assert s.engineer_entry(man, tower)
+    man.template = 'AlliedAntiInfantryInfantry'
+    assert not s.engineer_entry(man, tower)
+    assert simunits.engineer_contain(man.template) is None
+    own = {'Child': '<GameObject id="Child" inheritFrom="AlliedPowerPlant"/>'}
+    assert simunits.engineer_contain('Child', own) == simunits.engineer_contain('AlliedPowerPlant')
+    # A replacement is deliberately not implemented by the capture-only path.
+    own['Replacement'] = ('<GameObject id="Replacement"><Behaviors>'
+                          '<EngineerContain ImmediatelyEnabled="true" ReplaceWith="Unmeasured"/>'
+                          '</Behaviors></GameObject>')
+    s.own.update(own)
+    tower.template = 'Replacement'
+    assert not s.engineer_entry(man, tower)
+    assert ('EngineerContain', 'Replacement') in s.unmodeled
+    own['Filtered'] = ('<GameObject id="Filtered"><Behaviors><EngineerContain ImmediatelyEnabled="true">'
+                       '<CanEnterFilter Rule="NONE" ExcludeStatusBitFlags="IMMOBILE">'
+                       '<IncludeThing>AlliedEngineer</IncludeThing></CanEnterFilter>'
+                       '</EngineerContain></Behaviors></GameObject>')
+    assert not simunits.engineer_contain('Filtered', own)['supported']
+
+
+def test_engineer_capture_keeps_the_existing_derrick_bonus_and_deposit():
+    import simbench
+    status, lines = simbench.run('derrick')
+    assert status == 0, '\n'.join(lines)
+
+
+def test_engineer_partial_slice_does_not_register_the_whole_module_as_benched():
+    import inventory
+    key = inventory.MODULE, 'Behaviors/EngineerContain'
+    assert key not in inventory.BENCHED_TESTS
+    assert inventory.NOTES[key][0] == inventory.GUESSED

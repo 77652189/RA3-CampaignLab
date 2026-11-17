@@ -21,14 +21,10 @@ from mapscript import MapFile                   # noqa: E402
 
 c4, c2 = c6.c4, c6.c4.c2
 NAME = 'CampNew7'
-c4.NAME = c2.NAME = NAME
-c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', NAME, 'data')
-c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
-c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
 MAP_MOD = NAME + 'Map'          # separate SDK mod folder for the map compile
 GAME_MAP_ID = 'CAMP_A03_Heidelberg_Smith'      # same id as the retail stream had (atlas lookup unknown yet)
 
-_edited = c4.c2.map_files       # make_campnew6's edited_map_files
+_edited = c6.edited_map_files  # the map this one compiles
 SDK_OBJECTS = False             # make_campnew12 sets it
 EXTRA_TEMPLATES = {}            # our own GameObjects (make_campnew13)
 OWN_ATLAS = os.environ.get('CNV_OWN_ATLAS') == '1'     # compile the terrain atlas ourselves (make_campnew22)
@@ -37,7 +33,26 @@ OWN_ATLAS = os.environ.get('CNV_OWN_ATLAS') == '1'     # compile the terrain atl
 # the GameMap never reaches them (make_campnew26: production button, build command, factory command set)
 EXTRA_OWN = []
 EXTRA_ALL = []                  # our XML files nothing references, included type="all" (make_campnew27 button UI)
-OVERRIDE = []                   # retail GameObject ids we recompile with changes (make_campnew33: 复仇 death module)
+SPAWNS = []                     # templates made at run time by name, placed by nobody (mapxml.map_xml made=)
+# retail instances we recompile with changes under the same id, linked over the retail ones: a bare name is a
+# GameObject id (make_campnew33: 复仇 death module), 'Type:id' any other instance (AIData:AIData, from global.xml)
+OVERRIDE = []
+
+
+def override_names():
+    """OVERRIDE as instance names (bytes): a bare id is a GameObject's."""
+    return {(n if ':' in n else 'GameObject:' + n).encode() for n in OVERRIDE}
+
+
+def spawn_names(new, own):
+    """The instances of `new` (the link library: the worldbuilder / base map layers + BAB's output) that are a SPAWNS
+    template's GameObject the static stream lacks and not in `own` yet: nothing on the map references them -- an OCL
+    or a script names them at run time -- so the reference walk from the GameMap leaves them out (bench 11-17, A272:
+    map.xml included CAMP_AlliedBomberAircraft_Infantry_1 type="all", BAB built it, the drop still made nothing; the
+    worldbuilder layer has it, so it is the library's, not BAB-only)."""
+    wanted = {('gameobject:' + t).lower() for t in SPAWNS} - (mapxml.stream_names() if SPAWNS else set())
+    have = {(x.entry[0], x.entry[1]) for x in own}
+    return [v for v in new if v.name.decode('latin-1').lower() in wanted and (v.entry[0], v.entry[1]) not in have]
 
 
 def placed_templates(m):
@@ -52,8 +67,10 @@ def compile_map(m):
     # (bench 2026-10-22: ice_spawn's OCL made one), so it counts as placed for the spawn rule
     linked = {e.decode('latin-1').split(':', 1)[1] for e in EXTRA_OWN
               if isinstance(e, bytes) and e.startswith(b'GameObject:')}
-    lint.run(EXTRA_TEMPLATES, EXTRA_ALL, placed=placed_templates(m) | linked, overrides=OVERRIDE)
-    text, unknown = mapxml.map_xml(m, GAME_MAP_ID, EXTRA_TEMPLATES, atlas=OWN_ATLAS, also=EXTRA_ALL)
+    lint.run(EXTRA_TEMPLATES, EXTRA_ALL, placed=placed_templates(m) | linked,
+             overrides=[n for n in OVERRIDE if ':' not in n])
+    text, unknown = mapxml.map_xml(m, GAME_MAP_ID, EXTRA_TEMPLATES, atlas=OWN_ATLAS, also=EXTRA_ALL,
+                                   made=SPAWNS)
     print('map.xml:', text.count('type="instance"'), 'object files; no definition (roads, waypoints):', unknown)
     rel = os.path.join('data', 'maps', 'official', c2.NEW_STEM)
     src = os.path.join(c2.SDK, 'Mods', MAP_MOD, rel)
@@ -101,14 +118,19 @@ def map_files():
         extra = [v for v in new.values() if v.name.startswith(tuple(EXTRA_OWN))]
         own += extra
         print('  linked by name:', sorted(v.name.decode() for v in extra))
-    if OVERRIDE:        # retail GameObjects we recompiled (EXTRA_TEMPLATES under the retail id): ours, linked always
+    made = spawn_names(library.values(), own)
+    if made:            # retail templates made at run time by name (map_xml made=), compiled because the stream lacks them
+        own += made
+        print('  made at run time, linked by name:', sorted(v.name.decode() for v in made))
+    if OVERRIDE:        # retail instances we recompiled (EXTRA_TEMPLATES / EXTRA_ALL under the retail id): ours, linked always
+        wanted = override_names()
         ov = {(e[0], e[1]): mapxml.Inst(list(e), c, mapxml.sa.refs(bB, e), mapxml.sa.cstr(bB[2], e[6]),
                                         mapxml.sa.cstr(bB[3], e[7]), 'sdk')
-              for e, c in zip(bE, bC) if mapxml.sa.cstr(bB[2], e[6]) in {b'GameObject:' + n.encode() for n in OVERRIDE}}
-        assert len(ov) == len(OVERRIDE), ('BAB did not build every override', len(ov), OVERRIDE)
+              for e, c in zip(bE, bC) if mapxml.sa.cstr(bB[2], e[6]) in wanted}
+        assert len(ov) == len(wanted), ('BAB did not build every override', len(ov), OVERRIDE)
         library.update(ov)
         own = [x for x in own if (x.entry[0], x.entry[1]) not in ov] + list(ov.values())
-        print('  retail GameObjects overridden:', sorted(v.name.decode() for v in ov.values()))
+        print('  retail instances overridden:', sorted(v.name.decode() for v in ov.values()))
     if SDK_OBJECTS:     # test: BAB's own GameObjects (SDK layout) in place of the retail 1.12 ones
         sdk = {(e[0], e[1]): mapxml.Inst(list(e), c, mapxml.sa.refs(bB, e), mapxml.sa.cstr(bB[2], e[6]),
                                          mapxml.sa.cstr(bB[3], e[7]), 'sdk')
@@ -133,7 +155,16 @@ def map_files():
     return sorted(keep.items())
 
 
-c4.c2.map_files = map_files
+def install():
+    """make_campnew6.install(), then this mod's name and the compiled map in c2 (importing changes nothing)."""
+    c6.install()
+    c4.NAME = c2.NAME = NAME
+    c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', NAME, 'data')
+    c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
+    c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
+    c4.c2.map_files = map_files
+
 
 if __name__ == '__main__':
+    install()
     c4.main()

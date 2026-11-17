@@ -1,14 +1,15 @@
 """Doc guards (canon): the doc set is a deliberate list, ADR files match the index, hard constraints stay in the
 handoff, the handoff's state block keeps its fields and allowed values, and plan.md stays the state authority."""
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / 'docs'
 ADR = DOCS / 'adr'
 
-ROOT_DOCS = {'README.md', 'HANDOFF.md', 'CLAUDE.md'}   # CLAUDE.md: how every session here spends quota (2026-10-30)
-ACTIVE_DOCS = {'architecture.md', 'plan.md', 'requirements.md'}
+ROOT_DOCS = {'README.md', 'HANDOFF.md', 'CLAUDE.md', 'AGENTS.md'}   # AGENTS.md: the one rule file for every harness (red lines + map, 2026-11-10); CLAUDE.md: imports it + Claude-only mechanics
+ACTIVE_DOCS = {'architecture.md', 'issues.md', 'plan.md', 'requirements.md'}
 
 HARD_CONSTRAINTS = [
     '需要任何内容直接下载就行，不要停下来，你最多可以用50G硬盘',
@@ -18,14 +19,23 @@ HARD_CONSTRAINTS = [
     '不改 Steam 游戏目录里的文件',
     '不解密 Corona mod',
     '回复用通俗中文',
+    '总之让我听不到就可以',
+    '就只在国内发布吧，不上N网',
+    '只用来做mod，研究学习里面的内容，不公开',
+    '我希望尽可能把引擎的算法还原成python代码',
 ]
 STATE_FIELDS = {
     'slice': None,                                              # free text
     'blocked_on': {'none', 'voice-session', 'user'},
     'next_gate': {'test-map', 'coordinate-calibration', 'demo', 'playtest'},
 }
-ENGINE_DOCS = {'script-semantics.md', 'know-how.md'}
-PLAN_MAX_KB = 40        # status only (2026-10-28 it was 115 KB of history and know-how: archive/, engine/)
+ENGINE_DOCS = {'script-semantics.md', 'know-how.md', 'terrain.md', 'pathing.md', 'upgrades.md', 'spawn.md', 'air.md', 'aircraft.md',
+               'missile.md', 'weapons.md', 'garrison.md', 'stealth.md',
+               'production.md', 'mining.md', 'construction.md', 'specialpower.md', 'sell.md', 'heal.md', 'stance.md', 'transform.md', 'vision.md', 'runoffmap.md', 'teleport.md', 'crush.md', 'aiopen.md', 'aistate.md', 'aispecial.md', 'aimicro.md', 'aitactics.md', 'ainamed.md', 'aiswitches.md', 'aiteamstate.md', 'uprising-gap.md', 'weaponset.md', 'sim-layers.md'}   # reverse-engineering notes stay in work/re/ (repo is public)
+# generated on demand by experimental/cnv/inventory.py, inventory_levels.py --write, inventory_ai.py levels --write;
+# gitignored, never committed (ADR 0030): in docs/engine only when this checkout generated them
+GENERATED_ENGINE_PAGES = {'inventory.md', 'inventory-levels.md', 'inventory-levels-a.md'}
+PLAN_MAX_KB = 40       # status only (2026-10-28 it was 115 KB of history and know-how: archive/, engine/)
 
 
 def _md(root):
@@ -98,9 +108,34 @@ def test_plan_holds_status_not_history():
 
 
 def test_engine_docs_are_the_reviewed_set():
-    assert _md(DOCS / 'engine') == ENGINE_DOCS
+    assert _md(DOCS / 'engine') - GENERATED_ENGINE_PAGES == ENGINE_DOCS
+
+
+def test_generated_inventory_pages_are_ignored_not_committed():
+    """ADR 0030: 110 of 352 commits from 11-15 only regenerated these pages, and parallel lines conflicted on them."""
+    rules = (ROOT / '.gitignore').read_text(encoding='utf-8').splitlines()
+    assert '/docs/engine/inventory*.md' in rules
+    tracked = subprocess.run(['git', '-C', str(ROOT), 'ls-files', '--', 'docs/engine'], capture_output=True,
+                             text=True, encoding='utf-8', check=True).stdout.split()
+    assert not {Path(t).name for t in tracked} & GENERATED_ENGINE_PAGES
 
 
 def test_local_data_stays_ignored():
     rules = (ROOT / '.gitignore').read_text(encoding='utf-8').splitlines()
     assert '/work/' in rules
+
+
+def test_agents_md_is_rules_and_map_only():
+    """AGENTS.md is the one rule file every harness reads (user 2026-11-10): red lines + map, kept short;
+    CLAUDE.md only imports it and adds Claude-only mechanics; every repo path the map names exists."""
+    agents = (ROOT / 'AGENTS.md').read_text(encoding='utf-8')
+    assert len(agents.splitlines()) <= 60, 'AGENTS.md over 60 lines: move area know-how into that area\'s file'
+    for head in ('## 红线', '## 提交', '## 干活', '## 地图'):
+        assert head in agents, head
+    claude = (ROOT / 'CLAUDE.md').read_text(encoding='utf-8').splitlines()
+    assert claude[0].strip() == '@AGENTS.md'
+    assert len(claude) <= 15, 'CLAUDE.md is an adapter; rules go in AGENTS.md'
+    paths = re.findall(r'`((?:docs|experimental|tests)/[^`\s<*]+?\.(?:md|py))', agents)
+    assert paths, 'AGENTS.md map names no repo paths'
+    for p in paths:
+        assert (ROOT / p).is_file(), p

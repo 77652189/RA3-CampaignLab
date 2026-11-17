@@ -14,6 +14,8 @@ import sys
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -53,7 +55,7 @@ async def run(steps, out):
 def main():
     a = sys.argv[1]
     steps = json.load(open(a, encoding='utf-8')) if os.path.exists(a) else json.loads(a)
-    out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'work', 'testbench', 'client')
+    out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(labpaths.WORK, 'testbench', 'client')
     os.makedirs(out, exist_ok=True)
     asyncio.run(run(steps, out))
 

@@ -70,7 +70,7 @@ def cstr(buf, off):
 def splice(stem, mod, only, archive=GAME, add_new=False):
     names = [f'data\\{stem}.{x}' for x in ('manifest', 'bin', 'relo', 'imp')]
     f = big.read_files(archive, names)
-    m, b, r, i = (refpack.decompress(v) if refpack.is_refpack(v) else v for v in (f[n] for n in names))
+    m, b, r, i = (refpack.unpack(v) for v in (f[n] for n in names))
     h, E, chunks, bufs = parse(m, b, r, i)
     refbuf, namebuf = bytearray(bufs[0]), bytearray(bufs[2])
 

@@ -27,3 +27,9 @@ def mission(name='CampLock', gate=True):
     m.put(SHIP, 'island', X - 2500, SHIP_Y - 2500, name='UNIT - CNV Lock Ship', role='ship', angle=1.5708)
     m.waypoint('goal', 'CNV Lock Goal', 'island', X - 2500, GOAL_Y - 2500)
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'lock': lambda: mission(),
+}

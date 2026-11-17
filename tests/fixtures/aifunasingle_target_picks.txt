@@ -1,0 +1,2 @@
+tgt: frame=16 brain=redacted slot=0 state=redacted sid=ab309529 hi=0 vt=redacted sort=0 uniq=1 found=0 kind=0 target=-1@0:0 n=0 cand=-
+tgt: frame=151 brain=redacted slot=0 state=redacted sid=ab309529 hi=0 vt=redacted sort=0 uniq=1 found=1 kind=4 target=3166@3700:2400 n=3 cand=3164@1250:2500:1:-,3165@3150:3300:0:stat,3166@3700:2400:1:-

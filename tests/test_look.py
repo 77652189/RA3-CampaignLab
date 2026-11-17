@@ -69,7 +69,8 @@ def test_every_portrait_is_ours():
     the ones the player only meets, never builds (the convoy's truck, the clone), still retail's (docs/units)."""
     from missions import lock_bench
     from units import clone
-    retail = {convoy.truck().id, clone.clone().id}
+    from units import platform
+    retail = {convoy.truck().id, clone.clone().id, platform.tide_gun().id}      # the swell turret: the enemy's only
     for u in units() + [lock_bench.gate_unit()]:
         if u.id in retail:
             continue

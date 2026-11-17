@@ -1,7 +1,7 @@
 r"""One entry point for the everyday steps, so a session runs fixed commands instead of writing a fresh inline
 script each time (inline scripts are where backslashes got eaten and files got garbled).
 
-  python -I -X utf8 cnv.py build 30 [CNV_EASY=1 ...]   build make_campnew30.py (env settings after it), then draw
+  python -I -X utf8 cnv.py build 18 [CNV_EASY=1 ...]   build make_campnew18.py (env settings after it), then draw
                                                          its map (work/maps/<mod>.png)
   python -I -X utf8 cnv.py map CampNew30 [--around X Y R] [--bench-view] [--px N]       top-down map picture
   python -I -X utf8 cnv.py bench CampNew30 -s 120 --shots 30,60,90 [--actions '...'] [--visible]
@@ -10,7 +10,6 @@ script each time (inline scripts are where backslashes got eaten and files got g
   python -I -X utf8 cnv.py sheet <folder> [-o out.png]  contact sheet of the PNGs in a folder
   python -I -X utf8 cnv.py where X Y [--view VX VY]     world point -> bench screen (start camera, or after the
                                                          camera was moved to VX VY by a minimap click) + minimap
-  python -I -X utf8 cnv.py launcher CampNew30           (re)write Mods\CampNew30\Play_CampNew30.bat
   python -I -X utf8 cnv.py install CampNew30            a build staged while RA3 ran (work\staging) -> Mods
   python -I -X utf8 cnv.py status                       is RA3 running, who holds the bench / GPU locks
   python -I -X utf8 cnv.py make a8 [--check jump] [--no-build]   the decoupled builds (experimental/cnv/build.py:
@@ -133,13 +132,6 @@ def cmd_where(a):
     print('minimap', *calib.world_to_minimap(a.x, a.y))
 
 
-def cmd_launcher(a):
-    import make_campnew4
-    if game_running():
-        raise SystemExit('RA3 is running: not writing into the Mods folder')
-    print(make_campnew4.write_launcher(mod_dir(a.mod), a.mod))
-
-
 def cmd_install(a):
     """A build staged while RA3 ran (work\\staging\\<mod>) goes into the Mods folder (its files replace the older
     build's files of the same names)."""
@@ -164,7 +156,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('build')
-    p.add_argument('mission', help='campaign number (30 -> make_campnew30.py) or a script name')
+    p.add_argument('mission', help='campaign number (18 -> make_campnew18.py) or a script name')
     p.add_argument('env', nargs='*', help='KEY=VALUE settings for the build')
     p.set_defaults(fn=cmd_build)
     p = sub.add_parser('map')
@@ -190,9 +182,6 @@ def main():
     p.add_argument('y', type=float)
     p.add_argument('--view', type=float, nargs=2, metavar=('VX', 'VY'))
     p.set_defaults(fn=cmd_where)
-    p = sub.add_parser('launcher')
-    p.add_argument('mod')
-    p.set_defaults(fn=cmd_launcher)
     p = sub.add_parser('install')
     p.add_argument('mod')
     p.set_defaults(fn=cmd_install)

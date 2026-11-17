@@ -120,7 +120,7 @@
 
 ---
 
-## 第二轮：S1 甲、J7 甲（2026-10-30 重出的新题，需求在 [cards/brief.md](../design/cards/brief.md)）
+## 第二轮：S1 甲、J7 甲（2026-10-30 重出的新题，需求在 [cards/brief.md](../archive/cards-brief.md)）
 
 数字来自 `graybox_cards.py` 的 `s1_geometry`、`s1_natural`、`s1_ablate`、`s1_capes`、`j7_table`、`j7_pursuit`、`j7_grind`（测试 `tests/test_graybox_cards.py` 最后五条）。上面旧三版的 S1 甲、J7 甲结论对这两张新题不适用。仍是定性：没有经济、遭遇战 AI、磁钩坦克的数据（它不在 SDK 里，拿守护者的血当替身）、磁钩拽速、拖行脚本。这些写"留给实机"。
 

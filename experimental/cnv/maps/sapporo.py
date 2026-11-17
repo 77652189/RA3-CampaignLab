@@ -29,6 +29,7 @@ import struct
 import make_campnew18 as c18
 import platmap
 import platprops
+import resources
 from platmap import Block, Gap, Layout, Ramp, Road, poly, rect, wobble
 from platprops import along, area, cliff_feet, clumps, scatter, shore
 from maps import island
@@ -48,17 +49,22 @@ LANE_UP = 1200.0                                # the back lane's ramp up from t
 P1 = (1860.0, 2170.0, 3030.0)                   # plaza 1's courtyard: x0, x1, its back (y); its front the avenue
 WEST_END = P1[0] - 100.0                        # the three street mouths (the lane's ramp, gates 1 and 2) are >= 800
                                                 # apart: 1200, 2015, 2830 (a street's ice shuts one, the troops detour)
-LANE = (3030.0, 3200.0)                         # the back lane behind plaza 1 (y): raised, between two cliffs
-NB_EAST = (2460.0, 2760.0, 3260.0)              # the north block's east end: x0, x1, its back -- the lane comes
+LANE = (3030.0, 3170.0)                         # the back lane behind plaza 1 (y): between plaza 1's back wall and the
+                                                # district's north wall (120 clear, GATE)
+NB_EAST = (2460.0, 2760.0, 3170.0)              # the north district's east end: x0, x1, its back -- the lane comes
 LANE_DOWN = 2610.0                              # down its ramp here (x), between plazas 1 and 2
-NB_BACK = 3190.0                                # the north block's back (y), west of plaza 1
+NB_BACK = 3170.0                                # the north district's back wall (y): one line from the coast to NB_EAST
+ROW_N, ROW_S = ROAD_N + 30.0, ROAD_S - 30.0     # the house rows facing the avenue (K7: they shut the street blocks, no hill)
 SB_FRONT = 1820.0                               # the south block's south edge (y): into the sea
 P2 = (2680.0, 2980.0, 1980.0)                   # plaza 2's courtyard, south of the road: x0, x1, its back (y)
 P3 = (3250.0, 3490.0, 3020.0)                   # plaza 3's, north of the road: x0, x1, its back (y); its west
                                                 # side the ward's cliff
 WARD = (2760.0, 3250.0, 3060.0)                 # the raised ward between the north block and plaza 3: x0, x1, back
 NORTH_MOUTH_X = 3050.0                          # the gap through it (北坡口)
-EAST_MOUTH = ((P3[1] + CANAL[0]) / 2, ROAD_N + 120.0)     # 东街口: between plaza 3's wall and the canal
+EAST_MOUTH = ((P3[1] + CANAL[0]) / 2, ROAD_N + 120.0)     # 东街口: between plaza 3's wall and the canal (open ground
+                                                          # 3500..3620: its 104 cast circle just fits; 10 west of this
+                                                          # `placem` L3 passed on the bench, and graybox's old-A4 walk
+                                                          # meets an enemy in 布防 if this moves 5 or more)
 
 PLAZA3_X = (P3[0] + P3[1]) / 2
 PLAZAS = {1: ((P1[0] + P1[1]) / 2, True), 2: ((P2[0] + P2[1]) / 2, False), 3: ((P3[0] + P3[1]) / 2, True)}
@@ -73,6 +79,8 @@ SITES = {'island': island.SITES['island']}
 SITES.update({
     'start': Site(*START, 0.0, "the player's start: the corridor's west end, the map's edge behind it (P17); the "
                                'start camera looks here'),
+    'view start': Site(1000.0, ROAD_Y, 0.0, "where the opening cameras look: the screen is ~1900 wide, so any nearer the "
+                                            "map's west edge shows black beyond it (user 2026-11-03)"),
     'entry': Site(80.0, ROAD_Y, 60.0, 'the avenue past the west border: what comes in from off the map is made here'),
     'convoy start': Site(250.0, ROAD_Y, 100.0, 'the avenue at the west border: the convoy forms up here (trucks made '
                                                'at the departure stand west of it, off the border)'),
@@ -84,22 +92,27 @@ SITES.update({
     # 2's approach, its troops held the convoy for good once the ice melted)
     'halt': Site(P2[0] + 150.0, ROAD_Y, 40.0, "the road at plaza 2's gate: the whole convoy past plaza 2's "
                                               "approach, short of plaza 3's"),
-    'lane foot': Site(LANE_UP, ROAD_Y + 40.0, 60.0, "the back lane's way up: the foot of the ramp from the avenue "
-                                                   'onto the north street block'),
+    # K7: the lane is a street between house rows now, not a ramp: its mouth is the opening in the avenue's north row,
+    # level with the avenue (the ice shuts the opening itself: bench 2026-11-03 had it going down on flat ground only)
+    'lane foot': Site(LANE_UP, ROW_N, 60.0, "the back lane's mouth: the 120 opening in the avenue's north house row, "
+                                            'level with the avenue', cast=platmap.CAST_CLEAR),
     'lane mouth': Site(P1[0] + 60.0, (LANE[0] + LANE[1]) / 2, 50.0, "the back lane's west mouth, behind plaza 1: "
                                                                     'its sculptures stand here'),
-    'lane depot': Site(LANE_DOWN, 3120.0, 150.0, "the lane's east end, on the north block: a repair depot's pad",
+    'lane depot': Site(LANE_DOWN, 3030.0, 150.0, "the lane's east end, in the north district: a repair depot's pad",
                        build=160.0),
     'lane end': Site(LANE_DOWN, ROAD_Y + 80.0, 60.0, 'where the back lane comes down to the avenue, between plazas 1 '
                                                     'and 2'),
     # the last leg's gun pads: open ground ~250 behind each mouth (the enemy's side), where a gun can reach the ice in
     # front of the mouth and the open ground beside it
-    'gun north': Site(NORTH_MOUTH_X, 3110.0, 80.0, 'a gun pad behind the north mouth, in the low ground below the ward'),
+    'gun north': Site(NORTH_MOUTH_X, ROW_N + 270.0, 80.0, 'a gun pad behind the north mouth, in the open ground north of '
+                                                          'the house row'),
     'gun plaza 3': Site(PLAZA3_X, 2950.0, 80.0, "a gun pad at the back of plaza 3's courtyard, behind its gate"),
     'gun east': Site(EAST_MOUTH[0], 3040.0, 70.0, 'a gun pad up the east street, behind the east mouth'),
-    'north mouth': Site(NORTH_MOUTH_X, (ROAD_N + WARD[2]) / 2, 60.0, '北坡口: the gap through the raised ward, '
-                                                                    f'{GATE:g} wide, from the north camp to the road'),
-    'east mouth': Site(*EAST_MOUTH, 50.0, f"东街口: the street between plaza 3's wall and the canal, {GATE:g} wide"),
+    'north mouth': Site(NORTH_MOUTH_X, ROW_N, 60.0, '北坡口: the opening in the house row east of the north district, '
+                                                    f'{GATE:g} wide, from the north camp to the road',
+                       cast=platmap.CAST_CLEAR),
+    'east mouth': Site(*EAST_MOUTH, 50.0, f"东街口: the street between plaza 3's wall and the canal, {GATE:g} wide",
+                       cast=platmap.CAST_CLEAR),
     'north camp': Site(2900.0, 3250.0, 200.0, 'open low ground behind the ward, below the north plateau: where a '
                                               'force from the north gathers'),
     'north base': Site(3050.0, 4100.0, 250.0, 'the north plateau past its ore: room for a small camp', build=160.0),
@@ -110,8 +123,6 @@ SITES.update({
     'front ramp east': Site(3150.0, 3330.0, 80.0, "the foot of the north plateau's east front ramp (200 wide)"),
     'south base': Site(2850.0, 1150.0, 250.0, "the south plateau: the player's base ground (a construction yard's "
                                               'pad)', build=250.0),
-    'south refinery': Site(2440.0, 1230.0, 0.0, "a refinery's pad by the south plateau's pair of ore (~180 off, as "
-                                                'retail)', build=200.0),
     'south ramp': Site(2350.0, 1720.0, 80.0, "the foot of the south plateau's ramp, down to the low ground by the "
                                              'avenue'),
     'tv tower': Site(700.0, 3950.0, 200.0, "the west ridge's top: the TV tower's pad (an observation post)",
@@ -122,13 +133,25 @@ SITES.update({
     'north bridge': Site(3740.0, 3420.0, 60.0, 'the canal\'s north bridge'),
     'south bridge': Site(3740.0, 1850.0, 60.0, 'the canal\'s south bridge'),
 })
+# ore and oil as relations (resources.py, K4): a refinery pad, the way it faces, the base it serves; the ore is made from
+# that (180 straight ahead, a second node beside it), never typed. The oil stands off every camp (I9: the north
+# plateau's derrick was in the enemy camp; it is on the west ridge now, by the TV tower).
+FIELDS = [
+    resources.Field('south', 2540.0, 1170.0, 225.0, 1, base='south base', owner='p1', build=resources.PAD),
+    resources.Field('north', 2917.0, 3833.0, 135.0, 1, base='north base', owner='s1'),
+    resources.Field('harbour', 2801.0, 1814.0, 315.0, 1),    # user's map-page proposal 2026-11-04: the old pad's ground held no refinery
+    resources.Field('low ground', 2727.0, 2013.0, 135.0, 1),
+]
+DERRICKS = [(1120.0, 3860.0), (2120.0, 1660.0)]
+SITES.update(resources.sites(FIELDS))
 for _k, (_x, _north) in PLAZAS.items():
     _s, _side = (1 if _north else -1), ('north' if _north else 'south')
     _gx, _gy = _gate(_k)
     SITES[f'gate {_k}'] = Site(_gx, _gy, 0.0, f"plaza {_k}'s gate: the one gap in its front wall ({GATE:g} wide), on "
                                              f'the road\'s {_side} edge')
     SITES[f'inside {_k}'] = Site(_gx, _gy + _s * 40.0, 0.0, f"just inside plaza {_k}'s gate, on the road's level: a "
-                                                          'block of ice 160 across here shuts it', build=160.0)
+                                                          'block of ice 160 across here shuts it', build=160.0,
+                                 cast=platmap.CAST_CLEAR)
     SITES[f'plaza {_k}'] = Site(_gx, _gy + _s * 200.0, 120.0, f'plaza {_k}, a walled courtyard {_side} of the road: '
                                                             'its sculptures stand here')
     SITES[f'approach {_k}'] = Site(_gx - APPROACH[0], ROAD_Y, APPROACH[1], f'the road west of plaza {_k}: a convoy '
@@ -159,13 +182,14 @@ ISLETS = [wobble([(x + r * c, y + r * s) for c, s in ((1, 0), (.7, .7), (0, 1), 
                                                      (0, -1), (.7, -.7))], r * 0.3, 60 + k)
           for k, (x, y, r) in enumerate(((150, 250, 170), (4650, 1150, 190), (4700, 4100, 150), (1300, 4950, 160),
                                          (2800, 120, 130)))]
-# the north street block: west part to NB_BACK, plaza 1 cut out of it, the lane's strip behind plaza 1, the east end
-NORTH_BLOCK = [(-50, ROAD_N), (P1[0], ROAD_N), (P1[0], P1[2]), (P1[1], P1[2]), (P1[1], ROAD_N), (NB_EAST[1], ROAD_N),
-               (NB_EAST[1], NB_EAST[2]), (P1[1], NB_EAST[2]), (P1[1], LANE[1]), (P1[0], LANE[1]), (P1[0], NB_BACK),
-               (-50, NB_BACK)]
+# K7 (I8: "the big earth slopes are everywhere", user 2026-11-03/05): no street block is raised any more. The north
+# district (west part to NB_BACK, plaza 1 a courtyard of its own, the lane's strip behind plaza 1, the east end) and the
+# south block are flat ground shut by rows of houses facing the avenue and by walls behind -- the ground is what the
+# blocks' polygons below say, the shutting is OBJECTS (_rows, _walls). Only the two plateaus, the west ridge, the hills
+# and the knoll keep a height: P36's high ground (sight from above) and the map's edge mountains.
+NORTH_BLOCK = [(-50, ROAD_N), (P1[0], ROAD_N), (P1[0], LANE[0]), (P1[1], LANE[0]), (P1[1], ROAD_N), (NB_EAST[1], ROAD_N),
+               (NB_EAST[1], NB_BACK), (-50, NB_BACK)]
 SOUTH_BLOCK = [(-50, SB_FRONT), (WEST_END - 100, SB_FRONT), (WEST_END - 100, ROAD_S), (-50, ROAD_S)]
-WARD_W = (WARD[0], ROAD_N, NORTH_MOUTH_X - GATE / 2 - 40, WARD[2])     # its cliffs take ~40 off each side
-WARD_E = (NORTH_MOUTH_X + GATE / 2 + 40, ROAD_N, WARD[1], WARD[2])
 SHAPES = [
     poly(COAST, 1, 'the island: low ground'),
     poly(HARBOUR, 1, 'the harbour strip, between the bridges'),
@@ -175,15 +199,9 @@ SHAPES = [
     poly(KNOLL, 3, 'the shrine knoll'),
     poly(SOUTH_PLATEAU, 2, 'south plateau'),
     poly(WEST_RIDGE, 2, 'the west ridge'),
-    poly(NORTH_BLOCK, 2, 'the north street block (the back lane on top)'),
-    poly(SOUTH_BLOCK, 2, 'the south street block'),
-    rect(*WARD_W, 2, 'the ward west of the north mouth'),
-    rect(*WARD_E, 2, 'the ward east of the north mouth'),
     rect(CANAL[0], 200, CANAL[1], 4800, 0, 'the canal'),
 ]
 RAMPS = [
-    Ramp((LANE_UP, ROAD_Y + 40), (LANE_UP, ROAD_N + 230), GATE, 'the back lane up (west)'),
-    Ramp((LANE_DOWN, ROAD_Y + 60), (LANE_DOWN, ROAD_N + 300), GATE, 'the back lane down (east)'),
     Ramp((2650, 3330), (2650, 3700), 200.0, 'north plateau west'),
     Ramp((3150, 3330), (3150, 3700), 200.0, 'north plateau east'),
     Ramp((1820, 3720), (2090, 3720), 100.0, 'north plateau back'),
@@ -192,32 +210,52 @@ RAMPS = [
 ]
 # streets (ground texture only): the lane on the north block, up to the plateaus' ramps, the canal's west bank, the
 # harbour's street
-LANE_WAY = ((LANE_UP, ROAD_N + 230), (LANE_UP + 50, 2980), (P1[0] - 20, 3100), (P1[1] + 40, 3100), (LANE_DOWN, 3020),
-            (LANE_DOWN, ROAD_N + 300))
-STREETS = [((2650, ROAD_N), (2650, 3330)), ((3150, ROAD_N), (3150, 3330)), ((2350, ROAD_S), (2350, 1720)),
+LANE_WAY = ((LANE_UP, ROW_N), (LANE_UP, 3100), (LANE_DOWN, 3100), (LANE_DOWN, ROW_N))
+STREETS = [((NORTH_MOUTH_X, ROAD_N), (NORTH_MOUTH_X, 3330)), ((NORTH_MOUTH_X, 3330), (3150, 3330)),
+           ((2350, ROAD_S), (2350, 1720)),
            ((EAST_MOUTH[0], ROAD_N), (EAST_MOUTH[0], 4300)), ((3580, ROAD_S), (3580, 1600)),
            ((3900, 1600), (3900, 3650)), ((1400, 3360), (1400, 3200)), ((1820, 3720), (1700, 3400))]
 ROADS = [Road(((0, ROAD_Y), (4050, ROAD_Y)), 160.0), Road(LANE_WAY, 90.0), *[Road(s, 90.0) for s in STREETS]]
 
-# ---- the courtyards' walls: palace wall pieces round three sides and the front, one gate each (plaza 1's sides are
-# the north block's cliffs: only its front is walled)
-WALLS = []
+# ---- what shuts the ways without a hill (K7, P36 point 1): the courtyards' palace walls (all four sides, one gate each),
+# the north district's back and east walls, the south block's east wall, and the houses in a row along the avenue's two
+# edges, an opening left at each mouth. A wall or house over water is dropped (the sea shuts the coast itself).
+def _dry(flat=False):
+    """Whether (x, y) is dry ground, and with flat=True also level enough for a house (the walls may stand on a shore)."""
+    import newmap
+    e, _ = platmap.heights(Layout(shapes=SHAPES, ramps=RAMPS), *platmap.CONTAINER)
+    b, cell = platmap.CONTAINER[2], platmap.CELL
+    return lambda x, y: bool(e[int(round(y / cell)) + b, int(round(x / cell)) + b] > newmap.WATERLINE + 10
+                             and (not flat or platmap.relief(e, x, y, 60.0, b) <= platmap.FLAT))
 
 
 def _walls():
+    dry = _dry()
     out = []
-    gx, gy = _gate(1)
-    out += platmap.wall_line([(P1[0] - 10, gy), (P1[1] + 10, gy)], gaps=[(gx, gy, GATE)])
-    gx, gy = _gate(2)
-    out += platmap.wall_line([(P2[0], gy), (P2[0], P2[2]), (P2[1], P2[2]), (P2[1], gy), (P2[0], gy)],
-                             gaps=[(gx, gy, GATE)])
-    gx, gy = _gate(3)
-    out += platmap.wall_line([(P3[0] - 20, P3[2]), (P3[1], P3[2]), (P3[1], gy), (P3[0] - 20, gy)],
-                             gaps=[(gx, gy, GATE)])
-    return out
+    for k, (x0, x1, back) in {1: P1, 2: P2, 3: P3}.items():
+        gx, gy = _gate(k)
+        out += platmap.wall_line([(x0, gy), (x0, back), (x1, back), (x1, gy), (x0, gy)], gaps=[(gx, gy, GATE)])
+    out += platmap.wall_line([(-50.0, NB_BACK), (NB_EAST[1], NB_BACK), (NB_EAST[1], ROW_N)])
+    out += platmap.wall_line([(WEST_END - 100.0, ROW_S), (WEST_END - 100.0, 1780.0)])
+    return [w for w in out if dry(w[1], w[2])]
+
+
+HOUSE_MIX = ('MJ_Structure_02', 'MJ_Structure_02', 'MJ_Structure_02', 'HA_Building16_02', 'HA_Building16_03',
+             'TH_SushiBar_01')
+
+
+def _rows():
+    """The house rows; where a house cannot stand (the shore's slope) a wall piece takes its place, the row stays shut."""
+    dry, flat = _dry(), _dry(True)
+    out = platmap.house_row([(-50.0, ROW_N), (P1[0], ROW_N)], [(LANE_UP, ROW_N, GATE)], HOUSE_MIX, 1)
+    out += platmap.house_row([(P1[1], ROW_N), (P3[0], ROW_N)], [(LANE_DOWN, ROW_N, GATE), (NORTH_MOUTH_X, ROW_N, GATE)],
+                             HOUSE_MIX, 2)
+    out += platmap.house_row([(-50.0, ROW_S), (WEST_END - 100.0, ROW_S)], (), HOUSE_MIX, 3)
+    return [h if flat(h[1], h[2]) else (platmap.WALL_PIECE, *h[1:]) for h in out if dry(h[1], h[2])]
 
 
 WALLS = _walls()
+HOUSE_ROWS = _rows()
 BRIDGES = [((3590, 2500), (3890, 2500)), ((3590, 3420), (3890, 3420)), ((3590, 1850), (3890, 1850))]
 
 
@@ -226,14 +264,9 @@ def _objects():
     for p, q in BRIDGES:
         for x, y, a, flags in platmap.bridge(p, q, 'HB_Bridge_02'):
             out.append(Obj('HB_Bridge_02', x, y, side='neutral', angle=a, flags=flags, site='map'))
-    ore = [(2350, 1080), (2540, 1020),              # the south plateau: the player's base
-           (2600, 3900), (2790, 3960),              # north plateau
-           (4000, 1650), (4000, 1830),              # the harbour, past the canal
-           (2450, 2120)]                            # the low ground between the south plateau and the avenue
-    out += [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for x, y in ore]
-    for x, y in ((3200, 4050), (2120, 1660)):     # the north plateau's; one at the south ramp's foot (the base's)
-        out.append(Obj('OilDerrick', x, y, side='neutral', angle=0.0, site='map'))
+    out += resources.objects(FIELDS, DERRICKS)
     out += [Obj(t, round(x, 1), round(y, 1), side='civ', angle=round(a, 4), site='map') for t, x, y, a in WALLS]
+    out += [Obj(t, round(x, 1), round(y, 1), side='civ', angle=round(a, 4), site='map') for t, x, y, a in HOUSE_ROWS]
     return out
 
 
@@ -245,26 +278,29 @@ BLOCKS = [
     Block(rect(P2[0], P2[2], P2[1], ROAD_S, 1), '前线', 'plaza 2'),
     Block(rect(P3[0], ROAD_N, P3[1], P3[2], 1), '前线', 'plaza 3'),
     Block((-50, ROAD_S, CANAL[0], ROAD_N), '通道', 'the avenue'),
-    Block(poly(NORTH_BLOCK, 2), '支线', 'the north street block: the back lane, the repair depot'),
-    Block(poly(SOUTH_BLOCK, 2), '远景', 'the south street block'),
-    Block(WARD_W, '支线', 'the ward west of the north mouth: the north block goes on over it'),
-    Block(WARD_E, '远景', 'the ward east of the north mouth'),
-    Block((WARD_W[2], ROAD_N, WARD_E[0], WARD[2] + 40), '前线', 'the north mouth'),
+    Block(poly(NORTH_BLOCK, 1), '支线', 'the north district: the back lane, the repair depot'),
+    Block(poly(SOUTH_BLOCK, 1), '远景', 'the south street block'),
+    Block((NB_EAST[1], ROAD_N, P3[0], WARD[2] + 40), '前线', 'the open ground behind the north mouth'),
     Block((P3[1], ROAD_N, CANAL[0], 4400), '前线', 'the east street along the canal'),
     Block((1700, 1450, CANAL[0], ROAD_S), '通道', 'the low ground between the south plateau and the avenue'),
-    Block(poly(SOUTH_PLATEAU, 2), '后方', "the south plateau: the player's base"),
+    Block(poly(SOUTH_PLATEAU, 2), '后方', "the south plateau: the player's base",
+          high='the base sees the derrick at the slope foot, where the north camp strikes first when it wakes'),
     Block((-50, NB_BACK, CANAL[0], 3560), '前线', 'the north camp and the low ground below the north plateau'),
-    Block(poly(NORTH_PLATEAU, 2), '前线', 'the north plateau: the enemy camp'),
+    Block(poly(NORTH_PLATEAU, 2), '前线', 'the north plateau: the enemy camp',
+          high='low ground cannot see the plateau top: the front ramps against the back ramp is a choice made blind'),
     Block(poly(KNOLL, 3), '远景', 'the shrine knoll'),
     Block((1300, 3560, 2000, 4500), '通道', 'the way to the back ramp'),
-    Block(poly(WEST_RIDGE, 2), '支线', 'the west ridge: the TV tower'),
+    Block(poly(WEST_RIDGE, 2), '支线', 'the west ridge: the TV tower',
+          high='a hill at the map edge, a hill and not a street block; the derrick on top is taken by walking up its one ramp'),
     Block((300, 3560, 1300, 4600), '通道', 'below the west ridge'),
     Block((CANAL[0] - 40, 1400, 4400, 3800), '前线', 'the canal bridges and the harbour'),
     Block(poly(SW_HILLS, 2), '远景', 'the south-west hills'),
 ]
 GAPS = [Gap(*_gate(k), GATE, f'gate {k}') for k in (1, 2, 3)] + [
     Gap(P1[0] + 150, (LANE[0] + LANE[1]) / 2, GATE, 'the back lane'),
-    Gap(NORTH_MOUTH_X, (ROAD_N + WARD[2]) / 2, GATE, 'the north mouth'),
+    Gap(NORTH_MOUTH_X, ROW_N, GATE, 'the north mouth'),
+    Gap(LANE_UP, ROW_N, GATE, "the back lane's mouth"),
+    Gap(LANE_DOWN, ROW_N, GATE, "the back lane's east mouth"),
     Gap(*EAST_MOUTH, GATE, 'the east mouth'),
 ]
 LAYOUT = Layout(shapes=SHAPES, ramps=RAMPS, roads=ROADS, blocks=BLOCKS, gaps=GAPS)
@@ -299,11 +335,10 @@ def _scenery():
     put(along(avenue, ['OK_LANTERN01', 'MJ_BANNER01', 'MJ_BANNER02', 'TH_LAMPDECO03'], 70, 105, 1, jitter=0.0))
     put(along([(WEST_END, ROAD_Y), (CANAL[0] - 60, ROAD_Y)], PARK, 60, 175, 2))
     # the street blocks: houses on both, facing the avenue, the lane's way kept (a road)
-    put(along([(0, ROAD_Y), (WEST_END, ROAD_Y)], HOUSES, 120, 240, 10, face=True))
     put(scatter(area('poly', NORTH_BLOCK), HOUSES, 150, 11, density=0.7))
     put(scatter(area('poly', SOUTH_BLOCK), HOUSES, 140, 12, density=0.8))
     put(along(LANE_WAY, 'TH_LAMPPOST04', 110, 55, 13))
-    for k, street in enumerate(STREETS[:2]):
+    for k, street in enumerate(STREETS[:1]):
         put(along(street, HOUSES, 120, 150, 20 + k, face=True))
         put(along(street, 'TH_LAMPPOST04', 120, 62, 22 + k))
     put(along(STREETS[5], {'TH_Fish_Market02': 2, 'TH_Fish_Market03': 2, 'TH_FISH_MARKET04': 2}, 95, 125, 30,
@@ -325,14 +360,24 @@ def _scenery():
 SCENERY = _scenery()
 
 
+# Sapporo in winter (the snow festival: the user 2026-11-02, "the ice sculptures belong to winter, the map should not
+# be green grass"): the generator's grass and dirt patches are snow (retail's own Solvang snow, as CampNew22); the
+# roads stay pavement and the rock as it is
+SNOW = {'Grass_Heidelberg01': 'Snow_Solvang01', 'Grass_Heidelberg02': 'Snow_Solvang02',
+        'Dirt_Yucatan04': 'Snow_Solvang03'}
+
+
 def terrain(m):
     """CampNew18's generate with the platform terrain over its island, and the starts moved to this map's own
     (c18 puts them at island.py's, the template's default)."""
+    import newmap
     c18.generate(m)
-    previews, _ = platmap.apply(m, LAYOUT)
+    c18.c7.OWN_ATLAS = True                     # the snow is not in Heidelberg's atlas: ours, from the SDK's sources
+    newmap.COLORS.update({'Snow_Solvang01': (225, 230, 235), 'Snow_Solvang02': (210, 215, 225),
+                          'Snow_Solvang03': (200, 208, 220)})
+    previews, _ = platmap.apply(m, LAYOUT, swap=SNOW)
     c18.PREVIEWS.update(previews)
     objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
-    import newmap
     for k in objs.kids:
         name = newmap.typed_props_of(m, k)[0].get('waypointName', (0, ''))[1]
         if name in ('Player_1_Start', 'InitialCameraPosition', 'Player_2_Start'):

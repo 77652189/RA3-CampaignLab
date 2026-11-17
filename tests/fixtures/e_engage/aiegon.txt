@@ -1,0 +1,11 @@
+# CampAIEgOnA_mcp_1112_200704; selected first-cohort same-frame samples.
+# Pointer tokens redacted; IDs, frames, member state, positions, aim and heading unchanged.
+team: frame=345 list=0 proto=P name1='Soviet_1' name2='f678fcfb_HuntTactic_0_0' rel=1 slot=24 team=T active=1 n=2 ids=3170@3910:2930,3171@3890:2930
+tstate: frame=345 team=T mstate=8 prev=8 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=1 ready=1 mem=3170:16:1,3171:16:1 dest=3170@3890.0:2930.0,3171@3890.0:2930.0 aim=3170>3171@3890.0:2930.0,3171>0 hd=3170:-0,3171:-73
+teams: frame=345 full=0 wall_ms=6369 us_per_look=538 us_members=1 us_ready=1 player=PLAYER index=4 ai=AI protos=3 teams=34
+team: frame=353 list=0 proto=P name1='Soviet_1' name2='f678fcfb_HuntTactic_0_0' rel=1 slot=24 team=T active=1 n=2 ids=3170@3910:2927,3171@3890:2927
+tstate: frame=353 team=T mstate=5 prev=8 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-45,3171:-82
+teams: frame=353 full=0 wall_ms=6433 us_per_look=558 us_members=1 us_ready=1 player=PLAYER index=4 ai=AI protos=3 teams=34
+team: frame=376 list=0 proto=P name1='Soviet_1' name2='f678fcfb_HuntTactic_0_0' rel=1 slot=24 team=T active=1 n=2 ids=3170@3910:2863,3171@3894:2857
+tstate: frame=376 team=T mstate=2 prev=5 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:10:0,3171:10:0 dest=3170@0.0:0.0,3171@0.0:0.0 aim=3170>3168@3911.0:2706.3,3171>3168@3911.0:2706.3 hd=3170:-90,3171:-83
+teams: frame=376 full=1 wall_ms=6626 us_per_look=574 us_members=1 us_ready=1 player=PLAYER index=4 ai=AI protos=3 teams=34

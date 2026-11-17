@@ -25,6 +25,28 @@ def reinforced(id='CNV_IceSculptureHard', size=40, health=400, model='CNIceSculp
     return sculpture(id, size, health, model, leaves, look_as='reinforced')
 
 
+def spawn_sculpture(id='CNV_SpawnSculpture', size=64, health=400, model='CNIceSculptBig', leaves='CNIceCrackedBig'):
+    """A4's spawn sculpture, a size and a half bigger than the festival's and darker (docs/design/flow/a4.md: the
+    empire dug the tunnels under it): the mission makes it UNATTACKABLE (nothing aims at it) and kills it by script on
+    the first horn; it leaves a cracked sculpture that lies for good, and the horns send their troops from there."""
+    return iw.wall(id, length=size, thick=size, lifetime=None, health=health, model=model, leaves=leaves,
+                   look_as='spawn_sculpture', keep=True,
+                   what=f'出兵冰雕：{size} 见方、打不坏；第一声号角时关卡把它震碎，留下裂开的冰雕，兵从底座钻出来')
+
+
+def display(id='CNV_IceDisplay', size=40, health=400, model='CNIceSculpt', leaves='CNIceRubbleS'):
+    """The festival's small ice sculptures along the avenue (no troops in them, no plinth tunnel)."""
+    return iw.wall(id, length=size, thick=size, lifetime=None, health=health, model=model, leaves=leaves,
+                   look_as='display', what=f'展品冰雕：{size} 见方，{health} 血，摆着好看')
+
+
+def chips(id='CNV_IceChips', model='CNIceRubbleS'):
+    """A little broken ice that lies for good (the crack a spawn sculpture gets when it is told to split): a prop."""
+    from parts import Unit
+    return Unit(id, iw.rubble(id, model, keep=True), strings={f'Name:{id}': '碎冰'},
+                what='碎冰：裂开的冰雕脚下留下的碎冰', params=dict(model=model))
+
+
 def bank(id='CNV_SnowBank', length=220, thick=24, health=5000, model='CNSnowBank'):
     """model: its look (icewall.dress); None keeps the bunker's."""
     return iw.wall(id, length=length, thick=thick, lifetime=None, health=health, model=model, leaves=None,

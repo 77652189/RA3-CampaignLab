@@ -1,0 +1,16 @@
+# CampAIRev1TA_mcp_1112_202557; selected exact-frame observations. Pointer tokens redacted.
+team: frame=21 list=0 proto=P name1='Soviet_1' name2='c2bd8cee_SimpleAttack_0_0' rel=1 slot=0 team=T active=1 n=4 ids=3170@3590:3310,3171@3590:3370,3172@3590:3430,3173@3590:3490
+tstate: frame=21 team=T mstate=8 prev=8 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=1 mem=3170:16:1,3171:16:1,3172:16:1,3173:16:1 dest=3170@0.0:0.0,3171@0.0:0.0,3172@0.0:0.0,3173@0.0:0.0 aim=3170>0,3171>0,3172>0,3173>0 hd=3170:-180,3171:-180,3172:-180,3173:-180
+teams: frame=21 full=0 wall_ms=1295 us_per_look=409 us_members=0 us_ready=0 player=PLAYER index=4 ai=AI protos=3 teams=3
+team: frame=230 list=0 proto=P name1='Soviet_1' name2='c2bd8cee_SimpleAttack_0_0' rel=1 slot=0 team=T active=1 n=4 ids=3170@3732:2683,3171@3683:2687,3172@3694:2781,3173@3672:2741
+tstate: frame=230 team=T mstate=6 prev=8 secs=0.00 tgt=3169 chosen=-1 tact=3169 idle=0 ready=0 mem=3170:10:0,3171:10:0,3172:10:0,3173:10:0 dest=3170@0.0:0.0,3171@0.0:0.0,3172@0.0:0.0,3173@0.0:0.0 aim=3170>3169@3700.0:2400.0,3171>3169@3700.0:2400.0,3172>3169@3700.0:2400.0,3173>3169@3700.0:2400.0 hd=3170:-100,3171:-92,3172:-106,3173:-76
+teams: frame=230 full=0 wall_ms=7984 us_per_look=413 us_members=0 us_ready=1 player=PLAYER index=4 ai=AI protos=3 teams=3
+team: frame=260 list=0 proto=P name1='Soviet_1' name2='c2bd8cee_SimpleAttack_0_0' rel=1 slot=0 team=T active=1 n=4 ids=3170@3721:2621,3171@3681:2621,3172@3665:2682,3173@3750:2661
+tstate: frame=260 team=T mstate=2 prev=6 secs=0.00 tgt=3169 chosen=-1 tact=3169 idle=0 ready=0 mem=3170:10:0,3171:10:0,3172:10:0,3173:10:0 dest=3170@0.0:0.0,3171@0.0:0.0,3172@0.0:0.0,3173@0.0:0.0 aim=3170>3169@3700.0:2400.0,3171>3169@3700.0:2400.0,3172>3169@3700.0:2400.0,3173>3169@3700.0:2400.0 hd=3170:-100,3171:-92,3172:-106,3173:-1
+teams: frame=260 full=0 wall_ms=8682 us_per_look=415 us_members=0 us_ready=0 player=PLAYER index=4 ai=AI protos=3 teams=3
+team: frame=261 list=0 proto=P name1='Soviet_1' name2='c2bd8cee_SimpleAttack_0_0' rel=1 slot=0 team=T active=1 n=4 ids=3170@3721:2621,3171@3681:2621,3172@3663:2678,3173@3754:2661
+tstate: frame=261 team=T mstate=2 prev=6 secs=0.00 tgt=3169 chosen=-1 tact=3169 idle=0 ready=0 mem=3170:10:0,3171:10:0,3172:10:0,3173:10:0 dest=3170@0.0:0.0,3171@0.0:0.0,3172@0.0:0.0,3173@0.0:0.0 aim=3170>3169@3700.0:2400.0,3171>3169@3700.0:2400.0,3172>3169@3700.0:2400.0,3173>3169@3700.0:2400.0 hd=3170:-100,3171:-92,3172:-106,3173:0
+teams: frame=261 full=0 wall_ms=8703 us_per_look=457 us_members=0 us_ready=1 player=PLAYER index=4 ai=AI protos=3 teams=3
+team: frame=263 list=0 proto=P name1='Soviet_1' name2='c2bd8cee_SimpleAttack_0_0' rel=1 slot=0 team=T active=1 n=5 ids=3170@3721:2621,3171@3681:2621,3172@3661:2670,3173@3761:2660,3194@3668:2600
+tstate: frame=263 team=T mstate=2 prev=6 secs=0.00 tgt=3169 chosen=-1 tact=3169 idle=0 ready=0 mem=3170:10:0,3171:10:0,3172:10:0,3173:10:0,3194:999999:1 dest=3170@0.0:0.0,3171@0.0:0.0,3172@0.0:0.0,3173@0.0:0.0 aim=3170>3169@3700.0:2400.0,3171>3169@3700.0:2400.0,3172>3169@3700.0:2400.0,3173>3169@3700.0:2400.0,3194>0 hd=3170:-100,3171:-92,3172:-106,3173:-8,3194:-92
+teams: frame=263 full=0 wall_ms=8750 us_per_look=410 us_members=0 us_ready=0 player=PLAYER index=4 ai=AI protos=3 teams=3

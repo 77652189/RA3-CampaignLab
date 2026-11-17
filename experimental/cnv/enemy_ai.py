@@ -38,9 +38,25 @@ def taken(style_file):
     return re.findall(r'<OpeningMove\b.*?</OpeningMove>|<StrategicState\b[^>]*/>', text, re.S)
 
 
-def personality(pid, faction, style='平衡', prefer=None):
+def new_units_state(pid, new_units):
+    """The build state that makes the AI build units of ours, or '' for none: new_units {template: CountModifier}.
+    The AI builds no template no build state lists, even from a factory that makes it (bench 2026-11-11
+    checks/engine_aiskirm.py y, aisknew: 0 to s168); listed FEWEST_UNIT in a ConstantHeuristic state it builds it
+    from the first second it can (aisknew2: CountModifier 1 -> 9 of the barracks' 19 by s167). FEWEST_UNIT scores
+    100 / (count / CountModifier + 1) (program read, B handoff 126): a bigger CountModifier, more of them."""
+    if not new_units:
+        return ''
+    entries = [f'    <BuildEntry Build="{u}" Heuristic="FEWEST_UNIT" CountModifier="{k:g}"/>'
+               for u, k in new_units.items()]
+    return '\n'.join([f'  <AIBuildStateDefinition id="{pid}New">', '    <Heuristic>', '      <ConstantHeuristic/>',
+                      '    </Heuristic>', *entries, '  </AIBuildStateDefinition>'])
+
+
+def personality(pid, faction, style='平衡', prefer=None, new_units=None):
     """The personality's XML: id pid, the faction's co-op skirmish base, the style's moves and states, prefer
-    {template: factor} (how keen it is on that unit, attacking and defending; 0 never)."""
+    {template: factor} (UnitModifier, attacking and defending -- it does not change what is built: bench
+    engine_aiskirm u, B handoff 118), new_units {template of ours: CountModifier} (new_units_state; the AI still
+    needs a factory of its own that makes them)."""
     if faction not in SIDE:
         raise ValueError(f'faction {faction!r}: one of {sorted(SIDE)}')
     if style not in STYLES[faction]:
@@ -49,6 +65,9 @@ def personality(pid, faction, style='平衡', prefer=None):
     body = ['    ' + x.strip() for x in taken(STYLES[faction][style])]
     body += [f'    <UnitModifier Unit="{u}" OffensiveModifier="{k:g}" DefensiveModifier="{k:g}"/>'
              for u, k in (prefer or {}).items()]
+    state = new_units_state(pid, new_units)
+    if state:
+        body.append(f'    <BuildState id="{pid}New" State="{pid}New" Difficulty="EASY MEDIUM HARD BRUTAL"/>')
     return '\n'.join([
         '<?xml version="1.0" encoding="utf-8"?>',
         '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -56,7 +75,9 @@ def personality(pid, faction, style='平衡', prefer=None):
         '  <Tags></Tags>',
         '  <Includes>',
         f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{base}.xml" />',
+        *[f'    <Include type="all" source="DATA:CNVUnits/Data/{u}.xml" />' for u in (new_units or {})],
         '  </Includes>',
+        *([state] if state else []),
         f'  <AIPersonalityDefinition id="{pid}" PersonalityType="{pid}" inheritFrom="{base}">',
         *body,
         '  </AIPersonalityDefinition>',

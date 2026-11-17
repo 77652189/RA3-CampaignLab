@@ -69,12 +69,14 @@
 - 每帧在评估脚本**之前**：`if (value >= 0) value--`，减到 -1 就停。
 - `TIMER_EXPIRED`：计时器从没启动过（`isCountdownTimer` 为假）→ 假；否则判定是 `value < 1`，即剩余帧数 ≤ 0。
 - 推出来的精确时间：第 F 帧设成 N 帧，同一帧后面的脚本看到的值是 N，没到期（除非 N=0，0 秒计时器同帧就到期）。第 F+k 帧看到的值是 N−k，**第 F+N 帧首次到期**，正好 N 帧之后，按时间算就是"≥"。到期之后一直保持到期（值停在 -1），直到被重设或暂停。
-- 暂停 `STOP_TIMER` 只清 `isCountdownTimer`，于是 `TIMER_EXPIRED` 变假；`RESTART_TIMER` 只在剩余帧数 >0 时才恢复。
+- 暂停 `STOP_TIMER` 只清 `isCountdownTimer`，于是 `TIMER_EXPIRED` 变假；`RESTART_TIMER` 只在剩余帧数 >0 时才恢复。台上 11-10 `engine_timer` 证实：停住的剩余帧数原样保持，重开后接着减；**已经到点的计时器一停就不再算到点**（值停在 -1 也一样），所以"停表"不能当"记住它到过点"用，要记住就另设旗标。`SUB_FROM_MSEC_TIMER` 直接扣掉剩余帧数（10 秒的扣 5 秒，提前 5 秒到点）。
+- `DISPLAY_COUNTER` 显示一个正在走的计时器时，显示的是剩余**帧数**（每秒减 15），不是秒。
 - OpenSAGE 与此不同：它在脚本**之后**才减，并且只在 `== -1` 时算到期，会晚 1 帧（`OS/Scripting/ScriptingSystem.cs` 里的 `ScriptingTick`、`HasTimerExpired`）。以《将军》为准。
 
 **计数器**（`SE` 里的 `evaluateCounter`、`setCounter`、`addCounter`、`subCounter`）
 - 比较码：0 `<`、1 `<=`、2 `==`、3 `>=`、4 `>`、5 `!=`（`ZH/Include/GameLogic/Scripts.h` 里 `Parameter` 的枚举）。
-- `INCREMENT_COUNTER` / `DECREMENT_COUNTER` 的参数顺序是 **(数值, 计数器名)**。
+- `INCREMENT_COUNTER` / `DECREMENT_COUNTER` 的参数顺序是 **(数值, 计数器名)**。减到 0 以下不封底（台上 2 减 5 读 -3）。
+- `COUNTER_MATH_COUNTER(计数器, 运算码, 另一个计数器)`：**0 加、1 减、2 乘、3 除（向零取整）**，结果写回第一个；减可以减成负数（台上 2026-11-09 `engine_scripts3`：3+4=7、3-4=-1、3×4=12、13÷4=3、-13÷4=-3；`math`、`input`）。模型 `ra3model/scripts.py` 本来就这么算。
 
 **旗标**（`SE` 里的 `evaluateFlag`、`setFlag`）：值按布尔比较（非 0 即真）。从没设过的旗标，`FLAG x 0` 为真。
 
@@ -119,31 +121,36 @@
 | `MOVE_NAMED_UNIT_TO` / `NAMED_ATTACK_NAMED` / `NAMED_STOP` / `NAMED_HUNT` | `SA` 里的 `doNamedMoveToWaypoint` / `doNamedAttack` / `doNamedStop` / `doNamedHunt` | 只下命令（`aiMoveToPosition` 等）。位置在后面的物体更新里才变，**脚本下一帧起才看得到**。 |
 | `TEAM_ATTACK_NAMED`、`NAMED_GARRISON_SPECIFIC_BUILDING`、`NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT`、`NAMED_USE_COMMANDBUTTON_ABILITY` | `SA` 里的 `doTeamAttackNamed` / `doUnitGarrisonSpecificBuilding` / `doNamedFireSpecialPowerAtWaypoint` / `doNamedUseCommandButtonAbility` | 同上，都只是下命令。 |
 | `NAMED_TRANSFER_OWNERSHIP_PLAYER` | `SA` 里的 `doNamedTransferAssetsToPlayer` | 立即 `setTeam(目标玩家默认队伍)`，同一帧后面的脚本就能看到。 |
+| `TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY`、运输载具弹射 | 台上 11-10 `engine_transport` load（没读程序） | 整队每人照 `NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY` 进去：**不管座位数、不管敌我**（6 人进 5 座牛蛙、敌方的队进玩家的车），民房、运输载具都行。乘客跟着车走（在车所在的区域里、一直 ENCLOSED）。牛蛙的定点弹射（`NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT` + `Command_ActivateEjectPassengersSpecialPower`）从按下起每 0.5 秒（TimePerPassenger）扔出一个，约 2 秒后落在路点上。车被 `NAMED_KILL` 乘客全死（KillPassengersOnDeath；民房里的是活着出来）。做关卡：运兵波次不用担心超员，但车一死整波没了。 |
 
 ### 4.3 目标、计数器显示
 
 - `DISPLAY_COUNTER` / `DISPLAY_COUNTDOWN_TIMER`：`SA` 里的 `doDisplayCounter` / `doDisplayCountdownTimer` → `InGameUI::addNamedTimer`（`ZH/Source/GameClient/InGameUI.cpp`）。只是登记一个界面条目，绘制时现读计数器的值。倒计时显示的是 `(int)(剩余帧/30)`，向下取整。对逻辑**没有任何影响**。
 - `HIDE_COUNTER` / `HIDE_COUNTDOWN_TIMER` 调用 `removeNamedTimer`。
+  - 台上测过（11-09，`checks/engine_scripts4.py` clock）：藏起来的倒计时照走，到时 `TIMER_EXPIRED` 照常成立；再显示时读的是剩下的时间（不重置），**排到列表最后**（原来在计数器上面，再显示就跑到计数器下面）；到时后停在 0:00 一直显示，要自己藏。
 - `SHOW_MILITARY_CAPTION`：`SA` 里的 `doMilitaryCaption` → `InGameUI::militarySubtitle`。《将军》的时长参数是 Int 毫秒；红警3的 catalog 里参数类型是 Real（秒），类型变了。
 - 任务目标相关的动作（`SET_MISSION_OBJECTIVE_STATUS`、`LINK_MISSION_OBJECTIVE_TO_*`）《将军》里没有，见第 6 节。
+  - 台上测过（11-09，`checks/engine_scripts5.py` goals，看任务菜单和小地图）：状态 1 = 亮出；2 = 打勾、3 = 打红叉；**写 0 把已亮出的目标藏回去**，列表编号跟着收拢；**没亮过直接写 2/3 也会出现**（带勾/叉）；写 7 不做（还是亮着没勾）。列表按**第一次出现的先后**排，不按任务里目标的声明顺序。奖励目标是单独一组黄色、自己从 1 编号。
+  - 标记：`LINK_MISSION_OBJECTIVE_TO_OBJECT` 在小地图上画在单位身上（主目标绿色"!"，两个目标挂同一单位只画一个），`..._TO_WAYPOINT` 画在路点（奖励黄色"!"）。目标完成后单位身上的标记不再画（没区分开：是"完成就不画"，还是"同一单位只一个图标、另一个目标摘链把它带走了"）。
 
 ### 4.4 边界切换、揭图
 
 - `MAP_SWITCH_BORDER`：`SA` 里的 `doBorderSwitch` → `TerrainLogic::setActiveBoundary`（`ZH/Source/GameLogic/Map/TerrainLogic.cpp`）。
   - 序号越界、和当前相同、或那条边界宽高为 0 → 什么都不做。
   - 否则立即重建 PartitionManager 并恢复雾和揭开的格子，所有对象重新登记；落在新边界外的对象只是打上 `OFF_MAP` 状态，**不会被删或被杀**（`Object::friend_notifyOfNewMapBoundary`）。
+  - 台上测过（11-09，`checks/engine_scripts4.py` border）：边界外的单位**既不开火也不挨打**——一边在界内一边在界外的一对、两边都在界外的一对，都一枪不放；界内的一对照打；边界放开马上开打。界外单位还活着，区域条件照样看得见。比《将军》"同一边才互打"的过滤更严。模拟器 `Sim.on_map`。
   - 源码注释说边界切换"和永久揭图配合不好"，所以对观战者会先撤销永久揭图、切换、再重新揭。对普通玩家没有这样处理。推断：切换**之前**做的永久揭图，可能盖不到新扩出来的区域。未实测。
 - `MAP_REVEAL_ALL_PERM` / `MAP_REVEAL_ALL_UNDO_PERM`：`SA` 里的 `doRevealMapEntirePermanently`。玩家参数为空时作用于所有人类玩家。
 - `MAP_REVEAL_ALL`：`SA` 里的 `doRevealMapEntire`，一次性揭开，之后照常回雾。
-- `MAP_REVEAL_AT_WAYPOINT`：`SA` 里的 `doRevealMapAtWaypoint`，`doShroudReveal` 后紧跟 `undoShroudReveal`，只是一瞬间照亮。
-- `MAP_REVEAL_PERMANENTLY_AT_WAYPOINT` / `MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT`：`SA` 里的 `doRevealMapAtWaypointPermanent` → `ScriptEngine::createNamedMapReveal` + `doNamedMapReveal`，按名字登记、按名字撤销。
+- `MAP_REVEAL_AT_WAYPOINT`：`SA` 里的 `doRevealMapAtWaypoint`，`doShroudReveal` 后紧跟 `undoShroudReveal`；撤销进的是回雾队列，所以不是一瞬间：台上测过默认亮 **137 帧（约 9 秒）**，`MAP_SHROUD_SET_RESHROUD_TIME N` 改成 15 × N − 13 帧（`vision.md` 第 2 节）。
+- `MAP_REVEAL_PERMANENTLY_AT_WAYPOINT` / `MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT`：`SA` 里的 `doRevealMapAtWaypointPermanent` → `ScriptEngine::createNamedMapReveal` + `doNamedMapReveal`，按名字登记、按名字撤销。台上测过（11-09，`checks/engine_vision.py` perm / undo）：永久揭开**整局不过期**（30 秒 483 帧一直亮）；按名字撤销后**当帧就回雾**，不走回雾队列的 137 帧延迟。模拟器 `sim.py` 两条都一样。
 
 ### 4.5 胜负
 
 - 《将军》靠 `VICTORY` / `DEFEAT` 动作结束任务（`SA` 里的 `doVictory` / `doDefeat`）：关窗、禁止输入、弹出胜/负窗口、`TheCampaignManager->SetVictorious(...)`，并启动 `startEndGameTimer`（`m_endGameTimer = 120` 帧，即 `FRAMES_TO_SHOW_WIN_LOSE_MESSAGE`）。
 - `ScriptEngine::update` 里只要 `m_endGameTimer >= 0` 就直接 `return`，所以**从下一帧起脚本停跑**。但**当前这一帧排在后面的脚本照常执行**：如果同一帧里后面又有一个脚本执行了 DEFEAT，它会再关一次窗、再 `SetVictorious(FALSE)`，最后生效的是后执行的那个。
 - `VictoryConditions::update`（同目录 `VictoryConditions.cpp`）只在多人游戏里起作用，单人战役不会自动判胜负。
-- **`"Mission Won"` / `"Mission Lost"` 旗标**：两份源码里都**搜不到**这两个字符串。"设这个旗标就结束任务"是红警3自己的机制，只有我们的实测为证（`experimental/cnv/checks/a7.py` 注释写着 "Mission Won ends the mission"）。它在帧内的什么时刻被读取、同一帧后面的脚本还跑不跑，都查不到。
+- **`"Mission Won"` / `"Mission Lost"` 旗标**：两份源码里都**搜不到**这两个字符串。"设这个旗标就结束任务"是红警3自己的机制，只有我们的实测为证（`experimental/cnv/checks/a7.py` 注释写着 "Mission Won ends the mission"）。它在帧内的什么时刻被读取、同一帧后面的脚本还跑不跑，源码里都查不到。后来查清了：读这两个旗标的是零售战役共用的库地图脚本，设旗标后还要 3～5 秒才结束，见第 8 节第 10 条。
 
 ## 5. 同一帧里，一个动作造成的变化后面的脚本能不能马上看到
 
@@ -179,7 +186,7 @@
   - 遭遇战 AI：`SKIRMISH_AI_MAKE_BASE`、`SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES`、`SKIRMISH_AI_TRANSFER_ALL`、`SKIRMISH_AI_USE_REBUILD_SYSTEM`、`SKIRMISH_AI_USE_REPAIRS`、`UNIT_AI_TRANSFER_ALL`
   - 音乐：`PATH_MUSIC_PLAY_EVENT`、`PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM`
 - 还有这些也查不到：
-  - `"Mission Won"` / `"Mission Lost"` 旗标的结束机制；
+  - `"Mission Won"` / `"Mission Lost"` 旗标的结束机制（已查清，在库地图脚本里，见第 8 节第 10 条）；
   - 条件取反位的求值方式（测试台已测，见下表第 13 条）；
   - 红警3的逻辑帧率（测试台已测：每秒约 15 帧，见下表第 11 条）；
   - 红警3改过的参数顺序和类型（例如 `NAMED_OWNED_BY_PLAYER` 是玩家在前；`SHOW_MILITARY_CAPTION` 的时长是秒、Real）。
@@ -195,14 +202,14 @@
 | 1 | `NAMED_OUTSIDE_AREA`：对象不存在或已死 → 假（`sim.py` 里的 `cond`：`b and b.alive and ...`） | 对象不存在（已移除）→ **真**；正在死的对象按尸体位置算 | 用"离开某区"做条件时，单位死了可能被当作"离开了" |
 | 2 | `NAMED_INSIDE_AREA` 要求活着 | 不检查死活，死亡动画期间仍按位置算 | 一般影响很小 |
 | 3 | `UNIT_HEALTH` 要求活着 | 不检查死活；死亡动画期间读到 0%。测试台 2026-10-28（`probe --check death`）：打死后下一次读数就不在区内了，血量计数读 0，看不出死亡动画的停留；sim 的 `LINGER` 改成 0 | "血量 X < N 判负"不要指望单位被打死那一刻成立 |
-| 4 | `NAMED_ATTACKED_BY_PLAYER` = 曾经被该玩家打过（集合） | 只看**最近一次**伤害的来源；被别人打或被脚本杀后就可能变假 | 用"攻击 X"做触发的脚本，在游戏里可能更难触发，或只在一个窗口期内成立 |
+| 4 | `NAMED_ATTACKED_BY_PLAYER` = 曾经被该玩家打过（集合） | 只看**最近一次**伤害的来源；被别人打或被脚本杀后就可能变假。红警3实测见第 8 节第 2 条：打它的单位一被删或被杀，下一帧就变假 | 用"攻击 X"做触发的脚本，在游戏里可能更难触发，或只在一个窗口期内成立 |
 | 5 | `NAMED_DELETE` 当帧就算"被毁" | 下一帧才算 | 差 1 帧，基本可忽略 |
-| 6 | `PLAYER_HAS_OBJECT_COMPARISON` 只数活的 | 死亡动画中的仍计，建造中的不计 | "没有 X"会比 sim 晚成立（晚一个死亡动画的时长）；"建成 X"要等建完 |
-| 7 | 赢 / 输：设旗标后 sim 立即停（`step` 里的 `if self.ending: return`） | 《将军》的 VICTORY 当帧后面的脚本照跑；红警3旗标机制源码查不到 | 同一帧里同时满足赢和输时，sim 的判定可能和游戏不一致。sim 应报告"同帧双结局"，交给实测 |
+| 6 | `PLAYER_HAS_OBJECT_COMPARISON` 只数活的 | 死亡动画中的仍计，建造中的不计 | **红警3实测（2026-11-09 `engine_scripts2 one`）：被杀的坦克当次读数就不算了，和类型计数器同步——死亡动画中的不计，sim 对**。建造中的没量 |
+| 7 | 赢 / 输：设旗标后 sim 立即停（`step` 里的 `if self.ending: return`） | 《将军》的 VICTORY 当帧后面的脚本照跑；红警3旗标机制源码查不到 | 同一帧里同时满足赢和输时，sim 的判定可能和游戏不一致。sim 应报告"同帧双结局"，交给实测。红警3：先处理到的那个算数，再设另一个没用；设旗标后还有 3～5 秒才结束，这段时间脚本照跑、玩家不能操作，sim 没模拟（第 8 节第 10 条） |
 | 8 | `ENABLE_SCRIPT` 不会重新武装已触发的一次性脚本（`sim.py` 把 `done` 和 `disabled` 分开放） | 一次性 = `setActive(false)`，`ENABLE_SCRIPT` 会把它重新打开 | 目前编译器和 devices 没用 `ENABLE_SCRIPT`，暂无影响；以后用到就会不一致 |
 | 9 | 计数器和计时器分两张表（`self.counters` / `self.timers`） | 同一张表，同名即同一个 | 编译器的计时器名（`CNV <关> Wait k`）和中文计数器名不会撞，暂无影响 |
 | 10 | 难度位按全局难度过滤（`s.levels[self.level]`） | 按**脚本所在阵营玩家**的难度：该玩家带 AI 时用 AI 的难度 | 我们的脚本都放在 `PlayerScriptsList` 第 2 个列表（`newmap.clear_scripts`）。如果那个阵营是 AI，且红警3沿用这条规则，难度分支会跟 AI 难度走。需要查第 2 个列表属于哪个玩家 |
-| 11 | sim 每 0.5 s 一个 tick（`DT = 0.5`） | 每帧一次（《将军》30 帧/秒；红警3测试台 2026-10-28/29 实测每秒约 15 帧，10 秒的计时器 150 帧到期；`HAS_FINISHED_AUDIO` 的配音要数 44 帧/音频秒，和这个对不上，原因没查清，音频帧数别换算成任务秒，只和原版对白对照）；秒计时器到期 = `ceil(秒×帧率)` 帧之后 | 时间线误差最多约 0.5 s；同一帧内的先后在 sim 里也一样成立 |
+| 11 | sim 每 0.5 s 一个 tick（`DT = 0.5`） | 每帧一次（《将军》30 帧/秒；红警3测试台 2026-10-28/29 实测每秒约 15 帧，10 秒的计时器 150 帧到期；`HAS_FINISHED_AUDIO` 的配音要数 44 帧/音频秒——原因见第 8 节第 6 条：测试台把游戏时钟加速了，音频按真实时间放；原速下一句 4.34 秒的原版对白数 68 帧，正好 15 帧/秒）；秒计时器到期 = `ceil(秒×帧率)` 帧之后 | 时间线误差最多约 0.5 s；同一帧内的先后在 sim 里也一样成立 |
 | 12 | 区内对象计数实时、没有上限 | 依赖对象身上的进出区标记：每个对象最多同时记 5 个区；移动造成的进出要下一帧才看得到 | 地图上某点叠了超过 5 个触发区时，计数类条件可能漏算（`NAMED_INSIDE_AREA` 不受影响） |
 | 13 | 取反 = 对条件结果取逻辑非（`sim.py` 里的 `holds`） | 测试台 2026-10-29（`probe --check align`）：我们写的取反位和原版逐字节一样，可游戏从 .map 读的脚本不认这一位，取反的标志、取反的计时器都照原条件算；原版的脚本是编译进资源流的 | 编译器不再写取反位：每个取反条件换成一个标志，由列表最前面两条每帧脚本维护（`parts.unnot`），复测通过 |
 | 14 | `PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA` 数所有玩家（实测） | 只数指定玩家 | 以实测为准，并标明"红警3与《将军》不同" |
@@ -219,3 +226,46 @@
 - 动作效果当帧对后面的脚本可见；
 - 计时器到期判定是"≥"；
 - 比较码 0～5 的含义。
+
+## 8. 红警3测试台实测（引擎线，2026-11-04）
+
+第 1～11 条只写测试台上量到的行为。每条后面括号里写了在哪个检查或录音里量的，检查用 `cnv_check <构建> <检查>` 重跑（多数在 `experimental/cnv/checks/engine_*.py`）。末尾"推断，未实测"一段是读程序得来、还没上测试台核对的，用之前要先补测。
+
+1. **按种类数区内单位，数的是所有人的**（`engine_area`：`field`、`camp`）。`PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA` 不管条件里写的是哪个玩家都一样：敌方的读数是我方那 3 个；我方在敌营的读数是敌人那 2 个。按模板数（`..._UNIT_TYPE_IN_TRIGGER_AREA`）和 `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` 只数条件里写的那个玩家。所以"玩家在那里能打的少于 N 个"如果用按种类数来写，会把敌人、中立、盟友站在那里的也算进去。
+2. **"被玩家攻击"只看最后打它的那个单位还在不在**（`engine_attack`：`gone`）。`NAMED_ATTACKED_BY_PLAYER` 在打它的单位还在场时一直成立，两炮之间也成立；打它的单位一被删或被杀，下一帧就变假，哪怕目标还活着、刚被打掉三分之一血。它不是"曾经被这个玩家打过"。如果一击就死的单位（自爆类、被击落的飞机）是唯一打它的，只有被打的那一帧能抓到。
+3. **整队命令只对当时在队里的单位起作用；空队算不算全灭**（`engine_team`：`fresh`）。给一个还没有人的队下 `MOVE_TEAM_TO`，之后再放进队的单位不会去执行。在同一条脚本里先 `UNIT_SET_TEAM` 再下令，这个单位会执行（`Mission.order` 就是这么写的）。一个从来没人进过的队，`TEAM_DESTROYED` 和 `TEAM_HAS_UNITS` 都读假；放进一个人后"有人"读真；这个人被删后"全灭"读真。所以拿"队全灭"当条件时，这个队必须先有过人。
+4. **屏幕上有两种字幕**（`caption`，`checks/engine_caption.py`）：
+   - 上方青色角框的**军事字幕框**（`SHOW_MILITARY_CAPTION`）。同一时间只显示一条，新的一来就替换旧的，每条按它自己的秒数消失，不会累积。`DISPLAY_TUTORIAL_TEXT` 用的也是这个框，这次两条提示都在 2～3 秒内自己消失了，没有等 `HIDE_TUTORIAL_TEXT`。
+   - 下方黄字半透明黑底的**对白字幕面板**。播放带字幕的对白时（`PLAY_SOUND_EFFECT` 加上字符串表里的 `DIALOGEVENT:<事件名>`），字幕自己进这个面板，一句一行往下累积。纯字幕句不进这个面板。我们的配音句如果同时发了军事字幕，同一句会显示两遍。
+5. **对白面板在一句出现后约 5.1～5.6 游戏秒清掉**（`engine_dialog`：`real`、`fast`、`slow`、`pair`）。跟这句多长没关系（量了 3.3 秒、4.3 秒、4.34 秒三句原版对白），跟测试台把游戏开到几倍速也没关系（×1、×2.9、×8）。也不是游戏数据里写的停留 20 秒，不是等音频放完，也不是按真实秒计。按原速、玩家看到的样子：0.9 秒出现，5.3 秒音频放完，5.7～6.0 秒之间面板清掉。所以一句配音的字幕大约停 5.5 秒，不管这句有多长。几句接连播的时候怎么清，见第 7 条。
+6. **测试台会加速游戏时钟，音频按真实时间放**。`cnv_check` 默认按 ×8 跑；要逐秒截帧时会降到能跟上截帧的速度（每秒一帧大约 ×2.9，每 0.35 秒一帧是 ×1）。脚本帧、计时器、字幕框、对白面板都按游戏时钟走；`HAS_FINISHED_AUDIO` 等的是真实时间的音频。所以加速时一句对白要数更多帧才放完（×2.9 时 44 帧/音频秒，×8 时 33 游戏秒都没放完）。用音频长度定时间线的检查，要么在 ×1 下跑，要么只和同速度下的原版对白比。另外，测试台报的秒数是它自己估的，比任务里的计时器早约 2 秒；要对时间，用游戏计帧或任务自己的计时器。
+7. **对白面板是整块清空的**（`engine_dialog`：`stack`）。两句相隔 2 秒播放：第一句 1.0 秒出现，第二句约 3 秒时加在它下面（第一句往上挪一行）。两行一直同时在，到 7.7 秒还在，8.1 秒一起没了。第一句因此停了约 7 秒，比它单独播时的 5.5 秒长。也就是说，面板从最后一句出现起约 5 秒整块清空，每来一句就重新计时。sim 的 `PANEL_CLEAR`（5.4 秒，按整组清）和这个一致。
+8. **脚本按技能按钮时不看冷却**（`clone`：`twice`、`once`）。`NAMED_USE_COMMANDBUTTON_ABILITY` 在技能冷却中照样把技能放出去。量法：克隆体的"收买"冷却 10 秒，2 秒按一次收走身边的 A 工程师；4 秒把 B 工程师瞬移到它身边，5 秒再按，B 马上被收走。对照组同样瞬移、但不按第二次，B 要等到 20 秒第三次按才被收走，说明不是瞬移过去自己被收的。所以：关卡脚本发的技能不用等冷却；反过来，冷却也挡不住脚本连发，想限制就得自己在脚本里计时。冷却只拦玩家自己点按钮。只量了这一种技能，而且单位在电脑一方；玩家一方的单位、别种技能没量。
+9. **发一个配乐 cue，游戏自带的战况音乐就停了，之后不会自己恢复**（录音判读：构建 `musicdyncue` 对照 `musicdyntr`，`experimental/music/bench_listen.py`）。两个构建都在开局打开战况音乐，然后让敌人来打。不发 cue 的那次，交战后音乐转到激烈段，再转到劣势段。发了 cue 的那次，任务 20 秒发了一个行进段的 cue，此后一直放行进段，直到录音结束（约任务 135 秒），激烈、劣势一次都没出现。所以任何 `PATH_MUSIC_PLAY_EVENT` 都会关掉战况音乐，包括胜负时库脚本自动发的结束配乐（见第 10 条）。想让 cue 之后战况音乐接着管，得再发一次 `PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM`；`PATH_MUSIC_ENABLE_RESUME_SYSTEM` 能不能恢复还没测。
+10. **`"Mission Won"` / `"Mission Lost"` 旗标由零售战役共用的库地图读取**。"设了旗标任务就结束"是测试台上看到的（`experimental/cnv/checks/a7.py`）。下面的时长和顺序是从游戏数据里的库地图脚本读出来的，没在测试台上掐表。零售战役地图都挂了一张叫 `Lib_End_Mission` 的库地图，加载时它的脚本并进来，读这两个旗标的就是它：
+    - 旗标设上后，下一次脚本评估时就关掉玩家输入、收起界面、取消选择、关掉 EVA。
+    - 赢：1 秒播"任务完成"语音，2 秒出胜利画面，3 秒开始淡出到黑，5 秒任务真正结束；同时把"输"的那条脚本关掉，并发结束配乐 `S_EndMissionWin`。
+    - 输：先把"赢"的那条脚本关掉，1 秒播"任务失败"语音，2 秒开始淡出，3 秒任务结束；并发结束配乐 `S_EndMissionLose`。
+    - 所以先被处理到的那个算数，之后再设另一个旗标没用。赢和输在同一帧都设上时，库里"赢"的脚本排在前面，推断是赢先（未实测）。
+    - 结束前这 3～5 秒，其它脚本照跑，只是玩家不能操作。我们的失败字幕如果要停 10 秒，后 7 秒玩家看不到。我们自己在设旗标前发的胜负配乐，和库脚本发的是同一个，重复了。
+11. **按模板数数得到脚本创建的单位**（`a7`：`relief`，2026-11-04 引擎线另加四路对照）。A7 的保底规则用 `CREATE_NAMED_ON_TEAM_AT_WAYPOINT` 在 `start` 给玩家两个 `AlliedEngineer`（队 `Player_1/teamPlayer_1`）。同一次跑里四个计数器一起读：按模板在区内、按模板的拥有数（`SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER`）都在字幕"基地又送来两个工程师"出现时（测试台 s65）读到 2；按名字在区内读 1（画面上看得到，读数工具没读出第 4 行）。所以按模板数、按拥有数、按名字都看得到脚本 `给` 出来的单位，和 a7 `revenge` 按模板数看到脚本刷出的敌方守护者（读 5）一致，和地图上摆的还是脚本造的无关。
+    - 关卡线以前以为"按模板数看不到"（摩擦 8），是两件事凑在一起：一是按种类数从 s55 起读 2，但按种类数数的是所有人的（第 1 条），那 2 个不是工程师；二是工程师出来的同一刻，自由号第一次跃迁正好落在基地边，它带的兵 4 秒内把两个工程师打死了，按模板的读数 s69 回到 0。上一版 `relief` 是"读对了数、数错了人"的假通过。
+    - 关卡线该怎么改：检查里数给出来的单位，**按模板数**（`relief` 已改，数的模板从编译出的 `给` 动作里取，和摆在地图上的工程师对一致）；按种类数只在区里确定没有别人的单位时用。另外这是一个**关卡事实**：A7 保底工程师在 `start` 冒出来时，如果自由号同时落在基地边，工程师活不过几秒。保底要真管用，`给` 的位置要离基地边远一点，或者等自由号不在基地边时再给（策划决定，列给关卡线）。
+
+12. **脚本自己的钟和账本**（`engine_script`：`frames`，2026-11-05，四个读数和《将军》源码的推算逐个一致）。同一帧里按这个顺序排的脚本：
+    - 1.1 秒的计时器从设下那帧算起，要 17 帧（`ceil(1.1×15)`）才到期：每秒 15 帧、向上取整、计时器在脚本之前减。
+    - 一个动作造成的变化，排在后面的脚本当帧看得到，排在前面的下一帧才看到（同一个旗标，后面的计数器 18 帧，前面的 17 帧）。
+    - `ENABLE_SCRIPT` 会把已经触发过的一次性脚本重新打开，条件还成立就再触发一次。第 7 节第 8 条"不会重新武装"的假设不对。
+    - 计数器和计时器是同一张表：2 秒的计时器拿 `SET_COUNTER_TO_COUNTER` 读出来是 30（剩余帧数）。第 7 节第 9 条的担心成立，起名别撞。`SET_COUNTER_TO_COUNTER` 的参数是（目标，来源）。
+13. **`DISABLE_INPUT` 只锁玩家，不锁脚本；连 Esc 菜单也锁**（`engine_scripts3`：`input`，2026-11-09）。锁着的时候脚本给玩家坦克下 `MOVE_NAMED_UNIT_TO`，坦克照走、约 4 秒到位；玩家单位自己照样开火；计时器、计数器照常。锁在任务一开局时，测试台按 Esc 打不开任务菜单（暂停不了，`bench_start` 报错），所以探针要等台子开局暂停过了再锁（第 5 秒），到 `ENABLE_INPUT` 前也别指望台子能暂停。模拟器把它当一个没人读的标记，和这一致。
+
+**推断，未实测**（读程序得来，没上测试台核对；关卡要靠哪一条，先补一个机关单测）：
+- 血量百分比向下取整：99.9% 读成 99。找不到这个单位时，`UNIT_HEALTH` 的所有比较都读假，包括"小于"。
+- `CREATE_NAMED_ON_TEAM_AT_WAYPOINT`：下面任何一步不成立，整条什么也不做——名字已经被一个活着的单位占着（被已毁单位占着不算）、队找不到、路点找不到、模板找不到。新单位直接放在路点上，不判断那里能不能站。不带朝向的版本朝向固定为 0，不读路点自己的朝向；带朝向的版本（`..._WITH_ORIENTATION`）的角度按弧度算。
+- `UNIT_TELEPORT_TO_WAYPOINT` 直接设位置，同样不判断能不能站。
+- `SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` 和 `PLAYER_HAS_OBJECT_COMPARISON` 只数条件里那个玩家自己的单位，不数已毁的，也不数还在建造中的；模板列表按各类型的总数算。计数器的值是整个覆盖写进去的，不是累加。`PLAYER_HAS_OBJECT_COMPARISON` 每帧只算一次，所以同一帧里刚造出来的单位要到下一帧才数得到。
+- 遭遇战 AI 那几条（`SKIRMISH_AI_*`），玩家参数必须正好是一个玩家，写成"所有玩家"之类的整条不做。`UNIT_AI_TRANSFER_ALL` 除了把单位交给 AI，也让 AI 从这一刻开始运转，所以要放在其它 AI 设置之前（我们的出口就是这样排的）。`SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES` 传 0 不会清掉已经设过的优先级。
+- `UNIT_AI_TRANSFER` / `TEAM_AI_TRANSFER`（开关 1）对人类玩家的单位什么也不做。电脑玩家的单位交出去后**离开原来的队**（脚本叫得出名字的队都不在，默认队也不在），**手上的命令也丢了**——同一条脚本里先下的移动、或几秒前下的移动都不再走完（台上 11-10 `engine_aixfer`，AI 没唤醒时单位就停在原地）。所以先下命令再移交，命令只在 AI 已唤醒、会自己接手时才有意义；之后按队名下的命令、数队员的条件也找不到这些单位了。开关 0（收回）没量过。
+- `PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM` 写了一个不存在的名字时，战况音乐算开着，但什么也不放；名字留空时用默认的那套。
+- `NAMED_USE_COMMANDBUTTON_ABILITY` 在单位的命令集里没有这个按钮时什么也不做。`..._ON_NAMED` 找不到目标时整条不做。
+- `SET_MISSION_OBJECTIVE_STATUS` 只认 0～3，其它值不做；`MOVE_CAMERA_TO_NAMED` 的第 3 个参数没有用到。

@@ -8,6 +8,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'experimental' / 'cnv'))
+import contract  # noqa: E402
 import plan  # noqa: E402
 import plancheck  # noqa: E402
 
@@ -40,19 +41,30 @@ def waits_for(m, s):
 def test_a_scene_holds_the_input_and_leads_the_camera():
     m = small(段=[{'名字': '一', '过场': SCENE, '目标': ['甲']}], 目标={'甲': {'标记': ['camp']}})
     first = next(s for s in m.scripts if s.name == 'CNV ZZ - Phase 1').do
-    assert first[:3] == [('SET_FLAG', 'CNV_ZZ_Phase_1', 1), ('DISABLE_INPUT',), ('CAMERA_LETTERBOX_BEGIN',)]
-    assert ('MOVE_CAMERA_TO', 'CNV ZZ At west field', 3.0, 0.0, 1.0, 1.0) in first
+    assert first[:4] == [('SET_FLAG', 'CNV_ZZ_Phase_1', 1), ('SET_FLAG', 'CNV_ZZ_InScene', 1), ('DISABLE_INPUT',),
+                         ('CAMERA_LETTERBOX_BEGIN',)]
+    move = next(a for a in first if a[0] == 'MOVE_CAMERA_TO')
+    assert move[2:] == (3.0, 0.0, 1.0, 1.0) and move[1].startswith('CNV ZZ Cam west field ')     # a view point (K5)
+    assert move[1] in m.views and contract.camera_outside_the_view(m) == []
     steps = {waits_for(m, s): s.do for s in named(m, 'CNV ZZ - Phase 1 scene')}
     camp = m.cast['camp'].name
-    assert set(steps) == {3.0, 7.0, 9.0}
+    assert set(steps) == {3.0, 7.0, 13.0}           # the closing line (at 9 s, a script of its own) is said before the hand-back
+    line = named(m, 'CNV ZZ - Phase 1 line')[0]
+    assert waits_for(m, line) == 9.0 and ('FLAG', 'CNV_ZZ_Talking', 0) in line.when
     assert steps[3.0] == [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('CAMERA_FOLLOW_NAMED', camp, 0, plan.FOLLOW_AT)]
     assert steps[7.0] == [('CAMERA_STOP_FOLLOW',)]
-    assert steps[9.0][0][0] == 'SHOW_MILITARY_CAPTION'
-    assert steps[9.0][1:] == [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',), ('CAMERA_STOP_FOLLOW',),
-                              ('MAP_REVEAL_ALL_UNDO_PERM', m.player('p1')), ('SET_FLAG', 'CNV_ZZ_Scene_1', 1)]
-    assert m.facts['过场 一'] == 9.0
+    assert any(a[0] == 'SHOW_MILITARY_CAPTION' for a in line.do)
+    # a 镜头's own reveal at its site while the scene runs (the camera sees what is not explored), shrouded at the hand-back
+    reveal = next(a for a in first if a[0] == 'MAP_REVEAL_PERMANENTLY_AT_WAYPOINT')
+    assert reveal[1] == 'CNV ZZ At west field' and reveal[3:] == (m.player('p1'), 'CNV ZZ Look west field')
+    assert plan.LOOK_MIN <= reveal[2] <= plan.LOOK_MAX
+    assert steps[13.0][1:] == [('ENABLE_INPUT',), ('CAMERA_LETTERBOX_END',), ('CAMERA_STOP_FOLLOW',),
+                              ('MAP_REVEAL_ALL_UNDO_PERM', m.player('p1')),
+                              ('MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT', 'CNV ZZ Look west field'),
+                              ('SET_FLAG', 'CNV_ZZ_Scene_1', 1)]
+    assert m.facts['过场 一'] == 13.0
     goal = named(m, 'CNV ZZ - Phase 1 goal 1')[0]
-    assert waits_for(m, goal) == 9.0 + plan.REVEAL_FIRST         # the goals once the player has the input back
+    assert waits_for(m, goal) == 13.0 + plan.REVEAL_FIRST         # the goals once the player has the input back
 
 
 def test_after_the_scene():
@@ -85,7 +97,7 @@ def test_reveal_for_good_and_undo_it():
 
 @pytest.mark.parametrize('bad', [{'规则': [{'当': '开局', '做': [{'揭全图': '看一眼'}]}]},
                                  {'规则': [{'当': '开局', '做': [{'跟随': 'camp'}]}]},
-                                 {'段': [{'名字': '一', '过场': ['通报 没有时间']}]},
+                                 {'段': [{'名字': '一', '过场': [{'揭全图': '看一眼'}]}]},
                                  {'段': [{'名字': '一', '过场': [{'跟随': 'west field'}]}]},
                                  {'规则': [{'当': '开局', '做': [{'揭开': 'nowhere'}]}]}])
 def test_scene_words_misused_are_errors(bad):
@@ -132,3 +144,53 @@ def test_the_design_check_on_scenes_shown_goals_and_the_first_enemy():
     assert not any(t.startswith('开局没有基地') for _, t in plancheck.design_check(with_base))
     sheet = plancheck.beat_sheet(plan_of(段=[{'名字': '一', '过场': SCENE}]))
     assert '9 秒后交还控制' in sheet
+
+
+def test_lines_in_a_scene_are_said_one_at_a_time():
+    """User 2026-11-03 ("一句说完了之后再继续说", scenes too): each line takes the floor for its own turn (a
+    caption its reading time, a dubbed line its recording and a gap: no longer, E6), so any two lines of a scene start a
+    turn apart at least, whatever the plan wrote between them, and the hand-back leaves the floor busy until the last
+    line is said."""
+    m = small(段=[{'名字': '一', '过场': [{'镜头': 'west field', '秒': 3}, '通报 一', '通报 二', {'停': 1}, '通报 三']}])
+    lines = named(m, 'CNV ZZ - Phase 1 line')           # each line is a script of its own: it waits for the floor and takes it
+    starts = sorted(waits_for(m, s) for s in lines)
+    assert len(starts) == 3 and all(b - a >= plan.CAPTION_TURN for a, b in zip(starts, starts[1:]))
+    assert all(('FLAG', 'CNV_ZZ_Talking', 0) in s.when and ('SET_FLAG', 'CNV_ZZ_Talking', 1) in s.do for s in lines)
+    # the hand-back is not held for the last line: the floor stays taken (Say done frees it), so a queued line waits
+    hand = next(s for s in named(m, 'CNV ZZ - Phase 1 scene') if ('ENABLE_INPUT',) in s.do)
+    assert not any(a[0] == 'SET_MILLISECOND_TIMER' for a in hand.do)
+    assert any(s.name.endswith('Say done') for s in m.scripts)
+
+
+def test_a_camera_is_held_inside_the_playable_area_a_screen_from_its_edge():
+    """K5: a camera move aims at a view point: the site, clamped a half screen (plan.VIEW_HALF) inside the border in force
+    (a scene's phase border, else the level's; a rule's camera: every border the level uses)."""
+    from maps import festival
+    c = plan.Compiler({'关卡': 'zz', '地图': 'festival', '阵营': {'我': '盟军', '敌': '帝国'}, '开局': {'资金': 1},
+                       '边界': 'west of the canal', '段': [{'名字': '一'}, {'名字': '二', '边界': 'whole'}]})
+    c.setup_phases()
+    hx, hy = plan.VIEW_HALF
+    x0, y0, x1, y1 = c.view_rect(['whole'])
+    assert (x0, y0, x1, y1) == (hx, hy, 5000.0 - hx, 5000.0 - hy)
+    assert c.view_rect(['west of the canal'])[2] == festival.BORDERS['west of the canal'][2] - hx
+    assert c.view_rect(['whole', 'west of the canal'])[2] == c.view_rect(['west of the canal'])[2]     # the intersection
+    assert [c.border_at(p) for p in c.phases] == ['west of the canal', 'whole']
+    c.view = 'whole'
+    name = c.view_point('west field')
+    assert c.m.waypoints[name][0] >= x0 and c.m.views[name] == (x0, y0, x1, y1)
+
+
+def test_the_first_picture_of_every_level_shows_no_black(monkeypatch):
+    """K5 (I23, 2026-11-05): the camera the game starts with looks at the map's `start` site. A2's start was 430 from
+    the west edge and past the north one, so the first minute had black at the top and top left (A9, A1, A6 too); the
+    check watched only the camera moves a script makes. Phase 1 now cuts the camera to the view point of `start` when
+    it is outside, and contract.start_camera_inside_the_view holds every level to it -- and does fail without it."""
+    for level in plan.levels():
+        m = plan.Compiler(plan.load(level)).compile()
+        assert contract.start_camera_inside_the_view(m) == [], level
+    m = plan.Compiler(plan.load('a2')).compile()
+    cut = next(a for s in m.scripts if s.name == 'CNV A2 - Opening camera' for a in s.do if a[0] == 'MOVE_CAMERA_TO')
+    assert cut[1] == 'CNV A2 Cam start 950 1210' and cut[1] in m.views and contract.camera_outside_the_view(m) == []
+    monkeypatch.setattr(plan.Compiler, 'opening_camera', lambda self: [])
+    bare = plan.Compiler(plan.load('a2')).compile()
+    assert 'first picture shows black' in ''.join(contract.start_camera_inside_the_view(bare))

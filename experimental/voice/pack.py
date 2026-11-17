@@ -99,15 +99,19 @@ def lines(levels, lang='zh'):
     return out
 
 
-def xml(items, folder=FOLDER):
+def xml(items, folder=FOLDER, subtitles=True):
+    """subtitles: True, every line carries its subtitle (the dialogue panel stacks them); False, none does; a set of
+    audio ids, only those (a line the mission shows as a caption of its own carries none, so it is on screen once,
+    cnv/plan.py)."""
     groups, body = {}, ''
     for ev, _, _, group in items:
         if group:       # a unit voice: no subtitle; the group's event is written after the lines
             groups.setdefault(group, []).append(ev)
             body += f'\t<AudioFile id="{ev}" File="AUDIO:{folder}/{ev}.wav" PCCompression="XAS" />\n'
         else:
-            body += (f'\t<AudioFile id="{ev}" File="AUDIO:{folder}/{ev}.wav" PCCompression="XAS" '
-                     f'SubtitleStringName="DIALOGEVENT:{ev}" />\n'
+            body += (f'\t<AudioFile id="{ev}" File="AUDIO:{folder}/{ev}.wav" PCCompression="XAS"'
+                     + (f' SubtitleStringName="DIALOGEVENT:{ev}"'
+                        if subtitles is True or (subtitles and ev in subtitles) else '') + ' />\n'
                      f'\t<AudioEvent id="{ev}" {DIALOGUE}>\n{DIALOGUE_SLIDERS}\t\t<Sound>{ev}</Sound>\n\t</AudioEvent>\n')
     for group, evs in groups.items():
         body += (f'\t<AudioEvent id="{group}" {UNIT_VOICE}>\n\t\t<PitchShift Low="-1" High="1" />\n'
@@ -138,10 +142,11 @@ def to_48k(src, dst):
         w.writeframes(np.clip(np.round(x), -32768, 32767).astype('<i2').tobytes())
 
 
-def make(levels=(), test=False, lang='zh', folder=FOLDER):
+def make(levels=(), test=False, lang='zh', folder=FOLDER, items=None, subtitles=True):
     """Copy the WAVs under <SDK>/Audio/<folder>, write <SDK>/Mods/<folder>/Data/voice.xml, compile it alone (for the
-    encoded audio) and return the Pack."""
-    items = ([TEST] if test else []) + lines(levels, lang)
+    encoded audio) and return the Pack. items: [(audio id, wav, text, group)] already chosen (the level line's
+    experimental/cnv/langs.py: each speaker's dub language, the edition's subtitle language); None: lines(levels, lang)."""
+    items = ([TEST] if test else []) + (lines(levels, lang) if items is None else list(items))
     audio = os.path.join(labpaths.SDK3, 'Audio', folder)
     data = os.path.join(labpaths.SDK3, 'Mods', folder, 'Data')
     os.makedirs(audio, exist_ok=True)
@@ -149,7 +154,7 @@ def make(levels=(), test=False, lang='zh', folder=FOLDER):
     for ev, wav, _, _ in items:
         to_48k(wav, os.path.join(audio, ev + '.wav'))
     with open(os.path.join(data, 'voice.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
-        f.write(xml(items, folder))
+        f.write(xml(items, folder, subtitles))
     with open(os.path.join(data, 'mod.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n'

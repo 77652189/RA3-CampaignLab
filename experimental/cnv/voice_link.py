@@ -1,46 +1,92 @@
-"""A plan's dubbed lines (`语音: [A4, ICEENG]` at the top of a plan): the voice line's delivered manifests
-(RA3-ChineseVoice/work/campaign/zh/<LEVEL>/manifest.json, read without compiling) say which lines exist; the pack
+"""A plan's dubbed lines (`语音: [A4, ICEENG]` at the top of a plan): which recording each line plays and which subtitle it
+shows is the voice line's routing (langs.py: tools/campaign_lines.py route, ADR 0013), read without compiling; the pack
 itself (experimental/voice/pack.make, ~25 s under the SDK build lock) is made only when a build takes its include,
 files or check, as voice_bench.LazyPack does.
 
-find(who, text): the mission-dialogue event of the line `who` says (text as in the lines table), or None -- the plan
-then shows the subtitle alone, as it did before there was a voice. A unit voice (a line with a group) is the unit's own
-event, not the plan's: it is in `events` (the contract) but never found by find().
+find(who, text): the mission-dialogue event of the line `who` says (text as in the lines table, in Chinese), or None --
+the plan then shows the subtitle alone, as it did before there was a voice. A unit voice (a line with a group) is the
+unit's own event, not the plan's: it is in `events` (the contract) but never found by find(). eva(who, text): the retail
+event of a retail announcer line, played as it is.
+
+lang: the edition (langs.py): 'zh' (Chinese subtitles) or 'intl' (English subtitles). A line whose recording or subtitle is
+not delivered in that edition is left out and listed in `missing` (the build prints it), as is one that plays an interim
+recording.
 """
-import json
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class Later:
-    def __init__(self, levels, lang='zh'):
+    def __init__(self, levels, lang='zh', heads=None):
         if ROOT not in sys.path:
             sys.path.insert(0, ROOT)
         from experimental.voice import pack
+        import langs
         self.pack, self.levels, self.lang, self.made = pack, list(levels), lang, None
-        self.events, self.strings, self.said = set(), {}, {}
-        for lv in self.levels:
-            path = os.path.join(pack.DELIVERED, lang, str(lv).upper(), 'manifest.json')
-            if not os.path.exists(path):
-                raise FileNotFoundError(f'语音 {lv}: no delivered lines at {path}')
-            with open(path, encoding='utf-8') as f:
-                for e in json.load(f):
-                    ev = e.get('event')
-                    if not ev:
-                        continue                            # an announcer line that plays a retail event
-                    self.events.add(ev)
-                    if not e.get('group'):
-                        self.strings[f'DIALOGEVENT:{ev}'] = e['text']
-                        self.said[(e['who'], e['text'])] = ev
+        got = langs.Resolved(self.levels, lang)
+        self.items, self.missing, self.said, self.retail = got.items, got.missing, got.said, got.retail
+        self.folder = langs.voice_folder(lang)
+        self.events = {ev for ev, *_ in self.items}
+        self.subtitled = set()      # the events whose recording carries its own subtitle (the compiler adds them, E6)
+        import clips
+        self.clips = clips.Clips({ev: wav for ev, wav, _, group in self.items if not group}, self.missing, heads)
+        self.groups = {group for _, _, _, group in self.items if group}     # the unit voice events the pack has
+        self.texts = {f'DIALOGEVENT:{ev}': text for ev, _, text, group in self.items if not group}   # every line's words
+        known = self._retail_events() if self.retail else None
+        for ev in sorted(set(self.retail.values())):
+            if known is not None and ev not in known:
+                self.missing.append(f'{ev} (retail announcer): not a retail audio event')
+
+    @property
+    def strings(self):
+        """The labels that reach the mod's string table: only the lines that carry their own subtitle. The game finds a
+        recording's subtitle by its label DIALOGEVENT:<event> whether or not the AudioFile names it (I1, CampShell
+        2026-11-05: a 功能 line shown as a caption came up again in the dialogue panel ~7 s later, when its recording
+        played), so a line the mission shows as a caption has no such label."""
+        return {k: t for k, t in self.texts.items() if k.split(':', 1)[1] in self.subtitled}
+
+    def __bool__(self):                 # an edition with none of its lines delivered has no pack to build
+        return bool(self.items)
 
     def find(self, who, text):
         return self.said.get((str(who), str(text)))
 
+    def length(self, who, text):
+        """Seconds the recording of a dubbed line plays (a scene waits for it: the engine queues dialogue events, so
+        ten lines at one moment are heard one after another but their subtitles and the camera do not wait), or None."""
+        ev = self.find(who, text)
+        wav = next((w for e, w, _, g in self.items if e == ev and not g), None) if ev else None
+        if not wav:
+            return None
+        import wave
+        try:
+            with wave.open(wav) as w:
+                return w.getnframes() / w.getframerate()
+        except (wave.Error, OSError, EOFError):
+            return None
+
+    def eva(self, who, text):
+        """The retail event of an announcer line that is retail's own, or None. It is played as it is in both editions:
+        the international one runs on the English retail game, the Chinese one on the Chinese voice mod, which dubs
+        the same retail event."""
+        return self.retail.get((str(who), str(text)))
+
+    def _retail_events(self):
+        """The retail AudioEvent ids (the SDK's SageXML/Sounds/Voice.xml), the names an eva line may play."""
+        from experimental.campaign import labpaths
+        path = os.path.join(labpaths.SDK3, 'SageXML', 'Sounds', 'Voice.xml')
+        if not os.path.exists(path):
+            return None
+        with open(path, encoding='utf-8', errors='replace') as f:
+            return set(re.findall(r'<AudioEvent id="(\w+)"', f.read()))
+
     def _make(self):
         if self.made is None:
-            self.made = self.pack.make(self.levels, lang=self.lang)
+            self.made = self.pack.make(self.levels, lang=self.lang, folder=self.folder, items=self.items,
+                                       subtitles=self.subtitled)
         return self.made
 
     include = property(lambda self: self._make().include)

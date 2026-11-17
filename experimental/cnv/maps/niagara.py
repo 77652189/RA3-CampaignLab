@@ -20,6 +20,7 @@ platprops, kept off every way and place), LAYOUT, BORDERS.
 import make_campnew18 as c18
 import platmap
 import platprops
+import resources
 from platmap import Layout, Ramp, Road, poly, wobble
 from platprops import along, area, cliff_feet, clumps, scatter, shore
 from maps import island
@@ -48,9 +49,6 @@ SITES.update({
     'east factory': Site(3950.0, 3150.0, 0.0, "the hawks' war factory", build=200.0),
     'east airfield': Site(4050.0, 3700.0, 0.0, "the hawks' airfield", build=250.0),
     'east power': Site(4250.0, 3450.0, 0.0, "the hawks' own power plant", build=100.0),
-    'east refinery': Site(4300.0, 2860.0, 0.0, "the hawks' refinery, by their ore (the skirmish AI's income; "
-                                               '~180 from the nearer node, as retail)',
-                         build=250.0),
     'east gate': Site(3150.0, 3300.0, 200.0, "open ground between the hawks' base and the bridges: their army forms "
                                              'up here'),
     'carrier home': Site(3700.0, 2400.0, 250.0, 'over the east bank south of the base: where the carrier waits'),
@@ -134,18 +132,25 @@ LAYOUT = Layout(
            *[Road(s, 90.0) for s in TOWN]])
 
 
+# ore and oil as relations (resources.py, K4): a refinery pad, the way it faces, the base it serves; the ore is
+# made from that (180 straight ahead, a second node beside it), never typed
+FIELDS = [
+    resources.Field('base', 1130.0, 2060.0, 225.0, -1, base='start', owner='p1', build=resources.PAD),
+    resources.Field('east', 4300.0, 2860.0, 135.0, -1, build=250.0),
+    resources.Field('north', 1357.0, 3723.0, 135.0, 1),
+    resources.Field('south', 2053.0, 933.0, 45.0, 1),
+    resources.Field('bluff', 3273.0, 1173.0, 45.0, 0),
+]
+DERRICKS = [(700.0, 3200.0)]
+SITES.update(resources.sites(FIELDS))
+
+
 def _objects():
     out = []
     for p, q in BRIDGES:
         for x, y, a, flags in platmap.bridge(p, q, 'HB_Bridge_02'):
             out.append(Obj('HB_Bridge_02', x, y, side='neutral', angle=a, flags=flags, site='map'))
-    ore = [(850, 2050), (1010, 1930),               # the player's own, ~550 from the start
-           (1050, 3750), (1230, 3850),              # north of the base, below the plateau
-           (2000, 1150), (2180, 1060),              # the south, by outpost 2
-           (4150, 2950), (4250, 3120),              # the hawks' own
-           (3400, 1300)]                            # one on the bluff over the gorge, east bank south
-    out += [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for x, y in ore]
-    out.append(Obj('OilDerrick', 700, 3200, side='neutral', angle=0.0, site='map'))
+    out += resources.objects(FIELDS, DERRICKS)
     return out
 
 

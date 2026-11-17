@@ -20,11 +20,11 @@ Published: abilities control = the power's command (NAMED_USE_COMMANDBUTTON_ABIL
 import os
 import re
 
-import make_campnew2 as c2
+import labpaths
 from parts import Unit
 from units import look
 
-SAGE = os.path.join(c2.SDK, 'SageXML', 'Allied', 'Units')
+SAGE = os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Units')
 
 
 def sub1(x, old, new):

@@ -9,11 +9,11 @@ the reach: a mission script can pull from anywhere; a player's click beyond it d
 """
 import os
 
-import make_campnew2 as c2
+import labpaths
 from parts import Unit
 from units import look
 
-SAGE = os.path.join(c2.SDK, 'SageXML', 'Allied', 'Units')
+SAGE = os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Units')
 
 
 def sub1(x, old, new):

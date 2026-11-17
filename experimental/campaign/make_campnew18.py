@@ -21,19 +21,11 @@ import newmap                                   # noqa: E402
 
 c6, c4, c2 = c7.c6, c7.c4, c7.c2
 NAME = 'CampNew18'
-c4.NAME = c2.NAME = NAME
-c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', NAME, 'data')
-c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
-c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
-c7.MAP_MOD = NAME + 'Map'
 CENTER, RADIUS = (2500.0, 2500.0), 1800.0
 START = (1250.0, 2500.0)                         # west end of the island
 ENEMY = (3700.0, 2500.0)
 CAPTION = 'SCRIPT:CNV02_INTRO'
 OBJ = 'Objective01 - CNV Island'
-c4.c3.STRINGS.update({CAPTION: 'CNV02：这张地图的地形、贴图、水面、单位和脚本全部由代码生成。',
-                      'MISSIONOBJ:CNV02_1': 'CNV02 目标：消灭岛屿东侧的苏军坦克',
-                      'MISSIONOBJ:CNV02_1_DESC': '一张完全由我们的工具生成的测试地图。'})
 
 _entry = c4.cache_entry
 
@@ -44,8 +36,6 @@ def cache_entry():
                    ('Player_2_Start', START[0] + 60, START[1] + 60, 0.0)]
     return e
 
-
-c4.cache_entry = cache_entry
 
 
 def generate(m):
@@ -115,7 +105,6 @@ def generate(m):
     maplight.set_lighting(m, lt)
 
 
-c6.edit = generate
 PREVIEWS = {}
 _edited = c7._edited
 
@@ -134,7 +123,23 @@ def edited_with_previews():
     return out
 
 
-c7._edited = edited_with_previews
+def install():
+    """make_campnew7.install(), then this mod: its name, strings, start positions, generated map and its pictures.
+    Importing this module changes nothing (ADR 0016, G7); a build calls this (package.build_mod, the probes above)."""
+    c7.install()
+    c4.NAME = c2.NAME = NAME
+    c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', NAME, 'data')
+    c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
+    c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
+    c7.MAP_MOD = NAME + 'Map'
+    c4.c3.STRINGS.update({CAPTION: 'CNV02：这张地图的地形、贴图、水面、单位和脚本全部由代码生成。',
+                          'MISSIONOBJ:CNV02_1': 'CNV02 目标：消灭岛屿东侧的苏军坦克',
+                          'MISSIONOBJ:CNV02_1_DESC': '一张完全由我们的工具生成的测试地图。'})
+    c4.cache_entry = cache_entry
+    c6.edit = generate
+    c7._edited = edited_with_previews
+
 
 if __name__ == '__main__':
+    install()
     c4.main()

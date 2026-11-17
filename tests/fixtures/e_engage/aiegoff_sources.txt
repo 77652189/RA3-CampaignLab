@@ -1,0 +1,19 @@
+# CampAIEgOffA_mcp_1113_051449; team and caller redacted; measured fields unchanged.
+tstate: frame=345 team=T mstate=8 prev=8 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=1 ready=1 mem=3170:16:1,3171:16:1 dest=3170@3890.0:2930.0,3171@3890.0:2930.0 aim=3170>3171@3890.0:2930.0,3171>0 hd=3170:-0,3171:-73
+tstate: frame=346 team=T mstate=8 prev=8 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=1 ready=1 mem=3170:16:1,3171:16:1 dest=3170@3890.0:2930.0,3171@3890.0:2930.0 aim=3170>3171@3890.0:2930.0,3171>0 hd=3170:-0,3171:-73
+tstate: frame=352 team=T mstate=8 prev=8 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=1 mem=3170:16:1,3171:16:1 dest=3170@3890.0:2930.0,3171@3890.0:2930.0 aim=3170>3171@3890.0:2930.0,3171>0 hd=3170:-0,3171:-73
+tstate: frame=353 team=T mstate=8 prev=8 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-45,3171:-82
+tstate: frame=354 team=T mstate=8 prev=8 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-90,3171:-82
+tstate: frame=361 team=T mstate=8 prev=8 secs=1.07 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-90,3171:-82
+tstate: frame=368 team=T mstate=8 prev=8 secs=1.60 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-90,3171:-97
+tstate: frame=376 team=T mstate=8 prev=8 secs=2.13 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-90,3171:-83
+tstate: frame=391 team=T mstate=8 prev=8 secs=2.67 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-90,3171:-83
+tstate: frame=406 team=T mstate=8 prev=8 secs=3.73 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-90,3171:-83
+tstate: frame=408 team=T mstate=8 prev=8 secs=4.27 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3911.0:2706.3 aim=3170>0,3171>0 hd=3170:-90,3171:-76
+tstate: frame=409 team=T mstate=8 prev=8 secs=4.27 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3911.0:2706.3 aim=3170>0,3171>0 hd=3170:-90,3171:-83
+tstate: frame=421 team=T mstate=8 prev=8 secs=4.80 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3911.0:2706.3 aim=3170>0,3171>0 hd=3170:-90,3171:-83
+tstate: frame=431 team=T mstate=8 prev=8 secs=5.33 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3911.0:2706.3 aim=3170>0,3171>3168@3911.0:2706.3 hd=3170:-90,3171:-83
+tstate: frame=436 team=T mstate=8 prev=8 secs=5.87 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3911.0:2706.3 aim=3170>0,3171>3168@3911.0:2706.3 hd=3170:-90,3171:-83
+tstate: frame=442 team=T mstate=8 prev=8 secs=6.40 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3911.0:2706.3 aim=3170>0,3171>3168@3911.0:2706.3 hd=3170:-135,3171:-83
+tstate: frame=443 team=T mstate=8 prev=8 secs=6.40 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3911.0:2706.3 aim=3170>0,3171>3168@3911.0:2706.3 hd=3170:-146,3171:-83
+tstate: frame=446 team=T mstate=8 prev=8 secs=6.40 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3911.0:2706.3 aim=3170>0,3171>3168@3911.0:2706.3 hd=3170:-137,3171:-83

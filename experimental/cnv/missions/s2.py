@@ -9,3 +9,9 @@ import plan
 
 def mission(name='CampS2'):
     return plan.mission('s2', name)
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    's2': lambda: mission(),
+}

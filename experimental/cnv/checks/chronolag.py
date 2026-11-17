@@ -32,3 +32,9 @@ def packed(m):
     t = run(m, False)
     t.expect += [('时滞中', 0, '==', 0)]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'chronolag': {'hit': hit, 'packed': packed},
+}

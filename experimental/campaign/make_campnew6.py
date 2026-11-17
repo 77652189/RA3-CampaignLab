@@ -18,12 +18,7 @@ import make_campnew4 as c4                      # noqa: E402
 from mapscript import MapFile                   # noqa: E402
 
 NAME = 'CampNew6'
-c4.NAME = c4.c2.NAME = NAME
-c4.c2.SRC_DIR = os.path.join(c4.c2.SDK, 'Mods', NAME, 'data')
-c4.c2.BUILT = os.path.join(c4.c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
-c4.c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
 CAPTION = 'SCRIPT:CNV01_HINT_INTRO'
-c4.c3.STRINGS[CAPTION] = 'CNV01 测试：这条提示来自我们自己的脚本编辑器新增的脚本。'
 TIMER = 'TIMER - CNV Intro'
 
 _map_files = c4.c2.map_files
@@ -64,7 +59,17 @@ def edited_map_files():
     return out
 
 
-c4.c2.map_files = edited_map_files
+def install():
+    """make_campnew4.install(), then this mod's name, its caption and the edited map in c2 (importing changes nothing)."""
+    c4.install()
+    c4.NAME = c4.c2.NAME = NAME
+    c4.c2.SRC_DIR = os.path.join(c4.c2.SDK, 'Mods', NAME, 'data')
+    c4.c2.BUILT = os.path.join(c4.c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
+    c4.c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
+    c4.c3.STRINGS[CAPTION] = 'CNV01 测试：这条提示来自我们自己的脚本编辑器新增的脚本。'
+    c4.c2.map_files = edited_map_files
+
 
 if __name__ == '__main__':
+    install()
     c4.main()

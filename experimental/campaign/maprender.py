@@ -24,6 +24,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import labpaths  # noqa: E402
 
+SCREEN_Y = -1           # a top-down picture's rows run against world y (north up): the one place it is said -- the
+                        # simulator page (experimental/simui) draws with it too
+
+
+def north_up(x, y, top):
+    """A world point as picture coordinates in world units: x across, rows down from the north edge `top`."""
+    return x, top + SCREEN_Y * y
+
+
 sys.path.insert(0, labpaths.ROOT)
 import mapscript  # noqa: E402
 import mapterrain  # noqa: E402
@@ -110,7 +119,7 @@ def _blend_mask(px, direction, flags, two_sided):
     return np.maximum(ew, ns) if two_sided else np.minimum(ew, ns)
 
 
-def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, title=None):
+def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, title=None, plain=False):
     hm = mapterrain.HeightMap(m)
     tiles = mapterrain.Tiles(m, hm.width)
     tex = _Textures(tiles, px)
@@ -150,22 +159,23 @@ def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, 
     s = px / mapterrain.CELL                                          # pixels per world unit
 
     def at(x, y):
-        return x * s, (h * mapterrain.CELL - y) * s
+        px_, py_ = north_up(x, y, h * mapterrain.CELL)
+        return px_ * s, py_ * s
 
-    for g in range(0, int(max(w, h) * mapterrain.CELL) + 1, 500):    # world grid every 500
+    for g in range(0, 0 if plain else int(max(w, h) * mapterrain.CELL) + 1, 500):    # world grid every 500
         X, _ = at(g, 0)
         _, Y = at(0, g)
         d.line([(X, 0), (X, pic.height)], fill=(255, 255, 255, 50))
         d.line([(0, Y), (pic.width, Y)], fill=(255, 255, 255, 50))
         d.text((X + 2, 2), str(g), fill=(255, 255, 255, 170), font=small)
         d.text((2, Y - 3 * px), str(g), fill=(255, 255, 255, 170), font=small)
-    for name, pts in trigger_areas(m):
+    for name, pts in ([] if plain else trigger_areas(m)):
         q = [at(x, y) for x, y in pts]
         if len(q) >= 2:
             d.polygon(q, outline=(80, 230, 230, 220))
             d.text(q[0], name.replace('AREA - ', ''), fill=(80, 230, 230, 230), font=small)
     named = []
-    for o in mapxml.objects(m):
+    for o in ([] if plain else mapxml.objects(m)):
         x, y = at(o['x'], o['y'])
         p = o['props']
         if o['template'] == '*Waypoints/Waypoint':
@@ -213,8 +223,31 @@ def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, 
     return out
 
 
+def _retail(name):
+    """(archive, in-archive path) of the one retail campaign map whose name is `name` (exactly, else a part of it
+    matching one map), or None -- a mod folder of that name wins, so this runs only once that was not found."""
+    for base in (MODS, STAGING):
+        if os.path.exists(os.path.join(base, name, name + '.big')):
+            return None
+    sys.path.insert(0, HERE)
+    import mapstudy
+    hits = mapstudy.retail_maps([name])
+    exact = [h for h in hits if h[3] == name]
+    hits = exact or hits
+    return (hits[0][1], hits[0][2]) if len(hits) == 1 else None
+
+
 def load(source):
-    """MapFile from a .map file, a mod .big, or a mod name (Mods folder, then work\\staging)."""
+    """MapFile from a .map file, a mod .big, a mod name (Mods folder, then work\\staging), or a retail campaign
+    map by its name (a part of it, e.g. 'camp_a01_brightonbeach_smith': read from the game's MapsCampaign.big by its
+    in-archive path; `archive.big::inner\\path.map` names one explicitly)."""
+    if '::' in source:
+        arc, inner = source.split('::', 1)
+        return mapscript.MapFile(big.read_files(arc, [inner])[inner])
+    if not os.path.exists(source):
+        retail = _retail(source)
+        if retail:
+            return mapscript.MapFile(big.read_files(retail[0], [retail[1]])[retail[1]])
     if not os.path.exists(source):
         for base in (MODS, STAGING):
             cand = os.path.join(base, source, source + '.big')
@@ -244,10 +277,12 @@ def main():
     ap.add_argument('--around', type=float, nargs=3, metavar=('X', 'Y', 'R'), help='crop to a square around X Y')
     ap.add_argument('--bench-view', action='store_true')
     ap.add_argument('--water', type=float, default=newmap.WATERLINE)
+    ap.add_argument('--plain', action='store_true', help='the ground only (no grid, areas, objects or labels): a picture '
+                                                          'for players, e.g. the campaign shell\'s briefing map')
     a = ap.parse_args()
     stem = os.path.splitext(os.path.basename(a.source))[0]
     out = a.out or os.path.join(OUT_DIR, stem + '.png')
-    print(render(load(a.source), out, a.px, a.around, a.bench_view, a.water, title=stem))
+    print(render(load(a.source), out, a.px, a.around, a.bench_view, a.water, title=None if a.plain else stem, plain=a.plain))
 
 
 if __name__ == '__main__':

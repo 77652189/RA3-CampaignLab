@@ -1,0 +1,253 @@
+"""Engine probe: the skirmish AI team's PullbackInjured / ReverseMove (missions/aipullback_bench.py; docs/engine/aiteamstate.md).
+
+  aipull1 / aipull0   a  守军数 (the player's Peacekeepers), 坦克数 (s1 Hammers), 到远厂 (Hammers within 300 of the far
+                         plant), 回家 (Hammers within 300 of the AI's war factory)
+  airev1 / airev0     a  守军数, 坦克数, 近厂 (Hammers within 150 of the far plant), 到远厂 (within 300)
+     once a second, AFTER seconds after the wake
+
+Expectations are the model's; a FAIL is a reading too.
+  aipull1   回家 is 1 or more at some time after the wake
+  aipull0   回家 stays 0 from the wake + 25 s on (the tanks are at the far plant by then)
+  airev*    only that the counters exist (守军数 12 at the wake) -- the per-second readings are the result
+
+Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plant s15):
+  aipull1  FAIL (no retreat): 回家 1 at s1-2 (a tank near the factory at the start), 0 from s3 to the end; 4 tanks s3-24
+           (到远厂 1..3 at s12-14, 4 from s15) | 3 @ s25-26 | 2 @ s27-35 | 1 @ s36-37 | 0 @ s38-85; guards 12 all along
+  aipull0  PASS, second for second the same as aipull1 (no tank ever goes home)
+  airev1   守军 12 -> 11 at s31; 4 tanks s1-22 (近厂 2 @ s19-22) | 3 @ s23-30 (近厂 1 @ s25-29, 0 @ s30) | 2 @ s31-37
+           (近厂 1 @ s34-37) | 0 @ s38-85
+  airev0   守军 12 all along; 4 tanks to s22 (近厂 1 @ s18, 2 @ s19-22) | 3 @ s23-30 | 2 @ s31-33 (近厂 1) | 1 @ s34-36 |
+           0 @ s37-85
+  (the first airev1 run's expectation was written as '>=' and so failed at 11 guards; changed to ever>=, same readings)
+  aipullh1 FAIL: the 4 tanks set to 30 % at s12 on the road -- they drive on, 到远厂 4 by s15-16, 3 @ s17-20, 2 @ s21,
+           1 @ s22-24, 0 from s25; 回家 0 from s4 to the end. Not the shot-down-too-fast window.
+  aipullga FAIL: the same with Allied Guardian tanks (the AI's own faction): 4 at the plant s12, 0 by s20, 回家 0. Not the
+           faction either. Not settled: the member KindOf filter (masks 0xc000 / 0x1000, not read), the
+           template flag bit 13 test, the path test, or the garrison routine never reached in these states.
+  aipullh0 not run (aipull0 already shows no-one goes home).
+  (11-09, round 69; 血量 = tank 1's health %, read 30 from the set on: UNIT_SET_HEALTH does take)
+  aipulli1 FAIL: hurt 0.5 s after the wake, ~1000 from any enemy (no AlphaStrike) -- 血量 30 s9-12, the 4 drive on,
+           到远厂 1 @ s13 .. 3 @ s15-16, all dead by s23; 回家 0 from s3
+  aipullr1 FAIL, second for second as aipulli1, with SKIRMISH_AI_USE_REPAIRS s1 1 at the hurt: not the repair switch
+  aipullp1 FAIL: hurt before the wake (idle, ~400 from the factory): they join the team at 30 % and leave steadily,
+           近家 (600) 4 @ s1-5, 3 @ s6-7, 2 @ s8, 1 @ s9-10, 0 from s11 -- no lingering (not sent home and re-recruited)
+  aipullbig FAIL, the same as aipullp1 with PullbackInjuredHealthPct 100000: not the health ratio's scale
+  So the garrison routine is reached (EnterGarrisons, in the same state functions, worked) and the member gates pass; left: the
+  facility search -- the ArmyDef map lookup (key stored on the team / brain), the template's field against the ArmyDef's field, or the
+  path test (work/re/l4_micro_engage.md 1.4).
+  (11-09, round 70) The ArmyDefinition is found by the player's faction (its Side), so s1 Allied -> AlliedWarFactory
+  as the probe has it. aipulli1 with the faction changed:
+  aipullsov PASS (Soviet AI, a SovietCrane): 血量 30 from s9, 回家 1 @ s19 .. 4 @ s23, then 坦克数 4 -> 0 by s29 with
+           血量 frozen at 39 -- the 4 hurt tanks drive home and into the Crane (SlaughterHordeContain: ground up for
+           75 % cash back). Before this run's window moved to wake + 5 s it read FAIL (the window began at s35).
+  aipulljp  FAIL (Japan AI, a JapanWarFactory): as aipulli1 -- they drive on, all dead by s25, 回家 0.
+  So the pull-back works, but only to a repair place the vehicle can enter: retail's Allied / Japan war factories
+  (no vehicle Contain) are never found (the facility search's reach test, or the template match -- not told apart);
+  the Soviet AI recycles its hurt vehicles in the Crane.
+  ReverseMove: airev1 / airev0 differ too little to read a back-up (近厂 2 in both at s19-22).
+  (11-09, round 71; the target beside the tanks, 80-135 off, healed to 100 every frame)
+  airevp1 / airevp0 (the far plant): first runs, unhealed, the tanks shot it to 2 % by s8 and both left s19-24 alike
+           (target gone). Healed: airevp0 PASS 近厂 4 all 85 s; airevp1 FAIL, the same -- 近厂 4 all along. A plant is a
+           tactical target (state 6), and the reverse-move routine runs in states 2 and 4 only.
+  airevt1  FAIL (a player's AlliedBaseDefense instead, CleanupPowerAdvantage 1000, UseGatherState off -> state 2):
+           no tank moves, 近塔 = 坦克数 = 中圈 all along; the turret kills them one by one 4 @ s1-10, 3 @ s11-22,
+           2 @ s23-34, 1 @ s35-46, 0 from s47. airevt0 not run (airevt1 already shows no back-up).
+  Left (work/re handoff-b 72): the reverse-move routine's first gate -- a byte flag reached through the member's locomotor data
+  (read as a locomotor template flag, not named); the weapon flag check skips too.
+
+  (11-14, B round 196) airevidx: airev1t plus a second AI side s6 (index 11; s1 is index 4), laid out the same, its
+           units handed to the AI at the start (run 1 without that: they sat in the map's teamSoviet_6 and the team
+           filled only at the wake's transfer, f151 -> f152). Run 2, the slot team made / full: s1 f17 / f21, s6 f18 /
+           f20. Neither follows the index (+7 would put s6 at f24): the first slot draw is ~start + 15 for both, the
+           fill +4 / +2 is not an index stagger (left INFERRED). PASS (guards only).
+  (11-14, A round 227) the turn in place (tests/test_turn_rate.py, fixtures a_turn/): airevgt (Guardians facing
+           north-west) PASS -- 24 deg a frame (360 / TurnTimeSeconds 1.0), the 51 deg form-up turn in place f26-27,
+           driving from f28 (start 3 off), arrived f44-48, turned to the facing, go order f56 (96 deg: f56-59, drive
+           f60). airevat (Apocalypses) PASS -- 8 a frame (3 s): 96 deg f26-37, drive f38; the facing turns f67-97, go
+           order f98. With airev1t's Hammers (19 a frame): a unit drives on a frame that starts within ~9 deg of its
+           way (8 drove; 10 and 15 did not), the rest of the turn made driving; under TurnThresholdHS 90 alike.
+           A turn ordered while driving (airevgt f170, attack) is made driving (24 deg on a moving frame).
+  (11-14, A round 231) airevit (Conscripts, TestReactiveLocomotorHUMAN: no TurnThresholdHS) PASS (s15 到远厂 1 -> s17
+           4): the form-up order f26 -- every member moves ~3.2 a frame from f26 on while its heading goes -180 -135
+           -90 -72..-82: no turn in place (fixtures a_turn/airevit.txt); 45 a frame (not 720 / 15 = 48); standing,
+           3170 turns to the facing in place (f45-47); the go order f74-76 alike.
+  E115 observer pair airev1t/airev0t: both PASS the guard prerequisite only. Initial four join at host f21;
+  all acquire the far plant at f230; f260/261 are state 2 with valid goals. Each side has 23 moving-member
+  observations across consecutive frames in states 2/4 with the same valid goal, all positive hull-forward
+  displacement dot products (no reverse candidate in those samples). This does not cover every frame or prove
+  branch eligibility. Near-plant s19-s22 is zero on both observer builds, unlike the old uninstrumented record.
+  Exact goal acquisition replay remains a strict xfail; see work/re/e115_reverse_aim.md.
+  (11-13, D round 132; two of the player's Guardians ~54 off the column, host observed; 坦克数 近敌 敌坦)
+  airevk1  PASS, airevk0 PASS -- the same second for second: s1-12 4 4 2 | s13 4 4 1 | s14-85 4 3 1, and the host's
+           samples the same frame for frame: only 2 tanks join the team (f213), go state 2 at f242 with aim = the
+           far foe (the near one died s13, before the team), centre distance 166 / 190-233 > R - 10 = 135 -- the
+           reverse gate not reached, no back-up point in either (agrees with the model; not a test of the switch)
+  airevkg1 FAIL (invalid): the attack team never takes a Guardian (n=0 all run); 4 4 2 all along
+  (11-13, D round 133; at 16.7 s the two foes deleted, a player's Guardian spawned on each Hammer)
+  airevk2  PASS: s1-12 4 4 2 | s13 4 4 1 | s14 4 3 1 | s15-30 4 3 4 | s31-48 4 4 4 | s49-85 4 3 4. Host: both members
+           aim a spawned foe (f272); f302 member 3171 is stopped and sent to a point 135 (R - 10) from its target,
+           along target -> member, and drives there hull-first at the target (reversing); 23 such orders in the run
+  airevk2o PASS: s1-12 4 4 2 | s13 4 4 1 | s14-15 4 3 1 | s16-85 4 3 4; no back-up order (tests/test_ai_reverse_k2.py)
+  (11-14, D round 135b, "注入摆" -- PREMISE: THE START IS PLACED (前提是摆出来的), not the mission's own: at f250 the
+  plan moves foe 1 / 2 50 west of members 3170 / 3171; foe 1 already dead (poke not found), foe 2 placed)
+  airevkp1 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-17 4 3 1 | s18-85 4 2 1; f272 both members back up to 135 (R - 10)
+           from foe 2 <- ReverseMove, 19 back-up orders in the run = d133's airevk2
+  airevkp0 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-85 4 3 1; the same poke, no back-up order (tests/test_ai_reverse_poke.py)
+  (11-16, D round 182) airevkh PASS (airevk1, 坦克数 swapped for the foes' health % read BEFORE the frame's keep):
+           血1 血2 近敌 敌坦  s2-54 100 100|92 4 2 | s56 4 1 | s60-142 3 1 -- the keep holds (a read before it is 100, or
+           92 = one 35 shell); here the near foe lived to s56, yet members 3170 / 3171 joined the team f213 exactly as in
+           airevk1. The host: f166 the AI casts a special power (cmd 1ff, its own power hash, at 3545:3340 = the near foe),
+           f212 the strike (object 3228) hits the foe and the AI's own 3170 / 3171 (3170 to 316 / 550); f213 they join.
+           So the s13 death in airevk1 is that strike outdoing the keep in one frame; the simulator's AI casts no power.
+  (11-16, D round 183; 总控 k2 = A) the s1 AI's SpecialPowerPrecisionStrike held off (countdown 3600 s every frame,
+  NO_POWER); the readings above for airevk1 / 0 / 2 / 2o are the powered runs. The bench's seconds ran ~2x slow:
+  airevk1  CampAIRevK1A_mcp_1116_184800: 4 4 2 all run (s1-114); the attack team n=0 all run -- no strike, no join.
+           The 'ever<4' expectation (the model's, a back-up) FAILed; now airevk0's '>= 3' (the reading is 4).
+  airevk2  CampAIRevK2A_mcp_1116_184946: s1-31 4 4 2 | s32 4 4 4 | s34-42 4 3 4 | s43-64 4 0 4 | s66-116 4 1 ..;
+           host: before the swap (f250) the members aim 0; f253 all four (3170-3173) join, f257 the form-up move,
+           f312 on back-up orders (type 236 from the ReverseMove call site), 20 in the run. 敌坦's window FAILed on the
+           slow clock (4 first at bench s32), not on the spawn.
+  airevk2o CampAIRevK2OffA_mcp_1116_185214: s2-26 4 4 2 | s27 4 4 4 | s29-127 4 3 4; f253 the same four join, no
+           back-up order in the run (敌坦's window FAILed on the slow clock alike).
+  airevk0  CampAIRevK0A_*_1116: PASS, 4 4 2 all run (s1-129) = airevk1.
+  So with the power off the join waits for the swap (f250 -> f253, the members aiming 0 then); the simulator's
+  in_combat gate (a body that fired last tick) keeps all four out after the swap too: the spawned foe is in range
+  the same tick. tests/test_ai_reverse_k2.py's model test stays red on that (B's gate, not ReverseMove).
+"""
+import inject
+from checks import engine_aitarget as at
+from parts import Script, Test, counted, square
+
+AFTER = 70.0
+LATE = 25.0
+HURT_AT = 12.0                           # aipullh*: the tanks are on the road (at the far plant s15)
+IDLE = ('aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp')   # hurt at the wake, ~1000 from any enemy (p1: before it)
+IDLE_HURT = {'aipulli1': 0.5, 'aipullr1': 0.5, 'aipullp1': -9.0, 'aipullbig': -9.0, 'aipullsov': 0.5, 'aipulljp': 0.5}   # s after the wake
+HURT = 30.0                              # % -- under PullbackInjuredHealthPct 0.35
+LATE_AT = 16.7                           # airevk2*: s after the start (f250: the team formed f213, state 2 f242 in airevk1)
+LATE_NAME = 'UNIT - CNV AI Rev Late'     # + ' k': the Guardian spawned on Hammer k
+NEAR_FOE = 100.0                         # airevk*: half side of the square round the player's two Guardians
+POKE_AT = 250                            # airevkp*: logic frame of the plan (airevk1: team f213, state 2 f242)
+POKE_XY = ((3530.0, 3230.0), (3553.0, 3304.0))   # 50 west of members 3170 / 3171 as they stood f242-248 (airevk1
+                                                 # run 11-13, ra3ext.log team lines); foe k beside member k
+AI_POWER = 'SpecialPowerPrecisionStrike'  # airevkh f166: the s1 AI's cast (cmd 1ff, hash -918055170 = this name)
+NO_POWER_S = 3600                         # s: its countdown held far past the run every frame (engine_acts4 s17: a
+                                          # positive countdown makes a player power not ready)
+NO_POWER = ('airevk1', 'airevk0', 'airevk2', 'airevk2o')   # D round 183 (总控 k2 = A): the power off on these
+
+
+def a(m, build):
+    t = Test()
+    s1, p1 = m.player('s1'), m.player('p1')
+    t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', p1)]))
+    o = m.find(m.role('far plant').name)
+    t.areas[at.FAR] = square(o.x, o.y, 300.0)
+    inf, tank = m.cnv_units
+    wake = m.facts['wake at']
+    end = wake + AFTER
+    tanks = [o.name for o in m.objects if o.template == tank and o.side == 's1']
+    if build in IDLE:                    # four counters at most: 血量 (tank 1's health %) for 守军数
+        t.counters.append(('CNV_PB_Health', '血量'))
+        t.scripts.append(Script('Test - health', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', tanks[0],
+                                                       'CNV_PB_Health')], once=False))
+    elif not build.startswith(('airevp', 'airevt', 'airevk')):  # no guards
+        counted('CNV_PB_Guards', '守军数', t, template=inf, player=p1, most=13)
+    if build != 'airevkh':               # airevkh: the foes' two health % instead (four counters at most)
+        counted('CNV_PB_Tanks', '坦克数', t, template=tank, player=s1)
+    if build.startswith('aipull'):
+        f = m.find(m.role('ai factory').name)
+        t.areas[at.HOME] = square(f.x, f.y, 300.0)
+        if build in ('aipullp1', 'aipullbig'):
+            t.areas['CNV_PB_NearHome'] = square(f.x, f.y, 600.0)
+            counted('CNV_PB_NearH', '近家', t, template=tank, area='CNV_PB_NearHome', player=s1)
+        else:
+            counted('CNV_PB_Far', '到远厂', t, template=tank, area=at.FAR, player=s1)
+        counted('CNV_PB_Home', '回家', t, template=tank, area=at.HOME, player=s1)
+        if build.startswith('aipullh') or build == 'aipullga' or build in IDLE:
+            timer = 'Test - hurt timer'
+            t.scripts += [Script('Test - hurt set', [], [('SET_MILLISECOND_TIMER', timer,
+                                                          wake + IDLE_HURT[build] if build in IDLE else HURT_AT)]),
+                          Script('Test - hurt tanks', [('TIMER_EXPIRED', timer)],
+                                 [('UNIT_SET_HEALTH', n, HURT) for n in tanks])]
+        if build == 'aipullr1':          # after the wake's SKIRMISH_AI_USE_REPAIRS 0
+            t.scripts.append(Script('Test - repairs on', [('TIMER_EXPIRED', timer)],
+                                    [('SKIRMISH_AI_USE_REPAIRS', s1, 1)]))
+        if build in ('aipull1', 'aipullh1', 'aipullga') or build in IDLE:
+            # IDLE: from 5 s after the wake (aipullsov's Soviet tanks were home s19-28, wake ~s9, then ground up)
+            t.expect += [('回家', wake + (5.0 if build in IDLE else LATE), 'ever>=', 1, end)]
+        else:
+            t.expect += [('回家', wake + LATE, '==', 0, end)]
+    elif build.startswith('airevk'):
+        # D round 132: two of the player's Guardians ~54 from the column (missions FOE_AT); both sides healed every
+        # frame so the target stays; 近敌 = s1 tanks within NEAR_FOE of the foes' midpoint (start: all 4 inside;
+        # backed off to R - 10 = 135 from a foe: outside)
+        foes = [m.role(f'rev foe {k}').name for k in (1, 2)]
+        if build == 'airevkh':           # D round 182: read before the keep -- the health the frame's fire left
+            for k, n in enumerate(foes, 1):
+                t.counters.append((f'CNV_PB_FoeHp{k}', f'血{k}'))
+                t.scripts.append(Script(f'Test - foe health {k}', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', n,
+                                                                         f'CNV_PB_FoeHp{k}')], once=False))
+        t.scripts.append(Script('Test - keep', [], [('UNIT_SET_HEALTH', n, 100.0) for n in foes + tanks], once=False))
+        if build in NO_POWER:            # D round 183: the AI's f166 strike (airevkh) is not what k1 / k2 test
+            t.scripts.append(Script('Test - no AI power', [], [('PLAYER_SET_SPECIAL_POWER_COUNTDOWN', s1, AI_POWER,
+                                                                 NO_POWER_S)], once=False))
+        fx = sum(m.find(n).x for n in foes) / 2
+        fy = sum(m.find(n).y for n in foes) / 2
+        t.areas['CNV_PB_NearFoe'] = square(fx, fy, NEAR_FOE)
+        counted('CNV_PB_NearF', '近敌', t, template=tank, area='CNV_PB_NearFoe', player=s1)
+        counted('CNV_PB_Foes', '敌坦', t, template=m.find(foes[0]).template, player=p1)
+        # d131 1: on, a member with the foe as its own target backs off to R - 10 at its next micro pass; off, stays
+        if build.startswith('airevkp'):
+            # D round 135b: no script swap -- the plan moves the two foes beside the team's two members at POKE_AT
+            # (the bench's ra3ext_cmd.txt, inject.pos); a dead foe logs id=-1. The result is inject.look's poke and
+            # command records, not a counter: 坦克数 here only says the run went on
+            t.inject = [inject.pos(POKE_AT, n, x, y) for n, (x, y) in zip(foes, POKE_XY)]
+            t.expect += [('坦克数', 1.0, '>=', 2, end)]
+        elif build.startswith('airevk2'):
+            # D round 133: the two foes deleted, one Guardian spawned on each Hammer (every member's only foe a few
+            # tens off); kept alive too. 敌坦 4 from LATE_AT says the spawn took; the result is the host's aim / dest
+            late = [f'{LATE_NAME} {k + 1}' for k in range(len(tanks))]
+            timer = 'Test - late timer'
+            t.scripts += [Script('Test - late set', [], [('SET_MILLISECOND_TIMER', timer, LATE_AT)]),
+                          Script('Test - late swap', [('TIMER_EXPIRED', timer)],
+                                 [('NAMED_DELETE', n) for n in foes]
+                                 + [('UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION', n,
+                                     m.find(foes[0]).template, m.team(), k) for n, k in zip(late, tanks)]),
+                          Script('Test - late keep', [], [('UNIT_SET_HEALTH', n, 100.0) for n in late], once=False)]
+            t.expect += [('敌坦', LATE_AT + 2.0, 'ever>=', 3, LATE_AT + 10.0)]
+        else:
+            # D round 183: with the power off airevk1 = airevk0 (nobody joins: 4 near all run)
+            t.expect += ([('近敌', wake, 'ever<', 4, wake + 20.0)] if build.endswith('1') and build not in NO_POWER
+                         else [('近敌', wake + 2.0, '>=', 3, wake + 20.0)])
+    elif build.startswith('airevp') or build.startswith('airevt'):
+        # airevp: the far plant beside the tanks, no guards (missions CLOSE_AT); airevt: a player's turret there instead
+        turret = build.startswith('airevt')
+        g = m.find(m.role('rev turret').name) if turret else o
+        near, ring = (100.0, 250.0) if turret else (150.0, 300.0)
+        t.counters.append(('CNV_PB_PlantHp', '塔血' if turret else '厂血'))
+        t.scripts.append(Script('Test - target health', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', g.name,
+                                                              'CNV_PB_PlantHp')], once=False))
+        # first runs: the tanks shot the plant to 2 % before the wake (s8) and both builds left it s19-24 alike -- the
+        # target gone, not a back-up. So the target is healed back every frame: it stays
+        t.scripts.append(Script('Test - target keep', [], [('UNIT_SET_HEALTH', g.name, 100.0)], once=False))
+        t.areas['CNV_PB_Near'] = square(g.x, g.y, near)
+        t.areas['CNV_PB_Ring'] = square(g.x, g.y, ring)
+        lab = '近塔' if turret else '近厂'
+        counted('CNV_PB_NearC', lab, t, template=tank, area='CNV_PB_Near', player=s1)
+        counted('CNV_PB_Far', '中圈', t, template=tank, area='CNV_PB_Ring', player=s1)
+        # model: on, every tank backs off to range - 10 (out of the near square) within a micro update or two;
+        # off, they stay
+        t.expect += ([(lab, wake, 'ever<', 1, wake + 15.0)] if build.endswith('1')
+                     else [(lab, wake + 2.0, '>=', 3, wake + 15.0)])
+    else:
+        t.areas['CNV_PB_Near'] = square(o.x, o.y, 150.0)
+        counted('CNV_PB_NearC', '近厂', t, template=tank, area='CNV_PB_Near', player=s1)
+        counted('CNV_PB_Far', '到远厂', t, template=tank, area=at.FAR, player=s1)
+        t.expect += [('守军数', wake, 'ever>=', 12, end)]
+    t.bench = [('bench_watch', dict(seconds=end + at.LAG, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
+                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevgt', 'airevat', 'airevit', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
+                                                           'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0', 'airevkh')}

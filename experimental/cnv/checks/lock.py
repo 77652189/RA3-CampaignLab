@@ -46,3 +46,9 @@ def opened(m):
     t.bench = [('bench_camera', dict(x=m.point('goal')[0], y=m.point('goal')[1] - 250, look=False)),
                ('bench_watch', dict(seconds=RUN, every=3, sheet=False, lines=len(t.counters), until='c1==1'))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'lock': {'shut': shut, 'open': opened},
+}

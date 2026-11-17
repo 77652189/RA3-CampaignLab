@@ -21,6 +21,7 @@ and place, the plazas whole), LAYOUT (the terrain).
 import make_campnew18 as c18
 import platmap
 import platprops
+import resources
 from platmap import Gap, Layout, Ramp, Road, circle, poly, rect, wobble
 from platprops import along, area, cliff_feet, clumps, scatter, shore
 from maps import island
@@ -51,8 +52,6 @@ SITES.update({
                                                'round to the gates (J4)'),
     'base yard': Site(1250.0, 2500.0, 0.0, "the construction yard's pad on the player's start", build=200.0),
     'base barracks': Site(1250.0, 2780.0, 0.0, "a barracks' pad north of the yard", build=160.0),
-    'base refinery': Site(1130.0, 2060.0, 0.0, "a refinery's pad by the player's own ore (~180 from the nearer "
-                                               'node, as retail)', build=200.0),
     'harbour': Site(4030.0, 2500.0, 180.0, 'the harbour ground at the east end of the canal bridge: the convoy '
                                            'crosses it to the exit'),
     'north base': Site(3050.0, 4100.0, 250.0, 'the north plateau past its ore: room for a small camp', build=160.0),
@@ -152,19 +151,25 @@ LAYOUT = Layout(
 BRIDGES = [((3590, 2500), (3890, 2500)), ((3590, 3420), (3890, 3420)), ((3590, 1850), (3890, 1850))]
 
 
+# ore and oil as relations (resources.py, K4): a refinery pad, the way it faces, the base it serves; the ore is
+# made from that (180 straight ahead, a second node beside it), never typed
+FIELDS = [
+    resources.Field('base', 1130.0, 2060.0, 225.0, -1, base='start', owner='p1', build=resources.PAD),
+    resources.Field('north', 2917.0, 3833.0, 135.0, 1),
+    resources.Field('south', 2413.0, 893.0, 45.0, 1),
+    resources.Field('harbour', 3873.0, 1523.0, 45.0, 1),
+    resources.Field('middle', 2323.0, 1993.0, 45.0, 0),
+]
+DERRICKS = [(1500.0, 3900.0), (700.0, 1500.0)]
+SITES.update(resources.sites(FIELDS))
+
+
 def _objects():
     out = []
     for p, q in BRIDGES:
         for x, y, a, flags in platmap.bridge(p, q, 'HB_Bridge_02'):
             out.append(Obj('HB_Bridge_02', x, y, side='neutral', angle=a, flags=flags, site='map'))
-    ore = [(850, 2050), (1010, 1930),               # the player's own, ~550 from the start
-           (2600, 3900), (2790, 3960),              # north plateau
-           (2350, 1080), (2540, 1020),              # south plateau
-           (4000, 1650), (4000, 1830),              # the harbour, past the canal
-           (2450, 2120)]                            # one in the middle, between the plazas
-    out += [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for x, y in ore]
-    for x, y in ((3200, 4050), (700, 1500)):
-        out.append(Obj('OilDerrick', x, y, side='neutral', angle=0.0, site='map'))
+    out += resources.objects(FIELDS, DERRICKS)
     out.append(Obj('ObservationPostTechStructure', 3050, 1100, side='neutral', angle=0.0, site='map'))
     return out
 

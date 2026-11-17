@@ -8,7 +8,7 @@ first phase ends as soon as its objective shows (READY) and the carrier's jumps 
 jumps: home, warned, at the base edge (the first landing point: the player's army stands elsewhere), home again.
 pick: four of the player's tanks at the base edge: it lands at the second point, the ore, instead.
 defend: the station down to 40 % before any jump: the carrier jumps to it at once.
-power: the station killed after the first jump: no jump home; grounded, the next phase sends it off its point.
+power: the station killed after the first jump: no jump home, and grounded it stays where it landed.
 east: the east bank's skirmish AI asleep and broke, then woken: it spends, keeps its barracks, its army crosses
   to the player's bank; the carrier stays home meanwhile.
 faster: two of the east bank's production buildings down early: the second jump comes 0:50 after the first home,
@@ -16,12 +16,12 @@ faster: two of the east bank's production buildings down early: the second jump 
 revenge: the east barracks down: a revenge wave of guardians out of the east gate at once.
 pincer: the carrier's first warning: a pincer wave of guardians out of the east gate then.
 nag: the station nag said 3:00 into phase 2 and again 3:00 later, the carrier still powered.
-win: the carrier at 1 % health jumps (by test script) to the base edge at 5 s, the player's IFVs shoot it down,
-  Mission Won ends the mission.
+win: the carrier starts at 1 % health: the forced landing (迫降) sends it to the base edge, where the player's units
+  wait; landed with a unit of theirs there, Mission Won ends the mission.
 """
 import plan
-from parts import Obj, Script, Test, counted, square
-from checks.liberty import EARLY, jumps as fire_jump
+from parts import Obj, Script, Test, counted, kindof, square
+from checks.liberty import EARLY
 
 AREA = 300.0                                    # half-side of the areas counted around the carrier's places
 READY = plan.REVEAL_FIRST + plan.REVEAL_GAP + 3.0   # the outposts' objective shows (2nd of phase 1), then done
@@ -33,7 +33,9 @@ GATE_EARLY = 6.0                                # revenge / pincer: looked for f
                                                 # clock behind the mission's)
 REVENGE_AT = 10.0                              # revenge: the barracks dies this long after phase 2 starts
 NAG_DRIFT = 30.0                                # nag: the second looked for from this long before its time
-NAG_FIRST = 180.0                             # nag: its first time, into phase 2 (docs/story/plans/a7.md 规则)
+LAND_BY = 110.0                                 # win: the forced landing's flight home -> base edge, at most (sim: about 70 s of flight, won at 1:35)
+RELIEF_AFTER = 60.0                             # relief: the engineer relief's time, into phase 2 (docs/story/plans/a7.md 规则)
+NAG_FIRST = 180.0                           # nag: its first time, into phase 2 (docs/story/plans/a7.md 规则)
 
 
 def settle(t, m):
@@ -198,7 +200,7 @@ def power(m):
     t.expect += [('电站', 0, '==', 1, first + KILL_AFTER - EARLY), ('电站', first + KILL_AFTER + 2, '==', 0),
                  ('在基地边', first, 'ever==', 1, first + KILL_AFTER),       # wide enough for a reading every 4 s
                  ('在家', first + KILL_AFTER, '==', 0),                                  # no jump home, ever
-                 ('在基地边', first + stay + 30, '==', 0)]                               # flown off its point
+                 ('在基地边', first + stay + 30, '==', 1)]                               # grounded: stays on its point
     t.bench = [('bench_watch', dict(seconds=first + stay + 35, every=4, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -244,10 +246,43 @@ def east(m):
     return t
 
 
+def relief(m):
+    """The engineer relief (保底): both engineers die early, a minute into phase 2 two new ones come out at the base."""
+    m.keep_ai_asleep()
+    t = Test()
+    settle(t, m)
+    # the engineers die, and so do the loyal outpost's three infantry (handed over by settle): nothing else is infantry
+    kill_at(t, [r.name for g in ('engineer', 'loyal 2 troops') for r in (m.roles(g) or [m.role(g)])], 5.0, 'engineers')
+    w = m.where('start')
+    t.areas['Test start'] = square(w.x, w.y, 1200.0)       # all round the base: where they stand once out is not the point
+    # by template, the template the rule gives (给): bench 2026-11-04 (engine line, a7 given) read a count by template
+    # of a scripted unit fine -- 2 as the relief came at s65. The kind count read 2 from s55 but counted every
+    # player's infantry (E1), not the engineers; and the carrier landing at the base edge at s65 killed both in 4 s
+    made = sorted({a[2] for s in m.scripts for a in s.do if a[0] == 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT' and 'Engineer' in a[2]})
+    assert made == [m.roles('engineer')[0].template], made          # counted = given = the placed ones
+    counted('Test Relief', '基地来的工程师', t, template=made[0], area='Test start')
+    at = READY + RELIEF_AFTER
+    # the windows are wide (the bench's clock runs behind the mission's); the zero from s8 to s30, the two at s65
+    t.expect += [('基地来的工程师', 8, '==', 0, 30.0), ('基地来的工程师', at - 12, 'ever==', 2, at + 20)]
+    t.bench = [('bench_watch', dict(seconds=at + 22, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def win(m):
     m.find(m.role('carrier').name).props['objectInitialHealth'] = 1
-    t = where(m)
-    fire_jump(t, m.role('carrier').name, m.ability('carrier', 'jump'), 'Test Strike', m.point('base edge'), at=5.0)
-    t.expect += [('ENDED', 5, '', None)]
-    t.bench = [('bench_watch', dict(seconds=25, every=1, sheet=False))]
+    t = where(m, places=('base edge',))
+    for dx, dy in ((0, 0), (-60, 0), (60, 0)):  # three: the carrier fires on its way in (bench 2026-11-04: one died at s63)
+        t.objects.append(Obj('AlliedAntiVehicleVehicleTech1', *m.site('base edge', dx, dy), site='base edge'))
+    # what the win needs, one by one (bench 2026-11-04: it came to the 300 square at s66 but the mission did not end)
+    t.areas['Test edge 150'] = square(*m.point('base edge'), 150.0)
+    counted('Test Landed Close', '落在基地边150内', t, named=m.role('carrier').name, area='Test edge 150')
+    counted('Test Ours At Edge', '我方坦克在基地边', t, template='AlliedAntiVehicleVehicleTech1', area='Test edge 150')
+    t.expect += [('ENDED', LAND_BY, '', None)]
+    t.bench = [('bench_watch', dict(seconds=LAND_BY, every=1, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'a7': {'jumps': jumps, 'pick': pick, 'defend': defend, 'power': power, 'win': win, 'relief': relief, 'east': east, 'nag': nag, 'faster': faster, 'revenge': revenge, 'pincer': pincer},
+}

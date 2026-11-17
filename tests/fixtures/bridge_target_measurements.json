@@ -1,0 +1,20 @@
+{
+  "aibridgeon": {
+    "verdict": "PASS",
+    "expectations": [
+      "PASS ends == 322 from s2 until s15: s3-s13: 322",
+      "PASS centers == 33 from s2 until s15: s3-s13: 33"
+    ],
+    "readings": "counters (ends, centers, endpoint 0 alive, endpoint 1 alive): s1-s34: 322 33 1 0",
+    "last_log_frame": 116
+  },
+  "aibridgeoff": {
+    "verdict": "PASS",
+    "expectations": [
+      "PASS ends == 111 from s2 until s15: s2-s14: 111",
+      "PASS centers == 11 from s2 until s15: s2-s14: 11"
+    ],
+    "readings": "counters (ends, centers, endpoint 0 alive, endpoint 1 alive): s2-s44: 111 11 1 1",
+    "last_log_frame": 89
+  }
+}

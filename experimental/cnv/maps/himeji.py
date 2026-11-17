@@ -7,7 +7,7 @@ like Himeji -- a castle on its hill over a town -- shaped by what the level need
   - The town lies south of the hill on low ground, its streets lined with houses; the player comes in from the west.
   - Hills along the north edge, woods in the west.
 
-Published: SITES, PLAYERS, TEAMS, OBJECTS (ore), SCENERY (houses along the streets, woods, rocks: platprops, kept
+Published: SITES, PLAYERS, TEAMS, OBJECTS (none), SCENERY (houses along the streets, woods, rocks: platprops, kept
 off every way and place), LAYOUT, BORDERS.
 """
 import make_campnew18 as c18
@@ -62,12 +62,8 @@ LAYOUT = Layout(
                                                     'Dirt_Yucatan04')])
 
 
-def _objects():
-    ore = [(1400, 1500), (1560, 1400)]
-    return [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for x, y in ore]
-
-
-OBJECTS = _objects()
+OBJECTS = []                                    # no ore: J3 has no base (the two nodes that were at (1400, 1500) and
+                                                # (1560, 1400) lay outside the playable area, flowcheck 2026-11-01)
 
 WOODS = {'OK_Tree01': 3, 'OK_Tree02': 2, 'TH_Tree01': 2, 'HB_Tree04': 1}
 UNDER = {'OK_Shrub01': 3, 'OK_Shrub04': 2, 'CC_GRASS06': 2}

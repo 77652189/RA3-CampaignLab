@@ -1,6 +1,8 @@
 """The decoupled build layer (experimental/cnv): unit variants keep apart, a check merges into its mission, the
 verdict follows the counters, the counter reader reads back its calibration -- all without the game."""
+import dataclasses
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -9,8 +11,11 @@ sys.path.insert(1, os.path.join(ROOT, 'experimental', 'testbench'))
 import build  # noqa: E402
 import lint  # noqa: E402  (experimental/campaign, put on the path by parts)
 import parts  # noqa: E402
-from missions import a8, liberty_bench  # noqa: E402
+import registry  # noqa: E402
+from missions import a8_rough as a8, liberty_bench  # noqa: E402
 from units import liberty as lib  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'experimental', 'campaign')))
+import labpaths  # noqa: E402
 
 
 def test_liberty_variants_keep_apart():
@@ -71,7 +76,7 @@ def test_trigger_areas_round_trip():
 
 def test_a8_assault_same_for_both():
     names = {}
-    for build_name in ('a8', 'a8_control'):
+    for build_name in ('a8_rough', 'a8_rough_control'):
         m, t, mod = build.resolve(build_name, 'assault')
         names[build_name] = mod
         mm = parts.merged(m, t)
@@ -80,17 +85,17 @@ def test_a8_assault_same_for_both():
         labels = [label for _, label in t.counters]
         assert labels[:3] == ['平台剩余', '敌方铁锤', '守护者']
         jumps = [s for s in t.scripts if s.name.startswith('Test - jump ')]
-        assert len(jumps) == (3 if build_name == 'a8' else 0) and labels[3:] == (['自由号'] if jumps else ['多功能车'])
+        assert len(jumps) == (3 if build_name == 'a8_rough' else 0) and labels[3:] == (['自由号'] if jumps else ['多功能车'])
         assert t.bench[0][0] == 'bench_camera'
         order = [s.name for s in t.scripts]
         assert order.index('Test - order again') > order.index('Test - attack 3')   # the tick resets after the orders
-    assert names == {'a8': 'CampA8Assault', 'a8_control': 'CampA8CAssault'}
+    assert names == {'a8_rough': 'CampA8RAssault', 'a8_rough_control': 'CampA8RCAssault'}
     assert parts.kindof('VEHICLE')[2] == 'VEHICLE'
 
 
 def test_a8_lose_moves_the_carrier():
     m = a8.mission()
-    build.MISSIONS['a8'][1]['lose'](m)
+    build.MISSIONS['a8_rough'][1]['lose'](m)
     c = m.find(m.role('carrier').name)
     assert (c.x, c.y) == m.site('west shore') and c.props == {'objectInitialHealth': 1}
     assert a8.mission().find(a8.CARRIER).props == {}
@@ -98,14 +103,20 @@ def test_a8_lose_moves_the_carrier():
 
 def test_every_build_keeps_the_contract():
     """Every object placed by a map site, every name a script uses published (offline: what assemble asserts)."""
+    failures = []
     for n, (_, checks) in build.MISSIONS.items():
         for c in [''] + list(checks):
             m, t, _ = build.resolve(n, c)
-            assert parts.contract(parts.merged(m, t)) == [], (n, c)
+            errors = parts.contract(parts.merged(m, t))
+            if errors:
+                failures.append(f'{n}:{c or "<base>"}: {errors}')
     for n in build.PAIRS:
         m, t, _ = build.resolve(n, '')
-        assert parts.contract(parts.merged(m, t)) == [], n
-    assert build.show('a8', 'assault').endswith('contract: ok')
+        errors = parts.contract(parts.merged(m, t))
+        if errors:
+            failures.append(f'{n}:<pair>: {errors}')
+    assert not failures, '\n'.join(failures)
+    assert build.show('a8_rough', 'assault').endswith('contract: ok')
 
 
 def test_a7_publishes_marks_facts_and_counts_by_name():
@@ -128,7 +139,8 @@ def test_contract_catches_what_nobody_published():
                                    ('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'JapanNavalYard', 'Player_9', 'c'),
                                    ('SHOW_MILITARY_CAPTION', 'SCRIPT:NONE', 1.0)]))
     got = parts.contract(m)
-    assert len(got) == 7, got
+    assert len(got) == 8, got                          # the 7 it names, and the caption outside the dialogue outlet
+    assert any('dialogue outlet' in p for p in got)
     assert any('raw coordinates' in p for p in got) and any("object 'UNIT - Nobody'" in p for p in got)
     assert any("power 'SpecialPower_X'" in p for p in got) and any("waypoint 'WP X'" in p for p in got)
     assert any("template 'JapanNavalYard'" in p for p in got) and any("player 'Player_9'" in p for p in got)
@@ -183,6 +195,18 @@ def test_judge_until_and_the_bench_round_trip():
     assert 'liberty_riders --check jump -> CampLibRJump' in build.listing()
 
 
+def test_placement_start_keeps_cursor_and_starts_only_one_game():
+    t = parts.Test(bench=[('bench_start', {'hold': False, 'mod': 'WrongMod'}),
+                          ('bench_click', {'x': 10, 'y': 20})])
+    plan = build.steps('CampPlace', t)
+    assert plan == [['bench_start', {'mod': 'CampPlace', 'look': False, 'hold': False}],
+                    ['bench_click', {'x': 10, 'y': 20}]]
+    assert t.bench[0][0] == 'bench_start'  # repeated resolution keeps the same start
+    assert build.steps('CampPlace', t) == plan
+    assert build.steps('CampOld', parts.Test()) == [
+        ['bench_start', {'mod': 'CampOld', 'look': False}]]
+
+
 def test_every_build_name_fits():
     """Mod names over 15 characters crash the game before the main menu (bench 2026-10-21), and so does one with an
     underscore (bench 2026-10-25: CampA7East_What, from a check named east_what)."""
@@ -223,7 +247,7 @@ def test_judge_mission_ended_before():
 
 def test_counter_reader_reads_its_calibration():
     import counters
-    frames = os.path.join(ROOT, 'work', 'testbench', 'runs')
+    frames = os.path.join(labpaths.WORK, 'testbench', 'runs')
     shots = sorted(d for d in os.listdir(frames) if d.startswith('CampDigits_mcp_')) if os.path.isdir(frames) else []
     if not shots or len(counters.templates()) < 10:
         import pytest
@@ -262,3 +286,283 @@ def test_a_voice_line_must_be_in_the_voice_pack():
                                                               "the voice pack"]
     m.voice = SimpleNamespace(events={'CNV_A4_007'})
     assert not [p for p in parts.contract(m) if 'voice' in p]
+
+
+# the registry of builds (registry.py): every mission and check module declares its own
+def test_every_registered_build_and_check_resolves():
+    reg = registry.get()
+    assert len(reg.builds) >= 80 and 'a4' in reg.builds and 'digits' in reg.pairs
+    assert set(reg.checks) <= set(reg.builds)
+    assert not set(reg.builds) & set(reg.pairs)
+    assert build.MISSIONS.keys() == reg.builds.keys() and build.PAIRS is reg.pairs
+    # build.py list makes every mission and every check's test (the mission and the check merge, or this raises)
+    listed = build.listing().splitlines()
+    assert len(listed) >= len(reg.builds) + len(reg.pairs)
+
+
+def fake_modules(monkeypatch, **tables):
+    """Put modules declaring `tables` ({'MISSION': {...}, 'CHECKS': {...}}) in place of the real ones for registry.load."""
+    import types
+    names = []
+    for name, table in tables.items():
+        module = types.ModuleType(name)
+        module.__dict__.update(table)
+        monkeypatch.setitem(sys.modules, name, module)
+        names.append(name)
+    monkeypatch.setattr(registry, 'modules', lambda: names)
+
+
+def test_registry_refuses_a_build_made_twice(monkeypatch):
+    import pytest
+    fake_modules(monkeypatch, x1={'MISSION': {'dup': lambda: None}}, x2={'MISSION': {'dup': lambda: None}})
+    with pytest.raises(registry.RegistryError, match='made twice'):
+        registry.load()
+
+
+def test_registry_refuses_checks_for_a_build_nobody_makes(monkeypatch):
+    import pytest
+    fake_modules(monkeypatch, x1={'MISSION': {'real': lambda: None}}, x2={'CHECKS': {'ghost': {'c': print}}})
+    with pytest.raises(registry.RegistryError, match='no mission module makes'):
+        registry.load()
+
+
+def test_registry_refuses_checks_declared_twice_or_not_callable(monkeypatch):
+    import pytest
+    fake_modules(monkeypatch, x1={'MISSION': {'b': lambda: None}}, x2={'CHECKS': {'b': {'c': print}}},
+                 x3={'CHECKS': {'b': {'c': print}}})
+    with pytest.raises(registry.RegistryError, match='declared twice'):
+        registry.load()
+    fake_modules(monkeypatch, x1={'MISSION': {'b': lambda: None}}, x2={'CHECKS': {'b': {'c': 'nope'}}})
+    with pytest.raises(registry.RegistryError, match='not callable'):
+        registry.load()
+
+
+def test_registry_finds_only_modules_that_declare(monkeypatch):
+    mods = registry.modules()
+    assert 'missions.a4' in mods and 'checks.a4' in mods and 'missions.count_probes' in mods
+    assert 'missions.music_bench' not in mods and 'missions.festival_parts' not in mods
+
+
+def test_ctx_outlets_hand_over_the_same_actions():
+    from ctx import Ctx
+    from plantime import PlanError
+    import pytest
+    import types
+    m = parts.Mission(name='X', map=types.SimpleNamespace(PLAYERS={'p1': 'Player_1', 's1': 'Soviet_2'}, TEAMS={}))
+    ctx = Ctx(mission=m, tag='T')
+    assert ctx.say('SCRIPT:K', 5.0) == ('SET_FLAG', 'CNV_T_Show_0', 1)      # a line only asks; its caption is up at once
+    said = [s for s in ctx.talk_scripts() if s.name == 'CNV T - Now 0'][0]
+    assert ('SHOW_MILITARY_CAPTION', 'SCRIPT:K', 5.0) in said.do
+    assert ctx.final('SCRIPT:E', 10.0) == ('SHOW_MILITARY_CAPTION', 'SCRIPT:E', 10.0)
+    # K6: a group is a team of the map's own, ordered as one; the units join it in the same script (UNIT_SET_TEAM)
+    acts = ctx.order('attack', ['a', 'b'], 't', 's1')
+    team = acts[-1][1]
+    assert team.startswith('Soviet_2/teamCNVG') and team in m.teams.values()
+    assert acts == [('UNIT_SET_TEAM', 'a', team), ('UNIT_SET_TEAM', 'b', team), ('TEAM_ATTACK_NAMED', team, 't')]
+    assert ctx.order('attack', ['b', 'a'], 't', 's1')[-1] == acts[-1]        # the same group, the same team
+    assert ctx.order('guard', ['a'], 'z', 's1')[-1][:1] == ('TEAM_GUARD_AREA',)
+    assert ctx.order('hunt', ['a', 'b'], side='s1')[-1] == ('TEAM_HUNT', team)
+    assert ctx.order('move', ['a'], 'w', 'p1', crew='Fleet') == [('UNIT_SET_TEAM', 'a', 'Player_1/teamCNVFleet'),
+                                                                 ('MOVE_TEAM_TO', 'Player_1/teamCNVFleet', 'w')]
+    assert ctx.order('stop', ['a'], side='p1', crew='Fleet') == [('TEAM_STOP', 'Player_1/teamCNVFleet')]   # joins nobody
+    assert ctx.order('attack', [], 't', 's1') == []
+    with pytest.raises(PlanError, match='no kind'):
+        ctx.order('flee', ['a'], 't')
+    with pytest.raises(PlanError, match='needs a target'):
+        ctx.order('attack', ['a'])
+    for ask in (lambda: ctx.camera({}, 1.0, 0, 0), lambda: ctx.mark('s'), lambda: ctx.side('我')):
+        with pytest.raises(PlanError, match='written by hand'):
+            ask()
+    with pytest.raises(PlanError, match='needs a compiler or a mission'):
+        Ctx()
+
+
+def test_ctx_forwards_the_missions_own_writes():
+    from ctx import Ctx
+    m = parts.Mission(name='X', map=None)
+    ctx = Ctx(mission=m, tag='T')
+    ctx.string('K', 'a')
+    ctx.string('K', 'b', keep=True)
+    ctx.add_area('A', 'area')
+    ctx.add_point('P', (1.0, 2.0))
+    ctx.spawns_add('u1', 'u2')
+    ctx.countdown('timer')
+    assert (m.strings['K'], m.areas['A'], m.waypoints['P'], m.countdowns) == ('a', 'area', (1.0, 2.0), ['timer'])
+    assert {'u1', 'u2'} <= set(m.spawns)
+    assert ctx.voice_has('anything')          # no voice pack: nothing is missing
+
+
+def test_container_libraries_are_the_containers():
+    """model.CONTAINER_LIBRARIES (what the simulator and contract G6c take the container to hand the skirmish AI) is
+    the container map's LibraryMapLists; package.set_libraries writes the same bytes for the same names."""
+    import make_campnew18 as c18
+    import mapstudy
+    import model
+    import package
+    import retail
+    from mapscript import MapFile
+    data = next(d for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
+    m = MapFile(data)
+    order = [''] + list(mapstudy.players(m))
+    have = dict(zip(order, retail.library_names(m)))
+    assert have == {p: tuple(n.lower() for n in model.libraries(None).get(p, ())) for p in order}
+    before = [n.head for _, n in m.walk() if n.name == 'LibraryMaps']
+    package.set_libraries(m, model.CONTAINER_LIBRARIES)
+    assert [n.head for _, n in m.walk() if n.name == 'LibraryMaps'] == before
+    assert model.handed_to_ai(None) == {'Player_2', 'Soviet_1', 'Soviet_2', 'Soviet_3'}
+
+
+def test_a_waypoint_path_is_written_as_retail_writes_it_and_read_back():
+    """Part.path -> package.write_map: a path's waypoints carry waypointPathLabel1..3 (the unused ones empty, as a01
+    writes them), the others none; the links go after the container's own in WaypointsList, by waypointID;
+    retail.waypoint_links (what the simulator reads of a retail map) reads them back by name; contract holds a
+    *_FOLLOW_WAYPOINTS label to the paths published and every link to a waypoint."""
+    import make_campnew18 as c18
+    import mapxml
+    import package
+    import pytest
+    import retail
+    import struct
+    from maps import island
+    from mapscript import MapFile
+    m = parts.Mission(name='X', map=island)
+    for k, site in enumerate(('east 1', 'east 2', 'east 3', 'west shore')):
+        m.waypoints[f'WP {k}'] = m.site(site)
+    m.path('Ring', 'WP 0', 'WP 1', 'WP 2', loop=True)
+    m.path('Line', 'WP 2', 'WP 0')
+    with pytest.raises(AssertionError, match='3 at most'):
+        for label in ('A', 'B'):
+            m.path(label, 'WP 0')
+    m.labels['WP 0'].remove('A')
+    assert m.links == [('WP 0', 'WP 1'), ('WP 1', 'WP 2'), ('WP 2', 'WP 0'), ('WP 2', 'WP 0')]
+    assert m.labels == {'WP 0': ['Ring', 'Line'], 'WP 1': ['Ring'], 'WP 2': ['Ring', 'Line']}
+
+    data = next(d for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
+    built = MapFile(data)
+    head = next(n for _, n in built.walk() if n.name == 'WaypointsList').head
+    assert struct.unpack_from('<I', head)[0] == 111             # the container's links, to waypoints long gone
+    package.write_map(built, parts.merged(m))
+    after = next(n for _, n in built.walk() if n.name == 'WaypointsList').head
+    wps = {o['props']['waypointName']: o['props'] for o in mapxml.objects(built) if o['template'] == retail.WAYPOINT}
+    ids = {p['waypointID']: n for n, p in wps.items()}
+    raw = [struct.unpack_from('<II', after, 4 + 8 * k) for k in range(struct.unpack_from('<I', after)[0])]
+    # the container's dangling ones went (their ids, 4 on, are ours now: bench 11-10 engine_waypath); its one link
+    # between waypoints it still has stays, ours after
+    assert [(ids[a], ids[b]) for a, b in raw] == [('InitialCameraPosition', 'Player_2_Start')] + m.links
+    assert [wps['WP 0'].get(f'waypointPathLabel{k}') for k in (1, 2, 3)] == ['Ring', 'Line', '']
+    assert [wps['WP 1'].get(f'waypointPathLabel{k}') for k in (1, 2, 3)] == ['Ring', '', '']
+    assert not any(k.startswith('waypointPathLabel') for k in wps['WP 3'])
+
+    m.put('AlliedAntiVehicleVehicleTech1', 'east 1', name='UNIT - T')
+    m.scripts.append(parts.Script('Go', [], [('NAMED_FOLLOW_WAYPOINTS', 'UNIT - T', 'Ring'),
+                                             ('NAMED_FOLLOW_WAYPOINTS', 'UNIT - T', 'Nowhere')]))
+    m.links.append(('WP 3', 'WP 9'))
+    got = [p for p in parts.contract(m) if 'path' in p]
+    assert got == ["path link 'WP 3' -> 'WP 9': no waypoint 'WP 9'",
+                   "Go: NAMED_FOLLOW_WAYPOINTS waypoint path 'Nowhere' not published"], got
+
+
+def test_a_reinforcement_team_is_written_as_a_template_and_read_back():
+    """Mission.reinforcement -> mapxml.add_team writes a team template (not a singleton, the unit lines, retail's other
+    properties); retail.team_templates (what the simulator reads of a retail map) reads the same lines back; contract
+    G6b counts CREATE_REINFORCEMENT_TEAM as a join (bench 11-10 engine_reinf)."""
+    import make_campnew18 as c18
+    import contract
+    import mapxml
+    import retail
+    from mapscript import MapFile
+    from maps import niagara
+    from parts import Mission
+    m = Mission(name='CampT', map=niagara, units=[], facts={})
+    team = m.reinforcement('Wave', [('AlliedAntiInfantryInfantry', 2, 3), ('AlliedAntiVehicleVehicleTech1', 2)], 's1')
+    assert team == 'Soviet_1/teamCNVRWave' and m.teams['RWave'] == team
+    assert {'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleVehicleTech1'} <= m.spawns
+    data = next(d for p, d in c18.c6._map_files() if p.lower().endswith('.map'))
+    mf = MapFile(data)
+    spec = m.templates[team]
+    mapxml.add_team(mf, 'teamCNVRWave', 'Soviet_1', units=spec['units'], instances=spec['instances'])
+    got = next(t for t in mapxml.teams(mf) if t['teamName'][1] == 'teamCNVRWave')
+    assert got['teamIsSingleton'] == (0, 0) and got['teamUnitType1'] == (5, 'GameObject:AlliedAntiInfantryInfantry')
+    assert (got['teamUnitMinCount1'], got['teamUnitMaxCount1'], got['teamUnitMaxCount3']) == ((1, 2), (1, 3), (1, 0))
+    assert retail.team_templates(mf)[team] == {'units': [('AlliedAntiInfantryInfantry', 2, 3),
+                                                          ('AlliedAntiVehicleVehicleTech1', 2, 2)], 'instances': 1}
+    assert contract.JOINS_TEAM['CREATE_REINFORCEMENT_TEAM'] == 0
+
+
+def test_contract_g6c_placed_ai_units_take_no_team_order():
+    """G6c: a placed unit of Soviet_1 (handed to the skirmish AI by the container) is on no team after the start, so a
+    level order to its team is an error -- not on s4, not once a level script (not a first-frame one) fills the team."""
+    import types
+    import contract
+    import mapscript
+    from maps import island
+    cat = mapscript.catalog()
+
+    def broken(side, *more, libraries=None, placed=True):
+        mp = types.SimpleNamespace(**{k: getattr(island, k) for k in ('PLAYERS', 'TEAMS')})
+        if libraries is not None:
+            mp.LIBRARIES = libraries
+        team = f'{island.PLAYERS[side]}/team{island.PLAYERS[side]}'
+        m = types.SimpleNamespace(name='CampG6c', map=mp, objects=[parts.Obj('SovietWarFactory', 1, 1, side=side,
+                                                                              name='UNIT - G6c')][:int(placed)],
+                                  scripts=[parts.Script('CNV G6c - Go', [('TIMER_EXPIRED', 'g')], [('TEAM_HUNT', team)]),
+                                           *more])
+        return contract.placed_ai_units_unordered(m, cat)
+    assert broken('s1') and 'teamSoviet_1' in broken('s1')[0]
+    assert broken('s4') == []
+    assert broken('s1', libraries={'Soviet_1': ()}) == []
+    fill = ('UNIT_SET_TEAM', 'UNIT - G6c', 'Soviet_1/teamSoviet_1')
+    assert broken('s1', parts.Script('CNV G6c - Join', [('TIMER_EXPIRED', 'j')], [fill])) == []
+    assert broken('s1', parts.Script('CNV G6c - Join', [], [fill]))       # the first frame's join is undone
+    made = parts.Script('CNV G6c - Made', [], [('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'SovietWarFactory',
+                                                'Soviet_1/teamSoviet_1', 'W')])
+    assert broken('s1', made, placed=False)                    # made in the first frame: taken off alike
+    assert broken('s1', placed=False) == []
+
+
+def test_a_retail_template_made_at_run_time_is_compiled_whole(monkeypatch):
+    """D180 (bench 11-16): a placed CAMP_PowerStore_AlliedBomberDrop's type="instance" include brought its OCL into the
+    stream but not CAMP_AlliedBomberAircraft_Infantry_1, the GameObject the OCL makes by name, so the drop made nothing.
+    A mission's spawns reach the build (ModSpec.spawns -> make_campnew7.SPAWNS -> map_xml made=): a retail one the
+    static stream lacks and the map does not place is included type="all", as retail's AlliedMapSpecific.xml does (a
+    file a placed object shares goes in once, whole); a placed one stays instance, one in the static stream or ours
+    (extra / also) adds nothing."""
+    import mapxml
+    import package
+    from checks import engine_acts12 as a12
+    m = a12.drop_mission()
+    assert a12.BOMBER in package.spec_of(m, a12.own(m)).spawns
+    store, bomber = 'DATA:A/Store.xml', 'DATA:A/Bomber.xml'
+    index = {'store': {'file': store}, 'bomber': {'file': bomber}, 'gi': {'file': 'DATA:A/GI.xml'},
+             'shared': {'file': 'DATA:A/Shared.xml'}}
+    monkeypatch.setattr(mapxml, 'sage_index', lambda: index)
+    monkeypatch.setattr(mapxml, 'stream_names', lambda: {'gameobject:gi'})
+    monkeypatch.setattr(mapxml, 'game_map', lambda *a: '')
+
+    def includes(placed, made, extra=None, also=()):
+        monkeypatch.setattr(mapxml, 'object_templates', lambda _m: list(placed))
+        text, _ = mapxml.map_xml(None, 'G', extra, also=also, made=made)
+        return re.findall(r'<Include type="(\w+)" source="([^"]+)"/>', text)[3:]
+    assert includes(['Store'], []) == [('instance', store)]                    # before: the bomber never came
+    assert includes(['Store'], ['Bomber', 'GI', 'Store']) == [('instance', store), ('all', bomber)]
+    assert includes(['Shared', 'Store'], ['Shared']) == [('instance', 'DATA:A/Shared.xml'), ('instance', store)]
+    index['pilot'] = {'file': store}                    # made by name, its file one a placed object's: whole, once
+    assert includes(['Store'], ['Pilot']) == [('all', store)]
+    ours = {'CNV_X': {'file': 'DATA:CNVUnits/Data/CNV_X.xml'}}
+    assert includes(['Store'], ['CNV_X'], extra=ours, also=['DATA:CNVUnits/Data/CNV_X.xml']) == \
+        [('instance', store), ('all', 'DATA:CNVUnits/Data/CNV_X.xml')]
+
+
+def test_a_spawned_template_is_linked_by_name_unless_the_static_stream_has_it(monkeypatch):
+    """A272 (bench 11-17): with the bomber's file included type="all" the drop still made nothing -- the link keeps
+    what the GameMap references, and nothing references a template an OCL names. make_campnew7.spawn_names links a
+    SPAWNS GameObject from the library by name; one the static stream has (a GI) or one already linked is left be."""
+    import make_campnew7 as c7
+    import mapxml
+    inst = lambda name, k: mapxml.Inst([k, k], None, [], name.encode(), b'', 'sdk')  # noqa: E731
+    bomber, gi, store = inst('GameObject:CAMP_Bomber', 1), inst('GameObject:GI', 2), inst('GameObject:Store', 3)
+    monkeypatch.setattr(c7, 'SPAWNS', ['camp_bomber', 'GI', 'Store'])
+    monkeypatch.setattr(mapxml, 'stream_names', lambda: {'gameobject:gi'})
+    assert c7.spawn_names([bomber, gi, store], own=[store]) == [bomber]
+    monkeypatch.setattr(c7, 'SPAWNS', [])
+    assert c7.spawn_names([bomber], own=[]) == []

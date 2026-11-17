@@ -41,7 +41,8 @@ PLAYERS = {'p1': 'Player_1', 's1': 'Soviet_1'}
 # needs one of its own (the clones' mind control: units/clone.py)
 SPARE = {f's{k}': f'Soviet_{k}' for k in range(2, 7)}
 PLAYERS.update(SPARE)
-TEAMS = {'p1': 'Player_1/teamPlayer_1'}           # the player's default team: everything placed for them, built too
+TEAMS = {'p1': 'Player_1/teamPlayer_1',           # the player's default team: everything placed for them, built too
+         's1': 'Soviet_1/teamSoviet_1'}           # the enemy's (the container's own, as niagara has it): waves are made on it
 
 
 def terrain(m):

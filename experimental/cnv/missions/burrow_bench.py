@@ -23,3 +23,9 @@ def mission(name='CampBurrow', **unit):
     for dx in (-60, 0, 60):
         m.put('SovietAntiVehicleVehicleTech1', 'west field', MIDDLE + dx, 175, side='s1', role='hammer')
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'burrower': lambda: mission(),
+}

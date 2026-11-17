@@ -1,0 +1,14 @@
+# CampAIEgOffA_mcp_1112_201047; selected first-cohort same-frame samples.
+# Pointer tokens redacted; IDs, frames, member state, positions, aim and heading unchanged.
+team: frame=345 list=0 proto=P name1='Soviet_1' name2='f678fcfb_HuntTactic_0_0' rel=1 slot=24 team=T active=1 n=2 ids=3170@3910:2930,3171@3890:2930
+tstate: frame=345 team=T mstate=8 prev=8 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=1 ready=1 mem=3170:16:1,3171:16:1 dest=3170@3890.0:2930.0,3171@3890.0:2930.0 aim=3170>3171@3890.0:2930.0,3171>0 hd=3170:-0,3171:-73
+teams: frame=345 full=0 wall_ms=6322 us_per_look=577 us_members=1 us_ready=1 player=PLAYER index=4 ai=AI protos=3 teams=34
+team: frame=353 list=0 proto=P name1='Soviet_1' name2='f678fcfb_HuntTactic_0_0' rel=1 slot=24 team=T active=1 n=2 ids=3170@3910:2927,3171@3890:2927
+tstate: frame=353 team=T mstate=8 prev=8 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-45,3171:-82
+teams: frame=353 full=0 wall_ms=6389 us_per_look=530 us_members=1 us_ready=1 player=PLAYER index=4 ai=AI protos=3 teams=34
+team: frame=431 list=0 proto=P name1='Soviet_1' name2='f678fcfb_HuntTactic_0_0' rel=1 slot=24 team=T active=1 n=2 ids=3170@3910:2863,3171@3909:2738
+tstate: frame=431 team=T mstate=8 prev=8 secs=5.33 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3911.0:2706.3 aim=3170>0,3171>3168@3911.0:2706.3 hd=3170:-90,3171:-83
+teams: frame=431 full=0 wall_ms=7032 us_per_look=545 us_members=1 us_ready=1 player=PLAYER index=4 ai=AI protos=3 teams=34
+team: frame=443 list=0 proto=P name1='Soviet_1' name2='f678fcfb_HuntTactic_0_0' rel=1 slot=24 team=T active=1 n=2 ids=3170@3904:2860,3171@3910:2730
+tstate: frame=443 team=T mstate=8 prev=8 secs=6.40 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3911.0:2706.3 aim=3170>0,3171>3168@3911.0:2706.3 hd=3170:-146,3171:-83
+teams: frame=443 full=0 wall_ms=7131 us_per_look=539 us_members=1 us_ready=2 player=PLAYER index=4 ai=AI protos=3 teams=34

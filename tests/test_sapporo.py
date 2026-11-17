@@ -52,10 +52,21 @@ def test_a_shut_gate_shuts_its_courtyard():
                                 else (sp.SITES[f'gate {k}'].x, sp.SITES[f'gate {k}'].y)), f'plaza {k}'), k
 
 
-def test_the_back_lane_is_only_its_two_ramps():
-    up, down = sp.RAMPS[0], sp.RAMPS[1]
-    assert not reached(shut(up.low, down.low, half=110.0), 'lane depot')
-    assert reached(shut(up.low, half=110.0), 'lane depot') and reached(shut(down.low, half=110.0), 'lane depot')
+def test_the_north_district_is_only_its_two_mouths():
+    """K7: the district behind the avenue's north house row is flat ground; the row, the back wall and plaza 1's walls
+    shut it, the lane's two mouths (the openings in the row) are the only ways in."""
+    up, down = (sp.LANE_UP, sp.ROW_N), (sp.LANE_DOWN, sp.ROW_N)
+    assert not reached(shut(up, down, half=110.0), 'lane depot')
+    assert reached(shut(up, half=110.0), 'lane depot') and reached(shut(down, half=110.0), 'lane depot')
+    assert not reached(shut(up, down, half=110.0), 'lane mouth')
+
+
+def test_the_south_block_is_unreachable():
+    """The south street block is backdrop: its front row, its east wall and the sea shut it, nobody walks there."""
+    x, y = platmap._cells(platmap.CONTAINER)
+    inside = (x > 200) & (x < sp.WEST_END - 150) & (y > sp.SB_FRONT + 60) & (y < sp.ROW_S - 40)
+    reach = platmap.reach(WALK, sp.START[0], sp.START[1])
+    assert WALK[inside].any() and not (reach & inside).any()
 
 
 def test_the_north_comes_to_the_road_by_its_mouths():

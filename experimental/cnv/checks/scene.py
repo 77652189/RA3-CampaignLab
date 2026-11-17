@@ -44,3 +44,9 @@ def look(m):
                  ('奖励目标亮了', 1, 'ever==', 1), ('亮早了', 1, '==', 0)]
     t.bench = [('bench_watch', dict(seconds=RUN, every=2, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'scene': {'look': look},
+}

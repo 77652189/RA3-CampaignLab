@@ -105,3 +105,15 @@ def loose_turrets(m):
     t.expect += [('C 铁锤血量', 3, 'ever<', 100)]
     t.bench = [('bench_watch', dict(seconds=30, every=3, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'liberty': {'jump': jump, 'open': jump_open},
+    'liberty_turrets': {'fire': deck_turrets},
+    'liberty_loose': {'fire': loose_turrets},
+    'liberty_riders': {'jump': jump},
+}
+
+# a build that is its own pair of mission and test (cnv/registry.py)
+PAIR_BUILDS = {'liberty_ride_ab': ride_ab}

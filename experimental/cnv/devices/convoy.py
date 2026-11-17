@@ -14,6 +14,9 @@ from missions import festival_parts as fp
 from parts import Script
 
 
+HIT_SECS = 6.0
+
+
 class Convoy(Device):
     WHAT = '三辆车按时间表开向终点，玩家护送但指挥不了'
     PARAMS = {'出发': '条件：车队什么时候出发', '每隔': '秒：每隔多久重新给车下一次命令（默认 3）',
@@ -23,49 +26,61 @@ class Convoy(Device):
               '分批': '每辆车在出发后多少秒才开，例如 [0, 50, 110]（默认一起开；原版敖德萨的船一艘接一艘）',
               '分批从': '出发（默认）或 继续：写 继续 时出发一起开，停下以后 继续 那一刻起才按 分批 一辆接一辆开'
                        '（A4 返工：一起开到 2 号广场，最后一程分批走）'}
-    EVENTS = {'出发': '车队出发了', '到达 <地点>': '第一辆车开进这个地点', '到终点 <n>': '已有 n 辆车到达终点',
-              '损失 <n>': '已有 n 辆车被毁', '继续了': '动作 继续 做过了（停下以后又开了）'}
+    EVENTS = {'出发': '车队出发了', '到达 <地点>': '第一辆车开进这个地点',
+              '到齐 <地点>': '队尾那辆还活着的车开进这个地点（前面的都已过去：过场不抢在车还在路上时开始）','到终点 <n>': '已有 n 辆车到达终点',
+              '损失 <n>': '已有 n 辆车被毁', '继续了': '动作 继续 做过了（停下以后又开了）',
+              '挨打': '有一辆车刚掉了血（血量每掉到 90、80 ……% 以下算一次；之后 6 秒内成立；毁了的车一口气掉到 0 也算）'}
     ACTIONS = {'停下': '车队停在原地', '继续': '车队接着开'}
     TARGET = '最前面那辆还在路上的车'
 
-    def __init__(self, c, name, spec):
-        super().__init__(c, name, spec)
+    def __init__(self, ctx, name, spec):
+        super().__init__(ctx, name, spec)
         self.tick = float(spec.get('每隔', 3.0))
-        from plan import PlanError
+        from plantime import PlanError
         who = spec.get('车', '我')
-        if who not in c.side:
-            raise PlanError(f'{name}: 车 {who!r} is none of {sorted(c.side)}')
-        self.cv = fp.Convoy(self.m, c.tag, c.side[who], 0.0, self.tick, speed=float(spec.get('速度', 50.0)))
+        if who not in ctx.side_names():
+            raise PlanError(f'{name}: 车 {who!r} is none of {ctx.side_names()}')
+        self.cv = fp.Convoy(ctx, ctx.tag, ctx.side(who), 0.0, self.tick, speed=float(spec.get('速度', 50.0)))
         self.batches = [float(x) for x in spec.get('分批') or []]
+        self.cv.split = bool(self.batches)           # a team a truck: a later truck is not swept along by the first's order
         if self.batches and len(self.batches) != len(self.cv.trucks):
             raise PlanError(f'{name}: 分批 gives one time per truck ({len(self.cv.trucks)})')
-        self.go = [f'CNV_{c.tag}_Go_{j}' for j in range(1, len(self.cv.trucks) + 1)]
+        self.go = [f'CNV_{ctx.tag}_Go_{j}' for j in range(1, len(self.cv.trucks) + 1)]
         self.batch_from = spec.get('分批从', '出发')
         if self.batch_from not in ('出发', '继续'):
             raise PlanError(f'{name}: 分批从 {self.batch_from!r} is 出发 or 继续')
         if self.batch_from == '继续' and not self.batches:
             raise PlanError(f'{name}: 分批从 继续 without 分批')
-        self.resumed = f'CNV_{c.tag}_Resumed'
-        self.halted = f'CNV_{c.tag}_Halted'
+        self.resumed = f'CNV_{ctx.tag}_Resumed'
+        self.halted = f'CNV_{ctx.tag}_Halted'
+        self.hit = f'CNV_{ctx.tag}_Hit'
+        self.hit_timer = f'CNV {ctx.tag} Hit'
         self.holds = [self.halted]                  # flags that keep it parked (停下; hold() adds more)
         self.attacks = 0
         code = self.cv.code
-        self.m.strings.setdefault(f'SCRIPT:{code}_GO', '车队出发了。')
-        self.m.strings.setdefault(f'SCRIPT:{code}_SAFE', '一辆车到达终点。')
+        ctx.string(f'SCRIPT:{code}_GO', '车队出发了。', keep=True)
+        ctx.string(f'SCRIPT:{code}_SAFE', '一辆车到达终点。', keep=True)
 
     def cond(self, event, args):
         cv = self.cv
         if event == '出发':
             return [[('FLAG', cv.rolling, 1)]]
         if event == '到达':
-            area = self.c.area(' '.join(args))
+            area = self.ctx.area(' '.join(args))
             return [[('NAMED_INSIDE_AREA', t, area)] for t in cv.trucks]
+        if event == '到齐':                          # the rearmost truck still alive is there: none left behind
+            area = self.ctx.area(' '.join(args))
+            ts = self.cv.trucks
+            return [[('NAMED_DESTROYED', t) for t in ts[k + 1:]] + [('NAMED_INSIDE_AREA', ts[k], area)]
+                    for k in range(len(ts) - 1, -1, -1)]
         if event == '到终点':
             return [[('COUNTER', cv.arrived, 3, int(args[0]))]]
         if event == '损失':
             return [[('COUNTER', cv.losses, 3, int(args[0]))]]
         if event == '继续了':
             return [[('FLAG', self.resumed, 1)]]
+        if event == '挨打':
+            return [[('FLAG', self.hit, 1)]]
         return super().cond(event, args)
 
     def action(self, what, args):
@@ -73,7 +88,7 @@ class Convoy(Device):
             # 分批从 继续: stopped, the trucks after the first wait for their time after the 继续
             late = [('SET_FLAG', g, 0) for g, after in zip(self.go, self.batches) if after] \
                 if self.batch_from == '继续' else []
-            return [('SET_FLAG', self.halted, 1)] + late + [('NAMED_STOP', t) for t in self.cv.trucks]
+            return [('SET_FLAG', self.halted, 1)] + late + self.cv.order('stop', self.cv.trucks)
         if what == '继续':
             return [('SET_FLAG', self.halted, 0), ('SET_FLAG', self.resumed, 1)]
         return super().action(what, args)
@@ -81,37 +96,62 @@ class Convoy(Device):
     def hold(self, flag):
         """Keep the convoy parked while `flag` is 1 (as 停下 does); returns the actions that stop the trucks now."""
         self.holds.append(flag)
-        return [('NAMED_STOP', t) for t in self.cv.trucks]
+        return self.cv.order('stop', self.cv.trucks)
 
     def attack(self, names):
         """Every tick, at the leading truck still on the road (bench 2026-10-23: sent toward the exit they ran ahead of
         the convoy at its own speed and never fired on it)."""
-        cv = self.cv
+        cv, ctx = self.cv, self.ctx
         self.attacks += 1                           # one set per wave (names cut short collided, review 2026-10-24)
-        return [Script(f'CNV {self.c.tag} - Convoy target {self.attacks} at {j + 1}',
-                       [('TIMER_EXPIRED', cv.timer)] + cv.chase(j), [('NAMED_ATTACK_NAMED', n, t) for n in names],
+        return [Script(f'CNV {self.ctx.tag} - Convoy target {self.attacks} at {j + 1}',
+                       [('TIMER_EXPIRED', cv.timer)] + cv.chase(j), ctx.order('attack', names, t, 's1'),
                        once=False) for j, t in enumerate(cv.trucks)]
 
     def scripts(self):
-        import plan
-        self.c.when('Convoy go', self.spec['出发'], self.cv.go()[0].do)
+        import plantime
+        self.ctx.when('Convoy go', self.spec['出发'], self.cv.go()[0].do)
         for j, (after, g) in enumerate(zip(self.batches, self.go)):    # 分批: truck j once its time is up
             if self.batch_from == '继续':                 # all at the departure; in turn after the 继续
-                self.c.when(f'Convoy go {j + 1}', f'{self.name}.出发', [('SET_FLAG', g, 1)])
+                self.ctx.when(f'Convoy go {j + 1}', f'{self.name}.出发', [('SET_FLAG', g, 1)])
                 if after:
-                    self.c.when(f'Convoy resume {j + 1}', f'{self.name}.继续了 + {after:g}', [('SET_FLAG', g, 1)])
+                    self.ctx.when(f'Convoy resume {j + 1}', f'{self.name}.继续了 + {after:g}', [('SET_FLAG', g, 1)])
                 continue
-            self.c.when(f'Convoy go {j + 1}', f'{self.name}.出发' + (f' + {after:g}' if after else ''),
+            self.ctx.when(f'Convoy go {j + 1}', f'{self.name}.出发' + (f' + {after:g}' if after else ''),
                         [('SET_FLAG', g, 1)])
         # the tick runs before the convoy sets off too: what attacks it (a wave the player called early, troops out
         # of a broken sculpture) waits on the tick, and a timer never set never runs out
-        out = [Script(f'CNV {self.c.tag} - Tick before', [], [('SET_MILLISECOND_TIMER', self.cv.timer, 0.0)])]
+        out = [Script(f'CNV {self.ctx.tag} - Tick before', [], [('SET_MILLISECOND_TIMER', self.cv.timer, 0.0)])]
+        # a truck lost: the ones still waiting go now (user 2026-11-03: two trucks left, one drove, the other waited its
+        # 50-110 s, and the one driving was shot -- two lost, the mission over). Staggering is for a full convoy.
+        started = ('FLAG', self.resumed, 1) if self.batch_from == '继续' else ('FLAG', self.cv.rolling, 1)
+        for j, g in enumerate(self.go[:len(self.batches)]):
+            for i, lost in enumerate(self.cv.trucks):
+                if i != j:
+                    out.append(Script(f'CNV {self.ctx.tag} - Release {j + 1} after truck {i + 1} lost',
+                                      [started, ('NAMED_DESTROYED', lost), ('FLAG', f'CNV_{self.ctx.tag}_Safe_{i + 1}', 0)],
+                                      [('SET_FLAG', g, 1)]))     # (a truck that got there is deleted, not lost)
         if self.spec.get('血量') is not None:      # retail Iga: NAMED_SET_MAX_HEALTH by difficulty, full health too
             there = [('FLAG', self.cv.rolling, 1)] if self.cv.enter else []     # trucks made at the departure
-            for levels, v in plan.by_level(plan.counts(self.spec['血量'])):
-                out.append(Script(f'CNV {self.c.tag} - Truck health' + ('' if levels == plan.ALL else
-                                                                       f' {plan.TAGS[levels.index(True)]}'),
+            for levels, v in plantime.by_level(plantime.counts(self.spec['血量'])):
+                out.append(Script(f'CNV {self.ctx.tag} - Truck health' + ('' if levels == plantime.ALL else
+                                                                       f' {plantime.TAGS[levels.index(True)]}'),
                                   there, [('NAMED_SET_MAX_HEALTH', t, v, 1) for t in self.cv.trucks], levels=levels))
+        out += self.hit_scripts()
+        return out
+
+    def hit_scripts(self):
+        # 事件 挨打: a truck's health going under 90, 80 ... % sets the flag for HIT_SECS (the engine keeps no pulse
+        # for a hit; health bands it does keep, the checks read health the same way)
+        tag = self.ctx.tag
+        out = []
+        for j, t in enumerate(self.cv.trucks, 1):
+            for b in range(90, 0, -10):
+                seen = f'CNV_{tag}_HitSeen_{j}_{b}'
+                out.append(Script(f'CNV {tag} - Hit {j} under {b}', [('UNIT_HEALTH', t, 0, b), ('FLAG', seen, 0)],
+                                  [('SET_FLAG', seen, 1), ('SET_FLAG', self.hit, 1),
+                                   ('SET_MILLISECOND_TIMER', self.hit_timer, HIT_SECS)]))
+        out.append(Script(f'CNV {tag} - Hit over', [('FLAG', self.hit, 1), ('TIMER_EXPIRED', self.hit_timer)],
+                          [('SET_FLAG', self.hit, 0)], once=False))
         return out
 
     def last(self):
@@ -120,25 +160,25 @@ class Convoy(Device):
         roll = self.cv.roll()[0]
         roll.when = roll.when + [('FLAG', h, 0) for h in self.holds]
         if self.batches:
-            sends = [Script(f'CNV {self.c.tag} - Roll {j + 1}', roll.when + [('FLAG', g, 1)],
-                            [('MOVE_NAMED_UNIT_TO', t, self.cv.exit)], once=False)
+            sends = [Script(f'CNV {self.ctx.tag} - Roll {j + 1}', roll.when + [('FLAG', g, 1)],
+                            self.cv.order('move', [t], self.cv.exit), once=False)
                      for j, (t, g) in enumerate(zip(self.cv.trucks, self.go))]
-            roll.do = [a for a in roll.do if a[0] != 'MOVE_NAMED_UNIT_TO']
+            roll.do = [a for a in roll.do if a[0] not in ('UNIT_SET_TEAM', 'MOVE_TEAM_TO')]
             roll = sends + [roll]
         else:
             roll = [roll]
         # stopped, the tick still runs (scripts waiting on it would otherwise fire every frame): no moves
-        wait = [Script(f'CNV {self.c.tag} - Roll held' + (f' {k}' if k else ''),
+        wait = [Script(f'CNV {self.ctx.tag} - Roll held' + (f' {k}' if k else ''),
                        [('FLAG', self.cv.rolling, 1), ('TIMER_EXPIRED', self.cv.timer), ('FLAG', h, 1)],
                        [('SET_MILLISECOND_TIMER', self.cv.timer, self.tick)], once=False)
                 for k, h in enumerate(self.holds)]
-        parked = Script(f'CNV {self.c.tag} - Roll parked', [('FLAG', self.cv.rolling, 0), ('TIMER_EXPIRED', self.cv.timer)],
+        parked = Script(f'CNV {self.ctx.tag} - Roll parked', [('FLAG', self.cv.rolling, 0), ('TIMER_EXPIRED', self.cv.timer)],
                         [('SET_MILLISECOND_TIMER', self.cv.timer, self.tick)], once=False)
         return roll + wait + [parked] + self.cv.tail()
 
     def facts(self):
         out = {'tick': self.tick}
         mm = re.match(r'^段\s+(.+?)(\s+开始)?$', str(self.spec.get('出发', '')).strip())
-        if mm and f'段 {mm.group(1)}' in self.m.facts:
-            out['convoy leaves'] = self.m.facts[f'段 {mm.group(1)}']
+        if mm and self.ctx.has_fact(f'段 {mm.group(1)}'):
+            out['convoy leaves'] = self.ctx.fact(f'段 {mm.group(1)}')
         return out

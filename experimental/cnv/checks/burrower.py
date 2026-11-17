@@ -61,3 +61,9 @@ def deliver(m):
     # no early stop: the frames after the unload show where the conscripts went
     t.bench = [('bench_watch', dict(seconds=SURFACE_BY + 14, every=2, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'burrower': {'pass': burrow_pass, 'drop': deliver},
+}

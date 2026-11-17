@@ -1,0 +1,3 @@
+# aihotdef: run_queue 2026-11-14T17:58:44 head d51166fd PASS; one line a range start
+坦克总数 坦克在家 到目标
+s1 2 2 0

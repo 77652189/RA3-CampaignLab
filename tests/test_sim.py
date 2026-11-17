@@ -53,6 +53,63 @@ def test_a_unit_walks_the_map_at_its_speed():
     assert s.ending[0] == '赢' and straight / 50 - 3 <= s.ending[1] <= 1.6 * straight / 50
 
 
+def test_a_cryo_beam_slows_by_steps_then_freezes_and_a_frozen_unit_breaks_at_a_touch():
+    """ALIGN 'freeze' (INFERRED from the SDK data): the cryocopter's beam (75 a second) against a Hammer tank (550,
+    BaseVehicle's tracker melting 25 a second): speed 80 % from 110 cold, ... frozen at 550 -- stopped, silent,
+    CryoBeamFrozenArmor (90000 %): a peacekeeper's shotgun (26.7 a second, 20 s for 550) kills it within a second."""
+    m = mission([])
+    s = sim.Sim(m)
+    a = festival.SITES['west field']
+    s.add('cop', 'AlliedSupportAircraft', s.foe, a.x, a.y)
+    tank = s.add('tank', 'SovietAntiVehicleVehicleTech1', s.human, a.x + 100, a.y)
+    s.run(3)
+    # the Hammer's campaign speed (CampaignOverrides: 60, not its base 75 -- engine_topple; the unit table reads
+    # the override since round 139)
+    assert tank.cold_step == 0 and abs(tank.speed - 0.8 * 60.0) < 1e-6
+    s.run(13)
+    assert 'UNDER_FROZEN' in tank.status and tank.speed == 0 and tank.alive and tank.hp == tank.max_hp
+    s.add('gi', 'AlliedAntiInfantryInfantry', s.foe, a.x + 130, a.y)
+    s.run(14)
+    assert not tank.alive
+
+
+def test_an_unnamed_create_makes_a_new_object_each_time_on_the_team():
+    """CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT (was ignored): each action one more object, no name, on that team at the
+    waypoint; an unnamed-type reference finds it (it is unnamed: '#'). On Soviet_4: Soviet_1's would be taken off the
+    team after the first frame (the container's Lib_Skirmish_Setup: test_the_containers_ai_players_lose_their_teams)."""
+    team = 'Soviet_4/teamSoviet_4'
+    m = mission([Script('make', [], [('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'JapanAntiInfantryInfantry', team, 'A'),
+                                     ('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', 'JapanAntiInfantryInfantry',
+                                      team, 'A', 90.0),
+                                     ('SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER',
+                                      'JapanAntiInfantryInfantry', 'Soviet_4', team, 'R')])])
+    a = festival.SITES['start']
+    m.waypoints = {'A': (a.x, a.y)}
+    s = sim.Sim(m).run(1)
+    made = [b for b in s.bodies.values() if b.template == 'JapanAntiInfantryInfantry']
+    assert len(made) == 2 and all(b.name.startswith('#') and b.team == team and b.owner == 'Soviet_4' for b in made)
+    assert all(abs(b.x - a.x) < 1 and abs(b.y - a.y) < 1 for b in made)
+    assert sorted(b.angle for b in made) == [0.0, 90.0]
+    assert s.refs.get('R') in made
+
+
+def test_the_containers_ai_players_lose_their_teams():
+    """The container hands Soviet_1 to the skirmish AI (model.handed_to_ai): after the first frame's scripts its units
+    are on no team (bench 11-09 engine_scripts9 memb2 / memb3; a unit made in that frame: INFERRED alike); one made
+    later joins its team as ever."""
+    team = 'Soviet_1/teamSoviet_1'
+    m = mission([Script('make', [], [('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'JapanAntiInfantryInfantry', team, 'A'),
+                                     ('SET_MILLISECOND_TIMER', 'later', 1.0)]),
+                 Script('later', [('TIMER_EXPIRED', 'later')],
+                        [('CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', 'JapanAntiInfantryInfantry', team, 'A')])])
+    a = festival.SITES['start']
+    m.waypoints = {'A': (a.x, a.y)}
+    s = sim.Sim(m).run(3)
+    made = sorted(b.team for b in s.bodies.values() if b.template == 'JapanAntiInfantryInfantry')
+    assert made == ['', team]
+    assert 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT' not in s.unknown
+
+
 def test_a_route_runs_from_where_the_unit_stands():
     """The route from the start to the west field begins at the start and is not much longer than the straight line
     (the first simulator reversed it twice: a unit went straight at its goal, walked the route back to where it set
@@ -62,7 +119,8 @@ def test_a_route_runs_from_where_the_unit_stands():
     path = sim.Ground(festival).route('ground', (a.x, a.y), (b.x, b.y))
     d = lambda p, q: ((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2) ** 0.5           # noqa: E731
     walk = sum(d(p, q) for p, q in zip([(a.x, a.y)] + path, path))
-    assert d(path[0], (a.x, a.y)) < d(path[0], (b.x, b.y)) and path[-1] == (b.x, b.y)
+    # its first leg heads for the goal (since 11-09 a straight way is pulled to one leg: Ground.pull)
+    assert d(path[0], (b.x, b.y)) < d((a.x, a.y), (b.x, b.y)) and path[-1] == (b.x, b.y)
     assert walk <= 1.6 * d((a.x, a.y), (b.x, b.y))
 
 
@@ -153,10 +211,14 @@ def test_no_level_has_a_static_problem():
     """Every level as built: it can be won, each phase can be reached, each main objective gets its tick (a hold-out
     objective with no 完成 of its own is ticked by the win: plan.py compile_endings)."""
     import build
+    from test_landings import LEFT, found
     bad = []
     for lv in build.LEVELS:
         m, t, _ = build.resolve(lv, '')
-        bad += [f'{lv}: {x.strip()}' for x in simstatic.report(m) if '问题' in x]
+        # the landing finding is test_landings' (one list, ADR 0016): a level whose only unlanded amphibian is listed
+        # there (A4's Ghost King transport, R7) is not reported twice
+        listed = found(lv) and all(x.startswith(LEFT) for x in found(lv))
+        bad += [f'{lv}: {x.strip()}' for x in simstatic.report(m) if '问题' in x and not (listed and '上岸' in x)]
     assert not bad, '\n'.join(bad)
 
 
@@ -194,7 +256,10 @@ A4_WALKTHROUGH = '''不打; 自动打掉 5
 0 派 guardian 去 plaza 1; 0 派 riptide 去 plaza 1; 50 造 CNV_A4IceWall 在 inside 2
 85 派 guardian 去 harbour; 85 派 riptide 去 harbour
 165 派 guardian 去 north factory; 165 派 riptide 去 north barracks; 180 摧毁 north factory; 180 摧毁 north barracks
-200 造 CNV_A4IceWall 在 inside 3; 210 派 guardian 去 halt; 210 派 riptide 去 halt'''
+200 造 CNV_A4IceWall 在 inside 3; 210 派 guardian 去 halt; 210 派 riptide 去 halt
+80 造 CNV_A4IceWall 在 inside 2; 110 造 CNV_A4IceWall 在 inside 2; 140 造 CNV_A4IceWall 在 inside 2
+170 造 CNV_A4IceWall 在 inside 2; 200 造 CNV_A4IceWall 在 inside 2'''
+# the walls melt after their 30 s (R1, sim.Sim.expire): the player freezes plaza 2 again as each goes
 
 
 def test_a4_before_the_rework_can_be_won():
@@ -216,3 +281,257 @@ def test_low_ground_does_not_see_high_ground():
     assert w == 160 and g < 480
     g, w = run('高地不挡')
     assert w < 160 and g < 480
+
+
+def test_a_placed_objects_starting_health():
+    """objectInitialHealth (the map's starting health, in percent) is the unit's health from the start: A7's `win`
+    check places the carrier at 1 %, so its forced landing (at 10 %) starts at once and the mission is won when it is
+    down at the base edge with our tanks there (bench 2026-11-04 PASS within LAND_BY). Before, the simulator placed it
+    at 100 % and the run lost at 8:44."""
+    import build
+    from checks import a7
+    m, t, _ = build.resolve('a7', 'win')
+    s = sim.Sim(m, t, script='').run(a7.LAND_BY)
+    assert 1.0 <= s.bodies[m.role('carrier').name].health < 10.0    # still under the forced landing's 10 % (its AutoHeal mends a little: round 7)
+    assert s.ending and s.ending[0] == '赢' and s.ending[1] <= a7.LAND_BY, s.ending
+
+
+# ---- Sim.unmodeled: what a run met and the simulator does not act on, recorded in one place (Sim.gap)
+
+def test_acted_status_is_what_the_source_tests():
+    """sim.ACTED_STATUS (what a status-bit gap is measured against) holds every `'X' in b.status` test in the
+    simulator's files (simcoverage.status_modelled reads them: simcoverage.sim_files) (IN_STASIS, UNDER_FROZEN: tested
+    on the modifiers' bits in Sim.modify; SOLD: set by Sim.sell; GENERIC_TOGGLE_STATE:
+    the mirage aura's ObjectStatusValidation, Sim.cloaked, tested through the module's own set;
+    NO_COLLISIONS: the MetaImpact XML status_exclude list, consumed through a variable;
+    native keep/remove-exclusion replays live in tests/test_meta_statusgate.py)."""
+    import simcoverage
+    assert simcoverage.status_modelled() | {'UNDER_FROZEN', 'SOLD', 'GENERIC_TOGGLE_STATE', 'NO_COLLISIONS'} == \
+        sim.ACTED_STATUS
+
+
+def test_a_run_records_what_it_does_not_model():
+    """An unknown action and condition, a status bit nothing acts on, a button with no effect: each one entry under its
+    kind (the refined name simcoverage reports), counted, with the first time; a bit the fight acts on is no gap."""
+    m = mission([Script('make', [], [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'W', 'JapanAntiInfantryInfantry',
+                                      'Soviet_1/teamSoviet_1', 'A')]),
+                 Script('do', [('TIMER_EXPIRED', 'T')], [('UNIT_CHANGE_OBJECT_STATUS', 'W', 'DISGUISED', 1),
+                                                          ('UNIT_CHANGE_OBJECT_STATUS', 'W', 'NO_ATTACK', 1),
+                                                          ('NAMED_USE_COMMANDBUTTON_ABILITY', 'W', 'Command_Nothing'),
+                                                          ('MADE_UP_ACTION', 1)]),
+                 Script('timer', [], [('SET_MILLISECOND_TIMER', 'T', 2.0)]),
+                 Script('ask', [('MADE_UP_CONDITION', 1)], [WON])])
+    a = festival.SITES['start']
+    m.waypoints = {'A': (a.x, a.y)}
+    s = sim.Sim(m).run(5)
+    got = {k: g['n'] for k, g in s.unmodeled.items()}
+    assert got[(sim.GAP_ACTION, 'UNIT_CHANGE_OBJECT_STATUS:DISGUISED')] == 1
+    assert (sim.GAP_ACTION, 'UNIT_CHANGE_OBJECT_STATUS:NO_ATTACK') not in got
+    assert got[(sim.GAP_ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY:Command_Nothing')] == 1
+    assert got[(sim.GAP_ACTION, 'MADE_UP_ACTION')] == 1 and s.unknown['MADE_UP_ACTION'] == 1
+    assert got[(sim.GAP_CONDITION, 'MADE_UP_CONDITION')] > 1             # asked every tick
+    assert 1.9 <= s.unmodeled[(sim.GAP_ACTION, 'MADE_UP_ACTION')]['t'] <= 2.2
+    assert s.unmodeled[(sim.GAP_CONDITION, 'MADE_UP_CONDITION')]['t'] < 0.2
+    assert any('Sim.unmodeled' in line for line in s.report())
+
+
+def test_a_unit_whose_guns_are_not_read_is_a_gap(monkeypatch):
+    """A unit whose XML names weapons and the fight reads none is recorded under 武器 (once a template, counted)."""
+    monkeypatch.setattr(sim.simunits, 'fight', lambda t, own=None: dict(hp=None, armor={}, weapons=[]))
+    m = mission([Script('make', [], [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', w, 'JapanAntiInfantryInfantry',
+                                      'Soviet_1/teamSoviet_1', 'A') for w in ('W', 'V')])])
+    a = festival.SITES['start']
+    m.waypoints = {'A': (a.x, a.y)}
+    s = sim.Sim(m).run(1)
+    g = s.unmodeled[(sim.GAP_WEAPON, 'JapanAntiInfantryInfantry')]
+    assert g['n'] == 2 and g['what'].startswith('XML 有 JapanAntiInfantryInfantryWeapon')
+
+
+def test_a_build_line_queues_at_the_factory_and_pays():
+    """`2 生产 AlliedEngineer 在 barracks 1`: queued at that barracks (order_build), 500 paid as it builds, out
+    10 s + the door later (bench engine_production a / e: 帧数 160)."""
+    import build
+    m, t, _ = build.resolve('engine_production', 'a')
+    s = sim.Sim(m, t, script='2 生产 AlliedEngineer 在 barracks 1')
+    s.advance(15)
+    start = s.money.get(s.human)
+    s.advance(14 * 15)
+    out = [e for e in s.log if e[1] == '生产' and '出 AlliedEngineer' in e[2]]
+    assert start - s.money.get(s.human) == 500 and out and abs(out[0][0] - (2 + 160 / 15)) < 0.1
+
+
+def test_a_mission_unit_whose_file_opens_with_a_long_preamble_still_inherits_its_base():
+    """CNV_IceEngineer's file opens with its includes and defines; its GameObject (inheritFrom BaseInfantry) sat past
+    the first 2000 characters, so every _inherited reading (the freeze among them) lost the chain."""
+    su = sim.simunits
+    xml = ('<?xml version="1.0"?>\n<AssetDeclaration>\n<!--' + ' preamble ' * 400 + '-->\n'
+           '<GameObject id="CNV_Probe" inheritFrom="BaseInfantry" KindOf="INFANTRY">\n'
+           '<ArmorSet Armor="AlliedEngineerArmor" />\n</GameObject>\n</AssetDeclaration>')
+    assert xml.index('<GameObject') > 2000
+    assert su.parent(xml, 'CNV_Probe') == 'BaseInfantry'
+    tracker, frozen = su.freeze('CNV_Probe', {'CNV_Probe': xml})
+    assert tracker and tracker['steps'] and frozen is not None
+
+
+def _road(loop=False):
+    """A three-waypoint path 'Road' along festival's road (R1 -> R2 -> R3, or round again), and a Sim on it."""
+    m = mission([])
+    pts = {'R1': festival.SITES['approach 1'], 'R2': festival.SITES['approach 2'], 'R3': festival.SITES['halt']}
+    m.waypoints = {n: (p.x, p.y) for n, p in pts.items()}
+    m.path('Road', 'R1', 'R2', 'R3', loop=loop)
+    return sim.Sim(m)
+
+
+def _legs(s, bodies, until):
+    """The waypoints each body was sent to on its path, in order, stepping the Sim to `until`."""
+    seen = {b.name: [] for b in bodies}
+    while s.t < until:
+        t = s.t
+        s.run(s.t)                                  # one tick (Sim.run steps while t <= until, then moves t on)
+        if s.t == t:                                # all quiet: Sim.run stops without a tick
+            break
+        for b in bodies:
+            at = b.follow and b.follow['at']
+            if at and (not seen[b.name] or seen[b.name][-1] != at):
+                seen[b.name].append(at)
+    return seen
+
+
+def test_a_unit_follows_a_waypoint_path_from_the_nearest_waypoint_to_its_end():
+    """NAMED_FOLLOW_WAYPOINTS (Sim.order_follow): joins the path at its waypoint nearest the unit (Generals'
+    getClosestWaypointOnPath), goes on by the links, off the path at its end; one made by R2 starts there;
+    _STARTING_AT_WAYPOINT starts where it is told."""
+    s = _road()
+    a = s.add('a', 'JapanAntiInfantryInfantry', s.foe, s.waypoints['R1'][0] - 300, s.waypoints['R1'][1])
+    b = s.add('b', 'JapanAntiInfantryInfantry', s.foe, s.waypoints['R2'][0] - 40, s.waypoints['R2'][1])
+    c = s.add('c', 'JapanAntiInfantryInfantry', s.foe, s.waypoints['R2'][0] + 40, s.waypoints['R2'][1])
+    s.act('NAMED_FOLLOW_WAYPOINTS', ['a', 'Road'], None)
+    s.act('NAMED_FOLLOW_WAYPOINTS_EXACT', ['b', 'Road'], None)
+    s.act('NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT', ['c', 'Road', 'R1'], None)
+    seen = _legs(s, [a, b, c], 120)
+    assert seen == {'a': ['R1', 'R2', 'R3'], 'b': ['R2', 'R3'], 'c': ['R1', 'R2', 'R3']}
+    end = s.waypoints['R3']
+    for u in (a, b, c):
+        assert u.follow is None and not u.path and ((u.x - end[0]) ** 2 + (u.y - end[1]) ** 2) ** 0.5 < 60
+
+
+def test_a_loop_goes_round_and_a_new_order_takes_the_unit_off_the_path():
+    """A path that links back to its first waypoint goes round (bench 11-10 engine_waypath loop); MOVE_NAMED_UNIT_TO
+    drops the path."""
+    s = _road(loop=True)
+    a = s.add('a', 'JapanAntiInfantryInfantry', s.foe, s.waypoints['R1'][0] - 300, s.waypoints['R1'][1])
+    s.act('NAMED_FOLLOW_WAYPOINTS', ['a', 'Road'], None)
+    seen = _legs(s, [a], 100)
+    assert seen['a'][:5] == ['R1', 'R2', 'R3', 'R1', 'R2'] and a.follow is not None
+    s.act('MOVE_NAMED_UNIT_TO', ['a', 'R3'], None)
+    assert a.follow is None
+    s.run(s.t + 60)
+    assert a.follow is None
+
+
+def test_a_team_follows_a_path_as_one_with_group_moves():
+    """TEAM_FOLLOW_WAYPOINTS with asTeam: the team joins at the waypoint nearest its middle, one shared leg, each
+    member to the waypoint plus its offset from the team's middle, the next once the first is there (Generals
+    m_moveAsGroup; bench 11-10 engine_waypath team); asTeam off: each its own. An unused team: nothing (E3)."""
+    s = _road()
+    team = 'Soviet_4/teamSoviet_4'          # Soviet_1's loses its members after the first frame (Lib_Skirmish_Setup)
+    x, y = s.waypoints['R1']
+    crew = [s.add(f'u{i}', 'JapanAntiInfantryInfantry', 'Soviet_4', x - 300 - 30 * i, y) for i in range(3)]
+    for u in crew:
+        s.act('UNIT_SET_TEAM', [u.name, team], None)
+    s.act('TEAM_FOLLOW_WAYPOINTS', [team, 'Road', 1, 0], None)
+    assert 'team path' in s.used and crew[0].follow is crew[1].follow is crew[2].follow
+    seen = _legs(s, crew, 150)
+    assert all(v == ['R1', 'R2', 'R3'] for v in seen.values())
+    assert all(u.follow is None and abs(u.x - s.waypoints['R3'][0]) < 150 for u in crew)
+    s.act('TEAM_FOLLOW_WAYPOINTS', [team, 'Road', 0, 0], None)
+    assert len({id(u.follow) for u in crew}) == 3
+    s.act('TEAM_FOLLOW_WAYPOINTS', ['Nobody/teamNobody', 'Road', 1, 0], Script('go', [], []))
+    assert s.lost_orders[-1][2] == 'TEAM_FOLLOW_WAYPOINTS'
+
+
+def test_a_path_follower_loses_no_time_at_its_waypoints():
+    """Sim.move / Body.carry (A round 228): a leg ending mid-tick hands the rest of that tick to the next leg (follow_due
+    gives it only after the tick) -- along the path the unit is speed x time from where it started, every tick but the
+    one ending on the waypoint, until the end; before, each waypoint cost up to a tick (bench engine_waypath near / start went red once turning added a
+    frame)."""
+    import math
+    s = _road()
+    x, y = s.waypoints['R1']
+    a = s.add('a', 'JapanAntiInfantryInfantry', s.foe, x - 10, y)    # 610 to R2: the leg ends mid-tick (25 a tick)
+    s.act('NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT', ['a', 'Road', 'R2'], None)
+    pts = [(x - 10, y), s.waypoints['R2'], s.waypoints['R3']]
+    legs = [math.dist(p, q) for p, q in zip(pts, pts[1:])]
+
+    def along():
+        for k, (p, q) in enumerate(zip(pts, pts[1:])):
+            if abs(math.dist(p, (a.x, a.y)) + math.dist((a.x, a.y), q) - legs[k]) < 1e-6 and \
+                    (k == len(legs) - 1 or math.dist((a.x, a.y), q) > 1e-9):
+                return sum(legs[:k]) + math.dist(p, (a.x, a.y))
+        raise AssertionError((a.x, a.y))
+    t0, ticks = s.t, 0
+    while a.follow is not None or a.path:
+        s.run(s.t)
+        ticks += 1
+        if math.dist((a.x, a.y), pts[1]) > 1e-9:      # at R2 the tick's rest waits for the next leg (carry)
+            assert abs(along() - min(sum(legs), a.speed * sim.DT * ticks)) < 1e-6, (ticks, along())
+    assert math.dist((a.x, a.y), pts[-1]) < 1e-6 and ticks == math.ceil(sum(legs) / (a.speed * sim.DT))
+
+
+def _hammer_facing_south():
+    import math
+    s = sim.Sim(mission([]))
+    a = festival.SITES['west field']
+    tank = s.add('tank', 'SovietAntiVehicleVehicleTech1', s.human, a.x, a.y)
+    tank.angle = -math.pi / 2
+    return s, tank, (a.x, a.y)
+
+
+def test_a_unit_ordered_from_standing_turns_in_place_then_drives_and_turns_to_its_facing():
+    """Sim.move / Sim.turn (A round 228; the rates and the bench: tests/test_turn_rate.py): a Hammer facing south sent
+    300 north turns 180 deg in place at 19.2 a frame -- 9 frames to within DRIVE_WITHIN, more than the first 0.5 s tick
+    (7.5 frames): it stands that tick, then drives the rest of the second (60 a second); at the end it turns to the
+    facing it was sent with (east, 90 deg: 5 frames) and only then has stopped moving (simai's Unit.moving, the AI
+    form-up's gate)."""
+    import math
+    import simai
+    s, tank, (x, y) = _hammer_facing_south()
+    assert sim.DRIVE_WITHIN == 9.0 and tank.turn_rate == 288.0
+    s.send(tank, (x, y + 300), face=0.0)
+    s.run(0.0)
+    assert (tank.x, tank.y) == (x, y) and abs(math.degrees(tank.angle) - (-90 + 7.5 * 19.2)) < 1e-6
+    s.run(0.5)
+    assert tank.x == x and 15 < tank.y - y < 30 and abs(tank.angle - math.pi / 2) < 1e-9
+    unit = simai.Unit.__new__(simai.Unit)
+    unit.body = tank
+    while tank.path:
+        s.run(s.t)
+        assert unit.moving
+    assert tank.face is not None and unit.moving        # arrived, not yet turned to its facing
+    s.run(s.t)
+    assert tank.face is None and tank.angle == 0.0 and not unit.moving
+
+
+def test_infantry_ordered_from_standing_walk_off_at_once():
+    """Bench airevit (A round 231, tests/test_turn_rate.py test_infantry_walk_off_turning): a Conscript (its
+    Locomotor has no TurnThresholdHS) facing south sent 300 north walks the whole first tick, no turn in place."""
+    import math
+    s = sim.Sim(mission([]))
+    a = festival.SITES['west field']
+    man = s.add('man', 'SovietAntiInfantryInfantry', s.human, a.x, a.y)
+    man.angle = -math.pi / 2
+    assert man.turn_rate == 720.0 and not man.turn_first
+    s.send(man, (a.x, a.y + 300))
+    s.run(0.0)
+    assert man.x == a.x and abs(man.y - a.y - man.speed * sim.DT) < 1e-6
+
+
+def test_a_driving_unit_takes_a_new_way_without_stopping_to_turn():
+    """Bench airevgt f170 (the attack order given while the Guardians drove): turned on moving frames, no stop."""
+    s, tank, (x, y) = _hammer_facing_south()
+    s.send(tank, (x, y - 300))                          # the way it faces: drives at once
+    s.run(0.0)
+    assert tank.rolling and abs(tank.y - (y - 30)) < 1e-6
+    s.send(tank, (x + 300, y - 30))
+    s.run(0.5)
+    assert abs(tank.x - (x + 30)) < 1e-6

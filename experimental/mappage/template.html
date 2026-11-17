@@ -1,0 +1,882 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a survey table - the map sheet left with its tool strip, the proposal slip and rule ledger right, the simulator's log under both. */
+:root {
+  --bg: #eef2f4; --panel: #ffffff; --ink: #15212b; --muted: #5f6f7c; --rule: #cfd8de;
+  --allied: #245ea6; --enemy: #c0392b; --ice: #2f9fb8; --amber: #b9800f; --ok: #2f8a57; --prop: #8a3fb0;
+  --display: "Noto Serif SC", "Songti SC", serif;
+  --body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e151b; --panel: #151f28; --ink: #e2e9ef; --muted: #93a3b0; --rule: #26343f;
+  --allied: #6fa2e6; --enemy: #ff6e60; --ice: #63cfe3; --amber: #f0b43c; --ok: #5cc98a; --prop: #c58ae6; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e151b; --panel: #151f28; --ink: #e2e9ef; --muted: #93a3b0; --rule: #26343f;
+  --allied: #6fa2e6; --enemy: #ff6e60; --ice: #63cfe3; --amber: #f0b43c; --ok: #5cc98a; --prop: #c58ae6; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font: 16px/1.65 var(--body); }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 24px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 18px; }
+h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(24px, 3.6vw, 34px); font-weight: 900; letter-spacing: .02em; }
+h2 { font-size: 19px; font-weight: 600; }
+p { margin: 0; }
+.eyebrow, .label { font: 500 13px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.note { font-size: 14.5px; color: var(--muted); }
+.head { display: grid; gap: 6px; }
+.head .lede { max-width: 72ch; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font: 500 14px var(--mono); padding: 3px 12px; border-radius: 99px;
+  border: 1px solid currentColor; font-variant-numeric: tabular-nums; }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--enemy); }
+.board { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .board { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 480px) { .tools input[type=range] { width: 72px; } .tools label span { min-width: 0; } }
+.sheet { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--rule); align-items: center; }
+button { font: 500 15px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 4px;
+  padding: 5px 12px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible, textarea:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--allied); outline-offset: 1px; }
+button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+button.primary { background: var(--prop); color: #fff; border-color: var(--prop); }
+button:disabled { opacity: .45; cursor: default; }
+.tools .sep { width: 1px; align-self: stretch; background: var(--rule); margin: 0 4px; }
+.tools label { font-size: 14.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+.mapbox { position: relative; }
+.mapbox svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; }
+.mapbox svg.mode-line, .mapbox svg.mode-note, .mapbox svg.mode-raise, .mapbox svg.mode-lower, .mapbox svg.mode-flatten,
+.mapbox svg.mode-block, .mapbox svg.mode-unblock { cursor: crosshair; }
+.mapbox svg image.terrain { image-rendering: pixelated; }
+.tgroup { display: contents; }
+.tools input[type=range] { width: 96px; }
+.tools label span { font: 500 13px var(--mono); min-width: 7em; font-variant-numeric: tabular-nums; }
+.tlist { margin: 0; padding-left: 18px; font-size: 14.5px; display: grid; gap: 2px; }
+.tlist .bad { color: var(--enemy); } .tlist .good { color: var(--ok); }
+.swatch { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
+.coord { position: absolute; left: 8px; bottom: 8px; font: 500 13px var(--mono); background: rgba(0,0,0,.55); color: #fff;
+  padding: 2px 7px; border-radius: 3px; pointer-events: none; font-variant-numeric: tabular-nums; }
+.zoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.zoom button { width: 34px; height: 34px; padding: 0; font: 600 18px var(--body); background: rgba(0,0,0,.6); color: #fff;
+  border: 1px solid rgba(255,255,255,.35); border-radius: 4px; cursor: pointer; }
+.zoom button.all { font-size: 12px; }
+.zoom button:disabled { opacity: .4; cursor: default; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 8px 12px; border-top: 1px solid var(--rule); font-size: 14px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.side { display: grid; gap: 14px; min-width: 0; }
+.side .sheet { padding: 12px 14px; display: grid; gap: 10px; }
+.slip { border: 1px dashed var(--prop); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
+.slip b { color: var(--prop); }
+textarea { width: 100%; box-sizing: border-box; min-height: 72px; font: 15px/1.55 var(--body); color: var(--ink);
+  background: var(--bg); border: 1px solid var(--rule); border-radius: 4px; padding: 6px 8px; resize: vertical; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; max-height: 360px; overflow: auto; }
+.list li { border-left: 3px solid var(--prop); padding: 4px 8px; display: grid; gap: 2px; font-size: 15px; cursor: pointer; }
+.list li.on { background: color-mix(in srgb, var(--prop) 12%, transparent); }
+.list li .k { font: 500 13px var(--mono); color: var(--muted); }
+.list li .why { color: var(--ink); overflow-wrap: anywhere; }
+.list li .x { justify-self: start; font-size: 14px; padding: 2px 10px; }
+.rules { display: grid; gap: 6px; }
+.rule { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: baseline; }
+.rule .n { font: 500 14px var(--mono); font-variant-numeric: tabular-nums; min-width: 3.2em; }
+.rule .n.ok { color: var(--ok); } .rule .n.bad { color: var(--enemy); }
+.rule .w { font-size: 14px; color: var(--muted); grid-column: 2; }
+.rule ul { grid-column: 2; margin: 2px 0 4px; padding-left: 18px; font-size: 14.5px; color: var(--enemy); }
+.rule li { cursor: pointer; overflow-wrap: anywhere; }
+.status { font-size: 14.5px; color: var(--muted); }
+.status.err { color: var(--enemy); }
+.log { max-height: 420px; overflow: auto; padding: 0 14px 10px; }
+.log table { border-collapse: collapse; width: 100%; font-size: 15px; }
+.log td { padding: 3px 8px 3px 0; vertical-align: top; border-bottom: 1px solid var(--rule); }
+.log td.t { font: 500 14px var(--mono); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.log td.k { white-space: nowrap; font-size: 14px; color: var(--amber); }
+.log td.x { overflow-wrap: anywhere; }
+.loghead { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 12px 14px; }
+select { font: 15px var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 3px 6px; }
+svg text { font-family: var(--body); font-weight: 500; paint-order: stroke; stroke: rgba(10,16,22,.8); fill: #fff; }
+svg tspan.code { fill: #dfe7ee; font-weight: 400; }
+svg line.lead { stroke: #fff; opacity: .85; pointer-events: none; }
+svg text.lab.pop { fill: #ffe9a8; }
+@media (prefers-reduced-motion: no-preference) { .flash { animation: flash 1.2s ease-out 2; } }
+@keyframes flash { 50% { opacity: .2; } }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="title"></h1>
+    <p class="lede">地图、地点、矿和油、规则检查结果、模拟器时间轴，全部在每次生成时从地图模块和关卡代码导出。你可以在图上拖地点、画挡路线、钉批注，也可以抬高、压低、整平地面和画/擦不可通行（实时预览坡度和哪些地点不再平），页面只把它们记成<b>改动提议</b>，地图文件不会被改；关卡线读取提议后改地图模块，再重新生成这一页。</p>
+    <div class="row" id="summary"></div>
+  </header>
+
+  <section class="board">
+    <div class="sheet">
+      <div class="tools" role="toolbar" aria-label="地图工具">
+        <button id="m-move" aria-pressed="true" data-mode="move">拖地点</button>
+        <button id="m-block" aria-pressed="false" data-mode="line">画挡路线</button>
+        <button id="m-note" aria-pressed="false" data-mode="note">钉批注</button>
+        <span class="sep"></span>
+        <span class="tgroup" id="tgroup">
+        <button aria-pressed="false" data-mode="raise">抬高</button>
+        <button aria-pressed="false" data-mode="lower">压低</button>
+        <button aria-pressed="false" data-mode="flatten">整平</button>
+        <button aria-pressed="false" data-mode="block">画不可通行</button>
+        <button aria-pressed="false" data-mode="unblock">擦不可通行</button>
+        <label>半径 <input type="range" id="b-r" min="20" max="300" step="10" value="80"><span id="b-rv"></span></label>
+        <label>强度 <input type="range" id="b-s" min="0.5" max="20" step="0.5" value="3"><span id="b-sv"></span></label>
+        </span>
+        <span class="sep"></span>
+        <label><input type="checkbox" id="l-labels" checked> 地点名</label><span class="note" id="labnote"></span>
+        <label><input type="checkbox" id="l-objects" checked> 物体</label>
+        <label><input type="checkbox" id="l-guides" checked> 规则量线</label>
+        <label><input type="checkbox" id="l-areas"> 触发区</label>
+        <label><input type="checkbox" id="l-props" checked> 提议</label>
+        <label><input type="checkbox" id="l-terrain"> 坡度和通行</label>
+      </div>
+      <div class="mapbox">
+        <svg id="map" role="img" aria-label="地图俯视图"></svg>
+        <div class="coord" id="coord">x —, y —</div>
+        <div class="zoom" role="group" aria-label="缩放">
+          <button id="z-in" title="放大（也可滚轮，或两指张开）" aria-label="放大">+</button>
+          <button id="z-out" title="缩小" aria-label="缩小">−</button>
+          <button id="z-all" class="all" title="看全图" aria-label="看全图">全图</button>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--allied)"></i>地点（可拖）</span>
+        <span><i style="background:var(--ice)"></i>施法点和它的圆</span>
+        <span><i style="background:var(--amber)"></i>矿 / 矿场朝向</span>
+        <span><i style="background:#222;border:1px solid #fff"></i>油井</span>
+        <span><i style="background:var(--enemy)"></i>不合规的地方</span>
+        <span><i style="background:var(--prop)"></i>改动提议</span>
+        <span><i class="swatch" style="background:#e0322a"></i>编辑后新变成不可通行（画在平地上就是<b>看不见的墙：坦克步兵都过不去</b>）</span>
+        <span><i class="swatch" style="background:#2fbf63"></i>编辑后新变成可通行（擦在陡坡上，谁都能爬过去）</span>
+        <span><i class="swatch" style="background:rgba(20,20,20,.6)"></i>不可通行（原样）</span>
+        <span><i class="swatch" style="background:rgba(240,180,60,.7)"></i>陡（快到不可通行）</span>
+        <span><i class="swatch" style="background:rgba(160,80,220,.45)"></i>高度改过</span>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="sheet">
+        <h2>改动提议</h2>
+        <div id="slip"><p class="note" id="hint"></p></div>
+        <p class="status" id="dbstatus">正在连接提议存储…</p>
+        <ul class="list" id="props"></ul>
+      </div>
+      <div class="sheet" id="tsheet">
+        <h2>地形预览</h2>
+        <p class="note" id="tnote"></p>
+        <ul class="tlist" id="tlist"></ul>
+        <div id="srvbox" hidden>
+          <button id="srvprev">让本机服务算全部规则</button>
+          <p class="note" id="srvnote">已存的地形提议加上正在画的，套在构建出的地图上，跑和 build.py --show 同一套 contract。</p>
+          <ul class="tlist" id="srvlist"></ul>
+        </div>
+      </div>
+      <div class="sheet">
+        <h2>规则检查</h2>
+        <p class="note" id="rulenote"></p>
+        <div class="rules" id="rules"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" aria-label="模拟器时间轴">
+    <div class="loghead">
+      <div><h2>模拟器时间轴</h2><p class="note" id="ending"></p></div>
+      <label class="note">只看 <select id="kind"><option value="">全部</option></select></label>
+    </div>
+    <div class="log"><table><tbody id="log"></tbody></table></div>
+  </section>
+</div>
+
+<script>
+__TERRAIN_JS__
+</script>
+<script>
+__LABELS_JS__
+</script>
+<script>
+__VIEW_JS__
+</script>
+<script>
+const D = __DATA__;
+const IMG = "__IMG__";
+const $ = (id) => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const [X0, Y0, X1, Y1] = D.world;
+const W = X1 - X0, H = Y1 - Y0;
+const sx = (x) => x - X0, sy = (y) => Y1 - y;
+const wx = (px) => px + X0, wy = (py) => Y1 - py;
+const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+const r0 = (v) => Math.round(v);
+const ZH = Object.fromEntries(D.sites.map((s) => [s.k, s.zh || ""]));
+const nm = (k) => (ZH[k] ? `${ZH[k]} ${k}` : k);   // 港口矿场 harbour refinery
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+// ---- header ---------------------------------------------------------------------------------------------------------
+document.title = `${D.level.toUpperCase()} 地图改动台`;
+$("eyebrow").textContent = `${D.mod} · 地图模块 maps/${D.map}.py · 能改的地图页（ADR 0017）`;
+$("title").textContent = `${D.level.toUpperCase()} 地图改动台`;
+const ruleBad = D.rules.rules.reduce((n, r) => n + r.problems.length, 0);
+$("summary").innerHTML = "";
+const pill = (cls, text) => { const s = document.createElement("span"); s.className = `pill ${cls}`; s.textContent = text; $("summary").appendChild(s); };
+pill(D.rules.total.length ? "bad" : "ok", `接口检查（contract）：${D.rules.total.length ? D.rules.total.length + " 条问题" : "全部通过"}`);
+pill(ruleBad ? "bad" : "ok", `画在图上的规则问题 ${ruleBad}`);
+pill("", `地点 ${D.sites.length} · 物体 ${D.map_objects.length + D.objects.length} · 布景 ${D.scenery.length}`);
+
+// ---- map ------------------------------------------------------------------------------------------------------------
+const svg = $("map");
+svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+if (IMG) el("image", { href: IMG, x: 0, y: 0, width: W, height: H, preserveAspectRatio: "none" }, svg);
+else el("rect", { x: 0, y: 0, width: W, height: H, fill: "#9fb4c4" }, svg);
+const G = {};
+for (const k of ["terrain", "areas", "borders", "objects", "guides", "sites", "labels", "problems", "props", "draft"]) G[k] = el("g", { "data-layer": k }, svg);
+
+for (const [k, b] of Object.entries(D.borders)) {
+  if (k === "whole") continue;
+  el("rect", { x: sx(b[0]), y: sy(b[3]), width: b[2] - b[0], height: b[3] - b[1], fill: "none", stroke: "#fff",
+    "stroke-width": 6, "stroke-dasharray": "40 24", opacity: .55 }, G.borders);
+}
+for (const a of D.areas) {
+  el("polygon", { points: a.pts.map(([x, y]) => `${sx(x)},${sy(y)}`).join(" "), fill: "rgba(255,200,60,.12)",
+    stroke: "rgba(255,200,60,.8)", "stroke-width": 4 }, G.areas);
+}
+G.areas.style.display = "none";
+
+const OBJ = { ore: ["#e0a91d", 34], oil: ["#1d1d1d", 34], bridge: ["#888", 0], wall: ["#cfc7b8", 10], ice: ["#7fd8ea", 18], thing: ["#ffffff", 12] };
+for (const o of [...D.map_objects, ...D.objects]) {
+  const [c, r] = OBJ[o.kind] || OBJ.thing;
+  if (!r) continue;
+  const fill = o.side === "s1" && o.kind === "thing" ? "var(--enemy)" : o.side === "p1" && o.kind === "thing" ? "var(--allied)" : c;
+  const e = el("circle", { cx: sx(o.x), cy: sy(o.y), r, fill, stroke: "#fff", "stroke-width": o.kind === "oil" ? 6 : 3, opacity: .92 }, G.objects);
+  el("title", {}, e).textContent = `${o.t}${o.name ? ` "${o.name}"` : ""} (${r0(o.x)}, ${r0(o.y)})${o.site ? `，按地点 ${nm(o.site)}` : ""}`;
+}
+
+// guides: what the rules measure
+const gd = D.guides;
+for (const b of gd.bases) {
+  el("circle", { cx: sx(b.x), cy: sy(b.y), r: b.ore, fill: "none", stroke: "var(--amber)", "stroke-width": 5, "stroke-dasharray": "18 18", opacity: .6 }, G.guides);
+  if (b.oil) el("circle", { cx: sx(b.x), cy: sy(b.y), r: b.oil, fill: "rgba(192,57,43,.08)", stroke: "var(--enemy)", "stroke-width": 4, opacity: .7 }, G.guides);
+}
+for (const p of gd.pads) {
+  el("line", { x1: sx(p.x), y1: sy(p.y), x2: sx(p.fx), y2: sy(p.fy), stroke: "var(--amber)", "stroke-width": 10, "stroke-linecap": "round" }, G.guides);
+  el("circle", { cx: sx(p.fx), cy: sy(p.fy), r: p.slack, fill: "none", stroke: "var(--amber)", "stroke-width": 5 }, G.guides);
+}
+for (const c of gd.casts) {
+  const e = el("circle", { cx: sx(c.x), cy: sy(c.y), r: c.r, fill: "rgba(99,207,227,.22)", stroke: "var(--ice)", "stroke-width": 6 }, G.guides);
+  el("title", {}, e).textContent = `施法点 ${nm(c.site)}（冰墙标记 ${c.mark}），圆半径 ${c.r}`;
+}
+
+// sites (draggable)
+const siteEls = {};
+const labs = [];             // one per drawn site: its label, leader line and where layoutLabels() put it
+const LABEL = 15;            // screen pixels: fit() turns these into map units for the current width
+for (const s of D.sites) {
+  if (s.r >= 1000) continue;
+  const g = el("g", { class: "site", tabindex: 0, "data-k": s.k, style: "cursor:grab" }, G.sites);
+  if (s.r) el("circle", { cx: sx(s.x), cy: sy(s.y), r: s.r, fill: "rgba(36,94,166,.10)", stroke: "var(--allied)", "stroke-width": 3, opacity: .7, "pointer-events": "none" }, g);
+  el("circle", { class: "dot", cx: sx(s.x), cy: sy(s.y), r: 26, fill: s.cast ? "var(--ice)" : "var(--allied)", stroke: "#fff", "stroke-width": 6 }, g);
+  const lead = el("line", { class: "lead", "data-pxw": 1.5, style: "display:none" }, G.labels);
+  const t = el("text", { class: "lab", x: sx(s.x) + 34, y: sy(s.y) + 14, "data-px": LABEL, "pointer-events": "none" }, G.labels);
+  if (s.zh) { t.textContent = s.zh + " "; el("tspan", { class: "code", "data-px": LABEL * 0.8 }, t).textContent = s.k; }
+  else t.textContent = s.k;
+  el("title", {}, g).textContent = `${nm(s.k)}（${r0(s.x)}, ${r0(s.y)}）${s.r ? `，半径 ${s.r}` : ""}` +
+    `${s.build ? `，要能盖 ${s.build} 见方的建筑` : ""}${s.cast ? `，施法圆半径 ${s.cast}` : ""}\n地图模块里的说明（英文）：${s.what}`;
+  siteEls[s.k] = g;
+  const L = { s, g, t, lead, shown: true, item: null };
+  labs.push(L);
+  g.addEventListener("pointerenter", () => popLabel(L, true)); g.addEventListener("pointerleave", () => popLabel(L, false));
+  g.addEventListener("focus", () => popLabel(L, true)); g.addEventListener("blur", () => popLabel(L, false));
+}
+
+// rule problems
+const probEls = [];
+let pn = 0;
+for (const r of D.rules.rules) for (const p of r.problems) {
+  pn++;
+  if (!p.at) { probEls.push(null); continue; }
+  const g = el("g", {}, G.problems);
+  el("circle", { cx: sx(p.at[0]), cy: sy(p.at[1]), r: 70, fill: "none", stroke: "var(--enemy)", "stroke-width": 12 }, g);
+  const t = el("text", { x: sx(p.at[0]) + 80, y: sy(p.at[1]) - 50, "data-px": 18 }, g); t.textContent = `⚠${pn}`;
+  el("title", {}, g).textContent = `${r.label}：${p.text}`;
+  probEls.push(g);
+}
+
+for (const [id, layer] of [["l-labels", null], ["l-objects", "objects"], ["l-guides", "guides"], ["l-areas", "areas"], ["l-props", "props"]]) {
+  $(id).addEventListener("change", (e) => {
+    if (layer) G[layer].style.display = e.target.checked ? "" : "none";
+    else layoutLabels();
+  });
+}
+
+// ---- terrain (terrain.js: the mirror of terrain_edit.py and terrain_rules.py) ---------------------------------------
+// T0: the ground as the build writes it; BASE: T0 with the saved terrain proposals; CUR: BASE with the draft on top;
+// PRE: CUR before the stroke being drawn (so a stroke is re-applied from it on every move).
+const TP = D.terrain, TSITES = D.sites.filter((s) => s.build || s.cast);
+const T0 = TP ? TERRAIN.decode(TP) : null;
+let BASE = T0, CUR = T0, PRE = null, stroke = null, tFrame = 0;
+const FLAT0 = T0 ? TERRAIN.flatSites(T0, TP, TSITES) : {};
+const pairs = (d) => { const o = []; if (d.length && Array.isArray(d[0])) return d; for (let k = 0; k + 1 < d.length; k += 2) o.push([d[k], d[k + 1]]); return o; };
+function strokeBox(p) {
+  let b = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const st of p.strokes) for (const [x, y] of pairs(st.dabs)) b = [Math.min(b[0], x - st.r), Math.min(b[1], y - st.r), Math.max(b[2], x + st.r), Math.max(b[3], y + st.r)];
+  return b;
+}
+function cellIndex(x, y) {
+  const i = Math.min(TP.w - 1, Math.max(0, TERRAIN.pyRound(x / TP.cell) + TP.b)), j = Math.min(TP.h - 1, Math.max(0, TERRAIN.pyRound(y / TP.cell) + TP.b));
+  return j * TP.w + i;
+}
+function heightAt(x, y) { const v = CUR.e[cellIndex(x, y)]; return `${v.toFixed(1)}（世界 ${(v * TP.world_per_ours).toFixed(1)}）`; }
+function terrainChanged() {
+  if (!T0) return;
+  if (stroke) {
+    if (!PRE) { PRE = TERRAIN.copy(BASE); for (const st of draft.strokes) if (st !== stroke) TERRAIN.applyStroke(PRE, TP, st); }
+    CUR = TERRAIN.copy(PRE); TERRAIN.applyStroke(CUR, TP, stroke);
+  } else CUR = draft && draft.kind === "terrain" ? TERRAIN.applyProposals(BASE, TP, [draft]) : BASE;
+  drawDraft();
+  if (!tFrame) tFrame = setTimeout(() => { tFrame = 0; drawTerrain(); terrainReport(); }, 16);   // a timer, not rAF: rAF stalls in a hidden pane
+}
+function rebaseTerrain() {
+  if (!T0) return;
+  BASE = TERRAIN.applyProposals(T0, TP, props.filter((p) => p.kind === "terrain"));
+  PRE = null; terrainChanged();
+}
+const tcanvas = document.createElement("canvas");
+let timg = null;
+function drawTerrain() {
+  if (!T0 || G.terrain.style.display === "none") return;
+  const n = Math.round(W / TP.cell) + 1;
+  tcanvas.width = n; tcanvas.height = n;
+  const ctx = tcanvas.getContext("2d"), im = ctx.createImageData(n, n), px = im.data;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    const i = c + TP.b, j = n - 1 - r + TP.b;
+    if (i >= TP.w || j >= TP.h) continue;
+    const q = j * TP.w + i, o = 4 * (r * n + c), now = CUR.bits[q], was = T0.bits[q];
+    let rgba = null;
+    if (now && !was) rgba = [224, 50, 42, 220];
+    else if (!now && was) rgba = [47, 191, 99, 220];
+    else if (now) rgba = [20, 20, 20, 150];
+    else if (CUR.e[q] !== T0.e[q]) rgba = [160, 80, 220, 115];
+    else if (CUR.e[q] > TP.waterline && TERRAIN.slopeAt(CUR.e, TP.w, TP.h, i, j) > TP.steep * 0.6) rgba = [240, 180, 60, 170];
+    if (rgba) { px[o] = rgba[0]; px[o + 1] = rgba[1]; px[o + 2] = rgba[2]; px[o + 3] = rgba[3]; }
+  }
+  ctx.putImageData(im, 0, 0);
+  if (!timg) timg = el("image", { class: "terrain", x: -TP.cell / 2, y: -TP.cell / 2, width: n * TP.cell, height: n * TP.cell, preserveAspectRatio: "none" }, G.terrain);
+  timg.setAttribute("href", tcanvas.toDataURL());
+}
+let ODD0 = null;             // the built map's own invisible walls / climbable steep cells, counted once
+function terrainReport() {
+  const ul = $("tlist"); ul.innerHTML = "";
+  if (!T0) { $("tnote").textContent = "这一页生成时没带地形（--no-picture），地形工具关着。"; return; }
+  let blocked = 0, opened = 0, moved = 0;
+  for (let q = 0; q < CUR.e.length; q++) { if (CUR.bits[q] && !T0.bits[q]) blocked++; if (!CUR.bits[q] && T0.bits[q]) opened++; if (CUR.e[q] !== T0.e[q]) moved++; }
+  const nT = props.filter((p) => p.kind === "terrain").length + (draft && draft.kind === "terrain" ? 1 : 0);
+  $("tnote").textContent = nT ? `已存的地形提议${draft && draft.kind === "terrain" ? "加上正在画的" : ""}合起来，和构建出的地图比：高度改了 ${moved} 格，新不可通行 ${blocked} 格，新可通行 ${opened} 格。规则和 terrain_rules.py 同一套（坡度超过 ${TP.steep}/格 且在水线以上 = 不可通行；建筑和施法圆的起伏不超过 ${TP.build_variation} 世界单位）。`
+    : `还没有地形提议。坡度和通行层画的是构建出的地图；用抬高、压低、整平、画/擦不可通行在图上涂，这里会实时列出哪些地点不再平。`;
+  // the game reads field 0 alone (docs/engine/terrain.md 3): a bit on gentle ground is an invisible wall, a steep cell
+  // without it a slope anyone climbs -- count the ones the edits add
+  const odd = (Gd) => { let wall = 0, climb = 0;
+    for (let q = 0; q < Gd.e.length; q++) {
+      const i = q % TP.w, j = Math.floor(q / TP.w), steep = TERRAIN.impassableAt(Gd, TP, i, j);
+      if (Gd.bits[q] && !steep && Gd.e[q] > TP.waterline) wall++; else if (!Gd.bits[q] && steep) climb++;
+    }
+    return [wall, climb]; };
+  if (!ODD0) ODD0 = odd(T0);
+  const [w1, c1] = odd(CUR), [w0, c0] = ODD0;
+  const warn = (t) => { const li = document.createElement("li"); li.className = "bad"; li.textContent = t; ul.appendChild(li); };
+  if (w1 > w0) warn(`⚠ 看不见的墙：平地上画了 ${w1 - w0} 格不可通行。游戏只看这个位，坦克、步兵都过不去，玩家看不出为什么——要配栅栏、碎石之类看得见的东西。`);
+  if (c1 > c0) warn(`⚠ 看不见的路：陡坡上擦掉了 ${c1 - c0} 格不可通行。游戏不按坡度自己判悬崖，坦克、步兵能直接爬过去。`);
+  const now = TERRAIN.flatSites(CUR, TP, TSITES);
+  for (const s of TSITES) for (const what of ["build", "cast"]) {
+    const key = `${s.k}|${what}`; if (!(key in now)) continue;
+    if (now[key] === FLAT0[key]) continue;
+    const li = document.createElement("li"); li.className = now[key] ? "good" : "bad";
+    li.textContent = `${what === "build" ? "建筑点" : "施法点"} ${nm(s.k)}：${now[key] ? "改了以后变平了" : `改了以后不再平（${what === "build" ? s.build : 2 * s.cast} 见方的起伏超过 ${TP.build_variation} 世界单位）`}`;
+    ul.appendChild(li);
+  }
+  for (const s of TSITES) if (s.cast) {
+    let bad = 0;
+    for (let q = 0; q < CUR.bits.length; q++) {
+      if (!CUR.bits[q] || T0.bits[q]) continue;
+      const x = (q % TP.w - TP.b) * TP.cell, y = (Math.floor(q / TP.w) - TP.b) * TP.cell;
+      if ((x - s.x) ** 2 + (y - s.y) ** 2 <= s.cast * s.cast) bad++;
+    }
+    if (bad) { const li = document.createElement("li"); li.className = "bad"; li.textContent = `施法点 ${nm(s.k)}：圆里有 ${bad} 格新变成不可通行`; ul.appendChild(li); }
+  }
+  if (!ul.children.length && nT) { const li = document.createElement("li"); li.className = "good"; li.textContent = "没有建筑点或施法点因此变得不平。要看所有规则（坡道、豁口、街区），点下面「让本机服务算全部规则」。"; ul.appendChild(li); }
+}
+function brushLabels() {
+  $("b-rv").textContent = `${$("b-r").value} 世界`;
+  $("b-sv").textContent = TP ? `${$("b-s").value}≈${(+$("b-s").value * TP.world_per_ours).toFixed(1)} 世界/下` : $("b-s").value;
+}
+$("b-r").addEventListener("input", brushLabels); $("b-s").addEventListener("input", brushLabels); brushLabels();
+G.terrain.style.display = "none";
+$("l-terrain").addEventListener("change", (e) => { G.terrain.style.display = e.target.checked ? "" : "none"; drawTerrain(); });
+if (!TP) for (const b of document.querySelectorAll("#tgroup button, #tgroup input")) b.disabled = true;
+
+// ---- interaction ----------------------------------------------------------------------------------------------------
+let mode = "move", draft = null, drag = null;
+const HINT = { move: "按住一个地点拖到新位置，松手后写一句为什么，再保存提议。按住空白处拖动可以平移；滚轮或右上角 +/− 缩放，手机上两指缩放和平移。",
+  line: "在图上依次点下挡路线的各个点，点完按“画完了”。", note: "在图上点一下要批注的位置，然后写批注。",
+  raise: "按住在图上涂：每涂一下，圆心抬高“强度”，往外线性减到 0。可以连涂几笔，一起存成一条提议。",
+  lower: "按住在图上涂：每涂一下，圆心压低“强度”，往外线性减到 0。",
+  flatten: "按住在图上涂：取下笔那一格的高度，把圆里的地往这个高度拉，每下最多拉“强度”。",
+  block: "按住在图上涂：把圆里的格子画成不可通行（只改通行位，不动高度）。注意：游戏判断能不能走只看这个位，画在平地上就是一堵看不见的墙，坦克、步兵都过不去，玩家看不出原因，要配上栅栏、碎石这类看得见的东西。",
+  unblock: "按住在图上涂：擦掉圆里格子的不可通行位。游戏不会按坡度自己判悬崖，擦在陡坡上，坦克、步兵就能直接爬过去。" };
+const TERRAIN_OPS = ["raise", "lower", "flatten", "block", "unblock"];
+const OP_NAME = { raise: "抬高", lower: "压低", flatten: "整平", block: "画不可通行", unblock: "擦不可通行" };
+function setMode(m) {
+  if (TERRAIN_OPS.includes(m) && !D.terrain) return;
+  const keep = draft && draft.kind === "terrain" && TERRAIN_OPS.includes(m);
+  mode = m; if (!keep) cancelDraft();
+  for (const b of document.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === m));
+  svg.setAttribute("class", `mode-${m}`);
+  if (TERRAIN_OPS.includes(m) && !$("l-terrain").checked) { $("l-terrain").checked = true; G.terrain.style.display = ""; drawTerrain(); }
+  showSlip();
+}
+for (const b of document.querySelectorAll("[data-mode]")) b.addEventListener("click", () => setMode(b.dataset.mode));
+function world(ev) {
+  const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return [wx(p.x), wy(p.y)];
+}
+// ---- zoom and pan (view.js): wheel, the +/− buttons, drag on empty ground in 拖地点, middle button anywhere, two fingers
+let VIEW = View.full(W, H);
+let fitQueued = false;
+function setView(v) {
+  VIEW = View.clamp(v, W, H);
+  svg.setAttribute("viewBox", `${VIEW.x.toFixed(1)} ${VIEW.y.toFixed(1)} ${VIEW.w.toFixed(1)} ${View.height(VIEW, W, H).toFixed(1)}`);
+  $("z-in").disabled = VIEW.w <= W / View.MAX_ZOOM + 1e-6; $("z-out").disabled = $("z-all").disabled = VIEW.w >= W - 1e-6;
+  if (!fitQueued) { fitQueued = true; requestAnimationFrame(() => { fitQueued = false; fit(); }); }
+}
+const centre = () => [VIEW.x + VIEW.w / 2, VIEW.y + View.height(VIEW, W, H) / 2];
+$("z-in").onclick = () => setView(View.zoomAt(VIEW, W, H, 1.6, ...centre()));
+$("z-out").onclick = () => setView(View.zoomAt(VIEW, W, H, 1 / 1.6, ...centre()));
+$("z-all").onclick = () => setView(View.full(W, H));
+function svgPoint(cx, cy) {
+  const r = svg.getBoundingClientRect(), k = VIEW.w / r.width;
+  return [VIEW.x + (cx - r.left) * k, VIEW.y + (cy - r.top) * k];
+}
+svg.addEventListener("wheel", (ev) => {
+  ev.preventDefault();
+  const f = Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0015));
+  setView(View.zoomAt(VIEW, W, H, f, ...svgPoint(ev.clientX, ev.clientY)));
+}, { passive: false });
+const fingers = new Map();
+let pan = null;
+function dropGesture() {         // a second finger came down: what the first one started is a pinch, not an edit
+  if (stroke) { draft.strokes.pop(); stroke = null; PRE = null; if (!draft.strokes.length) draft = null; terrainChanged(); showSlip(); }
+  else if (drag) cancelDraft();
+  else if (draft && draft.kind === "block" && mode === "line") { draft.points.pop(); if (!draft.points.length) draft = null; drawDraft(); showSlip(); }
+  else if (draft && draft.kind === "note" && mode === "note") cancelDraft();
+}
+svg.addEventListener("pointerdown", (ev) => {
+  if (ev.pointerType === "touch") fingers.set(ev.pointerId, [ev.clientX, ev.clientY]);
+  if (fingers.size === 2) {
+    dropGesture();
+    const [a, b] = [...fingers.values()];
+    pan = { pinch: true, v0: VIEW, a0: a, b0: b, rect: svg.getBoundingClientRect() };
+    ev.stopImmediatePropagation(); return;
+  }
+  if (fingers.size > 2) { ev.stopImmediatePropagation(); return; }
+  const empty = mode === "move" && ev.button === 0 && !ev.target.closest(".site");
+  if (ev.button === 1 || empty) {
+    ev.preventDefault();
+    pan = { pinch: false, last: [ev.clientX, ev.clientY] };
+    try { svg.setPointerCapture(ev.pointerId); } catch (e) { /* pointer already gone */ }
+    svg.style.cursor = "grabbing";
+    ev.stopImmediatePropagation();
+  }
+});
+svg.addEventListener("pointermove", (ev) => {
+  if (fingers.has(ev.pointerId)) fingers.set(ev.pointerId, [ev.clientX, ev.clientY]);
+  if (!pan) return;
+  if (pan.pinch) {
+    if (fingers.size < 2) return;
+    const [a, b] = [...fingers.values()];
+    setView(View.pinch(pan.v0, W, H, pan.rect, pan.a0, pan.b0, a, b));
+  } else {
+    const k = VIEW.w / svg.getBoundingClientRect().width;
+    setView(View.panBy(VIEW, W, H, -(ev.clientX - pan.last[0]) * k, -(ev.clientY - pan.last[1]) * k));
+    pan.last = [ev.clientX, ev.clientY];
+  }
+  ev.stopImmediatePropagation();
+});
+const liftFinger = (ev) => {
+  fingers.delete(ev.pointerId);
+  if (pan && (!pan.pinch || fingers.size < 2)) {
+    pan = null; svg.style.cursor = "";
+    ev.stopImmediatePropagation();
+  }
+};
+svg.addEventListener("pointerup", liftFinger);
+svg.addEventListener("pointercancel", liftFinger);
+svg.addEventListener("auxclick", (ev) => { if (ev.button === 1) ev.preventDefault(); });
+
+svg.addEventListener("pointermove", (ev) => {
+  const [x, y] = world(ev);
+  $("coord").textContent = `x ${r0(x)}, y ${r0(y)}` + (D.terrain ? `，高 ${heightAt(x, y)}` : "");
+  if (drag) { drag.to = [x, y]; drawDraft(); }
+  if (stroke) {
+    const n = stroke.dabs.length, lx = stroke.dabs[n - 2], ly = stroke.dabs[n - 1];
+    if (Math.hypot(x - lx, y - ly) >= Math.max(10, stroke.r / 4)) { stroke.dabs.push(r0(x), r0(y)); terrainChanged(); }
+  }
+});
+svg.addEventListener("pointerdown", (ev) => {
+  const [x, y] = world(ev);
+  if (TERRAIN_OPS.includes(mode)) {
+    if (!draft || draft.kind !== "terrain") draft = { kind: "terrain", strokes: [] };
+    stroke = { op: mode, r: +$("b-r").value, s: +$("b-s").value, dabs: [r0(x), r0(y)] };
+    if (mode === "flatten") stroke.height = CUR.e[cellIndex(r0(x), r0(y))];
+    draft.strokes.push(stroke);
+    svg.setPointerCapture(ev.pointerId); terrainChanged();
+  } else if (mode === "move") {
+    const g = ev.target.closest(".site");
+    if (!g) return;
+    const s = D.sites.find((q) => q.k === g.dataset.k);
+    drag = { kind: "move", site: s.k, from: [s.x, s.y], to: [s.x, s.y] };
+    draft = drag; svg.setPointerCapture(ev.pointerId); drawDraft();
+  } else if (mode === "line") {
+    if (!draft) draft = { kind: "block", points: [] };
+    draft.points.push([r0(x), r0(y)]); drawDraft(); showSlip();
+  } else if (mode === "note") {
+    draft = { kind: "note", at_xy: [r0(x), r0(y)] }; drawDraft(); showSlip();
+  }
+});
+svg.addEventListener("pointerup", () => {
+  if (stroke) { stroke = null; PRE = null; terrainChanged(); showSlip(); return; }
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (Math.hypot(d.to[0] - d.from[0], d.to[1] - d.from[1]) < 15) { cancelDraft(); return; }
+  d.to = [r0(d.to[0]), r0(d.to[1])]; drawDraft(); showSlip();
+});
+function nearest(x, y, skip) {
+  let best = null;
+  for (const s of D.sites) {
+    if (s.r >= 1000 || s.k === skip) continue;
+    const d = Math.hypot(s.x - x, s.y - y);
+    if (!best || d < best[1]) best = [s.k, d];
+  }
+  return best;
+}
+function describe(p) {
+  if (p.kind === "terrain") {
+    const n = {}; for (const st of p.strokes) n[st.op] = (n[st.op] || 0) + 1;
+    const b = strokeBox(p), c = nearest((b[0] + b[2]) / 2, (b[1] + b[3]) / 2);
+    return `地形 ${p.strokes.length} 笔（${Object.entries(n).map(([k, v]) => `${OP_NAME[k]} ${v}`).join("、")}），范围 (${r0(b[0])}, ${r0(b[1])})–(${r0(b[2])}, ${r0(b[3])})` +
+      (c ? `，在 ${nm(c[0])} 附近` : "");
+  }
+  if (p.kind === "move") {
+    const n = nearest(p.to[0], p.to[1], p.site);
+    return `挪地点 ${nm(p.site)}：(${r0(p.from[0])}, ${r0(p.from[1])}) → (${p.to[0]}, ${p.to[1]})，挪了 ${r0(Math.hypot(p.to[0] - p.from[0], p.to[1] - p.from[1]))}` +
+      (n ? `；新位置离 ${nm(n[0])} ${r0(n[1])}` : "");
+  }
+  if (p.kind === "block") {
+    let len = 0; for (let i = 1; i < p.points.length; i++) len += Math.hypot(p.points[i][0] - p.points[i - 1][0], p.points[i][1] - p.points[i - 1][1]);
+    return `挡路线 ${p.points.length} 个点，长 ${r0(len)}，从 (${p.points[0]}) 到 (${p.points[p.points.length - 1]})`;
+  }
+  const n = nearest(p.at_xy[0], p.at_xy[1]);
+  return `批注 (${p.at_xy[0]}, ${p.at_xy[1]})` + (n ? `，离 ${nm(n[0])} ${r0(n[1])}` : "");
+}
+function shape(p, layer, color, faint) {
+  const g = el("g", { "data-id": p.id || "" }, layer);
+  const op = faint ? .55 : 1;
+  if (p.kind === "terrain") {
+    for (const st of p.strokes) {
+      const pts = pairs(st.dabs);
+      const dash = st.op === "lower" ? "30 18" : st.op === "unblock" ? "8 14" : null;
+      const a = { points: pts.map(([x, y]) => `${sx(x)},${sy(y)}`).join(" "), fill: "none", stroke: color, "stroke-width": 2 * st.r,
+        "stroke-linecap": "round", "stroke-linejoin": "round", opacity: .16 * op };
+      el("polyline", a, g);
+      const b = { ...a, "stroke-width": 6, opacity: op }; if (dash) b["stroke-dasharray"] = dash;
+      el("polyline", b, g);
+    }
+    if (p.why) el("title", {}, g).textContent = p.why;
+    return g;
+  }
+  if (p.kind === "move") {
+    el("line", { x1: sx(p.from[0]), y1: sy(p.from[1]), x2: sx(p.to[0]), y2: sy(p.to[1]), stroke: color, "stroke-width": 10, "stroke-dasharray": "26 14", opacity: op }, g);
+    el("circle", { cx: sx(p.to[0]), cy: sy(p.to[1]), r: 34, fill: "none", stroke: color, "stroke-width": 10, opacity: op }, g);
+    const t = el("text", { x: sx(p.to[0]) + 42, y: sy(p.to[1]) + 16, "data-px": 15 }, g); t.textContent = `→ ${nm(p.site)}`; fit();
+  } else if (p.kind === "block") {
+    el("polyline", { points: p.points.map(([x, y]) => `${sx(x)},${sy(y)}`).join(" "), fill: "none", stroke: color, "stroke-width": 22,
+      "stroke-linecap": "round", "stroke-linejoin": "round", opacity: op }, g);
+    for (const [x, y] of p.points) el("circle", { cx: sx(x), cy: sy(y), r: 14, fill: "#fff", stroke: color, "stroke-width": 6 }, g);
+  } else {
+    const [x, y] = p.at_xy;
+    el("path", { d: `M${sx(x)},${sy(y)} l-26,-62 a30,30 0 1 1 52,0 z`, fill: color, stroke: "#fff", "stroke-width": 5, opacity: op }, g);
+    el("circle", { cx: sx(x), cy: sy(y) - 78, r: 11, fill: "#fff" }, g);
+  }
+  if (p.why) el("title", {}, g).textContent = p.why;
+  return g;
+}
+function drawDraft() { G.draft.innerHTML = ""; if (draft) shape(draft, G.draft, "var(--prop)", false); }
+function cancelDraft() { const t = draft && draft.kind === "terrain"; draft = null; drag = null; stroke = null; PRE = null; drawDraft(); if (t) terrainChanged(); showSlip(); }
+function showSlip() {
+  const box = $("slip"); box.innerHTML = "";
+  if (!draft || (draft.kind === "move" && drag) || stroke) {
+    const p = document.createElement("p"); p.className = "note"; p.id = "hint"; p.textContent = HINT[mode]; box.appendChild(p); return;
+  }
+  const s = document.createElement("div"); s.className = "slip";
+  const d = document.createElement("div"); d.innerHTML = "<b>新提议</b> "; d.appendChild(document.createTextNode(describe(draft)));
+  const ta = document.createElement("textarea"); ta.id = "why"; ta.placeholder = draft.kind === "note" ? "批注写什么" : "为什么要这样改";
+  const row = document.createElement("div"); row.className = "row";
+  if (draft.kind === "terrain") {
+    const undo = document.createElement("button"); undo.textContent = "撤一笔";
+    undo.onclick = () => { draft.strokes.pop(); if (!draft.strokes.length) cancelDraft(); else { terrainChanged(); showSlip(); } };
+    row.appendChild(undo);
+  }
+  if (draft.kind === "block") {
+    const done = document.createElement("button"); done.textContent = "撤一个点";
+    done.onclick = () => { draft.points.pop(); if (!draft.points.length) cancelDraft(); else { drawDraft(); showSlip(); } };
+    row.appendChild(done);
+  }
+  const save = document.createElement("button"); save.className = "primary"; save.id = "save";
+  save.textContent = draft.kind === "block" ? "画完了，保存提议" : "保存提议";
+  save.disabled = !db || (draft.kind === "block" && draft.points.length < 2);
+  save.onclick = () => submit(ta.value.trim());
+  const no = document.createElement("button"); no.textContent = "取消"; no.onclick = cancelDraft;
+  row.append(save, no);
+  s.append(d, ta, row); box.appendChild(s);
+  if (draft.kind !== "block") ta.focus();
+}
+showSlip();
+
+// ---- proposal store -------------------------------------------------------------------------------------------------
+let db = null, me = "", props = [], selected = null, STORE_DIR = "";
+// served by serve.py on this computer: proposals are files in work/mappage/<level>/proposals (GET / POST / DELETE
+// /api/proposals); the page re-reads after each save and every few seconds (another tab, or a file removed by hand)
+function localStore() {
+  const subs = []; let last = null;
+  const pull = async () => {
+    const r = await fetch("/api/proposals", { cache: "no-store" });
+    if (!r.ok) throw new Error(`服务回 ${r.status}`);
+    const j = await r.json(), key = JSON.stringify(j.docs);
+    if (key === last) return;
+    last = key;
+    const s = { docs: j.docs.map((d) => ({ id: d.id, data: () => d.data })) };
+    for (const f of subs) f(s);
+  };
+  const call = async (method, url, body) => {
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || `服务回 ${r.status}`);
+    await pull(); return j;
+  };
+  let errf = null;
+  setInterval(() => pull().catch((e) => errf && errf(e)), 3000);
+  const col = { add: (v) => call("POST", "/api/proposals", v),
+    doc: (id) => ({ delete: () => call("DELETE", `/api/proposals/${encodeURIComponent(id)}`) }),
+    orderBy: () => col, onSnapshot: (f, err) => { subs.push(f); errf = err; pull().catch((e) => err && err(e)); return () => {}; } };
+  return { collection: () => col };
+}
+// when the page has no server (opened as a file): the same calls, kept in memory only
+function memoryStore() {
+  const docs = new Map(), subs = [];
+  let n = 0;
+  const snap = () => ({ docs: [...docs].sort((a, b) => String(a[1].at).localeCompare(String(b[1].at))).map(([id, v]) => ({ id, data: () => v })) });
+  const tell = () => { const s = snap(); for (const f of subs) setTimeout(() => f(s), 0); };
+  const col = { add: async (v) => { const id = `local${++n}`; docs.set(id, JSON.parse(JSON.stringify(v))); tell(); return { id }; },
+    doc: (id) => ({ delete: async () => { docs.delete(id); tell(); } }),
+    orderBy: () => col, onSnapshot: (f) => { subs.push(f); setTimeout(() => f(snap()), 0); return () => {}; } };
+  return { collection: () => col };
+}
+function status(text, err) { const s = $("dbstatus"); s.textContent = text; s.className = "status" + (err ? " err" : ""); }
+async function submit(why) {
+  if (!db || !draft) return;
+  const p = { ...draft, why, level: D.level, map: D.map, at: new Date().toISOString(), by: me, status: "open" };
+  if (p.kind === "move") p.from = [r0(p.from[0]), r0(p.from[1])];
+  const btn = $("save"); if (btn) btn.disabled = true;
+  try { await db.collection("proposals").add(p); status("已保存。关卡线用 mappage.py --pull 读取。"); cancelDraft(); }
+  catch (e) { status(`没存上：${e && e.message || e}。本机服务（serve.py）还开着吗？`, true); if (btn) btn.disabled = false; }
+}
+async function remove(id) {
+  try { await db.collection("proposals").doc(id).delete(); }
+  catch (e) { status(`删不掉：${e && e.message || e}`, true); }
+}
+function renderProps() {
+  G.props.innerHTML = "";
+  const ul = $("props"); ul.innerHTML = "";
+  if (!props.length) { const li = document.createElement("li"); li.style.borderLeftColor = "var(--rule)"; li.style.cursor = "default";
+    li.innerHTML = '<span class="why">还没有提议。用上面的工具在图上拖、画、钉，第一条就会出现在这里。</span>'; ul.appendChild(li); return; }
+  props.forEach((p, i) => {
+    shape(p, G.props, "var(--prop)", selected && selected !== p.id);
+    const li = document.createElement("li"); if (selected === p.id) li.className = "on";
+    const k = document.createElement("span"); k.className = "k"; k.textContent = `#${i + 1} · ${(p.at || "").slice(0, 16).replace("T", " ")}`;
+    const w = document.createElement("span"); w.textContent = describe(p);
+    const y = document.createElement("span"); y.className = "why"; y.textContent = p.why ? `“${p.why}”` : "（没写原因）";
+    const x = document.createElement("button"); x.className = "x"; x.textContent = "撤回";
+    x.onclick = (e) => { e.stopPropagation(); remove(p.id); };
+    li.append(k, w, y, x);
+    li.onclick = () => { selected = selected === p.id ? null : p.id; renderProps(); };
+    ul.appendChild(li);
+  });
+}
+renderProps(); terrainReport();
+(async () => {
+  let ping = null;
+  if (location.protocol.startsWith("http")) {
+    try { const r = await fetch("/api/ping", { cache: "no-store" }); if (r.ok) ping = await r.json(); } catch (e) { ping = null; }
+  }
+  const local = !ping;
+  if (ping) { db = localStore(); STORE_DIR = ping.dir; me = "local"; $("srvbox").hidden = false; }
+  else db = memoryStore();
+  showSlip();
+  db.collection("proposals").orderBy("at").onSnapshot((snap) => {
+    props = snap.docs.map((s) => ({ ...s.data(), id: s.id })).filter((p) => p.level === D.level);
+    status(local ? `没连上本机服务（要用 serve.py 打开这一页），提议只记在本页内存里，刷新就没了：${props.length} 条。`
+                 : `${props.length} 条提议，存在本机 ${STORE_DIR}。关卡线用 mappage.py ${D.level} --pull 读取。`, local);
+    renderProps(); rebaseTerrain();
+  }, (e) => status(`读不到提议：${e && e.message || e}。本机服务（serve.py）还开着吗？`, true));
+})();
+
+// ---- every rule after the terrain proposals, computed by serve.py (mappage.preview) ---------------------------------
+$("srvprev").onclick = async () => {
+  const ul = $("srvlist"), btn = $("srvprev");
+  ul.innerHTML = ""; btn.disabled = true; $("srvnote").textContent = "正在算（第一次要先构建地图，十几秒）……";
+  const li = (cls, text) => { const e = document.createElement("li"); if (cls) e.className = cls; e.textContent = text; ul.appendChild(e); };
+  try {
+    const r = await fetch("/api/preview", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ draft: draft && draft.kind === "terrain" && draft.strokes.length ? draft : null }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || `服务回 ${r.status}`);
+    const n = j.steps.length;
+    $("srvnote").textContent = n ? `${n} 条地形提议（${draft && draft.kind === "terrain" ? "含正在画的，" : ""}按先后）套上以后：contract 改之前 ${j.before.length || "ok"}，改之后 ${j.after.length || "ok"}。`
+                                 : `没有地形提议，contract 就是 build.py ${D.level} --show 的结果：${j.after.length ? j.after.length + " 条问题" : "ok"}。`;
+    for (const f of j.flips) li(f.flat ? "good" : "bad", `${f.what === "build" ? "建筑点" : "施法点"} ${nm(f.site)}：${f.flat ? "变平了" : "不再平"}`);
+    for (const p of j.red) li("bad", `新红：${p}`);
+    for (const p of j.cleared) li("good", `变好：${p}`);
+    if (n && !j.red.length && !j.cleared.length) li("good", "没有规则因此变红或变好。");
+    if (!n) for (const p of j.after) li("bad", p);
+  } catch (e) { $("srvnote").textContent = `算不了：${e && e.message || e}`; }
+  btn.disabled = false;
+};
+
+// ---- labels on the map in screen pixels (the map is 5000 units across, the screen a few hundred pixels) ----------
+function fit() {
+  const w = svg.getBoundingClientRect().width;
+  if (!w) return;
+  const k = VIEW.w / w;
+  for (const t of svg.querySelectorAll("[data-px]")) {
+    t.setAttribute("font-size", (+t.dataset.px * k).toFixed(1));
+    if (t.tagName === "text") t.style.strokeWidth = `${(3 * k).toFixed(1)}px`;
+  }
+  for (const t of svg.querySelectorAll("[data-pxw]")) t.setAttribute("stroke-width", (+t.dataset.pxw * k).toFixed(1));
+  layoutLabels();
+}
+// Site names spread out so none overlaps another (labels.js): measured at the current zoom, re-placed on every resize.
+// A name with no free spot is hidden and shown while the pointer is on (or focus is in) its site.
+function layoutLabels() {
+  const w = svg.getBoundingClientRect().width;
+  if (!w || !$("l-labels").checked) {
+    for (const L of labs) { L.t.style.display = "none"; L.lead.style.display = "none"; }
+    $("labnote").textContent = "";
+    return;
+  }
+  const k = VIEW.w / w, pad = 2 * k;
+  const vb = [VIEW.x, VIEW.y, VIEW.x + VIEW.w, VIEW.y + View.height(VIEW, W, H)];
+  const items = labs.map((L) => {
+    const x = sx(L.s.x), y = sy(L.s.y);
+    L.t.style.display = ""; L.t.classList.remove("pop"); L.t.setAttribute("x", x); L.t.setAttribute("y", y);
+    const code = L.t.querySelector("tspan.code");
+    if (code) code.style.display = "";
+    const bb = L.t.getBBox();
+    L.off = [bb.x - x - pad, bb.y - y - pad];
+    const it = { x, y, w: bb.width + 2 * pad, h: bb.height + 2 * pad };
+    if (code) { code.style.display = "none"; it.ws = L.t.getBBox().width + 2 * pad; code.style.display = ""; }
+    return it;
+  });
+  // only the sites in view take part; the rest stay hidden until the view comes to them
+  const inView = items.map((it) => it.x >= vb[0] && it.x <= vb[2] && it.y >= vb[1] && it.y <= vb[3]);
+  const idx = items.map((_, i) => i).filter((i) => inView[i]);
+  const placed = Labels.place(idx.map((i) => items[i]), vb, Labels.opts(k));
+  const res = items.map(() => ({ shown: false, short: false, leader: null }));
+  idx.forEach((i, n) => { res[i] = placed[n]; });
+  res.forEach((r, i) => {
+    const L = labs[i];
+    L.shown = r.shown; L.short = r.short; L.item = items[i];
+    if (r.shown) { L.t.setAttribute("x", (r.x - L.off[0]).toFixed(1)); L.t.setAttribute("y", (r.y - L.off[1]).toFixed(1)); }
+    else L.t.style.display = "none";
+    const code = L.t.querySelector("tspan.code");
+    if (code) code.style.display = r.short ? "none" : "";
+    if (r.leader) {
+      const [[x1, y1], [x2, y2]] = r.leader;
+      for (const [a, v] of Object.entries({ x1, y1, x2, y2 })) L.lead.setAttribute(a, v.toFixed(1));
+      L.lead.style.display = "";
+    } else L.lead.style.display = "none";
+  });
+  const n = res.filter((r) => r.shown).length, m = idx.length;
+  $("labnote").textContent = n < m ? `（视野里 ${m} 个地点显示了 ${n} 个，其余悬停或点选看，放大能显示更多）` : "";
+}
+function popLabel(L, on) {
+  if (!$("l-labels").checked || !L.item) return;
+  if (L.shown) {             // shown short (Chinese name only): the code name comes back while hovered
+    const code = L.t.querySelector("tspan.code");
+    if (L.short && code) { code.style.display = on ? "" : "none"; L.t.classList.toggle("pop", on); G.labels.appendChild(L.t); }
+    return;
+  }
+  if (on) {
+    const it = L.item, d = Labels.opts(VIEW.w / svg.getBoundingClientRect().width).dot, vh = View.height(VIEW, W, H);
+    const x = Math.min(Math.max(it.x + d, VIEW.x), VIEW.x + VIEW.w - it.w), y = Math.min(Math.max(it.y - it.h / 2, VIEW.y), VIEW.y + vh - it.h);
+    L.t.setAttribute("x", (x - L.off[0]).toFixed(1)); L.t.setAttribute("y", (y - L.off[1]).toFixed(1));
+    const code = L.t.querySelector("tspan.code");
+    if (code) code.style.display = "";
+    L.t.classList.add("pop"); L.t.style.display = ""; G.labels.appendChild(L.t);
+  } else { L.t.classList.remove("pop"); L.t.style.display = "none"; }
+}
+fit();
+window.addEventListener("resize", fit);
+if (window.ResizeObserver) new ResizeObserver(fit).observe(svg);
+
+// ---- rules ----------------------------------------------------------------------------------------------------------
+$("rulenote").textContent = `和 build.py ${D.level} --show 的 contract 同一套检查（${D.rules.total.length ? D.rules.total.length + " 条问题" : "全部通过"}）。图上的施法圆、矿场朝向线和营地圈是这些规则量的东西，合规时也画出来。`;
+let k = 0;
+for (const r of D.rules.rules) {
+  const div = document.createElement("div"); div.className = "rule";
+  const n = document.createElement("span"); n.className = "n " + (r.problems.length ? "bad" : "ok"); n.textContent = r.problems.length ? `✗ ${r.problems.length}` : "✓";
+  const l = document.createElement("span"); l.textContent = r.label;
+  const w = document.createElement("span"); w.className = "w"; w.textContent = `${r.what}（contract.${r.fn}）`;
+  div.append(n, l, w);
+  if (r.problems.length) {
+    const ul = document.createElement("ul");
+    for (const p of r.problems) {
+      const idx = k++;
+      const li = document.createElement("li"); li.textContent = `⚠${idx + 1} ${p.text}` + (p.at ? "" : "（图上没有位置）");
+      li.title = "问题原文由检查代码给出（英文）";
+      li.onclick = () => { const g = probEls[idx]; if (g) { g.classList.remove("flash"); void g.getBBox(); g.classList.add("flash"); } };
+      ul.appendChild(li);
+    }
+    div.appendChild(ul);
+  }
+  $("rules").appendChild(div);
+}
+
+// ---- timeline -------------------------------------------------------------------------------------------------------
+$("ending").textContent = `${D.timeline.ending}。玩家什么都不做时，关卡脚本按模拟器跑出来的事件。`;
+const kinds = [...new Set(D.timeline.rows.map((r) => r.k))];
+for (const kk of kinds) { const o = document.createElement("option"); o.value = kk; o.textContent = kk; $("kind").appendChild(o); }
+function renderLog() {
+  const f = $("kind").value, tb = $("log"); tb.innerHTML = "";
+  for (const r of D.timeline.rows) {
+    if (f && r.k !== f) continue;
+    const tr = document.createElement("tr");
+    for (const [c, v] of [["t", mmss(r.t)], ["k", r.k], ["x", r.x]]) { const td = document.createElement("td"); td.className = c; td.textContent = v; tr.appendChild(td); }
+    tb.appendChild(tr);
+  }
+}
+$("kind").addEventListener("change", renderLog);
+renderLog();
+</script>

@@ -1,0 +1,16 @@
+{
+  "build": "aiegoff",
+  "check": "a",
+  "run": "CampAIEgOffA_mcp_1113_065607",
+  "source": "work/re/e131_engage_inputs.md",
+  "goals": [
+    {"frame": 320, "member": 3170, "old": 0, "new": 3171, "source": "member_command"},
+    {"frame": 353, "member": 3170, "old": 3171, "new": 0, "source": "clear_command", "command_frame": 352},
+    {"frame": 408, "member": 3171, "old": 0, "new": 3168, "source": "special_power_command"},
+    {"frame": 408, "member": 3171, "old": 3168, "new": 0, "source": "clear_command", "command_frame": 408},
+    {"frame": 431, "member": 3171, "old": 0, "new": 3168, "source": "threat_reaction", "unit_state": 33},
+    {"frame": 469, "member": 3171, "old": 3168, "new": 3167, "source": "threat_reaction", "unit_state": 33},
+    {"frame": 496, "member": 3170, "old": 0, "new": 0, "source": "special_power_command"},
+    {"frame": 512, "member": 3171, "old": 3167, "new": 0, "source": "clear_command", "command_frame": 511}
+  ]
+}

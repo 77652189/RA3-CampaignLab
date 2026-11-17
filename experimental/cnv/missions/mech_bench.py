@@ -48,3 +48,11 @@ def shown(name='CampShown'):
     m.put(LIGHT, 'west field', X, 0, name='UNIT - CNV Near', role='near')
     m.put(LIGHT, 'east field', 0, 0, name='UNIT - CNV Far', role='far')
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'thin_ice': lambda: thin_ice(),
+    'thin_unnamed': lambda: thin_unnamed(),
+    'shown': lambda: shown(),
+}

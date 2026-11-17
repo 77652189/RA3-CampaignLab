@@ -35,3 +35,10 @@ def mission(name='CampProbe', save=True):
         Script('CNV Probe - Money', [], [('SET_PLAYER_MONEY_TO_COUNTER', m.player('p1'), 'CNV_Probe_Money')],
                once=False)]
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'probe': lambda: mission(),
+    'probe_nosave': lambda: mission(name='CampPrbN', save=False),
+}

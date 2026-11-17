@@ -45,3 +45,11 @@ def mission(name='CampVoice', cdata=None):
     m.voice = voice
     m.put('AlliedAntiVehicleVehicleTech1', 'west field', 250, 30, name='UNIT - CNV Voice Guardian', role='guardian')
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'voice_bench': lambda: mission(),
+    'voice_bench_s': lambda: mission(name='CampVoiceS', cdata='data\\static\\cdata'),
+    'voice_bench_12': lambda: mission(name='CampVoice12', cdata='data\\static.12\\cdata'),
+}

@@ -4,7 +4,7 @@ its module's defaults (docs/story/units.md: the numbers they were verified at). 
 
 Published: NAMES (name -> what), make(name) -> the Units it needs, the named one first.
 """
-from units import beacon, burrower, clone, combo, crane, jammer, shikigami, tesla
+from units import beacon, burrower, chronolag, clone, combo, crane, jammer, liberty, platform, shikigami, tesla, tower_ball
 
 _MAKE = {
     '超时空信标兵': (lambda: [beacon.beacon()], '盟军：把一片里的我方单位拉到自己身边（A5）'),
@@ -15,6 +15,11 @@ _MAKE = {
     '纸鹤侦察机': (lambda: [crane.crane()], '帝国：没有武器，驱雾 900，一直隐身（J3）'),
     '合体机甲': (lambda: [combo.parent(), combo.child()], '帝国：子机开进母机就是合体，合体后只拆建筑（J4）'),
     '心灵巫女': (lambda: [clone.maiden()], '帝国：收回被克隆体控制的单位（J8）'),
+    '自由号空天航母': (lambda: [liberty.liberty('CNV_Liberty', reload='45s', factory='AlliedAntiVehicleVehicleTech1')],
+                 '盟军：悬停、放无人机；超时空甲板每 45 秒把一队地面部队跃迁到视野内任一点；甲板工厂造守护者（A8 玩家的；A7 的是敌方设备里的那艘）'),
+    '浪涌炮塔': (lambda: [platform.tide_gun()], '海上平台的炮塔：射程随浪变（节律设备给它升级来切换；A8）'),
+    '原子球': (lambda: [tower_ball.tower_ball()], '原子球塔的球：暗着时无敌、亮着时能打碎（节律设备给它升级来切换；A9）'),
+    '时滞炮车': (lambda: [chronolag.chronolag()], '盟军：展开后向目标打一发时滞弹，目标被推出时间 8 秒（建筑 15 秒），30 秒一发（A9 草稿用）'),
     '船闸闸门': (lambda: [_gate()], '摆设：横在水道上的闸门（挡不住船：闸关着时用"锁住"留住舰队；A5 / S5）'),
 }
 

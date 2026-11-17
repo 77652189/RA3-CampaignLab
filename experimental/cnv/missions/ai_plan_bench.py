@@ -6,6 +6,7 @@ woken its army comes over and hurts the player's base.
 Facts: wake at, money, caps, watch (how long after waking the run goes on).
 """
 import plan
+import resources
 
 WAKE_AT, MONEY = 30.0, 30000                    # bench 2026-10-25 (ai/wake): 10000 went on its base, no army
 CAPS = {'电厂': 2, '兵营': 1}
@@ -25,7 +26,14 @@ PLAN = {
 
 def mission(name='CampAP'):
     m = plan.Compiler(dict(PLAN), name).compile()
+    m.map = resources.measured(m.map)           # benched with niagara's nodes at 0 (resources.MEASURED)
     m.spawns |= {'AlliedPowerPlant', 'AlliedBarracks'}                 # what the AI builds, the check counts
     m.facts.update({'wake at': WAKE_AT, 'money': MONEY, 'power cap': CAPS['电厂'], 'barracks cap': CAPS['兵营'],
                     'watch': WATCH})
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'ai_plan': lambda: mission(),
+}

@@ -1,0 +1,8 @@
+ua: frame=5 ev=set obj=3181 own=4 last=5 prev=-1 src=0 hp=1000.0/1000.0 win=75
+tgt: frame=16 brain=redacted slot=3 state=redacted sid=19dcc78 hi=0 vt=redacted sort=0 uniq=0 found=0 kind=0 target=-1@0:0 n=0 cand=-
+ua: frame=18 ev=src obj=3181 last=18 src=3185
+ua: frame=18 ev=set obj=3187 own=4 last=18 prev=-1 src=3185 hp=143.0/150.0 win=75
+ua: frame=20 ev=set obj=3185 own=2 last=20 prev=-1 src=3187 hp=537.0/550.0 win=75
+ua: frame=109 ev=clr obj=3181 at=109 last=33 src=3185 alive=1 hits=3
+ua: frame=122 ev=src obj=3185 last=122 src=3192
+ua: frame=122 ev=set obj=3197 own=4 last=122 prev=-1 src=3192 hp=0.0/100.0 win=75

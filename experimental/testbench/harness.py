@@ -22,6 +22,7 @@ import datetime
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -34,16 +35,23 @@ sys.path.insert(0, HERE)
 import calib  # noqa: E402
 import nav  # noqa: E402
 import slots  # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
 
 BENCH = slots.BENCH
 SHOTS = os.path.join(BENCH, 'shots')
 # RA3_BENCH_SPEED=<x>: the mission runs x times as fast (the capture shim scales the game's clocks once the menus are
 # walked); mission seconds, waits and watches are all in mission time. 1 (default): the shim hooks no clock.
 SPEED = float(os.environ.get('RA3_BENCH_SPEED') or 1)
+STOP_WAIT = 20      # seconds stop() waits for the killed game to exit before it warns and frees the slot anyway
 FRAME_COST = 0.35           # real seconds a watched frame takes: capture, archive, counters (bench 2026-10-27, x8)
-RUNS = os.path.join(ROOT, 'work', 'testbench', 'runs')
+RUNS = os.path.join(labpaths.WORK, 'testbench', 'runs')
 LOCK = slots.lock_path(1)
 MODS = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods')
+# engine line D (ADR 0027/0028): a mod whose folder holds ra3ext.allow (a mission with ext=True writes it) starts
+# through this launcher, which injects ra3ext.dll; every other start is the plain Popen, as before
+EXT_LAUNCH = os.environ.get('RA3EXT_LAUNCH') or os.path.join(labpaths.WORK, 're', 'ext', 'ra3ext', 'bin',
+                                                             'ra3ext_launch.exe')
 W, H = 1280, 720
 AIR_LIFT = 170              # a hovering aircraft is drawn ~170 px above its ground point (select it there)
 CAPTION_BOX = (340, 125, 840, 185)     # the military caption (SHOW_MILITARY_CAPTION): where scripts report signals
@@ -103,6 +111,56 @@ def crash_box(pid):
     return None
 
 
+def boxes(pid):
+    """[(title, [its texts])] of the process's visible standard dialog boxes (top-level, class #32770): a message
+    box the game put up -- "Steam: Failed to initialize Steam", a crash box -- which no captured frame shows (with no
+    Direct3D device yet there are no frames at all, and the parked window is off screen)."""
+    out = []
+
+    def each(h, _):
+        p = wt.DWORD()
+        user32.GetWindowThreadProcessId(h, ctypes.byref(p))
+        if p.value != pid or not user32.IsWindowVisible(h):
+            return True
+        cls = ctypes.create_unicode_buffer(256)
+        user32.GetClassNameW(h, cls, 256)
+        if cls.value != '#32770':
+            return True
+        title = ctypes.create_unicode_buffer(256)
+        user32.GetWindowTextW(h, title, 256)
+        texts = []
+
+        def child(c, _):
+            buf = ctypes.create_unicode_buffer(2048)
+            user32.GetWindowTextW(c, buf, 2048)
+            if buf.value.strip():
+                texts.append(buf.value.strip())
+            return True
+        user32.EnumChildWindows(h, EnumProc(child), 0)
+        out.append((title.value, texts))
+        return True
+    user32.EnumWindows(EnumProc(each), 0)
+    return out
+
+
+STEAM_HINT = ('Steam is not ready (bench 2026-11-08: right after boot its library never got ready -- '
+              'steamui_login.txt "Timed out waiting for library ready"): restart Steam, '
+              'python -I -X utf8 experimental/testbench/doctor.py checks it')
+BOX_WAIT = 10       # seconds a box stays up in the menu walk before it is the error (a passing one may close itself)
+BUTTONS = {'OK', 'Cancel', 'Yes', 'No', 'Retry', 'Abort', 'Ignore', '确定', '取消', '是', '否', '重试'}
+
+
+def box_error(found):
+    """The bench error for dialog boxes `found` (boxes(pid)), or None when there are none: each box's title and its
+    texts without the buttons, plus what to do when it is Steam's."""
+    if not found:
+        return None
+    said = '; '.join(f'{title or "(untitled)"}: ' + ' | '.join(t for t in texts if t not in BUTTONS)
+                     for title, texts in found)
+    hint = f' -- {STEAM_HINT}' if 'steam' in said.lower() else ''
+    return f'the game put up a box: {said}{hint}'
+
+
 def lp(x, y):
     return (int(y) << 16) | (int(x) & 0xFFFF)
 
@@ -118,13 +176,23 @@ def click(h, x, y, right=False):
     post(h, up, 0, lp(x, y))
 
 
-def drag(h, x1, y1, x2, y2):
-    """Box selection: button down at (x1, y1), moves with the button held, up at (x2, y2)."""
+def drag(h, x1, y1, x2, y2, right=False, both=False):
+    """Box selection: button down at (x1, y1), moves with the button held, up at (x2, y2). right=True: the right
+    button, slowly (in RA3 that pans the camera: the tutorial's own words; the bench pans nothing, the game reads the
+    real cursor for it -- D 84). both=True: the right button, then the left too, dragged together, the left let go
+    first -- a try at the formation preview (FormationAssistant ActivateTime 0.3 s held before the preview takes)."""
+    slow = right or both
+    down, up, mk, steps, pause = (0x0204, 0x0205, 2, 16, 0.05) if slow else (0x0201, 0x0202, 1, 8, 0.04)
     post(h, 0x0200, 0, lp(x1, y1)); time.sleep(0.06)
-    post(h, 0x0201, 1, lp(x1, y1)); time.sleep(0.06)
-    for k in range(1, 9):
-        post(h, 0x0200, 1, lp(x1 + (x2 - x1) * k / 8, y1 + (y2 - y1) * k / 8)); time.sleep(0.04)
-    post(h, 0x0202, 0, lp(x2, y2))
+    post(h, down, mk, lp(x1, y1)); time.sleep(0.06 if both else 0.4 if right else 0.06)
+    if both:
+        mk = 3
+        post(h, 0x0201, mk, lp(x1, y1)); time.sleep(0.4)
+    for k in range(1, steps + 1):
+        post(h, 0x0200, mk, lp(x1 + (x2 - x1) * k / steps, y1 + (y2 - y1) * k / steps)); time.sleep(pause)
+    if both:
+        post(h, 0x0202, 2, lp(x2, y2)); time.sleep(0.06)
+    post(h, up, 0, lp(x2, y2))
 
 
 def key(h, vk):
@@ -159,7 +227,8 @@ def mute(pid):
 
 
 def game_running():
-    out = subprocess.run(['tasklist'], capture_output=True, text=True, errors='replace').stdout.lower()
+    import slots      # the process list without a full `tasklist` (it hung inside Codex's sessions, 11-11)
+    out = ' '.join(slots._tasks().values()).lower()
     return bool(re.search(r'\bra3(_1\.\d+\.game|\.exe|ep1)', out))
 
 
@@ -183,16 +252,76 @@ def skudef(mod):
     return os.path.join(MODS, mod, f'{mod}_1.0.skudef')
 
 
-def map_borders(sku):
+def map_borders(sku, chapter=None):
     """The built map's borders [(name, (x0, y0, x1, y1))] from the sidecar the cnv build leaves next to the mod
-    (cnv/parts.write_sidecar); [] for a mod without one (older builds, the campaign makers: the whole map)."""
+    (cnv/parts.write_sidecar); a shell with several levels: chapter `chapter`'s map (the sidecar's 'levels'); [] for a
+    mod without one (older builds, the campaign makers: the whole map)."""
     try:
         with open(os.path.join(os.path.dirname(sku), 'cnv_map.json'), encoding='utf-8') as f:
-            # empty ones left out: the island's container keeps retail leftovers like (5010, 5010, 5010, 5010), and
-            # a zero-size area divided the minimap fit by zero (bench 2026-10-27, the units line's bench_camera)
-            return [(n, tuple(r)) for n, r in json.load(f)['borders'] if r[2] > r[0] and r[3] > r[1]]
+            side = json.load(f)
+        side = side.get('levels', {}).get(str(chapter), side)
+        # empty ones left out: the island's container keeps retail leftovers like (5010, 5010, 5010, 5010), and
+        # a zero-size area divided the minimap fit by zero (bench 2026-10-27, the units line's bench_camera)
+        return [(n, tuple(r)) for n, r in side['borders'] if r[2] > r[0] and r[3] > r[1]]
     except (OSError, ValueError, KeyError):
         return []
+
+
+# The plain game (no -modConfig) walks nav.json into the first Allied mission; its map, read for borders and terrain.
+RETAIL_DEFAULT = 'camp_a01_brightonbeach_smith'
+
+
+def retail_borders(name):
+    """A retail campaign map's borders [(name, (x0, y0, x1, y1))] in world units (the same as map_borders gives for a
+    built map): read from the map in the game's MapsCampaign.big by name; [] where it cannot be read."""
+    try:
+        maprender = calib._load_file('maprender', os.path.join(calib.ROOT, 'experimental', 'campaign', 'maprender.py'))
+        hm = sys.modules['mapterrain'].HeightMap(maprender.load(name))
+        cell = sys.modules['mapterrain'].CELL
+        return [(str(k), tuple(v * cell for v in r)) for k, r in enumerate(hm.borders()) if r[2] > r[0] and r[3] > r[1]]
+    except (Exception, SystemExit):
+        return []
+
+
+def shell_slot(sku):
+    """The campaign shell's slot a check build rides on (cnv build.py --shell --check: the sidecar's 'slot'), else None."""
+    try:
+        with open(os.path.join(os.path.dirname(sku), 'cnv_map.json'), encoding='utf-8') as f:
+            return json.load(f).get('slot')
+    except (OSError, ValueError):
+        return None
+
+
+def chapter_step(slot):
+    """The chapter list (title bar template cut from a frame of it: work/testbench/nav/step_chapters.png): its `slot`-th row,
+    then Proceed. The rows are 20.7 px apart from y 263 (1280 x 720 frame)."""
+    return {'name': f'chapter list: slot {slot}', 'how': 'tpl', 'box': [190, 28, 360, 68], 'threshold': 18,
+            'template': 'step_chapters.png',
+            'actions': [['click', 640, round(262.7 + 20.7 * (slot - 1))], ['wait', 0.6], ['click', 875, 676]]}
+
+
+def shell_steps(slot):
+    """nav.json's way into a mission, through the campaign shell's chapter list to `slot` instead of the faction menu:
+    main menu, the campaign submenu's chapter button, the chapter list, then nav.json's briefing video, world map and
+    mission briefing into the game (testbench/shell_shots.py --tour overview --slot walks the same)."""
+    with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
+        steps = json.load(f)
+    return [steps[0], dict(steps[1], actions=[['click', 375, 426]]), chapter_step(slot)] + steps[3:]
+
+
+# The faction select screen's three cards (1280 x 720 frame, 2026-11-08): Soviet left, Allied middle, Empire right.
+FACTION_X = {'s': 360, 'a': 637, 'j': 907}
+
+
+def faction_steps(letter):
+    """nav.json's way into the FIRST mission of a faction (the plain game's campaign is linear: only mission 1 of each
+    faction can be walked into; later ones need a campaign shell): the faction card clicked is `letter` (s Soviet,
+    a Allied, j Empire; the retail map names camp_<letter>01_...). The steps after it are the same screens."""
+    with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
+        steps = json.load(f)
+    acts = [['click', FACTION_X[letter], 315]] + steps[2]['actions'][1:]
+    last = dict(steps[-1], template=f'step8_{letter}.png') if letter != 'a' else steps[-1]   # the HUD's faction emblem
+    return steps[:2] + [dict(steps[2], actions=acts)] + steps[3:-1] + [last]
 
 
 def seen_step(steps, frame, at, back=False):
@@ -210,6 +339,134 @@ class BenchError(RuntimeError):
     pass
 
 
+def ext_wanted(args):
+    """True when the game args carry -modConfig <skudef> and that skudef's folder holds ra3ext.allow (engine line D,
+    ADR 0028: the same rule ra3ext_launch injects by). Off for every mod that does not write the file."""
+    if '-modConfig' not in args or args.index('-modConfig') + 1 >= len(args):
+        return False
+    return os.path.isfile(os.path.join(os.path.dirname(args[args.index('-modConfig') + 1]), 'ra3ext.allow'))
+
+
+EXT_LOGS = {'dock': 'RA3EXT_DOCK',      # ra3ext.allow word -> the variable the dll turns that log on by (D173)
+            'target': 'RA3EXT_TARGET'}  # D174: the tgt: hooks cut aiexpb50 from f2078 to ~f830; Mission.ext_logs
+
+
+ENTRIES = os.path.join(labpaths.WORK, 're', 'inject_entries.json')   # private: entry set name -> RA3EXT_ENTRY spec
+
+
+def entry_spec(name, path=None):
+    """The RA3EXT_ENTRY spec of the entry set `name` (D179: ra3ext logs each hit of those program entries, `ent:`
+    lines, inject.py kind 'entry'), from the private table; None without it (the addresses stay out of public files)."""
+    path = path or ENTRIES
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding='utf-8') as f:
+        spec = json.load(f).get(name)
+    return spec if isinstance(spec, str) and spec else None
+
+
+def ext_logs(args):
+    """{variable: value} for each costly ra3ext log the mod's ra3ext.allow names (package.mark_ext), else {}. A word
+    entry<name> (Mission.ext_logs) turns the entry-hit log on for the private entry set <name> (entry_spec)."""
+    path = os.path.join(os.path.dirname(args[args.index('-modConfig') + 1]), 'ra3ext.allow')
+    with open(path, encoding='ascii', errors='replace') as f:
+        words = f.read().split()
+    out = {EXT_LOGS[w]: '1' for w in words if w in EXT_LOGS}
+    specs = [entry_spec(w[len('entry'):]) for w in words if w.startswith('entry') and len(w) > len('entry')]
+    if any(specs):
+        out['RA3EXT_ENTRY'] = ','.join(x for x in specs if x)
+    return out
+
+
+def hand_plan(args, run_dir):
+    """The mod's ra3ext plan ("注入摆": ra3ext_plan.txt next to the skudef, written by the build) copied into the run
+    folder as ra3ext_cmd.txt, where the map's CNVCmd host reads it on its first update. True when there was one."""
+    plan = os.path.join(os.path.dirname(args[args.index('-modConfig') + 1]), 'ra3ext_plan.txt')
+    if not os.path.isfile(plan):
+        return False
+    shutil.copyfile(plan, os.path.join(run_dir, 'ra3ext_cmd.txt'))
+    return True
+
+
+def ext_command(args, log):
+    """The launcher's command line for the game command `args`: ra3ext_launch [opts] -- <game> <args...>."""
+    return [EXT_LAUNCH, '--log', log, '--cwd', BENCH, '--verify-ms', '15000', '--'] + list(args)
+
+
+def parse_launch(text):
+    """{pid, inject, reason, dll_loaded} from the launcher's one line 'pid=<n> inject=<yes|no> reason=<...> ...'."""
+    line = next((x for x in text.splitlines() if x.startswith('pid=')), '')
+    return dict(m.groups() for m in re.finditer(r'(\w+)=(.*?)(?= \w+=|$)', line))
+
+
+def ext_summary(path):
+    """One line on ra3ext's log: 'ra3ext: <status>; N create, M update[, K sweep] (log)', or None without a log."""
+    if not path or not os.path.isfile(path):
+        return None
+    lines = open(path, encoding='utf-8', errors='replace').read().splitlines()
+    status = next((x.split(': ', 1)[-1] for x in lines if x.startswith('ra3ext loaded')), 'no load line')
+    creates = sum(x.startswith('create ') for x in lines)
+    updates = sum(x.startswith('update ') for x in lines)
+    sweeps = sum(x.startswith('sweep ') for x in lines)
+    more = f', {sweeps} sweep' if sweeps else ''
+    return f'ra3ext: {status}; {creates} create, {updates} update{more} ({path})'
+
+
+def ext_frame(pid):
+    """The logic frame of game `pid` now, from ra3ext's shared clock (Local\\ra3ext_clock_<pid>: u32 'CLK1', the
+    frame, a tick count; written once per logic frame), or None without ra3ext (engine line D round 81). Bench
+    seconds are wall time x the rate asked for; this is what the game's own log lines call frame=."""
+    k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    k32.OpenFileMappingW.restype = wt.HANDLE
+    k32.MapViewOfFile.restype = ctypes.c_void_p
+    k32.MapViewOfFile.argtypes = [wt.HANDLE, wt.DWORD, wt.DWORD, wt.DWORD, ctypes.c_size_t]
+    k32.UnmapViewOfFile.argtypes = [ctypes.c_void_p]
+    h = k32.OpenFileMappingW(0x0004, False, f'Local\\ra3ext_clock_{pid}')     # FILE_MAP_READ
+    if not h:
+        return None
+    try:
+        p = k32.MapViewOfFile(h, 0x0004, 0, 0, 12)
+        if not p:
+            return None
+        magic, frame = ctypes.c_uint32.from_address(p).value, ctypes.c_int32.from_address(p + 4).value
+        k32.UnmapViewOfFile(p)
+        return frame if magic == 0x314b4c43 else None
+    finally:
+        k32.CloseHandle(h)
+
+
+class GameProcess:
+    """The bits of Popen the Session uses (pid, poll, returncode, kill, wait) for a game another program started (the
+    ra3ext launcher). A game already gone when opened polls as exited, code -1."""
+    _k32 = ctypes.WinDLL('kernel32', use_last_error=True) if os.name == 'nt' else None
+
+    def __init__(self, pid):
+        self.pid, self.returncode = pid, None
+        k = self._k32
+        k.OpenProcess.restype = wt.HANDLE
+        self._h = k.OpenProcess(0x00100000 | 0x0001 | 0x1000, False, pid)  # SYNCHRONIZE | TERMINATE | QUERY_LIMITED
+        if not self._h:
+            self.returncode = -1
+
+    def poll(self):
+        if self.returncode is None and self._k32.WaitForSingleObject(wt.HANDLE(self._h), 0) == 0:
+            code = wt.DWORD()
+            self._k32.GetExitCodeProcess(wt.HANDLE(self._h), ctypes.byref(code))
+            self.returncode = code.value
+        return self.returncode
+
+    def wait(self, timeout=None):
+        if self.returncode is None:
+            ms = 0xFFFFFFFF if timeout is None else int(timeout * 1000)
+            if self._k32.WaitForSingleObject(wt.HANDLE(self._h), ms) != 0:
+                raise subprocess.TimeoutExpired('game', timeout)
+        return self.poll()
+
+    def kill(self):
+        if self.poll() is None:
+            self._k32.TerminateProcess(wt.HANDLE(self._h), 1)
+
+
 class Session:
     """The one bench game. start() -> act / frame -> ... -> stop(). Frames go to work/testbench/runs/<mod>_mcp_<time>/
     as 0001.png ... with index.json (id, mission second, note)."""
@@ -219,10 +476,14 @@ class Session:
         self.slot = None            # the bench slot held (slots.py) while a game runs
         self.mod = None
         self.run_dir = None
+        self.ext_log = None         # ra3ext's log in the run folder, while a game started through ra3ext_launch
         self.frames = []
         self.t0 = None              # mission start (time.monotonic)
         self.view = None            # None: the start camera; else the world point the last minimap jump centred
-        self.borders = []           # the built map's playable areas (cnv_map.json beside the mod), [] the whole map
+        self.shift = (0.0, 0.0)     # screen pixels the view's point stands off the minimap-jump calibration (scripted_view)
+        self._ground = None         # the mod's terrain (calib.Ground), read at the first world click; False: unreadable
+        self.map_name = None        # the retail map a plain game plays (RETAIL_DEFAULT), None with a mod
+        self.borders = []         # the built map's playable areas (cnv_map.json beside the mod), [] the whole map
         self.last_border = None
         self.log = []
         self.muted = 0
@@ -231,16 +492,32 @@ class Session:
         self.game_s = 0.0           # mission seconds run before the current running stretch
         self.run_from = None        # when the current running stretch began (time.monotonic), None while paused
         self.rate = 1.0             # the speed the mission runs at now: x1 till speed_up
+        self.boxes = boxes          # pid -> the game's dialog boxes (a stand-in in tests)
 
     # -- life cycle -------------------------------------------------------------------------------------------
-    def start(self, mod, visible=False, timeout=150, hold=True, steps=None):
-        """mod None: the plain game (no -modConfig). steps: nav steps to walk instead of nav.json's way into the CNV
-        mission, e.g. nav.json's first step without its click to stop on the main menu (skirmish by hand)."""
+    def start(self, mod, visible=False, timeout=150, hold=True, steps=None, chapter=None, menu_frames=0.0,
+              retail_map=None):
+        """mod None: the plain game (no -modConfig); its map is `retail_map` (default: RETAIL_DEFAULT, the first
+        Allied mission nav.json walks into): the borders and terrain are read from it and the camera fitted for it
+        (calib.set_profile) is used. steps: nav steps to walk instead of nav.json's way into the CNV
+        mission, e.g. nav.json's first step without its click to stop on the main menu (skirmish by hand). A build on
+        the campaign shell (its sidecar names a slot) walks the chapter list into that slot (shell_steps), or into
+        `chapter` (1..9) when given (I18: the release shell carries every level, cnv build.py campaign --shell).
+        menu_frames > 0 (I22): also archive the walk itself -- a half-size frame every `menu_frames` seconds and one
+        of each menu step before its click (chapter list, briefing cards, mission briefing, the opening cutscene till
+        the HUD is up), as ordinary frames with second None and note "menu: <step>", so bench_inspect reads them."""
         if self.p and self.p.poll() is None:
             raise BenchError(f'a session is running ({self.mod}): stop it first')
         sku = skudef(mod) if mod else 'RA3'
         if mod and not os.path.exists(sku):
             raise BenchError(f'no such mod: {sku}')
+        if chapter and not (mod and shell_slot(sku)):
+            raise BenchError(f'{mod} is no campaign shell build (its cnv_map.json names no slot): no chapter to pick')
+        chapter = chapter or (shell_slot(sku) if mod else None)
+        if steps is None and chapter:
+            steps = shell_steps(chapter)
+        if steps is None and not mod and (retail_map or '')[:6] in ('camp_s', 'camp_j') and retail_map[6:8] == '01':
+            steps = faction_steps(retail_map[5])        # the Soviet / Empire campaign's first mission
         slot = slots.take_waiting('RA3-CampaignLab ra3bench', sku)     # queues while other bench games hold all
         foreign = slots.foreign_games()
         if foreign:
@@ -263,14 +540,21 @@ class Session:
         self.run_dir = os.path.join(RUNS, f'{self.mod}_mcp_{datetime.datetime.now():%m%d_%H%M%S}')
         os.makedirs(self.run_dir)
         self.frames, self.view, self.log, self.muted, self.t0 = [], None, [], 0, None
-        self.borders = map_borders(sku) if mod else []
+        self.shift = (0.0, 0.0)
+        self._ground = None
+        self.map_name = None if mod else (retail_map or RETAIL_DEFAULT)
+        if not mod and not calib.set_profile(self.map_name):
+            self._say(f'no camera fitted for {self.map_name} (calib.py fit_retail): world clicks are not to be trusted')
+        elif mod:
+            calib.set_profile(None)
+        self.borders = map_borders(sku, chapter) if mod else retail_borders(self.map_name)
         self.last_border = self.borders[0] if self.borders else None
         self.hold, self.paused, self.game_s, self.run_from, self.rate = hold, False, 0.0, None, 1.0
         args = [os.path.join(BENCH, 'Data', 'RA3_1.13.game'), '-config', os.path.join(BENCH, 'RA3_chinese_t_1.13.SkuDef'),
                 '-runver', '1.13', '-win', '-xres', str(W), '-yres', str(H)] + (['-modConfig', sku] if mod else [])
         try:
             self._launch(args)
-            self._walk_menus(visible, timeout, steps)
+            self._walk_menus(visible, timeout, steps, menu_frames)
         except BaseException:
             self.stop()
             raise
@@ -284,7 +568,7 @@ class Session:
         if SPEED != 1:
             env['CNV_SPEED'] = '1'          # clocks hooked, the menus and videos at x1; the mission sped up in game
         for _ in range(tries):
-            self.p = subprocess.Popen(args, cwd=BENCH, env=env)
+            self.p = self._start(args, env)
             slots.note_game(self.slot, self.p.pid)
             for _ in range(60):
                 time.sleep(0.5)
@@ -300,21 +584,55 @@ class Session:
             time.sleep(3)
         raise BenchError(f'the game would not start next to the other bench games ({tries} tries)')
 
+    def _start(self, args, env):
+        """The game's process: Popen, or -- for a mod that asks for ra3ext (ext_wanted) -- the launcher's child, held
+        as a GameProcess (the launcher prints the game's pid and exits). ra3ext's log goes to the run folder."""
+        self.ext_log = None
+        if not ext_wanted(args):
+            return subprocess.Popen(args, cwd=BENCH, env=env)
+        if not os.path.isfile(EXT_LAUNCH):
+            raise BenchError(f'the mod asks for ra3ext (ra3ext.allow) but {EXT_LAUNCH} is missing: build.bat in '
+                             'work/re/ext/ra3ext')
+        self.ext_log = os.path.join(self.run_dir, 'ra3ext.log')
+        if hand_plan(args, self.run_dir):
+            self._say('ra3ext plan handed to CNVCmd (ra3ext_plan.txt -> ra3ext_cmd.txt)')
+        env = {k: v for k, v in env.items() if k not in EXT_LOGS.values() and k != 'RA3EXT_ENTRY'}
+        env.update(ext_logs(args))
+        r = subprocess.run(ext_command(args, self.ext_log), capture_output=True, text=True, errors='replace', env=env,
+                           timeout=60)
+        got = parse_launch(r.stdout)
+        self._say(f'ra3ext_launch: {r.stdout.strip()} {r.stderr.strip()}'.strip())
+        if 'pid' not in got:
+            raise BenchError(f'ra3ext_launch gave no game (rc {r.returncode}): {r.stdout.strip()} {r.stderr.strip()}')
+        if got.get('inject') != 'yes' or got.get('dll_loaded') != 'yes':
+            GameProcess(int(got['pid'])).kill()
+            raise BenchError(f'ra3ext not in the game: {r.stdout.strip()}')
+        return GameProcess(int(got['pid']))
+
     def _say(self, s):
         self.log.append(s)
 
-    def _walk_menus(self, visible, timeout, steps=None):
+    def _walk_menus(self, visible, timeout, steps=None, every=0.0):
         if steps is None:
             with open(os.path.join(nav.OUT, 'nav.json'), encoding='utf-8') as f:
                 steps = json.load(f)
         at, done_at, parked, t = 0, 0, False, time.monotonic()
         lost = False                    # a "connection lost" box was answered: the screen may be any step now
+        kept = None                     # when the last walk frame was archived (every > 0)
+        boxed = None                    # since when a dialog box of the game's has been up
         while True:
             time.sleep(1)
             s = round(time.monotonic() - t)
             self._alive()
+            # A Windows box (Steam failed, ...) blocks the game before any menu: no frame ever shows it, so ask the
+            # windows. Up BOX_WAIT s in a row: report it instead of waiting the whole timeout out as "menus stuck".
+            box = box_error(self.boxes(self.p.pid))
+            boxed = (boxed if boxed is not None else s) if box else None
+            if box and s - boxed >= BOX_WAIT:
+                raise BenchError(f'{box} (up {s - boxed} s, menus at "{steps[at]["name"]}")')
             if s > timeout:             # here, not only after a frame: with no frames at all it never got there
-                raise BenchError(f'menus stuck at "{steps[at]["name"]}" after {s} s (see {self.run_dir}\\nav_last.bmp)')
+                raise BenchError(box or f'menus stuck at "{steps[at]["name"]}" after {s} s '
+                                        f'(see {self.run_dir}\\nav_last.bmp)')
             h = main_window(self.p.pid)
             if h is None:
                 continue
@@ -326,13 +644,19 @@ class Session:
             if frame is None:
                 continue
             pop = nav.popup(frame)
+            matched = not pop and nav.matches(steps[at], nav.metric(frame, steps[at]))
+            if every and (matched or kept is None or time.monotonic() - kept >= every):
+                name = 'opening cutscene (waiting for the HUD)' if at == len(steps) - 1 and not matched \
+                    else steps[at]['name']
+                self.keep_walk(frame, name + (' (before its keys)' if matched else ''), s)
+                kept = time.monotonic()
             if pop:
                 name, (x, y) = pop
                 self._say(f'popup {name} at {s} s: click {x},{y}')
                 click(h, x, y)
                 if name == 'connection lost':        # often back to the main menu, but it also came up in the
                     lost, done_at = True, s          # mission (bench 2026-10-27): walk on from what the screen shows
-            elif nav.matches(steps[at], nav.metric(frame, steps[at])):
+            elif matched:
                 self._say(f'menu {at} {steps[at]["name"]} at {s} s')
                 self._do(h, steps[at]['actions'])
                 at, done_at = at + 1, s
@@ -363,14 +687,25 @@ class Session:
                 time.sleep(a[1])
             time.sleep(0.25)
 
-    def stop(self):
+    def stop(self, wait=STOP_WAIT):
+        """Kill this session's own game (its pid only, never another line's) and free the slot. A game that has not
+        exited after `wait` seconds is a warning in the reply (dict 'warning'), not an exception: bench 2026-11-10 a
+        TimeoutExpired here lost a check's readings and verdict (engine_sweepoff, B's run the same night)."""
+        warning = None
         if self.p and self.p.poll() is None:
             self.p.kill()
-            self.p.wait(10)
+            try:
+                self.p.wait(wait)
+            except subprocess.TimeoutExpired:
+                warning = f'game pid {self.p.pid} still up {wait} s after kill (left to exit by itself)'
+                self._say(warning)
         if self.slot:
             slots.release(self.slot)
             self.slot = None
-        return dict(mod=self.mod, frames=len(self.frames), run_dir=self.run_dir)
+        r = dict(mod=self.mod, frames=len(self.frames), run_dir=self.run_dir)
+        if warning:
+            r['warning'] = warning
+        return r
 
     def _alive(self):
         if self.p is None:
@@ -427,13 +762,17 @@ class Session:
         """Hold mode: open the mission menu (the mission stands still); checked on a frame, retried once."""
         if not self.hold or self.paused:
             return
+        # the clock stops / starts at the Esc that worked, not after the check: resume started it after its 0.4 s
+        # and a frame, while the mission was already running -- ~0.4 mission s lost per pause, a run paused every
+        # 1.4 s counted 15 s for 19.5 (bench 11-09, movie_pause_probe.py: 19.5 counter frames a 'second', 15 unpaused)
         h = self.window()
         for _ in range(2):
+            pressed = time.monotonic()
             key(h, 0x1B)
             time.sleep(0.5)
             img = self._capture('hold')
             if img is not None and self.menu_open(img):
-                self.game_s += (time.monotonic() - self.run_from - 0.5) * self.rate
+                self.game_s += (pressed - self.run_from) * self.rate
                 self.paused, self.run_from = True, None
                 return
         raise BenchError('Esc did not open the mission menu (a targeting cursor or a dialog in the way?)')
@@ -445,11 +784,12 @@ class Session:
             return
         h = self.window()
         for _ in range(2):
+            pressed = time.monotonic()
             key(h, 0x1B)
             time.sleep(0.4)
             img = self._capture('hold')
             if img is not None and not self.menu_open(img):
-                self.paused, self.run_from = False, time.monotonic()
+                self.paused, self.run_from = False, pressed
                 self.speed_up()
                 return
         raise BenchError('Esc did not close the mission menu')
@@ -493,15 +833,28 @@ class Session:
         # the mission second when the shot was asked for: the shim saves the next frame drawn (ms later), while
         # waiting for the file and reading it back take ~0.3 s -- 2-3 mission seconds at x8 (bench 2026-10-27)
         second = self.second()
+        frame = ext_frame(self.p.pid) if self.ext_log else None     # the same moment, in logic frames (ra3ext)
         img = self._capture('mcp')
         if img is None:
             raise BenchError('no frame from the capture shim within 3 s')
         fid = len(self.frames) + 1
         img.save(os.path.join(self.run_dir, f'{fid:04d}.png'))
-        self.frames.append(dict(id=fid, second=second, note=note, view=self.view))
+        self.frames.append(dict(id=fid, second=second, note=note, view=self.view, **({'frame': frame} if
+                                                                                      frame is not None else {})))
         with open(os.path.join(self.run_dir, 'index.json'), 'w', encoding='utf-8') as f:
             json.dump(dict(mod=self.mod, frames=self.frames), f, ensure_ascii=False, indent=1)
         return fid, img
+
+    def keep_walk(self, bmp, step, s, scale=0.5):
+        """Archive a frame of the menu walk (I22): `scale` size, second None, the step and walk second in the note."""
+        img = Image.open(bmp).convert('RGB')
+        img = img.resize((round(img.width * scale), round(img.height * scale)), Image.BILINEAR)
+        fid = len(self.frames) + 1
+        img.save(os.path.join(self.run_dir, f'{fid:04d}.png'))
+        self.frames.append(dict(id=fid, second=None, note=f'menu: {step} at walk {s} s', view=None, scale=scale))
+        with open(os.path.join(self.run_dir, 'index.json'), 'w', encoding='utf-8') as f:
+            json.dump(dict(mod=self.mod, frames=self.frames), f, ensure_ascii=False, indent=1)
+        return fid
 
     def archived(self, fid):
         p = os.path.join(self.run_dir, f'{int(fid):04d}.png')
@@ -510,14 +863,34 @@ class Session:
         return Image.open(p).convert('RGB')
 
     # -- world <-> screen -------------------------------------------------------------------------------------
+    def ground(self):
+        """The running mod's terrain (calib.Ground), or None where its map cannot be read (then the ground is flat)."""
+        if self._ground is None:
+            try:
+                self._ground = calib.Ground(self.map_name or self.mod)
+            except (Exception, SystemExit) as e:          # maprender.load exits on a missing map
+                self._say(f'terrain of {self.mod} not read ({e}): clicks as on flat ground')
+                self._ground = False
+        return self._ground or None
+
+    def _lift(self, x, y):
+        g = self.ground() if self.view is not None and (self.mod or self.map_name) else None
+        return g.lift(x, y, self.view) if g else 0.0
+
     def to_screen(self, x, y, air=False):
-        u, v = calib.world_to_screen(x, y) if self.view is None else calib.world_to_screen_at(x, y, self.view)
-        return u, v - (AIR_LIFT if air else 0)
+        if self.view is None:
+            u, v = calib.world_to_screen(x, y)
+        else:   # the ground's height against what the camera looks at (calib.Ground; A4 back lane V1, round 8)
+            u, v = calib.world_to_screen_at(x, y + self._lift(x, y), self.view)
+        return u + self.shift[0], v + self.shift[1] - (AIR_LIFT if air else 0)
 
     def to_world(self, u, v):
-        x, y = calib.screen_to_world(u, v)
+        x, y = calib.screen_to_world(u - self.shift[0], v - self.shift[1])
         if self.view is not None:
             x, y = x + self.view[0] - calib.START_VIEW[0], y + self.view[1] - calib.START_VIEW[1]
+            fy = y                                         # the flat point drawn there; solve y + lift(x, y) = fy
+            for _ in range(4):
+                y = fy - self._lift(x, y)
         return round(x, 1), round(y, 1)
 
     def border(self):
@@ -540,7 +913,17 @@ class Session:
             raise BenchError(f'({x}, {y}) is outside the playable area now ({b[0]} {b[1]}): the camera cannot go there')
         click(h, *calib.world_to_minimap(x, y, b and b[1]))
         self.view = (float(x), float(y))
+        self.shift = (0.0, 0.0)
         time.sleep(0.3)
+
+    def scripted_view(self, x, y):
+        """The mission's own MOVE_CAMERA_TO put the camera on world (x, y): that point, at the height the camera looks
+        at, then stands at screen (640, 350) (bench 2026-11-03, a4 place: an engineer teleported to the waypoint stood
+        there), not where a minimap jump's calibration puts the view's centre; later world clicks follow. The ground
+        there is drawn lower where the camera looks higher (to_screen, calib.Ground: at A4's V1, 26 px)."""
+        self.view = (float(x), float(y))
+        u, v = calib.world_to_screen_at(x, y, self.view)      # the flat mapping: the look height at (640, 350)
+        self.shift = (640.0 - u, 350.0 - v)
 
 
 def main():

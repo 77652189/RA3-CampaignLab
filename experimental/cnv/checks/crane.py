@@ -48,3 +48,11 @@ def spot(m):
 
 def blind(m):
     return trip(m, False)
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'crane': {'spot': spot},
+    'crane_hide': {'hide': hide},
+    'crane_retail': {'blind': blind},
+}

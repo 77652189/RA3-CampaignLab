@@ -1,0 +1,27 @@
+# CampAICrush1TA_mcp_1113_052110; team and caller redacted; measured fields unchanged.
+kassign: frame=229 team=T mstate=6 src=all ra=R mem=3170 tgt=3169 flag=0 ret=1 w=1 prev=- start=229 until=299 keep=70 min=3.00 max=5.00 n=0
+kassign: frame=229 team=T mstate=6 src=all ra=R mem=3171 tgt=3169 flag=0 ret=1 w=1 prev=- start=229 until=295 keep=66 min=3.00 max=5.00 n=0
+kassign: frame=229 team=T mstate=6 src=all ra=R mem=3172 tgt=3169 flag=0 ret=1 w=1 prev=- start=229 until=298 keep=69 min=3.00 max=5.00 n=0
+kassign: frame=229 team=T mstate=6 src=all ra=R mem=3173 tgt=3169 flag=0 ret=1 w=1 prev=- start=229 until=284 keep=55 min=3.00 max=5.00 n=0
+tstate: frame=230 team=T mstate=6 prev=8 secs=0.00 tgt=3169 chosen=-1 tact=3169 idle=0 ready=0 mem=3170:10:0,3171:10:0,3172:10:0,3173:10:0 dest=3170@0.0:0.0,3171@0.0:0.0,3172@0.0:0.0,3173@0.0:0.0 aim=3170>3169@3700.0:2400.0,3171>3169@3700.0:2400.0,3172>3169@3700.0:2400.0,3173>3169@3700.0:2400.0 hd=3170:-100,3171:-92,3172:-106,3173:-76
+tstate: frame=259 team=T mstate=6 prev=8 secs=0.00 tgt=3169 chosen=-1 tact=3169 idle=0 ready=0 mem=3170:10:0,3171:10:0,3172:10:0,3173:10:0 dest=3170@0.0:0.0,3171@0.0:0.0,3172@0.0:0.0,3173@0.0:0.0 aim=3170>3169@3700.0:2400.0,3171>3169@3700.0:2400.0,3172>3169@3700.0:2400.0,3173>3169@3700.0:2400.0 hd=3170:-100,3171:-92,3172:-106,3173:-7
+kpass: frame=259 team=T cand=3175:1,3185:1,3184:1,3183:1,3182:1,3178:1,3181:1,3180:1,3179:1,3176:1,3177:1,3174:1 keep=3170:299:hold,3171:295:hold,3172:298:hold,3173:284:hold why=3170:3169:ok,3171:3169:ok,3172:3169:ok,3173:3169:ok
+tstate: frame=349 team=T mstate=0 prev=0 secs=2.00 tgt=0 chosen=-1 tact=3167 idle=0 ready=0 mem=3170:1:0,3171:1:0,3172:1:0,3173:1:0,3221:999999:1 dest=3170@3172.4:3086.8,3171@3170.8:3171.6,3172@3129.2:3128.4,3173@3214.0:3129.9 aim=3170>0,3171>0,3172>0,3173>0,3221>0 hd=3170:-157,3171:-149,3172:-163,3173:-147,3221:-97
+kassign: frame=349 team=T mstate=2 src=score ra=R mem=3170 tgt=3183 flag=0 ret=2 w=1 prev=- start=349 until=0 keep=-349 min=3.00 max=5.00 n=0
+kassign: frame=349 team=T mstate=2 src=score ra=R mem=3171 tgt=3220 flag=0 ret=2 w=1 prev=- start=349 until=0 keep=-349 min=3.00 max=5.00 n=0
+kassign: frame=349 team=T mstate=2 src=score ra=R mem=3172 tgt=3181 flag=0 ret=2 w=1 prev=- start=349 until=0 keep=-349 min=3.00 max=5.00 n=0
+kassign: frame=349 team=T mstate=2 src=score ra=R mem=3173 tgt=3176 flag=0 ret=2 w=1 prev=- start=349 until=0 keep=-349 min=3.00 max=5.00 n=0
+kpass: frame=349 team=T cand=3175:1,3185:1,3184:1,3183:1,3182:1,3178:1,3181:1,3220:1,3180:1,3179:1,3176:1,3177:1,3174:1 keep=3170:0:go,3171:0:go,3172:0:go,3173:0:go why=3170:0:norec,3171:0:norec,3172:0:norec,3173:0:norec
+tstate: frame=350 team=T mstate=2 prev=0 secs=0.00 tgt=-1 chosen=-1 tact=3167 idle=0 ready=0 mem=3170:1:0,3171:1:0,3172:1:0,3173:1:0,3221:999999:1 dest=3170@3700.0:2340.0,3171@3700.0:2400.0,3172@3648.0:2370.0,3173@3730.0:2462.0 aim=3170>0,3171>0,3172>0,3173>0,3221>0 hd=3170:-138,3171:-130,3172:-144,3173:-128,3221:-97
+kpass: frame=379 team=T cand=3179:1,3185:1,3175:1,3183:0,3182:1,3220:0,3178:1,3181:0,3184:1,3180:1,3176:0,3177:1,3174:1 keep= why=
+kassign: frame=409 team=T mstate=2 src=score ra=R mem=3170 tgt=3184 flag=0 ret=2 w=1 prev=3183:0 start=409 until=0 keep=-409 min=3.00 max=5.00 n=0
+kassign: frame=409 team=T mstate=2 src=score ra=R mem=3171 tgt=3178 flag=0 ret=2 w=1 prev=3220:0 start=409 until=0 keep=-409 min=3.00 max=5.00 n=0
+kassign: frame=409 team=T mstate=2 src=score ra=R mem=3173 tgt=3178 flag=0 ret=2 w=1 prev=3176:0 start=409 until=0 keep=-409 min=3.00 max=5.00 n=0
+kpass: frame=409 team=T cand=3182:1,3185:1,3183:0,3178:1,3184:1,3174:1 keep=3170:0:go,3171:0:go,3173:0:go why=3170:3183:ok,3171:3220:dead,3173:3176:dead
+tstate: frame=410 team=T mstate=2 prev=2 secs=4.00 tgt=-1 chosen=-1 tact=3167 idle=0 ready=0 mem=3170:1:0,3171:1:0,3172:1:0,3173:1:0 dest=3170@3730.0:2354.7,3171@3670.0:2468.6,3172@3648.0:2370.0,3173@3670.0:2468.6 aim=3170>0,3171>0,3172>0,3173>0 hd=3170:-75,3171:-104,3172:-91,3173:-117
+kassign: frame=439 team=T mstate=2 src=score ra=R mem=3170 tgt=3182 flag=0 ret=2 w=1 prev=3184:0 start=439 until=0 keep=-439 min=3.00 max=5.00 n=0
+kassign: frame=439 team=T mstate=2 src=score ra=R mem=3171 tgt=3174 flag=0 ret=2 w=1 prev=3178:0 start=439 until=0 keep=-439 min=3.00 max=5.00 n=0
+kassign: frame=439 team=T mstate=2 src=score ra=R mem=3172 tgt=3174 flag=0 ret=2 w=1 prev=3181:0 start=439 until=0 keep=-439 min=3.00 max=5.00 n=0
+kassign: frame=439 team=T mstate=2 src=score ra=R mem=3173 tgt=3183 flag=0 ret=2 w=1 prev=3178:0 start=439 until=0 keep=-439 min=3.00 max=5.00 n=0
+kpass: frame=439 team=T cand=3183:1,3182:1,3174:1 keep=3170:0:go,3171:0:go,3172:0:go,3173:0:go why=3170:3184:dead,3171:3178:dead,3172:3181:dead,3173:3178:dead
+tstate: frame=440 team=T mstate=2 prev=2 secs=6.00 tgt=-1 chosen=-1 tact=3167 idle=0 ready=0 mem=3170:1:0,3171:1:0,3172:1:0,3173:1:0 dest=3170@3670.0:2354.7,3171@3768.5:2442.5,3172@3768.5:2442.5,3173@3703.2:2349.5 aim=3170>0,3171>0,3172>0,3173>0 hd=3170:-88,3171:71,3172:-72,3173:-161

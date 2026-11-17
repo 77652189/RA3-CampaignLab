@@ -26,6 +26,10 @@ CONTAINERS = {'PlayerScriptsList', 'ScriptList', 'OrCondition', 'MPPositionList'
               'WaypointsList', 'ObjectsList', 'TriggerAreas', 'BuildLists', 'SidesList'}
 CONTENT = {'Condition', 'ScriptAction', 'ScriptActionFalse'}
 COORD3D = 16
+# a relation argument: the game reads the index (0 Enemy, 1 Neutral, 2 Friend); retail writes index and name. A bare
+# name went out as index 0 -- every Neutral / Friend was Enemy (cnv plan.RELATION_INDEX; bench 11-09 pend_scripts9 rel)
+RELATION = 19
+RELATION_INDEX = {'Enemy': 0, 'Neutral': 1, 'Friend': 2}
 
 
 class Node:
@@ -96,7 +100,7 @@ class MapFile:
     def map_file(self):
         """The .map the game reads: RefPack('EAR\\0' + u32 size + RefPack(chunk file)), the inner layer really
         compressed (refpack_lz; LightAll, 27 relit maps: 154 MB -> 19 MB, loads in game), the outer one stored.
-        The size is that of the uncompressed chunk file (retail: 0x51d5c6 for Heidelberg's 5363142 bytes); with the
+        The size is that of the uncompressed chunk file (retail: Heidelberg's 5363142 bytes); with the
         compressed length there instead the game hangs at ~60 % of the loading screen."""
         import refpack_lz       # real compression (11-15 % of the chunk file, a few seconds per map)
         chunks = self.chunk_file()
@@ -193,7 +197,11 @@ class MapFile:
             body += encode_arg(t, v)
         body += struct.pack('<I', enabled) + (struct.pack('<I', inverted) if kind == 'Condition' else b'')
         self.name_id(kind)
-        return Node(kind, self.version(kind), body, [])
+        # a map with no ELSE action has no ScriptActionFalse to read the version off: Generals writes both with
+        # one version (K_SCRIPT_ACTION_VERSION)
+        ver = self.version('ScriptAction' if kind == 'ScriptActionFalse' and not any(
+            n.name == kind for _, n in self.walk()) else kind)
+        return Node(kind, ver, body, [])
 
     def new_script(self, name, conditions, actions, else_actions=(), comment='', active=True, one_shot=True,
                    difficulties=(True, True, True), subroutine=False, interval=0):
@@ -302,6 +310,35 @@ class MapFile:
             body += _pstr(o['name']) + _pstr(o['title']) + _pstr(o['desc']) + struct.pack('<BI', o['bonus'], o['flags'])
         self._objectives_node().head = body
 
+    # ------------------------------------------------------------- mission hot spots
+    def hotspots(self):
+        """MissionHotSpots (v1, a leaf after FogSettings): u32 count, then per hot spot: name, title label, description
+        label (work/re d115_script_semantics.md 4: no switch / visibility / place in the file -- scripts set and link
+        them). -> {name: (title, desc)}; {} when the map has no such chunk."""
+        node = next((n for _, n in self.walk() if n.name == 'MissionHotSpots'), None)
+        if node is None:
+            return {}
+        d, out, p = node.head, {}, 4
+        for _ in range(struct.unpack_from('<I', d, 0)[0]):
+            name, p = self.string(d, p)
+            title, p = self.string(d, p)
+            desc, p = self.string(d, p)
+            out[name] = (title, desc)
+        assert p == len(d), 'MissionHotSpots: trailing bytes'
+        return out
+
+    def set_hotspots(self, spots):
+        """Replace the map's hot spots with {name: (title, desc)}; a map without the chunk gets one before
+        MissionObjectives (where every retail map has it)."""
+        body = struct.pack('<I', len(spots)) + b''.join(_pstr(n) + _pstr(t) + _pstr(d) for n, (t, d) in spots.items())
+        node = next((n for _, n in self.walk() if n.name == 'MissionHotSpots'), None)
+        if node is None:
+            self.name_id('MissionHotSpots')
+            node = Node('MissionHotSpots', 1, b'', [])
+            i = next(k for k, n in enumerate(self.nodes) if n.name == 'MissionObjectives')
+            self.nodes.insert(i, node)
+        node.head = body
+
     # ------------------------------------------------------------- trigger areas
     def _areas_node(self):
         return next(n for _, n in self.walk() if n.name == 'TriggerAreas')
@@ -390,6 +427,8 @@ def encode_arg(t, v):
     the slot its Python type picks (retail never sets more than one; selftest re-encodes every retail argument)."""
     if t == COORD3D:
         return struct.pack('<Ifff', t, *v)
+    if t == RELATION and isinstance(v, str):
+        v = (RELATION_INDEX[v], 0.0, v)
     i, f, s = v if isinstance(v, tuple) else (0, 0.0, v) if isinstance(v, str) else (0, float(v), '') if isinstance(v, float) else (int(v), 0.0, '')
     return struct.pack('<Iif', t, i, f) + _pstr(s)
 
@@ -453,6 +492,11 @@ def selftest():
             before = m._objectives_node().head
             m.set_objectives(objs)
             enc = enc and m._objectives_node().head == before
+        spot = next((x for _, x in m.walk() if x.name == 'MissionHotSpots'), None)
+        if spot is not None:
+            before = spot.head
+            m.set_hotspots(m.hotspots())
+            enc = enc and spot.head == before
         good = same and again and enc
         print(f'{"OK " if good else "BAD"} {n.split(chr(92))[-1]:45} {scripts:4d} scripts')
         ok += good

@@ -15,6 +15,7 @@ every way and place), LAYOUT, BORDERS.
 import make_campnew18 as c18
 import platmap
 import platprops
+import resources
 from platmap import Layout, Road, poly, wobble
 from platprops import area, cliff_feet, scatter, shore
 from maps import island
@@ -72,13 +73,22 @@ LAYOUT = Layout(
 BRIDGES = [((RIVER[0] - 80.0, BRIDGE_Y), (RIVER[1] + 80.0, BRIDGE_Y))]
 
 
+# ore and oil as relations (resources.py, K4): a refinery pad, the way it faces, the base it serves; the ore is
+# made from that (180 straight ahead, a second node beside it), never typed
+FIELDS = [
+    resources.Field('base', 1130.0, 2060.0, 225.0, -1, base='start', owner='p1', build=resources.PAD),
+    resources.Field('east', 4523.0, 2323.0, 45.0, 1),
+]
+DERRICKS = []
+SITES.update(resources.sites(FIELDS))
+
+
 def _objects():
     out = []
     for p, q in BRIDGES:
         for x, y, a, flags in platmap.bridge(p, q, 'HB_Bridge_02'):
             out.append(Obj('HB_Bridge_02', x, y, side='neutral', angle=a, flags=flags, site='map'))
-    ore = [(850, 2050), (1010, 1930), (4500, 2550), (4650, 2450)]
-    out += [Obj('OreNode', x, y, side='neutral', angle=0.0, site='map') for x, y in ore]
+    out += resources.objects(FIELDS, DERRICKS)
     return out
 
 

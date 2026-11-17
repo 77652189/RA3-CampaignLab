@@ -1,0 +1,508 @@
+"""盟军招牌「自由号」空天航母机制验证 (CampNew38), slice 1: a slow hovering capital ship that launches drone bombers.
+
+Design (docs/story/units.md 5.2): a huge hovering carrier; its deck launches drone bombers; its 超时空甲板 sends a
+group of nearby ground units to any point in view every few minutes (slice 2); it flies slowly and fears anti-air;
+the chrono deck runs on a power station (A7: the station dies, the deck goes dark). Story: FutureTech gives it to the
+Allies, the hawk commander takes it in A7 (the player's boss), the player takes it back in A8.
+
+Stand-in: a copy of the Kirov (retail: a slow hovering airship whose weapon slot works) with its bomb bay replaced by
+CNV_LibertyDrones: the aircraft carrier's drone weapon (OCL_AlliedAttackDrones, 5 drones a clip, 10 s reload) at
+range 600 instead of 1000; the turret's CheckVisionRange off (it would not launch beyond its own sight).
+First tried on the SDK SampleMod's Harbinger gunship (CampNew16's): the copy flew to its target and never fired,
+with the drones or with its own autocannon (bench 2026-10-21, _013526 / _013753), so the Kirov.
+The catch on both: vision. The Kirov sees 150 and would neither launch nor close in on a Hammer 450 away (CampNew35's
+lesson again; CheckVisionRange off did not help). At vision 650 (_020052): drones out from 6 s, the middle Hammer
+dies at ~13 s, a second by 25 s; the carrier stays put. Open: the drones do not go home -- they gather in a line
+beside the carrier (a dozen by 25 s).
+Chrono deck 2a (bench _020745: select, the ability slot, a point ~300 east): it turns at 3 s, vanishes and reappears
+there at 4 s, then launches drones from its new place. Carrying ground units needs a TransportContain and an unload,
+and the panel has one ability slot, taken by the jump.
+
+Scene: our carrier south, three enemy Hammers 450 north. Bench: box-select the carrier, right-click a Hammer.
+
+  python -I -X utf8 experimental/campaign/make_campnew38.py            -> Documents\\Red Alert 3\\Mods\\CampNew38
+"""
+import math
+import os
+import re
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import make_campnew29 as c29                    # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'campaign')))
+import labpaths  # noqa: E402
+
+c28, c23 = c29.c28, c29.c23
+c26, c7, c6, c4, c2 = c28.c26, c23.c7, c23.c6, c23.c4, c23.c2
+newmap = c23.newmap
+NAME = 'CampNew38'
+c4.NAME = c2.NAME = NAME
+c2.SRC_DIR = os.path.join(c2.SDK, 'Mods', NAME, 'data')
+c2.BUILT = os.path.join(c2.SDK, 'BuiltMods', 'mods', NAME.lower(), 'data')
+c2.OUT = c4.OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods', NAME)
+c7.MAP_MOD = NAME + 'Map'
+
+SAGE = os.path.join(c2.SDK, 'SageXML', 'Soviet', 'Units')
+UNIT = 'CNV_LibertyProbe'
+c7.EXTRA_TEMPLATES[UNIT] = {'file': f'DATA:CNVUnits/Data/{UNIT}.xml', 'EditorSorting': 'UNIT'}
+c7.EXTRA_OWN += [b'WeaponTemplate:CNV_LibertyDrones']
+DRONE_RANGE = 600
+# drones go home (CNV_DRONE_HOME=1, default; user 2026-10-21): they gathered beside the carrier. The aircraft carrier
+# (AlliedAntiStructureShip.xml) takes them back with three things: KindOf AIRFIELD, a ParkingPlaceBehavior that lets
+# only AlliedAttackDrone park, and a SlaughterHordeContain that swallows them (the OCL's RETURN_TO_SOURCE sends them).
+DRONE_HOME = os.environ.get('CNV_DRONE_HOME', '1') == '1'
+DRONE_HOME_MODULES = '''			<SlaughterHordeContain id="ModuleTag_CNV_DroneHome" CashBackPercent="0" ResetInitialTeamOnCapture="true">
+				<CanAlwaysEnterObjectFilter Rule="NONE">
+					<IncludeThing>AlliedAttackDrone</IncludeThing>
+				</CanAlwaysEnterObjectFilter>
+			</SlaughterHordeContain>
+			<ParkingPlaceBehavior id="ModuleTag_CNV_DroneParking" NumRows="2" NumCols="2" ApproachHeight="10"
+				ParkInHangars="true" DoorOpenTime="0.5s">
+				<CanParkHereFilter Rule="NONE" Relationship="ALLIES">
+					<IncludeThing>AlliedAttackDrone</IncludeThing>
+				</CanParkHereFilter>
+			</ParkingPlaceBehavior>
+'''
+# slice 2, 超时空甲板 (CNV_CHRONO=1, default): a targeted ability (the Sickle's leap button and command style, one
+# ability slot) driving TeleportSpecialAbilityUpdate -- in the schema, no retail unit uses it. Probe 2a: does the
+# carrier jump to the clicked point? (2b: carrying a group of ground units with it.) The Kirov's afterburner goes.
+CHRONO = os.environ.get('CNV_CHRONO', '1') == '1'
+CHRONO_RELOAD = os.environ.get('CNV_CHRONO_RELOAD', '20s')       # design: every few minutes; short for the bench
+UI_FILE = 'CNV_Liberty_UI.xml'
+CHRONO_DECL = f'''	<SpecialPowerTemplate id="SpecialPower_CNV_ChronoDeck" ReloadTime="{CHRONO_RELOAD}" TargetType="LOCATION"
+		Flags="FOGGED_SHROUDED_CELLS_OK CAN_NOT_BE_SCRAMBLED" WaypointModeTerminal="false"/>
+	<LogicCommand Type="SPECIAL_POWER" id="Command_CNV_ChronoDeck">
+		<SpecialPower>SpecialPower_CNV_ChronoDeck</SpecialPower>
+	</LogicCommand>
+	<LogicCommandSet id="CNV_LibertyCommandSet">
+		<Cmd>Command_CNV_ChronoDeck</Cmd>
+		<Cmd>Command_AttackMove</Cmd>
+	</LogicCommandSet>
+'''
+CHRONO_UI = '''	<UnitAbilityButtonTemplate id="Button_CNV_ChronoDeck" LogicCommand="Command_CNV_ChronoDeck">
+		<Data>
+			<TargetedSpecialPower StateData="ButtonStateAbilityLeap" ValidTargetCursor="TargetAbility"/>
+		</Data>
+	</UnitAbilityButtonTemplate>
+'''
+CHRONO_MODULES = '''			<SpecialPower id="ModuleTag_CNV_ChronoDeck" SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"
+				UpdateModuleStartsAttack="true"/>
+			<TeleportSpecialAbilityUpdate id="ModuleTag_CNV_ChronoDeckUpdate" SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"
+				StartAbilityRange="99999.0" UnpackTime="0.5s" PackTime="0s" MaxDistance="2000" FadeInTime="1s"/>
+'''
+# v2 甲板跃迁 (user 2026-10-21: the Griffin's way -- the big unit hides the effect, the Chronosphere's code underneath).
+# CNV_CHRONO_MODE=jump (default, below the deck block): works -- bench _152425, the carrier and the three Guardians
+# under it arrive together at 4 s in their formation, the one outside the deck stays.
+# CNV_CHRONO_MODE=deck (first try): every 0.5 s a FireWeaponUpdate fires CNV_DeckStoreTrigger, whose SpecialPowerNugget
+# fires SpecialPower_CNV_DeckStore = the Chronosphere's StoreObjectsSpecialPower (select) at the carrier's own spot,
+# radius DECK; the one button is its TeleportStoredObjectsSpecialPower (send) with GetObjectsCurrentlyAtStorePosition.
+# The filter takes our ground units and the carrier itself (the Chronosphere's leaves aircraft out).
+# CNV_CHRONO_MODE=self: 2a, the carrier alone (TeleportSpecialAbilityUpdate).
+CHRONO_MODE = os.environ.get('CNV_CHRONO_MODE', 'jump')
+DECK = int(os.environ.get('CNV_DECK_RADIUS', '150'))
+# CNV_DECK_SHOW=1: each select drops the Chronosphere's lasting marker (does the timer select at all?). In jump mode it
+# is on by default (user 2026-10-21: the jump had no visuals): the Chronosphere's own pair, the marker where it leaves
+# and the sphere where it lands (AlliedSuperWeapon.xml's StoreObjects / TeleportStoredObjects OCLs). CNV_DECK_SHOW=0 off.
+SHOW = os.environ.get('CNV_DECK_SHOW', '1' if CHRONO_MODE == 'jump' else '0') == '1'
+STORE_OCL = ' OCL="OCL_ChronospherePersistent"' if SHOW else ''
+# first deck run (_150502 / _150716): the select ran every 0.5 s (marker seen) and the button fired (it went into
+# cooldown), nothing moved, with the Chronosphere's send filter (none) and GetObjectsCurrentlyAtStorePosition true
+SEND_FILTER = os.environ.get('CNV_SEND_FILTER', 'CNV_DeckFilter')
+AT_STORE = os.environ.get('CNV_AT_STORE', 'true')
+STORE_EVERY = os.environ.get('CNV_STORE_EVERY', '0.5s')
+SEND_OCL = ' OCL="OCL_Chronosphere"' if SHOW else ''   # does the send fire?
+# the Chronosphere's power templates carry their own ObjectFilter (who gets picked up); without one nothing moved.
+# Riders (CNV_RIDERS=1) are left out: they ride the carrier's own jump (INSTANT_TELEPORT_ON_PARENT_TELEPORT), and the
+# deck's store/send moved them separately, which detached them (MCP run _1021)
+RIDERS = os.environ.get('CNV_RIDERS', '0') == '1'
+RIDER = 'CNV_DeckGuardian'
+NOT_RIDER = f'\n\t\t\t<ExcludeThing>{RIDER}</ExcludeThing>' if RIDERS else ''
+TEMPLATE_FILTER = f'''		<ObjectFilter Rule="ANY" Include="INFANTRY VEHICLE" StatusBitFlagsExclude="SUBMERGED NOT_IN_WORLD">
+			<IncludeThing>{UNIT}</IncludeThing>{NOT_RIDER}
+		</ObjectFilter>
+'''
+DECK_DECL = f'''	<SpecialPowerTemplate id="SpecialPower_CNV_DeckStore" ReloadTime="0s" TargetType="LOCATION"
+		Flags="WATER_OK CAN_NOT_BE_SCRAMBLED" WaypointModeTerminal="false">
+{TEMPLATE_FILTER}	</SpecialPowerTemplate>
+	<ObjectFilterAsset id="CNV_DeckFilter">
+		<Filter Rule="ANY" Include="INFANTRY VEHICLE" Relationship="SAME_PLAYER ALLIES"
+			StatusBitFlagsExclude="SUBMERGED NOT_IN_WORLD">
+			<IncludeThing>{UNIT}</IncludeThing>{NOT_RIDER.replace(chr(9) * 3, chr(9) * 4)}
+		</Filter>
+	</ObjectFilterAsset>
+	<WeaponTemplate id="CNV_DeckStoreTrigger" RadiusDamageAffects="SELF ALLIES" AttackRange="10000"
+		Flags="NOT_ATTRACTED_BY_MAGNETS">
+		<FiringDuration MinSeconds="0.1s" MaxSeconds="0.1s"/>
+		<Nuggets>
+			<SpecialPowerNugget SpecialPowerTemplate="SpecialPower_CNV_DeckStore"/>
+		</Nuggets>
+	</WeaponTemplate>
+'''
+DECK_MODULES = f'''			<StoreObjectsSpecialPower id="ModuleTag_CNV_DeckStore" SpecialPowerTemplate="SpecialPower_CNV_DeckStore"
+				Radius="{DECK}" TeleportLinkID="7" CanAffectObjectFilter="CNV_DeckFilter"{STORE_OCL}/>
+			<TeleportStoredObjectsSpecialPower id="ModuleTag_CNV_DeckSend" SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"
+				StoreObjectsLinkID="7" CanAffectObjectFilter="{SEND_FILTER}"{SEND_OCL}/>
+			<TeleportStoredObjectsUpdate id="ModuleTag_CNV_DeckSendUpdate" SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"
+				GetObjectsCurrentlyAtStorePosition="{AT_STORE}" Telefrag="INSTANT_DEATH_TELEPORTER_ONLY" TargetFX="FX_None"
+				FadeInTime="1s" DelayTime="0s"
+				DisabledTypesToProcess="USER_PARALYZED EMP HELD PARALYZED UNDERPOWERED TEMPORARILY_BUSY">
+				<CollidesWithOnTeleport Rule="ANY" Include="INFANTRY STRUCTURE VEHICLE"
+					Exclude="BRIDGE BRIDGE_SEGMENT BRIDGE_ENDCAP"/>
+			</TeleportStoredObjectsUpdate>
+			<FireWeaponUpdate id="ModuleTag_CNV_DeckStoreTimer" FireInterval="{STORE_EVERY}">
+				<FireWeaponNugget WeaponName="CNV_DeckStoreTrigger" FireDelay="0s"/>
+			</FireWeaponUpdate>
+'''
+# deck runs: with the templates' ObjectFilter the Guardians under the deck went to the target (_152020), the one outside
+# stayed, the carrier did not come (the Chronosphere's send seems to leave aircraft out). So CNV_CHRONO_MODE=jump
+# (default): the button is 2a's self-jump; its SourceWeapon selects what is under the deck as it leaves and its
+# DestinationWeapon sends that to where it arrives (SpecialPowerNuggets) -- no timer.
+JUMP_DECL = f'''	<SpecialPowerTemplate id="SpecialPower_CNV_DeckSend" ReloadTime="0s" TargetType="LOCATION"
+		Flags="WATER_OK CAN_NOT_BE_SCRAMBLED" WaypointModeTerminal="false">
+{TEMPLATE_FILTER}	</SpecialPowerTemplate>
+	<WeaponTemplate id="CNV_DeckSendTrigger" RadiusDamageAffects="SELF ALLIES" AttackRange="10000"
+		Flags="NOT_ATTRACTED_BY_MAGNETS">
+		<FiringDuration MinSeconds="0.1s" MaxSeconds="0.1s"/>
+		<Nuggets>
+			<SpecialPowerNugget SpecialPowerTemplate="SpecialPower_CNV_DeckSend"/>
+		</Nuggets>
+	</WeaponTemplate>
+'''
+JUMP_MODULES = (CHRONO_MODULES.replace('FadeInTime="1s"/>', 'FadeInTime="1s"\n\t\t\t\tSourceWeapon="CNV_DeckStoreTrigger" '
+                                       'DestinationWeapon="CNV_DeckSendTrigger"/>')
+                + DECK_MODULES.split('\t\t\t<FireWeaponUpdate')[0]
+                .replace('SpecialPowerTemplate="SpecialPower_CNV_ChronoDeck"', 'SpecialPowerTemplate="SpecialPower_CNV_DeckSend"'))
+if CHRONO_MODE == 'jump':
+    assert 'DestinationWeapon' in JUMP_MODULES and JUMP_MODULES.count('SpecialPower_CNV_DeckSend') == 2
+# v2 炮塔 (CNV_TURRETS=1, default): the carrier spawns TURRETS deck turrets that stay glued to it and can be shot off one
+# by one -- the war factory's repair-drone wiring: SpawnBehavior on the master, SlavedUpdate on each turret. A turret
+# is a copy of the Twinblade (hovers, rockets + autocannon at ground targets) without its transport bay, with a short
+# leash, dying with the carrier. No respawn in the probe (SpawnReplaceDelay very long).
+TURRETS = int(os.environ.get('CNV_TURRETS', '4'))
+TURRET = 'CNV_LibertyTurret'
+TURRET_SPAWN = f'''			<SpawnBehavior id="ModuleTag_CNV_DeckTurrets" SpawnNumberData="{TURRETS}" InitialBurst="{TURRETS}"
+				SpawnReplaceDelayData="9999s" SpawnedRequireSpawner="true" KillSpawnsOnCaptured="true"
+				ExitByBudding="true">
+				<Die DeathTypes="ALL"/>
+				<SpawnTemplate>{os.environ.get('CNV_SPAWN_TEMPLATE', TURRET)}</SpawnTemplate>
+			</SpawnBehavior>
+'''
+TURRET_SLAVE = '''			<SlavedUpdate id="ModuleTag_CNV_DeckSlave" LeashRange="60" GuardMaxRange="40" GuardWanderRange="10"
+				AttackRange="250" AttackWanderRange="20" DieOnMastersDeath="true" StayOnSameLayerAsMaster="true"/>
+'''
+if TURRETS:
+    c7.EXTRA_TEMPLATES[TURRET] = {'file': f'DATA:CNVUnits/Data/{TURRET}.xml', 'EditorSorting': 'UNIT'}
+
+# v2 甲板工厂 (CNV_FACTORY=1, default off until it works): the war factory's ProductionUpdate + QueueProductionExitUpdate
+# on the carrier, its factory KindOf flags, a Guardian build command in the carrier's command set. CNV_SCENE=factory:
+# the base's war factory left out, so the carrier is the only vehicle producer.
+FACTORY = os.environ.get('CNV_FACTORY', '0') == '1'
+# ... the sidebar did not take it (_155228: every tab greyed, the carrier not offered as a producer). CNV_FACTORY=auto:
+# the deck builds on its own -- a SpawnBehavior of Guardians (budding off under the carrier), up to 2, one every 20 s.
+AUTO_FACTORY = os.environ.get('CNV_FACTORY') == 'auto'
+AUTO_FACTORY_MODULE = '''			<SpawnBehavior id="ModuleTag_CNV_DeckFactory" SpawnNumberData="2" InitialBurst="0"
+				SpawnReplaceDelayData="20s" SpawnedRequireSpawner="false" ExitByBudding="true">
+				<Die DeathTypes="ALL"/>
+				<SpawnTemplate>AlliedAntiVehicleVehicleTech1</SpawnTemplate>
+			</SpawnBehavior>
+'''
+# v2 甲板乘员 (CNV_RIDERS=1, probe; user 2026-10-21: "no platform of its own to hold ground units"). The engine has no
+# walkable moving deck (retail's Floating Fortress is a map -- Civilian/Floating_Island: terrain plus FI_ buildings), but
+# AttachUpdate makes one object ride another: the Empire's point-defense drone sits on its vehicle, the repair drones
+# scan for a parent and stick to it. CNV_DeckGuardian = a Guardian with an AttachUpdate that looks for our carrier
+# within RIDE_RANGE while idle, sticks to it (moving and jumping with it), and a move order takes it off the deck.
+# The deck factory then builds these. Questions: do they get on, show on top, come along on the jump, fire from there?
+RIDE_RANGE = int(os.environ.get('CNV_RIDE_RANGE', '150'))
+RIDER_ATTACH = f'''			<AttachUpdate id="ModuleTag_CNV_Deck" Range="{RIDE_RANGE}" IdleScanDelay="0.5s"
+				Flags="{os.environ.get('CNV_RIDE_FLAGS', 'SAME_PLAYER_ONLY STICK_TO_PARENT TELEPORT INSTANT_TELEPORT_ON_PARENT_TELEPORT USE_GEOMETRY MOVE_ORDER_FORCES_DETACH SCAN_FOR_NEW_PARENT_WHEN_DETACHED')}"
+				AttachedObjectStatus="NO_COLLISIONS ATTACHED">
+				<ObjectFilter Rule="NONE" Relationship="SAME_PLAYER">
+					<IncludeThing>{UNIT}</IncludeThing>
+				</ObjectFilter>
+			</AttachUpdate>
+'''
+if RIDERS:
+    c7.EXTRA_TEMPLATES[RIDER] = {'file': f'DATA:CNVUnits/Data/{RIDER}.xml', 'EditorSorting': 'UNIT'}
+
+
+def rider_xml():
+    x = open(os.path.join(c2.SDK, 'SageXML', 'Allied', 'Units', 'AlliedAntiVehicleVehicleTech1.xml'), encoding='utf-8').read()
+    x = sub1(x, 'id="AlliedAntiVehicleVehicleTech1"', f'id="{RIDER}"')
+    x = sub1(x, 'EditorName="AlliedAntiVehicleVehicleTech1"', f'EditorName="{RIDER}"')
+    x = sub1(x, '\t\t</Behaviors>', RIDER_ATTACH + '\t\t</Behaviors>')
+    with open(os.path.join(c26.DATA, RIDER + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+        f.write(x.replace('\r\n', '\n'))
+
+
+FACTORY_MODULES = '''			<ProductionUpdate id="ModuleTag_CNV_DeckProduction" GiveNoXP="true" Type="VEHICLE"
+				NumDoorAnimations="0" NewObjectFadeInTime="0.5s"/>
+			<QueueProductionExitUpdate id="ModuleTag_CNV_DeckExit" ExitDelaySeconds="0.07s">
+				<UnitCreatePoint x="0.0" y="0.0" z="0.0" />
+				<NaturalRallyPoint x="80.0" y="0.0" z="0.0" />
+			</QueueProductionExitUpdate>
+'''
+
+
+TURRET_DRONE = f'''<?xml version="1.0" encoding="UTF-8"?>
+<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<Includes>
+		<Include type="all" source="DATA:GlobalData/GlobalDefines.xml" />
+		<Include type="all" source="ART:AURepairDrone_SKN.w3x" />
+		<Include type="all" source="ART:AURepairDrone_IDLA.w3x" />
+		<Include type="instance" source="DATA:BaseObjects/BaseObject.xml" />
+	</Includes>
+	<GameObject id="{TURRET}" inheritFrom="BaseObject" Side="Allies" EditorSorting="UNIT" EditorName="{TURRET}"
+		KindOf="DRONE AIRCRAFT NO_COLLIDE CAN_ATTACK SCORE VEHICLE" ShockwaveResistance="120.0">
+		<DisplayName>NAME:RepairDrone</DisplayName>
+		<LocomotorSet Locomotor="BaseRepairDroneLocomotor" Condition="NORMAL" Speed="150.0" />
+		<ArmorSet Armor="SovietAntiGroundAircraftArmor" />
+		<Draws>
+			<ScriptedModelDraw id="ModuleTag_Draw" OkToChangeModelColor="true">
+				<ModelConditionState ParseCondStateType="PARSE_DEFAULT">
+					<Model Name="AURepairDrone_SKN" />
+				</ModelConditionState>
+				<AnimationState ParseCondStateType="PARSE_DEFAULT" StateName="STATE_bored">
+					<Animation AnimationName="AURepairDrone_IDLA" AnimationMode="LOOP" />
+				</AnimationState>
+			</ScriptedModelDraw>
+		</Draws>
+		<Behaviors>
+			<WeaponSetUpdate id="ModuleTag_WeaponSetUpdate">
+				<WeaponSlotHardpoint ID="1">
+					<Weapon Ordering="PRIMARY_WEAPON" Template="{os.environ.get('CNV_TURRET_GUN', 'SovietAntiGroundAircraftAutoCannon')}" />
+				</WeaponSlotHardpoint>
+				<WeaponSlotHardpoint ID="2">
+					<Weapon Ordering="PRIMARY_WEAPON" Template="SovietAntiAirShipFlakCannon" />
+				</WeaponSlotHardpoint>
+			</WeaponSetUpdate>
+{TURRET_SLAVE}			<SlowDeath id="ModuleTag_Death" DestructionDelay="1s" Fade="true" FadeTime="1s">
+				<DieMuxData DeathTypes="ALL" />
+			</SlowDeath>
+			<Physics id="ModuleTag_Physics" />
+		</Behaviors>
+		<AI>
+			<AIUpdate id="ModuleTag_AIUpdate" AutoAcquireEnemiesWhenIdle="YES" StateMachine="UnitAIStateMachine" />
+		</AI>
+		<Body>
+			<ActiveBody id="ModuleTag_Body" MaxHealth="400.0" />
+		</Body>
+		<Geometry IsSmall="true">
+			<Shape Type="CYLINDER" MajorRadius="8.0" Height="8.0" />
+		</Geometry>
+		<VisionInfo VisionRange="300" ShroudClearingRange="100" />
+	</GameObject>
+</AssetDeclaration>
+'''
+
+
+def turret_xml():
+    """v2 (CNV_TURRET_BASE=drone, default): the repair drone (spawns and follows: _153352) armed with the Twinblade's
+    autocannon and the Bullfrog's flak, 400 health, attackable. v1 (=twinblade): never spawned."""
+    if os.environ.get('CNV_TURRET_BASE', 'drone') == 'drone':
+        with open(os.path.join(c26.DATA, TURRET + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+            f.write(TURRET_DRONE)
+        return
+    x = open(os.path.join(SAGE, 'SovietAntiGroundAircraft.xml'), encoding='utf-8').read()
+    x = sub1(x, 'id="SovietAntiGroundAircraft"', f'id="{TURRET}"')
+    x = sub1(x, 'EditorName="SovietAntiGroundAircraft"', f'EditorName="{TURRET}"')
+    x, n = re.subn(r'\s*<TransportContain\b.*?</TransportContain>', '', x, flags=re.S)
+    assert n == 1
+    x = sub1(x, ' TRANSPORT LEAVE_PARKING_ON_BUILD_COMPLETE PRODUCED_AT_HELIPAD"', '"')
+    x = sub1(x, 'CommandSet="SovietAntiGroundAircraftCommandSet"', 'CommandSet="SovietBomberAircraftCommandSet"')
+    x = sub1(x, '\t\t</Behaviors>', TURRET_SLAVE + '\t\t</Behaviors>')
+    x = sub1(x, 'VisionRange="200"', 'VisionRange="300"')
+    # spawned Twinblade copies never showed up (_152920, _153139) while the war factory's repair drones spawned and
+    # followed the carrier (_153352): the drones run a plain AIUpdate, the Twinblade a JetAIUpdate (airfield logic)
+    x, n = re.subn(r'<JetAIUpdate(.*?)StateMachine="TransportHelicopterAIStateMachine">(.*?)</JetAIUpdate>',
+                   r'<AIUpdate\1StateMachine="UnitAIStateMachine">\2</AIUpdate>', x, flags=re.S)
+    assert n == 1
+    with open(os.path.join(c26.DATA, TURRET + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+        f.write(x.replace('\r\n', '\n'))
+
+
+if CHRONO:
+    c7.EXTRA_OWN += [b'SpecialPowerTemplate:SpecialPower_CNV_ChronoDeck', b'LogicCommand:Command_CNV_ChronoDeck',
+                     b'LogicCommandSet:CNV_LibertyCommandSet', b'UnitAbilityButtonTemplate:Button_CNV_ChronoDeck']
+    c7.EXTRA_ALL.append('DATA:CNVUnits/Data/' + UI_FILE)
+    if CHRONO_MODE == 'deck':
+        CHRONO_DECL = CHRONO_DECL.replace('WaypointModeTerminal="false"/>', 'WaypointModeTerminal="false">\n'
+                                          + TEMPLATE_FILTER + '\t</SpecialPowerTemplate>', 1) + DECK_DECL
+        CHRONO_MODULES = DECK_MODULES
+        c7.EXTRA_OWN += [b'SpecialPowerTemplate:SpecialPower_CNV_DeckStore', b'ObjectFilterAsset:CNV_DeckFilter',
+                         b'WeaponTemplate:CNV_DeckStoreTrigger']
+    elif CHRONO_MODE == 'jump':
+        CHRONO_DECL += DECK_DECL + JUMP_DECL
+        CHRONO_MODULES = JUMP_MODULES
+        c7.EXTRA_OWN += [b'SpecialPowerTemplate:SpecialPower_CNV_DeckStore', b'ObjectFilterAsset:CNV_DeckFilter',
+                         b'WeaponTemplate:CNV_DeckStoreTrigger', b'SpecialPowerTemplate:SpecialPower_CNV_DeckSend',
+                         b'WeaponTemplate:CNV_DeckSendTrigger']
+
+
+def sub1(x, old, new):
+    assert x.count(old) == 1, (old[:60], x.count(old))
+    return x.replace(old, new, 1)
+
+
+def drone_weapon():
+    """The Kirov's bomb weapon (fires from this host) with range 600, a 5-shot clip every 10 s and the aircraft
+    carrier's drone OCL instead of the bomb. The carrier's own drone weapon was tried first: no launch either -- the
+    cause was the Kirov's 150 vision (unit_xml), not the weapon."""
+    w = open(os.path.join(c2.SDK, 'SageXML', 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
+    m = re.search(r'\t*<WeaponTemplate\s+id="SovietBomberAircraftBombWeapon".*?</WeaponTemplate>\n', w, re.S)
+    x = m.group(0).replace('id="SovietBomberAircraftBombWeapon"', 'id="CNV_LibertyDrones"')
+    x = sub1(x, 'AttackRange="5.0"', f'AttackRange="{DRONE_RANGE}.0"')
+    x = sub1(x, 'ClipSize="1"', 'ClipSize="5"\n\t\tAutoReloadsClip="AUTO"')
+    x = sub1(x, 'MinSeconds="0.8s"\n\t\t\tMaxSeconds="1.0s"', 'MinSeconds="10.0s"\n\t\t\tMaxSeconds="10.0s"')
+    x = sub1(x, 'MinSeconds=".1s"\n\t\t\tMaxSeconds=".1s"', 'MinSeconds="0.5s"\n\t\t\tMaxSeconds="0.5s"')
+    x, n = re.subn(r'<ProjectileNugget.*?</ProjectileNugget>', '<WeaponOCLNugget WeaponOCL="OCL_AlliedAttackDrones"/>',
+                   x, flags=re.S)
+    assert n == 1
+    return x
+
+
+def unit_xml():
+    x = open(os.path.join(SAGE, 'SovietBomberAircraft.xml'), encoding='utf-8').read()
+    x = sub1(x, 'id="SovietBomberAircraft"', f'id="{UNIT}"')
+    x = sub1(x, 'EditorName="SovietBomberAircraft"', f'EditorName="{UNIT}"')
+    if os.environ.get('CNV_LIB_WEAPON') != 'kirov':      # the control: the Kirov's own bombs, same clicks
+        x = sub1(x, 'Template="SovietBomberAircraftBombWeapon"', 'Template="CNV_LibertyDrones"')
+    # the Kirov sees 150 (it bombs what is under it): nothing fired at 450 until it could see that far -- CampNew35's
+    # lesson (CheckVisionRange off did not help)
+    x = sub1(x, 'VisionRange="150"', 'VisionRange="650"')
+    if DRONE_HOME:
+        x = sub1(x, 'KindOf="CAN_CAST_REFLECTIONS', 'KindOf="AIRFIELD CAN_CAST_REFLECTIONS')
+        x = sub1(x, '\t\t</Behaviors>', DRONE_HOME_MODULES + '\t\t</Behaviors>')
+    assert x.count('CheckVisionRange="true"') == 2           # the turret's and the AI's target choosers
+    x = x.replace('CheckVisionRange="true"', 'CheckVisionRange="false"')
+    if CHRONO:
+        x = sub1(x, 'CommandSet="SovietBomberAircraftCommandSet"', 'CommandSet="CNV_LibertyCommandSet"')
+        x = sub1(x, '\t\t</Behaviors>', CHRONO_MODULES + '\t\t</Behaviors>')
+        with open(os.path.join(c26.DATA, UI_FILE), 'w', encoding='utf-8', newline='\r\n') as f:
+            f.write('<?xml version="1.0" encoding="UTF-8"?>\n<AssetDeclaration xmlns="uri:ea.com:eala:asset" '
+                    'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' + CHRONO_UI + '</AssetDeclaration>\n')
+    if TURRETS:
+        x = sub1(x, '\t\t</Behaviors>', TURRET_SPAWN + '\t\t</Behaviors>')
+        turret_xml()
+    if AUTO_FACTORY:
+        x = sub1(x, '\t\t</Behaviors>', (AUTO_FACTORY_MODULE.replace('AlliedAntiVehicleVehicleTech1', RIDER) if RIDERS
+                                         else AUTO_FACTORY_MODULE) + '\t\t</Behaviors>')
+    if RIDERS:
+        rider_xml()
+    if FACTORY:
+        global CHRONO_DECL
+        CHRONO_DECL = sub1(CHRONO_DECL, '\t\t<Cmd>Command_AttackMove</Cmd>\n\t</LogicCommandSet>',
+                           '\t\t<Cmd>Command_AttackMove</Cmd>\n\t\t<Cmd>Command_ConstructAlliedAntiVehicleVehicleTech1</Cmd>\n'
+                           '\t</LogicCommandSet>')
+        x = sub1(x, '\t\t</Behaviors>', FACTORY_MODULES + '\t\t</Behaviors>')
+        x = sub1(x, 'KindOf="CAN_CAST_REFLECTIONS', 'KindOf="FS_FACTORY AUTO_RALLYPOINT FS_WAR_FACTORY CAN_CAST_REFLECTIONS')
+    x = sub1(x, '</AssetDeclaration>', (CHRONO_DECL if CHRONO else '') + drone_weapon() + '</AssetDeclaration>')
+    with open(os.path.join(c26.DATA, UNIT + '.xml'), 'w', encoding='utf-8', newline='\r\n') as f:
+        f.write(x.replace('\r\n', '\n'))
+
+
+A = c28.A
+SCENE = [(UNIT, (A[0], A[1] - 60), True)]
+SCENE += [('SovietAntiVehicleVehicleTech1', (A[0] + dx, A[1] + 390), False) for dx in (-80, 0, 80)]
+# CNV_SCENE=turrets: the Hammers 170 north (inside the turrets' leash-and-attack reach) and an enemy Bullfrog
+# (anti-air) with them, to shoot turrets down
+SCENE_KIND = os.environ.get('CNV_SCENE', '')
+if SCENE_KIND == 'turrets':
+    SCENE = [SCENE[0]] + [('SovietAntiVehicleVehicleTech1', (A[0] + dx, A[1] + 170), False) for dx in (-80, 0, 80)]
+    SCENE.append(('SovietAntiAirShip_Ground', (A[0] + 140, A[1] + 200), False))
+    # turrets fight: two Hammers 120 north (inside the autocannon's 150), an enemy Twinblade (flak target)
+    if os.environ.get('CNV_TURRET_FIGHT') == '1':
+        SCENE = [SCENE[0], ('SovietAntiVehicleVehicleTech1', (A[0] - 40, A[1] + 60), False),
+                 ('SovietAntiVehicleVehicleTech1', (A[0] + 40, A[1] + 60), False),
+                 ('SovietAntiGroundAircraft', (A[0] + 120, A[1] + 40), False),
+                 ('SovietAntiAirShip_Ground', (A[0] + 140, A[1] + 200), False)]
+# a spawned template of ours only loads when one is also placed on the map (spawning failed until then, _154143):
+# one turret parked out of the way, south-west (CNV_PLACE_TURRET=0 to leave it out)
+if TURRETS and os.environ.get('CNV_PLACE_TURRET', '1') == '1':
+    SCENE.append((TURRET, (A[0] - 330, A[1] - 300), True))
+# the deck jump: three of our Guardians under the carrier (inside DECK) and one outside it (should stay behind)
+if CHRONO and CHRONO_MODE in ('deck', 'jump') and SCENE_KIND != 'turrets':
+    SCENE += [(RIDER if RIDERS else 'AlliedAntiVehicleVehicleTech1', (A[0] + dx, A[1] - 60 + dy), True)
+              for dx, dy in ((-60, 0), (60, 0), (0, -60), (-330, -60))]
+
+_generate = c6.edit
+
+
+def generate(m):
+    unit_xml()
+    _generate(m)                                 # CampNew29's scene: factory, power plant, our tanks, Hammers
+    objs = next(n for _, n in m.walk() if n.name == 'ObjectsList')
+    head = lambda k: k.head[:60]                 # noqa: E731
+    p1 = next(k for k in objs.kids if b'CNV_LightTank2' in head(k))
+    s1 = next(k for k in objs.kids if b'SovietAntiVehicleVehicleTech1' in head(k))
+    gone = [k for k in objs.kids if any(u in head(k) for u in (b'CNV_LightTank2', b'CNV_ShrinkVehicle', b'Allied',
+                                                                 b'SovietAntiVehicleVehicleTech1'))
+            and b'AlliedWarFactory' not in head(k) and b'AlliedPowerPlant' not in head(k)
+            and b'AlliedConstructionYard' not in head(k)]
+    if SCENE_KIND == 'factory':                  # the carrier as the only vehicle producer
+        gone += [k for k in objs.kids if b'WarFactory' in head(k)]
+    objs.kids[:] = [k for k in objs.kids if k not in gone]
+    for template, (x, y), ours in SCENE:
+        pr, flags = newmap.typed_props_of(m, p1 if ours else s1)
+        named = {'objectName': CARRIER} if TEST and template == UNIT else {}
+        objs.kids.append(newmap.object_node(m, pr, flags, template, x, y, angle=math.pi / 2 if ours else -math.pi / 2,
+                                            uniqueID=f'{template} {len(objs.kids)}', **named))
+    if TEST == 'jump':
+        test_jump(m, objs)
+    print('CNV38: removed', len(gone), 'units;', len(SCENE), 'placed')
+
+
+# CNV_TEST=jump: the mission jumps the carrier itself (A7/A8's NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT) -- a bench run with
+# no clicks: start, wait, look. Map revealed; a caption at the jump marks the moment in the frames.
+TEST = os.environ.get('CNV_TEST', '')
+CARRIER = 'UNIT - CNV38 Liberty'
+JUMP_AT = float(os.environ.get('CNV_JUMP_AT', '15'))
+# east of the start on open grass, away from the Hammers (the hand-clicked (1180, 2600) of the earlier runs lands
+# next to them: the riders "lost after landing" may have been that fight). CNV_JUMP_TO=x,y
+JUMP_TO = tuple(float(v) for v in os.environ.get('CNV_JUMP_TO', f'{A[0] + 300},{A[1] - 60}').split(','))
+WP_JUMP = 'CNV38 Jump Target'
+ATTACHED = (102, 0.0, 'ATTACHED')                 # ObjectStatus index (the xsd's order; retail: UNPACKING = 162)
+if TEST:
+    c4.c3.STRINGS.update({'SCRIPT:CNV38_JUMP': 'TEST：自由号跃迁', 'SCRIPT:CNV38_RIDERS': '乘员存活',
+                          'SCRIPT:CNV38_DECK': '乘员在甲板'})
+
+
+def test_jump(m, objs):
+    tmpl = lambda k: k.head[22:22 + int.from_bytes(k.head[20:22], 'little')].decode('latin-1')   # noqa: E731
+    wps = [k for k in objs.kids if tmpl(k) == '*Waypoints/Waypoint']
+    wpr, wfl = newmap.typed_props_of(m, wps[0])
+    wid = 1 + max(newmap.typed_props_of(m, k)[0].get('waypointID', (1, 0))[1] for k in wps)
+    objs.kids.append(newmap.object_node(m, wpr, wfl, '*Waypoints/Waypoint', *JUMP_TO, waypointName=WP_JUMP,
+                                        waypointID=wid, uniqueID=f'Waypoint {wid}'))
+    act = lambda *a: m.new_content('ScriptAction', *a)                      # noqa: E731
+    psl = next(n for _, n in m.walk() if n.name == 'PlayerScriptsList')
+    psl.kids[2].kids += [
+        m.new_script('CNV38 - Test Start', [m.new_content('Condition', 'CONDITION_TRUE')],
+                     [act('MAP_REVEAL_ALL_PERM', 'Player_1'), act('SET_MILLISECOND_TIMER', 'CNV38 TestJump', JUMP_AT)]),
+        m.new_script('CNV38 - Test Jump', [m.new_content('Condition', 'TIMER_EXPIRED', 'CNV38 TestJump')],
+                     [act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', CARRIER, 'SpecialPower_CNV_ChronoDeck', WP_JUMP),
+                      act('SHOW_MILITARY_CAPTION', 'SCRIPT:CNV38_JUMP', 5.0),
+                      act('SET_MILLISECOND_TIMER', 'CNV38 TestJump', 9999.0)])]
+    # readouts instead of counting units in frames: the game's own counters on screen, kept current every frame --
+    # riders alive (owned) and riders on the deck (ATTACHED status: AttachedObjectStatus sets it)
+    if RIDERS:
+        psl.kids[2].kids += [
+            m.new_script('CNV38 - Probe Show', [m.new_content('Condition', 'CONDITION_TRUE')],
+                         [act('DISPLAY_COUNTER', 'CNV38 Riders', 'SCRIPT:CNV38_RIDERS'),
+                          act('DISPLAY_COUNTER', 'CNV38 Deck', 'SCRIPT:CNV38_DECK')]),
+            m.new_script('CNV38 - Probe Riders', [m.new_content('Condition', 'CONDITION_TRUE')],
+                         [act('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', RIDER, 'Player_1', 'CNV38 Riders')], one_shot=False)]
+        psl.kids[2].kids += [
+            m.new_script(f'CNV38 - Probe Deck {n}',
+                         [m.new_content('Condition', 'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', 'Player_1', 2, n,
+                                        ATTACHED)],
+                         [act('SET_COUNTER', 'CNV38 Deck', n)], one_shot=False) for n in range(8)]
+
+
+c6.edit = generate
+
+if __name__ == '__main__':
+    if c23.game_running():
+        c2.OUT = c4.OUT = os.path.join(labpaths.WORK, 'staging', NAME)
+        print('RA3 is running -> staging at', c4.OUT)
+    c4.main()

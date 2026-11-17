@@ -14,11 +14,11 @@ core and the turning gyroscope rings CNLibRings -- written into the SDK's Art by
 import os
 import re
 
-import make_campnew2 as c2
+import labpaths
 from parts import Unit
 from units import look
 
-SAGE = os.path.join(c2.SDK, 'SageXML')
+SAGE = os.path.join(labpaths.SDK3, 'SageXML')
 RETAIL_RIDER = 'AlliedAntiVehicleVehicleTech1'      # the Guardian
 LOOK = ('CNLiberty', 'CNLibStatue', 'CNLibRings', 'CNLibCharge')   # liberty_kit.py's: platform, statue, rings, charge
 CHARGING = 'USER_1'     # the model condition the jump warning sets for its length (devices/carrier.py): charge drawn

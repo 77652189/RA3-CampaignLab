@@ -20,208 +20,52 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import parts                                    # noqa: E402  (puts experimental/campaign on the path)
-from checks import a4 as check_a4               # noqa: E402
-from checks import a4_before as check_a4b       # noqa: E402
-from checks import a5 as check_a5               # noqa: E402
-from checks import s5 as check_s5               # noqa: E402
-from checks import s6 as check_s6               # noqa: E402
-from checks import j7 as check_j7               # noqa: E402
-from checks import s2 as check_s2               # noqa: E402
-from checks import j3 as check_j3               # noqa: E402
-from checks import j5 as check_j5               # noqa: E402
-from checks import a7 as check_a7               # noqa: E402
-from checks import j4 as check_j4               # noqa: E402
-from checks import a8 as check_a8               # noqa: E402
-from checks import beacon as check_bea          # noqa: E402
-from checks import burrower as check_bur        # noqa: E402
-from checks import clone as check_clo           # noqa: E402
-from checks import combo as check_com           # noqa: E402
-from checks import crane as check_cra           # noqa: E402
-from checks import icewall as check_ice         # noqa: E402
-from checks import tesla as check_tes           # noqa: E402
-from checks import jammer as check_jam          # noqa: E402
-from checks import chronolag as check_lag       # noqa: E402
-from checks import liberty as check_lib         # noqa: E402
-from checks import shikigami as check_shi       # noqa: E402
-from checks import train as check_tra           # noqa: E402
-from checks import probe as check_pro           # noqa: E402
-from checks import plan_words as check_pw       # noqa: E402
-from checks import ai as check_ai               # noqa: E402
-from checks import lock as check_lock           # noqa: E402
-from checks import scene as check_scene         # noqa: E402
-from checks import ally as check_ally           # noqa: E402
-from checks import aistep as check_aistep       # noqa: E402
-from checks import fence as check_fence         # noqa: E402
-from checks import reroute as check_reroute     # noqa: E402
-from checks import sight as check_sight         # noqa: E402
-from checks import voice as check_voice         # noqa: E402
-from checks import drive as check_drive         # noqa: E402
-from checks import mech as check_mech           # noqa: E402
-from units import tesla as units_tesla          # noqa: E402
-from missions import a4, a5, a7, a8, j3, j4, j5, j7, s2, s5, s6, beacon_bench, burrow_bench, clone_bench, combo_bench, crane_bench, icewall_bench, jammer_bench, liberty_bench, shikigami_bench, \
-    tesla_bench, train_bench, probe_bench, plan_words_bench, ai_bench, ai_plan_bench, lock_bench, scene_bench, \
-    ally_bench, aistep_bench, fence_bench, reroute_bench, sight_bench, chronolag_bench, ban_bench, sapporo_bench, voice_bench, drive_bench, mech_bench  # noqa: E402
+import langs                                    # noqa: E402
 
 BENCH_PY = os.path.join(os.path.dirname(ROOT), 'envs', 'bench_mcp', 'Scripts', 'python.exe')
 CLIENT = os.path.join(ROOT, 'experimental', 'testbench', 'bench_client.py')
 
+# The builds are not listed here: every mission and check module declares its own (registry.py). MISSIONS: build name ->
+# (mission(), {check name: check(mission) -> Test}); PAIRS: a build that is a (mission, test) pair outright.
+# An edition of a level (langs.py) is its own name: a4_intl (CampA4En) next to a4 (CampA4); `build.py a4 --lang intl`
+# is that name, and ra3bench's cnv_check takes it as it is
+import registry                                # noqa: E402
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
+import labpaths  # noqa: E402
+_REG = registry.get()
+MISSIONS = {n: (make, _REG.checks.get(n, {})) for n, make in _REG.builds.items()}
+PAIRS = _REG.pairs
 
-def digits():
-    """A map that shows counters.CALIBRATION (every digit once), whose frame gives the counter reader's templates."""
-    from maps import island
-    values = [1234, 5678, 90]                   # experimental/testbench/counters.py CALIBRATION
-    m = parts.Mission(name='CampDigits', map=island)
-    t = parts.Test(counters=[(f'Digit {k}', '校准') for k in range(len(values))])
-    t.scripts.append(parts.Script('Digits', [], [('SET_COUNTER', f'Digit {k}', v) for k, v in enumerate(values)]))
-    t.bench = [('bench_watch', dict(seconds=3, every=3, sheet=False))]
-    return m, t
-
-
-# name -> mission(); checks: name -> check(mission) -> Test; or a build that is a (mission, test) pair outright
-MISSIONS = {
-    'a4': (lambda: a4.mission(), {'horn': check_a4.horn, 'detour': check_a4.detour, 'queue': check_a4.queue,
-                                  'smash': check_a4.smash, 'derrick': check_a4.derrick, 'demo': check_a4.demo,
-                                  'idle': check_a4.idle, 'hold': check_a4.hold, 'win': check_a4.win}),
-    'a4_before': (lambda: a4.before(), {
-        'seal': check_a4b.seal, 'placed': check_a4b.placed, 'smash': check_a4b.smash, 'ambush': check_a4b.ambush,
-        'win': check_a4b.win, 'lose': check_a4b.lose, 'idle': check_a4b.idle, 'harbour': check_a4b.harbour,
-        'stop': check_a4b.stop, 'early': check_a4b.early, 'tough': check_a4b.tough, 'north': check_a4b.north,
-        'camp': check_a4b.camp, 'free': check_a4b.free}),
-    'a5': (lambda: a5.mission(), {'hold': check_a5.hold, 'win': check_a5.win}),
-    's5': (lambda: s5.mission(), {'trap': check_s5.trap, 'escape': check_s5.escape}),
-    's6': (lambda: s6.mission(), {'hold': check_s6.hold, 'lose': check_s6.lose}),
-    'j7': (lambda: j7.mission(), {'win': check_j7.win, 'late': check_j7.late}),
-    's2': (lambda: s2.mission(), {'catch': check_s2.catch, 'escape': check_s2.escape}),
-    'j3': (lambda: j3.mission(), {'run': check_j3.run, 'lose': check_j3.lose}),
-    'j5': (lambda: j5.mission(), {'hold': check_j5.hold, 'lose': check_j5.lose}),
-    'j4': (lambda: j4.mission(), {'breach': check_j4.breach, 'play': check_j4.play, 'lose': check_j4.lose}),
-    'a7': (lambda: a7.mission(), {'jumps': check_a7.jumps, 'pick': check_a7.pick, 'defend': check_a7.defend,
-                                  'power': check_a7.power, 'win': check_a7.win, 'east': check_a7.east,
-                                  'nag': check_a7.nag, 'faster': check_a7.faster, 'revenge': check_a7.revenge,
-                                  'pincer': check_a7.pincer}),
-    'a8': (lambda: a8.mission(), {'jump': check_a8.jump, 'lose': check_a8.lose, 'assault': check_a8.assault}),
-    'a8_control': (lambda: a8.mission(carrier=False, name='CampA8C'), {'assault': check_a8.assault}),
-    'liberty': (lambda: liberty_bench.mission(), {'jump': check_lib.jump, 'open': check_lib.jump_open}),
-    'liberty_turrets': (lambda: liberty_bench.turrets(), {'fire': check_lib.deck_turrets}),
-    'liberty_loose': (lambda: liberty_bench.loose(), {'fire': check_lib.loose_turrets}),
-    'liberty_riders': (lambda: liberty_bench.mission(riders=True, name='CampLibR'), {'jump': check_lib.jump}),
-    'burrower': (lambda: burrow_bench.mission(), {'pass': check_bur.burrow_pass, 'drop': check_bur.deliver}),
-    'beacon': (lambda: beacon_bench.mission(), {'pull': check_bea.pull, 'still': check_bea.still}),
-    'combo': (lambda: combo_bench.mission(), {'join': check_com.join}),
-    'combo_breach': (lambda: combo_bench.breach(), {'breach': check_com.breach}),
-    'combo_spare': (lambda: combo_bench.spare(), {'spare': check_com.spare}),
-    'tesla': (lambda: tesla_bench.mission(), {'fight': check_tes.fight}),
-    'tesla_surge': (lambda: tesla_bench.surge(), {'surge': check_tes.surge}),
-    'tesla_surge_retail': (lambda: tesla_bench.surge(name='CampTslR', fire=False), {'surge': check_tes.surge}),
-    'ice_block': (lambda: icewall_bench.block(), {'block': check_ice.block}),
-    'ice_turns': (lambda: icewall_bench.turns(), {'turns': check_ice.turns, 'clear': check_ice.clear}),
-    'ice_freeze': (lambda: icewall_bench.freeze(), {'freeze': check_ice.freeze}),
-    'ice_build': (lambda: icewall_bench.freeze(name='CampIceV', builder=True), {'built': check_ice.built}),
-    'ice_spawn': (lambda: icewall_bench.freeze(name='CampIceO', spawn='CNV_TeslaTank', extra=[units_tesla.tesla()]),
-                  {'built': check_ice.built}),
-    'lock': (lambda: lock_bench.mission(), {'shut': check_lock.shut, 'open': check_lock.opened}),
-    'scene': (lambda: scene_bench.mission(), {'look': check_scene.look}),
-    'ally': (lambda: ally_bench.mission(), {'mended': check_ally.mended}),
-    'ally_bare': (lambda: ally_bench.mission(name='CampAly', depot=False), {'unmended': check_ally.unmended}),
-    'aistep': (lambda: aistep_bench.mission(), {'stepped': check_aistep.stepped}),
-    'aistep_free': (lambda: aistep_bench.mission(held=False), {'free': check_aistep.free}),
-    'fence': (lambda: fence_bench.mission(), {'bar': check_fence.bar}),
-    'drive_idle': (lambda: drive_bench.mission('CampDrvI'), {'prod': check_drive.production(lambda p1: [])}),
-    'drive_ai': (lambda: drive_bench.mission('CampDrvA'), {'prod': check_drive.production(check_drive.ai_wake)}),
-    'drive_enable': (lambda: drive_bench.mission('CampDrvE'),
-                     {'prod': check_drive.production(check_drive.enable_wake)}),
-    'drive_cmd': (lambda: drive_bench.mission('CampDrvM', hammers=1), {'cmds': check_drive.commands}),
-    'drive_run': (lambda: drive_bench.mission('CampDrvR'), {'run': check_drive.run}),
-    'ban': (lambda: ban_bench.mission(), {}),                   # looked at by hand: the build tab
-    'sapporo': (lambda: sapporo_bench.mission(), {}),           # the A4 rework's map, to preview and measure
-    'reroute': (lambda: reroute_bench.mission(), {'round': check_reroute.round_, 'open': check_reroute.opened}),
-    'sight': (lambda: sight_bench.mission(), {'look': check_sight.look}),
-    'jammer': (lambda: jammer_bench.mission(), {'jam': check_jam.jam, 'free': check_jam.free}),
-    'jammer_own': (lambda: jammer_bench.mission(name='CampJamOwn', side='p1'), {'jam': check_jam.jam}),
-    'jammer_air': (lambda: jammer_bench.mission(name='CampJamAir', mech='SovietAntiGroundAircraft'),
-                   {'jam': check_jam.jam_air, 'free': check_jam.free}),
-    'thin_ice': (lambda: mech_bench.thin_ice(), {'thin': check_mech.thin}),
-    'thin_unnamed': (lambda: mech_bench.thin_unnamed(), {'kind': check_mech.thin_unnamed}),
-    'shown': (lambda: mech_bench.shown(), {'shown': check_mech.shown, 'bar': check_mech.bar}),
-    'jammer_jet':(lambda: jammer_bench.mission(name='CampJamJet', mech='SovietFighterAircraft'),
-                   {'jam': check_jam.jam_air, 'free': check_jam.free}),
-    'jammer_kirov': (lambda: jammer_bench.mission(name='CampJamKir', mech='SovietBomberAircraft'),
-                     {'jam': check_jam.jam_air, 'free': check_jam.free}),
-    'chronolag': (lambda: chronolag_bench.mission(), {'hit': check_lag.hit, 'packed': check_lag.packed}),
-    'shikigami': (lambda: shikigami_bench.mission(), {'cover': check_shi.cover}),
-    'shikigami_shells': (lambda: shikigami_bench.shells(), {'bend': check_shi.bend}),
-    'crane': (lambda: crane_bench.mission(), {'spot': check_cra.spot}),
-    'crane_hide': (lambda: crane_bench.hide(), {'hide': check_cra.hide}),
-    'crane_retail': (lambda: crane_bench.mission(name='CampCraneR', retail=True), {'blind': check_cra.blind}),
-    'train': (lambda: train_bench.mission(), {'run': check_tra.run, 'brake': check_tra.brake,
-                                              'astray': check_tra.astray}),
-    'train_braked': (lambda: train_bench.braked(), {'fire': check_tra.braked_fire}),
-    'train_fight': (lambda: train_bench.mission(name='CampTrainF', enemies=True), {'fight': check_tra.fight}),
-    'ice_smash': (lambda: icewall_bench.smash(), {'smash': check_ice.smash}),
-    'ice_ghost': (lambda: icewall_bench.ghost(), {'ghost': check_ice.ghost, 'north': check_ice.ghost_north}),
-    'clone': (lambda: clone_bench.mission(), {'hold': check_clo.hold, 'free': check_clo.free}),
-    'clone_any': (lambda: clone_bench.mission(name='CampCloneA', picky=False), {'free': check_clo.free_any}),
-    'probe': (lambda: probe_bench.mission(), {'engine': check_pro.engine, 'count': check_pro.count,
-                                              'align': check_pro.align, 'death': check_pro.death,
-                                              'reveal': check_pro.reveal,
-                                              'both': check_pro.both,
-                                              'both2': lambda m: check_pro.both(m, 'Mission Lost', 'Mission Won')}),
-    'probe_nosave': (lambda: probe_bench.mission(name='CampPrbN', save=False), {'engine': check_pro.engine}),
-    'plan_words': (lambda: plan_words_bench.mission(), {'words': check_pw.words}),
-    'ai': (lambda: ai_bench.mission(), {'wake': check_ai.wake}),
-    'ai_asleep': (lambda: ai_bench.mission(name='CampAIS', wake=False), {'asleep': check_ai.asleep}),
-    'ai_plan': (lambda: ai_plan_bench.mission(), {'capped': check_ai.capped}),
-    # our own music map (experimental/music): heard, not counted -- experimental/music/timing.py reads the recording
-    'music': (lambda: _music_bench().mission(), {}),
-    # the game's dynamic music system driving a4's music: listen.identify against experimental/music/a4.STREAMS
-    'musicdyn': (lambda: _music_bench('music_dyn').mission(), {}),
-    'musicdynspy': (lambda: _music_bench('music_dyn').mission(name='CampMusDynS', spy=True), {}),   # tracers
-    'musicdyntr': (lambda: _music_bench('music_dyn').mission(name='CampMusDynT', tracer=True), {}),
-    'musicroute': (lambda: _music_bench('music_route').mission(), {}),    # how routers take a pending jump
-    'musicrouteswap': (lambda: _music_bench('music_route').mission(name='CampMusRouteW', swap=True), {}),
-    'musicroutecover': (lambda: _music_bench('music_route').mission(name='CampMusRouteC', cover=True), {}),
-    # the voice line's pack (experimental/voice): one line played, how long till HAS_FINISHED_AUDIO, the subtitle
-    # looked at; _s / _12: the audio in one of the two cdata folders only -- the one that still plays is the one read
-    'voice_bench': (lambda: voice_bench.mission(), {'play': check_voice.play}),
-    'voice_bench_s': (lambda: voice_bench.mission(name='CampVoiceS', cdata='data\\static\\cdata'),
-                      {'play': check_voice.play}),
-    'voice_bench_12': (lambda: voice_bench.mission(name='CampVoice12', cdata='data\\static.12\\cdata'),
-                       {'play': check_voice.play, 'ref': check_voice.ref}),
-}
-
-
-def _music_bench(name='music_bench'):
-    """Imported only when asked for: it pulls in experimental/music, which no other build needs."""
-    import importlib
-    return importlib.import_module(f'missions.{name}')
-LEVELS = ('a4', 'a5', 'a7', 'a8', 'j3', 'j4', 'j5', 'j7', 's2', 's5', 's6')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
+LEVELS = ('a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'j3', 'j4', 'j5', 'j7', 's2', 's5', 's6')                          # campaign levels: each has a card in docs/story/levels.md (the rest:
                                                 # A/B controls and bench scenes)
 
 
-def kinds():
-    """A probe of the counting itself: 3 Guardians and 2 buildings of ours, counted four ways at once -- by KindOf
-    in an area (VEHICLE, STRUCTURE), by template in an area, by template owned. Should read 3 2 3 3 (the a8 assault's
-    KindOf counts read 20 for 12 vehicles, 2026-10-21)."""
-    from maps import island
-    guardian = 'AlliedAntiVehicleVehicleTech1'
-    m = parts.Mission(name='CampKinds', map=island)
-    for dx in (-60, 0, 60):
-        m.put(guardian, 'west field', dx, -60, role='guardian')
-    m.put('AlliedWarFactory', 'base factory', angle=3.1416, role='factory')
-    m.put('AlliedPowerPlant', 'base power', angle=0.0, role='power')
-    t = parts.Test()
-    whole = m.where('island')
-    t.areas['Test Whole Island'] = parts.square(whole.x, whole.y, whole.r + 300)
-    parts.counted('Test Kind V', '类别车辆', t, kind=parts.kindof('VEHICLE'), area='Test Whole Island')
-    parts.counted('Test Kind S', '类别建筑', t, kind=parts.kindof('STRUCTURE'), area='Test Whole Island')
-    parts.counted('Test Type A', '型号区域', t, template=guardian, area='Test Whole Island')
-    parts.counted('Test Type O', '型号拥有', t, template=guardian)
-    t.expect += [('类别车辆', 3, '==', 3), ('类别建筑', 3, '==', 2), ('型号区域', 3, '==', 3), ('型号拥有', 3, '==', 3)]
-    t.bench = [('bench_watch', dict(seconds=6, every=3, sheet=False))]
-    return m, t
+CAMPAIGN = 'campaign'                           # build.py campaign --shell [--lang intl]: CampShell / CampShellEn, I16
 
 
-PAIRS = {'liberty_ride_ab': check_lib.ride_ab, 'digits': digits, 'kinds': kinds}
+def campaign_levels(lang='zh'):
+    """({slot: mission}, fallback slots) of every Allied level (LEVELS a1..a9) in the edition `lang`: its own edition
+    where it has one, else the Chinese one (a fallback slot) -- said, never silently (langs.py), as a MISSING line."""
+    import shell
+    out, missing, fallback = {}, [], set()
+    for name in (n for n in LEVELS if n.startswith('a')):
+        own = name if lang == 'zh' else f'{name}_{lang}'
+        m = MISSIONS[own if own in MISSIONS else name][0]()
+        if own not in MISSIONS:
+            missing.append(f'{name}: no {lang} edition (built as {name}, the Chinese one)')
+            fallback.add(shell.slot_of(m.name))
+        if missing_report(m):
+            print(missing_report(m))
+        out[shell.slot_of(m.name)] = m
+    if missing:
+        print(f'MISSING in the {lang} campaign ({len(missing)}):\n  ' + '\n  '.join(missing))
+    return out, fallback
+
+
+def campaign(lang='zh'):
+    import package
+    levels, fallback = campaign_levels(lang)
+    return package.assemble_campaign(levels, lang=lang, fallback=fallback)
 
 
 def resolve(name, check):
@@ -233,6 +77,13 @@ def resolve(name, check):
     if not check:
         return m, None, m.name
     return m, checks[check](m), m.name + check.title()
+
+
+def missing_report(m):
+    """What the mission's edition lacks (audio, subtitle text, a translation of a plan string), one per line: never
+    silently missing (langs.py). Empty text when nothing is."""
+    gone = getattr(m, 'missing', [])
+    return (f'MISSING in {m.name} ({len(gone)}):\n  ' + '\n  '.join(gone)) if gone else ''
 
 
 def listing():
@@ -303,8 +154,15 @@ WATCH_MAX = 120.0                       # bench_watch's longest single run
 
 def steps(mod, t):
     """The ra3bench calls that run the check: start, the check's own steps, the counters read as text."""
-    out = [['bench_start', {'mod': mod, 'look': False}]]
-    for n, a in t.bench:
+    bench = list(t.bench)
+    start = {'mod': mod, 'look': False}
+    # A placement cursor is cancelled by the default Esc pause between calls.
+    # Let a check configure its single start without launching a second game.
+    if bench and bench[0][0] == 'bench_start':
+        start.update(bench.pop(0)[1])
+        start['mod'] = mod
+    out = [['bench_start', start]]
+    for n, a in bench:
         left = a.get('seconds', 0) if n == 'bench_watch' else 0
         while left > WATCH_MAX:             # one watch runs at most 120 s (bench 2026-10-23: j4 lose asked 153)
             out.append([n, dict(a, seconds=WATCH_MAX)])
@@ -394,10 +252,24 @@ def judge(t, readings):
     return verdicts
 
 
-def main():
+def parse(argv=None):
+    """build.py's arguments (tests/test_architecture.py G8: --shell --check is one of them)."""
     ap = argparse.ArgumentParser()
     ap.add_argument('name')
     ap.add_argument('--check', default='')
+    ap.add_argument('--lang', default='zh', choices=sorted(langs.EDITIONS),
+                    help='the edition: zh = Chinese subtitles and dub (CampA4), intl = English subtitles, each side '
+                         'dubbed in its language (CampA4En); what it lacks is listed')
+    ap.add_argument('--shell', action='store_true',
+                    help='the campaign shell (shell.py, ADR 0014): the mission in its slot of the Allied campaign, the other '
+                         'eight slots placeholders, with our own campaign front end, as the mod CampShell (CampShellEn with '
+                         '--lang intl; experimental/cnv/launcher.py starts either); with --check the check rides on it as '
+                         'a layer (package.check_layer) and the mod is CampShellT / CampShellEnT, the bench walking the '
+                         'chapter list into the slot')
+    ap.add_argument('--unit', action='store_true',
+                    help='with --shell --check: a check that acts on the level (contract.observes lists how) built on the '
+                         'shell all the same, as a device unit test (机关单测, not acceptance): the mod CampShellU / '
+                         'CampShellEnU, never the acceptance CampShellT')
     ap.add_argument('--no-build', action='store_true')
     ap.add_argument('--calibrate', action='store_true')
     ap.add_argument('--plan', action='store_true', help='(ra3bench cnv_check) build, then print the bench steps as '
@@ -406,36 +278,68 @@ def main():
     ap.add_argument('--show', action='store_true', help="the build's interfaces and the contract check, nothing built")
     ap.add_argument('--preview', action='store_true', help='only the map, written to work/maps/<mod>.map in seconds '
                                                            '(no compile, no game): for mapstudy / maprender')
-    a = ap.parse_args()
+    return ap.parse_args(argv)
+
+
+TEST_SUFFIX = 'T'                       # a check on the shell: CampShellT / CampShellEnT, beside the release CampShell
+UNIT_SUFFIX = 'U'                       # a device unit test on the shell (--unit): CampShellU / CampShellEnU
+UNIT_NOTE = '机关单测，不算验收 (device unit test on the shell: the check acts on the level, contract.observes)'
+
+
+def main():
+    a = parse()
     if a.name == 'list':
         print(listing())
         return
+    if a.name == CAMPAIGN:
+        if not a.shell or a.check:
+            sys.exit(f'build: {CAMPAIGN} is the campaign shell with every Allied level: --shell, no --check')
+        out = campaign(a.lang)
+        print('built to staging (RA3 is running)' if 'staging' in out else f'-> {out}')
+        return
+    if a.lang != 'zh':
+        a.name = f'{a.name}_{a.lang}'
+        if a.name not in MISSIONS:
+            sys.exit(f'build: no {a.lang} edition of {a.name.rsplit("_", 1)[0]} (builds: {sorted(MISSIONS)})')
     if a.show:
         text = show(a.name, a.check)
         print(text)
         sys.exit(0 if text.endswith('contract: ok') else 1)
     m, t, mod = resolve(a.name, a.check)
+    if a.shell:
+        import shell
+        # CampShell / CampShellEn; with a check CampShellT / CampShellEnT, so the release build installed stays as it is
+        # (a device unit test: CampShellU / CampShellEnU). Only a check that only observes rides on the shell as
+        # acceptance (ADR 0016: test edition = release edition + observation)
+        mod = shell.NAME + langs.edition(a.lang)['suffix']
+        if t is not None:
+            import contract
+            acts = contract.observes(m, t)
+            if acts and not a.unit:
+                sys.exit('build: the check does more than observe, so it cannot ride on the shell as acceptance '
+                         '(--unit builds it as a device unit test):\n  ' + '\n  '.join(acts))
+            mod += UNIT_SUFFIX if a.unit else TEST_SUFFIX
+            if a.unit:
+                print(UNIT_NOTE)
+    if missing_report(m):
+        print(missing_report(m))
     if a.preview:
-        if hasattr(m.map, 'LAYOUT'):            # the map's own design lint first: it needs no map file
-            import platmap
-            problems = platmap.lint(m.map.LAYOUT, m.map.SITES, getattr(m.map, 'OBJECTS', []),
-                                    getattr(m.map, 'SCENERY', []))
-            problems += platmap.ore_lint(list(getattr(m.map, 'OBJECTS', [])) + list(m.objects))
-            print('LINT ' + ('ok' if not problems else '; '.join(problems)))
-        elif hasattr(m.map, 'ground'):          # no layout (the noise island): its scenery checked on its heights
-            import platprops
-            problems = platprops.lint(None, m.map.SITES, getattr(m.map, 'OBJECTS', []), m.map.SCENERY,
-                                      ground=m.map.ground())
-            print('LINT ' + ('ok' if not problems else '; '.join(problems)))
-        path = parts.preview(m, t, out=os.path.join(ROOT, 'work', 'maps', mod + '.map'))
+        import contract                         # the map's own design lint first (it needs no map file): the one every
+        problems = contract.map_design(m)       # build runs (contract.contract), K4e
+        print('LINT ' + ('ok' if not problems else '; '.join(problems)))
+        path = parts.preview(m, t, out=os.path.join(labpaths.WORK, 'maps', mod + '.map'))
         print('PREVIEW ' + path)
         return
     if a.judge is not None:
         lines, status = report(t, parse_counters(a.judge))
-        print('\n'.join(lines))
+        print('\n'.join(([UNIT_NOTE] if a.unit else []) + lines))
         sys.exit(status)
     if not a.no_build:
-        out = parts.assemble(m, t, name=mod)
+        if a.shell and t is not None:        # the check as a layer on the shell (ADR 0016 phase 2): only adds
+            import package
+            out = parts.assemble(m, None, name=mod, shell=a.lang, layers=(package.check_layer(m, t),))
+        else:
+            out = parts.assemble(m, t, name=mod, shell=a.lang if a.shell else False)
         if 'staging' in out:
             print('built to staging (RA3 is running): no bench run')
             if a.plan:
@@ -457,7 +361,7 @@ def main():
         print('digits read back:', counters.calibrate(Image.open(os.path.join(run, last)).convert('RGB')))
         return
     lines, status = report(t, readings)
-    print('\n'.join(lines))
+    print('\n'.join(([UNIT_NOTE] if a.unit else []) + lines))
     sys.exit(status)
 
 

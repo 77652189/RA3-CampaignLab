@@ -1,0 +1,104 @@
+# 遭遇战 AI 先打哪栋楼、什么时候出门、守兵多远会被拉回
+
+引擎线 A 第 54～65 轮（2026-11-06），ADR 0019 第四层（遭遇战 AI）的 ④ 目标和战术、⑤ 防守。写法照 `script-semantics.md`：**测** = 测试台；**读到** = 程序里读到、没上测试台；**推断** = 只从资料推出来。
+
+探针两个，都用尼亚加拉图、敌方盟军 AI、人格只留一个常开状态（做法同 `aistate.md`）：
+- `experimental/cnv/checks/engine_aitarget.py`（任务 `missions/aitarget_bench.py`）：玩家有两座电厂，近的带炮塔、远的不设防，看 AI 的 4 个维和步兵先去哪座、几秒出门。
+- `experimental/cnv/checks/engine_aidefense.py`（任务 `missions/aidefense_bench.py`）：AI 用 `StaticDefense` 守自己的建造厂，用脚本把守兵弄走，看它们会不会、多久被拉回来。
+
+## 给关卡线的结论
+
+**先打哪栋楼**
+- 一个战略状态写了几条目标启发（`TargetHeuristic`），AI 按 `Priority` 从高到低一条条试，同级的随机先后，**第一条找到目标的就用它**，后面的不看。一个目标槽只占一个目标。（读到）
+- 找敌方建筑 / 敌方单位时，**距离从 AI 基地中心量**，不是从出门的队伍量。（读到）
+- `ClosestStructureHeuristic`（按距离）= 离 AI 基地最近的敌方建筑；**测**：先打带炮塔的近厂，炮塔把步兵全打死了。
+- `SafestToGroundStructureHeuristic`（按对地威胁）= 周围对地火力最小的那栋；**测**：绕过近厂、先打不设防的远厂，打掉以后（`RAMPAGE`）才转去近厂。量火力的半径固定 400，不看人格里的 `DefaultThreatFindRadius`。（半径：读到）
+- 设计用法：想让 AI 先砸某栋楼，就让它离 AI 基地最近；对"挑软柿子"的状态，玩家在一栋楼 400 内摆防御，AI 就会改打别处——可以拿来出"引导 AI 进攻方向"的题。
+- 有几个敌方玩家时，先给玩家排序（最近的 / 最强的 / 一样），只在排第一的那一档玩家里找；`HighestPriorityEnemyPlayersOnly` 为真（默认）时那一档没目标，这条启发就算失败。（读到）
+- `RequireUniqueTarget`：同一个 AI 的另一个槽正在打的东西，这条启发不会再选。（读到）
+- **找敌方建筑 / 单位没有距离上限**：搜索半径 `SearchRange` 只有"科技建筑"（`TechBuilding`）这一类启发在用，找敌方建筑 / 单位、状态起跑这一路都不量距离，也不要求 AI 看见过目标。所以目标离 AI 基地多远都会派兵。（读到）
+  - `aistate.md` 里"目标在 2600 外状态不启动"那次读数不能当距离限制：那个 build 的旗标名没加 `/`，同样写法在 750 处也不动（见 `aistate.md` 的 `aistatenear` / `aistateplain`）。要实锤就用常开状态把目标放到 2600 外重测一次（没测）。
+- 科技建筑启发（`TechBuilding`）：从 AI 基地中心量，`SearchRange` 内**最近**的一栋，**不看排序方式**（`SortType` 写什么都一样）；`MinDistanceFromEnemy` 大于 0 时这栋周围那么远内不能有敌人；别的槽正在打的不选（不管写没写 `RequireUniqueTarget`）。（读到；"必须是中立的"是推断）
+
+**什么时候出门**
+- `SimpleAttack`：队伍凑齐当场出发，直奔目标，路上不停。（测：唤醒后约 3 秒就到了近厂）
+- `DefenseAvoidanceAttack`（DA）和 `FlankAttack`：路分几段（队伍位置 → 侧移点 → 目标前 600～1000 的接近点 → 目标），**每段都要等队伍"就绪"才走下一段**。（分段：读到；等：测）
+  - 就绪 = 每个队员都处在"待命"（没接到命令，或者走到了上一段的点停下了），或者站着不动超过微操的 `MaxUnitIdleTime`（标准微操 10 秒）；或者整队闲置超过 `MaxTeamIdleTime`（标准 15 秒）。（读到；"走到点停下算待命"是推断）
+  - 所以队伍一组成，站着的兵本来就是待命，**第一段马上就走**；之后每段等全员走到点、停下，再走下一段。闲置时长平时根本用不上：测试台把两个闲置时长都改成 600 秒，和标准设置逐帧一样。（测）
+  - 整队闲置的计时从**开局第 0 帧**算起，队伍组成后的第一次微操更新（约一个 `UpdateTime` 后）才重新起算。所以开局超过 `MaxTeamIdleTime` 以后才组成、又一组成就开打的队伍（比如开局摆好、或者脚本交给 AI 的现成单位），在第一次更新前就算"闲置"：几段路一口气全派出去，**不绕路，直奔目标**（最后一道命令就是目标）。**边造边凑的队伍也一样**：队伍要凑够人（`MinUnits`、每种都不缺）才"激活"，激活前根本不做微操更新，所以等人等得再久，凑齐出发那一刻闲置计时还是第 0 帧那个；造出来的新兵和现成的兵进队走的是同一条路。（读到；测：两组唤醒后都在 1.5 秒内动身，5 秒那组早 163 帧出 450 方框、早 193 帧（12.9 秒）到——差的是绕路多走的路，不是等的时间）
+  - 在家集合、附近没有敌人时，队伍状态一直是"空闲"，没有单独的"集结"阶段拖时间。（读到）
+  - **测**：默认设置下 DA 唤醒后马上动身，但先在基地附近绕，约 18 秒才出 450 方框（`SimpleAttack` 当场直奔）；`MaxTeamIdleTime` 改 5 秒直奔目标，早约 11 秒出方框；改 30 秒、或者连 `MaxUnitIdleTime` 一起改 600 秒，都和 15 秒逐帧一样。`FlankAttack` 比 DA 早约 3 秒出方框，但晚约 23 秒到（随机绕一侧）。
+  - 设计用法：想给玩家留准备时间，用 DA（绕路、每段在点上停一下等齐人）；想立刻压上，用 `SimpleAttack`。开局 15 秒以后才交给 AI 的现成单位用 DA 也会直奔（见上一条）。
+- **AI 状态开局就在跑**：属于 AI 玩家的兵，第 1 秒就被防守状态带去集合，没等第 10 秒的唤醒脚本。（测）
+- 目标没了以后看 `EndBehavior`：`RAMPAGE` = 去打 99999 内最近的敌人，找不到才结束；`DISBAND` = 解散；`RETURN_HOME_AND_DISBAND` = 先走回基地 600 内再解散。（读到）关旗叫不回出了门的队伍，见 `aistate.md`。
+
+**守兵多远会被拉回（`StaticDefense`）**
+- 队伍先攻击移动到守的点。之后每 `UpdateTime`（默认 1 秒）看一次：队伍中心离点超过 `Distance` → 攻击移动回去；正在打仗时这个圈放大成 `Distance × CombatLeashSlack`（默认 1.5 倍）。目标是会动的东西就跟着走。（读到）
+- **测**：守兵被瞬移到 1200 外，`UpdateTime` 1 秒时 25 秒内全回到 300 圈里（基本就是走回来的时间），4 秒时晚约 2 秒。
+- 在圈里时：`UseAestheticsManager` 开着（默认）由"美化"在点周围摆站位；关着时，**队伍就绪且中心偏离点超过 100，就再走回点**。（读到）
+- **测**（美化关，`Distance` 250）：脚本用 `MOVE_NAMED_UNIT_TO` 把守兵往外派，**没走出 175 就被叫回**，远没到 `Distance`。原因是"就绪"按旧的站立记录判断，兵刚被推走时还算就绪。
+- 所以：**用脚本把 AI 的守兵调走基本不行**，会被叫回。要调走，得先把它们编进脚本小队（`UNIT_SET_TEAM`，`m.order` 就是这么做的）：**测**：这样派出 1200 后一个都没回来，改 `Distance` 250/450、`UpdateTime`、`CombatLeashSlack` 都一样（推断：编进脚本小队就脱离了 AI 的队伍）。
+- 守兵的战术里没有找敌人的逻辑，打不打靠微操（`aimicro.md`）。（读到）
+- 原版遭遇战人格里：`LandDefense` 守离敌人最近的 3 栋自家建筑、`Distance` 450；`BalancedDefense` 在敌人进到 750 内时才开。（读到，数据）
+- `ReactiveDefense`：每个 AI 同时只有一个，约每 2 秒看一次，追基地 `ReactiveDefenseRadius` 内的敌人，敌人跑出这个圈就放手回基地；原版只有一处演示用到。`SimpleDefense`：走到点、全员就绪就解散。`RoamingDefense`：程序里根本不建，写了也没用。（读到，没测）
+
+**基地"挨打"旗标和防御塔**
+- 任一建筑最近约 1 秒（`BaseBuilderUpdateUnderAttackTime` 默认值换算）挨过打 → 基地记"被攻击"；敌人进到建筑 300 内（建筑本身更大就按建筑半径）→ 记"敌人在基地里"。原版的"救援"队伍（`EmergencyDefense`）是 `SimpleAttack` 去打 `UnderAttackBy` 目标。（读到，没测）
+- 防御塔离中心多远：约 `BaseCompactness × 600`（±0.05 × 600 的随机，最远不超过 600），依次试 5 个角度（每次差 36°），第一个能放的就放。（**测**：0.5 → 约 300，0.75 → 420～442，1.0 → 590～620）
+- 防御塔围着谁、朝哪边：**围着离基地锚点最近的自家建筑**（锚点在建造场上时就是建造场本身），离敌人远近不管；那一圈放不下才把找中心的点往外推。开局指令和平时的造塔状态走同一套摆放。（早先读到的"围着离敌人最近的建筑"那段程序，摆塔时根本不经过。）朝哪边按塔模板的建筑位置类型定，其中一种才朝最近敌人，盟军多功能炮塔是哪种没读到。**测**：AI 用开局指令造的塔围着建造场、朝随机的 36° 倍数方向，敌方电厂在 AI 电厂南边 800、给 AI 开了全图也一样；平时的造塔状态造的塔也一样（敌方坦克就停在 AI 电厂南边 600）。**给关卡线的结论**：别指望 AI 的塔自动堵在朝玩家的路口；要塔在哪，就直接在地图上摆。
+
+## 读数（测）
+
+| 探针 | 设置 | 结果 |
+| --- | --- | --- |
+| `aitargetnear` | `ClosestStructure` + `SimpleAttack` | 唤醒后 3 秒到近厂，被炮塔打光；远厂一直没人去 |
+| `aitargetsafe` | `SafestToGround` + DA，默认微操 | 唤醒后 18 秒出门、25 秒到远厂；拆掉后转去近厂 |
+| `aitargetidle5` | 同上，`MaxTeamIdleTime` 5 秒 | 7 秒出门、12 秒到远厂（早约 11 秒） |
+| `aitargetidle30` | 同上，30 秒 | 和默认（15 秒）一样 |
+| `aitargetstill` | 同上，`MaxTeamIdleTime`、`MaxUnitIdleTime` 都 600 秒 | 和默认逐帧一样（按帧计：第 175 帧离开起点、443 帧出 450 方框、548 帧到远厂；5 秒那组 170 / 280 / 355） |
+| `aitargetflank` | `SafestToGround` + `FlankAttack` | 15 秒出门、48 秒到远厂 |
+| `aidefctl` / `aidefctl4` | `StaticDefense` `Distance` 250，`UpdateTime` 1 / 4 秒，瞬移到 1200 外 | 往西（11-06）第 25 / 27 秒全回 300 圈；往南开阔地（11-07）第 18 / 19 秒 |
+| `aidefmv` | 同上，脚本 `MOVE_NAMED_UNIT_TO` 往外派 | 没走出 175 就回来，之后一直在 100 圈里 |
+| `aidef250` 等 4 个 | `m.order` 编进脚本小队再派出 | 全部走到 1200 外，不回来 |
+| `aitower50` / `75` / `100` | 开局指令造一座塔，`BaseCompactness` 0.5 / 0.75 / 1.0 | 第 451 帧放下；离建造场约 300 / 420～442 / 590～620，围着建造场，不朝敌人 |
+| `aitowerfoe` | 只留造塔状态、自己的预算、脚本给钱 1700，AI 电厂南 600 停 4 辆玩家坦克 | 120 秒一座塔都不造 |
+| `aitowerdep` | 同上，再加一条只往 DEFENSE 账户存 1000 的开局指令（不下造塔命令） | 第 451 帧放下，在建造场 350 内，不在电厂南边 |
+
+（时间都是唤醒后秒数，测试台每秒读一次，±1 秒；瞬移那两行是瞬移后秒数。11-06 的 `aidefense` 读数里外派点在 1200，压着两棵树；第 65 轮挪到 1150 后落在河岸上、瞬移不生效，第 70 轮瞬移改到正南 1200 重测。）
+
+### 目标挑哪个（aitargetpick：VitalKindOf / ForbiddenKindOf / EnemyUnit / Priority / MaxTargets）
+
+探针 `experimental/cnv/missions/aitargetpick_bench.py` + `checks/engine_aitargetpick.py`（11-09，8 组全 PASS，读数在检查 docstring）。AI 家里 4 辆守护者（MaxTargets 两组 8 辆），一个常开状态一队 SimpleAttack、MaxUnits 4；玩家三个保活目标：近电厂（~710）、远兵营（~1010）、一辆坦克（~910）。
+
+| 变体 | 状态里的目标启发 | 去哪 |
+| --- | --- | --- |
+| `aitpnear` | ClosestStructure | 电厂（对照） |
+| `aitpvk` | 自写 EnemyStructure，`VitalKindOf` FS_BARRACKS | 兵营 |
+| `aitpfk` | 自写 EnemyStructure，`VitalKindOf` STRUCTURE、`ForbiddenKindOf` FS_POWER | 兵营 |
+| `aitpunit` | 自写 `HeuristicType` EnemyUnit、`VitalKindOf` VEHICLE | 玩家坦克（建筑不去） |
+| `aitpphi` | 兵营启发 `Priority` 20 + ClosestStructure 10 | 兵营：先试优先级高的 |
+| `aitpplo` | 兵营启发 `Priority` 5 + ClosestStructure 10 | 电厂 |
+| `aitpmt1` | `MaxTargets` 1，8 辆 | 一队 4 辆去电厂，4 辆留家 |
+| `aitpmt2` | `MaxTargets` 2，8 辆 | 两队：4 辆电厂、4 辆兵营（第二个槽避开第一个槽的目标，挑次近） |
+
+给关卡：一个状态 `MaxTargets` 几就同时出几队、各打一个不同目标；同一状态里写几条目标启发时先用 `Priority` 高的，找不到才往下。模拟器（simai）八组都对上（`tests/test_simai.py::test_target_pick_as_on_the_bench`）。没测：同优先级时随机挑哪条、VitalKindOf 写多个是"全都"还是"任一"、MaxTargets 大于可用兵力时。
+
+### 目标没了以后（EndBehavior，2026-11-09 各一次）
+
+同一队 4 辆守护者打电厂，检查脚本 s35 杀掉电厂，看 s75 站在哪（`aiendd` / `aiendh` / `aiendr` / `aiendp`）：
+
+| EndBehavior | 台上 | 模型 |
+|---|---|---|
+| `DISBAND` | 去兵营（状态重新派队） | 对 |
+| `RETURN_HOME_AND_DISBAND` | 去兵营，没回家（回家半径 600，从电厂走一点就算到） | 对 |
+| `RAMPAGE` | 去兵营，没去打坦克 | 错（模型打最近的敌方单位） |
+| `PICK_NEW_TARGET` | 一直站在电厂原地到 s85 | 错（模型去兵营） |
+
+给关卡：目标被打掉后想让队伍接着打下一个，用 `DISBAND` 最稳；`PICK_NEW_TARGET` 实测会原地发呆。
+
+## 没测 / 没建模
+
+- DA 怎么选"防御最弱的一侧"绕路，没进模型；所以 5 对 15 秒到达差的 193 帧（绕路多走的）模型对不上（模型里路点只有"队伍中心 → 目标"）。出发时刻已对上：都是唤醒就走。
+- 除了敌方建筑 / 单位、友方建筑 / 单位、科技建筑，其余目标启发（靠岸建筑、`UnderAttackBy`……）怎么挑都是推断；一个槽多久重选一次没读到。
+- 防御塔只测了第一座。**脚本给的钱（`PLAYER_SET_MONEY`）不会分进 AI 的 DEFENSE 账户**：只给钱时造塔状态一座不造（自己配了 DEFENSE 50% 的预算也一样；钱是没分进去还是只分新收入没读），开局指令往账户里存一笔钱它马上就造——关卡里想让 AI 造塔，要给它账户里的钱（比如开局指令存一笔），光给玩家钱不够。塔的朝向（36° 倍数、不朝敌人）是哪种位置类型没读到。建筑修理、"挨打"旗标的时间窗没上测试台。
+- `BaseDefenseMaxDistance` 按说明是"防御建筑多远还算同一队"，不是拴绳；谁读它没找到。

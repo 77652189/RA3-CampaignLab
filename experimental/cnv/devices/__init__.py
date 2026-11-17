@@ -17,8 +17,8 @@ class Device:
     ACTIONS = {}
     TARGET = ''
 
-    def __init__(self, c, name, spec):
-        self.c, self.m, self.name, self.spec = c, c.m, name, spec
+    def __init__(self, ctx, name, spec):
+        self.ctx, self.name, self.spec = ctx, name, spec
         self.units, self.names = [], {}
 
     def place(self):
@@ -31,11 +31,11 @@ class Device:
         raise self.unknown('action', what, self.ACTIONS)
 
     def attack(self, names):
-        from plan import PlanError
+        from plantime import PlanError
         raise PlanError(f'{self.name}: not a target a wave can attack')
 
     def scripts(self):
-        """Its scripts (it may also add some through the compiler, c.when)."""
+        """Its scripts (it may also add some through the context, ctx.when)."""
         return []
 
     def last(self):
@@ -46,12 +46,12 @@ class Device:
         return {}
 
     def unknown(self, kind, what, known):
-        from plan import PlanError
+        from plantime import PlanError
         return PlanError(f'{self.name}: no {kind} {what!r}: {sorted(known)}')
 
 
 def registry():
     """{device type (the plan's 类型): class}."""
-    from devices import carrier, convoy, horn, ice_plazas, train
+    from devices import carrier, convoy, horn, ice_plazas, rhythm, stasis, train
     return {'车队': convoy.Convoy, '冰雕广场': ice_plazas.IcePlazas, '号角': horn.Horn, '自由号': carrier.Carrier,
-            '列车': train.Train}
+            '列车': train.Train, '节律': rhythm.Rhythm, '时停区': stasis.Stasis}

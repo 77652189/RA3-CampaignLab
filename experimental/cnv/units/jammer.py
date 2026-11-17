@@ -7,11 +7,11 @@ Published: abilities jam = the toggle's command button (NAMED_USE_COMMANDBUTTON_
 """
 import os
 
-import make_campnew2 as c2
+import labpaths
 from parts import Unit
 from units import look
 
-SAGE = os.path.join(c2.SDK, 'SageXML', 'Soviet', 'Units')
+SAGE = os.path.join(labpaths.SDK3, 'SageXML', 'Soviet', 'Units')
 TOGGLE_POWER, TOGGLE_COMMAND = 'SpecialPower_ToggleTargetPainter', 'Command_ToggleTargetPainter'   # the Guardian's
 
 

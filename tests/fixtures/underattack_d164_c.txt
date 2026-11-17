@@ -1,0 +1,23 @@
+ua: frame=5 ev=set obj=3181 own=4 last=5 prev=-1 src=0 hp=1000.0/1000.0 win=75
+tgt: frame=16 brain=redacted slot=0 state=redacted sid=acdd62e1 hi=0 vt=redacted sort=5 uniq=0 found=1 kind=3 target=3181@4000:3000 n=4 cand=3163@3850:3400:1:-:e=3188:d=501,3181@4000:3000:1:-:e=3188:d=75,3182@3700:2400:0:forbid,3184@4100:3800:1:-:e=3188:d=878
+tgt: frame=16 brain=redacted slot=1 state=redacted sid=d2df3ca3 hi=0 vt=redacted sort=5 uniq=0 found=1 kind=3 target=3181@4000:3000 n=4 cand=3163@3850:3400:1:-:e=3188:d=501,3181@4000:3000:1:-:e=3188:d=75,3182@3700:2400:0:forbid,3184@4100:3800:1:-:e=3188:d=878
+tgt: frame=16 brain=redacted slot=2 state=redacted sid=2ee151d8 hi=0 vt=redacted sort=5 uniq=0 found=1 kind=3 target=3181@4000:3000 n=4 cand=3163@3850:3400:1:-:e=3188:d=501,3181@4000:3000:1:-:e=3188:d=75,3182@3700:2400:1:-:e=3185:d=524,3184@4100:3800:1:-:e=3188:d=878
+ua: frame=16 ev=gate obj=3163 secs=5 win=75 last=-1 src=0 alive=0 path=a res=0
+ua: frame=16 ev=gate obj=3181 secs=5 win=75 last=5 src=0 alive=0 path=a res=1
+ua: frame=16 ev=gate obj=3182 secs=5 win=75 last=-1 src=0 alive=0 path=a res=0
+ua: frame=16 ev=gate obj=3184 secs=5 win=75 last=-1 src=0 alive=0 path=a res=0
+tgt: frame=16 brain=redacted slot=3 state=redacted sid=19dcc78 hi=0 vt=redacted sort=0 uniq=0 found=1 kind=3 target=3181@4000:3000 n=4 cand=3163@3850:3400:0:other,3181@4000:3000:1:-,3182@3700:2400:0:other,3184@4100:3800:0:other
+ua: frame=18 ev=src obj=3181 last=18 src=3185
+ua: frame=18 ev=set obj=3187 own=4 last=18 prev=-1 src=3185 hp=143.0/150.0 win=75
+ua: frame=20 ev=set obj=3185 own=2 last=20 prev=-1 src=3187 hp=537.0/550.0 win=75
+ua: frame=110 ev=clr obj=3181 at=109 last=33 src=3185 alive=1 hits=3
+ua: frame=201 ev=set obj=3178 own=4 last=201 prev=-1 src=3186 hp=96.5/100.0 win=75
+ua: frame=212 ev=clr obj=3185 at=211 last=135 src=3187 alive=1 hits=6
+ua: frame=212 ev=set obj=3186 own=2 last=212 prev=-1 src=3197 hp=0.0/550.0 win=75
+ua: frame=212 ev=set obj=3200 own=4 last=212 prev=-1 src=3197 hp=0.0/100.0 win=75
+ua: frame=222 ev=clr obj=3187 at=222 last=146 src=3185 alive=0 hits=9
+ua: frame=232 ev=set obj=3197 own=4 last=232 prev=-1 src=0 hp=0.0/2000.0 win=75
+ua: frame=278 ev=clr obj=3178 at=277 last=201 src=3186 alive=0 hits=1
+ua: frame=288 ev=clr obj=3200 at=288 last=212 src=3197 alive=0 hits=1
+ua: frame=288 ev=clr obj=3186 at=288 last=212 src=3197 alive=0 hits=1
+ua: frame=308 ev=clr obj=3197 at=308 last=232 src=0 alive=0 hits=1

@@ -52,3 +52,11 @@ def _play(m, line, seconds):
                ('bench_look', dict(note='the subtitle of CNV_TEST_001 at the bottom?')),
                ('bench_watch', dict(seconds=RUN - at - 1, every=1, sheet=False, lines=len(t.counters)))]
     return t
+
+
+# the checks per build (cnv/registry.py): build name -> {check name: check(mission) -> Test}
+CHECKS = {
+    'voice_bench': {'play': play},
+    'voice_bench_s': {'play': play},
+    'voice_bench_12': {'play': play, 'ref': ref},
+}

@@ -13,11 +13,11 @@ along by MOVE_NAMED_UNIT_TO.
 import os
 import re
 
-import make_campnew2 as c2
+import labpaths
 from parts import Unit
 from units import look
 
-SAGE = c2.SDK + '/SageXML'
+SAGE = labpaths.SDK3 + '/SageXML'
 
 
 def sub1(x, old, new):

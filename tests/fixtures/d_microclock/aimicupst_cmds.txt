@@ -1,0 +1,10 @@
+# CampMicObsSlowA_mcp_1112_144547 (E102, MicroManager UpdateTime 0.5 s / 4 s pair); AI order lines only, minus the host's own (id 36) and type 205 / 24e
+cmd: frame=405 msg=0860EB40 type=1f5 player=4 n=3 args=2:1,2:0,4:3170
+cmd: frame=405 msg=0861E9B8 type=20d player=4 n=2 args=4:3168,7:3911.0:2706.3:212.5
+cmd: frame=405 msg=0861EA30 type=1f5 player=4 n=3 args=2:1,2:0,4:3171
+cmd: frame=405 msg=0861B628 type=20d player=4 n=2 args=4:3168,7:3911.0:2706.3:212.5
+cmd: frame=466 msg=0B3FFF38 type=1f5 player=4 n=3 args=2:1,2:0,4:3171
+cmd: frame=466 msg=0B3FFFB0 type=1fe player=4 n=4 args=0:-1394478417,0:0,0:-1,4:0
+cmd: frame=466 msg=0B40D3D8 type=1f5 player=4 n=3 args=2:1,2:0,4:3170
+cmd: frame=527 msg=0B405D78 type=1f5 player=4 n=3 args=2:1,2:0,4:3170
+cmd: frame=527 msg=0B405DF0 type=1fe player=4 n=4 args=0:-1394478417,0:0,0:-1,4:0

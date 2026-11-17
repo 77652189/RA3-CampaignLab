@@ -1,0 +1,121 @@
+"""Engine probe: PathToTargetHeuristic in the opening pick -- does the AI judge "no way to the enemy" by the unit the
+heuristic names (checks/engine_aiopath.py; private ai/opening._holds, simai.Brain.path_to_target)?
+
+aiopen_bench as is (Niagara, the enemy s1 Allied with one yard, woken at 10 s with 50000 money), but s1's
+personality is the probe's: inheritFrom AlliedCoopBaseSkirmishPersonality (it and its parents have no OpeningMove),
+two lines only, every difficulty:
+  AlliedStandard  PathToTargetHeuristic PathExists="true"   (barracks first, power plant at +10 s: engine_aiopen)
+  AlliedIsland    PathToTargetHeuristic PathExists="false"  (power plant first, no barracks in the list)
+both tested with the same ObjectTypeToUseForTest:
+  aiopath1  CNVPathP: AlliedPowerPlant -- no locomotor, so (program read, l4_states.md 3) no path: Island expected
+  aiopath0  CNVPathI: SovietAntiInfantryInfantry -- the stock test unit, Niagara is land: Standard expected
+  aiopathi  CNVPathO: ONE line, AlliedIsland with PathExists="true", the infantry tester -- does the probe's
+            personality take at all (a power plant first = yes; barracks first = the stock opening, it did not)
+  aiopathr  CNVPathR: aiopath1's two lines, order reversed (Island first) -- if both lines hold, the draw (same
+            weights) takes the first: Island here; if the power plant really has a path, Standard again
+"""
+from missions import aiopen_bench
+
+BASE = 'AlliedCoopBaseSkirmishPersonality'
+
+
+def personality_xml(pid, tester, moves=(('AlliedStandard', 'true'), ('AlliedIsland', 'false')),
+                    condition='NORMAL'):
+    test = (f'<PathToTargetHeuristic PathExists="{{}}" ObjectTypeToUseForTest="{tester}"'
+            f' LocomotorConditionToUseForTest="{condition}" />')
+    lines = []
+    for move, exists in moves:
+        lines += [f'    <OpeningMove Name="{move}" Weight="100%" Difficulty="EASY MEDIUM HARD BRUTAL">',
+                  '      <Heuristic>', '        ' + test.format(exists), '      </Heuristic>',
+                  '    </OpeningMove>']
+    return '\n'.join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+        ' xmlns:xai="uri:ea.com:eala:asset:instance">',
+        '  <Tags></Tags>',
+        '  <Includes>',
+        f'    <Include type="instance" source="DATA:SkirmishAI/Personalities/{BASE}.xml" />',
+        '  </Includes>',
+        f'  <AIPersonalityDefinition id="{pid}" PersonalityType="{pid}" inheritFrom="{BASE}">',
+        *lines,
+        '  </AIPersonalityDefinition>',
+        '</AssetDeclaration>', ''])
+
+
+def mission(name, pid, tester, **kw):
+    m = aiopen_bench.mission(name=name)
+    m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
+    m.assets.append((f'{pid}.xml', personality_xml(pid, tester, **kw), f'AIPersonalityDefinition:{pid}'))
+    return m
+
+
+def disconnected(amphibious=False):
+    """C condition probe: no bridges; independent scripted crossing controls.
+
+    INFERRED prediction: NORMAL cannot join the banks; SUPERSONIC can.
+    The tester has ground NORMAL and ground + water SUPERSONIC locomotors.
+    The controls use the very same sets under NORMAL, so physical reachability
+    can be checked independently of the opening heuristic's chosen condition.
+    """
+    import types
+    from parts import Unit
+    from units import convoy
+
+    tester = convoy.truck(id='CNVPathTester', cargo=None, speed=90)
+    extra = ('<LocomotorSet Locomotor="TestReactiveLocomotorTANK" '
+             'Condition="SUPERSONIC" Speed="90" />\n'
+             '<LocomotorSet Locomotor="AlliedMinerWaterLocomotor" '
+             'Condition="SUPERSONIC" Speed="90" />\n')
+    tester.xml = tester.xml.replace('</GameObject>', extra + '</GameObject>')
+    control = Unit('CNVPathSwimmer', tester.xml.replace('CNVPathTester', 'CNVPathSwimmer')
+                   .replace('Condition="SUPERSONIC"', 'Condition="NORMAL"'),
+                   what='Path probe crossing control with ground and water locomotors')
+    # Remove the duplicate ground set from the swimmer, retaining one of each.
+    control.xml = control.xml.replace(
+        '<LocomotorSet Locomotor="TestReactiveLocomotorTANK" Condition="NORMAL" Speed="90" />\n', '', 1)
+    name, pid = ('CampPCAmph', 'CNVPCAmph') if amphibious else ('CampPCLand', 'CNVPCLand')
+    m = mission(name, pid, tester.id, condition='SUPERSONIC' if amphibious else 'NORMAL')
+    cp = types.ModuleType(m.map.__name__)
+    cp.__dict__.update(vars(m.map))
+    cp.BRIDGES = []
+    cp.OBJECTS = [o for o in cp.OBJECTS if o.template != 'HB_Bridge_02']
+    m.map = cp
+    m.units += [tester, control]
+    m.put(tester.id, 'east gate', 0, -100, role='land control', name='UNIT - CNV PC Land')
+    m.put(control.id, 'east gate', 0, 100, role='amphib control', name='UNIT - CNV PC Amph')
+    m.waypoint('crossing goal', 'CNV PC Goal', 'front')
+    m.facts['path amphibious'] = amphibious
+    return m
+
+
+def disconnected_ready(amphibious=False):
+    """D108 follow-up: register base and enemy priorities before opening choice.
+
+    Keep the old builds intact for replay. Money still arrives at 10 seconds.
+    INFERRED: start-script registration precedes the engine's opening decision.
+    The read-only path trace must confirm this before interpreting a split.
+    """
+    m = disconnected(amphibious)
+    m.name = 'CampPCAmphY' if amphibious else 'CampPCLandY'
+    m.ext = True
+    s1 = m.player('s1')
+    m.scripts[0].do += [('SKIRMISH_AI_MAKE_BASE', s1, m.mark('ai base')),
+                        ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', s1, 20)]
+    return m
+
+
+MISSION = {
+    'aipclandy': lambda: disconnected_ready(False),
+    'aipcamphy': lambda: disconnected_ready(True),
+    'aipcland': lambda: disconnected(False),
+    'aipcamph': lambda: disconnected(True),
+    # Same tester and land endpoints: deep-water NORMAL versus flying SUPERSONIC.
+    'aiopwater': lambda: mission('CampPathWater', 'CNVPathWater', 'JapanAntiAirShip'),
+    'aiopair': lambda: mission('CampPathAir', 'CNVPathAir', 'JapanAntiAirShip', condition='SUPERSONIC'),
+    'aiopath1': lambda: mission('CampAIPath1', 'CNVPathP', 'AlliedPowerPlant'),
+    'aiopath0': lambda: mission('CampAIPath0', 'CNVPathI', 'SovietAntiInfantryInfantry'),
+    'aiopathi': lambda: mission('CampAIPathI', 'CNVPathO', 'SovietAntiInfantryInfantry',
+                                moves=(('AlliedIsland', 'true'),)),
+    'aiopathr': lambda: mission('CampAIPathR', 'CNVPathR', 'AlliedPowerPlant',
+                                moves=(('AlliedIsland', 'false'), ('AlliedStandard', 'true'))),
+}

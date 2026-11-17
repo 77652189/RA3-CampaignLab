@@ -1,0 +1,7 @@
+# CampAIEgOnA_mcp_1113_025227; team anonymized, caller omitted
+kassign: frame=375 team=T mstate=2 src=score ra=- mem=3170 tgt=3168 flag=0 ret=1 w=1 prev=3168:0 start=375 until=375 keep=0 min=0.00 max=0.00 n=0
+kassign: frame=375 team=T mstate=2 src=score ra=- mem=3171 tgt=3168 flag=0 ret=1 w=1 prev=3168:0 start=375 until=375 keep=0 min=0.00 max=0.00 n=0
+kpass: frame=375 team=T cand=3168:1,3167:1 keep=3170:0:go,3171:0:go
+kassign: frame=383 team=T mstate=2 src=score ra=- mem=3170 tgt=3168 flag=0 ret=0 w=1 prev=3168:375 start=383 until=383 keep=0 min=0.00 max=0.00 n=0
+kassign: frame=383 team=T mstate=2 src=score ra=- mem=3171 tgt=3168 flag=0 ret=0 w=1 prev=3168:375 start=383 until=383 keep=0 min=0.00 max=0.00 n=0
+kpass: frame=383 team=T cand=3168:1,3167:1 keep=3170:375:go,3171:375:go

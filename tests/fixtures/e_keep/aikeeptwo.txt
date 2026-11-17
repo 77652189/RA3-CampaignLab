@@ -1,0 +1,10 @@
+# CampAIKeepTwoA_mcp_1113_032514; team anonymized, caller omitted
+kassign: frame=495 team=T mstate=2 src=score ra=- mem=3170 tgt=3168 flag=0 ret=1 w=1 prev=- start=495 until=525 keep=30 min=2.00 max=2.00 n=0
+kassign: frame=495 team=T mstate=2 src=score ra=- mem=3171 tgt=3167 flag=0 ret=1 w=1 prev=3167:0 start=495 until=525 keep=30 min=2.00 max=2.00 n=0
+kpass: frame=495 team=T cand=3168:1,3167:1 keep=3170:0:go,3171:0:go
+kpass: frame=503 team=T cand=3168:1,3167:1 keep=3170:525:hold,3171:525:hold
+kpass: frame=519 team=T cand=3168:1,3167:1 keep=3170:525:hold
+kassign: frame=527 team=T mstate=2 src=score ra=- mem=3170 tgt=3168 flag=0 ret=0 w=1 prev=3168:525 start=527 until=557 keep=30 min=2.00 max=2.00 n=0
+kassign: frame=527 team=T mstate=2 src=score ra=- mem=3171 tgt=3167 flag=0 ret=0 w=1 prev=3167:525 start=527 until=557 keep=30 min=2.00 max=2.00 n=0
+kpass: frame=527 team=T cand=3168:1,3167:1 keep=3170:525:go,3171:525:go
+kpass: frame=535 team=T cand=3168:1,3167:1 keep=3170:557:hold,3171:557:hold

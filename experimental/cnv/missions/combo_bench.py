@@ -47,3 +47,11 @@ def mission(name='CampCombo'):
     m.put(p.id, 'west field', X, 200, name='UNIT - CNV Combo Parent', role='parent')
     m.put(c.id, 'west field', X, 0, name='UNIT - CNV Combo Child', role='child')
     return m
+
+
+# the builds this module makes (cnv/registry.py): build name -> mission factory
+MISSION = {
+    'combo': lambda: mission(),
+    'combo_breach': lambda: breach(),
+    'combo_spare': lambda: spare(),
+}

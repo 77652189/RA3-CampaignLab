@@ -47,14 +47,21 @@ KITS = {
                               ('06', 310, (0.15, 0.65), 0.35), ('03', 20, (0.65, 0.6), 0.3)]),
     # what a broken sculpture leaves (40 square, units/festival.py)
     'CNIceRubbleS': (40, 8, [('05', 10, (-0.5, -0.4), 0.5), ('06', 130, (0.45, -0.2), 0.45), ('03', 250, (0.0, 0.5), 0.5)]),
+    # what a spawn sculpture leaves (A4, 64 square, units/festival.py spawn_sculpture): the sculpture split open, a
+    # heap of tall broken shards that lies for good (the horns send their troops from here)
+    'CNIceCrackedBig': (64, 30, [('05', 10, (-0.45, -0.35), 0.55), ('06', 130, (0.5, -0.25), 0.5), ('03', 250, (0.0, 0.55), 0.55),
+                                 ('02', 30, (0.0, 0.0), 0.4), ('06A', 200, (-0.5, 0.5), 0.35)]),
 }
 # Tripo props (tripo_unit.py prop_main: work/units/<unit>/game/<model>.png, _nrm.png, parts.json) in the same ice
-PROPS = {'CNIceSculpt': 'icesculpture', 'CNIceSculptHard': 'icesculpture'}
+PROPS = {'CNIceSculpt': 'icesculpture', 'CNIceSculptHard': 'icesculpture', 'CNIceSculptBig': 'icesculpture'}
 # a prop made from another's bake: model -> (the bake's model, colour x per channel on top of the ice, size x). The
 # reinforced sculptures of A4's plazas 2 and 3 (docs/design/flow/a4.md: "颜色发暗、比别的厚一圈", nothing breaks
 # them): the same dragon in darker, greyer old ice, a size bigger, so they read apart from plaza 1's. Not bluer:
 # (0.62, 0.7, 0.86) came out a saturated royal blue on the bench (painted plastic, and near the Allied colour)
-VARIANTS = {'CNIceSculptHard': ('CNIceSculpt', (0.6, 0.64, 0.66), 1.15)}
+VARIANTS = {'CNIceSculptHard': ('CNIceSculpt', (0.6, 0.64, 0.66), 1.15),
+            # A4's spawn sculptures (docs/design/flow/a4.md 2026-11-02): a size and a half bigger than the festival's
+            # and darker, so the player knows which ones the empire dug under
+            'CNIceSculptBig': ('CNIceSculpt', (0.42, 0.46, 0.5), 1.7)}
 # snow banks, made, not kitbashed (retail has no snow drift; its snow is on roofs and props): model -> (length,
 # width at the foot, height). The festival's plaza walls (units/festival.py bank: 220 long, 24 thick): a berm a
 # little wider at its foot than the 24 it blocks, so it reads as shovelled snow, not a wall

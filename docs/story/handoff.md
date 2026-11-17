@@ -1,106 +1,104 @@
-# 关卡线交接（总控 local_79408d22 清空会话后，从这里接着做）
+最新进度看 [handoff-phase4.md](handoff-phase4.md)（前一份是 [handoff-phase3.md](../archive/level-handoff-phase3.md)）。
 
-写于 2026-10-30。只写进度和指针；事实以指到的文件为准。
+# 关卡线交接（早期，2026-10-30～11-04；已瘦身，只留仍有效的坑、工具用法和被别处引用的章节）
+
+已结束切片的过程、日志、提交号都删了（git 有历史）。ADR 0022～0026 之后关卡暂停、引擎优先，下面的"下一步"类计划不再有效。事实以指到的文件为准。
 
 ## 我是谁、管什么
 
 关卡线：`docs/story/`（outline、levels、plans/、map-language、units）、`experimental/cnv/`（单位外观接线除外）、模拟器（sim.py、simstatic.py、simchecks.py、simunits.py）、offline.py、platmap/platprops、terrainref。
-不是我的：`docs/plan.md`（总控）、`docs/design/`（设计线 local_51ff7c05，机制结论可写进 `docs/design/flow/mechanics.md`）、音乐线的文件（`experimental/music/*`、`docs/music/handoff.md`、`missions/music_dyn.py`、`tests/test_a4music.py`、`tests/test_sampler.py`，以及 `plan.py`、`tests/test_plans.py` 里的音乐部分，都还没提交，别碰也别混进我的提交）、`build.py` MISSIONS 里的 `probe`、`experimental/voice/*`（配音线 local_0f2be670）。
-规矩：`CLAUDE.md`（根目录）和总控给的那几条（通俗中文、mod 名 ≤15 字符不带下划线、提交署名、不 cd 进子目录、删文件先问、交给用户检查的只列真问题）。
+不是我的：`docs/plan.md`（总控）、`docs/design/`（设计线，机制结论可写进 `docs/design/flow/mechanics.md`）、音乐线文件（`experimental/music/*`、`docs/music/handoff.md`、`missions/music_dyn.py`）、`experimental/voice/*`（配音线）。外壳后来拆给外壳线（见 [shell/handoff.md](../shell/handoff.md)）。
+规矩：根目录 `CLAUDE.md`；mod 名 ≤15 字符不带下划线；不 cd 进子目录；交给用户检查的只列真问题。
 
-## 已做完（不用再查）
+## 已有的能力（不用再查，细节在指到的文件里）
 
-- NOT 条件：`parts.unnot`，测试台确认。
-- 模拟器对齐：`sim.py --align`，死亡不拖尾、帧率、揭图、血量读数、取反都按测试台改过。
-- A4 离线检查：`experimental/cnv/offline.py`（相克、高地视野、一段一种兵，A4 过，5:53 通关）。
-- 配音接线：任务带 `voice` 包，`CNV_` 开头的声音名必须在包里（`parts.py` 的契约）。配音测试台 `build.py voice_bench_12 --check play`（和 `ref` 原版对照）都 PASS：包按自己的长度播完，字幕自动出，音频读 `data\static.12\cdata`。细节在 `experimental/cnv/checks/voice.py` 顶部注释。
-- 工程师占油井：`a4 --check derrick` 过；"兵少于 N"的数法已测准（`mechanics.md` 兵少补援一行）。
+- NOT 条件 `parts.unnot`；模拟器对齐 `sim.py --align`；A4 离线检查 `experimental/cnv/offline.py`。
+- 配音接线：任务带 `voice` 包，`CNV_` 开头的声音名必须在包里（`parts.py` 的契约）；细节见 `experimental/cnv/checks/voice.py` 顶部注释。
+- 灰盒（ADR 0011）：`experimental/cnv/graybox.py`、`graybox_cards.py`，结论在 [graybox-cards.md](graybox-cards.md)。新题卡往 `graybox_cards.py` 加函数、往 `graybox-cards.md` 加一节；判断不了的写"留给实机"。
+- 引擎机制最小检查（冰面承重只能脚本做、干扰车对飞机有效、小地图闪点按物体、信息框当字符条）：结果在 [drive-probe.md](../archive/drive-probe.md) 末节和 [../design/flow/mechanics.md](../design/flow/mechanics.md)。
 
-## 下一步（按顺序）
+## 1a 引擎事实：鬼王、数冰墙、找最近的墙（结论已写进 mechanics.md，PASS）
 
-0. **灰盒（ADR 0011）已做完（2026-10-30）**：`experimental/cnv/graybox.py`（k\*，A4 三段全判平推轻松，测试 `tests/test_graybox.py`）；九张题卡的结论在 `docs/story/graybox-cards.md`，数字来自 `experimental/cnv/graybox_cards.py`（测试 `tests/test_graybox_cards.py`）。没补 `a4_before` 走查。新题卡出来后，往 `graybox_cards.py` 加函数、往 `graybox-cards.md` 加一节即可；模拟器判断不了的写"留给实机"。
+- 鬼王自己不砸墙，脚本 `NAMED_ATTACK_NAMED(鬼王, 墙名)` 下令才砸，一道墙约 16～24 秒。
+- 区域里数冰墙：`PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA`。
+- 找最近的墙：`SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER`。**写法要点**：墙一起名就不再算"没起名的"，要拿一面旗记"名字指着东西"，墙毁了才放旗再选；从没起过的名字"已毁""没毁"都是假。样子照抄 `checks/icewall.py` 的 `ghost`。用传送把鬼王挪过去再选，顺序对不上（没查原因）。
 
-0b. **引擎机制最小检查——四项都做完了（2026-10-30）**：结果在 `docs/story/drive-probe.md` 末节和 `docs/design/flow/mechanics.md`（冰面承重只能脚本做、干扰车对飞机有效、小地图闪点能按物体、信息框能当字符条）。下面是原来的派活说明，留作出处：每项上测试台做一个最小检查（`experimental/cnv/checks/` 里照现成的写，如 `jammer.py`、`probe.py`、`icewall.py`；用 `cnv_check` 跑，PASS/FAIL 加读数），结果写进 `docs/design/flow/mechanics.md` 的机制表（"冰面承重"那行 34 行附近，状态改"已确认/不行"并写读数）和 `docs/story/drive-probe.md` 旁。这是引擎事实不是打法测试，ADR 0011 允许。开跑前先查 `bench_status`，用户的游戏在跑就停下问。
-   ① 冰面承重：不同重量的车压上去会不会掉，脚本能不能控制（退路是触发区里删重车 + 沉没效果，S1 甲、丙都依赖）；
-   ② 干扰车（协调器）对飞机有没有效（J7 甲）；`checks/jammer.py` 已有，先看它测了什么；
-   ③ 小地图能不能按物体闪点（A4 甲暗示、J7 甲）；
-   ④ 任务信息框能不能显示（A4 丙的车头解冻条要用）。
+## 1b 号角机关与 A4 现状（旧方案已被实现取代，只留指针）
 
-0c. **（2026-10-30 晚）三张甲卡复算 + 没命名的车按种类杀，已提交（447e0bb）。** 结论在 `graybox-cards.md`"复算"一节：A4 甲 900 一组、第 2、4 波后各补满（设计线已采纳，brief 说 A4 甲不用再算）；J7 旧卡反扑 ≈ 驻塔大军造价 3.5 倍；没命名的车能按种类沉（`mechanics.md` 冰面承重行，`SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER`，`thin_unnamed --check kind` PASS）。工具：`graybox.fluid(..., later=[(秒, {兵: 数})])` 能算分批到达；`graybox_cards.py` 里 `a4_run`、`j7_counter` 是现成的样子。
+- A4 机关 `devices/horn.py`（计划里叫 `雪祭`），车队 `devices/convoy.py`，计划 `docs/story/plans/a4.md`（词表 `plans/README.md`），地图 `maps/sapporo.py`（测试 `tests/test_sapporo.py`，改完先 `cnv_preview a4`）。
+- 整关检查 `checks/a4.py`：`horn detour queue smash demo hold idle win melt heads smoke signs place placem derrick`；测试台读数的计时靠 `AFTER`（过场结束旗 `CNV_A4_Scene_1`）。已知：`smash` 在 x8 读数全 0（x1 手看正常，没查清）；`placem` 没跑；后巷口（V1）冰核放不出（见 `docs/issues.md` I3）。
+- 数字（号角间隔、每街一波、绕路秒数、补兵 45 秒、车速 12）是起步值，等实机反馈调。
 
-0d. **（2026-10-30 做完，结论在 `graybox-cards.md`"第二轮"一节，数字在 `graybox_cards.py` 的 `s1_*`、`j7_*`，测试最后五条；下面是原任务说明，留作出处。待设计线按"要策划线改"改题卡；J7"按兵力分档派兵"计划词灰盒说需要，等总控定。）** S1 甲、J7 甲是重出的新题，要灰盒（设计线 local_51ff7c05，需求全文 `docs/design/cards/brief.md`，提交 635b2d3；之前对旧第三版的结论不适用）。每张末尾"请模拟器答"四个问题：①自然打法 vs 聪明打法谁占优；②每轮最优变不变；③拿掉一项还成不成立；④简单档安全网；判断不了的写"留给实机"。做法照 0 号条：往 `graybox_cards.py` 加函数、`tests/test_graybox_cards.py` 加测试、`graybox-cards.md` 加一节，别改题卡。
-   - **S1 甲（拖在后面的卡车）**：钩卡车钩不动，要钩拖车的守护者、拽过薄冰让冰吞掉。要算：几何表（磁钩站冰边后 d、薄冰带宽 w、守护者离外沿 g：d+w+g ≤ 300，d+w > 150，w > 镰刀跳距；**镰刀跳距要先从数据里查**，`retail_objects`/单位数据）；三种自然打法（钩卡车、镰刀上冰、步兵上冰追）vs 钩守护者；步兵上冰追够不够亏（够亏就不用"湖心按种类杀步兵"，不够亏再用）；拿掉薄冰、拿掉钢缆。玩家没有坦克（磁钩、镰刀、动员兵、防空步兵、工程师），护卫最远射程 150。
-   - **J7 甲（给谁修路）**：援军从界外进来、总走"路程秒数 + 剩下干扰车 × 15"最小的谷（打平走近的）；拆通哪条谷等于给援军修路。要算：**"拆几辆以后援军走哪条"的表**（近中远谷差 15 秒一档，每辆 +15 秒；每谷 2～3 辆）；三种自然打法（挑一谷拆通直冲、全拆、龟缩）vs 两种聪明打法（拆一条不走的谷当诱饵并自己顶着干扰走另一条、拆通一条谷并守在出口伏击）；苏联每波挪一辆后最优是否每轮在变；消融（干扰车不影响苏联单位 → 聪明 = 直冲）；简单档。最后反扑"先看会不会一边倒"，一边倒再加回"按兵力分档派兵"（我之前在 plan.py 里**没做**这个计划词，别做，除非灰盒要）。
-   - 不做：`plan.py` 里"按兵力分档派兵"、S1"湖心按种类杀步兵"的计划词，brief 说新题不一定要。
-   - 做完 `pytest tests -q | tail -n 5`，提交（只提交自己的文件）并推送，汇报每处一句结论给设计线（SendMessage to `local_51ff7c05-91d2-4470-98af-6d2fbcbff92a`）和总控。
+## 1f 两个版本与配音路由（ADR 0013）
 
-1a. **（2026-10-31 做完，已提交 e77bae9）A4 第 3 层需求里的三项引擎检查**：`ice_ghost --check ghost` 和 `--check north`（`checks/icewall.py` 的 `ghost`、`ghost_north`，场景 `missions/icewall_bench.py` 的 `ghost`，用 aso 地图因为要敌方队伍）。结论已写进 `docs/design/flow/mechanics.md`（"鬼王砸冰墙""区域里数冰墙""找最近的冰墙并下令"三行），都是 PASS，用不上需求里的退路：
-   - 鬼王**自己不砸**墙（站在墙边 20 秒墙血量 100），脚本 `NAMED_ATTACK_NAMED(鬼王, 墙名)` 下令就砸，一道墙约 16～24 秒（含走位）；
-   - 区域里数冰墙：`PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA(玩家, 比较, 数, 冰墙种类, 区域)`，和老广场机关 `封住` 同一个条件；
-   - 找最近的墙：`SET_REF_TO_NEREST_TEAM_OF_UNNAMED_TYPE_OWNED_BY_PLAYER(冰墙种类, 玩家, 敌方队伍, 名字)`，按鬼王位置由近到远（C、A、D、B；北头出生则 B、A、C、D）。**写法要点**：一道墙起了名就不再算"没起名的"，所以要拿一面旗记"名字指着东西"，墙毁了才放旗再选；从没起过的名字"已毁""没毁"都是假。样子照抄 `checks/icewall.py` 的 `ghost`（`Test - pick`、`Test - dropped`、`Test - smash` 三条）。
-   - 用传送把鬼王挪过去再选，顺序对不上（原因没查）；A4 的鬼王是运输车卸下来的，等于创建，不受影响。
+- 构建：`python -I -X utf8 experimental/cnv/build.py a4 [--lang intl]`（名字 `a4` / `a4_intl`）。逻辑全在 `experimental/cnv/langs.py`（文件顶有接口说明）；每句用哪条音频、哪条字幕问配音线的 `RA3-ChineseVoice` `tools/campaign_lines.py route <关> --version zh|intl`（接口在它的 `docs/campaign_voice.md` 第 7 节，在配音线仓库里）。
+- 缺的句子不静默：构建开头打印 `MISSING`（只有字幕没录音等几类）；计划自己的字符串英文在 `docs/story/plans/a4.en.json`；`tests/test_langs.py` 守着。
+- 原版播报（`Aeva_...`）编译成 `PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT`，构建时用 `voice_link.Later.eva()` 核对。
+- 测试台名字不超过 15 字符（`CampA4EnHold` 等）。游戏里的声音测试台听不到，要用户试玩。
 
-1e. **（2026-10-31，提交 7779639）用户定了 A4 的改法，总控转来的八条做了大半，已装进 `Mods\CampA4`。** 用户原话："先按第1种降速，加上演示镜头，冰墙不需要限制，减少初始工兵，后续只给补充到最大数量就行，其他缺失的内容也接上，包括配乐，闪点，除了3D模型之外尽可能做的完善一些"。
-   - ①**车速 12**（`车队` 机关新参数 `速度`，`units/convoy.py` 的 `truck(speed=)` 改运输车 XML 里的地面速度）：会场 2730 / 12 ≈ 227 秒，加开场后倒计时，约 4 分钟到停车点；号角间隔表改成合计 225/215/180 秒（简单档车到前 22 秒响完第五声）。最后一程同一速度：920 / 12 ≈ 77 秒一辆，0/50/110 分批，第三辆 187 秒到；同一张间隔表盖得住（理由写在 `plans/a4.md` 机关节）。灰盒/离线走查 `offline.py` 的 `WALK` 时间跟着挪了（半路后的动作都 +190 秒）；`tests/test_graybox.py` 里"有敌人的阶段"多了港口生变（第五声的那一波在车到停车点时还在路上）。
-   - ②**开场演示**：号角机关新动作 `雪祭.演示` / `雪祭.演示收`（参数 `演示: {街: 一号, 绕去: 后巷, 等: 4, 兵: 2}`）：过场里建一个演示工兵冻一号街口，冰立起来（`冻住` 标志）后在街内出 2 个帝国武士，4 秒后删掉、在后巷口出 2 个（"钻地道绕路"），过场末尾全收走。会场过场加长到约 34 秒（镜头回到一号街口 → 演示 → 沃斯"看见没有"→ 镜头到后巷口 → 收）。**测试台验证没做成**：见下。
-   - ③**冰墙不设上限**：删了"封顶两个"；④**初始工兵 1 个，补到最大数量 2 个**：规则 `[过场 会场 结束 + 0:20, 兵少于 2 冰幕工兵]` 每隔 45 秒在 `entry` 补一个；冰幕工兵的角色现在叫 `engineer`（不带号），检查里同步改了（`a4_before.ice_wall` 兼容两种叫法）。
-   - ⑤**小地图闪点**：每一波第一个兵出生、鬼王上岸，`OBJECT_CREATE_RADAR_EVENT`（`horn.py` 的 `make_at` 和 `ghost_scripts`）；`sim.py` 的 SHOWN 里加了这个动作和 `NAMED_SHOW_INFOBOX`。⑧**信息框**：`plan.py` 新动作 `{信息框: <角色>, 文字:, 秒:, 图标:}`（`plans/README.md` 有），A4 用在工兵头上两处（"选中我，点街口"、"冰墙立起来了，歇 40 秒"，固定文字，不是走条）；图标用 `Button_AlliedEngineer_on`（原版 A01 医院框用的那个），游戏里显示对不对**没看过**。
-   - ⑧**整关走查三个口子**：`checks/a4.py` 新增 `idle`（什么都不做，会场里输）、`hold`（车保持满血，五声号角响完、车到二号广场门口、转港口生变）、`win`（车满血、北营一开始就拆指挥所，三辆车到港口、胜利），外加 `demo`；`build.py` 已登记。`scene()` 加了 `park/endings/trucks_up/long_run` 几个开关，`long_run` 每 2 秒把镜头拉回黑底（过场会把相机移走，数读数条要黑底）。
-   - **没做完的**：（a）上面四条检查 `demo/idle/hold/win` **一条都没上过测试台**——用户在玩红警2（进程 `game`，窗口"Red Alert 2"），测试台起不来（`D3DERR_DEVICELOST`，"另一个程序占着屏幕"）；屏幕空出来后先跑 `cnv_check a4 demo`，再 `hold`、`idle`、`win`（`win` 约 8 倍速下几分钟）。`demo` 要小心：测试台启动会按 Esc 跳过开场过场，跳过时演示可能被一口气收走（上一次试跑冰墙起来了、兵没出，就是这个嫌疑）；检查里加了"演示状态"读数（1 开始 / 10 冰在 / 100 已收）帮着看，必要时让检查自己在 t=1 发 `演示` 标志、不依赖过场。（b）配乐（音乐线第 5 版已提交 3eae5b4，接口等它来消息）、配音（等配音线给事件名）还没接。（c）全量 pytest 还有 6 个失败不是这条线的：`experimental/voice/pack.py` 配音线未提交的改动让 `voice_bench` 的 `pack.TEST` 解包出错（`test_cnv_parts` 四条、`test_maps` 两条）。（d）工兵"冷却"信息框是固定字不是走条。
-   - 数字起步值（间隔、每街一波、绕路秒数、补兵 45 秒）实机后再调。
+## 1g 任务脚本能播自己做的视频（2026-11-01，`cnv_check movie play` PASS）
 
-1d. **（2026-10-31 做完，提交 d43deba、4ce8a77、1f2bcd8 和检查那一笔；下面 1c 的四件都做了，1c 留作出处）A4 新稿已装好试玩（`Mods\CampA4`，`build.py a4`）。**
-   - ①地图：`sapporo.py` 街口 1200 / 2015 / 2830（≥ 800），后巷坡宽 120，三个炮位站点 `gun north/plaza 3/east`（站点，没摆东西；炮位上放什么还没定）；`tests/test_sapporo.py` 加了间距和炮位两条。
-   - ②机关：`devices/horn.py`（计划里叫 `雪祭`，类型 `号角`）。街口冻住绕路表在 `plans/a4.md` 机关块，`check_delays` 编译时查"任两条绕路差 ≥ 10 秒"，`tests/test_horn.py` 8 条。冻住的口子攒兵、鬼王砸最近的墙、`鬼王上岸`、`放出` 事件都在里面。
-   - ③计划：`plans/a4.md` 按流程稿六段重写，删了广场、北坡反扑、海上天狗、后巷冰雕、修理厂；末尾有"检查"和"号角返工"两节记没做的。
-   - ④检查（测试台都 PASS，2026-10-31）：`horn`（第一声 8 个兵，二号街第二声才出）、`detour`（一号街冻住：后巷的兵 s35 出，一号的兵晚 10 秒在后巷口 s45 出）、`queue`（北坡口冻住：另两口 8 个照出，北坡口这 4 个攒到冰化 s61 才出）、`smash`（鬼王上岸，没人下令，墙血量 100→76→65→53）。
-   - **试玩前要知道的三件事**：①**车队只要约 1 分钟就开到二号广场门口**（速度 50，路 2580），号角第一声约 35～45 秒才响，会场里最多听到一两声；流程稿说"约 4 分钟五声"，要么车速降到 ~12、要么号角后停车队、要么号角间隔缩短，需要用户或设计线定（我没改）。②开场"工兵冻一号街口、兵掉头绕后巷"的演示镜头没做（现在是镜头扫三个街口加台词）；"冰幕工兵封顶两个"缺条件词"兵多于"；小地图闪点没接。③`a4` 没有整关 `win` 检查了（旧的按广场写的，已删），三个口子的整段跑通要手动试玩。
-   - **测试台新踩的坑**：测试台启动会跳过开场过场，开场过场计时从 0 起算；读数条要在黑底上才读得出（相机挪到地图西边 `(0, start.y)` 的虚空，见 `checks/a4.py` 的 `scene`）；标签里不能有"一"这种一横的字（会被当成噪点，整行读不出）和全角括号（后面留空太宽，行被当成结束），用数字（"1号街的兵"）；灰盒/离线的老测试里"带空军的一段"现在用手写的敌人组成（`tests/test_graybox.py`），新 A4 自己没有空军。
-   - 下一步建议：先定车队节奏（上面第①条），再按用户试玩反馈调间隔、每街一波、绕路秒数；然后补演示镜头和封顶。
+- **进 mod**：和原版一样两处声明（`<Video id=X Filename=X Volume=190/>` + 同 id 的 `<VideoEventList>` 里 `<Movie MovieAsset=X/>`，`experimental/video/pack.py`）；片子 `X.vp6` 放进 mod 的 .big，路径 `data\movies\X.vp6`，不往游戏目录放文件。脚本 `MOVIE_PLAY_RADAR('X')` 小窗、`MOVIE_PLAY_FULLSCREEN('X', 0)` 全屏。
+- **转码**：ffmpeg 不能编 VP6，用 NihAV 的 nihav-encoder（已编好，Rust 在 `~/.cargo`，源码快照在 `work/downloads/nihav/`；`git://` 连不上，用 gitweb 的 https 快照）。一条命令：`python -I -X utf8 experimental/video/to_vp6.py in.mp4 out.vp6 --size radar|full`（小窗 288×288、全屏 1280×720 留黑边、23.976 fps；输入宽高必须是 16 的倍数）。
+- **原版片子格式**：`MVhd` + `MV0K` + `MV0F`，**没有音频块**，声音是脚本另配的对白事件；所以我们的片也无声，声音走语音包。
+- **坑**：①`HAS_FINISHED_VIDEO` 对小窗片成立、对全屏片一直不成立（全屏靠定时器）；②全屏时计数条被盖住，读数读不出；③小窗放片子时小地图被替换，播完恢复；④测试台不出声，没验 Esc 能否跳过全屏片。
+- 接进计划：顶层 `头像: [CNV_A4_…]`（只放玩家不用看地图的句子，不写名单就没有头像，见 `plans/README.md`）；`experimental/cnv/clips.py`：录音旁 `video/<同音频名>.mp4` 存在就转 vp6、同句小窗播；头像画面/嘴型/同步没人看过。代码：`parts.py` 的 `Mission.video`、`missions/movie_bench.py`、`checks/movie.py`、`tests/test_video.py`、`tests/test_clips.py`。
 
-1c. **（2026-10-31 清空后第一轮，只读不改，没有任何未提交改动）第 2、3 步的落地方案，已读完下面这些文件，下个会话不用重读：`a4-layer3.md`、`flow/a4.md`、旧 `plans/a4.md`、`maps/sapporo.py`、`devices/ice_plazas.py`、`devices/convoy.py`、`plans/README.md` 词表。**
-   - **做法分四件，按顺序**：①地图 ②新机关 `devices/horn.py`（类型 `号角`）③重写 `plans/a4.md` ④重写 `checks/a4.py`。旧 `ice_plazas.py` 别删（`a4_before` 还在用），只是 a4 不再引用。
-   - **①地图（sapporo.py）**：街口间距 ≥ 800 要同时满足 后巷口—一号—二号。二号门中心 x = 2830 不动，所以：后巷口 1250 → **1200**（`Ramp((1250,…))`、`lane foot` 站点、`LANE_WAY` 第一个点同步改，坡宽 160 → **GATE=120**，否则 200 长的冰墙封不住），`P1 = (1860, 2170, 3030)`（门中心 2015，间距 815/815）。`NORTH_BLOCK` 多边形、`lane mouth`、`inside 1` 等都由 `P1` 派生，会自动跟着；`WEST_END=2100` 比新的 `P1[0]` 大，改成 `P1[0]-100`（南街区 `WEST_END-100` 同理）后跑 `tests/test_sapporo.py`，别的断言（`test_the_back_lane_is_only_its_two_ramps` 用 RAMPS[0]）会跟着坡走。`LANE_DOWN` 坡（2610）留着：敌人是脚本在街口出生，不靠它绕路。最后一程三口后各加一块炮位空地：北坡口、三号广场（门在 x 3370，北边）、东街口各一个站点（`gun north`、`gun plaza 3`、`gun east`，半径 ~100，口子后面 200～300 处），加进 BLOCKS 的『前线』里不要和现有块冲突；布景先不做。改完先 `cnv_preview(a4)`，再 `pytest tests/test_sapporo.py -q`。
-   - **绕路用"出生点换位 + 延迟"做**（不做物理后街）：每条街一个出生点（后巷＝`lane foot` 上方一点、一号＝`inside 1`、二号＝`inside 2`），号角响时看街口区域里有没有冰墙（`PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA`，和旧 `封住` 同一条件，区域取 `m.areas[...]=square(...)`，样子照 `ice_plazas.py` 的 `place()` 里 `walls[k]`）；冻住的街，那波改在开着的街出生、晚 N 秒：开一号 ← 后巷 +10、二号 +20；开后巷 ← 一号 +10、二号 +30；开二号 ← 一号 +10、后巷 +20（两条绕路之间都差 ≥ 10 秒）；只冻一条时去最近的开着的街（后巷↔一号↔二号 的次序）。把这张表写进 `horn.py` 的参数 `绕路`，并写一条测试证明"任意两条绕路差 ≥ 10 秒"。
-   - **②`horn.py`**：模仿 `ice_plazas.py`（工兵、冰墙、种子核心、`iw.clear_of` 传送、倒计时 `DISPLAY_COUNTDOWN_TIMER`、`cv.chase(j)` 猎杀车队）。参数：`车队`、`间隔`（按难度的一张表，如 `简单 [45,50,45,50,45]`，普通 30/50 混，困难短多）、`每街一波`（`{帝国武士:2, 坦克杀手:2}`）、`街`（出生点和区域）、`绕路`、`冷却`。事件：`号角 <n>`（第 n 声）、`冻住 <街>`。动作：`停`（港口生变）、`开`（布防倒计时归零后恢复）。最后一程：同一机关另一组口子（北坡口、三号广场门、东街口），**号角时口子区域有冰墙就不出、给这口计数 +1，墙没了一起放出**（`INCREMENT_COUNTER` 记、放出时循环 `CREATE…` 按计数；`COUNTER_MATH_COUNTER`/`SET_COUNTER_TO_COUNTER` 测试台还没验，需要的话先 `plan_words` 里做最小检查，或者改成"每口最多攒 3 波，放出时三个固定的 Release 脚本各按计数 ≥1/≥2/≥3 放一波"，用不到那两个动作）。鬼王：第三声号角起 `突击运输车` 从 `beach` 靠岸卸鬼王，砸最近冰墙的写法见上面 1a（`checks/icewall.py` 的 `ghost`：`Test - pick`、`Test - dropped`、`Test - smash`）。注册进 `devices/__init__.py` 的 `registry()`。
-   - **③a4.md**：保留 车队、北营 AI、电视塔/修理厂"走近就归你"（修理厂奖励已删：流程稿说第 1 段不修，修理厂规则、目标、`depot` 都去掉）、兵少补援（科尔借两辆守护者和一队维和：丢车且鬼王在场时）、补派冰幕工兵、冰幕工兵封顶两个（`禁造/准造`）、基地车交付、港口生变后号角停。要删：`广场` 机关、`进攻` 里的 北坡反扑 和 海上来的（后巷无人机一并删：后巷冰雕也去掉）、2 号广场目标/规则、`冰雕演示` 过场（改成流程稿开场镜头：工兵冻一号街口、兵掉头绕后巷）。段名对应流程稿：开场/会场/港口生变/北营/布防/最后一程（现有四段加一段"港口生变"）。台词用 `{通报: …, 说: 沃斯, 原文: …}` 照 `flow/a4.md` 的台词写；护卫补满（第 2、4 声号角后 `给` 4250 的兵：3 守护者 + 4 维和 + 2 标枪，在 `entry`）。
-   - **④checks/a4.py**：换成 `horn`（号角出兵数）、`detour`（冻一条街，那波在开着的街晚到）、`queue`（冻住的口子攒兵、墙没了放出）、`smash`（鬼王砸墙）；`derrick` 不变。每条一个最小场景，别复制旧 `idle/hold/win`。
-   - **试玩缺什么（汇报用）**：音乐线 `experimental/music/*` 未提交且在等用户听 v5；配音线还没交 A4 台词（`RA3-ChineseVoice/work/campaign/zh/A4/manifest.json` 不存在）；单位外观（工兵/鬼王/冰墙/地道口布景）用替代品；舞台、金奖牌、地道口布景没做。
-   - **适合派 Sonnet 的**：②②之后"照现成样子"的检查批量改；`test_sapporo` 加断言（间距 ≥ 800、绕路差 ≥ 10）。②本身（新机关）和③（计划）自己做。
+## 配音叠播的真根因（4、7 叠播的真根因 ②；ADR 0015 第 1 类）
 
-1b. **（旧说明，留作出处；落地方案看上面 1c）第 2 步，A4 的摆放和脚本按新流程稿重做。** 读 `docs/design/cards/a4-layer3.md`（地图要改、脚本表、要测的）、`docs/design/flow/a4.md`、`docs/design/maps/a4.md`。还没动手，要做的东西和落点：
-   - **地图** `experimental/cnv/maps/sapporo.py`（测试 `tests/test_sapporo.py`，改完先 `cnv_preview(a4)`）：一号广场往西挪到接点约 x 2050，使后巷口（x 1250）、一号广场、二号广场三个街口相距 ≥ 800；三条街之间留后街（后巷当后街用），绕路长短差 ≥ 10 秒；最后一程三个口子（北坡口、三号广场、东街口）后面各一块炮位空地；布景（地道口、舞台、金奖牌）不挡试玩，先用替代品。
-   - **计划** `docs/story/plans/a4.md`（编译器 `plan.py`，`plan_vocab` 查能写的词）：旧的"广场"机关（`devices/ice_plazas.py`，冰雕里藏兵、车到才碎、2/3 号杀不完）和新题对不上，要换成"号角"机关：号角计时器 + 倒计时显示，间隔表按难度（简单都 ≥ 45，普通 30/50 混，困难短的多）；号角响，开着的地道口各出一波（900：2 武士 + 2 坦克杀手，`打: 猎杀` 车队）；会场冻住的街（口子区域里有冰墙）那波改从后街绕路的起点晚 10 秒出；第一声号角只开后巷、一号广场；最后一程三口同号角，冻住的口子这波不出、记账（每口一个计数），墙没了一起放出；第三声号角起鬼王从海上靠岸，按上面 1a 的写法砸最近的墙，没有墙就 `打: 猎杀`。要删的：二号广场杀不完的地道、修理厂奖励、北坡口那路反扑（旧"北坡反扑"进攻）、海上天狗（旧"海上来的"进攻）。
-   - **保留**：车队机关（`devices/convoy.py`）、北营 AI、电视塔/修理厂的"走近就归你"规则、兵少补援、补派冰幕工兵、冰幕工兵封顶两个（禁造/准造）、基地车交付、港口生变后号角停。
-   - **检查** `experimental/cnv/checks/a4.py`：`idle`、`hold`、`win` 都是按旧题写的，要换成新题的几条（号角出兵、冻街改道、冻口攒兵、鬼王砸墙）；`derrick` 不变。
-   - 做完 `cnv_preview` + 相关 `cnv_check` + `pytest tests -q | tail -n 5`，写进 `docs/design/flow/mechanics.md` 的新结论，A4 能不能试玩、缺什么（音乐、单位外观、配音）汇报总控。
+- 规则的 `做:` 列表编译时整串同一帧发出，"顺序播"只在 `过场` 里实现过；旧检查（单关、x8、只数读数器）永远抓不到。
+- 引擎把配音排队播，但**字幕条**（`SHOW_MILITARY_CAPTION` 和对话字幕共用）是累积的日志：新句追加一行，**最后一句加入后约 5.4 秒整条一起清空**，与字幕秒数无关（`r3_fine*` 一秒一帧测的；`work/shell/shots/r3_before/`、`r3_fine3/`）。原版没有清字幕条的动作。
+- 现做法：过场外所有 `通报` 走唯一队列出口 `Compiler.say()`/`compile_talk()`（`Say k` 脚本占住话筒 `max(录音长度+0.6, STRIP_CLEAR=6.5)` 秒）；配音事件不带自带字幕（`pack.py xml(subtitles=False)`），由脚本按录音长度显示字幕；过场里 `scene_steps` 也按 `STRIP_CLEAR` 一句一句排，过场因此变长（会场过场实测超 2 分钟）。测试 `tests/test_plan_lines.py`、`tests/test_plan_scenes.py`。复验用 `experimental/testbench/caption_rows.py <目录>`（每帧黄字行数应 ≤1），`shell_shots.py --hud-wait 150 --every 1`。
+- 过场不能跳：`DISABLE_INPUT` 的过场不认 Esc，脚本里没有按键条件和跳过动作，原版同样，只能缩短。
 
-1. **A4 按设计线新稿重做第 3 层。** 第 3 层要什么：`docs/design/cards/a4-layer3.md`（设计线 f4b7635，会场三街接点 ≥ 800、后街绕路差 ≥ 10 秒、口子后炮位、脚本表）。**最后一程灰盒已做（2026-10-31，`graybox-cards.md`"第三轮"，`graybox_cards.py` 的 `a4_last`）**：大军堵三口平推轻松（k\* 0.5～0.6）；鬼王只欺负车、冰墙只多拖 3 秒，转折在数字上不成立；每口一波要对着玩家的钱定。还要做的：地图改（sapporo 接点、后街、炮位）、脚本表照 a4-layer3.md、两项引擎检查（鬼王砸不砸冰墙、脚本能不能数到区域里的冰墙）。读：`docs/design/flow/a4.md`（流程稿，待用户审；第 2 层地图内容稿也还没出来）、`docs/design/flow/mechanics.md`（哪些机制能承诺）、`docs/design/maps/`（第 2 层，地图内容，设计线在做）。现有计划 `docs/story/plans/a4.md`；做法是改生成器和计划，不手改产物。要加的东西：
-   不依赖流程稿定稿的三项准备已做（2026-10-30，测试 `tests/test_plan_lines.py`，全量 286 过，已提交；`plan.py` 里音乐线的 `CNV_MUSIC_CAPTIONS` 那段没带进去，还在工作区）：
-   - 计划词 `兵少于 <n> <单位>、<单位>`（`plan.py` 的 `troops()`，比较码 0 是 `<`）；模拟器补了 `COUNTER_MATH_COUNTER`（0 加、1 减）和 `SET_COUNTER_TO_COUNTER`，**测试台还没验这两个动作**（只看过原版怎么用）；
-   - 通报可以写 `{通报: 文字, 说: 说话人, 原文: 流程稿原文}`，任务的 `lines` 里留一张台词表；
-   - `a4.md` 里改成术语表的叫法：天狗机甲、鹰击者VX、多功能步兵车。
-   整体按新流程稿重做 A4 还没开始，要等用户审流程稿、第 2 层地图内容稿出来。
-2. **配音接进 A4。** 卡在配音线还没交 A4 台词（`RA3-ChineseVoice/work/campaign/zh/A4/manifest.json` 还不存在）。到了就用 `experimental/voice/pack.py` 的 `make(levels=('A4',))` 接进 A4 的任务（参考 `missions/voice_bench.py` 的 `LazyPack`）。
-3. **A4 的 `win` 检查**：旧版里后两辆车没到港口；重做后这条会换，先别查旧的。
-4. **输出瘦身**（总控要求）：总控会列出输出最多的脚本，`experimental/cnv` 下的由我改成默认只打摘要，加 `--verbose` 才打全。
+## 画面和台词对照表（用户 2026-11-03 说"画面和台词也有不统一的时候"；`docs/issues.md` I2 引用本节）
+
+只读计划核对，没上游戏看。过场镜头和台词基本对得上；可疑五处：
+- `雪祭.号角 1 + 0:08` 的"二号广场的冰雕也裂了"：玩家镜头不一定在二号广场，没挂镜头。
+- "金奖两句"在倒计时过半或走近三号广场触发，时间触发时玩家可能没看三号广场。
+- 过场里"看见没有？他们只认车"在 `停 9` 之后，兵转向/下地道是否已发生没验。
+- 科尔通讯（基地车展开半分钟后）没有画面可挂。
+- 原版播报"冰墙已就位/即将融化"挂事件没挂位置。
+ADR 0015 第 2 类要求编译器拒收没挂镜头/事件的台词（I2，已有 `said_lines_kept` 检查，见 issues.md）。
+
+## ADR 0015 七类错误里本线的做法与没验证的（修了待验的以 `docs/issues.md` I1–I9 为准）
+
+- 车队（第 9 条）：`分批 [0,50,110]` + 失败条件 `车队.损失 2` 会让第二辆还在等；`devices/convoy.py` 现在任一辆被毁后其余等待的车立刻全部出发（`Release k after truck i lost`），没在游戏里杀一辆验证。
+- 开场黑区：新站点 `view start`（x=1000），会场过场首尾镜头用它；"编译时把所有镜头夹进可玩区"没做。
+- 演示：兵遇冰墙先走回出兵口再钻地道消失（`horn.py demo_scripts`，`Demo down`），没进游戏看。
+- 矿：A4 的矿点按"成对贴矿场"猜的，要用 `retail_objects`/`map_study` 对原版摆法；`cnv_map` 不画矿，矿看 `cnv_preview a4` 的图。
+- 冰墙放置：玩家点的是 `AssembleStructureSpecialAbilityUpdate` 放"冰核"（`units/icewall.py seed`，`SEED_SIZE=20`），技能 `ForbiddenObjectRange=32`、`PATHABLE_ONLY`；旧检查用脚本直接放，不走放置合法性。新检查 `a4 --check place`：用 `bench_view`（脚本镜头下点位在屏幕 (640,350)）+ `bench_click` + `bench_ability`，要用 bench 环境的 python 跑 `experimental/testbench/run_check.py a4 place`（`--no-build --keep --x1`；x1 过场 110 秒会被"连接中断"弹窗拉回主菜单）。x8 下点击让游戏跑约 29 秒，所以用锁存读数。源头修法（生成器保证冰点周围平地、可走、无物件，并进 lint）没做。
+- 过场镜头自动揭图（`plan.py scene()`，`不揭: 是` 关掉）；头像去掉 `CNV_A4_082`；A4 地面草/土换雪（`sapporo.py SNOW`）；冰核 40→20（推测，没在游戏验证）。
+
+## 1 ADR 0016 重构（关卡部分）留下的坑
+
+交接在 [handoff-phase3.md](../archive/level-handoff-phase3.md)。已做：`cnv/plantime.py`（`PlanError`/`times` 等，`plan.py` re-export）、`cnv/registry.py`（扫 `missions/`、`checks/` 里的 `MISSION`/`CHECKS`/`PAIR_BUILDS`；`build.MISSIONS/PAIRS` 是它的视图）、`cnv/ctx.py`（机关只拿 Ctx，不再有 `self.c/self.m`）。
+- 基线只信指纹：`python -I -X utf8 experimental/testbench/fingerprint.py record <名>`（约 8 分钟，跑时别改源码），`diff baseline` 三目标一致；`git archive`/`git worktree` 在仓库外解出的树跑 `sim.py a4` 结局不同，别当基线；`self.c.xxx` 遗漏要到运行才报 NameError，改完做一次 symtable 检查（函数里引用但模块没定义的全局名）。
+- `tests/test_architecture.py` 的 G4（sys.path 上限只降不升）、G9、G3a 白名单；不能新建带 `sys.path.insert` 的测试文件；混着别人未提交改动时只暂存自己的函数（`git hash-object` + `update-index --cacheinfo`）。
+- `plan.py` 和多数源文件是 CRLF，批量改写要保留换行风格；`sed -i` 往 .py 塞 `\r\n` 会弄坏文件。
+
+## 外壳（已拆给外壳线；这里只留以前搜"外壳""CampShell"的人需要的坑；`docs/shell/handoff.md`、issues.md K9 引用）
+
+- 构建：`python -I -X utf8 experimental/cnv/build.py a4 --shell [--lang intl]`（`cnv/shell.py` 管一切；`make_campnew2.SHELL` 以原版 `Allies_1` 为底、盟军 9 个位置全是我们的模板；`make_campnew3.OVERRIDES/PREFIX_OVERRIDES` 改字符串；`campaign/apt_textures.py` 改 APT 贴图/脚本常量）。mod `CampShell`、`CampShellEn`；启动器 `experimental/cnv/launcher.py`、`play.hta`（中文/国际两个按钮，选择存 `Mods\CampShell\last_edition.txt`）。
+- 测试台走菜单：`experimental/testbench/shell_shots.py <mod> <输出目录> [--plain] [--tour cards,overview,chapters] [--slot K] [--every 秒] [--hud-wait 秒]`。
+- APT 画面换贴图可行：换原版流的 `Texture:apt_*` 实例像素、其余字节不动，放进 mod 的 big 的 `data\aptui\<名>.bin`；带 `.5` 补丁的 `fes_m_factionmenu` 只换基础 `.bin`。阵营卡文字是 `APT:ALLIES_FACTION_DESCRIPTION`。
+- 副指挥官面板去干净：21 条 `MONITOR:*` 标签覆盖成空格 + `apt_textures.hollow(.., renames=)` 把 `AptConstData` 里的 `RenderImage` 改成同长度 `RenderImagx`。**坑**：改 `AptAptData` 里的会进游戏就崩（0xC0000005）。
+- 简报旁白事件 `MA0k_AlliedIntelNN` 在 APT 里写死，`apt_textures.patch(..., renames=)` 同长度改名成不存在的事件，字幕标签在 csf 里。
+- **坑**：①游戏启动后约 40 秒弹一次"连接中断通知"并把游戏拉回主菜单，`shell_shots.py settle()` 先等它过去；`harness._walk_menus` 步骤表必须完整才能从主菜单重新接上。②mshta 窗口里 `PrintWindow` 截不到内容，只能 `CopyFromScreen`，且先 `SetProcessDPIAware`；别整屏截图。③HTA `border="dialog"` 不让 `resizeTo`，用 `thin`。④阵营选择屏用标题栏模板认（`work/testbench/nav/`，不进 git）。⑤偶发启动成 800×600，重试就好。
+- 没做：章节页上方三个小阵营图标、任务播报页的原版指挥官概要（`AICommander`）、缩略图其余关、两个全屏视频/头像都无声。用户原话："原本的测试启动器也去掉吧，我们只维护一个mod就行了"——老启动器已删；Mods 里旧的测试台单关 mod 都留着，清理由总控定。
 
 ## 还没测的
 
 走近就归你（平民建筑转给玩家）；A4 plaza 3 的接力冰；J4 返工（车停下来、人活着）；A7 友军 AI 重查。J4/J7/S5 的游戏内标题还是旧名，等这几关重做时改。
 
-## 等谁
-
-- 配音线：A4 台词。
-- 设计线：A4 第 2 层地图内容。
-- 用户：音乐 v5 试听（音乐线的未提交文件在等）。
-
 ## 踩过的坑
 
-- 实测前先查 `get_status`，用户的游戏在跑就停下问，不要重试。
+- 实测前先查 `bench_status`，用户的游戏在跑就停下问，不要重试。装进 Mods 前也单独查游戏没在运行；下载要用户本人说。
 - 长检查放后台，输出写 `work/logs/`，屏幕只看 `PASS|FAIL|RESULT`。
-- 配音包会拿 SDK 构建锁，已改成同进程里重入不再卡死（333f09e）。
-- 测试台一个检查最多 4 行读数（`counters.MAX_LINES`）；第 4 行的数读不准（会读出 647 这种固定噪声），要紧的读数放前三行；多个状态可以压成一个数（位置编号、区域数）。标签别用"目标在哪"这类会读错的字，`cnv_list` 输出很长（几百行），别整条调用，用 Grep 查 `build.py`。
-- 钩子 `guard_inline_edits.py` 会拦下带反斜杠的 heredoc / `python -c`（连 `newline='\n'` 也算）：改文件用 Edit/Write，别用内联 python。
-- 检查里需要"脚本才创建的单位"时，基础任务（不带检查）也要有一个放好的对象，否则契约测试 `test_every_build_keeps_the_contract` 失败；做法是 mission 里在远处放一个，检查里杀掉再创建（`ghost`）。
-- 音频的脚本帧数（约 44 帧/音频秒）和计时器帧率（约 15/秒）对不上，原因没查清：别把音频帧数换算成任务秒（`docs/engine/script-semantics.md` 第 11 条）。
+- 测试台启动会跳过开场过场，首帧已在任务约 40 秒；Esc 暂停在过场里失败会被当成"任务结束"；读数器会把连续相同数字并成一个（用位值互不相同的闩锁）；`cnv_check` 偶发菜单卡住（`build=false` 重试）；读数条要在黑底上才读得出，标签里别用"一"这种一横的字和全角括号。
+- 测试台一个检查最多 4 行读数（`counters.MAX_LINES`），第 4 行读不准，要紧的放前三行；`cnv_list` 输出几百行，用 Grep 查 `build.py`；`bench_wait(look=false)` 之后 `bench_look` 看到的是旧帧；镜头移动在任务里要 1～7 秒，看有时限的东西要在检查里让它循环出现。
+- 钩子 `guard_inline_edits.py` 拦带反斜杠的 heredoc / `python -c`：改文件用 Edit/Write。
+- Bash 工具里 `cd` 会让工作目录漂，一律用绝对路径；停测试游戏用 PowerShell 按 pid 杀，别碰不是自己起的进程。
+- 配音包会拿 SDK 构建锁，同进程里已重入不再卡死。
+- 检查里需要"脚本才创建的单位"时，基础任务也要有一个放好的对象，否则契约测试 `test_every_build_keeps_the_contract` 失败（做法：远处放一个，检查里杀掉再创建，见 `ghost`）。
+- 音频脚本帧数（约 44 帧/音频秒）和计时器帧率（约 15/秒）对不上，别把音频帧数换算成任务秒（`docs/engine/script-semantics.md` 第 11 条）。

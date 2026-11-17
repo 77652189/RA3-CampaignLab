@@ -49,7 +49,7 @@ def test_an_ambush_stops_the_convoy_till_its_troops_are_down():
     # the truck that was there gone, the rest short of the approach: they come up (and are held again there)
     nobody, = named(m, 'CNV ZZ - Nobody at 2')
     assert nobody.when == [('FLAG', 'CNV_ZZ_Blocking_2', 1), ('FLAG', 'CNV_ZZ_Here_2', 0)]
-    assert blocked.do[0] == ('SET_FLAG', 'CNV_ZZ_Blocking_2', 1) and blocked.do[1][0] == 'NAMED_STOP'
+    assert blocked.do[0] == ('SET_FLAG', 'CNV_ZZ_Blocking_2', 1) and blocked.do[1][0] == 'TEAM_STOP'
     assert named(m, 'CNV ZZ - Cleared 2')[0].when[1] == ('COUNTER', 'CNV_ZZ_Left_2', 1, 0)
     assert any(c[0] == 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA' for c in named(m, 'CNV ZZ - Iced past 2')[0].when)
     # the troops made on easy: one a sculpture, counted up when it breaks and down as each falls, once made

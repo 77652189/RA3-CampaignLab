@@ -1,0 +1,56 @@
+# CampAIEgOnA_mcp_1113_051336; team and caller redacted; measured fields unchanged.
+tstate: frame=345 team=T mstate=8 prev=8 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=1 ready=1 mem=3170:16:1,3171:16:1 dest=3170@3890.0:2930.0,3171@3890.0:2930.0 aim=3170>3171@3890.0:2930.0,3171>0 hd=3170:-0,3171:-73
+tstate: frame=346 team=T mstate=8 prev=8 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=1 ready=1 mem=3170:16:1,3171:16:1 dest=3170@3890.0:2930.0,3171@3890.0:2930.0 aim=3170>3171@3890.0:2930.0,3171>0 hd=3170:-0,3171:-73
+tstate: frame=352 team=T mstate=5 prev=8 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:16:1,3171:16:1 dest=3170@3890.0:2930.0,3171@3890.0:2930.0 aim=3170>3171@3890.0:2930.0,3171>0 hd=3170:-0,3171:-73
+tstate: frame=353 team=T mstate=5 prev=8 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-45,3171:-82
+tstate: frame=354 team=T mstate=5 prev=8 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-90,3171:-82
+tstate: frame=360 team=T mstate=5 prev=5 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-90,3171:-82
+tstate: frame=361 team=T mstate=5 prev=5 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-90,3171:-82
+tstate: frame=368 team=T mstate=5 prev=5 secs=1.07 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:33:0,3171:33:0 dest=3170@3906.3:2626.5,3171@3906.3:2626.5 aim=3170>0,3171>0 hd=3170:-90,3171:-97
+kassign: frame=375 team=T mstate=2 src=score ra=- mem=3170 tgt=3168 flag=0 ret=1 w=1 prev=3168:0 start=375 until=375 keep=0 min=0.00 max=0.00 n=0
+kassign: frame=375 team=T mstate=2 src=score ra=- mem=3171 tgt=3168 flag=0 ret=1 w=1 prev=3168:0 start=375 until=375 keep=0 min=0.00 max=0.00 n=0
+kpass: frame=375 team=T cand=3168:1,3167:1 keep=3170:0:go,3171:0:go why=3170:3168:ok,3171:3168:ok
+tstate: frame=376 team=T mstate=2 prev=5 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:10:0,3171:10:0 dest=3170@0.0:0.0,3171@0.0:0.0 aim=3170>3168@3911.0:2706.3,3171>3168@3911.0:2706.3 hd=3170:-90,3171:-83
+kassign: frame=383 team=T mstate=2 src=score ra=- mem=3170 tgt=3168 flag=0 ret=0 w=1 prev=3168:375 start=383 until=383 keep=0 min=0.00 max=0.00 n=0
+kassign: frame=383 team=T mstate=2 src=score ra=- mem=3171 tgt=3168 flag=0 ret=0 w=1 prev=3168:375 start=383 until=383 keep=0 min=0.00 max=0.00 n=0
+kpass: frame=383 team=T cand=3168:1,3167:1 keep=3170:375:go,3171:375:go why=3170:3168:ok,3171:3168:ok
+tstate: frame=384 team=T mstate=2 prev=2 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:10:0,3171:10:0 dest=3170@0.0:0.0,3171@0.0:0.0 aim=3170>3168@3911.0:2706.3,3171>3168@3911.0:2706.3 hd=3170:-90,3171:-83
+tstate: frame=391 team=T mstate=2 prev=2 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:10:0,3171:10:0 dest=3170@0.0:0.0,3171@0.0:0.0 aim=3170>3168@3911.0:2706.3,3171>3168@3911.0:2706.3 hd=3170:-90,3171:-83
+kpass: frame=391 team=T cand=3168:1,3167:1 keep=3170:383:go,3171:383:go why=3170:3168:ok,3171:3168:ok
+kpass: frame=399 team=T cand=3168:1,3167:1 keep= why=
+tstate: frame=400 team=T mstate=2 prev=2 secs=1.60 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:-45,3171:-38
+tstate: frame=401 team=T mstate=2 prev=2 secs=1.60 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:0,3171:7
+tstate: frame=402 team=T mstate=2 prev=2 secs=1.60 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:45,3171:52
+tstate: frame=403 team=T mstate=2 prev=2 secs=1.60 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=406 team=T mstate=2 prev=2 secs=1.60 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=415 team=T mstate=2 prev=2 secs=2.13 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+kpass: frame=415 team=T cand=3167:1,3168:1 keep= why=
+tstate: frame=417 team=T mstate=2 prev=2 secs=2.67 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=418 team=T mstate=2 prev=2 secs=2.67 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=420 team=T mstate=2 prev=2 secs=2.67 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=421 team=T mstate=2 prev=2 secs=2.67 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=422 team=T mstate=2 prev=2 secs=2.67 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=423 team=T mstate=2 prev=2 secs=2.67 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=424 team=T mstate=5 prev=2 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=425 team=T mstate=5 prev=2 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=426 team=T mstate=5 prev=2 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=428 team=T mstate=5 prev=2 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=429 team=T mstate=5 prev=2 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=430 team=T mstate=5 prev=2 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=431 team=T mstate=5 prev=2 secs=0.00 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=432 team=T mstate=5 prev=5 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=433 team=T mstate=5 prev=5 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=434 team=T mstate=5 prev=5 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=436 team=T mstate=5 prev=5 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=437 team=T mstate=5 prev=5 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=438 team=T mstate=5 prev=5 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=439 team=T mstate=5 prev=5 secs=0.53 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=441 team=T mstate=5 prev=5 secs=1.07 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=442 team=T mstate=5 prev=5 secs=1.07 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=444 team=T mstate=5 prev=5 secs=1.07 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=445 team=T mstate=5 prev=5 secs=1.07 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=446 team=T mstate=5 prev=5 secs=1.07 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:77
+tstate: frame=447 team=T mstate=5 prev=5 secs=1.07 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:89
+tstate: frame=448 team=T mstate=5 prev=5 secs=1.60 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:90
+tstate: frame=449 team=T mstate=5 prev=5 secs=1.60 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:90
+tstate: frame=450 team=T mstate=5 prev=5 secs=1.60 tgt=-1 chosen=-1 tact=-1 idle=0 ready=0 mem=3170:1:0,3171:1:0 dest=3170@3908.5:3113.3,3171@3865.0:3105.7 aim=3170>0,3171>0 hd=3170:90,3171:90
