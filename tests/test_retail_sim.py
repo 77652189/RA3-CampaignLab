@@ -75,7 +75,7 @@ def test_the_opening_runs_on_its_own_scripts(mission):
 
 def test_question_1_the_squad_walks_to_the_point(mission):
     # bench 11-09 (retail_q1_spots.py): the blobs' middle at its final spot <=2.9 s after the order; the simulator was
-    # 3.9 s on grid-row ways, in time since they are pulled straight (Ground.pull, Generals' Path::optimize)
+    # 3.9 s on grid-row ways, in time since they are pulled straight (Ground.pull; bench engine_pull ways)
     """Acceptance question 1 (docs/story/retail-q1-a01.md): the squad ordered to (505, 1577) has its middle within 30 of
     it ~2.5-2.9 s after the order (bench: 2.9 s at most, sampled every 0.8 s)."""
     order = 22.6
