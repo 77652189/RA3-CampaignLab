@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|---|---|---|
 | 脚本动作 | **98%** | **100%** | 50 / 50 | 451 | 206 | 11 | 119 | 115 | 99% |
 | 脚本条件 | **100%** | **100%** | 12 / 12 | 89 | 74 | 0 | 12 | 3 | 100% |
-| 物体模块 | **98%** | **98%** | 60 / 120 | 198 | 62 | 27 | 83 | 26 | 99% |
+| 物体模块 | **98%** | **98%** | 60 / 120 | 199 | 62 | 28 | 83 | 26 | 99% |
 | 武器效果 | **94%** | **95%** | 18 / 24 | 33 | 20 | 5 | 5 | 3 | 96% |
 | AI | **98%** | **98%** | 201 / 357 | 428 | 220 | 83 | 91 | 34 | 100% |
 
@@ -712,7 +712,7 @@
 | 未做 | `Behaviors/DieOnProducerDeathUpdate` | 1 (1) |  | 模拟器代码里没有这个名字；例：AlliedAttackDrone |
 | 未做 | `Behaviors/DominateEnemySpecialPower` | 1 (1) |  | 模拟器代码里没有这个名字；例：AlliedInfiltrationInfantry |
 | 未做 | `Behaviors/GrapplingHookUpdate` | 1 (1) | a1 a3 a4 a6 a7 a9 | 仅engine_grapple a最小消费者诊断；模块派发/拉拽/释放未解释，未实现，不作为已对拍证据；例：SovietAntiVehicleVehicleTech3 |
-| 推断 | `Behaviors/InfiltratorContain` | 1 (1) | a4 a5 | E198按总控配置收尾；ENERGY独立已对拍4用量/6模板，STEAL_MONEY独立登记3用量/4模板，车辆VISION_UNITS另行登记4用量/4模板仍推断；RESET另行登记5用量/6模板仍推断；普通VISION另行登记5用量/5模板仍推断；飞机VISION_UNITS另行登记2用量/2模板仍推断；步兵VISION_UNITS另行登记3用量/3模板仍推断；舰船VISION_UNITS单列3用量/3模板仍推断；PARALYZE单列3用量/3模板已对拍；本行1配置1用量/1模板仍待闭合，不登记整组或整模块已对拍。逐配置边界：KILL 1用量/1模板部分已测（engine_infkill a，敌消耗/友拒入、满血不换主；tests/test_siminfiltrator_kill.py）；PARALYZE单列3用量/3模板已对拍（三国engine_infpara a/b、engine_infpsov a、engine_infpjap a移动及engine_infpatk/engine_infasov/engine_infajap a攻击，tests/test_siminfiltrator_paralyze.py）；普通VISION 5用量/5模板部分已测且暂停扩宿主（engine_infvis a/b稳定窗通过，c已接敌消耗/友拒入、满血原主与s19起局部揭示，s18=0时序保留strict xfail，见work/re/e196_vision.md）；港口阻断VISION单列1用量/1模板，实测边界见该行；飞机VISION_UNITS单列已接E199前300帧周期；步兵VISION_UNITS单列已接E199前300帧周期；车辆VISION_UNITS已接同一周期（engine_inffoot c、engine_infclock a，tests/test_siminfiltrator_clock.py）；完整筛选/移动/生产/到期仍gap；舰船VISION_UNITS已独立分区，实测边界见该行；RESET单列仅入楼已接（engine_infreset a/b就绪与真实冷却未闭环、strict xfail）。VISION/STEAL_MONEY/VISION_UNITS/RESET具名回放见tests/test_siminfiltrator.py。INFERRED：进入距离/生效和精确到期、VISION约5秒延迟/半径映射/宿主死亡清理、KILL致死清理；gap：其他间谍/模板、PARALYZE生产/重复进入/旧攻击订单、KILL抛飞/死亡效果、VISION持久性/重复进入及未测配置。已测PARALYZE不代表其余配置已测；完整逐配置证据与原始读数指针见work/re/e142_infiltrator_closure.md；例：AlliedAirfield, AlliedBarracks |
+| 推断 | `Behaviors/InfiltratorContain:KILL` | 1 (1) |  | E205完整KILL签名单列1用量/1模板；engine_infkill a按名回放s1..7敌友11100/11100、s18..30为1100/11100，敌间谍不再存活、友间谍存活、两起重机满血原主。c独立实测s46..52=1100/11100/1/111（敌/友/玩家击杀归属/派发抵近阶段），已接起重机所属玩家记账，不推具体击杀对象身份。原18..30预测窗口仍FAIL，b/c实际早窗回放保留strict xfail；Amount=1.5与空Eva事件及无额外属性/子项由分区测试守住；同宿主SlaughterHordeContain的友军载具过滤不含本台间谍，不据入楼声称抛飞或死亡派发已验证。致死清理与进入距离/时钟INFERRED；抛飞轨迹/死亡模块派发、其他间谍/玩家与重复进入仍gap，不进BENCHED_TESTS、不晋升已对拍；见work/re/e205_kill.md；例：SovietCrane |
 | 已对拍 | `Behaviors/InfiltratorContain:VISION_PORT` | 1 (1) |  | tests/test_siminfiltrator_port.py::test_port_entry_and_blocked_repeat_as_on_the_bench；E201按总控完整配置口径独立登记1用量/1模板；engine_infport a/b按名回放敌消耗/友拒入、满血原主、近同属与近第三方可见、远端隐藏、身份位置511；a第二间谍存活，b取消首次敌入港后同一第二间谍被消耗，闭合重复阻断对照。gap：其他间谍/玩家、长时持久性/到期、死亡清理及观察者内部；精确进入/揭示相位、半径映射与XML阻断到期INFERRED，b的s25瞬态保留strict xfail，不调时钟；见work/re/e201_port.md；例：CA_PortStructure |
 | 已对拍 | `Behaviors/LinearDamageUpdate` | 1 (1) | a1 a2 a4 a6 a7 | tests/test_simsweep.py::test_sweep_the_line_walks_out_and_a_stop_does_not_cut_it_at_the_bench_frames；例：AlliedAntiNavalScout |
 | 未做 | `Behaviors/MagneticEffectUpdate` | 1 (1) | a1 a4 a5 a6 a7 | 模拟器代码里没有这个名字；例：AlliedAntiNavyShipTech1 |
@@ -762,6 +762,7 @@
 | 未做 | `Behaviors/StoreTemplateIDBehavior` | 0 (1) |  | 模拟器代码里没有这个名字；例：PlayerSpellBook |
 | 未做 | `Behaviors/UnitCrateCollide` | 0 (1) |  | 模拟器代码里没有这个名字；例：UnitCrate |
 | 未做 | `Behaviors/UnitVisionBehavior` | 0 (1) |  | 模拟器代码里没有这个名字；例：UnitVisionObserver |
+| 推断 | `Behaviors/InfiltratorContain` | 0 (0) | a4 a5 | E198按总控配置收尾；ENERGY独立已对拍4用量/6模板，STEAL_MONEY独立登记3用量/4模板，车辆VISION_UNITS另行登记4用量/4模板仍推断；RESET另行登记5用量/6模板仍推断；普通VISION另行登记5用量/5模板仍推断；飞机VISION_UNITS另行登记2用量/2模板仍推断；步兵VISION_UNITS另行登记3用量/3模板仍推断；舰船VISION_UNITS单列3用量/3模板仍推断；PARALYZE单列3用量/3模板已对拍；KILL另行登记1用量/1模板仍推断；本行无剩余配置，不登记整组或整模块已对拍。逐配置边界：KILL单列1用量/1模板仅存活已测（engine_infkill a/c，另c已量到玩家击杀归属；敌消耗/友拒入、满血不换主；tests/test_siminfiltrator_kill.py）；PARALYZE单列3用量/3模板已对拍（三国engine_infpara a/b、engine_infpsov a、engine_infpjap a移动及engine_infpatk/engine_infasov/engine_infajap a攻击，tests/test_siminfiltrator_paralyze.py）；普通VISION 5用量/5模板部分已测且暂停扩宿主（engine_infvis a/b稳定窗通过，c已接敌消耗/友拒入、满血原主与s19起局部揭示，s18=0时序保留strict xfail，见work/re/e196_vision.md）；港口阻断VISION单列1用量/1模板，实测边界见该行；飞机VISION_UNITS单列已接E199前300帧周期；步兵VISION_UNITS单列已接E199前300帧周期；车辆VISION_UNITS已接同一周期（engine_inffoot c、engine_infclock a，tests/test_siminfiltrator_clock.py）；完整筛选/移动/生产/到期仍gap；舰船VISION_UNITS已独立分区，实测边界见该行；RESET单列仅入楼已接（engine_infreset a/b就绪与真实冷却未闭环、strict xfail）。VISION/STEAL_MONEY/VISION_UNITS/RESET具名回放见tests/test_siminfiltrator.py。INFERRED：进入距离/生效和精确到期、VISION约5秒延迟/半径映射/宿主死亡清理、KILL致死清理；gap：其他间谍/模板、PARALYZE生产/重复进入/旧攻击订单、KILL抛飞/死亡效果、VISION持久性/重复进入及未测配置。已测PARALYZE不代表其余配置已测；完整逐配置证据与原始读数指针见work/re/e142_infiltrator_closure.md；例：AlliedAirfield, AlliedBarracks |
 
 ## 武器效果
 
