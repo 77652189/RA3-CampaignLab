@@ -31,7 +31,7 @@ STATE_FIELDS = {
 }
 ENGINE_DOCS = {'script-semantics.md', 'know-how.md', 'terrain.md', 'pathing.md', 'upgrades.md', 'spawn.md', 'air.md', 'aircraft.md',
                'missile.md', 'weapons.md', 'garrison.md', 'stealth.md',
-               'production.md', 'mining.md', 'construction.md', 'specialpower.md', 'sell.md', 'heal.md', 'stance.md', 'transform.md', 'vision.md', 'runoffmap.md', 'teleport.md', 'crush.md', 'aiopen.md', 'aistate.md', 'aispecial.md', 'aimicro.md', 'aitactics.md', 'ainamed.md', 'aiswitches.md', 'aiteamstate.md', 'uprising-gap.md', 'weaponset.md', 'sim-layers.md'}   # reverse-engineering notes stay in work/re/ (repo is public)
+               'production.md', 'mining.md', 'construction.md', 'specialpower.md', 'sell.md', 'heal.md', 'stance.md', 'transform.md', 'vision.md', 'runoffmap.md', 'teleport.md', 'crush.md', 'aiopen.md', 'aistate.md', 'aispecial.md', 'aimicro.md', 'aitactics.md', 'ainamed.md', 'aiswitches.md', 'aiteamstate.md', 'uprising-gap.md', 'weaponset.md', 'sim-layers.md', 'sim-modules.md'}   # reverse-engineering notes stay in work/re/ (repo is public)
 # generated on demand by experimental/cnv/inventory.py, inventory_levels.py --write, inventory_ai.py levels --write;
 # gitignored, never committed (ADR 0030): in docs/engine only when this checkout generated them
 GENERATED_ENGINE_PAGES = {'inventory.md', 'inventory-levels.md', 'inventory-levels-a.md'}

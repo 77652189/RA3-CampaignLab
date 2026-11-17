@@ -43,6 +43,8 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 
 import labpaths  # noqa: E402
 import sim  # noqa: E402
+import simunits  # noqa: E402
+import simworld  # noqa: E402
 
 FPS = 15
 DIFFICULTY = 'normal'
@@ -90,6 +92,26 @@ TARGET_GOALS = {
 }
 
 _PROXY = {}
+
+# What the proxy player reads on the Sim beyond the world (simworld.WORLD_API): the orders a player gives, the run's
+# end and its advance, the bank and the build queues, the lit buttons, the on-screen countdowns, the input lock, the log
+# it reads the minimap flashes off, and the sight it asks (forget_sight, side_sees). It sets nothing there (no WRITES:
+# step 9d-1 moved its one write, the sight, onto Sim.forget_sight).
+PEERS = frozenset({'advance', 'countdowns', 'ending', 'forget_sight', 'input', 'log', 'money', 'offers', 'order_attack',
+                   'order_build', 'order_group', 'order_power', 'order_transform', 'queues', 'side_sees', 'timers'})
+
+
+class Peers:
+    """What the proxy player may read on its Sim beyond the world: the names in PEERS, read when used."""
+    __slots__ = ('host',)
+
+    def __init__(self, host):
+        self.host = host
+
+    def __getattr__(self, name):
+        if name not in PEERS:
+            raise AttributeError(f'simproxy.Peers: {name} is not lent (PEERS)')
+        return getattr(self.host, name)
 
 
 def _package(folder):
@@ -163,6 +185,9 @@ class SimWorld:
             self.sim = simshow.ShowSim(m, t, difficulty, script)
         else:
             self.sim = sim.Sim(m, t, difficulty, script)
+        # every read of the Sim outside this method goes through the world API and the loan (PEERS); self.sim stays
+        # for play() and the tests
+        self.world, self.peers = self.sim, Peers(self.sim)
         self.me = self.sim.human
         self.ids, self.names = {}, {}          # body name <-> the int id the player knows it by
         home = self.sim.point('start')
@@ -178,15 +203,15 @@ class SimWorld:
     # ---- the clock
     @property
     def frame(self):
-        s = self.sim
-        return s.eng.frame if s.eng is not None else int(round(s.t * FPS))
+        world = self.world
+        return world.eng.frame if world.eng is not None else int(round(world.t * FPS))
 
     def step(self, frames):
         """Run the simulator `frames` on (Sim.advance: run's ticks a slice at a time, stopping at the mission's end)."""
-        self.sim.advance(frames)
+        self.peers.advance(frames)
 
     def result(self):
-        e = self.sim.ending
+        e = self.peers.ending
         return ENDINGS.get(e[0], 'lose') if e else None
 
     def end(self, obs):
@@ -220,21 +245,21 @@ class SimWorld:
         return self.pw.Mine(self._id(b), b.template, frozenset(b.kinds), b.x, b.y, b.hp, b.max_hp, cost,
                             max((w['range'] for w in b.weapons), default=0.0), b.vision or 300.0, good, (), busy,
                             rates, float(b.speed or 0.0),
-                            frozenset(p for p, f in b.ready_at.items() if f > self.sim.frame_now()))
+                            frozenset(p for p, f in b.ready_at.items() if f > self.world.frame_now()))
 
     def _thing(self, b):
         cost, _, _ = self._data(b.template)
         goal = b.goal if isinstance(b.goal, sim.Body) else None
-        return self.p['targets'].Thing(self._id(b), '' if b.owner == sim.CIV else b.owner, b.template,
+        return self.p['targets'].Thing(self._id(b), '' if b.owner == simworld.CIV else b.owner, b.template,
                                        frozenset(b.kinds), frozenset(b.status), b.x, b.y,
                                        water=b.surface == 'water', value=float(cost), hits=_hits(b.weapons),
-                                       attacking_us=bool(goal and not self.sim.enemy(self.me, goal.owner)))
+                                       attacking_us=bool(goal and not self.world.enemy(self.me, goal.owner)))
 
     def enemies(self):
-        return frozenset(p for p in self.sim.players.values() if p != self.me and self.sim.enemy(self.me, p))
+        return frozenset(p for p in self.world.players.values() if p != self.me and self.world.enemy(self.me, p))
 
     def _convoy(self):
-        return [b for b in (self.sim.bodies.get(n) for n in self.escort) if b is not None and b.alive]
+        return [b for b in (self.world.bodies.get(n) for n in self.escort) if b is not None and b.alive]
 
     def where_home(self):
         convoy = self._convoy()
@@ -243,11 +268,11 @@ class SimWorld:
         return (sum(b.x for b in convoy) / len(convoy), sum(b.y for b in convoy) / len(convoy))
 
     def observe(self):
-        s = self.sim
-        s.forget_sight()                        # this moment's sight (Sim.fight clears it each tick too)
-        mine = [self._mine(b) for b in s.living() if b.owner == self.me and self._is_unit(b)]
-        seen = [self._thing(b) for b in s.living() if not b.scenery and b.owner != self.me
-                and (b.owner == sim.CIV or s.enemy(self.me, b.owner)) and s.side_sees(self.me, b)]
+        world, peers = self.world, self.peers
+        peers.forget_sight()                    # this moment's sight (Sim.fight clears it each tick too)
+        mine = [self._mine(b) for b in world.living() if b.owner == self.me and self._is_unit(b)]
+        seen = [self._thing(b) for b in world.living() if not b.scenery and b.owner != self.me
+                and (b.owner == simworld.CIV or world.enemy(self.me, b.owner)) and peers.side_sees(self.me, b)]
         return self.pw.Observation(self.frame, self.me, self.money(), self.where_home(), mine, seen, self.offers(),
                                    self.enemies(), list(self.leads), self.chokes(), escort=bool(self._convoy()),
                                    cinematic=not self.control(), healing=HEALING.get(self.level, False),
@@ -259,13 +284,13 @@ class SimWorld:
         the object they flash on) of the last BLIP_KEEP seconds, where that object stands: a human sees the flash even
         where the fog hides the object. Read off the log as it grows (a flash is placed when first read: observe runs
         every decision, before the flashed object has walked off)."""
-        s = self.sim
-        for t, kind, text in s.log[self._log_read:]:
+        world, peers = self.world, self.peers
+        for t, kind, text in peers.log[self._log_read:]:
             if kind == '小地图闪点':
-                b = s.bodies.get(text)
+                b = world.bodies.get(text)
                 if b is not None:
                     self._blips.append((int(round(t * FPS)), float(b.x), float(b.y)))
-        self._log_read = len(s.log)
+        self._log_read = len(peers.log)
         keep = self.frame - int(BLIP_KEEP * FPS)
         self._blips = [b for b in self._blips if b[0] >= keep]
         return list(self._blips)
@@ -273,15 +298,15 @@ class SimWorld:
     def money(self):
         """What the player can still spend: the bank less what the queued builds will still take (Sim.order_build pays
         frame by frame, so the bank alone would let the player queue far more than it can pay for)."""
-        s = self.sim
-        owed = sum(j['cost'] - j['paid'] for q in s.queues.values() for j in q if j['owner'] == self.me)
-        return int(s.money.get(self.me, 0)) - int(owed)
+        peers = self.peers
+        owed = sum(j['cost'] - j['paid'] for q in peers.queues.values() for j in q if j['owner'] == self.me)
+        return int(peers.money.get(self.me, 0)) - int(owed)
 
     def offers(self):
         """The lit sidebar buttons (Sim.offers: the player's live factories, prerequisites held, not banned) as the
         proxy's Offers: KindOf / good_against / rates from the data (Matchup.offer), cost and time from the simulator."""
         out = []
-        for template, cost, secs in self.sim.offers(self.me):
+        for template, cost, secs in self.peers.offers(self.me):
             tpl = self.match.lib.template(template)
             _, good, rates = self._data(template)
             out.append(self.pw.Offer(template, frozenset(tpl.kinds) if tpl is not None else frozenset(), int(cost),
@@ -294,18 +319,18 @@ class SimWorld:
         spec = CHOKES.get(self.level)
         if not spec:
             return []
-        s = self.sim
+        world, peers = self.world, self.peers
         name = spec['countdown']
-        at = int(round(s.timers[name] * FPS)) if name in s.countdowns and name in s.timers else None
+        at = int(round(peers.timers[name] * FPS)) if name in peers.countdowns and name in peers.timers else None
         part, ability = spec['power']
-        power = s.m.ability(part, ability) if part in s.m.cast else None
-        by = frozenset({s.m.cast[part].template}) if part in s.m.cast else frozenset()
-        walls = [(b.x, b.y) for b in s.living() if b.life_end is not None and b.speed == 0 and not b.scenery]
-        life = sim.simunits.lifetime(spec['seed'], s.own)[0] if spec.get('seed') else None
+        power = world.m.ability(part, ability) if part in world.m.cast else None
+        by = frozenset({world.m.cast[part].template}) if part in world.m.cast else frozenset()
+        walls = [(b.x, b.y) for b in world.living() if b.life_end is not None and b.speed == 0 and not b.scenery]
+        life = simunits.lifetime(spec['seed'], world.own)[0] if spec.get('seed') else None
         build = life / FPS if life else 0.0
         out = []
         for way, block, source in spec['ways']:
-            p, q = s.point(block), s.point(source)
+            p, q = world.point(block), world.point(source)
             if not p or not q:
                 continue
             blocked = any(math.hypot(x - p[0], y - p[1]) <= BLOCKED_R for x, y in walls)
@@ -316,17 +341,17 @@ class SimWorld:
         """{way: (x, y)}: where each of the level's ways meets the convoy's road (CHOKES 'road'), the spot a guard
         stands to meet the wave that comes out of it -- not the ice's mouth (up the street) nor the convoy."""
         spec = CHOKES.get(self.level) or {}
-        road = self.sim.point(spec.get('road', ''))
+        road = self.world.point(spec.get('road', ''))
         out = {}
         for way, block, _source in spec.get('ways', ()):
-            p = self.sim.point(block)
+            p = self.world.point(block)
             if road and p:
                 out[way] = (float(p[0]), float(road[1]))
         return out
 
     # ---- what the player does
     def _body(self, i):
-        b = self.sim.bodies.get(self.names.get(i))
+        b = self.world.bodies.get(self.names.get(i))
         return b if b is not None and b.alive else None
 
     def _refuse(self, o, why):
@@ -338,14 +363,16 @@ class SimWorld:
         Before it the level's scripts have not yet said whether a scene opens the mission (A4 locks the input in its
         first tick): orders the proxy gave at frame 0 sent a unit into lane foot and set the convoy off ~85 s early
         (round 40, 2026-11-07)."""
-        return self.sim.input and self.sim.t > 0
+        return self.peers.input and self.world.t > 0
 
     def issue(self, o):
-        s = self.sim
+        world, peers = self.world, self.peers
         if not self.control():
             return self._refuse(o, 'cinematic: no control')
         if o.kind == 'build':
-            return True if s.order_build(self.me, o.template) else self._refuse(o, 'no factory of mine builds it now')
+            if peers.order_build(self.me, o.template):
+                return True
+            return self._refuse(o, 'no factory of mine builds it now')
         units = [self._body(i) for i in o.units]
         units = [b for b in units if b is not None and b.owner == self.me]
         if not units:
@@ -355,62 +382,63 @@ class SimWorld:
                 return self._refuse(o, 'move without a place')
             for b in units:
                 b.goal = None
-            s.order_group(units, (float(o.pos[0]), float(o.pos[1])), o.kind == 'attack_move')   # a selection: a group
+            peers.order_group(units, (float(o.pos[0]), float(o.pos[1])), o.kind == 'attack_move')   # a selection: a group
             return True
         if o.kind == 'attack':
             t = self._body(o.target)
             if t is None:
                 return self._refuse(o, 'target gone')
             for b in units:
-                s.order_attack(b, t.name)
+                peers.order_attack(b, t.name)
             return True
         if o.kind == 'power':
             if o.power == 'SpecialPower_JAIV_Transform':
                 if o.target is not None or o.pos is not None:
                     return self._refuse(o, 'transform is an untargeted power')
-                results = [s.order_transform(b, o.power) for b in units]
+                results = [peers.order_transform(b, o.power) for b in units]
                 if not any(ok for ok, _ in results):
                     return self._refuse(o, 'power refused: ' + ', '.join(sorted({why for _, why in results})))
                 return True
             if o.pos is not None:               # a ground power: the player's click (Sim.order_power: reload, ground,
                 whys = []                       # ForbiddenObjectRange, reach), then the scripts' way at a waypoint
                 for b in units:
-                    ok, why = s.order_power(b, o.power, o.pos)
+                    ok, why = peers.order_power(b, o.power, o.pos)
                     if not ok:
                         whys.append(why)
                 if len(whys) == len(units):
                     return self._refuse(o, f'power refused: {", ".join(sorted(set(whys)))}')
             else:
                 for b in units:
-                    s.note('技能', f'{s.label(b)} 用 {o.power}' + (f' 打 #{o.target}' if o.target else ''))
+                    world.note('技能', f'{world.label(b)} 用 {o.power}' + (f' 打 #{o.target}' if o.target else ''))
             return True
         return self._refuse(o, f'unknown order {o.kind}')
 
     # ---- the score screen
     def losses(self):
-        s = self.sim
+        world = self.world
         out = []
-        for b in s.bodies.values():
+        for b in world.bodies.values():
             if b.alive or b.deleted or b.scenery or b.died_at is None or b.life_end is not None:
                 continue
             cost, _, _ = self._data(b.template)
             kind = self.pw.kind_of(self.p['targets'].Thing(0, b.owner, b.template, frozenset(b.kinds),
                                                            water=b.surface == 'water'))
-            out.append(self.pw.Loss(int(round(b.died_at * FPS)), '' if b.owner == sim.CIV else b.owner,
+            out.append(self.pw.Loss(int(round(b.died_at * FPS)), '' if b.owner == simworld.CIV else b.owner,
                                     b.template, kind, int(cost)))
         return sorted(out, key=lambda l: (l.frame, l.owner, l.template))
 
 
-def goals(world):
-    """The level's puzzle checks (report Goals): where the ice went (report.power_at), its own targets destroyed."""
-    rp = world.p['report']
-    s = world.sim
+def goals(w):
+    """The level's puzzle checks (report Goals): where the ice went (report.power_at), its own targets destroyed.
+    w: the SimWorld (its Sim read through the world API)."""
+    rp = w.p['report']
+    world = w.world
     out = []
-    for name, sites, radius, note in ICE_GOALS.get(world.level, ()):
-        pts = [tuple(q) for q in (s.point(n) for n in sites) if q]
+    for name, sites, radius, note in ICE_GOALS.get(w.level, ()):
+        pts = [tuple(q) for q in (world.point(n) for n in sites) if q]
         out.append(rp.power_at(pts, radius, name=name, note=note))
-    for name, part, note in TARGET_GOALS.get(world.level, ()):
-        b = s.bodies.get(s.m.cast[part].name) if part in s.m.cast else None
+    for name, part, note in TARGET_GOALS.get(w.level, ()):
+        b = world.bodies.get(world.m.cast[part].name) if part in world.m.cast else None
         if b is not None:
             out.append(rp.destroyed(b.template, name=name, note=note))
     return out

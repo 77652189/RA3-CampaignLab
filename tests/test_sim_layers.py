@@ -65,17 +65,22 @@ WORLD_TAKERS = {'simheal', 'simmine', 'simmoney', 'simmodifier', 'simlocomotion'
                 'simdamage',
                 'simlevel', 'simpullback', 'simsweep',
                 'simgarrison', 'siminfiltrator', 'simrepair',
-                'simai'}
+                'simai',
+                'simproxy'}
 # (simpullback, L8 -- the AI tactics' pullback adapter -- is not in LAYER_OF for simmicro's reason: only simai imports it)
 
 # modules that reach their host beyond the world through a Peers loan: every `peers.X` they read is in their PEERS
 PEER_TAKERS = {'simorder', 'simdamage',
                'simpullback', 'simsweep',
                'simgarrison', 'siminfiltrator',
-               'simai'}
+               'simai',
+               'simproxy'}
 # (simai, step 9d-2: a world and peers taker holding them as self.world / self.peers; it still names sim for sim.Body
 # and run()'s sim.Sim until step 10 moves Body below it -- SIM_NAMES_UNTIL_10)
 SIM_NAMES_UNTIL_10 = {'simai': {'Body', 'Sim'}}
+# (simproxy, step 9d: the same for SimWorld; it makes the Sim (sim.Sim, sim.LEVELS for main's --level) as an entry
+# point, which stays after step 10 -- only its sim.Body goes then)
+SIM_NAMES_UNTIL_10['simproxy'] = {'Body', 'Sim', 'LEVELS'}
 
 # field -> the one file that may assign it (rule 3), for the blocks moved so far. Not yet the money dicts (money,
 # income, money_cap): scripts, selling, production, repairs, spies and simai still write them directly (simmoney.py)
@@ -436,24 +441,46 @@ def test_host_write_guard_bites():
 # step 9d-2: simai reads its host only through the world API and its Peers loan; the raw Sim it is handed is kept as
 # SimAI.sim for its callers (main, tests) and read nowhere else (SimAI.__init__ makes world and peers; run() makes it)
 AI_RAW_SIM = {'SimAI.__init__', 'run', 'main'}
+# step 9d (R3): simproxy the same way; SimWorld.__init__ makes the Sim and world / peers, play() reads the ending, the
+# guessed set and simshow.problems off w.sim (the run's report), main hands nothing on
+PROXY_RAW_SIM = {'SimWorld.__init__', 'play', 'main'}
 
 
-def ai_sim_breaks(source=None):
-    """(function, line) for each `<x>.sim` in simai outside AI_RAW_SIM."""
-    tree = ast.parse(source) if source is not None else _tree('simai')
+def ai_sim_breaks(source=None, mod='simai', raw=AI_RAW_SIM):
+    """(function, line) for each `<x>.sim` in simai (or `mod`) outside AI_RAW_SIM (or `raw`)."""
+    tree = ast.parse(source) if source is not None else _tree(mod)
     out = []
     for top in tree.body:
         fns = [(top.name, top)] if isinstance(top, ast.FunctionDef) else \
             [(f'{top.name}.{f.name}', f) for f in top.body if isinstance(f, ast.FunctionDef)] \
             if isinstance(top, ast.ClassDef) else []
         for q, fn in fns:
-            if q not in AI_RAW_SIM:
+            if q not in raw:
                 out += [(q, n.lineno) for n in ast.walk(fn) if isinstance(n, ast.Attribute) and n.attr == 'sim']
     return out
 
 
 def test_the_ai_reads_its_host_through_world_and_peers():
     assert not ai_sim_breaks()
+
+
+def test_the_proxy_reads_its_sim_through_world_and_peers():
+    assert not ai_sim_breaks(mod='simproxy', raw=PROXY_RAW_SIM)
+
+
+def test_proxy_read_guard_bites():
+    """Mutation check on the real file: a SimWorld method or goals() reading self.sim / w.sim again, a peers read not
+    lent, a world read outside the API, and sim named beyond SIM_NAMES_UNTIL_10 are each caught."""
+    src = (CNV / 'simproxy.py').read_text(encoding='utf-8')
+    for old, new in (('return self.peers.input and', 'return self.sim.input and'),
+                     ('    world = w.world\n', '    world = w.sim\n')):
+        assert old in src
+        assert ai_sim_breaks(src.replace(old, new), 'simproxy', PROXY_RAW_SIM)
+    assert peer_breaks(['simproxy'], src.replace('self.peers.offers(', 'self.peers.order_move(')) == \
+        [('simproxy', 'order_move')]
+    assert world_breaks(['simproxy'], src.replace('self.world.point(block)', 'self.world.timers(block)')) == \
+        [('simproxy', 'timers')]
+    assert world_breaks(['simproxy'], src.replace('simworld.CIV', 'sim.CIV')) == [('simproxy', 'sim')] * 3
 
 
 def test_ai_read_guard_bites():
