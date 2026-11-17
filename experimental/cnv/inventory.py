@@ -51,6 +51,8 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
 BENCHED_TESTS = {
+    (ACTION, 'TEAM_SET_HEALTH'):
+        'tests/test_teamhp_bench_c.py::test_teamhp_current_mixed_members_and_controls_match_bench',
     (ACTION, 'NAMED_FACE_WAYPOINT'):
         'tests/test_facewp_bench_c.py::test_facewp_named_heading_and_untouched_control_match_bench',
     (ACTION, 'EXIT_SPECIFIC_BUILDING'):
@@ -419,6 +421,7 @@ BENCHED_TESTS = {
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
+    (ACTION, 'TEAM_SET_HEALTH'): (BENCHED, 'C engine_teamhp:a/b显式目标队守护者/征召兵血量100→25→75及100→75→25，同玩家异队/另一玩家守护者均保持100；四计数器为两成员实际血量百分比、异队血量组合码100100和逻辑帧。tests/test_teamhp_bench_c.py按名字逐实读帧回放；仅当前存活显式队伍成员的百分比设置切片，未来/死亡/缺名成员、AI实例、边界数值和精确派发相位仍gap，其他模板推广INFERRED；见work/re/c_teamhp_report.md'),
     (ACTION, 'NAMED_FACE_WAYPOINT'): (BENCHED, 'C engine_facewp:a及engine_facewpai:b两局；a仅人类玩家存活位7，无team/tstate朝向，b换AI观察宿主，原生hd甲0→180、乙0→117、未操作0，分别朝西/西北路点。tests/test_facewp_bench_c.py按名回放24组原始稳定朝向（全圈1度容差对应hd整数舍入），并断言存活位7；没有用位置不变替代朝向。转身复用既有移动器速率，精确命令/起转相位、移动中打断、缺名/死亡目标和其他模板仍gap或INFERRED；仅存活静止守护者的具名路点朝向切片，见work/re/c_facewp_report.md'),
     (ACTION, 'EXIT_SPECIFIC_BUILDING'): (BENCHED, 'C engine_exitbld:a/b两座公寓各装同玩家两队征召兵，交换具名目标西/东；指定楼两队均退出、另一楼仍驻，重复调用无误伤。进驻位15→12/3、区域码始终22、五兵两楼存活位127；tests/test_exitbld_bench_c.py逐实读逻辑帧按名回放四计数器。区域人数包含楼内人员，原仅室外预测2/20保留strict xfail，不改原门槛；仅存活公寓具名退出切片，出门位置沿现有INFERRED近似，精确时序、其他容器/模板、缺名/死亡目标、取消进门仍gap；见work/re/c_exitbld_report.md'),
     (ACTION, 'SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER'): (BENCHED, 'C engine_killcount:a/b原生守护者击杀两征召兵/一守护者，交换Player_1与Soviet_5为击杀者；DISPLAY_COUNTER主步兵/主坦克/另步兵开局0/0/0、末2/1/0，独立脚本杀死未受伤征召兵后不增计数，存活码末240。每帧先写77再查询，证明覆盖；tests/test_killcount_bench_c.py按名回放四读数。原s22存活码窗口差异保留strict xfail，不改门槛。仅具名玩家/单模板/原生直接武器致死和无归属脚本死阴性；列表并集INFERRED，This Player/All Players、换主、友军/间接伤害、争夺最后击和精确帧仍gap，见work/re/c_killcount_report.md'),

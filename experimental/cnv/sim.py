@@ -4139,6 +4139,12 @@ class Sim:
             b = self.body(a[0])
             if b and b.alive:
                 b.health = float(a[1])
+        elif name == 'TEAM_SET_HEALTH':
+            # Current living explicit-team members; engine_teamhp a/b.
+            # Other templates/AI instances and boundary values remain INFERRED;
+            # see work/re/c_teamhp_report.md for measured scope.
+            for b in self.members(a[0]):
+                b.health = float(a[1])
         elif name == 'NAMED_SET_MAX_HEALTH':
             # (name, INT max, full too): retail Iga's trucks by difficulty. RA3 (work/re/ra3-script-reference.md): setMaxHealth(max,
             # SAME_CURRENTHEALTH) -- the hit points stay (clamped to a lower max), then 100 % if `full`. Bench 11-10
