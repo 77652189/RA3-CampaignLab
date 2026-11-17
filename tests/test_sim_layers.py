@@ -258,20 +258,32 @@ def test_condition_home_guard_bites():
 
 
 def _loop():
-    """simloop's CELLS (names), FRAME and OLD, read from the source: importing it needs simworld on sys.path."""
-    out = {}
+    """simloop's CELLS (names), its orders (every tuple of names assigned at module level) and its functions, read
+    from the source: importing it needs simworld on sys.path."""
+    out, orders, defs = {}, {}, set()
     for n in _tree('simloop').body:
-        if isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name) and n.targets[0].id in ('FRAME', 'OLD'):
-            out[n.targets[0].id] = ast.literal_eval(n.value)
+        if isinstance(n, ast.FunctionDef):
+            defs.add(n.name)
+        elif isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name) and isinstance(n.value, ast.Tuple) \
+                and all(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in n.value.elts):
+            orders[n.targets[0].id] = ast.literal_eval(n.value)
         elif isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name) and n.targets[0].id == 'CELLS':
             out['CELLS'] = {e.id for gen in n.value.generators for e in gen.iter.elts}
-    return types.SimpleNamespace(**out)
+    return types.SimpleNamespace(FRAME=orders.get('FRAME'), orders=orders, defs=defs, **out)
+
+
+def order_breaks(loop):
+    """What breaks 'one frame order' (rule 5): an order beside FRAME (the old loop's OLD), a cell not in it, a step
+    of its own for the run without the model."""
+    out = [('order', name) for name in loop.orders if name != 'FRAME']
+    out += [('unused cell', name) for name in sorted(set(loop.CELLS) - set(loop.FRAME))]
+    out += [('step', name) for name in sorted(loop.defs) if name.startswith('step') and name != 'step']
+    return out
 
 
 def test_frame_orders_share_one_roster():
     loop = _loop()
-    assert set(loop.FRAME) <= set(loop.CELLS) and set(loop.OLD) <= set(loop.CELLS)
-    assert len(set(loop.FRAME)) == len(loop.FRAME) and len(set(loop.OLD)) == len(loop.OLD)
+    assert set(loop.FRAME) <= set(loop.CELLS) and len(set(loop.FRAME)) == len(loop.FRAME)
     assert loop.FRAME.index('tech') < loop.FRAME.index('scripts') < loop.FRAME.index('lose_health')
     assert loop.FRAME[-1] == 'deal'                    # damage last, after the frame's scripts (R6)
     for path in sorted(CNV.glob('sim*.py')):
@@ -279,18 +291,34 @@ def test_frame_orders_share_one_roster():
             assert 'eng.step()' not in path.read_text(encoding='utf-8'), path.name
 
 
+def test_one_frame_order_with_or_without_the_model():
+    """The run without the private engine model is FRAME minus nothing (its scripts cell runs the Python scripts):
+    no second order, no cell outside FRAME, no step_old (merged 11-17)."""
+    loop = _loop()
+    assert not order_breaks(loop)
+    assert 'step_old' not in (CNV / 'sim.py').read_text(encoding='utf-8')
+
+
+def test_one_frame_order_guard_bites():
+    """Mutation check: the old loop's order, an extra cell, or its own step put back is caught."""
+    loop = _loop()
+    old = types.SimpleNamespace(orders={**loop.orders, 'OLD': ('release', 'events_old')},
+                                CELLS=set(loop.CELLS) | {'events_old'}, FRAME=loop.FRAME,
+                                defs=loop.defs | {'step_old'})
+    assert order_breaks(old) == [('order', 'OLD'), ('unused cell', 'events_old'), ('step', 'step_old')]
+
+
 MOVE_TAIL = ('follow', 'capture', 'infiltrate', 'auto_kill')     # cells after a coarse move (step 8c)
 MOVE_TAIL_CALLS = {'follow_due', 'capture_due', 'tick', 'auto_kill_due'}
 
 
-def move_tail_breaks(frame, old, source=None):
-    """What breaks 'a move is only a move': the tail cells right after the moving cells in both orders, and
+def move_tail_breaks(frame, source=None):
+    """What breaks 'a move is only a move': the tail cells right after the moving cells in the frame order, and
     Sim.move calling none of what they run."""
     out = []
-    for order, after in ((frame, 'shot_clock'), (old, 'motion_old')):
-        i = order.index(after) + 1
-        if tuple(order[i:i + len(MOVE_TAIL)]) != MOVE_TAIL:
-            out.append(('order', after))
+    i = frame.index('shot_clock') + 1
+    if tuple(frame[i:i + len(MOVE_TAIL)]) != MOVE_TAIL:
+        out.append(('order', 'shot_clock'))
     tree = ast.parse(source if source is not None else (CNV / 'sim.py').read_text(encoding='utf-8'))
     cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'Sim')
     move = next(fn for fn in cls.body if isinstance(fn, ast.FunctionDef) and fn.name == 'move')
@@ -301,14 +329,14 @@ def move_tail_breaks(frame, old, source=None):
 
 def test_move_is_only_a_move():
     loop = _loop()
-    assert not move_tail_breaks(loop.FRAME, loop.OLD)
+    assert not move_tail_breaks(loop.FRAME)
 
 
 def test_move_tail_guard_bites():
     """Mutation check: a tail cell moved off its place, or the tail called from Sim.move again, is caught."""
     loop = _loop()
     frame = tuple(n for n in loop.FRAME if n != 'capture')
-    assert move_tail_breaks(frame[:2] + ('capture',) + frame[2:], loop.OLD) == [('order', 'shot_clock')]
+    assert move_tail_breaks(frame[:2] + ('capture',) + frame[2:]) == [('order', 'shot_clock')]
     src = ("class Sim:\n    def move(self, dt=1, precise=False):\n        self.attachment_tick()\n"
            "        self.infiltrators.tick()\n")
-    assert move_tail_breaks(loop.FRAME, loop.OLD, src) == [('move calls', 'tick')]
+    assert move_tail_breaks(loop.FRAME, src) == [('move calls', 'tick')]

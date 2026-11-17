@@ -1,13 +1,16 @@
 """L7 frame loop (ADR 0029, docs/engine/sim-layers.md rule 5): the frame's order written in one place.
 
-`CELLS` is the roster of everything that runs in a frame, by name; `FRAME` is the order with the engine model (each
-engine frame of a DT tick), `OLD` the reduced order without it (once a tick: a clean clone without the private
-engine model, Sim(model=False)). Both orders name cells of the one roster. A cell is `fn(s, frame, tick)`: `s` the
-Sim, `frame` the engine frame as the cell sees it (`eng.frame` read when the cell runs; `frame_now()` in the old
-loop), `tick` the tick's state (its start, whether its first-frame block ran).
+`CELLS` is the roster of everything that runs in a frame, by name; `FRAME` their order, run for each engine frame of
+a DT tick. A cell is `fn(s, frame, tick)`: `s` the Sim, `frame` the engine frame as the cell sees it, `tick` the
+tick's state (its start, whether its first-frame block ran).
 
-The old loop is not yet the engine order minus the scripts cell: it runs fewer cells in another order (tech last,
-expire first). Unifying it would change the clean-clone runs, so it waits for its own decision (work/re/handoff-r.md).
+With the engine model `frame` is `eng.frame` read when the cell runs: the scripts cell (the model's step) moves it
+on, so the cells after it see the next frame, as the engine has it. Without the model (a clean clone without the
+private engine model, Sim(model=False)) the same order runs frame by frame, the scripts cell running the Python
+scripts once a frame; nothing moves the frame on mid-frame, so every cell of a frame sees that frame (frame_now()
+too) -- the cells after the scripts one see a frame one earlier than with the model. Until 11-17 the clean clone
+ran a reduced order of its own once a tick (step_old: fewer cells, tech last, expire first, the fight's damage
+dealt at once); the merge changed its readings on purpose (work/re/handoff-r.md).
 """
 import math
 
@@ -43,7 +46,17 @@ def tech(s, frame, tick):
 
 
 def scripts(s, frame, tick):
-    s.eng.step()
+    if s.eng is not None:
+        s.eng.step()
+        return
+    for sc in s.mm.scripts:      # without the model: the map's scripts as the simulator reads them, once a frame
+        if sc.name in s.done or sc.name in s.disabled or not sc.levels[s.level]:
+            continue
+        if all(s.holds(c) for c in sc.when):
+            for name, *a in sc.do:
+                s.act(name, a, sc)
+            if sc.once:
+                s.done.add(sc.name)
 
 
 def seq(s, frame, tick):
@@ -149,8 +162,8 @@ def produce(s, frame, tick):
 
 def counters(s, frame, tick):
     # DISPLAY_COUNTER shows the table's value, a running timer's frames left too (bench 11-10 engine_timer stop:
-    # 109 94 80 ... after RESTART_TIMER; s.counters hides running timers)
-    if s.test and s.test.counters and (frame - 1) % s.fps == 0 and s.t >= LAG:
+    # 109 94 80 ... after RESTART_TIMER; s.counters hides running timers). Without the model Sim.sample reads them
+    if s.eng is not None and s.test and s.test.counters and (frame - 1) % s.fps == 0 and s.t >= LAG:
         s.series.append((int(round(s.t - LAG)), [s.eng.value(c) for c, _ in s.test.counters]))
 
 
@@ -172,7 +185,7 @@ def shot_clock(s, frame, tick):
         tick.coarse = frame
 
 
-# ---- right after a coarse move, on its frame only (tick_first / shot_clock / motion_old): what move's tail was
+# ---- right after a coarse move, on its frame only (tick_first / shot_clock): what move's tail was
 def follow(s, frame, tick):
     if tick.coarse == frame:
         s.follow_due()
@@ -203,72 +216,37 @@ def deal(s, frame, tick):
         s.deal(1.0 / s.fps)      # R6: the aimed fire frame by frame, after the frame's scripts
 
 
-# ---- the old loop's own cells
-def events_old(s, frame, tick):
-    while s.events and s.events[0][0] <= s.t:
-        s.happen(s.events.pop(0))
-
-
-def scripts_old(s, frame, tick):
-    for sc in s.mm.scripts:
-        if sc.name in s.done or sc.name in s.disabled or not sc.levels[s.level]:
-            continue
-        if all(s.holds(c) for c in sc.when):
-            for name, *a in sc.do:
-                s.act(name, a, sc)
-            if sc.once:
-                s.done.add(sc.name)
-
-
-def tech_old(s, frame, tick):
-    s.tech_due(frame)
-
-
-def motion_old(s, frame, tick):
-    if s.ending:
-        return
-    s.aura_tick()
-    if s.combat:
-        s.fight()
-    s.move()
-    tick.coarse = frame
-
-
 CELLS = {f.__name__: f for f in (
     release, events, tech, scripts, seq, handed, lose_health, autoheal, passive_area_heal, repairs, assignments,
     suppression, flee, hunt, toggles, self_power, expire, garrison, frame_movers, build, blast, wfire, death_blast,
     spawn, sweeps, deposit, mine, produce, counters, tick_first, shot_clock, follow, capture, infiltrate, auto_kill,
-    aim, deal,
-    events_old, scripts_old, tech_old, motion_old)}
+    aim, deal)}
 
 FRAME = ('release', 'events', 'tech', 'scripts', 'seq', 'handed', 'lose_health', 'autoheal', 'passive_area_heal',
          'repairs', 'assignments', 'suppression', 'flee', 'hunt', 'toggles', 'self_power', 'expire', 'garrison',
          'frame_movers', 'build', 'blast', 'wfire', 'death_blast', 'spawn', 'sweeps', 'deposit', 'mine', 'produce',
          'counters', 'tick_first', 'shot_clock', 'follow', 'capture', 'infiltrate', 'auto_kill', 'aim', 'deal')
 
-OLD = ('release', 'events_old', 'scripts_old', 'expire', 'spawn', 'garrison', 'suppression', 'hunt', 'build',
-       'deposit', 'mine', 'produce', 'tech_old', 'motion_old', 'follow', 'capture', 'infiltrate', 'auto_kill')
-
 _FRAME = tuple(CELLS[n] for n in FRAME)
-_OLD = tuple(CELLS[n] for n in OLD)
 
 
 def step(s):
-    """One DT tick from s.t (the caller moves s.t on). With the engine model: the tick's frames (those before
-    s.t + DT, 7 or 8), each running FRAME in order. Without it: OLD once."""
-    if s.eng is None:
-        return step_old(s)
+    """One DT tick from s.t (the caller moves s.t on): the tick's frames (those before s.t + DT, 7 or 8), each
+    running FRAME in order. The frame: the engine model's (its scripts cell moves it on); without the model the
+    tick's own count from its first frame, the same for every cell of a frame."""
     t0, eng = s.t, s.eng
     last = math.ceil(round((t0 + DT) * s.fps, 6))
     tick = Tick(t0)
-    while eng.frame < last and s.ending is None:
-        s.t = eng.frame / s.fps
-        for cell in _FRAME:
-            cell(s, eng.frame, tick)
+    if eng is not None:
+        while eng.frame < last and s.ending is None:
+            s.t = eng.frame / s.fps
+            for cell in _FRAME:
+                cell(s, eng.frame, tick)
+    else:
+        frame = math.ceil(round(t0 * s.fps, 6))
+        while frame < last and s.ending is None:
+            s.t = frame / s.fps
+            for cell in _FRAME:
+                cell(s, frame, tick)
+            frame += 1
     s.t = t0
-
-
-def step_old(s):
-    tick = Tick(s.t)
-    for cell in _OLD:
-        cell(s, s.frame_now(), tick)

@@ -13,7 +13,7 @@ All over the world it is given (simworld.WORLD_API only). Its host's other parts
 names in PEERS only, read when used): L2 locomotion (send, claims, free_spot, goal_off_nodes, column_ends), L2
 bodies (destroy, modify, engineer_entry, at_site, the garrison, toggles_of / toggle_press), L3 targeting and fire
 (reach, fight_field, aim, can_hit, in_range, shot_blocked, fire_spot, side_sees, takes_by_itself, the unshot
-templates), L3 damage (deal), L4 money (wallet) and power switches (powers_off), L6 act, the team registry
+templates), L4 money (wallet) and power switches (powers_off), L6 act, the team registry
 (members, team_targets) and the order queues the scripts fill (seq, hunts). The fight's per-tick state on the host
 (WRITES: seen, firing, volleys, chilling, mid_aims, the fire obstacles, the field) is reset through `peers` too --
 the only names it may set. This module never imports them.
@@ -24,7 +24,7 @@ import numpy as np
 
 import simunits
 from simpower import UNPACK_POWER
-from simworld import CIV, DT, GRID, inside
+from simworld import CIV, GRID, inside
 
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
@@ -40,7 +40,7 @@ WRITES = frozenset({'_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims
 PEERS = frozenset({'act', 'at_site', 'claims', 'column_ends', 'destroy', 'engineer_entry', 'free_spot', 'garrison',
                    'goal_off_nodes', 'hunts', 'modify', 'powers_off', 'reach', 'send', 'seq', 'toggle_press',
                    'toggles_of', 'wallet',
-                   'aim', 'can_hit', 'deal', 'fight_field', 'fire_spot', 'in_range', 'members', 'shot_blocked',
+                   'aim', 'can_hit', 'fight_field', 'fire_spot', 'in_range', 'members', 'shot_blocked',
                    'side_sees', 'takes_by_itself', 'team_targets', 'unshot',
                    '_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims', 'seen', 'volleys'})
 
@@ -577,8 +577,6 @@ def fight(world, peers):
         world.used.add('combat')
     if peers.chilling:
         world.used.add('freeze')
-    if world.eng is None:                    # no frames: the tick's damage at once
-        peers.deal(DT)
 
 
 def chase_step(world, peers, a, fired, near):

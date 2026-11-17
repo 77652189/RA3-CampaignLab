@@ -1112,6 +1112,7 @@ class Sim:
         self.waypoints = self.mm.waypoints
         self.reblock()
         self.eng = None
+        self.fps = simunits.LIFE_FPS     # the frame loop's rate, the model's FPS when there is one
         got = engine_model() if model else None
         if got:
             # the scripts as the game runs them: the compiler's NOT flags (package.py writes unnot's), the inverted
@@ -2491,8 +2492,8 @@ class Sim:
 
     # ---- running
     def step(self):
-        """One DT tick from self.t (the caller moves self.t on): the frame loop's table (simloop.FRAME with the
-        engine model, simloop.OLD without it)."""
+        """One DT tick from self.t (the caller moves self.t on): the frame loop's table (simloop.FRAME, frame by
+        frame, with the engine model or without it)."""
         return simloop.step(self)
 
     def flee_start(self, b):
@@ -2524,9 +2525,6 @@ class Sim:
                 self.anchored.remove(e)
                 self.events.append((round(self.t + e[0][2], 6),) + tuple(e[1:]))
                 self.events.sort(key=lambda x: x[0])
-
-    def step_old(self):
-        return simloop.step_old(self)
 
     def can_hit(self, w, t):
         """A weapon's anti mask against a target: aircraft need ANTI_AIRBORNE, buildings ANTI_STRUCTURE (or

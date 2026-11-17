@@ -7,7 +7,7 @@ from maps import island
 
 def small_world(objects=(), model=True):
     """A Sim on the island map with no scripts and only `objects`: (name, template, owner, x, y) each. Players are
-    the island's (Player_1 the human). model=False: without the private engine model (Sim.step_old)."""
+    the island's (Player_1 the human). model=False: without the private engine model (the frame loop's scripts cell runs the Python scripts)."""
     s = sim.Sim(parts.Mission(name='T', map=island, scripts=[]), model=model)
     for name in list(s.bodies):
         del s.bodies[name]

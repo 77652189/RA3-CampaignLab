@@ -19,7 +19,7 @@ import time
 
 
 # name -> (kind, args, seconds). kind: bench = build.resolve(build, check) then Sim.run; old = the same without the
-# engine model (Sim.step_old); retail = a retail map; ai = simai.run (the skirmish AI on the map).
+# engine model (Sim(model=False)); retail = a retail map; ai = simai.run (the skirmish AI on the map).
 TASKS = {
     'retail_a02': ('retail', ('camp_a02_cannes_smith',), 60.0),
     'retail_s01': ('retail', ('camp_s01_leningradcanals_rao',), 70.0),
