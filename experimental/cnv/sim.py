@@ -62,6 +62,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
 import parts  # noqa: E402
+import simact  # noqa: E402
 import simgarrison  # noqa: E402
 import simheal  # noqa: E402
 import simmine  # noqa: E402
@@ -338,11 +339,7 @@ RA3_ONLY = {'ATTACK_MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_TEAM_TO', 'CREATE_NAMED_ON
             'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', 'CAMERA_ENTERED_AREA',
             'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', 'SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER'}
 
-# Sim.unmodeled's kinds: what a run met and the simulator does not act on (Sim.gap). The names are simcoverage.py's
-# (the level line's static register; it imports sim, so they are spelled here too) plus 状态 (a status bit an upgrade
-# sets; a script's bit is a 脚本动作 under its refined name, as simcoverage reports it)
-GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
-    '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
+from simworld import GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS  # noqa: E402,F401
 # the object statuses sim.py acts on (tested with `in b.status`; IN_STASIS = IMMOBILE NO_ATTACK UNATTACKABLE in
 # Sim.modify); tests/test_sim.py checks the list against the source
 ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'NON_AUTOACQUIRABLE', 'IN_STASIS', 'UNDER_FROZEN', 'ATTACHED', 'SHROUD_REVEAL_TO_ALL',
@@ -377,8 +374,7 @@ SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档
 # a full-screen one never reads done. Lengths we cannot read (a retail line, a retail clip) take the guesses below.
 AUDIO_LEAD, AUDIO_GUESS, VIDEO_GUESS = 0.9, 2.5, 4.0
 SOUND_PLAYS = ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT')
-# the skirmish AI's script switches, kept per player for simai (work/re l4_aiswitches.md; docs/engine/aiswitches.md)
-AI_SWITCHES = ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM')
+from simact_player import AI_SWITCHES  # noqa: E402,F401  (simai reads sim.AI_SWITCHES)
 IGNORED = {'DISPLAY_COUNTER', 'HIDE_COUNTER',
            'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END',
            'SET_COOP_AI_COMMAND_UI_ENABLED'}
@@ -3438,6 +3434,8 @@ class Sim:
             self.ra3_only.add(name)
         if name in SOUND_PLAYS or name.startswith('MOVIE_PLAY_'):
             self.played(name, a)
+        if simact.act(self, name, a, script):          # the actions moved to the lookup table (ADR 0029 step 3)
+            return
         if name == 'SET_FLAG':
             if SCENE_FLAG.fullmatch(str(a[0])):         # the player's input is off: nothing is late for a scene's length
                 if a[1]:
@@ -3634,26 +3632,6 @@ class Sim:
             for b in self.living():
                 if b.owner == a[0]:
                     b.ai_acquire = bool(int(a[1]))
-        elif name == 'PLAYER_TRANSFER_OWNERSHIP_PLAYER':
-            # (from, to) the program (work/re/a217_transfer.md) calls the receiver's method with the giver. Bench 11-14
-            # engine_acts_x own (round 217, twice): only the giver's units on no team a script names change hands --
-            # Soviet_2's (off their teams since the container's start-up hand-over, skirmish_setup) and a Soviet_5
-            # conscript UNIT_AI_TRANSFER took off its crew; ones on a team stay (teamSoviet_5's tank, Soviet_6's
-            # conscript, a crew's, a Soviet_2 conscript put back on a crew). The giver's money goes whole to the
-            # receiver (Player_1 1000 -> ~6000, Soviet_5 5000 -> < 100). Structures alike (INFERRED: only units placed)
-            for b in self.living():
-                if b.owner == a[0] and not b.team:
-                    b.owner = a[1]
-                    self.note('易主', f'{self.label(b)} 归 {self.who(a[1])}')
-            self.money[a[1]] = self.money.get(a[1], 0) + self.money.get(a[0], 0)
-            self.money[a[0]] = 0
-            self.change()
-        elif name == 'NAMED_TRANSFER_OWNERSHIP_PLAYER':
-            b = self.body(a[0])
-            if b and b.owner != a[1]:
-                b.owner = a[1]
-                self.note('易主', f'{self.label(b)} 归 {self.who(a[1])}')
-                self.change()
         elif name in ('TEAM_DELETE', 'TEAM_KILL', 'TEAM_DELETE_LIVING'):
             # (team) INFERRED (Generals doTeamDelete / doTeamKill): every living member removed / killed, as
             # NAMED_DELETE / NAMED_KILL one by one; TEAM_DELETE_LIVING as TEAM_DELETE. engine_scripts8 team asks
@@ -3698,9 +3676,6 @@ class Sim:
                 spot = f'SIM spawn spot {len(self.waypoints)}'
                 self.waypoints[spot] = (at.x, at.y)
                 self.act('CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', [a[0], a[1], a[2], spot, at.angle], script)
-        elif name == 'PLAYER_SET_BASE_POWER':         # (player, n) INFERRED: n supply on top of its objects'
-            self.base_power[a[0]] = int(a[1])
-            self.change()
         elif name == 'PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT':
             # (player, power, waypoint) INFERRED: the player's first living object that has the power casts it, as
             # NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT (a script's cast: no reload asked); none, nothing. Retail fires
@@ -3712,29 +3687,11 @@ class Sim:
                 self.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [src.name, power, a[2]], script)
             else:
                 self.gap(GAP_ACTION, refined(name, a), f'{a[0]} 没有带 {a[1]} 的物体（协议类不模拟）')
-        elif name in ('PLAYER_GRANT_SPECIAL_POWER', 'PLAYER_SET_SPECIAL_POWER_COUNTDOWN') and \
-                (simtech.power_needs(str(a[0] if name == 'PLAYER_GRANT_SPECIAL_POWER' else a[1])) or (None,))[0]:
-            # GRANT (power, player): the power's RequiredPlayerTech given, ready at once; COUNTDOWN (player, power, s):
-            # ready s whole seconds on (d115 24: now + s x 15), only where held (not granted: nothing). Bench 11-13
-            # engine_acts_u (spellbook_ready); a building's power (no RequiredPlayerTech) falls to the gap below
-            power, who = (a[0], a[1]) if name == 'PLAYER_GRANT_SPECIAL_POWER' else (a[1], a[0])
-            tech = simtech.power_needs(str(power))[0]
-            for p in self.book_players(who):
-                if name == 'PLAYER_GRANT_SPECIAL_POWER':
-                    self.books[p].owned.add(tech)
-                    self.power_at[(p, str(power).lower())] = self.frame_now()
-                elif self.books[p].has(tech):
-                    self.power_at[(p, str(power).lower())] = self.frame_now() + int(a[2]) * simunits.LIFE_FPS
-            self.used.add('protocols')
         elif name == 'TECHTREE_MODIFY_BUILDABILITY_OBJECT':
             # (template, BuildableStatus 0 YES 1 IGNORE_PREREQUISITES 2 NO 3 ONLY_BY_AI): one table for every player
             # (d115 25); read by can_build
             self.buildable[str(a[0]).lower()] = int(a[1])
             self.change()
-        elif name == 'PLAYER_SPECIAL_POWER_AVAILABILITY':
-            # (player, power, Available / Disabled / Hidden) INFERRED: the player's click refused unless Available
-            # (power_refusal); a script's cast goes all the same. engine_scripts8 pdis asks the bench
-            self.powers_off[(a[0], str(a[1]).lower())] = str(a[2])
         elif name == 'TEAM_TRANSFER_TO_PLAYER':
             # (team, player) l2_scripts1 6: each member goes to the player's own team, its order cleared. Bench 11-08
             # engine_scripts1 xfer: owned by the new player at once, the move it was on dropped, the team left empty
@@ -3872,8 +3829,6 @@ class Sim:
                 self.seq.append({'b': b, 'script': sc, 'step': -1, 'loops': int(a[2]) if len(a) > 2 else 0})
             elif b and self.eng is None:
                 self.gap(GAP_ACTION, name, '没有引擎模型的运行不模拟顺序脚本')
-        elif name == 'PLAYER_TOGGLE_RESOURCE_SHARING':     # (player, on) d115 19: read when money comes in (earn)
-            (self.sharing.add if int(a[1]) else self.sharing.discard)(a[0])
         elif name == 'SELECT_OBJECT':           # (player, object): bench 11-14 engine_share all -- replaces the
             self.selected = a[1]                # selection, an enemy's object too; DESELECT changed nothing there
         elif name == 'TEAM_USE_COMMANDBUTTON_ABILITY':
@@ -3999,18 +3954,6 @@ class Sim:
                         b.indestructible = bool(a[2])
             else:
                 self.gap(GAP_ACTION, f'{name}:{flag}', f'面板标志 {flag} 没模拟（只认 Indestructible）')
-        elif name == 'TEAM_UPGRADE':
-            # Living current members, with the ordinary object-upgrade consumers.
-            # engine_teamup:a measures two Guardians and untouched other teams;
-            # future members, absent/dead teams and map-local upgrades remain gaps.
-            for b in self.members(a[0]):
-                self.give_upgrade(b, a[1])
-        elif name in ('NAMED_RECEIVE_UPGRADE', 'NAMED_REMOVE_UPGRADE'):     # (upgrade, object): recorded; of what an upgrade
-            b = self.body(a[1])                                              # does to a unit only the SPEED modifier is
-            if b:                                                            # simulated (units/pace.py's 齐步); a range,
-                self._upgrade(b, a[0], name == 'NAMED_RECEIVE_UPGRADE')     # a shield are not; a tier (can_build) is
-        elif name == 'ALLOW_DISALLOW_ONE_UPGRADE':      # (player, upgrade, allow): retail campaigns ban Tech2/3 with 0
-            (self.banned_ups.discard if a[2] else self.banned_ups.add)((a[0], str(a[1]).lower()))
         elif name == 'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER':
             b = self.body(a[0])
             if b:
@@ -4037,14 +3980,6 @@ class Sim:
             want = self.of_types(a[1])
             self.counters[a[2]] = sum(1 for owner, _, template, _ in self.kills
                                        if owner == a[0] and template.lower() in want)
-        elif name == 'PLAYER_SET_MONEY':
-            self.money[a[0]] = a[1]
-        elif name == 'PLAYER_GIVE_MONEY':
-            self.money[a[0]] = self.money.get(a[0], 0) + a[1]
-        elif name == 'PLAYER_SET_MONEY_CAP':
-            # (player, cap): bench 11-13 engine_acts_tel -- no script's money is held to it (give 5000 over a 3000 cap,
-            # a 500 cap under 6000, set 10000 over it: all kept); harvest income is held to it (Sim._pay, bench 11-15 mineturn0 cap / capz)
-            self.money_cap[a[0]] = int(a[1])
         elif name == 'NAMED_GARRISON_SPECIFIC_BUILDING':
             b, g = self.body(a[0]), self.body(a[1])
             if b and g and 'INFILTRATOR' in b.kinds and self.infiltrators.spec(g) is not None:
@@ -4134,75 +4069,10 @@ class Sim:
                  else self.base_construction_disabled.discard)(a[0])
             else:
                 self.gap('ScriptAction', name, '基地建造开关仅具名 AI 玩家的建筑订单已量；玩家范围未量')
-        elif name == 'ALLOW_DISALLOW_ONE_BUILDING':     # the AI's production is not simulated; the player's 造 is
-            (self.banned.discard if a[2] else self.banned.add)((a[0], str(a[1]).lower()))
-        elif name == 'GIVE_PLAYER_UPGRADE':             # (player, upgrade): a PLAYER upgrade; an OBJECT one (the tiers)
-                                                        # it gives unlocks nothing (bench 11-07 engine_tech b)
-            self.player_ups.setdefault(a[0], set()).add(a[1])
-            for b in self.living():
-                if b.owner == a[0]:
-                    self.modify(b)
         elif name == 'PLAYER_RELATES_PLAYER':           # (index, 0, name): the game reads the index (plan.relates)
             r = a[2]
             self.relations[(a[0], a[1])] = r if isinstance(r, str) else \
                 {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[r[0]]
-        elif name in ('PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'PLAYER_SET_PLAYER_POWER_POINTS', 'PLAYER_LOCK_PLAYER_TECH'):
-            self.used.add('protocols')                  # (player, n) / (player, protocol, on): simtech.Book
-            for book in self.books_of(a[0]):
-                if name == 'PLAYER_SET_MAX_PLAYER_POWER_POINTS':
-                    book.set_cap(a[1])
-                elif name == 'PLAYER_SET_PLAYER_POWER_POINTS':
-                    book.set_points(a[1])
-                elif not book.lock(str(a[1]), bool(int(a[2]))):
-                    self.gap(GAP_ACTION, name, f'{a[1]} 不是协议：游戏也不管')
-        elif name in AI_SWITCHES:                       # (player, value): the skirmish AI's script switches; what
-            self.ai_switches.setdefault(a[0], {})[name] = int(a[1])     # they do is simai's (engine line B)
-        elif name == 'SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY':   # (player, enemy, n): one entry of the AI's enemy
-            self.ai_priorities.setdefault(a[0], []).append((a[1], int(a[2])))     # table, in order (simai)
-        elif name == 'SKIRMISH_AI_SET_FAVORED_ENEMY':
-            # (player, enemy): the enemy table emptied, then that enemy alone at score 10 (program, work/re
-            # a219_skirmish_transfer.md 2; bench checks/engine_aifav.py). (None, 0) = the clear: simai tells the
-            # model 'enemy priorities' 0 (asked of engine line B, work/re a220_favored_enemy.md)
-            self.ai_priorities.setdefault(a[0], []).extend([(None, 0), (a[1], 10)])
-        elif name == 'SKIRMISH_AI_TRANSFER_ALL':
-            # (player, on): UNIT_AI_TRANSFER_ALL's team step without its AI wake (program, work/re
-            # a219_skirmish_transfer.md; the wake left out is INFERRED, not benched). Bench 11-14 engine_acts_z all:
-            # on -- off every team; off -- every unit on no team back onto the map's default team (teamSoviet_N,
-            # not the crew it came from); a player never handed keeps its own -- and each default team counts one
-            # member more than its units (Soviet_6's too, never handed: 1 -> 2): a hidden object every player has
-            # on defaultSkirmishTeam from the start (its PlayerSpellBook: INFERRED, which object is not read)
-            if int(a[1]):
-                self.off_teams((a[0],))
-                self.hidden_home.discard(a[0])
-            else:
-                self.hidden_home.add(a[0])
-                side = next((s for s, p in self.players.items() if p == a[0]), None)
-                home = self.mm.team(side) if side else ''
-                for b in self.living():
-                    if b.owner == a[0] and not b.team and home:
-                        b.team = home
-                        self.active.add(home)
-        elif name == 'PLAYER_TOGGLE_SKIRMISH_AI':
-            # (player, on): the AI's paused byte = not on (program, work/re a270_skirmish_start.md); its per-frame
-            # update does nothing while paused -- simai Brain.tick (bench aipause:a)
-            if a[0] in self.players.values():
-                (self.ai_paused.discard if int(a[1]) else self.ai_paused.add)(a[0])
-            else:
-                self.gap('ScriptAction', name, '开关遭遇战 AI 仅具名玩家已量；玩家范围未量')
-        elif name in ('UNIT_AI_TRANSFER_ALL', 'SKIRMISH_AI_MAKE_BASE', 'SKIRMISH_AI_START'):
-            # SKIRMISH_AI_START = UNIT_AI_TRANSFER_ALL's wake alone, no team step (program, work/re
-            # a270_skirmish_start.md). MAKE_BASE wakes nobody (program; bench ainowake:a / aixfer:a, no library:
-            # MAKE_BASE + money, with or without the team step, never spends): it stands in for the wake only for
-            # the library's players (Lib_Skirmish_Setup's frame-0 UNIT_AI_TRANSFER_ALL; engine line B's simai is
-            # fitted to the mission's own wake). Building also needs a yard handed to the AI: simai Brain.yards.
-            self.used.add('ai')
-            if name == 'UNIT_AI_TRANSFER_ALL' and int(a[1]):
-                self.off_teams((a[0],))
-            woke = (name in ('SKIRMISH_AI_START', 'UNIT_AI_TRANSFER_ALL')    # TRANSFER_ALL wakes either way (a219)
-                    or name == 'SKIRMISH_AI_MAKE_BASE' and a[0] in self.library_ai)
-            if woke and a[0] not in self.ai:
-                self.ai[a[0]] = self.t
-                self.note('AI', f'{self.who(a[0])} 交给遭遇战 AI（造兵、进攻不模拟）')
         elif name == 'MAP_SWITCH_BORDER':
             if self.all_revealed() or self.reveals:
                 self.used.add('border reveal')
@@ -4210,48 +4080,6 @@ class Sim:
             names = list(getattr(self.m.map, 'BORDERS', {}))
             self.note('边界', f'可玩区换成 {names[self.border] if self.border < len(names) else self.border}')
             self.change()
-        elif name in ('MAP_REVEAL_ALL', 'MAP_REVEAL_ALL_PERM'):
-            # Bench 11-10 engine_vision all / allundo (docs/engine/vision.md 2): MAP_REVEAL_ALL lapses as a waypoint
-            # reveal does (137 frames by default, 15 x N - 13); _PERM holds until MAP_REVEAL_ALL_UNDO_PERM, which
-            # shuts it the frame it runs (no reshroud delay). Another side's: kept for good (INFERRED, not benched)
-            if a and a[0] != self.human and a[0] in self.players.values():   # another side's: its own sight
-                self.revealed_to.add(a[0])
-            elif name == 'MAP_REVEAL_ALL':
-                hold = max(0, int(round(self.reshroud * 15)) - 13)
-                self.reveal_all_until = max(self.reveal_all_until, self.frame_now() + hold)
-                self.note('揭图', '全图（暂时）')
-            else:
-                self.reveal_all = True
-                self.note('揭图', '全图')
-        elif name == 'MAP_REVEAL_ALL_UNDO_PERM':
-            if a and a[0] != self.human and a[0] in self.players.values():
-                self.revealed_to.discard(a[0])
-            else:
-                self.reveal_all = False
-                self.note('揭图', '全图收回')
-        elif name in ('MAP_REVEAL_PERMANENTLY_AT_WAYPOINT', 'MAP_REVEAL_AT_WAYPOINT'):
-            p = self.point(a[0])
-            if p:
-                if name == 'MAP_REVEAL_AT_WAYPOINT':
-                    # docs/engine/vision.md 2 (bench 11-06 engine_vision resh*): it holds 15 x N - 13 frames
-                    hold = max(0, int(round(self.reshroud * 15)) - 13)
-                    self.peeks.append((p[0], p[1], float(a[1]), self.frame_now() + hold))
-                else:
-                    self.reveals[a[3]] = (p[0], p[1], float(a[1]))
-                self.note('揭图', f'{a[0]} 半径 {a[1]:g}')
-        elif name == 'MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT':
-            # bench 11-09 engine_vision undo: back to fog at once (no reshroud delay), by the reveal's name
-            self.reveals.pop(a[0], None)
-        elif name == 'MAP_REVEAL_PERMANENTLY_IN_TRIGGER':
-            # (area, player, reveal name) INFERRED as the waypoint one: the area open to the player till the undo;
-            # another side's not simulated (its sight)
-            if a[1] == self.human:
-                self.reveal_areas[a[2]] = a[0]
-                self.note('揭图', f'{a[0]}（区域）')
-            else:
-                self.gap(GAP_ACTION, name, '给其他玩家揭区域不模拟')
-        elif name == 'MAP_UNDO_REVEAL_PERMANENTLY_IN_TRIGGER':    # (reveal name) INFERRED: back to fog at once
-            self.reveal_areas.pop(a[0], None)
         elif name == 'MAP_SHROUD_SET_RESHROUD_TIME':
             self.reshroud = float(a[0])
         elif name in ('MOVE_CAMERA_TO', 'MOVE_CAMERA_TO_NAMED', 'CAMERA_FOLLOW_NAMED'):

@@ -22,6 +22,7 @@ LAYER_OF = {
     'simunits': 1,
     'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2, 'simmine': 2,
     'simtech': 4, 'simmoney': 4,
+    'simact': 6, 'simact_vision': 6, 'simact_player': 6,
     'simloop': 7,
 }
 
@@ -111,6 +112,64 @@ def test_world_takers_reach_only_the_world_api():
 
 def test_field_owners():
     assert not owner_breaks()
+
+
+def chain_names(source=None):
+    """The action names Sim.act's own elif chain still tests for (`name == 'X'`, `name in (...)`)."""
+    tree = ast.parse(source if source is not None else (CNV / 'sim.py').read_text(encoding='utf-8'))
+    cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'Sim')
+    act = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == 'act')
+    out = set()
+    for node in ast.walk(act):
+        if isinstance(node, ast.Compare) and isinstance(node.left, ast.Name) and node.left.id == 'name':
+            for c in node.comparators:
+                out |= {e.value for e in ast.walk(c) if isinstance(e, ast.Constant) and isinstance(e.value, str)}
+    return out
+
+
+def group_actions():
+    """action file -> the names its ACTIONS table has (read from the source: `'X': fn` and
+    `**dict.fromkeys(CONST, fn)` with CONST a tuple in that file), for the files simact.GROUPS lists."""
+    groups = next(n.value for n in _tree('simact').body if isinstance(n, ast.Assign) and n.targets[0].id == 'GROUPS')
+    out = {}
+    for g in (e.id for e in groups.elts):
+        tree = _tree(g)
+        consts = {n.targets[0].id: ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
+                  and isinstance(n.targets[0], ast.Name) and isinstance(n.value, ast.Tuple)}
+        table = next(n.value for n in tree.body if isinstance(n, ast.Assign) and getattr(n.targets[0], 'id', '') ==
+                     'ACTIONS')
+        names = set()
+        for k, v in zip(table.keys, table.values):
+            names |= {k.value} if k is not None else set(consts[v.args[0].id])
+        out[g] = names
+    return out
+
+
+def home_breaks(groups, chain):
+    """(name, where) for an action name in two action files or still in Sim.act's chain too."""
+    out, seen = [], {}
+    for g, names in groups.items():
+        out += [(n, f'{seen[n]} and {g}') for n in names if n in seen]
+        seen.update(dict.fromkeys(names, g))
+    return out + [(n, f'{seen[n]} and Sim.act') for n in sorted(chain & seen.keys())]
+
+
+def test_each_action_has_one_home():
+    """Step 3 (act as a table): a name moved to an action file is gone from Sim.act's chain, and no two action files
+    have it (one owner: the old chain's order no longer decides which runs)."""
+    groups = group_actions()
+    assert len(groups) >= 2 and all(groups.values())
+    assert not home_breaks(groups, chain_names())
+
+
+def test_home_guard_bites():
+    """Mutation check: a name in two action files, or still in Sim.act's chain, is caught."""
+    groups = group_actions()
+    first, second = list(groups)[:2]
+    name = next(iter(groups[first]))
+    assert home_breaks({**groups, second: groups[second] | {name}}, set())
+    assert home_breaks(groups, chain_names(f"class Sim:\n    def act(self, name, a, s):\n"
+                                           f"        if name == '{name}':\n            pass\n"))
 
 
 def test_frame_orders_share_one_roster():

@@ -19,3 +19,9 @@ WORLD_API = frozenset({
     'used',            # the audit set: rules the run leaned on (append only)
     'gap',             # an unmodelled rule met (Sim.gap)
 })
+
+# Sim.gap's kinds: what a run met and the simulator does not act on (any layer reports one). The names are
+# simcoverage.py's (the level line's static register; it imports sim, so they are spelled here too) plus 状态 (a status
+# bit an upgrade sets; a script's bit is a 脚本动作 under its refined name, as simcoverage reports it)
+GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
+    '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
