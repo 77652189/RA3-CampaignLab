@@ -379,6 +379,8 @@ def power_modelled(power, inf):
     """A script's special power the simulator acts on: a superweapon's blast, the Iron Curtain / Nanoswarm, a unit's
     assemble-a-structure power."""
     return power in sim.SUPERWEAPON_HITS or power in sim.CURTAIN or \
+        power == 'SpecialPower_JAIV_Transform' and any(
+            tm['power'] == power for u in inf.human_templates for tm in simunits.template_toggles(u, inf.own)) or \
         any(simunits.assemble(u, power, inf.own) for u in inf.own)
 
 
@@ -672,7 +674,6 @@ KNOWN = {
     ('命令', '技能 SpecialPower_CNV_ChronoDeck'): first('a8', '技能 SpecialPower_CNV_ChronoDeck', 'CNV_Liberty 的"jump"：玩家能点，但模拟器只记日志、没有效果（order_power 只对造结构 / 超'),
     ('命令', '技能 SpecialPower_JapanAntiInfantryInfantryBonzai'): first('j4', '技能 SpecialPower_JapanAntiInfantryInfantryBonzai', 'JapanAntiInfantryInfantry 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
     # B round 229: the campaign overrides' abilities, hidden while inherited_text stopped at the override
-    ('命令', '技能 SpecialPower_JAIV_Transform'): first('j7', '技能 SpecialPower_JAIV_Transform', 'JapanAntiInfantryVehicle 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
     ('命令', '技能 SpecialPower_ToggleLeechBeam'): first('s2', '技能 SpecialPower_ToggleLeechBeam', 'SovietAntiVehicleVehicleTech1 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
     ('命令', '技能 SpecialPower_MolotovCocktail'): first('s2', '技能 SpecialPower_MolotovCocktail', 'SovietAntiInfantryInfantry 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),
     ('命令', '技能 SpecialPower_PackReplaceSelf'): first('a1', '技能 SpecialPower_PackReplaceSelf', 'AlliedConstructionYard 的原版特殊能力：玩家能点，模拟器只记日志、没有效果'),

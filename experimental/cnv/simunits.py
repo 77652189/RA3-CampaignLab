@@ -2210,7 +2210,8 @@ def power_rules(template, power, own=None):
     xml = (own or {}).get(template) or ''
     heads = [h for h, _ in _blocks(xml, 'SpecialPowerTemplate')]
     if not any(re.search(r'\bid="([^"]*)"', h).group(1) == power for h in heads):
-        body = xml or retail_xml(template)
+        # Campaign self-overrides keep the power on their retail parent (E206).
+        body = '\n'.join(body for _, body in xml_chain(template, own))
         if f'"{power}"' in body and power in _retail_power_heads():
             heads = [_retail_power_heads()[power]]
     for head in heads:

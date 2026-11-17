@@ -362,6 +362,13 @@ class SimWorld:
                 s.order_attack(b, t.name)
             return True
         if o.kind == 'power':
+            if o.power == 'SpecialPower_JAIV_Transform':
+                if o.target is not None or o.pos is not None:
+                    return self._refuse(o, 'transform is an untargeted power')
+                results = [s.order_transform(b, o.power) for b in units]
+                if not any(ok for ok, _ in results):
+                    return self._refuse(o, 'power refused: ' + ', '.join(sorted({why for _, why in results})))
+                return True
             if o.pos is not None:               # a ground power: the player's click (Sim.order_power: reload, ground,
                 whys = []                       # ForbiddenObjectRange, reach), then the scripts' way at a waypoint
                 for b in units:

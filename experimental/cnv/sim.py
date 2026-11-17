@@ -2513,6 +2513,27 @@ class Sim:
         self.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [b.name, power, spot], None)
         return True, None
 
+    def order_transform(self, b, power):
+        """E206: player's untargeted Tengu transform; reuse the measured button effect.
+
+        Reload/availability use the existing player-power gate. The 15 s reload
+        is XML-derived (INFERRED for this input); this bench measures the state
+        and locomotor, not a player's cooldown or animation-frame boundaries.
+        """
+        if power != 'SpecialPower_JAIV_Transform':
+            return False, 'unmeasured self power'
+        if not b or not b.alive:
+            return False, 'gone'
+        if not any(tm['power'] == power for tm in self.toggles_of(b)):
+            return False, 'not a toggle of his'
+        why = self.power_refusal(b, power, b.x, b.y)
+        if why:
+            return False, why
+        if not self.toggle_press(b, 'Command_JAIV_Transform'):
+            return False, 'not a toggle of his'
+        b.ready_at[power] = self.frame_now() + simunits.power_rules(b.template, power, self.own)['reload']
+        return True, None
+
     def order_stop(self, b):
         if b:
             b.path, b.goal, b.follow, b.ground_fire = [], None, None, None
