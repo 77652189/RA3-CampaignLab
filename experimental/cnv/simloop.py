@@ -60,11 +60,11 @@ def lose_health(s, frame, tick):
 
 
 def autoheal(s, frame, tick):
-    s.autoheal(frame)
+    s.heal.autoheal(s, frame)
 
 
 def passive_area_heal(s, frame, tick):
-    s.passive_area_heal()
+    s.heal.passive_area_heal(s)
 
 
 def repairs(s, frame, tick):

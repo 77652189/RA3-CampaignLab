@@ -20,16 +20,16 @@ CNV = ROOT / 'experimental' / 'cnv'
 LAYER_OF = {
     'simworld': 0,
     'simunits': 1,
-    'simtopple': 2, 'simjet': 2, 'simcrush': 2,
+    'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2,
     'simtech': 4,
     'simloop': 7,
 }
 
 # modules that take the world as an argument (rule 2): they reach it only through WORLD_API
-WORLD_TAKERS = set()
+WORLD_TAKERS = {'simheal'}
 
 # field -> the one file that may assign it (rule 3), for the blocks moved so far
-FIELD_OWNER = {}
+FIELD_OWNER = {'heal_at': 'simheal', 'heal_seen': 'simheal'}
 
 
 def _load(name):
