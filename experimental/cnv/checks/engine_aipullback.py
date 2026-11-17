@@ -99,6 +99,20 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
            airevk1. The host: f166 the AI casts a special power (cmd 1ff, its own power hash, at 3545:3340 = the near foe),
            f212 the strike (object 3228) hits the foe and the AI's own 3170 / 3171 (3170 to 316 / 550); f213 they join.
            So the s13 death in airevk1 is that strike outdoing the keep in one frame; the simulator's AI casts no power.
+  (11-16, D round 183; 总控 k2 = A) the s1 AI's SpecialPowerPrecisionStrike held off (countdown 3600 s every frame,
+  NO_POWER); the readings above for airevk1 / 0 / 2 / 2o are the powered runs. The bench's seconds ran ~2x slow:
+  airevk1  CampAIRevK1A_mcp_1116_184800: 4 4 2 all run (s1-114); the attack team n=0 all run -- no strike, no join.
+           The 'ever<4' expectation (the model's, a back-up) FAILed; now airevk0's '>= 3' (the reading is 4).
+  airevk2  CampAIRevK2A_mcp_1116_184946: s1-31 4 4 2 | s32 4 4 4 | s34-42 4 3 4 | s43-64 4 0 4 | s66-116 4 1 ..;
+           host: before the swap (f250) the members aim 0; f253 all four (3170-3173) join, f257 the form-up move,
+           f312 on back-up orders (type 236 from the ReverseMove call site), 20 in the run. 敌坦's window FAILed on the
+           slow clock (4 first at bench s32), not on the spawn.
+  airevk2o CampAIRevK2OffA_mcp_1116_185214: s2-26 4 4 2 | s27 4 4 4 | s29-127 4 3 4; f253 the same four join, no
+           back-up order in the run (敌坦's window FAILed on the slow clock alike).
+  airevk0  CampAIRevK0A_*_1116: PASS, 4 4 2 all run (s1-129) = airevk1.
+  So with the power off the join waits for the swap (f250 -> f253, the members aiming 0 then); the simulator's
+  in_combat gate (a body that fired last tick) keeps all four out after the swap too: the spawned foe is in range
+  the same tick. tests/test_ai_reverse_k2.py's model test stays red on that (B's gate, not ReverseMove).
 """
 import inject
 from checks import engine_aitarget as at
@@ -116,6 +130,10 @@ NEAR_FOE = 100.0                         # airevk*: half side of the square roun
 POKE_AT = 250                            # airevkp*: logic frame of the plan (airevk1: team f213, state 2 f242)
 POKE_XY = ((3530.0, 3230.0), (3553.0, 3304.0))   # 50 west of members 3170 / 3171 as they stood f242-248 (airevk1
                                                  # run 11-13, ra3ext.log team lines); foe k beside member k
+AI_POWER = 'SpecialPowerPrecisionStrike'  # airevkh f166: the s1 AI's cast (cmd 1ff, hash -918055170 = this name)
+NO_POWER_S = 3600                         # s: its countdown held far past the run every frame (engine_acts4 s17: a
+                                          # positive countdown makes a player power not ready)
+NO_POWER = ('airevk1', 'airevk0', 'airevk2', 'airevk2o')   # D round 183 (总控 k2 = A): the power off on these
 
 
 def a(m, build):
@@ -170,6 +188,9 @@ def a(m, build):
                 t.scripts.append(Script(f'Test - foe health {k}', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', n,
                                                                          f'CNV_PB_FoeHp{k}')], once=False))
         t.scripts.append(Script('Test - keep', [], [('UNIT_SET_HEALTH', n, 100.0) for n in foes + tanks], once=False))
+        if build in NO_POWER:            # D round 183: the AI's f166 strike (airevkh) is not what k1 / k2 test
+            t.scripts.append(Script('Test - no AI power', [], [('PLAYER_SET_SPECIAL_POWER_COUNTDOWN', s1, AI_POWER,
+                                                                 NO_POWER_S)], once=False))
         fx = sum(m.find(n).x for n in foes) / 2
         fy = sum(m.find(n).y for n in foes) / 2
         t.areas['CNV_PB_NearFoe'] = square(fx, fy, NEAR_FOE)
@@ -195,7 +216,8 @@ def a(m, build):
                           Script('Test - late keep', [], [('UNIT_SET_HEALTH', n, 100.0) for n in late], once=False)]
             t.expect += [('敌坦', LATE_AT + 2.0, 'ever>=', 3, LATE_AT + 10.0)]
         else:
-            t.expect += ([('近敌', wake, 'ever<', 4, wake + 20.0)] if build.endswith('1')
+            # D round 183: with the power off airevk1 = airevk0 (nobody joins: 4 near all run)
+            t.expect += ([('近敌', wake, 'ever<', 4, wake + 20.0)] if build.endswith('1') and build not in NO_POWER
                          else [('近敌', wake + 2.0, '>=', 3, wake + 20.0)])
     elif build.startswith('airevp') or build.startswith('airevt'):
         # airevp: the far plant beside the tanks, no guards (missions CLOSE_AT); airevt: a player's turret there instead
