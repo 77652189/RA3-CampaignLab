@@ -1,0 +1,15 @@
+# Bench readings of checks/engine_hull.py (format: experimental/cnv/readings.py).
+
+[[reading]]
+id = "hull_a_moving_tank_faces_the_way_it_drives_and_takes_a_hit_by_that_facing[turn]"
+scene = {build = "engine_hull", check = "turn", until = 9.5, shot_clock = true}
+bench = "11-12 round 187 turn: 40/44/42/44 percent lost (s5-s9)."
+proves = "Vehicle locomotion and ArmorTemplate flank damage: still, north, east and short-north Hammers present front, rear, side and rear to the V4."
+expect = "list(rows[-1].values()) == [40, 44, 42, 44]"
+
+[[reading]]
+id = "hull_a_moving_tank_faces_the_way_it_drives_and_takes_a_hit_by_that_facing[rate]"
+scene = {build = "engine_hull", check = "rate", until = 9.5, shot_clock = true}
+bench = "11-12 round 187 rate: 44/44/44/44 percent lost (s5-s12)."
+proves = "Vehicle locomotion and ArmorTemplate rear damage: Hammers sent north already take the 110% rear scalar at the earliest tested fire delay, 0.15 s."
+expect = "list(rows[-1].values()) == [44, 44, 44, 44]"

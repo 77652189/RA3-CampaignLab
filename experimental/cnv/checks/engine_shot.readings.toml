@@ -1,0 +1,15 @@
+# Bench readings of checks/engine_shot.py (format: experimental/cnv/readings.py).
+
+[[reading]]
+id = "shot_a_direct_hit_takes_the_victim_s_side_and_rear_scalar_by_where_the_shooter_stands[flank]"
+scene = {build = "engine_shot", check = "flank", until = 9, shot_clock = true}
+bench = "11-05 round 33 flank: 40/40/42/44 percent lost on the first direct hit."
+proves = "ArmorTemplate SideDamageScalar and RearDamageScalar: 4000 EXPLOSIVE against 10000 HP gives 40% front, 42% side and 44% rear at 0/40/90/180 degrees."
+expect = "list(rows[-1].values()) == [40, 40, 42, 44]"
+
+[[reading]]
+id = "shot_a_direct_hit_takes_the_victim_s_side_and_rear_scalar_by_where_the_shooter_stands[armor]"
+scene = {build = "engine_shot", check = "armor", until = 9, shot_clock = true}
+bench = "11-05 round 33 armor: 10/5/15/1 percent lost on the first direct hit."
+proves = "ArmorTemplate damage-type scalars: four front hits use 50/25/75/5% of 2000 damage against 10000 HP; the display rounds a loss upward."
+expect = "list(rows[-1].values()) == [10, 5, 15, 1]"

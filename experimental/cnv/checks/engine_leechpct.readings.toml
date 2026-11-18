@@ -1,0 +1,8 @@
+# Bench readings of checks/engine_leechpct.py (format: experimental/cnv/readings.py).
+
+[[reading]]
+id = "leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum"
+scene = {build = "engine_leechpct", check = "a", until = 16, shot_clock = true}
+bench = "Bench PASS 1000025/1000025/1000030/1000020."
+proves = "LeechPercentMaxHealthDamageNugget: half of victim max HP heals the live 10000-HP casters by 500/500/1000/0; all victims die."
+expect = "list(rows[-1].values()) == [1000025, 1000025, 1000030, 1000020]"

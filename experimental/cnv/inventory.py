@@ -153,13 +153,13 @@ BENCHED_TESTS = {
     (MODULE, 'Behaviors/SuppressionUpdate'): 'tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings',
     (NUGGET, 'SuppressionNugget'): 'tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings',
     # engine_dot: direct single hit, immediate first tick and inclusive expiry; stacking/healing/projectiles unbenched.
-    (NUGGET, 'DOTNugget'): 'tests/test_simbench_c.py::test_dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame',
+    (NUGGET, 'DOTNugget'): 'experimental/cnv/checks/engine_dot.readings.toml::dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame',
     # engine_contained: NONE KindOf filter, cap1/2; selection order GUESSED, radius/projectiles/death unbenched.
     (NUGGET, 'DamageContainedNugget'): 'tests/test_simbench_c.py::test_damage_contained_limits_eligible_passengers_without_damaging_the_others',
-    (NUGGET, 'LeechHealthDamageNugget'): 'tests/test_simbench_c.py::test_leech_health_heals_from_damage_and_respects_the_heal_fraction',
-    (NUGGET, 'LeechPercentMaxHealthDamageNugget'): 'tests/test_simbench_c.py::test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum',
-    (NUGGET, 'SecondaryDamageNugget'): 'tests/test_simbench_c.py::test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health',
-    (NUGGET, 'WeaponOCLNugget'): 'tests/test_simbench_c.py::test_weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates',
+    (NUGGET, 'LeechHealthDamageNugget'): 'experimental/cnv/checks/engine_leechhealth.readings.toml::leech_health_heals_from_damage_and_respects_the_heal_fraction',
+    (NUGGET, 'LeechPercentMaxHealthDamageNugget'): 'experimental/cnv/checks/engine_leechpct.readings.toml::leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum',
+    (NUGGET, 'SecondaryDamageNugget'): 'experimental/cnv/checks/engine_secondary.readings.toml::secondary_damage_delivers_one_amount_at_hit_without_damaging_health',
+    (NUGGET, 'WeaponOCLNugget'): 'experimental/cnv/checks/engine_oclone.readings.toml::weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates',
     (NUGGET, 'ProjectileNugget'): 'tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead',
     # Weapon C: replayed bench variants; tests name the actual engine_X build (A line rule).
     (NUGGET, 'AttributeModifierNugget'): 'tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts',

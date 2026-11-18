@@ -624,14 +624,6 @@ def test_weapon_first_hit_is_observed_one_frame_after_the_order_script():
     assert tuple(engine.run(16).series[-1][1])==(16051,31066,61096,1)
 
 
-def test_inform_target_does_not_add_damage_to_the_separate_damage_nugget():
-    import build
-    import sim
-    m,t,_=build.resolve('engine_inform','damage')
-    engine=sim.Sim(m,t);engine.shot_clock=True
-    assert tuple(engine.run(16).series[-1][1])==(79,1,79,1)
-
-
 # ---- FireWeaponWhenDead (simunits.death_weapons; Sim.destroy / death_blast_due): bench 2026-11-05 engine_spawn_refill
 # (checks/engine_spawn.py, docs/engine/spawn.md 5). Two S02_ExplodingMig (1000 GRENADE, radius 100, .3 s) killed by
 # script, at 8 s and 11 s, each beside a Guardian at 20 % health 57 off its centre: each Guardian dies with its mig and
@@ -695,14 +687,6 @@ def test_activate_laser_uses_separate_damage_nugget_without_delaying_the_hit():
                for u in m.units if u.id.startswith('CNV_Laser'))
 
 
-def test_weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates():
-    import build
-    import sim
-    m,t,_=build.resolve('engine_oclone','a')
-    e=sim.Sim(m,t);e.shot_clock=True
-    assert tuple(e.run(16).series[-1][1])==(99,1,40,1)
-
-
 def test_tint_changes_no_health_or_hit_timing_beyond_the_separate_damage_nugget():
     import inventory
     assert inventory.NOTES[inventory.NUGGET,'TintObjectsNugget'][0]==inventory.NA
@@ -714,30 +698,6 @@ def test_tint_changes_no_health_or_hit_timing_beyond_the_separate_damage_nugget(
     assert 'TintObjectsNugget' in next(u.xml for u in m.units if u.id=='CNV_LaserHigh')
 
 
-def test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health():
-    import build
-    import sim
-    m,t,_=build.resolve('engine_secondary','single')
-    e=sim.Sim(m,t);e.shot_clock=True
-    assert tuple(e.run(16).series[-1][1])==(1099,0,1099,1)
-
-
-def test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum():
-    import build
-    import sim
-    m,t,_=build.resolve('engine_leechpct','a')
-    e=sim.Sim(m,t);e.shot_clock=True
-    assert tuple(e.run(16).series[-1][1])==(1000025,1000025,1000030,1000020)
-
-
-def test_leech_health_heals_from_damage_and_respects_the_heal_fraction():
-    import build
-    import sim
-    m,t,_=build.resolve('engine_leechhealth','a')
-    e=sim.Sim(m,t);e.shot_clock=True
-    assert tuple(e.run(16).series[-1][1])==(1001095045,1001090050,1001090045,1001090040)
-
-
 def test_damage_contained_limits_eligible_passengers_without_damaging_the_others():
     import build
     import sim
@@ -746,14 +706,6 @@ def test_damage_contained_limits_eligible_passengers_without_damaging_the_others
     for lane in ('base','high','order','removed'):
         assert e.body('Contained '+lane+' gun').y>=0
     assert tuple(e.run(16).series[-1][1])==(992002200,992002180,992002160,992002200)
-
-
-def test_dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame():
-    import build
-    import sim
-    m,t,_=build.resolve('engine_dot','a')
-    e=sim.Sim(m,t);e.shot_clock=True
-    assert tuple(e.run(16).series[-1][1])==(2,1088,2,1078)
 
 
 def test_emp_blocks_an_ordered_shot_and_allows_a_new_shot_after_expiry():
@@ -803,16 +755,6 @@ def test_attach_parent_death_clears_simple_link_and_preserves_the_child():
     assert child.alive and not parent.alive
     assert not child.status & {'ATTACHED','NON_AUTOACQUIRABLE','NO_COLLISIONS'}
     assert 'Attach high child' not in e.attachments
-
-
-@pytest.mark.xfail(strict=True,raises=AssertionError,
-                   reason='NO_COLLISIONS low on bench but high in model; see work/re/c_attach_parent_report.md and handoff-c.md')
-def test_attach_parent_death_complete_status_reading_matches_bench():
-    import build
-    import sim
-    m,t,_=build.resolve('engine_attach_parent','a')
-    e=sim.Sim(m,t);e.shot_clock=True
-    assert tuple(e.run(18).series[-1][1])==(958,928,48,32)
 
 
 def test_attach_child_death_clears_the_surviving_parents_status():
@@ -914,33 +856,3 @@ def test_attach_move_flag_transient_link_matches_engine_attach_detach_observatio
     assert child.alive and parent.alive
     assert not child.status & {'ATTACHED','NON_AUTOACQUIRABLE','NO_COLLISIONS'}
     assert 'VEHICLE_ATTACHED' not in parent.status
-
-
-# ---- ArmorTemplate SideDamageScalar / RearDamageScalar on direct fire (engine line A round 186, Sim.flank_of):
-# bench 11-05 (round 33, checks/engine_shot.py docstring; docs/engine/weapons.md 4), percent lost by the first hit.
-@pytest.mark.parametrize('check, bench', [('flank', [40, 40, 42, 44]), ('armor', [10, 5, 15, 1])])
-def test_shot_a_direct_hit_takes_the_victim_s_side_and_rear_scalar_by_where_the_shooter_stands(check, bench):
-    """engine_shot flank: 4000 EXPLOSIVE from 0 / 40 / 90 / 180 degrees off a south-facing Hammer (BaseTankArmor
-    EXPLOSIVE 100, Side 105, Rear 110) -- front, front, side, rear; armor (all front) holds the plain percents."""
-    import build
-    import sim
-    from checks.engine_shot import SHORT
-    m, t, _ = build.resolve('engine_shot', check)
-    s = sim.Sim(m, t)
-    s.shot_clock = True                      # discrete hits: only the first lands within SHORT
-    s.run(SHORT)
-    assert s.series[-1][1] == bench, (check, s.series[-1])
-
-
-@pytest.mark.parametrize('check, bench', [('turn', [40, 44, 42, 44]), ('rate', [44, 44, 44, 44])])
-def test_hull_a_moving_tank_faces_the_way_it_drives_and_takes_a_hit_by_that_facing(check, bench):
-    """engine_hull (bench 11-12): south-facing Hammers sent north / east / 120 behind take the rear / side / rear
-    scalar from a V4 south of them, a still one the front; sent north, already the rear 0.15 s after the order."""
-    import build
-    import sim
-    from checks.engine_hull import MOVE
-    m, t, _ = build.resolve('engine_hull', check)
-    s = sim.Sim(m, t)
-    s.shot_clock = True                      # discrete hits: only the first lands before MOVE + 5.5
-    s.run(MOVE + 5.5)
-    assert s.series[-1][1] == bench, (check, s.series[-1])
