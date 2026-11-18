@@ -615,6 +615,7 @@ class Ground:
         land = walk & ~bridge
         self.grids['both'] = (fold(land).all(axis=(1, 3)) | self.grids['water'] |
                               fold(land | water | shallow).all(axis=(1, 3)))
+        self.fine = {k: a[:hh * d, :ww * d] for k, a in (('ground', walk), ('water', water), ('both', land | water | shallow))}
         self.cache = {}
         self.blocked = np.zeros(self.grids['ground'].shape, bool)
         self.placed = self.blocked          # what a new structure's placement sees as taken (set_blocks' place)
@@ -735,16 +736,6 @@ class Ground:
         import platmap
         return ((c[1] * self.d - self.b) * platmap.CELL, (c[0] * self.d - self.b) * platmap.CELL)
 
-
-    def snap(self, g, c):
-        if 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and g[c]:
-            return c
-        jj, ii = np.nonzero(g[max(0, c[0] - 15):c[0] + 16, max(0, c[1] - 15):c[1] + 16])
-        if not len(jj):
-            return None
-        k = int(np.argmin((jj + max(0, c[0] - 15) - c[0]) ** 2 + (ii + max(0, c[1] - 15) - c[1]) ** 2))
-        return (int(jj[k] + max(0, c[0] - 15)), int(ii[k] + max(0, c[1] - 15)))
-
     def route(self, surface, p, q, closest=False):
         """World points from p to q (None: no way); aircraft fly straight. closest: no way to q -- the way to the
         nearest point it can reach instead (a unit's move, R7; the static checks ask for q itself)."""
@@ -771,7 +762,7 @@ class Ground:
     def way(self, surface, p, q, closest):
         from skimage import graph
         g = self.grids[surface] & ~self.blocked
-        a, z = self.snap(g, self.cell(*p)), self.snap(g, self.cell(*q))
+        a, z = simpath.open_cell(g, self.cell(*p)), simpath.open_cell(g, self.cell(*q))
         if a is None or z is None:
             return None
         key = (surface, z)
@@ -781,17 +772,23 @@ class Ground:
             self.cache[key] = (m, cost)
         m, cost = self.cache[key]
         if not np.isfinite(cost[a]):
-            return self.closest(g, a, z) if closest else None
+            return self.closest(g, a, z, surface) if closest else None
         legs = ('legs', surface, a, z)              # the same way asked again (an AI's path checks: 23670 asks,
         if legs not in self.cache:                  # 320 ways in simrecord's ai_open); set_blocks clears the cache
             cells = m.traceback(a)[::-1]            # traceback runs from the goal (the costs' source) to a
-            self.cache[legs] = simpath.pull(g, cells)
+            self.cache[legs] = simpath.pull(self.sight(surface), cells)
         pts = [self.world(c) for c in self.cache[legs]]
         if pts and math.hypot(pts[-1][0] - q[0], pts[-1][1] - q[1]) <= GRID:
             pts.pop()                               # the goal's own cell: q itself ends the way
         return pts + [q]
 
-    def closest(self, g, a, z):
+    def sight(self, surface):
+        """simpath.Sight.of `surface`'s grid and CELL cells now; cached until set_blocks."""
+        if ('sight', surface) not in self.cache:
+            self.cache['sight', surface] = simpath.Sight.of(self.grids[surface], self.fine[surface], self.blocked)
+        return self.cache['sight', surface]
+
+    def closest(self, g, a, z, surface):
         """R7: the goal out of reach -- the way to the cell it can reach nearest the goal (bench 2026-11-07
         engine_land: the A4 transport sent to the quay's top went straight to its foot and stayed; the Generals
         pathfinder's closest path; bench 2026-11-08 engine_seal move: a peacekeeper walled in, sent 600 out, walked
@@ -804,7 +801,7 @@ class Ground:
         end = (int(jj[k]), int(ii[k]))
         if end == tuple(a):
             return []
-        return [self.world(c) for c in simpath.pull(g, m.traceback(end))] or [self.world(end)]
+        return [self.world(c) for c in simpath.pull(self.sight(surface), m.traceback(end))] or [self.world(end)]
 
     def within(self, surface, p, q, reach):
         """R3: an attacker's way -- to the cell it reaches soonest from which q is within `reach` (Generals' attack
@@ -817,7 +814,7 @@ class Ground:
             return [q]
         from skimage import graph
         g = self.grids[surface] & ~self.blocked
-        a = self.snap(g, self.cell(*p))
+        a = simpath.open_cell(g, self.cell(*p))
         if a is None:
             return None
         m = graph.MCP_Geometric(np.where(g, 1.0, np.inf))
@@ -830,7 +827,7 @@ class Ground:
             return None
         k = int(np.flatnonzero(ok)[np.argmin(cost[jj[ok], ii[ok]])])
         end = (int(jj[k]), int(ii[k]))
-        return [self.world(c) for c in simpath.pull(g, m.traceback(end))] or [self.world(end)]
+        return [self.world(c) for c in simpath.pull(self.sight(surface), m.traceback(end))] or [self.world(end)]
 
 
 class Sim:

@@ -33,28 +33,74 @@ import math
 import numpy as np
 
 
+class Sight:
+    """Which straight lines between a way's cells are clear, asked on a finer mask: `mask` walkable cells d to a
+    way's cell a side (way cell c's point is mask cell c * d, as sim.Ground.world puts it). Ground's routing cells are
+    20 (GRID), each shut when any of its 10 map cells (CELL, the game's own pathfinding cell) is; a leg checked on the
+    20 cells clips corners the 10 cells leave open -- aiaeson (11-18): the AI's tank leaving its yard, one 20 cell a
+    cliff's corner shut by one of its four 10 cells, bent the first leg, its line ran 12 further from the player's
+    power plant (353 from it against 341), out of its reach, and it drove on out of the 900 square where the bench's
+    stays in it (B round 205; the old quarter-cell samples had missed the corner). A line is clear when it is on the
+    way's own grid `g` or on the finer mask: only lines the folding shut are let through. The finer mask alone does
+    not do: way cell c's point is its 2 x 2 block's corner sample, so a diagonal step down one axis crosses a third
+    20 cell's sample -- shut, neighbours no longer saw each other (pull looped forever on retail maps) and a 45-degree
+    run of cells bent (s01's #223, 11-18). INFERRED: a line clear on the grid but over a shut 10 cell is driven as
+    before. g None: the mask is the way's own grid (d = 1)."""
+
+    def __init__(self, mask, d=1, g=None):
+        mask = np.ascontiguousarray(mask, bool)
+        self.flat, self.w, self.d = mask.tobytes(), mask.shape[1], d
+        g = None if g is None else np.ascontiguousarray(g, bool)
+        self.gflat, self.gw = (None, None) if g is None else (g.tobytes(), g.shape[1])
+
+    @classmethod
+    def of(cls, grid, fine, blocked):
+        """For a way over `grid` (sim.Ground's GRID cells of one surface) with `fine` its CELL cells unfolded and
+        `blocked` what stands in the way (GRID cells, as the way sees it on both)."""
+        d = fine.shape[0] // grid.shape[0]
+        return cls(fine & ~blocked.repeat(d, 0).repeat(d, 1), d, grid & ~blocked)
+
+    def __call__(self, c0, c1):
+        d = self.d
+        if self.gflat is not None and sees(self.gflat, self.gw, c0, c1):
+            return True
+        return sees(self.flat, self.w, (c0[0] * d, c0[1] * d), (c1[0] * d, c1[1] * d))
+
+
+def open_cell(g, c):
+    """Cell c of grid g if walkable, else the nearest walkable one within 15 cells (None: none) -- a way's ends."""
+    if 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and g[c]:
+        return c
+    jj, ii = np.nonzero(g[max(0, c[0] - 15):c[0] + 16, max(0, c[1] - 15):c[1] + 16])
+    if not len(jj):
+        return None
+    k = int(np.argmin((jj + max(0, c[0] - 15) - c[0]) ** 2 + (ii + max(0, c[1] - 15) - c[1]) ** 2))
+    return (int(jj[k] + max(0, c[0] - 15)), int(ii[k] + max(0, c[1] - 15)))
+
+
 def pull(g, cells):
-    """A way's cells (`cells[0]` the start) over grid g to its legs: the cells after the start where it bends, and
-    its last cell. Worked out in two passes: how far along the way each cell sees (from where the cell before it saw
-    to: on while it sees, back while it does not), then the cheapest chain over legs within that sight, each leg
-    checked. Sight that comes back after a cell it lost is not looked for: on random ways over five maps' grids
-    (11-17) 1 way in 8 came out up to 4 cells longer than the very shortest chain, at a fifth of its cost."""
+    """A way's cells (`cells[0]` the start) over grid g (a Sight, or a mask: its own cells) to its legs: the cells
+    after the start where it bends, and its last cell. Worked out in two passes: how far along the way each cell sees
+    (from where the cell before it saw to: on while it sees, back while it does not), then the cheapest chain over
+    legs within that sight, each leg checked. Sight that comes back after a cell it lost is not looked for: on random
+    ways over five maps' grids (11-17) 1 way in 8 came out up to 4 cells longer than the very shortest chain, at a
+    fifth of its cost."""
     cells = [(int(c[0]), int(c[1])) for c in cells]
     n = len(cells)
     if n < 2:
         return []
-    flat, w = np.ascontiguousarray(g, bool).tobytes(), g.shape[1]
-    if sees(flat, w, cells[0], cells[-1]):
+    see = g if isinstance(g, Sight) else Sight(g)
+    if see(cells[0], cells[-1]):
         return [cells[-1]]
     reach, k = [0] * n, 1                   # reach[i]: the last cell along the way cells[i] sees
     for i in range(n - 1):
         k = max(k, i + 1)
-        if sees(flat, w, cells[i], cells[k]):
-            while k + 1 < n and sees(flat, w, cells[i], cells[k + 1]):
+        if see(cells[i], cells[k]):
+            while k + 1 < n and see(cells[i], cells[k + 1]):
                 k += 1
         else:
             k -= 1                          # the next cell (i + 1) always sees: they are neighbours
-            while k > i + 1 and not sees(flat, w, cells[i], cells[k]):
+            while k > i + 1 and not see(cells[i], cells[k]):
                 k -= 1
         reach[i] = k
     reach[n - 1] = n - 1
@@ -69,7 +115,7 @@ def pull(g, cells):
             # of equal costs the earliest: cells in one line cost the same in sums, and the last of them (rounding)
             # would bend the leg at each (s01's Yari on a diagonal, 11-17)
             i = int(np.flatnonzero(cost <= cost.min() + 1e-6)[0])
-            if i == j - 1 or sees(flat, w, cells[i], cells[j]):
+            if i == j - 1 or see(cells[i], cells[j]):
                 break
             cost[i] = np.inf
         best[j], back[j] = cost[i], i

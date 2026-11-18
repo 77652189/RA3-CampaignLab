@@ -78,3 +78,29 @@ def test_past_the_wall_one_straight_leg_to_the_goal(ground):
     way = [(500.0, 550.0)] + ground.route('ground', (500.0, 550.0), goal)
     past = [p for p in way if p[1] >= 820.0]          # from the anchor on the wall's far edge on
     assert max(_off(p, past[0], goal) for p in _dense(past)) <= 10.0
+
+
+def test_legs_are_checked_on_the_ten_cells():
+    """aiaeson (11-18, B round 205): a 20 cell shut by one of its four 10 cells (a cliff's corner) bent the AI tank's
+    first leg out of its yard; its line then passed 12 further from the player's power plant, out of reach, and it
+    drove on out of the 900 square the bench's stays in. On the 10 cells (the game's own) the corner is open."""
+    import numpy as np
+    import simpath
+    fine = np.ones((12, 12), bool)
+    fine[7, 4] = False                              # one 10 cell of the 20 cell (3, 2)
+    grid = fine.reshape(6, 2, 6, 2).all(axis=(1, 3))
+    cells = [(5, 5), (4, 4), (3, 3), (2, 2), (2, 1), (1, 0)]
+    assert not simpath.clear(grid, (5, 5), (1, 0))  # the folded grid hides the end
+    assert simpath.pull(simpath.Sight(fine, 2, grid), cells) == [(1, 0)]
+
+
+def test_a_diagonal_run_past_a_shut_corner_sample_is_one_leg():
+    """On the 10 cells a 45-degree run down one axis crosses a third 20 cell's corner sample; shut, the run is still
+    one leg, as on the grid (the 10 cells alone: pull looped forever on retail maps, and s01's #223 bent on its
+    diagonal, 11-18). Run with a timeout: the loop does not end."""
+    import numpy as np
+    import simpath
+    fine = np.ones((8, 8), bool)
+    fine[3, 1] = False                              # crossed going from (1, 1) to (2, 0); the 20 cell (1, 0) shut
+    grid = fine.reshape(4, 2, 4, 2).all(axis=(1, 3))
+    assert simpath.pull(simpath.Sight(fine, 2, grid), [(0, 2), (1, 1), (2, 0)]) == [(2, 0)]
