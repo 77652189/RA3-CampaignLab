@@ -16,9 +16,11 @@ Left out: bookkeeping (ids, inheritance, includes). 不涉及: speech / video / 
 States: 推断 -- the name is a quoted string in the AI model (the private engine model's ra3model/ai/*.py at the commit
 inventory_model.rev pins -- not its working tree, so every workspace renders the same page -- or the public
 simai.py, simtech.py for the protocol lottery): a first cut, "read" is not "acts on" -- NOTES corrects it; 未做 -- not there; 已对拍 -- an implemented item
-whose last word a checks/engine_ai*.py a test runs names (generic words excluded; of a probe of several checks, the
-check that names it, inventory.probe_parts; a line saying it was not measured does not count, inventory.measured), or
-the BENCHED register. Named only by a probe no test runs, or a measured (测) line of docs/engine/ai*.md: 推断, 台上量过.
+whose last word a checks/engine_ai*.py names that is matched (inventory.backing: a reading of its readings data the
+conformance runner holds, ADR 0035 5; or, frozen, a legacy test that runs it) (generic words excluded; of a probe of
+several checks, the check that names it, inventory.probe_parts; a line saying it was not measured does not count,
+inventory.measured), or the BENCHED register (legacy: only shrinks, tests/guards/test_bench_tests.py). Named only by
+a probe nothing matches, or a measured (测) line of docs/engine/ai*.md: 推断, 台上量过.
 """
 import collections
 import os
@@ -1016,8 +1018,9 @@ def quoted(word, code):
 
 
 def ai_items(bench_sources, tested):
-    """The AI items; bench_sources = inventory.bench_sources() ([(source, text)]), tested = inventory.tested_probes()
-    (the probes a test runs: only those make an item 已对拍, as inventory.bench_verdict)."""
+    """The AI items; bench_sources = inventory.bench_sources() ([(source, text)]), tested = inventory.backing() (the
+    sources the readings data or a frozen legacy test matches: only those make an item 已对拍, as
+    inventory.bench_verdict; a plain set counts as the legacy route, as inventory.how_matched)."""
     code = ai_code()
     src = [(s, t) for s, t in bench_sources if re.match(r'(checks/engine_ai|docs/engine/ai(?!r))', s)]
     items = []
@@ -1036,7 +1039,8 @@ def ai_items(bench_sources, tested):
             hits = [s for s, t in src if rx.search(t)]
             run = next((s for s in hits if s in tested), None)
             if run:
-                state, why = BENCHED, f'{why}；台上量过、测试对拍：{run}'
+                how = tested.get(run, '测试对拍') if isinstance(tested, dict) else '测试对拍'
+                state, why = BENCHED, f'{why}；台上量过、{how}：{run}'
             elif hits:
                 why = f'{why}；台上量过（{hits[0]}），没有测试跑这个台子'
         if name in NOTES:

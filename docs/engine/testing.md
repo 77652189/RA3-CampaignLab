@@ -23,7 +23,7 @@
 3. 规则写进模块，`tests/modules/` 里加最小世界测试。
 4. 一致性跑器自动核对，不另写测试。
 
-做完这三样才算"已对拍"：读数在数据里，跑器核对相符，有模块测试。
+做完这三样才算"已对拍"：读数在数据里，跑器核对相符，有模块测试。清单（`inventory.py` 的 `conformance_probes`）现在按前两样算；第三样等 `tests/modules/` 有了测试再接进清单。迁移前的老路子（测试点名台子、手写登记表 `BENCHED_TESTS` 等）冻结：只减不增，`tests/guards/test_bench_tests.py` 守着。
 
 ## 耗时
 

@@ -12,8 +12,12 @@ Parts (the engine A line's share of ADR 0026; AI is the B line's):
                     inheritance resolved), counted by templates placed in the retail campaign maps, then by all
   武器效果          every Nugget type of the retail weapons (retailmodules.weapon_census)
 
-States (STATES): 已对拍 -- implemented and a bench comparison test cites it (BENCHED: the register, each entry naming
-the test); 推断 -- the simulator has code for it, no bench comparison yet; 未做 -- nothing; 不涉及 -- presentation / statistics only
+States (STATES): 已对拍 -- implemented and matched against the bench: a reading in the readings data beside the probe
+(checks/engine_X.readings.toml) the conformance runner holds without a mismatch mark (ADR 0035 5, conformance_probes:
+the only way an item becomes 已对拍 from now on), or, frozen, a legacy test that names the probe (tested_probes; the
+guard tests/guards/test_bench_tests.py lets no new test function name a probe) or a register entry (BENCHED_TESTS,
+and the BENCHED entries of NOTES: the same guard lets them only shrink); 推断 -- the simulator has code for it, no
+bench comparison yet; 未做 -- nothing; 不涉及 -- presentation / statistics only
 (a rule below, by name or module group: never a list; a presentation action measured on the bench stays 已对拍).
 How "has code" is told:
   script names    simcoverage.name_state: the engine model's core, a Sim.act / Sim.cond branch (probed with a retail
@@ -53,7 +57,8 @@ STATES = (BENCHED, GUESSED, TODO, NA)
 ACTION, CONDITION, MODULE, NUGGET, AI = '脚本动作', '脚本条件', '物体模块', '武器效果', 'AI'
 PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its own rules in inventory_ai.py
 
-# (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists)
+# (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists).
+# Legacy (ADR 0035 5): only shrinks (tests/guards/test_bench_tests.py); a new one is a reading in the readings data.
 BENCHED_TESTS = {
     (ACTION, 'TEAM_SET_HEALTH'):
         'tests/test_teamhp_bench_c.py::test_teamhp_current_mixed_members_and_controls_match_bench',
@@ -1145,10 +1150,50 @@ def tested_checks(text, probe, variants, missions, keys):
     return found
 
 
+READINGS = CHECKS
+LEGACY, CONFORMS = '测试对拍', '读数数据核对相符'
+
+
+def conformance_probes(folder=None, checks=CHECKS):
+    """The bench sources the readings data backs (ADR 0035 5, the definition of 已对拍 from now on): for every reading
+    of checks/engine_X.readings.toml with no mismatch mark (the conformance runner, tests/conformance/test_readings.py,
+    holds it to the simulator), 'checks/engine_X.py', and for a probe of several checks (probe_parts) also
+    'checks/engine_X.py:<key>' of each of its scenes' check. A reading marked mismatch backs nothing."""
+    import readings
+    folder = READINGS if folder is None else folder
+    keys_of, out = {}, set()
+    for r in readings.load_all(folder):
+        if r['mismatch']:
+            continue
+        probe = r['bench_file']
+        if probe not in keys_of:
+            path = os.path.join(checks, f'{probe}.py')
+            if not os.path.exists(path):
+                raise SystemExit(f'inventory: {probe}.readings.toml sits beside no probe {path}')
+            keys_of[probe] = set(probe_checks(open(path, encoding='utf-8').read())[1])
+        out.add(f'checks/{probe}.py')
+        if len(keys_of[probe]) >= 2:
+            out |= {f'checks/{probe}.py:{c}' for _, c, _ in r['scenes'].values() if c in keys_of[probe]}
+    return out
+
+
+def backing(tests=TESTS, checks=CHECKS, folder=None):
+    """{bench source: how it is matched}: the readings data's (CONFORMS) over the frozen legacy route's (LEGACY, a
+    test file naming the probe: tested_probes)."""
+    out = dict.fromkeys(tested_probes(tests, checks), LEGACY)
+    out.update(dict.fromkeys(conformance_probes(folder, checks), CONFORMS))
+    return out
+
+
+def how_matched(tested, run):
+    """What backs `run` in `tested` (a set of sources: the legacy route; or backing()'s dict)."""
+    return tested.get(run, LEGACY) if isinstance(tested, dict) else LEGACY
+
+
 def bench_verdict(rx, src, tested):
-    """(tested, measured): the first bench source naming `rx` that a test runs (tested_probes), and the first naming it
-    at all. Only the first makes an item 已对拍 (ADR 0026: matched against the bench by a test); a reading on the bench
-    no test replays (a probe's docstring, a docs/engine line) leaves it 推断, noted 台上量过."""
+    """(tested, measured): the first bench source naming `rx` that is matched (backing: the readings data, or the
+    frozen legacy tests), and the first naming it at all. Only the first makes an item 已对拍; a reading on the bench
+    nothing matches (a probe's docstring, a docs/engine line) leaves it 推断, noted 台上量过."""
     hits = [s for s, text in src if rx.search(text)]
     return next((s for s in hits if s in tested), None), (hits[0] if hits else None)
 
@@ -1157,7 +1202,7 @@ def benched(items, src=None, tested=None):
     """An implemented item (推断) whose name a bench probe a test runs names becomes 已对拍, citing that probe; one only
     measured on the bench (no test runs that probe, or only a docs/engine line) stays 推断 with 台上量过 noted."""
     src = bench_sources() if src is None else src
-    tested = tested_probes() if tested is None else tested
+    tested = backing() if tested is None else tested
     for it in items:
         if it['state'] not in (GUESSED, TODO):
             continue
@@ -1165,7 +1210,7 @@ def benched(items, src=None, tested=None):
         rx = re.compile(r'(?<![A-Za-z0-9_])' + re.escape(name) + r'(?![A-Za-z0-9_])')
         run, hit = bench_verdict(rx, src, tested)
         if run and it['state'] == GUESSED:
-            it['state'], it['why'] = BENCHED, f'{it["why"]}；台上量过、测试对拍：{run}'
+            it['state'], it['why'] = BENCHED, f'{it["why"]}；台上量过、{how_matched(tested, run)}：{run}'
         elif hit and it['state'] == GUESSED:
             it['why'] = f'{it["why"]}；台上量过（{hit}），没有测试跑这个台子'
         elif hit and it['part'] in (MODULE, NUGGET):       # measured, but the name rule finds no code: look (NOTES)
@@ -1202,7 +1247,7 @@ def collect(parts=PARTS):
     items = apply_registers(items)
     if AI in parts:                                 # engine B: its own state rules and registers (inventory_ai.py)
         import inventory_ai
-        items += inventory_ai.ai_items(bench_sources(), tested_probes())
+        items += inventory_ai.ai_items(bench_sources(), backing())
     return mark_levels(items)
 
 
