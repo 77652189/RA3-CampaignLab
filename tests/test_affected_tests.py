@@ -122,8 +122,51 @@ def test_pick_falls_back_by_name_and_takes_changed_tests(tmp_path):
 
 def test_guards_always_present():
     g = at.guards()
-    assert {'tests/test_docs.py', 'tests/test_architecture.py', 'tests/test_no_program_addresses.py'} <= g
-    assert any(x.startswith('tests/test_inventory') for x in g)
+    assert 'tests/guards/test_layers.py' in g
+    assert any(x.rsplit('/', 1)[1].startswith('test_inventory') for x in g)
+
+
+def _tree(root, files):
+    for f in files:
+        p = root / f
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text('', encoding='utf-8')
+    return str(root)
+
+
+def test_the_guards_are_the_guard_layer_and_the_inventory_tests_wherever_they_sit(tmp_path):
+    root = _tree(tmp_path, ['tests/guards/test_g.py', 'tests/tools/test_inventory_x.py', 'tests/test_inventory.py',
+                            'tests/test_plain.py', 'tests/modules/test_m.py'])
+    assert at.guards(root) == {'tests/guards/test_g.py', 'tests/tools/test_inventory_x.py', 'tests/test_inventory.py'}
+
+
+def test_a_test_recorded_before_a_move_is_found_by_its_name(tmp_path):
+    root = _tree(tmp_path, ['tests/guards/test_g.py', 'tests/test_top.py'])
+    assert at.current_path('tests/test_g.py', root) == 'tests/guards/test_g.py'       # moved into a layer
+    assert at.current_path('tests/test_top.py', root) == 'tests/test_top.py'          # still there
+    assert at.current_path('tests/test_gone.py', root) == 'tests/test_gone.py'        # deleted: left as named
+    assert at.current_path('experimental/cnv/x.py', root) == 'experimental/cnv/x.py'  # not a test file
+
+
+def test_the_map_and_the_replay_list_follow_a_moved_test(tmp_path):
+    root = _tree(tmp_path, ['tests/content/test_a.py', 'tests/test_b.py'])
+    where = lambda n: at.current_path(n, root)                                       # noqa: E731
+    make_db(tmp_path / 'm.db', {'tests/test_a.py::t|run': {'C:\\r\\experimental\\cnv\\f.py': [1]},
+                                'tests/test_b.py::t|run': {'C:\\r\\experimental\\cnv\\f.py': [1]}})
+    assert at.CovMap(str(tmp_path / 'm.db'), where).test_files() == {'tests/content/test_a.py', 'tests/test_b.py'}
+    (tmp_path / 'r.txt').write_text('[game]\ntest_a.py\ntest_b.py\n', encoding='utf-8')
+    assert at.replay_files(str(tmp_path / 'r.txt'), where) == {'tests/content/test_a.py': 'game',
+                                                               'tests/test_b.py': 'game'}
+
+
+def test_two_test_files_of_one_name_are_an_error(tmp_path):
+    root = _tree(tmp_path, ['tests/guards/test_same.py', 'tests/tools/test_same.py'])
+    try:
+        at.test_index(root)
+    except ValueError as e:
+        assert 'test_same.py' in str(e)
+    else:
+        raise AssertionError('a name in two places passed')
 
 
 def test_workers_follow_free_memory():

@@ -35,7 +35,8 @@ def names_in(path):
 def test_every_listed_replay_is_a_test_file_that_exists():
     names = names_in(LIST)
     assert names, 'the replay list is empty'
-    bad = [n for n in names if not re.match(r'test_\w+\.py$', n) or not os.path.isfile(os.path.join(HERE, n))]
+    bad = [n for n in names if not re.match(r'test_\w+\.py$', n)
+           or not os.path.isfile(os.path.join(os.path.dirname(HERE), at.current_path('tests/' + n)))]   # any layer
     assert not bad, 'listed in tests/replay_tests.txt but no such test file (renamed or deleted?): %s' % bad
 
 
@@ -51,7 +52,7 @@ def test_no_replay_is_listed_twice_and_every_group_is_known():
 def test_the_reader_takes_groups_and_skips_comments(tmp_path):
     p = tmp_path / 'r.txt'
     p.write_text('# head\n\n[game]  # whole games\ntest_a.py\n[bench]\ntest_b.py  # why\n', encoding='utf-8')
-    assert at.replay_files(str(p)) == {'tests/test_a.py': 'game', 'tests/test_b.py': 'bench'}
+    assert at.replay_files(str(p), lambda n: n) == {'tests/test_a.py': 'game', 'tests/test_b.py': 'bench'}
     assert at.replay_files(str(tmp_path / 'none.txt')) == {}
 
 

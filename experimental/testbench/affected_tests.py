@@ -28,7 +28,9 @@ How a changed line is matched (always "more rather than fewer"):
   * a file that is not in the map (XML, data, new files, tests' helpers) falls back to `git grep -l` over tests/ by
     module or file name, and the output says so;
   * a test file with no coverage record at all (the map is partial) is always picked: nothing says what it touches;
-  * the guard tests (docs, architecture, no program addresses, inventory) are always added;
+  * the guard layer (every test file under tests/guards/) and the inventory tests are always added;
+  * the map and the durations name a test by the path it had when they were recorded: a test file moved since (into
+    a layer folder, ADR 0035) is found by its file name, which is unique under tests/ (tests/guards/test_layers.py);
   * keep --timeout at 3000 or more: on Windows pytest-timeout's default method ends the WHOLE xdist worker when one test
     passes the limit ("node down: Not properly terminated"), and single simulator tests run 15-50 min under load;
   * --cmd prints a full pytest command with -n min(8, free GB / 1.5): a simulator-test worker needs about 1.5 GB.
@@ -82,8 +84,9 @@ MAPDIR = os.path.join(WORK, 'testmap')
 COVDB = os.path.join(MAPDIR, 'coverage.db')
 META = os.path.join(MAPDIR, 'meta.json')
 DURATIONS = os.path.join(MAPDIR, 'durations.json')
-GUARDS = ['tests/test_docs.py', 'tests/test_architecture.py', 'tests/test_no_program_addresses.py']
-GUARD_GLOBS = ['tests/test_inventory*.py']
+LAYERS = ('modules', 'conformance', 'golden', 'guards', 'content', 'tools')   # tests/<layer>/ (docs/engine/testing.md)
+GUARD_LAYER = 'tests/guards'           # every test file in it is always picked
+GUARD_NAMES = re.compile(r'test_inventory.*\.py$')   # and these, wherever they sit under tests/
 ENGINE_KEY = 'ENGINE:'          # a key prefix: files of the engine model repository
 REPLAYS = os.path.join(ROOT, 'tests', 'replay_tests.txt')
 MAX_WORKERS = 8
@@ -143,7 +146,8 @@ def path_key(path):
 class CovMap:
     """Read-only view of coverage.db: which test file ran which line of which source file."""
 
-    def __init__(self, dbpath):
+    def __init__(self, dbpath, where=None):
+        where = where or current_path          # a test recorded at an old path -> where it is now
         self.db = sqlite3.connect('file:%s?mode=ro' % dbpath.replace('\\', '/'), uri=True)
         self.files = {}
         for fid, path in self.db.execute('select id, path from file'):
@@ -154,7 +158,7 @@ class CovMap:
         for cid, ctx in self.db.execute('select id, context from context'):
             name = ctx.split('|')[0].split('::')[0].replace('\\', '/')
             if name:                                # '' is import time: no test owns it
-                self.ctx_file[cid] = name
+                self.ctx_file[cid] = where(name)
         self._cache = {}
 
     def has(self, key):
@@ -702,8 +706,10 @@ def merge_nodes(picked):
     return {x for x in picked if '::' not in x or file_of(x) not in picked}
 
 
-def replay_files(path=REPLAYS):
-    """{'tests/test_x.py': kind} from the replay list: one file name per line, '[kind]' starts a group, '#' comments."""
+def replay_files(path=REPLAYS, where=None):
+    """{'tests/<layer>/test_x.py': kind} from the replay list: one file name per line (found wherever it sits under
+    tests/; a name found nowhere stays 'tests/<name>'), '[kind]' starts a group, '#' comments."""
+    where = where or current_path
     out, kind = {}, ''
     try:
         with open(path, encoding='utf-8') as fh:
@@ -715,7 +721,7 @@ def replay_files(path=REPLAYS):
         if line.startswith('[') and line.endswith(']'):
             kind = line[1:-1].strip()
         elif line:
-            out['tests/' + line] = kind
+            out[where('tests/' + line)] = kind
     return out
 
 
@@ -833,19 +839,46 @@ def all_test_files(root=None):
     return sorted(out)
 
 
+def test_index(root=None):
+    """{file name: 'tests/.../test_x.py'} of every test file under tests/. A name in two places is an error: pytest
+    imports test files by name (no __init__.py), and the readers here find a moved file by it."""
+    out = {}
+    for f in all_test_files(root):
+        name = f.rsplit('/', 1)[1]
+        if name in out:
+            raise ValueError('two test files named %s: %s and %s' % (name, out[name], f))
+        out[name] = f
+    return out
+
+
+_INDEX = {}
+
+
+def current_path(name, root=None):
+    """A test file as a record names it ('tests/test_x.py', maybe from before a move) -> where it is now: itself if it
+    exists, else the test file of that name anywhere under tests/, else the name unchanged."""
+    root = root or ROOT
+    if not is_test_file(name) or os.path.exists(os.path.join(root, name)):
+        return name
+    if root not in _INDEX:
+        _INDEX[root] = test_index(root)
+    return _INDEX[root].get(name.rsplit('/', 1)[-1], name)
+
+
 def unrecorded(cov):
     """Test files with no coverage record at all (the map is partial, or the test runs no measured code):
     nothing says what they touch, so they are always picked."""
     return sorted(set(all_test_files()) - cov.test_files())
 
 
-def guards():
-    out = set(GUARDS)
-    d = os.path.join(ROOT, 'tests')
-    for f in os.listdir(d):
-        if re.match(r'test_inventory.*\.py$', f):
-            out.add('tests/' + f)
-    return {g for g in out if os.path.exists(os.path.join(ROOT, g))}
+def guards(root=None):
+    """Always picked: every test file of the guard layer, and the inventory tests. An empty guard layer is an error,
+    not an empty pick (a moved or renamed folder must not turn the guards off without a word)."""
+    files = all_test_files(root)
+    layer = [f for f in files if f.startswith(GUARD_LAYER + '/')]
+    if not layer:
+        raise RuntimeError('no test files under %s: the guards would silently not run' % GUARD_LAYER)
+    return set(layer) | {f for f in files if GUARD_NAMES.match(f.rsplit('/', 1)[1])}
 
 
 def estimate(files, durations, n=MAX_WORKERS, tests_in=None):
@@ -1011,7 +1044,7 @@ def main(argv=None):
         for t in out:
             print('  %s <- %s' % (t, '; '.join(why.get(t, []))), file=sys.stderr)
     if args.stats:
-        durations = load_json(DURATIONS)
+        durations = {current_path(k): v for k, v in load_json(DURATIONS).items()}
         serial, par, unknown = estimate(out, durations, n, tests_in)
         total = len(durations) or None
         nodes = sum(1 for t in out if '::' in t)
