@@ -1,0 +1,14 @@
+# Bench readings of checks/engine_aicreate.py (format: experimental/cnv/readings.py).
+
+[[reading]]
+id = "create_units_slot_replays_observed_counters"
+scene = {build = "aicr1", check = "a", until = 71}
+each = [{build = "aicr1", home_tanks = 2, home_infantry = 2, minimum = 1}, {build = "aicr3", home_tanks = 0, home_infantry = 4, minimum = 3}]
+bench = "Retail s70 (owned Guardians / home Guardians / home Peacekeepers): min 1 reads 3/2/2; min 3 reads 3/0/4. The first lone Guardian leaves in min 1, while the first two remain home until full production in min 3."
+proves = "simai CreateUnits slot MinUnits: reproduce the different dispatch patterns with the same opener"
+let = {at = "lambda second: next(r for t, r in zip(times, rows) if second <= t < second + 1)", partial = "[r for r in rows if r['坦克总数'] in (1, 2)]"}
+expect = [
+    "tuple(at(70)[k] for k in ('坦克总数', '坦克在家', '步兵在家')) == (3, home_tanks, home_infantry)",
+    "any(r['坦克总数'] == 1 and r['坦克在家'] == 0 for r in rows) if minimum == 1 else bool(partial) and all(r['坦克总数'] == r['坦克在家'] for r in partial)",
+]
+mismatch = "Model s70 production is four Guardians versus retail three, with one extra at home in both builds. The production consumer remains a separate gap."

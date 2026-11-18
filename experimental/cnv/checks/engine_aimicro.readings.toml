@@ -43,3 +43,25 @@ bench = "E102 D81 observer pair: first-charge script-clock latch at frame 317."
 proves = "simai micro UpdateTime: the first charge latches the measured frame for this update period"
 expect = "{r['首冲帧'] for r in rows if r['首冲帧']} == {317}"
 mismatch = "E102 D81 observers: retail first-charge latch fast 371 / slow 317, simulator fast 264 / slow 309. Low-health eligibility and preceding state updates remain unresolved."
+
+[[reading]]
+id = "micro_update_time_charge_and_survival"
+scene = {build = "aimicupfast", check = "a", until = 56}
+each = [{build = "aimicupfast"}, {build = "aimicupslow"}]
+bench = "Both UpdateTime lanes latch a first charge with two alive; the probe checks production reached at least two."
+proves = "simai micro UpdateTime: both periods still expose a first charge and the two live units"
+let = {charged = "[r for r in rows if r['首冲帧'] > 0]"}
+expect = [
+    "charged",
+    "{r['首活'] for r in charged} == {2}",
+    "max(r['造出'] for r in rows) >= 2",
+]
+
+[[reading]]
+id = "micro_update_time_first_clock_replays_bench"
+scene = {build = "aimicupfast", check = "a", until = 56}
+each = [{build = "aimicupfast", frame = 363}, {build = "aimicupslow", frame = 317}]
+bench = "UpdateTime-only pair: the script latches the first charge at frame 363 (fast) / 317 (slow)."
+proves = "simai micro UpdateTime: reproduce the first charge clock for each period"
+expect = "{r['首冲帧'] for r in rows if r['首冲帧']} == {frame}"
+mismatch = "Retail first-charge latch fast 363 / slow 317, model 271 / 309. Both model fires use the low-health branch outside charge distance; health eligibility remains unresolved."

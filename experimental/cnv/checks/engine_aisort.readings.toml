@@ -1,0 +1,15 @@
+# Bench readings of checks/engine_aisort.py (format: experimental/cnv/readings.py).
+
+[[reading]]
+id = "sort_by_distance_replays_named_departure"
+scene = {build = "aisort0", check = "a", until = 36}
+each = [{build = "aisort0", far = 0, near = 1, identity = 1}, {build = "aisort1", far = 1, near = 0, identity = 2}]
+bench = "Both start in place; off sends far first (frame 177), on sends near first (frame 178). The other candidate stays at its initial position."
+proves = "simai recruitment SortByDistance: changing the switch changes which named candidate departs"
+let = {at = "lambda second: next(r for t, r in zip(times, rows) if second <= t < second + 1)", before = "[r for t, r in zip(times, rows) if 1 <= t < 9]"}
+expect = [
+    "before",
+    "all((r['远在原位'], r['近在原位'], r['首离身份']) == (1, 1, 0) for r in before)",
+    "tuple(at(35)[k] for k in ('远在原位', '近在原位', '首离身份')) == (far, near, identity)",
+    "at(35)['首离帧'] > 0",
+]

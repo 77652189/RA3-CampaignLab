@@ -1,0 +1,35 @@
+# Bench readings of checks/engine_aialphaclose.py (format: experimental/cnv/readings.py).
+
+[[reading]]
+id = "alpha_close_arrives_with_target_at_seventy_percent"
+scene = {build = "aialcloselo", check = "a", until = 66}
+each = [{build = "aialcloselo"}, {build = "aialclosehi"}]
+bench = "Delayed-guard controls hold the target at HP 70, with all four infantry at the target during s17-29."
+proves = "simai AlphaStrike delayed-guard control: all four live infantry arrive while target health is held at 70 percent"
+let = {arrival = "[r for t, r in zip(times, rows) if 17 <= t <= 29]"}
+expect = "any(r['到远厂'] == 4 and r['步兵数'] == 4 and r['目标血量'] == 70 for r in arrival)"
+
+[[reading]]
+id = "alpha_close_replays_measured_outcome"
+scene = {build = "aialcloselo", check = "a", until = 66}
+each = [{build = "aialcloselo", hp = 59, home = 4, live = 4}, {build = "aialclosehi", hp = 34, home = 0, live = 0}]
+bench = "Stable retail s39-55 plateaus (target HP / infantry home / live): low 59/4/4, high 34/0/0."
+proves = "simai AlphaStrike: reproduce the different retreat and survival outcomes of the low and high thresholds"
+let = {plateau = "[r for t, r in zip(times, rows) if 39 <= t <= 55]"}
+expect = [
+    "plateau",
+    "{tuple(r[k] for k in ('目标血量', '步兵在家', '步兵数')) for r in plateau} == {(hp, home, live)}",
+]
+mismatch = "Retail low HP59/home4/live4 and high HP34/home0/live0; E90 comparison low HP64/home3/live3 and high HP37/home0/live0. Exact firing and retreat chronology remain unresolved."
+
+[[reading]]
+id = "alpha_close_high_replays_measured_no_survivors"
+scene = {build = "aialclosehi", check = "a", until = 66}
+each = [{build = "aialclosehi"}]
+bench = "High-threshold retail s39-55 plateau: zero infantry home, zero alive."
+proves = "simai AlphaStrike: reproduce the high-threshold lane's infantry losses"
+let = {plateau = "[r for t, r in zip(times, rows) if 39 <= t <= 55]"}
+expect = [
+    "plateau",
+    "{(r['步兵在家'], r['步兵数']) for r in plateau} == {(0, 0)}",
+]

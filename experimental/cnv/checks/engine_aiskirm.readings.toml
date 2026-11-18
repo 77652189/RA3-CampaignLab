@@ -327,3 +327,33 @@ expect = [
     "all(r['维和总数'] == 5 and r['标枪总数'] == 0 and r['警犬总数'] == 9 and r['工程师总数'] == 1 for r in samples)",
 ]
 mismatch = "B round 143: engine builds dogs 7-9 at s146-s152 over cap 6 and an engineer at s144. Model holds at 6 dogs and draws a Javelin. Its teams do not board a transport."
+
+[[reading]]
+id = "release_to_priority_named_transfer_skips_the_pool"
+scene = {build = "aiskirm", check = "m", until = 170}
+bench = "aiskirm:m retail 11-11: defense 8 / Cleanup 99 at s125-128, defense 0 / Cleanup 8 at s129, pool 0 with per-frame peak 1 at transfer."
+proves = "simai team recruitment: RELEASE_TO_PRIORITY transfers the whole defense team to Cleanup directly"
+let = {transfer = "first('清扫', lambda v: v not in (0, 99))", before = "rows[transfer - 1] if transfer is not None else None", after = "rows[transfer] if transfer is not None else None"}
+expect = [
+    "transfer is not None",
+    "before['清扫'] == 99 and before['防御型'] >= 8",
+    "all(r['防御型'] == before['防御型'] for r in rows[transfer - 4:transfer])",
+    "before['防御型'] - (0 if after['防御型'] == 99 else after['防御型']) == after['清扫']",
+    "before['池兵'] == after['池兵'] == 0 and after['池峰'] == 1",
+    "abs(times[transfer] - 129) <= 3",
+]
+
+[[reading]]
+id = "release_to_priority_transfers_defense_without_a_pool_round_trip"
+scene = {build = "aiskirm", check = "m", until = 170}
+bench = "aiskirm:m retail 11-11: defense 8 -> 0, Cleanup 99 -> 8 at s129, pool peak 1 then and 2 at s134."
+proves = "simai team recruitment: reproduce the exact defense, Cleanup and pool-peak counts around the direct transfer"
+let = {transfer = "first('清扫', lambda v: v not in (0, 99))", before = "rows[transfer - 1] if transfer is not None else None", after = "rows[transfer] if transfer is not None else None"}
+expect = [
+    "transfer is not None",
+    "(before['防御型'], before['清扫']) == (8, 99)",
+    "(after['防御型'], after['清扫']) == (0, 8)",
+    "after['池峰'] == 1",
+    "any(r['池峰'] == 2 for r in rows[transfer:])",
+]
+mismatch = "A round 202 (model fca219e): model defense 9 -> 0 and Cleanup 99 -> 9 at s131, pool 0 and peak 1 through s170; retail defense 8 -> 0 and Cleanup 99 -> 8 at s129, pool peak 2 at s134."

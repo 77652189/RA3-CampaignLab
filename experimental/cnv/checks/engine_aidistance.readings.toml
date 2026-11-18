@@ -1,0 +1,15 @@
+# Bench readings of checks/engine_aidistance.py (format: experimental/cnv/readings.py).
+
+[[reading]]
+id = "tactic_distance_replays_displaced_guardian"
+scene = {build = "aidist250", check = "a", until = 67}
+each = [{build = "aidist250", home = 1}, {build = "aidist2000", home = 0}]
+bench = "Retail s20 inside 900, both later displaced and alive. Small Distance returns inside 900 at s33 and 300 at s41; large leaves 900 again at s56. At s65 the small lane is inside both squares and the large lane outside both."
+proves = "simai StaticDefense Tactic.Distance: reproduce the displaced Guardian's location endpoints"
+let = {at = "lambda second: next(r for t, r in zip(times, rows) if second <= t < second + 1)"}
+expect = [
+    "at(20)['圈900'] == 1",
+    "at(65)['曾出圈'] == 1",
+    "at(65)['坦克总数'] == 1",
+    "(at(65)['圈300'], at(65)['圈900']) == (home, home)",
+]

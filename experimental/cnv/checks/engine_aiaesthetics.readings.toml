@@ -1,0 +1,34 @@
+# Bench readings of checks/engine_aiaesthetics.py (format: experimental/cnv/readings.py).
+
+[[reading]]
+id = "tactic_aesthetics_displacement_and_survival"
+scene = {build = "aiaeson", check = "a", until = 67}
+each = [{build = "aiaeson"}, {build = "aiaesoff"}]
+bench = "Both retail switch settings latch successful displacement and have one live tank at s65."
+proves = "simai StaticDefense UseAestheticsManager: both lanes retain the displaced Guardian"
+let = {at = "lambda second: next(r for t, r in zip(times, rows) if second <= t < second + 1)"}
+expect = "(at(65)['传送出圈'], at(65)['坦克总数']) == (1, 1)"
+
+[[reading]]
+id = "tactic_aesthetics_replays_named_location_transitions"
+scene = {build = "aiaeson", check = "a", until = 76}
+each = [{build = "aiaeson", enabled = true}, {build = "aiaesoff", enabled = false}]
+bench = "Retail occupancy (300, 900): enabled leaves 300 before displacement, then 00 -> 01 -> 00; disabled stays in both before displacement, then 00 -> 01 -> 11."
+proves = "simai StaticDefense UseAestheticsManager: reproduce pre-displacement occupancy and ordered post-displacement transitions"
+let = {pre_positions = "{(r['圈300'], r['圈900']) for r in rows if not r['传送出圈']}", positions = "[(r['圈300'], r['圈900']) for r in rows if r['传送出圈']]", transitions = "[p for i, p in enumerate(positions) if i == 0 or p != positions[i - 1]]"}
+expect = [
+    "pre_positions == ({(1, 1), (0, 1)} if enabled else {(1, 1)})",
+    "transitions == ([(0, 0), (0, 1), (0, 0)] if enabled else [(0, 0), (0, 1), (1, 1)])",
+]
+
+[[reading]]
+id = "tactic_aesthetics_switch_after_displacement"
+scene = {build = "aiaeson", check = "a", until = 76}
+each = [{build = "aiaeson", enabled = true}, {build = "aiaesoff", enabled = false}]
+bench = "D round 145 retail: after displacement enabled returns to 900 then leaves it (s65 0/0); disabled returns inside both squares (s65 1/1). Both retain one tank."
+proves = "simai StaticDefense UseAestheticsManager: reproduce the two post-displacement return paths"
+let = {positions = "[(r['圈300'], r['圈900']) for r in rows if r['传送出圈']]", transitions = "[p for i, p in enumerate(positions) if i == 0 or p != positions[i - 1]]", at = "lambda second: next(r for t, r in zip(times, rows) if second <= t < second + 1)", home = "int(not enabled)"}
+expect = [
+    "transitions == ([(0, 0), (0, 1), (0, 0)] if enabled else [(0, 0), (0, 1), (1, 1)])",
+    "(at(65)['圈300'], at(65)['圈900'], at(65)['坦克总数']) == (home, home, 1)",
+]
