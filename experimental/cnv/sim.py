@@ -165,9 +165,9 @@ ALIGN = {**kernel_factory.align(), **simheal.ALIGN,     # the kernel modules' ow
     'inverted': 'a NOT condition is the plain negation: the compiler reads it off a flag two every-frame scripts '
                 'keep (parts.unnot) -- the game ignores the inverted bit of a .map\'s own scripts (bench 2026-10-29, '
                 'probe align; retail\'s scripts are compiled into the stream)',
-    'frame rate': 'a tick is DT 0.5 s; RA3 runs about 15 script frames a mission second (bench 2026-10-28, probe '
-                  'align; Generals 30; a timer runs out ceil(seconds x rate) frames on: 源码 3) -- the timeline is '
-                  'good to about half a second',
+    'frame rate': 'the scripts run in the public executor (engine/script/executor.py, script-semantics.md): 15 frames a '
+                  'second (bench 10-28 probe align), a timer ceil(seconds x 15) frames counted down before the scripts, '
+                  'counters and timers in one table (源码 3); units move and fight once a DT tick, on its first frame',
     'engine model': 'the scripts run in the engine line\'s script engine model (ADR 0019 layer 1: RA3-EngineModel '
                     'ra3model/scripts.py, labpaths.ENGINE_MODEL): 15 frames a mission second, a timer ceil(seconds x '
                     '15) frames counted down before the scripts, counters and timers in one table, ENABLE_SCRIPT arms '
@@ -3212,7 +3212,7 @@ class Sim:
             (self.tech_read and any(b.grows() for b in self.books.values()))
 
     def run(self, until=UNTIL):
-        self.used |= {'engine model' if self.eng else 'frame rate', 'difficulty side'}
+        self.used |= {'engine model' if self.model_scripts else 'frame rate', 'difficulty side'}
         while self.t <= until and self.ending is None:
             self.step()
             if abs(self.t - round(self.t)) < 1e-6:

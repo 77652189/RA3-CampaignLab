@@ -290,7 +290,7 @@ def play(level, personality, seed, difficulty="normal", until=None, style=None):
     rng = random.Random(f'{level}/{personality}/{seed}')
     me = players.make(personality, rng, brief, style)
     me.start(s, out)
-    s.used |= {'engine model' if s.eng else 'frame rate', 'difficulty side'}
+    s.used |= {'engine model' if s.model_scripts else 'frame rate', 'difficulty side'}
     next_at = 0.0
     while s.t <= until and s.ending is None:
         if s.t >= next_at and view.control():
