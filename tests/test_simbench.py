@@ -1610,7 +1610,9 @@ def test_acts_v_as_the_bench():
     ~1 behind): 状 5 20 -- UNIT_SET_MODELCONDITION n is USER_n, 0 clears; 旗 20 -- PLAYER_ALLOW_AI_AUTOACQUIRE: the
     player's tank fires on the enemy plant (the hand-over never happened on the bench: no 1 / 2 / 8); 位 1 2 102 202
     200 220 -- TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE to the nearer barracks, after its delete to the other;
-    TEAM_GUARD_AREA_FROM_POSITION: the tanks at the waypoint, never the area's middle; 守 2 12."""
+    TEAM_GUARD_AREA_FROM_POSITION: the tanks at the waypoint, never the area's middle; 守 2 12. 201 / 210 = one of the
+    two men a second ahead of the other leaving nb / reaching fb: the bench's two did each within one second; the
+    simulator's stand 41 apart at nb since adfe8a0e's straighter ways (11-18), so fb a second apart (not modelled)."""
     run = _sim_run('engine_acts_v', 'acts', 40.0)
 
     def changes(col):
@@ -1621,7 +1623,8 @@ def test_acts_v_as_the_bench():
         return out
     assert changes(0)[-2:] == [5, 20]
     assert changes(1)[:2] == [16, 20] and set(changes(1)) <= {16, 20}
-    assert changes(2) == [0, 1, 2, 102, 202, 201, 200, 220] or changes(2) == [0, 1, 2, 102, 202, 200, 220]
+    assert [v for v in changes(2) if v not in (201, 210)] == [0, 1, 2, 102, 202, 200, 220], changes(2)
+    assert sum(v[2] in (201, 210) for _, v in run.series[1:]) <= 2, changes(2)     # a second each at most
     assert changes(3)[-2:] == [2, 12] and run.series[-1][1][3] == 12
 
 

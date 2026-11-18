@@ -54,17 +54,40 @@ class Sight:
         self.gflat, self.gw = (None, None) if g is None else (g.tobytes(), g.shape[1])
 
     @classmethod
-    def of(cls, grid, fine, blocked):
-        """For a way over `grid` (sim.Ground's GRID cells of one surface) with `fine` its CELL cells unfolded and
-        `blocked` what stands in the way (GRID cells, as the way sees it on both)."""
+    def of(cls, grid, fine, blocked, fblocked):
+        """For a way over `grid` (sim.Ground's GRID cells of one surface) with `fine` its CELL cells unfolded;
+        `blocked` / `fblocked` what stands in the way on each, every cell's own point inside a shape (`covered`).
+        Not the GRID mask repeated onto the CELL cells: a GRID cell's 2 x 2 block lies north-east of its point, so a
+        building's CELL footprint came out a cell further north and east than south and west -- engine_seal attack
+        (11-18): the peacekeeper's two ways round the row's ends, mirror images, came out 5 apart, the south one the
+        shorter, and fire_spot sent it round the south end; the bench's goes round the north (a tie goes north)."""
         d = fine.shape[0] // grid.shape[0]
-        return cls(fine & ~blocked.repeat(d, 0).repeat(d, 1), d, grid & ~blocked)
+        return cls(fine & ~fblocked, d, grid & ~blocked)
 
     def __call__(self, c0, c1):
         d = self.d
         if self.gflat is not None and sees(self.gflat, self.gw, c0, c1):
             return True
         return sees(self.flat, self.w, (c0[0] * d, c0[1] * d), (c1[0] * d, c1[1] * d))
+
+
+def covered(shapes, x, y):
+    """Cells whose point (x, y: world coordinates, x along axis 1 and y along axis 0, both rising) is inside any of
+    `shapes`: (x, y, angle, length, thick) a bar, or (x, y, r) a round building (sim.Ground.set_blocks). Each shape
+    is tested on the cells of its own bounding box only."""
+    m = np.zeros(x.shape, bool)
+    xs, ys = x[0], y[:, 0]
+    for s in shapes:
+        r = s[2] if len(s) == 3 else math.hypot(s[3], s[4]) / 2
+        j0, j1 = np.searchsorted(ys, s[1] - r), np.searchsorted(ys, s[1] + r, 'right')
+        i0, i1 = np.searchsorted(xs, s[0] - r), np.searchsorted(xs, s[0] + r, 'right')
+        bx, by = x[j0:j1, i0:i1] - s[0], y[j0:j1, i0:i1] - s[1]
+        if len(s) == 3:
+            m[j0:j1, i0:i1] |= bx ** 2 + by ** 2 <= r ** 2
+        else:
+            u, v = bx * math.cos(s[2]) + by * math.sin(s[2]), -bx * math.sin(s[2]) + by * math.cos(s[2])
+            m[j0:j1, i0:i1] |= (abs(u) <= s[3] / 2) & (abs(v) <= s[4] / 2)
+    return m
 
 
 def open_cell(g, c):

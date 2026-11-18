@@ -625,7 +625,7 @@ class Ground:
         self.deck = np.zeros_like(self.blocked)
         objs = list(getattr(mapmod, 'OBJECTS', []))
         jj, ii = np.mgrid[0:self.blocked.shape[0], 0:self.blocked.shape[1]]
-        self.xy = self.world((jj, ii))
+        self.xy, self.shapes = self.world((jj, ii)), []
         for o, q in zip(objs, objs[1:]):
             if getattr(o, 'flags', None) == platmap.BRIDGE_START and getattr(q, 'flags', None) == platmap.BRIDGE_END:
                 self.deck |= self.strip((o.x, o.y), (q.x, q.y), platmap.BRIDGE_DECK, 0.0)
@@ -647,22 +647,12 @@ class Ground:
         m = self._mask(shapes)
         self.placed = m if place is None else self._mask(place)
         if (m != self.blocked).any():
-            self.blocked, self.version, self.cache = m, self.version + 1, {}
+            self.blocked, self.version, self.cache, self.shapes = m, self.version + 1, {}, list(shapes)
             return True
         return False
 
     def _mask(self, shapes):
-        x, y = self.xy
-        m = np.zeros_like(self.blocked)
-        for s in shapes:
-            if len(s) == 3:
-                m |= (x - s[0]) ** 2 + (y - s[1]) ** 2 <= s[2] ** 2
-            else:
-                cx, cy, a, length, thick = s
-                u = (x - cx) * math.cos(a) + (y - cy) * math.sin(a)
-                v = -(x - cx) * math.sin(a) + (y - cy) * math.cos(a)
-                m |= (abs(u) <= length / 2) & (abs(v) <= thick / 2)
-        return m & ~self.deck
+        return simpath.covered(shapes, *self.xy) & ~self.deck
 
     def open(self, surface, x, y, place=False):
         """A world point a unit of that surface may stand on now (its routing cell walkable and not blocked); place:
@@ -783,9 +773,15 @@ class Ground:
         return pts + [q]
 
     def sight(self, surface):
-        """simpath.Sight.of `surface`'s grid and CELL cells now; cached until set_blocks."""
+        """simpath.Sight.of `surface`'s grid and CELL cells now (the shapes on each cell's own point; a deck's CELL
+        cells its GRID cell's, INFERRED); cached until set_blocks."""
         if ('sight', surface) not in self.cache:
-            self.cache['sight', surface] = simpath.Sight.of(self.grids[surface], self.fine[surface], self.blocked)
+            import platmap
+            fine, d = self.fine[surface], self.d
+            jj, ii = np.mgrid[0:fine.shape[0], 0:fine.shape[1]]
+            fb = simpath.covered(self.shapes, (ii - self.b) * platmap.CELL, (jj - self.b) * platmap.CELL)
+            fb &= ~self.deck.repeat(d, 0).repeat(d, 1)
+            self.cache['sight', surface] = simpath.Sight.of(self.grids[surface], fine, self.blocked, fb)
         return self.cache['sight', surface]
 
     def closest(self, g, a, z, surface):
