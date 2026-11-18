@@ -1,7 +1,8 @@
 """Daily report, built from what is already there -- nobody writes it by hand (AGENTS.md).
 
 Prints: the commits of the last N hours in this repo and in work/re (the private one), the inventory's
-per-part benched share, and every handoff's `## 待答问题` section.
+per-part benched share, the structure numbers (simulator size, kernel modules, peak-load speed, the full test run),
+and every handoff's `## 待答问题` section.
     python -X utf8 experimental/campaign/daily_report.py [--hours 24]
 """
 import argparse
@@ -56,6 +57,53 @@ def questions():
     return rows or ['  (无)']
 
 
+FAT = 1500          # lines: a simulator file this long is a part that wants splitting
+FULL_SLOW = 3 * 3600  # seconds: the full test run past this means the structure costs every line time
+SIM = ROOT / 'experimental' / 'cnv'
+
+
+def _lines(p):
+    return sum(1 for _ in p.open(encoding='utf-8', errors='replace'))
+
+
+def structure(logs=None):
+    """Structure numbers, read every day so a drift shows before it costs (11-17 retrospective: the architecture
+    problems were known but only noticed once the test run had grown hours long). Each row is a number and, when
+    it crosses its line, a `!!` flag. Reads files only; a missing source is said, not guessed."""
+    logs = Path(logs) if logs else WORK / 'logs'
+    rows, flags = [], []
+    sims = sorted(SIM.glob('sim*.py'))
+    big = sorted(((_lines(p), p.name) for p in sims), reverse=True)
+    rows.append('  模拟器 sim*.py：%d 个文件 %d 行；sim.py %d 行（只许减）' % (
+        len(sims), sum(n for n, _ in big), next((n for n, name in big if name == 'sim.py'), 0)))
+    fat = [f'{name} {n}' for n, name in big if n > FAT]
+    if fat:
+        flags.append('超过 %d 行的模拟器文件：%s' % (FAT, '、'.join(fat)))
+    mods = [p for p in (SIM / 'engine' / 'modules').glob('*.py') if p.name != '__init__.py']
+    rows.append('  内核模块（engine/modules）：%d 个' % len(mods))
+    peaks = sorted(logs.glob('perf/peak_*.json'), key=lambda p: p.stat().st_mtime)
+    if peaks:
+        import json
+        d = json.loads(peaks[-1].read_text(encoding='utf-8'))
+        rows.append('  高峰负载（%s）：全程 %.2f 倍实时，最慢 10 秒 %.2f 倍' % (d.get('rev', '?'), d['multiple'], d['worst']))
+        if d['worst'] < 1:
+            flags.append('高峰最慢段慢于实时（ADR 0034 第 10 条要求比实时快）')
+    else:
+        rows.append('  高峰负载：没有 perf/peak_*.json（experimental/cnv/simbench_peak.py 单独跑）')
+    fulls = sorted(logs.glob('full_*.log'), key=lambda p: p.stat().st_mtime)
+    tail = next((ln for ln in reversed(fulls[-1].read_text(encoding='utf-8', errors='replace').splitlines())
+                 if re.search(r'\d+ passed', ln)), '') if fulls else ''
+    m = re.search(r'in ([\d.]+)s', tail)
+    if m:
+        rows.append('  最近全量（%s）：%s' % (fulls[-1].name, tail.strip('= ')))
+        if float(m.group(1)) > FULL_SLOW:
+            flags.append('全量测试超过 %d 小时' % (FULL_SLOW // 3600))
+    else:
+        rows.append('  最近全量：没有跑完的 full_*.log')
+    rows += ['  !! ' + f for f in flags] or ['  （没有越线的）']
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--hours', type=int, default=24)
@@ -64,6 +112,7 @@ def main():
     print('## 提交：本仓库'); print('\n'.join(commits(ROOT, a.hours)))
     print('\n## 提交：work/re（私有）'); print('\n'.join(commits(WORK / 're', a.hours)))
     print('\n## 清单（按用量已对拍；9 关用到的那栏是当前主攻）'); print('\n'.join(inventory()))
+    print('\n## 结构（越线标 !!，规模一变先看这里）'); print('\n'.join(structure()))
     print('\n## 待答问题'); print('\n'.join(questions()))
 
 
