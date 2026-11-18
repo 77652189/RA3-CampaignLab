@@ -31,6 +31,7 @@ LAB, WORK = _paths.LAB, _paths.WORK
 
 LOGS = os.path.join(WORK, 'logs')
 SUMMARY = os.path.join(LAB, 'shared', 'outsource', 'lanes.jsonl')
+MODEL = 'gpt-6.2-sol'   # pinned here, not left to ~/.codex/config.toml (user 2026-11-17: the lanes move to 6.2 sol)
 
 PROMPT = """你是引擎 {L} 线。工作区 {wt}（这是你的独立工作区，推送用 `git push origin HEAD:main`）。
 开工只读 AGENTS.md 和 work/re/handoff-{lane}.md（存档 handoff-{lane}-archive.md、别的线的交接都不读；要查历史用
@@ -253,7 +254,7 @@ def main():
         sys.exit(stale)
     before, h0, t0 = origin_main(wt), handoff_rev(a.lane), time.time()
     prompt = PROMPT.format(L=a.lane.upper(), lane=a.lane, wt=wt)
-    cmd = [exe, 'exec', '--json', '--dangerously-bypass-approvals-and-sandbox', '-C', wt,
+    cmd = [exe, 'exec', '--json', '--dangerously-bypass-approvals-and-sandbox', '-C', wt, '-m', MODEL,
            '-c', f'model_reasoning_effort="{a.effort}"', *bench_mcp(wt), prompt]
     with open(events, 'w', encoding='utf-8') as out:
         try:

@@ -14,7 +14,7 @@ coordinator runs the long regressions, reads the diff, then commits).
              Codex's own review of this contract (2026-11-09): a short kill cuts work off half done
   --effort   reasoning effort, default medium (2026-11-09: high on a rule-plus-readings task spent 30+ min, most of it
              re-running long regressions); high only for a task that needs real design judgment
-  --model    default gpt-6.1-sol (2026-11-09 comparison: Astra no better at 4.5x the price)
+  --model    default gpt-6.2-sol (user 2026-11-17: less over-design and over-testing; 11-09: Astra no better at 4.5x the price)
   --read-dir extra folders Codex may write in besides --dir (e.g. the main checkout's work\ for logs)
   --bench    may run the bench through run_queue.py
   --full     no sandbox, so it can bench itself (the SDK compiler crashes in any sandbox); user-approved 2026-11-09
@@ -128,7 +128,7 @@ def main():
     ap.add_argument('--dir', required=True)
     ap.add_argument('--minutes', type=float, default=60)
     ap.add_argument('--effort', default='medium', choices=['low', 'medium', 'high'])
-    ap.add_argument('--model', default='gpt-6.1-sol')
+    ap.add_argument('--model', default='gpt-6.2-sol')
     ap.add_argument('--read-dir', action='append', default=[])
     ap.add_argument('--bench', action='store_true', help='may run the bench through run_queue.py (a line task)')
     ap.add_argument('--full', action='store_true',

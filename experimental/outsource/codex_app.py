@@ -3,7 +3,7 @@ coordinator can follow up after a turn, steer or interrupt a running turn and re
 codex_task.py runs `codex exec` once and forgets the thread.
 
   python -I -X utf8 experimental/outsource/codex_app.py start BRIEF.md --dir WORKTREE [--full] [--bench]
-                    [--effort medium] [--model gpt-6.1-sol] [--minutes 60] [--read-dir D]
+                    [--effort medium] [--model gpt-6.2-sol] [--minutes 60] [--read-dir D]
   ... send THREAD "message"   a new turn when the thread is idle; while a turn runs, steers it (turn/steer: the text
                               joins the running turn, which keeps its id)
   ... interrupt THREAD        stops the running turn (turn/interrupt); the thread stays, `send` goes on from there
@@ -550,7 +550,7 @@ def main():
         bench = a.bench or full
         launch({'brief': brief_path, 'dir': os.path.abspath(a.dir), 'allowed': allowed, 'full': full, 'bench': bench,
                 'read_dirs': a.read_dir + (ct.bench_dirs() if bench else []), 'effort': a.effort or 'medium',
-                'model': a.model or 'gpt-6.1-sol', 'minutes': a.minutes or 60,
+                'model': a.model or 'gpt-6.2-sol', 'minutes': a.minutes or 60,
                 'task': brief.strip().splitlines()[0][:120]})
     elif a.cmd == 'resume':
         sdir, st = find(a.thread)
