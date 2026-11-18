@@ -19,7 +19,7 @@ def test_the_apocalypse_reads_2_points_every_7_frames_15_after_a_hurt_the_guardi
     a, g, p = s.bodies['a'], s.bodies['g'], s.bodies['p']
     (m,) = a.find(interfaces.Update)
     assert isinstance(m, autoheal.AutoHeal) and m.data.rule == (2, 7, 15) and m.thing is a and m.world is s.world
-    (h,) = g.modules                                   # BaseVehicle's heroic heal: idle until Upgrade_Veterancy_HEROIC
+    (h,) = g.find(interfaces.Update)                   # BaseVehicle's heroic heal: idle until Upgrade_Veterancy_HEROIC
     assert not h.data.active and h.data.trigger.by == {'Upgrade_Veterancy_HEROIC'} and h.data.rule[1:] == (7, 15)
     assert p.modules == () and 'modules' not in vars(p)
 
@@ -42,7 +42,7 @@ def test_the_block_is_read_as_the_xml_says_intervals_truncated_as_float32():
 def _hurt_guardian():
     s = simsmall.small_world([('g', GUARDIAN, 'Player_1', 0.0, 0.0)])
     g = s.bodies['g']
-    (m,) = g.modules
+    (m,) = g.find(interfaces.Update)
     s.world.schedule.run('autoheal', 0)
     g.damage(30)
     return s, g, m
@@ -72,7 +72,7 @@ def test_an_idle_heroic_heal_ignores_hurts_mends_two_frames_after_its_upgrade_an
 def test_a_status_gated_heal_sleeps_while_the_status_fails_and_a_later_status_does_not_wake_it():
     s = simsmall.small_world([('t', 'JapanAntiVehicleVehicleTech1', 'Player_1', 0.0, 0.0)])   # the Tsunami
     t = s.bodies['t']
-    (m,) = t.modules
+    (m,) = t.find(interfaces.Update)
     s.world.schedule.run('autoheal', 0)
     t.damage(76)
     s.world.schedule.run('autoheal', 0)
@@ -100,9 +100,9 @@ def test_a_thing_taken_out_of_the_world_leaves_the_schedule():
     s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)])
     proto = s.proto('p', APOC, 'Player_1')             # the AI's figures body: made, then out of the registry
     assert 'p' not in s.bodies and proto.modules
-    assert set(s.world.schedule.cells['autoheal']) == set(s.bodies['a'].modules)
+    assert set(s.world.schedule.cells['autoheal']) == set(s.bodies['a'].find(interfaces.Update))
     s.add('a', APOC, 'Player_1', 10.0, 0.0)            # a new body under the name: the old one leaves
-    assert set(s.world.schedule.cells['autoheal']) == set(s.bodies['a'].modules)
+    assert set(s.world.schedule.cells['autoheal']) == set(s.bodies['a'].find(interfaces.Update))
 
 
 def test_the_record_shows_the_modules_state_among_the_bodys_fields():
