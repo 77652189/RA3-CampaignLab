@@ -29,7 +29,7 @@ import simsmall  # noqa: E402
 from engine.kernel import factory, interfaces, module, schedule, world  # noqa: E402
 from maps import probe_block  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 CNV = ROOT / 'experimental' / 'cnv'
 ENGINE = CNV / 'engine'
 _spec = importlib.util.spec_from_file_location('test_sim_layers_registry_k', ROOT / 'tests' / 'test_sim_layers.py')
