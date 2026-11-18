@@ -248,7 +248,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3431, 'Sim methods': 194, 'Body fields': 88, 'simunits defs': 141,
+CENTER = {'sim.py lines': 3429, 'Sim methods': 194, 'Body fields': 88, 'simunits defs': 141,
           'cells with old code': 31}
 
 

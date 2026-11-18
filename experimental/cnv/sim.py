@@ -3160,9 +3160,7 @@ class Sim:
                 self.destroy(b, f'自动打掉：在玩家 {REACH:g} 以内 {self.auto_kill:g} 秒')
 
     def sample(self):
-        """Every second: a check's counters; every 10: the threat; every 30: what the player has seen."""
-        if not self.model_scripts and self.test and self.test.counters and self.t >= LAG:   # the model's: in step
-            self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
+        """Every 10 seconds: the threat; every 30: what the player has seen (a check's counters: simloop.counters)."""
         if int(round(self.t)) % 10 == 0:
             # can the player hold: the enemy's fire within NEAR of the player's things against the player's own
             # there, and how much of the player's units' health is left (of all they ever had: the dead at 0,

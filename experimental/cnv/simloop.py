@@ -154,9 +154,12 @@ def produce(s, frame, tick):
 
 def counters(s, frame, tick):
     # DISPLAY_COUNTER shows the table's value, a running timer's frames left too (bench 11-10 engine_timer stop:
-    # 109 94 80 ... after RESTART_TIMER; s.counters hides running timers). Without the model Sim.sample reads them
-    if s.model_scripts and s.test and s.test.counters and (frame - 1) % s.fps == 0 and s.t >= LAG:
-        s.series.append((int(round(s.t - LAG)), [s.eng.value(c) for c, _ in s.test.counters]))
+    # 109 94 80 ... after RESTART_TIMER; s.counters hides running timers): either executor's one table, read on each
+    # mission second's first frame (until R3 ④-6, 11-18, the public executor's were read by Sim.sample at the tick's
+    # end, a second later, running timers as 0)
+    if s.test and s.test.counters and (frame - 1) % s.fps == 0 and s.t >= LAG:
+        table = s.executor.counters
+        s.series.append((int(round(s.t - LAG)), [table.get(c, (0,))[0] for c, _ in s.test.counters]))
 
 
 def tick_first(s, frame, tick):
