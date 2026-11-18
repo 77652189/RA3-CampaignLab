@@ -355,26 +355,36 @@ def main():
             print(f[:-3], 'MISSING in', a.new)
             bad += 1
             continue
-        with gzip.open(os.path.join(a.base, f), 'rt', encoding='utf-8') as x, \
-                gzip.open(other, 'rt', encoding='utf-8') as y:
-            n = 0
-            while True:
-                lx, ly = x.readline(), y.readline()
-                n += 1
-                if lx != ly:
-                    bad += 1
-                    px, py = lx.split(' || '), ly.split(' || ')
-                    diff = [(i, u, v) for i, (u, v) in enumerate(zip(px, py)) if u != v][:3]
-                    print(f[:-3], f'DIFFERS at line {n}: {px[0][:40]} vs {py[0][:40]}; parts', len(px), len(py))
-                    for i, u, v in diff:
-                        iu, iv = u.split(';'), v.split(';')
-                        print('   in', u[:30], [(p, q) for p, q in zip(iu, iv) if p != q][:4] or (u[:300], v[:300]))
-                    break
-                if not lx:
-                    print(f[:-3], 'same', n - 1, 'lines')
-                    break
+        lines, differs = first_difference(os.path.join(a.base, f), other)
+        if differs:
+            bad += 1
+            print(f[:-3], differs)
+        else:
+            print(f[:-3], 'same', lines, 'lines')
     timing(a.base, a.new)
     return 1 if bad else 0
+
+
+def first_difference(base, new):
+    """Two records (gzip text) line by line: (lines, None) where they are the same, else (line number, a report of
+    the first differing line: its frame on each side and up to 3 differing parts, each with up to 4 differing fields).
+    tests/golden (experimental/testbench/golden.py) reports through it too."""
+    with gzip.open(base, 'rt', encoding='utf-8') as x, gzip.open(new, 'rt', encoding='utf-8') as y:
+        n = 0
+        while True:
+            lx, ly = x.readline(), y.readline()
+            n += 1
+            if lx != ly:
+                px, py = lx.rstrip(chr(10)).split(' || '), ly.rstrip(chr(10)).split(' || ')
+                diff = [(i, u, v) for i, (u, v) in enumerate(zip(px, py)) if u != v][:3]
+                out = [f'DIFFERS at line {n}: {px[0][:40]} vs {py[0][:40]}; parts {len(px)} {len(py)}']
+                for i, u, v in diff:
+                    iu, iv = u.split(';'), v.split(';')
+                    out.append(f'   in {u[:30]} ' + repr([(p, q) for p, q in zip(iu, iv) if p != q][:4] or
+                                                        (u[:300], v[:300])))
+                return n, chr(10).join(out)
+            if not lx:
+                return n - 1, None
 
 
 def read_cross(path):

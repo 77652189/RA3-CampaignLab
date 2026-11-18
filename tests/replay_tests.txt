@@ -15,6 +15,7 @@ test_forbidden_status.py
 test_graybox.py
 test_offline.py
 test_readings.py  # tests/conformance: the bench readings, each scene once (ADR 0035 2)
+test_simrecord_golden.py  # tests/golden: the 11 simrecord tasks on the base commit and here, frame by frame
 test_sim.py
 test_simai.py
 test_simai_basedef_idle.py
