@@ -23,8 +23,8 @@ def attach(sim, got, executor, skirmish_setup, parts):
     """The Sim's script executor (moved off Sim.__init__): `got` the model's (module, plug-in class) where it is on
     this computer, else None; `parts` (the compiler's NOT mark, unnot) handed in by sim.py, which layered modules do
     not import. Either executor's counter-and-timer table is the Sim's counters and timers (Counters / Timers). With it the scripts as the game runs them: the compiler's NOT flags (package.py writes
-    unnot's), one list, the run's difficulty, the Sim the engine's World; the model's FPS is the frame rate and the
-    container's Lib_Skirmish_Setup is handed the published players. Without it the public executor.
+    unnot's), one list, the run's difficulty, the Sim the engine's World; the model's FPS is the frame rate. Without it
+    the public executor. Either way, on our maps the container's Lib_Skirmish_Setup is handed the published players.
 
     executor 'public' with the model there (simrecord --executor public@model, a diagnostic): the model's engine
     holding no scripts, only its frame clock (Sim.frame_now, the model's FPS), and the public executor on it -- the
@@ -32,12 +32,12 @@ def attach(sim, got, executor, skirmish_setup, parts):
     sim.eng = None
     sim.clock = sim.__dict__.get('clock') or simworld.FrameClock()   # the world's frame clock without the model
     sim.fps = simunits.LIFE_FPS                     # the frame loop's rate, the model's FPS when there is one
+    if not sim.retail:      # the container's start-up, ours with or without the model (a world's, not an executor's)
+        sim.handed = skirmish_setup(sim.m.map, set(sim.players.values()))
+        sim.library_ai = frozenset(sim.handed)      # kept: their MAKE_BASE stands in for the library's wake
     if got:
         mod, cls = got
         sim.fps = mod.FPS
-        if not sim.retail:
-            sim.handed = skirmish_setup(sim.m.map, set(sim.players.values()))
-            sim.library_ai = frozenset(sim.handed)  # kept: their MAKE_BASE stands in for the library's wake
     if got and executor == 'public':
         sim.eng = cls([], world=SimWorld(sim), difficulty=sim.level, end_library=False)
         sim.clock = sim.eng
