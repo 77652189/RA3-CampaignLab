@@ -315,3 +315,15 @@ A + 36 (aiskin0 x13 y15) or A - 36 (aiskin0r x9 y21)"""
 proves = "simai general placement: FRONT structures face the map centre from the yard, tries A, +36, -36"
 let = {at = "first('其他X')", wf = "first('建筑码', lambda v: v >= 1000)", step = "(rows[wf]['其他X'] - rows[wf - 1]['其他X'], rows[wf]['其他Y'] - rows[wf - 1]['其他Y'])"}
 expect = ["rows[at]['建筑码'] == 100 and (rows[at]['其他X'], rows[at]['其他Y']) == (11, 17)", "wf is not None", "step in ((13, 15), (14, 15), (9, 21))"]
+
+[[reading]]
+id = "against_conscripts_dogs"
+scene = {build = "aiskvinf", check = "t", until = 157}
+bench = "E78 follow-up (B round 140), s152-s156: 5 Peacekeepers, 0 Javelins, 9 dogs, 1 engineer."
+proves = "simai SpecificUnitCap: the engine fields nine dogs despite the cap of six"
+let = {samples = "[r for t, r in zip(times, rows) if 152 <= t < 157]"}
+expect = [
+    "len(samples) == 5",
+    "all(r['维和总数'] == 5 and r['标枪总数'] == 0 and r['警犬总数'] == 9 and r['工程师总数'] == 1 for r in samples)",
+]
+mismatch = "B round 143: engine builds dogs 7-9 at s146-s152 over cap 6 and an engineer at s144. Model holds at 6 dogs and draws a Javelin. Its teams do not board a transport."

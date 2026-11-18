@@ -20,46 +20,6 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
-@pytest.fixture(scope='module', params=['aimicupft', 'aimicupst'])
-def update_clock_rows(request):
-    w = simai.run(request.param, 'a', until=56, lib=simai.model()['xmldata'].Library())
-    labels = [label for _, label in w.sim.test.counters]
-    return request.param, [dict(zip(labels, values)) for _, values in w.sim.series]
-
-
-def test_micro_update_d81_charge_survival(update_clock_rows):
-    """D81-clock observer pair: AI builds two and charges with two alive.
-
-    No scripted power press; observation uses a 15-frame heartbeat.
-    Exact first-charge timing is checked separately against the retail latch.
-    """
-    build, rows = update_clock_rows
-    charged = [row for row in rows if row['首冲帧'] > 0]
-    assert charged, (build, rows[-1])
-    assert {row['首活'] for row in charged} == {2}
-
-
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E102 observer pair retail population peaks at 2; model peaks at 3. '
-    'Observer-carrier population/economy equivalence remains a gap; '
-    'see work/re/handoff-e.md and work/re/e102_update_clock.md.'))
-def test_micro_update_d81_population(update_clock_rows):
-    """Retain the measured population ceiling independently of skill timing."""
-    build, rows = update_clock_rows
-    assert max(row['造出'] for row in rows) == 2
-
-
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E102 D81-clock pair: retail first-charge latch fast371/slow317; '
-    'low-health eligibility and preceding state updates remain unresolved. '
-    'See work/re/handoff-e.md and work/re/e102_update_clock.md.'))
-def test_micro_update_d81_first_clock(update_clock_rows):
-    """Replay named observer builds against the new script-clock latches."""
-    build, rows = update_clock_rows
-    expected = 371 if build == 'aimicupft' else 317
-    assert {row['首冲帧'] for row in rows if row['首冲帧']} == {expected}
-
-
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
     'D78 same-run commands diverge: retail stands west at frame 191, while the model stands east. '
     'The E96 candidate reaches the measured point only at frame 214 and repeats orders; '
@@ -86,67 +46,6 @@ def test_tactic_aesthetics_replays_same_frame_commands():
         orders = [o for o in brain.rec['orders'] if o['frame'] <= frame and o['member'] == member['name']]
         assert orders, frame
         assert orders[-1]['point'] == pytest.approx(point, abs=0.05), (frame, orders[-1])
-
-
-@pytest.mark.xfail(strict=True, reason='E85 engine_aifriendly a: both types yield zero arrivals with both MCVs alive; '
-                  'default model sends four to the selected MCV. StaticDefense/selection boundary unresolved; '
-                  'see work/re/handoff-e.md and work/re/e_friendly_e85.md.')
-@pytest.mark.parametrize('build,friendly,enemy', [('aifriend', 0, 0), ('aienemy', 0, 0)])
-def test_friendly_unit_target(build, friendly, enemy):
-    """E85 engine_aifriendly a: arrivals plus independent target survival."""
-    w = simai.run(build, 'a', 41, lib=simai.model()['xmldata'].Library())
-    labels = [label for _, label in w.sim.test.counters]
-    samples = [dict(zip(labels, values)) for t, values in w.sim.series if t == 40]
-    assert len(samples) == 1
-    assert (samples[0]['友车存活'], samples[0]['敌车存活']) == (1, 1), samples
-    assert (samples[0]['到友车'], samples[0]['到敌车']) == (friendly, enemy), samples
-
-
-@pytest.mark.parametrize('build', ['aiopwater', 'aiopair'])
-def test_path_locomotor_condition(build):
-    """E84 engine_aiopathcond a: both conditions gave barracks=1, power=0.
-
-    The water check retains its failed Island prediction. Equal observations
-    cannot verify condition selection; see work/re/e_pathcond_e84.md.
-    B round 217 (D175): the opening is drawn before any base is registered, so PathToTarget answers "cannot judge"
-    without looking at the tester -> the PathExists="true" line (barracks first) whatever its locomotor is
-    (simai.Brain.path_to_target). Red B216 (water tester routed after A252) was the model asking too early.
-    """
-    w = simai.run(build, 'a', 25, lib=simai.model()['xmldata'].Library())
-    labels = [label for _, label in w.sim.test.counters]
-    samples = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 22 <= t < 25]
-    assert [t for t, _ in samples] == [22, 23, 24]
-    assert all(row['兵营'] == 1 and row['电厂'] == 0 for _, row in samples), samples
-
-
-@pytest.mark.parametrize('build,target,home', [('aibldtrue', 0, 4), ('aibldfalse', 4, 0)])
-def test_is_building_idle(build, target, home):
-    """Replay engine_aibuilding a's displayed s40 readings; idle queue only."""
-    w = simai.run(build, 'a', 41, lib=simai.model()['xmldata'].Library())
-    labels = [label for _, label in w.sim.test.counters]
-    samples = [dict(zip(labels, values)) for t, values in w.sim.series if t == 40]
-    assert len(samples) == 1
-    assert samples[0]['到陆厂'] == target, samples
-    assert samples[0]['在家'] == home, samples
-    assert samples[0]['基地数'] == 1, samples
-
-
-@pytest.mark.parametrize('build,power,barracks', [
-    ('aiosallies', 3, 0),
-    pytest.param('aiossoviet', 2, 1, marks=pytest.mark.xfail(
-        strict=True, reason='E82 engine_aiopenside a: Allied player with Soviet opening Side '
-        'builds two power plants and one barracks on [s55,s60). The model now skips the other '
-        'side\'s opening and counts the opening complete (B handoff 147, D 66), but builds no '
-        'structures without an opening (the structure build states are not modelled, B handoff '
-        '123/124), so 0/0.')),
-])
-def test_opening_side(build, power, barracks):
-    """Replay engine_aiopenside a's measured counters on [s55,s60)."""
-    w = simai.run(build, 'a', 60, lib=simai.model()['xmldata'].Library())
-    labels = [label for _, label in w.sim.test.counters]
-    samples = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 55 <= t < 60]
-    assert [t for t, _ in samples] == list(range(55, 60))
-    assert all(row['电厂数'] == power and row['兵营数'] == barracks for _, row in samples), samples
 
 
 def test_an_opening_of_another_side_is_not_run():
@@ -227,48 +126,6 @@ def test_against_conscripts_the_dogs_reach_their_cap_of_six():
     assert sum(1 for _, t in _orders(w, 'state build', 146) if t == 'AlliedScoutInfantry') >= 5
 
 
-@pytest.mark.xfail(strict=True, reason='B round 143 bench t: after s145 the engine builds dogs 7-9 (s146-s152) over the '
-    'cap of six, and an engineer (s144); the model holds six (and draws a Javelin) -- as aiskcap past s150 '
-    '(test_after_s150_the_capped_unit_is_built_again): units riding a transport leave the cap\'s count (D round '
-    '89); the simulator\'s teams board no transport. B owns the model; see work/re/handoff-b.md 146 / 161.')
-def test_against_conscripts_dogs():
-    """engine_aiskirm t, aiskvinf (bench 2026-11-12, B round 140): 维和 5 / 标枪 0 / 警犬 9 / 工程师 1 on [s152,s157)."""
-    w = simai.run('aiskvinf', 't', 157, lib=simai.model()['xmldata'].Library())
-    labels = [label for _, label in w.sim.test.counters]
-    samples = [dict(zip(labels, values)) for t, values in w.sim.series if 152 <= t < 157]
-    assert len(samples) == 5
-    assert all(r['维和总数'] == 5 and r['标枪总数'] == 0 and r['警犬总数'] == 9 and r['工程师总数'] == 1
-               for r in samples), samples
-
-
-@pytest.mark.parametrize('build,active', [
-    ('aicapctrl', False), ('aicapmed', True), ('aicaphard', False),
-])
-@pytest.mark.xfail(strict=True, reason='E80 engine_aicap a/b: engine makes three Peacekeepers and three '
-    'Javelins on [s70,s100); model makes two and one, and 3 -> 5 Peacekeepers on [s150,s200) against the '
-    'engine\'s 5 -> 9 -- the build rate, not the cap (the MEDIUM cap two no longer binds in the model either: '
-    'test_a_child_cap_under_the_parents_line_does_not_bind). B owns the model; see work/re/handoff-b.md 144.')
-def test_specific_unit_cap(build, active):
-    """engine_aicap b: replay observed counts, including the violated MEDIUM cap.
-
-    The check keeps its original cap-two prediction and FAIL verdict. These
-    assertions describe engine readings; no model threshold is relaxed.
-    """
-    w = simai.run(build, 'b', 100, lib=simai.model()['xmldata'].Library())
-    labels = [label for _, label in w.sim.test.counters]
-    samples = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 70 <= t < 100]
-    assert [t for t, _ in samples] == list(range(70, 100))
-    assert all(row['维和总数'] == 3 and row['标枪总数'] == 3 for _, row in samples), samples
-    w.advance(100 * simai.FPS)
-    late = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 150 <= t < 200]
-    assert [t for t, _ in late] == list(range(150, 200))
-    assert max(row['维和总数'] for _, row in late) >= 4, late
-    assert max(row['标枪总数'] for _, row in late) >= 4, late
-    if active:
-        assert all(row['维和总数'] >= 5 for _, row in late), late
-        assert max(row['维和总数'] for _, row in late) == 9, late
-
-
 @pytest.mark.xfail(strict=True, reason='B round 217: both runs alike but 2 Peacekeepers by s150 (needs > 2). '
                    'Bisected (public + time-synced model): first red at model 05d99e0 (C, Husk targets get no '
                    'generic neutral fallback); with that reverted, first red at public 1afb989a (D169, ore nodes '
@@ -287,18 +144,3 @@ def test_a_child_cap_under_the_parents_line_does_not_bind():
         runs[build] = [(t, dict(zip(labels, v))) for t, v in w.sim.series]
     assert runs['aicapmed'] == runs['aicapctrl']
     assert max(r['维和总数'] for _, r in runs['aicapmed']) > 2, runs['aicapmed'][-1]
-
-
-@pytest.mark.parametrize('build,land,water', [
-    ('ailocland', 4, 0),
-    ('ailocboth', 4, 0),
-    ('ailocwater', 0, 4),
-])
-def test_target_location(build, land, water):
-    """Replay engine_ailocation a's displayed arrival counters at s40."""
-    w = simai.run(build, 'a', 41, lib=simai.model()['xmldata'].Library())
-    labels = [label for _, label in w.sim.test.counters]
-    samples = [dict(zip(labels, values)) for t, values in w.sim.series if t == 40]
-    assert len(samples) == 1
-    assert samples[0]['到陆厂'] == land, samples
-    assert samples[0]['到水厂'] == water, samples

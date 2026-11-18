@@ -1,0 +1,42 @@
+# Bench readings of checks/engine_aicap.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "specific_unit_cap[aicapctrl]"
+scene = {build = "aicapctrl", check = "b", until = 200}
+bench = "E80: 3 Peacekeepers and 3 Javelins at s70-s99, both reach at least 4 at s150-s199. MEDIUM Peacekeepers rise from 5 to 9 despite cap 2."
+proves = "simai SpecificUnitCap: the observed production continues above the MEDIUM cap after the opening"
+expect = [
+    "win(70, 99, '维和总数') == [3] * 30",
+    "win(70, 99, '标枪总数') == [3] * 30",
+    "max(win(150, 199, '维和总数')) >= 4",
+    "max(win(150, 199, '标枪总数')) >= 4",
+]
+mismatch = "E80: s70-s99 engine has 3 Peacekeepers and 3 Javelins, model 2 and 1. At s150-s199 engine Peacekeepers rise 5 to 9, model 3 to 5. The MEDIUM cap 2 also no longer binds in the model."
+
+[[reading]]
+id = "specific_unit_cap[aicapmed]"
+scene = {build = "aicapmed", check = "b", until = 200}
+bench = "E80: 3 Peacekeepers and 3 Javelins at s70-s99, both reach at least 4 at s150-s199. MEDIUM Peacekeepers rise from 5 to 9 despite cap 2."
+proves = "simai SpecificUnitCap: the observed production continues above the MEDIUM cap after the opening"
+expect = [
+    "win(70, 99, '维和总数') == [3] * 30",
+    "win(70, 99, '标枪总数') == [3] * 30",
+    "max(win(150, 199, '维和总数')) >= 4",
+    "max(win(150, 199, '标枪总数')) >= 4",
+    "min(win(150, 199, '维和总数')) >= 5",
+    "max(win(150, 199, '维和总数')) == 9",
+]
+mismatch = "E80: s70-s99 engine has 3 Peacekeepers and 3 Javelins, model 2 and 1. At s150-s199 engine Peacekeepers rise 5 to 9, model 3 to 5. The MEDIUM cap 2 also no longer binds in the model."
+
+[[reading]]
+id = "specific_unit_cap[aicaphard]"
+scene = {build = "aicaphard", check = "b", until = 200}
+bench = "E80: 3 Peacekeepers and 3 Javelins at s70-s99, both reach at least 4 at s150-s199. MEDIUM Peacekeepers rise from 5 to 9 despite cap 2."
+proves = "simai SpecificUnitCap: the observed production continues above the MEDIUM cap after the opening"
+expect = [
+    "win(70, 99, '维和总数') == [3] * 30",
+    "win(70, 99, '标枪总数') == [3] * 30",
+    "max(win(150, 199, '维和总数')) >= 4",
+    "max(win(150, 199, '标枪总数')) >= 4",
+]
+mismatch = "E80: s70-s99 engine has 3 Peacekeepers and 3 Javelins, model 2 and 1. At s150-s199 engine Peacekeepers rise 5 to 9, model 3 to 5. The MEDIUM cap 2 also no longer binds in the model."

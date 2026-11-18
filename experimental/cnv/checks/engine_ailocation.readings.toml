@@ -1,0 +1,12 @@
+# Bench readings of checks/engine_ailocation.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "target_location"
+scene = {build = "ailocland", check = "a", until = 41}
+each = [{build = "ailocland", land = 4, water = 0}, {build = "ailocboth", land = 4, water = 0}, {build = "ailocwater", land = 0, water = 4}]
+bench = "E81 s40: Land and Water Land both read 4/0 land/water arrivals, Water reads 0/4."
+proves = "simai AITargetingHeuristic.Location: terrain-backed selection sends the four Twinblades to the matching plant"
+expect = [
+    "win(40, 40, '到陆厂') == [land]",
+    "win(40, 40, '到水厂') == [water]",
+]

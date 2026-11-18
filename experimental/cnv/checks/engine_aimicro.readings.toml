@@ -1,0 +1,45 @@
+# Bench readings of checks/engine_aimicro.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "micro_update_d81_charge_survival"
+scene = {build = "aimicupft", check = "a", until = 56}
+each = [{build = "aimicupft"}, {build = "aimicupst"}]
+bench = "E102 D81 observer pair: the first AI charge occurs without a scripted power press and latches 2 live warriors in both builds."
+proves = "simai micro: AI-built warriors enter the charge path with two warriors alive at the first charge"
+let = {charged = "[r for r in rows if r['首冲帧'] > 0]"}
+expect = [
+    "bool(charged)",
+    "{r['首活'] for r in charged} == {2}",
+]
+
+[[reading]]
+id = "micro_update_d81_population[aimicupft]"
+scene = {build = "aimicupft", check = "a", until = 56}
+bench = "E102 D81 observer pair: the retail warrior population peaks at 2."
+proves = "simai AI production: the observer scene reaches a peak owned warrior count of two"
+expect = "max(r['造出'] for r in rows) == 2"
+mismatch = "E102 observer pair: retail peaks at 2 warriors, model at 3. Observer-carrier population/economy equivalence remains a gap."
+
+[[reading]]
+id = "micro_update_d81_population[aimicupst]"
+scene = {build = "aimicupst", check = "a", until = 56}
+bench = "E102 D81 observer pair: the retail warrior population peaks at 2."
+proves = "simai AI production: the observer scene reaches a peak owned warrior count of two"
+expect = "max(r['造出'] for r in rows) == 2"
+mismatch = "E102 observer pair: retail peaks at 2 warriors, model at 3. Observer-carrier population/economy equivalence remains a gap."
+
+[[reading]]
+id = "micro_update_d81_first_clock[aimicupft]"
+scene = {build = "aimicupft", check = "a", until = 56}
+bench = "E102 D81 observer pair: first-charge script-clock latch at frame 371."
+proves = "simai micro UpdateTime: the first charge latches the measured frame for this update period"
+expect = "{r['首冲帧'] for r in rows if r['首冲帧']} == {371}"
+mismatch = "E102 D81 observers: retail first-charge latch fast 371 / slow 317, simulator fast 264 / slow 309. Low-health eligibility and preceding state updates remain unresolved."
+
+[[reading]]
+id = "micro_update_d81_first_clock[aimicupst]"
+scene = {build = "aimicupst", check = "a", until = 56}
+bench = "E102 D81 observer pair: first-charge script-clock latch at frame 317."
+proves = "simai micro UpdateTime: the first charge latches the measured frame for this update period"
+expect = "{r['首冲帧'] for r in rows if r['首冲帧']} == {317}"
+mismatch = "E102 D81 observers: retail first-charge latch fast 371 / slow 317, simulator fast 264 / slow 309. Low-health eligibility and preceding state updates remain unresolved."

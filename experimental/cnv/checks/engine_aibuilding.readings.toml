@@ -1,0 +1,13 @@
+# Bench readings of checks/engine_aibuilding.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "is_building_idle"
+scene = {build = "aibldtrue", check = "a", until = 41}
+each = [{build = "aibldtrue", target = 0, home = 4}, {build = "aibldfalse", target = 4, home = 0}]
+bench = "E83 s40 with an empty queue: PassIfBuilding true reads 0 at the land plant and 4 at home, false reads 4 and 0. Both have 1 base."
+proves = "simai IsBuildingHeuristic: PassIfBuilding false admits the attack when the build queue is idle"
+expect = [
+    "win(40, 40, '到陆厂') == [target]",
+    "win(40, 40, '在家') == [home]",
+    "win(40, 40, '基地数') == [1]",
+]
