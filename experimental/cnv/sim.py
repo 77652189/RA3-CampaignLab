@@ -80,6 +80,7 @@ import simtech  # noqa: E402
 import simtoggle  # noqa: E402
 import simunits  # noqa: E402
 import simlevel  # noqa: E402
+from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
 import simloop  # noqa: E402
 import simworld  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
@@ -396,7 +397,7 @@ class Timers(collections.abc.Mapping):
 
 
 @dataclasses.dataclass
-class Body:
+class Body(kernel_module.Thing):
     """An object in the simulated world."""
     name: str
     template: str
@@ -950,9 +951,10 @@ class Sim:
         self.panel_log = []                 # groups of (t, text): the dialogue panel stacks subtitles, a group clears together
         self.asked, self.up = {}, []        # a 功能 caption asked for (flag -> t), and shown: (flag, asked, shown)
         self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
-        self.used = set()                   # ALIGN keys the run leaned on
+        self.world = kernel_world.World()   # the kernel's world (engine/kernel): schedule, module data, audit, gaps
+        self.used = self.world.used         # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
-        self.unmodeled = {}                 # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
+        self.unmodeled = self.world.gaps    # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
         self.declared = {}                  # template -> the weapons its XML names (simunits.declared_weapons), asked once
         self.flags, self.counters, self.timers = {}, {}, {}
         self.objectives = {}                # name -> status (0 hidden, 1 shown, 2 done, 3 failed)
@@ -1265,6 +1267,9 @@ class Sim:
         if b.deposit:                           # Generals: the first deposit an interval after it is made
             b.deposit_at = (self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))) \
                 + b.deposit[2]
+        mods = self.world.build(b, self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS)))
+        if mods:
+            b.modules = mods
         self.bodies[name] = b
         rules = self.__dict__.setdefault('_spawn_rules', {})
         if template not in rules:

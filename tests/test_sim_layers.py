@@ -24,6 +24,8 @@ _ef_spec.loader.exec_module(enginefiles)
 # 7 frame loop, 8 skirmish AI, 9 report)
 LAYER_OF = {
     'simworld': 0,
+    'engine': 0, 'engine.kernel': 0, 'engine.kernel.interfaces': 0, 'engine.kernel.module': 0,   # the kernel
+    'engine.kernel.factory': 0, 'engine.kernel.schedule': 0, 'engine.kernel.world': 0,          # (tests/test_kernel.py)
     'simunits': 1,
     'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2, 'simmine': 2, 'simstatus': 2, 'simpower': 2, 'simgarrison': 2,
     'simmodifier': 2, 'simlevel': 2, 'simlocomotion': 2,

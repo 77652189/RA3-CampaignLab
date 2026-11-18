@@ -5,10 +5,11 @@ import parts
 from maps import island
 
 
-def small_world(objects=(), model=True):
-    """A Sim on the island map with no scripts and only `objects`: (name, template, owner, x, y) each. Players are
-    the island's (Player_1 the human). model=False: without the private engine model (the frame loop's scripts cell runs the Python scripts)."""
-    s = sim.Sim(parts.Mission(name='T', map=island, scripts=[]), model=model)
+def small_world(objects=(), model=True, map=island):
+    """A Sim on the island map (or `map`, a maps module) with no scripts and only `objects`: (name, template, owner,
+    x, y) each. Players are the map's (on the island Player_1 the human). model=False: without the private engine
+    model (the frame loop's scripts cell runs the Python scripts)."""
+    s = sim.Sim(parts.Mission(name='T', map=map, scripts=[]), model=model)
     for name in list(s.bodies):
         del s.bodies[name]
     for name, template, owner, x, y in objects:
