@@ -18,8 +18,7 @@ def _load(name):
     return mod
 
 
-simunits = sys.modules.setdefault('simunits', _load('simunits'))     # simlevel imports it by name
-simlevel = _load('simlevel')
+simunits = sys.modules.setdefault('simunits', _load('simunits'))
 
 HAMMER = 'SovietAntiVehicleVehicleTech1'
 SELF = f'<GameObject id="{HAMMER}" inheritFrom="{HAMMER}"></GameObject>'   # a mission file patching the Hammer
@@ -38,7 +37,7 @@ def test_a_self_inheriting_override_reads_the_retail_weapons():
     # the cannon is held under its toggle's status (its first state's, from the start), the leech beam without it
     assert _keys(simunits.pick_weapons(ws, {'GENERIC_TOGGLE_STATE'})) == ['SovietAntiVehicleVehicleTech1CannonWeapon']
     assert _keys(simunits.template_weapons(HAMMER, own)) == ['SovietAntiVehicleVehicleTech1LeechBeamWeapon']
-    assert simlevel.rules(HAMMER, own)
+    assert simunits.module_blocks(HAMMER, 'LevelUpUpgrade', own)     # its LevelUpUpgrade modules (step M12)
 
 
 def test_every_armed_campaign_override_reads_its_weapons():

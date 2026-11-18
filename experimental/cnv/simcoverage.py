@@ -321,13 +321,15 @@ def weapon_items(inf):
 # the unit looks like: nothing a script or the fight asks about)
 READ_OR_VISUAL = {'AttributeModifierUpgrade', 'CommandSetUpgrade', 'NeededUpgrade', 'TechUpgrade',
                   'ModelConditionUpgrade', 'SubObjectsUpgrade', 'StatusBitsUpgrade'}
-# A modifier hung through an upgrade or an aura is read (simunits.upgrade_mods / auras -> sim.Sim.modify); of what it
+# A modifier hung through an upgrade or an aura is read (simunits.upgrade_mods / the aura modules -> sim.Sim.modify); of what it
 # carries the simulator acts on simunits.ACTING_TYPES and ACTING_BITS. Hung any other way (a ToggleState the player
 # flips, a weapon's AttributeModifierNugget): not read at all.
 def upgrade_items(inf):
     out = []
-    aura_mods = {a['mod'] for xml in inf.own.values() for a in simunits.auras(xml)
-                 if not a['needs']}                   # the jammer's needs its ToggleState's bit: never on in sim
+    aura_mods = {templates.attr(h, 'AttributeModifierName') for uid in inf.own       # the port (step M12)
+                 for h, _ in simunits.module_blocks(uid, 'AttributeModifierAuraUpdate', inf.own)
+                 if not (templates.attr(h, 'RequiredObjectStatusFlags') or '').split()} - {None, ''}
+    # (the jammer's needs its ToggleState's bit: never on in sim)
     for uid, xml in sorted(inf.own.items()):
         mods = {}
         for head, body in simunits._blocks(xml, 'AttributeModifier'):

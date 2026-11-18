@@ -384,6 +384,43 @@ class Freeze(Interface):
         raise NotImplementedError
 
 
+class LevelUp(Interface):
+    """LevelUpUpgrade, several a thing, in its blocks' order (step M12): its module id (module_id), its rules (rules:
+    the TriggeredBy names, LevelsToGain, LevelCap, Permanent), whether a grant has it in force (active) and setting
+    that (set_active: a grant puts it in force, a removal of its trigger rearms it). The rank it gives is the thing's
+    (Body.level_rank); simlevel.receive keeps the grant."""
+    __slots__ = ()
+
+    def module_id(self):
+        raise NotImplementedError
+
+    def rules(self):
+        raise NotImplementedError
+
+    def active(self):
+        raise NotImplementedError
+
+    def set_active(self, on):
+        raise NotImplementedError
+
+
+class Aura(Interface):
+    """AttributeModifierAuraUpdate, several a thing, in its blocks' order (step M12): its rule (rules: mod, range,
+    refresh, relation, include, exclude, active, needs, self), the frame of its last refresh (last_beat: None, none)
+    and asking whether a refresh is due (pulse: the frame; -> True and its beat moved). The host's aura tick hangs the
+    modifier."""
+    __slots__ = ()
+
+    def rules(self):
+        raise NotImplementedError
+
+    def last_beat(self):
+        raise NotImplementedError
+
+    def pulse(self, frame):
+        raise NotImplementedError
+
+
 class AIUpdate(Interface):
     """The command state machine (move, attack, guard, follow ...) and the movement's physics."""
     __slots__ = ()
@@ -393,5 +430,6 @@ class AIUpdate(Interface):
 
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
-FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze,
+          LevelUp, Aura)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze})  # a thing has at most one of these: Thing.find gives it

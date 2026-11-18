@@ -1423,10 +1423,12 @@ MERGED = frozenset({'CrusherInfo'})        # attributes inherited one by one, ea
                                             # chain that writes it (step M3: 64 retail templates have an empty
                                             # CrusherInfo and take their CrushableLevel from their base, as the reader
                                             # it replaced did; the Hammer's own CrusherLevel 20 over BaseVehicle's 10)
-SELF_ONLY = frozenset({'AutoDepositUpdate'})   # read from the template's own XML alone -- the mission's, else the
-                                            # retail file of its name -- no inheritance, as the reader it replaced
-                                            # (step M4: oilderrick_onwater, which inherits oilderrick's, pays nothing);
-                                            # reading it inherited is a behaviour change
+SELF_ONLY = frozenset({'AutoDepositUpdate',    # read from the template's own XML alone -- the mission's, else the
+                       'AttributeModifierAuraUpdate'})  # retail file of its name -- no inheritance, as the reader
+                                            # it replaced (step M4: oilderrick_onwater, which inherits oilderrick's,
+                                            # pays nothing; step M12: 354 retail templates inherit an aura, the
+                                            # garrisoned civilian buildings', and read none); reading them inherited
+                                            # is a behaviour change
 REMOVE_KEPT = frozenset({'SpawnBehavior'})  # a Remove block is kept as a block, as the reader it replaced read it
                                             # (step M7: alliedrefinery_noharvester's removes its base's spawn and
                                             # reads as a spawn not modelled, a gap); dropping it is a behaviour change
@@ -2494,26 +2496,6 @@ def status_bits(xml, upgrades):
             on |= set((_attr(head, 'StatusToSet') or '').split())
             off |= set((_attr(head, 'StatusToClear') or '').split())
     return on, off
-
-
-def auras(xml):
-    """The object's AttributeModifierAuraUpdate modules: [{'mod', 'range', 'refresh' (frames), 'relation' (set of
-    ALLIES / ENEMIES / NEUTRAL, against the aura's owner), 'include' / 'exclude' (KindOf sets; include empty = any),
-    'active' (InitiallyActive), 'needs' (RequiredObjectStatusFlags the aura object must have: the jammer's toggle),
-    'self' (AllowSelf)}]. Bench upgrades.md 5 (the stasis zone): Range 200, refresh 0.25 s, the modifier's Duration 1 s
-    -- whoever is within stops, and is free within 1 s of the object's going or of leaving the circle."""
-    out = []
-    for head, inner in _blocks(xml or '', 'AttributeModifierAuraUpdate'):
-        f, _ = next(_blocks(inner, 'ObjectFilter'), ('', ''))
-        out.append({'mod': _attr(head, 'AttributeModifierName'), 'range': _num(_attr(head, 'Range'), 0.0),
-                    'refresh': max(1, int(round(_secs(_attr(head, 'RefreshDelay', '1s')) * LIFE_FPS))),
-                    'relation': set((_attr(f, 'Relationship') or 'ALLIES ENEMIES NEUTRAL').split()),
-                    'include': set((_attr(f, 'Include') or '').split()),
-                    'exclude': set((_attr(f, 'Exclude') or '').split()),
-                    'active': (_attr(head, 'InitiallyActive', 'true') or 'true').lower() != 'false',
-                    'needs': set((_attr(head, 'RequiredObjectStatusFlags') or '').split()),
-                    'self': (_attr(head, 'AllowSelf', 'false') or '').lower() == 'true'})
-    return [a for a in out if a['mod']]
 
 
 def stack(values):

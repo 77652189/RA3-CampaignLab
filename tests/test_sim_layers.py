@@ -91,7 +91,7 @@ FIELD_OWNER = {'heal_at': 'engine.modules.autoheal', 'hurt': 'engine.modules.aut
                'life_end': 'engine.modules.lifetime',
                'toppled': 'engine.modules.topple', 'topple_end': 'engine.modules.topple',
                'mine': 'engine.modules.oreminer', 'nodes': 'simmine', 'mined_to': 'simmine',
-               'aura_cache': 'simmodifier', 'aura_beat': 'simmodifier', 'level_rate': 'simmodifier',
+               'level_rate': 'simmodifier',
                'level_vision': 'simmodifier', 'shielded': 'simmodifier', 'taken': 'simmodifier', 'dealt': 'simmodifier',
                'stood_for': 'simlocomotion', 'set_off': 'simlocomotion', 'jet_motion': 'simlocomotion',
                'frame_move': 'simlocomotion',

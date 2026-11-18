@@ -6,6 +6,8 @@ from test_plans import named, small  # (puts experimental/cnv on the path)  # no
 import sim  # noqa: E402
 import simunits  # noqa: E402
 import simworld  # noqa: E402
+from engine.kernel import world as kernel_world  # noqa: E402
+from engine.modules import aura  # noqa: E402
 from units import platform, stasis_zone, tower_ball  # noqa: E402
 
 
@@ -18,7 +20,8 @@ def test_stacking_adds_the_raises_and_multiplies_the_cuts():
 
 def test_the_stasis_zone_modifier_and_aura_read():
     u = stasis_zone.zone()
-    (a,) = simunits.auras(u.xml)
+    (blk,) = simunits._blocks(u.xml, 'AttributeModifierAuraUpdate')
+    a = aura.AuraData.parse(*blk).rule                                   # its aura module's data (step M12)
     assert a['range'] == stasis_zone.RADIUS and a['refresh'] == 4 and a['relation'] == {'ALLIES', 'ENEMIES', 'NEUTRAL'}
     assert a['include'] == set(stasis_zone.INCLUDE.split()) and a['active']
     m = simunits.modifier(u.xml, a['mod'])
@@ -47,6 +50,7 @@ def _world(own):
     s.own, s.bodies, s.eng, s.t, s.used = own, {}, None, 0.0, set()
     s.clock = simworld.FrameClock()
     s.relations, s.human, s.foe, s.ai, s.players = {}, 'PlyrHuman', 'PlyrEnemy', set(), {}
+    s.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, s.own))   # its modules (step M12: the aura)
     return s
 
 
@@ -59,6 +63,9 @@ def _body(s, name, template, owner, x, kinds, speed=30.0):
     b = sim.Body(name, template, owner, float(x), 0.0, speed, kinds=frozenset(kinds))
     b.weapons = [{'range': 150.0, 'dps': 10.0, 'type': 'ARMOR_PIERCING', 'anti': set()}]
     b.vision = b.sight = 300.0
+    mods = s.world.build(b, s.clock.frame)                  # as Sim.add makes them
+    if mods:
+        b.modules = mods
     s.bodies[name] = b
     return b
 

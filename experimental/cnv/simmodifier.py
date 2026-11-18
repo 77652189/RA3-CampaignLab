@@ -1,16 +1,18 @@
 """L2 attribute modifiers and auras (ADR 0029, docs/engine/sim-layers.md; bench docs/engine/upgrades.md).
 
-`Modifiers` keeps the aura rules read per template and each aura's last refresh, and sets a body's acting values from
-the modifiers on it (`modify`) over the world it is given (simworld.WORLD_API only). The peers it reads are handed in
-by the caller (Sim.modify / Sim.aura_tick): the template's toggles and freeze tracker (L2), the upgrade names a weapon
-line tests and the player's granted upgrades (L4), how two owners stand (`relation`) -- this module never imports them.
-Fields it owns: its own `aura_cache` and `aura_beat`; on a body `level_rate`, `level_vision`, `shielded`, `taken`,
-`dealt`.
+`Modifiers` sets a body's acting values from the modifiers on it (`modify`) and lets the aura objects hang theirs
+(`aura_tick`) over the world it is given (simworld.WORLD_API only); an aura's rule and last refresh are its kernel
+module's (engine/modules/aura.py, step M12), the modifiers hung on a body stay the body's (auras_on: the engine's
+Object holds them, no module) as does `base`, this host's copy of the values before modifiers. The peers it reads are
+handed in by the caller (Sim.modify / Sim.aura_tick): the template's toggles and freeze tracker (L2), the upgrade names
+a weapon line tests and the player's granted upgrades (L4), how two owners stand (`relation`) -- this module never
+imports them. Fields it owns on a body: `level_rate`, `level_vision`, `shielded`, `taken`, `dealt`.
 """
 import math
 
 import simlevel
 import simunits
+from engine.kernel import interfaces
 from simstatus import ACTED_STATUS
 from simworld import GAP_STATUS, GAP_UPGRADE
 
@@ -20,10 +22,6 @@ UNDERSIZE = 5.0
 
 
 class Modifiers:
-    def __init__(self):
-        self.aura_cache = {}           # template -> simunits.auras rules
-        self.aura_beat = {}            # (aura body's name, modifier id) -> the frame of its last refresh
-
     def modify(self, world, b, toggles_of, cold_of, upgrades_of, player_ups):
         """Sets b's acting values from the attribute modifiers on it (simunits.effect): the upgrades it holds (an
         AttributeModifierUpgrade's modifier, until its Duration runs out from the giving: bench upgrades.md 4; a
@@ -113,7 +111,7 @@ class Modifiers:
             world.gap(GAP_STATUS, bit, f'{b.template} 身上的修正 / 升级给的，只记下来')
 
     def aura_tick(self, world, relation, modify):
-        """Once a tick before the fight: every living aura object (simunits.auras, active, holding the bits it needs)
+        """Once a tick before the fight: every living aura object's aura modules (interfaces.Aura, active, holding the bits it needs)
         hangs its modifier on what its filter takes within Range, centre to centre, once every RefreshDelay (the first
         at once), until then + the modifier's Duration (none: the refresh); then every body with a modifier is re-set
         (modify). Bench upgrades.md 5 / 5.1 (engine_stasis_edge / _leave): the edge is the unit's centre (a Guardian
@@ -122,21 +120,14 @@ class Modifiers:
         (refresh 1 s, hold 0.2 s: on 22 of 150 frames) -- a 0.5 s tick shows that only as on at a refresh tick."""
         now = world.frame_now()
         live = world.living()
-        cache = self.aura_cache
         for e in live:
-            if e.template not in cache:
-                cache[e.template] = simunits.auras(world.xml_of(e.template))
-            for a in cache[e.template]:
-                if not a['active'] or not a['needs'] <= e.status:
+            for aura in (e.find(interfaces.Aura) if e.modules else ()):     # step M12: its aura modules, block order
+                a = aura.rules()
+                if not a['mod'] or not a['active'] or not a['needs'] <= e.status:
                     continue
                 m = simunits.modifier(world.xml_of(e.template), a['mod'])
-                if m is None:
+                if m is None or not aura.pulse(now):
                     continue
-                beat = self.aura_beat
-                k = (e.name, a['mod'])
-                if k in beat and now - beat[k] < a['refresh']:
-                    continue
-                beat[k] = now if k not in beat else beat[k] + (now - beat[k]) // a['refresh'] * a['refresh']
                 until = now + (m['frames'] or a['refresh'])
                 for t in live:
                     if t is e and not a['self']:

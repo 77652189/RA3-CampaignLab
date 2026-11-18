@@ -377,8 +377,7 @@ class Body(kernel_module.Thing):
     indestructible: bool = False                                # the Indestructible panel flag: takes no damage
     upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (modify)
     up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
-    level_rank: int = 1                                      # LevelUpUpgrade creation grants; not combat XP
-    level_modules: set = dataclasses.field(default_factory=set)  # active creation modules; removal rearms, keeps rank
+    level_rank: int = 1                                      # LevelUpUpgrade creation grants; not combat XP (the Object's ExperienceTracker, no module's: M12)
     script_status: set = dataclasses.field(default_factory=set)  # persistent script/startup bits; `status` is these
                                                                 # + the modifiers' (modify)
     slots: object = None                                        # simunits.weapon_sets: the weapons chosen by status (None: fixed)
@@ -453,7 +452,7 @@ class Body(kernel_module.Thing):
     FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
-                'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step')
+                'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules')
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
@@ -482,6 +481,7 @@ class Body(kernel_module.Thing):
     sell_end = kernel_module.forward(kernel_interfaces.Sell, lambda m: m.gone_frame())      # till; a sale's delete
     cold = kernel_module.forward(kernel_interfaces.Freeze, lambda m: m.held(), 0.0)    # step M11: the cryo beam's cold
     cold_step = kernel_module.forward(kernel_interfaces.Freeze, lambda m: m.stage(), -1)     # its highest EffectInfo
+    level_modules = kernel_module.forward(kernel_interfaces.LevelUp, lambda ms: {m.module_id() for m in ms if m.active()}, set())  # M12: ids in force
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
@@ -1655,7 +1655,7 @@ class Sim:
             b.up_since[up] = self.frame_now()
         else:
             b.up_since.pop(up, None)
-        simlevel.receive(self, b, up, on, newly_held, self.__dict__.setdefault('_levelup_rules', {}))
+        simlevel.receive(self, b, up, on, newly_held)
         self.modify(b)
 
     def xml_of(self, template):

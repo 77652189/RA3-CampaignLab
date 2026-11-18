@@ -5,28 +5,16 @@ heroic RANGE, Mirage SHROUD_CLEARING/ENEMY_SIGHTED and the measured Mirage heroi
 remain unmodeled. This module does not turn a direct Upgrade_Veterancy_HEROIC
 grant into a rank change.
 
-It is given the world (simworld.WORLD_API only); the host keeps the per-template rule cache and hands it in
-(`rules_of`), so this module never reaches the Sim.
+It is given the world (simworld.WORLD_API only). The LevelUpUpgrade modules are the thing's kernel modules
+(engine/modules/levelup.py, step M12: their rules and whether each is in force), found by interface; the rank they
+give stays on the body (level_rank: the engine's ExperienceTracker is the Object's).
 """
 import functools
 import os
 import xml.etree.ElementTree as ET
 
 import simunits
-
-
-def rules(template, own):
-    """Effective LevelUpUpgrade modules, by id, including BaseVehicle/Infantry."""
-    found = {}
-    for _, xml in simunits.xml_chain(template, own, steps=10):
-        for head, inner in simunits._blocks(xml or '', 'LevelUpUpgrade'):
-            mid = simunits._attr(head, 'id')
-            if mid not in found:
-                found[mid] = (simunits._triggers(inner),
-                              int(simunits._attr(head, 'LevelsToGain', '0')),
-                              int(simunits._attr(head, 'LevelCap', '0')),
-                              simunits._attr(head, 'Permanent', 'false').lower() == 'true')
-    return found
+from engine.kernel import interfaces
 
 
 @functools.lru_cache(maxsize=1)
@@ -52,13 +40,10 @@ def profiles():
     return out
 
 
-def receive(world, b, up, on, newly_held, rules_of):
-    """An upgrade `up` given (on) or taken from b: its LevelUpUpgrade modules. `rules_of`: the host's cache,
-    template -> rules()."""
-    cache = rules_of
-    if b.template not in cache:
-        cache[b.template] = rules(b.template, world.own)
-    for mid, (triggers, gain, cap, permanent) in cache[b.template].items():
+def receive(world, b, up, on, newly_held):
+    """An upgrade `up` given (on) or taken from b: its LevelUpUpgrade modules (interfaces.LevelUp, in block order)."""
+    for lm in (b.find(interfaces.LevelUp) if b.modules else ()):
+        triggers, gain, cap, permanent = lm.rules()
         if up not in triggers:
             continue
         if not on:
@@ -67,9 +52,9 @@ def receive(world, b, up, on, newly_held, rules_of):
             if permanent:
                 world.gap('升级', 'LevelUpUpgrade/permanent', 'Permanent=true的移除重给未对拍')
             else:
-                b.level_modules.discard(mid)
+                lm.set_active(False)
             continue
-        if mid in b.level_modules:
+        if lm.active():
             continue
         if not newly_held:
             continue
@@ -82,7 +67,7 @@ def receive(world, b, up, on, newly_held, rules_of):
         if any(rank not in profile for rank in range(old + 1, new + 1)):
             world.gap('升级', 'LevelUpUpgrade/profile', f'{b.template} 缺等级表')
             continue
-        b.level_modules.add(mid)
+        lm.set_active(True)
         b.level_rank = new
         seen = {mid for rank, (_, mids) in profile.items() if rank <= old for mid in mids}
         for rank in range(old + 1, new + 1):
