@@ -1431,6 +1431,11 @@ SELF_ONLY = frozenset({'AutoDepositUpdate'})   # read from the template's own XM
 REMOVE_KEPT = frozenset({'SpawnBehavior'})  # a Remove block is kept as a block, as the reader it replaced read it
                                             # (step M7: alliedrefinery_noharvester's removes its base's spawn and
                                             # reads as a spawn not modelled, a gap); dropping it is a behaviour change
+EXPANDED = frozenset({'StructureUnpackUpdate'})  # '=$NAME' attribute values spelled out from the defines of the
+                                            # asked template's own file and GlobalDefines (_file_defines), as the
+                                            # reader it replaced (step M10: 17 retail UnpackTimes are =$..._UNPACK_TIME;
+                                            # a template inheriting one from another file -- 3 retail, 13 of our own
+                                            # -- reads it as nothing, 0); the define's own file is a behaviour change
 
 
 def module_blocks(template, tag, own=None):
@@ -1460,6 +1465,9 @@ def module_blocks(template, tag, own=None):
                         attrs.setdefault(k, v)
             return [(''.join(f' {k}="{v}"' for k, v in attrs.items()), '')] if found else []
         blocks = _inherited(template, own, read, [])
+        if tag in EXPANDED and any('="=$' in h for h, _ in blocks):
+            local = _file_defines(template, own)
+            blocks = [(re.sub(r'="=\$([^"]*)"', lambda m: f'="{local.get(m.group(1), "")}"', h), i) for h, i in blocks]
         if tag in REMOVE_KEPT:
             return blocks
         return [b for b in blocks if _attr(b[0], 'xai:joinAction') != 'Remove']
@@ -2857,24 +2865,16 @@ def energy(template, own=None):
     return _inherited(template, own, read, None) or 0
 
 
-def unpack_frames(template, own=None):
-    """StructureUnpackUpdate's UnpackTime x 15 rounded (RA3 1.13, work/re/l2_construction.md: F = round(UnpackTime x 15)); 0 where it
-    has none. A '=$NAME' value is the define of the template's file (SovietPowerPlant: 10 s) or GlobalDefines."""
-    def read(xml):
-        head, _ = next(_blocks(xml, 'StructureUnpackUpdate'), (None, ''))
-        return _attr(head, 'UnpackTime') if head else None
-    v = _inherited(template, own, read, None)
-    if not v:
-        return 0
-    if v.startswith('=$'):
-        _xml(template, own)                     # loads the index
-        f = (_index.get(template.lower()) or {}).get('file', '')
-        path = os.path.join(SAGEXML, *f[5:].split('/')) if f.startswith('DATA:') else ''
-        text = open(path, encoding='utf-8', errors='replace').read() if path and os.path.exists(path) else ''
-        g = dict(DEFINE.findall(open(GLOBAL_DEFINES, encoding='utf-8', errors='replace').read())) \
-            if os.path.exists(GLOBAL_DEFINES) else {}
-        v = {**g, **dict(DEFINE.findall(text))}.get(v[2:], '')
-    return int(round(_secs(v.lstrip('=')) * LIFE_FPS))
+def _file_defines(template, own=None):
+    """{name: value} of GlobalDefines and, over it, the <Define>s of the template's own retail file (none for a
+    mission's template of a new name): the port's EXPANDED values (SovietPowerPlant's UnpackTime: 10 s)."""
+    _xml(template, own)                     # loads the index
+    f = (_index.get(template.lower()) or {}).get('file', '')
+    path = os.path.join(SAGEXML, *f[5:].split('/')) if f.startswith('DATA:') else ''
+    text = open(path, encoding='utf-8', errors='replace').read() if path and os.path.exists(path) else ''
+    g = dict(DEFINE.findall(open(GLOBAL_DEFINES, encoding='utf-8', errors='replace').read())) \
+        if os.path.exists(GLOBAL_DEFINES) else {}
+    return {**g, **dict(DEFINE.findall(text))}
 
 
 _command_powers = None

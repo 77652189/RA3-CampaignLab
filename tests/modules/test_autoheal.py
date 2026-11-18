@@ -26,7 +26,7 @@ def test_the_apocalypse_reads_2_points_every_7_frames_15_after_a_hurt_the_guardi
     assert isinstance(m, autoheal.AutoHeal) and m.data.rule == (2, 7, 15) and m.thing is a and m.world is s.world
     (h,) = heals(g)                   # BaseVehicle's heroic heal: idle until Upgrade_Veterancy_HEROIC
     assert not h.data.active and h.data.trigger.by == {'Upgrade_Veterancy_HEROIC'} and h.data.rule[1:] == (7, 15)
-    assert p.modules == () and 'modules' not in vars(p)
+    assert heals(p) == () and not [m for m in p.modules if isinstance(m, autoheal.AutoHeal)]   # (it unpacks, sells)
 
 
 def test_the_block_is_read_as_the_xml_says_intervals_truncated_as_float32():

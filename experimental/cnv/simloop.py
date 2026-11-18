@@ -104,7 +104,7 @@ def self_power(s, frame, tick):
 
 
 def expire(s, frame, tick):
-    s.expire(frame)
+    """Its modules only (lifetimes, toppled props, sales: engine/modules/lifetime.py, topple.py, sell.py)."""
 
 
 def garrison(s, frame, tick):

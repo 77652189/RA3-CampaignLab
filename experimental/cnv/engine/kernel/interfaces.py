@@ -315,6 +315,34 @@ class OreMiner(Interface):
         raise NotImplementedError
 
 
+class Unpack(Interface):
+    """StructureUnpackUpdate, one a thing (step M10): its UnpackTime in frames (frames: 0, none), the frame its
+    unpacking ends (end_frame: None, it never unpacked) and setting that end (set_end: the host works it out from the
+    owner's power factor when the structure is made in the run)."""
+    __slots__ = ()
+
+    def frames(self):
+        raise NotImplementedError
+
+    def end_frame(self):
+        raise NotImplementedError
+
+    def set_end(self, frame):
+        raise NotImplementedError
+
+
+class Sell(Interface):
+    """StructureSellUpdate, one a thing (step M10): the frame its sale deletes it (gone_frame: None, not sold) and a
+    sale (start_sale: the frame it is sold in; -> the frame it goes)."""
+    __slots__ = ()
+
+    def gone_frame(self):
+        raise NotImplementedError
+
+    def start_sale(self, frame):
+        raise NotImplementedError
+
+
 class SpecialPower(Interface):
     """A SpecialPowerModule, several a thing (step M8; the engine's isModuleForPower / getReadyFrame / setReadyFrame):
     the SpecialPowerTemplate it serves (power), the frame its reload ends (ready_at: None, no cast started one) and a
@@ -343,5 +371,5 @@ class AIUpdate(Interface):
 
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
-FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
-ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner})  # a thing has at most one of these: Thing.find gives it
+FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell})  # a thing has at most one of these: Thing.find gives it

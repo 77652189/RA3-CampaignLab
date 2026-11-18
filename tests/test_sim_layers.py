@@ -95,7 +95,7 @@ FIELD_OWNER = {'heal_at': 'engine.modules.autoheal', 'hurt': 'engine.modules.aut
                'level_vision': 'simmodifier', 'shielded': 'simmodifier', 'taken': 'simmodifier', 'dealt': 'simmodifier',
                'stood_for': 'simlocomotion', 'set_off': 'simlocomotion', 'jet_motion': 'simlocomotion',
                'frame_move': 'simlocomotion',
-               'deleted': 'simbody', 'died_at': 'simbody', 'sell_end': 'simbody', 'lose_of': 'simbody',
+               'deleted': 'simbody', 'died_at': 'simbody', 'sell_end': 'engine.modules.sell', 'unpack_end': 'engine.modules.unpack', 'lose_of': 'simbody',
                'toggle_at': 'engine.modules.toggle', 'armor_up': 'engine.modules.toggle',
                'wfires': 'simspecial', 'leaps_due': 'simspecial', 'leap_ground_hits': 'simspecial',
                'movement_due': 'simspecial', 'self_bits_due': 'simspecial',

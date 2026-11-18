@@ -406,9 +406,7 @@ class Body(kernel_module.Thing):
     leaves: list = dataclasses.field(default_factory=list)      # what its lifetime's death makes where it stood
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
     replace: bool = False                                       # building = its ReplaceSelfSpecialAbility: it turns into it
-    unpack_end: int = None                                      # a structure made in the run: unpacking until then
     read_until: int = None                                      # killed by NAMED_DAMAGE in this frame: bits still read
-    sell_end: int = None                                        # SELL_OBJECT: the frame the sale deletes it (sell)
     lies: float = 0.0                                           # seconds it lies dying once killed (SlowDeath's
                                                                 # DestructionDelay), the crush's death only (R9)
     linger: float = 0.0                                         # ... the lie this death has (LINGER, or `lies`)
@@ -428,7 +426,8 @@ class Body(kernel_module.Thing):
     ai_acquire: bool = False                                    # TEAM_ALLOW_AI_AUTOACQUIRE (takes_by_itself)
     z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
     unpack_parent: object = None                                # the refinery whose SpawnOnUnpack made it (not a
-                                                                # slave: outlives it, never replaced)
+                                                                # slave: outlives it, never replaced); the engine's
+                                                                # Object producer, no module's (stays: step M10)
 
     def damage(self, amount):
         """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
@@ -456,7 +455,7 @@ class Body(kernel_module.Thing):
     FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
-                'spawn_module', 'ready_at', 'mine')
+                'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end')
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
@@ -481,6 +480,8 @@ class Body(kernel_module.Thing):
     spawn_module = kernel_module.forward(kernel_interfaces.Slaved, lambda m: m.slaver_module(), '')
     ready_at = kernel_module.forward(kernel_interfaces.SpecialPower, simpower.ready_at, {})  # step M8: {power: frame}
     mine = kernel_module.forward(kernel_interfaces.OreMiner, lambda m: m.trip())    # step M9: a miner's trip
+    unpack_end = kernel_module.forward(kernel_interfaces.Unpack, lambda m: m.end_frame())   # step M10: unpacking
+    sell_end = kernel_module.forward(kernel_interfaces.Sell, lambda m: m.gone_frame())      # till; a sale's delete
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
@@ -1123,14 +1124,14 @@ class Sim:
                 self.gap(GAP_WEAPON, template, f'XML 有 {", ".join(self.declared[template])}，读成没有武器')
         b.acquire =frozenset(simunits.acquire(template, self.own)) if b.weapons else frozenset()
         b.leaves = simunits.life_leaves(template, self.own)
-        unpack = simunits.unpack_frames(template, self.own) if by and 'STRUCTURE' in b.kinds else 0
-        if unpack:                              # made in the run (a map's own skip it): unpacks first -- adds no power
-            v = np.float32(power_factor(*self.power(owner)))       # and does not fire meanwhile; RA3 1.13, work/re/l2_construction.md:
-            extra = np.float32(np.float32(1.0) - v) * np.float32(unpack)   # trunc((1 - v) F + F), v the owner's
-            b.unpack_end = self.frame_now() + int(np.float32(extra + np.float32(unpack)))   # factor then
         mods = self.world.build(b, self.clock.frame)
         if mods:
             b.modules = mods
+        unpack = b.find(kernel_interfaces.Unpack) if by and 'STRUCTURE' in b.kinds else None
+        if unpack and unpack.frames():          # made in the run (a map's own skip it): unpacks first -- adds no power
+            v = np.float32(power_factor(*self.power(owner)))       # and does not fire meanwhile; RA3 1.13, work/re/l2_construction.md:
+            extra = np.float32(np.float32(1.0) - v) * np.float32(unpack.frames())   # trunc((1 - v) F + F), v the
+            unpack.set_end(self.frame_now() + int(np.float32(extra + np.float32(unpack.frames()))))  # owner's factor
         for m in b.find(kernel_interfaces.Attach):    # AttachUpdate (engine/modules/attach.py): the statuses its
             if m.rule():                              # links may set are known ones (simcond_object)
                 self.attachment_known_status.update(m.rule()['child'] | m.rule()['parent'])
@@ -1185,10 +1186,6 @@ class Sim:
         child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
         child.unpack_parent = parent                # the owner's default team, as Generals' createSpawn (team '')
         return child
-
-    def expire(self, frame):
-        """simbody.Life.expire (L2): whatever's lifetime (a topple's delay, a sale's) is up by `frame` goes."""
-        self._life().expire(self, frame, self.destroy)
 
     def living(self):
         return [b for b in self.bodies.values() if b.alive]

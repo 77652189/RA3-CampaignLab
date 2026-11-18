@@ -63,7 +63,7 @@ FORWARDER_CALLS = {
     ('siminfiltrator', 'destroy'): 11, ('siminfiltrator', 'send'): 1,
     # simloop: the frame table's cells, each the Sim's forwarder of its block
     **dict.fromkeys([('simloop', n) for n in (
-        'aura_tick', 'blast_due', 'capture_due', 'deal', 'death_blast_due', 'expire', 'fight', 'flee_due',
+        'aura_tick', 'blast_due', 'capture_due', 'deal', 'death_blast_due', 'fight', 'flee_due',
         'follow_due', 'hunt_due', 'lose_health', 'self_power_due', 'seq_due', 'suppression_tick',
         'wfire_due')], 1),
     # simorder's Peers loan
@@ -71,11 +71,11 @@ FORWARDER_CALLS = {
     # simpullback / simsweep Peers loans
     ('simpullback', 'order_move'): 1, ('simsweep', 'destroy'): 1,
     # simai's Peers loan (step 9d-2, R: the calls it made on self.sim before, counted since it joined the registry;
-    # step 10 can call simorder / simmodifier / simdamage itself). Not the Sim's: state.expire (the AI's hunt state, 2)
-    # and self.tactics.stand (the tactics block, 1)
+    # step 10 can call simorder / simmodifier / simdamage itself). Not the Sim's: self.tactics.stand (the tactics
+    # block, 1; the AI's hunt state's expire went off the count with Sim.expire, step M10)
     ('simai', 'expected_damage'): 1, ('simai', 'modify'): 1, ('simai', 'order_attack'): 1,
     ('simai', 'order_capture'): 1, ('simai', 'order_move'): 4, ('simai', 'order_unpack'): 1,
-    ('simai', 'expire'): 2, ('simai', 'stand'): 1,
+    ('simai', 'stand'): 1,
     # simproxy's Peers loan (step 9d, R3: SimWorld.issue's orders on self.sim before, counted since it joined)
     ('simproxy', 'order_attack'): 1, ('simproxy', 'order_group'): 1, ('simproxy', 'order_power'): 1,
     ('simproxy', 'order_transform'): 1,

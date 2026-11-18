@@ -1,13 +1,14 @@
 """L2 body: health lost by itself, death and removal (ADR 0029, docs/engine/sim-layers.md; bench docs/engine/sell.md).
 
 `Life` kills or deletes a body (`destroy`: its spawn's refill, its garrison, its FireWeaponWhenDead and an aircraft's
-falling wreck queued as death blasts), ends what has a lifetime (`expire`: a sale's; a lifetime's and a toppled prop's
-are modules), sells a structure (`sell`) and runs LoseHealthUpdate (`lose_health`), over the world it is given
-(simworld.WORLD_API only). The peers it needs are handed in by the caller (Sim.destroy / expire / sell / air_crash /
-lose_health): the garrison (simgarrison, L2), the death-blast queue (L2 queues, L3's death_blast_due fires them), the
-ground's height, the template's toggles and the modifiers (L2), `destroy` itself for expire, and the money's
-`credit` (L4) for a sale's refund -- this module never imports them.
-Fields it owns: its own `lose_of`; on a body `alive`, `deleted`, `died_at`, `sell_end`.
+falling wreck queued as death blasts), sells a structure (`sell`: the refund; its StructureSellUpdate module deletes it
+later, as a lifetime's and a toppled prop's modules end theirs -- the expire cell's modules since steps M1, M2, M10)
+and runs LoseHealthUpdate (`lose_health`), over the world it is given (simworld.WORLD_API only). The peers it needs
+are handed in by the caller (Sim.destroy / sell / air_crash / lose_health): the garrison (simgarrison, L2), the
+death-blast queue (L2 queues, L3's death_blast_due fires them), the ground's height, the template's toggles and the
+modifiers (L2), `destroy` itself for a lifetime's death, and the money's `credit` (L4) for a sale's refund -- this
+module never imports them.
+Fields it owns: its own `lose_of`; on a body `alive`, `deleted`, `died_at`.
 Two entries for the skirmish AI, which writes no body field itself: `last_until` (a lifetime the reader missed) and
 `fill` (the stats of a body simunits does not know, from the model's library).
 """
@@ -17,20 +18,13 @@ import math
 import simunits
 from engine.kernel import interfaces
 
-SELL_PERCENT, SELL_FRAMES = 0.5, 30          # SellPercentage (SDK default) and SellTime 2 s x 15 (BuildingBehavior)
+SELL_PERCENT = 0.5              # SellPercentage (SDK default); SellTime: engine/modules/sell.py
 HOVER_DRIFT = 0.2               # a frame: a hovering plane's velocity (air_crash)
 
 
 class Life:
     def __init__(self):
         self.lose_of = {}              # template -> simunits.lose_health rule
-
-    def expire(self, world, frame, destroy):
-        """What is up by `frame` goes: a sale's (a lifetime: engine/modules/lifetime.py, a toppled prop's delay:
-        engine/modules/topple.py -- the expire cell's modules since steps M1, M2)."""
-        for b in world.living():
-            if b.sell_end is not None and frame >= b.sell_end:
-                destroy(b, '卖掉了', delete=True)          # StructureSellUpdate: deleted, no death, no ruin
 
     def die_of_age(self, world, b, why, destroy):
         """The kernel's kill (World.kill) for a LifetimeUpdate: b dies (killed, NAMED_DESTROYED, gone from areas at
@@ -54,9 +48,10 @@ class Life:
         bench 11-17 engine_garrison del: SELL_OBJECT on a civilian house, which has none, leaves it standing, unsold,
         owned and still manned, no refund). The garrison empties in the sale's frame (simgarrison; bench 11-17
         engine_sell g: a SovietBunker's peacekeeper ENCLOSED 9 frames, out from the sale on)."""
-        if b is None or not b.alive or 'STRUCTURE' not in b.kinds or b.sell_end is not None:
+        if b is None or not b.alive or 'STRUCTURE' not in b.kinds:
             return
-        if not simunits.module_blocks(b.template, 'StructureSellUpdate', world.own):
+        m = b.find(interfaces.Sell)             # StructureSellUpdate (engine/modules/sell.py, step M10)
+        if m is None or m.gone_frame() is not None:
             return
         garrison.empty(b)
         if b.unpack_end is not None and world.frame_now() < b.unpack_end:
@@ -67,7 +62,7 @@ class Life:
         credit(b.owner, refund)
         b.script_status.add('SOLD')
         modify(b)
-        b.sell_end = world.frame_now() + SELL_FRAMES
+        m.start_sale(world.frame_now())
         world.note('出售', f'{world.label(b)}（退 {refund}）')
 
     def destroy(self, world, b, why, delete, garrison, death_blasts, ground_z):

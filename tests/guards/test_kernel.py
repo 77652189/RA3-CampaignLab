@@ -170,7 +170,7 @@ def test_find_is_by_interface_and_body_is_one():
 
 
 def test_a_body_is_a_thing_with_no_modules_field_while_its_template_has_no_registered_block():
-    s = simsmall.small_world([('a', 'AlliedPowerPlant', 'Player_1', 0.0, 0.0)], model=False)    # no AutoHealBehavior
+    s = simsmall.small_world([('a', 'BaseBridgeGateHouse', 'Player_1', 0.0, 0.0)], model=False)  # no registered tag
     b = s.bodies['a']
     assert isinstance(b, module.Thing) and b.modules == () and 'modules' not in vars(b)
     assert s.unmodeled is s.world.gaps and s.used is s.world.used
@@ -248,8 +248,8 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3438, 'Sim methods': 195, 'Body fields': 93, 'simunits defs': 145,
-          'cells with old code': 33}
+CENTER = {'sim.py lines': 3435, 'Sim methods': 194, 'Body fields': 91, 'simunits defs': 145,
+          'cells with old code': 32}
 
 
 def _old_code(fn):
@@ -315,7 +315,8 @@ BODY_FORWARDS = {'life_end': 'LifetimeUpdate', 'topple': 'ToppleUpdate', 'topple
                  'suppressed': 'SuppressionUpdate', 'suppressed_until': 'SuppressionUpdate',
                  'suppression_next': 'SuppressionUpdate', 'attachment_rules': 'AttachUpdate',
                  'spawned_children': 'SpawnBehavior', 'spawn_refills': 'SpawnBehavior', 'spawn_parent': 'SlavedUpdate',
-                 'spawn_module': 'SlavedUpdate', 'ready_at': 'SpecialPower', 'mine': 'OreMinerBehavior'}
+                 'spawn_module': 'SlavedUpdate', 'ready_at': 'SpecialPower', 'mine': 'OreMinerBehavior',
+                 'unpack_end': 'StructureUnpackUpdate', 'sell_end': 'StructureSellUpdate'}
 
 
 def body_forwards(sim_src=None):
