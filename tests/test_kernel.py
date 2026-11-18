@@ -10,7 +10,8 @@ rules (factory, schedule, Thing.find, sealed data), and
 6. the kernel has no dependency on the private model: no name of it in engine/**, imports only engine.* and the
    standard library, and its tests run in full with CNV_ENGINE_MODEL pointing nowhere;
 7. a module file runs with no centre file naming it: importing engine.modules loads every file in it, every PHASE is
-   a cell of simloop.FRAME, and every cell runs its modules (step K1.5).
+   a cell of simloop.FRAME, and every cell runs its modules (step K1.5);
+8. health moves only through the Body's damage / mend / health or a listed write (HEALTH_WRITES, step K2).
 Each guard has a mutation check (a synthetic breach it must catch)."""
 import ast
 import importlib.util
@@ -115,6 +116,46 @@ def test_the_schedule_runs_an_awake_module_at_its_cell_and_sleeps_it():
     sch.wake(a, 55)                                                 # the earlier wake wins
     sch.run('autoheal', 55)
     assert a.runs == [5, 8, 55]
+
+
+class Hearer(module.Module, interfaces.Damage):
+    def __init__(self, thing, data, world=None):
+        super().__init__(thing, data, world)
+        self.told = []
+
+    def on_damaged(self, info):
+        self.told.append(('damaged', info))
+
+    def on_healed(self, info):
+        self.told.append(('healed', info))
+
+
+def test_a_health_move_tells_the_damage_modules_and_a_wake_comes_at_the_running_cells_frame():
+    """Step K2: Thing.health_moved is the Damage broadcast; World.wake defaults to World.frame (the frame loop sets
+    it before each cell); a module whose thing left the world is not woken back onto the schedule."""
+    t = T('X')
+    h = Hearer(t, None)
+    t.modules = (h, Ticker(t, None))
+    t.health_moved(10, 4)
+    t.health_moved(4, 9)
+    t.health_moved(9, 9)                                            # a moved maximum: not a hurt
+    assert h.told == [('damaged', 10), ('healed', 4), ('healed', 9)]
+    assert T('Y').health_moved(1, 0) is None                        # no modules: nobody told
+    w = world.World(blocks=lambda template, tag: [('', '')] if tag == 'Tick' else [], tags={'Tick': Ticker})
+    thing = T('X')
+    thing.modules = w.build(thing, 0)
+    (a,) = thing.modules
+    w.schedule.run('autoheal', 0)
+    w.frame = 1
+    w.wake(a)
+    w.schedule.run('autoheal', 1)                                   # woken for 1 (not 3): run, then asleep
+    assert a.runs == [0, 1] and w.schedule.awake('autoheal') == {}
+    w.frame = 7
+    w.wake(a)
+    assert w.schedule.awake('autoheal') == {a: 7}
+    w.drop(thing)
+    w.wake(a)
+    assert w.schedule.awake('autoheal') == {} and a not in w.schedule.seq
 
 
 def test_find_is_by_interface_and_body_is_one():
@@ -531,6 +572,59 @@ def test_private_guard_bites():
     for sneak in ('importlib.import_module(".." + n, __name__)', 'importlib.import_module(n, __name__)',
                   'importlib.import_module("." + n, "ra3model")', 'importlib.import_module("." + n)'):
         assert private_breaks({'engine.modules': 'import importlib\n' + sneak + '\n'}), sneak
+
+
+# Guard 8 (step K2): a thing's health moves only through Body.damage / mend / health, which tell its Damage modules
+# (an asleep AutoHeal wakes on it). The direct writes of `hp` / `max_hp` left, by (file, function): told -- the
+# function calls health_moved itself; made -- the body is being made or filled before its modules first run (the
+# every-frame module of K1 did not count a first sight as a hurt either), or dies (a dead module sleeps).
+HEALTH_WRITES = {('sim.py', 'damage'): 'Body', ('sim.py', 'mend'): 'Body', ('sim.py', 'health'): 'Body',
+                 ('sim.py', '__init__'): 'made', ('sim.py', 'add'): 'made', ('sim.py', 'build_due'): 'made',
+                 ('simbody.py', 'fill'): 'made', ('simbody.py', 'destroy'): 'made',
+                 ('simact_object.py', 'named_set_max_health'): 'told', ('simlevel.py', 'receive'): 'told'}
+
+
+def health_writes(sources=None):
+    """{(file, function): calls health_moved} for every function of experimental/cnv/sim*.py that assigns a
+    `.hp` / `.max_hp` attribute (simai's own `self.hp` table is not a body's health: left out by name)."""
+    if sources is None:
+        sources = {p.name: p.read_text(encoding='utf-8') for p in sorted(CNV.glob('sim*.py'))}
+    found = {}
+    for name, src in sources.items():
+        for fn in ast.walk(ast.parse(src)):
+            if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            writes = [t for st in ast.walk(fn) if isinstance(st, (ast.Assign, ast.AugAssign))
+                      for t in (st.targets if isinstance(st, ast.Assign) else [st.target]) for x in ast.walk(t)
+                      if isinstance(x, ast.Attribute) and x.attr in ('hp', 'max_hp') and isinstance(x.ctx, ast.Store)
+                      and not (name == 'simai.py' and isinstance(x.value, ast.Name) and x.value.id == 'self')]
+            if writes:
+                found[(name, fn.name)] = any(isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and
+                                             c.func.attr == 'health_moved' for c in ast.walk(fn))
+    return found
+
+
+def health_breaks(found):
+    """A write not in HEALTH_WRITES, or a 'told' / 'Body' one that does not call health_moved."""
+    return sorted(k for k, tells in found.items() if HEALTH_WRITES.get(k) is None or
+                  (HEALTH_WRITES[k] in ('told', 'Body') and not tells))
+
+
+def test_health_moves_only_through_the_body_or_a_told_write():
+    found = health_writes()
+    assert not health_breaks(found), health_breaks(found)
+    assert set(found) == set(HEALTH_WRITES), f'a listed write is gone: lower HEALTH_WRITES {set(HEALTH_WRITES) - set(found)}'
+
+
+def test_health_guard_bites():
+    sources = {p.name: p.read_text(encoding='utf-8') for p in sorted(CNV.glob('sim*.py'))}
+    raw = dict(sources, **{'simrepair.py': sources['simrepair.py'].replace('b.mend(heal)', 'b.hp = min(b.max_hp, b.hp + heal)', 1)})
+    assert raw['simrepair.py'] != sources['simrepair.py'] and ('simrepair.py', 'due') in health_breaks(health_writes(raw))
+    quiet = dict(sources, **{'simlevel.py': sources['simlevel.py'].replace('b.health_moved(was, b.hp)', 'pass', 1)})
+    assert quiet['simlevel.py'] != sources['simlevel.py'] and health_breaks(health_writes(quiet)) == [('simlevel.py', 'receive')]
+    body = dict(sources, **{'sim.py': sources['sim.py'].replace('        self.health_moved(was, self.hp)\n', '', 1)})
+    assert health_breaks(health_writes(body)) == [('sim.py', 'damage')]
+    assert not health_breaks(health_writes(dict(sources, **{'simai.py': 'class A:\n    def f(self):\n        self.hp = {}\n'})))
 
 
 def test_the_kernel_tests_run_in_full_without_the_model(tmp_path):

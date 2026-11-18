@@ -17,6 +17,7 @@ class World:
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
         self.used = set()       # the audit set: rules the run leaned on
         self.gaps = {}          # (kind, name) -> {'n' times, 't' first met, 'what' first note} (Sim.gap writes it)
+        self.frame = 0          # the frame of the cell now running (simloop sets it), what wake() defaults to
 
     def build(self, thing, frame):
         """Make a thing's modules (none unless a tag is registered) and hold its update modules from `frame`."""
@@ -41,5 +42,8 @@ class World:
             if isinstance(m, interfaces.Update):
                 self.schedule.remove(m)
 
-    def wake(self, module, frame):
-        self.schedule.wake(module, frame)
+    def wake(self, module, frame=None):
+        """Run an update module at `frame`, by default the frame of the cell now running (`frame`, which the frame
+        loop sets before each cell): a module woken by a cell before its own runs this frame, by one after it the
+        next (step K2)."""
+        self.schedule.wake(module, self.frame if frame is None else frame)

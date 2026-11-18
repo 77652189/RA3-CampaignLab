@@ -96,7 +96,6 @@ class Heal:
                 used = healed_by.get(source.name, 0)
                 if rule[2] and used >= rule[2]:
                     continue
-                target.hp = min(target.max_hp,
-                                target.hp + target.max_hp * rule[1] * period / world.fps)
+                target.mend(target.max_hp * rule[1] * period / world.fps)
                 healed_by[source.name] = used + 1
                 world.used.add('passive area heal')

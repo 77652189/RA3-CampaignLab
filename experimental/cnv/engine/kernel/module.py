@@ -21,6 +21,18 @@ class Thing:
             return found[0] if found else None
         return found
 
+    def health_moved(self, was, now):
+        """Its health went from `was` to `now` (step K2): the Damage modules are told -- on_damaged(was) when it fell,
+        else on_healed(was) (it rose, stayed, or the maximum moved). The Body's damage / mend / health call it; whoever
+        writes the health or its maximum past them calls it too."""
+        if not self.modules:
+            return
+        for m in self.find(interfaces.Damage):
+            if now < was:
+                m.on_damaged(was)
+            else:
+                m.on_healed(was)
+
 
 class ModuleData:
     """The parse of one module block: parse(head, inner) -> an instance, sealed by the factory -- read only after."""

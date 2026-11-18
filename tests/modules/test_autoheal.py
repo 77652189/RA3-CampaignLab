@@ -31,7 +31,8 @@ def test_a_gated_block_is_not_modelled_and_its_module_sleeps():
     s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)])
     (m,) = s.bodies['a'].modules
     gated = autoheal.AutoHeal(s.bodies['a'], autoheal.AutoHealData.parse(' InitiallyActive="false"', ''), s.world)
-    assert gated.update(1) is interfaces.SLEEP and m.update(1) == 1
+    s.bodies['a'].damage(10)                           # the live one, hurt, waits 15 frames (at full it sleeps too)
+    assert gated.update(1) is interfaces.SLEEP and m.update(1) == 15
 
 
 def test_a_thing_taken_out_of_the_world_leaves_the_schedule():
@@ -48,7 +49,7 @@ def test_the_record_shows_the_modules_state_among_the_bodys_fields():
     b = s.bodies['a']
     assert 'heal_at' not in simrecord.body_state(b) and 'modules' not in simrecord.body_state(b)
     s.world.schedule.run('autoheal', 0)
-    b.hp -= 10
+    b.damage(10)
     s.world.schedule.run('autoheal', 1)
     d = simrecord.body_state(b)
-    assert d['heal_at'] == 16 and d['heal_seen'] == b.hp and d['hp'] == b.hp
+    assert d['heal_at'] == 16 and d['hurt'] is False and d['hp'] == b.hp

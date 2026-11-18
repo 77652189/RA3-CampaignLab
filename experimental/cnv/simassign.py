@@ -47,7 +47,7 @@ class Assignments:
                       '移动、死亡、换主或外部血量变化后的派发边界未测；保守停止为INFERRED')
                 del self.active[name]
                 continue
-            target.hp = min(target.max_hp, target.hp + rate / world.fps)
+            target.mend(rate / world.fps)
             self.active[name] = (source, target, rate, target.hp, positions)
             world.used.add('assigned repair')
             if target.hp >= target.max_hp:

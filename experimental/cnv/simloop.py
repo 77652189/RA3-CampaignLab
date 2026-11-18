@@ -235,6 +235,7 @@ def _with_modules(name, cell):
     same frame), then what of the cell is not yet a module. So a module file picks any cell of FRAME by its PHASE and
     nothing here changes (tests/test_kernel.py: a PHASE not in FRAME is red)."""
     def run(s, frame, tick):
+        s.world.frame = frame       # what a broadcast wakes a module at (World.wake, step K2)
         s.world.schedule.run(name, frame)
         cell(s, frame, tick)
     run.__name__ = name

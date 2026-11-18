@@ -104,8 +104,8 @@ class Repairs:
                     self.refused.add(b.name)
                     continue
                 self.wallet.charge(b.owner, n)
-                b.hp = min(b.max_hp, b.hp + heal)
+                b.mend(heal)
             elif new >= 1:
-                b.hp = b.max_hp
+                b.mend(float('inf'))
             state['last_hp'] = b.hp
             world.used.add('repair')

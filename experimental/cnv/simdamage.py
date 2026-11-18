@@ -638,7 +638,7 @@ class Damage:
                         tag = 'LeechPercentMaxHealthDamageNugget' if basis == 'maximum' else 'LeechHealthDamageNugget'
                         world.gap(GAP_WEAPON, tag, '最大血量吸取仅致死、实伤吸取仅非致死场景已验证')
                     if healer.alive:
-                        healer.hp = min(healer.max_hp, healer.hp + amount)
+                        healer.mend(amount)
                 else:
                     world.gap(GAP_WEAPON, 'leech', '并发吸取的伤害归属与回补尚未建模')
             t.last_hit, t.last_by = by.owner, by.name

@@ -42,7 +42,8 @@ TASKS = {
 
 SIM_FIELDS = ('log', 'flags', 'counters', 'timers', 'objectives', 'money', 'income', 'ending', 'used', 'unknown',
               'series', 'done', 'disabled', 'events')
-SKIP_BODY = frozenset()
+SKIP_BODY = frozenset({'heal_seen', 'hurt'})   # K2: AutoHeal's last-frame health became a hurt flag (bookkeeping
+                                               # nobody sees; heal_at, what it decides, is still recorded)
 SLOWER = 0.10                  # compare flags a task whose run got more than this much slower (ADR 0029 "搬完" (d))
 SHORTEST = 1.0                 # ... and only a run of at least this many seconds (shorter ones are noise)
 

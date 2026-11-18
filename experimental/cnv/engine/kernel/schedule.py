@@ -22,8 +22,11 @@ class Schedule:
         self.seq.pop(module, None)
 
     def wake(self, module, frame):
-        """Run it at `frame`: an earlier wake wins over a later one; woken twice for one frame it runs once."""
-        cell = self.cells[module.PHASE]
+        """Run it at `frame`: an earlier wake wins over a later one; woken twice for one frame it runs once. One no
+        longer held (its thing left the world) stays out."""
+        cell = self.cells.get(module.PHASE, {})
+        if module not in cell:
+            return
         now = cell[module]
         if now is None or frame < now:
             cell[module] = frame

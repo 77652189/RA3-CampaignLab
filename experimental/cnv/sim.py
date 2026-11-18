@@ -542,11 +542,13 @@ class Body(kernel_module.Thing):
         """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
         if self.prop:
             return
-        self.hp = max(self.health_floor if self.immortal else 0.0, self.hp - amount)
+        was, self.hp = self.hp, max(self.health_floor if self.immortal else 0.0, self.hp - amount)
+        self.health_moved(was, self.hp)
 
     def mend(self, amount):
-        """Health up by `amount`, at most the maximum: what a module heals by until the Body module owns health."""
-        self.hp = min(self.max_hp, self.hp + amount)
+        """Health up by `amount`, at most the maximum (math.inf: to full); every heal goes through it (step K2)."""
+        was, self.hp = self.hp, min(self.max_hp, self.hp + amount)
+        self.health_moved(was, self.hp)
 
     @property
     def health(self):
@@ -555,9 +557,9 @@ class Body(kernel_module.Thing):
 
     @health.setter
     def health(self, pct):
-        self.hp = self.max_hp * float(pct) / 100.0
-        if self.immortal:
-            self.hp = max(self.health_floor, self.hp)
+        was, hp = self.hp, self.max_hp * float(pct) / 100.0
+        self.hp = max(self.health_floor, hp) if self.immortal else hp
+        self.health_moved(was, self.hp)
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
@@ -1201,10 +1203,8 @@ class Sim:
             b.suppression_next = max(1, self.eng.frame if getattr(self, 'eng', None)
                                      else int(round(at * simunits.LIFE_FPS)))
         hp = immortal_hp if b.immortal else (f['hp'] or simunits.max_health(template, self.own))
-        if hp:
-            b.max_hp = b.hp = hp
-        else:                                   # no health in the data: a building's or a unit's usual (a guess)
-            b.max_hp = b.hp = 2000.0 if 'STRUCTURE' in b.kinds else 300.0
+        # no health in the data: a building's or a unit's usual (a guess)
+        b.max_hp = b.hp = hp or (2000.0 if 'STRUCTURE' in b.kinds else 300.0)
         b.armor, b.weapons = f['armor'], f['weapons']
         if template not in self.__dict__.setdefault('_wsets', {}):
             self._wsets[template] = simunits.weapon_sets(template, self.own)

@@ -146,8 +146,9 @@ def named_set_max_health(sim, name, a, script):
     # engine_maxhealth mh: 480 -> 240 hp, max 960 full 0: 25 %; full 1: 100 %; max 240 full 0, 120 off: 50 %
     b = sim.body(a[0])
     if b and b.alive:
-        b.max_hp = float(a[1])
+        was, b.max_hp = b.hp, float(a[1])
         b.hp = b.max_hp if a[2] else min(b.hp, b.max_hp)
+        b.health_moved(was, b.hp)       # step K2: a module waiting on the health is told (a raised maximum too)
 
 
 def unit_set_modelcondition(sim, name, a, script):

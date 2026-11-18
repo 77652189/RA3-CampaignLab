@@ -183,7 +183,7 @@ def capture_due(world, peers):
                 # and all three nations' engineers survive. Travel INFERRED.
                 b.goal, b.mode, b.path = None, 'move', []
                 continue
-            g.hp = g.max_hp
+            g.mend(math.inf)
             world.note('修理', f'{world.label(b)} 修复 {world.label(g)}')
             peers.destroy(b, '进楼修理', delete=True)
             world.change()
