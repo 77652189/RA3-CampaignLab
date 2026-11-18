@@ -1,0 +1,227 @@
+r"""Close one family moved into a kernel module (ADR 0029, refactor line R) in one command, one line per check:
+
+    python -X utf8 experimental/testbench/family_close.py                 # HEAD against its parent
+    python -X utf8 experimental/testbench/family_close.py --base <rev>    # against another base (e.g. a step's parent)
+    python -X utf8 experimental/testbench/family_close.py --skip-tests -n 2
+
+Run it from the line's own worktree after committing the step (uncommitted work under experimental/ is recorded too,
+as tests/golden does, but the test pick reads base..HEAD). In order:
+  1-3. golden (experimental/testbench/golden.py: its per-commit cache under work\logs\golden, the base recorded in
+       the sibling RA3-CampaignLab-golden with this checkout's recorder): every simrecord task recorded on the base
+       and here, compared frame by frame (simrecord.first_difference, what `simrecord.py compare` prints);
+  4.   the centre (tests/guards/test_kernel.py CENTER: sim.py lines, Sim methods, Body fields, simunits defs, cells
+       with old code) on the base and here, against the table: over it is red, under it says what to lower it to;
+  5.   the affected tests of base..HEAD (affected_tests.py --cmd, with -n replaced: -n 2 until the machine's CPU token
+       pool exists, handoff-r2 T5); a red test is rerun on the base (in the golden tree) and one red there too is
+       reported as old, not this step's.
+Each check prints one line with its log (work\logs\family_close_<stamp>_<check>.log). Exit 0 = all green (old reds
+allowed); 1 = something to fix.
+"""
+import argparse
+import ast
+import datetime
+import importlib.util
+import os
+import re
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(HERE))
+KERNEL_GUARD = 'tests/guards/test_kernel.py'
+CENTER_SOURCES = {'sim_src': 'experimental/cnv/sim.py', 'units_src': 'experimental/cnv/simunits.py',
+                  'loop_src': 'experimental/cnv/simloop.py'}
+WORKERS = 2          # until the CPU token pool (handoff-r2 T5) says how many
+
+
+def _load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def git(root, *args):
+    r = subprocess.run(['git', '-C', root, *args], capture_output=True, text=True, encoding='utf-8', errors='replace')
+    return r.stdout if r.returncode == 0 else None
+
+
+# ---- 4. the centre --------------------------------------------------------------------------------------------
+
+def centre_tools(guard_src):
+    """(CENTER, center) from the kernel guard's source: the table literal, and its own `center` function (with the
+    helper it calls) run on given sources -- the guard stays the one place the counting rule is written."""
+    tree = ast.parse(guard_src)
+    table, defs = None, []
+    for n in tree.body:
+        if isinstance(n, ast.Assign) and any(getattr(t, 'id', '') == 'CENTER' for t in n.targets):
+            table = ast.literal_eval(n.value)
+        elif isinstance(n, ast.FunctionDef) and n.name in ('center', '_old_code'):
+            defs.append(n)
+    if table is None or not any(d.name == 'center' for d in defs):
+        raise ValueError(f'{KERNEL_GUARD} has no CENTER table or center() any more')
+    ns = {'ast': ast, 'CNV': None}
+    exec(compile(ast.Module(body=defs, type_ignores=[]), KERNEL_GUARD, 'exec'), ns)
+    return table, ns['center']
+
+
+def centre_line(before, now, table):
+    """(ok, one line): each count as before->now, red where now is over the table, and the table to write where
+    now is under it (test_the_centre_only_shrinks wants them equal)."""
+    parts, over, under = [], [], []
+    for k, v in now.items():
+        b = before.get(k) if before else None
+        parts.append(f'{k} {v}' if b in (None, v) else f'{k} {b}->{v}')
+        if v > table[k]:
+            over.append(f'{k} {v} > {table[k]}')
+        elif v < table[k]:
+            under.append(k)
+    text = '; '.join(parts)
+    if over:
+        return False, f'中心变大（红）：{", ".join(over)}。{text}'
+    if under:
+        return False, f'中心变小、上限表没下调（test_kernel CENTER 改成 {now}）。{text}'
+    return True, f'中心与上限表一致：{text}'
+
+
+def centre(root, base):
+    with open(os.path.join(root, KERNEL_GUARD), encoding='utf-8') as f:
+        table, count = centre_tools(f.read())
+    now = count(**{k: open(os.path.join(root, p), encoding='utf-8').read() for k, p in CENTER_SOURCES.items()})
+    olds = {k: git(root, 'show', f'{base}:{p}') for k, p in CENTER_SOURCES.items()}
+    before = count(**olds) if all(v is not None for v in olds.values()) else None
+    return centre_line(before, now, table)
+
+
+# ---- 1-3. golden ----------------------------------------------------------------------------------------------
+
+def golden_line(run, log):
+    """(ok, one line) from a golden.Run, the per-task detail written to `log` (an open file)."""
+    same, declared, skipped, bad = [], [], [], []
+    for n in run.names:
+        if run.failed('new', n):
+            bad.append(n)
+            log.write(f'{n}: FAILED to record here\n{run.failed("new", n)}\n')
+        elif run.failed('base', n):
+            skipped.append(n)
+            log.write(f'{n}: not recordable on the base\n')
+        else:
+            d = run.difference(n)
+            log.write(f'{n}: {"same" if not d else d}\n')
+            (same if not d else declared if n in run.changed else bad).append(n)
+    head = f'底版 {run.base_rev[:10]} 对本工作区：{len(same)}/{len(run.names)} same'
+    tail = ''.join([f'；声明改了 {declared}' if declared else '', f'；底版录不了 {skipped}' if skipped else ''])
+    if bad:
+        return False, f'逐帧记录有差异或录不了（红）：{bad}。{head}{tail}'
+    return True, head + tail
+
+
+# ---- 5. affected tests ----------------------------------------------------------------------------------------
+
+def with_workers(cmd, n):
+    """affected_tests' pytest command with its -n replaced (or added)."""
+    if re.search(r'(^|\s)-n\s+\d+', cmd):
+        return re.sub(r'(^|\s)-n\s+\d+', lambda m: f'{m.group(1)}-n {n}', cmd, count=1)
+    return cmd.replace(' -m pytest ', f' -m pytest -n {n} ', 1)
+
+
+def pytest_counts(text):
+    """{'passed': 840, 'failed': 5, ...} from pytest's last summary line, and the failed node ids (-rf)."""
+    counts = {}
+    for line in reversed(text.splitlines()):
+        found = re.findall(r'(\d+) (passed|failed|errors?|skipped|xfailed|xpassed|deselected)', line)
+        if found:
+            counts = {k.rstrip('s') if k.startswith('error') else k: int(v) for v, k in found}
+            break
+    red = sorted(set(re.findall(r'^(?:FAILED|ERROR) (\S+)', text, re.M)))
+    return counts, red
+
+
+def tests_line(counts, red, old_red):
+    """(ok, one line): red tests also red on the base are old (someone else's), the rest are this step's."""
+    new = [t for t in red if t not in old_red]
+    tally = ', '.join(f'{v} {k}' for k, v in counts.items()) or 'no summary'
+    if not counts and not red:
+        return False, 'pytest 没给出结果（看日志）'
+    if new:
+        return False, f'本步新红 {len(new)} 个：{" ".join(new)}（{tally}）'
+    if red:
+        return True, f'{tally}；红的 {len(red)} 个在底版上也红（旧红，不是本步的）'
+    return True, tally
+
+
+def run_pytest(args, cwd, log_path):
+    """pytest with `args` (a list starting at its options) in `cwd`; its counts and red ids."""
+    cmd = [sys.executable, '-X', 'utf8', '-m', 'pytest', *args]
+    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding='utf-8', errors='replace')
+    with open(log_path, 'a', encoding='utf-8') as f:
+        f.write(f'$ {" ".join(cmd)}\n(in {cwd})\n{r.stdout}\n{r.stderr[-5000:]}\n')
+    return pytest_counts(r.stdout)
+
+
+def affected(root, base, n, log_path, golden):
+    pick = subprocess.run([sys.executable, '-X', 'utf8', os.path.join(HERE, 'affected_tests.py'), '--cmd',
+                           f'{base}..HEAD'], cwd=root, capture_output=True, text=True, encoding='utf-8',
+                          errors='replace')
+    with open(log_path, 'w', encoding='utf-8') as f:
+        f.write(pick.stderr)
+    cmd = pick.stdout.strip().splitlines()[-1] if pick.stdout.strip() else ''
+    if pick.returncode or ' -m pytest ' not in cmd:
+        return False, f'affected_tests 没给出命令（exit {pick.returncode}）'
+    args = with_workers(cmd, n).split(' -m pytest ', 1)[1].split() + ['-rf']
+    counts, red = run_pytest(args, root, log_path)
+    old = set()
+    if red:   # rerun the reds on the base, in the golden tree (held under golden's lock)
+        with golden.Lock(os.path.join(golden.CACHE, 'golden.lock')):
+            golden.prepare_tree(base, root)
+            git(golden.TREE, 'checkout', '--', golden.SIMRECORD_REL)   # the base's own recorder for its tests
+            here = [t for t in red if os.path.exists(os.path.join(golden.TREE, t.split('::')[0]))]
+            if here:
+                _, old_red = run_pytest(['-n', str(n), '--timeout', '3000', '-p', 'no:cacheprovider', '-q', '-rf',
+                                         *here], golden.TREE, log_path)
+                old = set(old_red)
+    return tests_line(counts, red, old)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    ap.add_argument('--base', help='the base commit (default: HEAD~1, or HEAD with uncommitted work, as golden)')
+    ap.add_argument('-n', type=int, default=WORKERS, help=f'pytest workers (default {WORKERS})')
+    ap.add_argument('-j', type=int, default=None, help='simrecord jobs per side (golden default)')
+    ap.add_argument('--skip-tests', action='store_true', help='checks 1-4 only')
+    a = ap.parse_args(argv)
+    golden = _load('golden', os.path.join(HERE, 'golden.py'))
+    env = dict(os.environ)
+    if a.base:
+        env['GOLDEN_BASE'] = a.base
+    base = golden.base_rev(ROOT, env)
+    stamp = datetime.datetime.now().strftime('%m%d_%H%M%S')
+    logs = os.path.join(golden.labpaths.WORK, 'logs')
+    os.makedirs(logs, exist_ok=True)
+    log = lambda check: os.path.join(logs, f'family_close_{stamp}_{check}.log')
+    print(f'底版 {base[:10]}，本工作区 {git(ROOT, "rev-parse", "--short=10", "HEAD").strip()}')
+    results = []
+
+    path = log('golden')
+    with open(path, 'w', encoding='utf-8') as f:
+        try:
+            ok, line = golden_line(golden.records(env=env, jobs=a.j), f)
+        except golden.Skip as e:
+            ok, line = False, f'没法比：{e}'
+    results.append((ok, '逐帧记录', line, path))
+    print(('✓' if ok else '✗'), '逐帧记录', line, '|', path, flush=True)
+
+    ok, line = centre(ROOT, base)
+    results.append((ok, '中心计数', line, None))
+    print(('✓' if ok else '✗'), '中心计数', line, flush=True)
+
+    if not a.skip_tests:
+        path = log('tests')
+        ok, line = affected(ROOT, base, a.n, path, golden)
+        results.append((ok, '受影响测试', line, path))
+        print(('✓' if ok else '✗'), '受影响测试', line, '|', path, flush=True)
+    return 0 if all(r[0] for r in results) else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
