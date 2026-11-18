@@ -17,7 +17,7 @@ def team_commands(sim, name, a, script):
         sim.lost_orders.append((sim.t, script.name, name, a[0]))
         sim.note('无效命令', f'{name} {a[0]}：这个队还没有人加入，命令落空')
     elif name in ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO'):
-        sim.order_group(sim.members(a[0]), a[1], name == 'ATTACK_MOVE_TEAM_TO')
+        sim.order_group(sim.members(a[0]), a[1], name == 'ATTACK_MOVE_TEAM_TO', on_grid=True)
     elif name in TEAM_FOLLOWS:
         # (team, path, asTeam[, ?][, start waypoint]); the fourth flag (work/re/handoff-archive.md) not read: ignored.
         # The attack version is each member's own walk whatever asTeam says (bench 11-10 engine_wayatk3 cut:
@@ -42,7 +42,7 @@ def team_commands(sim, name, a, script):
 
 
 def move_named_unit_to(sim, name, a, script):
-    sim.order_move(sim.body(a[0]), a[1], name == 'ATTACK_MOVE_NAMED_UNIT_TO')
+    sim.order_move(sim.body(a[0]), a[1], name == 'ATTACK_MOVE_NAMED_UNIT_TO', on_grid=True)   # snapped (engine_drop)
 
 
 def named_follow_waypoints(sim, name, a, script):
@@ -93,7 +93,7 @@ def team_guard_area_from_position(sim, name, a, script):
     # (team, area, waypoint): bench 11-13 engine_acts_v guard: the tanks went to the waypoint (inside the area,
     # 100 in from its edge) and stayed there, the area's middle never reached; an enemy put in the area 600
     # from them: see the module docstring for what they did. Taken as a group move to the waypoint
-    sim.order_group(sim.members(a[0]), a[2], False)
+    sim.order_group(sim.members(a[0]), a[2], False, on_grid=True)
 
 
 def named_face_waypoint(sim, name, a, script):

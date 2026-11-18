@@ -128,10 +128,9 @@ def replay():
         return simai.run('aicrush1t', 'a', until=30, record=True)
 
 
-@pytest.mark.xfail(strict=True, reason='aicrush1t f230: engine four members target the far plant; '
-                   'E136 model recognizes the plant but already sees hostile infantry and has no member plant goals. '
-                   'Movement/candidate-input gap; see work/re/e136_crush_approach.md and work/re/handoff-e.md.')
 def test_aicrush1t_model_plant_attack_precedes_crush(replay):
+    # was a strict xfail (the plant goal never came first); the move goals snapped to the grid (checks/engine_drop.py,
+    # 2026-11-18) put the members where the game has them, and the plant is attacked before the crush
     brain, = replay.brains.values()
     # The world advances in coarse ticks. Keep both clocks; do not relabel a tactical frame as a world sample.
     row = next(r for r in brain.rec['frames'] if r['host_frame'] >= 230)

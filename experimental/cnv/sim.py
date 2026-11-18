@@ -1454,9 +1454,9 @@ class Sim:
                         self.note('协议', f'玩家：{what}')
         self.tech_to = max(self.tech_to, frame)
 
-    def order_move(self, b, where, attacking, given=(), skip=(), face=None):
+    def order_move(self, b, where, attacking, given=(), skip=(), face=None, on_grid=False):
         """simorder.order_move (L5)."""
-        return simorder.order_move(self, self._order_peers(), b, where, attacking, given, skip, face)
+        return simorder.order_move(self, self._order_peers(), b, where, attacking, given, skip, face, on_grid)
 
     def _order_peers(self):
         """simorder.Peers: what the unit orders (L5) may reach on this Sim beyond the world, made on first use."""
@@ -1466,9 +1466,12 @@ class Sim:
         return p
 
     def claims(self, b, skip=()):
-        """The spots other mobile ground units hold (x, y, radius): where they are going, or where they stand (the
-        pathfinder's goal cells, Pathfinder::updateGoal); none for aircraft in the air or for `skip`; none unless
-        HOLD_SPOTS. Benched 11-09: the rule is the game's (a01, two infantry sent alone to one point stood ~22 apart),
+        """The spots other mobile ground units hold (x, y, radius): where they are going, or where they stand; none for
+        aircraft in the air or for `skip`; none unless HOLD_SPOTS. free_spot (simpath.spot) keeps a move's goal off
+        them (bench 2026-11-17 checks/engine_drop.py: allies sent one after another to one point stood in the rings'
+        order, each off every one before it -- all of them there already; that a goal is held while its unit is
+        still on its way is from engine_spots 'same' below). Benched 11-09: the rule is the game's (a01, two
+        infantry sent alone to one point stood ~22 apart),
         and the game's a4 gets all trucks to the 80-wide halt area (checks/a4.py hold PASS). The simulator's trucks
         2 and 3, their goals moved 30 aside, ran on grid rows 40 off the road's middle the whole way, on the halt
         area's edges, and drove past it: its ways were not pulled straight (Ground.pull since; now 2854,2479 and
@@ -1481,12 +1484,11 @@ class Sim:
         (j7 126.9 vs 130.5): the script's 派 went straight to `send`, past this; it is order_move now, as its compiled
         ATTACK_MOVE_NAMED_UNIT_TO (test_playcheck). The script's 走 is a group move (order_group) but compiles to one
         MOVE_NAMED_UNIT_TO per unit -- no play has 走 for several units yet.
-        Whose spots (Generals' Pathfinder::checkDestination, refs AIPathfind.cpp 4924): an ally's (own units too) goal
-        always; an enemy's or a neutral's only where it stands still (UNIT_PRESENT_FIXED) and b cannot crush it --
-        a moving enemy's goal and a crushable one's spot are b's to take. Until 11-11 every unit's spot was held:
+        Whose spots: an ally's (own units too) goal always; an enemy's or a neutral's only where it stands still and b
+        cannot crush it -- a moving enemy's goal and a crushable one's spot are b's to take (INFERRED: no bench sent a
+        unit onto an enemy's spot yet; the crush case is aicrush1's, below). Until 11-11 every unit's spot was held:
         aicrush1's first Crush move (checks/engine_aicrush.py, work/re/c_crush_path_report.md) had its goal, the
-        guard's own spot, moved 31.6 aside, and the tank drove past the guard it was sent over. INFERRED for RA3
-        (its adjustDestination not read)."""
+        guard's own spot, moved 31.6 aside, and the tank drove past the guard it was sent over."""
         if b.surface == 'air' or not HOLD_SPOTS:
             return []
         out = []
@@ -1500,9 +1502,9 @@ class Sim:
             out.append(tuple(o.dest if moving else (o.x, o.y)) + (o.radius,))
         return out
 
-    def order_group(self, bodies, where, attacking):
+    def order_group(self, bodies, where, attacking, on_grid=False):
         """simorder.order_group (L5)."""
-        return simorder.order_group(self, self._order_peers(), bodies, where, attacking)
+        return simorder.order_group(self, self._order_peers(), bodies, where, attacking, on_grid)
 
     def column_ends(self, foot, p, attacking, given, skip):
         """Generals' infantry column march (AIGroup::friend_moveInfantryToPos), its ends only: 3 columns (5 from 16
@@ -1535,9 +1537,9 @@ class Sim:
 
     def goal_off_nodes(self, b, want):
         """A ground move's goal whose footprint touches an ore node's: the nearest goal clear of every node, on the
-        pathfinder's GRID cells (D round 176). The footprint is the unit's diam = floor(2 r / GRID + 0.3) cells
-        (Generals' pathfinder size rule, INFERRED for RA3), an even one round a cell corner, an odd one round a cell
-        centre; a node's is its base plate (OreNode.xml's 60 x 45 half-extent box, every other shape of it inside),
+        pathfinder's GRID cells (D round 176). The footprint is simpath.footprint, floor(2 r / GRID + 0.3) cells, an
+        even one round a cell corner, an odd one round a cell centre (bench 2026-11-17 checks/engine_drop.py: Guardians
+        2 cells, Peacekeepers 1, snapped so); a node's is its base plate (OreNode.xml's 60 x 45 half-extent box, every other shape of it inside),
         turned with the node, and a cell touching it is shut. Bench aiexpb50n (only node 44 by the slot, D175): the
         miner sent to its slot (4215, 3039), 7 off the plate's edge, turned off its straight way 37 short and stood
         at (4221, 3061) -- this rule's (4220, 3060), the nearest corner whose four cells clear the plate. Not yet
@@ -1567,31 +1569,14 @@ class Sim:
             return want
         return min(spots, key=lambda s: (s[0] - want[0]) ** 2 + (s[1] - want[1]) ** 2)
 
-    def free_spot(self, b, want, held):
-        """Pathfinder::adjustDestination over 10-unit cells: `want` or the first spot of the spiral round it (400
-        tries) on ground b may stand on and clear of the spots `held` (centres at least the two radii apart);
-        aircraft in the air take `want` as it is. None found, or `want` off its ground (the way finder's closest
-        point decides, R7): `want`."""
-        if b.surface == 'air' or not held:
+    def free_spot(self, b, want, held, on_grid=False):
+        """simpath.spot (L2: the goal snapped to the grid by b's footprint, off the spots `held`; bench engine_drop):
+        aircraft in the air, or no spot (none free, or `want` off its ground: the way finder's closest point decides,
+        R7) -> `want`."""
+        if b.surface == 'air':
             return want
-        step = 10.0
-
-        def ok(x, y):
-            return self.ground.open(b.surface, x, y) and \
-                all(math.hypot(x - gx, y - gy) >= max(b.radius + gr, 1.0) for gx, gy, gr in held)
-        if ok(*want) or not self.ground.open(b.surface, *want):
-            return want
-        i = j = 0
-        delta, left = 1, 400
-        while left > 0:
-            for di, dj, k in ((1, 0, delta), (0, 1, delta), (-1, 0, delta + 1), (0, -1, delta + 1)):
-                for _ in range(k):
-                    i, j, left = i + di, j + dj, left - 1
-                    x, y = want[0] + i * step, want[1] + j * step
-                    if ok(x, y):
-                        return (x, y)
-            delta += 2
-        return want
+        at = simpath.spot(want, b.radius, held, lambda x, y: self.ground.open(b.surface, x, y), GRID, on_grid)
+        return want if at is None else at
 
     def held_up(self, b):
         """simorder.held_up (L5)."""
@@ -2421,10 +2406,10 @@ class Sim:
         if verb == '派':
             who, where = rest
             for b in self.pick(who):                # the player's units go attack-moving, fighting on the way: one
-                self.order_move(b, where, True)     # unit's order as ATTACK_MOVE_NAMED_UNIT_TO (its goal off held spots)
+                self.order_move(b, where, True, on_grid=True)  # unit's order as ATTACK_MOVE_NAMED_UNIT_TO (its goal off held spots)
         elif verb == '走':
             who, where = rest
-            self.order_group(self.pick(who), where, False)  # as MOVE_NAMED_UNIT_TO; several at once, a group move
+            self.order_group(self.pick(who), where, False, on_grid=True)  # as MOVE_NAMED_UNIT_TO; several at once, a group move
         elif verb == '攻击':
             who, target = rest                      # an attack order on a thing (NAMED_ATTACK_NAMED): units take no building by themselves
             targets = self.pick(target)

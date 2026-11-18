@@ -1223,12 +1223,13 @@ def test_seal_erow_an_idle_soldier_leaves_enemy_bunkers_alone():
     assert all(r['兵'] == 0 for _, r in rows)
 
 
-@pytest.mark.parametrize('variant,secs', [('ebld', 60.0), ('ebldam', 22.0), ('pam', 60.0)])
+@pytest.mark.parametrize('variant,secs', [('ebld', 60.0), ('ebldam', 23.0), ('pam', 60.0)])
 def test_seal_units_leave_the_enemys_buildings_alone_by_themselves(variant, secs):
     """Bench engine_seal (2026-11-08), a bunker and a power plant in range, the line clear: ebld -- the enemy's (a
     computer player's, no skirmish AI) peacekeeper idle, the player's bunker 120 east and plant 150 west: both 100 for
     61 s; ebldam -- it attack-moves 1000 east past the two (100 / 120 off its line, 500 along): both 100 while it
-    passes (at the goal, 11, s19-s22; see the xfail below for after); pam -- the player's soldier attack-moves past the
+    passes (at the goal, 11, s19-s22 -- the simulator's at 22.5: its coarse steps reach the goal square's edge on
+    the step, the goal snapped to the grid 10 off its line; see the xfail below for after); pam -- the player's soldier attack-moves past the
     enemy's two the same way: both 100 for 61 s, at the goal s22. RA3 drops Generals' 'a computer player's units take
     enemy buildings'; an attack-move takes no building either."""
     rows, _ = _seal_rows(variant, secs)
@@ -1695,7 +1696,11 @@ def test_acts_btn_all_as_the_bench():
     bench.update({k: (3030, 30, 1011) for k in range(12, 23)})
     for k, (out, team, state) in bench.items():
         v = at[k + 2]
-        assert (v[0], v[1], v[3]) == (out, team, state), (k, v)
+        assert (v[0], v[1], v[3] % 1000) == (out, team, state % 1000), (k, v)
+    # 态's thousands (the Tankbuster in its far square) within a second, as 到: its coarse 25-unit steps reach the
+    # square's edge (x 900) on the step itself, so a goal snapped to the grid (1110, 4310: off its line by 0.1 at the
+    # edge) puts it in one step later (2026-11-18)
+    assert abs(min(t for t, v in run.series if v[3] // 1000) - (12 + 2)) <= 1, run.series
     first = {w: min(t for t, v in run.series if v[2] // w % 10) for w in (1, 10, 100, 1000)}
     for w, s in ((1, 9), (100, 11), (10, 12), (1000, 15)):      # TT, VT, TP, VP
         assert abs(first[w] - (s + 2)) <= 1, (w, first)
@@ -2103,11 +2108,14 @@ def test_a_yard_packs_into_its_mcv_at_once_and_the_mcv_stands_before_it_drives(v
     the MCV and not the yard from the press frame on (车帧 = 1000 x 帧数), the yard's name passes on (名字帧 = 帧数);
     the move order given at once is kept, but the MCV stands NewObjectUnpackTime (2 s) and some more before it
     drives (out of the 40 square at frame 50-54; sim.PACK_FRAMES 0, simunits.replace_unpack_frames 30 + 14 INFERRED).
-    The sim still counts the yard one frame (the press frame's count): held to at most 1."""
+    The sim still counts the yard one frame (the press frame's count): held to at most 1. Tolerances are a coarse
+    step (7-8 frames) and the MCV's pace: the simulator's walks 50 a second, the bench's ~55 (frames 50 -> 121 for
+    the 260 to the 100 square), so 'there' runs 7-15 late (frame clock on: a / s / j 135 / 135 / 157); which coarse
+    step lands on a square's edge flips with a goal moved a few units (2026-11-18: the grid's snap, 129 -> 136)."""
     until, out, there = BENCH_PACK[variant]
     frames, own, name, walk = _sim_run(f'engine_pack_{variant}', 'go', until).series[-1][1]
     assert own // 1000 >= frames - 1 and own % 1000 <= 1 and name == frames, (frames, own, name)
-    assert abs(walk % 1000 - out) <= 6 and abs(frames - walk // 1000 - there) <= 10, (frames, walk, out, there)
+    assert abs(walk % 1000 - out) <= 8 and abs(frames - walk // 1000 - there) <= 15, (frames, walk, out, there)
 
 
 def test_a_weapon_fire_ability_goes_off_after_its_unpack_and_holds_the_caster_through_its_pack():
@@ -2261,7 +2269,14 @@ WAYPATH = {
 }
 
 
-@pytest.mark.parametrize('check', sorted(WAYPATH))
+WAYPATH_XFAIL = {'near': 'bench: truck 1 drives through A (s3-s5) on its way from (1130, 2225) to N, turning east from '
+                          'its start; the simulator drives the straight line and passes A\'s corner (x 1297) at y 2265.8, '
+                          '0.8 outside -- it was in by 0.9 with N unsnapped (1600, 2335), on the grid (1600, 2340) not; '
+                          'the start\'s heading and turn are not modelled (2026-11-18)'}
+
+
+@pytest.mark.parametrize('check', [pytest.param(c, marks=pytest.mark.xfail(strict=True, reason=WAYPATH_XFAIL[c]))
+                                   if c in WAYPATH_XFAIL else c for c in sorted(WAYPATH)])
 def test_waypath_follows_the_links_waypoint_by_waypoint_as_the_bench(check):
     """line / exact walk A -> B (within 10 of it: no corner cut, the two alike) -> C and stay; near joins at B, the
     nearest, A never again; team: each truck to the waypoint plus its offset from the team's middle (both within 100

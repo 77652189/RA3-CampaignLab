@@ -65,9 +65,10 @@ class Peers:
         setattr(self.host, name, value)
 
 
-def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None):
-    """A plain move (attacking: an attack-move). The spot is adjusted first (free_spot: Generals'
-    AIInternalMoveToState::onEnter adjusts every move's goal off the spots other units hold); `given` are spots
+def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None, on_grid=False):
+    """A plain move (attacking: an attack-move). The spot is adjusted first (free_spot: the goal kept off the spots
+    other units hold; on_grid, for a unit sent to a point -- MOVE_NAMED_UNIT_TO, a team's or a selection's move --
+    also snapped to the grid, bench engine_drop; other moves keep their exact point, INFERRED); `given` are spots
     already handed out to a group being ordered, `skip` that group (its members' old goals are dropped first).
     face: the facing (radians) it turns to once there (the AI's form-up slots; send)."""
     if b:
@@ -77,13 +78,13 @@ def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None):
         b.mode = 'attack' if attacking else 'move'
         p = world.point(where) if isinstance(where, str) else where
         if p is not None and b.alive and b.speed > 0:
-            spot = peers.free_spot(b, peers.goal_off_nodes(b, p), peers.claims(b, skip) + list(given))
+            spot = peers.free_spot(b, peers.goal_off_nodes(b, p), peers.claims(b, skip) + list(given), on_grid)
             where = where if spot == p else spot
         peers.send(b, where, face=face)
         b.move_to = b.dest if not attacking else None
 
 
-def order_group(world, peers, bodies, where, attacking):
+def order_group(world, peers, bodies, where, attacking, on_grid=False):
     """A move order to several units at once (a team's MOVE_TEAM_TO, a selection's click): Generals'
     AIGroup::groupMoveToPosition without a formation (GL/AI/AIGroup.cpp; work/re/generals-source-map.md). The unit
     nearest the goal is the centre and walks to the point; the others, nearest first, each to the point plus where
@@ -97,7 +98,7 @@ def order_group(world, peers, bodies, where, attacking):
     p = world.point(where) if isinstance(where, str) else where
     if len(movers) < 2 or p is None:
         for b in bodies:
-            order_move(world, peers, b, where, attacking)
+            order_move(world, peers, b, where, attacking, on_grid=on_grid)
         return
     world.used.add('group move')
     movers.sort(key=lambda b: (b.x - p[0]) ** 2 + (b.y - p[1]) ** 2)
@@ -116,7 +117,7 @@ def order_group(world, peers, bodies, where, attacking):
         cap = 6 * b.radius
         if n > cap:
             vx, vy = vx * cap / n, vy * cap / n
-        order_move(world, peers, b, (p[0] + vx, p[1] + vy), attacking, given, movers)
+        order_move(world, peers, b, (p[0] + vx, p[1] + vy), attacking, given, movers, on_grid=on_grid)
         given.append(tuple(b.dest or (b.x, b.y)) + (b.radius,))
 
 

@@ -109,15 +109,16 @@ def test_question_1_the_squad_stands_round_the_point(mission):
 
 
 def test_two_units_sent_alone_to_one_point_stand_apart(mission):
-    """Two separate move orders to one point (MOVE_NAMED_UNIT_TO each): the second's goal is moved off the first's
-    (Generals' AIInternalMoveToState adjusts every move's goal off the spots other units hold). Bench 11-09
-    retail_q1_spots.py: a dog and a Peacekeeper sent alone to one point stood ~22 apart (sim.HOLD_SPOTS)."""
+    """Two separate move orders to one point (MOVE_NAMED_UNIT_TO each): the second's goal is moved off the first's.
+    Bench 11-17 checks/engine_drop.py (simpath.spot): infantry (one 20 cell) sent one after another to one point stand
+    on the centre of the cell the point is in, then one footprint (20) off it on the rings; bench 11-09
+    retail_q1_spots.py (blob centres): a dog and a Peacekeeper stood ~22 apart."""
     s = sim.Sim(mission, script='22.6 走 UNIT - P1 - Peacekeeper 01 去 @505.2,1576.7; '
                                 '22.6 走 UNIT - P1 - Peacekeeper 02 去 @505.2,1576.7')
     s.advance(int(35 * 15))
     a, b = s.bodies['UNIT - P1 - Peacekeeper 01'], s.bodies['UNIT - P1 - Peacekeeper 02']
-    assert math.hypot(a.x - b.x, a.y - b.y) >= 14
-    assert min(math.hypot(u.x - 505.2, u.y - 1576.7) for u in (a, b)) <= 1
+    assert math.hypot(a.x - b.x, a.y - b.y) >= 20 - 1
+    assert min(math.hypot(u.x - 505.2, u.y - 1576.7) for u in (a, b)) <= 10 * math.sqrt(2) + 0.1
 
 
 def test_a_players_names_are_its_own():

@@ -10,6 +10,23 @@ the line start -> end), passed it 0-1.2 from the wall (no clearance for its size
 shows the legs, not how the game picks its corners). Before any pulling a way ran on the grid's rows: a goal moved 30
 aside (HOLD_SPOTS) kept the unit on the next row the whole way, where the game goes in one slant line (a4's trucks 2
 and 3 on the halt area's edges, 2026-11-09). Tests: tests/test_sim_pull.py.
+
+Also the goal's spot (`spot`, R3 step X second part): where on the grid a ground unit sent to a point stops, kept off
+the spots others hold. The rule, from the bench (2026-11-17 `engine_drop lanes`, `engine_dropring tens`,
+checks/engine_drop.py; read by work/re/scripts/x_drop.py), units of one kind sent one after another to one point:
+  - the point is snapped to the 20-unit grid by the unit's footprint, n = floor(2 r / 20 + 0.3) cells (a Guardian 2,
+    a Peacekeeper 1): an even one to the nearest cell corner, an odd one to the centre of the cell the point is in --
+    the first one sent stops there with nobody about (Guardians at (3000, 2000) and (3013, 3007) at (3001, 2001) and
+    (3021, 3001); Peacekeepers at (3000, 4500) and (3600, 2800) at (3010, 4510) and (3610, 2810));
+  - a held spot is one whose footprint square overlaps (side n cells, round its centre); then the first free one of
+    rings k = 1, 2, ... of eight spots k footprints off, in the order east, north, west, north-east, north-west,
+    south-west, south, south-east (world axes): ten Guardians from the west and ten Peacekeepers from the south both
+    stood in exactly that order, the tanks 40 apart, the men 20 (not the two radii, 46.6 / 14), the tenth two
+    footprints east; six Guardians from the north and six from the west the same as each other.
+INFERRED: ring 2 past its first spot (only the tenth unit read), how far it searches (RINGS), a footprint's ground
+read at its centre only, the bench's +1 on the tanks' spots (all of them, both axes; not modelled), and the rule for
+units bigger than a Guardian or on water (a02's Akula subs, footprint 5: rings 100 apart; no bench yet). Tests:
+tests/test_sim_spot.py.
 """
 import math
 
@@ -89,3 +106,45 @@ def sees(flat, w, c0, c1):
         if not flat[r * w + q]:
             return False
     return True
+
+
+RING = ((1, 0), (0, 1), (-1, 0), (1, 1), (-1, 1), (-1, -1), (0, -1), (1, -1))    # the bench's order round a spot
+RINGS = 12                                                                         # INFERRED: how far it looks
+
+
+def footprint(radius, grid):
+    """Cells a side of a unit's footprint: floor(2 r / grid + 0.3), at least one."""
+    return max(1, math.floor(2.0 * radius / grid + 0.3 + 1e-9))
+
+
+def snap(p, n, grid):
+    """`p` on the grid for a footprint of n cells: an even one to the nearest cell corner, an odd one to the centre
+    of the cell it is in."""
+    if n % 2 == 0:
+        return (round(p[0] / grid) * grid, round(p[1] / grid) * grid)
+    return (math.floor(p[0] / grid) * grid + grid / 2, math.floor(p[1] / grid) * grid + grid / 2)
+
+
+def spot(want, radius, held, open_at, grid, on_grid=True):
+    """Where a ground unit of `radius` sent to `want` stops (the module docstring's rule): `want` snapped to the grid
+    by its footprint, or the first spot round that of the rings that is open_at(x, y) and overlaps no footprint square
+    of `held` ((x, y, radius) each). None: none free within RINGS, or the snapped point not open. on_grid=False:
+    `want` itself, not snapped, and the rings round it (INFERRED: the bench sent units to empty ground only; moves
+    to a thing's place -- a waypoint leg, a building, a unit chased -- keep their exact point)."""
+    n = footprint(radius, grid)
+    p = snap(want, n, grid) if on_grid else (float(want[0]), float(want[1]))
+    if not open_at(*p):
+        return None
+    side = n * grid
+    squares = [(x, y, footprint(r, grid) * grid) for x, y, r in held]
+
+    def free(q):
+        return all(abs(q[0] - x) * 2 >= side + s or abs(q[1] - y) * 2 >= side + s for x, y, s in squares)
+    if free(p):
+        return p
+    for k in range(1, RINGS + 1):
+        for dx, dy in RING:
+            q = (p[0] + dx * k * side, p[1] + dy * k * side)
+            if free(q) and open_at(*q):
+                return q
+    return None

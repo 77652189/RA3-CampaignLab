@@ -21,9 +21,12 @@ CNV_A1_Phase_2+80 派 tanya 去 south tower
 # 3. 过桥: the base vehicle is given at the south camp: deploy it at once (the made yard stands for it), the army holds
 #    the bridgehead, a guardian from the new yard every 30 s, the first two tank raids are met there. The push over
 #    the bridge goes with the anti-air vehicles (the twin blades come over the deck) once the second raid is down.
+#    The squad walks to the bridgehead (走, not 派): an attack-move there chases the first raid up the deck and stops
+#    in the south patrol's sight -- the plan says leave the patrol alone (2026-11-18: with the goal on the grid the
+#    peacekeepers stood 20-40 further up and lost the bridgehead to the second raid -- 派 had won by luck).
 CNV_A1_Phase_3+8 派 tanya 去 south camp
-CNV_A1_Phase_3+8 派 hawk 去 south bridgehead
-CNV_A1_Phase_3+8 派 peace 去 south bridgehead
+CNV_A1_Phase_3+8 走 hawk 去 south bridgehead
+CNV_A1_Phase_3+8 走 peace 去 south bridgehead
 CNV_A1_Phase_3+8 删除 名字含 AlliedMCV
 CNV_A1_Phase_3+8 造 AlliedConstructionYard 在 south camp
 CNV_A1_Phase_3+43 造 AlliedAntiVehicleVehicleTech1 在 south camp
