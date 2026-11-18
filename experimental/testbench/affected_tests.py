@@ -33,7 +33,9 @@ How a changed line is matched (always "more rather than fewer"):
     a layer folder, ADR 0035) is found by its file name, which is unique under tests/ (tests/guards/test_layers.py);
   * keep --timeout at 3000 or more: on Windows pytest-timeout's default method ends the WHOLE xdist worker when one test
     passes the limit ("node down: Not properly terminated"), and single simulator tests run 15-50 min under load;
-  * --cmd prints a full pytest command with -n min(8, free GB / 1.5): a simulator-test worker needs about 1.5 GB.
+  * --cmd prints a full pytest command with -n min(8, free GB / 1.5, the CPU tokens free now): a simulator-test
+    worker needs about 1.5 GB, and the machine's heavy jobs share one token pool (cpupool.py; the run waits for its
+    tokens, tests/conftest.py).
 
 The simulator's files (simcoverage.sim_files(): sim.py, simproxy.py and the parts they import -- sim*.py, or
 experimental/cnv/engine/... once step 10 moves them; cnv/enginefiles.py says which files those are) go by import
@@ -114,10 +116,27 @@ def available_gb():
         return None
 
 
-def workers(avail=None):
-    """How many pytest-xdist workers fit now: min(8, free GB / 1.5), at least 1 (avail: GB, for tests)."""
+def cpu_tokens():
+    """The machine's CPU tokens free now (cpupool, T5: every heavy job on the machine shares them); None if unknown."""
+    try:
+        spec = importlib.util.spec_from_file_location('_cpupool', os.path.join(HERE, 'cpupool.py'))
+        cpupool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cpupool)
+        return cpupool.free_now()
+    except Exception:                               # pragma: no cover - the tool must work on a bare clone
+        return None
+
+
+def workers(avail=None, tokens=None):
+    """How many pytest-xdist workers fit now: min(8, free GB / 1.5, the CPU tokens free now), at least 1 (avail: GB,
+    tokens: free tokens, for tests). The run waits for that many tokens when it starts (tests/conftest.py): another
+    line taking them first only queues it."""
     avail = available_gb() if avail is None else avail
-    return MAX_WORKERS if avail is None else max(1, min(MAX_WORKERS, int(avail / GB_PER_WORKER)))
+    tokens = cpu_tokens() if tokens is None else tokens
+    n = MAX_WORKERS if avail is None else min(MAX_WORKERS, int(avail / GB_PER_WORKER))
+    if tokens is not None:
+        n = min(n, tokens)
+    return max(1, n)
 
 
 # ---------------------------------------------------------------- the coverage map

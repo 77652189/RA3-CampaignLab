@@ -311,6 +311,31 @@ def main():
     c.add_argument('base')
     c.add_argument('new')
     a = ap.parse_args()
+    if a.cmd in ('cross', 'compare'):
+        return _main(a)
+    # the machine's CPU tokens (cpupool, T5): a recording takes a token a subprocess (-j of them, as many as are free,
+    # waiting for one); `time` takes the whole pool so its readings are the machine's alone
+    pool = _cpupool()
+    if a.cmd == 'time':
+        with pool.hold(1, 'simrecord time', exclusive=True):
+            return _main(a)
+    want = max(1, min(a.j, len(a.only or TASKS))) if a.cmd == 'record' else 1
+    with pool.hold(want, f'simrecord {a.cmd}', at_least=1) as j:
+        if a.cmd == 'record':
+            a.j = j
+        return _main(a)
+
+
+def _cpupool():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        '_cpupool', os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testbench', 'cpupool.py'))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _main(a):
     if a.cmd == 'one':
         t0 = time.perf_counter()
         with gzip.open(a.path, 'wt', encoding='utf-8') as out:

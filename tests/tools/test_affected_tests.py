@@ -172,7 +172,9 @@ def test_two_test_files_of_one_name_are_an_error(tmp_path):
 
 
 def test_workers_follow_free_memory():
-    assert at.workers(100) == 8 and at.workers(6.1) == 4 and at.workers(1.0) == 1 and at.workers(0) == 1
+    assert at.workers(100, 99) == 8 and at.workers(6.1, 99) == 4 and at.workers(1.0, 99) == 1 and at.workers(0, 99) == 1
+    # the CPU tokens free now cap it too (cpupool, T5), never below 1
+    assert at.workers(100, 3) == 3 and at.workers(6.1, 2) == 2 and at.workers(100, 0) == 1
 
 
 def test_tests_without_a_coverage_record_are_always_picked(tmp_path, monkeypatch):

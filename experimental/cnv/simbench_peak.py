@@ -147,7 +147,13 @@ def main():
     ap.add_argument('--no-model', action='store_true', help='without the private engine model')
     ap.add_argument('--out', default=None, help='folder for peak_<rev>.json (default work/logs/perf)')
     a = ap.parse_args()
-    r = run(a.secs, a.units, not a.no_model)
+    # a timing: the whole of the machine's CPU tokens (cpupool, T5), so other lines' jobs do not share its cores
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('_cpupool', os.path.join(os.path.dirname(HERE), 'testbench', 'cpupool.py'))
+    cpupool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cpupool)
+    with cpupool.hold(1, 'simbench_peak', exclusive=True):
+        r = run(a.secs, a.units, not a.no_model)
     out = a.out or logs_dir()
     os.makedirs(out, exist_ok=True)
     path = os.path.join(out, f'peak_{r["rev"]}.json')
