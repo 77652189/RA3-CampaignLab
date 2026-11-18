@@ -22,22 +22,24 @@ DURATIONS_TESTS = os.path.join(at.MAPDIR, 'durations_tests.json')
 
 # item -> ceiling in seconds of test time (summed over tests: serial, not wall). Set at T4 (11-18):
 #   modules: ADR 0035 6 gives the module layer "a few minutes" as its whole budget. It is the layer meant to grow
-#     (each rule moved into engine/modules/ brings its tests), so its line is that budget, not the 23.5 s measured
-#     at landing (6 files, `-n 2`, 11-18); lower it once the layer is full.
-#   guards: every pick runs them. 295 s by the 11-15 record (240 s timed + 5 newer guard files at the 11 s
-#     median); 227 s measured 11-18 (`-n 2`, all of them; test_architecture 195 s of it). The line is ~25 % over
-#     the record, for runs that share 8 cores with other lines' tests.
+#     (each rule moved into engine/modules/ brings its tests), so its line is that budget, not the 31.6 s measured
+#     clean (8 files, `-n 2` holding the whole CPU pool, 11-18); lower it once the layer is full.
+#   guards: every pick runs them. Tightened 11-18 from 360 to 250: 205 s measured clean (all 8 files, `-n 2`
+#     holding the whole CPU pool, RA3_CPU_EXCLUSIVE=1; test_architecture 171 s, test_kernel 27 s of it; the 11-15
+#     record said 295 with 5 files guessed, and 227 s a loaded run 11-18). The line is ~20 % over the clean
+#     reading: a full run takes its workers' tokens, so it no longer shares cores past the pool, but more workers
+#     than 2 still slow each test a little.
 #   conformance_group: the slowest group of the conformance runner (one test = one scene's readings). No line
 #     yet (None: shown in the report, not checked): no record times single tests until a full run writes
 #     durations_tests.json; set it then, 25 % over the slowest group. (A `-n 2` run of the layer 11-18 was
 #     stopped at 77 of 118 groups; the layer takes ~77 min there, T2's number.)
-#   All lines were taken on a machine other lines' tests kept busy, so they are loose (safe: no false red).
-#   Retake them on an idle machine once the test token pool (T5) can hold it alone, and tighten.
 #   daily: the daily pick's pool, every test file not on tests/replay_tests.txt; 2860 s in the 11-15 record
-#     (2409 s recorded + 41 files not yet timed at the 11 s median), line 25 % over (~6 min over 8 workers).
+#     (2409 s recorded + 41 files not yet timed at the 11 s median), line 25 % over (~6 min over 8 workers). Not
+#     retaken clean yet (the pool is ~45 min of test time: the whole machine for ~25 min at `-n 2`): tighten it,
+#     and set conformance_group, from the coordinator's next full run, taken with RA3_CPU_EXCLUSIVE=1.
 CEILING = {
     'modules': 180.0,
-    'guards': 360.0,
+    'guards': 250.0,
     'conformance_group': None,
     'daily': 3600.0,
 }

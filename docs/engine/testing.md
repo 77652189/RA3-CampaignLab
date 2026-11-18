@@ -35,4 +35,4 @@
 
 读数迁进数据以后，原来点名它的手写整局测试在同一次提交里删掉。
 
-不许新加点名台子的测试函数：`tests/guards/bench_tests_baseline.txt` 是 T4（11-18）时点名台子（代码里出现 `engine_X`、它的变体或它的构建名；注释和文档串里引用不算）的 880 个测试函数，只减不增。测试函数本身或它用到的模块级辅助函数、常量、fixture 点名都算；新的一条变红，删掉或不再点名的那条要在同一次提交里从名单删掉（`tests/guards/test_bench_tests.py`）。新读数写进 `checks/<台子>.readings.toml`。
+不许新加点名台子的测试函数：`tests/guards/bench_tests_baseline.txt` 是 T4（11-18）时点名台子（代码里出现 `engine_X`、它的变体或它的构建名；注释和文档串里引用不算）的 880 个测试函数（T6 读全构建名后补进 7 个既有的，887），只减不增。测试函数本身或它用到的模块级辅助函数、常量、fixture 点名都算；新的一条变红，删掉或不再点名的那条要在同一次提交里从名单删掉（`tests/guards/test_bench_tests.py`）。新读数写进 `checks/<台子>.readings.toml`。

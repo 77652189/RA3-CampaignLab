@@ -64,6 +64,7 @@ def test_the_report_rows_and_flags(tmp_path):
     rows, flags = tb.rows(str(tmp_path))
     text = '\n'.join(rows)
     assert '守卫层合计' in text and '模块层合计：没有记录' in text
-    assert any(f.startswith('测试耗时越线：守卫层合计') and '上限 360' in f for f in flags)   # the rest at that median
+    assert any(f.startswith('测试耗时越线：守卫层合计') and '上限 %.0f' % tb.CEILING['guards'] in f
+               for f in flags)   # the rest at that median
     assert tb.rows(str(tmp_path / 'none')) == (
         ['  测试耗时：没有耗时记录（总控全量时 affected_tests.py --save-durations junit.xml）'], [])
