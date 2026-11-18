@@ -218,13 +218,13 @@ NOTES = {
         '后两路整局strict xfail保留交E；见work/re/c_closest_recheck_report.md'),
     '启发条件/EnemyNearbyHeuristic.MinEnemyValue': (BENCHED,
         'C engine_aiminvalue aiminvalue/aiminvaluehi:a：27关依赖显式取值1000/2500；'
-        '单盟军矿车1000、合计2400/3800对照；tests/test_min_enemy_value_c.py按名回放台上前三路。'
+        '单盟军矿车1000、合计2400/3800对照；experimental/cnv/checks/engine_aiminvalue.readings.toml 读数核对台上前三路。'
         '低值反向组台上留家1、模型0，strict xfail；招募/个人移动原因及其他对象价值算法保持gap；'
         '见work/re/c_minvalue_report.md'),
     '启发条件/TimeSinceLastExpansionHeuristic.Time': (BENCHED,
         'C engine_ailastexp ailastexp:a：原版27关有效依赖仅60s/240s，另设常量阳性组；'
         '同图一局12条预写断言PASS，在家人数s19-62为4/4/0、s64-242为0/4/0、s244-345为0/0/0。'
-        'tests/test_last_expansion_c.py按名回放四个窗口一致，无模型修改。'
+        'experimental/cnv/checks/engine_ailastexp.readings.toml 读数核对四个窗口一致，无模型修改。'
         '仅首次扩张前计时；SDK其他Time取值、初始时刻精确值、真实扩张后重置/Past=false/逐帧边界仍gap；'
         '见work/re/c_lastexp_report.md'),
     '启发条件/TimeSinceLastExpansionHeuristic': (GUESSED,
@@ -241,45 +241,45 @@ NOTES = {
         'C engine_aipowerenemy aipenoff/aipenon:a：同图8对4守护者、一座玩家光谱塔及电厂，'
         '固定Value=2.0/Above=true/IncludeOwnDefenses=false，仅IncludeEnemyDefenses=false/true；'
         's40在家/AI总数/玩家坦克/玩家塔为0/8/4/1与8/8/4/1，两局各4条PASS。'
-        'tests/test_simai_powerenemy_c.py按名回放原读数；仅验证此塔与军队组合，'
+        'experimental/cnv/checks/engine_aipowerenemy.readings.toml 读数核对原读数；仅验证此塔与军队组合，'
         '精确比值公式、求值帧、其他防御类别仍gap；未改模型或阈值，'
         '见work/re/c_powerenemy_report.md'),
     '启发条件/PowerAdvantageHeuristic.IncludeOwnDefenses': (BENCHED,
         'C engine_aipowerown aipownoff/aipownon:a：同图4对8守护者、一座己方光谱塔及电厂，'
         '固定Value=0.5/Above=true，仅IncludeOwnDefenses=false/true；'
         's40在家/AI总数/玩家坦克/己方塔为4/4/8/1与0/4/8/1，两局各4条PASS。'
-        'tests/test_simai_powerown_c.py按名回放原读数；仅验证此塔与军队组合，'
+        'experimental/cnv/checks/engine_aipowerown.readings.toml 读数核对原读数；仅验证此塔与军队组合，'
         '精确比值公式、求值帧、其他防御类别及敌方防御计入仍gap；未改模型或阈值，'
         '见work/re/c_powerown_report.md'),
     '启发条件/PowerAdvantageHeuristic.Value': (BENCHED,
         'C engine_aipowervalue aipval1/aipval01:a：同图4对8同型守护者、Above=true，'
         '仅Value=1.0/0.1；s40在家/AI总数/玩家坦克分别4/4/8与0/4/8，两局各3条PASS。'
-        'tests/test_simai_powervalue_c.py按名回放两组实测；仅验证该固定军队下两阈值的行为差异，'
+        'experimental/cnv/checks/engine_aipowervalue.readings.toml 读数核对两组实测；仅验证该固定军队下两阈值的行为差异，'
         '完整比值公式、精确边界/求值帧、动态伤亡与防御计入仍gap；未改模型或阈值，'
         '见work/re/c_powervalue_report.md'),
     '启发条件/PowerAdvantageHeuristic.Above': (BENCHED,
         'C engine_aipowerabove aipabtrue/aipabfalse:a：同图4对8同型守护者、Value=1.0，'
         '仅Above=true/false；s40在家/AI总数/玩家坦克分别4/4/8与0/4/8，'
-        '两局各3条PASS，tests/test_simai_powerabove_c.py按名回放两组实测。'
+        '两局各3条PASS，experimental/cnv/checks/engine_aipowerabove.readings.toml 读数核对两组实测。'
         '仅验证该固定军队与阈值下Above翻转；精确求值帧、其他比值/动态伤亡/防御计入仍gap；'
         '未改模型与阈值，见work/re/c_powerabove_report.md'),
     '启发条件/IntervalHeuristic.CountFrom': (BENCHED,
         'C engine_aiintervalfrom aiintmap/aiintai:a：同人格同图s10唤醒，仅MAP_START/AI_START；'
         'IntervalTime=25s、ActiveTime=30s，s24在家/总数均4/4，s32为0/4与4/4，s42均0/4。'
-        'tests/test_simai_intervalfrom_c.py按名回放两组实测；'
+        'experimental/cnv/checks/engine_aiintervalfrom.readings.toml 读数核对两组实测；'
         '只验证首次开启起点，后续循环、精确求值帧、未唤醒边界仍gap；'
         '见work/re/c_intervalfrom_report.md'),
     '启发条件/ConstantHeuristic.Weight': (BENCHED,
         'C engine_aiconstweight aicwzero/aicwone:a：同人格单战略状态，仅Weight=0/1；'
         's40步兵在家/总数/未登记坦克在家为4/4/4与0/4/4，'
-        'tests/test_simai_constweight_c.py按名回放两组实测。'
+        'experimental/cnv/checks/engine_aiconstweight.readings.toml 读数核对两组实测。'
         '仅验证零排除及正值可进入；多个正权重的抽样比例、随机分布和预算/造兵消费者仍gap；'
         '见work/re/c_constweight_report.md'),
     **{f'启发条件/{k}': (GUESSED,
         'C engine_aitechshare a：四座开局油井、活跃拥有者两方，aitechlow/high自有1/2；'
         's40低于75/高于75/低于125三组在家人数均4/0/4，原预测0/4/0与4/0/0。'
         '地图另有Soviet_2..6空玩家，倾向引擎玩家数包含空槽；'
-        'tests/test_simai_techshare_c.py按名回放两组实测，门控两strict xfail、所有权控制独立断言；'
+        'experimental/cnv/checks/engine_aitechshare.readings.toml 读数核对两组实测，门控两strict xfail、所有权控制独立断言；'
         '尚缺同帧own/total/player-count和状态权重，保留gap，不按结果倒推公式；'
         '见work/re/c_techshare_report.md、handoff-c.md')
        for k in ('TechBuildingShareHeuristic', 'TechBuildingShareHeuristic.Above',
@@ -298,7 +298,7 @@ NOTES = {
         '（ConyardInDanger 三项 1000s / 100% / 5000、HoldObjectBeaconRadius 5000、'
         'ResourceNodeValueRemainingForExpansion 1000000、DefaultThreatFindRadius 5000、'
         'MaxWallDestroyTimeToCountAsGoThroughWalls 1000s），AI钱 / 建筑码 / 兵数 / 我方建筑逐秒和基准一样'
-        '（±1 s 开局相位）；tests/test_simai_bench_b.py::test_seven_inert_personality_fields_change_nothing。'
+        '（±1 s 开局相位）；experimental/cnv/checks/engine_aiskirm.readings.toml::seven_inert_personality_fields_change_nothing。'
         f'为什么不起作用：{why}。gap：台上没有围攻建造厂、没有墙、没有协同信标，只证"27 关的门关着时不起作用"')
        for k, why in (
            ('ConyardInDangerEmergencyUnderAttackTime', 'D126 难度门 EmergencyManagerHandleConyardInDangerAtDifficulty 94 个人格全空'),
@@ -311,14 +311,14 @@ NOTES = {
     '人格/AIPersonalityDefinition.CanBuildInAlliedBuildRadii': (BENCHED,
         'B212-B213 engine_aiskirm acbr0 / acbr1:rpb（都 PASS）：玩家盟军建造厂放在 AI 建造厂西南 700、两向 Friend，'
         '只差这一项 false / true：兵营 s49 都在 x10 y17（在盟友 600 半径内）、电厂都在其后 +21 +17，两局相同；'
-        'tests/test_simai_bench_b.py::test_allied_build_radius_over_the_ais_own_does_not_move_its_structures。'
+        'experimental/cnv/checks/engine_aiskirm.readings.toml::allied_build_radius_over_the_ais_own_does_not_move_its_structures。'
         '程序（l4_allied_radii，读到）：false 时放置搜索多带一位，格子可建区检查拒绝盟友的那条记录；台上否掉"重叠处也挡"，'
         '模拟器 simai.allied_ok 只挡"只有盟友半径盖住"的落点（任一记录过就过，INFERRED）。gap：只在盟友半径里的落点'
         '（AI 建造厂挪到盟友半径边上）没上台；盟友是 AI 时挡不挡没测'),
     '人格/AIPersonalityDefinition.ResourceNodeSearchRadius': (BENCHED,
         'B185 engine_aiskirm aiskind:ib vs aiskirm:ib（都 PASS）：1AlliedBalanced 子人格只把它从 700 改成 5000，'
-        '建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::'
-        'test_a_resource_node_search_radius_of_5000_changes_nothing_on_a_plain_skirmish。D125 第 1 节：只给矿点排先后'
+        '建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；'
+        'experimental/cnv/checks/engine_aiskirm.readings.toml::a_resource_node_search_radius_of_5000_changes_nothing_on_a_plain_skirmish。D125 第 1 节：只给矿点排先后'
         '（半径内先试），不排除远处矿点。gap：台上只有基地旁的矿，两个矿点的排序台子（d125 第 1 节）没上'),
     **{f'人格/AIPersonalityDefinition.RefineryPlacement{k}': (BENCHED,
         f'B185 / B186 engine_aiskirm aiskinp:ib、aiskin1:rp、aiskin0:rp vs aiskirm（都 PASS）：{why}；'
@@ -326,7 +326,7 @@ NOTES = {
         '模拟器（B189 simai Brain.refinery_spot + 模型 REFINERY 150 分）照 d125 第 1 节排矿点、D136 第 5 节固定圈 + '
         '矿点朝向 ±k·π/16 七个方向、Ticks ≤ 0 不转圈（读到）；B188 rpx 坐标：aiskirm 两座落各东矿点第 5 圈 −3 档'
         '（条带 x26 y9 / x28 y11，模拟器逐条对上）、不造第三座；'
-        'tests/test_simai_bench_b.py::test_stock_refineries_stand_on_ring_5_of_each_east_node_at_minus_three_sixteenths 等。'
+        'experimental/cnv/checks/engine_aiskirm.readings.toml::stock_refineries_stand_on_ring_5_of_each_east_node_at_minus_three_sixteenths 等。'
         'B191 照 D138 换成读到的：预检（各矿点默认位 S 的外形相交 + 通道点 150）、方向顺序 0/−1/+1/−2/+2/−3/+3、'
         '"还要不要矿场" = 矿点前方点在建造半径 600 + 75 内。'
         'gap：第 4 圈 −3 档模拟器放得下、台上放不下（aiskirm 差一条带，strict xfail，外形没读）；'
@@ -339,8 +339,8 @@ NOTES = {
         'B185 一局证一批 engine_aiskirm aiskins:ib vs aiskirm:ib（都 PASS）：七个字段一次改成 27 关敌方人格的值 / 极端值'
         '（CleanupRefineries false、CoopPersonality false、Assault / HoldPosition BeaconRadius 5000、'
         'EmergencyManagerHandle NoIncome / NoConyard / UnderAttack ""；1AlliedBalanced 继承的是 Coop 那套），'
-        '建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；tests/test_simai_bench_b.py::'
-        f'test_seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。{why}。'
+        '建筑码 / 兵数 / 我方建筑逐秒和基准一样（±1 s）；'
+        f'experimental/cnv/checks/engine_aiskirm.readings.toml::seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish。{why}。'
         'gap：D126 读成"条件满足才起作用"，台上条件都不满足（矿没采空、没有人类盟友和信标、建造厂在、有收入），'
         '起作用的那半没上台（d126 第 3 节的对照台子）')
        for k, why in (
@@ -419,7 +419,7 @@ NOTES = {
     '人格/AIPersonalityDefinition.ReactiveDefenseRadius': (BENCHED,
         'B199 engine_aireactive aireact750/aireact1200：ReactiveDefense 单状态、敌人在基地正南 1000，仅半径不同；'
         '750 全程不动（家300 4、敌存活 1 到 s80），1200 s8 全员出门、s20 敌人死；'
-        'tests/test_simai_bench_b.py::test_reactive_defense_radius_gates_the_chase 按名回放（模拟器 s10 出门、s23 打死）。'
+        'experimental/cnv/checks/engine_aireactive.readings.toml::reactive_defense_radius_gates_the_chase 读数核对（模拟器 s10 出门、s23 打死）。'
         '原版 27 关没有状态用 ReactiveDefense（只有 PCG 演示状态），只证半径门；精确边界、R×1.25 到位、美学站位没量'),
     '人格/AIPersonalityDefinition.UnitBuilderOverallDefensivePreference': (BENCHED,
         'B199 engine_aiskirm z aiskvd9（aiskvveh 布局，仅此项 1000%）：维和 s30 起到 s196 共 14、标枪 s151 才有、s222 共 7；'
@@ -432,7 +432,7 @@ NOTES = {
         'B201 engine_aihome aihmgcl/aihmgnw：两座初始建造厂（A 先放、B 在北 1350），SimpleAttack 打 A 西 ~700 的具名电厂、'
         'RETURN_HOME_AND_DISBAND，仅人格这条不同；PREFER_NEWEST 电厂没后全员回 B（s36 起家B 4），'
         'PREFER_CLOSEST 选 A、队伍中心已在 600 内 → 原地解散不走（到电厂 4 到 s88）；'
-        'tests/test_simai_bench_b.py::test_return_home_picks_the_base_by_the_personality_criteria 按名回放。'
+        'experimental/cnv/checks/engine_aihome.readings.toml::return_home_picks_the_base_by_the_personality_criteria 读数核对。'
         'CLOSEST 的量点（队伍中心）是推断，OLDEST/SMALLEST 等其余排序没量'),
     '人格/DefaultTacticHomeBaseCriteria.PreferredNotBaseTypes': (BENCHED,
         'B201 engine_aihome aihmgno：同上，PREFER_CLOSEST + PreferredNotBaseTypes OLDEST_OF_TYPE → 不回近的 A、回 B'
@@ -526,7 +526,7 @@ NOTES = {
     '目标/AITargetingHeuristic.Location': (BENCHED,
         'E81/E87 engine_ailocation a：同型电厂一陆一水、四架双刃，仅切Land/Water/Water Land；'
         's40到陆厂/到水厂分别4/0、0/4、4/0；'
-        'tests/test_simai_bench_e.py::test_target_location按名回放三组通过。'
+        'experimental/cnv/checks/engine_ailocation.readings.toml::target_location 读数核对三组通过。'
         'Location按位置地形过滤；只验证EnemyStructure/Distance，浅滩、桥面及空中目标仍INFERRED；'
         '见 work/re/e_location_e87.md'),
     '目标/AITargetingHeuristic.HeuristicType=FriendlyUnit': (BENCHED,
@@ -542,15 +542,15 @@ NOTES = {
         'C复核：旧配方Surface未显式指定，SDK移动器差异不能独立证明实际路径可达性；'
         'C断桥两组aipcland/aipcamph同模板切NORMAL地面/SUPERSONIC地面+水面：'
         's22-24仍均兵营1/电厂0，s40-44控制车均存活未到岸，两栖阳性未建立。'
-        'tests/test_simai_pathbanks_c.py独立断言控制读数；'
+        'experimental/cnv/checks/engine_aipathbanks.readings.toml独立断言控制读数；'
         'D108/D175：开局f4抽签时未登记基地，启发early:nobase直接"判不了"、不看测试模板，'
         'B217模拟器开局同样判不了，建筑选择各局按名回放通过——但这些局都没走到条件/移动器，'
         '保持gap不晋升；见 work/re/c_pathbanks_report.md、c_pathcond_gate_report.md、d175_gap_b216.md'),
     **{f'启发条件/{k}': (BENCHED,
         'E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，'
-        'true时0/4，两组PASS；tests/test_simai_bench_e.py::test_is_building_idle按名回放通过。'
+        'true时0/4，两组PASS；experimental/cnv/checks/engine_aibuilding.readings.toml::is_building_idle 读数核对通过。'
         'C补充活跃连续电厂队列false反向对照：匹配组s40到陆厂/在家0/4，不匹配4/0，'
-        '两组电厂4/基地1、各一次PASS；模型匹配组4/0，test_simai_buildkind_c为strict xfail，'
+        '两组电厂4/基地1、各一次PASS；模型匹配组4/0，experimental/cnv/checks/engine_aibuildkind.readings.toml为strict xfail，'
         '队列/求值时序未解；取消/挂起/等待仍gap；见 work/re/c_buildkind_false_report.md、e_building_e83.md')
        for k in ('IsBuildingHeuristic', 'IsBuildingHeuristic.PassIfBuilding')},
     '启发条件/IsBuildingHeuristic.KindOf': (BENCHED,
@@ -558,7 +558,7 @@ NOTES = {
         'FS_BARRACKS不匹配时0/4；两组电厂4/基地1，两局PASS；'
         '多token aibkindoryes/aibkindorno各一次PASS：FS_BARRACKS FS_POWER仅第二token匹配时4/0，'
         'FS_BARRACKS FS_TECHNOLOGY均不匹配时0/4，两组电厂4/基地1；'
-        'tests/test_simai_buildkind_c.py按名回放单token和多token四组，验证活跃队列KindOf按OR匹配。'
+        'experimental/cnv/checks/engine_aibuildkind.readings.toml 读数核对单token和多token四组，验证活跃队列KindOf按OR匹配。'
         'false反向两组各一次PASS：匹配0/4、不匹配4/0，均电厂4/基地1；'
         '模型匹配false组4/0，strict xfail，见 work/re/c_buildkind_false_report.md。'
         '仅连续电厂开局，队列挂起/取消/等待阶段仍gap；'
@@ -567,61 +567,61 @@ NOTES = {
         'E82 engine_aiopenside a：固定盟军玩家显式挂载三电厂开局，仅切Side。'
         'Allies在[s55,s60)电厂3/兵营0，Soviet电厂2/兵营1。D66：Side和玩家阵营全等才进候选，'
         '候选全空=开局直接完成、不下单、不回退；模型照此（B第147节）。'
-        'tests/test_simai_bench_e.py::test_opening_side[aiosallies]、test_an_opening_of_another_side_is_not_run'
+        'experimental/cnv/checks/engine_aiopenside.readings.toml::opening_side[aiosallies]、test_an_opening_of_another_side_is_not_run'
         '按名回放、断言台上读数（Soviet s19-s28 无电厂）。gap：Soviet之后的2电厂1兵营是没开局时的结构建造，'
         '模型没建（strict xfail，同第123节）；见 work/re/e_openside_e82.md'),
     **{f'人格/SpecificUnitCap.{k}': (BENCHED,
         'engine_aiskirm aiskcap:y（2026-11-12）：子人格给父人格没写的CNVNewPK四档Cap=2，'
         '新维和s33到2、停到s149（无上限aisknew2 s44已4），兵营改造标枪/维和；'
-        'tests/test_simai_bench_b.py::test_a_specific_unit_cap_holds_our_unit_at_two按名回放、断言台上读数。'
+        'experimental/cnv/checks/engine_aiskirm.readings.toml::a_specific_unit_cap_holds_our_unit_at_two 读数核对、断言台上读数。'
         'E80父人格已有维和Cap=20时子人格Cap=2不生效=第一条命中（test_simai_bench_e.py）。'
         'gap：s150后又造到4、没死人，引擎拿什么数对上限未知（strict xfail '
-        'test_after_s150_the_capped_unit_is_built_again）；见 work/re/handoff-b.md 第145节')
+        'experimental/cnv/checks/engine_aiskirm.readings.toml::after_s150_the_capped_unit_is_built_again）；见 work/re/handoff-b.md 第145节')
        for k in ('Unit', 'Difficulty', 'Cap')},
     **{f'经济/ResourceMultiplierCheat.{k}': (BENCHED,
         'engine_aitower aicheat2 / aicheat1 g（2026-11-13，台上 MEDIUM，矿车每趟 250）：MEDIUM 200% → 每趟 500；'
         'EASY HARD BRUTAL 300% + MEDIUM 100% → 每趟 250（与没写的 aitowerinc5 同）——Percentage 就是倍率本身，'
         '难度不含当前难度的行跳过；原版 EASY 100% / BRUTAL 200% 两种取值都在内。'
-        'tests/test_simai_bench_b.py::test_a_medium_cheat_line_of_200_percent_doubles_each_trip、'
-        'test_a_100_percent_line_and_lines_for_other_difficulties_change_nothing按名回放。'
+        'experimental/cnv/checks/engine_aitower.readings.toml::a_medium_cheat_line_of_200_percent_doubles_each_trip、'
+        'experimental/cnv/checks/engine_aitower.readings.toml::a_100_percent_line_and_lines_for_other_difficulties_change_nothing 读数核对。'
         'gap：多行同难度取哪条（取第一条，INFERRED）、卖楼等其他入账也乘（l2_mining 读到，没上台）；'
         '见 work/re/handoff-b.md 第176节')
        for k in ('Percentage', 'Difficulty')},
     **{f'人格/UnitCap.{k}': (BENCHED,
         'engine_aiskirm aiskuc uc（2026-11-13，台上 MEDIUM）：子人格写 Cap 3 MEDIUM + Cap 1 EASY HARD BRUTAL，'
         '兵数（矿车以外）s37 到 4、停到 s110（原版 aiskirm c 约 s60 已 8 个步兵）——严格大于最小匹配上限才停，'
-        '别的难度那行跳过；建筑照造。tests/test_simai_bench_b.py::test_a_medium_unit_cap_of_3_holds_the_army_at_4'
+        '别的难度那行跳过；建筑照造。experimental/cnv/checks/engine_aiskirm.readings.toml::a_medium_unit_cap_of_3_holds_the_army_at_4'
         '按名回放。原版只有 Cap 100 一种取值（够不着，规则同一条）。s111 后涨到 10 = 开局表末尾 3 辆激流'
         '（开局下单不过 UnitCap 门；计数同时列了激流两个模板名，_Ground 等同于前者，每辆算两次），'
-        '第183轮转正 test_after_s110_the_opening_riptides_pass_the_unit_cap。'
+        '第183轮转正 experimental/cnv/checks/engine_aiskirm.readings.toml::after_s110_the_opening_riptides_pass_the_unit_cap。'
         '第179轮：aiskuc7 uc（Cap 7）兵数 s55–s111 停在 7、第一辆矿车 s53 → 矿车算进单位数'
-        '（test_the_unit_cap_counts_the_miners）；aiskucn ucn（建造状态列新维和 + Cap 3）兵数 5、新维和 2 停到 s111 → '
-        '建造状态的单位单也过这道门（test_the_unit_cap_holds_the_build_states_unit_too）')
+        '（experimental/cnv/checks/engine_aiskirm.readings.toml::the_unit_cap_counts_the_miners）；aiskucn ucn（建造状态列新维和 + Cap 3）兵数 5、新维和 2 停到 s111 → '
+        '建造状态的单位单也过这道门（experimental/cnv/checks/engine_aiskirm.readings.toml::the_unit_cap_holds_the_build_states_unit_too）')
        for k in ('Cap', 'Difficulty')},
     '经济/BudgetState.State': (BENCHED,
         'engine_aitower aibsprod h（2026-11-13）：人格自己声明 DEFENSE 50% 的预算，唯一一行 BudgetState 的 State 指'
         '原版 ProductionOnlyBudget（DEFENSE 0%）：开局 2 万、到 s160 一座塔也不造，钱只随矿车涨——State 指哪个预算'
-        '定义就用哪个的份额。tests/test_simai_bench_b.py::test_a_budget_state_line_uses_the_budget_its_state_names'
+        '定义就用哪个的份额。experimental/cnv/checks/engine_aitower.readings.toml::a_budget_state_line_uses_the_budget_its_state_names'
         '按名回放；自建预算那几局（aitowerinc10 / inc5）同一规则。见 work/re/handoff-b.md 第177节。'
         '多行时选哪一个（work/re/d122_ai_rules.md 第1节）：engine_aitower aibsmax / aibstie / aibszero i'
         '（2026-11-13 三局 PASS）——权重最大的一个单独生效、不混合份额，并列取靠前，全 0 取第一条；'
-        'tests/test_simai_bench_b.py 的 test_the_heavier_budget_state_runs_alone_though_listed_second 等三条。'
+        'tests/test_simai_bench_b.py 的 experimental/cnv/checks/engine_aitower.readings.toml::the_heavier_budget_state_runs_alone_though_listed_second 等三条。'
         '敌人进出时切回（d122 R4）：engine_aitower aibsback r4（2026-11-14 PASS，原版四个预算、开局立刻完、5000）：'
         'Coop 5% 到 s48 无塔；4 辆守护者在 700 内 s29–s57 → s49 一座塔；撤走后 s73 再给 5000 不造第二座（又回 Coop）。'
-        'test_the_retail_budgets_switch_to_defense_while_the_raid_is_near_and_back_after'),
+        'experimental/cnv/checks/engine_aitower.readings.toml::the_retail_budgets_switch_to_defense_while_the_raid_is_near_and_back_after'),
     '人格/AIPersonalityDefinition.Side': (BENCHED,
         'B184 engine_aiskirm sd（work/re/d123_side.md 第3节；s1 阵营 Japan，人格 CNVSideX 只写 Side Soviet）：'
         'aisksd1 SkirmishPersonality=false（27 关全是这样）人格位 9 = 照用 CNVSideX，Side 不符不管；'
         'aisksd2 =true → 136 = 换成随机的日本人格（2JapanMechaWarfare）。27 关 Side 不起作用；'
-        'test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side 按名回放；'
+        'experimental/cnv/checks/engine_aiskirm.readings.toml::a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side 读数核对；'
         '门开着换人格 B207 进模拟器（模型 AIData.assigned_personality，随机抽签对不齐，只断言"不是 CNVSideX、是日本人格"）'
-        '：test_a_skirmish_personality_of_another_side_is_replaced'),
+        '：experimental/cnv/checks/engine_aiskirm.readings.toml::a_skirmish_personality_of_another_side_is_replaced'),
     '人格/AIPersonalityDefinition.SkirmishPersonality': (BENCHED,
         'B207：aisksd1 / aisksd2 只差这一项（engine_aiskirm sd，2026-11-14 两局 PASS，work/re/d123_side.md 1.2）：'
         'false（27 关全是默认 false）人格位 9 = 照用地图写的 CNVSideX；true 且 Side 不含玩家阵营 → 136 = 换成随机的'
         '本阵营遭遇战人格。模拟器 simai SimAI.assigned → 模型 AIData.assigned_personality（库 = SkirmishPersonality '
-        '的人格、Side 随继承，INFERRED）；按名回放 test_a_personality_whose_skirmish_gate_is_closed_is_used_whatever_'
-        'its_side、test_a_skirmish_personality_of_another_side_is_replaced'),
+        '的人格、Side 随继承，INFERRED）；读数 experimental/cnv/checks/engine_aiskirm.readings.toml::'
+        'a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side、experimental/cnv/checks/engine_aiskirm.readings.toml::a_skirmish_personality_of_another_side_is_replaced'),
     '组队招人/TeamTemplate.ReleaseType=NEVER_RELEASE': (BENCHED,
         'engine_airelease airelnever/airelprio仅ReleaseType不同；CNVTeams两组f166防御激活持3166/3167，'
         'priority在(526,541]同两ID转进攻，never保留至末样本；'
@@ -632,10 +632,10 @@ NOTES = {
         'engine_aiskirm aiskirm:m 实机（11-11 CampAISkirmM_mcp_1111_221811）s125-128防御8/清扫99，s129防御0/清扫8，'
         '池兵0、转队时逐帧兵池峰1：DEFENSE队RELEASE_TO_PRIORITY放人给STANDARD清扫队，一个采样内直接转、不经兵池。'
         '模拟器按引擎队名读AI队（A第202轮：状态_战术类型_a_b、defaultSkirmishTeam<玩家>、不存在的队条件为假）；'
-        'tests/test_simai_bench_c.py::test_release_to_priority_named_transfer_skips_the_pool按名回放、断言台上读数'
+        'experimental/cnv/checks/engine_aiskirm.readings.toml::release_to_priority_named_transfer_skips_the_pool 读数核对、断言台上读数'
         '（防御稳定、减少数=清扫人数、池兵0、峰1、s129±3）。NEVER_RELEASE见上一行。'
         'gap：人数——模型（fca219e）s131防御9→0/清扫99→9，实机8（模型多造1个，造兵归B）；s134池峰2模型没有'
-        '（strict xfail test_release_to_priority_transfers_defense_without_a_pool_round_trip）；ALWAYS_RELEASE、'
+        '（mismatch experimental/cnv/checks/engine_aiskirm.readings.toml::release_to_priority_transfers_defense_without_a_pool_round_trip）；ALWAYS_RELEASE、'
         '精确时钟仍gap；见 work/re/handoff.md 第202轮、c_release_report.md'),
     '微操/AIMicroManagerData.PassiveTargetSearchDistance': (TODO,
         'E104 engine_aipassive_distance aipsdz/aipsdt/aipsds/aipsdl：0/1/200/600均f140状态6选四人旁厂，'
@@ -681,8 +681,8 @@ NOTES = {
         'tests/test_simai_search.py 回放；仅被动建筑搜索，精确边界、敌军目标取得和揭雾未量'),
     '组队招人/TeamTemplate.SortByDistance': (BENCHED,
         '专用engine_aisort aisort0/aisort1：容量1，关闭远候选f177先离、开启近候选f178先离，另一名留原位；'
-        '固定到目标距离约985/700、到基地顺序相反；tests/test_simai_bench_c.py::'
-        'test_sort_by_distance_replays_named_departure按名断言两组台内计数并回放匹配；'
+        '固定到目标距离约985/700、到基地顺序相反；'
+        'experimental/cnv/checks/engine_aisort.readings.toml::sort_by_distance_replays_named_departure 两组台内计数读数核对；'
         '已对拍限具名候选离开顺序；招走解释仍INFERRED，同帧动态队成员ID/实际距离和等距规则仍gap；'
         '见 work/re/c_sort_report.md'),
     '组队招人/TeamTemplate.AllowRecruitUnitsInCombat': (BENCHED,
@@ -709,7 +709,7 @@ NOTES = {
         '大组实机传送前离300、传送后回900再离，模型美学轨迹strict xfail；'
         '精确边界/动态队成员仍gap，不晋升；tests/test_simai_bench_c.py；见 work/re/c_distance_report.md'),
     '战术/Tactic.UseAestheticsManager': (BENCHED,
-        'D145晋升：tests/test_simai_bench_c.py::test_tactic_aesthetics_switch_after_displacement 按名跑 aiaeson/aiaesoff，'
+        'D145晋升：experimental/cnv/checks/engine_aiaesthetics.readings.toml::tactic_aesthetics_switch_after_displacement 按名跑 aiaeson/aiaesoff，'
         '传送出圈后开的一侧回900再离开（s65 圈300/900=0/0）、关的一侧回双圈（1/1），模型两边都对上，正常断言；'
         '传送前模型开的一侧也离900（台上不离）仍strict xfail。旧记录：'
         '专用engine_aiaesthetics aiaeson/aiaesoff固定Distance=2000，仅切美学开关；'
@@ -719,8 +719,8 @@ NOTES = {
         '完整模拟首发154对台191且漏461，选敌/成员目的地/ready仍gap、strict xfail，不晋升；'
         'tests/test_ai_aesthetics_clock.py；见 work/re/e108_aesthetics_gate.md'),
     '微操/AIMicroManagerData.PullbackInjured': (BENCHED,
-        'engine_aipullback aipullsov 残血坦克离队回吊车；tests/test_simai_bench_b.py::'
-        'test_a_hurt_soviet_tank_team_is_pulled_back_to_the_crane 回放；普通盟军/日本工厂不可进入；'
+        'engine_aipullback aipullsov 残血坦克离队回吊车；'
+        'experimental/cnv/checks/engine_aipullback.readings.toml::a_hurt_soviet_tank_team_is_pulled_back_to_the_crane 回放；普通盟军/日本工厂不可进入；'
         '仅地面车辆回撤，吊车回收仍 strict xfail，未验证空海军/精确时间'),
     '微操/AIMicroManagerData.PullbackInjuredHealthPct': (BENCHED,
         'engine_aipullpct 固定30%血量、苏联吊车，仅阈值0.2/0.5不同；'

@@ -89,12 +89,72 @@ def named_missing(src):
     return None if re.search(pattern, text, re.M) else f'no {name} in {path}'
 
 
+# a test or reading a note's prose names: 'tests/x.py', 'tests/x.py::test_y', '<...>.readings.toml::id[case]', and a
+# trailing '*' or '…' makes the name a prefix. 'RA3-EngineModel tests/...' is the private model's own test, not ours.
+_PROSE_REF = re.compile(r'(?<!RA3-EngineModel )((?:tests|experimental)/[A-Za-z0-9_/.\-]+?\.(?:py|toml))'
+                        r'(?:::([A-Za-z0-9_]+(?:\[[^\]\s]*\])?)([*…]?))?')
+_BARE_TEST = re.compile(r'(?<![A-Za-z0-9_/:.])(test_[A-Za-z0-9_]+)([*…]?)')
+_defs = {}
+
+
+def _test_defs(root):
+    """Every test def name and test file stem under tests/, for a bare 'test_y' in prose."""
+    if root not in _defs:
+        names = set()
+        for top, _, files in os.walk(os.path.join(root, 'tests')):
+            for f in files:
+                if f.endswith('.py'):
+                    names.add(f[:-3])
+                    names.update(re.findall(r'^def (test_\w+)\(', open(os.path.join(top, f), encoding='utf-8').read(),
+                                            re.M))
+        _defs[root] = names
+    return _defs[root]
+
+
+def prose_missing(text, root=ROOT):
+    """Every test or reading a register's prose names that is not there (a note outlives the test it cites: T3 moved
+    them into readings data). Checks the same things named_missing does, wherever in the text they stand."""
+    missing = []
+    for m in _PROSE_REF.finditer(text):
+        path, name, star = m[1], m[2], m[3]
+        full = os.path.join(root, path)
+        if not os.path.exists(full):
+            missing.append(f'no file {path}')
+            continue
+        if not name:
+            continue
+        found = re.findall(r'^id = "([^"]+)"$' if path.endswith('.readings.toml') else r'^def (\w+)\(',
+                           open(full, encoding='utf-8').read(), re.M)
+        if not any(f == name or (star and f.startswith(name)) for f in found):
+            missing.append(f'no {name} in {path}')
+    for m in _BARE_TEST.finditer(_PROSE_REF.sub(' ', text)):
+        if not any(d == m[1] or (m[2] and d.startswith(m[1])) for d in _test_defs(root)):
+            missing.append(f'no test {m[1]} under tests/')
+    return missing
+
+
+def test_prose_missing_reads_paths_names_cases_prefixes_and_bare_names(tmp_path):
+    (tmp_path / 'tests').mkdir()
+    (tmp_path / 'tests' / 'test_x.py').write_text('def test_kept_one():\n    pass\n', encoding='utf-8')
+    (tmp_path / 'experimental').mkdir()
+    (tmp_path / 'experimental' / 'r.readings.toml').write_text('[[reading]]\nid = "side[a]"\n', encoding='utf-8')
+    root = str(tmp_path)
+    assert prose_missing('tests/test_x.py::test_kept_one按名回放、test_kept* 和 tests/test_x.py', root) == []
+    assert prose_missing('experimental/r.readings.toml::side[a]通过；test_x 整个文件', root) == []
+    assert prose_missing('RA3-EngineModel tests/no_such_file.py::test_y', root) == []
+    assert prose_missing('tests/no_such_file.py按名回放；tests/test_x.py::test_nope；test_nope_too；'
+                         'experimental/r.readings.toml::side[b]', root) == [
+        'no file tests/no_such_file.py', 'no test_nope in tests/test_x.py',
+        'no side[b] in experimental/r.readings.toml', 'no test test_nope_too under tests/']
+
+
 def test_the_registers_point_at_real_items_and_tests():
     keys = {(i['part'], i['name']) for i in items()}
     problems = [f'BENCHED_TESTS: no item {k}' for k in inventory.BENCHED_TESTS if k not in keys]
     problems += [f'BENCHED_TESTS {k}: {why}' for k, test in inventory.BENCHED_TESTS.items()
                  if (why := named_missing(test))]
     problems += [f'NOTES: {k}' for k, (state, _) in inventory.NOTES.items() if k not in keys or state not in inventory.STATES]
+    problems += [f'NOTES {k}: {why}' for k, (_, text) in inventory.NOTES.items() for why in prose_missing(text)]
     assert not problems, '\n'.join(problems)
 
 
@@ -260,9 +320,10 @@ def test_every_retail_tactic_and_heuristic_kind_is_an_ai_item():
 
 def test_the_ai_registers_point_at_real_items_and_sources():
     names = {i['name'] for i in items() if i['part'] == inventory.AI}
-    for name, (state, _) in inventory_ai.NOTES.items():
-        assert name in names and state in inventory.STATES, name
-    problems = [f'BENCHED_REG: no item {name}' for name in inventory_ai.BENCHED_REG if name not in names]
+    problems = [f'NOTES: {name}' for name, (state, _) in inventory_ai.NOTES.items()
+                if name not in names or state not in inventory.STATES]
+    problems += [f'NOTES {name}: {why}' for name, (_, text) in inventory_ai.NOTES.items() for why in prose_missing(text)]
+    problems += [f'BENCHED_REG: no item {name}' for name in inventory_ai.BENCHED_REG if name not in names]
     problems += [f'BENCHED_REG {name}: {why}' for name, src in inventory_ai.BENCHED_REG.items()
                  if (why := named_missing(src))]
     assert not problems, '\n'.join(problems)
