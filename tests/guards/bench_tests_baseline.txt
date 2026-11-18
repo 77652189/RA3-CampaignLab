@@ -1,4 +1,4 @@
-# Test functions that name a bench at T4 (11-18), 880 of them: in code (not a comment or docstring), an engine_X probe,
+# Test functions that name a bench at T4 (11-18), 880 of them, 887 with the 7 T6 found (11-18: build names the bench reader had missed): in code (not a comment or docstring), an engine_X probe,
 # a build variant of it, or one of its build names ('aiaeson'). Only shrinks: tests/guards/test_bench_tests.py is red
 # on a new one and on a line whose test is gone or no longer names a bench. New readings go into
 # experimental/cnv/checks/<bench>.readings.toml (docs/engine/testing.md).
@@ -41,6 +41,9 @@ tests/test_ai_reverse_k2.py::test_on_the_member_backs_up_to_r_minus_10
 tests/test_ai_reverse_poke.py::test_off_no_back_up_order
 tests/test_ai_reverse_poke.py::test_on_both_members_back_up_to_r_minus_10_from_the_placed_foe
 tests/test_ai_reverse_poke.py::test_the_plan_ran_at_frame_250
+tests/test_ai_team_fields.py::test_bench
+tests/test_ai_team_fields.py::test_model
+tests/test_ai_team_fields.py::test_pairs_differ_in_one_field_only
 tests/test_aistart_bench_a.py::test_an_ai_neither_woken_nor_handed_its_yard_never_opens
 tests/test_aistart_bench_a.py::test_skirmish_ai_start_opens_an_ai_whose_yard_was_handed
 tests/test_aistart_bench_a.py::test_toggle_skirmish_ai_off_freezes_the_ai_and_on_resumes_it
@@ -337,6 +340,9 @@ tests/test_simai.py::test_nobody_goes_in_where_the_bench_had_nobody
 tests/test_simai.py::test_object_of_type_exists_counts_the_relationship_as_on_the_bench
 tests/test_simai.py::test_one_goes_into_the_first_turret
 tests/test_simai.py::test_one_of_the_four_dies_at_the_house_door
+tests/test_simai.py::test_one_priority_alone_leaves_the_unnamed_enemies_out
+tests/test_simai.py::test_one_priority_puts_the_top_scored_enemy_first
+tests/test_simai.py::test_one_priority_zero_takes_that_enemy_out
 tests/test_simai.py::test_only_the_states_listed_for_the_difficulty_run
 tests/test_simai.py::test_opening_frames_match_the_bench
 tests/test_simai.py::test_opening_time_counts_from_the_wake_as_on_the_bench
@@ -376,6 +382,7 @@ tests/test_simai.py::test_the_ais_hurt_plant_is_not_repaired_either_way
 tests/test_simai.py::test_the_ais_turrets_are_its_base_defenses_in_their_order_not_houses
 tests/test_simai.py::test_the_opening_path_test_picks_what_the_bench_picked
 tests/test_simai.py::test_the_team_goes_into_the_house
+tests/test_simai.py::test_two_enemies_in_one_tier_go_for_the_far_plant_first
 tests/test_simai.py::test_unit_modifier_zero_changes_nothing_as_on_the_bench
 tests/test_simai.py::test_waypoint_target_walks_there_and_stays
 tests/test_simai_alphahp.py::test_alpha_first_cycle_matches_measured_arrival_and_return

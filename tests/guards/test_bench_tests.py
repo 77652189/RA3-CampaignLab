@@ -151,37 +151,15 @@ def named_bench_tests(text, stems, missions):
     return {tid for tid, n in tests if names_a_bench(n) or uses(n) & tainted}
 
 
-def built_names(text):
-    """The build names a bench module's CHECKS / MISSION / PAIR_BUILDS declares, read from its syntax tree (a bench
-    is not imported: it builds missions, and most are reached lazily, not through the registry): the string keys
-    of a dict literal, and for a dict comprehension keyed by its loop variable -- {k: .. for k in ('aipull1', ..)}
-    or over a module-level tuple -- the strings it loops over."""
-    tree = ast.parse(text)
-    consts = {n.targets[0].id: n.value for n in tree.body
-              if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)}
-    out = set()
-    for n in tree.body:
-        if not (isinstance(n, ast.Assign)
-                and any(getattr(t, 'id', None) in ('CHECKS', 'MISSION', 'PAIR_BUILDS') for t in n.targets)):
-            continue
-        v = n.value
-        if isinstance(v, ast.Dict):
-            out |= {k.value for k in v.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)}
-        elif isinstance(v, ast.DictComp) and isinstance(v.key, ast.Name):
-            for g in v.generators:
-                if isinstance(g.target, ast.Name) and g.target.id == v.key.id:
-                    it = consts.get(g.iter.id, g.iter) if isinstance(g.iter, ast.Name) else g.iter
-                    if isinstance(it, (ast.Tuple, ast.List, ast.Set)):
-                        out |= {c.value for c in it.elts if isinstance(c, ast.Constant) and isinstance(c.value, str)}
-    return out
-
-
 def bench_names(checks=None):
-    """(bench stems {'engine_X'}, bench build names) of checks/engine_*.py."""
+    """(bench stems {'engine_X'}, bench build names) of checks/engine_*.py. The build names are what the bench's
+    CHECKS / MISSION / PAIR_BUILDS declares, read by the inventory's one reader of a bench's syntax tree
+    (inventory.probe_checks: a bench is not imported, it builds missions, and most are reached lazily, not through
+    the registry)."""
     stems, missions = set(), set()
     for p in sorted(Path(checks or inventory.CHECKS).glob('engine_*.py')):
         stems.add(p.stem)
-        missions |= built_names(p.read_text(encoding='utf-8'))
+        missions |= inventory.probe_checks(p.read_text(encoding='utf-8'))[0]
     return stems, missions
 
 

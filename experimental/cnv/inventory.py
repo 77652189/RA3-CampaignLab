@@ -976,22 +976,205 @@ CHECKS = os.path.join(HERE, 'checks')
 ENGINE_DOCS = os.path.join(ROOT, 'docs', 'engine')
 
 
+class _Unknown(Exception):
+    """A part of a probe's CHECKS / MISSION the static reader cannot work out (it is skipped, not guessed)."""
+
+
+class _Static:
+    """Works out, from a probe's syntax tree alone, the entries of its CHECKS / MISSION / PAIR_BUILDS however they
+    are written: a dict literal, a comprehension over a literal or a module-level constant ({k: .. for k in ('a',
+    ..)}, `for b, v in VARIANTS.items()`, `for w in 'abc'`), f-string or helper-built keys (f'engine_unpack_{v}',
+    _build(w) whose body is one return), `{**{..}, **{..}}` and `{..} | {..}` merges, and a name bound to any of
+    these."""
+
+    def __init__(self, tree):
+        self.consts = {n.targets[0].id: n.value for n in tree.body
+                       if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)}
+        self.funcs = {n.name: n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+
+    def entries(self, node, env, depth=0):
+        """[(key, value node, env)] of the mapping `node`; a part it cannot work out is left out."""
+        if depth > 8:
+            return []
+        if isinstance(node, ast.Dict):
+            out = []
+            for k, v in zip(node.keys, node.values):
+                if k is None:
+                    out += self.entries(v, env, depth + 1)
+                    continue
+                try:
+                    out.append((self.value(k, env), v, env))
+                except _Unknown:
+                    pass
+            return out
+        if isinstance(node, ast.DictComp):
+            out = []
+            try:
+                envs = self.bindings(node.generators, env)
+            except _Unknown:
+                return []
+            for e in envs:
+                try:
+                    out.append((self.value(node.key, e), node.value, e))
+                except _Unknown:
+                    pass
+            return out
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+            return self.entries(node.left, env, depth + 1) + self.entries(node.right, env, depth + 1)
+        if isinstance(node, ast.Name) and node.id not in env and node.id in self.consts:
+            return self.entries(self.consts[node.id], {}, depth + 1)
+        return []
+
+    def bindings(self, generators, env):
+        envs = [env]
+        for g in generators:
+            if g.is_async:
+                raise _Unknown
+            more = []
+            for e in envs:
+                for item in self.iterate(self.value(g.iter, e)):
+                    e2 = dict(e)
+                    self.bind(g.target, item, e2)
+                    if all(self.value(c, e2) for c in g.ifs):
+                        more.append(e2)
+            envs = more
+        return envs
+
+    @staticmethod
+    def iterate(v):
+        if isinstance(v, (str, list, tuple, set, frozenset, dict)):
+            return list(v)
+        raise _Unknown
+
+    def bind(self, target, item, env):
+        if isinstance(target, ast.Name):
+            env[target.id] = item
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            items = self.iterate(item)
+            if len(items) != len(target.elts):
+                raise _Unknown
+            for t, x in zip(target.elts, items):
+                self.bind(t, x, env)
+        else:
+            raise _Unknown
+
+    def value(self, node, env, depth=0):
+        """The Python value of the expression `node` (constants, containers, names, f-strings, simple calls)."""
+        if depth > 20:
+            raise _Unknown
+        v = lambda n: self.value(n, env, depth + 1)
+        if isinstance(node, ast.Constant):
+            return node.value
+        if isinstance(node, ast.Name):
+            if node.id in env:
+                return env[node.id]
+            if node.id in self.consts:
+                return self.value(self.consts[node.id], {}, depth + 1)
+            raise _Unknown
+        if isinstance(node, (ast.Tuple, ast.List)):
+            return tuple(v(e) for e in node.elts)
+        if isinstance(node, ast.Set):
+            return frozenset(v(e) for e in node.elts)
+        if isinstance(node, ast.Dict):
+            return {k: None for k, _, _ in self.entries(node, env)}
+        if isinstance(node, ast.DictComp):
+            return {k: None for k, _, _ in self.entries(node, env)}
+        if isinstance(node, ast.JoinedStr):
+            out = ''
+            for part in node.values:
+                if isinstance(part, ast.Constant):
+                    out += str(part.value)
+                elif isinstance(part, ast.FormattedValue) and part.conversion == -1 and part.format_spec is None:
+                    out += str(v(part.value))
+                else:
+                    raise _Unknown
+            return out
+        if isinstance(node, ast.IfExp):
+            return v(node.body) if v(node.test) else v(node.orelse)
+        if isinstance(node, ast.Compare) and len(node.ops) == 1:
+            a, b, op = v(node.left), v(node.comparators[0]), node.ops[0]
+            ops = {ast.Eq: lambda: a == b, ast.NotEq: lambda: a != b, ast.In: lambda: a in b,
+                   ast.NotIn: lambda: a not in b}
+            if type(op) in ops:
+                return ops[type(op)]()
+            raise _Unknown
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            a, b = v(node.left), v(node.right)
+            if type(a) is type(b) and isinstance(a, (str, tuple)):
+                return a + b
+            raise _Unknown
+        if isinstance(node, ast.Call) and not node.keywords:
+            f = node.func
+            if isinstance(f, ast.Attribute) and not node.args and f.attr in ('items', 'keys', 'values'):
+                d = self.value(f.value, env, depth + 1)
+                if isinstance(d, dict):
+                    if f.attr == 'keys':
+                        return tuple(d)
+                    full = self.full_dict(f.value, env)
+                    return tuple(full.items()) if f.attr == 'items' else tuple(full.values())
+                raise _Unknown
+            if isinstance(f, ast.Name) and f.id in ('tuple', 'list', 'sorted') and len(node.args) == 1:
+                items = self.iterate(v(node.args[0]))
+                return tuple(sorted(items) if f.id == 'sorted' else items)
+            if isinstance(f, ast.Name) and f.id in self.funcs:
+                fn = self.funcs[f.id]
+                body = [s for s in fn.body if not (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant))]
+                a = fn.args
+                if (len(body) == 1 and isinstance(body[0], ast.Return) and body[0].value is not None
+                        and not (a.vararg or a.kwarg or a.kwonlyargs or a.defaults or a.posonlyargs)
+                        and len(a.args) == len(node.args)):
+                    inner = {p.arg: v(x) for p, x in zip(a.args, node.args)}
+                    return self.value(body[0].value, inner, depth + 1)
+        raise _Unknown
+
+    def full_dict(self, node, env):
+        """{key: value} of a mapping whose values are themselves worked out (for .items() / .values())."""
+        if isinstance(node, ast.Name) and node.id not in env and node.id in self.consts:
+            node, env = self.consts[node.id], {}
+        if isinstance(node, ast.Dict) and None not in node.keys:
+            return {self.value(k, env): self.value(x, env) for k, x in zip(node.keys, node.values)}
+        raise _Unknown
+
+    def functions(self, node, env):
+        """The module-level function names a check value runs: a bare name (`a`), else every module-level function a
+        lambda / call names in its body (lambda m, k=k: a(m, k) -> a), looked through a name bound to a constant."""
+        if isinstance(node, ast.Name) and node.id not in self.funcs and node.id in self.consts and node.id not in env:
+            return self.functions(self.consts[node.id], {})
+        if isinstance(node, ast.Name):
+            return [node.id]
+        out = []
+        for n in ast.walk(node):
+            if isinstance(n, ast.Name) and n.id in self.funcs and n.id not in out:
+                out.append(n.id)
+        return out
+
+
 def probe_checks(text):
-    """(missions, {check key: [function name]}) of a probe's source: its CHECKS = {mission: {key: function}} read from
-    the syntax tree (a probe is not imported: it builds missions)."""
+    """(missions, {check key: [function name]}) of a probe's source: its CHECKS = {mission: {key: function}} (and the
+    builds of MISSION / PAIR_BUILDS) read from the syntax tree (a probe is not imported: it builds missions) by
+    _Static, which works out comprehensions, f-strings and merges, and for a check written as a lambda or call names
+    the module-level functions it runs. The one reader of a probe's builds and checks: the inventory's split by check
+    (probe_parts, tested_checks) and the guard against new bench tests (tests/guards/test_bench_tests.py) both use it."""
+    tree = ast.parse(text)
+    st = _Static(tree)
     missions, keys = set(), collections.defaultdict(list)
-    for node in ast.parse(text).body:
-        if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict)
-                and any(getattr(g, 'id', None) in ('CHECKS', 'MISSION') for g in node.targets)):
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
             continue
-        for mk, mv in zip(node.value.keys, node.value.values):
-            if isinstance(mk, ast.Constant) and isinstance(mk.value, str):
-                missions.add(mk.value)
-            if any(getattr(g, 'id', None) == 'CHECKS' for g in node.targets) and isinstance(mv, ast.Dict):
-                for k, v in zip(mv.keys, mv.values):
-                    if isinstance(k, ast.Constant) and isinstance(k.value, str) and isinstance(v, ast.Name):
-                        if v.id not in keys[k.value]:
-                            keys[k.value].append(v.id)
+        names = {getattr(g, 'id', None) for g in node.targets}
+        if not names & {'CHECKS', 'MISSION', 'PAIR_BUILDS'}:
+            continue
+        for mk, mv, env in st.entries(node.value, {}):
+            if isinstance(mk, str):
+                missions.add(mk)
+            if 'CHECKS' not in names:
+                continue
+            for k, v, env2 in st.entries(mv, env):
+                if isinstance(k, str):
+                    for fn in st.functions(v, env2):
+                        if fn not in keys[k]:
+                            keys[k].append(fn)
+                    keys.setdefault(k, [])
     return missions, dict(keys)
 
 

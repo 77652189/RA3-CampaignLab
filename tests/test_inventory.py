@@ -419,6 +419,42 @@ def test_a_reading_of_one_check_counts_only_when_a_test_runs_that_check(tmp_path
     assert got['Range'][0] == inventory.BENCHED
 
 
+PROBE_SHAPES = '''
+VARIANTS = {'engine_trial': 'trial', 'engine_trial2': 'trial2'}
+NAMES = ('k1', 'k2')
+
+
+def _build(w):
+    return 'engine_tp' if w == 'a' else f'engine_tp_{w}'
+
+
+def a(m, k): pass
+def b(m): pass
+def shared(m, w): pass
+
+
+MISSION = {_build(w): (lambda w=w: None) for w in 'ab'}
+CHECKS = ({k: {'x': (lambda m, k=k: a(m, k)), 'y': b} for k in NAMES}
+          | {b2: {'trial': b} for b2, v in VARIANTS.items()}
+          | {f'unpack_{v}': {'go': b} for v in ('p', 'q')}
+          | {'super': {**{w: (lambda m, w=w: shared(m, w)) for w in 'pq'}, **{'z': a}}})
+'''
+
+
+def test_the_probe_reader_works_out_comprehensions_and_lambdas():
+    """T6 (11-18): about ninety probes write CHECKS as a comprehension (over a literal, a module-level constant,
+    VARIANTS.items(), a string, f-string or helper-built keys, merged with | or **) and about seventy write a check
+    as a lambda; the reader read only dict literals with bare function names, so their builds and checks were
+    missed (engine_aipullback's airevk2). One reader (probe_checks) serves the inventory and the bench-tests guard;
+    a lambda's check is the module-level functions it runs."""
+    missions, keys = inventory.probe_checks(PROBE_SHAPES)
+    assert missions == {'engine_tp', 'engine_tp_b', 'k1', 'k2', 'engine_trial', 'engine_trial2', 'unpack_p',
+                        'unpack_q', 'super'}
+    assert keys == {'x': ['a'], 'y': ['b'], 'trial': ['b'], 'go': ['b'], 'p': ['shared'], 'q': ['shared'],
+                    'z': ['a']}
+    assert inventory.probe_checks("CHECKS = {k: {'a': f} for k in unknown()}\n") == (set(), {})
+
+
 def test_mintime_is_not_benched_by_a_check_no_test_runs():
     """The live case: no test runs engine_aiskirm's check mt, and engine_aiupgrade says MinTime is outside its
     observation -- MinTime is not 已对拍 until a test replays a MinTime bench (or B registers one)."""
