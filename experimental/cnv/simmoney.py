@@ -1,5 +1,5 @@
 """L4 money (ADR 0029, docs/engine/sim-layers.md): the players' money, the AI's income multiplier, income sharing and
-the money cap, with the rules that pay into them from below: the deposit buildings' clock, a collector's unloading
+the money cap, with the rules that pay into them from below: a deposit building's payment, a collector's unloading
 (collect: handed to simmine), a deposit split between sharing friends (earn). It reads the world only through
 simworld.WORLD_API. A sale's refund, a repair's cost and a spy's theft go through credit / held / charge; other writers
 of the money (scripts, production, simai) still write the dicts directly; Sim.money / income / sharing / money_cap are
@@ -15,14 +15,12 @@ class Money:
         self.sharing = set()                # players sharing income (PLAYER_TOGGLE_RESOURCE_SHARING)
         self.money_cap = {}                 # PLAYER_SET_MONEY_CAP: player -> cap (scripts' money not held to it)
 
-    def deposit_due(self, world, frame):
-        """R4: the deposit buildings a player (not the neutral side) holds pay `amount` each `frames` (Generals'
-        AutoDepositUpdate.update: the clock runs for the neutral too, it just pays nobody)."""
-        for b in world.living():
-            if b.deposit and b.deposit_at is not None and frame >= b.deposit_at:
-                b.deposit_at = frame + b.deposit[2]
-                if b.owner != CIV and b.deposit[1] > 0:
-                    self.money[b.owner] = self.money.get(b.owner, 0) + b.deposit[1]
+    def deposit(self, owner, amount):
+        """R4: a deposit building's amount (engine/modules/deposit.py, through World.pay) to its holder, a player --
+        not the neutral side (Generals' AutoDepositUpdate.update: the clock runs for the neutral too, it just pays
+        nobody); not held to the money cap."""
+        if owner != CIV:
+            self.money[owner] = self.money.get(owner, 0) + amount
 
     def earn(self, world, owner, amount):
         """Income (a collector's deposit) with PLAYER_TOGGLE_RESOURCE_SHARING (d115 19, bench 11-14 engine_share all):

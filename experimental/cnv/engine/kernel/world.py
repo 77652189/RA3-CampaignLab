@@ -9,11 +9,11 @@ def no_blocks(template, tag):
 
 
 class World:
-    def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None):
+    def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None, pay=None):
         """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry;
         kill(thing, why): the host's death of a thing (World.kill); remove(thing, why): the host's deletion of one,
-        no death (World.remove)."""
-        self.blocks, self.tags, self._kill, self._remove = blocks, tags, kill, remove
+        no death (World.remove); pay(thing, amount): the host's payment to a thing's holder (World.pay)."""
+        self.blocks, self.tags, self._kill, self._remove, self._pay = blocks, tags, kill, remove, pay
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
@@ -58,6 +58,13 @@ class World:
         if self._remove is None:
             raise RuntimeError(f'World.remove({thing.name!r}): this world has no host to remove with')
         self._remove(thing, why)
+
+    def pay(self, thing, amount):
+        """A module pays its thing's holder (AutoDepositUpdate): the host's money -- today simmoney.Money.deposit
+        (the neutral side paid nothing). A world with no host pays nobody."""
+        if self._pay is None:
+            raise RuntimeError(f'World.pay({thing.name!r}): this world has no host to pay with')
+        self._pay(thing, amount)
 
     def blocks_of(self, template, tag):
         """The template data port's blocks of a tag, asked once a world (the port reads the XML files)."""

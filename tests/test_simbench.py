@@ -119,7 +119,7 @@ def _series(lines, label_count=2):
 
 
 def test_r4_the_engineer_takes_the_derrick_as_on_the_bench():
-    """R4 (sim.Sim.capture_due / deposit_due): bench 2026-11-07 `cnv_check a4 derrick` -- the derrick the player's
+    """R4 (sim.Sim.capture_due / engine/modules/deposit.py): bench 2026-11-07 `cnv_check a4 derrick` -- the derrick the player's
     at the first reading after the order (s4) with 500 (the capture bonus), 515 at s7, 800 at s46 (15 every 2 s)."""
     status, lines = simbench.run('derrick')
     got = _series(lines)

@@ -1442,6 +1442,10 @@ MERGED = frozenset({'CrusherInfo'})        # attributes inherited one by one, ea
                                             # chain that writes it (step M3: 64 retail templates have an empty
                                             # CrusherInfo and take their CrushableLevel from their base, as the reader
                                             # it replaced did; the Hammer's own CrusherLevel 20 over BaseVehicle's 10)
+SELF_ONLY = frozenset({'AutoDepositUpdate'})   # read from the template's own XML alone -- the mission's, else the
+                                            # retail file of its name -- no inheritance, as the reader it replaced
+                                            # (step M4: oilderrick_onwater, which inherits oilderrick's, pays nothing);
+                                            # reading it inherited is a behaviour change
 
 
 def module_blocks(template, tag, own=None):
@@ -1450,12 +1454,15 @@ def module_blocks(template, tag, own=None):
     (xml_chain) that has one; [] when none has, or the template's XML cannot be read. Step K1 checked it against the
     AutoHealBehavior reader it replaced over all 3448 indexed templates: the same rule for each. A tag of OWN_ONLY
     is read from the mission's own XML of the template alone; one of MERGED is one block whose attributes are each
-    the nearest template's that writes it (no inner text), when any template up the chain has the tag."""
+    the nearest template's that writes it (no inner text), when any template up the chain has the tag; one of
+    SELF_ONLY from the template's own XML alone (the mission's, else retail's)."""
     def read(xml):
         return list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), tag))
     if tag in OWN_ONLY:
         return read((own or {}).get(template))
     try:
+        if tag in SELF_ONLY:
+            return read(own[template] if own and template in own else retail_xml(template))
         if tag in MERGED:
             found, attrs = False, {}
             for _, xml in xml_chain(template, own):
@@ -2036,30 +2043,6 @@ def engineer_contain(template, own=None):
                     allowed=allowed, relations=relations, supported=supported,
                     status=frozenset(_attr(head, 'ObjectStatusToSet', 'NO_REFUND').split()))
     return _chain(template, own, read)
-
-
-def deposit(template, own=None):
-    """(bonus, amount, frames) of an AutoDepositUpdate (the oil derrick: 500 when taken, 15 every 2 s), else None.
-    When it pays (Generals' AutoDepositUpdate, R4): the capture pays the bonus and sets the next deposit `frames` on;
-    then `amount` every `frames` while a player (not the neutral side) holds it; frames = seconds x 15, cut down."""
-    if own and template in own:
-        return _deposit_of(own[template])
-    if template.lower() not in _deposits:
-        _deposits[template.lower()] = _deposit_of(retail_xml(template))
-    return _deposits[template.lower()]
-
-
-_deposits = {}
-
-
-def _deposit_of(xml):
-    head, inner = next(_blocks(xml, 'AutoDepositUpdate'), (None, ''))
-    if head is None:
-        return None
-    bonus = re.search(r'<InitialCaptureBonus[^>]*Amount="([\d.]+)"', inner)
-    amount = re.search(r'<Deposit\b[^>]*Amount="([\d.]+)"', inner)
-    return (float(bonus.group(1)) if bonus else 0.0, float(amount.group(1)) if amount else 0.0,
-            int(_secs(_attr(head, 'DepositInterval', '0s')) * LIFE_FPS + 1e-6))
 
 
 def assemble(template, power, own=None):

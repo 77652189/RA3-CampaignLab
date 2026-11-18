@@ -247,8 +247,8 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3499, 'Sim methods': 200, 'Body fields': 109, 'simunits defs': 153,
-          'cells with old code': 36}
+CENTER = {'sim.py lines': 3493, 'Sim methods': 199, 'Body fields': 107, 'simunits defs': 151,
+          'cells with old code': 35}
 
 
 def _old_code(fn):
@@ -307,7 +307,8 @@ def test_centre_guard_bites():
 # Body.FORWARDS (the frame record shows them as the fields they were). Only shrinks: a forward goes when its last
 # outside reader asks the module's interface itself.
 BODY_FORWARDS = {'life_end': 'LifetimeUpdate', 'topple': 'ToppleUpdate', 'toppled': 'ToppleUpdate',
-                 'topple_end': 'ToppleUpdate', 'crusher': 'CrusherInfo', 'crushable': 'CrusherInfo'}
+                 'topple_end': 'ToppleUpdate', 'crusher': 'CrusherInfo', 'crushable': 'CrusherInfo',
+                 'deposit': 'AutoDepositUpdate', 'deposit_at': 'AutoDepositUpdate'}
 
 
 def body_forwards(sim_src=None):
@@ -362,7 +363,7 @@ CONTAINERS = {'dict', 'list', 'set', 'defaultdict', 'OrderedDict', 'Counter', 'd
 PROCESS_CACHES = {
     ('sim', '_MODEL'), ('simai', '_AI'), ('simproxy', '_PROXY'), ('simgarrison', '_memo'), ('simsweep', '_weapon_blocks'),
     *(('simunits', n) for n in (
-        '_acquire', '_all_defines', '_command_powers', '_deposits', '_equivalent', '_fight',
+        '_acquire', '_all_defines', '_command_powers', '_equivalent', '_fight',
         '_flee_memo', '_globals', '_hp_memo', '_index', '_ocl_text', '_ocls', '_own_weapons', '_prop_memo', '_radii',
         '_resolved', '_retail_commands', '_retail_files', '_retail_mods', '_retail_powers', '_slow_memo',
         '_surf_memo', '_table', '_turning_memo', '_upgrades', '_weapon_blocks', '_wreck_memo')),

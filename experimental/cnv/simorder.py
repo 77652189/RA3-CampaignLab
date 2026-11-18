@@ -24,6 +24,7 @@ import math
 import numpy as np
 
 import simunits
+from engine.kernel import interfaces
 from simpower import UNPACK_POWER
 from simworld import CIV, GRID, inside
 
@@ -191,9 +192,9 @@ def capture_due(world, peers):
             continue
         g.owner = b.owner
         world.note('占领', f'{world.label(b)} 占下 {world.label(g)}，归 {world.who(b.owner)}')
-        if g.deposit:
-            peers.wallet.credit(b.owner, g.deposit[0])
-            g.deposit_at = world.frame_now() + g.deposit[2]
+        m = g.find(interfaces.Deposit) if g.modules else None
+        if m is not None:                               # engine/modules/deposit.py (step M4)
+            peers.wallet.credit(b.owner, m.capture(world.frame_now()))
         peers.destroy(b, '进楼占领', delete=True)
         world.change()
 

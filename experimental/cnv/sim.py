@@ -401,8 +401,6 @@ class Body(kernel_module.Thing):
     level_rate: float = 1.0                                     # measured heroic Mirage clip rate; never per-hit damage
     level_vision: float = 1.0                                   # ENEMY_SIGHTED only; heroic auto-acquire not benched
     base: dict = None                                           # speed, vision, sight, weapons before modifiers
-    deposit: tuple = None                                       # R4: its AutoDepositUpdate (bonus, amount, frames)
-    deposit_at: int = None                                      # ... the frame of its next deposit
     died_at: float = None                                       # killed or deleted then
     last_hit: str = None                                        # the player whose damage came last (None: a
                                                                 # script's NAMED_KILL, or never hit)
@@ -471,14 +469,16 @@ class Body(kernel_module.Thing):
         was, hp = self.hp, self.max_hp * float(pct) / 100.0
         self.hp = max(self.health_floor, hp) if self.immortal else hp
         self.health_moved(was, self.hp)
-    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable')  # fields moved into modules,
-                                                                    # still read outside: read only (BODY_FORWARDS)
+    # fields moved into modules, still read outside: read only (test_kernel BODY_FORWARDS)
+    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at')
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
     topple_end = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.gone_frame())
     crusher = kernel_module.forward(kernel_interfaces.Crush, lambda m: m.crusher_level(), 0)    # step M3: drives over
     crushable = kernel_module.forward(kernel_interfaces.Crush, lambda m: m.crushable_level())  # a lower level
+    deposit = kernel_module.forward(kernel_interfaces.Deposit, lambda m: m.rules())     # step M4: (bonus, amount, frames)
+    deposit_at = kernel_module.forward(kernel_interfaces.Deposit, lambda m: m.next_frame())
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
@@ -851,7 +851,8 @@ class Sim:
         self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
         self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own),   # engine/kernel
                                         kill=lambda b, why: self._life().die_of_age(self, b, why, self.destroy),
-                                        remove=lambda b, why: self.destroy(b, why, delete=True))
+                                        remove=lambda b, why: self.destroy(b, why, delete=True),
+                                        pay=lambda b, amount: self.wallet.deposit(b.owner, amount))
         self.used = self.world.used         # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
         self.unmodeled = self.world.gaps    # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
@@ -1154,10 +1155,6 @@ class Sim:
             v = np.float32(power_factor(*self.power(owner)))       # and does not fire meanwhile; RA3 1.13, work/re/l2_construction.md:
             extra = np.float32(np.float32(1.0) - v) * np.float32(unpack)   # trunc((1 - v) F + F), v the owner's
             b.unpack_end = self.frame_now() + int(np.float32(extra + np.float32(unpack)))   # factor then
-        b.deposit = simunits.deposit(template, self.own)
-        if b.deposit:                           # Generals: the first deposit an interval after it is made
-            b.deposit_at = (self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))) \
-                + b.deposit[2]
         mods = self.world.build(b, self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS)))
         if mods:
             b.modules = mods
@@ -1509,9 +1506,6 @@ class Sim:
     def capture_due(self):
         """simorder.capture_due (L5)."""
         return simorder.capture_due(self, self._order_peers())
-
-    def deposit_due(self, frame):
-        self.wallet.deposit_due(self, frame)            # simmoney.Money (L4)
 
     def earn(self, owner, amount):
         self.wallet.earn(self, owner, amount)

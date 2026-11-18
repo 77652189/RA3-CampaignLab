@@ -140,7 +140,7 @@ def sweeps(s, frame, tick):
 
 
 def deposit(s, frame, tick):
-    s.wallet.deposit_due(s, frame)
+    """Its modules only (engine/modules/deposit.py, run by step)."""
 
 
 def mine(s, frame, tick):
