@@ -16,7 +16,7 @@ import sim  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 
 UNWRITTEN = {
-    'ai team absent', 'air crash', 'assigned repair', 'crash choice', 'crush', 'death weapon', 'flee off map',
+    'ai team absent', 'air crash', 'crash choice', 'crush', 'death weapon', 'flee off map',
     'follow path', 'hit reaction', 'knock landing drowns', 'knock landing moved', 'knock resistance gate',
     'leap ground hit', 'linear damage', 'lose health', 'meta impact', 'miner armor', 'movement special power',
     'path fork', 'reinforcement team unknown', 'reinforcement unit dead', 'reinforcement waypoint unknown', 'repair', 'self power', 'sell', 'stealth',

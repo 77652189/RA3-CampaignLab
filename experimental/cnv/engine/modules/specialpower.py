@@ -9,6 +9,8 @@ started; simpower.ready_at): several of these on one thing record as one field, 
 A thing whose template has no block for a power cast on it (35 retail template / power pairs: ReplaceSelf's packs,
 the player spell book's nearest-template blocks, the structures' PlayerPowerManager powers; and simmicro's Bonzai,
 keyed by its command) is given one then (simpower.start_reload, World.attach), as the body's dict took any key."""
+import re
+
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -19,6 +21,8 @@ TAGS = ('SpecialPower', 'OCLSpecialPower', 'MovementSpecialPower', 'DominateEnem
         'TeleportToCasterSpecialPower', 'PlayerUpgradeSpecialPower', 'ReturnToProducerSpecialPower',
         'ActivateModuleSpecialPower', 'AssignSlavesTargetObjectSpecialPower', 'GiveProductionBonusSpecialPower',
         'PrematureDischargeSpecialPower', 'ReturnToDockSpecialPower')
+FPS = 15                        # the game's logic frames a second (bench 2026-10-28, probe align)
+ASSIGN = 'AssignSlavesTargetObjectSpecialPower'     # its own class below (AssignSlaves: a SpecialPower with a dispatch)
 
 
 class SpecialPowerData(module.ModuleData):
@@ -30,7 +34,7 @@ class SpecialPowerData(module.ModuleData):
         return cls(templates.attr(head, 'SpecialPowerTemplate'))
 
 
-@factory.module(*TAGS)
+@factory.module(*(t for t in TAGS if t != ASSIGN))
 class SpecialPower(module.Module, interfaces.SpecialPower):
     """Data and a reload frame; no update of its own (a reload is over once the frame passes it)."""
     DATA = SpecialPowerData
@@ -45,3 +49,68 @@ class SpecialPower(module.Module, interfaces.SpecialPower):
 
     def set_ready_at(self, frame):
         self.ready = frame
+
+
+class AssignData(SpecialPowerData):
+    def __init__(self, power=None, plain=False):
+        super().__init__(power)
+        self.plain = plain          # no attribute but SpecialPowerTemplate (and id), no inner text: the measured shape
+
+    @classmethod
+    def parse(cls, head, inner):
+        names = set(re.findall(r'(\w+)\s*=', head))
+        return cls(templates.attr(head, 'SpecialPowerTemplate'),
+                   not inner.strip() and names == {'id', 'SpecialPowerTemplate'})
+
+
+@factory.module(ASSIGN)
+class AssignSlaves(SpecialPower, interfaces.Assign, interfaces.Update):
+    """AssignSlavesTargetObjectSpecialPower (step M13; E67, moved from simassign.Assignments' store and due): a
+    SpecialPower with a dispatch. The host (simassign.Assignments.press: which press, which target, the rate from the
+    retail repair drone's PassiveAreaEffectBehavior) assigns; then in the assignments cell it mends the target rate / 15
+    a frame until whole, and stops -- a gap noted -- once anything moves: either dies, the owners differ, no drone of
+    its SpawnBehaviors lives, either moves, or the target's health is changed by anything else (a conservative stop,
+    INFERRED). Asleep without a target. Its state was a store's, never in the frame record: STATE names none."""
+    DATA = AssignData
+    PHASE = 'assignments'
+    STATE = ()
+    ALIGN = {'assigned repair': '部分对齐：显式单目标派无人机治疗（E67 原版 AlliedWarFactoryRepairDrone 的 '
+                                'PassiveAreaEffectBehavior 每秒治疗量）；自动获取、前三目标占用、换父/换目标/状态清理未模拟，'
+                                '启动相位与中断即停为 INFERRED'}
+    tgt = None          # the thing it heals; None: none
+    rate = 0.0          # its heal a second
+    last = 0.0          # the target's health after its last mend (or at the dispatch)
+    spots = None        # (its x, y, the target's x, y) at the dispatch
+
+    def plain(self):
+        return self.data.plain
+
+    def target(self):
+        return self.tgt
+
+    def assign(self, target, rate):
+        s = self.thing
+        self.tgt, self.rate, self.last = target, rate, target.hp
+        self.spots = (s.x, s.y, target.x, target.y)
+        self.world.wake(self)
+
+    def _stop(self):
+        self.tgt = self.spots = None
+        return interfaces.SLEEP
+
+    def update(self, frame):
+        s, t = self.thing, self.tgt
+        if t is None:
+            return interfaces.SLEEP
+        if (not s.alive or not t.alive or s.owner != t.owner
+                or not any(c.alive for m in s.find(interfaces.Spawn) for c in m.children())
+                or self.spots != (s.x, s.y, t.x, t.y)
+                or abs(t.hp - self.last) > 1e-6):
+            self.world.gap(ASSIGN, 'interrupted', '移动、死亡、换主或外部血量变化后的派发边界未测；保守停止为INFERRED')
+            return self._stop()
+        t.mend(self.rate / FPS)
+        self.last = t.hp
+        self.world.used.add('assigned repair')
+        if t.hp >= t.max_hp:
+            return self._stop()
+        return 1

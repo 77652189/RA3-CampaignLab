@@ -1373,49 +1373,6 @@ def wall_builder_start(template, own=None):
     return _chain(template, own, read)
 
 
-def repair_update(template, own=None):
-    """RepairUpdate fields (schema defaults); player repair, distinct from AutoHeal.
-
-    Includes and inheritance are resolved. Rebuild/dead and non-toggleable paths
-    are read so the caller can report them as unmeasured rather than heal them.
-    """
-    def read(xml):
-        clean = re.sub(r'<!--.*?-->', '', _with_includes(xml), flags=re.S)
-        head, inner = next(_blocks(clean, 'RepairUpdate'), (None, ''))
-        if head is None:
-            return None
-        cost, _ = next(_blocks(inner, 'PercentOfBuildCostToRebuildInfo'), ('', ''))
-        return {'rate': _num(_attr(head, 'HealAmountPerSecond'), 10),
-                'toggleable': _attr(head, 'Toggleable', 'true').lower() == 'true',
-                'dead': _attr(head, 'RepairableWhenDead', 'false').lower() == 'true',
-                'cost': tuple(_num(_attr(cost, state), 50) / 100
-                              for state in ('Pristine', 'Damaged', 'ReallyDamaged', 'Rubble'))}
-    return _inherited(template, own, read, None)
-
-
-def repair_measured_config(template, own=None):
-    """Reject unmeasured RepairUpdate fields, including fields outside repair_update's summary."""
-    def read(xml):
-        clean = re.sub(r'<!--.*?-->', '', _with_includes(xml), flags=re.S)
-        blocks = list(_blocks(clean, 'RepairUpdate'))
-        if not blocks:
-            return None
-        if len(blocks) != 1:
-            return False
-        head, inner = blocks[0]
-        attrs = set(re.findall(r'([\w:]+)\s*=', head)) - {'xmlns', 'id'}
-        if attrs - {'HealAmountPerSecond', 'Toggleable', 'RepairableWhenDead'}:
-            return False
-        tags = set(re.findall(r'<(?!/)(\w+)', inner))
-        if tags - {'PercentOfBuildCostToRebuildInfo', 'SelfAudio'}:
-            return False
-        for h, _ in _blocks(inner, 'PercentOfBuildCostToRebuildInfo'):
-            if set(re.findall(r'([\w:]+)\s*=', h)) - {'Pristine', 'Damaged', 'ReallyDamaged', 'Rubble'}:
-                return False
-        return True
-    return bool(_inherited(template, own, read, None))
-
-
 OWN_ONLY = frozenset({'LifetimeUpdate'})   # read from a mission's own template only -- no inheritance, no retail -- as
                                             # the reader each replaced (step M1: none of our scripts makes a retail
                                             # object with a lifetime); reading the retail ones is a behaviour change
@@ -1437,6 +1394,9 @@ EXPANDED = frozenset({'StructureUnpackUpdate'})  # '=$NAME' attribute values spe
                                             # reader it replaced (step M10: 17 retail UnpackTimes are =$..._UNPACK_TIME;
                                             # a template inheriting one from another file -- 3 retail, 13 of our own
                                             # -- reads it as nothing, 0); the define's own file is a behaviour change
+INCLUDED = frozenset({'RepairUpdate'})      # read with the DATA:Includes files a template references (_with_includes),
+                                            # as the reader it replaced (step M13: the retail structures take their
+                                            # RepairUpdate from Includes/GenericBuildingRepair.xml)
 
 
 def module_blocks(template, tag, own=None):
@@ -1449,8 +1409,11 @@ def module_blocks(template, tag, own=None):
     SELF_ONLY from the template's own XML alone (the mission's, else retail's). A block of the nearest template that
     removes the inherited module (xai:joinAction="Remove") is left out, and the walk ends there (step M6: 11 retail
     templates remove their base's SuppressionUpdate, as the reader it replaced read; no other registered tag but
-    CrusherInfo has one, whose 64 MERGED keeps as M3's reader did; a tag of REMOVE_KEPT keeps it: step M7)."""
+    CrusherInfo has one, whose 64 MERGED keeps as M3's reader did; a tag of REMOVE_KEPT keeps it: step M7). A tag of
+    INCLUDED is read with the DATA:Includes files each template's XML references."""
     def read(xml):
+        if tag in INCLUDED:
+            xml = _with_includes(xml or '')
         return list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), tag))
     if tag in OWN_ONLY:
         return read((own or {}).get(template))
@@ -2176,24 +2139,15 @@ def power_rules(template, power, own=None):
     return None
 
 
-def assigned_repair_rate(template, command, own=None):
+def assigned_repair_rate(template, power, own=None):
     """E67 explicit dispatch only; retail drone configuration, no allocation model.
 
     Custom drone XML/dispatch flags remain unmeasured. The rate comes from the
     retail passive healing module, rather than the observed final percentage.
+    `power`: the SpecialPowerTemplate a plain AssignSlavesTargetObjectSpecialPower module of the template serves
+    (simassign asks its modules: step M13).
     """
-    power = command_power(command, own)
-    if power != 'SpecialPower_TargetedRepairVehicle':
-        return None
-    def read(xml):
-        blocks = list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S),
-                              'AssignSlavesTargetObjectSpecialPower'))
-        if not blocks:
-            return None
-        return any(not inner.strip() and _attr(head, 'SpecialPowerTemplate') == power
-                   and set(re.findall(r'(\w+)\s*=', head)) == {'id', 'SpecialPowerTemplate'}
-                   for head, inner in blocks)
-    if not _chain(template, own, read) or not module_blocks(template, 'SpawnBehavior', own):
+    if power != 'SpecialPower_TargetedRepairVehicle' or not module_blocks(template, 'SpawnBehavior', own):
         return None
     if any(k in (own or {}) for k in ('AlliedWarFactoryRepairDrone', 'BaseRepairDrone')):
         return None

@@ -421,6 +421,49 @@ class Aura(Interface):
         raise NotImplementedError
 
 
+class Repair(Interface):
+    """RepairUpdate (step M13): its rules (rules: rate, toggleable, dead, cost), whether its block is the measured
+    shape (measured: no field outside rules' read), the repair under way (job: the host's dict, None none), setting it
+    (set_job), and whether a disturbed repair refused it for the run (refused / refuse). The host's Repairs keeps the
+    loop: who may repair, the money, the healing."""
+    __slots__ = ()
+
+    def rules(self):
+        raise NotImplementedError
+
+    def measured(self):
+        raise NotImplementedError
+
+    def job(self):
+        raise NotImplementedError
+
+    def set_job(self, job):
+        raise NotImplementedError
+
+    def refused(self):
+        raise NotImplementedError
+
+    def refuse(self):
+        raise NotImplementedError
+
+
+class Assign(Interface):
+    """AssignSlavesTargetObjectSpecialPower (step M13), a SpecialPower too: whether its block is the plain measured
+    shape (plain: no attribute but SpecialPowerTemplate, no inner text), the target it sends its drones to heal
+    (target: None, none), and a dispatch (assign: the target, the heal a second, the frame; held till the target is
+    whole, or anything moves)."""
+    __slots__ = ()
+
+    def plain(self):
+        raise NotImplementedError
+
+    def target(self):
+        raise NotImplementedError
+
+    def assign(self, target, rate, frame):
+        raise NotImplementedError
+
+
 class AIUpdate(Interface):
     """The command state machine (move, attack, guard, follow ...) and the movement's physics."""
     __slots__ = ()
@@ -431,5 +474,5 @@ class AIUpdate(Interface):
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
 FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze,
-          LevelUp, Aura)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+          LevelUp, Aura, Repair, Assign)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze})  # a thing has at most one of these: Thing.find gives it

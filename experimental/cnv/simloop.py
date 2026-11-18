@@ -78,7 +78,7 @@ def repairs(s, frame, tick):
 
 
 def assignments(s, frame, tick):
-    s.assignments.due(frame)
+    """Its modules only (AssignSlaves dispatches: engine/modules/specialpower.py, run by step)."""
 
 
 def suppression(s, frame, tick):

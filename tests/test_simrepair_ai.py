@@ -10,6 +10,13 @@ simai = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simai)
 
 
+def _job(b):
+    """The repair under way: its RepairUpdate module's (step M13)."""
+    from engine.kernel import interfaces
+    (m,) = b.find(interfaces.Repair)
+    return m.job()
+
+
 @pytest.mark.parametrize('name, expected', [
     ('repairai', [100, 50, 9900]), ('repairzero', [50, 50, 0]),
     # B round 181, RepairBuildingsAtDifficulty at MEDIUM (bench 11-13 work/bench_results/repairoff__a.json /
@@ -53,13 +60,18 @@ def test_ai_repair_quarter_health_cost_prediction_and_bench_readings():
     plant = e.body(m.role('repair').name)
     assert plant.hp == pytest.approx(500, abs=6)
     assert e.money[plant.owner] == pytest.approx(9925, abs=1)
-    assert e.repairs.active[plant.name]['cost'] == 300
-    assert e.repairs.active[plant.name]['r'] == pytest.approx(1 / 1500)
+    assert _job(plant)['cost'] == 300
+    assert _job(plant)['r'] == pytest.approx(1 / 1500)
     e.advance(15 * 76)
     rows = [row for sec, row in e.series if 90 <= sec <= 95]
     assert rows and all(row == [100, 50, 9775] for row in rows), rows
     assert build.report(t, e.series)[1] == 0
     assert 10000 - e.money[plant.owner] == 800 * .5 * .75 ** 2
+    # A finished repair leaves the module (step M13): hurt to a measured share again, a fresh repair starts.
+    assert plant.hp == 1000 and _job(plant) is None
+    plant.hp = 500.0
+    e.advance(15 * 5)
+    assert plant.hp > 500 and _job(plant)['cost'] == 200
 
 
 def test_ai_repair_three_quarter_health_cost_prediction_and_bench_readings():
@@ -74,8 +86,8 @@ def test_ai_repair_three_quarter_health_cost_prediction_and_bench_readings():
     plant = e.body(m.role('repair').name)
     assert plant.hp == pytest.approx(850, abs=12)
     assert e.money[plant.owner] == pytest.approx(9990, abs=1)
-    assert e.repairs.active[plant.name]['cost'] == 100
-    assert e.repairs.active[plant.name]['r'] == pytest.approx(1 / 1500)
+    assert _job(plant)['cost'] == 100
+    assert _job(plant)['r'] == pytest.approx(1 / 1500)
     e.advance(15 * 41)
     rows = [row for sec, row in e.series if 40 <= sec <= 45]
     assert rows and all(row == [100, 50, 9975] for row in rows), rows
@@ -93,23 +105,27 @@ def test_ai_repair_rate_and_unmeasured_configuration_gate():
     plant = e.body(m.role('repair').name)
     assert plant.hp == pytest.approx(750, abs=6)
     assert e.money[plant.owner] == pytest.approx(9950, abs=1)
-    assert e.repairs.active[plant.name]['cost'] == 200
-    assert e.repairs.active[plant.name]['r'] == pytest.approx(1 / 1500)
+    assert _job(plant)['cost'] == 200
+    assert _job(plant)['r'] == pytest.approx(1 / 1500)
     assert ('物体模块', 'RepairUpdate boundaries') in e.unmodeled
     plant.hp -= 10
     hp = plant.hp
     e.advance(15)
     assert plant.hp == hp
     assert ('物体模块', 'RepairUpdate interrupted') in e.unmodeled
+    plant.hp = 750.0            # a measured share again: a refused repair stays refused for the run
+    e.advance(15 * 5)
+    assert plant.hp == 750.0
     # An unhandled field must not disappear in the compact rule dictionary.
     m, t, _ = build.resolve('repairai', 'a')
+    # Replace the include with an explicit unsupported default-like module -- in the mission's template, before the
+    # run: the RepairUpdate module reads its block when the plant is made (step M13).
+    import re
+    for u in m.units:
+        u.xml = re.sub(r'<xi:include\s+href="DATA:Includes/GenericBuildingRepair.xml"\s*/>',
+                       '<RepairUpdate id="Repair" RepopThreshold="50%"/>', u.xml)
     e = sim.Sim(m, t)
     plant = e.body(m.role('repair').name)
-    # Replace the include with an explicit unsupported default-like module.
-    import re
-    e.own[plant.template] = re.sub(
-        r'<xi:include\s+href="DATA:Includes/GenericBuildingRepair.xml"\s*/>',
-        '<RepairUpdate id="Repair" RepopThreshold="50%"/>', e.own[plant.template])
     assert 'RepopThreshold' in e.own[plant.template]
     e.advance(15 * 80)
     assert plant.hp == 500

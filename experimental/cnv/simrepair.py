@@ -5,11 +5,14 @@ observations; general AI economy, player input and other repair configurations
 remain unmeasured. No mission names or final counter offsets are used here.
 L2 (ADR 0029, docs/engine/sim-layers.md): the world only through simworld.WORLD_API; the money through simmoney.Money
 (held / charge); the AI switches and the difficulty handed in by the host.
+Step M13 (ADR 0029): a structure's rules, its repair under way and its refusal are its RepairUpdate module's
+(engine/modules/repair.py, found by interface); this keeps the players' gates and the loop.
 """
 import struct
 import xml.etree.ElementTree as ET
 
 import simunits
+from engine.kernel import interfaces
 
 
 def f32(x):
@@ -21,8 +24,7 @@ class Repairs:
         """world: simworld.WORLD_API only; wallet: the players' money (simmoney.Money, L4); ai_switches: player ->
         {AI_SWITCHES name: value} (the scripts' / AI's dict, read when due); level: the difficulty (0 easy .. 3 brutal)."""
         self.world, self.wallet, self.ai_switches = world, wallet, ai_switches
-        self.rules, self.active, self.blocked = {}, {}, set()
-        self.refused = set()
+        self.blocked = set()            # players the no-economy money latch stopped
         self.players = {}
         # Only explicit mission personalities with a measured difficulty gate.
         # Inherited personality/economy evaluation belongs to the AI line.
@@ -45,16 +47,18 @@ class Repairs:
         if not self.players or frame < 5:  # D42: default AI dispatch before the scripted wake.
             return
         for b in world.bodies.values():
-            state = self.active.get(b.name)
-            if b.name in self.refused:
+            mods = b.find(interfaces.Repair)
+            m = mods[0] if mods else None       # several blocks: never the measured shape, never repaired
+            state = m.job() if m else None
+            if m is not None and m.refused():
                 continue
             if state and (state['owner'] != b.owner or abs(b.hp - state['last_hp']) > 1e-6):
                 world.gap('物体模块', 'RepairUpdate interrupted', '维修中血量或归属被外部改变的分支未测')
-                self.active.pop(b.name, None)
-                self.refused.add(b.name)
+                m.refuse()
                 continue
             if not b.alive or b.hp >= b.max_hp:
-                self.active.pop(b.name, None)
+                if m is not None:
+                    m.set_job(None)
                 continue
             if not state:
                 if b.owner not in self.players:
@@ -72,20 +76,17 @@ class Repairs:
                     self.blocked.add(b.owner)
                     world.gap('物体模块', 'RepairUpdate economy', '无经济低资金门禁；矿场清除此门禁未测')
                     continue
-                if b.template not in self.rules:
-                    self.rules[b.template] = (simunits.repair_update(b.template, world.own),
-                                              simunits.repair_measured_config(b.template, world.own))
-                rule, measured = self.rules[b.template]
-                if rule is None:
+                if m is None:
                     continue
+                rule, measured = m.rules(), len(mods) == 1 and m.measured()
                 cost = simunits.production(b.template, world.own)[0]
                 if (not measured or rule != {'rate': 10, 'toggleable': True, 'dead': False, 'cost': (.5,) * 4}
                         or b.max_hp != 1000 or cost != 800
                         or not any(abs(b.hp / b.max_hp - fraction) <= 1e-6 for fraction in (.25, .5, .75))):
                     world.gap('物体模块', 'RepairUpdate', '仅测1000血800造价25%/50%/75%初始血量默认维修；其他配置/受损档未测')
                     continue
-                state = self.active[b.name] = dict(owner=b.owner, cost=int((1 - b.hp / b.max_hp) * cost * .5),
-                                                  r=f32(rule['rate'] / b.max_hp / 15), money=0., hp=0., last_hp=b.hp)
+                m.set_job(dict(owner=b.owner, cost=int((1 - b.hp / b.max_hp) * cost * .5),
+                               r=f32(rule['rate'] / b.max_hp / 15), money=0., hp=0., last_hp=b.hp))
                 world.gap('物体模块', 'RepairUpdate boundaries', '玩家入口、废墟、受伤/停修、非默认配置未测；启动相位INFERRED')
                 continue
             old = f32(b.hp / b.max_hp)
@@ -100,8 +101,7 @@ class Repairs:
                 state['hp'] = f32(state['hp'] - heal)
                 if self.wallet.held(b.owner) < n:
                     world.gap('物体模块', 'RepairUpdate insufficient funds', '激活后资金耗尽未上台')
-                    self.active.pop(b.name, None)
-                    self.refused.add(b.name)
+                    m.refuse()
                     continue
                 self.wallet.charge(b.owner, n)
                 b.mend(heal)

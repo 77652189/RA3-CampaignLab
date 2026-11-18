@@ -24,9 +24,12 @@ def test_repair_update_defaults_do_not_claim_the_failed_activation_as_implemente
     assert inventory.BENCHED_TESTS[key].startswith('tests/test_simrepair_ai.py::')
     assert 'gap：玩家入口' in inventory.NOTES[key][1]
     assert ('repair HP', 90, '==', 100, 100) in t.expect  # keep the failed prediction visible
-    # The include and inherited copy must both supply the schema defaults.
-    rule = simunits.repair_update('AlliedPowerPlant')
-    assert rule == {'rate': 10, 'toggleable': True, 'dead': False, 'cost': (.5,) * 4}
+    # The include and inherited copy must both supply the schema defaults (the port reads RepairUpdate's includes).
+    from engine.modules import repair
+
+    def rule(template, own=None):
+        return [repair.RepairData.parse(*b).rule for b in simunits.module_blocks(template, 'RepairUpdate', own)]
+    assert rule('AlliedPowerPlant') == [{'rate': 10, 'toggleable': True, 'dead': False, 'cost': (.5,) * 4}]
     own = {'RepairChild': '<GameObject id="RepairChild" inheritFrom="AlliedPowerPlant"/>'}
-    assert simunits.repair_update('RepairChild', own) == rule
-    assert simunits.repair_update('AlliedAntiInfantryInfantry') is None
+    assert rule('RepairChild', own) == rule('AlliedPowerPlant')
+    assert rule('AlliedAntiInfantryInfantry') == []
