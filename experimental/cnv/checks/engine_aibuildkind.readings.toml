@@ -1,0 +1,68 @@
+# Bench readings of checks/engine_aibuildkind.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "building_kind_active[aibkindyes]"
+scene = {build = "aibkindyes", check = "a", until = 41}
+bench = "engine_aibuildkind a s40: target/home 4/0, with at least two power plants and one base."
+proves = "simai active-construction KindOf comparison (PassIfBuilding): the team goes only when the kind matches"
+expect = [
+    "win(40, 40, '到陆厂') == [4] and win(40, 40, '在家') == [0]",
+    "win(40, 40, '电厂数')[0] >= 2",
+    "win(40, 40, '基地数') == [1]",
+]
+
+[[reading]]
+id = "building_kind_active[aibkindno]"
+scene = {build = "aibkindno", check = "a", until = 41}
+bench = "engine_aibuildkind a s40: target/home 0/4, with at least two power plants and one base."
+proves = "simai active-construction KindOf comparison (PassIfBuilding): the team goes only when the kind matches"
+expect = [
+    "win(40, 40, '到陆厂') == [0] and win(40, 40, '在家') == [4]",
+    "win(40, 40, '电厂数')[0] >= 2",
+    "win(40, 40, '基地数') == [1]",
+]
+
+[[reading]]
+id = "building_kind_active[aibkindoryes]"
+scene = {build = "aibkindoryes", check = "a", until = 41}
+bench = "engine_aibuildkind a s40: target/home 4/0, with at least two power plants and one base."
+proves = "simai active-construction KindOf comparison (PassIfBuilding): the team goes only when the kind matches"
+expect = [
+    "win(40, 40, '到陆厂') == [4] and win(40, 40, '在家') == [0]",
+    "win(40, 40, '电厂数')[0] >= 2",
+    "win(40, 40, '基地数') == [1]",
+]
+
+[[reading]]
+id = "building_kind_active[aibkindorno]"
+scene = {build = "aibkindorno", check = "a", until = 41}
+bench = "engine_aibuildkind a s40: target/home 0/4, with at least two power plants and one base."
+proves = "simai active-construction KindOf comparison (PassIfBuilding): the team goes only when the kind matches"
+expect = [
+    "win(40, 40, '到陆厂') == [0] and win(40, 40, '在家') == [4]",
+    "win(40, 40, '电厂数')[0] >= 2",
+    "win(40, 40, '基地数') == [1]",
+]
+
+[[reading]]
+id = "building_kind_active[aibkindfalseyes]"
+scene = {build = "aibkindfalseyes", check = "a", until = 41}
+bench = "engine_aibuildkind a s40: target/home 0/4, with at least two power plants and one base."
+proves = "simai active-construction KindOf comparison (PassIfBuilding): the team goes only when the kind matches"
+expect = [
+    "win(40, 40, '到陆厂') == [0] and win(40, 40, '在家') == [4]",
+    "win(40, 40, '电厂数')[0] >= 2",
+    "win(40, 40, '基地数') == [1]",
+]
+mismatch = "sim target/home 0/2; bench 0/4 (queue/evaluation timing in the continuous-power opening unresolved)"
+
+[[reading]]
+id = "building_kind_active[aibkindfalseno]"
+scene = {build = "aibkindfalseno", check = "a", until = 41}
+bench = "engine_aibuildkind a s40: target/home 4/0, with at least two power plants and one base."
+proves = "simai active-construction KindOf comparison (PassIfBuilding): the team goes only when the kind matches"
+expect = [
+    "win(40, 40, '到陆厂') == [4] and win(40, 40, '在家') == [0]",
+    "win(40, 40, '电厂数')[0] >= 2",
+    "win(40, 40, '基地数') == [1]",
+]

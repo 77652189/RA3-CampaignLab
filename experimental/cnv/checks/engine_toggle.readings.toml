@@ -1,0 +1,12 @@
+# Bench readings of checks/engine_toggle.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# ToggleStatusSpecialAbilityUpdate: engine_toggle a-f, bench 2026-11-11 (round 156, Sim.toggle_press). Rows at frame n
+# since Go: 第二行 frames A + 1000 x frames B held, 第三行 / 第四行 frames before A / B first seen on / off (第四行 reads the
+# NOT flag of the frame's top, so a bit turned on by the press frame reads 'lost' then: 1001).
+
+[[reading]]
+id = "test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press"
+scenes = {a = {build = "engine_toggle", check = "a", until = 12}, b = {build = "engine_toggle", check = "b", until = 12}, c = {build = "engine_toggle", check = "c", until = 12}, d = {build = "engine_toggle", check = "d", until = 12}, e = {build = "engine_toggle", check = "e", until = 12}, f = {build = "engine_toggle", check = "f", until = 12}}
+bench = "a Peacekeeper on 1-59, off by the press at 60; b Conscript PackTime 1 s changes nothing; c Hammer the first state's bit from the start; d Engineer UnpackTime 1 s then HELD for good; e Sickle WEAPON_UPGRADED_01 -> _02 -> _01; f Tesla trooper HELD, the press at 60 does nothing"
+proves = "ToggleStatusSpecialAbilityUpdate: a press moves to the next state, unpack delays it, a held state takes no press"
+let = {runs = "{'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f}", bench = "{'a': lambda n: (59059, 1001, 1001), 'b': lambda n: (59059, 1001, 1001), 'c': lambda n: (60000 + n - 60, 30001, 30031), 'd': lambda n: (n - 16, n * 1000 + 17, n * 1000 + n), 'e': lambda n: (60000 + n - 60, 30001, 30031), 'f': lambda n: (n * 1001, 1001, 1001)}"}
+expect = "all(runs[k][-1]['帧数'] > 150 and tuple(runs[k][-1][c] for c in ('第二行', '第三行', '第四行')) == bench[k](runs[k][-1]['帧数']) for k in runs)"

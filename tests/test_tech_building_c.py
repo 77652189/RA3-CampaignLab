@@ -18,21 +18,6 @@ def native_picks(build):
     return teamlog.target_picks(str(FIXTURES / f'{build}_target_picks.txt'))
 
 
-@pytest.mark.parametrize('build, expected', [
-    ('aitechkind', (4, 0, 0, 0)),
-    pytest.param('aitechnon', (0, 0, 0, 0), marks=pytest.mark.xfail(strict=True,
-        reason='Native selects inherited far oil and leaves home; model selects none. '
-               'Search-range/base reference unresolved; see work/re/handoff-c.md '
-               'and work/re/c_techkind_report.md.')),
-])
-def test_tech_building_named_bench_replay(build, expected):
-    if not simai.available():
-        pytest.skip('no private AI model')
-    w = simai.run(build, 'a', until=41)
-    rows = [tuple(values) for second, values in w.sim.series if 40 <= second <= 41]
-    assert rows and all(row == expected for row in rows), rows
-
-
 @pytest.mark.parametrize('build, tech', [('aitechkind', True), ('aitechnon', False)])
 def test_tech_building_same_frame_native_qualification(build, tech):
     """Game candidate filter, selected slot and original counts are independent evidence."""

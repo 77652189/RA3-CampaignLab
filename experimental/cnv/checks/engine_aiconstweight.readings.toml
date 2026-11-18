@@ -1,0 +1,9 @@
+# Bench readings of checks/engine_aiconstweight.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "constant_weight_named_replay"
+scene = {build = "aicwzero", check = "a", until = 41}
+each = [{build = "aicwzero", home = 4}, {build = "aicwone", home = 0}]
+bench = "engine s40: infantry home 4 (weight 0) / 0 (weight 1) of 4, the unregistered tanks 4 at home."
+proves = "simai ConstantHeuristic.Weight: weight 0 sends nobody away, weight 1 sends the infantry"
+expect = "(win(40, 40, '步兵在家')[0], win(40, 40, '步兵总数')[0], win(40, 40, '坦克在家')[0]) == (home, 4, 4)"

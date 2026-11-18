@@ -1,0 +1,36 @@
+# Bench readings of checks/engine_aiminvalue.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "min_enemy_value_retail_named_bench_replay"
+scene = {build = "aiminvalue", check = "a", until = 61}
+each = [{build = "aiminvalue", want = [0, 4, 4]}, {build = "aiminvaluehi", want = [0, 4, 0]}]
+bench = "aiminvalue:a / aiminvaluehi:a s40-s60: the first three counters read 0/4/4 (low value) and 0/4/0 (high value) every second."
+proves = "simai MinEnemyValue: the threshold decides whether the team goes"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 60]"}
+expect = [
+    "len(sel) == 21",
+    "all(tuple(v[:3]) == tuple(want) for v in sel)",
+]
+
+[[reading]]
+id = "min_enemy_value_inverted_retail_named_bench_replay[aiminvalue]"
+scene = {build = "aiminvalue", check = "a", until = 61}
+bench = "aiminvalue:a s40-s60: the inverted group counter reads 1 every second (one member stays home)."
+proves = "simai MinEnemyValue: the inverted low-value group"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 60]"}
+expect = [
+    "len(sel) == 21",
+    "all(v[3] == 1 for v in sel)",
+]
+mismatch = "sim 0; bench 1 (the engine leaves one member home in the low-value inverted group)"
+
+[[reading]]
+id = "min_enemy_value_inverted_retail_named_bench_replay[aiminvaluehi]"
+scene = {build = "aiminvaluehi", check = "a", until = 61}
+bench = "aiminvaluehi:a s40-s60: the inverted group counter reads 4 every second."
+proves = "simai MinEnemyValue: the inverted high-value group"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 60]"}
+expect = [
+    "len(sel) == 21",
+    "all(v[3] == 4 for v in sel)",
+]

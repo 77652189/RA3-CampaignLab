@@ -1,0 +1,24 @@
+# Bench readings of checks/engine_aimindist.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "tech_building_named_bench_replay[aitechkind]"
+scene = {build = "aitechkind", check = "a", until = 41}
+bench = "aitechkind:a s40-41: counters (to power plant, to barracks, to tank, at home) read 4/0/0/0."
+proves = "simai TechBuilding kind: the registered tech building set draws the team out"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
+expect = [
+    "len(sel) > 0",
+    "all(tuple(v) == (4, 0, 0, 0) for v in sel)",
+]
+
+[[reading]]
+id = "tech_building_named_bench_replay[aitechnon]"
+scene = {build = "aitechnon", check = "a", until = 41}
+bench = "aitechnon:a s40-41: counters read 0/0/0/0 (the native selects the inherited far oil and the team leaves home)."
+proves = "simai TechBuilding kind: the non-tech set"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
+expect = [
+    "len(sel) > 0",
+    "all(tuple(v) == (0, 0, 0, 0) for v in sel)",
+]
+mismatch = "sim 0/0/0/4; bench 0/0/0/0"

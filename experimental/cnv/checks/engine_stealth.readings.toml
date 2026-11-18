@@ -1,0 +1,33 @@
+# Bench readings of checks/engine_stealth.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# InvisibilityBroadcastUpdate, bench 2026-11-05 engine_stealth a / b (docs/engine/stealth.md 1-2, 4): a mirage tank under
+# GENERIC_TOGGLE_STATE hides the friendly infantry / vehicles within 175; its enemy cannot pick them. Read in percent.
+
+[[reading]]
+id = "test_invisibility_broadcast_the_aura_holds_its_guardian_at_full_health_and_the_control_dies"
+scene = {build = "engine_stealth", check = "a", until = 24}
+bench = "bench 光环血 100 throughout, 对照血 4 at the end, 隐形位 never reads (stealth.md 5)"
+proves = "InvisibilityBroadcastUpdate: the aura keeps its guardian at full health, the unhidden control dies"
+expect = [
+  "[r['光环血'] for r in rows] == [100] * len(rows)",
+  "rows[-1]['对照血'] <= 10",
+  "all(r['隐形位'] == 0 for r in rows)",
+]
+
+[[reading]]
+id = "test_invisibility_broadcast_fire_stops_the_moment_it_hides_and_the_order_waits_for_the_aura_to_drop"
+scenes = {a = {build = "engine_stealth", check = "a", until = 24}, b = {build = "engine_stealth", check = "b", until = 24}}
+bench = "bench 开关血: aura off 6 s, on again: 54 from s15; 后隐血 50 from s10"
+proves = "InvisibilityBroadcastUpdate: fire stops the moment the target hides; the attack order waits for the aura to drop"
+let = {order = "[r['开关血'] for r in a]", late = "[r['后隐血'] for r in b]"}
+expect = [
+  "order[:5] == [100] * 5 and 50 <= order[-1] <= 56",
+  "order[-1] == order[-3] and order[11] > order[-1]",
+  "late[0] == 100 and 47 <= late[-1] <= 56 and late[-1] == late[-4]",
+]
+
+[[reading]]
+id = "test_invisibility_behavior_a_house_given_garrison_can_stealth_by_script_is_shot_like_a_plain_one"
+scene = {build = "engine_stealth", check = "b", until = 24}
+bench = "bench 隐楼血 = 明楼血 (98 at s4 .. 45)"
+proves = "InvisibilityBehavior: a house-given garrison that stealths by script is shot like a plain one"
+expect = "[r['隐楼血'] for r in rows] == [r['明楼血'] for r in rows] and rows[-1]['隐楼血'] < 80"

@@ -1,0 +1,25 @@
+# Bench readings of checks/engine_aitechshare.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "tech_share_ownership_control"
+scene = {build = "aitechlow", check = "a", until = 41}
+each = [{build = "aitechlow", own = 1}, {build = "aitechhigh", own = 2}]
+bench = "Engine oil-derrick ownership counter from s1 through s40: 1 (aitechlow) / 2 (aitechhigh)."
+proves = "simai initial tech ownership: the owner count control, independent of the gate outcome"
+expect = "win(1, 40, '油井数') == [own] * 40"
+
+[[reading]]
+id = "tech_share_initial_ownership[aitechlow]"
+scene = {build = "aitechlow", check = "a", until = 41}
+bench = "Engine s40: tech-share gates (low-threshold below, low-threshold above, high-threshold below) read 4/0/4."
+proves = "simai tech-share heuristic: initial gates by the active-owner count"
+expect = "(win(40, 40, '低阈下')[0], win(40, 40, '低阈上')[0], win(40, 40, '高阈下')[0]) == (4, 0, 4)"
+mismatch = "sim 0/4/0; bench 4/0/4"
+
+[[reading]]
+id = "tech_share_initial_ownership[aitechhigh]"
+scene = {build = "aitechhigh", check = "a", until = 41}
+bench = "Engine s40: tech-share gates (low-threshold below, low-threshold above, high-threshold below) read 4/0/4."
+proves = "simai tech-share heuristic: initial gates by the active-owner count"
+expect = "(win(40, 40, '低阈下')[0], win(40, 40, '低阈上')[0], win(40, 40, '高阈下')[0]) == (4, 0, 4)"
+mismatch = "sim 4/0/0; bench 4/0/4"

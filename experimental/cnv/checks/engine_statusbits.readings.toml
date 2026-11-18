@@ -1,0 +1,11 @@
+# Bench readings of checks/engine_statusbits.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it"
+scene = {build = "engine_statusbits", check = "b", until = 20}
+bench = "bench engine_statusbits b s7-s41: 1 1 0 11 (s1-s6: 1 0 1 11)"
+proves = "StatusBitsUpgrade: the HEROIC grant sets WEAPON_UPGRADED_01 / _02 and a removal takes it back"
+expect = [
+  "[rows[-1][k] for k in ('英雄位', '晚位', '去位', '兵守位')] == [1, 1, 0, 11]",
+  "(rows[3]['晚位'], rows[3]['去位']) == (0, 1)",
+]

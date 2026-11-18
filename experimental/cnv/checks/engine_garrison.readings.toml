@@ -1,0 +1,30 @@
+# Bench readings of checks/engine_garrison.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# ContestableGarrisonContain (simgarrison.Garrisons, sim.Sim.garrison): bench 2026-11-05 engine_garrison in / hp
+# (docs/engine/garrison.md 1-5) and 2026-11-17 del (CampGarrisonDel_mcp_1117_223555).
+
+[[reading]]
+id = "test_garrison_script_entry_skips_room_and_relation_owner_follows_and_damage_or_kill_ejects_alive_at_the_bench"
+scenes = {i = {build = "engine_garrison", check = "in", until = 24}, h = {build = "engine_garrison", check = "hp", until = 24}}
+bench = "bench s4-7 / s10-13 / s16-: 驻满 伤争敌 炸杀 存活 = 16 1123 33 33 / 15 1230 0 33 / 0 1220 0 33; 炸楼血 / 伤楼血 100 100 / 0 13 / 0 6"
+proves = "ContestableGarrisonContain: the script's INSTANTLY entry skips room and relation, the owner follows the first passenger, damage or a kill ejects the passengers alive"
+expect = [
+  "[list(i[s].values()) for s in (4, 10, 16)] == [[16, 1123, 33, 33], [15, 1230, 0, 33], [0, 1220, 0, 33]]",
+  "[[h[s]['炸楼血'], h[s]['伤楼血']] for s in (4, 10, 16)] == [[100, 100], [0, 13], [0, 6]]",
+]
+
+[[reading]]
+id = "test_a_deleted_garrison_takes_its_passengers_with_it_at_the_bench"
+scene = {build = "engine_garrison", check = "del", until = 16}
+bench = "bench 2026-11-17 engine_garrison del 删卖 / 存活 / 楼 / 资金: s2-s7 333 33 1011 2000, s8- 330 30 1010 2000 -- the deleted house takes its passengers (high 0 inside, 0 alive); the control lane stays in"
+proves = "ContestableGarrisonContain: a deleted house takes its passengers with it"
+expect = [
+  "[rows[s]['删卖'] % 10 for s in (4, 12)] == [3, 0] and [rows[s]['存活'] % 10 for s in (4, 12)] == [3, 0]",
+  "rows[12]['楼'] % 10 == 0 and rows[12]['删卖'] // 100 == 3",
+]
+
+[[reading]]
+id = "test_a_civilian_garrison_is_not_sold_at_the_bench"
+scene = {build = "engine_garrison", check = "del", until = 16}
+bench = "bench 11-17 engine_garrison del: SELL_OBJECT leaves a house without StructureSellUpdate standing and manned: 330 30 1010 2000 from s8"
+proves = "StructureSellUpdate: a civilian structure (no sell module) is not sold, still standing and manned, no money"
+expect = "list(rows[12].values()) == [330, 30, 1010, 2000]"

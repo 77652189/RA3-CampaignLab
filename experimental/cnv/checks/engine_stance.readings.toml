@@ -1,0 +1,54 @@
+# Bench readings of checks/engine_stance.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# StancesBehavior, bench 2026-11-06 engine_stance (docs/engine/stance.md): a Guardian A, an enemy Guardian T 150 in front
+# (NO_ATTACK but in e), each hit 12.5 %. The rhythm (the bench's ~30-45 frames a shot against the simulator's damage rate)
+# is the fight model's, not the stance's: read here only who fires and when it stops / starts again. T血量 drops are the
+# frames (帧数) at which a second's reading is lower than the one before.
+
+[[reading]]
+id = "test_stance_hold_fire_stops_a_standing_attack_order"
+scene = {build = "engine_stance", check = "a", until = 14}
+bench = "a: ordered at Go, HOLD_FIRE at frame 45: the bench's T 87 -> 75 (a shot fired by the stance frame), then 75 to frame 179"
+proves = "StancesBehavior: HOLD_FIRE stops a standing attack order (hurt by frame 46, not one point after frame 50)"
+let = {drops = "[r['帧数'] for i, r in enumerate(rows) if i and r['T血量'] < rows[i - 1]['T血量']]"}
+expect = [
+  "rows[-1]['帧数'] >= 179 and 0 < len(drops)",
+  "all(f <= 50 for f in drops)",
+  "rows[-1]['T血量'] == next(r['T血量'] for r in rows if r['帧数'] >= 50)",
+]
+
+[[reading]]
+id = "test_stance_back_to_guard_the_same_order_fires_again"
+scene = {build = "engine_stance", check = "f", until = 14}
+bench = "f: as a, GUARD at frame 90: the bench's T quiet from ~52 to 90, 62 by frame 98, then 50, 37 -- the order kept under HOLD_FIRE, no new order needed"
+proves = "StancesBehavior: back to GUARD the same order fires again"
+let = {drops = "[r['帧数'] for i, r in enumerate(rows) if i and r['T血量'] < rows[i - 1]['T血量']]"}
+expect = [
+  "not [f for f in drops if 50 < f <= 90]",
+  "any(90 < f <= 110 for f in drops) and len([f for f in drops if f > 90]) >= 3",
+]
+
+[[reading]]
+id = "test_stance_an_order_given_under_hold_fire_fires"
+scene = {build = "engine_stance", check = "b", until = 14}
+bench = "b: HOLD_FIRE before Go, ordered at Go: the bench's first drop frame 16, a hit every 30-50 frames to 12 % by frame 200"
+proves = "StancesBehavior: an order given under HOLD_FIRE fires (percent down by frame 20 and still going down at the end)"
+let = {drops = "[r['帧数'] for i, r in enumerate(rows) if i and r['T血量'] < rows[i - 1]['T血量']]"}
+expect = "drops[0] <= 20 and drops[-1] >= 160 and rows[-1]['T血量'] <= 37"
+
+[[reading]]
+id = "test_stance_held_it_takes_nothing_by_itself_and_does_not_hit_back"
+scenes = {d = {build = "engine_stance", check = "d", until = 14}, e = {build = "engine_stance", check = "e", until = 14}}
+bench = "d: held, no order: T 100 all the way (T状态 = 帧数). e: held, T ordered on A: A hurt, T 100 all the way"
+proves = "StancesBehavior: a held unit takes nothing by itself and does not hit back"
+expect = [
+  "all(r['T血量'] == 100 for r in d) and d[-1]['T状态'] == d[-1]['帧数']",
+  "all(r['T血量'] == 100 for r in e) and e[-1]['A血量'] <= 50",
+]
+
+[[reading]]
+id = "test_stance_the_default_stance_fires_by_itself"
+scene = {build = "engine_stance", check = "c", until = 14}
+bench = "c: no order, no stance set: the bench's A fires by itself (first drop frame 13, then on to 25 %)"
+proves = "StancesBehavior: the default stance fires by itself (idle acquire)"
+let = {drops = "[r['帧数'] for i, r in enumerate(rows) if i and r['T血量'] < rows[i - 1]['T血量']]"}
+expect = "drops[0] <= 20 and rows[-1]['T血量'] <= 37"

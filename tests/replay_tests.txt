@@ -27,8 +27,6 @@ test_simai_delay.py
 test_simai_engineer_tactic.py
 test_simai_favored.py
 test_simai_garrison_distance.py
-test_simai_pathbanks_c.py
-test_simai_upgrade_c.py
 test_simbench.py
 test_simbench_c.py
 test_simengineer.py
@@ -114,7 +112,6 @@ test_sellall_bench_c.py
 test_seqstop_bench_c.py
 test_simactivate.py
 test_simai_alphahp.py
-test_simai_buildkind_c.py
 test_simai_fallback.py
 test_simai_friendly_c.py
 test_simai_mintime.py

@@ -1,0 +1,22 @@
+# Bench readings of checks/engine_runoffmap.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# RunOffMapBehavior, bench 2026-11-06 (docs/engine/runoffmap.md): 逃帧 = frames not removed + 1000 x frames fleeing.
+
+[[reading]]
+id = "test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying"
+scenes = {a = {build = "engine_runoffmap", check = "a", until = 20}, b = {build = "engine_runoffmap", check = "b", until = 50}}
+bench = "bench 2026-11-06 engine_runoffmap a / b: the peacekeeper to the waypoint 200 off / 1000 along its facing is gone 64 / 304 frames after the order, never dying (逃帧 64064 / 304304, 第四行 15)"
+proves = "RunOffMapBehavior (sim.Sim.flee_start / flee_due; simunits.run_off_map): removed 3 frames after arrival, never dying"
+expect = [
+  "(a[-1]['逃帧'], a[-1]['第四行']) == (64064, 15) and (b[-1]['逃帧'], b[-1]['第四行']) == (304304, 15)",
+  "a[-1]['死法'] == a[-1]['帧数'] - 64 and b[-1]['死法'] == b[-1]['帧数'] - 304",
+]
+
+[[reading]]
+id = "test_run_off_map_a_structure_stays_and_a_stop_takes_the_run_over_with_the_status_left_on"
+scenes = {c = {build = "engine_runoffmap", check = "c", until = 20}, d = {build = "engine_runoffmap", check = "d", until = 20}}
+bench = "bench 2026-11-06 engine_runoffmap c / d: a structure never flees (there all along); NAMED_STOP at frame 15 leaves the unit standing with the status on, still fleeing"
+proves = "RunOffMapBehavior: a structure does not run; a stop takes the run over with the RunOffMap status left on"
+expect = [
+  "c[-1]['逃帧'] == c[-1]['帧数'] and c[-1]['死法'] == 0 and c[-1]['第四行'] == 64064",
+  "d[-1]['逃帧'] == 1000 * d[-1]['帧数'] + d[-1]['帧数'] and d[-1]['死法'] == 0 and d[-1]['第四行'] == 0",
+]

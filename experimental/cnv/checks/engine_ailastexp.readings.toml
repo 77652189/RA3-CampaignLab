@@ -1,0 +1,8 @@
+# Bench readings of checks/engine_ailastexp.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "last_expansion_retail_times_named_replay"
+scene = {build = "ailastexp", check = "a", until = 286}
+bench = "ailastexp:a retail: home counts (60 s, 240 s, constant) 4/4/0 at s40-49, 0/4/0 at s100-109 and s220-229, 0/0/0 at s275-284."
+proves = "simai TimeSinceLastExpansionHeuristic.Time: the 60 s and 240 s thresholds with no expansion"
+expect = "all(list(zip(win(s, s + 9, '六十在家'), win(s, s + 9, '二四零家'), win(s, s + 9, '常量在家'))) == [e] * 10 for s, e in ((40, (4, 4, 0)), (100, (0, 4, 0)), (220, (0, 4, 0)), (275, (0, 0, 0))))"

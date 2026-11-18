@@ -1,0 +1,31 @@
+# Bench readings of checks/engine_aiclosestenemy.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "closest_enemy_land_named_bench_replay[lane0]"
+scene = {build = "aiclosest", check = "a", until = 61}
+bench = "aiclosest:a s55-s60 (D158): 普通数量 reads 4 every second (engine counts [4, 4, 0, 0])."
+proves = "simai ClosestToEnemy sort: the land slice of the named target selection and the team arrival"
+expect = "win(55, 60, '普通数量') == [4] * 6"
+
+[[reading]]
+id = "closest_enemy_land_named_bench_replay[lane1]"
+scene = {build = "aiclosest", check = "a", until = 61}
+bench = "aiclosest:a s55-s60 (D158): 非矿数量 reads 4 every second (engine counts [4, 4, 0, 0])."
+proves = "simai ClosestToEnemy sort: the land slice of the named target selection and the team arrival"
+expect = "win(55, 60, '非矿数量') == [4] * 6"
+
+[[reading]]
+id = "closest_enemy_land_named_bench_replay[lane2]"
+scene = {build = "aiclosest", check = "a", until = 61}
+bench = "aiclosest:a s55-s60 (D158): 非塔数量 reads 0 every second (engine counts [4, 4, 0, 0])."
+proves = "simai ClosestToEnemy sort: the land slice of the named target selection and the team arrival"
+expect = "win(55, 60, '非塔数量') == [0] * 6"
+mismatch = "sim 4 at s55-60; bench 0 (native host reaches the enemy anchor, not the predicted friendly plant)"
+
+[[reading]]
+id = "closest_enemy_land_named_bench_replay[lane3]"
+scene = {build = "aiclosest", check = "a", until = 61}
+bench = "aiclosest:a s55-s60 (D158): 原关数量 reads 0 every second (engine counts [4, 4, 0, 0])."
+proves = "simai ClosestToEnemy sort: the land slice of the named target selection and the team arrival"
+expect = "win(55, 60, '原关数量') == [0] * 6"
+mismatch = "sim 4 at s55-60; bench 0 (native A05 host reaches the enemy anchor, not the predicted friendly plant)"

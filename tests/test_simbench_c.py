@@ -12,13 +12,6 @@ simbench = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simbench)
 
 
-def _sim_run(build_name, check, until):
-    import build
-    import sim
-    m, t, _ = build.resolve(build_name, check)
-    return sim.Sim(m, t).run(until)
-
-
 def test_levelup_heroic_vision_sights_inner_engineer_after_near_controls_are_deleted():
     """engine_levelvision a:11/11/11/11 ->0/0/0/0 ->0/101/0/100 at240/310."""
     import build
@@ -120,14 +113,12 @@ def test_levelup_heroic_rate_changes_three_intershot_spans_without_scaling_each_
 
 
 def test_levelup_elite_health_persists_at_heroic_and_freezes_before_healing():
-    """engine_levelhealth a: script-frame readings 80/80/84/84 after 100 damage."""
+    """engine_levelhealth a: structure only (the 80/80/84/84 readings are in checks/engine_levelup.readings.toml)."""
     import build
     import sim
     m, t, _ = build.resolve('engine_levelhealth', 'a')
     e = sim.Sim(m, t)
-    rows = e.run(12).series
-    assert tuple(rows[-1][1]) == (80, 80, 84, 84)
-    assert all(tuple(row) == (80, 80, 84, 84) for sec, row in rows if sec >= 8)
+    e.run(12)
     assert [e.body(m.role(lane).name).max_hp for lane in ('base', 'high', 'order', 'removed')] == [500, 500, 625, 625]
     heroic = e.body(m.role('removed').name)
     for upgrade in ('VETERAN', 'ELITE', 'HEROIC'):
@@ -137,7 +128,8 @@ def test_levelup_elite_health_persists_at_heroic_and_freezes_before_healing():
 
 
 def test_levelup_injured_elite_promotion_preserves_fraction_and_scales_current_health():
-    """engine_levelhealth b: 50/80/50/20, then 30/64/34/4 after 100 damage.
+    """engine_levelhealth b, structure only (the 50/80/50/20 -> 30/64/34/4 readings are in
+    checks/engine_levelup.readings.toml).
 
     Check absolute HP too: skipping the modifier also preserves percentages.
     No heroic autoheal is present in this probe.
@@ -146,9 +138,7 @@ def test_levelup_injured_elite_promotion_preserves_fraction_and_scales_current_h
     import sim
     m, t, _ = build.resolve('engine_levelhealth', 'b')
     e = sim.Sim(m, t)
-    rows = e.run(16).series
-    assert all(tuple(row) == (50, 80, 50, 20) for sec, row in rows if 9 <= sec <= 10)
-    assert all(tuple(row) == (30, 64, 34, 4) for sec, row in rows if sec >= 14)
+    e.run(16)
     bodies = [e.body(m.role(lane).name) for lane in ('base', 'high', 'order', 'removed')]
     assert [b.max_hp for b in bodies] == [500, 625, 625, 625]
     assert [b.hp for b in bodies] == [150, 400, 212.5, 25]
@@ -171,9 +161,7 @@ def test_levelup_creation_grants_reach_heroic_only_after_three_distinct_triggers
     import sim
     m, t, _ = build.resolve('engine_levelup', 'a')
     e = sim.Sim(m, t)
-    rows = e.run(12).series
-    assert any(tuple(row) == (0, 0, 1, 0) for _, row in rows)
-    assert tuple(rows[-1][1]) == (0, 1, 1, 0)
+    e.run(12)                      # the 0/0/1/0 -> 0/1/1/0 readings: checks/engine_levelup.readings.toml
     assert (sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Elite') not in e.unmodeled
     assert '创建升级触发' in '\n'.join(e.report())
 
@@ -190,12 +178,7 @@ def test_levelup_creation_remove_keeps_rank_and_regrant_can_trigger_twice():
     from checks.engine_levelup import CREATION
     m, t, _ = build.resolve('engine_levelup', 'b')
     e = sim.Sim(m, t)
-    rows = e.run(28).series
-    for first, last, expected in ((2, 4, (0, 0, 0, 1)), (8, 10, (0, 0, 0, 1)),
-                                   (14, 16, (0, 0, 1, 1)), (20, 22, (0, 0, 1, 1)),
-                                   (26, 28, (0, 1, 1, 1))):
-        window = [tuple(row) for sec, row in rows if first <= sec <= last]
-        assert window and all(row == expected for row in window), (first, window)
+    e.run(28)                      # the stable-window readings: checks/engine_levelup.readings.toml
     bodies = [e.body(m.role(lane).name) for lane in ('base', 'high', 'order', 'removed')]
     assert [b.level_rank for b in bodies] == [2, 4, 4, 4]
     assert not (set(CREATION) & bodies[-1].upgrades)
@@ -220,12 +203,7 @@ def test_levelup_elite_and_heroic_creation_regrants_each_need_two_reactivations(
     from checks.engine_levelup import CREATION
     m, t, _ = build.resolve('engine_levelup', 'c')
     e = sim.Sim(m, t)
-    rows = e.run(28).series
-    for first, last, expected in ((2, 4, (0, 0, 0, 1)), (8, 10, (0, 0, 0, 1)),
-                                   (14, 16, (0, 0, 0, 1)), (20, 22, (0, 0, 0, 1)),
-                                   (26, 28, (0, 1, 1, 1))):
-        window = [tuple(row) for sec, row in rows if first <= sec <= last]
-        assert window and all(row == expected for row in window), (first, window)
+    e.run(28)                      # the stable-window readings: checks/engine_levelup.readings.toml
     bodies = [e.body(m.role(lane).name) for lane in ('base', 'high', 'order', 'removed')]
     assert [b.level_rank for b in bodies] == [2, 4, 4, 4]
     assert [b.max_hp for b in bodies] == [500, 625, 625, 625]
@@ -287,133 +265,6 @@ def test_levelup_veteran_damage_persists_at_elite_and_heroic_without_gated_targe
     assert tuple(rows[-1][1]) == (47, 34, 34, 17)
     assert all(tuple(row) == (47, 34, 34, 17) for sec, row in rows if sec >= 10)
     assert 'RATE_OF_FIRE' not in e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
-
-
-# ---- RunOffMapBehavior (sim.Sim.flee_start / flee_due; simunits.run_off_map): bench 2026-11-06 engine_runoffmap
-# (checks/engine_runoffmap.py, docs/engine/runoffmap.md): the peacekeeper runs to the waypoint `RunOffMap` (a, 200 off)
-# or 1000 along its facing (b), is gone 3 frames after it arrives and was never dying; a structure does not run (c);
-# NAMED_STOP at frame 15 leaves him standing with the status on (d). 逃帧 = frames not removed + 1000 x frames fleeing.
-def test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying():
-    a = _sim_run('engine_runoffmap', 'a', 20.0).series[-1][1]
-    b = _sim_run('engine_runoffmap', 'b', 50.0).series[-1][1]
-    assert (a[1], a[3]) == (64064, 15) and (b[1], b[3]) == (304304, 15), (a, b)
-    assert a[2] == a[0] - 64 and b[2] == b[0] - 304, (a, b)         # 死法 = removed frames (+ 1000 x dying: none)
-
-
-def test_run_off_map_a_structure_stays_and_a_stop_takes_the_run_over_with_the_status_left_on():
-    c = _sim_run('engine_runoffmap', 'c', 20.0).series[-1][1]
-    d = _sim_run('engine_runoffmap', 'd', 20.0).series[-1][1]
-    assert c[1] == c[0] and c[2] == 0 and c[3] == 64064, c           # the plant: there all along, never fleeing
-    assert d[1] == 1000 * d[0] + d[0] and d[2] == 0 and d[3] == 0, d     # stopped at 15: still there, still fleeing
-
-
-# ---- InvisibilityBroadcastUpdate (sim.Sim.cloaked; simunits.invis_broadcast): bench 2026-11-05 engine_stealth a / b
-# (checks/engine_stealth.py, docs/engine/stealth.md 1-2, 4). A mirage tank carrying GENERIC_TOGGLE_STATE (a script gives
-# it) hides the friendly infantry / vehicles within 175; its enemy cannot pick them, the attack order stays and fires
-# the moment the aura goes off. The series is read in percent at each second (the bench's seconds run ahead of the
-# simulator's, so the times are not compared, the values are).
-def _stealth_series(check):
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_stealth', check)
-    return {c: [row[1][i] for row in sim.Sim(m, t).run(24.0).series] for i, (c, _) in enumerate(t.counters)}
-
-
-def test_invisibility_broadcast_the_aura_holds_its_guardian_at_full_health_and_the_control_dies():
-    a = _stealth_series('a')
-    assert a['CNV_Stealth_BaseHp'] == [100] * 25, a['CNV_Stealth_BaseHp']    # bench 光环血 100 throughout
-    assert a['CNV_Stealth_HighHp'][-1] <= 10, a['CNV_Stealth_HighHp']        # bench 对照血 4 at the end
-    assert a['CNV_Stealth_Bits'] == [0] * 25                                # STEALTHED never reads (stealth.md 5)
-
-
-def test_invisibility_broadcast_fire_stops_the_moment_it_hides_and_the_order_waits_for_the_aura_to_drop():
-    a, b = _stealth_series('a'), _stealth_series('b')
-    order, late = a['CNV_Stealth_OrderHp'], b['CNV_Stealth_SwitchHp']
-    assert order[:5] == [100] * 5 and 50 <= order[-1] <= 56, order        # aura off 6 s, on again: bench 54 from s15
-    assert order[-1] == order[-3] and order[11] > order[-1], order        # stopped dead once the aura came back
-    assert late[0] == 100 and 47 <= late[-1] <= 56 and late[-1] == late[-4], late   # bench 后隐血 50 from s10
-
-
-def test_invisibility_behavior_a_house_given_garrison_can_stealth_by_script_is_shot_like_a_plain_one():
-    b = _stealth_series('b')                                              # bench 隐楼血 = 明楼血 (98 at s4 .. 45)
-    assert b['CNV_Stealth_HiddenHp'] == b['CNV_Stealth_PlainHp'] and b['CNV_Stealth_HiddenHp'][-1] < 80, b
-
-
-# ---- WeaponSetUpdate / StatusBitsUpgrade (simunits.weapon_sets / pick_weapons, Sim.modify; bench 2026-11-09 engine_weaponset
-# a / b, engine_statusbits b; docs/engine/weaponset.md). A weapon line's ObjectStatus / ForbiddenObjectStatus choose the gun:
-# a conscript with GENERIC_TOGGLE_STATE throws Molotovs instead of firing the AK47 (changing in mid-fight when the script
-# gives it); a Guardian under the toggle holds only the target painter (no damage); the upgrade module's HEROIC grant
-# sets WEAPON_UPGRADED_01 / _02 and a removal takes it back. Bench 基准血 / 毒瓶血 / 中途血 at s41: 42 / 9 / 21.
-def _series(build_name, check, until):
-    import build
-    import sim
-    m, t, _ = build.resolve(build_name, check)
-    return {c: [row[1][i] for row in sim.Sim(m, t).run(until).series] for i, (c, _) in enumerate(t.counters)}
-
-
-def test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm():
-    a = _series('engine_weaponset', 'a', 41.0)
-    base, high, order = a['CNV_Wset_BaseHp'], a['CNV_Wset_HighHp'], a['CNV_Wset_OrderHp']
-    assert abs(base[-1] - 42) <= 3 and abs(high[-1] - 9) <= 3 and abs(order[-1] - 21) <= 3, (base[-1], high[-1], order[-1])
-    assert order[8] == base[8] and order[20] < base[20], (order, base)       # the same until the toggle, faster after it
-    b = _series('engine_weaponset', 'b', 20.0)
-    assert b['CNV_Wset_LowHp'] == [100] * len(b['CNV_Wset_LowHp']), b['CNV_Wset_LowHp']      # bench 涂靶血 100 throughout
-
-
-def test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it():
-    b = _series('engine_statusbits', 'b', 20.0)
-    assert [b[k][-1] for k in ('CNV_Sbits_HighBit', 'CNV_Sbits_OrderBit', 'CNV_Sbits_RemovedBit', 'CNV_Sbits_Other')] == \
-        [1, 1, 0, 11], b                                                      # bench s7-s41: 1 1 0 11 (s1-s6: 1 0 1 11)
-    assert (b['CNV_Sbits_OrderBit'][3], b['CNV_Sbits_RemovedBit'][3]) == (0, 1)
-
-
-# ---- ToppleUpdate: engine_topple a / b, bench 2026-11-09 (docs/engine/crush.md).
-# Each row is undestroyed frames + 1000 * dying frames + 1000000 * frames at the goal.
-def test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying():
-    for build_name, check, destroyed, arrivals in (
-            ('engine_topple', 'a', (162, 118, 163), (91, 91, 91)),
-            ('engine_topple_b', 'b', (119, None, 170), (91, 111, 110))):
-        s = _sim_run(build_name, check, 50.0)
-        frames, *rows = s.series[-1][1]
-        assert 710 <= frames < 1000, frames                  # the conscript's control outlasts the bench's 710
-        for row, gone, arrived in zip(rows, destroyed, arrivals):
-            undestroyed, dying, at_goal = row % 1000, row // 1000 % 1000, row // 1000000
-            assert dying == 0, (check, row)
-            assert undestroyed == frames if gone is None else abs(undestroyed - gone) <= 2, (check, row, gone)
-            assert abs((frames - at_goal + 1) - arrived) <= 2, (check, row, arrived)
-
-
-def test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames():
-    """engine_topple c, bench 11-10: the retail lantern, its flattened copy without EnableDynamicsCollide and the copy
-    with it -- every Hammer at its goal at frame 91, every lantern gone at 162, never dying. The module (no fields)
-    changes nothing a script reads; the simulator has no such module and gives the same frames."""
-    s = _sim_run('engine_topple_c', 'c', 50.0)
-    frames, *rows = s.series[-1][1]
-    assert len(rows) == 3 and frames >= 700, (frames, rows)
-    for row in rows:
-        undestroyed, dying, at_goal = row % 1000, row // 1000 % 1000, row // 1000000
-        assert dying == 0 and abs(undestroyed - 162) <= 2, row
-        assert abs((frames - at_goal + 1) - 91) <= 2, row
-    assert len({row % 1000 for row in rows}) == 1, rows      # the three lanes alike, as on the bench
-
-
-def test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one():
-    """engine_dynamics a / b, bench 11-10: the retail Hammer, a copy whose BaseVehicle copy lacks DynamicsUpdate and the
-    copy with it -- the three rows identical every second. a: conscript crushed at frame 43, dying 127, tank at its
-    goal from 92; b: the Guardian never crushed, the tank round it, at its goal from 97. The simulator (no such module;
-    the copies' crush levels read from their own GameObject in a file holding two -- simunits._own_only) gives the
-    three lanes alike; its frames are the known no-acceleration bands (test_simbench.py, crush)."""
-    for build, check in (('engine_dynamics', 'a'), ('engine_dynamics_b', 'b')):
-        s = _sim_run(build, check, 50.0)
-        frames, *rows = s.series[-1][1]
-        assert len(rows) == 3 and len(set(rows)) == 1, (check, rows)
-        row = rows[0]
-        undestroyed, dying, at_goal = row % 1000, row // 1000 % 1000, row // 1000000
-        if check == 'a':
-            assert 39 <= undestroyed <= 55 and abs(dying - 127) <= 2, row
-        else:
-            assert undestroyed == frames and dying == 0, row
-        assert 80 <= frames - at_goal + 1 <= 100, row
 
 
 def test_a_mission_file_holding_two_game_objects_gives_each_its_own_crush_levels():
@@ -798,22 +649,6 @@ def test_fire_weapon_when_dead_a_scripted_kill_blows_the_mig_and_the_guardian_be
     assert by[3] == 1100 and by[-1] == 3300, by                # bench: both gone by s11, as here
 
 
-# ---- PropBody (simunits.prop_body; Body.damage / health, Sim.destroy): bench 2026-11-10 engine_propbody a / b / c
-# (checks/engine_propbody.py). A street segment AM_StreetSegment01, a tree CS_Tree01 and a lantern OK_Lantern01, neutral.
-# a: NAMED_DAMAGE 10 -- the health percent reads 0 throughout, all three stay. b: NAMED_KILL -- the segment stays for
-# good, the tree / lantern are gone 61 / 121 frames after (their ToppleUpdate delay), never dying. c: a Hammer told to
-# attack each never fires. Rows: frames not destroyed + 1000 x frames dying (a: 存 1000^(k-1) a frame for each left).
-def test_prop_body_no_health_a_kill_leaves_the_street_and_topples_the_tree_and_lantern_at_the_bench_frames():
-    a = _sim_run('engine_propbody', 'a', 21.0).series
-    assert all(row[1][:3] == [0, 0, 0] for row in a), a                     # bench 血1..3: 0 0 0 throughout
-    left = a[-1][1][3]
-    assert left == (left % 1000) * 1001001, left                            # bench 存 333333333: all three there
-    frames, street, tree, lantern = _sim_run('engine_propbody_b', 'b', 21.0).series[-1][1]
-    assert street == frames and (tree, lantern) == (61, 121), (frames, street, tree, lantern)   # bench 332 332 61 121
-    c = _sim_run('engine_propbody_c', 'c', 21.0).series[-1][1]
-    assert c[1:] == [c[0]] * 3, c                                           # bench 332 x 4: none shot, none dying
-
-
 def test_weapon_bench_register_points_to_replayed_engine_probes():
     import inspect
     import inventory
@@ -887,50 +722,6 @@ def test_secondary_damage_delivers_one_amount_at_hit_without_damaging_health():
     assert tuple(e.run(16).series[-1][1])==(1099,0,1099,1)
 
 
-# ---- ContestableGarrisonContain (simgarrison.Garrisons, sim.Sim.garrison): bench 2026-11-05 engine_garrison in / hp
-# (checks/engine_garrison.py, docs/engine/garrison.md 1-5). The script's _INSTANTLY entry skips the room and the
-# relation (six in, 16), the owner is the first passenger's and back to the civilians when empty (15, 0); 3000 health
-# (BaseCivilianStructureMedium's), out at 13 % in the damage's frame (伤争敌 1230), the contesting conscript bounces one
-# and stays out (1220); a killing hit and a script kill both eject them alive (炸杀 33 -> 0, 存活 33 throughout).
-def _garrison_series(check):
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_garrison', check)
-    return {s: row for s, row in sim.Sim(m, t).run(24.0).series}
-
-
-def test_garrison_script_entry_skips_room_and_relation_owner_follows_and_damage_or_kill_ejects_alive_at_the_bench():
-    a = _garrison_series('in')
-    got = [tuple(a[s]) for s in (4, 10, 16)]
-    assert got == [(16, 1123, 33, 33), (15, 1230, 0, 33), (0, 1220, 0, 33)], got   # bench s4-7 / s10-13 / s16-
-    hp = _garrison_series('hp')
-    assert [hp[s][:2] for s in (4, 10, 16)] == [[100, 100], [0, 13], [0, 6]], hp   # bench 炸楼血 / 伤楼血
-
-
-# bench 2026-11-17 engine_garrison del (CampGarrisonDel_mcp_1117_223555; R3 step X 4): three in each lane at IN, at ACT
-# the high lane's house NAMED_DELETE, the order lane's SELL_OBJECT, the removed lane's left. 删卖 / 存活 / 楼 / 资金:
-# s2-s7 333 33 1011 2000, s8- 330 30 1010 2000 -- a deleted house takes its passengers with it (high 0 inside, 0 alive);
-# the civilian house is not sold at all (still standing, never SOLD, still the player's, the three still inside, no
-# money): retail's civilian structures carry no StructureSellUpdate (only BaseStructure has it).
-def _del_series():
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_garrison', 'del')
-    return {s: row for s, row in sim.Sim(m, t).run(16.0).series}
-
-
-def test_a_deleted_garrison_takes_its_passengers_with_it_at_the_bench():
-    a = _del_series()
-    assert [a[s][0] % 10 for s in (4, 12)] == [3, 0] and [a[s][1] % 10 for s in (4, 12)] == [3, 0], a
-    assert a[12][2] % 10 == 0 and a[12][0] // 100 == 3, a                      # house gone; the control lane in
-
-
-def test_a_civilian_garrison_is_not_sold_at_the_bench():
-    # bench 11-17 engine_garrison del: SELL_OBJECT leaves a house without StructureSellUpdate standing and manned
-    a = _del_series()
-    assert tuple(a[12]) == (330, 30, 1010, 2000), a
-
-
 def test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum():
     import build
     import sim
@@ -973,94 +764,6 @@ def test_emp_blocks_an_ordered_shot_and_allows_a_new_shot_after_expiry():
     assert all('Armor="NoArmor"' in u.xml for u in m.units if
                u.id.startswith(('CNV_EmpFireGun','CNV_EmpFireTarget')))
     assert tuple(e.run(16).series[-1][1])==(901090,901100,901080,901090)
-
-
-# ---- StancesBehavior (sim.Sim.act UNIT_SET_STANCE, Sim.fight's armed list; Body.hold_fire / hold_paused): bench
-# 2026-11-06 engine_stance (checks/engine_stance.py, docs/engine/stance.md): a Guardian A, an enemy Guardian T 150 in
-# front (NO_ATTACK but in e), each hit 12.5 %. The rhythm (the bench's ~30-45 frames a shot against the simulator's
-# damage rate) is the fight model's, not the stance's: asserted here only who fires and when it stops / starts again.
-def _stance(which):
-    s = _sim_run('engine_stance', which, 13.0)
-    labs = ['帧数', 'T状态', 'T血量', 'A血量']
-    return [dict(zip(labs, r[1])) for r in s.series]
-
-
-def _drops(rows, key):
-    return [r['帧数'] for i, r in enumerate(rows) if i and r[key] < rows[i - 1][key]]
-
-
-def test_stance_hold_fire_stops_a_standing_attack_order():
-    """a: ordered at Go, HOLD_FIRE at frame 45: the bench's T 87 -> 75 (a shot fired by the stance frame), then 75 to
-    frame 179. The simulator: hurt by frame 46, not one point after frame 50."""
-    rows = _stance('a')
-    assert rows[-1]['帧数'] >= 179 and 0 < len(_drops(rows, 'T血量'))
-    assert all(f <= 50 for f in _drops(rows, 'T血量')), _drops(rows, 'T血量')
-    assert rows[-1]['T血量'] == next(r['T血量'] for r in rows if r['帧数'] >= 50)
-
-
-def test_stance_back_to_guard_the_same_order_fires_again():
-    """f: as a, GUARD at frame 90: the bench's T quiet from ~52 to 90, 62 by frame 98, then 50, 37 -- the order kept
-    under HOLD_FIRE, no new order needed."""
-    rows = _stance('f')
-    drops = _drops(rows, 'T血量')
-    assert not [f for f in drops if 50 < f <= 90], drops
-    assert any(90 < f <= 110 for f in drops) and len([f for f in drops if f > 90]) >= 3, drops
-
-
-def test_stance_an_order_given_under_hold_fire_fires():
-    """b: HOLD_FIRE before Go, ordered at Go: the bench's first drop frame 16, a hit every 30-50 frames to 12 % by
-    frame 200. The simulator: the percent down by frame 20 and still going down at the end (its damage starts at the
-    order, frame 2 by T状态: the fight model's dealing, not the stance)."""
-    rows = _stance('b')
-    drops = _drops(rows, 'T血量')
-    assert drops[0] <= 20 and drops[-1] >= 160 and rows[-1]['T血量'] <= 37, drops
-
-
-def test_stance_held_it_takes_nothing_by_itself_and_does_not_hit_back():
-    """d: held, no order: T 100 all the way (T状态 = 帧数). e: held, T ordered on A: A hurt, T 100 all the way."""
-    d = _stance('d')
-    assert all(r['T血量'] == 100 for r in d) and d[-1]['T状态'] == d[-1]['帧数']
-    e = _stance('e')
-    assert all(r['T血量'] == 100 for r in e) and e[-1]['A血量'] <= 50
-
-
-def test_stance_the_default_stance_fires_by_itself():
-    """c: no order, no stance set: the bench's A fires by itself (first drop frame 13, then on to 25 %). The simulator
-    (idle acquire, R8): T hurt by frame 20 and hit all the run."""
-    rows = _stance('c')
-    drops = _drops(rows, 'T血量')
-    assert drops[0] <= 20 and rows[-1]['T血量'] <= 37, drops
-
-
-# bench 2026-11-10 engine_acquire with a stance set at birth (readings in checks/engine_acquire.py): an enemy Guardian
-# (weapon 150, VisionRange 200) and the player's NO_ATTACK tank d north. GUARD (idle180 / 220 in test_simbench.py):
-# fires in place at 180, walks in at 220 and back home by s16.
-def _acquire(variant):
-    import build
-    import sim
-    m, t, _ = build.resolve(f'acquire_{variant}', 'frames')
-    s = sim.Sim(m, t)
-    s.run(26.0)
-    labels = [lab for _, lab in t.counters]
-    return [dict(zip(labels, row)) for k, row in s.series if k >= 1]
-
-
-def test_stance_hold_position_fires_in_reach_and_goes_after_nothing():
-    """hold180: 原地 1 all along, 坦克血 100 -> 86 s2 ... 3 (as GUARD's idle180). hold220: 原地 1, 近敌 0, 坦克血 100 all
-    26 s -- where GUARD walks in and fires."""
-    near = _acquire('hold180')
-    assert all(r['原地'] == 1 for r in near) and near[-1]['坦克血'] < 50
-    far = _acquire('hold220')
-    assert all(r['原地'] == 1 and r['近敌'] == 0 and r['坦克血'] == 100 for r in far)
-
-
-def test_stance_aggressive_walks_in_and_stays():
-    """agg220: 原地 0 and 近敌 1 from s1 to s26, 坦克血 down to 3 by s14 -- it never walks back (GUARD home s16).
-    agg240 / agg260: 原地 1, 坦克血 100 all along: the same reach as GUARD."""
-    rows = _acquire('agg220')
-    assert rows[-1]['坦克血'] < 50 and all(r['原地'] == 0 for r in rows[3:]) and rows[-1]['近敌'] == 1
-    for v in ('agg240', 'agg260'):
-        assert all(r['原地'] == 1 and r['坦克血'] == 100 for r in _acquire(v)), v
 
 
 def test_special_power_nugget_dispatches_the_casters_self_modifier_only_with_module_and_eligible_target():
@@ -1211,21 +914,6 @@ def test_attach_move_flag_transient_link_matches_engine_attach_detach_observatio
     assert child.alive and parent.alive
     assert not child.status & {'ATTACHED','NON_AUTOACQUIRABLE','NO_COLLISIONS'}
     assert 'VEHICLE_ATTACHED' not in parent.status
-
-
-# ---- ToggleStatusSpecialAbilityUpdate: engine_toggle a-f, bench 2026-11-11 (round 156, Sim.toggle_press). Rows at
-# frame n since Go: 第二行 frames A + 1000 x frames B held, 第三行 / 第四行 frames before A / B first seen on / off
-# (第四行 reads the NOT flag of the frame's top, so a bit turned on by the press frame reads 'lost' then: 1001).
-def test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press():
-    bench = {'a': lambda n: (59059, 1001, 1001),                  # Peacekeeper: on 1-59, off by the press at 60
-             'b': lambda n: (59059, 1001, 1001),                  # Conscript: PackTime 1 s changes nothing
-             'c': lambda n: (60000 + n - 60, 30001, 30031),       # Hammer: the first state's bit from the start
-             'd': lambda n: (n - 16, n * 1000 + 17, n * 1000 + n),  # Engineer: UnpackTime 1 s, then HELD for good
-             'e': lambda n: (60000 + n - 60, 30001, 30031),       # Sickle: WEAPON_UPGRADED_01 -> _02 -> _01
-             'f': lambda n: (n * 1001, 1001, 1001)}               # Tesla trooper: HELD, the press at 60 does nothing
-    for which, rows in bench.items():
-        n, *got = _sim_run('engine_toggle', which, 12.0).series[-1][1]
-        assert n > 150 and tuple(got) == rows(n), (which, n, got)
 
 
 # ---- ArmorTemplate SideDamageScalar / RearDamageScalar on direct fire (engine line A round 186, Sim.flank_of):

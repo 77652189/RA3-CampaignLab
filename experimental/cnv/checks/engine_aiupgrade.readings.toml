@@ -1,0 +1,35 @@
+# Bench readings of checks/engine_aiupgrade.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "upgrade_entry_pair_setup"
+scene = {build = "aicupgon", check = "a", until = 102}
+each = [{build = "aicupgon"}, {build = "aicupgoff"}]
+bench = "BuildEntry.Upgrade pair s40-s100: the refinery prerequisite and the sole upgrade seller (one construction yard) survive."
+proves = "simai BuildEntry.Upgrade: the pair keeps its prerequisite and its only seller alive"
+let = {sel = "[r for t, r in zip(times, rows) if 40 <= t <= 100]"}
+expect = [
+    "len(sel) > 0",
+    "all(r['矿厂数'] >= 1 and r['建造厂数'] == 1 for r in sel)",
+]
+
+[[reading]]
+id = "upgrade_entry_pair_ownership"
+scene = {build = "aicupgon", check = "a", until = 102}
+each = [{build = "aicupgon", want = 2}, {build = "aicupgoff", want = 0}]
+bench = "Bench aicupgon:a holds the Tech2 upgrade on 2 buildings from s39 (the yard and the barracks its receiver reaches); aicupgoff holds 0. (The model buys it at s20 and holds 2 from s40.)"
+proves = "simai BuildEntry.Upgrade presence: the upgrade is bought and held by the two receivers only when the entry is present"
+let = {sel = "[r for t, r in zip(times, rows) if 40 <= t <= 100]"}
+expect = [
+    "len(sel) > 0",
+    "all(r['二级持有'] == want for r in sel)",
+]
+
+[[reading]]
+id = "upgrade_ban_holds_until_the_allow_as_the_bench"
+scene = {build = "aicupgon", check = "ban", until = 66}
+bench = "A264 bench aicupgon:ban: Upgrade_AlliedTech2 banned from s1, allowed at 40 s: 0 holders s1-s62, 2 from s63. (The model holds none to the allow and 2 from s56; its rebuy right at the allow is 7 s before the bench, INFERRED.)"
+proves = "simai ALLOW_DISALLOW_ONE_UPGRADE: a banned upgrade is not bought until the allow"
+expect = [
+    "all(r['二级持有'] == 0 for t, r in zip(times, rows) if t <= 50)",
+    "len([r for t, r in zip(times, rows) if t >= 63]) > 0 and all(r['二级持有'] == 2 for t, r in zip(times, rows) if t >= 63)",
+]

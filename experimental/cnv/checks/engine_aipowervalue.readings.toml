@@ -1,0 +1,9 @@
+# Bench readings of checks/engine_aipowervalue.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "power_value_named_replay"
+scene = {build = "aipval1", check = "a", until = 41}
+each = [{build = "aipval1", home = 4}, {build = "aipval01", home = 0}]
+bench = "engine s40: tanks home 4 (Value 1) / 0 (Value 0.1), own total 4, the player army 8."
+proves = "simai power condition Value: single-parameter control"
+expect = "(win(40, 40, '坦克在家')[0], win(40, 40, '坦克总数')[0], win(40, 40, '玩家坦克')[0]) == (home, 4, 8)"

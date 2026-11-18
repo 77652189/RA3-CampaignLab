@@ -1,0 +1,9 @@
+# Bench readings of checks/engine_aipowerenemy.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "power_enemy_defenses_named_replay"
+scene = {build = "aipenoff", check = "a", until = 41}
+each = [{build = "aipenoff", home = 0}, {build = "aipenon", home = 8}]
+bench = "engine s40: tanks home 0 (enemy defenses off) / 8 (on), totals 8, player tanks 4, one tower."
+proves = "simai power condition on enemy defenses: single-parameter control"
+expect = "(win(40, 40, '坦克在家')[0], win(40, 40, '坦克总数')[0], win(40, 40, '玩家坦克')[0], win(40, 40, '玩家防御塔')[0]) == (home, 8, 4, 1)"

@@ -1,0 +1,29 @@
+# Bench readings of checks/engine_killcount.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "killcount_native_type_and_player_match_bench[a]"
+scene = {build = "engine_killcount", check = "a", until = 25}
+bench = "engine_killcount: the first row reads 0/0/0/255 and the last 2/1/0/240 (kills by type, by player, alive mask)."
+proves = "simai SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER: kill credit by type and by player"
+expect = [
+    "vals(rows)[0] == [0, 0, 0, 255]",
+    "vals(rows)[-1] == [2, 1, 0, 240]",
+]
+
+[[reading]]
+id = "killcount_native_type_and_player_match_bench[b]"
+scene = {build = "engine_killcount", check = "b", until = 25}
+bench = "engine_killcount: the first row reads 0/0/0/255 and the last 2/1/0/240 (kills by type, by player, alive mask)."
+proves = "simai SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER: kill credit by type and by player"
+expect = [
+    "vals(rows)[0] == [0, 0, 0, 255]",
+    "vals(rows)[-1] == [2, 1, 0, 240]",
+]
+
+[[reading]]
+id = "killcount_original_script_death_window_matches_bench"
+scene = {build = "engine_killcount", check = "a", until = 22}
+bench = "engine_killcount:a at screenshot s22-s23 the alive mask is 248 (script death is first captured at s25; screenshot time is not aligned to logic frames)."
+proves = "simai SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER: the alive mask at the original s22 window"
+expect = "vals(rows)[-1] == [2, 1, 0, 248]"
+mismatch = "sim 2, 1, 0, 240; bench 248"
