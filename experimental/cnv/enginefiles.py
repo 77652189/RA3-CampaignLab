@@ -89,7 +89,29 @@ def imports(tree, cnv=CNV, packages=False):
                 name = '.'.join(parts[:k])
                 if file_of(name, cnv):
                     out.add(name)
+    for name in list(out):
+        out.update(folder_loaded(name, cnv))
     return out
+
+
+def loads_its_folder(tree):
+    """Does a package's __init__ import every module file in its folder (pkgutil.iter_modules(__path__), as
+    engine/modules does so that no centre file names a module family)?"""
+    return any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == 'iter_modules' and
+               any(isinstance(a, ast.Name) and a.id == '__path__' for a in n.args) for n in ast.walk(tree))
+
+
+def folder_loaded(dotted, cnv=CNV):
+    """The modules importing package `dotted` imports with it, when its __init__ loads its folder; else none."""
+    path = file_of(dotted, cnv)
+    if not path or os.path.basename(path) != '__init__.py':
+        return set()
+    with open(path, encoding='utf-8') as f:
+        if not loads_its_folder(ast.parse(f.read())):
+            return set()
+    folder = os.path.dirname(path)
+    return {f'{dotted}.{f[:-3]}' for f in os.listdir(folder) if f.endswith('.py') and f != '__init__.py'} | \
+        {f'{dotted}.{d}' for d in os.listdir(folder) if os.path.isfile(os.path.join(folder, d, '__init__.py'))}
 
 
 def bindings(tree, cnv=CNV):

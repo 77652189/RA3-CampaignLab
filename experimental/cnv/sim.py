@@ -82,7 +82,7 @@ import simtoggle  # noqa: E402
 import simunits  # noqa: E402
 import simlevel  # noqa: E402
 from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
-from engine.modules import autoheal as _autoheal  # noqa: E402,F401  (registers AutoHealBehavior)
+import engine.modules  # noqa: E402,F401  (imports, so registers, every module file in it)
 import simloop  # noqa: E402
 import simworld  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402

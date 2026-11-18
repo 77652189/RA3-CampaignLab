@@ -8,7 +8,9 @@ rules (factory, schedule, Thing.find, sealed data), and
 4. two worlds in one process, advanced in turn, each record as when run alone;
 5. every tag the factory registers has a module test by name;
 6. the kernel has no dependency on the private model: no name of it in engine/**, imports only engine.* and the
-   standard library, and its tests run in full with CNV_ENGINE_MODEL pointing nowhere.
+   standard library, and its tests run in full with CNV_ENGINE_MODEL pointing nowhere;
+7. a module file runs with no centre file naming it: importing engine.modules loads every file in it, every PHASE is
+   a cell of simloop.FRAME, and every cell runs its modules (step K1.5).
 Each guard has a mutation check (a synthetic breach it must catch)."""
 import ast
 import importlib.util
@@ -203,7 +205,15 @@ def test_module_guard_bites():
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
 CENTER = {'sim.py lines': 3640, 'Sim methods': 205, 'Body fields': 115, 'simunits defs': 154,
-          'cells not on the schedule': 36}
+          'cells with old code': 36}
+
+
+def _old_code(fn):
+    """Does a frame cell still hold code of its own (beyond a docstring / pass)? Every cell runs its modules
+    (simloop._with_modules); a cell that is only its modules has none."""
+    body = [n for n in fn.body if not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant)) and
+            not isinstance(n, ast.Pass)]
+    return bool(body)
 
 
 def center(sim_src=None, units_src=None, loop_src=None):
@@ -216,13 +226,11 @@ def center(sim_src=None, units_src=None, loop_src=None):
     frame = next(ast.literal_eval(n.value) for n in loop.body
                  if isinstance(n, ast.Assign) and any(getattr(t, 'id', '') == 'FRAME' for t in n.targets))
     cells = {n.name: n for n in loop.body if isinstance(n, ast.FunctionDef)}
-    on = {c for c in frame if c in cells and any(isinstance(x, ast.Attribute) and x.attr == 'schedule'
-                                                 for x in ast.walk(cells[c]))}
     return {'sim.py lines': len(sim_src.splitlines()),
             'Sim methods': sum(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) for n in cls['Sim'].body),
             'Body fields': sum(isinstance(n, ast.AnnAssign) for n in cls['Body'].body),
             'simunits defs': sum(isinstance(n, ast.FunctionDef) for n in ast.parse(units_src).body),
-            'cells not on the schedule': len(frame) - len(on)}
+            'cells with old code': sum(c not in cells or _old_code(cells[c]) for c in frame)}
 
 
 def grown(now, limits=CENTER):
@@ -240,10 +248,16 @@ def test_centre_guard_bites():
     now = center()
     sim_src = (CNV / 'sim.py').read_text(encoding='utf-8').replace('class Sim:\n', 'class Sim:\n    def extra(self):\n        pass\n', 1)
     assert grown(center(sim_src=sim_src))['Sim methods'] == (now['Sim methods'] + 1, CENTER['Sim methods'])
-    loop_src = (CNV / 'simloop.py').read_text(encoding='utf-8').replace(
-        "def passive_area_heal(s, frame, tick):\n",
-        "def passive_area_heal(s, frame, tick):\n    s.world.schedule.run('passive_area_heal', frame)\n", 1)
-    assert center(loop_src=loop_src)['cells not on the schedule'] == now['cells not on the schedule'] - 1
+    loop_src = (CNV / 'simloop.py').read_text(encoding='utf-8')
+    emptied = loop_src.replace("def passive_area_heal(s, frame, tick):\n    s.heal.passive_area_heal(s)\n",
+                               "def passive_area_heal(s, frame, tick):\n    \"\"\"Its modules only.\"\"\"\n", 1)
+    assert emptied != loop_src
+    assert center(loop_src=emptied)['cells with old code'] == now['cells with old code'] - 1
+    refilled = loop_src.replace('    """Its modules only (engine/modules/autoheal.py, run by step)."""\n',
+                                '    """Its modules only."""\n    s.heal.autoheal(s)\n', 1)
+    assert refilled != loop_src
+    assert grown(center(loop_src=refilled))['cells with old code'] == (CENTER['cells with old code'] + 1,
+                                                                       CENTER['cells with old code'])
 
 
 # --- 3. no module-level mutable state -----------------------------------------------------------------------------
@@ -409,6 +423,65 @@ def test_tag_guard_bites():
     assert untested_tags(src, {'test_autoheal': 'def test_x():  # AutoHealBehavior\n    pass\n'}) == []
 
 
+# --- 7. a module file runs without a centre file naming it (step K1.5) -------------------------------------------
+
+def test_every_module_file_is_loaded_with_the_package():
+    import engine.modules  # noqa: F401
+    files = sorted(p.stem for p in (ENGINE / 'modules').glob('*.py') if p.stem != '__init__')
+    assert files and all(f'engine.modules.{f}' in sys.modules for f in files)
+    assert enginefiles.folder_loaded('engine.modules') == {f'engine.modules.{f}' for f in files}   # the tools see it
+    assert {c.__module__ for c in factory.TAGS.values()} <= {f'engine.modules.{f}' for f in files}
+
+
+def unwired(classes, frame):
+    """The update module classes whose PHASE is no cell of the frame order (they would never run)."""
+    return sorted(c.__name__ for c in classes if issubclass(c, interfaces.Update) and c.PHASE not in frame)
+
+
+def test_every_phase_is_a_frame_cell():
+    import simloop
+    assert not unwired(set(factory.TAGS.values()), simloop.FRAME)
+
+
+def test_phase_guard_bites():
+    import simloop
+    typo = type('Typo', (Ticker,), {'PHASE': 'auto_heal'})
+    assert unwired({Ticker, typo, Mender}, simloop.FRAME) == ['Typo']
+
+
+def _probes(s, phases, log):
+    """One probe a phase in s's schedule, logging (frame, phase) each run."""
+    class Probe(module.Module, interfaces.Update):
+        def update(self, frame):
+            log.append((frame, self.PHASE))
+            return 1
+    for p in phases:
+        s.world.schedule.add(type('Probe_' + p, (Probe,), {'PHASE': p})(T('x'), None, s.world), 0)
+
+
+def test_every_frame_cell_runs_its_modules_in_the_frame_order():
+    import simloop
+    s = simsmall.small_world((), model=False)
+    log = []
+    _probes(s, simloop.FRAME, log)
+    s.step()
+    frames = sorted({f for f, _ in log})
+    assert len(frames) >= 7
+    assert log == [(f, p) for f in frames for p in simloop.FRAME]
+
+
+def test_cell_guard_bites():
+    """A frame loop that skips a cell's modules leaves its probe idle."""
+    import simloop
+    s = simsmall.small_world((), model=False)
+    log = []
+    _probes(s, ('autoheal', 'deal'), log)
+    plain = tuple(simloop._with_modules(n, simloop.CELLS[n]) if n != 'deal' else simloop.CELLS[n]
+                  for n in simloop.FRAME)
+    simloop.step(s, plain)
+    assert {p for _, p in log} == {'autoheal'}
+
+
 # --- 6. no dependency on the private model ------------------------------------------------------------------------
 
 PRIVATE_NAMES = ('RA3-EngineModel', 'ra3model', 'labpaths', 'modelpin', 'engine_model', 'ENGINE_MODEL',
@@ -424,9 +497,18 @@ def private_breaks(sources):
             mods = [a.name for a in node.names] if isinstance(node, ast.Import) else \
                 [node.module] if isinstance(node, ast.ImportFrom) and node.module and not node.level else []
             out += [(name, m) for m in mods if m.split('.')[0] != 'engine' and m.split('.')[0] not in sys.stdlib_module_names]
-            if isinstance(node, ast.Call) and getattr(node.func, 'attr', '') in ('spec_from_file_location', 'import_module'):
+            if isinstance(node, ast.Call) and getattr(node.func, 'attr', '') in ('spec_from_file_location', 'import_module') \
+                    and not _own_folder_load(node):
                 out.append((name, ast.unparse(node.func)))
     return out
+
+
+def _own_folder_load(call):
+    """import_module('.' + name, __name__): a package loading a file of its own folder (engine/modules/__init__)."""
+    a = call.args
+    return getattr(call.func, 'attr', '') == 'import_module' and len(a) == 2 and not call.keywords and \
+        isinstance(a[1], ast.Name) and a[1].id == '__name__' and isinstance(a[0], ast.BinOp) and \
+        isinstance(a[0].op, ast.Add) and isinstance(a[0].left, ast.Constant) and a[0].left.value == '.'
 
 
 def engine_sources():
@@ -444,6 +526,11 @@ def test_private_guard_bites():
     got = {w for _, w in private_breaks(bad)}
     assert {'modelpin', 'simunits', 'RA3-EngineModel', 'ra3model', 'importlib.import_module'} <= got
     assert not private_breaks({'engine.kernel.y': 'import types\nfrom engine.kernel import module\n'})
+    own = 'import importlib\nimportlib.import_module("." + n, __name__)\n'
+    assert not private_breaks({'engine.modules': own})
+    for sneak in ('importlib.import_module(".." + n, __name__)', 'importlib.import_module(n, __name__)',
+                  'importlib.import_module("." + n, "ra3model")', 'importlib.import_module("." + n)'):
+        assert private_breaks({'engine.modules': 'import importlib\n' + sneak + '\n'}), sneak
 
 
 def test_the_kernel_tests_run_in_full_without_the_model(tmp_path):

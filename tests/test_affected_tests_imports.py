@@ -162,6 +162,9 @@ def test_the_real_tree():
     sc = importlib.util.module_from_spec(sc_spec)
     sc_spec.loader.exec_module(sc)
     assert {at.module_name(p) for p in g.sim_files()} == set(sc.sim_files())
+    # engine/modules/__init__ imports its folder (step K1.5): sim.py names no module file, the tools still see them
+    assert 'experimental/cnv/engine/modules/autoheal.py' in g.edges('experimental/cnv/engine/modules/__init__.py')
+    assert 'engine.modules.autoheal' in sc.sim_files()
     users = g.users('experimental/cnv/engine/modules/autoheal.py')   # simheal.Heal.autoheal until step K1
     assert {'tests/test_simheal.py', 'tests/modules/test_autoheal.py'} <= {at.file_of(u) for u in users}
     assert not {u for u in users if os.path.basename(at.file_of(u)).startswith('test_simai_bench')}

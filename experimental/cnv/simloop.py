@@ -76,7 +76,7 @@ def lose_health(s, frame, tick):
 
 
 def autoheal(s, frame, tick):
-    s.world.schedule.run('autoheal', frame)      # engine/modules/autoheal.py
+    """Its modules only (engine/modules/autoheal.py, run by step)."""
 
 
 def passive_area_heal(s, frame, tick):
@@ -228,7 +228,20 @@ FRAME = ('release', 'events', 'tech', 'scripts', 'seq', 'handed', 'lose_health',
          'frame_movers', 'build', 'blast', 'wfire', 'death_blast', 'spawn', 'sweeps', 'deposit', 'mine', 'produce',
          'counters', 'tick_first', 'shot_clock', 'follow', 'capture', 'infiltrate', 'auto_kill', 'aim', 'deal')
 
-_FRAME = tuple(CELLS[n] for n in FRAME)
+
+
+def _with_modules(name, cell):
+    """A cell as the frame runs it: first the update modules whose PHASE is its name (the kernel's schedule, at the
+    same frame), then what of the cell is not yet a module. So a module file picks any cell of FRAME by its PHASE and
+    nothing here changes (tests/test_kernel.py: a PHASE not in FRAME is red)."""
+    def run(s, frame, tick):
+        s.world.schedule.run(name, frame)
+        cell(s, frame, tick)
+    run.__name__ = name
+    return run
+
+
+_FRAME = tuple(_with_modules(n, CELLS[n]) for n in FRAME)
 
 
 def timed(totals):

@@ -438,6 +438,10 @@ class ImportGraph:
                 if m:
                     whole = n.value.strip().replace('\\', '/')
                     strs.add(whole if whole in self.paths else self.resolve(m.group(1), p))
+        if p.endswith('/__init__.py') and enginefiles.loads_its_folder(tree):     # engine/modules: every file in it
+            folder = p[:-len('__init__.py')]
+            imp.update(f for f in self.paths if f.startswith(folder) and
+                       ('/' not in f[len(folder):] or f[len(folder):].count('/') == 1 and f.endswith('/__init__.py')))
         return imp - {None, p}, strs - {None, p}
 
     def edges(self, p):
