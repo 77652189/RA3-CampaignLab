@@ -58,7 +58,7 @@ def test_reading_sim_py_by_name_would_be_caught():
     missed = uncounted(code, status)
     assert ('simcond_vision', 'status', 'SHROUD_REVEAL_TO_ALL') in missed
     assert ('simheal', 'status', 'GENERIC_TOGGLE_STATE') in missed
-    assert ('simlevel', 'string', 'LevelUpUpgrade') in missed
+    assert ('simlevel', 'string', 'LevelUpUpgrade/permanent') in missed     # its tag went to the module in step M12
 
 
 def test_a_module_that_imports_sim_is_not_a_part_of_it():

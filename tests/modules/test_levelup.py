@@ -3,6 +3,7 @@ elements -- not an attribute --, LevelsToGain, LevelCap, Permanent), several on 
 grant has it in force, and the body's level_modules forward (the ids in force) where the field was. The grant itself
 (rank, upgrades, elite health) is benched in tests/test_simbench_c.py (engine_levelup a / b / c)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
+import simlevel  # noqa: E402
 import simrecord  # noqa: E402
 import simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
@@ -40,6 +41,28 @@ def test_several_in_block_order_and_the_forward_shows_those_in_force():
     assert simrecord.body_state(b)['level_modules'] == {'ModuleTag_Second'}
     second.set_active(False)
     assert b.level_modules == set()
+
+
+PERMANENT = '''<GameObject id="CNV_TestVetP" KindOf="VEHICLE">
+  <Behaviors>
+    <LevelUpUpgrade id="ModuleTag_P" LevelsToGain="1" LevelCap="4" Permanent="true"><TriggeredBy>Upgrade_A</TriggeredBy></LevelUpUpgrade>
+  </Behaviors>
+</GameObject>'''
+
+
+def test_a_permanent_module_stays_in_force_and_a_new_grant_gains_no_more(monkeypatch):
+    """The removal of a Permanent module's trigger is a gap and leaves it in force: given again, it gains nothing."""
+    monkeypatch.setattr(simlevel, 'profiles', lambda: {'cnv_testvetp': {2: ((), ()), 3: ((), ())}})
+    s = simsmall.small_world()
+    s.own['CNV_TestVetP'] = PERMANENT
+    s.add('vet', 'CNV_TestVetP', 'Player_1', 100.0, 100.0)
+    b = s.bodies['vet']
+    s.give_upgrade(b, 'Upgrade_A')
+    assert b.level_rank == 2 and b.level_modules == {'ModuleTag_P'}
+    s._upgrade(b, 'Upgrade_A', False)
+    assert b.level_modules == {'ModuleTag_P'}
+    s.give_upgrade(b, 'Upgrade_A')
+    assert b.level_rank == 2
 
 
 def test_a_thing_without_one_reads_no_modules_in_force():
