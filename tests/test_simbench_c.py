@@ -918,9 +918,8 @@ def test_a_deleted_garrison_takes_its_passengers_with_it_at_the_bench():
     assert a[12][2] % 10 == 0 and a[12][0] // 100 == 3, a                      # house gone; the control lane in
 
 
-@pytest.mark.xfail(strict=True, reason='bench: SELL_OBJECT does nothing to a civilian house (no StructureSellUpdate); '
-                                       'simbody.Life.sell sells any STRUCTURE')
 def test_a_civilian_garrison_is_not_sold_at_the_bench():
+    # bench 11-17 engine_garrison del: SELL_OBJECT leaves a house without StructureSellUpdate standing and manned
     a = _del_series()
     assert tuple(a[12]) == (330, 30, 1010, 2000), a
 

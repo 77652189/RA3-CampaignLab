@@ -14,8 +14,9 @@ in through the same object). The rules are the XML's (GarrisonContain's fields) 
   inside       the passenger stands at the building's spot carrying ObjectStatusOfContained (UNSELECTABLE ENCLOSED
                CAN_ATTACK for a house: ENCLOSED is what the checks count) + INSIDE_STATUS; the building's owner is the
                first passenger's, empty again the owner it had before (garrison.md 1 / 2: 16 / 15 / 0)
-  out          NAMED_EXIT_BUILDING (the unit); a sale (INFERRED, never seen: SELL_OBJECT does nothing to a civilian
-               house, bench 11-17 engine_garrison del); REALLYDAMAGED -- the health at
+  out          NAMED_EXIT_BUILDING (the unit); a sale, all out in the sale's frame (bench 11-17 engine_sell g, a
+               SovietBunker; a house without StructureSellUpdate is not sold at all, engine_garrison del);
+               REALLYDAMAGED -- the health at
                or under ActiveBody's MaxHealthReallyDamagedPercentage (default 33.333333 %) without KindOf
                GARRISONABLE_UNTIL_DESTROYED -- orders all out (garrison.md 3: out at 13 %)
   the end      the building killed (a hit or a script's kill, garrison.md 4): KillPassengersOnDeath kills them (the

@@ -735,6 +735,14 @@ def test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_fram
     assert a['第四行'] % 1000 == 31 and a['第四行'] // 1000 == a['帧数'] - 31      # the plant counts 31 frames, then not
 
 
+def test_sell_lets_a_bunker_garrison_out_in_the_sale_frame():
+    # bench 11-17 engine_sell g (CampSellG_mcp_1117_225033): s1 frame 27 -> 9042, ENCLOSED 9 frames (0.4 s to the
+    # sale at 1.0 s), alive 15 + frames since Go
+    g = _sell('g')
+    assert g['资金'] == 2250 and g['卖帧'] == 31031
+    assert g['第四行'] // 1000 == 9 and g['第四行'] % 1000 == 15 + g['帧数'], g
+
+
 def test_sell_a_killed_building_stays_paid_and_a_building_unpacking_is_not_sold():
     e, c = _sell('e'), _sell('c')
     assert e['资金'] == 2400 and e['卖帧'] == 5004 and e['第四行'] % 1000 == 4

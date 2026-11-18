@@ -10,6 +10,8 @@ second in) each variant sells its target:
   c  unpack  the map's plant deleted; one made by script at Go (unpacks 46 frames); sold at frame 10 of the count
   d  bunker  a SovietBunker for the player (cost 500) with two Allied peacekeepers garrisoned instantly at the
              start (NO_ATTACK); the bunker is sold at Go
+  g  bunker  as d, but the fourth line counts from the start, not from Go: d's counting began in the sale's own
+             frame, so "never ENCLOSED" there could be "never got in" or "let out at once by the sale"
   e  killed  as a; 5000 damage at frame 5 (killed half way through the sale)
   f  twice   as a; SELL_OBJECT written twice in the Go actions
 
@@ -30,6 +32,9 @@ Bench 11-06 (round 49; the counters read from s1 on, the first row already 26-29
   d CampSellD_mcp_1106_022301 (2nd try; the 1st, garrison in the start script, read the same): 资金 2000 -> 2250
     (half of 500); 卖帧 31031; 第四行 = frames only: the first peacekeeper alive throughout, ENCLOSED never seen
     (the garrison did not take, or the bunker does not give that status: open, not looked into).
+  g CampSellG_mcp_1117_225033 (bench 11-17): s1 27 2250 27027 9042 -- the peacekeeper was ENCLOSED 9 frames (in at
+    0.4 s, the sale at 1.0 s) and out from the sale's frame on, alive: the garrison took, the sale lets it out at once
+    (d's counting simply began in that frame). The simulator reads the same.
   e CampSellE_mcp_1106_022507: killed at frame 5: 资金 2400 (the refund comes at the start of the sale); 卖帧 5004
     (gone after 4 frames, SOLD 5); 第四行 4 then 1000 a frame: the power goes with it.
   f CampSellF_mcp_1106_022713: SELL_OBJECT twice: 2400 (paid once); 卖帧 31031; 第四行 as a.
@@ -64,7 +69,7 @@ def mission():
 def sell_test(m, which='a'):
     t = Test()
     p1 = m.player('p1')
-    d = which == 'd'
+    d = which in 'dg'
     target = _n('Bunker') if d else (_n('Made') if which == 'c' else _n('Power'))
     gone = [_n('Bunker'), _n('Man 0'), _n('Man 1')] if not d else [_n('Power')]
     if which == 'c':
@@ -114,7 +119,8 @@ def sell_test(m, which='a'):
         rows = [(('PLAYER_EXCESS_POWER_COMPARE_VALUE', p1, 3, 150), 1),
                 (('PLAYER_EXCESS_POWER_COMPARE_VALUE', p1, 0, 51), 1000)]
     for k, (cond, step) in enumerate(rows):
-        t.scripts.append(Script(f'Test - four {k}', [going, cond], [('INCREMENT_COUNTER', step, 'CNV_Sell_Four')],
+        t.scripts.append(Script(f'Test - four {k}', [cond] if which == 'g' else [going, cond],
+                                [('INCREMENT_COUNTER', step, 'CNV_Sell_Four')],
                                 once=False))
     t.expect = [('帧数', 0, 'ever>=', 1, RUN)]
     t.bench = [('bench_watch', dict(every=0.5, sheet=False, lines=len(t.counters), seconds=RUN))]
@@ -122,4 +128,4 @@ def sell_test(m, which='a'):
 
 
 MISSION = {'engine_sell': mission}
-CHECKS = {'engine_sell': {w: (lambda m, w=w: sell_test(m, w)) for w in 'abcdef'}}
+CHECKS = {'engine_sell': {w: (lambda m, w=w: sell_test(m, w)) for w in 'abcdefg'}}
