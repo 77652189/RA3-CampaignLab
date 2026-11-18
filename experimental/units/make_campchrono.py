@@ -12,6 +12,7 @@ look and size to match). CNV_DEPLOY defaults to 0 here (always armed, so it fire
   python -I -X utf8 experimental/units/make_campchrono.py          -> Documents\Red Alert 3\Mods\CampChrono1
 (from a worktree set CNV_SDK to the shared SDK: labpaths finds it next to the repository)
 """
+import importlib.util
 import json
 import os
 import re
@@ -37,8 +38,10 @@ UNIT, MODEL = c35.UNIT, 'CNChrono'
 SRC = os.path.join(labpaths.WORK, 'units', 'chronolag', 'game')
 BUTTON, PORTRAIT = f'Button_{UNIT}_on', f'Portrait_{UNIT}'
 PARTS = {'HULL': 'BODY', 'TURRET': 'Bone_Turret', 'BARREL': 'Bone_Turret_Pitch'}
-sys.path.insert(0, HERE)
-from chrono_kit import LEVEL, LOOK              # noqa: E402  (the look, shared with chrono_kit.py)
+_spec = importlib.util.spec_from_file_location('chrono_kit', os.path.join(HERE, 'chrono_kit.py'))
+chrono_kit = sys.modules['chrono_kit'] = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(chrono_kit)
+LEVEL, LOOK = chrono_kit.LEVEL, chrono_kit.LOOK  # the look, shared with chrono_kit.py
 c7.EXTRA_OWN += [b'LogicCommand:Command_Construct' + UNIT.encode()] + \
     [p + n.encode() for n in (BUTTON, PORTRAIT) for p in (b'PackedTextureImage:', b'Texture:')]
 c4.c3.STRINGS.update({

@@ -11,14 +11,25 @@ The look is make_campchrono.py's (it reads LEVEL / LOOK from here): the bake as 
 wider and lifted (user 2026-10-26: "太暗了，调亮一点，青色光要看得见"). make_campchrono.py also builds the old
 CampChrono1 sample mod; that build needs gone experiments (work/units/shrinkvehicle), this file does not.
 """
+import importlib.util
 import json
 import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
-import to_w3x                                   # noqa: E402
-import labpaths                                 # noqa: E402  (to_w3x put experimental/campaign on the path)
+
+
+def _load(name):
+    """a sibling module by file path (tests/test_architecture.py G4: no new sys.path edits)"""
+    if name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(name, os.path.join(HERE, name + '.py'))
+        sys.modules[name] = module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    return sys.modules[name]
+
+
+to_w3x = _load('to_w3x')
+import labpaths                                # noqa: E402  (to_w3x put experimental/campaign on the path)
 
 LEVEL = int(os.environ.get('CNV_CHRONO_LEVEL', 85))     # diffuse median (retail Allied vehicles 62..80); the bake's
 # own is 84 and level only darkens: 62 read dark and brown beside the Guardian (user 2026-10-26)
