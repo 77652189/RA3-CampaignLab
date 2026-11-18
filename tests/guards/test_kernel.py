@@ -248,7 +248,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3461, 'Sim methods': 196, 'Body fields': 105, 'simunits defs': 149,
+CENTER = {'sim.py lines': 3461, 'Sim methods': 196, 'Body fields': 100, 'simunits defs': 148,
           'cells with old code': 34}
 
 
@@ -310,7 +310,10 @@ def test_centre_guard_bites():
 BODY_FORWARDS = {'life_end': 'LifetimeUpdate', 'topple': 'ToppleUpdate', 'toppled': 'ToppleUpdate',
                  'topple_end': 'ToppleUpdate', 'crusher': 'CrusherInfo', 'crushable': 'CrusherInfo',
                  'deposit': 'AutoDepositUpdate', 'deposit_at': 'AutoDepositUpdate',
-                 'toggle_at': 'ToggleStatusSpecialAbilityUpdate', 'armor_up': 'ToggleStatusSpecialAbilityUpdate'}
+                 'toggle_at': 'ToggleStatusSpecialAbilityUpdate', 'armor_up': 'ToggleStatusSpecialAbilityUpdate',
+                 'suppression_rule': 'SuppressionUpdate', 'suppression_hits': 'SuppressionUpdate',
+                 'suppressed': 'SuppressionUpdate', 'suppressed_until': 'SuppressionUpdate',
+                 'suppression_next': 'SuppressionUpdate'}
 
 
 def body_forwards(sim_src=None):

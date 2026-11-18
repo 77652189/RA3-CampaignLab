@@ -387,11 +387,6 @@ class Body(kernel_module.Thing):
     taken: float = 1.0                                          # ARMOR factor: damage taken x (INFERRED)
     cold: float = 0.0                                           # the cryo beam's secondary damage held (deal, R freeze)
     cold_step: int = -1                                         # ... the highest EffectInfo reached (-1: none)
-    suppression_rule: object = None
-    suppression_hits: list = dataclasses.field(default_factory=list)  # (expiry frame, value)
-    suppressed: bool = False                                    # sampled model condition; may outlive end frame
-    suppressed_until: int = -1                                  # model condition, NOT an object status
-    suppression_next: int = 0
     model_conditions: dict = dataclasses.field(default_factory=dict)  # condition -> expiry frame or None
     dealt: float = 1.0                                          # DAMAGE_MULT x RATE_OF_FIRE: damage dealt x (INFERRED)
     level_rate: float = 1.0                                     # measured heroic Mirage clip rate; never per-hit damage
@@ -467,7 +462,8 @@ class Body(kernel_module.Thing):
         self.health_moved(was, self.hp)
     # fields moved into modules, still read outside: read only (test_kernel BODY_FORWARDS)
     FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
-                'toggle_at', 'armor_up')
+                'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
+                'suppression_next')
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
@@ -478,6 +474,11 @@ class Body(kernel_module.Thing):
     deposit_at = kernel_module.forward(kernel_interfaces.Deposit, lambda m: m.next_frame())
     toggle_at = kernel_module.forward(kernel_interfaces.Toggle, simtoggle.toggle_at, {})   # step M5: {index: state}
     armor_up = kernel_module.forward(kernel_interfaces.Toggle, simtoggle.armor_up, False)  # the miner's armour
+    suppression_rule = kernel_module.forward(kernel_interfaces.Suppression, lambda m: m.rules())    # step M6
+    suppression_hits = kernel_module.forward(kernel_interfaces.Suppression, lambda m: m.hits(), ())  # (end, value)
+    suppressed = kernel_module.forward(kernel_interfaces.Suppression, lambda m: m.is_suppressed(), False)  # a model
+    suppressed_until = kernel_module.forward(kernel_interfaces.Suppression, lambda m: m.until(), -1)  # condition
+    suppression_next = kernel_module.forward(kernel_interfaces.Suppression, lambda m: m.next_sample(), 0)
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
@@ -854,7 +855,10 @@ class Sim:
                                         kill=lambda b, why: self._life().die_of_age(self, b, why, self.destroy),
                                         remove=lambda b, why: self.destroy(b, why, delete=True),
                                         pay=lambda b, amount: self.wallet.deposit(b.owner, amount),
-                                        toggled=lambda b, m: simtoggle.entered(self, b, m, self.modify))
+                                        toggled=lambda b, m: simtoggle.entered(self, b, m, self.modify),
+                                        modify=lambda b: self.modify(b),
+                                        suppression_at=lambda b, f: simdamage.suppression_at(
+                                            self.suppression_fields, b, f))
         self.used = self.world.used         # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
         self.unmodeled = self.world.gaps    # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
@@ -1098,18 +1102,13 @@ class Sim:
                 b.status.add('WALL_SEGMENT')
             self.gap('WallBuilderBehavior', template,
                      '仅预摆墙默认WALL_SEGMENT初始状态已量；运行时生成/建墙/连接/段数上限/生死联动、自定义状态与模型条件未建模；其他继承覆盖默认值INFERRED，脚本改位交互未测')
-        b.suppression_rule = simunits.suppression(template, self.own)
         if template not in self._attachment_rules:
             self._attachment_rules[template] = simunits.attach_modules(template, self.own)
         b.attachment_rules = self._attachment_rules[template]
         for rule in b.attachment_rules.values():
             if rule:
                 self.attachment_known_status.update(rule['child'] | rule['parent'])
-        if b.suppression_rule:
-            b.suppressed_until = 0
-            b.suppression_next = max(1, self.eng.frame if getattr(self, 'eng', None)
-                                     else int(round(at * simunits.LIFE_FPS)))
-        hp = immortal_hp if b.immortal else (f['hp'] or simunits.max_health(template, self.own))
+        hp =immortal_hp if b.immortal else (f['hp'] or simunits.max_health(template, self.own))
         # no health in the data: a building's or a unit's usual (a guess)
         b.max_hp = b.hp = hp or (2000.0 if 'STRUCTURE' in b.kinds else 300.0)
         b.armor, b.weapons = f['armor'], f['weapons']
@@ -2820,7 +2819,8 @@ class Sim:
         self._attachment_marked = set(bits)
 
     def suppression_tick(self):
-        """simdamage.suppression_tick (L3): the suppression fields sampled on each body."""
+        """simdamage.suppression_tick (L3): after the bodies' modules sampled (engine/modules/suppression.py, step
+        M6), the fields whose lifetime is out leave."""
         simdamage.suppression_tick(self, simdamage.Peers(self))
 
     def shots_due(self, b, w, dt):

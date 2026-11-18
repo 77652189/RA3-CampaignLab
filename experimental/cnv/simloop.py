@@ -82,6 +82,7 @@ def assignments(s, frame, tick):
 
 
 def suppression(s, frame, tick):
+    """Its modules sample first (engine/modules/suppression.py, run by step); then the spent fields leave."""
     s.suppression_tick()
 
 

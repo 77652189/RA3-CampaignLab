@@ -1374,24 +1374,6 @@ def wall_builder_start(template, own=None):
     return _chain(template, own, read)
 
 
-def suppression(template, own=None):
-    """Nearest infantry suppression rule; an explicit Remove stops inheritance.
-
-    RA3 data only. engine_suppress_probe 2026-11-10 confirms individual hit
-    lifetimes and birth-phased samples; no invented linear decay.
-    """
-    def read(xml):
-        for h, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'SuppressionUpdate'):
-            if _attr(h, 'xai:joinAction') == 'Remove':
-                return False
-            return dict(threshold=_num(_attr(h, 'Suppressability')),
-                        every=max(1, _frames(_secs(_attr(h, 'UpdateDelay', '1s')))),
-                        duration=_frames(_secs(_attr(h, 'SuppressionDuration', '0s'))),
-                        modifier=_attr(h, 'AttributeModifierSuppressed'))
-        return None
-    return _chain(template, own, read) or None
-
-
 def repair_update(template, own=None):
     """RepairUpdate fields (schema defaults); player repair, distinct from AutoHeal.
 
@@ -1455,7 +1437,10 @@ def module_blocks(template, tag, own=None):
     AutoHealBehavior reader it replaced over all 3448 indexed templates: the same rule for each. A tag of OWN_ONLY
     is read from the mission's own XML of the template alone; one of MERGED is one block whose attributes are each
     the nearest template's that writes it (no inner text), when any template up the chain has the tag; one of
-    SELF_ONLY from the template's own XML alone (the mission's, else retail's)."""
+    SELF_ONLY from the template's own XML alone (the mission's, else retail's). A block of the nearest template that
+    removes the inherited module (xai:joinAction="Remove") is left out, and the walk ends there (step M6: 11 retail
+    templates remove their base's SuppressionUpdate, as the reader it replaced read; no other registered tag but
+    CrusherInfo has one, whose 64 MERGED keeps as M3's reader did)."""
     def read(xml):
         return list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), tag))
     if tag in OWN_ONLY:
@@ -1471,7 +1456,7 @@ def module_blocks(template, tag, own=None):
                     for k, v in re.findall(r'([\w:]+)="([^"]*)"', head):
                         attrs.setdefault(k, v)
             return [(''.join(f' {k}="{v}"' for k, v in attrs.items()), '')] if found else []
-        return _inherited(template, own, read, [])
+        return [b for b in _inherited(template, own, read, []) if _attr(b[0], 'xai:joinAction') != 'Remove']
     except (OSError, ValueError):
         return []
 

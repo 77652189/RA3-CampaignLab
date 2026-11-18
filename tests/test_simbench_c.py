@@ -637,7 +637,7 @@ def test_suppression_predictions():
         assert ordinary.max_hp == 150 and ordinary.speed == 50
         assert ordinary.suppression_rule == dict(threshold=50, every=15, duration=75,
                                                 modifier='Modifier_Test_Suppression')
-        assert simunits.suppression('AlliedCommandoTech1') is None
+        assert simunits.module_blocks('AlliedCommandoTech1', 'SuppressionUpdate') == []   # its Remove block
         s.run(9)
         assert s.enemy(m.player('p1'), m.player('s1')) and s.enemy(m.player('s1'), m.player('p1'))
         assert 'SUPPRESSED' not in ordinary.status   # model condition is not an object status
@@ -656,12 +656,14 @@ def test_suppression_predictions():
     m, t, _ = build.resolve('engine_suppression', 'threshold')
     s = sim.Sim(m, t)
     b = s.body('UNIT - CNV Supp high man')
+    from engine.kernel import interfaces
+    mod = b.find(interfaces.Suppression)        # step M6: engine/modules/suppression.py
     for points, suppressed in ((48, False), (50, True)):
         s.suppression_fields = [(1000, points, b.x, b.y, 20)]
-        b.suppression_next = 0
-        b.suppressed = False
-        b.suppressed_until = 0
-        s.suppression_tick()
+        mod.suppression_next = 0
+        mod.suppressed = False
+        mod.suppressed_until = 0
+        mod.update(s.frame_now())
         assert b.suppressed is suppressed
         assert b.suppressed_until == 0
         assert b.speed == (37.5 if suppressed else 50)

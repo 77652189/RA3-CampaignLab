@@ -54,7 +54,7 @@ FORWARDER_CALLS = {
     # simact_player / simact_world: upgrades and a team's stop
     ('simact_player', 'modify'): 1, ('simact_world', 'stand'): 1,
     # simdamage's Peers loan
-    ('simdamage', 'destroy'): 4, ('simdamage', 'modify'): 5, ('simdamage', 'projectile_detonate'): 2,
+    ('simdamage', 'destroy'): 4, ('simdamage', 'modify'): 4, ('simdamage', 'projectile_detonate'): 2,
     ('simdamage', 'queue_projectile_hit'): 1,
     # simgarrison's Peers loan (R3 ⑨c)
     ('simgarrison', 'destroy'): 1, ('simgarrison', 'modify'): 3, ('simgarrison', 'order_move'): 2,

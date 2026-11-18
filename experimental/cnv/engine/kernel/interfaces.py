@@ -166,6 +166,28 @@ class Toggle(Interface):
         raise NotImplementedError
 
 
+class Suppression(Interface):
+    """SuppressionUpdate, one a thing (step M6): its rules (rules: threshold, every, duration, modifier), the fields
+    covering it at its last update (hits: [(end frame, value)]), whether it is suppressed (is_suppressed), the end a
+    refreshed sample set (until: 0, none yet) and its next sample frame (next_sample)."""
+    __slots__ = ()
+
+    def rules(self):
+        raise NotImplementedError
+
+    def hits(self):
+        raise NotImplementedError
+
+    def is_suppressed(self):
+        raise NotImplementedError
+
+    def until(self):
+        raise NotImplementedError
+
+    def next_sample(self):
+        raise NotImplementedError
+
+
 class Upgrade(Interface):
     """Whether it is in force (the XML's triggers, conflicts and required upgrades) and what it does then. Its data
     has `trigger` (module.Trigger); the kernel (Thing.upgrades_moved) keeps its `upgraded` and calls on_upgrade when
@@ -237,5 +259,5 @@ class AIUpdate(Interface):
 
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
-FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
-ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit})  # a thing has at most one of these: Thing.find gives it
+FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression})  # a thing has at most one of these: Thing.find gives it

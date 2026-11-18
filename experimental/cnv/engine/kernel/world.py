@@ -9,13 +9,16 @@ def no_blocks(template, tag):
 
 
 class World:
-    def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None, pay=None, toggled=None):
+    def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None, pay=None, toggled=None,
+                 modify=None, suppression_at=None):
         """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry;
         kill(thing, why): the host's death of a thing (World.kill); remove(thing, why): the host's deletion of one,
         no death (World.remove); pay(thing, amount): the host's payment to a thing's holder (World.pay);
-        toggled(thing, module): what the host re-sets when a toggle enters its next state (World.toggled)."""
+        toggled(thing, module): what the host re-sets when a toggle enters its next state (World.toggled);
+        modify(thing): the host's re-reading of a thing's attribute modifiers (World.modify);
+        suppression_at(thing, frame): the suppression fields covering a thing (World.suppression_at)."""
         self.blocks, self.tags, self._kill, self._remove, self._pay = blocks, tags, kill, remove, pay
-        self._toggled = toggled
+        self._toggled, self._modify, self._suppression_at = toggled, modify, suppression_at
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
@@ -75,6 +78,19 @@ class World:
         if self._toggled is None:
             raise RuntimeError(f'World.toggled({thing.name!r}): this world has no host to tell')
         self._toggled(thing, module)
+
+    def modify(self, thing):
+        """A module's state moved what a thing's attribute modifiers are (SuppressionUpdate entering or leaving): the
+        host re-reads them -- today Sim.modify, until the modifier family is a module of its own."""
+        if self._modify is None:
+            raise RuntimeError(f'World.modify({thing.name!r}): this world has no host to tell')
+        self._modify(thing)
+
+    def suppression_at(self, thing, frame):
+        """The suppression fields covering a thing in `frame`: [(end frame, value)], in the order the hits left them,
+        those still alive (end after `frame`) within their radius of it, centre to centre in 2D. The host keeps the
+        fields (today Sim.suppression_fields, which the combat family's SuppressionNugget fills); none: []."""
+        return [] if self._suppression_at is None else self._suppression_at(thing, frame)
 
     def data_of(self, template, tag):
         """The data of a registered tag's blocks of a template, in order: the parse its things' modules get

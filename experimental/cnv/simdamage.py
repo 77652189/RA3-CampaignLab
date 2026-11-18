@@ -58,34 +58,18 @@ def impact_ground_z(world, x, y):
     return float(terrain_rules.world(world.ground.z(x, y)))
 
 
-def suppression_tick(world, peers):
-    """engine_suppress_probe tail/lifetime/duration/expiry (bench 2026-11-10).
+def suppression_at(fields, b, now):
+    """The suppression fields covering b in frame `now` (World.suppression_at; the sampling is
+    engine/modules/suppression.py, step M6): [(end, value)] of the hits' stationary 2D fields
+    (end, value, x, y, radius) still alive, within their radius of b's centre (bench 2026-11-10
+    engine_suppress_probe: individual hit lifetimes)."""
+    return [(end, v) for end, v, x, y, radius in fields if now < end and math.hypot(b.x - x, b.y - y) <= radius]
 
-    Hits leave stationary 2D fields with individual lifetimes. Samples run
-    on the body's birth phase. Entering suppression leaves the old end
-    untouched; an already suppressed high sample refreshes it. Only a low
-    sample strictly after the end clears the condition. Fractional lifetime
-    ceil vs nearest is still INFERRED outside the measured 1.1s case.
-    """
+
+def suppression_tick(world, peers):
+    """The suppression cell's host half, after the modules sampled: fields whose lifetime is out leave."""
     now = world.frame_now()
     peers.suppression_fields[:] = [p for p in peers.suppression_fields if now < p[0]]
-    for b in world.living():
-        rule = b.suppression_rule
-        if not rule:
-            continue
-        b.suppression_hits[:] = [(end, v) for end, v, x, y, radius in peers.suppression_fields
-                                if math.hypot(b.x - x, b.y - y) <= radius]
-        before = b.suppressed
-        if now >= b.suppression_next:
-            b.suppression_next += ((now - b.suppression_next) // rule['every'] + 1) * rule['every']
-            if sum(v for _, v in b.suppression_hits) >= rule['threshold']:
-                if b.suppressed:
-                    b.suppressed_until = now + rule['duration']
-                b.suppressed = True
-            elif now > b.suppressed_until:
-                b.suppressed = False
-        if before != b.suppressed:
-            peers.modify(b)
 
 
 def death_blast_due(world, frame, peers):
