@@ -26,8 +26,11 @@ A file is a list of [[reading]] tables:
 
 Expressions see: rows (list of {counter label: value}, row i ~ mission second i + 1), times (each row's mission
 second), first(key, pred=None, rows=rows), vals(rows) (each row's values in counter order), win(t0, t1, key)
-(the key's values at mission seconds t0..t1, asserting every second is there), the scene names, the each-entry
-keys, and the builtins."""
+(the key's values at mission seconds t0..t1, asserting every second is there), counter(name, scene=None) (a script
+counter's value at until, by its name in the scripts: shown on the counter display or not), verdicts(scene=None)
+(the check's own expectations judged on the rows to until, build.judge: [(ok, text)]), the scene names, the
+each-entry keys, and the builtins. With scenes, counter / verdicts name the scene."""
+import collections
 import os
 import tomllib
 
@@ -144,7 +147,8 @@ def untils(readings):
 
 def snapshots(start, advance, rows_of, wanted):
     """Run each (build, check) once: start(build, check) -> world, advance(world, frames), rows_of(world) -> (times,
-    rows). {(build, check, until): (times, rows)} for every until in wanted, the world advanced to each in turn."""
+    rows, counters, verdicts). {(build, check, until): Run} for every until in wanted, the world advanced to each in
+    turn: counters {script counter name: value} then, verdicts the check's own [(ok, text)] on the rows so far."""
     out = {}
     for (b, c), us in sorted(wanted.items()):
         w, done = start(b, c), 0
@@ -152,21 +156,31 @@ def snapshots(start, advance, rows_of, wanted):
             frames = int(u * FPS) - done
             advance(w, frames)
             done += frames
-            times, rows = rows_of(w)
-            out[(b, c, u)] = (list(times), [dict(r) for r in rows])
+            times, rows, counters, verdicts = rows_of(w)
+            out[(b, c, u)] = Run(list(times), [dict(r) for r in rows], dict(counters), list(verdicts))
     return out
+
+
+Run = collections.namedtuple('Run', 'times rows counters verdicts')     # one snapshot (see snapshots)
 
 
 FPS = 15     # simai.FPS (checked by tests/tools/test_readings_format.py against the simulator's)
 
 
 def namespace(reading, runs):
-    """The names a reading's expressions see, its runs given as {(build, check, until): (times, rows)}."""
+    """The names a reading's expressions see, its runs given as {(build, check, until): Run}."""
     ns = dict(reading['vars'])
     for name, key in reading['scenes'].items():
-        ns[name] = runs[key][1]
+        ns[name] = runs[key].rows
+
+    def run_of(scene):
+        if scene is None and not reading['single']:
+            raise ReadingError(f'{reading["id"]}: name the scene ({sorted(reading["scenes"])})')
+        return runs[reading['scenes']['rows' if scene is None else scene]]
+    ns['counter'] = lambda name, scene=None: run_of(scene).counters[name]
+    ns['verdicts'] = lambda scene=None: run_of(scene).verdicts
     if reading['single']:
-        times, rows = runs[reading['scenes']['rows']]
+        times, rows = runs[reading['scenes']['rows']][:2]
         ns['times'] = times
 
         def first(key, pred=None, rows=rows):

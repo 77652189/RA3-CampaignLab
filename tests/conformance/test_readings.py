@@ -31,8 +31,10 @@ def lib():
 
 
 def _rows_of(w):
+    import build                                   # on the path once simai is loaded
     labels = [lab for _, lab in w.sim.test.counters]
-    return [t for t, _ in w.sim.series], [dict(zip(labels, v)) for _, v in w.sim.series]
+    return ([t for t, _ in w.sim.series], [dict(zip(labels, v)) for _, v in w.sim.series], dict(w.sim.counters),
+            build.judge(w.sim.test, w.sim.series))
 
 
 @pytest.mark.parametrize('keys, group', GROUPS,

@@ -39,7 +39,8 @@ def run(readings):
     out = []
     for keys, group in rd.groups(readings):
         out += rd.run_group(keys, group, Fake, lambda w, f: w.advance(f),
-                            lambda w: ([t for t, _ in w.series], [r for _, r in w.series]))
+                            lambda w: ([t for t, _ in w.series], [r for _, r in w.series], {'frame': w.frame},
+                                       [(w.frame % 2 == 0, f'frame {w.frame}')]))
     return out
 
 
@@ -134,6 +135,38 @@ def test_each_overrides_a_named_scene_of_scenes(tmp_path):
     assert sorted(Fake.started) == [('b1', 'a'), ('b2', 'a'), ('b3', 'a')]
     assert run(rd.load(write(tmp_path, EACH_SCENES.replace('n = 40', 'n = 41')))) == [
         "same_as_b1[b2]: does not hold: got[-1]['k'] == n and first('n', rows=got) == 0"]
+
+
+COUNTERS = '''
+[[reading]]
+id = "by_name"
+scene = {build = "b1", check = "a", until = 4}
+bench = "-"
+proves = "x: y"
+expect = ["counter('frame') == 60", "verdicts() == [(True, 'frame 60')]"]
+
+[[reading]]
+id = "by_name_later"
+scene = {build = "b1", check = "a", until = 5}
+bench = "-"
+proves = "x: y"
+expect = "counter('frame') == 75 and not verdicts()[0][0]"
+
+[[reading]]
+id = "by_scene"
+scenes = {one = {build = "b1", check = "a", until = 4}, two = {build = "b2", check = "a", until = 2}}
+bench = "-"
+proves = "x: y"
+expect = "counter('frame', 'one') - counter('frame', 'two') == 30 and verdicts('two')[0][0]"
+'''
+
+
+def test_counters_by_name_and_the_checks_verdicts_at_each_until(tmp_path):
+    assert run(rd.load(write(tmp_path, COUNTERS))) == []
+    missing = COUNTERS.replace("counter('frame') == 75", "counter('nope') == 75")
+    assert run(rd.load(write(tmp_path, missing))) == ["by_name_later: KeyError: 'nope'"]
+    unnamed = COUNTERS.replace("counter('frame', 'one')", "counter('frame')")
+    assert run(rd.load(write(tmp_path, unnamed)))[0].startswith('by_scene: ReadingError: by_scene: name the scene')
 
 
 @pytest.mark.parametrize('entry', ['{n = 4}', '{got = "b3"}', '{build = "b3", got = {build = "b3"}}'])
