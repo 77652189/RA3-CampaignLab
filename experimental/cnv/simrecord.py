@@ -2,8 +2,14 @@
 frame's record identical (docs/engine/sim-layers.md "搬迁不改行为").
 
     python -X utf8 experimental/cnv/simrecord.py record <dir>            # every task, one subprocess each
+    python -X utf8 experimental/cnv/simrecord.py time <dir>              # each task's run time again: alone, one
+                                                                         # after another, the least of 3 runs
     python -X utf8 experimental/cnv/simrecord.py compare <base> <new>    # first differing line per task, then
                                                                          # each task's run time before and after
+
+The times `record` writes come from runs side by side (-j), a few percent of noise and more on a loaded machine;
+`time` replaces them with the least of three lone runs (docs/engine/sim-modules.md 9.3: same machine, one task a
+process, the least of three), run it on both sides before explaining a slower step.
 
 A task's record is one text line per engine frame (and one per DT tick): the frame, every body's attributes (sorted,
 other bodies by name), and the Sim's observable state (log, flags, counters, timers, objectives, money, power, the
@@ -153,6 +159,10 @@ def main():
     one = sub.add_parser('one')
     one.add_argument('name')
     one.add_argument('path')
+    tm = sub.add_parser('time')
+    tm.add_argument('dir')
+    tm.add_argument('--only', nargs='*', default=None)
+    tm.add_argument('-n', type=int, default=3, help='runs a task (the least is kept)')
     c = sub.add_parser('compare')
     c.add_argument('base')
     c.add_argument('new')
@@ -166,6 +176,8 @@ def main():
             json.dump({'total': total, 'record': rec.spent, 'run': rec.ran}, f)
         print(a.name, 'used:', ' / '.join(sorted(s.used)))
         return 0
+    if a.cmd == 'time':
+        return time_tasks(a.dir, a.only or list(TASKS), a.n)
     if a.cmd == 'record':
         os.makedirs(a.dir, exist_ok=True)
         names = a.only or list(TASKS)
@@ -216,6 +228,38 @@ def main():
                     break
     timing(a.base, a.new)
     return 1 if bad else 0
+
+
+def time_tasks(folder, names, runs=3):
+    """Each task run `runs` times, one subprocess at a time, its record thrown away; <task>.time.json in `folder`
+    gets the least run and total ('runs': how many). Returns 1 if a run failed."""
+    import tempfile
+    os.makedirs(folder, exist_ok=True)
+    env = dict(os.environ, PYTHONHASHSEED='0')
+    failed = 0
+    with tempfile.TemporaryDirectory() as tmp:
+        for n in names:
+            got = []
+            for k in range(runs):
+                gz = os.path.join(tmp, f'{n}.{k}.gz')
+                with open(os.path.join(tmp, n + '.txt'), 'w', encoding='utf-8') as log:
+                    p = subprocess.run([sys.executable, '-X', 'utf8', os.path.abspath(__file__), 'one', n, gz],
+                                       env=env, stdout=log, stderr=subprocess.STDOUT)
+                if p.returncode:
+                    break
+                with open(timing_path(gz), encoding='utf-8') as f:
+                    got.append(json.load(f))
+            if len(got) < runs:
+                failed = 1
+                print(n, 'FAILED')
+                continue
+            best = {'run': min(g['run'] for g in got), 'total': min(g['total'] for g in got),
+                    'record': min(g['record'] for g in got), 'runs': runs}
+            with open(timing_path(os.path.join(folder, n + '.gz')), 'w', encoding='utf-8') as f:
+                json.dump(best, f)
+            each = ', '.join('%.2f' % g['run'] for g in got)
+            print(f'{n:14} run {best["run"]:7.2f} (of {each})', flush=True)
+    return failed
 
 
 def timing_path(gz):

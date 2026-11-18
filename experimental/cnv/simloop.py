@@ -13,6 +13,7 @@ ran a reduced order of its own once a tick (step_old: fewer cells, tech last, ex
 dealt at once); the merge changed its readings on purpose (work/re/handoff-r.md).
 """
 import math
+from time import perf_counter
 
 from simworld import DT          # seconds a tick (sim.DT; the fight's damage step reads it too, L0)
 LAG = 0.0                        # the readings' clock: mission seconds, as the bench's since 4aed60f (ADR 0007: the
@@ -230,23 +231,37 @@ FRAME = ('release', 'events', 'tech', 'scripts', 'seq', 'handed', 'lose_health',
 _FRAME = tuple(CELLS[n] for n in FRAME)
 
 
-def step(s):
+def timed(totals):
+    """FRAME's cells, each adding its wall seconds to totals[name]: the peak benchmark's per-cell clock
+    (simbench_peak: step(s, timed(totals))); the plain loop pays nothing for it."""
+    def clock(cell):
+        name = cell.__name__
+
+        def run(s, frame, tick):
+            t0 = perf_counter()
+            cell(s, frame, tick)
+            totals[name] = totals.get(name, 0.0) + perf_counter() - t0
+        return run
+    return tuple(clock(c) for c in _FRAME)
+
+
+def step(s, cells=_FRAME):
     """One DT tick from s.t (the caller moves s.t on): the tick's frames (those before s.t + DT, 7 or 8), each
-    running FRAME in order. The frame: the engine model's (its scripts cell moves it on); without the model the
-    tick's own count from its first frame, the same for every cell of a frame."""
+    running FRAME in order (`cells`: the same order, timed()'s). The frame: the engine model's (its scripts cell moves
+    it on); without the model the tick's own count from its first frame, the same for every cell of a frame."""
     t0, eng = s.t, s.eng
     last = math.ceil(round((t0 + DT) * s.fps, 6))
     tick = Tick(t0)
     if eng is not None:
         while eng.frame < last and s.ending is None:
             s.t = eng.frame / s.fps
-            for cell in _FRAME:
+            for cell in cells:
                 cell(s, eng.frame, tick)
     else:
         frame = math.ceil(round(t0 * s.fps, 6))
         while frame < last and s.ending is None:
             s.t = frame / s.fps
-            for cell in _FRAME:
+            for cell in cells:
                 cell(s, frame, tick)
             frame += 1
     s.t = t0

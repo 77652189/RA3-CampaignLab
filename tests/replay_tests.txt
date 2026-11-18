@@ -37,6 +37,7 @@ test_slush_account.py
 test_talk_queue.py
 test_threatbonus_bench_c.py
 test_vital_status_c.py
+test_perf_peak.py  # the peak-load benchmark (B0): 60 s of a 600-unit fight, about a minute
 
 [bench]  # bench-mission replays: a test mission run once in the simulator
 test_a1_plan.py
