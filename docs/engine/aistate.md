@@ -50,7 +50,7 @@
 | `aipadvh` | 4 | 只有一辆矿车 | 出门（敌人没有能打的单位 → 占优） |
 | `aipadvc` | 4 | 8 辆守护者，状态换成常开 | 出门——对照：`aipadv1` 不动是战力判断挡的，不是别的原因 |
 
-给关卡线：用这个条件的 AI 状态**数的是双方整支军队**（不是附近的），玩家在家里囤兵也会让 AI 不出门；玩家只有矿车等不能打的单位时，AI 一定判自己占优。模拟器 `simai.Brain.power_advantage` 四组都对上（`tests/test_simai.py::test_power_advantage_gates_the_state_as_on_the_bench`）。没测：`Above="false"`、Value 不是 1、算上防御建筑、多个敌人时看哪一个。
+给关卡线：用这个条件的 AI 状态**数的是双方整支军队**（不是附近的），玩家在家里囤兵也会让 AI 不出门；玩家只有矿车等不能打的单位时，AI 一定判自己占优。模拟器 `simai.Brain.power_advantage` 四组都对上（`checks/engine_aipoweradv.readings.toml power_advantage_gates_the_state_as_on_the_bench`）。没测：`Above="false"`、Value 不是 1、算上防御建筑、多个敌人时看哪一个。
 
 ## 队伍招谁（TeamTemplate 的筛选）
 
@@ -69,7 +69,7 @@
 - **点名要哪几种兵**：`Rule="ANY"` 或 `Rule="NONE"` 加一串 `IncludeThing`，都是"只要这几种"。原版 `CaptureLandHusks`（"派 1 个基础步兵去占残骸"）就是 NONE 加步兵名单。**点名不要哪几种**：`Rule="ALL"` 加 `ExcludeThing`。
 - 按种类：`IncludeKindOf` 只收带这个种类的，`ExcludeKindOf` 把带这个种类的排掉。写了几个 IncludeKindOf 时是"有一个就行"还是"都得有"，这次只写一个，没分出来。
 - `MaxUnits` 是一队的人数上限；同一个目标只派一队（`MaxTargets` 1），所以多出来的兵留在家里。
-- 模型原先把 NONE 当"不筛"，台上否了，已改（私有 `ai/teams.py`）；模拟器六组都对上（`tests/test_simai.py::test_team_filters_take_whom_the_bench_sent`）。
+- 模型原先把 NONE 当"不筛"，台上否了，已改（私有 `ai/teams.py`）；模拟器六组都对上（`checks/engine_aiteamfilter.readings.toml team_filters_take_whom_the_bench_sent`）。
 
 ### 移动方式和对象集（第 81 轮）
 
@@ -86,7 +86,7 @@
 
 给关卡线（测）：
 - 想让海军队伍也带上两栖单位，要写 `WATER AMPHIBIOUS`（原版就这么写）；只写 WATER 不收两栖的。
-- `RegisteredObjectSet` 也是一道筛选：INFANTRY 只收步兵、VEHICLES 只收车。模型原先没用它，已补（私有 `ai/teams.py`；AIRCRAFT、HARVESTERS 按名字推断，没量）；模拟器六组对上（`tests/test_simai.py::test_locomotor_types_and_object_sets_take_whom_the_bench_sent`）。"普通作战单位"那组晚 6 秒的原因没查，模拟器没做。
+- `RegisteredObjectSet` 也是一道筛选：INFANTRY 只收步兵、VEHICLES 只收车。模型原先没用它，已补（私有 `ai/teams.py`；AIRCRAFT、HARVESTERS 按名字推断，没量）；模拟器六组对上（`checks/engine_aiteamfilter.readings.toml locomotor_types_and_object_sets_take_whom_the_bench_sent`）。"普通作战单位"那组晚 6 秒的原因没查，模拟器没做。
 
 ### 两队抢兵和 MinPowerAdvantage（第 82 轮）
 
@@ -104,7 +104,7 @@
 给关卡线（测）：
 - 两个状态抢同一批兵时，**队伍 Priority 高的那队拿走全部**；一样高时归后写的那个状态（B），哪怕它的目标晚找到——不是"先找到目标的先招"。一样高时是按写的顺序还是抽签没分开。
 - 想让 AI 留着兵等优势再出门，别靠队伍的 MinPowerAdvantage，用状态的 PowerAdvantageHeuristic（见上"战力优势开关"）。
-- 模拟器：HIGH 对 STANDARD 那组对上；另三组模拟器给"全去电厂"，对不上（`tests/test_simai.py::test_team_priority_as_on_the_bench` strict xfail）。
+- 模拟器：HIGH 对 STANDARD 那组对上；另三组模拟器给"全去电厂"，对不上（AI 战术队可被招走以后 aitpprh / aitpprl 两组也对上，只剩平局 aitpprs 对不上：`checks/engine_aitargetpick.readings.toml team_priority_as_on_the_bench_on_a_tie` 标 mismatch）。
 
 ## 启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮）
 
@@ -123,7 +123,7 @@
 给关卡线（测）：
 - 定时类全按读法：Timer 从开局或唤醒算、EndTime 是开着的时长；Interval 先等再开。
 - `ObjectOfTypeExists` 看的是 ObjectFilter 的 Relationship（原版用 ENEMIES 看玩家有没有某建筑），ALLIES 包括 AI 自己。
-- 模拟器：前三种对上（`tests/test_simai.py::test_condition_heuristics_gate_the_state_as_on_the_bench`）；ObjectOfTypeExists 按 Relationship 取哪些玩家的东西（SAME_PLAYER 自己、ALLIES 自己 + 盟友、ENEMIES 敌人、NEUTRAL 中立；不写 = 全算，推断，原版没有不写的），五组都对上（`test_object_of_type_exists_counts_the_relationship_as_on_the_bench`）。
+- 模拟器：前三种对上（`checks/engine_aipoweradv.readings.toml condition_heuristics_gate_the_state_as_on_the_bench`）；ObjectOfTypeExists 按 Relationship 取哪些玩家的东西（SAME_PLAYER 自己、ALLIES 自己 + 盟友、ENEMIES 敌人、NEUTRAL 中立；不写 = 全算，推断，原版没有不写的），五组都对上（`checks/engine_aipoweradv.readings.toml object_of_type_exists_counts_the_relationship_as_on_the_bench`）。
 
 ## 按难度挂的状态（StrategicState 的 Difficulty）
 
@@ -137,7 +137,7 @@
 给关卡线（测）：
 - **战役"普通"难度下，地图里的遭遇战 AI 按 MEDIUM 跑**；没挂 MEDIUM 的状态根本不跑。测试台走菜单进的是普通难度。
 - 想让敌人在不同难度下做不同的事，就在人格里给同一个状态挂不同难度的版本（原版 `LandDefense` HARD BRUTAL、`LandDefense_MEDIUM`、`LandDefense_EASY` 就这么写）。
-- 简单、困难两档对应 EASY / HARD 是推断（测试台只走普通）；模拟器（simai 的 DIFFICULTY）按这个对应，两组都对上（`tests/test_simai.py::test_only_the_states_listed_for_the_difficulty_run`）。
+- 简单、困难两档对应 EASY / HARD 是推断（测试台只走普通）；模拟器（simai 的 DIFFICULTY）按这个对应，两组都对上（`checks/engine_aidiff.readings.toml only_the_states_listed_for_the_difficulty_run`）。
 
 ## 没测的
 

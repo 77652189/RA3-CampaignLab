@@ -1,0 +1,33 @@
+# Bench readings of checks/engine_ainamed.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# NamedObject / Waypoint targets (bench 2026-11-08, readings in the check's docstring): where the team goes first,
+# whether it stays. Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i].
+
+[[reading]]
+id = "named_object_target_goes_to_the_named_plant_not_the_nearest"
+scene = {build = "ainmfar", check = "a", until = 76.0}
+bench = "ainmfar: NamedObject -> the far plant first (到远厂 2 @ s15), the near one only after (RAMPAGE)"
+proves = "simai targets: a NamedObject target is the named plant, not the nearest"
+let = {far = "first('到远厂')", near = "first('到近厂')"}
+expect = "far is not None and near is not None and far < near and not any(r['到路点'] for r in rows)"
+
+[[reading]]
+id = "waypoint_target_walks_there_and_stays"
+scene = {build = "ainmwp", check = "a", until = 76.0}
+bench = "ainmwp: HeuristicType Waypoint -> all 4 at the waypoint from s8 to s75; never at either plant"
+proves = "simai targets: a Waypoint target walks the team there and it stays"
+expect = ["rows[74]['到路点'] == 4", "not any(r['到近厂'] or r['到远厂'] for r in rows)"]
+
+[[reading]]
+id = "named_target_filtered_or_missing_sends_nobody"
+scene = {build = "ainmrel", check = "a", until = 76.0}
+each = [{build = "ainmrel"}, {build = "ainmnone"}]
+bench = "ainmrel (Relationship NEUTRAL drops the player's plant) / ainmnone (no such name): 步兵在家 4 all 75 s"
+proves = "simai targets: a NamedObject filtered out or missing sends nobody"
+expect = "all(r['步兵在家'] == 4 for r in rows)"
+
+[[reading]]
+id = "named_object_team_leaves_when_the_bench_did"
+scene = {build = "ainmfar", check = "a", until = 20.0}
+bench = "ainmfar: the team out of the base by s10 (bench aialobsw: a NamedObject team forms before the wake)"
+proves = "simai teams: a NamedObject team forms before the wake, so it leaves when the bench's did"
+expect = "rows[11]['步兵在家'] < 4"

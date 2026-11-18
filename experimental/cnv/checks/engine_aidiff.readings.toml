@@ -1,0 +1,13 @@
+# Bench readings of checks/engine_aidiff.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# StrategicState Difficulty (bench 2026-11-09, B round 79; the bench walks the campaign at normal).
+# Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i] (same run, checked row by row).
+
+[[reading]]
+id = "only_the_states_listed_for_the_difficulty_run"
+scene = {build = "aidiff", check = "a", until = 41.0}
+each = [{build = "aidiff", tanks = 0, inf = 4}, {build = "aidiffx", tanks = 4, inf = 0}]
+bench = """\
+two always-on states, one listed Difficulty MEDIUM, one EASY HARD BRUTAL: aidiff 坦克在家 0 from s16 to s55 \
+(the Guardians go); aidiffx (the lists swapped) 步兵在家 0 from s17, 坦克在家 4 to s55"""
+proves = "simai states: only the states listed for the campaign's difficulty run"
+expect = "(rows[39]['坦克在家'], rows[39]['步兵在家']) == (tanks, inf)"

@@ -71,14 +71,31 @@ def test_every_retail_script_name_is_an_item():
     assert set(catalog) <= names
 
 
+def named_missing(src):
+    """What a register's source names that is not there, or None: 'tests/x.py::test_y' -> a def test_y in that file,
+    'experimental/cnv/checks/b.readings.toml::r' -> a reading id r in that file, any other path (a doc#section) -> the
+    file. A test deleted when its readings moved into data left its name behind (T3 line A); this finds every one."""
+    head = src.split('（')[0]
+    path, _, name = head.partition('::')
+    path = path.split('#')[0]
+    full = os.path.join(ROOT, path)
+    if not os.path.exists(full):
+        return f'no file {path}'
+    if not name:
+        return None
+    name = re.match(r'[A-Za-z0-9_]*', name)[0]
+    text = open(full, encoding='utf-8').read()
+    pattern = rf'^id = "{re.escape(name)}"$' if path.endswith('.readings.toml') else rf'^def {re.escape(name)}\('
+    return None if re.search(pattern, text, re.M) else f'no {name} in {path}'
+
+
 def test_the_registers_point_at_real_items_and_tests():
     keys = {(i['part'], i['name']) for i in items()}
-    for k, test in inventory.BENCHED_TESTS.items():
-        assert k in keys, f'BENCHED_TESTS: no item {k}'
-        path, _, fn = test.partition('::')
-        assert re.search(rf'^def {re.escape(fn)}\(', open(os.path.join(ROOT, path), encoding='utf-8').read(), re.M), test
-    for k, (state, _) in inventory.NOTES.items():
-        assert k in keys and state in inventory.STATES, k
+    problems = [f'BENCHED_TESTS: no item {k}' for k in inventory.BENCHED_TESTS if k not in keys]
+    problems += [f'BENCHED_TESTS {k}: {why}' for k, test in inventory.BENCHED_TESTS.items()
+                 if (why := named_missing(test))]
+    problems += [f'NOTES: {k}' for k, (state, _) in inventory.NOTES.items() if k not in keys or state not in inventory.STATES]
+    assert not problems, '\n'.join(problems)
 
 
 def test_repair_closure_retains_three_health_slices_and_unmeasured_gaps():
@@ -245,9 +262,10 @@ def test_the_ai_registers_point_at_real_items_and_sources():
     names = {i['name'] for i in items() if i['part'] == inventory.AI}
     for name, (state, _) in inventory_ai.NOTES.items():
         assert name in names and state in inventory.STATES, name
-    for name, src in inventory_ai.BENCHED_REG.items():
-        assert name in names, name
-        assert os.path.exists(os.path.join(ROOT, src.split('::')[0].split('#')[0])), src
+    problems = [f'BENCHED_REG: no item {name}' for name in inventory_ai.BENCHED_REG if name not in names]
+    problems += [f'BENCHED_REG {name}: {why}' for name, src in inventory_ai.BENCHED_REG.items()
+                 if (why := named_missing(src))]
+    assert not problems, '\n'.join(problems)
 
 
 def test_the_ai_part_has_no_decompiler_addresses():

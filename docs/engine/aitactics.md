@@ -81,7 +81,7 @@
 | `aitpmt1` | `MaxTargets` 1，8 辆 | 一队 4 辆去电厂，4 辆留家 |
 | `aitpmt2` | `MaxTargets` 2，8 辆 | 两队：4 辆电厂、4 辆兵营（第二个槽避开第一个槽的目标，挑次近） |
 
-给关卡：一个状态 `MaxTargets` 几就同时出几队、各打一个不同目标；同一状态里写几条目标启发时先用 `Priority` 高的，找不到才往下。模拟器（simai）八组都对上（`tests/test_simai.py::test_target_pick_as_on_the_bench`）。没测：同优先级时随机挑哪条、VitalKindOf 写多个是"全都"还是"任一"、MaxTargets 大于可用兵力时。
+给关卡：一个状态 `MaxTargets` 几就同时出几队、各打一个不同目标；同一状态里写几条目标启发时先用 `Priority` 高的，找不到才往下。模拟器（simai）八组都对上（`checks/engine_aitargetpick.readings.toml target_pick_as_on_the_bench`）。没测：同优先级时随机挑哪条、VitalKindOf 写多个是"全都"还是"任一"、MaxTargets 大于可用兵力时。
 
 ### 目标没了以后（EndBehavior，2026-11-09 各一次）
 

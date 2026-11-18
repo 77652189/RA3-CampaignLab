@@ -82,14 +82,14 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
               '组队招人/TeamTemplate.Priority=LOW': 'docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮）',
               '组队招人/TeamTemplate.Priority=HIGH': 'docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮）',
               '组队招人/TeamTemplate.MinPowerAdvantage': 'docs/engine/aistate.md#两队抢兵和 MinPowerAdvantage（第 82 轮）',
-              **{f'造兵/BlockIfThingNearFactory.{k}': 'tests/test_simai_bench_b.py::test_a_thing_near_the_factory_'
+              **{f'造兵/BlockIfThingNearFactory.{k}': 'experimental/cnv/checks/engine_aiskirm.readings.toml::a_thing_near_the_factory_'
                  'blocks_the_entry（engine_aiskirm y aiskblkn / aiskblkr：Rule ANY + Relationship NEUTRAL 挡住，'
                  'aiskblkf 400 外不挡；ENEMIES 走同一段代码没单独上台；B 第 149 轮）' for k in ('Relationship', 'Rule')},
               **{f'人格/EnemyFilter.{k}': 'tests/test_enemyfilter.py::test_enemyfilter_named_bench_replay'
                  '（C 的 engine_aienemyfilter aiefharv / aiefeng / aiefself：Include HARVESTER 近处敌矿车触发、'
                  'ENGINEER 不触发，SAME_PLAYER 无自家矿车不触发；模型 B 第 155 轮接进 EnemyNearby）'
                  for k in ('Include', 'Relationship')},
-              '人格/AIPersonalityDefinition.PersonalityType': 'tests/test_simai_bench_b.py::test_the_personality_'
+              '人格/AIPersonalityDefinition.PersonalityType': 'experimental/cnv/checks/engine_aiskirm.readings.toml::the_personality_'
                  'condition_matches_the_id_not_the_personality_type（engine_aiskirm pt aiskpt / aiskpti：脚本条件 '
                  'PLAYER_IS_HUMAN_OR_AI_PERSONALITY 只认人格 id，PersonalityType 写成别的名字或不写都不影响；'
                  'AI 行为不读它；B 第 150 轮）',

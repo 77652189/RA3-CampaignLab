@@ -22,7 +22,7 @@ Bench 2026-11-09 (B round 80, run_queue --jobs 2, one run each, all PASS; counte
   aitpmt2   MaxTargets 2: 到电厂 4 from s13, 到兵营 4 from s26 (the second team left s19-21), 在家 0 -- a team per
             slot, the second slot's unique nearest = the barracks (the plant is the first slot's).
 (aitpmt1's first run read 在家 2: the home area was then a 300 square that held 6 of the 8 start spots; widened.)
-The simulator (simai) gives the same eight (tests/test_simai.py test_target_pick_as_on_the_bench).
+The simulator (simai) gives the same eight (checks/engine_aitargetpick.readings.toml target_pick_as_on_the_bench).
 Bench 2026-11-09 (B round 82, TeamTemplate.Priority: two always-on states over the same 4 Guardians, P = the plant
 (ClosestStructure), B = the barracks (CNVHBarracks); one run each, run first with the model's guess plant 4 for all):
   aitpprs   P STANDARD / B STANDARD: 在家 4 to s16, 3/2/1/0 s17-s20; 到兵营 2 @ s21, 4 s23-s55; 到电厂 0 throughout.
@@ -32,7 +32,7 @@ Bench 2026-11-09 (B round 82, TeamTemplate.Priority: two always-on states over t
             aitpnear alone.
 Read: the higher team Priority takes the units; on a tie the barracks' state (listed second) wins, though its target
 is found later (s19 in aitpvk) -- nobody went to the plant first. Not split: a tie by list order or by state draw.
-simai sends all four to the plant (strict xfail, tests/test_simai.py test_team_priority_as_on_the_bench).
+simai sends all four to the plant (mismatch, checks/engine_aitargetpick.readings.toml team_priority_as_on_the_bench_on_a_tie).
 Bench 2026-11-09 (B round 85, EndBehavior, the check script kills the plant at s35; one run each; 到电厂 到兵营 到坦克 在家):
   all four: out s13-s14, 到电厂 4 s15-s34 (the Guardians did not kill it by s32 as the simulator has).
   aiendd   DISBAND:                 到电厂 2 @ s37, 0 s38-s39, 到兵营 2 @ s40, 4 from s42 -- PASS (as the model)

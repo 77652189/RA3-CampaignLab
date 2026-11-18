@@ -14,13 +14,13 @@ Bench 2026-11-09 (B round 77, one run each, PASS 1 of 1 each):
     (then 0: the plant dead) -- the control, so aipadv1's stay is the heuristic's.
   aipadv2 a (CampAIPAdv2A, 8 against 4): 坦克在家 8 -> 7 @ s13, 5 @ s14, 1 @ s15, 0 @ s16; 坦克出门 8 s21-s26 -- on.
   aipadvh a (CampAIPAdvHA, 4 against an Ore Collector only): 坦克在家 4 -> 3 @ s15, 0 @ s16; 坦克出门 4 s20-s31 -- on.
-The simulator (simai) gives the same four (tests/test_simai.py test_power_advantage_gates_the_state_as_on_the_bench).
+The simulator (simai) gives the same four (checks/engine_aipoweradv.readings.toml power_advantage_gates_the_state_as_on_the_bench).
 Bench 2026-11-09 (B round 82, the team's MinPowerAdvantage, the state ConstantHeuristic; one run each):
   aipadm1 (8 v 4, 1.0): 坦克在家 8 -> 0 s13-15; 坦克出门 4 @ s18.
   aipadm0 (4 v 8, 1.0): 坦克在家 4 -> 0 s14-15; 坦克出门 4 s18-31 -- goes (the first guess said stay).
   aipadm5 (8 v 4, 5.0; ratio 4 < 5): 坦克在家 8 -> 0 s13-16; 坦克出门 8 s21-26 -- goes (the guess said stay).
 Read: MinPowerAdvantage holds no team back here (as the model: parsed, not used); what it gates, if anything, not
-found. simai agrees (it ignores the field): tests/test_simai.py test_team_min_power_advantage_holds_nobody_back.
+found. simai agrees (it ignores the field): checks/engine_aipoweradv.readings.toml team_min_power_advantage_holds_nobody_back.
 Bench 2026-11-09 (B round 83, the condition heuristics, 4 Guardians against none; one run each, all PASS):
   aihtim  (Timer 30s, MAP_START):         home 4 to s32, 0 @ s34 -- on after 30 s from the mission start.
   aihtima (Timer 25s AI_START, wake s10): home 4 to s37, 0 @ s39 -- from the wake.
@@ -33,7 +33,7 @@ Bench 2026-11-09 (B round 83, the condition heuristics, 4 Guardians against none
   aihoea  (ALLIES, only the player's): home to s65.   aihoes (ALLIES, s1's own collector): out s15-17 -- ALLIES
           includes oneself.
 Read: Timer / Interval / EnemyNearby as the model; ObjectOfTypeExists counts the filter's Relationship (the model
-looks only at its own templates: tests/test_simai.py test_object_of_type_exists_* strict xfail).
+looks only at its own templates: checks/engine_aipoweradv.readings.toml object_of_type_exists_counts_the_relationship_as_on_the_bench strict xfail).
 """
 from parts import Script, Test, counted, square
 

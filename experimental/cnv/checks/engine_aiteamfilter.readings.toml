@@ -46,3 +46,31 @@ expect = "rows[-1]['坦克拥有'] == 6"
 mismatch = """\
 simai aiar0 builds a third Guardian s67 and a fourth s78 (owned 8 at s80); bench aiar0-3 own 6 to the end \
 (late=2: the opener builds two, nothing more)"""
+
+# Moved from tests/test_simai.py (T3 line B, bench 2026-11-09 a): rows[i] is the old _switch_run's rows[i].
+
+[[reading]]
+id = "team_filters_take_whom_the_bench_sent"
+scene = {build = "aitfany", check = "a", until = 41.0}
+each = [{build = "aitfany", tanks = 0, inf = 4}, {build = "aitfnone", tanks = 0, inf = 4},
+        {build = "aitfall", tanks = 4, inf = 0}, {build = "aitfki", tanks = 4, inf = 0},
+        {build = "aitfke", tanks = 0, inf = 4}, {build = "aitfmax", tanks = 5, inf = 0}]
+bench = """\
+(坦克在家, 步兵在家) from s15 on: ObjectFilter ANY / NONE + IncludeThing Guardian -- only the Guardians go; ALL + \
+ExcludeThing Guardian -- only the Peacekeepers; IncludeKindOf INFANTRY / ExcludeKindOf INFANTRY; MaxUnits 3 of 8 \
+Guardians: 5 stay"""
+proves = "simai teams: a team template's ObjectFilter / KindOf / MaxUnits pick whom it takes"
+expect = "(rows[39]['坦克在家'], rows[39]['步兵在家']) == (tanks, inf)"
+
+[[reading]]
+id = "locomotor_types_and_object_sets_take_whom_the_bench_sent"
+scene = {build = "aitfland", check = "a", until = 41.0}
+each = [{build = "aitfland", tanks = 0, other = 4}, {build = "aitfamph", tanks = 4, other = 0},
+        {build = "aitfwat", tanks = 4, other = 4}, {build = "aitfosi", tanks = 4, other = 0},
+        {build = "aitfosv", tanks = 0, other = 4}, {build = "aitfosc", tanks = 0, other = 0}]
+bench = """\
+(Guardians home, the other type home) at s40 (B round 81): AllowedLocomotorTypes LAND -- only the Guardians; \
+AMPHIBIOUS -- only the Riptide ACVs; WATER -- nobody (an amphibious unit is not WATER). RegisteredObjectSet \
+INFANTRY -- only the Peacekeepers; VEHICLES -- only the Guardians; SKIRMISH_AI_NORMAL_COMBAT_UNITS -- both"""
+proves = "simai teams: AllowedLocomotorTypes and RegisteredObjectSet pick whom a team takes"
+expect = "tuple(vals(rows)[39]) == (tanks, other)"

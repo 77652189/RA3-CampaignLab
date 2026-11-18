@@ -1,0 +1,27 @@
+# Bench readings of checks/engine_aiswitch.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The wake's script switches (bench 2026-11-08; l4_aiswitches.md in the private notes).
+# Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i] (same run, checked row by row).
+
+[[reading]]
+id = "priorities_zero_do_not_stop_a_named_target"
+scene = {build = "aisw0far", check = "a", until = 70.0}
+bench = "aisw0far: 到远厂 2 @ s15, 4 s17-s33, 0 from s35; then RAMPAGE to the near plant (到近厂 4 s44-s51)"
+proves = "simai targets: enemy priorities 0 do not stop a named target; RAMPAGE after it"
+let = {far = "first('到远厂')", near = "first('到近厂')"}
+expect = "far is not None and near is not None and far < near"
+
+[[reading]]
+id = "the_ais_hurt_plant_is_not_repaired_either_way"
+scene = {build = "aiswrep1", check = "a", until = 70.0}
+each = [{build = "aiswrep1"}, {build = "aiswrep0"}]
+bench = "aiswrep1 / aiswrep0: 电厂血量 50 all along (75 s / 107 s), repairs 1 or 0 -- why 1 does not repair is open"
+proves = "simai AI switches: the repair switch (1 or 0) repairs nothing"
+expect = "all(r['电厂血量'] == 50 for r in rows)"
+
+[[reading]]
+id = "a_killed_plant_is_not_rebuilt_either_way"
+scene = {build = "aiswreb1", check = "a", until = 100.0}
+each = [{build = "aiswreb1", kill = 15}, {build = "aiswreb0", kill = 15}]   # kill = the build's facts['kill at']
+bench = "aiswreb1 / aiswreb0: 电厂数 0 from s14 to s119-s120, 5000 money, rebuild 1 or 0"
+proves = "simai AI switches: the rebuild switch (1 or 0) does not put a killed plant back"
+expect = "rows[kill - 2]['电厂数'] == 1 and all(r['电厂数'] == 0 for r in rows[kill + 2:])"

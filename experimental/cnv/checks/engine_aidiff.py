@@ -15,7 +15,7 @@ Bench 2026-11-09 (B round 79, one run each, PASS 3 of 3 each):
           步兵在家 4 to s55 -- only the state listed MEDIUM sent its team.
   aidiffx a (the lists swapped): 难度 2; 步兵在家 4 -> 1 @ s16, 0 from s17; 坦克在家 4 to s55.
 So campaign normal = AI difficulty MEDIUM (simai's DIFFICULTY map), and a state not listed for it never runs.
-The simulator gives the same two (tests/test_simai.py test_only_the_states_listed_for_the_difficulty_run).
+The simulator gives the same two (checks/engine_aidiff.readings.toml only_the_states_listed_for_the_difficulty_run).
 """
 from parts import Test, counted, square, Script
 

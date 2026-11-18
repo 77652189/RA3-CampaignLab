@@ -16,7 +16,7 @@ Bench 2026-11-09 (B round 78, one run each, PASS 1 of 1 each; 4 Guardians + 4 Pe
   aitfki   a (IncludeKindOf INFANTRY, no ObjectFilter): 步兵在家 0 @ s15; 坦克在家 4 to s55.
   aitfke   a (IncludeKindOf CAN_ATTACK, ExcludeKindOf INFANTRY): 坦克在家 3 @ s14, 0 @ s15; 步兵在家 4 to s55.
   aitfmax  a (MaxUnits 3, 8 Guardians): 坦克在家 8 -> 6 @ s13, 5 from s14 to s55 -- one team of 3.
-The simulator (simai) gives the same six (tests/test_simai.py test_team_filters_take_whom_the_bench_sent).
+The simulator (simai) gives the same six (checks/engine_aiteamfilter.readings.toml team_filters_take_whom_the_bench_sent).
 Bench 2026-11-09 (B round 81, run_queue --jobs 2, all PASS; the second type: Riptide ACVs in the locomotor builds):
   aitfland  AllowedLocomotorTypes LAND: 坦克在家 2 @ s15, 0 from s16; 气垫船在家 4 to s55.
   aitfamph  AMPHIBIOUS: 气垫船在家 2 @ s13, 0 from s14; 坦克在家 4 to s55.
@@ -26,7 +26,7 @@ Bench 2026-11-09 (B round 81, run_queue --jobs 2, all PASS; the second type: Rip
   aitfosc   SKIRMISH_AI_NORMAL_COMBAT_UNITS: both go, later than the rest: 坦克在家 2 @ s20, 0 @ s21; 步兵在家 1 @
             s22, 0 from s23 (not modelled: the ~6 s).
 The model had the object set as no filter (private ai/teams.py OBJECT_SET_KIND now); simai gives these six
-(tests/test_simai.py test_locomotor_types_and_object_sets_take_whom_the_bench_sent).
+(checks/engine_aiteamfilter.readings.toml locomotor_types_and_object_sets_take_whom_the_bench_sent).
 Bench 2026-11-09 (B round 88): aiar0 / aiar1 / aiar2 (AlwaysRecruit false / true / true MaxUnits 4; 4 Guardians,
 the AI to build 2 more by an opener in an Allied war factory): all three 坦克在家 4 to s13, 3 @ s14, 0 from s15 to
 s75 -- no third tank ever seen at home: the opener most likely built nothing (no owned counter, not told apart).
