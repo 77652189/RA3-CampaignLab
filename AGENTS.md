@@ -32,6 +32,7 @@
 |---|---|
 | 引擎线 A 脚本 / B AI / C 武器 / D 注入 / E 物体模块 / R / R2 / R3 模拟器分层重构（ADR 0029，搬完前只有这三条改模拟器，分工 `work/re/sim_split/parallel.md`） | `work/re/handoff.md` / `handoff-b.md` / `handoff-c.md` / `handoff-d.md` / `handoff-e.md` / `handoff-r.md`、`handoff-r2.md`、`handoff-r3.md` |
 | 台子怎么跑、坑 | `docs/engine/know-how.md` |
+| 写测试（分几层、放哪、怎么加一条台上读数） | `docs/engine/testing.md`（ADR 0035） |
 | 清单和进度 | `python -I -X utf8 experimental/cnv/inventory.py`；原版 27 关：`experimental/cnv/inventory_retail.py` |
 | 其他各线（shell、units、story、music、render、simui） | `docs/<线>/handoff.md` |
 | 为什么这么定 | `docs/adr/README.md` |
