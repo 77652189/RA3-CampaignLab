@@ -452,10 +452,10 @@ class Session:
                 return seen_cache[k]
             units = [self.unit(b, sees) for b in s.living()]
             ui = []
-            readings = s.eng.readings() if s.eng else {}
+            readings = s.executor.readings()
             for label in sorted(s._up):
                 key = next((k for k in readings if s.text(str(k)) == label), None)
-                counter = s.eng.displayed.get(key) if key and s.eng else None
+                counter = s.executor.displayed.get(key) if key else None
                 left = None
                 if counter is not None and counter in s.timers:
                     left = max(0.0, s.timers[counter] - t)

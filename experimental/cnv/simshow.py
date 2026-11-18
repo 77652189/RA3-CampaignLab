@@ -47,7 +47,7 @@ HOOKS = [
     "(self.camera), not the pan's seconds, the start point or the time; CAMERA_FOLLOW_NAMED jumps to the unit once and "
     "never follows; CAMERA_STOP_FOLLOW is ignored. The default camera at t=0 is not set.",
     "act(): HIDE_COUNTER is in IGNORED (a shown counter is never taken down in the records); DISPLAY_COUNTER is the "
-    "engine model's own (eng.log 'show'), not the simulator's, so Sim.note does not see it.",
+    "script executor's own (executor.log 'show', either executor), not the simulator's, so Sim.note does not see it.",
     "act(): ENABLE_INPUT / DISABLE_INPUT keep only the last state (Sim.input) plus a note; show_caption forgets the "
     "seconds the script asked for (box_log holds start / end after a replacement).",
 ]
@@ -72,7 +72,7 @@ class ShowSim(sim.Sim):
         self.shown_ui = []          # (t, kind, text): counters / countdowns up and down, with their values
         self.shots = []             # (t, centre, reach, outside {side: units}, [units in the picture])
         self._up = set()            # counters / countdowns shown now (by label)
-        self._read = 0              # how much of the engine model's log is in shown_ui already
+        self._read = 0              # how much of the script executor's log is in shown_ui already
         self._value = {}            # a shown counter's last value seen
         start = (getattr(self.m.map, 'SITES', None) or {}).get('start')
         self.cam0 = (float(start.x), float(start.y)) if start is not None else None   # where the game starts looking
@@ -114,30 +114,25 @@ class ShowSim(sim.Sim):
 
     def step(self):
         super().step()
-        eng = self.eng
-        if eng is None:
-            self.snap(self.t)
-            return
-        for frame, kind, where, name, a in eng.log[self._read:]:
+        ex = self.executor
+        for frame, kind, where, name, a in ex.log[self._read:]:
             if kind == 'show' and name in ('DISPLAY_COUNTER', 'DISPLAY_COUNTDOWN_TIMER'):
                 label = self.text(str(a[1]))
                 if label not in self._up:
                     self._up.add(label)
                     self.shown_ui.append((frame / self.fps, '亮出' if name == 'DISPLAY_COUNTER' else '倒计时', label))
-        self._read = len(eng.log)
+        self._read = len(ex.log)
         self.snap(self.t)                                 # the picture at each tick (DT) -- what a pan passes through
 
     def sample(self):
         super().sample()
-        eng = self.eng
-        if eng is not None:                               # a shown counter's value, when it changes
-            for label, counter in eng.displayed.items():
-                v = self.counters.get(counter)
-                if v is not None and self._value.get(label) != v:
-                    first = label not in self._value
-                    self._value[label] = v
-                    if not first:
-                        self.shown_ui.append((self.t, '读数', f'{self.text(str(label))} = {v}'))
+        for label, counter in self.executor.displayed.items():     # a shown counter's value, when it changes
+            v = self.counters.get(counter)
+            if v is not None and self._value.get(label) != v:
+                first = label not in self._value
+                self._value[label] = v
+                if not first:
+                    self.shown_ui.append((self.t, '读数', f'{self.text(str(label))} = {v}'))
 
     # ---- the camera -------------------------------------------------------------------------------------------
     def camera_at(self, t):

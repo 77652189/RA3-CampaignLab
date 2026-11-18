@@ -92,6 +92,26 @@ def test_timers_are_the_executors_table_counted_down_before_the_scripts():
     assert ex.counters['T'] == [1, True]
 
 
+def test_a_shown_counter_is_the_executors_own_as_the_plugins():
+    """DISPLAY_COUNTER / DISPLAY_COUNTDOWN_TIMER (counter, label): the world hears of it (World.core), the label keeps
+    its counter (`displayed`), a 'show' row (frame, 'show', script, action, args) is logged -- the plug-in's shapes,
+    which simshow and simui read -- and `readings` is the label's value, a running timer's frames left."""
+    w = Core({})
+    scripts = [script('show', [], [['SET_COUNTER', 'N', 3], ['DISPLAY_COUNTER', 'N', 'Trucks'],
+                                   ['SET_MILLISECOND_TIMER', 'T', 1.0], ['DISPLAY_COUNTDOWN_TIMER', 'T', 'Left']],
+                      once=True)]
+    ex = run(w, scripts)
+    ex.counter('N')[0] = 3                                  # the counter action is the world's (simact_world)
+    ex.step()
+    ex.step()
+    assert ('core', 'DISPLAY_COUNTER', ('N', 'Trucks'), 'show') in w.calls
+    assert not any(c[0] == 'act' and c[1].startswith('DISPLAY_') for c in w.calls)
+    assert ex.displayed == {'Trucks': 'N', 'Left': 'T'}
+    assert [(f, k, s, n) for f, k, s, n, _ in ex.log] == [(1, 'show', 'show', 'DISPLAY_COUNTER'),
+                                                         (1, 'show', 'show', 'DISPLAY_COUNTDOWN_TIMER')]
+    assert ex.readings() == {'Trucks': 3, 'Left': 14}
+
+
 def test_this_player_is_the_executors_side():
     assert port.this_player(types.SimpleNamespace(_side='Player_1'), ['<This Player>', 'x']) == ['Player_1', 'x']
     assert port.this_player(types.SimpleNamespace(), ['<This Player>']) == ['<This Player>']

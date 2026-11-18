@@ -32,7 +32,10 @@ TIMER_ACTIONS = frozenset({'SET_MILLISECOND_TIMER', 'SET_RANDOM_MSEC_TIMER', 'SE
                            'STOP_TIMER', 'RESTART_TIMER', 'SUB_FROM_MSEC_TIMER', 'ADD_TO_MSEC_TIMER'})
 # ... and the script switches and calls (script-semantics.md 1, 5); the world hears of each through World.core
 SCRIPT_ACTIONS = frozenset({'ENABLE_SCRIPT', 'DISABLE_SCRIPT', 'CALL_SUBROUTINE', 'NO_OP'})
-OWN_ACTIONS = TIMER_ACTIONS | SCRIPT_ACTIONS
+# ... and the shown counters (counter, label): the label's counter kept (`displayed`) and a 'show' row logged, as
+# the plug-in does; the screen's readers (simshow, simui) read them off whichever executor runs
+SHOW_ACTIONS = frozenset({'DISPLAY_COUNTER', 'DISPLAY_COUNTDOWN_TIMER'})
+OWN_ACTIONS = TIMER_ACTIONS | SCRIPT_ACTIONS | SHOW_ACTIONS
 
 
 class PublicExecutor(port.Executor):
@@ -48,6 +51,8 @@ class PublicExecutor(port.Executor):
         self.assume_inverted = assume_inverted
         self.counters = {}              # name -> [value, is_countdown_timer]: the counters and timers, one table
         self.steps = 0                  # frames run (the intervals' clock)
+        self.displayed = {}             # label -> counter name (DISPLAY_COUNTER / DISPLAY_COUNTDOWN_TIMER)
+        self.log = []                   # (frame, 'show', script name, action, args): the plug-in's log's shape
         self._side = ''
         self._scripts, self._groups = {}, {}
         for lst in lists:
@@ -70,6 +75,10 @@ class PublicExecutor(port.Executor):
     def counter(self, name):
         """The table's entry for `name`, made (a plain counter at 0) the first time it is used."""
         return self.counters.setdefault(name, [0, False])
+
+    def readings(self):
+        """What the bench's counter lines show: label -> the shown counter's value (a running timer's frames left)."""
+        return {k: self.counters.get(n, [0, False])[0] for k, n in self.displayed.items()}
 
     def frames(self, secs):
         """A timer's seconds as frames: ceil(seconds x frame rate) (script-semantics.md 3)."""
@@ -171,6 +180,10 @@ class PublicExecutor(port.Executor):
             for x in (self._groups.get(a[0]), self._scripts.get(a[0])):
                 if x is not None:
                     x.active = name == 'ENABLE_SCRIPT'
+        elif name in SHOW_ACTIONS:
+            self.displayed[str(a[1])] = str(a[0])
+            frame = self.clock.frame if self.clock is not None else self.steps      # the frame now
+            self.log.append((frame, 'show', s.name if s else '', name, a))
         elif name == 'CALL_SUBROUTINE':
             g, sc = self._groups.get(a[0]), self._scripts.get(a[0])
             caller = self.script
