@@ -510,9 +510,6 @@ class Body(kernel_module.Thing):
     lies: float = 0.0                                           # seconds it lies dying once killed (SlowDeath's
                                                                 # DestructionDelay), the crush's death only (R9)
     linger: float = 0.0                                         # ... the lie this death has (LINGER, or `lies`)
-    topple: object = None                                       # simtopple.rules: prop removal after contact / settling
-    toppled: bool = False
-    topple_end: int = None
     follow: dict = None                                         # on a waypoint path (order_follow): label, the waypoint
                                                                 # it is going to, how; shared by a team that goes as one
     frame_move: bool = False                                    # topple contact / measured Jet startup need frame-sized steps
@@ -557,8 +554,12 @@ class Body(kernel_module.Thing):
         was, hp = self.hp, self.max_hp * float(pct) / 100.0
         self.hp = max(self.health_floor, hp) if self.immortal else hp
         self.health_moved(was, self.hp)
-    FORWARDS = ('life_end',)    # fields moved into modules, still read outside: read only (test_kernel BODY_FORWARDS)
+    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end')    # fields moved into modules, still read outside:
+                                                                    # read only (test_kernel BODY_FORWARDS)
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
+    topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
+    toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
+    topple_end = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.gone_frame())
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
@@ -930,7 +931,8 @@ class Sim:
         self.asked, self.up = {}, []        # a 功能 caption asked for (flag -> t), and shown: (flag, asked, shown)
         self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
         self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own),   # engine/kernel
-                                        kill=lambda b, why: self._life().die_of_age(self, b, why, self.destroy))
+                                        kill=lambda b, why: self._life().die_of_age(self, b, why, self.destroy),
+                                        remove=lambda b, why: self.destroy(b, why, delete=True))
         self.used = self.world.used         # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
         self.unmodeled = self.world.gaps    # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
@@ -1218,13 +1220,6 @@ class Sim:
         b.lies = simunits.slow_death(template, self.own)
         b.linger = LINGER
         b.prop = simunits.prop_body(template, self.own)
-        import simtopple
-        b.topple = simtopple.rules(template, self.own)
-        if b.topple:
-            a, c, _, _ = simtopple.shape(template, self.own)
-            b.radius = math.hypot(a, c)
-            b.vision = b.sight = 0.0         # a prop has no sight (stats' unit-only table otherwise guesses 100)
-            self.topples.append(b)
         if not b.weapons:                     # its XML names guns and none was read: a gap, not a unit without guns
             if template not in self.declared:
                 self.declared[template] = simunits.declared_weapons(template, self.own)
@@ -1244,6 +1239,12 @@ class Sim:
         mods = self.world.build(b, self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS)))
         if mods:
             b.modules = mods
+        if b.topple:                            # a ToppleUpdate (engine/modules/topple.py)
+            import simtopple
+            a, c, _, _ = simtopple.shape(template, self.own)
+            b.radius = math.hypot(a, c)
+            b.vision = b.sight = 0.0         # a prop has no sight (stats' unit-only table otherwise guesses 100)
+            self.topples.append(b)
         self.world.drop(self.bodies.get(name))  # a body under the same name leaves the world
         self.bodies[name] = b
         rules = self.__dict__.setdefault('_spawn_rules', {})
@@ -3303,11 +3304,8 @@ class Sim:
                             continue
                         if not simtopple.crosses(b, o, (x0, y0), (b.x, b.y), self.own):
                             continue
-                        o.toppled = True
                         speed = b.drive_speed if precise else b.speed
-                        fall = simtopple.fall_frames(speed / simunits.LIFE_FPS, o.topple)
-                        if fall is not None and (o.topple['start'] or o.topple['finish']):
-                            o.topple_end = self.frame_now() + fall + o.topple['delay']
+                        o.find(kernel_interfaces.Topple).knock(self.frame_now(), speed / simunits.LIFE_FPS)
             self.change()
         self.attachment_tick()
         # what follows a coarse move in the frame (follow_due, capture_due, infiltrators.tick, auto_kill_due) are

@@ -247,7 +247,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3600, 'Sim methods': 205, 'Body fields': 114, 'simunits defs': 154,
+CENTER = {'sim.py lines': 3598, 'Sim methods': 205, 'Body fields': 111, 'simunits defs': 154,
           'cells with old code': 36}
 
 
@@ -306,7 +306,8 @@ def test_centre_guard_bites():
 # Body fields moved into modules that outside code still reads (module_plan 1): read-only forwards, listed in
 # Body.FORWARDS (the frame record shows them as the fields they were). Only shrinks: a forward goes when its last
 # outside reader asks the module's interface itself.
-BODY_FORWARDS = {'life_end': 'LifetimeUpdate'}
+BODY_FORWARDS = {'life_end': 'LifetimeUpdate', 'topple': 'ToppleUpdate', 'toppled': 'ToppleUpdate',
+                 'topple_end': 'ToppleUpdate'}
 
 
 def body_forwards(sim_src=None):
@@ -335,10 +336,11 @@ def test_body_forwards_are_read_only_listed_and_only_shrink():
 
 def test_forward_guard_bites():
     src = (CNV / 'sim.py').read_text(encoding='utf-8')
-    more = src.replace("    FORWARDS = ('life_end',)", "    FORWARDS = ('life_end', 'hp')", 1)
+    listed = "    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end')"
+    more = src.replace(listed, "    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'hp')", 1)
     assert more != src and set(body_forwards(more)[0]) != body_forwards(more)[1]
-    unlisted = src.replace("    FORWARDS = ('life_end',)", "    FORWARDS = ()", 1)
-    assert body_forwards(unlisted)[1] - set(body_forwards(unlisted)[0]) == {'life_end'}
+    unlisted = src.replace(listed, "    FORWARDS = ()", 1)
+    assert body_forwards(unlisted)[1] - set(body_forwards(unlisted)[0]) == {'life_end', 'topple', 'toppled', 'topple_end'}
     written = src.replace('    @health.setter\n', '    @life_end.setter\n', 1)
     assert body_forwards(written)[2] == {'life_end'}
 

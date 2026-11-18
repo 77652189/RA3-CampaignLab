@@ -9,10 +9,11 @@ def no_blocks(template, tag):
 
 
 class World:
-    def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None):
+    def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None):
         """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry;
-        kill(thing, why): the host's death of a thing (World.kill)."""
-        self.blocks, self.tags, self._kill = blocks, tags, kill
+        kill(thing, why): the host's death of a thing (World.kill); remove(thing, why): the host's deletion of one,
+        no death (World.remove)."""
+        self.blocks, self.tags, self._kill, self._remove = blocks, tags, kill, remove
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
@@ -50,6 +51,13 @@ class World:
         if self._kill is None:
             raise RuntimeError(f'World.kill({thing.name!r}): this world has no host to kill with')
         self._kill(thing, why)
+
+    def remove(self, thing, why):
+        """A module takes its thing out, no death (a toppled prop gone: ToppleUpdate): the host's deletion -- today
+        Sim.destroy(delete=True). A world with no host removes nothing."""
+        if self._remove is None:
+            raise RuntimeError(f'World.remove({thing.name!r}): this world has no host to remove with')
+        self._remove(thing, why)
 
     def blocks_of(self, template, tag):
         """The template data port's blocks of a tag, asked once a world (the port reads the XML files)."""

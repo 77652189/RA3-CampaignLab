@@ -88,6 +88,7 @@ SIM_NAMES_UNTIL_10['simproxy'] = {'Body', 'Sim', 'LEVELS'}
 # income, money_cap): scripts, selling, production, repairs, spies and simai still write them directly (simmoney.py)
 FIELD_OWNER = {'heal_at': 'engine.modules.autoheal', 'hurt': 'engine.modules.autoheal',
                'life_end': 'engine.modules.lifetime',
+               'toppled': 'engine.modules.topple', 'topple_end': 'engine.modules.topple',
                'mine': 'simmine', 'nodes': 'simmine', 'mined_to': 'simmine',
                'aura_cache': 'simmodifier', 'aura_beat': 'simmodifier', 'level_rate': 'simmodifier',
                'level_vision': 'simmodifier', 'shielded': 'simmodifier', 'taken': 'simmodifier', 'dealt': 'simmodifier',

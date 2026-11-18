@@ -98,6 +98,25 @@ class Lifetime(Interface):
         raise NotImplementedError
 
 
+class Topple(Interface):
+    """ToppleUpdate, one a thing (step M2): knocked over (is_toppled), the frame it is gone in (gone_frame, None: it
+    stays), taking a crusher's knock (knock: the frame, the knocker's speed a frame) and its kill (fall_where_it_stands:
+    the frame)."""
+    __slots__ = ()
+
+    def is_toppled(self):
+        raise NotImplementedError
+
+    def gone_frame(self):
+        raise NotImplementedError
+
+    def knock(self, frame, speed):
+        raise NotImplementedError
+
+    def fall_where_it_stands(self, frame):
+        raise NotImplementedError
+
+
 class Upgrade(Interface):
     """Whether it is in force (the XML's triggers, conflicts and required upgrades) and what it does then. Its data
     has `trigger` (module.Trigger); the kernel (Thing.upgrades_moved) keeps its `upgraded` and calls on_upgrade when
@@ -169,5 +188,5 @@ class AIUpdate(Interface):
 
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
-FAMILY = (Lifetime,)                    # a family's own, added with its step (docs/engine/sim-modules.md 2)
-ONE = frozenset({Body, AIUpdate, Lifetime})     # a thing has at most one of these: Thing.find gives it, not a tuple
+FAMILY = (Lifetime, Topple)                    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+ONE = frozenset({Body, AIUpdate, Lifetime, Topple})     # a thing has at most one of these: Thing.find gives it, not a tuple

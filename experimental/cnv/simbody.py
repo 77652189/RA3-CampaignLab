@@ -1,8 +1,8 @@
 """L2 body: health lost by itself, death and removal (ADR 0029, docs/engine/sim-layers.md; bench docs/engine/sell.md).
 
 `Life` kills or deletes a body (`destroy`: its spawn's refill, its garrison, its FireWeaponWhenDead and an aircraft's
-falling wreck queued as death blasts), ends what has a lifetime (`expire`: the lifetime, a toppled prop's delay, a
-sale's), sells a structure (`sell`) and runs LoseHealthUpdate (`lose_health`), over the world it is given
+falling wreck queued as death blasts), ends what has a lifetime (`expire`: a sale's; a lifetime's and a toppled prop's
+are modules), sells a structure (`sell`) and runs LoseHealthUpdate (`lose_health`), over the world it is given
 (simworld.WORLD_API only). The peers it needs are handed in by the caller (Sim.destroy / expire / sell / air_crash /
 lose_health): the garrison (simgarrison, L2), the death-blast queue (L2 queues, L3's death_blast_due fires them), the
 ground's height, the template's toggles and the modifiers (L2), `destroy` itself for expire, and the money's
@@ -26,12 +26,9 @@ class Life:
         self.lose_of = {}              # template -> simunits.lose_health rule
 
     def expire(self, world, frame, destroy):
-        """What is up by `frame` goes: a toppled prop's delay, a sale's (a lifetime: engine/modules/lifetime.py, the
-        expire cell's module since step M1)."""
+        """What is up by `frame` goes: a sale's (a lifetime: engine/modules/lifetime.py, a toppled prop's delay:
+        engine/modules/topple.py -- the expire cell's modules since steps M1, M2)."""
         for b in world.living():
-            if b.topple_end is not None and frame >= b.topple_end:
-                destroy(b, '倒伏后消失', delete=True)     # PropBody never exposes NAMED_DYING, even for one frame
-                continue
             if b.sell_end is not None and frame >= b.sell_end:
                 destroy(b, '卖掉了', delete=True)          # StructureSellUpdate: deleted, no death, no ruin
 
@@ -81,8 +78,8 @@ class Life:
             # engine_propbody b (bench 11-10): a killed topple prop falls where it stands (no fall time) and is gone
             # its delay later, never dying (expire; 61 / 121 frames counted with the kill's); a PropBody with nothing
             # to take its death stays for good
-            if b.topple and b.topple_end is None:
-                b.toppled, b.topple_end = True, world.frame_now() + b.topple['delay']
+            if b.topple:
+                b.find(interfaces.Topple).fall_where_it_stands(world.frame_now())
             return
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], world.t
         if not delete and b.last_by is not None and b.last_hit is not None:

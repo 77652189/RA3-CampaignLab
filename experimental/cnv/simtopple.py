@@ -1,4 +1,6 @@
-"""Data and collision timing for topple props (engine_topple, bench 2026-11-09).
+"""Collision timing for topple props (engine_topple, bench 2026-11-09): their footprints, the swept boxes a crusher
+drives into them by and the knocker's speed. The rules, the fall and the removal are the ToppleUpdate module's
+(engine/modules/topple.py, step M2).
 
 The SDK's ToppleUpdate defaults supply the angular velocity, acceleration and bounce. The angular fall / settling
 rule follows the reference ToppleUpdate.cpp under work/downloads/cnc_generals_src; RA3's observed removal includes
@@ -9,35 +11,11 @@ import re
 
 import simunits
 
-_rules, _shapes, _motion = {}, {}, {}
+_shapes, _motion = {}, {}
 
 
 def _key(template, own):
     return template, (own or {}).get(template)
-
-
-def rules(template, own=None):
-    """None without ToppleUpdate, else its inherited kill flags, angular parameters and removal delay in frames."""
-    key = _key(template, own)
-    if key not in _rules:
-        def read(xml):
-            return next(simunits._blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'ToppleUpdate'), None)
-        module = simunits._chain(template, own, read)
-        if module is None:
-            _rules[key] = None
-        else:
-            def attr(name, default):
-                return simunits._chain(template, own, lambda xml: next(
-                    (v for h, _ in simunits._blocks(xml or '', 'ToppleUpdate')
-                     if (v := simunits._attr(h, name)) is not None), None)) or default
-            _rules[key] = dict(start=attr('KillWhenStartToppled', 'false') == 'true',
-                               finish=attr('KillWhenToppled', 'false') == 'true',
-                               velocity=float(attr('InitialVelocityPercent', '20%').rstrip('%')) / 100,
-                               accel=float(attr('InitialAccelPercent', '1%').rstrip('%')) / 100,
-                               bounce=float(attr('BounceVelocityPercent', '20%').rstrip('%')) / 100,
-                               minimum=float(attr('MinimumToppleSpeed', '0.5')),
-                               delay=int(round(simunits.slow_death(template, own) * simunits.LIFE_FPS)))
-    return _rules[key]
 
 
 def shape(template, own=None):
@@ -83,26 +61,6 @@ def crosses(b, o, start, end, own):
             if lo > hi:
                 return False
     return True
-
-
-def fall_frames(speed, data):
-    """Angular fall, then damped bounces until resting (reference source's 0.01 rad/frame stop threshold)."""
-    if data['start']:
-        return 0
-    speed = max(speed, data['minimum'])
-    velocity, accel = speed * data['velocity'], speed * data['accel']
-    if velocity <= 0 and accel <= 0:
-        return None                                 # no force to bring it down
-    angle, limit = 0.0, math.pi / 2 - math.pi / 64
-    for frame in range(1, 10001):
-        angle += min(velocity, limit - angle)
-        if angle >= limit and velocity > 0:
-            velocity *= -data['bounce']
-            if abs(velocity) < 0.01:
-                return frame
-        else:
-            velocity += accel
-    return None                                     # no settling, no removal
 
 
 def motion(template, own=None):
