@@ -116,6 +116,72 @@ def structure(logs=None, testmap=None):
     return rows
 
 
+STEP = re.compile(r'^(M\d+ |K\d|R3 |Z |X |Test layers T3)')   # a refactor step's commit subject (ADR 0029 / 0035)
+NEW_REDS_PER_STEP = 0.5   # full run's new reds per step past this: small steps' light checks cost too much (user 11-18)
+WAIT_SLOW = 600           # seconds: the mean wait for CPU tokens past this, the machine is the bottleneck
+BACKLOG = 15              # entries on R's after-the-move behaviour list past this: a round of only those
+
+
+def _step_commits(repo, hours):
+    out = subprocess.run(['git', '-C', str(repo), 'log', '--since=%d hours ago' % hours, '--format=%ct %s'],
+                         capture_output=True, text=True, encoding='utf-8').stdout
+    return [(int(t), s) for t, s in (ln.split(' ', 1) for ln in out.splitlines() if ' ' in ln) if STEP.match(s)]
+
+
+def _reds(log):
+    return {ln.split(' - ')[0][7:].strip() for ln in log.read_text(encoding='utf-8', errors='replace').splitlines()
+            if ln.startswith('FAILED ')}
+
+
+def flow(logs=None, re_dir=None, steps=None, hours=24):
+    """Flow numbers (11-18, the user: "如果不带来额外负担的话可以加进去"), read from what tools already leave: refactor
+    steps from git subjects, the full runs' red lists, the CPU token pool's wait log, R's after-the-move list. Each
+    has its action when it crosses (handoff-coord); a missing source is said, not guessed."""
+    logs = Path(logs) if logs else WORK / 'logs'
+    re_dir = Path(re_dir) if re_dir else WORK / 're'
+    rows, flags = [], []
+    steps = sorted(_step_commits(ROOT, hours) if steps is None else steps)
+    gaps = sorted((b - a) / 60 for (a, _), (b, _) in zip(steps, steps[1:]))
+    rows.append('  重构步（最近 %d 小时，各线合计）：%d 步%s' % (hours, len(steps),
+                '，相邻两步中位间隔 %d 分钟' % gaps[len(gaps) // 2] if gaps else ''))
+    fulls = sorted(logs.glob('full_*.log'), key=lambda p: p.stat().st_mtime)
+    if len(fulls) >= 2:
+        prev, last = fulls[-2], fulls[-1]
+        new = _reds(last) - _reds(prev)
+        between = [t for t, _ in steps if prev.stat().st_mtime <= t <= last.stat().st_mtime]
+        rows.append('  全量新红：%s 对 %s 新 %d 条，其间 %d 步' % (last.name, prev.name, len(new), len(between)))
+        if between and len(new) / len(between) > NEW_REDS_PER_STEP:
+            flags.append('全量新红平均每步超过 %.1f 条：小族验证放轻的代价偏大，报用户定要不要改回' % NEW_REDS_PER_STEP)
+    else:
+        rows.append('  全量新红：不到两次全量，没法比')
+    waits = logs / 'cpupool_waits.jsonl'
+    if waits.is_file():
+        import json
+        import time
+        cut = time.time() - hours * 3600
+        ws = [w['waited'] for w in map(json.loads, waits.read_text(encoding='utf-8').splitlines()) if w['t'] >= cut]
+        if ws:
+            mean = sum(ws) / len(ws)
+            rows.append('  等 CPU 令牌：%d 次，平均 %d 秒，最长 %d 秒' % (len(ws), mean, max(ws)))
+            if mean > WAIT_SLOW:
+                flags.append('等令牌平均超过 %d 分钟：查谁占着' % (WAIT_SLOW // 60))
+        else:
+            rows.append('  等 CPU 令牌：最近 %d 小时没有记录' % hours)
+    else:
+        rows.append('  等 CPU 令牌：没有 cpupool_waits.jsonl（令牌池还不记）')
+    hand = re_dir / 'handoff-r.md'
+    if hand.is_file():
+        sec = re.search(r'^## 搬完后有意改行为.*?$(.*?)(?=^## |\Z)', hand.read_text(encoding='utf-8'), re.M | re.S)
+        n = len(re.findall(r'^- ', sec.group(1), re.M)) if sec else 0
+        rows.append('  搬完再改的清单：%d 条' % n)
+        if n > BACKLOG:
+            flags.append('搬完再改的清单超过 %d 条：插一轮专门清' % BACKLOG)
+    else:
+        rows.append('  搬完再改的清单：没有 handoff-r.md')
+    rows += ['  !! ' + f for f in flags] or ['  （没有越线的）']
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--hours', type=int, default=24)
@@ -125,6 +191,7 @@ def main():
     print('\n## 提交：work/re（私有）'); print('\n'.join(commits(WORK / 're', a.hours)))
     print('\n## 清单（按用量已对拍；9 关用到的那栏是当前主攻）'); print('\n'.join(inventory()))
     print('\n## 结构（越线标 !!，规模一变先看这里）'); print('\n'.join(structure()))
+    print('\n## 流程（越线标 !!，动作见 handoff-coord）'); print('\n'.join(flow(hours=a.hours)))
     print('\n## 待答问题'); print('\n'.join(questions()))
 
 
