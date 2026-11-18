@@ -389,6 +389,7 @@ class ImportGraph:
                 rel = os.path.relpath(d, self.root).replace('\\', '/')
                 self.paths.update(rel + '/' + f for f in fs if f.endswith('.py'))
         self.imports, self.strings, self._reach = {}, {}, {}
+        self.registries = {}    # {package __init__ that loads its folder: the files it loads that way}
         for p in self.paths:
             self.imports[p], self.strings[p] = self._edges(p)
 
@@ -444,15 +445,20 @@ class ImportGraph:
                     strs.add(whole if whole in self.paths else self.resolve(m.group(1), p))
         if p.endswith('/__init__.py') and enginefiles.loads_its_folder(tree):     # engine/modules: every file in it
             folder = p[:-len('__init__.py')]
-            imp.update(f for f in self.paths if f.startswith(folder) and
-                       ('/' not in f[len(folder):] or f[len(folder):].count('/') == 1 and f.endswith('/__init__.py')))
+            loaded = {f for f in self.paths if f.startswith(folder) and f != p and
+                      ('/' not in f[len(folder):] or f[len(folder):].count('/') == 1 and f.endswith('/__init__.py'))}
+            self.registries[p] = loaded
+            imp.update(loaded)
         return imp - {None, p}, strs - {None, p}
 
     def edges(self, p):
         return self.imports.get(p, set()) | self.strings.get(p, set())
 
     def reach(self, start):
-        """Every file `start` reaches by import; the facade is reached but not walked through (unless it is start)."""
+        """Every file `start` reaches by import; the facade is reached but not walked through (unless it is start),
+        and so is a registry -- a package __init__ that loads its folder (engine/modules, step K1.5): importing one
+        module file of it (simproxy: from engine.modules import lifetime) loads them all, but only to register them;
+        they run when a Sim schedules them, which users() finds by their names, as for the facade."""
         if start not in self._reach:
             seen, todo = set(), [start]
             while todo:
@@ -460,8 +466,10 @@ class ImportGraph:
                 if f in seen:
                     continue
                 seen.add(f)
-                if f != FACADE or f == start:
+                if f == start:
                     todo += sorted(self.edges(f))
+                elif f != FACADE:
+                    todo += sorted(self.edges(f) - self.registries.get(f, set()))
             self._reach[start] = seen
         return self._reach[start]
 
@@ -473,8 +481,9 @@ class ImportGraph:
         return {t for t in self.test_files() if t != target and target in self.reach(t)}
 
     def facade_tests(self):
-        """Test files that reach the facade (they build a Sim -- themselves or through simsmall -- and test it)."""
-        return {t for t in self.test_files() if FACADE in self.reach(t)}
+        """Test files that reach the facade (they build a Sim -- themselves or through simsmall -- and test it) or a
+        registry (they can schedule the modules it loads)."""
+        return {t for t in self.test_files() if FACADE in self.reach(t) or self.registries.keys() & self.reach(t)}
 
     def handles(self):
         """{part module: names on Sim that lead to it} off the facade as it is now: its forwarders' names and the Sim

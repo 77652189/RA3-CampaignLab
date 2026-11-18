@@ -151,6 +151,28 @@ def test_tests_in_sub_folders_and_packages_on_the_way(tmp_path):
     assert at.is_test_file('tests/modules/test_leaf.py') and not at.is_test_file('tests/modules/helper.py')
 
 
+def test_a_package_that_loads_its_folder_is_a_registry(tmp_path):
+    """Importing one file of engine/modules loads every file of it (K1.5), but only registers them: a test importing
+    lifetime does not import autoheal; it can still schedule autoheal, so it is picked if it names its tag."""
+    loader = 'import importlib, pkgutil\nfor i in pkgutil.iter_modules(__path__):\n    importlib.import_module(i.name)\n'
+    for rel, text in {'experimental/cnv/eng/__init__.py': '', 'experimental/cnv/eng/mods/__init__.py': loader,
+                      'experimental/cnv/eng/mods/heal.py': "PHASE = 'autoheal'\n",
+                      'experimental/cnv/eng/mods/life.py': 'X = 1\n',
+                      'experimental/cnv/proxy.py': 'from eng.mods import life\n',
+                      'tests/test_life.py': 'import proxy\n',
+                      'tests/test_kernel_reg.py': 'import eng.mods\n'}.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text, encoding='utf-8')
+    g = at.ImportGraph(str(tmp_path))
+    heal, init = 'experimental/cnv/eng/mods/heal.py', 'experimental/cnv/eng/mods/__init__.py'
+    assert heal in g.edges(init)                                        # the graph still knows what it loads
+    assert g.importers('experimental/cnv/eng/mods/life.py') == {'tests/test_life.py'}
+    assert g.importers(heal) == set()                                   # not walked through the registry
+    assert init in g.reach('tests/test_kernel_reg.py') and heal not in g.reach('tests/test_kernel_reg.py')
+    assert heal in g.reach(init)                                        # unless it is where the walk starts
+    assert g.facade_tests() == {'tests/test_life.py', 'tests/test_kernel_reg.py'}   # they can schedule heal
+
+
 def test_estimate_counts_a_single_test_as_its_share_of_the_file():
     serial, par, unknown = at.estimate(['f.py::t1', 'g.py'], {'f.py': 100.0, 'g.py': 10.0}, 2, lambda f: 4)
     assert serial == 35.0 and unknown == 0
