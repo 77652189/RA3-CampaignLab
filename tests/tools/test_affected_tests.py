@@ -6,7 +6,8 @@ import sqlite3
 import sys
 
 _spec = importlib.util.spec_from_file_location('affected_tests', os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'experimental', 'testbench', 'affected_tests.py'))
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'experimental', 'testbench',
+    'affected_tests.py'))
 at = sys.modules['affected_tests'] = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(at)
 
@@ -122,7 +123,8 @@ def test_pick_falls_back_by_name_and_takes_changed_tests(tmp_path):
 
 def test_guards_always_present():
     g = at.guards()
-    assert 'tests/guards/test_layers.py' in g
+    assert {'tests/guards/test_layers.py', 'tests/guards/test_docs.py', 'tests/guards/test_architecture.py',
+            'tests/guards/test_no_program_addresses.py'} <= g
     assert any(x.rsplit('/', 1)[1].startswith('test_inventory') for x in g)
 
 

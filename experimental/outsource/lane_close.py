@@ -4,7 +4,7 @@ r"""Close one item of a Codex engine line in one command: rebase on origin/main,
 
 Run it from the line's own worktree after committing. The closing tests are the files named on the command line
 (the ones the item touched -- narrowed to the test functions the item changed in them, the whole file when it
-changed a shared helper), the two guards (tests/test_architecture.py, tests/test_docs.py), -- only when the
+changed a shared helper), the two guards (tests/guards/test_architecture.py, tests/guards/test_docs.py), -- only when the
 item changed the inventory scripts -- the inventory tests (the pages they generate are not committed: ADR 0030), and -- only when the item moved the model
 pin (experimental/cnv/inventory_model.rev) -- the private model's whole suite (a red also red at the old pin is
 reported, not blocking). The output goes to
@@ -19,8 +19,8 @@ _spec = importlib.util.spec_from_file_location('labpaths', os.path.join(os.path.
 _paths = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_paths)
 
-GUARDS = ['tests/test_architecture.py', 'tests/test_docs.py',
-          'tests/test_no_program_addresses.py']   # 11-13 an address reached simai.py past a Claude line's close
+GUARDS = ['tests/guards/test_architecture.py', 'tests/guards/test_docs.py',
+          'tests/guards/test_no_program_addresses.py']   # 11-13 an address reached simai.py past a Claude line's close
 INVENTORY_PATHS = ('experimental/cnv/inventory',)
 PAGES = 'docs/engine/inventory'   # the generated pages: gitignored, generated on demand, never committed (ADR 0030)
 # the architecture guards that build or walk the levels (each 5-100 s): they judge content, so they run only when the
@@ -158,7 +158,7 @@ def main():
     content = [c for c in changed if c.startswith(CONTENT_PATHS)
                and not (c.startswith('experimental/cnv/missions/') and c.endswith('_bench.py'))]
     skip = [] if content else [
-        a for g in CONTENT_GUARDS for a in ('--deselect', f'tests/test_architecture.py::{g}')]
+        a for g in CONTENT_GUARDS for a in ('--deselect', f'{GUARDS[0]}::{g}')]
     stamp = datetime.datetime.now().strftime('%m%d_%H%M')
     log = os.path.join(_paths.WORK, 'logs', f'{lane}_close_{stamp}.log')
     with open(log, 'w', encoding='utf-8') as f:

@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 _spec = importlib.util.spec_from_file_location('affected_tests', ROOT / 'experimental' / 'testbench' / 'affected_tests.py')
 at = sys.modules['affected_tests'] = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(at)

@@ -1,7 +1,7 @@
 # 在本仓库干活（所有 agent 通用：Claude Code、Codex 等）
 
 开工：读完本文件 → 读你那条线的交接（见"地图"）→ 交接开头"待答问题"里有新回答就先处理。
-本文件只放红线和地图，限 60 行（tests/test_docs.py 守着）。只有做某块活才要知道的，写进那块的文件，这里只留指针。
+本文件只放红线和地图，限 60 行（tests/guards/test_docs.py 守着）。只有做某块活才要知道的，写进那块的文件，这里只留指针。
 
 ## 红线
 - 含目录联接的文件夹不许递归删除（`work/extsdk`、各工作区的 `work`、`.claude/worktrees/RA3-ChineseVoice`），删除会穿过联接清空目标（2026-11-10 因此清空过 work/ 和 SDK）。先 `python work/re/scripts/extsdk_setup.py --unlink`，或者问。
@@ -23,7 +23,7 @@
 - 每项：先从数据预测 → 上台 → 读数不符照数据修模拟器（猜的标 INFERRED）→ 登记 + 测试。每轮只做一件能提交的事。
 - 难题在交接里列一张假设表（假设、能区分它的那次运行、结果）。连续两轮解释不了就停。
 - 卡住不等人：写进自己交接开头的 `## 待答问题`（问题、你倾向的答案、卡住了哪项），转去做下一项。回答的人写在问题下面。
-- 测试：收尾跑 `python -X utf8 experimental/testbench/affected_tests.py --cmd` 打出的命令（模拟器文件按导入关系挑、其余按覆盖率图挑，含守卫；默认不带 `tests/replay_tests.txt` 里的整局和台子关回放，改的正是某个回放测试或要拿它当对拍证据时加 `--with-replays`；8 核共用，并行开 `-n 2`）；挑得太多、慢文件跑不完的，在提交说明里写"留给总控全量"。工具报错时退回：改到的测试文件、`git grep -l <模块名> tests/`、`tests/test_inventory*.py`、`tests/test_docs.py`、`tests/test_architecture.py`（G4：新文件别加 `sys.path.insert`，按文件路径加载）、`tests/test_no_program_addresses.py`（守公开文件里不出现程序地址）。不跑全量，全量由总控跑。
+- 测试：收尾跑 `python -X utf8 experimental/testbench/affected_tests.py --cmd` 打出的命令（模拟器文件按导入关系挑、其余按覆盖率图挑，含守卫；默认不带 `tests/replay_tests.txt` 里的整局和台子关回放，改的正是某个回放测试或要拿它当对拍证据时加 `--with-replays`；8 核共用，并行开 `-n 2`）；挑得太多、慢文件跑不完的，在提交说明里写"留给总控全量"。工具报错时退回：改到的测试文件、`git grep -l <模块名> tests/`、`tests/test_inventory*.py`、`tests/guards/test_docs.py`、`tests/guards/test_architecture.py`（G4：新文件别加 `sys.path.insert`，按文件路径加载）、`tests/guards/test_no_program_addresses.py`（守公开文件里不出现程序地址）。不跑全量，全量由总控跑。
 - 输出只看结论：长输出写 `work/logs/<名字>.log`，屏幕只看末几行；`pytest -q | tail -n 5`；能用数字（`cnv_check`、`bench_counters`）就不截图；读文件先搜索再按行读。数字解释不了时再看画面，别猜。
 - 上下文快满：写交接（在做什么、下一步、没提交的改动、坑；只写指针）→ 提交推送 → 停掉后台任务 → 最后一行"可以清空：读 <交接> 接着做 <下一步>"。
 

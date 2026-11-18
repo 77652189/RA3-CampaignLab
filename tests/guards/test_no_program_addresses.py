@@ -16,7 +16,7 @@ import re
 import subprocess
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 SCANNED = ('experimental', 'tests', 'docs')
 
 ADDRESS = re.compile(r'\b0x0{0,2}[4-9a-cA-C][0-9a-fA-F]{5}\b'      # code address, first digit 4 to C

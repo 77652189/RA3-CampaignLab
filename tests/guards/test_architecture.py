@@ -8,7 +8,7 @@ import ast
 import subprocess
 from pathlib import Path, PurePosixPath
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 
 # G1: no new experimental/campaign/make_campnewNN.py. The 14 that are still live (the packaging chain 2 3 4 6 7 18, and
 # 23..29 + 35 which make_campchrono -> liberty_kit still import); shrink as they are archived.
