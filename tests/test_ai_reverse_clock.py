@@ -76,14 +76,10 @@ def test_reverse_named_replay_has_four_initial_members(reverse_record):
     assert all(m['alive'] for m in first['members'])
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E115 observer pair: at host f263 the engine initial four all aim at the far '
-    'plant (object 3169, (3700, 2400)); the model aims them at CNV AI Guard units '
-    'instead (D136: ordered_aim gives a target, not the right one). D139: the engine '
-    'holds the plant from state 6 (f230, every member) through state 2 by the keep record '
-    '(now in the model), but the model never reaches state 6 here: it lists the guards as '
-    'hostiles from f150 (engine: not before f231-260) and its team leaves without the '
-    'f26-f80 gather; see work/re/d139_member_aim.md.'))
+# was strict xfail (E115 observer pair: at host f263 the engine's initial four all aim at the far plant, the model aimed
+# them at CNV AI Guard units; D139: the model never reached state 6, it listed the guards as hostiles from f150 --
+# work/re/d139_member_aim.md): passes since R3 7f4b9e8b (a move's goal spot from the bench, 有意改行为; bisected 11-18
+# on the model pin, parent 188e3010 xfails). Whether D139's state-6 story now holds too is not re-read here (line D/B).
 def test_reverse_named_replay_member_goal_at_engine_frame(reverse_record):
     """INFERRED model aim proxy cannot replace the engine persistent goal contract."""
     build, brain = reverse_record

@@ -292,10 +292,9 @@ def _first_out(build, lib, until=75.0):
     return first, w
 
 
-@pytest.mark.xfail(strict=True, reason='B round 196: since the SimpleAttack form-up (B round 194) the tanks are out '
-                                       'wake + 98 frames, the bench ~75 +- 22. The bench forms up too (aiexpctl, a team '
-                                       'made at the wake: form f158, go f185 = 27 frames); the simulator\'s form-up '
-                                       'here takes 44-52 frames (f153 -> f197 / f205) -- the slot walk, not the scope')
+# was strict xfail (B round 196: tanks out wake + 98 frames, the bench ~75 +- 22, the form-up's slot walk 44-52 frames
+# against the bench's 27): passes since R3 7f4b9e8b (a move's goal spot from the bench, 有意改行为; bisected 11-18 on
+# the model pin, parent 188e3010 xfails)
 def test_mission_personality_both_states_go_at_the_wake(lib):
     """aistateconst a: both states always on -- all four of each out s14-16, the wake s9 (~5 s after it)."""
     first, w = _first_out('aistateconst', lib, until=25)
