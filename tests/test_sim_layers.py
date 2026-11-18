@@ -28,7 +28,7 @@ LAYER_OF = {
     'engine.kernel.factory': 0, 'engine.kernel.schedule': 0, 'engine.kernel.world': 0,          # (tests/test_kernel.py)
     'simunits': 1,
     'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2, 'simmine': 2, 'simstatus': 2, 'simpower': 2, 'simgarrison': 2,
-    'simmodifier': 2, 'simlevel': 2, 'simlocomotion': 2,
+    'simmodifier': 2, 'simlevel': 2, 'simlocomotion': 2, 'simpath': 2,
     'simbody': 2,
     'simtoggle': 2,
     'simspecial': 2,

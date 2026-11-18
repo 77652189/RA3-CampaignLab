@@ -70,6 +70,7 @@ import simheal  # noqa: E402
 import simlocomotion  # noqa: E402
 import simbody  # noqa: E402
 import simmine  # noqa: E402
+import simpath  # noqa: E402
 import simmodifier  # noqa: E402
 import simmoney  # noqa: E402
 import siminfiltrator  # noqa: E402
@@ -852,43 +853,14 @@ class Ground:
         m, cost = self.cache[key]
         if not np.isfinite(cost[a]):
             return self.closest(g, a, z) if closest else None
-        cells = m.traceback(a)[::-1]                # traceback runs from the goal (the costs' source) to a
-        pts = [self.world(c) for c in self.pull(g, cells)]
+        legs = ('legs', surface, a, z)              # the same way asked again (an AI's path checks: 23670 asks,
+        if legs not in self.cache:                  # 320 ways in simrecord's ai_open); set_blocks clears the cache
+            cells = m.traceback(a)[::-1]            # traceback runs from the goal (the costs' source) to a
+            self.cache[legs] = simpath.pull(g, cells)
+        pts = [self.world(c) for c in self.cache[legs]]
         if pts and math.hypot(pts[-1][0] - q[0], pts[-1][1] - q[1]) <= GRID:
             pts.pop()                               # the goal's own cell: q itself ends the way
         return pts + [q]
-
-    def pull(self, g, cells):
-        """A way's cells (after the start, `cells[0]`) to its straight legs: from each anchor straight to the farthest
-        cell of the way it sees over walkable cells (Ground.clear), the cells between left out; the next cell is
-        always kept. Bench 2026-11-17 `engine_pull ways` (checks/engine_pull.py, CNVProbe tracks read by
-        work/re/scripts/x_pull.py against these ways): on open ground a Guardian and a Peacekeeper sent 800 east,
-        300 north went one straight line (0.1 off it; here 0); sent round a field-0 wall's end, each went straight at
-        the end (the tank 6.8 off the line start -> end, here 7.4) and passed it 0-1.2 from the wall (here 0).
-        未对齐: past the end the game goes one straight leg to the goal (from about (900, 843)); here the anchor
-        falls on the wall's far edge (900, 820), the grid's folded wall (a grid cell any of whose map cells is shut is
-        shut: 20 thicker there) hides the goal from it, and the leg bends at (640, 1000), 37 off the game's line
-        (work/re/handoff-r3.md, X step's hypotheses). Before this a way ran on the grid's rows: a goal moved 30 aside
-        (HOLD_SPOTS) kept the unit on the next row the whole way, where the game goes in one slant line (a4's trucks
-        2 and 3 on the halt area's edges, 2026-11-09)."""
-        out, a, n = [], 0, len(cells)
-        while a < n - 1:
-            j = a + 1
-            while j + 1 < n and self.clear(g, cells[a], cells[j + 1]):
-                j += 1
-            out.append(cells[j])
-            a = j
-        return out
-
-    @staticmethod
-    def clear(g, c0, c1):
-        """Every grid cell the straight line between the centres of cells c0 and c1 passes (sampled every quarter
-        cell) walkable in g: a leg may run along a wall's cells (engine_pull ways: the game's units passed a wall's
-        end 0-1.2 from it, no clearance kept for their size)."""
-        k = 4 * max(abs(c1[0] - c0[0]), abs(c1[1] - c0[1])) + 1
-        jj = np.rint(np.linspace(c0[0], c1[0], k)).astype(int)
-        ii = np.rint(np.linspace(c0[1], c1[1], k)).astype(int)
-        return bool(g[jj, ii].all())
 
     def closest(self, g, a, z):
         """R7: the goal out of reach -- the way to the cell it can reach nearest the goal (bench 2026-11-07
@@ -903,7 +875,7 @@ class Ground:
         end = (int(jj[k]), int(ii[k]))
         if end == tuple(a):
             return []
-        return [self.world(c) for c in self.pull(g, m.traceback(end))] or [self.world(end)]
+        return [self.world(c) for c in simpath.pull(g, m.traceback(end))] or [self.world(end)]
 
     def within(self, surface, p, q, reach):
         """R3: an attacker's way -- to the cell it reaches soonest from which q is within `reach` (Generals' attack
@@ -929,7 +901,7 @@ class Ground:
             return None
         k = int(np.flatnonzero(ok)[np.argmin(cost[jj[ok], ii[ok]])])
         end = (int(jj[k]), int(ii[k]))
-        return [self.world(c) for c in self.pull(g, m.traceback(end))] or [self.world(end)]
+        return [self.world(c) for c in simpath.pull(g, m.traceback(end))] or [self.world(end)]
 
 
 class Sim:

@@ -61,10 +61,19 @@ def test_round_a_wall_straight_at_its_end_and_close_by(ground, start):
     assert max(_off(p, start, near) for p in first) <= 10.0
 
 
-@pytest.mark.xfail(strict=True, reason='未对齐: past the wall the game goes one straight leg to the goal; the grid\'s '
-                   'folded wall hides it from the anchor on the far edge and the way bends 37 off (handoff-r3 X step)')
+@pytest.mark.parametrize('start', [(500.0, 550.0), (480.0, 360.0)])
+def test_no_bend_on_a_straight_run(ground, start):
+    """A bend only where the way turns: (480, 360) comes down a 45-degree run of cells to the wall's corner (equal
+    costs along it once bent each cell of a Yari's diagonal in s01's record, 11-17)."""
+    way = [start] + ground.route('ground', start, (500.0, 1050.0))
+    for a, b, c in zip(way, way[1:], way[2:]):
+        assert _off(b, a, c) > 1.0, (a, b, c)
+
+
 def test_past_the_wall_one_straight_leg_to_the_goal(ground):
-    """Bench: from just past the wall's end (about (900, 843)) the tank went one straight line to the goal."""
+    """Bench: from just past the wall's end (about (900, 843)) the tank went one straight line to the goal (before
+    the 11-17 rewrite the simulator bent 37 off at (640, 1000): its farthest-seen anchors stopped on the wall's far
+    edge, from where the goal is hidden)."""
     goal = (500.0, 1050.0)
     way = [(500.0, 550.0)] + ground.route('ground', (500.0, 550.0), goal)
     past = [p for p in way if p[1] >= 820.0]          # from the anchor on the wall's far edge on
