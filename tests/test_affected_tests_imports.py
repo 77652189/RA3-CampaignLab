@@ -135,6 +135,22 @@ def test_pick_a_part_change_and_a_part_nobody_imports(tmp_path):
     assert tests == {'tests/test_by_name.py'} and fell == ['experimental/cnv/simlone.py']   # nobody imports it
 
 
+def test_tests_in_sub_folders_and_packages_on_the_way(tmp_path):
+    """A test under tests/modules/ is a test file like any other; importing a.b.c imports a/ and a/b/ too."""
+    for rel, text in {'experimental/cnv/pkg/__init__.py': '', 'experimental/cnv/pkg/sub/__init__.py': '',
+                      'experimental/cnv/pkg/sub/leaf.py': 'X = 1\n',
+                      'tests/modules/test_leaf.py': 'from pkg.sub import leaf\n',
+                      'tests/modules/helper.py': '', 'tests/test_top.py': 'import pkg.sub.leaf\n'}.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text, encoding='utf-8')
+    g = at.ImportGraph(str(tmp_path))
+    assert g.test_files() == ['tests/modules/test_leaf.py', 'tests/test_top.py']
+    assert g.importers('experimental/cnv/pkg/sub/leaf.py') == {'tests/modules/test_leaf.py', 'tests/test_top.py'}
+    assert g.importers('experimental/cnv/pkg/__init__.py') == {'tests/modules/test_leaf.py', 'tests/test_top.py'}
+    assert at.all_test_files(str(tmp_path)) == ['tests/modules/test_leaf.py', 'tests/test_top.py']
+    assert at.is_test_file('tests/modules/test_leaf.py') and not at.is_test_file('tests/modules/helper.py')
+
+
 def test_estimate_counts_a_single_test_as_its_share_of_the_file():
     serial, par, unknown = at.estimate(['f.py::t1', 'g.py'], {'f.py': 100.0, 'g.py': 10.0}, 2, lambda f: 4)
     assert serial == 35.0 and unknown == 0
@@ -146,6 +162,7 @@ def test_the_real_tree():
     sc = importlib.util.module_from_spec(sc_spec)
     sc_spec.loader.exec_module(sc)
     assert {at.module_name(p) for p in g.sim_files()} == set(sc.sim_files())
-    users = g.users('experimental/cnv/simheal.py')
-    assert 'tests/test_simheal.py' in {at.file_of(u) for u in users}
+    users = g.users('experimental/cnv/engine/modules/autoheal.py')   # simheal.Heal.autoheal until step K1
+    assert {'tests/test_simheal.py', 'tests/modules/test_autoheal.py'} <= {at.file_of(u) for u in users}
     assert not {u for u in users if os.path.basename(at.file_of(u)).startswith('test_simai_bench')}
+    assert g.module_names('experimental/cnv/engine/modules/autoheal.py') == {'autoheal', 'AutoHealBehavior'}

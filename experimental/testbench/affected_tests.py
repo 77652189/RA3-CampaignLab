@@ -403,6 +403,15 @@ class ImportGraph:
                 return f
         return None
 
+    def packages(self, dotted, frm):
+        """import a.b.c runs a/__init__.py and a/b/__init__.py before a/b/c.py: all of them, from the folder a.b.c
+        resolves in (empty if it is not ours)."""
+        parts = dotted.split('.')
+        for base in (os.path.dirname(frm),) + SEARCH:
+            if self._file(base, dotted):
+                return {self._file(base, '.'.join(parts[:i])) for i in range(1, len(parts) + 1)}
+        return set()
+
     def _edges(self, p):
         try:
             tree = ast.parse(open(os.path.join(self.root, p), encoding='utf-8').read())
@@ -412,14 +421,15 @@ class ImportGraph:
         for n in ast.walk(tree):
             if isinstance(n, ast.Import):
                 for a in n.names:
-                    imp.add(self.resolve(a.name, p))
+                    imp.update(self.packages(a.name, p))
             elif isinstance(n, ast.ImportFrom):
                 if n.level:                                 # relative: from the package folder up
                     base = p.rsplit('/', n.level)[0]
                     mod = self._file(base, n.module) if n.module else self._file(base, '')
                     subs = [self._file(base, '.'.join(x for x in (n.module, a.name) if x)) for a in n.names]
                 else:
-                    mod = self.resolve(n.module, p)
+                    imp.update(self.packages(n.module, p))
+                    mod = None
                     subs = [self.resolve(n.module + '.' + a.name, p) for a in n.names]
                 imp.add(mod)
                 imp.update(subs)                            # from checks import a1: the submodule checks/a1.py
@@ -448,7 +458,7 @@ class ImportGraph:
         return self._reach[start]
 
     def test_files(self):
-        return sorted(p for p in self.paths if re.match(r'tests/test_[^/]*\.py$', p))
+        return sorted(p for p in self.paths if is_test_file(p))
 
     def importers(self, target):
         """Test files that import `target`, directly or through files other than the facade."""
@@ -480,9 +490,28 @@ class ImportGraph:
 
     def users(self, target):
         """Test files a change to the simulator's file `target` can affect: its importers, and the tests of the facade
-        that name a handle of it (simheal.py: the tests that call .autoheal or .heal on a Sim)."""
-        return merge_nodes(self.importers(target) |
-                           naming(self.facade_tests(), self.handles().get(module_name(target), ()), self.root))
+        that name a handle of it (simheal.py: the tests that call .autoheal or .heal on a Sim; a kernel module file:
+        its frame cell and its tags, schedule.run('autoheal', ...) or 'AutoHealBehavior')."""
+        names = set(self.handles().get(module_name(target), ())) | self.module_names(target)
+        return merge_nodes(self.importers(target) | naming(self.facade_tests(), names, self.root))
+
+    def module_names(self, target):
+        """What a facade test reaches a kernel module file (engine/modules/) by: the PHASE strings of its classes and
+        the tags it registers (@factory.module('<tag>'))."""
+        if not target.startswith(CNV + '/engine/modules/'):
+            return set()
+        try:
+            tree = ast.parse(open(os.path.join(self.root, target), encoding='utf-8').read())
+        except (OSError, SyntaxError, ValueError):
+            return set()
+        out = set()
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'PHASE' for t in n.targets):
+                if isinstance(n.value, ast.Constant) and isinstance(n.value.value, str):
+                    out.add(n.value.value)
+            elif isinstance(n, ast.Call) and getattr(n.func, 'attr', getattr(n.func, 'id', None)) == 'module':
+                out.update(a.value for a in n.args if isinstance(a, ast.Constant) and isinstance(a.value, str))
+        return out
 
     def sim_files(self):
         """simcoverage.sim_files() as paths, read off the same imports (tests/test_affected_tests.py checks they agree):
@@ -755,7 +784,7 @@ def pick(cov, changes, sources, remaps, fallback, graph=None, facade=(None, None
 
     sim_files = graph.sim_files() if graph else ()
     for key, shown, hunks, deleted in changes:
-        if shown.startswith('tests/') and re.search(r'tests/test_[^/]*\.py$', shown):
+        if is_test_file(shown):
             add({shown}, 'changed test')
             continue
         if key == FACADE and hunks is not None and graph and not deleted:
@@ -784,12 +813,26 @@ def pick(cov, changes, sources, remaps, fallback, graph=None, facade=(None, None
     return tests, why, fell
 
 
+def is_test_file(path):
+    """A pytest file: tests/test_x.py, or one in a folder under tests/ (tests/modules/test_autoheal.py)."""
+    return bool(re.match(r'tests/(?:[^/]+/)*test_[^/]*\.py$', path))
+
+
+def all_test_files(root=None):
+    """Every test file under tests/, sub-folders included."""
+    root = root or ROOT
+    out = []
+    for d, dirs, fs in os.walk(os.path.join(root, 'tests')):
+        dirs[:] = [x for x in dirs if x not in SKIP_DIRS and not x.startswith('.')]
+        rel = os.path.relpath(d, root).replace(os.sep, '/')
+        out += [rel + '/' + f for f in fs if is_test_file(rel + '/' + f)]
+    return sorted(out)
+
+
 def unrecorded(cov):
     """Test files with no coverage record at all (the map is partial, or the test runs no measured code):
     nothing says what they touch, so they are always picked."""
-    d = os.path.join(ROOT, 'tests')
-    allt = {'tests/' + f for f in os.listdir(d) if re.match(r'test_.*\.py$', f)}
-    return sorted(allt - cov.test_files())
+    return sorted(set(all_test_files()) - cov.test_files())
 
 
 def guards():
@@ -830,7 +873,7 @@ def save_durations(junit_path):
         i = next((k for k, p in enumerate(parts) if p.startswith('test_')), None)
         if i is None:
             continue
-        f = 'tests/' + parts[i] + '.py'
+        f = '/'.join(['tests'] + [x for x in parts[:i] if x != 'tests'] + [parts[i]]) + '.py'   # tests.modules.test_x
         out[f] = out.get(f, 0.0) + float(tc.get('time', 0))
     os.makedirs(MAPDIR, exist_ok=True)
     with open(DURATIONS, 'w', encoding='utf-8') as fh:
