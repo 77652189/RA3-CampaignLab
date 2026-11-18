@@ -82,6 +82,8 @@ def body_state(b):
                 if k in d:
                     raise ValueError(f'{b.name}: {type(m).__name__}.{k} is already a field of the body')
                 d[k] = own[k]
+    for k in getattr(type(b), 'FORWARDS', ()):     # a moved dataclass field (Body.FORWARDS, step M1): every body had
+        d.setdefault(k, getattr(b, k))              # it, None where no module sets it
     return d
 
 

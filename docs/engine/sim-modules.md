@@ -22,7 +22,7 @@
 | 受伤 `Damage` | `on_damaged(info)`、`on_healed(info)`、`on_damage_state(old, new)`：血量模块改完血后广播给本物体所有实现者 | 回血（受伤推迟、唤醒）、受击反应、压制 |
 | 死亡 `Die` | `on_die(info)`；按 XML 的死亡类型、等级、必需 / 排除状态判定这一个死亡模块管不管（引擎的死亡判定混入） | DestroyDie、SlowDeathBehavior、CreateObjectDie、FireWeaponWhenDeadBehavior…… |
 | 移除 `Destroy` | `on_destroy()`：物体从世界移除那一刻，每个实现者收到一次 | 子体、附着、容器放人 |
-| 创建 `Create` | `on_create()`、`on_build_complete()` | 造出来就生效的状态位、等级、子体 |
+| 创建 `Create` | `on_create(frame)`（`World.build` 造完模块后调，给出物体造出来那一帧）、`on_build_complete()` | 寿命（算死亡帧）、造出来就生效的状态位、等级、子体 |
 | 升级 `Upgrade` | 按 XML 的触发 / 冲突 / 必需升级判定是否生效；`on_upgrade()` / `on_remove()` | StatusBitsUpgrade、各种 Upgrade、升级触发的回血 |
 | 容器 `Contain` | `can_take(obj)`、`take(obj)`、`release(obj)`、`members()`、`on_container_died()` | 驻军、运输、渗透 |
 | 碰撞 `Collide` | `on_collide(other)` | 碾压、捡箱子 |
@@ -30,7 +30,9 @@
 | 特殊能力 `SpecialPower` | `ready_at()`、`cast(target)` | SpecialPower 一族 |
 | 移动和命令 `AIUpdate` | 命令状态机（移动、攻击、警戒、跟随……）+ 移动的物理（Locomotor） | 每个能动的物体一个 |
 
-上表是核心接口；引擎还有一批专项接口（出口、停靠、弹体、子体 / 被奴役者、被卖通知、跑出地图……），搬到那一族时再加进 `interfaces.py`，不预先建。
+上表是核心接口；引擎还有一批专项接口（出口、停靠、弹体、子体 / 被奴役者、被卖通知、跑出地图……），搬到那一族时再加进 `interfaces.py`（`FAMILY`），不预先建。已加：寿命 `Lifetime`（M1，一个物体至多一个：`die_frame()` / `set_die_frame(frame)`）。
+
+模块要让自己的物体死（寿命到了），调 `world.kill(物体, 原因)`：宿主（今天 `Sim`）建 `World` 时给的死亡入口；搬完 Body + 死亡族后改成血量模块的入口。物体造出来以后才补一个模块（遭遇战 AI 补读原版寿命）用 `world.attach(物体, 标签)`。
 
 约定：
 
@@ -140,6 +142,6 @@
 
 ## 10. 迁移期怎么和旧代码共存（绞杀者）
 
-- 今天的 `Body` 就是物体：先长出 `modules`，字段一族一族搬进模块实例；外面还在读的字段留只读转发属性（名单只减），写一律走模块接口。
+- 今天的 `Body` 就是物体：先长出 `modules`，字段一族一族搬进模块实例；外面还在读的字段留只读转发属性（名单只减），写一律走模块接口。转发写成 `Body` 上的 `名字 = kernel_module.forward(接口, 读法)`，名字列进 `Body.FORWARDS`（逐帧记录照旧当字段记，没模块的记 None）和 `tests/test_kernel.py` 的 `BODY_FORWARDS`。只从任务自带模板读的标签列在 `simunits.OWN_ONLY`（寿命：和它替换的读法一样，不读原版）。
 - 今天的 `Sim` 是世界的宿主：持有内核 `World`，`simworld.WORLD_API` 的名字逐个改指到 `World` 上；`Sim` 上的转调只给旧代码和测试用，不许再加。
 - 每一步仍按 [sim-layers.md](sim-layers.md) 的比对方法验收：固定任务逐帧记录前后一字不差；有意改行为的步单独提交、写明、上台。

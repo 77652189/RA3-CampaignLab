@@ -81,7 +81,7 @@ import simtech  # noqa: E402
 import simtoggle  # noqa: E402
 import simunits  # noqa: E402
 import simlevel  # noqa: E402
-from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
+from engine.kernel import interfaces as kernel_interfaces, module as kernel_module, world as kernel_world  # noqa: E402
 import engine.modules  # noqa: E402,F401  (imports, so registers, every module file in it)
 import simloop  # noqa: E402
 import simworld  # noqa: E402
@@ -496,9 +496,7 @@ class Body(kernel_module.Thing):
                                                                 # 'attack' (attack-move, attack named: stops to fight)
     move_to: tuple = None                                       # where its last plain move sent it (held_up)
     fired_at: float = None                                      # a bombarder's last shot (seen by all a while)
-    life_end: int = None                                        # its LifetimeUpdate kills it after this frame's
-                                                                # scripts (simunits.lifetime, R1)
-    leaves: list = dataclasses.field(default_factory=list)      # what that death makes where it stood
+    leaves: list = dataclasses.field(default_factory=list)      # what its lifetime's death makes where it stood
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
     replace: bool = False                                       # building = its ReplaceSelfSpecialAbility: it turns into it
     unpack_end: int = None                                      # a structure made in the run: unpacking until then
@@ -560,6 +558,8 @@ class Body(kernel_module.Thing):
         was, hp = self.hp, self.max_hp * float(pct) / 100.0
         self.hp = max(self.health_floor, hp) if self.immortal else hp
         self.health_moved(was, self.hp)
+    FORWARDS = ('life_end',)    # fields moved into modules, still read outside: read only (test_kernel BODY_FORWARDS)
+    life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
@@ -930,7 +930,8 @@ class Sim:
         self.panel_log = []                 # groups of (t, text): the dialogue panel stacks subtitles, a group clears together
         self.asked, self.up = {}, []        # a 功能 caption asked for (flag -> t), and shown: (flag, asked, shown)
         self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
-        self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own))   # engine/kernel
+        self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own),   # engine/kernel
+                                        kill=lambda b, why: self._life().die_of_age(self, b, why, self.destroy))
         self.used = self.world.used         # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
         self.unmodeled = self.world.gaps    # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
@@ -1231,10 +1232,7 @@ class Sim:
             if self.declared[template]:
                 self.gap(GAP_WEAPON, template, f'XML 有 {", ".join(self.declared[template])}，读成没有武器')
         b.acquire =frozenset(simunits.acquire(template, self.own)) if b.weapons else frozenset()
-        frames, b.leaves = simunits.lifetime(template, self.own)
-        if frames is not None:                  # made in this frame's scripts (or, by a run event, at its start)
-            made = self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS))
-            b.life_end = made + frames
+        b.leaves = simunits.life_leaves(template, self.own)
         unpack = simunits.unpack_frames(template, self.own) if by and 'STRUCTURE' in b.kinds else 0
         if unpack:                              # made in the run (a map's own skip it): unpacks first -- adds no power
             v = np.float32(power_factor(*self.power(owner)))       # and does not fire meanwhile; RA3 1.13, work/re/l2_construction.md:

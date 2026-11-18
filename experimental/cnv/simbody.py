@@ -15,6 +15,7 @@ import importlib
 import math
 
 import simunits
+from engine.kernel import interfaces
 
 SELL_PERCENT, SELL_FRAMES = 0.5, 30          # SellPercentage (SDK default) and SellTime 2 s x 15 (BuildingBehavior)
 HOVER_DRIFT = 0.2               # a frame: a hovering plane's velocity (air_crash)
@@ -25,21 +26,21 @@ class Life:
         self.lose_of = {}              # template -> simunits.lose_health rule
 
     def expire(self, world, frame, destroy):
-        """R1: whatever's lifetime is up by `frame` dies (killed, as the game's LifetimeUpdate: NAMED_DESTROYED, gone
-        from areas at once -- bench 2026-11-07 engine_life, no body lingers) and leaves what its death makes, made
-        that frame (the ice core's wall)."""
+        """What is up by `frame` goes: a toppled prop's delay, a sale's (a lifetime: engine/modules/lifetime.py, the
+        expire cell's module since step M1)."""
         for b in world.living():
             if b.topple_end is not None and frame >= b.topple_end:
                 destroy(b, '倒伏后消失', delete=True)     # PropBody never exposes NAMED_DYING, even for one frame
                 continue
             if b.sell_end is not None and frame >= b.sell_end:
                 destroy(b, '卖掉了', delete=True)          # StructureSellUpdate: deleted, no death, no ruin
-                continue
-            if b.life_end is None or frame < b.life_end:
-                continue
-            world.used.add('lifetime')
-            destroy(b, '寿命到了')
-            for tmpl in b.leaves:
+
+    def die_of_age(self, world, b, why, destroy):
+        """The kernel's kill (World.kill) for a LifetimeUpdate: b dies (killed, NAMED_DESTROYED, gone from areas at
+        once -- bench 2026-11-07 engine_life, no body lingers) and leaves what its death makes, made that frame (the
+        ice core's wall; the death family's, until step M Body + death family)."""
+        destroy(b, why)
+        for tmpl in b.leaves:
                 n = world.add(f'#left {len(world.bodies)} of {b.name}', tmpl, b.owner, b.x, b.y, by=b.name, at=world.t)
                 n.team, n.angle = b.team, b.angle
                 world.note('留下', f'{tmpl}（{world.label(b)} 寿命到了）')
@@ -178,11 +179,15 @@ class Life:
                 world.used.add('lose health')
 
 
-def last_until(b, frame):
-    """A lifetime the template's bounded reader (simunits.lifetime) left out, set from outside: the body dies at
-    `frame` as any other (`Life.expire`). The skirmish AI's dodge read of a retail fixed LifetimeUpdate does this
-    (simai.Brain.micro_team; INFERRED: the frame it first sees the body as its birth)."""
-    b.life_end = frame
+def last_until(world, b, frame):
+    """A lifetime the template data port left out (retail LifetimeUpdate, simunits.OWN_ONLY), set from outside: the
+    body dies at `frame` as any other (engine/modules/lifetime.py), its module attached now when it has none. The
+    skirmish AI's dodge read of a retail fixed LifetimeUpdate does this (simai.Brain.micro_team; INFERRED: the frame
+    it first sees the body as its birth)."""
+    m = b.find(interfaces.Lifetime) if b.modules else None
+    if m is None:
+        m = world.world.attach(b, 'LifetimeUpdate')
+    m.set_die_frame(frame)
 
 
 def fill(b, lib, own):

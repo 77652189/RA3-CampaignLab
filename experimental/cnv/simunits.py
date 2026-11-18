@@ -1435,13 +1435,21 @@ def repair_measured_config(template, own=None):
     return bool(_inherited(template, own, read, None))
 
 
+OWN_ONLY = frozenset({'LifetimeUpdate'})   # read from a mission's own template only -- no inheritance, no retail -- as
+                                            # the reader each replaced (step M1: none of our scripts makes a retail
+                                            # object with a lifetime); reading the retail ones is a behaviour change
+
+
 def module_blocks(template, tag, own=None):
     """The template data port (docs/engine/sim-modules.md 3; engine.kernel.world.World's `blocks`): [(attributes
     text, inner text)] of every <tag> block (comments left out) of the nearest template up the inheritance chain
     (xml_chain) that has one; [] when none has, or the template's XML cannot be read. Step K1 checked it against the
-    AutoHealBehavior reader it replaced over all 3448 indexed templates: the same rule for each."""
+    AutoHealBehavior reader it replaced over all 3448 indexed templates: the same rule for each. A tag of OWN_ONLY
+    is read from the mission's own XML of the template alone."""
     def read(xml):
         return list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), tag))
+    if tag in OWN_ONLY:
+        return read((own or {}).get(template))
     try:
         return _inherited(template, own, read, [])
     except (OSError, ValueError):
@@ -1701,19 +1709,15 @@ def _dies_of(head, death):
     return death in words or f'+{death}' in words
 
 
-def lifetime(template, own=None):
-    """(frames, leaves) of a mission unit with a LifetimeUpdate, else (None, []): it is killed (its DeathType, not
-    deleted) `frames` after the frame it was made -- the seconds x 15, cut down (bench 2026-11-07 engine_life: a 30 s
-    wall 450 frames, a 5.5 s core 82); Min and Max apart: their middle (the game draws one between, a guess). leaves:
-    what its CreateObjectDie lists for that death type make where it stood (the ice core's wall, born the frame the
-    core dies). Retail templates are not read (none of our scripts makes one with a lifetime)."""
+def life_leaves(template, own=None):
+    """What a mission unit's death of age leaves (its LifetimeUpdate: engine/modules/lifetime.py, step M1), else []:
+    what its CreateObjectDie lists for the lifetime's DeathType, made where it stood (the ice core's wall, born the
+    frame the core dies). Retail templates are not read (none of our scripts makes one with a lifetime)."""
     xml = (own or {}).get(template)
     life = next(_blocks(xml, 'LifetimeUpdate'), None) if xml else None
     if life is None:
-        return None, []
-    lo, hi = _secs(_attr(life[0], 'MinLifetime')), _secs(_attr(life[0], 'MaxLifetime'))
+        return []
     death = _attr(life[0], 'DeathType', 'NORMAL')
-    frames = int((lo + hi) / 2 * LIFE_FPS + 1e-6)
     leaves = []
     for head, inner in _blocks(xml, 'CreateObjectDie'):
         if not _dies_of(next((h for h, _ in _blocks(inner, 'DieMuxData')), ''), death):
@@ -1722,7 +1726,7 @@ def lifetime(template, own=None):
         for h, body in _blocks(xml, 'ObjectCreationList'):
             if _attr(h, 'id') == ocl:
                 leaves += re.findall(r'<CreateObject>\s*([^<\s]+)\s*</CreateObject>', body)
-    return frames, leaves
+    return leaves
 
 
 _crush_memo = {}

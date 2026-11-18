@@ -45,6 +45,7 @@ import labpaths  # noqa: E402
 import sim  # noqa: E402
 import simunits  # noqa: E402
 import simworld  # noqa: E402
+from engine.modules import lifetime as lifetime_module  # noqa: E402
 
 FPS = 15
 DIFFICULTY = 'normal'
@@ -326,7 +327,8 @@ class SimWorld:
         power = world.m.ability(part, ability) if part in world.m.cast else None
         by = frozenset({world.m.cast[part].template}) if part in world.m.cast else frozenset()
         walls = [(b.x, b.y) for b in world.living() if b.life_end is not None and b.speed == 0 and not b.scenery]
-        life = simunits.lifetime(spec['seed'], world.own)[0] if spec.get('seed') else None
+        seed = simunits.module_blocks(spec['seed'], 'LifetimeUpdate', world.own)[:1] if spec.get('seed') else ()
+        life = lifetime_module.LifetimeData.parse(*seed[0]).frames if seed else None
         build = life / FPS if life else 0.0
         out = []
         for way, block, source in spec['ways']:

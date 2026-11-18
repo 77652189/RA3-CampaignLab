@@ -14,6 +14,7 @@ DT = 0.5               # seconds a tick (simloop.DT, sim.DT)
 WORLD_API = frozenset({
     'bodies',          # name -> Body, every body made (dead too), in the order made
     'living',          # () -> the bodies alive now, in bodies' order
+    'world',           # the kernel World (engine/kernel/world.py): a module attached late (simbody.last_until)
     'own',             # the template data handle (simunits)
     'xml_of',          # template -> its XML (the mission's own, else retail; '' where none), kept
     'fps',             # engine frames a second

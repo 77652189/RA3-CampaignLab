@@ -76,12 +76,25 @@ class Destroy(Interface):
 
 
 class Create(Interface):
+    """Told once its thing is made (World.build), with the frame it was made in (step M1)."""
     __slots__ = ()
 
-    def on_create(self):
+    def on_create(self, frame):
         raise NotImplementedError
 
     def on_build_complete(self):
+        raise NotImplementedError
+
+
+class Lifetime(Interface):
+    """LifetimeUpdate, one a thing (step M1): the frame its thing dies of age (None: not set), and setting it from
+    outside (the skirmish AI's late read of a retail lifetime, simbody.last_until)."""
+    __slots__ = ()
+
+    def die_frame(self):
+        raise NotImplementedError
+
+    def set_die_frame(self, frame):
         raise NotImplementedError
 
 
@@ -156,4 +169,5 @@ class AIUpdate(Interface):
 
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
-ONE = frozenset({Body, AIUpdate})       # a thing has at most one of these: Thing.find gives it, not a tuple
+FAMILY = (Lifetime,)                    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+ONE = frozenset({Body, AIUpdate, Lifetime})     # a thing has at most one of these: Thing.find gives it, not a tuple

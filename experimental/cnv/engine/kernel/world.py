@@ -9,9 +9,10 @@ def no_blocks(template, tag):
 
 
 class World:
-    def __init__(self, blocks=no_blocks, tags=factory.TAGS):
-        """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry."""
-        self.blocks, self.tags = blocks, tags
+    def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None):
+        """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry;
+        kill(thing, why): the host's death of a thing (World.kill)."""
+        self.blocks, self.tags, self._kill = blocks, tags, kill
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
@@ -27,7 +28,28 @@ class World:
         for m in mods:
             if isinstance(m, interfaces.Update):
                 self.schedule.add(m, frame)
+        for m in mods:
+            if isinstance(m, interfaces.Create):
+                m.on_create(frame)
         return mods
+
+    def attach(self, thing, tag, frame=None):
+        """One module of a registered tag made on a thing after it was made -- its data the tag's empty block, no
+        on_create -- and held from `frame` (default: the frame of the cell now running): the skirmish AI's late
+        lifetime (simbody.last_until). -> the module."""
+        cls = self.tags[tag]
+        m = cls(thing, cls.DATA.parse('', '').seal(), self)
+        thing.modules = tuple(thing.modules) + (m,)
+        if isinstance(m, interfaces.Update):
+            self.schedule.add(m, self.frame if frame is None else frame)
+        return m
+
+    def kill(self, thing, why):
+        """A module kills its thing (LifetimeUpdate): the host's death -- today Sim.destroy plus what the thing's
+        death leaves (the death family's, until step M Body + death family). A world with no host kills nothing."""
+        if self._kill is None:
+            raise RuntimeError(f'World.kill({thing.name!r}): this world has no host to kill with')
+        self._kill(thing, why)
 
     def blocks_of(self, template, tag):
         """The template data port's blocks of a tag, asked once a world (the port reads the XML files)."""

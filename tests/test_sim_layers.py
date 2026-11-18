@@ -87,6 +87,7 @@ SIM_NAMES_UNTIL_10['simproxy'] = {'Body', 'Sim', 'LEVELS'}
 # field -> the one file that may assign it (rule 3), for the blocks moved so far. Not yet the money dicts (money,
 # income, money_cap): scripts, selling, production, repairs, spies and simai still write them directly (simmoney.py)
 FIELD_OWNER = {'heal_at': 'engine.modules.autoheal', 'hurt': 'engine.modules.autoheal',
+               'life_end': 'engine.modules.lifetime',
                'mine': 'simmine', 'nodes': 'simmine', 'mined_to': 'simmine',
                'aura_cache': 'simmodifier', 'aura_beat': 'simmodifier', 'level_rate': 'simmodifier',
                'level_vision': 'simmodifier', 'shielded': 'simmodifier', 'taken': 'simmodifier', 'dealt': 'simmodifier',

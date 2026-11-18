@@ -50,6 +50,16 @@ class Thing:
                     m.on_remove()
 
 
+def forward(interface, read):
+    """A read-only attribute of a thing for a field moved into a module that outside code still reads (sim.Body
+    FORWARDS; docs/engine/sim-modules.md 10): read(the thing's `interface` module, one of interfaces.ONE), None when
+    it has none."""
+    def get(thing):
+        m = thing.find(interface) if thing.modules else None
+        return None if m is None else read(m)
+    return property(get)
+
+
 class Trigger:
     """An upgrade module's trigger (Generals UpgradeMux): TriggeredBy -- any one, or all with RequiresAllTriggers --
     and none of ConflictsWith. No TriggeredBy: never. Read only."""

@@ -21,6 +21,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import simrecord  # noqa: E402
 import simsmall  # noqa: E402
@@ -245,7 +247,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3625, 'Sim methods': 205, 'Body fields': 115, 'simunits defs': 154,
+CENTER = {'sim.py lines': 3623, 'Sim methods': 205, 'Body fields': 114, 'simunits defs': 154,
           'cells with old code': 36}
 
 
@@ -299,6 +301,54 @@ def test_centre_guard_bites():
     assert refilled != loop_src
     assert grown(center(loop_src=refilled))['cells with old code'] == (CENTER['cells with old code'] + 1,
                                                                        CENTER['cells with old code'])
+
+
+# Body fields moved into modules that outside code still reads (module_plan 1): read-only forwards, listed in
+# Body.FORWARDS (the frame record shows them as the fields they were). Only shrinks: a forward goes when its last
+# outside reader asks the module's interface itself.
+BODY_FORWARDS = {'life_end': 'LifetimeUpdate'}
+
+
+def body_forwards(sim_src=None):
+    """(Body.FORWARDS, the class-level names bound to kernel_module.forward(...), any of those with a setter)."""
+    sim_src = sim_src if sim_src is not None else (CNV / 'sim.py').read_text(encoding='utf-8')
+    body = next(n for n in ast.parse(sim_src).body if isinstance(n, ast.ClassDef) and n.name == 'Body')
+    listed, bound = (), set()
+    for n in body.body:
+        if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name):
+            if n.targets[0].id == 'FORWARDS':
+                listed = tuple(ast.literal_eval(n.value))
+            elif isinstance(n.value, ast.Call) and getattr(n.value.func, 'attr', '') == 'forward':
+                bound.add(n.targets[0].id)
+    setters = {d.value.id for n in body.body if isinstance(n, ast.FunctionDef) for d in n.decorator_list
+               if isinstance(d, ast.Attribute) and d.attr == 'setter' and isinstance(d.value, ast.Name)} & bound
+    return listed, bound, setters
+
+
+def test_body_forwards_are_read_only_listed_and_only_shrink():
+    listed, bound, setters = body_forwards()
+    assert set(listed) == bound, f'Body.FORWARDS {listed} and the forward(...) attributes {sorted(bound)} differ'
+    assert not setters, f'a forward is written: {setters}'
+    assert set(listed) <= set(BODY_FORWARDS), f'a new forward: {set(listed) - set(BODY_FORWARDS)}'
+    assert set(listed) == set(BODY_FORWARDS), f'a forward went: take it off BODY_FORWARDS {set(BODY_FORWARDS) - set(listed)}'
+
+
+def test_forward_guard_bites():
+    src = (CNV / 'sim.py').read_text(encoding='utf-8')
+    more = src.replace("    FORWARDS = ('life_end',)", "    FORWARDS = ('life_end', 'hp')", 1)
+    assert more != src and set(body_forwards(more)[0]) != body_forwards(more)[1]
+    unlisted = src.replace("    FORWARDS = ('life_end',)", "    FORWARDS = ()", 1)
+    assert body_forwards(unlisted)[1] - set(body_forwards(unlisted)[0]) == {'life_end'}
+    written = src.replace('    @health.setter\n', '    @life_end.setter\n', 1)
+    assert body_forwards(written)[2] == {'life_end'}
+
+
+def test_a_forward_reads_the_module_and_cannot_be_written():
+    s =simsmall.small_world([('p', 'AlliedPowerPlant', 'Player_1', 0.0, 0.0)])
+    p = s.bodies['p']
+    assert p.life_end is None and 'life_end' not in vars(p)
+    with pytest.raises(AttributeError):
+        p.life_end = 3
 
 
 # --- 3. no module-level mutable state -----------------------------------------------------------------------------
