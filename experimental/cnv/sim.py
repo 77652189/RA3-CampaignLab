@@ -114,7 +114,6 @@ LINGER = 0.0                   # a killed unit's death (its slow death): still i
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
 from simworld import GRID  # noqa: E402,F401  (routing cells, world units; L0)
-COLUMN_GAP = 44.0              # infantry column march's ends, across and back (bench 11-09 a01: ~44-50; Generals 22)
 HOLD_SPOTS = True              # every move's goal kept off other units' spots (Sim.claims): the game's (bench 11-09,
                                # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
 ORE_PLATE = (60.0, 45.0)        # an ore node's base plate, half-extents (OreNode.xml's last BOX): Sim.goal_off_nodes
@@ -154,8 +153,8 @@ ALIGN = {
                   'objects and ones out of the partition count as clear -- a guess why)',
     'group move': 'units ordered together stop apart, each where it stood from the one nearest the goal (cut to 6 '
                   'radii) on a free spot (Generals AIGroup::groupMoveToPosition; RA3 not read)',
-    'column march': '3+ infantry sent 100+ off stop in 3 columns 22 apart, rows 22 back (Generals '
-                    'friend_moveInfantryToPos, its ends only; the thresholds 3 / 100 INFERRED; RA3 not read)',
+    'column march': '3+ infantry sent together stop in a block, ceil(sqrt(n)) files 40 apart, rows 40 back from the '
+                    'point, turned with the way in (bench 2026-11-17 engine_column; simpath.block)',
     'death linger': 'a killed unit is gone from areas and counts from the next reading: LINGER 0 (bench 2026-10-28, '
                     'probe death; the Generals source keeps it while it dies, 源码 4.2)',
     'both endings': '未对齐: won and lost in one frame: Generals runs the frame\'s later scripts and takes the last; '
@@ -1504,33 +1503,11 @@ class Sim:
         """simorder.order_group (L5)."""
         return simorder.order_group(self, self._order_peers(), bodies, where, attacking, on_grid)
 
-    def column_ends(self, foot, p, attacking, given, skip):
-        """Generals' infantry column march (AIGroup::friend_moveInfantryToPos), its ends only: 3 columns (5 from 16
-        men) across the way in, COLUMN_GAP apart, filled by where the men stand across it; in each column the front man
-        at the point's row, the next COLUMN_GAP behind. Bench 2026-11-09 (testbench/retail_q1_spots.py, a01's squad):
-        3 columns x 2 rows, ~44-50 across and ~48 back, no side step on the second row -- Generals' 2.2 cells and its
-        every-other-one cell aside read as RA3 with 20-unit cells and no side step. The way in is taken straight from
-        the man nearest the group's middle (Generals: the last leg of one wide ground path); the column's own way
-        there and the conditions' constants (AIData MinDistanceForGroup, here 100; MinInfantryForGroup, here 3) are
-        INFERRED. Bench 2026-11-08 question 1: the squad's middle ~18-23 short of the point."""
-        mx, my = sum(b.x for b in foot) / len(foot), sum(b.y for b in foot) / len(foot)
-        mid = min(foot, key=lambda b: (b.x - mx) ** 2 + (b.y - my) ** 2)
-        ex, ey = p[0] - mid.x, p[1] - mid.y
-        n = math.hypot(ex, ey) or 1.0
-        ex, ey = ex / n, ey / n
-        nx, ny = -ey, ex
-        cols = 5 if len(foot) >= 16 else 3
-        across = sorted(foot, key=lambda b: -((b.x - mid.x) * nx + (b.y - mid.y) * ny))
-        size = max(len(foot) // cols if cols == 5 else (len(foot) + 1) // 3, 1)
-        column = {id(b): min(k // size, cols - 1) - cols // 2 for k, b in enumerate(across)}
-        rows = collections.Counter()
-        for b in sorted(foot, key=lambda b: -((b.x - mid.x) * ex + (b.y - mid.y) * ey)):    # front first
-            c = column[id(b)]
-            r = rows[c]
-            rows[c] += 1
-            side = COLUMN_GAP * c
-            want = (p[0] + side * nx - r * COLUMN_GAP * ex, p[1] + side * ny - r * COLUMN_GAP * ey)
-            self.order_move(b, want, attacking, given, skip)
+    def column_ends(self, foot, p, attacking, given, skip, on_grid=False):
+        """An infantry group's ends (simpath.block, bench engine_column): each man sent to his spot in the block, a
+        move's goal like any other (snapped by order_move's free_spot when on_grid)."""
+        for b, q in zip(foot, simpath.block([(b.x, b.y) for b in foot], p)):
+            self.order_move(b, q, attacking, given, skip, on_grid=on_grid)
             given.append(tuple(b.dest or (b.x, b.y)) + (b.radius,))
 
     def goal_off_nodes(self, b, want):

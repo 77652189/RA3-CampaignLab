@@ -92,8 +92,8 @@ def order_group(world, peers, bodies, where, attacking, on_grid=False):
     off spots already held (free_spot). Bench 2026-11-08 acceptance question 1 (a01's squad, 4 Peacekeepers + 2
     dogs): the squad's middle ~18-23 short of the point, the units apart -- the simulator had all six on the point.
     INFERRED for RA3 (its group move not read, docs/engine/pathing.md 5: the script's MOVE_TEAM_TO hands the team
-    to one group command): Generals' column march for a big, far group (friend_moveInfantryToPos) and the line
-    check from the group's goal to the spot are left out."""
+    to one group command): the line check from the group's goal to the spot is left out. Two or more infantry stand
+    in their block instead (column_ends -> simpath.block, bench 2026-11-17 engine_column)."""
     movers = [b for b in bodies if b and b.alive and b.speed > 0 and 'IMMOBILE' not in b.status]
     p = world.point(where) if isinstance(where, str) else where
     if len(movers) < 2 or p is None:
@@ -104,9 +104,9 @@ def order_group(world, peers, bodies, where, attacking, on_grid=False):
     movers.sort(key=lambda b: (b.x - p[0]) ** 2 + (b.y - p[1]) ** 2)
     given = []                                  # (x, y, radius) spots handed out to the group so far
     foot = [b for b in movers if 'INFANTRY' in b.kinds]
-    if len(foot) >= 3 and math.hypot(movers[0].x - p[0], movers[0].y - p[1]) >= 100:
+    if len(foot) >= 2:      # bench engine_colgate: 2 men, and 6 sent 20 short, stand in the block too
         world.used.add('column march')
-        peers.column_ends(foot, p, attacking, given, movers)
+        peers.column_ends(foot, p, attacking, given, movers, on_grid)
         movers = [b for b in movers if b not in foot]
     if not movers:
         return

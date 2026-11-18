@@ -148,3 +148,43 @@ def spot(want, radius, held, open_at, grid, on_grid=True):
             if free(q) and open_at(*q):
                 return q
     return None
+
+
+BLOCK = 40.0    # bench engine_column: an infantry group's rows and files stand 40 apart (two cells), every count
+
+
+def block(starts, point):
+    """Where each of a group of infantry sent to `point` as one team stands (the R3 step X third part), as unsnapped
+    spots in the order of `starts` ((x, y) each); each is then a move's goal like any other (`spot`: snapped by the
+    footprint). The rule, from the bench (2026-11-17 `engine_column lanes`, `engine_crowd big`, `engine_colgate two`,
+    checks/engine_column.py; read by work/re/scripts/x_column.py), Peacekeepers sent by one MOVE_TEAM_TO:
+      - any group of two or more, however near (two men, side by side or one behind the other, stood side by side 40
+        apart; six sent 20 short of the point stood in the same block as six sent from 500);
+      - ceil(sqrt(n)) files across (2, 3 -> 2, 6 -> 3, 10 -> 4, 16 -> 4), rows BLOCK back, files BLOCK apart, each row
+        centred on the point (the last one too: 10 men 4 + 4 + 2, 3 men 2 + 1); the front row on the point, the rest
+        behind it -- the group's middle short of the point (6 men: 20; a01's squad, 2026-11-08, ~18-23);
+      - the block turned with the way in (from the north and from the south-west the same block, turned): every
+        stop is point + the turned offset snapped to the centre of the cell it is in, the 45-degree lane included;
+      - the men taken nearest the point first along the way in for the rows, and in each row by where they stand
+        across it (right to left as they walk in) for the files;
+      - the way in from the men's middle to the point: six men standing anyhow (no two level or abreast, their middle
+        7 off the straight line in) stood man for man where this puts them, the slightly turned block snapped.
+    INFERRED: the way in over a first leg round a wall (the bench's ground was open), which of two men level along or
+    abreast goes first (the bench's blocks tie; kept in `starts`' order), and a group of infantry with vehicles (the
+    vehicles keep order_group's offsets)."""
+    n = len(starts)
+    mx, my = sum(x for x, _ in starts) / n, sum(y for _, y in starts) / n
+    ux, uy = point[0] - mx, point[1] - my
+    d = math.hypot(ux, uy)
+    ux, uy = (ux / d, uy / d) if d > 1e-6 else (1.0, 0.0)
+    lx, ly = -uy, ux
+    files = math.ceil(math.sqrt(n) - 1e-9)
+    ahead = sorted(range(n), key=lambda k: -(starts[k][0] * ux + starts[k][1] * uy))
+    out = [None] * n
+    for row in range(0, n, files):
+        men = sorted(ahead[row:row + files], key=lambda k: starts[k][0] * lx + starts[k][1] * ly)
+        back = -(row // files) * BLOCK
+        for i, k in enumerate(men):
+            side = (i - (len(men) - 1) / 2) * BLOCK
+            out[k] = (point[0] + back * ux + side * lx, point[1] + back * uy + side * ly)
+    return out

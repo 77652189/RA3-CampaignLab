@@ -95,16 +95,19 @@ def test_question_1_the_squad_walks_to_the_point(mission):
 
 
 def test_question_1_the_squad_stands_round_the_point(mission):
-    """The squad stops apart, its middle short of the point: a column march's ends (Sim.column_ends). Bench 11-09
-    (testbench/retail_q1_spots.py, units as blobs): 3 columns x 2 rows, the front row on the point, ~44-50 across
-    and ~48 back, the middle ~22 short; the farthest ~76 off (pixel centres sit above the feet: ~10 off)."""
+    """The squad stops apart, its middle short of the point: an infantry group's block (Sim.column_ends ->
+    simpath.block). Bench 11-09 (testbench/retail_q1_spots.py, units as blobs): 3 columns x 2 rows, the front row on
+    the point, ~44-50 across and ~48 back, the middle ~22 short; the farthest ~76 off (pixel centres sit above the
+    feet: ~10 off). The closest pair from the probe bench (11-17 checks/engine_column.py, lane d6): a block turned off
+    the world's axes, each spot snapped to its cell's centre, has neighbours 20 * sqrt(2) apart (27.6 there); the
+    blobs' ~42 was a screenshot reading (INFERRED which is right for a01's squad, its dogs included: no probe on a01)."""
     s = sim.Sim(mission, script='22.6 走 队 Player_1/teamPlayer_1 去 @505.2,1576.7')
     s.advance(int(32 * 15))
     crew = [b for b in s.living() if b.owner == 'Player_1']
     cx, cy = sum(b.x for b in crew) / len(crew), sum(b.y for b in crew) / len(crew)
     assert 10 <= math.hypot(cx - 505.2, cy - 1576.7) <= 35
     apart = min(math.hypot(a.x - b.x, a.y - b.y) for i, a in enumerate(crew) for b in crew[i + 1:])
-    assert apart >= 38, apart                                       # bench: the closest pair ~42
+    assert apart >= 20 * math.sqrt(2) - 1, apart                    # probe bench: diagonal neighbours 27.6
     assert max(math.hypot(b.x - 505.2, b.y - 1576.7) for b in crew) <= 75
 
 
