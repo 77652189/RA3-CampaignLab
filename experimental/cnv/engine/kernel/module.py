@@ -42,10 +42,11 @@ class ModuleData:
 
 class Module:
     """One module instance. DATA: its data class; TAGS: the XML tags it is registered under (factory.module);
-    STATE: its state fields (World.snapshot, step S)."""
+    STATE: its state fields (World.snapshot, step S; the frame record shows the set ones among its thing's fields).
+    world: the World it lives in -- for the kernel's services (the audit set), not to reach other things."""
     DATA = ModuleData
     TAGS = ()
     STATE = ()
 
-    def __init__(self, thing, data):
-        self.thing, self.data = thing, data
+    def __init__(self, thing, data, world=None):
+        self.thing, self.data, self.world = thing, data, world

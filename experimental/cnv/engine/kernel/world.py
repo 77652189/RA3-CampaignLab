@@ -14,6 +14,7 @@ class World:
         self.blocks, self.tags = blocks, tags
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
+        self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
         self.used = set()       # the audit set: rules the run leaned on
         self.gaps = {}          # (kind, name) -> {'n' times, 't' first met, 'what' first note} (Sim.gap writes it)
 
@@ -21,11 +22,24 @@ class World:
         """Make a thing's modules (none unless a tag is registered) and hold its update modules from `frame`."""
         if not self.tags:
             return ()
-        mods = factory.build(thing, self.blocks, self.data, self.tags)
+        mods = factory.build(thing, self.blocks_of, self.data, self.tags, self)
         for m in mods:
             if isinstance(m, interfaces.Update):
                 self.schedule.add(m, frame)
         return mods
+
+    def blocks_of(self, template, tag):
+        """The template data port's blocks of a tag, asked once a world (the port reads the XML files)."""
+        key = (template, tag)
+        if key not in self.block_lists:
+            self.block_lists[key] = tuple(self.blocks(template, tag))
+        return self.block_lists[key]
+
+    def drop(self, thing):
+        """A thing leaves the world (taken out of its registry): its update modules leave the schedule. None: none."""
+        for m in getattr(thing, 'modules', ()):
+            if isinstance(m, interfaces.Update):
+                self.schedule.remove(m)
 
     def wake(self, module, frame):
         self.schedule.wake(module, frame)

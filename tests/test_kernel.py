@@ -42,8 +42,8 @@ class Ticker(module.Module, interfaces.Update):
     PHASE = 'autoheal'
     STATE = ('runs',)
 
-    def __init__(self, thing, data):
-        super().__init__(thing, data)
+    def __init__(self, thing, data, world=None):
+        super().__init__(thing, data, world)
         self.runs = []
 
     def update(self, frame):
@@ -123,8 +123,8 @@ def test_find_is_by_interface_and_body_is_one():
     assert t.find(interfaces.Body) is None
 
 
-def test_a_body_is_a_thing_with_no_modules_field_while_none_is_registered():
-    s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)], model=False)
+def test_a_body_is_a_thing_with_no_modules_field_while_its_template_has_no_registered_block():
+    s = simsmall.small_world([('a', 'AlliedPowerPlant', 'Player_1', 0.0, 0.0)], model=False)    # no AutoHealBehavior
     b = s.bodies['a']
     assert isinstance(b, module.Thing) and b.modules == () and 'modules' not in vars(b)
     assert s.unmodeled is s.world.gaps and s.used is s.world.used
@@ -202,8 +202,8 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3640, 'Sim methods': 207, 'Body fields': 115, 'simunits defs': 154,
-          'cells not on the schedule': 37}
+CENTER = {'sim.py lines': 3640, 'Sim methods': 205, 'Body fields': 115, 'simunits defs': 154,
+          'cells not on the schedule': 36}
 
 
 def center(sim_src=None, units_src=None, loop_src=None):
@@ -241,7 +241,8 @@ def test_centre_guard_bites():
     sim_src = (CNV / 'sim.py').read_text(encoding='utf-8').replace('class Sim:\n', 'class Sim:\n    def extra(self):\n        pass\n', 1)
     assert grown(center(sim_src=sim_src))['Sim methods'] == (now['Sim methods'] + 1, CENTER['Sim methods'])
     loop_src = (CNV / 'simloop.py').read_text(encoding='utf-8').replace(
-        "def autoheal(s, frame, tick):\n", "def autoheal(s, frame, tick):\n    s.world.schedule.run('autoheal', frame)\n", 1)
+        "def passive_area_heal(s, frame, tick):\n",
+        "def passive_area_heal(s, frame, tick):\n    s.world.schedule.run('passive_area_heal', frame)\n", 1)
     assert center(loop_src=loop_src)['cells not on the schedule'] == now['cells not on the schedule'] - 1
 
 

@@ -1936,7 +1936,7 @@ def test_scripts6_else_random_and_timers_as_the_bench():
     assert by[3][2] == 1 and by[5][2] == 41 and by[7][2] == 43 and by[11][2] == 63, by
 
 
-# ---- self-healing (sim.Sim.autoheal, simunits.autoheal): bench 2026-11-06 engine_heal (docs/engine/heal.md): an
+# ---- self-healing (engine/modules/autoheal.py, AutoHealBehavior): bench 2026-11-06 engine_heal (docs/engine/heal.md): an
 # Apocalypse (3000 health, AutoHealBehavior 2 points every 7 frames, waits 15 frames after a hurt) hurt 600 at Go:
 # 低血 = 1 x frames below 81 % + 1000 x frames below 82 % -> 219114 (81 % again after 114 frames, 82 % after 219);
 # b: 30 more at frame 40 -> 230 frames below 81 %, below 82 % to the end. (The state / rank-gated heals c, d, e are not

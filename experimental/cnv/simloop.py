@@ -76,7 +76,7 @@ def lose_health(s, frame, tick):
 
 
 def autoheal(s, frame, tick):
-    s.heal.autoheal(s, frame)
+    s.world.schedule.run('autoheal', frame)      # engine/modules/autoheal.py
 
 
 def passive_area_heal(s, frame, tick):

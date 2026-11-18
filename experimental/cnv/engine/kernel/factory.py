@@ -23,15 +23,16 @@ def module(*tags):
     return register
 
 
-def build(thing, blocks, data, tags=TAGS):
+def build(thing, blocks, data, tags=TAGS, world=None):
     """The modules of a thing: for each registered tag, one instance per block of it in the template.
     blocks(template, tag) -> [(head, inner)] (the template data port); data: the world's parse cache
-    {(template, tag, index): ModuleData}; tags: the registry (a test passes its own)."""
+    {(template, tag, index): ModuleData}; tags: the registry (a test passes its own); world: the World the modules
+    live in (Module.world)."""
     out = []
     for tag, cls in tags.items():
         for k, (head, inner) in enumerate(blocks(thing.template, tag)):
             key = (thing.template, tag, k)
             if key not in data:
                 data[key] = cls.DATA.parse(head, inner).seal()
-            out.append(cls(thing, data[key]))
+            out.append(cls(thing, data[key], world))
     return tuple(out)

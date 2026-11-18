@@ -1435,25 +1435,17 @@ def repair_measured_config(template, own=None):
     return bool(_inherited(template, own, read, None))
 
 
-def autoheal(template, own=None):
-    """(amount, every, wait): AutoHealBehavior of a template that mends from the start, with no state or rank in the
-    way -- HealingAmount points every `every` frames, the first `wait` frames after a hurt (engine_heal a / b, bench
-    11-06, docs/engine/heal.md 1: the intervals are floor(15 x seconds) frames, 0.5 s is 7). None without one (the
-    state-gated and rank-gated ones are not modelled: InitiallyActive false or an ObjectStatusValidation)."""
+def module_blocks(template, tag, own=None):
+    """The template data port (docs/engine/sim-modules.md 3; engine.kernel.world.World's `blocks`): [(attributes
+    text, inner text)] of every <tag> block (comments left out) of the nearest template up the inheritance chain
+    (xml_chain) that has one; [] when none has, or the template's XML cannot be read. Step K1 checked it against the
+    AutoHealBehavior reader it replaced over all 3448 indexed templates: the same rule for each."""
     def read(xml):
-        for head, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'AutoHealBehavior'):
-            if _attr(head, 'InitiallyActive') == 'false' or _attr(head, 'ObjectStatusValidation') or \
-                    '<ObjectStatusValidation' in inner or \
-                    _num(_attr(head, 'Radius'), 0.0) > 0:
-                continue
-            return (int(_num(_attr(head, 'HealingAmount'), 0.0)),
-                    int(15 * _secs(_attr(head, 'HealingDelay') or '1s')),
-                    int(15 * _secs(_attr(head, 'StartHealingDelay') or '0s')))
-        return None
+        return list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), tag))
     try:
-        return _inherited(template, own, read, None)
+        return _inherited(template, own, read, [])
     except (OSError, ValueError):
-        return None
+        return []
 
 
 def lose_health(template, own=None):

@@ -1,8 +1,8 @@
-"""L2 self-healing (ADR 0029, docs/engine/sim-layers.md): AutoHealBehavior and PassiveAreaEffectBehavior.
+"""L2 self-healing (ADR 0029, docs/engine/sim-layers.md): PassiveAreaEffectBehavior. (AutoHealBehavior is the kernel
+module engine/modules/autoheal.py since step K1.)
 
-`Heal` keeps the template rules read so far (one cache each) and runs one frame of each rule over the world it is
-given; it reaches the world only through simworld.WORLD_API. The frame loop calls it (simloop's autoheal and
-passive_area_heal cells). Fields it owns on a body: heal_at, heal_seen.
+`Heal` keeps the template rules read so far and runs one frame of them over the world it is given; it reaches the
+world only through simworld.WORLD_API. The frame loop calls it (simloop's passive_area_heal cell).
 """
 import math
 
@@ -11,36 +11,7 @@ import simunits
 
 class Heal:
     def __init__(self):
-        self.heal_of = {}              # template -> simunits.autoheal rule
         self.passive_area_of = {}      # template -> simunits.passive_area rule (False: an untested configuration)
-
-    def autoheal(self, world, frame):
-        """AutoHealBehavior (simunits.autoheal; engine line C round 7, engine_heal a / b): a hurt body (health below
-        what it was last frame) is mended `amount` every `every` frames, the first `wait` frames after the latest hurt;
-        full health stops it. The state- and rank-gated ones are not modelled."""
-        cache = self.heal_of
-        for b in world.bodies.values():
-            if not b.alive:
-                continue
-            if b.template not in cache:
-                cache[b.template] = simunits.autoheal(b.template, world.own)
-            rule = cache[b.template]
-            if not rule or not rule[0]:
-                continue
-            amount, every, wait = rule
-            seen = getattr(b, 'heal_seen', None)
-            if seen is not None and b.hp < seen - 1e-9:
-                b.heal_at = frame + max(wait, 1)
-            if b.hp < b.max_hp - 1e-9:
-                if getattr(b, 'heal_at', None) is None:
-                    b.heal_at = frame + every
-                if frame >= b.heal_at:
-                    b.hp = min(b.max_hp, b.hp + amount)
-                    b.heal_at = frame + every
-            else:
-                b.heal_at = None
-            b.heal_seen = b.hp
-            world.used.add('autoheal')
 
     def passive_area_heal(self, world):
         """E70/E163 single engineer, own/allied infantry, scripted status on/off.

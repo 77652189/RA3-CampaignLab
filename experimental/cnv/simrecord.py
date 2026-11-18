@@ -70,6 +70,20 @@ def canon(v, depth=0):
     return '<' + type(v).__name__ + '>'
 
 
+def body_state(b):
+    """A body's fields as the record shows them: its own (not `modules`), and beside them the STATE fields its kernel
+    modules have set -- a field moved off the body into a module records as it did on the body (step K1 on)."""
+    d = {k: v for k, v in vars(b).items() if k != 'modules'}
+    for m in b.modules:
+        own = vars(m)
+        for k in m.STATE:
+            if k in own:
+                if k in d:
+                    raise ValueError(f'{b.name}: {type(m).__name__}.{k} is already a field of the body')
+                d[k] = own[k]
+    return d
+
+
 class Recorder:
     def __init__(self, s, out):
         self.s, self.out, self.n = s, out, 0
@@ -85,7 +99,7 @@ class Recorder:
         s = self.s
         parts = [f'{where} t={s.t!r}']
         for b in s.bodies.values():
-            d = vars(b)
+            d = body_state(b)
             parts.append(b.name + '|' + ';'.join(f'{k}={canon(d[k])}' for k in sorted(d) if k not in SKIP_BODY))
         for f in SIM_FIELDS:
             if f == 'log':

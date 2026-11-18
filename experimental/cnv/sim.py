@@ -82,6 +82,7 @@ import simtoggle  # noqa: E402
 import simunits  # noqa: E402
 import simlevel  # noqa: E402
 from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
+from engine.modules import autoheal as _autoheal  # noqa: E402,F401  (registers AutoHealBehavior)
 import simloop  # noqa: E402
 import simworld  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
@@ -543,6 +544,10 @@ class Body(kernel_module.Thing):
             return
         self.hp = max(self.health_floor if self.immortal else 0.0, self.hp - amount)
 
+    def mend(self, amount):
+        """Health up by `amount`, at most the maximum: what a module heals by until the Body module owns health."""
+        self.hp = min(self.max_hp, self.hp + amount)
+
     @property
     def health(self):
         """Health in percent of its maximum (what the scripts read); a PropBody's reads 0 (engine_propbody a)."""
@@ -923,7 +928,7 @@ class Sim:
         self.panel_log = []                 # groups of (t, text): the dialogue panel stacks subtitles, a group clears together
         self.asked, self.up = {}, []        # a 功能 caption asked for (flag -> t), and shown: (flag, asked, shown)
         self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
-        self.world = kernel_world.World()   # the kernel's world (engine/kernel): schedule, module data, audit, gaps
+        self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own))   # engine/kernel
         self.used = self.world.used         # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
         self.unmodeled = self.world.gaps    # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
@@ -1155,7 +1160,7 @@ class Sim:
         """A Body of the template that is not in the world (made by add, then taken out of the registry again):
         what the skirmish AI reads a template's figures off (simai Brain._proto)."""
         b = self.add(name, template, owner, -1e6, -1e6)
-        self.bodies.pop(name, None)
+        self.world.drop(self.bodies.pop(name))
         return b
 
     def add(self, name, template, owner, x, y, by='', at=0.0, team=''):
@@ -1242,6 +1247,7 @@ class Sim:
         mods = self.world.build(b, self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS)))
         if mods:
             b.modules = mods
+        self.world.drop(self.bodies.get(name))  # a body under the same name leaves the world
         self.bodies[name] = b
         rules = self.__dict__.setdefault('_spawn_rules', {})
         if template not in rules:
@@ -2514,12 +2520,6 @@ class Sim:
     def lose_health(self, frame):
         """simbody.Life.lose_health (L2): LoseHealthUpdate while the body's own toggle carries its statuses."""
         self._life().lose_health(self, frame, self.toggles_of)
-
-    def autoheal(self, frame):
-        self.heal.autoheal(self, frame)                 # simheal.Heal (L2)
-
-    def passive_area_heal(self):
-        self.heal.passive_area_heal(self)
 
     def release(self):
         """The script events anchored to a flag that is up now: due `delta` after this moment."""

@@ -11,7 +11,7 @@ def small_world(objects=(), model=True, map=island):
     model (the frame loop's scripts cell runs the Python scripts)."""
     s = sim.Sim(parts.Mission(name='T', map=map, scripts=[]), model=model)
     for name in list(s.bodies):
-        del s.bodies[name]
+        s.world.drop(s.bodies.pop(name))
     for name, template, owner, x, y in objects:
         s.add(name, template, owner, x, y)
     return s
