@@ -41,7 +41,7 @@ def go_to(world, b, target, reach, face, frame_movers, topples):
         b.stood_for = b.dest
     b.jet_motion = simjet.start(world, b, path)
     points = [(b.x, b.y)] + path
-    b.frame_move = world.eng is not None and (b.jet_motion is not None or any(o.alive and simtopple.crosses(b, o, a, z, world.own)
+    b.frame_move = (b.jet_motion is not None or any(o.alive and simtopple.crosses(b, o, a, z, world.own)
                                               for o in topples if o is not b
                                               for a, z in zip(points, points[1:])))
     if b.frame_move:

@@ -3139,15 +3139,14 @@ class Sim:
                 self.at_site(b, walked - left)
             if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):
                 self.crush_along(b, x0, y0)
-                if precise or self.eng is None:
-                    import simtopple
+                if precise:                    # toppled only frame by frame: a way across one is a frame mover's
+                    import simtopple           # (simlocomotion.go_to), with or without the model (bench engine_crush)
                     for o in self.topples:
                         if not o.alive or o.toppled or o.crushable is None or b.crusher <= o.crushable:
                             continue
                         if not simtopple.crosses(b, o, (x0, y0), (b.x, b.y), self.own):
                             continue
-                        speed = b.drive_speed if precise else b.speed
-                        o.find(kernel_interfaces.Topple).knock(self.frame_now(), speed / simunits.LIFE_FPS)
+                        o.find(kernel_interfaces.Topple).knock(self.frame_now(), b.drive_speed / simunits.LIFE_FPS)
             self.change()
         self.attachment_tick()
         # what follows a coarse move in the frame (follow_due, capture_due, infiltrators.tick, auto_kill_due) are
