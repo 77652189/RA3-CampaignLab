@@ -112,7 +112,6 @@ ATTACK_SLACK = 10.0             # R3: an attacker stops this far inside its rang
 from simmodifier import UNDERSIZE  # noqa: E402,F401  (a weapon reach less this, L2)
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 SPREAD = 30.0                   # a reinforcement team's units this far apart round its waypoint (Sim.reinforce, INFERRED)
-from simtoggle import TOGGLE_UNPACK_LAG  # noqa: E402,F401  (a toggle's unpack lag, L2)
 LINGER = 0.0                   # a killed unit's death (its slow death): still in the game's name cache, where it fell
                                 # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
                                 # the area from the reading the kill shows in; the guess was 3 s
@@ -384,8 +383,6 @@ class Body(kernel_module.Thing):
                                                                 # + the modifiers' (modify)
     slots: object = None                                        # simunits.weapon_sets: the weapons chosen by status (None: fixed)
     auras_on: dict = dataclasses.field(default_factory=dict)   # modifier id -> (until frame, xml) an aura hung on it
-    armor_up: bool = False                                    # retail miner toggle, owned separately from script bits
-    toggle_at: dict = dataclasses.field(default_factory=dict)  # toggle module index -> its ToggleState (0 at the start)
     shielded: bool = False                                      # INVULNERABLE + Iron Curtain bits on it (simunits.effect)
     taken: float = 1.0                                          # ARMOR factor: damage taken x (INFERRED)
     cold: float = 0.0                                           # the cryo beam's secondary damage held (deal, R freeze)
@@ -469,7 +466,8 @@ class Body(kernel_module.Thing):
         self.hp = max(self.health_floor, hp) if self.immortal else hp
         self.health_moved(was, self.hp)
     # fields moved into modules, still read outside: read only (test_kernel BODY_FORWARDS)
-    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at')
+    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
+                'toggle_at', 'armor_up')
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
@@ -478,6 +476,8 @@ class Body(kernel_module.Thing):
     crushable = kernel_module.forward(kernel_interfaces.Crush, lambda m: m.crushable_level())  # a lower level
     deposit = kernel_module.forward(kernel_interfaces.Deposit, lambda m: m.rules())     # step M4: (bonus, amount, frames)
     deposit_at = kernel_module.forward(kernel_interfaces.Deposit, lambda m: m.next_frame())
+    toggle_at = kernel_module.forward(kernel_interfaces.Toggle, simtoggle.toggle_at, {})   # step M5: {index: state}
+    armor_up = kernel_module.forward(kernel_interfaces.Toggle, simtoggle.armor_up, False)  # the miner's armour
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
@@ -853,7 +853,8 @@ class Sim:
         self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own),   # engine/kernel
                                         kill=lambda b, why: self._life().die_of_age(self, b, why, self.destroy),
                                         remove=lambda b, why: self.destroy(b, why, delete=True),
-                                        pay=lambda b, amount: self.wallet.deposit(b.owner, amount))
+                                        pay=lambda b, amount: self.wallet.deposit(b.owner, amount),
+                                        toggled=lambda b, m: simtoggle.entered(self, b, m, self.modify))
         self.used = self.world.used         # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
         self.unmodeled = self.world.gaps    # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
@@ -2703,33 +2704,20 @@ class Sim:
         self._harm().inform_launch(self, target, attacker, weapon, count)
 
     def toggles_of(self, b):
-        """simunits.template_toggles for b's template, kept."""
+        """The rules of b's template's toggle modules (engine/modules/toggle.py, step M5), in their blocks' order --
+        the data its modules get (World.data_of), kept: Sim.add reads the first states before the modules are made.
+        A Sim built without __init__ reads them through a world of its own."""
         cache = self.__dict__.setdefault('_toggles', {})
         if b.template not in cache:
-            cache[b.template] = simunits.template_toggles(b.template, self.own)
+            world = self.__dict__.get('world') or kernel_world.World(
+                lambda t, tag: simunits.module_blocks(t, tag, self.own))
+            cache[b.template] = [d.rules() for d in world.data_of(b.template, 'ToggleStatusSpecialAbilityUpdate')]
         return cache[b.template]
 
     def toggle_press(self, b, command):
-        """simtoggle.Toggles.press (L2): a toggle button steps b's toggle module to its next ToggleState. False when
-        b has no toggle for that button."""
-        return self._toggle_book().press(self, b, command, self.toggles_of, self.short_of_power, self.modify)
-
-    @property
-    def toggles_due(self):
-        """{(body name, toggle module index): (frame, body, button)}: presses waiting out their UnpackTime."""
-        return self._toggle_book().due
-
-    def toggles_run(self, frame):
-        """simtoggle.Toggles.run (L2): the toggles whose UnpackTime ran out by this frame enter their next state."""
-        self._toggle_book().run(self, frame, self.toggles_of, self.modify)
-
-    def _toggle_book(self):
-        """The simtoggle.Toggles (L2), made on first use (a Sim built without __init__ has none yet). Not `_toggles`:
-        that is toggles_of's cache in the instance dict."""
-        t = self.__dict__.get('toggler')
-        if t is None:
-            t = self.toggler = simtoggle.Toggles()
-        return t
+        """simtoggle.press (L2): a toggle button steps b's toggle module to its next ToggleState. False when b has no
+        toggle for that button."""
+        return simtoggle.press(self, b, command, self.short_of_power)
 
     toggle_miner_armor = toggle_press           # simai's name (the AI micro's toggles)
 

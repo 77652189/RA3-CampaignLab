@@ -45,6 +45,7 @@ import enginefiles  # noqa: E402
 import parts  # noqa: E402
 import sim  # noqa: E402
 import simunits  # noqa: E402
+from engine.ports import templates  # noqa: E402
 
 WEAPON, UPGRADE, ACTION, IGNORED_ACTION, CONDITION, DEVICE, COMMAND, STUCK = (
     '武器', '升级', '脚本动作', '脚本动作(忽略)', '脚本条件', '设备', '命令', '对打不动')
@@ -415,7 +416,8 @@ def power_modelled(power, inf):
     assemble-a-structure power."""
     return power in sim.SUPERWEAPON_HITS or power in sim.CURTAIN or \
         power == 'SpecialPower_JAIV_Transform' and any(
-            tm['power'] == power for u in inf.human_templates for tm in simunits.template_toggles(u, inf.own)) or \
+            templates.attr(head, 'SpecialPowerTemplate') == power for u in inf.human_templates     # a toggle's
+            for head, _ in simunits.module_blocks(u, 'ToggleStatusSpecialAbilityUpdate', inf.own)) or \
         any(simunits.assemble(u, power, inf.own) for u in inf.own)
 
 

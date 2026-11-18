@@ -64,7 +64,7 @@ FORWARDER_CALLS = {
     # simloop: the frame table's cells, each the Sim's forwarder of its block
     **dict.fromkeys([('simloop', n) for n in (
         'aura_tick', 'blast_due', 'capture_due', 'deal', 'death_blast_due', 'expire', 'fight', 'flee_due',
-        'follow_due', 'hunt_due', 'lose_health', 'self_power_due', 'seq_due', 'suppression_tick', 'toggles_run',
+        'follow_due', 'hunt_due', 'lose_health', 'self_power_due', 'seq_due', 'suppression_tick',
         'wfire_due')], 1),
     # simorder's Peers loan
     ('simorder', 'destroy'): 3, ('simorder', 'modify'): 1, ('simorder', 'send'): 12, ('simorder', 'toggle_press'): 1,

@@ -38,3 +38,10 @@ def child(inner, tag):
     """The attributes text of a block's first <tag ...> child element; '' when none."""
     m = re.search(rf'<{tag}\b([^>]*?)/?>', inner or '')
     return m.group(1) if m else ''
+
+
+def blocks(text, tag):
+    """(attributes text, inner text) of every <tag ...>...</tag> (or self-closed) element of a block's inner text:
+    the nested blocks (a toggle's ToggleStates). simunits._blocks, kept there for its own readers until step P."""
+    for m in re.finditer(rf'<{tag}\b(.*?)(/>|>(.*?)</{tag}>)', text or '', re.S):
+        yield m.group(1), m.group(3) or ''

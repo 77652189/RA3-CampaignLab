@@ -17,6 +17,7 @@ import ast
 import importlib.util
 import io
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -247,8 +248,8 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3474, 'Sim methods': 199, 'Body fields': 107, 'simunits defs': 151,
-          'cells with old code': 35}
+CENTER = {'sim.py lines': 3462, 'Sim methods': 196, 'Body fields': 105, 'simunits defs': 149,
+          'cells with old code': 34}
 
 
 def _old_code(fn):
@@ -308,7 +309,8 @@ def test_centre_guard_bites():
 # outside reader asks the module's interface itself.
 BODY_FORWARDS = {'life_end': 'LifetimeUpdate', 'topple': 'ToppleUpdate', 'toppled': 'ToppleUpdate',
                  'topple_end': 'ToppleUpdate', 'crusher': 'CrusherInfo', 'crushable': 'CrusherInfo',
-                 'deposit': 'AutoDepositUpdate', 'deposit_at': 'AutoDepositUpdate'}
+                 'deposit': 'AutoDepositUpdate', 'deposit_at': 'AutoDepositUpdate',
+                 'toggle_at': 'ToggleStatusSpecialAbilityUpdate', 'armor_up': 'ToggleStatusSpecialAbilityUpdate'}
 
 
 def body_forwards(sim_src=None):
@@ -337,7 +339,7 @@ def test_body_forwards_are_read_only_listed_and_only_shrink():
 
 def test_forward_guard_bites():
     src = (CNV / 'sim.py').read_text(encoding='utf-8')
-    listed = '    FORWARDS = ' + repr(tuple(BODY_FORWARDS))       # as sim.py writes it, in the same order
+    listed = re.search(r'    FORWARDS = [(].*?[)]', src, re.S).group(0)     # as sim.py writes it (lines may wrap)
     more = src.replace(listed, '    FORWARDS = ' + repr(tuple(BODY_FORWARDS) + ('hp',)), 1)
     assert more != src and set(body_forwards(more)[0]) != body_forwards(more)[1]
     unlisted = src.replace(listed, "    FORWARDS = ()", 1)

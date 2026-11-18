@@ -145,6 +145,27 @@ class Deposit(Interface):
         raise NotImplementedError
 
 
+class Toggle(Interface):
+    """ToggleStatusSpecialAbilityUpdate, any number a thing, in its blocks' order (step M5): its rules (rules: power,
+    pack, unpack, states), the index of its ToggleState now (state: 0 until a press moves it), whether a press ever
+    moved it (entered) and a press (press: the frame it is pressed in; -> False when its state now takes no press --
+    a DisabledType -- or a press waits out its UnpackTime; else True: its next state entered now, or once the
+    UnpackTime is out, and the host told through World.toggled)."""
+    __slots__ = ()
+
+    def rules(self):
+        raise NotImplementedError
+
+    def state(self):
+        raise NotImplementedError
+
+    def entered(self):
+        raise NotImplementedError
+
+    def press(self, frame):
+        raise NotImplementedError
+
+
 class Upgrade(Interface):
     """Whether it is in force (the XML's triggers, conflicts and required upgrades) and what it does then. Its data
     has `trigger` (module.Trigger); the kernel (Thing.upgrades_moved) keeps its `upgraded` and calls on_upgrade when
@@ -216,5 +237,5 @@ class AIUpdate(Interface):
 
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
-FAMILY = (Lifetime, Topple, Crush, Deposit)            # a family's own, added with its step (docs/engine/sim-modules.md 2)
+FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit})  # a thing has at most one of these: Thing.find gives it

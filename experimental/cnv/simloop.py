@@ -95,7 +95,7 @@ def hunt(s, frame, tick):
 
 
 def toggles(s, frame, tick):
-    s.toggles_run(frame)
+    """Its modules only (engine/modules/toggle.py, run by step)."""
 
 
 def self_power(s, frame, tick):

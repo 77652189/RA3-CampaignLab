@@ -9,11 +9,13 @@ def no_blocks(template, tag):
 
 
 class World:
-    def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None, pay=None):
+    def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None, pay=None, toggled=None):
         """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry;
         kill(thing, why): the host's death of a thing (World.kill); remove(thing, why): the host's deletion of one,
-        no death (World.remove); pay(thing, amount): the host's payment to a thing's holder (World.pay)."""
+        no death (World.remove); pay(thing, amount): the host's payment to a thing's holder (World.pay);
+        toggled(thing, module): what the host re-sets when a toggle enters its next state (World.toggled)."""
         self.blocks, self.tags, self._kill, self._remove, self._pay = blocks, tags, kill, remove, pay
+        self._toggled = toggled
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
@@ -65,6 +67,27 @@ class World:
         if self._pay is None:
             raise RuntimeError(f'World.pay({thing.name!r}): this world has no host to pay with')
         self._pay(thing, amount)
+
+    def toggled(self, thing, module):
+        """A toggle module entered its next ToggleState (ToggleStatusSpecialAbilityUpdate): the host re-sets what the
+        state switches -- today simtoggle.entered (Sim.modify for its ObjectStatus / AttributeModifier, the
+        LocomotorSet's speed), until the modifier and movement families read the Toggle interface themselves."""
+        if self._toggled is None:
+            raise RuntimeError(f'World.toggled({thing.name!r}): this world has no host to tell')
+        self._toggled(thing, module)
+
+    def data_of(self, template, tag):
+        """The data of a registered tag's blocks of a template, in order: the parse its things' modules get
+        (World.data), for a reader that needs it before or without the modules (Sim.toggles_of: a first
+        ToggleState's status is set before a body's modules are made)."""
+        cls = self.tags[tag]
+        out = []
+        for k, (head, inner) in enumerate(self.blocks_of(template, tag)):
+            key = (template, tag, k)
+            if key not in self.data:
+                self.data[key] = cls.DATA.parse(head, inner).seal()
+            out.append(self.data[key])
+        return tuple(out)
 
     def blocks_of(self, template, tag):
         """The template data port's blocks of a tag, asked once a world (the port reads the XML files)."""

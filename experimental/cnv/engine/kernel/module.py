@@ -54,11 +54,11 @@ class Thing:
 
 def forward(interface, read, default=None):
     """A read-only attribute of a thing for a field moved into a module that outside code still reads (sim.Body
-    FORWARDS; docs/engine/sim-modules.md 10): read(the thing's `interface` module, one of interfaces.ONE), `default`
-    (the field's old default) when it has none."""
+    FORWARDS; docs/engine/sim-modules.md 10): read(the thing's `interface` module, one of interfaces.ONE; else the
+    tuple of its modules of that interface), `default` (the field's old default) when it has none."""
     def get(thing):
         m = thing.find(interface) if thing.modules else None
-        return default if m is None else read(m)
+        return default if m is None or m == () else read(m)
     return property(get)
 
 
