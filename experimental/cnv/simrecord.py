@@ -152,8 +152,9 @@ class Recorder:
 
 class PortTap:
     """The port's World between an executor and the simulator's (simexec.SimWorld), noting each action the executor
-    does (script, name, args as text): every World.action of the public executor, every World.core of the model's
-    plug-in (it tells core() each action it runs, its own core ones and those it then hands to action()). Conditions
+    does (script, name, args as text): every World.core (the model's plug-in tells core() each action it runs, its own
+    core ones and those it then hands to action(); the public executor its timer actions) and the public executor's
+    World.action (the plug-in's would be the second time). Conditions
     are not noted: the plug-in answers flags, counters and timers itself, so the two ask the world different
     questions."""
 
@@ -172,8 +173,7 @@ class PortTap:
         return self.inner.action(eng, name, args)
 
     def core(self, eng, name, args, script):
-        if self.model:
-            self.note(name, args, script)
+        self.note(name, args, script)
         return self.inner.core(eng, name, args, script)
 
     def begin(self, eng):

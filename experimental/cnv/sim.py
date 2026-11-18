@@ -277,7 +277,7 @@ SOUND_PLAYS = ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT')
 from simact_player import AI_SWITCHES  # noqa: E402,F401  (simai reads sim.AI_SWITCHES)
 
 # ---- the engine line's script engine (ADR 0019 layer 1). Where it is not on this computer (a clean clone) the
-# simulator runs its own older loop: every DT tick each script once, timers as seconds, NOT as a plain negation.
+# public executor runs the scripts (engine/script/executor.py): once a frame, timers in frames, NOT as a plain negation.
 from simexec import SEEN_CORE, CHANGES  # noqa: E402,F401  (what the world watches of the plug-in's core actions, L6)
 _MODEL = {}
 
@@ -1023,7 +1023,7 @@ class Sim:
         self.waypoints = self.mm.waypoints
         self.reblock()
         # the script executor port (engine/ports/scripts.py): the model's plug-in where it is, else the public one
-        simexec.attach(self, engine_model() if model else None, executor, skirmish_setup, parts, scriptplugin)
+        simexec.attach(self, engine_model() if model else None, executor, skirmish_setup, parts)
 
     def blocks(self, b, place=False):
         """What of the way a body takes up: a wall of ours its bar (or disc, square), a building its round. place:

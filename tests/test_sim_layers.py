@@ -289,7 +289,8 @@ def test_each_condition_has_one_home():
     assert not home_breaks(groups, set())
     homed = set().union(*groups.values())
     assert {'FLAG', 'COUNTER', 'TEAM_HAS_UNITS', 'TEAM_OUTSIDE_AREA_ENTIRELY', 'SKIRMISH_SPECIAL_POWER_READY',
-            'NAMED_DESTROYED', 'ENEMY_SIGHTED', 'HAS_FINISHED_VIDEO'} <= homed and len(homed) == 71
+            'NAMED_DESTROYED', 'ENEMY_SIGHTED', 'HAS_FINISHED_VIDEO'} <= homed and len(homed) == 70
+    assert 'TIMER_EXPIRED' not in homed         # Z 2: the script executor's own (its timer table)
 
 
 def test_condition_home_guard_bites():

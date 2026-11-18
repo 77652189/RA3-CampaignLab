@@ -82,7 +82,7 @@ def test_the_public_executor_can_run_on_the_models_clock():
 
     clock = types.SimpleNamespace(frame=0)
     sc = types.SimpleNamespace(name='s', levels=(True,), when=[], do=[['DO']], once=False)
-    ex = executor.PublicExecutor(World(), [sc], 0, set(), set(), '<not>', clock=clock)
+    ex = executor.PublicExecutor(World(), [sc], 0, set(), set(), '<not>', 15, clock=clock)
     ex.step()
     ex.step()
     assert seen == [('DO', 1), ('DO', 2)]

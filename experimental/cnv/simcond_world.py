@@ -1,5 +1,6 @@
-"""L6 script conditions on the world (ADR 0029, docs/engine/sim-layers.md; L0): flags, timers, counters, the platform,
-hot spots, and teams (made, emptied, where their members are, what hit them, whether they can get somewhere).
+"""L6 script conditions on the world (ADR 0029, docs/engine/sim-layers.md; L0): flags, counters, the platform, hot
+spots, and teams (made, emptied, where their members are, what hit them, whether they can get somewhere). TIMER_EXPIRED
+is the script executor's own (engine/script/executor.py: the timers are its table).
 
 Each condition is `fn(sim, name, a)`, moved verbatim out of Sim.cond's chain; simcond.cond looks them up in
 CONDITIONS. None back: not taken (a gap)."""
@@ -9,13 +10,6 @@ from simworld import inside, same_team
 
 def flag(sim, name, a):
     return int(sim.flags.get(a[0], 0)) == int(a[1])
-
-
-def timer_expired(sim, name, a):
-    if a[0] not in sim.timers:
-        sim.used.add('timer unset')
-        return False
-    return sim.t >= sim.timers[a[0]]
 
 
 def counter(sim, name, a):
@@ -161,7 +155,6 @@ def team_entered_area_partially(sim, name, a):
 
 CONDITIONS = {
     'FLAG': flag,
-    'TIMER_EXPIRED': timer_expired,
     'COUNTER': counter,
     'TEAM_DESTROYED': team_destroyed,
     'TEAM_COMPARE_NUM_MEMBERS': team_compare_num_members,

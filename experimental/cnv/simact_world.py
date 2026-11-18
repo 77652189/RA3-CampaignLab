@@ -1,5 +1,5 @@
-"""L6 script actions on the world's bookkeeping (ADR 0029, docs/engine/sim-layers.md; L0): flags, counters and
-timers, making objects and reinforcement teams, references and object lists, team membership and override relations,
+"""L6 script actions on the world's bookkeeping (ADR 0029, docs/engine/sim-layers.md; L0): flags, counters (on the
+script executor's table: simexec.Counters; the timer actions are the executor's own), making objects and reinforcement teams, references and object lists, team membership and override relations,
 sequential scripts, the *_TO_COUNTER reads, mission objectives, player relations, the map border and the script
 switches.
 
@@ -49,17 +49,6 @@ def counter_math_counter(sim, name, a, script):
 
 def increment_counter(sim, name, a, script):
     sim.counters[a[1]] = sim.counters.get(a[1], 0) + (a[0] if name == 'INCREMENT_COUNTER' else -a[0])
-    sim.change()
-
-
-def set_millisecond_timer(sim, name, a, script):
-    sim.timers[a[0]] = sim.t + float(a[1])
-    sim.change()
-
-
-def set_random_msec_timer(sim, name, a, script):
-    # [lo, hi] at random (源码): the latest, as the beat sheet counts
-    sim.timers[a[0]] = sim.t + float(a[2])
     sim.change()
 
 
@@ -291,8 +280,6 @@ ACTIONS = {
     'COUNTER_MATH_COUNTER': counter_math_counter,
     'INCREMENT_COUNTER': increment_counter,
     'DECREMENT_COUNTER': increment_counter,
-    'SET_MILLISECOND_TIMER': set_millisecond_timer,
-    'SET_RANDOM_MSEC_TIMER': set_random_msec_timer,
     'CREATE_NAMED_ON_TEAM_AT_WAYPOINT': create_named_on_team_at_waypoint,
     'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION': create_named_on_team_at_waypoint,
     'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT': create_unnamed_on_team_at_waypoint,

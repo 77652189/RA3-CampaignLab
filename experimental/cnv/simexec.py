@@ -2,6 +2,8 @@
 executor -- the public one (engine/script/executor.py) or the private model's plug-in (scriptplugin.py) -- through
 the port's `World`. Moved off Sim (its condition / action / this_player / update / difficulty, and the core actions
 the model's SimEngine reported) as a pure move; the rules stay where they were (simcond / simact by name)."""
+import collections.abc
+
 from engine.ports import scripts as port
 from engine.script import executor as script_executor
 import simcond
@@ -15,10 +17,10 @@ SEEN_CORE = {'SET_FLAG', 'SET_MISSION_OBJECTIVE_STATUS', 'DISPLAY_COUNTDOWN_TIME
 CHANGES = {'INCREMENT_COUNTER', 'DECREMENT_COUNTER', 'SET_MILLISECOND_TIMER', 'SET_RANDOM_MSEC_TIMER'}
 
 
-def attach(sim, got, executor, skirmish_setup, parts, scriptplugin):
+def attach(sim, got, executor, skirmish_setup, parts):
     """The Sim's script executor (moved off Sim.__init__): `got` the model's (module, plug-in class) where it is on
-    this computer, else None; `parts` (the compiler's NOT mark, unnot) and `scriptplugin` (the plug-in's table views)
-    handed in by sim.py, which layered modules do not import. With it the scripts as the game runs them: the compiler's NOT flags (package.py writes
+    this computer, else None; `parts` (the compiler's NOT mark, unnot) handed in by sim.py, which layered modules do
+    not import. Either executor's counter-and-timer table is the Sim's counters and timers (Counters / Timers). With it the scripts as the game runs them: the compiler's NOT flags (package.py writes
     unnot's), one list, the run's difficulty, the Sim the engine's World; the model's FPS is the frame rate and the
     container's Lib_Skirmish_Setup is handed the published players. Without it the public executor.
 
@@ -40,13 +42,59 @@ def attach(sim, got, executor, skirmish_setup, parts, scriptplugin):
         # a retail map's own scripts keep their inverted bit (the engine model: honored for retail's compiled
         # scripts; a02's 'NOT units in the convention center' completed objective 1 at 0:04 with it ignored)
         sim.eng = cls(lists, world=SimWorld(sim), difficulty=sim.level, honor_inverted=sim.retail)
-        sim.flags, sim.counters = sim.eng.flags, scriptplugin.Counters(sim.eng)
-        sim.timers = scriptplugin.Timers(sim, mod.FPS)
+        sim.flags = sim.eng.flags
         if any(c and c[-1] == parts.NOT for s in sim.mm.scripts for c in s.when):
             sim.used.add('inverted')
         sim.model_scripts = True
     sim.executor = sim.eng if sim.model_scripts else script_executor.PublicExecutor(
-        SimWorld(sim), sim.mm.scripts, sim.level, sim.done, sim.disabled, parts.NOT, clock=sim.eng)
+        SimWorld(sim), sim.mm.scripts, sim.level, sim.done, sim.disabled, parts.NOT, sim.fps, clock=sim.eng)
+    sim.counters, sim.timers = Counters(sim.executor), Timers(sim.executor, sim)   # the executor's one table
+
+
+class Counters(collections.abc.MutableMapping):
+    """An executor's one counter / timer table (`counters`: name -> [value, is_countdown_timer]; `counter(name)` its
+    entry, made at 0) as the simulator's counters: a plain counter's value by name (a running timer is not one)."""
+
+    def __init__(self, owner):
+        self.owner = owner
+
+    def __getitem__(self, k):
+        c = self.owner.counters[k]
+        if c[1]:
+            raise KeyError(k)
+        return c[0]
+
+    def __setitem__(self, k, v):
+        self.owner.counter(k)[0] = v
+
+    def __delitem__(self, k):
+        del self.owner.counters[k]
+
+    def __iter__(self):
+        return (k for k, c in self.owner.counters.items() if not c[1])
+
+    def __len__(self):
+        return sum(1 for _ in self)
+
+
+class Timers(collections.abc.Mapping):
+    """... and as its timers: a running countdown's mission second it runs out at (at or before now once out), its
+    frames left at the Sim's frame rate."""
+
+    def __init__(self, owner, sim):
+        self.owner, self.sim = owner, sim
+
+    def __getitem__(self, k):
+        c = self.owner.counters[k]
+        if not c[1]:
+            raise KeyError(k)
+        return self.sim.t + c[0] / self.sim.fps
+
+    def __iter__(self):
+        return (k for k, c in self.owner.counters.items() if c[1])
+
+    def __len__(self):
+        return sum(1 for _ in self)
 
 
 class SimWorld(port.World):
