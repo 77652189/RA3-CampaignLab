@@ -25,7 +25,7 @@ def start(world, b, path):
                 and b.mode == 'move' and not b.path and not b.jet_started
                 and math.isclose(b.angle % (2 * math.pi), 0, abs_tol=1e-9)
                 and len(path) == 1 and path[0][0] > b.x
-                and math.isclose(path[0][1], b.y, abs_tol=1e-9) and world.eng is not None)
+                and math.isclose(path[0][1], b.y, abs_tol=1e-9))
     b.jet_started = True
     if not measured:
         world.gap('jet movement', b.template,
