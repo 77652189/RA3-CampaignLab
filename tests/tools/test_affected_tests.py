@@ -188,3 +188,17 @@ def test_estimate_uses_median_for_unknown_files():
     serial, par, unknown = at.estimate(['a', 'b', 'c'], {'a': 80.0, 'b': 40.0})
     assert unknown == 1 and serial == 200.0                    # c gets the median (index 1 of 40, 80 -> 80)
     assert par == 80.0                                         # no faster than the longest single file
+
+
+def test_save_durations_keeps_files_and_single_tests(tmp_path):
+    junit = tmp_path / 'j.xml'
+    junit.write_text('<testsuites><testsuite>'
+                     '<testcase classname="tests.conformance.test_readings" name="test_r[a.py:engine_x]" time="3.5"/>'
+                     '<testcase classname="tests.conformance.test_readings" name="test_r[b]" time="1.5"/>'
+                     '<testcase classname="tests.test_x.TestC" name="test_y" time="2"/>'
+                     '</testsuite></testsuites>', encoding='utf-8')
+    files = at.save_durations(str(junit), str(tmp_path / 'map'))
+    assert files == {'tests/conformance/test_readings.py': 5.0, 'tests/test_x.py': 2.0}
+    per_test = at.load_json(str(tmp_path / 'map' / 'durations_tests.json'))
+    assert per_test == {'tests/conformance/test_readings.py::test_r[a.py:engine_x]': 3.5,
+                        'tests/conformance/test_readings.py::test_r[b]': 1.5, 'tests/test_x.py::TestC::test_y': 2.0}

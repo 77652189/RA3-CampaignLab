@@ -910,9 +910,10 @@ def tests_in(path):
         return 1
 
 
-def save_durations(junit_path):
-    """junit xml -> {test file: seconds of CPU wall in that file} (summed over its tests)."""
-    out = {}
+def save_durations(junit_path, mapdir=None):
+    """junit xml -> {test file: seconds of CPU wall in that file} (summed over its tests), written to durations.json;
+    and {test id: seconds} to durations_tests.json (time_budget.py's per-test lines: a conformance group)."""
+    out, per_test = {}, {}
     for tc in ET.parse(junit_path).getroot().iter('testcase'):
         cls = tc.get('classname', '')
         parts = cls.split('.')
@@ -920,10 +921,14 @@ def save_durations(junit_path):
         if i is None:
             continue
         f = '/'.join(['tests'] + [x for x in parts[:i] if x != 'tests'] + [parts[i]]) + '.py'   # tests.modules.test_x
-        out[f] = out.get(f, 0.0) + float(tc.get('time', 0))
-    os.makedirs(MAPDIR, exist_ok=True)
-    with open(DURATIONS, 'w', encoding='utf-8') as fh:
-        json.dump({k: round(v, 2) for k, v in sorted(out.items())}, fh, indent=0)
+        secs = float(tc.get('time', 0))
+        out[f] = out.get(f, 0.0) + secs
+        per_test['::'.join([f] + parts[i + 1:] + [tc.get('name', '')])] = secs     # tests/x.py::TestC::test_y[p]
+    mapdir = mapdir or MAPDIR
+    os.makedirs(mapdir, exist_ok=True)
+    for name, data in (('durations.json', out), ('durations_tests.json', per_test)):
+        with open(os.path.join(mapdir, name), 'w', encoding='utf-8') as fh:
+            json.dump({k: round(v, 2) for k, v in sorted(data.items())}, fh, indent=0, ensure_ascii=False)
     return out
 
 

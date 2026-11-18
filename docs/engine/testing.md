@@ -27,7 +27,7 @@
 
 ## 耗时
 
-- 每层有上限，由 `tests/guards/` 按耗时记录检查，上限只许降。
+- 每层有上限，由 `tests/guards/` 按耗时记录检查，上限只许降。上限表和每项为什么取这个数在 `experimental/testbench/time_budget.py`（模块层合计、守卫层合计、一致性跑器最慢一组、日常挑选池），守卫是 `tests/guards/test_time_budget.py`；耗时记录是总控全量后 `affected_tests.py --save-durations junit.xml` 写的 `work/testmap/durations.json`（按文件）和 `durations_tests.json`（按测试）。某项还没有记录就写"没有记录"，不猜。
 - 越线在每日汇报"结构"段标 `!!`。
 - 开局准备长的场景从快照开始，不从第 0 帧跑。
 

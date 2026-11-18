@@ -66,10 +66,19 @@ def _lines(p):
     return sum(1 for _ in p.open(encoding='utf-8', errors='replace'))
 
 
-def structure(logs=None):
+def _time_budget():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('time_budget', ROOT / 'experimental' / 'testbench' / 'time_budget.py')
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def structure(logs=None, testmap=None):
     """Structure numbers, read every day so a drift shows before it costs (11-17 retrospective: the architecture
     problems were known but only noticed once the test run had grown hours long). Each row is a number and, when
-    it crosses its line, a `!!` flag. Reads files only; a missing source is said, not guessed."""
+    it crosses its line, a `!!` flag. Reads files only; a missing source is said, not guessed. The test layers'
+    time ceilings are experimental/testbench/time_budget.py's (ADR 0035 6), read from the time record in testmap."""
     logs = Path(logs) if logs else WORK / 'logs'
     rows, flags = [], []
     sims = sorted(SIM.glob('sim*.py'))
@@ -100,6 +109,9 @@ def structure(logs=None):
             flags.append('全量测试超过 %d 小时' % (FULL_SLOW // 3600))
     else:
         rows.append('  最近全量：没有跑完的 full_*.log')
+    budget_rows, budget_flags = _time_budget().rows(str(testmap) if testmap else None)
+    rows += budget_rows
+    flags += budget_flags
     rows += ['  !! ' + f for f in flags] or ['  （没有越线的）']
     return rows
 
