@@ -16,10 +16,13 @@ A file is a list of [[reading]] tables:
   until would have given (the world advances frame by frame, so a run stopped at 35 is a prefix of one to 76).
 - scenes = {name = {build, check, until}, ...} for a reading comparing runs: each name is bound to that run's rows.
 - each = [{build = "aiowt", plants = 0}, ...]: one reading per entry, id[build]; build (and check / until) replace the
-  scene's, the other keys are names the expressions can use.
+  scene's, the other keys are names the expressions can use. With scenes, an entry key naming a scene takes a table
+  that overrides that scene's build / check / until (each = [{got = {build = "aiidle30"}}, ...]), id[the overridden
+  scenes' builds]; every entry overrides at least one scene, the other keys are names as above.
 - let = {name = "expression", ...}: evaluated in order before expect (lambdas welcome).
-- mismatch: the reading is checked in the same run, expected not to hold; if it holds the runner says so (drop the
-  mark). Write both numbers.
+- mismatch: the reading is checked in the same run, expected not to hold (expect evaluates false); if it holds the
+  runner says so (drop the mark). Write both numbers. A reading that raises (in let or expect: an index past the end,
+  a second missing) is a problem, mismatch mark or not: a run that breaks is never "still off".
 
 Expressions see: rows (list of {counter label: value}, row i ~ mission second i + 1), times (each row's mission
 second), first(key, pred=None, rows=rows), vals(rows) (each row's values in counter order), win(t0, t1, key)
@@ -69,8 +72,6 @@ def load(path):
             raise ReadingError(f'{where}: unknown {sorted(set(r) - KEYS)} / missing {sorted(NEEDED - set(r))}')
         if ('scene' in r) == ('scenes' in r):
             raise ReadingError(f'{where}: one of scene / scenes')
-        if 'each' in r and 'scene' not in r:
-            raise ReadingError(f'{where}: each needs scene')
         expect = r['expect'] if isinstance(r['expect'], list) else [r['expect']]
         for e in expect + list(r.get('let', {}).values()):
             compile(e, where, 'eval')
@@ -85,7 +86,17 @@ def load(path):
                     one['id'] = f'{r["id"]}[{sc["build"]}]'
                 one['scenes'], one['single'] = {'rows': _scene(sc, where)}, True
             else:
-                one['scenes'] = {n: _scene(s, where) for n, s in r['scenes'].items()}
+                scs = {n: dict(s) if isinstance(s, dict) else s for n, s in r['scenes'].items()}
+                if entry is not None:
+                    over = [k for k in entry if k in scs]
+                    if not over or set(entry) & SCENE_KEYS or any(not isinstance(entry[k], dict) for k in over):
+                        raise ReadingError(f'{where}: an each entry of scenes overrides a scene by name with a table '
+                                           f'({sorted(scs)}), got {entry!r}')
+                    for k in over:
+                        scs[k].update(entry[k])
+                    one['vars'] = {k: v for k, v in entry.items() if k not in scs}
+                    one['id'] = f'{r["id"]}[{",".join(str(scs[k].get("build")) for k in over)}]'
+                one['scenes'] = {n: _scene(s, where) for n, s in scs.items()}
                 one['single'] = False
             if one['id'] in seen:
                 raise ReadingError(f'{where}: id {one["id"]} twice')
@@ -177,21 +188,20 @@ def namespace(reading, runs):
 
 
 def check(reading, runs):
-    """None when the reading is as its data says (holds, or is marked a mismatch and does not hold); else what is
-    wrong, one line."""
+    """None when the reading is as its data says (holds, or is marked a mismatch and evaluates false); else what is
+    wrong, one line. Raising is always wrong: a mismatch mark covers a run that reads otherwise, not one that breaks."""
     ns = namespace(reading, runs)
     try:
         for name, e in reading['let'].items():
             ns[name] = eval(e, ns)
         failed = next((e for e in reading['expect'] if not eval(e, ns)), None)
-        err = None
     except Exception as x:       # a reading that cannot be evaluated on this run (an index past the end, ...)
-        failed, err = 'error', f'{type(x).__name__}: {x}'
+        return f'{reading["id"]}: {type(x).__name__}: {x}'
     if reading['mismatch']:
         return None if failed else f'{reading["id"]}: marked mismatch but now holds -- drop the mark'
     if failed is None:
         return None
-    return f'{reading["id"]}: {err or "does not hold: " + failed}'
+    return f'{reading["id"]}: does not hold: {failed}'
 
 
 def run_group(keys, readings, start, advance, rows_of):

@@ -106,11 +106,41 @@ def test_a_reading_that_does_not_hold_is_reported_and_a_mismatch_that_holds_too(
     assert problems[0].startswith('short: does not hold') and 'drop the mark' in problems[1]
 
 
-def test_a_reading_that_raises_fails_unless_marked(tmp_path):
+def test_a_reading_that_raises_fails_mismatch_mark_or_not(tmp_path):
     text = DATA.replace("len(rows) == 5", "rows[40]['n'] == 0")
     assert run(rd.load(write(tmp_path, text))) == ["short: IndexError: list index out of range"]
-    marked = DATA.replace("rows[-1]['n'] == 99", "rows[40]['n'] == 99")
-    assert run(rd.load(write(tmp_path, marked))) == []
+    marked = DATA.replace("rows[-1]['n'] == 99", "rows[40]['n'] == 99")      # a broken run is not "still off"
+    assert run(rd.load(write(tmp_path, marked))) == ["still_off: IndexError: list index out of range"]
+    in_let = DATA.replace('mismatch = "sim 9', 'let = {x = "1 / 0"}\nmismatch = "sim 9')
+    assert run(rd.load(write(tmp_path, in_let))) == ["still_off: ZeroDivisionError: division by zero"]
+
+
+EACH_SCENES = '''
+[[reading]]
+id = "same_as_b1"
+scenes = {base = {build = "b1", check = "a", until = 4}, got = {build = "b1", check = "a", until = 4}}
+each = [{got = {build = "b3"}, n = 4}, {got = {build = "b2"}, n = 40}]
+bench = "-"
+proves = "x: y"
+expect = "got[-1]['k'] == n and first('n', rows=got) == 0"
+'''
+
+
+def test_each_overrides_a_named_scene_of_scenes(tmp_path):
+    rs = rd.load(write(tmp_path, EACH_SCENES))
+    assert [r['id'] for r in rs] == ['same_as_b1[b3]', 'same_as_b1[b2]']
+    assert rs[0]['scenes'] == {'base': ('b1', 'a', 4.0), 'got': ('b3', 'a', 4.0)} and rs[1]['vars'] == {'n': 40}
+    assert run(rs) == []
+    assert sorted(Fake.started) == [('b1', 'a'), ('b2', 'a'), ('b3', 'a')]
+    assert run(rd.load(write(tmp_path, EACH_SCENES.replace('n = 40', 'n = 41')))) == [
+        "same_as_b1[b2]: does not hold: got[-1]['k'] == n and first('n', rows=got) == 0"]
+
+
+@pytest.mark.parametrize('entry', ['{n = 4}', '{got = "b3"}', '{build = "b3", got = {build = "b3"}}'])
+def test_an_each_entry_of_scenes_must_override_a_scene_by_table(tmp_path, entry):
+    text = EACH_SCENES.replace('{got = {build = "b3"}, n = 4}', entry)
+    with pytest.raises(rd.ReadingError, match='overrides a scene by name'):
+        rd.load(write(tmp_path, text))
 
 
 @pytest.mark.parametrize('text, why', [

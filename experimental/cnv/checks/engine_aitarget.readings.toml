@@ -29,16 +29,12 @@ proves = "simai team idle time: MaxTeamIdleTime 5 s sends the team out before th
 expect = "first('步兵在家', lambda v: v < 4, rows=idle5) < first('步兵在家', lambda v: v < 4, rows=safe)"
 
 [[reading]]
-id = "longer_idle_times_change_nothing[aitargetidle30]"
+id = "longer_idle_times_change_nothing"
 scenes = {safe = {build = "aitargetsafe", check = "a", until = 70.0}, got = {build = "aitargetidle30", check = "a", until = 70.0}}
-bench = "MaxTeamIdleTime 30 s: identical to the 15 s default (aitargetsafe), second for second to s70"
-proves = "simai team idle time: a longer MaxTeamIdleTime changes nothing"
-expect = "got == safe"
-
-[[reading]]
-id = "longer_idle_times_change_nothing[aitargetstill]"
-scenes = {safe = {build = "aitargetsafe", check = "a", until = 70.0}, got = {build = "aitargetstill", check = "a", until = 70.0}}
-bench = "MaxTeamIdleTime / MaxUnitIdleTime 600 s (aitargetstill): to the frame as 15 s (aitargetsafe) to s70"
+each = [{got = {build = "aitargetidle30"}}, {got = {build = "aitargetstill"}}]
+bench = """\
+MaxTeamIdleTime 30 s (aitargetidle30): identical to the 15 s default (aitargetsafe), second for second to s70; \
+MaxTeamIdleTime / MaxUnitIdleTime 600 s (aitargetstill): to the frame as 15 s to s70"""
 proves = "simai team idle time: a longer MaxTeamIdleTime / MaxUnitIdleTime changes nothing"
 expect = "got == safe"
 
