@@ -1237,20 +1237,19 @@ def read_fight(text, weapons, armors):
                 weapons=[g for g in guns if (g['dps'] > 0 or g.get('sdps', 0) > 0 or g.get('dot') or g.get('lift')) and g['range'] > 0])
 
 
-def freeze(template, own=None):
-    """(tracker(), the armour {type: percent} of its ArmorSet with Conditions SECONDARY_DAMAGE) of a template, each
-    from its own XML else what it inherits from (the retail units inherit both from BaseVehicle / BaseInfantry /
-    BaseStructure; INFERRED that a unit's own ArmorSet does not drop the base's frozen one: frozen units break at a
-    touch in the game); (None, None) where neither is found."""
+def frozen_armor(template, own=None):
+    """The armour {type: percent} of a template's ArmorSet with Conditions SECONDARY_DAMAGE, from its own XML else what
+    it inherits from (the retail units inherit it from BaseVehicle / BaseInfantry / BaseStructure; INFERRED that a
+    unit's own ArmorSet does not drop the base's frozen one: frozen units break at a touch in the game); None where
+    none is found. Its SecondaryDamageTracker is a kernel module (engine/modules/freeze.py, step M11)."""
     def frozen(xml):
         m = re.search(r'<ArmorSet\b[^>]*\bArmor="([^"]+)"[^>]*\bConditions="[^"]*SECONDARY_DAMAGE', xml or '')
         return m.group(1) if m else None
     try:
-        t = _inherited(template, own, lambda x: tracker(x or ''), None)
         a = _inherited(template, own, frozen, None)
     except (OSError, ValueError):
-        return None, None
-    return t, (_fight_data()['armors'].get(a) if a else None)
+        return None
+    return _fight_data()['armors'].get(a) if a else None
 
 
 def immortal_body(template, own=None):
@@ -1539,26 +1538,6 @@ def run_off_map(template, own=None):
         except (OSError, ValueError):
             _flee_memo[key] = None
     return _flee_memo[key]
-
-
-def tracker(text):
-    """A SecondaryDamageTracker (the freeze): {'every': UpdateDuration s, 'melt': DissipateAmount taken off each
-    UpdateDuration, 'cap': MaxDamageClampScaler (the most it holds, x max health), 'steps': [[Fraction of max health,
-    AttributeModifier id, OnEnterDisable, SetUpgradedArmor, DIE_ON_ENTER], ...] lowest first}; None without one. Retail BaseVehicle /
-    BaseInfantry / BaseStructure: 25 a second, 200 %, 0.2 .. 0.8 slow speed and rate of fire to 80 .. 20 %, 1.0 frozen
-    (UNDER_FROZEN, CryoBeamFrozenArmor). A $ define as the cap: MAX_SECONDARY_DAMAGE_SCALER, 200 % (the only one)."""
-    blocks = list(_blocks(re.sub(r'<!--.*?-->', '', text, flags=re.S), 'SecondaryDamageTracker'))
-    if not blocks:
-        return None
-    head, inner = blocks[-1]                            # an override after the base's (xai:joinAction Replace)
-    cap = _attr(head, 'MaxDamageClampScaler') or '125%'
-    cap = 2.0 if cap.startswith('=') else _num(cap.rstrip('%'), 125.0) / 100.0
-    steps = sorted((_num(_attr(h, 'Fraction')), _attr(h, 'AttributeModifier'),
-                    _attr(h, 'OnEnterDisable') == 'true', _attr(h, 'SetUpgradedArmor') == 'true',
-                    'DIE_ON_ENTER' in (_attr(h, 'Options') or '').split())
-                   for h, _ in _blocks(inner or '', 'EffectInfo'))
-    return dict(every=_secs(_attr(head, 'UpdateDuration') or '1s'), melt=_num(_attr(head, 'DissipateAmount'), 0.0),
-                cap=cap, steps=[list(x) for x in steps])
 
 
 _fight = None

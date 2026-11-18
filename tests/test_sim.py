@@ -369,8 +369,10 @@ def test_a_mission_unit_whose_file_opens_with_a_long_preamble_still_inherits_its
            '<ArmorSet Armor="AlliedEngineerArmor" />\n</GameObject>\n</AssetDeclaration>')
     assert xml.index('<GameObject') > 2000
     assert su.parent(xml, 'CNV_Probe') == 'BaseInfantry'
-    tracker, frozen = su.freeze('CNV_Probe', {'CNV_Probe': xml})
-    assert tracker and tracker['steps'] and frozen is not None
+    own = {'CNV_Probe': xml}
+    (block,) = su.module_blocks('CNV_Probe', 'SecondaryDamageTracker', own)     # engine/modules/freeze.py (M11)
+    from engine.modules import freeze
+    assert freeze.FreezeData.parse(*block).tracker['steps'] and su.frozen_armor('CNV_Probe', own) is not None
 
 
 def _road(loop=False):

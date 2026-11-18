@@ -19,6 +19,7 @@ nugget_powers, hit_reaction_of.
 import math
 
 import simunits
+from engine.kernel import interfaces
 from simworld import GAP_WEAPON
 
 PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'destroy', 'emp_disabled', 'emp_until', 'fire_gate', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'knock_landing', 'knock_landing_vehicle', 'lift_timers', 'modify', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'suppression_fields', 'sweeps', 'volleys'})
@@ -429,7 +430,7 @@ class Damage:
                         if projectile:
                             world.gap(GAP_WEAPON, 'SecondaryDamageNugget', '弹体冷冻值的到达事件尚未建模')
                         elif not t.shielded and peers.cold_of(t)[0] is not None:
-                            t.cold += n * w['sd'] * by.dealt
+                            t.find(interfaces.Freeze).add(n * w['sd'] * by.dealt)   # SecondaryDamageTracker
                             self.cold_on[id(t)] = (t, by)
                             world.used.add('freeze')
                     for radius, value, seconds in w.get('suppression', []):
@@ -662,19 +663,19 @@ class Damage:
                 continue
             if peers.cold_of(t)[0] is None:
                 continue
-            t.cold += rate * dt
+            t.find(interfaces.Freeze).add(rate * dt)      # engine/modules/freeze.py (step M11)
             cold[id(t)] = (t, by)
         for k, (t, by) in list(cold.items()):
             tr = peers.cold_of(t)[0]
             if not t.alive:
                 del cold[k]
                 continue
-            t.cold = min(max(t.cold - tr['melt'] / max(tr['every'], 1e-6) * dt, 0.0), tr['cap'] * t.max_hp)
-            step = max((i for i, st in enumerate(tr['steps']) if t.cold >= st[0] * t.max_hp), default=-1)
-            if t.cold <= 0:
+            m = t.find(interfaces.Freeze)
+            moved = m.melt(dt)
+            step = m.stage()
+            if m.held() <= 0:
                 del cold[k]
-            if step != t.cold_step:
-                t.cold_step = step
+            if moved:
                 peers.modify(t)
                 if step >= 0:
                     world.note('冷冻', f'{world.label(t)} 冷冻到第 {step + 1} 档（{tr["steps"][step][0]:.0%} 生命值）')

@@ -248,7 +248,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3431, 'Sim methods': 194, 'Body fields': 91, 'simunits defs': 145,
+CENTER = {'sim.py lines': 3431, 'Sim methods': 194, 'Body fields': 89, 'simunits defs': 144,
           'cells with old code': 32}
 
 
@@ -316,7 +316,8 @@ BODY_FORWARDS = {'life_end': 'LifetimeUpdate', 'topple': 'ToppleUpdate', 'topple
                  'suppression_next': 'SuppressionUpdate', 'attachment_rules': 'AttachUpdate',
                  'spawned_children': 'SpawnBehavior', 'spawn_refills': 'SpawnBehavior', 'spawn_parent': 'SlavedUpdate',
                  'spawn_module': 'SlavedUpdate', 'ready_at': 'SpecialPower', 'mine': 'OreMinerBehavior',
-                 'unpack_end': 'StructureUnpackUpdate', 'sell_end': 'StructureSellUpdate'}
+                 'unpack_end': 'StructureUnpackUpdate', 'sell_end': 'StructureSellUpdate',
+                 'cold': 'SecondaryDamageTracker', 'cold_step': 'SecondaryDamageTracker'}
 
 
 def body_forwards(sim_src=None):

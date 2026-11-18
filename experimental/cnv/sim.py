@@ -189,7 +189,7 @@ ALIGN = {**kernel_factory.align(), **simheal.ALIGN,     # the kernel modules' ow
                      '(a jump, a carrier\'s drop: the device\'s own scripts say what follows)',
     'ai': 'a skirmish AI (UNIT_AI_TRANSFER_ALL, SKIRMISH_AI_*): woken and logged; what it builds and when it '
           'attacks is not simulated (bench 2026-10-27 aistep: it may never build a kind it is let to)',
-    'freeze': 'the cryo beam (SecondaryDamageNugget, simunits.freeze): its Amount a shot (x RATE_OF_FIRE) adds to '
+    'freeze': 'the cryo beam (SecondaryDamageNugget, engine/modules/freeze.py): its Amount a shot (x RATE_OF_FIRE) adds to '
               'the target\'s cold, DissipateAmount comes off a second (spread over the second), held up to '
               'MaxDamageClampScaler x max health; the highest EffectInfo Fraction x max health reached hangs its '
               'modifier (0.2 .. 0.8: speed and rate of fire 80 .. 20 %), 1.0 freezes: UNDER_FROZEN, stopped and '
@@ -385,8 +385,6 @@ class Body(kernel_module.Thing):
     auras_on: dict = dataclasses.field(default_factory=dict)   # modifier id -> (until frame, xml) an aura hung on it
     shielded: bool = False                                      # INVULNERABLE + Iron Curtain bits on it (simunits.effect)
     taken: float = 1.0                                          # ARMOR factor: damage taken x (INFERRED)
-    cold: float = 0.0                                           # the cryo beam's secondary damage held (deal, R freeze)
-    cold_step: int = -1                                         # ... the highest EffectInfo reached (-1: none)
     model_conditions: dict = dataclasses.field(default_factory=dict)  # condition -> expiry frame or None
     dealt: float = 1.0                                          # DAMAGE_MULT x RATE_OF_FIRE: damage dealt x (INFERRED)
     level_rate: float = 1.0                                     # measured heroic Mirage clip rate; never per-hit damage
@@ -455,7 +453,7 @@ class Body(kernel_module.Thing):
     FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
-                'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end')
+                'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step')
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
@@ -482,6 +480,8 @@ class Body(kernel_module.Thing):
     mine = kernel_module.forward(kernel_interfaces.OreMiner, lambda m: m.trip())    # step M9: a miner's trip
     unpack_end = kernel_module.forward(kernel_interfaces.Unpack, lambda m: m.end_frame())   # step M10: unpacking
     sell_end = kernel_module.forward(kernel_interfaces.Sell, lambda m: m.gone_frame())      # till; a sale's delete
+    cold = kernel_module.forward(kernel_interfaces.Freeze, lambda m: m.held(), 0.0)    # step M11: the cryo beam's cold
+    cold_step = kernel_module.forward(kernel_interfaces.Freeze, lambda m: m.stage(), -1)     # its highest EffectInfo
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
@@ -2841,11 +2841,11 @@ class Sim:
         return n
 
     def cold_of(self, b):
-        """(simunits.freeze tracker, frozen armour) of b's template, read once a template."""
-        cache = self.__dict__.setdefault('_cold', {})
-        if b.template not in cache:
-            cache[b.template] = simunits.freeze(b.template, self.own)
-        return cache[b.template]
+        """(b's SecondaryDamageTracker rules, engine/modules/freeze.py -- None: none; simunits.frozen_armor, a template)."""
+        m = b.find(kernel_interfaces.Freeze) if b.modules else None
+        if b.template not in self.__dict__.setdefault('_cold', {}):
+            self._cold[b.template] = simunits.frozen_armor(b.template, self.own)
+        return (m and m.rules()), self._cold[b.template]
 
     def chill(self, dt):
         """simdamage.Damage.chill (L3): `dt` seconds of cryo beams and melting."""

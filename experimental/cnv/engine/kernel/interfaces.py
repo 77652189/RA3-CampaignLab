@@ -362,6 +362,28 @@ class SpecialPower(Interface):
         raise NotImplementedError
 
 
+class Freeze(Interface):
+    """SecondaryDamageTracker, one a thing (step M11): its rules (rules: every, melt, cap, steps), the cold it holds
+    (held), the highest step reached (stage: -1, none), a hit's cold (add: the amount) and a tick's melting (melt: the
+    seconds; -> whether the step moved). The host's chill keeps the tick."""
+    __slots__ = ()
+
+    def rules(self):
+        raise NotImplementedError
+
+    def held(self):
+        raise NotImplementedError
+
+    def stage(self):
+        raise NotImplementedError
+
+    def add(self, amount):
+        raise NotImplementedError
+
+    def melt(self, dt):
+        raise NotImplementedError
+
+
 class AIUpdate(Interface):
     """The command state machine (move, attack, guard, follow ...) and the movement's physics."""
     __slots__ = ()
@@ -371,5 +393,5 @@ class AIUpdate(Interface):
 
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
-FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
-ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell})  # a thing has at most one of these: Thing.find gives it
+FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze})  # a thing has at most one of these: Thing.find gives it
