@@ -1428,6 +1428,9 @@ SELF_ONLY = frozenset({'AutoDepositUpdate'})   # read from the template's own XM
                                             # retail file of its name -- no inheritance, as the reader it replaced
                                             # (step M4: oilderrick_onwater, which inherits oilderrick's, pays nothing);
                                             # reading it inherited is a behaviour change
+REMOVE_KEPT = frozenset({'SpawnBehavior'})  # a Remove block is kept as a block, as the reader it replaced read it
+                                            # (step M7: alliedrefinery_noharvester's removes its base's spawn and
+                                            # reads as a spawn not modelled, a gap); dropping it is a behaviour change
 
 
 def module_blocks(template, tag, own=None):
@@ -1440,7 +1443,7 @@ def module_blocks(template, tag, own=None):
     SELF_ONLY from the template's own XML alone (the mission's, else retail's). A block of the nearest template that
     removes the inherited module (xai:joinAction="Remove") is left out, and the walk ends there (step M6: 11 retail
     templates remove their base's SuppressionUpdate, as the reader it replaced read; no other registered tag but
-    CrusherInfo has one, whose 64 MERGED keeps as M3's reader did)."""
+    CrusherInfo has one, whose 64 MERGED keeps as M3's reader did; a tag of REMOVE_KEPT keeps it: step M7)."""
     def read(xml):
         return list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), tag))
     if tag in OWN_ONLY:
@@ -1456,7 +1459,10 @@ def module_blocks(template, tag, own=None):
                     for k, v in re.findall(r'([\w:]+)="([^"]*)"', head):
                         attrs.setdefault(k, v)
             return [(''.join(f' {k}="{v}"' for k, v in attrs.items()), '')] if found else []
-        return [b for b in _inherited(template, own, read, []) if _attr(b[0], 'xai:joinAction') != 'Remove']
+        blocks = _inherited(template, own, read, [])
+        if tag in REMOVE_KEPT:
+            return blocks
+        return [b for b in blocks if _attr(b[0], 'xai:joinAction') != 'Remove']
     except (OSError, ValueError):
         return []
 
@@ -2198,7 +2204,7 @@ def assigned_repair_rate(template, command, own=None):
         return any(not inner.strip() and _attr(head, 'SpecialPowerTemplate') == power
                    and set(re.findall(r'(\w+)\s*=', head)) == {'id', 'SpecialPowerTemplate'}
                    for head, inner in blocks)
-    if not _chain(template, own, read) or not spawn_modules(template, own):
+    if not _chain(template, own, read) or not module_blocks(template, 'SpawnBehavior', own):
         return None
     if any(k in (own or {}) for k in ('AlliedWarFactoryRepairDrone', 'BaseRepairDrone')):
         return None
@@ -2255,93 +2261,6 @@ def passive_area(template, own=None):
         return (value, .1, int(cap)) if value == 100 else False
 
     return _chain(template, own, read)
-
-
-def spawn_modules(template, own=None):
-    """Nearest SpawnBehavior group; only the engine_spawn repair-drone configuration is supported.
-
-    Compare the complete subtree so new flags or child variants remain explicit gaps.
-    Even the supported configuration only implements initial burst, death refill and parent removal.
-    """
-    import xml.etree.ElementTree as ET
-
-    expected = dict(SpawnNumberData='3', InitialBurst='3', SpawnReplaceDelayData='10s',
-                    SpawnedRequireSpawner='true', KillSpawnsOnCaptured='true',
-                    SpawnInsideBuilding='true', KillSpawnsOnDisabled='true')
-
-    def read(xml):
-        out = {}
-        for head, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'SpawnBehavior'):
-            try:
-                node = ET.fromstring('<SpawnBehavior ' + head + '>' + inner + '</SpawnBehavior>')
-            except ET.ParseError:
-                out[_attr(head, 'id', '')] = None
-                continue
-            attrs = dict(node.attrib)
-            mid = attrs.pop('id', '')
-            children = [(c.tag, dict(c.attrib), (c.text or '').strip(), len(c)) for c in node]
-            valid = attrs == expected and children == [
-                ('Die', {'DeathTypes': 'ALL'}, '', 0),
-                ('SpawnTemplate', {}, 'AlliedWarFactoryRepairDrone', 0)]
-            out[mid] = 'AlliedWarFactoryRepairDrone' if valid else None
-        return out or None
-
-    return _chain(template, own, read) or {}
-
-
-UNPACK_SPAWN = dict(SpawnNumberData='1', SpawnReplaceDelayData='9999s', IsOneShotData='true', FadeInTime='1.0s',
-                    SpawnOnUnpack='true', CanReclaimOrphans='false', SetPurchasePrice='true')
-
-
-def unpack_spawn(template, own=None):
-    """{module id: the one unit it makes} for the nearest SpawnBehavior group's refinery configuration (all three
-    nations' refineries: one collector on unpacking, one-shot, never replaced -- UNPACK_SPAWN, exactly, one
-    SpawnTemplate). Anything else (more attributes, more children) is not this and stays spawn_modules' gap.
-    Bench 2026-11-12 checks/engine_mining.py mineturn<k> / mineniag p: a refinery the map places pays without a
-    collector placed (the placed one deleted at the start) -- it gives its own."""
-    import xml.etree.ElementTree as ET
-
-    def read(xml):                          # the nearest level with SpawnBehavior answers, as spawn_modules
-        out, seen = {}, False
-        for head, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'SpawnBehavior'):
-            seen = True
-            try:
-                node = ET.fromstring('<SpawnBehavior ' + head + '>' + inner + '</SpawnBehavior>')
-            except ET.ParseError:
-                continue
-            attrs = dict(node.attrib)
-            mid = attrs.pop('id', '')
-            kids = [(c.tag, dict(c.attrib), (c.text or '').strip(), len(c)) for c in node]
-            if attrs == UNPACK_SPAWN and len(kids) == 1 and kids[0][:2] == ('SpawnTemplate', {}) \
-                    and kids[0][2] and not kids[0][3]:
-                out[mid] = kids[0][2]
-        return out if seen else None
-
-    return _chain(template, own, read) or {}
-
-
-def attach_modules(template, own=None):
-    """Nearest AttachUpdate group: direct teleport/stick/status subset (engine_attach a).
-
-    Unsupported modules stay False, so recognizing an id cannot silently
-    implement leech, death, repair, idle-detach or autonomous scanning.
-    Multiple inherited module groups and distance boundaries are unbenched.
-    """
-    def read(xml):
-        out = {}
-        for h, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'AttachUpdate'):
-            flags = set(_attr(h, 'Flags', 'STICK_TO_PARENT TELEPORT USE_GEOMETRY').split())
-            mid = _attr(h, 'id')
-            if (inner.strip() or not {'STICK_TO_PARENT', 'TELEPORT'} <= flags
-                    or flags - {'STICK_TO_PARENT', 'TELEPORT', 'ONE_ATTACH_PER_PARENT'}
-                    or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'Flags', 'Range', 'CloseEnoughRange', 'ParentStatus', 'AttachedObjectStatus'}):
-                out[mid] = False
-            else:
-                out[mid] = dict(flags=flags, range=_num(_attr(h, 'Range')),
-                                child=set(_attr(h, 'AttachedObjectStatus', '').split()) | {'ATTACHED'},
-                                parent=set(_attr(h, 'ParentStatus', '').split()))
-        return out or None
-    return _chain(template, own, read) or {}
 
 
 def nugget_disguise_power(template, power, own=None):

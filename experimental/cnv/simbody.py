@@ -88,15 +88,16 @@ class Life:
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], world.t
         if not delete and b.last_by is not None and b.last_hit is not None:
             world.kills.append((b.last_hit, b.last_by, b.template, b.name))     # cond_retail: who killed what
-        b.spawn_refills.clear()
-        parent = b.spawn_parent
+        for m in b.find(interfaces.Spawn):      # SpawnBehavior / SlavedUpdate (engine/modules/spawn.py, step M7)
+            m.parent_died()
+        slaved = b.find(interfaces.Slaved)
+        parent = slaved.slaver() if slaved else None
         if parent is not None and parent.alive:
             if delete:
                 world.gap('SpawnBehavior', parent.template, '子体直接删除是否补充未测；不作为死亡通知')
             else:
                 # The complete accepted configuration fixes SpawnReplaceDelayData at 10s.
-                parent.spawn_refills.append((world.frame_now() + simunits._frames(10.0),
-                                             b.spawn_module, b.template))
+                slaved.spawner().child_died(b.template, world.frame_now())
         for child in b.spawned_children:
             # engine_spawn: both script kill and delete remove all three in the same sample.
             # Removal via deletion (rather than a lethal hit) is INFERRED; child death effects unmeasured.

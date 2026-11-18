@@ -133,7 +133,7 @@ def death_blast(s, frame, tick):
 
 
 def spawn(s, frame, tick):
-    s.spawn_due(frame)
+    """Its modules only (engine/modules/spawn.py, run by step): the drones' replacements when due."""
 
 
 def sweeps(s, frame, tick):

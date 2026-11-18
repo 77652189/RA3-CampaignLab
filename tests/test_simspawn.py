@@ -1,4 +1,5 @@
-"""SpawnBehavior lifecycle replay, deliberately excluding drone repair and slaving."""
+"""SpawnBehavior lifecycle replay, deliberately excluding drone repair and slaving (the data reading:
+tests/modules/test_spawn.py)."""
 import importlib.util
 from pathlib import Path
 
@@ -27,18 +28,6 @@ def test_spawn_initial_burst_and_parent_kill_delete_match_named_bench():
     # A factory built during play has an unmeasured unpack gate; do not silently spawn early.
     built = e.add('late factory', 'AlliedWarFactory', parent.owner, 100, 100, by='builder', at=24)
     assert not built.spawned_children
-
-
-def test_spawn_unmeasured_flags_and_subtrees_do_not_generate_children():
-    import simunits
-    xml = simunits._xml('AlliedWarFactory')
-    assert list(simunits.spawn_modules('AlliedWarFactory').values()) == ['AlliedWarFactoryRepairDrone']
-    for changed in (xml.replace('InitialBurst="3"', 'InitialBurst="1"'),
-                    xml.replace('SpawnedRequireSpawner="true"', 'SpawnedRequireSpawner="false"'),
-                    xml.replace('<SpawnTemplate>AlliedWarFactoryRepairDrone</SpawnTemplate>',
-                                '<SpawnTemplate>AlliedAirfieldRepairDrone</SpawnTemplate>'),
-                    xml.replace('DeathTypes="ALL"', 'DeathTypes="NORMAL"')):
-        assert list(simunits.spawn_modules('AlliedWarFactory', {'AlliedWarFactory': changed}).values()) == [None]
 
 
 def test_spawn_refill_two_independent_deaths_match_named_bench_with_position_precondition():
@@ -89,15 +78,15 @@ def test_spawn_refill_tracks_actual_death_frame_and_parent_removal_cancels_pendi
         e.destroy(child, 'test death')
         e.destroy(child, 'duplicate notification')
         assert len(parent.spawn_refills) == 1
-        e.spawn_due(died + 149)
+        e.world.schedule.run('spawn', died + 149)    # the spawn cell's modules (spawn.py)
         assert sum(c.alive for c in parent.spawned_children) == 2
-        e.spawn_due(died + 150)
+        e.world.schedule.run('spawn', died + 150)    # the spawn cell's modules (spawn.py)
         assert sum(c.alive for c in parent.spawned_children) == 3
         e.destroy(parent.spawned_children[-1], 'replacement death')
         assert len(parent.spawn_refills) == 1
         e.destroy(parent, 'parent removed', delete=delete)
         assert not parent.spawn_refills
-        e.spawn_due(died + 1000)
+        e.world.schedule.run('spawn', died + 1000)    # the spawn cell's modules (spawn.py)
         assert len(parent.spawned_children) == 4
         assert not any(c.alive for c in parent.spawned_children)
 
@@ -125,19 +114,6 @@ def test_spawn_power_outage_and_recovery_match_named_bench():
     assert all(c.alive for c in parent.spawned_children)
     assert not parent.spawn_refills
     assert e.power(m.player('p1')) == (100, 50)
-
-
-def test_unpack_spawn_reads_each_refinery_s_one_collector_and_nothing_else():
-    """SpawnOnUnpack (round 177): the three refineries' one-shot collector; the war factory's drones are not it, and a
-    changed attribute is not it either (stays spawn_modules' gap)."""
-    import simunits
-    assert simunits.unpack_spawn('AlliedRefinery') == {'ModuleTag_Spawn': 'AlliedMiner'}
-    assert simunits.unpack_spawn('SovietRefinery') == {'ModuleTag_Spawn': 'SovietMiner'}
-    assert simunits.unpack_spawn('JapanRefinery') == {'ModuleTag_Spawn': 'JapanMiner'}
-    assert simunits.unpack_spawn('AlliedWarFactory') == {}
-    xml = simunits._xml('AlliedRefinery')
-    changed = xml.replace('IsOneShotData="true"', 'IsOneShotData="false"')
-    assert changed != xml and simunits.unpack_spawn('AlliedRefinery', {'AlliedRefinery': changed}) == {}
 
 
 def test_a_placed_refinery_gives_its_collector_a_built_one_does_not():

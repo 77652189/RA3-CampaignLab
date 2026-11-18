@@ -188,6 +188,69 @@ class Suppression(Interface):
         raise NotImplementedError
 
 
+class Spawn(Interface):
+    """SpawnBehavior, several a thing (step M7): its module id (module_id), the drone template it keeps alive (child:
+    None, not that configuration), the collector it gives on unpacking (unpack_child: None, not that one), the things
+    it made (children, dead ones too), the replacements queued (refills: [(due frame, module id, template)]); taking a
+    thing it made (adopt), the death of one (child_died: its template, the frame -- a replacement queued) and its own
+    thing's death (parent_died: the queue emptied)."""
+    __slots__ = ()
+
+    def module_id(self):
+        raise NotImplementedError
+
+    def child(self):
+        raise NotImplementedError
+
+    def unpack_child(self):
+        raise NotImplementedError
+
+    def children(self):
+        raise NotImplementedError
+
+    def refills(self):
+        raise NotImplementedError
+
+    def adopt(self, child):
+        raise NotImplementedError
+
+    def child_died(self, template, frame):
+        raise NotImplementedError
+
+    def parent_died(self):
+        raise NotImplementedError
+
+
+class Slaved(Interface):
+    """SlavedUpdate, one a thing (step M7): the thing that made it (slaver: None, none), the module id it was made by
+    (slaver_module: '') and that Spawn module (spawner: None); being made by one (enslave: the parent, its module)."""
+    __slots__ = ()
+
+    def enslave(self, parent, spawner):
+        raise NotImplementedError
+
+    def slaver(self):
+        raise NotImplementedError
+
+    def slaver_module(self):
+        raise NotImplementedError
+
+    def spawner(self):
+        raise NotImplementedError
+
+
+class Attach(Interface):
+    """AttachUpdate, several a thing (step M7): its module id (module_id) and the rule an AttachNugget naming it
+    sticks by (rule: {flags, range, child, parent}; False, a shape not modelled)."""
+    __slots__ = ()
+
+    def module_id(self):
+        raise NotImplementedError
+
+    def rule(self):
+        raise NotImplementedError
+
+
 class Upgrade(Interface):
     """Whether it is in force (the XML's triggers, conflicts and required upgrades) and what it does then. Its data
     has `trigger` (module.Trigger); the kernel (Thing.upgrades_moved) keeps its `upgraded` and calls on_upgrade when
@@ -259,5 +322,5 @@ class AIUpdate(Interface):
 
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
-FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
-ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression})  # a thing has at most one of these: Thing.find gives it
+FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved})  # a thing has at most one of these: Thing.find gives it

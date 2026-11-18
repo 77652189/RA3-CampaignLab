@@ -373,7 +373,6 @@ class Body(kernel_module.Thing):
                                                                 # cannot destroy it) ...
     attachment_status: set = dataclasses.field(default_factory=set)  # owned by direct attachment links, not scripts
     lift_status: set = dataclasses.field(default_factory=set)  # survives timer release; landing is unresolved
-    attachment_rules: dict = dataclasses.field(default_factory=dict)
     indestructible: bool = False                                # the Indestructible panel flag: takes no damage
     upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (modify)
     up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
@@ -431,10 +430,6 @@ class Body(kernel_module.Thing):
                                                                 # 2, HOLD_FIRE 3 (idle_chase reads 1 / 2)
     ai_acquire: bool = False                                    # TEAM_ALLOW_AI_AUTOACQUIRE (takes_by_itself)
     z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
-    spawned_children: list = dataclasses.field(default_factory=list)
-    spawn_parent: object = None
-    spawn_module: str = ''
-    spawn_refills: list = dataclasses.field(default_factory=list)
     unpack_parent: object = None                                # the refinery whose SpawnOnUnpack made it (not a
                                                                 # slave: outlives it, never replaced)
 
@@ -463,7 +458,8 @@ class Body(kernel_module.Thing):
     # fields moved into modules, still read outside: read only (test_kernel BODY_FORWARDS)
     FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
-                'suppression_next')
+                'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
+                'spawn_module')
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
@@ -479,6 +475,13 @@ class Body(kernel_module.Thing):
     suppressed = kernel_module.forward(kernel_interfaces.Suppression, lambda m: m.is_suppressed(), False)  # a model
     suppressed_until = kernel_module.forward(kernel_interfaces.Suppression, lambda m: m.until(), -1)  # condition
     suppression_next = kernel_module.forward(kernel_interfaces.Suppression, lambda m: m.next_sample(), 0)
+    attachment_rules = kernel_module.forward(kernel_interfaces.Attach,      # step M7: {module id: rule or False}
+                                             lambda ms: {m.module_id(): m.rule() for m in ms}, {})
+    spawned_children = kernel_module.forward(kernel_interfaces.Spawn, lambda ms: [c for m in ms for c in m.children()],
+                                             [])                            # what its SpawnBehaviors made
+    spawn_refills = kernel_module.forward(kernel_interfaces.Spawn, lambda ms: [r for m in ms for r in m.refills()], [])
+    spawn_parent = kernel_module.forward(kernel_interfaces.Slaved, lambda m: m.slaver())   # its SlavedUpdate's maker
+    spawn_module = kernel_module.forward(kernel_interfaces.Slaved, lambda m: m.slaver_module(), '')
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
@@ -858,7 +861,8 @@ class Sim:
                                         toggled=lambda b, m: simtoggle.entered(self, b, m, self.modify),
                                         modify=lambda b: self.modify(b),
                                         suppression_at=lambda b, f: simdamage.suppression_at(
-                                            self.suppression_fields, b, f))
+                                            self.suppression_fields, b, f),
+                                        spawn=lambda b, m, template: self.spawn_child(b, m, template, self.t))
         self.used = self.world.used         # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
         self.unmodeled = self.world.gaps    # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
@@ -945,7 +949,6 @@ class Sim:
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
         self.attachments = {}              # child name -> (child, parent, module rule)
         self.lift_timers = simunits.LiftTimers()
-        self._attachment_rules = {}
         self._attachment_marked = set()
         self.attachment_known_status = {'ATTACHED'}
         self.suppression_fields = []        # (end, value, x, y, radius): stationary hit contributions
@@ -1102,12 +1105,6 @@ class Sim:
                 b.status.add('WALL_SEGMENT')
             self.gap('WallBuilderBehavior', template,
                      '仅预摆墙默认WALL_SEGMENT初始状态已量；运行时生成/建墙/连接/段数上限/生死联动、自定义状态与模型条件未建模；其他继承覆盖默认值INFERRED，脚本改位交互未测')
-        if template not in self._attachment_rules:
-            self._attachment_rules[template] = simunits.attach_modules(template, self.own)
-        b.attachment_rules = self._attachment_rules[template]
-        for rule in b.attachment_rules.values():
-            if rule:
-                self.attachment_known_status.update(rule['child'] | rule['parent'])
         hp =immortal_hp if b.immortal else (f['hp'] or simunits.max_health(template, self.own))
         # no health in the data: a building's or a unit's usual (a guess)
         b.max_hp = b.hp = hp or (2000.0 if 'STRUCTURE' in b.kinds else 300.0)
@@ -1138,6 +1135,9 @@ class Sim:
         mods = self.world.build(b, self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS)))
         if mods:
             b.modules = mods
+        for m in b.find(kernel_interfaces.Attach):    # AttachUpdate (engine/modules/attach.py): the statuses its
+            if m.rule():                              # links may set are known ones (simcond_object)
+                self.attachment_known_status.update(m.rule()['child'] | m.rule()['parent'])
         if b.topple:                            # a ToppleUpdate (engine/modules/topple.py)
             import simtopple
             a, c, _, _ = simtopple.shape(template, self.own)
@@ -1146,41 +1146,41 @@ class Sim:
             self.topples.append(b)
         self.world.drop(self.bodies.get(name))  # a body under the same name leaves the world
         self.bodies[name] = b
-        rules = self.__dict__.setdefault('_spawn_rules', {})
-        if template not in rules:
-            rules[template] = simunits.spawn_modules(template, self.own), simunits.unpack_spawn(template, self.own)
-        for mid, child_template in rules[template][1].items():
+        spawns = b.find(kernel_interfaces.Spawn)    # SpawnBehavior (engine/modules/spawn.py)
+        for m in spawns:
+            if not m.unpack_child():
+                continue
             if by:                      # built (simai gives the AI's its own, put) or a script's: not benched here
                 self.gap('SpawnBehavior', template, '建成或脚本创建的矿场自带矿车（SpawnOnUnpack）出车时机未对拍')
                 continue
-            self.unpack_child(b, child_template, at)
-        for mid, child_template in rules[template][0].items():
-            if mid in rules[template][1]:
+            self.unpack_child(b, m.unpack_child(), at)
+        for m in spawns:
+            if m.unpack_child():
                 continue
             self.gap('SpawnBehavior', template,
                      '仅盟军战车工厂配置开局3架、死亡10秒补充、母体清随从及缺电保持3架已量；子体直接删除、真正禁用、占领、缺电时死亡补充、'
                      '展开时机、其他配置未建模；生成位置INFERRED；不含SlavedUpdate/AttachUpdate维修')
-            if not child_template or by:  # construction/unpack and scripted creation have not been measured
+            if not m.child() or by:     # construction/unpack and scripted creation have not been measured
                 continue
-            if not b.spawned_children:
-                self.__dict__.setdefault('_spawn_parents', []).append(b)
             for i in range(3):
-                self.spawn_child(b, mid, child_template, at)
+                self.spawn_child(b, m, m.child(), at)
         b.team = team                   # the team it is made into, set last (its spawn and unpack children keep '')
         return b
 
-    def spawn_child(self, parent, mid, template, at):
-        """Measured drone group only; centre placement remains INFERRED (no autonomous repair flight)."""
-        name = f'#spawn {parent.name} {mid} {len(parent.spawned_children)}'
+    def spawn_child(self, parent, spawner, template, at):
+        """One thing a parent's Spawn module (engine/modules/spawn.py) makes: the measured drone group only; centre
+        placement remains INFERRED (no autonomous repair flight). A child template without SlavedUpdate is given
+        one (World.attach), so every child knows its maker."""
+        name = f'#spawn {parent.name} {spawner.module_id()} {len(parent.spawned_children)}'
         while name in self.bodies:
             name += '#'
         child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
-        child.spawn_parent, child.spawn_module = parent, mid
-        parent.spawned_children.append(child)
+        (child.find(kernel_interfaces.Slaved) or self.world.attach(child, 'SlavedUpdate')).enslave(parent, spawner)
+        spawner.adopt(child)
         return child
 
     def unpack_child(self, parent, template, at):
-        """SpawnOnUnpack (simunits.unpack_spawn): a refinery the map places gives its one collector at the start, on
+        """SpawnOnUnpack (engine/modules/spawn.py): a refinery the map places gives its one collector at the start, on
         its own spot (bench 2026-11-12 mineturn<k> / mineniag p: the first money by the drive from there; the spot and
         the 1 s fade INFERRED). Its own unit: it outlives the refinery (no SpawnedRequireSpawner)."""
         name = f'#unpack {parent.name}'
@@ -1189,22 +1189,6 @@ class Sim:
         child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
         child.unpack_parent = parent                # the owner's default team, as Generals' createSpawn (team '')
         return child
-
-    def spawn_due(self, frame):
-        """engine_spawn_refill: independent death + 10s replacements; subsecond phase INFERRED.
-
-        engine_spawn_power: a supply shortage alone leaves the factory's drone
-        count at three. Do not equate short_of_power with KillSpawnsOnDisabled. Real module
-        disabling and death/refill during an outage are still unmeasured gaps.
-        """
-        for parent in self.__dict__.get('_spawn_parents', ()):
-            if not parent.alive:
-                continue
-            for item in list(parent.spawn_refills):
-                due, mid, template = item
-                if due <= frame:
-                    parent.spawn_refills.remove(item)
-                    self.spawn_child(parent, mid, template, self.t)
 
     def expire(self, frame):
         """simbody.Life.expire (L2): whatever's lifetime (a topple's delay, a sale's) is up by `frame` goes."""
