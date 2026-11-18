@@ -2897,8 +2897,7 @@ class Sim:
         150 and 165 -- the turn 0.5 s, 1.5 s driving: its way ends at 11.0, the frame of 165 still moving)."""
         if b.path and b.dest:
             return self.frame_now() > b.set_off
-        fps = self.fps if self.eng is not None else simunits.LIFE_FPS
-        return self.t < b.stops_at + 1.0 / fps - 1e-9
+        return self.t < b.stops_at + 1.0 / self.fps - 1e-9
 
     def emp_disabled(self, b):
         """EMP pauses movement and new fire (engine_emp phase / engine_empfire a).
@@ -3241,8 +3240,7 @@ class Sim:
         """The mission `frames` frames on, for a caller that plays it a slice at a time (simproxy's player gives its
         orders between slices): run's DT ticks (step, each whole second's sample) up to the first tick at or past them,
         stopping at the mission's end. No quiet check and no end-of-run counters (run's). Returns self."""
-        fps = self.fps if self.eng is not None else simunits.LIFE_FPS
-        target = round(self.t + frames / fps, 6)
+        target = round(self.t + frames / self.fps, 6)
         while self.t < target - 1e-9 and self.ending is None:
             self.step()
             if abs(self.t - round(self.t)) < 1e-6:
