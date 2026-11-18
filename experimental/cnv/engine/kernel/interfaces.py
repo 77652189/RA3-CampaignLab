@@ -482,6 +482,28 @@ class Assign(Interface):
         raise NotImplementedError
 
 
+class Infiltrate(Interface):
+    """InfiltratorContain (step M15): its rules (rules: the block's attributes as written), whether a spy has entered
+    it for a measured slice (entered / mark: 'kill', 'money', 'vehicle' ...), and a blocking port's turn-away frame
+    (blocked_until / block). Who may enter, the walk and the effect stay with the host (siminfiltrator.Infiltrators)."""
+    __slots__ = ()
+
+    def rules(self):
+        raise NotImplementedError
+
+    def entered(self, slice_):
+        raise NotImplementedError
+
+    def mark(self, slice_):
+        raise NotImplementedError
+
+    def blocked_until(self):
+        raise NotImplementedError
+
+    def block(self, frame):
+        raise NotImplementedError
+
+
 class AIUpdate(Interface):
     """The command state machine (move, attack, guard, follow ...) and the movement's physics."""
     __slots__ = ()
@@ -492,5 +514,5 @@ class AIUpdate(Interface):
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
 FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze,
-          LevelUp, Aura, Repair, Assign)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+          LevelUp, Aura, Repair, Assign, Infiltrate)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze})  # a thing has at most one of these: Thing.find gives it

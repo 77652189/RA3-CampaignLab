@@ -24,32 +24,30 @@ other parts through `peers` (Peers: the names in PEERS, read when used), the mon
 held / charge / credit). This module never imports sim.
 """
 import math
-import os
 import re
 
 import simunits
+from engine.kernel import factory, interfaces
+
+
+TAG = 'InfiltratorContain'
+
+
+def _rule(rule, modules):
+    """The first module's rule; a KILL host with sibling InfiltratorContains is marked (E205 measured one alone), a
+    copy so the shared data stays as parsed."""
+    if rule.get('Effect') == 'KILL' and modules != 1:
+        return dict(rule, _unmeasured_siblings=modules)
+    return rule
 
 
 def spec(template, own=None):
-    def read(xml):
-        text = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
-        def include(m):
-            path = os.path.join(simunits.SAGEXML, *m.group(1).split('/'))
-            return open(path, encoding='utf-8').read() if os.path.isfile(path) else ''
-        text = re.sub(r'<xi:include\b[^>]*href="DATA:([^"]+)"[^>]*/>', include, text)
-        modules = list(simunits._blocks(text, 'InfiltratorContain'))
-        head = modules[0] if modules else None
-        if head is None:
-            return None
-        rule = dict(re.findall(r'(\w+)="([^"]*)"', head[0]))
-        if rule.get('Effect') == 'KILL' and head[1].strip():
-            # E205: the measured KILL module has no children. Preserve an
-            # explicit rejection marker rather than silently dropping a filter.
-            rule['_unmeasured_children'] = head[1]
-        if rule.get('Effect') == 'KILL' and len(modules) != 1:
-            rule['_unmeasured_siblings'] = len(modules)
-        return rule
-    return simunits._chain(template, own, read)
+    """The rule a thing of the template gets (the port's blocks, simunits.INCLUDED, parsed as its module's data:
+    engine/modules/infiltrate.py), None without the tag. Step M15 census: the reader it replaced, 3448 retail + 520
+    own templates, no difference (work/logs/m15_census.log). The tag is registered once engine.modules is imported
+    (sim does)."""
+    blocks = simunits.module_blocks(template, TAG, own)
+    return _rule(factory.TAGS[TAG].DATA.parse(*blocks[0]).rule, len(blocks)) if blocks else None
 
 
 def filter_spec(name):
@@ -90,22 +88,25 @@ class Infiltrators:
     def __init__(self, world, peers, wallet):
         # simworld.WORLD_API only; the host's other parts (Peers); the players' money (simmoney.Money, L4)
         self.world, self.peers, self.wallet = world, peers, wallet
-        self.rules = {}
         self.going = {}
         self.off_until = {}
         self.observers = []
         self.unit_observers = []
         self.paralyzed_until = {}
         self.attack_until = {}
-        self.paralyzed_hosts = set()
-        self.kill_hosts = set()
-        self.money_hosts = set()
-        self.vehicle_hosts = set()
-        self.reset_hosts = set()
-        self.aircraft_hosts = set()
-        self.infantry_hosts = set()
-        self.ship_hosts = set()
-        self.port_blocked_until = {}
+
+    def module(self, target):
+        """The target's first InfiltratorContain module (engine/modules/infiltrate.py, the one the rule is read
+        from), None without one."""
+        found = target.find(interfaces.Infiltrate) if target is not None and target.modules else ()
+        return found[0] if found else None
+
+    def entered(self, target, slice_):
+        """A spy has entered the target for this measured slice (the module keeps it, step M15)."""
+        return self.module(target).entered(slice_)
+
+    def mark(self, target, slice_):
+        self.module(target).mark(slice_)
 
     def aircraft_rule(self, target, rule):
         """E197 complete retail airfield configuration; no reveal assumption."""
@@ -119,7 +120,7 @@ class Infiltrators:
     def aircraft_entry_measured(self, spy, target):
         world = self.world
         return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
-                and id(target) not in self.aircraft_hosts)
+                and not self.entered(target, 'aircraft'))
 
     def infantry_rule(self, target, rule):
         """E198 complete retail barracks configuration; no reveal assumption."""
@@ -133,7 +134,7 @@ class Infiltrators:
     def infantry_entry_measured(self, spy, target):
         world = self.world
         return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
-                and id(target) not in self.infantry_hosts)
+                and not self.entered(target, 'infantry'))
 
     def ship_rule(self, target, rule):
         """E200 complete retail naval yard configuration; no reveal assumption."""
@@ -147,7 +148,7 @@ class Infiltrators:
     def ship_entry_measured(self, spy, target):
         world = self.world
         return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
-                and id(target) not in self.ship_hosts)
+                and not self.entered(target, 'ship'))
 
     def port_rule(self, target, rule):
         """E201 complete retail port signature, independent of ordinary yards."""
@@ -169,7 +170,7 @@ class Infiltrators:
     def reset_entry_measured(self, spy, target):
         world = self.world
         return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
-                and id(target) not in self.reset_hosts)
+                and not self.entered(target, 'reset'))
 
     def vehicle_rule(self, target, rule):
         """E194: measured factory entry only; intermittent discovery stays a gap."""
@@ -183,7 +184,7 @@ class Infiltrators:
     def vehicle_entry_measured(self, spy, target):
         world = self.world
         return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
-                and id(target) not in self.vehicle_hosts)
+                and not self.entered(target, 'vehicle'))
 
     def money_rule(self, target, rule):
         """E193: one retail Allied refinery transfer; income blocking is a gap."""
@@ -195,7 +196,7 @@ class Infiltrators:
     def money_entry_measured(self, spy, target):
         world = self.world
         return (spy.owner == world.human and spy.template == 'AlliedInfiltrationInfantry'
-                and id(target) not in self.money_hosts
+                and not self.entered(target, 'money')
                 and self.wallet.held(target.owner) >= 2000)
 
     def vision_rule(self, target, rule):
@@ -300,10 +301,9 @@ class Infiltrators:
                                         (body.x, body.y)))
 
     def spec(self, target):
-        world = self.world
-        if target.template not in self.rules:
-            self.rules[target.template] = spec(target.template, world.own)
-        return self.rules[target.template]
+        """The target's rule (its module's data, shared by the template's things), None without the module."""
+        found = target.find(interfaces.Infiltrate) if target.modules else ()
+        return _rule(found[0].rules(), len(found)) if found else None
 
     def send(self, spy, target):
         world, peers = self.world, self.peers
@@ -330,7 +330,7 @@ class Infiltrators:
             if not self.port_entry_measured(spy):
                 world.gap('InfiltratorContain', target.template, '港口其他间谍/玩家未对拍')
                 return
-            if world.frame_now() < self.port_blocked_until.get(id(target), 0):
+            if world.frame_now() < self.module(target).blocked_until():
                 return  # E201 a: second remains alive; b checks the same order is legal.
         if self.aircraft_rule(target, rule) and not self.aircraft_entry_measured(spy, target):
             world.gap('InfiltratorContain', target.template, '飞机VISION_UNITS其他间谍/玩家或重复进入未对拍')
@@ -352,12 +352,12 @@ class Infiltrators:
             return
         if self.kill_rule(target, rule) and (
                 spy.owner != world.human or spy.template != 'AlliedInfiltrationInfantry'
-                or id(target) in self.kill_hosts):
+                or self.entered(target, 'kill')):
             world.gap('InfiltratorContain', target.template, 'KILL其他间谍/玩家或重复进入未对拍')
             return
         if self.paralyze_rule(target, rule) and (
                 spy.owner != world.human or spy.template != 'AlliedInfiltrationInfantry'
-                or id(target) in self.paralyzed_hosts):
+                or self.entered(target, 'paralyze')):
             world.gap('InfiltratorContain', target.template, 'PARALYZE其他间谍/玩家或重复进入未对拍')
             return
         if self.vision_rule(target, rule) and (
@@ -395,11 +395,11 @@ class Infiltrators:
                 if not self.port_entry_measured(spy):
                     world.gap('InfiltratorContain', target.template, '港口入楼时资格变化未对拍')
                     continue
-                if world.frame_now() < self.port_blocked_until.get(id(target), 0):
+                if world.frame_now() < self.module(target).blocked_until():
                     continue
                 # INFERRED: XML duration beyond the measured second-entry window;
                 # E201 observes blocking through 41s, not its distant expiry.
-                self.port_blocked_until[id(target)] = (world.frame_now()
+                self.module(target).block(world.frame_now()
                     + simunits._frames(float(rule['BlockedDuration'][:-1])))
                 # INFERRED: attach local sight at accepted entry; exact activation
                 # phase/observer identity were not measured. Keep ordinary yards' delay.
@@ -413,7 +413,7 @@ class Infiltrators:
                 if not self.aircraft_entry_measured(spy, target):
                     world.gap('InfiltratorContain', target.template, '飞机VISION_UNITS入楼时资格变化未对拍')
                     continue
-                self.aircraft_hosts.add(id(target))
+                self.mark(target, 'aircraft')
                 self.unit_vision(spy, target, rule)
                 world.gap('InfiltratorContain', target.template,
                       '飞机VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
@@ -424,7 +424,7 @@ class Infiltrators:
                 if not self.infantry_entry_measured(spy, target):
                     world.gap('InfiltratorContain', target.template, '步兵VISION_UNITS入楼时资格变化未对拍')
                     continue
-                self.infantry_hosts.add(id(target))
+                self.mark(target, 'infantry')
                 self.unit_vision(spy, target, rule)
                 world.gap('InfiltratorContain', target.template,
                       '步兵VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
@@ -435,7 +435,7 @@ class Infiltrators:
                 if not self.ship_entry_measured(spy, target):
                     world.gap('InfiltratorContain', target.template, '舰船VISION_UNITS入楼时资格变化未对拍')
                     continue
-                self.ship_hosts.add(id(target))
+                self.mark(target, 'ship')
                 self.unit_vision(spy, target, rule)
                 world.gap('InfiltratorContain', target.template,
                       '舰船VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e200_ship.md')
@@ -446,7 +446,7 @@ class Infiltrators:
                 if not self.reset_entry_measured(spy, target):
                     world.gap('InfiltratorContain', target.template, 'RESET入楼时资格变化未对拍')
                     continue
-                self.reset_hosts.add(id(target))
+                self.mark(target, 'reset')
                 # E61 observes entry, not an independent remaining cooldown.
                 # Never interpret the short ready interruption as a reload time.
                 world.gap('InfiltratorContain', target.template,
@@ -458,7 +458,7 @@ class Infiltrators:
                 if not self.vehicle_entry_measured(spy, target):
                     world.gap('InfiltratorContain', target.template, '车辆VISION_UNITS入楼时资格变化未对拍')
                     continue
-                self.vehicle_hosts.add(id(target))
+                self.mark(target, 'vehicle')
                 self.unit_vision(spy, target, rule)
                 world.gap('InfiltratorContain', target.template,
                       '车辆VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
@@ -468,7 +468,7 @@ class Infiltrators:
             if self.kill_rule(target, rule):
                 # INFERRED: ordinary lethal cleanup; E138 only observes survival,
                 # not the fling trajectory, death animation or death-module dispatch.
-                self.kill_hosts.add(id(target))
+                self.mark(target, 'kill')
                 world.gap('InfiltratorContain', target.template,
                       'KILL存活及玩家击杀归属已接，抛飞/死亡模块派发未对拍，见 work/re/e205_kill.md')
                 prior_attacker = spy.last_by is not None
@@ -489,7 +489,7 @@ class Infiltrators:
                 amount = int(rule['Amount'])
                 self.wallet.charge(target.owner, amount)
                 self.wallet.credit(spy.owner, amount)
-                self.money_hosts.add(id(target))
+                self.mark(target, 'money')
                 # E60 observed subsequent miner income. Do not invent a 30s
                 # income freeze from BlockedDuration; its consumer remains a gap.
                 peers.destroy(spy, '进楼渗透', delete=True)
@@ -510,7 +510,7 @@ class Infiltrators:
                 # INFERRED: apply once to existing units at entry, for the XML duration.
                 # E128 b/E129 a/E133 a support stable movement windows, not exact expiry or new units.
                 end = world.frame_now() + simunits._frames(float(rule['Duration'][:-1]))
-                self.paralyzed_hosts.add(id(target))
+                self.mark(target, 'paralyze')
                 for body in world.living():
                     if body.owner != target.owner or body.template.lower() not in selected[0]:
                         continue

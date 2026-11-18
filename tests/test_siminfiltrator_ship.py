@@ -116,11 +116,11 @@ def test_ship_unmeasured_entry_stays_gap(variant):
         spy.owner = m.player('s6')
         s.relations[target.owner, spy.owner] = 'Enemy'
     elif variant == 'repeat':
-        s.infiltrators.ship_hosts.add(id(target))
+        s.infiltrators.mark(target, 'ship')
     s.infiltrators.send(spy, target)
     if variant == 'entry_recheck':
         assert spy.mode == 'infiltrate'
-        s.infiltrators.ship_hosts.add(id(target))
+        s.infiltrators.mark(target, 'ship')
         spy.x, spy.y, spy.path = target.x, target.y, []
         s.infiltrators.tick()
     assert spy.alive and not s.infiltrators.going

@@ -1394,9 +1394,11 @@ EXPANDED = frozenset({'StructureUnpackUpdate'})  # '=$NAME' attribute values spe
                                             # reader it replaced (step M10: 17 retail UnpackTimes are =$..._UNPACK_TIME;
                                             # a template inheriting one from another file -- 3 retail, 13 of our own
                                             # -- reads it as nothing, 0); the define's own file is a behaviour change
-INCLUDED = frozenset({'RepairUpdate'})      # read with the DATA:Includes files a template references (_with_includes),
-                                            # as the reader it replaced (step M13: the retail structures take their
-                                            # RepairUpdate from Includes/GenericBuildingRepair.xml)
+INCLUDED = frozenset({'RepairUpdate', 'InfiltratorContain'})  # read with the DATA:Includes files a template
+                                            # references (_with_includes), as the readers they replaced (step M13: the
+                                            # retail structures take their RepairUpdate from Includes/GenericBuilding-
+                                            # Repair.xml; step M15: their InfiltratorContain from Includes/Infiltrator-
+                                            # Contain*.xml)
 GATHERED = frozenset({'GarrisonContain', 'ContestableGarrisonContain', 'TransportContain'})  # one block made of
                                             # every block of the tag up the chain: each attribute the nearest that
                                             # writes it, '=$' defines spelled out (expand), the inner text the nearest

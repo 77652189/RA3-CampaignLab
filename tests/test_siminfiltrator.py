@@ -186,7 +186,7 @@ def test_spy_vehicle_unmeasured_entry_reports_gap(variant):
         spy.owner = m.player('s3')
         s.relations[target.owner, spy.owner] = 'Enemy'
     elif variant == 'repeat':
-        s.infiltrators.vehicle_hosts.add(id(target))
+        s.infiltrators.mark(target, 'vehicle')
     s.infiltrators.send(spy, target)
     if variant == 'player_at_entry':
         assert spy.mode == 'infiltrate'
@@ -419,7 +419,7 @@ def test_spy_superweapon_reset_unmeasured_entry_reports_gap(variant):
         spy.owner = m.player('s3')
         s.relations[target.owner, spy.owner] = 'Enemy'
     else:
-        s.infiltrators.reset_hosts.add(id(target))
+        s.infiltrators.mark(target, 'reset')
     s.infiltrators.send(spy, target)
     assert not s.infiltrators.going
     assert spy.alive
@@ -536,7 +536,7 @@ def test_spy_refinery_unmeasured_money_variants_report_gap(variant):
         spy.owner = m.player('s3')
         s.relations[target.owner, spy.owner] = 'Enemy'
     elif variant == 'repeat':
-        s.infiltrators.money_hosts.add(id(target))
+        s.infiltrators.mark(target, 'money')
     elif variant == 'poor':
         s.money[target.owner] = 1999
     s.infiltrators.send(spy, target)

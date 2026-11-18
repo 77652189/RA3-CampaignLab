@@ -68,9 +68,7 @@ def test_port_unmeasured_configurations_stay_gaps(variant):
         rule['Amount'] = '1'
     elif variant == 'host':
         target.template = 'AlliedConstructionYard'
-        # Preserve the synthetic port configuration on the changed host; otherwise
-        # spec() correctly resolves the yard's ordinary, already-measured VISION.
-        s.infiltrators.rules[target.template] = rule
+        # The port's module (its rule) stays with the thing: the changed name alone is the unmeasured host.
     elif variant == 'spy':
         spy.template = 'JapanInfiltrationInfantry'
     elif variant == 'player':
@@ -79,7 +77,7 @@ def test_port_unmeasured_configurations_stay_gaps(variant):
     s.infiltrators.send(spy, target)
     if variant == 'entry_recheck':
         assert spy.mode == 'infiltrate'
-        s.infiltrators.port_blocked_until[id(target)] = s.frame_now() + 100
+        s.infiltrators.module(target).block(s.frame_now() + 100)
         spy.x, spy.y, spy.path = target.x, target.y, []
         s.infiltrators.tick()
     assert spy.alive and not s.infiltrators.going

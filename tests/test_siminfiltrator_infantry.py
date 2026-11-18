@@ -109,11 +109,11 @@ def test_infantry_unmeasured_entry_stays_gap(variant):
         spy.owner = m.player('s6')
         s.relations[target.owner, spy.owner] = 'Enemy'
     elif variant == 'repeat':
-        s.infiltrators.infantry_hosts.add(id(target))
+        s.infiltrators.mark(target, 'infantry')
     s.infiltrators.send(spy, target)
     if variant == 'entry_recheck':
         assert spy.mode == 'infiltrate'
-        s.infiltrators.infantry_hosts.add(id(target))
+        s.infiltrators.mark(target, 'infantry')
         spy.x, spy.y, spy.path = target.x, target.y, []
         s.infiltrators.tick()
     assert spy.alive and not s.infiltrators.going
@@ -138,4 +138,5 @@ def test_infantry_no_hostile_entry_as_on_the_bench():
     assert s.series and all(values == [11100, 11100, 0, 511] for _, values in s.series)
     assert s.body(m.role('enemy spy').name).alive
     assert s.body(m.role('ally spy').name).alive
-    assert not s.infiltrators.infantry_hosts and not s.infiltrators.observers
+    assert not any(s.infiltrators.entered(b, 'infantry') for b in s.living() if s.infiltrators.module(b))
+    assert not s.infiltrators.observers

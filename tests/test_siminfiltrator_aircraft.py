@@ -57,7 +57,8 @@ def test_aircraft_no_hostile_entry_as_on_the_bench():
     assert s.series and all(values == [11100, 11100, 0, 511] for _, values in s.series)
     assert s.body(m.role('enemy spy').name).alive
     assert s.body(m.role('ally spy').name).alive
-    assert not s.infiltrators.aircraft_hosts and not s.infiltrators.observers
+    assert not any(s.infiltrators.entered(b, 'aircraft') for b in s.living() if s.infiltrators.module(b))
+    assert not s.infiltrators.observers
 
 
 @pytest.mark.xfail(strict=True, reason='E197 a匹配飞机可见位1/0间歇，其他两位0；'
@@ -97,11 +98,11 @@ def test_aircraft_unmeasured_entry_stays_gap(variant):
         spy.owner = m.player('s6')
         s.relations[target.owner, spy.owner] = 'Enemy'
     elif variant == 'repeat':
-        s.infiltrators.aircraft_hosts.add(id(target))
+        s.infiltrators.mark(target, 'aircraft')
     s.infiltrators.send(spy, target)
     if variant == 'entry_recheck':
         assert spy.mode == 'infiltrate'
-        s.infiltrators.aircraft_hosts.add(id(target))
+        s.infiltrators.mark(target, 'aircraft')
         spy.x, spy.y, spy.path = target.x, target.y, []
         s.infiltrators.tick()
     assert spy.alive and not s.infiltrators.going
