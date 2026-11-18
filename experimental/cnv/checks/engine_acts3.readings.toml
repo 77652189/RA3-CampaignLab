@@ -1,0 +1,19 @@
+# Bench readings of checks/engine_acts3.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "acts_tel_as_the_bench"
+scene = {build = "engine_acts_tel", check = "tel", until = 31}
+bench = """tel, bench 11-13 `run_queue engine_acts_tel:tel` (CampActsTTel_mcp_1113_203544, round 213; the bench's seconds 1-2 ahead): \
+钱 1000 6000 10000 10100 20000; 位 3 from the start and Gar walking into the five-place Bullfrog one by one to 503; \
+旗 15 14 12"""
+proves = """sim PLAYER_SET_MONEY_CAP holds no script's money; the team teleported, its move dropped, never in 'tel go'; \
+TEAM_GARRISON_SPECIFIC_BUILDING asks the room, unlike _INSTANTLY; 旗 15 14 12 -- the reference on refb (named, nearest \
+RefT's middle), then on CA's; aaq's plant hit after UNIT_ALLOW_AI_AUTOACQUIRE, aaq0's never."""
+let = {S = "list(zip(times, vals(rows)))[1:]", changes = "lambda col: [v for j, v in enumerate([x[col] for t, x in S]) if j == 0 or v != [x[col] for t, x in S][j - 1]]"}
+expect = [
+    "changes(0) == [1000, 6000, 10000, 10100, 20000]",
+    "changes(1)[-1] == 503 and all(v % 100 in (0, 3) for v in changes(1)) and len(changes(1)) >= 4",
+    "all(v[1] % 100 == 3 for t, v in S if t >= 2.5)",
+    "changes(2) == [7, 15, 14, 12]",
+]

@@ -168,67 +168,28 @@ BENCHED_TESTS = {
     (MODULE, 'Behaviors/OreMinerBehavior'): 'tests/test_simbench.py::test_mining_pays_8_a_frame_and_a_trip_takes_269',
     (MODULE, 'Behaviors/OreNodeBehavior'): 'tests/test_simbench.py::test_mining_a_second_miner_on_one_node_adds_nothing',
     # batch 1 (work/re/l2_scripts1.md, checks/engine_scripts1.py, bench 11-08)
-    (CONDITION, 'PLAYER_IS_HUMAN_OR_AI_PERSONALITY'): 'tests/test_simbench.py::test_scripts1_conditions_as_the_bench',
-    (CONDITION, 'UNIT_HAS_OBJECT_STATUS'): 'tests/test_simbench.py::test_scripts1_conditions_as_the_bench',
     (CONDITION, 'HAS_FINISHED_AUDIO'):
         'tests/test_simbench.py::test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard',
-    (CONDITION, 'HAS_FINISHED_VIDEO'):
-        'tests/test_simbench.py::test_video_a_radar_clip_is_done_after_its_length_full_screen_never',
-    (ACTION, 'TEAM_TRANSFER_TO_PLAYER'): 'tests/test_simbench.py::test_scripts1_a_team_handed_over_drops_its_move',
-    (ACTION, 'PLAYER_RELATES_PLAYER'): 'tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back',
-    (CONDITION, 'PLAYER_HAS_OBJECT_COMPARISON'): 'tests/test_simbench.py::test_scripts2_a_relation_is_one_way_and_turns_back',
     (ACTION, 'ALLOW_DISALLOW_ONE_BUILDING'): 'tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel',
-    (ACTION, 'UNIT_IDLE_FOR_SECONDS'): 'tests/test_simbench.py::test_scripts1_idle_for_seconds_drops_the_move',
     # protocol points (simtech.py, checks/engine_protocol.py, bench 11-08)
-    (ACTION, 'PLAYER_SET_MAX_PLAYER_POWER_POINTS'):
-        'tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule',
-    (ACTION, 'PLAYER_SET_PLAYER_POWER_POINTS'):
-        'tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule',
-    (ACTION, 'PLAYER_LOCK_PLAYER_TECH'): 'tests/test_simbench.py::test_protocol_a_computer_player_spends_unless_locked',
-    (CONDITION, 'PLAYER_HAS_COMPARISON_POWER_POINTS'):
-        'tests/test_simbench.py::test_protocol_set_points_follows_the_programs_rule',
-    (CONDITION, 'PLAYER_HAS_PLAYER_TECH'): 'tests/test_simbench.py::test_protocol_rank_two_at_frame_5400',
     # engine line A round 208: retail-campaign conditions batch 1 (checks/engine_conds.py team / fight); the
     # TEAM_INSIDE_AREA k other than 0 is benched only as "no Guardian passes 1 / 3 / 7" (air / ships INFERRED)
-    **{(CONDITION, n): 'tests/test_simbench.py::test_conds_team_as_the_bench' for n in (
-        'TEAM_HAS_UNITS', 'TEAM_INSIDE_AREA_PARTIALLY', 'TEAM_INSIDE_AREA_ENTIRELY', 'TEAM_CREATED', 'TEAM_DESTROYED',
-        'TEAM_SOME_HAVE_OBJECT_STATUS', 'TEAM_ALL_HAS_OBJECT_STATUS', 'PLAYER_HAS_CREDITS', 'CURRENT_PLATFORM',
-        'NAMED_EXITED_AREA')},
-    **{(CONDITION, n): 'tests/test_simbench.py::test_conds_fight_as_the_bench' for n in (
-        'TEAM_ATTACKED_BY_PLAYER', 'SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER', 'TEAM_ATTACKED_BY_OBJECTTYPE',
-        'NAMED_ATTACKED_BY_OBJECTTYPE', 'PLAYER_HAS_KILLED_NAMED_UNIT', 'PLAYER_HAS_KILLED_TYPE_UNITS',
-        'NAMED_HAS_KILLED_COMPARISON_UNIT_TYPE')},
     # engine line A round 210: batch 2 (checks/engine_conds.py sight): sight / discovery, the hot spot switch
-    **{(CONDITION, n): 'tests/test_simbench.py::test_conds_sight_as_the_bench' for n in (
-        'ENEMY_SIGHTED_BY_TEAM', 'TEAM_DISCOVERED', 'MISSION_HOT_SPOT_ACTIVE')},
-    (ACTION, 'SET_MISSION_HOT_SPOT_ACTIVENESS'): 'tests/test_simbench.py::test_conds_sight_as_the_bench',
     # engine line A round 211: retail-campaign actions batch 1 (checks/engine_acts.py flow; NAMED_SET_DISABLED benched
     # for EMP only, the other types INFERRED the same hold)
-    **{(ACTION, n): 'tests/test_simbench.py::test_acts_flow_as_the_bench' for n in (
+    **{(ACTION, n): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator' for n in (
         'UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL', 'UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_ATTACK',
         'TEAM_ALLOW_AI_AUTOACQUIRE', 'NAMED_SET_DISABLED', 'NAMED_FORCE_ATTACK_NAMED', 'TEAM_SET_STANCE')},
     # round 212: batch 2 (checks/engine_acts2.py seq / more; the ground fire's own damage not benched, none simulated)
-    (ACTION, 'UNIT_EXECUTE_SEQUENTIAL_SCRIPT'): 'tests/test_simbench.py::test_acts_seq_as_the_bench',
-    **{(ACTION, n): 'tests/test_simbench.py::test_acts_more_as_the_bench' for n in (
-        'TEAM_GARRISON_TEAM_INSTANTLY', 'NAMED_FORCE_ATTACK_WAYPOINT', 'UNIT_KILL_ALL_IN_AREA',
-        'ATTACK_MOVE_TEAM_TO_NAMED_OBJECT', 'MAP_REVEAL_PERMANENTLY_IN_TRIGGER', 'MAP_UNDO_REVEAL_PERMANENTLY_IN_TRIGGER')},
     # round 254: checks/engine_reinfat.py go (on a house, at a moved tank's place now, none at a dead one)
-    (ACTION, 'CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION'):
-        'tests/test_simbench.py::test_reinforcement_at_a_unit_as_the_bench',
     # round 254: checks/engine_mining.py mineturn0 cap / capz (harvest income held; scripts' money not: acts_tel)
-    (ACTION, 'PLAYER_SET_MONEY_CAP'): 'tests/test_simbench.py::test_money_cap_holds_harvest_income_as_the_bench',
     # round 264: checks/engine_aiupgrade.py aicupgon:ban (0 holders until the allow; bench rebuys 7 s after the model)
-    (ACTION, 'ALLOW_DISALLOW_ONE_UPGRADE'):
-        'tests/test_simai_upgrade_c.py::test_upgrade_ban_holds_until_the_allow_as_the_bench',
     # round 213: batch 3 (checks/engine_acts3.py tel)
-    **{(ACTION, n): 'tests/test_simbench.py::test_acts_tel_as_the_bench' for n in (
-        'TEAM_TELEPORT_TO_WAYPOINT', 'TEAM_GARRISON_SPECIFIC_BUILDING',
-        'TEAM_SET_PLAYERS_NEAREST_UNIT_OF_TYPE_TO_REFERENCE', 'UNIT_ALLOW_AI_AUTOACQUIRE')},
     # round 214: batch 4 (checks/engine_acts4.py acts: spellbook powers, the context attack, buildability)
-    **{(ACTION, n): 'tests/test_simbench.py::test_acts_u_as_the_bench' for n in (
+    **{(ACTION, n): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator' for n in (
         'PLAYER_GRANT_SPECIAL_POWER', 'PLAYER_SET_SPECIAL_POWER_COUNTDOWN', 'UNIT_CONTEXT_SENSITIVE_ATTACK',
         'UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_TAKE', 'TECHTREE_MODIFY_BUILDABILITY_OBJECT')},
-    (CONDITION, 'SKIRMISH_SPECIAL_POWER_READY'): 'tests/test_simbench.py::test_acts_u_as_the_bench',
+    (CONDITION, 'SKIRMISH_SPECIAL_POWER_READY'): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     # round 215: batch 5 (checks/engine_acts5.py acts; PLAYER_TRANSFER_OWNERSHIP_PLAYER changed nothing on the bench:
     # not simulated, stays 未做)
     **{(ACTION, n): 'tests/test_simbench.py::test_acts_v_as_the_bench' for n in (
@@ -238,14 +199,13 @@ BENCHED_TESTS = {
     # the nearest enemy; the 240 one's, and NAMED_HUNT on an AI not woken: nothing)
     # round 218 (checks/engine_acts8.py hunt): the gate is aiTactical, the target the nearest hostile object (units
     # too), re-picked after each one dies; NAMED_HUNT moves a woken AI's unit neither
-    (ACTION, 'TEAM_HUNT'): 'tests/test_simbench.py::test_acts_y_hunt_as_the_bench',
-    (ACTION, 'NAMED_HUNT'): 'tests/test_simbench.py::test_acts_w_hunt_as_the_bench',
+    (ACTION, 'TEAM_HUNT'): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
+    (ACTION, 'NAMED_HUNT'): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     # round 219 (checks/engine_acts9.py all): on -- off every team; off -- back onto the map default team, with a
     # hidden member (the AI wake UNIT_AI_TRANSFER_ALL adds is not in it: program, not benched)
-    (ACTION, 'SKIRMISH_AI_TRANSFER_ALL'): 'tests/test_simbench.py::test_acts_z_all_as_the_bench',
     # round 221 (checks/engine_acts10.py all): ability buttons in one run -- the bomber's untargeted eject, the
     # Twinblade's evacuate, the spider hole, the two transforms (with their locomotors), the team's button at a spot
-    **{(ACTION, n): 'tests/test_simbench.py::test_acts_btn_all_as_the_bench' for n in (
+    **{(ACTION, n): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator' for n in (
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateEjectPassengersSpecialPowerUntargeted',
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform',
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_SovietAntiGroundAircraftEvacuate',
@@ -256,181 +216,134 @@ BENCHED_TESTS = {
         'tests/test_ifvevac_bench_e.py::test_ifvevac_named_measured_snapshots',
     # round 223 (checks/engine_acts11.py all): EVACUATE on a ground transport / a civilian block (out at once), the
     # Apocalypse's harpoon, both mirage fields, the Kirov's afterburners (its LoseHealthUpdate while on)
-    **{(ACTION, f'NAMED_USE_COMMANDBUTTON_ABILITY:{n}'): 'tests/test_simbench.py::test_acts_tgl_all_as_the_bench'
+    **{(ACTION, f'NAMED_USE_COMMANDBUTTON_ABILITY:{n}'): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator'
        for n in ('Command_DisguisedEvacuate', 'Command_CivilianStructureEvacuate', 'Command_ToggleHarpoonSpecialPower',
                  'Command_ToggleMirageField', 'Command_ToggleAfterburners')},
     # (engine_acts11.py t): the Japanese tower's toggle takes a press only with power; the Sickle's button on it: none
-    **{(ACTION, f'NAMED_USE_COMMANDBUTTON_ABILITY:{n}'): 'tests/test_simbench.py::test_acts_twr_t_as_the_bench'
+    **{(ACTION, f'NAMED_USE_COMMANDBUTTON_ABILITY:{n}'): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator'
        for n in ('Command_JapanBaseDefenseToggleBinaryWeapon', 'Command_ToggleBinaryWeapon')},
     # round 224 (checks/engine_acts12.py all): the shinobi's smoke bomb and the Tsunami's energized armor (a self
     # AttributeModifier for its Duration), the bear's roar (the bark's EMP), the Sickle's leap to a spot
-    **{(ACTION, n): 'tests/test_simbench.py::test_acts_mix_all_as_the_bench' for n in (
+    **{(ACTION, n): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator' for n in (
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower',
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower',
         'NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateRoarSpecialPower',
         'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower')},
     # round 226 (checks/engine_acts13.py all): the roar _ON_NAMED (the bear walks up to the target, then roars)
-    **{(ACTION, n): 'tests/test_simbench.py::test_acts_wet_all_as_the_bench' for n in (
+    **{(ACTION, n): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator' for n in (
         'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower',)},
     # round 252 (checks/engine_dam.py all): the dolphin's jump over a dry dam its swimming twin cannot pass (round
     # 249 had it in NOTES: engine_acts_wet's readout did not tell the jump from swimming)
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower'):
-        'tests/test_simbench.py::test_dam_all_as_the_bench',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     # round 222 (checks/engine_share.py all): mining income split among sharing Friends (the earner keeps the rest);
     # NAMED_SELECTED after SELECT_OBJECT (TYPE_SELECTED in NOTES: never true there)
-    (ACTION, 'PLAYER_TOGGLE_RESOURCE_SHARING'): 'tests/test_simbench.py::test_share_all_as_the_bench',
-    (CONDITION, 'NAMED_SELECTED'): 'tests/test_simbench.py::test_share_all_as_the_bench',
     # round 237 (checks/engine_eyes.py all): ENEMY_SIGHTED's player = the sighted object's owner, Friend takes the
     # viewer itself; CAMERA_ENTERED_AREA latches (the way there counts); TYPE_SELECTED never, the player's own click
     # and box selection too
-    **{(CONDITION, n): 'tests/test_simbench.py::test_eyes_all_as_the_bench' for n in (
-        'ENEMY_SIGHTED', 'CAMERA_ENTERED_AREA', 'TYPE_SELECTED')},
     # round 238 (checks/engine_sighted.py all): TYPE_SIGHTED = ENEMY_SIGHTED's query with a type (the viewer itself
     # counts, a script's object list never); NAMED_BUILDING_IS_EMPTY a living garrison with nobody in; BUILT_BY_PLAYER
     # the player owns one, placed ones too (a killed one ~7 s while it lies: not modelled)
-    **{(CONDITION, n): 'tests/test_simbench.py::test_sighted_all_as_the_bench' for n in (
-        'TYPE_SIGHTED', 'NAMED_BUILDING_IS_EMPTY', 'BUILT_BY_PLAYER')},
     # round 240 (checks/engine_razed.py all): PLAYER_DESTROYED_N_BUILDINGS_PLAYER false always (Generals' stub, n 0
     # too); SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED counts the player's men inside garrisons, not the buildings
-    **{(CONDITION, n): 'tests/test_simbench.py::test_razed_all_as_the_bench' for n in (
-        'PLAYER_DESTROYED_N_BUILDINGS_PLAYER', 'SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED')},
     # round 242 (checks/engine_cast.py all): a cast waits until the first matching reader takes it; IN_AREA by the
     # cast's point; TEAM_CAN_PATH_TO_WAYPOINT every member to the waypoint itself (no snap)
-    **{(CONDITION, n): 'tests/test_simbench.py::test_cast_all_as_the_bench' for n in (
-        'PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED', 'PLAYER_TRIGGERED_SPECIAL_POWER_IN_AREA',
-        'TEAM_CAN_PATH_TO_WAYPOINT')},
     # round 245 (checks/engine_enter.py all): TEAM_OUTSIDE_AREA_ENTIRELY = not inside (an absent team outside);
     # TEAM_ENTERED_AREA_PARTIALLY one frame a member comes in (a start inside also on leaving); GARRISONNED by type
     # and owner; COMPLETELY_BUILT the player's own, a script's unpacking one at once
-    **{(CONDITION, n): 'tests/test_simbench.py::test_area_all_as_the_bench' for n in (
-        'TEAM_OUTSIDE_AREA_ENTIRELY', 'TEAM_ENTERED_AREA_PARTIALLY', 'BUILDING_GARRISONNED_BY_OBJECT_TYPE',
-        'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_COMPLETELY_BUILT')},
     # round 244 (checks/engine_kind.py all / by): PLAYER_HAS_COMPARISON_UNIT_KIND counts every player's objects;
     # PLAYER_LOST_OBJECT_TYPE one stored count per (player, type string), the first reader takes a drop;
     # NAMED_DESTROYED_BY_OBJECTTYPE false always (four kills, either case)
-    **{(CONDITION, n): 'tests/test_simbench.py::test_kind_all_as_the_bench' for n in (
-        'PLAYER_HAS_COMPARISON_UNIT_KIND', 'PLAYER_LOST_OBJECT_TYPE')},
-    (CONDITION, 'NAMED_DESTROYED_BY_OBJECTTYPE'): 'tests/test_simbench.py::test_kind_by_as_the_bench',
     # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
     # money go to the receiver; ones on a team stay)
-    (ACTION, 'PLAYER_TRANSFER_OWNERSHIP_PLAYER'): 'tests/test_simbench.py::test_acts_x_own_as_the_bench',
     # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
     (MODULE, 'Behaviors/ProductionUpdate'):
         'tests/test_simbench.py::test_production_pays_as_it_builds_and_comes_out_after_the_door',   # engine_production a-g
     (MODULE, 'Behaviors/StructureUnpackUpdate'): 'tests/test_simbench.py::test_power_back_after_the_plant_unpacks',
     (MODULE, 'Behaviors/SpecialPower'): 'tests/test_simbench.py::test_super_a_scripts_cast_starts_the_retail_reload',
-    (MODULE, 'AI/AIUpdate'): 'tests/test_simbench.py::test_r8_idle_within_sight_walks_up_fires_and_comes_back',
+    (MODULE, 'AI/AIUpdate'): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     # engine line C round 3: the crush / slow-death family (checks/engine_crush.py, docs/engine/crush.md, bench 11-06)
     # engine line C round 7: the superweapon benches (engine_super) read health % of 1000-health defenses and the
     # Iron Curtain's expiry frame -- MaxHealth through the damage, the modifier pool through the 23 s it holds
-    (MODULE, 'Body/ActiveBody'): 'tests/test_simbench.py::test_super_the_proton_collider_ends_as_the_bench',
+    (MODULE, 'Body/ActiveBody'): 'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     (MODULE, 'Behaviors/AttributeModifierPoolUpdate'):
-        'tests/test_simbench.py::test_super_the_iron_curtain_holds_off_fire_some_23_seconds',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     (MODULE, 'Behaviors/SecondaryDamageTracker'):
-        'tests/test_simbench.py::test_cryo_a_frozen_tank_melts_334_frames_after_the_beam_whatever_the_beam',
-    (MODULE, 'Behaviors/AutoHealBehavior'):
-        'tests/test_simbench.py::test_autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     (MODULE, 'Behaviors/SquishCollide'):
-        'tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     (MODULE, 'Behaviors/CrushDie'):
-        'tests/test_simbench.py::test_crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one',
-    (MODULE, 'Behaviors/SlowDeath'):
-        'tests/test_simbench.py::test_slow_death_a_crushed_conscript_lies_127_frames_dying_and_in_its_spot',
-    (MODULE, 'Behaviors/DestroyDie'): 'tests/test_simbench.py::test_destroy_die_a_building_killed_is_dying_one_frame_and_gone',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     # engine A rounds 162-173: knock-back curve, landing, hold, gates, fire, the crash's fall (checks/engine_knock_probe,
     # engine_knock_water, engine_crash_fall; the whole list in NOTES' Physics line)
     (MODULE, 'Behaviors/Physics'):
         'tests/test_meta_impact.py::test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravity',
     # engine line C round 8: running off the map (Sim.flee_start / flee_due, checks/engine_runoffmap.py, bench 11-06)
-    (MODULE, 'Behaviors/RunOffMapBehavior'):
-        'tests/test_simbench_c.py::test_run_off_map_the_peacekeeper_is_gone_64_and_304_frames_after_the_order_never_dying',
     # engine line C round 9: the mirage aura (Sim.cloaked, simunits.invis_broadcast, checks/engine_stealth.py, bench 11-05)
-    (MODULE, 'Behaviors/InvisibilityBroadcastUpdate'):
-        'tests/test_simbench_c.py::test_invisibility_broadcast_the_aura_holds_its_guardian_at_full_health_and_the_control_dies',
     (MODULE, 'Behaviors/InvisibilityBehavior'):
-        'tests/test_simbench_c.py::test_invisibility_behavior_a_house_given_garrison_can_stealth_by_script_is_shot_like_a_plain_one',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     (MODULE, 'Behaviors/StealthDetectorUpdate'):
         'tests/test_detector_bench_e.py::test_detector_named_object_model_observations',
     # engine line C round 11: weapon choice by ObjectStatus (simunits.weapon_sets, checks/engine_weaponset.py,
     # engine_statusbits.py, bench 11-09)
-    (MODULE, 'Behaviors/WeaponSetUpdate'):
-        'tests/test_simbench_c.py::test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm',
     # engine line D: the damage line (simsweep, checks/engine_sweep.py engine_sweepoff a / b / c, bench 11-10)
     (MODULE, 'Behaviors/LinearDamageUpdate'):
         'tests/test_simsweep.py::test_sweep_the_line_walks_out_and_a_stop_does_not_cut_it_at_the_bench_frames',
     (NUGGET, 'ActivateLinearDamageNugget'):
         'tests/test_simsweep.py::test_sweep_a_killed_shooters_line_stops_with_it_and_the_second_ones_rows_are_hit',
-    (MODULE, 'Behaviors/StatusBitsUpgrade'):
-        'tests/test_simbench_c.py::test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it',
     # immortal a / b / c, bench 11-09 (checks/engine_immortal.py): damage floor 1 %, script kill clamped, delete removes
     (MODULE, 'Body/ImmortalBody'):
         'tests/test_simbench_c.py::test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes',
     # engine_propbody a / b / c, bench 11-10: no health, a kill leaves the street segment, topples the tree / lantern
-    (MODULE, 'Body/PropBody'):
-        'tests/test_simbench_c.py::test_prop_body_no_health_a_kill_leaves_the_street_and_topples_the_tree_and_lantern_at_the_bench_frames',
     # engine_spawn_refill, bench 11-05: a scripted kill sets off the exploding mig's death weapon, the Guardian beside it dies
     (MODULE, 'Behaviors/FireWeaponWhenDead'):
         'tests/test_simbench_c.py::test_fire_weapon_when_dead_a_scripted_kill_blows_the_mig_and_the_guardian_beside_it',
     # topple a / b, bench 11-09: neutral props, delayed removal without DYING; all five readings within one frame
-    (MODULE, 'Behaviors/ToppleUpdate'):
-        'tests/test_simbench_c.py::test_topple_the_five_props_disappear_at_the_bench_frames_without_ever_dying',
     # topple c, bench 11-10: lantern copies with / without EnableDynamicsCollide crushed and gone at the same frames
     (MODULE, 'Behaviors/EnableDynamicsCollide'):
-        'tests/test_simbench_c.py::test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     # engine_dynamics a / b, bench 11-10: Hammers with / without BaseVehicle's DynamicsUpdate crush, go round and
     # arrive at the same frames (the Uprising fling props' share is split off: SPLIT_ORPHAN)
     (MODULE, 'Behaviors/DynamicsUpdate'):
-        'tests/test_simbench_c.py::test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     # all four stances the retail scripts set: engine_stance a-f (HOLD_FIRE, bench 11-06) and engine_acquire hold / agg
     # (HOLD_POSITION goes after nothing, AGGRESSIVE never walks back; bench 11-10) -- tests/test_simbench_c.py test_stance_*
     (MODULE, 'Behaviors/StancesBehavior'):
-        'tests/test_simbench_c.py::test_stance_hold_fire_stops_a_standing_attack_order',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     # engine_garrison in / hp, bench 11-05 (simgarrison): script entry skips room and relation, owner follows the
     # first passenger, out at 13 % in the damage's frame, the contester bounces one, kill / hit eject them alive
-    (MODULE, 'Behaviors/ContestableGarrisonContain'):
-        'tests/test_simbench_c.py::test_garrison_script_entry_skips_room_and_relation_owner_follows_and_damage_or_kill_ejects_alive_at_the_bench',
     # engine_transport load, bench 11-10 round 152 (simgarrison's transports): the script's entry skips room and
     # relation, the men ride along, a killed transport kills them; the man cannon throws one every TimePerPassenger
-    (MODULE, 'Behaviors/TransportContain'):
-        'tests/test_simbench.py::test_transport_a_team_put_in_instantly_skips_the_room_and_the_relation_and_rides_along',
     # engine_unpack mcv / egg (bench 11-10, round 138) and engine_pack a / s / j (bench 11-11, round 159): an MCV or
     # an egg drives to its point and turns into the replacement, a yard packs into its MCV at once and the MCV stands
     # ~44 frames -- tests/test_simbench.py test_*deploys_at_a_far_waypoint*, test_a_yard_packs_*
-    (MODULE, 'Behaviors/ReplaceSelfSpecialAbility'):
-        'tests/test_simbench.py::test_a_yard_packs_into_its_mcv_at_once_and_the_mcv_stands_before_it_drives',
     # engine_production a / e (out at UnitCreatePoint, the door 10 frames), h / i and engine_rally tank (bench 11-11,
     # round 159): the unit stops 40 beyond NaturalRallyPoint on the centre -> rally line (sim.RALLY_PUSH, fitted);
     # gap: ExitDelaySeconds (0.07 s between two units), h's barracks stop 1-2 units off (strict xfail)
     (MODULE, 'Behaviors/QueueProductionExitUpdate'):
-        'tests/test_simbench.py::test_a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     # engine line A round 160: engine_wfire all (bench 11-11): Yuriko's blast (radius damage after the nugget's
     # delay), Natasha's pilot snipe (walks till the target's edge is in StartAbilityRange, UnpackTime, the vehicle
     # neutral), the dog's bark (EMP on enemy infantry in the radius); the caster stands Pack / Freeze. Gaps: the
     # blast's MetaImpactNugget push, the ships' / Cryocopter's / superweapons' (WeaponSlot, FaceTarget), the sickle's
     # leap (BezierProjectile), the player's click reload
-    (MODULE, 'Behaviors/WeaponFireSpecialAbilityUpdate'):
-        'checks/engine_wfire.readings.toml::a_weapon_fire_ability_goes_off_after_its_unpack_and_holds_the_caster_through_its_pack',
-    (MODULE, 'Behaviors/EjectPassengersSpecialAbilityUpdate'):
-        'tests/test_simbench.py::test_transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men',
     # engine line A round 156: engine_toggle a-f, bench 11-11 (Sim.toggle_press): six of our 9 levels' toggles -- a
     # press moves to the next ToggleState (its ObjectStatus / AttributeModifier), the first state's bits from the
     # start, UnpackTime delays, PackTime does not, a DisabledType state takes no press (INFERRED cause). Not modelled:
     # ModelConditions, ArmorSet / LocomotorSet (the VX's / Tengu's jet form), TriggerAttributeModifier
     (MODULE, 'Behaviors/ToggleStatusSpecialAbilityUpdate'):
-        'tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     # round 223: the same bench's a / f are the retail presses' own units (s09's Peacekeepers, a08's Tesla troopers)
     **{(ACTION, f'NAMED_USE_COMMANDBUTTON_ABILITY:{n}'):
-       'tests/test_simbench_c.py::test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press'
+       'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator'
        for n in ('Command_ToggleRiotShieldSpecialPower', 'Command_ToggleShortCircuit')},
     # engine line C round 5: selling (checks/engine_sell.py, docs/engine/sell.md, bench 11-06)
     (MODULE, 'Behaviors/BuildingBehavior'):
-        'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     (MODULE, 'Behaviors/StructureSellUpdate'):
-        'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
     (ACTION, 'SELL_OBJECT'):
-        'tests/test_simbench.py::test_sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames',
-    (ACTION, 'NAMED_DAMAGE'):
-        'tests/test_simbench.py::test_sell_a_killed_building_stays_paid_and_a_building_unpacking_is_not_sold',
+        'tests/conformance/test_readings.py::test_the_bench_readings_hold_on_the_simulator',
 }
 
 # (part, name) -> (state, why): where the name rule above is wrong (a module read under another name ...)

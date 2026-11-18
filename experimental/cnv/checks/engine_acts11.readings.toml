@@ -1,0 +1,29 @@
+# Bench readings of checks/engine_acts11.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "acts_tgl_all_as_the_bench"
+scene = {build = "engine_acts_tgl", check = "all", until = 25}
+bench = """all, bench 11-14 `run_queue engine_acts_tgl:all` (CampActsTglAll, round 223; bench row s_k = mission k + 2): 门 303 -> \
+3030 at s2; 态 x100 / 幻 111 from s2 to s13; 血 the Kirov 100 -> 60 at 200 a second while the afterburners are on; both \
+Kirovs there at the same time (s13-s14)"""
+proves = """sim toggle abilities: the Sudden transport's DisguisedEvacuate and the civilian block's evacuate let all out within a \
+second (no landing); the Apocalypse's harpoon, the Kirov's afterburners (GENERIC_TOGGLE_STATE, SHROUD_REVEAL_TO_ALL), both \
+mirage fields on, off again by the second press; LoseHealthUpdate while the afterburners are on, held after; no faster on \
+afterburners. JB 0: its owner has no plant."""
+let = {at = "dict(zip(times, vals(rows)))", hp = "{2: 97, 3: 93, 4: 90, 5: 87, 6: 83, 7: 80, 8: 77, 9: 73, 10: 70, 11: 67, 12: 63, 13: 60}"}
+expect = [
+    "all((at[k + 2][0], at[k + 2][1], at[k + 2][2]) == ((3030, 1100, 111) if k <= 12 else (3030, 0, 3000)) for k in range(2, 23))",
+    "all(abs(at[k + 2][3] - hp.get(k, 60)) <= 1 for k in range(2, 23))",
+    "at[2][0] == 303",
+]
+
+[[reading]]
+id = "acts_twr_t_as_the_bench"
+scene = {build = "engine_acts_twr", check = "t", until = 41}
+bench = """t, bench 11-14 `run_queue engine_acts_twr:t` (CampActsTwrT, round 223): 塔 1 from s1, 11 from s34 -- with a \
+SovietPowerPlant the Japanese tower's own button toggles it at 3 s and at 35 s alike"""
+proves = """sim command-button toggle on the tower: all's JB, its owner with no plant, took no press for want of power, not for \
+unpacking; Command_ToggleBinaryWeapon (a04 presses it on the tower too) never does anything there."""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = ["all(at[k] == [1] for k in range(4, 35))", "all(at[k] == [11] for k in range(36, 41))"]

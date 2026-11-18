@@ -1,0 +1,17 @@
+# Bench readings of checks/engine_ref.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1.
+
+[[reading]]
+id = "r2_the_reference_picks_the_wall_the_bench_did"
+scene = {build = "ref_a", check = "frames", until = 17}
+each = [{build = "ref_a", gone = 2}, {build = "ref_a2", gone = 2}, {build = "ref_b", gone = 1}, {build = "ref_c", gone = 0}]
+bench = "the wall the reference was deleted through: C (墙C gone), nearest the team's middle, whichever member was made first (a, a2); B when C has a script name (b); A, nearest the map's corner, for an empty team (c) (bench 2026-11-07 cnv_check <variant> frames)"
+proves = "sim.Sim.nearest_ref (R2): the reference is the wall nearest the team's middle, by script name, or the corner for an empty team"
+expect = "[rows[-1]['墙A'], rows[-1]['墙B'], rows[-1]['墙C']] == [0 if k == gone else 1 for k in range(3)]"
+
+[[reading]]
+id = "r2_unnamed_made_twice_by_one_script_join_the_team_and_are_picked"
+scene = {build = "ref_d", check = "frames", until = 17}
+bench = "one script run twice (CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT at M2): 造了 2, 坦克 2 from s1; the wall pick took B (the team's middle at M2: both on the team; an empty team would take A); the tank type's pick took one of them (坦克 2 -> 1 at the delete) (bench 2026-11-09 cnv_check ref_d frames, CampRefDFrames_mcp_1109_061813)"
+proves = "sim.Sim.nearest_ref (R2): two unnamed units made by one script both join the team and are picked"
+expect = ["vals(rows)[-1][:4] == [2, 1, 1, 0]", "any(v[:2] == [2, 2] for v in vals(rows))"]

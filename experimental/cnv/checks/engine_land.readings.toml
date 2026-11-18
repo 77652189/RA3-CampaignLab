@@ -1,0 +1,13 @@
+# Bench readings of checks/engine_land.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1.
+
+[[reading]]
+id = "r7_the_transport_goes_straight_at_the_quay"
+scene = {build = "engine_land", check = "way", until = 47}
+bench = "frames from the order to the first time in each box: shore area 岸 89, before the quay 码头 65, the southern way never (the run's end) (bench 2026-11-07 cnv_check engine_land way)"
+proves = """sim.Ground (R7): no bridge decks for amphibians, Ground.closest -- the transport goes straight at the quay. The \
+simulator has no start-up (about 12 frames): within 15 (sim 84 / 61)."""
+expect = [
+    "abs(rows[-1]['岸'] - 89) <= 15 and abs(rows[-1]['码头'] - 65) <= 15",
+    "rows[-1]['南水'] == rows[-1]['南岸'] > 600",
+]

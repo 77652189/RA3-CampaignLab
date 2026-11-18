@@ -1,0 +1,11 @@
+# Bench readings of checks/engine_maxhealth.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "maxhealth_keeps_the_hit_points_unless_full_as_the_bench"
+scene = {build = "engine_maxhealth", check = "mh", until = 9}
+bench = """\
+`cnv_check engine_maxhealth mh` s2-s11 (bench 2026-11-10): 甲 25 (240 of 480 hp, max 960 full 0: the hit points stay), \
+乙 100 (full 1), 丙 95 (max 9600 full 1, 480 off), 丁 50 (max 240 full 0: clamped, 120 off). Before round 147 the \
+simulator kept the ratio (甲 50)"""
+proves = "sim NAMED_SET_MAX_HEALTH (RA3 setMaxHealth SAME_CURRENTHEALTH): the hit points stay unless the unit was full, clamped to a lower max"
+expect = "vals(rows)[-1] == [25, 100, 95, 50]"

@@ -1,6 +1,6 @@
 """Self-healing as a rule (AutoHealBehavior, engine/modules/autoheal.py since step K1; ADR 0029 "测试分两层"): on the
 minimal world, only the frame order's autoheal cell runs. The whole-mission version against the bench is
-test_simbench.py::test_autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait (engine_heal a).
+the reading autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait (checks/engine_heal.readings.toml).
 The module's own tests: tests/modules/test_autoheal.py."""
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import simsmall  # noqa: E402

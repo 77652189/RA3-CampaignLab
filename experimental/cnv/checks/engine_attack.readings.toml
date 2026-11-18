@@ -1,0 +1,17 @@
+# Bench readings of checks/engine_attack.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# NAMED_ATTACKED_BY_PLAYER (E2), bench 2026-11-04.
+
+[[reading]]
+id = "attacked_by_player_holds_while_the_attacker_stands_as_the_bench"
+scene = {build = "engine_attack", check = "gone", until = 17}
+bench = """\
+gone: NAMED_ATTACKED_BY_PLAYER holds while the last unit that hit the target stands (between its shots too) and is \
+false the frame it is deleted (A) or killed (B) at 6 s, the targets alive, about a third of their health gone by then \
+(bench 2026-11-04)"""
+proves = "sim NAMED_ATTACKED_BY_PLAYER: true while the last attacker stands, false the frame it is deleted or killed"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]"}
+expect = [
+    "all(r['甲被我方打'] == 1 and r['乙被我方打'] == 1 for t, r in chg if 1 <= t <= 6)",
+    "all(r['甲被我方打'] == 0 and r['乙被我方打'] == 0 for t, r in chg if t >= 7) and chg[-1][1]['甲被我方打'] == 0 and chg[-1][1]['乙被我方打'] == 0",
+    "all(55 <= rows[-1][k] <= 75 for k in ('甲血量', '乙血量'))",
+]

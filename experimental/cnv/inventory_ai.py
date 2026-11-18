@@ -522,7 +522,7 @@ NOTES = {
         'aicupgoff移除专用状态后恒0；见work/re/c_upgrade_report.md。B第153轮接模型：'
         '升级条目按状态权重×分（UPGRADE 140；UPGRADE_TECH MinTime前0、ForceTime后200推断、中间140推断）'
         '挑最高下单，扣PRODUCTION，下了升级这一轮不下兵；模拟器s20下单、s40起持有2。'
-        'tests/test_simai_upgrade_c.py按名回放两组通过。电力门、效率/兵力比两道、开局里的升级单没建模'),
+        'checks/engine_aiupgrade.readings.toml 的两组读数相符。电力门、效率/兵力比两道、开局里的升级单没建模'),
     '目标/AITargetingHeuristic.Location': (BENCHED,
         'E81/E87 engine_ailocation a：同型电厂一陆一水、四架双刃，仅切Land/Water/Water Land；'
         's40到陆厂/到水厂分别4/0、0/4、4/0；'

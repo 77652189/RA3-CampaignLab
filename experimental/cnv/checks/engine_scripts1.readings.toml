@@ -1,0 +1,40 @@
+# Bench readings of checks/engine_scripts1.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Inventory batch 1 (work/re/l2_scripts1.md): bench 2026-11-08 `cnv_check engine_scripts1 <variant>`.
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "scripts1_conditions_as_the_bench"
+scene = {build = "engine_scripts1", check = "cond", until = 13}
+bench = "cond: 条件位 9 all run (Player_1 Human 1 + a line never played reads done 8; Soviet_1 not Human, before and after its AI is woken; a clip never played not done); 状态 3 -> 1 at the kill -> 0 at the clear"
+proves = "sim Sim conditions: PLAYER_IS_HUMAN, HAS_FINISHED_AUDIO / movie never played, object state counts"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = ["all(v[0] == 9 for v in by.values())", "(by[3][1], by[4][1], by[11][1]) == (3, 1, 0)"]
+
+[[reading]]
+id = "scripts1_a_team_handed_over_drops_its_move"
+scene = {build = "engine_scripts1", check = "xfer", until = 41}
+bench = "xfer: Soviet_2's from the hand-over, the move it was on dropped (nobody in `far` in 40 s), both off home"
+proves = "sim Sim team hand-over to an AI player: the team's move is dropped"
+expect = "vals(rows)[-1][:3] == [1, 0, 2]"
+
+[[reading]]
+id = "scripts1_idle_for_seconds_drops_the_move"
+scene = {build = "engine_scripts1", check = "idle", until = 46}
+bench = "idle: the tank without the idle order arrives (bench s7, about 9 game s), the one told UNIT_IDLE_FOR_SECONDS 3 at 3 s never does in 45 s -- the order dropped, not a 3 s pause"
+proves = "sim Sim UNIT_IDLE_FOR_SECONDS: the unit's move is dropped"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = ["7 <= min(s for s, v in by.items() if v[1] == 1) <= 12", "all(v[0] == 0 for v in by.values())"]
+
+[[reading]]
+id = "scripts1_hunt_without_an_ai_moves_nobody"
+scene = {build = "engine_scripts1", check = "hunt", until = 61}
+bench = "hunt: TEAM_HUNT / NAMED_HUNT on a computer player's units (AI not woken) and TEAM_HUNT on the player's: 60 s where they stood"
+proves = "sim Sim TEAM_HUNT / NAMED_HUNT: nothing moves without an AI"
+expect = "all(v == [0, 0, 0] for v in vals(rows))"
+
+[[reading]]
+id = "scripts1_team_button_raises_both_shields"
+scene = {build = "engine_scripts1", check = "button", until = 11}
+bench = "button: TEAM_USE_COMMANDBUTTON_ABILITY(Pk, the riot shield) at 2 s: 举盾 2 from then"
+proves = "sim Sim TEAM_USE_COMMANDBUTTON_ABILITY: both team members raise the shield"
+expect = "dict(zip(times, vals(rows)))[10] == [2]"

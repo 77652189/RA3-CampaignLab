@@ -1,0 +1,17 @@
+# Bench readings of checks/engine_scripts3.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench 11-09, CampScr3Math / CampScr3Input. A scene's until is the old test's seconds + 1.
+
+[[reading]]
+id = "scripts3_counter_math_codes_as_the_bench"
+scene = {build = "engine_scripts3", check = "math", until = 11}
+bench = "math: COUNTER_MATH_COUNTER by 4 -- 0 adds, 1 takes away (no floor: -1), 2 multiplies, 3 divides (13 -> 3) (bench 11-09)"
+proves = "sim Sim counter math: the four codes, no floor at 0, integer division"
+expect = "vals(rows)[0] == [3, 3, 3, 13] and vals(rows)[-1] == [7, -1, 12, 3]"
+
+[[reading]]
+id = "scripts3_a_script_moves_the_player_under_disable_input"
+scene = {build = "engine_scripts3", check = "input", until = 25}
+bench = "input: DISABLE_INPUT at 5 s, the tank's MOVE_NAMED_UNIT_TO at 7 done (走到 1, bench s9); DECREMENT 5 from 2 reads -3; -13 / 4 reads -3 (toward zero) (bench 11-09)"
+proves = "sim Sim DISABLE_INPUT (a script's orders still move the player's unit), DECREMENT_COUNTER, integer division toward zero"
+let = {last = "vals(rows)[-1]"}
+expect = "last[0] == 1 and last[2:] == [-3, -3]"

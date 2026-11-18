@@ -1,0 +1,20 @@
+# Bench readings of checks/engine_enter.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "area_all_as_the_bench"
+scene = {build = "engine_enter", check = "all", until = 31}
+bench = """\
+engine_enter all (round 245, bench 11-15 CampAreaAll_mcp_1115_093807; the bench's seconds ~1.5 behind the timers): 进入 \
+10000 -> 20000 -> 30001 -> 30002 -> 30003 (TEAM_ENTERED_AREA_PARTIALLY: Home on the first frame and on each Guardian's \
+leaving it, F on each entry, k 1 never); 区外 11 / 30 / 15 (TEAM_OUTSIDE_AREA_ENTIRELY: not inside, an absent team \
+outside); 驻类 13 -> 4 (BUILDING_GARRISONNED_BY_OBJECT_TYPE: type in either case and the owner, dropped on the exit \
+order); 建成 21 -> 31 (..._COMPLETELY_BUILT: the player's own, a script's plant at once)"""
+proves = "sim area / garrison / built readers: TEAM_ENTERED_AREA_PARTIALLY, TEAM_OUTSIDE_AREA_ENTIRELY, BUILDING_GARRISONNED_BY_OBJECT_TYPE, ..._COMPLETELY_BUILT"
+let = {by = "dict(zip(times, vals(rows)))", seen = "[by[0][0]] + [by[k][0] for k in range(1, 31) if by[k][0] != by[k - 1][0]]"}
+expect = [
+    "by[1] == [10000, 11, 0, 21] and by[30] == [30003, 15, 4, 31]",
+    "seen == [10000, 20000, 30001, 30002, 30003]",
+    "all(by[k][1] == 30 for k in range(9, 23)) and all(by[k][1] == 15 for k in range(25, 31))",
+    "all(by[k][2] == 13 for k in range(3, 10)) and all(by[k][2] == 4 for k in range(11, 31))",
+    "all(by[k][3] == 31 for k in range(4, 31))",
+]

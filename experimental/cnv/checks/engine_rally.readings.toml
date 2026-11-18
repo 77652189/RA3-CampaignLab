@@ -1,0 +1,10 @@
+# Bench readings of checks/engine_rally.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1.
+
+[[reading]]
+id = "a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench"
+scene = {build = "engine_rally", check = "tank", until = 31}
+bench = "the war factory's Riptide (NaturalRallyPoint (80, 20)) stops in x 112-127 / y 25-34: 出口位 1000010, 40 beyond the point on the line from the factory's centre (bench 11-11 engine_rally tank)"
+proves = """QueueProductionExitUpdate (sim.RALLY_PUSH, INFERRED fit): a new unit stops 40 beyond the natural rally point (x 1.9 \
+from the centre would put the Riptide at (152, 38))."""
+expect = "rows[-1]['出口位'] == 1000010"

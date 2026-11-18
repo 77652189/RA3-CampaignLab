@@ -1,0 +1,28 @@
+# Bench readings of checks/engine_scripts4.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench 11-09, CampScr4Border / Team / Clock. A scene's until is the old test's seconds + 1.
+
+[[reading]]
+id = "scripts4_off_the_border_nobody_fires_or_is_fired_on"
+scene = {build = "engine_scripts4", check = "border", until = 33}
+bench = "border: the west half from the start -- the pair across its edge (X) and the pair outside (Y) hold their fire till the whole map opens at 20 s, the pair inside (Z) fights; Y's Guardian lives on in its area (Y在 1) (bench 11-09)"
+proves = "sim Sim map border (SET_MAP_BORDER / open at 20 s): nobody fires at or from outside it"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = [
+    "by[18][:2] == [100, 100] and by[18][3] == 1 and by[9][2] < 100",
+    "by[30][0] < 100 and by[30][1] < 100",
+]
+
+[[reading]]
+id = "scripts4_team_stop_and_team_guard_area_as_the_bench"
+scene = {build = "engine_scripts4", check = "team", until = 31}
+bench = "team: TEAM_STOP 3 s into a 1400 move -- both stay in the middle; TEAM_GUARD_AREA -- both in the zone (bench 11-09)"
+proves = "sim Sim TEAM_STOP and TEAM_GUARD_AREA"
+expect = "vals(rows)[-1] == [0, 2, 0, 2]"
+
+[[reading]]
+id = "scripts4_a_hidden_countdown_runs_on"
+scene = {build = "engine_scripts4", check = "clock", until = 27}
+bench = "clock: the 20 s timer hidden at 8 and shown at 14 expires at 20 all the same (到点 1, bench s19) (bench 11-09)"
+proves = "sim Sim countdown timers: hiding the display does not stop the timer"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = "by[18] == [0] and by[24] == [1]"

@@ -1,0 +1,86 @@
+# Bench readings of checks/engine_super.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1. A script's cast at a waypoint
+# (sim.SUPERWEAPON_HITS, Sim.blast_due). Bench 2026-11-07 engine_super p: health % of base defenses (1000) at 0 / 150 /
+# 240 / 300 from the waypoint, ended 44 / 7 / 12 / 100; q: the first loss 56 frames after the cast (+-1).
+# The last reading of the file is the engine_scripts8bs build (checks/engine_scripts8b.py, missions/super_bench.py).
+
+[[reading]]
+id = "super_the_proton_collider_ends_as_the_bench"
+scene = {build = "engine_super", check = "p", until = 31}
+bench = "血0 / 血150 / 血240 / 血300 ended 44 / 7 / 12 / 100 (bench 2026-11-07 engine_super p; sim 44 / 6 / 12 / 100)"
+proves = "sim.SUPERWEAPON_HITS, Sim.blast_due: the proton collider's cast at a waypoint hurts by distance, ends as the bench"
+expect = "all(abs(g - w) <= 2 for g, w in zip(vals(rows)[-1], (44, 7, 12, 100)))"
+
+[[reading]]
+id = "super_the_proton_collider_hits_56_frames_after_the_cast"
+scene = {build = "engine_super", check = "q", until = 31}
+bench = "满血帧 56 (frames the centre target stayed whole after the cast, +-1) (bench 2026-11-07 engine_super q)"
+proves = "sim.SUPERWEAPON_HITS: the proton collider hits 56 frames after the cast (sim 57)"
+expect = "abs(rows[-1]['满血帧'] - 56) <= 1"
+
+[[reading]]
+id = "super_the_vacuum_imploder_ends_as_the_bench"
+scenes = {v = {build = "engine_super", check = "v", until = 31}, w = {build = "engine_super", check = "w", until = 31}}
+bench = "v: 满血帧 62, health % at 0 / 150 / 280 end 5 / 1 / 1; w: the one at 350 untouched, 100 (bench 2026-11-07 engine_super v / w)"
+proves = "sim.SUPERWEAPON_HITS: the vacuum imploder's reach -- kills within 280, leaves the one at 350 untouched"
+expect = [
+    "abs(v[-1]['满血帧'] - 62) <= 1 and all(abs(g - w) <= 2 for g, w in zip(vals(v)[-1][1:], (5, 1, 1)))",
+    "w[-1]['血350'] == 100",
+]
+
+[[reading]]
+id = "super_the_psionic_decimator_kills_within_300_at_61_frames"
+scene = {build = "engine_super", check = "e", until = 35}
+bench = "the base defenses (1000) at 0 and 250 whole 61 frames after the cast, then dead; 350 whole to the end (the bench's counters freeze at a dead object's last health, so only the 满血 frames compare) (bench 2026-11-07 engine_super e)"
+proves = "sim.SUPERWEAPON_HITS: the psionic decimator kills within 300 at 61 frames, the one at 350 lives"
+expect = "abs(rows[-1]['满血帧'] - 61) <= 1 and abs(rows[-1]['满250'] - 61) <= 1 and rows[-1]['满350'] > 400"
+
+[[reading]]
+id = "super_the_nanoswarm_keeps_200_out_of_fire"
+scene = {build = "engine_super", check = "n", until = 35}
+bench = "tanks at 0 and 150 from the hive's spot take no fire to the end (497 frames): their health 100 -> 90 -> 80 by the bench's two scripted NAMED_DAMAGE hits only; 250 shot down (bench 1 % by 180) (bench 2026-11-07 engine_super n)"
+proves = "sim nanoswarm (engine line C round 5): tanks within 200 of the hive take no fire, only the scripted NAMED_DAMAGE hits; 250 is shot down"
+expect = "[rows[-1]['血0'], rows[-1]['血150']] == [80, 80] and rows[-1]['血250'] <= 10"
+
+[[reading]]
+id = "super_the_iron_curtain_reaches_800"
+scenes = {g = {build = "engine_super", check = "g", until = 35}, a = {build = "engine_super", check = "a", until = 35}}
+bench = "g / a (each tank shot by an enemy of its own): 满血 frames of tanks at 100 / 300 / 500 / 800 bench 353 / 357 / 351 / 354 (covered), at 850 / 950 / 1050 / 1150 bench 20 / 23 / 23 / 25 (not) (bench 2026-11-07 engine_super g / a)"
+proves = "sim.CURTAIN: the Iron Curtain covers to 800 and not past it"
+expect = ["all(abs(x - 354) <= 6 for x in vals(g)[-1])", "all(x <= 30 for x in vals(a)[-1])"]
+
+[[reading]]
+id = "super_the_iron_curtain_reaches_the_tanks_edge"
+scene = {build = "engine_super", check = "o", until = 35}
+bench = "tanks 770 / 807 from the cast whole until frame 361, the one at 872 shot from frame 32; the first o run had 832 shot from ~28 (rerun 2026-11-07 after the vacuum spot moved)"
+proves = "sim.CURTAIN, measured like R8's reach: centre distance less the tank's radius 23.3 within 800; by centre alone the 807 one is left out"
+let = {by = "{r['帧数']: r for r in rows}"}
+expect = "[by[347]['血350'], by[347]['血250']] == [100, 100] and by[347]['血150'] < 100"
+
+[[reading]]
+id = "super_the_iron_curtain_holds_off_fire_some_23_seconds"
+scene = {build = "engine_super", check = "j", until = 35}
+bench = "both tanks (0 and 150 from the waypoint) whole until frame ~354 after the cast, then the enemy's fire takes them down (bench 86 / 73 / 60 % at 362 / 391 / 422: a volley, where the simulator's fire is steady, 71 at 422); 施放数 1 (the cast seen by PLAYER_TRIGGERED_SPECIAL_POWER once; bench i / j: 1)"
+proves = "sim.CURTAIN: the Iron Curtain holds off fire some 23 s, then the enemy's fire takes the tanks"
+let = {by = "{r['帧数']: r for r in rows}"}
+expect = [
+    "[by[347]['血0'], by[347]['血150'], by[347]['施放数']] == [100, 100, 1]",
+    "by[362]['血0'] < 100 and by[422]['血0'] <= 75",
+]
+
+[[reading]]
+id = "scripts8b_the_players_cast_as_the_bench_pfire"
+scene = {build = "engine_scripts8bs", check = "pfire", until = 21}
+bench = "target 0 whole 56 frames after the cast, then 44 %; PLAYER_TRIGGERED_SPECIAL_POWER sees it one frame (施放数 1) (bench engine_scripts8b pfire)"
+proves = "sim PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT casts the player's collider; PLAYER_TRIGGERED_SPECIAL_POWER sees it (sim 满血帧 57)"
+expect = "abs(rows[-1]['满血帧'] - 56) <= 1 and rows[-1]['血0'] == 44 and rows[-1]['施放数'] == 1"
+
+[[reading]]
+id = "scripts8b_the_players_cast_as_the_bench_pdis"
+scene = {build = "engine_scripts8bs", check = "pdis", until = 41}
+bench = "with PLAYER_SPECIAL_POWER_AVAILABILITY Disabled the script's cast goes all the same (满血帧 56, 血0 44); the named cast ~20 s later is seen (施放数 2 from s26) and hurts nobody (血0 stays 44) (bench engine_scripts8b pdis)"
+proves = "sim PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT ignores the availability flag; the named cast is seen and harmless (sim 满血帧 57)"
+expect = [
+    "abs(rows[-1]['满血帧'] - 56) <= 1 and rows[-1]['血0'] == 44 and rows[-1]['施放数'] == 2",
+    "24 <= times[first('施放数', lambda v: v == 2)] <= 26",
+]

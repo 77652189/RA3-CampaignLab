@@ -1,0 +1,17 @@
+# Bench readings of checks/engine_razed.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "razed_all_as_the_bench"
+scene = {build = "engine_razed", check = "all", until = 33}
+bench = """engine_razed all (round 240, bench 11-15 CampRazedAll_mcp_1115_030516): 摧毁 0 all run (N 0 too, two of Soviet_4's plants \
+razed by the player's tanks, one of the player's by Soviet_4's); 驻军 42 / 50 / 42 / 38 / 33"""
+proves = """sim PLAYER_DESTROYED_N_BUILDINGS_PLAYER false always (Generals' stub); SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED counts \
+the men inside (2, 3, 2, 1, 0 for the player; Soviet_4's man for Soviet_4). The bench drops a man ~3.5 s after \
+NAMED_EXIT_BUILDING (the entry counts at once); the simulator at once: the edges are not asserted."""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = [
+    "all(at[k][0] == 0 for k in range(0, 32))",
+    "all(at[k][2] == want for (lo, hi), want in (((3, 6), 42), ((7, 10), 50), ((11, 14), 42), ((15, 18), 38), ((19, 32), 33)) for k in range(lo, hi))",
+    "at[31][1] == 31",
+]

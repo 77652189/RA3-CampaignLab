@@ -1,0 +1,20 @@
+# Bench readings of checks/engine_sighted.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "sighted_all_as_the_bench"
+scene = {build = "engine_sighted", check = "all", until = 33}
+bench = """all, bench 11-15 (round 238, CampSightedAll_mcp_1115_001541; the bench's seconds ~1.5 behind the timers): 看见 37 to \
+s11, 39 after; 驻军 1 then 3 from s6; 建造 6 from the start, 23 once the engineer is out (s11), 6 again at the end"""
+proves = """sim TYPE_SIGHTED: the scout's Peacekeeper once in watch's sight; the viewer itself counts; lower case too; a script's \
+object list never; NAMED_BUILDING_IS_EMPTY: H2 empty again once its man is out, H3 dead false, a barracks / a tank \
+false; BUILT_BY_PLAYER: owns one, placed ones too, a state: 帧 +15 a second. The bench's engineer still counted ~7 s \
+after the kill at 22 s (it lies; the simulator's LINGER 0 drops it at once): not asserted."""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = [
+    "all(at[k][0] == 37 for k in range(1, 11)) and all(at[k][0] == 39 for k in range(14, 32))",
+    "all(at[k][1] == 1 for k in range(3, 7)) and all(at[k][1] == 3 for k in range(9, 32))",
+    "all(at[k][2] == 6 for k in range(1, 11)) and all(at[k][2] == 23 for k in range(14, 22))",
+    "at[31][2] == 6 and at[31][3] == at[30][3]",
+    "all(14 <= at[k + 1][3] - at[k][3] <= 16 for k in range(14, 21))",
+]

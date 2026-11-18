@@ -1,0 +1,18 @@
+# Bench readings of checks/engine_life.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1 (the runner's last row is until - 1 s).
+
+[[reading]]
+id = "r1_lifetime_as_the_bench"
+scene = {build = "engine_life", check = "frames", until = 55}
+bench = "墙A 451451, 墙B 83450 at s54 (bench 2026-11-07 cnv_check engine_life frames)"
+proves = """sim.Sim.expire (R1): a 30 s wall made by a script in frame 1 is seen by 451 frames' scripts, the area count \
+drops with it; a 5.5 s core lives 83 frames' and its wall 450."""
+expect = "(rows[-1]['墙A'], rows[-1]['墙B']) == (451451, 83450)"
+
+[[reading]]
+id = "r5_the_ice_engineer_as_the_bench"
+scene = {build = "engine_life", check = "frames", until = 55}
+bench = "冰C 82002 (within range: the core one frame after the order, its 82 frames, then the wall), 冰D 82103 (a 272 walk first) (bench 2026-11-07, the two engineers' orders at 21 s)"
+proves = """sim.Sim.at_site (R5): the in-range engineer's core comes a frame after the order, the walked one's walk is moved \
+a 0.5 s tick at a time: within a few frames (sim 82106)."""
+expect = ["rows[-1]['冰C'] == 82002", "rows[-1]['冰D'] // 1000 == 82 and abs(rows[-1]['冰D'] % 1000 - 103) <= 4"]

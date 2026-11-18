@@ -1,0 +1,25 @@
+# Bench readings of checks/engine_transport.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "transport_a_team_put_in_instantly_skips_the_room_and_the_relation_and_rides_along"
+scene = {build = "engine_transport", check = "load", until = 31}
+bench = "load (bench 11-10 engine_transport, CampTransLoad_mcp_1110_215316): 装 326 = six into the five-place Bullfrog, Soviet_4's two into the player's, three into a house; 乘 3 -> 133 when the Bullfrog reaches the far square (bench s12, the men inside it with the vehicle, still ENCLOSED)"
+proves = "sim Sim TEAM_LOAD_TRANSPORT_INSTANTLY: asks no room and no relation, the men ride along (before round 152 the simulator read 装 0, 乘 0 -> 100)"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = [
+    "all(v[0] == 326 for s, v in by.items() if s >= 3)",
+    "by[3][1] == 3 and by[30][1] == 133",
+    "12 <= min(s for s, v in by.items() if v[1] == 133) <= 12 + 3",
+]
+
+[[reading]]
+id = "transport_the_man_cannon_throws_one_every_half_second_and_a_killed_transport_kills_its_men"
+scene = {build = "engine_transport", check = "load", until = 31}
+bench = "load: 跳 bench 3 3 1 0 20 30 at s1-s6 (eject at the far J waypoint pressed at 4 s: one out every 0.5 s, down on the spot ~2 s later); 存 33 -> 0 at s3 (NAMED_KILL on the Bullfrog at 4 s kills the three inside)"
+proves = "sim Sim transport eject (one man every 0.5 s) and a killed transport killing its men"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = [
+    "[by[s][2] for s in range(4, 9)] == [3, 1, 0, 20, 30]",
+    "by[3][3] == 33 and all(v[3] == 0 for s, v in by.items() if s >= 5)",
+]

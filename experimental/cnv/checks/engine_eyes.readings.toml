@@ -1,0 +1,18 @@
+# Bench readings of checks/engine_eyes.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "eyes_all_as_the_bench"
+scene = {build = "engine_eyes", check = "all", until = 21}
+bench = """all, bench 11-14 (round 237, CampSeeAll_mcp_1114_234139 / _234250; the bench's seconds ~1 ahead): 看见 45 to s8, 47 \
+after; 镜头 129 from s1 to the end, 帧 growing ~15 a second (a state); 选中 1 from s3"""
+proves = """sim ENEMY_SIGHTED's player = the sighted object's owner (Friend takes the viewer itself); CAMERA_ENTERED_AREA latches A \
+and M, M crossed on the way there; the strips never; NAMED_SELECTED, TYPE_SELECTED never -- nor after the player's own \
+click or box on pick / other (by hand: 选中 8 / 1, 帧 never +10000; the player's camera to N2 latched 133, not modelled)."""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = [
+    "all(at[k][0] == 45 and at[k][1] == 129 for k in range(1, 9))",
+    "all(at[k][0] == 47 and at[k][1] == 129 for k in range(11, 21))",
+    "15 * 15 < at[20][2] < 10000",
+    "all(at[k][3] == 1 for k in range(4, 21))",
+]

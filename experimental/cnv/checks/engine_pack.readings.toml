@@ -1,0 +1,25 @@
+# Bench readings of checks/engine_pack.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# NAMED_USE_COMMANDBUTTON_ABILITY(yard, Command_Pack...MCV), bench 11-11 (round 159): per yard, (last second read,
+# frames out of the 40 square round where it stood, frame it reached the 100 square 400 east) -- CampPackAGo / SGo /
+# JGo, the 走帧 counter's units and 帧数 - thousands.
+
+[[reading]]
+id = "a_yard_packs_into_its_mcv_at_once_and_the_mcv_stands_before_it_drives"
+scene = {build = "engine_pack_a", check = "go", until = 32}
+each = [
+    {build = "engine_pack_a", until = 32, out = 50, there = 121},
+    {build = "engine_pack_s", until = 32, out = 51, there = 128},
+    {build = "engine_pack_j", until = 47, out = 54, there = 150},
+]
+bench = """\
+engine_pack a / s / j: the player owns the MCV and not the yard from the press frame on (车帧 = 1000 x 帧数), the \
+yard's name passes on (名字帧 = 帧数); the move order given at once is kept, but the MCV stands NewObjectUnpackTime (2 s) \
+and some more before it drives (out of the 40 square at frame 50 / 51 / 54, at the 100 square 400 east at frame 121 / \
+128 / 150) (bench 11-11, round 159). The sim still counts the yard one frame (the press frame's count): held to at most 1; \
+the simulator's MCV walks 50 a second, the bench's ~55, so 'there' runs 7-15 late"""
+proves = "sim pack: the yard becomes the MCV at once, the MCV stands NewObjectUnpackTime and some more (simunits.replace_unpack_frames) before it drives"
+let = {frames = "rows[-1]['帧数']", own = "rows[-1]['车帧']", name = "rows[-1]['名字帧']", walk = "rows[-1]['走帧']"}
+expect = [
+    "own // 1000 >= frames - 1 and own % 1000 <= 1 and name == frames",
+    "abs(walk % 1000 - out) <= 8 and abs(frames - walk // 1000 - there) <= 15",
+]

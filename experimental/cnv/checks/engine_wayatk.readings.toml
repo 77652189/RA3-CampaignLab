@@ -1,0 +1,92 @@
+# Bench readings of checks/engine_wayatk.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench 2026-11-10 (counters 敌血, 近敌, 段1): a Guardian on the path A -> B -> C, an enemy Guardian (NO_ATTACK) 150
+# beside the A -> B leg. The bench's seconds run 1-2 s ahead of the mission's timers: the simulator's readings are
+# asserted at most 2 s later. In a reading of several scenes the row index is the mission second (one row a second
+# from 0).
+
+[[reading]]
+id = "wayatk_a_plain_path_walker_fires_on_the_way_and_does_not_stop"
+scene = {build = "engine_wayatk", check = "plain", until = 51}
+bench = "plain (NAMED_FOLLOW_WAYPOINTS): 段1 1 s3, 2 s7, 3 s10, two hits on the way (敌血 73 at the end) (bench 2026-11-10)"
+proves = "sim order_follow with fire: a plain path walker fires at the enemy beside its way and does not stop for it"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", hit = "lambda k, v, b: (lambda g: g is not None and b <= g <= b + 2)(at(k, lambda x: x == v))"}
+expect = [
+    "hit('段1', 1, 3) and hit('段1', 2, 7) and hit('段1', 3, 10)",
+    "0 < rows[-1]['敌血'] < 100",
+]
+
+[[reading]]
+id = "wayatk_an_attack_walker_stops_to_fight_and_goes_on_once_it_is_dead_atk"
+scenes = {r = {build = "engine_wayatk", check = "atk", until = 51}, p = {build = "engine_wayatk", check = "plain", until = 51}}
+bench = """\
+atk (NAMED_ATTACK_FOLLOW_WAYPOINTS), second by second on the bench: first hit s4, a shot every 2 s (13.9 %) to 3 at s16 \
+(the counter keeps a dead unit's last value), on to B at s21 -- 14 s after plain's. GAP (the fire model, not the path): \
+the simulator's continuous fire (6.25 %/s from s6) kills at s21 and reaches B at s24; asserted: the first hit within \
+LAG, B only after the kill, 10+ s after plain's (bench 2026-11-10)"""
+proves = "sim attack_chase: an attack-follow walker stops to fight, goes on only once the enemy is dead, B 10+ s after the plain walker"
+let = {at = "lambda rs, k, p: next((i for i, r in enumerate(rs) if p(r[k])), None)", hit = "at(r, '敌血', lambda v: v < 100)", dead = "at(r, '敌血', lambda v: v == 0)", at_b = "at(r, '段1', lambda v: v == 2)"}
+expect = [
+    "4 <= hit <= 6 and dead is not None and at_b is not None and at_b > dead",
+    "at_b - at(p, '段1', lambda v: v == 2) >= 10",
+]
+
+[[reading]]
+id = "wayatk_an_attack_walker_stops_to_fight_and_goes_on_once_it_is_dead_amove"
+scenes = {r = {build = "engine_wayatk", check = "amove", until = 51}, p = {build = "engine_wayatk", check = "plain", until = 51}}
+bench = """\
+amove (ATTACK_MOVE_TEAM_TO to B) = atk, second by second on the bench: first hit s4, a shot every 2 s (13.9 %) to 3 at \
+s16, on to B at s21 -- 14 s after plain's. GAP (the fire model): the simulator's continuous fire kills at s21 and reaches \
+B at s24; asserted: the first hit within LAG, B only after the kill, 10+ s after plain's (bench 2026-11-10)"""
+proves = "sim attack_chase: an attack-move walker stops to fight, goes on only once the enemy is dead, B 10+ s after the plain walker"
+let = {at = "lambda rs, k, p: next((i for i, r in enumerate(rs) if p(r[k])), None)", hit = "at(r, '敌血', lambda v: v < 100)", dead = "at(r, '敌血', lambda v: v == 0)", at_b = "at(r, '段1', lambda v: v == 2)"}
+expect = [
+    "4 <= hit <= 6 and dead is not None and at_b is not None and at_b > dead",
+    "at_b - at(p, '段1', lambda v: v == 2) >= 10",
+]
+
+[[reading]]
+id = "wayatk_an_attack_walker_turns_aside_to_an_enemy_within_its_sight"
+scene = {build = "engine_wayatk", check = "atk2", until = 51}
+bench = """\
+atk2: the enemy 220 off the leg (beyond the weapon's 196.6 from the path, within VisionRange 200 + its radius): first hit \
+s6 (2 s after atk's), 近敌 0 (a step aside), B s22 once it is dead (sim.Sim.attack_chase; before round 146 the \
+simulator went by: B s8, 敌血 100). The fire model's GAP as atk's (sim: hit s7, B s25) (bench 2026-11-10)"""
+proves = "sim attack_chase: an attack walker turns aside to an enemy within its sight (VisionRange + radius), goes on once it is dead"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", hit = "at('敌血', lambda v: v < 100)", dead = "at('敌血', lambda v: v == 0)", at_b = "at('段1', lambda v: v == 2)"}
+expect = [
+    "6 <= hit <= 8 and dead is not None and at_b is not None and at_b > dead",
+    "all(r['近敌'] == 0 for r in rows)",
+]
+
+[[reading]]
+id = "wayatk_a_team_on_an_attack_path_fights_as_one_and_holds_until_it_is_dead"
+scenes = {r = {build = "engine_wayatk", check = "team", until = 51}, a = {build = "engine_wayatk", check = "atk", until = 51}}
+bench = """\
+team (TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS, tanks 2 and 3): 敌血 86 s4, 73 s6, 59 s7, 32 s8 -- tank 3 too (each walks to A \
+itself, 212 from the enemy: within its own scan), dead ~s12; neither tank on to B before that: B 段3 s14 / 段2 s15. \
+Asserted: first hit within LAG, a second's loss above one tank's best (atk's), both to B only after the kill (bench \
+2026-11-10)"""
+proves = "sim attack_chase for teams: every member fights what is within its own scan and holds until the enemy is dead"
+let = {at = "lambda rs, k, p: next((i for i, r in enumerate(rs) if p(r[k])), None)", chg = "lambda rs: [(i, r) for i, r in enumerate(rs) if i == 0 or r != rs[i - 1]]", drops = "lambda rs: [w['敌血'] - v['敌血'] for (s, v), (z, w) in zip(chg(rs)[1:], chg(rs)) if s == z + 1]", hit = "at(r, '敌血', lambda v: v < 100)", dead = "at(r, '敌血', lambda v: v == 0)", b2 = "at(r, '段2', lambda v: v == 2)", b3 = "at(r, '段3', lambda v: v == 2)"}
+expect = [
+    "4 <= hit <= 6 and dead is not None",
+    "max(drops(r)) > 1.5 * max(drops(a))",
+    "b2 is not None and b2 > dead and b3 is not None and b3 > dead",
+]
+
+[[reading]]
+id = "wayatk_a_team_on_an_attack_path_shares_no_target_and_each_member_walks_its_own"
+scenes = {r = {build = "engine_wayatk3", check = "cut", until = 51}, a = {build = "engine_wayatk", check = "atk", until = 51}}
+bench = """\
+cut (the team's own road P -> Q, the enemy 150 / 211 off tank 2's leg, never within 351 of tank 3's): 敌血 86 s3, then a \
+shot every ~2 s (13 %) to 8 at s14 -- tank 2 alone (atk's rate); 近3 0 throughout (tank 3 never within 190 of it); tank \
+3 at P (within 60: no place kept) s6 and Q s11 while tank 2 fought; tank 2 P s20, Q s25 after the kill. Asserted: 近3 \
+never, one tank's loss a second (atk's best at most), tank 3 at Q before the kill, tank 2 at P after it (bench 11-10)"""
+proves = "sim attack_chase for teams: the team's target is not shared, each member walks its own road and fires only within its own scan"
+let = {at = "lambda rs, k, p: next((i for i, r in enumerate(rs) if p(r[k])), None)", chg = "lambda rs: [(i, r) for i, r in enumerate(rs) if i == 0 or r != rs[i - 1]]", drops = "lambda rs: [w['敌血'] - v['敌血'] for (s, v), (z, w) in zip(chg(rs)[1:], chg(rs)) if s == z + 1]", hit = "at(r, '敌血', lambda v: v < 100)", dead = "at(r, '敌血', lambda v: v == 0)", q3 = "at(r, '段3', lambda v: v == 2)", p2 = "at(r, '段2', lambda v: v == 1)"}
+expect = [
+    "3 <= hit <= 5 and dead is not None",
+    "all(x['近3'] == 0 for x in r)",
+    "max(drops(r)) <= max(drops(a))",
+    "q3 is not None and q3 < dead and p2 is not None and p2 > dead",
+]

@@ -1,0 +1,15 @@
+# Bench readings of checks/engine_acts9.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "acts_z_all_as_the_bench"
+scene = {build = "engine_acts_z", check = "all", until = 13}
+bench = """all, bench 11-14 `run_queue engine_acts_z:all` (CampActsZ, round 219; the bench's seconds ~1 ahead of the timers): 队5 / \
+队C5 / 队2 / 队6 0 0 0 1 after SKIRMISH_AI_TRANSFER_ALL(Soviet_5, 1) at 2 s, then 4 0 3 2 after (Soviet_5 / 2 / 6, 0) at 6 s"""
+proves = """sim SKIRMISH_AI_TRANSFER_ALL: off every team at the first hand-over, then all back on the default team, not the crew, \
+plus one hidden member each (Soviet_6's too, never handed)."""
+let = {F = "list(zip(times, vals(rows)))", seen = "[v for t, v in F if 2.0 <= t < 6.0]", after = "[v for t, v in F if t >= 6.5]"}
+expect = [
+    "seen and all(v == [0, 0, 0, 1] for v in seen)",
+    "after and all(v == [4, 0, 3, 2] for v in after)",
+]

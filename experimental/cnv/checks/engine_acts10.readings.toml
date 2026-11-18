@@ -1,0 +1,22 @@
+# Bench readings of checks/engine_acts10.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "acts_btn_all_as_the_bench"
+scene = {build = "engine_acts_btn", check = "all", until = 25}
+bench = """all, bench 11-14 `run_queue engine_acts_btn:all` (CampActsBtnAll, round 221; bench row s_k = mission k + 2): 弹 312 -> \
+3021 -> 3030 at s2-s4; 队 1 0 20 30; 态 111 -> 11 (s7) -> 1011 (s12); 到 TT s9, VT s11, TP s12, VP s15"""
+proves = """sim command-button abilities: the bomber's untargeted eject one man every 1.25 s from the press, the Twinblade's \
+evacuate all three out together 1-2 s after it (in: ENCLOSED, not in its XML); the team's Bullfrog threw its men at the \
+waypoint; the transforms' toggle state, the Tankbuster in its hole and not moved by the order given there, out by the \
+second press, there after the second order; the transformed Tengu / VX on their SUPERSONIC locomotors (200 / 120 against \
+100 / 85). 态's thousands (the Tankbuster in its far square) within a second, as 到: its coarse 25-unit steps reach the \
+square's edge (x 900) on the step itself, so a goal snapped to the grid (1110, 4310: off its line by 0.1 at the edge) \
+puts it in one step later (2026-11-18)."""
+let = {at = "dict(zip(times, vals(rows)))", F = "list(zip(times, vals(rows)))", bench = "{**{2: (312, 1, 111), 3: (3021, 0, 111), 4: (3030, 20, 111), 5: (3030, 30, 111), 6: (3030, 30, 111)}, **{k: (3030, 30, 11) for k in range(7, 12)}, **{k: (3030, 30, 1011) for k in range(12, 23)}}", first = "{w: min(t for t, v in F if v[2] // w % 10) for w in (1, 10, 100, 1000)}"}
+expect = [
+    "all((at[k + 2][0], at[k + 2][1], at[k + 2][3] % 1000) == (out, team, state % 1000) for k, (out, team, state) in bench.items())",
+    "abs(min(t for t, v in F if v[3] // 1000) - (12 + 2)) <= 1",
+    "all(abs(first[w] - (s + 2)) <= 1 for w, s in ((1, 9), (100, 11), (10, 12), (1000, 15)))",
+    "first[1] < first[100] <= first[10] < first[1000]",
+]

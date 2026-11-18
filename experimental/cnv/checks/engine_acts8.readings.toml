@@ -1,0 +1,29 @@
+# Bench readings of checks/engine_acts8.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "acts_y_hunt_as_the_bench"
+scene = {build = "engine_acts_y", check = "hunt", until = 62}
+bench = """hunt, bench 11-14 `run_queue engine_acts_y:hunt` (CampActsYHunt, round 218; the bench's seconds ~1 behind): 家 11222 -> \
+11200 at s6; 到 20 at s9, 220 at s21, 0 at s39, home again at s49-s59; 家 as the bench's BENCH line (checks/engine_acts8.py): \
+11222 s1-s5, 11200 from s6, 11201 s49-s50, 11202 s51-s58, 11201 s59 (the two men home one after the other)"""
+proves = """sim TEAM_HUNT moves the aiTactical-255 crews (Soviet_4's, Soviet_5's at aiTeamBuilder 240), not Soviet_6's (aiTactical \
+240); NAMED_HUNT not the woken Soviet_3's conscript; 到 20 by the engineer 700 east, not the barracks 1000 west, re-picked \
+by the next engineer; 活's alive bits: e1 dead s15, e2 attacked s26, dead s29; 饵: b5 dead s13, b6 attacked s29. A dead \
+engineer's 'attacked' bit (7 s on the bench) is not asserted. Unexplained two rounds (A 232-234): H4's two men come home \
+1-2 s apart on the bench (leave e1's area s26 / s29, enter it s43 / s45, home s49 / s51); the simulator walks them 6-8 \
+apart all the way."""
+let = {F = "list(zip(times, vals(rows)))", first_at = "lambda col, test: next(t for t, v in F if test(v[col]))"}
+expect = [
+    "{v[0] for t, v in F} == {11222, 11200, 11201, 11202} and 5.0 <= first_at(0, lambda v: v == 11200) <= 9.0",
+    "{v[0] for t, v in F if v[0] < 11210} <= {11200, 11201, 11202}",
+    "8.0 <= first_at(1, lambda v: v == 20) <= 12.0 and 20.0 <= first_at(1, lambda v: v >= 200) <= 24.0",
+    "37.0 <= next(t for t, v in F if t > 30 and v[1] == 0) <= 41.0",
+    "47.0 <= first_at(0, lambda v: v == 11202) - 1.0 <= 53.0",
+    "14.0 <= first_at(2, lambda v: v & 1 == 0) <= 17.0 and 25.0 <= first_at(2, lambda v: v & 16) <= 28.0",
+    "28.0 <= first_at(2, lambda v: v & 2 == 0) <= 31.0",
+    "12.0 <= first_at(3, lambda v: v & 1 == 0) <= 15.0 and 28.0 <= first_at(3, lambda v: v & 8) <= 31.0",
+    "{v[3] & 48 for t, v in F} == {48}",
+]
+mismatch = """sim: 到 goes back to 0 at s48 (bench s39), 家 11201 only s51-s52 (bench s49-s50), 11202 first at s53 (bench s51), \
+11201 s60 / 11200 s61 (bench 11201 s59); the other readings hold"""

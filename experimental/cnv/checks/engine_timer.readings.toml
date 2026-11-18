@@ -1,0 +1,30 @@
+# Bench readings of checks/engine_timer.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The timers paused and shifted: bench 2026-11-10 (the lines show a timer's frames left). The bench's seconds run 1-2 s
+# ahead of the mission's timers: the simulator's readings are asserted at most 2 s later.
+
+[[reading]]
+id = "timer_stop_holds_the_frames_and_a_stopped_timer_is_not_expired"
+scene = {build = "engine_timer", check = "stop", until = 19}
+bench = """\
+stop: 停表帧 120 to s3 (STOP_TIMER at 2 s holds it), 109 94 ... from s4 (RESTART_TIMER at 5 s), -1 and 停表到 1 from s12; \
+过期停 (E out at 2 s, stopped at 4 s) 1 to s2, 0 from s3 -- a stopped timer is no countdown, TIMER_EXPIRED false though \
+its frames are out. The old readout (running timers hidden) read 0 while P ran"""
+proves = "sim timers: STOP_TIMER holds the frames, RESTART_TIMER runs them on, a stopped timer is not expired"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", held = "[r['停表帧'] for t, r in chg if 2 <= t <= 4]", again = "at('停表帧', lambda v: 0 < v < 120)", out = "at('停表到', lambda v: v == 1)", gone = "[t for (t, v), (_, w) in zip(chg[1:], chg) if v['过期停'] == 0 and w['过期停'] == 1]"}
+expect = [
+    "held and all(x == 120 for x in held)",
+    "again is not None and 4 <= again <= 6",
+    "out is not None and 12 <= out <= 14 and rows[-1]['停表帧'] == -1 and rows[-1]['停表到'] == 1",
+    "gone and 3 <= gone[0] <= 5 and rows[-1]['过期停'] == 0",
+]
+
+[[reading]]
+id = "timer_sub_from_msec_takes_the_frames_off"
+scene = {build = "engine_timer", check = "shift", until = 13}
+bench = "shift: SUB_FROM_MSEC_TIMER 5 s at 2 s off a 10 s timer -- 减帧 32 17 3 at s1-3, out (-1, 减到 1) from s4"
+proves = "sim timers: SUB_FROM_MSEC_TIMER takes the frames off a running timer"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", out = "at('减到', lambda v: v == 1)"}
+expect = [
+    "out is not None and 4 <= out <= 6 and rows[-1]['减帧'] == -1 and rows[-1]['减到'] == 1",
+    "any(30 <= r['减帧'] <= 45 for t, r in chg if 2 <= t <= 3)",
+]

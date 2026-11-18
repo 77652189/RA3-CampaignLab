@@ -1,0 +1,16 @@
+# Bench readings of checks/engine_acts6.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "acts_w_hunt_as_the_bench"
+scene = {build = "engine_acts_w", check = "hunt", until = 61}
+bench = """hunt, bench 11-14 `run_queue engine_acts_w:hunt` (CampActsWHunt, round 216; the bench's seconds ~1 behind): 家 1122 -> \
+1120 at s7; 到 0 throughout; 打 60 -> 62 at s15 (52 at s31, 42 at s49)"""
+proves = """sim TEAM_HUNT moves Soviet_4's crew (aiTactical 255, not woken), not Soviet_5's (240), and NAMED_HUNT neither lone \
+conscript; not to the nearest structure; the player's tank (the nearest enemy) attacked, then the crew killed by it."""
+let = {F = "list(zip(times, vals(rows)))", first_at = "lambda col, value: next(t for t, v in F if v[col] == value)"}
+expect = [
+    "{v[0] for t, v in F} == {1122, 1120} and 5.0 <= first_at(0, 1120) <= 10.0",
+    "{v[1] for t, v in F} == {0}",
+    "13.0 <= first_at(2, 62) <= 19.0 and 29.0 <= first_at(2, 52) <= 36.0 and 46.0 <= first_at(2, 42) <= 53.0",
+]

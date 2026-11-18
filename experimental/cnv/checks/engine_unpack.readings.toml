@@ -1,0 +1,17 @@
+# Bench readings of checks/engine_unpack.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT, bench 11-10.
+
+[[reading]]
+id = "mcv_deploys_at_a_far_waypoint_as_the_bench"
+scene = {build = "engine_unpack_mcv", check = "go", until = 41}
+bench = """\
+NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT(mcv, Command_UnPackAlliedMCV, 400 east) (bench 11-10 engine_unpack mcv): \
+the MCV drives there and is the yard from frame 121 on (sim 128), the yard on the point, the name passed on (名字帧 = \
+帧数)"""
+proves = "sim unpack at a waypoint: the MCV drives to the point, becomes the yard there, the name passes on"
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = [
+    "115 <= unit % 1000 <= 135 and unit // 1000 > 0",
+    "yard % 1000 == frames - unit % 1000 and yard // 1000 == yard % 1000",
+    "name == frames",
+]

@@ -1,0 +1,21 @@
+# Bench readings of checks/engine_acts4.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "acts_u_as_the_bench"
+scene = {build = "engine_acts_u", check = "acts", until = 33}
+bench = """acts, bench 11-13 `run_queue engine_acts_u:acts` (CampActsUActs, round 214; the bench's seconds 1-2 ahead): 技能 45 63 60 \
+56 60; 旗 5; 造 100 110 111; 钱 ends 18400 (dog, two peacekeepers, one spy)"""
+proves = """sim PLAYER_GRANT_SPECIAL_POWER gives the protocol and the power ready at once (both players), a countdown 0 before \
+the grant does nothing, the yard deleted takes READY away (the protocol kept), a 5 s countdown is 5 s not ready; \
+UNIT_CONTEXT_SENSITIVE_ATTACK: the engineers take their plants (the one with SKIRMISH_AI_DO_NOT_TAKE too), the tanks fire \
+on neither plant; a script's press builds the dog under ONLY_BY_AI and the peacekeeper under NO, the spy only after \
+IGNORE_PREREQUISITES (its first press refused)."""
+let = {S = "list(zip(times, vals(rows)))[1:]", changes = "lambda col: [v for j, v in enumerate([x[col] for t, x in S]) if j == 0 or v != [x[col] for t, x in S][j - 1]]", pows = "[t for t, v in zip(times, vals(rows)) if v[0] == 56]"}
+expect = [
+    "changes(0) == [0, 45, 63, 60, 56, 60]",
+    "changes(1) == [0, 5]",
+    "changes(2) == [0, 100, 110, 111]",
+    "vals(rows)[-1][3] == 18400",
+    "4.0 <= pows[-1] - pows[0] <= 5.5",
+]

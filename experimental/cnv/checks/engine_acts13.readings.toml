@@ -1,0 +1,24 @@
+# Bench readings of checks/engine_acts13.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "acts_wet_all_as_the_bench"
+scene = {build = "engine_acts_wet", check = "all", until = 27}
+bench = """all, bench 11-14 `run_queue engine_acts_wet:all` (CampActsWetAll_mcp_1114_091622, round 226; bench row s_k = simulator \
+k + 1): 跳 11 from s4; 吼 1111 s5-s12 (C1 out s13, C2 s14, C4 s17); 放 10101 s3 -> 20101 s4 -> 30101 s7 -> 30202 s12; \
+机 0: no bomber ever (NOTES)"""
+proves = """sim the dolphin's jump 250 off and its swimming twin both there (not telling apart); the bear pressed _ON_NAMED 300 off \
+walked up to its conscript (1000), both conscripts pressed _ON_NAMED were held as the plain roar's; both stores' drop \
+button seen cast (1 / 100), each roar once (10 000), the by-name casts at 12 s once more. The _ON_NAMED roars go off \
+NONE_TARGET_LAG after the bear is up (fitted to the cast readings); C2 / C4 come out of their hold a reading after the \
+bench's (s15 / s18 for s14 / s17)."""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = [
+    "at[3] == [0, 111, 0, 0]",
+    "all(at[k][0] == 11 for k in range(7, 27))",
+    "all(at[k][1] == 1111 for k in range(6, 14)) and at[14][1] == 1110",
+    "all(at[k][1] == 1100 for k in range(16, 19)) and all(at[k][1] == 1000 for k in range(19, 27))",
+    "[at[k][2] for k in (4, 5)] == [10101, 20101]",
+    "all(at[k][2] == 30101 for k in range(8, 13)) and all(at[k][2] == 30202 for k in range(13, 27))",
+    "all(v[3] == 0 for v in at.values())",
+]

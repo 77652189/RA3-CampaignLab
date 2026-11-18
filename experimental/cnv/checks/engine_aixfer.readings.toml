@@ -1,0 +1,22 @@
+# Bench readings of checks/engine_aixfer.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "aixfer_a_computer_players_units_handed_to_its_ai_leave_their_crew_and_drop_the_move"
+scene = {build = "engine_aixfer", check = "xfer", until = 26}
+bench = "xfer (bench 11-10 engine_aixfer, Soviet_4's AI not woken; order and hand-over in one script, as retail a01): 到 8 = only the player's tank arrives, 队 8 = only the player's crew keeps its member, 默 0 = the handed-over units are not on Soviet_4's default team either"
+proves = "sim Sim SKIRMISH_AI_TRANSFER: handed-over units leave their crew and drop the move (before round 150 the simulator kept both: 到 14, 队 14)"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = ["by[0][1] == 14 and all(v[1] == 8 and v[2] == 0 for s, v in by.items() if s >= 2)", "by[25][0] == 8"]
+
+[[reading]]
+id = "aixfer_a_move_under_way_stops_at_the_hand_over_and_the_players_crew_is_untouched"
+scene = {build = "engine_aixfer", check = "late", until = 26}
+bench = "late (bench 11-10): the moves at 1 s, the hand-overs at 4 s. 离 6 (A and B had set off), 队 30 -> 24 at the hand-over, 到 24 at the end = the player's C and the never-handed-over control D; A and B never arrive"
+proves = "sim Sim SKIRMISH_AI_TRANSFER: a move under way stops at the hand-over, the player's crew is untouched"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = [
+    "by[2][1] == 30 and all(v[1] == 24 for s, v in by.items() if s >= 5)",
+    "by[25][0] == 24 and by[25][3] == 6 and by[25][2] == 0",
+    "12 <= min(s for s, v in by.items() if v[0] == 24) <= 18",
+]

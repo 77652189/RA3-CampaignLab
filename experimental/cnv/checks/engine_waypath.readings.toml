@@ -1,0 +1,94 @@
+# Bench readings of checks/engine_waypath.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Waypoint paths (Sim.order_follow): bench 2026-11-10. Each reading is (counter, value, bench second); the simulator's
+# first second at that value is at most 2 s later (the bench's seconds run 1-2 s ahead of the mission's timers).
+
+[[reading]]
+id = "waypath_follows_the_links_waypoint_by_waypoint_line"
+scene = {build = "engine_waypath", check = "line", until = 51}
+bench = """\
+line walks A -> B (within 10 of it: no corner cut) -> C and stays: 段1 1 at s3, 2 at s9, 3 at s15; 近B 4 at s9 (bench \
+2026-11-10)"""
+proves = "sim order_follow: a truck follows the waypoint links A -> B -> C and stays at C"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", hit = "lambda k, v, b: (lambda g: g is not None and b <= g <= b + 2)(at(k, lambda x: x == v))"}
+expect = [
+    "hit('段1', 1, 3) and hit('段1', 2, 9) and hit('近B', 4, 9) and hit('段1', 3, 15)",
+    "rows[-1]['段1'] == 3",
+]
+
+[[reading]]
+id = "waypath_follows_the_links_waypoint_by_waypoint_exact"
+scene = {build = "engine_waypath", check = "exact", until = 51}
+bench = """\
+exact (the exact variant) walks A -> B -> C like line, the two alike: 段1 1 at s3, 2 at s9, 3 at s15; 近B 4 at s9 (bench \
+2026-11-10)"""
+proves = "sim order_follow: the exact follow-waypoints order walks the same as the plain one"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", hit = "lambda k, v, b: (lambda g: g is not None and b <= g <= b + 2)(at(k, lambda x: x == v))"}
+expect = [
+    "hit('段1', 1, 3) and hit('段1', 2, 9) and hit('近B', 4, 9) and hit('段1', 3, 15)",
+    "rows[-1]['段1'] == 3",
+]
+
+[[reading]]
+id = "waypath_follows_the_links_waypoint_by_waypoint_near"
+scene = {build = "engine_waypath", check = "near", until = 51}
+bench = """\
+near joins at B, the nearest, A never again: 段1 1 at s3 (truck 1 drives through A on its way from (1130, 2225) to N, \
+turning east from its start), 2 at s15, 3 at s21; 近B 4 at s16 (bench 2026-11-10)"""
+proves = "sim order_follow: a follow-waypoints order started away from the path joins it at the nearest waypoint, A never again"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", hit = "lambda k, v, b: (lambda g: g is not None and b <= g <= b + 2)(at(k, lambda x: x == v))"}
+expect = [
+    "hit('段1', 1, 3) and hit('段1', 2, 15) and hit('近B', 4, 16) and hit('段1', 3, 21)",
+    "rows[-1]['段1'] == 3 and all(r['段1'] != 1 for t, r in chg if t >= 15)",
+]
+mismatch = """\
+sim 段1 0 -> 2 at s17 (never 1: the straight line passes A's corner (x 1297) at y 2265.8, 0.8 outside -- it was in by 0.9 \
+with N unsnapped (1600, 2335), on the grid (1600, 2340) not; the start's heading and turn are not modelled), 近B 4 at \
+s18, 段1 3 at s23; bench 段1 1 at s3, 2 at s15, 近B 4 at s16, 3 at s21 (2026-11-18)"""
+
+[[reading]]
+id = "waypath_follows_the_links_waypoint_by_waypoint_team"
+scene = {build = "engine_waypath", check = "team", until = 46}
+bench = """\
+team: each truck to the waypoint plus its offset from the team's middle (both within 100 of every one), the first \
+there moves the team on -- 段2 1 at s3, 2 at s10, 3 at s17; 段3 (truck 3, ahead on the last leg) 1 at s5, 2 at s10, 3 at \
+s14, at C 3 s before truck 2 (bench 2026-11-10)"""
+proves = "sim order_follow: a team follows the links, each member to the waypoint plus its offset, the first there moves the team on"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", hit = "lambda k, v, b: (lambda g: g is not None and b <= g <= b + 2)(at(k, lambda x: x == v))"}
+expect = [
+    "hit('段2', 1, 3) and hit('段2', 2, 10) and hit('段2', 3, 17) and hit('段3', 1, 5) and hit('段3', 2, 10) and hit('段3', 3, 14)",
+    "rows[-1]['段2'] == 3",
+]
+
+[[reading]]
+id = "waypath_follows_the_links_waypoint_by_waypoint_texact"
+scene = {build = "engine_waypath", check = "texact", until = 46}
+bench = """\
+texact (TEAM_FOLLOW_WAYPOINTS_EXACT): the same as team, second by second: 段2 1 at s3, 2 at s10, 3 at s17; 段3 1 at s5, \
+2 at s10, 3 at s14 (bench 2026-11-10)"""
+proves = "sim order_follow: the exact team follow-waypoints order walks the same as the plain one"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", hit = "lambda k, v, b: (lambda g: g is not None and b <= g <= b + 2)(at(k, lambda x: x == v))"}
+expect = [
+    "hit('段2', 1, 3) and hit('段2', 2, 10) and hit('段2', 3, 17) and hit('段3', 1, 5) and hit('段3', 2, 10) and hit('段3', 3, 14)",
+    "rows[-1]['段2'] == 3",
+]
+
+[[reading]]
+id = "waypath_follows_the_links_waypoint_by_waypoint_start"
+scene = {build = "engine_waypath", check = "start", until = 46}
+bench = """\
+start (NAMED_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT from B): straight to B, A never; truck 2 from B: 段2 2 at s9, 3 at \
+s15, never 1 (bench 2026-11-10)"""
+proves = "sim order_follow: a path started at a named waypoint goes straight there, the waypoint before it never"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", hit = "lambda k, v, b: (lambda g: g is not None and b <= g <= b + 2)(at(k, lambda x: x == v))"}
+expect = [
+    "hit('段2', 2, 9) and hit('段2', 3, 15)",
+    "rows[-1]['段2'] == 3 and all(r['段2'] != 1 for t, r in chg)",
+]
+
+[[reading]]
+id = "waypath_loop_goes_round_and_round_a_lap_about_20_s"
+scene = {build = "engine_waypath", check = "loop", until = 91}
+bench = "loop: C linked back to A -- 段1 back at A at s23 43 63 84 (laps 20-21 s); the simulator 2-3 s later (bench 2026-11-10)"
+proves = "sim order_follow: a path linked back to its start goes round and round, a lap about 20 s"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", back = "[t for (t, v), (_, w) in zip(chg[1:], chg) if v['段1'] == 1 and w['段1'] == 3]"}
+expect = "len(back) >= 4 and all(b <= s <= b + 3 for b, s in zip((23, 43, 63, 84), back))"

@@ -1,0 +1,19 @@
+# Bench readings of checks/engine_production.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1.
+
+[[reading]]
+id = "a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench"
+scene = {build = "engine_production", check = "i", until = 25}
+bench = "the barracks' engineer (NaturalRallyPoint (40, 18)) stops in x 75-90 / y 24-36: 出口位 1010000 (bench 11-11 engine_production i, CampProdI_mcp_1111_041259)"
+proves = """QueueProductionExitUpdate (sim.RALLY_PUSH, INFERRED fit): a new unit stops 40 beyond the natural rally point on the \
+line from the factory's centre. ExitDelaySeconds (0.07 s) not modelled: a gap no level can see."""
+expect = "rows[-1]['出口位'] == 1010000"
+
+[[reading]]
+id = "the_engineer_stops_inside_the_far_strip_of_h"
+scene = {build = "engine_production", check = "h", until = 25}
+bench = "出口位 1000 (the engineer in x 65-80, y 3-33) (bench 11-11 engine_production h)"
+proves = "QueueProductionExitUpdate (sim.RALLY_PUSH): the stop at the barracks' far strip of h"
+expect = "rows[-1]['出口位'] == 1000"
+mismatch = """sim 0: the sim stops the engineer at (76.5, 34.4), 1.4 past the strip; bench 1000. The push is fitted to i \
+and the Riptide, the barracks stop is 1-2 units off"""

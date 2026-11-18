@@ -22,3 +22,42 @@ expect = [
   "a220[-1]['坦克血'] < 50 and all(r['原地'] == 0 for r in a220[4:]) and a220[-1]['近敌'] == 1",
   "all(r['原地'] == 1 and r['坦克血'] == 100 for r in a240[1:] + a260[1:])",
 ]
+
+# ---- T3 A: the R8 tests moved from tests/test_simbench.py (until is the old run's until + 1; R = the rows of seconds
+# >= 1, as the old helper left row 0 out). Bench 2026-11-07 engine_acquire: an enemy Guardian (weapon 150, VisionRange
+# 200, radius 23.3 like the player's NO_ATTACK tank) idle with the tank d north of it; guard / attack-move beside it.
+
+[[reading]]
+id = "r8_idle_180_fires_where_it_stands"
+scene = {build = "acquire_idle180", check = "frames", until = 27}
+bench = "never out of 15 of its spot (原地 1 all along), the tank hurt from s2 -- 180 centre to centre is within 150 + the radii (bench 2026-11-07 engine_acquire idle180)"
+proves = "sim idle acquire (R8): an idle Guardian fires where it stands at 180 (within weapon range + both radii)"
+let = {R = "[r for t, r in zip(times, rows) if t >= 1]"}
+expect = ["all(r['原地'] == 1 for r in R)", "R[1]['坦克血'] < 100"]
+
+[[reading]]
+id = "r8_idle_within_sight_walks_up_fires_and_comes_back"
+scene = {build = "acquire_idle200", check = "frames", until = 27}
+each = [{build = "acquire_idle200"}, {build = "acquire_idle220"}]
+bench = "out of its spot from s1 (it walked up), the tank hurt from s2, back within 15 once the tank is done (bench s16, the tank left at 3; the simulator kills it at s17 and is back by s18) (bench 2026-11-07 engine_acquire idle200 / idle220)"
+proves = "sim idle_chase (R8): an idle Guardian walks up on a target within VisionRange 200 + its radius, fires and goes back to its spot"
+let = {R = "[r for t, r in zip(times, rows) if t >= 1]"}
+expect = ["R[1]['原地'] == 0 and R[1]['坦克血'] < 100", "R[-1]['原地'] == 1 and R[-1]['坦克血'] <= 3"]
+
+[[reading]]
+id = "r8_beyond_sight_nothing"
+scene = {build = "acquire_idle240", check = "frames", until = 27}
+each = [{build = "acquire_idle240"}, {build = "acquire_idle260"}, {build = "acquire_guard260"}]
+bench = "no move, no shot at 240 / 260 (beyond VisionRange 200 + the tank's radius), nor when guarding at 260 (bench 2026-11-07 engine_acquire idle240 / idle260 / guard260)"
+proves = "sim idle_chase (R8): nothing beyond VisionRange + the target's radius, idle or guarding"
+let = {R = "[r for t, r in zip(times, rows) if t >= 1]"}
+expect = "all(r['原地'] == 1 and r['坦克血'] == 100 for r in R)"
+
+[[reading]]
+id = "r8_attack_move_past_does_not_turn_aside"
+scene = {build = "acquire_am260", check = "frames", until = 27}
+each = [{build = "acquire_am260"}, {build = "acquire_am400"}]
+bench = "walks straight to E (终点 from s7), the tank 260 / 400 beside the path untouched (bench 2026-11-07 engine_acquire am260 / am400)"
+proves = "sim attack-move (R8): an attack-moving Guardian walks past a target beside its path without turning aside"
+let = {R = "[r for t, r in zip(times, rows) if t >= 1]"}
+expect = "R[-1]['终点'] == 1 and all(r['坦克血'] == 100 for r in R)"

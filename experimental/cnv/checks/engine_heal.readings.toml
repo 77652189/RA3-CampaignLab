@@ -1,0 +1,36 @@
+# Bench readings of checks/engine_heal.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Self-healing (engine/modules/autoheal.py, AutoHealBehavior): bench 2026-11-06 (docs/engine/heal.md), f / g 11-17.
+
+[[reading]]
+id = "autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait"
+scenes = {a = {build = "engine_heal", check = "a", until = 19}, b = {build = "engine_heal", check = "b", until = 19}}
+bench = """\
+An Apocalypse (3000 health, AutoHealBehavior 2 points every 7 frames, waits 15 frames after a hurt) hurt 600 at Go: \
+低血 = 1 x frames below 81 % + 1000 x frames below 82 % -> 219114 (81 % again after 114 frames, 82 % after 219); b: 30 \
+more at frame 40 -> 230 frames below 81 %, below 82 % to the end (bench 2026-11-06)"""
+proves = "sim AutoHealBehavior: 2 points every 7 frames, only after a 15-frame wait since the last hurt"
+let = {la = "a[-1]['低血']", lb = "b[-1]['低血']", fb = "b[-1]['帧数']"}
+expect = [
+    "la == 219114",
+    "lb % 1000 == 230 and lb // 1000 == fb",
+]
+
+[[reading]]
+id = "autoheal_the_tsunamis_armour_heal_runs_only_in_its_state_and_a_hurt_not_the_state_wakes_it"
+scenes = {c = {build = "engine_heal", check = "c", until = 9}, d = {build = "engine_heal", check = "d", until = 11}}
+bench = """\
+c: the Tsunami (380; 3 points every 3 frames, no wait, only in GENERIC_TOGGLE_STATE) with the state on, hurt 76 at Go: \
+低血 20005 (below 81 % 5 frames, below 85 % 20). d: the state off at Go, on at frame 20 -- asleep, the state does not \
+wake it -- and 1 more damage at 60 (wakes it): 64002. Bench CampHealC / D 11-06, to the digit"""
+proves = "sim AutoHealBehavior: the armour heal runs only in its toggle state, and only a hurt (not the state) wakes it"
+expect = "(c[-1]['低血'], d[-1]['低血']) == (20005, 64002)"
+
+[[reading]]
+id = "autoheal_the_heroic_heal_runs_from_its_upgrade_and_stops_when_the_upgrade_is_taken_back"
+scenes = {f = {build = "engine_heal", check = "f", until = 19}, g = {build = "engine_heal", check = "g", until = 11}}
+bench = """\
+f: a GI (150; BaseInfantry's heroic heal: 1 point every 7 frames, idle until Upgrade_Veterancy_HEROIC) hurt 30 at Go, \
+the upgrade itself given at frame 30: 低血 45038 (81 % at 38, 82 % at 45), 100 at the end; g: the upgrade taken back at \
+frame 40 -- two mends, then none: 帧数 x 1000 + 38, 81 (bench 11-17, step K3, engine_heal__f / g)"""
+proves = "sim AutoHealBehavior: the heroic heal runs from the upgrade and stops when the upgrade is taken back"
+expect = "(f[-1]['低血'], f[-1]['血量']) == (45038, 100) and (g[-1]['低血'], g[-1]['血量']) == (g[-1]['帧数'] * 1000 + 38, 81)"

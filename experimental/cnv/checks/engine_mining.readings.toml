@@ -1,0 +1,121 @@
+# Bench readings of checks/engine_mining.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1. The full Sim on a mining bench (no miner
+# put by hand): the refinery's own collector (SpawnOnUnpack, sim.Sim.unpack_child) does the work. 首笔 / 二笔 / 三笔 =
+# the frames of the first / second / third deposit.
+
+[[reading]]
+id = "mining_the_refinery_s_own_collector_pays_at_the_bench_s_period"
+scene = {build = "mineturn0", check = "p", until = 76}
+each = [
+    {build = "mineniag", f = 111, s2 = 262, s3 = 413},
+    {build = "mineturn0", f = 111, s2 = 262, s3 = 413},
+    {build = "mineturn180", f = 296, s2 = 619, s3 = 942},
+    {build = "mineturn45", f = 156, s2 = 342, s3 = 528},
+    {build = "mineturn90", f = 214, s2 = 455, s3 = 696},
+    {build = "mineturnm45", f = 157, s2 = 344, s3 = 531},
+    {build = "mineturnm90", f = 214, s2 = 455, s3 = 696},
+]
+bench = "the benches' 首笔 / 二笔 / 三笔 f / s2 / s3 (bench 2026-11-12 checks/engine_mining.py mineturn<k> p / mineniag p: the node turned k degrees off facing its refinery)"
+proves = """sim.Sim.unpack_child (round 177): the placed collector deleted at the start, the refinery the map places gives its \
+own (SpawnOnUnpack) and the money comes at the bench's period (二笔 - 首笔, 三笔 - 二笔 within 2 frames)."""
+expect = "abs((rows[-1]['二笔'] - rows[-1]['首笔']) - (s2 - f)) <= 2 and abs((rows[-1]['三笔'] - rows[-1]['二笔']) - (s3 - s2)) <= 2"
+
+[[reading]]
+id = "mining_the_refinery_s_own_collector_s_first_money_as_the_bench"
+scene = {build = "mineturn45", check = "p", until = 76}
+each = [
+    {build = "mineturn180", f = 296},
+    {build = "mineturn45", f = 156},
+    {build = "mineturn90", f = 214},
+    {build = "mineturnm45", f = 157},
+    {build = "mineturnm90", f = 214},
+]
+bench = "首笔 f of the bench off retail's facing (bench 2026-11-12 mineturn<k> p; sim 294 / 156 / 212 / 156 / 212)"
+proves = "sim.Sim.unpack_child: the first drive, from the refinery's spot (INFERRED), within 2 frames of the bench's 首笔 off retail's facing"
+expect = "abs(rows[-1]['首笔'] - f) <= 2"
+
+[[reading]]
+id = "mining_retail_facing_first_money_as_the_bench"
+scenes = {niag = {build = "mineniag", check = "p", until = 76}, t0 = {build = "mineturn0", check = "p", until = 76}}
+bench = "首笔 111 at retail's facing, mineniag and mineturn0 (bench 2026-11-12 mineniag p / mineturn0 p)"
+proves = """sim.Sim.unpack_child (round 179): at retail's facing the node's own cycle (151) bounds the trip, the drive is \
+shorter (a leg 36), so the first trip, at a node that waits for nobody, pays at 111 (was 122 with a drive-bound leg of 45)."""
+expect = "abs(niag[-1]['首笔'] - 111) <= 2 and abs(t0[-1]['首笔'] - 111) <= 2"
+
+[[reading]]
+id = "mining_retail_facing_legs_as_the_bench"
+scene = {build = "mineturn0", check = "q", until = 31}
+bench = "mineturn0 q: the collector in c's node square at 23 (from where it faded in), out at 96 (73 frames: a node that waits for nobody), back in at 156 (15 after its unloading ends): 首笔 111, 到矿 23, 离矿 96, 二到矿 156 (bench 2026-11-12 mineturn0 q, CampMineT0Q; sim 111 / 22 / 96 / 159)"
+proves = "sim.Sim.unpack_child / mine_due (round 179): the legs of a trip at retail's facing, each within 3 frames"
+let = {legs = "{'首笔': 111, '到矿': 23, '离矿': 96, '二到矿': 156}"}
+expect = "all(abs(rows[-1][k] - v) <= 3 for k, v in legs.items())"
+
+[[reading]]
+id = "mining_retail_facing_drive_bound_once_the_refinery_is_further"
+scenes = {p = {build = "minefar", check = "p", until = 76}, q = {build = "minefar", check = "q", until = 31}}
+bench = "minefar p: 首笔 / 二笔 / 三笔 133 / 288 / 443 (a trip of 155, the refinery 38 further back); q legs 首笔 133, 到矿 34, 离矿 107, 二到矿 190 (bench 2026-11-12 minefar p / q; sim q 133 / 32 / 109 / 190)"
+proves = """sim.Sim.mine_due (round 179, the prediction told apart): the refinery 38 further back at retail's facing, the \
+legs 36 + 11 make the drive bound again -- a trip of 155 (the old drive-bound 45-frame leg said 144 / 317 / 490); the \
+sim's 133 / 288 / 443 to the frame, the legs within 3."""
+let = {far = "{'首笔': 133, '二笔': 288, '三笔': 443}", legs = "{'首笔': 133, '到矿': 34, '离矿': 107, '二到矿': 190}"}
+expect = ["all(p[-1][k] == v for k, v in far.items())", "all(abs(q[-1][k] - v) <= 3 for k, v in legs.items())"]
+
+[[reading]]
+id = "mining_engine_mining_a_with_the_refinery_s_own_collector"
+scene = {build = "engine_mining", check = "a", until = 76}
+bench = "首笔 239, 收满 268, 二笔 508 (bench CampMineA_mcp_1105_201253)"
+proves = "sim.Sim.unpack_child in the full Sim: the refinery's own collector's first money, load full and second money, 240 / 269 / 509: one frame late"
+expect = "(rows[-1]['首笔'] - 239, rows[-1]['收满'] - 268, rows[-1]['二笔'] - 508) == (1, 1, 1)"
+
+[[reading]]
+id = "mining_engine_mining_f_the_placed_collector_comes_as_on_the_bench"
+scene = {build = "engine_mining", check = "f", until = 31}
+bench = "名到矿 107: the placed collector in the node's square (bench 2026-11-12 CampMineF_mcp_1112_095956; sim 102)"
+proves = "sim.Sim.mine_due (round 178): the placed collector comes to the node's square, 102 in the sim (no acceleration), within 6"
+expect = "abs(rows[-1]['名到矿'] - 107) <= 6"
+
+[[reading]]
+id = "mining_engine_mining_f_the_refinery_s_own_is_held_up"
+scene = {build = "engine_mining", check = "f", until = 31}
+bench = "自到矿 121: the refinery's own collector, waiting for good, is first in the node square at 121 / 170 (alone 56, h), after the placed one (107 / 114) (round 189, bench engine_mining g / mineaway g; f 121)"
+proves = "sim.Sim.mine_due: where a waiting miner stands"
+expect = "abs(rows[-1]['自到矿'] - 121) <= 6"
+mismatch = "sim 自到矿 49 (the sim draws the waiting miner to the node), bench 121: where a waiting miner stands is not modelled"
+
+[[reading]]
+id = "mining_the_placed_collector_claims_the_node_whether_or_not_the_drives_meet"
+scenes = {g = {build = "engine_mining", check = "g", until = 31}, away = {build = "mineaway", check = "g", until = 31}, h = {build = "engine_mining", check = "h", until = 31}}
+bench = "bench 2026-11-12 engine_mining g / h, mineaway g: 首笔 290 / 261 / 239; the refinery's own leaves its pad at 19 either way; with the placed one far off any shared way (mineaway) it still comes second and waits (sim 首笔 277 / 266 / 240)"
+proves = """sim.Sim._claimed (round 189): not a collision, the placed one (there before the refinery's own fades in) claims \
+the node when it looks for it. The placed one's first money within 15 (290: its drive round the refinery, not \
+modelled, the sim 277), mineaway's within 6, h's within 2."""
+expect = [
+    "abs(g[-1]['首笔'] - 290) <= 15",
+    "abs(away[-1]['首笔'] - 261) <= 6",
+    "abs(h[-1]['首笔'] - 239) <= 2",
+]
+
+[[reading]]
+id = "mining_engine_mining_b_the_refinery_s_own_collector_waits"
+scene = {build = "engine_mining", check = "b", until = 76}
+bench = "b: 首笔 / 二笔 / 三笔 290 / 559 / 828: the placed collector works, the refinery's own waits for good -- one miner's period 269 (sim 277 / 546 / 815)"
+proves = "sim.Sim.mine_due: the refinery's own collector waits for good, one miner's period (269); the first money 13 early (the placed one's drive round the refinery)"
+expect = "(rows[-1]['二笔'] - rows[-1]['首笔'], rows[-1]['三笔'] - rows[-1]['二笔']) == (269, 269) and abs(rows[-1]['首笔'] - 290) <= 15"
+
+[[reading]]
+id = "mining_engine_mining_e_the_waiting_one_never_gets_the_node"
+scene = {build = "engine_mining", check = "e", until = 61}
+bench = "the placed one deleted once the first load is in, the money stays 250 to s61 -- the refinery's own, waiting, never docks (bench CampMineE_mcp_1105_203435)"
+proves = "sim.Sim.mine_due: a waiting collector never gets the node"
+expect = "rows[-1]['资金'] == 250"
+
+[[reading]]
+id = "money_cap_holds_harvest_income_as_the_bench"
+scenes = {cap = {build = "mineturn0", check = "cap", until = 31}, capz = {build = "mineturn0", check = "capz", until = 31}}
+bench = "资金 首笔 二笔 三笔: cap 400 -- the first load paid (250 from frame 111), the second 8 a frame to 394 (二笔 262 as without a cap), then nothing: a deposit that would pass the cap is not paid, not cut to it; 三笔 counts on to the end. Cap 0 -- no money at all (a07's allies: money 0, cap 0) (bench 11-15 run_queue mineturn0:cap mineturn0:capz, A round 254)"
+proves = "sim.Sim.earn / Sim._pay, PLAYER_SET_MONEY_CAP on income: a deposit that would pass the cap is not paid, cut to nothing"
+expect = [
+    "[cap[-1]['资金'], cap[-1]['首笔'], cap[-1]['二笔']] == [394, 111, 262] and cap[-1]['三笔'] > 400",
+    "max(r['资金'] for r in cap) == 394",
+    "all(r['资金'] == 0 for r in capz) and capz[-1]['首笔'] > 400",
+]

@@ -1,0 +1,20 @@
+# Bench readings of checks/engine_share.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+id = "share_all_as_the_bench"
+scene = {build = "engine_share", check = "all", until = 67}
+bench = """all, bench 11-14 `run_queue engine_share:all` (CampShareAll, round 222; the bench's seconds 1-2 ahead): 甲 / 乙 / 丙钱 125 \
+125 0 after the first load (Player_1 and Soviet_5 sharing), 249 188 63 after the second (Soviet_6 sharing too), 374 188 \
+188 after the third (Soviet_5 off); 选 1 / 2 / 16 / 1 / 0"""
+proves = """sim money sharing: each sharing Friend takes amount // 3 of every deposit, the earner the rest; SELECT_OBJECT replaces \
+the selection, an enemy's object too; DESELECT changes nothing; TYPE_SELECTED never true; the killed pick ~3 s still \
+selected on the bench (not modelled). The second load's split within 2: the bench unloads 30 deposits of 8 and a last \
+of 10, the simulator 29 and 18 (MINE_DOCK, timing fitted)."""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = [
+    "at[30][:3] == [125, 125, 0]",
+    "all(abs(v - w) <= 2 for k, want in ((45, (249, 188, 63)), (66, (374, 188, 188))) for v, w in zip(at[k][:3], want))",
+    "at[45][0] + at[45][1] + at[45][2] == 500",
+    "all(at[k][3] == sel for k, sel in ((4, 1), (8, 2), (10, 2), (14, 16), (16, 16), (19, 1), (25, 0), (60, 0)))",
+]

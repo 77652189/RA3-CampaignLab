@@ -1,0 +1,14 @@
+# Bench readings of checks/engine_reinfat.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# CREATE_REINFORCEMENT_TEAM_AT_UNIT_POSITION, bench 11-15.
+
+[[reading]]
+id = "reinforcement_at_a_unit_as_the_bench"
+scene = {build = "engine_reinfat", check = "go", until = 27}
+bench = """\
+`run_queue engine_reinfat:go` (CampReinfAtGo_mcp_1115_235514, A round 254): 兵A 楼A 楼内A 远处A s1-s10 3 3 3 0, s11-s27 6 3 \
+3 3 -- made on a house (all three inside 60 of it: not pushed off), at a tank's place now (it had driven 500 north: \
+all three at its goal), and not at all at a tank killed 2 s before (兵A stays 6). The bench seconds run 1-2 ahead of \
+the script timers (know-how)"""
+proves = "sim reinforce at a unit's position: made on a house, at a moving tank's place now, not at all at a dead tank"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = "by[10] == [3, 3, 3, 0] and by[18] == [6, 3, 3, 3] and by[25] == [6, 3, 3, 3]"

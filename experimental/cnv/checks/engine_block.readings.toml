@@ -1,0 +1,33 @@
+# Bench readings of checks/engine_block.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1. Buildings in the way (sim.Sim.reblock,
+# Ground.set_blocks): docs/engine/pathing.md 6, know-how.md A4 ice walls. Rows are one a second from s0 (row i = s i).
+
+[[reading]]
+id = "block_a_unit_on_the_move_goes_through_a_building_made_since"
+scene = {build = "engine_block", check = "wall", until = 31}
+bench = "the bitmap wall and the map's row of bunkers 11 (round by the gap, s7); the row made a second after the order 10, at the goal s4 (straight through it); the simulator s8 (bench 2026-11-04 cnv_check engine_block wall)"
+proves = "sim.Sim.reblock, Ground.set_blocks: a unit already on the move goes through a building made since its order"
+expect = [
+    "rows[-1]['位图墙'] == 11 and rows[-1]['建筑墙'] == 11 and rows[-1]['后建墙'] == 10",
+    "abs(first('后建墙', lambda v: v == 10) - 4) <= 1",
+    "abs(first('建筑墙', lambda v: v == 11) - 7) <= 1",
+]
+
+[[reading]]
+id = "block_the_late_row_stands_by_the_first_second"
+scene = {build = "engine_block", check = "made", until = 31}
+bench = "all 8 of the late row counted from s1 (the counter caps at 8), the map's row 8 from the start (bench `made`)"
+proves = "sim.Sim.reblock: a row made by a script stands in the first second"
+expect = ["rows[0]['建筑墙座数'] == 8", "first('后建墙座数', lambda v: v == 8) <= 1"]
+
+[[reading]]
+id = "block_a_new_order_goes_round_a_building_made_before_it_infantry_too"
+scene = {build = "engine_block", check = "foot", until = 31}
+bench = "the late row made at the start, 4 s on the IFV and a peacekeeper beside it ordered to the goal -- both 11 (round by the gap), the IFV at the goal s13, the soldier s22; the simulator s12 / s22 (bench 2026-11-08 cnv_check engine_block foot)"
+proves = """sim.Sim.reblock: a structure made in the run is in a new order's way for infantry as for a vehicle (know-how.md's A4 \
+ice walls letting soldiers out was not that)."""
+expect = [
+    "rows[-1]['后建墙'] == 11 and rows[-1]['后建墙步兵'] == 11",
+    "abs(first('后建墙', lambda v: v == 11) - 13) <= 2",
+    "abs(first('后建墙步兵', lambda v: v == 11) - 22) <= 2",
+]

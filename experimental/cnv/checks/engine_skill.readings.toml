@@ -1,0 +1,39 @@
+# Bench readings of checks/engine_skill.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1. Per spot, units = frames from the order to
+# the core, thousands = frames it stood. A script's cast heeds neither the 20 s reload, ForbiddenObjectRange 32 nor
+# PATHABLE_ONLY. c's 平D (a 400 walk first) is left to R5's test; 走D only counts the walk.
+
+[[reading]]
+id = "skill_a_scripted_cast_builds_whatever_the_reload_or_the_spot_a"
+scene = {build = "engine_skill", check = "a", until = 61}
+bench = "C1 / C2 / C3 82002 / 82003 / 82003 (bench 2026-11-07 engine_skill a)"
+proves = """sim.Sim.act NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT: every core comes and stands its 82 frames; the frame it comes \
+within 2 of the bench's (the simulator has every in-range core 1 frame after its order; the bench 2-3 frames), the \
+walked D within 4 (as R5)."""
+let = {want = "[82002, 82003, 82003]"}
+expect = "all(g // 1000 == w // 1000 and abs(g % 1000 - w % 1000) <= (4 if w % 1000 > 50 else 2) for g, w in zip(vals(rows)[-1], want))"
+
+[[reading]]
+id = "skill_a_scripted_cast_builds_whatever_the_reload_or_the_spot_b"
+scene = {build = "engine_skill", check = "b", until = 61}
+bench = "禁20 / 禁40 / 禁60 82002 each (bench 2026-11-07 engine_skill b)"
+proves = "sim.Sim.act NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT: a script's cast builds whatever the forbidden-object range (ForbiddenObjectRange 32)"
+let = {want = "[82002, 82002, 82002]"}
+expect = "all(g // 1000 == w // 1000 and abs(g % 1000 - w % 1000) <= (4 if w % 1000 > 50 else 2) for g, w in zip(vals(rows)[-1], want))"
+
+[[reading]]
+id = "skill_a_scripted_cast_builds_whatever_the_reload_or_the_spot_c"
+scene = {build = "engine_skill", check = "c", until = 61}
+bench = "悬1 / 悬2 / 平D 82004 / 82002 / 82103 (bench 2026-11-07 engine_skill c; the cliff edge and the sea 4 frames)"
+proves = """sim.Sim.act NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT: a script's cast builds on the cliff edge and in the sea (the 2 \
+more frames on the bench not explained); the walked D within 4 (as R5, sim 82106)."""
+let = {want = "[82004, 82002, 82103]"}
+expect = "all(g // 1000 == w // 1000 and abs(g % 1000 - w % 1000) <= (4 if w % 1000 > 50 else 2) for g, w in zip(vals(rows)[-1], want))"
+
+[[reading]]
+id = "skill_a_scripted_cast_builds_whatever_the_reload_or_the_spot_w"
+scene = {build = "engine_skill", check = "w", until = 61}
+bench = "水 82004 (the cast in the sea, bench 2026-11-07 engine_skill w)"
+proves = "sim.Sim.act NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT: a script's cast builds in the water (PATHABLE_ONLY not heeded)"
+let = {want = "[82004]"}
+expect = "all(g // 1000 == w // 1000 and abs(g % 1000 - w % 1000) <= (4 if w % 1000 > 50 else 2) for g, w in zip(vals(rows)[-1], want))"
