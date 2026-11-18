@@ -1,0 +1,19 @@
+# Bench readings of checks/engine_spider_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E178: the retail toggle / SpiderHoleUpdate removal control (work/re/e178_spider.md).
+
+[[reading]]
+id = "test_spider_named_measured_toggle_snapshot"
+scene = {build = "spideron_e", check = "a", until = 16}
+each = [{build = "spideron_e"}, {build = "spideroff_e"}]
+bench = "Retail f90: both in the hole and alive; f180: quiet one out, contact one still in: frame 180, entry 1515, exit 1508 (both arms)"
+proves = "SpiderHoleUpdate: the quiet spider leaves the hole at f180, the one in contact stays in"
+expect = "list(rows[-1].values())[:3] == [180, 1515, 1508]"
+
+[[reading]]
+id = "test_spider_named_measured_cast_events"
+scene = {build = "spideron_e", check = "a", until = 16}
+each = [{build = "spideron_e"}, {build = "spideroff_e"}]
+bench = "E178 retail toggle emits three player cast observations (work/re/e178_spider.md)"
+proves = "SpiderHoleUpdate: the retail toggle's cast dispatch events"
+expect = "list(rows[-1].values())[3] == 3"
+mismatch = "sim 0 cast observations; bench 3 (dispatch event gap)"

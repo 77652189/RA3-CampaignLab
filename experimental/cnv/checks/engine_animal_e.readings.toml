@@ -1,0 +1,24 @@
+# Bench readings of checks/engine_animal_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E192: a named civilian near / far / deleted control (work/re/e192_animal.md).
+
+[[reading]]
+id = "test_animal_named_bench[engine_animal_e]"
+scene = {build = "engine_animal_e", check = "a", until = 20}
+bench = "E192 frame 240, left 0, live 7, start 7 (named civilian near/far/deletion control; work/re/e192_animal.md)"
+proves = "AnimalAIUpdate: the named civilian control (no firing) keeps all seven alive and none left"
+expect = "list(rows[-1].values()) == [240, 0, 7, 7]"
+
+[[reading]]
+id = "test_animal_named_bench[engine_animalfire_e]"
+scene = {build = "engine_animalfire_e", check = "a", until = 20}
+bench = "E192 frame 240, left 0, start 7 with firing at the animals (work/re/e192_animal.md)"
+proves = "AnimalAIUpdate: the firing control runs its 240 frames with none left and seven at the start"
+expect = "[rows[-1]['frame'], rows[-1]['left'], rows[-1]['start']] == [240, 0, 7]"
+
+[[reading]]
+id = "test_animal_named_bench[engine_animalfire_e-E192Live]"
+scene = {build = "engine_animalfire_e", check = "a", until = 20}
+bench = "E192 live 7 at the end of the firing control: gate 7, the shots have no legal hits (work/re/e192_animal.md)"
+proves = "AnimalAIUpdate: shots at a named civilian animal are not legal hits (live stays 7)"
+expect = "rows[-1]['live'] == 7"
+mismatch = "sim live 63 (the simulator accepts firing, gate 63); bench 7 (gate 7, no legal hits)"

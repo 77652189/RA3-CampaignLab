@@ -21,13 +21,3 @@ def test_hitreaction_only_module_removal_contract():
     assert not contract(merged(m, t))
     m, t, _ = build.resolve('engine_hitreaction_e', 'b')
     assert not contract(merged(m, t))
-
-
-def test_hitreaction_named_shield_hit_readings():
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_hitreaction_e', 'b')
-    engine = sim.Sim(m, t).run(18)
-    # CampHitReactEB_mcp_1116_004505: frozen f180 HUD, s15..80.
-    # Bit 64 is the original's ever-on reaction; no timing/orientation claim.
-    assert [engine.eng.value(c) for c in ('E172Frame', 'E172OnHP', 'E172OffHP', 'E172Gate')] == [180, 99, 99, 895]

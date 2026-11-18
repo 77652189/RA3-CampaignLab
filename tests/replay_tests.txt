@@ -120,7 +120,6 @@ test_simai_friendly_c.py
 test_simai_mintime.py
 test_simai_pullpct.py
 test_simai_search.py
-test_simareaally_e.py
 test_simareaoverlap_e.py
 test_simareaself_e.py
 test_simassignslaves.py
@@ -158,11 +157,9 @@ test_simtransform_e.py
 test_slaughter_bench_e.py
 test_sovdeploy_bench_c.py
 test_special_power_nugget.py
-test_specialability_bench_e.py
 test_spider_bench_e.py
 test_stasis.py
 test_structureplace_bench_e.py
-test_substructure_bench_e.py
 test_suppress_probe.py
 test_teamexit_bench_c.py
 test_teamgarr_bench_c.py

@@ -1,0 +1,10 @@
+# Bench readings of checks/engine_secondary_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E174: IF_SecondaryObjectListener, an engineer inside a base defense, with and without the listener.
+
+[[reading]]
+id = "test_secondary_named_sim_bench"
+scene = {build = "engine_secondon_e", check = "a", until = 25}
+each = [{build = "engine_secondon_e", inside = 15}, {build = "engine_secondoff_e", inside = 7}]
+bench = "E174 frame 360, before 3, inside 15 (with the listener) / 7 (removed), after 3; the check's own expectations hold"
+proves = "IF_SecondaryObjectListener: the listener adds the secondary object's bits while the engineer is inside"
+expect = ["list(rows[-1].values()) == [360, 3, inside, 3]", "verdicts() and all(ok for ok, _ in verdicts())"]

@@ -1,0 +1,10 @@
+# Bench readings of checks/engine_powerupgrade_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E175: a power plant's turbine upgrade (work/re/e175_powerupgrade.md).
+
+[[reading]]
+id = "test_powerupgrade_named_bench"
+scene = {build = "engine_powerupgrade_e", check = "a", until = 23}
+bench = "E175 frame 330, base 11, grant 10, remove 11 (original advanced plant has campaign power 500; work/re/e175_powerupgrade.md)"
+proves = "power upgrade: the advanced plant's campaign power, with and without the turbine upgrade"
+expect = "list(rows[-1].values()) == [330, 11, 10, 11]"
+mismatch = "sim [330, 15, 10, 15]: the original advanced plant has campaign power 500, the simulator 350; turbine upgrade possession was never observed"

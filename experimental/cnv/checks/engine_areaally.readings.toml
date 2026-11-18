@@ -1,0 +1,11 @@
+# Bench readings of checks/engine_areaally.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E163: PassiveAreaEffect across players (work/re/e163_areaally.md).
+
+[[reading]]
+id = "test_areaally_named_bench_friend_snapshot"
+scene = {build = "engine_areaally", check = "b", until = 17}
+bench = """\
+Bench b f240: own / foreign full, inactive half, source full => friend 15; b ended at f448, before the f450 enemy / position \
+snapshots, so those two are not measured (work/re/e163_areaally.md)"""
+proves = "PassiveAreaEffectBehavior: the area effect heals a friend of another player (own / foreign full, inactive half, source full => 15)"
+expect = "[rows[-1]['friend snapshot'], rows[-1]['enemy snapshot'], rows[-1]['positions']] == [15, 0, 0]"

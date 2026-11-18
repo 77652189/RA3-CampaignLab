@@ -11,19 +11,6 @@ spec.loader.exec_module(bootstrap)
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E175: original advanced plant has campaign power 500, simulator 350; '
-    'turbine upgrade possession was never observed. See work/re/e175_powerupgrade.md '
-    'and work/re/handoff-e.md; no inferred turbine effect implemented.'))
-def test_powerupgrade_named_bench():
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_powerupgrade_e', 'a')
-    engine = sim.Sim(m, t).run(23)
-    assert [engine.eng.value(c) for c in
-            ('E175Frame', 'E175Base', 'E175Grant', 'E175Remove')] == [330, 11, 10, 11]
-
-
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
     'E175: bench grant interval holds no turbine upgrade; simulator grants an '
     'unresolved upgrade and misses advanced plant campaign power 500. '
     'See work/re/e175_powerupgrade.md and work/re/handoff-e.md.'))

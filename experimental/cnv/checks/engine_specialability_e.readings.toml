@@ -1,0 +1,9 @@
+# Bench readings of checks/engine_specialability_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E176: the retail pack-status removal control.
+
+[[reading]]
+id = "test_specialability_named_bench"
+scene = {build = "engine_specialability_e", check = "a", until = 17}
+bench = "E176 frame 240, ever-with-status 13, original end state 4, control end state 4 (retail pack-status removal control)"
+proves = "SpecialAbilityUpdate: the pack-status removal control ends in the same state as the original"
+expect = "list(rows[-1].values()) == [240, 13, 4, 4]"
