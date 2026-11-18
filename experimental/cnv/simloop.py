@@ -47,17 +47,7 @@ def tech(s, frame, tick):
 
 
 def scripts(s, frame, tick):
-    if s.eng is not None:
-        s.eng.step()
-        return
-    for sc in s.mm.scripts:      # without the model: the map's scripts as the simulator reads them, once a frame
-        if sc.name in s.done or sc.name in s.disabled or not sc.levels[s.level]:
-            continue
-        if all(s.holds(c) for c in sc.when):
-            for name, *a in sc.do:
-                s.act(name, a, sc)
-            if sc.once:
-                s.done.add(sc.name)
+    s.executor.step()            # the script executor port: the model's plug-in (it moves the frame on) or the public one
 
 
 def seq(s, frame, tick):

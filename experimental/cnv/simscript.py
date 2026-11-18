@@ -25,6 +25,20 @@ BUTTON_ACTIONS = ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTT
 # a condition's comparison argument (0 <, 1 <=, 2 ==, 3 >=, 4 >, 5 !=)
 CMP = {0: lambda a, b: a < b, 1: lambda a, b: a <= b, 2: lambda a, b: a == b, 3: lambda a, b: a >= b,
        4: lambda a, b: a > b, 5: lambda a, b: a != b}
+# RA3's own actions and conditions (docs/engine/script-semantics.md 6: in neither source): run as we understand them,
+# each run that uses one lists it under 'ra3 only'
+RA3_ONLY = {'ATTACK_MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_TEAM_TO', 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION',
+            'UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION', 'UNIT_TELEPORT_TO_WAYPOINT', 'UNIT_GUARD_AREA',
+            'UNIT_SET_HEALTH', 'NAMED_SET_MAX_HEALTH', 'UNIT_CHANGE_OBJECT_STATUS',
+            'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', 'SET_MISSION_OBJECTIVE_STATUS', 'LINK_MISSION_OBJECTIVE_TO_OBJECT',
+            'LINK_MISSION_OBJECTIVE_TO_WAYPOINT', 'CAMPAIGN_CREATE_AUTO_SAVE', 'MOVE_CAMERA_TO_NAMED',
+            'PLAYER_SET_PLAYER_POWER_POINTS', 'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'SET_PLAYER_MONEY_TO_COUNTER',
+            'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'ALLOW_DISALLOW_ONE_BUILDING', 'ALLOW_DISALLOW_ONE_UPGRADE',
+            'SKIRMISH_AI_MAKE_BASE', 'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_TRANSFER_ALL', 'SKIRMISH_AI_USE_REBUILD_SYSTEM',
+            'SKIRMISH_AI_USE_REPAIRS', 'UNIT_AI_TRANSFER_ALL', 'PATH_MUSIC_PLAY_EVENT', 'SKIRMISH_AI_START',
+            'PLAYER_TOGGLE_SKIRMISH_AI',
+            'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', 'CAMERA_ENTERED_AREA',
+            'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', 'SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER'}
 # AssetTypeLocomotorTemplate.xsd's Surface, in order: TEAM_INSIDE_AREA_*'s third argument is an index into it (D 119)
 SURFACES = ('GROUND', 'WATER', 'CLIFF', 'AIR', 'RUBBLE', 'OBSTACLE', 'IMPASSABLE', 'DEEP_WATER')
 # a script's relation argument (its name, or the index retail writes) -> Sim.relation's word (D 115 5, INFERRED order)

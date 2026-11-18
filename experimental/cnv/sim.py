@@ -86,6 +86,9 @@ from engine.kernel import module as kernel_module, world as kernel_world  # noqa
 import engine.modules  # noqa: E402,F401  (imports, so registers, every module file in it)
 import simloop  # noqa: E402
 import simworld  # noqa: E402
+import simexec  # noqa: E402
+import scriptplugin  # noqa: E402
+from engine.script import executor as script_executor  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
 
@@ -258,20 +261,7 @@ ALIGN = {**kernel_factory.align(), **simheal.ALIGN,     # the kernel modules' ow
                    'shuts again (about 9 s by default) and ENEMY_SIGHTED (a range query: true on the high ground '
                    'where NAMED_DISCOVERED is not) are not modelled',
 }
-# RA3's own actions and conditions (docs/engine/script-semantics.md 6: in neither source): run as we understand them,
-# each run that uses one lists it under 'ra3 only'
-RA3_ONLY = {'ATTACK_MOVE_NAMED_UNIT_TO', 'ATTACK_MOVE_TEAM_TO', 'CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION',
-            'UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION', 'UNIT_TELEPORT_TO_WAYPOINT', 'UNIT_GUARD_AREA',
-            'UNIT_SET_HEALTH', 'NAMED_SET_MAX_HEALTH', 'UNIT_CHANGE_OBJECT_STATUS',
-            'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', 'SET_MISSION_OBJECTIVE_STATUS', 'LINK_MISSION_OBJECTIVE_TO_OBJECT',
-            'LINK_MISSION_OBJECTIVE_TO_WAYPOINT', 'CAMPAIGN_CREATE_AUTO_SAVE', 'MOVE_CAMERA_TO_NAMED',
-            'PLAYER_SET_PLAYER_POWER_POINTS', 'PLAYER_SET_MAX_PLAYER_POWER_POINTS', 'SET_PLAYER_MONEY_TO_COUNTER',
-            'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'ALLOW_DISALLOW_ONE_BUILDING', 'ALLOW_DISALLOW_ONE_UPGRADE',
-            'SKIRMISH_AI_MAKE_BASE', 'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_TRANSFER_ALL', 'SKIRMISH_AI_USE_REBUILD_SYSTEM',
-            'SKIRMISH_AI_USE_REPAIRS', 'UNIT_AI_TRANSFER_ALL', 'PATH_MUSIC_PLAY_EVENT', 'SKIRMISH_AI_START',
-            'PLAYER_TOGGLE_SKIRMISH_AI',
-            'PATH_MUSIC_ENABLE_SPECIFIC_DYNAMIC_SYSTEM', 'CAMERA_ENTERED_AREA',
-            'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', 'SET_COUNTER_TO_COUNTER', 'COUNTER_MATH_COUNTER'}
+from simscript import RA3_ONLY  # noqa: E402,F401  (RA3's own actions and conditions, L6)
 
 from simworld import GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS  # noqa: E402,F401
 from simstatus import ACTED_STATUS, AI_ONLY_STATUS  # noqa: E402,F401  (status bits acted on, L2)
@@ -290,9 +280,7 @@ from simact_player import AI_SWITCHES  # noqa: E402,F401  (simai reads sim.AI_SW
 
 # ---- the engine line's script engine (ADR 0019 layer 1). Where it is not on this computer (a clean clone) the
 # simulator runs its own older loop: every DT tick each script once, timers as seconds, NOT as a plain negation.
-SEEN_CORE = {'SET_FLAG', 'SET_MISSION_OBJECTIVE_STATUS', 'DISPLAY_COUNTDOWN_TIMER',   # the timeline's notes on them
-             'MARK_MISSION_OBJECTIVE_COMPLETED', 'MARK_MISSION_OBJECTIVE_NOT_COMPLETED'}
-CHANGES = {'INCREMENT_COUNTER', 'DECREMENT_COUNTER', 'SET_MILLISECOND_TIMER', 'SET_RANDOM_MSEC_TIMER'}
+from simexec import SEEN_CORE, CHANGES  # noqa: E402,F401  (what the world watches of the plug-in's core actions, L6)
 _MODEL = {}
 
 
@@ -313,7 +301,7 @@ def engine_model():
             mod = importlib.util.module_from_spec(spec)
             sys.modules[name] = mod             # dataclasses look their module up while the file runs
             spec.loader.exec_module(mod)
-        _MODEL[path] = mod and (mod, _engine_class(mod))
+        _MODEL[path] = mod and (mod, scriptplugin.plug(mod))
     return _MODEL[path]
 
 
@@ -326,71 +314,6 @@ def skirmish_setup(map_module, players):
     its bench readings were matched (tests/test_simai); the container's other libraries (Lib_End_Mission ...) neither."""
     from model import handed_to_ai
     return tuple(sorted(p for p in handed_to_ai(map_module) if p in players))
-
-
-def _engine_class(scripts):
-    class SimEngine(scripts.Engine):
-        """The model's engine with the simulator as its World, watching the core actions it reports on (a flag's
-        scene, caption, ending; an objective; a countdown shown; something changed). A random timer runs to its
-        latest, as the beat sheet counts."""
-        script = None
-
-        def action(self, name, a, s=None):
-            sim, self.script = self.world, s
-            if name in SEEN_CORE:
-                sim.act(name, list(a), s)
-            elif name in CHANGES:
-                sim.change()
-            if name == 'SET_RANDOM_MSEC_TIMER':
-                name, a = 'SET_MILLISECOND_TIMER', (a[0], a[2])
-            elif name == 'COUNTER_MATH_COUNTER' and scripts.as_int(a[1]) not in (0, 1):
-                sim.used.add(f'COUNTER_MATH_COUNTER code {a[1]}')
-            super().action(name, a, s)
-    return SimEngine
-
-
-class Counters(collections.abc.MutableMapping):
-    """The engine's one counter / timer table as the simulator's counters: a plain counter's value by name."""
-
-    def __init__(self, eng):
-        self.eng = eng
-
-    def __getitem__(self, k):
-        c = self.eng.counters[k]
-        if c[1]:
-            raise KeyError(k)
-        return c[0]
-
-    def __setitem__(self, k, v):
-        self.eng.counter(k)[0] = v
-
-    def __delitem__(self, k):
-        del self.eng.counters[k]
-
-    def __iter__(self):
-        return (k for k, c in self.eng.counters.items() if not c[1])
-
-    def __len__(self):
-        return sum(1 for _ in self)
-
-
-class Timers(collections.abc.Mapping):
-    """... and as its timers: a running countdown's mission second it runs out at (at or before now once out)."""
-
-    def __init__(self, sim, fps):
-        self.sim, self.fps = sim, fps
-
-    def __getitem__(self, k):
-        c = self.sim.eng.counters[k]
-        if not c[1]:
-            raise KeyError(k)
-        return self.sim.t + c[0] / self.fps
-
-    def __iter__(self):
-        return (k for k, c in self.sim.eng.counters.items() if c[1])
-
-    def __len__(self):
-        return sum(1 for _ in self)
 
 
 @dataclasses.dataclass
@@ -1110,10 +1033,14 @@ class Sim:
                 self.library_ai = frozenset(self.handed)    # kept: their MAKE_BASE stands in for the library's wake
             # a retail map's own scripts keep their inverted bit (the engine model: honored for retail's compiled
             # scripts; a02's 'NOT units in the convention center' completed objective 1 at 0:04 with it ignored)
-            self.eng = cls(lists, world=self, difficulty=self.level, honor_inverted=self.retail)
-            self.flags, self.counters, self.timers = self.eng.flags, Counters(self.eng), Timers(self, mod.FPS)
+            self.eng = cls(lists, world=simexec.SimWorld(self), difficulty=self.level, honor_inverted=self.retail)
+            self.flags, self.counters = self.eng.flags, scriptplugin.Counters(self.eng)
+            self.timers = scriptplugin.Timers(self, mod.FPS)
             if any(c and c[-1] == parts.NOT for s in self.mm.scripts for c in s.when):
                 self.used.add('inverted')
+        # the script executor port (engine/ports/scripts.py): the plug-in above, else the public executor
+        self.executor = self.eng if self.eng is not None else script_executor.PublicExecutor(
+            simexec.SimWorld(self), self.mm.scripts, self.level, self.done, self.disabled, parts.NOT)
 
     def blocks(self, b, place=False):
         """What of the way a body takes up: a wall of ours its bar (or disc, square), a building its round. place:
@@ -2115,28 +2042,6 @@ class Sim:
     def air_crash(self, b):
         """simbody.Life.air_crash (L2): an aircraft killed in the air leaves its falling wreck's death weapon."""
         self._life().air_crash(self, b, self.death_blasts, self.impact_ground_z)
-
-    # ---- the engine model's World: what its script engine asks of the objects (the rest it does itself)
-    def condition(self, eng, name, args):
-        if name in RA3_ONLY:
-            self.ra3_only.add(name)
-        return self.cond(name, self.this_player(eng, args))
-
-    def action(self, eng, name, args):
-        self.act(name, self.this_player(eng, args), eng.script)
-
-    @staticmethod
-    def this_player(eng, args):
-        """'<This Player>' as the game reads it: the player whose script list the script is in (the engine's side;
-        retail maps' lists are per player, ours have one unnamed list and never use it)."""
-        side = getattr(eng, '_side', '')
-        return [side if a == '<This Player>' and side else a for a in args]
-
-    def update(self, eng):
-        """Units move and fight in step(), once a DT tick."""
-
-    def difficulty(self, side):
-        return None                             # the run's level ('difficulty side')
 
     # ---- conditions
     def holds(self, c):

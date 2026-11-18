@@ -247,7 +247,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3594, 'Sim methods': 205, 'Body fields': 109, 'simunits defs': 153,
+CENTER = {'sim.py lines': 3499, 'Sim methods': 200, 'Body fields': 109, 'simunits defs': 153,
           'cells with old code': 36}
 
 
@@ -624,6 +624,34 @@ def test_private_guard_bites():
     for sneak in ('importlib.import_module(".." + n, __name__)', 'importlib.import_module(n, __name__)',
                   'importlib.import_module("." + n, "ra3model")', 'importlib.import_module("." + n)'):
         assert private_breaks({'engine.modules': 'import importlib\n' + sneak + '\n'}), sneak
+
+
+# Step P1: a plug-in's adapter (the private model's script core on the script executor port) imports only the ports
+# (engine.ports.*) and the standard library -- never the kernel's insides nor the simulator (sim-modules.md 6).
+ADAPTERS = ('scriptplugin.py',)
+
+
+def adapter_breaks(sources):
+    """(file, module) for each import of an adapter other than engine.ports.* and the standard library."""
+    out = []
+    for name, src in sources.items():
+        for node in ast.walk(ast.parse(src)):
+            mods = [a.name for a in node.names] if isinstance(node, ast.Import) else \
+                [node.module] if isinstance(node, ast.ImportFrom) and node.module and not node.level else []
+            out += [(name, m) for m in mods if not (m == 'engine.ports' or m.startswith('engine.ports.'))
+                    and m.split('.')[0] not in sys.stdlib_module_names]
+    return out
+
+
+def test_adapters_import_only_the_ports():
+    assert not adapter_breaks({n: (CNV / n).read_text(encoding='utf-8') for n in ADAPTERS})
+
+
+def test_adapter_guard_bites():
+    src = (CNV / 'scriptplugin.py').read_text(encoding='utf-8')
+    assert adapter_breaks({'a': src + '\nimport sim\n'}) == [('a', 'sim')]
+    assert adapter_breaks({'a': src + '\nfrom engine.kernel import world\n'}) == [('a', 'engine.kernel')]
+    assert not adapter_breaks({'a': 'import math\nfrom engine.ports import scripts\nimport engine.ports.templates\n'})
 
 
 # Guard 8 (step K2): a thing's health moves only through Body.damage / mend / health, which tell its Damage modules

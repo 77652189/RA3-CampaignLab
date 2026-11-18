@@ -42,6 +42,7 @@ LAYER_OF = {
     'simsweep': 3,
     'siminfiltrator': 2, 'simrepair': 2,
     'simmicro': 5, 'simpullback': 8,
+    'engine.ports.scripts': 0, 'engine.script': 6, 'engine.script.executor': 6, 'simexec': 6,   # P1 the script port
 }
 # the skirmish AI's side (step 9d): simai and the parts only it imports. The inventory counts the player's run
 # (simcoverage.sim_files walks down from sim and simproxy, never into simai; inventory_ai counts the AI apart), so
