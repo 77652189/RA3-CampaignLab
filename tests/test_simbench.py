@@ -1939,13 +1939,31 @@ def test_scripts6_else_random_and_timers_as_the_bench():
 # ---- self-healing (engine/modules/autoheal.py, AutoHealBehavior): bench 2026-11-06 engine_heal (docs/engine/heal.md): an
 # Apocalypse (3000 health, AutoHealBehavior 2 points every 7 frames, waits 15 frames after a hurt) hurt 600 at Go:
 # 低血 = 1 x frames below 81 % + 1000 x frames below 82 % -> 219114 (81 % again after 114 frames, 82 % after 219);
-# b: 30 more at frame 40 -> 230 frames below 81 %, below 82 % to the end. (The state / rank-gated heals c, d, e are not
-# modelled.)
+# b: 30 more at frame 40 -> 230 frames below 81 %, below 82 % to the end. The gated ones since step K3: c, d below.
+# (e, the heroic rank from experience points, is not run: UNIT_GIVE_EXPERIENCE_POINTS is a gap.)
 def test_autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait():
     a = _sim_run('engine_heal', 'a', 18.0).series[-1][1]
     assert a[1] == 219114, a
     b = _sim_run('engine_heal', 'b', 18.0).series[-1][1]
     assert b[1] % 1000 == 230 and b[1] // 1000 == b[0], b          # below 82 % every frame to the end
+
+
+# c: the Tsunami (380; 3 points every 3 frames, no wait, only in GENERIC_TOGGLE_STATE) with the state on, hurt 76 at Go:
+# 低血 20005 (below 81 % 5 frames, below 85 % 20). d: the state off at Go, on at frame 20 -- asleep, the state does not
+# wake it -- and 1 more damage at 60 (wakes it): 64002. Bench CampHealC / D 11-06, to the digit.
+def test_autoheal_the_tsunamis_armour_heal_runs_only_in_its_state_and_a_hurt_not_the_state_wakes_it():
+    c = _sim_run('engine_heal', 'c', 8.0).series[-1][1]
+    d = _sim_run('engine_heal', 'd', 10.0).series[-1][1]
+    assert (c[1], d[1]) == (20005, 64002), (c, d)
+
+
+# f: a GI (150; BaseInfantry's heroic heal: 1 point every 7 frames, idle until Upgrade_Veterancy_HEROIC) hurt 30 at Go,
+# the upgrade itself given at frame 30: 低血 45038 (81 % at 38, 82 % at 45), 100 at the end; g: the upgrade taken back at
+# frame 40 -- two mends, then none: 帧数 x 1000 + 38, 81. Bench 11-17 (step K3, work/bench_results engine_heal__f / g).
+def test_autoheal_the_heroic_heal_runs_from_its_upgrade_and_stops_when_the_upgrade_is_taken_back():
+    f = _sim_run('engine_heal', 'f', 18.0).series[-1][1]
+    g = _sim_run('engine_heal', 'g', 10.0).series[-1][1]
+    assert (f[1], f[2]) == (45038, 100) and (g[1], g[2]) == (g[0] * 1000 + 38, 81), (f, g)
 
 
 # ---- the freeze (sim.Sim.chill, SecondaryDamageTracker): bench 2026-11-09 engine_cryo (checks/engine_cryo.py; the bench ran

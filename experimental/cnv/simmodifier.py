@@ -30,7 +30,9 @@ class Modifiers:
         StatusBitsUpgrade's bits) and what auras hung on it (aura_tick, each until its frame). SPEED x the speed,
         RANGE x the weapons' range only, VISION x vision and sight (upgrades.md 1, 2); the status = the script's bits
         + the modifiers', IN_STASIS meaning IMMOBILE NO_ATTACK UNATTACKABLE (INFERRED: the measured stasis modifier
-        sets them all); shielded, ARMOR (taken), DAMAGE_MULT x RATE_OF_FIRE (dealt)."""
+        sets them all); shielded, ARMOR (taken), DAMAGE_MULT x RATE_OF_FIRE (dealt). First the upgrades held (its own
+        and its player's, as a weapon's) are told to its Upgrade modules (step K3: the kernel's upgrade broadcast)."""
+        b.upgrades_moved(upgrades_of(b))
         now = world.frame_now()
         xml = world.xml_of(b.template)
         mods = []

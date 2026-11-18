@@ -33,6 +33,42 @@ class Thing:
             else:
                 m.on_healed(was)
 
+    def upgrades_moved(self, have):
+        """The upgrades it holds are now `have` (step K3, the Generals UpgradeMux): each Upgrade module whose trigger
+        they come to satisfy is told on_upgrade, each whose trigger they no longer satisfy on_remove (RA3 takes an
+        upgrade back: NAMED_REMOVE_UPGRADE). Told whenever the held upgrades may have moved (simmodifier.modify); a
+        module already as the upgrades say hears nothing."""
+        if not self.modules:
+            return
+        for m in self.find(interfaces.Upgrade):
+            want = m.data.trigger.wants(have)
+            if want != m.upgraded:
+                m.upgraded = want
+                if want:
+                    m.on_upgrade()
+                else:
+                    m.on_remove()
+
+
+class Trigger:
+    """An upgrade module's trigger (Generals UpgradeMux): TriggeredBy -- any one, or all with RequiresAllTriggers --
+    and none of ConflictsWith. No TriggeredBy: never. Read only."""
+    __slots__ = ('by', 'conflicts', 'all')
+
+    def __init__(self, by=(), conflicts=(), all=False):
+        object.__setattr__(self, 'by', frozenset(by))
+        object.__setattr__(self, 'conflicts', frozenset(conflicts))
+        object.__setattr__(self, 'all', bool(all))
+
+    def __setattr__(self, name, value):
+        raise AttributeError('a Trigger is read only')
+
+    def wants(self, have):
+        have = set(have)
+        if not self.by or self.conflicts & have:
+            return False
+        return self.by <= have if self.all else bool(self.by & have)
+
 
 class ModuleData:
     """The parse of one module block: parse(head, inner) -> an instance, sealed by the factory -- read only after."""

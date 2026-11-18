@@ -23,3 +23,18 @@ def num(v, default=0.0):
 def secs(v):
     """A duration attribute ('0.5s') in seconds; nothing: 0."""
     return num(v.rstrip('s')) if v else 0.0
+
+
+def names(head, inner, name):
+    """The names a block lists under `name`: an attribute (space-separated) and child elements
+    (<TriggeredBy>X</TriggeredBy>, several allowed)."""
+    found = set((attr(head, name) or '').split())
+    for text in re.findall(rf'<{name}>([^<]*)</{name}>', inner or ''):
+        found |= set(text.split())
+    return frozenset(found)
+
+
+def child(inner, tag):
+    """The attributes text of a block's first <tag ...> child element; '' when none."""
+    m = re.search(rf'<{tag}\b([^>]*?)/?>', inner or '')
+    return m.group(1) if m else ''

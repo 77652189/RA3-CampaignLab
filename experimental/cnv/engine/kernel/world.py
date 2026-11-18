@@ -42,6 +42,14 @@ class World:
             if isinstance(m, interfaces.Update):
                 self.schedule.remove(m)
 
+    def gap(self, kind, name, what=''):
+        """A module met what it does not act on: noted as Sim.gap does (t: seconds, 15 logic frames a second)."""
+        g = self.gaps.get((kind, name))
+        if g is None:
+            self.gaps[(kind, name)] = {'n': 1, 't': self.frame / 15.0, 'what': what}
+        else:
+            g['n'] += 1
+
     def wake(self, module, frame=None):
         """Run an update module at `frame`, by default the frame of the cell now running (`frame`, which the frame
         loop sets before each cell): a module woken by a cell before its own runs this frame, by one after it the

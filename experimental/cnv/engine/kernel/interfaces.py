@@ -86,7 +86,9 @@ class Create(Interface):
 
 
 class Upgrade(Interface):
-    """Whether it is in force (the XML's triggers, conflicts and required upgrades) and what it does then."""
+    """Whether it is in force (the XML's triggers, conflicts and required upgrades) and what it does then. Its data
+    has `trigger` (module.Trigger); the kernel (Thing.upgrades_moved) keeps its `upgraded` and calls on_upgrade when
+    the held upgrades come to satisfy the trigger, on_remove when they no longer do (step K3)."""
     __slots__ = ()
 
     def on_upgrade(self):

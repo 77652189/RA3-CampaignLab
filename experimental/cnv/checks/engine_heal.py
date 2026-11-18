@@ -11,6 +11,9 @@ On the Niagara map one unit of the player's alone in the west field (NO_ATTACK f
   d  late     as c with the state off at the start: 76 damage at Go, the state on at frame 20, 1 more damage at 60
   e  hero     Allied GI (150; mends from the hero rank only, 1 point every 7 frames): 30 damage (20 %) at Go,
               1800 experience points (the XP of rank 4) at frame 30
+  f  heroup   as e, but the heroic heal's trigger itself at frame 30 (NAMED_RECEIVE_UPGRADE Upgrade_Veterancy_HEROIC:
+              no rank, so no elite health multiplier)
+  g  heroff   as f, the upgrade taken back at frame 40 (NAMED_REMOVE_UPGRADE)
 
 Counters (three lines), counted from 'Test Go' on:
   帧数    frames since Go
@@ -29,6 +32,14 @@ Bench 11-06 (end readings 帧数 / 低血 / 血量; the OCR'd counters run ~7 fr
     frame 30), 100 at s18; 低血 stops at 38 (T1 81) and 52 (T2 82).
 Against the model (RA3-EngineModel, tools/objsidebyside.py engine_heal): a, b, c, d the same counters to the digit
 (a 219114, b 230 below T2, c 20005, d 64002); e differs: the model's T2 count stops at 45 (the bench 52).
+The public simulator (engine/modules/autoheal.py, step K3): a-d the same; e not run (no experience points).
+Prediction before the bench for f, g (step K3, the simulator; the upgrade wakes the heal the next frame, as a hurt
+does the Tsunami's): f mends at 帧数 30, 37, 44 ... (121, 122, 123 of 150): 低血 44037, 100 at the end; g mends twice
+(122 = 81 %): 低血 = 帧数 x 1000 + 37, 81 at the end (INFERRED: the upgrade taken back stops the heal). e's bench (the
+XP at frame 30, T1 38) suggests one frame later.
+  f (run_queue 11-17, work/bench_results/engine_heal__f.json): 301 / 45038 / 100 -- a frame later than predicted,
+    as e; 100 by s15. g (engine_heal__g.json): 180 / 180038 / 81 -- two mends, then none: the upgrade taken back
+    stops the heal. The simulator now mends two frames after the grant (f 45038, g 帧数 x 1000 + 38).
 
 """
 import resources
@@ -36,10 +47,11 @@ from maps import niagara
 from parts import Mission, Script, Test
 
 APOC, TSUNAMI, GI = 'SovietAntiVehicleVehicleTech3', 'JapanAntiVehicleVehicleTech1', 'AlliedAntiInfantryInfantry'
-UNIT = {'a': 0, 'b': 0, 'c': 1, 'd': 1, 'e': 2}      # which of the three stands in this variant
-HURT = {'a': 600, 'b': 600, 'c': 76, 'd': 76, 'e': 30}   # MaxHealth 3000 / 380 / 150: 20 %, 20 %, 20 %
-LOW = {'a': (81, 82), 'b': (81, 82), 'c': (81, 85), 'd': (80, 81), 'e': (81, 82)}
-RUN = {'a': 18.0, 'b': 18.0, 'c': 8.0, 'd': 10.0, 'e': 18.0}
+UNIT = {'a': 0, 'b': 0, 'c': 1, 'd': 1, 'e': 2, 'f': 2, 'g': 2}      # which of the three stands in this variant
+HURT = {'a': 600, 'b': 600, 'c': 76, 'd': 76, 'e': 30, 'f': 30, 'g': 30}   # MaxHealth 3000 / 380 / 150: 20 %
+LOW = {'a': (81, 82), 'b': (81, 82), 'c': (81, 85), 'd': (80, 81), 'e': (81, 82), 'f': (81, 82), 'g': (81, 82)}
+RUN = {'a': 18.0, 'b': 18.0, 'c': 8.0, 'd': 10.0, 'e': 18.0, 'f': 18.0, 'g': 10.0}
+HEROIC = 'Upgrade_Veterancy_HEROIC'         # the TriggeredBy of BaseInfantry's Upgrade_HeroicHeal
 XP = 1800                                   # RequiredExperience of AlliedAntiInfantryInfantryExperienceLevel_4
 SITE = ('west field', -120.0, 260.0)
 
@@ -79,6 +91,10 @@ def build_test(m, which='a'):
         t.scripts.append(Script('Test - hurt late', at(60), [('NAMED_DAMAGE', unit, 1)]))
     if which == 'e':
         t.scripts.append(Script('Test - rank', at(30), [('UNIT_GIVE_EXPERIENCE_POINTS', unit, XP)]))
+    if which in 'fg':
+        t.scripts.append(Script('Test - heroic', at(30), [('NAMED_RECEIVE_UPGRADE', HEROIC, unit)]))
+    if which == 'g':
+        t.scripts.append(Script('Test - heroic off', at(40), [('NAMED_REMOVE_UPGRADE', HEROIC, unit)]))
 
     t.counters.append(('CNV_Heal_Low', '低血'))
     t1, t2 = LOW[which]
@@ -95,4 +111,4 @@ def build_test(m, which='a'):
 
 
 MISSION = {'engine_heal': mission}
-CHECKS = {'engine_heal': {w: (lambda m, w=w: build_test(m, w)) for w in 'abcde'}}
+CHECKS = {'engine_heal': {w: (lambda m, w=w: build_test(m, w)) for w in 'abcdefg'}}
