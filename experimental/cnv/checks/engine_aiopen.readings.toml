@@ -1,0 +1,27 @@
+# The skirmish AI's opening against the bench (engine_aiopen.py), the brains given no blocks (simai blocks=():
+# the opening, states and teams only). The frame checks f1-f3 count frames from the wake while s1 owns fewer than
+# n of a template, so a counter's value at the end is the frame the n-th one first counted.
+
+[[reading]]
+id = "opening_frames_match_the_bench"
+scenes = {f1 = {build = "aiopen", check = "f1", until = 160, blocks = []}, f2 = {build = "aiopen", check = "f2", until = 160, blocks = []}, f3 = {build = "aiopen", check = "f3", until = 160, blocks = []}}
+bench = "frames from the wake (round 11): 兵营 152, 电厂1 305, 精炼厂1 607, 精炼厂2 909, 电厂2 1062, 战车工厂 1364, 采矿车1 667, 激流1-3 1555 1716 1877"
+proves = "simai opening: the build list in order, a structure owned 1 frame after its head is full, the miner on the refinery's UnpackTime, a unit out of the factory every 161 frames"
+let = {got = "[counter('CNV_AO_F_Barracks', 'f1'), counter('CNV_AO_F_Power1', 'f1'), counter('CNV_AO_F_Ref1', 'f1'), counter('CNV_AO_F_Ref2', 'f2'), counter('CNV_AO_F_Power2', 'f2'), counter('CNV_AO_F_Factory', 'f2'), counter('CNV_AO_F_Miner1', 'f3'), counter('CNV_AO_F_AIV1', 'f2'), counter('CNV_AO_F_AIV2', 'f3'), counter('CNV_AO_F_AIV3', 'f3')]", bench = "[152, 305, 607, 909, 1062, 1364, 667, 1555, 1716, 1877]"}
+expect = "got == bench"
+mismatch = "sim 158 308 608 915 1065 1365, 668, 1556 1721 1886; bench 152 305 607 909 1062 1364, 667, 1555 1716 1877. The brain owns each structure on the bench's frame (its own trace: 152 305 607 909 1062 1364), the counters see it up to a coarse tick (7-8 frames) later -- the 6 / 3 / 1 pattern of a DT tick boundary (INFERRED: the world takes the brain's finished structure at the next coarse tick)"
+
+[[reading]]
+id = "opening_frames_within_a_coarse_tick_of_the_bench"
+scenes = {f1 = {build = "aiopen", check = "f1", until = 160, blocks = []}, f2 = {build = "aiopen", check = "f2", until = 160, blocks = []}, f3 = {build = "aiopen", check = "f3", until = 160, blocks = []}}
+bench = "as opening_frames_match_the_bench"
+proves = "simai opening: the order and the gaps hold to a coarse tick (the known difference above, not a fit); the Riptides to two (HOOKS 1: the AI is ticked after a DT tick, so a unit queued once the last left the door starts up to a tick late)"
+let = {late = "[counter(c, s) - b for c, s, b in (('CNV_AO_F_Barracks', 'f1', 152), ('CNV_AO_F_Power1', 'f1', 305), ('CNV_AO_F_Ref1', 'f1', 607), ('CNV_AO_F_Ref2', 'f2', 909), ('CNV_AO_F_Power2', 'f2', 1062), ('CNV_AO_F_Factory', 'f2', 1364), ('CNV_AO_F_Miner1', 'f3', 667))]", rip = "[counter(c, s) - b for c, s, b in (('CNV_AO_F_AIV1', 'f2', 1555), ('CNV_AO_F_AIV2', 'f3', 1716), ('CNV_AO_F_AIV3', 'f3', 1877))]"}
+expect = ["all(0 <= d <= 8 for d in late)", "all(0 <= d <= 15 for d in rip)"]
+
+[[reading]]
+id = "short_of_money_the_opening_stalls_on_the_refinery"
+scene = {build = "aiopenpoor", check = "m", until = 120, blocks = []}
+bench = "aiopenpoor (3000 at the wake), bench m: 兵营 s19, 电厂 s29, money 23 at s37 and 0 s38-s125, 精炼厂 0 all run"
+proves = "simai opening: the opening stalls in order on the order it cannot pay (barracks, power plant, then the refinery never finished)"
+expect = ["rows[-1]['兵营'] == 1 and rows[-1]['电厂'] == 1", "first('兵营') < first('电厂')", "all(r['精炼厂'] == 0 for r in rows)", "rows[-1]['资金'] < 30"]

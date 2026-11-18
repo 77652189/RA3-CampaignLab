@@ -9,7 +9,7 @@ Expected (the model: Time counts from the wake, mission s10): 1 at s45, 2 at s55
 读数
 Bench 2026-11-09 (B round 79, one run, PASS 3 of 3): 电厂 0 to s18, 1 s19-s48, 2 s49-s58, 3 from s59 -- Time counts
 from the wake (the opening's start); a Time point already passed holds nothing up. The simulator has the gaps
-(30 s, 10 s) but every plant 3 s late (tests/test_simai.py, the absolute times a strict xfail).
+(30 s, 10 s) but every plant 3 s late (engine_aiotime.readings.toml, the absolute times a mismatch mark).
 """
 from parts import Test, counted, Script
 

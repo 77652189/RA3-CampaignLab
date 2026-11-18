@@ -1,0 +1,19 @@
+# An opening's Time order (engine_aiotime.py): power plant / Time 30s / plant / Time 20s / plant, woken at s10,
+# the brains given no blocks (the opening only). plants: the mission second each count of 电厂 first shows.
+
+[[reading]]
+id = "opening_time_counts_from_the_wake_as_on_the_bench"
+scene = {build = "aiotime", check = "a", until = 70, blocks = []}
+bench = "B round 79: 电厂 0 to s18, 1 s19-s48, 2 s49-s58, 3 from s59"
+proves = "simai opening: Time counts from the wake; a Time point already passed holds nothing up (30 s to the second plant, one build to the third -- not 20 s since the previous Time)"
+let = {plants = "[first('电厂', lambda v, n=n: v >= n) + 1 for n in (1, 2, 3)]"}
+expect = "(plants[1] - plants[0], plants[2] - plants[1]) == (49 - 19, 59 - 49)"
+
+[[reading]]
+id = "opening_time_plants_stand_when_on_the_bench"
+scene = {build = "aiotime", check = "a", until = 70, blocks = []}
+bench = "B round 79: the plants from s19, s49, s59"
+proves = "simai opening: an opening that starts with a power plant (no barracks) builds on the bench's seconds"
+let = {plants = "[first('电厂', lambda v, n=n: v >= n) + 1 for n in (1, 2, 3)]"}
+expect = "all(abs(f - b) <= 1 for f, b in zip(plants, (19, 49, 59)))"
+mismatch = "sim 22 / 52 / 62, bench 19 / 49 / 59: the first plant 3 s late (an opening that starts with a power plant, no barracks: aiopen is on time) -- not found, handoff-b 81"

@@ -37,19 +37,21 @@ def _rows_of(w):
             build.judge(w.sim.test, w.sim.series))
 
 
-def _start(lib, build, check, script='', shot_clock=False):
-    """A scene's run at frame 0 (readings.RUN_OPTS): the player's script given to the Sim, its clock set before a frame."""
-    w = simai.run(build, check, 0, lib=lib, script=script)
+def _start(lib, build, check, script='', shot_clock=False, blocks=simai.BLOCKS):
+    """A scene's run at frame 0 (readings.RUN_OPTS): the player's script given to the Sim, its clock set before a frame,
+    the AI brains given the blocks."""
+    w = simai.run(build, check, 0, lib=lib, script=script, blocks=blocks)
     w.sim.shot_clock = shot_clock
     return w
 
 
 def test_the_runner_gives_a_scene_its_run_options(lib):
-    """script reaches the Sim (不打: the player's units hold fire, Sim.combat) and shot_clock is set before a frame."""
+    """script reaches the Sim (不打: the player's units hold fire, Sim.combat), shot_clock is set before a frame and
+    the brains get the blocks."""
     build, check = GROUPS[0][0][0][:2]              # any scene of the data: the options are the runner's, not a bench's
-    plain, opted = _start(lib, build, check), _start(lib, build, check, '不打', True)
-    assert (plain.sim.combat, plain.sim.shot_clock, plain.sim.t) == (True, False, 0.0)
-    assert (opted.sim.combat, opted.sim.shot_clock, opted.sim.t) == (False, True, 0.0)
+    plain, opted = _start(lib, build, check), _start(lib, build, check, '不打', True, ())
+    assert (plain.sim.combat, plain.sim.shot_clock, plain.sim.t, plain.blocks) == (True, False, 0.0, simai.BLOCKS)
+    assert (opted.sim.combat, opted.sim.shot_clock, opted.sim.t, opted.blocks) == (False, True, 0.0, ())
 
 
 @pytest.mark.parametrize('keys, group', GROUPS,

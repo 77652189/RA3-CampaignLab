@@ -16,11 +16,6 @@ _spec.loader.exec_module(simai)
 
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
-# checks/engine_aiopen.py f1-f3 (bench 2026-11-06, frames from the wake = the frame 'make base' ran)
-BENCH_OWN = [('AlliedBarracks', 152), ('AlliedPowerPlant', 305), ('AlliedRefinery', 607), ('AlliedRefinery', 909),
-             ('AlliedPowerPlant', 1062), ('AlliedWarFactory', 1364)]
-BENCH_MINER = 667
-BENCH_RIPTIDES = [1555, 1716, 1877]
 RIPTIDE_SLACK = 7       # simai HOOKS 1: the AI is ticked after a DT tick (7-8 frames), so a unit queued once the last
                         # left the door starts up to a tick late; known difference, not a fit
 
@@ -41,36 +36,6 @@ def test_the_model_checkout_holds_the_pinned_commit():
 @pytest.fixture(scope='module')
 def lib():
     return simai.model()['xmldata'].Library()
-
-
-def _from_wake(w):
-    (b,) = w.brains.values()
-    return b, [(f - b.started, what, t) for f, what, t in b.trace]
-
-
-def test_opening_frames_match_the_bench(lib):
-    b, trace = _from_wake(simai.run('aiopen', until=140, lib=lib, blocks=()))
-    own = [(t, f) for f, what, t in trace if what == 'own']
-    assert own == BENCH_OWN, own
-    miners = [f for f, what, t in trace if t == 'AlliedMiner']
-    assert miners[0] == BENCH_MINER, miners
-    rip = [f for f, what, t in trace if t == 'AlliedAntiInfantryVehicle_Ground']
-    assert len(rip) == 3 and all(abs(m - r) <= RIPTIDE_SLACK for m, r in zip(rip, BENCH_RIPTIDES)), rip
-
-
-def test_short_of_money_the_opening_stalls_on_the_refinery(lib):
-    """aiopenpoor (3000 at the wake), bench m: barracks s19, power s29, money ~0 from s37-38, the refinery never
-    finished and nothing after it started."""
-    w = simai.run('aiopenpoor', until=120, lib=lib, blocks=())
-    b, trace = _from_wake(w)
-    own = [(t, f) for f, what, t in trace if what == 'own']
-    assert own == BENCH_OWN[:2], own
-    assert w.sim.money[b.player] < 30, w.sim.money[b.player]
-    (q,) = b.yard_q.values()                            # the orders are in (the yard's queue); its head is stuck
-    assert q[0]['template'] == 'AlliedRefinery' and q[0]['full'] is None, q[0]
-    # the unit builder runs beside the opening on the 2000 PRODUCTION Deposit (bench m counted no units: model only)
-    spent = sum(w.cost(t) for f, what, t in trace if what == 'out')
-    assert spent <= 2000, trace
 
 
 @pytest.fixture(scope='module')
@@ -363,40 +328,6 @@ def test_one_priority_zero_takes_that_enemy_out(lib):
     assert b.ai.enemy_table == {'Soviet_4': 20}
     near = _first(rows, '到近厂')
     assert near is not None and abs(near - 15) <= 2 and _first(rows, '到远厂') is None
-
-
-@pytest.mark.parametrize('build,first', [('aiopath1', 'AlliedBarracks'), ('aiopathr', 'AlliedBarracks'),
-                                         ('aiopathi', 'AlliedPowerPlant')])
-def test_the_opening_path_test_picks_what_the_bench_picked(lib, build, first):
-    """checks/engine_aiopath.py p (bench 2026-11-09): AlliedPowerPlant as ObjectTypeToUseForTest picks the
-    PathExists="true" line (Standard, barracks first) whichever is listed first; aiopathi (one Island line, true):
-    the probe's personality takes (a power plant first)."""
-    b, trace = _from_wake(simai.run(build, until=40, lib=lib, blocks=()))
-    own = [t for f, what, t in trace if what == 'own']
-    assert own and own[0] == first, own
-
-
-# bench 2026-11-09 checks/engine_aiotime.py a: power plant / Time 30s / plant / Time 20s / plant, woken at s10:
-# the plants stand from s19, s49, s59 (Time = since the wake; the 20s point has passed, the third goes at once)
-AIOTIME_BENCH = (19, 49, 59)
-
-
-def _aiotime_firsts(lib):
-    w = simai.run('aiotime', 'a', 70.0, lib=lib, blocks=())
-    seen = [v[0] for _, v in w.sim.series]
-    return [next(k + 1 for k, v in enumerate(seen) if v >= n) for n in (1, 2, 3)]
-
-
-def test_opening_time_counts_from_the_wake_as_on_the_bench(lib):
-    """The gaps: 30 s to the second plant, 10 s (one build) to the third -- not 20 s (since the previous Time)."""
-    a, b, c = _aiotime_firsts(lib)
-    assert (b - a, c - b) == (AIOTIME_BENCH[1] - AIOTIME_BENCH[0], AIOTIME_BENCH[2] - AIOTIME_BENCH[1]), (a, b, c)
-
-
-@pytest.mark.xfail(strict=True, reason='simai 22 / 52 / 62: the first plant 3 s late (an opening that starts with a '
-                                       'power plant, no barracks: aiopen is on time) -- not found, handoff-b 81')
-def test_opening_time_plants_stand_when_on_the_bench(lib):
-    assert all(abs(f - b) <= 1 for f, b in zip(_aiotime_firsts(lib), AIOTIME_BENCH))
 
 
 def test_path_to_target_is_asked_on_the_simulators_grid(lib):

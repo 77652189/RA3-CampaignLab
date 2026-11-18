@@ -14,17 +14,20 @@ A file is a list of [[reading]] tables:
 - scene: one run, its counters once a second; until is the mission seconds the run goes to. Several readings of the
   same (build, check) share one run: it goes to the longest until and each reading sees its rows as a run to its own
   until would have given (the world advances frame by frame, so a run stopped at 35 is a prefix of one to 76).
-  Two optional keys say how the simulator is run, and a run is one (build, check, script, shot_clock): readings that
-  differ in either get a run each.
+  Three optional keys say how the simulator is run, and a run is one (build, check, script, shot_clock, blocks):
+  readings that differ in any get a run each; a key written out at its default is no option (the same run).
     script = "不打"       the player's script of events (sim.py's 剧本, one event a line or ';' between: "5 摧毁 camp");
                           default "" (no player orders); "不打": the player's units hold fire (Sim.combat)
     shot_clock = true     sim.Sim.shot_clock: the frame clock (discrete shots, movement between script frames);
                           default false (the benched coarse tick)
+    blocks = []           which of A's blocks the AI brains get (simai.SimAI blocks, each of BLOCKS at most once, in
+                          any order); default all of them; [] = the opening, states and teams only (the opening benches)
 - scenes = {name = {build, check, until}, ...} for a reading comparing runs: each name is bound to that run's rows
-  (script / shot_clock as in scene, each scene its own).
+  (script / shot_clock / blocks as in scene, each scene its own).
 - each = [{build = "aiowt", plants = 0}, ...]: one reading per entry, id[build]; build (and check / until / script /
-  shot_clock) replace the scene's, the other keys are names the expressions can use; an entry that sets script /
-  shot_clock adds them to its id: id[build~script=...~shot_clock]. With scenes, an entry key naming a scene takes a
+  shot_clock / blocks) replace the scene's, the other keys are names the expressions can use; an entry that sets a
+  run option adds it to its id: id[build~script=...~shot_clock], blocks in BLOCKS order (~blocks=targets+micro,
+  ~blocks=none for []). With scenes, an entry key naming a scene takes a
   table that overrides that scene's keys (each = [{got = {build = "aiidle30"}}, ...]), id[the overridden scenes'
   builds, as above]; every entry overrides at least one scene, the other keys are names as above.
 - let = {name = "expression", ...}: evaluated in order before expect (lambdas welcome).
@@ -52,7 +55,9 @@ CHECKS = os.path.join(HERE, 'checks')
 SUFFIX = '.readings.toml'
 KEYS = {'id', 'scene', 'scenes', 'each', 'bench', 'proves', 'expect', 'mismatch', 'let', 'item'}
 NEEDED = {'id', 'bench', 'proves', 'expect'}
-RUN_OPTS = {'script': str, 'shot_clock': bool}     # how the simulator runs a scene: name -> type (default its falsy)
+BLOCKS = ('targets', 'defense', 'micro', 'specials')   # simai.BLOCKS (checked by tests/tools/test_readings_format.py)
+# how the simulator runs a scene: name -> (its TOML type, its default as a run key holds it)
+RUN_OPTS = {'script': (str, ''), 'shot_clock': (bool, False), 'blocks': (list, BLOCKS)}
 SCENE_KEYS = {'build', 'check', 'until'} | set(RUN_OPTS)
 
 
@@ -73,17 +78,33 @@ def _scene(d, where):
     """(build, check, until, opts): opts the run options set to other than their default, ((name, value), ...)."""
     if not isinstance(d, dict) or set(d) - SCENE_KEYS or 'build' not in d or 'until' not in d:
         raise ReadingError(f'{where}: a scene is {{build, check, until[, {", ".join(sorted(RUN_OPTS))}]}}, got {d!r}')
-    for k, kind in RUN_OPTS.items():
+    for k, (kind, _) in RUN_OPTS.items():
         if k in d and type(d[k]) is not kind:
             raise ReadingError(f'{where}: {k} is a {kind.__name__}, got {d[k]!r}')
-    opts = tuple((k, d[k]) for k in sorted(RUN_OPTS) if d.get(k))
+    if 'blocks' in d and (set(d['blocks']) - set(BLOCKS) or len(set(d['blocks'])) != len(d['blocks'])):
+        raise ReadingError(f'{where}: blocks names each of {list(BLOCKS)} at most once, got {d["blocks"]!r}')
+    vals = {k: _opt_value(k, d[k]) for k in RUN_OPTS if k in d}
+    opts = tuple((k, vals[k]) for k in sorted(vals) if vals[k] != RUN_OPTS[k][1])
     return (d['build'], d.get('check', ''), float(d['until']), opts)
+
+
+def _opt_value(k, v):
+    """A run option as a run key holds it: blocks a tuple in BLOCKS order (how the list was written is no matter)."""
+    return tuple(b for b in BLOCKS if b in v) if k == 'blocks' else v
+
+
+def _opt_text(k, v):
+    """A run option in an id: ~shot_clock, ~script=..., ~blocks=targets+micro (~blocks=none for [])."""
+    if v is True:
+        return f'~{k}'
+    if k == 'blocks':
+        return f'~{k}=' + ('+'.join(_opt_value(k, v)) or 'none')
+    return f'~{k}={v}'
 
 
 def _tag(scene, entry):
     """An each entry's id suffix: the scene's build, then the run options the entry sets (~script=..., ~shot_clock)."""
-    return str(scene.get('build')) + ''.join(f'~{k}' if entry[k] is True else f'~{k}={entry[k]}'
-                                             for k in sorted(RUN_OPTS) if k in entry)
+    return str(scene.get('build')) + ''.join(_opt_text(k, entry[k]) for k in sorted(RUN_OPTS) if k in entry)
 
 
 def _items(value, where):
@@ -209,9 +230,9 @@ def snapshots(start, advance, rows_of, wanted):
 
 
 def label(key):
-    """A run key for a test id: build[.check][~script=...][~shot_clock]."""
+    """A run key for a test id: build[.check][~blocks=...][~script=...][~shot_clock]."""
     b, c, opts = key
-    return b + (f'.{c}' if c else '') + ''.join(f'~{k}' if v is True else f'~{k}={v}' for k, v in opts)
+    return b + (f'.{c}' if c else '') + ''.join(_opt_text(k, v) for k, v in opts)
 
 
 Run = collections.namedtuple('Run', 'times rows counters verdicts')     # one snapshot (see snapshots)

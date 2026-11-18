@@ -294,8 +294,61 @@ def test_the_repository_readings_load_and_sit_beside_their_bench():
         assert (Path(rd.CHECKS) / f'{rd.bench_of(p)}.py').is_file(), p
 
 
-def test_the_runner_steps_at_the_simulators_frame_rate():
+def _simai_constant(name):
     tree = ast.parse((ROOT / 'experimental' / 'cnv' / 'simai.py').read_text(encoding='utf-8'))
-    fps = [n.value.value for n in tree.body if isinstance(n, ast.Assign) and
-           any(getattr(t, 'id', None) == 'FPS' for t in n.targets)]
-    assert fps == [rd.FPS]
+    return [ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign) and
+            any(getattr(t, 'id', None) == name for t in n.targets)]
+
+
+def test_the_runner_steps_at_the_simulators_frame_rate():
+    assert _simai_constant('FPS') == [rd.FPS]
+
+
+def test_the_default_blocks_are_the_simulators():
+    assert _simai_constant('BLOCKS') == [rd.BLOCKS]
+
+
+BLOCKS = '''
+[[reading]]
+id = "all"
+scene = {build = "b1", check = "a", until = 2, blocks = ["specials", "targets", "micro", "defense"]}
+bench = "-"
+proves = "x: y"
+expect = "counter('frame') == 30"
+
+[[reading]]
+id = "none"
+scene = {build = "b1", check = "a", until = 2, blocks = []}
+bench = "-"
+proves = "x: y"
+expect = "counter('blocks') == ()"
+
+[[reading]]
+id = "some"
+scene = {build = "b1", check = "a", until = 3}
+each = [{blocks = ["micro", "targets"]}, {blocks = []}]
+bench = "-"
+proves = "x: y"
+expect = "counter('blocks') in [('targets', 'micro'), ()]"
+'''
+
+
+def test_blocks_empty_is_a_run_of_its_own_and_all_of_them_is_the_default(tmp_path):
+    """blocks = [] (the opening benches' simai blocks=()) is not the default, as script "" is: its own run."""
+    rs = rd.load(write(tmp_path, BLOCKS))
+    assert [r['id'] for r in rs] == ['all', 'none', 'some[b1~blocks=targets+micro]', 'some[b1~blocks=none]']
+    assert rs[0]['scenes']['rows'] == ('b1', 'a', 2.0, ())                       # every block, any order: the default
+    assert rs[1]['scenes']['rows'] == ('b1', 'a', 2.0, (('blocks', ()),))
+    assert rs[2]['scenes']['rows'] == ('b1', 'a', 3.0, (('blocks', ('targets', 'micro')),))   # in BLOCKS order
+    assert run(rs) == []
+    assert sorted(Fake.started, key=str) == sorted([('b1', 'a'), ('b1', 'a', {'blocks': ()}),
+                                                    ('b1', 'a', {'blocks': ('targets', 'micro')})], key=str)
+    assert [rd.label(k) for ks, _ in rd.groups(rs) for k in ks] == ['b1.a', 'b1.a~blocks=none',
+                                                                     'b1.a~blocks=targets+micro']
+
+
+@pytest.mark.parametrize('blocks', ['"targets"', '["targets", "targets"]', '["tactics"]'])
+def test_blocks_names_simai_blocks_each_at_most_once(tmp_path, blocks):
+    text = f'[[reading]]\nid = "a"\nscene = {{build = "b", until = 1, blocks = {blocks}}}\nbench = "-"\nproves = "-"\nexpect = "1"\n'
+    with pytest.raises(rd.ReadingError, match='blocks'):
+        rd.load(write(tmp_path, text))

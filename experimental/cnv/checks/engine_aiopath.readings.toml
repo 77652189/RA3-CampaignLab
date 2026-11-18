@@ -1,0 +1,9 @@
+# The opening a PathToTargetHeuristic picks (engine_aiopath.py), the brains given no blocks (the opening only).
+
+[[reading]]
+id = "the_opening_path_test_picks_what_the_bench_picked"
+scene = {build = "aiopath1", check = "p", until = 40, blocks = []}
+each = [{build = "aiopath1", picked = "兵营", other = "电厂"}, {build = "aiopathr", picked = "兵营", other = "电厂"}, {build = "aiopathi", picked = "电厂", other = "兵营"}]
+bench = "bench 2026-11-09: aiopath1 兵营 s19 then 电厂 s29 (Standard); aiopathr the same, Island listed first; aiopathi 电厂 s19, 兵营 never (the probe's Island line)"
+proves = "simai Brain.path_to_target: with a tester that has no locomotor the heuristic says a way, PathExists=true holds whichever is listed first; the probe's personality takes"
+expect = "first(picked) is not None and (first(other) is None or first(picked) < first(other))"

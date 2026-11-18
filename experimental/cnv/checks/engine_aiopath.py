@@ -16,7 +16,7 @@ Bench 2026-11-09 (one run each, 105 frames s1-s105; counters 兵营 电厂 精�
 So with a tester that has no locomotor the heuristic says "a way": PathExists="true" holds, "false" fails (not
 "both hold, the first is drawn"). The program read (work/re l4_states.md 3, "no locomotor -> no way") is wrong or
 misread. aiopath0 not run (the infantry tester on land is aiopen's own opening). A true "no way" (an island map)
-not measured. Simulator: simai.Brain.path_to_target no locomotor -> True; tests/test_simai.py holds the three.
+not measured. Simulator: simai.Brain.path_to_target no locomotor -> True; its .readings.toml holds the three.
 """
 from parts import Script, Test, counted
 
