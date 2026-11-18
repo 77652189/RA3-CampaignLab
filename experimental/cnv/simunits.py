@@ -1977,7 +1977,7 @@ def retail_xml(template):
                 if f.endswith('.xml'):
                     _retail_files.setdefault(f[:-4].lower(), os.path.join(root, f))
     p = _retail_files.get(template.lower())
-    return open(p, encoding='utf-8', errors='replace').read() if p else ''
+    return _text(p) if p else ''
 
 
 def engineer_contain(template, own=None):
@@ -2595,39 +2595,58 @@ def _commands(own=None):
 
 
 _index = None
+_reads = {}         # T9 (11-18), per process -- the SDK does not change while one runs:
+                    #   ('text', path) a SageXML file's text; ('sdk', name) _xml's answer from the SDK;
+                    #   ('objects', text) {id.lower(): first GameObject} of a mission file, keyed by its text,
+                    #   not the dict; ('only', text, name) that file without its other GameObjects
+
+
+def _text(path):
+    """The SageXML file's text, read once a process (the per-frame build queries read the same files: profile_1118)."""
+    if ('text', path) not in _reads:
+        _reads['text', path] = open(path, encoding='utf-8', errors='replace').read()
+    return _reads['text', path]
 
 
 def _xml(template, own=None):
     """The template's own XML: a mission's, else its GameObject in the file the SageXML index names (a file may hold
     several, AlliedAntiInfantryVehicle.xml the Riptide's two), else the file of its own name. A mission file may also
     hold another GameObject (engine_dynamics: a copy of BaseVehicle the unit inherits): the unit's text leaves the
-    others out, and a template defined only inside a mission file is that GameObject."""
+    others out (its includes, weapons and the rest kept), and a template defined only inside a mission file is that
+    GameObject (the first of its id, files in order). Kept per process (T9): the SDK's answer by name, a mission's by
+    its file's text, not by the dict (two missions overriding one template each get their own)."""
     global _index
+    name = template.lower()
     if (own or {}).get(template):
-        return _own_only(own[template], template)
+        text = own[template]
+        if ('only', text, name) not in _reads:
+            def keep(m):
+                head = re.match(r'<GameObject\b[^>]*>', m.group(0)).group(0)
+                return m.group(0) if re.search(rf'\bid="{re.escape(template)}"', head, re.I) else ''
+            _reads['only', text, name] = re.sub(r'<GameObject\b.*?</GameObject>', keep, text, flags=re.S) \
+                if text.count('<GameObject') > 1 else text
+        return _reads['only', text, name]
     for text in (own or {}).values():
-        for m in re.finditer(r'<GameObject\b.*?</GameObject>', text or '', re.S):
-            if re.search(rf'\bid="{re.escape(template)}"', re.match(r'<GameObject\b[^>]*>', m.group(0)).group(0), re.I):
-                return m.group(0)
-    if _index is None:
-        _index = {k.lower(): v for k, v in json.load(open(INDEX, encoding='utf-8')).items()} \
-            if os.path.exists(INDEX) else {}
-    f = (_index.get(template.lower()) or {}).get('file', '')
-    path = os.path.join(SAGEXML, *f[5:].split('/')) if f.startswith('DATA:') else ''
-    if path and os.path.exists(path):
-        text = open(path, encoding='utf-8', errors='replace').read()
-        for m in re.finditer(r'<GameObject\b.*?</GameObject>', text, re.S):
-            if re.search(rf'\bid="{re.escape(template)}"', m.group(0)[:2000], re.I):
-                return m.group(0)
-    return retail_xml(template)
-
-
-def _own_only(text, template):
-    """A mission unit's file without the GameObjects that are not `template` (its includes, weapons and the rest kept)."""
-    def keep(m):
-        head = re.match(r'<GameObject\b[^>]*>', m.group(0)).group(0)
-        return m.group(0) if re.search(rf'\bid="{re.escape(template)}"', head, re.I) else ''
-    return re.sub(r'<GameObject\b.*?</GameObject>', keep, text, flags=re.S) if text.count('<GameObject') > 1 else text
+        text = text or ''
+        if ('objects', text) not in _reads:        # {id.lower(): the file's first GameObject of that id}
+            found = _reads['objects', text] = {}
+            for m in re.finditer(r'<GameObject\b.*?</GameObject>', text, re.S):
+                for i in re.findall(r'\bid="([^"]*)"', re.match(r'<GameObject\b[^>]*>', m.group(0)).group(0), re.I):
+                    found.setdefault(i.lower(), m.group(0))
+        if name in _reads['objects', text]:
+            return _reads['objects', text][name]
+    if ('sdk', name) not in _reads:               # the SageXML index's file, else the file of its own name
+        if _index is None:
+            _index = {k.lower(): v for k, v in json.load(open(INDEX, encoding='utf-8')).items()} \
+                if os.path.exists(INDEX) else {}
+        f = (_index.get(name) or {}).get('file', '')
+        path = os.path.join(SAGEXML, *f[5:].split('/')) if f.startswith('DATA:') else ''
+        objects = re.finditer(r'<GameObject\b.*?</GameObject>', _text(path), re.S) \
+            if path and os.path.exists(path) else ()
+        got = next((m.group(0) for m in objects
+                    if re.search(rf'\bid="{re.escape(template)}"', m.group(0)[:2000], re.I)), None)
+        _reads['sdk', name] = retail_xml(template) if got is None else got
+    return _reads['sdk', name]
 
 
 def parent(xml, template=None):
@@ -2767,8 +2786,8 @@ def _with_includes(xml):
     out = [xml]
     for href in re.findall(r'href="DATA:([^"]+)"', xml):
         p = os.path.join(SAGEXML, *href.replace('\\', '/').split('/'))
-        if os.path.exists(p):
-            out.append(open(p, encoding='utf-8', errors='replace').read())
+        if ('text', p) in _reads or os.path.exists(p):
+            out.append(_text(p))
     return '\n'.join(out)
 
 

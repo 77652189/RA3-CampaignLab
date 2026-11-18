@@ -372,6 +372,7 @@ CONTAINERS = {'dict', 'list', 'set', 'defaultdict', 'OrderedDict', 'Counter', 'd
 # its cache moves into the template data port's instance
 PROCESS_CACHES = {
     ('sim', '_MODEL'), ('simai', '_AI'), ('simproxy', '_PROXY'), ('simgarrison', '_memo'), ('simsweep', '_weapon_blocks'),
+    ('simunits', '_reads'),     # T9 (11-18, coordinator's order): the SDK text / template reads, read-only data
     *(('simunits', n) for n in (
         '_acquire', '_all_defines', '_command_powers', '_equivalent', '_fight',
         '_flee_memo', '_globals', '_hp_memo', '_index', '_ocl_text', '_ocls', '_own_weapons', '_prop_memo', '_radii',
