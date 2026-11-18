@@ -4,6 +4,7 @@ test_simbench.py::test_autoheal_an_apocalypse_mends_two_points_every_7_frames_af
 The module's own tests: tests/modules/test_autoheal.py."""
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import simsmall  # noqa: E402
+from engine.kernel import interfaces  # noqa: E402
 
 APOC = 'SovietAntiVehicleVehicleTech3'        # AutoHealBehavior: 2 points every 7 frames, 15 frames after a hurt
 
@@ -50,7 +51,7 @@ def test_a_fresh_hurt_restarts_the_wait_and_full_health_stops_it():
     assert b.hp == full
     for frame in range(36, 60):
         autoheal(s, frame)
-    assert b.hp == full and b.modules[0].heal_at is None
+    assert b.hp == full and b.find(interfaces.Update)[0].heal_at is None
 
 
 def test_asleep_at_full_health_and_woken_by_a_hurt_a_heal_to_full_or_a_raised_maximum():
@@ -58,7 +59,7 @@ def test_asleep_at_full_health_and_woken_by_a_hurt_a_heal_to_full_or_a_raised_ma
     the frame of the cell that told it), as the every-frame module of step K1 saw the health move."""
     s = simsmall.small_world([('apoc', APOC, 'Player_1', 0.0, 0.0)])
     b = s.bodies['apoc']
-    (m,) = b.modules
+    (m,) = b.find(interfaces.Update)                   # an Apocalypse also has its CrusherInfo (data only)
     for frame in range(0, 6):
         autoheal(s, frame)
     assert awake(s) == set() and m.heal_at is None                  # full health: asleep from its first run

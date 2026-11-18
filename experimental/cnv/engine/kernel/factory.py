@@ -23,6 +23,15 @@ def module(*tags):
     return register
 
 
+def align(tags=TAGS):
+    """The registered module classes' ALIGN lines in one dict (sim.ALIGN takes them: a new family writes its
+    assumptions in its own file, no centre file changes)."""
+    out = {}
+    for cls in tags.values():
+        out.update(cls.ALIGN)
+    return out
+
+
 def build(thing, blocks, data, tags=TAGS, world=None):
     """The modules of a thing: for each registered tag, one instance per block of it in the template.
     blocks(template, tag) -> [(head, inner)] (the template data port); data: the world's parse cache

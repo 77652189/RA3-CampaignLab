@@ -81,7 +81,8 @@ import simtech  # noqa: E402
 import simtoggle  # noqa: E402
 import simunits  # noqa: E402
 import simlevel  # noqa: E402
-from engine.kernel import interfaces as kernel_interfaces, module as kernel_module, world as kernel_world  # noqa: E402
+from engine.kernel import factory as kernel_factory, interfaces as kernel_interfaces  # noqa: E402
+from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
 import engine.modules  # noqa: E402,F401  (imports, so registers, every module file in it)
 import simloop  # noqa: E402
 import simworld  # noqa: E402
@@ -134,7 +135,7 @@ LAG = simloop.LAG               # the readings' clock (simloop.LAG)
 # what the simulator assumes of the engine ("待对齐清单"): printed with every run that leans on one of them. Settled
 # by the Generals / Zero Hour source (docs/engine/script-semantics.md, the section given) unless marked 未对齐: those
 # the source cannot tell for RA3, for the bench to settle last
-ALIGN = {
+ALIGN = {**kernel_factory.align(), **simheal.ALIGN,     # the kernel modules' own lines, the area heal's
     'levelup': '部分对齐：创建升级触发升阶、移除重给、等级伤害/血量、英雄射程RANGE125%及幻影英雄离散射速120%有效周期25→20帧（engine_levelup a/b/c、engine_leveldamage a、engine_levelhealth a/b、engine_levelrange a、engine_levelrate a）；其他武器射速、计时分段、其余等级属性与经验成长未模拟',
     'protocols': '未对齐: protocol points as the program keeps them (simtech.py: rank experience 1 a second, 360 a '
                  'rank, the cap, the set-points rule; bench 11-08 engine_protocol pts / ailock); no experience from '
@@ -186,11 +187,6 @@ ALIGN = {
                      '(a jump, a carrier\'s drop: the device\'s own scripts say what follows)',
     'ai': 'a skirmish AI (UNIT_AI_TRANSFER_ALL, SKIRMISH_AI_*): woken and logged; what it builds and when it '
           'attacks is not simulated (bench 2026-10-27 aistep: it may never build a kind it is let to)',
-    'lifetime': 'an object with a LifetimeUpdate (our ice walls, cores, smoke) is killed seconds x 15 frames (cut '
-                'down) after the frame it was made, and its CreateObjectDie for that death type makes what it lists '
-                'there that frame (bench 2026-11-07 engine_life: a 30 s wall lived 450 frames, a 5.5 s core 82, the '
-                'core\'s wall there at once; nothing of the dead lingers in an area). Min and Max apart: their '
-                'middle (a guess); retail templates\' lifetimes are not read',
     'freeze': 'the cryo beam (SecondaryDamageNugget, simunits.freeze): its Amount a shot (x RATE_OF_FIRE) adds to '
               'the target\'s cold, DissipateAmount comes off a second (spread over the second), held up to '
               'MaxDamageClampScaler x max health; the highest EffectInfo Fraction x max health reached hangs its '
@@ -3455,7 +3451,8 @@ class Sim:
             self.used.add('ra3 only')
         if self.used:
             out.append('待对齐（这次推演用到的假设）：' + '；'.join(
-                ALIGN[k] + (', '.join(sorted(self.ra3_only)) if k == 'ra3 only' else '') for k in sorted(self.used)))
+                ALIGN.get(k, k + '（未写说明）') + (', '.join(sorted(self.ra3_only)) if k == 'ra3 only' else '')
+                for k in sorted(self.used)))        # an unwritten key still prints (tests/guards/test_align.py)
         if self.unmodeled:                  # Sim.unknown's names are among them
             out.append('这次碰到、模拟器没模拟的（Sim.unmodeled）：' + '；'.join(
                 f'[{k}] {n}×{g["n"]}（{mmss(g["t"])} 起）{g["what"]}' for (k, n), g in self.unmodeled.items()))

@@ -8,6 +8,11 @@ import math
 
 import simunits
 
+ALIGN = {'passive area heal': 'PassiveAreaEffectBehavior (simheal.py): the SDK rate in 20-frame batches on a shared '
+                              'mission-frame phase (frame % 20 == 11, INFERRED), own / allied infantry, the source '
+                              'itself left out, two identical sources count once (bench E70 / E145 / E163 / E165 / '
+                              'E166); other overlaps and relations are gaps'}     # sim.ALIGN takes it
+
 
 class Heal:
     def __init__(self):

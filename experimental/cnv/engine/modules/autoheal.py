@@ -66,6 +66,11 @@ class AutoHeal(module.Module, interfaces.Update, interfaces.Damage, interfaces.U
     DATA = AutoHealData
     PHASE = 'autoheal'
     STATE = ('heal_at', 'hurt', 'upgraded', 'next_ok')
+    ALIGN = {'autoheal': 'AutoHealBehavior (engine/modules/autoheal.py): a hurt object is mended HealingAmount every '
+                         'HealingDelay, the first StartHealingDelay after the latest hurt, the intervals trunc(15 x '
+                         'seconds) frames (bench engine_heal a-g, docs/engine/heal.md 1); a block active at creation '
+                         'first wakes HealingDelay on, not the program\'s random 1..HealingDelay; area / whole-player '
+                         '/ in-combat blocks are gaps, not guessed'}
     heal_at = None
     hurt = False
     upgraded = False

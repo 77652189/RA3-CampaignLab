@@ -32,6 +32,11 @@ class Lifetime(module.Module, interfaces.Update, interfaces.Create, interfaces.L
     DATA = LifetimeData
     PHASE = 'expire'
     STATE = ('life_end',)
+    ALIGN = {'lifetime': 'an object with a LifetimeUpdate (our ice walls, cores, smoke) is killed seconds x 15 frames '
+                         '(cut down) after the frame it was made, and its CreateObjectDie for that death type makes '
+                         'what it lists there that frame (bench 2026-11-07 engine_life: a 30 s wall lived 450 frames, '
+                         'a 5.5 s core 82, the core\'s wall there at once; nothing of the dead lingers in an area). '
+                         'Min and Max apart: their middle (a guess); retail templates\' lifetimes are not read'}
     life_end = None
 
     def on_create(self, frame):

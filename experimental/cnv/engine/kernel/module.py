@@ -4,6 +4,8 @@ A thing is an object on the map: who, whose, where, plus its modules. A module i
 module tag on one thing; it keeps only its own state (STATE names it, for the snapshot) and reaches other modules
 only through their interfaces (Thing.find), the thing's blackboard, or the kernel's broadcasts. A module's data is
 the parse of that tag's block, shared by every thing of the template, read only once made."""
+import types
+
 from engine.kernel import interfaces
 
 
@@ -101,10 +103,13 @@ class ModuleData:
 class Module:
     """One module instance. DATA: its data class; TAGS: the XML tags it is registered under (factory.module);
     STATE: its state fields (World.snapshot, step S; the frame record shows the set ones among its thing's fields).
-    world: the World it lives in -- for the kernel's services (the audit set), not to reach other things."""
+    world: the World it lives in -- for the kernel's services (the audit set), not to reach other things.
+    ALIGN: what its family assumes of the engine, {key it puts in world.used: the line the report prints as 待对齐}
+    (factory.align gathers them into sim.ALIGN; tests/guards/test_align.py)."""
     DATA = ModuleData
     TAGS = ()
     STATE = ()
+    ALIGN = types.MappingProxyType({})
 
     def __init__(self, thing, data, world=None):
         self.thing, self.data, self.world = thing, data, world
