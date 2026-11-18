@@ -303,6 +303,18 @@ class Production(Interface):
         raise NotImplementedError
 
 
+class OreMiner(Interface):
+    """OreMinerBehavior, one a thing (step M9): a miner's trip (trip: the collector loop's dict, None before one and
+    after a move dropped it) and setting it (set_trip; simmine.Mining keeps the loop)."""
+    __slots__ = ()
+
+    def trip(self):
+        raise NotImplementedError
+
+    def set_trip(self, trip):
+        raise NotImplementedError
+
+
 class SpecialPower(Interface):
     """A SpecialPowerModule, several a thing (step M8; the engine's isModuleForPower / getReadyFrame / setReadyFrame):
     the SpecialPowerTemplate it serves (power), the frame its reload ends (ready_at: None, no cast started one) and a
@@ -331,5 +343,5 @@ class AIUpdate(Interface):
 
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
-FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
-ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved})  # a thing has at most one of these: Thing.find gives it
+FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner})  # a thing has at most one of these: Thing.find gives it

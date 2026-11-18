@@ -90,7 +90,7 @@ SIM_NAMES_UNTIL_10['simproxy'] = {'Body', 'Sim', 'LEVELS'}
 FIELD_OWNER = {'heal_at': 'engine.modules.autoheal', 'hurt': 'engine.modules.autoheal',
                'life_end': 'engine.modules.lifetime',
                'toppled': 'engine.modules.topple', 'topple_end': 'engine.modules.topple',
-               'mine': 'simmine', 'nodes': 'simmine', 'mined_to': 'simmine',
+               'mine': 'engine.modules.oreminer', 'nodes': 'simmine', 'mined_to': 'simmine',
                'aura_cache': 'simmodifier', 'aura_beat': 'simmodifier', 'level_rate': 'simmodifier',
                'level_vision': 'simmodifier', 'shielded': 'simmodifier', 'taken': 'simmodifier', 'dealt': 'simmodifier',
                'stood_for': 'simlocomotion', 'set_off': 'simlocomotion', 'jet_motion': 'simlocomotion',

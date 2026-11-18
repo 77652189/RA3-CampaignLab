@@ -409,8 +409,6 @@ class Body(kernel_module.Thing):
     unpack_end: int = None                                      # a structure made in the run: unpacking until then
     read_until: int = None                                      # killed by NAMED_DAMAGE in this frame: bits still read
     sell_end: int = None                                        # SELL_OBJECT: the frame the sale deletes it (sell)
-    mine: dict = None                                           # a harvester's trip (mine_due): state, node,
-                                                                # refinery, due frame, load, paid, leg
     lies: float = 0.0                                           # seconds it lies dying once killed (SlowDeath's
                                                                 # DestructionDelay), the crush's death only (R9)
     linger: float = 0.0                                         # ... the lie this death has (LINGER, or `lies`)
@@ -458,7 +456,7 @@ class Body(kernel_module.Thing):
     FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
-                'spawn_module', 'ready_at')
+                'spawn_module', 'ready_at', 'mine')
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
@@ -482,6 +480,7 @@ class Body(kernel_module.Thing):
     spawn_parent = kernel_module.forward(kernel_interfaces.Slaved, lambda m: m.slaver())   # its SlavedUpdate's maker
     spawn_module = kernel_module.forward(kernel_interfaces.Slaved, lambda m: m.slaver_module(), '')
     ready_at = kernel_module.forward(kernel_interfaces.SpecialPower, simpower.ready_at, {})  # step M8: {power: frame}
+    mine = kernel_module.forward(kernel_interfaces.OreMiner, lambda m: m.trip())    # step M9: a miner's trip
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)

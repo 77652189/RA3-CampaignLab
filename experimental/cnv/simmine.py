@@ -1,13 +1,15 @@
 """L2 ore mining (ADR 0029, docs/engine/sim-layers.md; docs/engine/mining.md): the harvesters' collector loop.
 
-`Mining` keeps the ore nodes' state and the last frame mined, and moves every player's harvester a frame at a time
-over the world it is given (simworld.WORLD_API only). Money goes out through `pay(owner, amount)`, handed in by the
-caller (simmoney.Money.collect, L4): this module never imports the money. Fields it owns: a body's `mine` (its trip),
-its own `nodes` and `mined_to`.
+`Mining` keeps the ore nodes' state and the last frame mined, and moves every player's miner a frame at a time over
+the world it is given (simworld.WORLD_API only). Money goes out through `pay(owner, amount)`, handed in by the caller
+(simmoney.Money.collect, L4): this module never imports the money. Fields it owns: its own `nodes` and `mined_to`. A
+miner is a thing with an OreMinerBehavior module (engine/modules/oreminer.py, step M9), which keeps its trip (the
+body's `mine`, a read-only forward); this loop sets it through the module.
 """
 import math
 
 import simunits
+from engine.kernel import interfaces
 from simworld import CIV
 
 # HOOKS 7, ore mining (docs/engine/mining.md, bench 2026-11-05 engine_mining a-e): a load 250 (retail miners'
@@ -61,7 +63,7 @@ class Mining:
         self.mined_to = None                # the last frame mine_due ran
 
     def mine_due(self, world, frame, pay):
-        """Every player's harvester (KindOf HARVESTER, not the neutral side's) up to `frame`, a frame at a time, the
+        """Every player's miner (an OreMinerBehavior, not the neutral side's) up to `frame`, a frame at a time, the
         collector's loop of docs/engine/mining.md: locate a node -> drive -> dock (the node loads it MINE_DOCK frames,
         from the frame after it docked, once the node waits for a miner) -> the nearest unpacked refinery of its
         owner's -> drive -> unload MINE_DOCK frames into the owner's money, load // MINE_DOCK a frame and the rest on the
@@ -73,7 +75,8 @@ class Mining:
         drawn along it. A harvester given a path (a script's move) drops its trip and starts over once it stands."""
         start = frame if self.mined_to is None else self.mined_to + 1
         self.mined_to = frame
-        miners = [b for b in world.living() if 'HARVESTER' in b.kinds and b.owner != CIV and b.speed > 0]
+        miners = [b for b in world.living() if b.modules and b.find(interfaces.OreMiner) is not None
+                  and b.owner != CIV and b.speed > 0]
         if not miners:
             return
         nodes = [b for b in world.living() if 'orenode' in b.template.lower()]
@@ -102,7 +105,7 @@ class Mining:
         if b.path:                                  # moved by someone else: start over once it stands
             if m is not None:
                 self._undock(b)
-                b.mine = None
+                b.find(interfaces.OreMiner).set_trip(None)
             return
         if m is None and b.building is not None:
             # told to unpack (order_unpack; the SimpleExpansion miner armed to unpack within Distance): it does not
@@ -111,9 +114,9 @@ class Mining:
             # idle to s130 (D156). INFERRED: the game's reason (the order's state, the team's hold) not read
             return
         if m is None:
-            m = b.mine = {'state': 'locate', 'node': None, 'ref': None, 'due': fr, 'load': 0, 'n': 0, 'leg': None,
-                          'spawned': b.unpack_parent is not None
-                          and (b.x, b.y) == (b.unpack_parent.x, b.unpack_parent.y)}
+            m = {'state': 'locate', 'node': None, 'ref': None, 'due': fr, 'load': 0, 'n': 0, 'leg': None,
+                 'spawned': b.unpack_parent is not None and (b.x, b.y) == (b.unpack_parent.x, b.unpack_parent.y)}
+            b.find(interfaces.OreMiner).set_trip(m)
         if m['leg']:                                # drawn along its drive
             (x0, y0), (x1, y1), f0, f1 = m['leg']
             k = min(1.0, (fr - f0) / max(1, f1 - f0))
