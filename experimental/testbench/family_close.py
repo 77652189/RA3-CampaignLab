@@ -137,12 +137,13 @@ def pytest_counts(text):
     return counts, red
 
 
-def tests_line(counts, red, old_red):
-    """(ok, one line): red tests also red on the base are old (someone else's), the rest are this step's."""
+def tests_line(counts, red, old_red, why=''):
+    """(ok, one line): red tests also red on the base are old (someone else's), the rest are this step's. `why`: how
+    a run that gave no summary ended (run_pytest)."""
     new = [t for t in red if t not in old_red]
     tally = ', '.join(f'{v} {k}' for k, v in counts.items()) or 'no summary'
     if not counts and not red:
-        return False, 'pytest 没给出结果（看日志）'
+        return False, f'pytest 没给出结果（{why or "看日志"}）'
     if new:
         return False, f'本步新红 {len(new)} 个：{" ".join(new)}（{tally}）'
     if red:
@@ -150,13 +151,31 @@ def tests_line(counts, red, old_red):
     return True, tally
 
 
-def run_pytest(args, cwd, log_path):
-    """pytest with `args` (a list starting at its options) in `cwd`; its counts and red ids."""
+def no_result_why(returncode, stderr):
+    """How a pytest run that printed no summary ended: its exit code and its last word on stderr."""
+    last = next((ln.strip() for ln in reversed(stderr.splitlines()) if ln.strip()), '')
+    return f'exit {returncode}' + (f'；{last[:200]}' if last else '')
+
+
+def run_pytest(args, cwd, log_path, run=subprocess.run, tries=2):
+    """pytest with `args` (a list starting at its options) in `cwd`; its counts, red ids and, when it gave no
+    summary, how it ended. A run that gave none (R 11-18: interrupted, or killed, while it waited for CPU tokens) is
+    run again once, as R did by hand; the log keeps both, each with its exit code."""
     cmd = [sys.executable, '-X', 'utf8', '-m', 'pytest', *args]
-    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding='utf-8', errors='replace')
-    with open(log_path, 'a', encoding='utf-8') as f:
-        f.write(f'$ {" ".join(cmd)}\n(in {cwd})\n{r.stdout}\n{r.stderr[-5000:]}\n')
-    return pytest_counts(r.stdout)
+    why = ''
+    for attempt in range(1, tries + 1):
+        r = run(cmd, cwd=cwd, capture_output=True, text=True, encoding='utf-8', errors='replace')
+        counts, red = pytest_counts(r.stdout)
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(f'$ {" ".join(cmd)}\n(in {cwd}; try {attempt}, exit {r.returncode})\n{r.stdout}\n'
+                    f'{r.stderr[-5000:]}\n')
+        if counts or red:
+            return counts, red, ''
+        why = no_result_why(r.returncode, r.stderr)
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(f'family_close: pytest gave no summary ({why})' + ('; running it again\n' if attempt < tries
+                                                                        else '\n'))
+    return {}, [], f'跑了 {tries} 次都没结果，最后一次 {why}'
 
 
 def affected(root, base, n, log_path, golden):
@@ -169,7 +188,7 @@ def affected(root, base, n, log_path, golden):
     if pick.returncode or ' -m pytest ' not in cmd:
         return False, f'affected_tests 没给出命令（exit {pick.returncode}）'
     args = with_workers(cmd, n).split(' -m pytest ', 1)[1].split() + ['-rf']
-    counts, red = run_pytest(args, root, log_path)
+    counts, red, why = run_pytest(args, root, log_path)
     old = set()
     if red:   # rerun the reds on the base, in the golden tree (held under golden's lock)
         with golden.Lock(os.path.join(golden.CACHE, 'golden.lock')):
@@ -177,10 +196,10 @@ def affected(root, base, n, log_path, golden):
             git(golden.TREE, 'checkout', '--', golden.SIMRECORD_REL)   # the base's own recorder for its tests
             here = [t for t in red if os.path.exists(os.path.join(golden.TREE, t.split('::')[0]))]
             if here:
-                _, old_red = run_pytest(['-n', str(n), '--timeout', '3000', '-p', 'no:cacheprovider', '-q', '-rf',
-                                         *here], golden.TREE, log_path)
+                _, old_red, _ = run_pytest(['-n', str(n), '--timeout', '3000', '-p', 'no:cacheprovider', '-q', '-rf',
+                                            *here], golden.TREE, log_path)
                 old = set(old_red)
-    return tests_line(counts, red, old)
+    return tests_line(counts, red, old, why)
 
 
 def main(argv=None):

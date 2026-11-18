@@ -21,7 +21,9 @@ hold(n, owner, at_least) is the one door:
     widen, but a child never queues behind its own parent);
   * exclusive=True (timing: simbench_peak, simrecord time, a --save-durations run) marks the pool pending, so no new
     job starts, and takes every token as it comes free: the reading is the machine's alone.
-It yields how many tokens the job may use -- a recorder's -j, a pytest run's workers. RA3_CPU_POOL=0 turns the pool
+A waiting job says so on stderr (again every REMIND seconds), says when it got its tokens, and says so when it is
+interrupted (T5b: pytest drops a Ctrl+C during configure without a word, so a run interrupted in the wait looked like
+one that gave no result). It yields how many tokens the job may use -- a recorder's -j, a pytest run's workers. RA3_CPU_POOL=0 turns the pool
 off (every hold yields n at once).
 
 pytest: tests/conftest.py holds the run's workers (-n, or 1) for the whole session and gives each worker a share of
@@ -41,6 +43,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 HELD_ENV = 'RA3_CPU_HELD'
 POLL = 3.0
+REMIND = 300.0      # a waiting job says so again every 5 minutes, so a log shows it still waits
 
 
 def _load(name, path):
@@ -191,17 +194,28 @@ class Pool:
         all at once; the token numbers. Never waits for more than the pool holds."""
         n = max(1, min(n, self.tokens))
         at_least = max(1, min(n if at_least is None else at_least, n))
-        told = False
-        while True:
-            if self.free() >= at_least:
-                got = self.try_take(n, owner)
-                if len(got) >= at_least:
-                    return got
-                self.release(got)       # someone took one between the count and the take: all or none
-            if not told and say:
-                say(f'cpupool: {owner} waits for {at_least} of {self.tokens} CPU tokens ({self.describe()})')
-                told = True
-            time.sleep(self.poll)
+        t0 = time.monotonic()
+        told = None             # when the job last said it waits (None: not yet)
+        try:
+            while True:
+                if self.free() >= at_least:
+                    got = self.try_take(n, owner)
+                    if len(got) >= at_least:
+                        if told is not None and say:
+                            say(f'cpupool: {owner} got {len(got)} CPU tokens after {time.monotonic() - t0:.0f} s')
+                        return got
+                    self.release(got)       # someone took one between the count and the take: all or none
+                if say and (told is None or time.monotonic() - told >= REMIND):
+                    again = '' if told is None else f'still ({time.monotonic() - t0:.0f} s) '
+                    say(f'cpupool: {owner} {again}waits for {at_least} of {self.tokens} CPU tokens '
+                        f'({self.describe()})')
+                    told = time.monotonic()
+                time.sleep(self.poll)
+        except KeyboardInterrupt:
+            if say:
+                say(f'cpupool: {owner} was interrupted (Ctrl+C) after waiting {time.monotonic() - t0:.0f} s for '
+                    f'{at_least} CPU tokens; it took none and stops ({self.describe()})')
+            raise
 
     def take_all(self, owner, say=None):
         """Mark the pool pending for this process, then take every token as it comes free; the token numbers."""

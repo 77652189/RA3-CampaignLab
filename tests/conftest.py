@@ -36,7 +36,12 @@ def hold_cpu(config):
         return
     n = max(1, getattr(config.option, 'numprocesses', None) or 1)
     exclusive = os.environ.get('RA3_CPU_EXCLUSIVE', '') not in ('', '0')
-    got = _held.enter_context(cpupool.hold(n, 'pytest -n %d' % n, exclusive=exclusive))
+    try:
+        got = _held.enter_context(cpupool.hold(n, 'pytest -n %d' % n, exclusive=exclusive))
+    except KeyboardInterrupt:
+        # pytest drops an interrupt during configure without a word (no summary, exit 2), so the run looks as if it
+        # gave no result at all (R 11-18, family_close's tests step). Say why it stops.
+        pytest.exit('cpupool: interrupted while waiting for %d CPU tokens; no test ran' % n, returncode=2)
     if got < n:
         print('cpupool: %d workers, but the run holds %d CPU tokens (the pool is %d)' % (n, got, cpupool.size()),
               file=sys.stderr)

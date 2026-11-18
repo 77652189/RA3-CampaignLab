@@ -93,7 +93,40 @@ def test_hold_waits_its_turn_and_says_so(tmp_path):
         assert got == 1 and env[cp.HELD_ENV] == '1'
     t.join(5)
     assert waited >= 0.3 and said and 'waits for 1 of 2' in said[0] and 'other' in said[0]
+    assert 'got 1 CPU tokens after' in said[-1]          # a log shows the wait ended (R 11-18 could not tell)
     assert cp.HELD_ENV not in env and p.free() == 2      # released, the environment as it was
+
+
+def test_an_interrupted_wait_says_so_and_takes_nothing(tmp_path, monkeypatch):
+    p = pool(tmp_path, tokens=2)
+    p.try_take(2, 'other')
+    said = []
+
+    def interrupt(_):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(cp.time, 'sleep', interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        with cp.hold(1, 'me', pool=p, env={}, say=said.append):
+            pass
+    assert 'waits for 1 of 2' in said[0] and 'interrupted' in said[-1] and 'took none' in said[-1]
+    assert len(p.holders()) == 2 and all(r['owner'] == 'other' for r in p.holders().values())
+
+
+def test_a_long_wait_says_again(tmp_path, monkeypatch):
+    p = pool(tmp_path, tokens=1)
+    p.try_take(1, 'other')
+    said, clock = [], [0.0]
+    monkeypatch.setattr(cp.time, 'monotonic', lambda: clock[0])
+
+    def tick(_):
+        clock[0] += 200.0
+        if clock[0] >= 700:
+            p.release([1])
+    monkeypatch.setattr(cp.time, 'sleep', tick)
+    with cp.hold(1, 'me', pool=p, env={}, say=said.append):
+        pass
+    assert [s.split(' waits')[0] for s in said if 'waits' in s] == ['cpupool: me', 'cpupool: me still (400 s)']
+    assert said[-1] == 'cpupool: me got 1 CPU tokens after 800 s'
 
 
 def test_inside_a_holder_it_never_waits(tmp_path):
@@ -153,6 +186,42 @@ def test_run_command_holds_while_it_runs(tmp_path):
     assert out.returncode == 0, out.stderr
     assert out.stdout.split() == ['3', '3']
     assert not [f for f in os.listdir(tmp_path / 'locks' / 'cpu') if f[0].isdigit()]
+
+
+INTERRUPT_PLUGIN = '''"""Loaded with -p before tests/conftest.py: the first sleep (the CPU-token wait) is a Ctrl+C."""
+import time
+
+
+def _interrupt(_):
+    raise KeyboardInterrupt
+
+
+time.sleep = _interrupt
+'''
+
+
+def test_a_pytest_run_interrupted_while_it_waits_says_why(tmp_path):
+    """R 11-18 (T5b): family_close's pytest waited for tokens, then ended with no output at all -- pytest drops an
+    interrupt during configure without a word (exit 2, empty stdout, only the wait line on stderr). The run must say
+    it was interrupted waiting for tokens."""
+    (tmp_path / 'interrupt_wait.py').write_text(INTERRUPT_PLUGIN, encoding='utf-8')
+    p = cp.Pool(str(tmp_path / 'locks' / 'cpu'), 2, poll=0.05)
+    taken = p.try_take(2, 'holder')       # this process holds the whole pool: the child must wait
+    try:
+        env = dict(os.environ, RA3_SHARED=str(tmp_path), RA3_CPU_TOKENS='2',
+                   PYTHONPATH=os.pathsep.join([str(tmp_path), os.environ.get('PYTHONPATH', '')]))
+        env.pop(cp.HELD_ENV, None)
+        env.pop('RA3_CPU_EXCLUSIVE', None)
+        out = subprocess.run([sys.executable, '-X', 'utf8', '-m', 'pytest', '-p', 'interrupt_wait', '-p',
+                              'no:cacheprovider', '-q', os.path.join(ROOT, 'tests', 'tools', 'test_cpupool.py') +
+                              '::test_size_leaves_the_reserve'],
+                             cwd=ROOT, env=env, capture_output=True, text=True, encoding='utf-8', timeout=120)
+    finally:
+        p.release(taken)
+    assert len(taken) == 2
+    assert out.returncode == 2, out.stdout[-2000:] + out.stderr[-2000:]
+    assert 'waits for 1 of 2 CPU tokens' in out.stderr
+    assert 'interrupted while waiting for 1 CPU tokens' in out.stderr, out.stderr[-2000:]
 
 
 PROBE = 'CPUPOOL_PROBE'
