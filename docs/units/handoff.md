@@ -54,7 +54,7 @@ Tripo 订阅：用户买的是包月（专业版，推测），2026-10-20 04:00�
 2. 自由号可选：玩家自己跃迁时的闪光要给跃迁加约 1 秒准备时间（机制，归关卡线定）；跃迁取消时让充能立刻熄灭，可以把 `carrier.py` 改用 `liberty.discharged`（要关卡线同意）；五个炮塔座骨骼 `TURRET01..05` 还没接线（总控：炮塔仍是跟着飘的无人机）。
 3. 时滞炮车可以改进：UV 小块太多、概念图没画展开支腿、履带没有滚动贴图。A3 时停区机关和它是不是一回事，等策划线定。
 4. 雪堆还偏光滑，像枕头，可以加脚印、铲痕。
-5. Tripo 线 11-17 交的其余模型，等用到的那一关再接（清单、文件路径在共享笔记 `tripo-to-units-1117.md` 和 `docs/units/tripo-plan.md`）：超级要塞海上 `gfsea_v5`、空中 `gfair_v1`，巨石阵 `stonehenge_v1`（地标，走 `kind='prop'`），巨人手臂 `giant_arm_v2` 和刀 `giant_sword_hy1`；另有三台已切好、面板盒已按 `panels` 格式给好的混元重做车（同笔记第 3 节，取代 `falcon_v2`、`burrower_v1`、`shrinkray_v2`）：游隼、钻地车（Hull + Drill）、缩小射线车，照 `chronolag_dep` 加 `kind='split'` 条目即可；钩爪坦克用 `hooktank_hy1`（`hooktank_v2` 从上看像铁锤），要用时请 Tripo 线切。阵营色都走 `panels`（按预留面板），盒子先用 `chronolag_dep` 那种探针找（面朝上 + 偏蓝的连片区域的包围盒），再渲一张阵营色涂品红的图核对。
+5. Tripo 线 11-17 交的其余模型，等用到的那一关再接（清单、文件路径在共享笔记 `tripo-to-units-1117.md` 和 `docs/units/tripo-plan.md`）：超级要塞海上 `gfsea_v5`、空中 `gfair_v1`，巨石阵 `stonehenge_v1`（地标，走 `kind='prop'`），巨人手臂 `giant_arm_v2` 和刀 `giant_sword_hy1`；另有三台已切好、面板盒已按 `panels` 格式给好的混元重做车（同笔记第 3 节，取代 `falcon_v2`、`burrower_v1`、`shrinkray_v2`）：游隼、钻地车（Hull + Drill）、缩小射线车，照 `chronolag_dep` 加 `kind='split'` 条目即可；钩爪坦克用 `hooktank_hy1`（`hooktank_v2` 从上看像铁锤），已切好 `work/units/hooktank/split/hooktank_hy1_split.glb`（Hull + Turret，转轴 Z 过 (0, 0.12, 0.28)，面板盒同笔记第 3 节），游戏距离下橄榄绿偏浅偏灰，烘焙时往原版苏军橄榄绿拉。阵营色都走 `panels`（按预留面板），盒子先用 `chronolag_dep` 那种探针找（面朝上 + 偏蓝的连片区域的包围盒），再渲一张阵营色涂品红的图核对。
 
 ## 流程和工具
 
