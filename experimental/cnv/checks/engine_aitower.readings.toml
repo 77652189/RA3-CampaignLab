@@ -1,0 +1,161 @@
+# Bench readings of checks/engine_aitower.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Where the base defence tower goes, BaseCompactness x ~600, and the budget states (bench 2026-11-07 on).
+
+[[reading]]
+id = "the_openers_tower_goes_up_in_the_build_time_and_in_no_band"
+scene = {build = "aitower50", check = "a", until = 40.0}
+bench = """\
+aitower50 a: the stop frame 451 (wake at frame 150 + the 20 s build time; the simulator ~7 frames later), every \
+BaseCompactness band 0"""
+proves = "simai base defense tower: the opener tower goes up in its build time and stands in no band"
+let = {v = "vals(rows)"}
+expect = "v[-1][:3] == [0, 0, 0] and abs(v[-1][3] - 451) <= 7"
+
+[[reading]]
+id = "the_build_state_alone_builds_no_tower"
+scene = {build = "aitowerstate", check = "a", until = 75.0}
+each = [{build = "aitowerstate"}, {build = "aitowerfoe"}]
+bench = """\
+aitowerstate / aitowerfoe (own budget, only AlliedDefenseBuildState; an enemy army nearby): no turret in 70 s \
+(stop frame keeps counting); no refinery, no income, the share pays nothing"""
+proves = "simai base defense tower: the build state alone builds no tower"
+expect = "vals(rows)[-1][3] >= 70 * 15"
+
+[[reading]]
+id = "an_empty_opener_does_not_fund_the_share"
+scene = {build = "aitoweropen", check = "e", until = 130.0}
+bench = "aitoweropen e (build state + an opener of one Time 0s order, own budget kept): no turret to s143"
+proves = "simai base defense tower: an empty opener does not hold back or fund the budget share"
+expect = "vals(rows)[-1][2] == 0"
+
+[[reading]]
+id = "with_a_refinery_and_a_miner_the_share_builds_the_tower"
+scene = {build = "aitowerinc", check = "e", until = 40.0}
+bench = """\
+aitowerinc e (build state + an AI refinery and miner on the east ore): the first turret at frame 451 (ordered at \
+the wake, 20 s build), round the yard (350 ring 1)"""
+proves = "simai base defense tower: with income the budget share builds the tower at the wake"
+let = {v = "vals(rows)[-1]"}
+expect = "v[1] == 1 and abs(v[3] - 451) <= 7"
+
+[[reading]]
+id = "with_income_the_turrets_keep_coming"
+scene = {build = "aitowerinc", check = "e", until = 121.0}
+bench = "aitowerinc e: 塔在基地 2 from s49, 3 from s69, 4 from s89, 5 at s128"
+proves = "simai base defense tower: with income the turrets keep coming (4 by s121)"
+expect = "vals(rows)[-1][2] >= 4"
+mismatch = """\
+simai: one turret only (share x money less what it has paid); bench aitowerinc e: 4 from s89 -- the share also \
+spends an income advance; the tried model (work/re/b139_income_window.patch) reddens aiskirmlow (B handoff 139)"""
+
+[[reading]]
+id = "a_ten_percent_share_borrows_its_first_turret_at_the_wake"
+scene = {build = "aitowerinc10", check = "e", until = 40.0}
+bench = "aitowerinc10 e (DEFENSE 10 %): 落塔帧 451, 塔在基地 1 from s29 and no second to s466"
+proves = "simai base defense tower: a 10 % share borrows its first turret at the wake (income advance)"
+let = {v = "vals(rows)[-1]"}
+expect = "v[2] == 1 and abs(v[3] - 451) <= 7"
+mismatch = """\
+simai: no turret (10 % x 1700 = 170 < 800); bench aitowerinc10 e: one at frame 451, ordered at the wake -- the \
+income advance (B handoff 139)"""
+
+[[reading]]
+id = "a_ten_percent_share_of_20000_buys_two_turrets_and_no_third"
+scene = {build = "aitowerinc10r", check = "f", until = 150.0}
+bench = "aitowerinc10r f (10 %, 20000 at the wake): 塔在基地 1 from s29, 2 from s49, no third to s174 (AI钱 ~21000)"
+proves = "simai base defense tower: 10 % x the bank, less what the share has paid -- two turrets, no third"
+expect = "max(r['塔在基地'] for r in rows) == 2 and rows[60]['塔在基地'] == 2"
+
+[[reading]]
+id = "a_five_percent_share_builds_no_turret_however_the_bank_grows"
+scene = {build = "aitowerinc5", check = "f", until = 120.0}
+bench = "aitowerinc5 f (DEFENSE 5 %): no turret to s454 while AI钱 grows 1700 -> 10700"
+proves = "simai base defense tower: a 5 % share builds no turret however the bank grows"
+expect = "all(r['塔在基地'] == 0 for r in rows)"
+
+[[reading]]
+id = "a_medium_cheat_line_of_200_percent_doubles_each_trip"
+scenes = {two = {build = "aicheat2", check = "g", until = 100.0}, one = {build = "aicheat1", check = "g", until = 100.0}}
+bench = "aicheat2 g (ResourceMultiplierCheat 200 % at MEDIUM): each miner trip pays 500, not 250"
+proves = "simai resource cheat: the Percentage is the factor itself -- 200 % doubles each trip"
+let = {m2 = "[r['AI钱'] for r in two]", m1 = "[r['AI钱'] for r in one]"}
+expect = "m2[-1] - m2[15] == 2 * (m1[-1] - m1[15]) > 0"
+
+[[reading]]
+id = "a_100_percent_line_and_lines_for_other_difficulties_change_nothing"
+scenes = {one = {build = "aicheat1", check = "g", until = 100.0}, none = {build = "aitowerinc5", check = "g", until = 100.0}}
+bench = """\
+aicheat1 g (a 300 % line for EASY HARD BRUTAL, then 100 % for MEDIUM): 250 a trip, as aitowerinc5 with no line \
+of its own"""
+proves = "simai resource cheat: a 100 % line and lines for other difficulties change nothing"
+let = {m1 = "[r['AI钱'] for r in one]", m0 = "[r['AI钱'] for r in none]"}
+expect = "m1 == m0 and m1[-1] > m1[15]"
+
+[[reading]]
+id = "the_tower_stands_in_the_350_circle_for_half_compactness"
+scene = {build = "aitower50", check = "b", until = 40.0}
+bench = "aitower50 b: the 350 circle >= 1 (from s33)"
+proves = "simai base defense tower: BaseCompactness 0.5 puts the tower in the 350 circle"
+expect = "vals(rows)[-1][0] >= 1"
+
+[[reading]]
+id = "a_wider_base_compactness_puts_the_tower_outside_the_350_circle"
+scene = {build = "aitower75", check = "b", until = 40.0}
+each = [{build = "aitower75"}, {build = "aitower100"}]
+bench = "aitower75 / aitower100 b: 350 ring 0, 700 ring 1 -- the radius follows BaseCompactness x ~600"
+proves = "simai base defense tower: a wider BaseCompactness puts the tower outside the 350 circle"
+expect = ["vals(rows)[-1][0] == 0", "rows[-1]['塔距场 700 内'] == 1"]
+
+[[reading]]
+id = "compactness_one_radius_is_between_590_and_620"
+scene = {build = "aitower100", check = "c", until = 40.0}
+bench = "aitower100 c: the final row reads 0 0 1 1 (the radius between 590 and 620)"
+proves = "simai base defense tower: BaseCompactness 1 radius is between 590 and 620"
+expect = "vals(rows)[-1] == [0, 0, 1, 1]"
+
+[[reading]]
+id = "an_opener_that_only_deposits_to_defense_builds_the_tower"
+scene = {build = "aitowerdep", check = "a", until = 40.0}
+bench = "aitowerdep: stop frame 451, the 350 ring 1 from s29"
+proves = "simai base defense tower: the DEFENSE Deposit pays the build state turret"
+expect = "abs(vals(rows)[-1][3] - 451) <= 7"
+
+[[reading]]
+id = "a_budget_state_line_uses_the_budget_its_state_names"
+scene = {build = "aibsprod", check = "h", until = 150.0}
+bench = """\
+aibsprod h: the personality declares DEFENSE 50 % but its BudgetState line names ProductionOnlyBudget (DEFENSE 0 \
+%): 塔在基地 0 throughout with 20000 at the wake, the money only grows by the miner trips"""
+proves = "simai budget states: a BudgetState line uses the budget its State names"
+expect = "all(r['塔在基地'] == 0 for r in rows) and rows[-1]['AI钱'] > rows[15]['AI钱']"
+
+[[reading]]
+id = "the_heavier_budget_state_runs_alone_though_listed_second"
+scene = {build = "aibsmax", check = "i", until = 150.0}
+bench = "aibsmax: DEFENSE 100 % at weight 0.4 first, PRODUCTION 100 % at 0.6: no turret with 20000"
+proves = "simai budget states: only the heaviest budget state runs, though listed second"
+expect = "all(r['塔在基地'] == 0 for r in rows)"
+
+[[reading]]
+id = "a_tie_between_budget_states_goes_to_the_earlier_line"
+scene = {build = "aibstie", check = "i", until = 150.0}
+bench = "aibstie: both weigh 0.5, DEFENSE first: turrets are built"
+proves = "simai budget states: a tie goes to the earlier line"
+expect = "max(r['塔在基地'] for r in rows) >= 1"
+
+[[reading]]
+id = "when_every_budget_state_weighs_0_the_first_line_runs"
+scene = {build = "aibszero", check = "i", until = 150.0}
+bench = "aibszero: no turret before s50, then every weight is 0 and the first line (DEFENSE) runs: turrets"
+proves = "simai budget states: when every state weighs 0 the first line runs"
+expect = "all(r['塔在基地'] == 0 for r in rows[:50]) and max(r['塔在基地'] for r in rows) >= 1"
+
+[[reading]]
+id = "the_retail_budgets_switch_to_defense_while_the_raid_is_near_and_back_after"
+scene = {build = "aibsback", check = "r4", until = 125.0}
+bench = """\
+aibsback (r4, PASS 11-14): Coop (DEFENSE 5 %) no turret to s48; the raid s29-s57 -> Defense (20 %): one turret \
+from s49; raid gone, +5000 at s73 -> Coop: no second to s128 (simulator: turret from s52)"""
+proves = "simai budget states: retail budgets switch to Defense while the raid is near and back after"
+let = {raid = "[i for i, r in enumerate(rows) if r['敌在'] > 0]", tower = "first('塔在基地')"}
+expect = ["raid and raid[0] <= tower <= raid[-1]", "max(r['塔在基地'] for r in rows) == 1"]

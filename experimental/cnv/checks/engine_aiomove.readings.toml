@@ -1,0 +1,31 @@
+# Bench readings of checks/engine_aiomove.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# What an OpeningMove line builds (bench 2026-11-09, rounds 83-90).
+
+[[reading]]
+id = "opening_move_builds_what_the_bench_built"
+scene = {build = "aiowt", check = "a", until = 40.0}
+each = [{build = "aiowt", plants = 0, barracks = 1}, {build = "aiowt2", plants = 1, barracks = 0}, {build = "aiodf", plants = 0, barracks = 1}, {build = "aiodf2", plants = 1, barracks = 0}, {build = "aiom1", plants = 0, barracks = 0}, {build = "aiom2", plants = 0, barracks = 0}, {build = "aiom4", plants = 0, barracks = 0}, {build = "aiom7", plants = 0, barracks = 0}, {build = "aiom8", plants = 0, barracks = 0}, {build = "aiom16", plants = 0, barracks = 0}, {build = "aiom5", plants = 1, barracks = 0}, {build = "aiom6", plants = 1, barracks = 0}, {build = "aiom9", plants = 1, barracks = 0}, {build = "aiom10", plants = 0, barracks = 1}, {build = "aiom11", plants = 1, barracks = 0}, {build = "aiom12", plants = 1, barracks = 0}, {build = "aiom13", plants = 2, barracks = 0}, {build = "aiom15", plants = 2, barracks = 0}, {build = "aiom17", plants = 1, barracks = 1}, {build = "aiom18", plants = 1, barracks = 0}, {build = "aiom19", plants = 1, barracks = 0}, {build = "aiom20", plants = 1, barracks = 0}]
+bench = """\
+电厂 / 兵营 standing at s40: nothing for a lone Build or a short opening (a 0 % line is never drawn), only the last \
+Build of a batch, all of them when a Time of 15 s or more follows (aiom13 two plants, aiom17 barracks and plant)"""
+proves = "simai opening move: an OpeningMove line builds what the bench built"
+expect = "(rows[-1]['电厂'], rows[-1]['兵营']) == (plants, barracks)"
+
+[[reading]]
+id = "opening_move_complete_holds_the_tanks_until_the_opening_is_over"
+scenes = {done = {build = "aiohc1", check = "a", until = 60.0}, not_done = {build = "aiohc0", check = "a", until = 60.0}}
+bench = """\
+aiohc1 (Complete true): tanks home to s42, out by s44-s46 (2 @ s43, 0 from s44); aiohc0 (Complete false): out \
+s14-15 (the simulator ~1 s later)"""
+proves = "simai opening move: Complete true holds the tanks until the opening is over"
+expect = ["all(r['坦克在家'] == 4 for r in done[:40]) and done[48]['坦克在家'] == 0", "not_done[19]['坦克在家'] == 0"]
+
+[[reading]]
+id = "opening_plants_stand_when_the_bench_did"
+scene = {build = "aiom14", check = "a", until = 60.0}
+bench = "aiom14: the plant stands at s49 (ordered at s40, the last order); aiohc1 plants s19 / s49"
+proves = "simai opening move: the opening plants stand when the bench had them (electric plant 1 at s49)"
+expect = "rows[48]['电厂'] == 1"
+mismatch = """\
+simai: aiom14 plant stands at s52, aiohc1 plants s22 / s52 / s62; bench aiom14 plant s49 (ordered at s40, the \
+last order), aiohc1 s19 / s49: ~3 s late"""

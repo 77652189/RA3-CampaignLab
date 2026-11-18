@@ -1,0 +1,23 @@
+# Bench readings of checks/engine_aistate.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# SearchRange is only the tech heuristic's -- distance stops no team (bench 2026-11-07).
+
+[[reading]]
+id = "far_structure_does_not_stop_a_team_when_two_are_far"
+scene = {build = "aistatefar2", check = "a", until = 30.0}
+bench = """\
+aistatefar2 (a second far structure: one target per state): both teams out, 步兵在家 and 坦克在家 4 -> 0 @ s14 (the \
+simulator ~3 s later)"""
+proves = "simai team states: SearchRange stops no team -- with two far structures both teams go out"
+expect = "rows[-1]['步兵在家'] == 0 and rows[-1]['坦克在家'] == 0"
+
+[[reading]]
+id = "one_far_structure_goes_to_the_tank_team_alone"
+scene = {build = "aistatefar", check = "a", until = 30.0}
+bench = """\
+aistatefar: the tanks 4 -> 0 @ s14, the infantry 4 all run (one structure only, a target one state holds is not \
+given to another)"""
+proves = "simai team states: one far structure goes to the tank team alone"
+expect = "rows[-1]['坦克在家'] == 0 and rows[-1]['步兵在家'] == 4"
+mismatch = """\
+simai aistatefar: the infantry go (步兵在家 0 @ s17) and the tanks stay home (4); bench: the tanks 4 -> 0 @ s14, the \
+infantry 4 all run (one structure only, a target one state holds is not given to another)"""

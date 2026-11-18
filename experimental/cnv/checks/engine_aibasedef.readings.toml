@@ -1,0 +1,22 @@
+# Bench readings of checks/engine_aibasedef.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# EnterBaseDefenses / EnterBaseDefensesWhenIdle (bench 2026-11-09).
+
+[[reading]]
+id = "with_the_main_switch_off_nobody_goes_into_a_turret_idle_or_not"
+scenes = {off = {build = "aibd0", check = "a", until = 60.0}, idle = {build = "aibdidle", check = "a", until = 60.0}}
+bench = "aibd0 (both off) / aibdidle (only EnterBaseDefensesWhenIdle on): 进炮塔 0 all along, the same readings"
+proves = "simai base defenses: with the main switch off nobody garrisons, idle switch or not"
+expect = "all(r['进炮塔'] == 0 for r in off) and idle == off"
+
+[[reading]]
+id = "one_peacekeeper_goes_into_the_first_turret"
+scene = {build = "aibd1", check = "a", until = 60.0}
+each = [{build = "aibd1"}, {build = "aibdwho"}]
+bench = """\
+aibd1 / aibdwho: one Peacekeeper goes into the first turret (进炮塔 1 or more; not 旁1: since A round 146 an \
+attack-moving one turns aside to a foe in sight)"""
+proves = "simai base defenses: EnterBaseDefenses sends one Peacekeeper into the first turret"
+expect = "any(r['进炮塔'] >= 1 for r in rows)"
+mismatch = """\
+B round 196: as test_simai test_one_goes_into_the_first_turret -- nobody goes in since the SimpleAttack form-up \
+(B round 194), which the bench has too"""

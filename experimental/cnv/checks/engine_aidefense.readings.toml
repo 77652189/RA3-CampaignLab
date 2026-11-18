@@ -1,0 +1,51 @@
+# Bench readings of checks/engine_aidefense.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# StaticDefense, the Distance circle, UpdateTime (bench 2026-11-06).
+
+[[reading]]
+id = "the_four_walk_out_to_far_and_stay_whatever_the_update_time"
+scene = {build = "aidef250", check = "a", until = 85.0}
+each = [{build = "aidef250"}, {build = "aidef450"}, {build = "aidefupd4"}, {build = "aidefslack"}]
+bench = """\
+aidef250 / aidef450 / aidefupd4 / aidefslack (UpdateTime 4 s as 1 s, Distance 250 / 450, CombatLeashSlack 3): \
+圈900 0 from s57, walked to FAR and stayed, no pull-back"""
+proves = "simai static defense: the four walk out to FAR and stay, whatever the update time"
+expect = "rows[-1]['圈900'] == 0"
+mismatch = """\
+simai: the 4 Peacekeepers never leave the yard (圈900 4 to s85; aidef450 only partly out); bench aidef250 / \
+aidef450 / aidefupd4 / aidefslack: 圈900 0 from s57, they walked to FAR and stayed"""
+
+[[reading]]
+id = "pushed_out_the_team_is_pulled_back_ring_by_ring"
+scene = {build = "aidefctl", check = "b", until = 125.0}
+each = [{build = "aidefctl"}, {build = "aidefctl4"}]
+bench = """\
+b (U = 1 s / 4 s): all four in the 300 ring before the push, every ring 0 after it, then back from the outside \
+in (圈900, 650, 450, 300), all 4 at the end (to s120)"""
+proves = "simai static defense: a pushed-out team is pulled back ring by ring, outside in"
+let = {gone = "first('圈900', lambda v: v == 0)", back = "[next(i for i in range(gone, len(rows)) if rows[i][k] == 4) for k in ('圈900', '圈650', '圈450', '圈300')]"}
+expect = ["rows[50] == dict.fromkeys(rows[50], 4)", "gone is not None and all(rows[gone][k] == 0 for k in rows[gone])", "back == sorted(back) and rows[-1] == dict.fromkeys(rows[-1], 4)"]
+
+[[reading]]
+id = "a_longer_update_time_pulls_back_a_little_later"
+scenes = {fast = {build = "aidefctl", check = "b", until = 125.0}, slow = {build = "aidefctl4", check = "b", until = 125.0}}
+bench = "aidefctl4 is back 1-2 s later per ring than aidefctl (900 s68 vs s66, 300 s82 vs s80)"
+proves = "simai static defense: a longer UpdateTime pulls the team back a little later"
+let = {back = "lambda rows: next(i for i in range(first('圈300', lambda v: v == 0, rows=rows), len(rows)) if rows[i]['圈300'] == 4)"}
+expect = "back(slow) > back(fast)"
+mismatch = """\
+simai aidefctl4 (UpdateTime 4 s) = aidefctl (1 s) second for second; bench: aidefctl4 is back 1-2 s later per \
+ring (900 s68 vs s66, 300 s82 vs s80)"""
+
+[[reading]]
+id = "a_script_move_order_never_takes_the_team_out_of_the_circle"
+scene = {build = "aidefmv", check = "b", until = 125.0}
+bench = "aidefmv (MOVE_NAMED_UNIT_TO): no ring ever drops after the s20 walk to the yard (4 4 4 4 from s9 to s120)"
+proves = "simai static defense: a script move order never takes the team out of the circle"
+expect = "all(r == dict.fromkeys(r, 4) for r in rows[25:])"
+
+[[reading]]
+id = "a_script_move_is_called_back_before_175"
+scene = {build = "aidefmv", check = "c", until = 125.0}
+bench = "aidefmv c: 圈100 4 from s57 to the end, 圈175 / 225 / 275 hold 4 throughout"
+proves = "simai static defense: a script move is called back before the 175 ring"
+expect = "rows[-1] == dict.fromkeys(rows[-1], 4)"

@@ -1,0 +1,48 @@
+# Bench readings of checks/engine_aiteamfilter.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# AlwaysRecruit: does a team that has gone out take the tanks the AI builds after it (bench 2026-11-09).
+
+[[reading]]
+id = "without_always_recruit_the_late_tanks_stay_home"
+scene = {build = "aiar0", check = "a", until = 62.0}
+bench = """\
+aiar0 (AlwaysRecruit false): the two built after the team left stay home (built s20 / s30, 坦克在家 2 of 6 owned; \
+the simulator s23 / s34)"""
+proves = "simai team recruiting: without AlwaysRecruit the late tanks stay home"
+expect = "rows[-1]['坦克在家'] == 2 and rows[-1]['坦克拥有'] == 6"
+
+[[reading]]
+id = "always_recruit_the_gone_team_takes_the_late_tanks"
+scene = {build = "aiar1", check = "a", until = 62.0}
+bench = """\
+aiar1 (AlwaysRecruit true): each late tank home a while, then taken by the team out there (built s19 -> taken \
+s29, s30 -> s56; the simulator s23 -> s30, s34 -> s60)"""
+proves = "simai team recruiting: AlwaysRecruit makes the gone team take the late tanks"
+expect = ["max(r['坦克在家'] for r in rows[19:35]) == 1", "rows[-1]['坦克在家'] == 0 and rows[-1]['坦克拥有'] == 6"]
+
+[[reading]]
+id = "always_recruit_a_full_team_takes_no_more"
+scene = {build = "aiar2", check = "a", until = 62.0}
+bench = "aiar2 (AlwaysRecruit true, MaxUnits 4 already full): both late tanks stay home, 坦克在家 2 of 6 owned"
+proves = "simai team recruiting: a full team takes no more under AlwaysRecruit"
+expect = "rows[-1]['坦克在家'] == 2 and rows[-1]['坦克拥有'] == 6"
+
+[[reading]]
+id = "without_always_recruit_the_first_built_forms_a_team_the_second_stays"
+scene = {build = "aiar3", check = "a", until = 62.0}
+bench = """\
+aiar3 (none placed, AlwaysRecruit false): the first built forms the team and goes (built s21, out s30; the \
+simulator s23 / s29), the second (s32) stays home"""
+proves = "simai team recruiting: without AlwaysRecruit the first built forms a team, the second stays"
+expect = ["max(r['坦克在家'] for r in rows[19:29]) == 1", "rows[-1]['坦克在家'] == 1 and rows[-1]['坦克拥有'] == 2"]
+
+[[reading]]
+id = "the_ai_builds_only_the_openers_two"
+scene = {build = "aiar0", check = "a", until = 80.0}
+bench = """\
+aiar0-3 own 6 to the end (late = 2: the opener builds two, nothing more); simai aiar0 builds a third Guardian \
+s67 and a fourth s78 (owned 8 at s80)"""
+proves = "simai team recruiting: the AI builds only the opener two late tanks"
+expect = "rows[-1]['坦克拥有'] == 6"
+mismatch = """\
+simai aiar0 builds a third Guardian s67 and a fourth s78 (owned 8 at s80); bench aiar0-3 own 6 to the end \
+(late=2: the opener builds two, nothing more)"""

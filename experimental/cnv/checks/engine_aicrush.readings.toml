@@ -1,0 +1,27 @@
+# Bench readings of checks/engine_aicrush.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Crush kills the guards on contact (bench 2026-11-09, readings in the check's docstring).
+
+[[reading]]
+id = "without_crush_the_guards_are_not_run_over"
+scene = {build = "aicrush0", check = "a", until = 37}
+each = [{build = "aicrush0"}, {build = "aicrushlo"}]
+bench = "aicrush0 / aicrushlo: 守军数 8 or more through s37 (bench 11-12)"
+proves = "simai team attack / sim crush: without Crush (or too light a crusher) the guards are not run over"
+expect = "all(r['守军数'] >= 8 for r in rows)"
+
+[[reading]]
+id = "crush_keeps_all_four_tanks_alive"
+scene = {build = "aicrush1", check = "a", until = 35}
+bench = "aicrush1: 坦克数 4 at s28-s33, independent of the kill gap"
+proves = "sim crush: the crushing tanks take no harm"
+expect = "win(28, 33, '坦克数') == [4] * 6"
+
+[[reading]]
+id = "crush_runs_the_guards_over_at_once"
+scene = {build = "aicrush1", check = "a", until = 35}
+bench = "aicrush1: 守军数 0 at s28-s33, 坦克数 4"
+proves = "simai team attack + sim crush: the team drives through the guards and crushes them at once"
+expect = ["win(28, 33, '坦克数') == [4] * 6", "win(28, 33, '守军数') == [0] * 6"]
+mismatch = """B round 196: the bench forms up too (aicrush1t: form f26, go f80); the simulator now leaves f40 -- still \
+earlier than the bench -- yet 4, 4, 3, 2, 2, 1 guards are left at s28-33: the old green rode on leaving at f2, the \
+drive / crush is slow, not the departure"""

@@ -1,0 +1,53 @@
+# Bench readings of checks/engine_aitarget.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Which structure an attack team goes for first, and how idle times change it (bench 2026-11-06).
+
+[[reading]]
+id = "threat_to_ground_sends_the_team_to_the_far_plant_first"
+scene = {build = "aitargetsafe", check = "a", until = 76.0}
+each = [{build = "aitargetsafe"}, {build = "aitargetidle5"}, {build = "aitargetidle30"}, {build = "aitargetstill"}]
+bench = """\
+SimpleAttack + SafestToGroundStructure / ThreatToGround (also MaxTeamIdleTime 5 / 30 s, 600 s): 到远厂 3 @ s35 ... \
+4 s36-s60, the near plant only afterwards (RAMPAGE, s69)"""
+proves = "simai team targets: ThreatToGround goes for the far undefended plant first, the near one only afterwards"
+let = {far = "first('到远厂')", near = "first('到近厂')"}
+expect = "far is not None and (near is None or far < near)"
+
+[[reading]]
+id = "closest_structure_sends_the_team_to_the_near_plant_and_never_the_far_one"
+scene = {build = "aitargetnear", check = "a", until = 76.0}
+bench = """\
+aitargetnear (ClosestStructure, Distance): 到近厂 4 from s14, shot down to 0 by s35; 到远厂 0 all 76 s (green with R8 \
+UNDERSIZE 4-8, 0-3 fail; D162 / A round 251)"""
+proves = "simai team targets: ClosestStructure goes for the near plant and never the far one"
+expect = ["first('到近厂') is not None and all(r['到远厂'] == 0 for r in rows)", "rows[40]['到近厂'] == 0 and rows[-1]['到近厂'] == 0"]
+
+[[reading]]
+id = "idle_time_5_leaves_home_before_the_default"
+scenes = {safe = {build = "aitargetsafe", check = "a", until = 40.0}, idle5 = {build = "aitargetidle5", check = "a", until = 40.0}}
+bench = "aitargetidle5 vs aitargetsafe: the 5 s team leaves earlier (bench 4 -> 3 @ s17 / @ s28)"
+proves = "simai team idle time: MaxTeamIdleTime 5 s sends the team out before the default"
+expect = "first('步兵在家', lambda v: v < 4, rows=idle5) < first('步兵在家', lambda v: v < 4, rows=safe)"
+
+[[reading]]
+id = "longer_idle_times_change_nothing[aitargetidle30]"
+scenes = {safe = {build = "aitargetsafe", check = "a", until = 70.0}, got = {build = "aitargetidle30", check = "a", until = 70.0}}
+bench = "MaxTeamIdleTime 30 s: identical to the 15 s default (aitargetsafe), second for second to s70"
+proves = "simai team idle time: a longer MaxTeamIdleTime changes nothing"
+expect = "got == safe"
+
+[[reading]]
+id = "longer_idle_times_change_nothing[aitargetstill]"
+scenes = {safe = {build = "aitargetsafe", check = "a", until = 70.0}, got = {build = "aitargetstill", check = "a", until = 70.0}}
+bench = "MaxTeamIdleTime / MaxUnitIdleTime 600 s (aitargetstill): to the frame as 15 s (aitargetsafe) to s70"
+proves = "simai team idle time: a longer MaxTeamIdleTime / MaxUnitIdleTime changes nothing"
+expect = "got == safe"
+
+[[reading]]
+id = "flank_attack_reaches_the_far_plant_much_later"
+scenes = {safe = {build = "aitargetsafe", check = "a", until = 76.0}, flank = {build = "aitargetflank", check = "a", until = 76.0}}
+bench = "aitargetflank: far plant 1 @ s58, ~23 s later than the other tactics, near plant 0 all 76 s"
+proves = "simai team targets: a flank attack reaches the far plant much later than the others"
+expect = "first('到远厂', rows=flank) - first('到远厂', rows=safe) >= 15"
+mismatch = """\
+simai aitargetflank = aitargetsafe (far plant first at s26); bench flank: far plant 1 @ s58, ~23 s later than \
+the other tactics, near plant 0 all 76 s"""

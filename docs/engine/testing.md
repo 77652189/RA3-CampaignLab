@@ -19,7 +19,7 @@
 ## 加一条台上读数
 
 1. 台子（`checks/engine_X.py`）摆场景、出计数器。
-2. 读数写进这个台子的读数数据，写明证明哪个模块的哪条规则，以及模拟器对不对得上。
+2. 读数写进这个台子的读数数据 `checks/engine_X.readings.toml`（格式写在 `experimental/cnv/readings.py` 开头，样板 `checks/engine_aicrush.readings.toml`），写明证明哪个模块的哪条规则，以及模拟器对不对得上（对不上写 `mismatch`，两边的数都写）。
 3. 规则写进模块，`tests/modules/` 里加最小世界测试。
 4. 一致性跑器自动核对，不另写测试。
 

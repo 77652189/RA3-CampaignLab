@@ -1,0 +1,147 @@
+"""experimental/cnv/readings.py, the bench readings' format and the conformance runner's logic, on made-up runs (no
+simulator): one run per scene, prefixes per until, each / scenes / let, the mismatch mark both ways."""
+import ast
+import importlib.util
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+_spec = importlib.util.spec_from_file_location('readings', ROOT / 'experimental' / 'cnv' / 'readings.py')
+rd = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(rd)
+
+
+def write(tmp_path, text, name='engine_x'):
+    p = tmp_path / f'{name}{rd.SUFFIX}'
+    p.write_text(text, encoding='utf-8')
+    return p
+
+
+class Fake:
+    """A world whose counter n reads its frame // FPS each second (the 'n' row of mission second t is t)."""
+    started = []
+
+    def __init__(self, b, c):
+        self.frame, self.series, self.key = 0, [], (b, c)
+        Fake.started.append((b, c))
+
+    def advance(self, frames):
+        for _ in range(frames):
+            self.frame += 1
+            if self.frame % rd.FPS == 0:
+                t = self.frame // rd.FPS
+                self.series.append((t, {'n': t, 'k': 10 * t if self.key[0] == 'b2' else t}))
+
+
+def run(readings):
+    Fake.started = []
+    out = []
+    for keys, group in rd.groups(readings):
+        out += rd.run_group(keys, group, Fake, lambda w, f: w.advance(f),
+                            lambda w: ([t for t, _ in w.series], [r for _, r in w.series]))
+    return out
+
+
+DATA = '''
+[[reading]]
+id = "short"
+scene = {build = "b1", check = "a", until = 5}
+bench = "n 5 at the end"
+proves = "x: y"
+expect = ["rows[-1]['n'] == 5", "len(rows) == 5", "first('n', lambda v: v >= 3) == 2"]
+
+[[reading]]
+id = "long"
+scene = {build = "b1", check = "a", until = 9}
+bench = "-"
+proves = "x: y"
+let = {last = "rows[-1]", f = "lambda r: r['n'] * 2"}
+expect = "f(last) == 18 and win(2, 4, 'n') == [2, 3, 4]"
+
+[[reading]]
+id = "each"
+scene = {build = "b1", check = "a", until = 3}
+each = [{build = "b1", want = 3}, {build = "b2", want = 30}]
+bench = "-"
+proves = "x: y"
+expect = "rows[-1]['k'] == want"
+
+[[reading]]
+id = "pair"
+scenes = {one = {build = "b1", check = "a", until = 4}, two = {build = "b3", check = "a", until = 4}}
+bench = "-"
+proves = "x: y"
+expect = "one == two and first('n', rows=one) == 0"
+
+[[reading]]
+id = "b3_alone"
+scene = {build = "b3", check = "a", until = 2}
+bench = "-"
+proves = "x: y"
+expect = "rows[-1]['n'] == 2"
+
+[[reading]]
+id = "still_off"
+scene = {build = "b1", check = "a", until = 9}
+bench = "n 99"
+proves = "x: y"
+expect = "rows[-1]['n'] == 99"
+mismatch = "sim 9, bench 99"
+'''
+
+
+def test_each_scene_runs_once_and_every_reading_sees_its_own_until(tmp_path):
+    rs = rd.load(write(tmp_path, DATA))
+    assert [r['id'] for r in rs] == ['short', 'long', 'each[b1]', 'each[b2]', 'pair', 'b3_alone', 'still_off']
+    assert run(rs) == []
+    assert sorted(Fake.started) == [('b1', 'a'), ('b2', 'a'), ('b3', 'a')]      # b1: four readings, one run
+    assert [k for k, _ in rd.groups(rs)] == [[('b1', 'a'), ('b3', 'a')], [('b2', 'a')]]   # the pair joins b1 and b3
+
+
+def test_a_reading_that_does_not_hold_is_reported_and_a_mismatch_that_holds_too(tmp_path):
+    bad = DATA.replace("rows[-1]['n'] == 5", "rows[-1]['n'] == 6").replace("== 99", "== 9")
+    problems = run(rd.load(write(tmp_path, bad)))
+    assert len(problems) == 2
+    assert problems[0].startswith('short: does not hold') and 'drop the mark' in problems[1]
+
+
+def test_a_reading_that_raises_fails_unless_marked(tmp_path):
+    text = DATA.replace("len(rows) == 5", "rows[40]['n'] == 0")
+    assert run(rd.load(write(tmp_path, text))) == ["short: IndexError: list index out of range"]
+    marked = DATA.replace("rows[-1]['n'] == 99", "rows[40]['n'] == 99")
+    assert run(rd.load(write(tmp_path, marked))) == []
+
+
+@pytest.mark.parametrize('text, why', [
+    ('[[reading]]\nid = "a"\nbench = "-"\nproves = "-"\nexpect = "1"\n', 'one of scene / scenes'),
+    ('[[reading]]\nid = "a"\nscene = {build = "b"}\nbench = "-"\nproves = "-"\nexpect = "1"\n', 'a scene is'),
+    ('[[reading]]\nid = "a"\nscene = {build = "b", until = 1}\nproves = "-"\nexpect = "1"\n', 'missing'),
+    ('[[reading]]\nid = "a"\nscene = {build = "b", until = 1}\nbench = "-"\nproves = "-"\nexpect = "1"\nwhy = 1\n',
+     'unknown'),
+    ('[[reading]]\nid = "a"\nscene = {build = "b", until = 1}\nbench = "-"\nproves = "-"\nexpect = "1"\n' * 2,
+     'twice'),
+    ('[foo]\n', 'only'),
+])
+def test_the_format_is_checked_on_load(tmp_path, text, why):
+    with pytest.raises(rd.ReadingError, match=why):
+        rd.load(write(tmp_path, text))
+
+
+def test_an_expression_that_does_not_compile_fails_on_load(tmp_path):
+    with pytest.raises(SyntaxError):
+        rd.load(write(tmp_path, DATA.replace("len(rows) == 5", "len(rows) ==")))
+
+
+def test_the_repository_readings_load_and_sit_beside_their_bench():
+    for p in rd.files():
+        rs = rd.load(p)
+        assert rs, p
+        assert (Path(rd.CHECKS) / f'{rd.bench_of(p)}.py').is_file(), p
+
+
+def test_the_runner_steps_at_the_simulators_frame_rate():
+    tree = ast.parse((ROOT / 'experimental' / 'cnv' / 'simai.py').read_text(encoding='utf-8'))
+    fps = [n.value.value for n in tree.body if isinstance(n, ast.Assign) and
+           any(getattr(t, 'id', None) == 'FPS' for t in n.targets)]
+    assert fps == [rd.FPS]

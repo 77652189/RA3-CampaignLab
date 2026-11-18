@@ -1,0 +1,317 @@
+# Bench readings of checks/engine_aiskirm.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Skirmish personality rules: unit builder, build states, caps, personality choice, refinery placement (bench 2026-11-11 on).
+
+[[reading]]
+id = "the_stock_ai_builds_no_unit_of_ours_from_its_own_barracks"
+scene = {build = "aisknew", check = "y", until = 170}
+bench = """\
+aisknew (copied barracks builds CNVNewPK, no build state lists it): 新维和 0 to s168; the bench built 6 \
+Peacekeepers and 12 Javelins beside"""
+proves = "simai unit builder: units of ours are built only when a build state lists them"
+expect = ["max(r['新维和'] for r in rows) == 0", "rows[-1]['维和总数'] + rows[-1]['标枪总数'] >= 1"]
+
+[[reading]]
+id = "listed_in_a_build_state_our_unit_takes_about_half_the_barracks"
+scene = {build = "aisknew2", check = "y", until = 170}
+bench = """\
+aisknew2 (CNVNewPK listed FEWEST_UNIT in a ConstantHeuristic state): the first at s27, 9 of 19 barracks units by \
+s167 (simulator 10 of 14: a higher share, so only the rule is asserted)"""
+proves = "simai build states: a unit listed FEWEST_UNIT takes about half the barracks"
+let = {r = "rows[166]"}
+expect = "rows[27]['新维和'] >= 1 and r['新维和'] >= 0.4 * (r['新维和'] + r['维和总数'] + r['标枪总数'])"
+
+[[reading]]
+id = "a_specific_unit_cap_holds_our_unit_at_two"
+scene = {build = "aiskcap", check = "y", until = 170}
+bench = """\
+aiskcap (SpecificUnitCap CNVNewPK Cap 2 at all difficulties; bench 11-12): 新维和 2 from s33 to s149 while the \
+barracks went on with Javelins and Peacekeepers (simulator: 2 from s46)"""
+proves = "simai specific unit cap: the cap holds our unit at two, the others still built"
+expect = ["max(r['新维和'] for r in rows[:149]) == 2 and rows[60]['新维和'] == 2", "rows[148]['维和总数'] + rows[148]['标枪总数'] >= 3"]
+
+[[reading]]
+id = "after_s150_the_capped_unit_is_built_again"
+scene = {build = "aiskcap", check = "y", until = 170}
+bench = "aiskcap (bench 11-12): 新维和 3 at s150, 4 from s155 to s168 (the cap counts owned units outside a container)"
+proves = "simai specific unit cap: a unit counted out of its container lets the capped unit be built again"
+expect = "rows[166]['新维和'] >= 3"
+mismatch = """\
+bench aiskcap built a 3rd CNVNewPK at s150 and a 4th at s155 (owned 4 to s168, none lost); the simulator keeps \
+2. Known since D round 89 (aiskcapt yl): the cap counts owned units outside a container -- the first wave rode \
+its attack team's transport, the barracks built two more, they got out. The model counts that way \
+(AIPlayer.owned); the simulator's teams board no transport"""
+
+[[reading]]
+id = "a_thing_near_the_factory_blocks_the_entry"
+scene = {build = "aiskblkn", check = "y", until = 170}
+each = [{build = "aiskblkn"}, {build = "aiskblkr"}]
+bench = """\
+aiskblkn (neutral bear 120 away) / aiskblkr (neutral power plant, centre 190 away, circle within the default \
+150): 新维和 0 to s168, the barracks build the rest"""
+proves = "simai build entries: BlockIfThingNearFactory blocks the entry (score 0)"
+expect = ["max(r['新维和'] for r in rows) == 0", "rows[166]['维和总数'] + rows[166]['标枪总数'] >= 3"]
+
+[[reading]]
+id = "a_unit_listed_only_by_the_missions_own_state_never_comes_from_the_unit_builder"
+scene = {build = "aiskoff", check = "y", until = 170}
+bench = "aiskoff (PASS 11-12): aisknew2 whose heuristic is a flag nobody sets -> 新维和 0 to s168 while 维和 6, 标枪 12"
+proves = "simai unit builder: a template only the mission own build state lists never comes from it (INFERRED)"
+expect = ["max(r['新维和'] for r in rows) == 0", "rows[166]['维和总数'] + rows[166]['标枪总数'] >= 3"]
+
+[[reading]]
+id = "the_personality_condition_matches_the_id_not_the_personality_type"
+scene = {build = "aiskpt", check = "pt", until = 40}
+each = [{build = "aiskpt"}, {build = "aiskpti"}]
+bench = """\
+aiskpt / aiskpti pt (both PASS 11-12): 人格位 10 every second: (s1, CNVPtId) 2 + (Player_1, Human) 8; (s1, \
+CNVPtType) 1 and (s1, 1AlliedBalanced) 4 never"""
+proves = "simai personality condition: it matches the personality id, not the PersonalityType"
+expect = "{r['人格位'] for r in rows} == {10}"
+
+[[reading]]
+id = "a_thing_beyond_the_distance_does_not_block"
+scene = {build = "aiskblkf", check = "y", until = 170}
+bench = "aiskblkf (the bear 400 away): 新维和 1 at s28, 9 by s167, as aisknew2 without the filter"
+proves = "simai build entries: a thing beyond the Distance does not block"
+let = {got = "first('新维和')"}
+expect = ["got is not None and got <= 60", "rows[166]['新维和'] >= 4"]
+
+[[reading]]
+id = "a_bare_random_percent_is_a_percent"
+scene = {build = "aiskrand", check = "s", until = 170}
+bench = """\
+aiskrand (RANDOM_UNIT bare numbers as retail writes them): 新维和 4, 新标枪 4 by s168, the first new Javelin at s27 -- \
+a bare 30 is 30 %"""
+proves = "simai RANDOM_UNIT: a bare number is a percent"
+let = {r = "rows[166]"}
+expect = "r['新标枪'] >= 1 and r['新维和'] >= 1"
+
+[[reading]]
+id = "a_build_state_hung_at_hard_does_not_build_at_medium"
+scene = {build = "aiskdiff", check = "s", until = 170}
+bench = """\
+aiskdiff (NEW_PK in a HARD state, NEW_JAV in a MEDIUM one; bench at MEDIUM): 新维和 0 to s169, 新标枪 1 at s27, 8 by \
+s167"""
+proves = "simai build state Difficulty: a state hung at HARD does not build at MEDIUM"
+expect = ["max(r['新维和'] for r in rows) == 0", "rows[166]['新标枪'] >= 1"]
+
+[[reading]]
+id = "a_new_barracks_first_unit_is_the_unit_builders"
+scene = {build = "aiskvveh", check = "t", until = 100}
+bench = """\
+aiskvveh t (ten Hammers; bench 11-12): 警犬 1 at s23, 标枪 1 at s29 .. 6 at s57, 维和 0 and 工程师 0 to s143; the first \
+idle frame goes to the unit builder (seed 1 = the dog)"""
+proves = "simai unit builder: a new barracks first unit is the unit builder draw, then the build states"
+expect = ["rows[27]['警犬总数'] == 1 and rows[27]['标枪总数'] == 0", "max(r['维和总数'] for r in rows) == 0", "rows[98]['标枪总数'] == 6 and rows[98]['警犬总数'] == 1"]
+
+[[reading]]
+id = "a_medium_unit_cap_of_3_holds_the_army_at_4"
+scene = {build = "aiskuc", check = "uc", until = 100.0}
+bench = """\
+aiskuc uc (UnitCap Cap 3 MEDIUM + Cap 1 EASY HARD BRUTAL, bench at MEDIUM): 兵数 4 at s37 and no more to s110 (the \
+stock AI has 8 by ~s60)"""
+proves = "simai unit cap: strictly more than the smallest matching Cap stops building, other difficulties skipped"
+let = {army = "[r['兵数'] for r in rows]"}
+expect = "max(army) == 4 and army[-1] == 4"
+
+[[reading]]
+id = "after_s110_the_opening_riptides_pass_the_unit_cap"
+scene = {build = "aiskuc", check = "uc", until = 145.0}
+bench = """\
+aiskuc uc: 兵数 4 to s110, then 6 at s111, 8 at s124, 10 from s132 to s218 -- the three Riptides closing the \
+opening (simai 6 / 8 / 10 at s115 / s126 / s137)"""
+proves = "simai unit cap: the opening Riptides pass the cap, each counting twice (the _Ground form)"
+let = {army = "[r['兵数'] for r in rows]"}
+expect = ["max(army[:110]) == 4 and army[-1] == 10", "sorted(set(army[100:])) == [4, 6, 8, 10]"]
+
+[[reading]]
+id = "the_unit_cap_counts_the_miners"
+scene = {build = "aiskuc7", check = "uc", until = 110.0}
+bench = """\
+aiskuc7 uc (UnitCap 7 MEDIUM): 兵数 6 at s49, the first miner s53, 7 from s55 to s111 -- with the miner the count \
+is 8 > 7 and building stops"""
+proves = "simai unit cap: the cap counts the miners"
+expect = "max(r['兵数'] for r in rows) == 7"
+mismatch = """\
+B round 200: a race, not the cap rule -- bench 兵数 6 s49, the first miner s53, the 7th soldier s55 (7 + 1 miner = \
+8 > 7: no more); the model 6 s47, the 7th soldier s53 (7, no miner yet: one more ordered), the miner s55, 8 from \
+s59. The model draws other soldiers (B189 moved the draws, the same as aiskirm) and its miner is 2 s late; red \
+since before model 12dfca8. Needs the miner's time on the bench (refinery order / done), not a constant."""
+
+[[reading]]
+id = "the_unit_cap_holds_the_build_states_unit_too"
+scene = {build = "aiskucn", check = "ucn", until = 110.0}
+bench = "aiskucn ucn (aisknew2 + UnitCap 3 MEDIUM): 兵数 5 and 新维和 2 from s33 to s111 (uncapped 9 by s167)"
+proves = "simai unit cap: the build state unit order checks UnitCap too"
+expect = "max(r['新维和'] for r in rows) == 2 and max(r['兵数'] for r in rows) == 5"
+
+[[reading]]
+id = "a_personality_whose_skirmish_gate_is_closed_is_used_whatever_its_side"
+scene = {build = "aisksd1", check = "sd", until = 40}
+bench = """\
+aisksd1 (PASS 11-14): CNVSideX (Side Soviet, SkirmishPersonality false) on a Japanese s1 -> 人格位 9 every second \
+s1-s41"""
+proves = "simai personality choice: with SkirmishPersonality false Side acts nowhere"
+expect = "{r['人格位'] for r in rows} == {9}"
+
+[[reading]]
+id = "a_skirmish_personality_of_another_side_is_replaced"
+scene = {build = "aisksd2", check = "sd", until = 40}
+bench = """\
+aisksd2 (PASS 11-14): the same with SkirmishPersonality true -> 人格位 136 s1-s41: 2JapanMechaWarfare 128 + Human 8 \
+(a random Japanese one)"""
+proves = "simai personality choice: a skirmish personality of another side is replaced"
+expect = "all(not r['人格位'] & 1 and r['人格位'] & 8 for r in rows)"
+
+[[reading]]
+id = "a_computer_player_without_a_personality_is_neither_hunt_nor_allied_balanced"
+scene = {build = "aisksd4", check = "sd", until = 40}
+bench = """\
+aisksd4 (PASS 11-14): s1 without aiPersonality -> 人格位 8 s1-s41: none of CNVSideX, HuntPersonality, \
+1AlliedBalanced, the Japanese skirmish ones"""
+proves = "simai personality choice: a computer player without a personality is neither Hunt nor AlliedBalanced"
+expect = "{r['人格位'] for r in rows} == {8}"
+
+[[reading]]
+id = "seven_inert_personality_fields_change_nothing"
+scenes = {base = {build = "aiskirm", check = "ib", until = 160.0}, inert = {build = "aiskinb", check = "ib", until = 160.0}}
+bench = """\
+aiskinb vs aiskirm ib (bench 11-13, both PASS): stock to the second (+-1 s): 建筑码 100 s19 .. 1124 s148/149; 兵数 \
+the same steps; AI钱 within the same second spend"""
+proves = "simai personality fields: seven fields read as acting nowhere change nothing"
+expect = "inert == base"
+
+[[reading]]
+id = "a_resource_node_search_radius_of_5000_changes_nothing_on_a_plain_skirmish"
+scenes = {base = {build = "aiskirm", check = "ib", until = 160.0}, radius = {build = "aiskind", check = "ib", until = 160.0}}
+bench = """\
+aiskind vs aiskirm ib (bench 11-14, both PASS): 建筑码 100 s19 .. 1124 s148 and the buildings die s204 / 220 / 222 \
+in both, 兵数 the same steps"""
+proves = "simai personality fields: ResourceNodeSearchRadius 5000 changes nothing on a plain skirmish"
+expect = "radius == base"
+
+[[reading]]
+id = "seven_conditional_personality_fields_change_nothing_on_a_plain_skirmish"
+scenes = {base = {build = "aiskirm", check = "ib", until = 160.0}, seven = {build = "aiskins", check = "ib", until = 160.0}}
+bench = """\
+aiskins vs aiskirm ib (bench 11-14, both PASS): 建筑码 to 1124 s148, buildings die s204 / 220 / 222, 兵数 the same \
+steps (+-1 s)"""
+proves = "simai personality fields: seven conditional fields change nothing on a plain skirmish"
+expect = "seven == base"
+
+[[reading]]
+id = "refinery_placement_far_rings_add_refineries"
+scene = {build = "aiskinp", check = "ib", until = 160.0}
+bench = """\
+aiskinp 建筑码 1132 s148 / 1133 s158 / 1134 s168 / 1144 s188 / 1154 s223 / 1155 s248 vs aiskirm 1123 s138 / 1124 \
+s148 (simulator: the third ~3 s later)"""
+proves = "simai refinery placement: far rings add refineries (third at s158)"
+expect = "rows[155]['建筑码'] // 10 % 10 == 3"
+
+[[reading]]
+id = "the_third_refinery_goes_to_the_east_field_or_nowhere"
+scene = {build = "aiskirm", check = "rp", until = 160.0}
+each = [{build = "aiskirm", third = 2}, {build = "aiskin1", third = 3}, {build = "aiskin0", third = 3}, {build = "aiskinp", third = 3}]
+bench = """\
+rp (all PASS): 矿区码 2 to s147 in all four; stock aiskirm stays 2, aiskin1 / aiskin0 / aiskinp 3 from s148 (all at \
+the AI east field)"""
+proves = "simai refinery placement: the third refinery goes to the east field or nowhere"
+expect = ["rows[100]['矿区码'] == 2", "rows[158]['矿区码'] == third"]
+
+[[reading]]
+id = "stock_refineries_stand_on_ring_5_of_each_east_node_at_minus_three_sixteenths"
+scene = {build = "aiskirm", check = "rpx", until = 160.0}
+bench = """\
+rpx aiskirm (PASS): 矿场X / 矿场Y step to 26 / 9 at s49 and +28 / +11 at s69 (each east node facing - 3 pi / 16, \
+~250 out), no third to s234"""
+proves = "simai refinery placement: stock refineries stand on ring 5 of each east node"
+let = {at = "first('矿场X')"}
+expect = ["(rows[at]['矿场X'], rows[at]['矿场Y']) == (26, 9)", "(rows[100]['矿场X'], rows[100]['矿场Y']) == (26 + 28, 9 + 11)", "(rows[158]['矿场X'], rows[158]['矿场Y']) == (54, 20)"]
+mismatch = """\
+B191 (D138 pre-check, read): ring 4 at -3 stands 121 off node A's default spot; two 60 x 45 boxes need only \
+115.8, so the simulator takes ring 4 (aiskirm x26 y10, aiskirmr x18 y10); the bench rejects it and takes ring 5 \
+/ 6 (x26 y9 / x17 y15). No pair of rigid 60 x 45 boxes rejects 121 yet passes ring 5 (26, 137.6): the shape \
+test, R or the node radius is not as modelled (D138 1; asked in b191_refinery_ring4.md)"""
+
+[[reading]]
+id = "ticks_0_and_a_far_start_place_alike_and_keep_placing"
+scenes = {a = {build = "aiskin0", check = "rpx", until = 160.0}, b = {build = "aiskin1", check = "rpx", until = 160.0}}
+bench = """\
+rpx aiskin0 / aiskin1 (both PASS): identical rows; refineries at s49 / s69 / s148 (and s188 / s223), none in an \
+east node +-33.75 degree fan"""
+proves = "simai refinery placement: Ticks 0 and a far start fall back alike and keep placing"
+expect = ["[(r['矿场X'], r['矿场Y']) for r in a] == [(r['矿场X'], r['矿场Y']) for r in b]", "first('矿场X', rows=a) < 60", "a[158]['矿场X'] > a[100]['矿场X'] > a[60]['矿场X'] > 0"]
+
+[[reading]]
+id = "ticks_0_puts_the_first_refinery_where_the_bench_did"
+scene = {build = "aiskin0", check = "rpx", until = 160.0}
+bench = """\
+aiskin0 rpx: the first refinery at strips x27 y18 (4425,3275), the second x16 y8 (3875,2775); the yard \
+NEAR_RESOURCE_NODE tries A + 36 and A - 36"""
+proves = "simai refinery placement: Ticks 0 puts the first refinery on strip x27 y18"
+let = {at = "first('矿场X')"}
+expect = "(rows[at]['矿场X'], rows[at]['矿场Y']) == (27, 18)"
+mismatch = """\
+B204: node_side_spot puts it at A + 36 = -16 deg, r 600 = (4427,3235), strip x27 y17; the bench x27 y18 (y >= \
+3250) needs about -14 deg: A ~ -50, not the nearest node's -52 (or another anchor / R; the node pick unread). \
+One strip off"""
+
+[[reading]]
+id = "turned_east_nodes_turn_the_first_refinery_to_the_west_side"
+scene = {build = "aiskirmr", check = "rpx", until = 160.0}
+bench = """\
+rpx aiskirmr (aiskirm with the two east nodes facing pi, PASS): the first refinery s49 at strips x17 y15 \
+(~3925,3125), the mirror of aiskirm x26 y9; not at x19 y12"""
+proves = """\
+simai refinery placement: the seven ways follow the node facing -- turned nodes turn the first refinery west"""
+let = {at = "first('矿场X')", x = "rows[at]['矿场X']", y = "rows[at]['矿场Y']"}
+expect = "17 <= x <= 18 and y == 15 and (x, y) != (19, 12)"
+mismatch = """\
+B191 (D138 pre-check, read): ring 4 at -3 stands 121 off node A's default spot; two 60 x 45 boxes need only \
+115.8, so the simulator takes ring 4 (aiskirm x26 y10, aiskirmr x18 y10); the bench rejects it and takes ring 5 \
+/ 6 (x26 y9 / x17 y15). No pair of rigid 60 x 45 boxes rejects 121 yet passes ring 5 (26, 137.6): the shape \
+test, R or the node radius is not as modelled (D138 1; asked in b191_refinery_ring4.md)"""
+
+[[reading]]
+id = "allied_build_radius_over_the_ais_own_does_not_move_its_structures"
+scenes = {a = {build = "acbr0", check = "rpb", until = 40.0}, b = {build = "acbr1", check = "rpb", until = 40.0}}
+bench = """\
+acbr0 / acbr1 rpb (both PASS): both runs read the same: the barracks s49 at strips x10 y17 (~420 from the friend \
+yard, inside its 600), the power plant next at +x21 +y17 (31 34)"""
+proves = """\
+simai allied build radius: false does not refuse a spot the AI own yard covers too (H2: a cell passes when any \
+buildable-area record does)"""
+let = {at = "first('其他X', rows=a)", second = "next(r for r in a if r['其他X'] > a[at]['其他X'])"}
+expect = ["a == b", "a[at]['建筑码'] == 100 and 10 <= a[at]['其他X'] <= 11 and a[at]['其他Y'] == 17", "(second['其他X'] - a[at]['其他X'], second['其他Y'] - a[at]['其他Y']) == (21, 17)"]
+
+[[reading]]
+id = "turned_east_nodes_give_one_refinery_each_and_no_third"
+scene = {build = "aiskirmr", check = "rpx", until = 160.0}
+bench = "aiskirmr rpx (B190): 矿场X / 矿场Y 17 / 15 at s49, 36 / 32 at s68 (second +19 / +17), the same to s264"
+proves = "simai refinery placement: turned east nodes give one refinery each and no third"
+let = {at = "first('矿场X')"}
+expect = ["(rows[at]['矿场X'], rows[at]['矿场Y']) == (17, 15)", "(rows[100]['矿场X'], rows[100]['矿场Y']) == (36, 32)", "(rows[158]['矿场X'], rows[158]['矿场Y']) == (36, 32)"]
+mismatch = """\
+B190: the bench puts aiskirmr's first on strip x17 (sim x18: ring 6, not 5?) and its second on node B (x19 y17, \
+146.25 degrees, ~285), no third; the simulator takes A again (180 degrees) and keeps building (B unserved); \
+unread"""
+
+[[reading]]
+id = "ticks_0_falls_back_alike_whichever_way_the_nodes_face"
+scenes = {a = {build = "aiskin0", check = "rpx", until = 160.0}, b = {build = "aiskin0r", check = "rpx", until = 160.0}}
+bench = """\
+rpx aiskin0r (aiskin0 with the east nodes facing pi, PASS): the same rows to the second as aiskin0 (x27 y18, x16 \
+y8, x27 y25, x9 y10, x16 y12 at s49 / s69 / s148 / s189 / s223)"""
+proves = "simai refinery placement: where a refinery goes once every node fails does not follow the nodes facing"
+expect = "[(r['矿场X'], r['矿场Y']) for r in a] == [(r['矿场X'], r['矿场Y']) for r in b]"
+
+[[reading]]
+id = "front_structures_face_the_map_centre_from_the_yard"
+scene = {build = "aiskin0", check = "rpb", until = 110.0}
+each = [{build = "aiskin0"}, {build = "aiskin0r"}]
+bench = """\
+rpb aiskin0 / aiskin0r (both PASS): the barracks (FRONT) s19 at strips x11 y17; the war factory (FRONT, s99) at \
+A + 36 (aiskin0 x13 y15) or A - 36 (aiskin0r x9 y21)"""
+proves = "simai general placement: FRONT structures face the map centre from the yard, tries A, +36, -36"
+let = {at = "first('其他X')", wf = "first('建筑码', lambda v: v >= 1000)", step = "(rows[wf]['其他X'] - rows[wf - 1]['其他X'], rows[wf]['其他Y'] - rows[wf - 1]['其他Y'])"}
+expect = ["rows[at]['建筑码'] == 100 and (rows[at]['其他X'], rows[at]['其他Y']) == (11, 17)", "wf is not None", "step in ((13, 15), (14, 15), (9, 21))"]

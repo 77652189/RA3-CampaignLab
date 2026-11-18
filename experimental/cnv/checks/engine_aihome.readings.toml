@@ -1,0 +1,22 @@
+# Bench readings of checks/engine_aihome.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# DefaultTacticHomeBaseCriteria (bench 2026-11-14).
+
+[[reading]]
+id = "return_home_picks_the_base_by_the_personality_criteria"
+scene = {build = "aihmgcl", check = "a", until = 60}
+each = [{build = "aihmgcl", home = ""}, {build = "aihmgnw", home = "家B"}, {build = "aihmgno", home = "家B"}]
+bench = """\
+two yards (B 1350 north), a SimpleAttack team loses its plant: PREFER_NEWEST -> 家B 4 from s36; OLDEST_OF_TYPE \
+(PREFER_CLOSEST) -> 家B 4 from s30; PREFER_CLOSEST alone -> disbands where it stands, 到电厂 4 to s88, never 家A \
+(home = \"\" means that case)"""
+proves = "simai return home: the base is picked by the personality criteria"
+expect = "(all(r['家B'] == 0 for r in rows) and rows[-1]['到电厂'] == 4 and rows[-1]['家A'] == 0) if not home else (rows[-1][home] == 4 and rows[-1]['到电厂'] == 0)"
+
+[[reading]]
+id = "reactive_defense_without_criteria_guards_the_newer_base"
+scene = {build = "aihomecl", check = "a", until = 30}
+bench = """\
+aihomecl: the Peacekeepers leave A s8-s11 and are all at B from s14 (simulator s15); the foe 1000 south of A is \
+never chased (PREFER_NEWEST picks B)"""
+proves = "simai reactive defense: without TargetBaseCriteria it guards the newer base"
+expect = ["first('家B', lambda v: v == 4) <= 16", "all(r['敌存活'] == 1 for r in rows)"]
