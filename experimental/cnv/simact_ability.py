@@ -8,7 +8,7 @@ import math
 
 import simgarrison
 import simunits
-from simpower import CURTAIN, PACK_FRAMES, PACK_POWER, RELOAD_LAG, SUPERWEAPON_HITS, UNPACK_POWER
+from simpower import CURTAIN, PACK_FRAMES, PACK_POWER, RELOAD_LAG, SUPERWEAPON_HITS, UNPACK_POWER, start_reload
 from simscript import refined
 from simworld import GAP_ACTION
 
@@ -126,7 +126,7 @@ def named_buttons(sim, name, a, script):
             sim.used.add('assemble')           # a script's cast heeds neither reload nor placing rules
             rules = simunits.power_rules(b.template, a[1], sim.own)    # (bench engine_skill a-c, w); it
             if rules and rules['reload']:                               # starts the reload all the same
-                b.ready_at[a[1]] = sim.frame_now() + rules['reload']   # (RA3 1.13, read, work/re/l2_ability.md)
+                start_reload(sim, b, a[1], sim.frame_now() + rules['reload'])   # (RA3 1.13, read, l2_ability.md)
             b.building, b.goal, b.mode = (got[1], p, got[0]), None, 'move'
             sim.note('技能', f'{sim.label(b)} 去 {a[2]} 造 {got[1]}')
             if not sim.at_site(b, 0.0):
@@ -142,7 +142,8 @@ def named_buttons(sim, name, a, script):
             # in the reload a cast started brings no blast
             cooling = bool(b and b.alive and b.ready_at.get(a[1], 0) > sim.frame_now())
             if rules and rules['reload']:       # every cast starts the reload anew (RA3 1.13, read, work/re/l2_ability.md;
-                b.ready_at[a[1]] = sim.frame_now() + rules['reload'] + RELOAD_LAG.get(a[1], 0)   # SDK GlobalData)
+                start_reload(sim, b, a[1],                                                  # SDK GlobalData)
+                             sim.frame_now() + rules['reload'] + RELOAD_LAG.get(a[1], 0))
             hits = SUPERWEAPON_HITS.get(a[1]) if b and b.alive else None
             if hits and q is not None and cooling:
                 sim.used.add('superweapon')

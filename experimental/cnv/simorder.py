@@ -25,7 +25,7 @@ import numpy as np
 
 import simunits
 from engine.kernel import interfaces
-from simpower import UNPACK_POWER
+from simpower import UNPACK_POWER, start_reload
 from simworld import CIV, GRID, inside
 
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
@@ -268,7 +268,7 @@ def order_transform(world, peers, b, power):
         return False, why
     if not peers.toggle_press(b, 'Command_JAIV_Transform'):
         return False, 'not a toggle of his'
-    b.ready_at[power] = world.frame_now() + simunits.power_rules(b.template, power, world.own)['reload']
+    start_reload(world, b, power, world.frame_now() + simunits.power_rules(b.template, power, world.own)['reload'])
     return True, None
 
 

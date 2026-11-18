@@ -304,9 +304,18 @@ class Production(Interface):
 
 
 class SpecialPower(Interface):
+    """A SpecialPowerModule, several a thing (step M8; the engine's isModuleForPower / getReadyFrame / setReadyFrame):
+    the SpecialPowerTemplate it serves (power), the frame its reload ends (ready_at: None, no cast started one) and a
+    cast starting it anew (set_ready_at: that frame). The cast itself (cast) comes with the step that models it."""
     __slots__ = ()
 
+    def power(self):
+        raise NotImplementedError
+
     def ready_at(self):
+        raise NotImplementedError
+
+    def set_ready_at(self, frame):
         raise NotImplementedError
 
     def cast(self, target):

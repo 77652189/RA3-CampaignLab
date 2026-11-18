@@ -41,12 +41,13 @@ class World:
                 m.on_create(frame)
         return mods
 
-    def attach(self, thing, tag, frame=None):
-        """One module of a registered tag made on a thing after it was made -- its data the tag's empty block, no
-        on_create -- and held from `frame` (default: the frame of the cell now running): the skirmish AI's late
-        lifetime (simbody.last_until). -> the module."""
+    def attach(self, thing, tag, frame=None, head=''):
+        """One module of a registered tag made on a thing after it was made -- its data the parse of a block of the
+        tag with attributes `head` (default: none), no on_create -- and held from `frame` (default: the frame of the
+        cell now running): the skirmish AI's late lifetime (simbody.last_until), a reload for a power no block of the
+        thing serves (simpower.start_reload). -> the module."""
         cls = self.tags[tag]
-        m = cls(thing, cls.DATA.parse('', '').seal(), self)
+        m = cls(thing, cls.DATA.parse(head, '').seal(), self)
         thing.modules = tuple(thing.modules) + (m,)
         if isinstance(m, interfaces.Update):
             self.schedule.add(m, self.frame if frame is None else frame)

@@ -1,6 +1,24 @@
 """L2 special powers (ADR 0029, docs/engine/sim-layers.md): a script's superweapon hits, the curtains, the reload
 lag and the deploy / pack buttons' powers, moved out of sim.py so the action files read them without importing sim.
-sim re-exports them all (`sim.SUPERWEAPON_HITS`, `sim.CURTAIN` still work)."""
+sim re-exports them all (`sim.SUPERWEAPON_HITS`, `sim.CURTAIN` still work). The reloads' host half (step M8):
+the body's `ready_at` forward and starting a reload on the SpecialPower modules (engine/modules/specialpower.py)."""
+from engine.kernel import interfaces
+
+
+def ready_at(mods):
+    """The body's ready_at forward: {power: the frame its reload ends} of the SpecialPower modules a cast started."""
+    return {m.power(): m.ready_at() for m in mods if m.ready_at() is not None}
+
+
+def start_reload(world, b, power, frame):
+    """A cast of `power` by b starts its reload, over at `frame`: every SpecialPower module of b serving it; none --
+    a power cast on a thing no block of whose template serves it -- one attached now (World.attach), as the body's
+    dict took any key."""
+    mods = [m for m in (b.find(interfaces.SpecialPower) if b.modules else ()) if m.power() == power]
+    if not mods:
+        mods = [world.world.attach(b, 'SpecialPower', head=f'SpecialPowerTemplate="{power}"')]
+    for m in mods:
+        m.set_ready_at(frame)
 
 # A script's superweapon at a waypoint: [(frames after the cast, [(centre distance, damage)])], nothing past the last
 # distance. Proton collider: bench 2026-11-07 engine_super p / q (base defenses of 1000 at 0 / 150 / 240 / 300): the

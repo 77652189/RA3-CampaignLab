@@ -75,6 +75,7 @@ import simmodifier  # noqa: E402
 import simmoney  # noqa: E402
 import siminfiltrator  # noqa: E402
 import simorder  # noqa: E402
+import simpower  # noqa: E402
 import simspecial  # noqa: E402
 import simsweep  # noqa: E402
 import simtech  # noqa: E402
@@ -410,8 +411,6 @@ class Body(kernel_module.Thing):
     sell_end: int = None                                        # SELL_OBJECT: the frame the sale deletes it (sell)
     mine: dict = None                                           # a harvester's trip (mine_due): state, node,
                                                                 # refinery, due frame, load, paid, leg
-    ready_at: dict = dataclasses.field(default_factory=dict)   # special power -> the frame its reload ends (a cast,
-                                                                # the script's too, starts it anew: order_power)
     lies: float = 0.0                                           # seconds it lies dying once killed (SlowDeath's
                                                                 # DestructionDelay), the crush's death only (R9)
     linger: float = 0.0                                         # ... the lie this death has (LINGER, or `lies`)
@@ -459,7 +458,7 @@ class Body(kernel_module.Thing):
     FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
-                'spawn_module')
+                'spawn_module', 'ready_at')
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
@@ -482,6 +481,7 @@ class Body(kernel_module.Thing):
     spawn_refills = kernel_module.forward(kernel_interfaces.Spawn, lambda ms: [r for m in ms for r in m.refills()], [])
     spawn_parent = kernel_module.forward(kernel_interfaces.Slaved, lambda m: m.slaver())   # its SlavedUpdate's maker
     spawn_module = kernel_module.forward(kernel_interfaces.Slaved, lambda m: m.slaver_module(), '')
+    ready_at = kernel_module.forward(kernel_interfaces.SpecialPower, simpower.ready_at, {})  # step M8: {power: frame}
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)

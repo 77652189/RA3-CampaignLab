@@ -8,6 +8,7 @@ Other commands retain their explicit unmodeled execution path.
 L5 orders (ADR 0029): reaches the world only through simworld.WORLD_API; the modifiers' re-set (`modify`, L2) is
 handed in by the caller (simai).
 """
+import simpower
 import simunits
 
 COMMAND = 'Command_JapanAntiInfantryInfantryBonzai'
@@ -48,7 +49,7 @@ def fire(world, body, command, modify):
     xml, mid, duration, reload = got
     now = world.frame_now()
     body.auras_on[mid] = (now + duration, xml)
-    body.ready_at[command] = now + reload
+    simpower.start_reload(world, body, command, now + reload)     # keyed by the command, as it always was
     modify(body)
     world.gap('升级', mid, '冲锋仅接状态、速度、武器选择；ArmorSetType护甲切换未模拟')
     world.change()
