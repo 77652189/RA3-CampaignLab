@@ -566,9 +566,11 @@ def test_every_frame_cell_runs_its_modules_in_the_frame_order():
     log = []
     _probes(s, simloop.FRAME, log)
     s.step()
-    frames = sorted({f for f, _ in log})
+    # the scripts cell moves the frame clock on (simloop: as the engine has it), so the cells after it see the next
+    after = set(simloop.FRAME[simloop.FRAME.index('scripts') + 1:])
+    frames = sorted({f for f, p in log if p not in after})
     assert len(frames) >= 7
-    assert log == [(f, p) for f in frames for p in simloop.FRAME]
+    assert log == [(f + (p in after), p) for f in frames for p in simloop.FRAME]
 
 
 def test_cell_guard_bites():

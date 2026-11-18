@@ -204,8 +204,7 @@ class SimWorld:
     # ---- the clock
     @property
     def frame(self):
-        world = self.world
-        return world.eng.frame if world.eng is not None else int(round(world.t * FPS))
+        return self.world.frame_now()
 
     def step(self, frames):
         """Run the simulator `frames` on (Sim.advance: run's ticks a slice at a time, stopping at the mission's end)."""

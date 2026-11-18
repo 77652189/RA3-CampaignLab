@@ -4,11 +4,11 @@
 a DT tick. A cell is `fn(s, frame, tick)`: `s` the Sim, `frame` the engine frame as the cell sees it, `tick` the
 tick's state (its start, whether its first-frame block ran).
 
-With the engine model `frame` is `eng.frame` read when the cell runs: the scripts cell (the model's step) moves it
-on, so the cells after it see the next frame, as the engine has it. Without the model (a clean clone without the
-private engine model, Sim(model=False)) the same order runs frame by frame, the scripts cell running the Python
-scripts once a frame; nothing moves the frame on mid-frame, so every cell of a frame sees that frame (frame_now()
-too) -- the cells after the scripts one see a frame one earlier than with the model. Until 11-17 the clean clone
+`frame` is the run's frame clock (Sim.clock, simworld.FrameClock) read when the cell runs: the scripts cell moves it
+on -- the model's step its engine's frame, the public executor (Sim(model=False), a clean clone without the private
+engine model) the world's clock -- so the cells after it see the next frame, as the engine has it, either way (until
+step R3 ④-1, 11-18, the clean clone counted the tick's frames itself and every cell of a frame saw that frame, the
+cells after the scripts one a frame earlier than with the model). Until 11-17 the clean clone
 ran a reduced order of its own once a tick (step_old: fewer cells, tech last, expire first, the fight's damage
 dealt at once); the merge changed its readings on purpose (work/re/handoff-r.md).
 """
@@ -254,19 +254,11 @@ def step(s, cells=_FRAME):
     """One DT tick from s.t (the caller moves s.t on): the tick's frames (those before s.t + DT, 7 or 8), each
     running FRAME in order (`cells`: the same order, timed()'s). The frame: the engine model's (its scripts cell moves
     it on); without the model the tick's own count from its first frame, the same for every cell of a frame."""
-    t0, eng = s.t, s.eng
+    t0, clock = s.t, s.clock
     last = math.ceil(round((t0 + DT) * s.fps, 6))
     tick = Tick(t0)
-    if eng is not None:
-        while eng.frame < last and s.ending is None:
-            s.t = eng.frame / s.fps
-            for cell in cells:
-                cell(s, eng.frame, tick)
-    else:
-        frame = math.ceil(round(t0 * s.fps, 6))
-        while frame < last and s.ending is None:
-            s.t = frame / s.fps
-            for cell in cells:
-                cell(s, frame, tick)
-            frame += 1
+    while clock.frame < last and s.ending is None:
+        s.t = clock.frame / s.fps
+        for cell in cells:
+            cell(s, clock.frame, tick)
     s.t = t0

@@ -57,6 +57,17 @@ GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS = \
     '武器', '升级', '脚本动作', '脚本条件', '命令', '状态'
 
 
+class FrameClock:
+    """The world's frame clock: `frame`, the engine frame now. One object a run (Sim.clock): the engine model's engine
+    where it is (its step moves it on), else this one, moved on by the public executor before each frame's scripts
+    (engine/script/executor.py `clock`). Every reader of the frame reads it (Sim.frame_now, simloop.step), with the
+    model or without, so the cells after the scripts one see the next frame either way."""
+    __slots__ = ('frame',)
+
+    def __init__(self, frame=0):
+        self.frame = frame
+
+
 def inside(pts, x, y):
     """Point in polygon (even-odd)."""
     c, n = False, len(pts)

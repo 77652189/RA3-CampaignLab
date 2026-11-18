@@ -1943,8 +1943,7 @@ class SimAI:
 
     @property
     def frame(self):
-        world = self.world
-        return world.eng.frame if world.eng is not None else int(round(world.t * FPS))
+        return self.world.frame_now()
 
     def flags(self, player):
         """The mission's flags as states.py keys them: cnv's scripts run in a player's script list, so a bare SET_FLAG

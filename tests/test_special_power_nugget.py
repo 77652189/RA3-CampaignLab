@@ -600,9 +600,11 @@ def test_disguise_model_condition_script_interface():
     assert e.cond('UNIT_HAS_MODELCONDITION', args)
     assert 'DISGUISED' not in b.status | b.script_status
     e.t += 2.
+    e.clock.frame += 2 * 15             # the frame clock with the time (the frame loop moves both)
     assert not e.cond('UNIT_HAS_MODELCONDITION', args)
     e.act('UNIT_SET_MODELCONDITION_GENERIC', args + [0.], '')
     e.t += 100.
+    e.clock.frame += 100 * 15
     assert e.cond('UNIT_HAS_MODELCONDITION', args)
     e.act('UNIT_CLEAR_MODELCONDITION', args, '')
     assert not e.cond('UNIT_HAS_MODELCONDITION', args)

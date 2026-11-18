@@ -845,7 +845,7 @@ class Sim:
         self.mm = mission.merged(test) if self.retail else parts.merged(mission, test)
         self.test = test
         self.level = LEVELS[level]
-        self.t = 0.0
+        self.t, self.clock = 0.0, simworld.FrameClock()  # the frame now: its clock (the model's: simexec.attach)
         self.log = []                       # (t, kind, text)
         self.box_log = []                   # [start, end, text]: the caption box holds one line; a new one ends the one up
         self.panel_log = []                 # groups of (t, text): the dialogue panel stacks subtitles, a group clears together
@@ -1129,7 +1129,7 @@ class Sim:
             v = np.float32(power_factor(*self.power(owner)))       # and does not fire meanwhile; RA3 1.13, work/re/l2_construction.md:
             extra = np.float32(np.float32(1.0) - v) * np.float32(unpack)   # trunc((1 - v) F + F), v the owner's
             b.unpack_end = self.frame_now() + int(np.float32(extra + np.float32(unpack)))   # factor then
-        mods = self.world.build(b, self.eng.frame if getattr(self, 'eng', None) else int(round(at * simunits.LIFE_FPS)))
+        mods = self.world.build(b, self.clock.frame)
         if mods:
             b.modules = mods
         for m in b.find(kernel_interfaces.Attach):    # AttachUpdate (engine/modules/attach.py): the statuses its
@@ -2885,7 +2885,7 @@ class Sim:
         return True
 
     def frame_now(self):
-        return self.eng.frame if self.eng else int(round(self.t * simunits.LIFE_FPS))
+        return self.clock.frame
 
     def on_the_move(self, b):
         """b physically moves this frame, as the program's own clock has it (TEAM_DISCOVERED): from the frame after

@@ -5,6 +5,7 @@ still runs out), 5 (the stasis zone: an aura, everyone within stops, free within
 from test_plans import named, small  # (puts experimental/cnv on the path)  # noqa: F401, I001
 import sim  # noqa: E402
 import simunits  # noqa: E402
+import simworld  # noqa: E402
 from units import platform, stasis_zone, tower_ball  # noqa: E402
 
 
@@ -44,8 +45,14 @@ def test_a_retail_modifier_is_found_and_shields_for_its_duration():
 def _world(own):
     s = sim.Sim.__new__(sim.Sim)
     s.own, s.bodies, s.eng, s.t, s.used = own, {}, None, 0.0, set()
+    s.clock = simworld.FrameClock()
     s.relations, s.human, s.foe, s.ai, s.players = {}, 'PlyrHuman', 'PlyrEnemy', set(), {}
     return s
+
+
+def _at(s, secs):
+    """The bare world's time and its frame clock moved to `secs` together (as the frame loop has them)."""
+    s.t, s.clock.frame = secs, int(round(secs * simunits.LIFE_FPS))
 
 
 def _body(s, name, template, owner, x, kinds, speed=30.0):
@@ -69,10 +76,10 @@ def test_the_zone_stops_friend_and_foe_within_and_lets_go_once_gone():
         assert b.speed == 0.0 and {'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'IN_STASIS'} <= b.status
     assert out.speed == 30.0 and not out.status and 'modifier' in s.used
     zone.alive = False                          # gone: held for the modifier's 1 s, then free
-    s.t = 0.5
+    _at(s, 0.5)
     s.aura_tick()
     assert ours.speed == 0.0
-    s.t = 1.0
+    _at(s, 1.0)
     s.aura_tick()
     assert ours.speed == 30.0 and not ours.status and theirs.weapons[0]['range'] == 150.0
 
@@ -99,7 +106,7 @@ def test_the_zone_holds_by_the_centre_and_a_short_hold_flickers_with_the_refresh
     edge = _body(s, 'edge', 'Tank', 'PlyrHuman', 205, ['VEHICLE'])
     seen = []
     for k in range(4):
-        s.t = 0.5 * k
+        _at(s, 0.5 * k)
         s.aura_tick()
         seen.append(near.speed == 0.0)
         assert edge.speed == 30.0

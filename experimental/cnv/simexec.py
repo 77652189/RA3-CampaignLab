@@ -8,6 +8,7 @@ from engine.ports import scripts as port
 from engine.script import executor as script_executor
 from engine.script import lists as script_lists
 import simcond
+import simworld
 import simunits
 from simscript import RA3_ONLY
 
@@ -29,6 +30,7 @@ def attach(sim, got, executor, skirmish_setup, parts):
     holding no scripts, only its frame clock (Sim.frame_now, the model's FPS), and the public executor on it -- the
     simulator's model-or-not branches as with the model, so a cross against the plug-in is the executor alone."""
     sim.eng = None
+    sim.clock = sim.__dict__.get('clock') or simworld.FrameClock()   # the world's frame clock without the model
     sim.fps = simunits.LIFE_FPS                     # the frame loop's rate, the model's FPS when there is one
     if got:
         mod, cls = got
@@ -38,11 +40,13 @@ def attach(sim, got, executor, skirmish_setup, parts):
             sim.library_ai = frozenset(sim.handed)  # kept: their MAKE_BASE stands in for the library's wake
     if got and executor == 'public':
         sim.eng = cls([], world=SimWorld(sim), difficulty=sim.level, end_library=False)
+        sim.clock = sim.eng
     elif got:
         lists = sim.m.script_lists(mod) if sim.retail else mod.from_cnv(parts.unnot(sim.mm.scripts))
         # a retail map's own scripts keep their inverted bit (the engine model: honored for retail's compiled
         # scripts; a02's 'NOT units in the convention center' completed objective 1 at 0:04 with it ignored)
         sim.eng = cls(lists, world=SimWorld(sim), difficulty=sim.level, honor_inverted=sim.retail)
+        sim.clock = sim.eng                         # its step moves the frame on
         sim.flags = sim.eng.flags
         if any(c and c[-1] == parts.NOT for s in sim.mm.scripts for c in s.when):
             sim.used.add('inverted')
@@ -51,7 +55,7 @@ def attach(sim, got, executor, skirmish_setup, parts):
         # the public executor's lists: a retail map's own per side with its libraries (retail.script_lists), ours
         # one unnamed list, the compiler's NOT marks inverted (as the game would not: an assumption the run lists)
         lists = sim.m.script_lists(script_lists) if sim.retail else script_lists.from_cnv(sim.mm.scripts, parts.NOT)
-        sim.executor = script_executor.PublicExecutor(SimWorld(sim), lists, sim.level, sim.fps, clock=sim.eng,
+        sim.executor = script_executor.PublicExecutor(SimWorld(sim), lists, sim.level, sim.fps, clock=sim.clock,
                                                       assume_inverted=not sim.retail)
     else:
         sim.executor = sim.eng
