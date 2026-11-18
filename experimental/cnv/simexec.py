@@ -6,6 +6,7 @@ import collections.abc
 
 from engine.ports import scripts as port
 from engine.script import executor as script_executor
+from engine.script import lists as script_lists
 import simcond
 import simunits
 from simscript import RA3_ONLY
@@ -46,8 +47,14 @@ def attach(sim, got, executor, skirmish_setup, parts):
         if any(c and c[-1] == parts.NOT for s in sim.mm.scripts for c in s.when):
             sim.used.add('inverted')
         sim.model_scripts = True
-    sim.executor = sim.eng if sim.model_scripts else script_executor.PublicExecutor(
-        SimWorld(sim), sim.mm.scripts, sim.level, sim.done, sim.disabled, parts.NOT, sim.fps, clock=sim.eng)
+    if not sim.model_scripts:
+        # the public executor's lists: a retail map's own per side with its libraries (retail.script_lists), ours
+        # one unnamed list, the compiler's NOT marks inverted (as the game would not: an assumption the run lists)
+        lists = sim.m.script_lists(script_lists) if sim.retail else script_lists.from_cnv(sim.mm.scripts, parts.NOT)
+        sim.executor = script_executor.PublicExecutor(SimWorld(sim), lists, sim.level, sim.fps, clock=sim.eng,
+                                                      assume_inverted=not sim.retail)
+    else:
+        sim.executor = sim.eng
     sim.counters, sim.timers = Counters(sim.executor), Timers(sim.executor, sim)   # the executor's one table
 
 

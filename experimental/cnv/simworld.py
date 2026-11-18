@@ -28,6 +28,7 @@ WORLD_API = frozenset({
     'point',           # a waypoint / area / site / mark / named object / '@x,y' -> its (x, y), None where none
     'ground',          # the pathing grid (within / route)
     'eng',             # the private engine model's handle, None without it
+    'executor',        # the script executor (engine/ports/scripts.py): a sequential script's steps are its actions
     'change',          # () -> note that something changed now (last_change)
     't',               # the run's time now, seconds
     'kills',           # (killer's player, killer's name, template, name) by weapon, append only

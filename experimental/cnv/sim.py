@@ -862,7 +862,6 @@ class Sim:
         self.flags, self.counters, self.timers = {}, {}, {}
         self.objectives = {}                # name -> status (0 hidden, 1 shown, 2 done, 3 failed)
         self.markers = {}                   # objective -> {object / waypoint}
-        self.done, self.disabled = set(), set()
         self.banned = set()                 # (player, template in lower case): ALLOW_DISALLOW_ONE_BUILDING 0
         self.unit_construction_disabled = set()  # named players; engine_unitban a/b native engineer queues
         self.base_construction_disabled = set()  # named players; aibgate:a the skirmish AI's structure orders (simai)

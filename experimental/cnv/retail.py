@@ -14,7 +14,7 @@ What is read off the map (mapstudy / mapxml / mapscript / mapterrain, the reader
             (HeightMapData)
   terrain   the height field (elevation / 16, as the cnv maps'), the water height (GlobalWaterSettings), the engine's
             own impassable cells (BlendTileData bit field 0)
-  scripts   PlayerScriptsList as the engine model reads a .map (ra3model scripts.from_mapfile), one list per side in
+  scripts   PlayerScriptsList as an executor reads a .map (engine/script/lists.from_mapfile), one list per side in
             SidesList order (the unnamed neutral side first), each with the scripts of the library maps that side
             carries (LibraryMaps, read from the game's Libraries.big: library_lists)
 What the simulator does not act on is listed by the run (Sim.unmodeled / Sim.unknown), not dropped quietly.
@@ -168,8 +168,9 @@ class RetailMission:
             self.hotspots)
 
     def script_lists(self, scripts):
-        """The map's scripts for the engine model (scripts = ra3model.scripts), one list per side, every name a
-        player's list keeps for itself written out in full (scope_names)."""
+        """The map's scripts for an executor (scripts = its lists' module: the public engine/script/lists, or the
+        engine model's ra3model.scripts), one list per side, every name a player's list keeps for itself written out
+        in full (scope_names)."""
         lists = scripts.from_mapfile(self.file, self.order)
         for lst in lists:
             if self.libraries.get(lst.side):

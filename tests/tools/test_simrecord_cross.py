@@ -73,16 +73,17 @@ def test_a_timer_is_recorded_as_its_frames_left_and_one_run_out_as_minus_one():
 
 def test_the_public_executor_can_run_on_the_models_clock():
     """--executor public@model: the public executor moves the model's frame on before each frame's scripts."""
-    from engine.script import executor
+    from engine.ports import scripts as port
+    from engine.script import executor, lists
     seen = []
 
-    class World:
+    class World(port.World):
         def action(self, eng, name, args):
             seen.append((name, clock.frame))
 
     clock = types.SimpleNamespace(frame=0)
     sc = types.SimpleNamespace(name='s', levels=(True,), when=[], do=[['DO']], once=False)
-    ex = executor.PublicExecutor(World(), [sc], 0, set(), set(), '<not>', 15, clock=clock)
+    ex = executor.PublicExecutor(World(), lists.from_cnv([sc], '<not>'), 0, 15, clock=clock)
     ex.step()
     ex.step()
     assert seen == [('DO', 1), ('DO', 2)]

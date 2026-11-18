@@ -15,6 +15,10 @@ def plug(scripts):
         """The model's engine, the world (World) watching the core actions it runs itself."""
         script = None
 
+        def script_named(self, name):
+            """The script of that name (the first of it), None where none (UNIT_EXECUTE_SEQUENTIAL_SCRIPT)."""
+            return self._scripts.get(name)
+
         def action(self, name, a, s=None):
             self.script = s
             self.world.core(self, name, a, s)

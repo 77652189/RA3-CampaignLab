@@ -334,7 +334,7 @@ def seq_due(world, peers):
             continue
         act = acts[r['step']]
         args = [b.name if x == '<This Object>' else (b.team if x == '<This Team>' else x) for x in act.args]
-        world.eng.action(act.name, args, r['script'])
+        world.executor.action(act.name, args, r['script'])
         if not b.alive and r in peers.seq:
             peers.seq.remove(r)
 

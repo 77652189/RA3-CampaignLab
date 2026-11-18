@@ -1,14 +1,13 @@
 """L6 script actions on the world's bookkeeping (ADR 0029, docs/engine/sim-layers.md; L0): flags, counters (on the
 script executor's table: simexec.Counters; the timer actions are the executor's own), making objects and reinforcement teams, references and object lists, team membership and override relations,
-sequential scripts, the *_TO_COUNTER reads, mission objectives, player relations, the map border and the script
-switches.
+sequential scripts, the *_TO_COUNTER reads, mission objectives, player relations and the map border (the script
+switches are the executor's: engine/script/executor.py).
 
 Each action is `fn(sim, name, a, script)`, moved verbatim out of Sim.act's chain; simact.act looks them up in ACTIONS."""
 import math
 
 import simunits
 from simscript import LOST, SCENE_FLAG, SHOW_FLAG, WON
-from simworld import GAP_ACTION
 
 
 def set_flag(sim, name, a, script):
@@ -22,8 +21,9 @@ def set_flag(sim, name, a, script):
             sim.asked.setdefault(a[0], sim.t)
         elif a[0] in sim.asked:
             sim.up.append((a[0], sim.asked.pop(a[0]), sim.t))
-    if int(sim.flags.get(a[0], 0)) != int(a[1]):
-        sim.flags[a[0]] = int(a[1])
+    old = int(sim.flags.get(a[0], 0))
+    sim.flags[a[0]] = int(a[1])                 # in the table once set, at 0 too (the script engine's flag array)
+    if old != int(a[1]):
         sim.change()
         if a[0] == WON and a[1]:
             sim.end('赢', script)
@@ -183,12 +183,10 @@ def unit_execute_sequential_script(sim, name, a, script):
     # (seq_due); the script becomes a subroutine. The record's loop count is 0 here (one run; the catalog's
     # action has no third argument)
     b = sim.body(a[0])
-    sc = getattr(sim.eng, '_scripts', {}).get(a[1]) if sim.model_scripts else None
+    sc = sim.executor.script_named(a[1])
     if b and b.alive and sc is not None:
         sc.subroutine = True
         sim.seq.append({'b': b, 'script': sc, 'step': -1, 'loops': int(a[2]) if len(a) > 2 else 0})
-    elif b and not sim.model_scripts:
-        sim.gap(GAP_ACTION, name, '没有引擎模型的运行不模拟顺序脚本')
 
 
 def set_unit_health_percentage_to_counter(sim, name, a, script):
@@ -264,15 +262,6 @@ def map_switch_border(sim, name, a, script):
     sim.change()
 
 
-def enable_script(sim, name, a, script):
-    # a once-script that fired is only switched off: ENABLE_SCRIPT arms it again (SE enableScript)
-    if name == 'ENABLE_SCRIPT':
-        sim.disabled.discard(a[0])
-        sim.done.discard(a[0])
-    else:
-        sim.disabled.add(a[0])
-
-
 ACTIONS = {
     'SET_FLAG': set_flag,
     'SET_COUNTER': set_counter,
@@ -310,6 +299,4 @@ ACTIONS = {
     'LINK_MISSION_OBJECTIVE_TO_WAYPOINT': link_mission_objective_to_object,
     'PLAYER_RELATES_PLAYER': player_relates_player,
     'MAP_SWITCH_BORDER': map_switch_border,
-    'ENABLE_SCRIPT': enable_script,
-    'DISABLE_SCRIPT': enable_script,
 }
