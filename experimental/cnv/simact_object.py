@@ -71,7 +71,7 @@ def team_garrison_team_instantly(sim, name, a, script):
             if g is m:
                 continue
             sp = sim.garrison.box(g)
-            if (free or len(sim.garrison.inside.get(g.name, [])) < sp['max']) and \
+            if (free or len(sim.garrison.held(g)) < sp['max']) and \
                     sim.garrison.put(m, g, script=True):
                 sim.stand(m)
                 break

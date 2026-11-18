@@ -43,6 +43,7 @@ import math
 import re
 
 import simunits
+from engine.kernel import interfaces
 
 TAGS = ('GarrisonContain', 'ContestableGarrisonContain')
 TRANSPORT = ('TransportContain',)
@@ -56,74 +57,37 @@ INSIDE_STATUS = frozenset({'IMMOBILE', 'UNATTACKABLE'})     # INFERRED: a passen
 CIV = 'PlyrCivilian'
 
 
-def _yes(v, default):
-    return default if v is None else v.strip().lower() == 'true'
-
-
 _memo = {}
 
 
-def spec(template, own=None, tags=TAGS):
-    """The template's garrison, None without one: {'tag', 'max', 'allow' {ENEMIES, NEUTRAL, ALLIES}, 'own', 'kill',
-    'status', 'clearing', 'rule', 'kinds', 'exclude', 'really'}. A module's attributes are merged down the inheritFrom
-    chain by its id (BaseCivilianStructureMedium writes only ContainMax over BaseCivilianStructure's); the
-    PassengerFilter is the nearest one written."""
-    key = (template, (own or {}).get(template), tags)
-    if key in _memo:
-        return _memo[key]
-    found, bodies = [], []
+def really(template, own=None):
+    """The REALLYDAMAGED line in percent: the nearest ActiveBody up the chain writing MaxHealthReallyDamagedPercentage,
+    else the default (step M14: what simgarrison.spec read beside the garrison block, which is the contain module's)."""
+    key = (template, (own or {}).get(template))
+    if key not in _memo:
+        bodies = []
 
-    def walk(xml):
-        text = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
-        for tag in tags:
-            for head, inner in simunits._blocks(text, tag):
-                found.append((tag, head, inner))
-        for head, _ in simunits._blocks(text, 'ActiveBody'):
-            bodies.append(head)
-        return None
-    try:
-        simunits._chain(template, own, walk)
-    except (OSError, ValueError):
-        found = []
-    if not found:
-        _memo[key] = None
-        return None
-    tag = found[0][0]
-    attrs, flt = {}, None
-    for t, head, inner in reversed(found):              # farthest first: the nearer writes over it
-        if t != tag:
-            continue
-        attrs.update(re.findall(r'(\w+)="([^"]*)"', head))
-    for t, head, inner in found:
-        f = next(simunits._blocks(inner, 'PassengerFilter'), None) if t == tag else None
-        if f is not None:
-            flt = f
-            break
-    really = next((simunits._attr(h, 'MaxHealthReallyDamagedPercentage') for h in bodies
-                   if simunits._attr(h, 'MaxHealthReallyDamagedPercentage')), None)
-    a = {k: simunits.expand(v) for k, v in attrs.items()}
-    fh, fi = flt if flt is not None else ('', '')
-    out = {
-        'tag': tag,
-        'max': int(float(a.get('ContainMax') or 0)),
-        'allow': {'ENEMIES': _yes(a.get('AllowEnemiesInside'), True), 'NEUTRAL': _yes(a.get('AllowNeutralInside'), True),
-                  'ALLIES': _yes(a.get('AllowAlliesInside'), True)},
-        'own': _yes(a.get('AllowOwnPlayerInsideOverride'), False),
-        'kill': _yes(a.get('KillPassengersOnDeath'), False),
-        # a TransportContain's passengers are ENCLOSED even when its ObjectStatusOfContained leaves it out (the
-        # Twinblade's "UNSELECTABLE NO_ATTACK": engine_acts_btn EV read ENCLOSED on all three; INFERRED for the rest)
-        'status': frozenset(a.get('ObjectStatusOfContained', '').split()) | (
-            {'ENCLOSED'} if tag == 'TransportContain' else set()),
-        'clearing': frozenset(a.get('RequiredClearingObjectStatus', '').split())
-        if tag == 'ContestableGarrisonContain' else frozenset(),
-        'rule': (simunits._attr(fh, 'Rule') or 'ANY').upper(),
-        'kinds': frozenset((simunits._attr(fh, 'Include') or '').split()),
-        'unkinds': frozenset((simunits._attr(fh, 'Exclude') or '').split()),
-        'exclude': frozenset(t.strip().lower() for t in re.findall(r'<ExcludeThing>([^<]*)</ExcludeThing>', fi)),
-        'really': float(really.rstrip('%')) if really else REALLY_DAMAGED,
-    }
-    _memo[key] = out
-    return out
+        def walk(xml):
+            bodies.extend(h for h, _ in simunits._blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S),
+                                                         'ActiveBody'))
+        try:
+            simunits._chain(template, own, walk)
+        except (OSError, ValueError):
+            pass
+        v = next((simunits._attr(h, 'MaxHealthReallyDamagedPercentage') for h in bodies
+                  if simunits._attr(h, 'MaxHealthReallyDamagedPercentage')), None)
+        _memo[key] = float(v.rstrip('%')) if v else REALLY_DAMAGED
+    return _memo[key]
+
+
+def contain(b, tags=TAGS):
+    """b's contain module of the nearest of `tags` (GarrisonContain / ContestableGarrisonContain, or TransportContain),
+    None without one. A thing has at most one of a tag (the port gathers the chain's into one block) and no template
+    has both garrison tags (step M14 census: 3448 retail + 520 own)."""
+    for m in b.find(interfaces.Contain) if b is not None and b.modules else ():
+        if m.data.TAG in tags:
+            return m
+    return None
 
 
 def ejects(command, own=None):
@@ -151,27 +115,34 @@ class Peers:
 class Garrisons:
     def __init__(self, world, peers):
         self.world, self.peers = world, peers     # simworld.WORLD_API only; the host's other parts (Peers)
-        self.inside = {}            # building name -> [passenger bodies], in the order they came in
+        self.boxes = {}             # building name -> its contain module (interfaces.Contain: the passengers, the owner
+                                    # before, the listener's upgrades), in the order first put into (the cell's order)
         self.where = {}             # passenger name -> building body
-        self.added = {}             # passenger name -> the status bits the garrison gave it
         self.going = {}             # body name -> building body it was sent into (the AI's walk)
-        self.home = {}              # building name -> its owner before the first passenger
         self.log = []               # (sim seconds, passenger name, building name, script)
         self.ejecting = {}          # transport name -> [the spot, seconds between, reach, next out at]
         self.flying = []            # [lands at, passenger body, the spot]
-        self.secondary_added = {}  # host name -> upgrades granted only by its listener
 
-    def spec(self, b):
-        """A building's garrison (what the AI and the walk-in look at)."""
-        world = self.world
-        return spec(b.template, world.own) if b is not None and 'STRUCTURE' in b.kinds else None
-
-    def box(self, b):
-        """Anything a script may put a unit into: a building's garrison, else a TransportContain."""
-        world = self.world
+    def _box(self, b):
+        """b's contain module a script may put a unit into: a building's garrison, else a TransportContain."""
         if b is None:
             return None
-        return self.spec(b) or spec(b.template, world.own, TRANSPORT)
+        return ('STRUCTURE' in b.kinds and contain(b)) or contain(b, TRANSPORT)
+
+    def spec(self, b):
+        """A building's garrison (what the AI and the walk-in look at): its module's rules, None without one."""
+        m = contain(b) if b is not None and 'STRUCTURE' in b.kinds else None
+        return m.rules() if m is not None else None
+
+    def box(self, b):
+        """Anything a script may put a unit into: a building's garrison, else a TransportContain (its rules)."""
+        m = self._box(b)
+        return m.rules() if m is not None else None
+
+    def held(self, g):
+        """The passengers of the building or transport g (by name, as the cell keeps them), in the order they came in."""
+        m = self.boxes.get(g.name) if g is not None else None
+        return m.passengers() if m is not None else []
 
     # ---- who
     def fits(self, u, sp):
@@ -232,9 +203,13 @@ class Garrisons:
         Keep upgrades that were already present before the listener granted them.
         """
         world, peers = self.world, self.peers
-        for up in self.secondary_added.pop(g.name, set()):
+        box = self.boxes.get(g.name)
+        if box is None:
+            return
+        for up in box.granted():
             peers._upgrade(g, up, False)
-        held = self.inside.get(g.name, [])
+        box.set_granted(())
+        held = box.passengers()
         if len(held) != 1:
             return
 
@@ -264,7 +239,7 @@ class Garrisons:
         for up in added:
             peers._upgrade(g, up, True)
         if added:
-            self.secondary_added[g.name] = added
+            box.set_granted(added)
 
     def put(self, u, g, script=False):
         """u into g now; True when it is inside. script: the script's ..._INSTANTLY (no relation, no room)."""
@@ -272,7 +247,8 @@ class Garrisons:
         sp = self.box(g) if g is not None and g.alive else None     # walked in: a transport asks the room too
         if sp is None or u is None or not u.alive or u is g or u.name in self.where or not self.fits(u, sp):
             return False
-        held = self.inside.setdefault(g.name, [])
+        box = self.boxes.setdefault(g.name, self._box(g))
+        held = box.passengers()
         clears = self.clears(u, sp)
         if not script and not clears and (not self.may(u, g) or len(held) >= sp['max']):
             return False
@@ -284,14 +260,14 @@ class Garrisons:
                     return False
         house = sp['tag'] in TAGS                       # a transport keeps its owner
         if not held and house:
-            self.home.setdefault(g.name, g.owner)
-        held.append(u)
+            box.keep_home(g.owner)
+        bits = (sp['status'] | INSIDE_STATUS) - u.script_status
+        box.let_in(u, bits)
         self.where[u.name] = g
         self.going.pop(u.name, None)
-        self.added[u.name] = (sp['status'] | INSIDE_STATUS) - u.script_status
         self.log.append((world.t, u.name, g.name, script))
         u.x, u.y, u.path, u.goal = g.x, g.y, [], None
-        u.script_status |= self.added[u.name]
+        u.script_status |= bits
         if house:
             g.owner = held[0].owner
         self.secondary(g)
@@ -306,29 +282,28 @@ class Garrisons:
         g = self.where.pop(u.name, None) if u is not None else None
         if g is None:
             return False
-        held = self.inside.get(g.name, [])
-        if u in held:
-            held.remove(u)
-        u.script_status -= self.added.pop(u.name, frozenset())
+        box = self.boxes.get(g.name)
+        u.script_status -= box.let_out(u) if box is not None else frozenset()
+        held = box.passengers() if box is not None else []
         u.x, u.y = g.x, g.y
         if u.alive:
             peers.modify(u)
         if held:
             g.owner = held[0].owner
-        elif g.name in self.home:
-            g.owner = self.home.pop(g.name)
+        elif box is not None and box.home():
+            g.owner = box.give_home()
         self.secondary(g)
         world.change()
         return True
 
     def empty(self, g):
-        for u in list(self.inside.get(g.name, [])):
+        for u in list(self.held(g)):
             self.out(u)
 
     def died(self, g, delete=False):
         """Sim.destroy: the building is gone. Killed: KillPassengersOnDeath kills them, else they come out alive;
         deleted: they go with it."""
-        held = list(self.inside.get(g.name, []))
+        held = list(self.held(g))
         if not held:
             return
         sp = self.box(g) or {}
@@ -338,7 +313,7 @@ class Garrisons:
             self.out(u)
             if u.alive and (delete or sp.get('kill')):
                 peers.destroy(u, '随楼删掉' if delete else '楼毁乘员同死', delete=delete)
-        self.inside.pop(g.name, None)
+        self.boxes.pop(g.name, None)
 
     def eject(self, g, command, where):
         """The button `command` pressed on g at the spot `where`: True when an EjectPassengersSpecialAbilityUpdate of
@@ -372,7 +347,7 @@ class Garrisons:
         EVACUATE_DELAY after the press (engine_acts_btn EV: all three in a second after the press, all out the next;
         INFERRED: the landing's time, 1-2 s, taken as 1.5). False when g carries nobody."""
         world = self.world
-        if g is None or not g.alive or not [u for u in self.inside.get(g.name, []) if u.alive]:
+        if g is None or not g.alive or not [u for u in self.held(g) if u.alive]:
             return False
         # only an aircraft lands first: the Sudden transport's DisguisedEvacuate and a civilian building's evacuate
         # had all out within a second of the press (engine_acts_tgl DE / CV, round 223)
@@ -384,7 +359,8 @@ class Garrisons:
     def _throw(self):
         world, peers = self.world, self.peers
         for gname, job in list(self.ejecting.items()):
-            g, held = world.bodies.get(gname), [u for u in self.inside.get(gname, []) if u.alive]
+            box = self.boxes.get(gname)
+            g, held = world.bodies.get(gname), [u for u in (box.passengers() if box else ()) if u.alive]
             if g is None or not g.alive or not held:
                 del self.ejecting[gname]
                 continue
@@ -425,8 +401,8 @@ class Garrisons:
                 continue
             del self.going[name]
             self.put(u, g)
-        for gname, held in list(self.inside.items()):
-            g = world.bodies.get(gname)
+        for gname, box in list(self.boxes.items()):
+            g, held = world.bodies.get(gname), box.passengers()
             for u in [u for u in held if not u.alive]:
                 self.out(u)
             if g is None or not held:
@@ -443,8 +419,8 @@ class Garrisons:
         """At or under the REALLYDAMAGED line (and not GARRISONABLE_UNTIL_DESTROYED): everyone out. A script's damage
         calls it at once; due() catches the fight's hits the frame after (INFERRED: the game's is in the damage)."""
         world = self.world
-        sp = self.spec(g) if self.inside.get(g.name) else None
-        if sp and g.alive and g.max_hp and g.hp > 0 and 100.0 * g.hp <= g.max_hp * sp['really'] + 1e-9 \
+        sp = self.spec(g) if self.held(g) else None
+        if sp and g.alive and g.max_hp and g.hp > 0 and 100.0 * g.hp <= g.max_hp * really(g.template, world.own) + 1e-9 \
                 and 'GARRISONABLE_UNTIL_DESTROYED' not in g.kinds:
             world.note('驻军', f'{world.label(g)} 残血，乘员全出来')
             self.empty(g)

@@ -417,7 +417,7 @@ class Damage:
                     # DamageContainedNugget damages eligible passengers, not the house.
                     # GUESSED priority: entry order; the bench asserts only aggregate HP.
                     for effect in w.get('contained', []):
-                        eligible = [p for p in peers.garrison.inside.get(t.name, []) if p.alive
+                        eligible = [p for p in peers.garrison.held(t) if p.alive
                                     and (not effect['include'] or set(effect['include']) & p.kinds)
                                     and not set(effect['exclude']) & p.kinds]
                         for passenger in eligible[:max(0, effect['maximum'])]:

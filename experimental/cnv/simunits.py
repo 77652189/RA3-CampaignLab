@@ -1397,6 +1397,11 @@ EXPANDED = frozenset({'StructureUnpackUpdate'})  # '=$NAME' attribute values spe
 INCLUDED = frozenset({'RepairUpdate'})      # read with the DATA:Includes files a template references (_with_includes),
                                             # as the reader it replaced (step M13: the retail structures take their
                                             # RepairUpdate from Includes/GenericBuildingRepair.xml)
+GATHERED = frozenset({'GarrisonContain', 'ContestableGarrisonContain', 'TransportContain'})  # one block made of
+                                            # every block of the tag up the chain: each attribute the nearest that
+                                            # writes it, '=$' defines spelled out (expand), the inner text the nearest
+                                            # PassengerFilter written -- as the reader it replaced (step M14:
+                                            # BaseCivilianStructureMedium writes only ContainMax over its base's)
 
 
 def module_blocks(template, tag, own=None):
@@ -1410,7 +1415,9 @@ def module_blocks(template, tag, own=None):
     removes the inherited module (xai:joinAction="Remove") is left out, and the walk ends there (step M6: 11 retail
     templates remove their base's SuppressionUpdate, as the reader it replaced read; no other registered tag but
     CrusherInfo has one, whose 64 MERGED keeps as M3's reader did; a tag of REMOVE_KEPT keeps it: step M7). A tag of
-    INCLUDED is read with the DATA:Includes files each template's XML references."""
+    INCLUDED is read with the DATA:Includes files each template's XML references; one of GATHERED is one block
+    gathered from all of the tag's up the chain (attributes as MERGED's, defines spelled out, the nearest
+    PassengerFilter its inner text)."""
     def read(xml):
         if tag in INCLUDED:
             xml = _with_includes(xml or '')
@@ -1420,6 +1427,20 @@ def module_blocks(template, tag, own=None):
     try:
         if tag in SELF_ONLY:
             return read(own[template] if own and template in own else retail_xml(template))
+        if tag in GATHERED:
+            found, attrs, flt = False, {}, None
+            for _, xml in xml_chain(template, own):
+                for head, inner in read(xml):
+                    found = True
+                    for k, v in re.findall(r'(\w+)="([^"]*)"', head):
+                        attrs.setdefault(k, v)
+                    if flt is None:
+                        flt = next(_blocks(inner, 'PassengerFilter'), None)
+            if not found:
+                return []
+            fh, fi = flt or ('', '')
+            return [(''.join(f' {k}="{expand(v)}"' for k, v in attrs.items()),
+                     f'<PassengerFilter{fh}>{fi}</PassengerFilter>' if flt else '')]
         if tag in MERGED:
             found, attrs = False, {}
             for _, xml in xml_chain(template, own):

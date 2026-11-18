@@ -477,7 +477,7 @@ def test_the_ais_turrets_are_its_base_defenses_in_their_order_not_houses(lib):
 def test_a_full_turret_stays_first_on_the_list(lib):
     # bench aibdpre: turret 1 full from s0, nobody went into turret 2 / 3 -- the pass does not skip a full one
     w, defenses, _ = _ai_hooks('aibdpre', lib)
-    assert w.garrison.inside['UNIT - CNV AI Turret 1'][0].name == 'UNIT - CNV AI Sitter'
+    assert w.garrison.held(w.body('UNIT - CNV AI Turret 1'))[0].name == 'UNIT - CNV AI Sitter'
     assert defenses[0] == 'UNIT - CNV AI Turret 1'
 
 
@@ -508,7 +508,7 @@ def test_one_goes_into_the_first_turret(lib):
 def test_the_team_goes_into_the_house(lib):
     w, got = _garrison_run('aigar1', lib, until=75.0)
     assert 3 <= len(got) <= 4, got
-    assert len([u for u in w.garrison.inside.get('UNIT - CNV AI House', []) if u.alive]) >= 3, got
+    assert len([u for u in w.garrison.held(w.body('UNIT - CNV AI House')) if u.alive]) >= 3, got
 
 
 @pytest.mark.xfail(strict=True, reason="bench aigar1: three alive inside, one died about the door. Since state 2's "
@@ -517,7 +517,7 @@ def test_the_team_goes_into_the_house(lib):
                                        "get in: the sim's fire, not the garrison rule (it passed by one shot's luck)")
 def test_one_of_the_four_dies_at_the_house_door(lib):
     w, got = _garrison_run('aigar1', lib, until=75.0)
-    assert len([u for u in w.garrison.inside.get('UNIT - CNV AI House', []) if u.alive]) == 3, got
+    assert len([u for u in w.garrison.held(w.body('UNIT - CNV AI House')) if u.alive]) == 3, got
 
 
 @pytest.fixture(scope='module')

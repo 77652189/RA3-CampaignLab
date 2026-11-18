@@ -138,3 +138,17 @@ def test_two_runs_with_no_summary_say_how_they_ended(tmp_path):
     assert run.calls == 2 and not counts and not red
     ok, line = fc.tests_line(counts, red, set(), why)
     assert not ok and 'exit 3' in line and 'INTERNALERROR> boom' in line
+
+
+def test_light_skips_the_affected_tests_and_says_they_are_left_to_the_full_run(tmp_path, monkeypatch, capsys):
+    import types
+    fake = types.SimpleNamespace(base_rev=lambda root, env: 'abcdef123456', records=lambda env, jobs: FakeRun({'a': 'same'}),
+                                 labpaths=types.SimpleNamespace(WORK=str(tmp_path)), Skip=RuntimeError)
+    monkeypatch.setattr(fc, '_load', lambda name, path: fake)
+    monkeypatch.setattr(fc, 'git', lambda root, *args: 'abcdef1234')
+    monkeypatch.setattr(fc, 'centre', lambda root, base: (True, 'same'))
+    called = []
+    monkeypatch.setattr(fc, 'affected', lambda *a: called.append(a) or (False, 'red'))
+    assert fc.main(['--light']) == 0 and not called
+    assert '受影响测试留给全量' in capsys.readouterr().out
+    assert fc.main([]) == 1 and called

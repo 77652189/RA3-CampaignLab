@@ -172,7 +172,7 @@ def named_building_is_empty(sim, name, a):
     # H3 killed reads false (gone), as do a barracks and a tank (no garrison). A transport INFERRED as these
     b = sim.body(a[0])
     return bool(b and b.alive and sim.garrison.spec(b) is not None
-                and not [u for u in sim.garrison.inside.get(b.name, []) if u.alive])
+                and not [u for u in sim.garrison.held(b) if u.alive])
 
 
 def built_by_player(sim, name, a):
@@ -199,7 +199,7 @@ def skirmish_player_has_comparison_garrisoned(sim, name, a):
     # (驻军, same run: two men in one building read == 2, a third in another >= 3, then 2 / 1 / 0 as they
     # leave; another player's man counts for his own). Men in a transport INFERRED not counted
     held = sum(1 for g in sim.living() if sim.garrison.spec(g) is not None
-               for u in sim.garrison.inside.get(g.name, []) if u.alive and u.owner == a[0])
+               for u in sim.garrison.held(g) if u.alive and u.owner == a[0])
     return CMP[int(a[1])](held, int(a[2]))
 
 
@@ -248,7 +248,7 @@ def building_garrisonned_by_object_type(sim, name, a):
         return False
     want = sim.of_types(a[1])
     return any(u.alive and u.owner == a[2] and u.template.lower() in want
-               for u in sim.garrison.inside.get(g.name, []))
+               for u in sim.garrison.held(g))
 
 
 def player_has_comparison_unit_type_in_trigger_area_completely_built(sim, name, a):

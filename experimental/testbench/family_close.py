@@ -13,7 +13,8 @@ as tests/golden does, but the test pick reads base..HEAD). In order:
        with old code) on the base and here, against the table: over it is red, under it says what to lower it to;
   5.   the affected tests of base..HEAD (affected_tests.py --cmd, with -n replaced: -n 2 until the machine's CPU token
        pool exists, handoff-r2 T5); a red test is rerun on the base (in the golden tree) and one red there too is
-       reported as old, not this step's.
+       reported as old, not this step's. --light (a small family: few fields, read nowhere else -- user 11-18) skips
+       it: the line says the affected tests are left to the coordinator's full run.
 Each check prints one line with its log (work\logs\family_close_<stamp>_<check>.log). Exit 0 = all green (old reds
 allowed); 1 = something to fix.
 """
@@ -202,12 +203,17 @@ def affected(root, base, n, log_path, golden):
     return tests_line(counts, red, old, why)
 
 
+LIGHT = '受影响测试留给全量（--light：小族，用户 11-18 定；总控约每 3 步全量一次）'
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--base', help='the base commit (default: HEAD~1, or HEAD with uncommitted work, as golden)')
     ap.add_argument('-n', type=int, default=WORKERS, help=f'pytest workers (default {WORKERS})')
     ap.add_argument('-j', type=int, default=None, help='simrecord jobs per side (golden default)')
     ap.add_argument('--skip-tests', action='store_true', help='checks 1-4 only')
+    ap.add_argument('--light', action='store_true',
+                    help='a small family (user 11-18): checks 1-4, the affected tests left to the coordinator\'s full run')
     a = ap.parse_args(argv)
     golden = _load('golden', os.path.join(HERE, 'golden.py'))
     env = dict(os.environ)
@@ -234,7 +240,10 @@ def main(argv=None):
     results.append((ok, '中心计数', line, None))
     print(('✓' if ok else '✗'), '中心计数', line, flush=True)
 
-    if not a.skip_tests:
+    if a.light:
+        results.append((True, '受影响测试', LIGHT, None))
+        print('·', '受影响测试', LIGHT, flush=True)
+    elif not a.skip_tests:
         path = log('tests')
         ok, line = affected(ROOT, base, a.n, path, golden)
         results.append((ok, '受影响测试', line, path))

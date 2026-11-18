@@ -265,21 +265,39 @@ class Upgrade(Interface):
 
 
 class Contain(Interface):
+    """GarrisonContain / ContestableGarrisonContain / TransportContain (step M14): its rules (rules: the dict the
+    host's garrison reads -- tag, max, allow, own, kill, status, clearing, rule, kinds, unkinds, exclude), the
+    passengers in the order they came in (passengers), one in with the status bits it was given (let_in) and out (let_out
+    -> those bits), the owner before the first passenger (home / keep_home / give_home), and the upgrades a single
+    passenger granted through its listener (granted / set_granted). Who may come in, the walk, the ejects and the
+    REALLYDAMAGED walk-out stay with the host (simgarrison.Garrisons)."""
     __slots__ = ()
 
-    def can_take(self, thing):
+    def rules(self):
         raise NotImplementedError
 
-    def take(self, thing):
+    def passengers(self):
         raise NotImplementedError
 
-    def release(self, thing):
+    def let_in(self, thing, bits):
         raise NotImplementedError
 
-    def members(self):
+    def let_out(self, thing):
         raise NotImplementedError
 
-    def on_container_died(self):
+    def home(self):
+        raise NotImplementedError
+
+    def keep_home(self, owner):
+        raise NotImplementedError
+
+    def give_home(self):
+        raise NotImplementedError
+
+    def granted(self):
+        raise NotImplementedError
+
+    def set_granted(self, upgrades):
         raise NotImplementedError
 
 
