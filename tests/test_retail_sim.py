@@ -96,19 +96,23 @@ def test_question_1_the_squad_walks_to_the_point(mission):
 
 def test_question_1_the_squad_stands_round_the_point(mission):
     """The squad stops apart, its middle short of the point: an infantry group's block (Sim.column_ends ->
-    simpath.block). Bench 11-09 (testbench/retail_q1_spots.py, units as blobs): 3 columns x 2 rows, the front row on
-    the point, ~44-50 across and ~48 back, the middle ~22 short; the farthest ~76 off (pixel centres sit above the
-    feet: ~10 off). The closest pair from the probe bench (11-17 checks/engine_column.py, lane d6): a block turned off
-    the world's axes, each spot snapped to its cell's centre, has neighbours 20 * sqrt(2) apart (27.6 there); the
-    blobs' ~42 was a screenshot reading (INFERRED which is right for a01's squad, its dogs included: no probe on a01)."""
+    simpath.block). Bench 11-17 checks/engine_a01sq.py squad (run CampA01SqSquad_mcp_1117_223430, read by
+    work/re/scripts/x_a01sq.py): a01's squad copied with CNVProbe -- 4 Peacekeepers and 2 dogs standing as at the
+    hand-over, the point as far and the same way, shifted by whole cells -- sent by one MOVE_TEAM_TO: each man's stop
+    off the point below (the same with six Peacekeepers: the dogs change nothing); the closest pair 28.3 (20 * sqrt(2),
+    a turned block snapped to cell centres), the middle 18.9 short, the farthest 61.6. The 11-09 screenshot's ~42
+    (retail_q1_spots.py, team-blue blobs) was a misreading."""
     s = sim.Sim(mission, script='22.6 走 队 Player_1/teamPlayer_1 去 @505.2,1576.7')
     s.advance(int(32 * 15))
     crew = [b for b in s.living() if b.owner == 'Player_1']
-    cx, cy = sum(b.x for b in crew) / len(crew), sum(b.y for b in crew) / len(crew)
-    assert 10 <= math.hypot(cx - 505.2, cy - 1576.7) <= 35
+    bench = {'AlliedScoutInfantry': [(4.8, -6.7), (4.8, 33.3)],
+             'AlliedAntiInfantryInfantry': [(-15.2, -46.7), (-15.2, 53.3), (-55.6, -26.5), (-35.2, 13.3)]}
+    for tpl, spots in bench.items():
+        got = sorted((round(b.x - 505.2, 1), round(b.y - 1576.7, 1)) for b in crew if b.template == tpl)
+        assert len(got) == len(spots) and all(math.hypot(gx - bx, gy - by) <= 1.5
+                                              for (gx, gy), (bx, by) in zip(got, sorted(spots))), (tpl, got)
     apart = min(math.hypot(a.x - b.x, a.y - b.y) for i, a in enumerate(crew) for b in crew[i + 1:])
-    assert apart >= 20 * math.sqrt(2) - 1, apart                    # probe bench: diagonal neighbours 27.6
-    assert max(math.hypot(b.x - 505.2, b.y - 1576.7) for b in crew) <= 75
+    assert abs(apart - 28.3) <= 1.0, apart
 
 
 def test_two_units_sent_alone_to_one_point_stand_apart(mission):

@@ -1,6 +1,6 @@
 """Garrisons in the simulator: GarrisonContain / ContestableGarrisonContain (sim.Sim.garrison; simai's AI walks its men
-in through the same object). The rules are the engine model's (RA3-EngineModel ra3model/objects/contain.py, read in
-RA3 1.13), held to the bench (checks/engine_garrison.py in / hp, bench 11-05; docs/engine/garrison.md):
+in through the same object). The rules are the XML's (GarrisonContain's fields) and the bench's readings
+(checks/engine_garrison.py in / hp, bench 11-05, del 11-17; docs/engine/garrison.md):
 
   who          the PassengerFilter (Include kinds by its Rule, ExcludeThing templates) -- kept for every entry; then the
                relation of the unit to the building (world.relation: no owner = NEUTRAL): AllowEnemiesInside /
@@ -14,12 +14,14 @@ RA3 1.13), held to the bench (checks/engine_garrison.py in / hp, bench 11-05; do
   inside       the passenger stands at the building's spot carrying ObjectStatusOfContained (UNSELECTABLE ENCLOSED
                CAN_ATTACK for a house: ENCLOSED is what the checks count) + INSIDE_STATUS; the building's owner is the
                first passenger's, empty again the owner it had before (garrison.md 1 / 2: 16 / 15 / 0)
-  out          NAMED_EXIT_BUILDING (the unit), a sale (INFERRED, Generals' onSelling); REALLYDAMAGED -- the health at
+  out          NAMED_EXIT_BUILDING (the unit); a sale (INFERRED, never seen: SELL_OBJECT does nothing to a civilian
+               house, bench 11-17 engine_garrison del); REALLYDAMAGED -- the health at
                or under ActiveBody's MaxHealthReallyDamagedPercentage (default 33.333333 %) without KindOf
                GARRISONABLE_UNTIL_DESTROYED -- orders all out (garrison.md 3: out at 13 %)
   the end      the building killed (a hit or a script's kill, garrison.md 4): KillPassengersOnDeath kills them (the
                Multigunner turret), else they come out alive (DamagePercentToUnits: none of the retail houses writes
-               it, not modelled); a deleted building takes them with it (INFERRED, Generals' onDelete)
+               it, not modelled); a deleted building takes them with it (bench 11-17 engine_garrison del: NAMED_DELETE
+               on a house with three in, none of them left)
 Transports (TransportContain: the Bullfrog, the Riptide, the bomber; bench 11-10 checks/engine_transport.py load):
   in           the script's TEAM_ / NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY as into a house -- no room, no relation
                (six into the five-place Bullfrog, Soviet_4's two into the player's); the AI never picks one (places)

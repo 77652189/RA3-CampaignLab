@@ -900,6 +900,31 @@ def test_garrison_script_entry_skips_room_and_relation_owner_follows_and_damage_
     assert [hp[s][:2] for s in (4, 10, 16)] == [[100, 100], [0, 13], [0, 6]], hp   # bench 炸楼血 / 伤楼血
 
 
+# bench 2026-11-17 engine_garrison del (CampGarrisonDel_mcp_1117_223555; R3 step X 4): three in each lane at IN, at ACT
+# the high lane's house NAMED_DELETE, the order lane's SELL_OBJECT, the removed lane's left. 删卖 / 存活 / 楼 / 资金:
+# s2-s7 333 33 1011 2000, s8- 330 30 1010 2000 -- a deleted house takes its passengers with it (high 0 inside, 0 alive);
+# the civilian house is not sold at all (still standing, never SOLD, still the player's, the three still inside, no
+# money): retail's civilian structures carry no StructureSellUpdate (only BaseStructure has it).
+def _del_series():
+    import build
+    import sim
+    m, t, _ = build.resolve('engine_garrison', 'del')
+    return {s: row for s, row in sim.Sim(m, t).run(16.0).series}
+
+
+def test_a_deleted_garrison_takes_its_passengers_with_it_at_the_bench():
+    a = _del_series()
+    assert [a[s][0] % 10 for s in (4, 12)] == [3, 0] and [a[s][1] % 10 for s in (4, 12)] == [3, 0], a
+    assert a[12][2] % 10 == 0 and a[12][0] // 100 == 3, a                      # house gone; the control lane in
+
+
+@pytest.mark.xfail(strict=True, reason='bench: SELL_OBJECT does nothing to a civilian house (no StructureSellUpdate); '
+                                       'simbody.Life.sell sells any STRUCTURE')
+def test_a_civilian_garrison_is_not_sold_at_the_bench():
+    a = _del_series()
+    assert tuple(a[12]) == (330, 30, 1010, 2000), a
+
+
 def test_leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum():
     import build
     import sim

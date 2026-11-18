@@ -52,7 +52,9 @@ class Life:
         and not already sold is paid at once -- round(round(cost x 50%) x health share) -- and carries SOLD; 30 frames
         later it is deleted (no death, no ruin); meanwhile it still counts as power and can still be killed (then the
         money stays paid and it is just dead). Anything else: nothing happens. Not read: a template's RefundValue,
-        NOT_SELLABLE, the factory's queue. The garrison empties (simgarrison, INFERRED: Generals' onSelling)."""
+        NOT_SELLABLE, the factory's queue. The garrison empties (simgarrison, INFERRED). Gap (bench 11-17
+        engine_garrison del): SELL_OBJECT on a civilian house does nothing (it has no StructureSellUpdate); this
+        sells it (strict xfail in tests/test_simbench_c.py)."""
         if b is None or not b.alive or 'STRUCTURE' not in b.kinds or b.sell_end is not None:
             return
         garrison.empty(b)

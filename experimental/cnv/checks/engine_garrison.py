@@ -124,6 +124,56 @@ def garrison_test(m, hp=False):
     return t
 
 
+DEL_LANES = ('high', 'order', 'removed')
+
+
+def del_test(m):
+    """R3 step X 4 (ADR 0032 5): what becomes of the passengers when their building goes without dying. Three of the
+    player's conscripts in at IN in each of three lanes (the house is then the player's: the first passenger's); at
+    ACT the high lane's house NAMED_DELETE, the order lane's SELL_OBJECT, the removed lane's left as it is (control).
+    2000 money set at the start (a sale pays something if 资金 moves).
+
+      删卖  passengers ENCLOSED: high (ones) + order (tens) + removed (hundreds)
+      存活  passengers alive: high (ones) + order (tens)
+      楼    high house not destroyed (1) + order house not destroyed (10) + order house SOLD (100) + order house the
+            player's (1000)
+      资金  the player's money"""
+    t = Test()
+    p1 = m.player('p1')
+    enclosed = status('ENCLOSED')
+    hold = [('UNIT_CHANGE_OBJECT_STATUS', _man(lane, 'p1', k), 'NO_ATTACK', 1) for lane in DEL_LANES for k in range(3)]
+    t.scripts.append(Script('Test - start', [], hold + [
+        ('MAP_REVEAL_ALL_PERM', p1), ('PLAYER_SET_MONEY', p1, 2000),
+        ('SET_MILLISECOND_TIMER', 'Test In', IN), ('SET_MILLISECOND_TIMER', 'Test Act', ACT)]))
+    t.scripts += [
+        Script('Test - in', [('TIMER_EXPIRED', 'Test In')],
+               [('NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY', _man(lane, 'p1', k), _house(lane))
+                for lane in DEL_LANES for k in range(3)]),
+        Script('Test - act', [('TIMER_EXPIRED', 'Test Act')],
+               [('NAMED_DELETE', _house('high')), ('SELL_OBJECT', _house('order'))])]
+    lines = [
+        ('CNV_Garrison_Gone', '删卖', [(step, ('UNIT_HAS_OBJECT_STATUS', _man(lane, 'p1', k), enclosed))
+                                     for lane, step in zip(DEL_LANES, (1, 10, 100)) for k in range(3)]),
+        ('CNV_Garrison_Alive', '存活', [(step, ('NAMED_NOT_DESTROYED', _man(lane, 'p1', k)))
+                                      for lane, step in (('high', 1), ('order', 10)) for k in range(3)]),
+        ('CNV_Garrison_House', '楼', [(1, ('NAMED_NOT_DESTROYED', _house('high'))),
+                                     (10, ('NAMED_NOT_DESTROYED', _house('order'))),
+                                     (100, ('UNIT_HAS_OBJECT_STATUS', _house('order'), status('SOLD'))),
+                                     (1000, ('NAMED_OWNED_BY_PLAYER', p1, _house('order')))])]
+    for c, label, rows in lines:
+        t.counters.append((c, label))
+        t.scripts.append(Script(f'Test - {c} zero', [], [('SET_COUNTER', c, 0)], once=False))
+        t.scripts += [Script(f'Test - {c} {i}', [cond], [('INCREMENT_COUNTER', step, c)], once=False)
+                      for i, (step, cond) in enumerate(rows)]
+    t.counters.append(('CNV_Garrison_Money', '资金'))
+    t.scripts.append(Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', p1, 'CNV_Garrison_Money')],
+                            once=False))
+    t.expect = [('删卖', 0, 'ever>=', 111, ACT - 1)]
+    t.bench = [('bench_watch', dict(seconds=RUN - 8.0, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 MISSION = {'engine_garrison': mission}
 CHECKS = {'engine_garrison': {'in': garrison_test,      # the mod's name CampGarrisonIn: 15 characters at most
-                              'hp': lambda m: garrison_test(m, hp=True)}}
+                              'hp': lambda m: garrison_test(m, hp=True),
+                              'del': del_test}}       # R3 step X 4: CampGarrisonDel
