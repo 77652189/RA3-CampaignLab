@@ -1438,6 +1438,10 @@ def repair_measured_config(template, own=None):
 OWN_ONLY = frozenset({'LifetimeUpdate'})   # read from a mission's own template only -- no inheritance, no retail -- as
                                             # the reader each replaced (step M1: none of our scripts makes a retail
                                             # object with a lifetime); reading the retail ones is a behaviour change
+MERGED = frozenset({'CrusherInfo'})        # attributes inherited one by one, each from the nearest template up the
+                                            # chain that writes it (step M3: 64 retail templates have an empty
+                                            # CrusherInfo and take their CrushableLevel from their base, as the reader
+                                            # it replaced did; the Hammer's own CrusherLevel 20 over BaseVehicle's 10)
 
 
 def module_blocks(template, tag, own=None):
@@ -1445,12 +1449,21 @@ def module_blocks(template, tag, own=None):
     text, inner text)] of every <tag> block (comments left out) of the nearest template up the inheritance chain
     (xml_chain) that has one; [] when none has, or the template's XML cannot be read. Step K1 checked it against the
     AutoHealBehavior reader it replaced over all 3448 indexed templates: the same rule for each. A tag of OWN_ONLY
-    is read from the mission's own XML of the template alone."""
+    is read from the mission's own XML of the template alone; one of MERGED is one block whose attributes are each
+    the nearest template's that writes it (no inner text), when any template up the chain has the tag."""
     def read(xml):
         return list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), tag))
     if tag in OWN_ONLY:
         return read((own or {}).get(template))
     try:
+        if tag in MERGED:
+            found, attrs = False, {}
+            for _, xml in xml_chain(template, own):
+                for head, _ in read(xml):
+                    found = True
+                    for k, v in re.findall(r'([\w:]+)="([^"]*)"', head):
+                        attrs.setdefault(k, v)
+            return [(''.join(f' {k}="{v}"' for k, v in attrs.items()), '')] if found else []
         return _inherited(template, own, read, [])
     except (OSError, ValueError):
         return []
@@ -1729,9 +1742,6 @@ def life_leaves(template, own=None):
     return leaves
 
 
-_crush_memo = {}
-
-
 def _chain(template, own, first):
     """Walk the template's XML up its inheritFrom chain (xml_chain) calling first(xml) on each; the first non-None
     answer, else None."""
@@ -1756,25 +1766,6 @@ def xml_chain(template, own=None, steps=5):
             return
         xml = retail_xml(template) if up.lower() == template.lower() else _xml(up, own)
         template = up
-
-
-def crush(template, own=None):
-    """(crusher, crushable): its CrusherInfo's CrusherLevel (0: crushes nothing) and CrushableLevel (None: cannot be
-    crushed), each from the nearest template up the chain that writes it (a child's own number beats its base's:
-    the Hammer's 20 over BaseVehicle's 10 -- docs/engine/crush.md, bench 11-06). Crushed when crusher > crushable,
-    strictly (crush.md: 30 against 30 and 20 against 20 live)."""
-    key = (template, (own or {}).get(template))
-    if key not in _crush_memo:
-        def level(attr):
-            def read(xml):
-                for head, _ in _blocks(xml or '', 'CrusherInfo'):
-                    v = _attr(head, attr)
-                    if v is not None:
-                        return int(_num(v))
-                return None
-            return _chain(template, own, read)
-        _crush_memo[key] = (level('CrusherLevel') or 0, level('CrushableLevel'))
-    return _crush_memo[key]
 
 
 _slow_memo = {}

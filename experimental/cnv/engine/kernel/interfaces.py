@@ -117,6 +117,18 @@ class Topple(Interface):
         raise NotImplementedError
 
 
+class Crush(Interface):
+    """CrusherInfo, one a thing (step M3): its CrusherLevel (crusher_level: 0 crushes nothing) and CrushableLevel
+    (crushable_level: None, it cannot be crushed); crushed when a crusher's level is strictly greater."""
+    __slots__ = ()
+
+    def crusher_level(self):
+        raise NotImplementedError
+
+    def crushable_level(self):
+        raise NotImplementedError
+
+
 class Upgrade(Interface):
     """Whether it is in force (the XML's triggers, conflicts and required upgrades) and what it does then. Its data
     has `trigger` (module.Trigger); the kernel (Thing.upgrades_moved) keeps its `upgraded` and calls on_upgrade when
@@ -188,5 +200,5 @@ class AIUpdate(Interface):
 
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
-FAMILY = (Lifetime, Topple)                    # a family's own, added with its step (docs/engine/sim-modules.md 2)
-ONE = frozenset({Body, AIUpdate, Lifetime, Topple})     # a thing has at most one of these: Thing.find gives it, not a tuple
+FAMILY = (Lifetime, Topple, Crush)             # a family's own, added with its step (docs/engine/sim-modules.md 2)
+ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush})  # a thing has at most one of these: Thing.find gives it

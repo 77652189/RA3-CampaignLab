@@ -419,10 +419,15 @@ def test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retai
 def test_a_mission_file_holding_two_game_objects_gives_each_its_own_crush_levels():
     import build
     import simunits
+    from engine.modules import crush
     m, _, _ = build.resolve('engine_dynamics', 'a')
     own = {u.id: u.xml for u in m.units}
-    assert simunits.crush('CNVHammerNoDyn', own) == (20, 20)        # its own CrusherInfo, not its base copy's 10
-    assert simunits.crush('CNVBaseVehicleNoDyn', own) == (10, 20)   # the base copy, found inside the unit's file
+
+    def levels(template):           # as the CrusherInfo module reads them (step M3)
+        d = crush.CrushData.parse(*simunits.module_blocks(template, 'CrusherInfo', own)[0])
+        return d.crusher, d.crushable
+    assert levels('CNVHammerNoDyn') == (20, 20)        # its own CrusherInfo, not its base copy's 10
+    assert levels('CNVBaseVehicleNoDyn') == (10, 20)   # the base copy, found inside the unit's file
 
 
 def test_topple_the_legacy_loop_still_drives_through_and_removes_the_props():
@@ -1174,8 +1179,15 @@ def test_attach_child_is_not_crushed_by_the_parent_it_travels_with():
     import sim
     m,t,_=build.resolve('engine_attach','a')
     e=sim.Sim(m,t);e.shot_clock=True
+    from engine.kernel import interfaces
+    from engine.modules import crush
     child=e.body('Attach high child');parent=e.body('Attach high parent')
-    child.crushable=0;parent.crusher=100
+
+    def levels(b, crusher, crushable):      # its CrusherInfo module swapped for one with these levels (step M3)
+        b.modules=tuple(m for m in b.modules if not isinstance(m,interfaces.Crush))+(
+            crush.Crush(b,crush.CrushData(crusher,crushable).seal(),e.world),)
+    levels(child,child.crusher,0);levels(parent,100,parent.crushable)
+    assert child.crushable==0 and parent.crusher==100
     e.run(20)
     assert child.alive and child.status >= {'ATTACHED','ENCLOSED','UNATTACKABLE'}
 

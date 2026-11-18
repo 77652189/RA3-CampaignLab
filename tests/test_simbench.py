@@ -643,7 +643,7 @@ def test_shot_clock_the_coil_shoots_every_31_s_one_shot_a_tank(monkeypatch):
     assert coil.weapons[0]['sched'] == [round(38 / 15, 4)] and abs(coil.weapons[0]['cycle'] - 48 / 15) < 1e-9
 
 
-# ---- crush / slow death (sim.Sim.crush_along, sim.Sim.dying, simunits.crush / slow_death): bench 2026-11-06
+# ---- crush / slow death (sim.Sim.crush_along, sim.Sim.dying, engine/modules/crush.py / simunits.slow_death): bench 2026-11-06
 # engine_crush (docs/engine/crush.md; one run each): `all` 步兵 170127043 (a Hammer drives over an enemy conscript:
 # crushed frame 43, never left its spot, lay dying 127 frames), 坦克 605069701 (a guardian, 20 against 20, lives the
 # whole run; an Apocalypse crushes one at frame 69), 建筑 1000 (a plant killed by script: dying the kill frame only);
@@ -658,11 +658,18 @@ def _crush(build_name, check):
     return s, dict(zip([lab for _, lab in t.counters], s.series[-1][1]))
 
 
-def test_crush_levels_come_from_the_data_and_the_greater_wins():
+def crush_levels(template, own=None):
+    """(crusher, crushable) as the CrusherInfo module reads them (engine/modules/crush.py; no block: (0, None))."""
     import simunits
-    conscript, hammer = simunits.crush('SovietAntiInfantryInfantry'), simunits.crush('SovietAntiVehicleVehicleTech1')
-    guardian, apoc = simunits.crush('AlliedAntiVehicleVehicleTech1'), simunits.crush('SovietAntiVehicleVehicleTech3')
-    sickle = simunits.crush('SovietScoutVehicle')
+    from engine.modules import crush
+    d = crush.CrushData.parse(*(simunits.module_blocks(template, 'CrusherInfo', own) or [('', '')])[0])
+    return d.crusher, d.crushable
+
+
+def test_crush_levels_come_from_the_data_and_the_greater_wins():
+    conscript, hammer = crush_levels('SovietAntiInfantryInfantry'), crush_levels('SovietAntiVehicleVehicleTech1')
+    guardian, apoc = crush_levels('AlliedAntiVehicleVehicleTech1'), crush_levels('SovietAntiVehicleVehicleTech3')
+    sickle = crush_levels('SovietScoutVehicle')
     assert conscript[1] == 10 and hammer == (20, 20) and guardian[1] == 20 and apoc == (30, 31) and sickle[1] == 30
     assert hammer[0] > conscript[1] and not hammer[0] > guardian[1]             # crush.md: all 1 dies, all 2 lives
     assert apoc[0] > guardian[1] and not apoc[0] > sickle[1] and not apoc[0] > apoc[1]     # all 3 dies, b 1 lives

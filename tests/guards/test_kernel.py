@@ -247,7 +247,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3598, 'Sim methods': 205, 'Body fields': 111, 'simunits defs': 154,
+CENTER = {'sim.py lines': 3597, 'Sim methods': 205, 'Body fields': 109, 'simunits defs': 153,
           'cells with old code': 36}
 
 
@@ -307,7 +307,7 @@ def test_centre_guard_bites():
 # Body.FORWARDS (the frame record shows them as the fields they were). Only shrinks: a forward goes when its last
 # outside reader asks the module's interface itself.
 BODY_FORWARDS = {'life_end': 'LifetimeUpdate', 'topple': 'ToppleUpdate', 'toppled': 'ToppleUpdate',
-                 'topple_end': 'ToppleUpdate'}
+                 'topple_end': 'ToppleUpdate', 'crusher': 'CrusherInfo', 'crushable': 'CrusherInfo'}
 
 
 def body_forwards(sim_src=None):
@@ -336,11 +336,11 @@ def test_body_forwards_are_read_only_listed_and_only_shrink():
 
 def test_forward_guard_bites():
     src = (CNV / 'sim.py').read_text(encoding='utf-8')
-    listed = "    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end')"
-    more = src.replace(listed, "    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'hp')", 1)
+    listed = '    FORWARDS = ' + repr(tuple(BODY_FORWARDS))       # as sim.py writes it, in the same order
+    more = src.replace(listed, '    FORWARDS = ' + repr(tuple(BODY_FORWARDS) + ('hp',)), 1)
     assert more != src and set(body_forwards(more)[0]) != body_forwards(more)[1]
     unlisted = src.replace(listed, "    FORWARDS = ()", 1)
-    assert body_forwards(unlisted)[1] - set(body_forwards(unlisted)[0]) == {'life_end', 'topple', 'toppled', 'topple_end'}
+    assert body_forwards(unlisted)[1] - set(body_forwards(unlisted)[0]) == set(BODY_FORWARDS)
     written = src.replace('    @health.setter\n', '    @life_end.setter\n', 1)
     assert body_forwards(written)[2] == {'life_end'}
 
@@ -362,7 +362,7 @@ CONTAINERS = {'dict', 'list', 'set', 'defaultdict', 'OrderedDict', 'Counter', 'd
 PROCESS_CACHES = {
     ('sim', '_MODEL'), ('simai', '_AI'), ('simproxy', '_PROXY'), ('simgarrison', '_memo'), ('simsweep', '_weapon_blocks'),
     *(('simunits', n) for n in (
-        '_acquire', '_all_defines', '_command_powers', '_crush_memo', '_deposits', '_equivalent', '_fight',
+        '_acquire', '_all_defines', '_command_powers', '_deposits', '_equivalent', '_fight',
         '_flee_memo', '_globals', '_hp_memo', '_index', '_ocl_text', '_ocls', '_own_weapons', '_prop_memo', '_radii',
         '_resolved', '_retail_commands', '_retail_files', '_retail_mods', '_retail_powers', '_slow_memo',
         '_surf_memo', '_table', '_turning_memo', '_upgrades', '_weapon_blocks', '_wreck_memo')),

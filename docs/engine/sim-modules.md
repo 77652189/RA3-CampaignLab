@@ -30,7 +30,7 @@
 | 特殊能力 `SpecialPower` | `ready_at()`、`cast(target)` | SpecialPower 一族 |
 | 移动和命令 `AIUpdate` | 命令状态机（移动、攻击、警戒、跟随……）+ 移动的物理（Locomotor） | 每个能动的物体一个 |
 
-上表是核心接口；引擎还有一批专项接口（出口、停靠、弹体、子体 / 被奴役者、被卖通知、跑出地图……），搬到那一族时再加进 `interfaces.py`（`FAMILY`），不预先建。已加：寿命 `Lifetime`（M1，一个物体至多一个：`die_frame()` / `set_die_frame(frame)`）；倒塌 `Topple`（M2，一个物体至多一个：`is_toppled()` / `gone_frame()` / `knock(frame, speed)` / `fall_where_it_stands(frame)`；模块删掉自己的物体走 `World.remove`）。
+上表是核心接口；引擎还有一批专项接口（出口、停靠、弹体、子体 / 被奴役者、被卖通知、跑出地图……），搬到那一族时再加进 `interfaces.py`（`FAMILY`），不预先建。已加：寿命 `Lifetime`（M1，一个物体至多一个：`die_frame()` / `set_die_frame(frame)`）；倒塌 `Topple`（M2，一个物体至多一个：`is_toppled()` / `gone_frame()` / `knock(frame, speed)` / `fall_where_it_stands(frame)`；模块删掉自己的物体走 `World.remove`）；碾压 `Crush`（M3，CrusherInfo，只有数据：`crusher_level()` / `crushable_level()`；谁压谁还在移动里）。
 
 模块要让自己的物体死（寿命到了），调 `world.kill(物体, 原因)`：宿主（今天 `Sim`）建 `World` 时给的死亡入口；搬完 Body + 死亡族后改成血量模块的入口。物体造出来以后才补一个模块（遭遇战 AI 补读原版寿命）用 `world.attach(物体, 标签)`。
 
@@ -142,6 +142,6 @@
 
 ## 10. 迁移期怎么和旧代码共存（绞杀者）
 
-- 今天的 `Body` 就是物体：先长出 `modules`，字段一族一族搬进模块实例；外面还在读的字段留只读转发属性（名单只减），写一律走模块接口。转发写成 `Body` 上的 `名字 = kernel_module.forward(接口, 读法)`，名字列进 `Body.FORWARDS`（逐帧记录照旧当字段记，没模块的记 None，或 `forward(..., default)` 给的旧默认值，如 `toppled` 的 False）和 `tests/test_kernel.py` 的 `BODY_FORWARDS`。只从任务自带模板读的标签列在 `simunits.OWN_ONLY`（寿命：和它替换的读法一样，不读原版）。
+- 今天的 `Body` 就是物体：先长出 `modules`，字段一族一族搬进模块实例；外面还在读的字段留只读转发属性（名单只减），写一律走模块接口。转发写成 `Body` 上的 `名字 = kernel_module.forward(接口, 读法)`，名字列进 `Body.FORWARDS`（逐帧记录照旧当字段记，没模块的记 None，或 `forward(..., default)` 给的旧默认值，如 `toppled` 的 False）和 `tests/test_kernel.py` 的 `BODY_FORWARDS`。只从任务自带模板读的标签列在 `simunits.OWN_ONLY`（寿命：和它替换的读法一样，不读原版）。属性逐个继承的标签（每个属性取继承链上最近写了它的模板）列在 `simunits.MERGED`（CrusherInfo：64 个原版模板的块是空的，等级来自基类）。
 - 今天的 `Sim` 是世界的宿主：持有内核 `World`，`simworld.WORLD_API` 的名字逐个改指到 `World` 上；`Sim` 上的转调只给旧代码和测试用，不许再加。
 - 每一步仍按 [sim-layers.md](sim-layers.md) 的比对方法验收：固定任务逐帧记录前后一字不差；有意改行为的步单独提交、写明、上台。

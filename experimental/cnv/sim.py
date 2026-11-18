@@ -505,8 +505,6 @@ class Body(kernel_module.Thing):
                                                                 # refinery, due frame, load, paid, leg
     ready_at: dict = dataclasses.field(default_factory=dict)   # special power -> the frame its reload ends (a cast,
                                                                 # the script's too, starts it anew: order_power)
-    crusher: int = 0                                            # CrusherInfo (simunits.crush): drives over what is
-    crushable: object = None                                    # of a lower level; None: cannot be crushed
     lies: float = 0.0                                           # seconds it lies dying once killed (SlowDeath's
                                                                 # DestructionDelay), the crush's death only (R9)
     linger: float = 0.0                                         # ... the lie this death has (LINGER, or `lies`)
@@ -554,12 +552,14 @@ class Body(kernel_module.Thing):
         was, hp = self.hp, self.max_hp * float(pct) / 100.0
         self.hp = max(self.health_floor, hp) if self.immortal else hp
         self.health_moved(was, self.hp)
-    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end')    # fields moved into modules, still read outside:
-                                                                    # read only (test_kernel BODY_FORWARDS)
+    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable')  # fields moved into modules,
+                                                                    # still read outside: read only (BODY_FORWARDS)
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
     topple_end = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.gone_frame())
+    crusher = kernel_module.forward(kernel_interfaces.Crush, lambda m: m.crusher_level(), 0)    # step M3: drives over
+    crushable = kernel_module.forward(kernel_interfaces.Crush, lambda m: m.crushable_level())  # a lower level
 
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
@@ -1216,7 +1216,6 @@ class Sim:
                                                                       # have no AttributeModifier)
         if b.slots:                           # the weapon lines name a status: the held one is chosen from it
             b.weapons = simunits.pick_weapons(b.slots, b.status, self.weapon_upgrades(b))
-        b.crusher, b.crushable = simunits.crush(template, self.own)
         b.lies = simunits.slow_death(template, self.own)
         b.linger = LINGER
         b.prop = simunits.prop_body(template, self.own)

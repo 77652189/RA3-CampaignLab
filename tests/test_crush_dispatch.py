@@ -58,9 +58,17 @@ def test_crush_host_dispatch(name, expected):
     callback = brain.tactics.crush
     assert callback(brain.ai, f, foe)
     for obj, attr, value in [(guard, 'alive', False), (tank, 'alive', False),
-                             (guard, 'owner', tank.owner), (guard, 'crushable', tank.crusher),
+                             (guard, 'owner', tank.owner),
                              (guard, 'surface', 'air'), (tank, 'surface', 'air')]:
         old = getattr(obj, attr)
         setattr(obj, attr, value)
         assert not callback(brain.ai, f, foe), (attr, value)
         setattr(obj, attr, old)
+    # The levels are the CrusherInfo module's (step M3): the guard's swapped for one at the tank's own level.
+    from engine.kernel import interfaces
+    from engine.modules import crush
+    kept = guard.modules
+    guard.modules = tuple(m for m in kept if not isinstance(m, interfaces.Crush)) + (
+        crush.Crush(guard, crush.CrushData(guard.crusher, tank.crusher).seal(), w.sim.world),)
+    assert guard.crushable == tank.crusher and not callback(brain.ai, f, foe)
+    guard.modules = kept
