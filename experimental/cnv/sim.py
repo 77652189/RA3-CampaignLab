@@ -2547,12 +2547,12 @@ class Sim:
     def range_targets(self, b):
         """For move: the foes an attack-mover on its way would stop for, [(foe, the centre distance it fires
         from)], out of reach where it stands (the tick's fight found nothing for it); None when it does not stop
-        for any (not attack-moving, not in the tick's fight, no frames). Bench 2026-11-10 engine_wayatk team (A
+        for any (not attack-moving, not in the tick's fight). Bench 2026-11-10 engine_wayatk team (A
         round 230): the tanks get in range mid-tick; held for the next tick's fight they hit a tick late (s7, the
         bench s4: LAG 2). Generals AIAttackMoveToState looks for a target every frame its attack machine is idle.
         The same picks as aim's (the order's target, or one it takes by itself); INFERRED: the foe stands still for
         the tick, the line of fire is taken where it would stop."""
-        if (self.eng is None or not self.combat or b.mode != 'attack' or b.engaged or b.speed <= 0
+        if (not self.combat or b.mode != 'attack' or b.engaged or b.speed <= 0
                 or not any(a is b for a in self._field[1])):
             return None
         out = []
@@ -3110,7 +3110,7 @@ class Sim:
                     left = 0
             if not b.path and not precise and b.speed > 0:      # where in the tick its way ended (Sim.on_the_move)
                 b.stops_at = math.floor(self.t / DT + 1e-6) * DT + max(spent + (walked - left) / b.speed - extra, 0.0)
-            if not b.path and not precise and self.eng is not None and self.combat and id(b) not in self.mid_aims \
+            if not b.path and not precise and self.combat and id(b) not in self.mid_aims \
                     and any(a is b for a in self._field[1]):
                 # its way ended mid-tick (an idle chase's walk to reach, an order's end): it aims from that frame,
                 # not the next tick's fight (bench engine_acquire idle220, A round 231)
