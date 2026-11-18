@@ -154,7 +154,7 @@ def produce(s, frame, tick):
 def counters(s, frame, tick):
     # DISPLAY_COUNTER shows the table's value, a running timer's frames left too (bench 11-10 engine_timer stop:
     # 109 94 80 ... after RESTART_TIMER; s.counters hides running timers). Without the model Sim.sample reads them
-    if s.eng is not None and s.test and s.test.counters and (frame - 1) % s.fps == 0 and s.t >= LAG:
+    if s.model_scripts and s.test and s.test.counters and (frame - 1) % s.fps == 0 and s.t >= LAG:
         s.series.append((int(round(s.t - LAG)), [s.eng.value(c) for c, _ in s.test.counters]))
 
 

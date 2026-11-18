@@ -194,11 +194,11 @@ def unit_execute_sequential_script(sim, name, a, script):
     # (seq_due); the script becomes a subroutine. The record's loop count is 0 here (one run; the catalog's
     # action has no third argument)
     b = sim.body(a[0])
-    sc = getattr(sim.eng, '_scripts', {}).get(a[1]) if sim.eng is not None else None
+    sc = getattr(sim.eng, '_scripts', {}).get(a[1]) if sim.model_scripts else None
     if b and b.alive and sc is not None:
         sc.subroutine = True
         sim.seq.append({'b': b, 'script': sc, 'step': -1, 'loops': int(a[2]) if len(a) > 2 else 0})
-    elif b and sim.eng is None:
+    elif b and not sim.model_scripts:
         sim.gap(GAP_ACTION, name, '没有引擎模型的运行不模拟顺序脚本')
 
 

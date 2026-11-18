@@ -88,7 +88,6 @@ import simloop  # noqa: E402
 import simworld  # noqa: E402
 import simexec  # noqa: E402
 import scriptplugin  # noqa: E402
-from engine.script import executor as script_executor  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
 
@@ -831,13 +830,15 @@ class Ground:
 
 
 class Sim:
+    model_scripts = False               # the model's plug-in runs the scripts (its tables): simexec.attach
     shot_clock = False                  # opt-in frame clock: discrete shots and movement between script frames;
                                         # default movement retains its benched coarse tick (work/re/handoff-c.md)
     player_ups = types.MappingProxyType({})     # read-only "nothing granted" for a Sim built without __init__ (the
                                                 # tests' bare worlds); __init__ gives each Sim its own dict
 
-    def __init__(self, mission, test=None, level='normal', script='', model=True):
-        """model: run the scripts in the engine line's model where it is on this computer (False: the older loop)."""
+    def __init__(self, mission, test=None, level='normal', script='', model=True, executor=None):
+        """model: run the scripts in the engine line's model where it is on this computer (False: the older loop).
+        executor 'public': the public executor on the model's world all the same (simexec.attach)."""
         self.m = mission
         self.retail = getattr(mission, 'RETAIL', False)      # a retail campaign map (retail.py): its own scripts
         self.mm = mission.merged(test) if self.retail else parts.merged(mission, test)
@@ -1020,28 +1021,8 @@ class Sim:
         self.hotspots = {str(k): False for k in getattr(self.mm, 'hotspots', {}) or {}}
         self.waypoints = self.mm.waypoints
         self.reblock()
-        self.eng = None
-        self.fps = simunits.LIFE_FPS     # the frame loop's rate, the model's FPS when there is one
-        got = engine_model() if model else None
-        if got:
-            # the scripts as the game runs them: the compiler's NOT flags (package.py writes unnot's), the inverted
-            # bit ignored; one list, the run's difficulty; this Sim is the engine's World (condition / action)
-            mod, cls = got
-            self.fps = mod.FPS
-            lists = mission.script_lists(mod) if self.retail else mod.from_cnv(parts.unnot(self.mm.scripts))
-            if not self.retail:
-                self.handed = skirmish_setup(mission.map, set(self.players.values()))
-                self.library_ai = frozenset(self.handed)    # kept: their MAKE_BASE stands in for the library's wake
-            # a retail map's own scripts keep their inverted bit (the engine model: honored for retail's compiled
-            # scripts; a02's 'NOT units in the convention center' completed objective 1 at 0:04 with it ignored)
-            self.eng = cls(lists, world=simexec.SimWorld(self), difficulty=self.level, honor_inverted=self.retail)
-            self.flags, self.counters = self.eng.flags, scriptplugin.Counters(self.eng)
-            self.timers = scriptplugin.Timers(self, mod.FPS)
-            if any(c and c[-1] == parts.NOT for s in self.mm.scripts for c in s.when):
-                self.used.add('inverted')
-        # the script executor port (engine/ports/scripts.py): the plug-in above, else the public executor
-        self.executor = self.eng if self.eng is not None else script_executor.PublicExecutor(
-            simexec.SimWorld(self), self.mm.scripts, self.level, self.done, self.disabled, parts.NOT)
+        # the script executor port (engine/ports/scripts.py): the model's plug-in where it is, else the public one
+        simexec.attach(self, engine_model() if model else None, executor, skirmish_setup, parts, scriptplugin)
 
     def blocks(self, b, place=False):
         """What of the way a body takes up: a wall of ours its bar (or disc, square), a building its round. place:
@@ -3222,7 +3203,7 @@ class Sim:
 
     def sample(self):
         """Every second: a check's counters; every 10: the threat; every 30: what the player has seen."""
-        if self.eng is None and self.test and self.test.counters and self.t >= LAG:     # the model's: in step
+        if not self.model_scripts and self.test and self.test.counters and self.t >= LAG:   # the model's: in step
             self.series.append((int(round(self.t - LAG)), [self.counters.get(c, 0) for c, _ in self.test.counters]))
         if int(round(self.t)) % 10 == 0:
             # can the player hold: the enemy's fire within NEAR of the player's things against the player's own

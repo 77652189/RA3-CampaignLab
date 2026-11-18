@@ -15,14 +15,17 @@ from engine.ports import scripts as port
 class PublicExecutor(port.Executor):
     """`scripts`: the map's scripts (each with name, levels, when, do, once); `level`: the run's difficulty index into
     a script's levels; `done` / `disabled`: the run's sets of script names (the world's, shared: actions change them);
-    `not_mark`: the last item of a negated condition."""
+    `not_mark`: the last item of a negated condition; `clock`: an object whose `frame` it moves on before each frame's
+    scripts (the model's engine as the world's clock, simexec.attach's executor 'public'), None: the world's clock."""
 
-    def __init__(self, world, scripts, level, done, disabled, not_mark):
+    def __init__(self, world, scripts, level, done, disabled, not_mark, clock=None):
         self.world, self.scripts, self.level = world, scripts, level
         self.done, self.disabled, self.not_mark = done, disabled, not_mark
-        self.script = None
+        self.script, self.clock = None, clock
 
     def step(self):
+        if self.clock is not None:
+            self.clock.frame += 1
         for sc in self.scripts:
             if sc.name in self.done or sc.name in self.disabled or not sc.levels[self.level]:
                 continue

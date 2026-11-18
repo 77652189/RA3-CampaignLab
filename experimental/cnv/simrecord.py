@@ -6,7 +6,7 @@ frame's record identical (docs/engine/sim-layers.md "搬迁不改行为").
                                                                          # after another, the least of 3 runs
     python -X utf8 experimental/cnv/simrecord.py compare <base> <new>    # first differing line per task, then
                                                                          # each task's run time before and after
-    python -X utf8 experimental/cnv/simrecord.py record <dir> --executor public|model
+    python -X utf8 experimental/cnv/simrecord.py record <dir> --executor public|model|public@model
     python -X utf8 experimental/cnv/simrecord.py cross <public dir> <model dir>
                                                                          # the two script executors frame by frame
 
@@ -20,7 +20,9 @@ audit set, gaps, ending, series). Runs go in a subprocess with PYTHONHASHSEED=0 
 Records are gzip text under the caller's folder (work/logs/simrecord/...), never in the repository.
 
 `--executor` runs every task with that script executor (engine/ports/scripts.py: `public`, the real one,
-engine/script/executor.py, is Sim(model=False); `model`, the private model's plug-in, is Sim(model=True)) and writes a
+engine/script/executor.py, is Sim(model=False); `model`, the private model's plug-in, is Sim(model=True);
+`public@model`, the public one on the model's world -- its frame clock and the simulator's model-or-not branches --
+is Sim(model=True, executor='public'), so of three records one pair differs by the executor, the other by the world) and writes a
 cross record instead (CrossRecorder): one line per script step, numbered by the loop's frame, of what the executor
 told the world through the port and the script state it leaves. `cross` lines the two up by frame and lists, per
 task, each field's first differing frame and how many frames differ: a report, never a pass/fail (the differences
@@ -54,7 +56,10 @@ SIM_FIELDS = ('log', 'flags', 'counters', 'timers', 'objectives', 'money', 'inco
               'series', 'done', 'disabled', 'events')
 SKIP_BODY = frozenset({'heal_seen', 'hurt'})   # K2: AutoHeal's last-frame health became a hurt flag (bookkeeping
                                                # nobody sees; heal_at, what it decides, is still recorded)
-EXECUTORS = ('public', 'model')   # --executor (engine/ports/scripts.py): Sim(model=False) / Sim(model=True)
+EXECUTORS = ('public', 'model', 'public@model')   # --executor (engine/ports/scripts.py): Sim(model=False) /
+                                # Sim(model=True) / Sim(model=True, executor='public'): the public one on the model's
+                                # world (its clock and model-or-not branches), so a cross against `model` is the
+                                # executor alone and one against `public` the world alone
 SLOWER = 0.10                  # compare flags a task whose run got more than this much slower (ADR 0029 "搬完" (d))
 SHORTEST = 1.0                 # ... and only a run of at least this many seconds (shorter ones are noise)
 
@@ -187,12 +192,22 @@ class PortTap:
 CROSS_FIELDS = ('did', 'flags', 'counters', 'timers', 'objectives', 'ending', 'log', 'alive')
 
 
+def frames_left(due, now, fps):
+    """A running timer's frames left as the game's counter table holds it (script-semantics.md 3): from the mission
+    second it runs out at (Sim.timers: either executor's) and the frame's second; one that ran out reads -1, where
+    the game's stops. Two places: an untaken ceil (a public timer of 2.3 s) shows as a fraction."""
+    v = round((due - now) * fps, 2)
+    v = max(-1, v)
+    return int(v) if v == int(v) else v
+
+
 class CrossRecorder:
     """The cross record (`--executor`): after each script step a line `x<frame>` -- the loop's frame the step ran on
     (the plug-in's own number before it moves it on, the public executor's frame_now()), so the n-th step of either
     has the same number -- with the actions it did (PortTap) and the script state after: flags (as 0 / 1), plain
-    counters, timers (the mission second each runs out, 3 places), objectives, the ending, the timeline's new lines,
-    the living bodies' names."""
+    counters, timers (frames_left: the frames each has left, as the game's table keeps them, so the two executors'
+    frame numbers being one apart does not show), objectives, the ending, the timeline's new lines, the living
+    bodies' names."""
 
     def __init__(self, s, out):
         self.s, self.out, self.n = s, out, 0
@@ -222,7 +237,7 @@ class CrossRecorder:
             'did': canon(did),
             'flags': canon({k: int(v) for k, v in s.flags.items()}),
             'counters': canon(dict(s.counters)),
-            'timers': canon({k: round(v, 3) for k, v in s.timers.items()}),
+            'timers': canon({k: frames_left(v, s.t, s.fps) for k, v in s.timers.items()}),
             'objectives': canon(s.objectives),
             'ending': canon(s.ending),
             'log': canon(s.log[self.logged:]),
@@ -236,23 +251,24 @@ class CrossRecorder:
 
 def run_task(name, out, executor=None):
     """One task's run, its record written to `out`. executor: None the task's own (TASKS: old runs the public one,
-    the rest the model's plug-in where it is on this computer) and the full record; 'public' / 'model' that executor
-    for every kind and the cross record (CrossRecorder)."""
+    the rest the model's plug-in where it is on this computer) and the full record; 'public' / 'model' /
+    'public@model' that executor for every kind and the cross record (CrossRecorder)."""
     import build
     import sim
     kind, args, until = TASKS[name]
-    model = kind != 'old' if executor is None else executor == 'model'
+    model = kind != 'old' if executor is None else executor in ('model', 'public@model')
+    which = {'executor': 'public'} if executor == 'public@model' else {}
     make = Recorder if executor is None else CrossRecorder
     if kind == 'retail':
         import retail
-        s = sim.Sim(retail.RetailMission(args[0]), model=model)
+        s = sim.Sim(retail.RetailMission(args[0]), model=model, **which)
         rec = make(s, out)
         rec.attach()
         t0 = time.perf_counter()
         s.run(until)
     elif kind in ('bench', 'old'):
         m, t, _ = build.resolve(*args)
-        s = sim.Sim(m, t, model=model)
+        s = sim.Sim(m, t, model=model, **which)
         rec = make(s, out)
         rec.attach()
         t0 = time.perf_counter()
@@ -260,7 +276,7 @@ def run_task(name, out, executor=None):
     elif kind == 'ai':
         import simai
         m, t, _ = build.resolve(*args)
-        s = sim.Sim(m, t, 'normal', model=model)
+        s = sim.Sim(m, t, 'normal', model=model, **which)
         rec = make(s, out)
         rec.attach()
         w = simai.SimAI(s, 'normal', 1, None, None, simai.BLOCKS, False)

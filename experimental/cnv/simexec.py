@@ -3,7 +3,9 @@ executor -- the public one (engine/script/executor.py) or the private model's pl
 the port's `World`. Moved off Sim (its condition / action / this_player / update / difficulty, and the core actions
 the model's SimEngine reported) as a pure move; the rules stay where they were (simcond / simact by name)."""
 from engine.ports import scripts as port
+from engine.script import executor as script_executor
 import simcond
+import simunits
 from simscript import RA3_ONLY
 
 # core actions the plug-in runs itself that the world still watches (World.core): the timeline's notes on them ...
@@ -11,6 +13,40 @@ SEEN_CORE = {'SET_FLAG', 'SET_MISSION_OBJECTIVE_STATUS', 'DISPLAY_COUNTDOWN_TIME
              'MARK_MISSION_OBJECTIVE_COMPLETED', 'MARK_MISSION_OBJECTIVE_NOT_COMPLETED'}
 # ... and the ones that only change something (the quiet clock: Sim.change)
 CHANGES = {'INCREMENT_COUNTER', 'DECREMENT_COUNTER', 'SET_MILLISECOND_TIMER', 'SET_RANDOM_MSEC_TIMER'}
+
+
+def attach(sim, got, executor, skirmish_setup, parts, scriptplugin):
+    """The Sim's script executor (moved off Sim.__init__): `got` the model's (module, plug-in class) where it is on
+    this computer, else None; `parts` (the compiler's NOT mark, unnot) and `scriptplugin` (the plug-in's table views)
+    handed in by sim.py, which layered modules do not import. With it the scripts as the game runs them: the compiler's NOT flags (package.py writes
+    unnot's), one list, the run's difficulty, the Sim the engine's World; the model's FPS is the frame rate and the
+    container's Lib_Skirmish_Setup is handed the published players. Without it the public executor.
+
+    executor 'public' with the model there (simrecord --executor public@model, a diagnostic): the model's engine
+    holding no scripts, only its frame clock (Sim.frame_now, the model's FPS), and the public executor on it -- the
+    simulator's model-or-not branches as with the model, so a cross against the plug-in is the executor alone."""
+    sim.eng = None
+    sim.fps = simunits.LIFE_FPS                     # the frame loop's rate, the model's FPS when there is one
+    if got:
+        mod, cls = got
+        sim.fps = mod.FPS
+        if not sim.retail:
+            sim.handed = skirmish_setup(sim.m.map, set(sim.players.values()))
+            sim.library_ai = frozenset(sim.handed)  # kept: their MAKE_BASE stands in for the library's wake
+    if got and executor == 'public':
+        sim.eng = cls([], world=SimWorld(sim), difficulty=sim.level, end_library=False)
+    elif got:
+        lists = sim.m.script_lists(mod) if sim.retail else mod.from_cnv(parts.unnot(sim.mm.scripts))
+        # a retail map's own scripts keep their inverted bit (the engine model: honored for retail's compiled
+        # scripts; a02's 'NOT units in the convention center' completed objective 1 at 0:04 with it ignored)
+        sim.eng = cls(lists, world=SimWorld(sim), difficulty=sim.level, honor_inverted=sim.retail)
+        sim.flags, sim.counters = sim.eng.flags, scriptplugin.Counters(sim.eng)
+        sim.timers = scriptplugin.Timers(sim, mod.FPS)
+        if any(c and c[-1] == parts.NOT for s in sim.mm.scripts for c in s.when):
+            sim.used.add('inverted')
+        sim.model_scripts = True
+    sim.executor = sim.eng if sim.model_scripts else script_executor.PublicExecutor(
+        SimWorld(sim), sim.mm.scripts, sim.level, sim.done, sim.disabled, parts.NOT, clock=sim.eng)
 
 
 class SimWorld(port.World):
