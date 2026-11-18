@@ -37,10 +37,24 @@ def _rows_of(w):
             build.judge(w.sim.test, w.sim.series))
 
 
+def _start(lib, build, check, script='', shot_clock=False):
+    """A scene's run at frame 0 (readings.RUN_OPTS): the player's script given to the Sim, its clock set before a frame."""
+    w = simai.run(build, check, 0, lib=lib, script=script)
+    w.sim.shot_clock = shot_clock
+    return w
+
+
+def test_the_runner_gives_a_scene_its_run_options(lib):
+    """script reaches the Sim (不打: the player's units hold fire, Sim.combat) and shot_clock is set before a frame."""
+    build, check = GROUPS[0][0][0][:2]              # any scene of the data: the options are the runner's, not a bench's
+    plain, opted = _start(lib, build, check), _start(lib, build, check, '不打', True)
+    assert (plain.sim.combat, plain.sim.shot_clock, plain.sim.t) == (True, False, 0.0)
+    assert (opted.sim.combat, opted.sim.shot_clock, opted.sim.t) == (False, True, 0.0)
+
+
 @pytest.mark.parametrize('keys, group', GROUPS,
-                         ids=[f'{g[0]["bench_file"]}:' + '+'.join(b + (f'.{c}' if c else '') for b, c in k)
-                              for k, g in GROUPS])
+                         ids=[f'{g[0]["bench_file"]}:' + '+'.join(readings.label(k) for k in ks) for ks, g in GROUPS])
 def test_the_bench_readings_hold_on_the_simulator(lib, keys, group):
-    problems = readings.run_group(keys, group, lambda b, c: simai.run(b, c, 0, lib=lib),
+    problems = readings.run_group(keys, group, lambda b, c, **opts: _start(lib, b, c, **opts),
                                   lambda w, frames: w.advance(frames), _rows_of)
     assert not problems, '\n'.join(problems)

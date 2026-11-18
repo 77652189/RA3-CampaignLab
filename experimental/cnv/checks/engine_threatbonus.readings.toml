@@ -1,0 +1,21 @@
+# Bench readings of checks/engine_threatbonus.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The retail threat-bonus action; evidence in work/re/c_threatbonus_report.md (private).
+
+[[reading]]
+id = "threatbonus_scripted_losses_replay_measured_waves"
+scene = {build = "engine_threatbonus", check = "a", until = 150, script = "不打"}
+bench = "A actual samples: 0/0/100/1, then 0/0/80/2, then 0/0/60/3 (bench 11-16)"
+proves = """sim threat bonus, the observed wave states only (capture seconds did not identify logic frames). Does not \
+establish the effect of DISABLE and must not promote its inventory state."""
+expect = "{(0, 0, 100, 1), (0, 0, 80, 2), (0, 0, 60, 3)} <= {tuple(v) for v in vals(rows)}"
+
+[[reading]]
+id = "threatbonus_both_actual_rank_frames_as_the_bench"
+scene = {build = "engine_threatbonus", check = "b", until = 380, script = "不打"}
+bench = "B archived 0063: 2893/2893/40/3374; final 0129: 2893/2893/0/5708 (bench 11-16)"
+proves = """sim threat bonus: rank-frame counters latched by once scripts, compared after the measured stage, without \
+converting capture seconds to mission time or replacing the observed 2893 with 5400."""
+let = {row = "vals(rows)[-1]"}
+expect = ["row[2] == 0 and row[3] >= 5700", "row[:2] == [2893, 2893]"]
+mismatch = """sim both rank-2 frames 5400, bench 2893 (including disabled s5): the Sim has no death-threat protocol \
+multiplier; the action reward scope and same-frame player threat / multiplier are unobserved"""

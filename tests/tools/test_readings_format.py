@@ -22,9 +22,9 @@ class Fake:
     """A world whose counter n reads its frame // FPS each second (the 'n' row of mission second t is t)."""
     started = []
 
-    def __init__(self, b, c):
-        self.frame, self.series, self.key = 0, [], (b, c)
-        Fake.started.append((b, c))
+    def __init__(self, b, c, **opts):
+        self.frame, self.series, self.key, self.opts = 0, [], (b, c), opts
+        Fake.started.append((b, c, opts) if opts else (b, c))
 
     def advance(self, frames):
         for _ in range(frames):
@@ -39,7 +39,7 @@ def run(readings):
     out = []
     for keys, group in rd.groups(readings):
         out += rd.run_group(keys, group, Fake, lambda w, f: w.advance(f),
-                            lambda w: ([t for t, _ in w.series], [r for _, r in w.series], {'frame': w.frame},
+                            lambda w: ([t for t, _ in w.series], [r for _, r in w.series], {'frame': w.frame, **w.opts},
                                        [(w.frame % 2 == 0, f'frame {w.frame}')]))
     return out
 
@@ -97,7 +97,8 @@ def test_each_scene_runs_once_and_every_reading_sees_its_own_until(tmp_path):
     assert [r['id'] for r in rs] == ['short', 'long', 'each[b1]', 'each[b2]', 'pair', 'b3_alone', 'still_off']
     assert run(rs) == []
     assert sorted(Fake.started) == [('b1', 'a'), ('b2', 'a'), ('b3', 'a')]      # b1: four readings, one run
-    assert [k for k, _ in rd.groups(rs)] == [[('b1', 'a'), ('b3', 'a')], [('b2', 'a')]]   # the pair joins b1 and b3
+    assert [k for k, _ in rd.groups(rs)] == [[('b1', 'a', ()), ('b3', 'a', ())], [('b2', 'a', ())]]   # the pair joins
+    # b1 and b3
 
 
 def test_a_reading_that_does_not_hold_is_reported_and_a_mismatch_that_holds_too(tmp_path):
@@ -130,7 +131,7 @@ expect = "got[-1]['k'] == n and first('n', rows=got) == 0"
 def test_each_overrides_a_named_scene_of_scenes(tmp_path):
     rs = rd.load(write(tmp_path, EACH_SCENES))
     assert [r['id'] for r in rs] == ['same_as_b1[b3]', 'same_as_b1[b2]']
-    assert rs[0]['scenes'] == {'base': ('b1', 'a', 4.0), 'got': ('b3', 'a', 4.0)} and rs[1]['vars'] == {'n': 40}
+    assert rs[0]['scenes'] == {'base': ('b1', 'a', 4.0, ()), 'got': ('b3', 'a', 4.0, ())} and rs[1]['vars'] == {'n': 40}
     assert run(rs) == []
     assert sorted(Fake.started) == [('b1', 'a'), ('b2', 'a'), ('b3', 'a')]
     assert run(rd.load(write(tmp_path, EACH_SCENES.replace('n = 40', 'n = 41')))) == [
@@ -167,6 +168,77 @@ def test_counters_by_name_and_the_checks_verdicts_at_each_until(tmp_path):
     assert run(rd.load(write(tmp_path, missing))) == ["by_name_later: KeyError: 'nope'"]
     unnamed = COUNTERS.replace("counter('frame', 'one')", "counter('frame')")
     assert run(rd.load(write(tmp_path, unnamed)))[0].startswith('by_scene: ReadingError: by_scene: name the scene')
+
+
+RUN_OPTS = '''
+[[reading]]
+id = "plain"
+scene = {build = "b1", check = "a", until = 3}
+bench = "-"
+proves = "x: y"
+expect = "counter('frame') == 45 and 'script' not in vars()"
+
+[[reading]]
+id = "defaults_written_out"
+scene = {build = "b1", check = "a", until = 2, script = "", shot_clock = false}
+bench = "-"
+proves = "x: y"
+expect = "counter('frame') == 30"
+
+[[reading]]
+id = "scripted"
+scene = {build = "b1", check = "a", until = 3, script = "5 摧毁 camp"}
+bench = "-"
+proves = "x: y"
+expect = "counter('script') == '5 摧毁 camp'"
+
+[[reading]]
+id = "clocked"
+scene = {build = "b1", check = "a", until = 4, shot_clock = true}
+bench = "-"
+proves = "x: y"
+expect = "counter('shot_clock') is True and counter('frame') == 60"
+
+[[reading]]
+id = "per_entry"
+scene = {build = "b1", check = "a", until = 2}
+each = [{script = "不打"}, {script = "不打", shot_clock = true}, {build = "b2"}]
+bench = "-"
+proves = "x: y"
+expect = "rows[-1]['n'] == 2"
+
+[[reading]]
+id = "compared"
+scenes = {off = {build = "b1", check = "a", until = 2}, on = {build = "b1", check = "a", until = 2, shot_clock = true}}
+bench = "-"
+proves = "x: y"
+expect = "off == on and 'shot_clock' not in vars() and counter('shot_clock', 'on')"
+'''
+
+
+def test_script_and_shot_clock_make_a_run_of_their_own(tmp_path):
+    rs = rd.load(write(tmp_path, RUN_OPTS))
+    assert [r['id'] for r in rs] == ['plain', 'defaults_written_out', 'scripted', 'clocked', 'per_entry[b1~script=不打]',
+                                     'per_entry[b1~script=不打~shot_clock]', 'per_entry[b2]', 'compared']
+    assert rs[1]['scenes']['rows'] == ('b1', 'a', 2.0, ())          # a default written out is the default
+    assert rs[4]['scenes']['rows'] == ('b1', 'a', 2.0, (('script', '不打'),))
+    assert run(rs) == []
+    # one run per (build, check, options): the defaults share plain's, the entries' and the comparison's join the rest
+    assert sorted(Fake.started, key=str) == sorted([
+        ('b1', 'a'), ('b1', 'a', {'script': '5 摧毁 camp'}), ('b1', 'a', {'shot_clock': True}),
+        ('b1', 'a', {'script': '不打'}), ('b1', 'a', {'script': '不打', 'shot_clock': True}), ('b2', 'a')], key=str)
+    keys = [k for k, _ in rd.groups(rs)]
+    assert [rd.label(k) for ks in keys for k in ks] == [
+        'b1.a', 'b1.a~shot_clock', 'b1.a~script=5 摧毁 camp', 'b1.a~script=不打', 'b1.a~script=不打~shot_clock', 'b2.a']
+    assert [len(ks) for ks in keys] == [2, 1, 1, 1, 1]               # the comparison joins b1.a and b1.a~shot_clock
+
+
+@pytest.mark.parametrize('scene, why', [('shot_clock = 1', 'shot_clock is a bool'), ('script = 5', 'script is a str'),
+                                        ('shot = true', 'a scene is')])
+def test_run_options_are_typed(tmp_path, scene, why):
+    text = f'[[reading]]\nid = "a"\nscene = {{build = "b", until = 1, {scene}}}\nbench = "-"\nproves = "-"\nexpect = "1"\n'
+    with pytest.raises(rd.ReadingError, match=why):
+        rd.load(write(tmp_path, text))
 
 
 @pytest.mark.parametrize('entry', ['{n = 4}', '{got = "b3"}', '{build = "b3", got = {build = "b3"}}'])

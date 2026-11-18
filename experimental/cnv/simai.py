@@ -2090,11 +2090,13 @@ class SimAI:
         return {self.world.who(p): b.ai.thoughts() for p, b in self.brains.items()}
 
 
-def run(build, check='', until=200.0, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS, record=False):
-    """Build `build` (a cnv build name), run it with the AI `until` seconds: the SimAI. record: HOOKS 9."""
+def run(build, check='', until=200.0, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS, record=False,
+        script=''):
+    """Build `build` (a cnv build name), run it with the AI `until` seconds: the SimAI. record: HOOKS 9. script: the
+    player's (sim.Sim's script)."""
     import build as bld
     m, t, _ = bld.resolve(build, check)
-    w = SimAI(sim.Sim(m, t, level), level, seed, lib, data, blocks, record)
+    w = SimAI(sim.Sim(m, t, level, script), level, seed, lib, data, blocks, record)
     w.advance(int(until * FPS))
     return w
 
