@@ -263,6 +263,25 @@ def test_the_format_is_checked_on_load(tmp_path, text, why):
         rd.load(write(tmp_path, text))
 
 
+ITEM = '[[reading]]\nid = "a"\nscene = {build = "b", until = 1}\nbench = "-"\nproves = "-"\nexpect = "1"\n'
+
+
+def test_item_is_a_part_and_a_name_or_a_list_of_them_the_same_for_every_each_entry(tmp_path):
+    one = rd.load(write(tmp_path, ITEM + 'item = "脚本动作 TEAM_HUNT"\n'))
+    assert one[0]['items'] == [('脚本动作', 'TEAM_HUNT')]
+    assert rd.load(write(tmp_path, ITEM))[0]['items'] == []
+    many = rd.load(write(tmp_path, ITEM + 'item = ["物体模块 AI/AIUpdate", "AI 人格/x"]\n'
+                                          'each = [{build = "b1"}, {build = "b2"}]\n'))
+    assert [r['items'] for r in many] == [[('物体模块', 'AI/AIUpdate'), ('AI', '人格/x')]] * 2
+
+
+@pytest.mark.parametrize('value', ['"TEAM_HUNT"', '"脚本动作  TEAM_HUNT"', '"脚本动作 TEAM HUNT"', '" TEAM_HUNT"', '[]',
+                                   '3', '["脚本动作 X", 3]'])
+def test_an_item_that_is_not_one_part_and_one_name_fails_on_load(tmp_path, value):
+    with pytest.raises(rd.ReadingError, match='item'):
+        rd.load(write(tmp_path, ITEM + f'item = {value}\n'))
+
+
 def test_an_expression_that_does_not_compile_fails_on_load(tmp_path):
     with pytest.raises(SyntaxError):
         rd.load(write(tmp_path, DATA.replace("len(rows) == 5", "len(rows) ==")))

@@ -37,6 +37,7 @@ expect = ["all(r['原地'] == 1 for r in R)", "R[1]['坦克血'] < 100"]
 
 [[reading]]
 id = "r8_idle_within_sight_walks_up_fires_and_comes_back"
+item = "物体模块 AI/AIUpdate"
 scene = {build = "acquire_idle200", check = "frames", until = 27}
 each = [{build = "acquire_idle200"}, {build = "acquire_idle220"}]
 bench = "out of its spot from s1 (it walked up), the tank hurt from s2, back within 15 once the tank is done (bench s16, the tank left at 3; the simulator kills it at s17 and is back by s18) (bench 2026-11-07 engine_acquire idle200 / idle220)"

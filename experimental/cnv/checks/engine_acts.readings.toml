@@ -3,6 +3,14 @@
 
 [[reading]]
 id = "acts_flow_as_the_bench"
+item = [
+    "脚本动作 UNIT_CHANGE_OBJECT_STATUS:SHROUD_REVEAL_TO_ALL",
+    "脚本动作 UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_ATTACK",
+    "脚本动作 TEAM_ALLOW_AI_AUTOACQUIRE",
+    "脚本动作 NAMED_SET_DISABLED",
+    "脚本动作 NAMED_FORCE_ATTACK_NAMED",
+    "脚本动作 TEAM_SET_STANCE",
+]
 scene = {build = "engine_acts", check = "flow", until = 31}
 bench = """flow, bench 11-13 `run_queue engine_acts:flow` (CampActsFlow, round 211): 甲钱 / 乙钱 1001 / 0 -> 1001 / 1000 -> 2001 / \
 1000 (script money never shared); 友血 100 until the FORCE attack (the plain NAMED_ATTACK_NAMED on its own side fires \

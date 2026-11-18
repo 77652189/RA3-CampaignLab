@@ -28,6 +28,11 @@ A file is a list of [[reading]] tables:
   table that overrides that scene's keys (each = [{got = {build = "aiidle30"}}, ...]), id[the overridden scenes'
   builds, as above]; every entry overrides at least one scene, the other keys are names as above.
 - let = {name = "expression", ...}: evaluated in order before expect (lambdas welcome).
+- item = "脚本动作 TEAM_HUNT" (or a list of them): the inventory items (inventory.py) the reading proves, "<part>
+  <name>": the part one of inventory.PARTS, the name as the inventory lists it (no spaces in either). A reading with
+  no mismatch mark makes each one 已对拍 (inventory.declared_items) -- for an item whose name the bench's source never
+  says (a module, a command button); tests/test_inventory.py checks every declared item exists. load gives `items`,
+  a list ([] when the key is absent), the same for every each entry.
 - mismatch: the reading is checked in the same run, expected not to hold (expect evaluates false); if it holds the
   runner says so (drop the mark). Write both numbers. A reading that raises (in let or expect: an index past the end,
   a second missing) is a problem, mismatch mark or not: a run that breaks is never "still off".
@@ -45,7 +50,7 @@ import tomllib
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHECKS = os.path.join(HERE, 'checks')
 SUFFIX = '.readings.toml'
-KEYS = {'id', 'scene', 'scenes', 'each', 'bench', 'proves', 'expect', 'mismatch', 'let'}
+KEYS = {'id', 'scene', 'scenes', 'each', 'bench', 'proves', 'expect', 'mismatch', 'let', 'item'}
 NEEDED = {'id', 'bench', 'proves', 'expect'}
 RUN_OPTS = {'script': str, 'shot_clock': bool}     # how the simulator runs a scene: name -> type (default its falsy)
 SCENE_KEYS = {'build', 'check', 'until'} | set(RUN_OPTS)
@@ -81,6 +86,20 @@ def _tag(scene, entry):
                                              for k in sorted(RUN_OPTS) if k in entry)
 
 
+def _items(value, where):
+    """item = "<part> <name>" or a list of them -> [(part, name), ...]."""
+    vals = value if isinstance(value, list) else [value]
+    out = []
+    for v in vals:
+        bits = v.split(' ') if isinstance(v, str) else []
+        if len(bits) != 2 or not all(bits):
+            raise ReadingError(f'{where}: an item is "<part> <name>" (one space, neither empty), got {v!r}')
+        out.append(tuple(bits))
+    if not out:
+        raise ReadingError(f'{where}: item lists no item')
+    return out
+
+
 def run_key(scene):
     """The run a scene is a snapshot of: (build, check, opts) -- its until left out."""
     return scene[:2] + scene[3:]
@@ -88,7 +107,7 @@ def run_key(scene):
 
 def load(path):
     """The file's readings, `each` expanded: [{id, bench_file, scenes {name: (build, check, until)}, single, expect
-    [..], let {..}, vars {..}, mismatch, bench, proves}]."""
+    [..], let {..}, vars {..}, items [(part, name)], mismatch, bench, proves}]."""
     with open(path, 'rb') as f:
         data = tomllib.load(f)
     if set(data) - {'reading'}:
@@ -103,8 +122,10 @@ def load(path):
         expect = r['expect'] if isinstance(r['expect'], list) else [r['expect']]
         for e in expect + list(r.get('let', {}).values()):
             compile(e, where, 'eval')
+        items = _items(r['item'], where) if 'item' in r else []
         for entry in r.get('each', [None]):
             one = {'bench_file': bench_of(path), 'expect': expect, 'let': dict(r.get('let', {})), 'vars': {},
+                   'items': list(items),
                    'mismatch': r.get('mismatch'), 'bench': r['bench'], 'proves': r['proves'], 'id': r['id']}
             if 'scene' in r:
                 sc = dict(r['scene'])

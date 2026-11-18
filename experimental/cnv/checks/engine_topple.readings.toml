@@ -19,6 +19,7 @@ expect = [
 
 [[reading]]
 id = "test_enable_dynamics_collide_a_lantern_without_it_is_crushed_and_gone_at_the_same_frames"
+item = "物体模块 Behaviors/EnableDynamicsCollide"
 scene = {build = "engine_topple_c", check = "c", until = 50}
 bench = "engine_topple c, bench 11-10: the retail lantern, its flattened copy without EnableDynamicsCollide and the copy with it -- every Hammer at its goal at frame 91, every lantern gone at 162, never dying"
 proves = "EnableDynamicsCollide: the module (no fields) changes nothing a script reads; the three lanes alike"

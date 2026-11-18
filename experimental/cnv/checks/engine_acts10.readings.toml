@@ -3,6 +3,14 @@
 
 [[reading]]
 id = "acts_btn_all_as_the_bench"
+item = [
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateEjectPassengersSpecialPowerUntargeted",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAVT1_Transform",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_SovietAntiGroundAircraftEvacuate",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleSpiderHole",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAIV_Transform",
+    "脚本动作 TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT",
+]
 scene = {build = "engine_acts_btn", check = "all", until = 25}
 bench = """all, bench 11-14 `run_queue engine_acts_btn:all` (CampActsBtnAll, round 221; bench row s_k = mission k + 2): 弹 312 -> \
 3021 -> 3030 at s2-s4; 队 1 0 20 30; 态 111 -> 11 (s7) -> 1011 (s12); 到 TT s9, VT s11, TP s12, VP s15"""

@@ -6,6 +6,7 @@
 
 [[reading]]
 id = "test_stance_hold_fire_stops_a_standing_attack_order"
+item = "物体模块 Behaviors/StancesBehavior"
 scene = {build = "engine_stance", check = "a", until = 14}
 bench = "a: ordered at Go, HOLD_FIRE at frame 45: the bench's T 87 -> 75 (a shot fired by the stance frame), then 75 to frame 179"
 proves = "StancesBehavior: HOLD_FIRE stops a standing attack order (hurt by frame 46, not one point after frame 50)"

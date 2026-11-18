@@ -158,6 +158,34 @@ def test_the_registers_point_at_real_items_and_tests():
     assert not problems, '\n'.join(problems)
 
 
+def test_the_items_readings_declare_exist_and_the_held_ones_are_benched_citing_the_reading():
+    """A reading's `item` (readings.py) names an inventory item that exists -- every one reported, mismatch-marked
+    readings too -- and each one a held reading declares is 已对拍 with that reading in its why."""
+    rows = {(i['part'], i['name']): i for i in items()}
+    problems = [f'{src}: no item {k[0]} {k[1]}' for k, src in inventory.declared_items(held_only=False).items()
+                if k not in rows]
+    problems += [f'{k}: {rows[k]["state"]} {rows[k]["why"][:80]}' for k, src in inventory.declared_items().items()
+                 if k in rows and (rows[k]['state'] != inventory.BENCHED or src not in rows[k]['why'])
+                 and k not in inventory.BENCHED_TESTS]
+    assert not problems, '\n'.join(problems)
+
+
+def test_a_declared_item_counts_only_from_a_reading_without_a_mismatch_mark(tmp_path):
+    base = '[[reading]]\nid = "{}"\nscene = {{build = "b", until = 1}}\nbench = "-"\nproves = "-"\nexpect = "1"\n'
+    (tmp_path / 'engine_x.readings.toml').write_text(
+        base.format('held') + 'item = ["脚本动作 A_ONE", "AI 人格/w"]\n\n'
+        + base.format('off') + 'item = "脚本动作 A_TWO"\nmismatch = "sim 1, bench 2"\n', encoding='utf-8')
+    held = {(inventory.ACTION, 'A_ONE'): 'checks/engine_x.readings.toml::held',
+            (inventory.AI, '人格/w'): 'checks/engine_x.readings.toml::held'}
+    assert inventory.declared_items(str(tmp_path)) == held
+    assert inventory.declared_items(str(tmp_path), held_only=False) == {
+        **held, (inventory.ACTION, 'A_TWO'): 'checks/engine_x.readings.toml::off'}
+    xs = [dict(part=inventory.ACTION, name=n, state=inventory.GUESSED, why='-') for n in ('A_ONE', 'A_TWO')]
+    inventory.apply_declared(xs, inventory.declared_items(str(tmp_path)), notes={})
+    assert [(x['state'], x['why']) for x in xs] == [(inventory.BENCHED, 'checks/engine_x.readings.toml::held'),
+                                                    (inventory.GUESSED, '-')]
+
+
 def test_repair_closure_retains_three_health_slices_and_unmeasured_gaps():
     key = inventory.MODULE, 'Behaviors/RepairUpdate'
     rows = [i for i in items() if i['part'] == key[0] and i['name'].startswith(key[1])]

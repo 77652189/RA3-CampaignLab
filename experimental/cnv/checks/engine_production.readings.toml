@@ -3,6 +3,7 @@
 
 [[reading]]
 id = "a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench"
+item = "物体模块 Behaviors/QueueProductionExitUpdate"
 scene = {build = "engine_production", check = "i", until = 25}
 bench = "the barracks' engineer (NaturalRallyPoint (40, 18)) stops in x 75-90 / y 24-36: 出口位 1010000 (bench 11-11 engine_production i, CampProdI_mcp_1111_041259)"
 proves = """QueueProductionExitUpdate (sim.RALLY_PUSH, INFERRED fit): a new unit stops 40 beyond the natural rally point on the \

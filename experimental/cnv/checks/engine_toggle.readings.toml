@@ -5,6 +5,11 @@
 
 [[reading]]
 id = "test_toggle_status_a_press_moves_to_the_next_state_unpack_delays_it_and_a_held_state_takes_no_press"
+item = [
+    "物体模块 Behaviors/ToggleStatusSpecialAbilityUpdate",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleRiotShieldSpecialPower",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleShortCircuit",
+]
 scenes = {a = {build = "engine_toggle", check = "a", until = 12}, b = {build = "engine_toggle", check = "b", until = 12}, c = {build = "engine_toggle", check = "c", until = 12}, d = {build = "engine_toggle", check = "d", until = 12}, e = {build = "engine_toggle", check = "e", until = 12}, f = {build = "engine_toggle", check = "f", until = 12}}
 bench = "a Peacekeeper on 1-59, off by the press at 60; b Conscript PackTime 1 s changes nothing; c Hammer the first state's bit from the start; d Engineer UnpackTime 1 s then HELD for good; e Sickle WEAPON_UPGRADED_01 -> _02 -> _01; f Tesla trooper HELD, the press at 60 does nothing"
 proves = "ToggleStatusSpecialAbilityUpdate: a press moves to the next state, unpack delays it, a held state takes no press"

@@ -6,6 +6,11 @@
 
 [[reading]]
 id = "sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames"
+item = [
+    "物体模块 Behaviors/BuildingBehavior",
+    "物体模块 Behaviors/StructureSellUpdate",
+    "脚本动作 SELL_OBJECT",
+]
 scenes = {a = {build = "engine_sell", check = "a", until = 9}, b = {build = "engine_sell", check = "b", until = 9}, d = {build = "engine_sell", check = "d", until = 9}, f = {build = "engine_sell", check = "f", until = 9}}
 bench = "资金 2400 / 2200 / 2250 / 2400 for a / b / d / f; 卖帧 31031 in each; the plant counts 31 frames, then not (bench 2026-11-06 engine_sell a b d f)"
 proves = "sim.Sim.sell (NAMED_DAMAGE): half the cost scaled by health, paid once, the building deleted 30 frames after the order and counted as power till then"

@@ -3,6 +3,10 @@
 
 [[reading]]
 id = "acts_w_hunt_as_the_bench"
+item = [
+    "脚本动作 TEAM_HUNT",
+    "脚本动作 NAMED_HUNT",
+]
 scene = {build = "engine_acts_w", check = "hunt", until = 61}
 bench = """hunt, bench 11-14 `run_queue engine_acts_w:hunt` (CampActsWHunt, round 216; the bench's seconds ~1 behind): 家 1122 -> \
 1120 at s7; 到 0 throughout; 打 60 -> 62 at s15 (52 at s31, 42 at s49)"""

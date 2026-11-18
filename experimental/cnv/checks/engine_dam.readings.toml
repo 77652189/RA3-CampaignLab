@@ -3,6 +3,7 @@
 
 [[reading]]
 id = "dam_all_as_the_bench"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateJumpSpecialPower"
 scene = {build = "engine_dam", check = "all", until = 11}
 bench = """all, bench 11-15 `run_queue engine_dam:all` (CampDamAll_mcp_1115_204351, round 252; maps/probe_dam.py: a dry dam across \
 probe_air's trench): 跳 1010 for the first four readings (both dolphins in the south pool), 1000 for two (DJ out of the \

@@ -4,6 +4,7 @@
 
 [[reading]]
 id = "cryo_a_frozen_tank_melts_334_frames_after_the_beam_whatever_the_beam"
+item = "物体模块 Behaviors/SecondaryDamageTracker"
 scenes = {one = {build = "engine_cryo", check = "one", until = 91}, two = {build = "engine_cryo", check = "two", until = 91}}
 bench = """\
 One cryocopter / two on a Hammer (550), the beam cut by script 34 s after the order. 先冻 / 冻住 / 化冰 = 139 / 705 / \

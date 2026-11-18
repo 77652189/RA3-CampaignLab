@@ -6,6 +6,7 @@
 
 [[reading]]
 id = "super_the_proton_collider_ends_as_the_bench"
+item = "物体模块 Body/ActiveBody"
 scene = {build = "engine_super", check = "p", until = 31}
 bench = "血0 / 血150 / 血240 / 血300 ended 44 / 7 / 12 / 100 (bench 2026-11-07 engine_super p; sim 44 / 6 / 12 / 100)"
 proves = "sim.SUPERWEAPON_HITS, Sim.blast_due: the proton collider's cast at a waypoint hurts by distance, ends as the bench"
@@ -59,6 +60,7 @@ expect = "[by[347]['血350'], by[347]['血250']] == [100, 100] and by[347]['血1
 
 [[reading]]
 id = "super_the_iron_curtain_holds_off_fire_some_23_seconds"
+item = "物体模块 Behaviors/AttributeModifierPoolUpdate"
 scene = {build = "engine_super", check = "j", until = 35}
 bench = "both tanks (0 and 150 from the waypoint) whole until frame ~354 after the cast, then the enemy's fire takes them down (bench 86 / 73 / 60 % at 362 / 391 / 422: a volley, where the simulator's fire is steady, 71 at 422); 施放数 1 (the cast seen by PLAYER_TRIGGERED_SPECIAL_POWER once; bench i / j: 1)"
 proves = "sim.CURTAIN: the Iron Curtain holds off fire some 23 s, then the enemy's fire takes the tanks"

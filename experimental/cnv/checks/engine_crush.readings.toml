@@ -8,6 +8,10 @@
 
 [[reading]]
 id = "crush_a_tank_drives_over_a_lower_level_and_leaves_an_equal_one"
+item = [
+    "物体模块 Behaviors/SquishCollide",
+    "物体模块 Behaviors/CrushDie",
+]
 scenes = {a = {build = "engine_crush", check = "all", until = 48}, b = {build = "engine_crush_b", check = "two", until = 48}}
 bench = "步兵 crushed at frame 43; lane 2 a guardian (20 against 20) never crushed; lane 3 the Apocalypse crushes one (69); the Hammer goes round / on to its goal; b: the Sickle (30 against 30) alive, never dying (bench 2026-11-06 engine_crush all / b two)"
 proves = "sim.Sim.crush_along, engine/modules/crush.py: a tank drives over a lower level and leaves an equal one"

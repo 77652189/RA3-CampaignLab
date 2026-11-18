@@ -3,6 +3,12 @@
 
 [[reading]]
 id = "acts_mix_all_as_the_bench"
+item = [
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_SmokeBombSpecialPower",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleEnergizedArmorSpecialPower",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateRoarSpecialPower",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_ActivateLeapSpecialPower",
+]
 scene = {build = "engine_acts_mix", check = "all", until = 25}
 bench = """all, bench 11-14 `run_queue engine_acts_mix:all` (CampActsMixAll, round 224; bench row s_k = mission k + 2): 技 101 \
 s2-s6, 1101 s7, 3101 s8-s10, 3000 s11 on; 吼 1 s2-s11, 0 s12 on; 跳 11 from s3; 兵 0 all along (the bomber drop brought \

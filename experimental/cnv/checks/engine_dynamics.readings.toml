@@ -2,6 +2,7 @@
 
 [[reading]]
 id = "test_dynamics_update_a_hammer_without_it_crushes_and_goes_round_as_the_retail_one"
+item = "物体模块 Behaviors/DynamicsUpdate"
 scene = {build = "engine_dynamics", check = "a", until = 50}
 bench = "engine_dynamics a / b, bench 11-10: the retail Hammer, a copy without DynamicsUpdate and the copy with it -- the three rows identical every second. a: conscript crushed at frame 43, dying 127, tank at its goal from 92; b: the Guardian never crushed, the tank round it, at its goal from 97"
 proves = "DynamicsUpdate: no such module in the simulator, the three lanes alike (its frames are the known no-acceleration bands)"

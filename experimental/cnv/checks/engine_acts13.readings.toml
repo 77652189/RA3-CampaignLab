@@ -3,6 +3,7 @@
 
 [[reading]]
 id = "acts_wet_all_as_the_bench"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRoarSpecialPower"
 scene = {build = "engine_acts_wet", check = "all", until = 27}
 bench = """all, bench 11-14 `run_queue engine_acts_wet:all` (CampActsWetAll_mcp_1114_091622, round 226; bench row s_k = simulator \
 k + 1): 跳 11 from s4; 吼 1111 s5-s12 (C1 out s13, C2 s14, C4 s17); 放 10101 s3 -> 20101 s4 -> 30101 s7 -> 30202 s12; \

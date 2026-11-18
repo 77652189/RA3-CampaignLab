@@ -3,6 +3,7 @@
 
 [[reading]]
 id = "a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench"
+item = "物体模块 Behaviors/QueueProductionExitUpdate"
 scene = {build = "engine_rally", check = "tank", until = 31}
 bench = "the war factory's Riptide (NaturalRallyPoint (80, 20)) stops in x 112-127 / y 25-34: 出口位 1000010, 40 beyond the point on the line from the factory's centre (bench 11-11 engine_rally tank)"
 proves = """QueueProductionExitUpdate (sim.RALLY_PUSH, INFERRED fit): a new unit stops 40 beyond the natural rally point (x 1.9 \

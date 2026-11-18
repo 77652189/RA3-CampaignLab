@@ -27,6 +27,7 @@ expect = [
 
 [[reading]]
 id = "test_invisibility_behavior_a_house_given_garrison_can_stealth_by_script_is_shot_like_a_plain_one"
+item = "物体模块 Behaviors/InvisibilityBehavior"
 scene = {build = "engine_stealth", check = "b", until = 24}
 bench = "bench 隐楼血 = 明楼血 (98 at s4 .. 45)"
 proves = "InvisibilityBehavior: a house-given garrison that stealths by script is shot like a plain one"

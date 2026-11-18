@@ -20,7 +20,7 @@ def _load(name):
 
 # register -> ceiling (count of entries that make an item 已对拍)
 REGISTER_CEILING = {
-    'inventory.BENCHED_TESTS': 121,
+    'inventory.BENCHED_TESTS': 71,
     'inventory.NOTES[已对拍]': 36,
     'inventory_ai.BENCHED_REG': 49,
     'inventory_ai.NOTES[已对拍]': 114,

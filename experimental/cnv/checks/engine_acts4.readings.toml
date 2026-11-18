@@ -3,6 +3,14 @@
 
 [[reading]]
 id = "acts_u_as_the_bench"
+item = [
+    "脚本动作 PLAYER_GRANT_SPECIAL_POWER",
+    "脚本动作 PLAYER_SET_SPECIAL_POWER_COUNTDOWN",
+    "脚本动作 UNIT_CONTEXT_SENSITIVE_ATTACK",
+    "脚本动作 UNIT_CHANGE_OBJECT_STATUS:SKIRMISH_AI_DO_NOT_TAKE",
+    "脚本动作 TECHTREE_MODIFY_BUILDABILITY_OBJECT",
+    "脚本条件 SKIRMISH_SPECIAL_POWER_READY",
+]
 scene = {build = "engine_acts_u", check = "acts", until = 33}
 bench = """acts, bench 11-13 `run_queue engine_acts_u:acts` (CampActsUActs, round 214; the bench's seconds 1-2 ahead): 技能 45 63 60 \
 56 60; 旗 5; 造 100 110 111; 钱 ends 18400 (dog, two peacekeepers, one spy)"""

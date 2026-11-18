@@ -3,6 +3,13 @@
 
 [[reading]]
 id = "acts_tgl_all_as_the_bench"
+item = [
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_DisguisedEvacuate",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_CivilianStructureEvacuate",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleHarpoonSpecialPower",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleMirageField",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleAfterburners",
+]
 scene = {build = "engine_acts_tgl", check = "all", until = 25}
 bench = """all, bench 11-14 `run_queue engine_acts_tgl:all` (CampActsTglAll, round 223; bench row s_k = mission k + 2): 门 303 -> \
 3030 at s2; 态 x100 / 幻 111 from s2 to s13; 血 the Kirov 100 -> 60 at 200 a second while the afterburners are on; both \
@@ -20,6 +27,10 @@ expect = [
 
 [[reading]]
 id = "acts_twr_t_as_the_bench"
+item = [
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanBaseDefenseToggleBinaryWeapon",
+    "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleBinaryWeapon",
+]
 scene = {build = "engine_acts_twr", check = "t", until = 41}
 bench = """t, bench 11-14 `run_queue engine_acts_twr:t` (CampActsTwrT, round 223): 塔 1 from s1, 11 from s34 -- with a \
 SovietPowerPlant the Japanese tower's own button toggles it at 3 s and at 35 s alike"""
