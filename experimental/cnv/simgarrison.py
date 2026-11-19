@@ -116,8 +116,10 @@ class Peers:
 class Garrisons:
     def __init__(self, world, peers):
         self.world, self.peers = world, peers     # simworld.WORLD_API only; the host's other parts (Peers)
-        self.boxes = {}             # building name -> its contain module (interfaces.Contain: the passengers, the owner
-                                    # before, the listener's upgrades), in the order first put into (the cell's order)
+        self.boxes = {}             # host serial (Thing.serial) -> its contain module (interfaces.Contain: the
+                                    # passengers, the owner before, the listener's upgrades), in the order first put
+                                    # into (the cell's order); by the thing, not its name: a thing made under a taken
+                                    # name has none of the old one's passengers (step B4c-3, INFERRED)
         self.where = {}             # passenger name -> building body
         self.going = {}             # body name -> building body it was sent into (the AI's walk)
         self.log = []               # (sim seconds, passenger name, building name, script)
@@ -141,8 +143,8 @@ class Garrisons:
         return m.rules() if m is not None else None
 
     def held(self, g):
-        """The passengers of the building or transport g (by name, as the cell keeps them), in the order they came in."""
-        m = self.boxes.get(g.name) if g is not None else None
+        """The passengers of the building or transport g (the thing, not its name), in the order they came in."""
+        m = self.boxes.get(getattr(g, 'serial', None)) if g is not None else None    # unbuilt: no box
         return m.passengers() if m is not None else []
 
     # ---- who
@@ -204,7 +206,7 @@ class Garrisons:
         Keep upgrades that were already present before the listener granted them.
         """
         world, peers = self.world, self.peers
-        box = self.boxes.get(g.name)
+        box = self.boxes.get(g.serial)
         if box is None:
             return
         for up in box.granted():
@@ -248,7 +250,7 @@ class Garrisons:
         sp = self.box(g) if g is not None and g.alive else None     # walked in: a transport asks the room too
         if sp is None or u is None or not u.alive or u is g or u.name in self.where or not self.fits(u, sp):
             return False
-        box = self.boxes.setdefault(g.name, self._box(g))
+        box = self.boxes.setdefault(g.serial, self._box(g))
         held = box.passengers()
         clears = self.clears(u, sp)
         if not script and not clears and (not self.may(u, g) or len(held) >= sp['max']):
@@ -283,7 +285,7 @@ class Garrisons:
         g = self.where.pop(u.name, None) if u is not None else None
         if g is None:
             return False
-        box = self.boxes.get(g.name)
+        box = self.boxes.get(g.serial)
         u.script_status -= box.let_out(u) if box is not None else frozenset()
         held = box.passengers() if box is not None else []
         u.x, u.y = g.x, g.y
@@ -314,7 +316,7 @@ class Garrisons:
             self.out(u)
             if u.alive and (delete or sp.get('kill')):
                 (peers.delete if delete else peers.destroy)(u, '随楼删掉' if delete else '楼毁乘员同死')
-        self.boxes.pop(g.name, None)
+        self.boxes.pop(g.serial, None)
 
     def eject(self, g, command, where):
         """The button `command` pressed on g at the spot `where`: True when an EjectPassengersSpecialAbilityUpdate of
@@ -360,8 +362,9 @@ class Garrisons:
     def _throw(self):
         world, peers = self.world, self.peers
         for gname, job in list(self.ejecting.items()):
-            box = self.boxes.get(gname)
-            g, held = world.bodies.get(gname), [u for u in (box.passengers() if box else ()) if u.alive]
+            g = world.bodies.get(gname)
+            box = self.boxes.get(g.serial) if g is not None else None
+            held = [u for u in (box.passengers() if box else ()) if u.alive]
             if g is None or not g.alive or not held:
                 del self.ejecting[gname]
                 continue
@@ -402,11 +405,11 @@ class Garrisons:
                 continue
             del self.going[name]
             self.put(u, g)
-        for gname, box in list(self.boxes.items()):
-            g, held = world.bodies.get(gname), box.passengers()
+        for box in list(self.boxes.values()):
+            g, held = box.thing, box.passengers()       # the host itself (a thing made under its name since: not it)
             for u in [u for u in held if not u.alive]:
                 self.out(u)
-            if g is None or not held:
+            if not held:
                 continue
             if not g.alive:
                 self.died(g, g.deleted)

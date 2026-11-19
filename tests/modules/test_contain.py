@@ -5,6 +5,7 @@ one's clearing bits; the passengers, the bits given each, the owner before and t
 module, which the host's garrisons (simgarrison.Garrisons) find by interface. On the bench: engine_garrison in / hp /
 del, engine_transport load (docs/engine/garrison.md)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
+import pytest  # noqa: E402
 import simgarrison  # noqa: E402
 import simsmall  # noqa: E402
 import simunits  # noqa: E402
@@ -81,6 +82,10 @@ def test_a_buildings_end_empties_it_through_its_module():
     """Step B4c: a house's death tells its Contain module (Die) -- the passenger out alive, no
     KillPassengersOnDeath -- and a deletion (Destroy only) takes the passenger with it."""
     s = simsmall.small_world()
+    told = []
+    vacate = s.world._vacate
+    s.world._vacate = lambda thing, delete: told.append((thing.name, delete, len(s.garrison.held(thing)))) or \
+        vacate(thing, delete)
     house = s.add('house', 'AM_Apartments_01', None, 300.0, 300.0)
     gi = s.add('gi', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 300.0)
     (m,) = house.find(interfaces.Contain)
@@ -88,17 +93,35 @@ def test_a_buildings_end_empties_it_through_its_module():
     assert s.garrison.put(gi, house, script=True)
     s.destroy(house, 'test')
     assert gi.alive and m.passengers() == [] and 'ENCLOSED' not in gi.script_status
+    assert told == [('house', False, 1)]            # a death empties it once (review 1119d #5: no second, deleting)
     house2 = s.add('house2', 'AM_Apartments_01', None, 300.0, 600.0)
     gi2 = s.add('gi2', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 600.0)
     assert s.garrison.put(gi2, house2, script=True)
     s.delete(house2, 'test')
     (m2,) = house2.find(interfaces.Contain)
     assert not gi2.alive and gi2.deleted and m2.passengers() == []
-    told = []
-    m.world._vacate = lambda thing, delete: told.append((thing.name, delete))
-    m.on_die(None)
-    m.on_destroy()
-    assert told == [('house', False), ('house', True)]
+    assert told[1:] == [('house2', True, 1)]
+
+
+@pytest.mark.parametrize('end', ['destroy', 'delete'])
+def test_a_thing_under_a_taken_name_has_none_of_the_old_ones_passengers(end):
+    """Review 1119d #1 (coordinator 11-19, INFERRED: no bench): the passengers are the host thing's, not its name's --
+    a tank made under the house's name and ended leaves the house's passenger in the house, now and after the
+    garrison cell; the house's own end lets it out."""
+    s = simsmall.small_world()
+    house = s.add('house', 'AM_Apartments_01', None, 300.0, 300.0)
+    gi = s.add('gi', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 300.0)
+    assert s.garrison.put(gi, house, script=True)
+    tank = s.add('house', 'SovietAntiVehicleVehicleTech3', 'Player_1', 600.0, 300.0)
+    assert s.garrison.held(tank) == [] and s.garrison.held(house) == [gi]
+    s.garrison.due()                                # it rides with its own host, not the tank
+    assert (gi.x, gi.y) == (300.0, 300.0)
+    getattr(s, end)(tank, 'test')
+    assert gi.alive and s.garrison.where.get('gi') is house and s.garrison.held(house) == [gi]
+    s.garrison.due()
+    assert gi.alive and s.garrison.where.get('gi') is house and (gi.x, gi.y) == (300.0, 300.0)
+    getattr(s, end)(house, 'test')
+    assert 'gi' not in s.garrison.where and s.garrison.held(house) == [] and gi.alive == (end == 'destroy')
 
 
 def test_a_transport_keeps_its_owner_and_its_passengers_are_enclosed():

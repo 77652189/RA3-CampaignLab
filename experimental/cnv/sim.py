@@ -845,8 +845,8 @@ class Sim:
                                         kill=lambda b, why, death, cause: self.destroy(b, why, death, cause),
                                         create=lambda b, ocl, air: self._life().create(
                                             self, b, ocl, air, self.death_blasts, self.impact_ground_z),
-                                        remove=lambda b, why: self.delete(b, why),
-                                        pay=lambda b, amount: self.wallet.deposit(b.owner, amount), modify=self.modify,
+                                        remove=lambda b, why: self.delete(b, why), modify=lambda b: self.modify(b),
+                                        pay=lambda b, amount: self.wallet.deposit(b.owner, amount),
                                         toggled=lambda b, m: simtoggle.entered(self, b, m, self.modify),
                                         suppression_at=lambda b, f: simdamage.suppression_at(
                                             self.suppression_fields, b, f),

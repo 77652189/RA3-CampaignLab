@@ -111,7 +111,8 @@ class Garrison(module.Module, interfaces.Die, interfaces.Destroy, interfaces.Con
         self.world.vacate(self.thing, False)
 
     def on_destroy(self):
-        self.world.vacate(self.thing, True)
+        if self.thing.deleted:          # a death emptied it in on_die: one vacate an end (review 1119d #5)
+            self.world.vacate(self.thing, True)
 
 
 @factory.module('ContestableGarrisonContain')

@@ -47,3 +47,14 @@ def test_an_inherited_aura_is_read():
     # Compiled CNV_TestAuraChild: one ModuleTag_Aura, AttributeModifierName="Slow", Range="150".
     (block,) = simunits.module_blocks('CNV_TestAuraChild', 'AttributeModifierAuraUpdate', own)
     assert aura.AuraData.parse(*block).rule == aura.AuraData.parse(HEAD, INNER).rule
+
+
+def test_the_worlds_modify_asks_the_host_when_called():
+    """Review 1119d #10: World.modify (the modifiers' re-read the modules call) looks the host's Sim.modify up at the
+    call, not at the world's making -- a Sim.modify put in its place since is the one told."""
+    s = simsmall.small_world([('tank', 'SovietAntiVehicleVehicleTech3', 'Player_1', 300, 300)], model=False)
+    calls = []
+    modify = s.modify
+    s.modify = lambda b: calls.append(b.name) or modify(b)
+    s.world.modify(s.bodies['tank'])
+    assert calls == ['tank']
