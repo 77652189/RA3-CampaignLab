@@ -9,18 +9,20 @@ runs as `codex_task.py <brief> --dir ../RA3-CampaignLab-cx-<stem> --full` in a w
 origin/main, then moves to QUEUE_DIR/done/ with its answer beside it. Nothing is committed and no worktree is
 removed: the coordinator reviews each result, commits from that worktree, then removes it. A new brief dropped into
 the folder while this runs is picked up; with none left it waits (checking every 2 min) until --hours have passed.
-The state -- running, done, waiting -- is in work/logs/codex_queue.json.
+The state -- running, done, waiting -- is in work/logs/<folder name>.json. Two folders, two runners: Codex works on
+two briefs at once (user 11-19: "codex的任务可以适当多派一些"); give each brief a name no other folder uses (the
+worktree is named after it).
 """
 import argparse, glob, json, os, re, shutil, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-STATE = os.path.join(ROOT, 'work', 'logs', 'codex_queue.json')
+STATE_DIR = os.path.join(ROOT, 'work', 'logs')
 
 
 def save(state):
-    os.makedirs(os.path.dirname(STATE), exist_ok=True)
-    with open(STATE, 'w', encoding='utf-8') as f:
+    os.makedirs(STATE_DIR, exist_ok=True)
+    with open(os.path.join(STATE_DIR, os.path.basename(state['queue']) + '.json'), 'w', encoding='utf-8') as f:
         json.dump(state, f, ensure_ascii=False, indent=1)
 
 
