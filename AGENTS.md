@@ -15,7 +15,7 @@
 ## 提交
 - 身份 `git -c user.email=71443605+77652189@users.noreply.github.com -c user.name=77652189 commit ...`。做完、跑过相关测试就提交推送。
 - 只 add 自己的文件。先提交再 `git pull --rebase`；不加 `--autostash`，不 stash、不碰别人没提交的改动。
-- 引擎各线（A–E）改公开仓库的代码一律在自己的独立工作区里做，不在主仓库留没提交的改动（11-13 三条线的改动混在主仓库，测试红了分不清是谁的）——`git worktree add ../RA3-CampaignLab-<线名> origin/main`（没有自己的 work 时自动用主仓库的，不建联接），在那里 cherry-pick、rebase、`git push origin HEAD:main`。在独立工作区里上台用本工作区的 `experimental/testbench/run_queue.py`：ra3bench MCP 跑的是主仓库的代码，看不到你没推的改动。`work/re`（私有仓库）各线共用一份：交接改完马上提交推送，不留没提交的改动（11-13 一份没提交的交接挡住了所有线的 pull）。只改自己的交接：给别线的答复写进自己的文件（`work/re/<线><轮>_*.md`），在自己交接里指过去（11-13 两条线同时写一份交接，覆盖掉 21 行）。
+- 引擎各线（A–E）改公开仓库的代码一律在自己的独立工作区里做，不在主仓库留没提交的改动（11-13 三条线的改动混在主仓库，测试红了分不清是谁的）——`git worktree add ../RA3-CampaignLab-<线名> origin/main`（没有自己的 work 时自动用主仓库的，不建联接），在那里 cherry-pick、rebase、`git push origin HEAD:main`。在独立工作区里上台用本工作区的 `experimental/testbench/run_queue.py`：ra3bench MCP 跑的是主仓库的代码，看不到你没推的改动。`work/re`（私有仓库）各线共用一份：里面任何跟踪的文件（交接、草稿、清单）改完马上提交推送，不等测试结果再"一起提交"——没定的写"待定"先推，定了再推一次（11-13 一份没提交的交接挡住了所有线的 pull；11-18 一晚又挡了四次）。只改自己的交接：给别线的答复写进自己的文件（`work/re/<线><轮>_*.md`），在自己交接里指过去（11-13 两条线同时写一份交接，覆盖掉 21 行）。
 - 清单页（docs/engine 下 inventory 开头的三张）不提交，按需生成（ADR 0030）：`inventory.py`、`inventory_levels.py --write`、`inventory_ai.py levels --write`。
 
 ## 干活
