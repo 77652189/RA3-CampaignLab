@@ -6,9 +6,13 @@ Heights here are elevation / 16 (mapterrain). Heidelberg's water area says 200 b
 ~285 on that scale -- consistent with real height = elevation * 0.04375 (= 200 at 285.7); WATERLINE uses that.
 World units: a cell is 10, world (0, 0) is cell (border, border).
 """
+from functools import lru_cache
+from itertools import product
 import math
 import random
 import struct
+
+import numpy as np
 
 import mapterrain
 import mapxml
@@ -37,26 +41,76 @@ def value_noise(seed, cells):
     return f
 
 
+def _noise_axis(points, cells):
+    pos = points / cells
+    grid = np.floor(pos).astype(np.intp)
+    angles = (pos - grid) * math.pi
+    # Keep the scalar math.cos rounding used by value_noise.
+    cosine = np.fromiter(map(math.cos, angles.flat), dtype=np.float64, count=angles.size)
+    return grid - grid.min(), (1.0 - cosine.reshape(angles.shape)) / 2.0
+
+
+def _noise_field(seed, cells, x, y):
+    gx, sx = _noise_axis(x, cells)
+    gy, sy = _noise_axis(y, cells)
+    stride = int(gx.max()) + 2
+    tiles = gy * stride + gx
+    lattice = np.empty((int(gy.max()) + 2) * stride, dtype=np.float64)
+    # Visiting a tile again draws nothing. Visit each tile at its first row-major
+    # sample, and each corner in value_noise's order, to reproduce the RNG stream.
+    first = np.sort(np.unique(tiles, return_index=True)[1])
+    rnd = random.Random(seed)
+    seen = set()
+    for k in tiles.ravel()[first].tolist():
+        for corner in (k, k + 1, k + stride, k + stride + 1):
+            if corner not in seen:
+                lattice[corner] = rnd.random()
+                seen.add(corner)
+    lo = lattice[tiles]
+    hi = lattice[tiles + stride]
+    a = lo + (lattice[tiles + 1] - lo) * sx
+    b = hi + (lattice[tiles + stride + 1] - hi) * sx
+    return a + (b - a) * sy
+
+
+def _coast_geometry(dx, dy):
+    # Keep scalar trig and hypot so the coast samples and beach heights round as before.
+    for y in dy:
+        for x in dx:
+            ang = math.atan2(y, x)
+            yield 1000 + 600 * math.cos(ang), 1000 + 600 * math.sin(ang), math.hypot(x, y)
+
+
+@lru_cache(maxsize=1)
+def _island_field(w, h, border, cell, seed, cx, cy, radius):
+    """Keep the last pure field in this process for terrain and scenery to share."""
+    x = (np.arange(w) - border) * cell
+    y = (np.arange(h) - border) * cell
+    geometry = np.fromiter(_coast_geometry((x - cx).tolist(), (y - cy).tolist()),
+                           dtype=np.dtype((np.float64, 3)), count=w * h).reshape(h, w, 3)
+    coast = _noise_field(seed, 700.0, geometry[:, :, 0], geometry[:, :, 1])
+    r = radius * (0.75 + 0.5 * coast)
+    land = np.clip((1.0 - geometry[:, :, 2] / r) / 0.12, 0.0, 1.0)
+    rough = _noise_field(seed + 1, 260.0, x[None, :], y[:, None])
+    hills = _noise_field(seed + 2, 900.0, x[None, :], y[:, None])
+    hill = np.maximum(0.0, hills - 0.55) / 0.45
+    field = 230.0 + land * (95.0 + 25 * rough + 140 * hill * hill * land)
+    field.setflags(write=False)
+    return field
+
+
 def island_heights(hm, seed=7, center=None, radius=1800.0):
     """Sea everywhere, one island: noisy coastline, rolling land with a few hills. Returns {(i, j): height}."""
-    w, h, b = hm.width, hm.height, hm.border
-    size = (w - 2 * b) * mapterrain.CELL
+    w, h, border = hm.width, hm.height, hm.border
+    cell = mapterrain.CELL
+    size = (w - 2 * border) * cell
     cx, cy = center or (size / 2, size / 2)
-    coast = value_noise(seed, 700.0)
-    rough = value_noise(seed + 1, 260.0)
-    hills = value_noise(seed + 2, 900.0)
-    out = {}
-    for j in range(h):
-        for i in range(w):
-            x, y = (i - b) * mapterrain.CELL, (j - b) * mapterrain.CELL
-            ang = math.atan2(y - cy, x - cx)
-            r = radius * (0.75 + 0.5 * coast(1000 + 600 * math.cos(ang), 1000 + 600 * math.sin(ang)))
-            d = math.hypot(x - cx, y - cy) / r              # < 1 on the island
-            land = max(0.0, min(1.0, (1.0 - d) / 0.12))      # 0 at sea, 1 inland, beach slope in between
-            hill = max(0.0, hills(x, y) - 0.55) / 0.45       # isolated hills where the noise is high
-            ht = 230.0 + land * (95.0 + 25 * rough(x, y) + 140 * hill * hill * land)
-            out[(i, j)] = ht
-    return out
+    if w <= 0 or h <= 0:
+        return {}
+    if radius == 0:
+        raise ZeroDivisionError('float division by zero')
+    field = _island_field(w, h, border, cell, seed, cx, cy, radius)
+    return {(i, j): height for (j, i), height in zip(product(range(h), range(w)), field.ravel().tolist())}
 
 
 def texture_for(height, slope, x, y, patch):
