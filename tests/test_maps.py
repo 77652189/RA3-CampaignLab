@@ -158,13 +158,46 @@ ON_SCENERY_AS_BENCHED = {'aibd0', 'aibd1', 'aibdidle', 'aibdwho', 'aibdpre',
                          'aihusknamed', 'aihusknone', 'aiuabl', 'aiuabw', 'aiuagate', 'aiunderatk'}
 
 
+# AllBuild and AllFlip were measured with the same six Hammers on this scenery.
+# A prop's position distinguishes fence segments with the same template.
+BENCH_PINNED = {
+    'pairs': {
+        ((1000, 3250), ('MR_Redwood01', 1025.5, 3240.8)),
+        ((1000, 3250), ('MR_TREE01', 978.6, 3261.6)),
+        ((1000, 3350), ('OK_Shrub01', 976.3, 3335.6)),
+        ((1100, 3350), ('CC_WOODFENCE01', 1123.7, 3366.8)),
+        ((1100, 3350), ('CC_WOODFENCE01', 1127.5, 3333.0)),
+        ((1100, 3450), ('CC_WOODFENCE01', 1112.5, 3468.2)),
+        ((1100, 3450), ('CC_WOODFENCE01', 1116.2, 3434.4)),
+        ((1300, 3250), ('CC_WOODFENCE01', 1303.9, 3284.2)),
+        ((1300, 3250), ('CC_WOODFENCE02', 1307.7, 3250.4)),
+        ((1300, 3350), ('CC_WOODFENCE02', 1296.4, 3351.8)),
+        ((1300, 3350), ('CC_WOODFENCE02', 1300.2, 3318.0)),
+    },
+    'readings': {
+        'aiallbuildon': 'bench_results/aiallbuildon__a.json',
+        'aiallbuildoff': 'bench_results/aiallbuildoff__a.json',
+        'aiallflipon': 'bench_results/aiallflipon__a.json',
+        'aiallflipoff': 'bench_results/aiallflipoff__a.json',
+        'aiallfliplate': 'bench_results/aiallfliplate__a.json',
+        'aiallflipnever': 'bench_results/aiallflipnever__a.json',
+        'aiallflipwoff': 'bench_results/aiallflipwoff__a.json',
+        'aiallflipwon': 'bench_results/aiallflipwon__a.json',
+    },
+}
+
+
 def test_nothing_a_build_places_stands_on_scenery():
     """Every build's objects and waypoints (missions, their checks, the benches) keep clear of its map's scenery:
     a unit is not made inside a tree or a house, a waypoint is not inside a rock."""
     import build
+    import labpaths
     import parts
     import platprops
     bad = []
+    pinned_pairs = BENCH_PINNED['pairs']
+    readings = BENCH_PINNED['readings']
+    seen = set()
     names = [(n, c) for n, (_, checks) in build.MISSIONS.items() for c in [''] + list(checks)]
     for n, c in names + [(p, '') for p in build.PAIRS]:
         if n in ON_SCENERY_AS_BENCHED:
@@ -177,14 +210,28 @@ def test_nothing_a_build_places_stands_on_scenery():
         grid = {}
         for o in scenery:
             grid.setdefault((int(o.x // 200), int(o.y // 200)), []).append(o)
-        points = [(o.template, o.x, o.y) for o in mm.objects] + [(w, x, y) for w, (x, y) in mm.waypoints.items()]
-        for what, x, y in points:
+        points = [(o.template, o.x, o.y, o.template == 'SovietAntiVehicleVehicleTech1') for o in mm.objects]
+        points += [(w, x, y, False) for w, (x, y) in mm.waypoints.items()]
+        for what, x, y, is_hammer in points:
             for i in range(int(x // 200) - 1, int(x // 200) + 2):
                 for j in range(int(y // 200) - 1, int(y // 200) + 2):
                     for o in grid.get((i, j), ()):
                         if ((o.x - x) ** 2 + (o.y - y) ** 2) ** 0.5 < platprops.radius(o.template) + 20:
+                            pair = ((x, y), (o.template, o.x, o.y))
+                            if n in readings and is_hammer and pair in pinned_pairs:
+                                seen.add((n, c, pair))
+                                continue
                             bad.append(f'{n} {c}: {what} at ({x:.0f}, {y:.0f}) on {o.template} ({o.x:.0f}, {o.y:.0f})')
     assert not bad, '\n'.join(sorted(set(bad))[:20])
+    stale = []
+    for n, reading in readings.items():
+        if not (Path(labpaths.WORK) / reading).is_file():
+            stale.append(f'{n}: missing reading work/{reading}')
+        for c in ('', 'a'):
+            for pair in sorted(pinned_pairs):
+                if (n, c, pair) not in seen:
+                    stale.append(f'{n}:{c or "base"}: missing pinned overlap {pair}')
+    assert not stale, '\n'.join(stale)
 
 
 def test_lint_catches_what_the_bench_caught():
