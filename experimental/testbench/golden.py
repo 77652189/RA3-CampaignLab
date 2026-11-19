@@ -26,6 +26,7 @@ checkout is a failure. The base pinning another engine model (experimental/cnv/i
 checkout skips everything: the two sides would run different models.
 """
 import argparse
+import contextlib
 import hashlib
 import importlib.util
 import os
@@ -44,7 +45,7 @@ RECORDER_RELS = (SIMRECORD_REL, os.path.join('experimental', 'cnv', 'engine', 'p
 PIN_REL = 'experimental/cnv/inventory_model.rev'
 TRAILER = 'golden-changed:'
 KEEP = 4                       # cached record sets kept under work\logs\golden (about 130 MB each)
-LOCK_STALE = 3 * 3600          # a lock file older than this is a crashed run's
+LOCK_STALE = 3 * 3600          # age limit for legacy locks without a process start time
 
 
 def _load(name, path):
@@ -142,6 +143,65 @@ def pin_here(root):
         return None
 
 
+@contextlib.contextmanager
+def _lock_update(path):
+    """Serialize changes to the lock file so stale recovery cannot remove a successor's lock."""
+    if os.name == 'nt':
+        import ctypes
+        from ctypes import wintypes
+
+        kernel = ctypes.windll.kernel32
+        kernel.CreateMutexW.restype = wintypes.HANDLE
+        name = _digest(os.path.normcase(os.path.realpath(path)))
+        handle = wintypes.HANDLE(kernel.CreateMutexW(None, False, ctypes.c_wchar_p('Global\\RA3Golden-' + name)))
+        if not handle:
+            raise ctypes.WinError()
+        try:
+            result = kernel.WaitForSingleObject(handle, wintypes.DWORD(0xFFFFFFFF))
+            if result not in (0, 0x80):  # acquired, including when the previous owner died
+                raise ctypes.WinError()
+            try:
+                yield
+            finally:
+                kernel.ReleaseMutex(handle)
+        finally:
+            kernel.CloseHandle(handle)
+    else:
+        import fcntl
+
+        fd = os.open(os.path.dirname(path), os.O_RDONLY)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            yield
+        finally:
+            os.close(fd)
+
+
+def _stale_holder(path):
+    import psutil
+
+    with open(path, encoding='ascii', errors='replace') as f:
+        fields = f.read().split()
+        age = time.time() - os.fstat(f.fileno()).st_mtime
+
+    try:
+        pid, started = fields
+        pid, started = int(pid), float(started)
+    except ValueError:
+        if age > LOCK_STALE:
+            return (fields[0] if len(fields) == 1 and fields[0].isdigit() else '?'), age
+        return None
+
+    try:
+        if psutil.Process(pid).create_time() == started:
+            return None
+    except psutil.AccessDenied:
+        return None
+    except psutil.NoSuchProcess:
+        pass
+    return pid, age
+
+
 class Lock:
     """One golden run at a time on this computer (pytest-xdist workers, other lines): an O_EXCL file."""
 
@@ -149,27 +209,41 @@ class Lock:
         self.path, self.wait = path, wait
 
     def __enter__(self):
+        import psutil
+
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        pid = os.getpid()
+        started = psutil.Process(pid).create_time()
+        owner = f'{pid} {started!r}'
         while True:
-            try:
-                fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                os.write(fd, str(os.getpid()).encode())
-                os.close(fd)
-                return self
-            except FileExistsError:
+            with _lock_update(self.path):
                 try:
-                    if time.time() - os.path.getmtime(self.path) > LOCK_STALE:
+                    stale = _stale_holder(self.path)
+                    if stale is not None:
                         os.remove(self.path)
-                        continue
                 except OSError:
+                    stale = None
+                try:
+                    f = open(self.path, 'x', encoding='ascii')
+                except FileExistsError:
                     pass
-                time.sleep(self.wait)
+                else:
+                    try:
+                        with f:
+                            f.write(owner)
+                    except BaseException:
+                        with contextlib.suppress(OSError):
+                            os.remove(self.path)
+                        raise
+                    if stale is not None:
+                        old_pid, age = stale
+                        print(f'golden: reclaimed stale lock (pid {old_pid}, age {age:.0f}s)', file=sys.stderr)
+                    return self
+            time.sleep(self.wait)
 
     def __exit__(self, *exc):
-        try:
+        with _lock_update(self.path), contextlib.suppress(OSError):
             os.remove(self.path)
-        except OSError:
-            pass
 
 
 def _plain_dir(path):
