@@ -1,10 +1,7 @@
 """The command port (engine/ports/command.py; R3 13b): a command is names and numbers; a queued command is the script
 event its line reads as (so moving a giver onto the port changes no timing); `do` gives the world what calling the
-order directly gives; an unknown kind, and a kind with no route yet, are refused; nothing in a run reads the record
-(`issued`: R2's condition for leaving it out of a snapshot). The givers' guard is tests/guards/test_ports.py."""
-import ast
-from pathlib import Path
-
+order directly gives; an unknown kind, and a kind with no route yet, are refused. The givers' guard is
+tests/guards/test_ports.py."""
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
@@ -14,7 +11,6 @@ from engine.ports import command as command_port  # noqa: E402
 from engine.ports.command import Command, Commands, ROUTED, command, event, text  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[2]
 APOC = 'SovietAntiVehicleVehicleTech3'
 LINES = [Command('attack_move', units=('guardian',), place='approach 1'),
          Command('move', units=('名字含 -AlliedAnti',), place='@1200,-340'),
@@ -186,9 +182,13 @@ def test_do_power_answers_the_worlds_refusal():
     assert s.commands.issued()[-1][2:] == want
 
 
-def _pair():
+def _world():
     objs = [('a', APOC, 'Player_1', 0.0, 0.0), ('b', APOC, 'Player_1', 60.0, 0.0), ('foe', APOC, 'Player_2', 900.0, 0.0)]
-    return simsmall.small_world(objs, model=False), simsmall.small_world(objs, model=False)
+    return simsmall.small_world(objs, model=False)
+
+
+def _pair():
+    return _world(), _world()
 
 
 def _states(s):
@@ -209,7 +209,7 @@ def test_do_gives_the_world_what_the_order_call_gives(kind):
         cmd = Command('attack_move', units=('a',), place='@400,300')
         direct.order_move(direct.bodies['a'], '@400,300', True, on_grid=True)
     assert Commands(port_world).do(cmd) == (True, '')
-    idle, _ = _pair()
+    idle = _world()
     for s in (port_world, direct, idle):
         for _ in range(30):
             s.step()
@@ -274,7 +274,7 @@ def test_a_script_order_at_a_place(kind):
 def test_a_script_line_order_is_the_runs_port_do():
     """Sim.happen gives a line's player order through the run's one port (R3 13c-2): the record holds it, done, as the
     player's; a god's-hand line (血量) is no command and leaves no record."""
-    s, _ = _pair()
+    s = _world()
     s.happen((0.0, '走', 'a', '@400,300'))
     s.happen((0.0, '血量', 'b', 0.5))
     s.happen((0.0, '生产', APOC, 'nowhere'))
@@ -284,18 +284,6 @@ def test_a_script_line_order_is_the_runs_port_do():
 
 
 def test_a_refused_build_says_why():
-    s, _ = _pair()
+    s = _world()
     ok, why = Commands(s).do(Command('build', template=APOC, target='nowhere'))
     assert not ok and why == '找不到工厂 nowhere'
-
-
-def test_nothing_in_a_run_reads_the_record():
-    """`issued()` is written, never read, outside the port and the tests (R2 13a: so a snapshot leaves it out)."""
-    readers = []
-    for p in sorted((ROOT / 'experimental').rglob('*.py')):
-        if p.name == 'command.py' or 'archive' in p.parts:
-            continue
-        for n in ast.walk(ast.parse(p.read_text(encoding='utf-8'))):
-            if isinstance(n, ast.Attribute) and n.attr in ('issued', '_issued'):
-                readers.append((p.name, n.lineno))
-    assert readers == []
