@@ -1404,6 +1404,20 @@ GATHERED = frozenset({'GarrisonContain', 'ContestableGarrisonContain', 'Transpor
                                             # writes it, '=$' defines spelled out (expand), the inner text the nearest
                                             # PassengerFilter written -- as the reader it replaced (step M14:
                                             # BaseCivilianStructureMedium writes only ContainMax over its base's)
+BODY = frozenset({'ActiveBody', 'ImmortalBody', 'PropBody', 'ManagerBody', 'ManagedActiveBody',  # the blocks of
+                  'ManagedImmortalBody', 'HighlanderBody'})  # the nearest <Body> up the chain that is not empty (98
+                                            # retail civilian buildings, AM_Apartments_01 and the rest, write an empty
+                                            # one and take their base's), its '=$' defines spelled out (expand:
+                                            # BaseCivilianStructureMedium's =$CIV_HEALTH_MEDIUM). The Body is taken
+                                            # whole, not each tag up the chain on its own: a template's ImmortalBody
+                                            # replaces its base's ActiveBody (one body, never two). A Remove block is
+                                            # left out, but one removing a PropBody keeps the Body a prop: its other
+                                            # block is read as a PropBody (two retail torpedoes, japanantivehicleship-
+                                            # torpedospreadprojectile and sovietantinavyshiptech2supertorpedoprojectile,
+                                            # remove BaseProjectile's PropBody for an ActiveBody of 100; the reader it
+                                            # replaced, prop_body, took any Body naming PropBody for a prop). A campaign
+                                            # override is read first, as max_health reads it; Sim.add's health takes
+                                            # fight's hp over it, the file the index names (step B2a; B2b keeps that)
 
 
 def module_blocks(template, tag, own=None):
@@ -1419,7 +1433,7 @@ def module_blocks(template, tag, own=None):
     CrusherInfo has one, whose 64 MERGED keeps as M3's reader did; a tag of REMOVE_KEPT keeps it: step M7). A tag of
     INCLUDED is read with the DATA:Includes files each template's XML references; one of GATHERED is one block
     gathered from all of the tag's up the chain (attributes as MERGED's, defines spelled out, the nearest
-    PassengerFilter its inner text)."""
+    PassengerFilter its inner text). One of BODY is read from the nearest non-empty <Body>."""
     def read(xml):
         if tag in INCLUDED:
             xml = _with_includes(xml or '')
@@ -1427,6 +1441,18 @@ def module_blocks(template, tag, own=None):
     if tag in OWN_ONLY:
         return read((own or {}).get(template))
     try:
+        if tag in BODY:
+            for _, xml in xml_chain(template, own):
+                body = next(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'Body'), None)
+                if body is None or not body[1].strip():
+                    continue
+                found = [(t, h, i) for t in sorted(BODY) for h, i in _blocks(body[1], t)]
+                kept = [(t, h, i) for t, h, i in found if _attr(h, 'xai:joinAction') != 'Remove']
+                if any(t == 'PropBody' for t, h, _ in found if _attr(h, 'xai:joinAction') == 'Remove'):
+                    kept = [('PropBody', h, i) for _, h, i in kept]
+                return [(re.sub(r'="(=\$[^"]*)"', lambda m: f'="{expand(m.group(1))}"', h), i)
+                        for t, h, i in kept if t == tag]
+            return []
         if tag in SELF_ONLY:
             return read(own[template] if own and template in own else retail_xml(template))
         if tag in GATHERED:
