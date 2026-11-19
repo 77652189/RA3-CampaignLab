@@ -17,11 +17,13 @@ The counters and the timers are one table (docs/engine/script-semantics.md 3): a
 made at 0 the first time it is used; a running timer's value is the frames it has left, taken down by one at the start
 of each frame, before the scripts, until it is -1; TIMER_EXPIRED is a running timer at 0 or below (bench
 engine_script frames, engine_timer). The counter actions are still the world's (simact_world), on the same table
-through simexec.Counters. ENABLE_SCRIPT / DISABLE_SCRIPT switch a group and a script of that name both (the first
+through simexec.Counters, but SET_RANDOM_COUNTER (the executor's seeded draws); COUNTER_COUNTER / COUNTER_SECONDS
+read the table itself (a running timer's frames left), as TIMER_EXPIRED. ENABLE_SCRIPT / DISABLE_SCRIPT switch a group and a script of that name both (the first
 of a name: Generals findScript / findGroup); a once script that fired is armed again (script-semantics.md 8 item 10).
 CALL_SUBROUTINE runs a subroutine group's scripts (the group active) or a subroutine script (Generals
 callSubroutine; not measured in RA3: INFERRED)."""
 import math
+import operator
 import random
 
 from engine.ports import scripts as port
@@ -35,7 +37,11 @@ SCRIPT_ACTIONS = frozenset({'ENABLE_SCRIPT', 'DISABLE_SCRIPT', 'CALL_SUBROUTINE'
 # ... and the shown counters (counter, label): the label's counter kept (`displayed`) and a 'show' row logged, as
 # the plug-in does; the screen's readers (simshow, simui) read them off whichever executor runs
 SHOW_ACTIONS = frozenset({'DISPLAY_COUNTER', 'DISPLAY_COUNTDOWN_TIMER'})
-OWN_ACTIONS = TIMER_ACTIONS | SCRIPT_ACTIONS | SHOW_ACTIONS
+# ... and the one counter action that draws at random (its own seeded draws, as the plug-in's)
+RANDOM_ACTIONS = frozenset({'SET_RANDOM_COUNTER'})
+OWN_ACTIONS = TIMER_ACTIONS | SCRIPT_ACTIONS | SHOW_ACTIONS | RANDOM_ACTIONS
+# the comparisons' codes (the world's simscript.CMP): <, <=, ==, >=, >, !=
+CMP = (operator.lt, operator.le, operator.eq, operator.ge, operator.gt, operator.ne)
 
 
 class PublicExecutor(port.Executor):
@@ -59,6 +65,7 @@ class PublicExecutor(port.Executor):
             self._index(lst.items)
         rng = random.Random(seed)       # Generals: a script with a delay first runs 0..2 s into the game
         self._next = {id(s): rng.randint(0, 2 * fps) if s.interval > 0 else 0 for s in self._scripts.values()}
+        self.rng = rng                  # then SET_RANDOM_COUNTER's draws
 
     def _index(self, items):
         for it in items:
@@ -139,9 +146,17 @@ class PublicExecutor(port.Executor):
             v = False
         elif c.name == 'TIMER_EXPIRED':
             v = self.timer_expired(c.args[0])
+        elif c.name == 'COUNTER_COUNTER':           # (counter, comparison, counter): the table's values, a running
+            v = CMP[int(c.args[1])](self.value(c.args[0]), self.value(c.args[2]))     # timer's its frames left
+        elif c.name == 'COUNTER_SECONDS':           # (timer, comparison, seconds): its frames left in seconds (bench
+            v = CMP[int(c.args[1])](self.value(c.args[0]) / self.fps, float(c.args[2])) # engine_scripts6 timers)
         else:
             v = self.world.condition(self, c.name, list(c.args))
         return (not v) if c.inverted else v
+
+    def value(self, name):
+        """A name's value in the table (a running timer's frames left), 0 where never used."""
+        return self.counters.get(name, [0, False])[0]
 
     def timer_expired(self, name):
         c = self.counters.get(name)
@@ -176,6 +191,8 @@ class PublicExecutor(port.Executor):
         elif name in ('SUB_FROM_MSEC_TIMER', 'ADD_TO_MSEC_TIMER'):     # (seconds, timer)
             d = self.frames(a[0])
             self.counter(a[1])[0] += d if name == 'ADD_TO_MSEC_TIMER' else -d
+        elif name == 'SET_RANDOM_COUNTER':          # (counter, lo, hi), both ends in (bench engine_scripts6: 1..3
+            self.counter(a[0])[0] = self.rng.randint(int(a[1]), int(a[2]))     # gives 1, 2 and 3, never 0 or 4)
         elif name in ('ENABLE_SCRIPT', 'DISABLE_SCRIPT'):
             for x in (self._groups.get(a[0]), self._scripts.get(a[0])):
                 if x is not None:
