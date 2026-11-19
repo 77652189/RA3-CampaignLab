@@ -74,7 +74,7 @@ def suppression_tick(world, peers):
 
 
 def death_blast_due(world, frame, peers):
-    """A death weapon going off by `frame` (destroy, simunits.death_weapons): every living object within its
+    """A death weapon going off by `frame` (simbody.Life.fire: a FireWeaponWhenDead's): every living object within its
     radius, centre to centre, whose owner stands to the dead one's as the weapon's RadiusDamageAffects takes
     (ENEMIES / NEUTRALS / ALLIES, its own owner counted an ally), loses the damage through its armor. A death it
     causes fires that one's weapon in turn (a chain of exploding props). The armour's side / rear scalar

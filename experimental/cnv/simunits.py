@@ -1879,22 +1879,18 @@ def max_health(template, own=None):
     return _hp_memo[key]
 
 
-_death_memo, _weapon_blocks = {}, None
+_weapon_blocks = None
 
 
-def death_weapons(template, own=None, death='NORMAL', scalars=False):
-    """[(damage, damage type, radius, delay s, affects)] -- each DamageNugget of each FireWeaponWhenDead's DeathWeapon
-    (InitiallyActive, its DieMuxData taking the death type) from the nearest template up the chain that has the module:
-    the weapon goes off where the body died, `delay` after (the nugget's DelayTimeSeconds), hurting what of `affects`
+def weapon_blasts(weapon, own=None):
+    """[(damage, damage type, radius, delay s, affects, allies' scalar)] -- each DamageNugget of the WeaponTemplate
+    `weapon` (the mission's own first, else retail; XML comments not read) as a death weapon fires it (step B5c: a
+    FireWeaponWhenDead's DeathWeapon, engine/modules/fireweaponwhendead.py; simbody.Life.fire / wreck_blasts): it goes
+    off where the body died, `delay` after (the nugget's DelayTimeSeconds), hurting what of `affects`
     (RadiusDamageAffects: ALLIES ENEMIES NEUTRALS, relative to the dead one's owner) lies within the radius, centre to
-    centre. Bench 11-05 engine_spawn_refill: S02_ExplodingMig (1000 GRENADE, 100, .3 s) killed by script takes the
-    Guardian 40 + 69 off its centre with it. INFERRED: no falloff inside the radius (the game's DamageNugget has none
-    without DamageArc / a ScalarFalloff), SpecialObjectFilter not read, an upgrade-activated module (InitiallyActive
-    false) never fires."""
+    centre. INFERRED: no falloff inside the radius (the game's DamageNugget has none without DamageArc / a
+    ScalarFalloff), SpecialObjectFilter not read. A weapon no file has: []. Not cached here (the caller keeps it)."""
     global _weapon_blocks
-    key = (template, (own or {}).get(template), death)
-    if key in _death_memo:
-        return _death_memo[key] if scalars else [d[:5] for d in _death_memo[key]]
     if _weapon_blocks is None:
         _weapon_blocks = {}
         for text in _weapon_files():
@@ -1904,23 +1900,11 @@ def death_weapons(template, own=None, death='NORMAL', scalars=False):
     for text in (own or {}).values():
         for head, body in _blocks(text or '', 'WeaponTemplate'):
             mine[_attr(head, 'id')] = (head, body)
-
-    def read(xml):
-        mods = list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'FireWeaponWhenDead'))
-        return mods or None
-    out = []
-    for head, inner in _chain(template, own, read) or []:
-        if (_attr(head, 'InitiallyActive') or 'false').lower() != 'true':
-            continue
-        if not _dies_of(next((h for h, _ in _blocks(inner, 'DieMuxData')), ''), death):
-            continue
-        whead, wbody = mine.get(_attr(head, 'DeathWeapon')) or _weapon_blocks.get(_attr(head, 'DeathWeapon'), ('', ''))
-        affects = frozenset((_attr(whead, 'RadiusDamageAffects') or 'ENEMIES NEUTRALS').split())
-        for nh, nb in _blocks(wbody, 'DamageNugget'):
-            out.append((_num(_attr(nh, 'Damage'), 0.0), _attr(nh, 'DamageType') or '', _num(_attr(nh, 'Radius'), 0.0),
-                        _secs(_attr(nh, 'DelayTimeSeconds') or '0s'), affects, _ally_scalar(nb)))
-    _death_memo[key] = out
-    return [d[:5] for d in out] if not scalars else out
+    whead, wbody = mine.get(weapon) or _weapon_blocks.get(weapon, ('', ''))
+    affects = frozenset((_attr(whead, 'RadiusDamageAffects') or 'ENEMIES NEUTRALS').split())
+    return [(_num(_attr(nh, 'Damage'), 0.0), _attr(nh, 'DamageType') or '', _num(_attr(nh, 'Radius'), 0.0),
+            _secs(_attr(nh, 'DelayTimeSeconds') or '0s'), affects, _ally_scalar(nb))
+           for nh, nb in _blocks(wbody, 'DamageNugget')]
 
 
 def _ally_scalar(nugget):
@@ -1982,8 +1966,8 @@ def ocl_wrecks(name, own=None):
     """What an ObjectCreationList makes fall when its CreateObjectDie takes a death in the air (Physics P5,
     checks/engine_crash_fall.py; the module: engine/modules/createobjectdie.py): (choose_one, [wreck]), None without
     the list. A wreck: dict(template, scale = the nugget's VelocityScale of the plane's velocity (INHERIT_VELOCITY
-    nuggets only), gravity = its own Physics GravityMultiplier (default 1), falls = KillWhenRestingOnGround, weapons =
-    its FireWeaponWhenDead (death_weapons with scalars)). The Apollo's: CHOOSE_ONE of AlliedFighterAircraft_Collapse
+    nuggets only), gravity = its own Physics GravityMultiplier (default 1), falls = KillWhenRestingOnGround; its death weapons:
+    simbody.Life.wreck_blasts, step B5c). The Apollo's: CHOOSE_ONE of AlliedFighterAircraft_Collapse
     (debris, no weapon) and AlliedFighterAircraft_Dying (x 0.5, falls, 150 EXPLOSIVE radius 20, allies 50 %)."""
     key = ('ocl', name, tuple((own or {}).values()))
     if key in _wreck_memo:
@@ -2005,8 +1989,7 @@ def ocl_wrecks(name, own=None):
                 return p[0] if p else None
             ph = _chain(w, own, physics) or ''
             wrecks.append(dict(template=w, scale=scale, gravity=_num(_attr(ph, 'GravityMultiplier') or '1', 1.0),
-                               falls=(_attr(ph, 'KillWhenRestingOnGround') or '').lower() == 'true',
-                               weapons=death_weapons(w, own, scalars=True)))
+                               falls=(_attr(ph, 'KillWhenRestingOnGround') or '').lower() == 'true'))
     _wreck_memo[key] = ('CHOOSE_ONE' in (_attr(head, 'Flags') or ''), wrecks)
     return _wreck_memo[key]
 

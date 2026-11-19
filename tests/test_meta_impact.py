@@ -816,8 +816,13 @@ def test_physics_p5_the_apollo_s_air_death_reads_its_crash_from_the_data():
     choose, wrecks = simunits.ocl_wrecks(air[0])
     assert choose and [w['template'] for w in wrecks] == ['AlliedFighterAircraft_Collapse', 'AlliedFighterAircraft_Dying']
     dying = wrecks[1]
-    assert (dying['scale'], dying['gravity'], dying['falls']) == (0.5, 1.0, True) and not wrecks[0]['weapons']
-    assert [(d[0], d[1], d[2], d[5]) for d in dying['weapons']] == [(150.0, 'EXPLOSIVE', 20.0, 0.5)]
+    import simbody
+    import simsmall
+    s = simsmall.small_world()                  # the wreck's death weapons: its FireWeaponWhenDead's data (step B5c)
+    assert (dying['scale'], dying['gravity'], dying['falls']) == (0.5, 1.0, True)
+    assert not simbody.Life().wreck_blasts(s, wrecks[0]['template'])
+    assert [(d[0], d[1], d[2], d[5]) for d in simbody.Life().wreck_blasts(s, dying['template'])] == [
+        (150.0, 'EXPLOSIVE', 20.0, 0.5)]
     assert simunits.fly_height('AlliedFighterAircraft') == simunits.fly_height('SovietFighterAircraft') == 175.0
     assert simunits.crash_frames((2885.0, 1500.47, 387.44), (7.5, 0.003, 0.0011), 212.5) == (29, (3160, 1500, 212.5))
 

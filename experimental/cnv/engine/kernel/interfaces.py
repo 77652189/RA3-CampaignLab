@@ -168,6 +168,18 @@ class CreateOnDeath(Interface):
         raise NotImplementedError
 
 
+class DeathWeapon(Interface):
+    """FireWeaponWhenDead (step B5c): the WeaponTemplate it fires where its thing died (death_weapon) and whether a
+    death of a type sets it off (fires: InitiallyActive and its DieMuxData's death types)."""
+    __slots__ = ()
+
+    def death_weapon(self):
+        raise NotImplementedError
+
+    def fires(self, death):
+        raise NotImplementedError
+
+
 class Create(Interface):
     """Told once its thing is made (World.build), with the frame it was made in (step M1)."""
     __slots__ = ()
@@ -604,5 +616,6 @@ class AIUpdate(Interface):
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
 FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze,
-          LevelUp, Aura, Repair, Assign, Infiltrate, SlowDeath, CreateOnDeath)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+          LevelUp, Aura, Repair, Assign, Infiltrate, SlowDeath, CreateOnDeath,
+          DeathWeapon)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze})  # a thing has at most one of these: Thing.find gives it

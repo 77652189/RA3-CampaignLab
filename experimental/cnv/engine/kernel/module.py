@@ -130,6 +130,25 @@ class Death:
         raise AttributeError('a Death is read only')
 
 
+class DieMux:
+    """What every Die module's data shares (Generals DieMuxData, the private model's DieMux.applies): a data class
+    that sets `types` (DeathTypes: ALL, -X, +X, X), `forbidden` (DeathTypesForbidden), `required` (RequiredStatus:
+    every bit) and `exempt` (ExemptStatus: none of them) gets takes / holds (step B5c: CreateObjectDie,
+    FireWeaponWhenDead)."""
+
+    def takes(self, death):
+        """Its DeathTypes take this death type, and DeathTypesForbidden does not name it."""
+        if death in self.forbidden:
+            return False
+        if 'ALL' in self.types:
+            return f'-{death}' not in self.types
+        return death in self.types or f'+{death}' in self.types
+
+    def holds(self, status):
+        """The status has every RequiredStatus bit and no ExemptStatus bit."""
+        return self.required <= status and not self.exempt & status
+
+
 class ModuleData:
     """The parse of one module block: parse(head, inner) -> an instance, sealed by the factory -- read only after."""
 

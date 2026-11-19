@@ -1,7 +1,7 @@
 """L2 body: health lost by itself, death and removal (ADR 0029, docs/engine/sim-layers.md; bench docs/engine/sell.md).
 
-`Life` kills a body (`kill`: its spawn's refill, its garrison, its FireWeaponWhenDead and an aircraft's falling wreck
-queued as death blasts) or deletes it (`delete`: no death) -- the one entry each (step B4b) --, sells a structure
+`Life` kills a body (`kill`: its Die modules told -- its spawn's refill, its garrison, its FireWeaponWhenDead's weapon
+(`fire`) and an aircraft's falling wreck (`create`, `air_crash`) queued as death blasts) or deletes it (`delete`: no death) -- the one entry each (step B4b) --, sells a structure
 (`sell`: the refund; its StructureSellUpdate module deletes it later, as a lifetime's and a toppled prop's modules end
 theirs -- the expire cell's modules since steps M1, M2, M10) and runs LoseHealthUpdate (`lose_health`), over the world
 it is given (simworld.WORLD_API only). The peers it needs are handed in by the caller (Sim.destroy / delete / sell / lose_health): the garrison (simgarrison, L2), the
@@ -25,6 +25,7 @@ HOVER_DRIFT = 0.2               # a frame: a hovering plane's velocity (air_cras
 class Life:
     def __init__(self):
         self.lose_of = {}              # template -> simunits.lose_health rule
+        self.blasts_of = {}            # death weapon -> simunits.weapon_blasts (the world's own templates are fixed)
 
     def create(self, world, b, ocl, airborne, death_blasts, ground_z):
         """The kernel's make (World.create) for a CreateObjectDie (engine/modules/createobjectdie.py, step B5b): a
@@ -72,12 +73,12 @@ class Life:
         m.start_sale(world.frame_now())
         world.note('出售', f'{world.label(b)}（退 {refund}）')
 
-    def kill(self, world, b, why, death_blasts, ground_z, death='NORMAL', cause=''):
+    def kill(self, world, b, why, death='NORMAL', cause=''):
         """The one death entry (Sim.destroy, step B4b): b killed -- its Die modules told (module.Death, `death` its
         death type: a crush's CRUSHED lies its SlowDeath out; `cause` 'lifetime' a death of age: its CreateObjectDie
-        leaves its list, World.create; an aircraft's makes its wreck fall), then its Destroy modules (_out), its
-        FireWeaponWhenDead queued; an immortal body takes lethal damage instead, and a prop that cannot die falls or
-        stays."""
+        leaves its list, World.create; an aircraft's makes its wreck fall; its FireWeaponWhenDead fires, World.fire),
+        then its Destroy modules (_out); an immortal body takes lethal damage instead, and a prop that cannot die falls
+        or stays."""
         if not b.alive:
             return
         if b.immortal:
@@ -94,13 +95,16 @@ class Life:
             return
         self._out(world, b, why, False, death, cause)
         b.set_hp(0.0, tell=False)
-        # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
-        # died; a deletion fires nothing (INFERRED, as Generals' destroyObject skips the die modules)
-        for dmg, typ, reach, after, affects, ally in simunits.death_weapons(b.template, world.own, scalars=True):
+        self._gone(world, b, why, False)
+
+    def fire(self, world, b, weapon, death_blasts):
+        """The kernel's fire (World.fire) for a FireWeaponWhenDead (engine/modules/fireweaponwhendead.py, step B5c;
+        bench 11-05 engine_spawn_refill): each DamageNugget of the WeaponTemplate `weapon` (simunits.weapon_blasts)
+        queued to go off where b died, its delay after, as b's (simdamage.death_blast_due)."""
+        for dmg, typ, reach, after, affects, ally in self.blasts(world, weapon):
             world.used.add('death weapon')
             death_blasts.append((world.frame_now() + simunits._frames(after), b.x, b.y, dmg, typ, reach,
                                  affects, b.owner, b, ally, False))
-        self._gone(world, b, why, False)
 
     def delete(self, world, b, why):
         """The one deletion entry (Sim.delete, step B4b): b taken out, no death -- no lethal damage, no death weapon,
@@ -147,7 +151,8 @@ class Life:
         if not got:
             return
         choose, wrecks = got
-        hits = [w for w in wrecks if w['falls'] and w['weapons']]
+        blasts = {w['template']: self.wreck_blasts(world, w['template']) for w in wrecks}
+        hits = [w for w in wrecks if w['falls'] and blasts[w['template']]]
         if choose and len(wrecks) > 1:
             world.used.add('crash choice')
             hits = hits[:1]
@@ -169,9 +174,23 @@ class Life:
             if abs(ground_z(end[0], end[1]) - ground) > 1e-3:
                 world.gap('Physics', w['template'], '坠机残骸落到不同高度的地面：落点和时刻按起点地面算')
             world.used.add('air crash')
-            for dmg, typ, reach, after, affects, ally in w['weapons']:
+            for dmg, typ, reach, after, affects, ally in blasts[w['template']]:
                 death_blasts.append((world.frame_now() + frames + simunits._frames(after), end[0], end[1], dmg,
                                      typ, reach, affects, b.owner, b, ally, True, (end[0] - b.x, end[1] - b.y)))
+
+    def blasts(self, world, weapon):
+        """A death weapon's DamageNuggets (simunits.weapon_blasts), read once a world."""
+        if weapon not in self.blasts_of:
+            self.blasts_of[weapon] = simunits.weapon_blasts(weapon, world.own)
+        return self.blasts_of[weapon]
+
+    def wreck_blasts(self, world, template):
+        """A falling wreck's death weapons, the wreck being no thing in the simulator: the DamageNuggets (blasts) of
+        the DeathWeapon of each FireWeaponWhenDead of its template (World.data_of: the module's own parse,
+        engine/modules/fireweaponwhendead.py) that a NORMAL death of a thing with no status sets off (INFERRED: a
+        wreck resting on the ground, KillWhenRestingOnGround, dies NORMAL), in module order."""
+        return [n for d in world.world.data_of(template, 'FireWeaponWhenDead') if d.fires('NORMAL')
+                for n in self.blasts(world, d.weapon)]
 
     def lose_health(self, world, frame, toggles_of):
         """LoseHealthUpdate gated by an ObjectStatusValidation (simunits.lose_health): DamagePerSecond / fps a frame

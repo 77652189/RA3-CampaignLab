@@ -10,10 +10,11 @@ def no_blocks(template, tag):
 
 class World:
     def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None, pay=None, toggled=None,
-                 modify=None, suppression_at=None, spawn=None, vacate=None, create=None):
+                 modify=None, suppression_at=None, spawn=None, vacate=None, create=None, fire=None):
         """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry;
         kill(thing, why, death, cause): the host's death of a thing (World.kill); create(thing, ocl, airborne): the
-        host's making of what a thing's death lists (World.create); remove(thing, why): the host's deletion of one,
+        host's making of what a thing's death lists (World.create); fire(thing, weapon): the host's firing of a
+        weapon where a thing died (World.fire); remove(thing, why): the host's deletion of one,
         no death (World.remove); pay(thing, amount): the host's payment to a thing's holder (World.pay);
         toggled(thing, module): what the host re-sets when a toggle enters its next state (World.toggled);
         modify(thing): the host's re-reading of a thing's attribute modifiers (World.modify);
@@ -23,7 +24,7 @@ class World:
         (World.vacate)."""
         self.blocks, self.tags, self._kill, self._remove, self._pay = blocks, tags, kill, remove, pay
         self._toggled, self._modify, self._suppression_at = toggled, modify, suppression_at
-        self._spawn, self._vacate, self._create = spawn, vacate, create
+        self._spawn, self._vacate, self._create, self._fire = spawn, vacate, create, fire
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
@@ -75,6 +76,14 @@ class World:
         if self._create is None:
             raise RuntimeError(f'World.create({thing.name!r}): this world has no host to make with')
         self._create(thing, ocl, airborne)
+
+    def fire(self, thing, weapon):
+        """A FireWeaponWhenDead module's thing died and its DeathWeapon goes off (step B5c): the host fires the
+        WeaponTemplate `weapon` where the thing died, as the thing's -- today its DamageNuggets queued as death blasts
+        (simbody.Life.fire, simdamage.death_blast_due). A world with no host fires nothing."""
+        if self._fire is None:
+            raise RuntimeError(f'World.fire({thing.name!r}): this world has no host to fire with')
+        self._fire(thing, weapon)
 
     def remove(self, thing, why):
         """A module takes its thing out, no death (a toppled prop gone: ToppleUpdate): the host's deletion -- today

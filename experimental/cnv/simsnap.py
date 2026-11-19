@@ -54,7 +54,7 @@ SIM = {
                'blocked': STATE, 'placed': STATE, 'version': STATE, 'shapes': STATE, 'cache': CACHE},
     'repairs': {'world': WIRE, 'wallet': WIRE, 'ai_switches': ALIAS, 'blocked': STATE, 'players': STATE},
     'heal': {'passive_area_of': CACHE},
-    'life': {'lose_of': CACHE},
+    'life': {'lose_of': CACHE, 'blasts_of': CACHE},
     'garrison': {'world': WIRE, 'peers': WIRE, 'boxes': STATE, 'where': STATE, 'going': STATE, 'log': STATE,
                  'ejecting': STATE, 'flying': STATE},
     'infiltrators': {'world': WIRE, 'peers': WIRE, 'wallet': WIRE, 'going': STATE, 'off_until': STATE,

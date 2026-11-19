@@ -25,7 +25,7 @@ def _words(head, name, default=''):
     return frozenset((templates.attr(head, name) or default).split())
 
 
-class CreateObjectDieData(module.ModuleData):
+class CreateObjectDieData(module.ModuleData, module.DieMux):
     def __init__(self, ocl='', types=frozenset({'ALL'}), forbidden=frozenset(), required=frozenset(),
                  exempt=frozenset()):
         self.ocl = ocl              # CreationList: the ObjectCreationList it makes
@@ -39,18 +39,6 @@ class CreateObjectDieData(module.ModuleData):
         mux = templates.child(inner, 'DieMuxData')
         return cls(templates.attr(head, 'CreationList', ''), _words(mux, 'DeathTypes', 'ALL'),
                    _words(mux, 'DeathTypesForbidden'), _words(mux, 'RequiredStatus'), _words(mux, 'ExemptStatus'))
-
-    def takes(self, death):
-        """Its DeathTypes take this death type, and DeathTypesForbidden does not name it."""
-        if death in self.forbidden:
-            return False
-        if 'ALL' in self.types:
-            return f'-{death}' not in self.types
-        return death in self.types or f'+{death}' in self.types
-
-    def holds(self, status):
-        """The status has every RequiredStatus bit and no ExemptStatus bit."""
-        return self.required <= status and not self.exempt & status
 
 
 @factory.module('CreateObjectDie')

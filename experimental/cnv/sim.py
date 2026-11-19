@@ -845,6 +845,7 @@ class Sim:
                                         kill=lambda b, why, death, cause: self.destroy(b, why, death, cause),
                                         create=lambda b, ocl, air: self._life().create(
                                             self, b, ocl, air, self.death_blasts, self.impact_ground_z),
+                                        fire=lambda b, weapon: self._life().fire(self, b, weapon, self.death_blasts),
                                         remove=lambda b, why: self.delete(b, why), modify=lambda b: self.modify(b),
                                         pay=lambda b, amount: self.wallet.deposit(b.owner, amount),
                                         toggled=lambda b, m: simtoggle.entered(self, b, m, self.modify),
@@ -1967,9 +1968,8 @@ class Sim:
         self._life().sell(self, b, self.garrison, self.modify, self.wallet.credit)
 
     def destroy(self, b, why, death='NORMAL', cause=''):
-        """simbody.Life.kill (L2), the one death entry: b killed -- its Die modules told of its death type and cause
-        (module.Death: CRUSHED for a crush, 'lifetime' a death of age), its death weapons; see Life.kill."""
-        self._life().kill(self, b, why, self.death_blasts, self.impact_ground_z, death, cause)
+        """simbody.Life.kill (L2), the one death entry: b killed, its Die modules told its death type and cause."""
+        self._life().kill(self, b, why, death, cause)
 
     def delete(self, b, why):
         """simbody.Life.delete (L2), the one deletion entry: b taken out, no death (children, passengers with it)."""
