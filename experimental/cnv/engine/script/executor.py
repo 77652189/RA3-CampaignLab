@@ -26,6 +26,7 @@ import math
 import operator
 import random
 
+from engine.kernel import snap
 from engine.ports import scripts as port
 from engine.script import lists as script_lists
 
@@ -82,6 +83,45 @@ class PublicExecutor(port.Executor):
         if self._scripts.get(s.name) is s:
             return s.name
         return s.name, next(i for i, x in enumerate(self._again[s.name]) if x is s)
+
+    def _walk(self, items=None):
+        """Every script and group of the lists, in the order the lists hold them (a group, then its items)."""
+        for it in (x for lst in self.lists for x in lst.items) if items is None else items:
+            yield it
+            if isinstance(it, script_lists.Group):
+                yield from self._walk(it.items)
+
+    def _by_key(self, key):
+        if isinstance(key, str):
+            return self._scripts[key]
+        return self._again[key[0]][key[1]]
+
+    def snapshot(self):
+        """The port's Executor.snapshot: counters, steps, displayed, log, the delayed scripts' next frames, the
+        random draws, the script now acting (by its _key) and the side, each script's and group's `active` in list
+        order. A `clock` the executor moves on is the world's (its holder takes it)."""
+        return {'counters': snap.encode(self.counters, at='counters'), 'steps': self.steps,
+                'displayed': snap.encode(self.displayed, at='displayed'), 'log': snap.encode(self.log, at='log'),
+                'next': snap.encode(self._next, at='next'), 'rng': snap.encode(self.rng.getstate(), at='rng'),
+                'script': None if self.script is None else snap.encode(self._key(self.script)),
+                'side': self._side,
+                'active': [[type(x).__name__, x.name, x.active] for x in self._walk()]}
+
+    def restore(self, s):
+        active = list(self._walk())
+        if [[type(x).__name__, x.name] for x in active] != [row[:2] for row in s['active']]:
+            raise ValueError('PublicExecutor.restore: the snapshot is of other script lists')
+        things = {}
+        for table, key in ((self.counters, 'counters'), (self.displayed, 'displayed'), (self._next, 'next')):
+            table.clear()               # in place: a reader may hold the table under another name
+            table.update(snap.decode(s[key], things))
+        self.log[:] = snap.decode(s['log'], things)
+        self.steps = s['steps']
+        self.rng.setstate(snap.decode(s['rng'], things))
+        self.script = None if s['script'] is None else self._by_key(snap.decode(s['script'], things))
+        self._side = s['side']
+        for x, row in zip(active, s['active']):
+            x.active = row[2]
 
     def script_named(self, name):
         """The script of that name (the first of it), None where none (UNIT_EXECUTE_SEQUENTIAL_SCRIPT)."""

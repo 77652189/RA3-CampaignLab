@@ -48,6 +48,17 @@ class Executor:
         """One logic frame of scripts."""
         raise NotImplementedError
 
+    def snapshot(self):
+        """The executor's state between two frames (step S, docs/engine/sim-modules.md 9.2) as a JSON-shaped dict:
+        its counters and timers, its clocks, its random draws, which scripts are on. The map's script lists are not
+        in it (the executor made for the same mission has them). An executor that cannot says so: the snapshot is
+        refused, never taken without it."""
+        raise NotImplementedError(f'{type(self).__name__}: this script executor does not take snapshots')
+
+    def restore(self, snap):
+        """Write a snapshot of this executor back, onto one made anew for the same mission's lists."""
+        raise NotImplementedError(f'{type(self).__name__}: this script executor does not take snapshots')
+
 
 def this_player(eng, args):
     """'<This Player>' as the game reads it: the player whose script list the script is in (the executor's `_side`;

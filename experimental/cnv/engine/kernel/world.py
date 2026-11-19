@@ -1,7 +1,7 @@
 """World (docs/engine/sim-modules.md 5): one game's mutable state, all in the instance -- the schedule, the parse cache
 of module data, the audit set and the gap log. Two worlds in one process share nothing (tests/test_kernel.py). Today
 the Sim hosts it: Sim.world, and the Sim's `used` / `unmodeled` are the world's own."""
-from engine.kernel import factory, interfaces, module, schedule  # noqa: F401  (module: Thing, which sim.Body is)
+from engine.kernel import factory, interfaces, module, schedule, snap  # noqa: F401  (module: Thing, which sim.Body is)
 
 
 def no_blocks(template, tag):
@@ -150,6 +150,66 @@ class World:
             self.gaps[(kind, name)] = {'n': 1, 't': self.frame / 15.0, 'what': what}
         else:
             g['n'] += 1
+
+    def snapshot(self, things, extra=None):
+        """The world's part of a snapshot (docs/engine/sim-modules.md 9.2, step S), in values engine/kernel/snap.py
+        keeps: the count of things made, the frame, the audit set, the gaps, the schedule (each cell's modules in the
+        cell's order with wake frame and seq, and the running count) and every module's STATE. `things`: all the
+        host's things, the dead it still holds too; a held module whose thing is not among them is an error.
+        `extra`: the host's own marks (snap.encode). Wiring, the parse caches and the template port are the new
+        world's own (World.restore writes onto a world made for the same mission)."""
+        things = list(things)
+        serials = [t.serial for t in things]
+        if len(set(serials)) != len(serials):
+            raise ValueError('World.snapshot: two things of one serial')
+        held = set(serials)
+        cells = []
+        for phase, cell in self.schedule.cells.items():
+            rows = []
+            for m, at in cell.items():
+                if m.thing.serial not in held or not any(x is m for x in m.thing.modules):
+                    raise ValueError(f'World.snapshot: {type(m).__name__} of {m.thing.name!r} is held by the schedule '
+                                     'but its thing is not among the things given')
+                rows.append([snap.encode(m), at, self.schedule.seq[m]])
+            cells.append([phase, rows])
+        return {'made': self.made, 'frame': self.frame,
+                'used': snap.encode(self.used, extra, 'used'), 'gaps': snap.encode(self.gaps, extra, 'gaps'),
+                'schedule': {'cells': cells, 'added': self.schedule.added},
+                'things': [[t.serial, [type(m).__name__ for m in t.modules],
+                            [snap.module_state(m, extra) for m in t.modules]] for t in things]}
+
+    def restore(self, snap_, things, extra=None):
+        """Write a World.snapshot onto this world, made anew for the same mission: `things` serial -> Thing, the
+        host's things for the snapshot's (made with their modules, each thing's serial set here). The things and
+        their modules must be the snapshot's (same serials, same module classes in order), else nothing is written
+        past the check. The audit set and the gaps are written in place (the host holds them under other names)."""
+        want = {row[0]: row[1] for row in snap_['things']}
+        if set(want) != set(things):
+            raise ValueError(f'World.restore: things {sorted(set(want) ^ set(things))[:10]} are on one side only')
+        for serial, names in want.items():
+            have = [type(m).__name__ for m in things[serial].modules]
+            if have != names:
+                raise ValueError(f'World.restore: thing {serial} ({things[serial].name!r}) has modules {have}, '
+                                 f'the snapshot {names}')
+        for serial, t in things.items():
+            t.serial = serial
+        for serial, _names, states in snap_['things']:
+            for m, state in zip(things[serial].modules, states):
+                snap.set_module_state(m, state, things, extra)
+        self.made, self.frame = snap_['made'], snap_['frame']
+        self.used.clear()
+        self.used.update(snap.decode(snap_['used'], things, extra))
+        self.gaps.clear()
+        self.gaps.update(snap.decode(snap_['gaps'], things, extra))
+        s = self.schedule
+        s.cells, s.seq = {}, {}
+        for phase, rows in snap_['schedule']['cells']:
+            cell = s.cells[phase] = {}
+            for ref, at, seq in rows:
+                m = snap.decode(ref, things)
+                cell[m] = at
+                s.seq[m] = seq
+        s.added = snap_['schedule']['added']
 
     def wake(self, module, frame=None):
         """Run an update module at `frame`, by default the frame of the cell now running (`frame`, which the frame
