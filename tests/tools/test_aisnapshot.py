@@ -3,6 +3,7 @@
 taken again equal (4.2) and run on to the end as the one never stopped; with brains (guard 7's ai_open, the engine
 model here) every field of the SimAI, its brains and their Units sorted (4.3); the brains through the plugin's own
 port (11b-4c), the two AI tasks of guard 7 written back at half and run on as the ones never stopped."""
+import io
 import json
 
 import pytest
@@ -226,3 +227,22 @@ def test_an_older_sim_part_is_refused_before_a_brain_is_made(half):
     with pytest.raises(ValueError, match=f'version {simsnap.VERSION - 1}'):
         simaisnap.restore(w, old)
     assert not w.brains and simsnap.snapshot(w.sim) == before
+
+
+def test_guard_7_takes_an_ai_task_cut_and_its_record_goes_on_as_the_whole_one():
+    """11b-4d: `simrecord snap` on an AI task (run_task through simaisnap): the record of the run taken at half,
+    written back onto a SimAI made anew and run on is the whole run's line for line, the ends (the AI's snapshot with
+    its brains, the report) the same."""
+    if not simai.available():
+        pytest.skip('the engine model (ra3model.ai) is not on this computer')
+    assert 'ai_crush1' in simrecord.SNAP_TASKS and 'ai_open' in simrecord.SNAP_TASKS
+    outs, ends = [], []
+    for snap in ('whole', '0.5'):
+        out = io.StringIO()
+        s, rec = simrecord.run_task('ai_crush1', out, snap=snap)
+        outs.append(out.getvalue())
+        ends.append(json.loads(json.dumps(rec.end)))
+    assert rec.snap['at'] > 0 and 'brains' in ends[1]['snapshot'] and ends[1]['snapshot']['brains']
+    assert outs[0].count(chr(10)) > 10 and outs[0] == outs[1]
+    assert simrecord.differences(ends[0]['snapshot'], ends[1]['snapshot']) == []
+    assert ends[0]['report'] == ends[1]['report']

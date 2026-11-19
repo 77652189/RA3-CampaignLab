@@ -65,7 +65,7 @@ TASKS = {
     'mine_cap': ('bench', ('mineturn0', 'cap'), 30.0),
     'mine_tower': ('bench', ('aitowerinc5', None), 60.0),
 }
-SNAP_TASKS = [n for n, (kind, *_) in TASKS.items() if kind != 'ai']   # `snap`: the AI's part cannot be taken yet
+SNAP_TASKS = list(TASKS)    # `snap`: every task, the AI's through simaisnap (11b-4d)
 
 SIM_FIELDS = ('log', 'flags', 'counters', 'timers', 'objectives', 'money', 'income', 'ending', 'used', 'unknown',
               'series', 'done', 'disabled', 'events')
@@ -248,19 +248,28 @@ def run_task(name, out, executor=None, snap=None):
     the rest the model's plug-in where it is on this computer) and the full record; 'public' / 'model' /
     'public@model' that executor for every kind and the cross record (CrossRecorder).
     snap (step S's guard 7, `snap` below): the full record on a world a snapshot can be taken of -- the task's own
-    with the public executor (the model's plug-in keeps its state to itself) --, 'whole' run through, a fraction
-    `at` stopped at the first tick past at x the task's seconds, taken (simsnap), through JSON, written onto the
-    same task made anew and run on to the end, the record going on where it stopped (Recorder, the log's count)."""
+    with the public executor (the model's plug-in keeps its state to itself), an AI task's the public world --,
+    'whole' run through, a fraction
+    `at` stopped at the first tick past at x the task's seconds, taken (simsnap; an AI task's SimAI with its brains
+    through simaisnap, 11b-4d), through JSON, written onto the same task made anew (an AI task's SimAI made anew on
+    it) and run on to the end, the record going on where it stopped (Recorder, the log's count)."""
     import build
     import sim
     from engine.ports.observe import Observe
     kind, args, until = TASKS[name]
     model = kind != 'old' if executor is None else executor in ('model', 'public@model')
+    if snap is not None and kind == 'ai':   # the model's world keeps the model's script engine as its clock, which
+        model = False                       # a snapshot cannot take (simaisnap: the AI's runs on Sim(model=False))
     which = {'executor': 'public'} if executor == 'public@model' or (snap is not None and model) else {}
     make = Recorder if executor is None else CrossRecorder
-    if snap is not None and (executor is not None or kind == 'ai'):
-        raise ValueError(f'simrecord: no snapshot of {name} ({kind}) with executor {executor}: the AI and the '
-                         "model's plug-in cannot be taken yet (step 11b-4)")
+    if snap is not None and executor is not None:
+        raise ValueError(f'simrecord: no snapshot of {name} ({kind}) with executor {executor}: the model\'s plug-in '
+                         'cannot be taken')
+    if snap is not None:    # the AI's run through simaisnap (the Sim's part and the brains'), the rest simsnap
+        if kind == 'ai':
+            import simaisnap as snaps
+        else:
+            import simsnap as snaps
 
     cut = None if snap in (None, 'whole') else float(snap) * until
     for half in range(1 if cut is None else 2):     # a cut run: the task made again for the half written back
@@ -270,8 +279,12 @@ def run_task(name, out, executor=None, snap=None):
         else:
             m, t, _ = build.resolve(*args)
             s = sim.Sim(m, t, 'normal', model=model, **which)
+        w = None
+        if kind == 'ai':
+            import simai
+            w = simai.SimAI(s, 'normal', 1, None, None, simai.BLOCKS, False)
         if half:
-            simsnap.restore(s, json.loads(taken))
+            snaps.restore(s if w is None else w, json.loads(taken))
             o = Observe(s)
             if o.log_since(0)[1] != rec.logged:
                 raise RuntimeError(f'simrecord: the restored log has {o.log_since(0)[1]} lines, the run had '
@@ -282,37 +295,41 @@ def run_task(name, out, executor=None, snap=None):
             rec.snap = {'at': was.at, 'bytes': len(taken), 'seconds': time.perf_counter() - t1}
             rec.attach()
             frame = s.world.frame
-            s.run(until)
+            if w is None:
+                s.run(until)
+            else:               # the AI's run a frame at a time (SimAI.advance), to the frame the whole one ends at
+                w.advance(int(until * simai.FPS) - w.frame)
             if s.world.frame == frame:
                 raise RuntimeError(f'simrecord: {name} restored at {s.t} ran no frame on to {until}: the cut proves '
                                    'nothing')
             break
         rec = make(Observe(s), out)
         rec.attach()
-        if kind == 'ai':
-            import simai
-            w = simai.SimAI(s, 'normal', 1, None, None, simai.BLOCKS, False)
-            t0 = time.perf_counter()
-            w.advance(int(until * simai.FPS))
-            break
         t0 = time.perf_counter()
         if cut is None:
-            s.run(until)
+            if w is None:
+                s.run(until)
+            else:
+                w.advance(int(until * simai.FPS))
             break
-        import simsnap
-        s.run(cut)
+        if w is None:
+            s.run(cut)
+            last = s.t > until      # Sim.run steps while t <= until: written back there, it would run no frame on
+        else:   # a frame at a time to the first tick past the cut, where Sim.run stops (t > cut; a tick is DT)
+            while s.t <= cut and s.ending is None:
+                w.advance(1)
+            last = w.frame >= int(until * simai.FPS)
         if s.ending is not None or s.t <= cut:
             raise RuntimeError(f'simrecord: {name} ended (or went quiet) at {s.t}, before {cut}: nothing to take')
-        if s.t > until:     # Sim.run steps while t <= until: written back there, it would run no frame on
+        if last:
             raise ValueError(f'simrecord: {name} cut at {snap} stops at {s.t}, past its end {until}: no frame left '
                              'to run after the snapshot (take it earlier)')
         t1 = time.perf_counter()
-        taken, rec.at = json.dumps(simsnap.snapshot(s)), s.t
+        taken, rec.at = json.dumps(snaps.snapshot(s if w is None else w)), s.t
     rec.ran = time.perf_counter() - t0 - rec.spent     # the run alone: no imports, map build or record writing
     rec.line('end')
-    if snap is not None:    # its end (end_path): the report after the snapshot -- it notes what it used (Sim.used)
-        import simsnap
-        rec.end = {'snapshot': simsnap.snapshot(s)}
+    if snap is not None:    # its end (end_path): the snapshot after the run (the AI's with its brains) and the
+        rec.end = {'snapshot': snaps.snapshot(s if w is None else w)}   # report -- it notes what it used (Sim.used)
         rec.end['report'] = s.report()
     return s, rec
 

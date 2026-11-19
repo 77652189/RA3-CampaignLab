@@ -49,6 +49,8 @@ SIM = {
     # the kernel, the script port, wiring
     'world': KERNEL, 'executor': EXECUTOR, 'eng': WIRE, 'counters': WIRE, 'timers': WIRE, 'team_names': WIRE,
     'order_peers': WIRE,
+    'step': WIRE,       # an observer's tick hook (Observe.on_tick wraps the run's step; simrecord's Recorder): the
+                        # new run's observer hooks its own (11b-4d: simaisnap's scan met it)
     'used': ALIAS, 'unmodeled': ALIAS, 'money': ALIAS, 'income': ALIAS, 'sharing': ALIAS, 'money_cap': ALIAS,
     # caches (template -> what its data says)
     'declared': CACHE, 'energies': CACHE, '_engineer_rules': CACHE, '_wsets': CACHE, '_xmls': CACHE,
