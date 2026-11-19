@@ -416,3 +416,26 @@ def test_a_name_ending_in_a_tail_reads_as_the_name():
     with pytest.raises(ValueError):
         s.commands.line(forced)
     assert s.commands.post(forced, 1.0)[0] is False and len(s.events) == 0
+
+
+def test_the_proxy_players_click_reaches_his_units_not_a_reference_of_their_name():
+    """simproxy.SimWorld.issue gives the units it picked (alive, his) by serial (review 11-19 h #1: by name, a script
+    reference `a` pointing at an enemy took a's move; the attack and the transform went astray the same way)."""
+    import simproxy
+    from types import SimpleNamespace
+    s = simsmall.small_world([('a', APOC, 'Player_1', 1250.0, 2500.0), ('b', APOC, 'Player_1', 1300.0, 2500.0),
+                              ('enemy', APOC, 'Player_2', 1350.0, 2500.0), ('t', APOC, 'Player_2', 1600.0, 2500.0)],
+                             model=False)
+    s.refs['a'] = s.bodies['enemy']
+    w = object.__new__(simproxy.SimWorld)
+    w.sim = w.world = s
+    w.peers, w.me, w.refused = simproxy.Peers(s), 'Player_1', []
+    w.names = {1: 'a', 2: 'b', 3: 'enemy', 4: 't'}
+    w.control = lambda: True
+    order = SimpleNamespace(kind='move', units=(1, 2, 3, 9), pos=(1450.0, 2700.0), target=None, power='', template='')
+    assert w.issue(order)
+    issued = s.commands.issued()[-1][1]
+    assert issued.units == (s.bodies['a'].serial, s.bodies['b'].serial) and issued.arg('objects') == 'serial'
+    assert s.bodies['a'].move_to is not None and s.bodies['enemy'].move_to is None
+    assert w.issue(SimpleNamespace(kind='attack', units=(1, 2), target=4, pos=None, power='', template=''))
+    assert s.commands.issued()[-1][1].units == (s.bodies['a'].serial, s.bodies['b'].serial)

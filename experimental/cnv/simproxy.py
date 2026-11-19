@@ -369,12 +369,13 @@ class SimWorld:
         return self.peers.input and self.world.t > 0
 
     def _do(self, kind, units=(), **kw):
-        """The player's order through the command port (R3 13e): (ok, why). `units` are bodies of his, given by name
-        (`('objects', True)`: the port finds each as the Sim does)."""
+        """The player's order through the command port (R3 13e): (ok, why). `units` are the bodies of his the click
+        picked (alive, his), given by serial (`('objects', 'serial')`): by name the port's lookup would read a script
+        reference of the same name -- an enemy's unit took the move, review 11-19 h #1, as f #1."""
         args = kw.pop('args', ())
         if units:
-            args = (('objects', True),) + args
-        return self.peers.commands.do(Command(kind, 'proxy', units=tuple(b.name for b in units), args=args, **kw))
+            args = (('objects', 'serial'),) + args
+        return self.peers.commands.do(Command(kind, 'proxy', units=tuple(b.serial for b in units), args=args, **kw))
 
     def issue(self, o):
         world = self.world
