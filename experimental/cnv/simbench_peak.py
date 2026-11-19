@@ -21,6 +21,7 @@ written to <out>/peak_<rev>.json.
 Run it through experimental/testbench/cpupool.py run -n 1 -- to share the machine with other jobs."""
 import sim  # noqa: I001  (first: it puts experimental/cnv and campaign on the path)
 import argparse
+import importlib.util
 import json
 import os
 import subprocess
@@ -31,6 +32,10 @@ import simloop
 import simsmall
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+_spec = importlib.util.spec_from_file_location(
+    'labpaths', os.path.join(os.path.dirname(HERE), 'campaign', 'labpaths.py'))
+labpaths = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(labpaths)
 SECS, UNITS = 60.0, 300
 QUEUED, MONEY = 100, 1_000_000                # queued a side: more than 60 s builds, so the factories never stop
 SLICE = 10.0                                  # seconds a slice: the peak is the slowest (the armies thin out)
@@ -176,16 +181,7 @@ def run_ai(secs=SECS):
 
 
 def logs_dir():
-    """work/logs/perf of this checkout, or of the main one (a worktree without its own work/)."""
-    root = os.path.dirname(os.path.dirname(HERE))
-    if not os.path.isdir(os.path.join(root, 'work')):
-        try:
-            common = subprocess.run(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir'], cwd=HERE,
-                                    capture_output=True, text=True, check=True).stdout.strip()
-            root = os.path.dirname(common)
-        except (OSError, subprocess.CalledProcessError):
-            pass
-    return os.path.join(root, 'work', 'logs', 'perf')
+    return os.path.join(labpaths.WORK, 'logs', 'perf')
 
 
 def main():
@@ -200,7 +196,6 @@ def main():
         r = run_ai(a.secs)  # the calling cpupool.py run -n 1 holds the shared token
     else:
         # a timing: the whole of the machine's CPU tokens (cpupool, T5), so other lines' jobs do not share its cores
-        import importlib.util
         spec = importlib.util.spec_from_file_location('_cpupool', os.path.join(os.path.dirname(HERE), 'testbench', 'cpupool.py'))
         cpupool = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cpupool)

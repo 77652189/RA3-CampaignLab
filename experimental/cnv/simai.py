@@ -291,15 +291,7 @@ class Brain:
         self._rec_runs, self._rec_mem, self._rec_bodies = {}, {}, {}
         self._team_names = None         # engine team name -> the model's team key (state, tactic id, template index)
         self.peers.add_team_lookup(self.team_named)
-        yards = self.yards()
-        self.home = (yards[0].x, yards[0].y) if yards else (0.0, 0.0)
-        # Dual-yard probe: the initial AI base exists before the scripted yard.
-        # INFERRED bootstrap for this single-initial-yard fixture only. Later
-        # yards do not register AI bases merely by being physical structures.
-        self.expansion_anchor = yards[0] if len(yards) == 1 else None
-        # Initial-yard registration order is INFERRED from the two-base probe;
-        # retain stable ids when a yard disappears, never enumerate live yards.
-        self.expansion_initial_yards = tuple(yards) if self.world.m.facts.get('initial dual bases') else ()
+        self.home = (0.0, 0.0)
         tg = m['targets']
         foes = frozenset(p for p in self.world.players.values() if p != player and self.world.enemy(player, p))
         self.view = tg.View(player, [], enemies=foes, waypoints=self.world.waypoints,
@@ -311,6 +303,29 @@ class Brain:
                                                       or self.world.m.facts.get('expansion')) else None))
         self.base = self.powers = None
         self.attach(host.blocks)
+        self._set_initial_yards(self.yards())
+
+    def _set_initial_yards(self, yards):
+        self._has_initial_yards = bool(yards)
+        if yards:
+            self.home = (yards[0].x, yards[0].y)
+        # Dual-yard probe: the initial AI base exists before the scripted yard.
+        # INFERRED bootstrap for this single-initial-yard fixture only. Later
+        # yards do not register AI bases merely by being physical structures.
+        self.expansion_anchor = yards[0] if len(yards) == 1 else None
+        # Initial-yard registration order is INFERRED from the two-base probe;
+        # retain stable ids when a yard disappears, never enumerate live yards.
+        self.expansion_initial_yards = tuple(yards) if self.world.m.facts.get('initial dual bases') else ()
+        if 'targets' in self.host.blocks:
+            self.targets.home = self.home
+        if self.defense is not None:
+            df = self.host.mod['defense']
+            self.base = df.Base(1, self.home, (), frozenset({'MAIN_BASE'}))
+            self.bases = [self.base]
+            if len(self.expansion_initial_yards) >= 2:      # two initial yards: two MAIN_BASEs, ids in placement
+                a, b = self.expansion_initial_yards[:2]     # order (C's aibs3 / aibn2 base ids; INFERRED adapter)
+                self.base = df.Base(0, (a.x, a.y), (), frozenset({'MAIN_BASE', 'OLDEST_OF_TYPE'}))
+                self.bases = [self.base, df.Base(1, (b.x, b.y), (), frozenset({'MAIN_BASE', 'MOST_RECENT_OF_TYPE'}))]
 
     def wake(self, frame):
         """The mission handed the player to the AI (Sim.ai): 'make base' that frame -- the opening and the building
@@ -355,12 +370,6 @@ class Brain:
         # PathfindingCheckType at recruiting (a model that has it, D152): the slot's target as a point
         self.ai.teams.reach = self.reach_target
         if 'defense' in which:
-            self.base = df.Base(1, self.home, (), frozenset({'MAIN_BASE'}))
-            self.bases = [self.base]
-            if len(self.expansion_initial_yards) >= 2:      # two initial yards: two MAIN_BASEs, ids in placement
-                a, b = self.expansion_initial_yards[:2]     # order (C's aibs3 / aibn2 base ids; INFERRED adapter)
-                self.base = df.Base(0, (a.x, a.y), (), frozenset({'MAIN_BASE', 'OLDEST_OF_TYPE'}))
-                self.bases = [self.base, df.Base(1, (b.x, b.y), (), frozenset({'MAIN_BASE', 'MOST_RECENT_OF_TYPE'}))]
             self.defense = df.DefenseBlock(self.tactics, lambda ai, f: self.view, bases=lambda ai, f: self.bases,
                                            busy=self.busy, aesthetics=self.stand, radius=self.radius_of,
                                            attrs=h.data_of('tactic attrs'), rng=random.Random(h.seed),
@@ -1724,6 +1733,9 @@ class Brain:
 
     def tick(self, frame):
         self.frame = frame
+        # aiexpc, aibs3old and aieng hand over the starting yards after the brain is attached.
+        if not self._has_initial_yards and (yards := self.yards()):
+            self._set_initial_yards(yards)
         self.earn()
         self.later_due(frame)
         self.yard_due(frame)

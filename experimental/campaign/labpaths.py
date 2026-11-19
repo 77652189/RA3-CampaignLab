@@ -39,14 +39,19 @@ def only_logs(path):
         return False
 
 
+def local_work_path(root):
+    """The work directory directly under root, before any override or fallback."""
+    return os.path.join(root, 'work')
+
+
 def _work(root=None, main=None, env=None):
     root, main = root or ROOT, main or MAIN
     env = os.environ if env is None else env
     if env.get('CNV_WORK'):
         return env['CNV_WORK']
-    own = os.path.join(root, 'work')
-    sibling = os.path.basename(root).startswith('RA3-CampaignLab-') and os.path.isdir(os.path.join(main, 'work'))
-    return os.path.join(main, 'work') if sibling and (not os.path.exists(own) or only_logs(own)) else own
+    own, shared = local_work_path(root), local_work_path(main)
+    sibling = os.path.basename(root).startswith('RA3-CampaignLab-') and os.path.isdir(shared)
+    return shared if sibling and (not os.path.exists(own) or only_logs(own)) else own
 
 
 WORK = _work()

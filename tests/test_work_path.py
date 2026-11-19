@@ -18,6 +18,7 @@ ALLOW = {
     'experimental/simui/game.py': "VOICE_LINE points into RA3-ChineseVoice\\work (other repo)",
     'demo/voice_snapshot.py': 'ships standalone inside the demo zip, which does not carry labpaths.py; keeps the CNV_WORK expression inline',
     'experimental/outsource/codex_task.py': "bench_dirs() names the MAIN checkout's work (LAB/RA3-CampaignLab/work) as a writable dir for the Codex sandbox on purpose; CNV_WORK still overrides",
+    'tests/test_missing_data.py': 'isolated fixtures spell out their input and expected paths independently',
     'tests/test_work_path.py': 'this file spells the patterns',
 }
 HAND = re.compile(r"""os\.path\.join\([^\n]*?,\s*['"]work['"]|['"]work['"]\s*/|/\s*['"]work['"]""")
@@ -46,7 +47,7 @@ def test_line_worktree_without_work_uses_the_main_checkouts(monkeypatch, tmp_pat
 def test_line_worktree_with_its_own_work_keeps_it(monkeypatch, tmp_path):
     main, line = tmp_path / 'RA3-CampaignLab', tmp_path / 'RA3-CampaignLab-codexc'
     (main / 'work').mkdir(parents=True)
-    (line / 'work').mkdir(parents=True)
+    (line / 'work' / 'sim').mkdir(parents=True)
     assert _work_for(monkeypatch, line, main) == str(line / 'work')
 
 

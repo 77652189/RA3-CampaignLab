@@ -14,10 +14,14 @@ two briefs at once (user 11-19: "codex的任务可以适当多派一些"); give 
 worktree is named after it).
 """
 import argparse, glob, json, os, re, shutil, subprocess, sys, time
+import importlib.util
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-STATE_DIR = os.path.join(ROOT, 'work', 'logs')
+_spec = importlib.util.spec_from_file_location('labpaths', os.path.join(ROOT, 'experimental', 'campaign', 'labpaths.py'))
+labpaths = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(labpaths)
+STATE_DIR = os.path.join(labpaths.WORK, 'logs')
 
 
 def save(state):
@@ -39,7 +43,7 @@ def run_one(brief, minutes, done_dir):
     text = open(brief, encoding='utf-8').read()
     effort = 'high' if re.search(r'^Effort:\s*high\s*$', text, re.M | re.I) else 'medium'
     tree = worktree(stem)
-    log = os.path.join(ROOT, 'work', 'logs', f'codex_q_{stem}.log')
+    log = os.path.join(STATE_DIR, f'codex_q_{stem}.log')
     t0 = time.time()
     with open(log, 'w', encoding='utf-8') as out:
         code = subprocess.run([sys.executable, '-I', '-X', 'utf8', os.path.join(HERE, 'codex_task.py'), brief,

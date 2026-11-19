@@ -203,7 +203,8 @@ def prepare_tree(rev, root=ROOT, tree=TREE):
         raise RuntimeError(f'the base {rev[:10]} predates the observation port (it has no {", ".join(missing)}): '
                            'the recorder reads the world through it and cannot record that base; '
                            'set GOLDEN_BASE to a commit at or after 6755aa55')
-    if os.path.exists(os.path.join(tree, 'work')) and not labpaths.only_logs(os.path.join(tree, 'work')):
+    own = labpaths.local_work_path(tree)
+    if os.path.exists(own) and not labpaths.only_logs(own):
         raise RuntimeError(f'{tree} has a work\\ of its own: the golden tree must not (remove it by hand, AGENTS.md)')
     if not os.path.exists(os.path.join(tree, '.git')):
         git(root, 'worktree', 'prune')

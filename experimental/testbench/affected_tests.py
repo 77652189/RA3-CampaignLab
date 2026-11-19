@@ -58,6 +58,7 @@ The daily pick leaves out the replay tests (tests/replay_tests.txt: whole-game a
 """
 import argparse
 import ast
+import importlib.util
 import json
 import os
 import re
@@ -69,14 +70,11 @@ import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
-try:                                                # labpaths by file path, so this file does not edit sys.path (G4)
-    import importlib.util
-    _spec = importlib.util.spec_from_file_location('labpaths', os.path.join(ROOT, 'experimental', 'campaign', 'labpaths.py'))
-    labpaths = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(labpaths)
-    WORK, ENGINE_MODEL = labpaths.WORK, labpaths.ENGINE_MODEL
-except Exception:                                   # pragma: no cover - the tool must work on a bare clone
-    WORK, ENGINE_MODEL = os.path.join(ROOT, 'work'), os.path.join(os.path.dirname(ROOT), 'RA3-EngineModel')
+# labpaths by file path, so this file does not edit sys.path (G4)
+_spec = importlib.util.spec_from_file_location('labpaths', os.path.join(ROOT, 'experimental', 'campaign', 'labpaths.py'))
+labpaths = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(labpaths)
+WORK, ENGINE_MODEL = labpaths.WORK, labpaths.ENGINE_MODEL
 # which files are the simulator's and how a module name maps to one (sim*, engine.x.y): one place, by file path too
 _spec = importlib.util.spec_from_file_location('enginefiles', os.path.join(ROOT, 'experimental', 'cnv', 'enginefiles.py'))
 enginefiles = importlib.util.module_from_spec(_spec)

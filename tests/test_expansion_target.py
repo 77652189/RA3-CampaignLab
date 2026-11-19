@@ -85,7 +85,7 @@ def test_dual_base_candidate_registration():
     brain = next(iter(w.brains.values()))
     h = brain.targets.tdata.heuristic('CNVExpansion')
     candidates = brain.view.expansion_candidates(h, brain.home)
-    assert len(brain.yards()) == 2
+    assert sum(b.owner == brain.player and 'CONSTRUCTION_YARD' in b.kinds for b in w.sim.living()) == 2
     assert len(candidates) == 1
     assert candidates[0].base_id == 0
     assert (candidates[0].x, candidates[0].y) == pytest.approx((4172.7, 2987.3), abs=0.1)
