@@ -1,13 +1,16 @@
 r"""The auto player's frame (ADR 0026 item 4): a level played start to end in the plan simulator by a player who sees only
 what a human sees and acts only through the script verbs, so every run is also a script.
 
-  View     what the player has in front of them, read once a decision: its own units, the enemies its units see
-           (Sim.side_sees: vision, the high-ground rule, a bombarder that just fired), the ones it saw lately and has
-           not looked at since (ghosts), the objectives' markers (Sim.markers: the arrows on the map), the countdowns
-           on screen. It never reads a script's flag, a hidden objective, an enemy out of sight.
-  Orders   the player's hands: 派 / 走 / 攻击 / 放 lines at the simulator's clock, pushed into Sim.events as parse_script
-           reads them, so what the run did IS the script (`Run.lines`): the same text through Sim(script=...) plays
-           the same game (`replay`), and the testbench replays it by playcheck as any plays/*.txt.
+  View     what the player has in front of them, read once a decision through the observation port
+           (engine/ports/observe.py): its own units, the enemies its units see (side_sees: vision, the high-ground
+           rule, a bombarder that just fired), the ones it saw lately and has not looked at since (ghosts), the
+           objectives' markers (the arrows on the map), the countdowns on screen. It never reads a script's flag, a
+           hidden objective, an enemy out of sight.
+  Orders   the player's hands: 派 / 走 / 攻击 / 放 lines at the simulator's clock, handed to `post` (attach: into
+           Sim.events as parse_script reads them), so what the run did IS the script (`Run.lines`): the same text
+           through Sim(script=...) plays the same game (`replay`), and the testbench replays it by playcheck as any
+           plays/*.txt.
+  attach   the View and the Orders of a world about to run (the harness: it alone holds the world).
   play     one run: the simulator ticked as Sim.run does (step, a sample each whole second, the quiet check), the
            player asked for decisions every `interval()` seconds while it has the controls (Sim.input).
 
@@ -78,10 +81,11 @@ def attackable(b):
 
 
 class View:
-    """What the player has in front of them at one moment (Sim.side_sees, markers, countdowns)."""
+    """What the player has in front of them at one moment (the port's side_sees, markers, countdowns). `civ`: the
+    neutral player's name (not an enemy to pick)."""
 
-    def __init__(self, s, brief):
-        self.s, self.brief = s, brief
+    def __init__(self, obs, brief, civ):
+        self.obs, self.brief, self.civ = obs, brief, civ
         self.ghosts = {}                    # name -> Foe, last seen
         self._addr = {}
         self.t = 0.0
@@ -90,12 +94,12 @@ class View:
     def address(self, b):
         """The name a script line uses for body b ('guardian 1', or its own name), '' when none carries."""
         if b.name not in self._addr:
-            s = self.s
-            role = next((k for k, r in s.m.cast.items() if r.name == b.name and b.name), '')
+            cast = self.obs.mission().cast
+            role = next((k for k, r in cast.items() if r.name == b.name and b.name), '')
             got = ''
             for c in (role, b.name):
                 if c and not any(x in c for x in NAME_BAD) and not c.startswith(('名字含 ', '敌人 在 ')) \
-                        and ((c in s.m.cast and s.m.cast[c].name == b.name) or s.bodies.get(c) is b):
+                        and ((c in cast and cast[c].name == b.name) or self.obs.thing(c) is b):
                     got = c
                     break
             self._addr[b.name] = got
@@ -104,24 +108,25 @@ class View:
     def control(self):
         """The player has the controls: no scene holds the input, and the first tick has run (a scene's lock comes
         in the first tick, simproxy.SimWorld.control)."""
-        return self.s.input and self.s.t > 0
+        return self.obs.input() and self.obs.t > 0
 
     def refresh(self):
-        s = self.s
-        s.seen = {}                         # this moment's sight (Sim.fight clears it each tick too)
-        self.t = s.t
-        me = s.human
-        self.mine = [b for b in s.living() if b.owner == me and not b.scenery]
+        obs = self.obs
+        obs.fresh_sight()                   # this moment's sight (Sim.fight clears it each tick too)
+        self.t = obs.t
+        me = obs.human
+        cast = obs.mission().cast
+        self.mine = [b for b in obs.living() if b.owner == me and not b.scenery]
         self.units = [b for b in self.mine if b.speed > 0 and 'STRUCTURE' not in b.kinds]
         self.army = [b for b in self.units if b.weapons]
-        escort = {s.m.cast[r].name for r in self.brief.escort if r in s.m.cast}
-        self.convoy = [b for b in s.living() if b.name in escort]       # the level drives these (an ally's, A4's trucks)
+        escort = {cast[r].name for r in self.brief.escort if r in cast}
+        self.convoy = [b for b in obs.living() if b.name in escort]     # the level drives these (an ally's, A4's trucks)
         self.foes = []
-        for b in s.living():
-            if b.scenery or b.owner in (me, sim.CIV) or not s.enemy(me, b.owner) or not attackable(b):
+        for b in obs.living():
+            if b.scenery or b.owner in (me, self.civ) or not obs.enemy(me, b.owner) or not attackable(b):
                 continue
-            if s.side_sees(me, b):
-                f = Foe(b.name, self.address(b), b.template, b.x, b.y, b.hp, b.kinds, b, True, s.t)
+            if obs.side_sees(me, b):
+                f = Foe(b.name, self.address(b), b.template, b.x, b.y, b.hp, b.kinds, b, True, obs.t)
                 self.foes.append(f)
                 self.ghosts[b.name] = f
         live = {f.name for f in self.foes}
@@ -129,8 +134,8 @@ class View:
             if name in live:
                 continue
             # a death out of sight is not known: a ghost stays until it is stale, or the player looked at its spot
-            looked = any(math.hypot(u.x - g.x, u.y - g.y) < GHOST_LOOKED and s.sees(g.x, g.y) for u in self.units)
-            if s.t - g.seen_at > GHOST_SECS or looked:
+            looked = any(math.hypot(u.x - g.x, u.y - g.y) < GHOST_LOOKED and obs.sees(g.x, g.y) for u in self.units)
+            if obs.t - g.seen_at > GHOST_SECS or looked:
                 del self.ghosts[name]
         self.old = [g for n, g in self.ghosts.items() if n not in live]       # seen lately, not in sight now
 
@@ -138,23 +143,23 @@ class View:
     def markers(self):
         """[(objective, [own bodies], [(x, y) places], [enemy Foe-like (name, addr, x, y, template)])] of the objectives
         shown now: what the arrows point at. An enemy object an arrow points at is shown even in the fog."""
-        s = self.s
+        obs = self.obs
         out = []
-        for obj, names in s.markers.items():
-            if s.objectives.get(obj) != 1:
+        for obj, names in obs.markers().items():
+            if obs.objectives().get(obj) != 1:
                 continue
             own, places, foes = [], [], []
             for n in sorted(names):
-                b = s.bodies.get(n)
+                b = obs.thing(n)
                 if b is not None:
                     if not b.alive:
                         continue
-                    if b.owner == s.human:
+                    if b.owner == obs.human:
                         own.append(b)
-                    elif s.enemy(s.human, b.owner):
+                    elif obs.enemy(obs.human, b.owner):
                         foes.append(b)
                     continue
-                p = s.waypoints.get(n)
+                p = obs.waypoints().get(n)
                 if p is not None:
                     places.append((float(p[0]), float(p[1])))
             out.append((obj, own, places, foes))
@@ -162,22 +167,24 @@ class View:
 
     def countdowns(self):
         """[(label, seconds left)] of the countdown timers on screen."""
-        s = self.s
-        return [(n, max(0.0, s.timers[n] - s.t)) for n in s.countdowns if n in s.timers]
+        obs = self.obs
+        timers = obs.timers()
+        return [(n, max(0.0, timers[n] - obs.t)) for n in obs.countdowns() if n in timers]
 
-    def centre(self, bodies):
-        bodies = list(bodies)
-        if not bodies:
+    def centre(self, things):
+        things = list(things)
+        if not things:
             return None
-        return (sum(b.x for b in bodies) / len(bodies), sum(b.y for b in bodies) / len(bodies))
+        return (sum(b.x for b in things) / len(things), sum(b.y for b in things) / len(things))
 
 
 class Orders:
-    """The player's hands. Each order is a script line stamped with the simulator's clock and pushed into its event
-    list; `lines` is the run as a script."""
+    """The player's hands. Each order is a script line stamped with the simulator's clock and handed to `post` (the
+    harness pushes it into the world's event list); `lines` is the run as a script. `seconds`: how a script line's
+    time reads (sim.seconds)."""
 
-    def __init__(self, s, view):
-        self.s, self.view = s, view
+    def __init__(self, view, post, seconds):
+        self.view, self.post, self.seconds = view, post, seconds
         self.lines = []
         self.memo = {}                      # unit name -> (verb, target): the last order, not repeated while it stands
         self.skipped = 0                    # orders to a unit no script line can name
@@ -185,17 +192,11 @@ class Orders:
     def push(self, time, text):
         """One event at `time` (seconds, or `<flag>+<secs>`): into the simulator, as parse_script reads the line."""
         line = f'{time} {text}'
-        (e,) = sim.parse_script(line)
-        s = self.s
-        if isinstance(e[0], tuple):
-            s.anchored.append(e)
-        else:
-            s.events.append(e)
-            s.events.sort(key=lambda x: x[0])
+        self.post(line)
         self.lines.append(line)
 
     def now(self, text):
-        self.push(num(self.s.t), text)
+        self.push(num(self.view.obs.t), text)
 
     def _fresh(self, b, verb, target):
         """False when b is already on this very order (a unit still under way is not told again: that resets its path)."""
@@ -248,22 +249,40 @@ class Run:
     escort_lost: int = 0        # of the units the level asks to keep alive (Brief.escort), how many died
 
 
-def losses(s):
+def losses(obs):
     """The player's units that died in the run (sim.Sim's death notes: a body with a lifetime of its own, scenery and
     a deletion are not losses)."""
-    return sum(1 for b in s.bodies.values() if b.owner == s.human and not b.alive and not b.deleted and not b.scenery
+    return sum(1 for b in obs.things() if b.owner == obs.human and not b.alive and not b.deleted and not b.scenery
                and b.life_end is None and b.died_at is not None)
 
 
-def finish(s, level, name, seed, lines, skipped, brief=None):
-    if s.ending:
-        outcome, t, by = ENDINGS.get(s.ending[0], 'lose'), s.ending[1], s.ending[2]
+def finish(obs, level, name, seed, lines, skipped, brief=None):
+    ending = obs.ending()
+    if ending:
+        outcome, t, by = ENDINGS.get(ending[0], 'lose'), ending[1], ending[2]
     else:
-        outcome, t, by = ('stuck' if not s.pending() else 'timeout'), s.t, ''
-    escort = [s.bodies.get(s.m.cast[r].name) for r in (brief.escort if brief else ()) if r in s.m.cast]
-    return Run(level, name, seed, outcome, t, lines, losses(s),
-               sum(1 for b in s.bodies.values() if b.owner == s.human and b.alive and not b.scenery and b.speed > 0),
+        outcome, t, by = ('stuck' if not obs.pending() else 'timeout'), obs.t, ''
+    cast = obs.mission().cast
+    escort = [obs.thing(cast[r].name) for r in (brief.escort if brief else ()) if r in cast]
+    return Run(level, name, seed, outcome, t, lines, losses(obs),
+               sum(1 for b in obs.things() if b.owner == obs.human and b.alive and not b.scenery and b.speed > 0),
                skipped, by, sum(1 for b in escort if b is not None and not b.alive))
+
+
+def attach(world, brief):
+    """(View, Orders) of a world about to run: the View reads it through the observation port, the Orders' lines go
+    into its script events as parse_script reads them (an anchored line waits on its flag)."""
+    from engine.ports.observe import Observe
+
+    def post(line):
+        (e,) = sim.parse_script(line)
+        if isinstance(e[0], tuple):
+            world.anchored.append(e)
+        else:
+            world.events.append(e)
+            world.events.sort(key=lambda x: x[0])
+    view = View(Observe(world), brief, sim.CIV)
+    return view, Orders(view, post, sim.seconds)
 
 
 def tick(s):
@@ -285,11 +304,10 @@ def play(level, personality, seed, difficulty="normal", until=None, style=None):
     until = brief.until if until is None else until
     m, t, _ = build.resolve(level, '')
     s = sim.Sim(m, t, difficulty, '')
-    view = View(s, brief)
-    out = Orders(s, view)
+    view, out = attach(s, brief)
     rng = random.Random(f'{level}/{personality}/{seed}')
     me = players.make(personality, rng, brief, style)
-    me.start(s, out)
+    me.start(view.obs, out)
     s.used |= {'engine model' if s.model_scripts else 'frame rate', 'difficulty side'}
     next_at = 0.0
     while s.t <= until and s.ending is None:
@@ -299,7 +317,7 @@ def play(level, personality, seed, difficulty="normal", until=None, style=None):
             next_at = s.t + me.interval()
         if not tick(s):
             break
-    return finish(s, level, personality, seed, out.lines, out.skipped, brief), s
+    return finish(view.obs, level, personality, seed, out.lines, out.skipped, brief), s
 
 
 def replay(level, lines, difficulty='normal', until=None):

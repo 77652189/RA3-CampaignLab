@@ -11,15 +11,16 @@ second twice, an aim that is a little off, a target picked among the good ones, 
            off: each order's time shifted, now and then forgotten, a destination clicked beside the mark. `sloppy`
            is the same hand with a wide spread
 
-A personality's knobs are in Style; a run gets them from `make(name, rng, brief)`.
+A personality's knobs are in Style; a run gets them from `make(name, rng, brief)`. A player reads the world only
+through the View's observation port (`view.obs`, engine/ports/observe.py) and acts only through Orders.
 """
 import dataclasses
 import math
 import os
 import re
 
-import sim      # autoplay.py loads this file after the simulator, whose import puts the cnv folders on the path
-import simunits
+import simunits     # template data; autoplay.py loads this file after the simulator, whose import puts the cnv
+                    # folders on the path
 
 
 def num(t):
@@ -57,7 +58,7 @@ class Player:
     def __init__(self, rng, brief, style=None):
         self.rng, self.brief, self.style = rng, brief, style or Style()
 
-    def start(self, s, out):
+    def start(self, obs, out):
         """Before the first tick: a personality that plays a plan puts it in here."""
 
     def interval(self):
@@ -85,14 +86,14 @@ class Moving(Player):
     """What rush and counter share: where the army goes when no enemy is in sight, and the units the arrows mark."""
     escort = False                      # True: the units the level drives (a convoy) come before the arrows
 
-    def start(self, s, out):
+    def start(self, obs, out):
         self.lead = 0
         self.looked = set()             # leads looked at
 
     def goal(self, view):
         """The place the army should be heading for now (None: stay), from the objectives' arrows, the units the level
         moves, the briefing's sites -- in that order, as a human reads the screen."""
-        s = view.s
+        obs = view.obs
         marks = view.markers()
         for obj, own, places, foes in marks:
             if foes:                    # an arrow on an enemy thing: go there
@@ -110,7 +111,7 @@ class Moving(Player):
             if places and not own:
                 c = view.centre(view.army) or places[0]
                 return min(places, key=lambda p: math.hypot(p[0] - c[0], p[1] - c[1]))
-        sites = [q for q in (s.point(n) for n in self.brief.leads) if q]
+        sites = [q for q in (obs.point(n) for n in self.brief.leads) if q]
         if sites:
             c = view.centre(view.army) or sites[0]
             for q in sites[self.lead:]:
@@ -160,18 +161,17 @@ class Counter(Moving):
     name = 'counter'
     escort = True                       # a convoy the level asks to keep alive is what this player stays by
 
-    def start(self, s, out):
-        super().start(s, out)
+    def start(self, obs, out):
+        super().start(obs, out)
         self.pick = {}                  # unit name -> the Foe it was told to attack
 
-    def eff(self, s, u, f):
+    def eff(self, obs, u, f):
         """Damage a second the unit does to that enemy: its weapons that can hit it, by the enemy's armour."""
         return sum(w['dps'] * f.body.armor.get(w['type'], simunits.ARMOR_DEFAULT) / 100.0
-                   for w in u.weapons if s.can_hit(w, f.body))
+                   for w in u.weapons if obs.can_hit(w, f.body))
 
     def score(self, view, u, f):
-        s = view.s
-        e = self.eff(s, u, f)
+        e = self.eff(view.obs, u, f)
         if e <= 0:
             return 0.0
         threat = sum(w['dps'] for w in f.body.weapons)
@@ -181,7 +181,7 @@ class Counter(Moving):
         return kill * weight / (1.0 + d / 600.0)
 
     def decide(self, view, out):
-        s = view.s
+        obs = view.obs
         st = self.style
         self.wards(view, out)
         army = view.army
@@ -209,7 +209,7 @@ class Counter(Moving):
                 else:
                     out.go(army, self.aim(c))
             return
-        rear = view.centre(view.convoy) or tuple(s.point('start') or c)
+        rear = view.centre(view.convoy) or tuple(obs.point('start') or c)
         for u in army:
             near = [f for f in foes if math.hypot(f.x - u.x, f.y - u.y) <= st.near]
             if u.health < st.pullback * 100.0 and near:
@@ -233,7 +233,7 @@ class Counter(Moving):
 class Card(Player):
     name = 'card'
 
-    def start(self, s, out):
+    def start(self, obs, out):
         """The plan's own lines, each a little off, in the run's script from the first second."""
         path = self.brief.plan
         if not path or not os.path.exists(path):
@@ -248,17 +248,17 @@ class Card(Player):
                 continue
             if '+' in time and not re.fullmatch(r'[\d:.]+', time):          # <flag>+<time>: the flag's own time shifted
                 flag, _, delta = time.rpartition('+')
-                at = f'{flag}+{num(max(0.0, sim.seconds(delta) + self.rng.gauss(0, st.shift)))}'
+                at = f'{flag}+{num(max(0.0, out.seconds(delta) + self.rng.gauss(0, st.shift)))}'
             else:
-                at = num(max(1.0, sim.seconds(time) + self.rng.gauss(0, st.shift)))
-            out.push(at, self.click_off(s, rest))
+                at = num(max(1.0, out.seconds(time) + self.rng.gauss(0, st.shift)))
+            out.push(at, self.click_off(obs, rest))
 
-    def click_off(self, s, rest):
+    def click_off(self, obs, rest):
         """A named destination clicked beside its mark now and then (派 / 走 who 去 place)."""
         st = self.style
         m = re.match(r'(派|走) (.+) 去 (.+)$', rest)
         if m and self.rng.random() < st.off:
-            p = s.point(m.group(3).strip())
+            p = obs.point(m.group(3).strip())
             if p is not None and not m.group(3).strip().startswith('@'):
                 q = (p[0] + self.rng.gauss(0, st.click), p[1] + self.rng.gauss(0, st.click))
                 return f'{m.group(1)} {m.group(2)} 去 {where(q)}'

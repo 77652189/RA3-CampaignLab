@@ -10,10 +10,13 @@ Three groups and an internal door:
 - things (objects): `things()`, `living()`, `thing(name)`, `is_thing(v)`; a thing's public fields are read off it by
   their names (name template owner x y hp max_hp health ...: the readers' census, R3 12a);
 - scripts and players: `flags()`, `counters()`, `timers()` (name -> the mission second it runs out at), `objectives()`,
-  `ending()`, `money()`, `income()`;
+  `ending()`, `money()`, `income()`, `markers()`, `countdowns()`, `waypoints()`, `banned()`;
+- players and sight: `human`, `foe`, `enemy(a, b)`, `sees(x, y)`, `side_sees(side, thing)`, `looks(viewer, x, y)`,
+  `can_hit(weapon, thing)`, `ground_z(x, y)`;
 - internal (the simulator's own bookkeeping, which a game adapter does not have): `state(thing)` (every field a
   thing records, its modules' STATE and Body.FORWARDS by their old names), `report(name)` (log, used, unknown, ...),
-  `log_since(n)`, `gaps()`, the mission's data (`mission()`, `model()`), the run's names and presentation (`point`,
+  `log_since(n)`, `gaps()`, `pending()`, `fresh_sight()`, `specimen(...)` (a dead body made to read a template's
+  numbers), the mission's data (`mission()`, `model()`), the run's names and presentation (`point`,
   `text`, `label`, `who`, `input`, `late_captions`, `ending_line`); and the taps a recorder hangs on the loop
   (`on_frame`, `on_tick`, `on_act`, `on_sample`, `on_happen`, `scripts`).
 
@@ -79,6 +82,55 @@ class Observe:
     def income(self):
         return self._w.income
 
+    def markers(self):
+        """Objective -> the names (objects, waypoints) its arrows on the map point at."""
+        return self._w.markers
+
+    def countdowns(self):
+        """The timers shown on screen as countdowns (their names)."""
+        return self._w.countdowns
+
+    def waypoints(self):
+        """The map's waypoints: name -> (x, y)."""
+        return self._w.waypoints
+
+    def banned(self):
+        """(player, template in lower case) the scripts took off a player's build menu."""
+        return self._w.banned
+
+    # --- players and sight
+    @property
+    def human(self):
+        return self._w.human
+
+    @property
+    def foe(self):
+        return self._w.foe
+
+    def enemy(self, a, b):
+        """Whether players a and b are enemies."""
+        return self._w.enemy(a, b)
+
+    def sees(self, x, y, air=False):
+        """Whether the human player sees a point."""
+        return self._w.sees(x, y, air)
+
+    def side_sees(self, side, thing):
+        """Whether a side (it or a friend) sees a thing, this tick."""
+        return self._w.side_sees(side, thing)
+
+    def looks(self, viewer, x, y, air=False):
+        """Whether one thing sees a point (its vision, the high-ground rule)."""
+        return self._w.looks(viewer, x, y, air)
+
+    def can_hit(self, weapon, thing):
+        """Whether a weapon (one of a thing's `weapons`) can take that thing."""
+        return self._w.can_hit(weapon, thing)
+
+    def ground_z(self, x, y):
+        """The ground's height at a point."""
+        return self._w.ground.z(x, y)
+
     # --- internal
     @staticmethod
     def state(thing):
@@ -122,6 +174,22 @@ class Observe:
     def input(self):
         """Whether the player's input is on (DISABLE_INPUT / ENABLE_INPUT)."""
         return self._w.input
+
+    def pending(self):
+        """Whether the run still waits on something (a timer, a move, a script event): the loop's quiet check."""
+        return self._w.pending()
+
+    def fresh_sight(self):
+        """Forget this tick's sight (side_sees' cache), so the next side_sees reads where things are now (a player's
+        decision between ticks; the loop clears it each tick too)."""
+        self._w.seen = {}
+
+    def specimen(self, name, template, owner, x=0.0, y=0.0):
+        """A dead thing of a template, out of the fight, made only to read the template's numbers (weapons, armour,
+        health, vision) -- the one door that adds to the world: the numbers are built by making a body."""
+        b = self._w.add(name, template, owner, x, y)
+        b.alive = False
+        return b
 
     # --- internal: the run's names and its presentation records (simshow, the UI)
     def point(self, name):

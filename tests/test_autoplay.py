@@ -31,7 +31,7 @@ def test_the_view_holds_only_what_the_player_sees():
     m, t, _ = build.resolve('a4', '')
     s = sim.Sim(m, t, 'normal', '')
     s.advance(15 * 100)
-    view = autoplay.View(s, autoplay.levels.brief('a4'))
+    view, _ = autoplay.attach(s, autoplay.levels.brief('a4'))
     hidden = [b for b in s.living() if b.owner != s.human and not b.scenery and s.enemy(s.human, b.owner)
               and autoplay.attackable(b) and not s.side_sees(s.human, b)]
     assert hidden, 'A4 at 1:40 has enemies the player has not found: the check would pass vacuously'
@@ -84,8 +84,7 @@ def test_a_unit_no_line_can_name_is_skipped_not_misaddressed():
     import build
     m, t, _ = build.resolve('a3', '')
     s = sim.Sim(m, t, 'normal', '')
-    view = autoplay.View(s, autoplay.levels.brief('a3'))
-    out = autoplay.Orders(s, view)
+    view, out = autoplay.attach(s, autoplay.levels.brief('a3'))
     odd = s.add('#9 odd', 'AlliedAntiInfantryInfantry', s.human, 100, 100)
     out.go([odd], (200, 200))
     assert not out.lines and out.skipped == 1

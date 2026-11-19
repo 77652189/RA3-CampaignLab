@@ -80,16 +80,31 @@ def _src():
 # The other readers, one a step (R3, sim_split/obs_port.md): file -> (its harness: the functions that make the run or
 # hang the reader on it, the mission-data modules it may import beside engine.ports). simshow's: ctx (the contract's
 # timings), model (the camera's picture sizes), strip (reads the Show's own records) -- none holds a world.
+AUTOPLAY = ROOT / 'experimental' / 'autoplay'
 READERS = {
-    'simshow.py': ({'attach', 'play', 'run', 'main'}, {'ctx', 'model', 'strip'}),
+    CNV / 'simshow.py': ({'attach', 'play', 'run', 'main'}, {'ctx', 'model', 'strip'}),
+    # the auto player: attach / tick / play / replay make and drive the run (Orders' lines go out through attach's
+    # post, a function inside attach); the View, Orders, finish and the players read Observe. players may import
+    # simunits (template data).
+    AUTOPLAY / 'autoplay.py': ({'load', 'attach', 'post', 'tick', 'play', 'replay', 'main'}, set()),
+    AUTOPLAY / 'players.py': (set(), {'simunits'}),
 }
 # Readers that are one class of a bigger file (the rest of the file drives the run): (file, class).
 READER_CLASSES = [(ROOT / 'experimental' / 'simui' / 'game.py', 'Play')]
 
 
+def sim_breaks(src, harness):
+    """(line, 'sim') for each use of the simulator module inside a function outside HARNESS (a file that loads it at
+    module level, as autoplay.py does for its harness, may; its readers may not reach into it)."""
+    tree = ast.parse(src)
+    where = _functions(tree)
+    return [(n.lineno, 'sim') for n in ast.walk(tree)
+            if isinstance(n, ast.Name) and n.id == 'sim' and where.get(n) is not None and where.get(n) not in harness]
+
+
 def reader_breaks(src, harness, allowed):
     sim = simulator_modules() - set(allowed)
-    return import_breaks(src, sim, harness) + raw_breaks(src, harness)
+    return import_breaks(src, sim, harness) + raw_breaks(src, harness) + sim_breaks(src, harness)
 
 
 def class_src(path, name):
@@ -100,18 +115,26 @@ def class_src(path, name):
 
 def test_the_other_readers_read_only_the_port():
     for f, (harness, allowed) in READERS.items():
-        assert reader_breaks((CNV / f).read_text(encoding='utf-8'), harness, allowed) == [], f
+        assert reader_breaks(f.read_text(encoding='utf-8'), harness, allowed) == [], f.name
     for path, name in READER_CLASSES:
         src = class_src(path, name)
         assert import_breaks(src) == [] and raw_breaks(src) == [], (path.name, name)
 
 
 def test_planted_breaks_in_the_other_readers_are_found():
-    harness, allowed = READERS['simshow.py']
+    harness, allowed = READERS[CNV / 'simshow.py']
     src = (CNV / 'simshow.py').read_text(encoding='utf-8')
     assert reader_breaks(src + '\nimport sim\n', harness, allowed)
     assert reader_breaks(src.replace('for b in obs.living()', 'for b in self.obs._w.bodies.values()'), harness, allowed)
     assert not reader_breaks(src + '\ndef run():\n    import sim\n', harness, allowed)
+    harness, allowed = READERS[AUTOPLAY / 'autoplay.py']
+    src = (AUTOPLAY / 'autoplay.py').read_text(encoding='utf-8')
+    assert reader_breaks(src.replace('obs = self.obs', 's = self.obs'), harness, allowed)
+    assert reader_breaks(src.replace('obs.fresh_sight()', 'sim.CIV'), harness, allowed)
+    harness, allowed = READERS[AUTOPLAY / 'players.py']
+    src = (AUTOPLAY / 'players.py').read_text(encoding='utf-8')
+    assert reader_breaks(src + '\nimport sim\n', harness, allowed)
+    assert reader_breaks(src.replace('obs.can_hit(w, f.body)', 'view.s.can_hit(w, f.body)'), harness, allowed)
     play = class_src(*READER_CLASSES[0])
     assert raw_breaks(play.replace('obs = self.obs', 's = self.obs'))
 
