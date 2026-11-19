@@ -152,6 +152,10 @@ class Mining:
             n['at'] = b
             m['state'], m['due'] = 'docked', max(fr + 1, n['free'])
         elif st == 'docked':                        # the node's first loading frame
+            if held(world, om.node) is None:        # the node has left the world before its batch was reserved:
+                self._undock(b)                     # it looks again, as on its way there (review 1119p #4;
+                m['state'] = 'locate'               # INFERRED)
+                return
             n = self.nodes[om.node.serial]
             # E180 / D165: reserve the batch here, but cargo becomes visible
             # only when loading finishes. See work/re/e180_queuedock_load.md.
@@ -195,7 +199,8 @@ class Mining:
             self._mine(world, b, fr, nodes, pay)
         elif st == 'unloading':                     # money on the arrival frame and the next MINE_DOCK - 1
             r = held(world, om.refinery)
-            if r is None or not r.alive:
+            if r is None or not r.alive:            # cut off mid-unload: it carries on with what is left, not the
+                m['load'] -= m['load'] // MINE_DOCK * m['n']    # whole load again (review 1119p #1; INFERRED)
                 m['state'] = 'find refinery'
                 return
             m['n'] += 1

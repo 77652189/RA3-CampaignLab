@@ -135,6 +135,23 @@ def test_a_node_made_under_the_old_ones_name_has_none_of_its_ore_taken():
     assert s.bodies['miner'].find(interfaces.OreMiner).node is new
 
 
+def test_a_miner_docked_before_loading_takes_nothing_from_a_node_that_has_left_the_world():
+    """Review 1119p #4: docked at the node, its batch not yet reserved, the node replaced under its name far away:
+    nothing more comes off the old node's ore; the miner looks again (as on its way there). A batch already
+    reserved (loading) is left to its own rule."""
+    s, mining = _mining()
+    paid = []
+    b = s.bodies['miner']
+    old = s.bodies['node']
+    end = _run(s, mining, (1, 2000), paid, lambda: b.mine is not None and b.mine['state'] == 'docked')
+    assert mining.nodes[old.serial]['gathered'] == 0 and mining.nodes[old.serial]['at'] is b
+    new = s.add('node', 'OreNode', 'PlyrCivilian', 900.0, 0.0)
+    _run(s, mining, (end + 1, 6000), paid, lambda: sum(g for _, g in paid) >= simmine.MINE_LOAD)
+    assert mining.nodes[old.serial]['gathered'] == 0 and mining.nodes[old.serial]['at'] is None
+    assert mining.nodes[new.serial]['gathered'] >= simmine.MINE_LOAD     # (the next batch may be reserved)
+    assert b.find(interfaces.OreMiner).node is new
+
+
 def test_a_load_goes_to_the_refinery_picked_not_a_thing_made_under_its_name():
     s, mining = _mining()
     paid = []
@@ -145,6 +162,27 @@ def test_a_load_goes_to_the_refinery_picked_not_a_thing_made_under_its_name():
     _run(s, mining, (end + 1, end + 600), paid)
     assert [g for o, g in paid if o == 'Player_1'] == [] and b.mine['state'] == 'find refinery'    # none of its
                                                             # own left: it keeps looking
+
+
+def test_a_load_cut_off_mid_unload_brings_only_what_is_left_to_the_next_refinery():
+    """Review 1119p #1: the near refinery taken under its name after 10 unload frames (80 paid of 250); the miner goes
+    on to its own far one with the 170 left, not a full load again (it paid 10 x 8 + 250 = 330). INFERRED: the
+    cargo is what was not yet delivered; the far unload pays the rest over the usual MINE_DOCK frames."""
+    s = simsmall.small_world([('ref', 'AlliedRefinery', 'Player_1', 0.0, 0.0),
+                              ('ref2', 'AlliedRefinery', 'Player_1', -900.0, 0.0),
+                              ('node', 'OreNode', 'PlyrCivilian', 300.0, 0.0),
+                              ('miner', 'AlliedMiner', 'Player_1', 150.0, 60.0)])
+    mining = simmine.Mining()
+    paid = []
+    b = s.bodies['miner']
+    end = _run(s, mining, (1, 2000), paid, lambda: b.mine is not None and b.mine['state'] == 'unloading'
+               and b.mine['n'] == 10)
+    got = sum(g for o, g in paid if o == 'Player_1')
+    assert 0 < got < simmine.MINE_LOAD and b.mine['load'] == simmine.MINE_LOAD
+    s.add('ref', TANK, 'Player_2', 0.0, 0.0)                # an enemy tank under the near one's name
+    end = _run(s, mining, (end + 1, end + 2000), paid, lambda: b.mine['state'] == 'locate')
+    assert b.find(interfaces.OreMiner).refinery is s.bodies['ref2']
+    assert sum(g for o, g in paid if o == 'Player_1') == simmine.MINE_LOAD     # one load's money, not 330
 
 
 def test_a_nodes_claim_and_dock_are_the_miners_own_not_a_thing_made_under_its_name():
