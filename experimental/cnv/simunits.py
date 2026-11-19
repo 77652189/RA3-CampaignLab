@@ -309,7 +309,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v42.json')    # v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v43.json')    # v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 WEAPONS_GLOB = ('GlobalData', 'Weapon.xml')
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
@@ -1222,19 +1222,15 @@ def _armors():
     return out
 
 
-def read_fight(text, weapons, armors):
-    """One unit's fight from its XML: max health, its armour's percents, its weapons (the PRIMARY one of each slot,
-    resolved)."""
+def read_fight(text, armors):
+    """One unit's max health and armour from its XML, and `sets`: whether that text writes a WeaponSetUpdate of its
+    own (comments left out). fight() reads the weapons from the template data port (step W1, ADR 0029) only then,
+    as read_fight read them before: from the unit's own file, never inherited -- 25 retail templates inherit theirs
+    (the tutorial tanks, A08's dogs, the Emperor mecha, the Rushmore heads ...) and hold no weapon (Sim.add notes the
+    gap); reading the inherited ones is a change of behaviour of its own."""
     arm = re.search(r'<ArmorSet\b[^>]*\bArmor="([^"]+)"', text) or re.search(r'\bArmor="([^"]+)"', text)
-    guns = []
-    for head, body in _blocks(text, 'WeaponSetUpdate'):
-        for slot in re.finditer(r'<WeaponSlot\w*\b.*?</WeaponSlot\w*>', body, re.S):
-            ws = [(_attr(h, 'Ordering'), _attr(h, 'Template')) for h, _ in _blocks(slot.group(0), 'Weapon')]
-            pick = next((t for o, t in ws if o == 'PRIMARY_WEAPON'), ws[0][1] if ws else None)
-            if pick in weapons:
-                guns.append(_resolve(weapons[pick], weapons))
     return dict(hp=number(text, 'MaxHealth'), armor=armors.get(arm.group(1), {}) if arm else {},
-                weapons=[g for g in guns if (g['dps'] > 0 or g.get('sdps', 0) > 0 or g.get('dot') or g.get('lift')) and g['range'] > 0])
+                sets=bool(re.search(r'<WeaponSetUpdate\b', re.sub(r'<!--.*?-->', '', text, flags=re.S))))
 
 
 def frozen_armor(template, own=None):
@@ -1654,7 +1650,7 @@ def _fight_data():
         def build():
             require_data()
             weapons, armors = _weapons(_weapon_files()), _armors()
-            got = {t: read_fight(open(path, encoding='utf-8', errors='replace').read(), weapons, armors)
+            got = {t: read_fight(open(path, encoding='utf-8', errors='replace').read(), armors)
                    for t, _, path in units()}
             return dict(units=got, weapons=weapons, armors=armors)
         _fight = _cached(COMBAT_CACHE, build, lambda d: not (d.get('units') and d.get('weapons') and d.get('armors')))
@@ -1678,24 +1674,16 @@ def weapon_table(own=None):
 
 
 def declared_weapons(template, own=None):
-    """The weapon template of each WeaponSlot as read_fight takes it (the PRIMARY one), from the unit's XML or what it
-    inherits from (5 steps); [] when the XML names none. Sim.add asks it when fight() reads no weapon (a gap, not a
-    unit without guns); simcoverage.declared_picks reads the same."""
+    """The weapon template of each WeaponSlot as fight() takes it (the PRIMARY one, else the slot's first: the data
+    port's WeaponSetUpdate blocks, engine.modules.weaponset); [] when the XML names none. Sim.add asks it when fight()
+    reads no weapon (a gap, not a unit without guns); simcoverage.declared_picks reads the same. Step W1: a slot in
+    an XML comment or a block a template Removes is no longer named (the readers before read the text as written:
+    the Guardian's commented second turret, the Century bombers' removed set)."""
+    from engine.modules import weaponset
     try:
-        chain = list(xml_chain(template, own))
-    except (OSError, ValueError):
+        return [p for d in weaponset.read(module_blocks(template, 'WeaponSetUpdate', own)) for p in d.picks()]
+    except (OSError, ValueError, ET.ParseError):        # ParseError: the port's (StructureName's), as fight()
         return []
-    for _, xml in chain:
-        picks = []
-        for head, body in _blocks(xml or '', 'WeaponSetUpdate'):
-            for slot in re.finditer(r'<WeaponSlot\w*\b.*?</WeaponSlot\w*>', body, re.S):
-                ws = [(_attr(h, 'Ordering'), _attr(h, 'Template')) for h, _ in _blocks(slot.group(0), 'Weapon')]
-                pick = next((t for o, t in ws if o == 'PRIMARY_WEAPON'), ws[0][1] if ws else None)
-                if pick:
-                    picks.append(pick)
-        if picks:
-            return picks
-    return []
 
 
 def weapon_sets(template, own=None):
@@ -1707,31 +1695,17 @@ def weapon_sets(template, own=None):
     (Uprade_IFV_*, granted by who rides in, not modelled) are not an empty IFV's; before, its slots 3-7 (one
     upgrade line each) gave it a 750-dps pistol and the AI's expected efficiency 7.6 for it vs conscripts (B round
     132). None where no weapon line carries a status or upgrade condition (the unit's weapons are read_fight's,
-    whatever its status). Walks the inheritance like declared_weapons."""
+    whatever its status). The data port's blocks (engine.modules.weaponset, step W1: slots in the SDK's kind order,
+    Hardpoint before Turret -- the Apocalypse's two are never held at once)."""
+    from engine.modules import weaponset
     try:
-        chain, table = list(xml_chain(template, own)), weapon_table(own)
-    except (OSError, ValueError):
+        datas, table = weaponset.read(module_blocks(template, 'WeaponSetUpdate', own)), weapon_table(own)
+    except (OSError, ValueError, ET.ParseError):
         return None
-    for _, xml in chain:
-        slots = []
-        for head, body in _blocks(xml or '', 'WeaponSetUpdate'):
-            for slot in re.finditer(r'<WeaponSlot\w*\b.*?</WeaponSlot\w*>', body, re.S):
-                slots.append([(set((_attr(h, 'ObjectStatus') or '').split())
-                               | {UPGRADE_BIT + u.lower() for u in (_attr(h, 'Upgrade') or '').split()},
-                               set((_attr(h, 'ForbiddenObjectStatus') or '').split()),
-                               _attr(h, 'Ordering') == 'PRIMARY_WEAPON', _attr(h, 'Template'))
-                              for h, _ in _blocks(slot.group(0), 'Weapon')])
-        if slots:
-            if not any(need or forbid for s in slots for need, forbid, _, _ in s):
-                return None
-            return [[(need, forbid, prim, _resolve(table[t], table) if t in table else None)
-                     for need, forbid, prim, t in s] for s in slots]
-    return None
-
-
-UPGRADE_BIT = 'UPGRADE:'            # weapon_sets: a <Weapon Upgrade="X"> line's need
-ORDERING = ('PRIMARY_WEAPON', 'SECONDARY_WEAPON', 'TERTIARY_WEAPON', 'QUATERNARY_WEAPON', 'QUINARY_WEAPON',
-            'NO_WEAPON')            # the SDK's WeaponSlotType enumeration, the order the asset sorts a slot's lines by
+    if not any(d.conditioned() for d in datas):
+        return None
+    return [[(set(x.need), set(x.forbidden), x.primary, _resolve(table[x.template], table) if x.template in table
+              else None) for x in s.lines] for d in datas for s in d.slots]
 
 
 def template_weapons(template, own=None):
@@ -1741,47 +1715,36 @@ def template_weapons(template, own=None):
     that names no Upgrade and no ObjectStatus, or one with ConquerMetricsAlwaysCount="true"; ForbiddenObjectStatus
     is not looked at. A line so picked that cannot hurt or reach still ends its slot. So the Hammer counts its
     leech beam and not its gun (the gun needs GENERIC_TOGGLE_STATE). None where the XML (walked up like
-    weapon_sets) has no WeaponSetUpdate: the caller keeps the unit's own weapons."""
+    weapon_sets: the data port's blocks, engine.modules.weaponset.WeaponSlot.counted) has no WeaponSetUpdate: the
+    caller keeps the unit's own weapons."""
+    from engine.modules import weaponset
     try:
-        chain, table = list(xml_chain(template, own)), weapon_table(own)
-    except (OSError, ValueError):
+        datas, table = weaponset.read(module_blocks(template, 'WeaponSetUpdate', own)), weapon_table(own)
+    except (OSError, ValueError, ET.ParseError):
         return None
-    rank = {o: i for i, o in enumerate(ORDERING)}
-    for _, xml in chain:
-        found, guns = False, []
-        for head, body in _blocks(xml or '', 'WeaponSetUpdate'):
-            found = True
-            slots = []
-            for kind in ('WeaponSlotHardpoint', 'WeaponSlotTurret', 'WeaponSlotHierarchicalTurret',
-                         'WeaponSlotContained'):
-                slots += re.findall(rf'<{kind}\b.*?</{kind}>', body, re.S)
-            for slot in slots:
-                lines = sorted(_blocks(slot, 'Weapon'), key=lambda e: rank.get(_attr(e[0], 'Ordering'), 0))
-                for h, _ in lines:
-                    if _attr(h, 'ConquerMetricsAlwaysCount') == 'true' or \
-                            not (_attr(h, 'Upgrade') or '').strip() and not (_attr(h, 'ObjectStatus') or '').strip():
-                        t = _attr(h, 'Template')
-                        w = _resolve(table[t], table) if t in table else None
-                        if w and (w['dps'] > 0 or w.get('ai_parts') or w.get('sdps', 0) > 0 or w.get('dot')
-                                  or w.get('lift')) and w['range'] > 0:
-                            guns.append(w)
-                        break
-        if found:
-            return guns
-    return None
+    if not datas:
+        return None
+    guns = []
+    for x in (x for d in datas for x in d.counted()):
+        w = _resolve(table[x.template], table) if x.template in table else None
+        if w and (w['dps'] > 0 or w.get('ai_parts') or w.get('sdps', 0) > 0 or w.get('dot') or w.get('lift')) \
+                and w['range'] > 0:
+            guns.append(w)
+    return guns
 
 
 def pick_weapons(slots, status, upgrades=()):
     """The weapons a unit holds under `status` with `upgrades` (the object's and its player's upgrade names): per
     slot the first line (a PRIMARY_WEAPON one before the rest) whose need bits are all set and forbid bits none set;
     one that cannot hurt or reach (the target painter) is no gun."""
+    from engine.modules import weaponset
     if upgrades:
-        status = set(status) | {UPGRADE_BIT + u.lower() for u in upgrades}
+        status = set(status) | {weaponset.UPGRADE_BIT + u.lower() for u in upgrades}
     guns = []
     for s in slots:
         for need, forbid, prim, w in sorted(s, key=lambda e: not e[2]):
             if need <= status and not (forbid & status):
-                if w and (w['dps'] > 0 or w.get('sdps', 0) > 0 or w.get('dot') or w.get('lift')) and w['range'] > 0:
+                if weaponset.armed(w):
                     guns.append(w)
                 break
     return guns
@@ -1789,11 +1752,33 @@ def pick_weapons(slots, status, upgrades=()):
 
 def fight(template, own=None):
     """{hp, armor {damage type: percent}, weapons [{range, dps, type, anti}]} for a template (own: the mission's
-    units' XML, read with the retail weapons and armours and their own weapons); hp None when the data has none."""
+    units' XML, read with the retail weapons and armours and their own weapons); hp None when the data has none. The
+    weapons: the PRIMARY one of each WeaponSlot (else its first) of the data port's WeaponSetUpdate blocks that can
+    hurt and reach (engine.modules.weaponset), resolved; none when the unit's file writes no WeaponSetUpdate
+    (read_fight's `sets`). A retail unit's are read once (_reads), the shape the combat cache gave them (lists, not
+    tuples). A block the port cannot parse (retail StructureName's: the port's known parse error) gives none, as the
+    reader before read no weapon there."""
+    from engine.modules import weaponset
     d = _fight_data()
+
+    def guns(table, own):
+        try:
+            datas = weaponset.read(module_blocks(template, 'WeaponSetUpdate', own))
+        except ET.ParseError:
+            return []
+        return [w for x in datas for n in x.picks() if n in table for w in (_resolve(table[n], table),)
+                if weaponset.armed(w)]
     if own and template in own:
-        return read_fight(own[template], weapon_table(own), d['armors'])
-    return d['units'].get(template.lower(), dict(hp=None, armor={}, weapons=[]))
+        f = read_fight(own[template], d['armors'])
+        return dict(hp=f['hp'], armor=f['armor'], weapons=guns(weapon_table(own), own) if f['sets'] else [])
+    name = template.lower()
+    u = d['units'].get(name)
+    if u is None:
+        return dict(hp=None, armor={}, weapons=[])
+    key = ('fight weapons', name)
+    if key not in _reads:
+        _reads[key] = json.loads(json.dumps(guns(d['weapons'], None))) if u['sets'] else []
+    return dict(hp=u['hp'], armor=u['armor'], weapons=_reads[key])
 
 
 LIFE_FPS = 15                   # the game's logic frames a second (bench 2026-10-28, probe align)

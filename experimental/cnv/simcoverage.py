@@ -271,20 +271,9 @@ def nuggets_of(wid, own=None):
 
 
 def declared_picks(template, own):
-    """The weapon template of each slot as simunits.read_fight takes it (the PRIMARY one), from the unit's XML or what it
-    inherits from; None when the XML names no weapon."""
-    for _, xml in simunits.xml_chain(template, own):
-        picks = []
-        for head, body in simunits._blocks(xml, 'WeaponSetUpdate'):
-            for slot in re.finditer(r'<WeaponSlot\w*\b.*?</WeaponSlot\w*>', body, re.S):
-                ws = [(simunits._attr(h, 'Ordering'), simunits._attr(h, 'Template'))
-                      for h, _ in simunits._blocks(slot.group(0), 'Weapon')]
-                pick = next((t for o, t in ws if o == 'PRIMARY_WEAPON'), ws[0][1] if ws else None)
-                if pick:
-                    picks.append(pick)
-        if picks:
-            return picks
-    return None
+    """The weapon template of each slot as simunits.fight takes it (the PRIMARY one, else the slot's first), from the
+    data port's WeaponSetUpdate blocks (simunits.declared_weapons, step W1); None when the XML names no weapon."""
+    return simunits.declared_weapons(template, own) or None
 
 
 def weapon_items(inf):
