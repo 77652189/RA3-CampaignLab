@@ -125,15 +125,18 @@ LIFETIME = 'lifetime'           # Death.cause of a LifetimeUpdate's death of age
 class Death:
     """What a Die module is told (interfaces.Die.on_die, step B4c): the frame its thing died in, why (the host's
     words), its death type (step B5a: NORMAL, CRUSHED for a crush; step B5b: a lifetime's DeathType) and its cause
-    (step B5b: 'lifetime' for a LifetimeUpdate's death of age, else ''). Read only; the killer and the damage come
-    with the death modules that need them (step B5)."""
-    __slots__ = ('frame', 'why', 'death', 'cause')
+    (step B5b: 'lifetime' for a LifetimeUpdate's death of age, else '') and the thing's status as the broadcast
+    began (status_now; review i #5: the airborne wreck list is picked once a death, not again as each module's turn
+    comes; None: each module reads the status now). Read only; the killer and the damage come with the death modules
+    that need them (step B5)."""
+    __slots__ = ('frame', 'why', 'death', 'cause', 'status')
 
-    def __init__(self, frame, why='', death='NORMAL', cause=''):
+    def __init__(self, frame, why='', death='NORMAL', cause='', status=None):
         object.__setattr__(self, 'frame', frame)
         object.__setattr__(self, 'why', why)
         object.__setattr__(self, 'death', death)
         object.__setattr__(self, 'cause', cause)
+        object.__setattr__(self, 'status', None if status is None else frozenset(status))
 
     def __setattr__(self, name, value):
         raise AttributeError('a Death is read only')

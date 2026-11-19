@@ -163,3 +163,32 @@ def test_the_airborne_pick_matches_the_status_the_thing_has():
         made.append(host.made)
     assert made == [[('OCL_First', True)], [('OCL_Second', True)]]
     assert module.status_now(b) == {'UNDER_FROZEN', 'AIRBORNE_TARGET'}
+
+
+def test_one_death_makes_one_wreck_list_by_the_status_it_began_with():
+    """Review i #5 (the parent's pick, once a death): the status changing while the Die modules are told (an earlier
+    one sets or clears a bit) does not make a later module the first airborne one too -- before, each module read
+    the status at its turn and the plane above could make both OCL_First and OCL_Second."""
+    s = simsmall.small_world()
+    s.own['CNV_TestPlane'] = PLANE
+    s.add('plane', 'CNV_TestPlane', 'Player_1', 100.0, 100.0)
+    b = s.bodies['plane']
+    mods = b.find(interfaces.CreateOnDeath)
+    host = _Host()
+    for m in mods:
+        m.world = host
+    b.surface, b.status = 'air', {'SPECIAL_ARMOR_ACTIVE'}
+    info = module.Death(10, 'shot', status=module.status_now(b))
+    for m in mods:
+        m.on_die(info)
+        b.status = set()                    # the bit gone after the first module's turn
+    assert host.made == [('OCL_First', True)]
+    # the host's death broadcast (simbody.Life._out) gives the status the death began with
+    s.add('plane2', 'CNV_TestPlane', 'Player_1', 200.0, 100.0)
+    b = s.bodies['plane2']
+    b.surface, b.status = 'air', {'SPECIAL_ARMOR_ACTIVE'}
+    told = []
+    for m in b.find(interfaces.CreateOnDeath):
+        m.on_die = told.append
+    s.destroy(b, 'shot')
+    assert told and all(i.status == {'SPECIAL_ARMOR_ACTIVE', 'AIRBORNE_TARGET'} for i in told)

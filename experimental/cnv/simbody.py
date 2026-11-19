@@ -124,7 +124,7 @@ class Life:
         if not delete and b.last_by is not None and b.last_hit is not None:
             world.kills.append((b.last_hit, b.last_by, b.template, b.name))     # cond_retail: who killed what
         if not delete:
-            info = module.Death(world.frame_now(), why, death, cause)
+            info = module.Death(world.frame_now(), why, death, cause, module.status_now(b))
             for m in b.find(interfaces.SlowDeath):      # its lie first: every Die module reads it (B5 review e #7)
                 m.begin(info)
             for m in b.find(interfaces.Die):

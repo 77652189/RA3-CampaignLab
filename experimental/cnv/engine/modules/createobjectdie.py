@@ -57,11 +57,14 @@ class CreateObjectDie(module.Module, interfaces.Die, interfaces.CreateOnDeath):
         d, thing = self.data, self.thing
         if info.cause == LIFETIME and d.takes(info.death):
             self.world.create(thing, d.ocl, False)
-        if thing.surface == 'air' and self._first_airborne():
+        if thing.surface == 'air' and self._first_airborne(info.status):
             self.world.create(thing, d.ocl, True)
 
-    def _first_airborne(self):
-        status = module.status_now(self.thing)
+    def _first_airborne(self, status=None):
+        """Is it the first module whose block takes a death in the air, by the status the death began with (review
+        i #5: one list a death, as the parent picked it; None: the status now)?"""
+        if status is None:
+            status = module.status_now(self.thing)
         return next((m for m in self.thing.find(interfaces.CreateOnDeath) if m.takes_airborne(status)), None) is self
 
     def creation_list(self):
