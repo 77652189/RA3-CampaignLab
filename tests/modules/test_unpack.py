@@ -1,5 +1,5 @@
 """The StructureUnpackUpdate module (engine/modules/unpack.py, step M10): UnpackTime read through the port (a '=$NAME'
-define from the asked template's own file, as the reader it replaced), the end set only on a structure made in the
+define from the file that supplies the block), the end set only on a structure made in the
 run, read through the body's `unpack_end` forward and in the frame record where the body's field was. The power factor's
 stretch and what unpacking holds back (power, fire, a sale): tests/test_simbench.py (engine_powerdef), test_sell.py."""
 import pytest
@@ -19,11 +19,20 @@ def test_the_block_is_read_seconds_x_15_rounded_nothing_is_none():
     assert unpack.UnpackData.parse('', '').frames == 0
 
 
-def test_a_define_is_spelled_out_from_the_templates_own_file_an_inherited_one_from_another_file_reads_as_nothing():
+def test_a_define_is_spelled_out_in_the_file_that_supplies_the_block():
     (head, _), = simunits.module_blocks('SovietPowerPlant', 'StructureUnpackUpdate')
     assert '=$' not in head and unpack.UnpackData.parse(head, '').frames == 150      # SovietPowerPlant.xml: 10 s
     (head, _), = simunits.module_blocks('AlliedRefinery_NoHarvester', 'StructureUnpackUpdate')
-    assert unpack.UnpackData.parse(head, '').frames == 0     # AlliedRefinery's define, not in its file (kept, M10)
+    # Compiled AlliedRefinery_NoHarvester: ModuleTag_StructureUnpackUpdate UnpackTime="4s".
+    assert unpack.UnpackData.parse(head, '').frames == 60
+
+    # Compiled JapanBaseDefense_S07: ModuleTag_StructureUnpack="15s", ModuleTag_StructureUnpack_02="5s".
+    template = 'JapanBaseDefense_S07'
+    s = simsmall.small_world()
+    first, selected = s.world.data_of(template, 'StructureUnpackUpdate')
+    assert (first.frames, selected.frames) == (225, 75)
+    b = s.add('defense', template, 'Player_1', 0.0, 0.0)
+    assert b.find(interfaces.Unpack).data is selected
 
 
 def test_only_a_structure_made_in_the_run_unpacks_and_the_end_is_in_the_record():

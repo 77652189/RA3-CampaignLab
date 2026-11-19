@@ -1,8 +1,8 @@
 """The AttributeModifierAuraUpdate module (engine/modules/aura.py, step M12): its data read from the block (the shape
 simunits.auras gave: RefreshDelay in frames, the ObjectFilter's Relationship / Include / Exclude, InitiallyActive,
 RequiredObjectStatusFlags, AllowSelf), its refresh beat (the first at once, then every RefreshDelay counted from the
-first, a late ask moved to the latest refresh due), and the port reading the template's own XML alone (an inherited
-aura is not read: simunits.SELF_ONLY). The stasis zone on the map: tests/test_simmodifier.py."""
+first, a late ask moved to the latest refresh due), and the port reading inherited auras.
+The stasis zone on the map: tests/test_simmodifier.py."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simsmall  # noqa: E402
 import simunits  # noqa: E402
@@ -41,7 +41,9 @@ def test_the_beat_first_at_once_then_every_refresh_from_the_first():
     assert m.pulse(43) is True and m.last_beat() == 42            # late: the latest refresh due, 18 + 3 x 8
 
 
-def test_an_inherited_aura_is_not_read():
+def test_an_inherited_aura_is_read():
     own = {'CNV_TestAura': EMITTER, 'CNV_TestAuraChild': CHILD}
     assert len(simunits.module_blocks('CNV_TestAura', 'AttributeModifierAuraUpdate', own)) == 1
-    assert simunits.module_blocks('CNV_TestAuraChild', 'AttributeModifierAuraUpdate', own) == []
+    # Compiled CNV_TestAuraChild: one ModuleTag_Aura, AttributeModifierName="Slow", Range="150".
+    (block,) = simunits.module_blocks('CNV_TestAuraChild', 'AttributeModifierAuraUpdate', own)
+    assert aura.AuraData.parse(*block).rule == aura.AuraData.parse(HEAD, INNER).rule

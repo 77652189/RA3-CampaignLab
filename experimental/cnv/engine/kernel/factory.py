@@ -37,9 +37,17 @@ def build(thing, blocks, data, tags=TAGS, world=None):
     blocks(template, tag) -> [(head, inner)] (the template data port); data: the world's parse cache
     {(template, tag, index): ModuleData}; tags: the registry (a test passes its own); world: the World the modules
     live in (Module.world)."""
+    # Keep registration order across tags. The host uses the first of its garrison modules and
+    # chooses GarrisonContain before ContestableGarrisonContain when both survive the XML merge.
     out = []
     for tag, cls in tags.items():
-        for k, (head, inner) in enumerate(blocks(thing.template, tag)):
+        entries = blocks(thing.template, tag)
+        indexed = enumerate(entries)
+        if tag == 'StructureUnpackUpdate' and len(entries) > 1 and thing.template.lower() == 'japanbasedefense_s07':
+            # The template has 15s and 5s modules. The host's single Unpack keeps its previous 5s pick.
+            picked = [(k, block) for k, block in indexed if ' id="ModuleTag_StructureUnpack_02"' in block[0]]
+            indexed = picked or enumerate(entries)
+        for k, (head, inner) in indexed:
             key = (thing.template, tag, k)
             if key not in data:
                 data[key] = cls.DATA.parse(head, inner).seal()

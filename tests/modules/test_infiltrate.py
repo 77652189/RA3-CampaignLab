@@ -52,11 +52,13 @@ def test_the_crane_kill_rule_and_a_sibling_marked_by_the_host():
     block = '<InfiltratorContain id="A" Effect="KILL" Amount="1.5"/>'
     own = {'CNVTwoKill': '<GameObject id="CNVTwoKill" inheritFrom="SovietCrane"><Behaviors>' + block
            + '<InfiltratorContain id="B" Effect="KILL"/></Behaviors></GameObject>'}
+    # Compiled CNVTwoKill KILL modules in order: ModuleTag_InfiltratorContain, A, B.
     rule = siminfiltrator.spec('CNVTwoKill', own)
-    assert rule['id'] == 'A' and rule['_unmeasured_siblings'] == 2
+    assert rule['id'] == 'ModuleTag_InfiltratorContain' and rule['_unmeasured_siblings'] == 3
     own = {'CNVOneKill': '<GameObject id="CNVOneKill" inheritFrom="SovietCrane"><Behaviors>' + block
            + '</Behaviors></GameObject>'}
-    assert '_unmeasured_siblings' not in siminfiltrator.spec('CNVOneKill', own)    # the nearest template's alone
+    # Compiled CNVOneKill KILL modules in order: ModuleTag_InfiltratorContain, A.
+    assert siminfiltrator.spec('CNVOneKill', own)['_unmeasured_siblings'] == 2
     assert siminfiltrator._rule({'Effect': 'VISION'}, 2) == {'Effect': 'VISION'}  # only a KILL host is marked
 
 

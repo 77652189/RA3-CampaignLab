@@ -59,9 +59,9 @@ def test_an_empty_body_is_skipped_and_a_define_spelled_out():
     assert answer('AM_FutureTech_02') == {'ActiveBody': [50000.0]}      # MaxHealth="=50000"
 
 
-def test_a_removed_prop_body_keeps_the_body_a_prop():
-    # retail: the torpedo removes BaseProjectile's PropBody for an ActiveBody of 100; read as prop_body read it
-    assert answer('JapanAntiVehicleShipTorpedoSpreadProjectile') == {'PropBody': [100.0]}
+def test_a_removed_prop_body_gives_way_to_the_active_body():
+    # Compiled JapanAntiVehicleShipTorpedoSpreadProjectile: ActiveBody MaxHealth="100.0", zero PropBody.
+    assert answer('JapanAntiVehicleShipTorpedoSpreadProjectile') == {'ActiveBody': [100.0]}
     assert answer('BaseProjectile') == {'PropBody': [None]}
     own = {'CNVBodyBase': BASE,
            'CNVBodyGone': ('<GameObject id="CNVBodyGone" inheritFrom="CNVBodyBase"><Body>'
@@ -72,7 +72,8 @@ def test_a_removed_prop_body_keeps_the_body_a_prop():
 
 def test_the_managed_and_the_other_bodies_are_their_own_tags():
     assert answer('BaseBridge') == {'ManagerBody': [1.0]}
-    assert answer('BaseCivilianBridge') == {'ManagedActiveBody': [1000.0]}  # its own body, not BaseBridge's
+    # Compiled BaseCivilianBridge: one ManagerBody, MaxHealth="1.0", InitialHealth="1.0".
+    assert answer('BaseCivilianBridge') == {'ManagerBody': [1.0]}
     assert set(answer('BaseBridgeEnd')) == {'ManagedImmortalBody'}      # not an ImmortalBody
     assert set(answer('BaseMountRushmoreHead')) == {'HighlanderBody'}
 

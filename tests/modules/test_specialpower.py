@@ -33,21 +33,24 @@ def test_a_template_gets_one_module_a_block_and_no_reload_before_a_cast():
     import sim
     e, b = _collider()
     mods = b.find(sim.kernel_interfaces.SpecialPower)
-    # the retail proton collider: a SpecialPower and an OCLSpecialPower block, both for the cannon
-    assert sorted((type(m).__name__, m.power()) for m in mods) == [('SpecialPower', CANNON)] * 2
+    # Compiled AlliedSuperWeaponAdvanced: one OCLSpecialPower ModuleTag_ParticleCannon, zero SpecialPower blocks.
+    assert e.world.data_of(COLLIDER, 'SpecialPower') == ()
+    assert [d.power for d in e.world.data_of(COLLIDER, 'OCLSpecialPower')] == [CANNON]
+    assert [(type(m).__name__, m.power()) for m in mods] == [('SpecialPower', CANNON)]
     assert all(m.ready_at() is None for m in mods)
     assert b.ready_at == {}
     with pytest.raises(AttributeError):
         b.ready_at = {CANNON: 1}
 
 
-def test_a_reload_started_is_on_every_module_of_its_power_and_refuses_the_click_until_over():
+def test_the_cannon_module_refuses_the_click_until_its_reload_ends():
     import sim
     import simpower
     e, b = _collider()
     now = e.frame_now()
     simpower.start_reload(e, b, CANNON, now + 100)
-    assert [m.ready_at() for m in b.find(sim.kernel_interfaces.SpecialPower)] == [now + 100, now + 100]
+    # Compiled AlliedSuperWeaponAdvanced: only OCLSpecialPower ModuleTag_ParticleCannon serves the cannon.
+    assert [m.ready_at() for m in b.find(sim.kernel_interfaces.SpecialPower)] == [now + 100]
     assert b.ready_at == {CANNON: now + 100}
     assert e.order_power(b, CANNON, (b.x + 500, b.y))[1] == 'reloading'
     simpower.start_reload(e, b, CANNON, now + 30)       # every cast starts it anew

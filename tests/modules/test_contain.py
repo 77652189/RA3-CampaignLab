@@ -1,6 +1,6 @@
 """The contain modules (engine/modules/contain.py, step M14): GarrisonContain / ContestableGarrisonContain /
-TransportContain read from the block the port gathers up the chain (simunits.GATHERED: each attribute the nearest
-that writes it, defines spelled out, the nearest PassengerFilter), a transport's passengers ENCLOSED, a contestable
+TransportContain read from the block the port merges up the chain, including the PassengerFilter,
+a transport's passengers ENCLOSED, a contestable
 one's clearing bits; the passengers, the bits given each, the owner before and the listener's upgrades kept on the
 module, which the host's garrisons (simgarrison.Garrisons) find by interface. On the bench: engine_garrison in / hp /
 del, engine_transport load (docs/engine/garrison.md)."""
@@ -30,7 +30,7 @@ def test_the_block_is_read_with_the_schema_defaults():
     assert contain.ContainData.parse(head, '').rule['clearing'] == frozenset()     # only a contestable one's
 
 
-def test_the_port_gathers_the_chain_into_one_block():
+def test_the_port_merges_the_same_module_and_its_filter():
     own = {'CNVBase': BASE, 'CNVChild': CHILD}
     (block,) = simunits.module_blocks('CNVChild', 'GarrisonContain', own)
     r = contain.ContainData.parse(*block).rule
@@ -40,7 +40,8 @@ def test_the_port_gathers_the_chain_into_one_block():
                            '<PassengerFilter Rule="ALL" Include="VEHICLE"/></GarrisonContain></Behaviors></GameObject>')
     (block,) = simunits.module_blocks('CNVOwnFilter', 'GarrisonContain', own)
     r = contain.ContainData.parse(*block).rule
-    assert (r['rule'], r['kinds'], r['exclude'], r['max']) == ('ALL', {'VEHICLE'}, frozenset(), 5)  # its own, nearest
+    # Compiled CNVOwnFilter: ContainMax="5", PassengerFilter Rule="ALL" Include="VEHICLE", ExcludeThing AlliedScoutInfantry.
+    assert (r['rule'], r['kinds'], r['exclude'], r['max']) == ('ALL', {'VEHICLE'}, {'alliedscoutinfantry'}, 5)
     (block,) = simunits.module_blocks('AM_Apartments_01', 'ContestableGarrisonContain')
     r = contain.ContestableData.parse(*block).rule
     assert r['max'] == 5 and 'ENCLOSED' in r['status'] and r['kinds'] == {'INFANTRY'}

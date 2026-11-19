@@ -22,7 +22,10 @@ def test_the_apocalypse_reads_2_points_every_7_frames_15_after_a_hurt_the_guardi
     s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0), ('g', GUARDIAN, 'Player_1', 300.0, 0.0),
                               ('p', PLANT, 'Player_1', 600.0, 0.0)])
     a, g, p = s.bodies['a'], s.bodies['g'], s.bodies['p']
-    (m,) = heals(a)
+    # Compiled Apocalypse: Upgrade_HeroicHeal (inactive, 3/.5s/1s), then Upgrade_PassiveHeal (active, 2/.5s/1s).
+    heroic, m = heals(a)
+    assert not heroic.data.active and heroic.data.trigger.by == {'Upgrade_Veterancy_HEROIC'}
+    assert heroic.data.rule == (3, 7, 15)
     assert isinstance(m, autoheal.AutoHeal) and m.data.rule == (2, 7, 15) and m.thing is a and m.world is s.world
     (h,) = heals(g)                   # BaseVehicle's heroic heal: idle until Upgrade_Veterancy_HEROIC
     assert not h.data.active and h.data.trigger.by == {'Upgrade_Veterancy_HEROIC'} and h.data.rule[1:] == (7, 15)
@@ -77,7 +80,9 @@ def test_an_idle_heroic_heal_ignores_hurts_mends_two_frames_after_its_upgrade_an
 def test_a_status_gated_heal_sleeps_while_the_status_fails_and_a_later_status_does_not_wake_it():
     s = simsmall.small_world([('t', 'JapanAntiVehicleVehicleTech1', 'Player_1', 0.0, 0.0)])   # the Tsunami
     t = s.bodies['t']
-    (m,) = heals(t)
+    # Compiled Tsunami: Upgrade_HeroicHeal (inactive), then ModuleTag_ActiveArmorHeal (GENERIC_TOGGLE_STATE, 3/.25s/0s).
+    heroic, m = heals(t)
+    assert not heroic.data.active and m.data.required == {'GENERIC_TOGGLE_STATE'}
     s.world.schedule.run('autoheal', 0)
     t.damage(76)
     s.world.schedule.run('autoheal', 0)

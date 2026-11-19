@@ -1348,119 +1348,235 @@ def wall_builder_start(template, own=None):
     return _chain(template, own, read)
 
 
-OWN_ONLY = frozenset({'LifetimeUpdate'})   # read from a mission's own template only -- no inheritance, no retail -- as
-                                            # the reader each replaced (step M1: none of our scripts makes a retail
-                                            # object with a lifetime); reading the retail ones is a behaviour change
-MERGED = frozenset({'CrusherInfo'})        # attributes inherited one by one, each from the nearest template up the
-                                            # chain that writes it (step M3: 64 retail templates have an empty
-                                            # CrusherInfo and take their CrushableLevel from their base, as the reader
-                                            # it replaced did; the Hammer's own CrusherLevel 20 over BaseVehicle's 10)
-SELF_ONLY = frozenset({'AutoDepositUpdate',    # read from the template's own XML alone -- the mission's, else the
-                       'AttributeModifierAuraUpdate'})  # retail file of its name -- no inheritance, as the reader
-                                            # it replaced (step M4: oilderrick_onwater, which inherits oilderrick's,
-                                            # pays nothing; step M12: 354 retail templates inherit an aura, the
-                                            # garrisoned civilian buildings', and read none); reading them inherited
-                                            # is a behaviour change
-REMOVE_KEPT = frozenset({'SpawnBehavior'})  # a Remove block is kept as a block, as the reader it replaced read it
-                                            # (step M7: alliedrefinery_noharvester's removes its base's spawn and
-                                            # reads as a spawn not modelled, a gap); dropping it is a behaviour change
-EXPANDED = frozenset({'StructureUnpackUpdate'})  # '=$NAME' attribute values spelled out from the defines of the
-                                            # asked template's own file and GlobalDefines (_file_defines), as the
-                                            # reader it replaced (step M10: 17 retail UnpackTimes are =$..._UNPACK_TIME;
-                                            # a template inheriting one from another file -- 3 retail, 13 of our own
-                                            # -- reads it as nothing, 0); the define's own file is a behaviour change
-INCLUDED = frozenset({'RepairUpdate', 'InfiltratorContain'})  # read with the DATA:Includes files a template
-                                            # references (_with_includes), as the readers they replaced (step M13: the
-                                            # retail structures take their RepairUpdate from Includes/GenericBuilding-
-                                            # Repair.xml; step M15: their InfiltratorContain from Includes/Infiltrator-
-                                            # Contain*.xml)
-GATHERED = frozenset({'GarrisonContain', 'ContestableGarrisonContain', 'TransportContain'})  # one block made of
-                                            # every block of the tag up the chain: each attribute the nearest that
-                                            # writes it, '=$' defines spelled out (expand), the inner text the nearest
-                                            # PassengerFilter written -- as the reader it replaced (step M14:
-                                            # BaseCivilianStructureMedium writes only ContainMax over its base's)
-BODY = frozenset({'ActiveBody', 'ImmortalBody', 'PropBody', 'ManagerBody', 'ManagedActiveBody',  # the blocks of
-                  'ManagedImmortalBody', 'HighlanderBody'})  # the nearest <Body> up the chain that is not empty (98
-                                            # retail civilian buildings, AM_Apartments_01 and the rest, write an empty
-                                            # one and take their base's), its '=$' defines spelled out (expand:
-                                            # BaseCivilianStructureMedium's =$CIV_HEALTH_MEDIUM). The Body is taken
-                                            # whole, not each tag up the chain on its own: a template's ImmortalBody
-                                            # replaces its base's ActiveBody (one body, never two). A Remove block is
-                                            # left out, but one removing a PropBody keeps the Body a prop: its other
-                                            # block is read as a PropBody (two retail torpedoes, japanantivehicleship-
-                                            # torpedospreadprojectile and sovietantinavyshiptech2supertorpedoprojectile,
-                                            # remove BaseProjectile's PropBody for an ActiveBody of 100; the reader it
-                                            # replaced, prop_body, took any Body naming PropBody for a prop). A campaign
-                                            # override is read first, as max_health reads it; Sim.add's health takes
-                                            # fight's hp over it, the file the index names (step B2a; B2b keeps that)
+BODY = frozenset({'ActiveBody', 'ImmortalBody', 'PropBody', 'ManagerBody', 'ManagedActiveBody',
+                  'ManagedImmortalBody', 'HighlanderBody'})
+
+
+class _ModuleTemplates:
+    """Read source GameObjects and merge the parts that supply module data."""
+
+    ASSET = 'uri:ea.com:eala:asset'
+    XI = 'http://www.w3.org/2001/XInclude'
+    XAI = 'uri:ea.com:eala:asset:instance'
+    JOIN = f'{{{XAI}}}joinAction'
+    POSITION = f'{{{XAI}}}insertPosition'
+    XSD = '{http://www.w3.org/2001/XMLSchema}'
+    GROUPS = frozenset({'Behaviors', 'Body', 'AI', 'Draws', 'ClientUpdates', 'ClientBehaviors'})
+
+    @classmethod
+    def _document(cls, text):
+        # Unit XML also accepts bare GameObject fragments with the standard prefixes.
+        text = re.sub(r'^\s*\ufeff?\s*<\?xml\s[^?]*\?>', '', text, count=1)
+        return ET.fromstring(f'<Source xmlns:xi="{cls.XI}" xmlns:xai="{cls.XAI}">{text}</Source>')
+
+    @classmethod
+    def _includes(cls, node, path, active):
+        for i, child in reversed(list(enumerate(node))):
+            if child.tag != f'{{{cls.XI}}}include':
+                cls._includes(child, path, active)
+                continue
+            href = child.get('href', '').replace('\\', '/')
+            source = os.path.normpath(os.path.join(SAGEXML, href[5:]) if href.startswith('DATA:')
+                                      else os.path.join(os.path.dirname(path) if path else SAGEXML, href))
+            if source in active:
+                raise ValueError(f'circular XML include: {source}')
+            fragment = cls._document(_text(source))
+            cls._includes(fragment, source, active | {source})
+            node.remove(child)
+            node[i:i] = list(fragment)
+
+    @classmethod
+    def _objects(cls, text, path=None):
+        key = ('module_objects', text, path)
+        if key not in _reads:
+            root = cls._document(text)
+            cls._includes(root, path, {path} if path else set())
+            for node in root.iter():
+                node.tag = node.tag.removeprefix(f'{{{cls.ASSET}}}')
+            objects = {}
+            for asset in (root, *root.findall('AssetDeclaration')):
+                local = {d.attrib['name']: d.attrib['value']
+                         for d in asset.findall('Defines/Define') if 'name' in d.attrib and 'value' in d.attrib}
+                for obj in asset.findall('GameObject'):
+                    for node in obj.iter():
+                        for attr, value in node.attrib.items():
+                            if value.startswith('=') and ('$' in value or "'" in value):
+                                node.set(attr, expand(value, extra=local))
+                        if node.text and node.text.strip().startswith('=$'):
+                            node.text = expand(node.text.strip(), extra=local)
+                    name = obj.get('id', '').lower()
+                    if name in objects:
+                        raise ValueError(f'duplicate GameObject: {name}')
+                    objects[name] = obj
+            _reads[key] = objects
+        return _reads[key]
+
+    @classmethod
+    def _lookup(cls, name, own, source=None, original=False):
+        if source is not None and name in source:
+            return source
+        if not original:
+            for xml in own:
+                objects = cls._objects(xml)
+                if name in objects:
+                    return objects
+        path = None if original else _sdk_source(name)
+        if path:
+            objects = cls._objects(_text(path), path)
+            if name in objects:
+                return objects
+        text = retail_xml(name)
+        return cls._objects(text, _retail_files.get(name)) if text else {}
+
+    @classmethod
+    def _types(cls):
+        key = ('module_schema_types', labpaths.SDK3)
+        if key not in _reads:
+            schema = os.path.join(labpaths.SDK3, 'Schemas', 'xsd', 'CnC3Types.xsd')
+            types, seen, pending = {}, set(), [schema]
+            while pending:
+                path = pending.pop()
+                if path in seen:
+                    continue
+                seen.add(path)
+                root = ET.parse(path).getroot()
+                for node in root:
+                    if node.tag == cls.XSD + 'include':
+                        pending.append(os.path.normpath(os.path.join(os.path.dirname(path), node.attrib['schemaLocation'])))
+                    elif node.tag == cls.XSD + 'complexType':
+                        types[node.attrib['name']] = node
+            _reads[key] = types
+        return _reads[key]
+
+    @classmethod
+    def _fields(cls, type_name):
+        """Nested element types, order and cardinality from the SDK's XML schema."""
+        key = ('module_schema_fields', type_name)
+        if key not in _reads:
+            slots = []
+
+            def fields(node):
+                for part in node:
+                    kind = part.tag.removeprefix(cls.XSD)
+                    if kind == 'element':
+                        slots.append(([part], part.get('maxOccurs', '1') != '1'))
+                    elif kind == 'choice':
+                        slots.append((part.findall(cls.XSD + 'element'), part.get('maxOccurs', '1') != '1'))
+                    elif kind == 'extension':
+                        base = cls._types().get(part.get('base'))
+                        if base is not None:
+                            fields(base)
+                        fields(part)
+                    elif kind in ('sequence', 'all', 'complexContent'):
+                        fields(part)
+
+            node = cls._types().get(type_name)
+            if node is not None:
+                fields(node)
+            _reads[key] = {part.attrib['name']: (part.get('type'), slot, many)
+                           for slot, (choices, many) in enumerate(slots) for part in choices}
+        return _reads[key]
+
+    @classmethod
+    def _join(cls, parent, child, match, *, inherit, position):
+        """Overlay the next child in its container. Replace takes the insertion path after removing its match."""
+        action = child.get(cls.JOIN)
+        if action is not None and not inherit:
+            raise ValueError(f'{action} on {child.tag} without inheritFrom')
+        if action == 'Remove':
+            if match is None:
+                raise ValueError(f'Remove has no matching {child.tag} ({child.get("id", "")})')
+            parent.remove(match)
+            return
+        if match is not None and (action == 'Replace' or match.tag != child.tag):
+            parent.remove(match)
+            match = None
+        if match is None:
+            match = ET.Element(child.tag)
+            parent.insert(position, match)
+        match.attrib.update((key, value) for key, value in child.attrib.items() if key not in (cls.JOIN, cls.POSITION))
+        if child.text and child.text.strip():
+            match.text = child.text
+        return match
+
+    @classmethod
+    def _merge(cls, parent, child, type_name, inherit):
+        layout = cls._fields(type_name)
+        default = (None, len(layout), False)
+        for node in child:
+            if child.tag == 'GameObject' and node.tag not in cls.GROUPS and node.tag != 'CrusherInfo':
+                continue
+            nested, slot, many = layout.get(node.tag, default)
+            match, position = None, len(parent)
+            if inherit:
+                key = node.get('id')
+                top = node.get(cls.POSITION) == 'Top'
+                match_index = None
+                for i, old in enumerate(parent):
+                    old_slot = layout.get(old.tag, default)[1]
+                    same = old_slot == slot and (node.tag in layout or old.tag == node.tag)
+                    if same and (not many or key is not None and old.get('id') == key):
+                        match, match_index = old, i
+                    if old_slot > slot or (same and top):
+                        position = min(position, i)
+                if match_index is not None and match_index < position and (
+                        node.get(cls.JOIN) == 'Replace' or match.tag != node.tag):
+                    position -= 1
+            merged = cls._join(parent, node, match, inherit=inherit, position=position)
+            if merged is not None:
+                cls._merge(merged, node, nested, inherit)
+        if child.tag == 'Body' and not len(parent):
+            raise ValueError('Body has no module')
+
+    @classmethod
+    def _effective(cls, name, own, source=None, trail=frozenset(), original=False):
+        objects = cls._lookup(name, own, source, original)
+        obj = objects.get(name)
+        if obj is None:
+            return ET.Element('GameObject')
+        ident = (name, id(obj))
+        if ident in trail:
+            raise ValueError(f'circular template inheritance: {name}')
+        up = obj.get('inheritFrom', '').lower()
+        if up == name:
+            merged = cls._effective(name, (), trail=trail | {ident}, original=True)
+        elif up:
+            merged = cls._effective(up, own, objects, trail | {ident})
+        else:
+            merged = ET.Element('GameObject')
+        cls._merge(merged, obj, 'GameObject', bool(up))
+        return merged
+
+    @staticmethod
+    def _blocks(obj):
+        blocks = {}
+        for group in obj:
+            for node in group if group.tag in _ModuleTemplates.GROUPS else (group,):
+                xml = ET.tostring(node, encoding='unicode', short_empty_elements=False)
+                head, _, rest = xml.partition('>')
+                inner = rest.rsplit('</', 1)[0]
+                blocks.setdefault(node.tag, []).append((head[len(node.tag) + 1:], inner))
+        return blocks
+
+    @classmethod
+    def blocks(cls, template, tag, own):
+        name = template.lower()
+        direct = (own or {}).get(template)
+        if tag == 'LifetimeUpdate':
+            # The simulator arms scripted lifetimes only on mission-owned templates that declare one.
+            obj = cls._objects(direct).get(name) if direct else None
+            return cls._blocks(obj).get(tag, []) if obj is not None else []
+        files = dict.fromkeys((direct, *(own or {}).values()))
+        sources = tuple(xml for xml in files if xml)
+        key = ('module_blocks', name, sources)
+        if key not in _reads:
+            _reads[key] = cls._blocks(cls._effective(name, sources))
+        return list(_reads[key].get(tag, ()))
 
 
 def module_blocks(template, tag, own=None):
-    """The template data port (docs/engine/sim-modules.md 3; engine.kernel.world.World's `blocks`): [(attributes
-    text, inner text)] of every <tag> block (comments left out) of the nearest template up the inheritance chain
-    (xml_chain) that has one; [] when none has, or the template's XML cannot be read. Step K1 checked it against the
-    AutoHealBehavior reader it replaced over all 3448 indexed templates: the same rule for each. A tag of OWN_ONLY
-    is read from the mission's own XML of the template alone; one of MERGED is one block whose attributes are each
-    the nearest template's that writes it (no inner text), when any template up the chain has the tag; one of
-    SELF_ONLY from the template's own XML alone (the mission's, else retail's). A block of the nearest template that
-    removes the inherited module (xai:joinAction="Remove") is left out, and the walk ends there (step M6: 11 retail
-    templates remove their base's SuppressionUpdate, as the reader it replaced read; no other registered tag but
-    CrusherInfo has one, whose 64 MERGED keeps as M3's reader did; a tag of REMOVE_KEPT keeps it: step M7). A tag of
-    INCLUDED is read with the DATA:Includes files each template's XML references; one of GATHERED is one block
-    gathered from all of the tag's up the chain (attributes as MERGED's, defines spelled out, the nearest
-    PassengerFilter its inner text). One of BODY is read from the nearest non-empty <Body>."""
-    def read(xml):
-        if tag in INCLUDED:
-            xml = _with_includes(xml or '')
-        return list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), tag))
-    if tag in OWN_ONLY:
-        return read((own or {}).get(template))
-    try:
-        if tag in BODY:
-            for _, xml in xml_chain(template, own):
-                body = next(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'Body'), None)
-                if body is None or not body[1].strip():
-                    continue
-                found = [(t, h, i) for t in sorted(BODY) for h, i in _blocks(body[1], t)]
-                kept = [(t, h, i) for t, h, i in found if _attr(h, 'xai:joinAction') != 'Remove']
-                if any(t == 'PropBody' for t, h, _ in found if _attr(h, 'xai:joinAction') == 'Remove'):
-                    kept = [('PropBody', h, i) for _, h, i in kept]
-                return [(re.sub(r'="(=\$[^"]*)"', lambda m: f'="{expand(m.group(1))}"', h), i)
-                        for t, h, i in kept if t == tag]
-            return []
-        if tag in SELF_ONLY:
-            return read(own[template] if own and template in own else retail_xml(template))
-        if tag in GATHERED:
-            found, attrs, flt = False, {}, None
-            for _, xml in xml_chain(template, own):
-                for head, inner in read(xml):
-                    found = True
-                    for k, v in re.findall(r'(\w+)="([^"]*)"', head):
-                        attrs.setdefault(k, v)
-                    if flt is None:
-                        flt = next(_blocks(inner, 'PassengerFilter'), None)
-            if not found:
-                return []
-            fh, fi = flt or ('', '')
-            return [(''.join(f' {k}="{expand(v)}"' for k, v in attrs.items()),
-                     f'<PassengerFilter{fh}>{fi}</PassengerFilter>' if flt else '')]
-        if tag in MERGED:
-            found, attrs = False, {}
-            for _, xml in xml_chain(template, own):
-                for head, _ in read(xml):
-                    found = True
-                    for k, v in re.findall(r'([\w:]+)="([^"]*)"', head):
-                        attrs.setdefault(k, v)
-            return [(''.join(f' {k}="{v}"' for k, v in attrs.items()), '')] if found else []
-        blocks = _inherited(template, own, read, [])
-        if tag in EXPANDED and any('="=$' in h for h, _ in blocks):
-            local = _file_defines(template, own)
-            blocks = [(re.sub(r'="=\$([^"]*)"', lambda m: f'="{local.get(m.group(1), "")}"', h), i) for h, i in blocks]
-        if tag in REMOVE_KEPT:
-            return blocks
-        return [b for b in blocks if _attr(b[0], 'xai:joinAction') != 'Remove']
-    except (OSError, ValueError):
-        return []
+    """[(attribute text, inner XML)] for this tag in the merged GameObject, in effective module order."""
+    return _ModuleTemplates.blocks(template, tag, own)
 
 
 def lose_health(template, own=None):
@@ -2596,7 +2712,8 @@ _reads = {}         # T9 (11-18), per process -- the SDK does not change while o
                     #   ('text', path) a SageXML file's text; ('sdk', name) _xml's answer from the SDK;
                     #   ('objects', text) {id.lower(): first GameObject} of a mission file, keyed by its text,
                     #   not the dict; ('only', text, name) that file without its other GameObjects;
-                    #   ('command_set', name[, own files]) inherited CommandSet and upgrade triggers
+                    #   ('command_set', name[, own files]) inherited CommandSet and upgrade triggers;
+                    #   ('module_*', ...) parsed sources, schema fields and effective module blocks
 
 
 def _text(path):
@@ -2606,6 +2723,17 @@ def _text(path):
     return _reads['text', path]
 
 
+def _sdk_source(name):
+    """Indexed SageXML source path, or None for an unindexed template."""
+    global _index
+    if _index is None:
+        _index = {k.lower(): v for k, v in json.load(open(INDEX, encoding='utf-8')).items()} \
+            if os.path.exists(INDEX) else {}
+    f = (_index.get(name) or {}).get('file', '')
+    path = os.path.join(SAGEXML, *f[5:].split('/')) if f.startswith('DATA:') else ''
+    return path if path and os.path.isfile(path) else None
+
+
 def _xml(template, own=None):
     """The template's own XML: a mission's, else its GameObject in the file the SageXML index names (a file may hold
     several, AlliedAntiInfantryVehicle.xml the Riptide's two), else the file of its own name. A mission file may also
@@ -2613,7 +2741,6 @@ def _xml(template, own=None):
     others out (its includes, weapons and the rest kept), and a template defined only inside a mission file is that
     GameObject (the first of its id, files in order). Kept per process (T9): the SDK's answer by name, a mission's by
     its file's text, not by the dict (two missions overriding one template each get their own)."""
-    global _index
     name = template.lower()
     if (own or {}).get(template):
         text = own[template]
@@ -2627,20 +2754,17 @@ def _xml(template, own=None):
     for text in (own or {}).values():
         text = text or ''
         if ('objects', text) not in _reads:        # {id.lower(): the file's first GameObject of that id}
-            found = _reads['objects', text] = {}
+            found = {}
             for m in re.finditer(r'<GameObject\b.*?</GameObject>', text, re.S):
                 for i in re.findall(r'\bid="([^"]*)"', re.match(r'<GameObject\b[^>]*>', m.group(0)).group(0), re.I):
                     found.setdefault(i.lower(), m.group(0))
+            # Readers can build the same index concurrently. Publish only the complete index.
+            _reads['objects', text] = found
         if name in _reads['objects', text]:
             return _reads['objects', text][name]
     if ('sdk', name) not in _reads:               # the SageXML index's file, else the file of its own name
-        if _index is None:
-            _index = {k.lower(): v for k, v in json.load(open(INDEX, encoding='utf-8')).items()} \
-                if os.path.exists(INDEX) else {}
-        f = (_index.get(name) or {}).get('file', '')
-        path = os.path.join(SAGEXML, *f[5:].split('/')) if f.startswith('DATA:') else ''
-        objects = re.finditer(r'<GameObject\b.*?</GameObject>', _text(path), re.S) \
-            if path and os.path.exists(path) else ()
+        path = _sdk_source(name)
+        objects = re.finditer(r'<GameObject\b.*?</GameObject>', _text(path), re.S) if path else ()
         got = next((m.group(0) for m in objects
                     if re.search(rf'\bid="{re.escape(template)}"', m.group(0)[:2000], re.I)), None)
         _reads['sdk', name] = retail_xml(template) if got is None else got
@@ -2823,18 +2947,6 @@ def energy(template, own=None):
         m = re.search(r'\bEnergyProduction="(-?[\d.]+)"', xml)
         return int(float(m.group(1))) if m else None
     return _inherited(template, own, read, None) or 0
-
-
-def _file_defines(template, own=None):
-    """{name: value} of GlobalDefines and, over it, the <Define>s of the template's own retail file (none for a
-    mission's template of a new name): the port's EXPANDED values (SovietPowerPlant's UnpackTime: 10 s)."""
-    _xml(template, own)                     # loads the index
-    f = (_index.get(template.lower()) or {}).get('file', '')
-    path = os.path.join(SAGEXML, *f[5:].split('/')) if f.startswith('DATA:') else ''
-    text = open(path, encoding='utf-8', errors='replace').read() if path and os.path.exists(path) else ''
-    g = dict(DEFINE.findall(open(GLOBAL_DEFINES, encoding='utf-8', errors='replace').read())) \
-        if os.path.exists(GLOBAL_DEFINES) else {}
-    return {**g, **dict(DEFINE.findall(text))}
 
 
 _command_powers = None

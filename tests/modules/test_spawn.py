@@ -1,6 +1,6 @@
 """The SpawnBehavior / SlavedUpdate modules (engine/modules/spawn.py, step M7): the two configurations read exactly
-(the war factory's drones, the refineries' collector), anything else neither; a Remove block kept as an unmodelled
-spawn (simunits.REMOVE_KEPT); a child's death queuing its replacement the delay on, made in the spawn cell when due
+(the war factory's drones, the refineries' collector), anything else neither; removed blocks absent from the template;
+a child's death queuing its replacement the delay on, made in the spawn cell when due
 and not before; the parent's death emptying the queue; a child template without SlavedUpdate given one; the body's
 forwards with the old defaults. The bench replays: tests/test_simspawn.py."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
@@ -36,10 +36,9 @@ def test_each_refinery_gives_its_one_collector_and_a_changed_one_does_not():
     assert changed != xml and [d.unpack for d in data('AlliedRefinery', {'AlliedRefinery': changed})] == [None]
 
 
-def test_a_remove_block_is_kept_as_a_spawn_not_modelled():
-    """alliedrefinery_noharvester removes its base's SpawnBehavior; the reader M7 replaced read it as one id with no
-    configuration (a gap noted when placed), and so does the port (REMOVE_KEPT)."""
-    assert [(d.id, d.child, d.unpack) for d in data('alliedrefinery_noharvester')] == [('ModuleTag_Spawn', None, None)]
+def test_a_remove_block_leaves_no_spawn_module():
+    # Compiled AlliedRefinery_NoHarvester: zero SpawnBehavior modules after removal of ModuleTag_Spawn.
+    assert data('alliedrefinery_noharvester') == []
 
 
 def _world():
