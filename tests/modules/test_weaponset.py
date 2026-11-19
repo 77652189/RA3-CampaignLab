@@ -51,6 +51,10 @@ def test_a_slot_without_primary_holds_its_first_and_always_count_wins():
     assert d.picks() == ['A'] and [x.template for x in d.counted()] == ['A']
     plain = weaponset.WeaponSetUpdateData.parse('', '<WeaponSlotTurret ID="1"><Weapon Template="A"/></WeaponSlotTurret>')
     assert not plain.conditioned() and plain.picks() == ['A']
+    by_order = weaponset.WeaponSetUpdateData.parse('', '<WeaponSlotTurret ID="1"><Weapon Ordering="TERTIARY_WEAPON" '
+                                                   'Template="A"/><Weapon Ordering="SECONDARY_WEAPON" Template="B"/>'
+                                                   '</WeaponSlotTurret>')
+    assert [x.template for x in by_order.counted()] == ['B']        # the Ordering ranks, not the XML order
 
 
 def test_the_readers_take_the_port_blocks():
@@ -83,11 +87,18 @@ def test_a_unit_whose_file_writes_no_set_holds_no_weapon():
     assert simunits.fight('Tutorial_AlliedTech1Tank')['weapons'] == []
     assert simunits.declared_weapons('Tutorial_AlliedTech1Tank') == [CANNON]
     assert _keys(simunits.fight('AlliedAntiVehicleVehicleTech1')['weapons']) == [CANNON]
+    # a retail unit with fight data whose file writes none: the Rushmore head's laser stays unread (3 such)
+    assert simunits.fight('MR_LaserMtRushmore_Jefferson_Ready')['weapons'] == []
+    assert simunits.declared_weapons('MR_LaserMtRushmore_Jefferson_Ready') == ['MountRushmoreHeadEyeWeapon']
     up = _tank('CNV_TestBase', f'<WeaponSetUpdate id="ModuleTag_WeaponSetUpdate">{SET}</WeaponSetUpdate>')
     child = _tank('CNV_TestChild', '', up='CNV_TestBase')
     own = {'CNV_TestBase': up + child, 'CNV_TestChild': child}
     assert simunits.fight('CNV_TestChild', own)['weapons'] == []
     assert simunits.declared_weapons('CNV_TestChild', own) == [CANNON, 'X']
+    # a WeaponSetUpdate only in an XML comment of its own file is none: the parent's weapons stay unread
+    commented = _tank('CNV_TestChild', '<!-- <WeaponSetUpdate id="ModuleTag_WeaponSetUpdate"/> -->', up='CNV_TestBase')
+    own = {'CNV_TestBase': up + commented, 'CNV_TestChild': commented}
+    assert simunits.fight('CNV_TestChild', own)['weapons'] == []
 
 
 def test_a_retail_units_weapons_are_read_once_in_the_cache_shape():
