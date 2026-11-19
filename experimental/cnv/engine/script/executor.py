@@ -96,16 +96,25 @@ class PublicExecutor(port.Executor):
             return self._scripts[key]
         return self._again[key[0]][key[1]]
 
+    def script_key(self, s):
+        """The port's: a script by a key a snapshot keeps (its _key: the name; a later script of a taken name,
+        (name, its place among them)); script_by_key finds it again on an executor made for the same lists."""
+        return self._key(s)
+
+    def script_by_key(self, key):
+        return self._by_key(key)
+
     def snapshot(self):
         """The port's Executor.snapshot: counters, steps, displayed, log, the delayed scripts' next frames, the
-        random draws, the script now acting (by its _key) and the side, each script's and group's `active` in list
-        order. A `clock` the executor moves on is the world's (its holder takes it)."""
+        random draws, the script now acting (by its _key) and the side, each script's and group's `active` and
+        `subroutine` in list order (a sequential script turns subroutine in the run: simact_world). A `clock` the
+        executor moves on is the world's (its holder takes it)."""
         return {'counters': snap.encode(self.counters, at='counters'), 'steps': self.steps,
                 'displayed': snap.encode(self.displayed, at='displayed'), 'log': snap.encode(self.log, at='log'),
                 'next': snap.encode(self._next, at='next'), 'rng': snap.encode(self.rng.getstate(), at='rng'),
                 'script': None if self.script is None else snap.encode(self._key(self.script)),
                 'side': self._side,
-                'active': [[type(x).__name__, x.name, x.active] for x in self._walk()]}
+                'active': [[type(x).__name__, x.name, x.active, x.subroutine] for x in self._walk()]}
 
     def restore(self, s):
         active = list(self._walk())
@@ -121,7 +130,7 @@ class PublicExecutor(port.Executor):
         self.script = None if s['script'] is None else self._by_key(snap.decode(s['script'], things))
         self._side = s['side']
         for x, row in zip(active, s['active']):
-            x.active = row[2]
+            x.active, x.subroutine = row[2], row[3]
 
     def script_named(self, name):
         """The script of that name (the first of it), None where none (UNIT_EXECUTE_SEQUENTIAL_SCRIPT)."""

@@ -16,7 +16,8 @@ Values as engine/kernel/snap.py keeps them, plus the host's marks: a weapon / ar
 data held by identity ({"$weapon": [template, "fight" | "slot", ...]}: written back as the new world's own object of
 the same place), one list / dict / set / array held in two places ({"$shared": [n, value]} then {"$ref": n}: one
 object again), a numpy array ({"$array": [dtype, shape, base64]}), a player's protocol book ({"$book": fields}), an
-order the command port keeps ({"$command": fields}).
+order the command port keeps ({"$command": fields}), a script of the map's lists the host holds (a sequential
+script's queue: {"$script": the executor's script_key}, the new executor's script of that key).
 `unclassified(sim)` (step S's guard 4.3) names every field not sorted here, so a new one cannot be left out."""
 import base64
 import importlib
@@ -28,6 +29,7 @@ import simunits
 from engine.kernel import module as _module
 from engine.kernel import snap
 from engine.ports.command import Command
+from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
 VERSION = 2             # 2: 'others', the things held but not in bodies (_things)
@@ -95,6 +97,7 @@ for _f in ('name template owner x y z speed surface vision kinds immune_until ar
            'flee ground_fire unpack_here last_by').split():
     BODY.setdefault(_f, STATE)
 
+MODULE_WIRE = ('thing', 'data', 'world')    # Module.__init__'s: the factory makes them again on the new world
 _MUTABLE = (list, dict, set)
 
 
@@ -141,6 +144,8 @@ def unclassified(sim):
     walk(sim, SIM, ('sim',))
     for b in _things(sim):
         out.extend(f'Body.{f}' for f in vars(b) if f not in BODY)
+        for m in b.modules:     # a module's own: its STATE (the kernel's) and the factory's wiring, nothing set besides
+            out.extend(f'{type(m).__name__}.{f}' for f in vars(m) if f not in MODULE_WIRE and f not in m.STATE)
     return sorted(set(out))
 
 
@@ -267,6 +272,8 @@ class _Codec:
             return {'$npbool': bool(v)}
         if isinstance(v, Command):      # an order the command port keeps (its names and numbers)
             return {'$command': snap.encode({f: getattr(v, f) for f in v.__dataclass_fields__}, self.extra, 'command')}
+        if isinstance(v, script_lists.Script):      # one of the map's lists (the executor's): by its key
+            return {'$script': snap.encode(self.sim.executor.script_key(v), at='script key')}
         return NotImplemented
 
     # ---- writing back
@@ -291,6 +298,8 @@ class _Codec:
                 return np.bool_(x)
             if mark == '$command':
                 return Command(**snap.decode(x, things, extra))
+            if mark == '$script':
+                return self.sim.executor.script_by_key(snap.decode(x, things))
             if mark in ('$slots', '$weapon', '$armor', '$weapons'):
                 return self._template_object(mark, x)
             return NotImplemented

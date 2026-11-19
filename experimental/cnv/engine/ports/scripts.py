@@ -59,6 +59,14 @@ class Executor:
         """Write a snapshot of this executor back, onto one made anew for the same mission's lists."""
         raise NotImplementedError(f'{type(self).__name__}: this script executor does not take snapshots')
 
+    def script_key(self, script):
+        """A JSON-shaped key for one of its scripts that the host holds (a sequential script's queue, Sim.seq);
+        script_by_key gives that script again on an executor made for the same lists."""
+        raise NotImplementedError(f'{type(self).__name__}: this script executor does not take snapshots')
+
+    def script_by_key(self, key):
+        raise NotImplementedError(f'{type(self).__name__}: this script executor does not take snapshots')
+
 
 def this_player(eng, args):
     """'<This Player>' as the game reads it: the player whose script list the script is in (the executor's `_side`;

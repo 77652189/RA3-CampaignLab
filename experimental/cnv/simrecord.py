@@ -280,7 +280,11 @@ def run_task(name, out, executor=None, snap=None):
             rec.spent = was.spent + time.perf_counter() - t1     # taking and writing back: not the run's time
             rec.snap = {'at': was.at, 'bytes': len(taken), 'seconds': time.perf_counter() - t1}
             rec.attach()
+            frame = s.world.frame
             s.run(until)
+            if s.world.frame == frame:
+                raise RuntimeError(f'simrecord: {name} restored at {s.t} ran no frame on to {until}: the cut proves '
+                                   'nothing')
             break
         rec = make(Observe(s), out)
         rec.attach()
@@ -298,6 +302,9 @@ def run_task(name, out, executor=None, snap=None):
         s.run(cut)
         if s.ending is not None or s.t <= cut:
             raise RuntimeError(f'simrecord: {name} ended (or went quiet) at {s.t}, before {cut}: nothing to take')
+        if s.t > until:     # Sim.run steps while t <= until: written back there, it would run no frame on
+            raise ValueError(f'simrecord: {name} cut at {snap} stops at {s.t}, past its end {until}: no frame left '
+                             'to run after the snapshot (take it earlier)')
         t1 = time.perf_counter()
         taken, rec.at = json.dumps(simsnap.snapshot(s)), s.t
     rec.ran = time.perf_counter() - t0 - rec.spent     # the run alone: no imports, map build or record writing

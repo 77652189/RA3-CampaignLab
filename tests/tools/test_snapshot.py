@@ -2,17 +2,23 @@
 taken at its half, through JSON and back equal, written onto a Sim made anew for the same mission, taken again
 equal (4.2), and run on to its end as the one never stopped; every field of the Sim, its parts and its bodies
 sorted (4.3); the fields called static the same on the new world; what it cannot keep an error. The kernel's and
-the executor's own: tests/modules/test_snapshot_kernel.py. The 9 missions without the AI frame for frame: 11b-3c."""
+the executor's own: tests/modules/test_snapshot_kernel.py. The 9 missions without the AI frame for frame: 11b-3c.
+On the island (simsmall): a sequential script queued and run, an order given, a moved waypoint, a module's field
+set in the run (review 1119e #1-#4 #8 #9); a cut at the run's end refused (review 1119g #3)."""
+import io
 import json
 
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import build  # noqa: E402
+import parts  # noqa: E402
 import sim  # noqa: E402
 import simrecord  # noqa: E402
+import simsmall  # noqa: E402
 import simsnap  # noqa: E402
-from engine.kernel import snap  # noqa: E402
+from engine.kernel import interfaces, snap  # noqa: E402
+from engine.ports.command import Command  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 
 TASK = 'heal_a'                 # one of guard 7's fixed missions (simrecord.TASKS), half of its run and the end
@@ -160,3 +166,111 @@ def test_what_it_cannot_keep_is_an_error(heal):
     taken['bodies'].append(['#late', 10 ** 6, '#late', 'X', {}])
     with pytest.raises(NotImplementedError, match='11b-3c'):
         simsnap.restore(sim.Sim(m, t, model=False), taken)
+
+
+# ---- on the island: what a script, an order or a module sets in the run
+SEQ = parts.Mission(name='seq', map=simsmall.island, scripts=[
+    parts.Script('seqtask', [], [('INCREMENT_COUNTER', 1, 'score')], once=False)])
+
+
+def _seq_world():
+    s = sim.Sim(SEQ, model=False)
+    s.add('unit', 'AlliedAntiInfantryInfantry', 'Player_1', 300, 300)
+    return s
+
+
+def _go_on(a, b, frames):
+    """Both runs `frames` frames on; their counters, logs, clocks, each thing's state."""
+    for s in (a, b):
+        s.advance(frames)
+    oa, ob = Observe(a), Observe(b)
+    assert [x.name for x, y in zip(oa.things(), ob.things()) if oa.state(x) != ob.state(y)] == []
+    assert (a.t, a.world.frame, dict(a.counters), a.log) == (b.t, b.world.frame, dict(b.counters), b.log)
+
+
+def _fork(a, b):
+    taken = simsnap.snapshot(a)
+    assert json.loads(json.dumps(taken)) == taken
+    simsnap.restore(b, json.loads(json.dumps(taken)))
+    assert simsnap.snapshot(b) == taken
+
+
+def test_a_sequential_script_run_is_not_run_again():
+    """1119e #1: the queued script turned subroutine; written back it stays one (not run every frame)."""
+    a = _seq_world()
+    a.act('UNIT_EXECUTE_SEQUENTIAL_SCRIPT', ['unit', 'seqtask'], None)
+    a.advance(15)
+    assert (a.seq, a.counters.get('score'), a.executor.script_named('seqtask').subroutine) == ([], 1, True)
+    b = _seq_world()
+    _fork(a, b)
+    assert b.executor.script_named('seqtask').subroutine
+    _go_on(a, b, 40)
+    assert b.counters.get('score') == 1
+
+
+def test_a_sequential_script_waiting_is_kept_by_its_key():
+    """1119e #3: Sim.seq holds the map's script: kept by the executor's key, the new executor's script again."""
+    a = _seq_world()
+    a.act('UNIT_EXECUTE_SEQUENTIAL_SCRIPT', ['unit', 'seqtask'], None)
+    assert len(a.seq) == 1
+    b = _seq_world()
+    _fork(a, b)
+    assert b.seq[0]['script'] is b.executor.script_named('seqtask') and b.seq[0]['b'] is b.bodies['unit']
+    _go_on(a, b, 30)
+    assert (a.seq, b.counters.get('score')) == ([], 1)
+
+
+def _island():
+    s = simsmall.small_world([('unit', 'AlliedAntiInfantryInfantry', 'Player_1', 300, 300)], model=False)
+    s.waypoints['dest'] = (400, 300)
+    return s
+
+
+def test_an_order_given_is_kept():
+    """1119e #2: the command port's history holds the Command; a run that gave one is taken, and goes on the same."""
+    a = _island()
+    a.advance(15)
+    assert a.commands.post(Command('move', units=('unit',), place='dest'), a.t + 1)[0]
+    b = _island()
+    _fork(a, b)
+    assert b.commands.pending() == a.commands.pending() != ()
+    _go_on(a, b, 60)
+    assert [x[3] for x in b.commands.issued()] == [x[3] for x in a.commands.issued()] == ['posted', 'done']
+
+
+def test_waypoints_are_each_runs_own():
+    """1119e #4: two runs of one mission do not share its waypoints; writing one back leaves the source as it is."""
+    a = _seq_world()
+    a.waypoints['spot'] = (1, 2)
+    taken = json.loads(json.dumps(simsnap.snapshot(a)))
+    a.waypoints['spot'] = (3, 4)
+    b = _seq_world()
+    assert b.waypoints is not a.waypoints and 'spot' not in b.waypoints
+    simsnap.restore(b, taken)
+    b.waypoints['spot'] = (5, 6)
+    assert (a.waypoints['spot'], sim.Sim(SEQ, model=False).waypoints.get('spot')) == ((3, 4), None)
+
+
+def test_another_worlds_thing_of_the_same_serial_is_an_error():
+    """1119e #8: a thing of another run with a serial this run gave too is not taken as this run's."""
+    a, b = _island(), _island()
+    assert a.bodies['unit'].serial == b.bodies['unit'].serial
+    a.refs['r'] = b.bodies['unit']
+    with pytest.raises(ValueError, match='not bodies of the run'):
+        simsnap.snapshot(a)
+
+
+def test_a_modules_field_set_in_the_run_is_unclassified():
+    """1119e #9: a field set on a module of a thing outside its STATE is named (the source guard reads only
+    `self.x = ...`)."""
+    a = _island()
+    assert simsnap.unclassified(a) == []
+    m = a.bodies['unit'].find(interfaces.Body)
+    m.review_timer = 7
+    assert simsnap.unclassified(a) == [f'{type(m).__name__}.review_timer']
+
+
+def test_a_cut_with_no_frame_after_it_is_refused():
+    """1119g #3: cut at the end (Sim.run stops past it), the written-back run would run no frame: refused."""
+    with pytest.raises(ValueError, match='no frame left'):
+        simrecord.run_task(TASK, io.StringIO(), snap='1')

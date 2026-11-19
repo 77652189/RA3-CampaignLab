@@ -1017,7 +1017,7 @@ class Sim:
         # popup, not simulated) turns one on or off (d115_script_semantics.md 4). The name as written: bench 11-13
         # engine_conds sight 热点&8, the lower-case name never on
         self.hotspots = {str(k): False for k in getattr(self.mm, 'hotspots', {}) or {}}
-        self.waypoints = self.mm.waypoints
+        self.waypoints = dict(self.mm.waypoints)    # the run's own: a waypoint moved in it is not the mission's
         self.reblock()
         # the script executor port (engine/ports/scripts.py): the model's plug-in where it is, else the public one
         simexec.attach(self, engine_model() if model else None, executor, skirmish_setup, parts)
