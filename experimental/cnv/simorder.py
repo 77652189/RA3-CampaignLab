@@ -572,7 +572,7 @@ def fight(world, peers):
         if a.serial in peers.team_targets and not (isinstance(a.goal, type(a)) and a.goal.alive):
             them = peers.members(peers.team_targets[a.serial])
             if them:
-                order_attack(world, peers, a, min(them, key=lambda t: math.hypot(t.x - a.x, t.y - a.y)).name)
+                order_attack(world, peers, a, min(them, key=lambda t: math.hypot(t.x - a.x, t.y - a.y)))   # itself
             else:
                 del peers.team_targets[a.serial]
     for a in armed:

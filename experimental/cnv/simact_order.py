@@ -126,8 +126,9 @@ def named_face_waypoint(sim, name, a, script):
         sim.change()
 
 
-def unit_teleport_to_waypoint(sim, name, a, script):
-    b, p = sim.body(a[0]), sim.point(a[1])
+def unit_teleport_to_waypoint(sim, name, a, script, unit=None):
+    # `unit`: the member a team action picked (the object itself, not a reference of its name: 11-19 sweep)
+    b, p = unit if unit is not None else sim.body(a[0]), sim.point(a[1])
     if b and p:
         # the unit's orders go too: bench aiaeson (work/re d150) member 3166 attacking (AI state 10, not
         # ready) is idle and ready (16:1) the frame after the teleport, its team still in state 6
@@ -140,7 +141,8 @@ def unit_teleport_to_waypoint(sim, name, a, script):
 def team_teleport_to_waypoint(sim, name, a, script):
     # (team, waypoint) INFERRED: the unit version on every member
     for b in sim.members(a[0]):
-        sim.act('UNIT_TELEPORT_TO_WAYPOINT', [b.name, a[1]], script)
+        sim.ra3_only.add('UNIT_TELEPORT_TO_WAYPOINT')       # as Sim.act noted the unit action it runs
+        unit_teleport_to_waypoint(sim, 'UNIT_TELEPORT_TO_WAYPOINT', [b.name, a[1]], script, unit=b)
 
 
 def unit_allow_ai_autoacquire(sim, name, a, script):
@@ -170,9 +172,10 @@ def team_attack_team(sim, name, a, script):
     crew = sim.members(a[0]) if name == 'TEAM_ATTACK_TEAM' else [b for b in [sim.body(a[0])] if b and b.alive]
     them = sim.members(a[1])
     for b in crew:
-        if them:
+        if them:                # the nearest member by serial (its name for the record): no reference stands in
+            t = min(them, key=lambda t: math.hypot(t.x - b.x, t.y - b.y))
             _order_bodies(sim, 'attack', [b], ('team', a[1]),     # the fight takes the next member when this dies
-                   target=min(them, key=lambda t: math.hypot(t.x - b.x, t.y - b.y)).name)
+                   ('target_serial', t.serial), target=t.name)
 
 
 def unit_idle_for_framecount(sim, name, a, script):
@@ -229,7 +232,7 @@ def team_set_stance(sim, name, a, script):
     # (team, stance) d115 23: each member now (a member's, not the team's: one joining later keeps its own),
     # as UNIT_SET_STANCE; bench 11-13 engine_acts flow (stance)
     for b in sim.members(a[0]):
-        sim.act('UNIT_SET_STANCE', [b.name, a[1]], script)
+        unit_set_stance(sim, 'UNIT_SET_STANCE', [b.name, a[1]], script, unit=b)
 
 
 def team_allow_ai_autoacquire(sim, name, a, script):
@@ -267,13 +270,16 @@ def player_set_all_units_to_flee(sim, name, a, script):
     _order_bodies(sim, 'flee', [b for b in sim.living() if b.owner == a[0]])
 
 
-def unit_set_stance(sim, name, a, script):
+def unit_set_stance(sim, name, a, script, unit=None):
     # (name, stance): GUARD 0, AGGRESSIVE 1, HOLD_POSITION 2, HOLD_FIRE 3
     # Bench 11-06 engine_stance (docs/engine/stance.md): going HOLD_FIRE stops a standing attack order without
     # dropping it (a: no hit after the stance frame; f: back to GUARD, the same order fires again); an order
     # given while held fires (b); held, nothing by itself (d) and no hitting back (e)
-    b = sim.body(a[0])
-    if b and b.alive:
+    # `unit`: the member a team action picked, ordered by serial (11-19 sweep)
+    b = unit if unit is not None else sim.body(a[0])
+    if b and b.alive and unit is not None:
+        _order_bodies(sim, 'stance', [b], ('stance', int(a[1])))
+    elif b and b.alive:
         _order(sim, 'stance', [a[0]], ('stance', int(a[1])))
 
 

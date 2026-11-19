@@ -598,3 +598,48 @@ def test_the_ais_refused_orders():
     assert s.commands.do(gone) == (False, 'no unit to unpack')
     a.goal = s.bodies['foe']
     assert s.commands.do(_ai('attack', a, args=(('goal_only', True),))) == (True, '') and a.goal is None
+
+
+def test_team_teleport_status_and_stance_reach_the_members_not_a_reference_of_their_name():
+    """TEAM_TELEPORT_TO_WAYPOINT / TEAM_CHANGE_OBJECT_STATUS / TEAM_SET_STANCE run the unit action on the member they
+    picked (11-19 same-name sweep S2: by name, the reference `lead` took lead's teleport, status bit and stance)."""
+    s = _team_world()
+    _act(s, 'TEAM_TELEPORT_TO_WAYPOINT', 'T', '@400,300')
+    _act(s, 'TEAM_CHANGE_OBJECT_STATUS', 'T', 'UNATTACKABLE', 1)
+    _act(s, 'TEAM_SET_STANCE', 'T', '3')
+    lead, out = s.bodies['lead'], s.bodies['outsider']
+    assert (lead.x, lead.y) == (400.0, 300.0) and (out.x, out.y) == (900.0, 0.0)
+    assert 'UNATTACKABLE' in lead.script_status and 'UNATTACKABLE' not in out.script_status
+    assert lead.hold_fire and not out.hold_fire
+    assert s.commands.issued()[-1][1].units == (s.bodies['next'].serial,)
+    assert {'UNIT_TELEPORT_TO_WAYPOINT', 'UNIT_CHANGE_OBJECT_STATUS'} <= s.ra3_only
+
+
+def test_team_attack_team_and_its_follow_up_take_the_member_not_a_reference_of_its_name():
+    """TEAM_ATTACK_TEAM gives the nearest member by serial, and the fight's next pick when it dies is the member
+    itself (11-19 same-name sweep S2: by name, references `lead` / `next` pointing at a decoy took both)."""
+    s = simsmall.small_world([('atk', APOC, 'Player_2', 0.0, 600.0), ('lead', APOC, 'Player_1', 0.0, 0.0),
+                              ('next', APOC, 'Player_1', 60.0, 0.0), ('decoy', APOC, 'Player_1', 900.0, 0.0)],
+                             model=False)
+    s.relations[('Player_1', 'Player_2')] = s.relations[('Player_2', 'Player_1')] = 'Enemy'
+    s.bodies['atk'].team = 'A'
+    for n in ('lead', 'next'):
+        s.bodies[n].team = 'T'
+    s.active |= {'A', 'T'}
+    s.refs['lead'] = s.refs['next'] = s.bodies['decoy']
+    _act(s, 'TEAM_ATTACK_TEAM', 'A', 'T')
+    atk = s.bodies['atk']
+    assert atk.goal is s.bodies['lead'] and s.commands.issued()[-1][1].arg('target_serial') == s.bodies['lead'].serial
+    s.destroy(s.bodies['lead'], '测试')
+    _run_frames(s)
+    assert atk.goal is s.bodies['next']
+
+
+def test_a_player_power_is_cast_by_the_object_it_picked_not_a_reference_of_its_name():
+    """PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT casts from the object it found (11-19 same-name sweep S2: by name, the
+    reference `lead` pointing at another player's unit cast in its place)."""
+    s = simsmall.small_world([('lead', 'JapanAntiInfantryVehicle', 'Player_1', 0.0, 0.0),
+                              ('other', APOC, 'Player_2', 900.0, 0.0)], model=False)
+    s.refs['lead'] = s.bodies['other']
+    _act(s, 'PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'Player_1', 'SpecialPower_JAIV_Transform', '@400,300')
+    assert [c[1] for c in s.casts] == ['Player_1']

@@ -226,7 +226,7 @@ def player_fire_special_power_at_waypoint(sim, name, a, script):
     src = next((b for b in sim.living() if b.owner == a[0]
                 and simunits.power_rules(b.template, power, sim.own)), None)
     if src:
-        sim.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [src.name, power, a[2]], script)
+        _member(sim, 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [src.name, power, a[2]], script, src)   # itself
     else:
         sim.gap(GAP_ACTION, refined(name, a), f'{a[0]} 没有带 {a[1]} 的物体（协议类不模拟）')
 

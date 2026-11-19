@@ -23,7 +23,8 @@ def team_delete(sim, name, a, script):
 def team_change_object_status(sim, name, a, script):
     # (team, status, on) INFERRED: the unit version on every member
     for b in sim.members(a[0]):
-        sim.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, *a[1:]], script)
+        sim.ra3_only.add('UNIT_CHANGE_OBJECT_STATUS')       # as Sim.act noted the unit action it runs
+        unit_change_object_status(sim, 'UNIT_CHANGE_OBJECT_STATUS', [b.name, *a[1:]], script, unit=b)
 
 
 def techtree_modify_buildability_object(sim, name, a, script):
@@ -183,8 +184,9 @@ def unit_set_modelcondition_generic(sim, name, a, script):
             sim.set_model_condition(b, condition, float(a[2]))
 
 
-def unit_change_object_status(sim, name, a, script):
-    b = sim.body(a[0])
+def unit_change_object_status(sim, name, a, script, unit=None):
+    # `unit`: the member a team action picked (the object itself, not a reference of its name: 11-19 sweep)
+    b = unit if unit is not None else sim.body(a[0])
     st = a[1][2] if isinstance(a[1], tuple) else a[1]
     if b:
         (b.script_status.add if a[2] else b.script_status.discard)(st)
