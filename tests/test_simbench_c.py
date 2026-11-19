@@ -107,7 +107,7 @@ def test_levelup_heroic_rate_changes_three_intershot_spans_without_scaling_each_
         assert gun.dealt == 1.25
         assert gun.level_rate == 1.2
     # Range refreshes copy the heroic weapon; copies must share its one clock.
-    assert all(sum(key[0] == id(b) for key in e.clocks) == 1 for b in guns)
+    assert all(sum(key[0] == b.serial for key in e.clocks) == 1 for b in guns)
     gap = e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
     assert 'RATE_OF_FIRE' not in gap and 'VISION' in gap
 

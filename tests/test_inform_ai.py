@@ -78,7 +78,7 @@ def test_inform_expiry_replays_observed_launch_deadlines(check_name, monkeypatch
         target = e.body('Expiry ' + lane)
         weapon, = gun.weapons
         e.inform_launch(target, gun, weapon)
-        assert e.incoming[id(target)] == [(id(gun), weapon['weapon_key'], *observed[source][:3])]
+        assert e.incoming[target.serial] == [(gun.serial, weapon['weapon_key'], *observed[source][:3])]
         assert target.hp == 500
 
 
@@ -105,14 +105,14 @@ def test_inform_expiry_replays_observed_autonomous_table_cleanup(check_name, lan
     damage, hit, expiry, removal = observed[source]
     e.eng.frame = 302
     e.t = 302 / 15
-    e.incoming_add(target, id(gun), 'observed', damage, hit, expiry)
+    e.incoming_add(target, gun.serial, 'observed', damage, hit, expiry)
     while e.eng.frame < removal - 1:
         e.step()
         e.t = e.eng.frame / 15
-    assert e.incoming[id(target)]
+    assert e.incoming[target.serial]
     e.step()
     assert e.eng.frame == removal
-    assert not e.incoming[id(target)]
+    assert not e.incoming[target.serial]
 
 
 @pytest.mark.parametrize('check_name', ['a', 'off'])
@@ -361,7 +361,7 @@ def test_inform_max_launch_matches_engine_inform_max_observed_deadline(run_name,
         weapon, = gun.weapons
         assert weapon['inform'] == [dict(min=.85, max=1.6 if lane == 'base' else 1.15)]
         e.inform_launch(target, gun, weapon)
-        assert e.incoming[id(target)] == [(id(gun), weapon['weapon_key'], damage, hit, expiry)]
+        assert e.incoming[target.serial] == [(gun.serial, weapon['weapon_key'], damage, hit, expiry)]
         assert target.hp == 500
         if lane == 'order':
             clock[0] = 304
@@ -371,8 +371,8 @@ def test_inform_max_launch_matches_engine_inform_max_observed_deadline(run_name,
             clock[0] = 347
             assert e.expected_damage(target, 0, 2) == damage
             clock[0] = 389
-        e.incoming_hit(target, id(gun), weapon['weapon_key'])
-        assert not e.incoming[id(target)]
+        e.incoming_hit(target, gun.serial, weapon['weapon_key'])
+        assert not e.incoming[target.serial]
         clock[0] = 302
 
 
@@ -392,10 +392,10 @@ def test_inform_launch_formula_and_matching_hit_lifecycle(monkeypatch):
     assert weapon['inform'] == [dict(min=0.85, max=1.15)]
     assert weapon['weapon_speed'] == 75
     e.inform_launch(target, gun, weapon)
-    assert e.incoming[id(target)] == [(id(gun), weapon['weapon_key'], 150, 377, 404)]
+    assert e.incoming[target.serial] == [(gun.serial, weapon['weapon_key'], 150, 377, 404)]
     # No tracking module, no table entry; no damage or HP mutation on notification.
     e.inform_launch(gun, gun, weapon)
-    assert id(gun) not in e.incoming and target.hp == 500
+    assert gun.serial not in e.incoming and target.hp == 500
     e.incoming_add(target, 999, 'other', 10, 377, 450)
     clock[0] = 347
     assert e.expected_damage(target, 0, 2) == 160
@@ -417,12 +417,12 @@ def test_inform_launch_formula_and_matching_hit_lifecycle(monkeypatch):
     target.y = gun.y + 103.75
     custom = dict(weapon, inform=[dict(min=0.5, max=1.6)], weapon_key='custom', dmg=100)
     e.inform_launch(target, gun, custom)
-    assert e.incoming[id(target)] == [(id(gun), 'custom', 100, 312, 336)]
+    assert e.incoming[target.serial] == [(gun.serial, 'custom', 100, 312, 336)]
     assert e.expected_damage(target, 0, 10/15) / target.max_hp == 0.2
-    e.incoming_hit(target, id(gun), 'custom')
+    e.incoming_hit(target, gun.serial, 'custom')
     instant = dict(custom, weapon_speed=0)
     e.inform_launch(target, gun, instant)
-    assert e.incoming[id(target)] == [(id(gun), 'custom', 100, 302, 302)]
+    assert e.incoming[target.serial] == [(gun.serial, 'custom', 100, 302, 302)]
 
 
 @pytest.mark.parametrize('check_name', ['a', 'off'])
@@ -452,12 +452,12 @@ def test_inform_normal_fire_records_launch_and_deletes_on_arrival(check_name, mo
     clock[0] += 1
     e.t += 1/15
     e.deal(1/15)
-    notified = {b.name for b in e.bodies.values() if e.incoming.get(id(b))}
+    notified = {b.name for b in e.bodies.values() if e.incoming.get(b.serial)}
     assert notified == {'Dispatch high', 'Dispatch removed'} | ({'Dispatch base'} if check_name == 'a' else set())
     for target, weapon, gun in e.volleys:
-        rows = e.incoming.get(id(target), [])
+        rows = e.incoming.get(target.serial, [])
         if rows:
-            assert rows == [(id(gun), weapon['weapon_key'], weapon['dmg'], clock[0] + 75, clock[0] + 102)]
+            assert rows == [(gun.serial, weapon['weapon_key'], weapon['dmg'], clock[0] + 75, clock[0] + 102)]
     assert len(e.projectile_hits) == 3
     arrival = max(hit[0] for hit in e.projectile_hits)
     e.volleys = []

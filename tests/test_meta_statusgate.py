@@ -78,7 +78,7 @@ def test_meta_statusgate_replays_native_dispatch_and_path(check, lane, frame, de
     e.deal(1/15)
     moves = check == 'b' or not bit
     assert called == ({'man', 'near'} if moves else {'man'})
-    assert (id(near) in e.impact_flights) == moves
+    assert (near.serial in e.impact_flights) == moves
     assert int(100 * victim.hp / 150) == 99
     assert near.hp == 150
     x = 820 if lane == 'yuri' else 2320
@@ -89,4 +89,4 @@ def test_meta_statusgate_replays_native_dispatch_and_path(check, lane, frame, de
         e.meta_impact_tick()
         assert (near.x, near.y, e.impact_ground_z(near.x, near.y) if near.z is None else near.z
                 ) == pytest.approx(xyz, abs=.051)
-    assert id(near) not in e.impact_flights
+    assert near.serial not in e.impact_flights

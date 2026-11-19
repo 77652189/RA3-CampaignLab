@@ -87,7 +87,7 @@ def test_meta_filter_replays_native_ground_dispatch(check, lane, frame, centre, 
     e.meta_impact_detonate(weapon, centre, gun)
     ground = ('man', 'normal', 'drone', 'tesla', 'near', 'teslaic', 'infantry')
     assert {part for part in ground if name(lane, part) in called} == set(velocities)
-    assert {part for part in ground if id(e.bodies[name(lane, part)]) in e.impact_flights} == set(velocities)
+    assert {part for part in ground if e.bodies[name(lane, part)].serial in e.impact_flights} == set(velocities)
     for part, velocity in velocities.items():
         assert called[name(lane, part)] == pytest.approx(velocity, abs=.00006)
     for tick in range(frame + 1, 211):

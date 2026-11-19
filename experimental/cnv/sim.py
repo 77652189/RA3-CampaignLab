@@ -896,7 +896,7 @@ class Sim:
         self.money, self.income = self.wallet.money, self.wallet.income
         self.sharing, self.money_cap = self.wallet.sharing, self.wallet.money_cap
         self.selected = None                # the object SELECT_OBJECT selected last (NAMED_SELECTED)
-        self.script_disabled = {}           # id(body) -> NAMED_SET_DISABLED types on (emp_disabled)
+        self.script_disabled = {}           # body.serial -> NAMED_SET_DISABLED types on (emp_disabled)
         self.kills = []                     # (killer's player, killer's name, template, name) by weapon (cond_retail)
         self.attacked_by = set()            # (player hit, player hitting): SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER
         self.cond_memory = {}               # a condition's reading the frame before (NAMED_EXITED_AREA)
@@ -905,7 +905,7 @@ class Sim:
         self.mining = simmine.Mining()      # ore nodes and the harvesters' trips (L2)
         self.relations = dict(getattr(mission, 'relations', {}))   # (a, b) -> Enemy / Neutral / Friend
         self.team_team_rel, self.team_player_rel, self.player_team_rel = {}, {}, {}   # the overrides (hostile)
-        self.team_targets = {}                  # id(body) -> the team it was told to attack (TEAM_ATTACK_TEAM)
+        self.team_targets = {}                  # body.serial -> the team it was told to attack (TEAM_ATTACK_TEAM)
         self.players = dict(mission.map.PLAYERS)
         self.human = self.players['p1']
         self.foe = self.players.get('s1')
@@ -996,13 +996,13 @@ class Sim:
         self.high = not any(e[1] == '高地不挡' for e in self.script)
         # what nobody shoots unless ordered: our ice walls (units with a lifetime; bench 2026-10-28, a4 hold)
         self.unshot = {u.id for u in self.mm.units if 'lifetime' in (getattr(u, 'params', None) or {})}
-        self.seen = {}                      # this tick: (side, id(body)) -> whether that side sees it
+        self.seen = {}                      # this tick: (side, body.serial) -> whether that side sees it
         self.firing = []                    # this tick's aimed fire: (target, damage per second, shooter) (fight, deal)
         self.mid_aims = {}                  # id -> (second, body): an attack-mover that got in range mid-tick (move)
-        self.pre_locks = {}                 # (id(shooter), weapon key) -> (target, second): a PER_TARGET weapon's
+        self.pre_locks = {}                 # (shooter.serial, weapon key) -> (target, second): a PER_TARGET weapon's
                                             # last target and when its first shot at it is due (first_shot); not
                                             # `locks`: simshow.ShowSim keeps its input locks under that name
-        self.fire_gate = {}                 # (id(shooter), id(target)) -> no fire dealt before this second (deal)
+        self.fire_gate = {}                 # (shooter.serial, target.serial) -> no fire dealt before this second (deal)
         self._field = ((), (), ())          # this tick's fight_field (fight)
         self.first_death = None             # (t, body, killer): the fight's first death
         self.death_blasts = []              # (frame, x, y, damage, type, radius, affects, owner, by): FireWeaponWhenDead
@@ -2041,16 +2041,16 @@ class Sim:
         val = False
         for b in crew:
             ins = inside(self.areas[a[1]], b.x, b.y)
-            was = st['was'].get(id(b))
+            was = st['was'].get(b.serial)
             if was is None:
                 hit = ins
                 if ins:
-                    st['start'].add(id(b))
+                    st['start'].add(b.serial)
             else:
-                hit = (ins and not was) or (was and not ins and id(b) in st['start'])
+                hit = (ins and not was) or (was and not ins and b.serial in st['start'])
                 if was and not ins:
-                    st['start'].discard(id(b))
-            st['was'][id(b)] = ins
+                    st['start'].discard(b.serial)
+            st['was'][b.serial] = ins
             val = val or hit
         st['frame'], st['val'] = now, val
         return val
@@ -2098,7 +2098,7 @@ class Sim:
 
     def side_sees(self, side, t):
         """Whether a side (it or a friend of it) sees body t, this tick; the player's reveals count for the player."""
-        key = (side, id(t))
+        key = (side, t.serial)
         if key not in self.seen:
             air = t.surface == 'air'
             if t.fired_at is not None and self.t - t.fired_at <= FIRE_SEEN:
@@ -2450,13 +2450,13 @@ class Sim:
         # engine_knock_probe fire: first hit ~300-316, the landing 300; bench 11-11 engine_knock_water farfire: ~20 up
         # and in 2-D reach for frames ~182..196, no fire in the air)
         armed = [b for b in live if b.weapons and 'NO_ATTACK' not in b.status    # NO_ATTACK: holds its fire
-                 and id(b) not in flying
+                 and b.serial not in flying
                  and not getattr(b, 'ground_fire', None)     # NAMED_FORCE_ATTACK_WAYPOINT: busy at the ground
                  and not self.emp_disabled(b) and not self.unpowered(b)
                  and not self.infiltrators.attack_blocked(b)
                  and not (b.hold_fire and (b.hold_paused or not isinstance(b.goal, Body)))]
         cloaked = self.cloaked(live)
-        targets = [b for b in live if 'UNATTACKABLE' not in b.status and id(b) not in cloaked]
+        targets = [b for b in live if 'UNATTACKABLE' not in b.status and b.serial not in cloaked]
         return live, armed, targets
 
     def aim(self, a, targets, aimable, tx, ty):
@@ -2473,7 +2473,7 @@ class Sim:
         for w in a.weapons:
             order = np.argsort(d, kind='stable')    # ties (two foes made on one point) by list order: the
             pick = None                              # default quicksort broke them by the array's length (a4 r121)
-            if isinstance(a.goal, Body) and a.goal.alive and id(a.goal) in aimable and \
+            if isinstance(a.goal, Body) and a.goal.alive and a.goal.serial in aimable and \
                     self.in_range(a, a.goal, w) and self.can_hit(w, a.goal) and \
                     self.side_sees(a.owner, a.goal) and not self.shot_blocked(a, a.goal, w):
                 pick = a.goal
@@ -2529,12 +2529,12 @@ class Sim:
         wt = simunits.weapon_table(self.own).get(w.get('weapon_key'), {})
         if wt.get('pretype') != 'PER_TARGET' or not wt.get('pre'):
             return
-        key = (id(a), w.get('weapon_key'))
+        key = (a.serial, w.get('weapon_key'))
         held = self.pre_locks.get(key)
         if held is None or held[0] is not pick:
             ready = self.t + simunits._frames(wt['pre']) / simunits.FPS
             self.pre_locks[key] = (pick, ready)
-            self.fire_gate[(id(a), id(pick))] = ready
+            self.fire_gate[(a.serial, pick.serial)] = ready
 
     def range_targets(self, b):
         """For move: the foes an attack-mover on its way would stop for, [(foe, the centre distance it fires
@@ -2597,7 +2597,7 @@ class Sim:
             targets = [t for t in self._field[2] if t.alive]
             if not targets:
                 continue
-            self.aim(b, targets, {id(t) for t in targets},
+            self.aim(b, targets, {t.serial for t in targets},
                      np.array([t.x for t in targets]), np.array([t.y for t in targets]))
             if self.firing or self.volleys:
                 self.used.add('combat')
@@ -2624,7 +2624,7 @@ class Sim:
                         or r['exclude'] & t.status or self.relation(e.owner, t.owner) not in r['relation']:
                     continue
                 if math.hypot(t.x - e.x, t.y - e.y) <= r['range']:
-                    out.add(id(t))
+                    out.add(t.serial)
         if out:
             self.used.add('stealth')
         return out
@@ -2635,7 +2635,7 @@ class Sim:
 
     @property
     def incoming(self):
-        """{id(target): [(source, weapon key, damage, hit frame, expiry frame)]}: simdamage.Damage's notifications."""
+        """{target.serial: [(source, weapon key, damage, hit frame, expiry frame)]}: simdamage.Damage's notifications."""
         return self._harm().incoming
 
     @property
@@ -2798,8 +2798,8 @@ class Sim:
         eps = 1e-6
         clocks = self.__dict__.setdefault('clocks', {})
         # Attribute refresh may copy a weapon to scale its range. Keep that
-        # weapon's clip running across copies; distinct retail guns stay apart.
-        key = (id(b), w.get('weapon_key') or id(w))
+        # weapon's clip running across copies; distinct retail guns stay apart (a keyless one, made by hand: its slot).
+        key = (b.serial, w.get('weapon_key') or next((k for k, x in enumerate(b.weapons) if x is w), -1))
         c = clocks.get(key)
         cycle = w['cycle']
         if b.level_rate != 1.0:
@@ -2889,8 +2889,8 @@ class Sim:
         Recheck at each damage frame too: fight's cached aim may predate the hit.
         Already launched projectiles and DOTs keep their own delivery events.
         """
-        return (self.frame_now() < self.__dict__.get('emp_until', {}).get(id(b), 0)
-                or id(b) in self.__dict__.get('script_disabled', {}))
+        return (self.frame_now() < self.__dict__.get('emp_until', {}).get(b.serial, 0)
+                or b.serial in self.__dict__.get('script_disabled', {}))
 
     def order_unpack(self, b, p, button=None, where=None, stand=None, here=False, send=True):
         """simorder.order_unpack (L5)."""
@@ -2927,7 +2927,7 @@ class Sim:
                 n.set_hp(n.max_hp * share, tell=False)
                 hold = self.__dict__.get('pack_hold', {}).pop(by, 0)
                 if hold:                    # DISABLE_NEW_OBJECT_DURING_UNPACK: stands still (engine_pack), as EMP'd
-                    self.__dict__.setdefault('emp_until', {})[id(n)] = self.frame_now() + hold
+                    self.__dict__.setdefault('emp_until', {})[n.serial] = self.frame_now() + hold
             else:
                 n = self.add(f'#built {len(self.bodies)} by {by}', structure, owner, x, y, by=by, at=self.t)
             n.team = team
@@ -2944,7 +2944,7 @@ class Sim:
             self.first_death = (self.t, t, by)
 
     def emp_book(self):
-        """{id(body): frame}: who stands still (EMP'd, casting, leaping) till when, made on first use."""
+        """{body.serial: frame}: who stands still (EMP'd, casting, leaping) till when, made on first use."""
         return self.__dict__.setdefault('emp_until', {})
 
     def _specials(self):
@@ -3020,9 +3020,9 @@ class Sim:
         for b in list(self.frame_movers.values()) if precise else self.living():
             if not b.alive or b.frame_move != precise:
                 continue
-            if id(b) in self.__dict__.get('impact_flights', {}):
+            if b.serial in self.__dict__.get('impact_flights', {}):
                 continue
-            hold = self.__dict__.get('knock_hold', {}).get(id(b))
+            hold = self.__dict__.get('knock_hold', {}).get(b.serial)
             if hold is not None and self.frame_now() < hold + (simunits.KNOCK_ATTACK_WAIT
                                                                if isinstance(b.goal, Body) else 0):
                 continue
@@ -3032,7 +3032,7 @@ class Sim:
                 g = b.goal
                 if not g.alive:
                     b.goal, b.path = None, []
-                elif b.spot and b.spot[0] == id(g) and math.hypot(g.x - b.spot[1], g.y - b.spot[2]) <= 150:
+                elif b.spot and b.spot[0] == g.serial and math.hypot(g.x - b.spot[1], g.y - b.spot[2]) <= 150:
                     pass                            # at / on the way to its fire_spot while the goal stays near it
                 elif not b.path or math.hypot(b.path[-1][0] - g.x, b.path[-1][1] - g.y) > 150:
                     if int(self.t / DT) % 8 == 0:                    # re-aimed every 4 s
@@ -3091,7 +3091,7 @@ class Sim:
                         b.x += (tx - b.x) * s / d
                         b.y += (ty - b.y) * s / d
                         left -= s
-                        self.mid_aims[id(b)] = (self.t + max(spent + (walked - left) / b.speed - extra, 0.0), b)
+                        self.mid_aims[b.serial] = (self.t + max(spent + (walked - left) / b.speed - extra, 0.0), b)
                         break
                 if d <= left:
                     b.x, b.y, left = tx, ty, left - d
@@ -3102,11 +3102,11 @@ class Sim:
                     left = 0
             if not b.path and not precise and b.speed > 0:      # where in the tick its way ended (Sim.on_the_move)
                 b.stops_at = math.floor(self.t / DT + 1e-6) * DT + max(spent + (walked - left) / b.speed - extra, 0.0)
-            if not b.path and not precise and self.combat and id(b) not in self.mid_aims \
+            if not b.path and not precise and self.combat and b.serial not in self.mid_aims \
                     and any(a is b for a in self._field[1]):
                 # its way ended mid-tick (an idle chase's walk to reach, an order's end): it aims from that frame,
                 # not the next tick's fight (bench engine_acquire idle220, A round 231)
-                self.mid_aims[id(b)] = (self.t + max(spent + (walked - left) / b.speed - extra, 0.0), b)
+                self.mid_aims[b.serial] = (self.t + max(spent + (walked - left) / b.speed - extra, 0.0), b)
             b.rolling = True       # it drove this tick: a next leg given at once (follow_due) is driven on, no stop
                                     # (bench engine_waypath line / exact: no time lost at the 90 deg corners)
             if (b.x, b.y) != (x0, y0):
@@ -3164,8 +3164,8 @@ class Sim:
             ours = sum(w['dps'] for b in mine for w in b.weapons
                        if any(math.hypot(b.x - e.x, b.y - e.y) <= NEAR for e in near))
             ever = [b for b in self.bodies.values() if b.owner == self.human and b.speed > 0]
-            alive = {id(b) for b in mine}
-            left = sum(b.hp for b in ever if id(b) in alive) /(sum(b.max_hp for b in ever) or 1.0)
+            alive = {b.serial for b in mine}
+            left = sum(b.hp for b in ever if b.serial in alive) /(sum(b.max_hp for b in ever) or 1.0)
             self.threat.append((self.t, len(near), foe, ours, left))
             if near and self.first_threat is None:
                 b = min(near, key=lambda b: b.made_at)

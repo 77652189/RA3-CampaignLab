@@ -155,7 +155,7 @@ def team_attack_team(sim, name, a, script):
     for b in crew:
         if them:
             sim.order_attack(b, min(them, key=lambda t: math.hypot(t.x - b.x, t.y - b.y)).name)
-            sim.team_targets[id(b)] = a[1]     # the fight takes the next member when this one dies
+            sim.team_targets[b.serial] = a[1]     # the fight takes the next member when this one dies
 
 
 def unit_idle_for_framecount(sim, name, a, script):

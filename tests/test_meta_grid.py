@@ -103,8 +103,8 @@ def _replay(check, lane, monkeypatch, verify_noninf=False):
         if lane == 'yuri' or verify_noninf:
             other_xyz = (x+20,3750,212.5) if lane == 'yuri' else (xyz[0]+20,xyz[1],xyz[2])
             assert (other.x, other.y, z(other)) == pytest.approx(other_xyz, abs=.051)
-    assert id(near) not in e.impact_flights
+    assert near.serial not in e.impact_flights
     if lane == 'yuri' or verify_noninf:
-        assert id(other) not in e.impact_flights
+        assert other.serial not in e.impact_flights
 
 

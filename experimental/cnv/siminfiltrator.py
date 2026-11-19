@@ -227,7 +227,7 @@ class Infiltrators:
     def movement_blocked(self, body):
         """E128 movement only; no PARALYZED model-condition bit was observed."""
         world = self.world
-        return world.frame_now() < self.paralyzed_until.get(id(body), 0)
+        return world.frame_now() < self.paralyzed_until.get(body.serial, 0)
 
     def attack_blocked(self, body):
         """E139/E140/E141: existing Mirage fire, three retail tech hosts.
@@ -236,7 +236,7 @@ class Infiltrators:
         Other templates' attack consumers and retained orders remain gaps.
         """
         world = self.world
-        return world.frame_now() < self.attack_until.get(id(body), 0)
+        return world.frame_now() < self.attack_until.get(body.serial, 0)
 
     def sees(self, side, x, y, air=False):
         """Measured local yard shroud. Parent-death cleanup is INFERRED."""
@@ -517,9 +517,9 @@ class Infiltrators:
                     if body.template != 'AlliedAntiVehicleVehicleTech3':
                         world.gap('InfiltratorContain', body.template, 'PARALYZE其他匹配模板未对拍')
                         continue
-                    self.paralyzed_until[id(body)] = end
+                    self.paralyzed_until[body.serial] = end
                     if target.template in ('AlliedTechStructure', 'SovietTechStructure', 'JapanTechStructure'):
-                        self.attack_until[id(body)] = end
+                        self.attack_until[body.serial] = end
                 peers.delete(spy, '进楼渗透')
                 world.change()
                 continue

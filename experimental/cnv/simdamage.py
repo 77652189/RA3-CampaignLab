@@ -112,13 +112,13 @@ def death_blast_due(world, frame, peers):
 
 class Damage:
     def __init__(self):
-        self.incoming = {}               # id(target) -> [(source, weapon key, damage, hit, expiry)]
+        self.incoming = {}               # target.serial -> [(source, weapon key, damage, hit, expiry)]
         self.projectile_hits = []        # (frame, target, damage, attacker, weapon, centre): arrivals to come
         self.projectile_speeds = {}      # projectile template -> its straight-line muzzle speed (0: not one)
         self.impact_body = {}            # template -> (MetaImpact body height, ShockwaveResistance)
-        self.knock_drowns = set()        # id(body) of knocked vehicles that drown where they land
+        self.knock_drowns = set()        # body.serial of knocked vehicles that drown where they land
         self.dots = []                   # running DOTNugget ticks
-        self.cold_on = {}                # id(body) -> (body, last freezer): bodies with cold to melt
+        self.cold_on = {}                # body.serial -> (body, last freezer): bodies with cold to melt
         self.lift_modules = {}           # caster template -> simunits.lift_module
         self.nugget_powers = {}          # (caster template, power) -> simunits.nugget_self_power
         self.hit_reaction_of = {}        # template -> simunits.hit_reaction
@@ -128,12 +128,12 @@ class Damage:
         if '<TrackIncomingWeaponFireBehavior' not in world.xml_of(target.template):
             return
         table = self.incoming
-        table.setdefault(id(target), []).append((source, key, damage, hit, expiry))
+        table.setdefault(target.serial, []).append((source, key, damage, hit, expiry))
 
     def incoming_hit(self, target, source, key):
         """Damage notification deletes matching source + weapon entries."""
         table = self.incoming
-        rows = table.get(id(target), [])
+        rows = table.get(target.serial, [])
         rows[:] = [r for r in rows if r[:2] != (source, key)]
 
     def expected_damage(self, world, target, behind, ahead, now=None):
@@ -147,7 +147,7 @@ class Damage:
         See work/re/c_inform_expiry_report.md; query output is not measured.
         """
         now = world.frame_now() if now is None else now
-        rows = self.incoming.get(id(target), [])
+        rows = self.incoming.get(target.serial, [])
         rows[:] = [r for r in rows if now <= r[4]]
         if behind:
             world.gap(GAP_WEAPON, 'InformTargetNugget', '历史伤害入口未接；当前只提供来弹预计伤害')
@@ -178,7 +178,7 @@ class Damage:
                                            (target.x, target.y, target.z or 0)) <= effect['radius']]
             for recipient in recipients:
                 for _ in range(count):
-                    self.incoming_add(world, recipient, id(attacker), weapon.get('weapon_key'),
+                    self.incoming_add(world, recipient, attacker.serial, weapon.get('weapon_key'),
                                       weapon['dmg'] * attacker.dealt * armor,
                                       world.frame_now() + int(duration * effect['min']),
                                       world.frame_now() + int(duration * effect['max'] + 0.99))
@@ -262,7 +262,7 @@ class Damage:
                         continue
                     # INFERRED: Physics flights / landing hold represent the three
                     # forbidden knock states; their native bit timing is still a gap.
-                    if id(b) in flights or peers.knock_hold.get(id(b), -1) > world.frame_now():
+                    if b.serial in flights or peers.knock_hold.get(b.serial, -1) > world.frame_now():
                         continue
                 ground = impact_ground_z(world, b.x, b.y)
                 position = (b.x, b.y, ground if b.z is None else b.z)
@@ -277,7 +277,7 @@ class Damage:
                     # ShockwaveResistance, no shock at all (no ra3ext `shock` line); equal to it still flies
                     world.used.add('knock resistance gate')
                     continue
-                if height is None or not grounded or b.name in peers.attachments or id(b) in flights:
+                if height is None or not grounded or b.name in peers.attachments or b.serial in flights:
                     world.gap(GAP_WEAPON, 'MetaImpactNugget', '仅默认Physics的未附着地面起飞已接通；筛选/重入待核')
                     continue
                 velocity = simunits.meta_impact_velocity(effect, position, centre, height, detonation=True)
@@ -298,7 +298,7 @@ class Damage:
                 if drowns:
                     # gone the frame it lands, whatever the curve passes over (tank: the wet one 178, the direct
                     # hit 192 = 173 + its points - 1; meta_impact_tick)
-                    self.knock_drowns.add(id(b))
+                    self.knock_drowns.add(b.serial)
                     world.used.add('knock landing drowns')
                 else:
                     # the curve may cross lower ground (far: over the trench to the far bank), end lower (ramp:
@@ -310,7 +310,7 @@ class Damage:
                             any(z < terrain_rules.world(world.ground.z_smooth(x, y)) - 1e-5 for x, y, z in points)):
                         world.gap(GAP_WEAPON, 'MetaImpactNugget', '坡地轨迹和地形查询未建模')
                         continue
-                flights[id(b)] = (b, world.frame_now(), points)
+                flights[b.serial] = (b, world.frame_now(), points)
                 b.z = position[2]
                 world.used.add('meta impact')
 
@@ -352,8 +352,8 @@ class Damage:
         for when, target, damage, attacker, weapon, centre in due:
             peers.projectile_detonate(weapon, target, centre, attacker)
             if target.alive:
-                self.incoming_hit(target, id(attacker), weapon.get('weapon_key'))
-                h = hurt.setdefault(id(target), [target, 0.0, attacker])
+                self.incoming_hit(target, attacker.serial, weapon.get('weapon_key'))
+                h = hurt.setdefault(target.serial, [target, 0.0, attacker])
                 h[1] += damage
         # A cached aim is not permission to fire after a script/modifier stops
         # the shooter. Keep its order; expiry lets fight select it again.
@@ -362,14 +362,14 @@ class Damage:
         for t, rate, by in peers.firing:
             if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not peers.emp_disabled(by)
                     and not peers.infiltrators.attack_blocked(by)
-                    and world.t >= peers.fire_gate.get((id(by), id(t)), 0.0) - 1e-9):
-                h = hurt.setdefault(id(t), [t, 0.0, by])
+                    and world.t >= peers.fire_gate.get((by.serial, t.serial), 0.0) - 1e-9):
+                h = hurt.setdefault(t.serial, [t, 0.0, by])
                 h[1] += rate * dt
                 h[2] = by
         for t, w, by in peers.volleys:           # engine line C round 2: a shot lands when its clock says (shots_due)
             if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not peers.emp_disabled(by)
                     and not peers.infiltrators.attack_blocked(by)
-                    and world.t >= peers.fire_gate.get((id(by), id(t)), 0.0) - 1e-9):
+                    and world.t >= peers.fire_gate.get((by.serial, t.serial), 0.0) - 1e-9):
                 n = peers.shots_due(by, w, dt)
                 if n:
                     self.inform_launch(world, t, by, w, n)
@@ -400,13 +400,13 @@ class Damage:
                                 peers.queue_projectile_hit(world.frame_now() + frames, t, damage, by, w)
                             else:
                                 peers.projectile_detonate(w, t, attacker=by)
-                                self.incoming_hit(t, id(by), w.get('weapon_key'))
-                                h = hurt.setdefault(id(t), [t, 0.0, by])
+                                self.incoming_hit(t, by.serial, w.get('weapon_key'))
+                                h = hurt.setdefault(t.serial, [t, 0.0, by])
                                 h[1] += damage
                             continue
                         world.gap(GAP_WEAPON, 'ProjectileNugget', '仅无复合效果的直线弹飞行已建模；曲线弹/复合弹/自制弹体待核')
                     if not projectile:
-                        self.incoming_hit(t, id(by), w.get('weapon_key'))
+                        self.incoming_hit(t, by.serial, w.get('weapon_key'))
                     for effect in w.get('dot', []):
                         dots = self.dots
                         if projectile or n != 1 or any(d['target'] is t for d in dots):
@@ -423,7 +423,7 @@ class Damage:
                         for passenger in eligible[:max(0, effect['maximum'])]:
                             armor = (1.0 if effect['type'] == 'UNRESISTABLE' else
                                      simunits.percent(passenger.armor, effect['type']) / 100 * passenger.taken)
-                            h = hurt.setdefault(id(passenger), [passenger, 0.0, by])
+                            h = hurt.setdefault(passenger.serial, [passenger, 0.0, by])
                             h[1] += n * effect['damage'] * by.dealt * armor
                     # SecondaryDamageNugget.Amount is per hit, not a partial clip's mean DPS.
                     if w.get('sd'):
@@ -431,7 +431,7 @@ class Damage:
                             world.gap(GAP_WEAPON, 'SecondaryDamageNugget', '弹体冷冻值的到达事件尚未建模')
                         elif not t.shielded and peers.cold_of(t)[0] is not None:
                             t.find(interfaces.Freeze).add(n * w['sd'] * by.dealt)   # SecondaryDamageTracker
-                            self.cold_on[id(t)] = (t, by)
+                            self.cold_on[t.serial] = (t, by)
                             world.used.add('freeze')
                     for radius, value, seconds in w.get('suppression', []):
                         peers.suppression_fields.extend(
@@ -439,7 +439,7 @@ class Damage:
                             for _ in range(n))
                     for seconds in w.get('emp_seconds', []):
                         deadlines = peers.emp_until
-                        deadlines[id(t)] = max(deadlines.get(id(t), 0), world.frame_now() + simunits._frames(seconds))
+                        deadlines[t.serial] = max(deadlines.get(t.serial, 0), world.frame_now() + simunits._frames(seconds))
                     if w.get('sweep'):
                         peers.sweeps.fire(by, t, w['sweep'])
                     victims = [t]
@@ -459,15 +459,15 @@ class Damage:
                                 if -line['lead'] <= along <= length + line['out'] and across <= line['width'] / 2 + candidate.radius:
                                     victims.append(candidate)
                     for victim in victims:
-                        h = hurt.setdefault(id(victim), [victim, 0.0, by])
+                        h = hurt.setdefault(victim.serial, [victim, 0.0, by])
                         side = flank_of(victim, by)
                         armor = (1.0 if w['type'] == 'UNRESISTABLE' else
                                  simunits.percent(victim.armor, w['type']) / 100.0 * victim.taken) * side
                         h[1] += n * w['dmg'] * by.dealt * armor
                         if w.get('leech_percent'):
-                            leech_events.setdefault(id(victim), []).append((by, 'maximum', w['leech_percent'], 0.0))
+                            leech_events.setdefault(victim.serial, []).append((by, 'maximum', w['leech_percent'], 0.0))
                         if w.get('leech_health'):
-                            leech_events.setdefault(id(victim), []).append((by, 'damage', w['leech_health'], n * w['dmg'] * by.dealt * armor))
+                            leech_events.setdefault(victim.serial, []).append((by, 'damage', w['leech_health'], n * w['dmg'] * by.dealt * armor))
                         for fraction, damage_type in w.get('strip_max_health', []):
                             scalar = (1.0 if damage_type == 'UNRESISTABLE' else       # the flank: INFERRED
                                       simunits.percent(victim.armor, damage_type) / 100 * victim.taken) * side
@@ -597,7 +597,7 @@ class Damage:
                 # GUESSED for changing modifiers / dead casters: read scalars on each tick.
                 armor = (1.0 if effect['type'] == 'UNRESISTABLE' else
                          simunits.percent(t.armor, effect['type']) / 100 * t.taken)
-                h = hurt.setdefault(id(t), [t, 0.0, by])
+                h = hurt.setdefault(t.serial, [t, 0.0, by])
                 h[1] += effect['damage'] * by.dealt * armor
                 dot['next'] += effect['interval']
             dot['hp'] = t.hp
@@ -610,7 +610,7 @@ class Damage:
             before_hp = t.hp
             t.damage(dmg)
             self.hit_reaction_damage(world, t, before_hp - t.hp, peers)
-            events = leech_events.get(id(t), [])
+            events = leech_events.get(t.serial, [])
             if events:
                 if len(events) == 1:
                     healer, basis, fraction, raw = events[0]
@@ -664,7 +664,7 @@ class Damage:
             if peers.cold_of(t)[0] is None:
                 continue
             t.find(interfaces.Freeze).add(rate * dt)      # engine/modules/freeze.py (step M11)
-            cold[id(t)] = (t, by)
+            cold[t.serial] = (t, by)
         for k, (t, by) in list(cold.items()):
             tr = peers.cold_of(t)[0]
             if not t.alive:

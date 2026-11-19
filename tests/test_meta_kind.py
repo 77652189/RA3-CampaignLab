@@ -74,7 +74,7 @@ def test_meta_kind_replays_native_dispatch_health_and_neighbour_path(
     e.queue_projectile_hit(frame, victim, weapon['dmg'], gun, weapon, centre)
     e.deal(1/15)
     assert set(called) == ({'man', 'near'} if moves else {'man'})
-    assert (id(near) in e.impact_flights) == moves
+    assert (near.serial in e.impact_flights) == moves
     assert victim.hp == pytest.approx(148.5)
     assert near.hp == (150 if lane == 'yuri' else 550)
     # The displayed health counters measure 99 / 100, not absolute HP.
@@ -89,7 +89,7 @@ def test_meta_kind_replays_native_dispatch_health_and_neighbour_path(
         e.meta_impact_tick()
         assert (near.x, near.y, e.impact_ground_z(near.x, near.y) if near.z is None else near.z
                 ) == pytest.approx(xyz, abs=.051)
-    assert id(near) not in e.impact_flights
+    assert near.serial not in e.impact_flights
 
 
 @pytest.mark.parametrize('lane', ['yuri', 'rocket'])

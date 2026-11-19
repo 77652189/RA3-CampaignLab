@@ -90,7 +90,7 @@ def test_meta_sickle_replays_real_landing_dispatch_and_path(check, lane, x, monk
         assert calls[0][0] == (x, 3550, 212.5)
         assert calls[0][1] == (x - 39, 3561, 212.5)
         assert calls[0][2] == pytest.approx((3.1677, -.8934, .5279), abs=.0001)
-    assert id(friend) not in e.__dict__.get('impact_flights', {})
+    assert friend.serial not in e.__dict__.get('impact_flights', {})
     assert (friend.x, friend.y) == (x - 80, 3550)
     samples = ([(x,3546.7,213.40), (x,3543.4,213.40), (x,3540,212.5)]
                if check in ('a', 'c') else [(x,3550,212.5)] * 3)
@@ -99,7 +99,7 @@ def test_meta_sickle_replays_real_landing_dispatch_and_path(check, lane, x, monk
         e.meta_impact_tick()
         z = e.impact_ground_z(enemy.x, enemy.y) if enemy.z is None else enemy.z
         assert (enemy.x, enemy.y, z) == pytest.approx(xyz, abs=.051)
-    assert id(enemy) not in e.impact_flights
+    assert enemy.serial not in e.impact_flights
     e.self_power_due(118)
     assert len(calls) == (1 if check in ('a', 'c') else 0)
     assert any('落地伤害' in row['what'] for row in e.unmodeled.values())

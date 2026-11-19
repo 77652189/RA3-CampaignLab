@@ -315,9 +315,9 @@ def seq_due(world, peers):
     heads = set()
     for r in list(peers.seq):
         b = r['b']
-        if id(b) in heads:
+        if b.serial in heads:
             continue
-        heads.add(id(b))
+        heads.add(b.serial)
         if not b.alive:
             peers.seq.remove(r)
             continue
@@ -393,7 +393,7 @@ def order_follow(world, peers, bodies, label, attacking, exact=False, start=None
     if as_team and len(movers) > 1:
         n = len(movers)
         cx, cy = sum(b.x for b in movers) / n, sum(b.y for b in movers) / n
-        how['offset'] = {id(b): (b.x - cx, b.y - cy) for b in movers}
+        how['offset'] = {b.serial: (b.x - cx, b.y - cy) for b in movers}
         world.used.add('team path')
     follow_leg(world, peers, movers, how)
 
@@ -405,7 +405,7 @@ def follow_leg(world, peers, movers, how):
         wx, wy = world.waypoints[how['at']]
         given = []
         for b in movers:
-            ox, oy = how['offset'].get(id(b), (0.0, 0.0))
+            ox, oy = how['offset'].get(b.serial, (0.0, 0.0))
             order_move(world, peers, b, (wx + ox, wy + oy), how['attacking'], given=given, skip=movers)
             given.append((wx + ox, wy + oy, b.radius))
             b.follow = how
@@ -557,16 +557,16 @@ def fight(world, peers):
     peers._field = (live, armed, targets)
     if not armed or not targets:
         return
-    aimable = {id(t) for t in targets}
+    aimable = {t.serial for t in targets}
     tx = np.array([b.x for b in targets])
     ty = np.array([b.y for b in targets])
     for a in armed:                         # an attack on a team goes on to its next member (TEAM_ATTACK_TEAM)
-        if id(a) in peers.team_targets and not (isinstance(a.goal, type(a)) and a.goal.alive):
-            them = peers.members(peers.team_targets[id(a)])
+        if a.serial in peers.team_targets and not (isinstance(a.goal, type(a)) and a.goal.alive):
+            them = peers.members(peers.team_targets[a.serial])
             if them:
                 order_attack(world, peers, a, min(them, key=lambda t: math.hypot(t.x - a.x, t.y - a.y)).name)
             else:
-                del peers.team_targets[id(a)]
+                del peers.team_targets[a.serial]
     for a in armed:
         a.engaged = False
         if held_up(a):                 # stopped short on a plain move: still moving (DEMO_KILL)
@@ -577,12 +577,12 @@ def fight(world, peers):
             continue
         fired, d, idx = got
         g = a.goal
-        if not fired and isinstance(g, type(a)) and g.alive and not a.path and id(g) in aimable and \
-                (a.spot is None or a.spot[0] != id(g) or math.hypot(g.x - a.spot[1], g.y - a.spot[2]) > 150) and \
+        if not fired and isinstance(g, type(a)) and g.alive and not a.path and g.serial in aimable and \
+                (a.spot is None or a.spot[0] != g.serial or math.hypot(g.x - a.spot[1], g.y - a.spot[2]) > 150) and \
                 any(peers.can_hit(w, g) and peers.shot_blocked(a, g, w) for w in a.weapons) and \
                 not any(peers.can_hit(w, g) and peers.in_range(a, g, w) and not peers.shot_blocked(a, g, w)
                         for w in a.weapons):
-            a.spot = (id(g), g.x, g.y)          # told to attack, the line blocked: round to a clear spot
+            a.spot = (g.serial, g.x, g.y)          # told to attack, the line blocked: round to a clear spot
             p = peers.fire_spot(a, g)
             if p is not None:
                 world.note('绕位', f'{world.label(a)} 打不着 {world.label(g)}（中间有建筑），绕到 ({p[0]:.0f},{p[1]:.0f})')

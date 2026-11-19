@@ -81,14 +81,14 @@ def test_meta_impact_arc_probe_replays_plain_neighbour_and_retains_filter_gap():
         e.deal(1/15)
         z = e.impact_ground_z(near.x, near.y) if near.z is None else near.z
         assert (near.x, near.y, z) == pytest.approx(xyz, abs=.051)
-    assert id(near) not in e.impact_flights
+    assert near.serial not in e.impact_flights
     restricted, = e.bodies[name('yuri', 'gun')].weapons
     assert 'MetaImpactNugget' in restricted['unmodeled_effects']
     assert restricted['meta_impacts'] == []
     # These match the recorded negative, but are fail-closed parser behaviour.
     for part, x in (('man',800), ('near',820)):
         b = e.bodies[name('yuri', part)]
-        assert id(b) not in e.impact_flights
+        assert b.serial not in e.impact_flights
         assert (b.x,b.y,e.impact_ground_z(b.x,b.y) if b.z is None else b.z) == (x,3750,212.5)
 
 
@@ -202,7 +202,7 @@ def test_meta_impact_collision_event_replays_engine_knock_probe_neighbour_five_f
         e.deal(1/15)
         got = (near.x, near.y, e.impact_ground_z(near.x, near.y) if near.z is None else near.z)
         assert got == pytest.approx(xyz, abs=.051), (check, k, got)
-        assert (id(near) in e.impact_flights) == (k < 5)
+        assert (near.serial in e.impact_flights) == (k < 5)
     assert near.hp == 150
     assert 'meta impact' in e.used
 
@@ -279,9 +279,9 @@ def test_meta_impact_dispatch_retains_nondefault_physics_and_outside_radius_gaps
     by, near = (e.bodies[name('rocket', part)] for part in ('gun', 'near'))
     weapon, = by.weapons
     e.meta_impact_detonate(weapon, (2300, 3750, 219))
-    assert id(near) in e.impact_flights
+    assert near.serial in e.impact_flights
     # The instant control lane, 1500 away, must not be selected.
-    assert id(e.bodies[name('strong', 'near')]) not in e.impact_flights
+    assert e.bodies[name('strong', 'near')].serial not in e.impact_flights
 
     m, t, _ = build.resolve('engine_knock_probe', 'land')
     probe = next(u for u in m.units if u.id == near.template)
@@ -323,11 +323,11 @@ def test_physics_p3_a_man_knocked_toward_water_lands_on_the_nearest_cell_he_can_
     import sim
     e, wet, dry = _knock_water(check)
     count, frames = KNOCK_WATER[check]
-    _, _, points = e.impact_flights[id(wet)]
+    _, _, points = e.impact_flights[wet.serial]
     assert len(points) == count
     for k, want in frames.items():
         assert points[k] == pytest.approx(want, abs=0.12), k
-    assert id(dry) in e.impact_flights
+    assert dry.serial in e.impact_flights
     assert (sim.GAP_WEAPON, 'MetaImpactNugget') not in e.unmodeled
 
 
@@ -375,7 +375,7 @@ def test_physics_p3_a_hammer_lands_on_the_plus_10_grid_and_drowns_within_10_of_t
     want = {}
     for p, (land, count, mid, dies) in bodies.items():
         b = e.bodies[name(lane, p)]
-        _, start, points = e.impact_flights[id(b)]
+        _, start, points = e.impact_flights[b.serial]
         assert len(points) == count, p
         assert points[-1] == pytest.approx(land, abs=1e-3), p
         if mid:
@@ -409,7 +409,7 @@ def test_physics_p3_a_shock_under_the_hammers_resistance_90_launches_nothing(che
     e, _, _ = _knock_water(check, KNOCK_WATER_TANK['edge'][0])
     assert simunits.meta_impact_resistance(PROBE_TANK, e.own) == 90
     for p, want in KNOCK_GATE[check].items():
-        flight = e.impact_flights.get(id(e.bodies[name('tank', p)]))
+        flight = e.impact_flights.get(e.bodies[name('tank', p)].serial)
         if want is None:
             assert flight is None, p
         else:
@@ -463,7 +463,7 @@ def test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour():
         e.deal(1/15)
         got = (near.x, near.y, e.impact_ground_z(near.x, near.y) if near.z is None else near.z)
         assert got == pytest.approx(xyz, abs=.051), (k, got)
-        assert (id(near) in e.impact_flights) == (k < 14)
+        assert (near.serial in e.impact_flights) == (k < 14)
     assert near.hp == 150
     # Rebuilding the retail cache must also populate an omitted-Z warhead.
     retail = simunits.weapon_table()['AlliedBomberAircraftBombWarhead']
@@ -640,7 +640,7 @@ def test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_hi
     e.firing, e.volleys = [], []
     points = simunits.meta_impact_trajectory((2300, 3750, 212.5), (0, -2.1463, 45.6088))
     assert len(points) == 128 and points[-1] == (2300, 3060, 212.5)
-    e.impact_flights = {id(man): (man, 173, points)}
+    e.impact_flights = {man.serial: (man, 173, points)}
     order = round((ORDER + MOVE[check]) * 15)
     assert order == {'stand': 248, 'standlate': 310}[check]
     e.eng.frame = 173
@@ -653,7 +653,7 @@ def test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_hi
         e.move(1/15)
         e.deal(1/15)
         if e.eng.frame == 300:
-            assert id(man) not in e.impact_flights and (man.x, man.y) == (2300, 3060)
+            assert man.serial not in e.impact_flights and (man.x, man.y) == (2300, 3060)
         if first is None and e.eng.frame > 300 and (man.x, man.y) != before:
             first = e.eng.frame
     assert simunits.meta_impact_landing_hold() == 38
@@ -681,7 +681,7 @@ def test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands()
     man.script_status.discard('NO_ATTACK')
     points = simunits.meta_impact_trajectory((2300, 3750, 212.5), (0, -1.7730, 45.6088), (2300, 3180, 212.5))
     assert points[-1] == (2300, 3180, 212.5)
-    e.impact_flights = {id(man): (man, 173, points)}
+    e.impact_flights = {man.serial: (man, 173, points)}
     man.x, man.y = points[0][:2]
     e.eng.frame = 173
     full, first = target.health, None
@@ -714,12 +714,12 @@ def test_physics_p4b_a_knocked_man_does_not_fire_in_the_air_with_the_target_in_r
     weapon, = gun.weapons
     e.meta_impact_detonate(weapon, (2000, 3300.01, 219))
     man, target = e.bodies[name('man', 'dry')], e.bodies[name('man', 'target')]
-    _, _, points = e.impact_flights[id(man)]
+    _, _, points = e.impact_flights[man.serial]
     assert len(points) == 25
     for k, want in {1: (1924.3, 3299.2, 216.01), 2: (1908.6, 3298.3, 219.21), 12: (1751.4, 3290.1, 234.46),
                     24: (1560.0, 3280.0, 212.5)}.items():
         assert points[k] == pytest.approx(want, abs=0.06), k
-    e.impact_flights[id(man)] = (man, 175, points)
+    e.impact_flights[man.serial] = (man, 175, points)
     for b in e.bodies.values():
         if b is not man:
             b.status.add('NO_ATTACK')
@@ -763,8 +763,8 @@ def test_physics_p4b_an_attack_order_kept_through_the_knock_walks_at_landing_plu
     weapon, = e.bodies[name('man', 'gun')].weapons
     e.meta_impact_detonate(weapon, (2000, 3300.01, 219))
     man, target = e.bodies[name('man', 'dry')], e.bodies[name('man', 'target')]
-    _, _, points = e.impact_flights[id(man)]
-    e.impact_flights[id(man)] = (man, 175, points)
+    _, _, points = e.impact_flights[man.serial]
+    e.impact_flights[man.serial] = (man, 175, points)
     for b in e.bodies.values():
         if b is not man:
             b.status.add('NO_ATTACK')
@@ -980,9 +980,9 @@ def test_meta_impact_relation_rejects_missing_source_and_ineligible_bodies(gate)
     elif gate == 'condition':
         e.set_model_condition(victim, 'STUNNED', 0)
     elif gate == 'flight':
-        e.impact_flights = {id(victim): ('sentinel',)}
+        e.impact_flights = {victim.serial: ('sentinel',)}
     elif gate == 'hold':
-        e.knock_hold = {id(victim): e.frame_now() + 1}
+        e.knock_hold = {victim.serial: e.frame_now() + 1}
     before = dict(e.__dict__.get('impact_flights', {}))
     e.meta_impact_detonate(weapon, (victim.x, victim.y, 219), None if gate == 'source' else by)
     assert e.__dict__.get('impact_flights', {}) == before

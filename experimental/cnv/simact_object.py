@@ -38,10 +38,10 @@ def named_set_disabled(sim, name, a, script):
     # holds a unit as EMP does (emp_disabled; benched for EMP only, the others INFERRED)
     b = sim.body(a[0])
     if b:
-        kinds = sim.script_disabled.setdefault(id(b), set())
+        kinds = sim.script_disabled.setdefault(b.serial, set())
         (kinds.add if int(a[2]) else kinds.discard)(str(a[1]))
         if not kinds:
-            sim.script_disabled.pop(id(b))
+            sim.script_disabled.pop(b.serial)
 
 
 def unit_kill_all_in_area(sim, name, a, script):

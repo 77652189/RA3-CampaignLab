@@ -11,9 +11,12 @@ from engine.kernel import interfaces
 
 class Thing:
     """The kernel's side of an object (sim.Body inherits it). A thing without modules uses the empty class default
-    and carries neither a modules field nor a find cache."""
-    # The frame recorder reads instance fields. Keep the cache outside that state.
-    __slots__ = ('__dict__', '__weakref__', '_find_cache')
+    and carries neither a modules field nor a find cache. `serial`: the thing's number in its world, World.build's
+    running count from 0 -- the key every table about a thing uses (never id(): it differs run to run and a new
+    object may reuse a dead one's; never the name: a thing made under a dead one's name is another thing), so a
+    snapshot (docs/engine/sim-modules.md 9.2) can write the tables back as they were."""
+    # The frame recorder reads instance fields. Keep the cache and the number outside that state.
+    __slots__ = ('__dict__', '__weakref__', '_find_cache', 'serial')
 
     @property
     def modules(self):

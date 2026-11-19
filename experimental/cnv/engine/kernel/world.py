@@ -29,9 +29,12 @@ class World:
         self.used = set()       # the audit set: rules the run leaned on
         self.gaps = {}          # (kind, name) -> {'n' times, 't' first met, 'what' first note} (Sim.gap writes it)
         self.frame = 0          # the frame of the cell now running (simloop sets it), what wake() defaults to
+        self.made = 0           # things built so far: the next one's serial (Thing.serial)
 
     def build(self, thing, frame):
-        """Make a thing's modules (none unless a tag is registered) and hold its update modules from `frame`."""
+        """Number a new thing (Thing.serial), make its modules (none unless a tag is registered) and hold its update
+        modules from `frame`."""
+        thing.serial, self.made = self.made, self.made + 1
         if not self.tags:
             return ()
         mods = factory.build(thing, self.blocks_of, self.data, self.tags, self)

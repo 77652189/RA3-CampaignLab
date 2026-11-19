@@ -119,7 +119,7 @@ def test_meta_invert_collision_replays_native_neighbour_frames(lane, collision, 
         e.deal(1/15)
         assert (near.x, near.y, e.impact_ground_z(near.x, near.y) if near.z is None else near.z
                 ) == pytest.approx(xyz, abs=.051)
-    assert id(near) not in e.impact_flights
+    assert near.serial not in e.impact_flights
 
 
 @pytest.mark.parametrize('lane,collision,centre,landing', [

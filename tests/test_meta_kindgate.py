@@ -136,6 +136,6 @@ def _replay(check, lane, delta, monkeypatch, verify_noninf=False):
         other_xyz = (xyz[0] + 20, xyz[1], xyz[2]) if check == 'b' and lane == 'rocket' else (x + 20, 3750, 212.5)
         if check != 'b' or lane != 'rocket' or verify_noninf:
             assert (other.x, other.y, z(other)) == pytest.approx(other_xyz, abs=.051)
-    assert id(near) not in e.impact_flights
+    assert near.serial not in e.impact_flights
     if check != 'b' or lane != 'rocket' or verify_noninf:
-        assert id(other) not in e.impact_flights
+        assert other.serial not in e.impact_flights

@@ -20,7 +20,7 @@ def enemy_sighted(sim, name, a):
     hidden = sim.cloaked(live)
     return bool(viewer and viewer.alive and want and any(
         target.owner == a[2] and sim.relation(viewer.owner, target.owner) == want
-        and id(target) not in hidden
+        and target.serial not in hidden
         # Centre-distance boundary/combined modifiers remain INFERRED.
         and math.hypot(target.x - viewer.x, target.y - viewer.y) <= viewer.sight * viewer.level_vision
         for target in live))
@@ -68,7 +68,7 @@ def team_discovered(sim, name, a):
             return True
         if 'SHROUD_REVEAL_TO_ALL' in m.status:  # bench 11-13 engine_acts flow 旗&1: the bit set on a standing
             return True                          # unit far from all the player's, discovered from that second
-        if id(m) in hidden or sim.on_the_move(m):
+        if m.serial in hidden or sim.on_the_move(m):
             continue
         if (sim.sees(m.x, m.y, air) if a[0] == sim.human else
                 any(b.owner == a[0] and sim.looks(b, m.x, m.y, air) for b in live)):
@@ -87,7 +87,7 @@ def type_sighted(sim, name, a):
     live = list(sim.living())
     hidden = sim.cloaked(live)
     return bool(viewer and viewer.alive and any(
-        target.owner == a[2] and target.template.lower() == want and id(target) not in hidden
+        target.owner == a[2] and target.template.lower() == want and target.serial not in hidden
         and math.hypot(target.x - viewer.x, target.y - viewer.y) <= viewer.sight * viewer.level_vision
         for target in live))
 

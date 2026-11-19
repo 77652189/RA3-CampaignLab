@@ -80,7 +80,7 @@ def test_meta_nocoll_replays_native_status_dispatch_and_neighbour_path(
     e.queue_projectile_hit(frame, victim, weapon['dmg'], gun, weapon, centre)
     e.deal(1/15)
     assert called == ({'man'} if bit else {'man', 'near'})
-    assert (id(near) in e.impact_flights) == (not bit)
+    assert (near.serial in e.impact_flights) == (not bit)
     assert victim.hp == pytest.approx(148.5)
     assert near.hp == 150
     for tick, xyz in enumerate(samples, frame + 1):
@@ -88,4 +88,4 @@ def test_meta_nocoll_replays_native_status_dispatch_and_neighbour_path(
         e.meta_impact_tick()
         assert (near.x, near.y, e.impact_ground_z(near.x, near.y) if near.z is None else near.z
                 ) == pytest.approx(xyz, abs=.051)
-    assert id(near) not in e.impact_flights
+    assert near.serial not in e.impact_flights

@@ -5,7 +5,7 @@
 `start` / `wfire_due`), what those leave running out (`self_power_due`) and a superweapon's hits (`blast_due`), over the
 world it is given (simworld.WORLD_API only). The peers it needs are handed in by the caller (Sim.self_power_press /
 ... / Sim.blast_due): the modifiers' re-set (`modify`, L2), a body's route (`send`, L2 simlocomotion), its death
-(`destroy`, L2 simbody), who stands still till when (`emp_until`: () -> the {id(body): frame} book, made on first
+(`destroy`, L2 simbody), who stands still till when (`emp_until`: () -> the {body.serial: frame} book, made on first
 use), the queues other blocks share (the superweapon `blasts` a script casts, the `casts` a script condition reads,
 the `death_blasts` L3 fires), the players' upgrades (`player_ups`, L4), how two owners stand (`relation`), the fight's
 first death (`first_death(body, killer)`), and L3's detonation and ground height for a leap's landing (`detonate`,
@@ -130,7 +130,7 @@ class Specials:
         land = world.frame_now() + ab['unpack'] + int(math.ceil(d / speed * simunits.LIFE_FPS))
         b.path, b.dest = [], None
         deadlines = emp_until()       # holds still till it lands (INFERRED)
-        deadlines[id(b)] = max(deadlines.get(id(b), 0), land)
+        deadlines[b.serial] = max(deadlines.get(b.serial, 0), land)
         self.leaps_due.append((land, b, p))
         world.note('技能', f'{world.label(b)} 按 {button} 跳到 ({p[0]:.0f}, {p[1]:.0f})')
 
@@ -208,7 +208,7 @@ class Specials:
         b.path, b.dest = [], None
         hold = job['fire_at'] + max(ab['freeze'], ab['pack'] if ab['busy_pack'] else 0)
         deadlines = emp_until()       # stands still (INFERRED: as EMP'd)
-        deadlines[id(b)] = max(deadlines.get(id(b), 0), hold)
+        deadlines[b.serial] = max(deadlines.get(b.serial, 0), hold)
 
     def wfire_due(self, world, frame, casts, death_blasts, player_ups, relation, send, emp_until):
         """The weapon-fire abilities going off by `frame` (wfire_press): the weapon's DamageNuggets as a death blast
@@ -255,7 +255,7 @@ class Specials:
                         continue
                     if p['kind'] == 'EMP':
                         deadlines = emp_until()
-                        deadlines[id(o)] = max(deadlines.get(id(o), 0), frame + simunits._frames(p['seconds']))
+                        deadlines[o.serial] = max(deadlines.get(o.serial, 0), frame + simunits._frames(p['seconds']))
                     elif p['kind'] == 'UNMANNED' and o.owner != CIV:
                         o.owner, o.path, o.dest, o.goal = CIV, [], None, None
                         world.note('易主', f'{world.label(o)} 的驾驶员被打掉，归中立')
