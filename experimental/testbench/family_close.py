@@ -13,8 +13,9 @@ as tests/golden does, but the test pick reads base..HEAD). In order:
        with old code) on the base and here, against the table: over it is red, under it says what to lower it to;
   5.   the affected tests of base..HEAD (affected_tests.py --cmd, with -n replaced: -n 2 until the machine's CPU token
        pool exists, handoff-r2 T5); a red test is rerun on the base (in the golden tree) and one red there too is
-       reported as old, not this step's. --light (a small family: few fields, read nowhere else -- user 11-18) skips
-       it: the line says the affected tests are left to the coordinator's full run.
+       reported as old, not this step's. --light (a small family: few fields, read nowhere else -- user 11-18) runs
+       only the test files base..HEAD changed (coordinator 11-18; none: nothing) and says the rest of the affected
+       tests are left to the coordinator's full run.
 Each check prints one line with its log (work\logs\family_close_<stamp>_<check>.log). Exit 0 = all green (old reds
 allowed); 1 = something to fix.
 """
@@ -188,7 +189,19 @@ def affected(root, base, n, log_path, golden):
     cmd = pick.stdout.strip().splitlines()[-1] if pick.stdout.strip() else ''
     if pick.returncode or ' -m pytest ' not in cmd:
         return False, f'affected_tests 没给出命令（exit {pick.returncode}）'
-    args = with_workers(cmd, n).split(' -m pytest ', 1)[1].split() + ['-rf']
+    return judge(with_workers(cmd, n).split(' -m pytest ', 1)[1].split() + ['-rf'], root, base, n, log_path, golden)
+
+
+def changed_tests(root, base):
+    """The test files base..HEAD changed that are still here (tests/**/test_*.py): --light runs them (coordinator
+    11-18: M14 changed two test_simai lines and its light close ran none of them)."""
+    out = git(root, 'diff', '--name-only', f'{base}..HEAD', '--', 'tests')
+    return sorted(p for p in out.split() if p.startswith('tests/') and os.path.basename(p).startswith('test_')
+                  and p.endswith('.py') and os.path.exists(os.path.join(root, p)))
+
+
+def judge(args, root, base, n, log_path, golden):
+    """pytest with `args` in `root`, its reds rerun on the base: (ok, the line)."""
     counts, red, why = run_pytest(args, root, log_path)
     old = set()
     if red:   # rerun the reds on the base, in the golden tree (held under golden's lock)
@@ -241,8 +254,17 @@ def main(argv=None):
     print(('✓' if ok else '✗'), '中心计数', line, flush=True)
 
     if a.light:
-        results.append((True, '受影响测试', LIGHT, None))
-        print('·', '受影响测试', LIGHT, flush=True)
+        own = [] if a.skip_tests else changed_tests(ROOT, base)
+        if own:     # the step's own test files still run (coordinator 11-18); the rest is left to the full run
+            path = log('tests')
+            ok, line = judge(['-n', str(a.n), '-p', 'no:cacheprovider', '-q', '-rf', *own], ROOT, base, a.n, path,
+                             golden)
+            line = f'本步改过的测试文件 {len(own)} 个：{line}；其余{LIGHT}'
+            results.append((ok, '受影响测试', line, path))
+            print(('✓' if ok else '✗'), '受影响测试', line, '|', path, flush=True)
+        else:
+            results.append((True, '受影响测试', LIGHT, None))
+            print('·', '受影响测试', LIGHT, flush=True)
     elif not a.skip_tests:
         path = log('tests')
         ok, line = affected(ROOT, base, a.n, path, golden)

@@ -152,3 +152,20 @@ def test_light_skips_the_affected_tests_and_says_they_are_left_to_the_full_run(t
     assert fc.main(['--light']) == 0 and not called
     assert '受影响测试留给全量' in capsys.readouterr().out
     assert fc.main([]) == 1 and called
+
+
+def test_light_runs_the_test_files_the_step_changed(tmp_path, monkeypatch, capsys):
+    import types
+    fake = types.SimpleNamespace(base_rev=lambda root, env: 'abcdef123456', records=lambda env, jobs: FakeRun({'a': 'same'}),
+                                 labpaths=types.SimpleNamespace(WORK=str(tmp_path)), Skip=RuntimeError)
+    monkeypatch.setattr(fc, '_load', lambda name, path: fake)
+    diff = 'tests/test_simai.py\ntests/guards/test_kernel.py\ntests/conftest.py\nexperimental/cnv/sim.py\ntests/test_gone.py\n'
+    monkeypatch.setattr(fc, 'git', lambda root, *args: diff if args[0] == 'diff' else 'abcdef1234')
+    monkeypatch.setattr(fc, 'centre', lambda root, base: (True, 'same'))
+    assert fc.changed_tests(fc.ROOT, 'b') == ['tests/guards/test_kernel.py', 'tests/test_simai.py']   # gone: left out
+    ran = []
+    monkeypatch.setattr(fc, 'judge', lambda args, *a: ran.append(args) or (False, '本步新红 1 个'))
+    assert fc.main(['--light']) == 1
+    assert ran and ran[0][-2:] == ['tests/guards/test_kernel.py', 'tests/test_simai.py']
+    out = capsys.readouterr().out
+    assert '本步改过的测试文件 2 个' in out and '受影响测试留给全量' in out
