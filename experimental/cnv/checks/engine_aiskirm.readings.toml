@@ -537,3 +537,38 @@ expect = "air is not None and 213 <= times[air] <= 224"
 mismatch = """\
 B handoff 182: simai orders the airfield at TECH MinTime 180 either way (s206 here, as on aiskirm); the bench s219. \
 What holds it longer with two more plants is not known"""
+
+# ---- the skirmish AI's teams over the player's base (T3 B batch 5, from tests/test_simai.py's skirmish fixture; mission
+# seconds, the bench wakes s8: "N s after the wake" is written as the bench second)
+
+[[reading]]
+id = "skirmish_ai_first_team_out_is_cleanup_before_the_players_losses"
+scene = {build = "aiskirm", check = "p", until = 240}
+bench = """\
+engine_aiskirm i-m / p (B handoff 99): the first team out is BalancedCleanup's, ~123 s after the wake (s131, the \
+defense team taken whole); the player's buildings fall only after it left (the last at s224)"""
+proves = "simai skirmish teams: an attack team goes after the opening (100-140 s after the wake), the player's losses come after it"
+let = {go = "first('清扫', lambda v: v not in (0, 99))", hit = "first('我方建筑', lambda v: v < rows[0]['我方建筑'])"}
+expect = ["go is not None and 108 <= times[go] <= 148", "hit is not None and times[hit] > times[go]"]
+
+[[reading]]
+id = "skirmish_ai_after_the_last_building_no_cleanup_team_takes_men_back"
+scene = {build = "aiskirm", check = "p", until = 240}
+bench = """\
+engine_aiskirm p (B handoff 106-107): the player's last building down at s224, Cleanup _0_0 gone (99) at s226 and \
+the defense team at 14 (MaxUnits) to s249 -- no Cleanup team takes anyone back (the simulator's fight is ~10 s \
+early: last building s214, so only the rule is read)"""
+proves = "simai team states: a gathering slot whose target is gone ends instead of recruiting; LandDefense holds the men let go"
+let = {gone = "first('我方建筑', lambda v: v == 0)"}
+expect = ["gone is not None", "all(r['清扫'] in (0, 99) for r in rows[gone:])", "rows[-1]['防御型'] >= 14"]
+
+[[reading]]
+id = "skirmish_ai_scout_dog_stays_out"
+scene = {build = "aiskirm", check = "b", until = 180}
+bench = """\
+engine_aiskirm b: the dogs leave ~44 s after the wake (s52) and stay away 120-170 s. How many dogs is the unit \
+builder's uniform draw (B handoff 103), so only 'one is out and some dog stays out to s178' is read"""
+proves = "simai team recruitment: the AlliedScout team (NEVER_RELEASE) keeps its dog out; no other team takes it home"
+let = {out = "next((i for i, r in enumerate(rows) if r['警犬总数'] - r['警犬在家'] >= 1), None)"}
+expect = ["out is not None and times[out] < 60",
+          "all(r['警犬总数'] - r['警犬在家'] >= 1 for t, r in zip(times, rows) if times[out] <= t <= 178)"]

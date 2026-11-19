@@ -65,3 +65,50 @@ bench = "UpdateTime-only pair: the script latches the first charge at frame 363 
 proves = "simai micro UpdateTime: reproduce the first charge clock for each period"
 expect = "{r['首冲帧'] for r in rows if r['首冲帧']} == {frame}"
 mismatch = "Retail first-charge latch fast 363 / slow 317, model 271 / 309. Both model fires use the low-health branch outside charge distance; health eligibility remains unresolved."
+
+# ---- UseSpecialPowers / EngageHostileTargets (T3 B batch 5, from tests/test_simai.py's spow fixture; check r counts
+# 帧数 造出 冲 曾冲, w 帧数 造出 在家 曾冲; one row a mission second, the wake ~s10)
+
+[[reading]]
+id = "use_special_powers_the_micro_charges_only_when_on"
+scenes = {on = {build = "aimicspon", check = "r", until = 61}, off = {build = "aimicspoff", check = "r", until = 61}}
+bench = """\
+engine_aimicro aimicspon / aimicspoff (B round 113): only UseSpecialPowers differing -- on, the warriors charge \
+(冲 2 @ s41, first ~362 frames after the wake); off, 曾冲 0 until the scripted control (冲 1 @ s61)"""
+proves = "simai micro: the probe's own AIMicroManagerData reaches the micro block; UseSpecialPowers false uses no unit power"
+expect = ["any(r['曾冲'] > 0 for r in on)", "all(r['曾冲'] == 0 for r in off[:55])"]
+
+[[reading]]
+id = "hunt_team_turns_on_the_conscripts_it_sees"
+scene = {build = "aimicspon", check = "r", until = 61}
+bench = """\
+engine_aimicro aimicspon: the Hunt team fights the conscripts walking up -- hurt and charging by s41 (a charge \
+needs a target in reach: tests/test_simai.py::test_engage_hostile_same_view_has_same_power_decision)"""
+proves = "simai tactics: state 2's per-member pick (EngageHostileTargets on) turns the team on the conscripts it sees"
+let = {fc = "first('曾冲', lambda v: v > 0)"}
+expect = "fc is not None and times[fc] <= 41"
+
+[[reading]]
+id = "engage_hostile_off_still_fights_and_charges"
+scenes = {r = {build = "aimicengoff", check = "r", until = 61}, w = {build = "aimicengoff", check = "w", until = 61}}
+bench = """\
+engine_aimicro aimicengoff (B round 115): EngageHostileTargets false -- the first pair fights at home (在家 2 \
+s21-s41) and charges (曾冲 75 @ 帧数 333: ~258 frames after the wake), alive to the end"""
+proves = "simai tactics: the field off does not keep the team out of the fight or the charge"
+expect = ["all(x['在家'] == 2 for x in w[24:42])", "any(x['曾冲'] > 0 for x in r)"]
+mismatch = """\
+simulator (11-18): the first pair is home s23-s30 and gone at s32 (在家 0), 曾冲 0 through s61 -- it walks the pair \
+away without a target and never charges (work/re/handoff-c.md, work/re/c_engage_record_report.md: B target/order gap)"""
+
+[[reading]]
+id = "engage_hostile_off_charges_before_on"
+scenes = {on = {build = "aimicspon", check = "r", until = 61}, off = {build = "aimicengoff", check = "r", until = 61}}
+bench = """\
+engine_aimicro (two runs each): EngageHostileTargets off charges ~258 frames after the wake, on ~362 -- off is \
+~100 frames earlier"""
+proves = "simai tactics: with the engage pick off the team fights at home and charges sooner"
+let = {fc = "lambda rs: next((x['帧数'] - x['曾冲'] for x in rs if x['曾冲'] > 0), None)"}
+expect = "fc(off) is not None and fc(on) is not None and fc(off) < fc(on)"
+mismatch = """\
+simulator (11-18): on charges 263 frames after the wake (271 - 8 at s28), off never (曾冲 0 through s61): the \
+other way round from the bench (see engage_hostile_off_still_fights_and_charges)"""
