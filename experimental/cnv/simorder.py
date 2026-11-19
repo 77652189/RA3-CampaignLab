@@ -343,9 +343,31 @@ def seq_due(world, peers):
             continue
         act = acts[r['step']]
         args = [b.name if x == '<This Object>' else (b.team if x == '<This Team>' else x) for x in act.args]
-        world.executor.action(act.name, args, r['script'])
+        _as_itself(world, b, lambda: world.executor.action(act.name, args, r['script']))
         if not b.alive and r in peers.seq:
             peers.seq.remove(r)
+
+
+_NONE = object()
+
+
+def _as_itself(world, b, step):
+    """Run `step` (a sequential script's action, <This Object> written as `b`'s name) with that name reading as `b`
+    itself: a reference of the same name, or another object made under it since, cannot take the unit's place
+    (same-name audit 11-19, S5). The name points at `b` among the references for the step's length (every action
+    finds its object by name through world.body, either executor); the reference it shadowed comes back after, unless
+    the step pointed the name elsewhere itself. Arguments and the log's text unchanged. Not told apart: a step that
+    names the shadowed reference literally (not as <This Object>) reads the unit too."""
+    had = world.refs.get(b.name, _NONE)
+    world.refs[b.name] = b
+    try:
+        step()
+    finally:
+        if world.refs.get(b.name) is b:
+            if had is _NONE:
+                del world.refs[b.name]
+            else:
+                world.refs[b.name] = had
 
 
 def path_start(world, label, at):

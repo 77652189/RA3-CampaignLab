@@ -681,3 +681,20 @@ def test_the_players_power_is_cast_by_the_object_he_picked_not_a_reference_of_it
     s.refs['cannon'] = s.bodies['other']
     assert s.order_power(s.bodies['cannon'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
     assert [c[1] for c in s.casts] == ['Player_1']
+
+
+def test_a_sequential_scripts_this_object_is_the_unit_queued_not_a_reference_of_its_name():
+    """A sequential script's <This Object> is the unit it was queued on (11-19 same-name sweep S5: by its name, the
+    reference `lead` pointing at another unit took the step's move); the reference reads as before after the step."""
+    import parts
+    s = sim.Sim(parts.Mission(name='T', map=simsmall.island, scripts=[
+        parts.Script('seqtask', [], [('MOVE_NAMED_UNIT_TO', '<This Object>', 'dest')], once=False)]), model=False)
+    for name in list(s.bodies):
+        s.world.drop(s.bodies.pop(name))
+    lead = s.add('lead', 'AlliedAntiInfantryInfantry', 'Player_1', 300.0, 300.0)
+    other = s.add('other', 'AlliedAntiInfantryInfantry', 'Player_1', 300.0, 600.0)
+    s.waypoints['dest'] = (600.0, 300.0)
+    s.act('UNIT_EXECUTE_SEQUENTIAL_SCRIPT', ['lead', 'seqtask'], None)
+    s.refs['lead'] = other
+    s.seq_due()
+    assert (lead.move_to, other.move_to, s.refs['lead']) == ((600.0, 300.0), None, other)
