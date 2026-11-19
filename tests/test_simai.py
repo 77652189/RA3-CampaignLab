@@ -43,77 +43,6 @@ def skirmish(lib):
     return simai.run('aiskirm', until=300, lib=lib)
 
 
-BARRACKS = ('AlliedScoutInfantry', 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry')
-
-
-def _barracks_out(skirmish):
-    (b,) = skirmish.brains.values()
-    return [((f - b.started) / simai.FPS, t) for f, what, t in b.trace if what == 'out' and t in BARRACKS]
-
-
-def test_skirmish_ai_builds_infantry_in_the_opening_until_the_deposit_is_spent(skirmish):
-    """bench engine_aiskirm c: the barracks builds from ~15 s after the wake, beside the opening (the unit builder is
-    tied to no team, l4_unitbuilder.md 2), 1900 of the opening's PRODUCTION Deposit 2000 by 52 s, then nothing till
-    125 s (the opening's budget gives PRODUCTION 0 %)."""
-    out = _barracks_out(skirmish)
-    assert out and out[0][0] < 30, out                              # during the opening
-    spent = sum(skirmish.cost(t) for s, t in out if s < 120)
-    assert 1800 <= spent <= 2000, (spent, out)
-
-
-BARRACKS_COST = {'AlliedScoutInfantry': 200, 'AlliedAntiInfantryInfantry': 200, 'AlliedAntiVehicleInfantry': 300}
-
-
-def test_skirmish_ai_barracks_spends_only_the_deposit_and_most_of_it_by_60_s(skirmish):
-    """The budget rule apart from the draw (B round 200): the opening's Deposit 2000 is the barracks' only money before
-    125 s (the budget's PRODUCTION share 0 %) and at least 1800 of it goes by 60 s (bench engine_aiskirm c: 2 dogs /
-    3 Javelins / 3 Peacekeepers = 1900 by 52 s). Costs: the retail BuildCost (dog / Peacekeeper 200, Javelin 300)."""
-    out = _barracks_out(skirmish)
-    assert sum(BARRACKS_COST[t] for s, t in out if s < 120) <= 2000, out
-    assert sum(BARRACKS_COST[t] for s, t in out if s < 60) >= 1800, out
-
-
-def test_skirmish_ai_barracks_builds_nothing_between_70_and_120_s(skirmish):
-    """bench engine_aiskirm c: nothing from the barracks between 70 and 125 s (its draw spent 1900, 100 left). This
-    rides on the uniform unit draw, which is not aligned with the bench (B handoff 103 / 104): round 45 had seed 1
-    spend the rest at 83 s (strict xfail); round 49 seeds 1-6 spent it by 60 s; B189 (b645b61f) to B200 (565619fa)
-    the draw left 200 for a Peacekeeper at 88 s; on main 077642ea it passes again (B round 206, split from the budget
-    rule above at the coordinator's request). If it goes red with only the draws moved, strict xfail it with the reading."""
-    out = _barracks_out(skirmish)
-    assert not [s for s, t in out if 70 < s < 120], out
-
-
-def test_skirmish_ai_barracks_mix_matches_the_bench(skirmish):
-    """The unit-choice rule (read, work/re/l4_unitbuilder.md B): with no UnitBuilderUnitChoiceStrategy -- no SDK personality has
-    one -- every idle candidate weighs 1, so the barracks draws uniformly among its standard units. Bench c's one run
-    (2 dogs, 3 Javelins, 3 Peacekeepers) is one such draw; the exact counts are chance, so only the set is asserted."""
-    made = collections.Counter(t for s, t in _barracks_out(skirmish) if s < 120)
-    assert set(made) == {'AlliedScoutInfantry', 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry'}, made
-
-
-def test_unit_modifier_zero_changes_nothing_as_on_the_bench(lib, skirmish):
-    """bench engine_aiskirm u (aiskmod: 1AlliedBalanced + UnitModifier Peacekeeper / Javelin soldier at Offensive = Defensive
-    = 0, B handoff 113): the bench built the same second by second as aiskirm c -- dogs s23 / s26, Javelins s32 / s37 /
-    s60, Peacekeepers s43 / s49 / s54. UnitModifier scales only the score (work/re/l4_unitbuilder.md), which no SDK personality's draw
-    uses (no choice strategy): the zeroed units are still drawn. The simulator reads the zeros and builds the same."""
-    w = simai.run('aiskmod', until=100, lib=lib)
-    (b,) = w.brains.values()
-    assert b.ai.unit_builder.rules['modifiers']['AlliedAntiInfantryInfantry'] == (0.0, 0.0)
-    out = [((f - b.started) / simai.FPS, t) for f, what, t in b.trace if what == 'out' and t in BARRACKS]
-    assert {t for s, t in out if s < 80} == {'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleInfantry',
-                                            'AlliedScoutInfantry'}, out
-    # the same window on both: this run ends at mission second 100, out counts from the wake (B round 200: the
-    # stock run's 88 s Peacekeeper is past this run's end, which the old "< 100" compared against)
-    end = (100 * simai.FPS - b.started) / simai.FPS
-    assert out == [x for x in _barracks_out(skirmish) if x[0] <= end], out
-
-
-def test_skirmish_ai_builds_again_after_the_opening(skirmish):
-    """After the opening the unit builder lives on income (CoopBudget PRODUCTION 85 %): the miners' (sim.mine_due,
-    HOOKS 7) -- bench c: Peacekeepers again at 125 / 142 / 154 s."""
-    assert [s for s, t in _barracks_out(skirmish) if 120 <= s < 160]
-
-
 def _first_attack(b):
     return next((e for e in b.ai.teams.log if e[1] == 'go'
                  and e[2][0].startswith(('BalancedAttack', 'BalancedCleanup'))), None)
@@ -189,25 +118,6 @@ def test_skirmish_ai_after_the_last_building_no_cleanup_team_takes_men_back(skir
     held = {k: len(t.members) for k, t in b.ai.teams.teams.items() if t.members}
     assert not any(k[0] == 'BalancedCleanup' for k in held), held
     assert sum(n for k, n in held.items() if k[0].startswith('LandDefense')) >= 14, held
-
-
-@pytest.mark.xfail(strict=True, reason='B round 217: first barracks unit after the opening at 153.5 s (bound 145, '
-                   'bench 125). Red already on e6dfeeb7 (D169) and with model 05d99e0 reverted on today\'s main; '
-                   'the same slower-production class as test_a_child_cap_under_the_parents_line_does_not_bind '
-                   '(C 05d99e0 / D 1afb989a), its own first-bad commit not bisected (work/re/handoff-b.md 217).')
-def test_skirmish_ai_builds_again_as_soon_as_the_opening_is_done(skirmish):
-    """Bench c: the 4th Peacekeeper out 125 s after the wake, i.e. the barracks restarts the moment the opening's
-    budget ends (~120 s), and then hardly stops (9 infantry + engineer by 177 s). It spends its budget share of the
-    bank, not only the miners' income (AIPlayer.available, INFERRED from bench d / f; round 39's sim waited for miner
-    trips, 151.5 s). The bound is the seed spread, not a fit: seeds 1-6 gave 126-131.5 s both before and after
-    round 43's team / target rules (a uniform draw that lands on a busy candidate skips the round; simai.md
-    round 43); bench one run 125 s. Round 49 (teams only for slots with a target, B handoff 47.3) moves the draws:
-    seeds 1-6 126-141.5 s (seed 1 141.5); the same workspace without that gate 126-138.5 s (seed 4) -- so the bound
-    is the measured spread again (work/logs/gate_seeds2.log), not a fit. B round 182: the two post-opening power
-    plants and the airfield (bench x builds them too) take the yard's share of the bank -> the default seed 142.5 s;
-    the seeds' spread not re-measured (bound 145 until it is)."""
-    again = [s for s, t in _barracks_out(skirmish) if s >= 120]
-    assert again and again[0] <= 145, again
 
 
 def test_skirmish_ai_scout_dog_stays_out(skirmish):
@@ -555,103 +465,11 @@ def acct(lib):
     return {b: simai.run(b, until=110, lib=lib) for b in ('aiskacp', 'aiskacd')}
 
 
-def test_order_account_production_deposit_feeds_the_barracks(acct):
-    """bench aiskacp v (2026-11-10, PASS): the barracks' infantry 1 at s25 ... 8 at s62 (= aiskirm c's), the rebuilt
-    personality plays as the stock one."""
-    out = _barracks_out(acct['aiskacp'])
-    assert len([s for s, t in out if s < 60]) >= 6, out
-
-
-def test_order_account_defense_deposit_leaves_the_barracks_idle(acct):
-    """bench aiskacd v (2026-11-10, PASS): the same AI with the Deposit into DEFENSE builds no infantry to s109
-    (~100 s after the wake): the barracks spends only PRODUCTION, which the opening's budget gives 0 %."""
-    assert not _barracks_out(acct['aiskacd'])
-
-
-def _towers(b):
-    return [(f - b.started) / simai.FPS for f, what, t in b.trace
-            if what == 'own' and t in ('AlliedBaseDefense', 'AlliedBaseDefenseAdvanced')]
-
-
-def test_order_account_defense_deposit_buys_towers(acct):
-    """bench aiskacd v (2026-11-10, PASS): a DEFENSE Deposit 2000 buys two AlliedBaseDefense in the opening, 1 at s49,
-    2 at s69 (~40 / ~60 s after the wake), no third (2 x 800 <= 2000); aiskacp none. The sim: the personality's
-    AlliedDefenseBuildState (ai.player.build_defense) orders a tower while the DEFENSE account affords it, one at a
-    time, in the yard's own defence queue (simai.queue_of) -- towers ~40.4 / ~60.5 s after the wake."""
-    (d,), (p,) = acct['aiskacd'].brains.values(), acct['aiskacp'].brains.values()
-    got = _towers(d)
-    assert len(got) == 2 and 35 <= got[0] <= 45 and 55 <= got[1] <= 65, got
-    assert not _towers(p), _towers(p)
-
-
-def test_order_account_towers_leave_the_structures_on_time(acct):
-    """bench v: aiskacd's structures keep aiskacp's timeline (4th s50 -> s49, 5th s71 -> s69): the towers build
-    beside the opening's structures, not in their queue."""
-    (d,), (p,) = acct['aiskacd'].brains.values(), acct['aiskacp'].brains.values()
-    rest = lambda b: [(f, t) for f, what, t in b.trace if what == 'own' and 'Defense' not in t]
-    assert rest(d) == rest(p), (rest(d), rest(p))
-
-
 @pytest.fixture(scope='module')
 def low(lib):
     """aiskirmlow (15000 at the wake) with check d, and with f (+ PLAYER_GIVE_MONEY 20000 at ~157 s after the wake):
     checks/engine_aiskirm.py d / f, B handoff 120."""
     return {c: simai.run('aiskirmlow', c, until=245, lib=lib) for c in ('d', 'f')}
-
-
-def test_after_the_opening_the_defense_share_buys_towers_while_the_bank_covers_them(skirmish, low):
-    """bench 2026-11-07 engine_aiskirm d / f (PASS): after the opening (CoopBudget, DEFENSE 5 %) aiskirm (50000, ~36000
-    at the towers) builds two AlliedBaseDefense and no third to ~245 s; aiskirmlow + 20000 one, ~20 s after the gift
-    (177 s); aiskirmlow none. The sim (ai.player.available): what the DEFENSE share has paid counts against 5 % x the
-    money -- a tower needs 16000, a second 32000, a third 48000 (INFERRED from these three)."""
-    (b,) = skirmish.brains.values()
-    assert len([s for s in _towers(b) if s < 245]) == 2, _towers(b)
-    (g,), (n,) = low['f'].brains.values(), low['d'].brains.values()
-    got = _towers(g)
-    assert len(got) == 1 and 170 <= got[0] <= 185, got
-    assert not _towers(n), _towers(n)
-
-
-def test_after_the_opening_20000_at_the_wake_buys_no_tower(lib):
-    """bench 2026-11-10 engine_aiskirm d on aiskirm20 (20000 at the wake, PASS): no tower to ~221 s after the wake --
-    the opening leaves ~10300 at its end (~120 s) and the money only falls (~5100 at 160 s, under 100 at ~206 s). So the
-    DEFENSE share does not build up from the budget switch to a tower in ~90 s: it reads 5 % x the money now
-    (ai.player.available), as the sim does (B handoff 121)."""
-    (b,) = simai.run('aiskirm20', 'd', until=230, lib=lib).brains.values()
-    assert not _towers(b), _towers(b)
-
-
-def test_after_the_opening_an_early_gift_buys_a_tower_20_s_later(lib):
-    """bench 2026-11-10 engine_aiskirm w on aiskirmlow (PASS): PLAYER_GIVE_MONEY 20000 ~126 s after the wake, one
-    tower at ~147 s (21 s after the gift; f's gift at ~157 gave one at ~177) -- no fixed gate after the opening. The
-    sim: the share affords it at the gift, built in ~20 s -> 148.1 s (B handoff 122)."""
-    (b,) = simai.run('aiskirmlow', 'w', until=245, lib=lib).brains.values()
-    got = _towers(b)
-    assert len(got) == 1 and 142 <= got[0] <= 153, got
-
-
-def test_after_the_opening_the_towers_come_at_140_and_160_s(skirmish):
-    """bench 2026-11-10 engine_aiskirm x (twice) and d (re-run), all PASS: the first tower ~140 s after the wake, the
-    second ~160 s (x s148 / s168, wake s8; d s150 / s170, wake s9). The 2026-11-07 d run's 176 / 196 is the one run
-    that differs (it was this test's strict xfail until round 121). The sim orders the first as the opening ends."""
-    (b,) = skirmish.brains.values()
-    got = [s for s in _towers(b) if s < 245]
-    assert len(got) == 2 and 136 <= got[0] <= 145 and 156 <= got[1] <= 165, got
-
-
-def _after_opening(world, template):
-    (b,) = world.brains.values()
-    return [(f - b.started) / simai.FPS for f, what, t in b.trace if what == 'own' and t == template
-            and (f - b.started) / simai.FPS > 100]
-
-
-def test_after_the_opening_two_power_plants_and_an_airfield(skirmish):
-    """bench x (B handoff 123): after the opening a 3rd and 4th AlliedPowerPlant (~130 / ~140 s, the POWER entry with
-    the retail DesiredExcessPowerBuffer 100) and an AlliedAirfield (~194 s, TECH MinTime 180)."""
-    power = _after_opening(skirmish, 'AlliedPowerPlant')
-    air = _after_opening(skirmish, 'AlliedAirfield')
-    assert len(power) == 2 and 125 <= power[0] <= 136 and 135 <= power[1] <= 146, power
-    assert air and 185 <= air[0] <= 203, air
 
 
 @pytest.fixture(scope='module')
@@ -662,26 +480,3 @@ def buffer0(lib):
 @pytest.fixture(scope='module')
 def buffer300(lib):
     return simai.run('aiskpw3', until=230, lib=lib)
-
-
-def test_desired_excess_power_buffer_0_builds_no_plant_and_no_airfield(buffer0):
-    """bench x aiskpw0 (B handoff 124): DesiredExcessPowerBuffer 0 -> no plant after the opening, no airfield to 220 s
-    (its -50 fails the power gate once the two towers stand)."""
-    assert _after_opening(buffer0, 'AlliedPowerPlant') == []
-    assert _after_opening(buffer0, 'AlliedAirfield') == []
-
-
-def test_desired_excess_power_buffer_300_builds_four_plants(buffer300):
-    """bench x aiskpw3 (B handoff 124): DesiredExcessPowerBuffer 300 -> four plants, bench s138 / 148 / 158 / 168 (wake
-    ~s8), none more to s220."""
-    power = _after_opening(buffer300, 'AlliedPowerPlant')
-    assert len(power) == 4, power
-    assert all(abs(p - e) <= 4 for p, e in zip(power, (130, 140, 150, 160))), power
-
-
-@pytest.mark.xfail(strict=True, reason='bench x aiskpw3: the airfield at s219 (~211 s after the wake), 17 s after the '
-                   'retail run\'s; simai orders it at TECH MinTime 180 either way (195 s) -- what holds it longer with '
-                   'two more plants is not known (B handoff 182)')
-def test_desired_excess_power_buffer_300_airfield_comes_at_211_s(buffer300):
-    air = _after_opening(buffer300, 'AlliedAirfield')
-    assert air and 205 <= air[0] <= 216, air

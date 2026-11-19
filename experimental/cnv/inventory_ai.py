@@ -364,8 +364,8 @@ NOTES = {
         'B122 engine_aiskirm x 三局（aiskpw0 / aiskirm / aiskpw3 = 缓冲 0 / 100 / 300）：开局后多造电厂 0 / 2 / 4 座，'
         '一座接一座（唤醒后 ~130 / 140 / 150 / 160 s）。B182 模型 POWER 启发照读到的规则（产电 + 在队列里的电量 '
         '对 耗电 + 缓冲；建造场算、刚放下还在展开的电厂两边都不算）三局数量和时刻都对上，'
-        'tests/test_simai.py::test_desired_excess_power_buffer_* 按名回放。'
-        'gap：敌人压境（500 内价值 ≥1000）那道门没上台；缓冲 300 时空军台上晚 17 s 没解释（strict xfail）'),
+        '读数 experimental/cnv/checks/engine_aiskirm.readings.toml::desired_excess_power_buffer_* 。'
+        'gap：敌人压境（500 内价值 ≥1000）那道门没上台；缓冲 300 时空军台上晚 17 s 没解释（读数 mismatch）'),
     '人格/AIPersonalityDefinition.BuildTechMinPowerAdvantage': (BENCHED,
         'B181 engine_aiskirm aiskmtp:mt（aiskmt40 加 BuildTechMinPowerAdvantage=1000）：到 s810（科技帧 12159）'
         '没造科技楼；aiskmt40（继承 1.25）f5857 造。模型 tech_score 在 MinTime..ForceTime 窗口里加兵力比门'

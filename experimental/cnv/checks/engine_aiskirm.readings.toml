@@ -357,3 +357,183 @@ expect = [
     "any(r['池峰'] == 2 for r in rows[transfer:])",
 ]
 mismatch = "A round 202 (model fca219e): model defense 9 -> 0 and Cleanup 99 -> 9 at s131, pool 0 and peak 1 through s170; retail defense 8 -> 0 and Cleanup 99 -> 8 at s129, pool peak 2 at s134."
+
+# ---- the barracks, the order account, the towers and the post-opening plants (T3 B, from tests/test_simai.py; mission
+# seconds; the bench wakes s8 on aiskirm / aiskpw*, s9 on aiskirmlow / aiskirm20 / aiskac*: "N s after the wake" is
+# written as the bench second). 警犬 200, 维和 200, 标枪 300 (retail BuildCost); the engineer is not the deposit's.
+
+[[reading]]
+id = "skirmish_ai_builds_infantry_in_the_opening_until_the_deposit_is_spent"
+scene = {build = "aiskirm", check = "u", until = 300}
+bench = """\
+engine_aiskirm c: the barracks builds from ~15 s after the wake, beside the opening, 1900 of the opening's PRODUCTION \
+Deposit 2000 by 52 s (2 dogs / 3 Javelins / 3 Peacekeepers), then nothing till 125 s"""
+proves = "simai unit builder: tied to no team, it spends the opening's PRODUCTION Deposit during the opening"
+let = {at = "lambda s: next(r for t, r in zip(times, rows) if t >= s)", spent = "lambda r: 200 * r['警犬总数'] + 200 * r['维和总数'] + 300 * r['标枪总数']", start = "next(t for t, r in zip(times, rows) if spent(r) > 0)"}
+expect = ["start < 38", "1800 <= spent(at(127)) <= 2000"]
+
+[[reading]]
+id = "skirmish_ai_barracks_spends_only_the_deposit_and_most_of_it_by_60_s"
+scene = {build = "aiskirm", check = "u", until = 300}
+bench = """\
+engine_aiskirm c: the Deposit 2000 is the barracks' only money before 125 s after the wake (the budget's PRODUCTION \
+share 0 %), 1900 of it by 52 s"""
+proves = "simai budget: the barracks spends only the opening's Deposit before the opening ends, most of it in a minute"
+let = {at = "lambda s: next(r for t, r in zip(times, rows) if t >= s)", spent = "lambda r: 200 * r['警犬总数'] + 200 * r['维和总数'] + 300 * r['标枪总数']"}
+expect = ["spent(at(127)) <= 2000", "spent(at(68)) >= 1800"]
+
+[[reading]]
+id = "skirmish_ai_barracks_builds_nothing_between_70_and_120_s"
+scene = {build = "aiskirm", check = "u", until = 300}
+bench = """\
+engine_aiskirm c: nothing from the barracks between 70 and 125 s after the wake (its draw spent 1900, 100 left). \
+Rides on the uniform unit draw (B handoff 103 / 104): red with only the draws moved -> mark it mismatch with the numbers"""
+proves = "simai unit builder: with the Deposit spent the barracks waits for the budget switch"
+let = {kinds = "lambda r: (r['警犬总数'], r['维和总数'], r['标枪总数'])", span = "[kinds(r) for t, r in zip(times, rows) if 78 <= t <= 127]"}
+expect = "len(span) >= 40 and len(set(span)) == 1"
+
+[[reading]]
+id = "skirmish_ai_barracks_mix_matches_the_bench"
+scene = {build = "aiskirm", check = "u", until = 300}
+bench = """\
+engine_aiskirm c: 2 dogs, 3 Javelins, 3 Peacekeepers by 120 s after the wake -- one uniform draw (no SDK personality \
+has a UnitBuilderUnitChoiceStrategy), so only the set is read"""
+proves = "simai unit builder: every idle candidate weighs 1, the barracks draws among its three standard units"
+let = {r = "next(r for t, r in zip(times, rows) if t >= 127)"}
+expect = "r['警犬总数'] > 0 and r['维和总数'] > 0 and r['标枪总数'] > 0"
+
+[[reading]]
+id = "unit_modifier_zero_changes_nothing_as_on_the_bench"
+scenes = {base = {build = "aiskirm", check = "u", until = 100}, zero = {build = "aiskmod", check = "u", until = 100}}
+bench = """\
+engine_aiskirm u (aiskmod: UnitModifier Peacekeeper / Javelin soldier Offensive = Defensive = 0, B handoff 113): \
+the same second by second as aiskirm c -- dogs s23 / s26, Javelins s32 / s37 / s60, Peacekeepers s43 / s49 / s54"""
+proves = "simai unit builder: UnitModifier scales only the score, which no SDK personality's draw uses"
+let = {r = "zero[87]"}
+expect = ["zero == base", "r['警犬总数'] > 0 and r['维和总数'] > 0 and r['标枪总数'] > 0"]
+
+[[reading]]
+id = "skirmish_ai_builds_again_after_the_opening"
+scene = {build = "aiskirm", check = "u", until = 300}
+bench = "engine_aiskirm c: Peacekeepers again at 125 / 142 / 154 s after the wake (CoopBudget PRODUCTION 85 %)"
+proves = "simai unit builder: after the opening it lives on its budget share"
+let = {at = "lambda s: next(r for t, r in zip(times, rows) if t >= s)", made = "lambda r: r['警犬总数'] + r['维和总数'] + r['标枪总数']"}
+expect = "made(at(168)) > made(at(127))"
+
+[[reading]]
+id = "skirmish_ai_builds_again_as_soon_as_the_opening_is_done"
+scene = {build = "aiskirm", check = "u", until = 300}
+bench = """\
+engine_aiskirm c: the 4th Peacekeeper out 125 s after the wake (s133), i.e. the barracks restarts the moment the \
+opening's budget ends (~120 s); seeds 1-6 gave 126-141.5 s (bound 145 s = s153)"""
+proves = "simai budget: the barracks spends its share of the bank as soon as the opening ends"
+let = {made = "lambda r: r['警犬总数'] + r['维和总数'] + r['标枪总数']", base = "made(next(r for t, r in zip(times, rows) if t >= 127))", again = "next((t for t, r in zip(times, rows) if t > 127 and made(r) > base), None)"}
+expect = "again is not None and again <= 153"
+mismatch = """\
+B round 217: the first barracks unit after the opening at s164 (153.5 s after the simulator's wake; bound s153, \
+bench s133). Red already on e6dfeeb7 (D169) and with model 05d99e0 reverted; the same slower-production class as \
+test_a_child_cap_under_the_parents_line_does_not_bind (C 05d99e0 / D 1afb989a), its first-bad commit not bisected"""
+
+[[reading]]
+id = "order_account_production_deposit_feeds_the_barracks"
+scene = {build = "aiskacp", check = "v", until = 110}
+bench = "aiskacp v (2026-11-10, PASS): the barracks' infantry 1 at s25 ... 8 at s62 (= aiskirm c's)"
+proves = "simai order Account: a PRODUCTION Deposit feeds the barracks, the rebuilt personality plays as the stock one"
+expect = "next(r for t, r in zip(times, rows) if t >= 69)['步兵'] >= 6"
+
+[[reading]]
+id = "order_account_defense_deposit_leaves_the_barracks_idle"
+scene = {build = "aiskacd", check = "v", until = 110}
+bench = "aiskacd v (2026-11-10, PASS): with the Deposit into DEFENSE no infantry to s109 (~100 s after the wake)"
+proves = "simai order Account: the barracks spends only PRODUCTION, which the opening's budget gives 0 %"
+expect = "max(r['步兵'] for r in rows) == 0"
+
+[[reading]]
+id = "order_account_defense_deposit_buys_towers"
+scenes = {d = {build = "aiskacd", check = "v", until = 110}, p = {build = "aiskacp", check = "v", until = 110}}
+bench = """\
+aiskacd v (2026-11-10, PASS): the DEFENSE Deposit 2000 buys two AlliedBaseDefense in the opening, 1 at s49, 2 at \
+s69, no third (2 x 800 <= 2000); aiskacp none"""
+proves = "simai base defense builder: a tower while the DEFENSE account affords it, one at a time, in the yard's defence queue"
+let = {one = "next(i for i, r in enumerate(d) if r['塔数'] >= 1)", two = "next(i for i, r in enumerate(d) if r['塔数'] >= 2)"}
+expect = ["44 <= one + 1 <= 54 and 64 <= two + 1 <= 74", "max(r['塔数'] for r in d) == 2", "max(r['塔数'] for r in p) == 0"]
+
+[[reading]]
+id = "order_account_towers_leave_the_structures_on_time"
+scenes = {d = {build = "aiskacd", check = "v", until = 110}, p = {build = "aiskacp", check = "v", until = 110}}
+bench = "bench v: aiskacd's structures keep aiskacp's timeline (4th s50 -> s49, 5th s71 -> s69)"
+proves = "simai base defense builder: the towers build beside the opening's structures, not in their queue"
+expect = "[r['建筑数'] - r['塔数'] for r in d] == [r['建筑数'] - r['塔数'] for r in p]"
+
+[[reading]]
+id = "after_the_opening_the_defense_share_buys_towers_while_the_bank_covers_them"
+scenes = {rich = {build = "aiskirm", check = "d", until = 245}, gift = {build = "aiskirmlow", check = "f", until = 245}, low = {build = "aiskirmlow", check = "d", until = 245}}
+bench = """\
+engine_aiskirm d / f (2026-11-07, PASS): after the opening (CoopBudget DEFENSE 5 %) aiskirm builds two towers and no \
+third to ~245 s; aiskirmlow + 20000 one, ~20 s after the gift (177 s after the wake, s186); aiskirmlow none"""
+proves = "simai budget: what the DEFENSE share has paid counts against 5 % x the money (INFERRED from these three)"
+let = {at = "next(i for i, r in enumerate(gift) if r['塔数'] >= 1)"}
+expect = ["max(r['塔数'] for r in rich) == 2", "max(r['塔数'] for r in gift) == 1 and 179 <= at + 1 <= 194", "max(r['塔数'] for r in low) == 0"]
+
+[[reading]]
+id = "after_the_opening_20000_at_the_wake_buys_no_tower"
+scene = {build = "aiskirm20", check = "d", until = 230}
+bench = """\
+engine_aiskirm d on aiskirm20 (2026-11-10, PASS): no tower to ~221 s after the wake -- the money only falls after \
+the opening (~10300 at ~120 s, under 100 at ~206 s)"""
+proves = "simai budget: the DEFENSE share reads 5 % x the money now, it does not build up from the budget switch"
+expect = "max(r['塔数'] for r in rows) == 0"
+
+[[reading]]
+id = "after_the_opening_an_early_gift_buys_a_tower_20_s_later"
+scene = {build = "aiskirmlow", check = "w", until = 245}
+bench = "engine_aiskirm w on aiskirmlow (2026-11-10, PASS): the gift 20000 at s135, one tower at s156, one only to s253"
+proves = "simai budget: no fixed gate after the opening -- the share affords a tower at the gift, built in ~20 s"
+let = {at = "times[first('塔数', lambda v: v >= 1)]"}
+expect = ["151 <= at <= 162", "max(r['塔数'] for r in rows) == 1"]
+
+[[reading]]
+id = "after_the_opening_the_towers_come_at_140_and_160_s"
+scene = {build = "aiskirm", check = "x", until = 245}
+bench = """\
+engine_aiskirm x (twice) and d (re-run), 2026-11-10, all PASS: towers s148 / s168 (wake s8; d s150 / s170, wake \
+s9). The 2026-11-07 d run's 176 / 196 s after the wake is the one run that differs"""
+proves = "simai base defense builder: the first tower is ordered as the opening ends"
+let = {one = "times[first('塔数', lambda v: v >= 1)]", two = "times[first('塔数', lambda v: v >= 2)]"}
+expect = ["144 <= one <= 153 and 164 <= two <= 173", "max(r['塔数'] for r in rows) == 2"]
+
+[[reading]]
+id = "after_the_opening_two_power_plants_and_an_airfield"
+scene = {build = "aiskirm", check = "x", until = 245}
+bench = """\
+engine_aiskirm x (2026-11-10, two runs the same): 建筑码 1122 s99, 1123 s138, 1124 s148 (a 3rd and 4th plant, the \
+POWER entry with the retail DesiredExcessPowerBuffer 100); 空军 1 at s202 (TECH MinTime 180); 科技 0"""
+proves = "simai build states: after the opening two plants (POWER) and an airfield (TECH), nothing else"
+let = {p3 = "times[first('建筑码', lambda v: v % 10 >= 3)]", p4 = "times[first('建筑码', lambda v: v % 10 >= 4)]", air = "times[first('空军', lambda v: v >= 1)]"}
+expect = ["133 <= p3 <= 144 and 143 <= p4 <= 154", "max(r['建筑码'] % 10 for r in rows) == 4", "193 <= air <= 211"]
+
+[[reading]]
+id = "desired_excess_power_buffer_0_builds_no_plant_and_no_airfield"
+scene = {build = "aiskpw0", check = "x", until = 230}
+bench = "engine_aiskirm x on aiskpw0 (2026-11-10, PASS): DesiredExcessPowerBuffer 0 -> 1122 to s228, 空军 0 to s228"
+proves = "simai build states: buffer 0 builds no plant after the opening, and its -50 fails the airfield's power gate"
+expect = "max(r['建筑码'] % 10 for r in rows) == 2 and max(r['空军'] for r in rows) == 0"
+
+[[reading]]
+id = "desired_excess_power_buffer_300_builds_four_plants"
+scene = {build = "aiskpw3", check = "x", until = 230}
+bench = "engine_aiskirm x on aiskpw3 (2026-11-10, PASS): DesiredExcessPowerBuffer 300 -> 1123 s138, 1124 s148, 1125 s158, 1126 s168, to s220"
+proves = "simai build states: the post-opening plants follow the buffer (0 -> 0, 100 -> 2, 300 -> 4)"
+let = {got = "[times[first('建筑码', lambda v, n=n: v % 10 >= n)] for n in (3, 4, 5, 6)]"}
+expect = ["max(r['建筑码'] % 10 for r in rows) == 6", "all(abs(g - e) <= 4 for g, e in zip(got, (138, 148, 158, 168)))"]
+
+[[reading]]
+id = "desired_excess_power_buffer_300_airfield_comes_at_211_s"
+scene = {build = "aiskpw3", check = "x", until = 230}
+bench = "engine_aiskirm x on aiskpw3 (2026-11-10, PASS): 空军 1 at s219 (~211 s after the wake), 17 s after aiskirm's"
+proves = "simai build states: with two more plants the airfield comes later"
+let = {air = "first('空军', lambda v: v >= 1)"}
+expect = "air is not None and 213 <= times[air] <= 224"
+mismatch = """\
+B handoff 182: simai orders the airfield at TECH MinTime 180 either way (s206 here, as on aiskirm); the bench s219. \
+What holds it longer with two more plants is not known"""
