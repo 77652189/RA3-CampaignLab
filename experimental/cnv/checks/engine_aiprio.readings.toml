@@ -27,3 +27,11 @@ expect = "far is not None and (near is None or far < near)"
 mismatch = """\
 bench aipriodef: two enemies in one tier, the game went for the farther plant (the player's, s25); the simulator \
 takes the nearest (Soviet_4's, s14) -- why NOT READ"""
+
+[[reading]]
+id = "one_priority_zero_takes_that_enemy_out"
+scene = {build = "aiprio0", check = "a", until = 70.0}
+bench = "aiprio0 (SET_ALL 20, then Player_1 0): 到近厂 2 @ s15, never 到远厂"
+proves = "simai enemy priority: a priority 0 after SET_ALL takes that enemy out of the table"
+let = {near = "first('到近厂')"}
+expect = "near is not None and abs(near - 15) <= 2 and first('到远厂') is None"

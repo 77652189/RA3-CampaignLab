@@ -25,3 +25,10 @@ each = [{build = "aiswreb1", kill = 15}, {build = "aiswreb0", kill = 15}]   # ki
 bench = "aiswreb1 / aiswreb0: 电厂数 0 from s14 to s119-s120, 5000 money, rebuild 1 or 0"
 proves = "simai AI switches: the rebuild switch (1 or 0) does not put a killed plant back"
 expect = "rows[kill - 2]['电厂数'] == 1 and all(r['电厂数'] == 0 for r in rows[kill + 2:])"
+
+[[reading]]
+id = "priorities_zero_send_no_team_to_the_nearest_structure"
+scene = {build = "aisw0near", check = "a", until = 70.0}
+bench = "aisw0near: 步兵在家 4 from s1 to s75, nobody at either plant (the control aitargetnear went at s13)"
+proves = "simai enemy priority: all priorities 0 (no named target) send no team anywhere"
+expect = "all(r['步兵在家'] == 4 and r['到近厂'] == 0 and r['到远厂'] == 0 for r in rows)"

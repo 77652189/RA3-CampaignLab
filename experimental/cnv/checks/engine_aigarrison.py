@@ -1,5 +1,5 @@
 """Engine probe: the skirmish AI team's EnterGarrisons (missions/aigarrison_bench.py; docs/engine/aiteamstate.md; the
-simulator against these readings: tests/test_simai.py).
+simulator against these readings: engine_aigarrison.readings.toml).
 
   a  步兵在家 / 到远厂     Peacekeepers of s1 within 450 of the AI's base / 300 of the far power plant
      步兵数               Peacekeepers s1 owns (in the house too)

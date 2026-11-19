@@ -18,5 +18,15 @@ attack-moving one turns aside to a foe in sight)"""
 proves = "simai base defenses: EnterBaseDefenses sends one Peacekeeper into the first turret"
 expect = "any(r['进炮塔'] >= 1 for r in rows)"
 mismatch = """\
-B round 196: as test_simai test_one_goes_into_the_first_turret -- nobody goes in since the SimpleAttack form-up \
-(B round 194), which the bench has too"""
+B round 196: nobody goes into turret 1 since the SimpleAttack form-up (B round 194: form f2, go f55), which the \
+bench has too (it forms up in every SimpleAttack run with a teams host); the way past turret 1 from the form point \
+vs the garrison pass is not attributed"""
+
+[[reading]]
+id = "a_full_turret_keeps_its_sitter_and_nobody_else_goes_in"
+scene = {build = "aibdpre", check = "a", until = 60.0}
+bench = """\
+aibdpre (turret 1 holds a fifth Peacekeeper from s0): 进炮塔 1 s1-s15 (the sitter), never passes 1 -- with turret 1 \
+full nobody goes into turret 2 or 3, though 3 stand by turret 2 (s18-25)"""
+proves = "simai base defenses: the pass does not skip a full turret (nobody of the team goes into another one)"
+expect = ["win(1, 12, '进炮塔') == [1] * 12", "all(r['进炮塔'] <= 1 for r in rows)"]

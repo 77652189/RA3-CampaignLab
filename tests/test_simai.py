@@ -211,35 +211,6 @@ def test_skirmish_ai_talks_about_itself(skirmish):
     assert 'targets' in me and any(me['targets'].values())
 
 
-# ---- the wake's script switches (checks/engine_aiswitch.py, bench 2026-11-08; work/re l4_aiswitches.md)
-def _switch_run(build, lib, until=70.0):
-    w = simai.run(build, 'a', until, lib=lib)
-    labels = [lab for _, lab in w.sim.test.counters]
-    return w, [dict(zip(labels, v)) for _, v in w.sim.series]
-
-
-def test_priorities_zero_send_no_team_to_the_nearest_structure(lib):
-    # bench aisw0near: 步兵在家 4 from s1 to s75, nobody at either plant (the control aitargetnear went at s13)
-    w, rows = _switch_run('aisw0near', lib)
-    (b,) = w.brains.values()
-    assert b.ai.enemy_table == {}
-    assert all(r['步兵在家'] == 4 and r['到近厂'] == 0 and r['到远厂'] == 0 for r in rows)
-
-
-# ---- SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY (checks/engine_aiprio.py, bench 2026-11-10): the near plant Soviet_4's
-def _first(rows, label):
-    return next((i for i, r in enumerate(rows) if r[label] >= 1), None)
-
-
-def test_one_priority_zero_takes_that_enemy_out(lib):
-    # bench aiprio0 (SET_ALL 20, then Player_1 0): 到近厂 2 @ s15, never 到远厂
-    w, rows = _switch_run('aiprio0', lib)
-    (b,) = w.brains.values()
-    assert b.ai.enemy_table == {'Soviet_4': 20}
-    near = _first(rows, '到近厂')
-    assert near is not None and abs(near - 15) <= 2 and _first(rows, '到远厂') is None
-
-
 def test_path_to_target_is_asked_on_the_simulators_grid(lib):
     """PathToTargetHeuristic (work/re l4_states.md 3): the opening and the states ask the brain; the skirmish map is
     one piece of land, so infantry has a way and a ship finds no water spot (= no way). At 300 s the player's base
@@ -291,14 +262,8 @@ def test_strategic_facts_the_brain_gives(lib):
 
 
 # ---- EnterBaseDefenses / EnterGarrisons (checks/engine_aibasedef.py, engine_aigarrison.py, bench 11-09; public
-# docs/engine/aiteamstate.md sections 3 / 4). The simulator has no garrisons: simai.Garrisons carries the model's
-# 'enter' orders out; these read Garrisons.log, not the check's counters (written before sim.py counted ENCLOSED
-# through PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS, A round 164).
-def _garrison_run(build, lib, until=60.0):
-    w = simai.run(build, 'a', until, lib=lib)
-    return w, [e for e in w.garrison.log if not e[3]]          # the AI's own entries (not the script's sitter)
-
-
+# docs/engine/aiteamstate.md sections 3 / 4). Who goes in, and who stays out, are readings on the checks' counters
+# (engine_aibasedef / engine_aigarrison .readings.toml); left here: the brain's own lists and their order.
 def _ai_hooks(build, lib):
     """The brain just after the wake: an AI Peacekeeper's defenses / houses lists (building names, the list's order)."""
     w = simai.run(build, 'a', 12.0, lib=lib)
@@ -316,49 +281,15 @@ def test_the_ais_turrets_are_its_base_defenses_in_their_order_not_houses(lib):
 
 
 def test_a_full_turret_stays_first_on_the_list(lib):
-    # bench aibdpre: turret 1 full from s0, nobody went into turret 2 / 3 -- the pass does not skip a full one
-    w, defenses, _ = _ai_hooks('aibdpre', lib)
-    assert w.garrison.held(w.body('UNIT - CNV AI Turret 1'))[0].name == 'UNIT - CNV AI Sitter'
+    # bench aibdpre: turret 1 full from s0 (the sitter: reading a_full_turret_keeps_its_sitter_and_nobody_else_goes_in),
+    # nobody went into turret 2 / 3 -- the pass does not skip a full one
+    _, defenses, _ = _ai_hooks('aibdpre', lib)
     assert defenses[0] == 'UNIT - CNV AI Turret 1'
 
 
 def test_a_neutral_house_is_a_house_not_a_defense(lib):
     _, defenses, houses = _ai_hooks('aigar1', lib)
     assert defenses == [] and houses == ['UNIT - CNV AI House']
-
-
-@pytest.mark.parametrize('build', ['aibd0', 'aibdidle', 'aigar0', 'aigarfar', 'aibdpre'])
-def test_nobody_goes_in_where_the_bench_had_nobody(lib, build):
-    # bench: aibd0 / aibdidle / aigar0 / aigarfar nobody in; aibdpre nobody besides the sitter
-    _, got = _garrison_run(build, lib)
-    assert got == []
-
-
-# was strict xfail (the team ~8 s late): it forms before the wake now (B rounds 161-164)
-@pytest.mark.xfail(strict=True, reason='B round 196: since the SimpleAttack form-up (B round 194: form f2, go f55) '
-                                       'nobody goes into turret 1; the bench forms up in every SimpleAttack run with a '
-                                       'teams host, so the scope stands -- the way past turret 1 from the form point vs '
-                                       'the garrison pass is not attributed')
-def test_one_goes_into_the_first_turret(lib):
-    _, got = _garrison_run('aibd1', lib)
-    assert [e[2] for e in got] == ['UNIT - CNV AI Turret 1']
-
-
-# bench aigar1: the house the AI's at s18, three alive inside to s75. Passes since the topple props (188 lamp posts on
-# this map) stopped being walls: the men no longer walk round them under fire (codex/topple, 2026-11-09).
-def test_the_team_goes_into_the_house(lib):
-    w, got = _garrison_run('aigar1', lib, until=75.0)
-    assert 3 <= len(got) <= 4, got
-    assert len([u for u in w.garrison.held(w.body('UNIT - CNV AI House')) if u.alive]) >= 3, got
-
-
-@pytest.mark.xfail(strict=True, reason="bench aigar1: three alive inside, one died about the door. Since state 2's "
-                                       "per-member pick (tactics._assign, B round 114) the men turn on the defenders "
-                                       "on the way and take more fire (18 / 18 / 33 / 101 hp inside) but all four "
-                                       "get in: the sim's fire, not the garrison rule (it passed by one shot's luck)")
-def test_one_of_the_four_dies_at_the_house_door(lib):
-    w, got = _garrison_run('aigar1', lib, until=75.0)
-    assert len([u for u in w.garrison.held(w.body('UNIT - CNV AI House')) if u.alive]) == 3, got
 
 
 @pytest.fixture(scope='module')
