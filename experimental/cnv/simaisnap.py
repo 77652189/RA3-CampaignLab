@@ -242,10 +242,13 @@ def restore(w, s):
     SimAI's own, then each brain's -- its Units, its own fields, the plugin's objects through their port, the Teams
     it holds by their keys."""
     _check(s)
+    simsnap.check(w.sim, s['sim'])      # review 1119m #1: the Sim's part refused before a brain is made, not after
     if w.brains:
         raise ValueError('simaisnap.restore: onto a SimAI that has brains already (made anew, not advanced)')
-    Brain = importlib.import_module(type(w).__module__).Brain
     for player, side, pid, fields, _ in s['brains']:
+        # review 1119m #3: found only when a brain is to be made, along the SimAI's classes (a subclass declared
+        # where no Brain is finds simai's)
+        Brain = simsnap.host_class(w, 'Brain', 'make a brain the snapshot has (simaisnap.restore)')
         w.own_personalities()
         w.brains[player] = Brain(w, player, side, pid, snap.decode(fields.get('born', 0), {}))
     things = simsnap.restore(w.sim, s['sim'])
@@ -261,7 +264,7 @@ def restore(w, s):
 
 
 def _write_brain(w, b, fields, model, things):
-    Unit = importlib.import_module(type(w).__module__).Unit
+    Unit = simsnap.host_class(w, 'Unit', 'wrap a brain\'s unit (simaisnap.restore)')
     b.wrappers = {}
     units = {}
     for name, serial, _team in fields['wrappers']:

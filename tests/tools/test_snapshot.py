@@ -320,6 +320,38 @@ def test_a_replaced_things_attached_row_goes_with_it():
     assert sorted(b.world.late) == [last]
 
 
+def _spy_world():
+    s = simsmall.small_world(model=False)
+    target = s.add('t', 'AlliedWarFactory', 'Player_2', 1000.0, 1000.0)
+    s.add('spy', 'AlliedInfiltrationInfantry', s.human, 1000.0, 1000.0)
+    s.relations[target.owner, s.human] = 'Enemy'
+    return s
+
+
+def test_a_spy_on_its_way_is_kept_and_an_older_versions_snapshot_refused_whole():
+    """1119m #1: a spy on its way (Infiltrators.going) is the spy's serial -> (spy, target) since edd381f1, version 6;
+    written back it walks in as on the run never stopped. A snapshot of version 5 (the name -> target it had then
+    broke the first tick restored) is refused before anything is written."""
+    a = _spy_world()
+    spy, target = a.bodies['spy'], a.bodies['t']
+    a.infiltrators.send(spy, target)
+    spy.path = []
+    taken = json.loads(json.dumps(simsnap.snapshot(a)))
+    b = _spy_world()
+    simsnap.restore(b, taken)
+    assert b.infiltrators.going == {spy.serial: (b.bodies['spy'], b.bodies['t'])}
+    for s in (a, b):
+        s.infiltrators.tick()
+        assert not s.bodies['spy'].alive and s.infiltrators.entered(s.bodies['t'], 'vehicle')
+        assert not s.infiltrators.going
+    old = dict(taken, version=5)
+    c = _spy_world()
+    before = simsnap.snapshot(c)
+    with pytest.raises(ValueError, match='version 5'):
+        simsnap.restore(c, old)
+    assert simsnap.snapshot(c) == before
+
+
 class _Derived(sim.Sim):
     """A host's Sim subclass declared in a module with no Body (1119j #4: restore read Body from here)."""
 

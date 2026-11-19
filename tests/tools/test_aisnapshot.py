@@ -194,3 +194,35 @@ def test_a_snapshot_missing_a_kernel_field_is_refused_before_anything_is_written
     with pytest.raises(ValueError, match="kernel.*late"):
         simsnap.restore(fresh, s)
     assert simsnap.snapshot(fresh) == before
+
+
+# ---- review 1119m (with 11b-4c's push)
+class _DerivedAI(simai.SimAI):
+    """A host's SimAI subclass declared in a module with no Brain or Unit (1119m #3: restore read them from here)."""
+
+
+def test_a_simai_subclass_declared_where_no_brain_is_is_restored(heal, half):
+    """1119m #3: written onto a SimAI subclass from another module: with no brain (none looked for), and with
+    brains (Brain and Unit found along the subclass's classes, simai's)."""
+    m, t, run, taken, _ = heal
+    w = _DerivedAI(sim.Sim(m, t, model=False))
+    simaisnap.restore(w, json.loads(json.dumps(taken)))
+    assert simaisnap.snapshot(w) == taken
+    _, taken, _, _ = half
+    w = _DerivedAI(sim.Sim(*build.resolve(*simrecord.TASKS['ai_open'][1])[:2], model=False))
+    simaisnap.restore(w, json.loads(json.dumps(taken)))
+    assert all(type(b) is simai.Brain for b in w.brains.values())
+    assert simaisnap.snapshot(w) == taken
+
+
+def test_an_older_sim_part_is_refused_before_a_brain_is_made(half):
+    """1119m #1: the Sim's part of another version (a v5 one's spy on its way broke the first tick) is refused before
+    restore makes the brains (making one multiplies its player's income): nothing written."""
+    _, taken, _, _ = half
+    old = json.loads(json.dumps(taken))
+    old['sim']['version'] = simsnap.VERSION - 1
+    w = _simai(*build.resolve(*simrecord.TASKS['ai_open'][1])[:2])
+    before = simsnap.snapshot(w.sim)
+    with pytest.raises(ValueError, match=f'version {simsnap.VERSION - 1}'):
+        simaisnap.restore(w, old)
+    assert not w.brains and simsnap.snapshot(w.sim) == before

@@ -32,9 +32,11 @@ from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 5             # 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
+VERSION = 6             # 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
                         # 4: areas.missing (4.4, 11-19); 5: the queue's events -- a posted command as itself
-                        # (command port ORDER), a line's 强制 / 由 P kept in its word group (review 11-19 i #1 #4)
+                        # (command port ORDER), a line's 强制 / 由 P kept in its word group (review 11-19 i #1 #4);
+                        # 6: a spy on its way, Infiltrators.going, is the spy's serial -> (spy, target), not its
+                        # name -> target (edd381f1; review 1119m #1: a v5 one restored broke the first tick)
 
 SIM = {
     # the setup
@@ -425,16 +427,20 @@ def _write(obj, f, e, decode, codec):
         codec.table[n] = new
 
 
+def host_class(host, name, why):
+    """The host's class `name` (this layer does not import the host's module): from the module of the first class
+    along the host's MRO whose module has one -- a subclass declared where none is (a script's
+    `class Derived(sim.Sim)`, `class Derived(simai.SimAI)`) finds its base's. Asked only when one must be built
+    (review 1119j #4, 1119m #3); `why` names it in the error."""
+    for k in type(host).__mro__:
+        cls = getattr(importlib.import_module(k.__module__), name, None)
+        if cls is not None:
+            return cls
+    raise ValueError(f'no {name} class along {type(host).__name__}\'s classes to {why}')
+
+
 def _host_body(sim):
-    """The host's Body class (this layer does not import sim): from the module of the first class along the Sim's
-    MRO whose module has one -- a subclass declared where no Body is (a script's `class Derived(sim.Sim)`) finds
-    sim's. Asked only when a thing must be built bare (review 1119j #4)."""
-    for k in type(sim).__mro__:
-        body = getattr(importlib.import_module(k.__module__), 'Body', None)
-        if body is not None:
-            return body
-    raise ValueError(f'simsnap.restore: no Body class along {type(sim).__name__}\'s classes to build a thing made '
-                     'in the run')
+    return host_class(sim, 'Body', 'build a thing made in the run (simsnap.restore)')
 
 
 def restore(sim, s):
@@ -446,11 +452,7 @@ def restore(sim, s):
     a module attached in the run (World.attach) is made again the same way. A thing of the new run the snapshot has
     not: an error. Returns the things, serial -> Thing (a thing made bare that nothing of the Sim's holds is held
     only by this: a caller's root, simaisnap)."""
-    if s.get('version') != VERSION:
-        raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {VERSION}')
-    if s['mission'] != getattr(sim.m, 'name', None):
-        raise ValueError(f'simsnap.restore: a snapshot of {s["mission"]!r} onto {getattr(sim.m, "name", None)!r}')
-    _check(s)
+    check(sim, s)
     have = {b.serial: b for b in _things(sim)}
     things = {}
     every = [(serial, name, template, fields) for _key, serial, name, template, fields in s['bodies']] + s['others']
@@ -499,6 +501,17 @@ def _table_state(table=SIM, at=()):
             yield from _table_state(kind, at + (f,))
         elif kind == STATE:
             yield '.'.join(at + (f,))
+
+
+def check(sim, s):
+    """What restore asks of `s` before it writes anything onto `sim` (a wrapper writing its own part first, simaisnap,
+    asks it first: review 1119m #1, an older version refused whole, not half restored): its version, its mission,
+    its shape."""
+    if s.get('version') != VERSION:
+        raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {VERSION}')
+    if s['mission'] != getattr(sim.m, 'name', None):
+        raise ValueError(f'simsnap.restore: a snapshot of {s["mission"]!r} onto {getattr(sim.m, "name", None)!r}')
+    _check(s)
 
 
 def _check(s):
