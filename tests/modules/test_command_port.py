@@ -823,3 +823,14 @@ def test_the_ais_hunt_goes_on_with_its_member_not_a_reference_of_its_name():
     br.hunt_threats(1)
     last = br.peers.commands.issued()[-1][1]
     assert (last.kind, last.units, last.pos) == ('attack_move', (lead.serial,), (400.0, 0.0))
+
+
+def test_the_players_power_casts_with_an_observer_tapping_the_actions():
+    """An observer's tap around Sim.act passes the cast's unit on (review 11-19 n P2: the tap took three arguments and
+    the ground power threw TypeError once simshow / simui hung it); both taps see the cast."""
+    s = simsmall.small_world([('cannon', 'AlliedSuperWeaponAdvanced', 'Player_1', 0.0, 0.0)], model=False)
+    seen = []
+    Observe(s).on_act(lambda n, a, sc: seen.append(('before', n)), lambda n, a, sc: seen.append(('after', n)))
+    assert s.order_power(s.bodies['cannon'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
+    assert [c[1] for c in s.casts] == ['Player_1']
+    assert seen == [('before', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT'), ('after', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT')]

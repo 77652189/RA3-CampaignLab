@@ -283,14 +283,15 @@ class Observe:
 
     def on_act(self, before=None, after=None):
         """Call before(name, args, script) / after(name, args, script) around each action the world carries out
-        (Sim.act: the script executor's and a script event's). A tap hung later runs outside one hung earlier."""
+        (Sim.act: the script executor's and a script event's). A tap hung later runs outside one hung earlier. Sim.act's
+        keywords (`unit`, the player's ground power's caster) pass through untouched; the taps see the three."""
         w = self._w
         inner = w.act
 
-        def act(name, a, script):
+        def act(name, a, script, **kw):
             if before is not None:
                 before(name, a, script)
-            r = inner(name, a, script)
+            r = inner(name, a, script, **kw)
             if after is not None:
                 after(name, a, script)
             return r
