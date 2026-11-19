@@ -39,6 +39,8 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 LAB = os.path.dirname(ROOT)
 TREE = os.path.join(LAB, 'RA3-CampaignLab-golden')
 SIMRECORD_REL = os.path.join('experimental', 'cnv', 'simrecord.py')
+# the recorder: simrecord and the observation port it reads the world through (R3 12b), copied over the base together
+RECORDER_RELS = (SIMRECORD_REL, os.path.join('experimental', 'cnv', 'engine', 'ports', 'observe.py'))
 PIN_REL = 'experimental/cnv/inventory_model.rev'
 TRAILER = 'golden-changed:'
 KEEP = 4                       # cached record sets kept under work\logs\golden (about 130 MB each)
@@ -105,8 +107,11 @@ def _digest(*parts):
 
 
 def recorder_hash(root=ROOT):
-    with open(os.path.join(root, SIMRECORD_REL), 'rb') as f:
-        return _digest(f.read())
+    texts = []
+    for rel in RECORDER_RELS:
+        with open(os.path.join(root, rel), 'rb') as f:
+            texts.append(f.read())
+    return _digest(*texts)
 
 
 def work_key(root):
@@ -187,7 +192,8 @@ def prepare_tree(rev, root=ROOT, tree=TREE):
         git(root, 'worktree', 'add', '--detach', tree, rev)
     else:
         git(tree, 'checkout', '--force', '--detach', rev)
-    shutil.copyfile(os.path.join(root, SIMRECORD_REL), os.path.join(tree, SIMRECORD_REL))
+    for rel in RECORDER_RELS:
+        shutil.copyfile(os.path.join(root, rel), os.path.join(tree, rel))
 
 
 def complete(folder, names):

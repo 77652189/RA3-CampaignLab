@@ -26,7 +26,13 @@ is Sim(model=True, executor='public'), so of three records one pair differs by t
 cross record instead (CrossRecorder): one line per script step, numbered by the loop's frame, of what the executor
 told the world through the port and the script state it leaves. `cross` lines the two up by frame and lists, per
 task, each field's first differing frame and how many frames differ: a report, never a pass/fail (the differences
-are step Z's work list, judged on the bench by docs/engine/script-semantics.md)."""
+are step Z's work list, judged on the bench by docs/engine/script-semantics.md).
+
+The recorders read the world only through the observation port (engine/ports/observe.py, R3 12b): a field moved
+into a kernel module changes the port, never this file. Only run_task, the harness, imports the simulator (to make
+the run); tests/guards/test_ports.py holds both. The golden layer copies this file and the port onto its base
+together (testbench/golden.py RECORDER_RELS); the port is imported where it is used, so loading this file by its
+path (golden, family_close) needs no simulator on sys.path."""
 import argparse
 import gzip
 import os
@@ -66,8 +72,8 @@ SHORTEST = 1.0                 # ... and only a run of at least this many second
 
 def canon(v, depth=0):
     """A stable text for a value: other bodies by name, sets sorted, floats by repr."""
-    import sim
-    if isinstance(v, sim.Body):
+    from engine.ports.observe import Observe
+    if Observe.is_thing(v):
         return 'B:' + v.name
     if isinstance(v, int) and not isinstance(v, bool) and v > 10 ** 11:
         return 'ID'                              # an id() key (follow offsets): differs run to run
@@ -88,24 +94,14 @@ def canon(v, depth=0):
 
 
 def body_state(b):
-    """A body's fields as the record shows them: its own (not `modules`), and beside them the STATE fields its kernel
-    modules have set -- a field moved off the body into a module records as it did on the body (step K1 on)."""
-    d = {k: v for k, v in vars(b).items() if k != 'modules'}
-    for m in b.modules:
-        own = vars(m)
-        for k in m.STATE:
-            if k in own:
-                if k in d:
-                    raise ValueError(f'{b.name}: {type(m).__name__}.{k} is already a field of the body')
-                d[k] = own[k]
-    for k in getattr(type(b), 'FORWARDS', ()):     # a moved dataclass field (Body.FORWARDS, step M1): every body had
-        d.setdefault(k, getattr(b, k))              # it, None where no module sets it
-    return d
+    """A body's fields as the record shows them: the port's state() (its own, its modules' STATE, Body.FORWARDS)."""
+    from engine.ports.observe import Observe
+    return Observe.state(b)
 
 
 class Recorder:
-    def __init__(self, s, out):
-        self.s, self.out, self.n = s, out, 0
+    def __init__(self, o, out):
+        self.o, self.out, self.n = o, out, 0     # o: the run's observation port (engine/ports/observe.Observe)
         self.logged = 0
         self.spent = 0.0                # seconds spent writing the record (taken off the run's time)
 
@@ -115,39 +111,24 @@ class Recorder:
         self.spent += time.perf_counter() - t0
 
     def _line(self, where):
-        s = self.s
-        parts = [f'{where} t={s.t!r}']
-        for b in s.bodies.values():
-            d = body_state(b)
+        o = self.o
+        parts = [f'{where} t={o.t!r}']
+        for b in o.things():
+            d = o.state(b)
             parts.append(b.name + '|' + ';'.join(f'{k}={canon(d[k])}' for k in sorted(d) if k not in SKIP_BODY))
         for f in SIM_FIELDS:
             if f == 'log':
-                parts.append('log+' + canon(s.log[self.logged:]))
-                self.logged = len(s.log)
+                new, self.logged = o.log_since(self.logged)
+                parts.append('log+' + canon(new))
             else:
-                parts.append(f + '=' + canon(getattr(s, f, None)))
-        parts.append('gaps=' + canon({k: v.get('n') for k, v in s.unmodeled.items()}))
+                parts.append(f + '=' + canon(o.report(f)))
+        parts.append('gaps=' + canon(o.gaps()))
         self.out.write(' || '.join(parts) + '\n')
         self.n += 1
 
     def attach(self):
-        s = self
-        sim_ = self.s
-        if sim_.eng is not None:
-            eng = sim_.eng
-            inner = eng.step
-
-            def step():
-                s.line(f'f{eng.frame}')
-                return inner()
-            eng.step = step
-        tick = sim_.step
-
-        def step_tick():
-            r = tick()
-            s.line('tick')
-            return r
-        sim_.step = step_tick
+        self.o.on_frame(lambda frame: self.line(f'f{frame}'))
+        self.o.on_tick(lambda: self.line('tick'))
 
 
 class PortTap:
@@ -209,21 +190,20 @@ class CrossRecorder:
     frame numbers being one apart does not show), objectives, the ending, the timeline's new lines, the living
     bodies' names."""
 
-    def __init__(self, s, out):
-        self.s, self.out, self.n = s, out, 0
+    def __init__(self, o, out):
+        self.o, self.out, self.n = o, out, 0     # o: the run's observation port
         self.logged = 0
         self.spent = 0.0
 
     def attach(self):
-        s = self.s
-        ex = s.executor
-        model = s.eng is not None and ex is s.eng
+        o = self.o
+        ex, model = o.scripts()
         self.tap = PortTap(ex.world, model)
         ex.world = self.tap
         inner = ex.step
 
         def step():
-            f = ex.frame if model else s.frame_now()
+            f = ex.frame if model else o.frame()
             r = inner()
             self.line(f'x{f}')
             return r
@@ -231,19 +211,20 @@ class CrossRecorder:
 
     def line(self, where):
         t0 = time.perf_counter()
-        s = self.s
+        o = self.o
         did, self.tap.did = self.tap.did, []
+        new, logged = o.log_since(self.logged)
         vals = {
             'did': canon(did),
-            'flags': canon({k: int(v) for k, v in s.flags.items()}),
-            'counters': canon(dict(s.counters)),
-            'timers': canon({k: frames_left(v, s.t, s.fps) for k, v in s.timers.items()}),
-            'objectives': canon(s.objectives),
-            'ending': canon(s.ending),
-            'log': canon(s.log[self.logged:]),
-            'alive': canon(sorted(b.name for b in s.living())),
+            'flags': canon({k: int(v) for k, v in o.flags().items()}),
+            'counters': canon(dict(o.counters())),
+            'timers': canon({k: frames_left(v, o.t, o.fps) for k, v in o.timers().items()}),
+            'objectives': canon(o.objectives()),
+            'ending': canon(o.ending()),
+            'log': canon(new),
+            'alive': canon(sorted(b.name for b in o.living())),
         }
-        self.logged = len(s.log)
+        self.logged = logged
         self.out.write(where + ' || ' + ' || '.join(f'{k}={vals[k]}' for k in CROSS_FIELDS) + chr(10))
         self.n += 1
         self.spent += time.perf_counter() - t0
@@ -255,6 +236,7 @@ def run_task(name, out, executor=None):
     'public@model' that executor for every kind and the cross record (CrossRecorder)."""
     import build
     import sim
+    from engine.ports.observe import Observe
     kind, args, until = TASKS[name]
     model = kind != 'old' if executor is None else executor in ('model', 'public@model')
     which = {'executor': 'public'} if executor == 'public@model' else {}
@@ -262,14 +244,14 @@ def run_task(name, out, executor=None):
     if kind == 'retail':
         import retail
         s = sim.Sim(retail.RetailMission(args[0]), model=model, **which)
-        rec = make(s, out)
+        rec = make(Observe(s), out)
         rec.attach()
         t0 = time.perf_counter()
         s.run(until)
     elif kind in ('bench', 'old'):
         m, t, _ = build.resolve(*args)
         s = sim.Sim(m, t, model=model, **which)
-        rec = make(s, out)
+        rec = make(Observe(s), out)
         rec.attach()
         t0 = time.perf_counter()
         s.run(until)
@@ -277,7 +259,7 @@ def run_task(name, out, executor=None):
         import simai
         m, t, _ = build.resolve(*args)
         s = sim.Sim(m, t, 'normal', model=model, **which)
-        rec = make(s, out)
+        rec = make(Observe(s), out)
         rec.attach()
         w = simai.SimAI(s, 'normal', 1, None, None, simai.BLOCKS, False)
         t0 = time.perf_counter()
@@ -339,11 +321,11 @@ def _main(a):
     if a.cmd == 'one':
         t0 = time.perf_counter()
         with gzip.open(a.path, 'wt', encoding='utf-8') as out:
-            s, rec = run_task(a.name, out, a.executor)
+            _, rec = run_task(a.name, out, a.executor)
         total = time.perf_counter() - t0
         with open(timing_path(a.path), 'w', encoding='utf-8') as f:
             json.dump({'total': total, 'record': rec.spent, 'run': rec.ran}, f)
-        print(a.name, 'used:', ' / '.join(sorted(s.used)))
+        print(a.name, 'used:', ' / '.join(sorted(rec.o.report('used'))))
         return 0
     if a.cmd == 'cross':
         return cross(a.a, a.b, a.show)

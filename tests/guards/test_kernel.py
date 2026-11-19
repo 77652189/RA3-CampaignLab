@@ -28,6 +28,7 @@ from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the p
 import simrecord  # noqa: E402
 import simsmall  # noqa: E402
 from engine.kernel import factory, interfaces, module, schedule, world  # noqa: E402
+from engine.ports.observe import Observe  # noqa: E402
 from maps import probe_block  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -473,7 +474,7 @@ def simrecord_dt():
 def _record(worlds, ticks):
     """One record a world: its line after each tick, the worlds advanced in turn."""
     outs = [io.StringIO() for _ in worlds]
-    recs = [simrecord.Recorder(s, o) for s, o in zip(worlds, outs)]
+    recs = [simrecord.Recorder(Observe(s), o) for s, o in zip(worlds, outs)]
     for _ in range(ticks):
         for s, r in zip(worlds, recs):
             s.step()
