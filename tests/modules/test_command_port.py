@@ -1,5 +1,5 @@
-"""The command port (engine/ports/command.py; R3 13b): a command is names and numbers; a queued command is the script
-event its line reads as (so moving a giver onto the port changes no timing); `do` gives the world what calling the
+"""The command port (engine/ports/command.py; R3 13b): a command is names and numbers; a queued command runs when its
+script line would (so moving a giver onto the port changes no timing), as itself (review 11-19 i #1); `do` gives the world what calling the
 order directly gives; an unknown kind, and a kind with no route yet, are refused. The givers' guard is
 tests/guards/test_ports.py."""
 from pathlib import Path
@@ -10,7 +10,7 @@ from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its c
 import sim  # noqa: E402
 import simsmall  # noqa: E402
 from engine.ports import command as command_port  # noqa: E402
-from engine.ports.command import Command, Commands, ROUTED, command, event, text  # noqa: E402
+from engine.ports.command import Command, Commands, ROUTED, command, event, queued, text  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -88,8 +88,8 @@ def test_post_queues_as_the_line_and_pending_keeps_the_order():
     port.post(LINES[1], ('@', 'go', 2.0))
     port.post_line('3 造 tank 在 inside 1')
     port.post(LINES[2], 9.0)
-    assert port.pending() == (sim.parse_script('3 造 tank 在 inside 1')[0], event(LINES[0], 9.0),
-                              event(LINES[2], 9.0), event(LINES[1], ('@', 'go', 2.0)))
+    assert port.pending() == (sim.parse_script('3 造 tank 在 inside 1')[0], queued(LINES[0], 9.0),
+                              queued(LINES[2], 9.0), queued(LINES[1], ('@', 'go', 2.0)))
     assert [r[1].kind for r in port.issued()] == ['attack_move', 'move', 'attack']     # the 造 line is no command
     port.drop_pending()                                     # a play handing the run over: nothing still to come
     assert port.pending() == () and not s.events and not s.anchored
@@ -139,7 +139,7 @@ def test_a_queued_command_is_the_one_given():
     still gets its order (simui replays events, not lines)."""
     s = simsmall.small_world([('a', APOC, 'Player_1', 300.0, 300.0)], model=False)
     cmd = Command('capture', units=('a',), target='#0')
-    assert s.commands.post(cmd, 0.0) == (True, '') and list(s.events) == [event(cmd, 0.0)]
+    assert s.commands.post(cmd, 0.0) == (True, '') and list(s.events) == [queued(cmd, 0.0)]
     assert command(s.events[0], 'player') == cmd
 
 
@@ -414,8 +414,74 @@ def test_a_name_ending_in_a_tail_reads_as_the_name():
         assert s.commands.line(cmd) == text(cmd)
     forced = Command('attack', units=('a',), target='enemy', force=True)
     with pytest.raises(ValueError):
-        s.commands.line(forced)
-    assert s.commands.post(forced, 1.0)[0] is False and len(s.events) == 0
+        s.commands.line(forced)             # no line says it here (autoplay writes none) -- posted, it is itself:
+    assert s.commands.post(forced, 1.0) == (True, '') and s.events[-1] == queued(forced, 1.0)
+
+
+def _tails_world():
+    s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0), ('enemy', APOC, 'Player_1', 300.0, 0.0),
+                              ('f', APOC, 'Player_1', 0.0, 300.0)], model=False)
+    asked = []
+    s.order_build = lambda player, tmpl, factory=None, press=False: asked.append((player, factory.name)) or True
+    return s, asked
+
+
+def test_a_posted_command_is_not_read_again_when_it_runs():
+    """A posted command runs as posted though a name its line would read as appears meanwhile (review 11-19 i #1: a
+    forced attack on `enemy` went to a new `enemy 强制`, a build in Player_2's name at `f` to a new `f 由 Player_2`
+    in Player_1's); it is noted as its line's event."""
+    s, asked = _tails_world()
+    attack = Command('attack', units=('a',), target='enemy', force=True)
+    build = Command('build', player='Player_2', template='AlliedAntiInfantryInfantry', target='f')
+    assert s.commands.post(attack, 0.0) == (True, '') and s.commands.post(build, 0.0) == (True, '')
+    for name, x in (('enemy 强制', 600.0), ('f 由 Player_2', 900.0)):
+        s.add(name, APOC, 'Player_2', x, 0.0)
+    _run_frames(s)
+    done = [r[1:3] for r in s.commands.issued() if r[3] != 'posted']
+    assert done == [(attack, True), (build, True)]
+    assert s.bodies['a'].goal is s.bodies['enemy'] and asked == [('Player_2', 'f')]
+    notes = [x for _, k, x in s.log if k == '剧本']
+    assert '攻击 a enemy 强制' in notes and '生产 AlliedAntiInfantryInfantry f 由 Player_2' in notes
+
+
+def test_a_whole_name_is_read_as_written():
+    """The whole word group, its spaces as written, is the name when the world has it (review 11-19 i #4: `enemy  强制`
+    with two spaces read as a forced attack on `enemy`); not a name: its tail, the rest stripped."""
+    s, _ = _tails_world()
+    s.add('enemy  强制', APOC, 'Player_2', 600.0, 0.0)
+    (e,) = sim.parse_script('0 攻击 a 打 enemy  强制')
+    assert s.commands.command(e) == Command('attack', 'script', units=('a',), target='enemy  强制')
+    (e,) = sim.parse_script('0 攻击 a 打 f  强制')
+    assert s.commands.command(e) == Command('attack', 'script', units=('a',), target='f', force=True)
+    (e,) = sim.parse_script('0 生产 X 在 f  由  Player_2')
+    assert s.commands.command(e) == Command('build', 'script', player='Player_2', template='X', target='f')
+
+
+def test_a_line_capture_refused_by_the_world_is_refused():
+    """A line's capture the order call turns down (a tank cannot capture) is no success (review 11-19 i #3)."""
+    s = simsmall.small_world([('tank', APOC, 'Player_1', 0.0, 0.0),
+                              ('building', 'AlliedBarracks', 'Player_2', 300.0, 0.0)], model=False)
+    s.commands.post_line('0 占领 tank 进 building')
+    _run_frames(s)
+    (rec,) = [r for r in s.commands.issued() if r[3] != 'posted']
+    assert rec[2] is False and s.bodies['tank'].goal is None and s.bodies['building'].owner == 'Player_2'
+
+
+def test_a_team_button_presses_its_members_not_a_reference_of_their_name():
+    """TEAM_USE_COMMANDBUTTON_ABILITY gives the button to the members it picked (review 11-19 i #2: a reference `lead`
+    pointing at another player's Peacekeeper took lead's press)."""
+    import simact_ability
+    pk = 'AlliedAntiInfantryInfantry'
+    s = simsmall.small_world([('lead', pk, 'Player_1', 0.0, 0.0), ('other', pk, 'Player_2', 300.0, 0.0)],
+                             model=False)
+    s.bodies['lead'].team = 'T'
+    s.refs['lead'] = s.bodies['other']
+    s.members = lambda team: [s.bodies['lead']] if team == 'T' else []
+    simact_ability.team_use_commandbutton_ability(s, 'TEAM_USE_COMMANDBUTTON_ABILITY',
+                                                  ['T', 'Command_ToggleRiotShieldSpecialPower'], None)
+    rec = s.commands.issued()[-1]
+    assert rec[1].units == (s.bodies['lead'].serial,) and rec[1].arg('objects') == 'serial' and rec[2] is True
+    assert 'GENERIC_TOGGLE_STATE' in s.bodies['lead'].status and 'GENERIC_TOGGLE_STATE' not in s.bodies['other'].status
 
 
 def test_the_proxy_players_click_reaches_his_units_not_a_reference_of_their_name():

@@ -2216,10 +2216,12 @@ class Sim:
         return out
 
     def happen(self, e):
+        cmd = self.commands.command(e, 'player')    # 派 走 攻击 放 占领 X 进 Y 生产 买: the player's orders, given
+        if e[1] == command_port.ORDER:              # through the command port (its routes are these verbs' order
+            e = command_port.event(cmd, e[0])       # calls); a posted command noted as its line's event
         t, verb, *rest = e
         self.note('剧本', ' '.join([verb] + [str(x) for x in rest]))
-        cmd = self.commands.command(e, 'player')    # 派 走 攻击 放 占领 X 进 Y 生产 买: the player's orders, given
-        if cmd is not None:                         # through the command port (its routes are these verbs' order calls)
+        if cmd is not None:
             self.commands.do(cmd)
         elif verb in ('摧毁', '删除'):              # the rest: the god's hand (a test's shortcuts, not orders)
             for b in self.pick(rest[0]):
@@ -3307,10 +3309,9 @@ def parse_script(text):
         if rest.startswith('派 ') or (rest.startswith('走 ') and ' 去 ' in rest):
             who, _, where = rest[2:].rpartition(' 去 ')
             out.append((when(t), rest[0], who.strip(), where.strip()))
-        elif rest.startswith('攻击 '):              # `... 强制`: a forced attack (the command port's FORCE)
-            who, _, target = rest[3:].rpartition(' 打 ')
-            target, forced = (target[:-3], ('强制',)) if target.endswith(' 强制') else (target, ())
-            out.append((when(t), '攻击', who.strip(), target.strip()) + forced)
+        elif rest.startswith('攻击 '):              # `... 强制`: a forced attack -- kept in the word group, the
+            who, _, target = rest[3:].rpartition(' 打 ')     # command port's split reads it (a whole name first: i #4)
+            out.append((when(t), '攻击', who.strip(), target.strip()))
         elif rest.startswith('放 ') and ' 在 ' in rest:
             who_power, _, where = rest[2:].rpartition(' 在 ')
             who, _, power = who_power.strip().rpartition(' ')
@@ -3325,9 +3326,8 @@ def parse_script(text):
             name, v = rest[3:].rsplit(None, 1)
             out.append((when(t), '旗标', name.strip(), int(v)))
         elif rest.startswith('生产 ') and ' 在 ' in rest:
-            what, _, where = rest[3:].rpartition(' 在 ')
-            where, by = command_port.by_player(where)       # `... 由 P`: in that player's name
-            out.append((when(t), '生产', what.strip(), where.strip()) + by)
+            what, _, where = rest[3:].rpartition(' 在 ')     # `... 由 P`: in that player's name (kept whole, as 攻击's)
+            out.append((when(t), '生产', what.strip(), where.strip()))
         elif rest.startswith('造 '):
             what, _, where = rest[2:].partition(' 在 ')
             angle = 0.0
@@ -3338,8 +3338,7 @@ def parse_script(text):
             verb, _, who = rest.partition(' ')
             if verb not in ('摧毁', '删除', '打', '占领', '买'):
                 raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 放 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 生产 / 造 / 买 之一')
-            who, by = command_port.by_player(who) if verb == '买' else (who, ())
-            out.append((when(t), verb, who.strip()) + by)
+            out.append((when(t), verb, who.strip()))
     return out
 
 

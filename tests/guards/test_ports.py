@@ -493,12 +493,12 @@ def test_planted_orders_in_a_script_action_are_found():
         assert planted != src and giver_breaks(planted, SCRIPT_GIVERS[f]), new
     f = CNV / 'simact_ability.py'
     src = f.read_text(encoding='utf-8')
-    for old, new in (("        _order(sim, 'power', a[0], ('via', 'self'), ('button', a[1]))\n",
-                      "        sim.self_power_press(sim.body(a[0]), a[1])\n"),
-                     ("            _order(sim, 'toggle', a[0], ('button', a[1]))[0]:\n",
-                      "            sim.toggle_press(sim.body(a[0]), a[1]):\n"),
-                     ("        _order(sim, 'capture', a[0], target=a[2])\n",
-                      "        sim.order_capture(sim.body(a[0]), a[2])\n"),
+    for old, new in (("        _order(sim, 'power', who, ('via', 'self'), ('button', a[1]))\n",
+                      "        sim.self_power_press(body(a[0]), a[1])\n"),
+                     ("            _order(sim, 'toggle', who, ('button', a[1]))[0]:\n",
+                      "            sim.toggle_press(body(a[0]), a[1]):\n"),
+                     ("        _order(sim, 'capture', who, target=a[2])\n",
+                      "        sim.order_capture(body(a[0]), a[2])\n"),
                      ("        b.replace = True\n", "        b.replace = True\n        b.mode = 'idle'\n")):
         planted = src.replace(old, new)
         assert planted != src and giver_breaks(planted, SCRIPT_GIVERS[f]), new

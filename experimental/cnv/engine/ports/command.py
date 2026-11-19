@@ -9,10 +9,12 @@ Two routes, as in the game (a player's click is a message carried into the logic
 a unit's AI command interface there and then):
 - `post(cmd, at)`: queued, run at `at` (mission seconds, or `('@', flag, secs)`: that long after the flag first reads
   1) by the frame loop's events cell -- today's `Sim.events` / `anchored`, so a queued command runs exactly when the
-  script line it reads as would (`text(cmd)`: its line; `event(cmd, at)`: the event, the command as given). A command
-  its line cannot carry whole (a `pos`, an `args` entry, a `player` or `force` on a kind whose line has none) is
-  refused, not queued short. The event is the command's, not its line read back: a name a line cannot hold (an
-  unnamed object's `#0`: '#' starts a comment) still reaches its unit (simui replays events). A giver that records
+  script line it reads as would (`text(cmd)`: its line). What is queued is the command itself (`queued(cmd, at)`:
+  `(at, ORDER, cmd)`, its fields as given -- never its line written and read back, so a name that appears later cannot
+  turn it into another: review 11-19 i #1); `Sim.happen` gives it through `do` and notes it as its line's event
+  (`event(cmd, at)`). A command no line could carry (a `pos`, an `args` entry, a `player` or `force` on a kind whose
+  line has none) is refused, as before (the queue holds the commands the script verbs give). A name a line cannot hold
+  (an unnamed object's `#0`: '#' starts a comment) still reaches its unit (simui replays events). A giver that records
   its run as lines and replays them (autoplay) posts those lines (`post_line`), so its run gives what its replay will
   even where a name splits another way (`a` told to use `x y` reads as `a x` told to use `y`: review 11-19 d #4);
 - `do(cmd)`: now (the AI command interface route).
@@ -38,10 +40,12 @@ objects the action picked itself (a team's members: found as picked, a reference
 place -- review 11-19 f #1). A route that cannot go on without its object (a factory, the unit to unpack) refuses a
 missing one; a press the world turns down (a target gone, out of range) is refused (review 11-19 f #4 #5).
 
-A line's tails `强制` / `由 P` (written only by `text` for a command that has them) read as part of the name when the
-whole is a name in the world (`Commands.command`: a role or an object called `enemy 强制`), so a run's line reads as its
-own name; a command whose line would read as another here (a forced attack on `enemy` beside an `enemy 强制`) is not
-written (`Commands.line`) nor posted (review 11-19 g #2).
+A line's tails `强制` / `由 P` (in a line a player or a play wrote, or `text` wrote for a command that has them) read as
+part of the name when the whole, exactly as written, is a name in the world (`Commands.command`: a role or an object
+called `enemy 强制`, or `enemy  强制` with its two spaces: review 11-19 g #2, i #4) -- sim.parse_script keeps the word
+group whole and `split` decides -- so a line reads as its own name; a command whose line would read as another here (a
+forced attack on `enemy` beside an `enemy 强制`) is not written (`Commands.line`; autoplay checks its lines with it). A
+posted command has no line to read: it is queued as itself.
 `issued()` is the record of what was posted and done -- written, never read in a run (nothing in a game decides by
 it; so a snapshot does not hold it: R2 13a)."""
 import dataclasses
@@ -111,12 +115,29 @@ class Command:
 # without it, the human player). sim.parse_script reads them back (the event's last item).
 FORCE = '强制'
 BY_PLAYER = ' 由 '
+# The verb of a queued command's event (`queued`): no script line has it (parse_script refuses `0 命令 ...`).
+ORDER = '命令'
 
 
 def by_player(s):
-    """(the rest, (player,)) of a line's tail `... 由 P`, or (s, ()) (sim.parse_script reads 生产 / 买 with it)."""
+    """(the rest, player) of a line's tail `... 由 P`, or (s, '')."""
     head, mark, player = s.rpartition(BY_PLAYER)
-    return (head, (player.strip(),)) if mark else (s, ())
+    return (head.strip(), player.strip()) if mark and head.strip() else (s, '')
+
+
+def split(verb, whole, named=None):
+    """A line's last word group as parse_script keeps it whole (`攻击`'s target, `生产`'s factory, `买`'s science) ->
+    (name, force) for 攻击, (name, player) for 生产 / 买. `named(s)`: s is a name in the world -- then the whole, exactly
+    as written (its spaces too), is that name and no tail (review 11-19 g #2, i #4). A science is no object: 买 always
+    splits."""
+    if verb != '买' and named and named(whole):
+        return whole, (False if verb == '攻击' else '')
+    if verb == '攻击':
+        head = whole[:-len(FORCE)]
+        if whole.endswith(FORCE) and head[-1:].isspace() and head.strip():
+            return head.strip(), True
+        return whole, False
+    return by_player(whole)
 
 
 def text(cmd):
@@ -150,40 +171,49 @@ def text(cmd):
 
 
 def event(cmd, at):
-    """The script event (at, verb, ...) parse_script makes of `at text(cmd)` (for names a line can hold)."""
+    """The script event (at, verb, ...) parse_script makes of `at text(cmd)` (for names a line can hold): a tail stays
+    in its word group, as the line has it (`enemy 强制`, `f 由 P`: `split` reads it)."""
     text(cmd)                       # the same checks
-    verb, by = VERB[cmd.kind], (cmd.player,) if cmd.player else ()
+    verb, by = VERB[cmd.kind], f'{BY_PLAYER}{cmd.player}' if cmd.player else ''
     if cmd.kind == 'buy_science':
-        return (at, verb, cmd.arg('science')) + by
+        return (at, verb, cmd.arg('science') + by)
     if cmd.kind == 'build':
-        return (at, verb, cmd.template, cmd.target) + by
+        return (at, verb, cmd.template, cmd.target + by)
     who = cmd.units[0]
-    tail = {'attack_move': (cmd.place,), 'move': (cmd.place,), 'attack': (cmd.target,) + ((FORCE,) if cmd.force else ()),
+    tail = {'attack_move': (cmd.place,), 'move': (cmd.place,),
+            'attack': (cmd.target + (f' {FORCE}' if cmd.force else ''),),
             'power': (cmd.power, cmd.place), 'capture': (cmd.target,)}[cmd.kind]
     return (at, verb, who) + tail
 
 
+def queued(cmd, at):
+    """The event `post` queues: the command itself, run at `at` (`Sim.happen` gives it through `do`)."""
+    return (at, ORDER, cmd)
+
+
 def command(e, by='script', named=None):
-    """The command a script event gives, or None (a god's-hand verb: 造 血量 旗标 摧毁 删除 打, one-name 占领).
-    `named(s)`: s is a name in the world -- then a tail `强制` / `由 P` read off a line is the name's own end (g #2)."""
+    """The command a script event gives, or None (a god's-hand verb: 造 血量 旗标 摧毁 删除 打, one-name 占领). A
+    queued command's event (`queued`) gives the command as posted (its own `by`). `named(s)`: s is a name in the
+    world -- then a word group's whole is that name, no tail read off it (`split`)."""
     _, verb, *rest = e
+    if verb == ORDER:
+        return rest[0]
     kind = KIND.get(verb)
     if kind is None or (verb == '占领' and len(rest) != 2):
         return None
-    if named and kind == 'attack' and rest[2:] == [FORCE] and named(f'{rest[1]} {FORCE}'):
-        rest = [rest[0], f'{rest[1]} {FORCE}']
-    if named and kind == 'build' and len(rest) > 2 and named(f'{rest[1]}{BY_PLAYER}{rest[2]}'):
-        rest = [rest[0], f'{rest[1]}{BY_PLAYER}{rest[2]}']
     if kind == 'buy_science':
-        return Command(kind, by, player=rest[1] if len(rest) > 1 else '', args=(('science', rest[0]),))
+        science, player = split(verb, rest[0])
+        return Command(kind, by, player=player, args=(('science', science),))
     if kind == 'build':
-        return Command(kind, by, player=rest[2] if len(rest) > 2 else '', template=rest[0], target=rest[1])
+        factory, player = split(verb, rest[1], named)
+        return Command(kind, by, player=player, template=rest[0], target=factory)
     if kind in ('attack_move', 'move'):
         return Command(kind, by, units=(rest[0],), place=rest[1])
     if kind == 'power':
         return Command(kind, by, units=(rest[0],), power=rest[1], place=rest[2])
     if kind == 'attack':
-        return Command(kind, by, units=(rest[0],), target=rest[1], force=rest[2:] == [FORCE])
+        target, force = split(verb, rest[1], named)
+        return Command(kind, by, units=(rest[0],), target=target, force=force)
     return Command(kind, by, units=(rest[0],), target=rest[1])
 
 
@@ -229,19 +259,19 @@ class Commands:
         return s
 
     def post(self, cmd, at):
-        """Queue it for `at` (seconds, or ('@', flag, secs)): run by the events cell as its script line would be. A
-        command its line cannot carry whole is refused (ok False, nothing queued)."""
+        """Queue it for `at` (seconds, or ('@', flag, secs)): run by the events cell when its script line would be, as
+        itself (`queued`: no line written and read back, review 11-19 i #1). A command no line carries whole is
+        refused (ok False, nothing queued)."""
         ok, why = self.check(cmd)
-        if ok and cmd.kind not in VERB:     # the queue is today's script events: a kind no line carries is do's only
+        if ok and cmd.kind not in VERB:     # the queue holds the script verbs' commands: a kind no line carries is do's
             ok, why = False, f'{cmd.kind}: not queued (no script line carries it; do gives it now)'
         if ok:
             try:
-                e = event(cmd, at)
-                self.line(cmd)
+                event(cmd, at)              # the checks (it is noted as this event when it runs)
             except ValueError as err:
                 ok, why = False, str(err)
         if ok:
-            self._queue(e)
+            self._queue(queued(cmd, at))
         self._issued.append((self._w.frame_now(), cmd, ok, why or 'posted'))
         return ok, why
 
@@ -381,9 +411,8 @@ class Commands:
         targets = w.pick(cmd.target)
         if not targets:
             return False, f'找不到 {cmd.target}'
-        for b in self._units(cmd):
-            w.order_capture(b, targets[0].name)
-        return True, ''
+        sent = [w.order_capture(b, targets[0].name) for b in self._units(cmd)]     # each one's answer (i #3)
+        return (True, '') if sent and all(sent) else (False, f'没有能去占 {cmd.target} 的工兵')
 
     def _build(self, cmd):
         w = self._w

@@ -32,8 +32,9 @@ from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 4             # 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
-                        # 4: areas.missing (4.4, 11-19)
+VERSION = 5             # 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
+                        # 4: areas.missing (4.4, 11-19); 5: the queue's events -- a posted command as itself
+                        # (command port ORDER), a line's 强制 / 由 P kept in its word group (review 11-19 i #1 #4)
 
 SIM = {
     # the setup

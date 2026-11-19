@@ -408,7 +408,7 @@ class Session:
                 return self._refuse('没有能执行这个命令的单位')
             for cmd in cmds:                        # queued at this tick: run by the events cell as its script line
                 self.commands.post(cmd, s.t)
-                self.orders.append((s.t, command_port.event(cmd, s.t)))
+                self.orders.append((s.t, command_port.queued(cmd, s.t)))
             return True, ''
 
     def _refuse(self, why):

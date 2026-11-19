@@ -27,41 +27,49 @@ from simworld import GAP_ACTION
 
 def _order(sim, kind, unit, *args, **fields):
     """A map script's button press through the run's command port: (ok, why). `unit` the object's name as the action
-    found it (None: no unit, a factory's build); `args` more (name, value) pairs."""
-    return sim.commands.do(Command(kind, 'script', units=() if unit is None else (unit,),
-                                   args=(('objects', True),) + args, **fields))
+    found it, or the object a team action picked (by serial: review 11-19 i #2); None: no unit (a factory's build);
+    `args` more (name, value) pairs."""
+    if unit is None or isinstance(unit, str):
+        units, by = () if unit is None else (unit,), True
+    else:
+        units, by = (unit.serial,), 'serial'
+    return sim.commands.do(Command(kind, 'script', units=units, args=(('objects', by),) + args, **fields))
 
 
-def named_buttons(sim, name, a, script):
+def named_buttons(sim, name, a, script, unit=None):
+    """The button on `a[0]` -- or on `unit`, a member a team action picked (the object itself, not a reference that
+    has its name: review 11-19 i #2)."""
+    body = (lambda _n: unit) if unit is not None else sim.body
+    who = unit if unit is not None else a[0]
     if name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and a[1] == 'Command_CaptureBuilding':
-        _order(sim, 'capture', a[0], target=a[2])
-    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and sim.body(a[0]) and sim.body(a[0]).alive and \
-            simunits.built(sim.body(a[0]).template, a[1], sim.own, sim.body(a[0]).upgrades):
+        _order(sim, 'capture', who, target=a[2])
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
+            simunits.built(body(a[0]).template, a[1], sim.own, body(a[0]).upgrades):
         # a factory's build button: queued there as the player's click (bench engine_production e); a banned unit
         # queued all the same and waits (g); refused where the player's click would be for the rest (can_build:
         # tier, a factory still unpacking -- INFERRED, not measured)
-        f = sim.body(a[0])
+        f = body(a[0])
         tmpl = simunits.built(f.template, a[1], sim.own, f.upgrades)
         if not _order(sim, 'build', None, ('press', True), player=f.owner, template=tmpl, target=a[0])[0]:
             sim.note('生产', f'{sim.label(f)} 按 {a[1]}：现在造不了 {tmpl}')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and simgarrison.ejects(a[1], sim.own):
         # a transport's eject at the spot (simgarrison; bench 11-10 engine_transport load 跳)
-        b, p = sim.body(a[0]), sim.point(a[2])
+        b, p = body(a[0]), sim.point(a[2])
         if not (b and p is not None and sim.garrison.eject(b, a[1], p)):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有能弹出乘员的载具或路点')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and simgarrison.ejects(a[1], sim.own):
         # the untargeted eject (a01's intro bombers, SovietSupportBomber_S07): out where it is (engine_acts_btn EJ)
-        b = sim.body(a[0])
+        b = body(a[0])
         if not (b and sim.garrison.eject(b, a[1], (b.x, b.y))):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有能弹出乘员的载具')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and \
             (simunits._commands(sim.own)[1].get(a[1]) or ('',))[0] == 'EVACUATE':
         # the Twinblade's evacuate (s09's Hinds): lands, all out together where it is (engine_acts_btn EV)
-        if not sim.garrison.evacuate(sim.body(a[0])):
+        if not sim.garrison.evacuate(body(a[0])):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有载着人的载具')
     elif (name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and a[1] == 'Command_UnPackJapanEgg'
           and simunits.command_power(a[1], sim.own) is None
-          and sim.body(a[0]) and sim.body(a[0]).template in
+          and body(a[0]) and body(a[0]).template in
           ('JapanBaseDefenseEgg', 'JapanPowerPlantEgg', 'JapanNavalYardEgg')):
         # engine_eggcmd:a / engine_eggnav:a: legacy id leaves these cores home; concrete buttons deploy.
         # Other hosts and map-local command definitions remain gaps, not aliases for UnpackReplaceSelf.
@@ -70,14 +78,14 @@ def named_buttons(sim, name, a, script):
             simunits.command_power(a[1], sim.own) == UNPACK_POWER:
         # an MCV / a Japanese egg deploys at the point: drives there, then turns into its replacement (bench
         # engine_unpack mcv / egg: the yard stands on the point, the name passes on)
-        b, p = sim.body(a[0]), sim.point(a[2])
-        if not (b and p is not None and _order(sim, 'unpack', a[0], ('button', a[1]), place=a[2])[0]):
+        b, p = body(a[0]), sim.point(a[2])
+        if not (b and p is not None and _order(sim, 'unpack', who, ('button', a[1]), place=a[2])[0]):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有能展开的单位或路点')
-    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and sim.body(a[0]) and sim.body(a[0]).alive and \
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
             simunits.command_power(a[1], sim.own) == PACK_POWER and \
-            simunits.replace_self(sim.body(a[0]).template, a[1], sim.own):
+            simunits.replace_self(body(a[0]).template, a[1], sim.own):
         # a construction yard packs back into its MCV where it stands (engine_pack a / s / j)
-        b = sim.body(a[0])
+        b = body(a[0])
         _, into = simunits.replace_self(b.template, a[1], sim.own)
         sim.used.add('unpack')
         b.replace = True
@@ -86,56 +94,57 @@ def named_buttons(sim, name, a, script):
         sim.note('技能', f'{sim.label(b)} 收起成 {into}')
         sim.build_due(sim.frame_now())        # the press frame's later scripts already see the MCV
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and \
-            sim.body(a[0]) and sim.body(a[0]).alive and \
-            sim.assignments.press(sim.body(a[0]), a[1], sim.body(a[2])):
+            body(a[0]) and body(a[0]).alive and \
+            sim.assignments.press(body(a[0]), a[1], sim.body(a[2])):
         sim.note('技能', f'{a[0]} 显式派发维修到 {a[2]}')
-    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and sim.body(a[0]) and sim.body(a[0]).alive and \
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and body(a[0]) and body(a[0]).alive and \
             sim.point(a[2]) is not None and simunits.ocl_power(
-                sim.body(a[0]).template, simunits.command_power(a[1], sim.own) or '', sim.own):
+                body(a[0]).template, simunits.command_power(a[1], sim.own) or '', sim.own):
         # engine_acts_wet DP / DS (round 226): the campaign bomber drop store's button is seen cast
         # (PLAYER_TRIGGERED_SPECIAL_POWER) the player's and the computer's alike -- and nobody comes, in six
         # runs (its OCL's CREATE_AT_EDGE_NEAR_SOURCE not explained: inventory NOTES)
-        b = sim.body(a[0])
+        b = body(a[0])
         sim.casts.append((sim.frame_now(), b.owner, simunits.command_power(a[1], sim.own).lower(), b.name,
                            sim.point(a[2])))
         sim.note('技能', f'{sim.label(b)} 按 {a[1]}：算放了，没出东西（推断）')
     elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and \
-            sim.body(a[0]) and sim.body(a[0]).alive and \
-            simunits.weapon_fire_ability(sim.body(a[0]).template, a[1], sim.own):
-        _order(sim, 'power', a[0], ('via', 'wfire'), ('button', a[1]), target=a[2] if len(a) > 2 else '')
-    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and sim.body(a[0]) and sim.body(a[0]).alive and \
-            sim.point(a[2]) is not None and simunits.weapon_fire_ability(sim.body(a[0]).template, a[1], sim.own) \
+            body(a[0]) and body(a[0]).alive and \
+            simunits.weapon_fire_ability(body(a[0]).template, a[1], sim.own):
+        _order(sim, 'power', who, ('via', 'wfire'), ('button', a[1]), target=a[2] if len(a) > 2 else '')
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and body(a[0]) and body(a[0]).alive and \
+            sim.point(a[2]) is not None and simunits.weapon_fire_ability(body(a[0]).template, a[1], sim.own) \
             and simunits.self_projectile_speed(
-                simunits.weapon_fire_ability(sim.body(a[0]).template, a[1], sim.own)['weapon'], sim.own):
-        _order(sim, 'power', a[0], ('via', 'leap'), ('button', a[1]), place=a[2])
-    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and sim.body(a[0]) and sim.body(a[0]).alive and \
-            sim.point(a[2]) is not None and simunits.movement_power(sim.body(a[0]).template, a[1], sim.own):
-        _order(sim, 'power', a[0], ('via', 'movement'), ('button', a[1]), place=a[2])
-    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and sim.body(a[0]) and sim.body(a[0]).alive and \
-            simunits.self_module_power(sim.body(a[0]).template, a[1], sim.own):
-        _order(sim, 'power', a[0], ('via', 'self'), ('button', a[1]))
-    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and sim.body(a[0]) and \
-            _order(sim, 'toggle', a[0], ('button', a[1]))[0]:
+                simunits.weapon_fire_ability(body(a[0]).template, a[1], sim.own)['weapon'], sim.own):
+        _order(sim, 'power', who, ('via', 'leap'), ('button', a[1]), place=a[2])
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and body(a[0]) and body(a[0]).alive and \
+            sim.point(a[2]) is not None and simunits.movement_power(body(a[0]).template, a[1], sim.own):
+        _order(sim, 'power', who, ('via', 'movement'), ('button', a[1]), place=a[2])
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
+            simunits.self_module_power(body(a[0]).template, a[1], sim.own):
+        _order(sim, 'power', who, ('via', 'self'), ('button', a[1]))
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and \
+            _order(sim, 'toggle', who, ('button', a[1]))[0]:
         sim.note('技能', f'{a[0]} 按 {a[1]} 切换状态')
-    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and sim.body(a[0]) and sim.body(a[0]).alive and \
-            simunits.press_records(sim.body(a[0]).template, a[1], sim.own):
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
+            simunits.press_records(body(a[0]).template, a[1], sim.own):
         # engine_cast (round 242): Tanya's time belt seen cast twice (simunits.press_records); her jump back in
         # time is not simulated
-        b = sim.body(a[0])
+        b = body(a[0])
         power, n = simunits.press_records(b.template, a[1], sim.own)
         sim.used.add('special power')
         sim.casts += [(sim.frame_now(), b.owner, power.lower(), b.name, None)] * n
         sim.note('技能', f'{sim.label(b)} 按 {a[1]}：记 {n} 次施放')
     elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
-        script_cast(sim, name, a)
+        script_cast(sim, name, a, unit)
     else:
         return False
 
 
-def script_cast(sim, name, a):
+def script_cast(sim, name, a, unit=None):
     """A special power's cast by a script (and a button none of named_buttons' branches took): the SpecialPower
-    module's effect, where the player's `power` command comes too (order_power); no order (module docstring)."""
-    b = sim.body(a[0])
+    module's effect, where the player's `power` command comes too (order_power); no order (module docstring). `unit`:
+    the member a team action picked (named_buttons)."""
+    b = unit if unit is not None else sim.body(a[0])
     # engine_oclnone / engine_oclwrong: no matching host module means
     # neither protection nor PLAYER_TRIGGERED_SPECIAL_POWER event.
     if b and b.alive and a[1] == 'SpecialPowerIronCurtain' and \
@@ -226,14 +235,22 @@ def team_use_commandbutton_ability(sim, name, a, script):
     # (team, button) l2_scripts1 8: the button on every living member, no target. Bench 11-08 button: both
     # Peacekeepers of the crew raised their shields
     for b in sim.members(a[0]):
-        sim.act('NAMED_USE_COMMANDBUTTON_ABILITY', [b.name, a[1]], script)
+        _member(sim, 'NAMED_USE_COMMANDBUTTON_ABILITY', [b.name, a[1]], script, b)
 
 
 def team_use_commandbutton_ability_at_waypoint(sim, name, a, script):
     # (team, button, waypoint): the button at the spot on every living member (engine_acts_btn TB: the crew's
     # Bullfrog threw its passengers at the waypoint, as NAMED_..._AT_WAYPOINT did in round 152)
     for b in sim.members(a[0]):
-        sim.act('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', [b.name, a[1], a[2]], script)
+        _member(sim, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', [b.name, a[1], a[2]], script, b)
+
+
+def _member(sim, name, a, script, b):
+    """A team button on one member as the named action is on it (Sim.act's run of it: a branch declined is a gap),
+    the member itself pressed -- a reference of its name cannot take its place (review 11-19 i #2)."""
+    if named_buttons(sim, name, a, script, unit=b) is False:
+        sim.unknown[name] = sim.unknown.get(name, 0) + 1
+        sim.gap(GAP_ACTION, refined(name, a), 'Sim.act 不认识：没效果')
 
 
 ACTIONS = {

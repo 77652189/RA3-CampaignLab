@@ -31,6 +31,7 @@ sys.path[:0] = [p for p in (HERE, os.path.join(HERE, 'checks'), os.path.join(os.
                 if p not in sys.path]
 
 from parts import Script, Test, counted
+from engine.ports import command as command_port  # noqa: E402  (a line's tails, read as the simulator reads them)
 
 PLAYS = os.path.join(HERE, 'plays')
 WINDOW = 0.15           # ADR 0023: a key time off by more than this much of the simulator's is a stop-and-find-out
@@ -105,6 +106,13 @@ class Compiler:
                 self.t.waypoints[wp] = m.site(name)
         return wp
 
+    def _named(self, text, now):
+        """`text` names objects of the plan at `now` (who's answer, no error)."""
+        try:
+            return bool(self.who(text, now))
+        except ValueError:
+            return False
+
     def who(self, text, now):
         """The object names a line's unit text means at second `now` (None: after a flag, every `造` above it)."""
         m, text = self.m, text.strip()
@@ -144,9 +152,13 @@ class Compiler:
             who, where = rest
             wp = self.where(where)
             return [('MOVE_NAMED_UNIT_TO', n, wp) for n in self.who(who, now)]
-        if verb in ('攻击', '生产', '买') and len(rest) > (1 if verb == '买' else 2):
-            raise ValueError(f'play: {" ".join(map(str, event[1:]))!r}: a forced attack / an order in another '
-                             "player's name (强制 / 由) is the simulator's only, no map-script action is chosen for it")
+        if verb in ('攻击', '生产', '买'):  # a tail 强制 / 由 P, unless the whole is a name of the plan (as the
+            name, extra = command_port.split(verb, rest[-1], lambda n: self._named(n, now))     # simulator: i #4)
+            if extra:
+                raise ValueError(f'play: {" ".join(map(str, event[1:]))!r}: a forced attack / an order in another '
+                                 "player's name (强制 / 由) is the simulator's only, no map-script action is chosen "
+                                 'for it')
+            rest = rest[:-1] + [name] if isinstance(rest, list) else rest[:-1] + (name,)
         if verb == '攻击':
             who, target = rest
             goal = self.who(target, now)[0]
