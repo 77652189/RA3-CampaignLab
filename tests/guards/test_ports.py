@@ -88,6 +88,12 @@ READERS = {
     # simunits (template data).
     AUTOPLAY / 'autoplay.py': ({'load', 'attach', 'post', 'tick', 'play', 'replay', 'main'}, set()),
     AUTOPLAY / 'players.py': (set(), {'simunits'}),
+    # the plan's offline checks: walk makes and drives the walkthrough's run, spelt hands the report the simulator's
+    # m:ss and high-ground step; glossary (names) and simunits (template data) are data. graybox / graybox_cards read
+    # what walk returns (and the cards' world(), their harness, makes A4's run) through offline's numbers.
+    CNV / 'offline.py': ({'walk', 'spelt', 'main'}, {'glossary', 'simunits'}),
+    CNV / 'graybox.py': ({'main'}, {'offline', 'simunits'}),
+    CNV / 'graybox_cards.py': ({'world', 'main'}, {'glossary', 'graybox', 'offline', 'simunits'}),
 }
 # Readers that are one class of a bigger file (the rest of the file drives the run): (file, class).
 READER_CLASSES = [(ROOT / 'experimental' / 'simui' / 'game.py', 'Play')]
@@ -135,6 +141,16 @@ def test_planted_breaks_in_the_other_readers_are_found():
     src = (AUTOPLAY / 'players.py').read_text(encoding='utf-8')
     assert reader_breaks(src + '\nimport sim\n', harness, allowed)
     assert reader_breaks(src.replace('obs.can_hit(w, f.body)', 'view.s.can_hit(w, f.body)'), harness, allowed)
+    harness, allowed = READERS[CNV / 'offline.py']
+    src = (CNV / 'offline.py').read_text(encoding='utf-8')
+    assert reader_breaks(src + '\nimport sim\n', harness, allowed)
+    assert reader_breaks(src.replace('obs.ground_z(vx, vy)', 's.ground.z(vx, vy)'), harness, allowed)
+    assert reader_breaks(src.replace("'段：' + '，'.join(f'{n} {mmss(t)}'", "'段：' + '，'.join(f'{n} {sim.mmss(t)}'"),
+                         harness, allowed)
+    harness, allowed = READERS[CNV / 'graybox_cards.py']
+    src = (CNV / 'graybox_cards.py').read_text(encoding='utf-8')
+    assert reader_breaks(src.replace("wall = obs.specimen(", "wall = obs._w.bodies.get("), harness, allowed)
+    assert reader_breaks(src + '\nimport plan\n', harness, allowed)
     play = class_src(*READER_CLASSES[0])
     assert raw_breaks(play.replace('obs = self.obs', 's = self.obs'))
 

@@ -38,14 +38,12 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 class Bodies:
     """Fight numbers of templates, read once: the owners do not matter to Lanchester, only the numbers."""
 
-    def __init__(self, s):
-        self.s, self._b = s, {}
+    def __init__(self, obs):
+        self.obs, self._b = obs, {}
 
     def __call__(self, template):
         if template not in self._b:
-            b = self.s.add(f'#graybox {len(self._b)}', template, self.s.foe, 0.0, 0.0)
-            b.alive = False
-            self._b[template] = b
+            self._b[template] = self.obs.specimen(f'#graybox {len(self._b)}', template, self.obs.foe)
         return self._b[template]
 
     def armed(self, template):
@@ -76,7 +74,7 @@ def fluid(body, mine, theirs, later=()):
             for p, n in fire.items():
                 if n <= 0:
                     continue
-                rate = {e: offline.dps(body.s, body(p), body(e)) for e, m in foe.items() if m > 0}
+                rate = {e: offline.dps(body.obs, body(p), body(e)) for e, m in foe.items() if m > 0}
                 rate = {e: r for e, r in rate.items() if r > 0}
                 mass = sum(foe[e] for e in rate)
                 for e, r in rate.items():
@@ -146,8 +144,8 @@ def verdict(ks):
 
 def stages(level):
     """[(stage, {enemy template: n}, {player template: k*}, best k*)] for the plan's walkthrough."""
-    s, starts, enemy, have = offline.walk(level)
-    body = Bodies(s)
+    obs, starts, enemy, have = offline.walk(level)
+    body = Bodies(obs)
     out = []
     for n, _ in starts:
         e = enemy.get(n, {})
@@ -158,7 +156,7 @@ def stages(level):
         known = [k for k in ks.values() if k is not None]
         k2, mix = best_mix(body, sorted(have.get(n, ())), e)
         out.append((n, e, ks, min(known + [k2]) if known or mix else None, mix))
-    return s, out
+    return obs, out
 
 
 def fmt(k):
@@ -166,7 +164,7 @@ def fmt(k):
 
 
 def report(level, verbose=False):
-    s, rows = stages(level)
+    obs, rows = stages(level)
     lines = [f'{level}（灰盒，旧版走查敌人的并发形态；EASY={EASY}，TOUGH={TOUGH}）']
     summary = []
     for n, e, ks, best, mix in rows:

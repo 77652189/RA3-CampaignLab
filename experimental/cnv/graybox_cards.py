@@ -17,9 +17,8 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import glossary  # noqa: E402
 import graybox  # noqa: E402
 import offline  # noqa: E402
-import plan  # noqa: E402
-import sim  # noqa: E402
 import simunits  # noqa: E402
+# A reader through the observation port (tests/guards/test_ports READERS): sim and plan only in world, the harness.
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
 import labpaths  # noqa: E402
 
@@ -34,9 +33,13 @@ def ground_range(b):
 
 
 def world():
-    """A4's sim for the bodies' numbers, and the fight-numbers reader."""
-    s = sim.Sim(plan.Compiler(plan.load('a4')).compile())
-    return s, graybox.Bodies(s)
+    """A4's run, through the observation port, for the bodies' numbers, and the fight-numbers reader. The harness:
+    the one place that makes a world (nothing runs it: the cards read templates' numbers and the placed camp)."""
+    import plan
+    import sim
+    from engine.ports.observe import Observe
+    obs = Observe(sim.Sim(plan.Compiler(plan.load('a4')).compile()))
+    return obs, graybox.Bodies(obs)
 
 
 def cost_of(side):
@@ -66,7 +69,7 @@ def biggest(ok, lo=0.05, hi=64.0):
     return lo
 
 
-def a4_streets(s, body):
+def a4_streets(obs, body):
     """A4 甲 (three streets, two engineers): the escort and one street's group (2 Knights : 1 Tank Killer, the plan's
     plaza mix), at the scale where the escort still wins with half left. Merged is the three groups at once; a column
     is the three in a narrow street one after another. The truck's life under one street's fire is the price of letting
@@ -91,14 +94,14 @@ def a4_streets(s, body):
     truck = body('CNV_ConvoyTruck')
     street = scaled(1.0)
     _, _, clear = graybox.fluid(body, escort, street)
-    fire = sum(offline.dps(body.s, body(t), truck) * n for t, n in street.items())
+    fire = sum(offline.dps(body.obs, body(t), truck) * n for t, n in street.items())
     return dict(escort_cost=cost_of(escort), street_cost=cost_of(street),
                 single=biggest(single), column=biggest(column), merged=biggest(merged),
                 truck_hp=truck.max_hp, truck_guessed=bool(truck.guessed), street_dps_on_truck=fire,
                 truck_seconds=truck.max_hp / fire if fire else math.inf, clear_seconds=clear)
 
 
-def a4_street_types(s, body):
+def a4_street_types(obs, body):
     """A4 甲 says the three streets send different troops (infantry, tank killers, tsunami tanks) so the escort's mix
     must change street by street. k* of each escort type against each street, and the cheapest type that answers
     all three."""
@@ -129,25 +132,24 @@ def wall_cover(builders, life=30.0, cooldown=40.0, window=40.0):
     return covered, window
 
 
-def a4_plaza(s, body):
+def a4_plaza(obs, body):
     """A4 乙: the convoy needs ~40 s for a plaza; a wall lives 30 s, cools down 40 s."""
     one, two = wall_cover(1), wall_cover(2)
     return dict(one_engineer=one[0] / one[1], two_relay=two[0] / two[1])
 
 
-def a4_cold(s, body):
+def a4_cold(obs, body):
     """A4 丙: what the 拆源 route costs the convoy -- the north camp's building health over what the player's army
     does to buildings per second (the convoy waits at the bridge head meanwhile)."""
-    hp = sum(b.max_hp for b in s.living() if b.owner != s.human and 'STRUCTURE' in b.kinds and not b.scenery)
+    hp = sum(b.max_hp for b in obs.living() if b.owner != obs.human and 'STRUCTURE' in b.kinds and not b.scenery)
     escort = {T('守护者坦克', '盟军'): 3, T('维和步兵', '盟军'): 4, T('标枪兵', '盟军'): 2}
-    wall = s.add('#wall', 'JapanBarracks', s.foe, 0.0, 0.0)
-    wall.alive = False
-    wall.kinds = frozenset({'STRUCTURE'})
-    dps = sum(offline.dps(s, body(t), wall) * n for t, n in escort.items())
+    wall = obs.specimen('#wall', 'JapanBarracks', obs.foe)
+    wall.kinds = frozenset({'STRUCTURE'})              # the specimen is this reader's own, out of the world
+    dps = sum(offline.dps(obs, body(t), wall) * n for t, n in escort.items())
     return dict(camp_hp=hp, escort_dps=dps, seconds=hp / dps if dps else math.inf)
 
 
-def s1_lake(s, body):
+def s1_lake(obs, body):
     """S1: ranges (the card's hook range 300 is a confirmed number), the roster the flow gives the player and the
     enemy's, and the lake against the ice window of card 丙 (60 s) at the roster's speeds."""
     mine = ['防空步兵', '镰刀机甲']
@@ -161,7 +163,7 @@ def s1_lake(s, body):
                 map_width=4740.0)
 
 
-def j7_valleys(s, body):
+def j7_valleys(obs, body):
     """J7: the jammer's 250 aura at 40 % speed, and the ranges of the high-ground card."""
     out = {}
     for who, f in [('动员兵', '苏联'), ('铁锤坦克', '苏联'), ('天启坦克', '苏联')]:
@@ -199,7 +201,7 @@ def a4_run(body, per_wave, scale, resupply=(3,), waves=5):
     return shares, None
 
 
-def a4_waves(s, body):
+def a4_waves(obs, body):
     """A4 甲: does the card's own trick (walls turn three streets into one, so the escort eats three groups a horn)
     also grind the escort down over the ~5 horns of section 1? Per wave the escort fights 3 groups (both walls
     used: all three streets into one) or 2 (one wall: the frozen street's group joins an open one, the third
@@ -212,7 +214,7 @@ def a4_waves(s, body):
     part, _, secs3 = graybox.fluid(body, third, group)
     cut = 900 / cost_of(group)
     truck = body('CNV_ConvoyTruck')
-    fire = sum(offline.dps(body.s, body(t), truck) * n for t, n in group.items())
+    fire = sum(offline.dps(body.obs, body(t), truck) * n for t, n in group.items())
     return dict(group_cost=cost_of(group), truck_seconds=truck.max_hp / fire,
                 waves_three=a4_run(body, (3,), 1.0), waves_two=a4_run(body, (2,), 1.0),
                 waves_three_900=a4_run(body, (3,), cut), waves_two_900=a4_run(body, (2,), cut),
@@ -254,7 +256,7 @@ def a4l_survive(body, army_cost, w, horns=6, kings_from=3, kings=1, mouths=3):
     return out, None
 
 
-def a4_last(s, body):
+def a4_last(obs, body):
     """A4 甲, the last stretch: a base, a mass army and cannons against three mouths and the Ghost King. What does a
     horn have to weigh before a mass of ordinary units cannot just eat it, and what does the wall in front of the
     guns buy against the King?"""
@@ -269,11 +271,11 @@ def a4_last(s, body):
     third = {(w, kings): graybox.kstar(body, A4L_ARMY, a4l_horn(w, 1, kings)) for w in (900, 1500, 2500) for kings in (0, 1)}
     king_alone = {glossary_name(p): graybox.kstar(body, p, {A4L_KING: 1.0}) for p in A4L_HAVE}
     wall = body('CNV_IceWall')
-    smash = wall.max_hp / offline.dps(s, body(A4L_KING), wall)
+    smash = wall.max_hp / offline.dps(obs, body(A4L_KING), wall)
     free = {}                                                     # damage the army deals to the King while it smashes
     for c in (2000, 4000, 8000):
         n = {p: c * f / cost(p) for p, f in A4L_ARMY.items()}
-        free[c] = sum(offline.dps(s, body(p), body(A4L_KING)) * m for p, m in n.items()) * smash / body(A4L_KING).max_hp
+        free[c] = sum(offline.dps(obs, body(p), body(A4L_KING)) * m for p, m in n.items()) * smash / body(A4L_KING).max_hp
     killed = {}
     for c in (2000, 4000, 8000):
         n = {p: c * f / cost(p) for p, f in A4L_ARMY.items()}
@@ -304,7 +306,7 @@ J7_TIMINGS = {'同时到': (0, 0, 0), '先一路，另两路晚 15 秒': (0, 15,
               '先一路，另两路晚 45 秒': (0, 45, 45)}
 
 
-def j7_counter(s, body, army_cost=10000.0):
+def j7_counter(obs, body, army_cost=10000.0):
     """J7 甲: how big must the last counterattack be (three routes, as the card's jammers leave them) for an army
     waiting under the tower to be unable to eat it? An army of cost `army_cost` of the best Empire mix (the player
     picks) meets three equal routes arriving `timing` seconds apart; the largest counterattack (total cost, as a
@@ -340,7 +342,7 @@ S1_HOOK = 300.0                                                      # the card'
 S1_CONVOY_SPEED = 50.0                                               # the truck's (the tow is slowed to it)
 
 
-def s1_geometry(s, body):
+def s1_geometry(obs, body):
     """S1 甲, the geometry table. Hook tank d behind the ice edge, thin band w, tow Guardian g past its outer edge.
     Hook reaches: d + w + g <= 300. The escort cannot shoot the hook tank: d + w > its range. Shore fire cannot reach
     a Guardian from the ice edge: w + g > the player's longest range. The Sickle leaps `leap` (its data): a band the
@@ -359,7 +361,7 @@ def s1_geometry(s, body):
                 no_w_blocks_leap=all(not r['leap_blocked'] for r in rows if r['g_max'] >= 0))
 
 
-def s1_natural(s, body):
+def s1_natural(obs, body):
     """S1 甲 natural plays. Hooking the truck: the cursor says no (no fight at all); with d + w > 150 the escort
     cannot answer it either. The Sickle leaps the band and lands on thick ice: one Sickle against a Guardian.
     Infantry walks the band (thin ice sinks only vehicles) and fights the escort: the k* of the player's best
@@ -378,27 +380,27 @@ def s1_natural(s, body):
              for n, m in armies.items()}
     truck = body('CNV_ConvoyTruck')
     hook_tank_hp = body(guard).max_hp
-    peace_on_guard = offline.dps(s, body(peace), body(guard))
+    peace_on_guard = offline.dps(obs, body(peace), body(guard))
     best = {col: min(row[col] for row in table.values()) for col in ('whole', 'cape', 'ashore', 'lone')}
     return dict(table=table, best=best, escort_cost=cost_of(escort), ashore_cost=cost_of(ashore),
                 whole_need_cost=best['whole'] * cost_of(escort), ashore_need_cost=best['ashore'] * cost_of(ashore),
-                sickle_vs_guard=offline.dps(s, body(sickle), body(guard)), guard_vs_sickle=offline.dps(s, body(guard), body(sickle)),
-                flak_kills_truck=truck.max_hp / offline.dps(s, body(flak), truck),
+                sickle_vs_guard=offline.dps(obs, body(sickle), body(guard)), guard_vs_sickle=offline.dps(obs, body(guard), body(sickle)),
+                flak_kills_truck=truck.max_hp / offline.dps(obs, body(flak), truck),
                 infantry_speed=body(flak).speed, convoy_speed=S1_CONVOY_SPEED, sickle_speed=body(sickle).speed,
                 hook_tank_seconds={n: hook_tank_hp / (n * peace_on_guard) for n in (2, 4, 6)},
                 walk_to_range={g: (10.0 + 200 + g - body(peace).weapons[0]['range']) / body(peace).speed for g in (0, 50, 100)})
 
 
-def s1_ablate(s, body):
+def s1_ablate(obs, body):
     """S1 甲, take one thing away. No thin ice: the Guardians come ashore too, so the player fights the whole escort
     (k* of the best mix); with the ice only the Peacekeepers can come, and the sunk Guardian costs nothing. No cable:
     the truck drives alone and the hook takes it from any cape (the puzzle is gone)."""
-    n = s1_natural(s, body)
+    n = s1_natural(obs, body)
     return dict(with_ice=n['best']['ashore'], without_ice=n['best']['whole'], lone=n['best']['lone'],
                 with_ice_cost=n['ashore_need_cost'], without_ice_cost=n['whole_need_cost'])
 
 
-def s1_capes(s, body):
+def s1_capes(obs, body):
     """S1 甲, cape ambush against staying put. The lane touches `capes` capes and the player has `tanks` hook tanks
     (the flow gives three). One tank at every cape (static) catches a Guardian wherever the lane goes when
     tanks >= capes; the optimum can only move round to round when capes > tanks, or when a tank cannot follow the
@@ -486,7 +488,7 @@ def j7_grind(body, h, waves, resupply=False, column=False, army_cost=10000.0, ro
     return shares, None
 
 
-def j7_valley_choice(s, body):
+def j7_valley_choice(obs, body):
     """J7 甲: the route table, the pursuit, the head-on grind against the ambush at the mouth, the ablation."""
     pick, pursuit, follow = j7_table(), {}, {}
     for n0 in [(3, 3, 3), (3, 2, 2), (2, 2, 2)]:
@@ -509,11 +511,11 @@ def j7_valley_choice(s, body):
 
 
 def facts():
-    s, body = world()
-    return dict(a4_streets=a4_streets(s, body), a4_types=a4_street_types(s, body), a4_plaza=a4_plaza(s, body), a4_cold=a4_cold(s, body),
-                s1=s1_lake(s, body), j7=j7_valleys(s, body), a4_waves=a4_waves(s, body), j7_counter=j7_counter(s, body),
-                s1_geometry=s1_geometry(s, body), s1_natural=s1_natural(s, body), s1_ablate=s1_ablate(s, body),
-                s1_capes=s1_capes(s, body), j7_valley=j7_valley_choice(s, body), a4_last=a4_last(s, body))
+    obs, body = world()
+    return dict(a4_streets=a4_streets(obs, body), a4_types=a4_street_types(obs, body), a4_plaza=a4_plaza(obs, body), a4_cold=a4_cold(obs, body),
+                s1=s1_lake(obs, body), j7=j7_valleys(obs, body), a4_waves=a4_waves(obs, body), j7_counter=j7_counter(obs, body),
+                s1_geometry=s1_geometry(obs, body), s1_natural=s1_natural(obs, body), s1_ablate=s1_ablate(obs, body),
+                s1_capes=s1_capes(obs, body), j7_valley=j7_valley_choice(obs, body), a4_last=a4_last(obs, body))
 
 
 def lines(f):

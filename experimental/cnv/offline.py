@@ -26,9 +26,10 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 import glossary  # noqa: E402
-import plan  # noqa: E402
-import sim  # noqa: E402
 import simunits  # noqa: E402
+# A reader of the run through the observation port (engine/ports/observe.py; tests/guards/test_ports READERS): the
+# simulator itself (sim, plan) is imported only in the harness -- walk makes and drives the run, spelt gives what the
+# report prints in the simulator's own terms.
 
 ONE = 0.9                                       # P29 (a4-redesign.md): one unit type answers under 90 % of a stage
 # the walkthrough that wins (a4.md 返工: the player's escort with the trucks, plazas 2 and 3 frozen, the north
@@ -64,14 +65,14 @@ ROSTER = {'盟军': ['维和步兵', '标枪兵', '警犬', '谭雅', '守护者
 BASE = re.compile(r'constructionyard|mcv', re.I)
 
 
-def a4_sight(m, s):
+def a4_sight(m, obs):
     """A4's high-ground claims (a4-redesign.md P27, a4.md 规则 and 目标说明)."""
     # K7 (I8, 2026-11-05): the back lane is flat, between house rows -- no high-ground claim on it any more (the three
     # lane-over-avenue claims went with the hill); the two plateaus' towers keep theirs
-    tower = s.point('ramp tower 1')
-    return [('坡脚看不见坡顶的波能塔（要先派兵上坡）', '守护者坦克', s.point('front ramp west'), tower, False),
-            ('北营低地看不见坡顶的波能塔', '守护者坦克', s.point('north camp'), tower, False),
-            ('波能塔看得见坡脚', '波能塔', tower, s.point('front ramp west'), True)]
+    tower = obs.point('ramp tower 1')
+    return [('坡脚看不见坡顶的波能塔（要先派兵上坡）', '守护者坦克', obs.point('front ramp west'), tower, False),
+            ('北营低地看不见坡顶的波能塔', '守护者坦克', obs.point('north camp'), tower, False),
+            ('波能塔看得见坡脚', '波能塔', tower, obs.point('front ramp west'), True)]
 
 
 SIGHT = {'a4': a4_sight}
@@ -94,44 +95,50 @@ def cost(template):
     return _cost.get(template.lower())
 
 
-def dps(s, a, t):
-    """Damage per second body a does to body t: each weapon that can hit t, x t's armour for its type."""
+def dps(obs, a, t):
+    """Damage per second body a does to body t: each weapon that can hit t (`obs`: the run's observation port), x t's
+    armour for its type."""
     return sum(w['dps'] * simunits.percent(t.armor, w['type']) / 100.0 for w in a.weapons
-               if s.can_hit(w, t))
+               if obs.can_hit(w, t))
 
 
-def ratio(s, p, e):
+def ratio(obs, p, e):
     """Cost for cost, p's strength over e's (Lanchester's square law); inf: e cannot hurt p; None: neither."""
     cp, ce = cost(p.template) or 500, cost(e.template) or 500
-    mine, theirs = p.max_hp * dps(s, p, e) / cp ** 2, e.max_hp * dps(s, e, p) / ce ** 2
+    mine, theirs = p.max_hp * dps(obs, p, e) / cp ** 2, e.max_hp * dps(obs, e, p) / ce ** 2
     if not theirs:
         return math.inf if mine else None
     return mine / theirs
 
 
 def walk(level):
-    """Run the plan's walkthrough: (sim, compiler, [(stage, start s)], {enemy template: (stage, cost met)},
-    {stage: player templates})."""
+    """Run the plan's walkthrough: (the run's observation port, [(stage, start s)], {stage: {enemy template: how many
+    met}}, {stage: player templates}). The harness: it makes the run and drives its loop (step, the clock, the quiet
+    check); what it reads of the run it reads through the port, as the readers do."""
+    import plan
+    import sim
+    from engine.ports.observe import Observe
     c = plan.Compiler(plan.load(level))
     m = c.compile()
     s = sim.Sim(m, script=anchored(WALK.get(level, ''), c))
+    obs = Observe(s)
     starts, met, have = [], {}, {}
     base = None
-    while s.t <= sim.UNTIL and s.ending is None:
+    while obs.t <= sim.UNTIL and obs.ending() is None:
         s.step()
         for ph in c.phases:
-            if s.flags.get(ph.flag) == 1 and ph.name not in dict(starts):
-                starts.append((ph.name, s.t))
+            if obs.flags().get(ph.flag) == 1 and ph.name not in dict(starts):
+                starts.append((ph.name, obs.t))
         stage = starts[-1][0] if starts else (c.phases[0].name if c.phases else '')
-        for b in s.living():
-            if b.owner == s.human and b.speed > 0 and b.weapons:
+        for b in obs.living():
+            if b.owner == obs.human and b.speed > 0 and b.weapons:
                 have.setdefault(stage, set()).add(b.template)
-            if base is None and b.owner == s.human and BASE.search(b.template):
+            if base is None and b.owner == obs.human and BASE.search(b.template):
                 base = stage
-            if b.owner != s.human and s.enemy(s.human, b.owner) and b.close_since is not None and \
+            if b.owner != obs.human and obs.enemy(obs.human, b.owner) and b.close_since is not None and \
                     (b.weapons or 'CAN_ATTACK' in b.kinds) and id(b) not in met:
                 met[id(b)] = (b.template, stage)
-        if not s.pending() and s.t - s.last_change >= sim.QUIET:
+        if not obs.pending() and s.t - s.last_change >= sim.QUIET:
             break
         s.t = round(s.t + sim.DT, 3)
     enemy = {}
@@ -141,7 +148,7 @@ def walk(level):
     names = [n for n, _ in starts]
     if base is not None:                        # from the stage the base comes: what it builds, less the bans
         faction = c.faction['p1']
-        banned = {t for p, t in s.banned if p == s.human}
+        banned = {t for p, t in obs.banned() if p == obs.human}
         build = {glossary.template(n, faction) for n in ROSTER.get(faction, [])}
         build = {t for t in build if t.lower() not in banned}
         for n in names[names.index(base):]:
@@ -150,7 +157,14 @@ def walk(level):
     for n in names:                             # what was had stays (the roster grows)
         acc |= have.get(n, set())
         have[n] = set(acc)
-    return s, starts, enemy, have
+    return obs, starts, enemy, have
+
+
+def spelt():
+    """The harness's other half: what the report prints in the simulator's own terms (its m:ss, the high-ground step
+    its sight rule uses) -- handed to the reader, as simshow.attach hands the Show its mmss."""
+    import sim
+    return sim.mmss, sim.HIGH_STEP
 
 
 def label(template):
@@ -159,15 +173,15 @@ def label(template):
 
 
 def report(level):
-    s, starts, enemy, have = walk(level)
-    lines = [f'{level}: walkthrough {WALK.get(level, "")!r} -- {s.ending_line()}',
-             '段：' + '，'.join(f'{n} {sim.mmss(t)}' for n, t in starts)]
+    obs, starts, enemy, have = walk(level)
+    mmss, high_step = spelt()
+    lines = [f'{level}: walkthrough {WALK.get(level, "")!r} -- {obs.ending_line()}',
+             '段：' + '，'.join(f'{n} {mmss(t)}' for n, t in starts)]
     proto = {}
 
     def body(t, owner):
         if (t, owner) not in proto:
-            proto[(t, owner)] = s.add(f'#offline {len(proto)}', t, owner, 0.0, 0.0)
-            proto[(t, owner)].alive = False             # out of the world: only its numbers are read
+            proto[(t, owner)] = obs.specimen(f'#offline {len(proto)}', t, owner)    # only its numbers are read
         return proto[(t, owner)]
 
     foes = sorted({t for e in enemy.values() for t in e}, key=label)
@@ -178,11 +192,11 @@ def report(level):
     for p in mine:
         row = []
         for e in foes:
-            bp, be = body(p, s.human), body(e, s.foe)
+            bp, be = body(p, obs.human), body(e, obs.foe)
             if not any(w['dps'] for w in bp.weapons) or not any(w['dps'] for w in be.weapons):
                 row.append('?')                         # unknown: neither a win nor a loss in the counts
                 continue
-            r = ratio(s, bp, be)
+            r = ratio(obs, bp, be)
             table[(p, e)] = r
             row.append('-' if r is None else 'inf' if r == math.inf else f'{r:.2g}')
         lines.append(f'{label(p)} ({cost(p) or "?"}) | ' + ' | '.join(row))
@@ -207,15 +221,14 @@ def report(level):
                             f'under {ONE:.0%}')
     claims = SIGHT.get(level)
     if claims:
-        lines.append('\n高地视野（低处看不见高出 %g 的地方）：' % sim.HIGH_STEP)
-        for text, who, (vx, vy), (tx, ty), want in claims(s.m, s):
-            v = s.add(f'#offline {len(proto) + 100}', glossary.template(who, '盟军'), s.human, vx, vy)
-            v.alive = False
-            got = s.looks(v, tx, ty)
+        lines.append('\n高地视野（低处看不见高出 %g 的地方）：' % high_step)
+        for text, who, (vx, vy), (tx, ty), want in claims(obs.mission(), obs):
+            v = obs.specimen(f'#offline {len(proto) + 100}', glossary.template(who, '盟军'), obs.human, vx, vy)
+            got = obs.looks(v, tx, ty)
             sight = v.vision or max((w['range'] for w in v.weapons), default=0.0)
             d = math.hypot(tx - vx, ty - vy)
-            lines.append(f'- {"过" if got == want else "不对"} {text}：{who} 站在 {s.ground.z(vx, vy):.0f} 高，'
-                         f'目标 {s.ground.z(tx, ty):.0f} 高，相距 {d:.0f}，视野 {sight:.0f} -> '
+            lines.append(f'- {"过" if got == want else "不对"} {text}：{who} 站在 {obs.ground_z(vx, vy):.0f} 高，'
+                         f'目标 {obs.ground_z(tx, ty):.0f} 高，相距 {d:.0f}，视野 {sight:.0f} -> '
                          f'{"看得见" if got else "看不见"}')
             if got != want:
                 problems.append(f'sight: {text}: {"sees" if got else "does not see"}')

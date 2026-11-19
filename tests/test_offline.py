@@ -30,15 +30,15 @@ def test_a4_offline():
     assert not [p for p in problems if p.startswith('sight')], problems
     # the plateau towers' three claims (K7: the back lane's three went with its hill)
     assert text.count('\n- 过 ') == 3 and '\n- 不对 ' not in text
-    s, starts, enemy, have = offline.walk('a4')
+    obs, starts, enemy, have = offline.walk('a4')          # the run's observation port
     body = {}
 
     def b(t, owner):
-        body[(t, owner)] = body.get((t, owner)) or s.add(f'#t {len(body)}', t, owner, 0.0, 0.0)
+        body[(t, owner)] = body.get((t, owner)) or obs.specimen(f'#t {len(body)}', t, owner)
         return body[(t, owner)]
-    javelin, tsunami = b('AlliedAntiVehicleInfantry', s.human), b('JapanAntiVehicleVehicleTech1', s.foe)
-    guardian, buster = b('AlliedAntiVehicleVehicleTech1', s.human), b('JapanAntiVehicleInfantry', s.foe)
-    peacekeeper = b('AlliedAntiInfantryInfantry', s.human)
-    assert offline.ratio(s, javelin, tsunami) > 1
-    assert offline.ratio(s, guardian, buster) < 1
-    assert offline.ratio(s, peacekeeper, buster) > 1
+    javelin, tsunami = b('AlliedAntiVehicleInfantry', obs.human), b('JapanAntiVehicleVehicleTech1', obs.foe)
+    guardian, buster = b('AlliedAntiVehicleVehicleTech1', obs.human), b('JapanAntiVehicleInfantry', obs.foe)
+    peacekeeper = b('AlliedAntiInfantryInfantry', obs.human)
+    assert offline.ratio(obs, javelin, tsunami) > 1
+    assert offline.ratio(obs, guardian, buster) < 1
+    assert offline.ratio(obs, peacekeeper, buster) > 1
