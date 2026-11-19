@@ -202,10 +202,9 @@ class World:
                 self.schedule.remove(m)
 
     def bind_slave(self, child, parent, spawner):
-        """Give a spawned child its SlavedUpdate if needed and set its maker."""
+        """Give a spawned child its SlavedUpdate if needed and set its maker (Slaved.enslave drops the living views)."""
         slaved = child.find(interfaces.Slaved) or self.attach(child, 'SlavedUpdate')
         slaved.enslave(parent, spawner)
-        self.invalidate_living()
 
     def invalidate_living(self):
         """Forget the ordered membership lists after a change to the host's bodies."""

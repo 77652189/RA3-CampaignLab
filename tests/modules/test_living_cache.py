@@ -102,3 +102,17 @@ def test_living_cache_invalidates_when_a_registered_body_becomes_a_slave():
     world.world.bind_slave(b, yard, spawner)
     _assert_view(brain.living(), a, yard)
     _assert_view(world.living(), a, b, yard, *yard.spawned_children)
+
+
+def test_living_cache_invalidates_when_slaved_enslave_is_called_directly():
+    """Review 1119l P3: the module's own enslave (not World.bind_slave) drops the views too."""
+    world = simsmall.small_world(OBJECTS, model=False)
+    brain = simai.Brain.__new__(simai.Brain)
+    brain.world = world
+    a, b = world.bodies.values()
+    yard = world.add('factory', 'AlliedWarFactory', world.human, 600, 600)
+    spawner, = yard.find(interfaces.Spawn)
+    slave = world.world.attach(b, 'SlavedUpdate')
+    _assert_view(brain.living(), a, b, yard)
+    slave.enslave(yard, spawner)
+    _assert_view(brain.living(), a, yard)

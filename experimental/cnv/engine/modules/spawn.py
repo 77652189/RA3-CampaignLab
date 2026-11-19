@@ -134,6 +134,7 @@ class Slaved(module.Module, interfaces.Die, interfaces.Destroy, interfaces.Slave
 
     def enslave(self, parent, spawner):
         self.spawn_parent, self.spawn_module, self._spawner = parent, spawner.module_id(), spawner
+        self.world.invalidate_living()      # a slave leaves the AI's unslaved view (review 1119l P3: any caller)
 
     def slaver(self):
         return self.spawn_parent
