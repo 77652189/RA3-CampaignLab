@@ -2595,7 +2595,8 @@ _index = None
 _reads = {}         # T9 (11-18), per process -- the SDK does not change while one runs:
                     #   ('text', path) a SageXML file's text; ('sdk', name) _xml's answer from the SDK;
                     #   ('objects', text) {id.lower(): first GameObject} of a mission file, keyed by its text,
-                    #   not the dict; ('only', text, name) that file without its other GameObjects
+                    #   not the dict; ('only', text, name) that file without its other GameObjects;
+                    #   ('command_set', name[, own files]) inherited CommandSet and upgrade triggers
 
 
 def _text(path):
@@ -2689,16 +2690,21 @@ def equivalent_to(template, own=None):
 def command_set(structure, upgrades=(), own=None):
     """The structure's CommandSet: its own, or the last CommandSetUpgrade's whose TriggeredBy it holds (AlliedConstruction
     Yard: ...Level2 once it holds Upgrade_AlliedTech2, its button then buys Tech3)."""
-    def read(xml):
-        bare = re.sub(r'<CommandSetUpgrade\b.*?(/>|</CommandSetUpgrade>)', '', xml, flags=re.S)
-        base = (re.findall(r'\bCommandSet="([^"]+)"', bare) or [None])[0]
-        swaps = [(_attr(h, 'CommandSet'), set(re.findall(r'<TriggeredBy>\s*([^<\s]+)', i)))
-                 for h, i in _blocks(xml, 'CommandSetUpgrade')]
-        return (base, swaps) if base or swaps else None
-    base, swaps = _inherited(structure, own, read, None) or ('', [])
+    # An own file can override an ancestor or contain another GameObject. Keep file order for _xml's first match,
+    # and the original spelling of the structure for its exact lookup in own.
+    key = ('command_set', structure, tuple(own.items())) if own else ('command_set', structure.lower())
+    if key not in _reads:
+        def read(xml):
+            bare = re.sub(r'<CommandSetUpgrade\b.*?(/>|</CommandSetUpgrade>)', '', xml, flags=re.S)
+            base = (re.findall(r'\bCommandSet="([^"]+)"', bare) or [None])[0]
+            swaps = [(_attr(h, 'CommandSet'), frozenset(t.lower() for t in re.findall(r'<TriggeredBy>\s*([^<\s]+)', i)))
+                     for h, i in _blocks(xml, 'CommandSetUpgrade')]
+            return (base, tuple(swaps)) if base or swaps else None
+        _reads[key] = _inherited(structure, own, read, None) or ('', ())
+    base, swaps = _reads[key]
     held = {u.lower() for u in upgrades}
     for cs, trig in swaps:
-        if cs and trig and {t.lower() for t in trig} <= held:
+        if cs and trig and trig <= held:
             base = cs
     return base or ''
 

@@ -31,3 +31,16 @@ def test_two_worlds_overriding_one_template_each_read_their_own():
     assert simunits.production(BASE, second.own)[0] == 2000
     assert simunits.production(UNIT) == retail != (111, 0.0)        # the SDK's own answer untouched by either
     assert simunits.production(BASE) == (0, 0.0)                     # nor taught the mission-only template
+
+
+def test_two_worlds_overriding_one_structure_each_get_their_command_set():
+    structure = 'AlliedConstructionYard'
+    mission = parts.Mission(name='T', map=simsmall.island, scripts=[])
+    first, second = [
+        simsmall.sim.Sim(dataclasses.replace(mission, units=[
+            model.Unit(id=structure, xml=f'<GameObject id="{structure}" CommandSet="{commands}"></GameObject>'),
+        ]), model=False)
+        for commands in ('CacheCommandsFirst', 'CacheCommandsSecond')
+    ]
+    assert simunits.command_set(structure, own=first.own) == 'CacheCommandsFirst'
+    assert simunits.command_set(structure, own=second.own) == 'CacheCommandsSecond'
