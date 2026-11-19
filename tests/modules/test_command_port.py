@@ -2,6 +2,8 @@
 event its line reads as (so moving a giver onto the port changes no timing); `do` gives the world what calling the
 order directly gives; an unknown kind, and a kind with no route yet, are refused. The givers' guard is
 tests/guards/test_ports.py."""
+from pathlib import Path
+
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
@@ -11,6 +13,7 @@ from engine.ports import command as command_port  # noqa: E402
 from engine.ports.command import Command, Commands, ROUTED, command, event, text  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 
+ROOT = Path(__file__).resolve().parents[2]
 APOC = 'SovietAntiVehicleVehicleTech3'
 LINES = [Command('attack_move', units=('guardian',), place='approach 1'),
          Command('move', units=('名字含 -AlliedAnti',), place='@1200,-340'),
