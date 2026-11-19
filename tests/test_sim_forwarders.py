@@ -53,7 +53,8 @@ FORWARDER_CALLS = {
     ('engine.ports.command', 'order_attack'): 2, ('engine.ports.command', 'order_capture'): 2,
     ('engine.ports.command', 'order_follow'): 1, ('engine.ports.command', 'order_group'): 2,
     ('engine.ports.command', 'order_guard'): 1, ('engine.ports.command', 'order_move'): 2,
-    ('engine.ports.command', 'order_power'): 1, ('engine.ports.command', 'order_stop'): 1,
+    ('engine.ports.command', 'order_power'): 2, ('engine.ports.command', 'order_stop'): 1,
+    ('engine.ports.command', 'order_transform'): 1,
     ('engine.ports.command', 'stand'): 3,
     ('engine.ports.command', 'leap_press'): 1, ('engine.ports.command', 'movement_power_press'): 1,
     ('engine.ports.command', 'order_unpack'): 1, ('engine.ports.command', 'self_power_press'): 1,
@@ -83,9 +84,7 @@ FORWARDER_CALLS = {
     ('simai', 'expected_damage'): 1, ('simai', 'modify'): 1, ('simai', 'order_attack'): 1,
     ('simai', 'order_capture'): 1, ('simai', 'order_move'): 4, ('simai', 'order_unpack'): 1,
     ('simai', 'stand'): 1,
-    # simproxy's Peers loan (step 9d, R3: SimWorld.issue's orders on self.sim before, counted since it joined)
-    ('simproxy', 'order_attack'): 1, ('simproxy', 'order_group'): 1, ('simproxy', 'order_power'): 1,
-    ('simproxy', 'order_transform'): 1,
+    # simproxy: none (its orders go through the command port since R3 13e)
 }
 
 _CONTAINER = set(dir(dict)) | set(dir(list)) | set(dir(set))   # self.players.get(...) is a lookup, not a forwarder

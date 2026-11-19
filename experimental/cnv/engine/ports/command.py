@@ -20,7 +20,11 @@ a unit's AI command interface there and then):
 verbs too -- 造, 删除, 血量 ...: those are not commands and go in as the script events they are, unlogged).
 
 The port holds no rules: `do` routes each kind to the world's own order call (`Sim.happen` gives a script line's
-order through `do` too: one port per run, `Sim.commands`). Kinds with no route yet (`check` says so) get theirs when their giver moves to the port (R3 13e-13f).
+order through `do` too: one port per run, `Sim.commands`). Kinds with no route yet (`check` says so) get theirs when
+their giver moves to the port (R3 13f: the AI). The proxy player (simproxy, R3 13e) gives the player's own clicks
+through `do`: a selection's move (`('drop_target', True)`: the click drops the units' attack target first), a sidebar
+build (no `target`: the owner's factory with the shortest queue), a ground power or a transform answering the world's
+refusals (`via` 'click' / 'transform').
 
 Two kinds of address. A script line's (the player's, the plays'): `units` / `target` are what `Sim.pick` reads (a
 role, `名字含 ...`, `队 ...`; one not there is noted). A map script's (`('objects', True)`, the script actions since
@@ -121,6 +125,8 @@ def text(cmd):
     if cmd.kind == 'buy_science':
         return f"买 {cmd.arg('science')}{by}"
     if cmd.kind == 'build':
+        if not cmd.target:
+            raise ValueError("build: its script line names the factory (a sidebar build is do's only)")
         return f'生产 {cmd.template} 在 {cmd.target}{by}'
     if len(cmd.units) != 1:
         raise ValueError(f'{cmd.kind}: a script line names one address (it may name several units)')
@@ -273,7 +279,11 @@ class Commands:
         place; `on_grid`: snapped (engine_drop)."""
         w, where, grid = self._w, cmd.place if cmd.pos is None else cmd.pos, cmd.arg('on_grid', False)
         if cmd.arg('group'):
-            w.order_group(self._units(cmd), where, attacking, on_grid=grid)
+            units = self._units(cmd)
+            if cmd.arg('drop_target'):      # the player's click on a selection: his move replaces their attack
+                for b in units:
+                    b.goal = None
+            w.order_group(units, where, attacking, on_grid=grid)
         else:
             for b in self._units(cmd):
                 w.order_move(b, where, attacking, on_grid=grid)
@@ -332,6 +342,10 @@ class Commands:
             if w.order_build(cmd.player, cmd.template, factory=f, press=cmd.arg('press', False)):
                 return True, ''
             return False, f'{w.label(f)} 现在造不了 {cmd.template}'
+        if not cmd.target:                  # the player's sidebar click (simproxy): the shortest queue that builds it
+            if w.order_build(cmd.player or w.human, cmd.template):
+                return True, ''
+            return False, f'没有工厂现在造得了 {cmd.template}'
         tmpl = next((u.id for u in w.mm.units if u.id == cmd.template), None) or \
             next((r.template for k, r in w.m.cast.items() if k == cmd.template), cmd.template)
         f = next(iter(w.pick(cmd.target)), None)
@@ -419,8 +433,12 @@ class Commands:
     def _script_press(self, cmd):
         """power by `button`, `via`: 'wfire' (WeaponFireSpecialAbilityUpdate, at `target` or none), 'leap' (a
         ProjectileSelf leap to the place), 'movement' (MovementSpecialPower to the place), 'self'
-        (ActivateModuleSpecialPower)."""
+        (ActivateModuleSpecialPower) -- a script's press, no refusal; or the player's own (simproxy, R3 13e), which
+        answer the world's refusals: 'click' (`power` at `pos`: reload, ground, ForbiddenObjectRange, reach -- then
+        the scripts' way at a waypoint), 'transform' (`power` untargeted)."""
         w, button, via = self._w, cmd.arg('button'), cmd.arg('via')
+        if via in ('click', 'transform'):
+            return self._player_power(cmd, via)
         if via not in ('wfire', 'leap', 'movement', 'self'):
             return False, f'power: no press route {via!r}'
         for b in self._units(cmd):
@@ -432,6 +450,17 @@ class Commands:
                 w.movement_power_press(b, button, w.point(cmd.place))
             else:
                 w.self_power_press(b, button)
+        return True, ''
+
+    def _player_power(self, cmd, via):
+        """Each unit's own click; refused only when every unit's is (why: their refusals, sorted, once each)."""
+        w, units, refused = self._w, self._units(cmd), []
+        for b in units:
+            ok, why = w.order_power(b, cmd.power, cmd.pos) if via == 'click' else w.order_transform(b, cmd.power)
+            if not ok:
+                refused.append(why)
+        if units and len(refused) == len(units):
+            return False, ', '.join(sorted(set(refused)))
         return True, ''
 
     def _unpack(self, cmd):                  # drive to the place, turn into the button's replacement there (M10)

@@ -240,7 +240,31 @@ SCRIPT_ORDERS = {      # a map script's order (R3 13d-1: simact_order) -> what t
     'stance': (Command('stance', 'script', units=('a',), args=OBJ + (('stance', 3),)),
                lambda s, a, b: (setattr(a, 'hold_paused', isinstance(a.goal, type(a))), setattr(a, 'hold_fire', True),
                                 setattr(a, 'stance', 3))),
+    # the proxy player's clicks (R3 13e: simproxy.SimWorld.issue): a selection's move drops their targets first
+    'proxy move': (Command('attack_move', 'proxy', units=('a', 'b'), pos=(400.0, 300.0),
+                           args=OBJ + (('group', True), ('on_grid', True), ('drop_target', True))),
+                   lambda s, a, b: (setattr(a, 'goal', None), setattr(b, 'goal', None),
+                                    s.order_group([a, b], (400.0, 300.0), True, on_grid=True))),
 }
+
+
+def test_the_proxy_players_build_and_power_answer_the_world():
+    """A sidebar build (no factory named) and a ground power / transform: refused as the world refuses -- a power only
+    when every unit's is, why their refusals sorted once each (R3 13e)."""
+    s, direct = _pair()
+    want = direct.order_build('Player_1', APOC)
+    assert s.commands.do(Command('build', 'proxy', player='Player_1', template=APOC))[0] is want
+    assert want is False                                     # the small world has no factory
+    whys = sorted({direct.order_power(direct.bodies[n], 'Command_ReviewMissing', (500.0, 0.0))[1] for n in 'ab'})
+    cmd = Command('power', 'proxy', units=('a', 'b'), power='Command_ReviewMissing', pos=(500.0, 0.0),
+                  args=OBJ + (('via', 'click'),))
+    assert s.commands.do(cmd) == (False, ', '.join(whys))
+    want = sorted({direct.order_transform(direct.bodies[n], 'SpecialPower_JAIV_Transform')[1] for n in 'ab'})
+    cmd = Command('power', 'proxy', units=('a', 'b'), power='SpecialPower_JAIV_Transform',
+                  args=OBJ + (('via', 'transform'),))
+    assert s.commands.do(cmd) == (False, ', '.join(want))
+    with pytest.raises(ValueError):                          # a line names its factory: a sidebar build is do's only
+        text(Command('build', template=APOC))
 
 
 @pytest.mark.parametrize('case', sorted(SCRIPT_ORDERS))

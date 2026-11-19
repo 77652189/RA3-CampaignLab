@@ -131,7 +131,7 @@ EXEMPT = [
     (CNV / 'simbench_peak.py', None, '测速：自己驱动整局、下令，等命令端口'),
     (CNV / 'simcoverage.py', None, '"模拟器不认识什么"是模拟器的内部报告，不归观测端口'),
     (CNV / 'simai.py', None, '归 AI 端口'),
-    (CNV / 'simproxy.py', None, '归命令端口'),
+    (CNV / 'simproxy.py', None, '代理玩家：自己造局、驱动、读世界（下令经命令端口，GIVERS 守，R3 13e）'),
     (CNV / 'retail.py', None, '造原版关的局（同 build，造局的一边）'),
     (CNV / 'simsmall.py', None, '规则测试的小世界：造局'),
     (CNV / 'simstatic.py', None, '静态半边：只用 sim.CMP 比较表和 sim.Ground 地面，不读跑着的世界'),
@@ -391,11 +391,13 @@ ORDER_FIELDS = {'goal', 'path', 'dest', 'move_to', 'mode', 'stance', 'hold_fire'
 # and setattr / delattr by the field's name are writes too.
 MUTATORS = {'clear', 'append', 'extend', 'pop', 'popitem', 'insert', 'remove', 'update', 'setdefault', 'sort',
             'reverse', 'add', 'discard', '__setitem__', '__delitem__', '__iadd__'}
-GIVERS = [AUTOPLAY / 'autoplay.py', AUTOPLAY / 'players.py']
+GIVERS = [AUTOPLAY / 'autoplay.py', AUTOPLAY / 'players.py', CNV / 'simproxy.py']   # simproxy: R3 13e
 
 
 def _order_field(node):
-    return isinstance(node, ast.Attribute) and node.attr in ORDER_FIELDS
+    """A unit's order field (not `sys.path`: simproxy's import line, R3 13e)."""
+    return isinstance(node, ast.Attribute) and node.attr in ORDER_FIELDS and \
+        not (isinstance(node.value, ast.Name) and node.value.id == 'sys')
 
 
 def _in_place_write(node):
@@ -512,3 +514,18 @@ def test_planted_orders_round_the_port_are_found():
     for line in ('x = b.path[0]', 'self.memo.clear()', 'n = len(b.path)'):     # reads, and a giver's own state
         planted = src.replace(key, f'{key}        {line}\n')
         assert planted != src and not giver_breaks(planted, harness(f)), line
+
+
+def test_planted_orders_in_the_proxy_are_found():
+    """simproxy (R3 13e): its player's clicks go through the port; an order call or a target dropped by hand is red."""
+    f = CNV / 'simproxy.py'
+    src = f.read_text(encoding='utf-8')
+    for old, new in (("            self._do('attack', units, target=t.name)\n",
+                      "            for b in units:\n                self.sim.order_attack(b, t.name)\n"),
+                     ("        units = [b for b in units if b is not None and b.owner == self.me]\n",
+                      "        units = [b for b in units if b is not None and b.owner == self.me]\n"
+                      "        for b in units:\n            b.goal = None\n"),
+                     ("            if self._do('build', player=self.me, template=o.template)[0]:\n",
+                      "            if self.peers.order_build(self.me, o.template):\n")):
+        planted = src.replace(old, new)
+        assert planted != src and giver_breaks(planted, harness(f)), new

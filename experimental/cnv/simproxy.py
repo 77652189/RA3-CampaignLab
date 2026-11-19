@@ -3,8 +3,8 @@ RA3-EngineModel ra3model/proxy, labpaths.ENGINE_MODEL), so a level is played sta
 user says he plays (counter by unit kind, pull back the wounded, knock out the pressure source first) and a playtest
 report comes out: won or lost, when, what each side lost, whether the level's clever solution (巧解) was used.
 
-This file only calls the simulator (Sim's own world: bodies, side_sees, order_move / order_attack, act, step and
-sample as Sim.run does); it changes none of sim.py's rules. Where the proxy package is not on this computer (a clean
+This file only calls the simulator (Sim's own world: bodies, side_sees, act, step and sample as Sim.run does; its
+orders through the command port, engine/ports/command.py, R3 13e); it changes none of sim.py's rules. Where the proxy package is not on this computer (a clean
 clone) nothing here runs: available() is False and the tests skip, as sim.py's engine model does.
 
   python -I -X utf8 experimental/cnv/simproxy.py [level] [--until <seconds>] [--json <file>]
@@ -46,6 +46,7 @@ import sim  # noqa: E402
 import simunits  # noqa: E402
 import simworld  # noqa: E402
 from engine.modules import lifetime as lifetime_module  # noqa: E402
+from engine.ports.command import Command  # noqa: E402
 
 FPS = 15
 DIFFICULTY = 'normal'
@@ -98,8 +99,9 @@ _PROXY = {}
 # end and its advance, the bank and the build queues, the lit buttons, the on-screen countdowns, the input lock, the log
 # it reads the minimap flashes off, and the sight it asks (forget_sight, side_sees). It sets nothing there (no WRITES:
 # step 9d-1 moved its one write, the sight, onto Sim.forget_sight).
-PEERS = frozenset({'advance', 'countdowns', 'ending', 'forget_sight', 'input', 'log', 'money', 'offers', 'order_attack',
-                   'order_build', 'order_group', 'order_power', 'order_transform', 'queues', 'side_sees', 'timers'})
+# Its orders go through the command port (`commands`, R3 13e), not the Sim's order calls.
+PEERS = frozenset({'advance', 'commands', 'countdowns', 'ending', 'forget_sight', 'input', 'log', 'money', 'offers',
+                   'queues', 'side_sees', 'timers'})
 
 
 class Peers:
@@ -366,12 +368,20 @@ class SimWorld:
         (round 40, 2026-11-07)."""
         return self.peers.input and self.world.t > 0
 
+    def _do(self, kind, units=(), **kw):
+        """The player's order through the command port (R3 13e): (ok, why). `units` are bodies of his, given by name
+        (`('objects', True)`: the port finds each as the Sim does)."""
+        args = kw.pop('args', ())
+        if units:
+            args = (('objects', True),) + args
+        return self.peers.commands.do(Command(kind, 'proxy', units=tuple(b.name for b in units), args=args, **kw))
+
     def issue(self, o):
-        world, peers = self.world, self.peers
+        world = self.world
         if not self.control():
             return self._refuse(o, 'cinematic: no control')
-        if o.kind == 'build':
-            if peers.order_build(self.me, o.template):
+        if o.kind == 'build':                   # the sidebar: the shortest queue of his that builds it
+            if self._do('build', player=self.me, template=o.template)[0]:
                 return True
             return self._refuse(o, 'no factory of mine builds it now')
         units = [self._body(i) for i in o.units]
@@ -381,33 +391,26 @@ class SimWorld:
         if o.kind in ('move', 'attack_move'):
             if o.pos is None:
                 return self._refuse(o, 'move without a place')
-            for b in units:
-                b.goal = None
-            peers.order_group(units, (float(o.pos[0]), float(o.pos[1])), o.kind == 'attack_move', on_grid=True)   # a selection: a group
+            self._do(o.kind, units, pos=(float(o.pos[0]), float(o.pos[1])),     # a selection: a group, the click
+                     args=(('group', True), ('on_grid', True), ('drop_target', True)))   # drops their target
             return True
         if o.kind == 'attack':
             t = self._body(o.target)
             if t is None:
                 return self._refuse(o, 'target gone')
-            for b in units:
-                peers.order_attack(b, t.name)
+            self._do('attack', units, target=t.name)
             return True
         if o.kind == 'power':
             if o.power == 'SpecialPower_JAIV_Transform':
                 if o.target is not None or o.pos is not None:
                     return self._refuse(o, 'transform is an untargeted power')
-                results = [peers.order_transform(b, o.power) for b in units]
-                if not any(ok for ok, _ in results):
-                    return self._refuse(o, 'power refused: ' + ', '.join(sorted({why for _, why in results})))
-                return True
+                ok, why = self._do('power', units, power=o.power, args=(('via', 'transform'),))
+                return True if ok else self._refuse(o, 'power refused: ' + why)
             if o.pos is not None:               # a ground power: the player's click (Sim.order_power: reload, ground,
-                whys = []                       # ForbiddenObjectRange, reach), then the scripts' way at a waypoint
-                for b in units:
-                    ok, why = peers.order_power(b, o.power, o.pos)
-                    if not ok:
-                        whys.append(why)
-                if len(whys) == len(units):
-                    return self._refuse(o, f'power refused: {", ".join(sorted(set(whys)))}')
+                ok, why = self._do('power', units, power=o.power,    # ForbiddenObjectRange, reach), then the
+                                   pos=(float(o.pos[0]), float(o.pos[1])), args=(('via', 'click'),))   # scripts' way
+                if not ok:
+                    return self._refuse(o, 'power refused: ' + why)
             else:
                 for b in units:
                     world.note('技能', f'{world.label(b)} 用 {o.power}' + (f' 打 #{o.target}' if o.target else ''))
