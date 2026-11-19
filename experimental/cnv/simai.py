@@ -290,7 +290,9 @@ class Brain:
         self.seen_t = None              # the sim time the view was last built at
         self.fired = []                 # (frame, team key, unit, command): unit powers the micro wanted
         self.rec = {'frames': [], 'orders': [], 'deaths': {}}   # HOOKS 9: filled only with SimAI(record=True)
-        self._rec_runs, self._rec_mem, self._rec_bodies = {}, {}, {}
+        # the runs the trail saw, first seen first (a run's number is its place + 1; a Run is the plugin's dataclass,
+        # equal by value, so found by identity, never by id()); run number -> the Run.mem seen last; name -> body
+        self._rec_runs, self._rec_mem, self._rec_bodies = [], {}, {}
         self._team_names = None         # engine team name -> the model's team key (state, tactic id, template index)
         self.peers.add_team_lookup(self.team_named)
         self.home = (0.0, 0.0)
@@ -1864,7 +1866,10 @@ class Brain:
             return
         tc, g = self.host.mod['tactics'], self.host.garrison
         for r in list(tactics.runs.values()):
-            n = self._rec_runs.setdefault(id(r), (len(self._rec_runs) + 1, r))[0]
+            n = next((i for i, x in enumerate(self._rec_runs, 1) if x is r), 0)
+            if not n:
+                self._rec_runs.append(r)
+                n = len(self._rec_runs)
             if r.phase == 'done' and r.since < frame:
                 continue
             for u in r.team.members:

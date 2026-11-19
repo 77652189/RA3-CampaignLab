@@ -18,10 +18,13 @@ A brain's own values as engine/kernel/snap.py keeps them, plus its marks: a Unit
 serial} (one Unit a body: the new brain's wrapper of that body), a random.Random {"$random": its state}, a plugin
 value {"$model": the session's mark}. The Bodies the brain holds out of the world (_protos, Sim.proto) and the things
 the plugin's values hold go to simsnap as roots: kept with the Sim's things, made bare on the new world.
-Not yet: a SimAI with record=True (HOOKS 9's runs, held by the plugin's Run objects): an error naming it.
+HOOKS 9's trail (SimAI(record=True)): rec, _rec_bodies and _rec_runs (the Runs first seen first: plugin values, their
+marks) as the brain's own; _rec_mem (run number -> the Run.mem the trail last saw, read only by identity: a micro
+update ran when the Run's mem is no longer it) by hand, as whether it is the Run's mem now (true), None, or an older
+one (false: a stand-in, never the Run's).
 
 11b-4a: the tables, `unclassified(w)` (guard 4.3), the port refused by name. 11b-4b: the brains' public fields.
-11b-4c: the plugin's port, a session a brain (the engine model's ra3model/ai/snapshot.py)."""
+11b-4c: the plugin's port, a session a brain (the engine model's ra3model/ai/snapshot.py). 11b-4e: record=True."""
 import importlib
 import random
 
@@ -31,8 +34,9 @@ from engine.kernel import snap
 from simsnap import ALIAS, CACHE, STATE, STATIC, WIRE
 
 HOST, BRAINS, MODEL = 'host', 'brains', 'model'
-VERSION = 4             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
-#                         4: a brain's ids / hp keyed by serial, not name (same-name sweep S6a)
+VERSION = 5             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
+#                         4: a brain's ids / hp keyed by serial, not name (same-name sweep S6a);
+#                         5: HOOKS 9's runs, a list, and the mems they saw (_rec_mem by hand, 11b-4e)
 
 SIMAI = {
     'sim': HOST, 'world': ALIAS, 'garrison': ALIAS, 'peers': WIRE,
@@ -68,7 +72,8 @@ BRAIN = {
     '_team_names': CACHE, '_template_guns': CACHE, '_refinery_spots': CACHE, '_allied_radii': CACHE,
     '_build_radii': CACHE, '_node_offsets': CACHE, '_miner_toggles': CACHE, '_micro_units': CACHE,
 }
-_OWN = [f for f, k in BRAIN.items() if k == STATE and f not in ('wrappers', '_exp_teams')]   # those two: by hand
+_BY_HAND = ('wrappers', '_exp_teams', '_rec_mem')
+_OWN = [f for f, k in BRAIN.items() if k == STATE and f not in _BY_HAND]
 _MODEL = [f for f, k in BRAIN.items() if k == MODEL]
 
 UNIT = {'body': STATE, 'peers': WIRE, 'template': STATIC, 'kindof': STATIC, 'surface': STATIC, 'team': MODEL,
@@ -128,16 +133,12 @@ def _port(w):
 
 def _no_port(w):
     """What keeps a SimAI with brains from being taken: (where, what), else None -- the plugin without its
-    snapshot port, a run with record=True's runs (not kept yet)."""
+    snapshot port."""
     if not w.brains:
         return None
     if _port(w) is None:
         pkg = (w.mod or {}).get('player')
         return 'the AI plugin', (pkg.__name__.rsplit('.', 1)[0] if pkg else 'none') + '.snapshot (Taker / Putter)'
-    for player, b in w.brains.items():
-        if simsnap._fields(b).get('_rec_runs'):
-            return f'{player}._rec_runs (SimAI record=True: the runs HOOKS 9 follows)', _name(next(
-                iter(b._rec_runs.values()))[1])
     return None
 
 
@@ -187,8 +188,24 @@ def _take_brain(w, b, held):
     held.extend(u.body for u in b.wrappers.values())
     if '_exp_teams' in own:
         fields['_exp_teams'] = [[sess.ref(t, '_exp_teams'), snap.encode(p)] for t, p in b._exp_teams]
+    if '_rec_mem' in own:
+        runs = own.get('_rec_runs', [])
+        fields['_rec_mem'] = [[n, _mem_mark(m, runs[n - 1] if 0 < n <= len(runs) else None)]
+                              for n, m in b._rec_mem.items()]
     side, pid = b.made_as
     return [b.player, side, pid, fields, sess.taken()]
+
+
+def _mem_mark(mem, run):
+    """A mem HOOKS 9 last saw: true (the Run's mem now), None, false (an older one)."""
+    if run is not None and mem is run.mem:
+        return True
+    return None if mem is None else False
+
+
+class _Older:
+    """The stand-in for a mem the trail saw before its Run's present one: never the Run's (Brain.snap reads it only
+    as `r.mem is not last`)."""
 
 
 def snapshot(w):
@@ -227,7 +244,7 @@ def _check(s):
     bad = [r for r in s['ai'] if not (isinstance(r, list) and len(r) == 2 and r[0] in state)]
     if bad:
         raise ValueError(f'simaisnap.restore: not a field the SimAI keeps: {bad[:3]}')
-    own = set(_OWN) | {'wrappers', '_exp_teams'}
+    own = set(_OWN) | set(_BY_HAND)
     bad = [r[:3] if isinstance(r, list) else r for r in s['brains']
            if not (isinstance(r, list) and len(r) == 5 and isinstance(r[3], dict) and set(r[3]) <= own
                    and 'wrappers' in r[3] and isinstance(r[4], dict) and set(r[4]) == {'roots', 'objects'}
@@ -309,3 +326,7 @@ def _write_brain(w, b, fields, model, things):
         b._exp_teams = [(sess.get(k), snap.decode(p, {})) for k, p in fields['_exp_teams']]
     elif '_exp_teams' in vars(b):
         del b._exp_teams
+    if '_rec_mem' in fields:
+        runs = b._rec_runs      # written above with the brain's own: the new Runs, in the trail's order
+        b._rec_mem = {n: runs[n - 1].mem if v is True else None if v is None else _Older()
+                      for n, v in fields['_rec_mem']}

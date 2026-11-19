@@ -143,16 +143,45 @@ def test_an_ai_run_written_back_runs_on_as_the_one_never_stopped(task, half):
     assert simaisnap.snapshot(restored) == simaisnap.snapshot(run)
 
 
-def test_a_brain_kept_on_record_or_without_the_plugin_port_is_refused(half, monkeypatch):
+def test_a_brain_without_the_plugin_port_is_refused(half, monkeypatch):
     run, *_ = half
-    b = next(iter(run.brains.values()))
-    monkeypatch.setattr(b, '_rec_runs', {1: (1, object())})
-    with pytest.raises(NotImplementedError, match='record=True'):
-        simaisnap.snapshot(run)
-    monkeypatch.setattr(b, '_rec_runs', {})
     monkeypatch.setattr(simaisnap, '_port', lambda w: None)
     with pytest.raises(NotImplementedError, match=r'snapshot \(Taker / Putter\)'):
         simaisnap.snapshot(run)
+
+
+def test_a_run_on_record_written_back_goes_on_with_the_trail_the_one_never_stopped_writes():
+    """11b-4e: SimAI(record=True) (HOOKS 9) cut at ai_crush1's half, a micro update just run and its runs numbered:
+    through JSON onto a SimAI made anew with record=True, taken again equal; run on, each brain's trail (frames with
+    their run numbers and `updated`, orders, deaths) is the uninterrupted run's, and so are both snapshots."""
+    if not simai.available():
+        pytest.skip('the engine model (ra3model.ai) is not on this computer')
+    _, where, end = simrecord.TASKS['ai_crush1']
+    m, t, _ = build.resolve(*where)
+
+    def made():
+        return simai.SimAI(sim.Sim(m, t, model=False), record=True)
+    half, rest = int(end * FPS / 2), int(end * FPS) - int(end * FPS / 2)
+    run = made().advance(half)
+    recs = [b for b in run.brains.values() if b._rec_runs]
+    assert recs and any(b._rec_mem for b in recs)
+    taken = simaisnap.snapshot(run)
+    assert json.loads(json.dumps(taken)) == taken
+    restored = made()
+    simaisnap.restore(restored, json.loads(json.dumps(taken)))
+    assert simaisnap.snapshot(restored) == taken
+    for player, b in run.brains.items():
+        nb = restored.brains[player]
+        assert len(nb._rec_runs) == len(b._rec_runs) and not set(map(id, nb._rec_runs)) & set(map(id, b._rec_runs))
+        live = list(nb.tactics.runs.values())       # a run the tactics still hold is the very one the trail numbers
+        assert all(any(x is r for x in nb._rec_runs) for r in live)
+    run.advance(rest)
+    restored.advance(rest)
+    for player, b in run.brains.items():
+        assert len(b.rec['frames']) > 0 and restored.brains[player].rec == b.rec
+    assert any(f['updated'] for b in run.brains.values() for f in b.rec['frames'] if f['frame'] > half)
+    assert simsnap.snapshot(restored.sim) == simsnap.snapshot(run.sim)
+    assert simaisnap.snapshot(restored) == simaisnap.snapshot(run)
 
 
 def test_a_closure_the_plugin_holds_is_named_not_dropped(half, monkeypatch):
