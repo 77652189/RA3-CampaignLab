@@ -8,7 +8,8 @@ explicit gap):
   * the war factory's drones (DRONE, a Die DeathTypes="ALL" and one SpawnTemplate AlliedWarFactoryRepairDrone): the
     host makes the initial burst of three when a map places it (Sim.add); a drone's death queues one of the same
     template SpawnReplaceDelayData (10 s) on, made in the spawn cell when it is due (the module sleeps otherwise); a
-    deletion queues none (the host notes a gap); the factory's death or deletion takes its drones with it. A supply
+    deletion queues none (the drone's SlavedUpdate notes a gap); the factory's death or deletion takes its drones
+    with it (Destroy, step B4c). A supply
     shortage alone leaves the count at three (engine_spawn_power): it is not KillSpawnsOnDisabled. Real disabling,
     capture, death and refill during an outage, unpacking, the spot (INFERRED: the factory's centre) are not
     modelled; the subsecond phase of a refill is INFERRED.
@@ -63,9 +64,9 @@ class SpawnData(module.ModuleData):
 
 
 @factory.module('SpawnBehavior')
-class Spawn(module.Module, interfaces.Update, interfaces.Create, interfaces.Spawn):
+class Spawn(module.Module, interfaces.Update, interfaces.Create, interfaces.Destroy, interfaces.Spawn):
     """In the spawn cell, when a queued replacement is due: asks the host to make it (World.spawn); asleep
-    otherwise."""
+    otherwise. Its thing's end (Destroy) takes the things it made (World.remove)."""
     DATA = SpawnData
     PHASE = 'spawn'
     STATE = ('spawned_children', 'spawn_refills')
@@ -101,8 +102,14 @@ class Spawn(module.Module, interfaces.Update, interfaces.Create, interfaces.Spaw
         self.spawn_refills.append((due, self.data.id, template))
         self.world.wake(self, due)
 
-    def parent_died(self):
+    def on_destroy(self):
+        """Its thing died or was deleted (step B4c): the queue emptied and every thing it made that lives deleted
+        with it (engine_spawn: both script kill and delete remove all three in the same sample; deletion rather than
+        a lethal hit INFERRED, the children's death effects unmeasured)."""
         self.spawn_refills.clear()
+        for child in self.spawned_children:
+            if child.alive:
+                self.world.remove(child, 'SpawnedRequireSpawner')
 
     def update(self, frame):
         if not self.thing.alive:
@@ -115,9 +122,11 @@ class Spawn(module.Module, interfaces.Update, interfaces.Create, interfaces.Spaw
 
 
 @factory.module('SlavedUpdate')
-class Slaved(module.Module, interfaces.Slaved):
+class Slaved(module.Module, interfaces.Die, interfaces.Destroy, interfaces.Slaved):
     """Who made its thing (spawn_parent: the thing, None for one no spawner made) and by which of its modules
-    (spawn_module: the module id; the module itself for the host to tell of the death: spawner)."""
+    (spawn_module: the module id; the module itself: spawner). Its thing's death (Die) tells that module while the
+    maker lives (a replacement queued, the delay SpawnReplaceDelayData); a deletion (Destroy) tells it nothing --
+    a gap noted (a child deleted outright refilling or not is unmeasured)."""
     DATA = module.ModuleData
     RECORDED = ('spawn_parent', 'spawn_module')
     STATE = RECORDED + ('_spawner',)
@@ -134,3 +143,13 @@ class Slaved(module.Module, interfaces.Slaved):
 
     def spawner(self):
         return self._spawner
+
+    def on_die(self, info):
+        parent = self.spawn_parent
+        if parent is not None and parent.alive:
+            self._spawner.child_died(self.thing.template, info.frame)
+
+    def on_destroy(self):
+        parent = self.spawn_parent
+        if self.thing.deleted and parent is not None and parent.alive:
+            self.world.gap('SpawnBehavior', parent.template, '子体直接删除是否补充未测；不作为死亡通知')

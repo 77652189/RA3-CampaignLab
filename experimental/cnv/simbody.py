@@ -16,7 +16,7 @@ import importlib
 import math
 
 import simunits
-from engine.kernel import interfaces
+from engine.kernel import interfaces, module
 
 SELL_PERCENT = 0.5              # SellPercentage (SDK default); SellTime: engine/modules/sell.py
 HOVER_DRIFT = 0.2               # a frame: a hovering plane's velocity (air_crash)
@@ -65,10 +65,10 @@ class Life:
         m.start_sale(world.frame_now())
         world.note('出售', f'{world.label(b)}（退 {refund}）')
 
-    def kill(self, world, b, why, garrison, death_blasts, ground_z):
-        """The one death entry (Sim.destroy, step B4b): b killed -- its spawn and slaver told, its garrison out or
-        killed with it, its FireWeaponWhenDead queued, an aircraft's falling wreck; an immortal body takes lethal
-        damage instead, and a prop that cannot die falls or stays."""
+    def kill(self, world, b, why, death_blasts, ground_z):
+        """The one death entry (Sim.destroy, step B4b): b killed -- its Die modules told, then its Destroy modules
+        (_out), its FireWeaponWhenDead queued, an aircraft's falling wreck; an immortal body takes lethal damage
+        instead, and a prop that cannot die falls or stays."""
         if not b.alive:
             return
         if b.immortal:
@@ -83,7 +83,7 @@ class Life:
             if b.topple:
                 b.find(interfaces.Topple).fall_where_it_stands(world.frame_now())
             return
-        self._out(world, b, False, garrison)
+        self._out(world, b, why, False)
         b.set_hp(0.0, tell=False)
         # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
         # died; a deletion fires nothing (INFERRED, as Generals' destroyObject skips the die modules)
@@ -95,34 +95,28 @@ class Life:
             self.air_crash(world, b, death_blasts, ground_z)
         self._gone(world, b, why, False)
 
-    def delete(self, world, b, why, garrison):
-        """The one deletion entry (Sim.delete, step B4b): b taken out, no death -- no lethal damage, no death weapon;
-        its spawned children and passengers deleted with it."""
+    def delete(self, world, b, why):
+        """The one deletion entry (Sim.delete, step B4b): b taken out, no death -- no lethal damage, no death weapon,
+        no Die module told; its Destroy modules take its spawned children and passengers with it (_out)."""
         if b.alive:
-            self._out(world, b, True, garrison)
+            self._out(world, b, why, True)
             self._gone(world, b, why, True)
 
-    def _out(self, world, b, delete, garrison):
-        """What a death and a deletion share: b out of the fight, its spawn and slaver told, its children deleted, its
-        garrison out -- the only write of a body's alive / deleted / died_at (guard 10, tests/guards/test_kernel.py)."""
+    def _out(self, world, b, why, delete):
+        """What a death and a deletion share: b out of the fight -- the only write of a body's alive / deleted /
+        died_at (guard 10, tests/guards/test_kernel.py) -- then its modules told, the one broadcast of a thing's end
+        (step B4c, the private model's Object.die then destroyObject): a death tells its Die modules (module.Death),
+        both tell its Destroy modules, each in module order -- the SpawnBehavior's queue emptied and its children
+        deleted, the SlavedUpdate's maker told of the death, the Contain's passengers out (World.vacate)."""
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], world.t
         if not delete and b.last_by is not None and b.last_hit is not None:
             world.kills.append((b.last_hit, b.last_by, b.template, b.name))     # cond_retail: who killed what
-        for m in b.find(interfaces.Spawn):      # SpawnBehavior / SlavedUpdate (engine/modules/spawn.py, step M7)
-            m.parent_died()
-        slaved = b.find(interfaces.Slaved)
-        parent = slaved.slaver() if slaved else None
-        if parent is not None and parent.alive:
-            if delete:
-                world.gap('SpawnBehavior', parent.template, '子体直接删除是否补充未测；不作为死亡通知')
-            else:
-                # The complete accepted configuration fixes SpawnReplaceDelayData at 10s.
-                slaved.spawner().child_died(b.template, world.frame_now())
-        for child in b.spawned_children:
-            # engine_spawn: both script kill and delete remove all three in the same sample.
-            # Removal via deletion (rather than a lethal hit) is INFERRED; child death effects unmeasured.
-            self.delete(world, child, 'SpawnedRequireSpawner', garrison)
-        garrison.died(b, delete)       # passengers out alive / killed with it (simgarrison, garrison.md 4)
+        if not delete:
+            info = module.Death(world.frame_now(), why)
+            for m in b.find(interfaces.Die):
+                m.on_die(info)
+        for m in b.find(interfaces.Destroy):
+            m.on_destroy()
 
     def _gone(self, world, b, why, delete):
         world.note('删除' if delete else '摧毁', f'{world.label(b)}（{why}）')

@@ -107,6 +107,19 @@ class Trigger:
         return self.by <= have if self.all else bool(self.by & have)
 
 
+class Death:
+    """What a Die module is told (interfaces.Die.on_die, step B4c): the frame its thing died in and why (the host's
+    words). Read only; the death type, the killer and the damage come with the death modules (step B5)."""
+    __slots__ = ('frame', 'why')
+
+    def __init__(self, frame, why=''):
+        object.__setattr__(self, 'frame', frame)
+        object.__setattr__(self, 'why', why)
+
+    def __setattr__(self, name, value):
+        raise AttributeError('a Death is read only')
+
+
 class ModuleData:
     """The parse of one module block: parse(head, inner) -> an instance, sealed by the factory -- read only after."""
 

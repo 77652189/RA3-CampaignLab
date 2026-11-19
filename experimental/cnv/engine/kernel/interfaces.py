@@ -119,7 +119,9 @@ class Damage(Interface):
 
 
 class Die(Interface):
-    """Told when its thing dies; it decides itself (by the XML's death types, rank and status) whether it acts."""
+    """Told when its thing dies (step B4c: simbody.Life.kill, in module order, before the Destroy modules): `info` a
+    module.Death; it decides itself (by the XML's death types, rank and status) whether it acts. A deletion tells
+    none (Generals destroyObject skips the die modules)."""
     __slots__ = ()
 
     def on_die(self, info):
@@ -127,7 +129,8 @@ class Die(Interface):
 
 
 class Destroy(Interface):
-    """Told once, the moment its thing leaves the world."""
+    """Told once, the moment its thing leaves the world (step B4c, the Generals onDelete): deleted, or killed (after
+    the Die modules; INFERRED for a slow death: at the kill, until step B5)."""
     __slots__ = ()
 
     def on_destroy(self):
@@ -251,8 +254,8 @@ class Spawn(Interface):
     """SpawnBehavior, several a thing (step M7): its module id (module_id), the drone template it keeps alive (child:
     None, not that configuration), the collector it gives on unpacking (unpack_child: None, not that one), the things
     it made (children, dead ones too), the replacements queued (refills: [(due frame, module id, template)]); taking a
-    thing it made (adopt), the death of one (child_died: its template, the frame -- a replacement queued) and its own
-    thing's death (parent_died: the queue emptied)."""
+    thing it made (adopt) and the death of one (child_died: its template, the frame -- a replacement queued). Its own
+    thing's end is its Destroy (the queue emptied, the things it made deleted)."""
     __slots__ = ()
 
     def module_id(self):
@@ -274,9 +277,6 @@ class Spawn(Interface):
         raise NotImplementedError
 
     def child_died(self, template, frame):
-        raise NotImplementedError
-
-    def parent_died(self):
         raise NotImplementedError
 
 

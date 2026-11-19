@@ -906,13 +906,56 @@ def test_death_guard_bites():
     sold = dict(sources, **{mod: sources[mod] + '\n\ndef gone(thing, t):\n    thing.deleted, thing.died_at = True, t\n'})
     assert death_breaks(death_writes(sold)) == [(mod, 'gone')]
     # a third entry into the shared part
-    third = dict(sources, **{'simbody.py': sources['simbody.py'] + '\n\ndef sneak(life, w, b, g):\n    life._out(w, b, True, g)\n'})
+    third = dict(sources, **{'simbody.py': sources['simbody.py'] + '\n\ndef sneak(life, w, b, g):\n    life._out(w, b, g, True)\n'})
     assert death_breaks(death_writes(third)) == [('simbody.py', 'sneak')]
     # the kill writing its own alive past _out
     bm = 'simbody.py'
-    past = dict(sources, **{bm: sources[bm].replace('        self._out(world, b, False, garrison)\n',
+    past = dict(sources, **{bm: sources[bm].replace('        self._out(world, b, why, False)\n',
                                                     '        b.alive = False\n', 1)})
     assert past[bm] != sources[bm] and death_breaks(death_writes(past)) == [(bm, 'Life.kill')]
+
+
+# Guard 10b (step B4c): a thing's end reaches its modules through one broadcast -- simbody.Life._out tells the Die
+# modules (a death) and the Destroy modules (both) -- so a caller telling a module of a death itself (a module's
+# on_die / on_destroy, or the old parent_died / child_died / garrison.died past the modules) breaks it. Allowed
+# besides: a Slaved module telling its maker's Spawn module (child_died), the garrison cell emptying a building found
+# dead (simgarrison.Garrisons.due) and the host's World.vacate hook (Sim.__init__).
+END_CALLS = {'on_die', 'on_destroy', 'child_died', 'parent_died', 'died'}
+END_BROADCAST = {('simbody.py', 'Life._out'), ('engine/modules/spawn.py', 'Slaved.on_die'),
+                 ('simgarrison.py', 'Garrisons.due'), ('sim.py', 'Sim.__init__')}
+
+
+def end_calls(sources=None):
+    """{(file, qualified function)} of every function that calls a method named in END_CALLS (nested functions and
+    lambdas count for the function they are in)."""
+    if sources is None:
+        sources = health_sources()
+    found = set()
+    for name, src in sources.items():
+        for qual, fn in _functions(ast.parse(src)):
+            inner = {id(x) for f in ast.walk(fn) if f is not fn and isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))
+                     for x in ast.walk(f)}
+            if any(id(c) not in inner and isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute)
+                   and c.func.attr in END_CALLS for c in ast.walk(fn)):
+                found.add((name, qual))
+    return found
+
+
+def test_a_things_end_reaches_its_modules_through_one_broadcast():
+    found = end_calls()
+    assert found == END_BROADCAST, (sorted(found - END_BROADCAST), sorted(END_BROADCAST - found))
+
+
+def test_end_broadcast_guard_bites():
+    sources = health_sources()
+    told = dict(sources, **{'simact_object.py': sources['simact_object.py']
+                            + '\n\ndef tell(b):\n    for m in b.modules:\n        m.on_die(None)\n'})
+    assert end_calls(told) - END_BROADCAST == {('simact_object.py', 'tell')}
+    bm = 'simbody.py'
+    gone = dict(sources, **{bm: sources[bm].replace('                m.on_die(info)\n', '                pass\n', 1)})
+    assert gone[bm] != sources[bm] and ('simbody.py', 'Life._out') in end_calls(gone)     # on_destroy still there
+    both = dict(gone, **{bm: gone[bm].replace('            m.on_destroy()\n', '            pass\n', 1)})
+    assert both[bm] != gone[bm] and ('simbody.py', 'Life._out') not in end_calls(both)
 
 
 def test_the_kernel_tests_run_in_full_without_the_model(tmp_path):

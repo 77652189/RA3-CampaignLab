@@ -10,17 +10,19 @@ def no_blocks(template, tag):
 
 class World:
     def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None, pay=None, toggled=None,
-                 modify=None, suppression_at=None, spawn=None):
+                 modify=None, suppression_at=None, spawn=None, vacate=None):
         """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry;
         kill(thing, why): the host's death of a thing (World.kill); remove(thing, why): the host's deletion of one,
         no death (World.remove); pay(thing, amount): the host's payment to a thing's holder (World.pay);
         toggled(thing, module): what the host re-sets when a toggle enters its next state (World.toggled);
         modify(thing): the host's re-reading of a thing's attribute modifiers (World.modify);
         suppression_at(thing, frame): the suppression fields covering a thing (World.suppression_at);
-        spawn(thing, module, template): the host's making of a thing a Spawn module of `thing` makes (World.spawn)."""
+        spawn(thing, module, template): the host's making of a thing a Spawn module of `thing` makes (World.spawn);
+        vacate(thing, delete): the host's emptying of a Contain module's thing that died or was deleted
+        (World.vacate)."""
         self.blocks, self.tags, self._kill, self._remove, self._pay = blocks, tags, kill, remove, pay
         self._toggled, self._modify, self._suppression_at = toggled, modify, suppression_at
-        self._spawn = spawn
+        self._spawn, self._vacate = spawn, vacate
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
@@ -102,6 +104,15 @@ class World:
         if self._spawn is None:
             raise RuntimeError(f'World.spawn({thing.name!r}): this world has no host to make with')
         return self._spawn(thing, module, template)
+
+    def vacate(self, thing, delete):
+        """A Contain module's thing died (delete False: its passengers out alive, or killed with it by
+        KillPassengersOnDeath) or was deleted (True: they go with it) -- step B4c: the host empties it, today
+        simgarrison.Garrisons.died (it keeps the walk out, the kill and the owner given back). A thing already
+        emptied: nothing. A world with no host empties nothing."""
+        if self._vacate is None:
+            raise RuntimeError(f'World.vacate({thing.name!r}): this world has no host to empty with')
+        self._vacate(thing, delete)
 
     def data_of(self, template, tag):
         """The data of a registered tag's blocks of a template, in order: the parse its things' modules get

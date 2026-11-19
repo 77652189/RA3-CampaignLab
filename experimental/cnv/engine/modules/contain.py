@@ -59,8 +59,10 @@ class TransportData(ContainData):
 
 
 @factory.module('GarrisonContain')
-class Garrison(module.Module, interfaces.Contain):
-    """Data and the passengers; no update of its own (the host's garrison cell drives it)."""
+class Garrison(module.Module, interfaces.Die, interfaces.Destroy, interfaces.Contain):
+    """Data and the passengers; no update of its own (the host's garrison cell drives it). Its thing's death (Die)
+    has the host empty it -- the passengers out alive, or killed with it by KillPassengersOnDeath -- and its
+    deletion (Destroy) has them deleted with it (World.vacate, step B4c; after a death already empty)."""
     DATA = ContainData
     STATE = ('held', 'given', 'before', 'boost')
     RECORDED = ()       # a store's before M14, never in the frame record
@@ -104,6 +106,12 @@ class Garrison(module.Module, interfaces.Contain):
 
     def set_granted(self, upgrades):
         self.boost = upgrades       # the host's set as it is (its order is the order they are taken back in)
+
+    def on_die(self, info):
+        self.world.vacate(self.thing, False)
+
+    def on_destroy(self):
+        self.world.vacate(self.thing, True)
 
 
 @factory.module('ContestableGarrisonContain')

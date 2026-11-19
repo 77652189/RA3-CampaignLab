@@ -845,12 +845,12 @@ class Sim:
         self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own),   # engine/kernel
                                         kill=lambda b, why: self._life().die_of_age(self, b, why, self.destroy),
                                         remove=lambda b, why: self.delete(b, why),
-                                        pay=lambda b, amount: self.wallet.deposit(b.owner, amount),
+                                        pay=lambda b, amount: self.wallet.deposit(b.owner, amount), modify=self.modify,
                                         toggled=lambda b, m: simtoggle.entered(self, b, m, self.modify),
-                                        modify=lambda b: self.modify(b),
                                         suppression_at=lambda b, f: simdamage.suppression_at(
                                             self.suppression_fields, b, f),
-                                        spawn=lambda b, m, template: self.spawn_child(b, m, template, self.t))
+                                        spawn=lambda b, m, template: self.spawn_child(b, m, template, self.t),
+                                        vacate=lambda b, delete: self.garrison.died(b, delete))
         self.used = self.world.used         # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
         self.unmodeled = self.world.gaps    # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap
@@ -1969,11 +1969,11 @@ class Sim:
 
     def destroy(self, b, why):
         """simbody.Life.kill (L2), the one death entry: b killed -- its spawn, garrison, death weapons and air crash."""
-        self._life().kill(self, b, why, self.garrison, self.death_blasts, self.impact_ground_z)
+        self._life().kill(self, b, why, self.death_blasts, self.impact_ground_z)
 
     def delete(self, b, why):
         """simbody.Life.delete (L2), the one deletion entry: b taken out, no death (children, passengers with it)."""
-        self._life().delete(self, b, why, self.garrison)
+        self._life().delete(self, b, why)
 
     def _life(self):
         """The simbody.Life (L2), made on first use (a Sim built without __init__ has none yet)."""

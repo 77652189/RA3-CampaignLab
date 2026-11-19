@@ -76,6 +76,30 @@ def test_the_host_puts_one_in_through_the_module():
     assert s.garrison.out(gi) and house.owner is None and 'ENCLOSED' not in gi.script_status and m.home() == ()
 
 
+def test_a_buildings_end_empties_it_through_its_module():
+    """Step B4c: a house's death tells its Contain module (Die) -- the passenger out alive, no
+    KillPassengersOnDeath -- and a deletion (Destroy only) takes the passenger with it."""
+    s = simsmall.small_world()
+    house = s.add('house', 'AM_Apartments_01', None, 300.0, 300.0)
+    gi = s.add('gi', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 300.0)
+    (m,) = house.find(interfaces.Contain)
+    assert isinstance(m, interfaces.Die) and isinstance(m, interfaces.Destroy)
+    assert s.garrison.put(gi, house, script=True)
+    s.destroy(house, 'test')
+    assert gi.alive and m.passengers() == [] and 'ENCLOSED' not in gi.script_status
+    house2 = s.add('house2', 'AM_Apartments_01', None, 300.0, 600.0)
+    gi2 = s.add('gi2', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 600.0)
+    assert s.garrison.put(gi2, house2, script=True)
+    s.delete(house2, 'test')
+    (m2,) = house2.find(interfaces.Contain)
+    assert not gi2.alive and gi2.deleted and m2.passengers() == []
+    told = []
+    m.world._vacate = lambda thing, delete: told.append((thing.name, delete))
+    m.on_die(None)
+    m.on_destroy()
+    assert told == [('house', False), ('house', True)]
+
+
 def test_a_transport_keeps_its_owner_and_its_passengers_are_enclosed():
     s = simsmall.small_world()
     boat = s.add('boat', 'AlliedAntiInfantryVehicle', 'Player_2', 300.0, 300.0)

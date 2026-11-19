@@ -58,7 +58,12 @@ def _world():
         m.adopt(child)
         made.append(child)
         return child
-    w = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag), spawn=make)
+
+    def remove(thing, why):
+        thing.alive, thing.deleted = False, True
+        w.removed.append((thing.name, why))
+    w = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag), spawn=make, remove=remove)
+    w.removed = []
     return w, T, made
 
 
@@ -83,8 +88,33 @@ def test_a_dead_child_is_replaced_the_delay_on_in_the_spawn_cell_and_not_before(
     parent.alive = False                        # a dead parent makes nothing, even with one queued
     w.schedule.run('spawn', 1000)
     assert len(made) == 1
-    m.parent_died()
-    assert m.refills() == []
+    m.on_destroy()                              # its end: the queue emptied, the living child deleted with it
+    assert m.refills() == [] and w.removed == [('child0', 'SpawnedRequireSpawner')]
+
+
+def test_a_childs_death_tells_its_maker_and_a_deletion_only_notes_a_gap():
+    from engine.kernel import module as kmodule
+    w, T, made = _world()
+    parent = T('factory', 'AlliedWarFactory')
+    parent.modules = w.build(parent, 0)
+    (m,) = parent.find(interfaces.Spawn)
+    w.frame = 5
+    m.on_create(0)
+    child = w.spawn(parent, m, 'AlliedWarFactoryRepairDrone')
+    sl = child.find(interfaces.Slaved)
+    assert isinstance(sl, interfaces.Die) and isinstance(sl, interfaces.Destroy)
+    child.alive, child.deleted = False, False
+    sl.on_die(kmodule.Death(40, 'test'))
+    sl.on_destroy()                             # a death's Destroy notes nothing
+    assert m.refills() == [(190, 'ModuleTag_SpawnRepairDrones', 'AlliedWarFactoryRepairDrone')] and not w.gaps
+    other = w.spawn(parent, m, 'AlliedWarFactoryRepairDrone')
+    other.alive, other.deleted = False, True
+    other.find(interfaces.Slaved).on_destroy()  # deleted: no refill, a gap
+    assert len(m.refills()) == 1 and list(w.gaps) == [('SpawnBehavior', 'AlliedWarFactory')]
+    parent.alive = False
+    third = w.spawn(parent, m, 'AlliedWarFactoryRepairDrone')
+    third.find(interfaces.Slaved).on_die(kmodule.Death(50))     # a dead maker hears nothing
+    assert len(m.refills()) == 1
 
 
 def test_two_queued_replacements_each_come_on_their_own_frame():
