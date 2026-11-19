@@ -48,7 +48,8 @@ class Body(module.Module, interfaces.Body):
     the host makes it, as the fields' defaults); immortal, prop: what the forwards of those names read. A thing whose
     template has no Body block gets an ActiveBody attached (Sim.add, World.attach: made by __init__, no on_create)."""
     DATA = BodyData
-    STATE = ('hp', 'max_hp', 'health_floor', 'last_hit', 'last_by', 'indestructible', 'read_until')
+    RECORDED = ('hp', 'max_hp', 'health_floor', 'last_hit', 'last_by', 'indestructible', 'read_until')
+    STATE = RECORDED + ('immortal', 'prop')    # make() sets these after the thing is made: the snapshot's only
     IMMORTAL = False            # health changes cannot take it below its floor
     PROP = False                # no health: takes no damage, its percent reads 0 (engine_propbody a)
     hp = max_hp = 100.0

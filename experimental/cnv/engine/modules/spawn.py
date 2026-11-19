@@ -19,7 +19,7 @@ Any other block: neither (`child` and `unpack_child` None) -- the host notes the
 A made thing's SlavedUpdate keeps who made it (spawn_parent) and by which module id (spawn_module); one whose
 template has none is given one when made (World.attach), as the body's fields were set on any child. The names are
 the body's old fields, so the frame record is unchanged (the spawner's two lists, several modules a thing, record
-through the body's forwards: its STATE is empty)."""
+through the body's forwards: its RECORDED is empty)."""
 import math
 import xml.etree.ElementTree as ET
 
@@ -68,6 +68,8 @@ class Spawn(module.Module, interfaces.Update, interfaces.Create, interfaces.Spaw
     otherwise."""
     DATA = SpawnData
     PHASE = 'spawn'
+    STATE = ('spawned_children', 'spawn_refills')
+    RECORDED = ()       # they record through the body's forwards
 
     def on_create(self, frame):
         self.spawned_children = []      # the things it made, in the order made (dead ones stay)
@@ -117,7 +119,8 @@ class Slaved(module.Module, interfaces.Slaved):
     """Who made its thing (spawn_parent: the thing, None for one no spawner made) and by which of its modules
     (spawn_module: the module id; the module itself for the host to tell of the death: spawner)."""
     DATA = module.ModuleData
-    STATE = ('spawn_parent', 'spawn_module')
+    RECORDED = ('spawn_parent', 'spawn_module')
+    STATE = RECORDED + ('_spawner',)
     spawn_parent, spawn_module, _spawner = None, '', None     # no spawner made it (yet)
 
     def enslave(self, parent, spawner):

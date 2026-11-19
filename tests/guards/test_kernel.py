@@ -780,11 +780,9 @@ def test_health_guard_bites():
 # --- 9. a module's state is all in its STATE (step S, the snapshot; work/re sim_split/snapshot.md 4.3) -------------
 # The snapshot takes a module's STATE and nothing else of it (a restore makes the things again, without on_create), so
 # every field a module class sets on itself must be in its STATE; RECORDED (what the frame record shows) is part of it.
-# STATE_PENDING: the fields not yet in, by the class that sets them -- only shrinks (Body / Spawn / Contain wait for
-# line R's step B4, its files).
-STATE_PENDING = {('Body', 'immortal'), ('Body', 'prop'),
-                 ('Spawn', 'spawned_children'), ('Spawn', 'spawn_refills'), ('Slaved', '_spawner'),
-                 ('Garrison', 'held'), ('Garrison', 'given'), ('Garrison', 'before'), ('Garrison', 'boost')}
+# STATE_PENDING: the fields not yet in, by the class that sets them -- only shrinks (empty since step B4c's
+# first part: Body / Spawn / Slaved / Garrison name theirs, RECORDED kept as it was).
+STATE_PENDING = set()
 KERNEL_SET = {'thing', 'data', 'world'}          # Module.__init__'s wiring, made again by the factory
 
 

@@ -10,7 +10,7 @@ It keeps the passengers in the order they came in, the status bits it gave each,
 the first, and the upgrades a single passenger granted through the building's listener. Who may come in (filter,
 relation, room, the contest), the walk in, the ejects, the REALLYDAMAGED walk-out (ActiveBody's line) and the end
 stay with the host (simgarrison.Garrisons, the garrison cell), which finds the module by interface. Its state was a
-store's, never in the frame record: STATE names none."""
+store's, never in the frame record: STATE names it for the snapshot, RECORDED none."""
 import re
 
 from engine.kernel import factory, interfaces, module
@@ -62,7 +62,8 @@ class TransportData(ContainData):
 class Garrison(module.Module, interfaces.Contain):
     """Data and the passengers; no update of its own (the host's garrison cell drives it)."""
     DATA = ContainData
-    STATE = ()
+    STATE = ('held', 'given', 'before', 'boost')
+    RECORDED = ()       # a store's before M14, never in the frame record
     held = None         # [passenger things], in the order they came in (made on the first)
     given = None        # passenger name -> the status bits this gave it
     before = ()         # (the owner before the first passenger,); (): none kept (an owner may be None: neutral)
