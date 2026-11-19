@@ -2164,12 +2164,12 @@ class Sim:
         frames, _, den, num = struct.unpack('<IIII', head[16:32])
         return frames * num / den if den else None
 
-    def act(self, name, a, script):
+    def act(self, name, a, script, unit=None):
         if name in RA3_ONLY:
             self.ra3_only.add(name)
         if name in SOUND_PLAYS or name.startswith('MOVIE_PLAY_'):
             self.played(name, a)
-        simact.act(self, name, a, script)              # the actions as a lookup table (ADR 0029 step 3)
+        simact.act(self, name, a, script, unit)        # the actions as a lookup table (ADR 0029 step 3)
 
     def text(self, key):
         return self.mm.strings.get(key, key)

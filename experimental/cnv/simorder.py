@@ -254,7 +254,8 @@ def order_power(world, peers, b, power, pos):
         return False, why
     spot = f'SIM power spot {len(world.waypoints)}'
     world.waypoints[spot] = (x, y)
-    peers.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [b.name, power, spot], None)
+    peers.act('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [b.name, power, spot], None, unit=b)    # b itself casts: by
+    # its name, a script reference of that name cast in its place (11-19 same-name sweep S4)
     return True, None
 
 

@@ -194,6 +194,8 @@ class Garrisons:
             self.going[u.name] = g
             u.goal = None
             peers.order_move(u, (g.x, g.y), False)
+            return True
+        return False                        # one of them dead: not sent (the port answers so: review 11-19 k #4)
 
     def busy(self, u):
         return u.name in self.going or u.name in self.where

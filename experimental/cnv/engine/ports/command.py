@@ -583,9 +583,8 @@ class Commands:
         g = self._target(cmd, w.bodies.get)
         if g is None:
             return False, f'找不到 {cmd.target}'
-        for b in self._units(cmd):
-            w.garrison.send(b, g)
-        return True, ''
+        sent = [w.garrison.send(b, g) for b in self._units(cmd)]   # each one's answer (review 11-19 k #4: a dead
+        return (True, '') if sent and all(sent) else (False, f'进不去 {cmd.target}')    # building was a success)
 
     def _place(self, cmd):
         """A structure set down at `pos` (`('name', n)`, `('team', t)`): INFERRED -- in the game a dozer / the yard

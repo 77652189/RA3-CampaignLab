@@ -33,11 +33,13 @@ def table(groups=GROUPS):
 ACTIONS = table()
 
 
-def act(sim, name, a, script):
+def act(sim, name, a, script, unit=None):
     """Run the action `name` if a group has it; True where it was taken. Not taken (no group has it, or its guarded
-    function declined): counted in sim.unknown and logged as a gap, False back."""
+    function declined): counted in sim.unknown and logged as a gap, False back. `unit`: the object a giver already
+    picked, acted on as it is (named_buttons' `unit`; 11-19 same-name sweep S4: the player's power)."""
     fn = ACTIONS.get(name)
-    if fn is not None and fn(sim, name, a, script) is not False:
+    if fn is not None and (fn(sim, name, a, script) if unit is None else fn(sim, name, a, script, unit=unit)) \
+            is not False:
         return True
     sim.unknown[name] = sim.unknown.get(name, 0) + 1
     sim.gap(GAP_ACTION, refined(name, a), 'Sim.act 不认识：没效果')

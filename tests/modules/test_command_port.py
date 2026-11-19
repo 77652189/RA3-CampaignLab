@@ -657,3 +657,27 @@ def test_a_line_attack_and_capture_go_at_the_object_picked_not_a_reference_of_it
     assert s.commands.do(Command('attack', units=('tank',), target='target')) == (True, '')
     assert s.commands.do(Command('capture', units=('eng',), target='target')) == (True, '')
     assert s.bodies['tank'].goal is s.bodies['eng'].goal is s.bodies['target']
+
+
+def test_the_ais_enter_into_a_dead_building_is_refused():
+    """garrison.send sends no one into a dead building, and the port says so (review 11-19 k #4: it recorded a
+    success); into a living one it is a success."""
+    s = simsmall.small_world([('eng', 'SovietEngineer', 'Player_1', 0.0, 0.0),
+                              ('hut', 'AlliedBarracks', 'Player_1', 400.0, 0.0)], model=False)
+    eng, hut = s.bodies['eng'], s.bodies['hut']
+    enter = _ai('enter', eng, target='hut', args=(('via', 'garrison'), ('target_serial', hut.serial)))
+    hut.alive = False
+    assert s.commands.do(enter)[0] is False and s.garrison.going == {}
+    assert s.commands.issued()[-1][2] is False
+    hut.alive = True
+    assert s.commands.do(enter) == (True, '') and s.garrison.going == {'eng': hut}
+
+
+def test_the_players_power_is_cast_by_the_object_he_picked_not_a_reference_of_its_name():
+    """order_power (the proxy player's ground power) casts from the object itself (11-19 same-name sweep S4: by name,
+    the reference `cannon` pointing at another player's unit cast in its place)."""
+    s = simsmall.small_world([('cannon', 'AlliedSuperWeaponAdvanced', 'Player_1', 0.0, 0.0),
+                              ('other', APOC, 'Player_2', 900.0, 0.0)], model=False)
+    s.refs['cannon'] = s.bodies['other']
+    assert s.order_power(s.bodies['cannon'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
+    assert [c[1] for c in s.casts] == ['Player_1']
