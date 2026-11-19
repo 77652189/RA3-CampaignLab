@@ -1,0 +1,16 @@
+# Bench readings of checks/engine_acts5.py (build engine_acts_v).
+# The runner's until is one second past the old bare Sim.run limit to include its last sample.
+
+[[reading]]
+id = "acts_v_as_the_bench"
+scene = {build = "engine_acts_v", check = "acts", until = 41}
+bench = "CampActsVActs round 215: 状 5 20; 旗 20 then 16 with no ownership transfer; 位 1 2 102 202 200 220; 守 2 12"
+proves = "sim script actions: numbered model conditions, player auto-acquire, team move to the nearest object of a type, and guard from a point"
+let = {changes = "lambda key: [r[key] for i, r in enumerate(rows[1:]) if i == 0 or r[key] != rows[i][key]]"}
+expect = [
+    "changes('状')[-2:] == [5, 20]",
+    "changes('旗')[:2] == [16, 20] and set(changes('旗')) <= {16, 20}",
+    "[v for v in changes('位') if v not in (201, 210)] == [0, 1, 2, 102, 202, 200, 220]",
+    "sum(r['位'] in (201, 210) for r in rows[1:]) <= 2",
+    "changes('守')[-2:] == [2, 12] and rows[-1]['守'] == 12",
+]

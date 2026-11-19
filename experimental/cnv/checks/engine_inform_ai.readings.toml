@@ -1,0 +1,28 @@
+# Bench readings of checks/engine_inform_ai.py.
+# Packed: 1e9 * shield before hit + 1e8 * automatic shield + 1e6 * first hit frame
+# + 1000 * first shield frame + HP percent. Frame 135 is the never-seen sentinel.
+# The runner includes the legacy s36 sample with until=37.
+
+[[reading]]
+id = "inform_ai_advance_response_matches_engine_inform_ai_observation[a]"
+scene = {build = "engine_inform_ai", check = "a", until = 37, shot_clock = true}
+bench = "second automatic run: 1187051068/87135068/101003068/87135089 in the frozen automatic window"
+proves = "InformTargetNugget / miner self-defense AI: base shields before its first hit, instant shields after its first hit, player and low controls do not auto-shield"
+let = {expected = "[1187051068, 87135068, 101003068, 87135089]"}
+expect = [
+    "vals(rows)[-1] == expected",
+    "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
+]
+mismatch = "Final base packed counter: simulator 135135100, bench 1187051068. Full script placement, custom projectile flight, miner AI enrollment/history and micro phase remain gaps."
+
+[[reading]]
+id = "inform_ai_advance_response_matches_engine_inform_ai_observation[off]"
+scene = {build = "engine_inform_ai", check = "off", until = 37, shot_clock = true}
+bench = "third run, base InformTargetNugget removed: 87135068/87135068/101003068/87135089 in the frozen automatic window"
+proves = "InformTargetNugget / miner self-defense AI: base loses the automatic shield without its launch notification in this recipe"
+let = {expected = "[87135068, 87135068, 101003068, 87135089]"}
+expect = [
+    "vals(rows)[-1] == expected",
+    "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
+]
+mismatch = "Final base packed counter: simulator 135135100, bench 87135068. Full script placement, custom projectile flight, miner AI enrollment/history and micro phase remain gaps."

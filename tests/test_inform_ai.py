@@ -198,29 +198,6 @@ def test_inform_ai_response_is_reported_as_a_gap_including_retail_cache():
     assert inventory.NOTES[(inventory.MODULE, 'Behaviors/TrackIncomingWeaponFireBehavior')][0] == inventory.TODO
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason='Full script placement, custom projectile flight, miner AI enrollment/history and micro phase remain gaps')
-@pytest.mark.parametrize('check_name, expected', [
-    ('a', (1187051068, 87135068, 101003068, 87135089)),
-    ('off', (87135068, 87135068, 101003068, 87135089)),
-])
-def test_inform_ai_advance_response_matches_engine_inform_ai_observation(check_name, expected):
-    """Second: hit87/87/1/87, shield51/none/3/none; third: base shield absent.
-
-    Frozen automatic readings, before manual controls; no scalar fitting of
-    the unexplained ~2.4s advance window or projectile muzzle collision.
-    """
-    import build
-    import sim
-
-    m, t, _ = build.resolve('engine_inform_ai', check_name)
-    engine = sim.Sim(m, t)
-    engine.shot_clock = True
-    rows = engine.run(36).series
-    assert tuple(rows[-1][1]) == expected
-    assert all(tuple(row) == expected for sec, row in rows if sec >= 31)
-
-
 @pytest.mark.parametrize('check_name, run_name', [
     ('a', 'CampIPA_mcp_1110_231923'), ('off', 'CampIPOff_mcp_1110_231533'),
 ])

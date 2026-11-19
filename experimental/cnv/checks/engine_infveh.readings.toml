@@ -1,0 +1,50 @@
+# Bench readings of checks/engine_infveh.py.
+# The runner's until is one second past the old bare Sim.run limit to include its last sample.
+# 11100 = spy (10000) + original owner (1000) + full health (100); 1100 means the spy was consumed.
+
+[[reading]]
+id = "spy_vehicle_direct_readback_as_on_the_bench"
+scene = {build = "engine_infveh", check = "b", until = 48}
+bench = "E194 b: s1-s15=11100/11100/0/0; s17=1100/11100/1/1; s18=1100/11100/0/0; s19-s21=1100/11100/1/1; s22=1100/11100/0/0; s23-s26=1100/11100/1/1; s27=1100/11100/0/0; s28-s47=1100/11100/1/1. No s16 sample."
+proves = "InfiltratorContain VISION_UNITS: raw and direct discovery readbacks agree on the same frame"
+let = {sample = "lambda lo, hi: [v for t, v in zip(times, vals(rows)) if lo <= t <= hi]", matches = "lambda got, wanted: bool(got) and all(v == wanted for v in got)"}
+expect = [
+    "matches(sample(1, 15), [11100, 11100, 0, 0])",
+    "matches(sample(17, 17), [1100, 11100, 1, 1])",
+    "matches(sample(18, 18), [1100, 11100, 0, 0])",
+    "matches(sample(19, 21), [1100, 11100, 1, 1])",
+    "matches(sample(22, 22), [1100, 11100, 0, 0])",
+    "matches(sample(23, 26), [1100, 11100, 1, 1])",
+    "matches(sample(27, 27), [1100, 11100, 0, 0])",
+    "matches(sample(28, 47), [1100, 11100, 1, 1])",
+]
+mismatch = "E194 b: bench s13-s15 enemy=11100, raw/direct=0/0; simulator enemy=1100, raw/direct=1/1. The native direct bit also flickers 1/0 after entry; observer scheduling and entry timing remain unresolved."
+
+[[reading]]
+id = "spy_vehicle_stationary_positions_as_on_the_bench"
+scene = {build = "engine_infveh", check = "c", until = 47}
+bench = "E194 c: all three named markers remain in their 40-unit windows; position mask=111"
+proves = "InfiltratorContain VISION_UNITS probe: vehicle, infantry and third-side markers stay in their position windows"
+expect = "bool(rows) and all(r['position'] == 111 for r in rows)"
+
+[[reading]]
+id = "spy_vehicle_stationary_discovery_as_on_the_bench"
+scene = {build = "engine_infveh", check = "c", until = 47}
+bench = "E194 c: position=111 in every sample; enemy/ally=1100/11100 from sampled s14 onward. Direct bit=0 at s1-s12, s18, s22, s29-s30, s35-s36, s45; 1 in the other samples. No s13/s23/s31 samples."
+proves = "InfiltratorContain VISION_UNITS: direct vehicle discovery at the measured times with the markers stationary"
+let = {sample = "lambda lo, hi: [v for t, v in zip(times, vals(rows)) if lo <= t <= hi]", matches = "lambda got, wanted: bool(got) and all(v == wanted for v in got)"}
+expect = [
+    "matches(sample(1, 12), [11100, 11100, 0, 111])",
+    "matches(sample(14, 17), [1100, 11100, 1, 111])",
+    "matches(sample(18, 18), [1100, 11100, 0, 111])",
+    "matches(sample(19, 21), [1100, 11100, 1, 111])",
+    "matches(sample(22, 22), [1100, 11100, 0, 111])",
+    "matches(sample(24, 28), [1100, 11100, 1, 111])",
+    "matches(sample(29, 30), [1100, 11100, 0, 111])",
+    "matches(sample(32, 34), [1100, 11100, 1, 111])",
+    "matches(sample(35, 36), [1100, 11100, 0, 111])",
+    "matches(sample(37, 44), [1100, 11100, 1, 111])",
+    "matches(sample(45, 45), [1100, 11100, 0, 111])",
+    "matches(sample(46, 46), [1100, 11100, 1, 111])",
+]
+mismatch = "E194 c: with position=111, the bench direct bit flickers 1/0; at a sampled bench 0 the simulator still reads 1. Observer scheduling and lifetime remain unresolved."

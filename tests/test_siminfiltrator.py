@@ -95,74 +95,6 @@ def test_spy_vehicle_factory_entry_as_on_the_bench(check):
     assert not s.infiltrators.observers
 
 
-@pytest.mark.xfail(strict=True, reason='E194 b直接SET计数仍间歇1/0，观察者调度与进入时钟未闭合；'
-                   '见 work/re/e194_vehicle.md')
-def test_spy_vehicle_direct_readback_as_on_the_bench():
-    """engine_infveh:b same-frame raw and direct discovery masks agree.
-
-    s1-s15=11100/11100/0/0; s17=1100/11100/1/1;
-    s18=1100/11100/0/0; s19-s21=1100/11100/1/1;
-    s22=1100/11100/0/0; s23-s26=1100/11100/1/1;
-    s27=1100/11100/0/0; s28-s47=1100/11100/1/1.
-    Missing s16 is not interpolated. Both original continuous predictions fail.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_infveh', 'b')
-    s = sim.Sim(m, t).run(47)
-    for start, end, wanted in ((1, 15, [11100, 11100, 0, 0]),
-                               (17, 17, [1100, 11100, 1, 1]),
-                               (18, 18, [1100, 11100, 0, 0]),
-                               (19, 21, [1100, 11100, 1, 1]),
-                               (22, 22, [1100, 11100, 0, 0]),
-                               (23, 26, [1100, 11100, 1, 1]),
-                               (27, 27, [1100, 11100, 0, 0]),
-                               (28, 47, [1100, 11100, 1, 1])):
-        rows = [values for second, values in s.series if start <= second <= end]
-        assert rows and all(row == wanted for row in rows), rows
-
-
-def test_spy_vehicle_stationary_positions_as_on_the_bench():
-    """engine_infveh:c all three named markers remain in their 40-unit windows.
-
-    This is the measured position mask, not proof of observer lifetime or
-    exact coordinates. Direct visibility still flickers at mask=111.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_infveh', 'c')
-    s = sim.Sim(m, t).run(46)
-    assert s.series and all(values[3] == 111 for _, values in s.series)
-
-
-@pytest.mark.xfail(strict=True, reason='E194 c位置掩码111时可见位仍间歇1/0，观察者调度/寿命未闭合；'
-                   '两局后停止，见 work/re/e194_vehicle.md')
-def test_spy_vehicle_stationary_discovery_as_on_the_bench():
-    """engine_infveh:c measured direct bits with position=111 in every sample.
-
-    Missing s13/s23/s31 impose no constraint; continuous prediction remains
-    failed. Enemy/ally counters are 1100/11100 from sampled s14 onward.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_infveh', 'c')
-    s = sim.Sim(m, t).run(46)
-    for start, end, wanted in ((1, 12, [11100, 11100, 0, 111]),
-                               (14, 17, [1100, 11100, 1, 111]),
-                               (18, 18, [1100, 11100, 0, 111]),
-                               (19, 21, [1100, 11100, 1, 111]),
-                               (22, 22, [1100, 11100, 0, 111]),
-                               (24, 28, [1100, 11100, 1, 111]),
-                               (29, 30, [1100, 11100, 0, 111]),
-                               (32, 34, [1100, 11100, 1, 111]),
-                               (35, 36, [1100, 11100, 0, 111]),
-                               (37, 44, [1100, 11100, 1, 111]),
-                               (45, 45, [1100, 11100, 0, 111]),
-                               (46, 46, [1100, 11100, 1, 111])):
-        rows = [values for second, values in s.series if start <= second <= end]
-        assert rows and all(row == wanted for row in rows), rows
-
-
 @pytest.mark.parametrize('variant', ['duration', 'unit_duration', 'filter', 'structure_filter',
                                      'observer', 'host', 'spy', 'player', 'repeat', 'player_at_entry'])
 def test_spy_vehicle_unmeasured_entry_reports_gap(variant):
@@ -335,19 +267,6 @@ def test_spy_ordinary_vision_as_on_the_bench(check, template):
         assert yard.owner == m.player(side) and yard.hp == yard.max_hp
     assert not s.infiltrators.off_until
     assert not any(key[0] == 'InfiltratorContain' for key in s.unmodeled)
-
-
-@pytest.mark.xfail(strict=True, reason='E196日本VISION稳定窗已接，s18实测仍0而模型提前揭示；'
-                   '不拟合延迟，见 work/re/e196_vision.md')
-def test_spy_ordinary_vision_japan_activation_as_on_the_bench():
-    """E76 c: preserve s18=0/s19=1 independently of the stable host replay."""
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_infvis', 'c')
-    s = sim.Sim(m, t).run(20)
-    for second, wanted in ((18, [1100, 11100, 0]), (19, [1100, 11100, 1])):
-        rows = [values for at, values in s.series if at == second]
-        assert rows and all(row == wanted for row in rows), rows
 
 
 @pytest.mark.parametrize('check, until, entered', [('a', 35, 11), ('b', 55, 31)])

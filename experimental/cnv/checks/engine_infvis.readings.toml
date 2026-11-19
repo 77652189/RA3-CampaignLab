@@ -1,0 +1,14 @@
+# Bench readings of checks/engine_infvis.py.
+# The runner's until is one second past the old bare Sim.run limit to include its last sample.
+
+[[reading]]
+id = "spy_ordinary_vision_japan_activation_as_on_the_bench"
+scene = {build = "engine_infvis", check = "c", until = 21}
+bench = "E76 c: enemy/ally/vision=1100/11100/0 at s18 and 1100/11100/1 at s19"
+proves = "InfiltratorContain VISION: the Japan yard's nearby marker first becomes visible at s19 after enemy spy entry"
+let = {sample = "lambda lo, hi: [v for t, v in zip(times, vals(rows)) if lo <= t <= hi]", matches = "lambda got, wanted: bool(got) and all(v == wanted for v in got)"}
+expect = [
+    "matches(sample(18, 18), [1100, 11100, 0])",
+    "matches(sample(19, 19), [1100, 11100, 1])",
+]
+mismatch = "E196 Japan s18 visibility: bench 0, simulator 1; the simulator reveals the marker early."

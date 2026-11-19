@@ -104,3 +104,14 @@ bench = "twice: some time after the enemy soldier is at its attack-move goal (s1
 proves = "sim Sim.takes_by_itself: who fires is not known (that soldier walking back along the line, or the ebld lane's)"
 expect = "rows[-1]['电厂血'] <= 50"
 mismatch = "sim plant 100 % at s61 (it leaves the plant alone); bench loses 5 % / 3 s from s25-s31"
+
+[[reading]]
+id = "seal_told_to_attack_through_the_row_it_walks_round_the_end"
+scene = {build = "engine_seal", check = "attack", until = 62}
+bench = "engine_seal attack (2026-11-08): the peacekeeper leaves the start by s4, is north of the row's end from s7 (5 = 1 + 4; never east of it), the MCV 97 at s10 down to 85 at s40"
+proves = "sim Sim.fire_spot: an ordered attack takes the shortest way to a clear spot in range"
+expect = [
+    "rows[times.index(61)]['兵'] & 1 and rows[times.index(61)]['兵'] & 4",
+    "next(t for t, r in zip(times, rows) if r['敌车血量'] < 100) <= 13",
+    "rows[times.index(61)]['敌车血量'] <= 90",
+]

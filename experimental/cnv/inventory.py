@@ -186,7 +186,7 @@ BENCHED_TESTS = {
     # round 214: batch 4 (checks/engine_acts4.py acts: spellbook powers, the context attack, buildability)
     # round 215: batch 5 (checks/engine_acts5.py acts; PLAYER_TRANSFER_OWNERSHIP_PLAYER changed nothing on the bench:
     # not simulated, stays 未做)
-    **{(ACTION, n): 'tests/test_simbench.py::test_acts_v_as_the_bench' for n in (
+    **{(ACTION, n): 'experimental/cnv/checks/engine_acts5.readings.toml::acts_v_as_the_bench' for n in (
         'UNIT_SET_MODELCONDITION', 'PLAYER_ALLOW_AI_AUTOACQUIRE', 'TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE',
         'TEAM_GUARD_AREA_FROM_POSITION')},
     # round 216: TEAM_HUNT / NAMED_HUNT (checks/engine_acts6.py hunt: an aiTactical-255 owner's crew attack-moves to

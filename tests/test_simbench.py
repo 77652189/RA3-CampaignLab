@@ -595,19 +595,6 @@ def test_bodies_face_as_the_built_map_puts_them():
     assert model.facing(model.Obj('X', 0, 0, side='s1')) == pytest.approx(-1.5708)
 
 
-def test_seal_told_to_attack_through_the_row_it_walks_round_the_end():
-    """Bench engine_seal attack (2026-11-08): row's set-up, an attack order on the MCV at 4 s -- the peacekeeper
-    leaves the start by s4, is north of the row's end from s7 (5 = 1 + 4; never east of it), the MCV 97 at s10 down
-    to 85 at s40 (Sim.fire_spot: a clear spot in range, the shortest way). The simulator: north of the row from s10,
-    the first hit by s13, 86 at s61."""
-    rows, _ = _seal_rows('attack', 61.0)
-    foot = dict((k, r['兵']) for k, r in rows)
-    hp = dict((k, r['敌车血量']) for k, r in rows)
-    assert foot[61] & 1 and foot[61] & 4, rows[-1]
-    assert next(k for k, v in hp.items() if v < 100) <= 13, hp
-    assert hp[61] <= 90, hp
-
-
 def test_a_weapon_doing_nothing_to_the_armour_never_takes_the_target():
     """Tanya's pistol (SNIPER) at a faction building's armour (SNIPER 0 %): Generals estimateWeaponDamage 0 ->
     INVALID_SHOT, ordered or not (the a6 Tanya who stood firing at a building); the peacekeeper's GUN (100 %) can."""
@@ -627,29 +614,6 @@ def test_idle_acquiring_is_the_units_own_word():
     assert simunits.acquire('AlliedAntiInfantryInfantry') == ['YES']
     assert simunits.acquire('AlliedMCV') == ['NO']
     assert simunits.acquire('AlliedAntiInfantryVehicle') == []
-
-
-def test_acts_v_as_the_bench():
-    """acts, bench 11-13 `run_queue engine_acts_v:acts` (CampActsVActs, round 215, twice the same; the bench's seconds
-    ~1 behind): 状 5 20 -- UNIT_SET_MODELCONDITION n is USER_n, 0 clears; 旗 20 -- PLAYER_ALLOW_AI_AUTOACQUIRE: the
-    player's tank fires on the enemy plant (the hand-over never happened on the bench: no 1 / 2 / 8); 位 1 2 102 202
-    200 220 -- TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE to the nearer barracks, after its delete to the other;
-    TEAM_GUARD_AREA_FROM_POSITION: the tanks at the waypoint, never the area's middle; 守 2 12. 201 / 210 = one of the
-    two men a second ahead of the other leaving nb / reaching fb: the bench's two did each within one second; the
-    simulator's stand 41 apart at nb since adfe8a0e's straighter ways (11-18), so fb a second apart (not modelled)."""
-    run = _sim_run('engine_acts_v', 'acts', 40.0)
-
-    def changes(col):
-        out = []
-        for _, v in run.series[1:]:
-            if not out or out[-1] != v[col]:
-                out.append(v[col])
-        return out
-    assert changes(0)[-2:] == [5, 20]
-    assert changes(1)[:2] == [16, 20] and set(changes(1)) <= {16, 20}
-    assert [v for v in changes(2) if v not in (201, 210)] == [0, 1, 2, 102, 202, 200, 220], changes(2)
-    assert sum(v[2] in (201, 210) for _, v in run.series[1:]) <= 2, changes(2)     # a second each at most
-    assert changes(3)[-2:] == [2, 12] and run.series[-1][1][3] == 12
 
 
 def test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard(tmp_path):
