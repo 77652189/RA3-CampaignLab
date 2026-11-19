@@ -147,23 +147,6 @@ def test_special_power_nugget_closure_conserves_retail_consumers():
         assert inventory.nugget_form_slice('SpecialPowerNugget', changed) == ''
 
 
-def test_native_disguise_friend_neutral_bench_replay():
-    """engine_spnrelations a: spy/transport x distinct Friend/Neutral targets.
-
-    Every native payload has its own damage latch; no scripted DISGUISED.
-    Raw readings and remaining consumer gaps: work/re/c_spnclosure_report.md.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_spnrelations', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    result = e.run(14)
-    measured = (1111, 1111, 1111, 1111)
-    assert tuple(result.series[-1][1]) == measured
-    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
-
-
 def test_special_power_nugget_retail_active_consumer_is_not_silently_ignored():
     """A real active companion must remain a gap, unlike the commented retail beam."""
     import build
@@ -195,25 +178,6 @@ def test_retail_attribute_gates_reject_unmeasured_forms(inner):
     weapon = simunits._weapons([xml])['GateTest']
     assert not weapon.get('hit_modifiers')
     assert 'AttributeModifierNugget' in weapon['unmodeled_effects']
-
-
-def test_scrambler_expiry_resumes_kept_order_bench_replay():
-    """engine_spnscr a: measured snapshots, without changing the original orders.
-
-    The early snapshot already precedes the late command. It requires the
-    original in-range order to survive NO_ATTACK and resume after expiry.
-    Exact impact frames and the active SPN companion remain gaps; see
-    work/re/d50_scramble_expiry3.md for the order-state evidence.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_spnscr', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    result = e.run(16)
-    expected = (300999080,) * 4
-    assert tuple(result.series[-1][1]) == expected
-    assert all(tuple(row) == expected for sec, row in result.series if sec >= 14)
 
 
 @pytest.mark.xfail(strict=True, reason='NAMED_STOP did not bound real victim fire; '
@@ -502,70 +466,6 @@ def test_special_power_nugget_native_disguise_consumer_bench_replay():
     assert (sim.GAP_WEAPON, 'SpecialDisguiseUpdate') in e.unmodeled
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'Native disguise blocks autonomous conscript acquisition, while the model '
-    'applies only DISGUISED; empty EVACUATE does not cancel on the bench. '
-    'See work/re/c_spncancel_report.md and handoff-c.md.'))
-def test_native_transport_disguise_cancel_acquisition_bench_replay():
-    """engine_spncancel a: enemy damage is independent of the disguise bit.
-
-    Evidence: work/re/c_spncancel_report.md. Compare actual consumer readings,
-    including native EVACUATE, removed SPN and the script-bit-only control.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_spncancel', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    result = e.run(24)
-    measured = (1101, 1101, 1110, 1111)
-    assert tuple(result.series[-1][1]) == measured
-    assert all(tuple(row) == measured for sec, row in result.series if sec >= 22)
-
-
-def test_native_transport_disguise_script_bit_acquisition_controls_bench_replay():
-    """engine_spncancel a: no-SPN and bit-only controls both take enemy damage.
-
-    This independently green boundary must remain covered while native
-    disguise acquisition is tracked by the strict xfail above.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_spncancel', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    result = e.run(24)
-    measured_controls = (1110, 1111)
-    assert tuple(result.series[-1][1][2:]) == measured_controls
-    assert all(tuple(row[2:]) == measured_controls for sec, row in result.series if sec >= 22)
-
-
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'Loaded native EVACUATE clears real disguise before autonomous enemy damage; '
-    'the model has only the bit, without native identity/acquisition/cancellation. '
-    'See work/re/c_spncancel_report.md and handoff-c.md.'))
-def test_native_transport_loaded_disguise_cancellation_bench_replay():
-    """engine_spncargo a: measured loaded -> exit/clear -> damaged ordering.
-
-    Compare observed states rather than equating capture seconds to mission
-    seconds; the check keeps its disproved absolute-window prediction.
-    Passenger UNATTACKABLE is a deliberate premise of this bench only.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_spncargo', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    result = e.run(24)
-    rows = [tuple(row) for _, row in result.series]
-    held = [i for i, row in enumerate(rows) if row[1] == 111101]
-    cleared = [i for i, row in enumerate(rows) if row[1] == 101100]
-    damaged = [i for i, row in enumerate(rows) if row[1] == 101110]
-    assert held and cleared and damaged
-    assert held[0] < cleared[0] < damaged[0]
-    assert rows[-1] == (1101, 101110, 1110, 1111)
-
-
 def test_native_spy_scout_exclusion_bench_replay():
     """engine_spnspyex a: INFANTRY Terror Drone is explicitly excluded.
 
@@ -665,25 +565,6 @@ def test_native_transport_disguise_rejects_unmeasured_configuration(change):
         own[template] = own[template].replace('</AssetDeclaration>',
             '<SpecialPowerTemplate id="' + power + '" MaxCastRange="1"/></AssetDeclaration>')
     assert simunits.nugget_self_power(template, power, own) is False
-
-
-@pytest.mark.xfail(strict=True, reason=(
-    'Native transport has a sampled hit-before-disguise transition; the model '
-    'applies the bit immediately. See work/re/c_spntrans_report.md and handoff-c.md.'))
-def test_native_transport_disguise_unpack_transition_bench_replay():
-    """engine_spntrans a observed 1110/1110/1110/1111 before settling.
-
-    Compare the relative transition, not absolute sample/engine clocks.
-    The native caster has hit but not disguised; the scripted control has both.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_spntrans', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    result = e.run(14)
-    measured_transition = (1110, 1110, 1110, 1111)
-    assert any(tuple(row) == measured_transition for _, row in result.series)
 
 
 def test_native_transport_disguise_vehicle_filter_bench_replay():

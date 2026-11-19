@@ -1,0 +1,12 @@
+# Bench readings of checks/engine_spnscr.py (format: experimental/cnv/readings.py).
+
+[[reading]]
+id = "scrambler_expiry_resumes_kept_order_bench_replay"
+scene = {build = "engine_spnscr", check = "a", until = 16, shot_clock = true}
+bench = "MEASURED 2026-11-11: All four victims99%, all three bodies alive. Unjammed order/removed sink reaches90 earlier; base/high reaches90 later, before the8s snapshot; final sink80 in all four lanes, packed300999080."
+proves = "AttributeModifierNugget expiry: the original in-range order resumes when NO_ATTACK expires and reaches the measured early and late sink HP."
+let = {values = "vals(rows)", measured = "[300999080] * 4"}
+expect = [
+    "values[-1] == measured",
+    "all(row == measured for sec, row in zip(times, values) if sec >= 14)",
+]
