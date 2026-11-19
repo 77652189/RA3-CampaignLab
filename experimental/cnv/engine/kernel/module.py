@@ -10,17 +10,41 @@ from engine.kernel import interfaces
 
 
 class Thing:
-    """The kernel's side of an object (sim.Body inherits it). `modules` stays the empty class default until the
-    factory makes one, so a thing with none carries no field for it."""
-    modules = ()
+    """The kernel's side of an object (sim.Body inherits it). A thing without modules uses the empty class default
+    and carries neither a modules field nor a find cache."""
+    # The frame recorder reads instance fields. Keep the cache outside that state.
+    __slots__ = ('__dict__', '__weakref__', '_find_cache')
+
+    @property
+    def modules(self):
+        return self.__dict__.get('modules', ())
+
+    @modules.setter
+    def modules(self, modules):
+        if hasattr(self, '_find_cache'):
+            del self._find_cache
+        if modules:
+            self.__dict__['modules'] = modules
+        else:
+            self.__dict__.pop('modules', None)
 
     def find(self, interface):
         """The modules implementing `interface`, in the order made; for one of interfaces.ONE the one (or None)."""
-        found = tuple(m for m in self.modules if isinstance(m, interface))
+        try:
+            return self._find_cache[interface]
+        except (AttributeError, KeyError):
+            pass
+
+        modules = self.modules
+        found = tuple(m for m in modules if isinstance(m, interface))
         if interface in interfaces.ONE:
             if len(found) > 1:
                 raise ValueError(f'{interface.__name__}: {len(found)} modules on one thing')
-            return found[0] if found else None
+            found = found[0] if found else None
+        if modules:
+            if not hasattr(self, '_find_cache'):
+                self._find_cache = {}
+            self._find_cache[interface] = found
         return found
 
     def health_moved(self, was, now):
