@@ -44,3 +44,60 @@ def test_two_worlds_overriding_one_structure_each_get_their_command_set():
     ]
     assert simunits.command_set(structure, own=first.own) == 'CacheCommandsFirst'
     assert simunits.command_set(structure, own=second.own) == 'CacheCommandsSecond'
+
+
+def test_production_cache_reuses_only_template_data(monkeypatch):
+    factory = 'CNVCacheFactory'
+    base = 'CNVCacheFactoryBase'
+    definition = f"""
+        <GameObject id="{base}" CommandSet="CNVCacheNormal" BuildTime="3">
+            <BuildCost Amount="450"/>
+            <GameDependency><RequiredObject>Refinery</RequiredObject><NeededUpgrade>Tier</NeededUpgrade></GameDependency>
+            <CommandSetUpgrade CommandSet="CNVCacheUpgraded"><TriggeredBy>Tier</TriggeredBy></CommandSetUpgrade>
+            <TechUpgradeReceiver Radius="600" DistanceType="RECTANGULAR">
+                <TriggeredBy>Tier</TriggeredBy><IncludeThing>Yard</IncludeThing>
+            </TechUpgradeReceiver>
+            <ProductionUpdate DoorOpeningTime="0.66s"/>
+        </GameObject>
+        <LogicCommandSet id="CNVCacheNormal"><Cmd>BuildTank</Cmd><Cmd>BuyTier</Cmd></LogicCommandSet>
+        <LogicCommandSet id="CNVCacheUpgraded" inheritFrom="CNVCacheNormal"><Cmd>BuildPlane</Cmd></LogicCommandSet>
+        <LogicCommand id="BuildTank" Type="UNIT_BUILD"><Object>Tank</Object></LogicCommand>
+        <LogicCommand id="BuildPlane" Type="UNIT_BUILD"><Object>Plane</Object></LogicCommand>
+        <LogicCommand id="BuyTier" Type="OBJECT_UPGRADE"><Upgrade>Tier</Upgrade></LogicCommand>
+    """
+    own = {factory: f'<GameObject id="{factory}" inheritFrom="{base}"></GameObject>', 'Library': definition}
+
+    objects, upgrades = simunits.needs(factory, own)
+    assert (objects, upgrades) == (['Refinery'], ['Tier'])
+    objects.clear()
+    upgrades.append('OtherTier')
+    assert simunits.production(factory, own) == (450, 3.0)
+    assert simunits.exit_of(factory, own) == ((0.0, 0.0), None, 10)
+    receivers = simunits.tech_receivers(factory, own)
+    assert receivers == [({'tier'}, 600.0, True, {'yard'})]
+    receivers[0][3].clear()
+    menu = simunits.menu(factory, own)
+    assert menu == ['Tank']
+    menu.clear()
+    assert simunits.menu(factory, own, {'TIER'}) == ['Tank', 'Plane']
+
+    def unexpected_read(*args, **kwargs):
+        raise AssertionError('production data was read again')
+
+    with monkeypatch.context() as patch:
+        patch.setattr(simunits, '_inherited', unexpected_read)
+        patch.setattr(simunits, '_commands', unexpected_read)
+        assert simunits.needs(factory, own) == (['Refinery'], ['Tier'])
+        assert simunits.production(factory, own) == (450, 3.0)
+        assert simunits.exit_of(factory, own) == ((0.0, 0.0), None, 10)
+        assert simunits.tech_receivers(factory, own) == [({'tier'}, 600.0, True, {'yard'})]
+        assert simunits.menu(factory, own) == ['Tank']
+        assert simunits.build_button(factory, 'Plane', own) is None
+        assert simunits.build_button(factory, 'Plane', own, {'Tier'}) == 'BuildPlane'
+        assert simunits.built(factory, 'BuildPlane', own, {'Tier'}) == 'Plane'
+        assert simunits.upgrade_menu(factory, own) == [('Tier', 'OBJECT')]
+
+    own['Library'] = definition.replace('Refinery', 'Outpost').replace('450', '300').replace('>Tank<', '>Scout<')
+    assert simunits.needs(factory, own) == (['Outpost'], ['Tier'])
+    assert simunits.production(factory, own) == (300, 3.0)
+    assert simunits.menu(factory, own) == ['Scout']

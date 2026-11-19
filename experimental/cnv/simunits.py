@@ -2645,7 +2645,7 @@ _reads = {}         # T9 (11-18), per process -- the SDK does not change while o
                     #   ('text', path) a SageXML file's text; ('sdk', name) _xml's answer from the SDK;
                     #   ('objects', text) {id.lower(): first GameObject} of a mission file, keyed by its text,
                     #   not the dict; ('only', text, name) that file without its other GameObjects;
-                    #   ('command_set', name[, own files]) inherited CommandSet and upgrade triggers;
+                    #   ('production_*', name[, own files]) inherited production data and command-set buttons;
                     #   ('module_*', ...) parsed sources, schema fields and effective module blocks
 
 
@@ -2744,12 +2744,36 @@ def equivalent_to(template, own=None):
     return _equivalent[key]
 
 
+class _ProductionTemplates:
+    @staticmethod
+    def key(query, template, own):
+        # Even an ancestor can be overridden, and _xml uses exact keys and searches files in order.
+        return (query, template, tuple(own.items())) if own else (query, template.lower())
+
+    @staticmethod
+    def buttons(structure, own, upgrades):
+        selected = command_set(structure, upgrades, own)
+        # For an already selected set, only the ordered LogicCommand(Set) sources matter.
+        key = ('production_buttons', selected, tuple(own.values())) if own else ('production_buttons', selected)
+        if key not in _reads:
+            sets, cmds = _commands(own)
+            units, orders, research = [], [], []
+            for button in sets.get(selected, ()):
+                kind, target = cmds.get(button, ('', None))
+                if kind == 'UNIT_BUILD':
+                    orders.append((button, target))
+                    if target:
+                        units.append(target)
+                elif kind in ('OBJECT_UPGRADE', 'PLAYER_UPGRADE') and target:
+                    research.append((target, kind.split('_')[0]))
+            _reads[key] = tuple(units), tuple(orders), tuple(research)
+        return _reads[key]
+
+
 def command_set(structure, upgrades=(), own=None):
     """The structure's CommandSet: its own, or the last CommandSetUpgrade's whose TriggeredBy it holds (AlliedConstruction
     Yard: ...Level2 once it holds Upgrade_AlliedTech2, its button then buys Tech3)."""
-    # An own file can override an ancestor or contain another GameObject. Keep file order for _xml's first match,
-    # and the original spelling of the structure for its exact lookup in own.
-    key = ('command_set', structure, tuple(own.items())) if own else ('command_set', structure.lower())
+    key = _ProductionTemplates.key('production_command_set', structure, own)
     if key not in _reads:
         def read(xml):
             bare = re.sub(r'<CommandSetUpgrade\b.*?(/>|</CommandSetUpgrade>)', '', xml, flags=re.S)
@@ -2768,38 +2792,28 @@ def command_set(structure, upgrades=(), own=None):
 
 def menu(factory, own=None, upgrades=()):
     """The units a structure builds: its CommandSet's UNIT_BUILD commands' objects, in the sidebar's order."""
-    sets, cmds = _commands(own)
-    return [cmds[c][1] for c in sets.get(command_set(factory, upgrades, own), [])
-            if cmds.get(c, ('', None))[0] == 'UNIT_BUILD' and cmds[c][1]]
+    units, _, _ = _ProductionTemplates.buttons(factory, own, upgrades)
+    return list(units)
 
 
 def build_button(factory, template, own=None, upgrades=()):
     """The factory's UNIT_BUILD command that builds `template` (Command_ConstructAlliedEngineer), None when its
     CommandSet has none (the other way: built)."""
-    sets, cmds = _commands(own)
-    return next((c for c in sets.get(command_set(factory, upgrades, own), [])
-                 if cmds.get(c, ('', None)) == ('UNIT_BUILD', template)), None)
+    _, orders, _ = _ProductionTemplates.buttons(factory, own, upgrades)
+    return next((button for button, target in orders if target == template), None)
 
 
 def built(factory, button, own=None, upgrades=()):
     """The template the factory's `button` builds (a UNIT_BUILD command of its CommandSet), else None."""
-    sets, cmds = _commands(own)
-    if button not in sets.get(command_set(factory, upgrades, own), []):
-        return None
-    kind, obj = cmds.get(button, ('', None))
-    return obj if kind == 'UNIT_BUILD' else None
+    _, orders, _ = _ProductionTemplates.buttons(factory, own, upgrades)
+    return next((target for command, target in orders if command == button), None)
 
 
 def upgrade_menu(structure, own=None, upgrades=()):
     """The upgrades a structure's buttons buy (OBJECT_UPGRADE: the structure's own; PLAYER_UPGRADE: the player's), as
     [(upgrade, 'OBJECT' | 'PLAYER')] in the sidebar's order."""
-    sets, cmds = _commands(own)
-    out = []
-    for c in sets.get(command_set(structure, upgrades, own), []):
-        kind, up = cmds.get(c, ('', None))
-        if kind in ('OBJECT_UPGRADE', 'PLAYER_UPGRADE') and up:
-            out.append((up, kind.split('_')[0]))
-    return out
+    _, _, research = _ProductionTemplates.buttons(structure, own, upgrades)
+    return list(research)
 
 
 UPGRADES = os.path.join(SAGEXML, 'GlobalData', 'upgrade.xml')
@@ -2855,23 +2869,28 @@ def tech_receivers(structure, own=None):
     """The structure's TechUpgradeReceiver modules: [(upgrades in lower case, radius, rectangular?, {source templates
     in lower case})] -- an Allied factory takes Upgrade_AlliedTech2 / 3 from a yard or outpost holding it within 600
     (RECTANGULAR; AlliedTechUpgradeReceiverLevel2/3.xml)."""
-    def read(xml):
-        out = []
-        for h, i in _blocks(_with_includes(xml), 'TechUpgradeReceiver'):
-            out.append(({t.lower() for t in re.findall(r'<TriggeredBy>\s*([^<\s]+)', i)}, _num(_attr(h, 'Radius'), 0.0),
-                        (_attr(h, 'DistanceType', '') or '').upper() == 'RECTANGULAR',
-                        {t.lower() for t in re.findall(r'<IncludeThing>\s*([^<\s]+)', i)}))
-        return out or None
-    return _inherited(structure, own, read, None) or []
+    key = _ProductionTemplates.key('production_tech_receivers', structure, own)
+    if key not in _reads:
+        def read(xml):
+            return tuple(
+                (frozenset(t.lower() for t in re.findall(r'<TriggeredBy>\s*([^<\s]+)', i)), _num(_attr(h, 'Radius'), 0.0),
+                 (_attr(h, 'DistanceType', '') or '').upper() == 'RECTANGULAR',
+                 frozenset(t.lower() for t in re.findall(r'<IncludeThing>\s*([^<\s]+)', i)))
+                for h, i in _blocks(_with_includes(xml), 'TechUpgradeReceiver'))
+        _reads[key] = _inherited(structure, own, read, ())
+    return [(set(upgrades), radius, rect, set(sources)) for upgrades, radius, rect, sources in _reads[key]]
 
 
 def production(template, own=None):
     """(cost, seconds): BuildCost Amount and BuildTime of the template's XML ((0, 0.0) where it writes none)."""
-    def read(xml):
-        cost = re.search(r'<BuildCost\b[^>]*\bAmount="([\d.]+)"', xml)
-        secs = re.search(r'\bBuildTime="([\d.]+)"', xml)
-        return int(float(cost.group(1))) if cost else 0, float(secs.group(1)) if secs else 0.0
-    return _inherited(template, own, read, (0, 0.0))
+    key = _ProductionTemplates.key('production_cost_time', template, own)
+    if key not in _reads:
+        def read(xml):
+            cost = re.search(r'<BuildCost\b[^>]*\bAmount="([\d.]+)"', xml)
+            secs = re.search(r'\bBuildTime="([\d.]+)"', xml)
+            return int(float(cost.group(1))) if cost else 0, float(secs.group(1)) if secs else 0.0
+        _reads[key] = _inherited(template, own, read, (0, 0.0))
+    return _reads[key]
 
 
 def energy(template, own=None):
@@ -3145,26 +3164,33 @@ def special_weapon(weapon, own=None):
 def needs(template, own=None):
     """(objects, upgrades) its GameDependency asks for: every RequiredObject the player must own, every NeededUpgrade
     the player must hold (all of them: inference, the sidebar's lit buttons not measured)."""
-    def read(xml):
-        head, inner = next(_blocks(xml, 'GameDependency'), (None, ''))
-        return (re.findall(r'<RequiredObject>\s*([^<\s]+)', inner or ''),
-                re.findall(r'<NeededUpgrade>\s*([^<\s]+)', inner or ''))
-    return _inherited(template, own, read, ([], []))
+    key = _ProductionTemplates.key('production_needs', template, own)
+    if key not in _reads:
+        def read(xml):
+            _, inner = next(_blocks(xml, 'GameDependency'), (None, ''))
+            return (tuple(re.findall(r'<RequiredObject>\s*([^<\s]+)', inner)),
+                    tuple(re.findall(r'<NeededUpgrade>\s*([^<\s]+)', inner)))
+        _reads[key] = _inherited(template, own, read, ((), ()))
+    objects, upgrades = _reads[key]
+    return list(objects), list(upgrades)
 
 
 def exit_of(factory, own=None):
     """(create, rally, door frames) of a factory: UnitCreatePoint and NaturalRallyPoint (x, y) in its own frame (rally
     None where it writes none), and ProductionUpdate's DoorOpeningTime in frames, rounded up (0.66 s -> 10: bench
     2026-11-05 engine_production, every unit appeared 10 frames after its build was full)."""
-    def read(xml):
-        if '<ProductionUpdate' not in xml:
-            return None
+    key = _ProductionTemplates.key('production_exit', factory, own)
+    if key not in _reads:
+        def read(xml):
+            if '<ProductionUpdate' not in xml:
+                return None
 
-        def point(tag):
-            head, _ = next(_blocks(xml, tag), (None, ''))
-            return None if head is None else (_num(_attr(head, 'x'), 0.0), _num(_attr(head, 'y'), 0.0))
-        head, _ = next(_blocks(xml, 'ProductionUpdate'), ('', ''))
-        door = _secs(_attr(head or '', 'DoorOpeningTime', '0s'))
-        return point('UnitCreatePoint') or (0.0, 0.0), point('NaturalRallyPoint'), \
-            int(-(-round(door * LIFE_FPS, 6) // 1))
-    return _inherited(factory, own, read, None) or ((0.0, 0.0), None, 0)
+            def point(tag):
+                head, _ = next(_blocks(xml, tag), (None, ''))
+                return None if head is None else (_num(_attr(head, 'x'), 0.0), _num(_attr(head, 'y'), 0.0))
+            head, _ = next(_blocks(xml, 'ProductionUpdate'), ('', ''))
+            door = _secs(_attr(head or '', 'DoorOpeningTime', '0s'))
+            return point('UnitCreatePoint') or (0.0, 0.0), point('NaturalRallyPoint'), \
+                int(-(-round(door * LIFE_FPS, 6) // 1))
+        _reads[key] = _inherited(factory, own, read, None) or ((0.0, 0.0), None, 0)
+    return _reads[key]
