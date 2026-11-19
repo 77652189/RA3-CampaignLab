@@ -86,5 +86,12 @@ def same_team(have, asked):
     return have == asked or ('/' not in asked and have.split('/', 1)[-1] == asked)
 
 
+def held(world, b):
+    """b while the world still holds it under its name, else None: a thing picked earlier and kept (an attacker, a
+    miner, a node) that has since left the world -- a thing made under its name took its place -- is gone, as one
+    removed is (11-19 same-name sweep: kept by the thing, never looked up again by its name)."""
+    return b if b is not None and world.bodies.get(b.name) is b else None
+
+
 def mmss(t):
     return f'{int(t // 60)}:{int(t % 60):02d}'

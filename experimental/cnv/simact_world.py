@@ -105,8 +105,8 @@ def create_reinforcement_team_at_unit_position(sim, name, a, script):
     b = sim.body(a[1])
     if b is None or not b.alive:
         sim.used.add('reinforcement unit dead')
-    else:
-        sim.reinforce(a[0], a[1], script)
+    else:       # where the unit checked stands, not the name read again (11-19 same-name sweep)
+        sim.reinforce(a[0], a[1], script, at=(b.x, b.y))
 
 
 def set_ref_to_nerest_team_of_unnamed_type_owned_by_player(sim, name, a, script):

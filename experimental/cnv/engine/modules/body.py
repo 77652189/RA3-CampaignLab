@@ -49,7 +49,8 @@ class Body(module.Module, interfaces.Body):
     template has no Body block gets an ActiveBody attached (Sim.add, World.attach: made by __init__, no on_create)."""
     DATA = BodyData
     RECORDED = ('hp', 'max_hp', 'health_floor', 'last_hit', 'last_by', 'indestructible', 'read_until')
-    STATE = RECORDED + ('immortal', 'prop')    # make() sets these after the thing is made: the snapshot's only
+    STATE = RECORDED + ('immortal', 'prop', 'attacker')    # make() sets these after the thing is made: the snapshot's
+                                                           # only; attacker: the last damage's object itself
     IMMORTAL = False            # health changes cannot take it below its floor
     PROP = False                # no health: takes no damage, its percent reads 0 (engine_propbody a)
     hp = max_hp = 100.0
@@ -60,6 +61,7 @@ class Body(module.Module, interfaces.Body):
         self.health_floor = 1.0     # an immortal's: 1 HP; a ManagerBody proxy's: 1 % of its health (INFERRED)
         self.immortal, self.prop = self.IMMORTAL, None
         self.last_hit = self.last_by = None     # step B3: the last damage's player and object (set_last_damage)
+        self.attacker = None    # that object itself (last_by is its name, as the frame record shows it)
         self.indestructible = False
         self.read_until = None      # step B4a: killed by NAMED_DAMAGE in this frame -- its bits still read
 
@@ -108,8 +110,12 @@ class Body(module.Module, interfaces.Body):
     def last_damage(self):
         return self.last_hit, self.last_by
 
+    def last_attacker(self):
+        return self.attacker
+
     def set_last_damage(self, player, by=None):
-        self.last_hit, self.last_by = player, by
+        self.last_hit, self.attacker = player, by      # by: the object that hit (a name has no .name: refused)
+        self.last_by = by.name if by is not None else None
 
     def is_indestructible(self):
         return self.indestructible

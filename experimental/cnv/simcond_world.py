@@ -4,6 +4,7 @@ is the script executor's own (engine/script/executor.py: the timers are its tabl
 
 Each condition is `fn(sim, name, a)`, moved verbatim out of Sim.cond's chain; simcond.cond looks them up in
 CONDITIONS. None back: not taken (a gap)."""
+from simcond_object import attacker
 from simscript import CMP, SURFACES
 from simworld import inside, same_team
 
@@ -116,8 +117,8 @@ def team_attacked_by_player(sim, name, a):
     if name == 'TEAM_ATTACKED_BY_PLAYER':
         return any(b.last_by is not None and b.last_hit == a[1] for b in crew)
     want = sim.of_types(a[1])
-    return any(b.last_by is not None and sim.bodies.get(b.last_by) is not None
-               and sim.bodies[b.last_by].template.lower() in want for b in crew)
+    return any(b.last_by is not None and attacker(sim, b) is not None
+               and attacker(sim, b).template.lower() in want for b in crew)
 
 
 def mission_hot_spot_active(sim, name, a):

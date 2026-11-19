@@ -103,7 +103,7 @@ def death_blast_due(world, frame, peers):
             if dmg * armor <= 0:
                 continue
             t.damage(dmg * armor)
-            t.set_last_damage(owner, by.name)
+            t.set_last_damage(owner, by)
             if t.hp <= 0 and t.alive:
                 if world.first_death is None:
                     world.first_death = (world.t, t, by)
@@ -277,7 +277,7 @@ class Damage:
                     # ShockwaveResistance, no shock at all (no ra3ext `shock` line); equal to it still flies
                     world.used.add('knock resistance gate')
                     continue
-                if height is None or not grounded or b.name in peers.attachments or b.serial in flights:
+                if height is None or not grounded or b.serial in peers.attachments or b.serial in flights:
                     world.gap(GAP_WEAPON, 'MetaImpactNugget', '仅默认Physics的未附着地面起飞已接通；筛选/重入待核')
                     continue
                 velocity = simunits.meta_impact_velocity(effect, position, centre, height, detonation=True)
@@ -502,7 +502,7 @@ class Damage:
                         if 'VEHICLE' not in t.kinds or t.surface != 'ground':
                             world.gap(GAP_WEAPON, 'AttachNugget', '目前仅地面车辆父对象已对拍')
                             continue
-                        if by is t or t.name in peers.attachments or by.name in peers.attachments:
+                        if by is t or t.serial in peers.attachments or by.serial in peers.attachments:
                             world.gap(GAP_WEAPON, 'AttachNugget', '重复、换父与嵌套附着未对拍')
                             continue
                         if math.hypot(t.x - by.x, t.y - by.y) > rule['range']:
@@ -510,7 +510,7 @@ class Damage:
                             continue
                         if 'ONE_ATTACH_PER_PARENT' in rule['flags'] and any(p is t for _, p, _ in peers.attachments.values()):
                             continue
-                        peers.attachments[by.name] = (by, t, rule)
+                        peers.attachments[by.serial] = (by, t, rule)
                         peers.attachment_tick()
                     for effect in w.get('special_powers', []):
                         # engine_spng / engine_spngp: a single gate reads caster/object or owner.
@@ -626,7 +626,7 @@ class Damage:
                         healer.mend(amount)
                 else:
                     world.gap(GAP_WEAPON, 'leech', '并发吸取的伤害归属与回补尚未建模')
-            t.set_last_damage(by.owner, by.name)
+            t.set_last_damage(by.owner, by)
             if t.hp <= 0 and t.alive:
                 if world.first_death is None:
                     world.first_death = (world.t, t, by)

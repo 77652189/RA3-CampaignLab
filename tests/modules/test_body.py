@@ -174,7 +174,7 @@ def test_the_last_damage_and_the_indestructible_flag_live_on_the_module_step_b3(
     p, q = s.bodies['p'], s.bodies['q']
     assert (p.last_hit, p.last_by, p.indestructible) == (None, None, False)
     assert not {'last_hit', 'last_by', 'indestructible'} & set(vars(p))
-    p.set_last_damage('Player_2', 'q')
+    p.set_last_damage('Player_2', q)
     assert _one(p).last_damage() == ('Player_2', 'q') and (p.last_hit, p.last_by) == ('Player_2', 'q')
     assert (q.last_hit, q.last_by) == (None, None)                 # one a thing
     for field in ('last_hit', 'last_by', 'indestructible'):
@@ -188,7 +188,7 @@ def test_the_last_damage_and_the_indestructible_flag_live_on_the_module_step_b3(
     simact_object.named_damage(s, 'NAMED_DAMAGE', ['p', '10'], None)
     assert p.hp == was - 10.0                       # a script's damage goes through the flag (engine_scripts7 panel)
     assert (p.last_hit, p.last_by) == (None, None)  # and comes from nobody
-    q.set_last_damage('Player_2', 'p')
+    q.set_last_damage('Player_2', p)
     simact_object.named_kill(s, 'NAMED_KILL', ['q'], None)
     assert not q.alive and (q.last_hit, q.last_by) == (None, None)     # the game's kill comes from nobody too
     bare = sim.Body('b', 'AlliedPowerPlant', 'Player_1', 0.0, 0.0)

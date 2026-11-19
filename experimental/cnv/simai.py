@@ -1343,7 +1343,7 @@ class Brain:
         for b in self.living():
             if b.owner != self.player or 'STRUCTURE' in b.kinds or b.speed <= 0:
                 continue
-            if b.name in self.host.garrison.where:
+            if b.serial in self.host.garrison.where:
                 continue
             out[b.template] = out.get(b.template, 0) + 1
         return out
@@ -1870,7 +1870,7 @@ class Brain:
                 aim = self.aim_of(b, reach) if b.alive else None
                 goal, chase = b.goal, getattr(b, 'chase', None)
                 hunt = self.__dict__.get('_hunt_goals', {}).get(b.name)
-                going, inside = g.going.get(b.name), g.where.get(b.name)
+                going, inside = (g.going.get(b.serial) or (None, None))[1], g.where.get(b.serial)
                 mem.append({'name': b.name, 'id': self.ids.get(b.serial), 'pos': (b.x, b.y), 'hp': b.hp,
                             'alive': b.alive, 'goal': goal.name if isinstance(goal, sim.Body) else goal,
                             'chase': chase.name if isinstance(chase, sim.Body) else chase,

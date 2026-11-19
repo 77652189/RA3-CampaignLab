@@ -10,7 +10,7 @@ import math
 
 import simunits
 from engine.kernel import interfaces
-from simworld import CIV
+from simworld import CIV, held
 
 # HOOKS 7, ore mining (docs/engine/mining.md, bench 2026-11-05 engine_mining a-e): a load 250 (retail miners'
 # DeliveryCapacity), loaded at the node in 30 frames starting the frame after the miner docks, unloaded at the refinery
@@ -59,7 +59,9 @@ def mine_extra(node, far):
 
 class Mining:
     def __init__(self):
-        self.nodes = {}                     # ore node name -> {'free': frame it takes a miner from, 'gathered', 'at'}
+        self.nodes = {}                     # ore node serial -> {'free': frame it takes a miner from, 'gathered', 'at',
+                                            # 'claim'}: the miners themselves (11-19 same-name sweep: a node or miner
+                                            # made under the name since has none of the old one's)
         self.mined_to = None                # the last frame mine_due ran
 
     def mine_due(self, world, frame, pay):
@@ -91,8 +93,8 @@ class Mining:
     def _leg(self, world, b, fr, to, state):
         """Off to `to`: there mine_extra + distance / speed frames on, in `state` meanwhile."""
         d = math.hypot(to[0] - b.x, to[1] - b.y)
-        node = world.bodies.get(b.mine['node']) if b.mine.get('node') else None
-        far = (b.x, b.y) if state == 'to node' else to          # the leg's end away from the node
+        node = held(world, b.find(interfaces.OreMiner).node)
+        far =(b.x, b.y) if state == 'to node' else to          # the leg's end away from the node
         extra = mine_extra(node, far) if node else 0.0
         if b.mine.pop('spawned', False) and node and state == 'to node':     # from where it faded in
             extra += _by_turn(MINE_SPAWN_EXTRA, _turned_off(node, far))
@@ -124,29 +126,33 @@ class Mining:
         if fr < m['due']:
             return
         st = m['state']
+        om = b.find(interfaces.OreMiner)
         if st == 'locate':
-            node = world.bodies.get(m['node']) if m['node'] else None
+            node = held(world, om.node)
             if node is None or not node.alive:
                 node = min(nodes, key=lambda n: math.hypot(n.x - b.x, n.y - b.y), default=None)
             if node is None:
                 m['due'] = fr + MINE_RETRY
                 return
-            m['node'] = node.name
-            n = self.nodes.setdefault(node.name, {'free': 0, 'gathered': 0, 'at': None})
-            if not self._claimed(world, n, b, node.name):
-                n['claim'] = b.name                 # the first to look for it holds it (round 189)
+            om.head_for(node=node)
+            n = self.nodes.setdefault(node.serial, {'free': 0, 'gathered': 0, 'at': None})
+            if not self._claimed(world, n, b, node):
+                n['claim'] = b                      # the first to look for it holds it (round 189)
             self._leg(world, b, fr, (node.x, node.y), 'to node')
         elif st == 'to node':
             m['leg'] = None
-            n = self.nodes.setdefault(m['node'], {'free': 0, 'gathered': 0, 'at': None})
-            if (n['at'] is not None and n['at'] != b.name and self._docked(world, n['at'], m['node'])) \
-                    or self._claimed(world, n, b, m['node']):
+            if held(world, om.node) is None:        # the node picked has left the world (one made under its name
+                m['state'] = 'locate'               # since is another): it looks again (INFERRED)
+                return
+            n = self.nodes.setdefault(om.node.serial, {'free': 0, 'gathered': 0, 'at': None})
+            if (n['at'] is not None and n['at'] is not b and self._docked(world, n['at'], om.node)) \
+                    or self._claimed(world, n, b, om.node):
                 m['state'], m['due'] = 'stuck', 10 ** 9     # no queue place: it never gets in
                 return
-            n['at'] = b.name
+            n['at'] = b
             m['state'], m['due'] = 'docked', max(fr + 1, n['free'])
         elif st == 'docked':                        # the node's first loading frame
-            n = self.nodes[m['node']]
+            n = self.nodes[om.node.serial]
             # E180 / D165: reserve the batch here, but cargo becomes visible
             # only when loading finishes. See work/re/e180_queuedock_load.md.
             m['pending_load'] = MINE_LOAD if n['gathered'] < MINE_FULL else MINE_EMPTY
@@ -154,7 +160,7 @@ class Mining:
                 n['gathered'] += MINE_LOAD
             m['state'], m['due'] = 'loading', fr + MINE_DOCK - 1
         elif st == 'loading':                       # full on its last loading frame: off the frame after (the trip
-            n = self.nodes[m['node']]               # 2 x 104 + 61 = 269 of engine_mining a)
+            n = self.nodes[om.node.serial]          # 2 x 104 + 61 = 269 of engine_mining a)
             m['load'] = m.pop('pending_load')
             n['at'], n['free'], n['claim'] = None, fr + MINE_REST + 1, None
             m['state'], m['due'] = 'find refinery', fr + 1
@@ -166,7 +172,7 @@ class Mining:
             if r is None:
                 m['due'] = fr + MINE_RETRY
                 return
-            m['ref'] = r.name
+            om.head_for(refinery=r)
             # E164 / D165: selection still finds a refinery lacking QueueDock, but
             # native delivery faults immediately, before moving or paying. Reject
             # this configuration rather than simulating a successful delivery.
@@ -176,19 +182,19 @@ class Mining:
             self._leg(world, b, fr, (r.x, r.y), 'to refinery')
         elif st == 'to refinery':
             m['leg'] = None
-            r = world.bodies.get(m['ref'])
+            r = held(world, om.refinery)            # the one picked, not one made under its name since
             if r is None or not r.alive:
                 m['state'] = 'find refinery'
                 return
             busy = next((o for o in world.living() if o is not b and o.mine and o.mine['state'] == 'unloading'
-                         and o.mine['ref'] == r.name), None)
+                         and o.find(interfaces.OreMiner).refinery is r), None)
             if busy is not None:                    # one at a time: wait for it to finish
                 m['due'] = busy.mine['due'] + MINE_DOCK - busy.mine['n']
                 return
             m['state'], m['n'] = 'unloading', 0
             self._mine(world, b, fr, nodes, pay)
         elif st == 'unloading':                     # money on the arrival frame and the next MINE_DOCK - 1
-            r = world.bodies.get(m['ref'])
+            r = held(world, om.refinery)
             if r is None or not r.alive:
                 m['state'] = 'find refinery'
                 return
@@ -204,20 +210,24 @@ class Mining:
                 m['state'] = 'locate'
 
     def _claimed(self, world, n, b, node):
-        """Whether another miner than `b` holds node `n` (named `node`): it looked for it first and is on its way
+        """Whether another miner than `b` holds node `n` (the thing `node`): it looked for it first and is on its way
         there, docked or loading (bench round 189, checks/engine_mining.py g / mineaway g: the placed collector works,
-        the refinery's own waits for good, whether or not their drives meet)."""
-        o = world.bodies.get(n.get('claim')) if n.get('claim') not in (None, b.name) else None
-        return o is not None and o.alive and o.mine is not None and o.mine['node'] == node \
-            and o.mine['state'] in ('to node', 'docked', 'loading')
+        the refinery's own waits for good, whether or not their drives meet). The claim is the miner itself: one
+        made under its name since holds nothing."""
+        o = held(world, n.get('claim')) if n.get('claim') is not b else None
+        return self._at(o, node, ('to node', 'docked', 'loading'))
 
     def _docked(self, world, miner, node):
-        """Whether `miner` stands docked at (or is being loaded by) `node`."""
-        o = world.bodies.get(miner)
-        return o is not None and o.alive and o.mine is not None and o.mine['node'] == node \
-            and o.mine['state'] in ('docked', 'loading')
+        """Whether `miner` (the thing) stands docked at (or is being loaded by) `node`, the world still holding it."""
+        return self._at(held(world, miner), node, ('docked', 'loading'))
+
+    @staticmethod
+    def _at(o, node, states):
+        return o is not None and o.alive and o.mine is not None and o.find(interfaces.OreMiner).node is node \
+            and o.mine['state'] in states
 
     def _undock(self, b):
-        n = self.nodes.get(b.mine['node']) if b.mine and b.mine['node'] else None
-        if n and n['at'] == b.name:
+        node = b.find(interfaces.OreMiner).node if b.mine else None
+        n = self.nodes.get(node.serial) if node is not None else None
+        if n and n['at'] is b:
             n['at'] = None

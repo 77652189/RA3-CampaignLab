@@ -120,8 +120,10 @@ class Garrisons:
                                     # passengers, the owner before, the listener's upgrades), in the order first put
                                     # into (the cell's order); by the thing, not its name: a thing made under a taken
                                     # name has none of the old one's passengers (step B4c-3, INFERRED)
-        self.where = {}             # passenger name -> building body
-        self.going = {}             # body name -> building body it was sent into (the AI's walk)
+        self.where = {}             # passenger serial -> building body
+        self.going = {}             # serial -> (the body, the building body it was sent into) (the AI's walk); both
+                                    # by the thing picked, not its name (11-19 same-name sweep: a thing made under the
+                                    # name since is neither inside nor on its way, INFERRED)
         self.log = []               # (sim seconds, passenger name, building name, script)
         self.ejecting = {}          # host serial -> [the spot, seconds between, reach, next out at]: by the thing, as
                                     # boxes (B5 review g #1: a thing made under its name since neither drops nor takes
@@ -165,7 +167,7 @@ class Garrisons:
         """u may go into g by the filter and the relation (not the room: the AI's pass does not look at it, aibdpre)."""
         world = self.world
         sp = self.box(g) if g is not None and g.alive else None
-        if sp is None or u.name in self.where or not self.fits(u, sp):
+        if sp is None or u.serial in self.where or not self.fits(u, sp):
             return False
         if self.clears(u, sp):
             return True
@@ -191,14 +193,14 @@ class Garrisons:
     def send(self, u, g):
         peers = self.peers
         if u.alive and g.alive:
-            self.going[u.name] = g
+            self.going[u.serial] = (u, g)
             u.goal = None
             peers.order_move(u, (g.x, g.y), False)
             return True
         return False                        # one of them dead: not sent (the port answers so: review 11-19 k #4)
 
     def busy(self, u):
-        return u.name in self.going or u.name in self.where
+        return u.serial in self.going or u.serial in self.where
 
     # ---- in and out
     def secondary(self, g):
@@ -252,7 +254,7 @@ class Garrisons:
         """u into g now; True when it is inside. script: the script's ..._INSTANTLY (no relation, no room)."""
         world, peers = self.world, self.peers
         sp = self.box(g) if g is not None and g.alive else None     # walked in: a transport asks the room too
-        if sp is None or u is None or not u.alive or u is g or u.name in self.where or not self.fits(u, sp):
+        if sp is None or u is None or not u.alive or u is g or u.serial in self.where or not self.fits(u, sp):
             return False
         box = self.boxes.setdefault(g.serial, self._box(g))
         held = box.passengers()
@@ -270,8 +272,8 @@ class Garrisons:
             box.keep_home(g.owner)
         bits = (sp['status'] | INSIDE_STATUS) - u.script_status
         box.let_in(u, bits)
-        self.where[u.name] = g
-        self.going.pop(u.name, None)
+        self.where[u.serial] = g
+        self.going.pop(u.serial, None)
         self.log.append((world.t, u.name, g.name, script))
         u.x, u.y, u.path, u.goal = g.x, g.y, [], None
         u.script_status |= bits
@@ -286,7 +288,7 @@ class Garrisons:
     def out(self, u):
         """u out of the building it is in (where the building stands, INFERRED)."""
         world, peers = self.world, self.peers
-        g = self.where.pop(u.name, None) if u is not None else None
+        g = self.where.pop(u.serial, None) if u is not None else None
         if g is None:
             return False
         box = self.boxes.get(g.serial)
@@ -395,10 +397,9 @@ class Garrisons:
         """Once a frame: the ones sent in that have got there; a building at or under its REALLYDAMAGED line empties;
         the dead inside are let go of."""
         world, peers = self.world, self.peers
-        for name, g in list(self.going.items()):
-            u = world.bodies.get(name)
-            if u is None or not u.alive or not g.alive:
-                del self.going[name]
+        for key, (u, g) in list(self.going.items()):
+            if not u.alive or not g.alive or world.bodies.get(u.name) is not u:     # dead, or out of the world
+                del self.going[key]
                 continue
             sh = world.blocks(g)
             r = (sh[2] if sh and len(sh) == 3 else 40.0) + ENTER_REACH
@@ -407,7 +408,7 @@ class Garrisons:
                 if not u.path and u.goal is None:
                     peers.order_move(u, (g.x, g.y), False)          # stopped short (a fight): on its way again
                 continue
-            del self.going[name]
+            del self.going[key]
             self.put(u, g)
         for box in list(self.boxes.values()):
             g, held = box.thing, box.passengers()       # the host itself (a thing made under its name since: not it)

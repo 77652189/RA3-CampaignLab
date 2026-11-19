@@ -16,13 +16,25 @@ from engine.kernel import factory, interfaces, module
 @factory.module('OreMinerBehavior')
 class OreMiner(module.Module, interfaces.OreMiner):
     """Its trip, no update of its own (simmine moves it in the mine cell). mine: the trip (the name the body's field
-    had, so the frame record is unchanged)."""
+    had, so the frame record is unchanged). node / refinery: the trip's node and refinery themselves (the trip names
+    them, as the record shows them; the loop goes by these -- 11-19 same-name sweep: a thing made under the name since
+    is not the one picked)."""
     DATA = module.ModuleData
-    STATE = ('mine',)
+    STATE = ('mine', 'node', 'refinery')
+    RECORDED = ('mine',)
     mine = None         # no trip yet (or a move dropped it)
+    node = refinery = None
 
     def trip(self):
         return self.mine
 
     def set_trip(self, trip):
-        self.mine = trip
+        """A new trip (nothing picked yet), or None: dropped."""
+        self.mine, self.node, self.refinery = trip, None, None
+
+    def head_for(self, node=None, refinery=None):
+        """The trip's node, or refinery, picked: kept and named in the trip."""
+        if node is not None:
+            self.node, self.mine['node'] = node, node.name
+        if refinery is not None:
+            self.refinery, self.mine['ref'] = refinery, refinery.name

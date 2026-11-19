@@ -32,11 +32,14 @@ from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 6             # 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
+VERSION = 7             # 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
                         # 4: areas.missing (4.4, 11-19); 5: the queue's events -- a posted command as itself
                         # (command port ORDER), a line's 强制 / 由 P kept in its word group (review 11-19 i #1 #4);
                         # 6: a spy on its way, Infiltrators.going, is the spy's serial -> (spy, target), not its
                         # name -> target (edd381f1; review 1119m #1: a v5 one restored broke the first tick)
+                        # 7: R's same-name sweep -- garrison where / going, a contain's given, the mines' nodes,
+                        # attachments, pack_hold by serial; due, a node's at / claim, Body.attacker, OreMiner's node /
+                        # refinery the things
 
 SIM = {
     # the setup

@@ -754,7 +754,7 @@ def test_attach_parent_death_clears_simple_link_and_preserves_the_child():
     child,parent=e.body('Attach high child'),e.body('Attach high parent')
     assert child.alive and not parent.alive
     assert not child.status & {'ATTACHED','NON_AUTOACQUIRABLE','NO_COLLISIONS'}
-    assert 'Attach high child' not in e.attachments
+    assert e.bodies['Attach high child'].serial not in e.attachments
 
 
 def test_attach_child_death_clears_the_surviving_parents_status():
@@ -771,7 +771,7 @@ def test_attach_child_death_clears_the_surviving_parents_status():
     assert not child.alive and parent.alive
     assert 'VEHICLE_ATTACHED' not in parent.status
     assert 'VEHICLE_ATTACHED' in e.body('Attach base parent').status
-    assert set(e.attachments)=={'Attach base child'}
+    assert set(e.attachments)=={e.bodies['Attach base child'].serial}
     assert (sim.GAP_WEAPON,'AttachNugget') not in e.unmodeled
 
 
@@ -789,7 +789,7 @@ def test_attach_child_delete_clears_the_surviving_parents_status():
     assert child.deleted and not child.alive and parent.alive
     assert 'VEHICLE_ATTACHED' not in parent.status
     assert 'VEHICLE_ATTACHED' in e.body('Attach base parent').status
-    assert set(e.attachments)=={'Attach base child'}
+    assert set(e.attachments)=={e.bodies['Attach base child'].serial}
     assert (sim.GAP_WEAPON,'AttachNugget') not in e.unmodeled
 
 
@@ -807,7 +807,7 @@ def test_attach_parent_delete_clears_the_surviving_childs_status():
     assert child.alive and parent.deleted and not parent.alive
     assert not child.status & {'ATTACHED','ENCLOSED','UNATTACKABLE'}
     assert e.body('Attach base child').status >= {'ATTACHED','ENCLOSED','UNATTACKABLE'}
-    assert set(e.attachments)=={'Attach base child'}
+    assert set(e.attachments)=={e.bodies['Attach base child'].serial}
     assert (sim.GAP_WEAPON,'AttachNugget') not in e.unmodeled
 
 
@@ -851,7 +851,7 @@ def test_attach_move_flag_transient_link_matches_engine_attach_detach_observatio
     expected=(1133111099,1122000199,1122000099,1100000200)
     assert all(tuple(row)==expected for sec,row in rows if sec>=26)
     assert tuple(rows[-1][1])==expected
-    assert set(e.attachments)=={'Attach base child'}
+    assert set(e.attachments)=={e.bodies['Attach base child'].serial}
     child,parent=e.body('Attach high child'),e.body('Attach high parent')
     assert child.alive and parent.alive
     assert not child.status & {'ATTACHED','NON_AUTOACQUIRABLE','NO_COLLISIONS'}

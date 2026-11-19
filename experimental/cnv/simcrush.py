@@ -12,6 +12,6 @@ def eligible(world, member, target, attached):
     b, t = member.body, target.body
     return (b is not t and b.alive and t.alive
             and b.surface == 'ground' and t.surface == 'ground'
-            and not t.scenery and not t.topple and t.name not in attached
+            and not t.scenery and not t.topple and t.serial not in attached
             and b.crusher is not None and t.crushable is not None
             and b.crusher > t.crushable and world.enemy(b.owner, t.owner))

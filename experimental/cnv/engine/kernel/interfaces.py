@@ -84,8 +84,14 @@ class Body(Interface):
         player None -- a script's kill, or never hit; object None -- no object of ours (a run script's hit)."""
         raise NotImplementedError
 
+    def last_attacker(self):
+        """The object of that damage itself (None as last_damage's), whatever has been made under its name since:
+        the game keeps the source's id (11-19 same-name sweep)."""
+        raise NotImplementedError
+
     def set_last_damage(self, player, by=None):
-        """The one write of the last damage: every weapon, superweapon, crush and script hit names its source."""
+        """The one write of the last damage: every weapon, superweapon, crush and script hit names its source (the
+        object that hit, or None)."""
         raise NotImplementedError
 
     def is_indestructible(self):
@@ -437,6 +443,10 @@ class OreMiner(Interface):
         raise NotImplementedError
 
     def set_trip(self, trip):
+        raise NotImplementedError
+
+    def head_for(self, node=None, refinery=None):
+        """The trip's node or refinery picked, kept as the thing (`node` / `refinery`) and named in the trip."""
         raise NotImplementedError
 
 

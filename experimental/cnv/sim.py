@@ -937,9 +937,9 @@ class Sim:
         self.garrison = simgarrison.Garrisons(self, simgarrison.Peers(self))    # GarrisonContain / ContestableGarrisonContain
         self.infiltrators = siminfiltrator.Infiltrators(self, siminfiltrator.Peers(self), self.wallet)
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
-        self.attachments = {}              # child name -> (child, parent, module rule)
+        self.attachments = {}              # child serial -> (child, parent, module rule): by the thing (11-19 sweep)
         self.lift_timers = simunits.LiftTimers()
-        self._attachment_marked = set()
+        self._attachment_marked = {}       # serial -> the thing its attachment status was set on
         self.attachment_known_status = {'ATTACHED'}
         self.suppression_fields = []        # (end, value, x, y, radius): stationary hit contributions
         self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
@@ -1221,14 +1221,14 @@ class Sim:
             return True
         return False
 
-    def reinforce(self, team, waypoint, script):
+    def reinforce(self, team, waypoint, script, at=None):
         """CREATE_REINFORCEMENT_TEAM(team, waypoint): a new instance of the team template (mission.templates:
         {'Owner/name': {'units': [(template, min, max)], 'instances': n}}), every line's MAX count of its template, at
         the waypoint -- made again on every call, teamMaxInstances or not (bench 11-10 engine_reinf two: 3 A + 2 B of
-        a min 2 / max 3, min 1 / max 2 template, a second call 6 / 4 with teamMaxInstances 1). The units stand on a
-        grid of SPREAD round the waypoint (INFERRED: the bench counts them inside 250 of it)."""
+        a min 2 / max 3, min 1 / max 2 template, a second call 6 / 4 with teamMaxInstances 1). On a grid of SPREAD
+        round the waypoint, or `at` (a unit's spot, the caller's pick; INFERRED: the bench counts inside 250 of it)."""
         key = next((k for k in self.templates if same_team(k, team)), None)
-        p = self.point(waypoint)
+        p = at if at is not None else self.point(waypoint)
         if key is None or p is None:
             self.used.add('reinforcement team unknown' if key is None else 'reinforcement waypoint unknown')
             return
@@ -2736,14 +2736,14 @@ class Sim:
                     self.gap(GAP_WEAPON, 'AttachNugget', '仅ENCLOSED/UNATTACKABLE简单模块单端直接删除后的存活另一端状态已量；其他删除清理INFERRED')
                 continue
             child.x, child.y, child.path = parent.x, parent.y, []
-            bits.setdefault(child.name, set()).update(rule['child'])
-            bits.setdefault(parent.name, set()).update(rule['parent'])
-        for name in self._attachment_marked | set(bits):
-            b = self.bodies.get(name)
-            if b and b.attachment_status != bits.get(name, set()):
-                b.attachment_status = bits.get(name, set())
+            bits.setdefault(child.serial, (child, set()))[1].update(rule['child'])
+            bits.setdefault(parent.serial, (parent, set()))[1].update(rule['parent'])
+        for key, b in {**self._attachment_marked, **{k: v[0] for k, v in bits.items()}}.items():
+            want = bits[key][1] if key in bits else set()
+            if self.bodies.get(b.name) is b and b.attachment_status != want:
+                b.attachment_status = want
                 self.modify(b)
-        self._attachment_marked = set(bits)
+        self._attachment_marked = {k: v[0] for k, v in bits.items()}
 
     def suppression_tick(self):
         """simdamage.suppression_tick (L3): after the bodies' modules sampled (engine/modules/suppression.py, step
@@ -2868,26 +2868,26 @@ class Sim:
         if getattr(b, 'unpack_here', False):    # order_unpack here=True: the structure where b stands (D157)
             x, y = b.x, b.y
         got = self.frame_now() + (math.ceil(round(walked / b.speed * simunits.LIFE_FPS, 6)) if walked else 0)
-        self.due.append((got + (REPLACE_FRAMES if b.replace else 1), structure, b.owner, b.team, x, y, b.name))
+        self.due.append((got + (REPLACE_FRAMES if b.replace else 1), structure, b.owner, b.team, x, y, b))
         b.building, b.path, b.dest = None, [], None
         self.note('技能', f'{self.label(b)} 到位，造 {structure}')
         return True
 
     def build_due(self, frame):
-        """The structures builders put down by `frame` (at_site)."""
+        """The structures builders (the things that got there) put down by `frame` (at_site); a replaced one gone."""
         for d in [d for d in self.due if d[0] <= frame]:
-            self.due.remove(d)
-            _, structure, owner, team, x, y, by = d
-            was = self.bodies.get(by)
-            if was is not None and was.replace:     # engine_unpack: the replacement takes its name and health share
-                if not was.alive:
+            del self.due[next(i for i, e in enumerate(self.due) if e is d)]
+            _, structure, owner, team, x, y, was = d
+            by = was.name
+            if was.replace:                         # engine_unpack: the replacement takes its name and health share
+                if not was.alive or self.bodies.get(by) is not was:
                     continue
                 share = was.hp / was.max_hp if was.max_hp else 1.0
                 self.delete(was, f'展开成 {structure}')
                 self.bodies[f'#packed {len(self.bodies)} {by}'] = self.bodies.pop(by)
                 n = self.add(by, structure, owner, was.x, was.y, by=by, at=self.t)
                 n.set_hp(n.max_hp * share, tell=False)
-                hold = self.__dict__.get('pack_hold', {}).pop(by, 0)
+                hold = self.__dict__.get('pack_hold', {}).pop(was.serial, 0)
                 if hold:                    # DISABLE_NEW_OBJECT_DURING_UNPACK: stands still (engine_pack), as EMP'd
                     self.__dict__.setdefault('emp_until', {})[n.serial] = self.frame_now() + hold
             else:
@@ -2957,7 +2957,7 @@ class Sim:
         pool = self._crushable_pool
         if pool is None:                        # once a tick: the crushable ones, as arrays (a big map's tanks all drive)
             low = [o for o in self.living() if o.crushable is not None and not o.scenery and not o.topple
-                   and o.surface == 'ground' and o.name not in self.attachments]
+                   and o.surface == 'ground' and o.serial not in self.attachments]
             pool = self._crushable_pool = (low, np.array([o.x for o in low]), np.array([o.y for o in low]),
                                            np.array([o.radius for o in low]), np.array([o.crushable for o in low]))
         low, ox, oy, orad, olevel = pool
@@ -2970,7 +2970,7 @@ class Sim:
             if o is b or not o.alive or not self.enemy(b.owner, o.owner):
                 continue
             self.used.add('crush')
-            o.set_last_damage(b.owner, b.name)
+            o.set_last_damage(b.owner, b)
             self.destroy(o, f'被 {self.label(b)} 压死', death='CRUSHED')    # lies its SlowDeath out (B5a)
 
     _crushable_pool = None
@@ -2987,7 +2987,7 @@ class Sim:
             if hold is not None and self.frame_now() < hold + (simunits.KNOCK_ATTACK_WAIT
                                                                if isinstance(b.goal, Body) else 0):
                 continue
-            if 'ATTACHED' in b.status and b.name in self.attachments:
+            if 'ATTACHED' in b.status and b.serial in self.attachments:
                 continue
             if isinstance(b.goal, Body):
                 g = b.goal

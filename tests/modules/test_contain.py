@@ -117,11 +117,11 @@ def test_a_thing_under_a_taken_name_has_none_of_the_old_ones_passengers(end):
     s.garrison.due()                                # it rides with its own host, not the tank
     assert (gi.x, gi.y) == (300.0, 300.0)
     getattr(s, end)(tank, 'test')
-    assert gi.alive and s.garrison.where.get('gi') is house and s.garrison.held(house) == [gi]
+    assert gi.alive and s.garrison.where.get(gi.serial) is house and s.garrison.held(house) == [gi]
     s.garrison.due()
-    assert gi.alive and s.garrison.where.get('gi') is house and (gi.x, gi.y) == (300.0, 300.0)
+    assert gi.alive and s.garrison.where.get(gi.serial) is house and (gi.x, gi.y) == (300.0, 300.0)
     getattr(s, end)(house, 'test')
-    assert 'gi' not in s.garrison.where and s.garrison.held(house) == [] and gi.alive == (end == 'destroy')
+    assert gi.serial not in s.garrison.where and s.garrison.held(house) == [] and gi.alive == (end == 'destroy')
 
 
 @pytest.mark.parametrize('filled', [False, True])

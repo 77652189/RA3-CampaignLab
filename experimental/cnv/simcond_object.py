@@ -8,7 +8,15 @@ import math
 
 from simscript import CMP
 from simstatus import ACTED_STATUS
-from simworld import GAP_CONDITION, inside
+from simworld import GAP_CONDITION, held, inside
+from engine.kernel import interfaces
+
+
+def attacker(sim, b):
+    """The object that hit b last, itself (its Body module's last_attacker: not whatever has been made under its
+    name since -- 11-19 same-name sweep), while the world holds it (simworld.held), else None."""
+    m = b.find(interfaces.Body) if b.modules else None
+    return held(sim, m.last_attacker() if m is not None else None)
 
 
 def named_destroyed(sim, name, a):
@@ -72,7 +80,7 @@ def named_attacked_by_player(sim, name, a):
         return False
     if b.last_by is None:               # a hit a run script made up (打 / 摧毁): taken as the player's, standing
         return b.last_hit == a[1]
-    by = sim.bodies.get(b.last_by)
+    by = attacker(sim, b)
     return bool(sim.present(by) and by.owner == a[1])
 
 
@@ -127,7 +135,7 @@ def named_exited_area(sim, name, a):
 def named_attacked_by_objecttype(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
     b = sim.body(a[0])
-    by = sim.bodies.get(b.last_by) if sim.present(b) and b.last_by is not None else None
+    by = attacker(sim, b) if sim.present(b) and b.last_by is not None else None
     return bool(by is not None and by.template.lower() in sim.of_types(a[1]))
 
 

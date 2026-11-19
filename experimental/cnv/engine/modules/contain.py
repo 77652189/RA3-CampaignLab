@@ -67,7 +67,7 @@ class Garrison(module.Module, interfaces.Die, interfaces.Destroy, interfaces.Con
     STATE = ('held', 'given', 'before', 'boost')
     RECORDED = ()       # a store's before M14, never in the frame record
     held = None         # [passenger things], in the order they came in (made on the first)
-    given = None        # passenger name -> the status bits this gave it
+    given = None        # passenger serial -> the status bits this gave it (by the thing: 11-19 same-name sweep)
     before = ()         # (the owner before the first passenger,); (): none kept (an owner may be None: neutral)
     boost = frozenset()  # the upgrades a single passenger granted through the listener
 
@@ -81,13 +81,13 @@ class Garrison(module.Module, interfaces.Die, interfaces.Destroy, interfaces.Con
 
     def let_in(self, thing, bits):
         self.passengers().append(thing)
-        self.given[thing.name] = bits
+        self.given[thing.serial] = bits
 
     def let_out(self, thing):
         held = self.passengers()
         if thing in held:
             held.remove(thing)
-        return self.given.pop(thing.name, frozenset())
+        return self.given.pop(thing.serial, frozenset())
 
     def home(self):
         """(the owner kept,), () none."""

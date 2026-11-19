@@ -672,7 +672,7 @@ def test_the_ais_enter_into_a_dead_building_is_refused():
     assert s.commands.do(enter)[0] is False and s.garrison.going == {}
     assert s.commands.issued()[-1][2] is False
     hut.alive = True
-    assert s.commands.do(enter) == (True, '') and s.garrison.going == {'eng': hut}
+    assert s.commands.do(enter) == (True, '') and s.garrison.going == {eng.serial: (eng, hut)}
 
 
 def test_the_players_power_is_cast_by_the_object_he_picked_not_a_reference_of_its_name():

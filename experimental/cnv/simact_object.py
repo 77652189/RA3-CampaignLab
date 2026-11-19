@@ -65,7 +65,7 @@ def team_garrison_team_instantly(sim, name, a, script):
     free = not (len(a) > 2 and not int(a[2]))
     k = 0
     for m in sim.members(a[0]):
-        if m.name in sim.garrison.where or not boxes:
+        if m.serial in sim.garrison.where or not boxes:
             continue
         for _ in range(len(boxes)):
             g = boxes[k % len(boxes)]
@@ -217,14 +217,15 @@ def named_garrison_specific_building(sim, name, a, script):
     if b and g and 'INFILTRATOR' in b.kinds and sim.infiltrators.spec(g) is not None:
         sim.infiltrators.send(b, g)
     elif b and g and simunits.engineer_contain(g.template, sim.own) is not None:
-        sim.order_capture(b, a[1])
+        sim.order_capture(b, g)         # the building looked at above, not its name read again (same-name sweep)
     elif b and g and sim.garrison.spec(g) is not None:      # walks to it, in if it may (simgarrison; INFERRED)
         sim.garrison.send(b, g)
     elif b and g:
         # a transport: walked to only. The team's version goes in (bench engine_acts_tel); this one too in the
         # game, but s01's intro then needs CONTAINER_OCCUPIED, the eject and the flyby's relation, not modelled
-        # (Natasha would ride a Bullfrog the simulator lets die) -- round 213 handoff
-        sim.send(b, a[1])
+        # (Natasha would ride a Bullfrog the simulator lets die) -- round 213 handoff. To where that one stands
+        # (11-19 same-name sweep: not the name read again as a point -- a waypoint or the body table's thing)
+        sim.send(b, (g.x, g.y))
 
 
 def team_garrison_nearest_building(sim, name, a, script):

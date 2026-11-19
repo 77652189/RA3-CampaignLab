@@ -314,7 +314,7 @@ def idle(peers, b):
     no living target, no path, not firing at the ground, not running off."""
     return not b.path and not (isinstance(b.goal, type(b)) and b.goal.alive) and not b.follow \
         and not getattr(b, 'ground_fire', None) and not getattr(b, 'flee', None) \
-        and b.name not in peers.garrison.going
+        and b.serial not in peers.garrison.going
 
 
 def seq_due(world, peers):

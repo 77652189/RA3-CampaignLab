@@ -89,8 +89,8 @@ def named_buttons(sim, name, a, script, unit=None):
         _, into = simunits.replace_self(b.template, a[1], sim.own)
         sim.used.add('unpack')
         b.replace = True
-        sim.__dict__.setdefault('pack_hold', {})[b.name] = simunits.replace_unpack_frames(b.template, a[1], sim.own)
-        sim.due.append((sim.frame_now() + PACK_FRAMES, into, b.owner, b.team, b.x, b.y, b.name))
+        sim.__dict__.setdefault('pack_hold', {})[b.serial] = simunits.replace_unpack_frames(b.template, a[1], sim.own)
+        sim.due.append((sim.frame_now() + PACK_FRAMES, into, b.owner, b.team, b.x, b.y, b))   # by the thing (sweep)
         sim.note('技能', f'{sim.label(b)} 收起成 {into}')
         sim.build_due(sim.frame_now())        # the press frame's later scripts already see the MCV
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and \
