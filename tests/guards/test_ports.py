@@ -122,7 +122,8 @@ EXEMPT = [
     (CNV / 'graybox_cards.py', 'main', '命令行：造局'),
     (CNV / 'simbench.py', 'play', '造局、摆路点（derrick 的 Derrick k），返回 Observe'),
     (CNV / 'simchecks.py', 'play', '造局，返回 Observe'),
-    (GAME, None, 'Session 下令、跑 tick、跳阶段（驱动，有命令端口后归它）；读者是 Play / Picture / phase_flags / key_times'),
+    (GAME, None, 'Session 跑 tick、跳阶段（驱动；下令经命令端口，GIVER_PARTS 守）；replay 给新的一局喂回放记录；'
+                 '读者是 Play / Picture / phase_flags / key_times'),
     (PLAYCHECK, 'read', '造局，返回 Observe'),
     (PLAYCHECK, 'Compiler.play', '只用 sim.parse_script 解析打法的写法'),
     (MAPPAGE, 'simulate', '造局，返回 Observe'),
@@ -400,9 +401,25 @@ def giver_breaks(src, harness):
     return out
 
 
+# Givers that are one class of a bigger file (R3 13c): simui's Session -- the page's clicks and typed lines are posted
+# through the port, a stage jump's hand-over drops the queue through it (game.replay, the harness, feeds a fresh run).
+GIVER_PARTS = [(GAME, 'Session')]
+
+
 def test_the_givers_give_through_the_command_port():
     for f in GIVERS:
         assert giver_breaks(f.read_text(encoding='utf-8'), harness(f)) == [], f.name
+    for path, name in GIVER_PARTS:
+        assert giver_breaks(part_src(path, name), set()) == [], (path.name, name)
+
+
+def test_planted_orders_in_a_giver_part_are_found():
+    src = part_src(GAME, 'Session')
+    for old, new in (('self.commands.drop_pending()', 's.events.clear()'),
+                     ('got = self.commands.post_line(text)', 'got = sim.parse_script(text)'),
+                     ('self.commands.post(cmd, s.t)', 'self.s.order_move(cmd, cmd.place, True)')):
+        planted = src.replace(old, new)
+        assert planted != src and giver_breaks(planted, set())
 
 
 def test_planted_orders_round_the_port_are_found():

@@ -35,6 +35,10 @@ GIVERS = ('player', 'ai', 'script', 'proxy', 'test')     # `by`: 'player', 'ai:<
 DATA = (str, int, float, bool, type(None))
 
 
+class RunSwitch(ValueError):
+    """A script line that is a run switch (自动打掉 / 不打 / 高地不挡): it sets a run up, it is not queued."""
+
+
 def _data(v):
     return isinstance(v, DATA) or (isinstance(v, tuple) and all(_data(x) for x in v))
 
@@ -146,14 +150,23 @@ class Commands:
         return ok, why
 
     def post_line(self, line):
-        """Queue a script line as it is (`<time> <verb> ...`; a time may be `<flag>+<secs>`)."""
+        """Queue a script line as it is (`<time> <verb> ...`; a time may be `<flag>+<secs>`): the events queued. A line
+        that does not read raises parse_script's ValueError; a run switch RunSwitch (it is given at the start only)."""
+        out = []
         for e in sys.modules[type(self._w).__module__].parse_script(line):
             if e[0] is None:
-                raise ValueError(f'{line!r}: a run switch, not a line to queue')
+                raise RunSwitch(f'{line!r}: a run switch, not a line to queue')
             self._queue(e)
+            out.append(e)
             cmd = command(e, 'player')
             if cmd is not None:
                 self._issued.append((self._w.frame_now(), cmd, True, 'posted'))
+        return tuple(out)
+
+    def drop_pending(self):
+        """Drop every queued command still to come (a play script handing the run over to the player)."""
+        self._w.events.clear()
+        self._w.anchored.clear()
 
     def _queue(self, e):
         w = self._w

@@ -10,6 +10,7 @@ import pytest
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import sim  # noqa: E402
 import simsmall  # noqa: E402
+from engine.ports import command as command_port  # noqa: E402
 from engine.ports.command import Command, Commands, ROUTED, command, event, text  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 
@@ -69,6 +70,19 @@ def test_post_queues_as_the_line_and_pending_keeps_the_order():
     assert port.pending() == (sim.parse_script('3 造 tank 在 inside 1')[0], event(LINES[0], 9.0),
                               event(LINES[2], 9.0), event(LINES[1], ('@', 'go', 2.0)))
     assert [r[1].kind for r in port.issued()] == ['attack_move', 'move', 'attack']     # the 造 line is no command
+    port.drop_pending()                                     # a play handing the run over: nothing still to come
+    assert port.pending() == () and not s.events and not s.anchored
+
+
+def test_post_line_gives_what_it_queued_and_refuses_a_run_switch():
+    s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)], model=False)
+    port = Commands(s)
+    assert port.post_line('4 走 a 去 @10,10') == tuple(sim.parse_script('4 走 a 去 @10,10'))
+    with pytest.raises(command_port.RunSwitch):
+        port.post_line('不打')
+    with pytest.raises(ValueError):
+        port.post_line('4 乱写 a')
+    assert port.pending() == tuple(sim.parse_script('4 走 a 去 @10,10'))
 
 
 def _pair():

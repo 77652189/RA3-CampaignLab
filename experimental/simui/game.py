@@ -3,9 +3,10 @@ r"""The playable simulator's back end (ADR 0024): a level's simulated run that a
 It changes no rule. A run is sim.Sim with the presentation records (simshow.Show) and the page's own (`Play`) hung on
 the observation port's taps -- the dubbed lines' sound keys, and every script event as it happens (the replay
 record) -- and the player's
-orders are *script events*: a click becomes the tuple sim.parse_script makes of a play script's line (走 / 派 / 攻击 /
-放 / 占领 / 生产; a click on the ground is the place '@x,y', model.coord), put on Sim.events at the current tick, so
-Sim.happen carries it out exactly as it carries out plays/<level>.txt. `Session.tick` is Sim.run's loop body (step, the
+orders go through the command port (engine/ports/command.py): a click becomes a Command (走 / 派 / 攻击 / 放 / 占领 /
+生产 -> move / attack_move / attack / power / capture / build; a click on the ground is the place '@x,y', model.coord)
+posted at the current tick -- the script event of its play script line, so Sim.happen carries it out exactly as it
+carries out plays/<level>.txt; a typed line is posted as it is (Commands.post_line). `Session.tick` is Sim.run's loop body (step, the
 whole second's sample, t + DT) without the quiet stop: a level the player is still playing does not end because
 nothing moved for two minutes.
 
@@ -32,6 +33,8 @@ import maprender  # noqa: E402  (experimental/campaign: the map pictures' orient
 import sim  # noqa: E402
 import simshow  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402  (key_times reads a finished run through it)
+from engine.ports import command as command_port  # noqa: E402  (the page's orders go through it)
+from engine.ports.command import Command, Commands  # noqa: E402
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
 import labpaths  # noqa: E402
 
@@ -332,6 +335,7 @@ class Session:
         with self.lock:
             self.s, self.show, self.rec = play_sim(self.mission, self.test, self.difficulty, script)
             self.obs = self.show.obs
+            self.commands = Commands(self.s)            # the player's orders go through the command port
             self.picture = Picture(self.obs, self.show, self.rec, sim.mmss)
             self.run = getattr(self, 'run', 0) + 1      # a new run (restart, stage jump): the page drops its voice
             self.stages = phase_flags(self.obs.model())
@@ -383,37 +387,33 @@ class Session:
             where = c.get('to')
             if isinstance(where, (list, tuple)):
                 where = at(*where)
-            evs = []
+            cmds = []
             if verb in ('派', '走'):
-                evs = [(verb, n, where) for n in names if s.bodies[n].speed > 0]
-            elif verb == '攻击':
-                evs = [('攻击', n, c['target']) for n in names] if c.get('target') in s.bodies else []
+                kind = 'attack_move' if verb == '派' else 'move'
+                cmds = [Command(kind, units=(n,), place=where) for n in names if s.bodies[n].speed > 0]
+            elif verb in ('攻击', '占领'):
+                kind = 'attack' if verb == '攻击' else 'capture'
+                cmds = [Command(kind, units=(n,), target=c['target']) for n in names] \
+                    if c.get('target') in s.bodies else []
             elif verb == '放':
-                evs = [('放', n, c['ability'], where) for n in names]
-            elif verb == '占领':
-                evs = [('占领', n, c['target']) for n in names] if c.get('target') in s.bodies else []
+                cmds = [Command('power', units=(n,), power=c['ability'], place=where) for n in names]
             elif verb == '生产':
                 f = s.bodies.get(c.get('factory', ''))
                 if f is None or f.owner != s.human:
                     return self._refuse('没有这个工厂')
-                evs = [('生产', c['template'], f.name)]
+                cmds = [Command('build', template=c['template'], target=f.name)]
             else:
                 return self._refuse(f'不认识的命令 {verb}')
-            if not evs:
+            if not cmds:
                 return self._refuse('没有能执行这个命令的单位')
-            for e in evs:
-                self._put((s.t,) + e)
+            for cmd in cmds:                        # queued at this tick: run by the events cell as its script line
+                self.commands.post(cmd, s.t)
+                self.orders.append((s.t, command_port.event(cmd, s.t)))
             return True, ''
 
     def _refuse(self, why):
         self.refused.append((self.s.t, why))
         return False, why
-
-    def _put(self, e):
-        s = self.s
-        s.events.append(e)
-        s.events.sort(key=lambda x: x[0])
-        self.orders.append((s.t, e))
 
     def _line(self, text):
         """A play script's line: 't verb ...' (t: seconds, m:ss, '<flag>+<delta>' or 'now')."""
@@ -421,16 +421,12 @@ class Session:
         if text.startswith('now '):
             text = f'{self.s.t} {text[4:]}'
         try:
-            got = sim.parse_script(text)
+            got = self.commands.post_line(text)
+        except command_port.RunSwitch:
+            return self._refuse('全局开关（自动打掉、不打、高地不挡）只能在开局给')
         except ValueError as err:
             return self._refuse(str(err))
-        for e in got:
-            if isinstance(e[0], tuple):
-                self.s.anchored.append(e)
-            elif e[0] is None:
-                return self._refuse('全局开关（自动打掉、不打、高地不挡）只能在开局给')
-            else:
-                self._put(e)
+        self.orders += [(self.s.t, e) for e in got if not isinstance(e[0], tuple)]
         return True, ''
 
     # ---- saving time ------------------------------------------------------------------------------------------
@@ -469,10 +465,9 @@ class Session:
             return s.input and not self.show.state_at(self.show.bars, s.t)
         if kind == 'flag':
             if s.flags.get(v) == 1:
-                s.events.clear()                    # the play script hands over: its orders still to come are dropped
-                s.anchored.clear()
+                self.commands.drop_pending()        # the play script hands over: its orders still to come are dropped
                 return True
-            if not s.events and not s.anchored and not s.pending() and s.t - s.last_change >= sim.QUIET:
+            if not self.commands.pending() and not s.pending() and s.t - s.last_change >= sim.QUIET:
                 self.refused.append((s.t, f'全程脚本没打到 {v}，停在这里交给玩家'))
                 return True
         return False
