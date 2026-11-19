@@ -6,10 +6,10 @@
 
 | 东西 | 是什么 | 持有什么 | 不许 |
 |---|---|---|---|
-| 物体（`Thing`） | 地图上的一个对象：身份、归属、位置，加一串模块实例 | 名字、模板、玩家、队伍、坐标、朝向、生死；**黑板**：状态位、模型状态、升级位（多个模块读写的公共事实，按引擎的做法放物体上） | 存某个部件的状态（回血计时、弹仓、命令目标都在各自模块里） |
+| 物体（`sim.Body`） | 地图上的一个对象，继承提供模块集合和按接口查询的 `Thing` | 名字、模板、玩家、队伍、坐标、朝向、生死和黑板（状态位、模型状态、升级位） | 存已迁移部件的私有状态（如回血计时） |
 | 模块（`Module`） | 一个 XML 模块标签的运行时实例，一个物体身上可有多个 | 自己的状态；指向自己数据对象和所属物体 | 读写别的模块的字段；模块级（文件级）可变变量 |
 | 模块数据（`ModuleData`） | 同一模板同一标签的解析结果，同模板的物体共用 | 从 XML 读好的数值（帧数、百分比、条件……） | 运行时状态（它是只读的） |
-| 世界（`World`） | 一局游戏：全部物体、调度器、玩家系统、随机数、审计、缺口、本局的缓存 | 这一局的**全部**可变状态 | 被别的世界看见；一个进程可以同时有几个世界（0032 第 6 条，多战场） |
+| 世界（`World`） | `Sim` 持有的内核世界；整局状态归 `Sim` 及其持有对象 | 调度、模板块与模块数据缓存、审计、缺口、当前调度帧 | 与别局共享可变状态（0032 第 6 条，多战场） |
 
 ## 2. 模块的固定接口
 
@@ -17,40 +17,40 @@
 
 | 接口 | 方法（语义） | 谁实现（例） |
 |---|---|---|
-| 更新 `Update` | `update(frame)` → 下次多少帧后再醒（至少 1）；返回"睡死"就一直睡到别人唤醒。类上写 `PHASE`（在帧序哪一格跑，见 §4）和被禁用时还跑不跑 | 回血、寿命、开关、生产、采矿、压制、特殊能力…… |
-| 血量 `Body` | 一个物体只有一个：`attempt_damage(info)`、`attempt_healing(info)`（扣血、加血的唯一入口）、`health` / `max_health`、受伤状态（完好 / 受损 / 严重受损）；**血量只由它写** | ActiveBody、StructureBody、ImmortalBody、PropBody…… |
-| 受伤 `Damage` | `on_damaged(info)`、`on_healed(info)`、`on_damage_state(old, new)`：血量模块改完血后广播给本物体所有实现者 | 回血（受伤推迟、唤醒）、受击反应、压制 |
-| 死亡 `Die` | `on_die(info)`；按 XML 的死亡类型、等级、必需 / 排除状态判定这一个死亡模块管不管（引擎的死亡判定混入） | DestroyDie、SlowDeathBehavior、CreateObjectDie、FireWeaponWhenDeadBehavior…… |
-| 移除 `Destroy` | `on_destroy()`：物体从世界移除那一刻，每个实现者收到一次 | 子体、附着、容器放人 |
-| 创建 `Create` | `on_create(frame)`（`World.build` 造完模块后调，给出物体造出来那一帧）、`on_build_complete()` | 寿命（算死亡帧）、造出来就生效的状态位、等级、子体 |
+| 更新 `Update` | `update(frame)` → 下次多少帧后再醒（至少 1）；返回 `SLEEP` 就等唤醒。`PHASE` 选格（§4）；`RUNS_DISABLED` 预留，禁用门控由各模块按需处理 | 回血、寿命、开关、采矿、压制、特殊能力…… |
+| 血量 `Body` | 每物体至多一个：`attempt_damage(amount)`、`attempt_healing(amount)`、`health()` / `max_health()`；血量统一经 `set_health` 写，受伤分档接口预留 | ActiveBody、StructureBody、ImmortalBody、PropBody…… |
+| 受伤 `Damage` | 写血后，血量下降广播 `on_damaged(旧 HP)`，其余情况广播 `on_healed(旧 HP)`；`on_damage_state` 预留 | 回血（受伤推迟、唤醒）；压制在 `suppression` 格采样 |
+| 死亡 `Die` | `on_die(info)` 预留；现行死亡逻辑见 `simbody.Life.kill` | 子体、容器、死亡武器等由宿主处理 |
+| 移除 `Destroy` | `on_destroy()` 预留；现行移除逻辑见 `simbody.Life.delete` | 子体、附着和容器清理由宿主处理 |
+| 创建 `Create` | `World.build` 调 `on_create(frame)`；`World.attach` 跳过创建回调，`on_build_complete()` 尚未接线 | 寿命（算死亡帧）、初始状态、等级、子体 |
 | 升级 `Upgrade` | 按 XML 的触发 / 冲突 / 必需升级判定是否生效；`on_upgrade()` / `on_remove()` | StatusBitsUpgrade、各种 Upgrade、升级触发的回血 |
-| 容器 `Contain` | `can_take(obj)`、`take(obj)`、`release(obj)`、`members()`、`on_container_died()` | 驻军、运输、渗透 |
-| 碰撞 `Collide` | `on_collide(other)` | 碾压、捡箱子 |
-| 生产 `Production` | 排队、进度、取消、出口 | ProductionUpdate、停机坪 |
+| 容器 `Contain` | `interfaces.Contain` 提供乘员、原归属和升级状态接口；进出条件与死亡清理由 `Garrisons` 处理 | 驻军、运输；渗透走 `Infiltrate` |
+| 碰撞 `Collide` | `on_collide(other)` 预留 | 碾压用 `Crush` 模块数据，规则见 `simcrush` |
+| 生产 `Production` | 排队、进度、取消、出口接口预留 | 现行生产流程在 `Sim` |
 | 特殊能力 `SpecialPower` | `power()`、`ready_at()`、`set_ready_at(frame)`（M8：冷却在模块上，一个物体可以有好几个）、`cast(target)`（以后） | SpecialPower 一族（15 个 SpecialPowerModule 标签） |
-| 移动和命令 `AIUpdate` | 命令状态机（移动、攻击、警戒、跟随……）+ 移动的物理（Locomotor） | 每个能动的物体一个 |
+| 移动和命令 `AIUpdate` | 命令状态机和移动接口预留 | 当前命令见 `simorder` |
 
-上表是核心接口；引擎还有一批专项接口（出口、停靠、弹体、子体 / 被奴役者、被卖通知、跑出地图……），搬到那一族时再加进 `interfaces.py`（`FAMILY`），不预先建。已加：寿命 `Lifetime`（M1，一个物体至多一个：`die_frame()` / `set_die_frame(frame)`）；倒塌 `Topple`（M2，一个物体至多一个：`is_toppled()` / `gone_frame()` / `knock(frame, speed)` / `fall_where_it_stands(frame)`；模块删掉自己的物体走 `World.remove`）；碾压 `Crush`（M3，CrusherInfo，只有数据：`crusher_level()` / `crushable_level()`；谁压谁还在移动里）；自动存钱 `Deposit`（M4，AutoDepositUpdate：`rules()` / `next_frame()` / `capture(frame)` 返回占领奖金并重设钟；付钱走 `World.pay`，宿主不给中立方）；开关 `Toggle`（M5，ToggleStatusSpecialAbilityUpdate，一个物体可以有几个、按块的顺序：`rules()` / `state()` / `entered()` / `press(frame)`，有 UnpackTime 的按下在 toggles 格到点再切；切到新状态后经 `World.toggled` 告诉宿主重设状态位、修改器和 LocomotorSet 速度，等修改器和移动族自己读接口时去掉这个钩子。模块数据在模块造出来之前就要读的（`Sim.add` 先放第一状态的状态位再挑武器）用 `World.data_of(模板, 标签)`，和模块拿到的是同一份解析。几个同族模块的状态在逐帧记录里合成一个字段（`toggle_at`），所以它的 `STATE` 不列字段，快照（步骤 S）时再定）；压制 `Suppression`（M6，SuppressionUpdate，一个物体至多一个：`rules()` / `hits()` / `is_suppressed()` / `until()` / `next_sample()`；每帧问宿主盖住它的压制场 `World.suppression_at`（场由武器族的 SuppressionNugget 留下，宿主存），按出生相位每 UpdateDelay 采样一次，进出压制经 `World.modify` 让宿主重读修改器；模板里 `xai:joinAction="Remove"` 的块由端口去掉，继承来的模块就没了）；子体 `Spawn` / 被奴役者 `Slaved` / 附着 `Attach`（M7：SpawnBehavior 一个物体可以有几个，`module_id()` / `child()` / `unpack_child()` / `children()` / `refills()` / `adopt()` / `child_died(template, frame)` / `parent_died()`，补充排队后睡到到点在 spawn 格经 `World.spawn` 让宿主造；SlavedUpdate 一个物体至多一个，记谁造了它，`enslave` / `slaver()` / `slaver_module()` / `spawner()`，子体模板没有 SlavedUpdate 时宿主用 `World.attach` 补一个；AttachUpdate 只有数据，`module_id()` / `rule()`；SpawnBehavior 的 Remove 块端口照旧保留（`simunits.REMOVE_KEPT`，读成没建模的子体、记缺口）。几个同族模块的状态经 Body 的转发合成旧字段，`STATE` 不列）；采矿 `OreMiner`（M9，OreMinerBehavior，一个物体至多一个，只存这一趟：`trip()` / `set_trip(trip)`；谁算矿车从 KindOf HARVESTER 改成"有这个模块"，原版和全部任务自带模板上两者一致；矿车之间抢矿井、矿场排队的循环还在 `simmine` 的 mine 格里，等矿井也成模块再搬；DeliveryCapacity 和苏联 / 帝国矿车追加的 ObjectStatusValidation 照旧不读）；展开 `Unpack`（M10，StructureUnpackUpdate，一个物体至多一个，只存展开结束帧：`frames()` / `end_frame()` / `set_end(frame)`；按电力系数拉长的算法在宿主 `Sim.add`；UnpackTime 的 `=$定义` 由端口按"所问模板自己的文件 + GlobalDefines"展开（`simunits.EXPANDED`，旧读法如此，继承自别的文件的读成 0））；卖楼 `Sell`（M10，StructureSellUpdate，一个物体至多一个：`gone_frame()` / `start_sale(frame)`；退款、SOLD 仍在 `simbody.Life.sell`，到 SellTime 在 expire 格经 `World.remove` 删掉）；冷冻 `Freeze`（M11，SecondaryDamageTracker，一个物体至多一个：`rules()` / `held()` / `stage()` / `add(amount)` / `melt(dt)` 返回档位变没变；没有自己的更新格，冷冻光束累计和每帧消散仍由宿主 `simdamage.chill` 按原顺序驱动，档位变了由宿主重读修改器、DIE_ON_ENTER 由宿主杀；冻住时换的护甲 ArmorSet 不属于这个模块，留在 `simunits.frozen_armor`）；升级等级 `LevelUp`（M12，LevelUpUpgrade，一个物体可以有几个、按块的顺序：`module_id()` / `rules()` / `active()` / `set_active(on)`，只存"有没有生效"；升级到达时的算法（等级表、老兵升级、精英血量）仍在 `simlevel.receive`，由宿主给升级时调；不走内核的 Upgrade 广播——那个在 modify 时才动，不在给升级的那一刻；等级 `level_rank` 留在物体上：引擎里经验等级是 Object 的 ExperienceTracker，不属于哪个模块）；光环 `Aura`（M12，AttributeModifierAuraUpdate，一个物体可以有几个：`rules()` / `last_beat()` / `pulse(frame)` 问这一刻该不该刷新并推进节拍；挂到谁身上、挂多久、重读修改器仍在宿主 `simmodifier.aura_tick`；端口照旧读法只读模板自己那份 XML（`simunits.SELF_ONLY`）；挂在物体身上的修改器 `auras_on` 和修改器之前的原值 `base` 留在物体上：引擎里修改器表是 Object 自己的，`base` 是宿主 modify 的缓存，移动和武器族搬走后自然消失）；维修 `Repair`（M13，RepairUpdate：`rules()` / `measured()` / `job()` / `set_job(job)` / `refused()` / `refuse()`，只存规则、进行中的维修和"这局拒修"；谁能修（AI 难度门、低资金门）、扣钱、回血的循环仍是宿主 `simrepair.Repairs` 的 repairs 格；原版建筑的 RepairUpdate 写在 `Includes/GenericBuildingRepair.xml` 里，端口对这个标签展开 include（`simunits.INCLUDED`，旧读法如此））；指派 `Assign`（M13，AssignSlavesTargetObjectSpecialPower，同时是 `SpecialPower`：`plain()` / `target()` / `assign(target, rate)`；按下、挑目标、治疗量仍在宿主 `simassign.Assignments.press`，派出后在 assignments 格由模块自己每帧回血、修满或任何一方变了就停，这一格只剩模块）；容器 `Contain`（M14，核心接口，GarrisonContain / ContestableGarrisonContain / TransportContain 各一个类：`rules()` / `passengers()` / `let_in(thing, bits)` / `let_out(thing)` / `home()` / `keep_home(owner)` / `give_home()` / `granted()` / `set_granted(upgrades)`，只存乘员、给每个乘员加的状态位、第一个人进来前的主人、单个乘员经监听器给的升级；谁能进（过滤、关系、名额、争夺）、走进去、弹出、残血全出、楼毁仍在宿主 `simgarrison.Garrisons` 的 garrison 格；端口把继承链上这个标签的所有块合成一块（`simunits.GATHERED`：每个属性取最近写了它的、`=$定义` 展开、最近的 PassengerFilter，旧读法如此）；残血线 MaxHealthReallyDamagedPercentage 是 ActiveBody 的，宿主 `simgarrison.really` 读）；渗透 `Infiltrate`（M15，InfiltratorContain，一个物体可以有几个，宿主读第一个：`rules()` / `entered(slice)` / `mark(slice)` / `blocked_until()` / `block(frame)`，只存规则、已测切片里"这栋楼已被渗透过"的标记和港口阻断到哪一帧；谁能进、走进去、效果（观察者、停电、瘫痪、偷钱）和间谍的结束仍在宿主 `siminfiltrator.Infiltrators` 的 infiltrators 格——观察者、停电、瘫痪落在别的物体或玩家身上，不属于这栋楼的模块；原版的块写在 `Includes/InfiltratorContain*.xml` 里，端口对这个标签展开 include（`simunits.INCLUDED`）；KILL 楼有兄弟块的标记由宿主按模块个数加）。这四个仓的状态以前不在逐帧记录里，所以它们的 `STATE` 不列字段。`unpack_parent` 不搬：引擎里是物体自己的 producer，不属于哪个模块。
+上表是核心接口；引擎还有一批专项接口（出口、停靠、弹体、子体 / 被奴役者、被卖通知、跑出地图……），搬到那一族时再加进 `interfaces.py`（`FAMILY`），不预先建。已加：寿命 `Lifetime`（M1，一个物体至多一个：`die_frame()` / `set_die_frame(frame)`）；倒塌 `Topple`（M2，一个物体至多一个：`is_toppled()` / `gone_frame()` / `knock(frame, speed)` / `fall_where_it_stands(frame)`；模块删掉自己的物体走 `World.remove`）；碾压 `Crush`（M3，CrusherInfo，只有数据：`crusher_level()` / `crushable_level()`；谁压谁还在移动里）；自动存钱 `Deposit`（M4，AutoDepositUpdate：`rules()` / `next_frame()` / `capture(frame)` 返回占领奖金并重设钟；付钱走 `World.pay`，宿主不给中立方）；开关 `Toggle`（M5，ToggleStatusSpecialAbilityUpdate，一个物体可以有几个、按块的顺序：`rules()` / `state()` / `entered()` / `press(frame)`，有 UnpackTime 的按下在 toggles 格到点再切；切到新状态后经 `World.toggled` 告诉宿主重设状态位、修改器和 LocomotorSet 速度，等修改器和移动族自己读接口时去掉这个钩子。模块数据在模块造出来之前就要读的（`Sim.add` 先放第一状态的状态位再挑武器）用 `World.data_of(模板, 标签)`，和模块拿到的是同一份解析。几个同族模块的状态在逐帧记录里合成一个字段（`toggle_at`），其 `STATE` 列模块状态，`RECORDED` 留空）；压制 `Suppression`（M6，SuppressionUpdate，一个物体至多一个：`rules()` / `hits()` / `is_suppressed()` / `until()` / `next_sample()`；每帧问宿主盖住它的压制场 `World.suppression_at`（场由武器族的 SuppressionNugget 留下，宿主存），按出生相位每 UpdateDelay 采样一次，进出压制经 `World.modify` 让宿主重读修改器；模板里 `xai:joinAction="Remove"` 的块由端口去掉，继承来的模块就没了）；子体 `Spawn` / 被奴役者 `Slaved` / 附着 `Attach`（M7：SpawnBehavior 一个物体可以有几个，`module_id()` / `child()` / `unpack_child()` / `children()` / `refills()` / `adopt()` / `child_died(template, frame)` / `parent_died()`，补充排队后睡到到点在 spawn 格经 `World.spawn` 让宿主造；SlavedUpdate 一个物体至多一个，记谁造了它，`enslave` / `slaver()` / `slaver_module()` / `spawner()`，子体模板没有 SlavedUpdate 时宿主用 `World.attach` 补一个；AttachUpdate 只有数据，`module_id()` / `rule()`；SpawnBehavior 的 Remove 块端口照旧保留（`simunits.REMOVE_KEPT`，读成没建模的子体、记缺口）。Spawn 和 Slaved 各自声明 `STATE`；Spawn 经 Body 转发逐帧字段，Slaved 通过 `RECORDED` 直接记录 `spawn_parent` 和 `spawn_module`）；采矿 `OreMiner`（M9，OreMinerBehavior，一个物体至多一个，只存这一趟：`trip()` / `set_trip(trip)`；谁算矿车从 KindOf HARVESTER 改成"有这个模块"，原版和全部任务自带模板上两者一致；矿车之间抢矿井、矿场排队的循环还在 `simmine` 的 mine 格里，等矿井也成模块再搬；DeliveryCapacity 和苏联 / 帝国矿车追加的 ObjectStatusValidation 照旧不读）；展开 `Unpack`（M10，StructureUnpackUpdate，一个物体至多一个，只存展开结束帧：`frames()` / `end_frame()` / `set_end(frame)`；按电力系数拉长的算法在宿主 `Sim.add`；UnpackTime 的 `=$定义` 由端口按"所问模板自己的文件 + GlobalDefines"展开（`simunits.EXPANDED`，旧读法如此，继承自别的文件的读成 0））；卖楼 `Sell`（M10，StructureSellUpdate，一个物体至多一个：`gone_frame()` / `start_sale(frame)`；退款、SOLD 仍在 `simbody.Life.sell`，到 SellTime 在 expire 格经 `World.remove` 删掉）；冷冻 `Freeze`（M11，SecondaryDamageTracker，一个物体至多一个：`rules()` / `held()` / `stage()` / `add(amount)` / `melt(dt)` 返回档位变没变；没有自己的更新格，冷冻光束累计和每帧消散仍由宿主 `simdamage.chill` 按原顺序驱动，档位变了由宿主重读修改器、DIE_ON_ENTER 由宿主杀；冻住时换的护甲 ArmorSet 不属于这个模块，留在 `simunits.frozen_armor`）；升级等级 `LevelUp`（M12，LevelUpUpgrade，一个物体可以有几个、按块的顺序：`module_id()` / `rules()` / `active()` / `set_active(on)`，只存"有没有生效"；升级到达时的算法（等级表、老兵升级、精英血量）仍在 `simlevel.receive`，由宿主给升级时调；不走内核的 Upgrade 广播——那个在 modify 时才动，不在给升级的那一刻；等级 `level_rank` 留在物体上：引擎里经验等级是 Object 的 ExperienceTracker，不属于哪个模块）；光环 `Aura`（M12，AttributeModifierAuraUpdate，一个物体可以有几个：`rules()` / `last_beat()` / `pulse(frame)` 问这一刻该不该刷新并推进节拍；挂到谁身上、挂多久、重读修改器仍在宿主 `simmodifier.aura_tick`；端口照旧读法只读模板自己那份 XML（`simunits.SELF_ONLY`）；挂在物体身上的修改器 `auras_on` 和修改器之前的原值 `base` 留在物体上：引擎里修改器表是 Object 自己的，`base` 是宿主 modify 的缓存，移动和武器族搬走后自然消失）；维修 `Repair`（M13，RepairUpdate：`rules()` / `measured()` / `job()` / `set_job(job)` / `refused()` / `refuse()`，只存规则、进行中的维修和"这局拒修"；谁能修（AI 难度门、低资金门）、扣钱、回血的循环仍是宿主 `simrepair.Repairs` 的 repairs 格；原版建筑的 RepairUpdate 写在 `Includes/GenericBuildingRepair.xml` 里，端口对这个标签展开 include（`simunits.INCLUDED`，旧读法如此））；指派 `Assign`（M13，AssignSlavesTargetObjectSpecialPower，同时是 `SpecialPower`：`plain()` / `target()` / `assign(target, rate)`（宿主和实现用两参，接口声明还带 `frame`）；按下、挑目标、治疗量仍在宿主 `simassign.Assignments.press`，派出后在 assignments 格由模块自己每帧回血、修满，或任一方死亡、双方异主、无活子体、任一方移动、目标血量被外部改动时停止，这一格只剩模块）；容器 `Contain`（M14，核心接口，GarrisonContain / ContestableGarrisonContain / TransportContain 各一个类：`rules()` / `passengers()` / `let_in(thing, bits)` / `let_out(thing)` / `home()` / `keep_home(owner)` / `give_home()` / `granted()` / `set_granted(upgrades)`，只存乘员、给每个乘员加的状态位、第一个人进来前的主人、单个乘员经监听器给的升级；谁能进（过滤、关系、名额、争夺）、走进去、弹出、残血全出、楼毁仍在宿主 `simgarrison.Garrisons` 的 garrison 格；端口把继承链上这个标签的所有块合成一块（`simunits.GATHERED`：每个属性取最近写了它的、`=$定义` 展开、最近的 PassengerFilter，旧读法如此）；残血线 MaxHealthReallyDamagedPercentage 是 ActiveBody 的，宿主 `simgarrison.really` 读）；渗透 `Infiltrate`（M15，InfiltratorContain，一个物体可以有几个，宿主读第一个：`rules()` / `entered(slice)` / `mark(slice)` / `blocked_until()` / `block(frame)`，只存规则、已测切片里"这栋楼已被渗透过"的标记和港口阻断到哪一帧；谁能进、走进去、效果（观察者、停电、瘫痪、偷钱）和间谍的结束仍在宿主 `siminfiltrator.Infiltrators` 的 `infiltrate` 格粗步移动帧——观察者、停电、瘫痪落在别的物体或玩家身上，不属于这栋楼的模块；原版的块写在 `Includes/InfiltratorContain*.xml` 里，端口对这个标签展开 include（`simunits.INCLUDED`）；KILL 楼有兄弟块的标记由宿主按模块个数加）。这四族都用 `STATE` 声明模块状态；`RECORDED` 留空，因为它们不直接输出逐帧字段。`unpack_parent` 不搬：引擎里是物体自己的 producer，不属于哪个模块。
 
 模块要让自己的物体死（寿命到了），调 `world.kill(物体, 原因)`：宿主（今天 `Sim`）建 `World` 时给的死亡入口；搬完 Body + 死亡族后改成血量模块的入口。物体造出来以后才补一个模块（遭遇战 AI 补读原版寿命）用 `world.attach(物体, 标签)`。
 
 约定：
 
-- **接口是类，不是鸭子类型**：模块继承它实现的接口类（在 `engine/kernel/interfaces.py`），物体造好时按接口建一张索引；`thing.find(接口)` 取实现者（`Body` 取唯一一个）。不许 `hasattr(m, '某方法')` 探测，不许 `isinstance(m, 某具体模块类)`。
-- **模块之间只三种说话方式**：① 调另一模块的接口方法（经 `thing.find`）；② 写 / 读物体黑板（状态位、模型状态、升级位，经物体的方法）；③ 广播（受伤、死亡、创建、升级由内核按接口逐个通知）。
+- **接口是类，不是鸭子类型**：模块继承它实现的接口类（在 `engine/kernel/interfaces.py`），`thing.find(接口)` 首次查询时建缓存；`ONE` 接口返回单个实现者或 `None`，有多个实现时报错。不许 `hasattr(m, '某方法')` 探测，不许 `isinstance(m, 某具体模块类)`。
+- **模块之间只三种说话方式**：① 调另一模块的接口方法（经 `thing.find`）；② 写 / 读物体黑板（状态位、模型状态、升级位，经物体的方法）；③ 广播（内核按接口通知血量变动、创建和升级，死亡与移除由宿主处理）。
 - 接口要加方法 = 架构变更，由重构线 R 改 `interfaces.py`。
 
 ## 3. 工厂：按 XML 标签登记
 
-- 一个模块类用 `@module('AutoHealBehavior')` 登记一个或几个标签（`engine/kernel/factory.py`）。数据类 `parse(spec, data)` 把这个标签的 XML 块读成数值；模板数据端口给它块和继承链。
-- 造物体时，工厂按模板的模块列表逐个查登记表：登记了的造实例，没登记的记成缺口（`world.gap`），清单就看得到"这个模板有几个模块还没建模"。
-- 解析结果按"模板 + 标签 + 序号"缓存在**世界持有的模板数据端口**里，同模板共用一个数据对象；不在模块文件里放缓存。
-- 清单只读工厂登记表认模块名，不搜源码字符串。
+- 一个模块类用 `@module('AutoHealBehavior')` 登记一个或几个标签（`engine/kernel/factory.py`）。数据类 `parse(head, inner).seal()` 解析并封存模板端口给出的 XML 块。
+- 造物体时，工厂按已登记的标签向模板端口要块，每块造一个模块实例。
+- 解析结果按"模板 + 标签 + 序号"缓存在`World.data`里，同模板共用一个数据对象；不在模块文件里放缓存。
+- 清单做 XML 普查，并用导入链源码（`simcoverage.sim_code()`）识别模块名。
 
 ## 4. 调度：休眠和唤醒
 
-- 帧循环（`engine/loop.py`，今天是 `simloop`）是一张有序的**格子**名单；一个更新模块属于其中一格（类上的 `PHASE`）。到那一格，调度器只推进**醒着**（唤醒帧 ≤ 当前帧）的实例，格内按物体创建顺序。每一格都先跑自己的模块、再跑这格还没搬成模块的旧代码；`PHASE` 不是帧序里的格名就红（`tests/test_kernel.py` 第 7 条）。
-- `update` 返回 n：n 帧后再醒；返回睡死：移出名单，直到 `world.wake(模块, 帧)`。同一模块对同一帧重复唤醒不算两次；唤醒到更早的帧覆盖更晚的。
+- `simloop.FRAME` 是有序的**格子**名单，更新模块用 `PHASE` 选格。调度器只推进唤醒帧 ≤ 当前帧的实例，先按 `ORDER`，再按入调度顺序；模块跑完再跑该格的宿主代码。相位守卫见 `tests/guards/test_kernel.py`。
+- `update` 返回 n：n 帧后再醒；返回睡死：在格内标成 `None`，直到 `world.wake(模块, 帧)` 设回唤醒帧。同一模块对同一帧重复唤醒不算两次；唤醒到更早的帧覆盖更晚的。
 - 只有登记了更新的模块才进名单；不许每帧扫所有物体（0029 规则 4 的落实）。
 - 一格里挂几个模块类时，类上的 `ORDER` 定先后。新加格子、改格子顺序 = 改所有逐帧记录，是架构变更，要台上证据。
 
@@ -58,25 +58,25 @@
 
 ## 5. 世界：全部状态在实例里
 
-- 一局的可变状态只在 `World` 实例和它持有的东西（物体、模块、玩家系统、端口实例）里。模块文件、内核文件里**不许**模块级可变变量和 `global`；登记表只在导入时填，导入完冻结。
-- 只读的零售数据可以进程内共用，但放在模板数据端口里、按数据源区分，不放在模块文件里。
+- 一局的可变状态在 `Sim` 及其持有的对象里，内核部分由 `Sim.world` 持有。模块级可变变量和 `global` 由守卫限制；`TAGS` 是只读视图，登记由模块装饰器写入。
+- 只读的零售数据可以进程内共用，现有共享缓存例外见 `tests/guards/test_kernel.py` 的 `PROCESS_CACHES`。
 - 多战场：两个世界在同一进程交替推进，各自的逐帧记录必须等于各自单独跑的（守卫测试）。
 
 ## 6. 对外端口
 
-内核对外只开几个端口；测试台、自动玩家、地图页、私有模型都是接在端口上的适配器，不读内核内部（0031 第 2 条）。
+脚本、观测、模板数据已有端口。测试台、自动玩家、地图页和私有模型统一通过端口接入是架构目标（0031 第 2 条）；现有宿主接缝见下表。
 
-**内核对私有模型零依赖**：依赖只许"私有模型 → 内核端口"一个方向。内核（`engine/**`）不导入、不按路径加载私有仓库的任何文件，也不知道它在不在；找私有插件、加载、钉版本（今天的 `modelpin`、`engine_model`、`simproxy._package`）都在内核外面的入口里做，装上了就把插件交给端口。没有私有模型时内核功能完整：脚本照跑、规则照算、命令照下，只是少了"像原版那样打的遭遇战 AI"。脚本执行器、玩家代理都按"公开实现是正式的一份"设计，私有那份只是可换的插件。
+**内核对私有模型零依赖**：依赖只许"私有模型 → 内核端口"一个方向。内核（`engine/**`）不导入、不按路径加载私有仓库的文件。加载与钉版本在内核外，脚本走 `sim.engine_model()`，AI 和代理走 `simproxy._package`，由 `modelpin` 核版本。无私有模型仍可跑公开脚本、推演规则、下模拟命令；私有遭遇战 AI 和私有玩家代理需要模型。
 
 | 端口 | 内核给什么 / 要什么 | 接在上面的 |
 |---|---|---|
-| 脚本执行器 | 内核给：`condition(名字, 参数)`、`action(名字, 参数)`（查脚本条件 / 动作登记表）；要：一个推进脚本帧的执行器（`begin`、`update`、难度） | **公开的脚本执行器是正式实现**（今天的 Python 脚本循环要补到能独立跑原版和我们的关卡）；私有模型的脚本核心是可选替换品，两者同一个接口，可以拿来互相对照 |
-| 玩家输入（命令） | 给单位下命令、生产、建造、放技能、卖楼的唯一入口；内核检查能不能下（钱、电、前置、冷却）再交给 `AIUpdate` / 玩家系统 | 测试台的点击、玩家代理（目标是公开实现）、AI 端口上的插件 |
-| AI | 内核给：一个电脑玩家的观测（经观测端口）+ 下令（经命令端口）+ 每帧一次的 `tick`；内核要：什么都不要——没插 AI 的电脑玩家就站着不动（或由脚本驱动） | 可选插件：私有的遭遇战 AI（经公开宿主 `simai`，宿主也在内核外面）；以后我们自己设计的 AI（多战场发给玩家的就是它） |
-| 观测记录 | 只读：每个玩家看得到的局面、事件流（逐帧记录就是它）、审计（用到哪些规则）、缺口、计数器 | `simrecord`、报告和指标（L9）、清单、AI / 代理的"看"那一半 |
+| 脚本执行器 | 宿主调用 `Executor.step()`；执行器经 `scripts.World` 调 `begin`、`update`、难度及 `condition(eng, name, args)` / `action(eng, name, args)` | 公开执行器可加载原版 `.map` 和自制关卡脚本；私有脚本核心可选替换 |
+| 玩家输入（命令） | 当前由 `simproxy.SimWorld.issue` 等宿主入口下令；统一命令端口是目标 | 玩家代理、自动玩家、测试台输入 |
+| AI | `simai` 负责推进与宿主接入；通用 AI 端口是目标 | 私有遭遇战 AI；自研 AI 是后续目标 |
+| 观测记录 | `Observe.things` / `living` 给全局对象；按玩家过滤用 `side_sees` 等查询。另提供逐帧记录、审计、缺口、计数器和内部查询 | `simrecord`、报告和指标（L9）、清单、代理等 |
 | 模板数据 | 模板 → 继承好的模块块列表、种类、几何；零售数据 + 任务自带 XML | 今天是 `simunits` 的读取部分；模块数据类经它解析 |
 
-私有的东西（脚本核心、遭遇战 AI、玩家代理的私有版）只经端口接进来；私有模型只导入 `engine.ports`，不导入内核内部。今天还要私有模型才能做的事（读原版 `.map` 里的脚本），要在模板数据 / 脚本执行器端口后面补公开实现，补上前算缺口，不许内核去够私有模型。
+私有模型只导入 `engine.ports` 是接入约定。公开执行器经 `simexec` 加载原版及自制关卡脚本；私有遭遇战 AI 和代理目前经宿主接入。
 
 ## 7. 扩展点：加一样东西要写什么
 
@@ -86,12 +86,12 @@
 |---|---|---|---|
 | XML 物体模块（新标签） | `engine/modules/<族>.py`：数据类（`parse`）+ 模块类（继承它实现的接口）；同族已有文件就加进去 | `@module('<标签>')`（不改任何中心文件：`engine/modules` 包导入时自动导入目录里每个文件） | `tests/modules/test_<族>.py`：最小世界摆一个这个模板的物体，只推进几帧，断言行为；测试名写行为；有台读数的断言读数 |
 | 已有模块的新属性 / 新分支 | 那个模块的数据类和模块类 | 无 | 同上，加一个用例；做不到的属性组合 `world.gap(...)` |
-| 脚本动作 | 按作用对象挑一组 `simact_*`（以后在 `engine/script/`）：函数只把参数翻译成接口调用（命令端口、模块接口、玩家系统），规则写在模块里 | 那组的 `ACTIONS` | 最小世界里跑这个动作，断言世界的变化；不认得的参数分支 `return False`（记缺口） |
+| 脚本动作 | 按作用对象挑一组 `simact_*`（以后在 `engine/script/`）：函数只把参数翻译成接口调用（宿主命令入口、模块接口、玩家系统），规则写在模块里 | 那组的 `ACTIONS` | 最小世界里跑这个动作，断言世界的变化；不认得的参数分支 `return False`（记缺口） |
 | 脚本条件 | 同上，`simcond_*`，只读接口和黑板 | 那组的 `CONDITIONS` | 同上；不认得的情形回 `None` |
-| 武器效果（各种 Nugget、MetaImpact） | `engine/combat/` 下按 Nugget 一个函数 / 类：收开火信息和目标，对目标只调 `Body.attempt_damage`、黑板、模块接口 | `@nugget('<名字>')` | 最小世界里一个开火方一个挨打方，断言血量 / 状态；只做了一部分写缺口 |
-| 单位命令 | `AIUpdate` 的一个命令状态（下令时检查 + 每帧推进），移动物理调 Locomotor，开火调武器 | `@command('<名字>')`；玩家能下的命令清单从这里读 | 最小世界下命令、推进几帧，断言位置 / 目标 |
-| AI 行为 | 私有 AI 的决策不在公开仓库；公开侧只写宿主要回答的问题（"附近有没有敌人""路通不通"）和经命令端口下令。以后我们自己的 AI 也只经命令端口和观测端口 | 宿主问答的登记表（按 AI 问的名字） | 直接喂宿主一个小局面断言回答；AI 回放只当对拍证据 |
-| 玩家系统规则（钱、电、科技、技能书） | `engine/players/` 里对应系统 | 那个系统的接口；单个物体上的效果写成 Upgrade 模块 | 最小世界断言钱 / 电 / 解锁 |
+| 武器效果（各种 Nugget、MetaImpact） | 现行入口是 `simdamage.Damage`，按 Nugget 分派 | 现有伤害分派；`@nugget` 是迁移目标 | 最小世界里一个开火方一个挨打方，断言血量 / 状态；只做了一部分写缺口 |
+| 单位命令 | 在 `simorder` 接下令和推进，移动物理调 L2，开火调 L3 | 玩家入口见 `simproxy.SimWorld.issue` 和 `simcoverage.PLAYER_ORDERS`；`@command` 是迁移目标 | 最小世界下命令、推进几帧，断言位置 / 目标 |
+| AI 行为 | 私有 AI 的决策在私有模型；公开接入见 `simai` 及其适配器。统一观测与命令端口是目标 | 宿主问答接口 | 直接喂宿主一个小局面断言回答；AI 回放只当对拍证据 |
+| 玩家系统规则（钱、电、科技、技能书） | 钱走 `simmoney.Money`，科技和升级走 `simtech`，电力及技能书入口仍在 `Sim`；玩家系统目录是迁移目标 | 现有系统的接口；单个物体上的效果写成 Upgrade 模块 | 最小世界断言钱 / 电 / 解锁 |
 | 每帧要做的事 | 不加格子：写成更新模块，`PHASE` 选现有的格 | 模块类上的 `PHASE` / `ORDER` | 同 XML 模块 |
 
 每件都要：
@@ -101,47 +101,47 @@
 - **来源写清**：台读数（写台子和读数）/ XML / INFERRED。不许照程序或《将军》源码转写（0032 第 1 条）。
 - **私有模型有对应类的**（它的物体部分已冻结，0032 第 4 条）：搬或新写时拿它对一次，对不上上台判谁对。
 
-## 8. 守卫（`tests/test_kernel.py`，加上 sim-layers 的层守卫）
+## 8. 守卫（`tests/guards/test_kernel.py`，加上 sim-layers 的层守卫）
 
 1. 模块文件互不导入；只在自己身上赋值，改别人只调接口；按接口取模块。
 2. 中心只许变小：`sim.py` 行数、`Sim` 方法数、`Body` 字段数、`simunits` 函数数、还没换成调度阶段的格子数，只减不增。
 3. 不许模块级可变状态和 `global`（今天的例外列在名单里，只减）。
 4. 多世界：两个世界交替推进 = 各自单独跑。
 5. 工厂登记的每个标签都有按名字的模块测试。
-6. 内核零依赖私有模型（[ADR 0033](../adr/0033-kernel-no-private-dependency.md)）：`engine/**` 里不出现私有仓库的导入、路径和名字；在 `CNV_ENGINE_MODEL` 指向不存在目录时，内核的模块测试和多世界测试全跑、不跳过。
-7. 快照往返：精确快照拍下 → 还原 → 接着跑，逐帧记录等于不打断的；每个模块类都声明了状态字段。
-8. 速度：高峰负载基准不低于 1 倍实时；AI 只读观测里的"公共"字段。
-9. 血量只经入口变（K2 起，test_kernel 第 8 条）：`Body.damage` / `mend` / `health` 改完血调 `Thing.health_moved`，广播给受伤接口（睡着的回血模块靠它醒）；B1 起唯一的写口是 `Body.set_hp(hp, max_hp=None, tell=True)`：damage / mend / health 和别的写法（建物体、脚本改最大血量、精英倍数、死亡清零）都经它（建物体时和死亡时 `tell=False`，不算受伤）。别处（`sim*.py` 和 `engine/`）直接写 `hp` / `max_hp` 就红。
+6. 内核零依赖私有模型（[ADR 0033](../adr/0033-kernel-no-private-dependency.md)）：`engine/**` 里不出现私有仓库的导入、路径和名字；在 `CNV_ENGINE_MODEL` 指向不存在目录时，子进程复跑本守卫文件（含多世界用例），不得跳过。
+7. 状态声明：守卫检查每个模块类的 `STATE`；精确快照往返的验收见 §9.2。
+8. 性能和 AI 观测的目标见 §9。高峰最慢段低于 1 倍实时由日报标 `!!`；端口守卫检查导入和世界句柄边界。
+9. 血量唯一写点是模块的 `engine.modules.body.Body.set_health(hp, max_hp=None, tell=True)`。伤害、治疗和宿主设血入口都汇入这里；`tell=True` 经 `Thing.health_moved` 广播，建物体和死亡清零用 `tell=False`。守卫检查 `sim*.py` 和 `engine/` 中对 `hp` / `max_hp` 的写点。
 
 ## 9. 多战场要的三样（[ADR 0034](../adr/0034-multi-battlefield-and-own-ai.md) 第 6、10 条）
 
 ### 9.1 游戏适配器：真游戏也是端口的一个适配器
 
-- 真游戏实现**观测**和**命令**两个端口：观测经注入的探针读（物体、血量、位置、钱、电……），命令经注入的命令模块下（[ADR 0028](../adr/0028-inject-via-own-launcher.md) 的启动器注入）。
-- 我们的 AI、玩家代理只认这两个端口，所以对面是模拟世界还是真游戏，同一份代码。
-- 观测端口的数据格式按"真游戏读得到什么"定：模拟世界可以多给（调试用），但 AI 只许用两边都有的那部分（观测里分"公共"和"仅模拟"两类字段，AI 只读公共的，守卫查）。
-- 命令端口的命令集合按"真游戏能下什么"定；模拟世界下令前做同样的检查（钱、电、前置、冷却），被拒的理由两边同一套名字。
+- 目标是真游戏也实现**观测**和**命令**端口，分别接台上读数和命令；当前公开入口是测试台工具，模拟侧命令走宿主。
+- 目标是让 AI 和玩家代理经同一套端口接模拟世界和真游戏。
+- 目标是用两边都能读到的字段供 AI 使用。现有 `Observe` 也提供模拟内部字段；守卫检查导入和世界句柄边界。
+- 命令端口的目标是按真游戏能下的命令定义集合，并统一模拟侧的前置检查和拒绝理由。
 
 ### 9.2 整局快照和还原（端口能力）
 
-分两级，不混用：
+计划分两级；整局快照和真机局面交换尚未接入。
 
 | 级别 | 用在哪 | 内容 | 验收 |
 |---|---|---|---|
 | **精确快照** `World.snapshot()` / `World.restore()` | 模拟世界之间（存档、分叉推演、批量对打从同一局面开始） | 世界的全部状态：物体和每个模块的状态、黑板、调度器的唤醒帧、玩家系统、随机数状态、脚本执行器状态 | 拍下 → 还原 → 接着跑，逐帧记录等于不打断一直跑的 |
 | **局面交换** `Battlefield`（一个公开的数据格式） | 模拟世界 ↔ 真游戏（进出战场时双向搬运） | 两边都能读、能摆的：模板、归属、位置朝向、血量、状态位、升级、等级、容器里的乘员、生产队列、钱电科技、计数器 / 旗标 | 模拟 → 格式 → 模拟往返后格式里的字段全保住；丢掉的（飞行中的弹、路径、各模块的计时）逐项列成缺口，不静默 |
 
-- 精确快照能做到的前提就是 §5：全部状态在世界实例里、模块级没有可变变量；每个模块类声明自己的状态字段（快照逐模块序列化，不用 pickle 整个对象图）。
-- 游戏适配器的"拍下"走观测端口把真游戏读成 `Battlefield`，"摆入"走命令模块按 `Battlefield` 造物体、设血量和状态；摆不进去的项同样记缺口。
+- 精确快照依赖 §5 的实例状态归属，按 `STATE` 逐模块序列化。当前守卫检查模块状态声明及多世界隔离。
+- 局面交换目标：游戏适配器经观测端口生成 `Battlefield`，经命令端口摆入，缺失项记缺口。
 
 ### 9.3 性能：一个世界一个进程，高峰负载要快过实时
 
 - **运行时一个世界一个进程**（后端开几个战场就开几个进程，用满多核）；同一进程多个世界只用于测试和批量推演的单机便利，不当运行时的并行手段。
-- **高峰负载基准**：一个固定的遭遇战中后期局面（几家各几百个单位在打、都在生产，用精确快照存成固定文件），从快照开始跑固定时长，量**实时倍数**（模拟秒 / 墙钟秒，单进程）和每一格的耗时分布。要求：高峰负载下 > 1 倍实时（ADR 0034 第 10 条的硬要求），快进验收要远快于实时。11-17 的起点：原版关开头约 6 倍实时，带 AI 的遭遇战开局约 1.5 倍。
-- **速度守卫**：基准和固定任务的耗时在每步验收里比前后（同机、单任务单进程、取三次最小值）；变慢超过 10% 的步要在提交说明里解释，高峰基准跌破 1 倍实时就红。休眠唤醒（§4）和"不每帧全扫"是主要的提速手段，每搬一族都应看到它那一格的耗时下降。
+- **高峰负载基准**：`simbench_peak` 普通版新建合成局面，`--ai` 从 `aiskrand/s` 开局，量**实时倍数**（模拟秒 / 墙钟秒）和分段耗时。目标是高峰负载下 > 1 倍实时（ADR 0034 第 10 条），快进要远快于实时。11-17 的起点：原版关开头约 6 倍实时，带 AI 的遭遇战开局约 1.5 倍。
+- **速度守卫**：固定任务用 `simrecord time`，默认测三次取最小值；基准至少 1 秒时才标记超过 10% 的回退。高峰最慢段低于 1 倍实时由日报标 `!!`。休眠唤醒（§4）和减少全局遍历是主要提速手段。
 
 ## 10. 迁移期怎么和旧代码共存（绞杀者）
 
-- 今天的 `Body` 就是物体：先长出 `modules`，字段一族一族搬进模块实例；外面还在读的字段留只读转发属性（名单只减），写一律走模块接口。转发写成 `Body` 上的 `名字 = kernel_module.forward(接口, 读法)`，名字列进 `Body.FORWARDS`（逐帧记录照旧当字段记，没模块的记 None，或 `forward(..., default)` 给的旧默认值，如 `toppled` 的 False）和 `tests/test_kernel.py` 的 `BODY_FORWARDS`。只从任务自带模板读的标签列在 `simunits.OWN_ONLY`（寿命：和它替换的读法一样，不读原版）。属性逐个继承的标签（每个属性取继承链上最近写了它的模板）列在 `simunits.MERGED`（CrusherInfo：64 个原版模板的块是空的，等级来自基类）。只读模板自己那份 XML（任务自带的，否则原版同名文件）、不沿继承链的标签列在 `simunits.SELF_ONLY`（AutoDepositUpdate：`oilderrick_onwater` 继承了 oilderrick 的块，旧读法不给钱）。
-- 今天的 `Sim` 是世界的宿主：持有内核 `World`，`simworld.WORLD_API` 的名字逐个改指到 `World` 上；`Sim` 上的转调只给旧代码和测试用，不许再加。
+- 今天的 `Body` 就是物体：先长出 `modules`，字段一族一族搬进模块实例；外面还在读的字段留只读转发属性（名单只减），写一律走模块接口。转发写成 `Body` 上的 `名字 = kernel_module.forward(接口, 读法)`，名字列进 `Body.FORWARDS`（逐帧记录照旧当字段记，没模块的记 None，或 `forward(..., default)` 给的旧默认值，如 `toppled` 的 False）和 `tests/guards/test_kernel.py` 的 `BODY_FORWARDS`。只从任务自带模板读的标签列在 `simunits.OWN_ONLY`（寿命：和它替换的读法一样，不读原版）。属性逐个继承的标签（每个属性取继承链上最近写了它的模板）列在 `simunits.MERGED`（CrusherInfo：64 个原版模板的块是空的，等级来自基类）。只读模板自己那份 XML（任务自带的，否则原版同名文件）、不沿继承链的标签列在 `simunits.SELF_ONLY`（AutoDepositUpdate：`oilderrick_onwater` 继承了 oilderrick 的块，旧读法不给钱）。
+- 今天的 `Sim` 是世界的宿主，持有内核 `World`；旧分层模块用的 `simworld.WORLD_API` 仍主要由 `Sim` 提供。`Sim` 上的转调只给旧代码和测试用，不许再加。
 - 每一步仍按 [sim-layers.md](sim-layers.md) 的比对方法验收：固定任务逐帧记录前后一字不差；有意改行为的步单独提交、写明、上台。

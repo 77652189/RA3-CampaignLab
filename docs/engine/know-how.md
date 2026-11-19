@@ -2,9 +2,9 @@
 
 对红警 3 引擎、SDK、地图格式和测试工具的认识：做过什么、怎么用、踩过什么坑。认识变了就改这里（触发条件：我们对引擎或工具的认识变了）；进度和待办不在这里，在 [plan.md](../plan.md)。脚本引擎的运行语义另见 [script-semantics.md](script-semantics.md)。
 
-下面三节 2026-10-28 从 plan.md 原样搬来，编号（0～0h 等）不变；文中的 work/ 路径指本仓库的 work/。
+下面三节 2026-10-28 从 plan.md 原样搬来，编号（0～0h 等）不变；文中的 `work/` 以 `labpaths.WORK` 为准：`CNV_WORK` 优先；独立工作区没有自己的数据目录或只有 `logs/` 时，用主工作区的 `work/`。
 
-## 已完成能力与经验（原 RA3-ChineseVoice/HANDOFF.md「战役扩展与测试台」一节，2026-10-18 迁入；文中 work/ 路径指本仓库的 work/）
+## 已完成能力与经验（原 RA3-ChineseVoice/HANDOFF.md「战役扩展与测试台」一节，2026-10-18 迁入）
 
 - 测试台 `experimental/testbench/`：`make_bench.ps1` 建 Steam 目录的硬链接副本（`work/testbench/RA3`，游戏会写的小文件复制；不能往硬链接文件里写），`capture_shim.cpp` 截帧 / 钩输入 / 挡前台，`run_bench.ps1 -Mod -Clicks -Keys -Shots` 后台全自动跑（Esc 能跳过场：先发激活消息）。到关卡约 70 秒。菜单坐标见脚本调用示例和记忆。
 - 已证实（全部在测试台上看到）：改原版关卡、新增关卡和改关卡数（`splice_assets.py`，新实例要放进最上层 static.12 及 _l/_m.12）、新地图文件夹（`mapcache.py` 往原版地图清单追加登记，否则加载即崩；文件夹要带编译好的 map.* 流，否则缺地形贴图和建筑）、中文新字符串（mod 里放 `gamestrings.csf`；`mod.str` 按 Latin-1 读）。最小完整新关卡：`make_campnew4.py`。
@@ -12,7 +12,7 @@
 - 走不通的：SDK 编的 `data\additionalmaps\mapmetadata_mod` 流（军械库的做法）启动约 3 秒就崩，原因未明；SDK 的 AllTypesHash（177706643）和 1.12（1424942948）不同。
 - 测试台默认把游戏窗口挪到屏幕外、只静音测试进程自己的音频会话（`-Visible` / `-Sound` 关掉），游戏自己的 "Game crash" 弹窗会被识别并结束本次运行。
 - 脚本编辑器（`mapscript.py`）：按原版 379 种条件 / 动作的目录（`script_catalog.json`）新建条件和动作、新建脚本、增删脚本和其中的条件 / 动作、读写任务目标；`make_campnew6.py` 新增两条脚本弹出中文提示、删掉一段通话、改目标名，游戏里都生效。
-- 自己编 map.* 流（`mapxml.py` + `make_campnew7.py`）：从 .map 生成 map.xml（物体包含、GameMap、环境数据），BAB 只编 GameMap，其余实例按引用从 worldbuilder 流和原地图各层里取最新一层"链接"进来。**SDK 必须用 v3.0（`C:\RA3ModSDK3`）**：旧的 `C:\RA3ModSDK` 是 1.10 时代的，编出的 GameObject 是旧布局，能加载能显示（CampNew12 那次只是单位没活动），单位一开始运作就写坏堆内存、加载约 3 秒后崩（崩在游戏的内存分配器里，SDK 编的原样守护者 2/2 崩）；v3 编的同一单位 3/3 正常，链接器"旧布局"清单为空。构建脚本默认已切到 v3（`CNV_SDK` 可改）。SDK 对模型的泛型引用仍要改到同名 W3DContainer（链接器已做）；默认仍优先用原版 1.12 数据。坑：大小为 0 的补丁条目也会更新类型哈希（用旧哈希会弹 "Type hash mismatch"）；缺 EnvironmentData 时整个画面变洋红。地形图集 SDK 里没有源贴图，只能沿用原版地图的。
+- 自己编 map.* 流（`mapxml.py` + `make_campnew7.py`）：从 .map 生成 map.xml（物体包含、GameMap、环境数据），BAB 只编 GameMap，其余实例按引用从 worldbuilder 流和原地图各层里取最新一层"链接"进来。**SDK 必须用 v3.0**：旧的 `C:\RA3ModSDK` 是 1.10 时代的，编出的 GameObject 是旧布局，能加载能显示（CampNew12 那次只是单位没活动），单位一开始运作就写坏堆内存、加载约 3 秒后崩（崩在游戏的内存分配器里，SDK 编的原样守护者 2/2 崩）；v3 编的同一单位 3/3 正常，链接器"旧布局"清单为空。构建脚本默认用实验室的 `sdk/RA3ModSDK3`，可用 `CNV_SDK` 覆盖。SDK 对模型的泛型引用仍要改到同名 W3DContainer（链接器已做）；默认仍优先用原版 1.12 数据。坑：大小为 0 的补丁条目也会更新类型哈希（用旧哈希会弹 "Type hash mismatch"）；缺 EnvironmentData 时整个画面变洋红。地形图集 SDK 里没有源贴图，只能沿用原版地图的。
 - 新单位 + 往地图里摆新物体（`make_campnew13.py`）：SDK 写的新模板 CNV_TestShip（水翼船逻辑 + 航母模型 + 10 倍血量 + 中文名），`mapxml.place_object` 照着 Hydrofoil 01 摆进 .map，`mapscript.duplicate_contents` 把它的 7 条脚本动作复制给新单位，测试台上它跟着船队开进地图（work/testbench/new_unit_campnew13.png）。链接器会从 BAB 输出里补上原版流没有的新资产。
 - 改地形（`mapterrain.py` + `make_campnew14.py`）：HeightMapData = 560×560 格、每格 10 单位、高度值 ÷16、边框 30 格；在船队停泊点旁抬起一座岛，游戏里出现。`mapterrain.Tiles` 读写 BlendTileData 的贴图格（公式对上原版 36228 块草地），岛顶刷草、水线刷沙，游戏里显示（work/testbench/terrain_island_painted.png）；贴图过渡：混合描述表（每条 18 字节）已解析，方向含义用原版数据统计得出（`Tiles.SIDES`），`Tiles.autoblend` 自动给边缘加过渡，草地边缘变柔和（work/testbench/blend_cmp.png），27 张图 BlendTileData 逐字节往返。注意：按 ÷16 换算，水面实际在约 285 而不是水域里写的 200，原因未明，按实测用。
 - 汇总演示 `make_campnew15.py`：新任务 + 自写脚本 + 新单位 + 新岛（贴图 + 混合）+ crisp 光照，测试台正常（work/testbench/showcase_campnew15.png）。
@@ -83,8 +83,8 @@
 - **地图有了矿，矿车会自己跑去采**（2026-10-23）：车队原来借盟军矿车，放矿以后开局就开去采矿，冲进了 1 号广场的伏击区。矿车还是两栖的，会直接从水道里开过去，不走桥。车队改用 `units/convoy.py`（矿车去掉采矿、两栖、展开）。要"没有武器、不乱跑"的车就用它。
 - **坡道和悬崖上不能造建筑**（2026-10-23）：工兵在坡道中间造冰，什么都没造出来。要造建筑的地点标 `Site.build`，由 `platmap.lint` 离线检查。游戏里现造的建筑本来就不挡步兵；要真挡住出口，就由地图预先摆一道墙，横跨坡道口、两头搭在悬崖上（`festival` 的 `gate k`；A4 的冰造在门里平地 `inside k`）。
 - **桥是两个物件**（原版，2026-10-23）：桥头标记位 16、桥尾 32，在物件列表里紧挨着，引擎按模板的 `BridgeBuilder` 在两点之间铺桥段。两头都要在同一层的陆地上（`platmap.bridge`）。用原版石桥 `HB_Bridge_02`，运输车能过（`a4 win`）。
-- **计数器的内部名字只能用英文**（地图字符串按 latin-1 编码），中文只能放在显示的标签里。
-- **mod 名最多 15 个字符**：同一份内容，叫 CampLibRidersJump / CampBisjcdXXXXXXX（17 个字符）时游戏在主菜单前就崩（退出码 0xC000000D，日志里什么都没有）；叫 CampBisjcd、CampBisjcdXXXX（14）、CampLibertyJump（15）都正常。音乐探针 MusicProbeRetail（16）也一样：启动约 1 秒崩，Windows 应用日志 1000 号事件指向 MSVCR80.dll；同一份数据改名 MusRetail 就正常（2026-10-25）。CampA7East_What（15 个字符，带下划线）2026-10-25 也崩过，原因还没查清；`experimental/rtx-remix/README.md` 早先记过"不含下划线"，稳妥起见名字只用字母和数字。`experimental/cnv/parts.assemble` 超长直接报错，`tests/test_cnv_parts.py` 检查所有登记的编图名。
+- **计数器内部名须能用 Latin-1 编码**，中文可放在显示标签里。
+- **mod 名最多 15 个字符，且不得带下划线**：同一份内容，叫 CampLibRidersJump / CampBisjcdXXXXXXX（17 个字符）时游戏在主菜单前就崩（退出码 0xC000000D，日志里什么都没有）；叫 CampBisjcd、CampBisjcdXXXX（14）、CampLibertyJump（15）都正常。音乐探针 MusicProbeRetail（16）也一样：启动约 1 秒崩，Windows 应用日志 1000 号事件指向 MSVCR80.dll；同一份数据改名 MusRetail 就正常（2026-10-25）。CampA7East_What（15 个字符，带下划线）也曾在启动时崩溃。构建器和 `tests/test_cnv_parts.py` 都检查长度和下划线。
 - **游戏以为自己在后台时不放音乐**（2026-10-25，音乐探针）：界面音效照常，音乐完全没有；同一个 mod 有时出声有时不出声，就是这个原因。录音期间每 2 秒给游戏窗口发激活消息（WM_ACTIVATEAPP / WM_ACTIVATE / WM_SETFOCUS，和 `run_bench.ps1` 发按键前那三条一样，不抬窗口），音乐就稳定了（`experimental/music/listen.py` 的 `_tell_active`）。
 - **检查游戏在不在跑**：进程名要同时匹配 `ra3_1.xx.game`、`RA3.exe` 和起义时刻的 `ra3ep1`（之前漏了起义时刻）。
 - **截图隐私**：给启动器之类的窗口截图只用 PrintWindow 截那个窗口，别用 CopyFromScreen 截整屏（会截到用户的其他窗口）。
@@ -92,33 +92,33 @@
 
 ### 测试工具用法（编号沿用 HANDOFF 里的）
 
-0. **测试台改用 MCP（2026-10-21 晚起）**：仓库根 `.mcp.json` 注册了 `ra3bench`（`experimental/testbench/bench_mcp.py`，核心在 `harness.py`，Python 用 `../envs/bench_mcp`：mcp 2.x + Pillow + NumPy + pycaw）。新会话第一次要批准这个项目 MCP。用法：`bench_start(mod)` 自己走菜单进关（约 40 秒），之后用世界坐标 `bench_click / bench_box / bench_ability / bench_camera`，`bench_wait` 推进，`bench_look` 看，`bench_inspect` 放大任意存档帧，`bench_caption` 读任务脚本在字幕里报的信号，`bench_stop` 收尾放锁。默认 hold 模式：任务菜单（Esc）暂停游戏，只有工具在动作或等待时游戏才走（实测思考 5 秒游戏时间不变）。帧全尺寸存在 `work/testbench/runs/<mod>_mcp_<时间>/`（index.json 记每帧的任务秒数和镜头）。暂停菜单模板 `work/testbench/nav/pause_menu.png`（work 不进 git，丢了要从一帧任务菜单画面重切：`harness.MENU_BOX`）。旧的 `cnv.py bench`（run_bench.ps1 开环时间线）还在，批量回归可以继续用。思路来源：VISTA（arXiv 2610.02200）的机械控制器 + 无损帧存档 + 按需细看。
+0. **测试台改用 MCP（2026-10-21 晚起）**：仓库根 `.mcp.json` 注册了 `ra3bench`（`experimental/testbench/bench_mcp.py`，核心在 `harness.py`，Python 用 `../envs/bench_mcp`：mcp 2.x + Pillow + NumPy + pycaw）。新会话第一次要批准这个项目 MCP。用法：`bench_start(mod)` 自己走菜单进关（约 40 秒），之后用世界坐标 `bench_click / bench_box / bench_ability / bench_camera`，`bench_wait` 推进，`bench_look` 看，`bench_inspect` 放大任意存档帧，`bench_caption` 读任务脚本在字幕里报的信号，`bench_stop` 收尾放锁。默认 hold 模式：任务菜单（Esc）暂停游戏，只有工具在动作或等待时游戏才走（实测思考 5 秒游戏时间不变）。帧全尺寸存在 `work/testbench/runs/<mod>_mcp_<时间>/`（index.json 记每帧的任务秒数和镜头）。暂停菜单模板 `work/testbench/nav/pause_menu.png`（work 不进 git，丢了要从一帧任务菜单画面重切：`harness.MENU_BOX`）。MCP 跑主工作区代码；独立工作区排队检查用本工作区的 `run_queue.py`（见第 1 条）。旧的 `cnv.py bench` 是 `run_bench.ps1` 的开环入口。思路来源：VISTA（arXiv 2610.02200）的机械控制器 + 无损帧存档 + 按需细看。
 0b. **少操作、少截图的测法**（2026-10-21 夜）：
    - **让任务脚本自己动手**：`make_campnew38.py` 的 `CNV_TEST=jump` 由脚本在第 `CNV_JUMP_AT`（默认 15）秒用 `NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT` 让航母跳到 `CNV_JUMP_TO`，测试时一次点击都不用。
-   - **让任务脚本报数**：用 `DISPLAY_COUNTER` 把要检查的数显示在左下角（`harness.COUNTER_BOX`），每帧更新。例子：`SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` 数存活单位；`PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS` 按状态数单位，比较符 2 是"等于"，状态参数写成 `(序号, 0.0, 名字)`，序号按 ObjectStatus.xsd 的顺序从 0 数（ATTACHED = 102）。
+   - **让任务脚本报数**：用 `DISPLAY_COUNTER` 把要检查的数显示在左下角（OCR 读取范围见 `counters.line_box`），每帧更新。例子：`SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER` 数存活单位；`PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS` 按状态数单位，比较符 2 是"等于"，状态参数写成 `(序号, 0.0, 名字)`，序号按 ObjectStatus.xsd 的顺序从 0 数（ATTACHED = 102）。
    - **MCP 新工具**：
-     - `bench_watch(seconds, every, box)`：一次调用跑一段时间、定时存帧。返回每帧的变化量（水面和待机动画本身约 8）、字幕有没有变（超过 20），最多再加一张拼图。
-     - `bench_strip()`：把多帧里的同一块区域（默认计数器）拼成一条，只读存档、不碰游戏。
+     - `bench_watch(seconds, every, x0, y0, x1, y1)`（默认屏幕坐标，`world=true` 用世界坐标）：一次调用跑一段时间、定时存帧。返回每帧的变化量（水面和待机动画本身约 8）、字幕有没有变（字幕区域差值 ≥20），最多再加一张拼图。
+     - `bench_strip()`：把多帧里的同一块区域（默认裁图框 `harness.COUNTER_BOX`）拼成一条，只读存档、不碰游戏。
      - `bench_start(look=false)`：开局不截图。
-   - **飞行单位画在地面点上方约 170 像素**：框飞行单位时，`bench_watch` 要传 `air=true`。
+   - **飞行单位画在地面点上方约 170 像素**：`bench_watch(air=true)` 把裁图上扩；框选用 `bench_box(..., air=true)`。
    - 一次完整测试的流程：start → watch（sheet=false）→ `bench_counters`，只返回文字，一张图都不用看。
-   - **计数器认数字**：`experimental/testbench/counters.py`。计数器从左下角 y=578 往下排、每行 16 像素，只放得下 4 行（第 5 行被底栏挡住）。数字模板在 `work/testbench/nav/digits/`（work 不进 git，丢了就重跑 `cnv.py make digits --calibrate`：地图显示 1234 / 5678 / 90，切出 0～9）。MCP 工具 `bench_counters(lines)` 把每帧的计数器读成"s19: 6 5"。
-     - 任务显示的倒计时（`DISPLAY_COUNTDOWN_TIMER`）和计数器在同一张列表里，排在计数器上面，会把计数器往下挤一行。读数程序现在先数有字的行，多出来的当倒计时跳过（2026-10-24）。
+   - **计数器认数字**：`experimental/testbench/counters.py`。OCR 用 `line_box` 从 y=578 开始每 16 像素扫一行（x=0 到 330），最多扫 4 行。数字模板在 `work/testbench/nav/digits/`（work 不进 git，丢了就重跑 `cnv.py make digits --calibrate`：地图显示 1234 / 5678 / 90，切出 0～9）。MCP 工具 `bench_counters(lines)` 把每帧的计数器读成"s19: 6 5"。
+     - 任务显示的倒计时（`DISPLAY_COUNTDOWN_TIMER`）和计数器在同一张列表里，排在计数器上面，会把计数器往下挤一行。读数按字形识别并过滤倒计时；全被过滤时用原识别结果。
      - 标签最后一个字和数字挨得太近（如以"车"结尾，只隔 3 像素）时，数字会被并进标签读错；以"量"结尾的标签没问题。
    - 任务提前结束（输了 / 赢了）时，`bench_watch` 停不住游戏也会带着已存的帧返回，计数器随任务一起消失；判"任务结束"用 0c 的 ENDED。
 0c. **解耦后的组装命令**（2026-10-21 深夜，用户定"先接受叠放，先做解耦，效率改进也做"）：
-   - 结构 `experimental/cnv/`，旧的 42 个 `make_camp*.py` 不动：
+    - 结构在 `experimental/cnv/`。部分旧示例已归档到 `experimental/archive/campaign/`（如 `make_campnew5.py` 和 `make_campnew38.py`）；`cnv.py build` 只从现行 `experimental/campaign/` 找脚本：
      - `units/`：单位 = 参数 → `Unit`（XML 文本 + 编图要知道的东西），`tag=` 给所有自有 id 加后缀，两个变体能摆在同一张图上。
      - `maps/`：地形和开局点（`island.py` 就是 CampNew18 的岛）。
      - `missions/`：摆放 + 任务脚本 + 字符串 + 目标（`a8.py`、`liberty_bench.py`）。
      - `checks/`：检查 = 附加的脚本（让任务自己按技能）+ 计数器 + 测试台步骤 + 期望值。
      - `parts.py`：声明的数据结构和 `assemble()`，走原来的 CampNew7 流水线（lint 照跑）。
      - `build.py`：一条命令编图、跑测试台、按计数器判 PASS / FAIL，失败时退出码 1。
-   - 命令：
+    - 当时的组装命令（台上检查的现行入口见第 1 条）：
      - `cnv.py make list`：列出能编的图和检查。
      - `cnv.py make a8`：编 A8 本身。2026-10-21 深夜经用户同意已覆盖装着的 CampA8（新版是原版战车工厂，造不了 CNV 轻坦）。
-     - `cnv.py make a8 --check jump|lose`、`cnv.py make liberty_riders --check jump`、`cnv.py make liberty_ride_ab`（同图 A/B）。
-     - `--no-build`：只跑测试台，用已经编好的图。
+     - `cnv.py make a8 --check jump|lose`、`cnv.py make liberty_riders --check jump`、`cnv.py make liberty_ride_ab`（同图 A/B），均为当时的任务名及检查。
+     - `--no-build`：旧 `make` 检查选项，跳过编图，用已编好的图跑台。
    - 2026-10-21 测试台结果，全部零点击：
      - A8 jump PASS：自由号 1，守护者 6。
      - A8 lose PASS：自由号第 5 秒被击落，任务结束。
@@ -129,12 +129,12 @@
      - `(标签, 从第几秒起, 比较符, 值)`：从那一秒起每帧都要满足。
      - 比较符写成 `ever==` 之类：至少有一帧满足就算。
      - 标签写 `ENDED`：计数器先出现、后来全没了，就算任务已经结束。
-     - 可加第 5 项"到第几秒为止"：`(标签, 起, 比较符, 值, 止)`，比如"跃迁前落点里是 0"。任务计时器比测试台的秒数早约 1 秒（测试台从看到关卡画面才开始数），写截止时间时留 `checks/liberty.EARLY`（2 秒）余量。
+     - 可加第 5 项"到第几秒前（不含该秒）"：`(标签, 起, 比较符, 值, 止)`，比如"跃迁前落点里是 0"。任务计时器比测试台的秒数早约 1 秒（测试台从看到关卡画面才开始数），写截止时间时留 `checks/liberty.EARLY`（2 秒）余量。
 0d. **触发区域 + MCP 一次调用测完**（2026-10-21 深夜，用户："地图生成器写触发区域，完善 MCP 工具，尽可能让大模型直接和 MCP 交流，避免直接操作"）：
    - **触发区域**：`mapscript.MapFile.trigger_areas()` / `set_trigger_areas({名: [(x, y), ...]})`（格式见那里的注释，按原版地图核对过）。任务和检查写 `t.areas['名'] = parts.square(x, y, 半边长)`；`parts.counted(..., template=..., area='名')` 用 `PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` 数区域里我方某种单位有几辆。底图（海德堡）原有的区域随它的脚本一起被替换掉；脚本里引用了没声明的区域，`assemble` 编图前就报错。`maprender` 会画出区域（青色框）。
    - **MCP 新工具**（`bench_mcp.py`）：
      - `cnv_list()`：列出所有任务、检查、计数器和期望值。
-     - `cnv_check(name, check)`：编图 → 进关 → 看 → 读计数器 → 判 PASS / FAIL，一次调用全做完，返回文字，不点击、不看图。编图在单独进程里跑（每次都用最新代码）。`build=false` 用已编好的图，`keep=true` 留着游戏好接着查。
+     - `cnv_check(name, check)`：编图 → 进关 → 看 → 读计数器 → 判 PASS / FAIL，一次调用全做完，返回文字，不点击、不看图。编图在单独进程里跑（用 MCP 所在主工作区的代码）。`build=false` 用已编好的图，`keep=true` 留着游戏好接着查。
      - `cnv_map(mod, x, y, r)`：不开游戏看编好的地图俯视图（摆放、路点、触发区域）。
    - 本机已在 `.claude/settings.local.json` 批准 ra3bench（不进 git），**下个会话开始就能直接调这些工具**；没加载 MCP 时，用 `bench_client.py '[["cnv_check", {"name": "a8", "check": "jump"}]]'` 走同一条 MCP 路径。
    - `build.py` 给 MCP 用的两个模式：`--plan`（编图后打印测试台步骤）、`--judge "<计数器文字>"`（离线判定，改了期望值不用重跑游戏）。
@@ -144,16 +144,16 @@
      - liberty_riders jump：落点里跃迁前 0 辆、跃迁后 5 辆，在甲板 5、存活 6。
      - liberty jump：落点里跃迁后 4 辆；存活在跃迁那一刻从 6 变 5（老问题，候选 3）。
    - 已知缺口：
-     - 按类别数（`parts.counted(kind=parts.kindof('VEHICLE'), area=...)`，0e 接上了）会多算：A8 对照里 12 辆车读成 20、敌方 9 辆读成 12，大概是多功能车、牛蛙带着附属对象；探针图 `cnv.py make kinds`（3 辆守护者 + 2 座建筑）四种数法都对。对照、判定用按型号数。
+      - 按类别数（`parts.counted(kind=parts.kindof("VEHICLE"), area=...)`）统计区域内所有阵营的合计，忽略 `player`；要分阵营，用按模板的区域计数。A8 对照里原预期 12 / 9 辆，按类别读为 20 / 12，具体多算了哪些对象未核。
      - `cnv_check` 一次约 2～3 分钟，MCP 客户端要等这么久（Claude Code 默认不会超时）。
 0e. **A8 难度对照、MCP 第二轮改进、少一辆守护者**（2026-10-21 深夜）：
-   - **难度对照** `a8 --check assault` / `a8_control --check assault`（同一套脚本，两边都 PASS）：每 8 秒全队攻向第一座还在的平台，平台周围区域里没有铁锤了就改成点名攻击平台；有自由号时冷却一好就跃迁过去。去掉了任务自己的输赢脚本，计数器一直在。结果：有自由号第 60 秒三座全灭，丢 1 辆守护者，自由号活着；没自由号第 82 秒，12 辆里丢 4 辆（守护者 1、多功能车 3）。符合 5.6"有招牌不能无伤、没招牌能打但更难"，但两边都太容易，见候选 1。
+   - **难度对照**（现行检查为 `a8_rough:assault` / `a8_rough_control:assault`，当时同一套脚本两边都 PASS）：每 8 秒全队攻向第一座还在的平台，平台周围区域里没有铁锤了就改成点名攻击平台；有自由号时冷却一好就跃迁过去。去掉了任务自己的输赢脚本，计数器一直在。结果：有自由号第 60 秒三座全灭，丢 1 辆守护者，自由号活着；没自由号第 82 秒，12 辆里丢 4 辆（守护者 1、多功能车 3）。符合 5.6"有招牌不能无伤、没招牌能打但更难"，但两边都太容易，见候选 1。
    - **第一轮对照两边都 FAIL，是测试脚本的错**：攻击移动只打单位、不打建筑，护卫死光后全队停在路点发呆（看了相机对准平台 1 的那几帧才看出来）。坑已记在上面「踩过的坑」。
    - **MCP 改进**：
-     - `bench_watch(lines=n, until='c1==0')`：每帧读计数器，条件满足就提前停；`cnv_check` 随后跳过剩下的等待。这次两个对照分别 60、82 秒停，不用等满 290 秒。
-     - `cnv_check` 的返回只留一遍计数器，相同读数合并（`s18-s50: 2 4 6 1`），菜单日志、逐帧行都省掉：两个检查一共约 3 KB，以前一个就约 9 KB。完整逐帧行仍在 `bench_watch` 自己的返回和帧存档里。
+     - `bench_watch(lines=n, until='c1==0')`：每帧读计数器，条件满足就提前停；`cnv_check` 随后跳过带 `until` 的等待，保留无条件观察。这次两个对照分别 60、82 秒停，不用等满 290 秒。
+     - `cnv_check` 返回步骤摘要、合并后的计数器读数（`s18-s50: 2 4 6 1`）和判定。这次两个检查一共约 3 KB，以前一个就约 9 KB。完整逐帧行可看 `bench_watch` 返回和本局帧存档。
      - 检查可以先 `bench_camera` 把镜头对准要看的地方：数字说不通时，翻一帧就知道发生了什么。
-     - 修了一个隐患：`a8_control` 原来也叫 CampA8，一编就会覆盖正式 A8，现在叫 CampA8C。
+      - 控制组原先会覆盖正式 A8；现行 `a8_rough_control` 的构建名是 CampA8RC。
    - **liberty jump 少一辆守护者的原因**：落点 (1480, 2315) 紧挨我方电站 (1550, 2360)。航母东边 60 那辆被传过去正好压在电站上，超时空的 Telefrag 把它弄死了。对照 `liberty --check open`（落点往南挪 165，离电站 210 以上，其余不变）：6 辆全活、5 辆到落点，坐实。带乘员的版本不丢，是因为乘员挂在航母上，不单独传送。
 0f. **地图 / 单位 / 关卡 / 检查之间只走接口**（2026-10-22，用户："先把关卡设计，单位设计，地图设计解耦"、"让整个流程尽可能变成接口对接口的对话，不进行直接操作"）：
    - 每层只公开给下一层用的东西（`experimental/cnv/parts.py` 开头）：
@@ -163,7 +163,7 @@
      - **检查**只问关卡：`m.role('carrier').name`、`m.ability('carrier', 'jump')`、`m.site(...)`、`m.roles('platform')`、`m.player('s1')`、`m.drop_endings()`；不再 import 关卡模块的常量，也不写自己的坐标。
    - **接口检查** `parts.contract()`：编图前查一遍，`assemble` 有问题就停。查的是：物体有没有按地图地点放；脚本参数里的物体名、路点、触发区域、队伍、玩家、字符串、特殊能力、模板有没有人公开过；点名放技能的那个物体，它的单位有没有公开这个技能。`tests/test_cnv_parts.py` 有正反例。
    - **看接口**：`build.py <名> [--check <检查>] --show`，以及 MCP 的 `cnv_show(name, check)`。不编图，把地图地点、单位能力、关卡角色表、检查的计数和期望、接口检查结果打成文字。写新关卡、新检查之前先看一眼，写完再看一眼。`cnv_show` 是新工具，MCP 服务进程重启（新会话）后才有。
-   - **验证**：14 个构建改造前后逐项比对全部一致，每个构建 contract ok。测试台上截帧掉线时，`cnv_check` 会加一行 `BENCH DROPOUT`，提示用 `build=false` 重跑（第一次 a8 jump 就是这样，重跑 PASS）。
+   - **验证**：14 个构建改造前后逐项比对全部一致，每个构建 contract ok。第一次 A8 jump 截帧中断并判 FAIL，标为 `BENCH DROPOUT`，用原构建重跑后 PASS。
 0g. **A7 迁入、设计文档改成接口形式**（2026-10-22，用户："把 A7 搬进来，设计文档也改"）：
    - **A7**：`missions/a7.py` + `checks/a7.py`（`jumps` / `power` / `win` 在测试台全过，发现见 plan.md A7 行）。和 A8 同一张岛图，只给地图加了 `base edge`、`east field` 两个地点，旧构建快照仍一致。关卡另外公开路点 `marks` 和时间 `facts`，检查用 `m.point` / `m.facts` 取。
    - **设计文档**：[docs/story/levels.md](../story/levels.md) 每个关卡一张卡片，只用代码公开的名字写意图。`tests/test_level_cards.py` 保证卡片和代码一致，做过 8 种变异检验。
@@ -178,27 +178,27 @@
    - `retail_goals()`：各关目标的英文标题。
    - 原版资料第一次用时缓存到 `work/retailref/`，约 2 分钟（`retailref.py`）。
    - `bench_menu()`：截任务菜单，看目标列表和标记。
-   - `cnv_check` 遇到截帧断线（BENCH DROPOUT）会自动不重编再跑一次。
+    - 截帧中断且判 FAIL 时，`cnv_check` 标 `BENCH DROPOUT`，默认用原构建重跑一次；可传 `retry=false`。
    - 一次观察超过 120 秒的检查，自动拆成几段（`build.steps`）。
    - 离线守卫：`tests/test_maps.py`，所有平台地图的设计检查必须为空，做过 4 种变异检验。
 0a. **编图前自动静态检查**：`experimental/campaign/lint.py`，每次编图在编译前跑（`make_campnew7.compile_map`），有 ERROR 就停（`CNV_LINT=warn` 只打印）。规则对应上面"踩过的坑"：视野和射程（超过 1.5 倍只警告）、步兵 IMMOBILE、超时空模板缺 ObjectFilter、ToggleState 缺 SkirmishAiInfo、复制件里留着原版 id、SpawnBehavior 刷的自制模板没摆在地图上（按名字链接的算摆了：`experimental/cnv` 链接每个单位）、只有固定挂点武器又不会自己挑目标（只警告）。`python -I -X utf8 experimental/campaign/lint.py` 单独查全部单位文件；`tests/test_lint.py` 每条规则一个正反例。新坑出现时先加一条规则和测试。
-1. 日常操作先用根目录的 `cnv.py`（`python -I -X utf8 cnv.py -h`）：build / map / bench / sheet / where / status，不再临时写脚本。新测试一律用 `run_bench.ps1 -Nav`（`cnv.py bench` 就是它）：时间从进入关卡算起，点击位置用 `experimental/testbench/calib.py` 的 `world_to_screen` 从世界坐标算（标定只对从 CampNew18 岛派生、开局镜头相同的地图有效；换了开局镜头要重新标定：`CNV_CALIB=base/grid` 各编一次、各跑一次，再 `calib.py fit`）。要看镜头外的地方：左键点 `calib.world_to_minimap(x, y)` 移镜头，再用 `calib.world_to_screen_at(x, y, 镜头中心)` 算点击位置；要打人就右键点敌人本身，右键点小地图只是移动。
+1. 独立工作区的测试检查用 `python -I -X utf8 experimental/testbench/run_queue.py <任务:检查> --jobs 2`，由它排队取台位锁。根目录 `cnv.py -h` 可查 build / map / sheet / where / status 等工具。世界坐标换屏幕坐标看 `experimental/testbench/calib.py`：旧岛图标定要求同开局镜头，换镜头用 `CNV_CALIB=base/grid` 各编、各跑一次再 `calib.py fit`；原版地图可用专用标定。移镜头后，用 `world_to_screen_at(x, y, 镜头中心)` 计算点击位置；左键小地图移镜头，右键小地图是移动命令。
 1b. 试玩用的启动器现在是 `experimental/cnv/launcher.py` 生成的 CampShell 启动器（Mods\CampShell\Play_CampShell.vbs，桌面快捷方式「红警3 · 战役实验室」）；老的 launcher.pyw 已删。启动器是个 HTA 小窗（`experimental/cnv/play.hta` 模板 → `Play_CampShell.hta`，两个按钮"中文版""国际版"，记住上次选的存在 `last_edition.txt`，参数 `zh` / `intl` 可跳过），分别启动 `Mods\CampShell`（`build.py a4 --shell`）和 `Mods\CampShellEn`（`build.py a4 --shell --lang intl`）；启动器、图标、桌面快捷方式各只有一份，由 `python -I -X utf8 experimental/cnv/launcher.py --desktop` 生成。
-1a. **2026-10-21 晚起测试台副本不加载 Tacitus**：Tacitus 出了 1.1.1，又在每次启动时弹更新窗口，Steam 目录里的也还是 1.1.0、没有新版可抄，就把副本的 `Data\dsound.dll` 改名成 `dsound.dll.tacitus110.off`（测试台不联网，用不着它；改回原名即恢复）。没有 Tacitus 时游戏会弹"连接中断通知"并退回主菜单：`nav.py` 的 POPUPS 认得它、点确定，`run_bench.ps1` 随后从第 0 步重新走菜单（约第 29 秒进关）；ra3bench（`harness.py`）则看画面停在哪一步就从哪一步接着走——这个弹窗也在关卡里出现过，从第 0 步重走会一直等主菜单到超时（2026-10-27 修）。以下是旧情况：测试台的游戏副本 `work/testbench/RA3` 里也有 Tacitus（C&C:Online 的游戏补丁，`Data\dsound.dll`）。它的版本落后于新版时，每次启动都弹更新窗口，挡住菜单；而且它是 ImGui 窗口，测试台发的点击点不到。办法：把 Steam 游戏目录里更新过的 `Data\dsound.dll` 复制到测试台副本（2026-10-20 已换成 1.1.0，旧的留作 `dsound.dll.tacitus100.bak`）。`nav.py` 的 POPUPS 只能识别出这个窗口，点不掉它。卡在菜单时，看 `shots/nav_last.png` 就知道卡在哪个画面。
+1a. **2026-10-21 晚起测试台副本不加载 Tacitus**：Tacitus 出了 1.1.1，又在每次启动时弹更新窗口，Steam 目录里的也还是 1.1.0、没有新版可抄，就把副本的 `Data\dsound.dll` 改名成 `dsound.dll.tacitus110.off`（测试台不联网，用不着它；改回原名即恢复）。没有 Tacitus 时游戏会弹"连接中断通知"并退回主菜单：`nav.py` 的 POPUPS 认得它、点确定，`run_bench.ps1` 随后从第 0 步重新走菜单（约第 29 秒进关）；ra3bench（`harness.py`）则看画面停在哪一步就从哪一步接着走——这个弹窗也在关卡里出现过，从第 0 步重走会一直等主菜单到超时（2026-10-27 修）。以下是旧情况：测试台的游戏副本 `work/testbench/RA3` 里也有 Tacitus（C&C:Online 的游戏补丁，`Data\dsound.dll`）。它的版本落后于新版时，每次启动都弹更新窗口，挡住菜单；而且它是 ImGui 窗口，测试台发的点击点不到。办法：把 Steam 游戏目录里更新过的 `Data\dsound.dll` 复制到测试台副本（2026-10-20 已换成 1.1.0，旧的留作 `dsound.dll.tacitus100.bak`）。`nav.py` 的 POPUPS 只能识别出这个窗口，点不掉它。菜单卡住时，旧脚本结束后看 `shots/nav_last.png`；MCP 看本次 run 目录的 `nav_last.bmp`。
 - 清单的 AI 部分读私有模型 `ra3model/ai` 时只读 `experimental/cnv/inventory_model.rev` 钉住的那个提交（git 对象，不看任何人的模型工作区），所以各工作区生成的清单页一样。改了模型、要让清单看到：模型推到 origin 后跑 `python -I -X utf8 experimental/cnv/inventory_ai.py pin`，提交 `.rev`（清单页按需生成、不进仓库，ADR 0030）。`.rev` 冲突：取较新的一边，先合模型。
-- 模拟器、AI、代理玩家加载私有模型时也只认这个提交（ADR 0030，`modelpin.check`，`tests/test_modelpin.py`）：模型工作区（`CNV_ENGINE_MODEL` 指的也算）HEAD 不等于 `.rev` 就报 `ModelPinError` 停下，报出两个提交号和修法。只核 HEAD，模型里没提交的改动不看。改模型的流程：模型提交 → 在公开工作区 `inventory_ai.py pin <提交号>`（本地先试，不用先推）→ 跑测试 → 模型和公开（含 `.rev`）一起推。11-17 的教训：主工作区模型落后一个提交（B228），aiskvinf / aiskvd9 在全量里红，被当成 B 的已知红。
+- 模拟器、AI、代理玩家加载私有模型前核对钉住的提交（ADR 0030，`modelpin.check`，`tests/test_modelpin.py`）：模型工作区（`CNV_ENGINE_MODEL` 指的也算）HEAD 不等于 `.rev` 就报 `ModelPinError` 停下，报出两个提交号和修法。核对 HEAD 后从模型工作区加载 Python，未提交的改动也会影响运行。改模型的流程：模型提交 → 在公开工作区 `inventory_ai.py pin <提交号>`（接受本地提交号，仍先尝试 fetch origin）→ 跑测试 → 模型和公开（含 `.rev`）一起推。11-17 的教训：主工作区模型落后一个提交（B228），aiskvinf / aiskvd9 在全量里红，被当成 B 的已知红。
 
 ## 注入工具：注入看 / 注入摆（D 线第 135 轮起，ADR 0027）
 
-- **注入看**（第 135 轮做成）：带 ra3ext 宿主的台图（`missions/aiteams_bench.py` 的 host_unit，`Mission.ext = True`）跑完，ra3bench 的 `inject_look(run, kinds, unit, first, last)` 返回文字记录，一行一条：`f<帧> <单位> <类别> <做了什么> <- <哪段程序>`。类别：command（进命令队列的命令，单位取同帧之前的选中令）、dispatch（队伍给成员下令）、goal（成员目标变）、state（成员 AI 状态变）、team（队伍微操状态 / 目标 / 战术目标变）、assign（队伍给成员分目标）、threat（挑威胁）。不传 run 取最新一局。代码里用 `experimental/cnv/inject.py` 的 `look()` / `text()`（`tests/test_inject.py`）。
-- "哪段程序"的名字表是私有的（`work/re/inject_names.json`，运行时读）；表里没有的显示原样，只在屏幕上，不许抄进公开文件（`tests/test_no_program_addresses.py`）。新读懂一段程序就往表里加一行。
+- **注入看**（第 135 轮做成）：带 ra3ext 宿主的台图（`missions/aiteams_bench.py` 的 host_unit，`Mission.ext = True`）跑完，ra3bench 的 `inject_look(run, kinds, unit, first, last)` 返回文字记录，一行一条：`f<帧> <单位> <类别> <做了什么> <- <哪段程序>`。类别：command（进命令队列的命令，单位取同帧之前的选中令）、dispatch（队伍给成员下令）、goal（成员目标变）、state（成员 AI 状态变）、team（队伍微操状态 / 目标 / 战术目标变）、assign（队伍给成员分目标）、threat（挑威胁）。不传 `run` 取最新有 `ra3ext.log` 的一局。代码里用 `experimental/cnv/inject.py` 的 `look()` / `text()`（`tests/test_inject.py`）。
+- "哪段程序"的名字表是私有的（`work/re/inject_names.json`，运行时读）；表里没有的显示原样，只在屏幕上，不许抄进公开文件（`tests/guards/test_no_program_addresses.py`）。新读懂一段程序就往表里加一行。
 - 例：airevk2 → `f302 3171 command 移动(倒车)到 (3622.3, 3361.5) <- ReverseMove（倒车）`；aibdi1 → `f50 3165 command 对目标（攻击 / 进驻） 对象 3169 <- EnterBaseDefensesWhenIdle（闲时进基地防御）`。
-- **注入摆**（第 135b 轮做成，目前只有 pos：按地图脚本名把物体摆到 x y，高度不变）：检查里写 `t.inject = [inject.pos(帧, '脚本名', x, y)]`（`Part.inject`，merged 时任务和检查的合并）；宿主要带 CNVCmd：`host_unit(cmd=True)`，aicrush / aipullback 一类任务传 `observe='cmd'`。构建在 ra3ext.allow 旁边写 `ra3ext_plan.txt`（`package.mark_plan`，只在 ext 时），台子开局前拷成本局 run 目录的 `ra3ext_cmd.txt`（`harness.hand_plan`），CNVCmd 第一次 update 读走、排进队列，到帧执行，每条记一行 `poke:`，用 `inject_look(kinds=['poke'])` 看：`f250 3177 poke 摆 <名字> x,y -> x,y`，找不到（死了、名字错）是 `-1 … 没找到`。例子：`checks/engine_aipullback.py` 的 airevkp1 / airevkp0。
+- **注入摆**（第 135b 轮做成，目前只有 pos：按地图脚本名把物体摆到 x y，高度不变）：检查里写 `t.inject = [inject.pos(帧, '脚本名', x, y)]`（`Part.inject`，merged 时任务和检查的合并）；宿主要带 CNVCmd：`host_unit(cmd=True)`，aicrush / aipullback 一类任务传 `observe='cmd'`。构建在 ra3ext.allow 旁边写 `ra3ext_plan.txt`（`package.mark_plan`，只在 ext 时），台子开局前拷成本局 run 目录的 `ra3ext_cmd.txt`（`harness.hand_plan`），CNVCmd 第一次 update 读走、排进队列，到帧执行，每条记一行 `poke:`，用 `inject_look(kinds='poke')` 看：`f250 3177 poke 摆 <名字> x,y -> x,y`，找不到（死了、名字错）是 `-1 … 没找到`。例子：`checks/engine_aipullback.py` 的 airevkp1 / airevkp0。
 - 坑：帧是逻辑帧（ra3ext 的帧号，和 team: 行同一套），不是任务秒；摆的坐标先从同一台图上一局的 team: 行读成员位置再定。ra3bench MCP 跑主仓库代码，新检查推上去、MCP 重启前用本工作区的 `run_queue.py`。用"摆"得到的对拍，NOTES / 清单里标"前提是摆出来的"（起点不是任务自己走出来的）。下一步：队伍状态、目标、人格字段，设计和进度在 `work/re/handoff-d.md`。
-- **目标选择同帧记录**（D 第 158 轮）：带 ra3ext 宿主（`Mission.ext = True`）的台图，每次 AI 战略状态给目标槽跑一条目标启发（TargetHeuristic），ra3ext.log 记一行 `tgt:`，地图上所有 AI 都记。读法 `teamlog.target_picks(run, brain=None)`，每行给：帧、哪个 AI（brain）、槽号、状态（本局内的不透明记号，不是状态 id，同一状态全局同一个）、启发类、SortType、选中没有、选中的对象 id 和位置，以及**同帧全部候选**（按游戏过滤的顺序）：id、位置、`ok`（游戏自己的过滤结论）、`why`（观测器另算的不合格项：uniq 被别的槽占、stat 对象状态、dead、x471 / hide 不可选标志、vital / forbid 种类掩码、area 位置不认可、other 游戏判不过而上面都没失败）、ClosestToEnemy 的最近敌对象和距离、ThreatTo* 的威胁值。只在内容变了时记（同样内容 450 帧补一次），没有行 ≠ 没有调用。
+- **目标选择同帧记录**（D 第 158 轮）：带 ra3ext 宿主（`Mission.ext = True`）的台图，AI 战略状态的目标启发（TargetHeuristic）经 `ra3ext.log` 的 `tgt:` 行读取，覆盖地图上所有 AI。读法 `teamlog.target_picks(run, brain=None)`，每行给：帧、哪个 AI（brain）、槽号、状态（本局内的不透明记号，不是状态 id，同一状态全局同一个）、启发类、SortType、选中没有、选中的对象 id 和位置，以及同帧候选（按游戏过滤的顺序；列表可能截断，见 `more`）：id、位置、`ok`（游戏自己的过滤结论）、`why`（观测器另算的不合格项：uniq 被别的槽占、stat 对象状态、dead、x471 / hide 不可选标志、vital / forbid 种类掩码、area 位置不认可、other 游戏判不过而上面都没失败）、ClosestToEnemy 的最近敌对象和距离、ThreatTo* 的威胁值。只在内容变了时记（同样内容 450 帧补一次），没有行 ≠ 没有调用。
 - 例：aiclosest（`CampClosestA_mcp_1115_094417` 等三局，读数一样）f16 四个槽各选一次、之后不重选：允许炮塔的两槽选炮塔、另两槽炮塔被 forbid、选电厂（离敌 1118，比基地 1544、另一建筑 1844 近）——战略选点就是 塔 / 塔 / 电厂 / 电厂，台上后两路 0 人不是候选被拒，是选完以后的事（战术 / 微操改目标）。
-- 状态 id（D 第 159 轮，`CampClosestA_mcp_1115_141948` 台上核过）：每行的 `state_id` = 状态名小写的 FastHash（8 位小写十六进制），和同一 AI 的队伍名前缀一样（`2ee151d8_StaticDefense_0_0` 的状态就是 `state_id == '2ee151d8'`）；`teamlog.state_hash('CNVClosest1')` 从名字算。`index` = 这条启发在该状态 TargetHeuristic 列表里的位置（同一状态挂几条同类启发时靠它分路）。该局 31 个 (AI, 状态) 全部换回了原版 / 任务里的状态名；aiclosest 四路：cnvclosest0 / 1 选炮塔，cnvclosest2（非塔）炮塔 forbid、和 cnvclosest3 都选电厂。
-- **IncomeAdvantage 同帧记录**（D 第 159 轮）：同一类台图，每次 IncomeAdvantageHeuristic 求值记一行 `inc:`，读法 `teamlog.income_evals(run, brain=None)`：本方 / 游戏实际拿来比的敌方玩家序号（没找到敌人 = None）、双方原始输入（启发读的那个浮点数，两边同乘 1/90 之前）、Value / Above、结果 0 / 1、`why`（early 没有敌人等提前返回 → 0；zero 双方都是 0 → 1；ratio=本方 / 敌方，敌方 ≤ 0 时 9999）。按 AI 各自只在内容变了时记。每行另给 `own_q` / `enemy_q`（同一记账对象上相邻的三个数，输入 = 中间那个；下面叫第一 / 第三个）。
+- 状态 id（D 第 159 轮，`CampClosestA_mcp_1115_141948` 台上核过）：有效的 `state_id` 是 状态名小写的 FastHash（8 位小写十六进制），和同一 AI 的队伍名前缀一样（`2ee151d8_StaticDefense_0_0` 的状态就是 `state_id == '2ee151d8'`）；`teamlog.state_hash('CNVClosest1')` 从名字算。`index` = 这条启发在该状态 TargetHeuristic 列表里的位置（同一状态挂几条同类启发时靠它分路）。取不到的 `state_id` 或 `index` 为 `None`。该局 31 个 (AI, 状态) 全部换回了原版 / 任务里的状态名；aiclosest 四路：cnvclosest0 / 1 选炮塔，cnvclosest2（非塔）炮塔 forbid、和 cnvclosest3 都选电厂。
+- **IncomeAdvantage 同帧记录**（D 第 159 轮）：同一类台图的 IncomeAdvantageHeuristic 求值经 `inc:` 行读取，读法 `teamlog.income_evals(run, brain=None)`：本方 / 游戏实际拿来比的敌方玩家序号（没找到敌人 = None）、双方原始输入（启发读的那个浮点数，两边同乘 1/90 之前）、Value / Above、结果 0 / 1、`why`（early 没有敌人等提前返回 → 0；zero 双方都是 0 → 1；ratio=本方 / 敌方，敌方 ≤ 0 时 9999）。按 AI 去重，内容变化或相同内容满 450 帧时记一行。每行另给 `own_q` / `enemy_q`（同一记账对象上相邻的三个数，输入 = 中间那个；下面叫第一 / 第三个）。
   - 有采矿的台（D 第 160 轮，`aiskxo:l`，遭遇战 AI 自己采矿、开局给 50000，不用宿主——钩子在 ra3ext 加载时就装）：采矿 AI 的输入**不是余额**（只有两三千），按卸货的步子涨（+112 / +120 / +114 / +16 / +18），之后又会掉（−56 / −120 / −74 ……）；第三个数只涨不掉（输入掉的时候它不动），第一个一直 0；不采矿的玩家（敌方人类）三个数都是 0，所以 why 是 ratio=9999。这台 AI 每 15 帧求值一次（帧号同余），按 AI 去重台上成立：4 个 AI 交替、各记各的。**输入到底是什么还没定**：像"最近一段时间的收入"（掉的那几步和 435 帧前的入账对得上一组，另一组对不上），标 INFERRED。坑：AI 进入用这条启发的状态之后才有行（这台 f1954 才第一次出现，此前的入账看不到）。
-- **"受攻击"（目标启发 UnderAttack）逐对象记录**（D 第 161 轮）：ra3ext 加载即记 `ua:` 行，读法 `teamlog.under_attack(run, obj=None)` → `episodes`（每段：对象、所属玩家、置位帧 = 那次受伤帧、最后受伤帧、撤销帧 clear、最后来源及撤销时来源还在不在、受伤次数）和 `gates`（游戏自己对候选做 UnderAttack 判定的原值 result，及按规则算的 expect）。规则（读程序）：对象**最近一次受伤帧 + 5 秒 × 15 帧（× 游戏速度）≥ 当前帧**就算受攻击，撤销帧 = 最后受伤帧 + 76；**不查伤害来源还在不在**；只有友方类启发（FriendlyStructure / FriendlyUnit）会用这个门，敌方类不看。台上（`aiunderatk:a`）：电厂 f5 一次满血的"受伤"记录（来源 0，像是出生时写的）→ 置位，f81 撤销（= 5 + 76），f16 游戏判定 true，与规则一致。坑：同一帧或紧接的下一帧再挨打不刷新最后受伤帧（游戏把它并进上一条）。**还没有真打起来的一局**：这台的坦克开了全图也没打上电厂（原因没查），交战 / 停火 / 来源被消灭这几种情形待补。
-- 坑：老日志（第 159 轮前）没有 `state_id` / `index`（为 None），槽和状态的对应只能靠候选的 forbid 模式等区分；ra3ext.log 有总大小上限（aiclosest 在 f538 截断）；FriendlyUnit 里被"已占"提前刷掉的候选不出现在列表；Point 类的候选和威胁没记。
+- **"受攻击"（目标启发 UnderAttack）逐对象记录**（D 第 161 轮）：ra3ext 加载即记 `ua:` 行，读法 `teamlog.under_attack(run, obj=None)` → `episodes`（每段：对象、所属玩家、置位帧 = 那次受伤帧、最后受伤帧、撤销帧 clear、最后来源及撤销时来源还在不在、受伤次数；来源生存和次数可能未知）和 `gates`（游戏自己对候选做 UnderAttack 判定的原值 result，及按规则算的 expect）。规则（读程序）：对象**最近一次受伤帧 + 5 秒 × 15 帧（× 游戏速度）≥ 当前帧**就算受攻击，撤销帧 = 最后受伤帧 + `win` + 1（75 帧窗时差 76）；缺撤销行且日志已越过窗口时，读端按此推算；**不查伤害来源还在不在**；只有友方类启发（FriendlyStructure / FriendlyUnit）会用这个门，敌方类不看。台上（`aiunderatk:a`）：电厂 f5 一次满血的"受伤"记录（来源 0，像是出生时写的）→ 置位，f81 撤销（= 5 + 76），f16 游戏判定 true，与规则一致。坑：同一帧或紧接的下一帧再挨打不刷新最后受伤帧（游戏把它并进上一条）。D164 的随库读数已覆盖交战、停火和来源删除：末次受伤 f33 在 f109 撤销；另一对象末次 f146，来源在 f150 删除，仍在 f222 撤销。
+- 坑：老日志（第 159 轮前）没有 `state_id` / `index`（为 None），槽和状态的对应只能靠候选的 forbid 模式等区分；ra3ext.log 有总大小上限（aiclosest 在 f538 截断）；FriendlyUnit 里被"已占"提前刷掉的候选不出现在列表；D166 格式的 Point 候选在 `point_search` 中；`ThreatTo*` 排序中保留的候选还带威胁值。
