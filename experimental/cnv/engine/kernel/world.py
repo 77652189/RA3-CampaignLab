@@ -36,6 +36,7 @@ class World:
         self.made = 0           # things built so far: the next one's serial (Thing.serial)
         self.late = {}          # serial -> [(tag, head)]: the modules attached after its thing was made (attach)
         self.numbered = weakref.WeakValueDictionary()   # serial -> the thing this world numbered (owns)
+        self._living_views = None                      # the host's derived view of its registry (simliving)
 
     def build(self, thing, frame):
         """Number a new thing (Thing.serial), make its modules (none unless a tag is registered) and hold its update
@@ -194,9 +195,22 @@ class World:
 
     def drop(self, thing):
         """A thing leaves the world (taken out of its registry): its update modules leave the schedule. None: none."""
+        # Sim.add calls drop before every insertion, including when no name is being replaced.
+        self.invalidate_living()
         for m in getattr(thing, 'modules', ()):
             if isinstance(m, interfaces.Update):
                 self.schedule.remove(m)
+
+    def bind_slave(self, child, parent, spawner):
+        """Give a spawned child its SlavedUpdate if needed and set its maker."""
+        slaved = child.find(interfaces.Slaved) or self.attach(child, 'SlavedUpdate')
+        slaved.enslave(parent, spawner)
+        self.invalidate_living()
+
+    def invalidate_living(self):
+        """Forget the ordered membership lists after a change to the host's bodies."""
+        if self._living_views is not None:
+            self._living_views.invalidate()
 
     def gap(self, kind, name, what=''):
         """A module met what it does not act on: noted as Sim.gap does (t: seconds, 15 logic frames a second)."""
@@ -244,6 +258,7 @@ class World:
         want = {row[0]: row[1] for row in snap_['things']}
         if set(want) != set(things):
             raise ValueError(f'World.restore: things {sorted(set(want) ^ set(things))[:10]} are on one side only')
+        self.invalidate_living()
         late = {k: [tuple(x) for x in v] for k, v in snap_['late']}
         self.numbered = weakref.WeakValueDictionary()
         for serial, t in things.items():

@@ -67,6 +67,7 @@ import simcond  # noqa: E402
 import simdamage  # noqa: E402
 import simgarrison  # noqa: E402
 import simheal  # noqa: E402
+import simliving  # noqa: E402
 import simlocomotion  # noqa: E402
 import simbody  # noqa: E402
 import simmine  # noqa: E402
@@ -93,7 +94,6 @@ import simexec  # noqa: E402
 import scriptplugin  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
-
 from simscript import TEAM_FOLLOWS, TEAM_COMMANDS  # noqa: E402,F401  (the script vocabulary, L6)
 from simscript import SHOW_FLAG, SCENE_FLAG, WON, LOST  # noqa: E402,F401  (flags SET_FLAG reads, L6)
 
@@ -339,7 +339,7 @@ class Body(kernel_module.Thing):
     stood_for: tuple = None                                     # the goal it was told and stands short of (send)
     spot: tuple = None                                          # (goal id, goal x, y): sent to a fire_spot for it
     engaged: bool = False                                       # an attack-mover with an enemy in range: holds
-    alive: bool = True
+    alive: bool = simliving.Alive()
     deleted: bool = False
     path: list = dataclasses.field(default_factory=list)       # world points still to go
     goal: object = None                                         # what it is after: a point, or a Body (attack)
@@ -1160,7 +1160,7 @@ class Sim:
         while name in self.bodies:
             name += '#'
         child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
-        (child.find(kernel_interfaces.Slaved) or self.world.attach(child, 'SlavedUpdate')).enslave(parent, spawner)
+        self.world.bind_slave(child, parent, spawner)
         spawner.adopt(child)
         return child
 
@@ -1175,8 +1175,8 @@ class Sim:
         child.unpack_parent = parent                # the owner's default team, as Generals' createSpawn (team '')
         return child
 
-    def living(self):
-        return [b for b in self.bodies.values() if b.alive]
+    def living(self, *, unspawned=False):
+        return simliving.living(self.world, self.bodies, unspawned)
 
     # ---- orders: one unit's, and a team's (the same for each member: ctx.order gives teams only)
     def members(self, team):

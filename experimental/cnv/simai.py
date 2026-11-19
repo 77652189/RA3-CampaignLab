@@ -620,7 +620,7 @@ class Brain:
         they were not there; since sim.py spawns them (Codex E 7b9bb57) counting them turned the Peacekeeper's
         expected efficiency against conscripts 0.033 -> 1e-5 (nothing it has hits them) and moved the Cleanup
         attack. Whether the engine's unit category and the target scan skip slaves (work/re/l4_efficiency.md) is NOT READ."""
-        return [b for b in self.world.living() if getattr(b, 'spawn_parent', None) is None]
+        return self.world.living(unspawned=True)
 
     def look(self, frame):
         """The view's things (living bodies, including garrisonable scenery, but not other scenery or slaves; the whole map,
