@@ -9,7 +9,7 @@ templates that inherit an aura -- the garrisoned civilian buildings' -- read non
 behaviour change). Its beat is its own now, not kept by the aura object's name: a thing made again under the name of
 a dead one starts afresh (11 missions do not meet it).
 
-STATE names nothing: its beat had no field in the frame record (the snapshot, step S, takes `beat`)."""
+Its state is `beat`; RECORDED names nothing: its beat had no field in the frame record."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -40,6 +40,8 @@ class AuraData(module.ModuleData):
 @factory.module('AttributeModifierAuraUpdate')
 class Aura(module.Module, interfaces.Create, interfaces.Aura):
     DATA = AuraData
+    STATE = ('beat',)
+    RECORDED = ()
 
     def on_create(self, frame):
         self.beat = None        # the frame of its last refresh (None: none yet)

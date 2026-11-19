@@ -12,7 +12,7 @@ special power), a POWERED thing short of power and the notes stay outside (simto
 
 Its state is shown in the frame record by the body's forwards `toggle_at` ({module index: state}, the modules a
 press ever moved) and `armor_up` (the miner's armour toggle in its second state): several of these on one thing
-record as one field, so STATE names none of them (the snapshot, step S, takes state / moved / due_at)."""
+record as one field, so RECORDED names none of them (its STATE: at / moved / due_at)."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -46,7 +46,8 @@ class Toggle(module.Module, interfaces.Update, interfaces.Toggle):
     """In the frame order's toggles cell: asleep until a press's UnpackTime is out, then enters the next state."""
     DATA = ToggleData
     PHASE = 'toggles'
-    STATE = ()
+    STATE = ('at', 'moved', 'due_at')
+    RECORDED = ()
     at = 0              # the index of its ToggleState now
     moved = False       # a press ever moved it (its index is then in the body's toggle_at)
     due_at = None       # the frame a waiting press's state is entered

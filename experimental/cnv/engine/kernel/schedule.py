@@ -8,13 +8,15 @@ from engine.kernel import interfaces
 class Schedule:
     def __init__(self):
         self.cells = {}         # PHASE -> {module: wake frame, None asleep}
-        self.seq = {}           # module -> the order it was added in
+        self.seq = {}           # module -> the order it was added in (never reused after a removal)
+        self.added = 0          # how many were ever added: the next one's seq (the snapshot keeps it, step S)
 
     def add(self, module, frame):
         """Hold an update module from `frame` (one made this frame runs when its cell comes this frame)."""
         if not isinstance(module, interfaces.Update) or module.PHASE is None:
             raise TypeError(f'{type(module).__name__} is not an Update with a PHASE')
-        self.seq[module] = len(self.seq)
+        self.seq[module] = self.added
+        self.added += 1
         self.cells.setdefault(module.PHASE, {})[module] = frame
 
     def remove(self, module):

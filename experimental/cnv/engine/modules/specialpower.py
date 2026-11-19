@@ -5,7 +5,7 @@ program). How long a reload is (simunits.power_rules: the SpecialPowerTemplate's
 a cast does stay with the callers (simact_ability, simorder, simmicro) until the cast is a module's.
 
 Its state is shown in the frame record by the body's forward `ready_at` ({power: frame} of the modules a cast
-started; simpower.ready_at): several of these on one thing record as one field, so STATE names none of them.
+started; simpower.ready_at): several of these on one thing record as one field, so RECORDED names none of them.
 A thing whose template has no block for a power cast on it (35 retail template / power pairs: ReplaceSelf's packs,
 the player spell book's nearest-template blocks, the structures' PlayerPowerManager powers; and simmicro's Bonzai,
 keyed by its command) is given one then (simpower.start_reload, World.attach), as the body's dict took any key."""
@@ -38,7 +38,8 @@ class SpecialPowerData(module.ModuleData):
 class SpecialPower(module.Module, interfaces.SpecialPower):
     """Data and a reload frame; no update of its own (a reload is over once the frame passes it)."""
     DATA = SpecialPowerData
-    STATE = ()
+    STATE = ('ready',)
+    RECORDED = ()
     ready = None        # the frame its reload ends; None: no cast started one
 
     def power(self):
@@ -70,10 +71,11 @@ class AssignSlaves(SpecialPower, interfaces.Assign, interfaces.Update):
     retail repair drone's PassiveAreaEffectBehavior) assigns; then in the assignments cell it mends the target rate / 15
     a frame until whole, and stops -- a gap noted -- once anything moves: either dies, the owners differ, no drone of
     its SpawnBehaviors lives, either moves, or the target's health is changed by anything else (a conservative stop,
-    INFERRED). Asleep without a target. Its state was a store's, never in the frame record: STATE names none."""
+    INFERRED). Asleep without a target. Its state was a store's, never in the frame record: RECORDED names none."""
     DATA = AssignData
     PHASE = 'assignments'
-    STATE = ()
+    STATE = ('ready', 'tgt', 'rate', 'last', 'spots')
+    RECORDED = ()
     ALIGN = {'assigned repair': '部分对齐：显式单目标派无人机治疗（E67 原版 AlliedWarFactoryRepairDrone 的 '
                                 'PassiveAreaEffectBehavior 每秒治疗量）；自动获取、前三目标占用、换父/换目标/状态清理未模拟，'
                                 '启动相位与中断即停为 INFERRED'}

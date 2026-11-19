@@ -126,14 +126,23 @@ class ModuleData:
 
 class Module:
     """One module instance. DATA: its data class; TAGS: the XML tags it is registered under (factory.module);
-    STATE: its state fields (World.snapshot, step S; the frame record shows the set ones among its thing's fields).
+    STATE: every field it sets on itself after it is made and may change -- the snapshot takes these (World.snapshot,
+    step S; tests/guards/test_module_state.py holds it to what the class assigns).
+    RECORDED: the ones of STATE the frame record shows among its thing's fields (Observe.state, the set ones only); a
+    class that names STATE but not RECORDED records all of its STATE, one that names neither keeps its base's two.
     world: the World it lives in -- for the kernel's services (the audit set), not to reach other things.
     ALIGN: what its family assumes of the engine, {key it puts in world.used: the line the report prints as 待对齐}
     (factory.align gathers them into sim.ALIGN; tests/guards/test_align.py)."""
     DATA = ModuleData
     TAGS = ()
     STATE = ()
+    RECORDED = ()
     ALIGN = types.MappingProxyType({})
+
+    def __init_subclass__(cls, **kw):
+        super().__init_subclass__(**kw)
+        if 'STATE' in vars(cls) and 'RECORDED' not in vars(cls):
+            cls.RECORDED = cls.STATE
 
     def __init__(self, thing, data, world=None):
         self.thing, self.data, self.world = thing, data, world

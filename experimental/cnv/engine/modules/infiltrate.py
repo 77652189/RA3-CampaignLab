@@ -8,7 +8,7 @@ It keeps which measured slices have taken a spy here once (the host gaps a secon
 and, for a blocking port (E201), the frame till which another spy is turned away. Who may enter, the walk in, the
 effect (the observers, the energy cut, the paralysis, the money) and the spy's end stay with the host
 (siminfiltrator.Infiltrators, the infiltrators cell), which finds the module by interface. Its state was a store's,
-never in the frame record: STATE names none."""
+never in the frame record: RECORDED names none."""
 import re
 
 from engine.kernel import factory, interfaces, module
@@ -30,7 +30,8 @@ class InfiltratorData(module.ModuleData):
 class Infiltrator(module.Module, interfaces.Infiltrate):
     """Data, the slices already entered and the port's block; no update of its own (the host's cell drives it)."""
     DATA = InfiltratorData
-    STATE = ()
+    STATE = ('marks', 'until')
+    RECORDED = ()
     marks = frozenset()     # the measured slices ('kill', 'money', ...) a spy has entered here
     until = 0               # a blocking port: another spy is turned away before this frame
 

@@ -8,7 +8,7 @@ the elite health -- stays in simlevel.receive, told by the host's upgrade grant 
 Not an interfaces.Upgrade: the kernel's broadcast (Thing.upgrades_moved) would act at modify, not at the grant.
 
 Its state is shown in the frame record by the body's forward `level_modules` (the ids of those in force): several of
-these on one thing record as one field, so STATE names none (the snapshot, step S, takes `on`)."""
+these on one thing record as one field, so RECORDED names none (its STATE: `on`)."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -31,6 +31,8 @@ class LevelUpData(module.ModuleData):
 @factory.module('LevelUpUpgrade')
 class LevelUp(module.Module, interfaces.Create, interfaces.LevelUp):
     DATA = LevelUpData
+    STATE = ('on',)
+    RECORDED = ()
 
     def on_create(self, frame):
         self.on = False         # a grant has it in force (a removal of its trigger rearms it)

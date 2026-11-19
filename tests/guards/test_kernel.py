@@ -11,7 +11,8 @@ rules (factory, schedule, Thing.find, sealed data), and
    standard library, and its tests run in full with CNV_ENGINE_MODEL pointing nowhere;
 7. a module file runs with no centre file naming it: importing engine.modules loads every file in it, every PHASE is
    a cell of simloop.FRAME, and every cell runs its modules (step K1.5);
-8. health and its maximum are written only by Body.set_hp; damage / mend / health go through it (HEALTH_WRITES, K2, B1).
+8. health and its maximum are written only by Body.set_hp; damage / mend / health go through it (HEALTH_WRITES, K2, B1);
+9. every field a module class sets on itself is in its STATE, which holds its RECORDED (STATE_PENDING only shrinks).
 Each guard has a mutation check (a synthetic breach it must catch)."""
 import ast
 import importlib.util
@@ -120,6 +121,19 @@ def test_the_schedule_runs_an_awake_module_at_its_cell_and_sleeps_it():
     sch.wake(a, 55)                                                 # the earlier wake wins
     sch.run('autoheal', 55)
     assert a.runs == [5, 8, 55]
+
+
+def test_the_schedule_never_reuses_an_order_after_a_removal():
+    sch = schedule.Schedule()
+    a, b, c, d = (Ticker(T('X'), None) for _ in range(4))
+    for m in (a, b, c):
+        sch.add(m, 5)
+    sch.remove(a)
+    sch.remove(b)
+    sch.add(d, 5)                                                   # by len(seq) it would be 1, before c's 2
+    assert sch.seq == {c: 2, d: 3} and sch.added == 4
+    sch.run('autoheal', 5)
+    assert c.runs == [5] and d.runs == [5]
 
 
 class Hearer(module.Module, interfaces.Damage):
@@ -758,6 +772,78 @@ def test_health_guard_bites():
     body = dict(sources, **{bm: sources[bm].replace('            self.thing.health_moved(was, hp)\n', '            pass\n', 1)})
     assert body[bm] != sources[bm] and health_breaks(health_writes(body)) == [(bm, 'Body.set_health')]
     assert not health_breaks(health_writes(dict(sources, **{'simai.py': 'class A:\n    def f(self):\n        self.hp = {}\n'})))
+
+
+# --- 9. a module's state is all in its STATE (step S, the snapshot; work/re sim_split/snapshot.md 4.3) -------------
+# The snapshot takes a module's STATE and nothing else of it (a restore makes the things again, without on_create), so
+# every field a module class sets on itself must be in its STATE; RECORDED (what the frame record shows) is part of it.
+# STATE_PENDING: the fields not yet in, by the class that sets them -- only shrinks (Body / Spawn / Contain wait for
+# line R's step B4, its files).
+STATE_PENDING = {('Body', 'immortal'), ('Body', 'prop'),
+                 ('Spawn', 'spawned_children'), ('Spawn', 'spawn_refills'), ('Slaved', '_spawner'),
+                 ('Garrison', 'held'), ('Garrison', 'given'), ('Garrison', 'before'), ('Garrison', 'boost')}
+KERNEL_SET = {'thing', 'data', 'world'}          # Module.__init__'s wiring, made again by the factory
+
+
+def _self_sets(cls):
+    """The fields a class's own source assigns (or changes in place) on `self`."""
+    import inspect
+    import textwrap
+    tree = ast.parse(textwrap.dedent(inspect.getsource(cls)))
+    out = set()
+    for n in ast.walk(tree):
+        targets = n.targets if isinstance(n, ast.Assign) else \
+            [n.target] if isinstance(n, (ast.AugAssign, ast.AnnAssign)) else []
+        for t in targets:
+            for e in ast.walk(t):
+                if isinstance(e, ast.Attribute) and isinstance(e.value, ast.Name) and e.value.id == 'self':
+                    out.add(e.attr)
+    return out
+
+
+def module_state_gaps(classes):
+    """{(the class that sets it, field)} a module class sets on itself outside its STATE, and {(class, field)} of a
+    RECORDED field outside STATE; `classes` the concrete ones (their bases outside module.Module's own are read too)."""
+    gaps, recorded = set(), set()
+    for cls in classes:
+        state = set(cls.STATE)
+        for owner in cls.__mro__:
+            if owner is module.Module or not (isinstance(owner, type) and issubclass(owner, module.Module)):
+                continue
+            gaps |= {(owner.__name__, f) for f in _self_sets(owner) - KERNEL_SET - state}
+        recorded |= {(cls.__name__, f) for f in set(cls.RECORDED) - state}
+    return gaps, recorded
+
+
+def test_a_modules_state_is_all_in_its_state():
+    import engine.modules  # noqa: F401
+    gaps, recorded = module_state_gaps(set(factory.TAGS.values()))
+    assert not recorded, f'RECORDED outside STATE: {sorted(recorded)}'
+    assert not gaps - STATE_PENDING, f'set on the module but not in its STATE: {sorted(gaps - STATE_PENDING)}'
+    assert not STATE_PENDING - gaps, f'now in STATE: take them out of STATE_PENDING {sorted(STATE_PENDING - gaps)}'
+
+
+class Stateful(module.Module, interfaces.Create):
+    STATE = ('kept',)
+
+    def on_create(self, frame):
+        self.kept, self.lost = frame, frame
+
+
+class StatefulTwo(Stateful):
+    RECORDED = ('kept', 'shown')
+
+    def bump(self):
+        self.more += 1
+
+
+def test_module_state_guard_bites():
+    gaps, recorded = module_state_gaps({Stateful, StatefulTwo})
+    assert gaps == {('Stateful', 'lost'), ('StatefulTwo', 'more')}
+    assert recorded == {('StatefulTwo', 'shown')}
+    # RECORDED follows a class's own STATE unless named; a class naming neither keeps its base's
+    assert Stateful.RECORDED == ('kept',) and type('Plain', (Stateful,), {}).RECORDED == ('kept',)
+    assert type('Hidden', (Stateful,), {'STATE': ('kept', 'x'), 'RECORDED': ()}).RECORDED == ()
 
 
 def test_the_kernel_tests_run_in_full_without_the_model(tmp_path):

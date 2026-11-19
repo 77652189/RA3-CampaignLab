@@ -7,8 +7,8 @@ the includes for this tag: simunits.INCLUDED).
 
 It keeps the repair under way and whether a disturbed one refused it for the run; who may repair (the AI's
 difficulty gate, its money latch), the cost and the healing stay with the host's loop (simrepair.Repairs.due, the
-repairs cell), which finds the module by interface. Its state was a store's, never in the frame record: STATE names
-none (the snapshot step decides)."""
+repairs cell), which finds the module by interface. Its state was a store's, never in the frame record: RECORDED
+names none."""
 import re
 
 from engine.kernel import factory, interfaces, module
@@ -45,7 +45,8 @@ class RepairData(module.ModuleData):
 class Repair(module.Module, interfaces.Repair):
     """Data, the repair under way and the refusal; no update of its own (the host's repairs cell drives it)."""
     DATA = RepairData
-    STATE = ()
+    STATE = ('running', 'stopped')
+    RECORDED = ()
     running = None      # the host's dict of the repair under way (owner, cost, r, money, hp, last_hp); None: none
     stopped = False     # a disturbed repair refused it for the run
 

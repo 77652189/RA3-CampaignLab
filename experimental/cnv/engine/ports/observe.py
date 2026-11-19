@@ -16,7 +16,7 @@ Three groups and an internal door:
 - players and sight: `human`, `foe`, `enemy(a, b)`, `sees(x, y)`, `side_sees(side, thing)`, `looks(viewer, x, y)`,
   `can_hit(weapon, thing)`, `ground_z(x, y)`;
 - internal (the simulator's own bookkeeping, which a game adapter does not have): `state(thing)` (every field a
-  thing records, its modules' STATE and Body.FORWARDS by their old names), `report(name)` (log, used, unknown, ...),
+  thing records, its modules' RECORDED and Body.FORWARDS by their old names), `report(name)` (log, used, unknown, ...),
   `log_since(n)`, `gaps()`, `pending()`, `fresh_sight()`, `specimen(...)` (a dead body made to read a template's
   numbers), the mission's data (`mission()`, `model()`), the run's names and presentation (`point`,
   `text`, `label`, `who`, `input`, `late_captions`, `ending_line`); and the taps a recorder hangs on the loop
@@ -166,13 +166,15 @@ class Observe:
     # --- internal
     @staticmethod
     def state(thing):
-        """A thing's fields as the record shows them: its own (not `modules`), and beside them the STATE fields its
-        kernel modules have set -- a field moved off the thing into a module records as it did on the thing (step K1
-        on) -- and Body.FORWARDS (a moved dataclass field every body had: None where no module sets it)."""
+        """A thing's fields as the record shows them: its own (not `modules`), and beside them the RECORDED fields its
+        kernel modules have set (their STATE less what never recorded: Module.RECORDED) -- a field moved off the
+        thing into a module records as it did on the thing (step K1 on) -- and Body.FORWARDS (a moved dataclass field
+        every body had: None where no module sets it)."""
         d = {k: v for k, v in vars(thing).items() if k != 'modules'}
         for m in thing.modules:
             own = vars(m)
-            for k in m.STATE:
+            # a base older than RECORDED (the golden layer records it with this port) recorded all of STATE
+            for k in getattr(m, 'RECORDED', m.STATE):
                 if k in own:
                     if k in d:
                         raise ValueError(f'{thing.name}: {type(m).__name__}.{k} is already a field of the body')

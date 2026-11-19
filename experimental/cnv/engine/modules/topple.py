@@ -69,10 +69,12 @@ class Topple(module.Module, interfaces.Update, interfaces.Create, interfaces.Top
     """In the frame order's expire cell: asleep until its gone frame, then removes its thing (World.remove:
     '倒伏后消失'). toppled: knocked over (or killed); topple_end: the frame it is gone in (None: it stays); delay: its
     SlowDeath's DestructionDelay in frames (the body's `lies`, read by the death family's reader when it was made).
-    The names the body's fields had, so the frame record is unchanged."""
+    The names the body's fields had, so the frame record is unchanged; delay, set at on_create, is state too (a
+    snapshot's restore makes things without on_create) but never recorded."""
     DATA = ToppleData
     PHASE = 'expire'
-    STATE = ('toppled', 'topple_end')
+    STATE = ('toppled', 'topple_end', 'delay')
+    RECORDED = ('toppled', 'topple_end')
     toppled = False
     topple_end = None
     delay = 0
