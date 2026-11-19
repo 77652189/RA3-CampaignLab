@@ -83,7 +83,11 @@ def test_inform_expiry_replays_observed_launch_deadlines(check_name, monkeypatch
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError,
-                   reason='Autonomous incoming-table expiry schedule is missing; see work/re/c_inform_expiry_report.md')
+                   reason=('Autonomous incoming-table expiry schedule is missing; see '
+                           'work/re/c_inform_expiry_report.md. Now the frame assertion fails first: the test patches '
+                           'sim.DT to 1/15 s, but Sim.step reads simloop.DT (0.5 s, delegated in 5585f84f). The '
+                           'bench clears base at f336 in a and b, and removed at f312 in a and f320 in b. The replay '
+                           'overshoots to f350/f350 and f326/f334 respectively, before checking table cleanup.'))
 @pytest.mark.parametrize('check_name', ['a', 'b'])
 @pytest.mark.parametrize('lane,source', [('base', 12), ('removed', 15)])
 def test_inform_expiry_replays_observed_autonomous_table_cleanup(check_name, lane, source, monkeypatch):

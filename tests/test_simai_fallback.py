@@ -25,12 +25,15 @@ def test_fallback_distance_both_teams_return_alive(trips):
         assert all(r['步兵数'] == 4 for r in rows[:back + 1])
 
 
-@pytest.mark.xfail(strict=True, reason='B round 205: since the model\'s B194 (b830b09, SimpleAttack with '
-                  'UseAestheticsManager forms up first) aifbshort is home at row 36 and leaves at row 38 (bench waits '
-                  '18 samples, s35-52): the form-up shifts the first trip so the team gets home with hostiles still '
-                  'listed and goes straight to state 5 (the gather move, f541) instead of idling. Model b830b09~1: '
-                  'rows 36 / 53. aifblong still waits 17 (34 -> 51). Needs the form-up point / when it applies '
-                  '(handoff-b, question to D round 193 / 203).')
+@pytest.mark.xfail(strict=True, reason=(
+    'old cause gone: in B round 205, the model\'s B194 (b830b09, SimpleAttack with '
+    'UseAestheticsManager forms up first) shifted the first trip. aifbshort got home at row 36 with hostiles still '
+    'listed, went straight to state 5 (the gather move, f541) and left at row 38 instead of idling. '
+    'Model b830b09~1: rows 36 / 53. B205 aifblong waited 17 (34 -> 51). Needs the form-up point / when it '
+    'applies (handoff-b, question to D round 193 / 203). Now aifbshort loses one Peacekeeper on the return '
+    '(B230, 65873f7c reach change, handoff-b): three alive from row 34 and three home at row 36. The bench has '
+    'four home for 18 samples, s35-52. The model never has all four home after leaving, so the return search '
+    'raises StopIteration before departure. In the same fixture aifblong now waits 16 samples (34 -> 50).'))
 def test_fallback_distance_first_return_and_departure(trips):
     """checks/engine_aifallback.py: the measured second-departure ordering."""
     returns, departures = [], []

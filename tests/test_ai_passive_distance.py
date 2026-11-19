@@ -62,7 +62,9 @@ def test_passive_distance_named_side_selection(name):
 @pytest.mark.parametrize('name', ['aipsdz', 'aipsdt', 'aipsds', 'aipsdl'])
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
     'Same-run bench selects the side plant in state 6 at logic frame 140; '
-    'model first selects at 241 (startup/search geometry gaps). '
+    'old cause gone: the model no longer selects late (f241, previously attributed to startup/search geometry gaps); '
+    'now all four model variants first select the same side plant in state 6 with four members at f120, '
+    '20 frames early. The cause of the early selection is unconfirmed. '
     'See work/re/e104_passive_distance.md and work/re/handoff-e.md.'))
 def test_passive_distance_named_exact_first_selection(name):
     w = simai.run(name, 'r', until=17, record=True)

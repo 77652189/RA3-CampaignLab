@@ -21,9 +21,11 @@ pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (l
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'D78 same-run commands diverge: retail stands west at frame 191, while the model stands east. '
-    'The E96 candidate reaches the measured point only at frame 214 and repeats orders; '
-    'readiness and member destinations remain gaps. See work/re/e97_aesthetics_same_frame.md.'))
+    'D78 same-run commands diverge: retail orders the centre (3850, 3400) at f158 and stands west at f191. '
+    'old cause gone: the model used to stand east, and the E96 candidate only reached the measured point at f214 '
+    'and repeated orders; now the f166 comparison fails first because the model has already ordered west '
+    '(1859.93, 3200.99) at f153, while retail still has the centre order. Readiness and member destinations '
+    'still need to line up with the bench. See work/re/e97_aesthetics_same_frame.md.'))
 def test_tactic_aesthetics_replays_same_frame_commands():
     """Replay D78 CampAIAesOnA_mcp_1112_111517 without shifting frame clocks.
 
@@ -108,9 +110,11 @@ def test_best_unit_expected_infantry_choice(build, chosen, other, draws):
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'since the team forms before the wake (B round 164) seed 1 draws a Peacekeeper where a dog was (5 dogs); seeds '
-    '1-4 give 6 dogs on 1 of 4 with that change, 2 of 4 without -- the stream moved again, as this docstring says '
-    '(work/logs/b166_seeds_*.log); A owns the draw'))
+    'old cause gone: after the team formed before the wake (B round 164), seed 1 drew a Peacekeeper where a dog '
+    'was and stalled at five. Seeds 1-4 gave six dogs on 1 of 4 with that change, 2 of 4 without; the stream moved '
+    'again, as the docstring records (work/logs/b166_seeds_*.log); A owns the draw. Now the bench holds six dogs '
+    'at s43-s145, but the replay has four at s43 and five at s44, reaching six by s47. The cause of the current '
+    'delay is unconfirmed.'))
 def test_against_conscripts_the_dogs_reach_their_cap_of_six():
     """engine_aiskirm t, aiskvinf (bench 2026-11-12, B round 140): 警犬 6 by s43, held at 6 to s145 -- the
     AlliedAntiInfantryOnlyBuildState (ENEMIES ANY INFANTRY) dogs, BEST_UNIT_EXPECTED, scored with the dog's whole

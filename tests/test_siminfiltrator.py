@@ -10,7 +10,8 @@ _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 
 
-@pytest.mark.xfail(strict=True, reason='E194已接车辆工厂入楼；E77可见位间歇1/0的调度未闭合，'
+@pytest.mark.xfail(strict=True, reason='E194已接车辆工厂入楼；当前先卡在s10–16的入楼窗。原台s10已消耗敌间谍，读数1100/11100/1；'
+                   'Sim在s10–12仍为11100/11100/0，到s13才完成进入。后续E77可见位间歇1/0的调度未闭合，'
                    '不拟合连续30秒揭示；见 work/re/e194_vehicle.md')
 def test_spy_vehicle_factory_as_on_the_bench():
     """engine_infveh:a measured intermittent discovery, not the failed prediction.
