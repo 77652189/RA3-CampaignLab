@@ -40,15 +40,20 @@ class Thing:
             pass
 
         modules = self.modules
-        found = tuple(m for m in modules if isinstance(m, interface))
-        if interface in interfaces.ONE:
-            if len(found) > 1:
-                raise ValueError(f'{interface.__name__}: {len(found)} modules on one thing')
-            found = found[0] if found else None
-        if modules:
-            if not hasattr(self, '_find_cache'):
-                self._find_cache = {}
-            self._find_cache[interface] = found
+        one = interface in interfaces.ONE
+        if not modules:
+            return None if one else ()
+
+        matches = [m for m in modules if isinstance(m, interface)]
+        if one:
+            if len(matches) > 1:
+                raise ValueError(f'{interface.__name__}: {len(matches)} modules on one thing')
+            found = matches[0] if matches else None
+        else:
+            found = tuple(matches)
+        if not hasattr(self, '_find_cache'):
+            self._find_cache = {}
+        self._find_cache[interface] = found
         return found
 
     def health_moved(self, was, now):
@@ -85,7 +90,11 @@ def forward(interface, read, default=None):
     FORWARDS; docs/engine/sim-modules.md 10): read(the thing's `interface` module, one of interfaces.ONE; else the
     tuple of its modules of that interface), `default` (the field's old default) when it has none."""
     def get(thing):
-        m = thing.find(interface) if thing.modules else None
+        # The modules setter clears this lookup; the reader still sees the module's current state.
+        try:
+            m = thing._find_cache[interface]
+        except (AttributeError, KeyError):
+            m = thing.find(interface) if thing.modules else None
         return default if m is None or m == () else read(m)
     return property(get)
 
