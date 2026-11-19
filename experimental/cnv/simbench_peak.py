@@ -15,7 +15,10 @@ peak: `worst` (the slowest slice, the first) is the one to hold above real time.
 
 Result: {'rev', 'units', 'secs', 'model', 'build', 'wall', 'multiple' (simulated / wall seconds: > 1 is faster than
 real time), 'worst', 'slices' (each slice's multiple), 'bodies', 'alive', 'made', 'cells', 'inside'} printed and
-written to <out>/peak_<rev>.json."""
+written to <out>/peak_<rev>.json.
+
+--ai runs the aiskrand/s skirmish AI scene and writes peak_ai_<rev>.json with ms_frame in place of units.
+Run it through experimental/testbench/cpupool.py run -n 1 -- to share the machine with other jobs."""
 import sim  # noqa: I001  (first: it puts experimental/cnv and campaign on the path)
 import argparse
 import json
@@ -127,6 +130,51 @@ def run(secs=SECS, units=UNITS, model=True):
             'inside': {k: round(v, 3) for k, v in sorted(inside.items(), key=lambda kv: -kv[1])}}
 
 
+def run_ai(secs=SECS):
+    """Build with simai.run, then time its normal AI-and-world advance in slices."""
+    import simai
+
+    frames = int(secs * simai.FPS)
+    if frames <= 0:
+        raise ValueError('--secs must cover at least one AI frame')
+    t0 = time.perf_counter()
+    ai = simai.run('aiskrand', 's', until=0)
+    build = time.perf_counter() - t0
+    s = ai.sim
+    start, first_frame = len(s.bodies), ai.frame
+    cells, inside = {}, {}
+    for name in INSIDE:
+        _clock(s, name, inside)
+    frame = simloop.timed(cells)
+    s.step = lambda: simloop.step(s, frame)
+    slices = []
+    for offset in range(0, frames, int(SLICE * simai.FPS)):
+        before = ai.frame
+        count = min(int(SLICE * simai.FPS), frames - offset)
+        t0 = time.perf_counter()
+        ai.advance(count)
+        elapsed = time.perf_counter() - t0
+        advanced = ai.frame - before
+        if advanced:
+            slices.append((advanced / simai.FPS, elapsed))
+        if advanced < count:
+            break
+    advanced = ai.frame - first_frame
+    if not advanced:
+        raise RuntimeError('aiskrand/s did not advance')
+    wall = sum(w for _, w in slices)
+    secs = advanced / simai.FPS
+    return {'rev': rev(), 'secs': secs, 'model': s.eng is not None, 'build': round(build, 2),
+            'wall': round(wall, 2), 'multiple': round(secs / wall, 3),
+            'worst': round(min(n / w for n, w in slices), 3), 'slices': [round(n / w, 3) for n, w in slices],
+            'bodies': len(s.bodies),
+            'alive': {o: sum(1 for b in s.bodies.values() if b.alive and b.owner == o) for o in s.players.values()},
+            'made': len(s.bodies) - start,
+            'cells': {k: round(v, 3) for k, v in sorted(cells.items(), key=lambda kv: -kv[1])},
+            'inside': {k: round(v, 3) for k, v in sorted(inside.items(), key=lambda kv: -kv[1])},
+            'ms_frame': round(1000 * wall / advanced, 3)}
+
+
 def logs_dir():
     """work/logs/perf of this checkout, or of the main one (a worktree without its own work/)."""
     root = os.path.dirname(os.path.dirname(HERE))
@@ -145,21 +193,27 @@ def main():
     ap.add_argument('--secs', type=float, default=SECS)
     ap.add_argument('--units', type=int, default=UNITS, help='each side\'s army')
     ap.add_argument('--no-model', action='store_true', help='without the private engine model')
+    ap.add_argument('--ai', action='store_true', help='run aiskrand/s (use cpupool.py run -n 1)')
     ap.add_argument('--out', default=None, help='folder for peak_<rev>.json (default work/logs/perf)')
     a = ap.parse_args()
-    # a timing: the whole of the machine's CPU tokens (cpupool, T5), so other lines' jobs do not share its cores
-    import importlib.util
-    spec = importlib.util.spec_from_file_location('_cpupool', os.path.join(os.path.dirname(HERE), 'testbench', 'cpupool.py'))
-    cpupool = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(cpupool)
-    with cpupool.hold(1, 'simbench_peak', exclusive=True):
-        r = run(a.secs, a.units, not a.no_model)
+    if a.ai:
+        r = run_ai(a.secs)  # the calling cpupool.py run -n 1 holds the shared token
+    else:
+        # a timing: the whole of the machine's CPU tokens (cpupool, T5), so other lines' jobs do not share its cores
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('_cpupool', os.path.join(os.path.dirname(HERE), 'testbench', 'cpupool.py'))
+        cpupool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cpupool)
+        with cpupool.hold(1, 'simbench_peak', exclusive=True):
+            r = run(a.secs, a.units, not a.no_model)
     out = a.out or logs_dir()
     os.makedirs(out, exist_ok=True)
-    path = os.path.join(out, f'peak_{r["rev"]}.json')
+    prefix = 'peak_ai' if a.ai else 'peak'
+    path = os.path.join(out, f'{prefix}_{r["rev"]}.json')
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(r, f, ensure_ascii=False, indent=1)
-    print(f'{r["secs"]:g} s, {r["units"]} a side, model {r["model"]}: wall {r["wall"]:.1f} s = '
+    scene_label = f'aiskrand/s, {r["ms_frame"]:.2f} ms/frame' if a.ai else f'{r["units"]} a side'
+    print(f'{r["secs"]:g} s, {scene_label}, model {r["model"]}: wall {r["wall"]:.1f} s = '
           f'{r["multiple"]:.2f}x real time, the slowest {SLICE:g} s {r["worst"]:.2f}x '
           f'({" ".join("%.2f" % m for m in r["slices"])}); bodies {r["bodies"]} (made {r["made"]}), alive {r["alive"]}')
     for k, v in list(r['cells'].items())[:8]:

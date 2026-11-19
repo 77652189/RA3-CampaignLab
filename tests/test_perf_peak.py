@@ -7,6 +7,9 @@ whole; the whole run's multiple flatters it as they thin out). The simulator is 
 that test is a strict xfail and turns red (XPASS) the day it gets there -- then drop the mark. Until then the baseline ratchet keeps
 a step from making it much slower: the run is one, on a shared machine, so its margin is wide (a 10 % step is for
 simrecord's `time` and the benchmark run by hand, before and after)."""
+import json
+import sys
+
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
@@ -41,6 +44,22 @@ def test_the_peak_keeps_to_its_baseline(peak):
                                        'are to get it there (ADR 0034)')
 def test_the_peak_runs_faster_than_real_time(peak):
     assert peak['worst'] > 1.0, peak
+
+
+def test_ai_cli_passes_secs_and_writes_ai_result(monkeypatch, tmp_path, capsys):
+    result = {'rev': 'abc', 'secs': 2, 'model': True, 'wall': 1, 'multiple': 2, 'worst': 2, 'slices': [2],
+              'bodies': 3, 'made': 1, 'alive': {}, 'cells': {}, 'inside': {}, 'ms_frame': 33.333}
+
+    def run_ai(secs):
+        assert secs == 2
+        return result
+
+    monkeypatch.setattr(simbench_peak, 'run_ai', run_ai)
+    monkeypatch.setattr(sys, 'argv', ['simbench_peak.py', '--ai', '--secs', '2', '--out', str(tmp_path)])
+
+    assert simbench_peak.main() == 0
+    assert json.loads((tmp_path / 'peak_ai_abc.json').read_text(encoding='utf-8')) == result
+    assert 'aiskrand/s, 33.33 ms/frame' in capsys.readouterr().out
 
 
 def test_timed_cells_run_the_same_frame():

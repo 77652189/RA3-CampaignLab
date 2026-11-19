@@ -6,6 +6,7 @@ and every handoff's `## 待答问题` section.
     python -X utf8 experimental/campaign/daily_report.py [--hours 24]
 """
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -90,15 +91,24 @@ def structure(logs=None, testmap=None):
         flags.append('超过 %d 行的模拟器文件：%s' % (FAT, '、'.join(fat)))
     mods = [p for p in (SIM / 'engine' / 'modules').glob('*.py') if p.name != '__init__.py']
     rows.append('  内核模块（engine/modules）：%d 个' % len(mods))
-    peaks = sorted(logs.glob('perf/peak_*.json'), key=lambda p: p.stat().st_mtime)
+    peaks = sorted((p for p in logs.glob('perf/peak_*.json') if not p.name.startswith('peak_ai_')),
+                   key=lambda p: p.stat().st_mtime)
     if peaks:
-        import json
         d = json.loads(peaks[-1].read_text(encoding='utf-8'))
         rows.append('  高峰负载（%s）：全程 %.2f 倍实时，最慢 10 秒 %.2f 倍' % (d.get('rev', '?'), d['multiple'], d['worst']))
         if d['worst'] < 1:
             flags.append('高峰最慢段慢于实时（ADR 0034 第 10 条要求比实时快）')
     else:
         rows.append('  高峰负载：没有 perf/peak_*.json（experimental/cnv/simbench_peak.py 单独跑）')
+    ai_peak = max(logs.glob('perf/peak_ai_*.json'), key=lambda p: p.stat().st_mtime, default=None)
+    if ai_peak:
+        d = json.loads(ai_peak.read_text(encoding='utf-8'))
+        rows.append('  AI 高峰负载（%s）：全程 %.2f 倍实时，最慢 10 秒 %.2f 倍，平均 %.2f 毫秒/帧' % (
+            d.get('rev', '?'), d['multiple'], d['worst'], d['ms_frame']))
+        if d['worst'] < 1:
+            flags.append('AI 高峰最慢段慢于实时')
+    else:
+        rows.append('  AI 高峰负载：没有 perf/peak_ai_*.json（simbench_peak.py --ai）')
     fulls = sorted(logs.glob('full_*.log'), key=lambda p: p.stat().st_mtime)
     tail = next((ln for ln in reversed(fulls[-1].read_text(encoding='utf-8', errors='replace').splitlines())
                  if re.search(r'\d+ passed', ln)), '') if fulls else ''

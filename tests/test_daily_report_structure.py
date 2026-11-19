@@ -1,6 +1,7 @@
 """daily_report's structure section: the numbers come out and the lines flag (11-17 retrospective)."""
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -37,10 +38,27 @@ def test_lines_crossed_are_flagged(tmp_path):
 def test_missing_sources_are_said(tmp_path):
     text = '\n'.join(dr.structure(tmp_path))
     assert '没有 perf/peak_*.json' in text and '没有跑完的 full_*.log' in text
+    assert '没有 perf/peak_ai_*.json' in text
+
+
+def test_ai_peak_uses_newest_reading_and_flags_slow_slice(tmp_path):
+    perf = _logs(tmp_path, 1.5, 100) / 'perf'
+    older, latest = perf / 'peak_ai_older.json', perf / 'peak_ai_latest.json'
+    older.write_text(json.dumps({'rev': 'older', 'multiple': 2, 'worst': 1, 'ms_frame': 33.33}))
+    latest.write_text(json.dumps({'rev': 'latest', 'multiple': 1.25, 'worst': 0.8, 'ms_frame': 53.33}))
+    for name, stamp in (('peak_abc.json', 100), (older.name, 200), (latest.name, 300)):
+        os.utime(perf / name, (stamp, stamp))
+
+    text = '\n'.join(dr.structure(tmp_path))
+    assert '高峰负载（abc）' in text
+    assert '\n  高峰负载（latest）' not in text
+    assert 'AI 高峰负载（latest）：全程 1.25 倍实时，最慢 10 秒 0.80 倍，平均 53.33 毫秒/帧' in text
+    assert 'AI 高峰负载（older）' not in text
+    assert '!! AI 高峰最慢段慢于实时' in text
+    assert '!! 高峰最慢段慢于实时' not in text
 
 
 def _flow_sources(tmp_path, new_reds, steps_between, wait, backlog):
-    import os
     import time
     logs, re_dir = tmp_path / 'logs', tmp_path / 're'
     logs.mkdir()
