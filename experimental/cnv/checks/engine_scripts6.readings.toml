@@ -31,3 +31,4 @@ expect = [
     "by[19][1] == 14",
     "by[3][2] == 1 and by[5][2] == 41 and by[7][2] == 43 and by[11][2] == 63",
 ]
+mismatch_nomodel = "without the model 随机 0 and 计时 7 from s7 (bench 14, 63): the world has no SET_RANDOM_COUNTER, COUNTER_COUNTER, COUNTER_SECONDS (R3 ticket 11)"

@@ -34,13 +34,13 @@ class Fake:
                 self.series.append((t, {'n': t, 'k': 10 * t if self.key[0] == 'b2' else t}))
 
 
-def run(readings):
+def run(readings, model=True):
     Fake.started = []
     out = []
     for keys, group in rd.groups(readings):
         out += rd.run_group(keys, group, Fake, lambda w, f: w.advance(f),
                             lambda w: ([t for t, _ in w.series], [r for _, r in w.series], {'frame': w.frame, **w.opts},
-                                       [(w.frame % 2 == 0, f'frame {w.frame}')]))
+                                       [(w.frame % 2 == 0, f'frame {w.frame}')]), model)
     return out
 
 
@@ -115,6 +115,28 @@ def test_a_reading_that_raises_fails_mismatch_mark_or_not(tmp_path):
     assert run(rd.load(write(tmp_path, marked))) == ["still_off: IndexError: list index out of range"]
     in_let = DATA.replace('mismatch = "sim 9', 'let = {x = "1 / 0"}\nmismatch = "sim 9')
     assert run(rd.load(write(tmp_path, in_let))) == ["still_off: ZeroDivisionError: division by zero"]
+
+
+NOMODEL = '''
+[[reading]]
+id = "off_without_model"
+scene = {build = "b1", check = "a", until = 9}
+bench = "n 99"
+proves = "x: y"
+expect = "rows[-1]['n'] == 99"
+mismatch_nomodel = "sim 9 without the model, bench 99"
+'''
+
+
+def test_mismatch_nomodel_marks_a_reading_only_without_the_model(tmp_path):
+    marked = rd.load(write(tmp_path, NOMODEL))
+    assert run(marked, model=False) == []
+    assert run(marked) == ["off_without_model: does not hold: rows[-1]['n'] == 99"]     # with the model: no mark
+    bare = rd.load(write(tmp_path, NOMODEL.replace('mismatch_nomodel = "sim 9 without the model, bench 99"\n', '')))
+    assert run(bare, model=False) == ["off_without_model: does not hold: rows[-1]['n'] == 99"]
+    holds = rd.load(write(tmp_path, NOMODEL.replace('== 99', '== 9')))
+    assert run(holds, model=False) == ['off_without_model: marked mismatch_nomodel but now holds -- drop the mark']
+    assert run(holds) == []
 
 
 EACH_SCENES = '''
@@ -257,6 +279,10 @@ def test_an_each_entry_of_scenes_must_override_a_scene_by_table(tmp_path, entry)
     ('[[reading]]\nid = "a"\nscene = {build = "b", until = 1}\nbench = "-"\nproves = "-"\nexpect = "1"\n' * 2,
      'twice'),
     ('[foo]\n', 'only'),
+    ('[[reading]]\nid = "a"\nscene = {build = "b", until = 1}\nbench = "-"\nproves = "-"\nexpect = "1"\n'
+     'mismatch_nomodel = " "\n', 'non-empty'),
+    ('[[reading]]\nid = "a"\nscene = {build = "b", until = 1}\nbench = "-"\nproves = "-"\nexpect = "1"\n'
+     'mismatch_nomodel = true\n', 'non-empty'),
 ])
 def test_the_format_is_checked_on_load(tmp_path, text, why):
     with pytest.raises(rd.ReadingError, match=why):

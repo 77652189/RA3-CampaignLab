@@ -39,6 +39,9 @@ A file is a list of [[reading]] tables:
 - mismatch: the reading is checked in the same run, expected not to hold (expect evaluates false); if it holds the
   runner says so (drop the mark). Write both numbers. A reading that raises (in let or expect: an index past the end,
   a second missing) is a problem, mismatch mark or not: a run that breaks is never "still off".
+- mismatch_nomodel = "why, both numbers": the same mark only where the engine model is not on this computer (the plan
+  simulator's own path: run_group(..., model=False)); with the model the reading must hold as written. A non-empty
+  string. Not for a scene that hands a player to the AI: that one is skipped without the model (simai.NoModel).
 
 Expressions see: rows (list of {counter label: value}, row i ~ mission second i + 1), times (each row's mission
 second), first(key, pred=None, rows=rows), vals(rows) (each row's values in counter order), win(t0, t1, key)
@@ -53,7 +56,7 @@ import tomllib
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHECKS = os.path.join(HERE, 'checks')
 SUFFIX = '.readings.toml'
-KEYS = {'id', 'scene', 'scenes', 'each', 'bench', 'proves', 'expect', 'mismatch', 'let', 'item'}
+KEYS = {'id', 'scene', 'scenes', 'each', 'bench', 'proves', 'expect', 'mismatch', 'mismatch_nomodel', 'let', 'item'}
 NEEDED = {'id', 'bench', 'proves', 'expect'}
 BLOCKS = ('targets', 'defense', 'micro', 'specials')   # simai.BLOCKS (checked by tests/tools/test_readings_format.py)
 # how the simulator runs a scene: name -> (its TOML type, its default as a run key holds it)
@@ -140,6 +143,8 @@ def load(path):
             raise ReadingError(f'{where}: unknown {sorted(set(r) - KEYS)} / missing {sorted(NEEDED - set(r))}')
         if ('scene' in r) == ('scenes' in r):
             raise ReadingError(f'{where}: one of scene / scenes')
+        if 'mismatch_nomodel' in r and not (isinstance(r['mismatch_nomodel'], str) and r['mismatch_nomodel'].strip()):
+            raise ReadingError(f'{where}: mismatch_nomodel is the reason, a non-empty string')
         expect = r['expect'] if isinstance(r['expect'], list) else [r['expect']]
         for e in expect + list(r.get('let', {}).values()):
             compile(e, where, 'eval')
@@ -147,7 +152,8 @@ def load(path):
         for entry in r.get('each', [None]):
             one = {'bench_file': bench_of(path), 'expect': expect, 'let': dict(r.get('let', {})), 'vars': {},
                    'items': list(items),
-                   'mismatch': r.get('mismatch'), 'bench': r['bench'], 'proves': r['proves'], 'id': r['id']}
+                   'mismatch': r.get('mismatch'), 'mismatch_nomodel': r.get('mismatch_nomodel'),
+                   'bench': r['bench'], 'proves': r['proves'], 'id': r['id']}
             if 'scene' in r:
                 sc = dict(r['scene'])
                 if entry is not None:
@@ -275,9 +281,10 @@ def namespace(reading, runs):
     return ns
 
 
-def check(reading, runs):
+def check(reading, runs, model=True):
     """None when the reading is as its data says (holds, or is marked a mismatch and evaluates false); else what is
-    wrong, one line. Raising is always wrong: a mismatch mark covers a run that reads otherwise, not one that breaks."""
+    wrong, one line. Raising is always wrong: a mismatch mark covers a run that reads otherwise, not one that breaks.
+    model False: the run had no engine model, mismatch_nomodel marks it too."""
     ns = namespace(reading, runs)
     try:
         for name, e in reading['let'].items():
@@ -285,14 +292,16 @@ def check(reading, runs):
         failed = next((e for e in reading['expect'] if not eval(e, ns)), None)
     except Exception as x:       # a reading that cannot be evaluated on this run (an index past the end, ...)
         return f'{reading["id"]}: {type(x).__name__}: {x}'
-    if reading['mismatch']:
-        return None if failed else f'{reading["id"]}: marked mismatch but now holds -- drop the mark'
+    mark = 'mismatch' if reading['mismatch'] else 'mismatch_nomodel' if (
+        not model and reading.get('mismatch_nomodel')) else None
+    if mark:
+        return None if failed else f'{reading["id"]}: marked {mark} but now holds -- drop the mark'
     if failed is None:
         return None
     return f'{reading["id"]}: does not hold: {failed}'
 
 
-def run_group(keys, readings, start, advance, rows_of):
-    """Every reading of a group checked on one run per scene: [problems]."""
+def run_group(keys, readings, start, advance, rows_of, model=True):
+    """Every reading of a group checked on one run per scene: [problems]. model: check's."""
     runs = snapshots(start, advance, rows_of, untils(readings))
-    return [p for p in (check(r, runs) for r in readings) if p]
+    return [p for p in (check(r, runs, model) for r in readings) if p]

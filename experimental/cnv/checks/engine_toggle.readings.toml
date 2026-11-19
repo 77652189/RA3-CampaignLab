@@ -15,3 +15,4 @@ bench = "a Peacekeeper on 1-59, off by the press at 60; b Conscript PackTime 1 s
 proves = "ToggleStatusSpecialAbilityUpdate: a press moves to the next state, unpack delays it, a held state takes no press"
 let = {runs = "{'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f}", bench = "{'a': lambda n: (59059, 1001, 1001), 'b': lambda n: (59059, 1001, 1001), 'c': lambda n: (60000 + n - 60, 30001, 30031), 'd': lambda n: (n - 16, n * 1000 + 17, n * 1000 + n), 'e': lambda n: (60000 + n - 60, 30001, 30031), 'f': lambda n: (n * 1001, 1001, 1001)}"}
 expect = "all(runs[k][-1]['帧数'] > 150 and tuple(runs[k][-1][c] for c in ('第二行', '第三行', '第四行')) == bench[k](runs[k][-1]['帧数']) for k in runs)"
+mismatch_nomodel = "without the model 第四行 a/b 60060, c/e 90030, d/f 151151 (bench 1001, 30031, n*1000+n, 1001): the public executor negates the NOT condition itself, the model runs the unnot form, its flag set at the frame top (R3 ticket 11)"
