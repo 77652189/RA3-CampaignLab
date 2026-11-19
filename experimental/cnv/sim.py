@@ -86,6 +86,7 @@ from engine.kernel import factory as kernel_factory, interfaces as kernel_interf
 from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
 from engine.ports import command as command_port  # noqa: E402  (happen gives the player's orders through it)
 import engine.modules  # noqa: E402,F401  (imports, so registers, every module file in it)
+from engine.modules import slowdeath as kernel_slowdeath  # noqa: E402
 import simloop  # noqa: E402
 import simworld  # noqa: E402
 import simexec  # noqa: E402
@@ -114,9 +115,6 @@ ATTACK_SLACK = 10.0             # R3: an attacker stops this far inside its rang
 from simmodifier import UNDERSIZE  # noqa: E402,F401  (a weapon reach less this, L2)
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 SPREAD = 30.0                   # a reinforcement team's units this far apart round its waypoint (Sim.reinforce, INFERRED)
-LINGER = 0.0                   # a killed unit's death (its slow death): still in the game's name cache, where it fell
-                                # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
-                                # the area from the reading the kill shows in; the guess was 3 s
 from simworld import GRID  # noqa: E402,F401  (routing cells, world units; L0)
 HOLD_SPOTS = True              # every move's goal kept off other units' spots (Sim.claims): the game's (bench 11-09,
                                # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
@@ -392,9 +390,6 @@ class Body(kernel_module.Thing):
     leaves: list = dataclasses.field(default_factory=list)      # what its lifetime's death makes where it stood
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
     replace: bool = False                                       # building = its ReplaceSelfSpecialAbility: it turns into it
-    lies: float = 0.0                                           # seconds it lies dying once killed (SlowDeath's
-                                                                # DestructionDelay), the crush's death only (R9)
-    linger: float = 0.0                                         # ... the lie this death has (LINGER, or `lies`)
     follow: dict = None                                         # order_follow: label, next waypoint, mode; shared by one team
     frame_move: bool = False                                    # topple contact / measured Jet startup need frame-sized steps
     drive_speed: float = 0.0
@@ -440,7 +435,8 @@ class Body(kernel_module.Thing):
                 'read_until', 'life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
-                'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules')
+                'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules',
+                'lies', 'linger')
     hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
     max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
@@ -479,6 +475,9 @@ class Body(kernel_module.Thing):
     cold = kernel_module.forward(kernel_interfaces.Freeze, lambda m: m.held(), 0.0)    # step M11: the cryo beam's cold
     cold_step = kernel_module.forward(kernel_interfaces.Freeze, lambda m: m.stage(), -1)     # its highest EffectInfo
     level_modules = kernel_module.forward(kernel_interfaces.LevelUp, lambda ms: {m.module_id() for m in ms if m.active()}, set())  # M12: ids in force
+    lies = kernel_module.forward(kernel_interfaces.SlowDeath, kernel_slowdeath.lies, 0.0)   # step B5a: its SlowDeath's
+    linger = kernel_module.forward(kernel_interfaces.SlowDeath, kernel_slowdeath.linger,    # delay; how long this
+                                   kernel_slowdeath.LINGER)                                 # death lies (a crush: it)
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
 
@@ -1101,8 +1100,6 @@ class Sim:
                                                                       # have no AttributeModifier)
         if b.slots:                           # the weapon lines name a status: the held one is chosen from it
             b.weapons = simunits.pick_weapons(b.slots, b.status, self.weapon_upgrades(b))
-        b.lies = simunits.slow_death(template, self.own)
-        b.linger = LINGER
         if not b.weapons:                     # its XML names guns and none was read: a gap, not a unit without guns
             if template not in self.declared:
                 self.declared[template] = simunits.declared_weapons(template, self.own)
@@ -1969,9 +1966,10 @@ class Sim:
         """simbody.Life.sell (L2): SELL_OBJECT -- the refund paid at once (simmoney.Money.credit), deleted 30 frames on."""
         self._life().sell(self, b, self.garrison, self.modify, self.wallet.credit)
 
-    def destroy(self, b, why):
-        """simbody.Life.kill (L2), the one death entry: b killed -- its spawn, garrison, death weapons and air crash."""
-        self._life().kill(self, b, why, self.death_blasts, self.impact_ground_z)
+    def destroy(self, b, why, death='NORMAL'):
+        """simbody.Life.kill (L2), the one death entry: b killed -- its spawn, garrison, death weapons and air crash;
+        `death` its death type (module.Death: CRUSHED for a crush, which lies its SlowDeath out)."""
+        self._life().kill(self, b, why, self.death_blasts, self.impact_ground_z, death)
 
     def delete(self, b, why):
         """simbody.Life.delete (L2), the one deletion entry: b taken out, no death (children, passengers with it)."""
@@ -2971,8 +2969,7 @@ class Sim:
                 continue
             self.used.add('crush')
             o.set_last_damage(b.owner, b.name)
-            o.linger = o.lies
-            self.destroy(o, f'被 {self.label(b)} 压死')
+            self.destroy(o, f'被 {self.label(b)} 压死', death='CRUSHED')    # lies its SlowDeath out (B5a)
 
     _crushable_pool = None
 

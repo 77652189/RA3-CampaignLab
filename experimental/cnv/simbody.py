@@ -65,10 +65,11 @@ class Life:
         m.start_sale(world.frame_now())
         world.note('出售', f'{world.label(b)}（退 {refund}）')
 
-    def kill(self, world, b, why, death_blasts, ground_z):
-        """The one death entry (Sim.destroy, step B4b): b killed -- its Die modules told, then its Destroy modules
-        (_out), its FireWeaponWhenDead queued, an aircraft's falling wreck; an immortal body takes lethal damage
-        instead, and a prop that cannot die falls or stays."""
+    def kill(self, world, b, why, death_blasts, ground_z, death='NORMAL'):
+        """The one death entry (Sim.destroy, step B4b): b killed -- its Die modules told (module.Death, `death` its
+        death type: a crush's CRUSHED lies its SlowDeath out), then its Destroy modules (_out), its FireWeaponWhenDead
+        queued, an aircraft's falling wreck; an immortal body takes lethal damage instead, and a prop that cannot die
+        falls or stays."""
         if not b.alive:
             return
         if b.immortal:
@@ -83,7 +84,7 @@ class Life:
             if b.topple:
                 b.find(interfaces.Topple).fall_where_it_stands(world.frame_now())
             return
-        self._out(world, b, why, False)
+        self._out(world, b, why, False, death)
         b.set_hp(0.0, tell=False)
         # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
         # died; a deletion fires nothing (INFERRED, as Generals' destroyObject skips the die modules)
@@ -102,7 +103,7 @@ class Life:
             self._out(world, b, why, True)
             self._gone(world, b, why, True)
 
-    def _out(self, world, b, why, delete):
+    def _out(self, world, b, why, delete, death='NORMAL'):
         """What a death and a deletion share: b out of the fight -- the only write of a body's alive / deleted /
         died_at (guard 10, tests/guards/test_kernel.py) -- then its modules told, the one broadcast of a thing's end
         (step B4c, the private model's Object.die then destroyObject): a death tells its Die modules (module.Death),
@@ -112,7 +113,7 @@ class Life:
         if not delete and b.last_by is not None and b.last_hit is not None:
             world.kills.append((b.last_hit, b.last_by, b.template, b.name))     # cond_retail: who killed what
         if not delete:
-            info = module.Death(world.frame_now(), why)
+            info = module.Death(world.frame_now(), why, death)
             for m in b.find(interfaces.Die):
                 m.on_die(info)
         for m in b.find(interfaces.Destroy):

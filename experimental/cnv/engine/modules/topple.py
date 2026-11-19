@@ -65,31 +65,34 @@ def fall_frames(speed, data):
 
 
 @factory.module('ToppleUpdate')
-class Topple(module.Module, interfaces.Update, interfaces.Create, interfaces.Topple):
+class Topple(module.Module, interfaces.Update, interfaces.Topple):
     """In the frame order's expire cell: asleep until its gone frame, then removes its thing (World.remove:
     '倒伏后消失'). toppled: knocked over (or killed); topple_end: the frame it is gone in (None: it stays); delay: its
-    SlowDeath's DestructionDelay in frames (the body's `lies`, read by the death family's reader when it was made).
-    The names the body's fields had, so the frame record is unchanged; delay, set at on_create, is state too (a
-    snapshot's restore makes things without on_create) but never recorded."""
+    SlowDeath's DestructionDelay in frames (its thing's first plain SlowDeath module's, as the body's `lies`; B5a),
+    read the first time it is asked for (when made its thing's modules are not all its yet). The names the body's
+    fields had, so the frame record is unchanged; delay is state too (a snapshot keeps it) but never recorded."""
     DATA = ToppleData
     PHASE = 'expire'
     STATE = ('toppled', 'topple_end', 'delay')
     RECORDED = ('toppled', 'topple_end')
     toppled = False
     topple_end = None
-    delay = 0
-
-    def on_create(self, frame):
-        self.delay = int(round(self.thing.lies * FPS))
+    delay = None
 
     def on_build_complete(self):
         pass
+
+    def _delay(self):
+        if self.delay is None:
+            lies = next((m.lies() for m in self.thing.find(interfaces.SlowDeath) if m.is_plain()), 0.0)
+            self.delay = int(round(lies * FPS))
+        return self.delay
 
     def rules(self):
         """The rules as the body's `topple` field held them (simtopple.rules before step M2)."""
         d = self.data
         return dict(start=d.start, finish=d.finish, velocity=d.velocity, accel=d.accel, bounce=d.bounce,
-                    minimum=d.minimum, delay=self.delay)
+                    minimum=d.minimum, delay=self._delay())
 
     def is_toppled(self):
         return self.toppled
@@ -103,14 +106,14 @@ class Topple(module.Module, interfaces.Update, interfaces.Create, interfaces.Top
         self.toppled = True
         fall = fall_frames(speed, self.data)
         if fall is not None and (self.data.start or self.data.finish):
-            self._gone_at(frame + fall + self.delay)
+            self._gone_at(frame + fall + self._delay())
 
     def fall_where_it_stands(self, frame):
         """Killed in `frame` (engine_propbody b): it falls where it stands, no fall time, gone its delay later
         (61 / 121 frames counted with the kill's); once only."""
         if self.topple_end is None:
             self.toppled = True
-            self._gone_at(frame + self.delay)
+            self._gone_at(frame + self._delay())
 
     def _gone_at(self, frame):
         self.topple_end = frame

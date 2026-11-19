@@ -27,7 +27,7 @@ expect = [
 id = "slow_death_a_crushed_conscript_lies_127_frames_dying_and_in_its_spot"
 scene = {build = "engine_crush", check = "all", until = 48}
 bench = "步兵 170127043: dying 127 frames (8.5 s of its SlowDeath), in its spot all the while, not after (bench 2026-11-06 engine_crush all)"
-proves = "sim.Sim.dying, simunits.slow_death: a crushed conscript lies 127 frames dying and in its spot"
+proves = "sim.Sim.dying, engine/modules/slowdeath.py: a crushed conscript lies 127 frames dying and in its spot"
 expect = [
     "abs(rows[-1]['步兵'] // 1000 % 1000 - 127) <= 2",
     "rows[-1]['步兵'] // 10 ** 6 == rows[-1]['步兵'] % 1000 + rows[-1]['步兵'] // 1000 % 1000",

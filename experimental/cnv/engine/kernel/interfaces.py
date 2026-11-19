@@ -130,10 +130,26 @@ class Die(Interface):
 
 class Destroy(Interface):
     """Told once, the moment its thing leaves the world (step B4c, the Generals onDelete): deleted, or killed (after
-    the Die modules; INFERRED for a slow death: at the kill, until step B5)."""
+    the Die modules; a slow death too at the kill, not at its lie's end: decided in step B5a,
+    engine/modules/slowdeath.py)."""
     __slots__ = ()
 
     def on_destroy(self):
+        raise NotImplementedError
+
+
+class SlowDeath(Interface):
+    """SlowDeathBehavior (step B5a): its DestructionDelay (lies, seconds), how long this death lies (lie: the delay
+    for a crush, else LINGER) and whether its attributes name no death types (is_plain: the one the body lies by)."""
+    __slots__ = ()
+
+    def lies(self):
+        raise NotImplementedError
+
+    def lie(self):
+        raise NotImplementedError
+
+    def is_plain(self):
         raise NotImplementedError
 
 
@@ -573,5 +589,5 @@ class AIUpdate(Interface):
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
 FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze,
-          LevelUp, Aura, Repair, Assign, Infiltrate)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+          LevelUp, Aura, Repair, Assign, Infiltrate, SlowDeath)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze})  # a thing has at most one of these: Thing.find gives it

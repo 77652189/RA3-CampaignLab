@@ -11,6 +11,7 @@ from engine.modules import topple  # noqa: E402
 LAMP = '''<GameObject id="CNV_TestLamp" Side="Neutral" KindOf="IMMOBILE">
   <Behaviors>
     <ToppleUpdate id="ModuleTag_Topple" KillWhenToppled="true" />
+    <SlowDeath id="ModuleTag_Burnt" DeathTypes="BURNED" DestructionDelay="5s" />
     <SlowDeath id="ModuleTag_Death" DestructionDelay="2s" />
   </Behaviors>
 </GameObject>'''
@@ -42,7 +43,7 @@ def test_a_knocked_lamp_is_deleted_its_fall_plus_its_delay_later_in_the_expire_c
     s.add('lamp', 'CNV_TestLamp', 'Player_1', 100.0, 100.0)
     lamp = s.bodies['lamp']
     m = lamp.find(interfaces.Topple)
-    assert isinstance(m, topple.Topple) and m.delay == 30 and lamp.topple['delay'] == 30
+    assert isinstance(m, topple.Topple) and lamp.topple['delay'] == 30 and m.delay == 30 and lamp.lies == 2.0
     assert lamp in s.topples and lamp.vision == 0.0 and not lamp.toppled and lamp.topple_end is None
     fall = topple.fall_frames(2.0, m.data)
     s.world.schedule.run('expire', 5)               # standing: it sleeps until a knock wakes it

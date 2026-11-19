@@ -1858,26 +1858,6 @@ def xml_chain(template, own=None, steps=5):
         template = up
 
 
-_slow_memo = {}
-
-
-def slow_death(template, own=None):
-    """Seconds a body lies as a dying one after it is killed: the DestructionDelay of its plain SlowDeath (the module
-    without DeathFlags -- the others are for named death types), 0 without one (a vehicle or building's DestroyDie
-    takes it out at once). Bench 11-06 engine_crush: a crushed conscript (8.5 s) lay 127 frames, dying and in its
-    spot; a plant killed by script was gone the next frame."""
-    key = (template, (own or {}).get(template))
-    if key not in _slow_memo:
-        def read(xml):
-            mods = list(_blocks(xml or '', 'SlowDeath'))
-            if not mods:
-                return None
-            plain = [h for h, _ in mods if 'DeathFlags' not in h and 'DeathTypes' not in h]
-            return _secs(_attr(plain[0], 'DestructionDelay')) if plain else 0.0
-        _slow_memo[key] = _chain(template, own, read) or 0.0
-    return _slow_memo[key]
-
-
 _prop_memo = {}
 
 

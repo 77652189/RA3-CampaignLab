@@ -270,7 +270,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3383, 'Sim methods': 194, 'Body fields': 79, 'simunits defs': 139,
+CENTER = {'sim.py lines': 3380, 'Sim methods': 194, 'Body fields': 77, 'simunits defs': 138,
           'cells with old code': 31}
 
 
@@ -342,7 +342,7 @@ BODY_FORWARDS = {'hp': 'Body', 'max_hp': 'Body', 'health_floor': 'Body', 'immort
                  'spawn_module': 'SlavedUpdate', 'ready_at': 'SpecialPower', 'mine': 'OreMinerBehavior',
                  'unpack_end': 'StructureUnpackUpdate', 'sell_end': 'StructureSellUpdate',
                  'cold': 'SecondaryDamageTracker', 'cold_step': 'SecondaryDamageTracker',
-                 'level_modules': 'LevelUpUpgrade'}
+                 'level_modules': 'LevelUpUpgrade', 'lies': 'SlowDeath', 'linger': 'SlowDeath'}
 
 
 def body_forwards(sim_src=None):
@@ -400,7 +400,7 @@ PROCESS_CACHES = {
     *(('simunits', n) for n in (
         '_acquire', '_all_defines', '_command_powers', '_equivalent', '_fight',
         '_flee_memo', '_globals', '_hp_memo', '_index', '_ocl_text', '_ocls', '_own_weapons', '_prop_memo', '_radii',
-        '_resolved', '_retail_commands', '_retail_files', '_retail_mods', '_retail_powers', '_slow_memo',
+        '_resolved', '_retail_commands', '_retail_files', '_retail_mods', '_retail_powers',
         '_surf_memo', '_table', '_turning_memo', '_upgrades', '_weapon_blocks', '_wreck_memo')),
 }
 REGISTRARS = {('engine.kernel.factory', '_TAGS'): 'register'}     # filled only by the factory's decorator
@@ -910,7 +910,7 @@ def test_death_guard_bites():
     assert death_breaks(death_writes(third)) == [('simbody.py', 'sneak')]
     # the kill writing its own alive past _out
     bm = 'simbody.py'
-    past = dict(sources, **{bm: sources[bm].replace('        self._out(world, b, why, False)\n',
+    past = dict(sources, **{bm: sources[bm].replace('        self._out(world, b, why, False, death)\n',
                                                     '        b.alive = False\n', 1)})
     assert past[bm] != sources[bm] and death_breaks(death_writes(past)) == [(bm, 'Life.kill')]
 

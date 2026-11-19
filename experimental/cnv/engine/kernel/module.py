@@ -111,13 +111,15 @@ class Trigger:
 
 
 class Death:
-    """What a Die module is told (interfaces.Die.on_die, step B4c): the frame its thing died in and why (the host's
-    words). Read only; the death type, the killer and the damage come with the death modules (step B5)."""
-    __slots__ = ('frame', 'why')
+    """What a Die module is told (interfaces.Die.on_die, step B4c): the frame its thing died in, why (the host's
+    words) and its death type (step B5a: NORMAL, CRUSHED for a crush). Read only; the killer and the damage come
+    with the death modules that need them (step B5)."""
+    __slots__ = ('frame', 'why', 'death')
 
-    def __init__(self, frame, why=''):
+    def __init__(self, frame, why='', death='NORMAL'):
         object.__setattr__(self, 'frame', frame)
         object.__setattr__(self, 'why', why)
+        object.__setattr__(self, 'death', death)
 
     def __setattr__(self, name, value):
         raise AttributeError('a Death is read only')
