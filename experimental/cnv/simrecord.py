@@ -12,6 +12,7 @@ frame's record identical (docs/engine/sim-layers.md "搬迁不改行为").
     python -X utf8 experimental/cnv/simrecord.py snap <dir> [--at 0.5]   # step S's guard 7: each task without the
                                                                          # AI whole, and taken at half, written back
                                                                          # onto the task made anew, run on: the same
+                                                                         # record, snapshot at the end and report
 
 The times `record` writes come from runs side by side (-j), a few percent of noise and more on a loaded machine;
 `time` replaces them with the least of three lone runs (docs/engine/sim-modules.md 9.3: same machine, one task a
@@ -309,6 +310,10 @@ def run_task(name, out, executor=None, snap=None):
         taken, rec.at = json.dumps(simsnap.snapshot(s)), s.t
     rec.ran = time.perf_counter() - t0 - rec.spent     # the run alone: no imports, map build or record writing
     rec.line('end')
+    if snap is not None:    # its end (end_path): the report after the snapshot -- it notes what it used (Sim.used)
+        import simsnap
+        rec.end = {'snapshot': simsnap.snapshot(s)}
+        rec.end['report'] = s.report()
     return s, rec
 
 
@@ -326,7 +331,7 @@ def main():
     one.add_argument('--executor', choices=EXECUTORS, default=None)
     one.add_argument('--snap', default=None, help="'whole' or a fraction of the run: run_task")
     sn = sub.add_parser('snap', help="step S's guard 7: each task whole and taken at --at, written back, run on; "
-                                     'the two records the same line for line')
+                                     'the two records the same line for line, their ends the same')
     sn.add_argument('dir')
     sn.add_argument('--at', type=float, default=0.5, help='where to take it, a fraction of the task')
     sn.add_argument('--only', nargs='*', default=None)
@@ -375,6 +380,9 @@ def _main(a):
         with gzip.open(a.path, 'wt', encoding='utf-8') as out:
             _, rec = run_task(a.name, out, a.executor, a.snap)
         total = time.perf_counter() - t0
+        if a.snap is not None:      # the run's end beside its record: snap_check compares what the record does not show
+            with gzip.open(end_path(a.path), 'wt', encoding='utf-8') as f:
+                json.dump(rec.end, f)
         with open(timing_path(a.path), 'w', encoding='utf-8') as f:
             json.dump({'total': total, 'record': rec.spent, 'run': rec.ran, **({'snap': rec.snap}
                                                                                if hasattr(rec, 'snap') else {})}, f)
@@ -436,8 +444,9 @@ def _record(folder, jobs, j):
 def snap_check(folder, names, at=0.5, j=4):
     """Step S's guard 7 (docs/engine/sim-modules.md 9.2): each task recorded whole (<task>.gz) and taken at `at`
     of its run, through JSON, written onto the task made anew and run on (<task>.snap.gz), both on the world a
-    snapshot can be taken of (run_task); the first differing line of each pair, the snapshot's size and time. 0 when
-    every pair is the same."""
+    snapshot can be taken of (run_task); the first differing line of each pair, else where their ends differ
+    (end_difference: the snapshot at the end and the report), the snapshot's size and time. 0 when every pair is
+    the same."""
     failed = _record(folder, [(n, n, ['--snap', 'whole']) for n in names] +
                      [(n, n + '.snap', ['--snap', repr(at)]) for n in names], j)
     bad = 0
@@ -448,6 +457,7 @@ def snap_check(folder, names, at=0.5, j=4):
             bad += 1
             continue
         lines, differs = first_difference(whole, cut)
+        differs = differs or end_difference(whole, cut)
         with open(timing_path(cut), encoding='utf-8') as f:
             took = json.load(f).get('snap', {})
         how = f"taken at {took.get('at')} s, {took.get('bytes', 0) / 1e6:.2f} MB, {took.get('seconds', 0):.2f} s"
@@ -563,6 +573,64 @@ def time_tasks(folder, names, runs=3):
 
 def timing_path(gz):
     return gz[:-3] + '.time.json' if gz.endswith('.gz') else gz + '.time.json'
+
+
+def end_path(gz):
+    """A `snap` run's end beside its record: {'snapshot': simsnap.snapshot at the end, 'report': Sim.report()}."""
+    return (gz[:-3] if gz.endswith('.gz') else gz) + '.end.json.gz'
+
+
+
+def differences(a, b, at='', most=8):
+    """Where two snapshots (through JSON) differ: up to `most` paths, a row of the host's or the bodies' lists named
+    by its first item (the field's path, the body's key). [] when they are the same. `snap` reads the two runs'
+    ends through it (end_difference): a field the record does not show (the cells ever seen) still has to come back."""
+    out = []
+
+    def walk(x, y, at):
+        if len(out) >= most:
+            return
+        if type(x) is not type(y):
+            out.append(at or '.')
+        elif isinstance(x, dict):
+            for k in sorted(set(x) | set(y), key=str):
+                if k in x and k in y:
+                    walk(x[k], y[k], f'{at}.{k}')
+                else:
+                    out.append(f'{at}.{k} (one side only)')
+        elif isinstance(x, list):
+            if len(x) != len(y):
+                out.append(f'{at} ({len(x)} items, {len(y)})')
+                return
+            for i, (u, v) in enumerate(zip(x, y)):
+                name = u[0] if isinstance(u, list) and u and isinstance(u[0], str) else i
+                walk(u, v, f'{at}[{name}]')
+        elif x != y:
+            out.append(at or '.')
+    walk(a, b, at)
+    return out[:most]
+
+
+def end_difference(whole, cut):
+    """Two `snap` runs' ends (end_path): None when the same, else what differs -- the snapshot's paths (a field the
+    record does not show, as the cells ever seen) and the report's lines (what a field sorted as not to be taken
+    feeds: snapshot.md 4.4, the cells ever seen sorted a cache read the same at both ends and lost the report's
+    known area)."""
+    import difflib
+    ends = []
+    for gz in (whole, cut):
+        with gzip.open(end_path(gz), 'rt', encoding='utf-8') as f:
+            ends.append(json.load(f))
+    (x, y), out = ends, []
+    where = differences(x['snapshot'], y['snapshot'])
+    if where:
+        out.append('ENDS DIFFER in the snapshot at ' + ', '.join(where))
+    lines = [d for d in difflib.unified_diff(x['report'], y['report'], lineterm='', n=0)
+             if d[:1] in '+-' and d[:3] not in ('---', '+++')]
+    if lines:
+        out.append(f'ENDS DIFFER in the report, {len(lines)} lines: ' +
+                   ' | '.join(d[:160] for d in lines[:4]))
+    return chr(10).join(out) or None
 
 
 def timing(base, new, slower=SLOWER, shortest=SHORTEST):

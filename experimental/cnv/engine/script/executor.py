@@ -120,6 +120,10 @@ class PublicExecutor(port.Executor):
         active = list(self._walk())
         if [[type(x).__name__, x.name] for x in active] != [row[:2] for row in s['active']]:
             raise ValueError('PublicExecutor.restore: the snapshot is of other script lists')
+        want = {'counters', 'steps', 'displayed', 'log', 'next', 'rng', 'script', 'side', 'active'}
+        if set(s) != want or any(len(row) != 4 for row in s['active']):     # whole, before a write (1119i #6)
+            raise ValueError('PublicExecutor.restore: the snapshot is not of this shape '
+                             f'(parts {sorted(set(s) ^ want)}, active rows of {sorted({len(r) for r in s["active"]})})')
         things = {}
         for table, key in ((self.counters, 'counters'), (self.displayed, 'displayed'), (self._next, 'next')):
             table.clear()               # in place: a reader may hold the table under another name

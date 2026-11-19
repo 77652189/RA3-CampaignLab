@@ -32,13 +32,16 @@ from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 3             # 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late'
+VERSION = 4             # 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
+                        # 4: areas.missing (4.4, 11-19)
 
 SIM = {
     # the setup
     'm': STATIC, 'retail': STATIC, 'mm': STATIC, 'test': STATIC, 'level': STATIC, 'fps': STATIC, 'players': STATIC,
     'human': STATIC, 'foe': STATIC, 'own': STATIC, 'walls': STATIC, 'templates': STATIC, 'script': STATIC,
-    'auto_kill': STATIC, 'combat': STATIC, 'high': STATIC, 'unshot': STATIC, 'areas': STATIC,
+    'auto_kill': STATIC, 'combat': STATIC, 'high': STATIC, 'unshot': STATIC,
+    'areas': {'missing': STATE},    # the map's areas (the dict: the setup); the names looked up the map has not (the
+                                    # report's line): retail_s01's first half lost it written back (4.4, 11-19)
     'modifiers': {}, 'assignments': {'world': WIRE},
     # the kernel, the script port, wiring
     'world': KERNEL, 'executor': EXECUTOR, 'eng': WIRE, 'counters': WIRE, 'timers': WIRE, 'team_names': WIRE,
@@ -87,7 +90,7 @@ ALIASES = {('used',): ('world', 'used'), ('unmodeled',): ('world', 'gaps'),
            ('money',): ('wallet', 'money'), ('income',): ('wallet', 'income'), ('sharing',): ('wallet', 'sharing'),
            ('money_cap',): ('wallet', 'money_cap'), ('repairs', 'ai_switches'): ('ai_switches',)}
 
-BODY = {'modules': KERNEL}
+BODY = {'modules': KERNEL, 'serial': KERNEL, '_find_cache': CACHE}     # the last two: Thing's slots
 for _f in ('name template owner x y z speed surface vision kinds immune_until armor weapons acquire radius sight chase '
            'home auto_to resume stood_for spot engaged alive deleted path goal close_since made_by made_at scenery team '
            'instance guessed clear_height angle turn_rate turn_first face rolling carry dest set_off stops_at status '
@@ -103,9 +106,13 @@ _NAMED = ('$ref', '$slots', '$weapon', '$armor', '$weapons')    # marks of one o
 
 
 def _fields(obj):
-    if hasattr(obj, '__dict__'):
-        return vars(obj)
-    return {f: getattr(obj, f) for f in getattr(type(obj), '__slots__', ()) if hasattr(obj, f)}
+    """An object's own fields: its __dict__ and every slot set along its classes (review 1119i #7: a slot beside a
+    __dict__ was left out of the scan)."""
+    slots = [f for k in type(obj).__mro__ for f in (lambda s: (s,) if isinstance(s, str) else s)(
+        vars(k).get('__slots__', ())) if f not in ('__dict__', '__weakref__')]
+    out = dict(vars(obj)) if hasattr(obj, '__dict__') else {}
+    out.update((f, getattr(obj, f)) for f in slots if f not in out and hasattr(obj, f))
+    return out
 
 
 def _get(sim, path):
@@ -144,9 +151,9 @@ def unclassified(sim):
                     out.append('.'.join(at + (f,)) + ' (not the object it names)')
     walk(sim, SIM, ('sim',))
     for b in _things(sim):
-        out.extend(f'Body.{f}' for f in vars(b) if f not in BODY)
+        out.extend(f'Body.{f}' for f in _fields(b) if f not in BODY)
         for m in b.modules:     # a module's own: its STATE (the kernel's) and the factory's wiring, nothing set besides
-            out.extend(f'{type(m).__name__}.{f}' for f in vars(m) if f not in MODULE_WIRE and f not in m.STATE)
+            out.extend(f'{type(m).__name__}.{f}' for f in _fields(m) if f not in MODULE_WIRE and f not in m.STATE)
     return sorted(set(out))
 
 
@@ -425,6 +432,7 @@ def restore(sim, s):
         raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {VERSION}')
     if s['mission'] != getattr(sim.m, 'name', None):
         raise ValueError(f'simsnap.restore: a snapshot of {s["mission"]!r} onto {getattr(sim.m, "name", None)!r}')
+    _check(s)
     have = {b.serial: b for b in _things(sim)}
     things = {}
     every = [(serial, name, template, fields) for _key, serial, name, template, fields in s['bodies']] + s['others']
@@ -444,6 +452,7 @@ def restore(sim, s):
         things[serial] = b
     c = _Codec(sim)
     extra = c.decode_extra(things)
+    sim.executor.restore(s['executor'])     # first: it checks its own part whole before it writes (1119i #6)
     sim.world.restore(s['kernel'], things, extra)
     for serial, name, template, fields in every:
         b = things[serial]
@@ -463,5 +472,33 @@ def restore(sim, s):
     for path, e in s['host']:
         p = tuple(path.split('.'))
         _write(_get(sim, p[:-1]), p[-1], e, lambda x: snap.decode(x, things, extra), c)
-    sim.executor.restore(s['executor'])
     sim.ground.cache.clear()
+
+
+def _table_state(table=SIM, at=()):
+    for f, kind in table.items():
+        if isinstance(kind, dict):
+            yield from _table_state(kind, at + (f,))
+        elif kind == STATE:
+            yield '.'.join(at + (f,))
+
+
+def _check(s):
+    """The snapshot's shape, whole, before restore writes anything (review 1119i #6: a snapshot of an older shape
+    passed the version and failed half written): its parts, the rows of bodies and others, the host's fields each
+    one SIM sorts STATE, the parts SIM names."""
+    want = {'version', 'mission', 'kernel', 'bodies', 'others', 'parts', 'host', 'executor'}
+    bad = []
+    if set(s) != want:
+        bad.append(f'parts {sorted(set(s) ^ want)}')
+    else:
+        bad += [f'body row {r[:3]}' for r in s['bodies'] if not (isinstance(r, list) and len(r) == 5)]
+        bad += [f'other row {r[:2]}' for r in s['others'] if not (isinstance(r, list) and len(r) == 4)]
+        state = set(_table_state())
+        bad += [f'host field {r[0] if isinstance(r, list) and r else r!r}' for r in s['host']
+                if not (isinstance(r, list) and len(r) == 2 and r[0] in state)]
+        bad += [f'part {r!r}' for r in s['parts']
+                if not (isinstance(r, list) and len(r) == 3 and isinstance(SIM.get(r[0]), dict))]
+    if bad:
+        raise ValueError(f'simsnap.restore: the snapshot is not of this shape ({VERSION}): {", ".join(bad[:5])}')
+

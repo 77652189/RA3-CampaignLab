@@ -63,6 +63,9 @@ def test_the_restored_run_goes_on_as_the_one_never_stopped(heal):
     assert [x.name for x in oa.things()] == [x.name for x in ob.things()]
     assert [x.name for x, y in zip(oa.things(), ob.things()) if oa.state(x) != ob.state(y)] == []
     assert (a.t, a.world.frame, a.log) == (b.t, b.world.frame, b.log)
+    ends = [json.loads(json.dumps(simsnap.snapshot(s))) for s in (a, b)]     # what the things' state does not show
+    assert simrecord.differences(*ends) == []
+    assert a.report() == b.report()
 
 
 def test_every_field_is_sorted(heal):
@@ -99,8 +102,10 @@ def test_the_static_fields_are_the_new_worlds(heal):
             continue
         try:
             same = snap.encode(a, codec.extra) == snap.encode(b, codec.extra)
-        except TypeError:           # the mission merged with its test (a dataclass), the trigger areas: by fields
+        except TypeError:           # the mission merged with its test (a dataclass): by fields
             same = type(a) is type(b) and (a == b or vars(a) == vars(b))
+        if same and isinstance(a, dict) and hasattr(a, '__dict__'):    # a dict's own fields: dict == leaves them out
+            same = vars(a) == vars(b)
         if not same:
             moved.append('.'.join(p))
     assert moved == []
@@ -307,6 +312,18 @@ def test_another_worlds_thing_at_a_serial_left_free_is_an_error():
         simsnap.snapshot(a)
 
 
+def test_an_area_name_the_map_has_not_is_kept():
+    """4.4 (11-19): a name looked up the map has not (Areas.missing, the report's line) was the setup's, left out:
+    retail_s01's 'AREA - P2 Delete Aircraft', looked up in the first half, was gone from the restored run's report."""
+    a = _island()
+    assert a.areas['AREA - nowhere'] == ()
+    b = _island()
+    _fork(a, b)
+    assert b.areas.missing == {'AREA - nowhere'} and b.areas == a.areas
+    _go_on(a, b, 15)
+    assert a.report() == b.report()
+
+
 def test_a_modules_field_set_in_the_run_is_unclassified():
     """1119e #9: a field set on a module of a thing outside its STATE is named (the source guard reads only
     `self.x = ...`)."""
@@ -315,6 +332,39 @@ def test_a_modules_field_set_in_the_run_is_unclassified():
     m = a.bodies['unit'].find(interfaces.Body)
     m.review_timer = 7
     assert simsnap.unclassified(a) == [f'{type(m).__name__}.review_timer']
+
+
+def test_a_modules_slot_set_in_the_run_is_unclassified():
+    """1119i #7: a slot (beside the __dict__ a module has) set in the run is named too."""
+    from engine.kernel.module import Module
+
+    class Slotted(Module):
+        __slots__ = ('review_slot',)
+
+    a = _island()
+    b = a.bodies['unit']
+    m = Slotted(b, None, a.world)
+    b.modules = b.modules + (m,)
+    assert simsnap.unclassified(a) == []
+    m.review_slot = 7
+    assert simsnap.unclassified(a) == ['Slotted.review_slot']
+
+
+def test_a_snapshot_of_another_shape_is_refused_before_a_write():
+    """1119i #6: a snapshot of an older shape (an executor row short of `subroutine`, a host field this one does not
+    keep) is refused whole, the new run as made -- not written half and failed."""
+    a = _seq_world()
+    a.advance(15)
+    taken = json.loads(json.dumps(simsnap.snapshot(a)))
+    for spoil in (lambda s: s['executor']['active'][0].pop(), lambda s: s['host'].append(['gone_field', 1]),
+                  lambda s: s['bodies'][0].pop()):
+        s = json.loads(json.dumps(taken))
+        spoil(s)
+        b = _seq_world()
+        before = simsnap.snapshot(b)
+        with pytest.raises(ValueError, match='not of this shape'):
+            simsnap.restore(b, s)
+        assert simsnap.snapshot(b) == before
 
 
 def test_a_cut_with_no_frame_after_it_is_refused():
