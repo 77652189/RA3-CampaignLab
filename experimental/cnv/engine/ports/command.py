@@ -374,9 +374,10 @@ class Commands:
     def _attack(self, cmd):
         w = self._w
         if cmd.arg('goal_only'):            # the AI's pursuit takes a threat as the unit's goal alone: no fresh attack
-            t = self._target(cmd, w.bodies.get) if cmd.target else None    # order, its mode / path / follow
-            if cmd.target and t is None:    # untouched (INFERRED, e135); no target: the goal dropped (a charge ended)
-                return False, f'找不到 {cmd.target}'
+            aimed = bool(cmd.target) or cmd.arg('target_serial') is not None    # order, its mode / path / follow
+            t = self._target(cmd, w.bodies.get) if aimed else None  # untouched (INFERRED, e135); no target (no name,
+            if aimed and t is None:         # no serial: review 11-19 m): the goal dropped (a charge ended)
+                return False, f'找不到 {cmd.target or cmd.arg("target_serial")}'
             for b in self._units(cmd):
                 b.goal = t
             return True, ''
@@ -384,18 +385,25 @@ class Commands:
             t = cmd.target if cmd.arg('target_serial') is None else self._target(cmd, None)
             if t is None:
                 return False, f'找不到 {cmd.target}'
+            sent = []                       # a unit not there is ordered all the same and refuses nothing (as before)
             for b in self._units(cmd):
-                w.order_attack(b, t, cmd.force)
+                ok = w.order_attack(b, t, cmd.force)
+                if b is not None:
+                    sent.append(ok)
                 if cmd.arg('team') is not None:     # TEAM_ATTACK_TEAM ('' the default team's, f #2): the fight
                     # takes the team's next one when this dies
                     w.team_targets[b.serial] = cmd.arg('team')
-            return True, ''
+            return self._attacked(cmd, sent)
         targets = w.pick(cmd.target)        # the one picked is given as it is: read again by its name, a script
         if not targets:                     # reference of that name took its place (11-19 same-name sweep S3)
             return False, f'找不到 {cmd.target}'
-        for b in self._units(cmd):
-            w.order_attack(b, targets[0], cmd.force)
-        return True, ''
+        return self._attacked(cmd, [w.order_attack(b, targets[0], cmd.force) for b in self._units(cmd)])
+
+    @staticmethod
+    def _attacked(cmd, sent):
+        """The world's answers (order_attack's): one turned down (its own side without force, a dead one) refuses
+        the command (review 11-19 m); no unit, as before, is no refusal."""
+        return (True, '') if all(sent) else (False, f'不能攻击 {cmd.target}')
 
     def _power(self, cmd):
         w = self._w

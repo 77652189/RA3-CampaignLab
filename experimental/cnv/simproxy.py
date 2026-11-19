@@ -37,6 +37,7 @@ import json
 import math
 import os
 import sys
+import weakref
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
@@ -194,7 +195,7 @@ class SimWorld:
         self.me = self.sim.human
         # the int id the player knows an object by: one per object (by its serial), never per name -- an old id is not
         # a new object's of the same name (review 11-19 j #2); `names` its name, for the record and the tests
-        self.ids, self.names, self.things = {}, {}, {}
+        self.ids, self.names, self.things = {}, {}, weakref.WeakValueDictionary()
         home = self.sim.point('start')
         self.home = tuple(home) if home else (0.0, 0.0)
         names = LEADS.get(level, ()) if leads is None else leads
@@ -225,8 +226,11 @@ class SimWorld:
     # ---- what the player sees
     def _id(self, b):
         if b.serial not in self.ids:
-            i = self.ids[b.serial] = len(self.ids) + 1
+            # never one given before (names keeps every id); the object held weakly and its serial's row dropped
+            # when it is reclaimed: seeing an object kept it, and its World.late row, alive (review 11-19 m)
+            i = self.ids[b.serial] = max(self.names, default=0) + 1
             self.names[i], self.things[i] = b.name, b
+            weakref.finalize(b, self.ids.pop, b.serial, None)
         return self.ids[b.serial]
 
     def _data(self, template):

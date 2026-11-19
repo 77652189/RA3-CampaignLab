@@ -140,16 +140,20 @@ def _target(world, target):
 
 
 def order_attack(world, peers, b, target_name, force=False):
+    """True where `b` goes for the target (already on it too), False where the order is turned down: a unit or target
+    missing or dead, or one of its own side without force (review 11-19 m: the port read a success there)."""
     world.used.add('attack')
     target = _target(world, target_name)
     if b and target and not force and world.relation(b.owner, target.owner) == 'ALLIES':
-        return      # bench 11-13 engine_acts flow 友血: NAMED_ATTACK_NAMED on one of its own side, no shot (d115 13:
-                    # FORCE_ATTACK_NAMED is the order that takes any relation); a neutral one not benched, kept
-    if b and target and target.alive and b.alive:
-        b.hold_paused = False               # an order given under HOLD_FIRE fires (stance.md b)
-    if b and target and target.alive and b.alive and b.goal is not target:
+        return False    # bench 11-13 engine_acts flow 友血: NAMED_ATTACK_NAMED on one of its own side, no shot (d115
+        #                 13: FORCE_ATTACK_NAMED is the order that takes any relation); a neutral one not benched, kept
+    if not (b and target and target.alive and b.alive):
+        return False
+    b.hold_paused = False                   # an order given under HOLD_FIRE fires (stance.md b)
+    if b.goal is not target:
         b.goal, b.mode, b.follow, b.ground_fire = target, 'attack', None, None
         peers.send(b, (target.x, target.y), reach=peers.reach(b, target))
+    return True
 
 
 def order_capture(world, peers, b, target_name):

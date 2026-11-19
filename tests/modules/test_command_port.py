@@ -2,6 +2,8 @@
 script line would (so moving a giver onto the port changes no timing), as itself (review 11-19 i #1); `do` gives the world what calling the
 order directly gives; an unknown kind, and a kind with no route yet, are refused. The givers' guard is
 tests/guards/test_ports.py."""
+import gc
+import weakref
 from pathlib import Path
 
 import pytest
@@ -514,7 +516,7 @@ def _proxy(objs):
     w = object.__new__(simproxy.SimWorld)
     w.sim = w.world = s
     w.peers, w.me, w.refused = simproxy.Peers(s), 'Player_1', []
-    w.ids, w.names, w.things = {}, {}, {}
+    w.ids, w.names, w.things = {}, {}, weakref.WeakValueDictionary()
     w.control = lambda: True
     return s, w
 
@@ -698,3 +700,40 @@ def test_a_sequential_scripts_this_object_is_the_unit_queued_not_a_reference_of_
     s.refs['lead'] = other
     s.seq_due()
     assert (lead.move_to, other.move_to, s.refs['lead']) == ((600.0, 300.0), None, other)
+
+
+def test_the_proxy_does_not_keep_the_objects_it_saw():
+    """An object the proxy saw (gave an id) is reclaimed once the world lets go of it, its id row with it (review
+    11-19 m: 30 same-name replacements seen kept 30 objects alive); an old id still orders nothing."""
+    s, w = _proxy([])
+    seen = []
+    for _ in range(30):
+        b = s.add('same', APOC, 'Player_1', 1250.0, 2500.0)
+        seen.append(weakref.ref(b))
+        w._id(b)
+    del b
+    gc.collect()
+    assert (sum(r() is not None for r in seen), len(w.ids), len(w.things)) == (1, 1, 1)
+    assert w._body(1) is None and max(w.names) == 30
+
+
+def test_goal_only_with_a_serial_and_no_name_takes_that_target():
+    """The AI's goal_only by serial alone sets that goal (review 11-19 m: without a name the target was dropped)."""
+    s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0), ('t', APOC, 'Player_2', 400.0, 0.0)], model=False)
+    t = s.bodies['t']
+    assert s.commands.do(_ai('attack', s.bodies['a'], args=(('goal_only', True), ('target_serial', t.serial)))) \
+        == (True, '')
+    assert s.bodies['a'].goal is t
+
+
+def test_an_attack_on_ones_own_side_is_refused_by_the_port():
+    """A plain attack at one's own side is turned down by the world, and the port says so (review 11-19 m: it said
+    yes); forced, it goes."""
+    s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0), ('mate', APOC, 'Player_1', 400.0, 0.0)],
+                             model=False)
+    mate = s.bodies['mate']
+    attack = _ai('attack', s.bodies['a'], target='mate', args=(('target_serial', mate.serial),))
+    assert s.commands.do(attack)[0] is False and s.bodies['a'].goal is None
+    assert s.commands.do(Command('attack', units=('a',), target='mate'))[0] is False
+    assert s.commands.do(Command('attack', units=('a',), target='mate', force=True)) == (True, '')
+    assert s.bodies['a'].goal is mate
