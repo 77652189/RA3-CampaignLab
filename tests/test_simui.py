@@ -98,7 +98,8 @@ def snapshot(s):
 def test_clicks_replay_to_the_same_run():
     se = clicks_session()
     s = se.s
-    assert any(e[1] == '放' and e[4].startswith('@') for e in se.rec.happened)
+    assert any(e[1] == '命令' and e[2].kind == 'power' and e[2].place.startswith('@')    # a posted command is
+               for e in se.rec.happened)                                             # recorded as itself
     assert any(b.template == 'CNV_A4IceWall' or b.template == 'CNV_A4IceSeed' for b in s.bodies.values()
                if b.made_at > 0)                            # the clicked cast made its wall
     again = game.replay('a4', list(se.rec.happened), until=s.t - sim.DT)
