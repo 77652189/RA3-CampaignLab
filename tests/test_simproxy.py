@@ -101,7 +101,7 @@ def test_what_the_player_sees_at_the_start(lib):
         b = w.sim.bodies[w.names[t.id]]
         assert not b.scenery and w.sim.sees(b.x, b.y, b.surface == 'air')
     far = w.sim.bodies[w.sim.m.cast['north command'].name]
-    assert w.ids.get(far.name) not in {t.id for t in obs.seen}      # the north base is not in sight at the start
+    assert w.ids.get(far.serial) not in {t.id for t in obs.seen}      # the north base is not in sight at the start
     assert len(obs.leads) == len(simproxy.LEADS['a4'])
     # frame 0: the level's first tick (A4 locks the input for its scene) has not run, so the player has no control
     # yet (round 40: orders taken here sent a unit into lane foot and set the convoy off ~85 s early)

@@ -496,7 +496,7 @@ def test_the_proxy_players_click_reaches_his_units_not_a_reference_of_their_name
     w = object.__new__(simproxy.SimWorld)
     w.sim = w.world = s
     w.peers, w.me, w.refused = simproxy.Peers(s), 'Player_1', []
-    w.names = {1: 'a', 2: 'b', 3: 'enemy', 4: 't'}
+    w.things = {i: s.bodies[n] for i, n in {1: 'a', 2: 'b', 3: 'enemy', 4: 't'}.items()}
     w.control = lambda: True
     order = SimpleNamespace(kind='move', units=(1, 2, 3, 9), pos=(1450.0, 2700.0), target=None, power='', template='')
     assert w.issue(order)
@@ -505,6 +505,48 @@ def test_the_proxy_players_click_reaches_his_units_not_a_reference_of_their_name
     assert s.bodies['a'].move_to is not None and s.bodies['enemy'].move_to is None
     assert w.issue(SimpleNamespace(kind='attack', units=(1, 2), target=4, pos=None, power='', template=''))
     assert s.commands.issued()[-1][1].units == (s.bodies['a'].serial, s.bodies['b'].serial)
+
+
+def _proxy(objs):
+    import simproxy
+    s = simsmall.small_world(objs, model=False)
+    s.relations[('Player_1', 'Player_2')] = s.relations[('Player_2', 'Player_1')] = 'Enemy'
+    w = object.__new__(simproxy.SimWorld)
+    w.sim = w.world = s
+    w.peers, w.me, w.refused = simproxy.Peers(s), 'Player_1', []
+    w.ids, w.names, w.things = {}, {}, {}
+    w.control = lambda: True
+    return s, w
+
+
+def test_the_proxy_players_attack_reaches_the_target_he_clicked():
+    """The clicked target goes to the port by serial (review 11-19 j #1: by name, a reference `target` pointing at
+    another enemy took the goal, one pointing at his own unit turned the attack down -- the proxy still said yes)."""
+    from types import SimpleNamespace
+    for other in ('other', 'same'):
+        s, w = _proxy([('same', APOC, 'Player_1', 1250.0, 2500.0), ('target', APOC, 'Player_2', 1400.0, 2500.0),
+                       ('other', APOC, 'Player_2', 1600.0, 2500.0)])
+        me, t = w._id(s.bodies['same']), w._id(s.bodies['target'])
+        s.refs['target'] = s.bodies[other]
+        assert w.issue(SimpleNamespace(kind='attack', units=(me,), target=t, pos=None, power='', template=''))
+        assert s.bodies['same'].goal is s.bodies['target'], other
+
+
+def test_an_old_proxy_id_is_not_a_new_object_of_its_name():
+    """An id is its object's (review 11-19 j #2: ids were per name, so the id of a deleted `same` moved, attacked and
+    transformed the new `same` made in its place, and the new one went on under the old id)."""
+    from types import SimpleNamespace
+    s, w = _proxy([('same', APOC, 'Player_1', 1250.0, 2500.0), ('foe', APOC, 'Player_2', 1600.0, 2500.0)])
+    old, foe = w._id(s.bodies['same']), w._id(s.bodies['foe'])
+    s.bodies['same'].alive = False
+    del s.bodies['same']
+    new = s.add('same', APOC, 'Player_1', 1290.0, 2500.0)
+    move = SimpleNamespace(kind='move', units=(old,), pos=(1450.0, 2700.0), target=None, power='', template='')
+    assert not w.issue(move) and new.move_to is None
+    assert not w.issue(SimpleNamespace(kind='attack', units=(old,), target=foe, pos=None, power='', template=''))
+    assert new.goal is None and w._id(new) not in (old, foe)
+    assert w.issue(SimpleNamespace(kind='move', units=(w._id(new),), pos=(1450.0, 2700.0), target=None, power='',
+                                   template='')) and new.move_to is not None
 
 
 def _ai(kind, b, **kw):

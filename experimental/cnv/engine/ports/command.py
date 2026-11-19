@@ -331,6 +331,15 @@ class Commands:
             return [self._w.body(n) for n in cmd.units]
         return [b for who in cmd.units for b in self._w.pick(who)]
 
+    def _target(self, cmd, lookup):
+        """The target: `('target_serial', n)` the object the giver picked (`target` its name, for the record; one no
+        longer in the world's table is None -- a name taken over since does not take its place: the 11-19 same-name
+        sweep), else `lookup(cmd.target)`."""
+        s = cmd.arg('target_serial')
+        if s is None:
+            return lookup(cmd.target)
+        return next((b for b in self._w.bodies.values() if b.serial == s), None)
+
     def _attack_move(self, cmd):
         if cmd.arg('objects'):
             return self._script_move(cmd, True)
@@ -365,15 +374,18 @@ class Commands:
     def _attack(self, cmd):
         w = self._w
         if cmd.arg('goal_only'):            # the AI's pursuit takes a threat as the unit's goal alone: no fresh attack
-            t = w.bodies.get(cmd.target) if cmd.target else None    # order, its mode / path / follow untouched
-            if cmd.target and t is None:    # (INFERRED, e135); no target: the goal dropped (a charge ended)
+            t = self._target(cmd, w.bodies.get) if cmd.target else None    # order, its mode / path / follow
+            if cmd.target and t is None:    # untouched (INFERRED, e135); no target: the goal dropped (a charge ended)
                 return False, f'找不到 {cmd.target}'
             for b in self._units(cmd):
                 b.goal = t
             return True, ''
         if cmd.arg('objects'):
+            t = cmd.target if cmd.arg('target_serial') is None else self._target(cmd, None)
+            if t is None:
+                return False, f'找不到 {cmd.target}'
             for b in self._units(cmd):
-                w.order_attack(b, cmd.target, cmd.force)
+                w.order_attack(b, t, cmd.force)
                 if cmd.arg('team') is not None:     # TEAM_ATTACK_TEAM ('' the default team's, f #2): the fight
                     # takes the team's next one when this dies
                     w.team_targets[b.serial] = cmd.arg('team')
@@ -406,7 +418,8 @@ class Commands:
     def _capture(self, cmd):
         w = self._w
         if cmd.arg('objects'):              # refused when no unit goes (none there, or none may enter it: f #4)
-            sent = [w.order_capture(b, cmd.target) for b in self._units(cmd)]
+            t = cmd.target if cmd.arg('target_serial') is None else self._target(cmd, None)
+            sent = [w.order_capture(b, t) for b in self._units(cmd)] if t is not None else []
             return (True, '') if sent and all(sent) else (False, f'没有能去占 {cmd.target} 的工兵')
         targets = w.pick(cmd.target)
         if not targets:
@@ -567,7 +580,7 @@ class Commands:
         w = self._w
         if cmd.arg('via') != 'garrison':
             return False, f"enter: no route {cmd.arg('via')!r}"
-        g = w.bodies.get(cmd.target)
+        g = self._target(cmd, w.bodies.get)
         if g is None:
             return False, f'找不到 {cmd.target}'
         for b in self._units(cmd):

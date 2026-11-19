@@ -133,9 +133,15 @@ def held_up(b):
         b.dest == b.move_to and math.hypot(b.dest[0] - b.x, b.dest[1] - b.y) > ARRIVE
 
 
+def _target(world, target):
+    """An order's target: an object the giver picked, given as it is (the 11-19 same-name sweep: read again by its
+    name, a script reference of that name took its place), or a name, read as the world reads it (Sim.body)."""
+    return world.body(target) if isinstance(target, str) else target
+
+
 def order_attack(world, peers, b, target_name, force=False):
     world.used.add('attack')
-    target = world.body(target_name)
+    target = _target(world, target_name)
     if b and target and not force and world.relation(b.owner, target.owner) == 'ALLIES':
         return      # bench 11-13 engine_acts flow 友血: NAMED_ATTACK_NAMED on one of its own side, no shot (d115 13:
                     # FORCE_ATTACK_NAMED is the order that takes any relation); a neutral one not benched, kept
@@ -150,7 +156,7 @@ def order_capture(world, peers, b, target_name):
     """R4: NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED with Command_CaptureBuilding: the engineer goes to the
     building; at its side it takes it (capture_due)."""
     world.used.add('capture')
-    target = world.body(target_name)
+    target = _target(world, target_name)
     if b and b.alive and target and target.alive and peers.engineer_entry(b, target):
         b.goal, b.mode = target, 'capture'
         peers.send(b, (target.x, target.y))

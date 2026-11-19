@@ -192,7 +192,9 @@ class SimWorld:
         # for play() and the tests
         self.world, self.peers = self.sim, Peers(self.sim)
         self.me = self.sim.human
-        self.ids, self.names = {}, {}          # body name <-> the int id the player knows it by
+        # the int id the player knows an object by: one per object (by its serial), never per name -- an old id is not
+        # a new object's of the same name (review 11-19 j #2); `names` its name, for the record and the tests
+        self.ids, self.names, self.things = {}, {}, {}
         home = self.sim.point('start')
         self.home = tuple(home) if home else (0.0, 0.0)
         names = LEADS.get(level, ()) if leads is None else leads
@@ -222,10 +224,10 @@ class SimWorld:
 
     # ---- what the player sees
     def _id(self, b):
-        if b.name not in self.ids:
-            self.ids[b.name] = len(self.ids) + 1
-            self.names[self.ids[b.name]] = b.name
-        return self.ids[b.name]
+        if b.serial not in self.ids:
+            i = self.ids[b.serial] = len(self.ids) + 1
+            self.names[i], self.things[i] = b.name, b
+        return self.ids[b.serial]
 
     def _data(self, template):
         """(cost, good_against, rates) of a template: the SDK's data, or the name's guess for a part of ours."""
@@ -354,8 +356,8 @@ class SimWorld:
 
     # ---- what the player does
     def _body(self, i):
-        b = self.world.bodies.get(self.names.get(i))
-        return b if b is not None and b.alive else None
+        b = self.things.get(i)              # the object the id was given to, still in the world's table and alive
+        return b if b is not None and b.alive and self.world.bodies.get(b.name) is b else None
 
     def _refuse(self, o, why):
         self.refused.append((self.frame, o, why))
@@ -399,7 +401,7 @@ class SimWorld:
             t = self._body(o.target)
             if t is None:
                 return self._refuse(o, 'target gone')
-            self._do('attack', units, target=t.name)
+            self._do('attack', units, target=t.name, args=(('target_serial', t.serial),))   # as clicked (j #1)
             return True
         if o.kind == 'power':
             if o.power == 'SpecialPower_JAIV_Transform':
