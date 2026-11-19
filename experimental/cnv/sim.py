@@ -162,8 +162,8 @@ ALIGN = {**kernel_factory.align(), **simheal.ALIGN,     # the kernel modules' ow
                     'probe death; the Generals source keeps it while it dies, 源码 4.2)',
     'both endings': '未对齐: won and lost in one frame: Generals runs the frame\'s later scripts and takes the last; '
                     'RA3\'s "Mission Won" / "Mission Lost" flags are its own (源码 4.5)',
-    'inverted': 'a NOT condition is the plain negation: the compiler reads it off a flag two every-frame scripts '
-                'keep (parts.unnot) -- the game ignores the inverted bit of a .map\'s own scripts (bench 2026-10-29, '
+    'inverted': 'a NOT condition is read off a flag two every-frame scripts first in the list keep (parts.unnot), so '
+                'it sees the frame\'s top (bench engine_toggle 第四行 1001) -- the game ignores the inverted bit of a .map\'s own scripts (bench 2026-10-29, '
                 'probe align; retail\'s scripts are compiled into the stream)',
     'frame rate': 'the scripts run in the public executor (engine/script/executor.py, script-semantics.md): 15 frames a '
                   'second (bench 10-28 probe align), a timer ceil(seconds x 15) frames counted down before the scripts, '

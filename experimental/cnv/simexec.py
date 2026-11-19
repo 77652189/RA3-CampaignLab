@@ -24,7 +24,7 @@ def attach(sim, got, executor, skirmish_setup, parts):
     this computer, else None; `parts` (the compiler's NOT mark, unnot) handed in by sim.py, which layered modules do
     not import. Either executor's counter-and-timer table is the Sim's counters and timers (Counters / Timers). With it the scripts as the game runs them: the compiler's NOT flags (package.py writes
     unnot's), one list, the run's difficulty, the Sim the engine's World; the model's FPS is the frame rate. Without it
-    the public executor. Either way, on our maps the container's Lib_Skirmish_Setup is handed the published players.
+    the public executor, on our maps the same unnot'd list. Either way, on our maps the container's Lib_Skirmish_Setup is handed the published players.
 
     executor 'public' with the model there (simrecord --executor public@model, a diagnostic): the model's engine
     holding no scripts, only its frame clock (Sim.frame_now, the model's FPS), and the public executor on it -- the
@@ -48,15 +48,16 @@ def attach(sim, got, executor, skirmish_setup, parts):
         sim.eng = cls(lists, world=SimWorld(sim), difficulty=sim.level, honor_inverted=sim.retail)
         sim.clock = sim.eng                         # its step moves the frame on
         sim.flags = sim.eng.flags
-        if any(c and c[-1] == parts.NOT for s in sim.mm.scripts for c in s.when):
-            sim.used.add('inverted')
         sim.model_scripts = True
+    if not sim.retail and any(c and c[-1] == parts.NOT for s in sim.mm.scripts for c in s.when):
+        sim.used.add('inverted')                    # either executor reads them off unnot's flags
     if not sim.model_scripts:
         # the public executor's lists: a retail map's own per side with its libraries (retail.script_lists), ours
-        # one unnamed list, the compiler's NOT marks inverted (as the game would not: an assumption the run lists)
-        lists = sim.m.script_lists(script_lists) if sim.retail else script_lists.from_cnv(sim.mm.scripts, parts.NOT)
-        sim.executor = script_executor.PublicExecutor(SimWorld(sim), lists, sim.level, sim.fps, clock=sim.clock,
-                                                      assume_inverted=not sim.retail)
+        # one unnamed list as the package writes it, the compiler's NOT read off unnot's flags (set at the frame's
+        # top, before the scripts that change the test: bench engine_toggle 第四行 1001), as the model runs them
+        lists = (sim.m.script_lists(script_lists) if sim.retail
+                 else script_lists.from_cnv(parts.unnot(sim.mm.scripts), parts.NOT))
+        sim.executor = script_executor.PublicExecutor(SimWorld(sim), lists, sim.level, sim.fps, clock=sim.clock)
     else:
         sim.executor = sim.eng
     sim.counters, sim.timers = Counters(sim.executor), Timers(sim.executor, sim)   # the executor's one table
