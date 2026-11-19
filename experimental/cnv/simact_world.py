@@ -42,10 +42,13 @@ def set_counter_to_counter(sim, name, a, script):
 def counter_math_counter(sim, name, a, script):
     # retail uses 0 adds (a total of per-player kills) and 1 takes away (what is left of the transports spawned);
     # bench engine_scripts3 math / input (11-09): 2 multiplies, 3 divides toward zero (13 / 4 -> 3, -13 / 4 -> -3),
-    dst, op, src = a                        # no floor; another code leaves the counter as it is (as the model)
-    c, other = sim.counters.get(dst, 0), sim.counters.get(src, 0)
+    # no floor; another code leaves the counter as it is (as the model). COUNTER_MATH_VALUE: the same with a number
+    # for the second counter (bench engine_leechhealth: code 2 x 1000 packs the target's health, 11-18)
+    dst, op, src = a
+    c = sim.counters.get(dst, 0)
+    other = int(src) if name == 'COUNTER_MATH_VALUE' else sim.counters.get(src, 0)
     if op not in (0, 1, 2, 3):
-        sim.used.add(f'COUNTER_MATH_COUNTER code {op}')
+        sim.used.add(f'{name} code {op}')
     sim.counters[dst] = {0: c + other, 1: c - other, 2: c * other, 3: int(c / other) if other else c}.get(op, c)
 
 
@@ -269,6 +272,7 @@ ACTIONS = {
     'SET_COUNTER': set_counter,
     'SET_COUNTER_TO_COUNTER': set_counter_to_counter,
     'COUNTER_MATH_COUNTER': counter_math_counter,
+    'COUNTER_MATH_VALUE': counter_math_counter,
     'INCREMENT_COUNTER': increment_counter,
     'DECREMENT_COUNTER': increment_counter,
     'CREATE_NAMED_ON_TEAM_AT_WAYPOINT': create_named_on_team_at_waypoint,
