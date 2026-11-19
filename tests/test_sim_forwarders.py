@@ -39,11 +39,9 @@ enginefiles = _layers.enginefiles     # module name -> file (simX, or engine.<la
 # forwarder X today). Step B4b split destroy(delete=...) into destroy (a death) and delete (no death): the calls
 # that picked by a flag name both now.
 FORWARDER_CALLS = {
-    # simact_ability: the ability buttons the scripts press
-    ('simact_ability', 'leap_press'): 1, ('simact_ability', 'movement_power_press'): 1,
-    ('simact_ability', 'order_capture'): 1, ('simact_ability', 'order_unpack'): 1,
-    ('simact_ability', 'self_power_press'): 1, ('simact_ability', 'send'): 1, ('simact_ability', 'toggle_press'): 1,
-    ('simact_ability', 'wfire_press'): 1,
+    # simact_ability: a special power's cast walking the ice engineer to his spot (its buttons go through the command
+    # port, R3 13d-2)
+    ('simact_ability', 'send'): 1,
     # simact_object: kill / sell / move / capture an object
     ('simact_object', 'delete'): 2, ('simact_object', 'destroy'): 5, ('simact_object', 'modify'): 1, ('simact_object', 'order_capture'): 1,
     ('simact_object', 'sell'): 2, ('simact_object', 'send'): 1, ('simact_object', 'stand'): 1,
@@ -57,6 +55,9 @@ FORWARDER_CALLS = {
     ('engine.ports.command', 'order_guard'): 1, ('engine.ports.command', 'order_move'): 2,
     ('engine.ports.command', 'order_power'): 1, ('engine.ports.command', 'order_stop'): 1,
     ('engine.ports.command', 'stand'): 3,
+    ('engine.ports.command', 'leap_press'): 1, ('engine.ports.command', 'movement_power_press'): 1,
+    ('engine.ports.command', 'order_unpack'): 1, ('engine.ports.command', 'self_power_press'): 1,
+    ('engine.ports.command', 'toggle_press'): 1, ('engine.ports.command', 'wfire_press'): 1,
     # simact_player / simact_world: upgrades and a team's stop
     ('simact_player', 'modify'): 1, ('simact_world', 'stand'): 1,
     # simdamage's Peers loan

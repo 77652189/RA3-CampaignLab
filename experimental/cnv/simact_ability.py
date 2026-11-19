@@ -3,19 +3,38 @@ team's command button (capture, build, deploy and pack, garrison ejects, weapon-
 object) and a player's or a unit's special power at a waypoint (superweapon hits, the curtains).
 
 Each action is `fn(sim, name, a, script)`, moved verbatim out of Sim.act's chain; simact.act looks them up in ACTIONS.
-The button family is one function (`named_buttons`): its guarded branches share names, kept in the old chain's order."""
+The button family is one function (`named_buttons`): its guarded branches share names, kept in the old chain's order.
+
+A button press is a command through the run's command port (`_order`: a Command by 'script', its unit the object's name;
+R3 13d-2): a capture, a factory's build button, an unpack, a toggle, the weapon-fire / leap / movement / self powers
+(`power` with `via`: the action picks the module entry by what the unit's template has). Not orders, so not through it:
+- `script_cast`, the special power's cast (NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT and the buttons left over): the
+  SpecialPower module's effect, not a giver's order -- the player's `power` command comes to it too (order_power ->
+  this action), so the port cannot route to it until the module (M8) holds it. The ice engineer's walk and build
+  there (R5, AssembleStructureSpecialAbilityUpdate) is that effect: a `power` the unit's module carries out (the
+  structure is the module's, not the giver's), not `place` (a builder told a template and a spot by its player);
+- the god's-hand / effect branches of named_buttons: a yard packing back (replace, due), the drop store's and the
+  time belt's recorded casts, the ejects and the repair dispatch (their own modules, no command kind yet)."""
 import math
 
 import simgarrison
 import simunits
+from engine.ports.command import Command
 from simpower import CURTAIN, PACK_FRAMES, PACK_POWER, RELOAD_LAG, SUPERWEAPON_HITS, UNPACK_POWER, start_reload
 from simscript import refined
 from simworld import GAP_ACTION
 
 
+def _order(sim, kind, unit, *args, **fields):
+    """A map script's button press through the run's command port: (ok, why). `unit` the object's name as the action
+    found it (None: no unit, a factory's build); `args` more (name, value) pairs."""
+    return sim.commands.do(Command(kind, 'script', units=() if unit is None else (unit,),
+                                   args=(('objects', True),) + args, **fields))
+
+
 def named_buttons(sim, name, a, script):
     if name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and a[1] == 'Command_CaptureBuilding':
-        sim.order_capture(sim.body(a[0]), a[2])
+        _order(sim, 'capture', a[0], target=a[2])
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and sim.body(a[0]) and sim.body(a[0]).alive and \
             simunits.built(sim.body(a[0]).template, a[1], sim.own, sim.body(a[0]).upgrades):
         # a factory's build button: queued there as the player's click (bench engine_production e); a banned unit
@@ -23,7 +42,7 @@ def named_buttons(sim, name, a, script):
         # tier, a factory still unpacking -- INFERRED, not measured)
         f = sim.body(a[0])
         tmpl = simunits.built(f.template, a[1], sim.own, f.upgrades)
-        if not sim.order_build(f.owner, tmpl, factory=f, press=True):
+        if not _order(sim, 'build', None, ('press', True), player=f.owner, template=tmpl, target=a[0])[0]:
             sim.note('生产', f'{sim.label(f)} 按 {a[1]}：现在造不了 {tmpl}')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and simgarrison.ejects(a[1], sim.own):
         # a transport's eject at the spot (simgarrison; bench 11-10 engine_transport load 跳)
@@ -52,7 +71,7 @@ def named_buttons(sim, name, a, script):
         # an MCV / a Japanese egg deploys at the point: drives there, then turns into its replacement (bench
         # engine_unpack mcv / egg: the yard stands on the point, the name passes on)
         b, p = sim.body(a[0]), sim.point(a[2])
-        if not (b and p is not None and sim.order_unpack(b, p, a[1], a[2])):
+        if not (b and p is not None and _order(sim, 'unpack', a[0], ('button', a[1]), place=a[2])[0]):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有能展开的单位或路点')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and sim.body(a[0]) and sim.body(a[0]).alive and \
             simunits.command_power(a[1], sim.own) == PACK_POWER and \
@@ -83,19 +102,20 @@ def named_buttons(sim, name, a, script):
     elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and \
             sim.body(a[0]) and sim.body(a[0]).alive and \
             simunits.weapon_fire_ability(sim.body(a[0]).template, a[1], sim.own):
-        sim.wfire_press(sim.body(a[0]), a[1], a[2] if len(a) > 2 else None)
+        _order(sim, 'power', a[0], ('via', 'wfire'), ('button', a[1]), target=a[2] if len(a) > 2 else '')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and sim.body(a[0]) and sim.body(a[0]).alive and \
             sim.point(a[2]) is not None and simunits.weapon_fire_ability(sim.body(a[0]).template, a[1], sim.own) \
             and simunits.self_projectile_speed(
                 simunits.weapon_fire_ability(sim.body(a[0]).template, a[1], sim.own)['weapon'], sim.own):
-        sim.leap_press(sim.body(a[0]), a[1], sim.point(a[2]))
+        _order(sim, 'power', a[0], ('via', 'leap'), ('button', a[1]), place=a[2])
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and sim.body(a[0]) and sim.body(a[0]).alive and \
             sim.point(a[2]) is not None and simunits.movement_power(sim.body(a[0]).template, a[1], sim.own):
-        sim.movement_power_press(sim.body(a[0]), a[1], sim.point(a[2]))
+        _order(sim, 'power', a[0], ('via', 'movement'), ('button', a[1]), place=a[2])
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and sim.body(a[0]) and sim.body(a[0]).alive and \
             simunits.self_module_power(sim.body(a[0]).template, a[1], sim.own):
-        sim.self_power_press(sim.body(a[0]), a[1])
-    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and sim.body(a[0]) and sim.toggle_press(sim.body(a[0]), a[1]):
+        _order(sim, 'power', a[0], ('via', 'self'), ('button', a[1]))
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and sim.body(a[0]) and \
+            _order(sim, 'toggle', a[0], ('button', a[1]))[0]:
         sim.note('技能', f'{a[0]} 按 {a[1]} 切换状态')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and sim.body(a[0]) and sim.body(a[0]).alive and \
             simunits.press_records(sim.body(a[0]).template, a[1], sim.own):
@@ -107,80 +127,86 @@ def named_buttons(sim, name, a, script):
         sim.casts += [(sim.frame_now(), b.owner, power.lower(), b.name, None)] * n
         sim.note('技能', f'{sim.label(b)} 按 {a[1]}：记 {n} 次施放')
     elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
-        b = sim.body(a[0])
-        # engine_oclnone / engine_oclwrong: no matching host module means
-        # neither protection nor PLAYER_TRIGGERED_SPECIAL_POWER event.
-        if b and b.alive and a[1] == 'SpecialPowerIronCurtain' and \
-                not simunits.ocl_power(b.template, a[1], sim.own):
-            sim.note('技能', f'{sim.label(b)} 没有匹配的铁幕 OCLSpecialPower')
-            return
-        if b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT':
-            # bench 11-09 engine_scripts8b pfire / pdis: every script cast (the player-level one too, a second
-            # one in the reload that hurts nobody) is seen by PLAYER_TRIGGERED_SPECIAL_POWER for one frame
-            sim.casts.append((sim.frame_now(), b.owner, str(a[1]).lower(), b.name,
-                               sim.point(a[2]) if len(a) > 2 else None))
-        got = b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' and \
-            simunits.assemble(b.template, a[1], sim.own)
-        p = sim.point(a[2]) if got and got[1] else None
-        if p is not None:                       # R5: he walks there and builds (the ice engineer's core)
-            sim.used.add('assemble')           # a script's cast heeds neither reload nor placing rules
-            rules = simunits.power_rules(b.template, a[1], sim.own)    # (bench engine_skill a-c, w); it
-            if rules and rules['reload']:                               # starts the reload all the same
-                start_reload(sim, b, a[1], sim.frame_now() + rules['reload'])   # (RA3 1.13, read, l2_ability.md)
-            b.building, b.goal, b.mode = (got[1], p, got[0]), None, 'move'
-            sim.note('技能', f'{sim.label(b)} 去 {a[2]} 造 {got[1]}')
-            if not sim.at_site(b, 0.0):
-                sim.send(b, p)
-        else:
-            sim.used.add('special power')
-            sim.note('技能', f'{a[0]} 用 {a[1]}' + (f' 打 {a[2]}' if len(a) > 2 else ''))
-            q = sim.point(a[2]) if len(a) > 2 and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' else None
-            rules = simunits.power_rules(b.template, a[1], sim.own) if b and b.alive else None
-            # bench 11-09 engine_scripts8b pdis: a second script cast ~20 s after the first (the collider's
-            # reload, set by that cast, not over) is seen as triggered but hurts nobody; the first cast of a
-            # collider never cast went though its power was not charged (engine_super p / q). INFERRED: a cast
-            # in the reload a cast started brings no blast
-            cooling = bool(b and b.alive and b.ready_at.get(a[1], 0) > sim.frame_now())
-            if rules and rules['reload']:       # every cast starts the reload anew (RA3 1.13, read, work/re/l2_ability.md;
-                start_reload(sim, b, a[1],                                                  # SDK GlobalData)
-                             sim.frame_now() + rules['reload'] + RELOAD_LAG.get(a[1], 0))
-            hits = SUPERWEAPON_HITS.get(a[1]) if b and b.alive else None
-            if hits and q is not None and cooling:
-                sim.used.add('superweapon')
-                sim.note('技能', f'{sim.label(b)} 的 {a[1]} 还在重装：没打出来')
-            elif hits and q is not None:       # a script's cast fires though the power is not ready
-                sim.used.add('superweapon')
-                now = sim.frame_now()
-                for after, table in hits:
-                    sim.blasts.append((now + after, q[0], q[1], table, b.owner, b))
-            curtain_host = True
-            if a[1] == 'SpecialPowerIronCurtain' and b and b.alive:
-                module = simunits.ocl_power(b.template, a[1], sim.own)
-                curtain_host = bool(module and simunits.iron_curtain_ocl(module['OCL'], sim.own) and
-                                    module['CreateLocation'] == 'CREATE_AT_LOCATION' and
-                                    module['CanAffectObjectFilter'] ==
-                                    'SovietIronCurtainSpecialPowerObjectFilter')
-                empty_dispatch = bool(module and
-                                      (simunits.empty_ocl(module['OCL'], sim.own) or
-                                       simunits.iron_curtain_ocl(module['OCL'], sim.own, zero_count=True)) and
-                                      module['CreateLocation'] == 'CREATE_AT_LOCATION' and
-                                      module['CanAffectObjectFilter'] ==
-                                      'SovietIronCurtainSpecialPowerObjectFilter')
-                if module and not curtain_host and not empty_dispatch:
-                    sim.gap(GAP_ACTION, refined(name, a), 'OCLSpecialPower 配置未对拍，见 work/re/e_ocl_e62.md')
-            if a[1] in CURTAIN and q is not None and b and b.alive and curtain_host:
-                sim.used.add('superweapon')
-                reach, lasts, kinds = CURTAIN[a[1]]
-                for t in sim.living():
-                    # the reach to the object's bounding circle (bench engine_super o: a tank 807 off covered,
-                    # 832 not; 800 + its 23.3 radius -- INFERRED, R8's measure)
-                    if (kinds is None or t.kinds & kinds) and \
-                            math.hypot(t.x - q[0], t.y - q[1]) - t.radius <= reach:
-                        t.immune_until = sim.frame_now() + lasts
-            if b and b.alive and not ((hits or a[1] in CURTAIN) and q is not None):
-                sim.gap(GAP_ACTION, refined(name, a), f'{a[1]} 只记进时间线（special power），没有效果')
+        script_cast(sim, name, a)
     else:
         return False
+
+
+def script_cast(sim, name, a):
+    """A special power's cast by a script (and a button none of named_buttons' branches took): the SpecialPower
+    module's effect, where the player's `power` command comes too (order_power); no order (module docstring)."""
+    b = sim.body(a[0])
+    # engine_oclnone / engine_oclwrong: no matching host module means
+    # neither protection nor PLAYER_TRIGGERED_SPECIAL_POWER event.
+    if b and b.alive and a[1] == 'SpecialPowerIronCurtain' and \
+            not simunits.ocl_power(b.template, a[1], sim.own):
+        sim.note('技能', f'{sim.label(b)} 没有匹配的铁幕 OCLSpecialPower')
+        return
+    if b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT':
+        # bench 11-09 engine_scripts8b pfire / pdis: every script cast (the player-level one too, a second
+        # one in the reload that hurts nobody) is seen by PLAYER_TRIGGERED_SPECIAL_POWER for one frame
+        sim.casts.append((sim.frame_now(), b.owner, str(a[1]).lower(), b.name,
+                           sim.point(a[2]) if len(a) > 2 else None))
+    got = b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' and \
+        simunits.assemble(b.template, a[1], sim.own)
+    p = sim.point(a[2]) if got and got[1] else None
+    if p is not None:                       # R5: he walks there and builds (the ice engineer's core)
+        sim.used.add('assemble')           # a script's cast heeds neither reload nor placing rules
+        rules = simunits.power_rules(b.template, a[1], sim.own)    # (bench engine_skill a-c, w); it
+        if rules and rules['reload']:                               # starts the reload all the same
+            start_reload(sim, b, a[1], sim.frame_now() + rules['reload'])   # (RA3 1.13, read, l2_ability.md)
+        b.building, b.goal, b.mode = (got[1], p, got[0]), None, 'move'
+        sim.note('技能', f'{sim.label(b)} 去 {a[2]} 造 {got[1]}')
+        if not sim.at_site(b, 0.0):
+            sim.send(b, p)
+    else:
+        sim.used.add('special power')
+        sim.note('技能', f'{a[0]} 用 {a[1]}' + (f' 打 {a[2]}' if len(a) > 2 else ''))
+        q = sim.point(a[2]) if len(a) > 2 and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' else None
+        rules = simunits.power_rules(b.template, a[1], sim.own) if b and b.alive else None
+        # bench 11-09 engine_scripts8b pdis: a second script cast ~20 s after the first (the collider's
+        # reload, set by that cast, not over) is seen as triggered but hurts nobody; the first cast of a
+        # collider never cast went though its power was not charged (engine_super p / q). INFERRED: a cast
+        # in the reload a cast started brings no blast
+        cooling = bool(b and b.alive and b.ready_at.get(a[1], 0) > sim.frame_now())
+        if rules and rules['reload']:       # every cast starts the reload anew (RA3 1.13, read, work/re/l2_ability.md;
+            start_reload(sim, b, a[1],                                                  # SDK GlobalData)
+                         sim.frame_now() + rules['reload'] + RELOAD_LAG.get(a[1], 0))
+        hits = SUPERWEAPON_HITS.get(a[1]) if b and b.alive else None
+        if hits and q is not None and cooling:
+            sim.used.add('superweapon')
+            sim.note('技能', f'{sim.label(b)} 的 {a[1]} 还在重装：没打出来')
+        elif hits and q is not None:       # a script's cast fires though the power is not ready
+            sim.used.add('superweapon')
+            now = sim.frame_now()
+            for after, table in hits:
+                sim.blasts.append((now + after, q[0], q[1], table, b.owner, b))
+        curtain_host = True
+        if a[1] == 'SpecialPowerIronCurtain' and b and b.alive:
+            module = simunits.ocl_power(b.template, a[1], sim.own)
+            curtain_host = bool(module and simunits.iron_curtain_ocl(module['OCL'], sim.own) and
+                                module['CreateLocation'] == 'CREATE_AT_LOCATION' and
+                                module['CanAffectObjectFilter'] ==
+                                'SovietIronCurtainSpecialPowerObjectFilter')
+            empty_dispatch = bool(module and
+                                  (simunits.empty_ocl(module['OCL'], sim.own) or
+                                   simunits.iron_curtain_ocl(module['OCL'], sim.own, zero_count=True)) and
+                                  module['CreateLocation'] == 'CREATE_AT_LOCATION' and
+                                  module['CanAffectObjectFilter'] ==
+                                  'SovietIronCurtainSpecialPowerObjectFilter')
+            if module and not curtain_host and not empty_dispatch:
+                sim.gap(GAP_ACTION, refined(name, a), 'OCLSpecialPower 配置未对拍，见 work/re/e_ocl_e62.md')
+        if a[1] in CURTAIN and q is not None and b and b.alive and curtain_host:
+            sim.used.add('superweapon')
+            reach, lasts, kinds = CURTAIN[a[1]]
+            for t in sim.living():
+                # the reach to the object's bounding circle (bench engine_super o: a tank 807 off covered,
+                # 832 not; 800 + its 23.3 radius -- INFERRED, R8's measure)
+                if (kinds is None or t.kinds & kinds) and \
+                        math.hypot(t.x - q[0], t.y - q[1]) - t.radius <= reach:
+                    t.immune_until = sim.frame_now() + lasts
+        if b and b.alive and not ((hits or a[1] in CURTAIN) and q is not None):
+            sim.gap(GAP_ACTION, refined(name, a), f'{a[1]} 只记进时间线（special power），没有效果')
 
 
 def player_fire_special_power_at_waypoint(sim, name, a, script):

@@ -15,7 +15,7 @@ a unit's AI command interface there and then):
 verbs too -- 造, 删除, 血量 ...: those are not commands and go in as the script events they are, unlogged).
 
 The port holds no rules: `do` routes each kind to the world's own order call (`Sim.happen` gives a script line's
-order through `do` too: one port per run, `Sim.commands`). Kinds with no route yet (`check` says so) get theirs when their giver moves to the port (R3 13d-13f).
+order through `do` too: one port per run, `Sim.commands`). Kinds with no route yet (`check` says so) get theirs when their giver moves to the port (R3 13e-13f).
 
 Two kinds of address. A script line's (the player's, the plays'): `units` / `target` are what `Sim.pick` reads (a
 role, `名字含 ...`, `队 ...`; one not there is noted). A map script's (`('objects', True)`, the script actions since
@@ -37,10 +37,11 @@ KINDS = frozenset({
 VERB = {'attack_move': '派', 'move': '走', 'attack': '攻击', 'power': '放', 'capture': '占领', 'build': '生产',
         'buy_science': '买'}
 KIND = {v: k for k, v in VERB.items()}
-# the kinds `do` has a route for (the rest: R3 13d-13f, with their givers): the line verbs', and the script actions'
-# (13d-1); face (Generals' AI command list has AICMD_FACE_POSITION; INFERRED for RA3) joined with them.
+# the kinds `do` has a route for (the rest: R3 13e-13f, with their givers): the line verbs', and the script actions'
+# (13d-1 the orders; 13d-2 the buttons: unpack, toggle); face (Generals' AI command list has AICMD_FACE_POSITION;
+# INFERRED for RA3) joined with them.
 ROUTED = frozenset(VERB) | {'guard', 'stop', 'idle', 'follow_path', 'attack_ground', 'face', 'hunt', 'flee', 'stance',
-                            'auto_acquire'}
+                            'auto_acquire', 'unpack', 'toggle'}
 GIVERS = ('player', 'ai', 'script', 'proxy', 'test')     # `by`: 'player', 'ai:<player>', ...
 DATA = (str, int, float, bool, type(None))
 
@@ -252,6 +253,8 @@ class Commands:
 
     def _power(self, cmd):
         w = self._w
+        if cmd.arg('objects'):
+            return self._script_press(cmd)
         p = w.point(cmd.place)
         for b in self._units(cmd):
             u = next((u for u in w.mm.units if u.id == b.template), None)
@@ -276,6 +279,11 @@ class Commands:
 
     def _build(self, cmd):
         w = self._w
+        if cmd.arg('objects'):              # a map script's press of that factory's build button (press: queued while
+            f = w.body(cmd.target)          # banned, bench engine_production g); the action names the template
+            if w.order_build(cmd.player, cmd.template, factory=f, press=cmd.arg('press', False)):
+                return True, ''
+            return False, f'{w.label(f)} 现在造不了 {cmd.template}'
         tmpl = next((u.id for u in w.mm.units if u.id == cmd.template), None) or \
             next((r.template for k, r in w.m.cast.items() if k == cmd.template), cmd.template)
         f = next(iter(w.pick(cmd.target)), None)
@@ -357,6 +365,38 @@ class Commands:
                 b.hold_paused = hold and isinstance(b.goal, type(b))
             b.hold_fire, b.stance = hold, stance
         return True, ''
+
+    # --- the map scripts' button presses (simact_ability's since R3 13d-2): the button's module entry with no refusal (a
+    # script's press heeds no reload); the action picks the entry by what the unit's template has (`via`)
+    def _script_press(self, cmd):
+        """power by `button`, `via`: 'wfire' (WeaponFireSpecialAbilityUpdate, at `target` or none), 'leap' (a
+        ProjectileSelf leap to the place), 'movement' (MovementSpecialPower to the place), 'self'
+        (ActivateModuleSpecialPower)."""
+        w, button, via = self._w, cmd.arg('button'), cmd.arg('via')
+        if via not in ('wfire', 'leap', 'movement', 'self'):
+            return False, f'power: no press route {via!r}'
+        for b in self._units(cmd):
+            if via == 'wfire':
+                w.wfire_press(b, button, cmd.target or None)
+            elif via == 'leap':
+                w.leap_press(b, button, w.point(cmd.place))
+            elif via == 'movement':
+                w.movement_power_press(b, button, w.point(cmd.place))
+            else:
+                w.self_power_press(b, button)
+        return True, ''
+
+    def _unpack(self, cmd):                  # drive to the place, turn into the button's replacement there (M10)
+        w = self._w
+        p = w.point(cmd.place)
+        if all([w.order_unpack(b, p, cmd.arg('button'), cmd.place) for b in self._units(cmd)]):
+            return True, ''
+        return False, 'no unpack button of his'
+
+    def _toggle(self, cmd):                  # the toggle module (M5) steps to its next ToggleState
+        if all([self._w.toggle_press(b, cmd.arg('button')) for b in self._units(cmd)]):
+            return True, ''
+        return False, 'not a toggle of his'
 
     def _auto_acquire(self, cmd):            # an AI setting: takes what only a computer's units take by themselves
         for b in self._units(cmd):

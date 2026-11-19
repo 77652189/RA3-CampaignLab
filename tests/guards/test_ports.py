@@ -380,7 +380,9 @@ def test_planted_breaks_are_found():
 # world's order methods, the script event queue, or a write of a field an order sets.
 ORDER_CALLS = {'order_move', 'order_group', 'order_attack', 'order_capture', 'order_build', 'order_guard',
                'order_power', 'order_transform', 'order_stop', 'order_follow', 'order_unpack', 'sell', 'stand', 'send',
-               'happen', 'parse_script', 'flee_start', 'hunt_due', 'drop_goal', 'set_goal'}
+               'happen', 'parse_script', 'flee_start', 'hunt_due', 'drop_goal', 'set_goal',
+               # a button's module entry (R3 13d-2: the script actions press them through the port)
+               'toggle_press', 'wfire_press', 'leap_press', 'movement_power_press', 'self_power_press'}
 ORDER_QUEUES = {'events', 'anchored'}
 ORDER_FIELDS = {'goal', 'path', 'dest', 'move_to', 'mode', 'stance', 'hold_fire', 'hold_paused', 'ground_fire', 'face',
                 'ai_acquire', 'follow', 'engaged'}
@@ -411,7 +413,10 @@ def giver_breaks(src, harness):
 GIVER_PARTS = [(GAME, 'Session'), (CNV / 'sim.py', 'Sim.happen')]
 # Script action files whose orders go through the port (R3 13d), with the functions that are no order: a teleport and
 # the AI hand-over drop the unit's order (stand) as the god's hand.
-SCRIPT_GIVERS = {CNV / 'simact_order.py': {'unit_teleport_to_waypoint', 'unit_ai_transfer'}}
+SCRIPT_GIVERS = {CNV / 'simact_order.py': {'unit_teleport_to_waypoint', 'unit_ai_transfer'},
+                 # a special power's cast is the SpecialPower module's effect (the player's power comes to it too), no
+                 # order: the ice engineer's walk to build is that effect's (R3 13d-2)
+                 CNV / 'simact_ability.py': {'script_cast'}}
 
 
 def test_the_givers_give_through_the_command_port():
@@ -430,6 +435,17 @@ def test_planted_orders_in_a_script_action_are_found():
                      ("        _order(sim, 'stance', [a[0]], ('stance', int(a[1])))\n",
                       "        b.stance = int(a[1])\n"),
                      ("        _order(sim, 'face', [a[0]], place=a[1])\n", "        b.face = 0.0\n")):
+        planted = src.replace(old, new)
+        assert planted != src and giver_breaks(planted, SCRIPT_GIVERS[f]), new
+    f = CNV / 'simact_ability.py'
+    src = f.read_text(encoding='utf-8')
+    for old, new in (("        _order(sim, 'power', a[0], ('via', 'self'), ('button', a[1]))\n",
+                      "        sim.self_power_press(sim.body(a[0]), a[1])\n"),
+                     ("            _order(sim, 'toggle', a[0], ('button', a[1]))[0]:\n",
+                      "            sim.toggle_press(sim.body(a[0]), a[1]):\n"),
+                     ("        _order(sim, 'capture', a[0], target=a[2])\n",
+                      "        sim.order_capture(sim.body(a[0]), a[2])\n"),
+                     ("        b.replace = True\n", "        b.replace = True\n        b.mode = 'idle'\n")):
         planted = src.replace(old, new)
         assert planted != src and giver_breaks(planted, SCRIPT_GIVERS[f]), new
 
