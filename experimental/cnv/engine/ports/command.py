@@ -9,7 +9,12 @@ Two routes, as in the game (a player's click is a message carried into the logic
 a unit's AI command interface there and then):
 - `post(cmd, at)`: queued, run at `at` (mission seconds, or `('@', flag, secs)`: that long after the flag first reads
   1) by the frame loop's events cell -- today's `Sim.events` / `anchored`, so a queued command runs exactly when the
-  script line it reads as would (`text(cmd)`: its line; `event(cmd, at)`: the event parse_script makes of it);
+  script line it reads as would (`text(cmd)`: its line; `event(cmd, at)`: the event, the command as given). A command
+  its line cannot carry whole (a `pos`, an `args` entry, a `player` or `force` on a kind whose line has none) is
+  refused, not queued short. The event is the command's, not its line read back: a name a line cannot hold (an
+  unnamed object's `#0`: '#' starts a comment) still reaches its unit (simui replays events). A giver that records
+  its run as lines and replays them (autoplay) posts those lines (`post_line`), so its run gives what its replay will
+  even where a name splits another way (`a` told to use `x y` reads as `a x` told to use `y`: review 11-19 d #4);
 - `do(cmd)`: now (the AI command interface route).
 `post_line(line)` queues a whole script line as it is (a play replayed by a test player may hold the god's-hand
 verbs too -- 造, 删除, 血量 ...: those are not commands and go in as the script events they are, unlogged).
@@ -85,32 +90,57 @@ class Command:
         return next((v for k, v in self.args if k == name), default)
 
 
+# What a line adds for the two fields only some lines carry: a forced attack (`攻击 X 打 Y 强制`: whatever the
+# relation, the game's force-attack) and an explicit player for a build or a science (`生产 T 在 F 由 P`, `买 S 由 P`;
+# without it, the human player). sim.parse_script reads them back (the event's last item).
+FORCE = '强制'
+BY_PLAYER = ' 由 '
+
+
+def by_player(s):
+    """(the rest, (player,)) of a line's tail `... 由 P`, or (s, ()) (sim.parse_script reads 生产 / 买 with it)."""
+    head, mark, player = s.rpartition(BY_PLAYER)
+    return (head, (player.strip(),)) if mark else (s, ())
+
+
 def text(cmd):
-    """The script line's text of a command (no time): what a run records and a replay reads back."""
+    """The script line's text of a command (no time): what a run records and a replay reads back. ValueError when no
+    line carries the kind, or the command holds more than its line can say."""
     if cmd.kind not in VERB:
         raise ValueError(f'{cmd.kind}: no script line carries it')
+    if cmd.player and cmd.kind not in ('build', 'buy_science'):
+        raise ValueError(f"{cmd.kind}: its script line carries no player (a unit command goes as its owner's)")
+    if cmd.force and cmd.kind != 'attack':
+        raise ValueError(f'{cmd.kind}: its script line carries no force')
+    if cmd.pos is not None or cmd.attacking:
+        raise ValueError(f'{cmd.kind}: a script line carries a place by its name, and no path-follow fighting')
+    extra = [k for k, _ in cmd.args if not (cmd.kind == 'buy_science' and k == 'science')]
+    if extra:
+        raise ValueError(f'{cmd.kind}: its script line carries no {", ".join(extra)}')
+    by = f'{BY_PLAYER}{cmd.player}' if cmd.player else ''
     if cmd.kind == 'buy_science':
-        return f"买 {cmd.arg('science')}"
+        return f"买 {cmd.arg('science')}{by}"
     if cmd.kind == 'build':
-        return f'生产 {cmd.template} 在 {cmd.target}'
+        return f'生产 {cmd.template} 在 {cmd.target}{by}'
     if len(cmd.units) != 1:
         raise ValueError(f'{cmd.kind}: a script line names one address (it may name several units)')
     who = cmd.units[0]
     return {'attack_move': f'派 {who} 去 {cmd.place}', 'move': f'走 {who} 去 {cmd.place}',
-            'attack': f'攻击 {who} 打 {cmd.target}', 'power': f'放 {who} {cmd.power} 在 {cmd.place}',
+            'attack': f'攻击 {who} 打 {cmd.target}' + (f' {FORCE}' if cmd.force else ''),
+            'power': f'放 {who} {cmd.power} 在 {cmd.place}',
             'capture': f'占领 {who} 进 {cmd.target}'}[cmd.kind]
 
 
 def event(cmd, at):
-    """The script event (at, verb, ...) parse_script makes of `at text(cmd)`."""
+    """The script event (at, verb, ...) parse_script makes of `at text(cmd)` (for names a line can hold)."""
     text(cmd)                       # the same checks
-    verb = VERB[cmd.kind]
+    verb, by = VERB[cmd.kind], (cmd.player,) if cmd.player else ()
     if cmd.kind == 'buy_science':
-        return (at, verb, cmd.arg('science'))
+        return (at, verb, cmd.arg('science')) + by
     if cmd.kind == 'build':
-        return (at, verb, cmd.template, cmd.target)
+        return (at, verb, cmd.template, cmd.target) + by
     who = cmd.units[0]
-    tail = {'attack_move': (cmd.place,), 'move': (cmd.place,), 'attack': (cmd.target,),
+    tail = {'attack_move': (cmd.place,), 'move': (cmd.place,), 'attack': (cmd.target,) + ((FORCE,) if cmd.force else ()),
             'power': (cmd.power, cmd.place), 'capture': (cmd.target,)}[cmd.kind]
     return (at, verb, who) + tail
 
@@ -122,13 +152,15 @@ def command(e, by='script'):
     if kind is None or (verb == '占领' and len(rest) != 2):
         return None
     if kind == 'buy_science':
-        return Command(kind, by, args=(('science', rest[0]),))
+        return Command(kind, by, player=rest[1] if len(rest) > 1 else '', args=(('science', rest[0]),))
     if kind == 'build':
-        return Command(kind, by, template=rest[0], target=rest[1])
+        return Command(kind, by, player=rest[2] if len(rest) > 2 else '', template=rest[0], target=rest[1])
     if kind in ('attack_move', 'move'):
         return Command(kind, by, units=(rest[0],), place=rest[1])
     if kind == 'power':
         return Command(kind, by, units=(rest[0],), power=rest[1], place=rest[2])
+    if kind == 'attack':
+        return Command(kind, by, units=(rest[0],), target=rest[1], force=rest[2:] == [FORCE])
     return Command(kind, by, units=(rest[0],), target=rest[1])
 
 
@@ -152,29 +184,40 @@ class Commands:
             return False, f'{cmd.kind}: no route yet (its giver moves to the port later)'
         return True, ''
 
+    def _read(self, line):
+        return sys.modules[type(self._w).__module__].parse_script(line)
+
     def post(self, cmd, at):
-        """Queue it for `at` (seconds, or ('@', flag, secs)): run by the events cell as its script line would be."""
+        """Queue it for `at` (seconds, or ('@', flag, secs)): run by the events cell as its script line would be. A
+        command its line cannot carry whole is refused (ok False, nothing queued)."""
         ok, why = self.check(cmd)
         if ok and cmd.kind not in VERB:     # the queue is today's script events: a kind no line carries is do's only
             ok, why = False, f'{cmd.kind}: not queued (no script line carries it; do gives it now)'
         if ok:
-            self._queue(event(cmd, at))
+            try:
+                e = event(cmd, at)
+            except ValueError as err:
+                ok, why = False, str(err)
+        if ok:
+            self._queue(e)
         self._issued.append((self._w.frame_now(), cmd, ok, why or 'posted'))
         return ok, why
 
-    def post_line(self, line):
+    def post_line(self, line, one=False):
         """Queue a script line as it is (`<time> <verb> ...`; a time may be `<flag>+<secs>`): the events queued. A line
-        that does not read raises parse_script's ValueError; a run switch RunSwitch (it is given at the start only)."""
-        out = []
-        for e in sys.modules[type(self._w).__module__].parse_script(line):
-            if e[0] is None:
-                raise RunSwitch(f'{line!r}: a run switch, not a line to queue')
+        that does not read raises parse_script's ValueError, a run switch RunSwitch (it is given at the start only),
+        and with `one` a line that is not exactly one event ValueError -- each before anything is queued."""
+        events = self._read(line)
+        if any(e[0] is None for e in events):
+            raise RunSwitch(f'{line!r}: a run switch, not a line to queue')
+        if one and len(events) != 1:
+            raise ValueError(f'{line!r}: {len(events)} events, not one')
+        for e in events:
             self._queue(e)
-            out.append(e)
             cmd = command(e, 'player')
             if cmd is not None:
                 self._issued.append((self._w.frame_now(), cmd, True, 'posted'))
-        return tuple(out)
+        return tuple(events)
 
     def drop_pending(self):
         """Drop every queued command still to come (a play script handing the run over to the player)."""
@@ -256,13 +299,18 @@ class Commands:
         if cmd.arg('objects'):
             return self._script_press(cmd)
         p = w.point(cmd.place)
+        refused = []                        # the world's refusals (order_power's (False, why)): the first is the answer
         for b in self._units(cmd):
             u = next((u for u in w.mm.units if u.id == b.template), None)
             if p is None:
                 w.note('剧本', f'找不到地点 {cmd.place}')
             else:
-                w.order_power(b, (u.abilities.get(cmd.power) if u else None) or cmd.power, p)
-        return (False, f'找不到地点 {cmd.place}') if p is None else (True, '')
+                ok, why = w.order_power(b, (u.abilities.get(cmd.power) if u else None) or cmd.power, p)
+                if not ok:
+                    refused.append(why)
+        if p is None:
+            return False, f'找不到地点 {cmd.place}'
+        return (False, refused[0]) if refused else (True, '')
 
     def _capture(self, cmd):
         w = self._w

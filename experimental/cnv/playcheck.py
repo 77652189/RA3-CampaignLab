@@ -144,6 +144,9 @@ class Compiler:
             who, where = rest
             wp = self.where(where)
             return [('MOVE_NAMED_UNIT_TO', n, wp) for n in self.who(who, now)]
+        if verb in ('攻击', '生产', '买') and len(rest) > (1 if verb == '买' else 2):
+            raise ValueError(f'play: {" ".join(map(str, event[1:]))!r}: a forced attack / an order in another '
+                             "player's name (强制 / 由) is the simulator's only, no map-script action is chosen for it")
         if verb == '攻击':
             who, target = rest
             goal = self.who(target, now)[0]

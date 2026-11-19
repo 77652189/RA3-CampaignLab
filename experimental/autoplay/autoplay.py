@@ -180,9 +180,9 @@ class View:
 
 
 class Orders:
-    """The player's hands. Each order is a command posted through the command port at the simulator's clock; `lines`
-    is the run as a script (each command's script line, stamped). `seconds`: how a script line's time reads
-    (sim.seconds)."""
+    """The player's hands. Each order is a command's script line stamped with the simulator's clock, posted through
+    the command port; `lines` is the run as that script. `seconds`: how a script line's time reads (sim.seconds; the
+    card players shift a plan line's time with it)."""
 
     def __init__(self, view, commands, seconds):
         self.view, self.commands, self.seconds = view, commands, seconds
@@ -191,16 +191,17 @@ class Orders:
         self.skipped = 0                    # orders to a unit no script line can name
 
     def push(self, time, text):
-        """A script line at `time` (seconds, or `<flag>+<secs>`), queued as it is (a card player's plan line)."""
+        """A script line at `time` (seconds, or `<flag>+<secs>`), queued as it is (a card player's plan line): one event,
+        checked before anything is queued (ValueError, nothing queued, nothing recorded)."""
         line = f'{time} {text}'
-        self.commands.post_line(line)
+        self.commands.post_line(line, one=True)
         self.lines.append(line)
 
     def now(self, cmd):
-        """A command now: posted for this moment as its script line's time reads, recorded as that line."""
-        time = num(self.view.obs.t)
-        self.commands.post(cmd, self.seconds(time))
-        self.lines.append(f'{time} {command.text(cmd)}')
+        """A command now, as its script line stamped with this moment: the line is what is queued and recorded, so the
+        run gives what its replay will even where a name splits another way (review 11-19 d #4: unit `a` told to use
+        `x y` is, as the line reads, `a x` told to use `y` -- both ways). ValueError when no line carries it."""
+        self.push(num(self.view.obs.t), command.text(cmd))
 
     def _fresh(self, b, verb, target):
         """False when b is already on this very order (a unit still under way is not told again: that resets its path)."""

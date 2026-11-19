@@ -3304,15 +3304,13 @@ def parse_script(text):
             out.append((None, line))
             continue
         t, rest = line.split(None, 1)
-        if rest.startswith('派 '):
+        if rest.startswith('派 ') or (rest.startswith('走 ') and ' 去 ' in rest):
             who, _, where = rest[2:].rpartition(' 去 ')
-            out.append((when(t), '派', who.strip(), where.strip()))
-        elif rest.startswith('走 ') and ' 去 ' in rest:
-            who, _, where = rest[2:].rpartition(' 去 ')
-            out.append((when(t), '走', who.strip(), where.strip()))
-        elif rest.startswith('攻击 '):
+            out.append((when(t), rest[0], who.strip(), where.strip()))
+        elif rest.startswith('攻击 '):              # `... 强制`: a forced attack (the command port's FORCE)
             who, _, target = rest[3:].rpartition(' 打 ')
-            out.append((when(t), '攻击', who.strip(), target.strip()))
+            target, forced = (target[:-3], ('强制',)) if target.endswith(' 强制') else (target, ())
+            out.append((when(t), '攻击', who.strip(), target.strip()) + forced)
         elif rest.startswith('放 ') and ' 在 ' in rest:
             who_power, _, where = rest[2:].rpartition(' 在 ')
             who, _, power = who_power.strip().rpartition(' ')
@@ -3328,7 +3326,8 @@ def parse_script(text):
             out.append((when(t), '旗标', name.strip(), int(v)))
         elif rest.startswith('生产 ') and ' 在 ' in rest:
             what, _, where = rest[3:].rpartition(' 在 ')
-            out.append((when(t), '生产', what.strip(), where.strip()))
+            where, by = command_port.by_player(where)       # `... 由 P`: in that player's name
+            out.append((when(t), '生产', what.strip(), where.strip()) + by)
         elif rest.startswith('造 '):
             what, _, where = rest[2:].partition(' 在 ')
             angle = 0.0
@@ -3339,7 +3338,8 @@ def parse_script(text):
             verb, _, who = rest.partition(' ')
             if verb not in ('摧毁', '删除', '打', '占领', '买'):
                 raise ValueError(f'剧本 {line!r}: 动作是 派 / 攻击 / 放 / 摧毁 / 删除 / 血量 / 打 / 占领 / 旗标 / 生产 / 造 / 买 之一')
-            out.append((when(t), verb, who.strip()))
+            who, by = command_port.by_player(who) if verb == '买' else (who, ())
+            out.append((when(t), verb, who.strip()) + by)
     return out
 
 

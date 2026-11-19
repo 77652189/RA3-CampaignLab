@@ -22,7 +22,15 @@ LINES = [Command('attack_move', units=('guardian',), place='approach 1'),
          Command('power', units=('engineer',), power='freeze', place='inside 1'),
          Command('capture', units=('engineer',), target='derrick'),
          Command('build', template='AlliedAntiInfantryInfantry', target='barracks'),
-         Command('buy_science', args=(('science', 'SCIENCE_X'),))]
+         Command('buy_science', args=(('science', 'SCIENCE_X'),)),
+         # the fields only some lines carry (review 11-19 d #3): a forced attack, a build / science in a player's name
+         Command('attack', units=('tank 2',), target='名字含 bunker', force=True),
+         Command('build', player='Player_2', template='AlliedAntiInfantryInfantry', target='barracks 2'),
+         Command('buy_science', player='Player_2', args=(('science', 'SCIENCE_X'),))]
+
+
+def _port():
+    return Commands(simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)], model=False))
 
 
 @pytest.mark.parametrize('cmd', LINES, ids=lambda c: c.kind)
@@ -31,6 +39,18 @@ def test_a_command_is_its_script_line(cmd):
     assert sim.parse_script(f'95.5 {text(cmd)}') == [event(cmd, 95.5)]
     assert sim.parse_script(f'phase2+3 {text(cmd)}') == [event(cmd, ('@', 'phase2', 3.0))]
     assert command(event(cmd, 1.0), cmd.by) == cmd
+
+
+@pytest.mark.parametrize('cmd', [Command('move', units=('a',), place='@1,1', force=True),
+                                 Command('move', player='Player_2', units=('a',), place='@1,1'),
+                                 Command('move', units=('a',), pos=(1.0, 1.0)),
+                                 Command('attack', units=('a',), target='b', args=(('objects', True),))],
+                         ids=['force', 'player', 'pos', 'args'])
+def test_post_refuses_what_its_line_cannot_carry(cmd):
+    """Nothing is queued short (review 11-19 d #3): a field the kind's line has no word for is a refusal."""
+    port = _port()
+    ok, why = port.post(cmd, 1.0)
+    assert not ok and 'carries' in why and port.pending() == ()
 
 
 def test_god_hand_lines_are_not_commands():
@@ -85,6 +105,85 @@ def test_post_line_gives_what_it_queued_and_refuses_a_run_switch():
     with pytest.raises(ValueError):
         port.post_line('4 乱写 a')
     assert port.pending() == tuple(sim.parse_script('4 走 a 去 @10,10'))
+    # each check before anything is queued (review 11-19 d #6): a line holding a run switch, or more than one event
+    # where one is asked, queues none of it
+    for line, one in (('0 走 a 去 @500,300; 不打', False), ('0 走 a 去 @500,300; 0 派 a 去 @800,300', True)):
+        with pytest.raises(ValueError):
+            port.post_line(line, one=one)
+        assert port.pending() == tuple(sim.parse_script('4 走 a 去 @10,10')), line
+    assert len(port.post_line('0 走 a 去 @500,300; 0 派 a 去 @800,300')) == 2
+
+
+def _run_frames(s, n=1):
+    for _ in range(n):
+        s.step()
+        s.t = round(s.t + sim.DT, 3)
+
+
+def test_a_queued_forced_attack_is_the_one_given_now():
+    """A forced attack queued reaches the unit as the same order given now (review 11-19 d #3: it went in as a plain
+    attack, and an ally is no plain attack's target)."""
+    goals = []
+    for route in ('post', 'do'):
+        s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0), ('ally', APOC, 'Player_1', 300.0, 0.0)],
+                                 model=False)
+        cmd = Command('attack', units=('a',), target='ally', force=True)
+        assert (s.commands.post(cmd, 0.0) if route == 'post' else s.commands.do(cmd)) == (True, '')
+        _run_frames(s)
+        goals.append(None if s.bodies['a'].goal is None else s.bodies['a'].goal.name)
+    assert goals == ['ally', 'ally']
+    assert [r[1] for r in s.commands.issued()][-1].force
+
+
+def test_a_queued_command_is_the_one_given():
+    """post queues the command as given, not its line read back: an unnamed object's `#0` (a comment in a line)
+    still gets its order (simui replays events, not lines)."""
+    s = simsmall.small_world([('a', APOC, 'Player_1', 300.0, 300.0)], model=False)
+    cmd = Command('capture', units=('a',), target='#0')
+    assert s.commands.post(cmd, 0.0) == (True, '') and list(s.events) == [event(cmd, 0.0)]
+    assert command(s.events[0], 'player') == cmd
+
+
+def _autoplay():
+    import importlib.util
+    import sys
+    spec = importlib.util.spec_from_file_location('autoplay', ROOT / 'experimental' / 'autoplay' / 'autoplay.py')
+    if 'autoplay' not in sys.modules:
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules['autoplay'] = mod
+        spec.loader.exec_module(mod)
+    return sys.modules['autoplay']
+
+
+def test_a_run_line_reads_as_its_replay_does():
+    """autoplay's Orders queue the line they record (review 11-19 d #4): unit `a` told to use `x y` reads, run and
+    replay alike, as `a x` told to use `y`; and a push that does not read as one event queues nothing (#6)."""
+    from types import SimpleNamespace
+    ap = _autoplay()
+    s = simsmall.small_world([('a', APOC, 'Player_1', 300.0, 300.0), ('a x', APOC, 'Player_1', 450.0, 300.0)],
+                             model=False)
+    _, out = ap.attach(s, SimpleNamespace(escort=()))
+    asked = []
+    s.order_power = lambda b, power, pos: asked.append((b.name, power)) or (True, None)
+    out.power(s.bodies['a'], 'x y', (800, 300))
+    assert list(s.events) == sim.parse_script('\n'.join(out.lines))
+    _run_frames(s)
+    assert asked == [('a x', 'y')]
+    for line in ('走 a 去 @500,300; 不打', '走 a 去 @500,300; 0 派 a 去 @800,300'):
+        with pytest.raises(ValueError):
+            out.push(0, line)
+    assert not s.events and len(out.lines) == 1
+
+
+def test_do_power_answers_the_worlds_refusal():
+    """`do` of a power the unit has not: the world refuses (order_power's (False, why)) and so does the port (review
+    11-19 d #7: it recorded a success)."""
+    s = simsmall.small_world([('a', APOC, 'Player_1', 300.0, 300.0)], model=False)
+    cmd = Command('power', units=('a',), power='Command_ReviewMissing', place='@500,300')
+    want = s.order_power(s.bodies['a'], cmd.power, (500.0, 300.0))
+    assert want[0] is False
+    assert s.commands.do(cmd) == want
+    assert s.commands.issued()[-1][2:] == want
 
 
 def _pair():

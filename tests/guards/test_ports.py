@@ -386,7 +386,30 @@ ORDER_CALLS = {'order_move', 'order_group', 'order_attack', 'order_capture', 'or
 ORDER_QUEUES = {'events', 'anchored'}
 ORDER_FIELDS = {'goal', 'path', 'dest', 'move_to', 'mode', 'stance', 'hold_fire', 'hold_paused', 'ground_fire', 'face',
                 'ai_acquire', 'follow', 'engaged'}
+# A write of an order field is not only `b.path = ...`: changing the field's value in place (review 11-19 d #9:
+# `b.path.clear()` read as a Load and a call of `clear`), an item of it (`b.follow['offset'] = ...`, `del b.path[0]`)
+# and setattr / delattr by the field's name are writes too.
+MUTATORS = {'clear', 'append', 'extend', 'pop', 'popitem', 'insert', 'remove', 'update', 'setdefault', 'sort',
+            'reverse', 'add', 'discard', '__setitem__', '__delitem__', '__iadd__'}
 GIVERS = [AUTOPLAY / 'autoplay.py', AUTOPLAY / 'players.py']
+
+
+def _order_field(node):
+    return isinstance(node, ast.Attribute) and node.attr in ORDER_FIELDS
+
+
+def _in_place_write(node):
+    """The order field a node changes in place, or None."""
+    if isinstance(node, ast.Call):
+        f = node.func
+        if isinstance(f, ast.Attribute) and f.attr in MUTATORS and _order_field(f.value):
+            return f.value.attr
+        if _called(node) in ('setattr', 'delattr') and len(node.args) > 1 and \
+                isinstance(node.args[1], ast.Constant) and node.args[1].value in ORDER_FIELDS:
+            return node.args[1].value
+    if isinstance(node, ast.Subscript) and isinstance(node.ctx, (ast.Store, ast.Del)) and _order_field(node.value):
+        return node.value.attr
+    return None
 
 
 def giver_breaks(src, harness):
@@ -397,7 +420,9 @@ def giver_breaks(src, harness):
     for node in ast.walk(tree):
         if where.get(node) in harness:
             continue
-        if isinstance(node, ast.Call) and _called(node) in ORDER_CALLS:
+        if _in_place_write(node):
+            out.append((node.lineno, _in_place_write(node)))
+        elif isinstance(node, ast.Call) and _called(node) in ORDER_CALLS:
             out.append((node.lineno, _called(node)))
         elif isinstance(node, ast.Attribute) and node.attr in ORDER_QUEUES:
             out.append((node.lineno, node.attr))
@@ -468,11 +493,22 @@ def test_planted_orders_in_a_giver_part_are_found():
 def test_planted_orders_round_the_port_are_found():
     f = AUTOPLAY / 'autoplay.py'
     src = f.read_text(encoding='utf-8')
-    for planted in (src.replace('        self.commands.post_line(line)\n',
-                                '        self.commands.post_line(line)\n        self.view.obs.world.events.append(1)\n'),
-                    src.replace("        time = num(self.view.obs.t)\n",
-                                "        time = num(self.view.obs.t)\n        self.view.w.order_move(b, p, True)\n"),
+    for planted in (src.replace('        self.commands.post_line(line, one=True)\n',
+                                '        self.commands.post_line(line, one=True)\n'
+                                '        self.view.obs.world.events.append(1)\n'),
+                    src.replace("        self.push(num(self.view.obs.t), command.text(cmd))\n",
+                                "        self.push(num(self.view.obs.t), command.text(cmd))\n"
+                                "        self.view.w.order_move(b, p, True)\n"),
                     src.replace("        self.memo[b.name] = key\n",
                                 "        self.memo[b.name] = key\n        b.goal = None\n")):
         assert planted != src and giver_breaks(planted, harness(f))
     assert not giver_breaks(src + '\ndef tick(s):\n    s.events.sort()\n', harness(f))
+    # in place (review 11-19 d #9): each of these clears / changes a unit's order field without a store of it
+    key = '        self.memo[b.name] = key\n'
+    for line in ('b.path.clear()', 'b.path.append((1, 2))', "b.follow.update(offset=0)", 'b.path[0] = (1, 2)',
+                 'del b.path[0]', "b.follow['offset'] += 1", "setattr(b, 'goal', None)", "delattr(b, 'dest')"):
+        planted = src.replace(key, f'{key}        {line}\n')
+        assert planted != src and giver_breaks(planted, harness(f)), line
+    for line in ('x = b.path[0]', 'self.memo.clear()', 'n = len(b.path)'):     # reads, and a giver's own state
+        planted = src.replace(key, f'{key}        {line}\n')
+        assert planted != src and not giver_breaks(planted, harness(f)), line
