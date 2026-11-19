@@ -3,7 +3,9 @@ its blocks) plays an enemy of sim.Sim -- it builds its base, makes units, puts t
 
 This file only calls the simulator (Sim.advance, Sim.factories / order_build / queues, Sim.add, Sim.order_move,
 Sim.money, Sim.ai); it changes none of sim.py's rules (sim.py / simunits.py are the engine line A's). Where the model
-is not on this computer nothing here runs: available() is False and the tests skip (as simproxy).
+is not on this computer available() is False and the SimAI plays no one: a mission that hands no player to the AI
+runs as the plain Sim (the conformance runner's AI-free scenes run there too); one that does raises NoModel (as soon as
+a side with an aiPersonality is met, or the frame the mission hands a player over), which the tests take as a skip.
 
   python -I -X utf8 experimental/cnv/simai.py [build] [--until <seconds>] [--check <check>]
 
@@ -169,6 +171,10 @@ def model():
 
 def available():
     return model() is not None
+
+
+class NoModel(RuntimeError):
+    """The mission hands a player to the skirmish AI and ra3model.ai is not on this computer (a test's skip)."""
 
 
 def f32(x):
@@ -1919,13 +1925,11 @@ class SimAI:
     efficiency = True
 
     def __init__(self, s, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS, record=False):
-        mod = model()
-        if mod is None:
-            raise RuntimeError(f'ra3model.ai not found under {labpaths.ENGINE_MODEL}')
+        mod = model()                   # None: no brain is ever made (NoModel where one would be)
         self.sim, self.mod, self.level, self.seed = s, mod, level, seed   # sim: for the callers (main, tests)
         self.world, self.peers = s, Peers(s)    # all the AI reads of its host: the world API and its loan (PEERS)
-        self.lib = lib if lib is not None else mod['xmldata'].Library()
-        self.data = data if data is not None else mod['data'].AIData()
+        self.lib = lib if lib is not None or mod is None else mod['xmldata'].Library()
+        self.data = data if data is not None or mod is None else mod['data'].AIData()
         self.blocks = tuple(blocks)     # which of A's blocks the brains get (() = opening, states and teams only)
         self.brains = {}                # player -> Brain
         self.done_to = None             # the last frame the AI ran
@@ -1938,12 +1942,18 @@ class SimAI:
         for side, info in (getattr(s.m, 'sides', None) or {}).items():   # it as it makes the player; bench aisksd2
             player, pid = s.players.get(side), ((info or {}).get('aiPersonality') or '').split(':')[-1]   # 136 at s1)
             if pid and player is not None and player != s.human:
+                self.no_model(side)
                 self.own_personalities()
                 self._assigned[player] = self.assigned(player, side, pid)
 
     @property
     def frame(self):
         return self.world.frame_now()
+
+    def no_model(self, side):
+        """NoModel where the AI would play `side` and the model is not on this computer."""
+        if self.mod is None:
+            raise NoModel(f'{side} is the skirmish AI\'s and ra3model.ai is not under {labpaths.ENGINE_MODEL}')
 
     def flags(self, player):
         """The mission's flags as states.py keys them: cnv's scripts run in a player's script list, so a bare SET_FLAG
@@ -2055,6 +2065,7 @@ class SimAI:
             player = world.players.get(side)
             pid = ((info or {}).get('aiPersonality') or '').split(':')[-1]
             if pid and player is not None and player != world.human and player not in self.brains:
+                self.no_model(side)
                 self.own_personalities()
                 pid = self._assigned.get(player) or self.assigned(player, side, pid)
                 # INFERRED (D round 137): a side in the map with its personality thinks from frame 0, though the
@@ -2064,6 +2075,7 @@ class SimAI:
         for player in peers.ai:
             if player not in self.brains:
                 side = sides.get(player, '')
+                self.no_model(side or player)
                 pid = (world.m.sides.get(side) or {}).get('aiPersonality', '').split(':')[-1] or '1AlliedBalanced'
                 self.own_personalities()
                 self.brains[player] = Brain(self, player, side, pid, int(round(peers.ai[player] * FPS)))
@@ -2107,10 +2119,11 @@ def main():
     ap.add_argument('--check', default='')
     ap.add_argument('--until', type=float, default=200.0)
     a = ap.parse_args()
-    if not available():
-        print('ra3model.ai not on this computer')
+    try:
+        w = run(a.build, a.check, a.until)
+    except NoModel as e:
+        print(e)
         return 1
-    w = run(a.build, a.check, a.until)
     for p, b in w.brains.items():
         print(f'{w.sim.who(p)}（第 {b.started} 帧开局；下面是开局后的帧）')
         for f, what, t in b.trace:
