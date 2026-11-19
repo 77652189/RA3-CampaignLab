@@ -103,7 +103,7 @@ def death_blast_due(world, frame, peers):
             if dmg * armor <= 0:
                 continue
             t.damage(dmg * armor)
-            t.last_hit, t.last_by = owner, by.name
+            t.set_last_damage(owner, by.name)
             if t.hp <= 0 and t.alive:
                 if world.first_death is None:
                     world.first_death = (world.t, t, by)
@@ -626,7 +626,7 @@ class Damage:
                         healer.mend(amount)
                 else:
                     world.gap(GAP_WEAPON, 'leech', '并发吸取的伤害归属与回补尚未建模')
-            t.last_hit, t.last_by = by.owner, by.name
+            t.set_last_damage(by.owner, by.name)
             if t.hp <= 0 and t.alive:
                 if world.first_death is None:
                     world.first_death = (world.t, t, by)

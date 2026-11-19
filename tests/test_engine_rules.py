@@ -21,19 +21,19 @@ def test_e2_attacked_by_the_player_needs_the_last_attacker_standing_and_the_play
     s, foe, hit = world()
     ask = lambda: s.cond('NAMED_ATTACKED_BY_PLAYER', [foe.name, s.human])  # noqa: E731
     assert not ask()                                                     # never hit
-    foe.last_hit, foe.last_by = s.human, hit.name
+    foe.set_last_damage(s.human, hit.name)
     assert ask()
     hit.owner = 'Soviet_1'                                               # it changed hands: the new owner's
     assert not ask()
     hit.owner = s.human
     other = s.add('UNIT - other', foe.template, 'Soviet_1', foe.x, foe.y)
-    foe.last_hit, foe.last_by = other.owner, other.name                  # hit by somebody else since: false
+    foe.set_last_damage(other.owner, other.name)                  # hit by somebody else since: false
     assert not ask()
-    foe.last_hit, foe.last_by = s.human, hit.name
+    foe.set_last_damage(s.human, hit.name)
     s.destroy(hit, 'self-destruct', delete=True)
     s.t += 5.0                                                           # gone from the name cache
     assert not ask()                                                     # its attacker died: the condition went false
-    foe.last_hit, foe.last_by = s.human, None                            # a run script's made-up hit stands
+    foe.set_last_damage(s.human, None)                            # a run script's made-up hit stands
     assert ask()
 
 

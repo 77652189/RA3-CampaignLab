@@ -47,7 +47,7 @@ class Specials:
                 if dmg <= 0 or frame < t.immune_until or t.shielded or t.indestructible:
                     continue
                 t.damage(dmg)
-                t.last_hit, t.last_by = owner, by.name
+                t.set_last_damage(owner, by.name)
                 if t.hp <= 0 and t.alive:
                     first_death(t, by)
                     destroy(t, f'被 {world.label(by)} 的超武打掉')

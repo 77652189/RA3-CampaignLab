@@ -253,7 +253,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3421, 'Sim methods': 194, 'Body fields': 83, 'simunits defs': 139,
+CENTER = {'sim.py lines': 3421, 'Sim methods': 194, 'Body fields': 80, 'simunits defs': 139,
           'cells with old code': 31}
 
 
@@ -313,6 +313,7 @@ def test_centre_guard_bites():
 # Body.FORWARDS (the frame record shows them as the fields they were). Only shrinks: a forward goes when its last
 # outside reader asks the module's interface itself.
 BODY_FORWARDS = {'hp': 'Body', 'max_hp': 'Body', 'health_floor': 'Body', 'immortal': 'Body', 'prop': 'Body',
+                 'last_hit': 'Body', 'last_by': 'Body', 'indestructible': 'Body',
                  'life_end': 'LifetimeUpdate', 'topple': 'ToppleUpdate', 'toppled': 'ToppleUpdate',
                  'topple_end': 'ToppleUpdate', 'crusher': 'CrusherInfo', 'crushable': 'CrusherInfo',
                  'deposit': 'AutoDepositUpdate', 'deposit_at': 'AutoDepositUpdate',

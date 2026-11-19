@@ -79,6 +79,22 @@ class Body(Interface):
         """'pristine' / 'damaged' / 'really_damaged'."""
         raise NotImplementedError
 
+    def last_damage(self):
+        """(player, object name) of the damage that came last (step B3, the Generals ActiveBody's last DamageInfo):
+        player None -- a script's kill, or never hit; object None -- no object of ours (a run script's hit)."""
+        raise NotImplementedError
+
+    def set_last_damage(self, player, by=None):
+        """The one write of the last damage: every weapon, superweapon, crush and script hit names its source."""
+        raise NotImplementedError
+
+    def is_indestructible(self):
+        """The Indestructible panel flag (weapons and superweapons do no damage; script damage still does)."""
+        raise NotImplementedError
+
+    def set_indestructible(self, flag):
+        raise NotImplementedError
+
 
 class Damage(Interface):
     """Told after its thing's health changed."""

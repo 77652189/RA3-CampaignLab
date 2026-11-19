@@ -370,7 +370,6 @@ class Body(kernel_module.Thing):
                                                                 # cannot destroy it) ...
     attachment_status: set = dataclasses.field(default_factory=set)  # owned by direct attachment links, not scripts
     lift_status: set = dataclasses.field(default_factory=set)  # survives timer release; landing is unresolved
-    indestructible: bool = False                                # the Indestructible panel flag: takes no damage
     upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (modify)
     up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
     level_rank: int = 1                                      # LevelUpUpgrade creation grants; not combat XP (the Object's ExperienceTracker, no module's: M12)
@@ -386,12 +385,6 @@ class Body(kernel_module.Thing):
     level_vision: float = 1.0                                   # ENEMY_SIGHTED only; heroic auto-acquire not benched
     base: dict = None                                           # speed, vision, sight, weapons before modifiers
     died_at: float = None                                       # killed or deleted then
-    last_hit: str = None                                        # the player whose damage came last (None: a
-                                                                # script's NAMED_KILL, or never hit)
-    last_by: str = None                                         # the object whose damage came last (E2: the game
-                                                                # keeps its id, and "attacked by the player" holds
-                                                                # only while that object stands and is the player's);
-                                                                # None: no object of ours (a run script's hit)
     mode: str = 'idle'                                          # 'move' (a plain move: fires, does not stop) or
                                                                 # 'attack' (attack-move, attack named: stops to fight)
     move_to: tuple = None                                       # where its last plain move sent it (held_up)
@@ -437,8 +430,11 @@ class Body(kernel_module.Thing):
 
     def set_hp(self, hp, max_hp=None, tell=True):     # the one write (B1, the module's set_health since B2b)
         self.find(kernel_interfaces.Body).set_health(hp, max_hp, tell)
+
+    def set_last_damage(self, player, by=None):     # every hit names its source (step B3: the Body module's)
+        self.find(kernel_interfaces.Body).set_last_damage(player, by)
     # fields moved into modules, still read outside: read only (test_kernel BODY_FORWARDS)
-    FORWARDS = ('hp', 'max_hp', 'health_floor', 'immortal', 'prop',
+    FORWARDS = ('hp', 'max_hp', 'health_floor', 'immortal', 'prop', 'last_hit', 'last_by', 'indestructible',
                 'life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
@@ -448,6 +444,10 @@ class Body(kernel_module.Thing):
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
     immortal = kernel_module.forward(kernel_interfaces.Body, lambda m: m.is_immortal(), False)
     prop = kernel_module.forward(kernel_interfaces.Body, lambda m: m.prop_death())    # None / 'stays' / 'dies'
+    # step B3: who hit it last (player None: a script's kill / never hit; object None: a run script's hit; E2)
+    last_hit = kernel_module.forward(kernel_interfaces.Body, lambda m: m.last_damage()[0])
+    last_by = kernel_module.forward(kernel_interfaces.Body, lambda m: m.last_damage()[1])
+    indestructible = kernel_module.forward(kernel_interfaces.Body, lambda m: m.is_indestructible(), False)
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
@@ -2236,12 +2236,12 @@ class Sim:
                 if verb == '摧毁' and 'UNATTACKABLE' in b.status:
                     self.note('剧本', f'{self.label(b)} 打不动（UNATTACKABLE），没摧毁')
                     continue
-                b.last_hit, b.last_by = self.human, None
+                b.set_last_damage(self.human, None)
                 self.destroy(b, '剧本', delete=verb == '删除')
         elif verb == '血量':
             for b in self.pick(rest[0]):
                 b.health = float(rest[1])
-                b.last_hit, b.last_by = self.human, None
+                b.set_last_damage(self.human, None)
         elif verb == '买':                          # the player buys a protocol (simtech.Book.buy: points, not locked)
             book = self.books.get(self.human)
             if book and book.buy(rest[0], self.frame_now()):
@@ -2251,7 +2251,7 @@ class Sim:
                 self.note('剧本', f'买不了 {rest[0]}' + (f'（{book.points} 点）' if book else '（玩家没有协议）'))
         elif verb == '打':
             for b in self.pick(rest[0]):
-                b.last_hit, b.last_by = self.human, None
+                b.set_last_damage(self.human, None)
         elif verb == '放':
             who, ability, where = rest              # a ground power of the player's (order_power): `放 engineer freeze 在 inside 1`
             p = self.point(where)
@@ -3008,7 +3008,7 @@ class Sim:
             if o is b or not o.alive or not self.enemy(b.owner, o.owner):
                 continue
             self.used.add('crush')
-            o.last_hit, o.last_by = b.owner, b.name
+            o.set_last_damage(b.owner, b.name)
             o.linger = o.lies
             self.destroy(o, f'被 {self.label(b)} 压死')
 
@@ -3148,7 +3148,7 @@ class Sim:
             close = any(math.hypot(b.x - o.x, b.y - o.y) <= REACH for o in mine)
             b.close_since = (b.close_since if b.close_since is not None else self.t) if close else None
             if close and self.t - b.close_since >= self.auto_kill:
-                b.last_hit, b.last_by = self.human, None
+                b.set_last_damage(self.human, None)
                 self.destroy(b, f'自动打掉：在玩家 {REACH:g} 以内 {self.auto_kill:g} 秒')
 
     def sample(self):

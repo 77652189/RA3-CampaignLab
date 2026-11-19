@@ -13,6 +13,14 @@ INFERRED) and a PropBody's death to a script kill (simunits.prop_death). Kept fr
 line's census of step B2a, 3448 retail + 520 own templates, no difference): only an ImmortalBody is
 immortal (not a ManagedImmortalBody, nor a HighlanderBody); a Body removing a PropBody stays a prop.
 
+Step B3 moved the last damage (last_hit / last_by: who hit it last, the Generals ActiveBody's last DamageInfo; written
+by every hit through set_last_damage) and the Indestructible panel flag here (the Generals ActiveBody holds it too);
+the callers still skip an indestructible target themselves, as before (script damage goes through: engine_scripts7
+panel). Kept on the thing, as the engine model has them (its body reads them off the object): armor (the
+template's ArmorSet, swapped by a toggle state or the frozen armour), taken / shielded (the modifier pool's ARMOR
+product and INVULNERABLE + UNDER_IRON_CURTAIN bits, written beside the status and `dealt`: simmodifier) and
+immune_until (the Iron Curtain's protection, a stand-in for its status bits).
+
 The port hands the block of the nearest non-empty <Body> up the chain with its '=$' defines spelled out, so the
 MaxHealth here is a number or a literal written with an equals sign ('=50000': am_futuretech_02 / 03,
 am_alliedfuturetechhq, ny_chronolibertystatue; '=55000' am_futuretech_01)."""
@@ -40,7 +48,7 @@ class Body(module.Module, interfaces.Body):
     the host makes it, as the fields' defaults); immortal, prop: what the forwards of those names read. A thing whose
     template has no Body block gets an ActiveBody attached (Sim.add, World.attach: made by __init__, no on_create)."""
     DATA = BodyData
-    STATE = ('hp', 'max_hp', 'health_floor')
+    STATE = ('hp', 'max_hp', 'health_floor', 'last_hit', 'last_by', 'indestructible')
     IMMORTAL = False            # health changes cannot take it below its floor
     PROP = False                # no health: takes no damage, its percent reads 0 (engine_propbody a)
     hp = max_hp = 100.0
@@ -50,6 +58,8 @@ class Body(module.Module, interfaces.Body):
         self.set_health(100.0, 100.0, tell=False)      # on the module itself: the frame record reads its own fields
         self.health_floor = 1.0     # an immortal's: 1 HP; a ManagerBody proxy's: 1 % of its health (INFERRED)
         self.immortal, self.prop = self.IMMORTAL, None
+        self.last_hit = self.last_by = None     # step B3: the last damage's player and object (set_last_damage)
+        self.indestructible = False
 
     def make(self, hp, floor=None, death=None):
         self.set_health(hp, hp, tell=False)
@@ -92,6 +102,18 @@ class Body(module.Module, interfaces.Body):
 
     def set_percent(self, pct):
         self.set_health(max(self.health_floor if self.immortal else -math.inf, self.max_hp * float(pct) / 100.0))
+
+    def last_damage(self):
+        return self.last_hit, self.last_by
+
+    def set_last_damage(self, player, by=None):
+        self.last_hit, self.last_by = player, by
+
+    def is_indestructible(self):
+        return self.indestructible
+
+    def set_indestructible(self, flag):
+        self.indestructible = bool(flag)
 
 
 @factory.module('ActiveBody')

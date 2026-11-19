@@ -5,6 +5,7 @@ Each action is `fn(sim, name, a, script)`, moved verbatim out of Sim.act's chain
 import math
 
 import simunits
+from engine.kernel import interfaces
 from simscript import refined
 from simstatus import ACTED_STATUS, AI_ONLY_STATUS
 from simworld import GAP_ACTION, inside
@@ -15,7 +16,7 @@ def team_delete(sim, name, a, script):
     # NAMED_DELETE / NAMED_KILL one by one; TEAM_DELETE_LIVING as TEAM_DELETE. engine_scripts8 team asks
     for b in sim.members(a[0]):
         if name == 'TEAM_KILL':
-            b.last_hit = b.last_by = None
+            b.set_last_damage(None)
         sim.destroy(b, '脚本' if name == 'TEAM_KILL' else '脚本删掉', delete=name != 'TEAM_KILL')
 
 
@@ -49,7 +50,7 @@ def unit_kill_all_in_area(sim, name, a, script):
     if a[1] in sim.areas:
         for b in [b for b in sim.living() if b.owner == a[0] and inside(sim.areas[a[1]], b.x, b.y)
                   and 'DRONE' not in b.kinds and a[0] != '']:
-            b.last_hit = b.last_by = None
+            b.set_last_damage(None)
             sim.destroy(b, '脚本')
 
 
@@ -99,7 +100,7 @@ def named_damage(sim, name, a, script):
     # (object, amount) health points off, no armour; engine_sell b / e
     b = sim.body(a[0])                  # the Indestructible panel flag does not stop it (engine_scripts7 panel)
     if b and b.alive:
-        b.last_hit = b.last_by = None
+        b.set_last_damage(None)
         b.damage(float(a[1]))
         if b.hp <= 0.0:
             sim.destroy(b, '脚本伤害')
@@ -112,7 +113,7 @@ def named_kill(sim, name, a, script):
     b = sim.body(a[0])
     if b:
         if name == 'NAMED_KILL':
-            b.last_hit = b.last_by = None   # the game's kill damage comes from nobody (INVALID_ID)
+            b.set_last_damage(None)   # the game's kill damage comes from nobody (INVALID_ID)
         sim.destroy(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉', delete=name == 'NAMED_DELETE')
 
 
@@ -122,7 +123,7 @@ def player_kill(sim, name, a, script):
     # Ordinary lethal dispatch for other templates is INFERRED (work/re/c_playerkill_report.md).
     for b in list(sim.living()):
         if b.owner == a[0]:
-            b.last_hit = b.last_by = None
+            b.set_last_damage(None)
             sim.destroy(b, '玩家脚本清理')
 
 
@@ -204,7 +205,7 @@ def unit_affect_object_panel_flags(sim, name, a, script):
         bodies = [sim.body(a[0])] if name.startswith('UNIT') else sim.members(a[0])
         for b in bodies:
             if b:
-                b.indestructible = bool(a[2])
+                b.find(interfaces.Body).set_indestructible(a[2])
     else:
         sim.gap(GAP_ACTION, f'{name}:{flag}', f'面板标志 {flag} 没模拟（只认 Indestructible）')
 

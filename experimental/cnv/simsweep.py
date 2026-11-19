@@ -142,7 +142,7 @@ class Sweeps:
                 if dmg * armor * by.dealt <= 0:
                     continue
                 t.damage(dmg * armor * by.dealt)
-                t.last_hit, t.last_by = by.owner, by.name
+                t.set_last_damage(by.owner, by.name)
                 if t.hp <= 0 and t.alive:
                     peers.mark_first_death(t, by)
                     peers.destroy(t, f'被 {world.label(by)} 的伤害线打掉')
