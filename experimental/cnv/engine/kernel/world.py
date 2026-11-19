@@ -10,9 +10,10 @@ def no_blocks(template, tag):
 
 class World:
     def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None, pay=None, toggled=None,
-                 modify=None, suppression_at=None, spawn=None, vacate=None):
+                 modify=None, suppression_at=None, spawn=None, vacate=None, create=None):
         """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry;
-        kill(thing, why): the host's death of a thing (World.kill); remove(thing, why): the host's deletion of one,
+        kill(thing, why, death, cause): the host's death of a thing (World.kill); create(thing, ocl, airborne): the
+        host's making of what a thing's death lists (World.create); remove(thing, why): the host's deletion of one,
         no death (World.remove); pay(thing, amount): the host's payment to a thing's holder (World.pay);
         toggled(thing, module): what the host re-sets when a toggle enters its next state (World.toggled);
         modify(thing): the host's re-reading of a thing's attribute modifiers (World.modify);
@@ -22,7 +23,7 @@ class World:
         (World.vacate)."""
         self.blocks, self.tags, self._kill, self._remove, self._pay = blocks, tags, kill, remove, pay
         self._toggled, self._modify, self._suppression_at = toggled, modify, suppression_at
-        self._spawn, self._vacate = spawn, vacate
+        self._spawn, self._vacate, self._create = spawn, vacate, create
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
@@ -58,12 +59,22 @@ class World:
             self.schedule.add(m, self.frame if frame is None else frame)
         return m
 
-    def kill(self, thing, why):
-        """A module kills its thing (LifetimeUpdate): the host's death -- today Sim.destroy plus what the thing's
-        death leaves (the death family's, until step M Body + death family). A world with no host kills nothing."""
+    def kill(self, thing, why, death='NORMAL', cause=''):
+        """A module kills its thing (LifetimeUpdate): the host's death -- today Sim.destroy -- of type `death`
+        (module.Death's death) and `cause` (its cause: 'lifetime' for a death of age). A world with no host kills
+        nothing."""
         if self._kill is None:
             raise RuntimeError(f'World.kill({thing.name!r}): this world has no host to kill with')
-        self._kill(thing, why)
+        self._kill(thing, why, death, cause)
+
+    def create(self, thing, ocl, airborne):
+        """A CreateObjectDie module's thing died and its ObjectCreationList `ocl` is to be made (step B5b): the host
+        makes it where the thing died -- today a death of age's objects as things (simbody.Life.leave), and with
+        `airborne` a death in the air's falling wrecks as their landing's death blasts (simbody.Life.air_crash). A
+        world with no host makes nothing."""
+        if self._create is None:
+            raise RuntimeError(f'World.create({thing.name!r}): this world has no host to make with')
+        self._create(thing, ocl, airborne)
 
     def remove(self, thing, why):
         """A module takes its thing out, no death (a toppled prop gone: ToppleUpdate): the host's deletion -- today

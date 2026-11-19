@@ -26,17 +26,24 @@ class Life:
     def __init__(self):
         self.lose_of = {}              # template -> simunits.lose_health rule
 
-    def die_of_age(self, world, b, why, destroy):
-        """The kernel's kill (World.kill) for a LifetimeUpdate: b dies (killed, NAMED_DESTROYED, gone from areas at
-        once -- bench 2026-11-07 engine_life, no body lingers) and leaves what its death makes, made that frame (the
-        ice core's wall; the death family's, until step M Body + death family)."""
-        destroy(b, why)
-        for tmpl in b.leaves:
-                n = world.add(f'#left {len(world.bodies)} of {b.name}', tmpl, b.owner, b.x, b.y, by=b.name, at=world.t)
-                n.team, n.angle = b.team, b.angle
-                world.note('留下', f'{tmpl}（{world.label(b)} 寿命到了）')
-                if world.blocks(n):
-                    world.reblock()
+    def create(self, world, b, ocl, airborne, death_blasts, ground_z):
+        """The kernel's make (World.create) for a CreateObjectDie (engine/modules/createobjectdie.py, step B5b): a
+        death in the air makes its wrecks fall (air_crash), a death of age leaves its list's objects (leave)."""
+        if airborne:
+            self.air_crash(world, b, ocl, death_blasts, ground_z)
+        else:
+            self.leave(world, b, ocl)
+
+    def leave(self, world, b, ocl):
+        """What a death of age leaves (b killed, NAMED_DESTROYED, gone from areas at once -- bench 2026-11-07
+        engine_life, no body lingers): each object its ObjectCreationList lists made where it stood, that frame, its
+        owner's, team's and facing (the ice core's wall)."""
+        for tmpl in simunits.ocl_objects(ocl, world.own):
+            n = world.add(f'#left {len(world.bodies)} of {b.name}', tmpl, b.owner, b.x, b.y, by=b.name, at=world.t)
+            n.team, n.angle = b.team, b.angle
+            world.note('留下', f'{tmpl}（{world.label(b)} 寿命到了）')
+            if world.blocks(n):
+                world.reblock()
 
     def sell(self, world, b, garrison, modify, credit):
         """SELL_OBJECT (bench 2026-11-06 engine_sell, docs/engine/sell.md): a living structure that is not unpacking
@@ -65,11 +72,12 @@ class Life:
         m.start_sale(world.frame_now())
         world.note('出售', f'{world.label(b)}（退 {refund}）')
 
-    def kill(self, world, b, why, death_blasts, ground_z, death='NORMAL'):
+    def kill(self, world, b, why, death_blasts, ground_z, death='NORMAL', cause=''):
         """The one death entry (Sim.destroy, step B4b): b killed -- its Die modules told (module.Death, `death` its
-        death type: a crush's CRUSHED lies its SlowDeath out), then its Destroy modules (_out), its FireWeaponWhenDead
-        queued, an aircraft's falling wreck; an immortal body takes lethal damage instead, and a prop that cannot die
-        falls or stays."""
+        death type: a crush's CRUSHED lies its SlowDeath out; `cause` 'lifetime' a death of age: its CreateObjectDie
+        leaves its list, World.create; an aircraft's makes its wreck fall), then its Destroy modules (_out), its
+        FireWeaponWhenDead queued; an immortal body takes lethal damage instead, and a prop that cannot die falls or
+        stays."""
         if not b.alive:
             return
         if b.immortal:
@@ -84,7 +92,7 @@ class Life:
             if b.topple:
                 b.find(interfaces.Topple).fall_where_it_stands(world.frame_now())
             return
-        self._out(world, b, why, False, death)
+        self._out(world, b, why, False, death, cause)
         b.set_hp(0.0, tell=False)
         # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
         # died; a deletion fires nothing (INFERRED, as Generals' destroyObject skips the die modules)
@@ -92,8 +100,6 @@ class Life:
             world.used.add('death weapon')
             death_blasts.append((world.frame_now() + simunits._frames(after), b.x, b.y, dmg, typ, reach,
                                  affects, b.owner, b, ally, False))
-        if b.surface == 'air':
-            self.air_crash(world, b, death_blasts, ground_z)
         self._gone(world, b, why, False)
 
     def delete(self, world, b, why):
@@ -103,7 +109,7 @@ class Life:
             self._out(world, b, why, True)
             self._gone(world, b, why, True)
 
-    def _out(self, world, b, why, delete, death='NORMAL'):
+    def _out(self, world, b, why, delete, death='NORMAL', cause=''):
         """What a death and a deletion share: b out of the fight -- the only write of a body's alive / deleted /
         died_at (guard 10, tests/guards/test_kernel.py) -- then its modules told, the one broadcast of a thing's end
         (step B4c, the private model's Object.die then destroyObject): a death tells its Die modules (module.Death),
@@ -113,7 +119,7 @@ class Life:
         if not delete and b.last_by is not None and b.last_hit is not None:
             world.kills.append((b.last_hit, b.last_by, b.template, b.name))     # cond_retail: who killed what
         if not delete:
-            info = module.Death(world.frame_now(), why, death)
+            info = module.Death(world.frame_now(), why, death, cause)
             for m in b.find(interfaces.Die):
                 m.on_die(info)
         for m in b.find(interfaces.Destroy):
@@ -125,9 +131,10 @@ class Life:
         if world.blocks(b):
             world.reblock()
 
-    def air_crash(self, world, b, death_blasts, ground_z):
+    def air_crash(self, world, b, ocl, death_blasts, ground_z):
         """Physics P5 (checks/engine_crash_fall.py): an aircraft killed in the air is gone at once and its airborne
-        CreateObjectDie (simunits.air_wrecks) makes a wreck LIKE_EXISTING with its velocity x the OCL's VelocityScale;
+        CreateObjectDie (engine/modules/createobjectdie.py: its list `ocl`, simunits.ocl_wrecks) makes a wreck
+        LIKE_EXISTING with its velocity x the OCL's VelocityScale;
         a wreck that falls (KillWhenRestingOnGround) dies where it comes to rest (simunits.crash_frames: the fall's
         curve, its own GravityMultiplier) and its FireWeaponWhenDead goes off there (the Apollo's / MiG's
         NormalAircraftDeathWeapon: 150 EXPLOSIVE radius 20, allies 50 %), on the ground only. The plane is at its
@@ -136,7 +143,7 @@ class Life:
         Collapse or Dying) the first that falls and has a weapon (INFERRED choice: the crash that can hurt, the run
         repeatable). INFERRED: level ground (the landing's own height not looked up), the death on the frame it rests,
         the nugget's MetaImpact (ShockWave 50, radius 50) not dispatched."""
-        got = simunits.air_wrecks(b.template, world.own)
+        got = simunits.ocl_wrecks(ocl, world.own)
         if not got:
             return
         choose, wrecks = got

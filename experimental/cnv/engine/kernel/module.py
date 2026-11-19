@@ -110,16 +110,21 @@ class Trigger:
         return self.by <= have if self.all else bool(self.by & have)
 
 
+LIFETIME = 'lifetime'           # Death.cause of a LifetimeUpdate's death of age (step B5b)
+
+
 class Death:
     """What a Die module is told (interfaces.Die.on_die, step B4c): the frame its thing died in, why (the host's
-    words) and its death type (step B5a: NORMAL, CRUSHED for a crush). Read only; the killer and the damage come
+    words), its death type (step B5a: NORMAL, CRUSHED for a crush; step B5b: a lifetime's DeathType) and its cause
+    (step B5b: 'lifetime' for a LifetimeUpdate's death of age, else ''). Read only; the killer and the damage come
     with the death modules that need them (step B5)."""
-    __slots__ = ('frame', 'why', 'death')
+    __slots__ = ('frame', 'why', 'death', 'cause')
 
-    def __init__(self, frame, why='', death='NORMAL'):
+    def __init__(self, frame, why='', death='NORMAL', cause=''):
         object.__setattr__(self, 'frame', frame)
         object.__setattr__(self, 'why', why)
         object.__setattr__(self, 'death', death)
+        object.__setattr__(self, 'cause', cause)
 
     def __setattr__(self, name, value):
         raise AttributeError('a Death is read only')

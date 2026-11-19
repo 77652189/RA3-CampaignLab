@@ -153,6 +153,21 @@ class SlowDeath(Interface):
         raise NotImplementedError
 
 
+class CreateOnDeath(Interface):
+    """CreateObjectDie (step B5b): the ObjectCreationList it makes (creation_list), whether its DieMuxData takes a
+    death type (takes) and a death in the air (takes_airborne: RequiredStatus / ExemptStatus against AIRBORNE_TARGET)."""
+    __slots__ = ()
+
+    def creation_list(self):
+        raise NotImplementedError
+
+    def takes(self, death):
+        raise NotImplementedError
+
+    def takes_airborne(self):
+        raise NotImplementedError
+
+
 class Create(Interface):
     """Told once its thing is made (World.build), with the frame it was made in (step M1)."""
     __slots__ = ()
@@ -589,5 +604,5 @@ class AIUpdate(Interface):
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
 FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze,
-          LevelUp, Aura, Repair, Assign, Infiltrate, SlowDeath)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+          LevelUp, Aura, Repair, Assign, Infiltrate, SlowDeath, CreateOnDeath)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze})  # a thing has at most one of these: Thing.find gives it

@@ -270,7 +270,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3380, 'Sim methods': 194, 'Body fields': 77, 'simunits defs': 138,
+CENTER = {'sim.py lines': 3380, 'Sim methods': 194, 'Body fields': 76, 'simunits defs': 138,
           'cells with old code': 31}
 
 
@@ -910,7 +910,7 @@ def test_death_guard_bites():
     assert death_breaks(death_writes(third)) == [('simbody.py', 'sneak')]
     # the kill writing its own alive past _out
     bm = 'simbody.py'
-    past = dict(sources, **{bm: sources[bm].replace('        self._out(world, b, why, False, death)\n',
+    past = dict(sources, **{bm: sources[bm].replace('        self._out(world, b, why, False, death, cause)\n',
                                                     '        b.alive = False\n', 1)})
     assert past[bm] != sources[bm] and death_breaks(death_writes(past)) == [(bm, 'Life.kill')]
 

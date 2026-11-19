@@ -803,11 +803,17 @@ def test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravit
 
 
 def test_physics_p5_the_apollo_s_air_death_reads_its_crash_from_the_data():
-    """Life.air_crash's data (simunits.air_wrecks / fly_height / crash_frames): an Apollo killed in the air leaves one
-    of Collapse (no weapon) and Dying (x 0.5, falls, 150 EXPLOSIVE radius 20, allies 50 %), 175 up; the wreck's fall
-    from the bench's kill (engine_crash_fall plain) hits 29 frames on, at (3160, 1500)."""
+    """Life.air_crash's data (its airborne CreateObjectDie's list, simunits.ocl_wrecks / fly_height / crash_frames): an
+    Apollo killed in the air leaves one of Collapse (no weapon) and Dying (x 0.5, falls, 150 EXPLOSIVE radius 20,
+    allies 50 %), 175 up; the wreck's fall from the bench's kill (engine_crash_fall plain) hits 29 frames on, at
+    (3160, 1500)."""
     import simunits
-    choose, wrecks = simunits.air_wrecks('AlliedFighterAircraft')
+    from engine.modules import createobjectdie
+    mods = [createobjectdie.CreateObjectDieData.parse(*b)
+            for b in simunits.module_blocks('AlliedFighterAircraft', 'CreateObjectDie')]
+    air = [m.ocl for m in mods if m.holds({createobjectdie.AIRBORNE})]
+    assert air == ['AUFighterAircraft_Dying_OCL']
+    choose, wrecks = simunits.ocl_wrecks(air[0])
     assert choose and [w['template'] for w in wrecks] == ['AlliedFighterAircraft_Collapse', 'AlliedFighterAircraft_Dying']
     dying = wrecks[1]
     assert (dying['scale'], dying['gravity'], dying['falls']) == (0.5, 1.0, True) and not wrecks[0]['weapons']
@@ -858,6 +864,7 @@ def _face_health():
     import build
     import sim
     from checks.engine_crash_fall import FACE_LANES, face_name
+    from engine.kernel import interfaces
     m, t, name = build.resolve('engine_crash_face', 'face')
     assert name == 'CampCKFace'
     s = sim.Sim(m, t)
@@ -865,7 +872,8 @@ def _face_health():
     for k, (y, _) in FACE_LANES.items():
         b = s.bodies[face_name(k)]
         b.x, b.y, b.z, b.path, b.speed, b.engaged = 2885.0, y, None, [(4200.0, y)], 15.0 * 15, None
-        s._life().air_crash(s, b, s.death_blasts, s.impact_ground_z)
+        ocl = next(m for m in b.find(interfaces.CreateOnDeath) if m.takes_airborne()).creation_list()
+        s._life().air_crash(s, b, ocl, s.death_blasts, s.impact_ground_z)
     s.death_blast_due(105 + 40)
     tanks = {k: s.bodies[face_name('Tank ' + k)] for k in FACE_LANES}
     return {k: math.floor(b.hp / b.max_hp * 100 + 1e-9) for k, b in tanks.items()}

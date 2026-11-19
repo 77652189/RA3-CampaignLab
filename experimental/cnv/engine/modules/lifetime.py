@@ -15,14 +15,16 @@ FPS = 15                        # the game's logic frames a second (bench 2026-1
 
 
 class LifetimeData(module.ModuleData):
-    def __init__(self, frames=0, death='NORMAL'):
+    def __init__(self, frames=0, death='NORMAL', read=True):
         self.frames = frames        # frames from the one it is made in to the one it dies in
-        self.death = death          # its DeathType (what its CreateObjectDie answers: simunits.life_leaves)
+        self.death = death          # its DeathType (what its CreateObjectDie answers: engine/modules/createobjectdie.py)
+        self.read = read            # read off a template's block; the skirmish AI's late one (attached with no
+                                    # attributes, simbody.last_until) is not: its death is no death of age, leaves nothing
 
     @classmethod
     def parse(cls, head, inner):
         lo, hi = templates.secs(templates.attr(head, 'MinLifetime')), templates.secs(templates.attr(head, 'MaxLifetime'))
-        return cls(int((lo + hi) / 2 * FPS + 1e-6), templates.attr(head, 'DeathType', 'NORMAL'))
+        return cls(int((lo + hi) / 2 * FPS + 1e-6), templates.attr(head, 'DeathType', 'NORMAL'), bool(head.strip()))
 
 
 @factory.module('LifetimeUpdate')
@@ -58,5 +60,5 @@ class Lifetime(module.Module, interfaces.Update, interfaces.Create, interfaces.L
         if frame < self.life_end:
             return self.life_end - frame
         self.world.used.add('lifetime')
-        self.world.kill(self.thing, '寿命到了')
+        self.world.kill(self.thing, '寿命到了', self.data.death, module.LIFETIME if self.data.read else '')
         return interfaces.SLEEP

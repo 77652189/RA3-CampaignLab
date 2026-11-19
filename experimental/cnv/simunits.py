@@ -1812,26 +1812,6 @@ def _dies_of(head, death):
     return death in words or f'+{death}' in words
 
 
-def life_leaves(template, own=None):
-    """What a mission unit's death of age leaves (its LifetimeUpdate: engine/modules/lifetime.py, step M1), else []:
-    what its CreateObjectDie lists for the lifetime's DeathType, made where it stood (the ice core's wall, born the
-    frame the core dies). Retail templates are not read (none of our scripts makes one with a lifetime)."""
-    xml = (own or {}).get(template)
-    life = next(_blocks(xml, 'LifetimeUpdate'), None) if xml else None
-    if life is None:
-        return []
-    death = _attr(life[0], 'DeathType', 'NORMAL')
-    leaves = []
-    for head, inner in _blocks(xml, 'CreateObjectDie'):
-        if not _dies_of(next((h for h, _ in _blocks(inner, 'DieMuxData')), ''), death):
-            continue
-        ocl = _attr(head, 'CreationList')
-        for h, body in _blocks(xml, 'ObjectCreationList'):
-            if _attr(h, 'id') == ocl:
-                leaves += re.findall(r'<CreateObject>\s*([^<\s]+)\s*</CreateObject>', body)
-    return leaves
-
-
 def _chain(template, own, first):
     """Walk the template's XML up its inheritFrom chain (xml_chain) calling first(xml) on each; the first non-None
     answer, else None."""
@@ -1998,33 +1978,16 @@ def fly_height(template, own=None):
 _wreck_memo = {}
 
 
-def air_wrecks(template, own=None):
-    """What an aircraft killed in the air leaves (Physics P5, checks/engine_crash_fall.py): (choose_one, [wreck]) from
-    the CreateObjectDie that takes an airborne death (RequiredStatus AIRBORNE_TARGET, or ExemptStatus
-    PARKED_AT_AIRFIELD, or no status at all), None without one. A wreck: dict(template, scale = the OCL's VelocityScale
-    of the plane's velocity (INHERIT_VELOCITY), gravity = its own Physics GravityMultiplier (default 1), falls =
-    KillWhenRestingOnGround, weapons = its FireWeaponWhenDead (death_weapons with scalars)). The Apollo's: CHOOSE_ONE of
-    AlliedFighterAircraft_Collapse (debris, no weapon) and AlliedFighterAircraft_Dying (x 0.5, falls, 150 EXPLOSIVE
-    radius 20, allies 50 %)."""
-    key = (template, (own or {}).get(template))
+def ocl_wrecks(name, own=None):
+    """What an ObjectCreationList makes fall when its CreateObjectDie takes a death in the air (Physics P5,
+    checks/engine_crash_fall.py; the module: engine/modules/createobjectdie.py): (choose_one, [wreck]), None without
+    the list. A wreck: dict(template, scale = the nugget's VelocityScale of the plane's velocity (INHERIT_VELOCITY
+    nuggets only), gravity = its own Physics GravityMultiplier (default 1), falls = KillWhenRestingOnGround, weapons =
+    its FireWeaponWhenDead (death_weapons with scalars)). The Apollo's: CHOOSE_ONE of AlliedFighterAircraft_Collapse
+    (debris, no weapon) and AlliedFighterAircraft_Dying (x 0.5, falls, 150 EXPLOSIVE radius 20, allies 50 %)."""
+    key = ('ocl', name, tuple((own or {}).values()))
     if key in _wreck_memo:
         return _wreck_memo[key]
-
-    def read(xml):
-        text = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
-        mods = list(_blocks(text, 'CreateObjectDie'))
-        if not mods:
-            return None
-        for head, inner in mods:
-            req = re.search(r'RequiredStatus="([^"]*)"', inner)
-            exempt = re.search(r'ExemptStatus="([^"]*)"', inner)
-            if req and 'AIRBORNE_TARGET' not in req.group(1).split():
-                continue
-            if exempt and 'AIRBORNE_TARGET' in exempt.group(1).split():
-                continue
-            return _attr(head, 'CreationList')
-        return ''
-    name = _chain(template, own, read)
     got = _ocl(name, own) if name else None
     if not got:
         _wreck_memo[key] = None
@@ -2046,6 +2009,13 @@ def air_wrecks(template, own=None):
                                weapons=death_weapons(w, own, scalars=True)))
     _wreck_memo[key] = ('CHOOSE_ONE' in (_attr(head, 'Flags') or ''), wrecks)
     return _wreck_memo[key]
+
+
+def ocl_objects(name, own=None):
+    """The templates an ObjectCreationList's <CreateObject> nuggets list, in order (each once a listing; Count, the
+    disposition and the other nuggets not read): what a death of age leaves (CreateObjectDie, Life.leave)."""
+    got = _ocl(name, own) if name else None
+    return re.findall(r'<CreateObject>\s*([^<\s]+)\s*</CreateObject>', got[1]) if got else []
 
 
 def crash_frames(position, velocity, ground, gravity=1.0):

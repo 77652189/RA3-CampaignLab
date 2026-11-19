@@ -387,7 +387,6 @@ class Body(kernel_module.Thing):
                                                                 # 'attack' (attack-move, attack named: stops to fight)
     move_to: tuple = None                                       # where its last plain move sent it (held_up)
     fired_at: float = None                                      # a bombarder's last shot (seen by all a while)
-    leaves: list = dataclasses.field(default_factory=list)      # what its lifetime's death makes where it stood
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
     replace: bool = False                                       # building = its ReplaceSelfSpecialAbility: it turns into it
     follow: dict = None                                         # order_follow: label, next waypoint, mode; shared by one team
@@ -843,7 +842,9 @@ class Sim:
         self.asked, self.up = {}, []        # a 功能 caption asked for (flag -> t), and shown: (flag, asked, shown)
         self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
         self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own),   # engine/kernel
-                                        kill=lambda b, why: self._life().die_of_age(self, b, why, self.destroy),
+                                        kill=lambda b, why, death, cause: self.destroy(b, why, death, cause),
+                                        create=lambda b, ocl, air: self._life().create(
+                                            self, b, ocl, air, self.death_blasts, self.impact_ground_z),
                                         remove=lambda b, why: self.delete(b, why),
                                         pay=lambda b, amount: self.wallet.deposit(b.owner, amount), modify=self.modify,
                                         toggled=lambda b, m: simtoggle.entered(self, b, m, self.modify),
@@ -1106,7 +1107,6 @@ class Sim:
             if self.declared[template]:
                 self.gap(GAP_WEAPON, template, f'XML 有 {", ".join(self.declared[template])}，读成没有武器')
         b.acquire =frozenset(simunits.acquire(template, self.own)) if b.weapons else frozenset()
-        b.leaves = simunits.life_leaves(template, self.own)
         mods = self.world.build(b, self.clock.frame)
         if mods:
             b.modules = mods
@@ -1966,10 +1966,10 @@ class Sim:
         """simbody.Life.sell (L2): SELL_OBJECT -- the refund paid at once (simmoney.Money.credit), deleted 30 frames on."""
         self._life().sell(self, b, self.garrison, self.modify, self.wallet.credit)
 
-    def destroy(self, b, why, death='NORMAL'):
-        """simbody.Life.kill (L2), the one death entry: b killed -- its spawn, garrison, death weapons and air crash;
-        `death` its death type (module.Death: CRUSHED for a crush, which lies its SlowDeath out)."""
-        self._life().kill(self, b, why, self.death_blasts, self.impact_ground_z, death)
+    def destroy(self, b, why, death='NORMAL', cause=''):
+        """simbody.Life.kill (L2), the one death entry: b killed -- its Die modules told of its death type and cause
+        (module.Death: CRUSHED for a crush, 'lifetime' a death of age), its death weapons; see Life.kill."""
+        self._life().kill(self, b, why, self.death_blasts, self.impact_ground_z, death, cause)
 
     def delete(self, b, why):
         """simbody.Life.delete (L2), the one deletion entry: b taken out, no death (children, passengers with it)."""
