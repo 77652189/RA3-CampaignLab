@@ -84,9 +84,9 @@ def test_engage_hunt_command_state_contract():
     # movement simulator still has an ordered/chased enemy beside it.
     brain = simai.Brain.__new__(simai.Brain)
     old = SimpleNamespace(alive=True)
-    body = SimpleNamespace(name='member', goal=old, chase=old)
-    brain._hunt_goals = {'member': mc.HuntGoal()}
-    held = brain._hunt_goals['member']
+    body = SimpleNamespace(name='member', serial=7, goal=old, chase=old)
+    brain._hunt_goals = {7: mc.HuntGoal()}      # by the member's serial (same-name sweep S6b)
+    held = brain._hunt_goals[7]
     held.command(old)
     assert brain.aim_of(body, 100) is None
     held.target = old
@@ -141,9 +141,9 @@ def test_engage_dead_pursuit_continues_cancelled_path():
     brain = simai.Brain.__new__(simai.Brain)
     brain.player = 'Player_2'
     moves = []      # the AI's orders go through the command port (R3 13f-1): its attack-move, target dropped first
-    brain.world = brain.peers = SimpleNamespace(body=lambda name: body,
+    brain.world = brain.peers = SimpleNamespace(world=SimpleNamespace(numbered={7: body}),
                                                commands=SimpleNamespace(do=lambda cmd: moves.append(cmd) or (True, '')))
-    brain._hunt_goals = {'member': state}
+    brain._hunt_goals = {7: state}
     brain.hunt_threats(1)  # no partition scan before the first eligible frame
     assert state.state == 33 and state.target is retained
     assert [(c.kind, c.units, c.pos, c.arg('objects'), c.arg('drop_target')) for c in moves] == \

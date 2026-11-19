@@ -798,3 +798,28 @@ def test_the_ais_micro_fires_and_dodges_with_the_unit_it_viewed_not_a_reference_
     assert lead.armor_up and not decoy.armor_up and not old.armor_up
     br.dodge_move(SimpleNamespace(teams=SimpleNamespace(teams={'k': team})), 'k', mu, (0.0, 300.0))
     assert br.peers.commands.issued()[-1][1].units == (lead.serial,)
+
+
+def test_the_ais_hunt_goes_on_with_its_member_not_a_reference_of_its_name():
+    """A hunt state is its member's, by serial (11-19 same-name sweep S6b: keyed by name and read back by
+    `world.body(name)`, so with the pursuit dead and the path cancelled the reference `lead` pointing at another
+    tank of the same player took the walk on)."""
+    from types import SimpleNamespace
+    import simai
+    if not simai.available():
+        pytest.skip('ra3model.ai unavailable')
+    s = simsmall.small_world([('lead', APOC, 'Player_1', 0.0, 0.0), ('decoy', APOC, 'Player_1', 0.0, 300.0),
+                              ('foe', APOC, 'Player_2', 400.0, 0.0)], model=False)
+    s.relations[('Player_1', 'Player_2')] = s.relations[('Player_2', 'Player_1')] = 'Enemy'
+    lead, decoy, foe = s.bodies['lead'], s.bodies['decoy'], s.bodies['foe']
+    host = simai.SimAI(s)
+    br = object.__new__(simai.Brain)
+    br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
+    br.view, br.frame = SimpleNamespace(things=[], enemies=frozenset({'Player_2'})), 0
+    br.order(simai.Unit(lead, br.peers), 'hunt', br.tid(foe))
+    assert br.peers.commands.issued()[-1][1].units == (lead.serial,)
+    foe.alive, lead.path = False, []
+    s.refs['lead'] = decoy
+    br.hunt_threats(1)
+    last = br.peers.commands.issued()[-1][1]
+    assert (last.kind, last.units, last.pos) == ('attack_move', (lead.serial,), (400.0, 0.0))

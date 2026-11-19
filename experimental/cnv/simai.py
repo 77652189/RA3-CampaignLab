@@ -795,7 +795,7 @@ class Brain:
         b = u.body
         if kind == 'hunt':
             state = self.__dict__.setdefault('_hunt_goals', {}).setdefault(
-                b.name, self.host.mod['micro'].HuntGoal())
+                b.serial, self.host.mod['micro'].HuntGoal())     # per object: same-name sweep S6b
             state.expire(lambda t: t is not None and t.alive,
                          arrived=self.hunt_arrived(b, state))
             if state.state != 16 or not b.alive:
@@ -821,7 +821,7 @@ class Brain:
                 return      # a SimpleExpansion miner armed to unpack walks on (bench aiexpb*, D157; INFERRED)
             t = self.body_of(arg)
             if t is not None:
-                state = self.__dict__.get('_hunt_goals', {}).get(b.name)
+                state = self.__dict__.get('_hunt_goals', {}).get(b.serial)
                 if state is not None:
                     state.state, state.target = 26, t
                 if t.owner == self.player and t in self.host.garrison.places(b, True):
@@ -1051,7 +1051,7 @@ class Brain:
         standing in a turret's range with no target of their own never backed off)."""
         if not b.alive:
             return None
-        state = self.__dict__.get('_hunt_goals', {}).get(b.name)
+        state = self.__dict__.get('_hunt_goals', {}).get(b.serial)
         if state is not None:
             return state.target if state.target is not None and state.target.alive else None
         return next((t for t in (b.goal, getattr(b, 'chase', None))
@@ -1061,7 +1061,7 @@ class Brain:
         """The unit's current target for the micro (work/re/l4_micro_heur.md; RUSH_ATTACK reads it): its ordered or
         chased enemy, else the nearest living enemy within its longest weapon range
         (INFERRED legacy proxy). Hunt members instead keep a persistent object goal."""
-        state = self.__dict__.get('_hunt_goals', {}).get(b.name)
+        state = self.__dict__.get('_hunt_goals', {}).get(b.serial)
         if state is not None:
             return state.target if state.target is not None and state.target.alive else None
         for t in (b.goal, getattr(b, 'chase', None)):
@@ -1149,7 +1149,7 @@ class Brain:
             self.world.note('AI', f'{u.name} 执行 {info.command}')
             return
         if b and b.owner == self.player and simmicro.fire(self.world, b, info.command, self.peers.modify):
-            state = self.__dict__.get('_hunt_goals', {}).get(b.name)
+            state = self.__dict__.get('_hunt_goals', {}).get(b.serial)
             if (state is not None and state.state == 33
                     and info.command == simmicro.COMMAND):
                 state.charge_finished()
@@ -1798,8 +1798,10 @@ class Brain:
         states = self.__dict__.get('_hunt_goals', {})
         cells = self.__dict__.setdefault('_hunt_cells', {})
         cell = lambda b: (int(b.x * .05), int(b.y * .05))
-        for name, state in states.items():
-            b = self.world.body(name)
+        for serial, state in states.items():
+            # the member the state is of, by serial: a reference of its name or an object made again under it is
+            # not that member (same-name sweep S6b)
+            b = self.world.world.numbered.get(serial)
             if b is None or not b.alive:
                 continue
             arrived = self.hunt_arrived(b, state)
@@ -1811,8 +1813,8 @@ class Brain:
                 # team command or a fabricated current target.
                 self.give('attack_move', b, pos=(state.pursuit.x, state.pursuit.y), args=(('drop_target', True),))
             here = cell(b)
-            previous = cells.get(name)
-            cells[name] = here
+            previous = cells.get(serial)
+            cells[serial] = here
             if state.state != 33 or here == previous or frame <= 3:
                 continue
             reach = max((w.get('range') or 0. for w in b.weapons), default=0.)
@@ -1883,7 +1885,7 @@ class Brain:
                 reach = max((w.get('range') or 0.0 for w in b.weapons), default=0.0)
                 aim = self.aim_of(b, reach) if b.alive else None
                 goal, chase = b.goal, getattr(b, 'chase', None)
-                hunt = self.__dict__.get('_hunt_goals', {}).get(b.name)
+                hunt = self.__dict__.get('_hunt_goals', {}).get(b.serial)
                 going, inside = (g.going.get(b.serial) or (None, None))[1], g.where.get(b.serial)
                 mem.append({'name': b.name, 'id': self.ids.get(b.serial), 'pos': (b.x, b.y), 'hp': b.hp,
                             'alive': b.alive, 'goal': goal.name if isinstance(goal, sim.Body) else goal,
