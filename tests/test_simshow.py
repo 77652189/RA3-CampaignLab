@@ -28,7 +28,7 @@ def at(t, *acts, name=None):
 
 
 def play(scripts, until=30.0):
-    return simshow.ShowSim(mission(*scripts)).run(until)
+    return simshow.play(mission(*scripts), until=until)
 
 
 CORRIDOR_ON = [('MAP_SWITCH_BORDER', 1)]
@@ -85,7 +85,7 @@ def test_a_checks_own_camera_is_not_the_levels():
 def test_the_picture_lists_the_units_in_it_not_the_crowd():
     m = small(开局={'资金': '5000/3000/2000', '部队': [{'单位': '兵营', '在': 'north base', '阵营': '敌', '角色': 'camp'}]},
               规则=[{'当': '摧毁 camp', '做': [{'镜头': 'north base'}]}])
-    s = simshow.ShowSim(m, script='5 摧毁 camp').run(30)
+    s = simshow.play(m, script='5 摧毁 camp', until=30)
     assert s.moves, 'the plan moved the camera'
     rows = [r for r in simshow.timeline(s) if r[1] == '镜头']
     assert rows and all('PlyrCivilian' not in r[2] for r in rows), rows
@@ -97,7 +97,7 @@ BEAT = [{'镜头': 'west field'}]
 
 def lines(do, until=60):
     m = small(规则=[{'当': '摧毁 camp', '做': BEAT + do}])
-    return simshow.ShowSim(m, script='5 摧毁 camp').run(until)
+    return simshow.play(m, script='5 摧毁 camp', until=until)
 
 
 def test_gong_lines_at_once_are_in_time_until_the_queue_runs_past_func_late_k1():
@@ -160,7 +160,7 @@ def test_a4_with_its_camera_scripts_taken_out_shows_black_the_whole_opening_k5()
     """The mutation of I23 (A2: the start camera never moved, black top left for a minute): the simulator's picture finds it."""
     m, t, _ = build.resolve('a4', '')
     m.scripts = [s for s in m.scripts if not any('MOVE_CAMERA_TO' in a[0] for a in s.do)]
-    s = simshow.ShowSim(m, t).run(30.0)
+    s = simshow.play(m, t, until=30.0)
     runs = simshow.black_runs(s)
     assert runs and runs[0][1] - runs[0][0] >= 20.0 and 'west' in runs[0][3], runs
     assert any(p.startswith('K5') for p in simshow.problems(s))

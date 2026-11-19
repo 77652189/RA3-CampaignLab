@@ -448,7 +448,7 @@ def test_host_write_guard_bites():
 # SimAI.sim for its callers (main, tests) and read nowhere else (SimAI.__init__ makes world and peers; run() makes it)
 AI_RAW_SIM = {'SimAI.__init__', 'run', 'main'}
 # step 9d (R3): simproxy the same way; SimWorld.__init__ makes the Sim and world / peers, play() reads the ending, the
-# guessed set and simshow.problems off w.sim (the run's report), main hands nothing on
+# guessed set off w.sim (the run's report; simshow.problems reads w.show, the port's), main hands nothing on
 PROXY_RAW_SIM = {'SimWorld.__init__', 'play', 'main'}
 
 

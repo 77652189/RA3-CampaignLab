@@ -1,7 +1,8 @@
 r"""The playable simulator's back end (ADR 0024): a level's simulated run that a player drives from the browser.
 
-It changes no rule. `PlaySim` is simshow.ShowSim (itself sim.Sim plus the presentation records) with two readers
-added -- the dubbed lines' sound keys, and every script event as it happens (the replay record) -- and the player's
+It changes no rule. A run is sim.Sim with the presentation records (simshow.Show) and the page's own (`Play`) hung on
+the observation port's taps -- the dubbed lines' sound keys, and every script event as it happens (the replay
+record) -- and the player's
 orders are *script events*: a click becomes the tuple sim.parse_script makes of a play script's line (走 / 派 / 攻击 /
 放 / 占领 / 生产; a click on the ground is the place '@x,y', model.coord), put on Sim.events at the current tick, so
 Sim.happen carries it out exactly as it carries out plays/<level>.txt. `Session.tick` is Sim.run's loop body (step, the
@@ -45,36 +46,46 @@ def at(x, y):
     return f'@{float(x):.0f},{float(y):.0f}'
 
 
-class PlaySim(simshow.ShowSim):
-    """ShowSim plus what the page needs: the sound key of each dubbed line, every script event as it happened (the
-    replay). No rule changes: each action still goes to Sim.act."""
+class Play:
+    """What the page needs beside the presentation records (simshow.Show): the sound key of each dubbed line, every
+    script event as it happened (the replay). Read through the observation port and hung on its taps (on_act, before
+    the Show's; on_happen). No rule changes: each action still goes to Sim.act."""
 
-    def __init__(self, *a, **k):
-        super().__init__(*a, **k)
+    def __init__(self, obs):
+        self.obs = obs
         self.voices = []            # Voice, in the order they are heard: PLAY_SOUND_EFFECT / the announcer's
         self.voice_free = 0.0       # when the voice channel is free again (sim seconds)
         self.happened = []          # every script event as Sim.happen carried it out, time as scheduled
+        obs.on_act(self.act)
+        obs.on_happen(self.happen)
 
     def act(self, name, a, script):
+        obs = self.obs
         if name in ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT') and a:
             key = a[0] if isinstance(a[0], str) else str(a[0])
-            sub = self.text(self.mm.subtitles[key]) if key in getattr(self.mm, 'subtitles', {}) else ''
-            text = sub or self.text(key)
+            subs = getattr(obs.model(), 'subtitles', {})
+            sub = obs.text(subs[key]) if key in subs else ''
+            text = sub or obs.text(key)
             kind = '配音' if name == 'PLAY_SOUND_EFFECT' else '播报'
             # the engine queues dialogue events (voice_link.Later.length: ten lines at one moment "are heard one after
             # another"; source: docs/story/handoff.md 4、7 叠播的真根因 ②, seen in the game on CampShell, r3_fine* frames --
             # not a bench counter measurement; the level line re-checks it in the game): a line starts when the one
             # before it has played out, in game time; the page plays a line
             # when the run reaches its start and cuts the one before, so at most one is heard at a time
-            start = max(self.t, self.voice_free)
+            start = max(obs.t, self.voice_free)
             secs = voice_seconds(key, text, kind)
             self.voice_free = start + secs
-            self.voices.append(Voice(start, kind, key, text, secs, self.t))
-        super().act(name, a, script)
+            self.voices.append(Voice(start, kind, key, text, secs, obs.t))
 
     def happen(self, e):
         self.happened.append(tuple(e))
-        super().happen(e)
+
+
+def play_sim(m, t, difficulty, script):
+    """A run with the page's records: (the world, its simshow.Show, its Play)."""
+    world = sim.Sim(m, t, difficulty, script)
+    show = simshow.attach(world)
+    return world, show, Play(show.obs)
 
 
 class Voice(tuple):
@@ -204,7 +215,7 @@ class Session:
     # ---- the run -----------------------------------------------------------------------------------------------
     def new(self, script=''):
         with self.lock:
-            self.s = PlaySim(self.mission, self.test, self.difficulty, script)
+            self.s, self.show, self.rec = play_sim(self.mission, self.test, self.difficulty, script)
             self.run = getattr(self, 'run', 0) + 1      # a new run (restart, stage jump): the page drops its voice
             self.stages = phase_flags(self.s)
             self.orders, self.refused = [], []
@@ -309,7 +320,7 @@ class Session:
     def skip_scene(self):
         """As fast as it goes until the player has the input (and no letterbox)."""
         with self.lock:
-            if self.s.input and not self.s.state_at(self.s.bars, self.s.t):
+            if self.s.input and not self.show.state_at(self.show.bars, self.s.t):
                 return False, '现在不在过场里'
             self.busy, self.target = '跳过场', ('input', None)
             return True, ''
@@ -338,7 +349,7 @@ class Session:
         if s.ending is not None:
             return True
         if kind == 'input':
-            return s.input and not s.state_at(s.bars, s.t)
+            return s.input and not self.show.state_at(self.show.bars, s.t)
         if kind == 'flag':
             if s.flags.get(v) == 1:
                 s.events.clear()                    # the play script hands over: its orders still to come are dropped
@@ -453,7 +464,8 @@ class Session:
             units = [self.unit(b, sees) for b in s.living()]
             ui = []
             readings = s.executor.readings()
-            for label in sorted(s._up):
+            show = self.show
+            for label in sorted(show.up):
                 key = next((k for k in readings if s.text(str(k)) == label), None)
                 counter = s.executor.displayed.get(key) if key else None
                 left = None
@@ -461,7 +473,7 @@ class Session:
                     left = max(0.0, s.timers[counter] - t)
                 ui.append(dict(label=label, value=readings.get(key), left=left))
             panel = s.panel_at(t) if s.panel_log else []
-            letter = bool(s.state_at(s.bars, t))
+            letter = bool(show.state_at(show.bars, t))
             unmod = [dict(kind=k[0], name=k[1], n=v['n'], t=v['t'], what=v['what']) for k, v in s.unmodeled.items()]
             import simunits
             offers = [dict(tp=o[0], cost=o[1], secs=o[2]) for o in s.offers(s.human)]
@@ -477,15 +489,15 @@ class Session:
                 factories[0]['can'] += [o for o in offers if o['tp'] not in sold]
             return dict(
                 t=t, clock=sim.mmss(t), speed=self.speed, busy=self.busy, input=bool(s.input), letterbox=letter,
-                border=s.state_at(s.borders, t),
-                camera=s.camera_at(t), ending=(dict(how=s.ending[0], t=s.ending[1], clock=sim.mmss(s.ending[1]),
+                border=show.state_at(show.borders, t),
+                camera=show.camera_at(t), ending=(dict(how=s.ending[0], t=s.ending[1], clock=sim.mmss(s.ending[1]),
                                                      by=s.ending[2]) if s.ending else None),
                 units=units, caption=s.box_at(t), panel=panel,
                 objectives=[dict(name=k, status=v) for k, v in s.objectives.items() if v],
                 counters=ui, money=s.money.get(s.human, 0), unmodeled=unmod,
                 run=self.run, voices=[dict(i=i, t=v.t, kind=v.kind, key=v.key, text=v.text, secs=round(v.secs, 2),
                                            file=bool(find_voice(v.key)), speak=spoken(v.key, v.text))
-                                      for i, v in enumerate(s.voices) if i >= since and v.t <= t],
+                                      for i, v in enumerate(self.rec.voices) if i >= since and v.t <= t],
                 stages=[dict(flag=f, reached=s.flags.get(f) == 1) for f in self.stages],
                 factories=factories, offers=offers,
                 refused=[dict(t=a, why=b) for a, b in self.refused[-5:]],
@@ -496,17 +508,18 @@ class Session:
 
     # ---- the replay ---------------------------------------------------------------------------------------------
     def replay_events(self):
-        """Every script event this run carried out, as scheduled (Sim.events tuples): fed to a fresh PlaySim's
-        events they make the same run (tests/test_simui.py)."""
+        """Every script event this run carried out, as scheduled (Sim.events tuples): fed to a fresh run's events
+        they make the same run (tests/test_simui.py)."""
         with self.lock:
-            return list(self.s.happened)
+            return list(self.rec.happened)
 
 
 def replay(level, events, difficulty='normal', until=sim.UNTIL):
-    """A fresh run fed `events` (Sim.events tuples), run the way Sim.run runs (the quiet stop included)."""
+    """A fresh run fed `events` (Sim.events tuples), run the way Sim.run runs (the quiet stop included), with the
+    page's records on it. Returns the world."""
     import build
     m, t, _ = build.resolve(level, '')
-    s = PlaySim(m, t, difficulty, '')
+    s, _, _ = play_sim(m, t, difficulty, '')
     s.events = sorted(events, key=lambda e: e[0])
     return s.run(until)
 

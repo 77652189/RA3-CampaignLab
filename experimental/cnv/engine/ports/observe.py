@@ -13,7 +13,9 @@ Three groups and an internal door:
   `ending()`, `money()`, `income()`;
 - internal (the simulator's own bookkeeping, which a game adapter does not have): `state(thing)` (every field a
   thing records, its modules' STATE and Body.FORWARDS by their old names), `report(name)` (log, used, unknown, ...),
-  `log_since(n)`, `gaps()`; and the taps a recorder hangs on the loop (`on_frame`, `on_tick`, `scripts`).
+  `log_since(n)`, `gaps()`, the mission's data (`mission()`, `model()`), the run's names and presentation (`point`,
+  `text`, `label`, `who`, `input`, `late_captions`, `ending_line`); and the taps a recorder hangs on the loop
+  (`on_frame`, `on_tick`, `on_act`, `on_sample`, `on_happen`, `scripts`).
 
 Values are the world's own objects, not copies (a record reads every frame): a reader must not change them."""
 from engine.kernel import module as kernel_module
@@ -108,6 +110,77 @@ class Observe:
     def gaps(self):
         """(kind, name) -> how many times the run met what the simulator does not model."""
         return {k: v.get('n') for k, v in self._w.unmodeled.items()}
+
+    def mission(self):
+        """The mission as written (parts.Mission: its map's SITES / BORDERS, cast, objectives) -- data, not the run."""
+        return self._w.m
+
+    def model(self):
+        """The mission as compiled (strings, subtitles, scripts, units) -- data, not the run."""
+        return self._w.mm
+
+    def input(self):
+        """Whether the player's input is on (DISABLE_INPUT / ENABLE_INPUT)."""
+        return self._w.input
+
+    # --- internal: the run's names and its presentation records (simshow, the UI)
+    def point(self, name):
+        """Where a name is: a waypoint, an area's middle, a site, a mark, a named thing, '@x,y'; None if nowhere."""
+        return self._w.point(name)
+
+    def text(self, key):
+        """A string key's text (the mission's string table; the key itself if it has none)."""
+        return self._w.text(key)
+
+    def label(self, thing):
+        """A thing's name for a reader: its cast role, else its name, else its template."""
+        return self._w.label(thing)
+
+    def who(self, player):
+        """A player's name for a reader: 玩家 / 敌人 / its side."""
+        return self._w.who(player)
+
+    def late_captions(self):
+        return self._w.late_captions()
+
+    def ending_line(self):
+        return self._w.ending_line()
+
+    def on_act(self, before=None, after=None):
+        """Call before(name, args, script) / after(name, args, script) around each action the world carries out
+        (Sim.act: the script executor's and a script event's). A tap hung later runs outside one hung earlier."""
+        w = self._w
+        inner = w.act
+
+        def act(name, a, script):
+            if before is not None:
+                before(name, a, script)
+            r = inner(name, a, script)
+            if after is not None:
+                after(name, a, script)
+            return r
+        w.act = act
+
+    def on_sample(self, fn):
+        """Call fn() after each whole second's sample of the loop."""
+        w = self._w
+        inner = w.sample
+
+        def sample():
+            r = inner()
+            fn()
+            return r
+        w.sample = sample
+
+    def on_happen(self, fn):
+        """Call fn(event) before each script event (the player's orders, Sim.events) is carried out."""
+        w = self._w
+        inner = w.happen
+
+        def happen(e):
+            fn(e)
+            return inner(e)
+        w.happen = happen
 
     def on_frame(self, fn):
         """Call fn(frame) before each of the engine model's script steps (nothing without the model)."""

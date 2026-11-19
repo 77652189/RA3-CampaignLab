@@ -220,7 +220,7 @@ def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
 
 
 def test_a4_show_run_reads_the_presentation_and_changes_no_rule(a4_run, lib):
-    """--compare plays on simshow.ShowSim (sim.Sim plus presentation records): rep['world']['show'] is the problems a
+    """--compare plays with simshow.Show on the run (presentation records on the port's taps): rep['world']['show'] is the problems a
     player would see (readable lines), and the run itself is the same as the plain one (same ending, same moment)."""
     rep, w = a4_run
     shown, _ = simproxy.play('a4', label='看得见', lib=lib, show=True)

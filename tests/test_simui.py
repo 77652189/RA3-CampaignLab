@@ -43,7 +43,7 @@ def drive(session, script_lines, until=sim.UNTIL):
         while timed and timed[0][0] < s.t + sim.DT - 1e-9:
             assert session.command({'verb': 'line', 'text': timed.pop(0)[1]}) == (True, '')
         session.tick()
-    return s
+    return session
 
 
 @pytest.fixture(scope='module')
@@ -54,14 +54,14 @@ def a4_ui():
 def test_a4_play_through_the_page_matches_simulate(a4_ui):
     ref = sim.simulate('a4', '', A4)
     assert ref.ending is not None
-    assert game.key_times(a4_ui) == game.key_times(ref)
-    assert a4_ui.ending == ref.ending
-    assert {f: v for f, v in a4_ui.flags.items() if 'Phase' in f} == {f: v for f, v in ref.flags.items() if 'Phase' in f}
+    assert game.key_times(a4_ui.s) == game.key_times(ref)
+    assert a4_ui.s.ending == ref.ending
+    assert {f: v for f, v in a4_ui.s.flags.items() if 'Phase' in f} == {f: v for f, v in ref.flags.items() if 'Phase' in f}
 
 
 def test_the_replay_record_makes_the_same_run(a4_ui):
-    again = game.replay('a4', list(a4_ui.happened))
-    assert game.key_times(again) == game.key_times(a4_ui)
+    again = game.replay('a4', list(a4_ui.rec.happened))
+    assert game.key_times(again) == game.key_times(a4_ui.s)
 
 
 def clicks_session():
@@ -98,16 +98,16 @@ def snapshot(s):
 def test_clicks_replay_to_the_same_run():
     se = clicks_session()
     s = se.s
-    assert any(e[1] == '放' and e[4].startswith('@') for e in s.happened)
+    assert any(e[1] == '放' and e[4].startswith('@') for e in se.rec.happened)
     assert any(b.template == 'CNV_A4IceWall' or b.template == 'CNV_A4IceSeed' for b in s.bodies.values()
                if b.made_at > 0)                            # the clicked cast made its wall
-    again = game.replay('a4', list(s.happened), until=s.t - sim.DT)
+    again = game.replay('a4', list(se.rec.happened), until=s.t - sim.DT)
     assert round(again.t, 3) == round(s.t, 3)
     assert snapshot(again) == snapshot(s)
     import build                                            # the plain simulator, no UI class at all, the same
     m, t, _ = build.resolve('a4', '')
     plain = sim.Sim(m, t, 'normal', '')
-    plain.events = sorted(s.happened, key=lambda e: e[0])
+    plain.events = sorted(se.rec.happened, key=lambda e: e[0])
     plain.run(s.t - sim.DT)
     assert snapshot(plain) == snapshot(s)
 
@@ -126,7 +126,7 @@ def test_a_stage_jump_hands_over_at_its_flag():
     s = se.s
     assert s.flags.get('CNV_A4_Phase_2') == 1 and s.ending is None
     assert not s.events and not s.anchored                  # the play script's orders still to come are dropped
-    assert s.happened                                       # what it did on the way is in the record
+    assert se.rec.happened                                  # what it did on the way is in the record
 
 
 def test_the_state_serialises():
@@ -147,16 +147,16 @@ def test_two_lines_at_one_moment_are_heard_one_after_another():
     s = se.s
     s.act('PLAY_SOUND_EFFECT', ['CNV_A4_001'], None)
     s.act('PLAY_SOUND_EFFECT', ['CNV_A4_002'], None)
-    a, b = s.voices[-2:]
+    a, b = se.rec.voices[-2:]
     assert a.t == a.asked == b.asked
     assert b.t == pytest.approx(a.t + a.secs)                   # the second waits for the first to play out
     if game.find_voice('CNV_A4_001'):
         assert a.secs == pytest.approx(game.recording_seconds(game.find_voice('CNV_A4_001')))
-    assert game.voice_waits(s.voices[-2:]) == [(b.asked, b.t, 'CNV_A4_002', 'CNV_A4_001')]
+    assert game.voice_waits(se.rec.voices[-2:]) == [(b.asked, b.t, 'CNV_A4_002', 'CNV_A4_001')]
 
 
 def test_a4_voice_channel_never_holds_two_lines(a4_ui):
-    v = a4_ui.voices
+    v = a4_ui.rec.voices
     assert len(v) > 20
     for a, b in zip(v, v[1:]):
         assert b.t >= a.t + a.secs - 1e-6, (a.key, b.key)       # at any moment at most one line is heard
@@ -165,7 +165,7 @@ def test_a4_voice_channel_never_holds_two_lines(a4_ui):
 def test_a4_full_play_holds_no_line_back(a4_ui):
     """The level itself: the A4 full play's lines, at their recordings' real lengths, never wait for one another. A
     line held back here is heard late in the game as well (the engine queues dialogue): the level line's to fix."""
-    assert game.voice_waits(a4_ui.voices) == []
+    assert game.voice_waits(a4_ui.rec.voices) == []
 
 
 def test_the_page_gets_a_line_when_the_run_reaches_its_start():
@@ -178,7 +178,7 @@ def test_the_page_gets_a_line_when_the_run_reaches_its_start():
     s.act('PLAY_SOUND_EFFECT', ['CNV_A4_002'], None)
     first = se.state()['voices']
     assert [x['key'] for x in first] == ['CNV_A4_001']          # the second is not handed over before its start
-    se.run_to(s.voices[-1].t + 0.1)
+    se.run_to(se.rec.voices[-1].t + 0.1)
     assert 'CNV_A4_002' in [x['key'] for x in se.state(first[-1]['i'] + 1)['voices']]
     se.restart()
     assert se.state()['run'] == run + 1                         # the page drops what it is playing

@@ -181,11 +181,11 @@ class SimWorld:
         self.p, self.pw = p, p['world']
         self.level = level
         m, t, _ = build.resolve(level, check)
-        if show:        # simshow.ShowSim is sim.Sim plus presentation records (it changes no rule): what the player saw
+        self.sim = sim.Sim(m, t, difficulty, script)
+        self.show = None
+        if show:        # simshow.Show: presentation records on the run's taps (it changes no rule): what the player saw
             import simshow
-            self.sim = simshow.ShowSim(m, t, difficulty, script)
-        else:
-            self.sim = sim.Sim(m, t, difficulty, script)
+            self.show = simshow.attach(self.sim)
         # every read of the Sim outside this method goes through the world API and the loan (PEERS); self.sim stays
         # for play() and the tests
         self.world, self.peers = self.sim, Peers(self.sim)
@@ -458,7 +458,7 @@ def play(level='a4', style=None, until=UNTIL, every=15, check='', script='', dif
                     'guessed': sorted(w.sim.guessed)[:20]}
     if show:
         import simshow
-        rep['world']['show'] = simshow.problems(w.sim)
+        rep['world']['show'] = simshow.problems(w.show)
     return rep, w
 
 
