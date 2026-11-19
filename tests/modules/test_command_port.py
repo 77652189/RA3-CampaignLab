@@ -117,6 +117,18 @@ def test_do_gives_the_world_what_the_order_call_gives(kind):
     assert _states(port_world)['a'] != _states(idle)['a']          # the order did something
 
 
+def test_a_script_line_order_is_the_runs_port_do():
+    """Sim.happen gives a line's player order through the run's one port (R3 13c-2): the record holds it, done, as the
+    player's; a god's-hand line (血量) is no command and leaves no record."""
+    s, _ = _pair()
+    s.happen((0.0, '走', 'a', '@400,300'))
+    s.happen((0.0, '血量', 'b', 0.5))
+    s.happen((0.0, '生产', APOC, 'nowhere'))
+    assert [(r[1], r[2], r[3]) for r in s.commands.issued()] == [
+        (Command('move', units=('a',), place='@400,300'), True, 'done'),
+        (Command('build', template=APOC, target='nowhere'), False, '找不到工厂 nowhere')]
+
+
 def test_a_refused_build_says_why():
     s, _ = _pair()
     ok, why = Commands(s).do(Command('build', template=APOC, target='nowhere'))

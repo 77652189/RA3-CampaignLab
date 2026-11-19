@@ -34,7 +34,7 @@ import sim  # noqa: E402
 import simshow  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402  (key_times reads a finished run through it)
 from engine.ports import command as command_port  # noqa: E402  (the page's orders go through it)
-from engine.ports.command import Command, Commands  # noqa: E402
+from engine.ports.command import Command  # noqa: E402
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
 import labpaths  # noqa: E402
 
@@ -335,7 +335,7 @@ class Session:
         with self.lock:
             self.s, self.show, self.rec = play_sim(self.mission, self.test, self.difficulty, script)
             self.obs = self.show.obs
-            self.commands = Commands(self.s)            # the player's orders go through the command port
+            self.commands = self.s.commands             # the player's orders go through the run's command port
             self.picture = Picture(self.obs, self.show, self.rec, sim.mmss)
             self.run = getattr(self, 'run', 0) + 1      # a new run (restart, stage jump): the page drops its voice
             self.stages = phase_flags(self.obs.model())

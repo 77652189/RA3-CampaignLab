@@ -16,6 +16,7 @@ Givers give orders through the command port (engine/ports/command.py; R3 13b): a
 order of the world's, touches no script event queue and writes no field an order sets, outside its harness."""
 import ast
 import importlib.util
+import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -248,11 +249,13 @@ def reader_breaks(src, harness, allowed, *, data_s=()):
 
 
 def part_src(path, name):
-    """The source of a top-level class or function of a file."""
+    """The source of a top-level class or function of a file, or of a class's method ('Class.method'), dedented."""
     src = path.read_text(encoding='utf-8')
-    node = next(n for n in ast.parse(src).body
-                if isinstance(n, (ast.ClassDef, ast.FunctionDef)) and n.name == name)
-    return ast.get_source_segment(src, node)
+    body = ast.parse(src).body
+    for part in name.split('.'):
+        node = next(n for n in body if isinstance(n, (ast.ClassDef, ast.FunctionDef)) and n.name == part)
+        body = node.body
+    return textwrap.dedent(ast.get_source_segment(src, node, padded=True))
 
 
 def test_the_other_readers_read_only_the_port():
@@ -402,8 +405,10 @@ def giver_breaks(src, harness):
 
 
 # Givers that are one class of a bigger file (R3 13c): simui's Session -- the page's clicks and typed lines are posted
-# through the port, a stage jump's hand-over drops the queue through it (game.replay, the harness, feeds a fresh run).
-GIVER_PARTS = [(GAME, 'Session')]
+# through the port, a stage jump's hand-over drops the queue through it (game.replay, the harness, feeds a fresh run);
+# Sim.happen -- a script line's player order (派 走 攻击 放 占领 X 进 Y 生产 买) is the port's do; what it still does
+# itself is the god's hand (摧毁 删除 血量 打 one-name 占领 旗标 造), no order.
+GIVER_PARTS = [(GAME, 'Session'), (CNV / 'sim.py', 'Sim.happen')]
 
 
 def test_the_givers_give_through_the_command_port():
@@ -418,6 +423,12 @@ def test_planted_orders_in_a_giver_part_are_found():
     for old, new in (('self.commands.drop_pending()', 's.events.clear()'),
                      ('got = self.commands.post_line(text)', 'got = sim.parse_script(text)'),
                      ('self.commands.post(cmd, s.t)', 'self.s.order_move(cmd, cmd.place, True)')):
+        planted = src.replace(old, new)
+        assert planted != src and giver_breaks(planted, set())
+    src = part_src(CNV / 'sim.py', 'Sim.happen')
+    for old, new in (('        self.commands.do(cmd)\n', '        self.order_move(rest[0], rest[1], True)\n'),
+                     ("    elif verb == '旗标':\n", "    elif verb == '停':\n        b.goal = None\n"
+                                                   "    elif verb == '旗标':\n")):
         planted = src.replace(old, new)
         assert planted != src and giver_breaks(planted, set())
 

@@ -14,8 +14,8 @@ a unit's AI command interface there and then):
 `post_line(line)` queues a whole script line as it is (a play replayed by a test player may hold the god's-hand
 verbs too -- 造, 删除, 血量 ...: those are not commands and go in as the script events they are, unlogged).
 
-The port holds no rules: `do` routes each kind to the world's own order call, as `Sim.happen` does for the script
-line of it. Kinds with no route yet (`check` says so) get theirs when their giver moves to the port (R3 13d-13f).
+The port holds no rules: `do` routes each kind to the world's own order call (`Sim.happen` gives a script line's
+order through `do` too: one port per run, `Sim.commands`). Kinds with no route yet (`check` says so) get theirs when their giver moves to the port (R3 13d-13f).
 `issued()` is the record of what was posted and done -- written, never read in a run (nothing in a game decides by
 it; so a snapshot does not hold it: R2 13a)."""
 import dataclasses
@@ -177,7 +177,7 @@ class Commands:
             w.events.sort(key=lambda x: x[0])
 
     def do(self, cmd):
-        """Now: the kind's order call, as `Sim.happen` runs the script line of it. (ok, why)."""
+        """Now: the kind's order call (a script line's order, run by `Sim.happen`, comes here). (ok, why)."""
         ok, why = self.check(cmd)
         if ok:
             ok, why = getattr(self, '_' + cmd.kind)(cmd)
@@ -193,7 +193,7 @@ class Commands:
         waiting on a flag): what a snapshot holds of the queue."""
         return tuple(self._w.events) + tuple(self._w.anchored)
 
-    # --- the routes (each as Sim.happen's verb; R3 13c turns happen's command verbs into `do`)
+    # --- the routes (the script verbs' order calls; Sim.happen runs its order verbs through `do` since R3 13c-2)
     def _units(self, cmd):
         return [b for who in cmd.units for b in self._w.pick(who)]
 

@@ -84,6 +84,7 @@ import simunits  # noqa: E402
 import simlevel  # noqa: E402
 from engine.kernel import factory as kernel_factory, interfaces as kernel_interfaces  # noqa: E402
 from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
+from engine.ports import command as command_port  # noqa: E402  (happen gives the player's orders through it)
 import engine.modules  # noqa: E402,F401  (imports, so registers, every module file in it)
 import simloop  # noqa: E402
 import simworld  # noqa: E402
@@ -1009,6 +1010,7 @@ class Sim:
         self.sweeps = simsweep.Sweeps(self, simsweep.Peers(self))  # ActivateLinearDamageNugget + LinearDamageUpdate: the lines walking
         self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
         self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
+        self.commands = command_port.Commands(self)     # the command port: one per run (happen's orders, the givers')
         self.areas = Areas(self.mm.areas)
         # the map's hot spots (MissionHotSpots): name -> on; off at the start, only SET_..._ACTIVENESS (and the player's
         # popup, not simulated) turns one on or off (d115_script_semantics.md 4). The name as written: bench 11-13
@@ -2218,20 +2220,10 @@ class Sim:
     def happen(self, e):
         t, verb, *rest = e
         self.note('剧本', ' '.join([verb] + [str(x) for x in rest]))
-        if verb == '派':
-            who, where = rest
-            for b in self.pick(who):                # the player's units go attack-moving, fighting on the way: one
-                self.order_move(b, where, True, on_grid=True)  # unit's order as ATTACK_MOVE_NAMED_UNIT_TO (its goal off held spots)
-        elif verb == '走':
-            who, where = rest
-            self.order_group(self.pick(who), where, False, on_grid=True)  # as MOVE_NAMED_UNIT_TO; several at once, a group move
-        elif verb == '攻击':
-            who, target = rest                      # an attack order on a thing (NAMED_ATTACK_NAMED): units take no building by themselves
-            targets = self.pick(target)
-            if targets:
-                for b in self.pick(who):
-                    self.order_attack(b, targets[0].name)
-        elif verb in ('摧毁', '删除'):
+        cmd = command_port.command(e, 'player')     # 派 走 攻击 放 占领 X 进 Y 生产 买: the player's orders, given
+        if cmd is not None:                         # through the command port (its routes are these verbs' order calls)
+            self.commands.do(cmd)
+        elif verb in ('摧毁', '删除'):              # the rest: the god's hand (a test's shortcuts, not orders)
             for b in self.pick(rest[0]):
                 if verb == '摧毁' and 'UNATTACKABLE' in b.status:
                     self.note('剧本', f'{self.label(b)} 打不动（UNATTACKABLE），没摧毁')
@@ -2242,44 +2234,14 @@ class Sim:
             for b in self.pick(rest[0]):
                 b.health = float(rest[1])
                 b.set_last_damage(self.human, None)
-        elif verb == '买':                          # the player buys a protocol (simtech.Book.buy: points, not locked)
-            book = self.books.get(self.human)
-            if book and book.buy(rest[0], self.frame_now()):
-                self.note('协议', f'玩家买了 {rest[0]}（剩 {book.points} 点）')
-                self.change()
-            else:
-                self.note('剧本', f'买不了 {rest[0]}' + (f'（{book.points} 点）' if book else '（玩家没有协议）'))
         elif verb == '打':
             for b in self.pick(rest[0]):
                 b.set_last_damage(self.human, None)
-        elif verb == '放':
-            who, ability, where = rest              # a ground power of the player's (order_power): `放 engineer freeze 在 inside 1`
-            p = self.point(where)
-            for b in self.pick(who):
-                u = next((u for u in self.mm.units if u.id == b.template), None)
-                if p is None:
-                    self.note('剧本', f'找不到地点 {where}')
-                else:
-                    self.order_power(b, (u.abilities.get(ability) if u else None) or ability, p)
-        elif verb == '占领' and len(rest) == 2:
-            targets = self.pick(rest[1])            # the player's order: the engineer goes and takes it (capture_due)
-            if targets:
-                for b in self.pick(rest[0]):
-                    self.order_capture(b, targets[0].name)
-        elif verb == '占领':
+        elif verb == '占领':                        # one name: it is the player's now (占领 X 进 Y is an order)
             for b in self.pick(rest[0]):
                 b.owner = self.human
         elif verb == '旗标':
             self.flags[rest[0]] = int(rest[1])
-        elif verb == '生产':                         # the player's build order at a named factory: paid as it builds, the
-            what, where = rest                      # build time, out at the factory's door (order_build / produce_due)
-            tmpl = next((u.id for u in self.mm.units if u.id == what), None) or \
-                next((r.template for k, r in self.m.cast.items() if k == what), what)
-            f = next(iter(self.pick(where)), None)
-            if f is None:
-                self.note('剧本', f'找不到工厂 {where}')
-            elif not self.order_build(self.human, tmpl, factory=f):
-                self.note('剧本', f'{self.label(f)} 现在造不了 {tmpl}（不是玩家的、不造它、科技或禁造）')
         elif verb == '造':
             what, where, angle = rest
             tmpl = next((u.id for u in self.mm.units if u.id == what), None) or \

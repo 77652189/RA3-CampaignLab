@@ -275,11 +275,10 @@ def finish(obs, level, name, seed, lines, skipped, brief=None):
 
 def attach(world, brief):
     """(View, Orders) of a world about to run: the View reads it through the observation port, the Orders give their
-    commands through the command port."""
+    commands through the world's command port (one per run: its record holds every command posted and done)."""
     from engine.ports.observe import Observe
-    from engine.ports.command import Commands
     view = View(Observe(world), brief, sim.CIV)
-    return view, Orders(view, Commands(world), sim.seconds)
+    return view, Orders(view, world.commands, sim.seconds)
 
 
 def tick(s):
