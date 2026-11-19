@@ -182,9 +182,27 @@ def _plain_dir(path):
     return True
 
 
+def missing_recorder(root, rev):
+    """The recorder files (RECORDER_RELS, `/`-separated) that `rev` does not have. A base before the observation port
+    (R3 12b, 6755aa55) has no engine/ports/observe.py: today's simrecord reads the world only through it, and a port
+    copied onto a world that predates it is not the base's own simulator -- such a base cannot be recorded."""
+    out = []
+    for rel in RECORDER_RELS:
+        rel = rel.replace(os.sep, '/')
+        if subprocess.run(['git', '-C', root, 'cat-file', '-e', f'{rev}:{rel}'], capture_output=True).returncode:
+            out.append(rel)
+    return out
+
+
 def prepare_tree(rev, root=ROOT, tree=TREE):
     """The base worktree at `rev` with this checkout's recorder copied in. Refuses a tree holding a work\\ of its own
-    (a junction there is how work\\ was emptied, 11-10): the golden tree never has one."""
+    (a junction there is how work\\ was emptied, 11-10): the golden tree never has one; and a base without the
+    recorder's files (missing_recorder: before the observation port), before touching the tree."""
+    missing = missing_recorder(root, rev)
+    if missing:
+        raise RuntimeError(f'the base {rev[:10]} predates the observation port (it has no {", ".join(missing)}): '
+                           'the recorder reads the world through it and cannot record that base; '
+                           'set GOLDEN_BASE to a commit at or after 6755aa55')
     if os.path.exists(os.path.join(tree, 'work')) and not labpaths.only_logs(os.path.join(tree, 'work')):
         raise RuntimeError(f'{tree} has a work\\ of its own: the golden tree must not (remove it by hand, AGENTS.md)')
     if not os.path.exists(os.path.join(tree, '.git')):

@@ -123,6 +123,18 @@ def test_prune_keeps_the_newest_and_the_spared_and_nothing_else_of_others(tmp_pa
     assert sorted(os.listdir(cache)) == ['c-1', 'c-4', 'c-5', 'other']
 
 
+def test_a_base_before_the_observation_port_is_refused_before_the_tree_is_touched(repo, tmp_path):
+    r, first, _ = repo
+    port = {rel.replace(os.sep, '/'): 'x = 1\n' for rel in golden.RECORDER_RELS}
+    assert sorted(golden.missing_recorder(str(r), first)) == sorted(port)
+    tree = tmp_path / 'golden-tree'
+    with pytest.raises(RuntimeError, match='predates the observation port'):
+        golden.prepare_tree(first, str(r), str(tree))
+    assert not tree.exists()
+    later = _commit(r, 'three', port)
+    assert golden.missing_recorder(str(r), later) == []
+
+
 def test_complete_counts_a_failed_task_as_done(tmp_path):
     (tmp_path / 'heal_a.gz').write_text('x')
     assert not golden.complete(str(tmp_path), ['heal_a', 'ai_open'])
