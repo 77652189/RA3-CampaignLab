@@ -40,11 +40,13 @@ def set_counter_to_counter(sim, name, a, script):
 
 
 def counter_math_counter(sim, name, a, script):
-    # retail: 0 adds (a total of per-player kills), 1 takes away (what is
-    dst, op, src = a                        # left of the transports spawned); other codes were never seen used
-    if op not in (0, 1):
+    # retail uses 0 adds (a total of per-player kills) and 1 takes away (what is left of the transports spawned);
+    # bench engine_scripts3 math / input (11-09): 2 multiplies, 3 divides toward zero (13 / 4 -> 3, -13 / 4 -> -3),
+    dst, op, src = a                        # no floor; another code leaves the counter as it is (as the model)
+    c, other = sim.counters.get(dst, 0), sim.counters.get(src, 0)
+    if op not in (0, 1, 2, 3):
         sim.used.add(f'COUNTER_MATH_COUNTER code {op}')
-    sim.counters[dst] = sim.counters.get(dst, 0) + (-1 if op == 1 else 1) * sim.counters.get(src, 0)
+    sim.counters[dst] = {0: c + other, 1: c - other, 2: c * other, 3: int(c / other) if other else c}.get(op, c)
 
 
 def increment_counter(sim, name, a, script):
