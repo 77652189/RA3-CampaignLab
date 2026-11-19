@@ -9,6 +9,8 @@ import sys
 import re
 import threading
 import time
+from queue import Queue
+from types import SimpleNamespace
 
 import pytest
 
@@ -18,20 +20,30 @@ _spec = importlib.util.spec_from_file_location('_cpupool_under_test',
 cp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cp)
 
+WAIT_LIMIT = 60  # deadlock guard for synchronization
+
 
 def pool(tmp_path, tokens=3):
     return cp.Pool(str(tmp_path / 'cpu'), tokens, poll=0.05)
 
 
-def hold_in_thread(p, n, release, held, **kw):
-    """A holder in a thread (same pid: tokens are files, the pid only says whether the holder lives)."""
-    def body():
-        with cp.hold(n, 'other', pool=p, env={}, say=lambda m: None, **kw) as got:
-            held.append(got)
-            release.wait(10)
-    t = threading.Thread(target=body)
-    t.start()
-    return t
+def wait_until(condition, description):
+    deadline = time.monotonic() + WAIT_LIMIT
+    while not condition():
+        assert time.monotonic() < deadline, description
+        time.sleep(0.01)
+
+
+def unexpected_queue(*args, **kwargs):
+    pytest.fail('this request must not enter the queue')
+
+
+def on_wait(monkeypatch, check):
+    """Run the check at the pool's retry boundary, after one attempt to acquire."""
+    def sleep(_):
+        check()
+
+    monkeypatch.setattr(cp, 'time', SimpleNamespace(monotonic=time.monotonic, time_ns=time.time_ns, sleep=sleep))
 
 
 def test_size_leaves_the_reserve():
@@ -106,20 +118,19 @@ def test_one_request_takes_at_most_two(tmp_path):
         assert got == 6                                          # the whole pool only by asking for it
 
 
-def test_take_is_all_or_none_and_frees(tmp_path):
+def test_take_is_all_or_none_and_frees(tmp_path, monkeypatch):
     p = pool(tmp_path)
     a = p.try_take(2, 'a')
     assert len(a) == 2 and p.free() == 1
-    got = []
-    t = threading.Thread(target=lambda: got.append(p.take(2, 'b')))
-    t.start()
-    time.sleep(0.3)
-    assert not got and p.spare() == 1         # one free is not enough for two: it waits, holding none
-    assert p.free() == 0                      # and a new job would queue behind it
-    p.release(a)
-    t.join(5)
-    assert len(got[0]) == 2 and p.free() == 1
-    p.release(got[0])
+    def waiting():
+        assert p.spare() == 1  # one free is not enough for two: it waits, holding none
+        assert p.free() == 0   # and a new job would queue behind it
+        p.release(a)
+
+    on_wait(monkeypatch, waiting)
+    got = p.take(2, 'b')
+    assert len(got) == 2 and p.free() == 1
+    p.release(got)
     assert p.free() == 3
 
 
@@ -146,20 +157,20 @@ def test_a_dead_holders_token_is_free(tmp_path):
     assert p.free() == 3 and not os.path.exists(p.path(1))
 
 
-def test_hold_waits_its_turn_and_says_so(tmp_path):
+def test_hold_waits_its_turn_and_says_so(tmp_path, monkeypatch):
     p = pool(tmp_path, tokens=2)
-    release, held, said = threading.Event(), [], []
-    t = hold_in_thread(p, 2, release, held)
-    while not held:
-        time.sleep(0.01)
-    threading.Timer(0.4, release.set).start()
-    t0 = time.monotonic()
+    held = p.try_take(2, 'other')
+    said = []
+
+    def waiting():
+        assert len(p.holders()) == 2 and p.spare() == 0
+        p.release(held)
+
+    on_wait(monkeypatch, waiting)
     env = {}
     with cp.hold(1, 'me', pool=p, env=env, say=said.append) as got:
-        waited = time.monotonic() - t0
         assert got == 1 and env[cp.HELD_ENV] == '1'
-    t.join(5)
-    assert waited >= 0.3 and said and 'waits for 1 of 2' in said[0] and 'other' in said[0]
+    assert said and 'waits for 1 of 2' in said[0] and 'other' in said[0]
     assert 'got 1 CPU tokens after' in said[-1]          # a log shows the wait ended (R 11-18 could not tell)
     assert cp.HELD_ENV not in env and p.free() == 2      # released, the environment as it was
 
@@ -196,19 +207,16 @@ def test_a_long_wait_says_again(tmp_path, monkeypatch):
     assert said[-1] == 'cpupool: me got 1 CPU tokens after 800 s'
 
 
-def test_inside_a_holder_it_never_waits(tmp_path):
+def test_inside_a_holder_it_never_waits(tmp_path, monkeypatch):
     p = pool(tmp_path, tokens=2)
-    release, held = threading.Event(), []
-    t = hold_in_thread(p, 2, release, held)
-    while not held:
-        time.sleep(0.01)
+    held = p.try_take(2, 'other')
+    monkeypatch.setattr(p, '_enqueue', unexpected_queue)
     env = {cp.HELD_ENV: '1'}
-    t0 = time.monotonic()
     with cp.hold(6, 'golden', pool=p, env=env, say=lambda m: None) as got:
-        assert got == 1 and time.monotonic() - t0 < 0.2    # pool full: the inherited share, at once
-    release.set()
-    t.join(5)
+        assert got == 1 and len(p.holders()) == 2    # pool full: the inherited share
+    p.release(held)
     p = pool(tmp_path, tokens=4)
+    monkeypatch.setattr(p, '_enqueue', unexpected_queue)
     with cp.hold(6, 'golden', pool=p, env=env, say=lambda m: None) as got:
         # its share of one (held by its parent; here nobody) and what is free, up to two all told (T5c)
         assert got == 2 and env[cp.HELD_ENV] == '2' and p.free() == 3
@@ -217,142 +225,218 @@ def test_inside_a_holder_it_never_waits(tmp_path):
     assert env[cp.HELD_ENV] == '1' and p.free() == 4
 
 
-def test_inside_a_holder_it_never_jumps_the_queue(tmp_path):
+def test_inside_a_holder_it_never_jumps_the_queue(tmp_path, monkeypatch):
     p = pool(tmp_path, tokens=3)
-    release, held = threading.Event(), []
-    t = hold_in_thread(p, 2, release, held)
-    while not held:
-        time.sleep(0.01)
-    waiter = threading.Thread(target=lambda: p.release(p.take(2, 'queued')))
-    waiter.start()
-    while not p.queue():
-        time.sleep(0.01)
-    with cp.hold(2, 'golden', pool=p, env={cp.HELD_ENV: '1'}, say=lambda m: None) as got:
-        assert got == 1 and len(p.holders()) == 2         # one is free, but a job waits for it: no widening
-    release.set()
-    t.join(5)
-    waiter.join(5)
+    held = p.try_take(2, 'other')
+
+    def waiting():
+        assert p.spare() == 1
+        with monkeypatch.context() as nested:
+            nested.setattr(p, '_enqueue', unexpected_queue)
+            with cp.hold(2, 'golden', pool=p, env={cp.HELD_ENV: '1'}, say=lambda m: None) as got:
+                assert got == 1 and len(p.holders()) == 2  # one is free, but a job waits for it: no widening
+        p.release(held)
+
+    on_wait(monkeypatch, waiting)
+    p.release(p.take(2, 'queued'))
+    assert not p.holders()
 
 
-def test_exclusive_stops_new_jobs_and_gets_everything(tmp_path):
+def test_exclusive_stops_new_jobs_and_gets_everything(tmp_path, monkeypatch):
     p = pool(tmp_path, tokens=3)
-    release, held = threading.Event(), []
-    t = hold_in_thread(p, 1, release, held)
-    while not held:
-        time.sleep(0.01)
-    got, said = [], []
-    x = threading.Thread(target=lambda: got.append(p.take_all('timing', said.append)))
-    x.start()
-    time.sleep(0.3)
-    assert not got and [r['owner'] for _, r in p.queue()] == ['timing'] and p.pending()['owner'] == 'timing'
-    assert p.free() == 0               # a new job sees nothing free while the timing waits
-    assert len(p.holders()) == 3       # it already holds the two that were free and waits for the third
-    release.set()
-    t.join(5)
-    x.join(5)
-    assert len(got[0]) == 3 and not p.queue() and p.pending() is None
+    held = p.try_take(1, 'other')
+    said = []
+
+    def waiting():
+        assert [r['owner'] for _, r in p.queue()] == ['timing'] and p.pending()['owner'] == 'timing'
+        assert p.free() == 0  # a new job sees nothing free while the timing waits
+        assert sorted(r['owner'] for r in p.holders().values()) == ['other', 'timing', 'timing']
+        p.release(held)
+
+    on_wait(monkeypatch, waiting)
+    got = p.take_all('timing', say=said.append)
+    assert len(got) == 3 and not p.queue() and p.pending() is None
     assert any('whole pool' in m for m in said)
-    p.release(got[0])
+    p.release(got)
 
 
-def test_first_come_first_served_round_an_exclusive_job(tmp_path):
+def test_first_come_first_served_round_an_exclusive_job(tmp_path, monkeypatch):
     """T5c 1, 2, 4: an exclusive job queues like any; the one before it gets served first, the one after it waits
     for it although a token is free; a waiter says its place and who is ahead."""
     p = pool(tmp_path, tokens=3)
     order, says = [], {}
+    progress = Queue()
+    retry = {name: threading.Semaphore(0) for name in ('S1', 'X', 'S2')}
+    release = {name: threading.Event() for name in retry}
+    stop = threading.Event()
+    threads = []
 
-    def job(name, n=1, exclusive=False, hold_for=None):
+    class StopJob(Exception):
+        pass
+
+    def pause_after_poll():
+        name = threading.current_thread().name
+        progress.put((name, 'waiting'))
+        assert retry[name].acquire(timeout=WAIT_LIMIT), name
+        if stop.is_set():
+            raise StopJob
+
+    on_wait(monkeypatch, pause_after_poll)
+
+    def job(name, exclusive=False):
         def body():
             says[name] = []
-            with cp.hold(n, name, exclusive=exclusive, pool=p, env={}, say=says[name].append):
-                order.append(name)
-                hold_for.wait(10)
-        th = threading.Thread(target=body)
+            try:
+                with cp.hold(1, name, exclusive=exclusive, pool=p, env={}, say=says[name].append):
+                    order.append(name)
+                    progress.put((name, 'acquired'))
+                    assert release[name].wait(WAIT_LIMIT), name
+            except StopJob:
+                return
+            progress.put((name, 'released'))
+
+        th = threading.Thread(target=body, name=name, daemon=True)
+        threads.append(th)
         th.start()
-        return th
 
-    def queued(k):
-        deadline = time.monotonic() + 5
-        while len(p.queue()) < k:
-            assert time.monotonic() < deadline
-            time.sleep(0.01)
+    def expect(name, state):
+        assert progress.get(timeout=WAIT_LIMIT) == (name, state)
 
-    keep_a, keep_b, keep_s1, keep_x, keep_s2 = (threading.Event() for _ in range(5))
-    ths = [job('A', 2, hold_for=keep_a), job('B', 1, hold_for=keep_b)]
-    while len(order) < 2:
-        time.sleep(0.01)
-    ths.append(job('S1', hold_for=keep_s1))
-    queued(1)
-    ths.append(job('X', exclusive=True, hold_for=keep_x))
-    queued(2)
-    ths.append(job('S2', hold_for=keep_s2))
-    queued(3)
-    time.sleep(0.3)
-    place = [m for m in says['S2'] if 'waits' in m][-1]
-    assert 'place 3 in the queue' in place and 'S1 (pid' in place and 'X (pid' in place and 'all (exclusive)' in place
-    keep_b.set()                       # one token back: S1 came first
-    time.sleep(0.3)
-    assert order == ['A', 'B', 'S1']
-    keep_a.set()                       # two more back: X takes them, still waits for S1's; S2 does not pass it
-    time.sleep(0.3)
-    assert order == ['A', 'B', 'S1'] and len(p.holders()) == 3 and p.spare() == 0
-    keep_s1.set()
-    time.sleep(0.3)
-    assert order == ['A', 'B', 'S1', 'X']
-    keep_x.set()
-    time.sleep(0.3)
-    assert order == ['A', 'B', 'S1', 'X', 'S2']
-    keep_s2.set()
-    for th in ths:
-        th.join(5)
+    a = p.try_take(2, 'A')
+    b = p.try_take(1, 'B')
+    assert len(a) == 2 and len(b) == 1
+    try:
+        job('S1')
+        expect('S1', 'waiting')
+        job('X', exclusive=True)
+        expect('X', 'waiting')
+        job('S2')
+        expect('S2', 'waiting')
+        place = says['S2'][-1]
+        assert 'place 3 in the queue' in place and 'S1 (pid' in place and 'X (pid' in place
+        assert 'all (exclusive)' in place
+
+        p.release(b)
+        retry['X'].release()           # even with one free, X cannot pass S1
+        expect('X', 'waiting')
+        assert p.spare() == 1
+        retry['S1'].release()
+        expect('S1', 'acquired')
+        p.release(a)
+        retry['S2'].release()          # S2 gets a chance to grab the two free tokens before X retries
+        expect('S2', 'waiting')
+        assert p.spare() == 2
+        retry['X'].release()
+        expect('X', 'waiting')
+        assert sorted(r['owner'] for r in p.holders().values()) == ['S1', 'X', 'X']
+        release['S1'].set()
+        expect('S1', 'released')
+        retry['X'].release()
+        expect('X', 'acquired')
+        release['X'].set()
+        expect('X', 'released')
+        retry['S2'].release()
+        expect('S2', 'acquired')
+        release['S2'].set()
+        expect('S2', 'released')
+    finally:
+        stop.set()
+        for event in release.values():
+            event.set()
+        for step in retry.values():
+            step.release()
+        for th in threads:
+            th.join(WAIT_LIMIT)
+    assert order == ['S1', 'X', 'S2']
     assert not p.queue() and not p.holders() and p.pending() is None
 
 
 HOG = r'''"""Takes the whole pool over and over, each release followed at once by the next exclusive take (the
 profile run that starved R's pytest 11-18), until the stop file appears."""
-import importlib.util, os, sys, time
+import importlib.util, sys, time
+from pathlib import Path
+
 spec = importlib.util.spec_from_file_location('cp_hog', sys.argv[1])
 cp = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cp)
-p = cp.Pool(sys.argv[2], int(sys.argv[3]), poll=0.05)
-while not os.path.exists(sys.argv[4]):
-    with cp.hold(1, 'hog', exclusive=True, pool=p, env={}, say=lambda m: None):
-        with open(sys.argv[5], 'a') as f:
+state = Path(sys.argv[2])
+stop, cycles = state / 'stop', state / 'cycles'
+requeued = state / 'hog-requeued'
+p = cp.Pool(str(state / 'cpu'), 3, poll=0.05)
+
+def wait_for(signal):
+    while not (signal.exists() or stop.exists()):
+        time.sleep(0.01)
+
+def say(message):
+    if 'waits for' in message and cycles.exists() and not requeued.exists():
+        requeued.touch()
+        wait_for(state / 'retry-hog')
+
+while not stop.exists():
+    with cp.hold(1, 'hog', exclusive=True, pool=p, env={}, say=say):
+        first = not cycles.exists()
+        with cycles.open('a') as f:
             f.write('x')
-        time.sleep(0.2)
+        if first:
+            wait_for(state / 'release-hog')
 '''
 
 
-def test_a_small_job_is_not_starved_by_one_exclusive_take_after_another(tmp_path):
+def test_a_small_job_is_not_starved_by_one_exclusive_take_after_another(tmp_path, monkeypatch):
     """T5c 3 (the cpupool before it: red -- the small job never gets in while the hog runs)."""
     (tmp_path / 'hog.py').write_text(HOG, encoding='utf-8')
-    folder, stop, cycles = tmp_path / 'cpu', tmp_path / 'stop', tmp_path / 'cycles'
-    hog = subprocess.Popen([sys.executable, str(tmp_path / 'hog.py'),
-                            os.path.join(ROOT, 'experimental', 'testbench', 'cpupool.py'), str(folder), '3', str(stop),
-                            str(cycles)])
-    got = []
+    stop, cycles, requeued = (tmp_path / name for name in ('stop', 'cycles', 'hog-requeued'))
+    queued, retry, acquired, release = (threading.Event() for _ in range(4))
     p = pool(tmp_path, tokens=3)
+
+    def pause_small():
+        assert not queued.is_set(), 'small still waits after the hog gave up its tokens'
+        queued.set()
+        assert retry.wait(WAIT_LIMIT), 'small was not told to retry'
+
+    on_wait(monkeypatch, pause_small)
+
+    def take_small():
+        with cp.hold(1, 'small', pool=p, env={}, say=lambda m: None):
+            acquired.set()
+            assert release.wait(WAIT_LIMIT), 'small was not told to release its token'
+
+    small = threading.Thread(target=take_small, daemon=True)
+    hog = subprocess.Popen([sys.executable, str(tmp_path / 'hog.py'),
+                            os.path.join(ROOT, 'experimental', 'testbench', 'cpupool.py'), str(tmp_path)])
     try:
-        deadline = time.monotonic() + 30
-        while not cycles.exists():
-            assert time.monotonic() < deadline and hog.poll() is None
-            time.sleep(0.05)
-        small = threading.Thread(target=lambda: got.append(p.take(1, 'small')), daemon=True)
+        wait_until(cycles.exists, 'hog did not take the pool')
         small.start()
-        small.join(5)                  # some 25 of the hog's turns
-        served_while_hogged = bool(got)
+        assert queued.wait(WAIT_LIMIT), 'small did not queue behind the running hog'
+        (tmp_path / 'release-hog').touch()
+        # Let the hog requeue before small retries, so the hog cannot lose merely because it was slower.
+        wait_until(lambda: requeued.exists() or cycles.stat().st_size >= 2, 'hog did not try to reacquire')
+        assert requeued.exists() and cycles.read_text() == 'x', 'hog jumped ahead of the queued small job'
+        retry.set()
+        assert acquired.wait(WAIT_LIMIT), 'small was starved by the hog'
+        assert hog.poll() is None and cycles.read_text() == 'x'  # small got in before the next exclusive take
+        release.set()
+        small.join(WAIT_LIMIT)
+        assert not small.is_alive()
+        (tmp_path / 'retry-hog').touch()
+        wait_until(lambda: cycles.stat().st_size >= 2, 'hog did not reacquire after small released its token')
     finally:
+        release.set()
+        retry.set()
         stop.write_text('')
-        if got:
-            p.release(got[0])          # the hog waits for the whole pool: give it back before waiting for its end
-        hog.wait(30)
-    small.join(10)
-    if len(got) == 1 and not served_while_hogged:
-        p.release(got[0])
-    assert served_while_hogged, 'the small job waited 5 s behind %d exclusive takes' % len(cycles.read_text())
+        try:
+            hog.wait(10)
+        except subprocess.TimeoutExpired:
+            hog.kill()
+            hog.wait()
+        finally:
+            if small.ident is not None:
+                small.join(WAIT_LIMIT)
+    assert hog.returncode == 0 and not small.is_alive()
 
 
-def test_an_older_cpupools_pending_mark_holds_the_queue_and_the_first_waiter_sets_one(tmp_path):
+def test_an_older_cpupools_pending_mark_holds_the_queue_and_the_first_waiter_sets_one(tmp_path, monkeypatch):
     """Worktrees run older copies of this file: their exclusive.json (no ticket) holds the queue here, and the first
     waiter here writes one, which those copies read as 'someone waits for the pool: take nothing'."""
     p = pool(tmp_path, tokens=2)
@@ -360,25 +444,27 @@ def test_an_older_cpupools_pending_mark_holds_the_queue_and_the_first_waiter_set
     parent = os.getppid()
     with open(p.pending_path, 'w', encoding='utf-8') as f:
         json.dump({'owner': 'old timing', 'pid': parent, 'started': cp._started(parent)}, f)
-    got = []
-    t = threading.Thread(target=lambda: got.append(p.take(1, 'new')))
-    t.start()
-    time.sleep(0.3)
-    assert not got and p.free() == 0 and 'older cpupool' in p.describe()
-    os.remove(p.pending_path)          # the old job got its pool and dropped the mark
-    t.join(5)
-    assert len(got[0]) == 1
-    p.release(got[0])
+
+    def behind_older():
+        assert p.spare() == 2 and p.free() == 0 and 'older cpupool' in p.describe()
+        os.remove(p.pending_path)  # the old job got its pool and dropped the mark
+
+    on_wait(monkeypatch, behind_older)
+    got = p.take(1, 'new')
+    assert len(got) == 1 and p.pending() is None
+    p.release(got)
+
     held = p.try_take(2, 'other')
-    t = threading.Thread(target=lambda: got.append(p.take(1, 'new')))
-    t.start()
-    time.sleep(0.3)
-    mark = p.pending()
-    assert mark['owner'] == 'new' and mark['pid'] == os.getpid() and mark['ticket'] == p.queue()[0][0]
-    p.release(held)
-    t.join(5)
+
+    def first_waiter():
+        mark = p.pending()
+        assert mark['owner'] == 'new' and mark['pid'] == os.getpid() and mark['ticket'] == p.queue()[0][0]
+        p.release(held)
+
+    on_wait(monkeypatch, first_waiter)
+    got = p.take(1, 'new')
     assert p.pending() is None
-    p.release(got[-1])
+    p.release(got)
 
 
 def test_off_switch(tmp_path):
@@ -485,41 +571,46 @@ def test_a_pytest_run_asking_for_more_runs_two_workers(tmp_path):
     assert 'the run uses 2 workers' in out.stderr
 
 
-def test_every_take_is_logged_for_the_daily_report(tmp_path):
+def test_every_take_is_logged_for_the_daily_report(tmp_path, monkeypatch):
     """work/logs/cpupool_waits.jsonl: one line a take, the format daily_report.flow() reads."""
     log = tmp_path / 'waits.jsonl'
     p = cp.Pool(str(tmp_path / 'cpu'), 2, poll=0.05, log=str(log))
-    t0 = time.time()
+    now = 1_700_000_000.0
+    monkeypatch.setattr(cp.time, 'time', lambda: now)
     with cp.hold(2, 'me', pool=p, env={}, say=lambda m: None):
         pass
     with cp.hold(1, 'timing', exclusive=True, pool=p, env={}, say=lambda m: None):
         pass
     rows = [json.loads(line) for line in log.read_text(encoding='utf-8').splitlines()]
     assert [(r['owner'], r['n']) for r in rows] == [('me', 2), ('timing', 2)]
-    assert all(set(r) == {'t', 'owner', 'n', 'waited'} and r['t'] >= t0 - 1 and r['waited'] >= 0 for r in rows)
+    assert all(set(r) == {'t', 'owner', 'n', 'waited'} and r['t'] == now and r['waited'] >= 0 for r in rows)
     quiet = cp.Pool(str(tmp_path / 'cpu2'), 2, poll=0.05)
     assert quiet.log is None            # a pool in a test's folder never writes the machine's log
 
 
-def test_a_single_process_does_not_queue(tmp_path):
+def test_a_single_process_does_not_queue(tmp_path, monkeypatch):
     p = pool(tmp_path, tokens=2)
     said = []
-    with cp.hold(1, 'pytest', pool=p, env={}, say=said.append, wait=False) as got:
-        assert got == 1 and len(p.holders()) == 1          # a free token, nobody waiting: it takes it
-    held = p.try_take(2, 'other')
-    t0 = time.monotonic()
-    with cp.hold(1, 'pytest', pool=p, env={}, say=said.append, wait=False) as got:
-        assert got == 1 and time.monotonic() - t0 < 0.5 and len(p.holders()) == 2    # full: runs without one
+    with monkeypatch.context() as no_queue:
+        no_queue.setattr(p, '_enqueue', unexpected_queue)
+        with cp.hold(1, 'pytest', pool=p, env={}, say=said.append, wait=False) as got:
+            assert got == 1 and len(p.holders()) == 1  # a free token, nobody waiting: it takes it
+        held = p.try_take(2, 'other')
+        with cp.hold(1, 'pytest', pool=p, env={}, say=said.append, wait=False) as got:
+            assert got == 1 and len(p.holders()) == 2  # full: runs without one
     assert 'runs without a CPU token' in said[-1]
     p.release(held[:1])
-    waiter = threading.Thread(target=lambda: p.release(p.take(2, 'queued')))
-    waiter.start()
-    while not p.queue():
-        time.sleep(0.01)
-    with cp.hold(1, 'pytest', pool=p, env={}, say=said.append, wait=False):
-        assert len(p.holders()) == 1                       # one is free, but a job waits for it: not taken
-    p.release(held)
-    waiter.join(5)
+
+    def waiting():
+        with monkeypatch.context() as no_queue:
+            no_queue.setattr(p, '_enqueue', unexpected_queue)
+            with cp.hold(1, 'pytest', pool=p, env={}, say=said.append, wait=False):
+                assert p.spare() == 1  # one is free, but a job waits for it
+        p.release(held[1:])
+
+    on_wait(monkeypatch, waiting)
+    p.release(p.take(2, 'queued'))
+    assert not p.holders()
 
 
 def test_a_single_process_pytest_runs_at_once_on_a_full_pool(tmp_path):
