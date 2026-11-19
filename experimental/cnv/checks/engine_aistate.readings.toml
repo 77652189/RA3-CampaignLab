@@ -21,3 +21,39 @@ expect = "rows[-1]['坦克在家'] == 0 and rows[-1]['步兵在家'] == 4"
 mismatch = """\
 simai aistatefar: the infantry go (步兵在家 0 @ s17) and the tanks stay home (4); bench: the tanks 4 -> 0 @ s14, the \
 infantry 4 all run (one structure only, a target one state holds is not given to another)"""
+
+# ---- from tests/test_simai.py (T3 B ①, 11-18): the old tests read the units' positions (out of 450 round the base)
+# frame by frame; these read the check's counters (步兵在家 / 坦克在家 inside the base area, 等帧 from the flag).
+# The mission's wake timer is 10 s (missions/aistate_bench.WAKE_AT; the bench clock reads it s9).
+
+[[reading]]
+id = "mission_personality_both_states_go_at_the_wake"
+scene = {build = "aistateconst", check = "a", until = 25.0}
+bench = "aistateconst a (bench 2026-11-06): 步兵在家 4 -> 0 @ s14, 坦克在家 4 -> 0 @ s14-16, the wake s9 on the bench clock (~5 s after it)"
+proves = "simai team states: a state always on sends its team ~5 s after the wake (both teams, the probe's own personality)"
+let = {inf = "times[first('步兵在家', lambda v: v < 4)]", tank = "times[first('坦克在家', lambda v: v < 4)]"}
+expect = ["abs(inf - (10 + 5)) <= 1.5", "abs(tank - (10 + 5)) <= 1.5", "rows[-1]['步兵在家'] == 0 and rows[-1]['坦克在家'] == 0"]
+
+[[reading]]
+id = "slash_flags_switch_the_states_tanks"
+scene = {build = "aistateslash", check = "a", until = 75.0}
+bench = "aistateslash a (bench 2026-11-06): '/CNVAITanks' at 60 s, 坦克在家 4 -> 0 @ s63, 坦克等帧 stops at 77"
+proves = "simai team states: a SET_FLAG '/name' (the empty scope) turns the AI's state on -- its team leaves ~77 frames after"
+expect = ["abs(rows[-1]['坦克等帧'] - 77) <= 14", "rows[-1]['坦克在家'] == 0"]
+
+[[reading]]
+id = "slash_flags_switch_the_states_infantry"
+scene = {build = "aistateslash", check = "a", until = 75.0}
+bench = "aistateslash a (bench 2026-11-06): '/CNVAIInfantry' at 20 s, 步兵在家 4 -> 0 @ s23, 步兵等帧 stops at 74"
+proves = "simai team states: a SET_FLAG '/name' (the empty scope) turns the AI's state on -- its team leaves ~74 frames after"
+expect = ["abs(rows[-1]['步兵等帧'] - 74) <= 7", "rows[-1]['步兵在家'] == 0"]
+mismatch = """\
+simai aistateslash: 步兵等帧 stops at 61 (out at s25), bench 74 (s23 on its clock); the old test read the first \
+Peacekeeper out of a 450 circle at 68 frames (inside its 7-frame slack), the bench's own counter reads 13 early"""
+
+[[reading]]
+id = "bare_flags_are_the_script_players_not_the_ais"
+scene = {build = "aistateplain", check = "a", until = 75.0}
+bench = "aistateplain a (bench 2026-11-06): bare flag names -- nobody left, 步兵在家 / 坦克在家 4 / 4 to s127"
+proves = "simai flags: a bare SET_FLAG name is the script player's scope, not the empty one the AI's state reads"
+expect = "all(r['步兵在家'] == 4 and r['坦克在家'] == 4 for r in rows)"

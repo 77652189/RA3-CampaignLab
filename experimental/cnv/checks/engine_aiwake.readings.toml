@@ -1,0 +1,11 @@
+# Bench readings of checks/engine_aiwake.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "enemy_targets_wait_for_the_wake"
+scene = {build = "aistateconstw", check = "w", until = 45.0}
+bench = """\
+aistateconstw w (bench 11-13, B round 163): 唤醒前 stops at 450 (~s28 on the bench clock); the tanks out s33, the \
+infantry s34-35 -- ~5 s after the wake again, though the states and teams run from the start"""
+proves = "simai targets: an EnemyStructure target is not found before the wake (SKIRMISH_AI_MAKE_BASE), so the teams wait for it"
+let = {wake = "rows[-1]['唤醒前'] / 15", inf = "times[first('步兵在家', lambda v: v < 4)]", tank = "times[first('坦克在家', lambda v: v < 4)]"}
+expect = ["abs(rows[-1]['唤醒前'] - 450) <= 15", "abs(inf - wake - 5) <= 1.5", "abs(tank - wake - 5) <= 1.5"]
