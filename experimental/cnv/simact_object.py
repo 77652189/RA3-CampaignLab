@@ -104,7 +104,7 @@ def named_damage(sim, name, a, script):
         b.damage(float(a[1]))
         if b.hp <= 0.0:
             sim.destroy(b, '脚本伤害')
-            b.read_until = sim.frame_now()
+            b.find(interfaces.Body).set_bits_read_until(sim.frame_now())    # step B4a: the Body module's
         else:                           # under REALLYDAMAGED: out in this frame (engine_garrison 伤争敌 1230)
             sim.garrison.hurt(b)
 

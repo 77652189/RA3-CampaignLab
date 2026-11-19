@@ -95,6 +95,14 @@ class Body(Interface):
     def set_indestructible(self, flag):
         raise NotImplementedError
 
+    def bits_read_until(self):
+        """The frame a script's NAMED_DAMAGE killed it in (step B4a; None: not so killed): its status bits still
+        read in that frame (engine_sell e); a death of any other kind reads false from the kill."""
+        raise NotImplementedError
+
+    def set_bits_read_until(self, frame):
+        raise NotImplementedError
+
 
 class Damage(Interface):
     """Told after its thing's health changed."""

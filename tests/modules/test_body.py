@@ -184,3 +184,32 @@ def test_the_last_damage_and_the_indestructible_flag_live_on_the_module_step_b3(
     assert not q.alive and (q.last_hit, q.last_by) == (None, None)     # the game's kill comes from nobody too
     bare = sim.Body('b', 'AlliedPowerPlant', 'Player_1', 0.0, 0.0)
     assert (bare.last_hit, bare.last_by, bare.indestructible) == (None, None, False)
+
+
+def test_a_damage_kill_keeps_its_bits_readable_that_frame_on_the_module_step_b4a():
+    import pytest
+    import simact_object
+    import simcond_object
+    from engine.ports.observe import Observe
+    s = _world(('p', 'AlliedPowerPlant'), ('q', 'AlliedPowerPlant'), ('r', 'AlliedPowerPlant'))
+    p, q, r = s.bodies['p'], s.bodies['q'], s.bodies['r']
+    assert p.read_until is None and 'read_until' not in vars(p)
+    with pytest.raises(AttributeError):
+        p.read_until = 0
+    for b in (p, q, r):
+        b.status.add('IMMOBILE')
+    simact_object.named_damage(s, 'NAMED_DAMAGE', ['p', '10'], None)
+    assert p.alive and p.read_until is None                 # not killed: nothing kept
+    simact_object.named_damage(s, 'NAMED_DAMAGE', ['p', str(p.hp + 1.0)], None)
+    assert not p.alive and p.read_until == s.frame_now() == _one(p).bits_read_until()
+    assert q.read_until is None                             # one a thing
+    assert Observe.state(p)['read_until'] == s.frame_now()
+    simact_object.named_kill(s, 'NAMED_KILL', ['q'], None)
+    assert not q.alive and q.read_until is None             # a kill of any other kind keeps nothing
+    has = simcond_object.unit_has_object_status
+    assert has(s, 'UNIT_HAS_OBJECT_STATUS', ['p', 'IMMOBILE'])      # engine_sell e: a damage kill still reads
+    assert not has(s, 'UNIT_HAS_OBJECT_STATUS', ['q', 'IMMOBILE'])  # its bits in that frame; a kill does not
+    _one(p).set_bits_read_until(s.frame_now() - 1)                   # killed a frame before: reads false now
+    assert not has(s, 'UNIT_HAS_OBJECT_STATUS', ['p', 'IMMOBILE'])
+    _one(r).set_bits_read_until(s.frame_now())                       # a living thing reads its bits anyway
+    assert has(s, 'UNIT_HAS_OBJECT_STATUS', ['r', 'IMMOBILE'])

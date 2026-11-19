@@ -48,7 +48,7 @@ class Body(module.Module, interfaces.Body):
     the host makes it, as the fields' defaults); immortal, prop: what the forwards of those names read. A thing whose
     template has no Body block gets an ActiveBody attached (Sim.add, World.attach: made by __init__, no on_create)."""
     DATA = BodyData
-    STATE = ('hp', 'max_hp', 'health_floor', 'last_hit', 'last_by', 'indestructible')
+    STATE = ('hp', 'max_hp', 'health_floor', 'last_hit', 'last_by', 'indestructible', 'read_until')
     IMMORTAL = False            # health changes cannot take it below its floor
     PROP = False                # no health: takes no damage, its percent reads 0 (engine_propbody a)
     hp = max_hp = 100.0
@@ -60,6 +60,7 @@ class Body(module.Module, interfaces.Body):
         self.immortal, self.prop = self.IMMORTAL, None
         self.last_hit = self.last_by = None     # step B3: the last damage's player and object (set_last_damage)
         self.indestructible = False
+        self.read_until = None      # step B4a: killed by NAMED_DAMAGE in this frame -- its bits still read
 
     def make(self, hp, floor=None, death=None):
         self.set_health(hp, hp, tell=False)
@@ -114,6 +115,12 @@ class Body(module.Module, interfaces.Body):
 
     def set_indestructible(self, flag):
         self.indestructible = bool(flag)
+
+    def bits_read_until(self):
+        return self.read_until
+
+    def set_bits_read_until(self, frame):
+        self.read_until = frame
 
 
 @factory.module('ActiveBody')

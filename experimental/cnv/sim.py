@@ -392,7 +392,6 @@ class Body(kernel_module.Thing):
     leaves: list = dataclasses.field(default_factory=list)      # what its lifetime's death makes where it stood
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
     replace: bool = False                                       # building = its ReplaceSelfSpecialAbility: it turns into it
-    read_until: int = None                                      # killed by NAMED_DAMAGE in this frame: bits still read
     lies: float = 0.0                                           # seconds it lies dying once killed (SlowDeath's
                                                                 # DestructionDelay), the crush's death only (R9)
     linger: float = 0.0                                         # ... the lie this death has (LINGER, or `lies`)
@@ -435,7 +434,7 @@ class Body(kernel_module.Thing):
         self.find(kernel_interfaces.Body).set_last_damage(player, by)
     # fields moved into modules, still read outside: read only (test_kernel BODY_FORWARDS)
     FORWARDS = ('hp', 'max_hp', 'health_floor', 'immortal', 'prop', 'last_hit', 'last_by', 'indestructible',
-                'life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
+                'read_until', 'life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules')
@@ -448,6 +447,7 @@ class Body(kernel_module.Thing):
     last_hit = kernel_module.forward(kernel_interfaces.Body, lambda m: m.last_damage()[0])
     last_by = kernel_module.forward(kernel_interfaces.Body, lambda m: m.last_damage()[1])
     indestructible = kernel_module.forward(kernel_interfaces.Body, lambda m: m.is_indestructible(), False)
+    read_until = kernel_module.forward(kernel_interfaces.Body, lambda m: m.bits_read_until())     # step B4a
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
