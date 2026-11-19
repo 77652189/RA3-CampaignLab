@@ -1,6 +1,9 @@
 """Marks the replay tests (tests/replay_tests.txt: whole-game and bench-mission replays) `replay`, by the list, so no
 test file has to change. The full run (pytest tests) runs them; `pytest -m "not replay"` leaves them out, and the
-daily pick (experimental/testbench/affected_tests.py) leaves them out unless --with-replays."""
+daily pick (experimental/testbench/affected_tests.py) leaves them out unless --with-replays.
+
+Every test without a `timeout` marker of its own gets its layer's limit (experimental/testbench/time_budget.py
+TEST_TIMEOUT, T7): one that hangs is red and named; RA3_TEST_TIMEOUT_SCALE=0 runs with no limit (a debugger)."""
 import contextlib
 import importlib.util
 import os
@@ -9,11 +12,14 @@ import sys
 import pytest
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_HERE)
 _spec = importlib.util.spec_from_file_location(     # by file path, not sys.path (G4); the list's one reader lives there
-    '_affected_tests_for_conftest', os.path.join(os.path.dirname(_HERE), 'experimental', 'testbench', 'affected_tests.py'))
-_at = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_at)
-REPLAYS = {os.path.basename(f): kind for f, kind in _at.replay_files().items()}
+    '_time_budget_for_conftest', os.path.join(_ROOT, 'experimental', 'testbench', 'time_budget.py'))
+_tb = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_tb)
+_at = _tb.at
+_REPLAY_PATHS = _at.replay_files()
+REPLAYS = {os.path.basename(f): kind for f, kind in _REPLAY_PATHS.items()}
 _cpu_spec = importlib.util.spec_from_file_location(
     '_cpupool_for_conftest', os.path.join(os.path.dirname(_HERE), 'experimental', 'testbench', 'cpupool.py'))
 cpupool = importlib.util.module_from_spec(_cpu_spec)
@@ -73,6 +79,12 @@ def pytest_unconfigure(config):
 
 
 def pytest_collection_modifyitems(config, items):
+    limits = {}
     for item in items:
         if os.path.basename(str(item.fspath)) in REPLAYS:
             item.add_marker(pytest.mark.replay)
+        if item.get_closest_marker('timeout') is None:
+            path = os.path.relpath(str(item.fspath), _ROOT).replace(os.sep, '/')
+            if path not in limits:
+                limits[path] = _tb.timeout_for(path, _REPLAY_PATHS)
+            item.add_marker(pytest.mark.timeout(limits[path]))

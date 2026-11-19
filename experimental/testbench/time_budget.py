@@ -43,6 +43,44 @@ CEILING = {
     'conformance_group': None,
     'daily': 3600.0,
 }
+# One test's limit, seconds, by its layer (T7, 11-18): tests/conftest.py marks every test that has no `timeout` marker
+# of its own with it, so a test that hangs is red and named instead of spinning (R3's pull looped on a retail map 11-18:
+# two workers spun 56 minutes each, holding their CPU tokens, and nobody saw). A marker wins over `--timeout` on the
+# command line. On Windows pytest-timeout ends the process (os._exit) after dumping the stacks ("Stack of
+# pytest_timeout <test id>"): under xdist that is the worker -- the run says "worker 'gwN' crashed while running <test
+# id>", counts it failed and starts another worker -- with -n 0 the whole run. A dead process's CPU token is free
+# (cpupool: no live pid, no token). From the 11-18 full run's single-test times (work/logs/junit_full_1118b.xml): the
+# longest module test 12 s, tool 10 s, guard 81 s (test_architecture's g3b), any other non-replay 99 s, a replay
+# 456 s (golden retail_a02); about 5-10 times that, for a loaded machine. Raise one only with the test's measured time.
+TEST_TIMEOUT = {
+    'modules': 120.0,       # tests/modules/
+    'tools': 120.0,         # tests/tools/
+    'content': 120.0,       # tests/content/
+    'guards': 600.0,        # tests/guards/
+    'other': 900.0,         # every other file not on tests/replay_tests.txt
+    'replay': 2400.0,       # a file on tests/replay_tests.txt (whole games, the conformance runner, golden)
+}
+TIMEOUT_SCALE_ENV = 'RA3_TEST_TIMEOUT_SCALE'    # multiplies every limit (0: none; the T7 test shrinks them)
+
+
+def timeout_layer(path, replays):
+    """TEST_TIMEOUT's key for a test file ('tests/<layer>/test_x.py', '/' separated); replays: the replay files'
+    paths (replay_files())."""
+    if path in replays:
+        return 'replay'
+    parts = path.split('/')
+    if len(parts) > 2 and parts[1] in TEST_TIMEOUT and parts[1] not in ('other', 'replay'):
+        return parts[1]
+    return 'other'
+
+
+def timeout_for(path, replays, env=None):
+    """One test's limit in seconds for a test in that file (0: no limit)."""
+    env = os.environ if env is None else env
+    scale = float(env.get(TIMEOUT_SCALE_ENV) or 1)
+    return TEST_TIMEOUT[timeout_layer(path, replays)] * scale
+
+
 LABEL = {
     'modules': '模块层合计',
     'guards': '守卫层合计（每次都挑）',

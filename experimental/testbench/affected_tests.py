@@ -13,7 +13,7 @@ Use (from the repository root; the map lives in <WORK>/testmap/, outside git):
 
 Build / refresh the map (a parallel full run with per-test coverage contexts, then store it):
 
-    python -X utf8 -m pytest tests -n <workers> --timeout 3000 -p no:cacheprovider --cov=experimental \
+    python -X utf8 -m pytest tests -n <workers> -p no:cacheprovider --cov=experimental \
         --cov=<engine model dir> --cov-context=test --cov-report= -q --junitxml=work/logs/junit.xml
     python -X utf8 experimental/testbench/affected_tests.py --save-coverage .coverage --save-durations work/logs/junit.xml
 
@@ -31,8 +31,8 @@ How a changed line is matched (always "more rather than fewer"):
   * the guard layer (every test file under tests/guards/) and the inventory tests are always added;
   * the map and the durations name a test by the path it had when they were recorded: a test file moved since (into
     a layer folder, ADR 0035) is found by its file name, which is unique under tests/ (tests/guards/test_layers.py);
-  * keep --timeout at 3000 or more: on Windows pytest-timeout's default method ends the WHOLE xdist worker when one test
-    passes the limit ("node down: Not properly terminated"), and single simulator tests run 15-50 min under load;
+  * no --timeout: tests/conftest.py gives every test its layer's limit (time_budget.TEST_TIMEOUT, T7), and that marker
+    wins over the command line; past it pytest-timeout ends the xdist worker ("crashed while running <test id>");
   * --cmd prints a full pytest command with -n min(8, free GB / 1.5, the CPU tokens free now, 2): a simulator-test
     worker needs about 1.5 GB, and the machine's heavy jobs share one token pool (cpupool.py; the run waits for its
     tokens, tests/conftest.py; one run takes at most 2 of them unless RA3_CPU_EXCLUSIVE=1, T5c).
@@ -1084,7 +1084,7 @@ def main(argv=None):
     out = sorted(tests)
     n = workers()
     if args.cmd:
-        print('python -X utf8 -m pytest -n %d --timeout 3000 -p no:cacheprovider -q %s' % (n, ' '.join(out)))
+        print('python -X utf8 -m pytest -n %d -p no:cacheprovider -q %s' % (n, ' '.join(out)))
     else:
         for t in out:
             print(t)

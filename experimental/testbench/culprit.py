@@ -82,6 +82,7 @@ def probe(tree, rev, ids, log, family, cpupool, say):
                 completed = subprocess.run(cmd, env=env, **kwargs)
             return completed
 
+        # --timeout for a commit before T7: since then tests/conftest.py marks each test with its layer's limit
         family.run_pytest(
             ['-n', '0', '--timeout', '900', '-p', 'no:cacheprovider', '-vv', '-o', 'addopts=',
              '--color=no', '--basetemp', base, '--', *pending],

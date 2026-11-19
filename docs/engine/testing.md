@@ -28,6 +28,7 @@
 ## 耗时
 
 - 每层有上限，由 `tests/guards/` 按耗时记录检查，上限只许降。上限表和每项为什么取这个数在 `experimental/testbench/time_budget.py`（模块层合计、守卫层合计、一致性跑器最慢一组、日常挑选池），守卫是 `tests/guards/test_time_budget.py`；耗时记录是总控全量后 `affected_tests.py --save-durations junit.xml` 写的 `work/testmap/durations.json`（按文件）和 `durations_tests.json`（按测试）。某项还没有记录就写"没有记录"，不猜。量耗时要独占整机：`RA3_CPU_EXCLUSIVE=1` 跑 pytest（或 `cpupool.py run --exclusive -- <命令>`），等别的重活放完令牌、期间不让新的开始（CPU 令牌池 `experimental/testbench/cpupool.py`，按核数留 2 个给游戏和台子；`simbench_peak`、`simrecord time` 自己就拿独占）。
+- 单条测试也有超时（T7）：`tests/conftest.py` 给每条没自带 `timeout` 标记的测试按层加上限（模块 / 工具 / 内容 120 秒、守卫 600、其余 900、回放名单 2400，表和取数理由在 `time_budget.TEST_TIMEOUT`），标记压过命令行 `--timeout`，所以命令里不用再写。超时即红：xdist 下报 "crashed while running <测试 id>"，`-n 0` 时整次结束并打出 "Stack of pytest_timeout <测试 id>"；进程没了它的 CPU 令牌就空出来。调试要停掉上限：`RA3_TEST_TIMEOUT_SCALE=0`。
 - 全量出现新红时，用 `python -X utf8 experimental/testbench/culprit.py --since-full work/logs/full_A.log work/logs/full_B.log` 定位首红。日志开头没记提交号时，加 `--good <提交> --bad <提交>`。
 - 已知测试 ID 时，用 `python -X utf8 experimental/testbench/culprit.py --good <提交> --bad <提交> TEST_ID [TEST_ID ...]`。工具只复跑这些测试，遇到跳过会记为未知。
 - 越线在每日汇报"结构"段标 `!!`。

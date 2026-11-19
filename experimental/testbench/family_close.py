@@ -209,7 +209,7 @@ def judge(args, root, base, n, log_path, golden):
             golden.prepare_tree(base, root)
             git(golden.TREE, 'checkout', '--', golden.SIMRECORD_REL)   # the base's own recorder for its tests
             here = [t for t in red if os.path.exists(os.path.join(golden.TREE, t.split('::')[0]))]
-            if here:
+            if here:   # --timeout for a base before T7 (since then conftest marks each test with its layer's limit)
                 _, old_red, _ = run_pytest(['-n', str(n), '--timeout', '3000', '-p', 'no:cacheprovider', '-q', '-rf',
                                             *here], golden.TREE, log_path)
                 old = set(old_red)

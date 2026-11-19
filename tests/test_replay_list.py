@@ -60,9 +60,16 @@ class _Item:
     def __init__(self, path):
         self.fspath = path
         self.marks = []
+        self.limit = None
 
     def add_marker(self, mark):
-        self.marks.append(mark.name)
+        if mark.name == 'timeout':      # T7: every test gets its layer's limit too
+            self.limit = mark.args[0]
+        else:
+            self.marks.append(mark.name)
+
+    def get_closest_marker(self, name):
+        return None
 
 
 def test_conftest_marks_exactly_the_listed_files():
@@ -73,6 +80,9 @@ def test_conftest_marks_exactly_the_listed_files():
     items = [_Item(some_replay), _Item(other)]
     conftest.pytest_collection_modifyitems(None, items)
     assert items[0].marks == ['replay'] and items[1].marks == []
+    scale = float(os.environ.get(conftest._tb.TIMEOUT_SCALE_ENV) or 1)
+    assert (items[0].limit, items[1].limit) == (conftest._tb.TEST_TIMEOUT['replay'] * scale,
+                                                conftest._tb.TEST_TIMEOUT['other'] * scale)
     assert set(conftest.REPLAYS) == set(listed)
 
 
