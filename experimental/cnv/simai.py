@@ -1751,7 +1751,7 @@ class Brain:
             if b.owner == self.player and b.name.startswith('#made') and b.name not in self.made:
                 self.made[b.name] = frame
                 self.trace.append((frame, 'out', b.template))
-                simbody.fill(b, self.host.lib, world.own)     # a body simunits does not know (HOOKS 6)
+                simbody.fill(world, b, self.host.lib)     # a body simunits does not know (HOOKS 6)
         for t in list(self.unit_q):
             free = [f for f in self.factories() if t in self.host.menu(f.template)
                     and frame >= self.made.get(f.name, -10 ** 9) + self.host.unpack(f.template)

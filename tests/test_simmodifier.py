@@ -59,13 +59,14 @@ def _at(s, secs):
     s.t, s.clock.frame = secs, int(round(secs * simunits.LIFE_FPS))
 
 
-def _body(s, name, template, owner, x, kinds, speed=30.0):
+def _body(s, name, template, owner, x, kinds, speed=30.0, armed=True):
     b = sim.Body(name, template, owner, float(x), 0.0, speed, kinds=frozenset(kinds))
-    b.weapons = [{'range': 150.0, 'dps': 10.0, 'type': 'ARMOR_PIERCING', 'anti': set()}]
     b.vision = b.sight = 300.0
     mods = s.world.build(b, s.clock.frame)                  # as Sim.add makes them
     if mods:
         b.modules = mods
+    guns = [{'range': 150.0, 'dps': 10.0, 'type': 'ARMOR_PIERCING', 'anti': set()}] if armed else []
+    sim.kernel_weaponset.equip(s.world, b, guns, None)      # its WeaponSet module holds them (step W2)
     if b.find(sim.kernel_interfaces.Body) is None:          # no Body block: Sim.add attaches one (step B2b)
         s.world.attach(b, 'ActiveBody')
     s.bodies[name] = b
@@ -75,9 +76,8 @@ def _body(s, name, template, owner, x, kinds, speed=30.0):
 def test_the_zone_stops_friend_and_foe_within_and_lets_go_once_gone():
     u = stasis_zone.zone()
     s = _world({u.id: u.xml})
-    zone = _body(s, 'zone', u.id, 'PlyrEnemy', 0, ['IMMOBILE'], speed=0.0)
-    zone.weapons = []
-    ours = _body(s, 'ours', 'Tank', 'PlyrHuman', 100, ['VEHICLE'])
+    zone = _body(s, 'zone', u.id, 'PlyrEnemy', 0, ['IMMOBILE'], speed=0.0, armed=False)
+    ours =_body(s, 'ours', 'Tank', 'PlyrHuman', 100, ['VEHICLE'])
     theirs = _body(s, 'theirs', 'Tank', 'PlyrEnemy', 150, ['VEHICLE'])
     out = _body(s, 'out', 'Tank', 'PlyrHuman', 400, ['VEHICLE'])
     s.aura_tick()
@@ -109,9 +109,8 @@ def test_the_zone_holds_by_the_centre_and_a_short_hold_flickers_with_the_refresh
     box 20 x 12 does not count); refresh 1 s with hold 0.2 s flickers -- on at a refresh, off before the next."""
     u = stasis_zone.zone(radius=200, hold=0.2, refresh=1.0)
     s = _world({u.id: u.xml})
-    zone = _body(s, 'zone', u.id, 'PlyrEnemy', 0, ['IMMOBILE'], speed=0.0)
-    zone.weapons = []
-    near = _body(s, 'near', 'Tank', 'PlyrHuman', 190, ['VEHICLE'])
+    zone = _body(s, 'zone', u.id, 'PlyrEnemy', 0, ['IMMOBILE'], speed=0.0, armed=False)
+    near =_body(s, 'near', 'Tank', 'PlyrHuman', 190, ['VEHICLE'])
     edge = _body(s, 'edge', 'Tank', 'PlyrHuman', 205, ['VEHICLE'])
     seen = []
     for k in range(4):

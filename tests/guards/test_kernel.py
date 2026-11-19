@@ -270,7 +270,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3379, 'Sim methods': 194, 'Body fields': 76, 'simunits defs': 138,
+CENTER = {'sim.py lines': 3378, 'Sim methods': 194, 'Body fields': 74, 'simunits defs': 138,
           'cells with old code': 31}
 
 
@@ -342,7 +342,8 @@ BODY_FORWARDS = {'hp': 'Body', 'max_hp': 'Body', 'health_floor': 'Body', 'immort
                  'spawn_module': 'SlavedUpdate', 'ready_at': 'SpecialPower', 'mine': 'OreMinerBehavior',
                  'unpack_end': 'StructureUnpackUpdate', 'sell_end': 'StructureSellUpdate',
                  'cold': 'SecondaryDamageTracker', 'cold_step': 'SecondaryDamageTracker',
-                 'level_modules': 'LevelUpUpgrade', 'lies': 'SlowDeath', 'linger': 'SlowDeath'}
+                 'level_modules': 'LevelUpUpgrade', 'lies': 'SlowDeath', 'linger': 'SlowDeath',
+                 'weapons': 'WeaponSetUpdate', 'slots': 'WeaponSetUpdate'}
 
 
 def body_forwards(sim_src=None):

@@ -230,12 +230,13 @@ def last_until(world, b, frame):
     m.set_die_frame(frame)
 
 
-def fill(b, lib, own):
+def fill(world, b, lib):
     """A body simunits knows nothing of (its table misses the second GameObject of a file, such as the Riptide's
     AlliedAntiInfantryVehicle_Ground the war factory's button makes: speed 0, no KindOf -- HOOKS 6): KindOf and
     speed from the model's library `lib`, health / armour / weapons from the template of the name without its last
-    '_' part when simunits knows that one (INFERRED: the same unit). The skirmish AI calls it for what its factories
-    made (simai.Brain.unit_due); `own` is the world's own templates (WORLD_API own)."""
+    '_' part when simunits knows that one (INFERRED: the same unit; the weapons fixed, its WeaponSet module armed
+    -- attached when it has none). The skirmish AI calls it for what its factories made (simai.Brain.unit_due)."""
+    own = world.own
     if 'all' not in (b.guessed or []):
         return
     tpl = lib.template(b.template)
@@ -250,6 +251,11 @@ def fill(b, lib, own):
         st, f = simunits.stats(base, own), simunits.fight(base, own)
         if f['hp']:
             b.set_hp(f['hp'], f['hp'], tell=False)
-            b.armor, b.weapons = f['armor'], f['weapons']
+            b.armor = f['armor']
+            m = b.find(interfaces.WeaponSet) if b.modules else None
+            if m is None and f['weapons']:
+                m = world.world.attach(b, 'WeaponSetUpdate')
+            if m is not None:
+                m.hold(f['weapons'])
         b.surface, b.sight = st['surface'], st['vision'] or b.sight
     b.guessed = ['all: simai.fill']

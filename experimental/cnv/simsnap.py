@@ -32,7 +32,7 @@ from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 7             # 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
+VERSION = 8             # 8: W2, a body's weapons / slots are its WeaponSet module's STATE; 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
                         # 4: areas.missing (4.4, 11-19); 5: the queue's events -- a posted command as itself
                         # (command port ORDER), a line's 强制 / 由 P kept in its word group (review 11-19 i #1 #4);
                         # 6: a spy on its way, Infiltrators.going, is the spy's serial -> (spy, target), not its
@@ -99,10 +99,10 @@ ALIASES = {('used',): ('world', 'used'), ('unmodeled',): ('world', 'gaps'),
            ('money_cap',): ('wallet', 'money_cap'), ('repairs', 'ai_switches'): ('ai_switches',)}
 
 BODY = {'modules': KERNEL, 'serial': KERNEL, '_find_cache': CACHE}     # the last two: Thing's slots
-for _f in ('name template owner x y z speed surface vision kinds immune_until armor weapons acquire radius sight chase '
+for _f in ('name template owner x y z speed surface vision kinds immune_until armor acquire radius sight chase '
            'home auto_to resume stood_for spot engaged alive deleted path goal close_since made_by made_at scenery team '
            'instance guessed clear_height angle turn_rate turn_first face rolling carry dest set_off stops_at status '
-           'attachment_status lift_status upgrades up_since level_rank script_status slots auras_on shielded taken '
+           'attachment_status lift_status upgrades up_since level_rank script_status auras_on shielded taken '
            'model_conditions dealt level_rate level_vision base died_at mode move_to fired_at leaves building replace '
            'follow frame_move drive_speed jet_motion jet_started hold_fire hold_paused stance ai_acquire unpack_parent '
            'flee ground_fire unpack_here last_by').split():

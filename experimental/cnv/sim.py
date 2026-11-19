@@ -87,7 +87,7 @@ from engine.kernel import factory as kernel_factory, interfaces as kernel_interf
 from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
 from engine.ports import command as command_port  # noqa: E402  (happen gives the player's orders through it)
 import engine.modules  # noqa: E402,F401  (imports, so registers, every module file in it)
-from engine.modules import slowdeath as kernel_slowdeath  # noqa: E402
+from engine.modules import slowdeath as kernel_slowdeath, weaponset as kernel_weaponset  # noqa: E402
 import simloop  # noqa: E402
 import simworld  # noqa: E402
 import simexec  # noqa: E402
@@ -328,7 +328,6 @@ class Body(kernel_module.Thing):
     kinds: frozenset = frozenset()
     immune_until: int = -1          # the frame an Iron Curtain's protection ends (weapons and superweapons, not scripts)
     armor: dict = dataclasses.field(default_factory=dict)      # damage type -> percent taken (simunits.fight)
-    weapons: list = dataclasses.field(default_factory=list)    # [{range, dps, type, anti}]
     acquire: frozenset = frozenset({'YES'})                     # AutoAcquireEnemiesWhenIdle words (simunits.acquire)
     radius: float = 0.0                                         # R8: Geometry's bounding circle (simunits.radius)
     sight: float = 0.0                                          # R8: its VisionRange alone (vision: with the shroud)
@@ -373,7 +372,6 @@ class Body(kernel_module.Thing):
     level_rank: int = 1                                      # LevelUpUpgrade creation grants; not combat XP (the Object's ExperienceTracker, no module's: M12)
     script_status: set = dataclasses.field(default_factory=set)  # persistent script/startup bits; `status` is these
                                                                 # + the modifiers' (modify)
-    slots: object = None                                        # simunits.weapon_sets: the weapons chosen by status (None: fixed)
     auras_on: dict = dataclasses.field(default_factory=dict)   # modifier id -> (until frame, xml) an aura hung on it
     shielded: bool = False                                      # INVULNERABLE + Iron Curtain bits on it (simunits.effect)
     taken: float = 1.0                                          # ARMOR factor: damage taken x (INFERRED)
@@ -435,7 +433,7 @@ class Body(kernel_module.Thing):
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules',
-                'lies', 'linger')
+                'lies', 'linger', 'weapons', 'slots')
     hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
     max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
@@ -477,6 +475,8 @@ class Body(kernel_module.Thing):
     lies = kernel_module.forward(kernel_interfaces.SlowDeath, kernel_slowdeath.lies, 0.0)   # step B5a: its SlowDeath's
     linger = kernel_module.forward(kernel_interfaces.SlowDeath, kernel_slowdeath.linger,    # delay; how long this
                                    kernel_slowdeath.LINGER)                                 # death lies (a crush: it)
+    weapons = kernel_module.forward(kernel_interfaces.WeaponSet, lambda m: m.held(), [])    # step W2: its guns; the
+    slots = kernel_module.forward(kernel_interfaces.WeaponSet, lambda m: m.choices())   # ones by status (None: fixed)
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
 
@@ -1093,24 +1093,23 @@ class Sim:
                 b.status.add('WALL_SEGMENT')
             self.gap('WallBuilderBehavior', template,
                      '仅预摆墙默认WALL_SEGMENT初始状态已量；运行时生成/建墙/连接/段数上限/生死联动、自定义状态与模型条件未建模；其他继承覆盖默认值INFERRED，脚本改位交互未测')
-        b.armor, b.weapons = f['armor'], f['weapons']
+        b.armor, weapons = f['armor'], f['weapons']     # held by its WeaponSet module (step W2), armed below
         if template not in self.__dict__.setdefault('_wsets', {}):
             self._wsets[template] = simunits.weapon_sets(template, self.own)
-        b.slots = self._wsets[template] if b.weapons else None    # guns not read at all stay a gap (below)
+        slots = self._wsets[template] if weapons else None    # guns not read at all stay a gap (below)
         for tm in self.toggles_of(b):         # a first ToggleState's bits hold from the start (engine_toggle c / e;
             b.status = set(b.status) | tm['states'][0]['status']      # Sim.modify keeps them; retail first states
                                                                       # have no AttributeModifier)
-        if b.slots:                           # the weapon lines name a status: the held one is chosen from it
-            b.weapons = simunits.pick_weapons(b.slots, b.status, self.weapon_upgrades(b))
-        if not b.weapons:                     # its XML names guns and none was read: a gap, not a unit without guns
+        if slots:                             # the weapon lines name a status: the held one is chosen from it
+            weapons = simunits.pick_weapons(slots, b.status, self.weapon_upgrades(b))
+        if not weapons:                       # its XML names guns and none was read: a gap, not a unit without guns
             if template not in self.declared:
                 self.declared[template] = simunits.declared_weapons(template, self.own)
             if self.declared[template]:
                 self.gap(GAP_WEAPON, template, f'XML 有 {", ".join(self.declared[template])}，读成没有武器')
-        b.acquire =frozenset(simunits.acquire(template, self.own)) if b.weapons else frozenset()
-        mods = self.world.build(b, self.clock.frame)
-        if mods:
-            b.modules = mods
+        b.acquire =frozenset(simunits.acquire(template, self.own)) if weapons else frozenset()
+        b.modules = self.world.build(b, self.clock.frame)     # none: the setter keeps it unset
+        kernel_weaponset.equip(self.world, b, weapons, slots, self.clock.frame)
         body = b.find(kernel_interfaces.Body) or self.world.attach(b, 'ActiveBody', self.clock.frame)  # no block: one
         hp = proxy_hp or (body.data.max_health if body.is_immortal() else f['hp'] or body.data.max_health)
         body.make(hp or (2000.0 if 'STRUCTURE' in b.kinds else 300.0), proxy_hp * 0.01 if proxy_hp else None,

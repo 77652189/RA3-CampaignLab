@@ -3,7 +3,8 @@ block of the template data port, and the readers on it (simunits.fight / declare
 template_weapons, simcoverage.declared_picks) answering as before but for what the port does not read: a slot in an
 XML comment, a block the template Removes (the SDK compiler reads neither). Kept on purpose: a unit whose own file
 writes no WeaponSetUpdate holds no weapon (it inherits one: a gap Sim.add notes). Rules: docs/engine/weaponset.md;
-on the bench: checks/engine_weaponset.py."""
+on the bench: checks/engine_weaponset.py. Step W2 (below): the WeaponSet module holds a thing's weapons and slots,
+armed by Sim.add, written back by the modifier pass, read through the body's forwards and in the frame record."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simcoverage  # noqa: E402
 import simunits  # noqa: E402
@@ -105,3 +106,80 @@ def test_a_retail_units_weapons_are_read_once_in_the_cache_shape():
     a, b = simunits.fight('AlliedAntiAirShip'), simunits.fight('AlliedAntiAirShip')
     assert a['weapons'] is b['weapons'] and a['weapons']
     assert all(isinstance(p, list) for w in a['weapons'] for p in w.get('ai_parts') or [])
+
+
+# --- step W2: the module holds the thing's weapons and slots ------------------------------------------------------
+
+def _world():
+    import simsmall
+    return simsmall.small_world([('tank', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 0.0, 0.0),
+                                 ('plant', 'SovietPowerPlant', 'Player_1', 300.0, 0.0),
+                                 ('tut', 'Tutorial_AlliedTech1Tank', 'Player_1', 600.0, 0.0)])
+
+
+def test_the_module_holds_what_sim_add_armed_and_the_body_reads_it_through_forwards():
+    import pytest
+    import simrecord
+    from engine.kernel import interfaces
+    s = _world()
+    tank, plant, tut = s.bodies['tank'], s.bodies['plant'], s.bodies['tut']
+    m = tank.find(interfaces.WeaponSet)
+    assert isinstance(m, weaponset.WeaponSet) and m.data.slots          # its block's data (W1's)
+    assert tank.weapons is m.held() and _keys(tank.weapons) == [CANNON]
+    assert tank.slots is m.choices() is s._wsets['AlliedAntiVehicleVehicleTech1']    # the painter toggle: by status
+    state = simrecord.body_state(tank)
+    assert state['weapons'] is m.held() and state['slots'] is m.choices()     # the record's names, as on the body
+    with pytest.raises(AttributeError):
+        tank.weapons = []
+    with pytest.raises(AttributeError):
+        tank.slots = None
+    # no block and no weapons: no module, the old defaults
+    assert plant.find(interfaces.WeaponSet) is None and plant.weapons == [] and plant.slots is None
+    assert simrecord.body_state(plant)['weapons'] == [] and simrecord.body_state(plant)['slots'] is None
+    # an inherited block (the port's) but no weapon read (fight's own-file rule): a module holding none
+    t = tut.find(interfaces.WeaponSet)
+    assert t is not None and t.held() == [] and t.choices() is None and tut.weapons == []
+
+
+def test_the_modifier_pass_writes_the_status_pick_back_to_the_module():
+    from engine.kernel import interfaces
+    s = _world()
+    tank = s.bodies['tank']
+    m = tank.find(interfaces.WeaponSet)
+    tank.script_status.add('GENERIC_TOGGLE_STATE')          # the painter's line: no gun of its own
+    s.modify(tank)
+    assert m.held() == [] and tank.weapons == []
+    tank.script_status.discard('GENERIC_TOGGLE_STATE')
+    s.modify(tank)
+    assert _keys(m.held()) == [CANNON] and tank.weapons is m.held()
+
+
+def test_equip_attaches_a_module_only_to_a_thing_that_has_something_to_hold():
+    from engine.kernel import interfaces
+    s = _world()
+    plant = s.bodies['plant']
+    assert weaponset.equip(s.world, plant, [], None) is None and plant.find(interfaces.WeaponSet) is None
+    gun = simunits.fight('AlliedAntiVehicleVehicleTech1')['weapons']
+    m = weaponset.equip(s.world, plant, gun, None)
+    assert plant.find(interfaces.WeaponSet) is m and plant.weapons is gun and plant.slots is None
+    assert ('WeaponSetUpdate', '') in s.world.late[plant.serial]       # a snapshot's thing gets it again
+    again = weaponset.equip(s.world, plant, [], None)                      # one module: armed again
+    assert again is m and plant.weapons == [] and len(s.world.late[plant.serial]) == 1
+
+
+def test_the_ais_fill_arms_an_unknown_templates_body_through_its_module(monkeypatch):
+    """simbody.fill (the skirmish AI's factory made a template simunits does not know): the weapons of the template
+    without its last '_' part, held by the body's WeaponSet -- one attached when it has none."""
+    import types
+    import simbody
+    from engine.kernel import interfaces
+    s = _world()
+    lib = types.SimpleNamespace(template=lambda name: types.SimpleNamespace(kinds=('VEHICLE',)))
+    monkeypatch.setattr(simbody.importlib, 'import_module',
+                        lambda name: types.SimpleNamespace(normal_speed=lambda lib, tpl: 60.0))
+    plant = s.bodies['plant']                       # no WeaponSet: stands in for the unknown template's body
+    plant.template, plant.guessed = 'AlliedAntiVehicleVehicleTech1_Ground', ['all']
+    simbody.fill(s, plant, lib)
+    m = plant.find(interfaces.WeaponSet)
+    assert m is not None and _keys(plant.weapons) == [CANNON] and plant.speed == 60.0
+    assert plant.guessed == ['all: simai.fill']

@@ -6,7 +6,8 @@ module's (engine/modules/aura.py, step M12), the modifiers hung on a body stay t
 Object holds them, no module) as does `base`, this host's copy of the values before modifiers. The peers it reads are
 handed in by the caller (Sim.modify / Sim.aura_tick): the template's toggles and freeze tracker (L2), the upgrade names
 a weapon line tests and the player's granted upgrades (L4), how two owners stand (`relation`) -- this module never
-imports them. Fields it owns on a body: `level_rate`, `level_vision`, `shielded`, `taken`, `dealt`.
+imports them. Fields it owns on a body: `level_rate`, `level_vision`, `shielded`, `taken`, `dealt`; the weapons the
+status picks and the range scales it writes to the body's WeaponSet module (step W2, WeaponSet.hold).
 """
 import math
 
@@ -77,7 +78,7 @@ class Modifiers:
         if not mods and not on and not off and b.base is None:
             b.status = set(b.script_status | b.attachment_status | b.lift_status | toggle_bits)
             if b.slots:
-                b.weapons = simunits.pick_weapons(b.slots, b.status, upgrades_of(b))
+                b.find(interfaces.WeaponSet).hold(simunits.pick_weapons(b.slots, b.status, upgrades_of(b)))
             return
         if b.base is None:
             b.base = {'speed': b.speed, 'vision': b.vision, 'sight': b.sight, 'weapons': b.weapons, 'armor': b.armor}
@@ -97,8 +98,10 @@ class Modifiers:
             shroud = simunits.stats(b.template, world.own)['shroud'] or 0.0
             b.vision = max(b.vision, shroud * level_shroud)
         held = simunits.pick_weapons(b.slots, st, upgrades_of(b)) if b.slots else b.base['weapons']       # the status picks the guns
-        b.weapons = held if e['RANGE'] == 1.0 else [dict(w, range=w['range'] * e['RANGE'], undersize=UNDERSIZE * e['RANGE'])
-                                                    for w in held]
+        guns = b.find(interfaces.WeaponSet) if b.modules else None     # step W2: its WeaponSet holds them (none:
+        if guns is not None:                                            # it has none, held and base are [])
+            guns.hold(held if e['RANGE'] == 1.0 else [dict(w, range=w['range'] * e['RANGE'],
+                                                           undersize=UNDERSIZE * e['RANGE']) for w in held])
         b.shielded = e['shielded']
         # Suppression ARMOR75%: EXPLOSIVE40 on150HP reads80%; UNRESISTABLE bypasses it.
         b.taken, b.dealt = e['ARMOR'], e['DAMAGE_MULT'] * e['RATE_OF_FIRE']

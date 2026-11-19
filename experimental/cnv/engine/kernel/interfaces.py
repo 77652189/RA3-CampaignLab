@@ -621,6 +621,27 @@ class Infiltrate(Interface):
         raise NotImplementedError
 
 
+class WeaponSet(Interface):
+    """WeaponSetUpdate (step W2): the weapons a thing holds now (held: [{range, dps, type, anti ...}], the template
+    data's own or the modifier pass's scaled copies), its weapon slots when the lines name a status or an upgrade
+    (choices: simunits.weapon_sets, None: the weapons are fixed), arming it when it is made (arm) and the host's
+    modifier pass writing the held ones back (hold: the slots' pick for the status, ranges scaled). Who fires, when
+    and at what stays with the host."""
+    __slots__ = ()
+
+    def held(self):
+        raise NotImplementedError
+
+    def choices(self):
+        raise NotImplementedError
+
+    def arm(self, weapons, slots):
+        raise NotImplementedError
+
+    def hold(self, weapons):
+        raise NotImplementedError
+
+
 class AIUpdate(Interface):
     """The command state machine (move, attack, guard, follow ...) and the movement's physics."""
     __slots__ = ()
@@ -632,5 +653,6 @@ class AIUpdate(Interface):
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
 FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze,
           LevelUp, Aura, Repair, Assign, Infiltrate, SlowDeath, CreateOnDeath,
-          DeathWeapon)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
-ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze})  # a thing has at most one of these: Thing.find gives it
+          DeathWeapon, WeaponSet)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze,
+                 WeaponSet})  # a thing has at most one of these: Thing.find gives it
