@@ -73,7 +73,7 @@ def test_kill_unmeasured_configuration_stays_a_gap():
     spy.template = 'JapanInfiltrationInfantry'
     effect.send(spy, host)
     assert ('InfiltratorContain', host.template) in s.unmodeled
-    assert spy.name not in effect.going
+    assert spy.serial not in effect.going
 
 
 @pytest.mark.xfail(strict=True, reason='E205 b敌间谍到s47仍存活，模型消耗；进入前置未闭合，见 work/re/e205_kill.md')

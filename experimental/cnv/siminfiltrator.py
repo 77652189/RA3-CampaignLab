@@ -88,7 +88,7 @@ class Infiltrators:
     def __init__(self, world, peers, wallet):
         # simworld.WORLD_API only; the host's other parts (Peers); the players' money (simmoney.Money, L4)
         self.world, self.peers, self.wallet = world, peers, wallet
-        self.going = {}
+        self.going = {}         # the spy's serial -> (the spy, its target): the objects send picked, not names
         self.off_until = {}
         self.observers = []
         self.unit_observers = []
@@ -367,23 +367,22 @@ class Infiltrators:
             return
         if target.status & set(rule.get('InfiltratedStatusFilter', 'DESTROYED UNDER_CONSTRUCTION SOLD UNPACKING').split()):
             return
-        self.going[spy.name] = target
+        self.going[spy.serial] = (spy, target)
         spy.goal, spy.mode = target, 'infiltrate'
         peers.send(spy, (target.x, target.y))
 
     def tick(self):
         world, peers = self.world, self.peers
-        for name, target in list(self.going.items()):
-            spy = world.body(name)
-            if not spy or not spy.alive or not target.alive or spy.mode != 'infiltrate' or spy.goal is not target:
-                self.going.pop(name)
+        for key, (spy, target) in list(self.going.items()):
+            if not spy.alive or not target.alive or spy.mode != 'infiltrate' or spy.goal is not target:
+                self.going.pop(key)
                 continue
             shape = world.blocks(target)
             reach = (shape[2] if shape and len(shape) == 3 else 40.0) + 20.0
             distance = math.hypot(spy.x - target.x, spy.y - target.y)
             if distance > reach and (spy.path or distance > 2 * reach):
                 continue
-            self.going.pop(name)
+            self.going.pop(key)
             rule = self.spec(target)
             entry = filter_spec(rule.get('CanEnterFilter', 'InfiltrationCanEnterObjectFilter'))
             if (not entry or spy.template.lower() not in entry[0]

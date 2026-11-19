@@ -424,6 +424,18 @@ def _write(obj, f, e, decode, codec):
         codec.table[n] = new
 
 
+def _host_body(sim):
+    """The host's Body class (this layer does not import sim): from the module of the first class along the Sim's
+    MRO whose module has one -- a subclass declared where no Body is (a script's `class Derived(sim.Sim)`) finds
+    sim's. Asked only when a thing must be built bare (review 1119j #4)."""
+    for k in type(sim).__mro__:
+        body = getattr(importlib.import_module(k.__module__), 'Body', None)
+        if body is not None:
+            return body
+    raise ValueError(f'simsnap.restore: no Body class along {type(sim).__name__}\'s classes to build a thing made '
+                     'in the run')
+
+
 def restore(sim, s):
     """Write snapshot `s` onto `sim`, made anew for the same mission, test, level and script and not yet run: the
     world's part, each body's fields (the bodies held in the snapshot's order; the things held out of bodies found
@@ -441,7 +453,6 @@ def restore(sim, s):
     have = {b.serial: b for b in _things(sim)}
     things = {}
     every = [(serial, name, template, fields) for _key, serial, name, template, fields in s['bodies']] + s['others']
-    Body = importlib.import_module(type(sim).__module__).Body      # the host's (this layer does not import sim)
     lost = sorted(set(have) - {serial for serial, *_ in every})
     if lost:
         raise ValueError(f'simsnap.restore: things {lost[:10]} of the new run are not in the snapshot '
@@ -449,7 +460,7 @@ def restore(sim, s):
     for serial, name, template, _ in every:
         b = have.get(serial)
         if b is None:       # made in the run: bare -- every field is the snapshot's, its modules World.restore's
-            things[serial] = Body(name, template, '', 0.0, 0.0)
+            things[serial] = _host_body(sim)(name, template, '', 0.0, 0.0)
             continue
         if (b.name, b.template) != (name, template):
             raise ValueError(f'simsnap.restore: body {serial} is {b.name!r} ({b.template}) here, '

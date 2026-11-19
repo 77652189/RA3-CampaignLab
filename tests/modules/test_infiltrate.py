@@ -67,6 +67,21 @@ SLICES = {'vehicle': 'AlliedWarFactory', 'money': 'AlliedRefinery', 'kill': 'Sov
           'infantry': 'AlliedBarracks', 'ship': 'AlliedNavalYard'}
 
 
+def test_a_spy_sent_is_followed_as_itself_not_by_its_name():
+    """Same-name sweep (audit 1119, siminfiltrator.py:370): the spy send picked is the one that walks in, though its
+    name now reads as another thing (a script reference to a GI) -- before, the GI was found by name, had no
+    'infiltrate' mode, and the trip was dropped: the spy at the door never went in."""
+    s = simsmall.small_world()
+    target = s.add('t', 'AlliedWarFactory', 'Player_2', 1000.0, 1000.0)
+    spy = s.add('spy', 'AlliedInfiltrationInfantry', s.human, 1000.0, 1000.0)
+    s.refs['spy'] = s.add('gi', 'AlliedAntiInfantryInfantry', s.human, 400.0, 300.0)
+    s.relations[target.owner, s.human] = 'Enemy'
+    s.infiltrators.send(spy, target)
+    spy.path = []
+    s.infiltrators.tick()
+    assert not spy.alive and s.infiltrators.entered(target, 'vehicle') and not s.infiltrators.going
+
+
 def test_a_real_entry_marks_the_building_and_a_second_spy_is_turned_away():
     """Each measured slice: the first human spy that walks in is consumed and the building's module marked; a second
     is not sent (a repeat entry is a gap, the spy stays) -- the marks the tests above set by hand, made by an entry."""

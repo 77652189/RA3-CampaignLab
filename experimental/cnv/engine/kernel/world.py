@@ -61,10 +61,19 @@ class World:
         a snapshot's thing gets it again (remake). -> the module."""
         m = self._attached(thing, tag, head)
         if hasattr(thing, 'serial'):
+            if thing.serial not in self.late:
+                self._forget_late(thing, self.late)
             self.late.setdefault(thing.serial, []).append((tag, head))
         if isinstance(m, interfaces.Update):
             self.schedule.add(m, self.frame if frame is None else frame)
         return m
+
+    @staticmethod
+    def _forget_late(thing, late):
+        """A thing's row of `late` goes when the thing is reclaimed (numbered is weak: a thing replaced under its name
+        and dropped leaves no row behind, review 1119j #3). Bound to the table it was written in: a restore's new
+        table is not touched by the old one's things."""
+        weakref.finalize(thing, late.pop, thing.serial, None)
 
     def _attached(self, thing, tag, head):
         cls = self.tags[tag]
@@ -248,6 +257,8 @@ class World:
                 raise ValueError(f'World.restore: thing {serial} ({things[serial].name!r}) has modules {have}, '
                                  f'the snapshot {names}')
         self.late = late
+        for serial in late:
+            self._forget_late(things[serial], late)
         for serial, _names, states in snap_['things']:
             for m, state in zip(things[serial].modules, states):
                 snap.set_module_state(m, state, things, extra)

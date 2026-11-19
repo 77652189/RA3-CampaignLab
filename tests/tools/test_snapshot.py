@@ -5,6 +5,7 @@ sorted (4.3); the fields called static the same on the new world; what it cannot
 the executor's own: tests/modules/test_snapshot_kernel.py. The 9 missions without the AI frame for frame: 11b-3c.
 On the island (simsmall): a sequential script queued and run, an order given, a moved waypoint, a module's field
 set in the run (review 1119e #1-#4 #8 #9); a cut at the run's end refused (review 1119g #3)."""
+import gc
 import io
 import json
 
@@ -294,6 +295,50 @@ def test_a_thing_made_in_the_run_and_a_module_attached_come_back():
     assert [type(m).__name__ for m in b.bodies['unit'].modules] == [type(m).__name__ for m in a.bodies['unit'].modules]
     _go_on(a, b, 60)
     assert (a.bodies['late'].alive, b.bodies['late'].alive) == (False, False)
+
+
+def _replace_attached(s, n):
+    """`n` times a new 'same' in the name's place, each with a late lifetime (World.attach); the last one's serial."""
+    for _ in range(n):
+        b = s.add('same', 'AlliedAntiInfantryInfantry', 'Player_1', 350, 300)
+        simbody.last_until(s, b, s.world.frame + 300)
+    serial = b.serial
+    del b
+    gc.collect()
+    return serial
+
+
+def test_a_replaced_things_attached_row_goes_with_it():
+    """1119j #3: a thing replaced under its name and reclaimed leaves no row in World.late (it had kept one per
+    thing ever attached to) -- on the run and on one written back (its rows bound to the restored table)."""
+    a = _island()
+    last = _replace_attached(a, 30)
+    assert sorted(a.world.late) == [last]
+    b = _island()
+    _fork(a, b)
+    last = _replace_attached(b, 3)
+    assert sorted(b.world.late) == [last]
+
+
+class _Derived(sim.Sim):
+    """A host's Sim subclass declared in a module with no Body (1119j #4: restore read Body from here)."""
+
+
+def test_a_sim_subclass_declared_where_no_body_is_is_restored():
+    """1119j #4: written onto a subclass of sim.Sim from another module: with no thing made in the run, and with one
+    (built bare as sim's Body, found along the subclass's classes)."""
+    def derived():
+        s = _Derived(SEQ, model=False)
+        s.add('unit', 'AlliedAntiInfantryInfantry', 'Player_1', 300, 300)
+        return s
+    a = _seq_world()
+    a.advance(15)
+    _fork(a, derived())
+    a.add('late', 'AlliedAntiInfantryInfantry', 'Player_1', 350, 300, by='unit', at=a.t)
+    b = derived()
+    _fork(a, b)
+    assert type(b.bodies['late']) is sim.Body
+    _go_on(a, b, 15)
 
 
 def test_another_worlds_thing_at_a_serial_left_free_is_an_error():
