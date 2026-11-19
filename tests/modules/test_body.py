@@ -3,12 +3,24 @@ ActiveBody, ImmortalBody, PropBody, ManagerBody, ManagedActiveBody, ManagedImmor
 from the nearest non-empty <Body> up the chain, taken whole, defines spelled out. The census against the readers it
 replaces (immortal_body / manager_body / prop_body / max_health and Sim.add's health) is
 work/re/sim_split/b2_draft/b2_census.py: 3448 retail + 520 own templates, no difference."""
+import pytest
+
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simunits  # noqa: E402
 from engine.modules import body  # noqa: E402
 
 BASE = ('<GameObject id="CNVBodyBase"><Body><ActiveBody id="B" MaxHealth="400"/></Body>'
         '<Behaviors><SlowDeath id="S"/></Behaviors></GameObject>')
+
+
+def test_bare_body_health_defaults_and_writes_require_body_module():
+    import sim
+
+    bare = sim.Body('bare', 'ProbeBare', 'P', 0., 0.)
+    assert bare.hp == bare.max_hp == bare.health == 100.0
+    for write in (bare.damage, bare.mend, bare.set_hp):
+        with pytest.raises(RuntimeError, match="'bare' is missing a Body module"):
+            write(10.0)
 
 
 def answer(template, own=None):
@@ -139,7 +151,6 @@ def test_a_change_tells_the_damage_modules_a_making_does_not():
 
 def test_the_fields_live_on_the_module_read_only_on_the_body_and_recorded_by_their_old_names():
     import pytest
-    import sim
     from engine.ports.observe import Observe
     s = _world(('p', 'AlliedPowerPlant'))
     p = s.bodies['p']
@@ -151,9 +162,6 @@ def test_the_fields_live_on_the_module_read_only_on_the_body_and_recorded_by_the
         p.immortal = True
     d = Observe.state(p)
     assert (d['hp'], d['max_hp'], d['health_floor'], d['immortal'], d['prop']) == (p.max_hp, p.max_hp, 1.0, False, None)
-    bare = sim.Body('b', 'AlliedPowerPlant', 'Player_1', 0.0, 0.0)     # not made by Sim.add: no Body to write
-    with pytest.raises(AttributeError):
-        bare.damage(1.0)
 
 
 def test_the_last_damage_and_the_indestructible_flag_live_on_the_module_step_b3():

@@ -38,7 +38,8 @@ def test_clock_infantry_sequence_as_on_the_bench():
     import sim
     m, t, _ = build.resolve('engine_inffoot', 'c')
     s = sim.Sim(m, t).run(80)
-    assert s.infiltrators.unit_observers, s.infiltrators.rules
+    host = s.infiltrators.module(s.body(m.role('enemy').name))
+    assert s.infiltrators.unit_observers, host.rules() if host is not None else 'enemy host has no InfiltratorContain'
     assert [s.counters.get(f'Clock page {page}', 0) for page in range(20)] == [31710] * 20
     assert not s.body(m.role('enemy spy').name).alive
     assert s.body(m.role('ally spy').name).alive

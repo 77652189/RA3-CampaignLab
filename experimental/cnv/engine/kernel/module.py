@@ -21,6 +21,7 @@ class Thing:
 
     @modules.setter
     def modules(self, modules):
+        modules = tuple(modules)
         if hasattr(self, '_find_cache'):
             del self._find_cache
         if modules:

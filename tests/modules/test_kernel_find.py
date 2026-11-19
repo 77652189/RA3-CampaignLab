@@ -47,3 +47,17 @@ def test_kernel_find_rejects_two_one_modules():
     kernel.attach(thing, 'Body')
     with pytest.raises(ValueError, match='^Body: 2 modules on one thing$'):
         thing.find(interfaces.Body)
+
+
+def test_kernel_find_copies_mutable_module_list():
+    thing = module.Thing()
+    first, second = DamageModule(thing, None), DamageModule(thing, None)
+    modules = [first]
+    thing.modules = modules
+    assert thing.find(interfaces.Damage) == (first,)
+
+    modules[0] = second
+    assert thing.modules == thing.find(interfaces.Damage) == (first,)
+
+    thing.modules = modules
+    assert thing.modules == thing.find(interfaces.Damage) == (second,)

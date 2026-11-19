@@ -57,7 +57,7 @@ def test_aircraft_no_hostile_entry_as_on_the_bench():
     assert s.series and all(values == [11100, 11100, 0, 511] for _, values in s.series)
     assert s.body(m.role('enemy spy').name).alive
     assert s.body(m.role('ally spy').name).alive
-    assert not any(s.infiltrators.entered(b, 'aircraft') for b in s.living() if s.infiltrators.module(b))
+    assert not any(s.infiltrators.entered(b, 'aircraft') for b in s.bodies.values() if s.infiltrators.module(b))
     assert not s.infiltrators.observers
 
 

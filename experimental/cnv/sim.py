@@ -344,8 +344,7 @@ class Body(kernel_module.Thing):
     deleted: bool = False
     path: list = dataclasses.field(default_factory=list)       # world points still to go
     goal: object = None                                         # what it is after: a point, or a Body (attack)
-    close_since: float = None                                   # an enemy: since when it is within REACH of the
-                                                                # player's (自动打掉)
+    close_since: float = None                                   # since the enemy came within the player's REACH (自动打掉)
     made_by: str = ''                                           # the script that created it
     made_at: float = 0.0
     scenery: bool = False
@@ -395,8 +394,7 @@ class Body(kernel_module.Thing):
     lies: float = 0.0                                           # seconds it lies dying once killed (SlowDeath's
                                                                 # DestructionDelay), the crush's death only (R9)
     linger: float = 0.0                                         # ... the lie this death has (LINGER, or `lies`)
-    follow: dict = None                                         # on a waypoint path (order_follow): label, the waypoint
-                                                                # it is going to, how; shared by a team that goes as one
+    follow: dict = None                                         # order_follow: label, next waypoint, mode; shared by one team
     frame_move: bool = False                                    # topple contact / measured Jet startup need frame-sized steps
     drive_speed: float = 0.0
     jet_motion: dict = None                                     # simjet: measured first eastbound startup only
@@ -409,31 +407,35 @@ class Body(kernel_module.Thing):
                                                                 # 2, HOLD_FIRE 3 (idle_chase reads 1 / 2)
     ai_acquire: bool = False                                    # TEAM_ALLOW_AI_AUTOACQUIRE (takes_by_itself)
     z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
-    unpack_parent: object = None                                # the refinery whose SpawnOnUnpack made it (not a
-                                                                # slave: outlives it, never replaced); the engine's
-                                                                # Object producer, no module's (stays: step M10)
+    unpack_parent: object = None                                # SpawnOnUnpack's producer, outlived and never replaced (M10)
+
+    def _require_body(self):
+        body = self.find(kernel_interfaces.Body)
+        if body is None:
+            raise RuntimeError(f'{self.name!r} is missing a Body module')
+        return body
 
     def damage(self, amount):     # the Body module's (engine/modules/body.py, step B2b): down to its floor, a prop none
-        self.find(kernel_interfaces.Body).attempt_damage(amount)
+        self._require_body().attempt_damage(amount)
 
     def mend(self, amount):     # up by `amount`, at most the maximum (math.inf: to full); every heal (step K2)
-        self.find(kernel_interfaces.Body).attempt_healing(amount)
+        self._require_body().attempt_healing(amount)
 
     @property
     def health(self):           # percent of its maximum, what the scripts read; a PropBody's 0 (engine_propbody a)
-        return self.find(kernel_interfaces.Body).percent()
+        body = self.find(kernel_interfaces.Body)
+        return 100.0 if body is None else body.percent()   # the bare body's 100 HP / 100 MaxHP defaults
 
     @health.setter
     def health(self, pct):
         self.find(kernel_interfaces.Body).set_percent(pct)
 
     def set_hp(self, hp, max_hp=None, tell=True):     # the one write (B1, the module's set_health since B2b)
-        self.find(kernel_interfaces.Body).set_health(hp, max_hp, tell)
+        self._require_body().set_health(hp, max_hp, tell)
 
     def set_last_damage(self, player, by=None):     # every hit names its source (step B3: the Body module's)
         self.find(kernel_interfaces.Body).set_last_damage(player, by)
-    # fields moved into modules, still read outside: read only (test_kernel BODY_FORWARDS)
-    FORWARDS = ('hp', 'max_hp', 'health_floor', 'immortal', 'prop', 'last_hit', 'last_by', 'indestructible',
+    FORWARDS = ('hp', 'max_hp', 'health_floor', 'immortal', 'prop', 'last_hit', 'last_by', 'indestructible',  # read only
                 'read_until', 'life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
@@ -443,9 +445,8 @@ class Body(kernel_module.Thing):
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
     immortal = kernel_module.forward(kernel_interfaces.Body, lambda m: m.is_immortal(), False)
     prop = kernel_module.forward(kernel_interfaces.Body, lambda m: m.prop_death())    # None / 'stays' / 'dies'
-    # step B3: who hit it last (player None: a script's kill / never hit; object None: a run script's hit; E2)
-    last_hit = kernel_module.forward(kernel_interfaces.Body, lambda m: m.last_damage()[0])
-    last_by = kernel_module.forward(kernel_interfaces.Body, lambda m: m.last_damage()[1])
+    last_hit = kernel_module.forward(kernel_interfaces.Body, lambda m: m.last_damage()[0])  # B3: player (None for script kills or no hit)
+    last_by = kernel_module.forward(kernel_interfaces.Body, lambda m: m.last_damage()[1])  # attacking object (None for script hits)
     indestructible = kernel_module.forward(kernel_interfaces.Body, lambda m: m.is_indestructible(), False)
     read_until = kernel_module.forward(kernel_interfaces.Body, lambda m: m.bits_read_until())     # step B4a
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
@@ -477,7 +478,6 @@ class Body(kernel_module.Thing):
     cold = kernel_module.forward(kernel_interfaces.Freeze, lambda m: m.held(), 0.0)    # step M11: the cryo beam's cold
     cold_step = kernel_module.forward(kernel_interfaces.Freeze, lambda m: m.stage(), -1)     # its highest EffectInfo
     level_modules = kernel_module.forward(kernel_interfaces.LevelUp, lambda ms: {m.module_id() for m in ms if m.active()}, set())  # M12: ids in force
-
 
 from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
 
