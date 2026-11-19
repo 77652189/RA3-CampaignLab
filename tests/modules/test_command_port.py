@@ -643,3 +643,17 @@ def test_a_player_power_is_cast_by_the_object_it_picked_not_a_reference_of_its_n
     s.refs['lead'] = s.bodies['other']
     _act(s, 'PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'Player_1', 'SpecialPower_JAIV_Transform', '@400,300')
     assert [c[1] for c in s.casts] == ['Player_1']
+
+
+def test_a_line_attack_and_capture_go_at_the_object_picked_not_a_reference_of_its_name():
+    """A line's attack / capture order the object `pick` found, as it is (11-19 same-name sweep S3: read again by its
+    name, the reference `target` pointing at another enemy took the attack, and one pointing at a tank turned the
+    capture down)."""
+    s = simsmall.small_world([('tank', APOC, 'Player_1', 0.0, 0.0), ('eng', 'SovietEngineer', 'Player_1', 0.0, 60.0),
+                              ('target', 'AlliedBarracks', 'Player_2', 400.0, 0.0),
+                              ('decoy', APOC, 'Player_2', 900.0, 0.0)], model=False)
+    s.relations[('Player_1', 'Player_2')] = s.relations[('Player_2', 'Player_1')] = 'Enemy'
+    s.refs['target'] = s.bodies['decoy']
+    assert s.commands.do(Command('attack', units=('tank',), target='target')) == (True, '')
+    assert s.commands.do(Command('capture', units=('eng',), target='target')) == (True, '')
+    assert s.bodies['tank'].goal is s.bodies['eng'].goal is s.bodies['target']

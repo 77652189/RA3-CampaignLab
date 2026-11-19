@@ -390,11 +390,11 @@ class Commands:
                     # takes the team's next one when this dies
                     w.team_targets[b.serial] = cmd.arg('team')
             return True, ''
-        targets = w.pick(cmd.target)
-        if not targets:
+        targets = w.pick(cmd.target)        # the one picked is given as it is: read again by its name, a script
+        if not targets:                     # reference of that name took its place (11-19 same-name sweep S3)
             return False, f'找不到 {cmd.target}'
         for b in self._units(cmd):
-            w.order_attack(b, targets[0].name, cmd.force)
+            w.order_attack(b, targets[0], cmd.force)
         return True, ''
 
     def _power(self, cmd):
@@ -421,10 +421,10 @@ class Commands:
             t = cmd.target if cmd.arg('target_serial') is None else self._target(cmd, None)
             sent = [w.order_capture(b, t) for b in self._units(cmd)] if t is not None else []
             return (True, '') if sent and all(sent) else (False, f'没有能去占 {cmd.target} 的工兵')
-        targets = w.pick(cmd.target)
+        targets = w.pick(cmd.target)        # the one picked, as it is (S3, as _attack)
         if not targets:
             return False, f'找不到 {cmd.target}'
-        sent = [w.order_capture(b, targets[0].name) for b in self._units(cmd)]     # each one's answer (i #3)
+        sent = [w.order_capture(b, targets[0]) for b in self._units(cmd)]     # each one's answer (i #3)
         return (True, '') if sent and all(sent) else (False, f'没有能去占 {cmd.target} 的工兵')
 
     def _build(self, cmd):
