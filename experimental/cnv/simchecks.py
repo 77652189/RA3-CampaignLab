@@ -80,20 +80,27 @@ CHECKS = {
 def run(level, check):
     """(passed, lines) for one check's simulator version."""
     import build
-    import sim
     spec = CHECKS[(level, check)]
     m, t, _ = build.resolve(level, check)
-    s = sim.Sim(m, t, script=spec['script']).run(UNTIL)
-    lines, ok = [s.ending_line()], True
-    got = s.ending[0] if s.ending else None
+    obs = play(m, t, spec['script'])
+    lines, ok = [obs.ending_line()], True
+    ending = obs.ending()
+    got = ending[0] if ending else None
     if got != spec['ending']:
         ok = False
         lines.append(f'FAIL 结局应该是 {spec["ending"] or "不结束"}，推演是 {got or "不结束"}')
     if spec['counters'] and t.expect:
-        judged, status = build.report(t, s.series)
+        judged, status = build.report(t, obs.series())
         lines += judged
         ok = ok and status == 0
     return ok, lines
+
+
+def play(m, t, script):
+    """The harness: the check's mission run in the simulator to UNTIL; the run's Observe (engine/ports/observe.py)."""
+    import sim
+    from engine.ports.observe import Observe
+    return Observe(sim.Sim(m, t, script=script).run(UNTIL))
 
 
 def main():

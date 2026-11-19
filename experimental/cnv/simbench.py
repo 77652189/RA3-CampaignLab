@@ -68,23 +68,33 @@ def run(check, script=None):
     """(status, lines): status 0 = every expectation the simulator can judge held on its readings. `script`: the
     player's lines in place of the check's own (a mutation: the player does nothing)."""
     import build
-    import sim
     if check == 'derrick' and script is None:       # the check itself, then the walk to the map's own derricks
         status, lines = run(check, [])
         more, extra = reach()
         return status + more, lines + extra
     make, blind = SPECS[check]
     m, t, _ = build.resolve(LEVEL, check)
-    s = sim.Sim(m, t, script=';'.join(make(m) if script is None else script)).run(UNTIL[check])
-    gone = next((at for at, kind, text in s.log if kind == '过场' and text == '交还控制'), None)
+    obs = play(m, t, ';'.join(make(m) if script is None else script), UNTIL[check])
+    gone = next((at for at, kind, text in obs.log() if kind == '过场' and text == '交还控制'), None)
     if gone is None:
         return 1, ['FAIL 开场过场没有交还控制：检查的时间对不上']
     off = int(round(gone))
-    readings = [(sec - off, v) for sec, v in s.series if sec >= off]
+    readings = [(sec - off, v) for sec, v in obs.series() if sec >= off]
     t.expect, skip = judged(t, blind)
     lines, status = build.report(t, readings)
-    unknown = [f'不认识的动作：{k}×{v}' for k, v in s.unknown.items()]
-    return status, [f'开场过场 {off} 秒结束，读数已按它前移', s.ending_line()] + lines + skip + unknown
+    unknown = [f'不认识的动作：{k}×{v}' for k, v in obs.unknown().items()]
+    return status, [f'开场过场 {off} 秒结束，读数已按它前移', obs.ending_line()] + lines + skip + unknown
+
+
+def play(m, t, script, until, waypoints=()):
+    """The harness: the check's mission run in the simulator to `until` (mission seconds), `waypoints` ((name, (x, y))
+    each) placed on it first; what the reports read is the run's Observe (engine/ports/observe.py)."""
+    import sim
+    from engine.ports.observe import Observe
+    s = sim.Sim(m, t, script=script)
+    for name, at in waypoints:
+        s.waypoints[name] = at
+    return Observe(s.run(until))
 
 
 def reach():
@@ -92,17 +102,14 @@ def reach():
     flow/mechanics.md 工程师占油井), but that the player's engineer can walk from the start to each derrick the map
     holds (the cliff the first bench run stood on: an engineer 150 north of the start never moved)."""
     import build
-    import sim
     m, t, _ = build.resolve(LEVEL, 'derrick')
     m.drop_endings()                    # the check keeps the plan's own: the trucks' loss ends the run at 2:31
     lines, status = [], 0
     for k, (x, y) in enumerate(m.map.DERRICKS):
         # the fight off: the walk is the question (since DEMO_KILL closed, the engineer lives past the demo and the way
         # to derrick 0 runs through street V2, where the first wave kills him at 1:59)
-        s = sim.Sim(m, t, script=f'不打;{SCENE}+2 派 engineer 去 Derrick {k}')
-        s.waypoints[f'Derrick {k}'] = (x, y)
-        s.run(REACH_RUN)
-        b = s.bodies[m.role('engineer').name]
+        obs = play(m, t, f'不打;{SCENE}+2 派 engineer 去 Derrick {k}', REACH_RUN, [(f'Derrick {k}', (x, y))])
+        b = obs.thing(m.role('engineer').name)
         far = ((b.x - x) ** 2 + (b.y - y) ** 2) ** 0.5
         ok = far <= REACH
         status += not ok

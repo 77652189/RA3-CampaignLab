@@ -11,6 +11,8 @@ Three groups and an internal door:
   their names (name template owner x y hp max_hp health ...: the readers' census, R3 12a);
 - scripts and players: `flags()`, `counters()`, `timers()` (name -> the mission second it runs out at), `objectives()`,
   `ending()`, `money()`, `income()`, `markers()`, `countdowns()`, `waypoints()`, `banned()`;
+- a run's outcome (what a report reads once the run is over: simbench, simchecks, playcheck, mappage): `ending()`,
+  `log()`, `series()`, `unknown()`, `ending_line()`;
 - players and sight: `human`, `foe`, `enemy(a, b)`, `sees(x, y)`, `side_sees(side, thing)`, `looks(viewer, x, y)`,
   `can_hit(weapon, thing)`, `ground_z(x, y)`;
 - internal (the simulator's own bookkeeping, which a game adapter does not have): `state(thing)` (every field a
@@ -74,7 +76,21 @@ class Observe:
         return self._w.objectives
 
     def ending(self):
+        """(how '赢' / '输', mission second, why) once the run ended, else None."""
         return self._w.ending
+
+    # --- a run's outcome
+    def log(self):
+        """The timeline: (mission second, kind, text) each."""
+        return self._w.log
+
+    def series(self):
+        """The counter readings: (second, [one value per counter of the check]) each."""
+        return self._w.series
+
+    def unknown(self):
+        """Action name -> how many times the run met an action the simulator does not know."""
+        return self._w.unknown
 
     def money(self):
         return self._w.money

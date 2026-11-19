@@ -6,8 +6,13 @@ engine.ports"; R3 12b). First reader: simrecord, the frame record every pure mov
 - outside run_task it holds no raw world: no name or argument `s`, `sim_`, `bodies`, no attribute of those or `eng`
   (the recorders get an Observe and read it).
 A planted break (a raw import, a recorder reading self.s.bodies) turns each check red. (test_kernel's ADAPTERS is the
-whole-file form, for a plug-in adapter; simrecord cannot join it: run_task makes the run.)"""
+whole-file form, for a plug-in adapter; simrecord cannot join it: run_task makes the run.)
+
+The other readers (READERS, READER_PARTS) are held to the same, outside their harness; and every file in experimental/
+outside the simulator that uses a world maker is a reader or a row of EXEMPT, the explicit exemption table (file,
+function or the whole file, why) -- R3 12c, the observation port's close."""
 import ast
+import importlib.util
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -78,31 +83,138 @@ def _src():
     return (CNV / 'simrecord.py').read_text(encoding='utf-8')
 
 
-# The other readers, one a step (R3, sim_split/obs_port.md): file -> (its harness: the functions that make the run or
-# hang the reader on it, the mission-data modules it may import beside engine.ports). simshow's: ctx (the contract's
-# timings), model (the camera's picture sizes), strip (reads the Show's own records) -- none holds a world.
-AUTOPLAY = ROOT / 'experimental' / 'autoplay'
+EXP = ROOT / 'experimental'
+AUTOPLAY = EXP / 'autoplay'
+GAME = EXP / 'simui' / 'game.py'
+PLAYCHECK = CNV / 'playcheck.py'
+MAPPAGE = EXP / 'mappage' / 'mappage.py'
+
+# The exemption table (R3 12c, the observation port's close): everything in experimental/ that may still touch the
+# simulator's world outside the port, one row each -- (file, the function, or None: the whole file -- for a
+# READER_PARTS file, the rest of it --, why). The readers' harness sets below are these rows; a file outside the
+# simulator that uses a world maker (WORLD_MAKERS) and is neither a reader nor here turns test_every_world_user_is_listed
+# red. So "the readers that go round the port" = the None rows of this table.
+EXEMPT = [
+    (CNV / 'simrecord.py', 'run_task', '造一局（build / sim / retail / simai）；记录器只拿 Observe'),
+    (CNV / 'simshow.py', 'attach', '把 Show 挂上一局（注入 CIV、通报动作、mmss：端口不许导入模拟器）'),
+    (CNV / 'simshow.py', 'play', '造局并跑'),
+    (CNV / 'simshow.py', 'run', '造局并跑'),
+    (CNV / 'simshow.py', 'main', '命令行：造局'),
+    (AUTOPLAY / 'autoplay.py', 'load', '造局'),
+    (AUTOPLAY / 'autoplay.py', 'attach', '唯一拿世界的：View / Orders 从这里拿 Observe'),
+    (AUTOPLAY / 'autoplay.py', 'post', 'attach 里的内层函数：Orders 的行经它下给世界'),
+    (AUTOPLAY / 'autoplay.py', 'tick', '驱动一局'),
+    (AUTOPLAY / 'autoplay.py', 'play', '造局并驱动'),
+    (AUTOPLAY / 'autoplay.py', 'replay', '造局并驱动'),
+    (AUTOPLAY / 'autoplay.py', 'main', '命令行：造局'),
+    (CNV / 'offline.py', 'walk', '造走查那局并驱动，返回 Observe'),
+    (CNV / 'offline.py', 'spelt', '把 sim.mmss / sim.HIGH_STEP 交给报告'),
+    (CNV / 'offline.py', 'main', '命令行：造局'),
+    (CNV / 'graybox.py', 'main', '命令行：造局'),
+    (CNV / 'graybox_cards.py', 'world', '造 A4 那局'),
+    (CNV / 'graybox_cards.py', 'main', '命令行：造局'),
+    (CNV / 'simbench.py', 'play', '造局、摆路点（derrick 的 Derrick k），返回 Observe'),
+    (CNV / 'simchecks.py', 'play', '造局，返回 Observe'),
+    (GAME, None, 'Session 下令、跑 tick、跳阶段（驱动，有命令端口后归它）；读者是 Play / Picture / phase_flags / key_times'),
+    (PLAYCHECK, None, 'read() 造局；编译器只用 sim.parse_script 解析打法的写法，不读世界；读者是 readings'),
+    (MAPPAGE, None, 'simulate() 造局；其余读地图和任务的数据；读者是 timeline'),
+    (CNV / 'simbench_peak.py', None, '测速：自己驱动整局、下令，等命令端口'),
+    (CNV / 'simcoverage.py', None, '"模拟器不认识什么"是模拟器的内部报告，不归观测端口'),
+    (CNV / 'simai.py', None, '归 AI 端口'),
+    (CNV / 'simproxy.py', None, '归命令端口'),
+    (CNV / 'retail.py', None, '造原版关的局（同 build，造局的一边）'),
+    (CNV / 'simsmall.py', None, '规则测试的小世界：造局'),
+    (CNV / 'simstatic.py', None, '静态半边：只用 sim.CMP 比较表和 sim.Ground 地面，不读跑着的世界'),
+    (AUTOPLAY / 'levels.py', None, '只读 simproxy 的常量 LEADS / ESCORT（任务数据）'),
+]
+
+
+def harness(path):
+    return {fn for p, fn, _ in EXEMPT if p == path and fn}
+
+
+# The other readers, one a step (R3, sim_split/obs_port.md): file -> the mission-data modules it may import beside
+# engine.ports (its harness is its EXEMPT rows). simshow's: ctx (the contract's timings), model (the camera's picture
+# sizes), strip (reads the Show's own records) -- none holds a world. players may import simunits (template data);
+# offline's glossary (names) and simunits are data; graybox / graybox_cards read what walk returns through offline's
+# numbers. simbench / simchecks report a run's outcome (log, series, unknown, ending, ending_line) off its Observe;
+# simbench's build is the check's mission data.
 READERS = {
-    CNV / 'simshow.py': ({'attach', 'play', 'run', 'main'}, {'ctx', 'model', 'strip'}),
-    # the auto player: attach / tick / play / replay make and drive the run (Orders' lines go out through attach's
-    # post, a function inside attach); the View, Orders, finish and the players read Observe. players may import
-    # simunits (template data).
-    AUTOPLAY / 'autoplay.py': ({'load', 'attach', 'post', 'tick', 'play', 'replay', 'main'}, set()),
-    AUTOPLAY / 'players.py': (set(), {'simunits'}),
-    # the plan's offline checks: walk makes and drives the walkthrough's run, spelt hands the report the simulator's
-    # m:ss and high-ground step; glossary (names) and simunits (template data) are data. graybox / graybox_cards read
-    # what walk returns (and the cards' world(), their harness, makes A4's run) through offline's numbers.
-    CNV / 'offline.py': ({'walk', 'spelt', 'main'}, {'glossary', 'simunits'}),
-    CNV / 'graybox.py': ({'main'}, {'offline', 'simunits'}),
-    CNV / 'graybox_cards.py': ({'world', 'main'}, {'glossary', 'graybox', 'offline', 'simunits'}),
+    CNV / 'simrecord.py': set(),
+    CNV / 'simshow.py': {'ctx', 'model', 'strip'},
+    AUTOPLAY / 'autoplay.py': set(),
+    AUTOPLAY / 'players.py': {'simunits'},
+    CNV / 'offline.py': {'glossary', 'simunits'},
+    CNV / 'graybox.py': {'offline', 'simunits'},
+    CNV / 'graybox_cards.py': {'glossary', 'graybox', 'offline', 'simunits'},
+    CNV / 'simbench.py': {'build'},
+    CNV / 'simchecks.py': {'build'},
 }
-# Readers that are one class or function of a bigger file (the rest of the file drives the run): (file, name, the
-# mission-data modules it may import). simui's game.py: the Session gives the orders and runs the ticks (the driver);
-# what the page draws is the Picture's, the voices and the replay record the Play's, and the stage flags / the key
-# moments are read off the compiled mission / a run's Observe.
-GAME = ROOT / 'experimental' / 'simui' / 'game.py'
+
+
+def spec(path):
+    """(its harness, the modules it may import) for a whole-file reader."""
+    return harness(path), READERS[path]
+
+
+# Readers that are one class or function of a bigger file (the rest of the file is a None row of EXEMPT): (file, name,
+# the mission-data modules it may import). simui's game.py: what the page draws is the Picture's, the voices and the
+# replay record the Play's, and the stage flags / the key moments are read off the compiled mission / a run's Observe.
+# playcheck's readings and mappage's timeline read a run's outcome off its Observe.
 READER_PARTS = [(GAME, 'Play', set()), (GAME, 'Picture', {'simunits'}), (GAME, 'phase_flags', set()),
-                (GAME, 'key_times', set())]
+                (GAME, 'key_times', set()), (PLAYCHECK, 'readings', set()), (MAPPAGE, 'timeline', set())]
+
+# What makes or hands out a world (a sim.Sim): a file outside the simulator that imports one of these, or loads one by
+# file (`_load('sim', ...)`), touches the world and must be a reader or in EXEMPT.
+WORLD_MAKERS = {'sim', 'simai', 'simproxy', 'retail', 'simsmall'}
+_spec = importlib.util.spec_from_file_location('test_sim_layers_registry_p', ROOT / 'tests' / 'test_sim_layers.py')
+_layers = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_layers)
+SIMULATOR = set(_layers.LAYER_OF) | {'sim'}     # the simulator's own files (they hold the world by design)
+
+
+LOADERS = {'_load', 'load', 'import_module', 'spec_from_file_location', '__import__'}
+
+
+def _called(call):
+    f = call.func
+    return f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
+
+
+def uses_world(src):
+    """True when the source imports a world maker or loads one by name or file (a loader call whose first argument
+    is its module name)."""
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Import):
+            names = [a.name for a in node.names]
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            names = [node.module]
+        elif isinstance(node, ast.Call) and _called(node) in LOADERS and node.args \
+                and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
+            names = [node.args[0].value]
+        else:
+            continue
+        if any(n.split('.')[0] in WORLD_MAKERS for n in names):
+            return True
+    return False
+
+
+def outside_files():
+    """experimental/'s .py files that are not the simulator's own."""
+    out = []
+    for p in sorted(EXP.rglob('*.py')):
+        if 'archive' in p.relative_to(EXP).parts or (CNV / 'engine') in p.parents:
+            continue
+        if p.parent == CNV and p.stem in SIMULATOR:
+            continue
+        out.append(p)
+    return out
+
+
+def unlisted(sources):
+    """The files of {path: source} that use a world maker and are neither a reader nor in EXEMPT."""
+    listed = set(READERS) | {p for p, _, _ in READER_PARTS} | {p for p, _, _ in EXEMPT}
+    return sorted(p.relative_to(ROOT).as_posix() for p, src in sources.items() if p not in listed and uses_world(src))
 
 
 def sim_breaks(src, harness):
@@ -128,33 +240,70 @@ def part_src(path, name):
 
 
 def test_the_other_readers_read_only_the_port():
-    for f, (harness, allowed) in READERS.items():
-        assert reader_breaks(f.read_text(encoding='utf-8'), harness, allowed) == [], f.name
+    for f, allowed in READERS.items():
+        assert reader_breaks(f.read_text(encoding='utf-8'), harness(f), allowed) == [], f.name
     for path, name, allowed in READER_PARTS:
         assert reader_breaks(part_src(path, name), set(), allowed) == [], (path.name, name)
 
 
+def test_every_world_user_is_listed():
+    """Outside the exemption table nothing in experimental/ touches the world but through the port."""
+    assert unlisted({p: p.read_text(encoding='utf-8') for p in outside_files()}) == []
+
+
+def test_the_exemption_table_is_whole():
+    """Every row names a file that is there and a function that is in it, with a reason; a whole-file reader has no
+    None row (the whole file would be exempt), a READER_PARTS file has one (its rest)."""
+    parts = {p for p, _, _ in READER_PARTS}
+    for p, fn, why in EXEMPT:
+        assert p.exists() and why, (p, fn)
+        if fn:
+            assert fn in set(_functions(ast.parse(p.read_text(encoding='utf-8'))).values()), (p.name, fn)
+        else:
+            assert p not in READERS, p.name
+    assert all(any(p == q and fn is None for q, fn, _ in EXEMPT) for p in parts)
+
+
+def test_a_world_user_outside_the_table_is_found():
+    planted = CNV / 'planted_reader.py'
+    assert unlisted({planted: 'def f():\n    import sim\n    return sim.Sim(None).bodies\n'})
+    assert unlisted({planted: "x = _load('sim', 'sim.py')\n"})
+    assert unlisted({planted: 'from simproxy import LEADS\n'})
+    assert not unlisted({planted: 'import build\n'})
+    assert unlisted({planted: "import importlib\nm = importlib.import_module('simai')\n"})
+    assert not unlisted({planted: "SIM = 'sim.py'\n"})
+    assert not unlisted({planted: "ok = rel.startswith('sim')\n"})
+    peak = CNV / 'simbench_peak.py'
+    saved = list(EXEMPT)
+    try:
+        EXEMPT[:] = [r for r in EXEMPT if r[0] != peak]
+        assert unlisted({peak: peak.read_text(encoding='utf-8')}) == ['experimental/cnv/simbench_peak.py']
+    finally:
+        EXEMPT[:] = saved
+    assert unlisted({peak: peak.read_text(encoding='utf-8')}) == []
+
+
 def test_planted_breaks_in_the_other_readers_are_found():
-    harness, allowed = READERS[CNV / 'simshow.py']
+    harness, allowed = spec(CNV / 'simshow.py')
     src = (CNV / 'simshow.py').read_text(encoding='utf-8')
     assert reader_breaks(src + '\nimport sim\n', harness, allowed)
     assert reader_breaks(src.replace('for b in obs.living()', 'for b in self.obs._w.bodies.values()'), harness, allowed)
     assert not reader_breaks(src + '\ndef run():\n    import sim\n', harness, allowed)
-    harness, allowed = READERS[AUTOPLAY / 'autoplay.py']
+    harness, allowed = spec(AUTOPLAY / 'autoplay.py')
     src = (AUTOPLAY / 'autoplay.py').read_text(encoding='utf-8')
     assert reader_breaks(src.replace('obs = self.obs', 's = self.obs'), harness, allowed)
     assert reader_breaks(src.replace('obs.fresh_sight()', 'sim.CIV'), harness, allowed)
-    harness, allowed = READERS[AUTOPLAY / 'players.py']
+    harness, allowed = spec(AUTOPLAY / 'players.py')
     src = (AUTOPLAY / 'players.py').read_text(encoding='utf-8')
     assert reader_breaks(src + '\nimport sim\n', harness, allowed)
     assert reader_breaks(src.replace('obs.can_hit(w, f.body)', 'view.s.can_hit(w, f.body)'), harness, allowed)
-    harness, allowed = READERS[CNV / 'offline.py']
+    harness, allowed = spec(CNV / 'offline.py')
     src = (CNV / 'offline.py').read_text(encoding='utf-8')
     assert reader_breaks(src + '\nimport sim\n', harness, allowed)
     assert reader_breaks(src.replace('obs.ground_z(vx, vy)', 's.ground.z(vx, vy)'), harness, allowed)
     assert reader_breaks(src.replace("'段：' + '，'.join(f'{n} {mmss(t)}'", "'段：' + '，'.join(f'{n} {sim.mmss(t)}'"),
                          harness, allowed)
-    harness, allowed = READERS[CNV / 'graybox_cards.py']
+    harness, allowed = spec(CNV / 'graybox_cards.py')
     src = (CNV / 'graybox_cards.py').read_text(encoding='utf-8')
     assert reader_breaks(src.replace("wall = obs.specimen(", "wall = obs._w.bodies.get("), harness, allowed)
     assert reader_breaks(src + '\nimport plan\n', harness, allowed)
@@ -168,6 +317,23 @@ def test_planted_breaks_in_the_other_readers_are_found():
                          set(), {'simunits'})
     assert reader_breaks(part_src(GAME, 'key_times').replace('ending = obs.ending()', 's = obs; ending = s.ending'),
                          set(), set())
+    # the outcome readers (12c): a raw read, the simulator reached in a reader function, a run made outside play
+    harness, allowed = spec(CNV / 'simbench.py')
+    src = (CNV / 'simbench.py').read_text(encoding='utf-8')
+    for planted in (src.replace('in obs.series() if', 'in obs._w.series if'),
+                    src.replace("b = obs.thing(m.role('engineer').name)", "b = obs._w.bodies[m.role('engineer').name]"),
+                    src.replace('    import build\n    if check', '    import build\n    import sim\n    if check')):
+        assert planted != src and reader_breaks(planted, harness, allowed)
+    harness, allowed = spec(CNV / 'simchecks.py')
+    src = (CNV / 'simchecks.py').read_text(encoding='utf-8')
+    planted = src.replace('ending = obs.ending()', 's = obs; ending = s.ending')
+    assert planted != src and reader_breaks(planted, harness, allowed)
+    readings = part_src(PLAYCHECK, 'readings')
+    assert reader_breaks(readings.replace('for sec, v in obs.series()', 'for sec, v in obs._w.series'), set(), set())
+    timeline = part_src(MAPPAGE, 'timeline')
+    planted = timeline.replace('obs = simulate(name, script)',
+                               "sim = _load('sim', CNV)\n    obs = sim.simulate(name, '', script)")
+    assert planted != timeline and reader_breaks(planted, set(), set())
 
 
 def test_simrecord_imports_only_the_ports():

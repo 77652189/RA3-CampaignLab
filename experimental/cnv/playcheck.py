@@ -278,10 +278,11 @@ def make(level):
 
 
 def read(level, until=1800.0, native=False):
-    """What the simulator reads on the play: (result, ending second, [(phase k, second it begins)], the Sim).
+    """The harness: the play run in the simulator to `until`: (the Test, the run's Observe, engine/ports/observe.py).
     native: the play as sim.Sim's own `script` (not compiled) -- the two must agree (tests/test_playcheck.py)."""
     import build as b
     import sim
+    from engine.ports.observe import Observe
     m, _, _ = b.resolve(level, '')
     if native:
         s = sim.Sim(m, None, script=wording(level)).run(until)
@@ -289,21 +290,23 @@ def read(level, until=1800.0, native=False):
     else:
         t = build(m, level)
         s = sim.Sim(m, t).run(until)
-    return t, s
+    return t, Observe(s)
 
 
-def readings(t, s):
-    """(result, ending second, phases) off the Test's counter series (`s.series`: (second, [one value per counter]))."""
+def readings(t, obs):
+    """(result, ending second, phases) off the Test's counter series (`obs.series()`: (second, [one value per
+    counter])) and the run's ending."""
     labels = [label for _, label in t.counters]
     pi = labels.index('玩家局阶段')
     phases, last = [], 0
-    for sec, v in s.series:
+    for sec, v in obs.series():
         if v[pi] and v[pi] > last:
             last = v[pi]
             phases.append((last, sec))
-    if not s.ending:                    # the simulator stops at the flag (not 5 s / 3 s later like the library): its ending is the reading
-        return 0, s.t, phases
-    how, sec, _ = s.ending
+    ending = obs.ending()
+    if not ending:                      # the simulator stops at the flag (not 5 s / 3 s later like the library): its ending is the reading
+        return 0, obs.t, phases
+    how, sec, _ = ending
     return (1 if how == '赢' else 2), sec, phases
 
 
@@ -311,9 +314,9 @@ def main():
     import build as b
     level = sys.argv[1]
     if len(sys.argv) > 2 and sys.argv[2] == 'sim':
-        t, s = read(level, native='--native' in sys.argv)
-        print(s.ending_line())
-        print('result, ending, phases:', readings(t, s))
+        t, obs = read(level, native='--native' in sys.argv)
+        print(obs.ending_line())
+        print('result, ending, phases:', readings(t, obs))
         return
     m, _, _ = b.resolve(level, '')
     t = build(m, level)

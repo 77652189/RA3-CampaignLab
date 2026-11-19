@@ -162,10 +162,9 @@ def layout(mp):
 
 def timeline(name, script=''):
     """The simulator's events: (seconds, kind, text), units made in one tick folded into one row."""
-    sim = _load('sim', os.path.join(CNV, 'sim.py'))
-    s = sim.simulate(name, '', script)
+    obs = simulate(name, script)
     rows, made = [], {}
-    for t, k, x in s.log:
+    for t, k, x in obs.log():
         if k == '出现':
             if t not in made:
                 made[t] = {'t': round(t, 1), 'k': k, 'x': '', 'n': 0}
@@ -178,7 +177,15 @@ def timeline(name, script=''):
         if r.get('n', 0) > 1:
             r['x'] = f'{r["n"]} 个：{r["x"]}……'
         r.pop('n', None)
-    return {'ending': s.ending_line(), 'rows': rows}
+    return {'ending': obs.ending_line(), 'rows': rows}
+
+
+def simulate(name, script=''):
+    """The harness: the level run in the plan simulator; the run's Observe (experimental/cnv/engine/ports/observe.py,
+    imported once sim has put experimental/cnv on the path)."""
+    sim = _load('sim', os.path.join(CNV, 'sim.py'))
+    s = sim.simulate(name, '', script)
+    return importlib.import_module('engine.ports.observe').Observe(s)
 
 
 def built_map(m):
