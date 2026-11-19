@@ -772,3 +772,29 @@ def test_the_ais_attack_and_capture_take_the_object_it_saw_not_a_reference_of_it
     assert br.body_of(tid) is None and br.tid(again) != tid
     br.order(simai.Unit(tank, br.peers), 'attack', tid)
     assert tank.goal is None
+
+
+def test_the_ais_micro_fires_and_dodges_with_the_unit_it_viewed_not_a_reference_of_its_name():
+    """The micro outlets take the object the view was made of (11-19 same-name sweep S6b: `fire_unit` read
+    `world.body(u.name)` and `dodge_move` matched team members by name, so the reference `lead` pointing at another
+    miner of the same player fired that miner's armour, and a team still holding the old `lead` moved that one)."""
+    from types import SimpleNamespace
+    import simai
+    if not simai.available():
+        pytest.skip('ra3model.ai unavailable')
+    s = simsmall.small_world([('lead', 'SovietMiner', 'Player_1', 0.0, 0.0),
+                              ('decoy', 'SovietMiner', 'Player_1', 300.0, 0.0)], model=False)
+    old, decoy = s.bodies['lead'], s.bodies['decoy']
+    del s.bodies['lead']
+    lead = s.add('lead', 'SovietMiner', 'Player_1', 0.0, 100.0)
+    s.refs['lead'] = decoy
+    host = simai.SimAI(s)
+    br = object.__new__(simai.Brain)
+    br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
+    br.view, br.aim_of, br.fired, br.frame = SimpleNamespace(things=[], enemies=frozenset()), lambda b, r: None, [], 0
+    team = SimpleNamespace(members=[simai.Unit(old, br.peers), simai.Unit(lead, br.peers)])
+    mu = next(u for u in br.micro_team(None, 0, team).units if u.pos == (0.0, 100.0))
+    br.fire_unit(None, 'k', mu, SimpleNamespace(command='Command_ToggleArmorUp'))
+    assert lead.armor_up and not decoy.armor_up and not old.armor_up
+    br.dodge_move(SimpleNamespace(teams=SimpleNamespace(teams={'k': team})), 'k', mu, (0.0, 300.0))
+    assert br.peers.commands.issued()[-1][1].units == (lead.serial,)

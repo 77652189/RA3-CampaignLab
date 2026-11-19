@@ -66,7 +66,7 @@ BRAIN = {
     '_protos': STATE,
     # template (or the yards and the structures standing) -> what its data says
     '_team_names': CACHE, '_template_guns': CACHE, '_refinery_spots': CACHE, '_allied_radii': CACHE,
-    '_build_radii': CACHE, '_node_offsets': CACHE, '_miner_toggles': CACHE,
+    '_build_radii': CACHE, '_node_offsets': CACHE, '_miner_toggles': CACHE, '_micro_units': CACHE,
 }
 _OWN = [f for f, k in BRAIN.items() if k == STATE and f not in ('wrappers', '_exp_teams')]   # those two: by hand
 _MODEL = [f for f, k in BRAIN.items() if k == MODEL]

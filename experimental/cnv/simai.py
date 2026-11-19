@@ -1074,6 +1074,9 @@ class Brain:
         mc, sp = self.host.mod['micro'], self.host.mod['specials']
         powers = self.host.data_of('unit powers')
         units = []
+        # the view's units -> the objects they were made of: the manager fires / moves this same batch right after
+        # (MicroBlock.tick), so the outlets take the object, not a lookup of its name (same-name sweep S6b)
+        self._micro_units = seen = []
         for u in team.members:
             b = u.body
             reach = max((w.get('range') or 0.0 for w in b.weapons), default=0.0)
@@ -1087,13 +1090,14 @@ class Brain:
                                   'SpecialPower_ToggleArmorUp'), '')
                     cache[b.template] = mc.parse_toggle(ET.fromstring('<update>' + inner + '</update>'))
                 toggles = cache[b.template]
-            units.append(mc.Unit(b.name, (b.x, b.y), b.hp, b.max_hp,
+            units.append(mu := mc.Unit(b.name, (b.x, b.y), b.hp, b.max_hp,
                                  [powers[c] for c in self.host.command_set(b.template)
                                   if c in powers and simmicro.ready(self.world, b, c)],
                                  target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=t.name),
                                  weapon_range=reach, cost=self.host.cost(b.template),
                                  damage=lambda behind, ahead, b=b: self.peers.expected_damage(b, behind, ahead, now=frame),
                                  toggles=toggles, toggle_index=int(b.armor_up)))
+            seen.append((mu, b))
         enemies = [sp.Thing((t.x, t.y), t.kindof, int(t.value), name=str(t.id)) for t in self.view.things
                    if t.owner in self.view.enemies]
         threats = []
@@ -1124,16 +1128,21 @@ class Brain:
                                           b.owner, b.life_end - frame, eligible))
         return mc.Team(units, enemies=enemies, threats=threats)
 
+    def micro_body(self, u):
+        """The object micro_team made the view's unit u of (None for a unit of no view of this brain's)."""
+        return next((b for mu, b in self.__dict__.get('_micro_units', ()) if mu is u), None)
+
     def dodge_move(self, ai, key, unit, point):
         """E micro threat outlet (coordinator authorization); ordinary movement path."""
-        member = next((u for u in ai.teams.teams[key].members if u.body.name == unit.name), None)
+        b = self.micro_body(unit)
+        member = next((u for u in ai.teams.teams[key].members if u.body is b), None) if b else None
         if member is not None:
             self.order(member, 'move', point)
 
     def fire_unit(self, ai, key, u, info):
         """Execute toggles and C's bounded self-power bridge; otherwise record intent."""
         self.fired.append((self.frame, key, u.name, info.command))
-        b = self.world.body(u.name)
+        b = self.micro_body(u)
         if b and b.owner == self.player and self.give('toggle', b, args=(('button', info.command),))[0]:
             self.world.note('AI', f'{u.name} 执行 {info.command}')
             return
