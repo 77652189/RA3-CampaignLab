@@ -99,7 +99,7 @@ class Life:
             self.destroy(world, child, 'SpawnedRequireSpawner', True, garrison, death_blasts, ground_z)
         garrison.died(b, delete)       # passengers out alive / killed with it (simgarrison, garrison.md 4)
         if not delete:
-            b.hp = 0.0
+            b.set_hp(0.0, tell=False)
             # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
             # died; a deletion fires nothing (INFERRED, as Generals' destroyObject skips the die modules)
             for dmg, typ, reach, after, affects, ally in simunits.death_weapons(b.template, world.own, scalars=True):
@@ -208,7 +208,7 @@ def fill(b, lib, own):
     if base != b.template:
         st, f = simunits.stats(base, own), simunits.fight(base, own)
         if f['hp']:
-            b.max_hp = b.hp = f['hp']
+            b.set_hp(f['hp'], f['hp'], tell=False)
             b.armor, b.weapons = f['armor'], f['weapons']
         b.surface, b.sight = st['surface'], st['vision'] or b.sight
     b.guessed = ['all: simai.fill']

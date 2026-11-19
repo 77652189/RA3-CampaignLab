@@ -111,7 +111,7 @@
 6. 内核零依赖私有模型（[ADR 0033](../adr/0033-kernel-no-private-dependency.md)）：`engine/**` 里不出现私有仓库的导入、路径和名字；在 `CNV_ENGINE_MODEL` 指向不存在目录时，内核的模块测试和多世界测试全跑、不跳过。
 7. 快照往返：精确快照拍下 → 还原 → 接着跑，逐帧记录等于不打断的；每个模块类都声明了状态字段。
 8. 速度：高峰负载基准不低于 1 倍实时；AI 只读观测里的"公共"字段。
-9. 血量只经入口变（K2 起，test_kernel 第 8 条）：`Body.damage` / `mend` / `health` 改完血调 `Thing.health_moved`，广播给受伤接口（睡着的回血模块靠它醒）；直接写 `hp` / `max_hp` 的地方登记在 `HEALTH_WRITES`（建物体时、死亡时，或自己调 `health_moved`），新加一处没登记就红。
+9. 血量只经入口变（K2 起，test_kernel 第 8 条）：`Body.damage` / `mend` / `health` 改完血调 `Thing.health_moved`，广播给受伤接口（睡着的回血模块靠它醒）；B1 起唯一的写口是 `Body.set_hp(hp, max_hp=None, tell=True)`：damage / mend / health 和别的写法（建物体、脚本改最大血量、精英倍数、死亡清零）都经它（建物体时和死亡时 `tell=False`，不算受伤）。别处（`sim*.py` 和 `engine/`）直接写 `hp` / `max_hp` 就红。
 
 ## 9. 多战场要的三样（[ADR 0034](../adr/0034-multi-battlefield-and-own-ai.md) 第 6、10 条）
 

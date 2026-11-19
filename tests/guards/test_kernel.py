@@ -11,7 +11,7 @@ rules (factory, schedule, Thing.find, sealed data), and
    standard library, and its tests run in full with CNV_ENGINE_MODEL pointing nowhere;
 7. a module file runs with no centre file naming it: importing engine.modules loads every file in it, every PHASE is
    a cell of simloop.FRAME, and every cell runs its modules (step K1.5);
-8. health moves only through the Body's damage / mend / health or a listed write (HEALTH_WRITES, step K2).
+8. health and its maximum are written only by Body.set_hp; damage / mend / health go through it (HEALTH_WRITES, K2, B1).
 Each guard has a mutation check (a synthetic breach it must catch)."""
 import ast
 import importlib.util
@@ -667,56 +667,87 @@ def test_adapter_guard_bites():
     assert not adapter_breaks({'a': 'import math\nfrom engine.ports import scripts\nimport engine.ports.templates\n'})
 
 
-# Guard 8 (step K2): a thing's health moves only through Body.damage / mend / health, which tell its Damage modules
-# (an asleep AutoHeal wakes on it). The direct writes of `hp` / `max_hp` left, by (file, function): told -- the
-# function calls health_moved itself; made -- the body is being made or filled before its modules first run (the
-# every-frame module of K1 did not count a first sight as a hurt either), or dies (a dead module sleeps).
-HEALTH_WRITES = {('sim.py', 'damage'): 'Body', ('sim.py', 'mend'): 'Body', ('sim.py', 'health'): 'Body',
-                 ('sim.py', '__init__'): 'made', ('sim.py', 'add'): 'made', ('sim.py', 'build_due'): 'made',
-                 ('simbody.py', 'fill'): 'made', ('simbody.py', 'destroy'): 'made',
-                 ('simact_object.py', 'named_set_max_health'): 'told', ('simlevel.py', 'receive'): 'told'}
+# Guard 8 (steps K2, B1): a thing's health and its maximum are written only by Body.set_hp, which calls health_moved
+# (its Damage modules are told: an asleep AutoHeal wakes on it) unless the body is being made or filled before its
+# modules first run, or dies. Body.damage / mend / health and every other write (a script's maximum, an elite's
+# multiplier, a death) go through it; a direct `.hp` / `.max_hp` write anywhere else in experimental/cnv/sim*.py or
+# engine/ breaks the guard.
+HEALTH_WRITES = {('sim.py', 'Body.set_hp')}
+
+
+def health_sources():
+    """{file: source}: experimental/cnv/sim*.py by name, the engine package by path under experimental/cnv."""
+    return {**{p.name: p.read_text(encoding='utf-8') for p in sorted(CNV.glob('sim*.py'))},
+            **{p.relative_to(CNV).as_posix(): p.read_text(encoding='utf-8') for p in sorted(ENGINE.rglob('*.py'))}}
+
+
+def _functions(node, prefix=''):
+    """(qualified name, function node) of every function under `node`, classes and outer functions dotted in."""
+    for child in ast.iter_child_nodes(node):
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            yield prefix + child.name, child
+            yield from _functions(child, prefix + child.name + '.')
+        elif isinstance(child, ast.ClassDef):
+            yield from _functions(child, prefix + child.name + '.')
+        else:
+            yield from _functions(child, prefix)
 
 
 def health_writes(sources=None):
-    """{(file, function): calls health_moved} for every function of experimental/cnv/sim*.py that assigns a
-    `.hp` / `.max_hp` attribute (simai's own `self.hp` table is not a body's health: left out by name)."""
+    """{(file, qualified function): calls health_moved} for every function that assigns a `.hp` / `.max_hp`
+    attribute itself (not in a function nested in it; simai's own `self.hp` table is not a body's health: left out)."""
     if sources is None:
-        sources = {p.name: p.read_text(encoding='utf-8') for p in sorted(CNV.glob('sim*.py'))}
+        sources = health_sources()
     found = {}
     for name, src in sources.items():
-        for fn in ast.walk(ast.parse(src)):
-            if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            writes = [t for st in ast.walk(fn) if isinstance(st, (ast.Assign, ast.AugAssign))
+        for qual, fn in _functions(ast.parse(src)):
+            inner = {id(x) for f in ast.walk(fn) if f is not fn and isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))
+                     for x in ast.walk(f)}
+            writes = [t for st in ast.walk(fn) if id(st) not in inner and isinstance(st, (ast.Assign, ast.AugAssign))
                       for t in (st.targets if isinstance(st, ast.Assign) else [st.target]) for x in ast.walk(t)
                       if isinstance(x, ast.Attribute) and x.attr in ('hp', 'max_hp') and isinstance(x.ctx, ast.Store)
                       and not (name == 'simai.py' and isinstance(x.value, ast.Name) and x.value.id == 'self')]
             if writes:
-                found[(name, fn.name)] = any(isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and
-                                             c.func.attr == 'health_moved' for c in ast.walk(fn))
+                found[(name, qual)] = any(isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and
+                                          c.func.attr == 'health_moved' for c in ast.walk(fn))
     return found
 
 
 def health_breaks(found):
-    """A write not in HEALTH_WRITES, or a 'told' / 'Body' one that does not call health_moved."""
-    return sorted(k for k, tells in found.items() if HEALTH_WRITES.get(k) is None or
-                  (HEALTH_WRITES[k] in ('told', 'Body') and not tells))
+    """A write outside the Body's HEALTH_WRITES, or one of those that does not call health_moved."""
+    return sorted(k for k, tells in found.items() if k not in HEALTH_WRITES or not tells)
 
 
-def test_health_moves_only_through_the_body_or_a_told_write():
+def test_health_is_written_only_inside_the_body():
     found = health_writes()
     assert not health_breaks(found), health_breaks(found)
-    assert set(found) == set(HEALTH_WRITES), f'a listed write is gone: lower HEALTH_WRITES {set(HEALTH_WRITES) - set(found)}'
+    assert set(found) == HEALTH_WRITES, f'a Body write is gone: lower HEALTH_WRITES {HEALTH_WRITES - set(found)}'
 
 
 def test_health_guard_bites():
-    sources = {p.name: p.read_text(encoding='utf-8') for p in sorted(CNV.glob('sim*.py'))}
+    sources = health_sources()
     raw = dict(sources, **{'simrepair.py': sources['simrepair.py'].replace('b.mend(heal)', 'b.hp = min(b.max_hp, b.hp + heal)', 1)})
-    assert raw['simrepair.py'] != sources['simrepair.py'] and ('simrepair.py', 'due') in health_breaks(health_writes(raw))
-    quiet = dict(sources, **{'simlevel.py': sources['simlevel.py'].replace('b.health_moved(was, b.hp)', 'pass', 1)})
-    assert quiet['simlevel.py'] != sources['simlevel.py'] and health_breaks(health_writes(quiet)) == [('simlevel.py', 'receive')]
-    body = dict(sources, **{'sim.py': sources['sim.py'].replace('        self.health_moved(was, self.hp)\n', '', 1)})
-    assert health_breaks(health_writes(body)) == [('sim.py', 'damage')]
+    assert raw['simrepair.py'] != sources['simrepair.py'] and health_breaks(health_writes(raw)) == [('simrepair.py', 'Repairs.due')]
+    # a write outside the Body that tells is still outside it (as simlevel's elite multiplier was before step B1)
+    told = dict(sources, **{'simlevel.py': sources['simlevel.py'].replace(
+        'b.set_hp(b.hp * multiplier, b.max_hp * multiplier)', 'b.max_hp *= multiplier; b.health_moved(0, 0)', 1)})
+    assert told['simlevel.py'] != sources['simlevel.py'] and health_breaks(health_writes(told)) == [('simlevel.py', 'receive')]
+    # a module writing its thing's health
+    mod = 'engine/modules/autoheal.py'
+    assert mod in sources
+    hurt = dict(sources, **{mod: sources[mod] + '\n\ndef hurt(thing):\n    thing.hp = 0.0\n'})
+    assert health_breaks(health_writes(hurt)) == [(mod, 'hurt')]
+    # a sim.py function named as a Body method but outside the class
+    stray = dict(sources, **{'sim.py': sources['sim.py'] + '\n\ndef damage(b):\n    b.hp = 0.0\n    b.health_moved(1, 0)\n'})
+    assert health_breaks(health_writes(stray)) == [('sim.py', 'damage')]
+    # the Body's own damage writing past set_hp
+    past = dict(sources, **{'sim.py': sources['sim.py'].replace(
+        '            self.set_hp(max(self.health_floor if self.immortal else 0.0, self.hp - amount))',
+        '            self.hp -= amount', 1)})
+    assert past['sim.py'] != sources['sim.py'] and health_breaks(health_writes(past)) == [('sim.py', 'Body.damage')]
+    # set_hp telling no one
+    body = dict(sources, **{'sim.py': sources['sim.py'].replace('            self.health_moved(was, hp)\n', '            pass\n', 1)})
+    assert body['sim.py'] != sources['sim.py'] and health_breaks(health_writes(body)) == [('sim.py', 'Body.set_hp')]
     assert not health_breaks(health_writes(dict(sources, **{'simai.py': 'class A:\n    def f(self):\n        self.hp = {}\n'})))
 
 

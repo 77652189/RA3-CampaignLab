@@ -84,10 +84,7 @@ def receive(world, b, up, on, newly_held):
                     else:
                         # engine_levelhealth a/b: 500 -> 625 max HP; keep health fraction.
                         for multiplier in multipliers:
-                            was = b.hp
-                            b.max_hp *= multiplier
-                            b.hp *= multiplier
-                            b.health_moved(was, b.hp)   # step K2: told, as every write of the health
+                            b.set_hp(b.hp * multiplier, b.max_hp * multiplier)     # told, as every write of the health
             for upgrade in upgrades:
                 b.upgrades.add(upgrade)
                 b.up_since[upgrade] = world.frame_now()

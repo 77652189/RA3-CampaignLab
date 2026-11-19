@@ -428,15 +428,12 @@ class Body(kernel_module.Thing):
 
     def damage(self, amount):
         """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
-        if self.prop:
-            return
-        was, self.hp = self.hp, max(self.health_floor if self.immortal else 0.0, self.hp - amount)
-        self.health_moved(was, self.hp)
+        if not self.prop:
+            self.set_hp(max(self.health_floor if self.immortal else 0.0, self.hp - amount))
 
     def mend(self, amount):
         """Health up by `amount`, at most the maximum (math.inf: to full); every heal goes through it (step K2)."""
-        was, self.hp = self.hp, min(self.max_hp, self.hp + amount)
-        self.health_moved(was, self.hp)
+        self.set_hp(min(self.max_hp, self.hp + amount))
 
     @property
     def health(self):
@@ -445,9 +442,13 @@ class Body(kernel_module.Thing):
 
     @health.setter
     def health(self, pct):
-        was, hp = self.hp, self.max_hp * float(pct) / 100.0
-        self.hp = max(self.health_floor, hp) if self.immortal else hp
-        self.health_moved(was, self.hp)
+        self.set_hp(max(self.health_floor if self.immortal else -math.inf, self.max_hp * float(pct) / 100.0))
+
+    def set_hp(self, hp, max_hp=None, tell=True):
+        """The one write of health and maximum (B1; no floor, max_hp None kept); tell=False: being made, or dying."""
+        was, self.max_hp, self.hp = self.hp, self.max_hp if max_hp is None else max_hp, hp
+        if tell:
+            self.health_moved(was, hp)
     # fields moved into modules, still read outside: read only (test_kernel BODY_FORWARDS)
     FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
@@ -983,7 +984,7 @@ class Sim:
                                            and o.side in getattr(mission.map, 'PLAYERS', {}) else '')  # names no teams
             health = (getattr(o, 'props', None) or {}).get('objectInitialHealth')
             if isinstance(health, (int, float)) and 0 < health < 100:     # the map's starting health, in percent
-                b.hp = b.max_hp * health / 100.0                            # (a7 win: the carrier placed at 1 %)
+                b.set_hp(b.max_hp * health / 100.0, tell=False)             # (a7 win: the carrier placed at 1 %)
             crew = (getattr(o, 'props', None) or {}).get('originalOwner')
             if isinstance(crew, str):                   # placed in a team of the mission's own (K6): that team has a member
                 b.team = crew
@@ -1099,8 +1100,7 @@ class Sim:
             self.gap('WallBuilderBehavior', template,
                      '仅预摆墙默认WALL_SEGMENT初始状态已量；运行时生成/建墙/连接/段数上限/生死联动、自定义状态与模型条件未建模；其他继承覆盖默认值INFERRED，脚本改位交互未测')
         hp =immortal_hp if b.immortal else (f['hp'] or simunits.max_health(template, self.own))
-        # no health in the data: a building's or a unit's usual (a guess)
-        b.max_hp = b.hp = hp or (2000.0 if 'STRUCTURE' in b.kinds else 300.0)
+        b.set_hp(hp := hp or (2000.0 if 'STRUCTURE' in b.kinds else 300.0), hp, tell=False)   # none in the data: a guess
         b.armor, b.weapons = f['armor'], f['weapons']
         if template not in self.__dict__.setdefault('_wsets', {}):
             self._wsets[template] = simunits.weapon_sets(template, self.own)
@@ -2932,7 +2932,7 @@ class Sim:
                 self.destroy(was, f'展开成 {structure}', delete=True)
                 self.bodies[f'#packed {len(self.bodies)} {by}'] = self.bodies.pop(by)
                 n = self.add(by, structure, owner, was.x, was.y, by=by, at=self.t)
-                n.hp = n.max_hp * share
+                n.set_hp(n.max_hp * share, tell=False)
                 hold = self.__dict__.get('pack_hold', {}).pop(by, 0)
                 if hold:                    # DISABLE_NEW_OBJECT_DURING_UNPACK: stands still (engine_pack), as EMP'd
                     self.__dict__.setdefault('emp_until', {})[id(n)] = self.frame_now() + hold
