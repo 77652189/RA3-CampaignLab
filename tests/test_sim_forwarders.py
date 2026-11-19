@@ -85,6 +85,15 @@ FORWARDER_CALLS = {
     ('simai', 'expected_damage'): 1, ('simai', 'modify'): 1,
     ('simai', 'stand'): 1,
     # simproxy: none (its orders go through the command port since R3 13e)
+    # living: a forwarder since the living cache (Sim.living -> simliving.living); these are the layers' calls the day
+    # it became one, the rule's home being world.living(). The count only shrinks from here.
+    ('simact_ability', 'living'): 2, ('simact_object', 'living'): 3, ('simact_order', 'living'): 3,
+    ('simact_player', 'living'): 3, ('simact_world', 'living'): 1, ('simai', 'living'): 23,
+    ('simcond_object', 'living'): 8, ('simcond_player', 'living'): 1, ('simcond_vision', 'living'): 3,
+    ('simcond_world', 'living'): 1, ('simdamage', 'living'): 4, ('simgarrison', 'living'): 1,
+    ('siminfiltrator', 'living'): 3, ('simmine', 'living'): 4, ('simmodifier', 'living'): 1,
+    ('simorder', 'living'): 6, ('simproxy', 'living'): 3, ('simpullback', 'living'): 1,
+    ('simspecial', 'living'): 2, ('simsweep', 'living'): 1,
 }
 
 _CONTAINER = set(dir(dict)) | set(dir(list)) | set(dir(set))   # self.players.get(...) is a lookup, not a forwarder
