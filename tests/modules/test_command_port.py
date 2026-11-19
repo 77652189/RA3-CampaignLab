@@ -737,3 +737,38 @@ def test_an_attack_on_ones_own_side_is_refused_by_the_port():
     assert s.commands.do(Command('attack', units=('a',), target='mate'))[0] is False
     assert s.commands.do(Command('attack', units=('a',), target='mate', force=True)) == (True, '')
     assert s.bodies['a'].goal is mate
+
+
+def _brain(s, player='Player_1'):
+    """A bare Brain of `player` on the small world: its Thing ids and outlets, no model."""
+    import simai
+    host = simai.SimAI(s, lib=object(), data=object())
+    br = object.__new__(simai.Brain)
+    br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, player, {}, {}
+    return br, simai
+
+
+def test_the_ais_attack_and_capture_take_the_object_it_saw_not_a_reference_of_its_name():
+    """The AI's Thing id is its object's, and its attack / capture go at that object by serial (11-19 same-name sweep
+    S6: ids were per name and orders went by name, so the reference `target` pointing at another enemy took the
+    attack and the capture, and a building made again under the old one's name took its id)."""
+    from types import SimpleNamespace
+    s = simsmall.small_world([('tank', APOC, 'Player_1', 0.0, 0.0), ('eng', 'SovietEngineer', 'Player_1', 0.0, 60.0),
+                              ('target', 'AlliedBarracks', 'Player_2', 400.0, 0.0),
+                              ('decoy', APOC, 'Player_2', 900.0, 0.0)], model=False)
+    s.relations[('Player_1', 'Player_2')] = s.relations[('Player_2', 'Player_1')] = 'Enemy'
+    s.refs['target'] = s.bodies['decoy']
+    br, simai = _brain(s)
+    target, tank, eng = s.bodies['target'], s.bodies['tank'], s.bodies['eng']
+    tid = br.tid(target)
+    br.order(simai.Unit(tank, br.peers), 'attack', tid)
+    br.act(SimpleNamespace(members=[simai.Unit(eng, br.peers)]), 'Engineer', SimpleNamespace(id=tid))
+    assert tank.goal is eng.goal is target
+    assert s.commands.issued()[-1][1].arg('target_serial') == target.serial
+    tank.goal = None
+    target.alive = False
+    del s.bodies['target']
+    again = s.add('target', 'AlliedBarracks', 'Player_2', 400.0, 0.0)
+    assert br.body_of(tid) is None and br.tid(again) != tid
+    br.order(simai.Unit(tank, br.peers), 'attack', tid)
+    assert tank.goal is None

@@ -31,7 +31,8 @@ from engine.kernel import snap
 from simsnap import ALIAS, CACHE, STATE, STATIC, WIRE
 
 HOST, BRAINS, MODEL = 'host', 'brains', 'model'
-VERSION = 3             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c)
+VERSION = 4             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
+#                         4: a brain's ids / hp keyed by serial, not name (same-name sweep S6a)
 
 SIMAI = {
     'sim': HOST, 'world': ALIAS, 'garrison': ALIAS, 'peers': WIRE,

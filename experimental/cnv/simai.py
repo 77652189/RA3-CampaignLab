@@ -559,13 +559,18 @@ class Brain:
         return answer
 
     def tid(self, b):
-        if b.name not in self.ids:
-            self.ids[b.name] = len(self.ids) + 1
-        return self.ids[b.name]
+        """The model's Thing id of b: one an object, by its serial (11-19 same-name sweep S6: by name, a building made
+        again under the name of one the AI saw took the old one's id, and its attacks, captures and garrisons)."""
+        if b.serial not in self.ids:
+            self.ids[b.serial] = len(self.ids) + 1
+        return self.ids[b.serial]
 
     def body_of(self, tid):
-        name = next((k for k, v in self.ids.items() if v == tid), None)
-        return self.world.bodies.get(name) if name else None
+        """The object the AI gave Thing id `tid`, while the world still has it (under its name, dead or not, as
+        before); None once it is gone or another object holds its name."""
+        serial = next((k for k, v in self.ids.items() if v == tid), None)
+        b = self.world.world.numbered.get(serial) if serial is not None else None
+        return b if b is not None and self.world.bodies.get(b.name) is b else None
 
     def engine_team_names(self):
         """{engine name: model team key}: the name table the engine builds once when the AI is made -- every strategic
@@ -639,9 +644,9 @@ class Brain:
             if b.scenery and 'GARRISON' not in b.kinds:
                 continue
             i = self.tid(b)
-            if b.hp < self.hp.get(b.name, b.hp):
+            if b.hp < self.hp.get(i, b.hp):
                 self.hurt_at[i] = frame
-            self.hp[b.name] = b.hp
+            self.hp[i] = b.hp
             owner = b.owner if b.owner != simworld.CIV else ''
             things.append(tg.Thing(i, owner, b.template, frozenset(b.kinds), frozenset(b.status), b.x, b.y,
                                    water=b.surface == 'water', value=float(self.host.cost(b.template)),
@@ -820,15 +825,15 @@ class Brain:
                 if t.owner == self.player and t in self.host.garrison.places(b, True):
                     # "attacking" one's own base defense = entering it (d133_airevk2.md 1: the team state 6's 0x210
                     # at the AI's own turret, bench aibdi0 / aibdi2)
-                    self.give('enter', b, target=t.name, args=(('via', 'garrison'),))
+                    self.give('enter', b, target=t, args=(('via', 'garrison'),))
                     return
-                self.give('attack', b, target=t.name)
+                self.give('attack', b, target=t)
             return
         if kind == 'enter':                     # EnterGarrisons / EnterBaseDefenses: into a building (a Thing id)
             t = self.body_of(arg)
             if t is not None:
                 if not self.host.pullback.send(b, t):   # the pullbacks (L8) give their return through the port
-                    self.give('enter', b, target=t.name, args=(('via', 'garrison'),))
+                    self.give('enter', b, target=t, args=(('via', 'garrison'),))
             return
         face = float(arg[2]) if len(arg) > 2 and arg[2] is not None else None
         slot = self.__dict__.get('_exp_slots', {}).get(b.name)
@@ -842,6 +847,9 @@ class Brain:
         """One order of the AI's to its unit b through the command port (R3 13f-1): by serial, as the AI picked it
         (a script reference of the same name cannot take its place, as the proxy's: review 11-19 h #1). (ok, why)."""
         args = (('objects', 'serial'),) + kw.pop('args', ())
+        t = kw.get('target')
+        if t is not None and not isinstance(t, str):    # an object the AI picked: by serial, its name for the record
+            kw['target'], args = t.name, args + (('target_serial', t.serial),)
         return self.peers.commands.do(Command(kind, f'ai:{self.player}', units=(b.serial,), args=args, **kw))
 
     def expansion_slots(self, team, p):
@@ -904,7 +912,7 @@ class Brain:
         live = [u.body for u in team.members if u.body.alive and self.peers.engineer_entry(u.body, t)]
         for b in live:
             if b.mode != 'capture' or b.goal is not t:
-                self.give('capture', b, target=t.name)
+                self.give('capture', b, target=t)
         return not live
 
     def approach(self, team, kind, thing, distance):
@@ -1816,7 +1824,7 @@ class Brain:
             if selected is not None:
                 state.target = selected
                 # Direct object-goal write, not a fresh team attack order.
-                self.give('attack', b, target=selected.name, args=(('goal_only', True),))
+                self.give('attack', b, target=selected, args=(('goal_only', True),))
 
     # ---- HOOKS 9: the read-only trail (SimAI(record=True)); nothing below changes the run
     def _name(self, tid):
@@ -1863,7 +1871,7 @@ class Brain:
                 goal, chase = b.goal, getattr(b, 'chase', None)
                 hunt = self.__dict__.get('_hunt_goals', {}).get(b.name)
                 going, inside = g.going.get(b.name), g.where.get(b.name)
-                mem.append({'name': b.name, 'id': self.ids.get(b.name), 'pos': (b.x, b.y), 'hp': b.hp,
+                mem.append({'name': b.name, 'id': self.ids.get(b.serial), 'pos': (b.x, b.y), 'hp': b.hp,
                             'alive': b.alive, 'goal': goal.name if isinstance(goal, sim.Body) else goal,
                             'chase': chase.name if isinstance(chase, sim.Body) else chase,
                             'aim': aim.name if aim is not None else None,

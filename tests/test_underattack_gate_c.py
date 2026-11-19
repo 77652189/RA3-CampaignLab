@@ -106,5 +106,5 @@ def test_underattack_named_selection_matches_native():
     picks = [text for _, kind, text in brain.ai.log
              if kind == 'target' and text.startswith('CNVClosest0: ')]
     plant = world.sim.m.role('closest plant').name
-    expected = brain.ids[plant]
+    expected = brain.ids[world.sim.bodies[plant].serial]
     assert picks and all(text.endswith(f'-> [{expected}]') for text in picks)
