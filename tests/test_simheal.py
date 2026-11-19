@@ -71,8 +71,7 @@ def test_asleep_at_full_health_and_woken_by_a_hurt_a_heal_to_full_or_a_raised_ma
     b.mend(1)                                                       # to full by another hand: woken, heal_at cleared
     autoheal(s, 7)
     assert awake(s) == set() and m.heal_at is None
-    b.max_hp += 10                                                  # a raised maximum (named_set_max_health)
-    b.health_moved(b.hp, b.hp)
+    b.set_hp(b.hp, b.max_hp + 10)                                   # a raised maximum (named_set_max_health)
     autoheal(s, 8)
     assert m.heal_at == 15 and s.world.schedule.awake('autoheal') == {m: 15}
     b.alive = False

@@ -70,3 +70,86 @@ def test_a_campaign_override_is_read_first_as_max_health_reads_it():
     assert answer('JapanAntiStructureShip') == {'ActiveBody': [2000.0]}
     assert simunits.max_health('JapanAntiStructureShip') == 2000.0
     assert simunits.fight('JapanAntiStructureShip')['hp'] == 1500.0
+
+
+# --- step B2b: the module (one a thing, made by Sim.add; hp / max_hp / health_floor its state)
+
+def _world(*objects):
+    import simsmall
+    return simsmall.small_world([(n, t, 'Player_1', 0.0, 0.0) for n, t in objects], model=False)
+
+
+def _one(b):
+    from engine.kernel import interfaces
+    return b.find(interfaces.Body)
+
+
+def test_sim_add_makes_one_body_module_of_the_tag_and_keeps_the_old_health():
+    s = _world(('p', 'AlliedPowerPlant'), ('y', 'JapanAntiStructureShip'), ('f', 'RallyFlag'), ('g', 'AGenericSound'))
+    assert _one(s.bodies['p']).kind() == 'ActiveBody' and not s.bodies['p'].immortal
+    # fight's hp over the block's: the Yari's file 1500, not the campaign override's 2000 (B2a; 有意改行为 later)
+    assert (s.bodies['y'].hp, s.bodies['y'].max_hp) == (1500.0, 1500.0)
+    flag = s.bodies['f']        # no Body block up the chain (10 retail templates): an ActiveBody attached, a guess
+    assert _one(flag).kind() == 'ActiveBody' and flag.max_hp in (300.0, 2000.0) and flag.hp == flag.max_hp
+    snd = s.bodies['g']
+    assert _one(snd).kind() == 'ImmortalBody' and snd.immortal and snd.health_floor == 1.0
+
+
+def test_damage_stops_at_the_floor_a_prop_takes_none_a_heal_at_the_maximum():
+    s = _world(('p', 'AlliedPowerPlant'), ('g', 'AGenericSound'), ('c', 'A09_IronCurtainEffect'))
+    p, g, c = (s.bodies[n] for n in 'pgc')
+    full = p.max_hp
+    p.damage(full + 50)
+    assert p.hp == 0.0 and p.health == 0.0
+    p.mend(30.0)
+    p.mend(float('inf'))
+    assert p.hp == full
+    p.health = 25
+    assert p.hp == full / 4
+    g.damage(1e9)
+    assert g.hp == 1.0
+    g.health = 0
+    assert g.hp == 1.0                  # a script's 0 % holds an immortal at its floor
+    assert c.prop in ('stays', 'dies') and _one(c).kind() == 'PropBody'
+    was = c.hp
+    c.damage(50.0)
+    assert c.hp == was and c.health == 0.0
+
+
+def test_a_change_tells_the_damage_modules_a_making_does_not():
+    from engine.kernel import interfaces, module
+    s = _world(('p', 'AlliedPowerPlant'))
+    p = s.bodies['p']
+    heard = []
+
+    class Ear(module.Module, interfaces.Damage):
+        def on_damaged(self, was):
+            heard.append(('hurt', was))
+
+        def on_healed(self, was):
+            heard.append(('healed', was))
+    p.modules = tuple(p.modules) + (Ear(p, None),)
+    full = p.max_hp
+    p.damage(100.0)
+    p.mend(30.0)
+    p.set_hp(5.0, tell=False)
+    assert heard == [('hurt', full), ('healed', full - 100.0)]
+
+
+def test_the_fields_live_on_the_module_read_only_on_the_body_and_recorded_by_their_old_names():
+    import pytest
+    import sim
+    from engine.ports.observe import Observe
+    s = _world(('p', 'AlliedPowerPlant'))
+    p = s.bodies['p']
+    assert not {'hp', 'max_hp', 'health_floor', 'immortal', 'prop'} & set(vars(p))
+    assert vars(_one(p))['hp'] == p.hp
+    with pytest.raises(AttributeError):
+        p.hp = 1.0
+    with pytest.raises(AttributeError):
+        p.immortal = True
+    d = Observe.state(p)
+    assert (d['hp'], d['max_hp'], d['health_floor'], d['immortal'], d['prop']) == (p.max_hp, p.max_hp, 1.0, False, None)
+    bare = sim.Body('b', 'AlliedPowerPlant', 'Player_1', 0.0, 0.0)     # not made by Sim.add: no Body to write
+    with pytest.raises(AttributeError):
+        bare.damage(1.0)

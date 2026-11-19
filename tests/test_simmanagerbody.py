@@ -35,9 +35,8 @@ def test_manager_body_script_damage_preserves_retail_bridge_proxy():
     # A child's explicit different body must stop ManagerBody inheritance.
     own = {'ManagerOverride': '<GameObject id="ManagerOverride" inheritFrom="HB_Bridge_02">'
                              '<Body><ActiveBody id="Body" MaxHealth="75" /></Body></GameObject>'}
-    assert not simunits.manager_body('ManagerOverride', own)
-    assert simunits.immortal_body('ManagerOverride', own) == (False, None)
-    assert simunits.manager_proxy_health('ManagerOverride', own) is None
+    assert not simunits.module_blocks('ManagerOverride', 'ManagerBody', own)     # Sim.add asks no proxy
+    assert [h for h, _ in simunits.module_blocks('ManagerOverride', 'ActiveBody', own)] == [' id="Body" MaxHealth="75" ']
 
     # b: the same readings at 270 and 700; lethal script damage leaves 1%, alive.
     m, t, _ = build.resolve('engine_managerbody_b', 'b')

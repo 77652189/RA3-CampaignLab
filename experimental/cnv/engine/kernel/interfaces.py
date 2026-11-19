@@ -28,16 +28,51 @@ class Body(Interface):
     """Health, one a thing: the only writer of health. It tells the thing's Damage modules after a change."""
     __slots__ = ()
 
-    def attempt_damage(self, info):
+    def attempt_damage(self, amount):
+        """Health down by `amount`, not below 0 (an immortal's: its floor); a PropBody takes none."""
         raise NotImplementedError
 
-    def attempt_healing(self, info):
+    def attempt_healing(self, amount):
+        """Health up by `amount`, at most the maximum (math.inf: to full)."""
         raise NotImplementedError
 
     def health(self):
         raise NotImplementedError
 
     def max_health(self):
+        raise NotImplementedError
+
+    def set_health(self, hp, max_hp=None, tell=True):
+        """The one write of health and maximum (max_hp None: kept; no floor); tell=False: being made, or dying --
+        else the thing's Damage modules are told (Thing.health_moved)."""
+        raise NotImplementedError
+
+    def percent(self):
+        """Health in percent of the maximum, what the scripts read (a PropBody's: 0)."""
+        raise NotImplementedError
+
+    def set_percent(self, pct):
+        """A script's health in percent (not below an immortal's floor)."""
+        raise NotImplementedError
+
+    def make(self, hp, floor=None, death=None):
+        """The host makes the thing (step B2b, Sim.add): health and maximum `hp`; a floor makes it immortal (a
+        ManagerBody's proxy); a PropBody's death to a script kill ('dies' / 'stays')."""
+        raise NotImplementedError
+
+    def kind(self):
+        """Its XML tag (ActiveBody, ImmortalBody, PropBody, ManagerBody ...)."""
+        raise NotImplementedError
+
+    def floor(self):
+        """The health an immortal body holds at (1 HP; a ManagerBody proxy's 1 %)."""
+        raise NotImplementedError
+
+    def is_immortal(self):
+        raise NotImplementedError
+
+    def prop_death(self):
+        """None unless a PropBody; then what a script kill does to it: 'dies' / 'stays'."""
         raise NotImplementedError
 
     def damage_state(self):

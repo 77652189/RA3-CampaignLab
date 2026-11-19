@@ -170,10 +170,14 @@ def test_find_is_by_interface_and_body_is_one():
     assert t.find(interfaces.Body) is None
 
 
-def test_a_body_is_a_thing_with_no_modules_field_while_its_template_has_no_registered_block():
-    s = simsmall.small_world([('a', 'BaseBridgeGateHouse', 'Player_1', 0.0, 0.0)], model=False)  # no registered tag
+def test_a_body_is_a_thing_with_no_modules_field_until_its_modules_are_made():
+    import sim
+    bare = sim.Body('a', 'BaseBridgeGateHouse', 'Player_1', 0.0, 0.0)     # not made by Sim.add: no module
+    assert isinstance(bare, module.Thing) and bare.modules == () and 'modules' not in vars(bare)
+    assert (bare.hp, bare.max_hp, bare.immortal, bare.prop) == (100.0, 100.0, False, None)    # the forwards' defaults
+    s = simsmall.small_world([('a', 'BaseBridgeGateHouse', 'Player_1', 0.0, 0.0)], model=False)
     b = s.bodies['a']
-    assert isinstance(b, module.Thing) and b.modules == () and 'modules' not in vars(b)
+    assert [type(m).__name__ for m in b.modules] == ['ManagedImmortalBody']     # its Body only (step B2b)
     assert s.unmodeled is s.world.gaps and s.used is s.world.used
     s.gap('武器', 'X', 'why')
     s.gap('武器', 'X')
@@ -249,7 +253,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 3429, 'Sim methods': 194, 'Body fields': 88, 'simunits defs': 141,
+CENTER = {'sim.py lines': 3421, 'Sim methods': 194, 'Body fields': 83, 'simunits defs': 139,
           'cells with old code': 31}
 
 
@@ -308,7 +312,8 @@ def test_centre_guard_bites():
 # Body fields moved into modules that outside code still reads (module_plan 1): read-only forwards, listed in
 # Body.FORWARDS (the frame record shows them as the fields they were). Only shrinks: a forward goes when its last
 # outside reader asks the module's interface itself.
-BODY_FORWARDS = {'life_end': 'LifetimeUpdate', 'topple': 'ToppleUpdate', 'toppled': 'ToppleUpdate',
+BODY_FORWARDS = {'hp': 'Body', 'max_hp': 'Body', 'health_floor': 'Body', 'immortal': 'Body', 'prop': 'Body',
+                 'life_end': 'LifetimeUpdate', 'topple': 'ToppleUpdate', 'toppled': 'ToppleUpdate',
                  'topple_end': 'ToppleUpdate', 'crusher': 'CrusherInfo', 'crushable': 'CrusherInfo',
                  'deposit': 'AutoDepositUpdate', 'deposit_at': 'AutoDepositUpdate',
                  'toggle_at': 'ToggleStatusSpecialAbilityUpdate', 'armor_up': 'ToggleStatusSpecialAbilityUpdate',
@@ -349,7 +354,7 @@ def test_body_forwards_are_read_only_listed_and_only_shrink():
 def test_forward_guard_bites():
     src = (CNV / 'sim.py').read_text(encoding='utf-8')
     listed = re.search(r'    FORWARDS = [(].*?[)]', src, re.S).group(0)     # as sim.py writes it (lines may wrap)
-    more = src.replace(listed, '    FORWARDS = ' + repr(tuple(BODY_FORWARDS) + ('hp',)), 1)
+    more = src.replace(listed, '    FORWARDS = ' + repr(tuple(BODY_FORWARDS) + ('shielded',)), 1)
     assert more != src and set(body_forwards(more)[0]) != body_forwards(more)[1]
     unlisted = src.replace(listed, "    FORWARDS = ()", 1)
     assert body_forwards(unlisted)[1] - set(body_forwards(unlisted)[0]) == set(BODY_FORWARDS)
@@ -674,7 +679,7 @@ def test_adapter_guard_bites():
 # modules first run, or dies. Body.damage / mend / health and every other write (a script's maximum, an elite's
 # multiplier, a death) go through it; a direct `.hp` / `.max_hp` write anywhere else in experimental/cnv/sim*.py or
 # engine/ breaks the guard.
-HEALTH_WRITES = {('sim.py', 'Body.set_hp')}
+HEALTH_WRITES = {('engine/modules/body.py', 'Body.set_health')}     # the Body module's since step B2b
 
 
 def health_sources():
@@ -743,13 +748,14 @@ def test_health_guard_bites():
     stray = dict(sources, **{'sim.py': sources['sim.py'] + '\n\ndef damage(b):\n    b.hp = 0.0\n    b.health_moved(1, 0)\n'})
     assert health_breaks(health_writes(stray)) == [('sim.py', 'damage')]
     # the Body's own damage writing past set_hp
-    past = dict(sources, **{'sim.py': sources['sim.py'].replace(
-        '            self.set_hp(max(self.health_floor if self.immortal else 0.0, self.hp - amount))',
+    bm = 'engine/modules/body.py'
+    past = dict(sources, **{bm: sources[bm].replace(
+        '            self.set_health(max(self.health_floor if self.immortal else 0.0, self.hp - amount))',
         '            self.hp -= amount', 1)})
-    assert past['sim.py'] != sources['sim.py'] and health_breaks(health_writes(past)) == [('sim.py', 'Body.damage')]
-    # set_hp telling no one
-    body = dict(sources, **{'sim.py': sources['sim.py'].replace('            self.health_moved(was, hp)\n', '            pass\n', 1)})
-    assert body['sim.py'] != sources['sim.py'] and health_breaks(health_writes(body)) == [('sim.py', 'Body.set_hp')]
+    assert past[bm] != sources[bm] and health_breaks(health_writes(past)) == [(bm, 'Body.attempt_damage')]
+    # set_health telling no one
+    body = dict(sources, **{bm: sources[bm].replace('            self.thing.health_moved(was, hp)\n', '            pass\n', 1)})
+    assert body[bm] != sources[bm] and health_breaks(health_writes(body)) == [(bm, 'Body.set_health')]
     assert not health_breaks(health_writes(dict(sources, **{'simai.py': 'class A:\n    def f(self):\n        self.hp = {}\n'})))
 
 

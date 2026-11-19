@@ -1252,21 +1252,6 @@ def frozen_armor(template, own=None):
     return _fight_data()['armors'].get(a) if a else None
 
 
-def immortal_body(template, own=None):
-    """(immortal, MaxHealth) from the nearest Body in the XML inheritance chain.
-    A different body overrides an inherited immortal body. Retail props may be
-    absent from the combat cache, so read their MaxHealth here too.
-    """
-    def read(xml):
-        xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
-        body = next(_blocks(xml, 'Body'), None)
-        if body is None:
-            return None
-        immortal = bool(list(_blocks(body[1], 'ImmortalBody')))
-        return immortal, number(xml, 'MaxHealth') if immortal else None
-    return _chain(template, own, read) or (False, None)
-
-
 def bridge_generation_counts(template, length, own=None):
     """Count-only model for the two measured HB_Bridge_02 lengths (270/700).
 
@@ -1326,17 +1311,9 @@ def bridge_pair_generation_counts(start, end, length, own=None):
                           ('End', 'End2', 'Center', 'Center2', 'GateHouse')})
 
 
-def manager_body(template, own=None):
-    """Whether the nearest explicit Body is ManagerBody, respecting body overrides."""
-    def read(xml):
-        xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
-        body = next(_blocks(xml, 'Body'), None)
-        return bool(list(_blocks(body[1], 'ManagerBody'))) if body is not None else None
-    return bool(_chain(template, own, read))
-
-
 def manager_proxy_health(template, own=None):
-    """Whole-proxy effective HP; INFERRED from engine_managerbody a / b.
+    """Whole-proxy effective HP of a template whose Body is a ManagerBody (the caller asks for one only: Sim.add, by
+    the port's ManagerBody blocks); INFERRED from engine_managerbody a / b.
 
     HB_Bridge_02 at lengths 270 / 700 loses 20 percent to 200 script damage,
     independent of length, and lethal damage leaves a live 1-percent proxy.
@@ -1346,8 +1323,6 @@ def manager_proxy_health(template, own=None):
     other bridge configurations, segment damage/sharing and repairs are unbenched.
     This creates no bridge pieces and does not sum their health.
     """
-    if not manager_body(template, own):
-        return None
     def read(xml):
         for head, _ in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'BridgeBuilder'):
             center = _attr(head, 'CenterPiece')
@@ -1790,18 +1765,15 @@ def slow_death(template, own=None):
 _prop_memo = {}
 
 
-def prop_body(template, own=None):
-    """None unless its Body (nearest up the chain) is a PropBody; then 'dies' when a DestroyDie / SlowDeath up the
-    chain takes a NORMAL death (a script kill), else 'stays'. Bench 11-10 engine_propbody a / b / c: a PropBody has no
+def prop_death(template, own=None):
+    """What a script kill does to a PropBody (the caller asks for one only: Sim.add, by its Body module's kind --
+    the reader before step B2b, prop_body, also said whether the Body was one): 'dies' when a DestroyDie / SlowDeath
+    up the chain takes a NORMAL death, else 'stays'. Bench 11-10 engine_propbody a / b / c: a PropBody has no
     health (the percent reads 0, NAMED_DAMAGE 10 changes nothing), a Hammer told to attack never fires (UNATTACKABLE),
     and NAMED_KILL leaves a street segment (PropBody only) standing for good; a tree / lantern (SlowDeath only for
     TOPPLED) topples where it stands and is gone its ToppleUpdate delay + 1 frames later (61 / 121), never dying."""
     key = (template, (own or {}).get(template))
     if key not in _prop_memo:
-        def body(xml):
-            got = list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'Body'))
-            return ('<PropBody' in got[0][1]) if got else None
-
         def destroyer(xml):
             text = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
             for tag in ('DestroyDie', 'SlowDeath'):
@@ -1809,8 +1781,7 @@ def prop_body(template, own=None):
                     if _dies_of(next((h for h, _ in _blocks(inner, 'DieMuxData')), ''), 'NORMAL'):
                         return True
             return None
-        _prop_memo[key] = None if not _chain(template, own, body) else \
-            ('dies' if _chain(template, own, destroyer) else 'stays')
+        _prop_memo[key] = 'dies' if _chain(template, own, destroyer) else 'stays'
     return _prop_memo[key]
 
 

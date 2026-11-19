@@ -327,10 +327,6 @@ class Body(kernel_module.Thing):
     surface: str = 'ground'
     vision: float = 0.0
     kinds: frozenset = frozenset()
-    immortal: bool = False          # body module: health changes cannot take it below 1 HP
-    prop: str = None                # PropBody (simunits.prop_body): no health; 'stays' / 'dies' to a script kill
-    max_hp: float = 100.0
-    hp: float = 100.0
     immune_until: int = -1          # the frame an Iron Curtain's protection ends (weapons and superweapons, not scripts)
     armor: dict = dataclasses.field(default_factory=dict)      # damage type -> percent taken (simunits.fight)
     weapons: list = dataclasses.field(default_factory=list)    # [{range, dps, type, anti}]
@@ -413,7 +409,6 @@ class Body(kernel_module.Thing):
     drive_speed: float = 0.0
     jet_motion: dict = None                                     # simjet: measured first eastbound startup only
     jet_started: bool = False
-    health_floor: float = 1.0                               # ManagerBody proxy: inferred 1% effective HP; normal immortal 1 HP
     hold_fire: bool = False                                     # UNIT_SET_STANCE 3 (HOLD_FIRE): fires only at a
                                                                 # target it was ordered on (stance.md a / b / d / e)
     hold_paused: bool = False                                   # an attack order taken BEFORE HOLD_FIRE: kept, not
@@ -426,34 +421,33 @@ class Body(kernel_module.Thing):
                                                                 # slave: outlives it, never replaced); the engine's
                                                                 # Object producer, no module's (stays: step M10)
 
-    def damage(self, amount):
-        """The body's health floor (Generals reference: internalChangeHealth). A PropBody takes none (engine_propbody a)."""
-        if not self.prop:
-            self.set_hp(max(self.health_floor if self.immortal else 0.0, self.hp - amount))
+    def damage(self, amount):     # the Body module's (engine/modules/body.py, step B2b): down to its floor, a prop none
+        self.find(kernel_interfaces.Body).attempt_damage(amount)
 
-    def mend(self, amount):
-        """Health up by `amount`, at most the maximum (math.inf: to full); every heal goes through it (step K2)."""
-        self.set_hp(min(self.max_hp, self.hp + amount))
+    def mend(self, amount):     # up by `amount`, at most the maximum (math.inf: to full); every heal (step K2)
+        self.find(kernel_interfaces.Body).attempt_healing(amount)
 
     @property
-    def health(self):
-        """Health in percent of its maximum (what the scripts read); a PropBody's reads 0 (engine_propbody a)."""
-        return 100.0 * self.hp / self.max_hp if self.max_hp and not self.prop else 0.0
+    def health(self):           # percent of its maximum, what the scripts read; a PropBody's 0 (engine_propbody a)
+        return self.find(kernel_interfaces.Body).percent()
 
     @health.setter
     def health(self, pct):
-        self.set_hp(max(self.health_floor if self.immortal else -math.inf, self.max_hp * float(pct) / 100.0))
+        self.find(kernel_interfaces.Body).set_percent(pct)
 
-    def set_hp(self, hp, max_hp=None, tell=True):
-        """The one write of health and maximum (B1; no floor, max_hp None kept); tell=False: being made, or dying."""
-        was, self.max_hp, self.hp = self.hp, self.max_hp if max_hp is None else max_hp, hp
-        if tell:
-            self.health_moved(was, hp)
+    def set_hp(self, hp, max_hp=None, tell=True):     # the one write (B1, the module's set_health since B2b)
+        self.find(kernel_interfaces.Body).set_health(hp, max_hp, tell)
     # fields moved into modules, still read outside: read only (test_kernel BODY_FORWARDS)
-    FORWARDS = ('life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
+    FORWARDS = ('hp', 'max_hp', 'health_floor', 'immortal', 'prop',
+                'life_end', 'topple', 'toppled', 'topple_end', 'crusher', 'crushable', 'deposit', 'deposit_at',
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules')
+    hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
+    max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
+    health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
+    immortal = kernel_module.forward(kernel_interfaces.Body, lambda m: m.is_immortal(), False)
+    prop = kernel_module.forward(kernel_interfaces.Body, lambda m: m.prop_death())    # None / 'stays' / 'dies'
     life_end = kernel_module.forward(kernel_interfaces.Lifetime, lambda m: m.die_frame())     # step M1
     topple = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.rules())           # step M2: its rules
     toppled = kernel_module.forward(kernel_interfaces.Topple, lambda m: m.is_toppled(), False)
@@ -1085,12 +1079,9 @@ class Sim:
             b.turn_rate, limit = simunits.turning(template, self.own)
             b.turn_first = limit is not None
         f = simunits.fight(template, self.own)
-        b.immortal, immortal_hp = simunits.immortal_body(template, self.own)
-        if simunits.manager_body(template, self.own):
+        proxy_hp = None                         # the Body module's health is made below, once the modules are
+        if self.world.blocks_of(template, 'ManagerBody'):
             proxy_hp = simunits.manager_proxy_health(template, self.own)
-            if proxy_hp:
-                b.immortal, immortal_hp = True, proxy_hp
-                b.health_floor = proxy_hp * 0.01
             self.gap('ManagerBody', template, '仅HB_Bridge_02整体代理脚本伤害已量；有效HP/内部下限映射INFERRED，其他配置、桥段生成、共享血量与维修未建模')
         wall_start = simunits.wall_builder_start(template, self.own)
         if wall_start:
@@ -1099,8 +1090,6 @@ class Sim:
                 b.status.add('WALL_SEGMENT')
             self.gap('WallBuilderBehavior', template,
                      '仅预摆墙默认WALL_SEGMENT初始状态已量；运行时生成/建墙/连接/段数上限/生死联动、自定义状态与模型条件未建模；其他继承覆盖默认值INFERRED，脚本改位交互未测')
-        hp =immortal_hp if b.immortal else (f['hp'] or simunits.max_health(template, self.own))
-        b.set_hp(hp := hp or (2000.0 if 'STRUCTURE' in b.kinds else 300.0), hp, tell=False)   # none in the data: a guess
         b.armor, b.weapons = f['armor'], f['weapons']
         if template not in self.__dict__.setdefault('_wsets', {}):
             self._wsets[template] = simunits.weapon_sets(template, self.own)
@@ -1112,7 +1101,6 @@ class Sim:
             b.weapons = simunits.pick_weapons(b.slots, b.status, self.weapon_upgrades(b))
         b.lies = simunits.slow_death(template, self.own)
         b.linger = LINGER
-        b.prop = simunits.prop_body(template, self.own)
         if not b.weapons:                     # its XML names guns and none was read: a gap, not a unit without guns
             if template not in self.declared:
                 self.declared[template] = simunits.declared_weapons(template, self.own)
@@ -1123,6 +1111,10 @@ class Sim:
         mods = self.world.build(b, self.clock.frame)
         if mods:
             b.modules = mods
+        body = b.find(kernel_interfaces.Body) or self.world.attach(b, 'ActiveBody', self.clock.frame)  # no block: one
+        hp = proxy_hp or (body.data.max_health if body.is_immortal() else f['hp'] or body.data.max_health)
+        body.make(hp or (2000.0 if 'STRUCTURE' in b.kinds else 300.0), proxy_hp * 0.01 if proxy_hp else None,
+                  body.kind() == 'PropBody' and simunits.prop_death(template, self.own))
         unpack = b.find(kernel_interfaces.Unpack) if by and 'STRUCTURE' in b.kinds else None
         if unpack and unpack.frames():          # made in the run (a map's own skip it): unpacks first -- adds no power
             v = np.float32(power_factor(*self.power(owner)))       # and does not fire meanwhile; RA3 1.13, work/re/l2_construction.md:

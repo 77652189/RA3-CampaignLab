@@ -91,9 +91,9 @@ def test_at_the_reallydamaged_line_everyone_comes_out():
     gi = s.add('gi', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 300.0)
     assert simgarrison.really('AM_Apartments_01') == simgarrison.REALLY_DAMAGED
     s.garrison.put(gi, house, script=True)
-    house.hp = house.max_hp * .34
+    house.set_hp(house.max_hp * .34, tell=False)
     s.garrison.hurt(house)
     assert s.garrison.held(house) == [gi]
-    house.hp = house.max_hp * .33
+    house.set_hp(house.max_hp * .33, tell=False)
     s.garrison.hurt(house)
     assert s.garrison.held(house) == [] and house.owner is None

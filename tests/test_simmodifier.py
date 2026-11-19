@@ -66,6 +66,8 @@ def _body(s, name, template, owner, x, kinds, speed=30.0):
     mods = s.world.build(b, s.clock.frame)                  # as Sim.add makes them
     if mods:
         b.modules = mods
+    if b.find(sim.kernel_interfaces.Body) is None:          # no Body block: Sim.add attaches one (step B2b)
+        s.world.attach(b, 'ActiveBody')
     s.bodies[name] = b
     return b
 

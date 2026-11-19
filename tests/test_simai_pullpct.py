@@ -64,7 +64,7 @@ def test_pullback_facilities_require_faction_filter_and_reachable_entry(facility
     w, brain, tank, crane = facility_world
     member = SimpleNamespace(body=tank)
     monkeypatch.setattr(w.sim.ground, 'within', lambda *args: [])
-    tank.hp = .3 * tank.max_hp
+    tank.set_hp(.3 * tank.max_hp, tell=False)
     assert w.pullback.query(brain, member) == (.3, [(crane.name, (crane.x, crane.y), True)])
     tank.script_status.add('AIRBORNE_TARGET')
     assert w.pullback.query(brain, member) == (.3, [])

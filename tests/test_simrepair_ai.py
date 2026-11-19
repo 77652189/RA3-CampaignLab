@@ -69,7 +69,7 @@ def test_ai_repair_quarter_health_cost_prediction_and_bench_readings():
     assert 10000 - e.money[plant.owner] == 800 * .5 * .75 ** 2
     # A finished repair leaves the module (step M13): hurt to a measured share again, a fresh repair starts.
     assert plant.hp == 1000 and _job(plant) is None
-    plant.hp = 500.0
+    plant.set_hp(500.0, tell=False)
     e.advance(15 * 5)
     assert plant.hp > 500 and _job(plant)['cost'] == 200
 
@@ -108,12 +108,12 @@ def test_ai_repair_rate_and_unmeasured_configuration_gate():
     assert _job(plant)['cost'] == 200
     assert _job(plant)['r'] == pytest.approx(1 / 1500)
     assert ('物体模块', 'RepairUpdate boundaries') in e.unmodeled
-    plant.hp -= 10
+    plant.set_hp(plant.hp - 10, tell=False)     # by no hand of the game's (no Damage module told), as it was written
     hp = plant.hp
     e.advance(15)
     assert plant.hp == hp
     assert ('物体模块', 'RepairUpdate interrupted') in e.unmodeled
-    plant.hp = 750.0            # a measured share again: a refused repair stays refused for the run
+    plant.set_hp(750.0, tell=False)     # a measured share again: a refused repair stays refused for the run
     e.advance(15 * 5)
     assert plant.hp == 750.0
     # An unhandled field must not disappear in the compact rule dictionary.

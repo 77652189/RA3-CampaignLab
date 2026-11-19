@@ -28,7 +28,7 @@ Read (测, 2026-11-10, run_queue, all PASS; work/bench_results/engine_propbody*_
   b  帧数 332, 行1 332 (the street segment never goes), 行2 61, 行3 121 (the tree / lantern gone 61 / 121 frames after
      the kill -- their ToppleUpdate removal delay, 60 / 120 -- and never dying)
   c  332 x 4: the Hammers never fire, nothing goes
-Simulated since (simunits.prop_body, sim Body.damage / health, Sim.destroy):
+Simulated since (the PropBody module, engine/modules/body.py; simunits.prop_death, Sim.destroy):
 tests/test_simbench_c.py::test_prop_body_no_health_a_kill_leaves_the_street_and_topples_the_tree_and_lantern_at_the_bench_frames.
 """
 from maps import festival
