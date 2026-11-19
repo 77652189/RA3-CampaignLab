@@ -27,6 +27,7 @@ LAYER_OF = {
     'engine': 0, 'engine.kernel': 0, 'engine.kernel.interfaces': 0, 'engine.kernel.module': 0,   # the kernel
     'engine.kernel.factory': 0, 'engine.kernel.schedule': 0, 'engine.kernel.world': 0,          # (tests/test_kernel.py)
     'engine.kernel.snap': 0,                                                                     # step S's values
+    'simsnap': 9,                                                       # step S, the host's part (a whole run's)
     'simunits': 1,
     'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2, 'simmine': 2, 'simstatus': 2, 'simpower': 2, 'simgarrison': 2,
     'simmodifier': 2, 'simlevel': 2, 'simlocomotion': 2, 'simpath': 2,
@@ -50,6 +51,9 @@ LAYER_OF = {
 # test_simcoverage_files leaves these out; no other simulator module imports them (test_nothing_else_imports_the_ai).
 # simai itself is not in LAYER_OF until step 10: it still imports sim (SIM_NAMES_UNTIL_10).
 AI_SIDE = {'simai', 'simmicro', 'simpullback'}
+# tools over a whole run (step S's snapshot): layered for the import rule (never import sim), not a part of the
+# simulator, so the inventory does not count their strings (tests/test_simcoverage_files.py)
+OVER_THE_RUN = {'simsnap'}
 
 
 def ai_import_breaks(mods=None, source=None):

@@ -28,8 +28,9 @@ LAYER_OF = _LAYERS.LAYER_OF
 
 
 def simulator_modules():
-    """The player's run: the AI's side (test_sim_layers.AI_SIDE) is counted apart, by inventory_ai."""
-    return sorted((set(LAYER_OF) | {'sim', 'simunits', 'simproxy'}) - _LAYERS.AI_SIDE)
+    """The player's run: the AI's side (test_sim_layers.AI_SIDE) is counted apart, by inventory_ai; the tools over a
+    run (OVER_THE_RUN, the snapshot) are not the simulator."""
+    return sorted((set(LAYER_OF) | {'sim', 'simunits', 'simproxy'}) - _LAYERS.AI_SIDE - _LAYERS.OVER_THE_RUN)
 
 
 def uncounted(code, status):

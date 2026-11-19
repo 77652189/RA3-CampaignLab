@@ -970,6 +970,9 @@ ID_CALLS = {
     ('simai.py', 'Brain.stand'): 1,                     # tactics.runs: the private model's own key, changed on its side
     ('simai.py', 'Brain.approach'): 2,                  # _exp_teams: by team, until the model's teams carry a number
     ('simai.py', 'Brain.snap'): 1,                      # _rec_runs: by run, the same
+    ('simsnap.py', '_Codec._put'): 1,                   # one snapshot's identity maps (taken or written in one
+    ('simsnap.py', '_Codec.count'): 4,                  # call, never kept): the template data a body holds, a
+    ('simsnap.py', '_Codec.extra'): 1,                  # container held in two places
 }
 
 

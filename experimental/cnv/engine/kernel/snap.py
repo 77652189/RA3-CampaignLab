@@ -7,8 +7,10 @@ same snapshot is kept in one process or written out (json.dumps / loads gives it
   a set            {"$set": [...]}             (sorted by the JSON of each member: the same set, the same list)
   a frozenset      {"$frozenset": [...]}
   a dict whose keys are not all plain strings (or one starts with "$"): {"$items": [[key, value], ...]}, in order
-  anything else    the caller's `extra(value)` (the host's own marks: a weapon of the template cache ...), else a
-                   TypeError naming where it was -- a value is never dropped in silence.
+  the caller's     `extra(value)`, asked first for every value but a plain one, a thing or a module (the host's
+                   own marks: a weapon of the template cache, one list held in two places ...; NotImplemented: not
+                   one of its, go on as above)
+  anything else    a TypeError naming where it was -- a value is never dropped in silence.
 
 decode(...) is the inverse on a world whose things are given by serial (`things`)."""
 import json
@@ -35,6 +37,10 @@ def encode(v, extra=None, at='snapshot'):
         return {'$thing': v.serial}
     if isinstance(v, _module.Module):
         return {'$module': [v.thing.serial, _place(v)]}
+    if extra is not None:
+        out = extra(v)
+        if out is not NotImplemented:
+            return out
     if isinstance(v, list):
         return [encode(x, extra, f'{at}[{k}]') for k, x in enumerate(v)]
     if isinstance(v, tuple) and type(v) is tuple:
@@ -46,10 +52,6 @@ def encode(v, extra=None, at='snapshot'):
         if all(type(k) is str and not k.startswith('$') for k in v):
             return {k: encode(x, extra, f'{at}.{k}') for k, x in v.items()}
         return {'$items': [[encode(k, extra, f'{at} key'), encode(x, extra, f'{at}[{k!r}]')] for k, x in v.items()]}
-    if extra is not None:
-        out = extra(v)
-        if out is not NotImplemented:
-            return out
     raise TypeError(f'{at}: a {type(v).__name__} the snapshot cannot keep ({v!r:.80})')
 
 

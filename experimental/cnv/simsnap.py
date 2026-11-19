@@ -1,0 +1,379 @@
+"""A run's snapshot, the host's part (step S, docs/engine/sim-modules.md 9.2): the kernel's (World.snapshot), every
+Body's fields and the Sim's own, sorted by how each is kept, and the script executor's (its port). Taken at a tick's
+end (Sim.run between steps); written back onto a Sim made anew for the same mission, test, level and script, not yet
+run. A transition: it shrinks as blocks move into modules (their STATE is the kernel's) and goes with the old Sim.
+
+How a field is kept (SIM / BODY below; a dict there is a part: an object whose own fields are sorted the same way):
+  STATE     taken and written back (a container in place: another name may hold it)
+  ALIAS     another field's object under a second name (`ALIASES`): not taken, checked to be the same object
+  KERNEL    the world's: World.snapshot (the schedule, the modules' STATE, made, frame, used, gaps)
+  EXECUTOR  the script port's Executor.snapshot (an executor that cannot: an error)
+  CACHE     read from data that does not change in a run (the new world fills its own)
+  WIRE      hooks, views and back-references the constructor makes
+  STATIC    the mission's and the run's setup, the same on the new world (tests/tools/test_snapshot.py checks it)
+
+Values as engine/kernel/snap.py keeps them, plus the host's marks: a weapon / armour / weapon slots of the template
+data held by identity ({"$weapon": [template, "fight" | "slot", ...]}: written back as the new world's own object of
+the same place), one list / dict / set / array held in two places ({"$shared": [n, value]} then {"$ref": n}: one
+object again), a numpy array ({"$array": [dtype, shape, base64]}), a player's protocol book ({"$book": fields}).
+`unclassified(sim)` (step S's guard 4.3) names every field not sorted here, so a new one cannot be left out."""
+import base64
+import importlib
+
+import numpy as np
+
+import simtech
+import simunits
+from engine.kernel import module as _module
+from engine.kernel import snap
+
+STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
+VERSION = 1
+
+SIM = {
+    # the setup
+    'm': STATIC, 'retail': STATIC, 'mm': STATIC, 'test': STATIC, 'level': STATIC, 'fps': STATIC, 'players': STATIC,
+    'human': STATIC, 'foe': STATIC, 'own': STATIC, 'walls': STATIC, 'templates': STATIC, 'script': STATIC,
+    'auto_kill': STATIC, 'combat': STATIC, 'high': STATIC, 'unshot': STATIC, 'areas': STATIC,
+    'modifiers': {}, 'assignments': {'world': WIRE},
+    # the kernel, the script port, wiring
+    'world': KERNEL, 'executor': EXECUTOR, 'eng': WIRE, 'counters': WIRE, 'timers': WIRE, 'team_names': WIRE,
+    'order_peers': WIRE,
+    'used': ALIAS, 'unmodeled': ALIAS, 'money': ALIAS, 'income': ALIAS, 'sharing': ALIAS, 'money_cap': ALIAS,
+    # caches (template -> what its data says)
+    'declared': CACHE, 'energies': CACHE, '_engineer_rules': CACHE, '_wsets': CACHE, '_xmls': CACHE,
+    '_toggles': CACHE, '_invis': CACHE, '_xy': CACHE, '_crushable_pool': CACHE,
+    # parts
+    'clock': {'frame': STATE},
+    'wallet': {'money': STATE, 'income': STATE, 'sharing': STATE, 'money_cap': STATE},
+    'mining': {'nodes': STATE, 'mined_to': STATE},
+    'ground': {'waterline': STATIC, 'water': STATIC, 'b': STATIC, 'd': STATIC, 'e': STATIC, 'zgrid': STATIC,
+               'grids': STATIC, 'fine': STATIC, 'deck': STATIC, 'xy': STATIC,
+               'blocked': STATE, 'placed': STATE, 'version': STATE, 'shapes': STATE, 'cache': CACHE},
+    'repairs': {'world': WIRE, 'wallet': WIRE, 'ai_switches': ALIAS, 'blocked': STATE, 'players': STATE},
+    'heal': {'passive_area_of': CACHE},
+    'life': {'lose_of': CACHE},
+    'garrison': {'world': WIRE, 'peers': WIRE, 'boxes': STATE, 'where': STATE, 'going': STATE, 'log': STATE,
+                 'ejecting': STATE, 'flying': STATE},
+    'infiltrators': {'world': WIRE, 'peers': WIRE, 'wallet': WIRE, 'going': STATE, 'off_until': STATE,
+                     'observers': STATE, 'unit_observers': STATE, 'paralyzed_until': STATE, 'attack_until': STATE},
+    'lift_timers': {'remaining': STATE},
+    'sweeps': {'world': WIRE, 'peers': WIRE, 'lines': STATE},
+    'commands': {'_w': WIRE, '_issued': STATE},
+    'specials': {'wfires': STATE, 'leaps_due': STATE, 'leap_ground_hits': STATE, 'movement_due': STATE,
+                 'self_bits_due': STATE},
+    'harm': {'incoming': STATE, 'projectile_hits': STATE, 'knock_drowns': STATE, 'dots': STATE, 'cold_on': STATE,
+             'projectile_speeds': CACHE, 'impact_body': CACHE, 'lift_modules': CACHE, 'nugget_powers': CACHE,
+             'hit_reaction_of': CACHE},
+}
+for _f in ('t log box_log panel_log asked up scenes unknown flags objectives markers banned unit_construction_disabled '
+           'base_construction_disabled ai_paused buildable banned_ups border reveal_all reveal_all_until revealed_to '
+           'reveals peeks reveal_areas seq reshroud camera camera_been personality_of input countdowns ending both '
+           'ra3_only last_change ai handed library_ai ai_switches ai_priorities hidden_home audio_end video_end '
+           'selected script_disabled kills attacked_by cond_memory made_frame relations team_team_rel '
+           'team_player_rel player_team_rel team_targets books tech_to tech_read hunts bodies attachments '
+           '_attachment_marked attachment_known_status suppression_fields topples frame_movers refs object_lists '
+           'base_power powers_off series threat first_threat known known_at guessed due blasts casts power_at '
+           'queues produced_to player_ups instances active lost_orders seen firing mid_aims pre_locks fire_gate '
+           '_field first_death death_blasts events anchored hotspots waypoints volleys chilling _fire_obstacles '
+           'impact_flights emp_until knock_hold clocks tech_to').split():
+    SIM.setdefault(_f, STATE)
+# a second name -> the path of the object it names
+ALIASES = {('used',): ('world', 'used'), ('unmodeled',): ('world', 'gaps'),
+           ('money',): ('wallet', 'money'), ('income',): ('wallet', 'income'), ('sharing',): ('wallet', 'sharing'),
+           ('money_cap',): ('wallet', 'money_cap'), ('repairs', 'ai_switches'): ('ai_switches',)}
+
+BODY = {'modules': KERNEL}
+for _f in ('name template owner x y z speed surface vision kinds immune_until armor weapons acquire radius sight chase '
+           'home auto_to resume stood_for spot engaged alive deleted path goal close_since made_by made_at scenery team '
+           'instance guessed clear_height angle turn_rate turn_first face rolling carry dest set_off stops_at status '
+           'attachment_status lift_status upgrades up_since level_rank script_status slots auras_on shielded taken '
+           'model_conditions dealt level_rate level_vision base died_at mode move_to fired_at leaves building replace '
+           'follow frame_move drive_speed jet_motion jet_started hold_fire hold_paused stance ai_acquire unpack_parent '
+           'flee ground_fire unpack_here last_by').split():
+    BODY.setdefault(_f, STATE)
+
+_MUTABLE = (list, dict, set)
+
+
+def _fields(obj):
+    if hasattr(obj, '__dict__'):
+        return vars(obj)
+    return {f: getattr(obj, f) for f in getattr(type(obj), '__slots__', ()) if hasattr(obj, f)}
+
+
+def _get(sim, path):
+    obj = sim
+    for f in path:
+        obj = getattr(obj, f)
+    return obj
+
+
+def _state_paths(sim, table=SIM, at=()):
+    """(path, kind) of every field of the table the sim has, parts walked into, in the table's order."""
+    for f, kind in table.items():
+        obj = _get(sim, at)
+        if f not in _fields(obj) and not (isinstance(kind, dict) and hasattr(obj, f)):
+            continue
+        if isinstance(kind, dict):
+            yield from _state_paths(sim, kind, at + (f,))
+        else:
+            yield at + (f,), kind
+
+
+def unclassified(sim):
+    """Step S's guard 4.3: every field of the sim, of its parts and of its bodies that SIM / BODY do not sort, and
+    every ALIAS that is not the object it names -- all of them, sorted."""
+    out = []
+
+    def walk(obj, table, at):
+        for f, v in _fields(obj).items():
+            kind = table.get(f)
+            if kind is None:
+                out.append('.'.join(at + (f,)))
+            elif isinstance(kind, dict):
+                walk(v, kind, at + (f,))
+            elif kind == ALIAS and (at[1:] + (f,)) in ALIASES:
+                if v is not _get(sim, ALIASES[at[1:] + (f,)]):
+                    out.append('.'.join(at + (f,)) + ' (not the object it names)')
+    walk(sim, SIM, ('sim',))
+    for b in _things(sim):
+        out.extend(f'Body.{f}' for f in vars(b) if f not in BODY)
+    return sorted(set(out))
+
+
+def _things(sim):
+    return list(sim.bodies.values())
+
+
+class _Codec:
+    """The host's marks for snap.encode / decode: the template data's weapons and armours by place, containers held
+    twice, arrays, protocol books."""
+
+    def __init__(self, sim):
+        self.sim = sim
+        self.index = {}         # id -> (object, mark): the template data a body holds by identity
+        self.counts = {}        # id -> (object, times reached)
+        self.ids = {}           # id -> n: a container held twice, given its first time
+        self.table = {}         # n -> object (decoding)
+        self._open = None
+        for t in sorted({b.template for b in _things(sim)}):
+            self._place_template(t)
+
+    def _put(self, obj, mark):
+        self.index.setdefault(id(obj), (obj, mark))
+
+    def _place_template(self, t):
+        slots = self.sim.__dict__.get('_wsets', {}).get(t)
+        if slots:
+            self._put(slots, {'$slots': t})
+            for si, s in enumerate(slots):
+                for li, e in enumerate(s):
+                    if e[3]:
+                        self._put(e[3], {'$weapon': [t, 'slot', si, li]})
+        if t in self.sim.own:           # read anew at each ask: a body's own copy, kept by value
+            return
+        f = simunits.fight(t, self.sim.own)
+        self._put(f['armor'], {'$armor': t})
+        self._put(f['weapons'], {'$weapons': t})
+        for k, w in enumerate(f['weapons']):
+            self._put(w, {'$weapon': [t, 'fight', k]})
+
+    # ---- taking
+    def count(self, v):
+        """Reach every container once more (before encoding): one reached twice is kept once."""
+        if isinstance(v, (_module.Thing, _module.Module)) or (id(v) in self.index and self.index[id(v)][0] is v):
+            return
+        if isinstance(v, (*_MUTABLE, np.ndarray, simtech.Book)):
+            obj, n = self.counts.get(id(v), (v, 0))
+            self.counts[id(v)] = (v, n + 1)
+            if n:
+                return
+        if isinstance(v, dict):
+            for x in v.values():
+                self.count(x)
+        elif isinstance(v, (list, tuple, set, frozenset)):
+            for x in v:
+                self.count(x)
+        elif isinstance(v, simtech.Book):
+            self.count(vars(v))
+
+    def extra(self, v):
+        i = id(v)
+        hit = self.index.get(i)
+        if hit is not None and hit[0] is v:
+            return hit[1]
+        if self._open == i:
+            self._open = None
+        elif self.counts.get(i, (None, 0))[1] > 1:
+            if i in self.ids:
+                return {'$ref': self.ids[i]}
+            self.ids[i] = n = len(self.ids)
+            self._open = i
+            return {'$shared': [n, snap.encode(v, self.extra, f'shared {n}')]}
+        if isinstance(v, np.ndarray):
+            return {'$array': [v.dtype.str, list(v.shape), base64.b64encode(np.ascontiguousarray(v).tobytes()).decode()]}
+        if isinstance(v, simtech.Book):
+            return {'$book': snap.encode(dict(vars(v)), self.extra, 'book')}
+        if isinstance(v, np.bool_):
+            return {'$npbool': bool(v)}
+        return NotImplemented
+
+    # ---- writing back
+    def decode_extra(self, things):
+        def extra(mark, x):
+            if mark == '$shared':
+                n, val = x
+                obj = self.table[n] = snap.decode(val, things, extra)
+                return obj
+            if mark == '$ref':
+                if x not in self.table:
+                    raise ValueError(f'simsnap: a $ref {x} before its $shared')
+                return self.table[x]
+            if mark == '$array':
+                dtype, shape, data = x
+                return np.frombuffer(base64.b64decode(data), dtype=np.dtype(dtype)).reshape(shape).copy()
+            if mark == '$book':
+                b = object.__new__(simtech.Book)
+                b.__dict__.update(snap.decode(x, things, extra))
+                return b
+            if mark == '$npbool':
+                return np.bool_(x)
+            if mark in ('$slots', '$weapon', '$armor', '$weapons'):
+                return self._template_object(mark, x)
+            return NotImplemented
+        return extra
+
+    def _template_object(self, mark, x):
+        t = x if isinstance(x, str) else x[0]
+        if mark in ('$slots', '$weapon') and (mark == '$slots' or x[1] == 'slot'):
+            wsets = self.sim.__dict__.setdefault('_wsets', {})
+            if t not in wsets:
+                wsets[t] = simunits.weapon_sets(t, self.sim.own)
+            slots = wsets[t]
+            return slots if mark == '$slots' else slots[x[2]][x[3]][3]
+        f = simunits.fight(t, self.sim.own)
+        if mark == '$armor':
+            return f['armor']
+        if mark == '$weapons':
+            return f['weapons']
+        return f['weapons'][x[2]]
+
+
+def snapshot(sim):
+    """The run as it stands (at a tick's end): {'version', 'mission', 'kernel', 'bodies', 'host', 'executor'}, in
+    values json.dumps keeps. A value it cannot keep, a thing held that is not a body of the run, an executor without
+    snapshots: an error naming it, never a part left out."""
+    things = _things(sim)
+    held = {b.serial for b in things}
+    c = _Codec(sim)
+    w = sim.world
+    for v in (w.used, w.gaps):
+        c.count(v)
+    for b in things:
+        for m in b.modules:
+            for f in m.STATE:
+                if f in vars(m):
+                    c.count(vars(m)[f])
+    for b in things:
+        for f, kind in BODY.items():
+            if kind == STATE and f in vars(b):
+                c.count(vars(b)[f])
+    paths = [p for p, kind in _state_paths(sim) if kind == STATE]
+    for p in paths:
+        c.count(_get(sim, p))
+    kernel = w.snapshot(things, c.extra)
+    bodies = [[key, b.serial, b.name, b.template,
+               {f: snap.encode(x, c.extra, f'{b.name}.{f}') for f, x in vars(b).items() if BODY.get(f) == STATE}]
+              for key, b in sim.bodies.items()]
+    host = [['.'.join(p), snap.encode(_get(sim, p), c.extra, 'sim.' + '.'.join(p))] for p in paths]
+    parts = [[f, type(v).__module__, type(v).__qualname__] for f, v in _fields(sim).items() if isinstance(SIM.get(f), dict)]
+    out = {'version': VERSION, 'mission': getattr(sim.m, 'name', None), 'kernel': kernel, 'bodies': bodies,
+           'parts': parts, 'host': host, 'executor': sim.executor.snapshot()}
+    stray = sorted(_serials(out) - held)
+    if stray:
+        raise ValueError(f'simsnap.snapshot: things {stray[:10]} are held but are not bodies of the run')
+    return out
+
+
+def _serials(e, out=None):
+    out = set() if out is None else out
+    if isinstance(e, list):
+        for x in e:
+            _serials(x, out)
+    elif isinstance(e, dict):
+        if len(e) == 1 and '$thing' in e:
+            out.add(e['$thing'])
+        elif len(e) == 1 and '$module' in e:
+            out.add(e['$module'][0])
+        else:
+            for x in e.values():
+                _serials(x, out)
+    return out
+
+
+def _write(obj, f, e, decode, codec):
+    """Field `f` of `obj` from its snapshot `e`: a container the field already holds of the same type is filled in
+    place (another name may hold it), and stands for the $shared it was taken as."""
+    old = _fields(obj).get(f)
+    n = None
+    if isinstance(e, dict) and len(e) == 1 and '$shared' in e:
+        n, e = e['$shared']
+    new = decode(e)
+    again = isinstance(e, dict) and len(e) == 1 and '$ref' in e     # the object of another place: that one
+    if not again and type(old) is type(new) and isinstance(old, _MUTABLE) and old is not new:
+        if isinstance(old, list):
+            old[:] = new
+        else:
+            old.clear()
+            old.update(new)
+        new = old
+    else:
+        setattr(obj, f, new)
+    if n is not None:
+        codec.table[n] = new
+
+
+def restore(sim, s):
+    """Write snapshot `s` onto `sim`, made anew for the same mission, test, level and script and not yet run: the
+    world's part, each body's fields (the bodies held in the snapshot's order), the Sim's own (containers in place),
+    the executor's. A body the snapshot has and the new world has not (one made in the run): an error for now
+    (step 11b-3c builds it bare)."""
+    if s.get('version') != VERSION:
+        raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {VERSION}')
+    if s['mission'] != getattr(sim.m, 'name', None):
+        raise ValueError(f'simsnap.restore: a snapshot of {s["mission"]!r} onto {getattr(sim.m, "name", None)!r}')
+    have = {b.serial: b for b in _things(sim)}
+    things = {}
+    for key, serial, name, template, _ in s['bodies']:
+        b = have.get(serial)
+        if b is None:
+            raise NotImplementedError(f'simsnap.restore: body {serial} {name!r} ({template}) was made in the run; '
+                                      'building it bare is step 11b-3c')
+        if (b.name, b.template) != (name, template):
+            raise ValueError(f'simsnap.restore: body {serial} is {b.name!r} ({b.template}) here, '
+                             f'{name!r} ({template}) in the snapshot')
+        things[serial] = b
+    c = _Codec(sim)
+    extra = c.decode_extra(things)
+    sim.world.restore(s['kernel'], things, extra)
+    for key, serial, name, template, fields in s['bodies']:
+        b = things[serial]
+        for f in [f for f in vars(b) if BODY.get(f) == STATE and f not in fields]:
+            delattr(b, f)
+        for f, e in fields.items():
+            _write(b, f, e, lambda x: snap.decode(x, things, extra), c)
+    sim.bodies.clear()
+    sim.bodies.update((key, things[serial]) for key, serial, *_ in s['bodies'])
+    for f, mod, name in s['parts']:     # a part the run made on first use (Sim.harm, Sim.specials ...): made anew
+        if f not in _fields(sim):
+            setattr(sim, f, getattr(importlib.import_module(mod), name)())
+    taken = {path for path, _ in s['host']}
+    for p, kind in list(_state_paths(sim)):
+        if kind == STATE and '.'.join(p) not in taken:
+            delattr(_get(sim, p[:-1]), p[-1])
+    for path, e in s['host']:
+        p = tuple(path.split('.'))
+        _write(_get(sim, p[:-1]), p[-1], e, lambda x: snap.decode(x, things, extra), c)
+    sim.executor.restore(s['executor'])
+    sim.ground.cache.clear()
