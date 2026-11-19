@@ -12,7 +12,9 @@ frame's record identical (docs/engine/sim-layers.md "搬迁不改行为").
     python -X utf8 experimental/cnv/simrecord.py snap <dir> [--at 0.5]   # step S's guard 7: each task without the
                                                                          # AI whole, and taken at half, written back
                                                                          # onto the task made anew, run on: the same
-                                                                         # record, snapshot at the end and report
+                                                                         # record, snapshot at the end and report;
+                                                                         # the cut goes through a file to another
+                                                                         # process (11c, snapfile)
 
 The times `record` writes come from runs side by side (-j), a few percent of noise and more on a loaded machine;
 `time` replaces them with the least of three lone runs (docs/engine/sim-modules.md 9.3: same machine, one task a
@@ -243,7 +245,7 @@ class CrossRecorder:
         self.spent += time.perf_counter() - t0
 
 
-def run_task(name, out, executor=None, snap=None):
+def run_task(name, out, executor=None, snap=None, save=None, resume=None):
     """One task's run, its record written to `out`. executor: None the task's own (TASKS: old runs the public one,
     the rest the model's plug-in where it is on this computer) and the full record; 'public' / 'model' /
     'public@model' that executor for every kind and the cross record (CrossRecorder).
@@ -252,11 +254,22 @@ def run_task(name, out, executor=None, snap=None):
     'whole' run through, a fraction
     `at` stopped at the first tick past at x the task's seconds, taken (simsnap; an AI task's SimAI with its brains
     through simaisnap, 11b-4d), through JSON, written onto the same task made anew (an AI task's SimAI made anew on
-    it) and run on to the end, the record going on where it stopped (Recorder, the log's count)."""
+    it) and run on to the end, the record going on where it stopped (Recorder, the log's count).
+    Across processes (11c, `snap`): `save` a path -- the cut run stops once taken, the snapshot and where the record
+    stopped written there (snapfile); `resume` that path -- another process makes the task anew, writes the file's
+    snapshot onto it and runs on, its record the rest of the cut one's (`out` appended to)."""
     import build
     import sim
+    import snapfile
     from engine.ports.observe import Observe
     kind, args, until = TASKS[name]
+    if (save or resume) and snap in (None, 'whole'):
+        raise ValueError('simrecord: save / resume is a cut run\'s (--snap <fraction>)')
+    if resume:
+        meta, taken = snapfile.load(resume)
+        if (meta.get('task'), meta.get('snap')) != (name, snap):
+            raise ValueError(f'simrecord: {resume} is {meta.get("task")} cut at {meta.get("snap")}, '
+                             f'not {name} at {snap}')
     model = kind != 'old' if executor is None else executor in ('model', 'public@model')
     if snap is not None and kind == 'ai':   # the model's world keeps the model's script engine as its clock, which
         model = False                       # a snapshot cannot take (simaisnap: the AI's runs on Sim(model=False))
@@ -272,7 +285,12 @@ def run_task(name, out, executor=None, snap=None):
             import simsnap as snaps
 
     cut = None if snap in (None, 'whole') else float(snap) * until
-    for half in range(1 if cut is None else 2):     # a cut run: the task made again for the half written back
+    if resume:      # the cut run's first half was another process's: its recorder's counts and times from the file
+        rec = Recorder(None, out)
+        rec.n, rec.logged, rec.spent, rec.at = meta['n'], meta['logged'], meta['spent'], meta['at']
+        t1 = time.perf_counter()
+        t0 = t1 - meta['elapsed']
+    for half in (1,) if resume else range(1 if cut is None else 2):  # a cut run: the task made again, written back
         if kind == 'retail':
             import retail
             s = sim.Sim(retail.RetailMission(args[0]), model=model, **which)
@@ -284,7 +302,7 @@ def run_task(name, out, executor=None, snap=None):
             import simai
             w = simai.SimAI(s, 'normal', 1, None, None, simai.BLOCKS, False)
         if half:
-            snaps.restore(s if w is None else w, json.loads(taken))
+            snaps.restore(s if w is None else w, taken if resume else json.loads(taken))
             o = Observe(s)
             if o.log_since(0)[1] != rec.logged:
                 raise RuntimeError(f'simrecord: the restored log has {o.log_since(0)[1]} lines, the run had '
@@ -292,7 +310,8 @@ def run_task(name, out, executor=None, snap=None):
             was, rec = rec, Recorder(o, out)    # the record goes on from the line and the log count it stopped at
             rec.n, rec.logged = was.n, was.logged
             rec.spent = was.spent + time.perf_counter() - t1     # taking and writing back: not the run's time
-            rec.snap = {'at': was.at, 'bytes': len(taken), 'seconds': time.perf_counter() - t1}
+            rec.snap = {'at': was.at, 'bytes': meta['bytes'] if resume else len(taken),
+                        'seconds': time.perf_counter() - t1, **({'across': True} if resume else {})}
             rec.attach()
             frame = s.world.frame
             if w is None:
@@ -326,6 +345,11 @@ def run_task(name, out, executor=None, snap=None):
                              'to run after the snapshot (take it earlier)')
         t1 = time.perf_counter()
         taken, rec.at = json.dumps(snaps.snapshot(s if w is None else w)), s.t
+        if save:        # the rest is another process's (resume): where the record stopped goes with the snapshot
+            snapfile.save(save, json.loads(taken), task=name, snap=snap, at=rec.at, frame=s.world.frame, n=rec.n,
+                          logged=rec.logged, spent=rec.spent, elapsed=t1 - t0, bytes=len(taken))
+            rec.saved = save
+            return s, rec
     rec.ran = time.perf_counter() - t0 - rec.spent     # the run alone: no imports, map build or record writing
     rec.line('end')
     if snap is not None:    # its end (end_path): the snapshot after the run (the AI's with its brains) and the
@@ -347,6 +371,8 @@ def main():
     one.add_argument('path')
     one.add_argument('--executor', choices=EXECUTORS, default=None)
     one.add_argument('--snap', default=None, help="'whole' or a fraction of the run: run_task")
+    one.add_argument('--save', default=None, help='a cut run: stop once taken, the snapshot to this file (run_task)')
+    one.add_argument('--resume', default=None, help='a cut run: go on from this file, the record appended to')
     sn = sub.add_parser('snap', help="step S's guard 7: each task whole and taken at --at, written back, run on; "
                                      'the two records the same line for line, their ends the same')
     sn.add_argument('dir')
@@ -394,9 +420,13 @@ def _cpupool():
 def _main(a):
     if a.cmd == 'one':
         t0 = time.perf_counter()
-        with gzip.open(a.path, 'wt', encoding='utf-8') as out:
-            _, rec = run_task(a.name, out, a.executor, a.snap)
+        # a resumed run's record is the rest of the cut one's: a second gzip member, read on as one text
+        with gzip.open(a.path, 'at' if a.resume else 'wt', encoding='utf-8') as out:
+            _, rec = run_task(a.name, out, a.executor, a.snap, a.save, a.resume)
         total = time.perf_counter() - t0
+        if a.save:                  # the first half: its end, time and report are the resumed run's
+            print(a.name, 'taken at', rec.at, 's ->', a.save)
+            return 0
         if a.snap is not None:      # the run's end beside its record: snap_check compares what the record does not show
             with gzip.open(end_path(a.path), 'wt', encoding='utf-8') as f:
                 json.dump(rec.end, f)
@@ -434,16 +464,16 @@ def _main(a):
 
 
 def _record(folder, jobs, j):
-    """Each job (task, file name, extra arguments of `one`) in its own subprocess, j at a time, its record
-    <folder>/<file>.gz and its output <file>.txt. Returns the files that failed."""
+    """Each job (task, file name, extra arguments of `one`[, its output's name]) in its own subprocess, j at a time,
+    its record <folder>/<file>.gz and its output <file>.txt (or <output>.txt). Returns the files that failed."""
     os.makedirs(folder, exist_ok=True)
     env = dict(os.environ, PYTHONHASHSEED='0')
     procs, failed = [], []
     pending = list(jobs)
     while pending or procs:
         while pending and len(procs) < j:
-            n, f, extra = pending.pop(0)
-            log = open(os.path.join(folder, f + '.txt'), 'w', encoding='utf-8')
+            n, f, extra, *named = pending.pop(0)
+            log = open(os.path.join(folder, (named[0] if named else f) + '.txt'), 'w', encoding='utf-8')
             p = subprocess.Popen([sys.executable, '-X', 'utf8', os.path.abspath(__file__), 'one', n,
                                   os.path.join(folder, f + '.gz')] + extra,
                                  env=env, stdout=log, stderr=subprocess.STDOUT)
@@ -463,9 +493,14 @@ def snap_check(folder, names, at=0.5, j=4):
     of its run, through JSON, written onto the task made anew and run on (<task>.snap.gz), both on the world a
     snapshot can be taken of (run_task); the first differing line of each pair, else where their ends differ
     (end_difference: the snapshot at the end and the report), the snapshot's size and time. 0 when every pair is
-    the same."""
+    the same. Across processes (11c): the cut run stops once taken, its snapshot in a file (<task>.snap.json.gz,
+    snapfile), and another process (PYTHONHASHSEED the same) makes the task anew, writes it back and runs on."""
+    def file(n):
+        return os.path.join(folder, n + '.snap.json.gz')
     failed = _record(folder, [(n, n, ['--snap', 'whole']) for n in names] +
-                     [(n, n + '.snap', ['--snap', repr(at)]) for n in names], j)
+                     [(n, n + '.snap', ['--snap', repr(at), '--save', file(n)]) for n in names], j)
+    failed += _record(folder, [(n, n + '.snap', ['--snap', repr(at), '--resume', file(n)], n + '.snap.resume')
+                               for n in names if n + '.snap' not in failed], j)
     bad = 0
     for n in names:
         whole, cut = os.path.join(folder, n + '.gz'), os.path.join(folder, n + '.snap.gz')
@@ -477,7 +512,8 @@ def snap_check(folder, names, at=0.5, j=4):
         differs = differs or end_difference(whole, cut)
         with open(timing_path(cut), encoding='utf-8') as f:
             took = json.load(f).get('snap', {})
-        how = f"taken at {took.get('at')} s, {took.get('bytes', 0) / 1e6:.2f} MB, {took.get('seconds', 0):.2f} s"
+        how = f"taken at {took.get('at')} s, {took.get('bytes', 0) / 1e6:.2f} MB, {took.get('seconds', 0):.2f} s" + \
+              (', across processes' if took.get('across') else '')
         if differs:
             bad += 1
             print(n, differs, f'({how})')
