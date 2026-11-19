@@ -135,9 +135,9 @@ def _state_paths(sim, table=SIM, at=()):
             yield at + (f,), kind
 
 
-def unclassified(sim):
+def unclassified(sim, roots=()):
     """Step S's guard 4.3: every field of the sim, of its parts and of its bodies that SIM / BODY do not sort, and
-    every ALIAS that is not the object it names -- all of them, sorted."""
+    every ALIAS that is not the object it names -- all of them, sorted. `roots`: as _things'."""
     out = []
 
     def walk(obj, table, at):
@@ -151,17 +151,18 @@ def unclassified(sim):
                 if v is not _get(sim, ALIASES[at[1:] + (f,)]):
                     out.append('.'.join(at + (f,)) + ' (not the object it names)')
     walk(sim, SIM, ('sim',))
-    for b in _things(sim):
+    for b in _things(sim, roots):
         out.extend(f'Body.{f}' for f in _fields(b) if f not in BODY)
         for m in b.modules:     # a module's own: its STATE (the kernel's) and the factory's wiring, nothing set besides
             out.extend(f'{type(m).__name__}.{f}' for f in _fields(m) if f not in MODULE_WIRE and f not in m.STATE)
     return sorted(set(out))
 
 
-def _things(sim):
+def _things(sim, roots=()):
     """The run's things: the bodies, then the ones held but not in bodies (a map object whose name a later one took:
     Sim.add keeps it in topples, out of bodies and the schedule, still knocked over), found through the fields the
-    snapshot takes, in their order. A thing not of this world -- not the object World.numbered holds under its
+    snapshot takes, in their order, then through `roots` (what a caller holding the sim keeps: the skirmish AI's
+    Bodies never placed, simaisnap). A thing not of this world -- not the object World.numbered holds under its
     serial: another run's, of a serial taken here or of one left free here (review 1119e #8, h P3) -- an error."""
     out = list(sim.bodies.values())
     seen = {}
@@ -205,6 +206,8 @@ def _things(sim):
     for p, kind in _state_paths(sim):
         if kind == STATE:
             reach(_get(sim, p))
+    for x in roots:
+        reach(x)
     todo.extend(out[:len(sim.bodies)])
     while todo:
         fields(todo.pop(0))
@@ -215,14 +218,14 @@ class _Codec:
     """The host's marks for snap.encode / decode: the template data's weapons and armours by place, containers held
     twice, arrays, protocol books."""
 
-    def __init__(self, sim):
+    def __init__(self, sim, roots=()):
         self.sim = sim
         self.index = {}         # id -> (object, mark): the template data a body holds by identity
         self.counts = {}        # id -> (object, times reached)
         self.ids = {}           # id -> n: a container held twice, given its first time
         self.table = {}         # n -> object (decoding)
         self._open = None
-        for t in sorted({b.template for b in _things(sim)}):
+        for t in sorted({b.template for b in _things(sim, roots)}):
             self._place_template(t)
 
     def _put(self, obj, mark):
@@ -338,14 +341,14 @@ class _Codec:
         return f['weapons'][x[2]]
 
 
-def snapshot(sim):
+def snapshot(sim, roots=()):
     """The run as it stands (at a tick's end): {'version', 'mission', 'kernel', 'bodies', 'others' (the things held
-    but not in bodies, _things), 'parts', 'host', 'executor'}, in
+    but not in bodies, _things; `roots` as there), 'parts', 'host', 'executor'}, in
     values json.dumps keeps. A value it cannot keep, a thing held that is not a body of the run, an executor without
     snapshots: an error naming it, never a part left out."""
-    things = _things(sim)
+    things = _things(sim, roots)
     held = {b.serial for b in things}
-    c = _Codec(sim)
+    c = _Codec(sim, roots)
     w = sim.world
     for v in (w.used, w.gaps):
         c.count(v)
@@ -428,7 +431,8 @@ def restore(sim, s):
     the snapshot has and the new world has not (one made in the run) is built bare: a Body of the snapshot's fields,
     its modules made by World.restore (World.remake: no on_create, not scheduled -- the schedule is the snapshot's);
     a module attached in the run (World.attach) is made again the same way. A thing of the new run the snapshot has
-    not: an error."""
+    not: an error. Returns the things, serial -> Thing (a thing made bare that nothing of the Sim's holds is held
+    only by this: a caller's root, simaisnap)."""
     if s.get('version') != VERSION:
         raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {VERSION}')
     if s['mission'] != getattr(sim.m, 'name', None):
@@ -474,6 +478,7 @@ def restore(sim, s):
         p = tuple(path.split('.'))
         _write(_get(sim, p[:-1]), p[-1], e, lambda x: snap.decode(x, things, extra), c)
     sim.ground.cache.clear()
+    return things
 
 
 def _table_state(table=SIM, at=()):

@@ -968,7 +968,6 @@ ID_CALLS = {
     ('simcoverage.py', 'code_strings'): 2,              # an AST walk's own nodes (a tool, no state of a run)
     ('simunits.py', '_ModuleTemplates._effective'): 1,  # the template port's inheritance trail (one lookup's cycle check)
     ('simai.py', 'Brain.stand'): 1,                     # tactics.runs: the private model's own key, changed on its side
-    ('simai.py', 'Brain.approach'): 2,                  # _exp_teams: by team, until the model's teams carry a number
     ('simai.py', 'Brain.snap'): 1,                      # _rec_runs: by run, the same
     ('simsnap.py', '_Codec._put'): 1,                   # one snapshot's identity maps (taken or written in one
     ('simsnap.py', '_Codec.template_data'): 1,          # call, never kept): the template data a body holds, a

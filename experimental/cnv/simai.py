@@ -234,6 +234,7 @@ class Brain:
 
     def __init__(self, host, player, side, personality, frame):
         self.host, self.world, self.peers, self.player = host, host.world, host.peers, player
+        self.made_as = (side, personality)      # how SimAI.attach made it (a snapshot's brain is made again so)
         m = host.mod
         import simtech
         # the player's faction (the map's playerFaction, else by name) for the openings' Side (d66_b_fields.md:
@@ -910,9 +911,13 @@ class Brain:
         if kind != 'SimpleExpansion' or thing is None:
             return True
         p = (float(thing.x), float(thing.y))
-        made = self.__dict__.setdefault('_exp_teams', {})
-        if made.get(id(team)) != p:             # the go order's formation split, once a node (D168)
-            made[id(team)] = p
+        made = self.__dict__.setdefault('_exp_teams', [])   # [(team, node)], found by identity (a Team is not
+        k = next((k for k, (t, _) in enumerate(made) if t is team), None)   # hashable; the snapshot keeps it by
+        if k is None or made[k][1] != p:        # its snapshot_key); the go order's formation split, once a node (D168)
+            if k is None:
+                made.append((team, p))
+            else:
+                made[k] = (team, p)
             slots = self.expansion_slots(team, p)
             self.__dict__.setdefault('_exp_slots', {}).update(slots)
             for u in team.members:
