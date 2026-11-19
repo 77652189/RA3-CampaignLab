@@ -1,8 +1,8 @@
 """A run's snapshot with the skirmish AI (experimental/cnv/simaisnap.py; step S 11b-4, docs/engine/sim-modules.md
 9.2): a SimAI with no brain taken at heal_a's half, through JSON and back equal, written onto a SimAI made anew,
 taken again equal (4.2) and run on to the end as the one never stopped; with brains (guard 7's ai_open, the engine
-model here) every field of the SimAI, its brains and their Units sorted (4.3) and the snapshot refused naming the plugin
-object without the snapshot port."""
+model here) every field of the SimAI, its brains and their Units sorted (4.3); the brains through the plugin's own
+port (11b-4c), the two AI tasks of guard 7 written back at half and run on as the ones never stopped."""
 import json
 
 import pytest
@@ -85,81 +85,29 @@ def test_a_new_field_or_a_broken_alias_is_named(skirm):
         skirm.garrison = garrison
 
 
-def test_a_brain_whose_plugin_has_no_snapshot_port_is_refused_by_name(skirm, monkeypatch):
-    monkeypatch.delattr(simai.model()['player'].AIPlayer, 'snapshot', raising=False)    # the stand-in's, below
-    with pytest.raises(NotImplementedError, match=r'ra3model\.ai\.player\.AIPlayer \(at .*\.ai\).*snapshot port'):
-        simaisnap.snapshot(skirm)
-
-
-# ---- 11b-4b: the brains' public fields, through a stand-in for the plugin's port (the real one is 11b-4c, in the
-# engine model's repository): each plugin object gives its class name and the keys of the Units / things it would
-# hold (the tactics: its runs' members), restore checks each key comes back as the new run's object; a Team's key
-# is a number given here, the new AI player's team(key) a Team made for that key.
-class _Port:
-    def __init__(self, mod):
-        self.keys, self.back, self.stand = {}, [], {}
-        self.teams = mod['teams']
-
-    def snapshot(self, x, key):
-        if '_stand_in' in vars(x):          # one written back: its keys again (the stand-in keeps no other state)
-            return {'class': type(x).__name__, 'held': [key(u) for u in x._stand_in]}
-        runs = getattr(x, 'runs', None) or {}
-        return {'class': type(x).__name__,
-                'held': [key(u) for r in runs.values() for u in r.team.members]}
-
-    def restore(self, x, data, obj):
-        assert data['class'] == type(x).__name__
-        x._stand_in = [obj(k) for k in data['held']]
-        self.back += list(zip(data['held'], x._stand_in))
-
-    def key(self, team):
-        return self.keys.setdefault(id(team), [len(self.keys), team])[0]
-
-    def team(self, k):
-        if k not in self.stand:
-            t = self.stand[k] = self.teams.Team('restored', 'tactic', None)
-            self.keys[id(t)] = [k, t]
-        return self.stand[k]
-
-
-@pytest.fixture(scope='module')
-def ported():
+# ---- 11b-4c: the brains through the plugin's own port (the engine model's ra3model/ai/snapshot.py, a session a
+# brain): guard 7's two AI tasks taken at half, through JSON, written onto a SimAI made anew, taken again equal, run
+# on to the end as the one never stopped (the Sim's snapshot and the AI's equal at the end).
+def _half(task):
     if not simai.available():
         pytest.skip('the engine model (ra3model.ai) is not on this computer')
-    mod = simai.model()
-    port = _Port(mod)
-    mp = pytest.MonkeyPatch()
-    classes = [mod['player'].AIPlayer, mod['tactics'].TacticsBlock, mod['targets'].TargetsBlock,
-               mod['targets'].View, mod['defense'].DefenseBlock, mod['defense'].Base, mod['micro'].MicroBlock,
-               mod['micro'].HuntGoal, mod['specials'].PlayerPowers]
-    for c in classes:
-        mp.setattr(c, 'snapshot', lambda self, key: port.snapshot(self, key), raising=False)
-        mp.setattr(c, 'restore', lambda self, data, obj: port.restore(self, data, obj), raising=False)
-    mp.setattr(mod['teams'].Team, 'snapshot_key', lambda self: port.key(self), raising=False)
-    mp.setattr(mod['player'].AIPlayer, 'team', lambda self, k: port.team(k), raising=False)
-    yield port
-    mp.undo()
-
-
-@pytest.fixture(scope='module')
-def half(ported):
-    m, t, _ = build.resolve(*simrecord.TASKS['ai_open'][1])
-    run = _simai(m, t).advance(int(simrecord.TASKS['ai_open'][2] * FPS / 2))
-    b = next(iter(run.brains.values()))
-    team = next(iter(b.ai.teams.teams.values()), None) or mod_team(ported)
-    b._exp_teams = [(team, (1.0, 2.0))]     # a SimpleExpansion's split (none in this mission)
+    _, where, end = simrecord.TASKS[task]
+    m, t, _ = build.resolve(*where)
+    half = int(end * FPS / 2)
+    run = _simai(m, t).advance(half)
     taken = simaisnap.snapshot(run)
     restored = _simai(m, t)
     simaisnap.restore(restored, json.loads(json.dumps(taken)))
-    return run, taken, restored
+    return run, taken, restored, int(end * FPS) - half
 
 
-def mod_team(port):
-    return port.teams.Team('made here', 'tactic', None)
+@pytest.fixture(scope='module')
+def half():
+    return _half('ai_open')
 
 
-def test_the_brains_taken_and_written_back_equal(half, ported):
-    run, taken, restored = half
+def test_the_brains_taken_and_written_back_equal(half):
+    run, taken, restored, _ = half
     assert taken['brains'] and json.loads(json.dumps(taken)) == taken
     assert any(b._protos for b in run.brains.values()) and any(b.wrappers for b in run.brains.values())
     assert simaisnap.snapshot(restored) == taken
@@ -168,26 +116,81 @@ def test_the_brains_taken_and_written_back_equal(half, ported):
         assert nb is not b and nb.made_as == b.made_as
         assert {n: u.body.serial for n, u in nb.wrappers.items()} == {n: u.body.serial for n, u in b.wrappers.items()}
         assert all(u.body is restored.sim.world.numbered[u.body.serial] for u in nb.wrappers.values())
-        assert nb.path_rng.random() == b.path_rng.random() and nb.place_rng.getstate() == b.place_rng.getstate()
         assert [(n, p.serial) for n, p in nb._protos.items()] == [(n, p.serial) for n, p in b._protos.items()]
         assert all(p.name not in restored.sim.bodies for p in nb._protos.values())
-        (t, p), = nb._exp_teams
-        assert p == (1.0, 2.0) and ported.key(t) == ported.key(b._exp_teams[0][0])
 
 
-def test_the_plugin_gets_the_units_back_as_the_new_brain_wraps_them(half, ported):
-    run, taken, restored = half
-    units = {id(u) for b in restored.brains.values() for u in b.wrappers.values()}
-    assert ported.back and all(id(u) in units for k, u in ported.back if '$unit' in k)
+def test_one_object_of_the_plugin_held_at_two_places_comes_back_as_one(half):
+    run, taken, restored, _ = half
+    for player, b in run.brains.items():
+        nb = restored.brains[player]
+        assert nb.ai is not b.ai and nb.tactics in nb.ai.blocks and nb.targets is nb.tactics.targets
+        teams = list(nb.ai.teams.teams.values())
+        assert teams and all(r.team in teams for r in nb.tactics.runs.values())
+        assert all(nb.tactics.run_of(r.team) is r for r in nb.tactics.runs.values())
+        units = {id(u) for u in nb.wrappers.values()}
+        assert all(id(u) in units for t in teams for u in t.members)
+        assert all(u.team is None or u.team in teams for u in nb.wrappers.values())
 
 
-def test_a_brain_kept_on_record_or_without_a_team_lookup_is_refused(half, ported, monkeypatch):
+@pytest.mark.parametrize('task', ['ai_open', 'ai_crush1'])
+def test_an_ai_run_written_back_runs_on_as_the_one_never_stopped(task, half):
+    run, taken, restored, rest = half if task == 'ai_open' else _half(task)
+    run.advance(rest)
+    restored.advance(rest)
+    assert simsnap.snapshot(restored.sim) == simsnap.snapshot(run.sim)
+    assert simaisnap.snapshot(restored) == simaisnap.snapshot(run)
+
+
+def test_a_brain_kept_on_record_or_without_the_plugin_port_is_refused(half, monkeypatch):
     run, *_ = half
     b = next(iter(run.brains.values()))
     monkeypatch.setattr(b, '_rec_runs', {1: (1, object())})
     with pytest.raises(NotImplementedError, match='record=True'):
         simaisnap.snapshot(run)
     monkeypatch.setattr(b, '_rec_runs', {})
-    monkeypatch.delattr(type(b.ai), 'team')
-    with pytest.raises(NotImplementedError, match=r'team\(key\)'):
+    monkeypatch.setattr(simaisnap, '_port', lambda w: None)
+    with pytest.raises(NotImplementedError, match=r'snapshot \(Taker / Putter\)'):
         simaisnap.snapshot(run)
+
+
+def test_a_closure_the_plugin_holds_is_named_not_dropped(half, monkeypatch):
+    run, *_ = half
+    b = next(iter(run.brains.values()))
+    monkeypatch.setattr(b.tactics, 'held_note', [lambda: 0], raising=False)     # a closure in a list: no new object
+    taken = simaisnap.snapshot(run)                                             # can get it back
+    with pytest.raises(ValueError, match='held_note.*closure'):
+        simaisnap.restore(_simai(*build.resolve(*simrecord.TASKS['ai_open'][1])[:2]), json.loads(json.dumps(taken)))
+
+
+# ---- review 1119k (P3, with 11b-4c)
+def test_a_returner_comes_back_with_its_facility_and_the_path_it_walks():
+    m, t, _ = build.resolve(*_WHERE)
+    run = _simai(m, t).advance(HALF)
+    u, g = [b for b in run.sim.bodies.values() if b.alive][:2]
+    u.path = [(1.0, 2.0)]
+    run.pullback.returning[u.name] = (g, u.move_to, u.owner, u.path)
+    restored = _simai(m, t)
+    simaisnap.restore(restored, json.loads(json.dumps(simaisnap.snapshot(run))))
+    ng, dest, owner, path = restored.pullback.returning[u.name]
+    assert ng is restored.sim.world.numbered[g.serial] and path is restored.sim.bodies[u.name].path
+
+
+def test_a_private_slot_is_scanned_under_its_mangled_name():
+    class Slotted:
+        __slots__ = ('plain', '__hidden')
+
+    x = Slotted()
+    x.plain, x._Slotted__hidden = 8, 9
+    assert simsnap._fields(x) == {'plain': 8, '_Slotted__hidden': 9}
+
+
+def test_a_snapshot_missing_a_kernel_field_is_refused_before_anything_is_written(heal):
+    m, t, run, taken, _ = heal
+    s = json.loads(json.dumps(taken['sim']))
+    del s['kernel']['late']
+    fresh = sim.Sim(m, t, model=False)
+    before = simsnap.snapshot(fresh)
+    with pytest.raises(ValueError, match="kernel.*late"):
+        simsnap.restore(fresh, s)
+    assert simsnap.snapshot(fresh) == before

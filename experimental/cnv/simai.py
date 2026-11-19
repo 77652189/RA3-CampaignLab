@@ -61,6 +61,7 @@ HOOKS (what this file would rather have from sim.py; for A through the coordinat
      PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS, ENCLOSED among them, since A round 164); no fire from inside.
 """
 import argparse
+import functools
 import importlib
 import math
 import os
@@ -657,22 +658,8 @@ class Brain:
         building = set()
         for t in [j['template'] for q in self.yard_q.values() for j in q] + self.unit_q:
             building |= self.host.kinds(t)
-        hx, hy = self.home
-
-        def related(owner, relationship):
-            # an ObjectFilter's Relationship (D59 2: the ally bit takes the player itself, SAME_PLAYER only it);
-            # none written: the enemies (INFERRED, EnemyNearby before its EnemyFilter was read)
-            enemy, mine_ = owner in self.view.enemies, owner == self.player
-            return any((r == 'ENEMIES' and enemy) or (r == 'SAME_PLAYER' and mine_) or (r == 'NEUTRAL' and not owner)
-                       or (r == 'ALLIES' and owner and not enemy) for r in relationship) if relationship else enemy
-
-        def near(distance, min_value, things=(), relationship=(), passes=None):
-            # passes: the EnemyFilter's template test (the private model's), None = every template
-            v = sum(t.value for t in self.view.things if related(t.owner, relationship)
-                    and math.hypot(t.x - hx, t.y - hy) <= distance and (not things or t.template in things)
-                    and (passes is None or passes(t.template)))
-            return v > 0 and v >= min_value
-        foes = sorted(self.view.enemies)
+        near = functools.partial(self.enemy_near, tuple(self.home))     # a partial, not a closure: the AI's
+        foes = sorted(self.view.enemies)                                # snapshot keeps it (simaisnap)
         out = {'flags': self.host.flags(self.player), 'has': {b.template for b in mine}, 'building': building,
                'enemy nearby': near,
                # ObjectOfTypeExists by the filter's Relationship (bench aihoe*): the enemies' / allies' / neutral's
@@ -682,7 +669,7 @@ class Brain:
                'has neutral': {t.template for t in self.view.things if not t.owner},
                'kindof': self.host.kinds,                # an ObjectFilter's KindOf Include / Exclude (D61 3)
                'harvesters': sum('HARVESTER' in b.kinds for b in mine),               # INFERRED category 0x14
-               'money': lambda account: self.peers.money.get(self.player, 0),          # one account in the simulator
+               'money': self.money_in,          # one account in the simulator
                'beacons': set(),                                                     # no beacons in the simulator
                'power advantage': self.power_advantage,
                'tech buildings': self.tech_buildings(),
@@ -718,6 +705,27 @@ class Brain:
         tech = [b for b in self.living() if {'CAPTUREFLAG', 'NEUTRAL_TECH'} & set(b.kinds)]
         players = {b.owner for b in self.living() if b.owner != simworld.CIV and not b.scenery}
         return sum(b.owner == self.player for b in tech), len(tech), len(players)
+
+    def _related(self, owner, relationship):
+        # an ObjectFilter's Relationship (D59 2: the ally bit takes the player itself, SAME_PLAYER only it);
+        # none written: the enemies (INFERRED, EnemyNearby before its EnemyFilter was read)
+        enemy, mine_ = owner in self.view.enemies, owner == self.player
+        return any((r == 'ENEMIES' and enemy) or (r == 'SAME_PLAYER' and mine_) or (r == 'NEUTRAL' and not owner)
+                   or (r == 'ALLIES' and owner and not enemy) for r in relationship) if relationship else enemy
+
+    def enemy_near(self, home, distance, min_value, things=(), relationship=(), passes=None):
+        """facts' 'enemy nearby' (home: the yard's point when the facts were read). passes: the EnemyFilter's
+        template test (the private model's), None = every template."""
+        hx, hy = home
+        v = sum(t.value for t in self.view.things if self._related(t.owner, relationship)
+                and math.hypot(t.x - hx, t.y - hy) <= distance and (not things or t.template in things)
+                and (passes is None or passes(t.template)))
+        return v > 0 and v >= min_value
+
+    def money_in(self, account):
+        """facts' 'money': the player's money, whatever the account (one account in the simulator). A method, not a
+        closure, so the AI's snapshot keeps it (simaisnap)."""
+        return self.peers.money.get(self.player, 0)
 
     def power_advantage(self, own_kindof, enemy_kindof, own_defenses, enemy_defenses):
         """ctx 'power advantage' (PowerAdvantageHeuristic, read, work/re/l4_states.md): (the enemy's time to kill all of ours,
@@ -1012,7 +1020,8 @@ class Brain:
         members, foes = self.fight(self.ai, team)
         harvesters = [(b.x, b.y) for b in self.living()
                       if b.owner == self.player and 'HARVESTER' in b.kinds]
-        run = self.tactics.runs.get(id(team))
+        run_of = getattr(self.tactics, 'run_of', None)      # a model before 11b-4c keyed its runs by id(team)
+        run = run_of(team) if run_of is not None else self.tactics.runs.get(id(team))
         if run is None:
             return
         state = self.tactics.state_of(self.ai, team.state)

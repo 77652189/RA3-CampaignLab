@@ -5,20 +5,23 @@ How a field is kept: simsnap's kinds (STATE, ALIAS, CACHE, WIRE, STATIC) and
   HOST      the Sim the SimAI plays on: simsnap.snapshot / restore
   BRAINS    the brains: each Brain's own fields by BRAIN, made anew on the new SimAI the way attach makes them
   MODEL     an object of the AI plugin's (the engine model's ra3model.ai, private: ADR 0033): taken only through
-            the plugin's snapshot port (`snapshot(key)` / `restore(data, obj)`, sim-modules.md 9.2); the host never
-            reads its fields. A plugin object without the port: the snapshot is an error naming it, never left out.
+            the plugin's snapshot port (its package's `snapshot` module, sim-modules.md 9.2); the host never reads
+            its fields. A plugin without the port, a value its port cannot keep: an error naming it, never left out.
 
+The port is one session a brain (an object the plugin holds at two places comes back as one): `Taker(roots, key)`
+with the brain's MODEL fields as roots, `ref(x)` for each plugin value the brain itself holds (a HuntGoal of
+_hunt_goals, a wrapper's Team, _exp_teams' Teams) -> a mark, `taken()` the data; on restore `Putter(roots, data,
+obj, wire)` on the new brain's MODEL fields (written in place) and `get(mark)`. `key(x)`: a Unit or a thing of the
+host as its mark; `obj(mark)` the new run's; `wire(x, field)`: a host's closure for a plugin object made anew (a
+tactics.Fighter's rate / can_fire, made again by Brain.fighters for its body).
 A brain's own values as engine/kernel/snap.py keeps them, plus its marks: a Unit it wraps {"$unit": its body's
 serial} (one Unit a body: the new brain's wrapper of that body), a random.Random {"$random": its state}, a plugin
-object the brain made itself (a HuntGoal of _hunt_goals) {"$model": [module, class, its port's data]}, made anew by
-its class and written back through the port. A Team is kept by its snapshot_key() and found again on the restored
-plugin by `ai.team(key)` (a wrapper's team, _exp_teams' keys). The plugin's port gets `key(x)` (a Unit or a thing
-of the host -> its mark) and on restore `obj(mark)` (the new run's). The Bodies the brain holds out of the world
-(_protos, Sim.proto) go to simsnap as roots: kept with the Sim's things, made bare on the new world.
+value {"$model": the session's mark}. The Bodies the brain holds out of the world (_protos, Sim.proto) and the things
+the plugin's values hold go to simsnap as roots: kept with the Sim's things, made bare on the new world.
 Not yet: a SimAI with record=True (HOOKS 9's runs, held by the plugin's Run objects): an error naming it.
 
-11b-4a: the tables, `unclassified(w)` (guard 4.3), the port refused by name. 11b-4b (this): the brains' public
-fields. 11b-4c: the plugin's ports (the engine model's repository)."""
+11b-4a: the tables, `unclassified(w)` (guard 4.3), the port refused by name. 11b-4b: the brains' public fields.
+11b-4c: the plugin's port, a session a brain (the engine model's ra3model/ai/snapshot.py)."""
 import importlib
 import random
 
@@ -28,7 +31,7 @@ from engine.kernel import snap
 from simsnap import ALIAS, CACHE, STATE, STATIC, WIRE
 
 HOST, BRAINS, MODEL = 'host', 'brains', 'model'
-VERSION = 2             # 2: the brains (11b-4b)
+VERSION = 3             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c)
 
 SIMAI = {
     'sim': HOST, 'world': ALIAS, 'garrison': ALIAS, 'peers': WIRE,
@@ -67,7 +70,9 @@ BRAIN = {
 _OWN = [f for f, k in BRAIN.items() if k == STATE and f not in ('wrappers', '_exp_teams')]   # those two: by hand
 _MODEL = [f for f, k in BRAIN.items() if k == MODEL]
 
-UNIT = {'body': STATE, 'peers': WIRE, 'template': STATIC, 'kindof': STATIC, 'surface': STATIC, 'team': MODEL}
+UNIT = {'body': STATE, 'peers': WIRE, 'template': STATIC, 'kindof': STATIC, 'surface': STATIC, 'team': MODEL,
+        'escort_of': MODEL}     # the team a member escorts (teams.py writes it)
+_UNIT_MODEL = [f for f, k in UNIT.items() if k == MODEL]
 
 
 def _get(obj, path):
@@ -104,36 +109,32 @@ def unclassified(w):
     return sorted(set(out))
 
 
-def _ported(x):
-    return callable(getattr(x, 'snapshot', None)) and callable(getattr(x, 'restore', None))
-
-
 def _name(x):
     return f'{type(x).__module__}.{type(x).__qualname__}'
 
 
+def _port(w):
+    """The AI plugin's snapshot port: its package's `snapshot` module (Taker / Putter), else None."""
+    pkg = (w.mod or {}).get('player')
+    if pkg is None:
+        return None
+    try:
+        port = importlib.import_module(pkg.__name__.rsplit('.', 1)[0] + '.snapshot')
+    except ImportError:
+        return None
+    return port if hasattr(port, 'Taker') and hasattr(port, 'Putter') else None
+
+
 def _no_port(w):
-    """The first plugin object a brain holds that has not the snapshot port: (where, its class), else None. A held
-    Team needs snapshot_key and the AI player `team(key)`; a run with record=True's runs is not kept yet."""
+    """What keeps a SimAI with brains from being taken: (where, what), else None -- the plugin without its
+    snapshot port, a run with record=True's runs (not kept yet)."""
+    if not w.brains:
+        return None
+    if _port(w) is None:
+        pkg = (w.mod or {}).get('player')
+        return 'the AI plugin', (pkg.__name__.rsplit('.', 1)[0] if pkg else 'none') + '.snapshot (Taker / Putter)'
     for player, b in w.brains.items():
-        own = simsnap._fields(b)
-        for f in _MODEL:
-            v = own.get(f)
-            for x in (v if isinstance(v, (list, tuple)) else () if v is None else (v,)):
-                if not _ported(x):
-                    return f'{player}.{f}', _name(x)
-        for name, g in own.get('_hunt_goals', {}).items():
-            if not _ported(g):
-                return f'{player}._hunt_goals[{name!r}]', _name(g)
-        teams = [(f'{player}.wrappers[{u.body.name!r}].team', u.team) for u in b.wrappers.values()
-                 if u.team is not None]
-        teams += [(f'{player}._exp_teams', t) for t, _ in own.get('_exp_teams', [])]
-        for at, t in teams:
-            if not callable(getattr(t, 'snapshot_key', None)):
-                return at, _name(t)
-            if not callable(getattr(b.ai, 'team', None)):
-                return f'{player}.ai (team(key), for {at})', _name(b.ai)
-        if own.get('_rec_runs'):
+        if simsnap._fields(b).get('_rec_runs'):
             return f'{player}._rec_runs (SimAI record=True: the runs HOOKS 9 follows)', _name(next(
                 iter(b._rec_runs.values()))[1])
     return None
@@ -143,10 +144,15 @@ def _model_modules(w):
     return {m.__name__: m for m in (w.mod or {}).values()}
 
 
-def _key_of(held):
-    """The port's `key(x)`: a Unit or a thing of the host as its mark; each thing given is noted in `held` (kept as
-    one of simsnap's roots)."""
+def _key_of(held, brain):
+    """The port's `key(x)`: a Unit or a thing of the host as its mark, or the brain itself ({"$brain": 0}: a method
+    of it the plugin holds, e.g. the Opening's structure hook, is the new brain's); each thing given is noted in
+    `held` (kept as one of simsnap's roots)."""
     def key(x):
+        if x is brain:
+            return {'$brain': 0}
+        if x is brain.host:
+            return {'$simai': 0}        # a method of the SimAI's in the facts (kinds)
         if isinstance(x, _module.Thing):
             held.append(x)
             return {'$thing': x.serial}
@@ -159,7 +165,8 @@ def _key_of(held):
 
 
 def _take_brain(w, b, held):
-    key = _key_of(held)
+    own = simsnap._fields(b)
+    sess = _port(w).Taker({f: own.get(f) for f in _MODEL}, _key_of(held, b))
     mods = _model_modules(w)
 
     def extra(v):
@@ -167,30 +174,20 @@ def _take_brain(w, b, held):
             ver, st, gauss = v.getstate()
             return {'$random': [ver, list(st), gauss]}
         if type(v).__name__ == 'Unit' and isinstance(getattr(v, 'body', None), _module.Thing):
-            return key(v)
+            return sess.key(v)
         if type(v).__module__ in mods:
-            return {'$model': [type(v).__module__, type(v).__qualname__, v.snapshot(key)]}
+            return {'$model': sess.ref(v, f'Brain {b.player}')}
         return NotImplemented
 
-    own = simsnap._fields(b)
     fields = {f: snap.encode(own[f], extra, f'Brain {b.player}.{f}') for f in _OWN if f in own}
     held.extend(x for f in _OWN if f in own for x in [own[f]])      # the things in them: simsnap's roots
-    fields['wrappers'] = [[name, u.body.serial, None if u.team is None else snap.encode(u.team.snapshot_key())]
-                          for name, u in b.wrappers.items()]
+    fields['wrappers'] = [[name, u.body.serial, {f: sess.ref(vars(u)[f], f'{name}.{f}') for f in _UNIT_MODEL
+                                                 if f in vars(u)}] for name, u in b.wrappers.items()]
     held.extend(u.body for u in b.wrappers.values())
     if '_exp_teams' in own:
-        fields['_exp_teams'] = [[snap.encode(t.snapshot_key()), snap.encode(p)] for t, p in b._exp_teams]
-    model = {}
-    for f in _MODEL:
-        v = own.get(f)
-        if f == 'base' and v is not None and any(v is x for x in own.get('bases') or ()):
-            model[f] = {'$in': next(k for k, x in enumerate(b.bases) if x is v)}
-        elif isinstance(v, (list, tuple)):
-            model[f] = [x.snapshot(key) for x in v]
-        else:
-            model[f] = None if v is None else v.snapshot(key)
+        fields['_exp_teams'] = [[sess.ref(t, '_exp_teams'), snap.encode(p)] for t, p in b._exp_teams]
     side, pid = b.made_as
-    return [b.player, side, pid, fields, model]
+    return [b.player, side, pid, fields, sess.taken()]
 
 
 def snapshot(w):
@@ -232,7 +229,8 @@ def _check(s):
     own = set(_OWN) | {'wrappers', '_exp_teams'}
     bad = [r[:3] if isinstance(r, list) else r for r in s['brains']
            if not (isinstance(r, list) and len(r) == 5 and isinstance(r[3], dict) and set(r[3]) <= own
-                   and 'wrappers' in r[3] and isinstance(r[4], dict) and set(r[4]) == set(_MODEL))]
+                   and 'wrappers' in r[3] and isinstance(r[4], dict) and set(r[4]) == {'roots', 'objects'}
+                   and isinstance(r[4]['roots'], dict) and set(r[4]['roots']) == set(_MODEL))]
     if bad:
         raise ValueError(f'simaisnap.restore: not a brain of this shape: {bad[:3]}')
 
@@ -253,7 +251,11 @@ def restore(w, s):
     things = simsnap.restore(w.sim, s['sim'])
     for path, e in s['ai']:
         p = tuple(path.split('.'))
-        setattr(_get(w, p[:-1]), p[-1], snap.decode(e, {}))
+        setattr(_get(w, p[:-1]), p[-1], snap.decode(e, things))      # review k #1: a returner's facility
+    for name, (g, dest, owner, path) in list(getattr(getattr(w, 'pullback', None), 'returning', {}).items()):
+        u = w.sim.bodies.get(name)          # busy asks for the very path the unit walks (by identity): the unit's
+        if u is not None and path is not None and u.path == path:
+            w.pullback.returning[name] = (g, dest, owner, u.path)
     for player, _side, _pid, fields, model in s['brains']:
         _write_brain(w, w.brains[player], fields, model, things)
 
@@ -267,8 +269,19 @@ def _write_brain(w, b, fields, model, things):
 
     def obj(mark):
         (k, serial), = mark.items()
+        if k in ('$brain', '$simai'):
+            return b if k == '$brain' else w
         return {'$thing': things, '$unit': units}[k][serial]
-    mods = _model_modules(w)
+
+    def wire(x, f):
+        # a tactics.Fighter made anew: its rate / can_fire, closures of the host's, as fight makes them for its body
+        # (Brain.fighters; the ids it may give are written over with the brain's own fields below)
+        if type(x).__name__ == 'Fighter' and f in ('rate', 'can_fire') and isinstance(vars(x).get('body'),
+                                                                                       _module.Thing):
+            return getattr(b.fighters([x.body])[0], f)
+        return None
+    own = simsnap._fields(b)
+    sess = _port(w).Putter({f: own.get(f) for f in _MODEL}, model, obj, wire)
 
     def extra(mark, x):
         if mark == '$random':
@@ -278,32 +291,17 @@ def _write_brain(w, b, fields, model, things):
         if mark == '$unit':
             return units[x]
         if mark == '$model':
-            mod, qual, data = x
-            o = getattr(mods[mod], qual)()
-            o.restore(data, obj)
-            return o
+            return sess.get(x)
         return NotImplemented
     for f in _OWN:
         if f in fields:
             setattr(b, f, snap.decode(fields[f], things, extra))
         elif f in vars(b):
             delattr(b, f)
-    own = simsnap._fields(b)
-    for f in _MODEL:
-        v, data = own.get(f), model[f]
-        if isinstance(data, dict) and set(data) == {'$in'}:
-            continue        # one of bases: written back there
-        got = [] if v is None else list(v) if isinstance(v, (list, tuple)) else [v]
-        want = [] if data is None else data if isinstance(v, (list, tuple)) else [data]
-        if len(got) != len(want) or (v is None) != (data is None):
-            raise ValueError(f'simaisnap.restore: brain {b.player}.{f} is {_name(v)} x{len(got)} here, '
-                             f'x{len(want)} in the snapshot')
-        for x, d in zip(got, want):
-            x.restore(d, obj)
-    team = b.ai.team if any(t is not None for *_, t in fields['wrappers']) or '_exp_teams' in fields else None
-    for name, _serial, k in fields['wrappers']:
-        b.wrappers[name].team = None if k is None else team(snap.decode(k, {}))
+    for name, _serial, model_fields in fields['wrappers']:
+        for f, k in model_fields.items():
+            setattr(b.wrappers[name], f, sess.get(k))
     if '_exp_teams' in fields:
-        b._exp_teams = [(team(snap.decode(k, {})), snap.decode(p, {})) for k, p in fields['_exp_teams']]
+        b._exp_teams = [(sess.get(k), snap.decode(p, {})) for k, p in fields['_exp_teams']]
     elif '_exp_teams' in vars(b):
         del b._exp_teams

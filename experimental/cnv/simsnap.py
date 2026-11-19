@@ -109,8 +109,9 @@ _NAMED = ('$ref', '$slots', '$weapon', '$armor', '$weapons')    # marks of one o
 def _fields(obj):
     """An object's own fields: its __dict__ and every slot set along its classes (review 1119i #7: a slot beside a
     __dict__ was left out of the scan)."""
-    slots = [f for k in type(obj).__mro__ for f in (lambda s: (s,) if isinstance(s, str) else s)(
-        vars(k).get('__slots__', ())) if f not in ('__dict__', '__weakref__')]
+    slots = [f'_{k.__name__.lstrip("_")}{f}' if f.startswith('__') and not f.endswith('__') else f    # a private
+             for k in type(obj).__mro__ for f in (lambda s: (s,) if isinstance(s, str) else s)(        # slot under
+                 vars(k).get('__slots__', ())) if f not in ('__dict__', '__weakref__')]              # its mangled name
     out = dict(vars(obj)) if hasattr(obj, '__dict__') else {}
     out.update((f, getattr(obj, f)) for f in slots if f not in out and hasattr(obj, f))
     return out
@@ -516,6 +517,10 @@ def _check(s):
                 if not (isinstance(r, list) and len(r) == 2 and r[0] in state)]
         bad += [f'part {r!r}' for r in s['parts']
                 if not (isinstance(r, list) and len(r) == 3 and isinstance(SIM.get(r[0]), dict))]
+        kernel = {'made', 'frame', 'used', 'gaps', 'schedule', 'things', 'late'}     # World.snapshot's (review k
+        k = s['kernel']                                                             # #3: one missing failed after
+        if not isinstance(k, dict) or set(k) != kernel:                             # the executor was written)
+            bad.append(f'kernel {sorted(set(k) ^ kernel) if isinstance(k, dict) else type(k).__name__}')
     if bad:
         raise ValueError(f'simsnap.restore: the snapshot is not of this shape ({VERSION}): {", ".join(bad[:5])}')
 

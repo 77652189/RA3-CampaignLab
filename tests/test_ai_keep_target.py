@@ -17,6 +17,12 @@ _spec.loader.exec_module(simai)
 import teamlog
 
 
+class Member(NS):
+    """A team member: the model keys its keep tables by the member itself (by identity, as the simulator's bodies)."""
+    __hash__ = object.__hash__
+    __eq__ = object.__eq__
+
+
 @pytest.mark.skipif(not simai.available(), reason='no ra3model.ai')
 @pytest.mark.parametrize('build,seconds', [('aiegon', 0), ('aikeeptwo', 2)])
 def test_keep_target_named_clock_replay(build, seconds):
@@ -47,7 +53,7 @@ def test_keep_target_named_clock_replay(build, seconds):
     assert md.num(micro, 'TimeToKeepTargetMin') == seconds
     assert md.num(micro, 'TimeToKeepTargetMax') == seconds
     ids = [member for member, _, _ in passes[0]['keep']]
-    units = {i: NS(pos=(0, 0)) for i in ids}
+    units = {i: Member(pos=(0, 0)) for i in ids}
     run = tc.Run(NS(members=list(units.values()), template=NS(micro=micro), tactic='Hunt'), None)
     run.mem = [tc.Fighter(i, (0, 0), 100, rate=lambda _: 10, unit=u) for i, u in units.items()]
     block = tc.TacticsBlock(None, None, None, lambda _: (0, 0), micro=md)
@@ -69,7 +75,7 @@ def test_keep_target_named_clock_replay(build, seconds):
             assert member in units
             assert decision == ('go' if frame >= until else 'hold')
             # Initial pass has no record; later passes must match model state.
-            assert run.keep.get(id(units[member]), 0) == until, (build, p, run.keep)
+            assert run.keep.get(units[member], 0) == until, (build, p, run.keep)
             if decision == 'go':
                 expected.append(member)
             else:
@@ -84,7 +90,7 @@ def test_keep_target_named_clock_replay(build, seconds):
             assert (o['min'], o['max'], o['keep']) == (seconds, seconds, seconds * 15)
             assert (o['start'], o['until']) == (frame, frame + seconds * 15)
             assert (o['tgt'], True) in p['cand']
-            assert run.keep[id(units[o['mem']])] == o['until']
+            assert run.keep[units[o['mem']]] == o['until']
             reassigned += 1
     assert reassigned >= 4
     assert (held > 0) == (seconds > 0)
@@ -109,7 +115,7 @@ def test_keep_target_named_death_replay():
     for _, text, _ in mission.assets:
         if '<AIMicroManagerData' in text:
             md.add_text(text)
-    units = {o['mem']: NS(pos=(0, 0)) for o in orders if o['frame'] == 527}
+    units = {o['mem']: Member(pos=(0, 0)) for o in orders if o['frame'] == 527}
     run = tc.Run(NS(members=list(units.values()), template=NS(micro='CNVMicroSpow'), tactic='Hunt'), None)
     run.mem = [tc.Fighter(i, (0, 0), 100, rate=lambda _: 10, unit=u) for i, u in units.items()]
     block = tc.TacticsBlock(None, None, None, lambda _: (0, 0), micro=md)
@@ -121,8 +127,8 @@ def test_keep_target_named_death_replay():
     # Anchor observed assignments before the continuous validity window.
     for o in orders:
         if o['frame'] == 527:
-            run.keep[id(units[o['mem']])] = o['until']
-            run.keep_target[id(units[o['mem']])] = o['tgt']
+            run.keep[units[o['mem']]] = o['until']
+            run.keep_target[units[o['mem']]] = o['tgt']
             block._things[o['tgt']] = NS()
     early = held = 0
     for p in passes:
@@ -135,7 +141,7 @@ def test_keep_target_named_death_replay():
         reasons = {i: (target, reason) for i, target, reason in p['why']}
         assert set(reasons) == participating
         for member, until, decision in p['keep']:
-            key = id(units[member])
+            key = units[member]
             target, reason = reasons[member]
             assert run.keep_target[key] == target
             if reason == 'dead':
@@ -158,7 +164,7 @@ def test_keep_target_named_death_replay():
             assert o['src'] == 'score' and o['wrote']
             assert (o['min'], o['max'], o['keep']) == (2, 2, 30)
             assert (o['start'], o['until']) == (frame, frame + 30)
-            key = id(units[o['mem']])
+            key = units[o['mem']]
             assert run.keep[key] == o['until']
             assert run.keep_target[key] == o['tgt']
     # hold rows: f535 x2, f543 x1, f551 x1, f559 x1, f567 x2.
