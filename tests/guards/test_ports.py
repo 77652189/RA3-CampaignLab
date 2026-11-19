@@ -30,15 +30,20 @@ def simulator_modules():
 
 
 def _functions(tree):
-    """node -> the name of the top-level function / method it sits in (None at module level or in a class body)."""
+    """node -> its qualified function name (None at module level or in a class body)."""
     where = {}
 
-    def walk(node, fn):
+    def walk(node, prefix='', fn=None):
         for child in ast.iter_child_nodes(node):
-            name = child.name if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) else fn
+            scope, name = prefix, fn
+            if isinstance(child, ast.ClassDef):
+                scope, name = prefix + child.name + '.', None
+            elif isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                name = prefix + child.name
+                scope = name + '.'
             where[child] = name
-            walk(child, name)
-    walk(tree, None)
+            walk(child, scope, name)
+    walk(tree)
     return where
 
 
@@ -62,7 +67,7 @@ def import_breaks(src, sim=None, harness=HARNESS):
     return out
 
 
-def raw_breaks(src, harness=HARNESS):
+def raw_breaks(src, harness=HARNESS, *, data_s=()):
     """(line, name) for each raw-world name or attribute outside HARNESS."""
     tree = ast.parse(src)
     where = _functions(tree)
@@ -70,7 +75,7 @@ def raw_breaks(src, harness=HARNESS):
     for node in ast.walk(tree):
         if where.get(node) in harness:
             continue
-        if isinstance(node, ast.Name) and node.id in RAW:
+        if isinstance(node, ast.Name) and node.id in RAW and not (node.id == 's' and where.get(node) in data_s):
             out.append((node.lineno, node.id))
         elif isinstance(node, ast.Attribute) and node.attr in RAW_ATTRS:
             out.append((node.lineno, node.attr))
@@ -102,7 +107,7 @@ EXEMPT = [
     (CNV / 'simshow.py', 'main', '命令行：造局'),
     (AUTOPLAY / 'autoplay.py', 'load', '造局'),
     (AUTOPLAY / 'autoplay.py', 'attach', '唯一拿世界的：View / Orders 从这里拿 Observe'),
-    (AUTOPLAY / 'autoplay.py', 'post', 'attach 里的内层函数：Orders 的行经它下给世界'),
+    (AUTOPLAY / 'autoplay.py', 'attach.post', 'attach 里的内层函数：Orders 的行经它下给世界'),
     (AUTOPLAY / 'autoplay.py', 'tick', '驱动一局'),
     (AUTOPLAY / 'autoplay.py', 'play', '造局并驱动'),
     (AUTOPLAY / 'autoplay.py', 'replay', '造局并驱动'),
@@ -116,8 +121,9 @@ EXEMPT = [
     (CNV / 'simbench.py', 'play', '造局、摆路点（derrick 的 Derrick k），返回 Observe'),
     (CNV / 'simchecks.py', 'play', '造局，返回 Observe'),
     (GAME, None, 'Session 下令、跑 tick、跳阶段（驱动，有命令端口后归它）；读者是 Play / Picture / phase_flags / key_times'),
-    (PLAYCHECK, None, 'read() 造局；编译器只用 sim.parse_script 解析打法的写法，不读世界；读者是 readings'),
-    (MAPPAGE, None, 'simulate() 造局；其余读地图和任务的数据；读者是 timeline'),
+    (PLAYCHECK, 'read', '造局，返回 Observe'),
+    (PLAYCHECK, 'Compiler.play', '只用 sim.parse_script 解析打法的写法'),
+    (MAPPAGE, 'simulate', '造局，返回 Observe'),
     (CNV / 'simbench_peak.py', None, '测速：自己驱动整局、下令，等命令端口'),
     (CNV / 'simcoverage.py', None, '"模拟器不认识什么"是模拟器的内部报告，不归观测端口'),
     (CNV / 'simai.py', None, '归 AI 端口'),
@@ -149,6 +155,14 @@ READERS = {
     CNV / 'graybox_cards.py': {'glossary', 'graybox', 'offline', 'simunits'},
     CNV / 'simbench.py': {'build'},
     CNV / 'simchecks.py': {'build'},
+    PLAYCHECK: {'build', 'model', 'parts', 'simunits'},
+    MAPPAGE: {'contract', 'parts', 'resources'},
+}
+
+# These functions use the local name `s` for mission scripts, map sites, or preview steps.
+DATA_S = {
+    PLAYCHECK: {'phase_flags', 'Compiler.who', 'Compiler.actions'},
+    MAPPAGE: {'locate', 'guides', 'export', 'nearest', '_terrain_line', 'pull', 'apply_preview'},
 }
 
 
@@ -160,9 +174,8 @@ def spec(path):
 # Readers that are one class or function of a bigger file (the rest of the file is a None row of EXEMPT): (file, name,
 # the mission-data modules it may import). simui's game.py: what the page draws is the Picture's, the voices and the
 # replay record the Play's, and the stage flags / the key moments are read off the compiled mission / a run's Observe.
-# playcheck's readings and mappage's timeline read a run's outcome off its Observe.
 READER_PARTS = [(GAME, 'Play', set()), (GAME, 'Picture', {'simunits'}), (GAME, 'phase_flags', set()),
-                (GAME, 'key_times', set()), (PLAYCHECK, 'readings', set()), (MAPPAGE, 'timeline', set())]
+                (GAME, 'key_times', set())]
 
 # What makes or hands out a world (a sim.Sim): a file outside the simulator that imports one of these, or loads one by
 # file (`_load('sim', ...)`), touches the world and must be a reader or in EXEMPT.
@@ -226,9 +239,9 @@ def sim_breaks(src, harness):
             if isinstance(n, ast.Name) and n.id == 'sim' and where.get(n) is not None and where.get(n) not in harness]
 
 
-def reader_breaks(src, harness, allowed):
+def reader_breaks(src, harness, allowed, *, data_s=()):
     sim = simulator_modules() - set(allowed)
-    return import_breaks(src, sim, harness) + raw_breaks(src, harness) + sim_breaks(src, harness)
+    return import_breaks(src, sim, harness) + raw_breaks(src, harness, data_s=data_s) + sim_breaks(src, harness)
 
 
 def part_src(path, name):
@@ -241,7 +254,8 @@ def part_src(path, name):
 
 def test_the_other_readers_read_only_the_port():
     for f, allowed in READERS.items():
-        assert reader_breaks(f.read_text(encoding='utf-8'), harness(f), allowed) == [], f.name
+        breaks = reader_breaks(f.read_text(encoding='utf-8'), harness(f), allowed, data_s=DATA_S.get(f, ()))
+        assert breaks == [], (f.name, breaks)
     for path, name, allowed in READER_PARTS:
         assert reader_breaks(part_src(path, name), set(), allowed) == [], (path.name, name)
 

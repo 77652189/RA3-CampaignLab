@@ -860,7 +860,7 @@ DEATH_EXEMPT = {('engine/ports/observe.py', 'Observe.specimen'),   # a specimen 
 
 def death_writes(sources=None):
     """{(file, qualified function)}: every function that assigns an `.alive` / `.deleted` / `.died_at` attribute
-    itself (not in a function nested in it), and {(file, qualified function)} of those that call `._out(`."""
+    itself (not in a function nested in it), and {(file, qualified function)} of every function that calls `._out(`."""
     if sources is None:
         sources = health_sources()
     writes, entries = set(), set()
@@ -874,7 +874,7 @@ def death_writes(sources=None):
                    for t in (st.targets if isinstance(st, ast.Assign) else [st.target]) for x in ast.walk(t)):
                 writes.add((name, qual))
             if any(isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and c.func.attr == '_out'
-                   for c in mine) and name == 'simbody.py':
+                   for c in mine):
                 entries.add((name, qual))
     return writes - DEATH_EXEMPT, entries
 
