@@ -32,7 +32,7 @@ from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 2             # 2: 'others', the things held but not in bodies (_things)
+VERSION = 3             # 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late'
 
 SIM = {
     # the setup
@@ -99,6 +99,7 @@ for _f in ('name template owner x y z speed surface vision kinds immune_until ar
 
 MODULE_WIRE = ('thing', 'data', 'world')    # Module.__init__'s: the factory makes them again on the new world
 _MUTABLE = (list, dict, set)
+_NAMED = ('$ref', '$slots', '$weapon', '$armor', '$weapons')    # marks of one object: written back as that object
 
 
 def _fields(obj):
@@ -152,11 +153,14 @@ def unclassified(sim):
 def _things(sim):
     """The run's things: the bodies, then the ones held but not in bodies (a map object whose name a later one took:
     Sim.add keeps it in topples, out of bodies and the schedule, still knocked over), found through the fields the
-    snapshot takes, in their order. A thing not of this world (its serial not one World.build gave, or another
-    object's): an error."""
+    snapshot takes, in their order. A thing not of this world -- not the object World.numbered holds under its
+    serial: another run's, of a serial taken here or of one left free here (review 1119e #8, h P3) -- an error."""
     out = list(sim.bodies.values())
     seen = {}
     for b in out:
+        if sim.world.numbered.get(getattr(b, 'serial', None)) is not b:
+            raise ValueError(f'simsnap: thing {getattr(b, "serial", None)} {b.name!r} is in bodies but this world '
+                             'did not number it (not bodies of the run)')
         seen.setdefault(b.serial, b)
     todo = []
 
@@ -167,7 +171,7 @@ def _things(sim):
             have = seen.get(getattr(x, 'serial', None))
             if have is x:
                 return
-            if have is not None or not 0 <= getattr(x, 'serial', -1) < sim.world.made:
+            if have is not None or sim.world.numbered.get(getattr(x, 'serial', None)) is not x:   # not this world's
                 raise ValueError(f'simsnap: thing {getattr(x, "serial", None)} {getattr(x, "name", "")!r} is held but '
                                  'is not bodies of the run')
             seen[x.serial] = x
@@ -216,6 +220,11 @@ class _Codec:
     def _put(self, obj, mark):
         self.index.setdefault(id(obj), (obj, mark))
 
+    def template_data(self, v):
+        """Whether `v` is the template data's own object (a weapon, an armour, weapon slots), as placed above."""
+        hit = self.index.get(id(v))
+        return hit is not None and hit[0] is v
+
     def _place_template(self, t):
         slots = self.sim.__dict__.get('_wsets', {}).get(t)
         if slots:
@@ -235,7 +244,7 @@ class _Codec:
     # ---- taking
     def count(self, v):
         """Reach every container once more (before encoding): one reached twice is kept once."""
-        if isinstance(v, (_module.Thing, _module.Module)) or (id(v) in self.index and self.index[id(v)][0] is v):
+        if isinstance(v, (_module.Thing, _module.Module)) or self.template_data(v):
             return
         if isinstance(v, (*_MUTABLE, np.ndarray, simtech.Book)):
             obj, n = self.counts.get(id(v), (v, 0))
@@ -381,14 +390,17 @@ def _serials(e, out=None, at='snapshot'):
 
 def _write(obj, f, e, decode, codec):
     """Field `f` of `obj` from its snapshot `e`: a container the field already holds of the same type is filled in
-    place (another name may hold it), and stands for the $shared it was taken as."""
+    place (another name may hold it), and stands for the $shared it was taken as -- unless the snapshot names an
+    object ($ref: another place's; the template data's, as a body made bare got a default container of its own) or
+    the field holds the template data's (all its template's bodies hold it: written over, never filled)."""
     old = _fields(obj).get(f)
     n = None
     if isinstance(e, dict) and len(e) == 1 and '$shared' in e:
         n, e = e['$shared']
     new = decode(e)
-    again = isinstance(e, dict) and len(e) == 1 and '$ref' in e     # the object of another place: that one
-    if not again and type(old) is type(new) and isinstance(old, _MUTABLE) and old is not new:
+    again = isinstance(e, dict) and len(e) == 1 and next(iter(e)) in _NAMED
+    if not again and not codec.template_data(old) and type(old) is type(new) and isinstance(old, _MUTABLE) \
+            and old is not new:
         if isinstance(old, list):
             old[:] = new
         else:
@@ -404,8 +416,11 @@ def _write(obj, f, e, decode, codec):
 def restore(sim, s):
     """Write snapshot `s` onto `sim`, made anew for the same mission, test, level and script and not yet run: the
     world's part, each body's fields (the bodies held in the snapshot's order; the things held out of bodies found
-    on the new world by serial, as _things finds them), the Sim's own (containers in place), the executor's. A body the snapshot has and the new world has not (one made in the run): an error for now
-    (step 11b-3c builds it bare)."""
+    on the new world by serial, as _things finds them), the Sim's own (containers in place), the executor's. A body
+    the snapshot has and the new world has not (one made in the run) is built bare: a Body of the snapshot's fields,
+    its modules made by World.restore (World.remake: no on_create, not scheduled -- the schedule is the snapshot's);
+    a module attached in the run (World.attach) is made again the same way. A thing of the new run the snapshot has
+    not: an error."""
     if s.get('version') != VERSION:
         raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {VERSION}')
     if s['mission'] != getattr(sim.m, 'name', None):
@@ -413,11 +428,16 @@ def restore(sim, s):
     have = {b.serial: b for b in _things(sim)}
     things = {}
     every = [(serial, name, template, fields) for _key, serial, name, template, fields in s['bodies']] + s['others']
+    Body = importlib.import_module(type(sim).__module__).Body      # the host's (this layer does not import sim)
+    lost = sorted(set(have) - {serial for serial, *_ in every})
+    if lost:
+        raise ValueError(f'simsnap.restore: things {lost[:10]} of the new run are not in the snapshot '
+                         f'({", ".join(repr(have[k].name) for k in lost[:3])})')
     for serial, name, template, _ in every:
         b = have.get(serial)
-        if b is None:
-            raise NotImplementedError(f'simsnap.restore: body {serial} {name!r} ({template}) was made in the run; '
-                                      'building it bare is step 11b-3c')
+        if b is None:       # made in the run: bare -- every field is the snapshot's, its modules World.restore's
+            things[serial] = Body(name, template, '', 0.0, 0.0)
+            continue
         if (b.name, b.template) != (name, template):
             raise ValueError(f'simsnap.restore: body {serial} is {b.name!r} ({b.template}) here, '
                              f'{name!r} ({template}) in the snapshot')

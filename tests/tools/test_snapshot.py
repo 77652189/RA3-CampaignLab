@@ -15,6 +15,8 @@ import build  # noqa: E402
 import parts  # noqa: E402
 import sim  # noqa: E402
 import simrecord  # noqa: E402
+import simbody  # noqa: E402
+import simpower  # noqa: E402
 import simsmall  # noqa: E402
 import simsnap  # noqa: E402
 from engine.kernel import interfaces, snap  # noqa: E402
@@ -163,8 +165,17 @@ def test_what_it_cannot_keep_is_an_error(heal):
         simsnap.snapshot(a)
     del a.refs['r']
     taken = simsnap.snapshot(a)
-    taken['bodies'].append(['#late', 10 ** 6, '#late', 'X', {}])
-    with pytest.raises(NotImplementedError, match='11b-3c'):
+    gone = taken['bodies'].pop()
+    with pytest.raises(ValueError, match='not in the snapshot'):
+        simsnap.restore(sim.Sim(m, t, model=False), taken)
+    taken['bodies'].append(gone)
+    row = taken['kernel']['things'][-1]
+    row[1].append('LifetimeUpdate')                 # a module more than its template makes, none attached
+    with pytest.raises(ValueError, match='has modules'):
+        simsnap.restore(sim.Sim(m, t, model=False), taken)
+    row[1].append('LifetimeUpdate')                 # two more, one attached
+    taken['kernel']['late'].append([row[0], [['LifetimeUpdate', '']]])
+    with pytest.raises(ValueError, match='1 attached, the snapshot'):
         simsnap.restore(sim.Sim(m, t, model=False), taken)
 
 
@@ -257,6 +268,42 @@ def test_another_worlds_thing_of_the_same_serial_is_an_error():
     assert a.bodies['unit'].serial == b.bodies['unit'].serial
     a.refs['r'] = b.bodies['unit']
     with pytest.raises(ValueError, match='not bodies of the run'):
+        simsnap.snapshot(a)
+
+
+def test_a_thing_made_in_the_run_and_a_module_attached_come_back():
+    """11b-3c ① ②: a thing made after the start is built bare on the new run (its modules made, no on_create, the
+    schedule the snapshot's), and a module attached in the run (World.attach: a late lifetime, a reload for a power
+    no block serves) is made again -- on the thing made in the run and on one of the start."""
+    a = _island()
+    a.advance(15)
+    late = a.add('late', 'AlliedAntiInfantryInfantry', 'Player_1', 350, 300, by='unit', at=a.t)
+    simbody.last_until(a, late, a.world.frame + 30)
+    simpower.start_reload(a, a.bodies['unit'], 'SpecialPowerTestReload', a.world.frame + 45)
+    a.advance(5)
+    assert sorted(a.world.late) == sorted([late.serial, a.bodies['unit'].serial])
+    b = _island()
+    assert 'late' not in b.bodies
+    _fork(a, b)
+    assert type(b.bodies['late']) is sim.Body and b.bodies['late'].serial == late.serial
+    assert [type(m).__name__ for m in b.bodies['unit'].modules] == [type(m).__name__ for m in a.bodies['unit'].modules]
+    _go_on(a, b, 60)
+    assert (a.bodies['late'].alive, b.bodies['late'].alive) == (False, False)
+
+
+def test_another_worlds_thing_at_a_serial_left_free_is_an_error():
+    """1119h P3: the first of two things of one name, held by nothing once the second took its name, leaves its
+    serial free in what the snapshot reaches; another run's thing of that serial is still not this run's."""
+    a = simsmall.small_world([('same', 'AlliedAntiInfantryInfantry', 'Player_1', 300, 300)], model=False)
+    a.add('same', 'AlliedAntiInfantryInfantry', 'Player_1', 320, 300)
+    other = simsmall.small_world([('same', 'AlliedAntiInfantryInfantry', 'Player_1', 1600, 300)], model=False)
+    assert other.bodies['same'].serial == 0 and a.bodies['same'].serial == 1
+    a.refs['check'] = other.bodies['same']
+    with pytest.raises(ValueError, match='not bodies of the run'):
+        simsnap.snapshot(a)
+    del a.refs['check']
+    a.bodies['x'] = other.bodies['same']
+    with pytest.raises(ValueError, match='did not number it'):
         simsnap.snapshot(a)
 
 

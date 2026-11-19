@@ -1,6 +1,8 @@
 """World (docs/engine/sim-modules.md 5): one game's mutable state, all in the instance -- the schedule, the parse cache
 of module data, the audit set and the gap log. Two worlds in one process share nothing (tests/test_kernel.py). Today
 the Sim hosts it: Sim.world, and the Sim's `used` / `unmodeled` are the world's own."""
+import weakref
+
 from engine.kernel import factory, interfaces, module, schedule, snap  # noqa: F401  (module: Thing, which sim.Body is)
 
 
@@ -32,11 +34,14 @@ class World:
         self.gaps = {}          # (kind, name) -> {'n' times, 't' first met, 'what' first note} (Sim.gap writes it)
         self.frame = 0          # the frame of the cell now running (simloop sets it), what wake() defaults to
         self.made = 0           # things built so far: the next one's serial (Thing.serial)
+        self.late = {}          # serial -> [(tag, head)]: the modules attached after its thing was made (attach)
+        self.numbered = weakref.WeakValueDictionary()   # serial -> the thing this world numbered (owns)
 
     def build(self, thing, frame):
         """Number a new thing (Thing.serial), make its modules (none unless a tag is registered) and hold its update
         modules from `frame`."""
         thing.serial, self.made = self.made, self.made + 1
+        self.numbered[thing.serial] = thing
         if not self.tags:
             return ()
         mods = factory.build(thing, self.blocks_of, self.data, self.tags, self)
@@ -52,13 +57,34 @@ class World:
         """One module of a registered tag made on a thing after it was made -- its data the parse of a block of the
         tag with attributes `head` (default: none), no on_create -- and held from `frame` (default: the frame of the
         cell now running): the skirmish AI's late lifetime (simbody.last_until), a reload for a power no block of the
-        thing serves (simpower.start_reload). -> the module."""
-        cls = self.tags[tag]
-        m = cls(thing, cls.DATA.parse(head, '').seal(), self)
-        thing.modules = tuple(thing.modules) + (m,)
+        thing serves (simpower.start_reload). Noted in `late` by the thing's serial (a thing this world numbered), so
+        a snapshot's thing gets it again (remake). -> the module."""
+        m = self._attached(thing, tag, head)
+        if hasattr(thing, 'serial'):
+            self.late.setdefault(thing.serial, []).append((tag, head))
         if isinstance(m, interfaces.Update):
             self.schedule.add(m, self.frame if frame is None else frame)
         return m
+
+    def _attached(self, thing, tag, head):
+        cls = self.tags[tag]
+        m = cls(thing, cls.DATA.parse(head, '').seal(), self)
+        thing.modules = tuple(thing.modules) + (m,)
+        return m
+
+    def remake(self, thing, late, n):
+        """A snapshot's thing that the new world made short (World.restore): the modules its template makes, when it
+        has none (a thing made in the run, built bare by the host), then the last of `late` ([(tag, head)], the
+        snapshot's attached ones) it lacks, up to `n` modules -- made bare: no on_create, not scheduled (the
+        schedule and every module's STATE are the snapshot's)."""
+        if not thing.modules and self.tags:
+            thing.modules = factory.build(thing, self.blocks_of, self.data, self.tags, self)
+        lack = n - len(thing.modules)
+        if lack > len(late):
+            raise ValueError(f'World.restore: thing {thing.serial} ({thing.name!r}) has {len(thing.modules)} modules '
+                             f'and {len(late)} attached, the snapshot {n}')
+        for tag, head in late[len(late) - lack:] if lack > 0 else ():
+            self._attached(thing, tag, head)
 
     def kill(self, thing, why, death='NORMAL', cause=''):
         """A module kills its thing (LifetimeUpdate): the host's death -- today Sim.destroy -- of type `death`
@@ -196,23 +222,32 @@ class World:
                 'used': snap.encode(self.used, extra, 'used'), 'gaps': snap.encode(self.gaps, extra, 'gaps'),
                 'schedule': {'cells': cells, 'added': self.schedule.added},
                 'things': [[t.serial, [type(m).__name__ for m in t.modules],
-                            [snap.module_state(m, extra) for m in t.modules]] for t in things]}
+                            [snap.module_state(m, extra) for m in t.modules]] for t in things],
+                'late': [[k, [list(x) for x in v]] for k, v in sorted(self.late.items()) if k in held]}
 
     def restore(self, snap_, things, extra=None):
         """Write a World.snapshot onto this world, made anew for the same mission: `things` serial -> Thing, the
-        host's things for the snapshot's (made with their modules, each thing's serial set here). The things and
-        their modules must be the snapshot's (same serials, same module classes in order), else nothing is written
-        past the check. The audit set and the gaps are written in place (the host holds them under other names)."""
+        host's things for the snapshot's, each thing's serial set here: made with their modules, or bare (a thing
+        made in the run: no modules yet) -- the modules its template makes and the snapshot's attached ones a thing
+        lacks are made here (remake). The things and their modules must then be the snapshot's (same serials, same
+        module classes in order), else nothing more is written past the check. The audit set and the gaps are
+        written in place (the host holds them under other names)."""
         want = {row[0]: row[1] for row in snap_['things']}
         if set(want) != set(things):
             raise ValueError(f'World.restore: things {sorted(set(want) ^ set(things))[:10]} are on one side only')
+        late = {k: [tuple(x) for x in v] for k, v in snap_['late']}
+        self.numbered = weakref.WeakValueDictionary()
+        for serial, t in things.items():
+            t.serial = serial
+            self.numbered[serial] = t
+            if len(t.modules) < len(want[serial]) and (not t.modules or late.get(serial)):
+                self.remake(t, late.get(serial, []), len(want[serial]))
         for serial, names in want.items():
             have = [type(m).__name__ for m in things[serial].modules]
             if have != names:
                 raise ValueError(f'World.restore: thing {serial} ({things[serial].name!r}) has modules {have}, '
                                  f'the snapshot {names}')
-        for serial, t in things.items():
-            t.serial = serial
+        self.late = late
         for serial, _names, states in snap_['things']:
             for m, state in zip(things[serial].modules, states):
                 snap.set_module_state(m, state, things, extra)
