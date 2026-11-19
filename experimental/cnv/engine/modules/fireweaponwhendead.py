@@ -23,10 +23,6 @@ from engine.ports import templates
 AIRBORNE = module.AIRBORNE      # the status bit of a thing in the air (as CreateObjectDie's)
 
 
-def _words(head, name, default=''):
-    return frozenset((templates.attr(head, name) or default).split())
-
-
 class FireWeaponWhenDeadData(module.ModuleData, module.DieMux):
     def __init__(self, weapon='', active=False, types=frozenset({'ALL'}), forbidden=frozenset(),
                  required=frozenset(), exempt=frozenset()):
@@ -42,8 +38,8 @@ class FireWeaponWhenDeadData(module.ModuleData, module.DieMux):
         mux = templates.child(inner, 'DieMuxData')
         return cls(templates.attr(head, 'DeathWeapon', ''),
                    (templates.attr(head, 'InitiallyActive') or 'false').lower() == 'true',
-                   _words(mux, 'DeathTypes', 'ALL'), _words(mux, 'DeathTypesForbidden'),
-                   _words(mux, 'RequiredStatus'), _words(mux, 'ExemptStatus'))
+                   templates.words(mux, 'DeathTypes', 'ALL'), templates.words(mux, 'DeathTypesForbidden'),
+                   templates.words(mux, 'RequiredStatus'), templates.words(mux, 'ExemptStatus'))
 
     def fires(self, death, status=frozenset()):
         """A death of this type, of a thing with this status, sets its weapon off: active, its death types take it,

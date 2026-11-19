@@ -46,6 +46,13 @@ def test_the_die_mux_takes_death_types_and_status_as_the_model_s_applies():
     assert bare.ocl == '' and bare.takes('NORMAL') and bare.holds({'AIRBORNE_TARGET'})
 
 
+def test_an_empty_death_types_takes_no_death():
+    """DeathTypes="" written empty names no death (the old reader simunits._dies_of; review h P3) -- unlike no
+    DeathTypes at all, which is ALL."""
+    empty = cod.CreateObjectDieData.parse(' CreationList="X"', '<DieMuxData DeathTypes="" />')
+    assert not empty.takes('NORMAL') and not empty.takes('CRUSHED')
+
+
 def test_a_death_of_age_makes_the_list_its_death_type_takes_where_it_stood_that_frame():
     s = _world()
     s.add('core', 'CNV_TestCore', 'Player_1', 100.0, 100.0)

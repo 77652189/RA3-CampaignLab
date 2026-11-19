@@ -30,10 +30,6 @@ LIFETIME = module.LIFETIME      # module.Death's cause for a LifetimeUpdate's de
 AIRBORNE = module.AIRBORNE      # the status bit of a thing in the air
 
 
-def _words(head, name, default=''):
-    return frozenset((templates.attr(head, name) or default).split())
-
-
 class CreateObjectDieData(module.ModuleData, module.DieMux):
     def __init__(self, ocl='', types=frozenset({'ALL'}), forbidden=frozenset(), required=frozenset(),
                  exempt=frozenset()):
@@ -46,8 +42,9 @@ class CreateObjectDieData(module.ModuleData, module.DieMux):
     @classmethod
     def parse(cls, head, inner):
         mux = templates.child(inner, 'DieMuxData')
-        return cls(templates.attr(head, 'CreationList', ''), _words(mux, 'DeathTypes', 'ALL'),
-                   _words(mux, 'DeathTypesForbidden'), _words(mux, 'RequiredStatus'), _words(mux, 'ExemptStatus'))
+        w = templates.words
+        return cls(templates.attr(head, 'CreationList', ''), w(mux, 'DeathTypes', 'ALL'),
+                   w(mux, 'DeathTypesForbidden'), w(mux, 'RequiredStatus'), w(mux, 'ExemptStatus'))
 
 
 @factory.module('CreateObjectDie')

@@ -30,6 +30,18 @@ def test_the_data_reads_active_death_types_and_status():
     assert not off.active and not off.fires('NORMAL')               # upgrade-activated: never on
 
 
+def test_an_empty_death_types_fires_on_no_death():
+    """DeathTypes="" written empty names no death: the death weapon never goes off (the parent's reader,
+    simunits.death_weapons by _dies_of; review h P3), in a world as well as in the data."""
+    d = fw.FireWeaponWhenDeadData.parse(' InitiallyActive="true" DeathWeapon="W"', '<DieMuxData DeathTypes="" />')
+    assert not d.fires('NORMAL', set()) and not d.fires('CRUSHED', set())
+    s = simsmall.small_world()
+    s.own.update(CNV_TestBomb=_bomb('CNV_TestBomb', '<DieMuxData DeathTypes="" />') + BURST)
+    s.add('shot', 'CNV_TestBomb', 'Player_1', 0.0, 0.0)
+    s.destroy(s.bodies['shot'], 'test')
+    assert s.death_blasts == []
+
+
 class _Host:
     def __init__(self):
         self.fired = []

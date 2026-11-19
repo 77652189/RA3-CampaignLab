@@ -12,6 +12,13 @@ def attr(head, name, default=None):
     return m.group(1) if m else default
 
 
+def words(head, name, default=''):
+    """An attribute's space-separated words, a frozenset: `default`'s words when the attribute is not written, none
+    when it is written empty -- DeathTypes="" takes no death, as simunits._dies_of read it (review h P3)."""
+    v = attr(head, name)
+    return frozenset((default if v is None else v).split())
+
+
 def num(v, default=0.0):
     """A number attribute; a macro (=$UNLIMITED_CLIP_SIZE ...) or nothing: the default."""
     try:
