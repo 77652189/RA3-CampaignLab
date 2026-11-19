@@ -54,14 +54,14 @@ def a4_ui():
 def test_a4_play_through_the_page_matches_simulate(a4_ui):
     ref = sim.simulate('a4', '', A4)
     assert ref.ending is not None
-    assert game.key_times(a4_ui.s) == game.key_times(ref)
+    assert game.key_times(a4_ui.obs) == game.key_times(game.Observe(ref))
     assert a4_ui.s.ending == ref.ending
     assert {f: v for f, v in a4_ui.s.flags.items() if 'Phase' in f} == {f: v for f, v in ref.flags.items() if 'Phase' in f}
 
 
 def test_the_replay_record_makes_the_same_run(a4_ui):
     again = game.replay('a4', list(a4_ui.rec.happened))
-    assert game.key_times(again) == game.key_times(a4_ui.s)
+    assert game.key_times(game.Observe(again)) == game.key_times(a4_ui.obs)
 
 
 def clicks_session():

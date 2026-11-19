@@ -14,8 +14,9 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 CNV = ROOT / 'experimental' / 'cnv'
 HARNESS = {'run_task'}                  # the functions that may make a run
 RAW = {'s', 'sim_', 'bodies'}          # what holding the world itself looks like: names and arguments ...
-RAW_ATTRS = RAW | {'eng'}               # ... and attributes (`eng` is also the script port's World argument name:
-                                        # PortTap's methods take it, engine/ports/scripts.py)
+RAW_ATTRS = RAW | {'eng', '_w'}         # ... and attributes (`eng` is also the script port's World argument name:
+                                        # PortTap's methods take it, engine/ports/scripts.py; `_w` the world the
+                                        # Observe holds: a reader going round the port through it)
 
 
 def simulator_modules():
@@ -95,8 +96,13 @@ READERS = {
     CNV / 'graybox.py': ({'main'}, {'offline', 'simunits'}),
     CNV / 'graybox_cards.py': ({'world', 'main'}, {'glossary', 'graybox', 'offline', 'simunits'}),
 }
-# Readers that are one class of a bigger file (the rest of the file drives the run): (file, class).
-READER_CLASSES = [(ROOT / 'experimental' / 'simui' / 'game.py', 'Play')]
+# Readers that are one class or function of a bigger file (the rest of the file drives the run): (file, name, the
+# mission-data modules it may import). simui's game.py: the Session gives the orders and runs the ticks (the driver);
+# what the page draws is the Picture's, the voices and the replay record the Play's, and the stage flags / the key
+# moments are read off the compiled mission / a run's Observe.
+GAME = ROOT / 'experimental' / 'simui' / 'game.py'
+READER_PARTS = [(GAME, 'Play', set()), (GAME, 'Picture', {'simunits'}), (GAME, 'phase_flags', set()),
+                (GAME, 'key_times', set())]
 
 
 def sim_breaks(src, harness):
@@ -113,18 +119,19 @@ def reader_breaks(src, harness, allowed):
     return import_breaks(src, sim, harness) + raw_breaks(src, harness) + sim_breaks(src, harness)
 
 
-def class_src(path, name):
+def part_src(path, name):
+    """The source of a top-level class or function of a file."""
     src = path.read_text(encoding='utf-8')
-    node = next(n for n in ast.parse(src).body if isinstance(n, ast.ClassDef) and n.name == name)
+    node = next(n for n in ast.parse(src).body
+                if isinstance(n, (ast.ClassDef, ast.FunctionDef)) and n.name == name)
     return ast.get_source_segment(src, node)
 
 
 def test_the_other_readers_read_only_the_port():
     for f, (harness, allowed) in READERS.items():
         assert reader_breaks(f.read_text(encoding='utf-8'), harness, allowed) == [], f.name
-    for path, name in READER_CLASSES:
-        src = class_src(path, name)
-        assert import_breaks(src) == [] and raw_breaks(src) == [], (path.name, name)
+    for path, name, allowed in READER_PARTS:
+        assert reader_breaks(part_src(path, name), set(), allowed) == [], (path.name, name)
 
 
 def test_planted_breaks_in_the_other_readers_are_found():
@@ -151,8 +158,16 @@ def test_planted_breaks_in_the_other_readers_are_found():
     src = (CNV / 'graybox_cards.py').read_text(encoding='utf-8')
     assert reader_breaks(src.replace("wall = obs.specimen(", "wall = obs._w.bodies.get("), harness, allowed)
     assert reader_breaks(src + '\nimport plan\n', harness, allowed)
-    play = class_src(*READER_CLASSES[0])
+    play = part_src(GAME, 'Play')
     assert raw_breaks(play.replace('obs = self.obs', 's = self.obs'))
+    picture = part_src(GAME, 'Picture')
+    assert reader_breaks(picture.replace('clock=mmss(t)', 'clock=sim.mmss(t)'), set(), {'simunits'})
+    assert reader_breaks(picture.replace('shape = obs.blocks(b)', 'shape = obs._w.blocks(b)'), set(), {'simunits'})
+    assert reader_breaks(picture.replace('import simunits', 'import simunits\n        import sim'), set(), {'simunits'})
+    assert reader_breaks(picture.replace('readings = ex.readings()', 'readings = self.s.executor.readings()'),
+                         set(), {'simunits'})
+    assert reader_breaks(part_src(GAME, 'key_times').replace('ending = obs.ending()', 's = obs; ending = s.ending'),
+                         set(), set())
 
 
 def test_simrecord_imports_only_the_ports():

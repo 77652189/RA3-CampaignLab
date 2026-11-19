@@ -10,6 +10,7 @@ whole second's sample, t + DT) without the quiet stop: a level the player is sti
 nothing moved for two minutes.
 
   Session(level)          a fresh run; .command(dict) gives an order, .tick() one DT, .state() what the page draws
+                          (a Picture: it reads the run only through the observation port, engine/ports/observe.py)
   Session.jump(stage)     the level's own play script (plays/<level>.txt) plays to that stage's flag, then the script
                           events still to come are dropped and the player has it
   Session.skip_scene()    as fast as the computer goes until the input is handed back
@@ -30,6 +31,7 @@ sys.path[:0] = [p for p in (CNV, os.path.join(os.path.dirname(HERE), 'campaign')
 import maprender  # noqa: E402  (experimental/campaign: the map pictures' orientation, SCREEN_Y)
 import sim  # noqa: E402
 import simshow  # noqa: E402
+from engine.ports.observe import Observe  # noqa: E402  (key_times reads a finished run through it)
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
 import labpaths  # noqa: E402
 
@@ -86,6 +88,118 @@ def play_sim(m, t, difficulty, script):
     world = sim.Sim(m, t, difficulty, script)
     show = simshow.attach(world)
     return world, show, Play(show.obs)
+
+
+class Picture:
+    """What the page draws of a run, read through the observation port and the Show's / Play's records: the fixed
+    picture (the ground, areas, sites, borders, the objectives' texts), the units, and the run's state now. The Session
+    puts its own (speed, busy, the refused orders, ...) beside it. mmss: the simulator's m:ss (the harness hands it in;
+    a reader does not reach into the simulator)."""
+
+    def __init__(self, obs, show, rec, mmss):
+        self.obs, self.show, self.rec, self.mmss = obs, show, rec, mmss
+
+    def fixed(self):
+        import base64
+        import numpy as np
+        obs = self.obs
+        walk, water, z, (x0, y0), step = obs.ground_map()
+        z = z[:walk.shape[0], :walk.shape[1]]
+        lo, hi = float(z.min()), float(z.max())
+        shade = ((z - lo) / max(hi - lo, 1.0) * 255).astype(np.uint8)
+        kind = np.where(walk, 1, np.where(water, 2, 0)).astype(np.uint8)
+        mission = obs.mission()
+        sites = getattr(mission.map, 'SITES', {}) or {}
+        return dict(
+            grid=dict(w=int(walk.shape[1]), h=int(walk.shape[0]), x0=x0, y0=y0, step=step,
+                      kind=base64.b64encode(kind.tobytes()).decode(), shade=base64.b64encode(shade.tobytes()).decode()),
+            areas=[dict(name=k, pts=[[float(p[0]), float(p[1])] for p in v]) for k, v in obs.areas().items()],
+            sites=[dict(name=k, x=float(v.x), y=float(v.y), r=float(v.r or 0)) for k, v in sites.items()],
+            borders=[[k] + [float(x) for x in v] for k, v in (getattr(mission.map, 'BORDERS', None) or {}).items()],
+            objectives=[dict(name=o.name, title=obs.text(o.title), bonus=bool(o.bonus)) for o in mission.objectives],
+            human=obs.human, players=dict(obs.players()),
+        )
+
+    def unit(self, b, sees):
+        obs = self.obs
+        rel = 'me' if b.owner == obs.human else ('foe' if obs.enemy(obs.human, b.owner) else 'other')
+        shape = obs.blocks(b)
+        u = dict(id=b.name, x=round(b.x, 1), y=round(b.y, 1), o=b.owner, rel=rel, tp=b.template, lb=obs.label(b),
+                 hp=round(b.health, 1), r=round(b.radius or (30.0 if 'STRUCTURE' in b.kinds else 8.0), 1),
+                 k=''.join(c for c, w in (('S', 'STRUCTURE'), ('A', 'AIRCRAFT'), ('I', 'INFANTRY')) if w in b.kinds),
+                 mv=b.speed > 0, a=round(b.angle or 0.0, 3))
+        if b.scenery:
+            u['sc'] = 1
+        if shape and len(shape) == 5:
+            u['bar'] = [round(shape[3], 1), round(shape[4], 1), round(shape[2], 3)]
+        if rel == 'foe' and not sees(b):
+            u['fog'] = 1
+        if b.status:
+            u['st'] = sorted(b.status)
+        if rel == 'me':
+            own = next((x for x in obs.model().units if x.id == b.template), None)
+            if own and own.abilities:
+                f = obs.frame()                 # a power's reload ends at a frame of the frame clock, either executor
+                u['ab'] = {k: max(0.0, (b.ready_at.get(v, 0) - f) / obs.fps) for k, v in own.abilities.items()}
+            if b.path:
+                u['to'] = [round(b.path[-1][0]), round(b.path[-1][1])]
+        return u
+
+    def now(self, since, stages):
+        """The run now: the units, the shown counters, captions, the camera, the production menu, the lines heard from
+        the `since`-th on, the `stages` flags reached."""
+        import simunits
+        obs, show, mmss = self.obs, self.show, self.mmss
+        t = obs.t
+        seen_cache = {}
+
+        def sees(b):
+            k = id(b)
+            if k not in seen_cache:
+                seen_cache[k] = obs.sees(b.x, b.y, b.surface == 'air')
+            return seen_cache[k]
+        units = [self.unit(b, sees) for b in obs.living()]
+        ui = []
+        ex, _ = obs.scripts()
+        readings = ex.readings()
+        timers = obs.timers()
+        for label in sorted(show.up):
+            key = next((k for k in readings if obs.text(str(k)) == label), None)
+            counter = ex.displayed.get(key) if key else None
+            left = None
+            if counter is not None and counter in timers:
+                left = max(0.0, timers[counter] - t)
+            ui.append(dict(label=label, value=readings.get(key), left=left))
+        unmod = [dict(kind=k[0], name=k[1], n=v['n'], t=v['t'], what=v['what']) for k, v in obs.unmodeled().items()]
+        human, own, queues = obs.human, obs.own(), obs.queues()
+        offers = [dict(tp=o[0], cost=o[1], secs=o[2]) for o in obs.offers(human)]
+        factories, sold = [], set()
+        for f in obs.factories(human):
+            q = queues.get(f.name, [])
+            menu = set(simunits.menu(f.template, own, f.upgrades))
+            can = [o for o in offers if o['tp'] in menu]
+            sold |= {o['tp'] for o in can}
+            factories.append(dict(id=f.name, lb=obs.label(f), can=can,
+                                  queue=[dict(tp=j['template'], p=round(j.get('progress', 0), 1)) for j in q]))
+        if factories:                               # upgrades: bought at whichever structure sells them
+            factories[0]['can'] += [o for o in offers if o['tp'] not in sold]
+        ending, flags = obs.ending(), obs.flags()
+        return dict(
+            t=t, clock=mmss(t), input=bool(obs.input()), letterbox=bool(show.state_at(show.bars, t)),
+            border=show.state_at(show.borders, t),
+            camera=show.camera_at(t), ending=(dict(how=ending[0], t=ending[1], clock=mmss(ending[1]), by=ending[2])
+                                              if ending else None),
+            units=units, caption=obs.box_at(t), panel=obs.panel_at(t),
+            objectives=[dict(name=k, status=v) for k, v in obs.objectives().items() if v],
+            counters=ui, money=obs.money().get(human, 0), unmodeled=unmod,
+            voices=[dict(i=i, t=v.t, kind=v.kind, key=v.key, text=v.text, secs=round(v.secs, 2),
+                         file=bool(find_voice(v.key)), speak=spoken(v.key, v.text))
+                    for i, v in enumerate(self.rec.voices) if i >= since and v.t <= t],
+            stages=[dict(flag=f, reached=flags.get(f) == 1) for f in stages],
+            factories=factories, offers=offers,
+            log=[dict(t=a, k=b, x=c) for a, b, c in
+                 [x for x in obs.report('log')[-400:] if x[1] in ('目标', '剧本', '技能', '生产', '卡住', '够不着', '结局')][-12:]],
+        )
 
 
 class Voice(tuple):
@@ -147,10 +261,11 @@ def level_play(level):
     return path if os.path.isfile(path) else ''
 
 
-def phase_flags(s):
-    """The level's stage flags, in order: CNV_<L>_Phase_<n> as its scripts set them."""
+def phase_flags(model):
+    """The level's stage flags, in order: CNV_<L>_Phase_<n> as its scripts (the compiled mission's, Observe.model)
+    set them."""
     got = set()
-    for sc in s.mm.scripts:
+    for sc in model.scripts:
         for a in sc.do or []:
             if a and a[0] == 'SET_FLAG' and re.fullmatch(r'CNV_\w+_Phase_\d+', str(a[1])):
                 got.add(str(a[1]))
@@ -216,8 +331,10 @@ class Session:
     def new(self, script=''):
         with self.lock:
             self.s, self.show, self.rec = play_sim(self.mission, self.test, self.difficulty, script)
+            self.obs = self.show.obs
+            self.picture = Picture(self.obs, self.show, self.rec, sim.mmss)
             self.run = getattr(self, 'run', 0) + 1      # a new run (restart, stage jump): the page drops its voice
-            self.stages = phase_flags(self.s)
+            self.stages = phase_flags(self.obs.model())
             self.orders, self.refused = [], []
             self.wall0 = time.time()
 
@@ -395,116 +512,19 @@ class Session:
             elif not ran:
                 stop.wait(0.03)
 
-    # ---- what the page draws -----------------------------------------------------------------------------------
+    # ---- what the page draws (the Picture's, with the session's own beside it) -------------------------------
     def static(self):
         """What does not change in a run: the ground, the areas, sites, borders, the objectives' texts."""
-        import base64
-        import numpy as np
-        import platmap
-        s = self.s
-        g = s.ground
-        walk, water = g.grids['ground'], g.grids['water']
-        z = g.zgrid[:walk.shape[0], :walk.shape[1]]
-        lo, hi = float(z.min()), float(z.max())
-        shade = ((z - lo) / max(hi - lo, 1.0) * 255).astype(np.uint8)
-        kind = np.where(walk, 1, np.where(water, 2, 0)).astype(np.uint8)
-        x0, y0 = g.world((0, 0))
-        sites = getattr(self.mission.map, 'SITES', {}) or {}
-        return dict(
-            level=self.level, difficulty=self.difficulty, play=bool(self.play), dt=sim.DT,
-            screen_y=maprender.SCREEN_Y,        # world y on the screen: north up, as the map pictures (one definition)
-            grid=dict(w=int(walk.shape[1]), h=int(walk.shape[0]), x0=x0, y0=y0, step=g.d * platmap.CELL,
-                      kind=base64.b64encode(kind.tobytes()).decode(), shade=base64.b64encode(shade.tobytes()).decode()),
-            areas=[dict(name=k, pts=[[float(p[0]), float(p[1])] for p in v]) for k, v in s.areas.items()],
-            sites=[dict(name=k, x=float(v.x), y=float(v.y), r=float(v.r or 0)) for k, v in sites.items()],
-            borders=[[k] + [float(x) for x in v] for k, v in (getattr(self.mission.map, 'BORDERS', None) or {}).items()],
-            objectives=[dict(name=o.name, title=s.text(o.title), bonus=bool(o.bonus)) for o in self.mission.objectives],
-            stages=self.stages, human=s.human,
-            players={k: v for k, v in s.players.items()},
-            letterbox=dict(VIEW_HALF=list(simshow.model.VIEW_HALF)),
-        )
-
-    def unit(self, b, sees):
-        s = self.s
-        rel = 'me' if b.owner == s.human else ('foe' if s.enemy(s.human, b.owner) else 'other')
-        shape = s.blocks(b)
-        u = dict(id=b.name, x=round(b.x, 1), y=round(b.y, 1), o=b.owner, rel=rel, tp=b.template, lb=s.label(b),
-                 hp=round(b.health, 1), r=round(b.radius or (30.0 if 'STRUCTURE' in b.kinds else 8.0), 1),
-                 k=''.join(c for c, w in (('S', 'STRUCTURE'), ('A', 'AIRCRAFT'), ('I', 'INFANTRY')) if w in b.kinds),
-                 mv=b.speed > 0, a=round(b.angle or 0.0, 3))
-        if b.scenery:
-            u['sc'] = 1
-        if shape and len(shape) == 5:
-            u['bar'] = [round(shape[3], 1), round(shape[4], 1), round(shape[2], 3)]
-        if rel == 'foe' and not sees(b):
-            u['fog'] = 1
-        if b.status:
-            u['st'] = sorted(b.status)
-        if rel == 'me':
-            own = next((x for x in s.mm.units if x.id == b.template), None)
-            if own and own.abilities:
-                f = s.frame_now()
-                u['ab'] = {k: max(0.0, (b.ready_at.get(v, 0) - f) / s.fps) if s.eng else 0.0
-                           for k, v in own.abilities.items()}
-            if b.path:
-                u['to'] = [round(b.path[-1][0]), round(b.path[-1][1])]
-        return u
+        return dict(self.picture.fixed(), level=self.level, difficulty=self.difficulty, play=bool(self.play),
+                    dt=sim.DT, stages=self.stages,
+                    screen_y=maprender.SCREEN_Y,    # world y on the screen: north up, as the map pictures (one definition)
+                    letterbox=dict(VIEW_HALF=list(simshow.model.VIEW_HALF)))
 
     def state(self, since=0):
         with self.lock:
-            s = self.s
-            t = s.t
-            seen_cache = {}
-
-            def sees(b):
-                k = id(b)
-                if k not in seen_cache:
-                    seen_cache[k] = s.sees(b.x, b.y, b.surface == 'air')
-                return seen_cache[k]
-            units = [self.unit(b, sees) for b in s.living()]
-            ui = []
-            readings = s.executor.readings()
-            show = self.show
-            for label in sorted(show.up):
-                key = next((k for k in readings if s.text(str(k)) == label), None)
-                counter = s.executor.displayed.get(key) if key else None
-                left = None
-                if counter is not None and counter in s.timers:
-                    left = max(0.0, s.timers[counter] - t)
-                ui.append(dict(label=label, value=readings.get(key), left=left))
-            panel = s.panel_at(t) if s.panel_log else []
-            letter = bool(show.state_at(show.bars, t))
-            unmod = [dict(kind=k[0], name=k[1], n=v['n'], t=v['t'], what=v['what']) for k, v in s.unmodeled.items()]
-            import simunits
-            offers = [dict(tp=o[0], cost=o[1], secs=o[2]) for o in s.offers(s.human)]
-            factories, sold = [], set()
-            for f in s.factories(s.human):
-                q = s.queues.get(f.name, [])
-                menu = set(simunits.menu(f.template, s.own, f.upgrades))
-                can = [o for o in offers if o['tp'] in menu]
-                sold |= {o['tp'] for o in can}
-                factories.append(dict(id=f.name, lb=s.label(f), can=can,
-                                      queue=[dict(tp=j['template'], p=round(j.get('progress', 0), 1)) for j in q]))
-            if factories:                               # upgrades: bought at whichever structure sells them
-                factories[0]['can'] += [o for o in offers if o['tp'] not in sold]
-            return dict(
-                t=t, clock=sim.mmss(t), speed=self.speed, busy=self.busy, input=bool(s.input), letterbox=letter,
-                border=show.state_at(show.borders, t),
-                camera=show.camera_at(t), ending=(dict(how=s.ending[0], t=s.ending[1], clock=sim.mmss(s.ending[1]),
-                                                     by=s.ending[2]) if s.ending else None),
-                units=units, caption=s.box_at(t), panel=panel,
-                objectives=[dict(name=k, status=v) for k, v in s.objectives.items() if v],
-                counters=ui, money=s.money.get(s.human, 0), unmodeled=unmod,
-                run=self.run, voices=[dict(i=i, t=v.t, kind=v.kind, key=v.key, text=v.text, secs=round(v.secs, 2),
-                                           file=bool(find_voice(v.key)), speak=spoken(v.key, v.text))
-                                      for i, v in enumerate(self.rec.voices) if i >= since and v.t <= t],
-                stages=[dict(flag=f, reached=s.flags.get(f) == 1) for f in self.stages],
-                factories=factories, offers=offers,
-                refused=[dict(t=a, why=b) for a, b in self.refused[-5:]],
-                log=[dict(t=a, k=b, x=c) for a, b, c in
-                     [x for x in s.log[-400:] if x[1] in ('目标', '剧本', '技能', '生产', '卡住', '够不着', '结局')][-12:]],
-                wall=round(time.time() - self.wall0, 1),
-            )
+            return dict(self.picture.now(since, self.stages), speed=self.speed, busy=self.busy, run=self.run,
+                        refused=[dict(t=a, why=b) for a, b in self.refused[-5:]],
+                        wall=round(time.time() - self.wall0, 1))
 
     # ---- the replay ---------------------------------------------------------------------------------------------
     def replay_events(self):
@@ -524,11 +544,12 @@ def replay(level, events, difficulty='normal', until=sim.UNTIL):
     return s.run(until)
 
 
-def key_times(s):
-    """The run's ending and the moments that matter, to compare two runs: the ending, the stage flags, the objectives'
-    changes."""
-    out = {'ending': (s.ending[0], round(s.ending[1], 3)) if s.ending else None}
-    for t, k, x in s.log:
+def key_times(obs):
+    """The run's ending and the moments that matter, to compare two runs (each read through its Observe): the ending,
+    the stage flags, the objectives' changes."""
+    ending = obs.ending()
+    out = {'ending': (ending[0], round(ending[1], 3)) if ending else None}
+    for t, k, x in obs.report('log'):
         if k in ('目标', '结局'):
             out.setdefault(f'{k}:{x}', round(t, 3))
     return out

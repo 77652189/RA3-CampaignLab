@@ -98,6 +98,14 @@ class Observe:
         """(player, template in lower case) the scripts took off a player's build menu."""
         return self._w.banned
 
+    def players(self):
+        """The map's players: name -> its entry (the map's PLAYERS)."""
+        return self._w.players
+
+    def areas(self):
+        """The map's trigger areas: name -> their points (.items())."""
+        return self._w.areas
+
     # --- players and sight
     @property
     def human(self):
@@ -131,6 +139,14 @@ class Observe:
         """The ground's height at a point."""
         return self._w.ground.z(x, y)
 
+    def ground_map(self):
+        """The routing grid as a picture of the ground: (walkable, water, the height at each cell's corner -- arrays
+        of the grid's rows and columns; the height's may be a row / column longer --, (x, y) of cell (0, 0), a cell's
+        size in map units)."""
+        g = self._w.ground
+        x0, y0 = g.world((0, 0))
+        return g.grids['ground'], g.grids['water'], g.zgrid, (x0, y0), g.world((0, 1))[0] - x0
+
     # --- internal
     @staticmethod
     def state(thing):
@@ -162,6 +178,31 @@ class Observe:
     def gaps(self):
         """(kind, name) -> how many times the run met what the simulator does not model."""
         return {k: v.get('n') for k, v in self._w.unmodeled.items()}
+
+    def unmodeled(self):
+        """(kind, name) -> {'n', 't' first met, 'what'}: what the run met and the simulator does not model."""
+        return self._w.unmodeled
+
+    def blocks(self, thing):
+        """What of the way a thing takes up: None, (x, y, radius), or a wall's bar (x, y, angle, length, width)."""
+        return self._w.blocks(thing)
+
+    # --- internal: the production menu (a command port's, once there is one: what an order to build may ask for)
+    def own(self):
+        """Template id -> its unit data as compiled (what simunits reads a menu and a price off)."""
+        return self._w.own
+
+    def factories(self, player):
+        """A player's living structures that build units."""
+        return self._w.factories(player)
+
+    def offers(self, player):
+        """[(template or upgrade, cost, seconds)] a player can build or buy now."""
+        return self._w.offers(player)
+
+    def queues(self):
+        """Factory name -> its jobs ({'template', 'progress', ...})."""
+        return self._w.queues
 
     def mission(self):
         """The mission as written (parts.Mission: its map's SITES / BORDERS, cast, objectives) -- data, not the run."""
@@ -207,6 +248,14 @@ class Observe:
     def who(self, player):
         """A player's name for a reader: 玩家 / 敌人 / its side."""
         return self._w.who(player)
+
+    def box_at(self, t):
+        """The caption up at mission second t, or None."""
+        return self._w.box_at(t)
+
+    def panel_at(self, t):
+        """The subtitles stacked in the dialogue panel at mission second t."""
+        return self._w.panel_at(t)
 
     def late_captions(self):
         return self._w.late_captions()
