@@ -200,8 +200,9 @@ class Orders:
     def now(self, cmd):
         """A command now, as its script line stamped with this moment: the line is what is queued and recorded, so the
         run gives what its replay will even where a name splits another way (review 11-19 d #4: unit `a` told to use
-        `x y` is, as the line reads, `a x` told to use `y` -- both ways). ValueError when no line carries it."""
-        self.push(num(self.view.obs.t), command.text(cmd))
+        `x y` is, as the line reads, `a x` told to use `y` -- both ways). ValueError when no line carries it, or its line
+        reads as another command in this world (a tail `强制` taken for a name's end: review 11-19 g #2)."""
+        self.push(num(self.view.obs.t), self.commands.line(cmd))
 
     def _fresh(self, b, verb, target):
         """False when b is already on this very order (a unit still under way is not told again: that resets its path)."""

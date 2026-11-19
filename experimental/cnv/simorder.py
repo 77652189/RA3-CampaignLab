@@ -154,6 +154,8 @@ def order_capture(world, peers, b, target_name):
     if b and b.alive and target and target.alive and peers.engineer_entry(b, target):
         b.goal, b.mode = target, 'capture'
         peers.send(b, (target.x, target.y))
+        return True
+    return False
 
 
 def capture_due(world, peers):

@@ -2218,7 +2218,7 @@ class Sim:
     def happen(self, e):
         t, verb, *rest = e
         self.note('剧本', ' '.join([verb] + [str(x) for x in rest]))
-        cmd = command_port.command(e, 'player')     # 派 走 攻击 放 占领 X 进 Y 生产 买: the player's orders, given
+        cmd = self.commands.command(e, 'player')    # 派 走 攻击 放 占领 X 进 Y 生产 买: the player's orders, given
         if cmd is not None:                         # through the command port (its routes are these verbs' order calls)
             self.commands.do(cmd)
         elif verb in ('摧毁', '删除'):              # the rest: the god's hand (a test's shortcuts, not orders)
@@ -2916,15 +2916,15 @@ class Sim:
 
     def movement_power_press(self, b, button, point):
         """simspecial.Specials.movement_power_press (L2): a MovementSpecialPower's rush to a point in range."""
-        self._specials().movement_power_press(self, b, button, point, self.modify, self.send)
+        return self._specials().movement_power_press(self, b, button, point, self.modify, self.send)
 
     def self_power_press(self, b, button):
         """simspecial.Specials.self_power_press (L2): an ActivateModuleSpecialPower on self."""
-        self._specials().self_power_press(self, b, button, self.modify)
+        return self._specials().self_power_press(self, b, button, self.modify)
 
     def leap_press(self, b, button, p):
         """simspecial.Specials.leap_press (L2): a ProjectileSelf leap (the Sickle's) to a point."""
-        self._specials().leap_press(self, b, button, p, self.send, self.emp_book)
+        return self._specials().leap_press(self, b, button, p, self.send, self.emp_book)
 
     def self_power_due(self, frame):
         """simspecial.Specials.self_power_due (L2): leaps landing, rushes and self powers' bits running out."""
@@ -2932,7 +2932,7 @@ class Sim:
 
     def wfire_press(self, b, button, target=None):
         """simspecial.Specials.wfire_press (L2): a WeaponFireSpecialAbilityUpdate's button."""
-        self._specials().wfire_press(self, b, button, target, self.send, self.emp_book)
+        return self._specials().wfire_press(self, b, button, target, self.send, self.emp_book)
 
     def wfire_due(self, frame):
         """simspecial.Specials.wfire_due (L2): the weapon-fire abilities going off by `frame`."""

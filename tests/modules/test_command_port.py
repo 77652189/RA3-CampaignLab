@@ -314,3 +314,105 @@ def test_a_refused_build_says_why():
     s = _world()
     ok, why = Commands(s).do(Command('build', template=APOC, target='nowhere'))
     assert not ok and why == '找不到工厂 nowhere'
+
+
+def _act(s, action, *a):
+    from types import SimpleNamespace
+    s.executor.action(action, list(a), SimpleNamespace(name='probe'))
+
+
+def _team_world():
+    """Team T: lead, next; outsider (Player_2) a reference named `lead` points at (review 11-19 f #1)."""
+    s = simsmall.small_world([('lead', APOC, 'Player_1', 0.0, 0.0), ('next', APOC, 'Player_1', 60.0, 0.0),
+                              ('outsider', APOC, 'Player_2', 900.0, 0.0)], model=False)
+    for n in ('lead', 'next'):
+        s.bodies[n].team = 'T'
+    s.active.add('T')
+    s.refs['lead'] = s.bodies['outsider']
+    return s
+
+
+def test_a_team_order_reaches_the_members_not_a_reference_of_their_name():
+    """The units an action picked go to the port by serial (review 11-19 f #1: by name, the reference `lead` took the
+    member's place); a unit the script names still reads through the reference."""
+    s = _team_world()
+    _act(s, 'TEAM_ALLOW_AI_AUTOACQUIRE', 'T', '1')
+    _act(s, 'TEAM_STOP', 'T')
+    assert [s.bodies[n].ai_acquire for n in ('lead', 'next', 'outsider')] == [True, True, False]
+    stops = [r[1] for r in s.commands.issued() if r[1].kind == 'stop']
+    assert stops[-1].units == (s.bodies['lead'].serial, s.bodies['next'].serial)
+    _act(s, 'NAMED_STOP', 'lead')
+    assert s.commands.issued()[-1][1].units == ('lead',)
+    assert s.commands._units(s.commands.issued()[-1][1]) == [s.bodies['outsider']]
+
+
+def test_an_empty_team_name_keeps_the_follow_up_attack():
+    """TEAM_ATTACK_TEAM on the default team ('') registers the next-target look-up (review 11-19 f #2: '' was read as
+    no team)."""
+    s = _world()
+    a = s.bodies['a']
+    cmd = Command('attack', 'script', units=(a.serial,), target='foe', force=True,
+                  args=(('objects', 'serial'), ('team', '')))
+    assert s.commands.do(cmd) == (True, '') and s.team_targets[a.serial] == ''
+
+
+def test_an_empty_selection_reads_no_flag():
+    """A team / player with nobody to set reads no flag (review 11-19 f #3: a bad flag raised before any unit)."""
+    s = _world()
+    _act(s, 'TEAM_ALLOW_AI_AUTOACQUIRE', 'nobody', '')
+    _act(s, 'PLAYER_ALLOW_AI_AUTOACQUIRE', 'Player_9', '')
+    assert not s.commands.issued()
+
+
+def test_a_turned_down_press_or_missing_address_is_refused():
+    """The record says what the world did (review 11-19 f #4): a press at a target gone, a map capture nobody goes on,
+    a dead unit's power; a route that needs its object refuses a missing one before the order call (f #5)."""
+    s = _world()
+    press = Command('power', 'script', units=('a',), target='gone', args=OBJ + (('via', 'wfire'), ('button', 'Command_X')))
+    assert s.commands.do(press)[0] is False
+    assert s.commands.do(Command('capture', 'script', units=('missing',), target='foe', args=OBJ))[0] is False
+    s.bodies['b'].alive = False
+    assert s.commands.do(Command('power', units=('b',), power='Command_X', place='@500,0'))[0] is False
+    assert s.commands.do(Command('unpack', 'script', units=('missing',), place='@500,0',
+                                 args=OBJ + (('button', 'Command_X'),))) == (False, 'no unit to unpack')
+    assert s.commands.do(Command('build', 'script', player='Player_1', template=APOC, target='missing',
+                                 args=OBJ + (('press', True),))) == (False, '找不到工厂 missing')
+
+
+def test_a_script_toggle_and_pack_do_what_the_button_does():
+    """Behaviour the givers' static guard cannot see (review 11-19 f, guard mutations): a toggle the world steps is
+    noted as switched (its answer read the right way round), and a yard's pack puts the MCV in its place the same frame
+    (the replacement, not a new build)."""
+    s = simsmall.small_world([('gi', 'AlliedAntiInfantryInfantry', 'Player_1', 0.0, 0.0),
+                              ('yard', 'AlliedConstructionYard', 'Player_1', 600.0, 600.0)], model=False)
+    _act(s, 'NAMED_USE_COMMANDBUTTON_ABILITY', 'gi', 'Command_ToggleRiotShieldSpecialPower')
+    assert s.commands.issued()[-1][2] is True
+    assert s.log[-1][1:] == ('技能', 'gi 按 Command_ToggleRiotShieldSpecialPower 切换状态')
+    yard = s.bodies['yard']
+    _act(s, 'NAMED_USE_COMMANDBUTTON_ABILITY', 'yard', 'Command_PackAlliedMCV')
+    assert s.bodies['yard'].template == 'AlliedMCV' and not yard.alive
+
+
+def test_a_name_ending_in_a_tail_reads_as_the_name():
+    """A line's tail `强制` / `由 P` is the name's own end when the whole is a name here (review 11-19 g #2: objects
+    `enemy 强制` and `f 由 Player_2` read as a forced attack on `enemy` and a build at `f` in Player_2's name); a
+    command whose line would read as another here is neither written nor posted."""
+    s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0), ('enemy', APOC, 'Player_1', 300.0, 0.0),
+                              ('enemy 强制', APOC, 'Player_2', 600.0, 0.0), ('f', APOC, 'Player_1', 0.0, 300.0),
+                              ('f 由 Player_2', APOC, 'Player_1', 300.0, 300.0)], model=False)
+    asked = []
+    s.order_build = lambda player, tmpl, factory=None, press=False: asked.append((player, factory.name)) or True
+    s.commands.post_line('0 攻击 a 打 enemy 强制')
+    s.commands.post_line('0 生产 AlliedAntiInfantryInfantry 在 f 由 Player_2')
+    _run_frames(s)
+    done = [r[1] for r in s.commands.issued() if r[3] != 'posted']
+    assert done == [Command('attack', units=('a',), target='enemy 强制'),
+                    Command('build', template='AlliedAntiInfantryInfantry', target='f 由 Player_2')]
+    # not forced: no goal (the small world has no foes; forced, `a` went for its own side's `enemy`)
+    assert s.bodies['a'].goal is None and asked == [('Player_1', 'f 由 Player_2')]
+    for cmd in (Command('attack', units=('a',), target='enemy 强制'), Command('attack', units=('a',), target='a', force=True)):
+        assert s.commands.line(cmd) == text(cmd)
+    forced = Command('attack', units=('a',), target='enemy', force=True)
+    with pytest.raises(ValueError):
+        s.commands.line(forced)
+    assert s.commands.post(forced, 1.0)[0] is False and len(s.events) == 0

@@ -30,7 +30,15 @@ Two kinds of address. A script line's (the player's, the plays'): `units` / `tar
 role, `名字含 ...`, `队 ...`; one not there is noted). A map script's (`('objects', True)`, the script actions since
 R3 13d): `units` are objects' names as the script action found them (`Sim.body`: a reference reads as what it points
 at), each given its order even when not there -- the order call takes a missing one as it always did -- and `target`
-goes to the order call as it is (it looks the name up itself).
+goes to the order call as it is (it looks the name up itself); `('objects', 'serial')`: `units` are the serials of the
+objects the action picked itself (a team's members: found as picked, a reference of the same name cannot take one's
+place -- review 11-19 f #1). A route that cannot go on without its object (a factory, the unit to unpack) refuses a
+missing one; a press the world turns down (a target gone, out of range) is refused (review 11-19 f #4 #5).
+
+A line's tails `强制` / `由 P` (written only by `text` for a command that has them) read as part of the name when the
+whole is a name in the world (`Commands.command`: a role or an object called `enemy 强制`), so a run's line reads as its
+own name; a command whose line would read as another here (a forced attack on `enemy` beside an `enemy 强制`) is not
+written (`Commands.line`) nor posted (review 11-19 g #2).
 `issued()` is the record of what was posted and done -- written, never read in a run (nothing in a game decides by
 it; so a snapshot does not hold it: R2 13a)."""
 import dataclasses
@@ -151,12 +159,17 @@ def event(cmd, at):
     return (at, verb, who) + tail
 
 
-def command(e, by='script'):
-    """The command a script event gives, or None (a god's-hand verb: 造 血量 旗标 摧毁 删除 打, one-name 占领)."""
+def command(e, by='script', named=None):
+    """The command a script event gives, or None (a god's-hand verb: 造 血量 旗标 摧毁 删除 打, one-name 占领).
+    `named(s)`: s is a name in the world -- then a tail `强制` / `由 P` read off a line is the name's own end (g #2)."""
     _, verb, *rest = e
     kind = KIND.get(verb)
     if kind is None or (verb == '占领' and len(rest) != 2):
         return None
+    if named and kind == 'attack' and rest[2:] == [FORCE] and named(f'{rest[1]} {FORCE}'):
+        rest = [rest[0], f'{rest[1]} {FORCE}']
+    if named and kind == 'build' and len(rest) > 2 and named(f'{rest[1]}{BY_PLAYER}{rest[2]}'):
+        rest = [rest[0], f'{rest[1]}{BY_PLAYER}{rest[2]}']
     if kind == 'buy_science':
         return Command(kind, by, player=rest[1] if len(rest) > 1 else '', args=(('science', rest[0]),))
     if kind == 'build':
@@ -193,6 +206,24 @@ class Commands:
     def _read(self, line):
         return sys.modules[type(self._w).__module__].parse_script(line)
 
+    def _named(self, who):
+        """`who` is a role or an object's name here (what pick finds by name; no note)."""
+        w = self._w
+        return who in w.m.cast or who in w.bodies or any(k.startswith(who + ' ') and k[len(who) + 1:].isdigit()
+                                                         for k in w.m.cast)
+
+    def command(self, e, by='script'):
+        """`command(e, by)` with this world's names: a line's tail is a name's own end when the whole is a name."""
+        return command(e, by, self._named)
+
+    def line(self, cmd):
+        """text(cmd), checked to read back here as cmd (ValueError: no line carries it, or its line reads as another
+        command in this world -- a tail taken for a name's end)."""
+        s = text(cmd)
+        if self.command(event(cmd, 0), cmd.by) != cmd:
+            raise ValueError(f'{s!r} reads as another command here (a name ends in its tail)')
+        return s
+
     def post(self, cmd, at):
         """Queue it for `at` (seconds, or ('@', flag, secs)): run by the events cell as its script line would be. A
         command its line cannot carry whole is refused (ok False, nothing queued)."""
@@ -202,6 +233,7 @@ class Commands:
         if ok:
             try:
                 e = event(cmd, at)
+                self.line(cmd)
             except ValueError as err:
                 ok, why = False, str(err)
         if ok:
@@ -220,7 +252,7 @@ class Commands:
             raise ValueError(f'{line!r}: {len(events)} events, not one')
         for e in events:
             self._queue(e)
-            cmd = command(e, 'player')
+            cmd = self.command(e, 'player')
             if cmd is not None:
                 self._issued.append((self._w.frame_now(), cmd, True, 'posted'))
         return tuple(events)
@@ -257,6 +289,10 @@ class Commands:
 
     # --- the routes (the script verbs' order calls; Sim.happen runs its order verbs through `do` since R3 13c-2)
     def _units(self, cmd):
+        if cmd.arg('objects') == 'serial':  # the objects an action picked, each as picked (one no longer in the world's
+            want = set(cmd.units)           # table -- a name taken over since -- is not ordered: no None to the routes)
+            found = {b.serial: b for b in self._w.bodies.values() if b.serial in want}
+            return [found[s] for s in cmd.units if s in found]
         if cmd.arg('objects'):              # a map script's: each name as Sim.body finds it, a missing one None
             return [self._w.body(n) for n in cmd.units]
         return [b for who in cmd.units for b in self._w.pick(who)]
@@ -294,7 +330,8 @@ class Commands:
         if cmd.arg('objects'):
             for b in self._units(cmd):
                 w.order_attack(b, cmd.target, cmd.force)
-                if cmd.arg('team'):          # TEAM_ATTACK_TEAM: the fight takes the team's next one when this dies
+                if cmd.arg('team') is not None:     # TEAM_ATTACK_TEAM ('' the default team's, f #2): the fight
+                    # takes the team's next one when this dies
                     w.team_targets[b.serial] = cmd.arg('team')
             return True, ''
         targets = w.pick(cmd.target)
@@ -324,10 +361,9 @@ class Commands:
 
     def _capture(self, cmd):
         w = self._w
-        if cmd.arg('objects'):
-            for b in self._units(cmd):
-                w.order_capture(b, cmd.target)
-            return True, ''
+        if cmd.arg('objects'):              # refused when no unit goes (none there, or none may enter it: f #4)
+            sent = [w.order_capture(b, cmd.target) for b in self._units(cmd)]
+            return (True, '') if sent and all(sent) else (False, f'没有能去占 {cmd.target} 的工兵')
         targets = w.pick(cmd.target)
         if not targets:
             return False, f'找不到 {cmd.target}'
@@ -339,6 +375,8 @@ class Commands:
         w = self._w
         if cmd.arg('objects'):              # a map script's press of that factory's build button (press: queued while
             f = w.body(cmd.target)          # banned, bench engine_production g); the action names the template
+            if f is None:                   # no factory: refused, not another's queue (review 11-19 f #5)
+                return False, f'找不到工厂 {cmd.target}'
             if w.order_build(cmd.player, cmd.template, factory=f, press=cmd.arg('press', False)):
                 return True, ''
             return False, f'{w.label(f)} 现在造不了 {cmd.template}'
@@ -441,16 +479,17 @@ class Commands:
             return self._player_power(cmd, via)
         if via not in ('wfire', 'leap', 'movement', 'self'):
             return False, f'power: no press route {via!r}'
+        pressed = []                        # each press's answer: False where the world turned it down (f #4)
         for b in self._units(cmd):
             if via == 'wfire':
-                w.wfire_press(b, button, cmd.target or None)
+                pressed.append(w.wfire_press(b, button, cmd.target or None))
             elif via == 'leap':
-                w.leap_press(b, button, w.point(cmd.place))
+                pressed.append(w.leap_press(b, button, w.point(cmd.place)))
             elif via == 'movement':
-                w.movement_power_press(b, button, w.point(cmd.place))
+                pressed.append(w.movement_power_press(b, button, w.point(cmd.place)))
             else:
-                w.self_power_press(b, button)
-        return True, ''
+                pressed.append(w.self_power_press(b, button))
+        return (True, '') if all(pressed) else (False, f'{button}: not pressed (a target gone, out of range)')
 
     def _player_power(self, cmd, via):
         """Each unit's own click; refused only when every unit's is (why: their refusals, sorted, once each)."""
@@ -466,6 +505,8 @@ class Commands:
     def _unpack(self, cmd):                  # drive to the place, turn into the button's replacement there (M10)
         w = self._w
         p = w.point(cmd.place)
+        if None in self._units(cmd):        # no unit to unpack: refused before the order call (f #5)
+            return False, 'no unit to unpack'
         if all([w.order_unpack(b, p, cmd.arg('button'), cmd.place) for b in self._units(cmd)]):
             return True, ''
         return False, 'no unpack button of his'

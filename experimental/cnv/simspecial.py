@@ -63,11 +63,11 @@ class Specials:
         distance = math.hypot(point[0] - b.x, point[1] - b.y)
         if distance < sp['minimum'] or (sp['maximum'] and distance > sp['maximum']):
             world.guessed.add('MovementSpecialPower: out-of-range approach unmodelled')
-            return
+            return False
         jobs = self.movement_due
         if b.name in jobs:
             world.guessed.add('MovementSpecialPower: repeated press unmodelled')
-            return
+            return False
         now = world.frame_now()
         new = sp['bits'] - b.script_status
         old_speed = b.base['speed'] if b.base is not None else b.speed
@@ -85,6 +85,7 @@ class Specials:
         send(b, point)
         world.used.add('movement special power')
         world.guessed.add('MovementSpecialPower: exact phase timing, cooldown and collisions unmodelled')
+        return True
 
     def self_power_press(self, world, b, button, modify):
         """An ActivateModuleSpecialPower on self (simunits.self_module_power): its AttributeModifier hangs on b for its
@@ -112,6 +113,7 @@ class Specials:
             self.self_bits_due.append((now + duration, b, new))
         modify(b)
         world.note('技能', f'{world.label(b)} 按 {button}：{sp["modifier"]}')
+        return True
 
     def leap_press(self, world, b, button, p, send, emp_until):
         """A WeaponFireSpecialAbilityUpdate whose weapon is ProjectileSelf (the Sickle's leap, AT_WAYPOINT): b stands
@@ -126,13 +128,14 @@ class Specials:
             world.note('技能', f'{world.label(b)} 按 {button}：超出 {ab["range"]:.0f}，开过去')
             b.goal, b.mode = None, 'move'
             send(b, p)
-            return
+            return True
         land = world.frame_now() + ab['unpack'] + int(math.ceil(d / speed * simunits.LIFE_FPS))
         b.path, b.dest = [], None
         deadlines = emp_until()       # holds still till it lands (INFERRED)
         deadlines[b.serial] = max(deadlines.get(b.serial, 0), land)
         self.leaps_due.append((land, b, p))
         world.note('技能', f'{world.label(b)} 按 {button} 跳到 ({p[0]:.0f}, {p[1]:.0f})')
+        return True
 
     def self_power_due(self, world, frame, modify, detonate, ground_z):
         for job in list(self.leap_ground_hits):
@@ -187,7 +190,7 @@ class Specials:
         t = world.body(target) if target else None
         if target and not (t and t.alive):
             world.note('技能', f'{world.label(b)} 按 {button}：目标 {target} 不在')
-            return
+            return False
         world.used.add('weapon fire ability')
         job = dict(by=b, ab=ab, eff=simunits.special_weapon(ab['weapon'], world.own), target=t, button=button,
                    fire_at=None)
@@ -200,6 +203,7 @@ class Specials:
             send(b, (t.x, t.y))
         else:
             self.start(world, job, emp_until)
+        return True
 
     def start(self, world, job, emp_until):
         b, ab = job['by'], job['ab']

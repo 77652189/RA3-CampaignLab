@@ -498,8 +498,8 @@ def test_planted_orders_round_the_port_are_found():
     for planted in (src.replace('        self.commands.post_line(line, one=True)\n',
                                 '        self.commands.post_line(line, one=True)\n'
                                 '        self.view.obs.world.events.append(1)\n'),
-                    src.replace("        self.push(num(self.view.obs.t), command.text(cmd))\n",
-                                "        self.push(num(self.view.obs.t), command.text(cmd))\n"
+                    src.replace("        self.push(num(self.view.obs.t), self.commands.line(cmd))\n",
+                                "        self.push(num(self.view.obs.t), self.commands.line(cmd))\n"
                                 "        self.view.w.order_move(b, p, True)\n"),
                     src.replace("        self.memo[b.name] = key\n",
                                 "        self.memo[b.name] = key\n        b.goal = None\n")):

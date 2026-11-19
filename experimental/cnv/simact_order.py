@@ -6,9 +6,11 @@ A guarded one returns False where its guard fails (Sim.act's chain goes on, as b
 old chain's own run of branches for the team commands, in its order: the "no live team" branch first (E3).
 `isinstance(b.goal, type(b))` was `isinstance(b.goal, Body)` (Body has no subclasses: the same test).
 
-The orders go through the run's command port (`_order`: a Command by 'script', its units the objects' names; R3 13d-1);
-an action keeps what decides who is ordered and when (a team's members, the living, the movers, its guards). Not
-orders, so not through it: a teleport and the AI hand-over (they drop the unit's order with `stand`, a god's hand)."""
+The orders go through the run's command port (R3 13d-1): `_order` for the units a script names (the names as the
+script gave them: a reference reads as what it points at), `_order_bodies` for the ones an action picked itself (a
+team's members, a player's units, the movers) -- by serial, so a reference of the same name cannot stand in for the
+picked one (review 11-19 f #1). An action keeps what decides who is ordered and when. Not orders, so not through it: a
+teleport and the AI hand-over (they drop the unit's order with `stand`, a god's hand)."""
 import math
 
 from engine.ports.command import Command
@@ -22,8 +24,11 @@ def _order(sim, kind, units, *args, **fields):
     sim.commands.do(Command(kind, 'script', units=tuple(units), args=(('objects', True),) + args, **fields))
 
 
-def _names(bodies):
-    return [b.name for b in bodies]
+def _order_bodies(sim, kind, bodies, *args, **fields):
+    """The order to the objects an action picked itself, by serial (the port finds each as picked, not by a name a
+    reference may take over)."""
+    sim.commands.do(Command(kind, 'script', units=tuple(b.serial for b in bodies), args=(('objects', 'serial'),) + args,
+                            **fields))
 
 
 def team_commands(sim, name, a, script):
@@ -32,7 +37,7 @@ def team_commands(sim, name, a, script):
         sim.lost_orders.append((sim.t, script.name, name, a[0]))
         sim.note('无效命令', f'{name} {a[0]}：这个队还没有人加入，命令落空')
     elif name in ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO'):
-        _order(sim, 'attack_move' if name == 'ATTACK_MOVE_TEAM_TO' else 'move', _names(sim.members(a[0])),
+        _order_bodies(sim, 'attack_move' if name == 'ATTACK_MOVE_TEAM_TO' else 'move', sim.members(a[0]),
                ('group', True), ('on_grid', True), place=a[1])
     elif name in TEAM_FOLLOWS:
         # (team, path, asTeam[, ?][, start waypoint]); the fourth flag (work/re/handoff-archive.md) not read: ignored.
@@ -41,15 +46,15 @@ def team_commands(sim, name, a, script):
         # why); the team only picks the join (the waypoint nearest its middle: the first try, P and Q 427 off
         # the middle each, both went to Q)
         attack = name == 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS'
-        _order(sim, 'follow_path', _names(sim.members(a[0])), ('exact', name.endswith('_EXACT')),
+        _order_bodies(sim, 'follow_path', sim.members(a[0]), ('exact', name.endswith('_EXACT')),
                ('as_team', bool(int(a[2])) and not attack),
                ('start', a[-1] if name.endswith('_AT_WAYPOINT') else None), place=a[1], attacking=attack)
     elif name == 'TEAM_ATTACK_NAMED':
-        _order(sim, 'attack', _names(sim.members(a[0])), target=a[1])
+        _order_bodies(sim, 'attack', sim.members(a[0]), target=a[1])
     elif name == 'TEAM_GUARD_AREA':
-        _order(sim, 'guard', _names(sim.members(a[0])), place=a[1])
+        _order_bodies(sim, 'guard', sim.members(a[0]), place=a[1])
     elif name == 'TEAM_STOP':
-        _order(sim, 'stop', _names(sim.members(a[0])))
+        _order_bodies(sim, 'stop', sim.members(a[0]))
     else:
         return False
 
@@ -101,14 +106,14 @@ def team_move_to_nearest_object_of_type(sim, name, a, script):
         goal = min((o for o in sim.living() if o.template.lower() == want),
                    key=lambda o: math.hypot(o.x - mx, o.y - my), default=None)
         if goal is not None:
-            _order(sim, 'move', _names(crew), ('group', True), pos=(goal.x, goal.y))
+            _order_bodies(sim, 'move', crew, ('group', True), pos=(goal.x, goal.y))
 
 
 def team_guard_area_from_position(sim, name, a, script):
     # (team, area, waypoint): bench 11-13 engine_acts_v guard: the tanks went to the waypoint (inside the area,
     # 100 in from its edge) and stayed there, the area's middle never reached; an enemy put in the area 600
     # from them: see the module docstring for what they did. Taken as a group move to the waypoint
-    _order(sim, 'move', _names(sim.members(a[0])), ('group', True), ('on_grid', True), place=a[2])
+    _order_bodies(sim, 'move', sim.members(a[0]), ('group', True), ('on_grid', True), place=a[2])
 
 
 def named_face_waypoint(sim, name, a, script):
@@ -149,12 +154,14 @@ def player_allow_ai_autoacquire(sim, name, a, script):
     # (player, on): the team version on every unit the player owns now. Bench 11-13 engine_acts_v aaq: the
     # player's tank fired on the enemy plant 210 off after it. A unit the player gets later not benched (the
     # bench's hand-over never happened), INFERRED: not reached
-    _order(sim, 'auto_acquire', _names(b for b in sim.living() if b.owner == a[0]), ('on', bool(int(a[1]))))
+    crew = [b for b in sim.living() if b.owner == a[0]]
+    if crew:                    # the flag read only with a unit to set, as each unit's was (review 11-19 f #3)
+        _order_bodies(sim, 'auto_acquire', crew, ('on', bool(int(a[1]))))
 
 
 def team_idle_for_seconds(sim, name, a, script):
     # (team, n) INFERRED: the unit version on every member (it drops the order: engine_scripts7 idle)
-    _order(sim, 'idle', _names(b for b in sim.members(a[0]) if b.speed))
+    _order_bodies(sim, 'idle', [b for b in sim.members(a[0]) if b.speed])
 
 
 def team_attack_team(sim, name, a, script):
@@ -164,7 +171,7 @@ def team_attack_team(sim, name, a, script):
     them = sim.members(a[1])
     for b in crew:
         if them:
-            _order(sim, 'attack', [b.name], ('team', a[1]),       # the fight takes the next member when this dies
+            _order_bodies(sim, 'attack', [b], ('team', a[1]),     # the fight takes the next member when this dies
                    target=min(them, key=lambda t: math.hypot(t.x - b.x, t.y - b.y)).name)
 
 
@@ -194,7 +201,7 @@ def team_hunt(sim, name, a, script):
     crew = sim.members(a[0]) if name == 'TEAM_HUNT' else [b for b in [sim.body(a[0])] if b and b.alive]
     movers = [b for b in crew if b.speed > 0]
     if name == 'TEAM_HUNT' and movers and sim.tactical(movers[0].owner):
-        _order(sim, 'hunt', _names(movers))
+        _order_bodies(sim, 'hunt', movers)
     elif any(b.owner in sim.ai for b in crew):
         sim.gap(GAP_ACTION, name, 'AI 玩家的猎杀战术（HuntTactic）不模拟（引擎 B 的 AI）')
 
@@ -228,7 +235,9 @@ def team_set_stance(sim, name, a, script):
 def team_allow_ai_autoacquire(sim, name, a, script):
     # (team, on) d115 11: each member now takes what only a computer's units take by themselves (the
     # NOT_AUTOACQUIRABLE + AUTO_ACQUIRABLE_BY_AI ones: structures); takes_by_itself reads it
-    _order(sim, 'auto_acquire', _names(sim.members(a[0])), ('on', bool(int(a[1]))))
+    crew = sim.members(a[0])
+    if crew:                    # the flag read only with a unit to set (review 11-19 f #3)
+        _order_bodies(sim, 'auto_acquire', crew, ('on', bool(int(a[1]))))
 
 
 def named_force_attack_named(sim, name, a, script):
@@ -250,12 +259,12 @@ def attack_move_team_to_named_object(sim, name, a, script):
     # (team, object) INFERRED: ATTACK_MOVE_TEAM_TO the object's place at the order (it is not followed)
     o = sim.body(a[1])
     if o and sim.present(o):
-        _order(sim, 'attack_move', _names(sim.members(a[0])), ('group', True), pos=(o.x, o.y))
+        _order_bodies(sim, 'attack_move', sim.members(a[0]), ('group', True), pos=(o.x, o.y))
 
 
 def player_set_all_units_to_flee(sim, name, a, script):
     # (player) engine_runoffmap: every one with RunOffMapBehavior runs
-    _order(sim, 'flee', _names(b for b in sim.living() if b.owner == a[0]))
+    _order_bodies(sim, 'flee', [b for b in sim.living() if b.owner == a[0]])
 
 
 def unit_set_stance(sim, name, a, script):
