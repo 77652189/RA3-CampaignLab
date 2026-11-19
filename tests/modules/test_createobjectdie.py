@@ -119,3 +119,40 @@ def test_of_two_airborne_modules_only_the_first_makes_its_wrecks_fall():
     for m in mods:
         m.on_die(module.Death(10, 'shot'))
     assert len(host.made) == 1 and host.made[0][1]
+
+
+PLANE = '''<GameObject id="CNV_TestPlane" Side="Allies" KindOf="AIRCRAFT">
+  <Behaviors>
+    <CreateObjectDie id="ModuleTag_Frozen" CreationList="OCL_Frozen">
+      <DieMuxData DeathTypes="ALL" RequiredStatus="UNDER_FROZEN" /></CreateObjectDie>
+    <CreateObjectDie id="ModuleTag_First" CreationList="OCL_First">
+      <DieMuxData DeathTypes="ALL" RequiredStatus="AIRBORNE_TARGET SPECIAL_ARMOR_ACTIVE" /></CreateObjectDie>
+    <CreateObjectDie id="ModuleTag_Second" CreationList="OCL_Second">
+      <DieMuxData DeathTypes="ALL" RequiredStatus="AIRBORNE_TARGET" /></CreateObjectDie>
+  </Behaviors>
+</GameObject>'''
+
+
+def test_the_airborne_pick_matches_the_status_the_thing_has():
+    """B5 review e #6 (the parent's pick): RequiredStatus is matched against the thing's status as it is
+    (module.status_now), not a status of the one bit AIRBORNE_TARGET -- a plane holding both of the first module's bits
+    takes the first list, one without the second's; a module whose RequiredStatus does not name AIRBORNE_TARGET is no
+    airborne one (the old air_wrecks skipped it), whatever the thing holds."""
+    s = simsmall.small_world()
+    s.own['CNV_TestPlane'] = PLANE
+    s.add('plane', 'CNV_TestPlane', 'Player_1', 100.0, 100.0)
+    b = s.bodies['plane']
+    mods = b.find(interfaces.CreateOnDeath)
+    host = _Host()
+    for m in mods:
+        m.world = host
+    b.surface = 'air'
+    made = []
+    for status in ({'SPECIAL_ARMOR_ACTIVE', 'UNDER_FROZEN'}, {'UNDER_FROZEN'}):
+        b.status = set(status)
+        host.made = []
+        for m in mods:
+            m.on_die(module.Death(10, 'shot'))
+        made.append(host.made)
+    assert made == [[('OCL_First', True)], [('OCL_Second', True)]]
+    assert module.status_now(b) == {'UNDER_FROZEN', 'AIRBORNE_TARGET'}

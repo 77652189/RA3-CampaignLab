@@ -20,7 +20,7 @@ turns it on --; VeterancyLevels not read; a deletion fires nothing (Generals' de
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
-AIRBORNE = 'AIRBORNE_TARGET'    # the status bit of a thing in the air (as CreateObjectDie's)
+AIRBORNE = module.AIRBORNE      # the status bit of a thing in the air (as CreateObjectDie's)
 
 
 def _words(head, name, default=''):
@@ -65,8 +65,6 @@ class FireWeaponWhenDead(module.Module, interfaces.Die, interfaces.DeathWeapon):
         return self.data.weapon
 
     def fires(self, death):
-        """Its thing's status now: its object status bits, AIRBORNE_TARGET while in the air (surface 'air')."""
-        status = set(getattr(self.thing, 'status', ()))
-        if getattr(self.thing, 'surface', '') == 'air':
-            status.add(AIRBORNE)
-        return self.data.fires(death, status)
+        """By its thing's status now (module.status_now: its object status bits, AIRBORNE_TARGET while in the air --
+        the same match as CreateObjectDie's, B5 review e #6)."""
+        return self.data.fires(death, module.status_now(self.thing))

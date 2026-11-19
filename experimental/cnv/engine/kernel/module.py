@@ -158,6 +158,19 @@ class DieMux:
         return self.required <= status and not self.exempt & status
 
 
+AIRBORNE = 'AIRBORNE_TARGET'    # the status bit of a thing in the air
+
+
+def status_now(thing):
+    """The status a Die module's RequiredStatus / ExemptStatus is matched against (DieMux.holds): the thing's object
+    status bits as they are, AIRBORNE_TARGET added while it is in the air (surface 'air': the simulator sets no such
+    bit) -- shared by CreateObjectDie and FireWeaponWhenDead (B5 review e #6: never a status made up of the one bit)."""
+    status = set(getattr(thing, 'status', ()))
+    if getattr(thing, 'surface', '') == 'air':
+        status.add(AIRBORNE)
+    return status
+
+
 class ModuleData:
     """The parse of one module block: parse(head, inner) -> an instance, sealed by the factory -- read only after."""
 

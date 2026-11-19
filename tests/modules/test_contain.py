@@ -124,6 +124,24 @@ def test_a_thing_under_a_taken_name_has_none_of_the_old_ones_passengers(end):
     assert 'gi' not in s.garrison.where and s.garrison.held(house) == [] and gi.alive == (end == 'destroy')
 
 
+@pytest.mark.parametrize('filled', [False, True])
+def test_a_pending_evacuation_stays_with_its_host_when_its_name_is_taken(filled):
+    """B5 review g #1 (as the passengers, review 1119d #1): the evacuation queue is the host thing's -- a house made
+    under the old one's name the same frame (empty, or with a passenger of its own) neither drops the old house's
+    job nor takes it: the old passenger goes out where the old house is, the new one's stays in."""
+    s = simsmall.small_world()
+    old = s.add('host', 'AM_Apartments_01', None, 300.0, 300.0)
+    p = s.add('p', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 300.0)
+    assert s.garrison.put(p, old, script=True) and s.garrison.evacuate(old)
+    new = s.add('host', 'AM_Apartments_01', None, 600.0, 300.0)
+    q = s.add('q', 'AlliedAntiInfantryInfantry', 'Player_1', 700.0, 300.0)
+    if filled:
+        assert s.garrison.put(q, new, script=True)
+    s.garrison.due()
+    assert [(f[1].name, f[2]) for f in s.garrison.flying] == [('p', (300.0, 300.0))]
+    assert s.garrison.held(old) == [] and s.garrison.held(new) == ([q] if filled else [])
+
+
 def test_a_transport_keeps_its_owner_and_its_passengers_are_enclosed():
     s = simsmall.small_world()
     boat = s.add('boat', 'AlliedAntiInfantryVehicle', 'Player_2', 300.0, 300.0)

@@ -123,7 +123,9 @@ class Garrisons:
         self.where = {}             # passenger name -> building body
         self.going = {}             # body name -> building body it was sent into (the AI's walk)
         self.log = []               # (sim seconds, passenger name, building name, script)
-        self.ejecting = {}          # transport name -> [the spot, seconds between, reach, next out at]
+        self.ejecting = {}          # host serial -> [the spot, seconds between, reach, next out at]: by the thing, as
+                                    # boxes (B5 review g #1: a thing made under its name since neither drops nor takes
+                                    # the job)
         self.flying = []            # [lands at, passenger body, the spot]
 
     def _box(self, b):
@@ -311,7 +313,7 @@ class Garrisons:
             return
         sp = self.box(g) or {}
         peers = self.peers
-        self.ejecting.pop(g.name, None)
+        self.ejecting.pop(g.serial, None)
         for u in held:
             self.out(u)
             if u.alive and (delete or sp.get('kill')):
@@ -339,7 +341,7 @@ class Garrisons:
         h = found[0]
         per = simunits._secs(simunits._attr(h, 'TimePerPassenger') or '0.5s')
         reach = simunits._num(simunits._attr(h, 'StartAbilityRange'), 0.0)
-        self.ejecting[g.name] = [where, per, reach, None]
+        self.ejecting[g.serial] = [where, per, reach, None]
         if reach and math.hypot(where[0] - g.x, where[1] - g.y) > reach:
             peers.send(g, where)                     # INFERRED: drives in, then throws
         world.note('驻军', f'{world.label(g)} 往外弹乘员')
@@ -355,18 +357,18 @@ class Garrisons:
         # only an aircraft lands first: the Sudden transport's DisguisedEvacuate and a civilian building's evacuate
         # had all out within a second of the press (engine_acts_tgl DE / CV, round 223)
         delay = EVACUATE_DELAY if 'AIRCRAFT' in g.kinds else 0.0
-        self.ejecting[g.name] = [(g.x, g.y), 0.0, 0.0, world.t + delay]
+        self.ejecting[g.serial] = [(g.x, g.y), 0.0, 0.0, world.t + delay]
         world.note('驻军', f'{world.label(g)} 落地放下乘员')
         return True
 
     def _throw(self):
         world, peers = self.world, self.peers
-        for gname, job in list(self.ejecting.items()):
-            g = world.bodies.get(gname)
-            box = self.boxes.get(g.serial) if g is not None else None
+        for serial, job in list(self.ejecting.items()):
+            box = self.boxes.get(serial)                # the host itself, by its serial (never its name: g #1)
+            g = box.thing if box is not None else None
             held = [u for u in (box.passengers() if box else ()) if u.alive]
             if g is None or not g.alive or not held:
-                del self.ejecting[gname]
+                del self.ejecting[serial]
                 continue
             where, per, reach, at = job
             if at is None:

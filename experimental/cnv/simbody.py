@@ -116,7 +116,8 @@ class Life:
     def _out(self, world, b, why, delete, death='NORMAL', cause=''):
         """What a death and a deletion share: b out of the fight -- the only write of a body's alive / deleted /
         died_at (guard 10, tests/guards/test_kernel.py) -- then its modules told, the one broadcast of a thing's end
-        (step B4c, the private model's Object.die then destroyObject): a death tells its Die modules (module.Death),
+        (step B4c, the private model's Object.die then destroyObject): a death begins its SlowDeath modules' lie,
+        then tells its Die modules (module.Death),
         both tell its Destroy modules, each in module order -- the SpawnBehavior's queue emptied and its children
         deleted, the SlavedUpdate's maker told of the death, the Contain's passengers out (World.vacate)."""
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], world.t
@@ -124,6 +125,8 @@ class Life:
             world.kills.append((b.last_hit, b.last_by, b.template, b.name))     # cond_retail: who killed what
         if not delete:
             info = module.Death(world.frame_now(), why, death, cause)
+            for m in b.find(interfaces.SlowDeath):      # its lie first: every Die module reads it (B5 review e #7)
+                m.begin(info)
             for m in b.find(interfaces.Die):
                 m.on_die(info)
         for m in b.find(interfaces.Destroy):

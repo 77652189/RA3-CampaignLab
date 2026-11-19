@@ -140,8 +140,12 @@ class Destroy(Interface):
 
 class SlowDeath(Interface):
     """SlowDeathBehavior (step B5a): its DestructionDelay (lies, seconds), how long this death lies (lie: the delay
-    for a crush, else LINGER) and whether its attributes name no death types (is_plain: the one the body lies by)."""
+    for a crush, else LINGER) and whether its attributes name no death types (is_plain: the one the body lies by);
+    told of its thing's death before the Die modules (begin: `info` a module.Death; B5 review e #7)."""
     __slots__ = ()
+
+    def begin(self, info):
+        raise NotImplementedError
 
     def lies(self):
         raise NotImplementedError
@@ -155,7 +159,8 @@ class SlowDeath(Interface):
 
 class CreateOnDeath(Interface):
     """CreateObjectDie (step B5b): the ObjectCreationList it makes (creation_list), whether its DieMuxData takes a
-    death type (takes) and a death in the air (takes_airborne: RequiredStatus / ExemptStatus against AIRBORNE_TARGET)."""
+    death type (takes) and a death in the air (takes_airborne: RequiredStatus / ExemptStatus against the thing's
+    status, module.status_now; B5 review e #6)."""
     __slots__ = ()
 
     def creation_list(self):
@@ -164,7 +169,7 @@ class CreateOnDeath(Interface):
     def takes(self, death):
         raise NotImplementedError
 
-    def takes_airborne(self):
+    def takes_airborne(self, status=None):
         raise NotImplementedError
 
 

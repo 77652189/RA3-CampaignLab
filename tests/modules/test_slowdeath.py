@@ -74,11 +74,33 @@ def test_a_plain_module_takes_only_the_crush_and_a_named_one_none():
     s.add('guy2', 'CNV_TestGuy', 'Player_1', 300.0, 100.0)
     named, plain = s.bodies['guy2'].find(interfaces.SlowDeath)
     assert not named.is_plain() and plain.is_plain()
-    plain.on_die(module.Death(10, 'shot'))
-    named.on_die(module.Death(10, 'crushed', 'CRUSHED'))
+    plain.begin(module.Death(10, 'shot'))
+    named.begin(module.Death(10, 'crushed', 'CRUSHED'))
     assert plain.lie() == slowdeath.LINGER and named.lie() == slowdeath.LINGER
-    plain.on_die(module.Death(10, 'crushed', 'CRUSHED'))
+    plain.begin(module.Death(10, 'crushed', 'CRUSHED'))
     assert plain.lie() == 8.5
+
+
+FIRST = '''<GameObject id="CNV_TestFirst" Side="Soviet" KindOf="INFANTRY">
+  <Behaviors>
+    <CreateObjectDie id="ModuleTag_Before" CreationList="OCL_None" />
+    <SlowDeath id="ModuleTag_Death" DestructionDelay="2s" />
+    <CreateObjectDie id="ModuleTag_After" CreationList="OCL_None" />
+  </Behaviors>
+</GameObject>'''
+
+
+def test_a_die_module_before_the_slow_death_reads_this_deaths_lie(monkeypatch):
+    """B5 review e #7 (the parent's order): the lie is set before the Die broadcast, so a Die module ahead of the
+    SlowDeath in module order reads the crush's 2 s, not LINGER."""
+    from engine.modules import createobjectdie
+    s = _world()
+    s.own['CNV_TestFirst'] = FIRST
+    s.add('first', 'CNV_TestFirst', 'Player_1', 600.0, 100.0)
+    read = []
+    monkeypatch.setattr(createobjectdie.CreateObjectDie, 'on_die', lambda self, info: read.append(self.thing.linger))
+    s.destroy(s.bodies['first'], 'crushed', death='CRUSHED')
+    assert read == [2.0, 2.0]
 
 
 def test_a_commented_out_block_is_not_read():

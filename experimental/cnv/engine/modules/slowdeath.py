@@ -15,7 +15,12 @@ Decided in step B5a: a lying body's Destroy modules are told at its death, not w
 model's SlowDeath calls destroyObject after the DestructionDelay). INFERRED and kept: in the simulator only a crushed
 body lies, and what it leaves out of the fight -- passengers, slaves -- is let go at its death by the Die modules all
 the same (Contain on_die, Slaved on_die); only a crushed spawner's children would go 127 frames early (none in the
-eleven recorded missions)."""
+eleven recorded missions).
+
+The B5 review fix (e #7, the coordinator's ruling 11-19): the lie is set before the Die broadcast (begin, called by
+the host's simbody.Life._out ahead of every Die module, as the old sim.crush_along set `linger` before the kill), so
+every Die module reads this death's lie, an earlier one too; it is no Die module itself. INFERRED: in Generals the
+SlowDeathBehavior begins in its own onDie, in module order."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -37,16 +42,16 @@ class SlowDeathData(module.ModuleData):
 
 
 @factory.module('SlowDeath')
-class SlowDeath(module.Module, interfaces.Die, interfaces.SlowDeath):
-    """No update: told of its thing's death (on_die), it sets how long this death lies (`linger`, read by the body's
-    forward: Sim.present / dying). The names the body's fields had, so the frame record is unchanged: `lies` and
+class SlowDeath(module.Module, interfaces.SlowDeath):
+    """No update: told of its thing's death before the Die modules (begin), it sets how long this death lies
+    (`linger`, read by the body's forward: Sim.present / dying). The names the body's fields had, so the frame record is unchanged: `lies` and
     `linger` are the body's forwards, RECORDED none."""
     DATA = SlowDeathData
     STATE = ('linger',)
     RECORDED = ()
     linger = LINGER
 
-    def on_die(self, info):
+    def begin(self, info):
         if self.data.plain and info.death == LIES:
             self.linger = self.data.delay
 

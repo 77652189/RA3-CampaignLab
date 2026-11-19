@@ -9,16 +9,25 @@ debris and rubble nearly every retail template has -- is a behaviour change for 
   * a death of age (module.Death's cause LIFETIME, from a LifetimeUpdate read off the template -- a mission's own,
     the port's LifetimeUpdate rule; the skirmish AI's late one leaves nothing) makes the list's objects where it
     stood that frame (World.create: the ice core's wall; bench 2026-11-07 engine_life);
-  * a death in the air (the thing's surface 'air': its status AIRBORNE_TARGET, the only bit read) makes the first
-    such module's wrecks fall (World.create airborne: Life.air_crash, checks/engine_crash_fall.py) -- the one list
-    simunits.air_wrecks read; the death type is not read there (it read none);
+  * a death in the air (the thing's surface 'air') makes the first module's wrecks fall whose RequiredStatus names
+    AIRBORNE_TARGET or nothing and whose RequiredStatus / ExemptStatus hold for the thing's status as it is
+    (module.status_now: its status bits, AIRBORNE_TARGET in the air; B5 review e #6) (World.create airborne:
+    Life.air_crash, checks/engine_crash_fall.py) -- the one list simunits.air_wrecks read; the death type is not
+    read there (it read none);
   * any other death makes nothing.
-VeterancyLevels and the list's other nuggets (FX, debris, weapons) are not read."""
+VeterancyLevels and the list's other nuggets (FX, debris, weapons) are not read.
+
+Kept from step B5b (B5 review e #5, the coordinator's ruling 11-19): the list is found by its name over every
+ObjectCreationList the mission and the retail data have (in the SDK a global named asset; the old reader looked in
+the thing's own XML only) -- kept; an immortal body that lives out its lifetime makes nothing (it does not die, so no
+Die module is told; the old reader made the list all the same) -- a behaviour change, INFERRED. Known order: the
+objects it leaves are in the world while the later Die modules and the Destroy modules are told (they came after
+every Destroy module before)."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
 LIFETIME = module.LIFETIME      # module.Death's cause for a LifetimeUpdate's death of age
-AIRBORNE = 'AIRBORNE_TARGET'    # the status bit of a thing in the air
+AIRBORNE = module.AIRBORNE      # the status bit of a thing in the air
 
 
 def _words(head, name, default=''):
@@ -51,11 +60,12 @@ class CreateObjectDie(module.Module, interfaces.Die, interfaces.CreateOnDeath):
         d, thing = self.data, self.thing
         if info.cause == LIFETIME and d.takes(info.death):
             self.world.create(thing, d.ocl, False)
-        if thing.surface == 'air' and d.holds({AIRBORNE}) and self._first_airborne():
+        if thing.surface == 'air' and self._first_airborne():
             self.world.create(thing, d.ocl, True)
 
     def _first_airborne(self):
-        return next(m for m in self.thing.find(interfaces.CreateOnDeath) if m.takes_airborne()) is self
+        status = module.status_now(self.thing)
+        return next((m for m in self.thing.find(interfaces.CreateOnDeath) if m.takes_airborne(status)), None) is self
 
     def creation_list(self):
         return self.data.ocl
@@ -63,5 +73,12 @@ class CreateObjectDie(module.Module, interfaces.Die, interfaces.CreateOnDeath):
     def takes(self, death):
         return self.data.takes(death)
 
-    def takes_airborne(self):
-        return self.data.holds({AIRBORNE})
+    def takes_airborne(self, status=None):
+        """Its block is one for a death in the air -- its RequiredStatus names AIRBORNE_TARGET or nothing (the pick
+        of the old simunits.air_wrecks) -- and its RequiredStatus / ExemptStatus hold for the thing's status
+        (module.status_now; None: its status now, as if in the air): B5 review e #6, the parent's pick by the status
+        the thing has, never a status of the one bit."""
+        d = self.data
+        if status is None:
+            status = module.status_now(self.thing) | {AIRBORNE}
+        return (not d.required or AIRBORNE in d.required) and d.holds(status)
