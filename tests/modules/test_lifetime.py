@@ -63,7 +63,7 @@ def test_a_lifetime_set_late_attaches_the_module_and_kills_at_that_frame_a_dead_
     s = _world()
     s.add('w', 'CNV_TestWall', 'Player_1', 0.0, 0.0)
     w = s.bodies['w']
-    assert w.modules == ()
+    assert w.find(interfaces.Lifetime) is None          # its Body module only (step B2b)
     s.world.frame = 10
     simbody.last_until(s, w, 40)
     assert w.life_end == 40 and isinstance(w.find(interfaces.Lifetime), lifetime.Lifetime)

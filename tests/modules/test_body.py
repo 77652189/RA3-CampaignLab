@@ -110,7 +110,8 @@ def test_damage_stops_at_the_floor_a_prop_takes_none_a_heal_at_the_maximum():
     assert g.hp == 1.0
     g.health = 0
     assert g.hp == 1.0                  # a script's 0 % holds an immortal at its floor
-    assert c.prop in ('stays', 'dies') and _one(c).kind() == 'PropBody'
+    assert c.prop == 'dies' and _one(c).kind() == 'PropBody'      # a NORMAL death up its chain
+    assert _world(('l', 'AM_StreetSegment01')).bodies['l'].prop == 'stays'      # engine_propbody's street
     was = c.hp
     c.damage(50.0)
     assert c.hp == was and c.health == 0.0

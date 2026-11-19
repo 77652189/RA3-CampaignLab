@@ -176,7 +176,8 @@ def test_assign_press_keeps_its_first_target_and_one_dispatcher_a_target():
     two = s.add('two', 'AlliedWarFactory', 'Player_1', 300.0, 600.0)
     a = s.add('a', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 350.0, 400.0)
     b = s.add('b', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 350.0, 450.0)
-    a.hp, b.hp = 100.0, 100.0
+    a.set_hp(100.0, tell=False)
+    b.set_hp(100.0, tell=False)
     assert one.spawned_children and two.spawned_children
     assert s.assignments.press(one, 'Command_RepairVehicle', a)
     (m,) = one.find(interfaces.Assign)
