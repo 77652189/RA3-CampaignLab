@@ -914,19 +914,19 @@ class Brain:
                 if u.body.alive and u.body.name in slots:
                     self.order(u, 'move', p)
         armed = was = False
-        ordered = self.__dict__.setdefault('_unpack_ordered', {})   # id -> body: the members armed once (kept, so
-        for u in team.members:                                        # an id is not reused)
+        ordered = self.__dict__.setdefault('_unpack_ordered', set())  # the serials of the members armed once
+        for u in team.members:
             b = u.body
-            if id(b) in ordered:
+            if b.serial in ordered:
                 was = True
             if not b.alive:
                 continue
-            if b.building is not None and id(b) in ordered:
+            if b.building is not None and b.serial in ordered:
                 armed = True
-            elif id(b) not in ordered and \
+            elif b.serial not in ordered and \
                     self.peers.order_unpack(b, p, stand=distance, here=distance is not None,
                                             send=distance is None):
-                ordered[id(b)] = b
+                ordered.add(b.serial)
                 was = True
                 armed = b.building is not None or armed
         return not armed if was else True

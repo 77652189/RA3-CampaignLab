@@ -76,7 +76,9 @@ def canon(v, depth=0):
     if Observe.is_thing(v):
         return 'B:' + v.name
     if isinstance(v, int) and not isinstance(v, bool) and v > 10 ** 11:
-        return 'ID'                              # an id() key (follow offsets): differs run to run
+        return 'ID'                              # an id() differs run to run; no recorded table keys by one since
+                                                 # snapshot step 11b-2 (test_kernel's id guard): kept so a stray
+                                                 # one reads as one word, not a difference every run
     if v is None or isinstance(v, (bool, int, float, str)):
         return repr(v)
     if depth > 4:

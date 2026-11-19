@@ -61,10 +61,12 @@ class PublicExecutor(port.Executor):
         self.log = []                   # (frame, 'show', script name, action, args): the plug-in's log's shape
         self._side = ''
         self._scripts, self._groups = {}, {}
+        self._again = {}                # name -> the later scripts of a name _scripts already holds (place order)
         for lst in lists:
             self._index(lst.items)
         rng = random.Random(seed)       # Generals: a script with a delay first runs 0..2 s into the game
-        self._next = {id(s): rng.randint(0, 2 * fps) if s.interval > 0 else 0 for s in self._scripts.values()}
+        # a delayed script's next frame by its _key, never id(): a snapshot names its scripts
+        self._next = {s.name: rng.randint(0, 2 * fps) if s.interval > 0 else 0 for s in self._scripts.values()}
         self.rng = rng                  # then SET_RANDOM_COUNTER's draws
 
     def _index(self, items):
@@ -72,8 +74,14 @@ class PublicExecutor(port.Executor):
             if isinstance(it, script_lists.Group):
                 self._groups.setdefault(it.name, it)
                 self._index(it.items)
-            else:
-                self._scripts.setdefault(it.name, it)
+            elif self._scripts.setdefault(it.name, it) is not it:
+                self._again.setdefault(it.name, []).append(it)
+
+    def _key(self, s):
+        """A script's key in _next: its name; a later script of a name already taken, (name, its place among them)."""
+        if self._scripts.get(s.name) is s:
+            return s.name
+        return s.name, next(i for i, x in enumerate(self._again[s.name]) if x is s)
 
     def script_named(self, name):
         """The script of that name (the first of it), None where none (UNIT_EXECUTE_SEQUENTIAL_SCRIPT)."""
@@ -118,9 +126,10 @@ class PublicExecutor(port.Executor):
         if not s.levels[self.level if level is None else level]:
             return
         if s.interval > 0:
-            if self.steps < self._next.get(id(s), 0):
+            key = self._key(s)
+            if self.steps < self._next.get(key, 0):
                 return
-            self._next[id(s)] = self.steps + s.interval * self.fps
+            self._next[key] = self.steps + s.interval * self.fps
         if any(o and all(self.holds(c) for c in o) for o in s.ors):
             self.do(s.actions, s)
         elif s.else_actions:

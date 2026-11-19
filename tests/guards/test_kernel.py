@@ -958,6 +958,61 @@ def test_end_broadcast_guard_bites():
     assert both[bm] != gone[bm] and ('simbody.py', 'Life._out') not in end_calls(both)
 
 
+# --- 10. no table keyed by id() (step S, the snapshot; docs/engine/sim-modules.md 9.2) -----------------------------
+# A restore makes the things, scripts and teams again: an id() key names an object of the old run and finds nothing
+# (and a freed object's id can come back on a new one). Keys are names or World.build's serial (Thing.serial). The
+# id() calls left, by the function they are in, with why -- only shrinks.
+ID_CALLS = {
+    ('simorder.py', 'follow_due'): 3,                   # `done`: one call's set of follow dicts, by identity
+    ('simai.py', 'Brain.team_named'): 2,                # `held`: one call's set of wrappers, by identity
+    ('simcoverage.py', 'code_strings'): 2,              # an AST walk's own nodes (a tool, no state of a run)
+    ('simunits.py', '_ModuleTemplates._effective'): 1,  # the template port's inheritance trail (one lookup's cycle check)
+    ('simai.py', 'Brain.stand'): 1,                     # tactics.runs: the private model's own key, changed on its side
+    ('simai.py', 'Brain.approach'): 2,                  # _exp_teams: by team, until the model's teams carry a number
+    ('simai.py', 'Brain.snap'): 1,                      # _rec_runs: by run, the same
+}
+
+
+def id_calls(sources=None):
+    """{(file, innermost function): how many id(...) calls} over experimental/cnv/sim*.py and the engine package."""
+    if sources is None:
+        sources = health_sources()
+    found = {}
+    for name, src in sources.items():
+        tree = ast.parse(src)
+        where = {}
+        for qual, fn in _functions(tree):           # outer functions first: an inner one overwrites its own nodes
+            for x in ast.walk(fn):
+                where[x] = qual
+        for x in ast.walk(tree):
+            if isinstance(x, ast.Call) and isinstance(x.func, ast.Name) and x.func.id == 'id':
+                key = (name, where.get(x, '<module>'))
+                found[key] = found.get(key, 0) + 1
+    return found
+
+
+def test_no_table_is_keyed_by_id():
+    found = id_calls()
+    more = {k: n for k, n in found.items() if n > ID_CALLS.get(k, 0)}
+    fewer = {k: n for k, n in ID_CALLS.items() if found.get(k, 0) < n}
+    assert not more, f'id() is no key (a snapshot cannot name it): use a name or the serial {more}'
+    assert not fewer, f'an id() call is gone: lower ID_CALLS {fewer}'
+
+
+def test_id_guard_bites():
+    sources = health_sources()
+    keyed = dict(sources, **{'simact_object.py': sources['simact_object.py']
+                             + '\n\ndef mark(world, b):\n    world.marks[id(b)] = 1\n'})
+    assert id_calls(keyed)[('simact_object.py', 'mark')] == 1
+    assert id_calls(keyed) != ID_CALLS
+    fo = 'simorder.py'
+    less = dict(sources, **{fo: sources[fo].replace('        done.add(id(leg))\n', '        pass\n', 1)})
+    assert less[fo] != sources[fo] and id_calls(less)[(fo, 'follow_due')] == 2
+    ex = 'engine/script/executor.py'
+    back = dict(sources, **{ex: sources[ex].replace('self._next.get(key, 0)', 'self._next.get(id(s), 0)', 1)})
+    assert back[ex] != sources[ex] and id_calls(back)[(ex, 'PublicExecutor.execute')] == 1
+
+
 def test_the_kernel_tests_run_in_full_without_the_model(tmp_path):
     if os.environ.get('CNV_KERNEL_INNER'):
         return

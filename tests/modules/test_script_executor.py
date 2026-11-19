@@ -177,3 +177,23 @@ def test_an_or_of_ands_its_else_actions_and_a_delayed_script():
         if 'TICK' in acts:
             ticks.append(f)
     assert 0 <= ticks[0] <= 30 and len(ticks) >= 3 and all(b - a == 30 for a, b in zip(ticks, ticks[1:]))
+
+
+def test_two_delayed_scripts_of_one_name_keep_their_own_clocks_by_name():
+    """A delayed script's next frame is kept by its name, not id() (a snapshot names it): the first of a name draws its
+    0..2 s start; a later one of the same name (script_named does not find it) has no draw, runs on the first frame,
+    then every its own interval -- as each Script object's own clock did."""
+    S, C = lists.Script, lists.Content
+    w = Log({})
+    first = S('tick', [[C('CONDITION_TRUE')]], [C('A')], once=False, interval=2)
+    later = S('tick', [[C('CONDITION_TRUE')]], [C('B')], once=False, interval=3)
+    ex = executor.PublicExecutor(w, [lists.ScriptList('P1', [first]), lists.ScriptList('P2', [later])], 0, 15, seed=0)
+    seen = {'A': [], 'B': []}
+    for f in range(1, 140):
+        w.calls.clear()
+        ex.step()
+        for c in w.calls:
+            seen[c[1]].append(f)
+    assert ex.script_named('tick') is first and set(ex._next) == {'tick', ('tick', 0)}
+    assert 0 <= seen['A'][0] <= 30 and all(b - a == 30 for a, b in zip(seen['A'], seen['A'][1:]))
+    assert seen['B'] == [1, 46, 91, 136]
