@@ -16,9 +16,16 @@ verbs too -- 造, 删除, 血量 ...: those are not commands and go in as the sc
 
 The port holds no rules: `do` routes each kind to the world's own order call (`Sim.happen` gives a script line's
 order through `do` too: one port per run, `Sim.commands`). Kinds with no route yet (`check` says so) get theirs when their giver moves to the port (R3 13d-13f).
+
+Two kinds of address. A script line's (the player's, the plays'): `units` / `target` are what `Sim.pick` reads (a
+role, `名字含 ...`, `队 ...`; one not there is noted). A map script's (`('objects', True)`, the script actions since
+R3 13d): `units` are objects' names as the script action found them (`Sim.body`: a reference reads as what it points
+at), each given its order even when not there -- the order call takes a missing one as it always did -- and `target`
+goes to the order call as it is (it looks the name up itself).
 `issued()` is the record of what was posted and done -- written, never read in a run (nothing in a game decides by
 it; so a snapshot does not hold it: R2 13a)."""
 import dataclasses
+import math
 import sys
 
 # The commands a player or the AI can give in the game (the port's whole vocabulary; module_plan §2 order family and
@@ -26,11 +33,14 @@ import sys
 KINDS = frozenset({
     'move', 'attack_move', 'attack', 'attack_ground', 'stop', 'idle', 'guard', 'follow_path', 'capture', 'enter',
     'exit', 'power', 'toggle', 'stance', 'build', 'place', 'unpack', 'sell', 'buy_science', 'hunt', 'flee',
-    'auto_acquire'})
+    'auto_acquire', 'face'})
 VERB = {'attack_move': '派', 'move': '走', 'attack': '攻击', 'power': '放', 'capture': '占领', 'build': '生产',
         'buy_science': '买'}
 KIND = {v: k for k, v in VERB.items()}
-ROUTED = frozenset(VERB)            # the kinds `do` has a route for (the rest: R3 13d-13f, with their givers)
+# the kinds `do` has a route for (the rest: R3 13d-13f, with their givers): the line verbs', and the script actions'
+# (13d-1); face (Generals' AI command list has AICMD_FACE_POSITION; INFERRED for RA3) joined with them.
+ROUTED = frozenset(VERB) | {'guard', 'stop', 'idle', 'follow_path', 'attack_ground', 'face', 'hunt', 'flee', 'stance',
+                            'auto_acquire'}
 GIVERS = ('player', 'ai', 'script', 'proxy', 'test')     # `by`: 'player', 'ai:<player>', ...
 DATA = (str, int, float, bool, type(None))
 
@@ -144,6 +154,8 @@ class Commands:
     def post(self, cmd, at):
         """Queue it for `at` (seconds, or ('@', flag, secs)): run by the events cell as its script line would be."""
         ok, why = self.check(cmd)
+        if ok and cmd.kind not in VERB:     # the queue is today's script events: a kind no line carries is do's only
+            ok, why = False, f'{cmd.kind}: not queued (no script line carries it; do gives it now)'
         if ok:
             self._queue(event(cmd, at))
         self._issued.append((self._w.frame_now(), cmd, ok, why or 'posted'))
@@ -195,19 +207,42 @@ class Commands:
 
     # --- the routes (the script verbs' order calls; Sim.happen runs its order verbs through `do` since R3 13c-2)
     def _units(self, cmd):
+        if cmd.arg('objects'):              # a map script's: each name as Sim.body finds it, a missing one None
+            return [self._w.body(n) for n in cmd.units]
         return [b for who in cmd.units for b in self._w.pick(who)]
 
     def _attack_move(self, cmd):
+        if cmd.arg('objects'):
+            return self._script_move(cmd, True)
         for b in self._units(cmd):          # each unit's own attack-move (ATTACK_MOVE_NAMED_UNIT_TO)
             self._w.order_move(b, cmd.place, True, on_grid=True)
         return True, ''
 
     def _move(self, cmd):                    # several at once: a group move (MOVE_NAMED_UNIT_TO)
+        if cmd.arg('objects'):
+            return self._script_move(cmd, False)
         self._w.order_group(self._units(cmd), cmd.place, False, on_grid=True)
+        return True, ''
+
+    def _script_move(self, cmd, attacking):
+        """A map script's move: a team's (`group`: one group move, MOVE_TEAM_TO) or each unit's own; to `pos` or the
+        place; `on_grid`: snapped (engine_drop)."""
+        w, where, grid = self._w, cmd.place if cmd.pos is None else cmd.pos, cmd.arg('on_grid', False)
+        if cmd.arg('group'):
+            w.order_group(self._units(cmd), where, attacking, on_grid=grid)
+        else:
+            for b in self._units(cmd):
+                w.order_move(b, where, attacking, on_grid=grid)
         return True, ''
 
     def _attack(self, cmd):
         w = self._w
+        if cmd.arg('objects'):
+            for b in self._units(cmd):
+                w.order_attack(b, cmd.target, cmd.force)
+                if cmd.arg('team'):          # TEAM_ATTACK_TEAM: the fight takes the team's next one when this dies
+                    w.team_targets[b.serial] = cmd.arg('team')
+            return True, ''
         targets = w.pick(cmd.target)
         if not targets:
             return False, f'找不到 {cmd.target}'
@@ -228,6 +263,10 @@ class Commands:
 
     def _capture(self, cmd):
         w = self._w
+        if cmd.arg('objects'):
+            for b in self._units(cmd):
+                w.order_capture(b, cmd.target)
+            return True, ''
         targets = w.pick(cmd.target)
         if not targets:
             return False, f'找不到 {cmd.target}'
@@ -260,3 +299,66 @@ class Commands:
         why = f'买不了 {science}' + (f'（{book.points} 点）' if book else '（玩家没有协议）')
         w.note('剧本', why)
         return False, why
+
+    # --- the map scripts' orders (simact_order's actions give them through `do` since R3 13d-1; the actions keep what
+    # decides who is ordered -- a team's members, the living ones, the movers -- the routes are the order calls)
+    def _guard(self, cmd):
+        for b in self._units(cmd):
+            self._w.order_guard(b, cmd.place)
+        return True, ''
+
+    def _stop(self, cmd):
+        for b in self._units(cmd):
+            self._w.order_stop(b)
+        return True, ''
+
+    def _idle(self, cmd):                    # its order dropped, nothing new (the AI's command 5)
+        for b in self._units(cmd):
+            self._w.stand(b)
+        return True, ''
+
+    def _follow_path(self, cmd):
+        self._w.order_follow(self._units(cmd), cmd.place, cmd.attacking, exact=cmd.arg('exact', False),
+                             start=cmd.arg('start'), as_team=cmd.arg('as_team', False))
+        return True, ''
+
+    def _attack_ground(self, cmd):           # fire at the spot till another order replaces it (fight: ground_fire)
+        p = self._w.point(cmd.place)
+        for b in self._units(cmd):
+            self._w.stand(b)
+            b.ground_fire = p
+        return True, ''
+
+    def _face(self, cmd):                    # stand and turn to the point
+        p = self._w.point(cmd.place)
+        for b in self._units(cmd):
+            self._w.stand(b)
+            b.face = math.atan2(p[1] - b.y, p[0] - b.x)
+        return True, ''
+
+    def _hunt(self, cmd):                    # the crew attack-moves to the nearest hostile, again after each dies
+        w = self._w
+        movers = self._units(cmd)
+        w.hunts = [h for h in w.hunts if not any(b in movers for b in h[0])]
+        w.hunts.append([movers, None, w.frame_now()])
+        w.hunt_due(w.frame_now())
+        return True, ''
+
+    def _flee(self, cmd):                    # RunOffMapBehavior's run
+        for b in self._units(cmd):
+            self._w.flee_start(b)
+        return True, ''
+
+    def _stance(self, cmd):                  # an AI setting, no order dropped: GUARD 0 AGGRESSIVE 1 HOLD_POSITION 2 HOLD_FIRE 3
+        stance = cmd.arg('stance')
+        for b in self._units(cmd):
+            hold = stance == 3               # going HOLD_FIRE stops a standing attack without dropping it (stance.md)
+            if hold != b.hold_fire:
+                b.hold_paused = hold and isinstance(b.goal, type(b))
+            b.hold_fire, b.stance = hold, stance
+        return True, ''
+
+    def _auto_acquire(self, cmd):            # an AI setting: takes what only a computer's units take by themselves
+        for b in self._units(cmd):
+            b.ai_acquire = cmd.arg('on')
+        return True, ''

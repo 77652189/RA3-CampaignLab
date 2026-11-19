@@ -54,10 +54,12 @@ def test_unknown_and_unrouted_kinds_are_refused():
     s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)], model=False)
     port = Commands(s)
     assert port.do(Command('teleport', units=('a',)))[0] is False
-    ok, why = port.post(Command('hunt', units=('a',)), 5.0)
+    ok, why = port.post(Command('sell', units=('a',)), 5.0)
     assert not ok and 'no route' in why and not s.events
-    assert set(ROUTED) < port.kinds() and len(port.kinds()) == 22
-    assert [r[2] for r in port.issued()] == [False, False]
+    ok, why = port.post(Command('hunt', units=('a',)), 5.0)          # routed, but no script line carries it
+    assert not ok and 'not queued' in why and not s.events
+    assert set(ROUTED) < port.kinds() and len(port.kinds()) == 23
+    assert [r[2] for r in port.issued()] == [False, False, False]
 
 
 def test_post_queues_as_the_line_and_pending_keeps_the_order():
@@ -115,6 +117,59 @@ def test_do_gives_the_world_what_the_order_call_gives(kind):
             s.t = round(s.t + sim.DT, 3)
     assert _states(port_world) == _states(direct)
     assert _states(port_world)['a'] != _states(idle)['a']          # the order did something
+
+
+OBJ = (('objects', True),)
+SCRIPT_ORDERS = {      # a map script's order (R3 13d-1: simact_order) -> what the action called before
+    'move each': (Command('move', 'script', units=('a',), place='@400,300', args=OBJ + (('on_grid', True),)),
+                  lambda s, a, b: s.order_move(a, '@400,300', False, on_grid=True)),
+    'attack_move group': (Command('attack_move', 'script', units=('a', 'b'), pos=(400.0, 300.0),
+                                  args=OBJ + (('group', True),)),
+                          lambda s, a, b: s.order_group([a, b], (400.0, 300.0), True)),
+    'attack team': (Command('attack', 'script', units=('a',), target='foe', force=True, args=OBJ + (('team', 'T'),)),
+                    lambda s, a, b: (s.order_attack(a, 'foe', True), s.team_targets.__setitem__(a.serial, 'T'))),
+    'missing unit': (Command('attack', 'script', units=('nobody',), target='foe', args=OBJ),
+                     lambda s, a, b: s.order_attack(None, 'foe')),
+    'stop': (Command('stop', 'script', units=('a',), args=OBJ), lambda s, a, b: s.order_stop(a)),
+    'idle': (Command('idle', 'script', units=('a', 'b'), args=OBJ), lambda s, a, b: (s.stand(a), s.stand(b))),
+    'flee': (Command('flee', 'script', units=('a',), args=OBJ), lambda s, a, b: s.flee_start(a)),
+    'auto_acquire': (Command('auto_acquire', 'script', units=('a',), args=OBJ + (('on', True),)),
+                     lambda s, a, b: setattr(a, 'ai_acquire', True)),
+    'stance': (Command('stance', 'script', units=('a',), args=OBJ + (('stance', 3),)),
+               lambda s, a, b: (setattr(a, 'hold_paused', isinstance(a.goal, type(a))), setattr(a, 'hold_fire', True),
+                                setattr(a, 'stance', 3))),
+}
+
+
+@pytest.mark.parametrize('case', sorted(SCRIPT_ORDERS))
+def test_a_script_order_gives_what_the_action_called(case):
+    cmd, direct_call = SCRIPT_ORDERS[case]
+    port_world, direct = _pair()
+    for s in (port_world, direct):
+        s.order_move(s.bodies['a'], '@200,500', False)         # an order going on: the new one replaces it
+    direct_call(direct, direct.bodies['a'], direct.bodies['b'])
+    assert Commands(port_world).do(cmd) == (True, '')
+    assert _states(port_world) == _states(direct)
+    assert port_world.team_targets == direct.team_targets and port_world.used == direct.used
+    for s in (port_world, direct):
+        for _ in range(30):
+            s.step()
+            s.t = round(s.t + sim.DT, 3)
+    assert _states(port_world) == _states(direct)
+
+
+@pytest.mark.parametrize('kind', ['face', 'attack_ground'])
+def test_a_script_order_at_a_place(kind):
+    port_world, direct = _pair()
+    a = direct.bodies['a']
+    direct.stand(a)
+    if kind == 'face':
+        a.face = __import__('math').atan2(300.0 - a.y, 400.0 - a.x)
+    else:
+        a.ground_fire = direct.point('@400,300')
+    Commands(port_world).do(Command(kind, 'script', units=('a',), place='@400,300', args=OBJ))
+    assert _states(port_world) == _states(direct)
+    assert (port_world.bodies['a'].face, port_world.bodies['a'].ground_fire) == (a.face, a.ground_fire)
 
 
 def test_a_script_line_order_is_the_runs_port_do():

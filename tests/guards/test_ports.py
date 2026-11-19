@@ -382,7 +382,7 @@ ORDER_CALLS = {'order_move', 'order_group', 'order_attack', 'order_capture', 'or
                'order_power', 'order_transform', 'order_stop', 'order_follow', 'order_unpack', 'sell', 'stand', 'send',
                'happen', 'parse_script', 'flee_start', 'hunt_due', 'drop_goal', 'set_goal'}
 ORDER_QUEUES = {'events', 'anchored'}
-ORDER_FIELDS = {'goal', 'path', 'dest', 'move_to', 'mode', 'stance', 'hold_fire', 'hold_paused', 'ground_fire',
+ORDER_FIELDS = {'goal', 'path', 'dest', 'move_to', 'mode', 'stance', 'hold_fire', 'hold_paused', 'ground_fire', 'face',
                 'ai_acquire', 'follow', 'engaged'}
 GIVERS = [AUTOPLAY / 'autoplay.py', AUTOPLAY / 'players.py']
 
@@ -409,6 +409,9 @@ def giver_breaks(src, harness):
 # Sim.happen -- a script line's player order (派 走 攻击 放 占领 X 进 Y 生产 买) is the port's do; what it still does
 # itself is the god's hand (摧毁 删除 血量 打 one-name 占领 旗标 造), no order.
 GIVER_PARTS = [(GAME, 'Session'), (CNV / 'sim.py', 'Sim.happen')]
+# Script action files whose orders go through the port (R3 13d), with the functions that are no order: a teleport and
+# the AI hand-over drop the unit's order (stand) as the god's hand.
+SCRIPT_GIVERS = {CNV / 'simact_order.py': {'unit_teleport_to_waypoint', 'unit_ai_transfer'}}
 
 
 def test_the_givers_give_through_the_command_port():
@@ -416,6 +419,19 @@ def test_the_givers_give_through_the_command_port():
         assert giver_breaks(f.read_text(encoding='utf-8'), harness(f)) == [], f.name
     for path, name in GIVER_PARTS:
         assert giver_breaks(part_src(path, name), set()) == [], (path.name, name)
+    for path, gods_hand in SCRIPT_GIVERS.items():
+        assert giver_breaks(path.read_text(encoding='utf-8'), gods_hand) == [], path.name
+
+
+def test_planted_orders_in_a_script_action_are_found():
+    f = CNV / 'simact_order.py'
+    src = f.read_text(encoding='utf-8')
+    for old, new in (("    _order(sim, 'stop', [a[0]])\n", "    sim.order_stop(sim.body(a[0]))\n"),
+                     ("        _order(sim, 'stance', [a[0]], ('stance', int(a[1])))\n",
+                      "        b.stance = int(a[1])\n"),
+                     ("        _order(sim, 'face', [a[0]], place=a[1])\n", "        b.face = 0.0\n")):
+        planted = src.replace(old, new)
+        assert planted != src and giver_breaks(planted, SCRIPT_GIVERS[f]), new
 
 
 def test_planted_orders_in_a_giver_part_are_found():

@@ -47,11 +47,16 @@ FORWARDER_CALLS = {
     # simact_object: kill / sell / move / capture an object
     ('simact_object', 'delete'): 2, ('simact_object', 'destroy'): 5, ('simact_object', 'modify'): 1, ('simact_object', 'order_capture'): 1,
     ('simact_object', 'sell'): 2, ('simact_object', 'send'): 1, ('simact_object', 'stand'): 1,
-    # simact_order: the unit and team orders
-    ('simact_order', 'flee_start'): 1, ('simact_order', 'hunt_due'): 1, ('simact_order', 'order_attack'): 4,
-    ('simact_order', 'order_capture'): 1, ('simact_order', 'order_follow'): 2, ('simact_order', 'order_group'): 4,
-    ('simact_order', 'order_guard'): 2, ('simact_order', 'order_move'): 1, ('simact_order', 'order_stop'): 2,
-    ('simact_order', 'stand'): 6,
+    # simact_order: a teleport's and the AI hand-over's dropped order (its orders go through the command port, R3 13d-1)
+    ('simact_order', 'stand'): 2,
+    # the command port: the one caller of the order calls for the givers moved onto it (R3 13b-13d; the order family's
+    # move into AIUpdate turns these into its module's command)
+    ('engine.ports.command', 'flee_start'): 1, ('engine.ports.command', 'hunt_due'): 1,
+    ('engine.ports.command', 'order_attack'): 2, ('engine.ports.command', 'order_capture'): 2,
+    ('engine.ports.command', 'order_follow'): 1, ('engine.ports.command', 'order_group'): 2,
+    ('engine.ports.command', 'order_guard'): 1, ('engine.ports.command', 'order_move'): 2,
+    ('engine.ports.command', 'order_power'): 1, ('engine.ports.command', 'order_stop'): 1,
+    ('engine.ports.command', 'stand'): 3,
     # simact_player / simact_world: upgrades and a team's stop
     ('simact_player', 'modify'): 1, ('simact_world', 'stand'): 1,
     # simdamage's Peers loan
