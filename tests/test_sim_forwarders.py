@@ -36,7 +36,8 @@ enginefiles = _layers.enginefiles     # module name -> file (simX, or engine.<la
 
 # (module, forwarder) -> calls, 11-17 (R2). Who calls: the script actions (simact_*), the frame table (simloop), the
 # Peers loans (simdamage, simorder, simpullback, simsweep, simgarrison, siminfiltrator: `peers.X` is the Sim's
-# forwarder X today).
+# forwarder X today). Step B4b split destroy(delete=...) into destroy (a death) and delete (no death): the calls
+# that picked by a flag name both now.
 FORWARDER_CALLS = {
     # simact_ability: the ability buttons the scripts press
     ('simact_ability', 'leap_press'): 1, ('simact_ability', 'movement_power_press'): 1,
@@ -44,7 +45,7 @@ FORWARDER_CALLS = {
     ('simact_ability', 'self_power_press'): 1, ('simact_ability', 'send'): 1, ('simact_ability', 'toggle_press'): 1,
     ('simact_ability', 'wfire_press'): 1,
     # simact_object: kill / sell / move / capture an object
-    ('simact_object', 'destroy'): 5, ('simact_object', 'modify'): 1, ('simact_object', 'order_capture'): 1,
+    ('simact_object', 'delete'): 2, ('simact_object', 'destroy'): 5, ('simact_object', 'modify'): 1, ('simact_object', 'order_capture'): 1,
     ('simact_object', 'sell'): 2, ('simact_object', 'send'): 1, ('simact_object', 'stand'): 1,
     # simact_order: the unit and team orders
     ('simact_order', 'flee_start'): 1, ('simact_order', 'hunt_due'): 1, ('simact_order', 'order_attack'): 4,
@@ -57,17 +58,17 @@ FORWARDER_CALLS = {
     ('simdamage', 'destroy'): 4, ('simdamage', 'modify'): 4, ('simdamage', 'projectile_detonate'): 2,
     ('simdamage', 'queue_projectile_hit'): 1,
     # simgarrison's Peers loan (R3 ⑨c)
-    ('simgarrison', 'destroy'): 1, ('simgarrison', 'modify'): 3, ('simgarrison', 'order_move'): 2,
+    ('simgarrison', 'delete'): 1, ('simgarrison', 'destroy'): 1, ('simgarrison', 'modify'): 3, ('simgarrison', 'order_move'): 2,
     ('simgarrison', 'send'): 1,
     # siminfiltrator's Peers loan (R3 ⑨c: the calls it made on the whole Sim before, counted once it was layered)
-    ('siminfiltrator', 'destroy'): 11, ('siminfiltrator', 'send'): 1,
+    ('siminfiltrator', 'delete'): 10, ('siminfiltrator', 'destroy'): 1, ('siminfiltrator', 'send'): 1,
     # simloop: the frame table's cells, each the Sim's forwarder of its block
     **dict.fromkeys([('simloop', n) for n in (
         'aura_tick', 'blast_due', 'capture_due', 'deal', 'death_blast_due', 'fight', 'flee_due',
         'follow_due', 'hunt_due', 'lose_health', 'self_power_due', 'seq_due', 'suppression_tick',
         'wfire_due')], 1),
     # simorder's Peers loan
-    ('simorder', 'destroy'): 3, ('simorder', 'modify'): 1, ('simorder', 'send'): 12, ('simorder', 'toggle_press'): 1,
+    ('simorder', 'delete'): 3, ('simorder', 'modify'): 1, ('simorder', 'send'): 12, ('simorder', 'toggle_press'): 1,
     # simpullback / simsweep Peers loans
     ('simpullback', 'order_move'): 1, ('simsweep', 'destroy'): 1,
     # simai's Peers loan (step 9d-2, R: the calls it made on self.sim before, counted since it joined the registry;

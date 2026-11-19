@@ -249,7 +249,8 @@ def test_meta_impact_straight_projectile_dispatches_on_arrival_not_launch(monkey
         queued.append((e.frame_now(), when))
         assert near.x == 2360 and near.z is None
         queue(when, target, damage, attacker, weapon, centre)
-        attacker.hp, attacker.alive = 0, False
+        attacker.set_hp(0.0, tell=False)            # the Body module's write since step B2b
+        attacker.alive = False
 
     def record_arrival(weapon, target, centre=None, attacker=None):
         arrived.append(e.frame_now())
@@ -802,7 +803,7 @@ def test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravit
 
 
 def test_physics_p5_the_apollo_s_air_death_reads_its_crash_from_the_data():
-    """Sim.air_crash's data (simunits.air_wrecks / fly_height / crash_frames): an Apollo killed in the air leaves one
+    """Life.air_crash's data (simunits.air_wrecks / fly_height / crash_frames): an Apollo killed in the air leaves one
     of Collapse (no weapon) and Dying (x 0.5, falls, 150 EXPLOSIVE radius 20, allies 50 %), 175 up; the wreck's fall
     from the bench's kill (engine_crash_fall plain) hits 29 frames on, at (3160, 1500)."""
     import simunits
@@ -851,7 +852,7 @@ def test_physics_p5_the_flying_apollo_s_wreck_hits_its_last_point_as_on_the_benc
 
 
 def _face_health():
-    """Sim.air_crash from the bench's kill (x 2885, 15 a frame east) of engine_crash_face's four planes,
+    """simbody.Life.air_crash from the bench's kill (x 2885, 15 a frame east) of engine_crash_face's four planes,
     death_blast_due past the landing: each Hammer's health percent as the counter reads it."""
     import math
     import build
@@ -864,7 +865,7 @@ def _face_health():
     for k, (y, _) in FACE_LANES.items():
         b = s.bodies[face_name(k)]
         b.x, b.y, b.z, b.path, b.speed, b.engaged = 2885.0, y, None, [(4200.0, y)], 15.0 * 15, None
-        s.air_crash(b)
+        s._life().air_crash(s, b, s.death_blasts, s.impact_ground_z)
     s.death_blast_due(105 + 40)
     tanks = {k: s.bodies[face_name('Tank ' + k)] for k in FACE_LANES}
     return {k: math.floor(b.hp / b.max_hp * 100 + 1e-9) for k, b in tanks.items()}

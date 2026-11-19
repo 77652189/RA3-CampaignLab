@@ -95,12 +95,13 @@ def ejects(command, own=None):
     return str(simunits.command_power(command, own) or '').startswith('SpecialPower_EjectPassengers')
 
 
-PEERS = frozenset({'_upgrade', 'destroy', 'modify', 'order_move', 'send'})
+PEERS = frozenset({'_upgrade', 'delete', 'destroy', 'modify', 'order_move', 'send'})
 
 
 class Peers:
     """What the garrisons may reach on their host (the Sim) beyond the world: the names in PEERS, read when used --
-    L2 upgrades (_upgrade), the body's end (destroy), modifiers (modify), its walk (send) and L5's move (order_move)."""
+    L2 upgrades (_upgrade), the body's end (destroy / delete), modifiers (modify), its walk (send) and L5's move
+    (order_move)."""
     __slots__ = ('host',)
 
     def __init__(self, host):
@@ -301,8 +302,8 @@ class Garrisons:
             self.out(u)
 
     def died(self, g, delete=False):
-        """Sim.destroy: the building is gone. Killed: KillPassengersOnDeath kills them, else they come out alive;
-        deleted: they go with it."""
+        """Sim.destroy / delete: the building is gone. Killed: KillPassengersOnDeath kills them, else they come out
+        alive; deleted: they go with it."""
         held = list(self.held(g))
         if not held:
             return
@@ -312,7 +313,7 @@ class Garrisons:
         for u in held:
             self.out(u)
             if u.alive and (delete or sp.get('kill')):
-                peers.destroy(u, '随楼删掉' if delete else '楼毁乘员同死', delete=delete)
+                (peers.delete if delete else peers.destroy)(u, '随楼删掉' if delete else '楼毁乘员同死')
         self.boxes.pop(g.name, None)
 
     def eject(self, g, command, where):

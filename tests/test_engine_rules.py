@@ -30,7 +30,7 @@ def test_e2_attacked_by_the_player_needs_the_last_attacker_standing_and_the_play
     foe.set_last_damage(other.owner, other.name)                  # hit by somebody else since: false
     assert not ask()
     foe.set_last_damage(s.human, hit.name)
-    s.destroy(hit, 'self-destruct', delete=True)
+    s.delete(hit, 'self-destruct')
     s.t += 5.0                                                           # gone from the name cache
     assert not ask()                                                     # its attacker died: the condition went false
     foe.set_last_damage(s.human, None)                            # a run script's made-up hit stands

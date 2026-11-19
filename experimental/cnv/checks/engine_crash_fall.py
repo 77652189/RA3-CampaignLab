@@ -131,7 +131,7 @@ def check(m):
 # frames later); H and G hover where they were placed (no order) over (3000, 2000) / (3000, 2900) and are killed at
 # the same frame. Hammers under each landing: s1's at F's landing, s1's 40 east of it (out of the radius 20, centre
 # to centre), s1's under H, the player's own under G (NormalAircraftDeathWeapon's DamageScalarDetails: allies 50 %).
-# Prediction from the data (simunits.air_wrecks / crash_frames, Sim.air_crash): F's hit 30 frames after the kill at
+# Prediction from the data (simunits.air_wrecks / crash_frames, Life.air_crash): F's hit 30 frames after the kill at
 # (3160, 1500); H / G fall from rest, 35 frames (g n (n + 1) / 2 >= 175, INFERRED); 150 EXPLOSIVE through the
 # Hammer's armour, G's half that; the one 40 off untouched.
 HIT_LANES = {'F': ('CNV_CrashF', (1700.0, 1500.0), True), 'H': ('CNV_CrashH', (3000.0, 2000.0), False),

@@ -12,10 +12,13 @@ rules (factory, schedule, Thing.find, sealed data), and
 7. a module file runs with no centre file naming it: importing engine.modules loads every file in it, every PHASE is
    a cell of simloop.FRAME, and every cell runs its modules (step K1.5);
 8. health and its maximum are written only by Body.set_hp; damage / mend / health go through it (HEALTH_WRITES, K2, B1);
-9. every field a module class sets on itself is in its STATE, which holds its RECORDED (STATE_PENDING only shrinks).
+9. every field a module class sets on itself is in its STATE, which holds its RECORDED (STATE_PENDING only shrinks);
+10. a thing dies or is deleted only through simbody.Life.kill / Life.delete, which share the one write of alive /
+    deleted / died_at (DEATH_WRITES, DEATH_ENTRIES, B4b).
 Each guard has a mutation check (a synthetic breach it must catch)."""
 import ast
 import importlib.util
+import inspect
 import io
 import os
 import re
@@ -844,6 +847,74 @@ def test_module_state_guard_bites():
     # RECORDED follows a class's own STATE unless named; a class naming neither keeps its base's
     assert Stateful.RECORDED == ('kept',) and type('Plain', (Stateful,), {}).RECORDED == ('kept',)
     assert type('Hidden', (Stateful,), {'STATE': ('kept', 'x'), 'RECORDED': ()}).RECORDED == ()
+
+
+# Guard 10 (step B4b): a thing's end has two entries, Sim.destroy -> simbody.Life.kill (a death: lethal damage to an
+# immortal, a prop's fall, death weapons, an air crash) and Sim.delete -> Life.delete (no death); both go through
+# Life._out, the one function that writes a body's alive / deleted / died_at. A write anywhere else in
+# experimental/cnv/sim*.py or engine/, or a third caller of _out, breaks the guard (step B4c hangs the Die
+# modules' broadcast on the death entry alone).
+DEATH_WRITES = {('simbody.py', 'Life._out')}
+DEATH_ENTRIES = {('simbody.py', 'Life.kill'), ('simbody.py', 'Life.delete')}      # the callers of Life._out
+DEATH_EXEMPT = {('engine/ports/observe.py', 'Observe.specimen'),   # a specimen made dead, never in the fight
+                ('simai.py', 'Brain.attach')}                      # the AI's teams.alive hook, not a body's field
+
+
+def death_writes(sources=None):
+    """{(file, qualified function)}: every function that assigns an `.alive` / `.deleted` / `.died_at` attribute
+    itself (not in a function nested in it), and {(file, qualified function)} of those that call `._out(`."""
+    if sources is None:
+        sources = health_sources()
+    writes, entries = set(), set()
+    for name, src in sources.items():
+        for qual, fn in _functions(ast.parse(src)):
+            inner = {id(x) for f in ast.walk(fn) if f is not fn and isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))
+                     for x in ast.walk(f)}
+            mine = [st for st in ast.walk(fn) if id(st) not in inner]
+            if any(isinstance(x, ast.Attribute) and x.attr in ('alive', 'deleted', 'died_at') and isinstance(x.ctx, ast.Store)
+                   for st in mine if isinstance(st, (ast.Assign, ast.AugAssign, ast.AnnAssign))
+                   for t in (st.targets if isinstance(st, ast.Assign) else [st.target]) for x in ast.walk(t)):
+                writes.add((name, qual))
+            if any(isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and c.func.attr == '_out'
+                   for c in mine) and name == 'simbody.py':
+                entries.add((name, qual))
+    return writes - DEATH_EXEMPT, entries
+
+
+def death_breaks(found):
+    """A write outside DEATH_WRITES, or a caller of Life._out outside DEATH_ENTRIES."""
+    writes, entries = found
+    return sorted((writes - DEATH_WRITES) | (entries - DEATH_ENTRIES))
+
+
+def test_a_thing_ends_only_through_the_two_entries():
+    found = death_writes()
+    assert not death_breaks(found), death_breaks(found)
+    assert found == (DEATH_WRITES, DEATH_ENTRIES), f'an end entry is gone: lower DEATH_WRITES / DEATH_ENTRIES {found}'
+    import sim
+    import simbody
+    assert 'delete' not in inspect.signature(sim.Sim.destroy).parameters      # one entry each, no flag between them
+    assert {'kill', 'delete'} <= set(vars(simbody.Life)) and 'destroy' not in vars(simbody.Life)
+
+
+def test_death_guard_bites():
+    sources = health_sources()
+    # a script action marking its thing dead itself
+    act = dict(sources, **{'simact_object.py': sources['simact_object.py'] + '\n\ndef gone(b):\n    b.alive = False\n'})
+    assert death_breaks(death_writes(act)) == [('simact_object.py', 'gone')]
+    # a module deleting its thing past the host
+    mod = 'engine/modules/sell.py'
+    assert mod in sources
+    sold = dict(sources, **{mod: sources[mod] + '\n\ndef gone(thing, t):\n    thing.deleted, thing.died_at = True, t\n'})
+    assert death_breaks(death_writes(sold)) == [(mod, 'gone')]
+    # a third entry into the shared part
+    third = dict(sources, **{'simbody.py': sources['simbody.py'] + '\n\ndef sneak(life, w, b, g):\n    life._out(w, b, True, g)\n'})
+    assert death_breaks(death_writes(third)) == [('simbody.py', 'sneak')]
+    # the kill writing its own alive past _out
+    bm = 'simbody.py'
+    past = dict(sources, **{bm: sources[bm].replace('        self._out(world, b, False, garrison)\n',
+                                                    '        b.alive = False\n', 1)})
+    assert past[bm] != sources[bm] and death_breaks(death_writes(past)) == [(bm, 'Life.kill')]
 
 
 def test_the_kernel_tests_run_in_full_without_the_model(tmp_path):

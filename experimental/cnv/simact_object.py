@@ -17,7 +17,7 @@ def team_delete(sim, name, a, script):
     for b in sim.members(a[0]):
         if name == 'TEAM_KILL':
             b.set_last_damage(None)
-        sim.destroy(b, '脚本' if name == 'TEAM_KILL' else '脚本删掉', delete=name != 'TEAM_KILL')
+        (sim.destroy if name == 'TEAM_KILL' else sim.delete)(b, '脚本' if name == 'TEAM_KILL' else '脚本删掉')
 
 
 def team_change_object_status(sim, name, a, script):
@@ -114,7 +114,7 @@ def named_kill(sim, name, a, script):
     if b:
         if name == 'NAMED_KILL':
             b.set_last_damage(None)   # the game's kill damage comes from nobody (INVALID_ID)
-        sim.destroy(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉', delete=name == 'NAMED_DELETE')
+        (sim.delete if name == 'NAMED_DELETE' else sim.destroy)(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉')
 
 
 def player_kill(sim, name, a, script):

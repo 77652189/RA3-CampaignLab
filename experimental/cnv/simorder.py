@@ -12,7 +12,7 @@ body aims (L3 `aim`) and fires, rounds a blocked line, and chases by itself (`ch
 `attack_chase`, anyone else's `idle_chase`).
 All over the world it is given (simworld.WORLD_API only). Its host's other parts come in as `peers` (`Peers`, the
 names in PEERS only, read when used): L2 locomotion (send, claims, free_spot, goal_off_nodes, column_ends), L2
-bodies (destroy, modify, engineer_entry, at_site, the garrison, toggles_of / toggle_press), L3 targeting and fire
+bodies (delete, modify, engineer_entry, at_site, the garrison, toggles_of / toggle_press), L3 targeting and fire
 (reach, fight_field, aim, can_hit, in_range, shot_blocked, fire_spot, side_sees, takes_by_itself, the unshot
 templates), L4 money (wallet) and power switches (powers_off), L6 act, the team registry
 (members, team_targets) and the order queues the scripts fill (seq, hunts). The fight's per-tick state on the host
@@ -39,7 +39,7 @@ HUNT_REPICK = 45                    # frames from a hunted target's death to the
 IDLE_SCAN_FROM = 2
 
 WRITES = frozenset({'_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims', 'seen', 'volleys'})
-PEERS = frozenset({'act', 'at_site', 'claims', 'column_ends', 'destroy', 'engineer_entry', 'free_spot', 'garrison',
+PEERS = frozenset({'act', 'at_site', 'claims', 'column_ends', 'delete', 'engineer_entry', 'free_spot', 'garrison',
                    'goal_off_nodes', 'hunts', 'modify', 'powers_off', 'reach', 'send', 'seq', 'toggle_press',
                    'toggles_of', 'wallet',
                    'aim', 'can_hit', 'fight_field', 'fire_spot', 'in_range', 'members', 'shot_blocked',
@@ -187,7 +187,7 @@ def capture_due(world, peers):
                 continue
             g.mend(math.inf)
             world.note('修理', f'{world.label(b)} 修复 {world.label(g)}')
-            peers.destroy(b, '进楼修理', delete=True)
+            peers.delete(b, '进楼修理')
             world.change()
             continue
         g.owner = b.owner
@@ -195,7 +195,7 @@ def capture_due(world, peers):
         m = g.find(interfaces.Deposit) if g.modules else None
         if m is not None:                               # engine/modules/deposit.py (step M4)
             peers.wallet.credit(b.owner, m.capture(world.frame_now()))
-        peers.destroy(b, '进楼占领', delete=True)
+        peers.delete(b, '进楼占领')
         world.change()
 
 
@@ -504,7 +504,7 @@ def flee_due(world, peers, frame):
         b.x, b.y = x0 + (x1 - x0) * walked, y0 + (y1 - y0) * walked
         if walked >= 1.0 and k - math.ceil(d / step - 1e-9) >= FLEE_GONE:
             b.flee = None
-            peers.destroy(b, '逃出地图', delete=True)
+            peers.delete(b, '逃出地图')
         else:
             world.change()
 

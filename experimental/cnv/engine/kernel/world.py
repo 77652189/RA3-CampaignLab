@@ -62,7 +62,7 @@ class World:
 
     def remove(self, thing, why):
         """A module takes its thing out, no death (a toppled prop gone: ToppleUpdate): the host's deletion -- today
-        Sim.destroy(delete=True). A world with no host removes nothing."""
+        Sim.delete. A world with no host removes nothing."""
         if self._remove is None:
             raise RuntimeError(f'World.remove({thing.name!r}): this world has no host to remove with')
         self._remove(thing, why)

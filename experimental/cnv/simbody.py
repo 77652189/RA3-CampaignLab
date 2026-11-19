@@ -1,10 +1,10 @@
 """L2 body: health lost by itself, death and removal (ADR 0029, docs/engine/sim-layers.md; bench docs/engine/sell.md).
 
-`Life` kills or deletes a body (`destroy`: its spawn's refill, its garrison, its FireWeaponWhenDead and an aircraft's
-falling wreck queued as death blasts), sells a structure (`sell`: the refund; its StructureSellUpdate module deletes it
-later, as a lifetime's and a toppled prop's modules end theirs -- the expire cell's modules since steps M1, M2, M10)
-and runs LoseHealthUpdate (`lose_health`), over the world it is given (simworld.WORLD_API only). The peers it needs
-are handed in by the caller (Sim.destroy / sell / air_crash / lose_health): the garrison (simgarrison, L2), the
+`Life` kills a body (`kill`: its spawn's refill, its garrison, its FireWeaponWhenDead and an aircraft's falling wreck
+queued as death blasts) or deletes it (`delete`: no death) -- the one entry each (step B4b) --, sells a structure
+(`sell`: the refund; its StructureSellUpdate module deletes it later, as a lifetime's and a toppled prop's modules end
+theirs -- the expire cell's modules since steps M1, M2, M10) and runs LoseHealthUpdate (`lose_health`), over the world
+it is given (simworld.WORLD_API only). The peers it needs are handed in by the caller (Sim.destroy / delete / sell / lose_health): the garrison (simgarrison, L2), the
 death-blast queue (L2 queues, L3's death_blast_due fires them), the ground's height, the template's toggles and the
 modifiers (L2), `destroy` itself for a lifetime's death, and the money's `credit` (L4) for a sale's refund -- this
 module never imports them.
@@ -65,21 +65,46 @@ class Life:
         m.start_sale(world.frame_now())
         world.note('出售', f'{world.label(b)}（退 {refund}）')
 
-    def destroy(self, world, b, why, delete, garrison, death_blasts, ground_z):
+    def kill(self, world, b, why, garrison, death_blasts, ground_z):
+        """The one death entry (Sim.destroy, step B4b): b killed -- its spawn and slaver told, its garrison out or
+        killed with it, its FireWeaponWhenDead queued, an aircraft's falling wreck; an immortal body takes lethal
+        damage instead, and a prop that cannot die falls or stays."""
         if not b.alive:
             return
-        if b.immortal and not delete:
+        if b.immortal:
             # Object::kill (also script KILL, crushing etc.) is lethal damage;
             # only direct deletion bypasses the body's internalChangeHealth.
             b.damage(b.max_hp)
             return
-        if b.prop and not delete and (b.topple or b.prop == 'stays'):
+        if b.prop and (b.topple or b.prop == 'stays'):
             # engine_propbody b (bench 11-10): a killed topple prop falls where it stands (no fall time) and is gone
             # its delay later, never dying (expire; 61 / 121 frames counted with the kill's); a PropBody with nothing
             # to take its death stays for good
             if b.topple:
                 b.find(interfaces.Topple).fall_where_it_stands(world.frame_now())
             return
+        self._out(world, b, False, garrison)
+        b.set_hp(0.0, tell=False)
+        # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
+        # died; a deletion fires nothing (INFERRED, as Generals' destroyObject skips the die modules)
+        for dmg, typ, reach, after, affects, ally in simunits.death_weapons(b.template, world.own, scalars=True):
+            world.used.add('death weapon')
+            death_blasts.append((world.frame_now() + simunits._frames(after), b.x, b.y, dmg, typ, reach,
+                                 affects, b.owner, b, ally, False))
+        if b.surface == 'air':
+            self.air_crash(world, b, death_blasts, ground_z)
+        self._gone(world, b, why, False)
+
+    def delete(self, world, b, why, garrison):
+        """The one deletion entry (Sim.delete, step B4b): b taken out, no death -- no lethal damage, no death weapon;
+        its spawned children and passengers deleted with it."""
+        if b.alive:
+            self._out(world, b, True, garrison)
+            self._gone(world, b, why, True)
+
+    def _out(self, world, b, delete, garrison):
+        """What a death and a deletion share: b out of the fight, its spawn and slaver told, its children deleted, its
+        garrison out -- the only write of a body's alive / deleted / died_at (guard 10, tests/guards/test_kernel.py)."""
         b.alive, b.deleted, b.path, b.died_at = False, delete, [], world.t
         if not delete and b.last_by is not None and b.last_hit is not None:
             world.kills.append((b.last_hit, b.last_by, b.template, b.name))     # cond_retail: who killed what
@@ -96,18 +121,10 @@ class Life:
         for child in b.spawned_children:
             # engine_spawn: both script kill and delete remove all three in the same sample.
             # Removal via deletion (rather than a lethal hit) is INFERRED; child death effects unmeasured.
-            self.destroy(world, child, 'SpawnedRequireSpawner', True, garrison, death_blasts, ground_z)
+            self.delete(world, child, 'SpawnedRequireSpawner', garrison)
         garrison.died(b, delete)       # passengers out alive / killed with it (simgarrison, garrison.md 4)
-        if not delete:
-            b.set_hp(0.0, tell=False)
-            # FireWeaponWhenDead (simunits.death_weapons; bench 11-05 engine_spawn_refill): its weapon goes off where it
-            # died; a deletion fires nothing (INFERRED, as Generals' destroyObject skips the die modules)
-            for dmg, typ, reach, after, affects, ally in simunits.death_weapons(b.template, world.own, scalars=True):
-                world.used.add('death weapon')
-                death_blasts.append((world.frame_now() + simunits._frames(after), b.x, b.y, dmg, typ, reach,
-                                     affects, b.owner, b, ally, False))
-            if b.surface == 'air':
-                self.air_crash(world, b, death_blasts, ground_z)
+
+    def _gone(self, world, b, why, delete):
         world.note('删除' if delete else '摧毁', f'{world.label(b)}（{why}）')
         world.change()
         if world.blocks(b):

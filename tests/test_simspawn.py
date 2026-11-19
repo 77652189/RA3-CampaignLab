@@ -84,7 +84,7 @@ def test_spawn_refill_tracks_actual_death_frame_and_parent_removal_cancels_pendi
         assert sum(c.alive for c in parent.spawned_children) == 3
         e.destroy(parent.spawned_children[-1], 'replacement death')
         assert len(parent.spawn_refills) == 1
-        e.destroy(parent, 'parent removed', delete=delete)
+        (e.delete if delete else e.destroy)(parent, 'parent removed')
         assert not parent.spawn_refills
         e.world.schedule.run('spawn', died + 1000)    # the spawn cell's modules (spawn.py)
         assert len(parent.spawned_children) == 4

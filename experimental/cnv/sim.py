@@ -844,7 +844,7 @@ class Sim:
         self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
         self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own),   # engine/kernel
                                         kill=lambda b, why: self._life().die_of_age(self, b, why, self.destroy),
-                                        remove=lambda b, why: self.destroy(b, why, delete=True),
+                                        remove=lambda b, why: self.delete(b, why),
                                         pay=lambda b, amount: self.wallet.deposit(b.owner, amount),
                                         toggled=lambda b, m: simtoggle.entered(self, b, m, self.modify),
                                         modify=lambda b: self.modify(b),
@@ -1967,9 +1967,13 @@ class Sim:
         """simbody.Life.sell (L2): SELL_OBJECT -- the refund paid at once (simmoney.Money.credit), deleted 30 frames on."""
         self._life().sell(self, b, self.garrison, self.modify, self.wallet.credit)
 
-    def destroy(self, b, why, delete=False):
-        """simbody.Life.destroy (L2): b killed (or deleted): its spawn, garrison, death weapons and air crash."""
-        self._life().destroy(self, b, why, delete, self.garrison, self.death_blasts, self.impact_ground_z)
+    def destroy(self, b, why):
+        """simbody.Life.kill (L2), the one death entry: b killed -- its spawn, garrison, death weapons and air crash."""
+        self._life().kill(self, b, why, self.garrison, self.death_blasts, self.impact_ground_z)
+
+    def delete(self, b, why):
+        """simbody.Life.delete (L2), the one deletion entry: b taken out, no death (children, passengers with it)."""
+        self._life().delete(self, b, why, self.garrison)
 
     def _life(self):
         """The simbody.Life (L2), made on first use (a Sim built without __init__ has none yet)."""
@@ -1977,10 +1981,6 @@ class Sim:
         if m is None:
             m = self.life = simbody.Life()
         return m
-
-    def air_crash(self, b):
-        """simbody.Life.air_crash (L2): an aircraft killed in the air leaves its falling wreck's death weapon."""
-        self._life().air_crash(self, b, self.death_blasts, self.impact_ground_z)
 
     # ---- conditions
     def holds(self, c):
@@ -2237,7 +2237,7 @@ class Sim:
                     self.note('剧本', f'{self.label(b)} 打不动（UNATTACKABLE），没摧毁')
                     continue
                 b.set_last_damage(self.human, None)
-                self.destroy(b, '剧本', delete=verb == '删除')
+                (self.delete if verb == '删除' else self.destroy)(b, '剧本')
         elif verb == '血量':
             for b in self.pick(rest[0]):
                 b.health = float(rest[1])
@@ -2921,7 +2921,7 @@ class Sim:
                 if not was.alive:
                     continue
                 share = was.hp / was.max_hp if was.max_hp else 1.0
-                self.destroy(was, f'展开成 {structure}', delete=True)
+                self.delete(was, f'展开成 {structure}')
                 self.bodies[f'#packed {len(self.bodies)} {by}'] = self.bodies.pop(by)
                 n = self.add(by, structure, owner, was.x, was.y, by=by, at=self.t)
                 n.set_hp(n.max_hp * share, tell=False)
