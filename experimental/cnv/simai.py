@@ -79,17 +79,17 @@ import simproxy  # noqa: E402
 import simunits  # noqa: E402
 import simmicro  # noqa: E402
 import simbody  # noqa: E402
-import simorder  # noqa: E402
 import simworld  # noqa: E402
+from engine.ports.command import Command  # noqa: E402
 
-# What the skirmish AI reads on its host (the Sim) beyond the world (simworld.WORLD_API): the orders it gives, the
-# mission's AI settings, the player systems it asks (money, power, production) and the combat reads its blocks lean on.
-# It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
+# What the skirmish AI reads on its host (the Sim) beyond the world (simworld.WORLD_API): the command port its orders
+# go through (R3 13f-1), the mission's AI settings, the player systems it asks (money, power, production) and the
+# combat reads its blocks lean on. It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
 PEERS = frozenset({'add_team_lookup', 'advance', 'ai', 'ai_paused', 'ai_priorities', 'ai_switches', 'attachments',
-                   'base_construction_disabled', 'border', 'can_build', 'can_hit', 'ending', 'engineer_entry',
-                   'expected_damage', 'firing', 'flags', 'in_range', 'modify', 'money', 'offers', 'order_attack',
-                   'order_build', 'order_capture', 'order_move', 'order_unpack', 'power', 'proto', 'queues',
-                   'reach_of', 'take_personality', 'toggle_miner_armor', 'upgrade_sellers', 'volleys', 'wallet'})
+                   'base_construction_disabled', 'border', 'can_build', 'can_hit', 'commands', 'ending',
+                   'engineer_entry', 'expected_damage', 'firing', 'flags', 'in_range', 'modify', 'money', 'offers',
+                   'power', 'proto', 'queues', 'reach_of', 'take_personality', 'upgrade_sellers', 'volleys',
+                   'wallet'})
 
 
 class Peers:
@@ -798,8 +798,7 @@ class Brain:
             return
         if kind == 'hunt':
             state.command(t)
-            simorder.drop_goal(b)
-            self.peers.order_move(b, (t.x, t.y), True)
+            self.give('attack_move', b, pos=(t.x, t.y), args=(('drop_target', True),))
             return
         if kind == 'attack':                    # the team state's 0 / 6: attack the current enemy (a Thing id)
             if getattr(b, 'unpack_here', False) and b.building is not None:
@@ -812,23 +811,29 @@ class Brain:
                 if t.owner == self.player and t in self.host.garrison.places(b, True):
                     # "attacking" one's own base defense = entering it (d133_airevk2.md 1: the team state 6's 0x210
                     # at the AI's own turret, bench aibdi0 / aibdi2)
-                    self.host.garrison.send(b, t)
+                    self.give('enter', b, target=t.name, args=(('via', 'garrison'),))
                     return
-                self.peers.order_attack(b, t.name)
+                self.give('attack', b, target=t.name)
             return
         if kind == 'enter':                     # EnterGarrisons / EnterBaseDefenses: into a building (a Thing id)
             t = self.body_of(arg)
             if t is not None:
-                if not self.host.pullback.send(b, t):
-                    self.host.garrison.send(b, t)
+                if not self.host.pullback.send(b, t):   # the pullbacks (L8) give their return through the port
+                    self.give('enter', b, target=t.name, args=(('via', 'garrison'),))
             return
-        simorder.drop_goal(b)
         face = float(arg[2]) if len(arg) > 2 and arg[2] is not None else None
         slot = self.__dict__.get('_exp_slots', {}).get(b.name)
         if kind == 'move' and slot is not None and math.hypot(float(arg[0]) - slot[0][0],
                                                               float(arg[1]) - slot[0][1]) < 1.0:
             _, arg, face = slot                 # SimpleExpansion's formation move: this member's slot (D168)
-        self.peers.order_move(b, (float(arg[0]), float(arg[1])), kind == 'attack-move', face=face)
+        self.give('attack_move' if kind == 'attack-move' else 'move', b, pos=(float(arg[0]), float(arg[1])),
+                  args=(('drop_target', True),) + ((('face', face),) if face is not None else ()))
+
+    def give(self, kind, b, **kw):
+        """One order of the AI's to its unit b through the command port (R3 13f-1): by serial, as the AI picked it
+        (a script reference of the same name cannot take its place, as the proxy's: review 11-19 h #1). (ok, why)."""
+        args = (('objects', 'serial'),) + kw.pop('args', ())
+        return self.peers.commands.do(Command(kind, f'ai:{self.player}', units=(b.serial,), args=args, **kw))
 
     def expansion_slots(self, team, p):
         """SimpleExpansion's formation move to node p (EXPANSION_ROW): {member name: (p, slot, facing)}, every living
@@ -890,7 +895,7 @@ class Brain:
         live = [u.body for u in team.members if u.body.alive and self.peers.engineer_entry(u.body, t)]
         for b in live:
             if b.mode != 'capture' or b.goal is not t:
-                self.peers.order_capture(b, t.name)
+                self.give('capture', b, target=t.name)
         return not live
 
     def approach(self, team, kind, thing, distance):
@@ -924,8 +929,8 @@ class Brain:
             if b.building is not None and b.serial in ordered:
                 armed = True
             elif b.serial not in ordered and \
-                    self.peers.order_unpack(b, p, stand=distance, here=distance is not None,
-                                            send=distance is None):
+                    self.give('unpack', b, pos=p, args=(('stand', distance), ('here', distance is not None),
+                                                        ('send', distance is None)))[0]:
                 ordered.add(b.serial)
                 was = True
                 armed = b.building is not None or armed
@@ -1107,7 +1112,7 @@ class Brain:
         """Execute toggles and C's bounded self-power bridge; otherwise record intent."""
         self.fired.append((self.frame, key, u.name, info.command))
         b = self.world.body(u.name)
-        if b and b.owner == self.player and self.peers.toggle_miner_armor(b, info.command):
+        if b and b.owner == self.player and self.give('toggle', b, args=(('button', info.command),))[0]:
             self.world.note('AI', f'{u.name} 执行 {info.command}')
             return
         if b and b.owner == self.player and simmicro.fire(self.world, b, info.command, self.peers.modify):
@@ -1115,9 +1120,10 @@ class Brain:
             if (state is not None and state.state == 33
                     and info.command == simmicro.COMMAND):
                 state.charge_finished()
-                simorder.drop_goal(b)
                 if state.pursuit is not None and state.pursuit.alive:
-                    self.peers.order_move(b, (state.pursuit.x, state.pursuit.y), True)
+                    self.give('attack_move', b, pos=(state.pursuit.x, state.pursuit.y), args=(('drop_target', True),))
+                else:                           # the charge's target dropped, no order after it
+                    self.give('attack', b, target='', args=(('goal_only', True),))
             return
         self.world.note('AI', f'{self.world.who(self.player)} 微操想用 {info.command}（{u.name}；模拟器未接技能）')
 
@@ -1201,7 +1207,8 @@ class Brain:
 
     def upgrade(self, upgrade):
         """AIPlayer.upgrader: queue the upgrade at the structure that buys it (Sim.order_build; paid as it builds)."""
-        return bool(self.peers.upgrade_sellers(self.player, upgrade)) and self.peers.order_build(self.player, upgrade)
+        return bool(self.peers.upgrade_sellers(self.player, upgrade)) and \
+            self.peers.commands.do(Command('build', f'ai:{self.player}', player=self.player, template=upgrade))[0]
 
     def offers(self, ai, frame):
         """AIPlayer.offers: the units the AI's live factories can build now (Sim.offers), as teams.Offer with the unit
@@ -1684,17 +1691,15 @@ class Brain:
         else:
             spot = self.general_spot(yard, template)
         x, y = spot or self.spot(yard, template)
-        b = world.add(f'#ai {len(world.bodies)} {template}', template, self.player, x, y, by='skirmish AI', at=world.t,
-                      team=yard.team)
-        self.made[b.name] = frame
+        name = f'#ai {len(world.bodies)} {template}'
+        self.peers.commands.do(Command('place', f'ai:{self.player}', player=self.player, template=template,
+                                       pos=(float(x), float(y)), args=(('name', name), ('team', yard.team))))
+        self.made[name] = frame
         self.trace.append((frame, 'own', template))
         world.note('AI', f'{world.who(self.player)} 放下 {template}')
-        if world.blocks(b):
-            world.reblock()
         miner = self.host.free_unit(template)
         if miner:
             self.later.append((frame + self.host.unpack(template), miner, (x, y), yard.team))
-        world.change()
 
     def later_due(self, frame):
         world = self.world
@@ -1718,7 +1723,7 @@ class Brain:
             free = [f for f in self.factories() if t in self.host.menu(f.template)
                     and frame >= self.made.get(f.name, -10 ** 9) + self.host.unpack(f.template)
                     and not peers.queues.get(f.name)]
-            if free and peers.order_build(self.player, t):
+            if free and peers.commands.do(Command('build', f'ai:{self.player}', player=self.player, template=t))[0]:
                 self.unit_q.remove(t)
 
     @property
@@ -1771,8 +1776,7 @@ class Brain:
                 # INFERRED bridge: a dead combat goal can have cancelled the path.
                 # Continue toward the pursuit's last position, without a new
                 # team command or a fabricated current target.
-                simorder.drop_goal(b)
-                self.peers.order_move(b, (state.pursuit.x, state.pursuit.y), True)
+                self.give('attack_move', b, pos=(state.pursuit.x, state.pursuit.y), args=(('drop_target', True),))
             here = cell(b)
             previous = cells.get(name)
             cells[name] = here
@@ -1798,7 +1802,7 @@ class Brain:
             if selected is not None:
                 state.target = selected
                 # Direct object-goal write, not a fresh team attack order.
-                simorder.set_goal(b, selected)
+                self.give('attack', b, target=selected.name, args=(('goal_only', True),))
 
     # ---- HOOKS 9: the read-only trail (SimAI(record=True)); nothing below changes the run
     def _name(self, tid):

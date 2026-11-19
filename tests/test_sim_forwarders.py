@@ -76,13 +76,13 @@ FORWARDER_CALLS = {
         'wfire_due')], 1),
     # simorder's Peers loan
     ('simorder', 'delete'): 3, ('simorder', 'modify'): 1, ('simorder', 'send'): 12, ('simorder', 'toggle_press'): 1,
-    # simpullback / simsweep Peers loans
-    ('simpullback', 'order_move'): 1, ('simsweep', 'destroy'): 1,
+    # simsweep's Peers loan (simpullback's order_move went through the command port, R3 13f-1)
+    ('simsweep', 'destroy'): 1,
     # simai's Peers loan (step 9d-2, R: the calls it made on self.sim before, counted since it joined the registry;
-    # step 10 can call simorder / simmodifier / simdamage itself). Not the Sim's: self.tactics.stand (the tactics
-    # block, 1; the AI's hunt state's expire went off the count with Sim.expire, step M10)
-    ('simai', 'expected_damage'): 1, ('simai', 'modify'): 1, ('simai', 'order_attack'): 1,
-    ('simai', 'order_capture'): 1, ('simai', 'order_move'): 4, ('simai', 'order_unpack'): 1,
+    # step 10 can call simorder / simmodifier / simdamage itself; its orders go through the command port since R3
+    # 13f-1). Not the Sim's: self.tactics.stand (the tactics block, 1; the AI's hunt state's expire went off the count
+    # with Sim.expire, step M10)
+    ('simai', 'expected_damage'): 1, ('simai', 'modify'): 1,
     ('simai', 'stand'): 1,
     # simproxy: none (its orders go through the command port since R3 13e)
 }

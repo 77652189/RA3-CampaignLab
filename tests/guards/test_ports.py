@@ -382,7 +382,15 @@ ORDER_CALLS = {'order_move', 'order_group', 'order_attack', 'order_capture', 'or
                'order_power', 'order_transform', 'order_stop', 'order_follow', 'order_unpack', 'sell', 'stand', 'send',
                'happen', 'parse_script', 'flee_start', 'hunt_due', 'drop_goal', 'set_goal',
                # a button's module entry (R3 13d-2: the script actions press them through the port)
-               'toggle_press', 'wfire_press', 'leap_press', 'movement_power_press', 'self_power_press'}
+               'toggle_press', 'wfire_press', 'leap_press', 'movement_power_press', 'self_power_press',
+               'toggle_miner_armor'}    # Sim's alias of toggle_press (simai's name before R3 13f-1)
+# A thing set down in the world by hand (`world.add`): the god's hand, or the AI's structure, which is the port's
+# `place` (R3 13f-1). Only a call on a world counts (`world.add` / `self.world.add` / `sim.add`), not a set's add.
+WORLD_MAKES = {'add'}
+WORLDS = {'world', 'sim', 'w'}
+# Calls named like an order that are another giver's own method (each guarded on its own, or no order): the skirmish
+# AI's tactics block's `stand` (the tactic's hold, not Sim.stand), the pullbacks' `send` (simpullback, a giver here).
+OTHER_GIVERS = {'tactics', 'pullback'}
 ORDER_QUEUES = {'events', 'anchored'}
 ORDER_FIELDS = {'goal', 'path', 'dest', 'move_to', 'mode', 'stance', 'hold_fire', 'hold_paused', 'ground_fire', 'face',
                 'ai_acquire', 'follow', 'engaged'}
@@ -391,7 +399,24 @@ ORDER_FIELDS = {'goal', 'path', 'dest', 'move_to', 'mode', 'stance', 'hold_fire'
 # and setattr / delattr by the field's name are writes too.
 MUTATORS = {'clear', 'append', 'extend', 'pop', 'popitem', 'insert', 'remove', 'update', 'setdefault', 'sort',
             'reverse', 'add', 'discard', '__setitem__', '__delitem__', '__iadd__'}
-GIVERS = [AUTOPLAY / 'autoplay.py', AUTOPLAY / 'players.py', CNV / 'simproxy.py']   # simproxy: R3 13e
+GIVERS = [AUTOPLAY / 'autoplay.py', AUTOPLAY / 'players.py', CNV / 'simproxy.py',   # simproxy: R3 13e
+          CNV / 'simai.py', CNV / 'simpullback.py']                                 # the skirmish AI: R3 13f-1
+# What a giver does round the port that is no order (its functions): the AI's refinery's free miner coming out
+# (Brain.later_due: the refinery's FreeUnit, a module's behaviour, the refinery module's when it moves).
+GIVER_SHORTCUTS = {CNV / 'simai.py': {'Brain.later_due'}}
+
+
+def _receiver(call):
+    """The last name of what a method is called on (`self.host.pullback.send` -> 'pullback'), or None."""
+    f = call.func
+    if not isinstance(f, ast.Attribute):
+        return None
+    v = f.value
+    return v.id if isinstance(v, ast.Name) else v.attr if isinstance(v, ast.Attribute) else None
+
+
+def giver_harness(f):
+    return harness(f) | GIVER_SHORTCUTS.get(f, set())
 
 
 def _order_field(node):
@@ -424,7 +449,9 @@ def giver_breaks(src, harness):
             continue
         if _in_place_write(node):
             out.append((node.lineno, _in_place_write(node)))
-        elif isinstance(node, ast.Call) and _called(node) in ORDER_CALLS:
+        elif isinstance(node, ast.Call) and _called(node) in ORDER_CALLS and _receiver(node) not in OTHER_GIVERS:
+            out.append((node.lineno, _called(node)))
+        elif isinstance(node, ast.Call) and _called(node) in WORLD_MAKES and _receiver(node) in WORLDS:
             out.append((node.lineno, _called(node)))
         elif isinstance(node, ast.Attribute) and node.attr in ORDER_QUEUES:
             out.append((node.lineno, node.attr))
@@ -448,7 +475,7 @@ SCRIPT_GIVERS = {CNV / 'simact_order.py': {'unit_teleport_to_waypoint', 'unit_ai
 
 def test_the_givers_give_through_the_command_port():
     for f in GIVERS:
-        assert giver_breaks(f.read_text(encoding='utf-8'), harness(f)) == [], f.name
+        assert giver_breaks(f.read_text(encoding='utf-8'), giver_harness(f)) == [], f.name
     for path, name in GIVER_PARTS:
         assert giver_breaks(part_src(path, name), set()) == [], (path.name, name)
     for path, gods_hand in SCRIPT_GIVERS.items():
@@ -514,6 +541,29 @@ def test_planted_orders_round_the_port_are_found():
     for line in ('x = b.path[0]', 'self.memo.clear()', 'n = len(b.path)'):     # reads, and a giver's own state
         planted = src.replace(key, f'{key}        {line}\n')
         assert planted != src and not giver_breaks(planted, harness(f)), line
+
+
+def test_planted_orders_in_the_ai_are_found():
+    """simai / simpullback (R3 13f-1): the AI's orders go through the port; an order call, a target dropped by hand or
+    a structure set down by hand is red; the tactics block's stand and the pullbacks' send are not Sim's."""
+    f = CNV / 'simai.py'
+    src = f.read_text(encoding='utf-8')
+    for old, new in (("            self.give('attack_move', b, pos=(t.x, t.y), args=(('drop_target', True),))\n",
+                      "            self.peers.order_move(b, (t.x, t.y), True)\n"),
+                     ("        face = float(arg[2]) if len(arg) > 2 and arg[2] is not None else None\n",
+                      "        b.goal = None\n        face = float(arg[2]) if len(arg) > 2 and arg[2] is not None else None\n"),
+                     ("        self.peers.commands.do(Command('place', ",
+                      "        world.add(name, template, self.player, x, y)\n        self.peers.commands.do(Command('place', "),
+                     ("        if b and b.owner == self.player and self.give('toggle', b, args=(('button', info.command),))[0]:\n",
+                      "        if b and b.owner == self.player and self.peers.toggle_miner_armor(b, info.command):\n")):
+        planted = src.replace(old, new)
+        assert planted != src and giver_breaks(planted, giver_harness(f)), new
+    assert not giver_breaks(src + '\ndef f(self):\n    self.tactics.stand(1)\n    self.host.pullback.send(1, 2)\n'
+                            '    seen.add(3)\n', giver_harness(f))
+    f = CNV / 'simpullback.py'
+    src = f.read_text(encoding='utf-8')
+    planted = src.replace("        peers.commands.do(Command('move', ", "        u.goal = None\n        peers.commands.do(Command('move', ")
+    assert planted != src and giver_breaks(planted, giver_harness(f))
 
 
 def test_planted_orders_in_the_proxy_are_found():

@@ -439,3 +439,54 @@ def test_the_proxy_players_click_reaches_his_units_not_a_reference_of_their_name
     assert s.bodies['a'].move_to is not None and s.bodies['enemy'].move_to is None
     assert w.issue(SimpleNamespace(kind='attack', units=(1, 2), target=4, pos=None, power='', template=''))
     assert s.commands.issued()[-1][1].units == (s.bodies['a'].serial, s.bodies['b'].serial)
+
+
+def _ai(kind, b, **kw):
+    args = (('objects', 'serial'),) + kw.pop('args', ())
+    return Command(kind, 'ai:Player_1', units=(b.serial,), args=args, **kw)
+
+
+def _ran(*worlds):
+    for s in worlds:
+        for _ in range(30):
+            s.step()
+            s.t = round(s.t + sim.DT, 3)
+
+
+def test_the_ais_orders_give_what_its_calls_gave():
+    """simai / simpullback (R3 13f-1) give by serial: a member re-sent (its target dropped, a form-up slot's facing),
+    a pursuit's threat as the goal alone, a structure set down -- each what the old call gave."""
+    port_world, direct = _pair()
+    a, d = port_world.bodies['a'], direct.bodies['a']
+    a.goal, d.goal = port_world.bodies['foe'], direct.bodies['foe']
+    assert port_world.commands.do(_ai('attack_move', a, pos=(400.0, 300.0),
+                                      args=(('drop_target', True), ('face', 1.25)))) == (True, '')
+    d.goal = None
+    direct.order_move(d, (400.0, 300.0), True, face=1.25)
+    assert port_world.commands.do(_ai('attack', port_world.bodies['b'], target='foe',
+                                      args=(('goal_only', True),))) == (True, '')
+    direct.bodies['b'].goal = direct.bodies['foe']
+    cmd = Command('place', 'ai:Player_1', player='Player_1', template=APOC, pos=(700.0, 500.0),
+                  args=(('name', '#ai 3 x'), ('team', '')))
+    assert port_world.commands.do(cmd) == (True, '')
+    made = direct.add('#ai 3 x', APOC, 'Player_1', 700.0, 500.0, by='skirmish AI', at=direct.t, team='')
+    if direct.blocks(made):
+        direct.reblock()
+    direct.change()
+    assert _states(port_world) == _states(direct)
+    assert port_world.bodies['b'].goal is port_world.bodies['foe'] and port_world.bodies['b'].move_to is None
+    _ran(port_world, direct)
+    assert _states(port_world) == _states(direct)
+
+
+def test_the_ais_refused_orders():
+    s = _world()
+    a = s.bodies['a']
+    assert s.commands.do(_ai('enter', a, target='nowhere', args=(('via', 'garrison'),)))[0] is False
+    assert s.commands.do(_ai('enter', a, target='foe', args=(('via', 'door'),)))[0] is False
+    assert s.commands.do(_ai('attack', a, target='nowhere', args=(('goal_only', True),)))[0] is False
+    assert s.commands.do(_ai('unpack', a, pos=(1.0, 2.0), args=(('send', False),)))[0] is False   # no unpack button
+    gone = Command('unpack', 'ai:Player_1', units=(10 ** 6,), pos=(1.0, 2.0), args=(('objects', 'serial'),))
+    assert s.commands.do(gone) == (False, 'no unit to unpack')
+    a.goal = s.bodies['foe']
+    assert s.commands.do(_ai('attack', a, args=(('goal_only', True),))) == (True, '') and a.goal is None

@@ -136,17 +136,18 @@ def test_engage_dead_pursuit_continues_cancelled_path():
     state.command(pursuit)
     retained = SimpleNamespace(alive=False)
     state.target = retained
-    body = SimpleNamespace(name='member', alive=True, x=0., y=0., radius=10.,
+    body = SimpleNamespace(name='member', serial=7, alive=True, x=0., y=0., radius=10.,
                            path=[], goal=retained)
     brain = simai.Brain.__new__(simai.Brain)
-    moves = []
+    brain.player = 'Player_2'
+    moves = []      # the AI's orders go through the command port (R3 13f-1): its attack-move, target dropped first
     brain.world = brain.peers = SimpleNamespace(body=lambda name: body,
-                                               order_move=lambda *args: moves.append(args))
+                                               commands=SimpleNamespace(do=lambda cmd: moves.append(cmd) or (True, '')))
     brain._hunt_goals = {'member': state}
     brain.hunt_threats(1)  # no partition scan before the first eligible frame
     assert state.state == 33 and state.target is retained
-    assert moves == [(body, (100., 0.), True)]
-    assert body.goal is None
+    assert [(c.kind, c.units, c.pos, c.arg('objects'), c.arg('drop_target')) for c in moves] == \
+        [('attack_move', (7,), (100., 0.), 'serial', True)]
     body.x = 100.
     brain.hunt_threats(2)
     assert state.state == 16 and state.target is retained

@@ -21,7 +21,10 @@ verbs too -- 造, 删除, 血量 ...: those are not commands and go in as the sc
 
 The port holds no rules: `do` routes each kind to the world's own order call (`Sim.happen` gives a script line's
 order through `do` too: one port per run, `Sim.commands`). Kinds with no route yet (`check` says so) get theirs when
-their giver moves to the port (R3 13f: the AI). The proxy player (simproxy, R3 13e) gives the player's own clicks
+their giver moves to the port. The skirmish AI (simai, simpullback; R3 13f-1) gives its members' orders through `do`
+by serial: a member re-sent drops its target first (`drop_target` on each unit's move too), a form-up slot's `face`,
+a pursuit's threat taken as the unit's goal alone (`attack` with `goal_only`), a SimpleExpansion miner armed to unpack
+at `pos` (`stand` / `here` / `send`), `enter` a garrison, `place` a structure. The proxy player (simproxy, R3 13e) gives the player's own clicks
 through `do`: a selection's move (`('drop_target', True)`: the click drops the units' attack target first), a sidebar
 build (no `target`: the owner's factory with the shortest queue), a ground power or a transform answering the world's
 refusals (`via` 'click' / 'transform').
@@ -57,8 +60,9 @@ KIND = {v: k for k, v in VERB.items()}
 # the kinds `do` has a route for (the rest: R3 13e-13f, with their givers): the line verbs', and the script actions'
 # (13d-1 the orders; 13d-2 the buttons: unpack, toggle); face (Generals' AI command list has AICMD_FACE_POSITION;
 # INFERRED for RA3) joined with them.
+# The skirmish AI's (13f-1): enter (a garrison / its own base defense), place (a structure set down: INFERRED, below).
 ROUTED = frozenset(VERB) | {'guard', 'stop', 'idle', 'follow_path', 'attack_ground', 'face', 'hunt', 'flee', 'stance',
-                            'auto_acquire', 'unpack', 'toggle'}
+                            'auto_acquire', 'unpack', 'toggle', 'enter', 'place'}
 GIVERS = ('player', 'ai', 'script', 'proxy', 'test')     # `by`: 'player', 'ai:<player>', ...
 DATA = (str, int, float, bool, type(None))
 
@@ -320,13 +324,23 @@ class Commands:
                 for b in units:
                     b.goal = None
             w.order_group(units, where, attacking, on_grid=grid)
-        else:
+        else:                               # each unit's own (the AI re-sends a member: `drop_target` first; a
+            face = cmd.arg('face')          # form-up slot's `face`, radians, turned to once there)
             for b in self._units(cmd):
-                w.order_move(b, where, attacking, on_grid=grid)
+                if cmd.arg('drop_target'):
+                    b.goal = None
+                w.order_move(b, where, attacking, face=face, on_grid=grid)
         return True, ''
 
     def _attack(self, cmd):
         w = self._w
+        if cmd.arg('goal_only'):            # the AI's pursuit takes a threat as the unit's goal alone: no fresh attack
+            t = w.bodies.get(cmd.target) if cmd.target else None    # order, its mode / path / follow untouched
+            if cmd.target and t is None:    # (INFERRED, e135); no target: the goal dropped (a charge ended)
+                return False, f'找不到 {cmd.target}'
+            for b in self._units(cmd):
+                b.goal = t
+            return True, ''
         if cmd.arg('objects'):
             for b in self._units(cmd):
                 w.order_attack(b, cmd.target, cmd.force)
@@ -503,11 +517,15 @@ class Commands:
         return True, ''
 
     def _unpack(self, cmd):                  # drive to the place, turn into the button's replacement there (M10)
+        """At the place, or at `pos` (the AI's SimpleExpansion: armed, `stand` its Distance, `here` where it stands
+        then, `send` False -- its team's move walks it)."""
         w = self._w
-        p = w.point(cmd.place)
-        if None in self._units(cmd):        # no unit to unpack: refused before the order call (f #5)
+        p, where = (w.point(cmd.place), cmd.place) if cmd.pos is None else (cmd.pos, None)
+        units = self._units(cmd)
+        if not units or None in units:      # no unit to unpack: refused before the order call (f #5)
             return False, 'no unit to unpack'
-        if all([w.order_unpack(b, p, cmd.arg('button'), cmd.place) for b in self._units(cmd)]):
+        if all([w.order_unpack(b, p, cmd.arg('button'), where, stand=cmd.arg('stand'), here=cmd.arg('here', False),
+                               send=cmd.arg('send', True)) for b in units]):
             return True, ''
         return False, 'no unpack button of his'
 
@@ -515,6 +533,29 @@ class Commands:
         if all([self._w.toggle_press(b, cmd.arg('button')) for b in self._units(cmd)]):
             return True, ''
         return False, 'not a toggle of his'
+
+    def _enter(self, cmd):                   # into a building (`via` 'garrison': GarrisonContain, the AI's own defense)
+        w = self._w
+        if cmd.arg('via') != 'garrison':
+            return False, f"enter: no route {cmd.arg('via')!r}"
+        g = w.bodies.get(cmd.target)
+        if g is None:
+            return False, f'找不到 {cmd.target}'
+        for b in self._units(cmd):
+            w.garrison.send(b, g)
+        return True, ''
+
+    def _place(self, cmd):
+        """A structure set down at `pos` (`('name', n)`, `('team', t)`): INFERRED -- in the game a dozer / the yard
+        builds it there; the skirmish AI's yard job sets it down whole the frame it is done, as before (AI line / step
+        G to measure). The giver keeps its own books (made, trace, its note, the free unit)."""
+        w = self._w
+        b = w.add(cmd.arg('name'), cmd.template, cmd.player, cmd.pos[0], cmd.pos[1],
+                  by='skirmish AI' if cmd.by.startswith('ai') else cmd.by, at=w.t, team=cmd.arg('team', ''))
+        if w.blocks(b):
+            w.reblock()
+        w.change()
+        return True, ''
 
     def _auto_acquire(self, cmd):            # an AI setting: takes what only a computer's units take by themselves
         for b in self._units(cmd):

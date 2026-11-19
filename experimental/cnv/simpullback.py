@@ -8,15 +8,16 @@ existing garrison approach; exact return seconds are not claimed.
 
 L8 (the skirmish AI's tactics adapter: it orders units, it is not an object module). It is given the world
 (simworld.WORLD_API only); its host's other parts come in as `peers` (`Peers`, the names in PEERS only, read when
-used): L5's move order (order_move).
+used): the command port (R3 13f-1: the return is the AI's move order, given through it).
 """
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
 import simgarrison
 import simunits
+from engine.ports.command import Command
 
-PEERS = frozenset({'order_move'})
+PEERS = frozenset({'commands'})
 
 
 class Peers:
@@ -105,8 +106,9 @@ class Pullbacks:
         if not self.accepts(u, g):
             return False
         world, peers = self.world, self.peers
-        u.goal = None
-        peers.order_move(u, (g.x, g.y), False)
+        # INFERRED: in the game the unit enters the repair facility; here it walks there, its target dropped first
+        peers.commands.do(Command('move', f'ai:{u.owner}', units=(u.serial,), pos=(g.x, g.y),
+                                  args=(('objects', 'serial'), ('drop_target', True))))
         self.returning[u.name] = (g, u.move_to, u.owner, u.path)
         self.log.append((world.t, u.name, g.name))
         return True
