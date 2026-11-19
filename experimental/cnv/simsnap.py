@@ -30,7 +30,7 @@ from engine.kernel import snap
 from engine.ports.command import Command
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 1
+VERSION = 2             # 2: 'others', the things held but not in bodies (_things)
 
 SIM = {
     # the setup
@@ -145,7 +145,53 @@ def unclassified(sim):
 
 
 def _things(sim):
-    return list(sim.bodies.values())
+    """The run's things: the bodies, then the ones held but not in bodies (a map object whose name a later one took:
+    Sim.add keeps it in topples, out of bodies and the schedule, still knocked over), found through the fields the
+    snapshot takes, in their order. A thing not of this world (its serial not one World.build gave, or another
+    object's): an error."""
+    out = list(sim.bodies.values())
+    seen = {}
+    for b in out:
+        seen.setdefault(b.serial, b)
+    todo = []
+
+    def reach(x):
+        if isinstance(x, _module.Module):
+            x = x.thing
+        if isinstance(x, _module.Thing):
+            have = seen.get(getattr(x, 'serial', None))
+            if have is x:
+                return
+            if have is not None or not 0 <= getattr(x, 'serial', -1) < sim.world.made:
+                raise ValueError(f'simsnap: thing {getattr(x, "serial", None)} {getattr(x, "name", "")!r} is held but '
+                                 'is not bodies of the run')
+            seen[x.serial] = x
+            out.append(x)
+            todo.append(x)
+        elif isinstance(x, dict):
+            for k, v in x.items():
+                reach(k)
+                reach(v)
+        elif isinstance(x, (list, tuple, set, frozenset)):
+            for v in x:
+                reach(v)
+
+    def fields(b):
+        for f, kind in BODY.items():
+            if kind == STATE and f in vars(b):
+                reach(vars(b)[f])
+        for m in b.modules:
+            for f in m.STATE:
+                if f in vars(m):
+                    reach(vars(m)[f])
+
+    for p, kind in _state_paths(sim):
+        if kind == STATE:
+            reach(_get(sim, p))
+    todo.extend(out[:len(sim.bodies)])
+    while todo:
+        fields(todo.pop(0))
+    return out
 
 
 class _Codec:
@@ -267,7 +313,8 @@ class _Codec:
 
 
 def snapshot(sim):
-    """The run as it stands (at a tick's end): {'version', 'mission', 'kernel', 'bodies', 'host', 'executor'}, in
+    """The run as it stands (at a tick's end): {'version', 'mission', 'kernel', 'bodies', 'others' (the things held
+    but not in bodies, _things), 'parts', 'host', 'executor'}, in
     values json.dumps keeps. A value it cannot keep, a thing held that is not a body of the run, an executor without
     snapshots: an error naming it, never a part left out."""
     things = _things(sim)
@@ -289,13 +336,15 @@ def snapshot(sim):
     for p in paths:
         c.count(_get(sim, p))
     kernel = w.snapshot(things, c.extra)
-    bodies = [[key, b.serial, b.name, b.template,
-               {f: snap.encode(x, c.extra, f'{b.name}.{f}') for f, x in vars(b).items() if BODY.get(f) == STATE}]
-              for key, b in sim.bodies.items()]
+    def own(b):
+        return {f: snap.encode(x, c.extra, f'{b.name}.{f}') for f, x in vars(b).items() if BODY.get(f) == STATE}
+
+    bodies = [[key, b.serial, b.name, b.template, own(b)] for key, b in sim.bodies.items()]
+    others = [[b.serial, b.name, b.template, own(b)] for b in things[len(sim.bodies):]]
     host = [['.'.join(p), snap.encode(_get(sim, p), c.extra, 'sim.' + '.'.join(p))] for p in paths]
     parts = [[f, type(v).__module__, type(v).__qualname__] for f, v in _fields(sim).items() if isinstance(SIM.get(f), dict)]
     out = {'version': VERSION, 'mission': getattr(sim.m, 'name', None), 'kernel': kernel, 'bodies': bodies,
-           'parts': parts, 'host': host, 'executor': sim.executor.snapshot()}
+           'others': others, 'parts': parts, 'host': host, 'executor': sim.executor.snapshot()}
     found = _serials(out)
     stray = sorted(set(found) - held)
     if stray:
@@ -345,8 +394,8 @@ def _write(obj, f, e, decode, codec):
 
 def restore(sim, s):
     """Write snapshot `s` onto `sim`, made anew for the same mission, test, level and script and not yet run: the
-    world's part, each body's fields (the bodies held in the snapshot's order), the Sim's own (containers in place),
-    the executor's. A body the snapshot has and the new world has not (one made in the run): an error for now
+    world's part, each body's fields (the bodies held in the snapshot's order; the things held out of bodies found
+    on the new world by serial, as _things finds them), the Sim's own (containers in place), the executor's. A body the snapshot has and the new world has not (one made in the run): an error for now
     (step 11b-3c builds it bare)."""
     if s.get('version') != VERSION:
         raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {VERSION}')
@@ -354,7 +403,8 @@ def restore(sim, s):
         raise ValueError(f'simsnap.restore: a snapshot of {s["mission"]!r} onto {getattr(sim.m, "name", None)!r}')
     have = {b.serial: b for b in _things(sim)}
     things = {}
-    for key, serial, name, template, _ in s['bodies']:
+    every = [(serial, name, template, fields) for _key, serial, name, template, fields in s['bodies']] + s['others']
+    for serial, name, template, _ in every:
         b = have.get(serial)
         if b is None:
             raise NotImplementedError(f'simsnap.restore: body {serial} {name!r} ({template}) was made in the run; '
@@ -366,7 +416,7 @@ def restore(sim, s):
     c = _Codec(sim)
     extra = c.decode_extra(things)
     sim.world.restore(s['kernel'], things, extra)
-    for key, serial, name, template, fields in s['bodies']:
+    for serial, name, template, fields in every:
         b = things[serial]
         for f in [f for f in vars(b) if BODY.get(f) == STATE and f not in fields]:
             delattr(b, f)

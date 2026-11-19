@@ -111,6 +111,37 @@ def test_one_container_in_two_places_comes_back_one(heal):
     assert n1.leaves == [1, 2] and n1.leaves is n2.leaves
 
 
+def _shadowed(m, t):
+    """heal_a with its first body's name taken by a later one (two map objects of one name, as retail_a02's palms):
+    the first is out of bodies and the schedule and still held (here in refs; on a retail map in topples)."""
+    s = sim.Sim(m, t, model=False)
+    old = next(iter(s.bodies.values()))
+    s.refs['old'] = old
+    s.add(old.name, old.template, old.owner, old.x + 30.0, old.y)
+    return s, old
+
+
+def test_a_thing_held_out_of_bodies_comes_back_by_its_serial(heal):
+    m, t = heal[0], heal[1]
+    a, old = _shadowed(m, t)
+    a.run(HALF)
+    old.leaves = [old.serial]               # a field of its own, set in the run
+    taken = json.loads(json.dumps(simsnap.snapshot(a)))
+    assert [o[:3] for o in taken['others']] == [[old.serial, old.name, old.template]]
+    b, held = _shadowed(m, t)
+    simsnap.restore(b, taken)
+    assert b.refs['old'] is held and b.bodies[held.name] is not held and held.leaves == [held.serial]
+    assert simsnap.snapshot(b) == taken
+    a.run(END)
+    b.run(END)
+    oa, ob = Observe(a), Observe(b)
+    assert [x.name for x, y in zip(oa.things(), ob.things()) if oa.state(x) != ob.state(y)] == []
+    def own(x):         # its fields and its modules' STATE (the modules themselves are the new world's objects)
+        return ({f: v for f, v in vars(x).items() if f != 'modules'},
+                [{f: vars(m).get(f) for f in m.STATE} for m in x.modules])
+    assert (a.t, a.world.frame, a.log, own(old)) == (b.t, b.world.frame, b.log, own(held))
+
+
 def test_what_it_cannot_keep_is_an_error(heal):
     m, t = heal[0], heal[1]
     a = sim.Sim(m, t, model=False)
