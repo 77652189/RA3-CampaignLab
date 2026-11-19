@@ -4,7 +4,7 @@ the reading autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_fr
 The module's own tests: tests/modules/test_autoheal.py."""
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import simsmall  # noqa: E402
-from engine.kernel import interfaces  # noqa: E402
+from engine.modules.autoheal import AutoHeal  # noqa: E402
 
 APOC = 'SovietAntiVehicleVehicleTech3'        # AutoHealBehavior: 2 points every 7 frames, 15 frames after a hurt
 
@@ -51,7 +51,7 @@ def test_a_fresh_hurt_restarts_the_wait_and_full_health_stops_it():
     assert b.hp == full
     for frame in range(36, 60):
         autoheal(s, frame)
-    assert b.hp == full and b.find(interfaces.Update)[0].heal_at is None
+    assert b.hp == full and all(m.heal_at is None for m in b.find(AutoHeal))
 
 
 def test_asleep_at_full_health_and_woken_by_a_hurt_a_heal_to_full_or_a_raised_maximum():
@@ -59,21 +59,22 @@ def test_asleep_at_full_health_and_woken_by_a_hurt_a_heal_to_full_or_a_raised_ma
     the frame of the cell that told it), as the every-frame module of step K1 saw the health move."""
     s = simsmall.small_world([('apoc', APOC, 'Player_1', 0.0, 0.0)])
     b = s.bodies['apoc']
-    (m,) = (m for m in b.find(interfaces.Update) if m.PHASE == 'autoheal')   # it has CrusherInfo, a toggle too
+    # Compiled Apocalypse has inactive Upgrade_HeroicHeal and initially active Upgrade_PassiveHeal.
+    (passive,) = (m for m in b.find(AutoHeal) if m.data.active)
     for frame in range(0, 6):
         autoheal(s, frame)
-    assert awake(s) == set() and m.heal_at is None                  # full health: asleep from its first run
+    assert awake(s) == set() and passive.heal_at is None            # full health: asleep from its first run
     b.damage(4)
     autoheal(s, 6)                                                  # hurt at 5: waits to 6 + 15
-    assert s.world.schedule.awake('autoheal') == {m: 21} and m.heal_at == 21
+    assert s.world.schedule.awake('autoheal') == {passive: 21} and passive.heal_at == 21
     b.mend(3)
-    assert s.world.schedule.awake('autoheal') == {m: 21}            # healed, not to full: still waits for 21
+    assert s.world.schedule.awake('autoheal') == {passive: 21}      # healed, not to full: still waits for 21
     b.mend(1)                                                       # to full by another hand: woken, heal_at cleared
     autoheal(s, 7)
-    assert awake(s) == set() and m.heal_at is None
+    assert awake(s) == set() and passive.heal_at is None
     b.set_hp(b.hp, b.max_hp + 10)                                   # a raised maximum (named_set_max_health)
     autoheal(s, 8)
-    assert m.heal_at == 15 and s.world.schedule.awake('autoheal') == {m: 15}
+    assert passive.heal_at == 15 and s.world.schedule.awake('autoheal') == {passive: 15}
     b.alive = False
     b.damage(1)
     autoheal(s, 9)
