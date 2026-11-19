@@ -206,6 +206,23 @@ def test_a_returner_comes_back_with_its_facility_and_the_path_it_walks():
     assert ng is restored.sim.world.numbered[g.serial] and path is restored.sim.bodies[u.name].path
 
 
+def test_a_returner_a_later_order_cancelled_stays_cancelled():
+    """1119p #2: a later order gave the unit a new path equal to the one send saw; busy (by identity) has it
+    cancelled -- written back it stays so, not tied again to the unit's path by its points."""
+    m, t, _ = build.resolve(*_WHERE)
+    run = _simai(m, t).advance(HALF)
+    u, g = [b for b in run.sim.bodies.values() if b.alive][:2]
+    seen = [(1.0, 2.0), (3.0, 4.0)]
+    run.pullback.returning[u.name] = (g, u.move_to, u.owner, seen)
+    u.path = list(seen)                 # the later order's: the same points, another path
+    restored = _simai(m, t)
+    taken = simaisnap.snapshot(run)
+    simaisnap.restore(restored, json.loads(json.dumps(taken)))
+    path = restored.pullback.returning[u.name][3]
+    assert path == seen and path is not restored.sim.bodies[u.name].path
+    assert simaisnap.snapshot(restored) == taken
+
+
 def test_a_private_slot_is_scanned_under_its_mangled_name():
     class Slotted:
         __slots__ = ('plain', '__hidden')

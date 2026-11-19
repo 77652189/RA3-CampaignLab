@@ -34,10 +34,11 @@ from engine.kernel import snap
 from simsnap import ALIAS, CACHE, STATE, STATIC, WIRE
 
 HOST, BRAINS, MODEL = 'host', 'brains', 'model'
-VERSION = 6             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
+VERSION = 7             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
 #                         4: a brain's ids / hp keyed by serial, not name (same-name sweep S6a);
 #                         5: HOOKS 9's runs, a list, and the mems they saw (_rec_mem by hand, 11b-4e);
-#                         6: its hunt goals / cells keyed by serial (S6b)
+#                         6: its hunt goals / cells keyed by serial (S6b);
+#                         7: a returner's path kept as whether it is the one its unit walks (review 1119p #2)
 
 SIMAI = {
     'sim': HOST, 'world': ALIAS, 'garrison': ALIAS, 'peers': WIRE,
@@ -224,9 +225,25 @@ def snapshot(w):
     held = []
     brains = [_take_brain(w, b, held) for b in w.brains.values()]
     s = simsnap.snapshot(w.sim, held)
-    ai = [['.'.join(p), snap.encode(_get(w, p), at='simai.' + '.'.join(p))] for p in _paths()
+    ai = [['.'.join(p), snap.encode(_value(w, p), at='simai.' + '.'.join(p))] for p in _paths()
           if all(f in simsnap._fields(_get(w, p[:k])) for k, f in enumerate(p))]
     return {'version': VERSION, 'sim': s, 'ai': ai, 'brains': brains}
+
+
+_WALKS = '$walks'       # a returner's path that is the very one its unit walks
+
+
+def _value(w, p):
+    """The SimAI's field at `p` as it is taken. A returner's path: busy asks whether the unit still walks the very
+    path send saw (by identity, Pullback.busy) -- kept as that, `_WALKS`, not as its points; another path (an equal
+    one a later order gave the unit) stays points, a list of its own on the new run, never the unit's (review 1119p
+    #2: matched by value, restore had made a returner a later order cancelled busy again)."""
+    v = _get(w, p)
+    if p != ('pullback', 'returning'):
+        return v
+    bodies = w.sim.bodies
+    return {name: (g, dest, owner, _WALKS if path is not None and getattr(bodies.get(name), 'path', None) is path
+                   else path) for name, (g, dest, owner, path) in v.items()}
 
 
 def _paths(table=SIMAI, at=()):
@@ -275,9 +292,9 @@ def restore(w, s):
         p = tuple(path.split('.'))
         setattr(_get(w, p[:-1]), p[-1], snap.decode(e, things))      # review k #1: a returner's facility
     for name, (g, dest, owner, path) in list(getattr(getattr(w, 'pullback', None), 'returning', {}).items()):
-        u = w.sim.bodies.get(name)          # busy asks for the very path the unit walks (by identity): the unit's
-        if u is not None and path is not None and u.path == path:
-            w.pullback.returning[name] = (g, dest, owner, u.path)
+        if path == _WALKS:                  # busy asks for the very path the unit walks (by identity): the unit's
+            u = w.sim.bodies.get(name)      # (review 1119p #2: only the one taken as it, not an equal one)
+            w.pullback.returning[name] = (g, dest, owner, u.path if u is not None else [])
     for player, _side, _pid, fields, model in s['brains']:
         _write_brain(w, w.brains[player], fields, model, things)
 

@@ -91,7 +91,8 @@ for _f in ('t log box_log panel_log asked up scenes unknown flags objectives mar
            'base_power powers_off series threat first_threat known known_at guessed due blasts casts power_at '
            'queues produced_to player_ups instances active lost_orders seen firing mid_aims pre_locks fire_gate '
            '_field first_death death_blasts events anchored hotspots waypoints volleys chilling _fire_obstacles '
-           'impact_flights emp_until knock_hold clocks tech_to').split():
+           'impact_flights emp_until knock_hold clocks tech_to '
+           'pack_hold').split():     # pack_hold: a yard packing's frames held, by serial (review 1119p #3: unsorted)
     SIM.setdefault(_f, STATE)
 # a second name -> the path of the object it names
 ALIASES = {('used',): ('world', 'used'), ('unmodeled',): ('world', 'gaps'),

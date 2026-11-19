@@ -320,6 +320,25 @@ def test_a_replaced_things_attached_row_goes_with_it():
     assert sorted(b.world.late) == [last]
 
 
+def _yard():
+    return simsmall.small_world([('yard', 'AlliedConstructionYard', 'Player_1', 600, 600)], model=False)
+
+
+def test_a_yard_packed_is_kept():
+    """1119p #3: packing a yard holds its frames in Sim.pack_hold (by serial) until the MCV is made (the press frame,
+    PACK_FRAMES 0), an empty dict left: a run that packed one is taken, and goes on the same (the MCV held still as
+    long)."""
+    a = _yard()
+    a.act('NAMED_USE_COMMANDBUTTON_ABILITY', ['yard', 'Command_PackAlliedMCV'], None)
+    a.advance(2)
+    assert (a.pack_hold, a.bodies['yard'].template) == ({}, 'AlliedMCV') and a.emp_until
+    b = _yard()
+    _fork(a, b)
+    _go_on(a, b, 60)
+    assert (a.bodies['yard'].template, a.pack_hold, a.emp_until) == (b.bodies['yard'].template, b.pack_hold,
+                                                                      b.emp_until)
+
+
 def _spy_world():
     s = simsmall.small_world(model=False)
     target = s.add('t', 'AlliedWarFactory', 'Player_2', 1000.0, 1000.0)
