@@ -55,11 +55,11 @@
 
 | 要加 | 改哪个模块（层） | 在哪张登记表加一行 | 配什么测试 |
 |---|---|---|---|
-| 脚本动作 | 按它作用的层挑一组：`simact_vision`（视野）`simact_player`（钱、电、科技、技能）`simact_order`（给单位下命令）`simact_object`（对象状态）`simact_ability`（技能按钮）`simact_world`（旗标、计时器、队伍）`simact_show`（字幕、镜头、音视频）（L6）。函数 `fn(sim, name, a, script)` 只把参数翻译成下层接口的调用，规则本身写进下层模块 | 那组的 `ACTIONS`（`simact.table` 合并，重名报错；清单靠它认名字）。新开一组：加进 `simact.GROUPS` + `LAYER_OF` 记 6 | 最小世界摆好对象，跑这个动作，断言世界的变化；做不到的参数分支 `return False`（自动记成缺口） |
+| 脚本动作 | 按它作用的层挑一组：`simact_vision`（视野）`simact_player`（钱、电、科技、技能）`simact_order`（给单位下命令）`simact_object`（对象状态）`simact_ability`（技能按钮）`simact_world`（旗标、计时器、队伍）`simact_show`（字幕、镜头、音视频）（L6）。函数 `fn(sim, name, a, script)` 只翻译参数，已迁移的单位命令和按钮经 `Sim.commands` 下发，规则写在下层 | 那组的 `ACTIONS`（`simact.table` 合并，重名报错；清单靠它认名字）。新开一组：加进 `simact.GROUPS` + `LAYER_OF` 记 6 | 最小世界摆好对象，跑这个动作，断言世界的变化；做不到的参数分支 `return False`（自动记成缺口） |
 | 脚本条件 | 同上，`simcond_world` / `simcond_object` / `simcond_vision` / `simcond_player` / `simcond_show`（L6），`fn(sim, name, a)` 回真假 | 那组的 `CONDITIONS`；新开一组加进 `simcond.GROUPS` + `LAYER_OF` | 同上；不认得的情形回 `None`（记缺口、当不成立） |
 | 物体模块（AutoHeal、Toggle 这类 XML 模块） | L2。AutoHeal、Toggle 的本体规则写进 `engine/modules/autoheal.py`、`toggle.py`。仍在宿主的规则加进对应的 `sim<部件>.py`，状态放在自己的对象里 | 以下登记用于宿主规则：`LAYER_OF` 记 2；收世界句柄 → `WORLD_TAKERS`；用到世界的新能力 → `simworld.WORLD_API`；独占字段 → `FIELD_OWNER`；还要借 sim.py 里没搬的方法 → 模块自己的 `PEERS` + `PEER_TAKERS` | 最小世界 + 只推进这个部件几帧（样板：`test_simheal`） |
 | 武器伤害规则（各种 Nugget、MetaImpact） | L3 `simdamage.Damage`（`deal` 按 Nugget 派发）。索敌、瞄准、开火节奏也归 L3，但还没全搬（搜 `def can_hit`、`def shots_due`）；追击和攻击状态机归 L5 | 新缓存字段 → `FIELD_OWNER` 记 `simdamage`；要销毁、改修改器、改模型状态等 L2 动作 → `simdamage.PEERS`（只借还在 sim.py 的；已搬的直接导入调用） | 最小世界里一个开火方一个挨打方，断言血量 / 状态；只做了一部分的 Nugget 写 `world.gap(GAP_WEAPON, 'XxxNugget', 缺什么)` |
-| 单位命令（移动、攻击、警戒、跟随、撤退……） | L5 `simorder`：下命令 `order_*(world, peers, b, ...)`，每帧推进 `*_due`。移动的物理调 L2，开火的数值调 L3；扣钱加钱调 L4 `simmoney.Money` | 已登记的命令字段按 `FIELD_OWNER` 独写；借的名字进 `simorder.PEERS`；玩家能下的命令另看 `simproxy.SimWorld.issue` 和 `simcoverage.PLAYER_ORDERS` | 最小世界里下命令、推进几帧，断言位置 / 目标；脚本动作那一层只测"翻译对了" |
+| 单位命令（移动、攻击、警戒、跟随、撤退……） | L5 `simorder`：下命令 `order_*(world, peers, b, ...)`，每帧推进 `*_due`。移动的物理调 L2，开火的数值调 L3；扣钱加钱调 L4 `simmoney.Money` | 已登记的命令字段按 `FIELD_OWNER` 独写；借的名字进 `simorder.PEERS`；玩家输入从 `Sim.commands` 查分派 | 最小世界里下命令、推进几帧，断言位置 / 目标；脚本动作那一层只测"翻译对了" |
 | AI 规则 | L8 `simai` 和它的适配器（样板 `simpullback`、`simmicro`）：只通过 L4（`simmoney`、`simtech`）和 L5（`simorder`）的接口下指令，不直接改对象字段 | `simmicro`（L5）和 `simpullback`（L8）均在 `WORLD_TAKERS`；只有实际读 `peers` 的 `simpullback` 在 `PEER_TAKERS`。`simai` 暂无层登记；`AI_SIDE` 成员从玩家链清单排除 | 直接喂适配器一个小局面断言它的决定；AI 回放只当对拍证据 |
 | 每帧要做的事 | 已迁入内核的规则写成模块，例如 AutoHeal；仍在宿主的规则用主人对象的 `due` / `tick`，例如 `s.repairs.due` | 模块用 `PHASE` 选现有格；宿主调用和门控见 `simloop.CELLS` / `FRAME`，两种跑法共用 | 规则在主人模块测；改 `FRAME` 顺序会改录制，要有台上证据 |
 
