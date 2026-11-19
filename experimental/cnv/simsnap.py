@@ -15,7 +15,8 @@ How a field is kept (SIM / BODY below; a dict there is a part: an object whose o
 Values as engine/kernel/snap.py keeps them, plus the host's marks: a weapon / armour / weapon slots of the template
 data held by identity ({"$weapon": [template, "fight" | "slot", ...]}: written back as the new world's own object of
 the same place), one list / dict / set / array held in two places ({"$shared": [n, value]} then {"$ref": n}: one
-object again), a numpy array ({"$array": [dtype, shape, base64]}), a player's protocol book ({"$book": fields}).
+object again), a numpy array ({"$array": [dtype, shape, base64]}), a player's protocol book ({"$book": fields}), an
+order the command port keeps ({"$command": fields}).
 `unclassified(sim)` (step S's guard 4.3) names every field not sorted here, so a new one cannot be left out."""
 import base64
 import importlib
@@ -26,6 +27,7 @@ import simtech
 import simunits
 from engine.kernel import module as _module
 from engine.kernel import snap
+from engine.ports.command import Command
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
 VERSION = 1
@@ -217,6 +219,8 @@ class _Codec:
             return {'$book': snap.encode(dict(vars(v)), self.extra, 'book')}
         if isinstance(v, np.bool_):
             return {'$npbool': bool(v)}
+        if isinstance(v, Command):      # an order the command port keeps (its names and numbers)
+            return {'$command': snap.encode({f: getattr(v, f) for f in v.__dataclass_fields__}, self.extra, 'command')}
         return NotImplemented
 
     # ---- writing back
@@ -239,6 +243,8 @@ class _Codec:
                 return b
             if mark == '$npbool':
                 return np.bool_(x)
+            if mark == '$command':
+                return Command(**snap.decode(x, things, extra))
             if mark in ('$slots', '$weapon', '$armor', '$weapons'):
                 return self._template_object(mark, x)
             return NotImplemented
@@ -290,25 +296,28 @@ def snapshot(sim):
     parts = [[f, type(v).__module__, type(v).__qualname__] for f, v in _fields(sim).items() if isinstance(SIM.get(f), dict)]
     out = {'version': VERSION, 'mission': getattr(sim.m, 'name', None), 'kernel': kernel, 'bodies': bodies,
            'parts': parts, 'host': host, 'executor': sim.executor.snapshot()}
-    stray = sorted(_serials(out) - held)
+    found = _serials(out)
+    stray = sorted(set(found) - held)
     if stray:
-        raise ValueError(f'simsnap.snapshot: things {stray[:10]} are held but are not bodies of the run')
+        raise ValueError(f'simsnap.snapshot: things {stray[:10]} are held but are not bodies of the run '
+                         f'(the first at {", ".join(found[k] for k in stray[:3])})')
     return out
 
 
-def _serials(e, out=None):
-    out = set() if out is None else out
+def _serials(e, out=None, at='snapshot'):
+    """serial -> where in the taken snapshot it is first held (a path of keys)."""
+    out = {} if out is None else out
     if isinstance(e, list):
-        for x in e:
-            _serials(x, out)
+        for k, x in enumerate(e):
+            _serials(x, out, f'{at}[{k}]')
     elif isinstance(e, dict):
         if len(e) == 1 and '$thing' in e:
-            out.add(e['$thing'])
+            out.setdefault(e['$thing'], at)
         elif len(e) == 1 and '$module' in e:
-            out.add(e['$module'][0])
+            out.setdefault(e['$module'][0], at)
         else:
-            for x in e.values():
-                _serials(x, out)
+            for k, x in e.items():
+                _serials(x, out, f'{at}.{k}')
     return out
 
 

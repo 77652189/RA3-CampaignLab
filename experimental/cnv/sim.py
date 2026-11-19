@@ -3136,8 +3136,8 @@ class Sim:
         g = self.ground.grids['both'] | self.ground.grids['ground'] | ~self.ground.grids['both']
         if self.known is None:
             self.known = np.zeros(g.shape, bool)
-            jj, ii = np.mgrid[0:g.shape[0], 0:g.shape[1]]
-            self._xy = self.ground.world((jj, ii))
+        if '_xy' not in self.__dict__:      # a cache (a run written back from a snapshot makes its own)
+            self._xy = self.ground.world(tuple(np.mgrid[0:g.shape[0], 0:g.shape[1]]))
         x, y = self._xy
         if self.all_revealed():
             self.known[:] = True

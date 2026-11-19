@@ -9,6 +9,9 @@ frame's record identical (docs/engine/sim-layers.md "搬迁不改行为").
     python -X utf8 experimental/cnv/simrecord.py record <dir> --executor public|model|public@model
     python -X utf8 experimental/cnv/simrecord.py cross <public dir> <model dir>
                                                                          # the two script executors frame by frame
+    python -X utf8 experimental/cnv/simrecord.py snap <dir> [--at 0.5]   # step S's guard 7: each task without the
+                                                                         # AI whole, and taken at half, written back
+                                                                         # onto the task made anew, run on: the same
 
 The times `record` writes come from runs side by side (-j), a few percent of noise and more on a loaded machine;
 `time` replaces them with the least of three lone runs (docs/engine/sim-modules.md 9.3: same machine, one task a
@@ -27,6 +30,10 @@ cross record instead (CrossRecorder): one line per script step, numbered by the 
 told the world through the port and the script state it leaves. `cross` lines the two up by frame and lists, per
 task, each field's first differing frame and how many frames differ: a report, never a pass/fail (the differences
 are step Z's work list, judged on the bench by docs/engine/script-semantics.md).
+
+`snap` (step S's guard 7, docs/engine/sim-modules.md 9.2) runs both sides with the public executor (on the model's world where the
+task has it): the model's plug-in keeps its state to itself and cannot be taken yet, so its frame lines (on_frame) are
+not there and the record is a line per DT tick.
 
 The recorders read the world only through the observation port (engine/ports/observe.py, R3 12b): a field moved
 into a kernel module changes the port, never this file. Only run_task, the harness, imports the simulator (to make
@@ -57,6 +64,7 @@ TASKS = {
     'mine_cap': ('bench', ('mineturn0', 'cap'), 30.0),
     'mine_tower': ('bench', ('aitowerinc5', None), 60.0),
 }
+SNAP_TASKS = [n for n, (kind, *_) in TASKS.items() if kind != 'ai']   # `snap`: the AI's part cannot be taken yet
 
 SIM_FIELDS = ('log', 'flags', 'counters', 'timers', 'objectives', 'money', 'income', 'ending', 'used', 'unknown',
               'series', 'done', 'disabled', 'events')
@@ -234,40 +242,64 @@ class CrossRecorder:
         self.spent += time.perf_counter() - t0
 
 
-def run_task(name, out, executor=None):
+def run_task(name, out, executor=None, snap=None):
     """One task's run, its record written to `out`. executor: None the task's own (TASKS: old runs the public one,
     the rest the model's plug-in where it is on this computer) and the full record; 'public' / 'model' /
-    'public@model' that executor for every kind and the cross record (CrossRecorder)."""
+    'public@model' that executor for every kind and the cross record (CrossRecorder).
+    snap (step S's guard 7, `snap` below): the full record on a world a snapshot can be taken of -- the task's own
+    with the public executor (the model's plug-in keeps its state to itself) --, 'whole' run through, a fraction
+    `at` stopped at the first tick past at x the task's seconds, taken (simsnap), through JSON, written onto the
+    same task made anew and run on to the end, the record going on where it stopped (Recorder, the log's count)."""
     import build
     import sim
     from engine.ports.observe import Observe
     kind, args, until = TASKS[name]
     model = kind != 'old' if executor is None else executor in ('model', 'public@model')
-    which = {'executor': 'public'} if executor == 'public@model' else {}
+    which = {'executor': 'public'} if executor == 'public@model' or (snap is not None and model) else {}
     make = Recorder if executor is None else CrossRecorder
-    if kind == 'retail':
-        import retail
-        s = sim.Sim(retail.RetailMission(args[0]), model=model, **which)
+    if snap is not None and (executor is not None or kind == 'ai'):
+        raise ValueError(f'simrecord: no snapshot of {name} ({kind}) with executor {executor}: the AI and the '
+                         "model's plug-in cannot be taken yet (step 11b-4)")
+
+    cut = None if snap in (None, 'whole') else float(snap) * until
+    for half in range(1 if cut is None else 2):     # a cut run: the task made again for the half written back
+        if kind == 'retail':
+            import retail
+            s = sim.Sim(retail.RetailMission(args[0]), model=model, **which)
+        else:
+            m, t, _ = build.resolve(*args)
+            s = sim.Sim(m, t, 'normal', model=model, **which)
+        if half:
+            simsnap.restore(s, json.loads(taken))
+            o = Observe(s)
+            if o.log_since(0)[1] != rec.logged:
+                raise RuntimeError(f'simrecord: the restored log has {o.log_since(0)[1]} lines, the run had '
+                                   f'{rec.logged}')
+            was, rec = rec, Recorder(o, out)    # the record goes on from the line and the log count it stopped at
+            rec.n, rec.logged = was.n, was.logged
+            rec.spent = was.spent + time.perf_counter() - t1     # taking and writing back: not the run's time
+            rec.snap = {'at': was.at, 'bytes': len(taken), 'seconds': time.perf_counter() - t1}
+            rec.attach()
+            s.run(until)
+            break
         rec = make(Observe(s), out)
         rec.attach()
+        if kind == 'ai':
+            import simai
+            w = simai.SimAI(s, 'normal', 1, None, None, simai.BLOCKS, False)
+            t0 = time.perf_counter()
+            w.advance(int(until * simai.FPS))
+            break
         t0 = time.perf_counter()
-        s.run(until)
-    elif kind in ('bench', 'old'):
-        m, t, _ = build.resolve(*args)
-        s = sim.Sim(m, t, model=model, **which)
-        rec = make(Observe(s), out)
-        rec.attach()
-        t0 = time.perf_counter()
-        s.run(until)
-    elif kind == 'ai':
-        import simai
-        m, t, _ = build.resolve(*args)
-        s = sim.Sim(m, t, 'normal', model=model, **which)
-        rec = make(Observe(s), out)
-        rec.attach()
-        w = simai.SimAI(s, 'normal', 1, None, None, simai.BLOCKS, False)
-        t0 = time.perf_counter()
-        w.advance(int(until * simai.FPS))
+        if cut is None:
+            s.run(until)
+            break
+        import simsnap
+        s.run(cut)
+        if s.ending is not None or s.t <= cut:
+            raise RuntimeError(f'simrecord: {name} ended (or went quiet) at {s.t}, before {cut}: nothing to take')
+        t1 = time.perf_counter()
+        taken, rec.at = json.dumps(simsnap.snapshot(s)), s.t
     rec.ran = time.perf_counter() - t0 - rec.spent     # the run alone: no imports, map build or record writing
     rec.line('end')
     return s, rec
@@ -285,6 +317,13 @@ def main():
     one.add_argument('name')
     one.add_argument('path')
     one.add_argument('--executor', choices=EXECUTORS, default=None)
+    one.add_argument('--snap', default=None, help="'whole' or a fraction of the run: run_task")
+    sn = sub.add_parser('snap', help="step S's guard 7: each task whole and taken at --at, written back, run on; "
+                                     'the two records the same line for line')
+    sn.add_argument('dir')
+    sn.add_argument('--at', type=float, default=0.5, help='where to take it, a fraction of the task')
+    sn.add_argument('--only', nargs='*', default=None)
+    sn.add_argument('-j', type=int, default=4)
     x = sub.add_parser('cross')
     x.add_argument('a')
     x.add_argument('b')
@@ -305,9 +344,11 @@ def main():
     if a.cmd == 'time':
         with pool.hold(1, 'simrecord time', exclusive=True):
             return _main(a)
-    want = max(1, min(a.j, len(a.only or TASKS))) if a.cmd == 'record' else 1
+    want = 1
+    if a.cmd in ('record', 'snap'):
+        want = max(1, min(a.j, len(a.only or TASKS) * (2 if a.cmd == 'snap' else 1)))
     with pool.hold(want, f'simrecord {a.cmd}', at_least=1) as j:
-        if a.cmd == 'record':
+        if a.cmd in ('record', 'snap'):
             a.j = j
         return _main(a)
 
@@ -325,10 +366,11 @@ def _main(a):
     if a.cmd == 'one':
         t0 = time.perf_counter()
         with gzip.open(a.path, 'wt', encoding='utf-8') as out:
-            _, rec = run_task(a.name, out, a.executor)
+            _, rec = run_task(a.name, out, a.executor, a.snap)
         total = time.perf_counter() - t0
         with open(timing_path(a.path), 'w', encoding='utf-8') as f:
-            json.dump({'total': total, 'record': rec.spent, 'run': rec.ran}, f)
+            json.dump({'total': total, 'record': rec.spent, 'run': rec.ran, **({'snap': rec.snap}
+                                                                               if hasattr(rec, 'snap') else {})}, f)
         print(a.name, 'used:', ' / '.join(sorted(rec.o.report('used'))))
         return 0
     if a.cmd == 'cross':
@@ -336,27 +378,10 @@ def _main(a):
     if a.cmd == 'time':
         return time_tasks(a.dir, a.only or list(TASKS), a.n)
     if a.cmd == 'record':
-        os.makedirs(a.dir, exist_ok=True)
-        names = a.only or list(TASKS)
-        env = dict(os.environ, PYTHONHASHSEED='0')
-        procs, failed = [], []
-        pending = list(names)
-        while pending or procs:
-            while pending and len(procs) < a.j:
-                n = pending.pop(0)
-                log = open(os.path.join(a.dir, n + '.txt'), 'w', encoding='utf-8')
-                p = subprocess.Popen([sys.executable, '-X', 'utf8', os.path.abspath(__file__), 'one', n,
-                                      os.path.join(a.dir, n + '.gz')] +
-                                     (['--executor', a.executor] if a.executor else []), env=env, stdout=log, stderr=subprocess.STDOUT)
-                procs.append((n, p, log))
-            n, p, log = procs[0]
-            p.wait()
-            log.close()
-            procs.pop(0)
-            if p.returncode:
-                failed.append(n)
-            print(n, 'ok' if not p.returncode else f'FAILED (see {n}.txt)', flush=True)
-        return 1 if failed else 0
+        extra = ['--executor', a.executor] if a.executor else []
+        return 1 if _record(a.dir, [(n, n, extra) for n in a.only or TASKS], a.j) else 0
+    if a.cmd == 'snap':
+        return snap_check(a.dir, a.only or SNAP_TASKS, a.at, a.j)
     bad = 0
     for f in sorted(os.listdir(a.base)):
         if not f.endswith('.gz'):
@@ -373,6 +398,57 @@ def _main(a):
         else:
             print(f[:-3], 'same', lines, 'lines')
     timing(a.base, a.new)
+    return 1 if bad else 0
+
+
+def _record(folder, jobs, j):
+    """Each job (task, file name, extra arguments of `one`) in its own subprocess, j at a time, its record
+    <folder>/<file>.gz and its output <file>.txt. Returns the files that failed."""
+    os.makedirs(folder, exist_ok=True)
+    env = dict(os.environ, PYTHONHASHSEED='0')
+    procs, failed = [], []
+    pending = list(jobs)
+    while pending or procs:
+        while pending and len(procs) < j:
+            n, f, extra = pending.pop(0)
+            log = open(os.path.join(folder, f + '.txt'), 'w', encoding='utf-8')
+            p = subprocess.Popen([sys.executable, '-X', 'utf8', os.path.abspath(__file__), 'one', n,
+                                  os.path.join(folder, f + '.gz')] + extra,
+                                 env=env, stdout=log, stderr=subprocess.STDOUT)
+            procs.append((f, p, log))
+        f, p, log = procs[0]
+        p.wait()
+        log.close()
+        procs.pop(0)
+        if p.returncode:
+            failed.append(f)
+        print(f, 'ok' if not p.returncode else f'FAILED (see {f}.txt)', flush=True)
+    return failed
+
+
+def snap_check(folder, names, at=0.5, j=4):
+    """Step S's guard 7 (docs/engine/sim-modules.md 9.2): each task recorded whole (<task>.gz) and taken at `at`
+    of its run, through JSON, written onto the task made anew and run on (<task>.snap.gz), both on the world a
+    snapshot can be taken of (run_task); the first differing line of each pair, the snapshot's size and time. 0 when
+    every pair is the same."""
+    failed = _record(folder, [(n, n, ['--snap', 'whole']) for n in names] +
+                     [(n, n + '.snap', ['--snap', repr(at)]) for n in names], j)
+    bad = 0
+    for n in names:
+        whole, cut = os.path.join(folder, n + '.gz'), os.path.join(folder, n + '.snap.gz')
+        if n in failed or n + '.snap' in failed:
+            print(n, 'FAILED to run')
+            bad += 1
+            continue
+        lines, differs = first_difference(whole, cut)
+        with open(timing_path(cut), encoding='utf-8') as f:
+            took = json.load(f).get('snap', {})
+        how = f"taken at {took.get('at')} s, {took.get('bytes', 0) / 1e6:.2f} MB, {took.get('seconds', 0):.2f} s"
+        if differs:
+            bad += 1
+            print(n, differs, f'({how})')
+        else:
+            print(n, 'same', lines, f'lines ({how})')
     return 1 if bad else 0
 
 
