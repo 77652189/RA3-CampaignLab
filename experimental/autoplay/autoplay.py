@@ -6,10 +6,10 @@ what a human sees and acts only through the script verbs, so every run is also a
            rule, a bombarder that just fired), the ones it saw lately and has not looked at since (ghosts), the
            objectives' markers (the arrows on the map), the countdowns on screen. It never reads a script's flag, a
            hidden objective, an enemy out of sight.
-  Orders   the player's hands: 派 / 走 / 攻击 / 放 lines at the simulator's clock, handed to `post` (attach: into
-           Sim.events as parse_script reads them), so what the run did IS the script (`Run.lines`): the same text
-           through Sim(script=...) plays the same game (`replay`), and the testbench replays it by playcheck as any
-           plays/*.txt.
+  Orders   the player's hands: attack-move / move / attack / power commands at the simulator's clock, posted through
+           the command port (engine/ports/command.py: queued as the script lines 派 / 走 / 攻击 / 放 they read as),
+           so what the run did IS the script (`Run.lines`): the same text through Sim(script=...) plays the same
+           game (`replay`), and the testbench replays it by playcheck as any plays/*.txt.
   attach   the View and the Orders of a world about to run (the harness: it alone holds the world).
   play     one run: the simulator ticked as Sim.run does (step, a sample each whole second, the quiet check), the
            player asked for decisions every `interval()` seconds while it has the controls (Sim.input).
@@ -48,6 +48,7 @@ sim = load('sim', os.path.join(CNV, 'sim.py'))
 levels = load('levels', os.path.join(HERE, 'levels.py'))
 players = load('players', os.path.join(HERE, 'players.py'))
 num, where = players.num, players.where
+from engine.ports import command  # noqa: E402  (the simulator's import put experimental/cnv on the path)
 
 GHOST_SECS = 25.0           # an enemy last seen this long ago is no longer where the player thinks it is
 GHOST_LOOKED = 120.0        # ... or a unit of the player's is this close to the spot and sees nothing there
@@ -179,24 +180,27 @@ class View:
 
 
 class Orders:
-    """The player's hands. Each order is a script line stamped with the simulator's clock and handed to `post` (the
-    harness pushes it into the world's event list); `lines` is the run as a script. `seconds`: how a script line's
-    time reads (sim.seconds)."""
+    """The player's hands. Each order is a command posted through the command port at the simulator's clock; `lines`
+    is the run as a script (each command's script line, stamped). `seconds`: how a script line's time reads
+    (sim.seconds)."""
 
-    def __init__(self, view, post, seconds):
-        self.view, self.post, self.seconds = view, post, seconds
+    def __init__(self, view, commands, seconds):
+        self.view, self.commands, self.seconds = view, commands, seconds
         self.lines = []
         self.memo = {}                      # unit name -> (verb, target): the last order, not repeated while it stands
         self.skipped = 0                    # orders to a unit no script line can name
 
     def push(self, time, text):
-        """One event at `time` (seconds, or `<flag>+<secs>`): into the simulator, as parse_script reads the line."""
+        """A script line at `time` (seconds, or `<flag>+<secs>`), queued as it is (a card player's plan line)."""
         line = f'{time} {text}'
-        self.post(line)
+        self.commands.post_line(line)
         self.lines.append(line)
 
-    def now(self, text):
-        self.push(num(self.view.obs.t), text)
+    def now(self, cmd):
+        """A command now: posted for this moment as its script line's time reads, recorded as that line."""
+        time = num(self.view.obs.t)
+        self.commands.post(cmd, self.seconds(time))
+        self.lines.append(f'{time} {command.text(cmd)}')
 
     def _fresh(self, b, verb, target):
         """False when b is already on this very order (a unit still under way is not told again: that resets its path)."""
@@ -214,7 +218,7 @@ class Orders:
             if not who:
                 self.skipped += 1
             elif b.alive and self._fresh(b, verb, where(p)):
-                self.now(f'{verb} {who} 去 {where(p)}')
+                self.now(command.Command('attack_move' if attack else 'move', units=(who,), place=where(p)))
 
     def hit(self, units, foe):
         """Each unit attacks that thing (攻击), or attack-moves to where it was seen when no line can name it."""
@@ -224,14 +228,14 @@ class Orders:
                 self.skipped += 1
             elif not foe.addr:
                 if b.alive and self._fresh(b, '派', where((foe.x, foe.y))):
-                    self.now(f'派 {who} 去 {where((foe.x, foe.y))}')
+                    self.now(command.Command('attack_move', units=(who,), place=where((foe.x, foe.y))))
             elif b.alive and self._fresh(b, '攻击', foe.addr):
-                self.now(f'攻击 {who} 打 {foe.addr}')
+                self.now(command.Command('attack', units=(who,), target=foe.addr))
 
     def power(self, b, ability, p):
         who = self.view.address(b)
         if who:
-            self.now(f'放 {who} {ability} 在 {where(p)}')
+            self.now(command.Command('power', units=(who,), power=ability, place=where(p)))
 
 
 @dataclasses.dataclass
@@ -270,19 +274,12 @@ def finish(obs, level, name, seed, lines, skipped, brief=None):
 
 
 def attach(world, brief):
-    """(View, Orders) of a world about to run: the View reads it through the observation port, the Orders' lines go
-    into its script events as parse_script reads them (an anchored line waits on its flag)."""
+    """(View, Orders) of a world about to run: the View reads it through the observation port, the Orders give their
+    commands through the command port."""
     from engine.ports.observe import Observe
-
-    def post(line):
-        (e,) = sim.parse_script(line)
-        if isinstance(e[0], tuple):
-            world.anchored.append(e)
-        else:
-            world.events.append(e)
-            world.events.sort(key=lambda x: x[0])
+    from engine.ports.command import Commands
     view = View(Observe(world), brief, sim.CIV)
-    return view, Orders(view, post, sim.seconds)
+    return view, Orders(view, Commands(world), sim.seconds)
 
 
 def tick(s):

@@ -10,7 +10,10 @@ whole-file form, for a plug-in adapter; simrecord cannot join it: run_task makes
 
 The other readers (READERS, READER_PARTS) are held to the same, outside their harness; and every file in experimental/
 outside the simulator that uses a world maker is a reader or a row of EXEMPT, the explicit exemption table (file,
-function or the whole file, why) -- R3 12c, the observation port's close."""
+function or the whole file, why) -- R3 12c, the observation port's close.
+
+Givers give orders through the command port (engine/ports/command.py; R3 13b): a giver moved onto it (GIVERS) calls no
+order of the world's, touches no script event queue and writes no field an order sets, outside its harness."""
 import ast
 import importlib.util
 from pathlib import Path
@@ -106,8 +109,7 @@ EXEMPT = [
     (CNV / 'simshow.py', 'run', '造局并跑'),
     (CNV / 'simshow.py', 'main', '命令行：造局'),
     (AUTOPLAY / 'autoplay.py', 'load', '造局'),
-    (AUTOPLAY / 'autoplay.py', 'attach', '唯一拿世界的：View / Orders 从这里拿 Observe'),
-    (AUTOPLAY / 'autoplay.py', 'attach.post', 'attach 里的内层函数：Orders 的行经它下给世界'),
+    (AUTOPLAY / 'autoplay.py', 'attach', '唯一拿世界的：View / Orders 从这里拿 Observe / Commands'),
     (AUTOPLAY / 'autoplay.py', 'tick', '驱动一局'),
     (AUTOPLAY / 'autoplay.py', 'play', '造局并驱动'),
     (AUTOPLAY / 'autoplay.py', 'replay', '造局并驱动'),
@@ -367,3 +369,50 @@ def test_planted_breaks_are_found():
     assert planted != src and raw_breaks(planted)
     assert raw_breaks(src + '\ndef g(s):\n    return 1\n')
     assert raw_breaks(src + '\ndef h(x):\n    return x.eng.frame\n')
+
+
+# The givers moved onto the command port (R3 13b: autoplay's Orders and the players; simui, the plays, the script
+# actions, simproxy and simai follow, cmd_port.md). What giving an order round the port looks like: a call of the
+# world's order methods, the script event queue, or a write of a field an order sets.
+ORDER_CALLS = {'order_move', 'order_group', 'order_attack', 'order_capture', 'order_build', 'order_guard',
+               'order_power', 'order_transform', 'order_stop', 'order_follow', 'order_unpack', 'sell', 'stand', 'send',
+               'happen', 'parse_script', 'flee_start', 'hunt_due', 'drop_goal', 'set_goal'}
+ORDER_QUEUES = {'events', 'anchored'}
+ORDER_FIELDS = {'goal', 'path', 'dest', 'move_to', 'mode', 'stance', 'hold_fire', 'hold_paused', 'ground_fire',
+                'ai_acquire', 'follow', 'engaged'}
+GIVERS = [AUTOPLAY / 'autoplay.py', AUTOPLAY / 'players.py']
+
+
+def giver_breaks(src, harness):
+    """(line, name) for each order given round the port outside HARNESS."""
+    tree = ast.parse(src)
+    where = _functions(tree)
+    out = []
+    for node in ast.walk(tree):
+        if where.get(node) in harness:
+            continue
+        if isinstance(node, ast.Call) and _called(node) in ORDER_CALLS:
+            out.append((node.lineno, _called(node)))
+        elif isinstance(node, ast.Attribute) and node.attr in ORDER_QUEUES:
+            out.append((node.lineno, node.attr))
+        elif isinstance(node, ast.Attribute) and node.attr in ORDER_FIELDS and isinstance(node.ctx, (ast.Store, ast.Del)):
+            out.append((node.lineno, node.attr))
+    return out
+
+
+def test_the_givers_give_through_the_command_port():
+    for f in GIVERS:
+        assert giver_breaks(f.read_text(encoding='utf-8'), harness(f)) == [], f.name
+
+
+def test_planted_orders_round_the_port_are_found():
+    f = AUTOPLAY / 'autoplay.py'
+    src = f.read_text(encoding='utf-8')
+    for planted in (src.replace('        self.commands.post_line(line)\n',
+                                '        self.commands.post_line(line)\n        self.view.obs.world.events.append(1)\n'),
+                    src.replace("        time = num(self.view.obs.t)\n",
+                                "        time = num(self.view.obs.t)\n        self.view.w.order_move(b, p, True)\n"),
+                    src.replace("        self.memo[b.name] = key\n",
+                                "        self.memo[b.name] = key\n        b.goal = None\n")):
+        assert planted != src and giver_breaks(planted, harness(f))
+    assert not giver_breaks(src + '\ndef tick(s):\n    s.events.sort()\n', harness(f))
