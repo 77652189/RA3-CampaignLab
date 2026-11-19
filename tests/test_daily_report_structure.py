@@ -53,7 +53,7 @@ def _flow_sources(tmp_path, new_reds, steps_between, wait, backlog):
     os.utime(logs / 'full_b.log', (t0 + 3600, t0 + 3600))
     steps = [(int(t0) + 60 * (i + 1), 'M%d something' % i) for i in range(steps_between)]
     (logs / 'cpupool_waits.jsonl').write_text(json.dumps({'t': time.time(), 'owner': 'p', 'waited': wait}) + '\n')
-    (re_dir / 'handoff-r.md').write_text('## 搬完后有意改行为\n' + '- x\n' * backlog + '## 状态\n- y\n')
+    (re_dir / 'handoff-r.md').write_text('## 搬完后有意改行为\n' + '- x\n' * backlog + '## 状态\n- y\n', encoding='utf-8')
     return logs, re_dir, steps
 
 
