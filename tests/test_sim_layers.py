@@ -399,6 +399,9 @@ def test_move_tail_guard_bites():
 # changed would bypass the field's owner (simmoney's wallet, the team registry, the AI's personalities, the sight)
 HOST_USERS = ('simai', 'simproxy')
 MUTATORS = {'append', 'pop', 'update', 'add', 'setdefault', 'remove', 'discard', 'clear', 'extend', 'insert'}
+# what the two hold of the Sim: itself, the world API, the Peers loan, and the AI port's Settings (R3 13f-2a: the
+# mission's AI settings, read through; its two writes are its methods)
+HOST_HANDLES = ('sim', 'world', 'peers', 'settings')
 
 
 def host_write_breaks(mods=HOST_USERS, source=None):
@@ -408,8 +411,8 @@ def host_write_breaks(mods=HOST_USERS, source=None):
     for mod in mods:
         tree = ast.parse(source) if source is not None else _tree(mod)
         for fn in [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.Lambda))]:
-            def is_sim(e):          # the Sim, or what simai holds of it since step 9d-2 (world, peers)
-                return isinstance(e, ast.Attribute) and e.attr in ('sim', 'world', 'peers')
+            def is_sim(e):          # the Sim, or what simai holds of it since step 9d-2 (world, peers; settings: 13f-2a)
+                return isinstance(e, ast.Attribute) and e.attr in HOST_HANDLES
 
             handles = {t.id for st in ast.walk(fn) if isinstance(st, ast.Assign)
                        for tgt, val in ([(st.targets[0], st.value)] if len(st.targets) == 1 else [])
@@ -429,7 +432,7 @@ def host_write_breaks(mods=HOST_USERS, source=None):
                     [n.target] if isinstance(n, (ast.AugAssign, ast.AnnAssign)) else []
                 for t in targets:
                     for x in (t.elts if isinstance(t, ast.Tuple) else [t]):
-                        if field(x) and not (isinstance(x, ast.Attribute) and x.attr in ('sim', 'world', 'peers')):
+                        if field(x) and not (isinstance(x, ast.Attribute) and x.attr in HOST_HANDLES):
                             out.append((mod, field(x)))
                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in MUTATORS \
                         and field(n.func.value):
@@ -449,6 +452,43 @@ def test_host_write_guard_bites():
            "        s.wallet.charge(p, 3)\n        self.sim = s\n")
     assert host_write_breaks(('simai',), src) == [('simai', f) for f in
                                                    ('bodies', 'income', 'money', 'seen', 't', 'team_names')]
+    assert host_write_breaks(('simai',), "def f(self):\n    self.settings.ai_paused.add(p)\n") == \
+        [('simai', 'ai_paused')]
+
+
+# R3 13f-2a: the mission's AI settings reach simai through the AI port (engine/ports/ai.py Settings), not the Peers
+# loan: every `settings.X` it reads is a Settings name, and PEERS lends none of them (nor the frame loop, `advance`:
+# the port's runner drives the world and calls SimAI.tick)
+def _ai_port():
+    spec = importlib.util.spec_from_file_location('ai_port_for_layers', CNV / 'engine' / 'ports' / 'ai.py')
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def settings_breaks(source=None):
+    """(line, name) for each `settings.X` in simai that the AI port's Settings does not have, and ('PEERS', name) for
+    each Settings name (or `advance`) PEERS still lends."""
+    names = {n for n in vars(_ai_port().Settings) if not n.startswith('_')}
+    tree = ast.parse(source) if source is not None else _tree('simai')
+    out = [(n.lineno, n.attr) for n in ast.walk(tree) if isinstance(n, ast.Attribute) and _held(n.value, 'settings')
+           and n.attr not in names]
+    lent = next((ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
+                 and getattr(n.targets[0], 'id', '') == 'PEERS'), set())
+    return out + [('PEERS', n) for n in sorted(lent & (names | {'advance'}))]
+
+
+def test_the_ai_reads_its_settings_through_the_ai_port():
+    assert not settings_breaks()
+
+
+def test_settings_guard_bites():
+    """Mutation check on the real file: a Settings name lent by Peers again, a setting read that Settings lacks."""
+    src = (CNV / 'simai.py').read_text(encoding='utf-8')
+    assert settings_breaks(src.replace("PEERS = frozenset({'attachments',", "PEERS = frozenset({'ai_paused', "
+                                       "'attachments',")) == [('PEERS', 'ai_paused')]
+    assert [n for _, n in settings_breaks(src.replace('self.settings.ai_switches.get(',
+                                                      'self.settings.switches.get('))] == ['switches']
 
 
 # step 9d-2: simai reads its host only through the world API and its Peers loan; the raw Sim it is handed is kept as

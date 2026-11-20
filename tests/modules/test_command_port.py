@@ -875,6 +875,7 @@ def _brain(s, player='Player_1'):
     host = simai.SimAI(s, lib=object(), data=object())
     br = object.__new__(simai.Brain)
     br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, player, {}, {}
+    br.settings = host.settings     # the AI port's settings (R3 13f-2a)
     return br, simai
 
 
@@ -921,6 +922,7 @@ def test_the_ais_micro_fires_and_dodges_with_the_unit_it_viewed_not_a_reference_
     host = simai.SimAI(s)
     br = object.__new__(simai.Brain)
     br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
+    br.settings = host.settings     # the AI port's settings (R3 13f-2a)
     br.view, br.aim_of, br.fired, br.frame = SimpleNamespace(things=[], enemies=frozenset()), lambda b, r: None, [], 0
     team = SimpleNamespace(members=[simai.Unit(old, br.peers), simai.Unit(lead, br.peers)])
     mu = next(u for u in br.micro_team(None, 0, team).units if u.pos == (0.0, 100.0))
@@ -949,6 +951,7 @@ def test_the_ais_hunt_goes_on_with_its_member_not_a_reference_of_its_name():
     host = simai.SimAI(s)
     br = object.__new__(simai.Brain)
     br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
+    br.settings = host.settings     # the AI port's settings (R3 13f-2a)
     br.view, br.frame = SimpleNamespace(things=[], enemies=frozenset({'Player_2'})), 0
     br.order(simai.Unit(lead, br.peers), 'hunt', br.tid(foe))
     assert br.peers.commands.issued()[-1][1].units == (lead.serial,)
@@ -990,6 +993,7 @@ def test_the_ais_recruiting_wraps_the_new_unit_not_the_dead_one_of_its_name():
     host = simai.SimAI(s)
     br = object.__new__(simai.Brain)
     br.host, br.world, br.peers, br.player, br.ids, br.hp, br.wrappers = host, s, host.peers, 'Player_1', {}, {}, {}
+    br.settings = host.settings     # the AI port's settings (R3 13f-2a)
     first, = br.units(None, 0)
     assert first.body is old
     s.delete(old, 'test')
@@ -1014,6 +1018,7 @@ def test_the_ais_yard_orders_end_with_their_yard_not_go_on_at_a_new_one_of_its_n
     host = simai.SimAI(s)
     br = object.__new__(simai.Brain)
     br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
+    br.settings = host.settings     # the AI port's settings (R3 13f-2a)
     br.yard_q, br.yard_rest, br.unit_q = {}, {}, []
     old, had = s.bodies['yard'], {s.bodies['pp'].serial, s.bodies['bar'].serial}
     assert br.build('SovietPowerPlant') and br.build('SovietBaseDefenseGround')

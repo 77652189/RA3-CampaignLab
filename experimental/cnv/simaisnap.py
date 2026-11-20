@@ -49,7 +49,7 @@ VERSION = 10            # 2: the brains (11b-4b); 3: the plugin's objects a sess
 SETUP = ('level', 'seed', 'blocks', 'record')
 
 SIMAI = {
-    'sim': HOST, 'world': ALIAS, 'garrison': ALIAS, 'peers': WIRE,
+    'sim': HOST, 'world': ALIAS, 'garrison': ALIAS, 'peers': WIRE, 'settings': WIRE,   # the AI port's view (13f-2a)
     'mod': STATIC, 'level': STATIC, 'seed': STATIC, 'blocks': STATIC, 'record': STATIC,
     'lib': STATIC, 'data': STATIC,      # the model's library and AI data; the mission's own personalities added once
     '_assigned': STATIC,                # (own_personalities) the same way on the new SimAI; the personalities the
@@ -62,7 +62,7 @@ SIMAI = {
 ALIASES = {('world',): ('sim',), ('garrison',): ('sim', 'garrison')}
 
 BRAIN = {
-    'host': WIRE, 'world': WIRE, 'peers': WIRE, 'player': STATIC,
+    'host': WIRE, 'world': WIRE, 'peers': WIRE, 'settings': WIRE, 'player': STATIC,
     'made_as': STATIC,      # (side, personality): the snapshot's row, the new brain made with them
     # the plugin's: the AI player and the blocks Brain.attach gives it, the view it is handed, the defence's bases
     'ai': MODEL, 'tactics': MODEL, 'targets': MODEL, 'defense': MODEL, 'micro': MODEL, 'powers': MODEL,

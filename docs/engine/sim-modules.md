@@ -73,7 +73,7 @@
 |---|---|---|
 | 脚本执行器 | 宿主调用 `Executor.step()`；执行器经 `scripts.World` 调 `begin`、`update`、难度及 `condition(eng, name, args)` / `action(eng, name, args)` | 公开执行器可加载原版 `.map` 和自制关卡脚本；私有脚本核心可选替换 |
 | 玩家输入（命令） | `engine/ports/command.py` 通过每局的 `Sim.commands` 接收和分派命令 | 玩家代理、自动玩家、地图页和已迁移的脚本命令 |
-| AI | `simai` 负责推进与宿主接入；通用 AI 端口是目标 | 私有遭遇战 AI；自研 AI 是后续目标 |
+| AI | `engine/ports/ai.py`：`Settings` 给任务对 AI 玩家的设置（谁归 AI、暂停、开关、敌人优先级、禁建、边界），`drive(world, plugin, frames)` 逐帧推进世界、每帧后调插件 `tick(frame)`；其余读数暂经 `simai.PEERS` 借宿主，观测和玩家系统还在搬 | 私有遭遇战 AI（`simai.SimAI` 是插件）；自研 AI 是后续目标 |
 | 观测记录 | `Observe.things` / `living` 给全局对象；按玩家过滤用 `side_sees` 等查询。另提供逐帧记录、审计、缺口、计数器和内部查询 | `simrecord`、报告和指标（L9）、清单、代理等 |
 | 模板数据 | 模板 → 继承好的模块块列表、种类、几何；零售数据 + 任务自带 XML | 今天是 `simunits` 的读取部分；模块数据类经它解析 |
 

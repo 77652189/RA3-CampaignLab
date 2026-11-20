@@ -83,15 +83,15 @@ import simmicro  # noqa: E402
 import simbody  # noqa: E402
 import simworld  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
+from engine.ports import ai as ai_port  # noqa: E402
 
 # What the skirmish AI reads on its host (the Sim) beyond the world (simworld.WORLD_API): the command port its orders
-# go through (R3 13f-1), the mission's AI settings, the player systems it asks (money, power, production) and the
-# combat reads its blocks lean on. It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
-PEERS = frozenset({'add_team_lookup', 'advance', 'ai', 'ai_paused', 'ai_priorities', 'ai_switches', 'attachments',
-                   'base_construction_disabled', 'border', 'can_build', 'can_hit', 'commands', 'ending',
-                   'engineer_entry', 'expected_damage', 'firing', 'flags', 'in_range', 'modify', 'money', 'offers',
-                   'power', 'proto', 'queues', 'reach_of', 'take_personality', 'upgrade_sellers', 'volleys',
-                   'wallet'})
+# go through (R3 13f-1), the player systems it asks (money, power, production) and the combat reads its blocks lean
+# on. The mission's AI settings come through the AI port's Settings and the frame loop is its runner's (R3 13f-2a,
+# engine/ports/ai.py). It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
+PEERS = frozenset({'attachments', 'can_build', 'can_hit', 'commands', 'ending', 'engineer_entry', 'expected_damage',
+                   'firing', 'flags', 'in_range', 'modify', 'money', 'offers', 'power', 'proto', 'queues', 'reach_of',
+                   'upgrade_sellers', 'volleys', 'wallet'})
 
 
 class Peers:
@@ -236,6 +236,7 @@ class Brain:
 
     def __init__(self, host, player, side, personality, frame):
         self.host, self.world, self.peers, self.player = host, host.world, host.peers, player
+        self.settings = host.settings   # the mission's AI settings (the AI port)
         self.made_as = (side, personality)      # how SimAI.attach made it (a snapshot's brain is made again so)
         m = host.mod
         import simtech
@@ -295,7 +296,7 @@ class Brain:
         # equal by value, so found by identity, never by id()); run number -> the Run.mem seen last; name -> body
         self._rec_runs, self._rec_mem, self._rec_bodies = [], {}, {}
         self._team_names = None         # engine team name -> the model's team key (state, tactic id, template index)
-        self.peers.add_team_lookup(self.team_named)
+        self.settings.add_team_lookup(self.team_named)
         self.home = (0.0, 0.0)
         tg = m['targets']
         foes = frozenset(p for p in self.world.players.values() if p != player and self.world.enemy(player, p))
@@ -405,7 +406,7 @@ class Brain:
         """The mission's SKIRMISH_AI_* switches (sim.AI_SWITCHES, kept by Sim.act) told to the AI as they change
         (work/re l4_aiswitches.md): enemy priorities over the enemies now, repairs, rebuild with a snapshot of the
         own structures."""
-        got = self.peers.ai_switches.get(self.player, {})
+        got = self.settings.ai_switches.get(self.player, {})
         seen = getattr(self, '_switched', {})
         Command = self.host.mod['player'].Command
         for name, v in got.items():
@@ -422,7 +423,7 @@ class Brain:
         self._switched = dict(got)
         # SET_ENEMY_PLAYER_PRIORITY, each call once in order (bench 11-10 checks/engine_aiprio.py); a frame's calls
         # after its SET_ALL (one before it in the same frame is not ordered: INFERRED rare)
-        calls = self.peers.ai_priorities.get(self.player, [])
+        calls = self.settings.ai_priorities.get(self.player, [])
         for enemy, n in calls[getattr(self, '_prio_seen', 0):]:
             if enemy is None:       # SET_FAVORED_ENEMY's clear (sim.py, A 220 bench engine_aifav: the table emptied)
                 self.ai.tell(Command('enemy priorities', {'n': 0}))
@@ -1204,7 +1205,7 @@ class Brain:
         nothing waiting in that template's queue (one order a queue at a time, INFERRED) -- as (template, cost,
         kinds)."""
         world, peers, ys = self.world, self.peers, self.yards()
-        if not ys or self.player in peers.base_construction_disabled:   # bench aibgate:a (A269)
+        if not ys or self.player in self.settings.base_construction_disabled:   # bench aibgate:a (A269)
             return []
         out = []
         for t in templates:
@@ -1230,7 +1231,8 @@ class Brain:
         world, peers = self.world, self.peers
         if self.is_structure(template):
             ys = self.yards()
-            if not ys or self.player in peers.base_construction_disabled or not peers.can_build(self.player, template):
+            if not ys or self.player in self.settings.base_construction_disabled \
+                    or not peers.can_build(self.player, template):
                 return False        # base-disabled: bench aibgate:a (A269), no structure order taken till enabled
             q = self.queue_of(template)
             y = min(ys, key=lambda y: len(self.yard_q.get(q(y), [])))
@@ -1645,7 +1647,7 @@ class Brain:
 
     def _refinery_search(self, world, peers, r, reach, near, start, inc, ticks, yards, nodes, mine, taken, shape, tried):
         rects = list(getattr(world.m.map, 'BORDERS', {}).values())
-        x0, y0, x1, y1 = rects[peers.border] if peers.border < len(rects) else (-1e9, -1e9, 1e9, 1e9)
+        x0, y0, x1, y1 = rects[self.settings.border] if self.settings.border < len(rects) else (-1e9, -1e9, 1e9, 1e9)
         hx, hy = ((float(shape.get('MajorRadius', reach)), float(shape.get('MinorRadius', reach)))
                   if shape else (reach, reach))
         # every node's default spot S, facing its node, and its passage point P (D138 1, read)
@@ -1712,7 +1714,7 @@ class Brain:
             if job['full'] is not None:
                 # a paused AI (PLAYER_TOGGLE_SKIRMISH_AI 0) places nothing: aipause:a's third structure, done while
                 # paused, came down at f1280, just after the 85 s resume
-                if frame >= job['full'] + PLACE_DELAY and self.player not in peers.ai_paused:
+                if frame >= job['full'] + PLACE_DELAY and self.player not in self.settings.ai_paused:
                     q.pop(0)
                     self.put(y, job['template'], frame)
                     self.yard_rest[name] = frame + 1
@@ -1795,7 +1797,7 @@ class Brain:
         self.later_due(frame)
         self.yard_due(frame)
         self.unit_due(frame)
-        if self.player in self.peers.ai_paused:   # PLAYER_TOGGLE_SKIRMISH_AI(p, 0): the brain's update skips the
+        if self.player in self.settings.ai_paused:   # PLAYER_TOGGLE_SKIRMISH_AI(p, 0): the brain's update skips the
             return                              # whole frame (program, work/re a270_skirmish_start.md; aipause:a)
         if self.seen_t != self.world.t:           # the world changes once a DT tick: look and facts then
             self.look(frame)
@@ -1999,6 +2001,7 @@ class SimAI:
         mod = model()                   # None: no brain is ever made (NoModel where one would be)
         self.sim, self.mod, self.level, self.seed = s, mod, level, seed   # sim: for the callers (main, tests)
         self.world, self.peers = s, Peers(s)    # all the AI reads of its host: the world API and its loan (PEERS)
+        self.settings = ai_port.Settings(s)     # and the mission's AI settings (the AI port)
         self.lib = lib if lib is not None or mod is None else mod['xmldata'].Library()
         self.data = data if data is not None or mod is None else mod['data'].AIData()
         self.blocks = tuple(blocks)     # which of A's blocks the brains get (() = opening, states and teams only)
@@ -2122,7 +2125,7 @@ class SimAI:
         faction = simtech.faction_of(player, (getattr(self.world.m, 'sides', {}) or {}).get(side))
         got = pick(pid, faction and f'PlayerTemplate:{faction}', random.Random(self.seed + 11)) or pid
         if got != pid:
-            self.peers.take_personality(player, got)
+            self.settings.take_personality(player, got)
         return got
 
     def attach(self):
@@ -2130,7 +2133,7 @@ class SimAI:
         side with an aiPersonality has its brain from the first frame: its states and teams run before the wake
         (bench aialobsw, B round 161: the wake held to ~s28, its team still 4 at f21 as with the wake at s10); a side
         handed over without one gets the default personality then."""
-        world, peers = self.world, self.peers
+        world, settings = self.world, self.settings
         sides = {v: k for k, v in world.players.items()}
         for side, info in (getattr(world.m, 'sides', None) or {}).items():
             player = world.players.get(side)
@@ -2143,31 +2146,32 @@ class SimAI:
                 # first DT tick lands at frame 8 (bench aibdi0 / aibdi2: the team's rounds at f50 / f80 = mission
                 # s2 / s4, the man inside from s4)
                 self.brains[player] = Brain(self, player, side, pid, 0 if self.done_to is None else self.frame)
-        for player in peers.ai:
+        for player in settings.ai:
             if player not in self.brains:
                 side = sides.get(player, '')
                 self.no_model(side or player)
                 pid = (world.m.sides.get(side) or {}).get('aiPersonality', '').split(':')[-1] or '1AlliedBalanced'
                 self.own_personalities()
-                self.brains[player] = Brain(self, player, side, pid, int(round(peers.ai[player] * FPS)))
-            self.brains[player].wake(int(round(peers.ai[player] * FPS)))
+                self.brains[player] = Brain(self, player, side, pid, int(round(settings.ai[player] * FPS)))
+            self.brains[player].wake(int(round(settings.ai[player] * FPS)))
 
     def advance(self, frames):
-        """The mission `frames` frames on (Sim.advance a DT tick at a time), the AI ticked for each frame after."""
-        target = self.frame + frames
-        while self.frame < target and self.peers.ending is None:
-            self.peers.advance(1)
-            self.attach()
+        """The mission `frames` frames on (the AI port's runner: Sim.advance a DT tick at a time), the AI ticked for
+        each frame after."""
+        return ai_port.drive(self.world, self, frames)
+
+    def tick(self, now):
+        """The plug-in's turn after the world reached frame `now`: the brains the mission handed over made, their
+        switches read, and each ticked for every frame since the last turn (a brain from its birth)."""
+        self.attach()
+        for b in self.brains.values():
+            b.switches()
+        for f in range(min([now] + [b.born for b in self.brains.values()]) if self.done_to is None
+                       else self.done_to + 1, now + 1):
             for b in self.brains.values():
-                b.switches()
-            now = self.frame
-            for f in range(min([now] + [b.born for b in self.brains.values()]) if self.done_to is None
-                           else self.done_to + 1, now + 1):
-                for b in self.brains.values():
-                    if f >= b.born:
-                        b.tick(f)
-            self.done_to = now
-        return self
+                if f >= b.born:
+                    b.tick(f)
+        self.done_to = now
 
     def thoughts(self):
         return {self.world.who(p): b.ai.thoughts() for p, b in self.brains.items()}
