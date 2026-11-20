@@ -1,10 +1,12 @@
 """L4 money (ADR 0029, docs/engine/sim-layers.md): the players' money, the AI's income multiplier, income sharing and
 the money cap, with the rules that pay into them from below: a deposit building's payment, a collector's unloading
 (collect: handed to simmine), a deposit split between sharing friends (earn). It reads the world only through
-simworld.WORLD_API. A sale's refund, a repair's cost and a spy's theft go through credit / held / charge; other writers
-of the money (scripts, production, simai) still write the dicts directly; Sim.money / income / sharing / money_cap are
+simworld.WORLD_API. A sale's refund, a repair's cost, a spy's theft and a build job's instalment (instal) go through the methods; other
+writers of the money (scripts, simai's other buys) still write the dicts directly; Sim.money / income / sharing / money_cap are
 these same dicts.
 """
+import math
+
 from simworld import CIV
 
 
@@ -73,3 +75,14 @@ class Money:
         """An AI player's income multiplier (ResourceMultiplierCheat: simai sets it as the brain starts; collect
         applies it), the fraction carried reset."""
         self.income[player] = (mult, 0.0)
+
+    def instal(self, player, job, progress):
+        """A build job's instalment to `progress` (per cent; 100: a full job's rest) taken if held -- its cost so far
+        rounded up less what it paid, never below 0 (a battlefield job paid over its progress gets no refund); whether
+        it was. Sim.produce_due and the AI's yards (simai Brain.yard_due)."""
+        owe = max(0, min(job['cost'], math.ceil(round(job['cost'] * progress / 100.0, 9))) - job['paid'])
+        if owe > self.held(player):
+            return False
+        self.charge(player, owe)
+        job['paid'] += owe
+        return True

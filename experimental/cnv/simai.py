@@ -1768,7 +1768,8 @@ class Brain:
             if job['full'] is not None:
                 # a paused AI (PLAYER_TOGGLE_SKIRMISH_AI 0) places nothing: aipause:a's third structure, done while
                 # paused, came down at f1280, just after the 85 s resume
-                if frame >= job['full'] + PLACE_DELAY and self.player not in self.settings.ai_paused:
+                if frame >= job['full'] + PLACE_DELAY and self.player not in self.settings.ai_paused and \
+                        systems.instal(self.player, job, 100.0):     # a file's full job not paid up waits for its rest
                     q.pop(0)
                     self.put(y, job['template'], frame)
                     self.yard_rest[name] = frame + 1
@@ -1777,12 +1778,8 @@ class Brain:
                 continue                                # frames between two 10 s structures = 1 + 151 + 1)
             step = f32(100.0 / job['frames'])
             nxt = f32(job['progress'] + step)
-            owe = min(job['cost'], math.ceil(round(job['cost'] * nxt / 100.0, 9))) - job['paid']
-            have = systems.held(self.player)                         # the AI port's PlayerSystems
-            if owe > have:
+            if not systems.instal(self.player, job, nxt):           # the AI port's PlayerSystems
                 continue
-            systems.charge(self.player, owe)
-            job['paid'] += owe
             job['progress'] = nxt
             if nxt >= 100.0:
                 job['full'] = frame

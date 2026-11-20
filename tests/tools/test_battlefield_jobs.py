@@ -171,3 +171,15 @@ def test_a_job_not_full_whose_progress_rounds_to_100_stays_not_full():
     host.run(host.t + 1.0 / host.fps)
     [full] = host.queues[host.bodies['barracks'].serial]
     assert full['full'] is not None and host.money[P1] == 1000 - (200 - paid)
+
+
+def test_a_full_job_paid_short_comes_out_only_once_paid_up():
+    """Review 1120ee P2: a full scout with 50 of 200 paid came out free; it waits till its owner holds the rest."""
+    doc = simbattlefield.export(Observe(_source(1.5)))
+    _job(doc, 'barracks')[0]['paid'] = 50
+    host, gaps = _host(doc)
+    host.money[P1] = 0
+    assert gaps == [] and _go_on(host, 2.0) == (0, [])
+    host.money[P1] = 1000
+    spent, out = _go_on(host, 1.0)
+    assert spent == 150 and len(out) == 1

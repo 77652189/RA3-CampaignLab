@@ -39,7 +39,8 @@ def _arg(world, name):
     yard, barracks = world.bodies['yard'], world.bodies['barracks']
     return {'player': 'Player_1', 'side': 'Player_1', 'a': 'Player_1', 'b': 'Player_2', 'thing': barracks,
             'viewer': yard, 'body': yard, 'target': barracks, 'x': 0.0, 'y': 0.0, 'n': 0, 't': 0.0, 'key': 'x',
-            'name': 'barracks', 'template': GI, 'upgrade': 'x', 'behind': 1.0, 'ahead': 1.0, 'v': yard}[name]
+            'name': 'barracks', 'template': GI, 'upgrade': 'x', 'behind': 1.0, 'ahead': 1.0, 'v': yard,
+            'job': {'cost': 0, 'paid': 0}, 'progress': 0.0}[name]
 
 
 def _members(port):

@@ -150,3 +150,15 @@ def test_a_living_thing_not_in_the_file_is_named():
                                 map=probe_range)
     gaps = simbattlefield.place_things(host, doc)
     assert gaps == ["things: 'stray' (a Player_1 SovietAntiInfantryInfantry) living on the host, not in the file"]
+
+
+def test_a_sample_from_before_step_10_places_every_thing():
+    """Review 1120ee P2: levelvision_a as written before step 10 (no clocks, still battlefield/1) had all 9 things
+    refused. Each is placed, its clocks named (no clock difference left unexplained)."""
+    doc = _load('levelvision_a')
+    old = dict(doc, things=[{k: v for k, v in t.items() if k != 'clocks'} for t in doc['things']])
+    host, gaps = _place(old)
+    assert gaps == [f'things[{i}].clocks: {simbattlefield.NO_CLOCKS}' for i in range(len(old['things']))]
+    assert sorted(b.name for b in host.living()) == sorted(t['id'] for t in old['things'])
+    diffs = simbattlefield.round_trip(simsmall.small_world(model=False, map=probe_range), old)
+    assert any(p.endswith('.clocks') for p, _ in diffs) and all(why for p, why in diffs if p.endswith('.clocks'))

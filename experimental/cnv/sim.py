@@ -1598,6 +1598,8 @@ class Sim:
                     continue
                 create, rally, door = simunits.exit_of(f.template, self.own)
                 for job in [j for j in q if j['full'] is not None and fr >= j['full'] + (0 if 'upgrade' in j else door)]:
+                    if not self.wallet.instal(job['owner'], job, 100.0):
+                        continue            # a file's full job not paid up (simbattlefield) waits for its rest
                     q.remove(job)
                     if 'upgrade' in job:
                         self.upgrade_done(f, job)
@@ -1612,12 +1614,8 @@ class Sim:
                     continue                # banned: the first job stands, paid so far kept, the queue behind it too
                 step = f32(100.0 / self.build_frames(job['secs'], job['owner']))
                 nxt = f32(job['progress'] + step)
-                owe = min(job['cost'], math.ceil(round(job['cost'] * nxt / 100.0, 9))) - job['paid']
-                have = self.money.get(job['owner'], 0)
-                if owe > have:
+                if not self.wallet.instal(job['owner'], job, nxt):
                     continue
-                self.money[job['owner']] = have - owe
-                job['paid'] += owe
                 job['progress'] = nxt
                 if nxt >= 100.0:
                     job['full'] = fr

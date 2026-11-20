@@ -142,3 +142,22 @@ def test_the_half_refinery_goes_on_and_fills_the_same_frame_after_the_cut(cut):
     assert js['paid'] == jh['paid'] == js['cost']
 
 
+@pytest.mark.parametrize('job, paid', [(dict(progress=0.1, paid=1000), 1000), (dict(progress=1.0, paid=100), 2000)])
+def test_a_placed_yard_job_is_never_refunded_and_placed_only_paid_up(cut, job, paid):
+    """Review 1120ee P2: 1000 paid at 10 % got 746 back; full but 100 of 2000 paid was placed free. Broke, the first
+    builds free to the 50 % it paid for, the second waits; given 5000, the second pays its 1900 before it is placed."""
+    m, _, doc = cut
+    i, row = _yard(doc)
+    things = list(doc['things'])
+    things[i] = dict(row, queue=[dict(row['queue'][0], full=None if job['progress'] < 1 else doc['frame'] - 50, **job)])
+    host, ai = _host(m)
+    assert simbattlefield.place(host, dict(doc, things=things), ai) == []
+    host.money[AI] = 0
+    q = ai.brains[AI].yard_q[host.bodies[YARD].serial]
+    first = q[0]
+    ai.advance(60)
+    assert host.wallet.held(AI) == 0 and first['paid'] == job['paid'] and q[0] is first
+    host.money[AI] = 5000
+    ai.advance(1)
+    assert first['paid'] == paid if job['progress'] == 1 else first['paid'] >= 1000
+    assert host.wallet.held(AI) <= 5000 - (paid - job['paid'])

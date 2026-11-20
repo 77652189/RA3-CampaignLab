@@ -112,6 +112,10 @@ class PlayerSystems:
         """Take the amount off the player's wallet (a shortcut: the AI paying for what it places at once)."""
         return self._w.wallet.charge(player, amount)
 
+    def instal(self, player, job, progress):
+        """A yard job's instalment to `progress` taken if held; whether it was (simmoney.Money.instal)."""
+        return self._w.wallet.instal(player, job, progress)
+
     def multiply_income(self, player, mult):
         """Scale the player's income (a shortcut: the AI personality's resource multiplier)."""
         return self._w.wallet.multiply_income(player, mult)

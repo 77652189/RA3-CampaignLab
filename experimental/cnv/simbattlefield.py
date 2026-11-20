@@ -19,7 +19,7 @@ host. Format `battlefield/1`:
             in the order made [{module: XML tag, its fields (CLOCKS)}], each field a logic frame on the file's clock
             or null (autoheal's hurt a bool): AutoHealBehavior mend (its next mend), ok (its last mend's delay out),
             hurt (a hurt since its last run); LifetimeUpdate dies; StructureSellUpdate gone (sold: deleted then);
-            StructureUnpackUpdate unpacked (unpacking until then)
+            StructureUnpackUpdate unpacked (unpacking until then); missing in a file from before step 10 (NO_CLOCKS)
   script    {flags: {name: bool}, counters: {name: number}, timers: {name: deadline in t's seconds},
             objectives: {name: 0 hidden / 1 shown / 2 done / 3 failed}}
   gaps      [what this file leaves out, in words]: a state not listed is not carried
@@ -82,7 +82,8 @@ Step 7 places the factories' jobs, within place_things after the things are set 
 each job goes into its thing's queue in the file's order as the host's own order would have put it (Sim.order_build:
 a unit its menu builds, an upgrade its buttons buy), with the file's progress (per cent, float32, as the host keeps
 it) and what was paid (no money moves now: the host's production pays the rest frame by frame, as the source's would
-have), so a half-built scout goes on from half, paying only what is left; a full job waits to come out as many
+have), so a half-built scout goes on from half, paying only what is left (never refunded; a full one paid short
+pays its rest before it comes out); a full job waits to come out as many
 frames after its filling as on the source (full in the host's frames = full - the file's frame + the host's). A job
 the host's factory does not build (a construction yard's structures: the host has no such queue; a unit its menu
 lacks) is not placed and named by its field path, the jobs behind it placed; what was paid over the host's cost is
@@ -135,6 +136,7 @@ JOB = ('template', 'progress', 'paid', 'full')
 CLOCKS = {'AutoHealBehavior': ('mend', 'ok', 'hurt'), 'LifetimeUpdate': ('dies',), 'StructureSellUpdate': ('gone',),
           'StructureUnpackUpdate': ('unpacked',)}       # a timed module's fields (step 10): frames but hurt
 FLAGS = ('hurt',)
+NO_CLOCKS = 'not in the file (written before step 10): its timed modules run as the host made them'
 _FRAMES = {f for fields in CLOCKS.values() for f in fields if f not in FLAGS}
 SCRIPT = ('flags', 'counters', 'timers', 'objectives')
 RELATIONS = ('Enemy', 'Neutral', 'Friend')
@@ -158,13 +160,13 @@ def _name(v):
     return isinstance(v, str) and v != ''
 
 
-def _keys(obj, want, path, bad):
-    """Whether `obj` is a dict, the keys of `want` it misses and the unknown ones named; the caller checks each
-    field it has (one missing or broken field hides no other)."""
+def _keys(obj, want, path, bad, optional=()):
+    """Whether `obj` is a dict, the keys of `want` it misses (but `optional`'s) and the unknown ones named; the caller
+    checks each field it has (one missing or broken field hides no other)."""
     if not isinstance(obj, dict):
         bad.append(f'{path or "the file"}: not an object ({type(obj).__name__})')
         return False
-    missing = [k for k in want if k not in obj]
+    missing = [k for k in want if k not in obj and k not in optional]
     extra = sorted(str(k) for k in obj if k not in want)
     if missing:
         bad.append(f'{path or "the file"}: missing {", ".join(missing)}')
@@ -246,7 +248,7 @@ def _player(name, p, listed, bad):
 def _thing(i, t, bad, frame=None):
     """One thing's shape; `frame` the file's (a full job's frame is not after it), None when it is broken."""
     path = f'things[{i}]'
-    if not _keys(t, THING, path, bad):
+    if not _keys(t, THING, path, bad, optional=('clocks',)):  # a file from before step 10 has no clocks
         return
     for k in ('id', 'template', 'owner'):
         if k in t and not _name(t[k]):
@@ -730,7 +732,8 @@ def place_things(sim, doc, ai=None):
     for i, row, b in placed:                # after the upgrades: a factory's menu may come with one
         gaps += _set_jobs(sim, i, row, b, shift, ai)
     for _, row, b in placed:                # after health and upgrades: they set an autoheal's own (step 10)
-        _set_clocks(sim, row, b, shift)
+        if 'clocks' in row:
+            _set_clocks(sim, row, b, shift)
     sim.reblock()
     sim.change()
     obs = Observe(sim)
@@ -738,7 +741,9 @@ def place_things(sim, doc, ai=None):
         got = _plain(dict(_own_fields(b), contains=[p.name for p in sim.garrison.held(b)], home=obs.home(b),
                           queue=_job_rows(_jobs(obs, ai, b), -shift), clocks=_clock_rows(obs, b, -shift)))
         for k in THING:
-            if got[k] != row[k]:
+            if k not in row:                # clocks, in a file from before step 10
+                gaps.append(f'things[{i}].{k}: {NO_CLOCKS}')
+            elif got[k] != row[k]:
                 gaps.append(f'things[{i}].{k}: {row[k]!r} in the file, the host reads {got[k]!r}'
                             + (f' -- {WHY[k]}' if k in WHY else ''))
     mine = {b.serial for _, _, b in placed}
@@ -1026,7 +1031,7 @@ def _parts(a, b):
         if other is None:
             out.append(f'things[{i}]')
             continue
-        out += [f'things[{i}].{k}' for k in THING if row[k] != other[k]]
+        out += [f'things[{i}].{k}' for k in THING if row.get(k) != other.get(k)]   # clocks may be missing
     out += [f'things: {row["id"]!r}' for row in b['things'] if row['id'] not in at]
     common = [row['id'] for row in b['things'] if row['id'] in at]
     if common != sorted(common, key=at.get):

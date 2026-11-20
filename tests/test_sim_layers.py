@@ -579,8 +579,8 @@ def test_systems_guard_bites():
     src = (CNV / 'simai.py').read_text(encoding='utf-8')
     assert systems_breaks(src.replace("PEERS = frozenset({'modify'", "PEERS = frozenset({'queues', 'commands', "
                                       "'modify'")) == [('PEERS', 'commands'), ('PEERS', 'queues')]
-    assert [n for _, n in systems_breaks(src.replace('systems.held(self.player)',
-                                                     'systems.wallet.held(self.player)'))] == ['wallet']
+    assert [n for _, n in systems_breaks(src.replace('systems.instal(self.player, job, nxt)',
+                                                     'systems.wallet.instal(self.player, job, nxt)'))] == ['wallet']
 
 
 # step 9d-2: simai reads its host only through the world API and its Peers loan; the raw Sim it is handed is kept as
