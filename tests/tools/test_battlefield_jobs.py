@@ -131,3 +131,22 @@ def test_a_job_the_host_does_not_build_is_named_the_one_behind_placed():
                         f"things[{i}].queue[1].paid: 500 over the host's cost 200 (held to it)"]
     assert [(j['template'], j['paid']) for j in host.queues[host.bodies['barracks'].serial]] == [(SCOUT, 200)]
     assert gaps[2].startswith(f'things[{i}].queue: ')
+
+
+def test_a_job_full_before_the_placing_reads_back_before_frame_0_and_places_again():
+    """Review 1120cc P2: a scout full at frame 30 of a cut at 38, placed onto a run at frame 0, filled at -8 on the
+    host's clock; its export is a file the check takes, and placed again it comes out at the same frame."""
+    src = _source(2.0)
+    doc = simbattlefield.export(Observe(src))
+    [job] = _job(doc, 'barracks')
+    assert job['full'] is not None and doc['frame'] - job['full'] > 0
+    host, gaps = _host(doc)
+    assert gaps == [] and host.frame_now() == 0
+    back = simbattlefield.export(Observe(host))
+    assert _job(back, 'barracks') == [dict(job, full=job['full'] - doc['frame'])] and _job(back, 'barracks')[0]['full'] < 0
+    assert simbattlefield.check(back) == []
+    again, gaps = _host(back)
+    assert gaps == [] and _job(simbattlefield.export(Observe(again)), 'barracks') == _job(back, 'barracks')
+    src.money[P1] = host.money[P1] = again.money[P1] = 0
+    out = _go_on(src, 2.0)
+    assert _go_on(host, 2.0) == _go_on(again, 2.0) == out and len(out[1]) == 1

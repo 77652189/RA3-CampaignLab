@@ -14,7 +14,8 @@ host. Format `battlefield/1`:
             when its last passenger is out (the one it had before its first: a building holding passengers only,
             not a transport, which keeps its owner); queue its jobs in the queue's order [{template, progress, paid,
             full}]: progress 0..1, paid the money paid for it so far (a whole number), full null or the logic frame
-            (the file's `frame` clock, not after it) it filled -- progress 1 then, waiting to come out
+            (the file's `frame` clock, not after it; before 0 too -- a job full at the cut, placed onto a run at
+            frame 0, filled before it) it filled -- progress 1 then, waiting to come out
   script    {flags: {name: bool}, counters: {name: number}, timers: {name: deadline in t's seconds},
             objectives: {name: 0 hidden / 1 shown / 2 done / 3 failed}}
   gaps      [what this file leaves out, in words]: a state not listed is not carried
@@ -263,8 +264,8 @@ def _thing(i, t, bad, frame=None):
         if 'full' not in job:
             continue
         full = job['full']
-        if full is not None and (not _whole(full) or full < 0):
-            bad.append(f'{at}.full: not null or a whole number >= 0 ({full!r})')
+        if full is not None and not _whole(full):
+            bad.append(f'{at}.full: not null or a whole number ({full!r})')
         elif full is not None and frame is not None and full > frame:
             bad.append(f'{at}.full: {full!r} after the file\'s frame {frame!r}')
         elif progress and (full is not None) != (job['progress'] == 1):
@@ -674,6 +675,7 @@ def place_things(sim, doc):
 def _f32(x):
     """x as a single float (the host keeps a job's progress so: sim.f32)."""
     return struct.unpack('f', struct.pack('f', x))[0]
+
 
 
 def _set_jobs(sim, i, row, b, shift):
