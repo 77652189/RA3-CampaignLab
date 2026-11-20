@@ -1,6 +1,6 @@
 # 武器组与状态位（WeaponSetUpdate / StatusBitsUpgrade）
 
-台上读数 2026-11-09（引擎线 C 第 11 轮；探针 `experimental/cnv/checks/engine_weaponset.py`、`engine_statusbits.py`）。模拟器：`simunits.weapon_sets` / `pick_weapons`、`Sim.modify`。测试：`tests/test_simbench_c.py` 最后两条。
+台上读数 2026-11-09（引擎线 C 第 11 轮；探针 `experimental/cnv/checks/engine_weaponset.py`、`engine_statusbits.py`）。模拟器的模板解析与运行时武器归属见 [模块文档 §6](sim-modules.md#6-对外端口)。模块测试见 `tests/modules/test_weaponset.py`，台上对拍由一致性跑器读取 `checks/engine_weaponset.readings.toml` 和 `checks/engine_statusbits.readings.toml`。
 
 ## 1. 按状态选武器（engine_weaponset a，台上）
 
@@ -13,7 +13,7 @@
 | 中途（12 秒时脚本才给 TOGGLE） | 21 | 前 12 秒和基准重合，之后换成火焰瓶的斜率 |
 
 结论：武器组在**状态变化的那一刻**重新选；已经在打的目标不丢，只是换枪。
-模拟器：同槽位里 PRIMARY_WEAPON 的那一行先试，第一把"需要的位都在、禁用的位都没有"的就是它；伤害为 0 或射程为 0 的（涂靶器）不算枪。读数 `[43, 10, 20]` vs 台上 `[42, 9, 21]`。
+模拟器用 `simunits.pick_weapons` 每槽先试 PRIMARY_WEAPON，再找第一条满足状态位和升级条件的声明。该声明只有能造成主伤害、次级伤害、持续伤害或抬升，且射程大于 0 时才计为可用武器。读数 `[43, 10, 20]` vs 台上 `[42, 9, 21]`。
 
 ## 2. 涂靶器不伤人（engine_weaponset b，台上）
 

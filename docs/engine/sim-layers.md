@@ -12,7 +12,7 @@
 |---|---|---|
 | L0 世界 | 对象登记和生死、归属、队伍、玩家名单、帧时间、地形和区域、审计记录（哪条规则被用到） | 任何游戏规则 |
 | L1 数据 | 读模板、继承链、XML（`simunits.py`），武器组数据见 [模块文档](sim-modules.md#6-对外端口) §6 | 运行时状态 |
-| L2 物体模块 | 每个对象身上的部件：血量和受伤入口、回血、死亡和移除；状态位、模型状态、修改器和光环；移动、寻路、碾压、落地；装载（驻军、渗透、运输）；开关和自身技能；生产、展开、建造；采矿和停靠 | 给单位下命令（那是 L5）；扣钱加钱（调 L4 的接口） |
+| L2 物体模块 | 每个对象身上的部件：血量和受伤入口、回血、死亡和移除；状态位、模型状态、修改器和光环；`WeaponSet` 持有的武器和槽位；移动、寻路、碾压、落地；装载（驻军、渗透、运输）；开关和自身技能；生产、展开、建造；采矿和停靠 | 给单位下命令（那是 L5）；扣钱加钱（调 L4 的接口） |
 | L3 战斗 | 索敌（含隐身、视野对索敌的影响）、瞄准和开火节奏、弹体、伤害效果（各种 Nugget、MetaImpact） | 追击和攻击状态机（L5） |
 | L4 玩家系统 | 钱、电力、科技和升级、技能书 | 单个对象的状态 |
 | L5 单位命令 | 移动、攻击（含追击）、警戒、跟随、占领、猎杀、撤退、停止、发呆时找事 | 移动的物理（调 L2）、开火的数值（调 L3） |
@@ -55,7 +55,7 @@
 
 | 要加 | 改哪个模块（层） | 在哪张登记表加一行 | 配什么测试 |
 |---|---|---|---|
-| 脚本动作 | 按它作用的层挑一组：`simact_vision`（视野）`simact_player`（钱、电、科技、技能）`simact_order`（给单位下命令）`simact_object`（对象状态）`simact_ability`（技能按钮）`simact_world`（旗标、计时器、队伍）`simact_show`（字幕、镜头、音视频）（L6）。函数 `fn(sim, name, a, script)` 只翻译参数，已迁移的单位命令和按钮经 `Sim.commands` 下发，规则写在下层。队伍动作复用单体动作时，把选出的成员作为 `unit=` 传给 `simact_order`、`simact_object` 或 `simact_ability` 的相应函数，由命令端口按序号下发，点名入口才查 `a[0]` | 那组的 `ACTIONS`（`simact.table` 合并，重名报错；清单靠它认名字）。新开一组：加进 `simact.GROUPS` + `LAYER_OF` 记 6 | 最小世界摆好对象，跑这个动作，断言世界的变化；做不到的参数分支 `return False`（自动记成缺口） |
+| 脚本动作 | 按它作用的层挑一组：`simact_vision`（视野）`simact_player`（钱、电、科技、技能）`simact_order`（给单位下命令）`simact_object`（对象状态）`simact_ability`（技能按钮）`simact_world`（旗标、计时器、队伍）`simact_show`（字幕、镜头、音视频）（L6）。函数 `fn(sim, name, a, script)` 只翻译参数，已迁移的单位命令和按钮经 `Sim.commands` 下发，规则写在下层。队伍动作复用单体动作时，把已选成员作为 `unit=` 传给相应函数，所经的命令端口用序号传递对象。名字输入才由入口解析，见 [命令端口约定](sim-modules.md#91-游戏适配器真游戏也是端口的一个适配器) | 那组的 `ACTIONS`（`simact.table` 合并，重名报错；清单靠它认名字）。新开一组：加进 `simact.GROUPS` + `LAYER_OF` 记 6 | 最小世界摆好对象，跑这个动作，断言世界的变化；做不到的参数分支 `return False`（自动记成缺口） |
 | 脚本条件 | 同上，`simcond_world` / `simcond_object` / `simcond_vision` / `simcond_player` / `simcond_show`（L6），`fn(sim, name, a)` 回真假 | 那组的 `CONDITIONS`；新开一组加进 `simcond.GROUPS` + `LAYER_OF` | 同上；不认得的情形回 `None`（记缺口、当不成立） |
 | 物体模块（AutoHeal、Toggle 这类 XML 模块） | L2。AutoHeal、Toggle 的本体规则写进 `engine/modules/autoheal.py`、`toggle.py`。仍在宿主的规则加进对应的 `sim<部件>.py`，状态放在自己的对象里 | 以下登记用于宿主规则：`LAYER_OF` 记 2；收世界句柄 → `WORLD_TAKERS`；用到世界的新能力 → `simworld.WORLD_API`；独占字段 → `FIELD_OWNER`；还要借 sim.py 里没搬的方法 → 模块自己的 `PEERS` + `PEER_TAKERS` | 最小世界 + 只推进这个部件几帧（样板：`test_simheal`） |
 | 武器伤害规则（各种 Nugget、MetaImpact） | L3 `simdamage.Damage`（`deal` 按 Nugget 派发）。索敌、瞄准、开火节奏也归 L3，但还没全搬（搜 `def can_hit`、`def shots_due`）；追击和攻击状态机归 L5 | 新缓存字段 → `FIELD_OWNER` 记 `simdamage`；要销毁、改修改器、改模型状态等 L2 动作 → `simdamage.PEERS`（只借还在 sim.py 的；已搬的直接导入调用） | 最小世界里一个开火方一个挨打方，断言血量 / 状态；只做了一部分的 Nugget 写 `world.gap(GAP_WEAPON, 'XxxNugget', 缺什么)` |

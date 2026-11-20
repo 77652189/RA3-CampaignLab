@@ -32,7 +32,7 @@
 - 全量出现新红时，用 `python -X utf8 experimental/testbench/culprit.py --since-full work/logs/full_A.log work/logs/full_B.log` 定位首红。日志开头没记提交号时，加 `--good <提交> --bad <提交>`。
 - 已知测试 ID 时，用 `python -X utf8 experimental/testbench/culprit.py --good <提交> --bad <提交> TEST_ID [TEST_ID ...]`。工具只复跑这些测试，遇到跳过会记为未知。
 - 越线在每日汇报"结构"段标 `!!`。
-- 一致性跑器对同一场景从第 0 帧启动一次，按顺序推进并复用采样结果。`simrecord snap` 对全部固定任务（AI 任务走 `simaisnap`、在公开世界上跑）比较连续运行和经 JSON 还原续跑的逐帧记录、末态快照和最终报告，切点之后必须至少推进一帧。开局准备长的场景计划从快照开始。
+- 一致性跑器对同一场景从第 0 帧启动一次，按顺序推进并复用采样结果。`simrecord snap` 默认对全部固定任务跨进程验证（AI 任务在公开世界上走 `simaisnap`），比较逐帧记录、末态快照和最终报告。切点后须至少推进一帧。单项可用 `simrecord one NAME RECORD --snap FRACTION --save FILE` 停在切点，再用相同任务、记录路径和切点，改传 `--resume FILE` 接着写记录，对应的 Python 入口是 `simrecord.run_task(save=…, resume=…)`。
 
 ## 退出
 

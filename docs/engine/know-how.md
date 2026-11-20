@@ -109,7 +109,7 @@
 0c. **解耦后的组装命令**（2026-10-21 深夜，用户定"先接受叠放，先做解耦，效率改进也做"）：
     - 结构在 `experimental/cnv/`。部分旧示例已归档到 `experimental/archive/campaign/`（如 `make_campnew5.py` 和 `make_campnew38.py`）；`cnv.py build` 只从现行 `experimental/campaign/` 找脚本：
      - `units/`：单位 = 参数 → `Unit`（XML 文本 + 编图要知道的东西），`tag=` 给所有自有 id 加后缀，两个变体能摆在同一张图上。
-     - `maps/`：地形和开局点（`island.py` 就是 CampNew18 的岛）。
+     - `maps/`：地形和开局点。`island.py` 的 CampNew18 岛由地形生成和景物摆放共用 `newmap.island_heights`。它用 NumPy 批量算高度，沿用逐行采样的抽签顺序和标量三角函数，进程内只缓存最近一份只读高度场，每次返回各自的格点字典。
      - `missions/`：摆放 + 任务脚本 + 字符串 + 目标（`a8.py`、`liberty_bench.py`）。
      - `checks/`：检查 = 附加的脚本（让任务自己按技能）+ 计数器 + 测试台步骤 + 期望值。
      - `parts.py`：声明的数据结构和 `assemble()`，走原来的 CampNew7 流水线（lint 照跑）。
