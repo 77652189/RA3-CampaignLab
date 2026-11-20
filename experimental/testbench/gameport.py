@@ -580,6 +580,8 @@ class GameCommands:
 
     def _send(self, ask):
         """The pause record of one input, taken as the next sample; or why it is not the one asked for."""
+        if self._a.ended is not None:       # read at the record of an input before: the run is over, nothing sent
+            return f'{ask["tool"]}: not sent, the ending read at archive frame {self._a.sample.archive_id}'
         ans = self._a.transport.call(ask)
         if not isinstance(ans, dict) or 'id' not in ans:
             return f'{ask["tool"]}: no pause record ({ans!r})'
@@ -610,6 +612,8 @@ class GameCommands:
         if off:
             return self._refused(cmd, off)      # no unit ordered (a selection may be left: the next one replaces it)
         boxed = self._a.sample
+        if self._a.ended is not None:
+            return self._refused(cmd, self._send(dict(tool='bench_click', x=x, y=y, right=True)))
         off = self._send(dict(tool='bench_click', x=x, y=y, right=True))
         s = self._a.sample
         e = dict(frame=s.frame, cmd=cmd, ok=None, receipt=None,
@@ -667,6 +671,23 @@ class GameCommands:
 
     def __getattr__(self, name):
         raise Unsupported(f'{name}: no bench channel (work/re/sim_split/adapter_pack/census.md)')
+
+
+def drive(adapter, plugin):
+    """Step 3 (plan.md 会话 3): `plugin.tick(frame)` once per fresh sample, as engine.ports.ai.drive ticks a simulator
+    run, until the transport has no more or the ending reads (no step after it). A pause record an order takes is no
+    tick; a sample without its logic frame ticks with MISSING (a plug-in that counts frames fails on it, one that reads
+    `observe.t` goes on). `plugin.NEEDS` = (observation calls, command kinds): one the bench lacks is Unsupported
+    before anything is read. Returns the plug-in."""
+    calls, kinds = getattr(plugin, 'NEEDS', ((), ()))
+    lack = [c for c in calls if c not in GameObserve.SUPPORTED] + sorted(set(kinds) - GameCommands.KINDS)
+    if lack:
+        raise Unsupported(f'{type(plugin).__name__} needs {lack}: no bench channel (census.md)')
+    while adapter.ended is None and (s := adapter.step()) is not None:
+        if s.fresh:
+            plugin.tick(s.frame)
+    adapter.commands.close()
+    return plugin
 
 
 def transcript_with_inputs(run_dir, contract, steps, read=None):

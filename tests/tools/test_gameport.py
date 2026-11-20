@@ -436,3 +436,72 @@ def test_an_attack_the_bench_cannot_give_is_refused_and_a_click_drawn_flat_is_un
     flat = see(dataclasses.replace(gp.SEE, lifts=()))               # the ring's lift unknown: not the recorded click
     ok, why = flat.commands.do(cp.Command('attack', units=CANNON, target=TOWER))
     assert ok is False and 'records \'left click at screen (951, 383)\'' in why
+
+
+# Step 3 (plan.md 会话 3): one plug-in, written against the ports alone, driven on the simulator (engine.ports.ai.drive)
+# and on the bench's replayed run (gp.drive): the same condition gives the same Command. The simulator side runs a
+# plan map, not the bench mission (no new test names a bench: tests/guards/test_bench_tests.py), so there the units
+# are not found and the port refuses -- what it checks is the plug-in unchanged on both ports. On the bench missions
+# themselves (2026-11-20, once): the same commands; formss both moves taken in the simulator too.
+class Plugin:
+    """Each (condition(observe), Command) given once, at the first tick its condition holds."""
+    NEEDS = (('t',), ('move', 'attack'))
+
+    def __init__(self, observe, commands, orders):
+        self.observe, self.commands, self.orders = observe, commands, list(orders)
+        self.ticks, self.given = [], []
+
+    def tick(self, frame):
+        self.ticks.append((frame, self.observe.t))
+        for k, (when, cmd) in enumerate(self.orders):
+            if cmd is not None and when(self.observe):
+                self.orders[k] = (when, None)
+                self.given.append((cmd, self.commands.do(cmd)))
+
+
+ATTACK = cp.Command('attack', units=CANNON, target=TOWER)
+MOVES = (move(PLAIN, place='@1000.0,1230.0'), move(FORMATION[::-1], pos=(1000.0, 1390.0)))
+# the bench ran the check's inputs after its first watch: SEE's 5th sample (s9.1; the 4th s7.1), FORMSS's 3rd (s3.1)
+HOSTS = {'see': (SEE, gp.SEE, [(lambda o: o.t >= 8, ATTACK)], 10),
+         'formss': (INPUTS, gp.FORMSS, [(lambda o: o.t >= 3, m) for m in MOVES], 5)}
+
+
+def sample_frames(tr):
+    return [gp.MISSING if c['answer']['frame'] is None else c['answer']['frame']    # SEE ran without ra3ext
+            for c in tr['calls'] if c['ask']['tool'] == gp.SAMPLE and c['answer']]
+
+
+@pytest.mark.parametrize('host', sorted(HOSTS))
+def test_one_plugin_gives_the_same_commands_on_the_simulator_and_on_the_bench(host):
+    tr, contract, orders, secs = HOSTS[host]
+    a = gp.replay(contract, tr)
+    game = gp.drive(a, Plugin(a.observe, a.commands, orders))
+    assert a.transport.left() == 0 and [f for f, _ in game.ticks] == sample_frames(tr)  # no pause record ticks
+    assert [ok for _, (ok, _) in game.given] == [None] * len(orders)                   # issued; receipts follow
+    assert all(ok for _, _, ok, _ in a.commands.sent())
+    from test_plans import small  # noqa: I001  (puts experimental/cnv on the path)
+    import sim
+    from engine.ports import ai
+    from engine.ports.observe import Observe
+    w = sim.Sim(small())
+    model = ai.drive(w, Plugin(Observe(w), w.commands, orders), int(secs * w.fps))
+    assert [c for c, _ in model.given] == [c for c, _ in game.given] == [c for _, c in orders]
+
+def test_the_driver_ticks_once_per_new_sample_stops_at_the_ending_and_refuses_what_the_bench_lacks():
+    tr = copy.deepcopy(TRANSCRIPT)
+    tr['calls'].insert(1, copy.deepcopy(tr['calls'][0]))        # the first sample again: not fresh
+    a = gp.replay(gp.FORMSS, tr)
+    assert [f for f, _ in gp.drive(a, Plugin(a.observe, a.commands, [])).ticks] == sample_frames(TRANSCRIPT)
+    ends = dataclasses.replace(gp.FORMSS, ending=gp.Ending('CNV_Form_Plain', 22, '赢', 'all four in'))
+    a = gp.replay(ends, INPUTS)
+    p = gp.drive(a, Plugin(a.observe, a.commands, [(lambda o: o.t >= 3, m) for m in MOVES]))
+    # read at the formation box's record (frame 491): its click is not sent, no step after
+    assert p.ticks[-1][0] == 71 and a.sample.frame == 491 and a.transport.left() > 0
+    assert p.given[1][1] == (False, 'bench_click: not sent, the ending read at archive frame 7')
+    for needs in [(('t', 'timers'), ()), (('t',), ('move', 'build'))]:
+        a = gp.replay(gp.FORMSS, INPUTS)
+        p = Plugin(a.observe, a.commands, [])
+        p.NEEDS = needs
+        with pytest.raises(gp.Unsupported):
+            gp.drive(a, p)
+        assert a.transport.left() == len(INPUTS['calls']) and p.ticks == []
