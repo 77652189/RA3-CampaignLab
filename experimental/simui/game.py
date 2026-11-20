@@ -4,8 +4,8 @@ It changes no rule. A run is sim.Sim with the presentation records (simshow.Show
 the observation port's taps -- the dubbed lines' sound keys, and every script event as it happens (the replay
 record) -- and the player's
 orders go through the command port (engine/ports/command.py): a click becomes a Command (走 / 派 / 攻击 / 放 / 占领 /
-生产 -> move / attack_move / attack / power / capture / build; a click on the ground is the place '@x,y', model.coord)
-posted at the current tick -- the script event of its play script line, so Sim.happen carries it out exactly as it
+生产 -> move / attack_move / attack / power / capture / build; a click on the ground is the place '@x,y', model.coord;
+the objects clicked pinned by serial, `unit_serials` / `target_serial`) posted at the current tick -- the script event of its play script line, so Sim.happen carries it out exactly as it
 carries out plays/<level>.txt; a typed line is posted as it is (Commands.post_line). `Session.tick` is Sim.run's loop body (step, the
 whole second's sample, t + DT) without the quiet stop: a level the player is still playing does not end because
 nothing moved for two minutes.
@@ -382,26 +382,33 @@ class Session:
                 return self._line(c.get('text', ''))
             if not s.input and not c.get('force'):
                 return self._refuse('过场中，操作锁住')
-            names = [n for n in c.get('units', []) if n in s.bodies and s.bodies[n].alive
-                     and s.bodies[n].owner == s.human]
+            # the objects clicked, given by serial beside their names (`unit_serials` / `target_serial`): by name
+            # alone the port reads a role keyed so first, and another unit took the order (review 1119z P2 #1)
+            picked = [s.bodies[n] for n in c.get('units', []) if n in s.bodies and s.bodies[n].alive
+                      and s.bodies[n].owner == s.human]
             where = c.get('to')
             if isinstance(where, (list, tuple)):
                 where = at(*where)
+
+            def pin(b, *more):
+                return (('unit_serials', (b.serial,)),) + more
             cmds = []
             if verb in ('派', '走'):
                 kind = 'attack_move' if verb == '派' else 'move'
-                cmds = [Command(kind, units=(n,), place=where) for n in names if s.bodies[n].speed > 0]
+                cmds = [Command(kind, units=(b.name,), place=where, args=pin(b)) for b in picked if b.speed > 0]
             elif verb in ('攻击', '占领'):
                 kind = 'attack' if verb == '攻击' else 'capture'
-                cmds = [Command(kind, units=(n,), target=c['target']) for n in names] \
-                    if c.get('target') in s.bodies else []
+                t = s.bodies.get(c.get('target', ''))
+                cmds = [Command(kind, units=(b.name,), target=t.name, args=pin(b, ('target_serial', t.serial)))
+                        for b in picked] if t is not None else []
             elif verb == '放':
-                cmds = [Command('power', units=(n,), power=c['ability'], place=where) for n in names]
+                cmds = [Command('power', units=(b.name,), power=c['ability'], place=where, args=pin(b))
+                        for b in picked]
             elif verb == '生产':
                 f = s.bodies.get(c.get('factory', ''))
                 if f is None or f.owner != s.human:
                     return self._refuse('没有这个工厂')
-                cmds = [Command('build', template=c['template'], target=f.name)]
+                cmds = [Command('build', template=c['template'], target=f.name, args=(('target_serial', f.serial),))]
             else:
                 return self._refuse(f'不认识的命令 {verb}')
             if not cmds:

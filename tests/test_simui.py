@@ -113,6 +113,33 @@ def test_clicks_replay_to_the_same_run():
     assert snapshot(plain) == snapshot(s)
 
 
+@pytest.mark.parametrize('key', ['same', 'numbered'])
+def test_a_click_orders_the_object_clicked_not_a_role_of_its_name(monkeypatch, key):
+    """Review 1119z P2 #1: the page names objects; a role keyed by that name (`a`, or `a 1` beside an object `a`)
+    must not take the order -- the click passes the objects it picked by serial (as simproxy, 11-19 h #1). The
+    contract refuses such a build; the page does not ask the contract, so the port must not read the name again."""
+    se = game.Session('a4')
+    s = se.s
+    mine = [b for b in s.living() if b.owner == s.human and b.speed > 0]
+    foes = [b for b in s.living() if s.enemy(s.human, b.owner) and not b.scenery and b.speed > 0]
+    clicked, other, shooter = mine[0], mine[1], mine[2]
+    aimed, decoy = foes[0], foes[1]
+    for name, to in ((clicked.name, other), (aimed.name, decoy)):
+        r = type('Role', (), {})()
+        r.name = to.name
+        monkeypatch.setitem(s.m.cast, name if key == 'same' else name + ' 1', r)
+    assert se.command({'verb': '走', 'units': [clicked.name], 'to': [1500, 2500], 'force': True}) == (True, '')
+    assert se.command({'verb': '攻击', 'units': [shooter.name], 'target': aimed.name, 'force': True}) == (True, '')
+    se.tick()
+    assert clicked.move_to is not None and abs(clicked.move_to[0] - 1500) + abs(clicked.move_to[1] - 2500) <= 20
+    assert other.move_to is None                            # (the click's point snapped to the grid: on_grid)
+    assert shooter.goal is aimed
+    cmds = [e[2] for e in se.rec.happened if e[1] == '命令']
+    assert [(c.units, c.arg('unit_serials')) for c in cmds] == [((clicked.name,), (clicked.serial,)),
+                                                                 ((shooter.name,), (shooter.serial,))]
+    assert cmds[1].target == aimed.name and cmds[1].arg('target_serial') == aimed.serial
+
+
 @pytest.mark.xfail(strict=True, reason=(
     "plays/a4.txt no longer reaches stage 2: it was hill-climbed (2026-11-08) on a simulator whose infantry turned "
     "before walking. After 54a14eb0 (A231, bench airevit: infantry walk off at once), A256 recorded truck 1 at "

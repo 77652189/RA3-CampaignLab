@@ -37,7 +37,10 @@ R3 13d): `units` are objects' names as the script action found them (`Sim.body`:
 at), each given its order even when not there -- the order call takes a missing one as it always did -- and `target`
 goes to the order call as it is (it looks the name up itself); `('objects', 'serial')`: `units` are the serials of the
 objects the action picked itself (a team's members: found as picked, a reference of the same name cannot take one's
-place -- review 11-19 f #1). A route that cannot go on without its object (a factory, the unit to unpack) refuses a
+place -- review 11-19 f #1). A line verb's command may pin what its names picked: `('unit_serials', (n, ...))` the
+serials of the objects `units` names (one each, as picked) and `('target_serial', n)` the target's -- the route is the
+line's own, the names stay for the record (its noted line), and a name a role or another object also answers to
+cannot take the order (the page's click, review 1119z P2 #1; `Commands.line` writes no such command). A route that cannot go on without its object (a factory, the unit to unpack) refuses a
 missing one; a press the world turns down (a target gone, out of range) is refused (review 11-19 f #4 #5).
 
 A line's tails `强制` / `由 P` (in a line a player or a play wrote, or `text` wrote for a command that has them) read as
@@ -117,6 +120,9 @@ FORCE = '强制'
 BY_PLAYER = ' 由 '
 # The verb of a queued command's event (`queued`): no script line has it (parse_script refuses `0 命令 ...`).
 ORDER = '命令'
+# The args a line verb's command may carry beside its line: what its names picked, by serial (its line, for the
+# record, names them; the command goes by the serials). A line written for a replay to read cannot hold them.
+PINS = ('unit_serials', 'target_serial')
 
 
 def by_player(s):
@@ -151,7 +157,7 @@ def text(cmd):
         raise ValueError(f'{cmd.kind}: its script line carries no force')
     if cmd.pos is not None or cmd.attacking:
         raise ValueError(f'{cmd.kind}: a script line carries a place by its name, and no path-follow fighting')
-    extra = [k for k, _ in cmd.args if not (cmd.kind == 'buy_science' and k == 'science')]
+    extra = [k for k, _ in cmd.args if not (cmd.kind == 'buy_science' and k == 'science') and k not in PINS]
     if extra:
         raise ValueError(f'{cmd.kind}: its script line carries no {", ".join(extra)}')
     by = f'{BY_PLAYER}{cmd.player}' if cmd.player else ''
@@ -254,6 +260,9 @@ class Commands:
         """text(cmd), checked to read back here as cmd (ValueError: no line carries it, or its line reads as another
         command in this world -- a tail taken for a name's end)."""
         s = text(cmd)
+        pinned = [k for k, _ in cmd.args if k in PINS]
+        if pinned:
+            raise ValueError(f'{s!r}: the command picks by serial ({", ".join(pinned)}), its line by name')
         if self.command(event(cmd, 0), cmd.by) != cmd:
             raise ValueError(f'{s!r} reads as another command here (a name ends in its tail)')
         return s
@@ -323,6 +332,10 @@ class Commands:
 
     # --- the routes (the script verbs' order calls; Sim.happen runs its order verbs through `do` since R3 13c-2)
     def _units(self, cmd):
+        if cmd.arg('unit_serials') is not None:     # a line verb's, pinned: each object as picked (one gone: none)
+            want = set(cmd.arg('unit_serials'))
+            found = {b.serial: b for b in self._w.bodies.values() if b.serial in want}
+            return [found[s] for s in cmd.arg('unit_serials') if s in found]
         if cmd.arg('objects') == 'serial':  # the objects an action picked, each as picked (one no longer in the world's
             want = set(cmd.units)           # table -- a name taken over since -- is not ordered: no None to the routes)
             found = {b.serial: b for b in self._w.bodies.values() if b.serial in want}
@@ -394,10 +407,10 @@ class Commands:
                     # team's, f #2): the fight takes the team's next one when this dies; a refused one none (o #2)
                     w.team_targets[b.serial] = cmd.arg('team')
             return self._attacked(cmd, sent)
-        targets = w.pick(cmd.target)        # the one picked is given as it is: read again by its name, a script
-        if not targets:                     # reference of that name took its place (11-19 same-name sweep S3)
-            return False, f'找不到 {cmd.target}'
-        return self._attacked(cmd, [w.order_attack(b, targets[0], cmd.force) for b in self._units(cmd)])
+        t = self._target(cmd, lambda n: next(iter(w.pick(n)), None))  # the one picked is given as it is: read
+        if t is None:                       # again by its name, a script reference of that name took its place
+            return False, f'找不到 {cmd.target}'   # (11-19 same-name sweep S3); pinned, by its serial (z #1)
+        return self._attacked(cmd, [w.order_attack(b, t, cmd.force) for b in self._units(cmd)])
 
     @staticmethod
     def _attacked(cmd, sent):
@@ -429,10 +442,10 @@ class Commands:
             t = cmd.target if cmd.arg('target_serial') is None else self._target(cmd, None)
             sent = [w.order_capture(b, t) for b in self._units(cmd)] if t is not None else []
             return (True, '') if sent and all(sent) else (False, f'没有能去占 {cmd.target} 的工兵')
-        targets = w.pick(cmd.target)        # the one picked, as it is (S3, as _attack)
-        if not targets:
+        t = self._target(cmd, lambda n: next(iter(w.pick(n)), None))  # the one picked, as it is (S3, as _attack)
+        if t is None:
             return False, f'找不到 {cmd.target}'
-        sent = [w.order_capture(b, targets[0]) for b in self._units(cmd)]     # each one's answer (i #3)
+        sent = [w.order_capture(b, t) for b in self._units(cmd)]     # each one's answer (i #3)
         return (True, '') if sent and all(sent) else (False, f'没有能去占 {cmd.target} 的工兵')
 
     def _build(self, cmd):
