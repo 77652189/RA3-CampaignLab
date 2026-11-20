@@ -12,6 +12,12 @@ _spec.loader.exec_module(simai)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='requires private engine model')
 
 
+class Member(SimpleNamespace):
+    """A team member: the model keys its keep tables by the member itself (by identity, as the simulator's bodies)."""
+    __hash__ = object.__hash__
+    __eq__ = object.__eq__
+
+
 @pytest.mark.parametrize('name,expected', [('aicrush1', 'move'), ('aicrush0', 'attack'),
                                           ('aicrushlo', 'attack')])
 def test_crush_host_dispatch(name, expected):
@@ -36,7 +42,7 @@ def test_crush_host_dispatch(name, expected):
     travel = round(100 / f.speed * simai.FPS) / simai.FPS
     kill = foe.hp / f.dps(foe)
     assert .01 * kill < travel < kill
-    unit = SimpleNamespace(body=tank)
+    unit = Member(body=tank)
     run = SimpleNamespace(team=SimpleNamespace(template=SimpleNamespace(micro=airetreat_bench.MICRO_ID),
                                               tactic='isolated'),
                           keep={}, keep_target={})     # the per-member keep record (D round 139)

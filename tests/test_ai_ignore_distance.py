@@ -197,7 +197,8 @@ def test_ignore_distance_assignment_skips_filtered_enemy():
     md.add_text('''<AssetDeclaration><AIMicroManagerData id="ignore">
         <IgnoreTargets Rule="ANY" Include="INFANTRY"><ExcludeThing>Allowed</ExcludeThing>
         </IgnoreTargets></AIMicroManagerData></AssetDeclaration>''')
-    unit = NS(pos=(500, 0))
+    # the model keys its keep tables by the member itself (by identity, as the simulator's bodies)
+    unit = type('Member', (NS,), {'__hash__': object.__hash__, '__eq__': object.__eq__})(pos=(500, 0))
     member = tc.Fighter('mine', (500, 0), 100, rate=lambda _: 10, unit=unit)
     ignored = tc.Fighter('ignored', (500, 0), 1, template='Ignored', kinds=frozenset({'INFANTRY'}))
     allowed = tc.Fighter('allowed', (600, 0), 100, template='Allowed', kinds=frozenset({'INFANTRY'}))
