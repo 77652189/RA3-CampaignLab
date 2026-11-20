@@ -93,11 +93,53 @@ def test_what_the_host_cannot_give_is_named_by_field():
     high['status'].append('UNSELECTABLE')                        # a bit no source derives: held as a script's
     high['status'].sort()
     removed['hp'], removed['max_hp'] = 250, 1000                 # another max health: its share kept
-    doc['things'][0]['contains'] = ['Level eye base target']
     host, gaps = _place(doc)
-    said = ['things[0].contains: crews are not placed yet', 'things[1].z: 30.0 in the file, the host reads None',
+    said = ['things[1].z: 30.0 in the file, the host reads None',
             'things[2].status:', 'things[3].level: 3 in the file, the host reads 1',
             'things[4].hp: 250 in the file, the host reads 156.25', 'things[4].max_hp: 1000 in the file, the host reads 625']
     assert len(gaps) == len(said) and all(any(g.startswith(s) for g in gaps) for s in said), gaps
     assert 'UNSELECTABLE' in host.bodies['Level high'].status
     assert 'WEAPON_UPGRADED_01' in host.bodies['Level high'].status
+
+
+def _no_collector():
+    doc = _load('mine_cap')
+    doc['things'] = [t for t in doc['things'] if t['template'] != 'AlliedMiner']    # the source's was gone
+    return doc
+
+
+def test_a_collector_the_file_has_not_leaves_the_host_whole():
+    """Review 1120aa P2: the refinery's collector the host made alongside, taken out -- no corpse, no module of it
+    left in the schedule (its cells and its order table)."""
+    host, gaps = _place(_no_collector())
+    assert gaps == []
+    assert sorted(b.name for b in host.living()) == ['#0', 'UNIT - CNV Mine Refinery']
+    sched = host.world.schedule
+    held = [m for cell in sched.cells.values() for m in cell] + list(sched.seq)
+    assert [m.thing.name for m in held if m.thing.template == 'AlliedMiner'] == []
+    assert not any(b.template == 'AlliedMiner' for b in host.bodies.values())
+
+
+def test_a_script_reference_of_its_name_does_not_spare_the_collector():
+    """Review 1120aa P2: a reference named as the collector points at another (deleted) thing: the collector the
+    host made goes all the same (by the thing, not its name), the reference to the other kept."""
+    import parts
+    host = simsmall.small_world(model=False, map=probe_range)
+    script = parts.Script('Review', [], [])
+    ref = '#unpack UNIT - CNV Mine Refinery'
+    host.act('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', ['marker', 'AlliedMiner', 'Player_1/t', '@3300,4300'], script)
+    host.act('SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER', ['AlliedMiner', 'Player_1', 'Player_1/t', ref], script)
+    host.act('NAMED_DELETE', ['marker'], script)
+    assert host.refs[ref].name == 'marker' and list(host.living()) == []
+    gaps = simbattlefield.place(host, _no_collector())
+    assert [t['id'] for t in simbattlefield.export(Observe(host))['things']] == ['#0', 'UNIT - CNV Mine Refinery']
+    assert host.refs[ref].name == 'marker'
+    assert not [g for g in gaps if g.startswith('things:')], gaps
+
+
+def test_a_living_thing_not_in_the_file_is_named():
+    doc = _load('levelvision_a')
+    host = simsmall.small_world([('stray', 'SovietAntiInfantryInfantry', 'Player_1', 900.0, 900.0)], model=False,
+                                map=probe_range)
+    gaps = simbattlefield.place_things(host, doc)
+    assert gaps == ["things: 'stray' (a Player_1 SovietAntiInfantryInfantry) living on the host, not in the file"]
