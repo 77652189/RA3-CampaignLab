@@ -17,8 +17,9 @@ Result: {'rev', 'units', 'secs', 'model', 'build', 'wall', 'multiple' (simulated
 real time), 'worst', 'slices' (each slice's multiple), 'bodies', 'alive', 'made', 'cells', 'inside'} printed and
 written to <out>/peak_<rev>.json.
 
---ai runs the aiskrand/s skirmish AI scene and writes peak_ai_<rev>.json with ms_frame in place of units; with
---from SECS it starts from the scene's snapshot SECS in (step S 11c-2, ai_start: kept in work/cache/snaps, taken
+--ai runs the aipeak skirmish AI scene (two AIs at war, missions/aipeak_bench.py) and writes peak_ai_<rev>.json
+with ms_frame in place of units; with --from SECS (AI_FROM is the busy stretch's) it starts from the scene's snapshot
+SECS in (step S 11c-2, ai_start: kept in work/cache/snaps, taken
 again when none is kept or restore refuses it), on Sim(model=False), the result's 'start' naming the snapshot's sha.
 Run it through experimental/testbench/cpupool.py run -n 1 -- to share the machine with other jobs."""
 import sim  # noqa: I001  (first: it puts experimental/cnv and campaign on the path)
@@ -137,7 +138,8 @@ def run(secs=SECS, units=UNITS, model=True):
             'inside': {k: round(v, 3) for k, v in sorted(inside.items(), key=lambda kv: -kv[1])}}
 
 
-AI_SCENE = ('aiskrand', 's')    # (build, check): one AI side only, its fight 150-210 s -- not yet the peak B0 asks
+AI_SCENE = ('aipeak', '')      # (build, check): two AIs at war (aiskrand/s before: one side, its fight 150-210 s)
+AI_FROM = 360.0                 # its busiest: both sides growing and fighting (aipeak_bench's probes)
 
 
 def ai_start(at, scene=AI_SCENE, path=None):
@@ -244,7 +246,7 @@ def main():
     ap.add_argument('--secs', type=float, default=SECS)
     ap.add_argument('--units', type=int, default=UNITS, help='each side\'s army')
     ap.add_argument('--no-model', action='store_true', help='without the private engine model')
-    ap.add_argument('--ai', action='store_true', help='run aiskrand/s (use cpupool.py run -n 1)')
+    ap.add_argument('--ai', action='store_true', help='run the AI scene, aipeak (use cpupool.py run -n 1)')
     ap.add_argument('--from', dest='start', type=float, default=None,
                     help='--ai: from the scene\'s snapshot this many seconds in (kept in work/cache/snaps)')
     ap.add_argument('--out', default=None, help='folder for peak_<rev>.json (default work/logs/perf)')
@@ -267,7 +269,7 @@ def main():
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(r, f, ensure_ascii=False, indent=1)
     began = r.get('start')
-    scene_label = (f'{"/".join(AI_SCENE)}'
+    scene_label = (f'{"/".join(p for p in AI_SCENE if p)}'
                    + (f' from {began["at"]:g} s (snapshot {began["sha"]}{", taken now" if began["taken"] else ""})'
                       if began else '')
                    + f', {r["ms_frame"]:.2f} ms/frame') if a.ai else f'{r["units"]} a side'

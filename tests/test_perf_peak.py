@@ -6,7 +6,11 @@ The hard requirement is faster than real time at the peak: the slowest 10 s slic
 whole; the whole run's multiple flatters it as they thin out). The simulator is not there yet (B0 11-17: WORST), so
 that test is a strict xfail and turns red (XPASS) the day it gets there -- then drop the mark. Until then the baseline ratchet keeps
 a step from making it much slower: the run is one, on a shared machine, so its margin is wide (a 10 % step is for
-simrecord's `time` and the benchmark run by hand, before and after)."""
+simrecord's `time` and the benchmark run by hand, before and after).
+
+The AI scene (step S 11c-2: simbench_peak.run_ai, aipeak from AI_FROM): two skirmish AIs at war, a minute from its
+kept snapshot, held to its own ms-a-frame baseline the same way. Its first run plays the minutes up to the start and
+keeps them (work/cache/snaps), so it is the slow one; later runs read the start back."""
 import json
 import sys
 
@@ -20,6 +24,9 @@ import simsmall  # noqa: E402
 BASELINE = 1.13         # the whole run's simulated / wall seconds at 016c411a (B0 11-17; raise it as steps speed up)
 WORST = 0.45            # the slowest 10 s then (the first): the peak, the one under real time
 MARGIN = 0.75           # one run on a shared machine: red below 75 % of the baseline
+AI_BASELINE = 213.0     # ms a frame of aipeak's minute from AI_FROM at bceb6135 (11c-2: 96 % of it outside the
+                        # frame's cells, on the AI's side; lower it as steps speed up)
+AI_SIDE = 40            # each AI side's alive things (buildings and units) at the minute's end, at least
 
 
 @pytest.fixture(scope='module')
@@ -46,6 +53,28 @@ def test_the_peak_runs_faster_than_real_time(peak):
     assert peak['worst'] > 1.0, peak
 
 
+@pytest.fixture(scope='module')
+def ai_peak():
+    """The AI scene's busy stretch (aipeak from AI_FROM, step S 11c-2): its start kept in work/cache/snaps, so only
+    the first run (or one after the snapshot's shape changes) plays the minutes up to it."""
+    import simai
+    if not simai.available():
+        pytest.skip('the engine model (ra3model.ai) is not on this computer')
+    return simbench_peak.run_ai(simbench_peak.SECS, simbench_peak.AI_FROM)
+
+
+def test_the_ai_scene_is_a_fight(ai_peak):
+    """Two AI sides, both standing and both still making, the run what it says: a minute from the kept start."""
+    sides = {o: n for o, n in ai_peak['alive'].items() if o.startswith('Soviet_') and n}    # the spare slots: 0
+    assert len(sides) == 2 and all(n >= AI_SIDE for n in sides.values()), ai_peak['alive']
+    assert ai_peak['made'] > 0 and ai_peak['secs'] == simbench_peak.SECS
+    assert ai_peak['start']['at'] == simbench_peak.AI_FROM and not ai_peak['model']
+
+
+def test_the_ai_peak_keeps_to_its_baseline(ai_peak):
+    assert ai_peak['ms_frame'] <= AI_BASELINE / MARGIN, ai_peak
+
+
 def test_ai_cli_passes_secs_and_writes_ai_result(monkeypatch, tmp_path, capsys):
     result = {'rev': 'abc', 'secs': 2, 'model': True, 'wall': 1, 'multiple': 2, 'worst': 2, 'slices': [2],
               'bodies': 3, 'made': 1, 'alive': {}, 'cells': {}, 'inside': {}, 'ms_frame': 33.333}
@@ -59,7 +88,7 @@ def test_ai_cli_passes_secs_and_writes_ai_result(monkeypatch, tmp_path, capsys):
 
     assert simbench_peak.main() == 0
     assert json.loads((tmp_path / 'peak_ai_abc.json').read_text(encoding='utf-8')) == result
-    assert 'aiskrand/s, 33.33 ms/frame' in capsys.readouterr().out
+    assert 'aipeak, 33.33 ms/frame' in capsys.readouterr().out
 
 
 def test_timed_cells_run_the_same_frame():

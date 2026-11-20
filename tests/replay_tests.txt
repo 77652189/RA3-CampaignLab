@@ -29,7 +29,7 @@ test_simproxy.py
 test_simshow.py
 test_simui.py
 test_talk_queue.py
-test_perf_peak.py  # the peak-load benchmark (B0): 60 s of a 600-unit fight, about a minute
+test_perf_peak.py  # the peak-load benchmark (B0): 60 s of a 600-unit fight and a minute of the AI scene
 
 [bench]  # bench-mission replays: a test mission run once in the simulator
 test_ai_dodge.py
