@@ -506,3 +506,32 @@ def test_a_script_line_make_does_not_take_the_counted_key_a_living_one_holds():
     assert s.bodies['UNIT - SIM Made 1'] is held and held.alive
     made = [b for b in s.living() if b is not held and b.template == GI]
     assert len(made) == 1 and (made[0].x, made[0].y) == (1500.0, 2400.0)
+
+
+# ---- review 1119p #5 (P3): an attachment's link does not outlive its ends' place
+
+def test_a_name_an_attached_pair_holds_is_refused_and_the_link_stays():
+    """Review 1119p #5: the old link followed a stand-in only when a living end was put over in place; Sim.add refuses
+    that since 0a (8a129157) -- the pair and its link are as they were. The normal way (the old parent dies, one is
+    made under its name) leaves the new one out of the link: the child is let go, the new parent has no status."""
+    s = simsmall.small_world()
+    child = s.add('child', GI, 'Player_1', 300.0, 300.0)
+    parent = s.add('parent', TANK, 'Player_1', 300.0, 300.0)
+    link = {'child': {'ATTACHED'}, 'parent': {'VEHICLE_ATTACHED'}}
+    s.attachments[child.serial] = (child, parent, link)
+    s.attachment_tick()
+    for name, template in (('parent', TANK), ('child', GI)):
+        with pytest.raises(ValueError, match='is held by a living'):
+            s.add(name, template, 'Player_1', 500.0, 300.0)
+    s.attachment_tick()
+    assert s.bodies['child'] is child and s.bodies['parent'] is parent
+    assert s.attachments == {child.serial: (child, parent, link)}
+    assert child.attachment_status == {'ATTACHED'} and parent.attachment_status == {'VEHICLE_ATTACHED'}
+    s.destroy(parent, 'test')
+    again = s.add('parent', TANK, 'Player_1', 360.0, 300.0)
+    s.attachment_tick()
+    again.x = 420.0
+    s.attachment_tick()
+    assert s.attachments == {}
+    assert again.attachment_status == set() and child.attachment_status == set()
+    assert child.alive and (child.x, child.y) == (300.0, 300.0)
