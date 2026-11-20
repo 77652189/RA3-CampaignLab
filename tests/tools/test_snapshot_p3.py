@@ -49,16 +49,18 @@ def test_missing_ai_serial_is_refused_before_restore(reference, ai_model):
     assert simaisnap.snapshot(fresh) == before
 
 
-@pytest.mark.xfail(strict=True, raises=pytest.fail.Exception,
-                   reason='review w #5: simrecord.py must validate the record before appending')
 def test_resume_refuses_an_unrelated_record(tmp_path):
     record = tmp_path / 'record.gz'
     snapshot = tmp_path / 'cut.gz'
     args = argparse.Namespace(cmd='one', name='heal_a', path=str(record), executor=None, snap='0.5',
                               save=str(snapshot), resume=None)
     simrecord._main(args)
+    with gzip.open(record, 'rt', encoding='utf-8') as source:
+        *earlier, last = source.readlines()
     with gzip.open(record, 'wt', encoding='utf-8') as out:
-        out.write('unrelated prefix\n')
+        out.writelines(earlier)
+    with gzip.open(record, 'at', encoding='utf-8') as out:
+        out.write(last.rsplit(' || ', 1)[0] + ' || unrelated prefix\n')
     before = record.read_bytes()
     args.save, args.resume = None, str(snapshot)
     with pytest.raises(ValueError, match='first half'):

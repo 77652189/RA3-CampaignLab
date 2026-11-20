@@ -44,12 +44,14 @@ the run); tests/guards/test_ports.py holds both. The golden layer copies this fi
 together (testbench/golden.py RECORDER_RELS); the port is imported where it is used, so loading this file by its
 path (golden, family_close) needs no simulator on sys.path."""
 import argparse
+from contextlib import nullcontext
 import gzip
 import os
 import json
 import subprocess
 import sys
 import time
+import zlib
 
 
 # name -> (kind, args, seconds). kind: bench = build.resolve(build, check) then Sim.run; old = the same without the
@@ -265,6 +267,29 @@ class _Later:
             self.f.close()
 
 
+class _Prefix:
+    """Compare the existing record with the recorder's output up to the cut, without writing it again."""
+
+    def __init__(self, path, source):
+        self.path, self.source = path, source
+        self.line = 1
+
+    def _read(self, limit):
+        try:
+            return self.source.readline(limit)
+        except (OSError, EOFError, UnicodeError, zlib.error) as e:
+            raise ValueError(f"simrecord: cannot read first half's record at {self.path}: {e}") from e
+
+    def write(self, text):
+        if self._read(len(text)) != text:
+            raise ValueError(f"simrecord: first half's record at {self.path} differs at line {self.line}")
+        self.line += 1
+
+    def check_end(self):
+        if self._read(1):
+            raise ValueError(f"simrecord: first half's record at {self.path} has extra data after line {self.line - 1}")
+
+
 def _resumable(snapfile, resume, name, snap, record=None):
     """(meta, snapshot) of the file a cut run `name` at `snap` goes on from (snapfile.load: its format and shape),
     or an error naming why not -- another task or cut, and (`record`, the CLI's) no first half's record there to
@@ -290,7 +315,7 @@ def run_task(name, out, executor=None, snap=None, save=None, resume=None, record
     it) and run on to the end, the record going on where it stopped (Recorder, the log's count).
     Across processes (11c, `snap`): `save` a path -- the cut run stops once taken, the snapshot and where the record
     stopped written there (snapfile); `resume` that path -- another process makes the task anew, writes the file's
-    snapshot onto it and runs on, its record the rest of the cut one's (`out` appended to)."""
+    snapshot onto it and runs on. When appending to `record`, first replay to the cut and check its entire prefix."""
     import build
     import sim
     import snapfile
@@ -315,12 +340,13 @@ def run_task(name, out, executor=None, snap=None, save=None, resume=None, record
             import simsnap as snaps
 
     cut = None if snap in (None, 'whole') else float(snap) * until
-    if resume:      # the cut run's first half was another process's: its recorder's counts and times from the file
-        rec = Recorder(None, out)
-        rec.n, rec.logged, rec.spent, rec.at = meta['n'], meta['logged'], meta['spent'], meta['at']
-        t1 = time.perf_counter()
-        t0 = t1 - meta['elapsed']
-    for half in (1,) if resume else range(1 if cut is None else 2):  # a cut run: the task made again, written back
+    checking = resume and record is not None
+    for half in (1,) if resume and not checking else range(1 if cut is None else 2):
+        if half and resume:      # use the original recorder's counts and times, excluding the verification replay
+            rec = Recorder(None, out)
+            rec.n, rec.logged, rec.spent, rec.at = meta['n'], meta['logged'], meta['spent'], meta['at']
+            t1 = time.perf_counter()
+            t0 = t1 - meta['elapsed']
         if kind == 'retail':
             import retail
             s = sim.Sim(retail.RetailMission(args[0]), model=model, **which)
@@ -352,27 +378,38 @@ def run_task(name, out, executor=None, snap=None, save=None, resume=None, record
                 raise RuntimeError(f'simrecord: {name} restored at {s.t} ran no frame on to {until}: the cut proves '
                                    'nothing')
             break
-        rec = make(Observe(s), out)
-        rec.attach()
-        t0 = time.perf_counter()
-        if cut is None:
+        with (gzip.open(record, 'rt', encoding='utf-8') if checking else nullcontext()) as source:
+            prefix = _Prefix(record, source) if checking else None
+            rec = make(Observe(s), prefix if checking else out)
+            rec.attach()
+            t0 = time.perf_counter()
+            if cut is None:
+                if w is None:
+                    s.run(until)
+                else:
+                    w.advance(int(until * simai.FPS))
+                break
             if w is None:
-                s.run(until)
-            else:
-                w.advance(int(until * simai.FPS))
-            break
-        if w is None:
-            s.run(cut)
-            last = s.t > until      # Sim.run steps while t <= until: written back there, it would run no frame on
-        else:   # a frame at a time to the first tick past the cut, where Sim.run stops (t > cut; a tick is DT)
-            while s.t <= cut and s.ending is None:
-                w.advance(1)
-            last = w.frame >= int(until * simai.FPS)
+                s.run(cut)
+                last = s.t > until  # Sim.run steps while t <= until: written back there, it would run no frame on
+            else:   # a frame at a time to the first tick past the cut, where Sim.run stops (t > cut; a tick is DT)
+                while s.t <= cut and s.ending is None:
+                    w.advance(1)
+                last = w.frame >= int(until * simai.FPS)
+            if checking:
+                prefix.check_end()
         if s.ending is not None or s.t <= cut:
             raise RuntimeError(f'simrecord: {name} ended (or went quiet) at {s.t}, before {cut}: nothing to take')
         if last:
             raise ValueError(f'simrecord: {name} cut at {snap} stops at {s.t}, past its end {until}: no frame left '
                              'to run after the snapshot (take it earlier)')
+        if checking:
+            recorded = tuple(meta.get(k) for k in ('at', 'frame', 'n', 'logged'))
+            replayed = (s.t, s.world.frame, rec.n, rec.logged)
+            if recorded != replayed:
+                raise ValueError(f"simrecord: first half's record at {record} does not match the snapshot cut "
+                                 f"(time, frame, lines, log count): {replayed} vs {recorded}")
+            continue
         t1 = time.perf_counter()
         taken, rec.at = json.dumps(snaps.snapshot(s if w is None else w)), s.t
         if save:        # the rest is another process's (resume): where the record stopped goes with the snapshot
