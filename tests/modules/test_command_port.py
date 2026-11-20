@@ -1251,3 +1251,28 @@ def test_an_upgrade_is_bought_at_the_structure_named_or_refused():
     assert not w.order_build('Player_1', 'Upgrade_AlliedTech2', factory=foeyard) and not w.queues
     assert buy('yard', yard) == (True, '')
     assert [j['template'] for j in w.queues[yard.serial]] == ['Upgrade_AlliedTech2']
+
+
+@pytest.mark.parametrize('after', ['made_again_his', 'made_again_foes', 'taken'])
+def test_a_posted_build_goes_to_the_factory_clicked_not_one_made_under_its_name(after):
+    """S7b session 1 (work/re/sim_split/s7b_pack/plan.md): SimUI posts its build with the factory clicked pinned by
+    serial; before it runs that factory dies and another is made under its name (his own or the foe's), or it is
+    given to the foe -- refused, nothing queued anywhere, nothing paid. Green on e97aa63a: two guards close it, each
+    alone enough (_pinned's target_serial check, review 1120cc; _target by serial, 11-19 same-name sweep) -- with both
+    reading the name the factory made again under it takes the build; kept so the production move does not open it."""
+    gi = 'AlliedAntiInfantryInfantry'
+    s = simsmall.small_world()
+    s.money['Player_1'] = s.money['Player_2'] = 100000
+    f = s.add('f', 'AlliedBarracks', 'Player_1', 300.0, 300.0)
+    assert s.commands.post(Command('build', template=gi, target='f', args=(('target_serial', f.serial),)), 2.0) \
+        == (True, '')
+    if after == 'taken':
+        f.owner = 'Player_2'
+    else:
+        s.destroy(f, 'test')
+        s.add('f', 'AlliedBarracks', 'Player_1' if after == 'made_again_his' else 'Player_2', 900.0, 900.0)
+    s.advance(60)
+    ran = [(ok, why) for _, c, ok, why in s.commands._issued if c.kind == 'build' and why != 'posted']
+    assert len(ran) == 1 and not ran[0][0], ran
+    assert not s.queues and s.money == {**s.money, 'Player_1': 100000, 'Player_2': 100000}
+    assert not [b for b in s.living() if b.template == gi]
