@@ -39,7 +39,7 @@ def repo(tmp_path):
     picker_dir.mkdir()
     (picker_dir / 'affected_tests.py').write_text(
         'import sys\n'
-        'assert sys.argv[1:] == ["--cmd"]\n'
+        'assert len(sys.argv) == 3 and sys.argv[1] == "--cmd" and ".." in sys.argv[2]\n'
         'print("picker selected the guard", file=sys.stderr)\n'
         'print("python -X utf8 -m pytest -q -p no:cacheprovider guards/test_gate.py")\n', encoding='utf-8')
     (main / 'guards').mkdir()
@@ -48,7 +48,7 @@ def repo(tmp_path):
         'def test_gate():\n'
         '    assert Path("allowed.txt").read_text().strip() != "red"\n', encoding='utf-8')
     (main / '.gitignore').write_text('/shared/\n/work/\n/local-work/\n', encoding='utf-8')
-    (main / 'allowed.txt').write_text('base\n', encoding='utf-8')
+    (main / 'allowed.txt').write_text('top\nmiddle one\nmiddle two\nmiddle three\nbottom\n', encoding='utf-8')
     git(main, 'add', '.')
     git(main, 'commit', '-m', 'base')
     git(main, 'push', 'origin', 'main')
@@ -117,6 +117,7 @@ def test_rejected_push_keeps_worktree(repo):
 
     result = land(main, tree, '--remove')
     assert result.returncode != 0
+    assert 'push rejected after 3 attempts' in result.stderr
     assert 'reject demo landing' in result.stderr
     assert git(origin, 'rev-parse', 'main') == remote_tip
     kept = git(tree, 'rev-parse', 'HEAD')
@@ -131,6 +132,58 @@ def test_rejected_push_keeps_worktree(repo):
     assert git(origin, 'rev-parse', 'main') == kept
     assert git(main, 'log', '--format=%H', f'origin/main..{kept}') == ''
     assert not tree.exists()
+
+
+@pytest.mark.parametrize('scenario', ['unrelated', 'same_file', 'conflict'])
+def test_push_retry(repo, scenario):
+    main, tree, origin = repo
+    upstream = main.parent / 'racer'
+    git(main.parent, 'clone', str(origin), str(upstream))
+    if scenario == 'same_file':
+        original = (upstream / 'allowed.txt').read_text(encoding='utf-8')
+        (upstream / 'allowed.txt').write_text(original.replace('bottom', 'remote'), encoding='utf-8')
+        local = original.replace('top', 'local')
+        expected = local.replace('bottom', 'remote')
+    else:
+        path = 'unrelated.txt' if scenario == 'unrelated' else 'allowed.txt'
+        (upstream / path).write_text('remote\n', encoding='utf-8')
+        local = expected = 'local\n'
+    git(upstream, 'add', '.')
+    git(upstream, '-c', 'user.name=Upstream', '-c', 'user.email=upstream@example.test',
+        '-c', 'commit.gpgsign=false', 'commit', '-m', 'advance main during landing')
+    upstream_head = git(upstream, 'rev-parse', 'HEAD')
+    (tree / 'allowed.txt').write_text(local, encoding='utf-8')
+
+    # Publish once, after the initial tests and after the first push sees the old remote tip.
+    hook = main / '.git' / 'hooks' / 'pre-push'
+    hook.write_bytes(b'#!/bin/sh\nset -e\n'
+                     b'if [ ! -f ../racer/.git/raced ]; then\n'
+                     b'    touch ../racer/.git/raced\n'
+                     b'    unset $(git rev-parse --local-env-vars)\n'
+                     b'    git -C ../racer push --no-verify origin main\n'
+                     b'fi\n')
+    hook.chmod(0o755)
+
+    result = land(main, tree, '--remove')
+    assert 'Push rejected (attempt 1/3)' in result.stdout, (result.stdout, result.stderr)
+    log = log_path(main).read_text(encoding='utf-8')
+    if scenario == 'conflict':
+        assert result.returncode != 0
+        assert 'git rebase failed' in result.stderr and 'CONFLICT' in result.stderr
+        assert git(origin, 'rev-parse', 'main') == upstream_head
+        assert git(tree, 'status', '--porcelain') == 'UU allowed.txt'
+        assert git(tree, 'rev-parse', 'REBASE_HEAD')
+        pick_count, run_count = 1, 1
+    else:
+        assert result.returncode == 0, result.stderr
+        assert git(origin, 'rev-parse', 'main^') == upstream_head
+        assert git(origin, 'show', 'main:allowed.txt') == expected.strip()
+        assert not tree.exists()
+        assert ('Rerunning affected tests' if scenario == 'same_file'
+                else 'Reusing affected test results') in result.stdout
+        pick_count, run_count = 2, 2 if scenario == 'same_file' else 1
+    assert log.count('picker selected the guard') == pick_count
+    assert log.count('pytest exit code: 0') == run_count
 
 
 def test_junction_stops_removal(repo):

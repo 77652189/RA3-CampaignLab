@@ -14,6 +14,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 PREFIX = 'RA3-CampaignLab-cx-'
 UPSTREAM = 'origin/main'
+MAX_PUSH_ATTEMPTS = 3
 IDENTITY = ('-c', 'user.email=71443605+77652189@users.noreply.github.com',
             '-c', 'user.name=77652189')  # AGENTS.md
 
@@ -22,12 +23,21 @@ class LandError(Exception):
     pass
 
 
+class PushRejected(LandError):
+    pass
+
+
 def git(cwd, *args):
     result = subprocess.run(['git', '--no-optional-locks', *args], cwd=cwd, capture_output=True)
     if result.returncode:
         detail = '\n'.join(s.decode('utf-8', errors='replace').strip()
                            for s in (result.stdout, result.stderr) if s.strip())
-        raise LandError(f'git {args[0]} failed (exit {result.returncode})\n{detail}')
+        error = LandError
+        if args[:2] == ('push', '--porcelain') and any(
+                line.startswith(b'!\t') for line in result.stdout.splitlines()):
+            error = PushRejected
+        command = args[len(IDENTITY)] if args[:len(IDENTITY)] == IDENTITY else args[0]
+        raise error(f'git {command} failed (exit {result.returncode})\n{detail}')
     return result.stdout.decode('utf-8', errors='surrogateescape')
 
 
@@ -89,6 +99,11 @@ def dirty_paths(tree):
     return {record[3:] for record in status.split('\0') if record}
 
 
+def touched_paths(tree, revisions):
+    paths = git(tree, 'log', '--format=', '--name-only', '--no-renames', '-m', '-z', revisions)
+    return set(filter(None, paths.split('\0')))
+
+
 def check_allowed(paths, patterns):
     outside = sorted(path for path in paths if not any(fnmatch.fnmatchcase(path, p) for p in patterns))
     if outside:
@@ -107,24 +122,69 @@ def check_removable(tree):
             pending.extend(path.iterdir())
 
 
-def run_tests(tree, log_path):
+def pick_tests(tree, revisions, log, log_path):
+    picker = subprocess.run([sys.executable, '-X', 'utf8', 'experimental/testbench/affected_tests.py',
+                             '--cmd', revisions], cwd=tree, stdout=subprocess.PIPE, stderr=log, encoding='utf-8')
+    if picker.returncode:
+        raise LandError(f'affected_tests.py failed (exit {picker.returncode}); see {log_path}')
+    # The picker emits one space-separated argv line, with diagnostics on stderr.
+    lines = picker.stdout.strip().splitlines()
+    command = lines[0].split() if len(lines) == 1 else []
+    if command[:5] != ['python', '-X', 'utf8', '-m', 'pytest']:
+        raise LandError(f'affected_tests.py did not print its pytest command; see {log_path}')
+    print(lines[0], file=log, flush=True)
+    return command
+
+
+def run_tests(tree, command, log, log_path):
+    tests = subprocess.run([sys.executable, *command[1:]], cwd=tree, stdout=log, stderr=subprocess.STDOUT)
+    print(f'pytest exit code: {tests.returncode}', file=log, flush=True)
+    if tests.returncode:
+        raise LandError(f'affected tests failed (exit {tests.returncode}); see {log_path}')
+
+
+def test_and_push(tree, log_path):
+    previous_base = None
     log_path.parent.mkdir(parents=True, exist_ok=True)
     print(f'Test log: {log_path}', flush=True)
     with log_path.open('w', encoding='utf-8') as log:
-        picker = subprocess.run([sys.executable, '-X', 'utf8', 'experimental/testbench/affected_tests.py', '--cmd'],
-                                cwd=tree, stdout=subprocess.PIPE, stderr=log, encoding='utf-8')
-        if picker.returncode:
-            raise LandError(f'affected_tests.py failed (exit {picker.returncode}); see {log_path}')
-        # The picker emits one space-separated argv line, with diagnostics on stderr.
-        lines = picker.stdout.strip().splitlines()
-        command = lines[0].split() if len(lines) == 1 else []
-        if command[:5] != ['python', '-X', 'utf8', '-m', 'pytest']:
-            raise LandError(f'affected_tests.py did not print its pytest command; see {log_path}')
-        print(lines[0], file=log, flush=True)
-        tests = subprocess.run([sys.executable, *command[1:]], cwd=tree, stdout=log, stderr=subprocess.STDOUT)
-        print(f'pytest exit code: {tests.returncode}', file=log)
-        if tests.returncode:
-            raise LandError(f'affected tests failed (exit {tests.returncode}); see {log_path}')
+        for attempt in range(1, MAX_PUSH_ATTEMPTS + 1):
+            git(tree, 'fetch', 'origin', 'refs/heads/main:refs/remotes/origin/main')
+            # FETCH_HEAD is per-worktree. Other landings can move the shared origin/main.
+            base = git(tree, 'rev-parse', 'FETCH_HEAD').strip()
+            rebase_target = (base,) if previous_base is None else ('--onto', base, previous_base)
+            git(tree, *IDENTITY, 'rebase', '--no-autostash', '--no-update-refs', *rebase_target)
+            head = git(tree, 'rev-parse', 'HEAD').strip()
+            if dirty_paths(tree):
+                raise LandError('worktree is dirty after rebase')
+            revisions = f'{base}..{head}'
+            command = pick_tests(tree, revisions, log, log_path)
+
+            if previous_base is None:
+                run_tests(tree, command, log, log_path)
+            else:
+                # Check commits individually, including paths edited and then reverted upstream.
+                incoming = touched_paths(tree, f'{previous_base}...{base}')
+                if incoming & previous_paths or command != previous_command:
+                    print('Rerunning affected tests: overlapping paths or a changed test command.', flush=True)
+                    run_tests(tree, command, log, log_path)
+                else:
+                    print('Reusing affected test results: no overlapping paths and the test command is unchanged.',
+                          flush=True)
+
+            if dirty_paths(tree) or git(tree, 'rev-parse', 'HEAD').strip() != head:
+                raise LandError('worktree changed during testing')
+            try:
+                git(tree, 'push', '--porcelain', 'origin', f'{head}:refs/heads/main')
+            except PushRejected as exc:
+                if attempt == MAX_PUSH_ATTEMPTS:
+                    raise LandError(f'push rejected after {MAX_PUSH_ATTEMPTS} attempts\n{exc}') from exc
+                print(f'Push rejected (attempt {attempt}/{MAX_PUSH_ATTEMPTS}); fetching and rebasing.', flush=True)
+                previous_base = base
+                previous_paths = touched_paths(tree, revisions)
+                previous_command = command
+            else:
+                return head
 
 
 def land(args):
@@ -141,8 +201,7 @@ def land(args):
     outgoing = f'{UPSTREAM}..HEAD'
     if not changed and not git(tree, 'log', '--format=%H', outgoing).strip():
         raise LandError(f'{tree} has no changes or unpushed commits')
-    committed = git(tree, 'log', '--format=', '--name-only', '--no-renames', '-m', '-z', outgoing)
-    check_allowed(changed | set(filter(None, committed.split('\0'))), patterns)
+    check_allowed(changed | touched_paths(tree, outgoing), patterns)
     git(tree, 'remote', 'get-url', 'origin')
 
     if args.dry_run:
@@ -156,18 +215,10 @@ def land(args):
     if changed:
         git(tree, '--literal-pathspecs', 'add', '-A', '--', *sorted(changed))
         git(tree, *IDENTITY, 'commit', '-m', args.message, '--trailer', args.co_author)
-    git(tree, 'fetch', 'origin', 'refs/heads/main:refs/remotes/origin/main')
-    git(tree, *IDENTITY, 'rebase', '--no-autostash', '--no-update-refs', UPSTREAM)
-    tested_head = git(tree, 'rev-parse', 'HEAD').strip()
-    if dirty_paths(tree):
-        raise LandError('worktree is dirty after rebase')
-    run_tests(tree, main / 'work' / 'logs' / f'land_{name}.log')
-    if dirty_paths(tree) or git(tree, 'rev-parse', 'HEAD').strip() != tested_head:
-        raise LandError('worktree changed during testing')
-    git(tree, 'push', 'origin', f'{tested_head}:refs/heads/main')
+    pushed_head = test_and_push(tree, main / 'work' / 'logs' / f'land_{name}.log')
     if git(tree, 'log', '--format=%H', outgoing).strip():
         raise LandError(f'push verification failed: git log {outgoing} is not empty')
-    print(f'Pushed and verified {tested_head}')
+    print(f'Pushed and verified {pushed_head}')
     if args.remove:
         check_removable(tree)
         git(main, 'worktree', 'remove', str(tree))
