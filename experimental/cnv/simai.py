@@ -525,7 +525,7 @@ class Brain:
         if b.surface == 'air' or not b.alive:
             return True
         here = (b.x, b.y)
-        if g.route(b.surface, here, point) is not None:
+        if g.can_route(b.surface, here, point):
             return True
         if check != 'QuickDoesAttackPathExist':
             return False
@@ -534,7 +534,7 @@ class Brain:
             for k in range(16):
                 a = 2 * math.pi * k / 16
                 q = (point[0] + f * r * math.cos(a), point[1] + f * r * math.sin(a))
-                if g.open(b.surface, *q) and g.route(b.surface, here, q) is not None:
+                if g.open(b.surface, *q) and g.can_route(b.surface, here, q):
                     return True
         return False
 

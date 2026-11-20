@@ -721,25 +721,25 @@ class Ground:
         import platmap
         return ((c[1] * self.d - self.b) * platmap.CELL, (c[0] * self.d - self.b) * platmap.CELL)
 
+    def can_way(self, surface, p, q, closest=False):
+        """Whether way() would return a path, including an empty closest path."""
+        return simpath.can_way(self, surface, p, q, closest)
+
+    def can_route(self, surface, p, q):
+        return simpath.can_route(self, surface, p, q)
+
     def route(self, surface, p, q, closest=False):
         """World points from p to q (None: no way); aircraft fly straight. closest: no way to q -- the way to the
         nearest point it can reach instead (a unit's move, R7; the static checks ask for q itself)."""
         if surface == 'air':
             return [q]
         got = self.way(surface, p, q, False)
-        if got is None and surface == 'both':
-            # R7: an amphibian on dry land may take a bridge from its end (the 'both' grid has no decks: from the
-            # water nothing climbs onto one); one starting on land and not reaching q by water goes by land. "On
-            # land" is the terrain's, not the free cells': a unit just out of a factory stands on its footprint's
-            # edge (way snaps it off); aiskirm:et, line A round 205: the engineer out of the barracks at
-            # (4067,3562) took the 'both' grid's closest way and stood at (2900,3280), the derrick never reached
-            # A bridge's deck is land too: aiskirm:et, line A round 239: the engineer crossing the bridge at
-            # (2929, 2952) stood on a deck cell neither grid holds (ground False, both False) and its team's
-            # periodic path check (QuickDoesPathExist) found no way and kicked it, s165; the bench walks it on to
-            # the derrick and captures it s222
-            c, g = self.cell(*p), self.grids['ground']
-            if 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and (g[c] or self.deck[c]):
-                got = self.way('ground', p, q, False)
+        if got is None and surface == 'both' and simpath.amphibian_on_land(self, p):
+            # R7: try the dry route before settling for the closest point on the amphibious grid.
+            # Round 205: the engineer out of the barracks at (4067,3562) took the closest way and stopped at
+            # (2900,3280) without reaching the derrick. Round 239: the periodic path check kicked it off the
+            # team at s165 on the deck at (2929,2952). On the bench it walked on and captured the derrick at s222.
+            got = self.way('ground', p, q, False)
         if got is None and closest:
             got = self.way(surface, p, q, True)
         return got

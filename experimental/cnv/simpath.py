@@ -46,6 +46,7 @@ class RouteGrid:
     def __init__(self, grid, blocked):
         self.cells = grid & ~blocked
         self.endpoints = {}
+        self.components = None
 
     def endpoint(self, cell):
         try:
@@ -56,6 +57,14 @@ class RouteGrid:
                 self.endpoints[cell] = result
             return result
 
+    def connected(self, a, z):
+        if self.components is None:
+            from scipy.ndimage import label
+            # MCP_Geometric is fully connected by default: a diagonal can
+            # pass between two blocked orthogonal neighbours.
+            self.components, _ = label(self.cells, structure=np.ones((3, 3), bool))
+        return bool(self.components[a] == self.components[z])
+
 
 def route_grid(ground, surface):
     key = ('route grid', ground.version, surface)
@@ -65,6 +74,30 @@ def route_grid(ground, surface):
         grid = RouteGrid(ground.grids[surface], ground.blocked)
         ground.cache[key] = grid
         return grid
+
+
+def can_way(ground, surface, p, q, closest=False):
+    """Whether Ground.way returns a path, using exactly its snapped endpoints."""
+    grid = route_grid(ground, surface)
+    a, z = grid.endpoint(ground.cell(*p)), grid.endpoint(ground.cell(*q))
+    # Ground.closest always has at least a itself to fall back to (an empty path).
+    return a is not None and z is not None and (bool(closest) or a == z or grid.connected(a, z))
+
+
+def amphibian_on_land(ground, p):
+    """Test the raw start cell against terrain or deck, even on a factory footprint.
+
+    The 'both' grid omits decks so swimmers cannot climb onto them. A unit already on land
+    or a deck may still take the land route (aiskirm:et, rounds 205 and 239).
+    """
+    c, g = ground.cell(*p), ground.grids['ground']
+    return 0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and bool(g[c] or ground.deck[c])
+
+
+def can_route(ground, surface, p, q):
+    """Whether Ground.route finds a way to q with closest=False."""
+    return (surface == 'air' or ground.can_way(surface, p, q)
+            or (surface == 'both' and amphibian_on_land(ground, p) and ground.can_way('ground', p, q)))
 
 
 class Sight:
