@@ -374,3 +374,18 @@ def test_an_ai_factory_made_under_a_dead_unpacking_ones_name_builds_at_once():
     new = s.add(old.name, 'AlliedBarracks', 'Player_1', 600.0, 300.0)   # not the AI's: ready
     br.unit_due(31)
     assert br.unit_q == [] and list(s.queues) == [new.serial]
+
+
+def test_an_ai_unit_goes_to_the_ready_factory_it_picked_not_one_still_unpacking():
+    """Same-name sweep 11-19b N03: the AI's build names the free factory it picked (by serial) -- the shortest-queue
+    pick no longer hands the job to an earlier barracks of the AI's still unpacking."""
+    s = simsmall.small_world(model=False)
+    s.money['Player_1'] = 10000
+    br = _bare_brain(s, unpack=300)
+    br.later.append((0, 'AlliedBarracks', (300.0, 300.0), ''))
+    br.later_due(0)                                     # A: the AI's own, unpacking 300 frames
+    (a,) = [b for b in s.living() if b.template == 'AlliedBarracks']
+    b = s.add('ready barracks', 'AlliedBarracks', 'Player_1', 600.0, 300.0)   # B: ready
+    br.unit_q = [GI]
+    br.unit_due(30)
+    assert br.unit_q == [] and list(s.queues) == [b.serial] and a.serial != b.serial

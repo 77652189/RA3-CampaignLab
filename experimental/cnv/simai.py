@@ -1783,7 +1783,9 @@ class Brain:
             free = [f for f in self.factories() if t in self.host.menu(f.template)
                     and frame >= self.made.get(f.serial, -10 ** 9) + self.host.unpack(f.template)
                     and not systems.queues.get(f.serial)]
-            if free and self.commands.do(Command('build', f'ai:{self.player}', player=self.player, template=t))[0]:
+            if free and self.commands.do(Command(          # at the free one it picked, by serial (same-name 11-19b
+                    'build', f'ai:{self.player}', player=self.player, template=t,   # N03: not the shortest queue,
+                    target=free[0].name, args=(('target_serial', free[0].serial),)))[0]:   # one still unpacking)
                 self.unit_q.remove(t)
 
     @property

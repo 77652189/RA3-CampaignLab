@@ -451,7 +451,7 @@ class Commands:
             return False, f'没有工厂现在造得了 {cmd.template}'
         tmpl = next((u.id for u in w.mm.units if u.id == cmd.template), None) or \
             next((r.template for k, r in w.m.cast.items() if k == cmd.template), cmd.template)
-        f = next(iter(w.pick(cmd.target)), None)
+        f = self._target(cmd, lambda n: next(iter(w.pick(n)), None))   # the AI's: by serial (11-19b N03)
         if f is None:
             why = f'找不到工厂 {cmd.target}'
         elif not w.order_build(cmd.player or w.human, tmpl, factory=f):
