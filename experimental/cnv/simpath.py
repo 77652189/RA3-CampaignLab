@@ -195,18 +195,34 @@ def sees(flat, w, c0, c1):
     """`clear` on g's cells as bytes, row after row, w a row (pull asks many lines of one grid)."""
     r, q = c0
     dr, dq = c1[0] - r, c1[1] - q
-    sr, sq = (dr > 0) - (dr < 0), (dq > 0) - (dq < 0)
-    nr, nq = abs(dr), abs(dq)
-    i = j = 0                       # row and column lines crossed; the k-th at t = (2k + 1) / (2n) along the line
-    while i < nr or j < nq:
-        a, b = (2 * i + 1) * nq, (2 * j + 1) * nr       # compare the next crossings' t without division
-        if j >= nq or (i < nr and a < b):
-            r, i = r + sr, i + 1
-        elif i >= nr or b < a:
-            q, j = q + sq, j + 1
-        else:                                           # through a corner point
-            r, q, i, j = r + sr, q + sq, i + 1, j + 1
-        if not flat[r * w + q]:
+    major, minor = abs(dr), abs(dq)
+    step_major, step_minor = w if dr > 0 else -w, 1 if dq > 0 else -1
+    if major < minor:
+        major, minor = minor, major
+        step_major, step_minor = step_minor, step_major
+
+    # Compare the next crossings at (2k + 1) / (2n) without division.
+    # Keep the difference of their cross-products and update it after each crossing.
+    diff = minor - major
+    add_major, sub_minor = 2 * minor, 2 * major
+    add_corner = add_major - sub_minor
+    step_corner = step_major + step_minor
+    offset = r * w + q
+    # The major axis has the last crossing (possibly tied). An exhausted minor axis
+    # has no crossing before it, so it needs no separate counter.
+    while major:
+        if diff < 0:
+            offset += step_major
+            diff += add_major
+            major -= 1
+        elif diff > 0:
+            offset += step_minor
+            diff -= sub_minor
+        else:
+            offset += step_corner
+            diff += add_corner
+            major -= 1
+        if not flat[offset]:
             return False
     return True
 
