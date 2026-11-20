@@ -21,6 +21,7 @@
 ## 干活
 - 目标（ADR 0026）：清单各部分按用量已对拍 ≥ 90%，再往 100% 推；11-13 用户定：原版 27 关用到的全部补到已对拍（`inventory_retail.py` 列缺口和归属）。"已对拍" = 读数写进台子旁边的读数数据、一致性跑器核对相符（ADR 0035，`docs/engine/testing.md`）；不再新写点名台子的整局测试，旧的和手写登记表只减（`tests/guards/test_bench_tests.py`）。
 - 每项：先从数据预测 → 上台 → 读数不符照数据修模拟器（猜的标 INFERRED）→ 登记 + 测试。每轮只做一件能提交的事。
+- 代码只许慢涨（用户 11-20：仓库无限膨胀，每次都要读大量文件，维护越来越难）：改动落在最小范围，先找能复用、能删的，再写新的；测试写能抓住变异的最少几条，不按场景堆；一次性的调查脚本不进仓库（放 `work/` 或临时目录）。提交说明写净增减行数（`git diff --shortstat`），净增大的写一句为什么。
 - 难题在交接里列一张假设表（假设、能区分它的那次运行、结果）。连续两轮解释不了就停。
 - 卡住不等人：写进自己交接开头的 `## 待答问题`（问题、你倾向的答案、卡住了哪项），转去做下一项。回答的人写在问题下面。
 - 测试：收尾跑 `python -X utf8 experimental/testbench/affected_tests.py --cmd` 打出的命令（模拟器文件按导入关系挑、其余按覆盖率图挑，含守卫；默认不带 `tests/replay_tests.txt` 里的整局和台子关回放，改的正是某个回放测试或要拿它当对拍证据时加 `--with-replays`；整机重活共用 CPU 令牌池 `experimental/testbench/cpupool.py`：`-n` 按现在空着的令牌算、一次最多 2 个（独占 `RA3_CPU_EXCLUSIVE=1` 才拿全部），先来先到排队，别自己另开并行）；挑得太多、慢文件跑不完的，在提交说明里写"留给总控全量"。工具报错时退回：改到的测试文件、`git grep -l <模块名> tests/`、`tests/test_inventory*.py`、`tests/guards/test_docs.py`、`tests/guards/test_architecture.py`（G4：新文件别加 `sys.path.insert`，按文件路径加载）、`tests/guards/test_no_program_addresses.py`（守公开文件里不出现程序地址）。不跑全量，全量由总控跑。
