@@ -1,0 +1,44 @@
+"""Ground locomotion from route request to consumption of its last point."""
+import pytest
+
+import simsmall
+
+
+def test_open_ground_keeps_exact_goal_and_records_arrival_inside_a_coarse_tick():
+    s = simsmall.small_world(model=False)
+    b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1200, 2500)
+    b.speed = 60
+    goal = (1240, 2500)
+    s.send(b, goal)
+    assert b.path == [goal] and b.dest == goal
+
+    # At 60 units/s, the first half-second tick covers 30 units.
+    s.move()
+    assert (b.x, b.y) == (1230, 2500) and b.path == [goal]
+    s.t = 0.5
+    s.move()
+    assert (b.x, b.y) == goal and b.path == []
+    # The last ten units take 1/6 s, so the recorded arrival is at frame 10 (15 Hz).
+    assert b.stops_at * 15 == pytest.approx(10)
+
+
+def test_ground_route_pulls_a_single_bend_around_a_blocked_strip():
+    s = simsmall.small_world(model=False)
+    # A bar blocks x=1240..1260 through y=2500. The coarse chain clears
+    # the near corner at (1240, 2520). From there the line to the goal
+    # passes x=1260 above y=2510, so fine sight removes the far bend.
+    s.ground.set_blocks([(1250, 2200, 0, 20, 600)])
+    assert s.ground.route('ground', (1200, 2500), (1300, 2500)) == [
+        (1240, 2520), (1300, 2500),
+    ]
+
+
+def test_ground_attack_route_stops_at_the_first_cell_in_range():
+    s = simsmall.small_world(model=False)
+    b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1200, 2500)
+    target = (1320, 2500)
+    s.send(b, target, reach=40)
+
+    # The near edge of the range circle is two 20-unit cells west of the
+    # target. The physical endpoint differs from the requested destination.
+    assert b.path == [(1280, 2500)] and b.dest == target
