@@ -1234,7 +1234,7 @@ class Sim:
         side = math.ceil(math.sqrt(len(made)))
         for i, t in enumerate(made):
             dx, dy = (i % side - (side - 1) / 2) * SPREAD, (i // side - (side - 1) / 2) * SPREAD
-            b = self.add(f'#reinforcement {len(self.bodies)} {t}', t, owner, p[0] + dx, p[1] + dy, by=script.name,
+            b = self.add(simworld.free_name(self, '#reinforcement', t), t, owner, p[0] + dx, p[1] + dy, by=script.name,
                          at=self.t)
             b.team, b.instance = key, k
             if self.blocks(b):
@@ -1725,7 +1725,7 @@ class Sim:
 
         def at(p):
             return f.x + p[0] * c - p[1] * s, f.y + p[0] * s + p[1] * c
-        b = self.add(f'#made {len(self.bodies)} {job["template"]}', job['template'], job['owner'], *at(create),
+        b = self.add(simworld.free_name(self, '#made', job['template']), job['template'], job['owner'], *at(create),
                      by=f.name, at=self.t)
         b.team, b.angle = f.team, f.angle
         self.note('生产', f'{self.label(f)} 出 {job["template"]}')
@@ -2879,14 +2879,14 @@ class Sim:
                     continue
                 share = was.hp / was.max_hp if was.max_hp else 1.0
                 self.delete(was, f'展开成 {structure}')
-                self.bodies[f'#packed {len(self.bodies)} {by}'] = self.bodies.pop(by)
+                self.bodies[simworld.free_name(self, '#packed', by)] = self.bodies.pop(by)
                 n = self.add(by, structure, owner, was.x, was.y, by=by, at=self.t)
                 n.set_hp(n.max_hp * share, tell=False)
                 hold = self.__dict__.get('pack_hold', {}).pop(was.serial, 0)
                 if hold:                    # DISABLE_NEW_OBJECT_DURING_UNPACK: stands still (engine_pack), as EMP'd
                     self.__dict__.setdefault('emp_until', {})[n.serial] = self.frame_now() + hold
             else:
-                n = self.add(f'#built {len(self.bodies)} by {by}', structure, owner, x, y, by=by, at=self.t)
+                n = self.add(simworld.free_name(self, '#built', f'by {by}'), structure, owner, x, y, by=by, at=self.t)
             n.team = team
             if self.blocks(n):
                 self.reblock()

@@ -296,3 +296,29 @@ def test_an_object_upgrade_bought_at_a_structure_that_died_does_not_arrive_on_on
     s, f2, _ = _queued_at_a_dead_factory('Upgrade_AlliedTech2')
     s.produce_due(30 * 60)
     assert 'Upgrade_AlliedTech2' not in f2.upgrades and not s.player_ups.get('Player_1')
+
+
+# ---- review 1119w P2 #1 / #3: a thing made without a name goes under a key no living thing holds
+
+def test_an_unnamed_creation_whose_counted_key_a_living_one_holds_takes_the_next_free_key():
+    s = simsmall.small_world()
+    s.point = lambda wp: (300.0, 300.0)
+    s.add('x', GI, 'Player_1', 900.0, 900.0)
+    held = s.add(f'#created 2 {GI}', GI, 'Player_1', 600.0, 600.0)   # a named creation took the counted key
+    simact_world.create_unnamed_on_team_at_waypoint(s, 'CREATE_UNNAMED_ON_TEAM_AT_WAYPOINT', (GI, 'Player_1/t', 'wp'),
+                                                    types.SimpleNamespace(name='S'))
+    assert s.bodies[f'#created 2 {GI}'] is held and held.alive
+    made = s.bodies[f'#created 3 {GI}']
+    assert (made.x, made.y, made.team) == (300.0, 300.0, 'Player_1/t')
+
+
+def test_an_unpacked_builders_archive_key_leaves_a_living_one_under_its_counted_key_in_place():
+    s = simsmall.small_world()
+    mcv = s.add('mcv', 'AlliedMCV', 'Player_1', 300.0, 300.0)
+    mcv.replace = True
+    mcv.building = ('AlliedConstructionYard', (300.0, 300.0), 50.0)
+    assert s.at_site(mcv, 0.0)
+    held = s.add('#packed 1 mcv', GI, 'Player_1', 900.0, 900.0)   # the count the key reads (the builder popped)
+    s.build_due(s.frame_now() + 10)
+    assert s.bodies['#packed 1 mcv'] is held and held.alive
+    assert s.bodies['#packed 2 mcv'] is mcv and s.bodies['mcv'].template == 'AlliedConstructionYard'

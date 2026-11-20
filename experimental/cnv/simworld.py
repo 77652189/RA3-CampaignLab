@@ -93,5 +93,16 @@ def held(world, b):
     return b if b is not None and world.bodies.get(b.name) is b else None
 
 
+def free_name(world, head, tail):
+    """The internal key a thing made without a name of its own goes under, f'{head} {n} {tail}': n the count of
+    bodies, as ever, else the next n no living thing holds (review 1119w P2 #1 / #3: Sim.add refuses a living one's
+    name, and bodies shrink as things are deleted, so the count can come round to a key a living one still holds).
+    A dead one's key is taken again, as Sim.add lets it."""
+    n = len(world.bodies)
+    while (b := world.bodies.get(f'{head} {n} {tail}')) is not None and b.alive:
+        n += 1
+    return f'{head} {n} {tail}'
+
+
 def mmss(t):
     return f'{int(t // 60)}:{int(t % 60):02d}'

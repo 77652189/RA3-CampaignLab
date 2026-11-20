@@ -1743,7 +1743,7 @@ class Brain:
         else:
             spot = self.general_spot(yard, template)
         x, y = spot or self.spot(yard, template)
-        name = f'#ai {len(world.bodies)} {template}'
+        name = simworld.free_name(world, '#ai', template)
         self.peers.commands.do(Command('place', f'ai:{self.player}', player=self.player, template=template,
                                        pos=(float(x), float(y)), args=(('name', name), ('team', yard.team))))
         self.made[name] = frame
@@ -1758,8 +1758,8 @@ class Brain:
         for job in [j for j in self.later if j[0] <= frame]:
             self.later.remove(job)
             _, t, (x, y), team = job
-            b = world.add(f'#ai {len(world.bodies)} {t}', t, self.player, x, y + 60.0, by='skirmish AI', at=world.t,
-                          team=team)
+            b = world.add(simworld.free_name(world, '#ai', t), t, self.player, x, y + 60.0, by='skirmish AI',
+                          at=world.t, team=team)
             self.made[b.name] = frame
             self.trace.append((frame, 'out', t))
 

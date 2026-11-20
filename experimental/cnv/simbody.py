@@ -16,6 +16,7 @@ import importlib
 import math
 
 import simunits
+import simworld
 from engine.kernel import interfaces, module
 
 SELL_PERCENT = 0.5              # SellPercentage (SDK default); SellTime: engine/modules/sell.py
@@ -40,7 +41,8 @@ class Life:
         engine_life, no body lingers): each object its ObjectCreationList lists made where it stood, that frame, its
         owner's, team's and facing (the ice core's wall)."""
         for tmpl in simunits.ocl_objects(ocl, world.own):
-            n = world.add(f'#left {len(world.bodies)} of {b.name}', tmpl, b.owner, b.x, b.y, by=b.name, at=world.t)
+            n = world.add(simworld.free_name(world, '#left', f'of {b.name}'), tmpl, b.owner, b.x, b.y,
+                          by=b.name, at=world.t)
             n.team, n.angle = b.team, b.angle
             world.note('留下', f'{tmpl}（{world.label(b)} 寿命到了）')
             if world.blocks(n):

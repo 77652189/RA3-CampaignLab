@@ -7,6 +7,7 @@ Each action is `fn(sim, name, a, script)`, moved verbatim out of Sim.act's chain
 import math
 
 import simunits
+import simworld
 from simscript import LOST, SCENE_FLAG, SHOW_FLAG, WON
 
 
@@ -83,7 +84,7 @@ def create_unnamed_on_team_at_waypoint(sim, name, a, script):
     p = sim.point(a[2])
     if p is None:
         return
-    b = sim.add(f'#created {len(sim.bodies)} {a[0]}', a[0], a[1].split('/')[0], *p, by=script.name, at=sim.t)
+    b = sim.add(simworld.free_name(sim, '#created', a[0]), a[0], a[1].split('/')[0], *p, by=script.name, at=sim.t)
     b.team = a[1]
     sim.active.add(a[1])
     b.angle = float(a[3]) if len(a) > 3 else 0.0
