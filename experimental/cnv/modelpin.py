@@ -1,5 +1,5 @@
 r"""The private engine model pinned by version (ADR 0030 item 1): the simulator (sim.engine_model) and the AI and the
-proxy player (simproxy._package, which simai.model and simproxy.proxy load through) refuse to load RA3-EngineModel
+proxy player (package, which simai.model and simproxy.proxy load through) refuse to load RA3-EngineModel
 unless its HEAD is the commit experimental/cnv/inventory_model.rev names. One public commit then fixes the model the
 simulator runs, so a bisect, a full run and the refactor's frame-by-frame record compare like with like (11-17: the
 B228 public commit read red against a model checkout that was another commit).
@@ -8,8 +8,10 @@ Where the model is not on this computer (a clean clone) nothing is checked: the 
 (model=False) as before. CNV_ENGINE_MODEL (labpaths.ENGINE_MODEL) pointing at another model worktree is checked the
 same way. Only HEAD is compared: uncommitted edits in the model's working tree are not looked at.
 """
+import importlib.util
 import os
 import subprocess
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REV_FILE = os.path.join(HERE, 'inventory_model.rev')
@@ -58,3 +60,19 @@ def check(root, rev_file=REV_FILE):
         _SEEN[key] = None if got == want else message(root, want, got, rev_file)
     if _SEEN[key]:
         raise ModelPinError(_SEEN[key])
+
+
+def package(folder):
+    """The engine model's ra3model package, loaded by file as sim.engine_model does (nothing added to sys.path, guard
+    G4): its submodules then import by name through the package's own path. Only the commit inventory_model.rev
+    pins loads (check, ADR 0030): simai.model and simproxy.proxy come through here (R3 13f-2d: moved from
+    simproxy, so the skirmish AI, a layered module, loads its model without importing the proxy player)."""
+    check(os.path.dirname(os.path.abspath(folder)))
+    if 'ra3model' in sys.modules:
+        return sys.modules['ra3model']
+    spec = importlib.util.spec_from_file_location('ra3model', os.path.join(folder, '__init__.py'),
+                                                  submodule_search_locations=[folder])
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules['ra3model'] = mod
+    spec.loader.exec_module(mod)
+    return mod

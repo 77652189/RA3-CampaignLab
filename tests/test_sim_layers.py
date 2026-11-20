@@ -48,16 +48,20 @@ LAYER_OF = {
     'simsweep': 3,
     'siminfiltrator': 2, 'simrepair': 2,
     'simmicro': 5, 'simpullback': 8,
+    'simai': 8,             # the skirmish AI (R3 13f-2d: it names no Sim; its run is simai_run.py, an entry point)
     'engine.ports.scripts': 0, 'engine.ports.command': 0, 'engine.script': 6, 'engine.script.executor': 6, 'engine.script.lists': 6, 'simexec': 6,   # P1 the script port, Z its lists
 }
 # the skirmish AI's side (step 9d): simai and the parts only it imports. The inventory counts the player's run
 # (simcoverage.sim_files walks down from sim and simproxy, never into simai; inventory_ai counts the AI apart), so
 # test_simcoverage_files leaves these out; no other simulator module imports them (test_nothing_else_imports_the_ai).
-# simai itself is not in LAYER_OF until step 10: it still imports sim (SIM_NAMES_UNTIL_10).
 AI_SIDE = {'simai', 'simmicro', 'simpullback'}
 # tools over a whole run (step S's snapshot): layered for the import rule (never import sim), not a part of the
 # simulator, so the inventory does not count their strings (tests/test_simcoverage_files.py)
 OVER_THE_RUN = {'simsnap', 'simaisnap', 'simbattlefield'}
+# what any layer may import though it is no layer of the simulator (R3 13f-2d): the ports the AI asks its host
+# through (adapters over the Sim, not parts of the run -- the inventory does not count them, the forwarder guard
+# does not hold them) and modelpin (the private model's pin and package loader). Each imports nothing above L0.
+BOUNDARY = {'engine.ports.ai', 'engine.ports.observe', 'modelpin'}
 
 
 def ai_import_breaks(mods=None, source=None):
@@ -87,9 +91,9 @@ PEER_TAKERS = {'simorder', 'simdamage',
                'simgarrison', 'siminfiltrator',
                'simai',
                'simproxy'}
-# (simai, step 9d-2: a world and peers taker holding them as self.world / self.peers; it still names sim for sim.Body
-# and run()'s sim.Sim until step 10 moves Body below it -- SIM_NAMES_UNTIL_10)
-SIM_NAMES_UNTIL_10 = {'simai': {'Body', 'Sim'}}
+# (simai, step 9d-2: a world and peers taker holding them as self.world / self.peers; since R3 13f-2d it names no
+# sim -- a target object is a kernel Thing, the run is simai_run.py)
+SIM_NAMES_UNTIL_10 = {}
 # (simproxy, step 9d: the same for SimWorld; it makes the Sim (sim.Sim, sim.LEVELS for main's --level) as an entry
 # point, which stays after step 10 -- only its sim.Body goes then)
 SIM_NAMES_UNTIL_10['simproxy'] = {'Body', 'Sim', 'LEVELS'}
@@ -133,11 +137,14 @@ def _imports(tree):
     yield from sorted(enginefiles.imports(tree))
 
 
-def import_breaks(layer_of=LAYER_OF):
-    """(module, imported, why) for each import that breaks rule 1."""
+def import_breaks(layer_of=LAYER_OF, boundary=BOUNDARY):
+    """(module, imported, why) for each import that breaks rule 1 (a BOUNDARY module counts as L0 for what it
+    imports, and may be imported by any layer)."""
     out = []
-    for mod, layer in layer_of.items():
+    for mod, layer in {**layer_of, **dict.fromkeys(boundary, 0)}.items():
         for name in _imports(_tree(mod)):
+            if name in boundary:
+                continue
             if name not in layer_of:
                 out.append((mod, name, 'not layered'))
             elif layer_of[name] > layer:
@@ -191,6 +198,9 @@ def test_import_guard_bites():
     """Mutation check: a layer that imported one above it, or sim, would be caught."""
     assert ('simtech', 'simunits', 'L4 imports L5') in import_breaks({**LAYER_OF, 'simunits': 5})
     assert any(b[0] == 'simjet' and b[1] == 'simtopple' for b in import_breaks({**LAYER_OF, 'simtopple': 3}))
+    assert ('simai', 'modelpin', 'not layered') in import_breaks(boundary=BOUNDARY - {'modelpin'})
+    assert ('engine.ports.observe', 'engine.kernel.module', 'L0 imports L3') in \
+        import_breaks({**LAYER_OF, 'engine.kernel.module': 3})
 
 
 def test_world_takers_reach_only_the_world_api():
@@ -620,8 +630,9 @@ def test_ai_read_guard_bites():
     assert not peer_breaks(['simai'], src)
     assert peer_breaks(['simai'], src.replace('peers.money', 'peers.order_move')) == [('simai', 'order_move')]
     assert world_breaks(['simai'], "def f(self):\n    return self.world.order_move, sim.Body\n") == \
-        [('simai', 'order_move')]
-    assert world_breaks(['simai'], "def f(self):\n    return sim.Thing\n") == [('simai', 'sim')]
+        [('simai', 'order_move'), ('simai', 'sim')]         # R3 13f-2d: simai names no sim, Body neither
+    assert world_breaks(['simproxy'], "def f(self):\n    return sim.Body\n") == []
+    assert world_breaks(['simproxy'], "def f(self):\n    return sim.Thing\n") == [('simproxy', 'sim')]
     assert host_write_breaks(('simai',), "class B:\n    def f(self):\n        self.world.money[p] = 3\n") == \
         [('simai', 'money')]
 

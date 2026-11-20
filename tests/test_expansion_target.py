@@ -7,9 +7,10 @@ from types import SimpleNamespace
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no private AI model')
 
 
@@ -49,7 +50,7 @@ def test_expansion_interface_preserves_selection_and_slot_points(tmp_path):
 
 
 def test_expansion_named_bench_replay():
-    w = simai.run('aiexpc', 'a', until=31)
+    w = simai_run.run('aiexpc', 'a', until=31)
     labels = [label for _, label in w.sim.test.counters]
     row = dict(zip(labels, w.sim.series[-1][1]))
     # Bench aiexpc:a, seconds 22..32: four at east, none at bluff or entity.
@@ -57,7 +58,7 @@ def test_expansion_named_bench_replay():
 
 
 def test_expansion_named_entity_control_replay():
-    w = simai.run('aiexpctl', 'a', until=31)
+    w = simai_run.run('aiexpctl', 'a', until=31)
     labels = [label for _, label in w.sim.test.counters]
     row = dict(zip(labels, w.sim.series[-1][1]))
     assert (row['候选东'], row['候选崖'], row['普通实体']) == (0, 0, 4)
@@ -65,7 +66,7 @@ def test_expansion_named_entity_control_replay():
 
 @pytest.mark.parametrize('build', ['aibsold', 'aibsnew'])
 def test_base_sort_named_bench_replay(build):
-    w = simai.run(build, 'a', until=31)
+    w = simai_run.run(build, 'a', until=31)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     # Raw engine readings, not a rule for sorting bases; both layouts are identical.
     assert (row['候选东'], row['候选崖'], row['普通实体']) == (4, 0, 0)
@@ -73,7 +74,7 @@ def test_base_sort_named_bench_replay(build):
 
 @pytest.mark.parametrize('build', ['aibncap', 'aibnnone'])
 def test_base_preferred_not_named_bench_replay(build):
-    w = simai.run(build, 'a', until=31)
+    w = simai_run.run(build, 'a', until=31)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     # Retain raw bench counts, without inferring base type or preference scores.
     assert (row['候选东'], row['候选崖'], row['普通实体']) == (4, 0, 0), row
@@ -81,7 +82,7 @@ def test_base_preferred_not_named_bench_replay(build):
 
 def test_dual_base_candidate_registration():
     """D98 base table: physical scripted yard does not register a second AI base."""
-    w = simai.run('aibs2old', 'a', until=19)
+    w = simai_run.run('aibs2old', 'a', until=19)
     brain = next(iter(w.brains.values()))
     h = brain.targets.tdata.heuristic('CNVExpansion')
     candidates = brain.view.expansion_candidates(h, brain.home)
@@ -98,7 +99,7 @@ def test_dual_base_candidate_registration():
 @pytest.mark.parametrize('build', ['aibs2old', 'aibs2new'])
 def test_dual_base_sort_named_bench_replay(build):
     """Retain engine counts, without claiming two yards imply two eligible bases."""
-    w = simai.run(build, 'a', until=65)
+    w = simai_run.run(build, 'a', until=65)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     assert (row['候选东'], row['候选崖'], row['普通实体']) == (4, 0, 0), row
 
@@ -106,7 +107,7 @@ def test_dual_base_sort_named_bench_replay(build):
 @pytest.mark.parametrize('build', ['aibs2old', 'aibs2new'])
 def test_dual_base_physical_yards_named_bench_replay(build):
     """The b check distinguishes physical creation from AI base eligibility."""
-    w = simai.run(build, 'b', until=31)
+    w = simai_run.run(build, 'b', until=31)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     assert (row['东建厂'], row['崖建厂']) == (1, 1), row
 
@@ -126,7 +127,7 @@ def test_initial_dual_preferred_not_selection_replay(build, scores, base_id, poi
         return select(selection, candidates)
 
     monkeypatch.setattr(tg, 'select_expansion_base', observe)
-    w = simai.run(build, 'b', until=19)
+    w = simai_run.run(build, 'b', until=19)
     brain = next(iter(w.brains.values()))
     h = brain.targets.tdata.heuristic('CNVExpansion')
     picked = tg.find(h, brain.view, brain.home)
@@ -147,7 +148,7 @@ def test_initial_dual_preferred_not_selection_replay(build, scores, base_id, poi
                                             ('aibn2new', (4, 0, 1, 1))])
 def test_initial_dual_preferred_not_counts_replay(build, expected):
     """Keep the four raw bench counts separate from the base selection verdict."""
-    w = simai.run(build, 'b', until=65)
+    w = simai_run.run(build, 'b', until=65)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     assert tuple(row[k] for k in ('候选东', '候选崖', '东建厂', '崖建厂')) == expected, row
 
@@ -167,7 +168,7 @@ def test_initial_dual_preferred_selection_replay(build, preferred, scores, base_
         return select(selection, candidates)
 
     monkeypatch.setattr(tg, 'select_expansion_base', observe)
-    w = simai.run(build, 'b', until=19)
+    w = simai_run.run(build, 'b', until=19)
     brain = next(iter(w.brains.values()))
     h = brain.targets.tdata.heuristic('CNVExpansion')
     picked = tg.find(h, brain.view, brain.home)
@@ -190,7 +191,7 @@ def test_initial_dual_preferred_selection_replay(build, preferred, scores, base_
                                           ('aibp1new', (0, 0, 1, 1))])
 def test_initial_dual_preferred_counts_replay(build, expected):
     """Four raw s55..65 counts, independent of the base-choice verdict."""
-    w = simai.run(build, 'b', until=65)
+    w = simai_run.run(build, 'b', until=65)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     assert tuple(row[k] for k in ('候选东', '候选崖', '东建厂', '崖建厂')) == expected, row
 
@@ -199,7 +200,7 @@ def test_initial_dual_preferred_counts_replay(build, expected):
                                             ('aibs3new', (0, 0, 1, 1))])
 def test_initial_dual_base_counts_named_bench_replay(build, expected):
     """Raw s55..65 counts; NEW's absence at ore is not a base-selection failure."""
-    w = simai.run(build, 'b', until=65)
+    w = simai_run.run(build, 'b', until=65)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     assert tuple(row[k] for k in ('候选东', '候选崖', '东建厂', '崖建厂')) == expected, row
 
@@ -210,7 +211,7 @@ def test_initial_dual_base_counts_named_bench_replay(build, expected):
 ])
 def test_initial_dual_base_sort_named_bench_replay(build, base_id, point):
     """Initial-yard base table and OLD/NEW choice; see work/re/c_bs3_report.md."""
-    w = simai.run(build, 'b', until=19)
+    w = simai_run.run(build, 'b', until=19)
     brain = next(iter(w.brains.values()))
     h = brain.targets.tdata.heuristic('CNVExpansion')
     assert len(brain.expansion_initial_yards) == 2
@@ -251,7 +252,7 @@ def test_expansion_d104_candidate_readings_replay(tmp_path):
 
 @pytest.mark.parametrize('build', ['aiexpse', 'aiexpd50', 'aiexpd400'])
 def test_simple_expansion_placed_miner_named_bench_replay(build):
-    w = simai.run(build, 'a', until=31)
+    w = simai_run.run(build, 'a', until=31)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     # Bench D round 154, all three: the placed miner harvests on its own to the field, the SimpleExpansion team
     # stays empty (miner and escorts never taken), no outpost.
@@ -260,7 +261,7 @@ def test_simple_expansion_placed_miner_named_bench_replay(build):
 
 @pytest.mark.parametrize('build', ['aiexph200', 'aiexph50', 'aiexph400'])
 def test_simple_expansion_built_miner_named_bench_replay(build):
-    w = simai.run(build, 'a', until=31)
+    w = simai_run.run(build, 'a', until=31)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     # Bench D round 155, all three: refinery + money + a PRODUCTION deposit, no placed miner -- only the refinery's
     # free miner (harvesting the bluff); the SimpleExpansion team stays empty f152..f1741, no build order, no outpost.
@@ -283,7 +284,7 @@ def test_simple_expansion_unpacks_within_distance_named_bench_replay(build):
     # D round 157: the opener's unit Build kept (opening.kept_orders, structures only), a HARVESTER the AI's
     # production made offered to teams, and the miner armed to unpack where it stands within Tactic.Distance
     # (TacticsBlock.approach, Sim.order_unpack here=True): simulator 400 unpacks s64, 200 s68 (bench s66 / s71).
-    w = simai.run(build, 'a', until=130)
+    w = simai_run.run(build, 'a', until=130)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     assert (row['前哨'], row['前哨近'], row['矿车近']) == OPENER_MINER_BENCH[build], row
 
@@ -293,7 +294,7 @@ def test_simple_expansion_miner_goal_moved_off_the_node_named_bench_replay():
     # team rows): the miner, sent to its slot (4215, 3039) 7 off node 44's base plate, turned off its straight way
     # at (4252, 3039) and stood at (4221, 3061) from f1116 to the end, no outpost. D176: Sim.goal_off_nodes moves the
     # goal to the nearest GRID corner whose 2 x 2 cells clear the plate, (4220, 3060).
-    w = simai.run('aiexpb50n', 'a', until=130)
+    w = simai_run.run('aiexpb50n', 'a', until=130)
     row = dict(zip([label for _, label in w.sim.test.counters], w.sim.series[-1][1]))
     assert row['前哨'] == 0, row
     miner, = [b for b in w.sim.living() if b.template == 'AlliedMiner' and b.name.startswith('#made')]

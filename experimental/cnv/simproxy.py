@@ -43,7 +43,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
 import labpaths  # noqa: E402
+import modelpin  # noqa: E402
 import sim  # noqa: E402
+import simrange  # noqa: E402
 import simunits  # noqa: E402
 import simworld  # noqa: E402
 from engine.modules import lifetime as lifetime_module  # noqa: E402
@@ -118,21 +120,6 @@ class Peers:
         return getattr(self.host, name)
 
 
-def _package(folder):
-    """The engine model's ra3model package, loaded by file as sim.engine_model does (nothing added to sys.path, guard
-    G4): its submodules then import by name through the package's own path. Only the commit inventory_model.rev
-    pins loads (modelpin.check, ADR 0030): simai.model and proxy come through here."""
-    import modelpin
-    modelpin.check(os.path.dirname(os.path.abspath(folder)))
-    if 'ra3model' in sys.modules:
-        return sys.modules['ra3model']
-    spec = importlib.util.spec_from_file_location('ra3model', os.path.join(folder, '__init__.py'),
-                                                  submodule_search_locations=[folder])
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules['ra3model'] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
 
 def proxy():
     """The engine line's ra3model.proxy modules (world, player, report, matchup) as a namespace dict, or None."""
@@ -141,7 +128,7 @@ def proxy():
         got = None
         if os.path.isfile(os.path.join(root, 'ra3model', 'proxy', 'world.py')):
             try:
-                _package(os.path.join(root, 'ra3model'))
+                modelpin.package(os.path.join(root, 'ra3model'))
                 got = {k: importlib.import_module(f'ra3model.proxy.{k}') for k in ('world', 'player', 'report',
                                                                                    'matchup')}
                 got['targets'] = importlib.import_module('ra3model.ai.targets')
@@ -155,22 +142,6 @@ def proxy():
 def available():
     return proxy() is not None
 
-
-def _hits(weapons):
-    """The domains a body's weapons hit (ai.targets.Thing.hits) from the simulator's anti masks."""
-    out = set()
-    for w in weapons:
-        anti = w.get('anti') or ()
-        if not anti:
-            out.add('ground')
-        for a in anti:
-            if a.startswith('ANTI_AIRBORNE'):
-                out.add('air')
-            elif a == 'ANTI_WATER':
-                out.add('water')
-            elif a in ('ANTI_GROUND', 'ANTI_STRUCTURE'):
-                out.add('ground')
-    return frozenset(out)
 
 
 class SimWorld:
@@ -260,7 +231,7 @@ class SimWorld:
         goal = b.goal if isinstance(b.goal, sim.Body) else None
         return self.p['targets'].Thing(self._id(b), '' if b.owner == simworld.CIV else b.owner, b.template,
                                        frozenset(b.kinds), frozenset(b.status), b.x, b.y,
-                                       water=b.surface == 'water', value=float(cost), hits=_hits(b.weapons),
+                                       water=b.surface == 'water', value=float(cost), hits=simrange.hits(b.weapons),
                                        attacking_us=bool(goal and not self.world.enemy(self.me, goal.owner)))
 
     def enemies(self):

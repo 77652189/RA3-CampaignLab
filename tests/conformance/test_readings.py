@@ -19,7 +19,8 @@ def _load(name):
 
 
 readings = _load('readings')
-simai = _load('simai')
+simai_run = _load('simai_run')
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 GROUPS = readings.groups(readings.load_all())
 
@@ -42,7 +43,7 @@ def _start(lib, build, check, script='', shot_clock=False, blocks=simai.BLOCKS):
     """A scene's run at frame 0 (readings.RUN_OPTS): the player's script given to the Sim, its clock set before a frame,
     the AI brains given the blocks."""
     try:
-        w = simai.run(build, check, 0, lib=lib, script=script, blocks=blocks)
+        w = simai_run.run(build, check, 0, lib=lib, script=script, blocks=blocks)
     except simai.NoModel as e:
         pytest.skip(f'needs ra3model.ai: {e}')
     w.sim.shot_clock = shot_clock

@@ -1131,7 +1131,7 @@ def tested_probes(tests=TESTS, checks=CHECKS):
     """The bench probes a test holds the simulator to: {'checks/engine_X.py'} for each probe a test file names --
     'engine_X', or a variant 'engine_X_<v>' that is not a probe of its own (the longest probe name it starts with).
     Named, not only quoted as a build: tests replay a probe by its build name (_sim_resolve('engine_seal', ..)), by
-    its bench mission (simai.run('aiskirm') -- 'bench engine_aiskirm c' in the test) or by its layout rebuilt
+    its bench mission (simai_run.run('aiskirm') -- 'bench engine_aiskirm c' in the test) or by its layout rebuilt
     (engine_mining's), and each cites the probe whose readings it asserts. A probe no test names is a reading only.
     For a probe of several checks (probe_parts) also 'checks/engine_X.py:<key>' for each check the naming test file
     runs (tested_checks); naming the probe alone runs none of its checks' own readings. A test of the inventory tools
@@ -1167,7 +1167,7 @@ _PARAMETRIZE = re.compile(r'parametrize\((.*?)\)\s*\n\s*(?:@|def )', re.S)
 def tested_checks(text, probe, variants, missions, keys):
     """The checks of `probe` (keys) that the test file `text` runs: a key written after the probe's or one of its
     missions' name ('bench engine_aiskirm d / f', 'engine_engineer:c', 'checks/engine_aiskirm.py y'), quoted as the
-    argument after it (_sim_run('engine_scripts7', 'idle'), simai.run('aiskirmlow', 'd')), a build variant
+    argument after it (_sim_run('engine_scripts7', 'idle'), simai_run.run('aiskirmlow', 'd')), a build variant
     'engine_seal_move', or -- when the check is a variable (_sim_resolve('engine_seal', check)) -- quoted in the
     file's pytest parametrize lists."""
     names = sorted({probe, *missions, *variants}, key=len, reverse=True)

@@ -6,9 +6,10 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
 @pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
@@ -23,7 +24,7 @@ def test_ignore_distance_named_single_base_inputs(name, allowed):
     """
     import math
 
-    w = simai.run(name, 'r', until=27)
+    w = simai_run.run(name, 'r', until=27)
     assert len(w.brains) == 1
     brain = next(iter(w.brains.values()))
     base = brain.tactics.home(brain.ai)
@@ -89,7 +90,7 @@ def test_ignore_distance_observer_preserves_inputs_and_game_clock_gate():
 @pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 @pytest.mark.parametrize('name', ['aiignzero', 'aiignnear'])
 def test_ignore_distance_replays_named_damage_observation(name):
-    w = simai.run(name, 'r', until=50)
+    w = simai_run.run(name, 'r', until=50)
     rows = [values for _, values in w.sim.series]
     # The targets cannot be attacked before both warriors exist. Keep the
     # rejected first probe's contamination out of the replay acceptance.
@@ -123,7 +124,7 @@ def test_ignore_distance_micro_target_state_replays_observed_pair(name, expected
     The observer pair was rerun with same-run logic-clock anchors in E103:
     work/re/e103_ignore_distance.md. No target identity is inferred from IDs.
     """
-    w = simai.run(name, 'r', until=29, record=True)
+    w = simai_run.run(name, 'r', until=29, record=True)
     rows = [row for brain in w.brains.values() for row in brain.rec['frames']
             if row['state_key'] == 'CNVStateMicro' and len(row['members']) == 2]
     actual = [(frame, row['state'], row['foe_id'] is not None) for frame, _, _ in expected

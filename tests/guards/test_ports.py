@@ -130,7 +130,7 @@ EXEMPT = [
     (MAPPAGE, 'simulate', '造局，返回 Observe'),
     (CNV / 'simbench_peak.py', None, '测速：自己驱动整局、下令，等命令端口'),
     (CNV / 'simcoverage.py', None, '"模拟器不认识什么"是模拟器的内部报告，不归观测端口'),
-    (CNV / 'simai.py', None, '归 AI 端口'),
+    (CNV / 'simai_run.py', None, 'AI 的整局入口：造局（build / sim）交给 simai.SimAI（R3 13f-2d）'),
     (CNV / 'simproxy.py', None, '代理玩家：自己造局、驱动、读世界（下令经命令端口，GIVERS 守，R3 13e）'),
     (CNV / 'retail.py', None, '造原版关的局（同 build，造局的一边）'),
     (CNV / 'simsmall.py', None, '规则测试的小世界：造局'),
@@ -183,7 +183,7 @@ READER_PARTS = [(GAME, 'Play', set()), (GAME, 'Picture', {'simunits'}), (GAME, '
 
 # What makes or hands out a world (a sim.Sim): a file outside the simulator that imports one of these, or loads one by
 # file (`_load('sim', ...)`), touches the world and must be a reader or in EXEMPT.
-WORLD_MAKERS = {'sim', 'simai', 'simproxy', 'retail', 'simsmall'}
+WORLD_MAKERS = {'sim', 'simai', 'simai_run', 'simproxy', 'retail', 'simsmall'}
 _spec = importlib.util.spec_from_file_location('test_sim_layers_registry_p', ROOT / 'tests' / 'test_sim_layers.py')
 _layers = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_layers)

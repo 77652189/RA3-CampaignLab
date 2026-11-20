@@ -23,12 +23,12 @@ def test_bezier_projectile_only_module_is_removed():
 def test_bezier_named_bench_single_rocket_damage_and_control():
     import build
     import labpaths
-    import simproxy
+    import modelpin
     from model import facing
     from parts import merged, unnot
     if not (Path(labpaths.ENGINE_MODEL) / 'ra3model/objects/world.py').is_file():
         pytest.skip('no engine model (labpaths.ENGINE_MODEL)')
-    simproxy._package(str(Path(labpaths.ENGINE_MODEL) / 'ra3model'))
+    modelpin.package(str(Path(labpaths.ENGINE_MODEL) / 'ra3model'))
     from ra3model import scripts
     from ra3model.objects import weapons, xmldata
     from ra3model.objects.world import LogicWorld

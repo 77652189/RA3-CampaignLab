@@ -6,9 +6,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
 def test_passive_distance_fixture():
@@ -39,7 +40,7 @@ def test_passive_distance_named_side_selection(name):
     This is a bounded selection observation, not proof of the field's consumer.
     Exact timing is asserted separately; do not fit the model's startup clock.
     """
-    w = simai.run(name, 'r', until=22, record=True)
+    w = simai_run.run(name, 'r', until=22, record=True)
     rows = [r for b in w.brains.values() for r in b.rec['frames']
             if r['state_key'] == 'CNVStateGo']
     picked = [r for r in rows if r['foe'] == 'UNIT - CNV AI Side Plant']
@@ -67,7 +68,7 @@ def test_passive_distance_named_side_selection(name):
     '20 frames early. The cause of the early selection is unconfirmed. '
     'See work/re/e104_passive_distance.md and work/re/handoff-e.md.'))
 def test_passive_distance_named_exact_first_selection(name):
-    w = simai.run(name, 'r', until=17, record=True)
+    w = simai_run.run(name, 'r', until=17, record=True)
     rows = [r for b in w.brains.values() for r in b.rec['frames']
             if r['state_key'] == 'CNVStateGo' and r['foe'] is not None]
     assert rows

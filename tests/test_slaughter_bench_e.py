@@ -28,12 +28,12 @@ def test_slaughter_carrier_only_removes_container():
 def test_slaughter_named_object_world_readings(check):
     import build
     import labpaths
-    import simproxy
+    import modelpin
     from model import facing
     from parts import merged, unnot
     if not (Path(labpaths.ENGINE_MODEL) / 'ra3model/objects/world.py').is_file():
         pytest.skip('no engine model (labpaths.ENGINE_MODEL)')
-    simproxy._package(str(Path(labpaths.ENGINE_MODEL) / 'ra3model'))
+    modelpin.package(str(Path(labpaths.ENGINE_MODEL) / 'ra3model'))
     from ra3model import scripts
     from ra3model.objects import xmldata
     from ra3model.objects.world import LogicWorld

@@ -20,3 +20,21 @@ def in_range(a, t, w, d=None):
     if d is None:
         d = math.hypot(t.x - a.x, t.y - a.y)
     return d - a.radius - t.radius <= reach_of(w)
+
+
+def hits(weapons):
+    """The domains a body's weapons hit (ai.targets.Thing.hits) from the simulator's anti masks (R3 13f-2d:
+    moved from simproxy; read by the proxy player and the skirmish AI)."""
+    out = set()
+    for w in weapons:
+        anti = w.get('anti') or ()
+        if not anti:
+            out.add('ground')
+        for a in anti:
+            if a.startswith('ANTI_AIRBORNE'):
+                out.add('air')
+            elif a == 'ANTI_WATER':
+                out.add('water')
+            elif a in ('ANTI_GROUND', 'ANTI_STRUCTURE'):
+                out.add('ground')
+    return frozenset(out)

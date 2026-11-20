@@ -7,9 +7,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
 def test_closest_enemy_original_readings():
@@ -71,7 +72,7 @@ def test_closest_enemy_named_selection_replays_native_picks():
     import teamlog
     if not simai.available():
         pytest.skip('no private AI model')
-    w = simai.run('aiclosest', 'a', 3, lib=simai.model()['xmldata'].Library())
+    w = simai_run.run('aiclosest', 'a', 3, lib=simai.model()['xmldata'].Library())
     brain = w.brains['Soviet_1']
     native = teamlog.target_picks(str(PICKS))
     # Native state names are unavailable. Group by observed forbidden-turret verdict;

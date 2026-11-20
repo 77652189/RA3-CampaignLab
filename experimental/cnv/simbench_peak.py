@@ -189,16 +189,17 @@ def ai_start(at, scene=AI_SCENE, path=None):
 
 
 def run_ai(secs=SECS, start=None, scene=AI_SCENE, path=None):
-    """Build with simai.run, then time its normal AI-and-world advance in slices. start: from the scene's snapshot
+    """Build with simai_run.run, then time its normal AI-and-world advance in slices. start: from the scene's snapshot
     `start` seconds in (ai_start), the result's 'start' naming it."""
     import simai
+    import simai_run
 
     frames = int(secs * simai.FPS)
     if frames <= 0:
         raise ValueError('--secs must cover at least one AI frame')
     t0 = time.perf_counter()
     if start is None:
-        ai, began = simai.run(*scene, until=0), None
+        ai, began = simai_run.run(*scene, until=0), None
     else:
         ai, began = ai_start(start, scene, path)
     build = time.perf_counter() - t0

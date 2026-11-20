@@ -7,9 +7,10 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
 def test_micro_dodge_fixture_changes_only_the_switch():
@@ -36,7 +37,7 @@ def test_micro_dodge_fixture_changes_only_the_switch():
 def dodge_replay(request):
     if not simai.available():
         pytest.skip('no ra3model.ai (labpaths.ENGINE_MODEL)')
-    return simai.run(request.param, 'r', until=36.0)
+    return simai_run.run(request.param, 'r', until=36.0)
 
 
 @pytest.mark.parametrize('dodge_replay', ['aidodgeon', 'aidodgeoff'], indirect=True)
@@ -109,7 +110,7 @@ def test_micro_dodge_fixed_wait_replays_latched_order():
         pytest.skip('no ra3model.ai (labpaths.ENGINE_MODEL)')
     lefts = []
     for name, bench in (('aidodgezero', 490), ('aidodgetwo', 506)):
-        run = simai.run(name, 'y', until=36.0)
+        run = simai_run.run(name, 'y', until=36.0)
         rows = [v for _, v in run.sim.series]
         _, born, left, _ = rows[-1]
         assert born == 451, rows

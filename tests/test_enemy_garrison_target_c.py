@@ -7,9 +7,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 BUILDS = ('aiegarron', 'aiegarroff')
 WINDOWS = json.loads((ROOT / 'tests/fixtures/enemy_garrison_windows.json').read_text(encoding='utf-8'))
 
@@ -17,7 +18,7 @@ WINDOWS = json.loads((ROOT / 'tests/fixtures/enemy_garrison_windows.json').read_
 @lru_cache(maxsize=2)
 def replay(build):
     # Use the recorded logical frame window, not the bench's wall seconds.
-    return simai.run(build, 'a', until=WINDOWS[build] / simai.FPS)
+    return simai_run.run(build, 'a', until=WINDOWS[build] / simai.FPS)
 
 
 def native_picks(build):

@@ -14,13 +14,14 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / 'experimental/cnv'), str(ROOT / 'experimental/campaign')]
 import simai  # noqa: E402
+import simai_run  # noqa: E402
 
 WAKE = 11.0                         # the first simulator second the counters are written (missions.aiskirm_bench)
 
 
 @pytest.fixture(scope='module')
 def rows():
-    w = simai.run('aiskirm', 'et', until=float(os.environ.get('CNV_ET_UNTIL', 230)),
+    w = simai_run.run('aiskirm', 'et', until=float(os.environ.get('CNV_ET_UNTIL', 230)),
                   lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]
     return [(t, dict(zip(labels, values))) for t, values in w.sim.series]

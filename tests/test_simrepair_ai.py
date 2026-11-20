@@ -5,9 +5,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('repair_simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('repair_simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
 def _job(b):
@@ -26,7 +27,7 @@ def test_ai_repair_funded_and_zero_credit_final_readings(name, expected):
     import build
     from parts import contract, merged
 
-    w = simai.run(name, 'a', until=81, blocks=())
+    w = simai_run.run(name, 'a', until=81, blocks=())
     e = w.sim
     assert not contract(merged(e.m, e.test))
     assert e.m.player('s1') in w.brains
@@ -40,7 +41,7 @@ def test_ai_repair_funded_and_zero_credit_final_readings(name, expected):
 def test_ai_repair_funded_activation_and_cost_prediction():
     import build
 
-    w = simai.run('repairai', 'a', until=81, blocks=())
+    w = simai_run.run('repairai', 'a', until=81, blocks=())
     rows = [row for sec, row in w.sim.series if 75 <= sec <= 80]
     assert rows
     assert all(row == [100, 50, 9900] for row in rows), rows

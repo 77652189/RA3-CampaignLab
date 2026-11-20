@@ -10,9 +10,10 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no private AI model')
 
 
@@ -25,7 +26,7 @@ def test_cannot_reaction_replays_observed_lifecycle(name):
     CNVTeams' clock is relative to carrier creation. Replay checks lifecycle
     order inside the observed window, without treating it as the map clock.
     """
-    w = simai.run(name, 'r', until=65, record=True)
+    w = simai_run.run(name, 'r', until=65, record=True)
     rows = [r for b in w.brains.values() for r in b.rec['frames']
             if r['state_key'] == 'CNVCannot']
     first = next((i for i, r in enumerate(rows)

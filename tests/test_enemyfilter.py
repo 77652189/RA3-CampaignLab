@@ -6,16 +6,17 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
 @pytest.mark.skipif(not simai.available(), reason='no private AI model')
 @pytest.mark.parametrize('build, expected_home', [('aiefharv', 0), ('aiefeng', 4), ('aiefself', 4)])
 # the model reads EnemyNearby's EnemyFilter (Relationship picks the owners, the filter the templates): B round 155
 def test_enemyfilter_named_bench_replay(build, expected_home):
-    w = simai.run(build, 'a', until=61)
+    w = simai_run.run(build, 'a', until=61)
     rows = [values[0] for second, values in w.sim.series if 60 <= second <= 61]
     assert rows and all(value == expected_home for value in rows), rows
 

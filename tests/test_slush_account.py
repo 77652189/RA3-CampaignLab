@@ -6,22 +6,23 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no private AI model')
 
 
 @pytest.mark.parametrize('build, expected', [('aislush100', 2), ('aislush0', 2)])
 def test_slush_named_bench_replay(build, expected):
-    w = simai.run(build, 'a', until=41)
+    w = simai_run.run(build, 'a', until=41)
     rows = [values[0] for second, values in w.sim.series if 40 <= second <= 41]
     assert rows and all(value == expected for value in rows), rows
 
 
 @pytest.mark.parametrize('build, slush', [('aislsdef', True), ('aislddef', False)])
 def test_slush_defense_named_bench_replay(build, slush):
-    w = simai.run(build, 'd', until=61)
+    w = simai_run.run(build, 'd', until=61)
     rows = [values[0] for second, values in w.sim.series if 60 <= second <= 61]
     assert rows
     assert all(value == (0 if slush else 2) for value in rows), rows

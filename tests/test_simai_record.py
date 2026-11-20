@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental' / 'cnv' / 'simai.py')
 simai = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simai)
+import sim  # noqa: E402  (on the path once simai is loaded; simai names no Sim, R3 13f-2d)
 
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
@@ -31,7 +32,7 @@ def _world(w):
 def _steps(build, check, secs, record, lib):
     import build as bld
     m, t, _ = bld.resolve(build, check)
-    w = simai.SimAI(simai.sim.Sim(m, t, 'normal'), lib=lib, record=record)
+    w = simai.SimAI(sim.Sim(m, t, 'normal'), lib=lib, record=record)
     out = []
     for _ in range(secs):
         w.advance(simai.FPS)

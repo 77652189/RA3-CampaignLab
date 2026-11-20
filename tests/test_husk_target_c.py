@@ -7,9 +7,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 BUILDS = ('aihusknone', 'aihusknamed')
 
 
@@ -39,7 +40,7 @@ def test_husk_named_selection_replays_native(build):
         pytest.skip('no private AI model')
     rows = native_picks(build)
     assert rows
-    w = simai.run(build, 'a', until=3)
+    w = simai_run.run(build, 'a', until=3)
     picks = [text for _, kind, text in w.brains['Soviet_1'].ai.log
              if kind == 'target' and text.startswith('CNVStateTP: ')]
     assert bool(picks) == rows[0]['found']

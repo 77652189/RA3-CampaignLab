@@ -6,9 +6,10 @@ import xml.etree.ElementTree as ET
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
 def test_ignore_rule_fixture_changes_only_rule():
@@ -41,7 +42,7 @@ def rule_replays():
 
 def _replay(name, cache):
     if name not in cache:
-        cache[name] = simai.run(name, 'r', until=33, record=True)
+        cache[name] = simai_run.run(name, 'r', until=33, record=True)
     return cache[name]
 
 

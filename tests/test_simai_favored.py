@@ -8,16 +8,17 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental' / 'cnv' / 'simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental' / 'cnv' / 'simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
 @pytest.fixture(scope='module')
 def run():
-    w = simai.run('aipriofav', 'a', 70.0, lib=simai.model()['xmldata'].Library())
+    w = simai_run.run('aipriofav', 'a', 70.0, lib=simai.model()['xmldata'].Library())
     labels = [lab for _, lab in w.sim.test.counters]
     return w, [dict(zip(labels, v)) for _, v in w.sim.series]
 

@@ -59,10 +59,11 @@ def test_bench_none_recruits_and_goes():
 
 
 def _model(build):
-    spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-    simai = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(simai)
-    w = simai.run(build, 'a', until=40, lib=simai.model()['xmldata'].Library())
+    spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+    simai_run = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(simai_run)
+    simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
+    w = simai_run.run(build, 'a', until=40, lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]
     return [dict(zip(labels, v)) for _, v in w.sim.series]
 

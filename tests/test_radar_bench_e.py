@@ -250,11 +250,11 @@ def test_radar_transfer_named_script_prerequisite():
 def replay(name):
     import build
     import labpaths
-    import simproxy
+    import modelpin
     from model import facing, merged, unnot
     if not (Path(labpaths.ENGINE_MODEL) / 'ra3model/objects/world.py').is_file():
         pytest.skip('no engine model (labpaths.ENGINE_MODEL)')
-    simproxy._package(str(Path(labpaths.ENGINE_MODEL) / 'ra3model'))
+    modelpin.package(str(Path(labpaths.ENGINE_MODEL) / 'ra3model'))
     from ra3model import scripts
     from ra3model.objects import xmldata
     from ra3model.objects.world import LogicWorld

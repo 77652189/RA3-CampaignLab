@@ -13,9 +13,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
@@ -34,7 +35,7 @@ def test_tactic_aesthetics_replays_same_frame_commands():
     Command coordinates were logged to one decimal place. This checks the
     issued point, independently of formation offsets or square occupancy.
     """
-    w = simai.run('aiaeson', 'a', until=18, lib=simai.model()['xmldata'].Library(), record=True)
+    w = simai_run.run('aiaeson', 'a', until=18, lib=simai.model()['xmldata'].Library(), record=True)
     brain, = w.brains.values()
     observed = {166: (3850.0, 3400.0), 196: (1859.9, 3201.0), 256: (1859.9, 3201.0)}
     for frame, point in observed.items():
@@ -54,7 +55,7 @@ def test_an_opening_of_another_side_is_not_run():
     """engine_aiopenside a, aiossoviet (bench E82): the only opening has Side Soviet, the player is Allied. The engine
     skips it and, no candidate left, counts the opening complete (D 66): on [s19,s29) the bench has no power plant
     (the opening's first order) but a barracks. The model draws no opening and has no power plant there either."""
-    w = simai.run('aiossoviet', 'a', 29, lib=simai.model()['xmldata'].Library())
+    w = simai_run.run('aiossoviet', 'a', 29, lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]
     rows = [dict(zip(labels, values)) for t, values in w.sim.series if 19 <= t < 29]
     assert len(rows) == 10 and all(row['电厂数'] == 0 for row in rows), rows
@@ -95,7 +96,7 @@ def test_best_unit_expected_infantry_choice(build, chosen, other, draws):
     s23, an engineer s144) -- so the other type is split by source: none from the build states, every one the
     counter shows drawn, each draw one of the barracks' infantry, and as many draws as the bench shows.
     """
-    w = simai.run(build, 'z', 160, lib=simai.model()['xmldata'].Library())
+    w = simai_run.run(build, 'z', 160, lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]
     samples = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 150 <= t < 160]
     assert [t for t, _ in samples] == list(range(150, 160))
@@ -122,7 +123,7 @@ def test_against_conscripts_the_dogs_reach_their_cap_of_six():
 
     Rng-sensitive: red from lab edd0f6c0 to A round 200 (the uniform 'produce' draw at s136 landed on a dog, A round
     195); green again since A round 200's CreateUnits hold rule moved the stream."""
-    w = simai.run('aiskvinf', 't', 146, lib=simai.model()['xmldata'].Library())
+    w = simai_run.run('aiskvinf', 't', 146, lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]
     rows = [(t, dict(zip(labels, values))) for t, values in w.sim.series if 43 <= t < 146]
     assert [t for t, _ in rows] == list(range(43, 146))
@@ -143,7 +144,7 @@ def test_a_child_cap_under_the_parents_line_does_not_bind():
     lib = simai.model()['xmldata'].Library()
     runs = {}
     for build in ('aicapmed', 'aicapctrl'):
-        w = simai.run(build, 'b', 151, lib=lib)
+        w = simai_run.run(build, 'b', 151, lib=lib)
         labels = [label for _, label in w.sim.test.counters]
         runs[build] = [(t, dict(zip(labels, v))) for t, v in w.sim.series]
     assert runs['aicapmed'] == runs['aicapctrl']

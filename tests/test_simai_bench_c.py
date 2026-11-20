@@ -7,9 +7,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
@@ -78,7 +79,7 @@ def test_alpha_observer_replays_measured_early_team_membership(build):
     """Earliest nonempty named-team sample, on the original shared logic frame (E99 / E101: 4 at f21). The
     personality side runs its states and teams from the first frame, not from the wake (bench aialobsw, B round
     161), so the model's team fills before the wake too."""
-    w = simai.run(build, 'a', until=11, lib=simai.model()['xmldata'].Library(), record=True)
+    w = simai_run.run(build, 'a', until=11, lib=simai.model()['xmldata'].Library(), record=True)
     brain, = w.brains.values()
     rows = [r for r in brain.rec['frames'] if r['frame'] == 21]
     assert len(rows) == 1, ('missing measured team at frame 21',
@@ -91,7 +92,7 @@ def test_alpha_observer_forms_up_then_leaves_then_attacks(build):
     """E99 command log (work/re e99_compare.json, aialobslo): the SimpleAttack first forms up beside itself (f26 a
     formation move to 3601.6 / 3294.6, the members idle again one by one f48-f71), then the move to the target (f74),
     then state 6 (f230). The model (B round 194 form-up) runs the same order; its frames are the strict xfail below."""
-    w = simai.run(build, 'a', until=16, lib=simai.model()['xmldata'].Library(), record=True)
+    w = simai_run.run(build, 'a', until=16, lib=simai.model()['xmldata'].Library(), record=True)
     brain, = w.brains.values()
     first = {}
     for r in brain.rec['frames']:
@@ -113,7 +114,7 @@ def test_alpha_observer_forms_up_then_leaves_then_attacks(build):
 def test_alpha_observer_replays_measured_same_frame_state(build):
     """Assert the qualified observer reading on its original shared logic frame (E99: micro state 6 at f230; the
     model had 8 while its team formed only at the wake, right with the team filling before it)."""
-    w = simai.run(build, 'a', until=16, lib=simai.model()['xmldata'].Library(), record=True)
+    w = simai_run.run(build, 'a', until=16, lib=simai.model()['xmldata'].Library(), record=True)
     brain, = w.brains.values()
     row, = [r for r in brain.rec['frames'] if r['frame'] == 230]
     assert row['state'] == 6
@@ -229,7 +230,7 @@ def test_release_eight_kept_pair_goes_to_the_capture_tech_team_with_its_new_engi
 def test_release_eight_named_model_replays_carrier_partial_transfer():
     """Assert the measured carrier result; do not change the stock model or clock."""
     before, after = _release_eight_transition()
-    w = simai.run('aiskirmc', 'm', until=170, record=True, lib=simai.model()['xmldata'].Library())
+    w = simai_run.run('aiskirmc', 'm', until=170, record=True, lib=simai.model()['xmldata'].Library())
     brain, = w.brains.values()
     rows = brain.rec['frames']
     first = next((r for r in rows if r['state_key'] == 'BalancedCleanup' and r['members']), None)
@@ -278,7 +279,7 @@ def test_create_units_engine_team_samples(build, expected):
 
 @lru_cache(maxsize=2)
 def _create_units_team_go(build):
-    w = simai.run(build, 'a', until=45, lib=simai.model()['xmldata'].Library())
+    w = simai_run.run(build, 'a', until=45, lib=simai.model()['xmldata'].Library())
     brain, = w.brains.values()
     return next(e for e in brain.ai.teams.log if e[1] == 'go' and e[2][0] == 'CNVStateTF')
 
@@ -315,7 +316,7 @@ def test_create_units_replays_observed_first_members(build):
 ])
 def test_tactic_distance_replays_observed_excursion(build, expected_before, expected_after):
     """Assert measured location transitions, independent of capture-clock seconds."""
-    w = simai.run(build, 'a', until=76, lib=simai.model()['xmldata'].Library())
+    w = simai_run.run(build, 'a', until=76, lib=simai.model()['xmldata'].Library())
     labels = [label for _, label in w.sim.test.counters]
     rows = [dict(zip(labels, values)) for _, values in w.sim.series]
     # Original retail sequences: work/re/c_distance_report.md and the two
@@ -352,7 +353,7 @@ def test_never_release_engine_members_and_model_replay(build):
         teams = teamlog.at(source, frame)
         actual = [t for t in teams if t['names'][1].lower().startswith(teamlog._hashed(defense if never else attack))]
         assert len(actual) == 1 and actual[0]['active'] == 1
-    w = simai.run(build, 'a', until=66, record=True, lib=simai.model()['xmldata'].Library())
+    w = simai_run.run(build, 'a', until=66, record=True, lib=simai.model()['xmldata'].Library())
     brain, = w.brains.values()
     original = {'UNIT - CNV AI Tank 1', 'UNIT - CNV AI Tank 2'}
     for frame in (301, 601, 976):
@@ -371,7 +372,7 @@ def test_capture_tech_opens_with_the_cleanup_on_the_tech_building_share():
     TechBuildingShare (100%, Above false) reads simai's 'tech buildings' (own, all, players): the map's one
     neutral OilDerrick (KindOf NEUTRAL_TECH) owned by nobody -> share 0 -> on. Without the fact the state never
     opened (A round 191)."""
-    w = simai.run('aiskirmc', 'm', until=132, lib=simai.model()['xmldata'].Library())
+    w = simai_run.run('aiskirmc', 'm', until=132, lib=simai.model()['xmldata'].Library())
     brain, = w.brains.values()
     own, total, players = brain.facts()['tech buildings']
     assert (own, total) == (0, 1) and players >= 2
@@ -402,7 +403,7 @@ def test_capture_tech_holds_two_escorts_out_of_the_cleanup():
     model the carrier's scouts, so here its scouts hold the dogs and the hold falls on them: asserted is the rule
     (the two lowest ids stay out of Cleanup's commit, and whoever of them was in defense stays there), not retail's
     two left in defense."""
-    w = simai.run('aiskirmc', 'm', until=148, record=True, lib=simai.model()['xmldata'].Library())
+    w = simai_run.run('aiskirmc', 'm', until=148, record=True, lib=simai.model()['xmldata'].Library())
     brain, = w.brains.values()
     rows = brain.rec['frames']
     first = next(r for r in rows if r['state_key'] == 'BalancedCleanup' and r['members'])

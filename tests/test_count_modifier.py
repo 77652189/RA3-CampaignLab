@@ -6,9 +6,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
 def measured():
@@ -34,7 +35,7 @@ def test_count_modifier_named_bench_replay(build):
     before = max((row for row in rows if row[0] <= 40), key=lambda row: row[0])
     after = min((row for row in rows if row[0] >= 40), key=lambda row: row[0])
     assert before[2] == after[2], (before, after)
-    w = simai.run(build, 'a', until=41)
+    w = simai_run.run(build, 'a', until=41)
     samples = [values for second, values in w.sim.series if 40 <= second <= 41]
     assert samples and all(values == before[2] for values in samples), (samples, before, after)
 
@@ -69,7 +70,7 @@ def test_the_opening_deposit_never_pays_part_of_a_unit(monkeypatch):
         paid.append((account, cost))
         return spend(self, account, cost)
     monkeypatch.setattr(player, 'spend', record)
-    w = simai.run('aicmfour', 'b', until=60)
+    w = simai_run.run('aicmfour', 'b', until=60)
     production = [c for a, c in paid if a == 'PRODUCTION']
     assert production and all(c in set(COST['aicmfour']) for c in production), production
     assert max(v[0] for _, v in w.sim.series) == 8
@@ -83,7 +84,7 @@ def test_the_opening_deposit_never_pays_part_of_a_unit(monkeypatch):
 def test_count_modifier_high_group_stops_after_three_builds():
     rows = measured()['aicmfour']['rows']
     bench = {int(s): v for s, _, v in rows if 45 <= s <= 64}
-    w = simai.run('aicmfour', 'a', until=65)
+    w = simai_run.run('aicmfour', 'a', until=65)
     model = {}
     for s, v in w.sim.series:
         model.setdefault(int(s), v)

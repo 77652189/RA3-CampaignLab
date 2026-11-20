@@ -16,9 +16,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 import teamlog
 
 OBSERVED = ROOT / 'tests/fixtures/d_alpha'
@@ -49,7 +50,7 @@ def test_bench_alpha_state_only_with_the_high_threshold(build):
 @pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 @pytest.mark.parametrize('build', ['aialobshi', 'aialobslo', 'aialobttk'])
 def test_model_alpha_state_only_with_the_high_threshold(build):
-    w = simai.run(build, 'a', until=40, lib=simai.model()['xmldata'].Library(), record=True)
+    w = simai_run.run(build, 'a', until=40, lib=simai.model()['xmldata'].Library(), record=True)
     brain, = w.brains.values()
     seq = _sequence([r['state'] for r in brain.rec['frames']])
     if build == 'aialobshi':

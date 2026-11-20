@@ -7,7 +7,9 @@ is not on this computer available() is False and the SimAI plays no one: a missi
 runs as the plain Sim (the conformance runner's AI-free scenes run there too); one that does raises NoModel (as soon as
 a side with an aiPersonality is met, or the frame the mission hands a player over), which the tests take as a skip.
 
-  python -I -X utf8 experimental/cnv/simai.py [build] [--until <seconds>] [--check <check>]
+  python -I -X utf8 experimental/cnv/simai_run.py [build] [--until <seconds>] [--check <check>]
+(R3 13f-2d: the run -- build, make the Sim, play it -- is simai_run.py; this file is the layered AI, L8, and
+never names the Sim: a target that is an object, not a point, is a kernel Thing.)
 
 A side with an aiPersonality (mission.sides) has an AIPlayer from the first frame -- its states and teams run before
 the wake (bench aialobsw) -- and a side handed over without one gets the default personality then; either is told
@@ -60,7 +62,6 @@ HOOKS (what this file would rather have from sim.py; for A through the coordinat
      into houses / turrets through it; the older tests read Garrisons.log (sim.py counts
      PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS, ENCLOSED among them, since A round 164); no fire from inside.
 """
-import argparse
 from collections import Counter
 import functools
 import importlib
@@ -76,12 +77,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
 import labpaths  # noqa: E402
-import sim  # noqa: E402
-import simproxy  # noqa: E402
+import modelpin  # noqa: E402
 import simunits  # noqa: E402
 import simmicro  # noqa: E402
 import simbody  # noqa: E402
 import simworld  # noqa: E402
+from engine.kernel import module as kernel_module  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
 from engine.ports import ai as ai_port  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
@@ -159,13 +160,13 @@ _AI = {}
 
 
 def model():
-    """The engine model's ra3model.ai modules as a dict, or None (simproxy._package loads the package by file)."""
+    """The engine model's ra3model.ai modules as a dict, or None (modelpin.package loads the package by file)."""
     if 'got' not in _AI:
         root = labpaths.ENGINE_MODEL
         got = None
         if os.path.isfile(os.path.join(root, 'ra3model', 'ai', 'player.py')):
             try:
-                simproxy._package(os.path.join(root, 'ra3model'))
+                modelpin.package(os.path.join(root, 'ra3model'))
                 got = {k: importlib.import_module(f'ra3model.ai.{k}') for k in MODULES}
                 got['xmldata'] = importlib.import_module('ra3model.objects.xmldata')
             except ImportError:
@@ -660,7 +661,7 @@ class Brain:
             owner = b.owner if b.owner != simworld.CIV else ''
             things.append(tg.Thing(i, owner, b.template, frozenset(b.kinds), frozenset(b.status), b.x, b.y,
                                    water=b.surface == 'water', value=float(self.host.cost(b.template)),
-                                   hits=simproxy._hits(b.weapons) if b.weapons else frozenset(),
+                                   hits=simrange.hits(b.weapons) if b.weapons else frozenset(),
                                    under_attack=frame - self.hurt_at.get(i, -10 ** 9) <= 2 * FPS,
                                    name=b.name))                    # script name (NamedObject)
         self.view.things = things
@@ -1019,7 +1020,7 @@ class Brain:
         return [(self.tid(g), (g.x, g.y)) for g in self.host.garrison.places(b, own_defenses)]
 
     def busy(self, team):
-        return any(u.body.engaged or isinstance(u.body.goal, sim.Body) for u in team.members)
+        return any(u.body.engaged or isinstance(u.body.goal, kernel_module.Thing) for u in team.members)
 
     def stand(self, team, p, r, outer):
         """Consume the model's aesthetics gates; formation member destinations remain a gap.
@@ -1063,7 +1064,7 @@ class Brain:
         if state is not None:
             return state.target if state.target is not None and state.target.alive else None
         return next((t for t in (b.goal, getattr(b, 'chase', None))
-                     if isinstance(t, sim.Body) and t.alive and t.owner in self.view.enemies), None)
+                     if isinstance(t, kernel_module.Thing) and t.alive and t.owner in self.view.enemies), None)
 
     def aim_of(self, b, reach):
         """The unit's current target for the micro (work/re/l4_micro_heur.md; RUSH_ATTACK reads it): its ordered or
@@ -1073,7 +1074,7 @@ class Brain:
         if state is not None:
             return state.target if state.target is not None and state.target.alive else None
         for t in (b.goal, getattr(b, 'chase', None)):
-            if isinstance(t, sim.Body) and t.alive and t.owner in self.view.enemies:
+            if isinstance(t, kernel_module.Thing) and t.alive and t.owner in self.view.enemies:
                 return t
         near = [(math.hypot(t.x - b.x, t.y - b.y), k, t) for k, t in enumerate(self.living())
                 if not t.scenery and t.owner in self.view.enemies]
@@ -1924,8 +1925,8 @@ class Brain:
                 hunt = self.__dict__.get('_hunt_goals', {}).get(b.serial)
                 going, inside = (g.going.get(b.serial) or (None, None))[1], g.where.get(b.serial)
                 mem.append({'name': b.name, 'id': self.ids.get(b.serial), 'pos': (b.x, b.y), 'hp': b.hp,
-                            'alive': b.alive, 'goal': goal.name if isinstance(goal, sim.Body) else goal,
-                            'chase': chase.name if isinstance(chase, sim.Body) else chase,
+                            'alive': b.alive, 'goal': goal.name if isinstance(goal, kernel_module.Thing) else goal,
+                            'chase': chase.name if isinstance(chase, kernel_module.Thing) else chase,
                             'aim': aim.name if aim is not None else None,
                             'unit_state': hunt.state if hunt is not None else None,
                             'pursuit': getattr(hunt.pursuit, 'name', None) if hunt is not None else None,
@@ -2196,37 +2197,3 @@ class SimAI:
     def thoughts(self):
         return {self.world.who(p): b.ai.thoughts() for p, b in self.brains.items()}
 
-
-def run(build, check='', until=200.0, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS, record=False,
-        script=''):
-    """Build `build` (a cnv build name), run it with the AI `until` seconds: the SimAI. record: HOOKS 9. script: the
-    player's (sim.Sim's script)."""
-    import build as bld
-    m, t, _ = bld.resolve(build, check)
-    w = SimAI(sim.Sim(m, t, level, script), level, seed, lib, data, blocks, record)
-    w.advance(int(until * FPS))
-    return w
-
-
-def main():
-    ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('build', nargs='?', default='aiopen')
-    ap.add_argument('--check', default='')
-    ap.add_argument('--until', type=float, default=200.0)
-    a = ap.parse_args()
-    try:
-        w = run(a.build, a.check, a.until)
-    except NoModel as e:
-        print(e)
-        return 1
-    for p, b in w.brains.items():
-        print(f'{w.sim.who(p)}（第 {b.started} 帧开局；下面是开局后的帧）')
-        for f, what, t in b.trace:
-            print(f'  {f - b.started:5d} 帧 {(f - b.started) / FPS:6.1f} s  {what:4s} {t}')
-        for e in [e for e in b.ai.teams.log if e[1] in ('go', 'disband', 'ended')][-10:]:
-            print('  team', e[0] - b.started, e[1:])
-    return 0
-
-
-if __name__ == '__main__':
-    sys.exit(main())

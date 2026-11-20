@@ -28,11 +28,11 @@ def test_detector_single_module_control():
 
 def test_detector_named_object_model_observations():
     import labpaths
-    import simproxy
+    import modelpin
     from parts import unnot
     if not (Path(labpaths.ENGINE_MODEL) / 'ra3model/objects/world.py').is_file():
         pytest.skip('no engine model (labpaths.ENGINE_MODEL)')
-    simproxy._package(str(Path(labpaths.ENGINE_MODEL) / 'ra3model'))
+    modelpin.package(str(Path(labpaths.ENGINE_MODEL) / 'ra3model'))
     from ra3model import scripts
     from ra3model.objects import xmldata
     from ra3model.objects.world import LogicWorld

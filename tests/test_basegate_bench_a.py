@@ -11,9 +11,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('basegate_simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('basegate_simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 pytestmark = pytest.mark.skipif(not simai.available(), reason='ra3model.ai not on this computer')
 
@@ -23,7 +24,7 @@ KEYS = ('CNV_AIBGate_Money', 'CNV_AIBGate_Built')
 @pytest.fixture(scope='module')
 def run():
     """aibgate:a to 85 s, the counters read at every frame the bench sampled."""
-    w = simai.run('aibgate', 'a', until=1.0)
+    w = simai_run.run('aibgate', 'a', until=1.0)
     got = {}
     for f in (163, 1000, 1050, 1208, 1250):
         w.advance(f - w.sim.frame_now())

@@ -98,8 +98,8 @@ LATE_FRAME = round(16.7 * 15)                   # checks/engine_aipullback LATE_
 
 def _model_reverses(build):
     """The simulator's back-up orders in `build` (D round 134): [(game frame, member, point)]."""
-    from test_simai_bench_b import simai
-    w = simai.run(build, 'a', 40.0, lib=simai.model()['xmldata'].Library(), record=True)
+    from test_simai_bench_b import simai, simai_run
+    w = simai_run.run(build, 'a', 40.0, lib=simai.model()['xmldata'].Library(), record=True)
     b, = w.brains.values()
     return [(o['frame'] + b.started, o['member'], o['point']) for o in b.rec['orders'] if o['kind'] == 'reverse']
 
@@ -119,7 +119,7 @@ def test_model_backs_up_after_the_swap_only_with_the_switch_on():
                           'recruits all 4 and they back off the near foes from s14 on (近敌 s31-47 on 1, off 4; '
                           'bench on 4, off 3). Not ReverseMove: work/re/d132_whenidle.md, d134 in handoff-d')
 def test_model_replays_the_k2_counters():
-    from test_simai_bench_b import _probe_run, simai
+    from test_simai_bench_b import _probe_run, simai, simai_run
     lib = simai.model()['xmldata'].Library()
     got = {}
     for build in ('airevk2', 'airevk2o'):

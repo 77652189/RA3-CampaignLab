@@ -507,7 +507,7 @@ def test_a_reading_of_one_check_counts_only_when_a_test_runs_that_check(tmp_path
     (tests / 'test_x.py').write_text(
         '"""bench engine_multi c / q; checks/engine_one.py"""\n'
         "@pytest.mark.parametrize('k', ['z'])\ndef test_a(k):\n    _sim_run('engine_multi', k)\n\n\n"
-        "def test_b():\n    simai.run('multi', 'y')\n", encoding='utf-8')
+        "def test_b():\n    simai_run.run('multi', 'y')\n", encoding='utf-8')
     tested = inventory.tested_probes(str(tests), str(checks))
     assert tested == {'checks/engine_multi.py', 'checks/engine_one.py', 'checks/engine_multi.py:c',
                       'checks/engine_multi.py:y', 'checks/engine_multi.py:z'}

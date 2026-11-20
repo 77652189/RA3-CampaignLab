@@ -33,6 +33,7 @@
 - 已知测试 ID 时，用 `python -X utf8 experimental/testbench/culprit.py --good <提交> --bad <提交> TEST_ID [TEST_ID ...]`。工具只复跑这些测试，遇到跳过会记为未知。
 - 越线在每日汇报"结构"段标 `!!`。
 - 一致性跑器对同一场景从第 0 帧启动一次，按顺序推进并复用采样结果。`simrecord snap` 默认对全部固定任务跨进程验证（AI 任务在公开世界上走 `simaisnap`），比较逐帧记录、末态快照和最终报告。切点后须至少推进一帧。单项可用 `simrecord one NAME RECORD --snap FRACTION --save FILE` 停在切点，再用相同任务、记录路径和切点，改传 `--resume FILE` 接着写记录，对应的 Python 入口是 `simrecord.run_task(save=…, resume=…)`。
+- 跑 AI 整局用 `simai_run.run(build, check, until)`（R3 13f-2d 起 `simai` 不造局）：按文件加载 `simai_run.py`，再 `simai = simai_run.simai`，保证进程里只有一份 `simai`，对它打的 monkeypatch 才落到这局上。
 
 ## 退出
 

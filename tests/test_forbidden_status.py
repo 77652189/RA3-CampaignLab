@@ -6,9 +6,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 CASES = [('aiforbidnone', (1, 4, 0, 0)), ('aiforbidset', (1, 0, 4, 0)),
          ('aiforbidclear', (0, 4, 0, 0))]
 MASK_CASES = [('aifmasknone', (1, 4, 0, 0)), ('aifmaskiron', (1, 0, 4, 0)),
@@ -72,7 +73,7 @@ def test_forbidden_observed_named_replay(build, expected):
     import ast
     if not simai.available():
         pytest.skip('no private AI model')
-    w = simai.run(build, 'a', until=41)
+    w = simai_run.run(build, 'a', until=41)
     rows = [tuple(v) for second, v in w.sim.series if 40 <= second <= 41]
     assert rows and all(row == expected for row in rows), rows
     brain = w.brains['Soviet_1']
@@ -111,7 +112,7 @@ def test_forbidden_observed_original_arrival_prediction(build, expected):
 @pytest.mark.skipif(not simai.available(), reason='no private AI model')
 @pytest.mark.parametrize('build,expected', CASES)
 def test_forbidden_status_named_bench_replay(build, expected):
-    w = simai.run(build, 'a', until=41)
+    w = simai_run.run(build, 'a', until=41)
     rows = [tuple(v) for second, v in w.sim.series if 40 <= second <= 41]
     assert rows and all(row == expected for row in rows), rows
 
@@ -133,7 +134,7 @@ def test_forbidden_status_original_readings(build, expected):
 @pytest.mark.parametrize('build,expected', MASK_CASES)
 def test_forbidden_mask_named_bench_replay(build, expected):
     """Only IRON is set: the original two-bit mask excludes on ANY overlap."""
-    w = simai.run(build, 'a', until=41)
+    w = simai_run.run(build, 'a', until=41)
     rows = [tuple(v) for second, v in w.sim.series if 40 <= second <= 41]
     assert rows and all(row == expected for row in rows), rows
 
@@ -157,7 +158,7 @@ def test_forbidden_mask_original_readings(build, expected):
     ('aifunasingle', (2, 0, 4, 0)), ('aifunaboth', (2, 0, 4, 0))])
 def test_forbidden_unattackable_named_bench_replay(build, expected):
     """Only UNATTACKABLE is set; test the other direction of the original mask."""
-    w = simai.run(build, 'a', until=41)
+    w = simai_run.run(build, 'a', until=41)
     rows = [tuple(v) for second, v in w.sim.series if 40 <= second <= 41]
     assert rows and all(row == expected for row in rows), rows
 
@@ -180,7 +181,7 @@ def test_forbidden_unattackable_original_readings(build, expected):
 @pytest.mark.parametrize('build,expected', DUAL_CASES)
 def test_forbidden_dual_status_named_bench_replay(build, expected):
     """Both original mask bits are set, with an empty-filter positive control."""
-    w = simai.run(build, 'a', until=41)
+    w = simai_run.run(build, 'a', until=41)
     rows = [tuple(v) for second, v in w.sim.series if 40 <= second <= 41]
     assert rows and all(row == expected for row in rows), rows
 

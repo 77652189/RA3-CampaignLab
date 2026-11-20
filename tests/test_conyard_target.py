@@ -10,15 +10,16 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
 @pytest.mark.skipif(not simai.available(), reason='no private AI model')
 @pytest.mark.parametrize('build', ['aicyard0', 'aicyard300'])
 def test_conyard_named_gate_replay(build):
-    w = simai.run(build, 'a', until=36)
+    w = simai_run.run(build, 'a', until=36)
     rows = [tuple(values) for second, values in w.sim.series if 30 <= second <= 35]
     assert rows and all(row == (1, 0, 0, 1) for row in rows), rows[-3:]
 

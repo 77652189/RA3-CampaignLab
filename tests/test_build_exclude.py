@@ -7,9 +7,10 @@ import xml.etree.ElementTree as ET
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
 def test_build_exclude_single_input():
@@ -154,7 +155,7 @@ def test_build_exclude_original_readings(name):
 def test_build_exclude_named_first_wave_replay(name):
     # Only the first production wave is compared. Later team losses and
     # replenishment do not identify the basket used for an initial request.
-    w = simai.run(name, 'r', until=40)
+    w = simai_run.run(name, 'r', until=40)
     rows = [(second, values[:2]) for second, values in w.sim.series if any(values[:2])]
     # Original engine counters: s32..35 = 1/0, s36..40 = 1/1 in both
     # variants. Compare production, not model request logs, with that fact.

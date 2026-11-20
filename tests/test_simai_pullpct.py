@@ -1,6 +1,6 @@
 """Full PullbackInjuredHealthPct replay; no injected facility or orders."""
 from test_simai_bench_b import lib, _probe_run, pytestmark  # noqa: F401
-from test_simai_bench_b import simai
+from test_simai_bench_b import simai, simai_run
 from types import SimpleNamespace
 import pytest
 
@@ -52,7 +52,7 @@ def test_pullback_threshold_high_is_recycled_after_return(returns):
 
 @pytest.fixture
 def facility_world(lib):
-    w = simai.run('aipullpcthi', 'a', 0, lib=lib)
+    w = simai_run.run('aipullpcthi', 'a', 0, lib=lib)
     owner = w.sim.players['s1']
     tank = next(b for b in w.sim.living() if b.owner == owner and 'VEHICLE' in b.kinds)
     crane = next(b for b in w.sim.living() if b.template == 'SovietCrane')

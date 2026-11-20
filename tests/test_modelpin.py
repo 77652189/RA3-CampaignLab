@@ -1,5 +1,5 @@
 """ADR 0030 item 1: the private engine model loads only at the commit experimental/cnv/inventory_model.rev pins
-(modelpin.check). sim.engine_model, and simproxy._package (simai.model and simproxy.proxy load through it), refuse
+(modelpin.check). sim.engine_model, and modelpin.package (simai.model and simproxy.proxy load through it), refuse
 any other HEAD with both commit ids and how to fix it; a clean clone without the model is not checked."""
 import os
 import subprocess
@@ -62,7 +62,7 @@ def test_the_simulator_and_the_ai_loaders_ask_the_pin_before_loading(tmp_path, m
     with pytest.raises(modelpin.ModelPinError):
         sim.engine_model()
     with pytest.raises(modelpin.ModelPinError):
-        simproxy._package(os.path.join(str(root), 'ra3model'))
+        modelpin.package(os.path.join(str(root), 'ra3model'))
 
 
 def test_the_pin_file_names_one_full_commit():

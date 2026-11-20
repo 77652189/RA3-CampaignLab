@@ -9,9 +9,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
 def measured(key):
@@ -101,7 +102,7 @@ def test_underattack_named_selection_matches_native():
     selected = next(r for r in teamlog.target_picks(str(path))
                     if r['state_id'] == teamlog.state_hash('CNVClosest0'))
     assert selected['target'] == 3181 and selected['point'] == (4000.0, 3000.0)
-    world = simai.run('aiunderatk', 'a', until=6)
+    world = simai_run.run('aiunderatk', 'a', until=6)
     brain = world.brains['Soviet_1']
     picks = [text for _, kind, text in brain.ai.log
              if kind == 'target' and text.startswith('CNVClosest0: ')]

@@ -9,9 +9,10 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 # loaded by file: simai.py puts the cnv folders on the path itself (no new sys.path edit here: guard G4's ceiling)
-_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental' / 'cnv' / 'simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental' / 'cnv' / 'simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
@@ -38,7 +39,7 @@ def lib():
 
 @pytest.fixture(scope='module')
 def skirmish(lib):
-    return simai.run('aiskirm', until=300, lib=lib)
+    return simai_run.run('aiskirm', until=300, lib=lib)
 
 
 def _first_attack(b):
@@ -83,7 +84,7 @@ def test_path_to_target_is_asked_on_the_simulators_grid(lib):
     """PathToTargetHeuristic (work/re l4_states.md 3): the opening and the states ask the brain; the skirmish map is
     one piece of land, so infantry has a way and a ship finds no water spot (= no way). At 300 s the player's base
     is gone: no enemy with a base object, so it cannot judge (None, counted as a way)."""
-    w = simai.run('aiskirm', until=30, lib=lib)
+    w = simai_run.run('aiskirm', until=30, lib=lib)
     (b,) = w.brains.values()
     assert any(k[0] == 'Land' and v[1] is True for k, v in b.paths.items())   # the opening / states asked
     b.paths.clear()
@@ -104,7 +105,7 @@ def test_path_to_target_cannot_judge_without_an_enemy_base(skirmish):
 def test_strategic_facts_the_brain_gives(lib):
     """The cheap strategic-state facts (work/re l4_states.md 10, states.strategic): harvesters, money, the first
     enemy's money, no beacons, and PowerAdvantage asked lazily with tactics' rule; the rest stay unmodelled."""
-    w = simai.run('aiskirm', until=30, lib=lib)
+    w = simai_run.run('aiskirm', until=30, lib=lib)
     (b,) = w.brains.values()
     f = b.facts()
     st = b.host.mod['states']
@@ -134,7 +135,7 @@ def test_strategic_facts_the_brain_gives(lib):
 # (engine_aibasedef / engine_aigarrison .readings.toml); left here: the brain's own lists and their order.
 def _ai_hooks(build, lib):
     """The brain just after the wake: an AI Peacekeeper's defenses / houses lists (building names, the list's order)."""
-    w = simai.run(build, 'a', 12.0, lib=lib)
+    w = simai_run.run(build, 'a', 12.0, lib=lib)
     (b,) = w.brains.values()
     u = simai.Unit(next(x for x in w.sim.living() if x.owner == b.player and 'INFANTRY' in x.kinds
                         and not w.garrison.busy(x)))

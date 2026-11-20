@@ -12,9 +12,10 @@ from unittest.mock import patch
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 import teamlog
 
 SOURCE = ROOT / 'tests/fixtures/e_crush/aicrush1t.txt'
@@ -125,7 +126,7 @@ def replay():
         return result
 
     with patch.object(simai.Brain, 'snap', snapshot), patch.object(simai.Brain, 'order', command):
-        return simai.run('aicrush1t', 'a', until=30, record=True)
+        return simai_run.run('aicrush1t', 'a', until=30, record=True)
 
 
 def test_aicrush1t_model_plant_attack_precedes_crush(replay):
@@ -174,7 +175,7 @@ def test_crush_switch_runs_the_guards_over_only_when_on(build):
     if not simai.available():
         pytest.skip('no ra3model.ai')
     lib = simai.model()['xmldata'].Library()
-    w = simai.run(build, 'a', 28.0, lib=lib)
+    w = simai_run.run(build, 'a', 28.0, lib=lib)
     labels = [lab for _, lab in w.sim.test.counters]
     row = dict(zip(labels, w.sim.series[-1][1]))
     brain, = w.brains.values()

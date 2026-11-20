@@ -11,9 +11,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental' / 'cnv' / 'simai.py')
-simai = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai)
+_spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental' / 'cnv' / 'simai_run.py')
+simai_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(simai_run)
+simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
@@ -25,7 +26,7 @@ def lib():
 
 def _probe_run(build, lib, until, check='a'):
     """(world, rows): the probe's counters once a second, row i ~ second i+1, each row {label: value}."""
-    w = simai.run(build, check, until, lib=lib)
+    w = simai_run.run(build, check, until, lib=lib)
     labels = [lab for _, lab in w.sim.test.counters]
     return w, [dict(zip(labels, v)) for _, v in w.sim.series]
 
@@ -76,7 +77,7 @@ def test_the_expected_efficiency_ranks_the_counter_first(lib, build, best, other
     its dog. B round 228: asked at s25 instead (the AI owning nothing yet, no bench reading) the ranking is only
     the candidates' health once the Hammer counts its leech beam alone (MAGIC, 100% on both), and the
     Peacekeeper led there."""
-    w = simai.run(build, 'z', 40, lib=lib)
+    w = simai_run.run(build, 'z', 40, lib=lib)
     b = next(iter(w.brains.values()))
     # the player's map-placed war factory has its 3 repair drones (sim.py SpawnBehavior, Codex E 7b9bb57) and the
     # AI does not count them (SimAI.living; counted, nothing of the barracks hits them and the ranking flips)
@@ -94,7 +95,7 @@ def test_the_defensive_preference_turns_the_first_pick_against_tanks(lib, build,
     the dog then) turns on the two rules read in B rounds 225 / 227: K's time in frames (75 for a 5 s unit, not 5)
     and the template rate's weapons (one per slot, none needing an upgrade or an ObjectStatus: the Hammer counts
     its leech beam, 20 MAGIC, and not its gun). With either one alone d9 still builds a Javelin first."""
-    w = simai.run(build, 'z', 40, lib=lib)
+    w = simai_run.run(build, 'z', 40, lib=lib)
     b = next(iter(w.brains.values()))
     outs = [t for f, what, t in b.trace if what == 'out' and t in (best, other)]
     assert outs and outs[0] == best, outs
@@ -145,7 +146,7 @@ def test_against_conscripts_the_war_factory_builds_riptides(lib, monkeypatch):
     form AlliedAntiInfantryVehicle_Ground, which the probe's counter (AlliedAntiInfantryVehicle) does not count in
     the simulator: both forms are counted here."""
     monkeypatch.setattr(simai.SimAI, 'efficiency', True)
-    w = simai.run('aiskvinf', 'z', 175, lib=lib)
+    w = simai_run.run('aiskvinf', 'z', 175, lib=lib)
     assert _riptides(w) >= 5
 
 
@@ -160,7 +161,7 @@ def test_against_tanks_only_the_teams_riptides(lib, monkeypatch):
     only; the build state's war factory pick is not a Riptide (simulator: the IFV 1.041 over the Riptide 1.019; the
     bench's z does not count IFVs)."""
     monkeypatch.setattr(simai.SimAI, 'efficiency', True)
-    w = simai.run('aiskvveh', 'z', 175, lib=lib)
+    w = simai_run.run('aiskvveh', 'z', 175, lib=lib)
     assert _riptides(w) == 3
 
 
