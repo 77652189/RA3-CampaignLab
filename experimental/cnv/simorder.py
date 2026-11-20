@@ -350,7 +350,7 @@ def seq_due(world, peers):
         if '<This Object>' in act.args:
             written = {}                    # the unit's name written as well: that one reads as written -- the
             if b.name in act.args and world.body(b.name) is not None:   # reference or the object of that name, not
-                tok = b.name + ' <as written>'                          # the unit (same-name audit 11-19b O19)
+                tok = b.name + AS_WRITTEN                               # the unit (same-name audit 11-19b O19)
                 written[tok] = world.body(b.name)
                 args = [tok if x == b.name else y for x, y in zip(act.args, args)]
             _as_itself(world, b, lambda: world.executor.action(act.name, args, r['script']), written)
@@ -361,6 +361,10 @@ def seq_due(world, peers):
 
 
 _NONE = object()
+# the suffix of a sequential step's token for the unit's name written as well as <This Object> (O19): the token reads
+# as the object the name read before the step; a place by the name (Sim.point: waypoint, area, mark, site) is read by
+# the name itself, before any object, as without the token (review 11-19 w P2 #2)
+AS_WRITTEN = ' <as written>'
 
 
 def _as_itself(world, b, step, written=()):

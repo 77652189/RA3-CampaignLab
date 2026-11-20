@@ -1818,20 +1818,20 @@ class Sim:
         return (start.x, start.y) if start is not None else (2500.0, 2500.0)
 
     def point(self, name):
-        """A waypoint, a trigger area's middle, a site, a mark, a named object, map coordinates '@x,y' (model.coord)."""
+        """A waypoint, an area's middle, a mark, a site, a named object, '@x,y' (simorder.AS_WRITTEN: places by name)."""
         c = coord(name)
         if c is not None:
             return c
-        if name in self.waypoints:
-            return self.waypoints[name]
-        if name in self.areas:
-            pts = self.areas[name]
+        place = name[:-len(simorder.AS_WRITTEN)] if name in self.acting and name.endswith(simorder.AS_WRITTEN) else name
+        if place in self.waypoints:
+            return self.waypoints[place]
+        if place in self.areas:
+            pts = self.areas[place]
             return (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
-        if name in self.m.marks:
-            return self.waypoints[self.m.marks[name]]
-        sites = getattr(self.m.map, 'SITES', {})
-        if name in sites:
-            return (sites[name].x, sites[name].y)
+        if place in self.m.marks:
+            return self.waypoints[self.m.marks[place]]
+        if place in (sites := getattr(self.m.map, 'SITES', {})):
+            return (sites[place].x, sites[place].y)
         b = self.acting.get(name) or self.bodies.get(self.m.cast[name].name if name in self.m.cast else name)
         if b:
             return (b.x, b.y)

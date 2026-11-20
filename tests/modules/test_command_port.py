@@ -3,6 +3,7 @@ script line would (so moving a giver onto the port changes no timing), as itself
 order directly gives; an unknown kind, and a kind with no route yet, are refused. The givers' guard is
 tests/guards/test_ports.py."""
 import gc
+import math
 import weakref
 from pathlib import Path
 
@@ -793,6 +794,19 @@ def test_a_step_writing_this_object_and_the_units_name_reads_the_name_as_written
     s.refs['lead'] = foe
     s.seq_due()
     assert lead.goal is foe and not s.acting and s.refs['lead'] is foe
+
+
+def test_a_place_written_with_this_object_and_the_units_name_is_still_the_place():
+    """`MOVE_NAMED_UNIT_TO <This Object> lead` with a waypoint `lead` and the reference `lead` at an enemy: the unit
+    goes to the waypoint, as before O19 -- a place by that name is read before an object of it (Sim.point), the
+    name written as its own token too (review 11-19 w P2 #2: the token went to the reference's enemy)."""
+    s, lead, other = _seq_world([('MOVE_NAMED_UNIT_TO', '<This Object>', 'lead')])
+    foe = s.add('foe', 'SovietAntiInfantryInfantry', 'Player_2', 500.0, 300.0)
+    s.refs['lead'] = foe
+    s.waypoints['lead'] = (650.0, 420.0)
+    s.seq_due()
+    assert lead.move_to is not None and other.move_to is None and not s.acting
+    assert math.hypot(lead.move_to[0] - 650.0, lead.move_to[1] - 420.0) < 20.0
 
 
 def test_the_proxy_does_not_keep_the_objects_it_saw():
