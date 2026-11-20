@@ -19,7 +19,7 @@ nugget_powers, hit_reaction_of.
 import math
 
 import simunits
-from engine.combat import leech
+from engine.combat import dot, leech
 from engine.combat import projectile as flight
 from engine.combat import registry
 from engine.kernel import interfaces
@@ -532,29 +532,7 @@ class Damage:
                             peers.modify(t)
                         else:
                             world.gap(GAP_WEAPON, mid, '命中修正未找到或缺少已解释的Duration')
-        dots = self.dots
-        keep = []
-        for dot in dots:
-            t, by, effect = dot['target'], dot['by'], dot['effect']
-            if not t.alive:
-                continue
-            # GUESSED outside the no-healing probe: detect healing from a net HP increase.
-            if t.hp > dot['hp'] + 1e-6:
-                world.gap(GAP_WEAPON, 'DOTNugget', '治疗取消与再次施加未对拍')
-                if effect['remove_healed']:
-                    continue
-            # Inclusive expiry: floor(duration / interval) + 1 ticks, starting on impact.
-            while dot['next'] <= world.frame_now() and dot['next'] <= dot['end']:
-                # GUESSED for changing modifiers / dead casters: read scalars on each tick.
-                armor = (1.0 if effect['type'] == 'UNRESISTABLE' else
-                         simunits.percent(t.armor, effect['type']) / 100 * t.taken)
-                h = hurt.setdefault(t.serial, [t, 0.0, by])
-                h[1] += effect['damage'] * by.dealt * armor
-                dot['next'] += effect['interval']
-            dot['hp'] = t.hp
-            if dot['next'] <= dot['end']:
-                keep.append(dot)
-        dots[:] = keep
+        self.dots[:] = dot.tick(self.dots, world.frame_now(), hurt, armor_scalar, gap)    # the frame-end DOT ledger
         for t, dmg, by in hurt.values():
             if world.frame_now() < t.immune_until or t.shielded or t.indestructible:
                 continue

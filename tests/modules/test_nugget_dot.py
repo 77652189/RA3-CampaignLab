@@ -67,3 +67,30 @@ def test_only_a_direct_single_first_hit_books_a_dot(monkeypatch):
     s.clock.frame += 1
     s.deal(FRAME)
     assert len(s._harm().dots) == 1 and any(name == 'DOTNugget' for _, name in s.unmodeled)
+
+
+class _Body:
+    def __init__(self, serial, hp, alive=True, dealt=1.0):
+        self.serial, self.hp, self.alive, self.dealt = serial, hp, alive, dealt
+
+
+def test_the_frame_end_ledger_ticks_living_entries_through_the_hosts_armor():
+    """Step N2c: dot.tick -- a healed entry that is not remove_healed keeps ticking (a gap), a dead target's entry
+    is dropped, each tick reads the host's armor and the caster's dealt now, an entry already in the frame's damage
+    keeps its first attacker, and an entry past its end is not kept."""
+    from engine.combat import dot
+    by, other = _Body(1, 100, dealt=2.0), _Body(9, 100)
+    healed, dead, hit = _Body(2, 60), _Body(3, 50, alive=False), _Body(4, 80)
+    effect = dict(damage=5, type='GUN', interval=3, remove_healed=False)
+    book = [dict(target=healed, by=by, effect=effect, next=10, end=13, hp=50),
+            dict(target=dead, by=by, effect=effect, next=10, end=40, hp=50),
+            dict(target=hit, by=by, effect=effect, next=7, end=10, hp=80)]
+    hurt = {hit.serial: [hit, 1.0, other]}
+    gaps = []
+    keep = dot.tick(book, 10, hurt, lambda victim, kind: 0.5 if victim is hit else 0.25,
+                    lambda tag, why: gaps.append(tag))
+    assert gaps == ['DOTNugget']
+    assert hurt[healed.serial] == [healed, 5 * 2.0 * 0.25, by]
+    assert dead.serial not in hurt
+    assert hurt[hit.serial] == [hit, 1.0 + 2 * 5 * 2.0 * 0.5, other]     # frames 7 and 10, the end one included
+    assert keep == [book[0]] and book[0]['next'] == 13 and book[0]['hp'] == 60
