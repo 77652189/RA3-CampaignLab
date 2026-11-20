@@ -109,6 +109,25 @@ def test_a_rename_that_fails_leaves_no_temporary_file_and_its_name_is_short(tmp_
     assert os.listdir(folder) == []
 
 
+def test_a_fresh_process_reads_a_file_of_this_shape(tmp_path):
+    """Review 1119z P2 #4: a process that made no Sim (imported no engine.modules) loads a file this one wrote, and
+    the shape it computes is this one's."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    import simsnap
+    path = str(tmp_path / 's.json.gz')
+    snapfile.save(path, {'a': 1}, task='t')
+    cnv = Path(__file__).resolve().parents[2] / 'experimental' / 'cnv'
+    code = ('import sys, snapfile, simsnap; assert "engine.modules" not in sys.modules; '
+            'print(snapfile.load(sys.argv[1])[0]["task"], simsnap.version())')
+    out = subprocess.run([sys.executable, '-B', '-X', 'utf8', '-c', code, path], capture_output=True, text=True,
+                         env={**os.environ, 'PYTHONPATH': str(cnv)}, timeout=300)
+    assert out.returncode == 0, out.stderr[-2000:]
+    assert out.stdout.split() == ['t', simsnap.version()]
+
+
 def test_the_cli_resume_refuses_before_it_appends(tmp_path):
     """u P3 #1: `one --resume` checks the file and the first half's record before it opens the record to append:
     no record there -- refused, none made; a file of another task -- refused, the record as it was."""

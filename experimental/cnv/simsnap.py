@@ -23,7 +23,6 @@ import base64
 import hashlib
 import importlib
 import json
-import sys
 
 import numpy as np
 
@@ -129,11 +128,10 @@ def digest(*tables):
 
 def _module_states():
     """[tag, module, class, sorted STATE] of every module class registered from engine.modules (a test's subclass
-    left out): the kernel's part of what is kept. Read, not imported: simsnap is a layered tool and importing the
-    package would import every module file (tests/test_sim_layers.py); whoever makes a Sim has imported it."""
-    if 'engine.modules' not in sys.modules:
-        raise RuntimeError('simsnap.version reads the registered modules\' STATE: import engine.modules first '
-                           '(sim does)')
+    left out): the kernel's part of what is kept. The package is imported here, when a version is asked (a fresh
+    process reading a snapshot file has made no Sim -- review 1119z P2 #4), not at simsnap's load: a static import
+    would make every module file one of this layered tool's imports (tests/test_sim_layers.py)."""
+    importlib.import_module('engine.modules')
     return [[tag, cls.__module__, cls.__qualname__, sorted(cls.STATE)] for tag, cls in sorted(factory.TAGS.items())
             if cls.__module__.startswith('engine.modules.')]
 
