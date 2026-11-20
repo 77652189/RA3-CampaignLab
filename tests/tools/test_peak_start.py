@@ -40,7 +40,7 @@ def test_a_start_restore_refuses_is_taken_again(tmp_path, capsys):
     path = str(tmp_path / 'start.json.gz')
     _, info = simbench_peak.ai_start(AT, SCENE, path)
     meta, s = snapfile.load(path)
-    s['version'] = simaisnap.VERSION - 1                # an older shape: refused whole
+    s['version'] = 'older.0'                            # an older shape: refused whole
     snapfile.save(path, s, **meta)
     capsys.readouterr()
     _, info2 = simbench_peak.ai_start(AT, SCENE, path)

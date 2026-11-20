@@ -86,6 +86,44 @@ def test_every_field_is_sorted(heal):
         run.money = money
 
 
+def test_the_version_is_the_tables_digest(heal, monkeypatch):
+    """The snapshot version is the tables' digest (R2 11-19, no more hand-bumped numbers three lines raced for): a
+    field added to the Sim and not sorted is named by unclassified; sorted into SIM it is no longer, and the version
+    changes with that table -- the guard and the version read one table. A module class's STATE, the AI part's
+    tables and SEMANTICS change it too; the same tables filled in another order do not; a test's module subclass is
+    not counted."""
+    import simaisnap
+    from engine.kernel import factory
+    run = heal[2]
+    v0, ai0 = simsnap.VERSION, simaisnap.VERSION
+    assert re.fullmatch(r'[0-9a-f]{8}\.\d+', v0) and re.fullmatch(r'[0-9a-f]{8}\.\d+', ai0)
+    monkeypatch.setattr(run, 'brand_new_field', 1, raising=False)
+    assert simsnap.unclassified(run) == ['sim.brand_new_field'] and simsnap.VERSION == v0
+    monkeypatch.setitem(simsnap.SIM, 'brand_new_field', simsnap.STATE)
+    assert simsnap.unclassified(run) == []
+    v1 = simsnap.VERSION
+    assert v1 != v0 and simaisnap.VERSION == ai0
+    monkeypatch.setattr(simsnap, 'SIM', dict(reversed(list(simsnap.SIM.items()))))
+    assert simsnap.VERSION == v1
+    monkeypatch.undo()
+    assert simsnap.VERSION == v0
+    cls = next(c for c in factory.TAGS.values() if c.__module__.startswith('engine.modules.') and c.STATE)
+    monkeypatch.setattr(cls, 'STATE', tuple(cls.STATE) + ('review_timer',))
+    assert simsnap.VERSION not in (v0, v1)
+    monkeypatch.undo()
+    monkeypatch.setattr(cls, 'STATE', tuple(reversed(cls.STATE)))
+    assert simsnap.VERSION == v0                        # a module's STATE is a set of fields (module_state's dict)
+    monkeypatch.undo()
+    monkeypatch.setitem(factory._TAGS, 'ReviewOnlyTag', type('ReviewOnly', (cls,), {'STATE': ('x',)}))
+    assert simsnap.VERSION == v0
+    monkeypatch.undo()
+    monkeypatch.setitem(simaisnap.BRAIN, 'brand_new_field', simsnap.STATE)
+    assert simaisnap.VERSION != ai0 and simsnap.VERSION == v0
+    monkeypatch.undo()
+    monkeypatch.setattr(simsnap, 'SEMANTICS', simsnap.SEMANTICS + 1)
+    assert simsnap.VERSION.split('.') == [v0.split('.')[0], str(int(v0.split('.')[1]) + 1)]
+
+
 def _static(table, at=()):
     for f, kind in table.items():
         if isinstance(kind, dict):

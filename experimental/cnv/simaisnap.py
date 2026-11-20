@@ -34,15 +34,10 @@ from engine.kernel import snap
 from simsnap import ALIAS, CACHE, STATE, STATIC, WIRE
 
 HOST, BRAINS, MODEL = 'host', 'brains', 'model'
-VERSION = 10            # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
-#                         4: a brain's ids / hp keyed by serial, not name (same-name sweep S6a);
-#                         5: HOOKS 9's runs, a list, and the mems they saw (_rec_mem by hand, 11b-4e);
-#                         6: its hunt goals / cells keyed by serial (S6b);
-#                         7: a returner's path kept as whether it is the one its unit walks (review 1119p #2);
-#                         8: 'setup', the settings the new SimAI must be made with (review 1119s);
-#                         9: the yard queues keyed by the yard's serial, not its name (review 1119q P2 #2);
-#                         10: the returners keyed by serial (same-name review 1119b O60 / N05); the things the
-#                             SimAI's own fields hold kept as simsnap's roots (review 1119u P2 #3)
+SEMANTICS = 0           # raised by hand only when what is kept changes but no table below does (a mark, the
+#                         port's rows): the commit says why. VERSION is version(), the tables' digest and this
+#                         (before it, 1-10 were bumped by hand: git log)
+
 # The SimAI's settings restore asks the new SimAI to have been made with, taken with the snapshot; another one is
 # refused whole (review 1119s: one of record=True written onto a SimAI made with record=False, or the other way,
 # came back and its trail held half the run -- 525 / 36 lines the whole run, 262 / 24 off to on, 263 / 12 on to off).
@@ -92,6 +87,18 @@ _MODEL = [f for f, k in BRAIN.items() if k == MODEL]
 UNIT = {'body': STATE, 'observe': WIRE, 'template': STATIC, 'kindof': STATIC, 'surface': STATIC, 'team': MODEL,
         'escort_of': MODEL}     # the team a member escorts (teams.py writes it)
 _UNIT_MODEL = [f for f, k in UNIT.items() if k == MODEL]
+
+
+def version():
+    """The SimAI part's format: '<digest of SETUP, SIMAI, ALIASES, BRAIN, UNIT, the brain's own kept by hand>.
+    <SEMANTICS>' (simsnap.digest). The Sim's part is simsnap's, checked by its own version."""
+    return f'{simsnap.digest(SETUP, SIMAI, ALIASES, BRAIN, UNIT, _BY_HAND)}.{SEMANTICS}'
+
+
+def __getattr__(name):
+    if name == 'VERSION':       # simaisnap.VERSION, read live
+        return version()
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
 
 
 def _get(obj, path):
@@ -245,7 +252,7 @@ def snapshot(w):
                 if path is not None and getattr(numbered.get(k), 'path', None) is path)
     s = simsnap.snapshot(w.sim, held)
     ai = [['.'.join(p), snap.encode(v, at='simai.' + '.'.join(p))] for p, v in own]
-    return {'version': VERSION, 'setup': _setup(w), 'sim': s, 'ai': ai, 'brains': brains}
+    return {'version': version(), 'setup': _setup(w), 'sim': s, 'ai': ai, 'brains': brains}
 
 
 def _setup(w):
@@ -279,9 +286,10 @@ def _paths(table=SIMAI, at=()):
 
 def _check(s):
     """The snapshot's shape, whole, before restore writes anything."""
-    if (s.get('version') != VERSION or set(s) != {'version', 'setup', 'sim', 'ai', 'brains'}
+    v = version()
+    if (s.get('version') != v or set(s) != {'version', 'setup', 'sim', 'ai', 'brains'}
             or not isinstance(s['setup'], dict) or set(s['setup']) != set(SETUP)):
-        raise ValueError(f'simaisnap.restore: not a snapshot of this shape ({VERSION})')
+        raise ValueError(f'simaisnap.restore: not a snapshot of this shape ({v})')
     state = {'.'.join(p) for p in _paths()}
     bad = [r for r in s['ai'] if not (isinstance(r, list) and len(r) == 2 and r[0] in state)]
     if bad:

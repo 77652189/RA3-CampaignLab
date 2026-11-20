@@ -351,10 +351,10 @@ def test_an_older_sim_part_is_refused_before_a_brain_is_made(half):
     restore makes the brains (making one multiplies its player's income): nothing written."""
     _, taken, _, _ = half
     old = json.loads(json.dumps(taken))
-    old['sim']['version'] = simsnap.VERSION - 1
+    old['sim']['version'] = 'older.0'
     w = _simai(*build.resolve(*simrecord.TASKS['ai_open'][1])[:2])
     before = simsnap.snapshot(w.sim)
-    with pytest.raises(ValueError, match=f'version {simsnap.VERSION - 1}'):
+    with pytest.raises(ValueError, match='version older.0'):
         simaisnap.restore(w, old)
     assert not w.brains and simsnap.snapshot(w.sim) == before
 

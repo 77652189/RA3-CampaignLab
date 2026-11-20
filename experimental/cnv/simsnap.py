@@ -20,32 +20,25 @@ order the command port keeps ({"$command": fields}), a script of the map's lists
 script's queue: {"$script": the executor's script_key}, the new executor's script of that key).
 `unclassified(sim)` (step S's guard 4.3) names every field not sorted here, so a new one cannot be left out."""
 import base64
+import hashlib
 import importlib
+import json
+import sys
 
 import numpy as np
 
 import simtech
 import simunits
+from engine.kernel import factory
 from engine.kernel import module as _module
 from engine.kernel import snap
 from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 14            # 14: a movement power's job keyed by the presser's serial (same-name sweep 11-19b O58);
-                        # 13: 'setup', the run's level and script (review 1119v P2 #1: a normal run's
-                        # snapshot came back onto a hard host, its hard-only scripts ran); 12: the build queues keyed by the factory's serial, not its name (same-name sweep 11-19b
-                        # O31); 11: a cast's caster by serial (same-name sweep 11-19b O38); 10: acting, a sequential
-                        # step's unit by its name (review 11-19 n P3; empty between frames);
-                        # 9: W3, the fight's clocks / pre_locks / fire_gate are the shooter's WeaponSet's STATE, not
-                        # the host's; 8: W2, a body's weapons / slots are its WeaponSet module's STATE; 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
-                        # 4: areas.missing (4.4, 11-19); 5: the queue's events -- a posted command as itself
-                        # (command port ORDER), a line's 强制 / 由 P kept in its word group (review 11-19 i #1 #4);
-                        # 6: a spy on its way, Infiltrators.going, is the spy's serial -> (spy, target), not its
-                        # name -> target (edd381f1; review 1119m #1: a v5 one restored broke the first tick)
-                        # 7: R's same-name sweep -- garrison where / going, a contain's given, the mines' nodes,
-                        # attachments, pack_hold by serial; due, a node's at / claim, Body.attacker, OreMiner's node /
-                        # refinery the things
+SEMANTICS = 0           # raised by hand only when what is kept changes but no table below does (World.snapshot's
+                        # or the executor's rows, a value's encoding, a mark): the commit says why. VERSION is
+                        # version(): the tables' digest and this (before it, 1-14 were bumped by hand: git log)
 
 SIM = {
     # the setup
@@ -118,6 +111,44 @@ for _f in ('name template owner x y z speed surface vision kinds immune_until ar
 MODULE_WIRE = ('thing', 'data', 'world')    # Module.__init__'s: the factory makes them again on the new world
 _MUTABLE = (list, dict, set)
 _NAMED = ('$ref', '$slots', '$weapon', '$armor', '$weapons')    # marks of one object: written back as that object
+
+
+def digest(*tables):
+    """The first 8 hex digits of the sha256 of `tables` written one way: a dict's / set's items sorted, a tuple a
+    list. The same tables, in whatever order they were filled, give the same digest in every process."""
+    def canon(v):
+        if isinstance(v, dict):
+            return sorted(([canon(k), canon(x)] for k, x in v.items()), key=json.dumps)
+        if isinstance(v, (set, frozenset)):
+            return sorted((canon(x) for x in v), key=json.dumps)
+        if isinstance(v, (list, tuple)):
+            return [canon(x) for x in v]
+        return v
+    return hashlib.sha256(json.dumps(canon(tables), ensure_ascii=False).encode()).hexdigest()[:8]
+
+
+def _module_states():
+    """[tag, module, class, sorted STATE] of every module class registered from engine.modules (a test's subclass
+    left out): the kernel's part of what is kept. Read, not imported: simsnap is a layered tool and importing the
+    package would import every module file (tests/test_sim_layers.py); whoever makes a Sim has imported it."""
+    if 'engine.modules' not in sys.modules:
+        raise RuntimeError('simsnap.version reads the registered modules\' STATE: import engine.modules first '
+                           '(sim does)')
+    return [[tag, cls.__module__, cls.__qualname__, sorted(cls.STATE)] for tag, cls in sorted(factory.TAGS.items())
+            if cls.__module__.startswith('engine.modules.')]
+
+
+def version():
+    """The snapshot's format: '<digest of SIM, BODY, ALIASES, the marks, the modules' STATE>.<SEMANTICS>'. A field
+    added to or taken off a table (unclassified names one left out of them) changes it, so a snapshot taken before
+    is refused whole; the same tables on two commits give the same version."""
+    return f'{digest(SIM, BODY, ALIASES, snap.MARKS, _NAMED, MODULE_WIRE, _module_states())}.{SEMANTICS}'
+
+
+def __getattr__(name):
+    if name == 'VERSION':       # simsnap.VERSION, read live (a table changed in a test changes it)
+        return version()
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
 
 
 def _fields(obj):
@@ -387,7 +418,7 @@ def snapshot(sim, roots=()):
     others = [[b.serial, b.name, b.template, own(b)] for b in things[len(sim.bodies):]]
     host = [['.'.join(p), snap.encode(_get(sim, p), c.extra, 'sim.' + '.'.join(p))] for p in paths]
     parts = [[f, type(v).__module__, type(v).__qualname__] for f, v in _fields(sim).items() if isinstance(SIM.get(f), dict)]
-    out = {'version': VERSION, 'mission': getattr(sim.m, 'name', None), 'setup': _setup(sim), 'kernel': kernel,
+    out = {'version': version(), 'mission': getattr(sim.m, 'name', None), 'setup': _setup(sim), 'kernel': kernel,
            'bodies': bodies, 'others': others, 'parts': parts, 'host': host, 'executor': sim.executor.snapshot()}
     found = _serials(out)
     stray = sorted(set(found) - held)
@@ -519,8 +550,9 @@ def check(sim, s):
     """What restore asks of `s` before it writes anything onto `sim` (a wrapper writing its own part first, simaisnap,
     asks it first: review 1119m #1, an older version refused whole, not half restored): its version, its mission,
     its shape, its setup (level, script: review 1119v P2 #1)."""
-    if s.get('version') != VERSION:
-        raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {VERSION}')
+    v = version()
+    if s.get('version') != v:
+        raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {v}')
     if s['mission'] != getattr(sim.m, 'name', None):
         raise ValueError(f'simsnap.restore: a snapshot of {s["mission"]!r} onto {getattr(sim.m, "name", None)!r}')
     _check(s)
@@ -562,5 +594,5 @@ def _check(s):
         if not isinstance(k, dict) or set(k) != kernel:                             # the executor was written)
             bad.append(f'kernel {sorted(set(k) ^ kernel) if isinstance(k, dict) else type(k).__name__}')
     if bad:
-        raise ValueError(f'simsnap.restore: the snapshot is not of this shape ({VERSION}): {", ".join(bad[:5])}')
+        raise ValueError(f'simsnap.restore: the snapshot is not of this shape ({version()}): {", ".join(bad[:5])}')
 
