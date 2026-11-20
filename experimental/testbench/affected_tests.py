@@ -40,7 +40,7 @@ How a changed line is matched (always "more rather than fewer"):
 The simulator's files (simcoverage.sim_files(): sim.py, simproxy.py and the parts they import -- sim*.py, or
 experimental/cnv/engine/... once step 10 moves them; cnv/enginefiles.py says which files those are) go by import
 instead (ADR 0029 consequence 3; the map was recorded before the blocks moved out of sim.py, and it counts "ran it" as
-"depends on it"): ImportGraph reads every import (and every 'x.py' string) of experimental/ and tests/ as they are now;
+"depends on it"): ImportGraph reads imports and Python file references in experimental/ and tests/ as they are now;
   * a part module is picked for the tests that import it, directly or through other files -- but not through the
     facade sim.py: a whole-game replay that only imports sim is not a test of simheal -- and for the tests of the
     facade (they reach sim, by themselves or through simsmall) that name a handle of it on Sim: a forwarder
@@ -409,8 +409,8 @@ FORWARDER_STMTS = 3                     # a Sim method this short that reaches a
 class ImportGraph:
     """Who imports whom among the Python files of experimental/ and tests/ (as they are in the working tree).
 
-    An edge is an import (top level or inside a function: a lazy import counts), or a string constant naming a .py
-    file (importlib.util.spec_from_file_location(..., 'simai.py'), a script a subprocess runs). Bare names resolve
+    An edge is an import (top level or inside a function: a lazy import counts), or a reference to a .py file:
+    a string constant or a repository path split into literals in os.path.join. Bare names resolve
     the way the folders' sys.path edits do: the importer's own folder, then experimental/cnv, experimental/campaign,
     the repository root, tests/; a name found nowhere is not ours (stdlib, the engine model, numpy)."""
 
@@ -456,7 +456,7 @@ class ImportGraph:
             tree = ast.parse(open(os.path.join(self.root, p), encoding='utf-8').read())
         except (OSError, SyntaxError, ValueError):
             return set(), set()
-        imp, strs = set(), set()
+        imp, strs, joined_parts = set(), set(), set()
         for n in ast.walk(tree):
             if isinstance(n, ast.Import):
                 for a in n.names:
@@ -472,7 +472,19 @@ class ImportGraph:
                     subs = [self.resolve(n.module + '.' + a.name, p) for a in n.names]
                 imp.add(mod)
                 imp.update(subs)                            # from checks import a1: the submodule checks/a1.py
-            elif isinstance(n, ast.Constant) and isinstance(n.value, str) and len(n.value) < 200:
+            elif (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == 'join'
+                  and ast.unparse(n.func) == 'os.path.join'):
+                # A dynamic root may precede the literal repository path, as in the UI's importlib load.
+                parts = []
+                for arg in reversed(n.args):
+                    if not isinstance(arg, ast.Constant) or not isinstance(arg.value, str):
+                        break
+                    parts.append(arg)
+                path = '/'.join(arg.value for arg in reversed(parts)).replace('\\', '/')
+                if path in self.paths:
+                    strs.add(path)
+                    joined_parts.update(parts)    # its basename must not also resolve to an unrelated file
+            elif isinstance(n, ast.Constant) and n not in joined_parts and isinstance(n.value, str) and len(n.value) < 200:
                 m = PY_STRING.match(n.value.strip())
                 if m:
                     whole = n.value.strip().replace('\\', '/')

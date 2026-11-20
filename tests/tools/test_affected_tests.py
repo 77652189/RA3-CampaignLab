@@ -121,6 +121,31 @@ def test_pick_falls_back_by_name_and_takes_changed_tests(tmp_path):
     assert why['tests/test_x.py'] == ['by name: data/units.xml']
 
 
+def test_pick_follows_a_split_path_to_a_dynamically_loaded_module(tmp_path):
+    port = 'experimental/cnv/engine/ports/command.py'
+    ui_test = 'tests/test_page.py'
+    files = {
+        at.FACADE: 'from engine.ports import command\n',
+        port: 'class Command: pass\n',
+        'experimental/simui/game.py': 'from engine.ports.command import Command\n',
+        'tests/game.py': 'from engine.ports import unrelated\n',
+        'experimental/cnv/engine/ports/unrelated.py': '',
+        ui_test: "import importlib.util, os\n"
+                 "spec = importlib.util.spec_from_file_location('ui', os.path.join(ROOT, 'experimental', 'simui', 'game.py'))\n",
+        'tests/test_facade.py': 'import sim\n',
+    }
+    for path, source in files.items():
+        file = tmp_path / path
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(source, encoding='utf-8')
+
+    graph = at.ImportGraph(str(tmp_path))
+    picked, _, _ = at.pick(None, [(port, port, None, False)], {}, {}, lambda _: set(), graph)
+
+    assert picked == {ui_test}
+    assert graph.edges(ui_test) == {'experimental/simui/game.py'}
+
+
 def test_guards_always_present():
     g = at.guards()
     assert {'tests/guards/test_layers.py', 'tests/guards/test_docs.py', 'tests/guards/test_architecture.py',
