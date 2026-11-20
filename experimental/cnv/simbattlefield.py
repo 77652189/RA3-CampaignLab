@@ -32,10 +32,20 @@ alongside it (a refinery's collector, a factory's drones) is the file's thing of
 same template and owner, moved to the file's spot, and taken out when none is; then the way is blocked anew. It reads
 every placed thing back through the export's own reader and returns ['field path: why', ...] for each field that
 differs (an explicit height, a rank or a max health the host does not give, a status bit the host derives) and for
-what later steps place (crews, factory jobs). Players and the script are not touched."""
+what later steps place (crews, factory jobs). Players and the script are not touched.
+
+Step 4 places the players: `place_players(sim, doc)` refuses a file whose players the host cannot take (preflight
+with things=False: the map, each listed player one with a protocol book, each protocol one the host's data defines),
+then gives each listed player the file's money (PLAYER_SET_MONEY), protocols and points as they are -- held, nothing
+paid, the rank the generic rank protocols say (simtech.Book.place) -- the player upgrades the host does not hold yet
+(GIVE_PLAYER_UPGRADE) and the directed relations (PLAYER_RELATES_PLAYER); it reads each player back as the export
+does, power recomputed from the host's living things, and returns ['players.<p>.<field>: why', ...] for what differs.
+`place(sim, doc)` is steps 3 and 4 in the order a run has them: the players' upgrades first (a thing made after one
+is made with it, as the source's was), then the things, then the players read back (their power is the things')."""
 import math
 
 import simorder
+import simtech
 import simunits
 from simworld import CIV
 
@@ -268,10 +278,12 @@ def map_name(sim):
     return sim.m.map.__name__.rsplit('.', 1)[-1]
 
 
-def preflight(sim, doc):
+def preflight(sim, doc, things=True):
     """check(doc) and the host `sim` the file goes onto (an empty run of the same map): the map, each listed player
-    and each thing's owner one the host has (its players or the neutral side), each template and queued template
-    one its data defines, no id a living thing of the host holds. ['field path: why', ...], empty when it holds."""
+    one the host has with a protocol book (a playable one) and each protocol it holds one the host's data defines;
+    with `things`, each thing's owner one the host has (its players or the neutral side), each template and queued
+    template one its data defines, no id a living thing of the host holds. ['field path: why', ...], empty when it
+    holds."""
     bad = check(doc)
     if not isinstance(doc, dict):
         return bad
@@ -280,9 +292,21 @@ def preflight(sim, doc):
         bad.append(f'map: {doc["map"]!r}, the host is {here!r}')
     hosts = set(sim.players.values())
     if isinstance(doc.get('players'), dict):
-        for name in doc['players']:
+        for name, p in doc['players'].items():
             if name not in hosts:
                 bad.append(f'players.{name}: not a player of the host')
+            elif name not in sim.books:
+                bad.append(f'players.{name}: the host keeps no protocols for it (not a playable player)')
+            sciences = p.get('sciences') if isinstance(p, dict) else None
+            for i, s in enumerate(sciences if isinstance(sciences, list) else ()):
+                if _name(s) and s.lower() not in simtech.protocols():
+                    bad.append(f'players.{name}.sciences[{i}]: {s!r} not a protocol of the host\'s data')
+            rel = p.get('relations') if isinstance(p, dict) else None
+            for other, r in (rel.items() if isinstance(rel, dict) else ()):
+                if _start(sim.m).get((name, other)) == r:
+                    bad.append(f'players.{name}.relations.{other}: {r!r} the map\'s own (a file lists what differs)')
+    if not things:
+        return bad
     own = getattr(sim, 'own', None)
     for i, t in enumerate(doc.get('things') if isinstance(doc.get('things'), list) else ()):
         if not isinstance(t, dict):
@@ -302,9 +326,9 @@ def preflight(sim, doc):
     return bad
 
 
-def refuse(sim, doc):
+def refuse(sim, doc, things=True):
     """A ValueError naming every problem preflight finds, before anything is placed."""
-    bad = preflight(sim, doc)
+    bad = preflight(sim, doc, things)
     if bad:
         raise ValueError(f'simbattlefield: not placed ({len(bad)}): ' + '; '.join(bad))
 
@@ -320,6 +344,8 @@ NOT_CARRIED = (
     'the skirmish AI\'s state (teams, build queues, plans)',
     "the script executor's history (which scripts ran, subroutines, its random state)",
     'a thing\'s experience toward its next level, and when each upgrade came',
+    "a player's experience toward its next rank (a placed player starts its rank anew)",
+    "a player's protocol locks and point cap, and a power its scripts added (they set them)",
     'what a job in a queue was paid so far',
     'harvesters\' loads and trips',
     'team instances beyond each thing\'s team name',
@@ -353,6 +379,31 @@ def _export_thing(obs, b):
                 queue=[{'template': t, 'progress': p} for t, p in obs.queue(b)])
 
 
+def _player_row(money, tech, upgrades, power):
+    """A player's fields but its relations: money, (protocols, points), player upgrades, (made, used)."""
+    return {'money': money, 'sciences': tech[0], 'science_points': tech[1], 'upgrades': upgrades,
+            'power': {'made': power[0], 'used': power[1]}, 'relations': {}}
+
+
+def _start(mission):
+    """The map's own directed relations (a host starts from these)."""
+    return getattr(mission, 'relations', None) or {}
+
+
+def _relations(players, pairs, start):
+    """The explicit directed relations `pairs` that differ from the map's own, into each listed player's row; the
+    ones toward or of a player not listed as ['a -> b r', ...]."""
+    dropped = []
+    for (a, b), r in sorted(pairs.items()):
+        if start.get((a, b)) == r:
+            continue
+        if a in players and b in players and a != b:
+            players[a]['relations'][b] = r
+        else:
+            dropped.append(f'{a} -> {b} {r}')
+    return dropped
+
+
 def export(obs):
     """The run `obs` (an engine.ports.observe.Observe) reads, as a battlefield/1 file: every playable player, every
     living thing, the script's tables; relations the explicit directed ones that differ from the map's own (the host
@@ -360,20 +411,9 @@ def export(obs):
     players = {}
     for p in sorted(set(obs.players().values())):
         tech = obs.sciences(p)
-        if tech is None:
-            continue
-        made, used = obs.power(p)
-        players[p] = {'money': obs.money().get(p, 0), 'sciences': tech[0], 'science_points': tech[1],
-                      'upgrades': obs.player_upgrades(p), 'power': {'made': made, 'used': used}, 'relations': {}}
-    start = getattr(obs.mission(), 'relations', None) or {}
-    dropped = []
-    for (a, b), r in sorted(obs.relations().items()):
-        if start.get((a, b)) == r:
-            continue
-        if a in players and b in players and a != b:
-            players[a]['relations'][b] = r
-        else:
-            dropped.append(f'{a} -> {b} {r}')
+        if tech is not None:
+            players[p] = _player_row(obs.money().get(p, 0), tech, obs.player_upgrades(p), obs.power(p))
+    dropped = _relations(players, obs.relations(), _start(obs.mission()))
     things = [_export_thing(obs, b) for b in obs.things() if b.alive]     # living, in the order they were made
     script = {'flags': dict(obs.flags()), 'counters': dict(obs.counters()), 'timers': dict(obs.timers()),
               'objectives': dict(obs.objectives())}
@@ -456,3 +496,64 @@ def place_things(sim, doc):
                 gaps.append(f'things[{i}].{k}: {row[k]!r} in the file, the host reads {got[k]!r}'
                             + (f' -- {WHY[k]}' if k in WHY else ''))
     return gaps
+
+
+# Why a placed player's field reads other than the file's, where the host cannot give it (step 4).
+WHY_PLAYER = {
+    'power': "the host's own: what its living things make and use now (a power a script added is not carried)",
+    'upgrades': 'a player upgrade the host holds is not taken off',
+    'relations': 'a relation the host set over the map\'s own is not taken off',
+}
+
+
+def _set_players(sim, doc):
+    """Each listed player given the file's money, protocols and points, player upgrades and relations."""
+    for p, row in sorted(doc['players'].items()):
+        if sim.money.get(p, 0) != row['money']:
+            sim.act('PLAYER_SET_MONEY', [p, row['money']], LABEL)
+        book = sim.books[p]
+        if sorted(book.owned) != sorted(s.lower() for s in row['sciences']) or book.points != row['science_points']:
+            book.place(row['sciences'], row['science_points'])      # held as they are: none bought again
+            sim.used.add('protocols')
+        held = sim.player_ups.get(p, ())
+        for up in row['upgrades']:
+            if up not in held:
+                sim.act('GIVE_PLAYER_UPGRADE', [p, up], LABEL)
+        for other, r in sorted(row['relations'].items()):
+            if sim.relations.get((p, other)) != r:
+                sim.act('PLAYER_RELATES_PLAYER', [p, other, r], LABEL)
+    sim.change()
+
+
+def _read_players(sim, doc):
+    """The listed players read back as the export reads them, ['players.<p>.<field>: why', ...] where they differ."""
+    got = {p: _player_row(sim.money.get(p, 0), (sorted(sim.books[p].owned), sim.books[p].points),
+                          sorted(sim.player_ups.get(p, ())), sim.power(p)) for p in doc['players']}
+    _relations(got, sim.relations, _start(sim.m))
+    gaps = []
+    for p, row in sorted(doc['players'].items()):
+        have = _plain(got[p])
+        for k in PLAYER:
+            for sub in (POWER if k == 'power' else (None,)):
+                want, read = (row[k], have[k]) if sub is None else (row[k][sub], have[k][sub])
+                if read != want:
+                    gaps.append(f'players.{p}.{k}{"." + sub if sub else ""}: {want!r} in the file, the host reads '
+                                f'{read!r}' + (f' -- {WHY_PLAYER[k]}' if k in WHY_PLAYER else ''))
+    return gaps
+
+
+def place_players(sim, doc):
+    """The file's players onto the host `sim` (its map's run): see the module's step 4. ['field path: why', ...] for
+    what does not read back as the file has it (power: placed the things first, or use `place`)."""
+    refuse(sim, doc, things=False)
+    _set_players(sim, doc)
+    return _read_players(sim, doc)
+
+
+def place(sim, doc):
+    """Steps 3 and 4 onto the host `sim` (an empty run of the file's map): the players' state, the things, the players
+    read back. ['field path: why', ...] as place_things and place_players give them."""
+    refuse(sim, doc)
+    _set_players(sim, doc)
+    gaps = place_things(sim, doc)
+    return gaps + _read_players(sim, doc)

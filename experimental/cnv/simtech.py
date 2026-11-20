@@ -219,6 +219,20 @@ class Book:
     def has(self, name):
         return name.lower() in self.owned
 
+    def place(self, owned, points):
+        """A placed file's protocols and points (simbattlefield step 4): held as listed, nothing paid for them; the
+        rank the generic rank protocols held say (the highest of an unbroken run from rank 1), its points earned as
+        reaching it gives them, its experience toward the next from 0 (a file does not carry it)."""
+        self.owned = {p.lower() for p in owned}
+        self.points = int(points)
+        rank = 0
+        for i, rid in enumerate(self.rank_ids):
+            if not all(p.lower() in self.owned for p in ranks()[rid][2]):
+                break
+            rank = i
+        self.rank, self.xp = rank, 0.0
+        self.earned = factions()[self.faction]['initial'] + sum(ranks()[r][1] for r in self.rank_ids[1:rank + 1])
+
     # ---- time
     def grows(self):
         return self.rank + 1 < len(self.rank_ids) and (self.cap < 0 or self.earned < self.cap)
