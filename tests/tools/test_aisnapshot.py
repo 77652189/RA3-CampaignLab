@@ -56,8 +56,27 @@ def test_a_snapshot_of_another_shape_is_refused():
     with pytest.raises(ValueError, match='shape'):
         simaisnap.restore(_simai(m, t), {'version': simaisnap.VERSION, 'sim': {}})
     with pytest.raises(ValueError, match='not a field'):
-        simaisnap.restore(_simai(m, t), {'version': simaisnap.VERSION, 'sim': {}, 'brains': [],
-                                         'ai': [['brains', {}]]})
+        w = _simai(m, t)
+        simaisnap.restore(w, {'version': simaisnap.VERSION, 'setup': simaisnap._setup(w), 'sim': {}, 'brains': [],
+                              'ai': [['brains', {}]]})
+
+
+@pytest.mark.parametrize('field, made', [('record', {'record': True}), ('level', {'level': 'hard'}),
+                                         ('seed', {'seed': 2}), ('blocks', {'blocks': ()})])
+def test_a_snapshot_of_another_setup_is_refused_before_anything_is_written(heal, field, made):
+    """Review 1119s: a run taken with record=False written onto a SimAI made with record=True (or the other way)
+    came back and its trail held half the run; the settings are taken with it, another one refused whole -- no
+    brain made, the Sim as it was. The same for the other settings restore asks to be the same."""
+    m, t, run, taken, _ = heal
+    w = simai.SimAI(sim.Sim(m, t, model=False), **made)
+    before = simsnap.snapshot(w.sim)
+    with pytest.raises(ValueError, match=f'another setup: {field} '):
+        simaisnap.restore(w, json.loads(json.dumps(taken)))
+    assert not w.brains and w.done_to is None and simsnap.snapshot(w.sim) == before
+    if field == 'record':       # and the other way: one taken on record onto one made without
+        on = simai.SimAI(sim.Sim(m, t, model=False), record=True).advance(1)
+        with pytest.raises(ValueError, match='another setup: record True onto False'):
+            simaisnap.restore(_simai(m, t), json.loads(json.dumps(simaisnap.snapshot(on))))
 
 
 @pytest.fixture(scope='module')

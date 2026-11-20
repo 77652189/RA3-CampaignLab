@@ -34,11 +34,16 @@ from engine.kernel import snap
 from simsnap import ALIAS, CACHE, STATE, STATIC, WIRE
 
 HOST, BRAINS, MODEL = 'host', 'brains', 'model'
-VERSION = 7             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
+VERSION = 8             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
 #                         4: a brain's ids / hp keyed by serial, not name (same-name sweep S6a);
 #                         5: HOOKS 9's runs, a list, and the mems they saw (_rec_mem by hand, 11b-4e);
 #                         6: its hunt goals / cells keyed by serial (S6b);
-#                         7: a returner's path kept as whether it is the one its unit walks (review 1119p #2)
+#                         7: a returner's path kept as whether it is the one its unit walks (review 1119p #2);
+#                         8: 'setup', the settings the new SimAI must be made with (review 1119s)
+# The SimAI's settings restore asks the new SimAI to have been made with, taken with the snapshot; another one is
+# refused whole (review 1119s: one of record=True written onto a SimAI made with record=False, or the other way,
+# came back and its trail held half the run -- 525 / 36 lines the whole run, 262 / 24 off to on, 263 / 12 on to off).
+SETUP = ('level', 'seed', 'blocks', 'record')
 
 SIMAI = {
     'sim': HOST, 'world': ALIAS, 'garrison': ALIAS, 'peers': WIRE,
@@ -228,7 +233,11 @@ def snapshot(w):
     s = simsnap.snapshot(w.sim, held)
     ai = [['.'.join(p), snap.encode(_value(w, p), at='simai.' + '.'.join(p))] for p in _paths()
           if all(f in simsnap._fields(_get(w, p[:k])) for k, f in enumerate(p))]
-    return {'version': VERSION, 'sim': s, 'ai': ai, 'brains': brains}
+    return {'version': VERSION, 'setup': _setup(w), 'sim': s, 'ai': ai, 'brains': brains}
+
+
+def _setup(w):
+    return {f: list(getattr(w, f)) if f == 'blocks' else getattr(w, f) for f in SETUP}
 
 
 _WALKS = '$walks'       # a returner's path that is the very one its unit walks
@@ -257,7 +266,8 @@ def _paths(table=SIMAI, at=()):
 
 def _check(s):
     """The snapshot's shape, whole, before restore writes anything."""
-    if s.get('version') != VERSION or set(s) != {'version', 'sim', 'ai', 'brains'}:
+    if (s.get('version') != VERSION or set(s) != {'version', 'setup', 'sim', 'ai', 'brains'}
+            or not isinstance(s['setup'], dict) or set(s['setup']) != set(SETUP)):
         raise ValueError(f'simaisnap.restore: not a snapshot of this shape ({VERSION})')
     state = {'.'.join(p) for p in _paths()}
     bad = [r for r in s['ai'] if not (isinstance(r, list) and len(r) == 2 and r[0] in state)]
@@ -273,12 +283,15 @@ def _check(s):
 
 
 def restore(w, s):
-    """Write snapshot `s` onto `w`, a SimAI made anew (on a Sim made anew) for the same mission, level, seed and
-    blocks, not yet advanced: the brains made as attach makes them (before the Sim is written: a Brain's making
+    """Write snapshot `s` onto `w`, a SimAI made anew (on a Sim made anew) for the same mission, level, seed,
+    blocks and record (SETUP, taken with it: another one refused whole), not yet advanced: the brains made as attach makes them (before the Sim is written: a Brain's making
     multiplies its player's income, the Sim's part then is the snapshot's), the Sim's part (simsnap.restore), the
     SimAI's own, then each brain's -- its Units, its own fields, the plugin's objects through their port, the Teams
     it holds by their keys."""
     _check(s)
+    differ = [f'{f} {s["setup"][f]!r} onto {v!r}' for f, v in _setup(w).items() if s['setup'][f] != v]
+    if differ:      # review 1119s: refused whole, before a brain is made
+        raise ValueError(f'simaisnap.restore: a snapshot of another setup: {", ".join(differ)}')
     simsnap.check(w.sim, s['sim'])      # review 1119m #1: the Sim's part refused before a brain is made, not after
     if w.brains:
         raise ValueError('simaisnap.restore: onto a SimAI that has brains already (made anew, not advanced)')
