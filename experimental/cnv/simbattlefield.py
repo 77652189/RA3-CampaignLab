@@ -52,7 +52,10 @@ running timer -- written into the tables themselves, not through the script's ac
 nothing on the timeline and decides no ending (a won or lost flag is placed and named). A timer's deadline is in the
 file's seconds (`t` its clock): the host holds the frames left from the cut, round((deadline - t) x the host's frame
 rate), so it runs out as many frames after the placing as the source's did after the cut, whatever the host's own clock
-reads; one out before the cut is held as just out (-1, as the executor keeps it). It reads the tables back on the
+reads; one out before the cut is held as just out (-1, as the executor keeps it). Preflight refuses a deadline whose
+frames left are no whole number on the host (a finite deadline so far from the cut that x the frame rate it is infinite:
+script.timers.<name> named), and the four tables are all worked out before any is written (a placing stopped part way
+leaves the host's as they were). It reads the tables back on the
 file's clock (a running timer's deadline = t + frames left / frame rate, as the export reads it at the cut) and returns
 ['script.<table>.<name>: why', ...] for what differs. `place` does it last.
 
@@ -425,6 +428,12 @@ def preflight(sim, doc, things=True):
             for other, r in (rel.items() if isinstance(rel, dict) else ()):
                 if _start(sim.m).get((name, other)) == r:
                     bad.append(f'players.{name}.relations.{other}: {r!r} the map\'s own (a file lists what differs)')
+    script = doc.get('script')
+    timers = script.get('timers') if isinstance(script, dict) else None
+    for k, d in (timers.items() if isinstance(timers, dict) and _number(doc.get('t')) else ()):
+        if _number(d) and not math.isfinite((d - doc['t']) * sim.fps):
+            bad.append(f'script.timers.{k}: {d!r} is {d - doc["t"]!r} s from the cut, no whole number of the '
+                       f'host\'s frames')
     if not things:
         return bad
     own = getattr(sim, 'own', None)
@@ -791,21 +800,24 @@ def _frames_left(sim, doc, deadline):
 
 
 def _set_script(sim, doc):
-    """The host's flags, counter-and-timer table and objectives made the file's, written as they are (no action)."""
+    """The host's flags, counter-and-timer table and objectives made the file's, written as they are (no action):
+    all worked out first, then written, so one that cannot be leaves the host's as they were."""
     s = doc['script']
+    rows = [(k, [v, False]) for k, v in sorted(s['counters'].items())]
+    rows += [(k, [_frames_left(sim, doc, d), True]) for k, d in sorted(s['timers'].items())]
+    flags = [(k, int(v)) for k, v in sorted(s['flags'].items())]     # as SET_FLAG keeps it: 0 / 1
+    objectives = sorted(s['objectives'].items())
     table = sim.executor.counters           # one table: name -> [value, is a running timer] (simexec.Counters)
     for k in list(table):
         del table[k]
-    for k, v in sorted(s['counters'].items()):
-        table[k] = [v, False]
-    for k, d in sorted(s['timers'].items()):
-        table[k] = [_frames_left(sim, doc, d), True]
+    for k, row in rows:
+        table[k] = row
     for k in list(sim.flags):
         del sim.flags[k]
-    for k, v in sorted(s['flags'].items()):
-        sim.flags[k] = int(v)               # as SET_FLAG keeps it: 0 / 1
+    for k, v in flags:
+        sim.flags[k] = v
     sim.objectives.clear()
-    sim.objectives.update(sorted(s['objectives'].items()))
+    sim.objectives.update(objectives)
     sim.change()
 
 

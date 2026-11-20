@@ -125,3 +125,64 @@ def test_a_file_the_host_cannot_take_places_no_script():
     else:
         raise AssertionError('placed')
     assert dict(host.counters) == {} and dict(host.timers) == {}
+
+
+def _host_with_state():
+    """An empty run of the map whose script has written a counter, a flag and an objective (to be kept or replaced)."""
+    host = simsmall.small_world(model=False, map=probe_range)
+    review = parts.Script('Review', [], [])
+    host.act('SET_COUNTER', ['Original', 9], review)
+    host.act('SET_FLAG', ['Up', 1], review)
+    host.act('SET_MISSION_OBJECTIVE_STATUS', ['Goal', 1], review)
+    return host
+
+
+def test_a_deadline_no_whole_number_of_host_frames_is_refused_before_anything_is_written():
+    """Review 1120bb P2: a finite deadline so far from the cut that x the host's frame rate it is infinite (1.3e308,
+    -1.3e308, or a cut that far from it) is named by preflight; placing it raises the refusal and the host's exact
+    snapshot is as it was (it raised OverflowError after the counters were already the file's)."""
+    import simsnap
+    for at, deadline in (('Huge', 1.3e308), ('Huge', -1.3e308), ('t', 1.3e308)):
+        doc = json.loads((DATA / 'levelvision_a.json').read_text(encoding='utf-8'))
+        if at == 't':
+            doc['t'] = deadline
+        else:
+            doc['script']['timers'][at] = deadline
+        doc['script']['counters']['FromFile'] = 7
+        assert simbattlefield.check(doc) == [], at
+        host = _host_with_state()
+        bad = simbattlefield.preflight(host, doc, things=False)
+        named = sorted(doc['script']['timers']) if at == 't' else [at]
+        assert [b.split(':')[0] for b in bad] == [f'script.timers.{k}' for k in named], bad
+        assert all("no whole number of the host's frames" in b for b in bad)
+        before = simsnap.snapshot(host)
+        for place in (simbattlefield.place_script, simbattlefield.place):
+            try:
+                place(host, doc)
+            except ValueError as e:
+                assert 'script.timers.' in str(e)
+            else:
+                raise AssertionError(f'{place.__name__} placed {at}={deadline!r}')
+            assert simsnap.snapshot(host) == before, place.__name__
+
+
+def test_the_tables_are_worked_out_before_any_is_written(monkeypatch):
+    """A table entry that cannot be worked out (here a timer's frames left raising) leaves all four tables as they
+    were: none is written before every one is worked out."""
+    doc = json.loads((DATA / 'levelvision_a.json').read_text(encoding='utf-8'))
+    doc['script']['counters']['FromFile'] = 7
+    assert doc['script']['timers']
+    host = _host_with_state()
+    tables = lambda: (dict(host.executor.counters), dict(host.flags), dict(host.objectives))  # noqa: E731
+    before = tables()
+
+    def broken(sim, doc, deadline):
+        raise OverflowError('cannot convert float infinity to integer')
+    monkeypatch.setattr(simbattlefield, '_frames_left', broken)
+    try:
+        simbattlefield._set_script(host, doc)
+    except OverflowError:
+        pass
+    else:
+        raise AssertionError('worked out')
+    assert tables() == before

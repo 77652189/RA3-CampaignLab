@@ -218,3 +218,29 @@ def test_an_id_a_living_thing_holds_is_refused_and_a_dead_ones_is_not():
     assert simbattlefield.preflight(host, doc) == ["things[1].id: 'Level base' a living thing of the host holds"]
     host.bodies['Level base'].alive = False
     assert simbattlefield.preflight(host, doc) == []
+
+
+HUGE = (1.3e308, -1.3e308, 10 ** 30)
+
+
+def test_a_huge_finite_value_anywhere_is_refused_or_placed():
+    """Every number of a file at a huge finite value (and a timer added at one): the preflight refuses it, or the
+    placing takes it without raising (review 1120bb P2: a deadline x the frame rate went infinite part way)."""
+    doc = _load('levelvision_a')
+    doc['script']['timers']['Added'] = 0.0
+    paths = [p for p in _paths(doc)
+             if p and isinstance(_at(doc, p), (int, float)) and not isinstance(_at(doc, p), bool)]
+    assert len(paths) > 50
+    for path in paths:
+        for value in HUGE:
+            broken = copy.deepcopy(doc)
+            _set(list(path), value)(broken)
+            host = simsmall.small_world(model=False, map=probe_range)
+            if not simbattlefield.preflight(host, broken):
+                simbattlefield.place(host, broken)
+
+
+def _at(doc, path):
+    for k in path:
+        doc = doc[k]
+    return doc
