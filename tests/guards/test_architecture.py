@@ -274,21 +274,29 @@ G3B_PROBE = '''
 import sys
 sys.path[:0] = [{cnv!r}, {root!r}]
 import build, contract, ctx, model, plan, sim, strip
+from dataclasses import replace
+from mapscript import catalog
 from model import Script
+cat = catalog()
+levels = {{}}
 bad = []
 for n in sorted(build.MISSIONS):
-    m, _, _ = build.resolve(n, '')
-    bad += [(n, p) for p in contract.contract(model.merged(m))
-            if 'dialogue outlet' in p or 'queued line' in p or 'not 闲话' in p or 'must wait for the floor' in p
-            or 'one channel' in p or 'is late' in p or 'voice pack gives' in p
-            or 'nobody joined' in p or 'counts every player' in p]
+    m, t, _ = build.resolve(n, '')
+    if n in build.LEVELS:
+        levels[n] = (m, t)
+    mm = model.merged(m)
+    # Keep all five rules whose diagnostics the full contract used to filter here.
+    problems = (contract.said_outside_the_outlet(mm, cat) + contract.said_lines_kept(mm)
+                + contract.said_once_and_on_time(mm) + contract.team_orders_land(mm)
+                + contract.kind_counts_in_area(mm))
+    bad += [(n, p) for p in problems]
 print('G3B builds', len(build.MISSIONS), 'outside', bad[:3])
-m, _, _ = build.resolve('a4', '')
-m.scripts.append(Script('CNV A4 - Own caption', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:X', 3.0)]))
-print('G3B mutation', len([p for p in contract.contract(model.merged(m)) if 'dialogue outlet' in p]))
+a4 = model.merged(levels['a4'][0])
+caption = Script('CNV A4 - Own caption', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:X', 3.0)])
+print('G3B mutation', len(contract.said_outside_the_outlet(replace(a4, scripts=a4.scripts + [caption]), cat)))
 close, deep = [], []
 for lv in build.LEVELS:
-    s = sim.simulate(lv, until={until})
+    s = sim.Sim(*levels[lv]).run({until})
     # E6: a 功能 caption is up within ctx.FUNC_LATE of its event (a scene's seconds do not count), in every level's run
     close += [(lv, f, round(a, 1)) for f, a, _ in s.late_captions()]
     deep += [(lv, d) for d in strip.too_deep(s)]
@@ -296,11 +304,18 @@ print('G3B close', close[:5])
 print('G3B strip', deep[:5])
 # I1 mutation: a queue that lets any number of lines into the strip (the product's state before 2026-11-05) is caught
 ctx.STRIP_MAX = plan.STRIP_MAX = 99
-print('G3B strip mutation', len(strip.too_deep(sim.simulate("a4", until=200.0))) > 0)
+m, t, _ = build.resolve('a4', '')  # recompile the queue under the raised limit
+# An overlap during the first scene is already a witness. Otherwise finish the original run.
+end = 200.0
+opening = min(end, next((secs for name, secs in m.facts.items() if name.startswith('过场 ')), end))
+s = sim.Sim(m, t).run(opening)
+overlaps = strip.too_deep(s)
+if not overlaps and opening < s.t <= end:
+    overlaps = strip.too_deep(s.run(end))
+print('G3B strip mutation', bool(overlaps))
 ctx.STRIP_MAX = plan.STRIP_MAX = 1
-print('G3B twice', len(contract.said_once_and_on_time(model.merged(build.resolve('a4', '')[0]))))
-m, _, _ = build.resolve('a4', '')
-mm = model.merged(m)
+print('G3B twice', len(contract.said_once_and_on_time(a4)))
+mm = replace(a4, scripts=a4.scripts.copy(), subtitles=a4.subtitles.copy(), strings=a4.strings.copy())
 ev = next(iter(mm.subtitles), None) or 'CNV_X'
 mm.subtitles[ev] = 'SCRIPT:Twice'
 mm.strings['SCRIPT:Twice'] = 'twice'
