@@ -34,9 +34,10 @@ from engine.kernel import snap
 from simsnap import ALIAS, CACHE, STATE, STATIC, WIRE
 
 HOST, BRAINS, MODEL = 'host', 'brains', 'model'
-SEMANTICS = 0           # raised by hand only when what is kept changes but no table below does (a mark, the
+SEMANTICS = 1           # raised by hand only when what is kept changes but no table below does (a mark, the
 #                         port's rows): the commit says why. VERSION is version(), the tables' digest and this
-#                         (before it, 1-10 were bumped by hand: git log)
+#                         (before it, 1-10 were bumped by hand: git log). 1: a brain's birth frames (made) keyed by
+#                         serial, not name (same-name sweep 11-19b O63)
 
 # The SimAI's settings restore asks the new SimAI to have been made with, taken with the snapshot; another one is
 # refused whole (review 1119s: one of record=True written onto a SimAI made with record=False, or the other way,

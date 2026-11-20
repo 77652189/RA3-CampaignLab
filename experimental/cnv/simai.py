@@ -288,7 +288,7 @@ class Brain:
         self.yard_q = {}                # yard serial, or (serial, 'defense') -> [job]
         self.yard_rest = {}             # the same key -> the last frame it starts nothing (the one after a put)
         self.unit_q = []                # [template] waiting for a free, unpacked factory that makes it
-        self.made = {}                  # body name -> frame it came (structures: unpack; units: the trace)
+        self.made = {}                  # body serial -> frame it came (same-name sweep 11-19b O63: not by name) (structures: unpack; units: the trace)
         self.wrappers = {}              # body serial -> Unit (by serial: review 11-19 q P2 #1)
         self.later = []                 # (frame, template, (x, y), team): a refinery's miner
         self.trace = []                 # (frame, 'own' | 'out', template): what came when
@@ -1272,7 +1272,7 @@ class Brain:
         (state 2, cannot build now)."""
         tm = self.host.mod['teams']
         systems, frame = self.systems, self.frame
-        ready = [f for f in self.factories() if frame >= self.made.get(f.name, -10 ** 9) + self.host.unpack(f.template)]
+        ready = [f for f in self.factories() if frame >= self.made.get(f.serial, -10 ** 9) + self.host.unpack(f.template)]
         out = []
         for t, _, _ in systems.offers(self.player):
             fs = [f for f in ready if t in self.host.menu(f.template)]
@@ -1296,7 +1296,7 @@ class Brain:
         relationship to the player: SAME_PLAYER, NEUTRAL (the civilian player or a Neutral relation), ENEMIES,
         else ALLIES. bench 2026-11-12 engine_aiskirm y aiskblkn / aiskblkf / aiskblkr."""
         world, systems = self.world, self.systems
-        ready = [f for f in self.factories() if self.frame >= self.made.get(f.name, -10 ** 9)
+        ready = [f for f in self.factories() if self.frame >= self.made.get(f.serial, -10 ** 9)
                  + self.host.unpack(f.template) and template in self.host.menu(f.template)
                  and not systems.queues.get(f.serial) and not any(q in self.host.menu(f.template) for q in self.unit_q)]
         if not ready:
@@ -1752,7 +1752,9 @@ class Brain:
         name = simworld.free_name(world, '#ai', template)
         self.commands.do(Command('place', f'ai:{self.player}', player=self.player, template=template,
                                        pos=(float(x), float(y)), args=(('name', name), ('team', yard.team))))
-        self.made[name] = frame
+        placed = world.bodies.get(name)         # set down whole by the command, now (CommandPort._place)
+        if placed is not None:
+            self.made[placed.serial] = frame
         self.trace.append((frame, 'own', template))
         world.note('AI', f'{world.who(self.player)} 放下 {template}')
         miner = self.host.free_unit(template)
@@ -1766,20 +1768,20 @@ class Brain:
             _, t, (x, y), team = job
             b = world.add(simworld.free_name(world, '#ai', t), t, self.player, x, y + 60.0, by='skirmish AI',
                           at=world.t, team=team)
-            self.made[b.name] = frame
+            self.made[b.serial] = frame
             self.trace.append((frame, 'out', t))
 
     # ---- units, one at a time a factory
     def unit_due(self, frame):
         world, systems = self.world, self.systems
         for b in world.living():                    # what came out of a factory since: the trace
-            if b.owner == self.player and b.name.startswith('#made') and b.name not in self.made:
-                self.made[b.name] = frame
+            if b.owner == self.player and b.name.startswith('#made') and b.serial not in self.made:
+                self.made[b.serial] = frame
                 self.trace.append((frame, 'out', b.template))
                 simbody.fill(world, b, self.host.lib)     # a body simunits does not know (HOOKS 6)
         for t in list(self.unit_q):
             free = [f for f in self.factories() if t in self.host.menu(f.template)
-                    and frame >= self.made.get(f.name, -10 ** 9) + self.host.unpack(f.template)
+                    and frame >= self.made.get(f.serial, -10 ** 9) + self.host.unpack(f.template)
                     and not systems.queues.get(f.serial)]
             if free and self.commands.do(Command('build', f'ai:{self.player}', player=self.player, template=t))[0]:
                 self.unit_q.remove(t)

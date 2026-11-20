@@ -342,3 +342,35 @@ def test_a_movement_power_running_on_a_dead_one_does_not_block_or_end_one_made_u
     assert old_due < due2
     s.advance(old_due - s.frame_now() + 1)                            # the old one's rush ends: only its own
     assert set(s.specials.movement_due) == {p2.serial} and p2.dest is not None
+
+
+def _bare_brain(s, unpack):
+    """A bare Brain of Player_1 on the small world (test_command_port._brain's way): no model, the host's unpack
+    frames `unpack` for every template."""
+    import simai
+    host = simai.SimAI(s, lib=object(), data=object())
+    host.unpack = lambda template: unpack
+    br = object.__new__(simai.Brain)
+    br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
+    br.settings, br.observe = host.settings, host.observe
+    br.commands, br.systems = host.commands, host.systems   # the command port, the players' systems (R3 13f-2c)
+    br.made, br.unit_q, br.trace, br.later = {}, [], [], []
+    return br
+
+
+def test_an_ai_factory_made_under_a_dead_unpacking_ones_name_builds_at_once():
+    """Same-name sweep 11-19b O63: the AI's ready gate (made + unpack) reads the factory's own birth frame -- a ready
+    barracks under the name of one the AI set down and that died unpacking is not held back to the old one's end."""
+    s = simsmall.small_world(model=False)
+    s.money['Player_1'] = 10000
+    br = _bare_brain(s, unpack=300)
+    br.later.append((0, 'AlliedBarracks', (300.0, 300.0), ''))
+    br.later_due(0)                                     # the AI's own: born now, unpacking 300 frames
+    (old,) = [b for b in s.living() if b.template == 'AlliedBarracks']
+    br.unit_q = [GI]
+    br.unit_due(30)
+    assert br.unit_q == [GI] and not s.queues           # the old one still unpacking: nothing yet
+    s.destroy(old, 'test')
+    new = s.add(old.name, 'AlliedBarracks', 'Player_1', 600.0, 300.0)   # not the AI's: ready
+    br.unit_due(31)
+    assert br.unit_q == [] and list(s.queues) == [new.serial]
