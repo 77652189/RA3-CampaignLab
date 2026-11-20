@@ -48,7 +48,7 @@ class Peers:
 
 
 class EffectHost:
-    """The host's calls an 'effect' phase handler (engine/combat: Lift, Attach) makes -- registry.Context.host. The
+    """The host's calls an 'effect' phase handler (engine/combat: Lift, Attach, SpecialPower) makes -- registry.Context.host. The
     game-data reads and their caches stay here (engine/ reads no game data); the peers are read when used."""
     __slots__ = ('damage', 'world', 'peers')
     # what a lift still lacks (a gap after each lift; the report is private, so its pointer stays out of engine/)
@@ -71,6 +71,35 @@ class EffectHost:
     def refresh_modifiers(self, body):
         """Re-read the body's modifiers (the host's modify)."""
         self.peers.modify(body)
+
+    def upgrade_gate(self, by, required, forbidden):
+        """(the gate's type -- simunits.upgrade_type of the upgrade named, None: no gate --, whether `by` passes it:
+        the required one held and the forbidden one not, by its owner for a PLAYER gate, else by itself)."""
+        if not (required or forbidden):
+            return None, True
+        gate = simunits.upgrade_type(required or forbidden, self.world.own)
+        held = {up.lower() for up in (self.peers.player_ups.get(by.owner, ()) if gate == 'PLAYER' else by.upgrades)}
+        return gate, not ((required and required.lower() not in held) or (forbidden and forbidden.lower() in held))
+
+    def self_power(self, template, power):
+        """The caster template's module of `power` (simunits.nugget_self_power, cached in Damage.nugget_powers)."""
+        cache, key = self.damage.nugget_powers, (template, power)
+        if key not in cache:
+            cache[key] = simunits.nugget_self_power(template, power, self.world.own)
+        return cache[key]
+
+    def disguise(self, body):
+        self.peers.set_model_condition(body, 'DISGUISED')
+
+    def modifier(self, template, mid):
+        """(the modifier `mid` as the template's XML reads it -- simunits.modifier, None: none --, that XML)."""
+        xml = self.world.xml_of(template)
+        return simunits.modifier(xml, mid), xml
+
+    def wear(self, body, mid, frames, xml):
+        """Put the modifier `mid` (of `xml`) on the body for `frames` from now and re-read its modifiers."""
+        body.auras_on[mid] = (self.world.frame_now() + frames, xml)
+        self.refresh_modifiers(body)
 
     @property
     def attachments(self):
@@ -461,51 +490,7 @@ class Damage:
                         ctx.victim = victim
                         registry.run('victim', ctx)       # its damage, the leech claims, the strip (registry.ORDER)
                         h[2] = by
-                    registry.run('effect', ctx)           # the lift, the attachment (registry.ORDER)
-                    for effect in w.get('special_powers', []):
-                        # engine_spng / engine_spngp: a single gate reads caster/object or owner.
-                        required = effect.get('required_upgrade', '')
-                        forbidden = effect.get('forbidden_upgrade', '')
-                        gate_type = simunits.upgrade_type(required or forbidden, world.own) if required or forbidden else 'OBJECT'
-                        if gate_type not in ('OBJECT', 'PLAYER'):
-                            world.gap(GAP_WEAPON, 'SpecialPowerNugget', '升级门槛未知类型待核')
-                            continue
-                        held = {up.lower() for up in (peers.player_ups.get(by.owner, ())
-                                                     if gate_type == 'PLAYER' else by.upgrades)}
-                        if (required and required.lower() not in held) or (forbidden and forbidden.lower() in held):
-                            continue
-                        if ((effect['include'] and not set(effect['include']) & t.kinds)
-                                or set(effect['exclude']) & t.kinds):
-                            continue
-                        cache = self.nugget_powers
-                        key = (by.template, effect['power'])
-                        if key not in cache:
-                            cache[key] = simunits.nugget_self_power(by.template, effect['power'], world.own)
-                        power = cache[key]
-                        if power is None:      # no matching module on caster: engine_spn order
-                            continue
-                        if not power or projectile or n != 1 or (power['reach'] and
-                                math.hypot(t.x - by.x, t.y - by.y) > power['reach']):
-                            world.gap(GAP_WEAPON, 'SpecialPowerNugget', '仅直接单发、零冷却自身修正已对拍；其他技能处理器/弹体/范围待核')
-                            continue
-                        if power.get('noop'):
-                            continue
-                        if power.get('disguise'):
-                            if (not set(power['include']) & t.kinds
-                                    or t.template.lower() in power['exclude_templates']):
-                                continue
-                            peers.set_model_condition(by, 'DISGUISED')
-                            world.gap(GAP_WEAPON, 'SpecialDisguiseUpdate',
-                                     '仅直接命中DISGUISED位已对拍；身份/外观/索敌/换目标/取消未测')
-                            continue
-                        xml = world.xml_of(by.template)
-                        modifier = simunits.modifier(xml, power['modifier'])
-                        if (modifier and modifier['frames'] is not None and not modifier['status']
-                                and set(modifier['types']) <= {'ARMOR'}):
-                            by.auras_on[power['modifier']] = (world.frame_now() + modifier['frames'], xml)
-                            peers.modify(by)
-                        else:
-                            world.gap(GAP_WEAPON, 'SpecialPowerNugget', '仅有Duration的自身ARMOR修正已对拍')
+                    registry.run('effect', ctx)           # the lift, the attachment, the power (registry.ORDER)
                     for hit_modifier in w.get('hit_modifiers', []):
                         mid = hit_modifier
                         if isinstance(hit_modifier, dict):

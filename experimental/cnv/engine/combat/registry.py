@@ -13,11 +13,11 @@ import types
 # (LineDamageNugget); a victim effect runs once for each victim: its damage, then the leech claims on it, then the
 # strip (step N2a: Leech*DamageNugget, StripMaxHealthPercentDamageNugget); an effect runs once a volley, after the
 # victims' damage is added and before the frame's damage is dealt, on the aimed target only (step N3a: the lift, the
-# attachment)
+# attachment; N3b: the caster's power on itself)
 ORDER = (('Projectile', 'launch'), ('DOT', 'hit'), ('DamageContained', 'hit'), ('SecondaryDamage', 'hit'),
          ('Suppression', 'hit'), ('Paralyze', 'hit'), ('LineDamage', 'aim'), ('Damage', 'victim'),
          ('LeechPercentMaxHealth', 'victim'), ('LeechHealth', 'victim'), ('StripMaxHealthPercent', 'victim'),
-         ('Lift', 'effect'), ('Attach', 'effect'))
+         ('Lift', 'effect'), ('Attach', 'effect'), ('SpecialPower', 'effect'))
 
 _HANDLERS = {}
 HANDLERS = types.MappingProxyType(_HANDLERS)

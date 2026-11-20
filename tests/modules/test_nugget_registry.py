@@ -5,6 +5,7 @@ import pytest
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import engine.combat  # noqa: E402,F401  (registers the handlers)
 from engine.combat import registry  # noqa: E402
+import simdamage  # noqa: E402
 
 
 def _weapon(**extra):
@@ -81,6 +82,43 @@ def test_the_effects_lift_then_attach_only_on_a_direct_single_shot():
     for target, chains in ((tank(status={'STEALTHED'}), ()), (tank(kinds={'INFANTRY'}), ()), (tank(), {2: None}),
                            (parent, {9: (None, parent, None)})):
         assert run(target, chains=chains) == ['lift']
+
+
+def test_the_power_comes_after_the_attachment_and_only_a_timed_self_armor_one():
+    """Step N3b: SpecialPower runs after Attach (the caster's new place counts for the reach); the cases the
+    characterization tests leave open (an excluded target, a shell or two shots, out of reach, a modifier with a
+    status or a type other than ARMOR); the host puts the modifier on and re-reads the caster's modifiers."""
+    sp = dict(power='P', required_upgrade='', forbidden_upgrade='', include=[], exclude=['AIRCRAFT'])
+    w = dict(reversed(list(dict(_weapon(), special_powers=[sp],
+                                attach=[dict(module='A', forbidden=[], include=[], exclude=[])]).items())))
+    assert [k for k, _ in registry.effects(w)] == ['Damage', 'Attach', 'SpecialPower']
+
+    def run(n=1, kinds=frozenset({'VEHICLE'}), x=10.0, modifier=None, **extra):
+        done = []
+        by = types.SimpleNamespace(serial=1, template='Drone', x=0.0, y=0.0,
+                                   attachment_rules={'A': dict(range=500.0, flags=[])})
+        t = types.SimpleNamespace(serial=2, kinds=set(kinds), status=set(), surface='ground', x=x, y=0.0)
+        host = types.SimpleNamespace(upgrade_gate=lambda *_: (None, True), attachments={},
+                                     attach=lambda child, parent, _: setattr(child, 'x', parent.x),
+                                     self_power=lambda *_: dict(reach=50.0, modifier='M'),
+                                     modifier=lambda *_: (modifier or dict(frames=30, status=[], types=['ARMOR']), ''),
+                                     wear=lambda body, mid, frames, _: done.append((body.serial, mid, frames)))
+        weapon = dict(w, **extra)
+        registry.run('effect', types.SimpleNamespace(effects=registry.effects(weapon), weapon=weapon, by=by,
+                                                     target=t, n=n, host=host, gap=lambda *_: None))
+        return done
+    assert run(x=100.0) == [(1, 'M', 30)]      # out of reach until the attachment put the caster on the target
+    assert run(x=100.0, attach=None) == []
+    assert run() == [(1, 'M', 30)]
+    assert run(n=2) == run(projectile='Shell') == run(kinds={'VEHICLE', 'AIRCRAFT'}) == []
+    assert run(modifier=dict(frames=30, status=['STEALTHED'], types=['ARMOR'])) == []
+    assert run(modifier=dict(frames=30, status=[], types=['ARMOR', 'DAMAGE_MULT'])) == []
+    seen = []
+    body = types.SimpleNamespace(auras_on={})
+    host = simdamage.EffectHost(None, types.SimpleNamespace(frame_now=lambda: 100), types.SimpleNamespace(
+        modify=seen.append))
+    host.wear(body, 'M', 30, 'xml')
+    assert body.auras_on == {'M': (130, 'xml')} and seen == [body]
 
 
 def test_registration_order_does_not_decide_the_run(monkeypatch):
