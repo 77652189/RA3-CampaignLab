@@ -79,7 +79,15 @@ frames after its filling as on the source (full in the host's frames = full - th
 the host's factory does not build (a construction yard's structures: the host has no such queue; a unit its menu
 lacks) is not placed and named by its field path, the jobs behind it placed; what was paid over the host's cost is
 named too. What the file does not carry: a build ban a script set (the export names each job the source held for one:
-placed, it goes on) and a player's hold on a job (the host models none)."""
+placed, it goes on) and a player's hold on a job (the host models none).
+
+Step 8 is the round trip: `round_trip(host, doc)` places an export onto an empty run of its map, exports the host and
+reads that on the file's clock (`rebase`: the cut, a running timer's deadline and a full job's frame moved by the
+clocks' difference), then compares field by field -- a thing by its id, named by its place in the file (one only on
+the host by "things: 'id'"), a player's field (power by part), a script table's entry, the things' order, the
+NOT_CARRIED gaps (a host holds no ban: its own gaps are its own) -- and gives each differing field path with the
+placing's gap that names it (the same field, one it is in, or a part of it), None where none does. It holds when no
+path has None."""
 import math
 import struct
 
@@ -839,3 +847,73 @@ def place(sim, doc):
     gaps += _read_players(sim, doc)
     _set_script(sim, doc)
     return gaps + _read_script(sim, doc)
+
+
+def rebase(doc, t, frame):
+    """An export `doc` moved onto another clock (a copy): its cut at (`t`, `frame`), a running timer's deadline and a
+    full job's frame as many seconds / frames after the new cut as after its own (the host's export read on the
+    file's clock)."""
+    dt, df = t - doc['t'], frame - doc['frame']
+    out = dict(doc, t=t, frame=frame)
+    out['script'] = dict(doc['script'], timers={k: d + dt for k, d in doc['script']['timers'].items()})
+    out['things'] = [dict(row, queue=[dict(j, full=None if j['full'] is None else j['full'] + df)
+                                      for j in row['queue']]) for row in doc['things']]
+    return out
+
+
+def _parts(a, b):
+    """The field paths where the export `b` differs from the file `a` (both on one clock): a thing paired by its id
+    and named by its place in `a` (one only in `b` as "things: 'id'"), a player's field (power by part), a script
+    table's entry, the order of the things in common; gaps by NOT_CARRIED only (the host holds no ban, its own
+    gaps are its own)."""
+    out = [k for k in ('format', 'map', 't', 'frame') if a[k] != b[k]]
+    n = len(NOT_CARRIED)
+    if a['gaps'][:n] != b['gaps'][:n]:
+        out.append('gaps')
+    for p in sorted(set(a['players']) | set(b['players'])):
+        pa, pb = a['players'].get(p), b['players'].get(p)
+        if pa is None or pb is None:
+            out.append(f'players.{p}')
+            continue
+        for k in PLAYER:
+            if k == 'power':
+                out += [f'players.{p}.power.{s}' for s in POWER if pa[k][s] != pb[k][s]]
+            elif pa[k] != pb[k]:
+                out.append(f'players.{p}.{k}')
+    for part in SCRIPT:
+        sa, sb = a['script'][part], b['script'][part]
+        out += [f'script.{part}.{k}' for k in sorted(set(sa) | set(sb), key=str) if sa.get(k) != sb.get(k)]
+    at = {row['id']: i for i, row in enumerate(a['things'])}
+    got = {row['id']: row for row in b['things']}
+    for i, row in enumerate(a['things']):
+        other = got.get(row['id'])
+        if other is None:
+            out.append(f'things[{i}]')
+            continue
+        out += [f'things[{i}].{k}' for k in THING if row[k] != other[k]]
+    out += [f'things: {row["id"]!r}' for row in b['things'] if row['id'] not in at]
+    common = [row['id'] for row in b['things'] if row['id'] in at]
+    if common != sorted(common, key=at.get):
+        out.append('things')
+    return out
+
+
+def _covers(gap, path):
+    """Whether a placing's gap ('field path: why') names `path`: the same field, one it is in, or a part of it (a
+    job of a thing's queue); a thing only on the host by its "things: 'id'" line."""
+    where = gap.split(': ', 1)[0]
+    if path.startswith('things: '):
+        return gap.startswith(path)
+    if where in ('', 'things') or path == 'things':
+        return False
+    return any(x == y or x.startswith(y) and x[len(y)] in '.[' for x, y in ((path, where), (where, path)))
+
+
+def round_trip(host, doc):
+    """Step 8, the round trip: `doc` (an export) placed onto `host` (an empty run of its map), the host exported and
+    read on the file's clock; [(field path, the placing's gap naming it or None), ...] for each field that differs
+    -- the round trip holds when every difference has its gap (none None)."""
+    gaps = place(host, doc)
+    back = export(Observe(host))
+    back = rebase(back, doc['t'], doc['frame'])
+    return [(path, next((g for g in gaps if _covers(g, path)), None)) for path in _parts(doc, back)]
