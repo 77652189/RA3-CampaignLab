@@ -647,11 +647,8 @@ KNOWN = {
     ('j7', '脚本动作', 'NAMED_USE_COMMANDBUTTON_ABILITY:Command_CNV_Jammer_jam'): J7,
     # ---- the first census (2026-11-08): everything else it found, not looked at yet, to be assigned
     ('武器', 'AlliedAntiStructureShip'): first('a5', 'AlliedAntiStructureShip', '读空 AlliedAntiStructureAttackDrones: 伤害读成 0（WeaponOCLNugget）'),
-    ('武器', 'AlliedAntiVehicleVehicleTech1'): first('a1', 'AlliedAntiVehicleVehicleTech1', '少读了 AlliedAntiVehicleVehicleTech1TargetPainter: 伤害读成 0（Activ'),
     ('武器', 'AlliedSupportAircraft'): first('a7', 'AlliedSupportAircraft', '读空 AlliedSupportAircraftCryobeam: 伤害读成 0（ActivateLaserNugget'),
-    ('武器', 'CNV_ChronoLag'): first('a3', 'CNV_ChronoLag', '读空 CNV_ChronoLag_Shell: 武器模板找不到; AlliedAntiVehicleVehicleTec'),
     ('武器', 'CNV_Liberty'): first('a7', 'CNV_Liberty', '读空 CNV_LibertyDrones: 武器模板找不到'),
-    ('武器', 'CNV_Pace63_AlliedAntiVehicleVehicleTech1'): first('s5', 'CNV_Pace63_AlliedAntiVehicleVehicleTech1', '少读了 AlliedAntiVehicleVehicleTech1TargetPainter: 伤害读成 0（Activ'),
     ('武器', 'JapanCommandoTech1'): first('j3', 'JapanCommandoTech1', '读空 JapanCommandoTech1PsyonicCrush: 伤害读成 0（ActivateLiftObject'),
     ('武器', 'JapanLightTransportVehicle'): first('a4', 'JapanLightTransportVehicle', '读空 JapanLightTransportVehicleDisguiser: 伤害读成 0（SpecialPowerN'),
     ('武器', 'SovietAntiVehicleVehicleTech3'): first('a3', 'SovietAntiVehicleVehicleTech3', '少读了 SovietAntiVehicleVehicleTech3Harpoon: 伤害读成 0（GrapplingHo'),
