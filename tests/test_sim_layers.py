@@ -30,6 +30,7 @@ LAYER_OF = {
     'engine.ports.templates': 0, 'engine.modules.weaponset': 0,     # W1: simunits' weapon readers read its data
     'simsnap': 9,                                                       # step S, the host's part (a whole run's)
     'simaisnap': 9,                                                     # step S 11b-4, the SimAI's around it
+    'simbattlefield': 9,                                                # step S 11d, the exchange file's
     'simunits': 1,
     'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2, 'simmine': 2, 'simstatus': 2, 'simpower': 2, 'simgarrison': 2,
     'simmodifier': 2, 'simlevel': 2, 'simlocomotion': 2, 'simpath': 2,
@@ -56,7 +57,7 @@ LAYER_OF = {
 AI_SIDE = {'simai', 'simmicro', 'simpullback'}
 # tools over a whole run (step S's snapshot): layered for the import rule (never import sim), not a part of the
 # simulator, so the inventory does not count their strings (tests/test_simcoverage_files.py)
-OVER_THE_RUN = {'simsnap', 'simaisnap'}
+OVER_THE_RUN = {'simsnap', 'simaisnap', 'simbattlefield'}
 
 
 def ai_import_breaks(mods=None, source=None):

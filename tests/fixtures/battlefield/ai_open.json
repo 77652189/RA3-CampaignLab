@@ -1,0 +1,20 @@
+{
+  "format": "battlefield/1",
+  "map": "niagara",
+  "t": 41.5,
+  "frame": 623,
+  "players": {
+    "Player_1": {"money": 0, "sciences": ["playertech_allied", "playertech_generic_rank_1"], "science_points": 1, "upgrades": [], "power": {"made": 50, "used": 0}, "relations": {}},
+    "Soviet_1": {"money": 46593, "sciences": ["playertech_generic_rank_1", "playertech_soviet", "playertech_soviet_magneticsatellite_rank_1"], "science_points": 0, "upgrades": [], "power": {"made": 150, "used": 25}, "relations": {}}
+  },
+  "things": [
+    {"id": "UNIT - CNV AI Yard", "template": "AlliedConstructionYard", "owner": "Soviet_1", "x": 3850, "y": 3400, "z": null, "angle": -1.5708, "hp": 4000, "max_hp": 4000, "status": [], "upgrades": [], "level": 1, "contains": [], "queue": [], "team": ""},
+    {"id": "UNIT - CNV AI Player Yard", "template": "AlliedConstructionYard", "owner": "Player_1", "x": 1250, "y": 2500, "z": null, "angle": 1.5708, "hp": 4000, "max_hp": 4000, "status": [], "upgrades": [], "level": 1, "contains": [], "queue": [], "team": "Player_1/teamPlayer_1"},
+    {"id": "#ai 285 AlliedBarracks", "template": "AlliedBarracks", "owner": "Soviet_1", "x": 3614.0285799072153, "y": 3242.6857199381434, "z": null, "angle": 0.0, "hp": 1000, "max_hp": 1000, "status": [], "upgrades": [], "level": 1, "contains": [], "queue": [
+      {"template": "AlliedScoutInfantry", "progress": 0.49999996185302736}
+    ], "team": ""},
+    {"id": "#ai 288 AlliedPowerPlant", "template": "AlliedPowerPlant", "owner": "Soviet_1", "x": 4100.05501029209, "y": 3202.4480205904106, "z": null, "angle": 0.0, "hp": 1000, "max_hp": 1000, "status": [], "upgrades": [], "level": 1, "contains": [], "queue": [], "team": ""}
+  ],
+  "script": {"flags": {}, "counters": {}, "timers": {"CNV AI Wake": 41.43333333333333}, "objectives": {}},
+  "gaps": ["只列双方四座建筑，省略 283 个背景对象、Soviet_1 的四个已出厂步兵和其他槽位", "队列只列工厂订单，未带已付款、完成帧、AI 建造队列或预排队", "未带 AI 和脚本执行历史"]
+}

@@ -1,0 +1,29 @@
+{
+  "format": "battlefield/1",
+  "map": "probe_range",
+  "t": 13.0,
+  "frame": 195,
+  "players": {
+    "Player_1": {"money": 0, "sciences": ["playertech_allied", "playertech_generic_rank_1"], "science_points": 1, "upgrades": [], "power": {"made": 0, "used": 0}, "relations": {}},
+    "Soviet_1": {"money": 0, "sciences": ["playertech_generic_rank_1", "playertech_soviet", "playertech_soviet_magneticsatellite_rank_1"], "science_points": 0, "upgrades": [], "power": {"made": 0, "used": 0}, "relations": {}}
+  },
+  "things": [
+    {"id": "#0", "template": "OreNode", "owner": "PlyrCivilian", "x": 3127.3, "y": 4327.3, "z": null, "angle": 0.0, "hp": 10000, "max_hp": 10000, "status": [], "upgrades": [], "level": 1, "contains": [], "queue": [], "team": ""},
+    {"id": "Level base", "template": "AlliedAntiVehicleVehicleTech3", "owner": "Player_1", "x": 800, "y": 400, "z": null, "angle": 1.5708, "hp": 500, "max_hp": 500, "status": ["IMMOBILE", "NO_ATTACK"], "upgrades": [], "level": 1, "contains": [], "queue": [], "team": "Player_1/teamPlayer_1"},
+    {"id": "Level high", "template": "AlliedAntiVehicleVehicleTech3", "owner": "Player_1", "x": 2300, "y": 400, "z": null, "angle": 1.5708, "hp": 625, "max_hp": 625, "status": ["IMMOBILE", "NO_ATTACK", "WEAPON_UPGRADED_01"], "upgrades": [
+      "Upgrade_CreationVeterancy_ELITE", "Upgrade_CreationVeterancy_HEROIC", "Upgrade_CreationVeterancy_VETERAN",
+      "Upgrade_Veterancy_ELITE", "Upgrade_Veterancy_HEROIC", "Upgrade_Veterancy_VETERAN"
+    ], "level": 4, "contains": [], "queue": [], "team": "Player_1/teamPlayer_1"},
+    {"id": "Level order", "template": "AlliedAntiVehicleVehicleTech3", "owner": "Player_1", "x": 3800, "y": 400, "z": null, "angle": 1.5708, "hp": 500, "max_hp": 500, "status": ["IMMOBILE", "NO_ATTACK"], "upgrades": [], "level": 1, "contains": [], "queue": [], "team": "Player_1/teamPlayer_1"},
+    {"id": "Level removed", "template": "AlliedAntiVehicleVehicleTech3", "owner": "Player_1", "x": 800, "y": 3300, "z": null, "angle": 1.5708, "hp": 625, "max_hp": 625, "status": ["IMMOBILE", "NO_ATTACK", "WEAPON_UPGRADED_01"], "upgrades": [
+      "Upgrade_CreationVeterancy_ELITE", "Upgrade_CreationVeterancy_HEROIC", "Upgrade_CreationVeterancy_VETERAN",
+      "Upgrade_Veterancy_ELITE", "Upgrade_Veterancy_HEROIC", "Upgrade_Veterancy_VETERAN"
+    ], "level": 4, "contains": [], "queue": [], "team": "Player_1/teamPlayer_1"},
+    {"id": "Level eye base target", "template": "SovietEngineer", "owner": "Soviet_1", "x": 800, "y": 640, "z": null, "angle": -1.5708, "hp": 50, "max_hp": 50, "status": ["IMMOBILE", "NO_ATTACK"], "upgrades": [], "level": 1, "contains": [], "queue": [], "team": ""},
+    {"id": "Level eye high target", "template": "SovietEngineer", "owner": "Soviet_1", "x": 2300, "y": 640, "z": null, "angle": -1.5708, "hp": 50, "max_hp": 50, "status": ["IMMOBILE", "NO_ATTACK"], "upgrades": [], "level": 1, "contains": [], "queue": [], "team": ""},
+    {"id": "Level eye order target", "template": "SovietEngineer", "owner": "Soviet_1", "x": 3800, "y": 710, "z": null, "angle": -1.5708, "hp": 50, "max_hp": 50, "status": ["IMMOBILE", "NO_ATTACK"], "upgrades": [], "level": 1, "contains": [], "queue": [], "team": ""},
+    {"id": "Level eye removed target", "template": "SovietEngineer", "owner": "Soviet_1", "x": 800, "y": 3610, "z": null, "angle": -1.5708, "hp": 50, "max_hp": 50, "status": ["IMMOBILE", "NO_ATTACK"], "upgrades": [], "level": 1, "contains": [], "queue": [], "team": ""}
+  ],
+  "script": {"flags": {}, "counters": {"Level eye base": 0, "Level eye high": 101, "Level eye order": 0, "Level eye removed": 100}, "timers": {"Level eye promote": 12.933333333333334, "Level eye remove": 12.933333333333334}, "objectives": {}},
+  "gaps": ["玩家只列参与方，地图的 Soviet_2 至 Soviet_6 槽位沿用宿主", "只给可见等级和升级，未给升级年龄或各 LevelUpUpgrade 的已触发状态", "未带脚本执行历史"]
+}

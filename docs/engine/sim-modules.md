@@ -141,7 +141,7 @@
 - `engine/kernel/snap.py` 负责 JSON 值和引用的编解码，物体引用按本局 serial 恢复，模块引用按物体 serial 和模块在该物体上的位置恢复，宿主专用值经 `extra` 扩展，无法编码的值会点名报错。模块按 `STATE` 序列化，宿主检查新增字段时同时查实例字典和 slots。
 - 精确快照依赖 §5 的实例状态归属。守卫检查状态声明及多世界隔离，模块和工具测试覆盖快照往返，`simrecord snap` 的验收见 [testing.md 的耗时一节](testing.md#耗时)。
 - 带遭遇战 AI 的局用 `simaisnap.snapshot(w)` / `restore(w, data)`，宿主用 `Sim(model=False)`，AI 仍经插件运行。字段按 `SIMAI`、`BRAIN`、`UNIT` 分类，漏项报错。每个大脑单独通过插件 `snapshot` 端口拍一份：`Taker(roots, key)` 以大脑的 MODEL 字段为根，`ref(x)` 为宿主保留的插件值生成记号，`taken()` 输出 JSON 数据。恢复先按阵营和人格创建大脑，再写回宿主，随后用 `Putter(roots, data, obj, wire)` 写回插件状态并用 `get(记号)` 取回引用。同一会话内共享的对象还原后仍共享。`key` / `obj` 按序号对应旧局与新局的物体或 Unit，也可对应大脑或 SimAI。原型和插件引用的物体交给 `simsnap` 当额外的根。随机数生成器保留状态，撤回单位当前路径以引用关系恢复，后来下令取消的撤回保持取消。XML 对象从根路径找回，已知的宿主战斗闭包由 `wire` 重建，缺端口和不能还原的闭包会被点名。启用 `record=True` 时，快照还保留 HOOKS 9 轨迹。Run 按首次出现排序，轨迹据 Run 的身份取序号，`_rec_mem` 保留最近一次见到的内存是否仍是当前那份。逐帧续跑、轨迹和拒绝条件见 `tests/tools/test_aisnapshot.py`。
-- 局面交换目标：游戏适配器经观测端口生成 `Battlefield`，经命令端口摆入，缺失项记缺口。
+- 局面交换目标：游戏适配器经观测端口生成 `Battlefield`，经命令端口摆入，缺失项记缺口。格式 `battlefield/1` 的字段和契约写在 `simbattlefield.py` 文件头：摆入前 `refuse(sim, doc)` 先查文件形状和宿主（同图的空局），所有问题按"字段路径: 原因"一次列全，一个物体都不摆。
 
 ### 9.3 性能：一个世界一个进程，高峰负载要快过实时
 
