@@ -140,3 +140,57 @@ def test_complete_counts_a_failed_task_as_done(tmp_path):
     assert not golden.complete(str(tmp_path), ['heal_a', 'ai_open'])
     (tmp_path / 'ai_open.failed').write_text('')
     assert golden.complete(str(tmp_path), ['heal_a', 'ai_open'])
+
+
+def test_a_recorder_helper_the_base_lacks_is_copied_over_with_the_recorder(repo, tmp_path):
+    """Review 1120bb P2 #3: the base tree got this checkout's simrecord and observe.py but not engine/ports/readonly.py,
+    which observe.py had come to import -- a base before it could not be recorded (ModuleNotFoundError). A helper
+    (RECORDER_HELPERS) goes over with the recorder whether the base has it or not."""
+    r, first, _ = repo
+    later = _commit(r, 'three', {rel.replace(os.sep, '/'): 'x = 1\n' for rel in golden.RECORDER_RELS})
+    for rel in golden.RECORDER_HELPERS:
+        p = r / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text('helper = 1\n', encoding='utf-8')
+    assert golden.missing_recorder(str(r), later) == []          # a helper the base lacks is no reason to refuse
+    tree = tmp_path / 'golden-tree'
+    try:
+        golden.prepare_tree(later, str(r), str(tree))
+        for rel in golden.RECORDER_RELS + golden.RECORDER_HELPERS:
+            assert (tree / rel).read_text(encoding='utf-8') == (r / rel).read_text(encoding='utf-8')
+    finally:
+        _git(r, 'worktree', 'remove', '--force', str(tree))
+
+
+def _imports(path):
+    """The modules a file imports, anywhere in it (simrecord imports where it uses), as dotted names."""
+    import ast
+    out = set()
+    for node in ast.walk(ast.parse(path.read_text(encoding='utf-8'))):
+        if isinstance(node, ast.Import):
+            out |= {a.name for a in node.names}
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            out.add(node.module)
+            out |= {f'{node.module}.{a.name}' for a in node.names}
+    return out
+
+
+def test_every_lab_module_the_recorder_imports_goes_over_with_it_or_is_the_bases():
+    """The class of 1120bb P2 #3: a recorder file that comes to import a module of experimental/cnv must say whether
+    the module goes over with it (RECORDER_RELS / RECORDER_HELPERS) or is the base's own simulator (RECORDER_READS);
+    unsaid, a base without it cannot be recorded."""
+    cnv = ROOT / 'experimental' / 'cnv'
+
+    def in_lab(name):
+        p = cnv.joinpath(*name.split('.'))
+        return p.with_suffix('.py').exists() or (p / '__init__.py').exists()
+
+    def module(rel):
+        return Path(rel).with_suffix('').relative_to(Path('experimental', 'cnv')).as_posix().replace('/', '.')
+    files = golden.RECORDER_RELS + golden.RECORDER_HELPERS
+    seen = set()
+    for rel in files:
+        seen |= {m for m in _imports(ROOT / rel) if in_lab(m)}
+    seen = {m for m in seen if not any(o.startswith(m + '.') for o in seen)}   # a package stands for its module
+    assert sorted(seen - {module(rel) for rel in files} - set(golden.RECORDER_READS)) == []
+    assert sorted(set(golden.RECORDER_READS) - seen) == []      # none listed that it no longer imports

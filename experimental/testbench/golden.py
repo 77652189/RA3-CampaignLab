@@ -43,8 +43,15 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 LAB = os.path.dirname(ROOT)
 TREE = os.path.join(LAB, 'RA3-CampaignLab-golden')
 SIMRECORD_REL = os.path.join('experimental', 'cnv', 'simrecord.py')
-# the recorder: simrecord and the observation port it reads the world through (R3 12b), copied over the base together
+# the recorder: simrecord and the observation port it reads the world through (R3 12b), copied over the base together;
+# a base without them cannot be recorded (missing_recorder)
 RECORDER_RELS = (SIMRECORD_REL, os.path.join('experimental', 'cnv', 'engine', 'ports', 'observe.py'))
+# what the recorder needs beside them and no world logic lives in: copied over too, whether the base has it or not
+# (review 1120bb P2 #3: observe.py came to import readonly.py, and a base before it could not be recorded)
+RECORDER_HELPERS = (os.path.join('experimental', 'cnv', 'engine', 'ports', 'readonly.py'),)
+# the modules of experimental/cnv the recorder imports and reads off the base as it is: the base's own simulator
+# (tests/tools/test_golden.py: each one the recorder files import is here or goes over with them)
+RECORDER_READS = ('build', 'engine.kernel.module', 'retail', 'sim', 'simai', 'simaisnap', 'simsnap', 'snapfile')
 PIN_REL = 'experimental/cnv/inventory_model.rev'
 TRAILER = 'golden-changed:'
 KEEP = 4                       # cached record sets kept under work\logs\golden (about 130 MB each)
@@ -321,7 +328,8 @@ def prepare_tree(rev, root=ROOT, tree=TREE):
         git(root, 'worktree', 'add', '--detach', tree, rev)
     else:
         git(tree, 'checkout', '--force', '--detach', rev)
-    for rel in RECORDER_RELS:
+    for rel in RECORDER_RELS + RECORDER_HELPERS:
+        os.makedirs(os.path.dirname(os.path.join(tree, rel)), exist_ok=True)
         shutil.copyfile(os.path.join(root, rel), os.path.join(tree, rel))
 
 
