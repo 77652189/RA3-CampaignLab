@@ -47,6 +47,42 @@ class Peers:
         return getattr(self.host, name)
 
 
+class EffectHost:
+    """The host's calls an 'effect' phase handler (engine/combat: Lift, Attach) makes -- registry.Context.host. The
+    game-data reads and their caches stay here (engine/ reads no game data); the peers are read when used."""
+    __slots__ = ('damage', 'world', 'peers')
+    # what a lift still lacks (a gap after each lift; the report is private, so its pointer stays out of engine/)
+    LIFT_LANDING = ('计时释放不清状态；SoftLanding自击及修正器到期清位缺Lift接地事件，垂直运动/落地武器未接通；'
+                    '见work/re/c_lift_landing_gate_report.md')
+
+    def __init__(self, damage, world, peers):
+        self.damage, self.world, self.peers = damage, world, peers
+
+    def lift_rule(self, template):
+        """The caster template's LiftObjectUpdate rule (simunits.lift_module, cached in Damage.lift_modules)."""
+        cache = self.damage.lift_modules
+        if template not in cache:
+            cache[template] = simunits.lift_module(template, self.world.own)
+        return cache[template]
+
+    def lift_hit(self, caster, target, increment, maximum):
+        self.peers.lift_timers.hit(caster, target, increment, maximum)
+
+    def refresh_modifiers(self, body):
+        """Re-read the body's modifiers (the host's modify)."""
+        self.peers.modify(body)
+
+    @property
+    def attachments(self):
+        """The attachment chains (child serial -> (child, parent, rule)), read only."""
+        return self.peers.attachments
+
+    def attach(self, child, parent, rule):
+        """Chain `child` to `parent` and place it at once (Sim.attachment_tick)."""
+        self.peers.attachments[child.serial] = (child, parent, rule)
+        self.peers.attachment_tick()
+
+
 def flank_of(victim, attacker):
     """The side / rear scalar of a direct hit (simunits.flank) by where the attacker stands as it fires
     (docs/engine/weapons.md 4, bench engine_shot flank 40 / 40 / 42 / 44 %), UNRESISTABLE too (bench
@@ -377,6 +413,7 @@ class Damage:
         peers.lift_timers.tick()
         hurt = {}
         leech_events = {}       # the frame's leech claims (engine/combat/leech), paid after the damage
+        host = EffectHost(self, world, peers)       # the 'effect' phase's calls (engine/combat: lift, attach)
 
         def gap(tag, why):
             world.gap(GAP_WEAPON, tag, why)
@@ -409,7 +446,7 @@ class Damage:
                                            can_hit=peers.can_hit, held=peers.garrison.held, cold_of=peers.cold_of,
                                            dots=self.dots, mark_cold=self.mark_cold,
                                            suppression_fields=peers.suppression_fields,
-                                           emp_until=lambda: peers.emp_until, claims=leech_events)
+                                           emp_until=lambda: peers.emp_until, claims=leech_events, host=host)
                     if registry.run('launch', ctx):
                         continue
                     projectile = w.get('projectile')
@@ -424,45 +461,7 @@ class Damage:
                         ctx.victim = victim
                         registry.run('victim', ctx)       # its damage, the leech claims, the strip (registry.ORDER)
                         h[2] = by
-                    for effect in w.get('lift', []):
-                        if ((effect['include'] and not set(effect['include']) & t.kinds)
-                                or set(effect['exclude']) & t.kinds):
-                            continue
-                        cache = self.lift_modules
-                        if by.template not in cache:
-                            cache[by.template] = simunits.lift_module(by.template, world.own)
-                        rule = cache[by.template]
-                        if rule is None:  # missing caster module: native no-op
-                            continue
-                        if rule is False or projectile or n != 1 or t.surface != 'ground':
-                            world.gap(GAP_WEAPON, 'ActivateLiftObjectNugget', '仅直接单发、显式计时字段和地面目标已接通')
-                            continue
-                        peers.lift_timers.hit(by.name, t.name, rule['increment'], rule['maximum'])
-                        t.lift_status.add('LIFTED_INTO_AIR')
-                        peers.modify(t)
-                        world.gap(GAP_WEAPON, 'ActivateLiftObjectNugget', '计时释放不清状态；SoftLanding自击及修正器到期清位缺Lift接地事件，垂直运动/落地武器未接通；见work/re/c_lift_landing_gate_report.md')
-                    for effect in w.get('attach', []):
-                        if (set(effect['forbidden']) & t.status
-                                or (effect['include'] and not set(effect['include']) & t.kinds)
-                                or set(effect['exclude']) & t.kinds):
-                            continue
-                        rule = by.attachment_rules.get(effect['module'])
-                        if not rule or projectile or n != 1:
-                            world.gap(GAP_WEAPON, 'AttachNugget', '仅匹配已发布模块的直接单发附着已对拍；复杂模块/弹体未建模')
-                            continue
-                        if 'VEHICLE' not in t.kinds or t.surface != 'ground':
-                            world.gap(GAP_WEAPON, 'AttachNugget', '目前仅地面车辆父对象已对拍')
-                            continue
-                        if by is t or t.serial in peers.attachments or by.serial in peers.attachments:
-                            world.gap(GAP_WEAPON, 'AttachNugget', '重复、换父与嵌套附着未对拍')
-                            continue
-                        if math.hypot(t.x - by.x, t.y - by.y) > rule['range']:
-                            world.gap(GAP_WEAPON, 'AttachNugget', 'AttachUpdate距离边界未对拍')
-                            continue
-                        if 'ONE_ATTACH_PER_PARENT' in rule['flags'] and any(p is t for _, p, _ in peers.attachments.values()):
-                            continue
-                        peers.attachments[by.serial] = (by, t, rule)
-                        peers.attachment_tick()
+                    registry.run('effect', ctx)           # the lift, the attachment (registry.ORDER)
                     for effect in w.get('special_powers', []):
                         # engine_spng / engine_spngp: a single gate reads caster/object or owner.
                         required = effect.get('required_upgrade', '')

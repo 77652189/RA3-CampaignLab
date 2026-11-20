@@ -4,5 +4,5 @@ its phases in turn; what runs, and in which order, is registry.ORDER -- never th
 nor the order of a weapon's fields.
 
 Importing this package registers every handler (named here, so the simulator's file tools see them)."""
-from engine.combat import (contained, damage, dot, leech, line_damage, paralyze, projectile,  # noqa: F401
-                           registry, secondary, strip, suppression)  # (registers them)
+from engine.combat import (attach, contained, damage, dot, leech, lift, line_damage, paralyze,  # noqa: F401
+                           projectile, registry, secondary, strip, suppression)  # (registers them)

@@ -11,10 +11,13 @@ import types
 # effects on the aimed target, once a volley: the DOT booked, the passengers hit, the cold, the suppression fields,
 # the EMP (step N2b: DOT / DamageContained / SecondaryDamage / Suppression / ParalyzeNugget); an aim picks the victims
 # (LineDamageNugget); a victim effect runs once for each victim: its damage, then the leech claims on it, then the
-# strip (step N2a: Leech*DamageNugget, StripMaxHealthPercentDamageNugget)
+# strip (step N2a: Leech*DamageNugget, StripMaxHealthPercentDamageNugget); an effect runs once a volley, after the
+# victims' damage is added and before the frame's damage is dealt, on the aimed target only (step N3a: the lift, the
+# attachment)
 ORDER = (('Projectile', 'launch'), ('DOT', 'hit'), ('DamageContained', 'hit'), ('SecondaryDamage', 'hit'),
          ('Suppression', 'hit'), ('Paralyze', 'hit'), ('LineDamage', 'aim'), ('Damage', 'victim'),
-         ('LeechPercentMaxHealth', 'victim'), ('LeechHealth', 'victim'), ('StripMaxHealthPercent', 'victim'))
+         ('LeechPercentMaxHealth', 'victim'), ('LeechHealth', 'victim'), ('StripMaxHealthPercent', 'victim'),
+         ('Lift', 'effect'), ('Attach', 'effect'))
 
 _HANDLERS = {}
 HANDLERS = types.MappingProxyType(_HANDLERS)
@@ -72,16 +75,18 @@ class Context:
     entries), `mark_cold(body, shooter)` (whose cold it is, for the frame's chill), `suppression_fields` and
     `emp_until()` (serial -> frame, the host makes it on first use). `victims` starts as [target] (an aim may change it); `victim` is the
     one a victim effect runs for. `claims`: the frame's leech claims (victim serial -> list; engine/combat/leech),
-    the host's ledger, paid once the frame's damage is dealt."""
+    the host's ledger, paid once the frame's damage is dealt. `host`: the host's narrow calls for the 'effect' phase
+    (simdamage.EffectHost: lift_rule / lift_hit / LIFT_LANDING, attachments / attach, refresh_modifiers)."""
     __slots__ = ('world', 'by', 'target', 'weapon', 'n', 'hurt', 'scalar', 'armor', 'speed', 'frames', 'gap',
                  'queue_hit', 'detonate', 'clear_notice', 'can_hit', 'held', 'cold_of', 'dots', 'mark_cold',
-                 'suppression_fields', 'emp_until', 'effects', 'victims', 'victim', 'claims')
+                 'suppression_fields', 'emp_until', 'effects', 'victims', 'victim', 'claims', 'host')
 
     def __init__(self, world, by, target, weapon, n, hurt, *, scalar, armor, speed, frames, gap, queue_hit,
                  detonate, clear_notice, can_hit, held, cold_of, dots, mark_cold, suppression_fields, emp_until,
-                 claims=None):
+                 claims=None, host=None):
         self.world, self.by, self.target, self.weapon, self.n, self.hurt = world, by, target, weapon, n, hurt
         self.claims = {} if claims is None else claims
+        self.host = host
         self.scalar, self.armor, self.speed, self.frames, self.gap = scalar, armor, speed, frames, gap
         self.queue_hit, self.detonate, self.clear_notice, self.can_hit = queue_hit, detonate, clear_notice, can_hit
         self.held, self.cold_of = held, cold_of

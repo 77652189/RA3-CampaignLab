@@ -53,6 +53,36 @@ def test_a_victim_takes_its_damage_then_the_leech_claims_then_the_strip():
     assert dict(registry.effects(w))['LeechHealth'] == (0.5, 10.0, 'CANNON')
 
 
+def test_the_effects_lift_then_attach_only_on_a_direct_single_shot():
+    """Step N3a: 'effect' runs Lift -> Attach (ORDER); the cases the characterization tests leave open (a shell or
+    two shots, a forbidden status, a chained target, a parent already holding one, a non-vehicle)."""
+    w = dict(reversed(list(dict(_weapon(), lift=[dict(include=[], exclude=[])],
+                                attach=[dict(module='A', forbidden=['STEALTHED'], include=[], exclude=[])]).items())))
+    assert [k for k, _ in registry.effects(w)] == ['Damage', 'Lift', 'Attach']
+
+    def run(target, n=1, chains=(), **extra):
+        done = []
+        by = types.SimpleNamespace(name='drone', serial=1, template='Drone', x=0.0, y=0.0,
+                                   attachment_rules={'A': dict(range=50.0, flags=['ONE_ATTACH_PER_PARENT'])})
+        host = types.SimpleNamespace(lift_rule=lambda _: dict(increment=3, maximum=15), LIFT_LANDING='',
+                                     lift_hit=lambda *_: done.append('lift'), refresh_modifiers=lambda _: None,
+                                     attachments=dict(chains), attach=lambda *_: done.append('attach'))
+        weapon = dict(w, **extra)
+        registry.run('effect', types.SimpleNamespace(effects=registry.effects(weapon), weapon=weapon, by=by,
+                                                     target=target, n=n, host=host, gap=lambda *_: None))
+        return done
+
+    def tank(**kw):
+        return types.SimpleNamespace(**{'name': 'tank', 'serial': 2, 'kinds': {'VEHICLE'}, 'status': set(),
+                                        'surface': 'ground', 'x': 10.0, 'y': 0.0, 'lift_status': set(), **kw})
+    assert run(tank()) == ['lift', 'attach']
+    assert run(tank(), n=2) == run(tank(), projectile='Shell') == []
+    parent = tank()
+    for target, chains in ((tank(status={'STEALTHED'}), ()), (tank(kinds={'INFANTRY'}), ()), (tank(), {2: None}),
+                           (parent, {9: (None, parent, None)})):
+        assert run(target, chains=chains) == ['lift']
+
+
 def test_registration_order_does_not_decide_the_run(monkeypatch):
     """Registered the other way round, the same effects run in the same order."""
     handlers = dict(registry.HANDLERS)
