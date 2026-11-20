@@ -283,7 +283,7 @@ class GameAdapter:
 
     def step(self):
         """The next sample (None: the transport has no more). SampleError for a reading that cannot be one."""
-        answer = self.transport.call(dict(tool=SAMPLE, lines=len(self.contract.lines)))
+        answer = self.transport.call(sample_ask(self.contract))
         if answer is None:
             self.commands.close()
             return None
@@ -595,7 +595,7 @@ def transcript_with_inputs(run_dir, contract, steps, read=None):
     if index['mod'] != contract.mod:
         raise ValueError(f'{run_dir}: a run of {index["mod"]}, the contract is {contract.mod}')
     n, frames, calls = len(contract.lines), list(index['frames']), []
-    sample = dict(tool=SAMPLE, lines=n)
+    sample = sample_ask(contract)
 
     def answer(fr):
         return dict(id=fr['id'], second=fr.get('second'), frame=fr.get('frame'), note=fr.get('note', ''), menu=False,
@@ -630,7 +630,7 @@ def transcript_from_archive(run_dir, contract, read=None):
     if index['mod'] != contract.mod:
         raise ValueError(f'{run_dir}: a run of {index["mod"]}, the contract is {contract.mod}')
     n = len(contract.lines)
-    ask = dict(tool=SAMPLE, lines=n)
+    ask = sample_ask(contract)
     calls = []
     for fr in index['frames']:
         menu = fr.get('second') is None or str(fr.get('note', '')).startswith('menu:')
@@ -655,8 +655,17 @@ def _read_png(path, n):
     return _COUNTERS[0].read(Image.open(path).convert('RGB'), n)
 
 
+def sample_ask(contract):
+    """The `sample` ask: the contract's counter lines by name, in the HUD's order -- a reading is the values of these
+    lines, so a transcript answers only the contract it was read with (review 1120aa P2: an ask of the line count let
+    another contract with as many lines replay the run, its readings filed under the wrong counters)."""
+    return dict(tool=SAMPLE, lines=[ln.counter for ln in contract.lines])
+
+
 def replay(contract, transcript):
-    """A GameAdapter on a recorded transcript."""
+    """A GameAdapter on a recorded transcript of a run of the contract's map (its sample asks name the lines)."""
+    if transcript.get('mod') != contract.mod:
+        raise TranscriptError(f'a transcript of {transcript.get("mod")!r}, the contract is {contract.mod!r}')
     return GameAdapter(contract, Replay(transcript), transcript['run'], transcript.get('source', 'archive'))
 
 

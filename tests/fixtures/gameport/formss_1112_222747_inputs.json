@@ -72,7 +72,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 1,
@@ -91,7 +96,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 2,
@@ -110,7 +120,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 3,
@@ -240,7 +255,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 9,
@@ -259,7 +279,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 10,
@@ -278,7 +303,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 11,
@@ -297,7 +327,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 12,
@@ -316,7 +351,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 13,
@@ -335,7 +375,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 14,
@@ -354,7 +399,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 15,
@@ -373,7 +423,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 16,
@@ -392,7 +447,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 17,
@@ -411,7 +471,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 18,
@@ -430,7 +495,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 19,
@@ -449,7 +519,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 20,
@@ -468,7 +543,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 21,
@@ -487,7 +567,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 22,
@@ -506,7 +591,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 23,
@@ -525,7 +615,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 24,
@@ -544,7 +639,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 25,
@@ -563,7 +663,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 26,
@@ -582,7 +687,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 27,
@@ -601,7 +711,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 28,
@@ -620,7 +735,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": {
     "id": 29,
@@ -639,7 +759,12 @@
   {
    "ask": {
     "tool": "sample",
-    "lines": 4
+    "lines": [
+     "CNV_Form_Plain",
+     "CNV_Form_Formation",
+     "CNV_Form_Plain_Ahead",
+     "CNV_Form_Formation_Ahead"
+    ]
    },
    "answer": null
   }

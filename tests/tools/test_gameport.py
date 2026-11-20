@@ -96,6 +96,22 @@ def test_the_replay_refuses_an_ask_out_of_order_or_past_the_end():
         a.step()
 
 
+def test_a_transcript_answers_only_the_contract_it_was_read_with():
+    """Review 1120aa P2: a contract of as many lines (here the same four reversed, under another map's name) replayed
+    the run and filed the plain lane's 22 under CNV_Form_Formation_Ahead. The sample ask names the lines in order,
+    and the map is checked: another order, other names or another map are refused before a reading is taken."""
+    assert TRANSCRIPT['calls'][0]['ask'] == dict(tool='sample', lines=[ln.counter for ln in gp.FORMSS.lines])
+    reversed_lines = dataclasses.replace(gp.FORMSS, lines=gp.FORMSS.lines[::-1])
+    with pytest.raises(gp.TranscriptError, match='call 1'):
+        gp.replay(reversed_lines, TRANSCRIPT).step()
+    renamed = dataclasses.replace(gp.FORMSS, lines=gp.FORMSS.lines[:3]
+                                  + (dataclasses.replace(gp.FORMSS.lines[3], counter='CNV_Other'),))
+    with pytest.raises(gp.TranscriptError, match='call 1'):
+        gp.replay(renamed, TRANSCRIPT).step()
+    with pytest.raises(gp.TranscriptError, match="a transcript of 'CampFormSS', the contract is 'DifferentMap'"):
+        gp.replay(dataclasses.replace(gp.FORMSS, mod='DifferentMap'), TRANSCRIPT)
+
+
 def test_a_recorder_keeps_what_it_passed_on():
     rec = gp.Recorder(gp.Replay(TRANSCRIPT).call, mod='CampFormSS', run=TRANSCRIPT['run'], source='archive')
     run_all(gp.GameAdapter(gp.FORMSS, rec, TRANSCRIPT['run']))
