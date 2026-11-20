@@ -94,7 +94,8 @@ def test_an_upgrade_bought_at_a_yard_goes_on_the_same():
 
 
 def test_the_sample_barracks_reads_back_at_half_paid_100():
-    doc = json.loads((DATA / 'ai_open.json').read_text(encoding='utf-8'))
+    from test_battlefield_place import _load     # without the AI yard's structures (test_battlefield_ai)
+    doc = _load('ai_open')
     host = simsmall.small_world(model=False, map=niagara)
     assert simbattlefield.place_things(host, doc) == []
     [job] = host.queues[host.bodies['#ai 285 AlliedBarracks'].serial]

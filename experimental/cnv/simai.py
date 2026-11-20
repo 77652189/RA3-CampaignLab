@@ -1230,6 +1230,24 @@ class Brain:
             return lambda y: (y.serial, 'defense')
         return lambda y: y.serial
 
+    def put_yard_jobs(self, yard, rows):
+        """SimAI.put_yard_jobs for a yard of this brain's: its two queues made the rows' (as build queues a job, at the
+        row's progress, paid and full); a why for each row left out (not a structure), None for one placed."""
+        out = []
+        for key in (yard.serial, (yard.serial, 'defense')):
+            self.yard_q.pop(key, None)
+        for row in rows:
+            t = row['template']
+            if not self.is_structure(t):
+                out.append(f'a yard builds no {t} (not a structure)')
+                continue
+            cost, secs = simunits.production(t, self.world.own)
+            self.yard_q.setdefault(self.queue_of(t)(yard), []).append(
+                {'template': t, 'cost': cost, 'frames': max(1, int(round(secs * FPS))), 'progress': row['progress'],
+                 'paid': row['paid'], 'full': row['full']})
+            out.append(None)
+        return out
+
     def present(self, serial):
         """The object of `serial` while it is alive and still the one the world holds under its name; None once it
         is gone, dead, or another object took its name (Sim.add over a living one)."""
@@ -2219,4 +2237,33 @@ class SimAI:
 
     def thoughts(self):
         return {self.world.who(p): b.ai.thoughts() for p, b in self.brains.items()}
+
+    # ---- a yard's queue as plain rows (a Battlefield file's, S 11d: experimental/cnv/simbattlefield.py). The yard's
+    # structures are the AI's own queue (Brain.yard_q: the simulator's yards build none), so a file reads and places
+    # them here, not in the world's queues.
+    def yard_jobs(self, yard):
+        """The jobs the AI of `yard`'s owner has queued at it, its structures' then its defences' (Brain.queue_of),
+        each in order: [(template, progress 0..1, paid, the frame it filled or None)]; [] where no brain runs it."""
+        brain = self.brains.get(yard.owner)
+        if brain is None:
+            return []
+        return [(j['template'], min(1.0, j['progress'] / 100), j['paid'], j['full'])
+                for key in (yard.serial, (yard.serial, 'defense')) for j in brain.yard_q.get(key, ())]
+
+    def put_yard_jobs(self, yard, rows):
+        """`rows` ({template, progress: per cent float32, paid, full: a frame of the host's or None} each, in order)
+        into the queues of `yard` as Brain.build queues them -- the brains made first (attach: as the next tick would),
+        nothing paid now (yard_due pays the rest frame by frame); a row the AI cannot take is left out. A why for each
+        row left out, None for one placed. An AI that has not run yet starts from the placing's frame (its done_to:
+        the source's AI had run the cut's frame, so the frames before it are not run again -- a brain born at 0 would
+        step the yard once for each)."""
+        if self.done_to is None:
+            self.done_to = self.frame
+        self.attach()
+        brain = self.brains.get(yard.owner)
+        if brain is None:
+            return [f'no skirmish AI runs {yard.owner} on the host'] * len(rows)
+        if yard not in brain.yards():
+            return [f'not a yard of the AI of {yard.owner} (one on a map team builds nothing)'] * len(rows)
+        return brain.put_yard_jobs(yard, rows)
 

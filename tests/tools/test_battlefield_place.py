@@ -20,8 +20,14 @@ FILES = {'levelvision_a': probe_range, 'mine_cap': probe_range, 'ai_open': niaga
 LEFT = {}     # every file's things, its factory's job too, read back whole (step 7)
 
 
+AI_YARD = 'UNIT - CNV AI Yard'      # ai_open's: its queue is the skirmish AI's (step 9, test_battlefield_ai)
+
+
 def _load(name):
-    return json.loads((DATA / f'{name}.json').read_text(encoding='utf-8'))
+    """A sample file without the AI yard's structures (placed onto a host with no AI, each would be named: that and
+    the placing with one are test_battlefield_ai's)."""
+    doc = json.loads((DATA / f'{name}.json').read_text(encoding='utf-8'))
+    return dict(doc, things=[dict(t, queue=[]) if t['id'] == AI_YARD else t for t in doc['things']])
 
 
 def _place(doc, m=probe_range, objects=()):

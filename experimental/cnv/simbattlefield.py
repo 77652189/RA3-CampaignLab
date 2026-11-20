@@ -85,6 +85,14 @@ lacks) is not placed and named by its field path, the jobs behind it placed; wha
 named too. What the file does not carry: a build ban a script set (the export names each job the source held for one:
 placed, it goes on) and a player's hold on a job (the host models none).
 
+Step 9 carries the skirmish AI's yards: a yard builds its structures in the AI's own queue (simai Brain.yard_q: the
+simulator's yards have none), so with the run's AI (`export(obs, ai)`: simai.SimAI.yard_jobs) a yard's queue lists
+them after its own jobs, its structures' then its defences', each a row as any job; placed with the host's AI
+(`place(sim, doc, ai)`: SimAI.put_yard_jobs, the brains made as its next tick would), each goes into the AI's queue at
+the file's progress and paid, and its production pays the rest (a refinery half built goes on from half). With no AI
+on the host, or none running the yard's owner, the structure is not placed and named by its path. The rest of the
+AI's state is not carried (NOT_CARRIED): a placed AI starts its plans anew.
+
 Step 8 is the round trip: `round_trip(host, doc)` places an export onto an empty run of its map, exports the host and
 reads that on the file's clock (`rebase`: the cut, a running timer's deadline and a full job's frame moved by the
 clocks' difference), then compares field by field -- a thing by its id, named by its place in the file (one only on
@@ -481,7 +489,9 @@ NOT_CARRIED = (
     "modules' timers (autoheal, lifetime, sale, unpacking) and when each wakes",
     'reload, aim and fire gates',
     'special power cooldowns (a thing\'s and the player\'s)',
-    'the skirmish AI\'s state (teams, build queues, plans)',
+    "the skirmish AI's state but its yards' queues (which players it runs, its teams and plans, the units it waits "
+    "to order, a yard's rest the frame after it set one down, a pause): a yard's structures go to the host's AI of "
+    "its owner",
     "the script executor's history (which scripts ran, subroutines, its random state, when an interval script is due)",
     'which counters the screen shows (DISPLAY_COUNTER) and which things an objective marks',
     "a run's ending (a won or lost flag is placed, the host does not end on it)",
@@ -525,8 +535,15 @@ def _job_rows(jobs, shift=0):
             for t, p, paid, full, _ in jobs]
 
 
-def _export_thing(obs, b):
-    return dict(_own_fields(b), contains=obs.contents(b), home=obs.home(b), queue=_job_rows(obs.jobs(b)))
+def _jobs(obs, ai, b):
+    """Thing b's jobs as Observe.jobs gives them, then (with the run's skirmish AI `ai`) the structures the AI has
+    queued at it, a yard (simai.SimAI.yard_jobs: never held -- the AI's own queue holds for no ban)."""
+    own = list(obs.jobs(b))
+    return own + [(t, p, paid, full, False) for t, p, paid, full in ai.yard_jobs(b)] if ai is not None else own
+
+
+def _export_thing(obs, b, ai=None):
+    return dict(_own_fields(b), contains=obs.contents(b), home=obs.home(b), queue=_job_rows(_jobs(obs, ai, b)))
 
 
 def _held(obs, things):
@@ -565,10 +582,11 @@ def _relations(players, pairs, start):
     return dropped
 
 
-def export(obs):
+def export(obs, ai=None):
     """The run `obs` (an engine.ports.observe.Observe) reads, as a battlefield/1 file: every playable player, every
     living thing, the script's tables; relations the explicit directed ones that differ from the map's own (the host
-    starts from those) toward a listed player -- one toward any other is named in `gaps`."""
+    starts from those) toward a listed player -- one toward any other is named in `gaps`. `ai`: the run's skirmish AI
+    (simai.SimAI), whose yards' queues go into each yard's (step 9); without it a yard's structures are not read."""
     players = {}
     for p in sorted(set(obs.players().values())):
         tech = obs.sciences(p)
@@ -576,7 +594,7 @@ def export(obs):
             players[p] = _player_row(obs.money().get(p, 0), tech, obs.player_upgrades(p), obs.power(p))
     dropped = _relations(players, obs.relations(), _start(obs.mission()))
     living = [b for b in obs.things() if b.alive]                       # in the order they were made
-    things = [_export_thing(obs, b) for b in living]
+    things = [_export_thing(obs, b, ai) for b in living]
     script = {'flags': {k: bool(v) for k, v in obs.flags().items()}, 'counters': dict(obs.counters()), 'timers': dict(obs.timers()),
               'objectives': dict(obs.objectives())}
     gaps = list(NOT_CARRIED) + _held(obs, living)
@@ -600,8 +618,9 @@ WHY = {
     'owner': "a garrisoned building is its first passenger's",
     'home': "a garrisoned building holding passengers goes back to the owner before its first (the file's null: the "
             "owner the file gives it); one the host's filter emptied has none",
-    'queue': "a job the host's factory does not build is not placed; paid is held to the host's cost; progress is "
-             "the host's per cent (float32), a job not full kept below 100",
+    'queue': "a job the host's factory does not build (or no AI of the host takes) is not placed; paid is held to the "
+             "host's cost; progress is the host's per cent (float32), a job not full kept below 100; a yard's "
+             "structures read after its own jobs, its structures' before its defences'",
 }
 
 
@@ -620,9 +639,10 @@ def _set_thing(sim, b, row):
     b.set_hp(min(hp, b.max_hp), tell=False)         # no damage told: nothing hit it
 
 
-def place_things(sim, doc):
+def place_things(sim, doc, ai=None):
     """The file's things onto the host `sim` (an empty run of its map; refuse first): see the module's step 3.
-    ['field path: why', ...] for what is not placed as the file has it, empty when every thing reads back whole."""
+    ['field path: why', ...] for what is not placed as the file has it, empty when every thing reads back whole.
+    `ai`: the host's skirmish AI (simai.SimAI on `sim`), which takes a yard's structures (step 9)."""
     refuse(sim, doc)
     spare = {}          # name -> a thing made alongside a placed one, until the file's of that name takes it
     placed = []
@@ -655,13 +675,13 @@ def place_things(sim, doc):
         _set_thing(sim, b, row)
     shift = sim.frame_now() - doc['frame']  # a file's frame onto the host's
     for i, row, b in placed:                # after the upgrades: a factory's menu may come with one
-        gaps += _set_jobs(sim, i, row, b, shift)
+        gaps += _set_jobs(sim, i, row, b, shift, ai)
     sim.reblock()
     sim.change()
     obs = Observe(sim)
     for i, row, b in placed:
         got = _plain(dict(_own_fields(b), contains=[p.name for p in sim.garrison.held(b)], home=obs.home(b),
-                          queue=_job_rows(obs.jobs(b), -shift)))
+                          queue=_job_rows(_jobs(obs, ai, b), -shift)))
         for k in THING:
             if got[k] != row[k]:
                 gaps.append(f'things[{i}].{k}: {row[k]!r} in the file, the host reads {got[k]!r}'
@@ -682,14 +702,15 @@ def _f32(x):
 BELOW_100 = struct.unpack('f', struct.pack('I', struct.unpack('I', struct.pack('f', 100.0))[0] - 1))[0]
 
 
-def _set_jobs(sim, i, row, b, shift):
+def _set_jobs(sim, i, row, b, shift, ai=None):
     """The file's jobs of thing i into its queue as Sim.order_build would have queued them, at the file's progress and
-    paid (no money moves now), a full one at its frame on the host's clock; ['things[i].queue[j]: ...'] for a job the
-    host's factory does not build (not placed) and one paid over the host's cost."""
+    paid (no money moves now), a full one at its frame on the host's clock -- a structure at a yard into the host's
+    skirmish AI's queue of it (`ai`, step 9); ['things[i].queue[j]: ...'] for a job the host's factory does not build
+    or no AI of the host takes (not placed) and one paid over the host's cost."""
     sim.queues.pop(b.serial, None)
     if not row['queue']:
         return []
-    gaps, jobs = [], []
+    gaps, jobs, yard = [], [], []
     ups = dict(simunits.upgrade_menu(b.template, sim.own, b.upgrades))
     units = simunits.menu(b.template, sim.own, b.upgrades)
     for j, job in enumerate(row['queue']):
@@ -700,21 +721,39 @@ def _set_jobs(sim, i, row, b, shift):
         elif t in units:
             cost, secs = simunits.production(t, sim.own)
             made = {'template': t}
+        elif ai is not None:                        # the AI's (a yard's structure): its own queue, below
+            yard.append((j, job))
+            continue
         else:
             gaps.append(f'things[{i}].queue[{j}]: a {b.template} builds no {t} in the host\'s data (not placed)')
             continue
-        if job['paid'] > cost:
-            gaps.append(f'things[{i}].queue[{j}].paid: {job["paid"]!r} over the host\'s cost {cost!r} (held to it)')
-        pct = _f32(job['progress'] * 100.0)
-        if job['full'] is None and pct >= 100.0:    # not full in the file, so not here: it fills on the host's next step
-            pct = BELOW_100
-        made.update(owner=b.owner, cost=cost, secs=secs, progress=pct,
+        gaps += _over(i, j, job, cost)
+        made.update(owner=b.owner, cost=cost, secs=secs, progress=_pct(job),
                     paid=min(job['paid'], cost), full=None if job['full'] is None else job['full'] + shift)
         jobs.append(made)
     if jobs:
         sim.queues[b.serial] = jobs
         sim.used.add('production')
+    if yard:
+        costs = [simunits.production(job['template'], sim.own)[0] for _, job in yard]
+        whys = ai.put_yard_jobs(b, [{'template': job['template'], 'progress': _pct(job), 'paid': min(job['paid'], c),
+                                     'full': None if job['full'] is None else job['full'] + shift}
+                                    for (_, job), c in zip(yard, costs)])
+        for (j, job), c, why in zip(yard, costs, whys):
+            gaps += [f'things[{i}].queue[{j}]: {job["template"]} not placed -- {why}'] if why else _over(i, j, job, c)
     return gaps
+
+
+def _pct(job):
+    """A job's progress as the host keeps it: per cent, float32; one not full in the file kept below 100 (it fills on
+    the host's next step)."""
+    pct = _f32(job['progress'] * 100.0)
+    return BELOW_100 if job['full'] is None and pct >= 100.0 else pct
+
+
+def _over(i, j, job, cost):
+    return [f'things[{i}].queue[{j}].paid: {job["paid"]!r} over the host\'s cost {cost!r} (held to it)'] \
+        if job['paid'] > cost else []
 
 
 def _unmake(sim, b):
@@ -858,13 +897,13 @@ def place_script(sim, doc):
     return _read_script(sim, doc)
 
 
-def place(sim, doc):
+def place(sim, doc, ai=None):
     """Steps 3 to 5 onto the host `sim` (an empty run of the file's map): the players' state, the things, the players
     read back, the script's state. ['field path: why', ...] as place_things, place_players and place_script give
-    them."""
+    them. `ai`: the host's skirmish AI, as place_things takes it."""
     refuse(sim, doc)
     _set_players(sim, doc)
-    gaps = place_things(sim, doc)
+    gaps = place_things(sim, doc, ai)
     gaps += _read_players(sim, doc)
     _set_script(sim, doc)
     return gaps + _read_script(sim, doc)
@@ -930,11 +969,12 @@ def _covers(gap, path):
     return any(x == y or x.startswith(y) and x[len(y)] in '.[' for x, y in ((path, where), (where, path)))
 
 
-def round_trip(host, doc):
-    """Step 8, the round trip: `doc` (an export) placed onto `host` (an empty run of its map), the host exported and
-    read on the file's clock; [(field path, the placing's gap naming it or None), ...] for each field that differs
-    -- the round trip holds when every difference has its gap (none None)."""
-    gaps = place(host, doc)
-    back = export(Observe(host))
+def round_trip(host, doc, ai=None):
+    """Step 8, the round trip: `doc` (an export) placed onto `host` (an empty run of its map; `ai` its skirmish AI,
+    which takes and gives back the yards' structures), the host exported and read on the file's clock; [(field path,
+    the placing's gap naming it or None), ...] for each field that differs -- the round trip holds when every
+    difference has its gap (none None)."""
+    gaps = place(host, doc, ai)
+    back = export(Observe(host), ai)
     back = rebase(back, doc['t'], doc['frame'])
     return [(path, next((g for g in gaps if _covers(g, path)), None)) for path in _parts(doc, back)]

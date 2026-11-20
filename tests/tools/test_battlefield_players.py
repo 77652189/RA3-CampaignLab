@@ -28,7 +28,8 @@ LEFT = {}     # every file's things, its factory's job too, read back whole (ste
 
 
 def _load(name):
-    return json.loads((DATA / f'{name}.json').read_text(encoding='utf-8'))
+    from test_battlefield_place import _load as load     # without the AI yard's structures (test_battlefield_ai)
+    return load(name)
 
 
 def _host(m=probe_range):

@@ -27,7 +27,7 @@ def _run(name):
     if kind == 'ai' and not simai.available():
         pytest.skip('the engine model (ra3model.ai) is not on this computer')
     m, t, _ = build.resolve(*where)
-    w = sim.Sim(m, t, model=False)
+    w, ai = sim.Sim(m, t, model=False), None
     if kind == 'ai':
         ai = simai.SimAI(w)
         while w.t <= CUTS[name] and w.ending is None:
@@ -37,8 +37,8 @@ def _run(name):
     assert w.t > CUTS[name] and w.ending is None
     before = simsnap.snapshot(w)
     obs = Observe(w)
-    doc = simbattlefield.export(obs)
-    return m, w, before, doc, simbattlefield.export(obs)
+    doc = simbattlefield.export(obs, ai)        # the AI's yards' queues too (step 9)
+    return m, w, before, doc, simbattlefield.export(obs, ai)
 
 
 @pytest.fixture(scope='module', params=sorted(CUTS))
