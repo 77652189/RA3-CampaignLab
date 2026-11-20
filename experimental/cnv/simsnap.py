@@ -32,7 +32,8 @@ from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 9             # 9: W3, the fight's clocks / pre_locks / fire_gate are the shooter's WeaponSet's STATE, not
+VERSION = 10            # 10: acting, a sequential step's unit by its name (review 11-19 n P3; empty between frames);
+                        # 9: W3, the fight's clocks / pre_locks / fire_gate are the shooter's WeaponSet's STATE, not
                         # the host's; 8: W2, a body's weapons / slots are its WeaponSet module's STATE; 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
                         # 4: areas.missing (4.4, 11-19); 5: the queue's events -- a posted command as itself
                         # (command port ORDER), a line's 强制 / 由 P kept in its word group (review 11-19 i #1 #4);
@@ -88,7 +89,7 @@ for _f in ('t log box_log panel_log asked up scenes unknown flags objectives mar
            'ra3_only last_change ai handed library_ai ai_switches ai_priorities hidden_home audio_end video_end '
            'selected script_disabled kills attacked_by cond_memory made_frame relations team_team_rel '
            'team_player_rel player_team_rel team_targets books tech_to tech_read hunts bodies attachments '
-           '_attachment_marked attachment_known_status suppression_fields topples frame_movers refs object_lists '
+           '_attachment_marked attachment_known_status suppression_fields topples frame_movers refs acting object_lists '
            'base_power powers_off series threat first_threat known known_at guessed due blasts casts power_at '
            'queues produced_to player_ups instances active lost_orders seen firing mid_aims '
            '_field first_death death_blasts events anchored hotspots waypoints volleys chilling _fire_obstacles '

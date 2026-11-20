@@ -944,7 +944,7 @@ class Sim:
         self.suppression_fields = []        # (end, value, x, y, radius): stationary hit contributions
         self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
         self.frame_movers = {}              # topple contact paths and measured Jet startup
-        self.refs = {}                      # reference name (UNITRef - ...) -> the Body a SET_REF_TO_... pointed it at
+        self.refs, self.acting = {}, {}     # UNITRef name -> the Body SET_REF_TO_... set; acting: simorder._as_itself
         self.object_lists = {}              # OBJECTLIST_ADDOBJECTTYPE: list name -> {template}, both lower case
         self.base_power = {}                # PLAYER_SET_BASE_POWER: player -> supply added to its objects' (INFERRED)
         self.powers_off = {}                # PLAYER_SPECIAL_POWER_AVAILABILITY: (player, power lower) -> its word
@@ -1831,7 +1831,7 @@ class Sim:
         sites = getattr(self.m.map, 'SITES', {})
         if name in sites:
             return (sites[name].x, sites[name].y)
-        b = self.bodies.get(self.m.cast[name].name if name in self.m.cast else name)
+        b = self.acting.get(name) or self.bodies.get(self.m.cast[name].name if name in self.m.cast else name)
         if b:
             return (b.x, b.y)
         return None
@@ -1990,8 +1990,8 @@ class Sim:
         return (not v) if neg else v
 
     def body(self, name):
-        if name in self.refs:                       # R2: a reference reads as the object it points at, dead or not
-            return self.refs[name]
+        if name in self.acting or name in self.refs:    # a step's own unit; R2: a reference, dead or not
+            return self.acting[name] if name in self.acting else self.refs[name]
         return self.bodies.get(name)
 
     def of_types(self, name):

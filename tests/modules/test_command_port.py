@@ -702,6 +702,42 @@ def test_a_sequential_scripts_this_object_is_the_unit_queued_not_a_reference_of_
     assert (lead.move_to, other.move_to, s.refs['lead']) == ((600.0, 300.0), None, other)
 
 
+def _seq_world(actions):
+    import parts
+    s = sim.Sim(parts.Mission(name='T', map=simsmall.island, scripts=[
+        parts.Script('seqtask', [], actions, once=False)]), model=False)
+    for name in list(s.bodies):
+        s.world.drop(s.bodies.pop(name))
+    lead = s.add('lead', 'AlliedAntiInfantryInfantry', 'Player_1', 300.0, 300.0)
+    other = s.add('other', 'AlliedAntiInfantryInfantry', 'Player_1', 300.0, 600.0)
+    s.waypoints['dest'] = (600.0, 300.0)
+    s.act('UNIT_EXECUTE_SEQUENTIAL_SCRIPT', ['lead', 'seqtask'], None)
+    s.refs['lead'] = other
+    return s, lead, other
+
+
+def test_a_sequential_step_reads_the_unit_only_where_it_wrote_this_object():
+    """Only a step written with <This Object> reads the unit's name as the unit (review 11-19 n P3 #2: S5 shadowed
+    the name in every step, so a literal `lead` -- the reference -- moved the queued unit instead); during one the
+    unit is read as itself without the reference being written over, so a reference the step points at the unit
+    stays (#3: the restore took it back), and a point by its name is the unit's too (#4: the camera went to a unit
+    made under its name since)."""
+    import simorder
+    s, lead, other = _seq_world([('MOVE_NAMED_UNIT_TO', 'lead', 'dest')])
+    s.seq_due()
+    assert (lead.move_to, other.move_to, s.refs['lead']) == (None, (600.0, 300.0), other)
+    s, lead, other = _seq_world([('MOVE_NAMED_UNIT_TO', '<This Object>', 'dest')])
+    seen = []
+    simorder._as_itself(s, lead, lambda: (seen.append((s.body('lead'), s.refs['lead'])),
+                                          s.refs.__setitem__('lead', lead)))
+    assert seen == [(lead, other)] and s.refs['lead'] is lead and s.body('lead') is lead and not s.acting
+    s.world.drop(s.bodies.pop('lead'))
+    s.add('lead', 'AlliedAntiInfantryInfantry', 'Player_1', 700.0, 600.0)
+    at = []
+    simorder._as_itself(s, lead, lambda: at.append(s.point('lead')))
+    assert at == [(300.0, 300.0)] and s.point('lead') == (700.0, 600.0)
+
+
 def test_the_proxy_does_not_keep_the_objects_it_saw():
     """An object the proxy saw (gave an id) is reclaimed once the world lets go of it, its id row with it (review
     11-19 m: 30 same-name replacements seen kept 30 objects alive); an old id still orders nothing."""
