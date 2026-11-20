@@ -50,8 +50,8 @@ def test_ai_cli_passes_secs_and_writes_ai_result(monkeypatch, tmp_path, capsys):
     result = {'rev': 'abc', 'secs': 2, 'model': True, 'wall': 1, 'multiple': 2, 'worst': 2, 'slices': [2],
               'bodies': 3, 'made': 1, 'alive': {}, 'cells': {}, 'inside': {}, 'ms_frame': 33.333}
 
-    def run_ai(secs):
-        assert secs == 2
+    def run_ai(secs, start=None):
+        assert secs == 2 and start is None
         return result
 
     monkeypatch.setattr(simbench_peak, 'run_ai', run_ai)

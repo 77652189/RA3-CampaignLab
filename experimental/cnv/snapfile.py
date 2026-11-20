@@ -27,7 +27,9 @@ def save(path, snapshot, **meta):
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     tmp = f'{path}.{os.getpid()}.tmp'
     data = json.dumps({'format': FORMAT, 'meta': meta, 'snapshot': snapshot}).encode('utf-8')
-    with gzip.open(tmp, 'wb') as f:
+    # no time and no name in the gzip header: the same snapshot and meta make the same file, the same sha (a start
+    # taken again unchanged is the same start, 11c-2)
+    with open(tmp, 'wb') as raw, gzip.GzipFile(filename='', mode='wb', fileobj=raw, mtime=0) as f:
         f.write(data)
     os.replace(tmp, path)
     return digest(path)

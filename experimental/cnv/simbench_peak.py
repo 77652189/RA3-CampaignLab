@@ -17,7 +17,9 @@ Result: {'rev', 'units', 'secs', 'model', 'build', 'wall', 'multiple' (simulated
 real time), 'worst', 'slices' (each slice's multiple), 'bodies', 'alive', 'made', 'cells', 'inside'} printed and
 written to <out>/peak_<rev>.json.
 
---ai runs the aiskrand/s skirmish AI scene and writes peak_ai_<rev>.json with ms_frame in place of units.
+--ai runs the aiskrand/s skirmish AI scene and writes peak_ai_<rev>.json with ms_frame in place of units; with
+--from SECS it starts from the scene's snapshot SECS in (step S 11c-2, ai_start: kept in work/cache/snaps, taken
+again when none is kept or restore refuses it), on Sim(model=False), the result's 'start' naming the snapshot's sha.
 Run it through experimental/testbench/cpupool.py run -n 1 -- to share the machine with other jobs."""
 import sim  # noqa: I001  (first: it puts experimental/cnv and campaign on the path)
 import argparse
@@ -135,18 +137,71 @@ def run(secs=SECS, units=UNITS, model=True):
             'inside': {k: round(v, 3) for k, v in sorted(inside.items(), key=lambda kv: -kv[1])}}
 
 
-def run_ai(secs=SECS):
-    """Build with simai.run, then time its normal AI-and-world advance in slices."""
+AI_SCENE = ('aiskrand', 's')    # (build, check): one AI side only, its fight 150-210 s -- not yet the peak B0 asks
+
+
+def ai_start(at, scene=AI_SCENE, path=None):
+    """The AI scene written back from its snapshot `at` seconds in (step S 11c-2): (the SimAI, the start's info).
+    The snapshot is kept (snapfile.cached, by scene, `at` and the snapshot's shape); none kept, or one restore
+    refuses (another setup, an older shape, a broken file), is taken again -- the scene run to the first tick past
+    `at` on Sim(model=False) (simaisnap's: the model's script clock cannot be taken), one line printed why. Timed
+    from a written-back world either way: the one just taken is read back too. info: {'scene', 'at', 'file', 'sha'
+    (the file's: two results from different starts do not compare), 'taken' (taken this run), 'restore' (s)}."""
+    import build as bld
+    import simai
+    import simaisnap
+    import snapfile
+
+    scene = tuple(scene)
+    path = path or snapfile.cached(f'{scene[0]}_{scene[1] or "-"}_{at:g}')
+    m, t, _ = bld.resolve(*scene)
+
+    def made():
+        return simai.SimAI(sim.Sim(m, t, 'normal', model=False))
+
+    def read():
+        meta, taken = snapfile.load(path)
+        if (meta.get('scene'), meta.get('at')) != (list(scene), at):
+            raise ValueError(f'a start of {meta.get("scene")} at {meta.get("at")}, not {list(scene)} at {at}')
+        w, t0 = made(), time.perf_counter()
+        simaisnap.restore(w, taken)
+        return w, {'scene': list(scene), 'at': at, 'file': path, 'sha': snapfile.digest(path),
+                   'restore': round(time.perf_counter() - t0, 2)}
+
+    why = 'none kept'
+    if os.path.exists(path):
+        try:
+            w, info = read()
+            return w, {**info, 'taken': False}
+        except (ValueError, OSError, EOFError) as e:    # refused whole (simaisnap / simsnap), not a snapfile, cut
+            why = f'refused: {e}'
+    print(f'simbench_peak: taking the start again ({why}) -> {path}')
+    w = made()
+    while w.sim.t <= at and w.sim.ending is None:   # a frame at a time to the first tick past `at` (simrecord's cut)
+        w.advance(1)
+    if w.sim.t <= at:
+        raise RuntimeError(f'simbench_peak: {scene} ended at {w.sim.t}, before {at}: no start to take')
+    snapfile.save(path, simaisnap.snapshot(w), scene=list(scene), at=at, t=w.sim.t, frame=w.frame)
+    w, info = read()
+    return w, {**info, 'taken': True}
+
+
+def run_ai(secs=SECS, start=None, scene=AI_SCENE, path=None):
+    """Build with simai.run, then time its normal AI-and-world advance in slices. start: from the scene's snapshot
+    `start` seconds in (ai_start), the result's 'start' naming it."""
     import simai
 
     frames = int(secs * simai.FPS)
     if frames <= 0:
         raise ValueError('--secs must cover at least one AI frame')
     t0 = time.perf_counter()
-    ai = simai.run('aiskrand', 's', until=0)
+    if start is None:
+        ai, began = simai.run(*scene, until=0), None
+    else:
+        ai, began = ai_start(start, scene, path)
     build = time.perf_counter() - t0
     s = ai.sim
-    start, first_frame = len(s.bodies), ai.frame
+    placed, first_frame = len(s.bodies), ai.frame
     cells, inside = {}, {}
     for name in INSIDE:
         _clock(s, name, inside)
@@ -166,7 +221,7 @@ def run_ai(secs=SECS):
             break
     advanced = ai.frame - first_frame
     if not advanced:
-        raise RuntimeError('aiskrand/s did not advance')
+        raise RuntimeError(f'{"/".join(scene)} did not advance')
     wall = sum(w for _, w in slices)
     secs = advanced / simai.FPS
     return {'rev': rev(), 'secs': secs, 'model': s.eng is not None, 'build': round(build, 2),
@@ -174,10 +229,10 @@ def run_ai(secs=SECS):
             'worst': round(min(n / w for n, w in slices), 3), 'slices': [round(n / w, 3) for n, w in slices],
             'bodies': len(s.bodies),
             'alive': {o: sum(1 for b in s.bodies.values() if b.alive and b.owner == o) for o in s.players.values()},
-            'made': len(s.bodies) - start,
+            'made': len(s.bodies) - placed,
             'cells': {k: round(v, 3) for k, v in sorted(cells.items(), key=lambda kv: -kv[1])},
             'inside': {k: round(v, 3) for k, v in sorted(inside.items(), key=lambda kv: -kv[1])},
-            'ms_frame': round(1000 * wall / advanced, 3)}
+            'ms_frame': round(1000 * wall / advanced, 3), **({} if began is None else {'start': began})}
 
 
 def logs_dir():
@@ -190,10 +245,14 @@ def main():
     ap.add_argument('--units', type=int, default=UNITS, help='each side\'s army')
     ap.add_argument('--no-model', action='store_true', help='without the private engine model')
     ap.add_argument('--ai', action='store_true', help='run aiskrand/s (use cpupool.py run -n 1)')
+    ap.add_argument('--from', dest='start', type=float, default=None,
+                    help='--ai: from the scene\'s snapshot this many seconds in (kept in work/cache/snaps)')
     ap.add_argument('--out', default=None, help='folder for peak_<rev>.json (default work/logs/perf)')
     a = ap.parse_args()
+    if a.start is not None and not a.ai:
+        ap.error('--from is --ai\'s')
     if a.ai:
-        r = run_ai(a.secs)  # the calling cpupool.py run -n 1 holds the shared token
+        r = run_ai(a.secs, a.start)  # the calling cpupool.py run -n 1 holds the shared token
     else:
         # a timing: the whole of the machine's CPU tokens (cpupool, T5), so other lines' jobs do not share its cores
         spec = importlib.util.spec_from_file_location('_cpupool', os.path.join(os.path.dirname(HERE), 'testbench', 'cpupool.py'))
@@ -207,7 +266,11 @@ def main():
     path = os.path.join(out, f'{prefix}_{r["rev"]}.json')
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(r, f, ensure_ascii=False, indent=1)
-    scene_label = f'aiskrand/s, {r["ms_frame"]:.2f} ms/frame' if a.ai else f'{r["units"]} a side'
+    began = r.get('start')
+    scene_label = (f'{"/".join(AI_SCENE)}'
+                   + (f' from {began["at"]:g} s (snapshot {began["sha"]}{", taken now" if began["taken"] else ""})'
+                      if began else '')
+                   + f', {r["ms_frame"]:.2f} ms/frame') if a.ai else f'{r["units"]} a side'
     print(f'{r["secs"]:g} s, {scene_label}, model {r["model"]}: wall {r["wall"]:.1f} s = '
           f'{r["multiple"]:.2f}x real time, the slowest {SLICE:g} s {r["worst"]:.2f}x '
           f'({" ".join("%.2f" % m for m in r["slices"])}); bodies {r["bodies"]} (made {r["made"]}), alive {r["alive"]}')
