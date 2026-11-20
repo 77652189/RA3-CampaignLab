@@ -404,7 +404,8 @@ PROCESS_CACHES = {
         '_resolved', '_retail_commands', '_retail_files', '_retail_mods', '_retail_powers',
         '_surf_memo', '_table', '_turning_memo', '_upgrades', '_weapon_blocks', '_wreck_memo')),
 }
-REGISTRARS = {('engine.kernel.factory', '_TAGS'): 'register'}     # filled only by the factory's decorator
+REGISTRARS = {('engine.kernel.factory', '_TAGS'): 'register',      # filled only by the factory's decorator
+              ('engine.combat.registry', '_HANDLERS'): 'register'}     # and by @nugget's (step N1)
 
 
 def _mutable(v):

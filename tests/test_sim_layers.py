@@ -39,6 +39,8 @@ LAYER_OF = {
     'simspecial': 2,
     'simorder': 5,
     'simdamage': 3,
+    'engine.combat': 3, 'engine.combat.registry': 3, 'engine.combat.damage': 3,      # N1 the nugget handlers
+    'engine.combat.line_damage': 3, 'engine.combat.projectile': 3,
     'simrange': 3,          # the weapon reach rules (R3 13f-2b)
     'simtech': 4, 'simmoney': 4,
     'simact': 6, 'simact_vision': 6, 'simact_player': 6, 'simact_order': 6, 'simact_object': 6, 'simact_ability': 6, 'simact_world': 6, 'simact_show': 6, 'simscript': 6,

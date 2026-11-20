@@ -19,6 +19,8 @@ nugget_powers, hit_reaction_of.
 import math
 
 import simunits
+from engine.combat import projectile as flight
+from engine.combat import registry
 from engine.kernel import interfaces
 from engine.modules import weaponset
 from simworld import GAP_WEAPON
@@ -49,6 +51,27 @@ def flank_of(victim, attacker):
     (docs/engine/weapons.md 4, bench engine_shot flank 40 / 40 / 42 / 44 %), UNRESISTABLE too (bench
     engine_inform_ai: the side-facing miners at 68 % after a 150 UNRESISTABLE shell of their 500)."""
     return simunits.flank(victim.armor, victim.angle, attacker.x - victim.x, attacker.y - victim.y)
+
+
+def hit_scalar(victim, damage_type, attacker):
+    """What one point of `damage_type` from `attacker` does to `victim` on a direct hit: its armor percent x taken
+    (UNRESISTABLE: 1), x the flank (registry.Context.scalar, for the nugget handlers)."""
+    return (1.0 if damage_type == 'UNRESISTABLE' else
+            simunits.percent(victim.armor, damage_type) / 100.0 * victim.taken) * flank_of(victim, attacker)
+
+
+def straight_speed(projectile, own):
+    """The projectile template's straight-line muzzle speed (map units a frame): ProjectileUpdate
+    StateMachine="StraightLineProjectile"'s MoveInStraightLine MuzzleVelocity; 0 for any other flight or no file
+    (registry.Context.speed, cached in Damage.projectile_speeds)."""
+    try:
+        xml = simunits._xml(projectile, own)
+        update = next(simunits._blocks(xml or '', 'ProjectileUpdate'), ('', ''))
+        movement = next(simunits._blocks(update[1] or '', 'MoveInStraightLine'), ('', ''))
+        return (simunits._num(simunits._attr(movement[0], 'MuzzleVelocity'))
+                if simunits._attr(update[0], 'StateMachine') == 'StraightLineProjectile' else 0)
+    except (OSError, ValueError):
+        return 0
 
 
 def impact_ground_z(world, x, y):
@@ -184,15 +207,16 @@ class Damage:
                                       world.frame_now() + int(duration * effect['min']),
                                       world.frame_now() + int(duration * effect['max'] + 0.99))
 
-    def queue_projectile_hit(self, when, target, damage, attacker, weapon, centre=None):
-        """A projectile's arrival event, also usable to replay an observed collision.
+    def projectile_speed(self, world, projectile):
+        """straight_speed, read once a template (projectile_speeds)."""
+        speeds = self.projectile_speeds
+        if projectile not in speeds:
+            speeds[projectile] = straight_speed(projectile, world.own)
+        return speeds[projectile]
 
-        Damage is the existing launch-time snapshot. An explicit collision centre
-        overrides the static target half-height fallback (INFERRED). Curved flight
-        cannot generate this event yet; an observed arrival does not model flight.
-        """
-        self.projectile_hits.append(
-            (when, target, damage, attacker, weapon, centre))
+    def queue_projectile_hit(self, when, target, damage, attacker, weapon, centre=None):
+        """A projectile's arrival event (engine/combat/projectile.py queue), also usable to replay a collision."""
+        flight.queue(self.projectile_hits, when, target, damage, attacker, weapon, centre)
 
     def projectile_detonate(self, world, weapon, target, centre, attacker, peers):
         """Dispatch the non-damage payload of a projectile arrival."""
@@ -347,15 +371,8 @@ class Damage:
         hurt = {}
         leech_events = {}
         self.meta_impact_tick(world, peers)
-        pending = self.projectile_hits
-        due = [hit for hit in pending if world.frame_now() >= hit[0]]
-        pending[:] = [hit for hit in pending if world.frame_now() < hit[0]]
-        for when, target, damage, attacker, weapon, centre in due:
-            peers.projectile_detonate(weapon, target, centre, attacker)
-            if target.alive:
-                self.incoming_hit(target, attacker.serial, weapon.get('weapon_key'))
-                h = hurt.setdefault(target.serial, [target, 0.0, attacker])
-                h[1] += damage
+        for hit in flight.due(self.projectile_hits, world.frame_now()):     # shells fired before land first
+            flight.arrive(hit, hurt, peers.projectile_detonate, self.incoming_hit)
         # A cached aim is not permission to fire after a script/modifier stops
         # the shooter. Keep its order; expiry lets fight select it again.
         # Existing-order evidence: work/re/d50_scramble_expiry3.md.
@@ -374,38 +391,15 @@ class Damage:
                 n = peers.shots_due(by, w, dt)
                 if n:
                     self.inform_launch(world, t, by, w, n)
+                    # the volley's nugget handlers (engine/combat, registry.ORDER): a launch may take it over
+                    ctx = registry.Context(world, by, t, w, n, hurt, scalar=hit_scalar,
+                                           speed=lambda p: self.projectile_speed(world, p),
+                                           gap=lambda tag, why: world.gap(GAP_WEAPON, tag, why),
+                                           queue_hit=peers.queue_projectile_hit, detonate=peers.projectile_detonate,
+                                           clear_notice=self.incoming_hit, can_hit=peers.can_hit)
+                    if registry.run('launch', ctx):
+                        continue
                     projectile = w.get('projectile')
-                    if projectile:
-                        speeds = self.projectile_speeds
-                        if projectile not in speeds:
-                            try:
-                                xml = simunits._xml(projectile, world.own)
-                                update = next(simunits._blocks(xml or '', 'ProjectileUpdate'), ('', ''))
-                                movement = next(simunits._blocks(update[1] or '', 'MoveInStraightLine'), ('', ''))
-                                speeds[projectile] = (simunits._num(simunits._attr(movement[0], 'MuzzleVelocity'))
-                                    if simunits._attr(update[0], 'StateMachine') == 'StraightLineProjectile' else 0)
-                            except (OSError, ValueError):
-                                speeds[projectile] = 0
-                        speed = speeds[projectile]
-                        complex_effect = any(w.get(k) for k in ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd', 'dot', 'contained', 'special_powers', 'attach', 'lift'))
-                        if speed > 0 and not complex_effect:
-                            # GUESSED collision boundary, rechecked for the two probe distances: full
-                            # distance steps before impact. No fitted per-distance delays.
-                            frames = int(math.hypot(t.x - by.x, t.y - by.y) / speed)
-                            armor = 1.0 if w['type'] == 'UNRESISTABLE' else simunits.percent(t.armor, w['type']) / 100 * t.taken
-                            # GUESSED until dynamic-armor bench: snapshot scalars at launch (the flank too:
-                            # bench engine_inform_ai, the side-facing miners' 68 %, from the launch).
-                            armor *= flank_of(t, by)
-                            damage = n * w['dmg'] * by.dealt * armor
-                            if frames:
-                                peers.queue_projectile_hit(world.frame_now() + frames, t, damage, by, w)
-                            else:
-                                peers.projectile_detonate(w, t, attacker=by)
-                                self.incoming_hit(t, by.serial, w.get('weapon_key'))
-                                h = hurt.setdefault(t.serial, [t, 0.0, by])
-                                h[1] += damage
-                            continue
-                        world.gap(GAP_WEAPON, 'ProjectileNugget', '仅无复合效果的直线弹飞行已建模；曲线弹/复合弹/自制弹体待核')
                     if not projectile:
                         self.incoming_hit(t, by.serial, w.get('weapon_key'))
                     for effect in w.get('dot', []):
@@ -443,31 +437,19 @@ class Damage:
                         deadlines[t.serial] = max(deadlines.get(t.serial, 0), world.frame_now() + simunits._frames(seconds))
                     if w.get('sweep'):
                         peers.sweeps.fire(by, t, w['sweep'])
-                    victims = [t]
-                    # GUESSED edge geometry: circle extent; round 1 centres avoid edges.
-                    line = w.get('line')
-                    if line and line['dynamic']:
-                        dx, dy = t.x - by.x, t.y - by.y
-                        length = math.hypot(dx, dy)
-                        if length:
-                            ux, uy = dx / length, dy / length
-                            victims = []
-                            for candidate in world.living():
-                                if candidate is by or not world.hostile(by, candidate) or not peers.can_hit(w, candidate):
-                                    continue
-                                cx, cy = candidate.x - by.x, candidate.y - by.y
-                                along, across = cx * ux + cy * uy, abs(cx * uy - cy * ux)
-                                if -line['lead'] <= along <= length + line['out'] and across <= line['width'] / 2 + candidate.radius:
-                                    victims.append(candidate)
-                    for victim in victims:
+                    registry.run('aim', ctx)              # a dynamic line picks the victims (LineDamage)
+                    for victim in ctx.victims:
                         h = hurt.setdefault(victim.serial, [victim, 0.0, by])
-                        side = flank_of(victim, by)
-                        armor = (1.0 if w['type'] == 'UNRESISTABLE' else
-                                 simunits.percent(victim.armor, w['type']) / 100.0 * victim.taken) * side
-                        h[1] += n * w['dmg'] * by.dealt * armor
+                        ctx.victim = victim
+                        registry.run('victim', ctx)       # the direct damage (Damage)
+                        # Leech and Strip read the same victims after their damage (N2 moves them to handlers)
                         if w.get('leech_percent'):
                             leech_events.setdefault(victim.serial, []).append((by, 'maximum', w['leech_percent'], 0.0))
+                        if w.get('leech_health') or w.get('strip_max_health'):
+                            side = flank_of(victim, by)
                         if w.get('leech_health'):
+                            armor = (1.0 if w['type'] == 'UNRESISTABLE' else
+                                     simunits.percent(victim.armor, w['type']) / 100.0 * victim.taken) * side
                             leech_events.setdefault(victim.serial, []).append((by, 'damage', w['leech_health'], n * w['dmg'] * by.dealt * armor))
                         for fraction, damage_type in w.get('strip_max_health', []):
                             scalar = (1.0 if damage_type == 'UNRESISTABLE' else       # the flank: INFERRED

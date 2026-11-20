@@ -90,7 +90,7 @@ FORWARDER_CALLS = {
     ('simact_ability', 'living'): 2, ('simact_object', 'living'): 3, ('simact_order', 'living'): 3,
     ('simact_player', 'living'): 3, ('simact_world', 'living'): 1, ('simai', 'living'): 23,
     ('simcond_object', 'living'): 8, ('simcond_player', 'living'): 1, ('simcond_vision', 'living'): 3,
-    ('simcond_world', 'living'): 1, ('simdamage', 'living'): 4, ('simgarrison', 'living'): 1,
+    ('simcond_world', 'living'): 1, ('simdamage', 'living'): 3, ('simgarrison', 'living'): 1,
     ('siminfiltrator', 'living'): 3, ('simmine', 'living'): 4, ('simmodifier', 'living'): 1,
     ('simorder', 'living'): 6, ('simproxy', 'living'): 3, ('simpullback', 'living'): 1,
     ('simspecial', 'living'): 2, ('simsweep', 'living'): 1,
