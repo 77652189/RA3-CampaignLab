@@ -7,14 +7,16 @@ Names are the ones the object and the world carry today, so a reader never renam
 
 Three groups and an internal door:
 - the clock: `t`, `fps`, `frame()`;
-- things (objects): `things()`, `living()`, `thing(name)`, `is_thing(v)`; a thing's public fields are read off it by
-  their names (name template owner x y hp max_hp health ...: the readers' census, R3 12a);
+- things (objects): `things()`, `living()`, `thing(name)`, `is_thing(v)`, `contents(thing)` (who is inside),
+  `queue(thing)` (what it builds); a thing's public fields are read off it by their names (name template owner x y
+  hp max_hp health ...: the readers' census, R3 12a);
 - scripts and players: `flags()`, `counters()`, `timers()` (name -> the mission second it runs out at), `objectives()`,
-  `ending()`, `money()`, `income()`, `markers()`, `countdowns()`, `waypoints()`, `banned()`;
+  `ending()`, `money()`, `income()`, `sciences(player)`, `player_upgrades(player)`, `power(player)`, `markers()`,
+  `countdowns()`, `waypoints()`, `banned()`;
 - a run's outcome (what a report reads once the run is over: simbench, simchecks, playcheck, mappage): `ending()`,
   `log()`, `series()`, `unknown()`, `ending_line()`;
-- players and sight: `human`, `foe`, `enemy(a, b)`, `sees(x, y)`, `side_sees(side, thing)`, `looks(viewer, x, y)`,
-  `can_hit(weapon, thing)`, `ground_z(x, y)`;
+- players and sight: `human`, `foe`, `relations()`, `enemy(a, b)`, `sees(x, y)`, `side_sees(side, thing)`,
+  `looks(viewer, x, y)`, `can_hit(weapon, thing)`, `ground_z(x, y)`;
 - internal (the simulator's own bookkeeping, which a game adapter does not have): `state(thing)` (every field a
   thing records, its modules' RECORDED and Body.FORWARDS by their old names), `report(name)` (log, used, unknown, ...),
   `log_since(n)`, `gaps()`, `pending()`, `fresh_sight()`, `specimen(...)` (a dead body made to read a template's
@@ -23,7 +25,9 @@ Three groups and an internal door:
   `text`, `label`, `who`, `input`, `late_captions`, `ending_line`); and the taps a recorder hangs on the loop
   (`on_frame`, `on_tick`, `on_act`, `on_sample`, `on_happen`, `scripts`).
 
-Values are the world's own objects, not copies (a record reads every frame): a reader must not change them."""
+Values are the world's own objects, not copies (a record reads every frame): a reader must not change them. The
+readers a Battlefield file is read through (contents, queue, sciences, player_upgrades, power, relations: step S 11d,
+experimental/cnv/simbattlefield.py) give names and numbers only, so a game adapter can give the same."""
 from engine.kernel import module as kernel_module
 
 
@@ -62,6 +66,16 @@ class Observe:
     def is_thing(v):
         return isinstance(v, kernel_module.Thing)
 
+    def contents(self, thing):
+        """The names of the things inside a building's garrison or a transport, in the order they came in ([] for
+        a thing that holds none or cannot)."""
+        return [p.name for p in self._w.garrison.held(thing)]
+
+    def queue(self, thing):
+        """A factory's jobs in order: [(template, progress 0..1)] ([] for a thing that builds nothing). The world
+        keeps a job's progress in per cent (float32): read here / 100, a job done and waiting to come out at 1."""
+        return [(job['template'], min(1.0, job['progress'] / 100)) for job in self._w.queues.get(thing.serial, ())]
+
     # --- scripts and players
     def flags(self):
         return self._w.flags
@@ -99,6 +113,20 @@ class Observe:
     def income(self):
         return self._w.income
 
+    def sciences(self, player):
+        """(the protocols a player holds, sorted; its protocol points), or None for a player with no protocols (not
+        a playable faction: the neutral side, a map's civilian slots)."""
+        book = self._w.books.get(player)
+        return None if book is None else (sorted(book.owned), book.points)
+
+    def player_upgrades(self, player):
+        """The upgrades a player was given (GIVE_PLAYER_UPGRADE), sorted."""
+        return sorted(self._w.player_ups.get(player, ()))
+
+    def power(self, player):
+        """A player's power: (made, used), as its living things make and use it now."""
+        return self._w.power(player)
+
     def markers(self):
         """Objective -> the names (objects, waypoints) its arrows on the map point at."""
         return self._w.markers
@@ -127,6 +155,12 @@ class Observe:
     @property
     def human(self):
         return self._w.human
+
+    def relations(self):
+        """The run's explicit directed relations: (a, b) -> 'Enemy' / 'Neutral' / 'Friend', how player a takes b (the
+        map's own -- a retail map lists every pair -- and what scripts set since). A pair not in it falls back to
+        `enemy(a, b)`'s default."""
+        return self._w.relations
 
     @property
     def foe(self):

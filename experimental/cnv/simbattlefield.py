@@ -18,7 +18,12 @@ host. Format `battlefield/1`:
 Step 1 (bf_pack/plan.md) is the contract: `check(doc)` its shape alone; `preflight(sim, doc)` that and the host the
 file is to be placed onto -- an empty Sim of the same map (simsmall.small_world(model=False, map=...)): the map,
 the players and owners it has, the templates its data defines, no living thing of an id; `refuse(sim, doc)` a
-ValueError naming every problem, before anything is placed. Each problem is 'field path: why'."""
+ValueError naming every problem, before anything is placed. Each problem is 'field path: why'.
+
+Step 2 is the export: `export(obs)` reads a run through its observation port only (engine/ports/observe.py: the
+readers a game adapter can give too) into a file `check` passes -- every playable player (one with protocols), every
+living thing in the order they were made, the script's four tables; keys sorted, lists in a stable order, plain JSON
+values. Reading changes nothing in the world."""
 import math
 
 import simunits
@@ -292,3 +297,73 @@ def refuse(sim, doc):
     bad = preflight(sim, doc)
     if bad:
         raise ValueError(f'simbattlefield: not placed ({len(bad)}): ' + '; '.join(bad))
+
+
+# What battlefield/1 never carries (snapshot.md 5; bf_pack/census.md): the exact snapshot (simsnap) has them, a file
+# placed onto another engine starts them anew.
+NOT_CARRIED = (
+    'shots in flight and pending hits',
+    'paths, goals and orders under way',
+    "modules' timers (autoheal, lifetime, sale, unpacking) and when each wakes",
+    'reload, aim and fire gates',
+    'special power cooldowns (a thing\'s and the player\'s)',
+    'the skirmish AI\'s state (teams, build queues, plans)',
+    "the script executor's history (which scripts ran, subroutines, its random state)",
+    'a thing\'s experience toward its next level, and when each upgrade came',
+    'what a job in a queue was paid so far',
+    'harvesters\' loads and trips',
+    'team instances beyond each thing\'s team name',
+)
+
+
+def _plain(v):
+    """A JSON value of the world's own (float32 and the like read as float, tuples as lists)."""
+    if v is None or isinstance(v, (bool, str)):
+        return v
+    if isinstance(v, int):
+        return int(v)
+    if isinstance(v, float) or hasattr(v, '__float__'):
+        return float(v)
+    if isinstance(v, (list, tuple)):
+        return [_plain(x) for x in v]
+    if isinstance(v, dict):
+        return {str(k): _plain(x) for k, x in sorted(v.items())}
+    raise TypeError(f'simbattlefield: {v!r} is not a JSON value')
+
+
+def _export_thing(obs, b):
+    return {'id': b.name, 'template': b.template, 'owner': b.owner, 'x': b.x, 'y': b.y, 'z': b.z, 'angle': b.angle,
+            'hp': b.hp, 'max_hp': b.max_hp, 'status': sorted(b.status), 'upgrades': sorted(b.upgrades),
+            'level': b.level_rank, 'contains': obs.contents(b),
+            'queue': [{'template': t, 'progress': p} for t, p in obs.queue(b)], 'team': b.team or ''}
+
+
+def export(obs):
+    """The run `obs` (an engine.ports.observe.Observe) reads, as a battlefield/1 file: every playable player, every
+    living thing, the script's tables; relations the explicit directed ones that differ from the map's own (the host
+    starts from those) toward a listed player -- one toward any other is named in `gaps`."""
+    players = {}
+    for p in sorted(set(obs.players().values())):
+        tech = obs.sciences(p)
+        if tech is None:
+            continue
+        made, used = obs.power(p)
+        players[p] = {'money': obs.money().get(p, 0), 'sciences': tech[0], 'science_points': tech[1],
+                      'upgrades': obs.player_upgrades(p), 'power': {'made': made, 'used': used}, 'relations': {}}
+    start = getattr(obs.mission(), 'relations', None) or {}
+    dropped = []
+    for (a, b), r in sorted(obs.relations().items()):
+        if start.get((a, b)) == r:
+            continue
+        if a in players and b in players and a != b:
+            players[a]['relations'][b] = r
+        else:
+            dropped.append(f'{a} -> {b} {r}')
+    things = [_export_thing(obs, b) for b in obs.things() if b.alive]     # living, in the order they were made
+    script = {'flags': dict(obs.flags()), 'counters': dict(obs.counters()), 'timers': dict(obs.timers()),
+              'objectives': dict(obs.objectives())}
+    gaps = list(NOT_CARRIED)
+    if dropped:
+        gaps.append('relations toward or of a player not listed: ' + ', '.join(dropped))
+    return _plain({'format': FORMAT, 'map': obs.mission().map.__name__.rsplit('.', 1)[-1], 't': obs.t,
+                   'frame': obs.frame(), 'players': players, 'things': things, 'script': script, 'gaps': gaps})
