@@ -113,12 +113,38 @@ class Ending:
 
 
 @dataclasses.dataclass(frozen=True)
+class Group:
+    """A selection route: the player's things the map stands together at the start, and the world box that selects
+    exactly them there. The bench reads no positions, so the box holds only till the group is first ordered."""
+    name: str
+    members: tuple                      # bound names
+    box: tuple                          # (x0, y0, x1, y1) world
+
+
+@dataclasses.dataclass(frozen=True)
+class Goal:
+    """A receipt route: the map counts a group's members inside a square (`counter` reads `done` when all are in)."""
+    group: str
+    x: float
+    y: float
+    half: float
+    counter: str
+    done: int
+
+    def holds(self, x, y):
+        return abs(x - self.x) <= self.half and abs(y - self.y) <= self.half
+
+
+@dataclasses.dataclass(frozen=True)
 class Contract:
     mod: str
     human: str
     lines: tuple                        # Line, in the HUD's order (top to bottom)
     things: tuple = ()                  # Bound
     ending: Ending | None = None        # None: the map does not report its end (ending() is Unsupported)
+    view: tuple | None = None           # where the mission puts the camera (bench_view): world clicks need it
+    groups: tuple = ()                  # Group
+    goals: tuple = ()                   # Goal
 
     def __post_init__(self):
         names = [ln.counter for ln in self.lines]
@@ -129,23 +155,39 @@ class Contract:
                 raise ValueError(f'{b.name}: presence line {b.presence!r} is not one of the lines')
         if self.ending is not None and self.ending.counter not in names:
             raise ValueError(f'ending counter {self.ending.counter!r} is not one of the lines')
+        for g in self.groups:
+            for m in g.members:
+                if self.bound(m) is None:
+                    raise ValueError(f'group {g.name}: {m!r} is not a bound thing')
+        for g in self.goals:
+            if g.counter not in names or self.group(g.group) is None:
+                raise ValueError(f'goal of {g.group}: its counter {g.counter!r} or its group is not the contract one')
 
     def bound(self, name):
         return next((b for b in self.things if b.name == name), None)
 
+    def group(self, name):
+        return next((g for g in self.groups if g.name == name), None)
+
 
 # The fixed bench map of the first acceptance: CampFormSS (experimental/cnv/checks/engine_formation_player.py,
 # engine_formation_sync `s`, bench D 94). Two groups of the player on the probe map's pace lanes, each two Guardian
-# tanks and two Peacekeepers; the bench box-selects each group and right-clicks its goal (a plain move). Its four
-# lines: per lane +1 a tank in the goal square, +10 a Peacekeeper (22 = all four in), and the frames a tank of the
-# lane is in while neither Peacekeeper is. The two things bound are the plain lane's first tank and first
-# Peacekeeper (roles 'plain 0', 'plain 2'): the map publishes no presence line for them, nor an ending.
+# tanks (roles 0, 1) and two Peacekeepers (2, 3); the bench box-selects each group and right-clicks its goal (a plain
+# move). Its four lines: per lane +1 a tank in the goal square (half 70 round (1000, lane)), +10 a Peacekeeper (22 =
+# all four in; set to 0 each frame first, so a level, not a sum), and the frames a tank of the lane is in while
+# neither Peacekeeper is. All eight are bound; the map publishes no presence line for them, nor an ending. The boxes
+# and goals are the check's own (box X0 - 90 .. X0 + 40, lane +- 55; the click at (X1, lane)), the view the mission's.
+_LANES = (('plain', 'Plain', 1230.0), ('formation', 'Formation', 1390.0))
 FORMSS = Contract(
     mod='CampFormSS', human='Player_1',
     lines=(Line('CNV_Form_Plain', 'plain'), Line('CNV_Form_Formation', 'formation'),
            Line('CNV_Form_Plain_Ahead', 'plain 坦克先到帧'), Line('CNV_Form_Formation_Ahead', 'formation 坦克先到帧')),
-    things=(Bound('UNIT - CNV Form Plain 0', 'CNV_FormTank', 'Player_1'),
-            Bound('UNIT - CNV Form Plain 2', 'CNV_FormMan', 'Player_1')))
+    things=tuple(Bound(f'UNIT - CNV Form {t} {k}', 'CNV_FormTank' if k < 2 else 'CNV_FormMan', 'Player_1')
+                 for _, t, _ in _LANES for k in range(4)),
+    view=(825.0, 1300.0),
+    groups=tuple(Group(g, tuple(f'UNIT - CNV Form {t} {k}' for k in range(4)), (560.0, y - 55, 690.0, y + 55))
+                 for g, t, y in _LANES),
+    goals=tuple(Goal(g, 1000.0, y, 70.0, f'CNV_Form_{t}', 22) for g, t, y in _LANES))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -237,12 +279,18 @@ class GameAdapter:
         self._gone = {b.name: False for b in contract.things}
         self._seen = set()                  # the bound things whose presence line has read > 0
         self.observe = GameObserve(self)
+        self.commands = GameCommands(self)
 
     def step(self):
         """The next sample (None: the transport has no more). SampleError for a reading that cannot be one."""
         answer = self.transport.call(dict(tool=SAMPLE, lines=len(self.contract.lines)))
         if answer is None:
+            self.commands.close()
             return None
+        return self.take(answer)
+
+    def take(self, answer):
+        """An archived frame's record (a sample's, or an input's pause record) as the next sample."""
         if self.ended is not None:
             raise SampleError(f'archive frame {answer.get("id")}: a sample after the ending ({self.ended[1]} s)')
         if answer.get('menu'):
@@ -275,6 +323,7 @@ class GameAdapter:
         if e is not None and self.observe.counters()[e.counter] is not MISSING \
                 and self.observe.counters()[e.counter] == e.value:
             self.ended = (e.how, second, e.why)
+        self.commands.receipts()
         return self.sample
 
     def _births(self):
@@ -379,6 +428,196 @@ class GameObserve:
         raise Unsupported(f'{name}: no bench channel (work/re/sim_split/adapter_pack/census.md)')
 
 
+# What the bench's pause record of each input says (bench_mcp.after's note), to check it is the input asked for.
+NOTE = {'bench_view': 'camera set by the mission', 'bench_box': 'box select ', 'bench_click': 'right click at screen'}
+
+
+class GameCommands:
+    """The command port's shape for a game (step 2, plan.md 会话 2): the human player's plain group move, given as the
+    bench's inputs -- the mission's camera once (bench_view, so world clicks land), the group's box (bench_box), a
+    right click at the point (bench_click right) -- each answered by its pause record (an archived frame: it becomes
+    the next sample). Only `move` of a whole group the contract publishes, by 'player', to a world point (`pos`, or
+    `place` '@x,y' as a sim line writes one), from the group's start: the bench reads no positions, so after a group's
+    move no box selects it again (a second move is refused). The box and the click are two pause records (the game
+    runs between: the recorded run's 101 frames), not one resume.
+
+    `do` keeps (ok, why): False refused (nothing sent, or nothing that orders a unit), None issued with no receipt yet
+    -- never True at once. The receipt is the map's own count: a goal of the group holding the point whose counter
+    reads below `done` at the click and `done` at a later sample (`issued()` then shows True). A point no goal holds,
+    or a goal already reading `done`, has no receipt route: the move stays None, and the run's end says so. Attack has
+    no route: no archived run right-clicks an enemy (handoff-r3 gap; recording one passes the stage gate first)."""
+    KINDS = frozenset({'move'})
+
+    def __init__(self, adapter):
+        self._a = adapter
+        self._issued = []                   # dict(frame, cmd, ok, why, goal)
+        self._spent = {}                    # group -> its move's entry
+        self._viewed = False
+
+    @staticmethod
+    def kinds():
+        return GameCommands.KINDS
+
+    @staticmethod
+    def _point(cmd):
+        if cmd.pos is not None:
+            return float(cmd.pos[0]), float(cmd.pos[1])
+        if cmd.place.startswith('@'):
+            x, _, y = cmd.place[1:].partition(',')
+            return float(x), float(y)
+        return None
+
+    def _group(self, cmd):
+        return next((g for g in self._a.contract.groups
+                     if sorted(cmd.units) == sorted(g.members)), None)
+
+    def check(self, cmd):
+        """(ok, why) before anything is sent."""
+        a, c = self._a, self._a.contract
+        if cmd.kind not in self.KINDS:
+            if cmd.kind == 'attack':
+                return False, 'attack: no route yet -- no archived bench run right-clicks an enemy'
+            return False, f'{cmd.kind}: no bench route'
+        if cmd.by != 'player':
+            return False, f'by {cmd.by!r}: the bench plays the human player only'
+        if a.sample is None:
+            return False, 'no sample yet'
+        if a.ended is not None:
+            return False, f'after the ending ({a.ended[1]} s)'
+        if c.view is None:
+            return False, f'{c.mod}: the mission sets no camera for world clicks'
+        if self._point(cmd) is None:
+            return False, f'move to {cmd.place!r}: a world point (pos, or @x,y); the bench clicks no named place'
+        g = self._group(cmd)
+        if g is None:
+            return False, 'move: the units are not one group the map publishes (a box selects a whole group only)'
+        for m in g.members:
+            b = c.bound(m)
+            if b.owner != c.human:
+                return False, f'{m}: not the player\'s ({b.owner})'
+            if b.presence:
+                v = a.observe.counters()[b.presence]
+                if v is MISSING or v <= 0:
+                    return False, f'{m}: not here (its presence line reads {v})'
+        if g.name in self._spent:
+            e = self._spent[g.name]
+            if e['ok'] is None:
+                return False, f'{g.name}: no blind retry -- its move at frame {e["frame"]} has no receipt'
+            return False, f'{g.name}: moved at frame {e["frame"]}; the bench reads no positions, no box selects it now'
+        return True, ''
+
+    def _send(self, ask):
+        """The pause record of one input, taken as the next sample; or why it is not the one asked for."""
+        ans = self._a.transport.call(ask)
+        if not isinstance(ans, dict) or 'id' not in ans:
+            return f'{ask["tool"]}: no pause record ({ans!r})'
+        if not str(ans.get('note', '')).startswith(NOTE[ask['tool']]) or ans.get('paused') is not True:
+            return f'{ask["tool"]}: archive frame {ans["id"]} records {ans.get("note")!r}, paused {ans.get("paused")}'
+        self._a.take(ans)
+        return ''
+
+    def do(self, cmd):
+        ok, why = self.check(cmd)
+        if not ok:
+            frame = self._a.sample.frame if self._a.sample is not None else MISSING
+            self._issued.append(dict(frame=frame, cmd=cmd, ok=False, why=why, goal=None))
+            return False, why
+        c, g, (x, y) = self._a.contract, self._group(cmd), self._point(cmd)
+        if not self._viewed:
+            off = self._send(dict(tool='bench_view', x=c.view[0], y=c.view[1]))
+            if off:
+                return self._refused(cmd, off)
+            self._viewed = True
+        x0, y0, x1, y1 = g.box
+        off = self._send(dict(tool='bench_box', x0=x0, y0=y0, x1=x1, y1=y1))
+        if off:
+            return self._refused(cmd, off)      # no unit ordered (a selection may be left: the next box replaces it)
+        boxed = self._a.sample
+        off = self._send(dict(tool='bench_click', x=x, y=y, right=True))
+        s = self._a.sample
+        e = dict(frame=s.frame, cmd=cmd, ok=None, goal=None,
+                 why=f'issued: box archive frame {boxed.archive_id} (frame {boxed.frame}), ' + (
+                     f'click unsure: {off}' if off else f'click archive frame {s.archive_id} (frame {s.frame})'))
+        goal = next((q for q in c.goals if q.group == g.name and q.holds(x, y)), None)
+        if goal is None:
+            e['why'] += '; no receipt route (the map counts no goal of the group there)'
+        elif not off:
+            v = self._a.observe.counters()[goal.counter]
+            if v is MISSING or v >= goal.done:
+                e['why'] += f'; no receipt route ({goal.counter} reads {v} at the click, not below {goal.done})'
+            else:
+                e['goal'] = goal
+        self._issued.append(e)
+        self._spent[g.name] = e
+        return None, e['why']
+
+    def _refused(self, cmd, why):
+        self._issued.append(dict(frame=self._a.sample.frame, cmd=cmd, ok=False, why=why, goal=None))
+        return False, why
+
+    def receipts(self):
+        """A pending move whose goal counter reads `done` in this sample is confirmed (the adapter calls it per sample)."""
+        s = self._a.sample
+        for e in self._issued:
+            if e['ok'] is None and e['goal'] is not None:
+                v = self._a.observe.counters()[e['goal'].counter]
+                if v is not MISSING and v == e['goal'].done:
+                    e['ok'] = True
+                    e['why'] += (f'; receipt: {e["goal"].counter} reads {v} at archive frame {s.archive_id} '
+                                 f'(frame {s.frame})')
+
+    def close(self):
+        """The run is over: a move still without its receipt says so (it stays None: not known, not refused)."""
+        for e in self._issued:
+            if e['ok'] is None and not e['why'].endswith('no receipt by the run\'s end'):
+                e['why'] += '; no receipt by the run\'s end'
+
+    def issued(self):
+        """(frame, Command, ok, why) for every command given, in order (ok: True receipt, None not known, False
+        refused); the frame is the click's pause record's (a refusal's: the sample's)."""
+        return tuple((e['frame'], e['cmd'], e['ok'], e['why']) for e in self._issued)
+
+    def __getattr__(self, name):
+        raise Unsupported(f'{name}: no bench channel (work/re/sim_split/adapter_pack/census.md)')
+
+
+def transcript_with_inputs(run_dir, contract, steps, read=None):
+    """The transcript of an archived run with its inputs: `steps` the check's bench steps ([tool, args], world
+    units, as build.steps hands them to the bench). A bench_watch's frames are `sample` asks; each other step is its
+    own ask (args less `look`: the adapter always takes the pause record), answered by its archived frame with
+    `paused` as cnv_result.txt recorded it. Each frame's note must be its step's (NOTE), every frame used once."""
+    if read is None:
+        read = _read_png
+    with open(os.path.join(run_dir, 'index.json'), encoding='utf-8') as f:
+        index = json.load(f)
+    with open(os.path.join(run_dir, 'cnv_result.txt'), encoding='utf-8') as f:
+        log = f.read().splitlines()
+    if index['mod'] != contract.mod:
+        raise ValueError(f'{run_dir}: a run of {index["mod"]}, the contract is {contract.mod}')
+    n, frames, calls = len(contract.lines), list(index['frames']), []
+    sample = dict(tool=SAMPLE, lines=n)
+
+    def answer(fr):
+        return dict(id=fr['id'], second=fr.get('second'), frame=fr.get('frame'), note=fr.get('note', ''), menu=False,
+                    values=list(read(os.path.join(run_dir, f'{fr["id"]:04d}.png'), n)))
+    for tool, args in steps:
+        if tool == 'bench_watch':
+            while frames and str(frames[0].get('note', '')).startswith('watch'):
+                calls.append(dict(ask=sample, answer=answer(frames.pop(0))))
+            continue
+        fr = frames.pop(0)
+        if not str(fr.get('note', '')).startswith(NOTE[tool]):
+            raise ValueError(f'archive frame {fr["id"]}: {fr.get("note")!r} is not a {tool}')
+        line = next((x for x in log if x.startswith(f'{tool}: ') and f' frame {fr["id"]} at ' in x), '')
+        ask = dict(tool=tool, **{k: v for k, v in args.items() if k != 'look'})
+        calls.append(dict(ask=ask, answer=dict(answer(fr), paused=line.endswith('; paused'))))
+    if frames:
+        raise ValueError(f'archive frames {[fr["id"] for fr in frames]} are no step\'s')
+    calls.append(dict(ask=sample, answer=None))
+    return dict(mod=contract.mod, run=os.path.basename(os.path.normpath(run_dir)), source='archive', steps=steps,
+                calls=calls)
+
+
 def transcript_from_archive(run_dir, contract, read=None):
     """The transcript of the samples an archived run took: one `sample` ask per archived frame, in order, answered
     with that frame's id, mission second, logic frame (where ra3ext ran), note, whether it is a menu frame, and its
@@ -422,14 +661,20 @@ def replay(contract, transcript):
 
 
 def main(argv=None):
-    """record <run_dir> <out.json>: the transcript of an archived CampFormSS run."""
+    """record <run_dir> <out.json> [--steps steps.json]: the transcript of an archived CampFormSS run (with --steps,
+    the check's bench steps as JSON [[tool, args], ...]: its inputs too)."""
     import argparse
     ap = argparse.ArgumentParser(description=main.__doc__)
     ap.add_argument('cmd', choices=['record'])
     ap.add_argument('run_dir')
     ap.add_argument('out')
+    ap.add_argument('--steps')
     a = ap.parse_args(argv)
-    tr = transcript_from_archive(a.run_dir, FORMSS)
+    if a.steps:
+        with open(a.steps, encoding='utf-8') as f:
+            tr = transcript_with_inputs(a.run_dir, FORMSS, [tuple(s) for s in json.load(f)])
+    else:
+        tr = transcript_from_archive(a.run_dir, FORMSS)
     with open(a.out, 'w', encoding='utf-8') as f:
         json.dump(tr, f, ensure_ascii=False, indent=1)
     got = [c['answer'] for c in tr['calls'] if c['answer']]

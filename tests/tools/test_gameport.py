@@ -60,7 +60,9 @@ def test_bound_things_are_references_with_the_fields_the_bench_does_not_read_mis
     assert (tank.template, tank.owner, tank.serial) == ('CNV_FormTank', 'Player_1',
                                                         gp.Ref('CampFormSS_mcp_1112_222747', TANK, 1))
     assert o.is_thing(tank) and not o.is_thing(TANK) and o.thing('nobody') is None
-    assert [t.name for t in o.things()] == [TANK, MAN]
+    assert [t.name for t in o.things()] == [f'UNIT - CNV Form {lane} {k}' for lane in ('Plain', 'Formation')
+                                            for k in range(4)]
+    assert o.thing(MAN).template == 'CNV_FormMan'
     assert tank.hp is gp.MISSING and tank.x is gp.MISSING and tank.alive is gp.MISSING
     with pytest.raises(gp.NotRead):
         tank.hp < 100
@@ -149,7 +151,8 @@ def test_menu_frames_and_frames_with_no_second_are_no_samples():
 def test_a_thing_made_again_under_its_name_does_not_take_the_old_reference():
     # the plain lane's line taken as the tank's presence (a refusal test: the map publishes none)
     contract = dataclasses.replace(gp.FORMSS, things=(dataclasses.replace(gp.FORMSS.things[0],
-                                                                          presence='CNV_Form_Plain'),))
+                                                                          presence='CNV_Form_Plain'),),
+                                   groups=(), goals=())
     tr = copy.deepcopy(TRANSCRIPT)
     for k in (8, 9):                                # frames 9-10 read 0: gone; frame 11 on 22: made again
         answers(tr)[k]['values'][0] = 0
@@ -213,3 +216,115 @@ def test_a_contract_names_only_its_own_lines():
         gp.Contract('m', 'P', (gp.Line('c', 'a'),), (gp.Bound('u', 'T', 'P', presence='d'),))
     with pytest.raises(ValueError, match='ending'):
         gp.Contract('m', 'P', (gp.Line('c', 'a'),), ending=gp.Ending('d', 1, '赢', ''))
+
+
+# --- step 2 (plan.md 会话 2): the player's group move as the bench's inputs, confirmed by the map's own count.
+# tests/fixtures/gameport/formss_1112_222747_inputs.json is `gameport.py record ... --steps` on the same run, the steps
+# engine_formation_player.sync_moves(formation_bench.sync_mission()) hands the bench (unchanged since the run, fb2d917c):
+# its view, two boxes and two right clicks are asks answered by their archived pause records.
+INPUTS = json.loads((ROOT / 'tests' / 'fixtures' / 'gameport' / 'formss_1112_222747_inputs.json').read_text('utf-8'))
+_cspec = importlib.util.spec_from_file_location('command_port_for_gameport',
+                                                ROOT / 'experimental' / 'cnv' / 'engine' / 'ports' / 'command.py')
+cp = importlib.util.module_from_spec(_cspec)
+_cspec.loader.exec_module(cp)
+PLAIN = tuple(f'UNIT - CNV Form Plain {k}' for k in range(4))
+FORMATION = tuple(f'UNIT - CNV Form Formation {k}' for k in range(4))
+
+
+def move(units, **kw):
+    return cp.Command('move', units=units, **kw)
+
+
+def started(tr=INPUTS, contract=gp.FORMSS):
+    a = gp.replay(contract, tr)
+    for _ in range(3):                  # the run's first watch: 3 samples, then its inputs
+        a.step()
+    return a
+
+
+def test_the_players_two_group_moves_go_as_the_bench_gave_them_and_the_maps_count_confirms_each():
+    a = started()
+    plain, formation = move(PLAIN, place='@1000.0,1230.0'), move(FORMATION[::-1], pos=(1000.0, 1390.0))
+    ok, why = a.commands.do(plain)
+    assert ok is None and 'click archive frame 6 (frame 371)' in why     # issued, not yet known
+    assert a.commands.do(formation)[0] is None
+    samples = run_all(a)
+    assert a.transport.left() == 0 and a.sample.seq == 29 and len(samples) == 21
+    (f1, c1, ok1, why1), (f2, c2, ok2, why2) = a.commands.issued()
+    # plain: all four in by the formation box's record (frame 491); formation: by s80.3 (frame 670), not at s78.3
+    assert (f1, c1, ok1) == (371, plain, True) and why1.endswith('CNV_Form_Plain reads 22 at archive frame 7 (frame 491)')
+    assert (f2, c2, ok2) == (593, formation, True) and why2.endswith('reads 22 at archive frame 10 (frame 670)')
+    assert a.commands.kinds() == {'move'}
+
+
+def test_a_move_the_bench_cannot_give_is_refused_with_nothing_sent():
+    a = started()
+    left = a.transport.left()
+    for cmd, why in [(move(PLAIN[:3], pos=(1000.0, 1230.0)), 'not one group'),          # a box takes the whole group
+                     (move(PLAIN[:2] + FORMATION[:2], pos=(1000.0, 1230.0)), 'not one group'),
+                     (move(PLAIN, place='Test Form Plain Goal'), 'no named place'),
+                     (cp.Command('move', by='ai:Player_2', units=PLAIN, pos=(1000.0, 1230.0)), 'human player only'),
+                     (cp.Command('attack', units=PLAIN, target='enemy'), 'no archived bench run'),
+                     (cp.Command('stop', units=PLAIN), 'no bench route')]:
+        ok, got = a.commands.do(cmd)
+        assert ok is False and why in got
+    assert a.transport.left() == left and all(ok is False for *_, ok, _ in a.commands.issued())
+    fresh = gp.replay(gp.FORMSS, INPUTS)
+    assert fresh.commands.do(move(PLAIN, pos=(1000.0, 1230.0))) == (False, 'no sample yet')
+    with pytest.raises(gp.Unsupported):
+        a.commands.post(move(PLAIN, pos=(1000.0, 1230.0)), 5)
+
+
+def test_a_group_is_not_sent_twice_and_another_order_is_checked_against_the_recorded_one():
+    a = started()
+    a.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))
+    ok, why = a.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))       # no receipt yet: no blind retry
+    assert ok is False and 'no blind retry' in why
+    a.commands.do(move(FORMATION, pos=(1000.0, 1390.0)))              # its box record reads plain 22: confirmed
+    ok, why = a.commands.do(move(PLAIN, pos=(900.0, 1230.0)))
+    assert ok is False and 'no box selects it now' in why
+    other = started()
+    with pytest.raises(gp.TranscriptError, match='bench_box'):        # formation first: not the recorded input
+        other.commands.do(move(FORMATION, pos=(1000.0, 1390.0)))
+
+
+def test_a_move_with_no_receipt_stays_unknown_to_the_end():
+    # refusal tests on changed copies (not bench readings): the plain click asked 100 west of the goal; the plain
+    # lane never reading 22
+    tr = copy.deepcopy(INPUTS)
+    tr['calls'][5]['ask']['x'] = 900.0
+    a = started(tr)
+    ok, why = a.commands.do(move(PLAIN, pos=(900.0, 1230.0)))
+    assert ok is None and 'no receipt route' in why
+    tr = copy.deepcopy(INPUTS)
+    for c in tr['calls']:
+        if c['answer']:
+            c['answer']['values'][0] = 0
+    b = started(tr)
+    b.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))
+    b.commands.do(move(FORMATION, pos=(1000.0, 1390.0)))
+    run_all(b)
+    (_, _, ok1, why1), (_, _, ok2, _) = b.commands.issued()
+    assert ok1 is None and why1.endswith("no receipt by the run's end") and ok2 is True
+
+
+def test_an_input_answered_by_another_record_is_not_taken_as_given():
+    tr = copy.deepcopy(INPUTS)
+    tr['calls'][4]['answer']['note'] = 'right click at screen (1, 2)'     # the box's record is not a box select
+    a = started(tr)
+    ok, why = a.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))
+    assert ok is False and 'bench_box: archive frame 5' in why and a.sample.archive_id == 4
+    tr = copy.deepcopy(INPUTS)
+    tr['calls'][5]['answer']['paused'] = False                           # the click not followed by the pause
+    a = started(tr)
+    ok, why = a.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))
+    assert ok is None and 'click unsure' in why
+    assert 'no blind retry' in a.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))[1]
+
+
+def test_a_member_not_here_is_not_moved():
+    # the plain lane's line taken as its first tank's presence (a refusal test: the map publishes none); it reads 0
+    things = (dataclasses.replace(gp.FORMSS.things[0], presence='CNV_Form_Plain'),) + gp.FORMSS.things[1:]
+    a = started(contract=dataclasses.replace(gp.FORMSS, things=things))
+    ok, why = a.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))
+    assert ok is False and 'UNIT - CNV Form Plain 0: not here' in why
