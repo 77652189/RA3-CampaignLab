@@ -163,13 +163,11 @@ def test_and_push(tree, log_path):
             if previous_base is None:
                 run_tests(tree, command, log, log_path)
             else:
-                # Check commits individually, including paths edited and then reverted upstream.
-                incoming = touched_paths(tree, f'{previous_base}...{base}')
-                if incoming & previous_paths or command != previous_command:
-                    print('Rerunning affected tests: overlapping paths or a changed test command.', flush=True)
+                if base != previous_base or command != previous_command:
+                    print('Rerunning affected tests: main moved or the test command changed.', flush=True)
                     run_tests(tree, command, log, log_path)
                 else:
-                    print('Reusing affected test results: no overlapping paths and the test command is unchanged.',
+                    print('Reusing affected test results: main and the test command are unchanged.',
                           flush=True)
 
             if dirty_paths(tree) or git(tree, 'rev-parse', 'HEAD').strip() != head:
@@ -181,7 +179,6 @@ def test_and_push(tree, log_path):
                     raise LandError(f'push rejected after {MAX_PUSH_ATTEMPTS} attempts\n{exc}') from exc
                 print(f'Push rejected (attempt {attempt}/{MAX_PUSH_ATTEMPTS}); fetching and rebasing.', flush=True)
                 previous_base = base
-                previous_paths = touched_paths(tree, revisions)
                 previous_command = command
             else:
                 return head

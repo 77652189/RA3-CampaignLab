@@ -124,7 +124,7 @@ def test_rejected_push_keeps_worktree(repo):
     assert kept != remote_tip
     assert git(tree, 'log', '-1', '--format=%an <%ae>') == '77652189 <71443605+77652189@users.noreply.github.com>'
     assert TRAILER in git(tree, 'log', '-1', '--format=%B')
-    assert 'pytest exit code: 0' in log_path(main).read_text(encoding='utf-8')
+    assert log_path(main).read_text(encoding='utf-8').count('pytest exit code: 0') == 1
 
     hook.unlink()
     retry = land(main, tree, '--remove')
@@ -134,7 +134,7 @@ def test_rejected_push_keeps_worktree(repo):
     assert not tree.exists()
 
 
-@pytest.mark.parametrize('scenario', ['unrelated', 'same_file', 'conflict'])
+@pytest.mark.parametrize('scenario', ['unrelated', 'same_file', 'conflict', 'changed_test'])
 def test_push_retry(repo, scenario):
     main, tree, origin = repo
     upstream = main.parent / 'racer'
@@ -144,6 +144,10 @@ def test_push_retry(repo, scenario):
         (upstream / 'allowed.txt').write_text(original.replace('bottom', 'remote'), encoding='utf-8')
         local = original.replace('top', 'local')
         expected = local.replace('bottom', 'remote')
+    elif scenario == 'changed_test':
+        (upstream / 'guards' / 'test_gate.py').write_text(
+            'def test_gate():\n    assert False\n', encoding='utf-8')
+        local = 'local\n'
     else:
         path = 'unrelated.txt' if scenario == 'unrelated' else 'allowed.txt'
         (upstream / path).write_text('remote\n', encoding='utf-8')
@@ -173,17 +177,24 @@ def test_push_retry(repo, scenario):
         assert git(origin, 'rev-parse', 'main') == upstream_head
         assert git(tree, 'status', '--porcelain') == 'UU allowed.txt'
         assert git(tree, 'rev-parse', 'REBASE_HEAD')
-        pick_count, run_count = 1, 1
+        exit_codes = [0]
+    elif scenario == 'changed_test':
+        assert result.returncode == 1, (result.stdout, result.stderr)
+        assert 'affected tests failed (exit 1)' in result.stderr
+        assert git(origin, 'rev-parse', 'main') == upstream_head
+        assert git(tree, 'rev-parse', 'HEAD^') == upstream_head
+        exit_codes = [0, 1]
     else:
         assert result.returncode == 0, result.stderr
         assert git(origin, 'rev-parse', 'main^') == upstream_head
         assert git(origin, 'show', 'main:allowed.txt') == expected.strip()
         assert not tree.exists()
-        assert ('Rerunning affected tests' if scenario == 'same_file'
-                else 'Reusing affected test results') in result.stdout
-        pick_count, run_count = 2, 2 if scenario == 'same_file' else 1
-    assert log.count('picker selected the guard') == pick_count
-    assert log.count('pytest exit code: 0') == run_count
+        assert 'Rerunning affected tests' in result.stdout
+        exit_codes = [0, 0]
+    assert log.count('picker selected the guard') == len(exit_codes)
+    assert [line for line in log.splitlines() if line.startswith('pytest exit code: ')] == [
+        f'pytest exit code: {code}' for code in exit_codes
+    ]
 
 
 def test_junction_stops_removal(repo):

@@ -18,7 +18,9 @@ ALLOW = {
     'experimental/simui/game.py': "VOICE_LINE points into RA3-ChineseVoice\\work (other repo)",
     'demo/voice_snapshot.py': 'ships standalone inside the demo zip, which does not carry labpaths.py; keeps the CNV_WORK expression inline',
     'experimental/outsource/codex_task.py': "bench_dirs() names the MAIN checkout's work (LAB/RA3-CampaignLab/work) as a writable dir for the Codex sandbox on purpose; CNV_WORK still overrides",
-    'tests/test_missing_data.py': 'isolated fixtures spell out their input and expected paths independently',
+    'experimental/outsource/codex_land.py': "lands into the main checkout it is given (main / 'work' / 'logs' is that checkout's log folder, not this tree's WORK)",
+    'tests/tools/test_codex_land.py': "builds throwaway main checkouts under tmp_path and spells their work folders",
+    'tests/test_missing_data.py':'isolated fixtures spell out their input and expected paths independently',
     'tests/test_work_path.py': 'this file spells the patterns',
 }
 HAND = re.compile(r"""os\.path\.join\([^\n]*?,\s*['"]work['"]|['"]work['"]\s*/|/\s*['"]work['"]""")
