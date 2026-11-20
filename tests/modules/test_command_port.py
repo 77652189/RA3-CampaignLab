@@ -854,3 +854,32 @@ def test_the_ais_recruiting_wraps_the_new_unit_not_the_dead_one_of_its_name():
     now, = br.units(None, 1)
     assert now.body is again and now is not first and now.body.alive
     assert br.units(None, 2) == [now]
+
+
+
+def test_the_ais_yard_orders_end_with_their_yard_not_go_on_at_a_new_one_of_its_name():
+    """A yard's build queues are its object's, by serial (review 11-19 q P2 #2: keyed by the yard's name, a yard
+    deleted and made again elsewhere under it took the old one's structure order and its defence order and placed
+    them)."""
+    import simai
+    if not simai.available():
+        pytest.skip('ra3model.ai unavailable')
+    s = simsmall.small_world([('yard', 'SovietConstructionYard', 'Player_1', 2000.0, 2000.0),
+                              ('pp', 'SovietPowerPlant', 'Player_1', 3000.0, 3000.0),      # the tower's
+                              ('bar', 'SovietBarracks', 'Player_1', 3400.0, 3000.0)], model=False)  # prerequisites
+    s.money['Player_1'] = 10000
+    host = simai.SimAI(s)
+    br = object.__new__(simai.Brain)
+    br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
+    br.yard_q, br.yard_rest, br.unit_q = {}, {}, []
+    old, had = s.bodies['yard'], {s.bodies['pp'].serial, s.bodies['bar'].serial}
+    assert br.build('SovietPowerPlant') and br.build('SovietBaseDefenseGround')
+    assert sorted(map(str, br.yard_q)) == sorted(map(str, [old.serial, (old.serial, 'defense')]))
+    br.yard_due(1)
+    paid = s.money['Player_1']
+    s.delete(old, 'test')
+    new = s.add('yard', 'SovietConstructionYard', 'Player_1', 2700.0, 2400.0)
+    for f in range(2, 400):
+        br.yard_due(f)
+    assert br.yard_q == {} and s.money['Player_1'] == paid
+    assert not [b for b in s.living() if b.owner == 'Player_1' and b is not new and b.serial not in had]

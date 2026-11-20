@@ -277,8 +277,8 @@ class Brain:
         # aiskirm z) builds only the counter (B handoff 131); off = the unit builder alone, as before round 129
         self.ai.expected = self.expected if getattr(host, 'efficiency', False) else None
         self._protos = {}               # template -> a Body never placed (expected: the candidate)
-        self.yard_q = {}                # yard name -> [job]
-        self.yard_rest = {}             # yard name -> the last frame it starts nothing (the one after a put)
+        self.yard_q = {}                # yard serial, or (serial, 'defense') -> [job]
+        self.yard_rest = {}             # the same key -> the last frame it starts nothing (the one after a put)
         self.unit_q = []                # [template] waiting for a free, unpacked factory that makes it
         self.made = {}                  # body name -> frame it came (structures: unpack; units: the trace)
         self.wrappers = {}              # body serial -> Unit (by serial: review 11-19 q P2 #1)
@@ -1180,10 +1180,19 @@ class Brain:
         """fn(yard) -> the yard_q key a structure goes in: a base defence (FS_BASE_DEFENSE) in the yard's own
         defence queue beside the structures' (bench 2026-11-10 engine_aiskirm v: aiskacd's two towers, s49 / s69,
         leave the opening's structures on aiskacp's timeline, 4th s50 -> s49, 5th s71 -> s69 -- INFERRED a second
-        queue, the sidebar's defence tab); anything else in the yard's name."""
+        queue, the sidebar's defence tab); anything else in the yard's own. Keyed by the yard object's serial, not
+        its name (review 11-19 q P2 #2: by name, a yard made again under a dead one's name took over its orders).
+        INFERRED, no bench reading: a yard packed and unpacked is a new object under the old name, so its queue
+        ends with the packing."""
         if 'FS_BASE_DEFENSE' in self.host.kinds(template):
-            return lambda y: (y.name, 'defense')
-        return lambda y: y.name
+            return lambda y: (y.serial, 'defense')
+        return lambda y: y.serial
+
+    def present(self, serial):
+        """The object of `serial` while it is alive and still the one the world holds under its name; None once it
+        is gone, dead, or another object took its name (Sim.add over a living one)."""
+        b = self.world.world.numbered.get(serial)
+        return b if b is not None and b.alive and self.world.bodies.get(b.name) is b else None
 
     def build_offers(self, ai, frame, templates):
         """AIPlayer.build_offers: of `templates`, the structures the AI could order now -- a yard, can_build, and
@@ -1690,8 +1699,8 @@ class Brain:
     def yard_due(self, frame):
         world, peers = self.world, self.peers
         for name in list(self.yard_q):
-            y, q = world.bodies.get(name[0] if isinstance(name, tuple) else name), self.yard_q[name]
-            if y is None or not y.alive or not q:
+            y, q = self.present(name[0] if isinstance(name, tuple) else name), self.yard_q[name]
+            if y is None or not q:
                 del self.yard_q[name]
                 continue
             job = q[0]

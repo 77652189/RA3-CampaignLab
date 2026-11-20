@@ -34,12 +34,13 @@ from engine.kernel import snap
 from simsnap import ALIAS, CACHE, STATE, STATIC, WIRE
 
 HOST, BRAINS, MODEL = 'host', 'brains', 'model'
-VERSION = 8             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
+VERSION = 9             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
 #                         4: a brain's ids / hp keyed by serial, not name (same-name sweep S6a);
 #                         5: HOOKS 9's runs, a list, and the mems they saw (_rec_mem by hand, 11b-4e);
 #                         6: its hunt goals / cells keyed by serial (S6b);
 #                         7: a returner's path kept as whether it is the one its unit walks (review 1119p #2);
-#                         8: 'setup', the settings the new SimAI must be made with (review 1119s)
+#                         8: 'setup', the settings the new SimAI must be made with (review 1119s);
+#                         9: the yard queues keyed by the yard's serial, not its name (review 1119q P2 #2)
 # The SimAI's settings restore asks the new SimAI to have been made with, taken with the snapshot; another one is
 # refused whole (review 1119s: one of record=True written onto a SimAI made with record=False, or the other way,
 # came back and its trail held half the run -- 525 / 36 lines the whole run, 262 / 24 off to on, 263 / 12 on to off).
