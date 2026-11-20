@@ -1272,7 +1272,7 @@ class Brain:
             fs = [f for f in ready if t in self.host.menu(f.template)]
             if not fs:
                 continue
-            idles = tuple(f.name for f in fs if not peers.queues.get(f.name)
+            idles = tuple(f.name for f in fs if not peers.queues.get(f.serial)
                           and not any(q in self.host.menu(f.template) for q in self.unit_q))
             idle = bool(idles)
             kinds = self.host.kinds(t)
@@ -1292,7 +1292,7 @@ class Brain:
         world, peers = self.world, self.peers
         ready = [f for f in self.factories() if self.frame >= self.made.get(f.name, -10 ** 9)
                  + self.host.unpack(f.template) and template in self.host.menu(f.template)
-                 and not peers.queues.get(f.name) and not any(q in self.host.menu(f.template) for q in self.unit_q)]
+                 and not peers.queues.get(f.serial) and not any(q in self.host.menu(f.template) for q in self.unit_q)]
         if not ready:
             return []
         live = [b for b in self.living() if not b.scenery]
@@ -1774,7 +1774,7 @@ class Brain:
         for t in list(self.unit_q):
             free = [f for f in self.factories() if t in self.host.menu(f.template)
                     and frame >= self.made.get(f.name, -10 ** 9) + self.host.unpack(f.template)
-                    and not peers.queues.get(f.name)]
+                    and not peers.queues.get(f.serial)]
             if free and peers.commands.do(Command('build', f'ai:{self.player}', player=self.player, template=t))[0]:
                 self.unit_q.remove(t)
 

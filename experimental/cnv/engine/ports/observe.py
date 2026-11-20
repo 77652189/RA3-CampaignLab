@@ -219,7 +219,7 @@ class Observe:
         return self._w.offers(player)
 
     def queues(self):
-        """Factory name -> its jobs ({'template', 'progress', ...})."""
+        """Factory serial (Thing.serial) -> its jobs ({'template', 'progress', ...})."""
         return self._w.queues
 
     def mission(self):

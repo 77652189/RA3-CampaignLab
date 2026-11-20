@@ -178,7 +178,7 @@ class Picture:
         offers = [dict(tp=o[0], cost=o[1], secs=o[2]) for o in obs.offers(human)]
         factories, sold = [], set()
         for f in obs.factories(human):
-            q = queues.get(f.name, [])
+            q = queues.get(f.serial, [])
             menu = set(simunits.menu(f.template, own, f.upgrades))
             can = [o for o in offers if o['tp'] in menu]
             sold |= {o['tp'] for o in can}

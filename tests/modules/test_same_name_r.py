@@ -260,3 +260,39 @@ def test_a_dead_or_deleted_ones_name_may_be_taken_again():
     q2 = s.add('q', TANK, 'Player_1', 400.0, 300.0)
     assert s.bodies['p'] is p2 and s.bodies['q'] is q2 and p2 in s.living() and q2 in s.living()
     assert p not in s.living() and q not in s.living()
+
+
+# ---- O31 (same_name_audit_1119b): a build queue is its factory's own, not its name's
+
+def _queued_at_a_dead_factory(what):
+    """A factory of Player_1's queues `what` and pays some; it dies and a living one of the same template is made
+    under its name, elsewhere and another player's, before the job is due."""
+    s = simsmall.small_world()
+    s.money['Player_1'] = s.money['Player_2'] = 100000
+    if what == GI:
+        f = s.add('f', 'AlliedBarracks', 'Player_1', 300.0, 300.0)
+    else:
+        s.add('ref', 'AlliedRefinery', 'Player_1', 700.0, 700.0)
+        f = s.add('f', 'AlliedConstructionYard', 'Player_1', 300.0, 300.0)
+    assert s.order_build('Player_1', what, factory=f if what == GI else None)
+    s.produce_due(30)
+    paid = 100000 - s.money['Player_1']
+    assert paid > 0
+    s.destroy(f, 'test')
+    f2 = s.add('f', f.template, 'Player_2', 1500.0, 1500.0)
+    return s, f2, paid
+
+
+def test_a_unit_queued_at_a_factory_that_died_does_not_come_out_of_one_made_under_its_name():
+    s, f2, paid = _queued_at_a_dead_factory(GI)
+    s.produce_due(30 * 60)
+    assert not [b for b in s.living() if b.template == GI]
+    assert s.money['Player_1'] == 100000 - paid and s.money['Player_2'] == 100000     # gone with it, not refunded
+    assert not s.queues                                     # the dead one's queue went along
+    assert s.order_build('Player_2', GI, factory=f2) and list(s.queues) == [f2.serial]
+
+
+def test_an_object_upgrade_bought_at_a_structure_that_died_does_not_arrive_on_one_made_under_its_name():
+    s, f2, _ = _queued_at_a_dead_factory('Upgrade_AlliedTech2')
+    s.produce_due(30 * 60)
+    assert 'Upgrade_AlliedTech2' not in f2.upgrades and not s.player_ups.get('Player_1')

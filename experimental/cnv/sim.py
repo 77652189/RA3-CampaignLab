@@ -960,7 +960,7 @@ class Sim:
         self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
         self.casts = []                     # (frame, owner, power, caster's serial, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
         self.power_at = {}                  # (player, spellbook power lower) -> the frame it is ready from (spellbook_ready)
-        self.queues = {}                    # factory name -> [job]: production (order_build, produce_due)
+        self.queues = {}                    # factory serial -> [job]: production (order_build, produce_due)
         self.produced_to = None             # the last frame produce_due ran
         self.energies = {}                  # template -> EnergyProduction (simunits.energy; power)
         self.player_ups = {}                # player -> upgrades GIVE_PLAYER_UPGRADE gave (a unit's NeededUpgrade)
@@ -1554,10 +1554,10 @@ class Sim:
         False: nothing of the owner's builds / buys it now."""
         sellers = self.upgrade_sellers(owner, template)
         if sellers:
-            b = min(sellers, key=lambda b: len(self.queues.get(b.name, [])))
+            b = min(sellers, key=lambda b: len(self.queues.get(b.serial, [])))
             cost, secs = simunits.upgrade_cost(template)
             kind = dict(simunits.upgrade_menu(b.template, self.own, b.upgrades))[template]
-            self.queues.setdefault(b.name, []).append(
+            self.queues.setdefault(b.serial, []).append(
                 {'template': template, 'upgrade': template, 'kind': kind, 'owner': owner, 'cost': cost,
                  'secs': secs, 'progress': 0.0, 'paid': 0, 'full': None})
             self.used.add('production')
@@ -1567,9 +1567,9 @@ class Sim:
               and self.can_build(owner, template, f, ban=not press) and (factory is None or f is factory)]
         if not fs:
             return False
-        f = min(fs, key=lambda f: len(self.queues.get(f.name, [])))
+        f = min(fs, key=lambda f: len(self.queues.get(f.serial, [])))
         cost, secs = simunits.production(template, self.own)
-        self.queues.setdefault(f.name, []).append(
+        self.queues.setdefault(f.serial, []).append(
             {'template': template, 'owner': owner, 'cost': cost, 'secs': secs, 'progress': 0.0, 'paid': 0,
              'full': None})
         self.used.add('production')
@@ -1584,16 +1584,16 @@ class Sim:
         and walks to its NaturalRallyPoint (bench 2026-11-05 engine_production a-d: 150 / 151 frames, 54 paid at
         the 16th, a 250 budget stalls at 3 left, out 10 frames after full). A banned unit's job
         (ALLOW_DISALLOW_ONE_BUILDING 0) stands, keeps what it paid and goes on when let go -- not cancelled, not
-        refunded (bench 2026-11-09 engine_production g). A factory gone takes its queue along."""
+        refunded (bench 2026-11-09 engine_production g). A factory gone takes its queue (keyed by serial: O31)."""
         start = frame if self.produced_to is None else self.produced_to + 1
         self.produced_to = frame
         if not self.queues:
             return
         for fr in range(start, frame + 1):
-            for name in list(self.queues):
-                f, q = self.bodies.get(name), self.queues[name]
+            for serial in list(self.queues):
+                f, q = simworld.held(self, self.world.numbered.get(serial)), self.queues[serial]
                 if f is None or not f.alive or not q:
-                    del self.queues[name]
+                    del self.queues[serial]
                     continue
                 create, rally, door = simunits.exit_of(f.template, self.own)
                 for job in [j for j in q if j['full'] is not None and fr >= j['full'] + (0 if 'upgrade' in j else door)]:
