@@ -185,11 +185,13 @@ class Specials:
         """A WeaponFireSpecialAbilityUpdate's button (simunits.weapon_fire_ability; bench 11-11 engine_wfire): the
         caster walks to within StartAbilityRange of a named target first, then stands UnpackTime and the SpecialWeapon
         goes off once (wfire_due); it stands on through PackTime when BUSY_DURING_PACK, FreezeAfterTriggerDuration
-        always. A target gone or missing: nothing."""
+        always. A target gone or missing: nothing. `target`: a name (a map script's), or the object itself (picked by
+        serial through the command port: no object of its name stands in)."""
         ab = simunits.weapon_fire_ability(b.template, button, world.own)
-        t = world.body(target) if target else None
+        t = (world.body(target) if isinstance(target, str) else target) if target else None
         if target and not (t and t.alive):
-            world.note('技能', f'{world.label(b)} 按 {button}：目标 {target} 不在')
+            world.note('技能', f'{world.label(b)} 按 {button}：目标 '
+                             f'{target if isinstance(target, str) else world.label(target)} 不在')
             return False
         world.used.add('weapon fire ability')
         job = dict(by=b, ab=ab, eff=simunits.special_weapon(ab['weapon'], world.own), target=t, button=button,

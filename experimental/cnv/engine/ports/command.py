@@ -127,6 +127,13 @@ ORDER = '命令'
 # The args a line verb's command may carry beside its line: what its names picked, by serial (its line, for the
 # record, names them; the command goes by the serials). A line written for a replay to read cannot hold them.
 PINS = ('unit_serials', 'target_serial')
+TARGETED = frozenset({'attack', 'capture', 'build', 'enter'})     # the routes that read `target` / `target_serial`
+
+
+def takes_target(cmd):
+    """Whether cmd's route reads a target: TARGETED's, and a power pressed at one (`via` 'wfire'); the rest go to a
+    place or nowhere, so a `target_serial` given them would be checked by `_pinned` and then never used."""
+    return cmd.kind in TARGETED or (cmd.kind == 'power' and cmd.arg('via') == 'wfire')
 
 
 def by_player(s):
@@ -347,6 +354,8 @@ class Commands:
             if not self._held(cmd, found.values()):
                 return False, f'找不到 {"、".join(cmd.units)}（编号 {"、".join(map(str, pins))} 已不在）'
         s = cmd.arg('target_serial')
+        if s is not None and not takes_target(cmd):    # a route that reads no target would drop the pin unread
+            return False, f'{cmd.kind}: 不带目标，编号 {s} 无处可用'     # (review 1120ee P2 #4's class)
         if s is not None:
             t = self._serials((s,)).get(s)
             if t is not None and cmd.target and t.name != cmd.target:     # no name: a pin alone (11-19 m)
@@ -511,7 +520,8 @@ class Commands:
             if w.order_build(cmd.player, cmd.template, factory=f, press=cmd.arg('press', False)):
                 return True, ''
             return False, f'{w.label(f)} 现在造不了 {cmd.template}'
-        if not cmd.target:                  # the player's sidebar click (simproxy): the shortest queue that builds it
+        if not cmd.target and cmd.arg('target_serial') is None:     # the player's sidebar click (simproxy): the
+            # shortest queue that builds it; a serial alone is that factory's (review 1120ee P2 #4), not the sidebar's
             if w.order_build(cmd.player or w.human, cmd.template):
                 return True, ''
             return False, f'没有工厂现在造得了 {cmd.template}'
@@ -614,9 +624,10 @@ class Commands:
         if via not in ('wfire', 'leap', 'movement', 'self'):
             return False, f'power: no press route {via!r}'
         pressed = []                        # each press's answer: False where the world turned it down (f #4)
-        for b in self._units(cmd):
+        aim = (cmd.target or None) if cmd.arg('target_serial') is None else self._target(cmd, None)   # the object
+        for b in self._units(cmd):          # picked by serial, not one of its name (review 1120ee P2 #4's class)
             if via == 'wfire':
-                pressed.append(w.wfire_press(b, button, cmd.target or None))
+                pressed.append(w.wfire_press(b, button, aim))
             elif via == 'leap':
                 pressed.append(w.leap_press(b, button, w.point(cmd.place)))
             elif via == 'movement':

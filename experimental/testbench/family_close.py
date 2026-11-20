@@ -104,15 +104,15 @@ def golden_line(run, log):
         if run.failed('new', n):
             bad.append(n)
             log.write(f'{n}: FAILED to record here\n{run.failed("new", n)}\n')
-        elif run.failed('base', n):
-            skipped.append(n)
-            log.write(f'{n}: not recordable on the base\n')
+        elif run.failed('base', n):         # nothing compared: red unless the change declares the task (as golden.py)
+            (skipped if n in run.changed else bad).append(n)
+            log.write(f'{n}: not recordable on the base\n{run.failed("base", n)}\n')
         else:
             d = run.difference(n)
             log.write(f'{n}: {"same" if not d else d}\n')
             (same if not d else declared if n in run.changed else bad).append(n)
     head = f'底版 {run.base_rev[:10]} 对本工作区：{len(same)}/{len(run.names)} same'
-    tail = ''.join([f'；声明改了 {declared}' if declared else '', f'；底版录不了 {skipped}' if skipped else ''])
+    tail = ''.join([f'；声明改了 {declared}' if declared else '', f'；底版录不了（已声明）{skipped}' if skipped else ''])
     if bad:
         return False, f'逐帧记录有差异或录不了（红）：{bad}。{head}{tail}'
     return True, head + tail

@@ -36,9 +36,18 @@ def test_golden_a_difference_not_declared_is_red_and_named():
     assert 'frame 9' in log.getvalue()
 
 
-def test_golden_a_declared_difference_and_a_base_gap_are_green_but_said():
-    ok, line = fc.golden_line(FakeRun({'a': 'frame 1', 'b': 'fail-base', 'c': 'same'}, changed={'a'}), io.StringIO())
+def test_golden_a_declared_difference_and_a_declared_base_gap_are_green_but_said():
+    ok, line = fc.golden_line(FakeRun({'a': 'frame 1', 'b': 'fail-base', 'c': 'same'}, changed={'a', 'b'}),
+                              io.StringIO())
     assert ok and '声明改了' in line and '底版录不了' in line and '1/3 same' in line
+
+
+def test_golden_a_base_gap_not_declared_is_red():
+    """Nothing was compared for that task -- golden.py returns 1 for it, so the family gate must not say green."""
+    log = io.StringIO()
+    ok, line = fc.golden_line(FakeRun({'a': 'same', 'b': 'fail-base'}), log)
+    assert not ok and "['b']" in line and '1/2 same' in line
+    assert 'boom' in log.getvalue()
 
 
 def test_golden_not_recordable_here_is_red():

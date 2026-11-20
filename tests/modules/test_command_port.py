@@ -1276,3 +1276,23 @@ def test_a_posted_build_goes_to_the_factory_clicked_not_one_made_under_its_name(
     assert len(ran) == 1 and not ran[0][0], ran
     assert not s.queues and s.money == {**s.money, 'Player_1': 100000, 'Player_2': 100000}
     assert not [b for b in s.living() if b.template == gi]
+
+
+def test_a_target_serial_alone_is_the_route_s_target_or_refused():
+    """Review 1120ee P2 #4 and its class: a pin checked by `_pinned`, then dropped by the route -- a build by serial
+    alone went to the sidebar's pick, a weapon-fire press at no target; a route that reads no target refuses it."""
+    gi = 'AlliedAntiInfantryInfantry'
+    s = simsmall.small_world()
+    s.money['Player_1'] = 100000
+    first = s.add('first', 'AlliedBarracks', 'Player_1', 300.0, 300.0)
+    second = s.add('second', 'AlliedBarracks', 'Player_1', 900.0, 900.0)
+    assert s.commands.do(Command('build', template=gi, args=(('target_serial', second.serial),))) == (True, '')
+    assert Observe(s).queue(first) == [] and [t for t, _ in Observe(s).queue(second)] == [gi]
+    s, seen = _world(), []
+    s.wfire_press = lambda b, button, target=None: seen.append(target) or True
+    pin = (('target_serial', s.bodies['foe'].serial),)
+    press = Command('power', 'script', units=('a',), args=OBJ + (('via', 'wfire'), ('button', 'X')) + pin)
+    assert s.commands.do(press) == (True, '')
+    assert seen == [s.bodies['foe']]
+    assert s.commands.do(Command('move', units=('a',), place='@500,0', args=pin)) == \
+        (False, f'move: 不带目标，编号 {pin[0][1]} 无处可用')
