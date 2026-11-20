@@ -62,7 +62,12 @@ OBJECTIVES = (0, 1, 2, 3)
 
 
 def _number(v):
-    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+    if not isinstance(v, (int, float)) or isinstance(v, bool):
+        return False
+    try:
+        return math.isfinite(v)
+    except OverflowError:       # a whole number too large for a float (10**309)
+        return False
 
 
 def _whole(v):
@@ -74,7 +79,8 @@ def _name(v):
 
 
 def _keys(obj, want, path, bad):
-    """Whether `obj` is a dict of exactly the keys `want`; the missing and the unknown named."""
+    """Whether `obj` is a dict, the keys of `want` it misses and the unknown ones named; the caller checks each
+    field it has (one missing or broken field hides no other)."""
     if not isinstance(obj, dict):
         bad.append(f'{path or "the file"}: not an object ({type(obj).__name__})')
         return False
@@ -84,7 +90,18 @@ def _keys(obj, want, path, bad):
         bad.append(f'{path or "the file"}: missing {", ".join(missing)}')
     if extra:
         bad.append(f'{path or "the file"}: unknown {", ".join(extra)}')
-    return not missing
+    return True
+
+
+def _table(v, path, bad):
+    """A dict whose keys are names (a script's table, a player's relations): its bad keys named; whether a dict."""
+    if not isinstance(v, dict):
+        bad.append(f'{path}: not an object')
+        return False
+    for k in v:
+        if not _name(k):
+            bad.append(f'{path}: a key not a name ({k!r})')
+    return True
 
 
 def _names(v, path, bad, unique=False):
@@ -117,19 +134,24 @@ def _finite(v, path, bad, low=None, high=None):
 
 def _player(name, p, listed, bad):
     path = f'players.{name}'
+    if not _name(name):
+        bad.append(f'players: a key not a name ({name!r})')
     if not _keys(p, PLAYER, path, bad):
         return
-    _finite(p['money'], f'{path}.money', bad, 0)
-    _names(p['sciences'], f'{path}.sciences', bad, unique=True)
-    if not _whole(p['science_points']) or p['science_points'] < 0:
+    if 'money' in p:
+        _finite(p['money'], f'{path}.money', bad, 0)
+    if 'sciences' in p:
+        _names(p['sciences'], f'{path}.sciences', bad, unique=True)
+    if 'science_points' in p and (not _whole(p['science_points']) or p['science_points'] < 0):
         bad.append(f'{path}.science_points: not a whole number >= 0 ({p["science_points"]!r})')
-    _names(p['upgrades'], f'{path}.upgrades', bad, unique=True)
-    if _keys(p['power'], POWER, f'{path}.power', bad):
+    if 'upgrades' in p:
+        _names(p['upgrades'], f'{path}.upgrades', bad, unique=True)
+    if 'power' in p and _keys(p['power'], POWER, f'{path}.power', bad):
         for k in POWER:
-            _finite(p['power'][k], f'{path}.power.{k}', bad, 0)
-    rel = p['relations']
-    if not isinstance(rel, dict):
-        bad.append(f'{path}.relations: not an object')
+            if k in p['power']:
+                _finite(p['power'][k], f'{path}.power.{k}', bad, 0)
+    rel = p.get('relations')
+    if 'relations' not in p or not _table(rel, f'{path}.relations', bad):
         return
     for other, value in rel.items():
         at = f'{path}.relations.{other}'
@@ -146,32 +168,38 @@ def _thing(i, t, bad):
     if not _keys(t, THING, path, bad):
         return
     for k in ('id', 'template', 'owner'):
-        if not _name(t[k]):
+        if k in t and not _name(t[k]):
             bad.append(f'{path}.{k}: not a name ({t[k]!r})')
     for k in ('x', 'y', 'angle'):
-        _finite(t[k], f'{path}.{k}', bad)
-    if t['z'] is not None:
+        if k in t:
+            _finite(t[k], f'{path}.{k}', bad)
+    if t.get('z') is not None:
         _finite(t['z'], f'{path}.z', bad)
-    if _finite(t['max_hp'], f'{path}.max_hp', bad) and t['max_hp'] <= 0:
+    if 'max_hp' in t and _finite(t['max_hp'], f'{path}.max_hp', bad) and t['max_hp'] <= 0:
         bad.append(f'{path}.max_hp: {t["max_hp"]!r} not > 0')
-    if _finite(t['hp'], f'{path}.hp', bad, 0) and _number(t['max_hp']) and t['hp'] > t['max_hp']:
+    if 'hp' in t and _finite(t['hp'], f'{path}.hp', bad, 0) and _number(t.get('max_hp')) and t['hp'] > t['max_hp']:
         bad.append(f'{path}.hp: {t["hp"]!r} over max_hp {t["max_hp"]!r}')
-    _names(t['status'], f'{path}.status', bad, unique=True)
-    _names(t['upgrades'], f'{path}.upgrades', bad, unique=True)
-    if not _whole(t['level']) or t['level'] < 1:
+    for k in ('status', 'upgrades'):
+        if k in t:
+            _names(t[k], f'{path}.{k}', bad, unique=True)
+    if 'level' in t and (not _whole(t['level']) or t['level'] < 1):
         bad.append(f'{path}.level: not a whole number >= 1 ({t["level"]!r})')
-    _names(t['contains'], f'{path}.contains', bad)
-    if not isinstance(t['team'], str):
+    if 'contains' in t:
+        _names(t['contains'], f'{path}.contains', bad)
+    if 'team' in t and not isinstance(t['team'], str):
         bad.append(f'{path}.team: not a string ({t["team"]!r})')
+    if 'queue' not in t:
+        return
     if not isinstance(t['queue'], list):
         bad.append(f'{path}.queue: not a list')
         return
     for j, job in enumerate(t['queue']):
         at = f'{path}.queue[{j}]'
         if _keys(job, JOB, at, bad):
-            if not _name(job['template']):
+            if 'template' in job and not _name(job['template']):
                 bad.append(f'{at}.template: not a name ({job["template"]!r})')
-            _finite(job['progress'], f'{at}.progress', bad, 0, 1)
+            if 'progress' in job:
+                _finite(job['progress'], f'{at}.progress', bad, 0, 1)
 
 
 def _crews(things, bad):
@@ -208,21 +236,19 @@ def _crews(things, bad):
 def _script(s, bad):
     if not _keys(s, SCRIPT, 'script', bad):
         return
-    for k in SCRIPT:
-        if not isinstance(s[k], dict):
-            bad.append(f'script.{k}: not an object')
-    if isinstance(s['flags'], dict):
+    ok = {k: k in s and _table(s[k], f'script.{k}', bad) for k in SCRIPT}
+    if ok['flags']:
         for k, v in s['flags'].items():
             if not isinstance(v, bool):
                 bad.append(f'script.flags.{k}: not true / false ({v!r})')
     for part in ('counters', 'timers'):
-        if isinstance(s[part], dict):
+        if ok[part]:
             for k, v in s[part].items():
                 _finite(v, f'script.{part}.{k}', bad)
-    if isinstance(s['counters'], dict) and isinstance(s['timers'], dict):
-        for k in sorted(set(s['counters']) & set(s['timers'])):     # the executor keeps both in one table
+    if ok['counters'] and ok['timers']:
+        for k in sorted(set(s['counters']) & set(s['timers']), key=str):     # the executor keeps both in one table
             bad.append(f'script.timers.{k}: also a counter')
-    if isinstance(s['objectives'], dict):
+    if ok['objectives']:
         for k, v in s['objectives'].items():
             if not _whole(v) or v not in OBJECTIVES:
                 bad.append(f'script.objectives.{k}: {v!r} not one of 0 hidden, 1 shown, 2 done, 3 failed')
@@ -233,21 +259,26 @@ def check(doc):
     bad = []
     if not _keys(doc, TOP, '', bad):
         return bad
-    if doc['format'] != FORMAT:
+    if 'format' in doc and doc['format'] != FORMAT:
         bad.append(f'format: {doc["format"]!r}, this reads {FORMAT!r}')
-    if not _name(doc['map']):
+    if 'map' in doc and not _name(doc['map']):
         bad.append(f'map: not a name ({doc["map"]!r})')
-    _finite(doc['t'], 't', bad, 0)
-    if not _whole(doc['frame']) or doc['frame'] < 0:
+    if 't' in doc:
+        _finite(doc['t'], 't', bad, 0)
+    if 'frame' in doc and (not _whole(doc['frame']) or doc['frame'] < 0):
         bad.append(f'frame: not a whole number >= 0 ({doc["frame"]!r})')
-    players = doc['players']
-    if not isinstance(players, dict):
+    players = doc.get('players')
+    if 'players' not in doc:
+        pass
+    elif not isinstance(players, dict):
         bad.append('players: not an object')
     else:
         for name, p in players.items():
             _player(name, p, players, bad)
-    things = doc['things']
-    if not isinstance(things, list):
+    things = doc.get('things')
+    if 'things' not in doc:
+        pass
+    elif not isinstance(things, list):
         bad.append('things: not a list')
     else:
         seen = {}
@@ -260,8 +291,12 @@ def check(doc):
                 else:
                     seen[tid] = i
         _crews(things, bad)
-    _script(doc['script'], bad)
-    _names(doc['gaps'], 'gaps', bad)
+    if 'script' in doc:
+        _script(doc['script'], bad)
+    if 'gaps' in doc:
+        _names(doc['gaps'], 'gaps', bad)
+        if doc['gaps'] == []:
+            bad.append('gaps: empty (a file names what it leaves out)')
     return bad
 
 

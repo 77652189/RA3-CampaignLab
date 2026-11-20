@@ -118,6 +118,64 @@ def test_a_crew_listed_once_holds():
     assert _broken(_set(['things', 1, 'contains'], ['Level eye base target'])) == []
 
 
+def _drop_x_break_y(doc):
+    del doc['things'][0]['x']
+    doc['things'][0]['y'] = []
+
+
+def _drop_players_break_t(doc):
+    del doc['players']
+    doc['t'] = 'soon'
+
+
+# Review z #3 (11-20): a value no float holds, a missing field hiding the next broken one, a key that is no name, a
+# file naming no gap.
+WHOLE = [
+    ('x past a float', _set(['things', 0, 'x'], 10 ** 309), ['things[0].x: not a finite number']),
+    ('a missing field hides no other', _drop_x_break_y, ['things[0]: missing x', 'things[0].y: not a finite number']),
+    ('a missing part hides no other', _drop_players_break_t, ['the file: missing players', 't: not a finite number']),
+    ('a flag of no name', _set(['script', 'flags'], {'': True}), ["script.flags: a key not a name ('')"]),
+    ('a counter of no name', _set(['script', 'counters'], {'': 1}), ["script.counters: a key not a name ('')"]),
+    ('a relation of no name', _set(['players', 'Player_1', 'relations'], {'': 'Enemy'}),
+     ["players.Player_1.relations: a key not a name ('')"]),
+    ('no gap named', _set(['gaps'], []), ['gaps: empty (a file names what it leaves out)']),
+]
+
+
+@pytest.mark.parametrize('why, edit, said', WHOLE, ids=[w[0] for w in WHOLE])
+def test_every_problem_of_a_file_is_named(why, edit, said):
+    bad = _broken(edit)
+    for s in said:
+        assert any(s in b for b in bad), bad
+
+
+def _paths(v, at=()):
+    """Every path into a JSON value (its own first)."""
+    yield at
+    if isinstance(v, dict):
+        for k, x in v.items():
+            yield from _paths(x, at + (k,))
+    elif isinstance(v, list):
+        for i, x in enumerate(v):
+            yield from _paths(x, at + (i,))
+
+
+BAD_VALUES = (10 ** 309, -10 ** 309, math.nan, None, True, '', [], {}, [None], {'': None})
+
+
+def test_no_value_anywhere_breaks_the_check(hosts):
+    """Any field of a file set to any JSON value: the check and the preflight answer in field paths, never raise."""
+    doc = _load('levelvision_a')
+    paths = [p for p in _paths(doc) if p]
+    assert len(paths) > 150
+    for path in paths:
+        for value in BAD_VALUES:
+            broken = copy.deepcopy(doc)
+            _set(list(path), value)(broken)
+            for bad in (simbattlefield.check(broken), simbattlefield.preflight(hosts[probe_range], broken)):
+                assert isinstance(bad, list) and all(isinstance(b, str) for b in bad), (path, value)
+
+
 def test_not_an_object_at_all():
     assert simbattlefield.check([]) == ['the file: not an object (list)']
     bad = simbattlefield.check({**_load('mine_cap'), 'things': {}, 'players': []})
