@@ -24,3 +24,9 @@ def test_a_nonlethal_hit_heals_half_the_damage_taken(monkeypatch):
     s.deal(FRAME)
     assert target.hp == target_before - 20  # 40 × 50% armor
     assert caster.hp == caster_before + 10  # 20 actual damage × 50%
+
+    target.set_hp(10)  # less than the same hit's 20 damage after armor
+    caster_before = caster.hp
+    s.deal(FRAME)
+    assert not target.alive
+    assert caster.hp == caster_before

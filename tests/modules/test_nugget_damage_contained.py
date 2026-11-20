@@ -27,3 +27,11 @@ def test_the_first_eligible_passenger_takes_the_hit(monkeypatch):
     before = (first.hp, second.hp, target.hp)
     s.deal(FRAME)
     assert (first.hp, second.hp, target.hp) == (before[0] - 20, before[1], before[2])
+
+    # A vehicle-only hit has no eligible passengers in this apartment.
+    weapons = simunits._weapons([xml.replace('Include="INFANTRY"', 'Include="VEHICLE"')])
+    weapon = simunits._resolve(weapons['SampleHit'], weapons)
+    s.volleys = [(target, weapon, caster)]
+    before = (first.hp, second.hp, target.hp)
+    s.deal(FRAME)
+    assert (first.hp, second.hp, target.hp) == before

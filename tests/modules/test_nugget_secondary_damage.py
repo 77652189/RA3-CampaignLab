@@ -28,3 +28,9 @@ def test_a_two_hit_volley_adds_cold_without_health_damage(monkeypatch):
     s.deal(FRAME)
     assert target.hp == before
     assert target.cold == 24  # two hits at 12 each, with no configured dissipation
+
+    shielded = s.add('shielded', target.template, target.owner, 1350, 2540)
+    shielded.shielded = True
+    s.volleys = [(shielded, weapon, caster)]
+    s.deal(FRAME)
+    assert shielded.cold == 0  # the same two hits cannot add cold through the shield

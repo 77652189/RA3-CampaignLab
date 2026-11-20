@@ -30,3 +30,15 @@ def test_bridge_connects_ground_banks_and_ignores_an_obstacle_on_the_deck(monkey
     assert not g.open('ground', *water)
     g.set_blocks([(*deck, 20)])
     assert g.open('ground', *deck) and g.route('ground', start, goal) == [goal]
+
+    # Reproduce a cell still marked as deck but missing from the coarse
+    # land mask. The neighbouring deck cells still let the ground route snap on.
+    cell = g.cell(*deck)
+    assert g.deck[cell]
+    g.grids['ground'][cell] = False
+    g.cache.clear()
+
+    assert g.way('both', deck, goal, False) is None  # the deep channel cannot reach the bank
+    land_route = g.route('ground', deck, goal)
+    assert land_route is not None
+    assert g.route('both', deck, goal) == land_route

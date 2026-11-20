@@ -13,7 +13,7 @@ def test_the_first_and_last_ticks_are_both_included(monkeypatch):
     target = s.add('target', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1350, 2500)
     xml = ('<WeaponTemplate id="SampleHit" RequiredAntiMask="ANTI_GROUND"><Nuggets>'
            '<DOTNugget Damage="7" DamageType="UNRESISTABLE" DamageInterval="0.2s" '
-           'DamageDuration="0.4s"/>'
+           'DamageDuration="0.4s" RemoveIfHealed="true"/>'
            '</Nuggets></WeaponTemplate>')
     weapons = simunits._weapons([xml])
     weapon = simunits._resolve(weapons['SampleHit'], weapons)
@@ -28,4 +28,18 @@ def test_the_first_and_last_ticks_are_both_included(monkeypatch):
         s.clock.frame = now + elapsed
         s.deal(FRAME)
         assert before - target.hp == expected  # seven HP at frame offsets 0, 3 and 6
+    assert not s._harm().dots
+
+    target.set_hp(target.max_hp - 20)
+    before = target.hp
+    s.volleys = [(target, weapon, caster)]
+    s.deal(FRAME)
+    assert target.hp == before - 7
+    s.volleys.clear()
+
+    # The current healing check compares with HP saved before the first tick.
+    target.set_hp(before + 1)
+    s.clock.frame += 3  # 0.2 seconds at 15 Hz, when the next tick would land
+    s.deal(FRAME)
+    assert target.hp == before + 1
     assert not s._harm().dots

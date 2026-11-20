@@ -27,6 +27,14 @@ def test_attack_move_aims_on_the_first_frame_inside_range(monkeypatch):
     crossing = (225.0 - centre_reach + 1e-6) / tank.speed
     first = math.ceil(crossing * s.fps)
     assert first == 7
+    start = (tank.x, tank.y)
+    reach = [(foe, tank.weapons[0], centre_reach)]
+    with monkeypatch.context() as blocked:
+        blocked.setattr(s, 'shot_blocked', lambda *_: True)
+        # The only range intersection is on this leg, but its shot is blocked.
+        assert s.range_entry(tank, reach, *point, tank.speed / 2) is None
+        assert (tank.x, tank.y) == start
+
     aimed = []
     deal = s.deal
 

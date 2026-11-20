@@ -16,7 +16,7 @@ def test_attachment_teleports_the_child_and_tracks_the_parent(monkeypatch):
         '</Behaviors></GameObject>'
     )
     caster = s.add('caster', 'SampleCaster', 'Player_1', 1250, 2500)
-    target = s.add('target', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1350, 2500)
+    target = s.add('target', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1371, 2500)
     xml = ('<WeaponTemplate id="SampleHit" RequiredAntiMask="ANTI_GROUND"><Nuggets>'
            '<AttachNugget AttachModuleId="Hook"><SpecialObjectFilter Rule="ANY" '
            'Include="VEHICLE"/></AttachNugget>'
@@ -25,6 +25,12 @@ def test_attachment_teleports_the_child_and_tracks_the_parent(monkeypatch):
     weapon = simunits._resolve(weapons['SampleHit'], weapons)
     s.volleys = [(target, weapon, caster)]
     monkeypatch.setattr(s, 'shots_due', lambda *_: 1)
+    s.deal(FRAME)
+    # A 121-unit centre distance is outside the AttachUpdate range of 120.
+    assert caster.serial not in s.attachments
+    assert (caster.x, caster.y) == (1250, 2500)
+
+    target.x = 1350
     s.deal(FRAME)
     child, parent, _ = s.attachments[caster.serial]
     assert (child, parent) == (caster, target)

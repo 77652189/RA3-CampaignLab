@@ -17,12 +17,12 @@ def test_the_hit_uses_type_armor_and_rear_scalar(monkeypatch):
     weapons = simunits._weapons([xml])
     weapon = simunits._resolve(weapons['SampleHit'], weapons)
     s.volleys = [(target, weapon, caster)]
-    monkeypatch.setattr(s, 'shots_due', lambda *_: 1)
+    monkeypatch.setattr(s, 'shots_due', lambda *_: 2)
     caster.dealt = 2.0
     target.angle = 0.0  # caster is due west of a target facing east
     target.armor = {'CANNON': 50.0, '<rear': 150.0}
     target.taken = 0.5
     before = target.hp
     s.deal(FRAME)
-    assert before - target.hp == 30  # 40 × 2 × .5 armor × .5 taken × 1.5 rear
+    assert before - target.hp == 60  # 2 hits × 40 × 2 dealt × .5 armor × .5 taken × 1.5 rear
     assert target.last_by == caster.name

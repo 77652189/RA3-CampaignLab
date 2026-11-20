@@ -10,12 +10,13 @@ from sim import Ground
 def test_amphibious_route_lands_by_the_shallows():
     # An 8-unit rise per fine cell joins deep water to dry ground, below
     # the 9-unit slope limit. The middle row of heights straddles the shore.
-    elevation = np.tile([296] * 6 + [304, 312, 320, 328, 336, 344] + [352] * 12, (12, 1))
-    g = Ground(SimpleNamespace(DIMS=(24, 12, 0), WATERLINE=320,
+    elevation = np.tile([296] * 36 + [304, 312, 320, 328, 336, 344] + [352] * 12, (12, 1))
+    g = Ground(SimpleNamespace(DIMS=(54, 12, 0), WATERLINE=320,
                                ground=lambda: SimpleNamespace(e=elevation)))
-    sea, bank = (40, 60), (160, 60)
+    sea, bank = (40, 60), (460, 60)
     assert g.open('water', *sea) and not g.open('ground', *sea)
     assert g.open('ground', *bank) and not g.open('water', *bank)
+    assert g.route('ground', sea, bank) is None  # dry ground is outside the 300-unit snap range
     assert g.route('both', sea, bank) == [bank]
 
 
@@ -30,5 +31,9 @@ def test_knock_landing_moves_inland_and_uses_the_vehicle_half_cell_offset():
     # x=80 is wet. x=100 is the first dry four-corner cell on the
     # man's 20-unit lattice. A vehicle first snaps to (90, 110), then
     # searches its offset lattice and finds (110, 110). z is 400 * 0.625.
+    # A dry point already has a valid offset cell and takes the direct return.
+    assert s.knock_landing_vehicle((120, 100)) == (130, 110, 250)
+    assert 'knock landing moved' not in s.used
+
     assert s.knock_landing(b, (80, 100)) == (100, 100, 250)
     assert s.knock_landing_vehicle((80, 100)) == (110, 110, 250)

@@ -10,7 +10,7 @@ def test_the_straight_shell_arrives_after_full_distance_steps(monkeypatch):
     """ProjectileNugget resolves the warhead and snapshots damage until a straight shell arrives."""
     s = small_world(model=False)
     caster = s.add('caster', 'AlliedAntiInfantryInfantry', 'Player_1', 1250, 2500)
-    target = s.add('target', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1350, 2500)
+    target = s.add('target', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1360, 2500)
     xml = ('<WeaponTemplate id="SampleHit" RequiredAntiMask="ANTI_GROUND"><Nuggets>'
            '<ProjectileNugget ProjectileTemplate="SampleShell" WarheadTemplate="SampleWarhead"/>'
            '</Nuggets></WeaponTemplate>')
@@ -33,7 +33,7 @@ def test_the_straight_shell_arrives_after_full_distance_steps(monkeypatch):
     s.deal(FRAME)
     assert target.hp == before
     assert [(hit[0], hit[1], hit[2]) for hit in s._harm().projectile_hits] == [
-        (start + 4, target, 20),  # floor(100 / 25); 40 warhead × 50% armor
+        (start + 4, target, 20),  # floor(110 / 25); 40 warhead × 50% armor
     ]
 
     target.armor = {'CANNON': 0}

@@ -23,10 +23,13 @@ def test_the_dynamic_line_reaches_past_the_aim_point(monkeypatch):
     monkeypatch.setattr(s, 'shots_due', lambda *_: 1)
     near = s.add('near', target.template, target.owner, 1400, 2500)
     off = s.add('off', target.template, target.owner, 1350, 2670)
+    edge = s.add('edge', target.template, target.owner, 1350, 2500 + target.radius + 15)
     friend = s.add('friend', target.template, caster.owner, 1325, 2500)
     target.angle = near.angle = pi  # Both face the caster, so the flank scalar is 1.
-    before = {body.name: body.hp for body in (target, near, off, friend)}
+    # The edge vehicle misses by 5: the line reaches half its width plus the body radius.
+    bodies = (target, near, off, edge, friend)
+    before = {body.name: body.hp for body in bodies}
     s.deal(FRAME)
-    assert {body.name: before[body.name] - body.hp for body in (target, near, off, friend)} == {
-        'target': 20, 'near': 20, 'off': 0, 'friend': 0,
+    assert {body.name: before[body.name] - body.hp for body in bodies} == {
+        'target': 20, 'near': 20, 'off': 0, 'edge': 0, 'friend': 0,
     }

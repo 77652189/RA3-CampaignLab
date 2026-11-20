@@ -16,6 +16,17 @@ def test_three_infantry_fill_two_files_and_center_the_back_row():
         assert b.dest == goal and b.path == [goal]
 
 
+def test_two_infantry_fill_two_files():
+    s = simsmall.small_world(model=False)
+    template = 'AlliedAntiInfantryInfantry'
+    left = s.add('left', template, 'Player_1', 1220, 2480)
+    right = s.add('right', template, 'Player_1', 1220, 2520)
+    s.order_group([right, left], (1400, 2500), False)
+
+    # ceil(sqrt(2)) = 2 slots, spaced 40 apart and centred on the click.
+    assert (left.dest, right.dest) == ((1400, 2480), (1400, 2520))
+
+
 def test_vehicle_group_uses_the_nearest_as_anchor_and_caps_the_offset():
     s = simsmall.small_world(model=False)
     template = 'AlliedAntiVehicleVehicleTech1'

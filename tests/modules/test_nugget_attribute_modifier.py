@@ -30,3 +30,23 @@ def test_the_hit_keeps_its_original_damage_and_sets_the_target_status(monkeypatc
     assert before - target.hp == 20  # the hit is calculated before the armor modifier
     assert 'NO_ATTACK' in target.status
     assert target.auras_on['SampleSlow'] == (now + 6, s.own['SampleCaster'])
+
+
+def test_scrambler_excludes_vehicles_with_either_iron_curtain_status(monkeypatch):
+    s = small_world(model=False)
+    caster = s.add('caster', 'AlliedAntiAirShip', 'Player_1', 1250, 2500)
+    template = 'SovietAntiVehicleVehicleTech1'
+    exposed = s.add('exposed', template, 'Soviet_1', 1350, 2500)
+    native = s.add('native', template, 'Soviet_1', 1350, 2540)
+    scripted = s.add('scripted', template, 'Soviet_1', 1350, 2580)
+    native.status.add('UNDER_IRON_CURTAIN')
+    scripted.script_status.add('UNDER_IRON_CURTAIN')
+    weapons = simunits.weapon_table()
+    weapon = simunits._resolve(weapons['AlliedAntiAirShipWeaponScrambler'], weapons)
+    s.volleys = [(target, weapon, caster) for target in (exposed, native, scripted)]
+    monkeypatch.setattr(s, 'shots_due', lambda *_: 1)
+
+    s.deal(FRAME)
+    assert 'AttributeMod_WeaponScrambler' in exposed.auras_on
+    assert 'AttributeMod_WeaponScrambler' not in native.auras_on
+    assert 'AttributeMod_WeaponScrambler' not in scripted.auras_on

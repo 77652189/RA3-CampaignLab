@@ -19,9 +19,10 @@ def test_stripping_deals_a_fraction_of_the_unchanged_maximum(monkeypatch):
     weapon = simunits._resolve(weapons['SampleHit'], weapons)
     s.volleys = [(target, weapon, caster)]
     monkeypatch.setattr(s, 'shots_due', lambda *_: 1)
+    caster.dealt = 2
     maximum = target.max_hp
     target.set_hp(maximum / 2)
     target.armor = {'CANNON': 50}
     s.deal(FRAME)
     assert target.max_hp == maximum
-    assert target.hp == pytest.approx(maximum * .45)  # .5 − .1 × .5 armor
+    assert target.hp == pytest.approx(maximum * .4)  # .5 − .1 × .5 armor × 2 dealt

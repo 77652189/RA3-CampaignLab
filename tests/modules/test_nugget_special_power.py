@@ -34,3 +34,22 @@ def test_an_eligible_hit_installs_the_modifier_on_the_caster(monkeypatch):
     assert until == now + 15  # one-second modifier at 15 frames/s
     assert xml == s.own['SampleCaster']
     assert 'SampleArmor' not in target.auras_on
+
+
+def test_spy_disguise_excludes_the_terror_drone(monkeypatch):
+    s = small_world(model=False)
+    spy = s.add('spy', 'AlliedInfiltrationInfantry', 'Player_1', 1250, 2500)
+    drone = s.add('drone', 'SovietScoutVehicle', 'Soviet_1', 1350, 2500)
+    infantry = s.add('infantry', 'SovietAntiInfantryInfantry', 'Soviet_1', 1350, 2540)
+    weapons = simunits.weapon_table()
+    weapon = simunits._resolve(weapons['AlliedInfiltrationInfantryDisguiser'], weapons)
+    monkeypatch.setattr(s, 'shots_due', lambda *_: 1)
+
+    assert 'INFANTRY' in drone.kinds  # The power's Include matches; ExcludeThing must still win.
+    s.volleys = [(drone, weapon, spy)]
+    s.deal(FRAME)
+    assert not s.has_model_condition(spy, 'DISGUISED')
+
+    s.volleys = [(infantry, weapon, spy)]
+    s.deal(FRAME)
+    assert s.has_model_condition(spy, 'DISGUISED')

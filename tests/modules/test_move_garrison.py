@@ -10,6 +10,13 @@ def test_garrison_approach_enters_with_a_route_still_pending_at_the_building_edg
     assert s.garrison.send(b, house)
     assert s.garrison.going[b.serial] == (b, house) and s.garrison.held(house) == []
 
+    route = b.path.copy()
+    assert route
+    b.path, b.goal = [], None  # the approach was interrupted 160 units from the building
+    s.garrison.due()
+    assert s.garrison.going[b.serial] == (b, house) and s.garrison.held(house) == []
+    assert b.path == route
+
     # Each half-second tick covers 60. After one move x=1300,
     # still 100 away; after two x=1360, now within the footprint plus 20.
     s.move()

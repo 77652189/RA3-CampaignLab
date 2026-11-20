@@ -23,3 +23,7 @@ def test_first_eastbound_vindicator_move_uses_the_air_route_and_frame_budget():
         assert jet.path
     s.move(1 / 15, precise=True)
     assert (jet.x, jet.y) == (1220, 2500) and jet.path == []
+
+    s.order_move(jet, (1240, 2500), False)
+    assert jet.path == [(1240, 2500)]
+    assert not jet.frame_move and 'jet' not in s.frame_movers  # precise startup is first-order only
