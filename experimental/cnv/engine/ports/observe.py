@@ -18,7 +18,8 @@ Three groups and an internal door:
 - internal (the simulator's own bookkeeping, which a game adapter does not have): `state(thing)` (every field a
   thing records, its modules' RECORDED and Body.FORWARDS by their old names), `report(name)` (log, used, unknown, ...),
   `log_since(n)`, `gaps()`, `pending()`, `fresh_sight()`, `specimen(...)` (a dead body made to read a template's
-  numbers), the mission's data (`mission()`, `model()`), the run's names and presentation (`point`,
+  numbers), combat this tick (`firing()`, `volleys()`, `attachments()`, `expected_damage(...)`: the skirmish AI's,
+  R3 13f-2b), the mission's data (`mission()`, `model()`), the run's names and presentation (`point`,
   `text`, `label`, `who`, `input`, `late_captions`, `ending_line`); and the taps a recorder hangs on the loop
   (`on_frame`, `on_tick`, `on_act`, `on_sample`, `on_happen`, `scripts`).
 
@@ -204,6 +205,25 @@ class Observe:
     def blocks(self, thing):
         """What of the way a thing takes up: None, (x, y, radius), or a wall's bar (x, y, angle, length, width)."""
         return self._w.blocks(thing)
+
+    # --- internal: combat this tick (the skirmish AI's reads, R3 13f-2b)
+    def firing(self):
+        """This tick's aimed fire: [(target, damage per second, shooter)] (a new list each tick)."""
+        return self._w.firing
+
+    def volleys(self):
+        """This tick's volleys: [(pick, weapon, shooter)] (a new list each tick)."""
+        return self._w.volleys
+
+    def attachments(self):
+        """Child serial -> (child, parent, module rule): what rides on what."""
+        return self._w.attachments
+
+    def expected_damage(self, thing, behind, ahead, now=None):
+        """The damage a thing expects in the next `ahead` seconds from the fire told it is coming (InformTarget:
+        simdamage.Damage's table; the AI micro's incoming-damage callback). Asking drops the rows past their expiry
+        and notes the history it lacks (`behind`) as a gap -- the table's own upkeep, not a change of the fight."""
+        return self._w.expected_damage(thing, behind, ahead, now=now)
 
     # --- internal: the production menu (a command port's, once there is one: what an order to build may ask for)
     def own(self):

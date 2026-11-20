@@ -50,6 +50,7 @@ SETUP = ('level', 'seed', 'blocks', 'record')
 
 SIMAI = {
     'sim': HOST, 'world': ALIAS, 'garrison': ALIAS, 'peers': WIRE, 'settings': WIRE,   # the AI port's view (13f-2a)
+    'observe': WIRE,                    # the observation port (13f-2b)
     'mod': STATIC, 'level': STATIC, 'seed': STATIC, 'blocks': STATIC, 'record': STATIC,
     'lib': STATIC, 'data': STATIC,      # the model's library and AI data; the mission's own personalities added once
     '_assigned': STATIC,                # (own_personalities) the same way on the new SimAI; the personalities the
@@ -62,7 +63,7 @@ SIMAI = {
 ALIASES = {('world',): ('sim',), ('garrison',): ('sim', 'garrison')}
 
 BRAIN = {
-    'host': WIRE, 'world': WIRE, 'peers': WIRE, 'settings': WIRE, 'player': STATIC,
+    'host': WIRE, 'world': WIRE, 'peers': WIRE, 'settings': WIRE, 'observe': WIRE, 'player': STATIC,
     'made_as': STATIC,      # (side, personality): the snapshot's row, the new brain made with them
     # the plugin's: the AI player and the blocks Brain.attach gives it, the view it is handed, the defence's bases
     'ai': MODEL, 'tactics': MODEL, 'targets': MODEL, 'defense': MODEL, 'micro': MODEL, 'powers': MODEL,
@@ -86,7 +87,7 @@ _BY_HAND = ('wrappers', '_exp_teams', '_rec_mem')
 _OWN = [f for f, k in BRAIN.items() if k == STATE and f not in _BY_HAND]
 _MODEL = [f for f, k in BRAIN.items() if k == MODEL]
 
-UNIT = {'body': STATE, 'peers': WIRE, 'template': STATIC, 'kindof': STATIC, 'surface': STATIC, 'team': MODEL,
+UNIT = {'body': STATE, 'observe': WIRE, 'template': STATIC, 'kindof': STATIC, 'surface': STATIC, 'team': MODEL,
         'escort_of': MODEL}     # the team a member escorts (teams.py writes it)
 _UNIT_MODEL = [f for f, k in UNIT.items() if k == MODEL]
 
@@ -332,7 +333,7 @@ def _write_brain(w, b, fields, model, things):
     b.wrappers = {}
     units = {}
     for _name, serial, _team in fields['wrappers']:     # keyed by serial (Brain.units)
-        b.wrappers[serial] = units[serial] = Unit(things[serial], b.peers)
+        b.wrappers[serial] = units[serial] = Unit(things[serial], b.observe)
 
     def obj(mark):
         (k, serial), = mark.items()

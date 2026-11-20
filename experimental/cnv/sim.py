@@ -77,6 +77,7 @@ import simmoney  # noqa: E402
 import siminfiltrator  # noqa: E402
 import simorder  # noqa: E402
 import simpower  # noqa: E402
+import simrange  # noqa: E402
 import simspecial  # noqa: E402
 import simsweep  # noqa: E402
 import simtech  # noqa: E402
@@ -1887,20 +1888,9 @@ class Sim:
         r = [self.reach_of(w) for w in b.weapons if self.can_hit(w, target)]
         return max(max(r) + b.radius + target.radius - ATTACK_SLACK, 1.0) if r else 0.0
 
-    @staticmethod
-    def reach_of(w):
-        """R8: how far weapon w reaches edge to edge: (AttackRange - UNDERSIZE) x the range multiplier (D162 read);
-        the minimum range, the height bonus and UseCenterForRangeCheck are not modelled."""
-        return max(w['range'] - w.get('undersize', UNDERSIZE), 0.0)
-
-    @staticmethod
-    def in_range(a, t, w, d=None):
-        """R8: a weapon reaches when the 2D gap between the two bounding circles is within its range (Generals
-        Weapon::isWithinAttackRange, FROM_BOUNDINGSPHERE_2D: the centre distance less both radii); `d` the centre
-        distance when known. Bench 2026-11-07 engine_acquire: a Guardian (150, radius 23.3) fires at one 180 off."""
-        if d is None:
-            d = math.hypot(t.x - a.x, t.y - a.y)
-        return d - a.radius - t.radius <= Sim.reach_of(w)
+    # R8 weapon reach: the rules are L3 simrange's (R3 13f-2b: the AI imports them there, not through the host)
+    reach_of = staticmethod(simrange.reach_of)
+    in_range = staticmethod(simrange.in_range)
 
     def send(self, b, target, by='', reach=0.0, face=None):
         """Put b on a way to target (a point, or a waypoint / area name); face: the facing (radians) to turn to at the

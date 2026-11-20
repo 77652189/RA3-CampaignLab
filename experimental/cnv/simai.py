@@ -84,14 +84,16 @@ import simbody  # noqa: E402
 import simworld  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
 from engine.ports import ai as ai_port  # noqa: E402
+from engine.ports.observe import Observe  # noqa: E402
+import simrange  # noqa: E402
 
 # What the skirmish AI reads on its host (the Sim) beyond the world (simworld.WORLD_API): the command port its orders
-# go through (R3 13f-1), the player systems it asks (money, power, production) and the combat reads its blocks lean
-# on. The mission's AI settings come through the AI port's Settings and the frame loop is its runner's (R3 13f-2a,
-# engine/ports/ai.py). It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
-PEERS = frozenset({'attachments', 'can_build', 'can_hit', 'commands', 'ending', 'engineer_entry', 'expected_damage',
-                   'firing', 'flags', 'in_range', 'modify', 'money', 'offers', 'power', 'proto', 'queues', 'reach_of',
-                   'upgrade_sellers', 'volleys', 'wallet'})
+# go through (R3 13f-1) and the player systems it asks (power, production, the wallet; 13f-2c moves them). The
+# mission's AI settings come through the AI port's Settings and the frame loop is its runner's (R3 13f-2a,
+# engine/ports/ai.py); money, flags and the fight it reads through the observation port, the weapon reach rules
+# off L3 simrange (13f-2b). It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
+PEERS = frozenset({'can_build', 'commands', 'engineer_entry', 'modify', 'offers', 'power', 'proto', 'queues',
+                   'upgrade_sellers', 'wallet'})
 
 
 class Peers:
@@ -194,8 +196,8 @@ class Unit:
     """One of the AI's movers as teams.py wants it: template, kindof, surface, pos, team (TeamMaker writes it).
     One object a body for the whole run (teams test membership by identity)."""
 
-    def __init__(self, body, peers=None):
-        self.body, self.peers = body, peers     # peers: the host's loan (Peers), for in_combat's firing / volleys
+    def __init__(self, body, observe=None):
+        self.body, self.observe = body, observe     # the observation port, for in_combat's firing / volleys
         self.template = body.template
         self.kindof = set(body.kinds)
         self.surface = 'AIR' if 'AIRCRAFT' in body.kinds else 'AMPHIBIOUS' if 'AMPHIBIOUS' in body.kinds else \
@@ -224,8 +226,8 @@ class Unit:
         """What TeamTemplate.AllowRecruitUnitsInCombat false keeps out (teams.recruit, work/re b220): a live target
         within the current weapon's range. Here: the body aimed at someone last tick (Sim.aim picks only targets in
         range) -- INFERRED: the engine keeps the target between shots; this sees it only on the ticks it fires."""
-        peers = self.peers
-        return peers is not None and any(a is self.body for _, _, a in peers.firing + peers.volleys)
+        observe = self.observe
+        return observe is not None and any(a is self.body for _, _, a in observe.firing() + observe.volleys())
 
     def __repr__(self):
         return f'Unit({self.template} {self.body.name})'
@@ -237,6 +239,7 @@ class Brain:
     def __init__(self, host, player, side, personality, frame):
         self.host, self.world, self.peers, self.player = host, host.world, host.peers, player
         self.settings = host.settings   # the mission's AI settings (the AI port)
+        self.observe = host.observe     # the observation port (its reads of the fight, money, flags: 13f-2b)
         self.made_as = (side, personality)      # how SimAI.attach made it (a snapshot's brain is made again so)
         m = host.mod
         import simtech
@@ -353,7 +356,7 @@ class Brain:
                                        act=self.act, micro=h.data_of('tactics micro'), fight=self.fight,
                                        houses=lambda ai, u: self.garrisons(u, False),
                                        defenses=lambda ai, u: self.garrisons(u, True),
-                                       crush=lambda ai, f, foe: simcrush.eligible(self.world, f, foe, self.peers.attachments),
+                                       crush=lambda ai, f, foe: simcrush.eligible(self.world, f, foe, self.observe.attachments()),
                                        pullback=lambda ai, u: h.pullback.query(self, u),
                                        # GatherWaypoint: the map's waypoint by name, None when absent (D148)
                                        gather_point=lambda ai, tac: self.world.waypoints.get(getattr(tac, 'gather', '')
@@ -689,7 +692,7 @@ class Brain:
                # simulator's skirmish runs (aiskirm) do not show -- B handoff 137
                'own income': int(any('REFINERY' in b.kinds for b in mine)) or self.income(self.player)}
         if foes:                                     # INFERRED (work/re/l4_states.md): the engine's enemy = the first of the enemies here
-            out['opponent funds'] = self.peers.money.get(foes[0], 0)
+            out['opponent funds'] = self.observe.money().get(foes[0], 0)
             out['income'] = (self.income(self.player), self.income(foes[0]))
         if 'targets' in self.host.blocks:
             out['target'] = self.has_target
@@ -734,7 +737,7 @@ class Brain:
     def money_in(self, account):
         """facts' 'money': the player's money, whatever the account (one account in the simulator). A method, not a
         closure, so the AI's snapshot keeps it (simaisnap)."""
-        return self.peers.money.get(self.player, 0)
+        return self.observe.money().get(self.player, 0)
 
     def power_advantage(self, own_kindof, enemy_kindof, own_defenses, enemy_defenses):
         """ctx 'power advantage' (PowerAdvantageHeuristic, read, work/re/l4_states.md): (the enemy's time to kill all of ours,
@@ -863,7 +866,7 @@ class Brain:
         if not live:
             return {}
         foes = [t for t in self.living() if not t.scenery and t.owner != self.player and t.owner in self.view.enemies
-                and any(self.peers.can_hit(w, t) for b in live for w in b.weapons)]
+                and any(self.observe.can_hit(w, t) for b in live for w in b.weapons)]
         o = min(foes, key=lambda t: math.hypot(t.x - p[0], t.y - p[1]), default=None)
         if o is not None:
             a = math.atan2(o.y - p[1], o.x - p[0])
@@ -966,7 +969,7 @@ class Brain:
         template: the rate counts the weapons the AI's template-against-template rate takes (simunits.template_weapons:
         one per slot, none that needs an upgrade or an ObjectStatus; engine line B round 227, read), not the ones
         the body holds -- the expected efficiency's."""
-        tc, world, peers = self.host.mod['tactics'], self.world, self.peers
+        tc, world, observe = self.host.mod['tactics'], self.world, self.observe
         memo = self.__dict__.setdefault('_template_guns', {})
 
         def guns_of(b):
@@ -985,20 +988,20 @@ class Brain:
                 # its warhead's, l4_efficiency.md 3, read); a weapon without parts as fight does
                 return sum(sum(d * simunits.percent(t.armor, ty) / 100.0 for d, ty in w['ai_parts'])
                            if w.get('ai_parts') else w['dps'] * simunits.percent(t.armor, w['type']) / 100.0
-                           for w in guns if peers.can_hit(w, t))
+                           for w in guns if observe.can_hit(w, t))
             return rate
 
         def fighter(b, i):
             # reach = the engine's longest-range read: the weapon's AttackRange less 5 (sim.Sim.reach_of), no radii
             # (work/re/d131_triggers.md 1, read; its height and range-bonus terms not modelled); a member with no weapon 0
             f = tc.Fighter(i, (b.x, b.y), b.hp, b.max_hp, b.speed,
-                           max((peers.reach_of(w) for w in b.weapons if w.get('range')), default=0.0),
+                           max((simrange.reach_of(w) for w in b.weapons if w.get('range')), default=0.0),
                            b.sight or b.vision,
                            'STRUCTURE' in b.kinds, rate_of(b))
             f.body = b
             f.template, f.kinds = b.template, frozenset(b.kinds)
             f.radius = b.radius                     # the search circle reaches its edge (work/re d149, bench airett)
-            f.can_fire = lambda other: any(peers.can_hit(w, other.body) and peers.in_range(b, other.body, w)
+            f.can_fire = lambda other: any(observe.can_hit(w, other.body) and simrange.in_range(b, other.body, w)
                                            for w in b.weapons)
             return f
         return [fighter(b, self.tid(b)) for b in bodies]
@@ -1103,7 +1106,7 @@ class Brain:
                                   if c in powers and simmicro.ready(self.world, b, c)],
                                  target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=t.name),
                                  weapon_range=reach, cost=self.host.cost(b.template),
-                                 damage=lambda behind, ahead, b=b: self.peers.expected_damage(b, behind, ahead, now=frame),
+                                 damage=lambda behind, ahead, b=b: self.observe.expected_damage(b, behind, ahead, now=frame),
                                  toggles=toggles, toggle_index=int(b.armor_up)))
             seen.append((mu, b))
         enemies = [sp.Thing((t.x, t.y), t.kindof, int(t.value), name=str(t.id)) for t in self.view.things
@@ -1361,7 +1364,7 @@ class Brain:
             # one's wrapper, and the orders the AI gave it went to the dead body). The dead ones' stay: a model team
             # may still hold their Unit, and the snapshot builds its `$unit` table from here
             if b.serial not in self.wrappers:
-                self.wrappers[b.serial] = Unit(b, self.peers)
+                self.wrappers[b.serial] = Unit(b, self.observe)
             out.append(self.wrappers[b.serial])
         return out
 
@@ -1786,7 +1789,7 @@ class Brain:
     def earn(self):
         """AIPlayer.money: the player's money now (AIPlayer.available: an account spends its Deposits + its budget
         share of the money -- INFERRED, bench engine_aiskirm d / f; the income is in it, Sim.mine_due, HOOKS 7)."""
-        self.ai.money = self.peers.money.get(self.player, 0)
+        self.ai.money = self.observe.money().get(self.player, 0)
 
     def tick(self, frame):
         self.frame = frame
@@ -2002,6 +2005,7 @@ class SimAI:
         self.sim, self.mod, self.level, self.seed = s, mod, level, seed   # sim: for the callers (main, tests)
         self.world, self.peers = s, Peers(s)    # all the AI reads of its host: the world API and its loan (PEERS)
         self.settings = ai_port.Settings(s)     # and the mission's AI settings (the AI port)
+        self.observe = Observe(s)       # and the observation port (R3 13f-2b)
         self.lib = lib if lib is not None or mod is None else mod['xmldata'].Library()
         self.data = data if data is not None or mod is None else mod['data'].AIData()
         self.blocks = tuple(blocks)     # which of A's blocks the brains get (() = opening, states and teams only)
@@ -2034,7 +2038,7 @@ class SimAI:
         name is that list owner's and 'scope/name' sets the scope by hand ('/name' the empty one, which
         ScriptedFlagHeuristic reads -- l4_states.md 7; bench aistateplain: bare names unseen, aistateslash: seen)."""
         st = self.mod['states']
-        return {st.flag_key(k, SCRIPT_SCOPE): bool(v) for k, v in (self.peers.flags or {}).items()}
+        return {st.flag_key(k, SCRIPT_SCOPE): bool(v) for k, v in (self.observe.flags() or {}).items()}
 
     def data_of(self, what):
         """The blocks' SDK data, read once a run."""

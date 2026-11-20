@@ -876,6 +876,7 @@ def _brain(s, player='Player_1'):
     br = object.__new__(simai.Brain)
     br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, player, {}, {}
     br.settings = host.settings     # the AI port's settings (R3 13f-2a)
+    br.observe = host.observe       # the observation port (R3 13f-2b)
     return br, simai
 
 
@@ -892,8 +893,8 @@ def test_the_ais_attack_and_capture_take_the_object_it_saw_not_a_reference_of_it
     br, simai = _brain(s)
     target, tank, eng = s.bodies['target'], s.bodies['tank'], s.bodies['eng']
     tid = br.tid(target)
-    br.order(simai.Unit(tank, br.peers), 'attack', tid)
-    br.act(SimpleNamespace(members=[simai.Unit(eng, br.peers)]), 'Engineer', SimpleNamespace(id=tid))
+    br.order(simai.Unit(tank, br.observe), 'attack', tid)
+    br.act(SimpleNamespace(members=[simai.Unit(eng, br.observe)]), 'Engineer', SimpleNamespace(id=tid))
     assert tank.goal is eng.goal is target
     assert s.commands.issued()[-1][1].arg('target_serial') == target.serial
     tank.goal = None
@@ -901,7 +902,7 @@ def test_the_ais_attack_and_capture_take_the_object_it_saw_not_a_reference_of_it
     del s.bodies['target']
     again = s.add('target', 'AlliedBarracks', 'Player_2', 400.0, 0.0)
     assert br.body_of(tid) is None and br.tid(again) != tid
-    br.order(simai.Unit(tank, br.peers), 'attack', tid)
+    br.order(simai.Unit(tank, br.observe), 'attack', tid)
     assert tank.goal is None
 
 
@@ -923,8 +924,9 @@ def test_the_ais_micro_fires_and_dodges_with_the_unit_it_viewed_not_a_reference_
     br = object.__new__(simai.Brain)
     br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
     br.settings = host.settings     # the AI port's settings (R3 13f-2a)
+    br.observe = host.observe       # the observation port (R3 13f-2b)
     br.view, br.aim_of, br.fired, br.frame = SimpleNamespace(things=[], enemies=frozenset()), lambda b, r: None, [], 0
-    team = SimpleNamespace(members=[simai.Unit(old, br.peers), simai.Unit(lead, br.peers)])
+    team = SimpleNamespace(members=[simai.Unit(old, br.observe), simai.Unit(lead, br.observe)])
     mu = next(u for u in br.micro_team(None, 0, team).units if u.pos == (0.0, 100.0))
     br.fire_unit(None, 'k', mu, SimpleNamespace(command='Command_ToggleArmorUp'))
     assert lead.armor_up and not decoy.armor_up and not old.armor_up
@@ -932,7 +934,7 @@ def test_the_ais_micro_fires_and_dodges_with_the_unit_it_viewed_not_a_reference_
     assert br.peers.commands.issued()[-1][1].units == (lead.serial,)
     names = [u.name for u in br.micro_team(None, 0, team).units]    # the model keys its plans by name (review 11-19
     assert len(set(names)) == 2 and f'lead#{lead.serial}' in names  # q #3): two of one name in a team differ
-    alone = SimpleNamespace(members=[simai.Unit(lead, br.peers)])
+    alone = SimpleNamespace(members=[simai.Unit(lead, br.observe)])
     assert [u.name for u in br.micro_team(None, 0, alone).units] == ['lead']     # one keeps its name
 
 
@@ -952,8 +954,9 @@ def test_the_ais_hunt_goes_on_with_its_member_not_a_reference_of_its_name():
     br = object.__new__(simai.Brain)
     br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
     br.settings = host.settings     # the AI port's settings (R3 13f-2a)
+    br.observe = host.observe       # the observation port (R3 13f-2b)
     br.view, br.frame = SimpleNamespace(things=[], enemies=frozenset({'Player_2'})), 0
-    br.order(simai.Unit(lead, br.peers), 'hunt', br.tid(foe))
+    br.order(simai.Unit(lead, br.observe), 'hunt', br.tid(foe))
     assert br.peers.commands.issued()[-1][1].units == (lead.serial,)
     foe.alive, lead.path = False, []
     s.refs['lead'] = decoy
@@ -994,6 +997,7 @@ def test_the_ais_recruiting_wraps_the_new_unit_not_the_dead_one_of_its_name():
     br = object.__new__(simai.Brain)
     br.host, br.world, br.peers, br.player, br.ids, br.hp, br.wrappers = host, s, host.peers, 'Player_1', {}, {}, {}
     br.settings = host.settings     # the AI port's settings (R3 13f-2a)
+    br.observe = host.observe       # the observation port (R3 13f-2b)
     first, = br.units(None, 0)
     assert first.body is old
     s.delete(old, 'test')
@@ -1019,6 +1023,7 @@ def test_the_ais_yard_orders_end_with_their_yard_not_go_on_at_a_new_one_of_its_n
     br = object.__new__(simai.Brain)
     br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
     br.settings = host.settings     # the AI port's settings (R3 13f-2a)
+    br.observe = host.observe       # the observation port (R3 13f-2b)
     br.yard_q, br.yard_rest, br.unit_q = {}, {}, []
     old, had = s.bodies['yard'], {s.bodies['pp'].serial, s.bodies['bar'].serial}
     assert br.build('SovietPowerPlant') and br.build('SovietBaseDefenseGround')

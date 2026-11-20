@@ -38,6 +38,7 @@ LAYER_OF = {
     'simspecial': 2,
     'simorder': 5,
     'simdamage': 3,
+    'simrange': 3,          # the weapon reach rules (R3 13f-2b)
     'simtech': 4, 'simmoney': 4,
     'simact': 6, 'simact_vision': 6, 'simact_player': 6, 'simact_order': 6, 'simact_object': 6, 'simact_ability': 6, 'simact_world': 6, 'simact_show': 6, 'simscript': 6,
     'simcond': 6, 'simcond_world': 6, 'simcond_object': 6, 'simcond_vision': 6, 'simcond_player': 6, 'simcond_show': 6,
@@ -485,10 +486,48 @@ def test_the_ai_reads_its_settings_through_the_ai_port():
 def test_settings_guard_bites():
     """Mutation check on the real file: a Settings name lent by Peers again, a setting read that Settings lacks."""
     src = (CNV / 'simai.py').read_text(encoding='utf-8')
-    assert settings_breaks(src.replace("PEERS = frozenset({'attachments',", "PEERS = frozenset({'ai_paused', "
-                                       "'attachments',")) == [('PEERS', 'ai_paused')]
+    assert settings_breaks(src.replace("PEERS = frozenset({'can_build',", "PEERS = frozenset({'ai_paused', "
+                                       "'can_build',")) == [('PEERS', 'ai_paused')]
     assert [n for _, n in settings_breaks(src.replace('self.settings.ai_switches.get(',
                                                       'self.settings.switches.get('))] == ['switches']
+
+
+# R3 13f-2b: what simai reads of the fight, the money and the flags reaches it through the observation port
+# (engine/ports/observe.py Observe, held as `observe`) and the weapon reach rules off L3 simrange: every `observe.X`
+# it reads is an Observe name, and PEERS lends none of the Observe names it reads nor simrange's rules
+def _defs(path, cls=None):
+    """The public function names of a file (cls: of that class in it), read off its source."""
+    tree = ast.parse(path.read_text(encoding='utf-8'))
+    body = tree.body if cls is None else next(n.body for n in tree.body if isinstance(n, ast.ClassDef)
+                                              and n.name == cls)
+    return {n.name for n in body if isinstance(n, ast.FunctionDef) and not n.name.startswith('_')}
+
+
+def observe_breaks(source=None):
+    """(line, name) for each `observe.X` in simai that Observe does not have, and ('PEERS', name) for each name
+    PEERS lends that simai reads through Observe or off simrange."""
+    names = _defs(CNV / 'engine' / 'ports' / 'observe.py', 'Observe')
+    tree = ast.parse(source) if source is not None else _tree('simai')
+    read = [n for n in ast.walk(tree) if isinstance(n, ast.Attribute) and _held(n.value, 'observe')]
+    out = [(n.lineno, n.attr) for n in read if n.attr not in names]
+    lent = next((ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
+                 and getattr(n.targets[0], 'id', '') == 'PEERS'), set())
+    moved = {n.attr for n in read} | _defs(CNV / 'simrange.py')
+    return out + [('PEERS', n) for n in sorted(lent & moved)]
+
+
+def test_the_ai_reads_the_fight_through_the_observation_port():
+    assert not observe_breaks()
+
+
+def test_observe_guard_bites():
+    """Mutation check on the real file: a name read through Observe lent by Peers again, a simrange rule lent again,
+    an observe read that Observe lacks."""
+    src = (CNV / 'simai.py').read_text(encoding='utf-8')
+    assert observe_breaks(src.replace("PEERS = frozenset({'can_build',", "PEERS = frozenset({'money', 'reach_of', "
+                                      "'can_build',")) == [('PEERS', 'money'), ('PEERS', 'reach_of')]
+    assert [n for _, n in observe_breaks(src.replace('self.observe.attachments()',
+                                                     'self.observe.attached()'))] == ['attached']
 
 
 # step 9d-2: simai reads its host only through the world API and its Peers loan; the raw Sim it is handed is kept as
