@@ -136,14 +136,23 @@ def pick_tests(tree, revisions, log, log_path):
     return command
 
 
-def run_tests(tree, command, log, log_path):
+def run_tests(tree, command, log, log_path, known_reds):
+    log.flush()
+    start = log_path.stat().st_size
     tests = subprocess.run([sys.executable, *command[1:]], cwd=tree, stdout=log, stderr=subprocess.STDOUT)
     print(f'pytest exit code: {tests.returncode}', file=log, flush=True)
+    if tests.returncode == 1 and known_reds:
+        with log_path.open(encoding='utf-8', errors='replace') as run:
+            run.seek(start)  # this run only: pytest's short summary has one FAILED / ERROR <nodeid> line per red
+            reds = set(re.findall(r'^(?:FAILED|ERROR) (\S+)', run.read(), re.M))
+        if reds and reds <= set(known_reds):
+            print('Known reds failed: ' + ', '.join(sorted(reds)), flush=True)
+            return
     if tests.returncode:
         raise LandError(f'affected tests failed (exit {tests.returncode}); see {log_path}')
 
 
-def test_and_push(tree, log_path):
+def test_and_push(tree, log_path, known_reds):
     previous_base = None
     log_path.parent.mkdir(parents=True, exist_ok=True)
     print(f'Test log: {log_path}', flush=True)
@@ -153,7 +162,15 @@ def test_and_push(tree, log_path):
             # FETCH_HEAD is per-worktree. Other landings can move the shared origin/main.
             base = git(tree, 'rev-parse', 'FETCH_HEAD').strip()
             rebase_target = (base,) if previous_base is None else ('--onto', base, previous_base)
-            git(tree, *IDENTITY, 'rebase', '--no-autostash', '--no-update-refs', *rebase_target)
+            try:
+                git(tree, *IDENTITY, 'rebase', '--no-autostash', '--no-update-refs', *rebase_target)
+            except LandError as exc:
+                conflicts = git(tree, 'diff', '--name-only', '--diff-filter=U').rstrip('\n')
+                if not conflicts:
+                    raise
+                print(f'Rebase conflicts in:\n{conflicts}', file=sys.stderr, flush=True)
+                git(tree, 'rebase', '--abort')
+                raise LandError('rebase aborted after conflicts') from exc
             head = git(tree, 'rev-parse', 'HEAD').strip()
             if dirty_paths(tree):
                 raise LandError('worktree is dirty after rebase')
@@ -161,11 +178,11 @@ def test_and_push(tree, log_path):
             command = pick_tests(tree, revisions, log, log_path)
 
             if previous_base is None:
-                run_tests(tree, command, log, log_path)
+                run_tests(tree, command, log, log_path, known_reds)
             else:
                 if base != previous_base or command != previous_command:
                     print('Rerunning affected tests: main moved or the test command changed.', flush=True)
-                    run_tests(tree, command, log, log_path)
+                    run_tests(tree, command, log, log_path, known_reds)
                 else:
                     print('Reusing affected test results: main and the test command are unchanged.',
                           flush=True)
@@ -212,7 +229,7 @@ def land(args):
     if changed:
         git(tree, '--literal-pathspecs', 'add', '-A', '--', *sorted(changed))
         git(tree, *IDENTITY, 'commit', '-m', args.message, '--trailer', args.co_author)
-    pushed_head = test_and_push(tree, main / 'work' / 'logs' / f'land_{name}.log')
+    pushed_head = test_and_push(tree, main / 'work' / 'logs' / f'land_{name}.log', args.known_red)
     if git(tree, 'log', '--format=%H', outgoing).strip():
         raise LandError(f'push verification failed: git log {outgoing} is not empty')
     print(f'Pushed and verified {pushed_head}')
@@ -230,6 +247,7 @@ def main():
                         help='full Co-authored-by: Name <email> trailer for a new commit')
     parser.add_argument('--dry-run', action='store_true', help='check eligibility without changing anything')
     parser.add_argument('--remove', action='store_true', help='remove a verified worktree with no reparse points')
+    parser.add_argument('--known-red', action='append', default=[], metavar='NODEID')
     args = parser.parse_args()
     if not re.fullmatch(r'Co-authored-by: [^<>\r\n]+ <[^<>\s]+>', args.co_author, re.IGNORECASE):
         parser.error('--co-author must be a Co-authored-by: Name <email> trailer')

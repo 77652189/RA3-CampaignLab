@@ -107,6 +107,24 @@ def test_red_test_stops_push(repo):
     assert 'picker selected the guard' in log and '1 failed' in log and 'pytest exit code: 1' in log
 
 
+def test_known_reds_allow_only_listed_failures(repo):
+    main, tree, origin = repo
+    gate = main / 'guards' / 'test_gate.py'
+    gate.write_text(gate.read_text(encoding='utf-8') + '\ndef test_second():\n    test_gate()\n', encoding='utf-8')
+    git(main, 'commit', '-am', 'add another affected test')
+    git(main, 'push', 'origin', 'main')
+    base = git(origin, 'rev-parse', 'main')
+    (tree / 'allowed.txt').write_text('red\n', encoding='utf-8')
+    first, second = ('guards/test_gate.py::test_gate', 'guards/test_gate.py::test_second')
+    result = land(main, tree, '--known-red', first, '--known-red', second[:-1])
+    assert 'affected tests failed (exit 1)' in result.stderr
+    assert git(origin, 'rev-parse', 'main') == base
+    result = land(main, tree, '--known-red', first, '--known-red', second)
+    assert result.returncode == 0, result.stderr
+    assert f'Known reds failed: {first}, {second}' in result.stdout
+    assert git(origin, 'rev-parse', 'main') == git(tree, 'rev-parse', 'HEAD') != base
+
+
 def test_rejected_push_keeps_worktree(repo):
     main, tree, origin = repo
     remote_tip = git(origin, 'rev-parse', 'main')
@@ -173,10 +191,12 @@ def test_push_retry(repo, scenario):
     log = log_path(main).read_text(encoding='utf-8')
     if scenario == 'conflict':
         assert result.returncode != 0
-        assert 'git rebase failed' in result.stderr and 'CONFLICT' in result.stderr
+        assert 'Rebase conflicts in:\nallowed.txt\nLand stopped: rebase aborted' in result.stderr
         assert git(origin, 'rev-parse', 'main') == upstream_head
-        assert git(tree, 'status', '--porcelain') == 'UU allowed.txt'
-        assert git(tree, 'rev-parse', 'REBASE_HEAD')
+        assert not git(tree, 'status', '--porcelain')
+        git_dir = Path(git(tree, 'rev-parse', '--absolute-git-dir'))
+        assert not (git_dir / 'REBASE_HEAD').exists()
+        assert git(tree, 'show', 'HEAD:allowed.txt') == local.strip()
         exit_codes = [0]
     elif scenario == 'changed_test':
         assert result.returncode == 1, (result.stdout, result.stderr)
