@@ -74,6 +74,7 @@ BRAIN = {
     'expansion_anchor': STATE, 'expansion_initial_yards': STATE, '_has_initial_yards': STATE,
     '_switched': STATE, '_prio_seen': STATE, '_hunt_goals': STATE, '_hunt_cells': STATE,
     '_exp_teams': STATE, '_exp_slots': STATE, '_unpack_ordered': STATE,
+    '_view_names': STATE,   # name -> the serial the micro view first met under it (same-name sweep 11-19b N01)
     # a Body never placed (Sim.proto): built once, it took a serial of the world -- kept, so the serials after it
     # are the same as the run never stopped
     '_protos': STATE,

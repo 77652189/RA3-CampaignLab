@@ -950,8 +950,10 @@ def test_the_ais_micro_fires_and_dodges_with_the_unit_it_viewed_not_a_reference_
     assert br.commands.issued()[-1][1].units == (lead.serial,)
     names = [u.name for u in br.micro_team(None, 0, team).units]    # the model keys its plans by name (review 11-19
     assert len(set(names)) == 2 and f'lead#{lead.serial}' in names  # q #3): two of one name in a team differ
-    alone = SimpleNamespace(members=[simai.Unit(lead, br.observe)])
+    alone = SimpleNamespace(members=[simai.Unit(old, br.observe)])
     assert [u.name for u in br.micro_team(None, 0, alone).units] == ['lead']     # one keeps its name
+    alone = SimpleNamespace(members=[simai.Unit(lead, br.observe)])     # ... but the view met `old` under it first
+    assert [u.name for u in br.micro_team(None, 0, alone).units] == [f'lead#{lead.serial}']     # (11-19b N01)
 
 
 def test_the_ais_hunt_goes_on_with_its_member_not_a_reference_of_its_name():
@@ -1055,3 +1057,33 @@ def test_the_ais_yard_orders_end_with_their_yard_not_go_on_at_a_new_one_of_its_n
         br.yard_due(f)
     assert br.yard_q == {} and s.money['Player_1'] == paid
     assert not [b for b in s.living() if b.owner == 'Player_1' and b is not new and b.serial not in had]
+
+
+def test_the_ais_micro_view_names_a_member_and_a_beacon_made_again_apart_from_the_old_ones():
+    """Same-name sweep 11-19b N01: the model keeps a dodge job by (unit name, threat name), so the view hands a member
+    or a beacon made again under an earlier one's name a name of its own (`name#serial`) -- the new member does not
+    take the old one's flight point from the old beacon; one never replaced keeps its plain name."""
+    from types import SimpleNamespace
+    import simai
+    if not simai.available():
+        pytest.skip('ra3model.ai unavailable')
+    s = simsmall.small_world([('lead', 'SovietConscript', 'Player_1', 0.0, 0.0),
+                              ('wing', 'SovietConscript', 'Player_1', 0.0, 60.0),
+                              ('beacon', 'AlliedPrecisionStrikeBeacon', 'Player_2', 100.0, 0.0)], model=False)
+    s.relations[('Player_1', 'Player_2')] = s.relations[('Player_2', 'Player_1')] = 'Enemy'
+    br, simai = _brain(s)
+    br.view, br.aim_of, br.frame = SimpleNamespace(things=[], enemies=frozenset({'Player_2'})), lambda b, r: None, 0
+
+    def look(*names):
+        team = SimpleNamespace(members=[simai.Unit(s.bodies[n], br.observe) for n in names])
+        t = br.micro_team(None, 0, team)
+        return [u.name for u in t.units], [(d.name, sorted(d.units)) for d in t.threats]
+
+    assert look('lead', 'wing') == (['lead', 'wing'], [('beacon', ['lead', 'wing'])])
+    for n, x in (('lead', -50.0), ('beacon', -100.0)):         # both made again: the new ones west of the old
+        old = s.bodies[n]
+        s.destroy(old, 'test')
+        s.add(n, old.template, old.owner, x, old.y)
+    lead, beacon = s.bodies['lead'], s.bodies['beacon']
+    assert look('lead', 'wing') == ([f'lead#{lead.serial}', 'wing'],
+                                    [(f'beacon#{beacon.serial}', sorted([f'lead#{lead.serial}', 'wing']))])
