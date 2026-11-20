@@ -49,8 +49,8 @@ class Body(module.Module, interfaces.Body):
     template has no Body block gets an ActiveBody attached (Sim.add, World.attach: made by __init__, no on_create)."""
     DATA = BodyData
     RECORDED = ('hp', 'max_hp', 'health_floor', 'last_hit', 'last_by', 'indestructible', 'read_until')
-    STATE = RECORDED + ('immortal', 'prop', 'attacker')    # make() sets these after the thing is made: the snapshot's
-                                                           # only; attacker: the last damage's object itself
+    STATE = RECORDED + ('immortal', 'prop', 'attacker_serial')  # make() sets these after the thing is made: the
+                                                    # snapshot's only; attacker_serial: the last damage's object's
     IMMORTAL = False            # health changes cannot take it below its floor
     PROP = False                # no health: takes no damage, its percent reads 0 (engine_propbody a)
     hp = max_hp = 100.0
@@ -61,7 +61,7 @@ class Body(module.Module, interfaces.Body):
         self.health_floor = 1.0     # an immortal's: 1 HP; a ManagerBody proxy's: 1 % of its health (INFERRED)
         self.immortal, self.prop = self.IMMORTAL, None
         self.last_hit = self.last_by = None     # step B3: the last damage's player and object (set_last_damage)
-        self.attacker = None    # that object itself (last_by is its name, as the frame record shows it)
+        self.attacker_serial = None     # that object's serial (last_by is its name, as the frame record shows it)
         self.indestructible = False
         self.read_until = None      # step B4a: killed by NAMED_DAMAGE in this frame -- its bits still read
 
@@ -111,11 +111,16 @@ class Body(module.Module, interfaces.Body):
         return self.last_hit, self.last_by
 
     def last_attacker(self):
-        return self.attacker
+        """The object that hit it last, itself, while anything keeps it (review 1119p #6): looked up by its serial in
+        the world's weak table (World.numbered), so a body does not keep a chain of ones gone from the world in
+        memory -- the readers judge whether the world still holds it (simworld.held), the same answer as before."""
+        if self.attacker_serial is None or self.world is None:
+            return None
+        return self.world.numbered.get(self.attacker_serial)
 
     def set_last_damage(self, player, by=None):
-        self.last_hit, self.attacker = player, by      # by: the object that hit (a name has no .name: refused)
-        self.last_by = by.name if by is not None else None
+        self.last_hit = player          # by: the object that hit (a name has no .name: refused)
+        self.attacker_serial, self.last_by = (None, None) if by is None else (by.serial, by.name)
 
     def is_indestructible(self):
         return self.indestructible

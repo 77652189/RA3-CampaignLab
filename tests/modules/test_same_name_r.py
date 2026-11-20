@@ -535,3 +535,30 @@ def test_a_name_an_attached_pair_holds_is_refused_and_the_link_stays():
     assert s.attachments == {}
     assert again.attachment_status == set() and child.attachment_status == set()
     assert child.alive and (child.x, child.y) == (300.0, 300.0)
+
+
+# ---- review 1119p #6 (P3): a last attacker does not outlive the thing's place
+
+def test_a_last_attacker_does_not_keep_one_gone_from_the_world():
+    """Review 1119p #6: Body keeps the last attacker by its serial, looked up in the world's weak table -- a chain of
+    ones made under one name, each hit last by the one before, leaves none of the gone ones in memory (the condition
+    reads it through held: the same answer)."""
+    import gc
+    import weakref
+    s = simsmall.small_world(model=False)
+    before = s.add('u', GI, 'Player_1', 300.0, 300.0)
+    gone = []
+    for _ in range(32):
+        s.delete(before, 'test')
+        now = s.add('u', GI, 'Player_1', 300.0, 300.0)
+        now.set_last_damage('Player_2', before)
+        gone.append(weakref.ref(before))
+        before = now
+    del now
+    gc.collect()
+    assert sum(r() is not None for r in gone) == 0
+    assert simcond_object.attacker(s, before) is None and before.last_by == 'u'
+    hitter = s.add('h', TANK, 'Player_2', 600.0, 300.0)
+    before.set_last_damage('Player_2', hitter)
+    assert simcond_object.attacker(s, before) is hitter
+    assert before.find(interfaces.Body).last_attacker() is hitter
