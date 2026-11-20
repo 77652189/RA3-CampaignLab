@@ -27,7 +27,7 @@ def test_another_format_is_refused(tmp_path):
     path = str(tmp_path / 'x.json.gz')
     with gzip.open(path, 'wt', encoding='utf-8') as f:
         json.dump({'version': 8, 'kernel': {}}, f)            # a bare snapshot, not a file save wrote
-    with pytest.raises(ValueError, match='not a snapfile/1 file'):
+    with pytest.raises(ValueError, match=f'not a {snapfile.FORMAT} file'):
         snapfile.load(path)
 
 
@@ -56,3 +56,74 @@ def test_guard_7_across_processes_goes_on_as_the_whole_one(tmp_path, capsys):
     assert f'{TASK} same' in out and 'across processes' in out, out
     meta, snap = snapfile.load(str(tmp_path / f'{TASK}.snap.json.gz'))
     assert meta['task'] == TASK and meta['n'] > 0 and snap['version']
+
+
+# ---- review 1119u (R2 part)
+def test_a_file_taken_in_another_shape_is_refused_and_a_resume_of_it_writes_nothing(tmp_path, monkeypatch):
+    """u P2 #1: the shape (simsnap / simaisnap versions, the engine model's pin) goes with the file; one taken in
+    another (another model) is refused by load, so a resume of it is refused before it runs."""
+    path = str(tmp_path / 's.json.gz')
+    monkeypatch.setattr(snapfile, 'shape', lambda: '8-10-other00')
+    snapfile.save(path, {}, task=TASK, snap='0.5')
+    monkeypatch.undo()
+    with pytest.raises(ValueError, match='taken in shape 8-10-other00'):
+        snapfile.load(path)
+    out = io.StringIO()
+    with pytest.raises(ValueError, match='taken in shape'):
+        simrecord.run_task(TASK, out, snap='0.5', resume=path)
+    assert out.getvalue() == ''
+
+
+def test_save_names_the_bytes_it_wrote_not_what_another_writer_left_there(tmp_path, monkeypatch):
+    """u P2 #2: two writers of one file -- the sha save returns is of its own bytes, not read back from the path
+    another may have replaced since."""
+    path = str(tmp_path / 's.json.gz')
+    mine = snapfile.save(str(tmp_path / 'alone.json.gz'), {'a': 1}, task='t')
+    real = os.replace
+
+    def replace_then_another_writes(src, dst):
+        real(src, dst)
+        with open(dst, 'wb') as f:      # the other writer's rename, right after ours
+            f.write(b'another writer')
+
+    monkeypatch.setattr(snapfile.os, 'replace', replace_then_another_writes)
+    assert snapfile.save(path, {'a': 1}, task='t') == mine != snapfile.digest(path)
+
+
+def test_a_rename_that_fails_leaves_no_temporary_file_and_its_name_is_short(tmp_path, monkeypatch):
+    """u P3 #2: a reader holding the file on Windows (PermissionError on rename): tried again, then the error, the
+    temporary file gone; its name short whatever the path's length."""
+    folder = tmp_path / 'k'
+    path = str(folder / ('x' * 120 + '.json.gz'))
+    tried = []
+
+    def held(src, dst):
+        tried.append(os.path.basename(src))
+        raise PermissionError(13, 'in use', dst)
+
+    monkeypatch.setattr(snapfile.os, 'replace', held)
+    monkeypatch.setattr(snapfile.time, 'sleep', lambda s: None)
+    with pytest.raises(PermissionError):
+        snapfile.save(path, {}, task='t')
+    assert len(tried) == snapfile.RETRIES and all(len(n) < 30 for n in tried)
+    assert os.listdir(folder) == []
+
+
+def test_the_cli_resume_refuses_before_it_appends(tmp_path):
+    """u P3 #1: `one --resume` checks the file and the first half's record before it opens the record to append:
+    no record there -- refused, none made; a file of another task -- refused, the record as it was."""
+    import argparse
+    snap = str(tmp_path / 's.json.gz')
+    snapfile.save(snap, {}, task=TASK, snap='0.5')
+    record = tmp_path / 'r.jsonl.gz'
+    a = argparse.Namespace(cmd='one', name=TASK, path=str(record), executor=None, snap='0.5', save=None, resume=snap)
+    with pytest.raises(ValueError, match="no first half's record"):
+        simrecord._main(a)
+    assert not record.exists()
+    with gzip.open(record, 'wt', encoding='utf-8') as f:
+        f.write('first half')
+    before = record.read_bytes()
+    snapfile.save(snap, {}, task='wfire_all', snap='0.5')
+    with pytest.raises(ValueError, match='not heal_a at 0.5'):
+        simrecord._main(a)
+    assert record.read_bytes() == before

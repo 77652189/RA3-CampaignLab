@@ -34,13 +34,15 @@ from engine.kernel import snap
 from simsnap import ALIAS, CACHE, STATE, STATIC, WIRE
 
 HOST, BRAINS, MODEL = 'host', 'brains', 'model'
-VERSION = 9             # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
+VERSION = 10            # 2: the brains (11b-4b); 3: the plugin's objects a session a brain (11b-4c);
 #                         4: a brain's ids / hp keyed by serial, not name (same-name sweep S6a);
 #                         5: HOOKS 9's runs, a list, and the mems they saw (_rec_mem by hand, 11b-4e);
 #                         6: its hunt goals / cells keyed by serial (S6b);
 #                         7: a returner's path kept as whether it is the one its unit walks (review 1119p #2);
 #                         8: 'setup', the settings the new SimAI must be made with (review 1119s);
-#                         9: the yard queues keyed by the yard's serial, not its name (review 1119q P2 #2)
+#                         9: the yard queues keyed by the yard's serial, not its name (review 1119q P2 #2);
+#                         10: the returners keyed by serial (same-name review 1119b O60 / N05); the things the
+#                             SimAI's own fields hold kept as simsnap's roots (review 1119u P2 #3)
 # The SimAI's settings restore asks the new SimAI to have been made with, taken with the snapshot; another one is
 # refused whole (review 1119s: one of record=True written onto a SimAI made with record=False, or the other way,
 # came back and its trail held half the run -- 525 / 36 lines the whole run, 262 / 24 off to on, 263 / 12 on to off).
@@ -231,9 +233,15 @@ def snapshot(w):
                                   'snapshot port, docs/engine/sim-modules.md 9.2')
     held = []
     brains = [_take_brain(w, b, held) for b in w.brains.values()]
+    own = [(p, _value(w, p)) for p in _paths() if all(f in simsnap._fields(_get(w, p[:k])) for k, f in enumerate(p))]
+    # the things the SimAI's own fields hold (a returner's facility a later body took the name of, out of bodies:
+    # review 1119u P2 #3, restore met its serial nowhere) and the returners walking the path taken: simsnap's roots
+    held.extend(v for _, v in own)
+    numbered = w.sim.world.numbered
+    held.extend(numbered[k] for k, (*_, path) in getattr(getattr(w, 'pullback', None), 'returning', {}).items()
+                if path is not None and getattr(numbered.get(k), 'path', None) is path)
     s = simsnap.snapshot(w.sim, held)
-    ai = [['.'.join(p), snap.encode(_value(w, p), at='simai.' + '.'.join(p))] for p in _paths()
-          if all(f in simsnap._fields(_get(w, p[:k])) for k, f in enumerate(p))]
+    ai = [['.'.join(p), snap.encode(v, at='simai.' + '.'.join(p))] for p, v in own]
     return {'version': VERSION, 'setup': _setup(w), 'sim': s, 'ai': ai, 'brains': brains}
 
 
@@ -248,13 +256,14 @@ def _value(w, p):
     """The SimAI's field at `p` as it is taken. A returner's path: busy asks whether the unit still walks the very
     path send saw (by identity, Pullback.busy) -- kept as that, `_WALKS`, not as its points; another path (an equal
     one a later order gave the unit) stays points, a list of its own on the new run, never the unit's (review 1119p
-    #2: matched by value, restore had made a returner a later order cancelled busy again)."""
+    #2: matched by value, restore had made a returner a later order cancelled busy again). The unit is the one of
+    its serial (the table's key), never the body its name now finds (same-name review 1119b N05)."""
     v = _get(w, p)
     if p != ('pullback', 'returning'):
         return v
-    bodies = w.sim.bodies
-    return {name: (g, dest, owner, _WALKS if path is not None and getattr(bodies.get(name), 'path', None) is path
-                   else path) for name, (g, dest, owner, path) in v.items()}
+    numbered = w.sim.world.numbered
+    return {k: (g, dest, owner, _WALKS if path is not None and getattr(numbered.get(k), 'path', None) is path
+                else path) for k, (g, dest, owner, path) in v.items()}
 
 
 def _paths(table=SIMAI, at=()):
@@ -294,6 +303,11 @@ def restore(w, s):
     if differ:      # review 1119s: refused whole, before a brain is made
         raise ValueError(f'simaisnap.restore: a snapshot of another setup: {", ".join(differ)}')
     simsnap.check(w.sim, s['sim'])      # review 1119m #1: the Sim's part refused before a brain is made, not after
+    kept = {r[1] for r in s['sim']['bodies']} | {r[0] for r in s['sim']['others']}
+    stray = {k: at for k, at in simsnap._serials([s['ai'], s['brains']]).items() if k not in kept}
+    if stray:           # review 1119u P2 #3: a thing the snapshot does not keep, refused before anything is written
+        raise ValueError(f'simaisnap.restore: things {sorted(stray)[:10]} are held but not kept in the snapshot '
+                         f'(the first at {", ".join(stray[k] for k in sorted(stray)[:3])})')
     if w.brains:
         raise ValueError('simaisnap.restore: onto a SimAI that has brains already (made anew, not advanced)')
     for player, side, pid, fields, _ in s['brains']:
@@ -306,10 +320,9 @@ def restore(w, s):
     for path, e in s['ai']:
         p = tuple(path.split('.'))
         setattr(_get(w, p[:-1]), p[-1], snap.decode(e, things))      # review k #1: a returner's facility
-    for name, (g, dest, owner, path) in list(getattr(getattr(w, 'pullback', None), 'returning', {}).items()):
-        if path == _WALKS:                  # busy asks for the very path the unit walks (by identity): the unit's
-            u = w.sim.bodies.get(name)      # (review 1119p #2: only the one taken as it, not an equal one)
-            w.pullback.returning[name] = (g, dest, owner, u.path if u is not None else [])
+    for k, (g, dest, owner, path) in list(getattr(getattr(w, 'pullback', None), 'returning', {}).items()):
+        if path == _WALKS:      # busy asks for the very path the unit walks (by identity): the unit's (review 1119p
+            w.pullback.returning[k] = (g, dest, owner, things[k].path)  # #2), the unit kept as a root (snapshot)
     for player, _side, _pid, fields, model in s['brains']:
         _write_brain(w, w.brains[player], fields, model, things)
 

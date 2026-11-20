@@ -245,7 +245,39 @@ class CrossRecorder:
         self.spent += time.perf_counter() - t0
 
 
-def run_task(name, out, executor=None, snap=None, save=None, resume=None):
+class _Later:
+    """A gzip text file opened on its first write (the CLI's record: a resume refused writes nothing, u P3 #1)."""
+
+    def __init__(self, path, mode):
+        self.path, self.mode, self.f = path, mode, None
+
+    def write(self, text):
+        if self.f is None:
+            self.f = gzip.open(self.path, self.mode, encoding='utf-8')
+        return self.f.write(text)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        if self.f is not None:
+            self.f.close()
+
+
+def _resumable(snapfile, resume, name, snap, record=None):
+    """(meta, snapshot) of the file a cut run `name` at `snap` goes on from (snapfile.load: its format and shape),
+    or an error naming why not -- another task or cut, and (`record`, the CLI's) no first half's record there to
+    go on: asked before anything is written (review 1119u P3 #1)."""
+    meta, taken = snapfile.load(resume)
+    if (meta.get('task'), meta.get('snap')) != (name, snap):
+        raise ValueError(f'simrecord: {resume} is {meta.get("task")} cut at {meta.get("snap")}, '
+                         f'not {name} at {snap}')
+    if record is not None and not (os.path.isfile(record) and os.path.getsize(record) > 0):
+        raise ValueError(f'simrecord: no first half\'s record at {record} to go on from')
+    return meta, taken
+
+
+def run_task(name, out, executor=None, snap=None, save=None, resume=None, record=None):
     """One task's run, its record written to `out`. executor: None the task's own (TASKS: old runs the public one,
     the rest the model's plug-in where it is on this computer) and the full record; 'public' / 'model' /
     'public@model' that executor for every kind and the cross record (CrossRecorder).
@@ -266,10 +298,7 @@ def run_task(name, out, executor=None, snap=None, save=None, resume=None):
     if (save or resume) and snap in (None, 'whole'):
         raise ValueError('simrecord: save / resume is a cut run\'s (--snap <fraction>)')
     if resume:
-        meta, taken = snapfile.load(resume)
-        if (meta.get('task'), meta.get('snap')) != (name, snap):
-            raise ValueError(f'simrecord: {resume} is {meta.get("task")} cut at {meta.get("snap")}, '
-                             f'not {name} at {snap}')
+        meta, taken = _resumable(snapfile, resume, name, snap, record)
     model = kind != 'old' if executor is None else executor in ('model', 'public@model')
     if snap is not None and kind == 'ai':   # the model's world keeps the model's script engine as its clock, which
         model = False                       # a snapshot cannot take (simaisnap: the AI's runs on Sim(model=False))
@@ -420,9 +449,10 @@ def _cpupool():
 def _main(a):
     if a.cmd == 'one':
         t0 = time.perf_counter()
-        # a resumed run's record is the rest of the cut one's: a second gzip member, read on as one text
-        with gzip.open(a.path, 'at' if a.resume else 'wt', encoding='utf-8') as out:
-            _, rec = run_task(a.name, out, a.executor, a.snap, a.save, a.resume)
+        # a resumed run's record is the rest of the cut one's: a second gzip member, read on as one text; opened on
+        # its first line, so a resume run_task refuses (its file, the first half's record) appends nothing (u P3 #1)
+        with _Later(a.path, 'at' if a.resume else 'wt') as out:
+            _, rec = run_task(a.name, out, a.executor, a.snap, a.save, a.resume, a.path if a.resume else None)
         total = time.perf_counter() - t0
         if a.save:                  # the first half: its end, time and report are the resumed run's
             print(a.name, 'taken at', rec.at, 's ->', a.save)

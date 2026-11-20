@@ -36,7 +36,9 @@ class Peers:
 class Pullbacks:
     def __init__(self, world, peers):
         self.world, self.peers = world, peers
-        self.returning = {}             # unit name -> (facility, destination, owner, path object)
+        # unit serial -> (facility, destination, owner, path object): by serial, not name (same-name review 1119b
+        # O60 / N05: a unit made again under a dead returner's name, walking the very list, was taken for it)
+        self.returning = {}
         self.log = []                   # seconds, unit name, facility name
         self.armies = {}
         for path in Path(simunits.SAGEXML, 'SkirmishAI').glob('ArmyDef*.xml'):
@@ -109,18 +111,18 @@ class Pullbacks:
         # INFERRED: in the game the unit enters the repair facility; here it walks there, its target dropped first
         peers.commands.do(Command('move', f'ai:{u.owner}', units=(u.serial,), pos=(g.x, g.y),
                                   args=(('objects', 'serial'), ('drop_target', True))))
-        self.returning[u.name] = (g, u.move_to, u.owner, u.path)
+        self.returning[u.serial] = (g, u.move_to, u.owner, u.path)
         self.log.append((world.t, u.name, g.name))
         return True
 
     def busy(self, u):
         """Detached returners stay out of team recruitment, until cancelled or invalid."""
-        entry = self.returning.get(u.name)
+        entry = self.returning.get(u.serial)
         if entry is None:
             return False
         g, destination, owner, path = entry
         if (not self.accepts(u, g) or u.owner != owner or u.move_to != destination
                 or u.goal is not None or u.path is not path):
-            self.returning.pop(u.name, None)
+            self.returning.pop(u.serial, None)
             return False
         return True

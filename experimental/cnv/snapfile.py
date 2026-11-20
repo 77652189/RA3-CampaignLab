@@ -1,7 +1,7 @@
 """A run's snapshot in a file (step S 11c, docs/engine/sim-modules.md 9.2): simsnap's or simaisnap's snapshot written
 to a gzip JSON file and read back in another process, so a run taken in one process goes on in another.
 
-    {"format": "snapfile/1", "meta": {...}, "snapshot": {...}}
+    {"format": "snapfile/2", "shape": shape(), "meta": {...}, "snapshot": {...}}
 
 `meta` is the taker's (the task, where it was taken, the commit, the counts a recorder goes on from); the snapshot is
 as simsnap / simaisnap took it (its own version inside: their restore refuses another, whole). A file is written to a
@@ -14,34 +14,63 @@ the brains' part); a restore that refuses one is the caller's sign to take it ag
 import gzip
 import hashlib
 import importlib.util
+import io
 import json
 import os
+import tempfile
+import time
 
-FORMAT = 'snapfile/1'
+FORMAT = 'snapfile/2'   # 2: the shape it was taken in (review 1119u P2 #1)
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def save(path, snapshot, **meta):
-    """Write `snapshot` (simsnap's / simaisnap's, JSON values) and `meta` to `path` (gzip JSON), whole or not at all.
-    Returns the file's sha256 (its first 12 hex digits): what a result names the start it ran from by."""
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    tmp = f'{path}.{os.getpid()}.tmp'
-    data = json.dumps({'format': FORMAT, 'meta': meta, 'snapshot': snapshot}).encode('utf-8')
+    """Write `snapshot` (simsnap's / simaisnap's, JSON values) and `meta` to `path` (gzip JSON), whole or not at all,
+    with the shape it was taken in (`shape()`: load refuses another). Returns the sha256 (its first 12 hex digits) of
+    the bytes this call wrote -- what a result names the start it ran from by; never read back from `path`, which
+    another writer may have replaced since (review 1119u P2 #2)."""
+    folder = os.path.dirname(os.path.abspath(path))
+    os.makedirs(folder, exist_ok=True)
+    buf = io.BytesIO()
     # no time and no name in the gzip header: the same snapshot and meta make the same file, the same sha (a start
     # taken again unchanged is the same start, 11c-2)
-    with open(tmp, 'wb') as raw, gzip.GzipFile(filename='', mode='wb', fileobj=raw, mtime=0) as f:
-        f.write(data)
-    os.replace(tmp, path)
-    return digest(path)
+    with gzip.GzipFile(filename='', mode='wb', fileobj=buf, mtime=0) as f:
+        f.write(json.dumps({'format': FORMAT, 'shape': shape(), 'meta': meta, 'snapshot': snapshot}).encode('utf-8'))
+    data = buf.getvalue()
+    # a short temporary name of its own beside it (u P3 #2: '<path>.<pid>.tmp' outgrew a long path), gone if the
+    # rename fails (a reader holding the file on Windows: a few tries, then the error)
+    fd, tmp = tempfile.mkstemp(prefix='.snap', suffix='.tmp', dir=folder)
+    try:
+        with os.fdopen(fd, 'wb') as raw:
+            raw.write(data)
+        for k in range(RETRIES):
+            try:
+                os.replace(tmp, path)
+                break
+            except PermissionError:
+                if k == RETRIES - 1:
+                    raise
+                time.sleep(0.2)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+    return hashlib.sha256(data).hexdigest()[:12]
+
+
+RETRIES = 5
 
 
 def load(path):
-    """(meta, snapshot) of a file `save` wrote. Another format: an error naming it."""
+    """(meta, snapshot) of a file `save` wrote, in this shape. Another format, a file taken in another shape (another
+    simsnap / simaisnap version or engine model pin -- review 1119u P2 #1: resumed under another model): an error
+    naming it, before the caller writes anything."""
     with gzip.open(path, 'rt', encoding='utf-8') as f:
         d = json.load(f)
-    if not isinstance(d, dict) or d.get('format') != FORMAT or set(d) != {'format', 'meta', 'snapshot'}:
+    if not isinstance(d, dict) or d.get('format') != FORMAT or set(d) != {'format', 'shape', 'meta', 'snapshot'}:
         got = d.get('format') if isinstance(d, dict) else type(d).__name__
         raise ValueError(f'snapfile.load: {path} is not a {FORMAT} file ({got!r})')
+    if d['shape'] != shape():
+        raise ValueError(f'snapfile.load: {path} was taken in shape {d["shape"]}, this is {shape()}')
     return d['meta'], d['snapshot']
 
 

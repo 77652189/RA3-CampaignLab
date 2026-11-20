@@ -218,10 +218,10 @@ def test_a_returner_comes_back_with_its_facility_and_the_path_it_walks():
     run = _simai(m, t).advance(HALF)
     u, g = [b for b in run.sim.bodies.values() if b.alive][:2]
     u.path = [(1.0, 2.0)]
-    run.pullback.returning[u.name] = (g, u.move_to, u.owner, u.path)
+    run.pullback.returning[u.serial] = (g, u.move_to, u.owner, u.path)
     restored = _simai(m, t)
     simaisnap.restore(restored, json.loads(json.dumps(simaisnap.snapshot(run))))
-    ng, dest, owner, path = restored.pullback.returning[u.name]
+    ng, dest, owner, path = restored.pullback.returning[u.serial]
     assert ng is restored.sim.world.numbered[g.serial] and path is restored.sim.bodies[u.name].path
 
 
@@ -232,13 +232,78 @@ def test_a_returner_a_later_order_cancelled_stays_cancelled():
     run = _simai(m, t).advance(HALF)
     u, g = [b for b in run.sim.bodies.values() if b.alive][:2]
     seen = [(1.0, 2.0), (3.0, 4.0)]
-    run.pullback.returning[u.name] = (g, u.move_to, u.owner, seen)
+    run.pullback.returning[u.serial] = (g, u.move_to, u.owner, seen)
     u.path = list(seen)                 # the later order's: the same points, another path
     restored = _simai(m, t)
     taken = simaisnap.snapshot(run)
     simaisnap.restore(restored, json.loads(json.dumps(taken)))
-    path = restored.pullback.returning[u.name][3]
+    path = restored.pullback.returning[u.serial][3]
     assert path == seen and path is not restored.sim.bodies[u.name].path
+    assert simaisnap.snapshot(restored) == taken
+
+
+# ---- review 1119u (R2 part) and same-name review 1119b N05
+def _returner_out_of_bodies():
+    """A run at its half with a returner whose facility (made in the run) a later body took the name of: the old
+    facility alive, numbered, out of bodies and the schedule -- as Sim.add leaves the body it replaces (done here
+    by hand, the way Sim.add does it, so the case stays whether or not Sim.add later refuses a living one)."""
+    m, t, _ = build.resolve(*_WHERE)
+    run = _simai(m, t).advance(HALF)
+    u, g0 = [b for b in run.sim.bodies.values() if b.alive][:2]
+    g = run.sim.add('fac', g0.template, g0.owner, g0.x, g0.y)
+    u.path = [(1.0, 2.0)]
+    run.pullback.returning[u.serial] = (g, u.move_to, u.owner, u.path)
+    run.sim.world.drop(g)
+    del run.sim.bodies['fac']
+    return m, t, run, u, g
+
+
+def test_a_returners_facility_out_of_bodies_comes_back_as_that_facility():
+    """u P2 #3: the facility only the SimAI holds is kept with the snapshot (a root), written back as the same
+    thing -- not a KeyError on its serial after the Sim's part was written."""
+    m, t, run, u, g = _returner_out_of_bodies()
+    taken = simaisnap.snapshot(run)
+    restored = _simai(m, t)
+    simaisnap.restore(restored, json.loads(json.dumps(taken)))
+    ng, _, _, path = restored.pullback.returning[u.serial]
+    assert ng.serial == g.serial and ng.name == 'fac' and 'fac' not in restored.sim.bodies
+    assert path is restored.sim.bodies[u.name].path
+    assert simaisnap.snapshot(restored) == taken
+
+
+def test_a_snapshot_naming_a_thing_it_does_not_keep_is_refused_before_anything_is_written():
+    """u P2 #3: a thing the SimAI's part names that the Sim's part does not keep: refused whole, the new Sim and
+    SimAI as they were (no brain, no body written)."""
+    m, t, run, u, g = _returner_out_of_bodies()
+    taken = json.loads(json.dumps(simaisnap.snapshot(run)))
+    taken['sim']['others'] = [r for r in taken['sim']['others'] if r[0] != g.serial]
+    fresh = _simai(m, t)
+    before = simsnap.snapshot(fresh.sim)
+    with pytest.raises(ValueError, match=f'things \\[{g.serial}\\] are held but not kept'):
+        simaisnap.restore(fresh, taken)
+    assert not fresh.brains and simsnap.snapshot(fresh.sim) == before
+
+
+def test_a_returner_is_its_serials_not_the_body_its_name_finds_now():
+    """N05: whether a returner walks the path taken was asked of the body its name finds. A returner a later body
+    took the name of (out of bodies, by hand as Sim.add leaves it), the new one on a path of its own: the returner
+    still walks its path -- written back tied to the returner's own path (`$walks`), not cut loose as points."""
+    m, t, _ = build.resolve(*_WHERE)
+    run = _simai(m, t).advance(HALF)
+    u0, g = [b for b in run.sim.bodies.values() if b.alive][:2]
+    u = run.sim.add('ret', u0.template, u0.owner, u0.x, u0.y)
+    u.path = [(1.0, 2.0)]
+    run.pullback.returning[u.serial] = (g, u.move_to, u.owner, u.path)
+    run.sim.world.drop(u)
+    del run.sim.bodies['ret']
+    new = run.sim.add('ret', u.template, u.owner, u.x, u.y)
+    new.path = [(1.0, 2.0)]
+    taken = simaisnap.snapshot(run)
+    restored = _simai(m, t)
+    simaisnap.restore(restored, json.loads(json.dumps(taken)))
+    _, _, _, path = restored.pullback.returning[u.serial]
+    assert path is restored.sim.world.numbered[u.serial].path       # the returner's own
+    assert path is not restored.sim.bodies['ret'].path
     assert simaisnap.snapshot(restored) == taken
 
 
