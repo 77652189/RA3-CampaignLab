@@ -29,11 +29,14 @@ import argparse
 import contextlib
 import hashlib
 import importlib.util
+import math
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import time
+import uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -45,7 +48,19 @@ RECORDER_RELS = (SIMRECORD_REL, os.path.join('experimental', 'cnv', 'engine', 'p
 PIN_REL = 'experimental/cnv/inventory_model.rev'
 TRAILER = 'golden-changed:'
 KEEP = 4                       # cached record sets kept under work\logs\golden (about 130 MB each)
-LOCK_STALE = 3 * 3600          # age limit for legacy locks without a process start time
+LOCK_STALE = 3 * 3600          # age limit when the holder cannot be verified
+
+# The recorder must not touch .part before its identity is in the lock. A holder that dies before
+# opening the gate closes the pipe, so the recorder exits without running the script.
+_RECORDER_GATE = '''\
+import os, runpy, sys
+if sys.stdin.buffer.read(1) != b'1':
+    sys.exit(1)
+sys.argv = sys.argv[1:]
+if not sys.flags.safe_path:
+    sys.path[0] = os.path.dirname(os.path.abspath(sys.argv[0]))
+runpy.run_path(sys.argv[0], run_name='__main__')
+'''
 
 
 def _load(name, path):
@@ -145,65 +160,57 @@ def pin_here(root):
 
 @contextlib.contextmanager
 def _lock_update(path):
-    """Serialize changes to the lock file so stale recovery cannot remove a successor's lock."""
-    if os.name == 'nt':
-        import ctypes
-        from ctypes import wintypes
+    """Serialize read/modify/write across hosts on a file whose identity survives lock replacement."""
+    with open(os.fspath(path) + '.guard', 'a+b') as guard:
+        if os.name == 'nt':
+            import msvcrt
 
-        kernel = ctypes.windll.kernel32
-        kernel.CreateMutexW.restype = wintypes.HANDLE
-        name = _digest(os.path.normcase(os.path.realpath(path)))
-        handle = wintypes.HANDLE(kernel.CreateMutexW(None, False, ctypes.c_wchar_p('Global\\RA3Golden-' + name)))
-        if not handle:
-            raise ctypes.WinError()
-        try:
-            result = kernel.WaitForSingleObject(handle, wintypes.DWORD(0xFFFFFFFF))
-            if result not in (0, 0x80):  # acquired, including when the previous owner died
-                raise ctypes.WinError()
+            guard.seek(0)
+            msvcrt.locking(guard.fileno(), msvcrt.LK_LOCK, 1)
             try:
                 yield
             finally:
-                kernel.ReleaseMutex(handle)
-        finally:
-            kernel.CloseHandle(handle)
-    else:
-        import fcntl
+                msvcrt.locking(guard.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
 
-        fd = os.open(os.path.dirname(path), os.O_RDONLY)
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX)
+            fcntl.flock(guard.fileno(), fcntl.LOCK_EX)
             yield
-        finally:
-            os.close(fd)
 
 
-def _stale_holder(path):
+def _process_matches(fields):
+    """True for the same live process, False for a dead/reused PID, None if unverifiable."""
     import psutil
 
-    with open(path, encoding='ascii', errors='replace') as f:
+    try:
+        pid, started = int(fields[0]), float(fields[1])
+        if pid <= 0 or not math.isfinite(started) or started <= 0:
+            return None
+        return psutil.Process(pid).create_time() == started
+    except (psutil.AccessDenied, ValueError, OverflowError):
+        return None
+    except psutil.NoSuchProcess:
+        return False
+
+
+def _stale_holder(path, host):
+    with open(path, encoding='utf-8', errors='replace') as f:
         fields = f.read().split()
         age = time.time() - os.fstat(f.fileno()).st_mtime
 
-    try:
-        pid, started = fields
-        pid, started = int(pid), float(started)
-    except ValueError:
-        if age > LOCK_STALE:
-            return (fields[0] if len(fields) == 1 and fields[0].isdigit() else '?'), age
-        return None
-
-    try:
-        if psutil.Process(pid).create_time() == started:
+    old_pid = fields[0] if fields and fields[0].isdigit() else '?'
+    if len(fields) in (4, 6) and fields[2] == host:
+        holder = _process_matches(fields[:2])
+        recorder = _process_matches(fields[4:]) if len(fields) == 6 else False
+        if holder is True or recorder is True:
             return None
-    except psutil.AccessDenied:
-        return None
-    except psutil.NoSuchProcess:
-        pass
-    return pid, age
+        if holder is False and recorder is False:
+            return old_pid, age
+    return (old_pid, age) if age > LOCK_STALE else None
 
 
 class Lock:
-    """One golden run at a time on this computer (pytest-xdist workers, other lines): an O_EXCL file."""
+    """One golden run at a time per cache, including while its orphaned recorder runs."""
 
     def __init__(self, path, wait=2.0):
         self.path, self.wait = path, wait
@@ -214,23 +221,25 @@ class Lock:
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         pid = os.getpid()
         started = psutil.Process(pid).create_time()
-        owner = f'{pid} {started!r}'
+        host = socket.gethostname().casefold()
+        self.owner = self.contents = f'{pid} {started!r} {host} {uuid.uuid4().hex}'
+        self.recorder = None
         while True:
             with _lock_update(self.path):
                 try:
-                    stale = _stale_holder(self.path)
+                    stale = _stale_holder(self.path, host)
                     if stale is not None:
                         os.remove(self.path)
                 except OSError:
                     stale = None
                 try:
-                    f = open(self.path, 'x', encoding='ascii')
+                    f = open(self.path, 'x', encoding='utf-8')
                 except FileExistsError:
                     pass
                 else:
                     try:
                         with f:
-                            f.write(owner)
+                            f.write(self.contents)
                     except BaseException:
                         with contextlib.suppress(OSError):
                             os.remove(self.path)
@@ -243,7 +252,34 @@ class Lock:
 
     def __exit__(self, *exc):
         with _lock_update(self.path), contextlib.suppress(OSError):
-            os.remove(self.path)
+            with open(self.path, encoding='utf-8', errors='replace') as f:
+                contents = f.read()
+            if contents == self.contents and (self.recorder is None or self.recorder.poll() is not None):
+                os.remove(self.path)
+
+    def run_recorder(self, script, args, cwd):
+        import psutil
+
+        # Let the recorder finish its workers if the holder is interrupted or terminated.
+        flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+        with subprocess.Popen([sys.executable, '-X', 'utf8', '-c', _RECORDER_GATE, script, *args], cwd=cwd,
+                              stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                              creationflags=flags, start_new_session=os.name != 'nt') as recorder:
+            self.recorder = recorder
+            with _lock_update(self.path):
+                with open(self.path, 'r+', encoding='utf-8') as f:
+                    if f.read() != self.contents:
+                        raise RuntimeError('golden: lost the lock before starting the recorder')
+                    started = psutil.Process(recorder.pid).create_time()
+                    self.contents = f'{self.owner} {recorder.pid} {started!r}'
+                    stat = os.fstat(f.fileno())
+                    f.seek(0)
+                    f.write(self.contents)
+                    f.truncate()
+                os.utime(self.path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+                recorder.stdin.write(b'1')
+                recorder.stdin.close()
+            recorder.wait()
 
 
 def _plain_dir(path):
@@ -294,7 +330,7 @@ def complete(folder, names):
                for n in names)
 
 
-def record(code_root, names, folder, jobs):
+def record(code_root, names, folder, jobs, lock):
     """simrecord record of the tasks not yet in `folder`, run from `code_root`'s own simrecord.py (its code). A task
     that fails leaves <task>.failed beside its log <task>.txt."""
     missing = [n for n in names if not (os.path.exists(os.path.join(folder, n + '.gz')) or
@@ -305,9 +341,8 @@ def record(code_root, names, folder, jobs):
     tmp = folder + '.part'
     if os.path.isdir(tmp) and _plain_dir(tmp):
         shutil.rmtree(tmp)
-    subprocess.run([sys.executable, '-X', 'utf8', os.path.join(code_root, SIMRECORD_REL), 'record', tmp,
-                    '--only', *missing, '-j', str(jobs)], cwd=code_root, capture_output=True, text=True,
-                   encoding='utf-8', errors='replace')
+    lock.run_recorder(os.path.join(code_root, SIMRECORD_REL), ['record', tmp, '--only', *missing, '-j', str(jobs)],
+                      cwd=code_root)
     for n in missing:
         for ext in ('.txt', '.time.json'):
             if os.path.exists(os.path.join(tmp, n + ext)):
@@ -374,14 +409,14 @@ def records(names=None, env=None, root=ROOT, jobs=None):
         raise Skip(f'the engine model pin moved between the base {base[:10]} and this checkout '
                    f'({pin_at(root, base)} -> {pin_here(root)}): set GOLDEN_BASE to a commit with the same pin')
     changed = declared(root, base, env, simrecord.TASKS)
-    with Lock(os.path.join(CACHE, 'golden.lock')):
+    with Lock(os.path.join(CACHE, 'golden.lock')) as lock:
         base_dir = os.path.join(CACHE, f'c-{base[:12]}-{recorder_hash()}')
         new_dir = os.path.join(CACHE, work_key(root))
         if not complete(base_dir, names):
             prepare_tree(base, root)
-            record(TREE, names, base_dir, jobs)
+            record(TREE, names, base_dir, jobs, lock)
         if not complete(new_dir, names):
-            record(root, names, new_dir, jobs)
+            record(root, names, new_dir, jobs, lock)
         prune(spare=(base_dir, new_dir))
     return Run(base, base_dir, new_dir, changed, names)
 
