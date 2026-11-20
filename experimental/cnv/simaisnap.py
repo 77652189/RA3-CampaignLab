@@ -34,10 +34,7 @@ from engine.kernel import snap
 from simsnap import ALIAS, CACHE, STATE, STATIC, WIRE
 
 HOST, BRAINS, MODEL = 'host', 'brains', 'model'
-SEMANTICS = 1           # raised by hand only when what is kept changes but no table below does (a mark, the
-#                         port's rows): the commit says why. VERSION is version(), the tables' digest and this
-#                         (before it, 1-10 were bumped by hand: git log). 1: a brain's birth frames (made) keyed by
-#                         serial, not name (same-name sweep 11-19b O63)
+SEMANTICS = 1           # manual fallback for a format change outside version()'s tables and encoding rules
 
 # The SimAI's settings restore asks the new SimAI to have been made with, taken with the snapshot; another one is
 # refused whole (review 1119s: one of record=True written onto a SimAI made with record=False, or the other way,
@@ -92,9 +89,9 @@ _UNIT_MODEL = [f for f, k in UNIT.items() if k == MODEL]
 
 
 def version():
-    """The SimAI part's format: '<digest of SETUP, SIMAI, ALIASES, BRAIN, UNIT, the brain's own kept by hand>.
-    <SEMANTICS>' (simsnap.digest). The Sim's part is simsnap's, checked by its own version."""
-    return f'{simsnap.digest(SETUP, SIMAI, ALIASES, BRAIN, UNIT, _BY_HAND)}.{SEMANTICS}'
+    """The AI part's format depends on its own tables and encoding rules. The Sim has its own version."""
+    rules = simsnap.encoding_rules(snapshot, _key_of, _take_brain, _mem_mark, _setup, _value, _write_brain)
+    return f'{simsnap.digest(SETUP, SIMAI, ALIASES, BRAIN, UNIT, _BY_HAND, _WALKS, rules)}.{SEMANTICS}'
 
 
 def __getattr__(name):
@@ -305,6 +302,32 @@ def _check(s):
         raise ValueError(f'simaisnap.restore: not a brain of this shape: {bad[:3]}')
 
 
+def _check_serials(s):
+    """Check every serial used to look up a thing or a brain's wrapped unit before writing either world."""
+    kept = {r[1] for r in s['sim']['bodies']} | {r[0] for r in s['sim']['others']}
+    refs = simsnap._serials(s['ai'], at='ai')
+    returning = dict(s['ai']).get('pullback.returning', {})
+    for serial, row in returning.get('$items', ()):
+        # A cancelled return can outlive its unit. Only the path identity mark requires the unit.
+        if row['$tuple'][3] == _WALKS:
+            refs.setdefault(serial, f'pullback.returning[{serial}]')
+    for player, _side, _pid, fields, model in s['brains']:
+        at = f'Brain {player}'
+        wrapped = {serial for _, serial, _ in fields['wrappers']}
+        for serial in wrapped:
+            refs.setdefault(serial, f'{at}.wrappers')
+        units = {}
+        simsnap._serials([fields, model], refs, at, units)
+        missing = units.keys() - wrapped
+        if missing:
+            raise ValueError(f'simaisnap.restore: {at} refers to units without wrappers: {sorted(missing)[:10]}')
+    stray = refs.keys() - kept
+    if stray:
+        first = sorted(stray)[:10]
+        raise ValueError(f'simaisnap.restore: things {first} are held but not kept in the snapshot '
+                         f'(the first at {", ".join(refs[k] for k in first[:3])})')
+
+
 def restore(w, s):
     """Write snapshot `s` onto `w`, a SimAI made anew (on a Sim made anew) for the same mission, level, seed,
     blocks and record (SETUP, taken with it: another one refused whole), not yet advanced: the brains made as attach makes them (before the Sim is written: a Brain's making
@@ -316,11 +339,7 @@ def restore(w, s):
     if differ:      # review 1119s: refused whole, before a brain is made
         raise ValueError(f'simaisnap.restore: a snapshot of another setup: {", ".join(differ)}')
     simsnap.check(w.sim, s['sim'])      # review 1119m #1: the Sim's part refused before a brain is made, not after
-    kept = {r[1] for r in s['sim']['bodies']} | {r[0] for r in s['sim']['others']}
-    stray = {k: at for k, at in simsnap._serials([s['ai'], s['brains']]).items() if k not in kept}
-    if stray:           # review 1119u P2 #3: a thing the snapshot does not keep, refused before anything is written
-        raise ValueError(f'simaisnap.restore: things {sorted(stray)[:10]} are held but not kept in the snapshot '
-                         f'(the first at {", ".join(stray[k] for k in sorted(stray)[:3])})')
+    _check_serials(s)
     if w.brains:
         raise ValueError('simaisnap.restore: onto a SimAI that has brains already (made anew, not advanced)')
     for player, side, pid, fields, _ in s['brains']:

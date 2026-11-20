@@ -24,6 +24,8 @@ again when none is kept or restore refuses it), on Sim(model=False), the result'
 Run it through experimental/testbench/cpupool.py run -n 1 -- to share the machine with other jobs."""
 import sim  # noqa: I001  (first: it puts experimental/cnv and campaign on the path)
 import argparse
+import dataclasses
+import hashlib
 import importlib.util
 import json
 import os
@@ -142,9 +144,23 @@ AI_SCENE = ('aipeak', '')      # (build, check): two AIs at war (aiskrand/s befo
 AI_FROM = 360.0                 # its busiest: both sides growing and fighting (aipeak_bench's probes)
 
 
+def _scene_content(mission, check):
+    """Fingerprint the resolved placement, scripts, map data and AI setup used by the benchmark."""
+    from parts import merged
+
+    m = merged(mission, check)
+    fields = ('name', 'units', 'objects', 'waypoints', 'areas', 'scripts', 'strings', 'links', 'labels', 'hotspots',
+              'cast', 'marks', 'teams', 'templates', 'sides', 'assets', 'replaces', 'facts', 'objectives', 'endings')
+    map_fields = ('LAYOUT', 'DIMS', 'WATERLINE', 'OBJECTS', 'SCENERY', 'PLAYERS', 'TEAMS', 'LIBRARIES',
+                  'SITES', 'BORDERS')
+    data = ([getattr(m, f) for f in fields], m.map.__name__, [getattr(m.map, f, None) for f in map_fields])
+    encoded = json.dumps(data, default=dataclasses.asdict, separators=(',', ':')).encode('utf-8')
+    return hashlib.sha256(encoded).hexdigest()[:16]
+
+
 def ai_start(at, scene=AI_SCENE, path=None):
     """The AI scene written back from its snapshot `at` seconds in (step S 11c-2): (the SimAI, the start's info).
-    The snapshot is kept (snapfile.cached, by scene, `at` and the snapshot's shape); none kept, or one restore
+    The snapshot is kept (snapfile.cached, by scene content, `at` and the snapshot's shape); none kept, or one restore
     refuses (another setup, an older shape, a broken file), is taken again -- the scene run to the first tick past
     `at` on Sim(model=False) (simaisnap's: the model's script clock cannot be taken), one line printed why. Timed
     from a written-back world either way: the one just taken is read back too. info: {'scene', 'at', 'file', 'sha'
@@ -155,8 +171,9 @@ def ai_start(at, scene=AI_SCENE, path=None):
     import snapfile
 
     scene = tuple(scene)
-    path = path or snapfile.cached(f'{scene[0]}_{scene[1] or "-"}_{at:g}')
     m, t, _ = bld.resolve(*scene)
+    content = _scene_content(m, t)
+    path = path or snapfile.cached(f'{scene[0]}_{scene[1] or "-"}_{at:g}_{content}')
 
     def made():
         return simai.SimAI(sim.Sim(m, t, 'normal', model=False))
@@ -165,6 +182,8 @@ def ai_start(at, scene=AI_SCENE, path=None):
         meta, taken = snapfile.load(path)
         if (meta.get('scene'), meta.get('at')) != (list(scene), at):
             raise ValueError(f'a start of {meta.get("scene")} at {meta.get("at")}, not {list(scene)} at {at}')
+        if meta.get('content') != content:
+            raise ValueError('the start was taken with different scene content')
         w, t0 = made(), time.perf_counter()
         simaisnap.restore(w, taken)
         return w, {'scene': list(scene), 'at': at, 'file': path, 'sha': snapfile.digest(path),
@@ -183,7 +202,7 @@ def ai_start(at, scene=AI_SCENE, path=None):
         w.advance(1)
     if w.sim.t <= at:
         raise RuntimeError(f'simbench_peak: {scene} ended at {w.sim.t}, before {at}: no start to take')
-    snapfile.save(path, simaisnap.snapshot(w), scene=list(scene), at=at, t=w.sim.t, frame=w.frame)
+    snapfile.save(path, simaisnap.snapshot(w), scene=list(scene), content=content, at=at, t=w.sim.t, frame=w.frame)
     w, info = read()
     return w, {**info, 'taken': True}
 

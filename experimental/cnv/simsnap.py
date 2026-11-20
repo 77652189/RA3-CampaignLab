@@ -19,10 +19,14 @@ object again), a numpy array ({"$array": [dtype, shape, base64]}), a player's pr
 order the command port keeps ({"$command": fields}), a script of the map's lists the host holds (a sequential
 script's queue: {"$script": the executor's script_key}, the new executor's script of that key).
 `unclassified(sim)` (step S's guard 4.3) names every field not sorted here, so a new one cannot be left out."""
+import ast
 import base64
 import hashlib
 import importlib
+import inspect
 import json
+import textwrap
+from functools import lru_cache
 
 import numpy as np
 
@@ -31,13 +35,13 @@ import simunits
 from engine.kernel import factory
 from engine.kernel import module as _module
 from engine.kernel import snap
+from engine.kernel.world import World
 from engine.ports.command import Command
 from engine.script import lists as script_lists
+from engine.script.executor import PublicExecutor
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-SEMANTICS = 0           # raised by hand only when what is kept changes but no table below does (World.snapshot's
-                        # or the executor's rows, a value's encoding, a mark): the commit says why. VERSION is
-                        # version(): the tables' digest and this (before it, 1-14 were bumped by hand: git log)
+SEMANTICS = 0           # manual fallback for a format change outside the tables and encoding rules version() reads
 
 SIM = {
     # the setup
@@ -92,6 +96,14 @@ for _f in ('t log box_log panel_log asked up scenes unknown flags objectives mar
            'impact_flights emp_until knock_hold tech_to '
            'pack_hold').split():     # pack_hold: a yard packing's frames held, by serial (review 1119p #3: unsorted)
     SIM.setdefault(_f, STATE)
+# World.snapshot takes its own STATE. This table is for the field guard.
+WORLD = {
+    'blocks': WIRE, 'tags': STATIC, '_kill': WIRE, '_remove': WIRE, '_pay': WIRE, '_toggled': WIRE,
+    '_modify': WIRE, '_suppression_at': WIRE, '_spawn': WIRE, '_vacate': WIRE, '_create': WIRE, '_fire': WIRE,
+    'schedule': STATE, 'used': STATE, 'gaps': STATE, 'frame': STATE, 'made': STATE, 'late': STATE,
+    'data': CACHE, 'block_lists': CACHE, 'numbered': CACHE, '_living_views': CACHE,
+}
+
 # a second name -> the path of the object it names
 ALIASES = {('used',): ('world', 'used'), ('unmodeled',): ('world', 'gaps'),
            ('money',): ('wallet', 'money'), ('income',): ('wallet', 'income'), ('sharing',): ('wallet', 'sharing'),
@@ -136,11 +148,27 @@ def _module_states():
             if cls.__module__.startswith('engine.modules.')]
 
 
+@lru_cache(maxsize=64)
+def _encoding_rule(code):
+    rule = ast.parse(textwrap.dedent(inspect.getsource(code))).body[0]
+    body = rule.body[1:] if ast.get_docstring(rule) is not None else rule.body
+    return ast.dump(rule.args), [ast.dump(stmt) for stmt in body]
+
+
+def encoding_rules(*functions):
+    """The declared wire rules without comments, docstrings, or file locations, read from the live functions."""
+    return [_encoding_rule(f.__code__) for f in functions]
+
+
 def version():
-    """The snapshot's format: '<digest of SIM, BODY, ALIASES, the marks, the modules' STATE>.<SEMANTICS>'. A field
-    added to or taken off a table (unclassified names one left out of them) changes it, so a snapshot taken before
-    is refused whole; the same tables on two commits give the same version."""
-    return f'{digest(SIM, BODY, ALIASES, snap.MARKS, _NAMED, MODULE_WIRE, _module_states())}.{SEMANTICS}'
+    """The host snapshot's format depends on its field tables and the rules that encode its values and rows."""
+    rules = encoding_rules(snap.encode, snap.decode, snap._place, snap.module_state, snap.set_module_state,
+                           _Codec._place_template, _Codec.count, _Codec.extra, _Codec.decode_extra,
+                           _Codec._template_object, World.snapshot, World.restore, PublicExecutor.snapshot,
+                           PublicExecutor.restore, PublicExecutor._key, PublicExecutor._by_key, snapshot, _setup)
+    types = tuple(t.__name__ for t in (*snap._PLAIN, *_MUTABLE))
+    wire = digest(SIM, BODY, ALIASES, snap.MARKS, _NAMED, MODULE_WIRE, _module_states(), rules, types)
+    return f'{wire}.{SEMANTICS}'
 
 
 def __getattr__(name):
@@ -180,8 +208,7 @@ def _state_paths(sim, table=SIM, at=()):
 
 
 def unclassified(sim, roots=()):
-    """Step S's guard 4.3: every field of the sim, of its parts and of its bodies that SIM / BODY do not sort, and
-    every ALIAS that is not the object it names -- all of them, sorted. `roots`: as _things'."""
+    """Step S's guard 4.3: fields left out of SIM / WORLD / BODY or a module's STATE, and broken ALIASes."""
     out = []
 
     def walk(obj, table, at):
@@ -195,6 +222,7 @@ def unclassified(sim, roots=()):
                 if v is not _get(sim, ALIASES[at[1:] + (f,)]):
                     out.append('.'.join(at + (f,)) + ' (not the object it names)')
     walk(sim, SIM, ('sim',))
+    walk(sim.world, WORLD, ('sim', 'world'))
     for b in _things(sim, roots):
         out.extend(f'Body.{f}' for f in _fields(b) if f not in BODY)
         for m in b.modules:     # a module's own: its STATE (the kernel's) and the factory's wiring, nothing set besides
@@ -426,20 +454,22 @@ def snapshot(sim, roots=()):
     return out
 
 
-def _serials(e, out=None, at='snapshot'):
-    """serial -> where in the taken snapshot it is first held (a path of keys)."""
+def _serials(e, out=None, at='snapshot', unit_refs=None):
+    """Thing serial -> first reference path. When supplied, collect a brain's Unit references separately."""
     out = {} if out is None else out
     if isinstance(e, list):
         for k, x in enumerate(e):
-            _serials(x, out, f'{at}[{k}]')
+            _serials(x, out, f'{at}[{k}]', unit_refs)
     elif isinstance(e, dict):
         if len(e) == 1 and '$thing' in e:
             out.setdefault(e['$thing'], at)
         elif len(e) == 1 and '$module' in e:
             out.setdefault(e['$module'][0], at)
+        elif len(e) == 1 and '$unit' in e and unit_refs is not None:
+            unit_refs.setdefault(e['$unit'], at)
         else:
             for k, x in e.items():
-                _serials(x, out, f'{at}.{k}')
+                _serials(x, out, f'{at}.{k}', unit_refs)
     return out
 
 
