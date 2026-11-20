@@ -115,7 +115,8 @@ def measure(files, tests, all_files, replays):
 
     out = {
         'modules': total(f for f in all_files if f.startswith('tests/modules/')),
-        'guards': total(f for f in all_files if f.startswith(at.GUARD_LAYER + '/')),
+        'guards': total(f for f in all_files if f.startswith(at.GUARD_LAYER + '/') and f not in replays),  # a
+        # guard on the replay list (G3B's 16-level run) is not in every pick, so not in the guards layer's sum
         'daily': total(f for f in all_files if f not in replays),
     }
     groups = [v for k, v in tests.items() if k.startswith('tests/conformance/')]

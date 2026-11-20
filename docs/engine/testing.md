@@ -27,6 +27,7 @@
 
 ## 耗时
 
+- 整局模拟单独列入 `tests/replay_tests.txt` 的 `[game]` 组，日常挑选默认略过，总控全量运行。例如 G3B 的构建检查在 `tests/guards/test_architecture.py`，16 关的字幕回放在 `tests/guards/test_g3b_queue.py`。
 - 耗时按 `experimental/testbench/time_budget.py` 的 `CEILING` 四项核算，已设上限只许降。模块合计 180 秒、守卫合计 250 秒、日常池 3600 秒，一致性最慢组的上限待定。取值理由也在该文件，守卫是 `tests/guards/test_time_budget.py`；耗时记录是总控全量后 `affected_tests.py --save-durations junit.xml` 写的 `work/testmap/durations.json`（按文件）和 `durations_tests.json`（按测试）。整项没有样本时报"没有记录"；有样本时，合计中缺计时的文件用已知文件耗时的上中位数估算（排序后取下标 `len // 2`）。量耗时要独占令牌池：`RA3_CPU_EXCLUSIVE=1` 跑 pytest（或 `cpupool.py run --exclusive -- <命令>`），等别的重活放完令牌、期间不让新的开始（CPU 令牌池 `experimental/testbench/cpupool.py`，游戏或台子忙且至少有 8 个逻辑核时默认留 2 核，其余留 1 核；`RA3_CPU_TOKENS` 可覆盖池大小。`simbench_peak` 普通模式和 `simrecord time` 自取独占，`simbench_peak --ai` 由调用方持令牌）。
 - 单条测试也有超时（T7）：`tests/conftest.py` 给每条没自带 `timeout` 标记的测试按层加上限（模块 / 工具 / 内容 120 秒、守卫 600、其余 900、回放名单 2400，表和取数理由在 `time_budget.TEST_TIMEOUT`），标记压过命令行 `--timeout`，所以命令里不用再写。超时即红：xdist 下报 "crashed while running <测试 id>"，`-n 0` 时整次结束并打出 "Stack of pytest_timeout <测试 id>"；进程没了它的 CPU 令牌就空出来。调试要停掉上限：`RA3_TEST_TIMEOUT_SCALE=0`。
 - 全量出现新红时，用 `python -X utf8 experimental/testbench/culprit.py --since-full work/logs/full_A.log work/logs/full_B.log` 定位首红。日志开头没记提交号时，加 `--good <提交> --bad <提交>`。

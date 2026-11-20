@@ -11,6 +11,7 @@ test_cnv_parts.py
 test_count_modifier.py
 test_expansion_target.py
 test_forbidden_status.py
+test_g3b_queue.py
 test_graybox.py
 test_offline.py
 test_readings.py  # tests/conformance: the bench readings, each scene once (ADR 0035 2)

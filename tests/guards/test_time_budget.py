@@ -43,6 +43,13 @@ def test_measure_sums_each_layer_and_guesses_the_untimed_at_the_median():
     assert m['conformance_group'] == (180.0, 0)
 
 
+def test_a_guard_on_the_replay_list_is_not_in_the_guards_sum():
+    files = FILES + ['tests/guards/test_slow_game.py']           # G3B's 16-level run lives in such a file
+    m = tb.measure(dict(TIMES, **{'tests/guards/test_slow_game.py': 130.0}), TESTS, files,
+                   dict(REPLAYS, **{'tests/guards/test_slow_game.py': 'game'}))
+    assert m['guards'] == (9.0, 0)
+
+
 def test_a_layer_with_nothing_recorded_is_said_not_guessed():
     m = tb.measure({'tests/test_plain.py': 4.0}, {}, FILES, REPLAYS)
     assert m['modules'] == m['guards'] == m['conformance_group'] == (None, 0)

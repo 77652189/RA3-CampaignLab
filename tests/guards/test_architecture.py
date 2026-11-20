@@ -264,56 +264,30 @@ def test_g11_acceptance_checks_only_observe():
     assert "G11 ['acts', 'adds', 'overrides', 'reveals']" in r.stdout, r.stdout.strip()
 
 
-# G3b (ADR 0016 phase 3, K1 + K2): everything said in a built level comes from the one queue. contract.said_outside_the_outlet
-# holds it on the product of every build (a level's own caption, announcer, voice line or talking head in a script
-# that is not `Say k` / a scene's `Phase n line k` / an ending's own is a problem), contract.said_lines_kept that a line
-# is lost only by a 闲话 line's own Drop and an ending waits for the floor, and the simulator's timetable of every level
-# shows no more than ctx.STRIP_MAX sentences on screen at once (the caption box and the dialogue panel together).
-# tests/test_talk_queue.py runs the queue itself (order, tiers, expiry, the ending).
-G3B_PROBE = '''
+# G3b (ADR 0016 phase 3, K1 + K2): check the one dialogue outlet and queue contract on every build.
+# The 16-level simulation is in test_g3b_queue.py; tests/test_talk_queue.py checks the queue itself.
+G3B_STATIC_PROBE = '''
 import sys
 sys.path[:0] = [{cnv!r}, {root!r}]
-import build, contract, ctx, model, plan, sim, strip
+import build, contract, model
 from dataclasses import replace
 from mapscript import catalog
 from model import Script
 cat = catalog()
-levels = {{}}
 bad = []
 for n in sorted(build.MISSIONS):
-    m, t, _ = build.resolve(n, '')
-    if n in build.LEVELS:
-        levels[n] = (m, t)
+    m, _, _ = build.resolve(n, '')
     mm = model.merged(m)
+    if n == 'a4':
+        a4 = mm
     # Keep all five rules whose diagnostics the full contract used to filter here.
     problems = (contract.said_outside_the_outlet(mm, cat) + contract.said_lines_kept(mm)
                 + contract.said_once_and_on_time(mm) + contract.team_orders_land(mm)
                 + contract.kind_counts_in_area(mm))
     bad += [(n, p) for p in problems]
 print('G3B builds', len(build.MISSIONS), 'outside', bad[:3])
-a4 = model.merged(levels['a4'][0])
 caption = Script('CNV A4 - Own caption', [], [('SHOW_MILITARY_CAPTION', 'SCRIPT:X', 3.0)])
 print('G3B mutation', len(contract.said_outside_the_outlet(replace(a4, scripts=a4.scripts + [caption]), cat)))
-close, deep = [], []
-for lv in build.LEVELS:
-    s = sim.Sim(*levels[lv]).run({until})
-    # E6: a 功能 caption is up within ctx.FUNC_LATE of its event (a scene's seconds do not count), in every level's run
-    close += [(lv, f, round(a, 1)) for f, a, _ in s.late_captions()]
-    deep += [(lv, d) for d in strip.too_deep(s)]
-print('G3B close', close[:5])
-print('G3B strip', deep[:5])
-# I1 mutation: a queue that lets any number of lines into the strip (the product's state before 2026-11-05) is caught
-ctx.STRIP_MAX = plan.STRIP_MAX = 99
-m, t, _ = build.resolve('a4', '')  # recompile the queue under the raised limit
-# An overlap during the first scene is already a witness. Otherwise finish the original run.
-end = 200.0
-opening = min(end, next((secs for name, secs in m.facts.items() if name.startswith('过场 ')), end))
-s = sim.Sim(m, t).run(opening)
-overlaps = strip.too_deep(s)
-if not overlaps and opening < s.t <= end:
-    overlaps = strip.too_deep(s.run(end))
-print('G3B strip mutation', bool(overlaps))
-ctx.STRIP_MAX = plan.STRIP_MAX = 1
 print('G3B twice', len(contract.said_once_and_on_time(a4)))
 mm = replace(a4, scripts=a4.scripts.copy(), subtitles=a4.subtitles.copy(), strings=a4.strings.copy())
 ev = next(iter(mm.subtitles), None) or 'CNV_X'
@@ -324,15 +298,13 @@ print('G3B twice mutation', len([p for p in contract.said_once_and_on_time(mm) i
 '''
 
 
-def test_g3b_everything_said_comes_from_the_one_queue():
+def test_g3b_built_levels_use_the_one_queue():
     import sys
-    probe = G3B_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT), until=900.0)
+    probe = G3B_STATIC_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT))
     r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr[-2000:]
     assert 'G3B builds' in r.stdout and "outside []" in r.stdout, r.stdout.strip()
     assert 'G3B mutation 1' in r.stdout, r.stdout.strip()
-    assert 'G3B close []' in r.stdout, r.stdout.strip()
-    assert 'G3B strip []' in r.stdout and 'G3B strip mutation True' in r.stdout, r.stdout.strip()
     assert 'G3B twice 0' in r.stdout and 'G3B twice mutation 2' in r.stdout, r.stdout.strip()
 
 
