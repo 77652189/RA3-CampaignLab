@@ -1001,10 +1001,6 @@ class Sim:
         self.seen = {}                      # this tick: (side, body.serial) -> whether that side sees it
         self.firing = []                    # this tick's aimed fire: (target, damage per second, shooter) (fight, deal)
         self.mid_aims = {}                  # id -> (second, body): an attack-mover that got in range mid-tick (move)
-        self.pre_locks = {}                 # (shooter.serial, weapon key) -> (target, second): a PER_TARGET weapon's
-                                            # last target and when its first shot at it is due (first_shot); not
-                                            # `locks`: simshow.ShowSim keeps its input locks under that name
-        self.fire_gate = {}                 # (shooter.serial, target.serial) -> no fire dealt before this second (deal)
         self._field = ((), (), ())          # this tick's fight_field (fight)
         self.first_death = None             # (t, body, killer): the fight's first death
         self.death_blasts = []              # (frame, x, y, damage, type, radius, affects, owner, by): FireWeaponWhenDead
@@ -2486,16 +2482,15 @@ class Sim:
         Weapon::getPreAttackDelay). Bench 2026-11-07 `cnv_check a4 smash`: the King Oni's beam (PER_TARGET 0.75 s,
         a 175 shot every 1.8 s, 11.7 % of the wall) took it 100 -> 76 -> 53 -> 41 -> 18 -> 6 at s67 / 70 / 73 / 76 /
         79 / 82: its first shot falls in s67.0-67.6, more than the delay after it had the wall in range (A round 233).
-        INFERRED: the gate is per shooter and target (deal), a shooter's other weapons on that target wait with it."""
+        INFERRED: the gate is per shooter and target (deal), a shooter's other weapons on that target wait with it.
+        The last target and the gate are the shooter's WeaponSet's (step W3: WeaponSet.lock_on)."""
         wt = simunits.weapon_table(self.own).get(w.get('weapon_key'), {})
         if wt.get('pretype') != 'PER_TARGET' or not wt.get('pre'):
             return
-        key = (a.serial, w.get('weapon_key'))
-        held = self.pre_locks.get(key)
+        m = kernel_weaponset.of(self.world, a, self.clock.frame)
+        held = m.pre_lock(w.get('weapon_key'))
         if held is None or held[0] is not pick:
-            ready = self.t + simunits._frames(wt['pre']) / simunits.FPS
-            self.pre_locks[key] = (pick, ready)
-            self.fire_gate[(a.serial, pick.serial)] = ready
+            m.lock_on(w.get('weapon_key'), pick, self.t + simunits._frames(wt['pre']) / simunits.FPS)
 
     def range_targets(self, b):
         """For move: the foes an attack-mover on its way would stop for, [(foe, the centre distance it fires
@@ -2754,14 +2749,15 @@ class Sim:
         schedule (simunits._shot_times, then the reload), each cycle `w['cycle']` long, one shot after another as
         long as the weapon has a target every window. After an idle gap (no target in the previous window) a
         cycle that has run out starts anew now, pre-attack first; one still running (a reload, a part-spent clip)
-        goes on by the clock. Round 2 of engine line C (bench: the coil one tank per ~125 frames)."""
+        goes on by the clock. Round 2 of engine line C (bench: the coil one tank per ~125 frames). The clock is the
+        body's WeaponSet's (step W3: WeaponSet.clip_clock)."""
         t0, t1 = self.t, self.t + dt
         eps = 1e-6
-        clocks = self.__dict__.setdefault('clocks', {})
+        m = kernel_weaponset.of(self.world, b, self.clock.frame)
         # Attribute refresh may copy a weapon to scale its range. Keep that
         # weapon's clip running across copies; distinct retail guns stay apart (a keyless one, made by hand: its slot).
-        key = (b.serial, w.get('weapon_key') or next((k for k, x in enumerate(b.weapons) if x is w), -1))
-        c = clocks.get(key)
+        key = w.get('weapon_key') or next((k for k, x in enumerate(b.weapons) if x is w), -1)
+        c = m.clip_clock(key)
         cycle = w['cycle']
         if b.level_rate != 1.0:
             if (w.get('weapon_key') == 'AlliedAntiVehicleVehicleTech3PrismCannon_Veteran'
@@ -2780,7 +2776,7 @@ class Sim:
             c[1] = t0
             while c[0] + cycle <= t0 + eps:             # chained: the next cycle starts where this one ends
                 c[0] += cycle
-        clocks[key] = c
+        m.set_clip_clock(key, c)
         n = 0
         while True:
             for at in w['sched']:

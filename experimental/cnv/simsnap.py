@@ -32,7 +32,8 @@ from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 8             # 8: W2, a body's weapons / slots are its WeaponSet module's STATE; 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
+VERSION = 9             # 9: W3, the fight's clocks / pre_locks / fire_gate are the shooter's WeaponSet's STATE, not
+                        # the host's; 8: W2, a body's weapons / slots are its WeaponSet module's STATE; 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
                         # 4: areas.missing (4.4, 11-19); 5: the queue's events -- a posted command as itself
                         # (command port ORDER), a line's 强制 / 由 P kept in its word group (review 11-19 i #1 #4);
                         # 6: a spy on its way, Infiltrators.going, is the spy's serial -> (spy, target), not its
@@ -89,9 +90,9 @@ for _f in ('t log box_log panel_log asked up scenes unknown flags objectives mar
            'team_player_rel player_team_rel team_targets books tech_to tech_read hunts bodies attachments '
            '_attachment_marked attachment_known_status suppression_fields topples frame_movers refs object_lists '
            'base_power powers_off series threat first_threat known known_at guessed due blasts casts power_at '
-           'queues produced_to player_ups instances active lost_orders seen firing mid_aims pre_locks fire_gate '
+           'queues produced_to player_ups instances active lost_orders seen firing mid_aims '
            '_field first_death death_blasts events anchored hotspots waypoints volleys chilling _fire_obstacles '
-           'impact_flights emp_until knock_hold clocks tech_to '
+           'impact_flights emp_until knock_hold tech_to '
            'pack_hold').split():     # pack_hold: a yard packing's frames held, by serial (review 1119p #3: unsorted)
     SIM.setdefault(_f, STATE)
 # a second name -> the path of the object it names

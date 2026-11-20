@@ -12,6 +12,13 @@ simbench = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simbench)
 
 
+def _clocks(b):
+    """b's clip clocks by weapon key (step W3: its WeaponSet's, the host's Sim.clocks before)."""
+    from engine.kernel import interfaces
+    m = b.find(interfaces.WeaponSet) if b.modules else None
+    return (m.clocks if m is not None else None) or {}
+
+
 def test_levelup_heroic_vision_sights_inner_engineer_after_near_controls_are_deleted():
     """engine_levelvision a:11/11/11/11 ->0/0/0/0 ->0/101/0/100 at240/310."""
     import build
@@ -47,7 +54,7 @@ def test_levelup_heroic_vision_sights_inner_engineer_after_near_controls_are_del
         assert b.alive == (not obj.name.endswith(' near'))
         if b.alive:
             assert b.hp == b.max_hp and (b.x, b.y) == (obj.x, obj.y)
-    assert not e.reveal_all and not e.reveals and not getattr(e, 'clocks', {})
+    assert not e.reveal_all and not e.reveals and not any(_clocks(b) for b in e.bodies.values())
 
 
 def test_levelup_heroic_shroud_discovers_inner_target_only_without_changing_sight():
@@ -71,7 +78,7 @@ def test_levelup_heroic_shroud_discovers_inner_target_only_without_changing_sigh
         b = e.body(obj.name)
         assert b.alive and b.hp == b.max_hp
         assert (b.x, b.y) == (obj.x, obj.y)
-    assert not e.reveal_all and not e.reveals and not getattr(e, 'clocks', {})
+    assert not e.reveal_all and not e.reveals and not any(_clocks(b) for b in e.bodies.values())
     for _ in range(3):
         e.modify(guns[1])
         assert (guns[1].vision, guns[1].sight) == (625, 200)
@@ -107,7 +114,7 @@ def test_levelup_heroic_rate_changes_three_intershot_spans_without_scaling_each_
         assert gun.dealt == 1.25
         assert gun.level_rate == 1.2
     # Range refreshes copy the heroic weapon; copies must share its one clock.
-    assert all(sum(key[0] == b.serial for key in e.clocks) == 1 for b in guns)
+    assert all(len(_clocks(b)) == 1 for b in guns)
     gap = e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
     assert 'RATE_OF_FIRE' not in gap and 'VISION' in gap
 

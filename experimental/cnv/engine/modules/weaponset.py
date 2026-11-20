@@ -109,11 +109,22 @@ class WeaponSet(module.Module, interfaces.WeaponSet):
     names in the frame record). The host arms it when it makes the thing (Sim.add, simbody.fill: the template's
     weapons, simunits.fight, and slots, simunits.weapon_sets) and its modifier pass holds what the status picks
     (simmodifier). A thing whose template has no block and that is armed gets one attached (equip). No update of its
-    own."""
+    own.
+    Step W3: each weapon's firing state, before the host's dicts by (serial, weapon key) (Sim.clocks / pre_locks /
+    fire_gate) -- the private model's Weapon keeps its reload and pre-attack clocks per weapon too. The host's fight
+    still decides when (Sim.shots_due, Sim.first_shot, simdamage.deal); this keeps what it decided. Not in the frame
+    record (the host's dicts never were: RECORDED leaves them out)."""
     DATA = WeaponSetUpdateData
-    STATE = ('weapons', 'slots')
+    STATE = ('weapons', 'slots', 'clocks', 'pre_locks', 'fire_gate')
+    RECORDED = ('weapons', 'slots')
     weapons = []        # the held weapons (never changed in place: a new list each write)
     slots = None        # simunits.weapon_sets' slots, None: the weapons are fixed
+    clocks = None       # weapon key (a keyless one: its slot) -> [this cycle's start, the last window with a target]
+    #                     (Sim.shots_due; made on the first)
+    pre_locks = None    # weapon key -> (target, second): a PER_TARGET weapon's last target and when its first shot at
+    #                     it is due (Sim.first_shot)
+    fire_gate = None    # target serial -> no fire dealt at it before this second (simdamage.deal). INFERRED: one gate
+    #                     per shooter and target, its other weapons on that target wait with it (first_shot)
 
     def held(self):
         return self.weapons
@@ -127,6 +138,26 @@ class WeaponSet(module.Module, interfaces.WeaponSet):
     def hold(self, weapons):
         self.weapons = weapons
 
+    def clip_clock(self, key):
+        return (self.clocks or {}).get(key)
+
+    def set_clip_clock(self, key, clock):
+        if self.clocks is None:
+            self.clocks = {}
+        self.clocks[key] = clock
+
+    def pre_lock(self, key):
+        return (self.pre_locks or {}).get(key)
+
+    def lock_on(self, key, target, ready):
+        if self.pre_locks is None:
+            self.pre_locks, self.fire_gate = {}, {}
+        self.pre_locks[key] = (target, ready)
+        self.fire_gate[target.serial] = ready
+
+    def gate_until(self, target):
+        return (self.fire_gate or {}).get(target.serial, 0.0)
+
 
 def equip(world, thing, weapons, slots, frame=None):
     """Arm `thing` (WeaponSet.arm): its module, one attached (World.attach) when its template has no block and it
@@ -138,6 +169,18 @@ def equip(world, thing, weapons, slots, frame=None):
         m = world.attach(thing, 'WeaponSetUpdate', frame)
     m.arm(weapons, slots)
     return m
+
+
+def of(world, thing, frame=None):
+    """`thing`'s WeaponSet, one attached (World.attach) to a thing that has none -- a weapon made by hand in a test
+    fires too (its held weapons stay the default [], as the thing's were)."""
+    return thing.find(interfaces.WeaponSet) or world.attach(thing, 'WeaponSetUpdate', frame)
+
+
+def gate(shooter, target):
+    """The second before which `shooter` deals no fire at `target` (first_shot's PER_TARGET wait), 0.0: none."""
+    m = shooter.find(interfaces.WeaponSet)
+    return m.gate_until(target) if m is not None else 0.0
 
 
 def read(blocks):

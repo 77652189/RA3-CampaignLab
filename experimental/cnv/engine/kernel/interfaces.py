@@ -626,7 +626,9 @@ class WeaponSet(Interface):
     data's own or the modifier pass's scaled copies), its weapon slots when the lines name a status or an upgrade
     (choices: simunits.weapon_sets, None: the weapons are fixed), arming it when it is made (arm) and the host's
     modifier pass writing the held ones back (hold: the slots' pick for the status, ranges scaled). Who fires, when
-    and at what stays with the host."""
+    and at what stays with the host; it keeps each weapon's firing state (step W3): the clip clock by weapon key
+    (clip_clock / set_clip_clock), a PER_TARGET weapon's last target and first-shot second (pre_lock / lock_on, which
+    also gates the shooter's fire at that target: gate_until)."""
     __slots__ = ()
 
     def held(self):
@@ -639,6 +641,21 @@ class WeaponSet(Interface):
         raise NotImplementedError
 
     def hold(self, weapons):
+        raise NotImplementedError
+
+    def clip_clock(self, key):
+        raise NotImplementedError
+
+    def set_clip_clock(self, key, clock):
+        raise NotImplementedError
+
+    def pre_lock(self, key):
+        raise NotImplementedError
+
+    def lock_on(self, key, target, ready):
+        raise NotImplementedError
+
+    def gate_until(self, target):
         raise NotImplementedError
 
 

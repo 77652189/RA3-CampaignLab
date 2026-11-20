@@ -10,7 +10,7 @@ sampling and death blasts. All over the world it is given (simworld.WORLD_API on
 Its host's other parts come in as `peers` (`Peers`, the names in PEERS only, read when used so a swapped-in method
 still answers): the L2 body / modifier / status / locomotion calls (destroy, modify, emp_disabled, cold_of, the model
 conditions, attachment_tick, knock_landing*), the same-layer can_hit / shots_due, the host's own projectile_detonate /
-queue_projectile_hit (a test may intercept an arrival) and the fight state it shares (firing, volleys, fire_gate, the
+queue_projectile_hit (a test may intercept an arrival) and the fight state it shares (firing, volleys, the
 garrison, infiltrators, sweeps, attachments, player_ups, lift_timers, suppression_fields, death_blasts, chilling, the
 knock flights and holds, the EMP deadlines). This module never imports them.
 Fields it owns: incoming, projectile_hits, projectile_speeds, impact_body, knock_drowns, dots, cold_on, lift_modules,
@@ -20,9 +20,10 @@ import math
 
 import simunits
 from engine.kernel import interfaces
+from engine.modules import weaponset
 from simworld import GAP_WEAPON
 
-PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'destroy', 'emp_disabled', 'emp_until', 'fire_gate', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'knock_landing', 'knock_landing_vehicle', 'lift_timers', 'modify', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'suppression_fields', 'sweeps', 'volleys'})
+PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'destroy', 'emp_disabled', 'emp_until', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'knock_landing', 'knock_landing_vehicle', 'lift_timers', 'modify', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'suppression_fields', 'sweeps', 'volleys'})
 LAZY = frozenset({'impact_flights', 'knock_hold', 'emp_until'})     # the host makes these dicts on first use
 
 
@@ -362,14 +363,14 @@ class Damage:
         for t, rate, by in peers.firing:
             if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not peers.emp_disabled(by)
                     and not peers.infiltrators.attack_blocked(by)
-                    and world.t >= peers.fire_gate.get((by.serial, t.serial), 0.0) - 1e-9):
+                    and world.t >= weaponset.gate(by, t) - 1e-9):
                 h = hurt.setdefault(t.serial, [t, 0.0, by])
                 h[1] += rate * dt
                 h[2] = by
         for t, w, by in peers.volleys:           # engine line C round 2: a shot lands when its clock says (shots_due)
             if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not peers.emp_disabled(by)
                     and not peers.infiltrators.attack_blocked(by)
-                    and world.t >= peers.fire_gate.get((by.serial, t.serial), 0.0) - 1e-9):
+                    and world.t >= weaponset.gate(by, t) - 1e-9):
                 n = peers.shots_due(by, w, dt)
                 if n:
                     self.inform_launch(world, t, by, w, n)

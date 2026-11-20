@@ -183,3 +183,70 @@ def test_the_ais_fill_arms_an_unknown_templates_body_through_its_module(monkeypa
     m = plant.find(interfaces.WeaponSet)
     assert m is not None and _keys(plant.weapons) == [CANNON] and plant.speed == 60.0
     assert plant.guessed == ['all: simai.fill']
+
+
+# --- step W3: each weapon's firing state is the shooter's WeaponSet's ---------------------------------------------
+
+BAZOOKA = 'JapanAntiVehicleInfantryPlasmaBazooka'      # PreAttackType PER_TARGET with a PreAttackDelay
+
+
+def test_the_clip_clock_is_the_shooters_by_weapon_key_and_a_copy_shares_it():
+    from engine.kernel import interfaces
+    s = _world()
+    tank, tut = s.bodies['tank'], s.bodies['tut']
+    m = tank.find(interfaces.WeaponSet)
+    gun = tank.weapons[0]
+    assert s.shots_due(tank, gun, 1.0) >= 1
+    clock = m.clip_clock(CANNON)
+    assert clock is not None and list(m.clocks) == [CANNON]
+    s.shots_due(tank, dict(gun), 1.0)              # a range refresh's copy: the same clock, not a second one
+    assert list(m.clocks) == [CANNON] and m.clip_clock(CANNON) is clock
+    assert tut.find(interfaces.WeaponSet).clocks is None and 'clocks' not in vars(s)    # not the host's any more
+    keyless = {k: v for k, v in gun.items() if k != 'weapon_key'}
+    plant = s.bodies['plant']                       # no module: one attached; a keyless weapon's key is its slot
+    s.shots_due(plant, keyless, 1.0)
+    assert list(plant.find(interfaces.WeaponSet).clocks) == [-1] and plant.weapons == []
+
+
+def test_a_per_target_weapon_gates_only_its_shooter_and_that_target():
+    from engine.kernel import interfaces
+    s = _world()
+    tank, plant, tut = s.bodies['tank'], s.bodies['plant'], s.bodies['tut']
+    pre = simunits.weapon_table(s.own)[BAZOOKA]['pre']
+    ready = s.t + simunits._frames(pre) / simunits.FPS
+    w = {'weapon_key': BAZOOKA}
+    s.first_shot(tank, w, plant)
+    m = tank.find(interfaces.WeaponSet)
+    assert m.pre_lock(BAZOOKA) == (plant, ready) and ready > s.t
+    assert weaponset.gate(tank, plant) == ready
+    assert weaponset.gate(tank, tut) == 0.0 and weaponset.gate(tut, plant) == 0.0 and weaponset.gate(plant, tank) == 0.0
+    s.t += 1.0
+    s.first_shot(tank, w, plant)                    # the same target: no new wait
+    assert m.pre_lock(BAZOOKA) == (plant, ready) and weaponset.gate(tank, plant) == ready
+    s.first_shot(tank, w, tut)                      # a new one: waits again, the old target's gate stays as it was
+    assert m.pre_lock(BAZOOKA) == (tut, ready + 1.0) and weaponset.gate(tank, tut) == ready + 1.0
+    assert weaponset.gate(tank, plant) == ready
+    assert not hasattr(s, 'pre_locks') and not hasattr(s, 'fire_gate')
+
+
+def test_the_firing_state_is_left_out_of_the_frame_record_and_kept_by_a_snapshot():
+    import simrecord
+    import simsmall
+    import simsnap
+    from engine.kernel import interfaces
+    objects = [('tank', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 0.0, 0.0),
+               ('plant', 'SovietPowerPlant', 'Player_1', 300.0, 0.0)]
+    source, target = simsmall.small_world(objects, model=False), simsmall.small_world(objects, model=False)
+    tank, plant = source.bodies['tank'], source.bodies['plant']
+    source.shots_due(tank, tank.weapons[0], 1.0)
+    source.first_shot(tank, {'weapon_key': BAZOOKA}, plant)
+    state = simrecord.body_state(tank)
+    assert 'weapons' in state and not {'clocks', 'pre_locks', 'fire_gate'} & set(state)
+    saved = simsnap.snapshot(source)
+    assert not simsnap.unclassified(source)
+    simsnap.restore(target, saved)
+    m, t = tank.find(interfaces.WeaponSet), target.bodies['tank'].find(interfaces.WeaponSet)
+    assert t.clocks == m.clocks and t.clocks is not m.clocks
+    assert t.pre_lock(BAZOOKA)[0] is target.bodies['plant'] and t.pre_lock(BAZOOKA)[1] == m.pre_lock(BAZOOKA)[1]
+    assert weaponset.gate(target.bodies['tank'], target.bodies['plant']) == weaponset.gate(tank, plant) > 0
+    assert simsnap.snapshot(target) == saved
