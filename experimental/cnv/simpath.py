@@ -1,5 +1,5 @@
 """L2 path straightening (ADR 0029, docs/engine/sim-layers.md; R3 step X, re-derived on the bench, ADR 0032 item 5):
-a way found over a routing grid's cells (sim.Ground.way / closest / within) to the straight legs a unit drives.
+a way found over a routing grid's cells (Ground.way / closest / within, below) to the straight legs a unit drives.
 
 The rule, from the bench (2026-11-17 `engine_pull ways`, checks/engine_pull.py; CNVProbe tracks read by
 work/re/scripts/x_pull.py): the shortest chain of straight legs through the way's cells, each leg crossing walkable
@@ -31,6 +31,8 @@ tests/test_sim_spot.py.
 import math
 
 import numpy as np
+
+from simworld import GRID
 
 
 class RouteGrid:
@@ -102,7 +104,7 @@ def can_route(ground, surface, p, q):
 
 class Sight:
     """Which straight lines between a way's cells are clear, asked on a finer mask: `mask` walkable cells d to a
-    way's cell a side (way cell c's point is mask cell c * d, as sim.Ground.world puts it). Ground's routing cells are
+    way's cell a side (way cell c's point is mask cell c * d, as Ground.world puts it). Ground's routing cells are
     20 (GRID), each shut when any of its 10 map cells (CELL, the game's own pathfinding cell) is; a leg checked on the
     20 cells clips corners the 10 cells leave open -- aiaeson (11-18): the AI's tank leaving its yard, one 20 cell a
     cliff's corner shut by one of its four 10 cells, bent the first leg, its line ran 12 further from the player's
@@ -122,7 +124,7 @@ class Sight:
 
     @classmethod
     def of(cls, grid, fine, blocked, fblocked):
-        """For a way over `grid` (sim.Ground's GRID cells of one surface) with `fine` its CELL cells unfolded;
+        """For a way over `grid` (Ground's GRID cells of one surface) with `fine` its CELL cells unfolded;
         `blocked` / `fblocked` what stands in the way on each, every cell's own point inside a shape (`covered`).
         Not the GRID mask repeated onto the CELL cells: a GRID cell's 2 x 2 block lies north-east of its point, so a
         building's CELL footprint came out a cell further north and east than south and west -- engine_seal attack
@@ -140,7 +142,7 @@ class Sight:
 
 def covered(shapes, x, y):
     """Cells whose point (x, y: world coordinates, x along axis 1 and y along axis 0, both rising) is inside any of
-    `shapes`: (x, y, angle, length, thick) a bar, or (x, y, r) a round building (sim.Ground.set_blocks). Each shape
+    `shapes`: (x, y, angle, length, thick) a bar, or (x, y, r) a round building (Ground.set_blocks). Each shape
     is tested on the cells of its own bounding box only."""
     m = np.zeros(x.shape, bool)
     xs, ys = x[0], y[:, 0]
@@ -340,3 +342,257 @@ def block(starts, point):
             side = (i - (len(men) - 1) / 2) * BLOCK
             out[k] = (point[0] + back * ux + side * lx, point[1] + back * uy + side * ly)
     return out
+
+
+class Ground:
+    """The map's routing grids (GRID cells): ground (dry, not too steep, bridges over), water, both; paths by
+    least cost, cached per surface and goal cell."""
+
+    def __init__(self, mapmod):
+        import platmap
+        dims = getattr(mapmod, 'DIMS', platmap.CONTAINER)       # a retail map's own size (retail.Terrain)
+        w, h, b = dims
+        if hasattr(mapmod, 'LAYOUT'):
+            e, _ = platmap.heights(mapmod.LAYOUT, w, h, b)
+            walk = platmap.walkable(mapmod.LAYOUT, getattr(mapmod, 'OBJECTS', []), dims, e)
+            bridge = walk & ~platmap.walkable(mapmod.LAYOUT, [], dims, e)    # walkable only for a bridge laid on it
+        else:
+            e = mapmod.ground().e
+            import newmap
+            walk = (e > getattr(mapmod, 'WATERLINE', newmap.WATERLINE) + 10) & (platmap.slope_of(e) <= platmap.STEEP)
+            if hasattr(mapmod, 'impassable'):                   # a probe's field-0 cells (maps/probe_block.py)
+                walk &= ~mapmod.impassable()
+            bridge = np.zeros_like(walk)
+        import newmap
+        import terrain_rules
+        waterline = getattr(mapmod, 'WATERLINE', newmap.WATERLINE)
+        self.waterline = waterline
+        # the water's logic edge in our height units (terrain_rules: 320 on our maps, not the routing's WATERLINE);
+        # a retail map's (DIMS, retail.Terrain) own water height is not read (INFERRED: its WATERLINE)
+        self.water = waterline if hasattr(mapmod, 'DIMS') else float(terrain_rules.ours(terrain_rules.WATER_WORLD))
+        water = e < waterline - 5
+        d = int(GRID // platmap.CELL)
+        hh, ww = h // d, w // d
+        fold = lambda a: a[:hh * d, :ww * d].reshape(hh, d, ww, d)            # noqa: E731
+        self.b, self.d = b, d
+        self.e = e                                                          # ground height (CELL cells)
+        self.zgrid = e[:hh * d:d, :ww * d:d]                                # the same at each GRID cell's corner
+        self.grids ={'ground': fold(walk).all(axis=(1, 3)), 'water': fold(water).all(axis=(1, 3))}
+        # the shore's shallows (between the water's edge and 'dry'): platmap.apply blocks only steep ground, so an
+        # amphibian goes ashore through them; left out they cut every slip (a5, 2026-11-04)
+        shallow = (e >= waterline - 5) & (e <= waterline + 10) & (platmap.slope_of(e) <= platmap.STEEP)
+        # R7: an amphibian does not take a bridge -- its deck is up over the water, it swims under (bench 2026-11-07
+        # engine_land: the A4 transport went straight at the quay, 89 frames to the shore area, where the simulator
+        # had it drive out of the water onto the southern bridge's deck and round, 346)
+        land = walk & ~bridge
+        self.grids['both'] = (fold(land).all(axis=(1, 3)) | self.grids['water'] |
+                              fold(land | water | shallow).all(axis=(1, 3)))
+        self.fine = {k: a[:hh * d, :ww * d] for k, a in (('ground', walk), ('water', water), ('both', land | water | shallow))}
+        self.cache = {}
+        self.blocked = np.zeros(self.grids['ground'].shape, bool)
+        self.placed = self.blocked          # what a new structure's placement sees as taken (set_blocks' place)
+        self.version = 0
+        # a bridge's deck: what stands on it blocks nobody (bench 2026-10-27, reroute: the warriors walked through an
+        # ice wall on the deck)
+        self.deck = np.zeros_like(self.blocked)
+        objs = list(getattr(mapmod, 'OBJECTS', []))
+        jj, ii = np.mgrid[0:self.blocked.shape[0], 0:self.blocked.shape[1]]
+        self.xy, self.shapes = self.world((jj, ii)), []
+        for o, q in zip(objs, objs[1:]):
+            if getattr(o, 'flags', None) == platmap.BRIDGE_START and getattr(q, 'flags', None) == platmap.BRIDGE_END:
+                self.deck |= self.strip((o.x, o.y), (q.x, q.y), platmap.BRIDGE_DECK, 0.0)
+
+    def strip(self, p, q, width, over):
+        """Cells within width / 2 of segment p-q, the segment `over` longer at both ends."""
+        x, y = self.xy
+        dx, dy = q[0] - p[0], q[1] - p[1]
+        n = max(math.hypot(dx, dy), 1e-6)
+        ux, uy = dx / n, dy / n
+        u = (x - p[0]) * ux + (y - p[1]) * uy
+        v = -(x - p[0]) * uy + (y - p[1]) * ux
+        return (u >= -over) & (u <= n + over) & (abs(v) <= width / 2)
+
+    def set_blocks(self, shapes, place=None):
+        """What stands in the way now: [(x, y, angle, length, thick) a bar, or (x, y, r) a round building]; off a
+        bridge's deck. Routes are worked out anew. place: the shapes a structure's placement sees (open(place=True)),
+        None = the same."""
+        m = self._mask(shapes)
+        self.placed = m if place is None else self._mask(place)
+        if (m != self.blocked).any():
+            self.blocked, self.version, self.cache, self.shapes = m, self.version + 1, {}, list(shapes)
+            return True
+        return False
+
+    def _mask(self, shapes):
+        return covered(shapes, *self.xy) & ~self.deck
+
+    def open(self, surface, x, y, place=False):
+        """A world point a unit of that surface may stand on now (its routing cell walkable and not blocked); place:
+        a structure's placement's view (set_blocks' place)."""
+        if surface == 'air':
+            return True
+        c, g = self.cell(x, y), self.grids[surface]
+        return (0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and bool(g[c])
+                and not (self.placed if place else self.blocked)[c])
+
+    def stand(self, surface, x, y):
+        """A ground unit may stand in the CELL cell [x, x + CELL) x [y, y + CELL): its four corners dry (as 'ground'
+        walk) and within STEEP of each other, and not blocked now -- the engine's own 10-cell test of a knocked
+        body's landing (Physics P3, bench 11-11 engine_knock_water far: (2500, 3280) at the top of the far bank's
+        slope is standable, which the 20 routing cell round it is not). Other surfaces: open()."""
+        import platmap
+        if surface != 'ground':
+            return self.open(surface, x, y)
+        corners, free = self.corners(x, y)
+        return bool(corners is not None and corners.min() > self.waterline + 10 and
+                    corners.max() - corners.min() <= platmap.STEEP and free)
+
+    def corners(self, x, y):
+        """(the four corner heights of the CELL cell [x, x + CELL) x [y, y + CELL) or None off the map, not blocked now)."""
+        import platmap
+        j, i = math.floor(y / platmap.CELL + self.b), math.floor(x / platmap.CELL + self.b)
+        if not (0 <= j < self.e.shape[0] - 1 and 0 <= i < self.e.shape[1] - 1):
+            return None, False
+        c = self.cell(x, y)
+        free = not (0 <= c[0] < self.blocked.shape[0] and 0 <= c[1] < self.blocked.shape[1]) or not self.blocked[c]
+        return self.e[j:j + 2, i:i + 2], free
+
+    def stand_vehicle(self, x, y):
+        """A knocked vehicle may land in the CELL cell at (x, y): its four corners over the water, no slope limit
+        (Physics P3, bench 11-11 engine_knock_water tank: the landing in the trench went to (2490, 3330), the bank's
+        slope cell 325 / 340 ours, 15 a cell -- not 2470 (295 / 310) nor 2480 (310 / 325); the threshold between 310
+        and 325 is INFERRED as the water itself), and not blocked now."""
+        corners, free = self.corners(x, y)
+        return bool(corners is not None and corners.min() > self.water and free)
+
+    def drowns(self, x, y):
+        """A knocked vehicle landing in the CELL cell at (x, y) is gone the frame it lands: a corner within 10 of the
+        water (bench 11-11 engine_knock_water: tank's 2490, 5 over, dies; edge's 2510, 20 over, and ramp's 2470 on a
+        dry slope, 65 over, live -- so not the slope, not a footprint round the cell; the 10 is INFERRED, the men's
+        stand margin)."""
+        corners, _ = self.corners(x, y)
+        return corners is None or bool(corners.min() <= self.water + 10)
+
+    def z_smooth(self, x, y):
+        """The ground's height at a world point, bilinear between the CELL corners (a curve's terrain test)."""
+        import platmap
+        fy, fx = y / platmap.CELL + self.b, x / platmap.CELL + self.b
+        j = min(max(math.floor(fy), 0), self.e.shape[0] - 2)
+        i = min(max(math.floor(fx), 0), self.e.shape[1] - 2)
+        v, u = min(max(fy - j, 0.0), 1.0), min(max(fx - i, 0.0), 1.0)
+        q = self.e[j:j + 2, i:i + 2]
+        return float((q[0, 0] * (1 - u) + q[0, 1] * u) * (1 - v) + (q[1, 0] * (1 - u) + q[1, 1] * u) * v)
+
+    def cell(self, x, y):
+        import platmap
+        return (int(round((y / platmap.CELL + self.b) / self.d)), int(round((x / platmap.CELL + self.b) / self.d)))
+
+    def z(self, x, y):
+        """The ground's height at a world point (the nearest CELL)."""
+        import platmap
+        j = min(max(int(round(y / platmap.CELL + self.b)), 0), self.e.shape[0] - 1)
+        i = min(max(int(round(x / platmap.CELL + self.b)), 0), self.e.shape[1] - 1)
+        return float(self.e[j, i])
+
+    def world(self, c):
+        import platmap
+        return ((c[1] * self.d - self.b) * platmap.CELL, (c[0] * self.d - self.b) * platmap.CELL)
+
+    def can_way(self, surface, p, q, closest=False):
+        """Whether way() would return a path, including an empty closest path."""
+        return can_way(self, surface, p, q, closest)
+
+    def can_route(self, surface, p, q):
+        return can_route(self, surface, p, q)
+
+    def route(self, surface, p, q, closest=False):
+        """World points from p to q (None: no way); aircraft fly straight. closest: no way to q -- the way to the
+        nearest point it can reach instead (a unit's move, R7; the static checks ask for q itself)."""
+        if surface == 'air':
+            return [q]
+        got = self.way(surface, p, q, False)
+        if got is None and surface == 'both' and amphibian_on_land(self, p):
+            # R7: try the dry route before settling for the closest point on the amphibious grid.
+            # Round 205: the engineer out of the barracks at (4067,3562) took the closest way and stopped at
+            # (2900,3280) without reaching the derrick. Round 239: the periodic path check kicked it off the
+            # team at s165 on the deck at (2929,2952). On the bench it walked on and captured the derrick at s222.
+            got = self.way('ground', p, q, False)
+        if got is None and closest:
+            got = self.way(surface, p, q, True)
+        return got
+
+    def way(self, surface, p, q, closest):
+        from skimage import graph
+        grid = route_grid(self, surface)
+        a, z = grid.endpoint(self.cell(*p)), grid.endpoint(self.cell(*q))
+        if a is None or z is None:
+            return None
+        key = (surface, z)
+        if key not in self.cache:
+            m = graph.MCP_Geometric(np.where(grid.cells, 1.0, np.inf))
+            cost, _ = m.find_costs([z])
+            self.cache[key] = (m, cost)
+        m, cost = self.cache[key]
+        if not np.isfinite(cost[a]):
+            return self.closest(grid.cells, a, z, surface) if closest else None
+        legs = ('legs', surface, a, z)              # the same way asked again (an AI's path checks: 23670 asks,
+        if legs not in self.cache:                  # 320 ways in simrecord's ai_open); set_blocks clears the cache
+            cells = m.traceback(a)[::-1]            # traceback runs from the goal (the costs' source) to a
+            self.cache[legs] = pull(self.sight(surface), cells)
+        pts = [self.world(c) for c in self.cache[legs]]
+        if pts and math.hypot(pts[-1][0] - q[0], pts[-1][1] - q[1]) <= GRID:
+            pts.pop()                               # the goal's own cell: q itself ends the way
+        return pts + [q]
+
+    def sight(self, surface):
+        """Sight.of `surface`'s grid and CELL cells now (the shapes on each cell's own point; a deck's CELL
+        cells its GRID cell's, INFERRED); cached until set_blocks."""
+        if ('sight', surface) not in self.cache:
+            import platmap
+            fine, d = self.fine[surface], self.d
+            jj, ii = np.mgrid[0:fine.shape[0], 0:fine.shape[1]]
+            fb = covered(self.shapes, (ii - self.b) * platmap.CELL, (jj - self.b) * platmap.CELL)
+            fb &= ~self.deck.repeat(d, 0).repeat(d, 1)
+            self.cache['sight', surface] = Sight.of(self.grids[surface], fine, self.blocked, fb)
+        return self.cache['sight', surface]
+
+    def closest(self, g, a, z, surface):
+        """R7: the goal out of reach -- the way to the cell it can reach nearest the goal (bench 2026-11-07
+        engine_land: the A4 transport sent to the quay's top went straight to its foot and stayed; the Generals
+        pathfinder's closest path; bench 2026-11-08 engine_seal move: a peacekeeper walled in, sent 600 out, walked
+        to the wall's inside nearest the goal and stood). [] when that is where it stands: it stays (not stuck)."""
+        from skimage import graph
+        m = graph.MCP_Geometric(np.where(g, 1.0, np.inf))
+        cost, _ = m.find_costs([a])
+        jj, ii = np.nonzero(np.isfinite(cost))
+        k = int(np.argmin((jj - z[0]) ** 2 + (ii - z[1]) ** 2))
+        end = (int(jj[k]), int(ii[k]))
+        if end == tuple(a):
+            return []
+        return [self.world(c) for c in pull(self.sight(surface), m.traceback(end))] or [self.world(end)]
+
+    def within(self, surface, p, q, reach):
+        """R3: an attacker's way -- to the cell it reaches soonest from which q is within `reach` (Generals' attack
+        path: the way to a spot in range, not to the target; bench 2026-11-07 a4 smash: the Ghost King at the ice wall
+        12 s after landing, not round the wall to its far side). [] when p is in range already, None when no cell is."""
+        import platmap
+        if math.hypot(q[0] - p[0], q[1] - p[1]) <= reach:
+            return []
+        if surface == 'air':
+            return [q]
+        from skimage import graph
+        grid = route_grid(self, surface)
+        a = grid.endpoint(self.cell(*p))
+        if a is None:
+            return None
+        m = graph.MCP_Geometric(np.where(grid.cells, 1.0, np.inf))
+        cost, _ = m.find_costs([a])
+        jj, ii = np.nonzero(np.isfinite(cost))
+        x = (ii * self.d - self.b) * platmap.CELL
+        y = (jj * self.d - self.b) * platmap.CELL
+        ok = np.hypot(x - q[0], y - q[1]) <= reach
+        if not ok.any():
+            return None
+        k = int(np.flatnonzero(ok)[np.argmin(cost[jj[ok], ii[ok]])])
+        end = (int(jj[k]), int(ii[k]))
+        return [self.world(c) for c in pull(self.sight(surface), m.traceback(end))] or [self.world(end)]
