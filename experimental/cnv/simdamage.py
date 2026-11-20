@@ -48,9 +48,9 @@ class Peers:
 
 
 class EffectHost:
-    """The host's calls an 'effect' phase handler (engine/combat: Lift, Attach, SpecialPower, AttributeModifier) makes -- registry.Context.host. The
+    """The host's calls an 'effect' phase handler (engine/combat: Lift, Attach, SpecialPower, AttributeModifier) or the Sweep makes -- registry.Context.host. The
     game-data reads and their caches stay here (engine/ reads no game data); the peers are read when used."""
-    __slots__ = ('damage', 'world', 'peers', 'lift_hit', 'refresh_modifiers', 'fits')
+    __slots__ = ('damage', 'world', 'peers', 'lift_hit', 'refresh_modifiers', 'fits', 'sweep')
     # what a lift still lacks (a gap after each lift; the report is private, so its pointer stays out of engine/)
     LIFT_LANDING = ('计时释放不清状态；SoftLanding自击及修正器到期清位缺Lift接地事件，垂直运动/落地武器未接通；'
                     '见work/re/c_lift_landing_gate_report.md')
@@ -58,8 +58,9 @@ class EffectHost:
     def __init__(self, damage, world, peers):
         self.damage, self.world, self.peers = damage, world, peers
         # the peers' own calls as they are: lift_hit(caster, target, increment, maximum), refresh_modifiers(body) (the
-        # host's modify), fits(body, filter) (the garrison's PassengerFilter)
+        # host's modify), fits(body, filter) (the garrison's PassengerFilter), sweep(shooter, target, life) (Sweeps.fire)
         self.lift_hit, self.refresh_modifiers, self.fits = peers.lift_timers.hit, peers.modify, peers.garrison.fits
+        self.sweep = peers.sweeps.fire
 
     def lift_rule(self, template):
         """The caster template's LiftObjectUpdate rule (simunits.lift_module, cached in Damage.lift_modules)."""
@@ -477,9 +478,7 @@ class Damage:
                     projectile = w.get('projectile')
                     if not projectile:
                         self.incoming_hit(t, by.serial, w.get('weapon_key'))
-                    registry.run('hit', ctx)      # the DOT, passengers, cold, suppression, EMP (registry.ORDER)
-                    if w.get('sweep'):
-                        peers.sweeps.fire(by, t, w['sweep'])
+                    registry.run('hit', ctx)      # the DOT, passengers, cold, suppression, EMP, sweep (registry.ORDER)
                     registry.run('aim', ctx)              # a dynamic line picks the victims (LineDamage)
                     for victim in ctx.victims:
                         h = hurt.setdefault(victim.serial, [victim, 0.0, by])

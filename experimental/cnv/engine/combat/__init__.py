@@ -6,4 +6,4 @@ nor the order of a weapon's fields.
 Importing this package registers every handler (named here, so the simulator's file tools see them)."""
 from engine.combat import (attach, attribute_modifier, contained, damage, dot, leech, lift, line_damage, paralyze,  # noqa: F401
                            projectile, registry, secondary, special_power, strip,  # (registers them)
-                           suppression)
+                           suppression, sweep)

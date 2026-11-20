@@ -9,13 +9,14 @@ import types
 
 # (kind, phase) in the order the host runs them: a launch takes the hit over or not (ProjectileNugget); a direct hit's
 # effects on the aimed target, once a volley: the DOT booked, the passengers hit, the cold, the suppression fields,
-# the EMP (step N2b: DOT / DamageContained / SecondaryDamage / Suppression / ParalyzeNugget); an aim picks the victims
+# the EMP (step N2b: DOT / DamageContained / SecondaryDamage / Suppression / ParalyzeNugget), the shooter's sweeping
+# line (N3d: ActivateLinearDamageNugget); an aim picks the victims
 # (LineDamageNugget); a victim effect runs once for each victim: its damage, then the leech claims on it, then the
 # strip (step N2a: Leech*DamageNugget, StripMaxHealthPercentDamageNugget); an effect runs once a volley, after the
 # victims' damage is added and before the frame's damage is dealt, on the aimed target only (step N3a: the lift, the
 # attachment; N3b: the caster's power on itself; N3c: the weapon's modifier on the target)
 ORDER = (('Projectile', 'launch'), ('DOT', 'hit'), ('DamageContained', 'hit'), ('SecondaryDamage', 'hit'),
-         ('Suppression', 'hit'), ('Paralyze', 'hit'), ('LineDamage', 'aim'), ('Damage', 'victim'),
+         ('Suppression', 'hit'), ('Paralyze', 'hit'), ('Sweep', 'hit'), ('LineDamage', 'aim'), ('Damage', 'victim'),
          ('LeechPercentMaxHealth', 'victim'), ('LeechHealth', 'victim'), ('StripMaxHealthPercent', 'victim'),
          ('Lift', 'effect'), ('Attach', 'effect'), ('SpecialPower', 'effect'),
          ('AttributeModifier', 'effect'))

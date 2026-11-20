@@ -22,13 +22,17 @@ def test_effects_follow_order_not_the_weapons_field_order():
 
 
 def test_a_direct_hit_books_the_dot_then_the_passengers_the_cold_the_suppression_and_the_emp(monkeypatch):
-    """Step N2b: the 'hit' phase runs DOT -> DamageContained -> SecondaryDamage -> Suppression -> Paralyze, whatever
-    the weapon's field order, and only those (no launch, aim or victim handler)."""
+    """Step N2b: the 'hit' phase runs DOT -> DamageContained -> SecondaryDamage -> Suppression -> Paralyze (N3d:
+    -> Sweep), whatever the weapon's field order, and only those (no launch, aim or victim handler)."""
     contained = [dict(damage=5.0, type='CANNON', maximum=1, include=[], exclude=[])]
     w = dict(reversed(list(dict(_weapon(), emp_seconds=[2.0], suppression=[(30.0, 40.0, 1.0)], sd=3.0,
                                 contained=contained, dot=[dict(damage=1.0)], projectile='Shell',
-                                line=dict(dynamic=False)).items())))
-    hits = ['DOT', 'DamageContained', 'SecondaryDamage', 'Suppression', 'Paralyze']
+                                line=dict(dynamic=False), sweep=1.5).items())))
+    hits = ['DOT', 'DamageContained', 'SecondaryDamage', 'Suppression', 'Paralyze', 'Sweep']
+    calls = []      # the shooter's line goes at the aimed target for the weapon's Lifetime
+    registry.HANDLERS['Sweep'].apply(types.SimpleNamespace(by='by', target='t', host=types.SimpleNamespace(
+        sweep=lambda *a: calls.append(a))), 1.5)
+    assert calls == [('by', 't', 1.5)]
     effects = registry.effects(w)
     assert [k for k, _ in effects] == ['Projectile', *hits, 'LineDamage', 'Damage']
     seen = []
@@ -116,7 +120,8 @@ def test_the_power_comes_after_the_attachment_and_only_a_timed_self_armor_one():
     seen = []
     body = types.SimpleNamespace(auras_on={})
     host = simdamage.EffectHost(None, types.SimpleNamespace(frame_now=lambda: 100), types.SimpleNamespace(
-        modify=seen.append, lift_timers=types.SimpleNamespace(hit=None), garrison=types.SimpleNamespace(fits=None)))
+        modify=seen.append, lift_timers=types.SimpleNamespace(hit=None), garrison=types.SimpleNamespace(fits=None),
+        sweeps=types.SimpleNamespace(fire=None)))
     host.wear(body, 'M', 30, 'xml')
     assert body.auras_on == {'M': (130, 'xml')} and seen == [body]
 
