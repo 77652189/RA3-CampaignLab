@@ -96,11 +96,12 @@ def canon(v, depth=0):
         return repr(v)
     if depth > 4:
         return '<' + type(v).__name__ + '>'
-    if isinstance(v, (list, tuple)):
+    from engine.ports.readonly import MapView, SeqView, SetView   # the port's read-only views read as what they show
+    if isinstance(v, (list, tuple, SeqView)):
         return '[' + ','.join(canon(x, depth + 1) for x in v) + ']'
-    if isinstance(v, (set, frozenset)):
+    if isinstance(v, (set, frozenset, SetView)):
         return '{' + ','.join(sorted(canon(x, depth + 1) for x in v)) + '}'
-    if isinstance(v, dict):
+    if isinstance(v, (dict, MapView)):
         items = [(canon(k, depth + 1), canon(x, depth + 1)) for k, x in v.items()]
         return '{' + ','.join(f'{k}:{x}' for k, x in sorted(items)) + '}'
     if hasattr(v, '__dict__') and depth < 2:

@@ -28,6 +28,7 @@ LAYER_OF = {
     'engine.kernel.factory': 0, 'engine.kernel.schedule': 0, 'engine.kernel.world': 0,          # (tests/test_kernel.py)
     'engine.kernel.snap': 0,                                                                     # step S's values
     'engine.ports.templates': 0, 'engine.modules.weaponset': 0,     # W1: simunits' weapon readers read its data
+    'engine.ports.readonly': 0,                                     # the ports' read-only views (review 1119z P2 #2)
     'simsnap': 9,                                                       # step S, the host's part (a whole run's)
     'simaisnap': 9,                                                     # step S 11b-4, the SimAI's around it
     'simbattlefield': 9,                                                # step S 11d, the exchange file's

@@ -25,10 +25,12 @@ Three groups and an internal door:
   `text`, `label`, `who`, `input`, `late_captions`, `ending_line`); and the taps a recorder hangs on the loop
   (`on_frame`, `on_tick`, `on_act`, `on_sample`, `on_happen`, `scripts`).
 
-Values are the world's own objects, not copies (a record reads every frame): a reader must not change them. The
+A table, list or set comes back read only and live (engine/ports/readonly.view: not a copy, a record reads every
+frame; its write half raises, to any depth -- review 1119z P2 #2); a thing comes back itself. The
 readers a Battlefield file is read through (contents, queue, sciences, player_upgrades, power, relations: step S 11d,
 experimental/cnv/simbattlefield.py) give names and numbers only, so a game adapter can give the same."""
 from engine.kernel import module as kernel_module
+from engine.ports.readonly import view
 
 
 class Observe:
@@ -78,17 +80,17 @@ class Observe:
 
     # --- scripts and players
     def flags(self):
-        return self._w.flags
+        return view(self._w.flags)
 
     def counters(self):
-        return self._w.counters
+        return view(self._w.counters)
 
     def timers(self):
         """Timer name -> the mission second it runs out at (either executor's)."""
-        return self._w.timers
+        return view(self._w.timers)
 
     def objectives(self):
-        return self._w.objectives
+        return view(self._w.objectives)
 
     def ending(self):
         """(how '赢' / '输', mission second, why) once the run ended, else None."""
@@ -97,21 +99,21 @@ class Observe:
     # --- a run's outcome
     def log(self):
         """The timeline: (mission second, kind, text) each."""
-        return self._w.log
+        return view(self._w.log)
 
     def series(self):
         """The counter readings: (second, [one value per counter of the check]) each."""
-        return self._w.series
+        return view(self._w.series)
 
     def unknown(self):
         """Action name -> how many times the run met an action the simulator does not know."""
-        return self._w.unknown
+        return view(self._w.unknown)
 
     def money(self):
-        return self._w.money
+        return view(self._w.money)
 
     def income(self):
-        return self._w.income
+        return view(self._w.income)
 
     def sciences(self, player):
         """(the protocols a player holds, sorted; its protocol points), or None for a player with no protocols (not
@@ -129,27 +131,27 @@ class Observe:
 
     def markers(self):
         """Objective -> the names (objects, waypoints) its arrows on the map point at."""
-        return self._w.markers
+        return view(self._w.markers)
 
     def countdowns(self):
         """The timers shown on screen as countdowns (their names)."""
-        return self._w.countdowns
+        return view(self._w.countdowns)
 
     def waypoints(self):
         """The map's waypoints: name -> (x, y)."""
-        return self._w.waypoints
+        return view(self._w.waypoints)
 
     def banned(self):
         """(player, template in lower case) the scripts took off a player's build menu."""
-        return self._w.banned
+        return view(self._w.banned)
 
     def players(self):
         """The map's players: name -> its entry (the map's PLAYERS)."""
-        return self._w.players
+        return view(self._w.players)
 
     def areas(self):
         """The map's trigger areas: name -> their points (.items())."""
-        return self._w.areas
+        return view(self._w.areas)
 
     # --- players and sight
     @property
@@ -160,7 +162,7 @@ class Observe:
         """The run's explicit directed relations: (a, b) -> 'Enemy' / 'Neutral' / 'Friend', how player a takes b (the
         map's own -- a retail map lists every pair -- and what scripts set since). A pair not in it falls back to
         `enemy(a, b)`'s default."""
-        return self._w.relations
+        return view(self._w.relations)
 
     @property
     def foe(self):
@@ -221,7 +223,7 @@ class Observe:
     def report(self, name):
         """One of the run's report fields (log, used, unknown, series, events, ...) by name; None where the world has
         none of that name (a field since removed reads None, as the record always wrote it)."""
-        return getattr(self._w, name, None)
+        return view(getattr(self._w, name, None))
 
     def log_since(self, n):
         """The timeline's lines from the n-th on, and how many there are now."""
@@ -234,7 +236,7 @@ class Observe:
 
     def unmodeled(self):
         """(kind, name) -> {'n', 't' first met, 'what'}: what the run met and the simulator does not model."""
-        return self._w.unmodeled
+        return view(self._w.unmodeled)
 
     def blocks(self, thing):
         """What of the way a thing takes up: None, (x, y, radius), or a wall's bar (x, y, angle, length, width)."""
@@ -243,15 +245,15 @@ class Observe:
     # --- internal: combat this tick (the skirmish AI's reads, R3 13f-2b)
     def firing(self):
         """This tick's aimed fire: [(target, damage per second, shooter)] (a new list each tick)."""
-        return self._w.firing
+        return view(self._w.firing)
 
     def volleys(self):
         """This tick's volleys: [(pick, weapon, shooter)] (a new list each tick)."""
-        return self._w.volleys
+        return view(self._w.volleys)
 
     def attachments(self):
         """Child serial -> (child, parent, module rule): what rides on what."""
-        return self._w.attachments
+        return view(self._w.attachments)
 
     def expected_damage(self, thing, behind, ahead, now=None):
         """The damage a thing expects in the next `ahead` seconds from the fire told it is coming (InformTarget:
@@ -262,7 +264,7 @@ class Observe:
     # --- internal: the production menu (a command port's, once there is one: what an order to build may ask for)
     def own(self):
         """Template id -> its unit data as compiled (what simunits reads a menu and a price off)."""
-        return self._w.own
+        return view(self._w.own)
 
     def factories(self, player):
         """A player's living structures that build units."""
@@ -274,7 +276,7 @@ class Observe:
 
     def queues(self):
         """Factory serial (Thing.serial) -> its jobs ({'template', 'progress', ...})."""
-        return self._w.queues
+        return view(self._w.queues)
 
     def mission(self):
         """The mission as written (parts.Mission: its map's SITES / BORDERS, cast, objectives) -- data, not the run."""

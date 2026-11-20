@@ -21,7 +21,11 @@ keeps them: each forwards to the world's method of the same name, so moving them
 Two of the wallet's are writes the AI makes as shortcuts, not orders: `charge` (it pays for a structure it places
 at once; cmd_port.md's shortcut column) and `multiply_income` (its personality's resource multiplier, once).
 
-What the AI still borrows on its host beyond the ports (simai.PEERS) is listed there."""
+What the AI still borrows on its host beyond the ports (simai.PEERS) is listed there.
+
+A table or set read off either comes back read only and live (engine/ports/readonly.view, review 1119z P2 #2: a
+plug-in that cleared `systems.queues` emptied the production queues past the command port)."""
+from engine.ports.readonly import view
 
 
 class Settings:
@@ -34,27 +38,27 @@ class Settings:
     @property
     def ai(self):
         """player -> the mission second the mission handed it to the skirmish AI."""
-        return self._w.ai
+        return view(self._w.ai)
 
     @property
     def ai_paused(self):
-        return self._w.ai_paused
+        return view(self._w.ai_paused)
 
     @property
     def ai_switches(self):
-        return self._w.ai_switches
+        return view(self._w.ai_switches)
 
     @property
     def ai_priorities(self):
-        return self._w.ai_priorities
+        return view(self._w.ai_priorities)
 
     @property
     def base_construction_disabled(self):
-        return self._w.base_construction_disabled
+        return view(self._w.base_construction_disabled)
 
     @property
     def border(self):
-        return self._w.border
+        return view(self._w.border)
 
     def take_personality(self, player, personality):
         self._w.take_personality(player, personality)
@@ -90,7 +94,7 @@ class PlayerSystems:
     @property
     def queues(self):
         """factory serial -> its production jobs."""
-        return self._w.queues
+        return view(self._w.queues)
 
     def proto(self, name, template, player):
         """A thing of the template the world never placed, to read its figures off."""
