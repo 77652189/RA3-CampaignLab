@@ -104,7 +104,7 @@ _PROXY = {}
 # step 9d-1 moved its one write, the sight, onto Sim.forget_sight).
 # Its orders go through the command port (`commands`, R3 13e), not the Sim's order calls.
 PEERS = frozenset({'advance', 'commands', 'countdowns', 'ending', 'forget_sight', 'input', 'log', 'money', 'offers',
-                   'queues', 'side_sees', 'timers'})
+                   'production', 'side_sees', 'timers'})
 
 
 class Peers:
@@ -277,9 +277,7 @@ class SimWorld:
     def money(self):
         """What the player can still spend: the bank less what the queued builds will still take (Sim.order_build pays
         frame by frame, so the bank alone would let the player queue far more than it can pay for)."""
-        peers = self.peers
-        owed = sum(j['cost'] - j['paid'] for q in peers.queues.values() for j in q if j['owner'] == self.me)
-        return int(peers.money.get(self.me, 0)) - int(owed)
+        return int(self.peers.money.get(self.me, 0)) - int(self.peers.production.owed(self.me))
 
     def offers(self):
         """The lit sidebar buttons (Sim.offers: the player's live factories, prerequisites held, not banned) as the

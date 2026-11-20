@@ -174,16 +174,15 @@ class Picture:
                 left = max(0.0, timers[counter] - t)
             ui.append(dict(label=label, value=readings.get(key), left=left))
         unmod = [dict(kind=k[0], name=k[1], n=v['n'], t=v['t'], what=v['what']) for k, v in obs.unmodeled().items()]
-        human, own, queues = obs.human, obs.own(), obs.queues()
+        human, own = obs.human, obs.own()
         offers = [dict(tp=o[0], cost=o[1], secs=o[2]) for o in obs.offers(human)]
         factories, sold = [], set()
         for f in obs.factories(human):
-            q = queues.get(f.serial, [])
             menu = set(simunits.menu(f.template, own, f.upgrades))
             can = [o for o in offers if o['tp'] in menu]
             sold |= {o['tp'] for o in can}
             factories.append(dict(id=f.name, lb=obs.label(f), can=can,
-                                  queue=[dict(tp=j['template'], p=round(j.get('progress', 0), 1)) for j in q]))
+                                  queue=[dict(tp=tp, p=round(p * 100, 1)) for tp, p in obs.queue(f)]))
         if factories:                               # upgrades: bought at whichever structure sells them
             factories[0]['can'] += [o for o in offers if o['tp'] not in sold]
         ending, flags = obs.ending(), obs.flags()

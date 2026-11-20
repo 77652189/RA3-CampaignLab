@@ -23,6 +23,7 @@ def test_object_upgrade_survives_snapshot_and_applies_before_the_unit_door_delay
     assert not s.commands.do(order)[0]  # owner's duplicate is suppressed even before the upgrade arrives
     assert s.money[PLAYER] == 1000
 
+    s.act('PLAYER_DISABLE_UNIT_CONSTRUCTION', [PLAYER], None)   # a unit gate holds no upgrade (INFERRED, simproduce)
     s.produce_due(1)
     # $500 over 30 s at full power (100 supply, 75 demand): ceil(500/450) = 2.
     job, = s.queues[seller.serial]

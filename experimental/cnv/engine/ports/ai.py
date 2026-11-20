@@ -91,10 +91,9 @@ class PlayerSystems:
         """What the player's factories offer now."""
         return self._w.offers(player)
 
-    @property
-    def queues(self):
-        """factory serial -> its production jobs."""
-        return view(self._w.queues)
+    def busy(self, factory):
+        """Whether the factory has a production job queued."""
+        return self._w.production.busy(factory.serial)
 
     def proto(self, name, template, player):
         """A thing of the template the world never placed, to read its figures off."""

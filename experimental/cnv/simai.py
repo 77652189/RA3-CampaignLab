@@ -1326,7 +1326,7 @@ class Brain:
             fs = [f for f in ready if t in self.host.menu(f.template)]
             if not fs:
                 continue
-            idles = tuple(f.name for f in fs if not systems.queues.get(f.serial)
+            idles = tuple(f.name for f in fs if not systems.busy(f)
                           and not any(q in self.host.menu(f.template) for q in self.unit_q))
             idle = bool(idles)
             kinds = self.host.kinds(t)
@@ -1346,7 +1346,7 @@ class Brain:
         world, systems = self.world, self.systems
         ready = [f for f in self.factories() if self.frame >= self.made.get(f.serial, -10 ** 9)
                  + self.host.unpack(f.template) and template in self.host.menu(f.template)
-                 and not systems.queues.get(f.serial) and not any(q in self.host.menu(f.template) for q in self.unit_q)]
+                 and not systems.busy(f) and not any(q in self.host.menu(f.template) for q in self.unit_q)]
         if not ready:
             return []
         live = [b for b in self.living() if not b.scenery]
@@ -1827,7 +1827,7 @@ class Brain:
         for t in list(self.unit_q):
             free = [f for f in self.factories() if t in self.host.menu(f.template)
                     and frame >= self.made.get(f.serial, -10 ** 9) + self.host.unpack(f.template)
-                    and not systems.queues.get(f.serial)
+                    and not systems.busy(f)
                     and systems.can_build(self.player, t, f)]   # its tier there (review 1120aa: order_build's own test)
             if free and self.commands.do(Command(          # at the free one it picked, by serial (same-name 11-19b
                     'build', f'ai:{self.player}', player=self.player, template=t,   # N03: not the shortest queue,

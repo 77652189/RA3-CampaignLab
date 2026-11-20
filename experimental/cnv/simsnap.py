@@ -75,6 +75,7 @@ SIM = {
     'infiltrators': {'world': WIRE, 'peers': WIRE, 'wallet': WIRE, 'going': STATE, 'off_until': STATE,
                      'observers': STATE, 'unit_observers': STATE, 'paralyzed_until': STATE, 'attack_until': STATE},
     'lift_timers': {'remaining': STATE},
+    'production': {'peers': WIRE},
     'sweeps': {'world': WIRE, 'peers': WIRE, 'lines': STATE},
     'commands': {'_w': WIRE, '_issued': STATE},
     'specials': {'wfires': STATE, 'leaps_due': STATE, 'leap_ground_hits': STATE, 'movement_due': STATE,

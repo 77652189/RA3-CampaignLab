@@ -94,20 +94,16 @@ class Observe:
     def queue(self, thing):
         """A factory's jobs in order: [(template, progress 0..1)] ([] for a thing that builds nothing). The world
         keeps a job's progress in per cent (float32): read here / 100, a job done and waiting to come out at 1."""
-        return [(job['template'], min(1.0, job['progress'] / 100)) for job in self._w.queues.get(thing.serial, ())]
+        return [(job['template'], min(1.0, job['progress'] / 100)) for job in self._w.production.jobs(thing.serial)]
 
     def jobs(self, thing):
         """A factory's jobs in order, whole: [(template, progress 0..1, paid so far, the logic frame it filled or None,
         held)] -- held: a job not full that stands for a ban (its unit off the owner's menu, the owner's unit
         construction disabled: the hold Sim.produce_due keeps a unit job to, upgrades' never). [] for a thing that
         builds nothing (a Battlefield file's queue, S 11d step 7)."""
-        w = self._w
-
-        def held(job):
-            return job['full'] is None and 'upgrade' not in job and (
-                (job['owner'], job['template'].lower()) in w.banned or job['owner'] in w.unit_construction_disabled)
-        return [(job['template'], min(1.0, job['progress'] / 100), job['paid'], job['full'], held(job))
-                for job in w.queues.get(thing.serial, ())]
+        p = self._w.production
+        return [(job['template'], min(1.0, job['progress'] / 100), job['paid'], job['full'], p.held(job))
+                for job in p.jobs(thing.serial)]
 
     def clocks(self, thing):
         """Its timed modules' frames in the order made (interfaces.Clocked: autoheal, lifetime, sale, unpacking):
@@ -310,10 +306,6 @@ class Observe:
     def offers(self, player):
         """[(template or upgrade, cost, seconds)] a player can build or buy now."""
         return self._w.offers(player)
-
-    def queues(self):
-        """Factory serial (Thing.serial) -> its jobs ({'template', 'progress', ...})."""
-        return view(self._w.queues)
 
     def mission(self):
         """The mission as written (parts.Mission: its map's SITES / BORDERS, cast, objectives) -- data, not the run."""

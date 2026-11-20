@@ -1,6 +1,6 @@
 """The ports hand out no container of the world to write (review 1119z P2 #2 + y P3 #5; engine/ports/readonly.py):
 a reader of the observation port or a plug-in reading the AI port's Settings / PlayerSystems gets live read-only views,
-so `systems.queues.clear()` and the like raise instead of changing the run past the command port."""
+so `production.jobs(f).clear()` and the like raise instead of changing the run past the command port."""
 import inspect
 
 import pytest
@@ -38,7 +38,8 @@ _DOORS = ('specimen', 'fresh_sight', 'take_personality', 'add_team_lookup', 'cha
 def _arg(world, name):
     yard, barracks = world.bodies['yard'], world.bodies['barracks']
     return {'player': 'Player_1', 'side': 'Player_1', 'a': 'Player_1', 'b': 'Player_2', 'thing': barracks,
-            'viewer': yard, 'body': yard, 'target': barracks, 'x': 0.0, 'y': 0.0, 'n': 0, 't': 0.0, 'key': 'x',
+            'viewer': yard, 'body': yard, 'factory': barracks,
+            'target': barracks, 'x': 0.0, 'y': 0.0, 'n': 0, 't': 0.0, 'key': 'x',
             'name': 'barracks', 'template': GI, 'upgrade': 'x', 'behind': 1.0, 'ahead': 1.0, 'v': yard,
             'job': {'cost': 0, 'paid': 0}, 'progress': 0.0}[name]
 
@@ -125,9 +126,9 @@ def test_the_guard_finds_a_planted_door(world):
 def test_the_review_repro_raises(world):
     systems, settings, obs = ai_port.PlayerSystems(world), ai_port.Settings(world), Observe(world)
     serial = world.bodies['barracks'].serial
-    assert systems.queues[serial][0]['template'] == GI          # read as before
-    for write in (lambda: systems.queues.clear(), lambda: systems.queues[serial].append({}),
-                  lambda: systems.queues[serial][0].update(progress=100), lambda: settings.ai_paused.add('x'),
+    jobs = world.production.jobs(serial)                        # what Observe.queue / jobs read (S7b)
+    assert jobs[0]['template'] == GI and systems.busy(world.bodies['barracks'])
+    for write in (lambda: jobs.append({}), lambda: jobs[0].update(progress=100), lambda: settings.ai_paused.add('x'),
                   lambda: settings.ai_switches['Player_2'].pop('x'), lambda: obs.firing().clear(),
                   lambda: obs.flags().__setitem__('f', 1), lambda: obs.counters().__delitem__('c')):
         with pytest.raises((AttributeError, TypeError)):

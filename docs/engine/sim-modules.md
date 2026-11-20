@@ -81,7 +81,7 @@
 
 私有模型只导入 `engine.ports` 是接入约定。公开执行器经 `simexec` 接入原版和自制关卡脚本。遭遇战入口 `simai_run.py` 负责建局，`simai.SimAI` 是 AI 插件。
 
-`Observe` 的旗标、资金、队列、报告等直接读取宿主容器的接口，`Settings` 的容器属性及 `PlayerSystems.queues` 用 `engine/ports/readonly.py` 的实时只读视图。读取嵌套字典、列表和集合也得到只读视图。视图保留对原容器的引用，宿主替换整张表后应重新取；物体引用仍按原样返回。
+`Observe` 的旗标、资金、队列、报告等直接读取宿主容器的接口，`Settings` 的容器属性及生产队列的行（`simproduce.Production.jobs`，S7b）用 `engine/ports/readonly.py` 的实时只读视图。读取嵌套字典、列表和集合也得到只读视图。视图保留对原容器的引用，宿主替换整张表后应重新取；物体引用仍按原样返回。
 
 ## 7. 扩展点：加一样东西要写什么
 

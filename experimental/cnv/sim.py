@@ -77,6 +77,7 @@ import simmoney  # noqa: E402
 import siminfiltrator  # noqa: E402
 import simorder  # noqa: E402
 import simpower  # noqa: E402
+import simproduce  # noqa: E402
 import simrange  # noqa: E402
 import simspecial  # noqa: E402
 import simsweep  # noqa: E402
@@ -963,6 +964,7 @@ class Sim:
         self.power_at = {}                  # (player, spellbook power lower) -> the frame it is ready from (spellbook_ready)
         self.queues = {}                    # factory serial -> [job]: production (order_build, produce_due)
         self.produced_to = None             # the last frame produce_due ran
+        self.production = simproduce.Production(simproduce.Peers(self))     # the queues' read side (S7b)
         self.energies = {}                  # template -> EnergyProduction (simunits.energy; power)
         self.player_ups = {}                # player -> upgrades GIVE_PLAYER_UPGRADE gave (a unit's NeededUpgrade)
         self.templates = getattr(self.mm, 'templates', None) or {}     # team templates (Sim.reinforce)
@@ -1518,8 +1520,7 @@ class Sim:
         have = {b.template.lower() for b in self.living() if b.owner == owner}
         if not all(o.lower() in have for o in objs):
             return []
-        queued = any(j.get('upgrade', '').lower() == low for q in self.queues.values() for j in q
-                     if j['owner'] == owner)
+        queued = self.production.buying(owner, low)
         out = []
         for b in self.living():
             if b.owner != owner or 'STRUCTURE' not in b.kinds or b.scenery or queued:
@@ -1606,11 +1607,7 @@ class Sim:
                     else:
                         self.produce_out(f, job, create, rally)
                 job = next((j for j in q if j['full'] is None), None)
-                # Global unit gate measured with AlliedEngineer only; applying it to other unit templates
-                # is INFERRED. Upgrade queues and UI request eligibility have not been measured here.
-                if job is None or 'upgrade' not in job and (
-                        (job['owner'], job['template'].lower()) in self.banned or
-                        job['owner'] in self.unit_construction_disabled):
+                if job is None or self.production.held(job):
                     continue                # banned: the first job stands, paid so far kept, the queue behind it too
                 step = f32(100.0 / self.build_frames(job['secs'], job['owner']))
                 nxt = f32(job['progress'] + step)

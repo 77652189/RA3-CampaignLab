@@ -33,6 +33,7 @@ LAYER_OF = {
     'simbattlefield': 9,                                                # step S 11d, the exchange file's
     'simunits': 1,
     'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2, 'simmine': 2, 'simstatus': 2, 'simpower': 2, 'simgarrison': 2,
+    'simproduce': 2,
     'simmodifier': 2, 'simlevel': 2, 'simlocomotion': 2, 'simpath': 2,
     'simbody': 2,
     'simtoggle': 2,
@@ -98,7 +99,7 @@ PEER_TAKERS = {'simorder', 'simdamage',
                'simpullback', 'simsweep',
                'simgarrison', 'siminfiltrator',
                'simai',
-               'simproxy'}
+               'simproxy', 'simproduce'}
 # (simai, step 9d-2: a world and peers taker holding them as self.world / self.peers; since R3 13f-2d it names no
 # sim -- a target object is a kernel Thing, the run is simai_run.py)
 SIM_NAMES_UNTIL_10 = {}

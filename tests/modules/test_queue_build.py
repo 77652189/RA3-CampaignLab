@@ -77,3 +77,17 @@ def test_unit_queue_stalls_for_cash_and_uses_current_power_when_it_resumes():
     assert s.power(PLAYER) == (100, 25)
     assert job['progress'] == pytest.approx(100 / 495 + 100 / 150)
     assert job['paid'] == 5 and s.money[PLAYER] == 97  # ceil(500*(1/495+1/150)) = 5
+
+
+def test_the_proxy_can_spend_the_bank_less_what_its_own_queued_jobs_still_take():
+    """simproxy money(): the bank less Production.owed -- the player's jobs only, paid so far counted (S7b 1)."""
+    import simproxy
+    s = small_world([('factory', 'AlliedBarracks', PLAYER, 600, 600),
+                     ('foe', 'AlliedBarracks', 'Player_2', 900, 600)], model=False)
+    s.money.update({PLAYER: 2000, 'Player_2': 2000})
+    assert s.order_build(PLAYER, ENGINEER) and s.order_build('Player_2', ENGINEER)
+    s.produce_due(10)
+    w = object.__new__(simproxy.SimWorld)
+    w.peers, w.me = simproxy.Peers(s), PLAYER
+    job, = s.queues[s.bodies['factory'].serial]
+    assert 0 < job['paid'] < job['cost'] and w.money() == s.money[PLAYER] - (job['cost'] - job['paid'])

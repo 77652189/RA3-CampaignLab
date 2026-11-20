@@ -81,7 +81,7 @@ def test_calls_with_no_bench_channel_are_refused():
         o.living()
     with pytest.raises(gp.Unsupported, match='does not report its end'):
         o.ending()
-    for call in ('sees', 'money', 'timers', 'state', 'firing', 'queues'):
+    for call in ('sees', 'money', 'timers', 'state', 'firing', 'jobs'):
         with pytest.raises(gp.Unsupported):
             getattr(o, call)
 
