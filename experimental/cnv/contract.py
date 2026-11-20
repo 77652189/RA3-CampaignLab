@@ -681,8 +681,11 @@ def contract(mission):
             if r.name and r.name not in named and r.name not in created]
     # a role's key is no other object's name, and no object is named as a numbered group of roles stands ('guard'
     # beside roles 'guard 1', 'guard 2'): a line naming the object reads the role (Sim.pick), so the player's and
-    # autoplay's orders to it would go to another (same-name sweep 11-19b O22 / O23; 0 of 1,098 builds had one)
-    for x in sorted(set(named) | created):
+    # autoplay's orders to it would go to another (same-name sweep 11-19b O22 / O23; 0 of 1,098 builds had one).
+    # Every name the run holds counts: the mission's, the ones its scripts make, and the named objects the map
+    # places itself (its OBJECTS, which the Sim loads beside the mission's; review 1119x P2)
+    loaded = {o.name for o in getattr(m.map, 'OBJECTS', ()) if getattr(o, 'name', '')}
+    for x in sorted(set(named) | created | loaded):
         if x in m.cast:
             if m.cast[x].name != x:
                 out.append(f'cast {x}: the key is another object\'s name (the role is {m.cast[x].name!r})')

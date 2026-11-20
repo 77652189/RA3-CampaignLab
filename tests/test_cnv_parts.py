@@ -175,6 +175,25 @@ def test_contract_refuses_a_role_key_that_is_another_objects_name():
                                  "object guard: named as the roles guard 1, guard 2 ... are (a line naming it reads them)"]
 
 
+def test_contract_refuses_a_role_key_that_is_a_map_objects_name():
+    """The same for a named object the map places (its OBJECTS, which the Sim loads beside the mission's): a role
+    keyed `a` or `a 1` beside the map's `a` sent the player's and autoplay's orders to `a` to the role (review 1119x
+    P2)."""
+    import types
+    from maps import island
+    for key, want in (('a', "cast a: the key is another object's name (the role is 'b')"),
+                      ('a 1', 'object a: named as the roles a 1, a 2 ... are (a line naming it reads them)')):
+        m = parts.Mission(name='X', map=island, units=[a8.mission().units[0]])
+        uid = m.units[0].id
+        m.put(uid, 'west shore', name='a')
+        mine = m.objects.pop()                                  # the same object, the map's now
+        m.map = types.ModuleType('island_with_a')
+        m.map.__dict__.update({k: v for k, v in vars(island).items() if not k.startswith('__')})
+        m.map.OBJECTS = list(getattr(island, 'OBJECTS', [])) + [mine]
+        m.put(uid, 'west field', name='b', role=key)
+        assert parts.contract(m) == [want], key
+
+
 def test_ab_pair():
     m, t = build.PAIRS['liberty_ride_ab']()
     ids = [u.id for u in m.units]
