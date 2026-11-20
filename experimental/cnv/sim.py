@@ -1552,8 +1552,8 @@ class Sim:
         whose button buys it; nothing is paid now (produce_due pays frame by frame, an upgrade as a unit).
         press: a script's press, queued even while the unit is banned (ALLOW_DISALLOW_ONE_BUILDING 0) -- it waits
         unbuilt until let go (bench 2026-11-09 engine_production g); the player's click is not (the button is locked).
-        False: nothing of the owner's builds / buys it now."""
-        sellers = self.upgrade_sellers(owner, template)
+        False: nothing of the owner's builds / buys it now (`factory`: that one does not, review 1120cc P2 #3)."""
+        sellers = [b for b in self.upgrade_sellers(owner, template) if factory is None or b is factory]
         if sellers:
             b = min(sellers, key=lambda b: len(self.queues.get(b.serial, [])))
             cost, secs = simunits.upgrade_cost(template)

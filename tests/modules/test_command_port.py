@@ -505,7 +505,8 @@ def test_a_team_build_button_queues_at_the_member_not_a_reference_of_its_name():
     assert rec[1].kind == 'build' and rec[1].target == 'f' and rec[2] is True
     assert asked == [('Player_1', s.bodies['f'])]
     del s.bodies['f']                       # the factory the press picked is no longer in the world's table
-    assert s.commands.do(rec[1]) == (False, '找不到工厂 f') and len(asked) == 1
+    ok, why = s.commands.do(rec[1])
+    assert not ok and why.startswith('找不到 f（编号') and len(asked) == 1
 
 
 def _cast_world():
@@ -1116,3 +1117,137 @@ def test_a_pinned_order_moves_only_the_object_its_name_picked_and_a_gone_one_is_
     assert not ok and 'bob' in why
     assert new.move_to is None
     assert move(new.serial) == (True, '') and new.move_to is not None     # the live one, pinned: ordered
+
+
+def _review_cc():
+    """Review 1120cc's port scene: bob / foe tanks, an engineer, a garrisonable house of Player_2's, an infantryman,
+    each side's yard and war factory, Player_1's refinery."""
+    import parts
+    from maps import probe_range
+
+    def make(name, template, owner, where):
+        return ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', name, template, owner + '/t', where)
+    tank = 'AlliedAntiVehicleVehicleTech1'
+    w = sim.Sim(parts.Mission(name='Review', map=probe_range, scripts=[parts.Script('Setup', [], [
+        make('bob', tank, 'Player_1', '@1060,1230'), make('foe', tank, 'Player_2', '@990,1390'),
+        make('eng', 'AlliedEngineer', 'Player_1', '@1200,1240'),
+        make('house', 'AM_Apartments_01', 'Player_2', '@1500,1500'),
+        make('man', 'SovietAntiInfantryInfantry', 'Player_1', '@1250,1240'),
+        make('yard', 'AlliedConstructionYard', 'Player_1', '@1900,1900'),
+        make('ref', 'AlliedRefinery', 'Player_1', '@2000,2300'),
+        make('foeyard', 'AlliedConstructionYard', 'Player_2', '@2400,2000'),
+        make('fac', 'AlliedWarFactory', 'Player_1', '@1350,1330'),
+        make('enemyfac', 'AlliedWarFactory', 'Player_2', '@1650,1330')])]), model=False)
+    w.advance(1)
+    return w
+
+
+# the routes a pinned unit command reaches (review 1120cc: 18; build / buy_science / place order no unit)
+UNIT_ROUTES = sorted(ROUTED - {'build', 'buy_science', 'place'})
+
+
+def _bob_order(w, kind, serial=None):
+    b = w.bodies['bob']
+    return w.commands.do(Command(kind, units=('bob',), place='@1360,1450',
+                                 args=(('unit_serials', (b.serial if serial is None else serial,)),
+                                       ('via', 'garrison'))))
+
+
+def _unit_state(b):
+    return tuple(repr(getattr(b, k, None)) for k in ('move_to', 'goal', 'ground_fire', 'face', 'stance', 'hold_fire',
+                                                       'ai_acquire', 'path', 'mode'))
+
+
+@pytest.mark.parametrize('kind', UNIT_ROUTES)
+def test_a_pinned_order_to_a_dead_unit_is_refused(kind):
+    """Review 1120cc P2 #1: a unit destroyed the normal way stays in the world's table, its name and serial too; its
+    pin is gone all the same -- every route refuses it and the body is left as it was."""
+    w = _review_cc()
+    bob = w.bodies['bob']
+    w.commands.post_line(f'{w.t} 摧毁 bob')
+    w.advance(1)
+    assert not bob.alive and w.bodies['bob'] is bob
+    before, hunts = _unit_state(bob), len(w.hunts)
+    ok, why = _bob_order(w, kind)
+    assert not ok and 'bob' in why, (kind, why)
+    assert _unit_state(bob) == before and len(w.hunts) == hunts
+
+
+def test_a_pinned_order_to_a_unit_given_away_is_refused_and_the_others_go():
+    """Review 1120cc P2 #1: the player's pin is a unit he clicked as his; given to another player since (a script's
+    NAMED_TRANSFER_OWNERSHIP_PLAYER), it is not his to order -- not ordered, and with none of his left, refused. The
+    AI's serials (`objects: serial`) likewise: only its own living ones move."""
+    import parts
+    w = _review_cc()
+    bob, man, foe = w.bodies['bob'], w.bodies['man'], w.bodies['foe']
+    w.act('NAMED_TRANSFER_OWNERSHIP_PLAYER', ['bob', 'Player_2'], parts.Script('Review', [], []))
+    assert bob.owner == 'Player_2'
+    ok, why = _bob_order(w, 'move')
+    assert not ok and 'bob' in why and bob.move_to is None
+    ok, _ = w.commands.do(Command('move', units=('bob', 'man'), place='@1360,1450',
+                                  args=(('unit_serials', (bob.serial, man.serial)),)))
+    assert ok and bob.move_to is None and man.move_to is not None
+    w.commands.do(Command('move', 'ai:Player_1', units=(foe.serial,), pos=(1360.0, 1450.0),
+                          args=(('objects', 'serial'),)))
+    assert foe.move_to is None                                      # not the AI's own: not moved
+    w.commands.post_line(f'{w.t} 摧毁 man')
+    w.advance(1)
+    before = man.move_to
+    w.commands.do(Command('move', 'ai:Player_1', units=(man.serial,), pos=(1500.0, 1500.0),
+                          args=(('objects', 'serial'),)))
+    assert not man.alive and man.move_to == before                  # dead: not moved
+
+
+def test_a_target_pin_is_the_object_its_name_picked():
+    """Review 1120cc P2 #2: `target_serial` pins the object `target` names -- a serial of another name's object refuses
+    the command (attack, capture, enter, build alike), nothing ordered; with its own name it goes."""
+    import dataclasses
+    w = _review_cc()
+    bob, foe, eng, man, house, foeyard, fac = (w.bodies[n] for n in ('bob', 'foe', 'eng', 'man', 'house', 'foeyard',
+                                                                      'fac'))
+    wrong = [Command('attack', units=('bob',), target='wrong', force=True,
+                     args=(('unit_serials', (bob.serial,)), ('target_serial', foe.serial))),
+             Command('capture', units=('eng',), target='wrong',
+                     args=(('unit_serials', (eng.serial,)), ('target_serial', foeyard.serial))),
+             Command('enter', 'ai:Player_1', units=(man.serial,), target='wrong',
+                     args=(('objects', 'serial'), ('via', 'garrison'), ('target_serial', house.serial))),
+             Command('build', player='Player_1', target='wrong', template='AlliedAntiInfantryVehicle_Ground',
+                     args=(('target_serial', fac.serial),))]
+    for cmd in wrong:
+        ok, why = w.commands.do(cmd)
+        assert not ok and 'wrong' in why, (cmd.kind, why)
+    assert bob.goal is None and eng.move_to is None and not w.garrison.going and not w.queues
+    assert w.commands.do(dataclasses.replace(wrong[0], target='foe')) == (True, '') and bob.goal is foe
+    assert w.commands.do(dataclasses.replace(wrong[3], target='fac')) == (True, '') and fac.serial in w.queues
+
+
+def test_the_ais_pursuit_takes_no_dead_target():
+    """Review 1120cc P2 #2: the AI's pursuit (`goal_only`) writes the goal itself, past order_attack's checks -- a dead
+    target, by serial or by name, is refused and the goal left as it was."""
+    w = _review_cc()
+    bob, foe = w.bodies['bob'], w.bodies['foe']
+    w.commands.post_line(f'{w.t} 摧毁 bob')
+    w.advance(1)
+    assert not bob.alive
+    before = foe.goal
+    for args in ((('objects', 'serial'), ('goal_only', True), ('target_serial', bob.serial)),
+                 (('objects', 'serial'), ('goal_only', True))):
+        ok, why = w.commands.do(Command('attack', 'ai:Player_2', units=(foe.serial,), target='bob', args=args))
+        assert not ok and 'bob' in why and foe.goal is before, why
+
+
+def test_an_upgrade_is_bought_at_the_structure_named_or_refused():
+    """Review 1120cc P2 #3: a build at a named structure that sells an upgrade buys it there; the enemy's yard sells
+    nothing to Player_1 -- refused, not moved to his own yard (order_build's upgrade branch heeds `factory`)."""
+    w = _review_cc()
+    yard, foeyard = w.bodies['yard'], w.bodies['foeyard']
+
+    def buy(name, f):
+        return w.commands.do(Command('build', target=name, player='Player_1', template='Upgrade_AlliedTech2',
+                                     args=(('target_serial', f.serial),)))
+    assert w.upgrade_sellers('Player_1', 'Upgrade_AlliedTech2') == [yard]
+    ok, why = buy('foeyard', foeyard)
+    assert not ok and not w.queues, why
+    assert not w.order_build('Player_1', 'Upgrade_AlliedTech2', factory=foeyard) and not w.queues
+    assert buy('yard', yard) == (True, '')
+    assert [j['template'] for j in w.queues[yard.serial]] == ['Upgrade_AlliedTech2']

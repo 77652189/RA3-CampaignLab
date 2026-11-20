@@ -41,7 +41,10 @@ place -- review 11-19 f #1). A line verb's command may pin what its names picked
 serials of the objects `units` names (one each, as picked) and `('target_serial', n)` the target's -- the route is the
 line's own, the names stay for the record (its noted line), and a name a role or another object also answers to
 cannot take the order (the page's click, review 1119z P2 #1; `Commands.line` writes no such command); a pin of an
-object by another name, or with none of its objects left, is refused (`do`, review 1120bb P2 #1). A route that cannot go on without its object (a factory, the unit to unpack) refuses a
+object by another name, or with none of its objects left, is refused (`do`, review 1120bb P2 #1). A serial stands for
+a living object, the giver's own where the giver has units (the player's, the proxy's, an AI's) and of the name it
+was given with: a dead one (its body stays in the table), one given to another player since, is not ordered; a
+target pin of another name or dead refuses the command (review 1120cc P2). A route that cannot go on without its object (a factory, the unit to unpack) refuses a
 missing one; a press the world turns down (a target gone, out of range) is refused (review 11-19 f #4 #5).
 
 A line's tails `强制` / `由 P` (in a line a player or a play wrote, or `text` wrote for a command that has them) read as
@@ -325,22 +328,50 @@ class Commands:
         return ok, why
 
     def _pinned(self, cmd):
-        """(ok, why) of a command's `unit_serials`: one serial for each name in `units`, each the object of that name
-        when it was picked. A pin whose object here goes by another name (a foe's serial beside `bob`) refuses the
-        whole command, nothing ordered; one whose object is gone is not ordered, and when none is left the command is
-        refused -- a name made again since does not take the order (review 1120bb P2 #1)."""
+        """(ok, why) of a command's pins: a serial stands for the living object its name picked (review 1120cc P2).
+        `unit_serials`: one for each name in `units`, each the object of that name when it was picked; a pin whose
+        object here goes by another name (a foe's serial beside `bob`) refuses the whole command, nothing ordered; one
+        whose object is gone -- out of the table, dead (a body stays in it, name and serial), or no longer the giver's
+        (`_giver`: given to another player since the click) -- is not ordered, and when none is left the command is
+        refused: a name made again since does not take the order (review 1120bb P2 #1). `target_serial`: the object
+        `target` names (when it names one), living -- one of another name, or gone, refuses the command (the target is the object picked,
+        its name the record; whether the route may take it -- an enemy to attack, a factory of his -- is the route's)."""
         pins = cmd.arg('unit_serials')
-        if pins is None:
-            return True, ''
-        if len(pins) != len(cmd.units):
-            return False, f'{len(pins)} 个编号对 {len(cmd.units)} 个名字'
-        found = {b.serial: b for b in self._w.bodies.values() if b.serial in set(pins)}
-        for name, s in zip(cmd.units, pins):
-            if s in found and found[s].name != name:
-                return False, f'编号 {s} 是 {found[s].name}，不是 {name}'
-        if not any(s in found for s in pins):
-            return False, f'找不到 {"、".join(cmd.units)}（编号 {"、".join(map(str, pins))} 已不在）'
+        if pins is not None:
+            if len(pins) != len(cmd.units):
+                return False, f'{len(pins)} 个编号对 {len(cmd.units)} 个名字'
+            found = self._serials(pins)
+            for name, s in zip(cmd.units, pins):
+                if s in found and found[s].name != name:
+                    return False, f'编号 {s} 是 {found[s].name}，不是 {name}'
+            if not self._held(cmd, found.values()):
+                return False, f'找不到 {"、".join(cmd.units)}（编号 {"、".join(map(str, pins))} 已不在）'
+        s = cmd.arg('target_serial')
+        if s is not None:
+            t = self._serials((s,)).get(s)
+            if t is not None and cmd.target and t.name != cmd.target:     # no name: a pin alone (11-19 m)
+                return False, f'编号 {s} 是 {t.name}，不是 {cmd.target}'
+            if t is None or not t.alive:
+                return False, f'找不到 {cmd.target}（编号 {s} 已不在）'
         return True, ''
+
+    def _serials(self, serials):
+        """{serial: the object in the world's table that has it} for those of `serials` there."""
+        want = set(serials)
+        return {b.serial: b for b in self._w.bodies.values() if b.serial in want}
+
+    def _giver(self, cmd):
+        """Whose units a pinned command may order: the AI's (`ai:P`) P's, the player's and the proxy's (a click on his
+        own: SimUI and simproxy pick only those) the human's; a script's or a test's anyone's (None)."""
+        who, _, player = cmd.by.partition(':')
+        if who == 'ai':
+            return player
+        return self._w.human if who in ('player', 'proxy') else None
+
+    def _held(self, cmd, bodies):
+        """The ones of `bodies` a pin still stands for: living, and the giver's (`_giver`)."""
+        owner = self._giver(cmd)
+        return [b for b in bodies if b.alive and (owner is None or b.owner == owner)]
 
     def issued(self):
         """(frame, Command, ok, why) for every command posted or done, in order. A record: nothing in a run reads it."""
@@ -353,14 +384,15 @@ class Commands:
 
     # --- the routes (the script verbs' order calls; Sim.happen runs its order verbs through `do` since R3 13c-2)
     def _units(self, cmd):
-        if cmd.arg('unit_serials') is not None:     # a line verb's, pinned: each object as picked (one gone: none)
-            want = set(cmd.arg('unit_serials'))
-            found = {b.serial: b for b in self._w.bodies.values() if b.serial in want}
-            return [found[s] for s in cmd.arg('unit_serials') if s in found]
-        if cmd.arg('objects') == 'serial':  # the objects an action picked, each as picked (one no longer in the world's
-            want = set(cmd.units)           # table -- a name taken over since -- is not ordered: no None to the routes)
-            found = {b.serial: b for b in self._w.bodies.values() if b.serial in want}
-            return [found[s] for s in cmd.units if s in found]
+        # by serial -- a line verb's pins, or the objects an action or the AI picked: each object as picked; one gone
+        # (out of the world's table: a name taken over since; dead; no longer the giver's -- `_pinned`) is not
+        # ordered: no None to the routes
+        pins = cmd.arg('unit_serials')
+        if pins is None and cmd.arg('objects') == 'serial':
+            pins = cmd.units
+        if pins is not None:
+            found = self._serials(pins)
+            return self._held(cmd, [found[s] for s in pins if s in found])
         if cmd.arg('objects'):              # a map script's: each name as Sim.body finds it, a missing one None
             return [self._w.body(n) for n in cmd.units]
         return [b for who in cmd.units for b in self._w.pick(who)]
@@ -372,7 +404,7 @@ class Commands:
         s = cmd.arg('target_serial')
         if s is None:
             return lookup(cmd.target)
-        return next((b for b in self._w.bodies.values() if b.serial == s), None)
+        return self._serials((s,)).get(s)     # `_pinned` checked it: living, of that name
 
     def _attack_move(self, cmd):
         if cmd.arg('objects'):
@@ -410,8 +442,8 @@ class Commands:
         if cmd.arg('goal_only'):            # the AI's pursuit takes a threat as the unit's goal alone: no fresh attack
             aimed = bool(cmd.target) or cmd.arg('target_serial') is not None    # order, its mode / path / follow
             t = self._target(cmd, w.bodies.get) if aimed else None  # untouched (INFERRED, e135); no target (no name,
-            if aimed and t is None:         # no serial: review 11-19 m): the goal dropped (a charge ended)
-                return False, f'找不到 {cmd.target or cmd.arg("target_serial")}'
+            if aimed and (t is None or not t.alive):    # no serial: review 11-19 m): the goal dropped (a charge
+                return False, f'找不到 {cmd.target or cmd.arg("target_serial")}'  # ended); a dead one: none (cc P2 #2)
             for b in self._units(cmd):
                 b.goal = t
             return True, ''

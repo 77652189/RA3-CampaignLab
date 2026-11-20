@@ -53,7 +53,7 @@ def named_buttons(sim, name, a, script, unit=None):
         # the factory as the action found it, by serial (same-name sweep 11-19b O07: by name the port read `a[0]`
         # again, a reference of a member's name took its press)
         if not _order(sim, 'build', None, ('press', True), ('target_serial', f.serial), player=f.owner,
-                      template=tmpl, target=a[0])[0]:
+                      template=tmpl, target=f.name)[0]:
             sim.note('生产', f'{sim.label(f)} 按 {a[1]}：现在造不了 {tmpl}')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and simgarrison.ejects(a[1], sim.own):
         # a transport's eject at the spot (simgarrison; bench 11-10 engine_transport load 跳)
