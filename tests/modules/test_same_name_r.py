@@ -409,6 +409,43 @@ def test_an_ai_unit_goes_past_a_first_factory_that_lacks_the_tier():
     assert br.unit_q == [] and list(s.queues) == [near.serial]
 
 
+RIPTIDE = 'AlliedAntiInfantryVehicle_Ground'
+
+
+def _tank_role_is_riptide(s):
+    """A mission cast whose role key is the Guardian's template ID and whose role is a Riptide (review 1120aa P2,
+    N03's second: a role keyed by a retail ID)."""
+    s.m.cast = dict(getattr(s.m, 'cast', None) or {})
+    s.m.cast[TANK] = types.SimpleNamespace(name='Riptide marker', template=RIPTIDE)
+
+
+def test_an_ai_unit_ordered_at_a_factory_is_the_template_it_chose_not_a_role_of_that_name():
+    """Review 1120aa P2 (N03's): the AI's build names a factory by serial and the template off its menu -- the command
+    port builds that template, it does not read the ID as a mission role (the text order's way)."""
+    s = simsmall.small_world(model=False)
+    s.money['Player_1'] = 10000
+    _tank_role_is_riptide(s)
+    br = _bare_brain(s, unpack=0)
+    yard = s.add('yard', 'AlliedConstructionYard', 'Player_1', 300.0, 300.0)
+    yard.upgrades.add('Upgrade_AlliedTech2')
+    near = s.add('near', 'AlliedWarFactory', 'Player_1', 600.0, 300.0)
+    br.unit_q = [TANK]
+    br.unit_due(30)
+    assert br.unit_q == [] and [j['template'] for j in s.queues[near.serial]] == [TANK]
+
+
+def test_a_text_build_at_a_named_factory_still_reads_the_role():
+    """The other half kept: a text order (a plan, no serial) names a role -- it builds the role's template."""
+    from engine.ports.command import Command
+    s = simsmall.small_world(model=False)
+    s.money['Player_1'] = 10000
+    _tank_role_is_riptide(s)
+    near = s.add('near', 'AlliedWarFactory', 'Player_1', 600.0, 300.0)
+    ok, why = s.commands.do(Command('build', 'script', player='Player_1', template=TANK, target='near'))
+    assert ok, why
+    assert [j['template'] for j in s.queues[near.serial]] == [RIPTIDE]
+
+
 # ---- review 1119y P2 #3 / #4: every internal key goes through simworld.free_key, which counts a key the schedule
 # still holds a module of as taken too
 

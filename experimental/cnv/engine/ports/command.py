@@ -462,8 +462,11 @@ class Commands:
             if w.order_build(cmd.player or w.human, cmd.template):
                 return True, ''
             return False, f'没有工厂现在造得了 {cmd.template}'
-        tmpl = next((u.id for u in w.mm.units if u.id == cmd.template), None) or \
-            next((r.template for k, r in w.m.cast.items() if k == cmd.template), cmd.template)
+        if cmd.arg('target_serial') is not None:    # the AI's / the SimUI menu's: the template off that factory's
+            tmpl = cmd.template                     # menu, never a role of that name (review 1120aa P2, N03's)
+        else:                                       # a text order: a unit ID or a mission role
+            tmpl = next((u.id for u in w.mm.units if u.id == cmd.template), None) or \
+                next((r.template for k, r in w.m.cast.items() if k == cmd.template), cmd.template)
         f = self._target(cmd, lambda n: next(iter(w.pick(n)), None))   # the AI's: by serial (11-19b N03)
         if f is None:
             why = f'找不到工厂 {cmd.target}'
