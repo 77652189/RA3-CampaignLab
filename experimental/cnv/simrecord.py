@@ -96,9 +96,9 @@ def canon(v, depth=0):
                                                  # one reads as one word, not a difference every run
     if v is None or isinstance(v, (bool, int, float, str)):
         return repr(v)
+    from engine.ports.readonly import MapView, SeqView, SetView, kind   # the port's views read as what they show
     if depth > 4:
-        return '<' + type(v).__name__ + '>'
-    from engine.ports.readonly import MapView, SeqView, SetView   # the port's read-only views read as what they show
+        return '<' + kind(v).__name__ + '>'      # a view by its container's name (review 1120bb P2 #2's state views)
     if isinstance(v, (list, tuple, SeqView)):
         return '[' + ','.join(canon(x, depth + 1) for x in v) + ']'
     if isinstance(v, (set, frozenset, SetView)):

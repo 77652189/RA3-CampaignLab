@@ -128,7 +128,9 @@ def test_the_module_holds_what_sim_add_armed_and_the_body_reads_it_through_forwa
     assert tank.weapons is m.held() and _keys(tank.weapons) == [CANNON]
     assert tank.slots is m.choices() is s._wsets['AlliedAntiVehicleVehicleTech1']    # the painter toggle: by status
     state = simrecord.body_state(tank)
-    assert state['weapons'] is m.held() and state['slots'] is m.choices()     # the record's names, as on the body
+    # the record's names, as on the body (read only: views of them, review 1120bb P2 #2)
+    assert state['weapons'] == m.held() and state['slots'] == m.choices()
+    assert not hasattr(state['weapons'], 'append') and not hasattr(state['slots'], 'append')
     with pytest.raises(AttributeError):
         tank.weapons = []
     with pytest.raises(AttributeError):

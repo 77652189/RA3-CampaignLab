@@ -33,6 +33,14 @@ from engine.kernel import module as kernel_module
 from engine.ports.readonly import view
 
 
+def _fixed(a):
+    """An array read only and live: a numpy view of it with the write flag off (review 1120bb P2 #2: ground_map's
+    grids were the routing grid itself)."""
+    v = a.view()
+    v.flags.writeable = False
+    return v
+
+
 class Observe:
     """Read-only view of one running world (today a sim.Sim)."""
 
@@ -216,7 +224,7 @@ class Observe:
         size in map units)."""
         g = self._w.ground
         x0, y0 = g.world((0, 0))
-        return g.grids['ground'], g.grids['water'], g.zgrid, (x0, y0), g.world((0, 1))[0] - x0
+        return _fixed(g.grids['ground']), _fixed(g.grids['water']), _fixed(g.zgrid), (x0, y0), g.world((0, 1))[0] - x0
 
     # --- internal
     @staticmethod
@@ -224,7 +232,8 @@ class Observe:
         """A thing's fields as the record shows them: its own (not `modules`), and beside them the RECORDED fields its
         kernel modules have set (their STATE less what never recorded: Module.RECORDED) -- a field moved off the
         thing into a module records as it did on the thing (step K1 on) -- and Body.FORWARDS (a moved dataclass field
-        every body had: None where no module sets it)."""
+        every body had: None where no module sets it). A new dict each call, its values read only (readonly.view: a
+        reader that cleared `path` emptied the unit's route, review 1120bb P2 #2)."""
         d = {k: v for k, v in vars(thing).items() if k != 'modules'}
         for m in thing.modules:
             own = vars(m)
@@ -236,7 +245,7 @@ class Observe:
                     d[k] = own[k]
         for k in getattr(type(thing), 'FORWARDS', ()):
             d.setdefault(k, getattr(thing, k))
-        return d
+        return {k: view(v) for k, v in d.items()}
 
     def report(self, name):
         """One of the run's report fields (log, used, unknown, series, events, ...) by name; None where the world has

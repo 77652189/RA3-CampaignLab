@@ -19,6 +19,16 @@ _LEAF = frozenset((str, bytes, int, float, bool, type(None), complex))
 _CONTAINER = (list, dict, set, tuple, collections.deque, abc.Mapping, abc.Set, abc.Sequence)
 
 
+def kind(v):
+    """The type of what v shows: a view's container's (a record naming a value by its type reads the same through
+    a view as through the container itself), else v's own."""
+    if isinstance(v, MapView):
+        return type(v._m)
+    if isinstance(v, (SeqView, SetView)):
+        return type(v._s)
+    return type(v)
+
+
 def view(v):
     """v read only (see the module): a view of a container, a tuple of views, or v itself."""
     t = type(v)
