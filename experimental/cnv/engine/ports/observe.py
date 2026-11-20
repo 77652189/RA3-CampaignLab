@@ -8,7 +8,7 @@ Names are the ones the object and the world carry today, so a reader never renam
 Three groups and an internal door:
 - the clock: `t`, `fps`, `frame()`;
 - things (objects): `things()`, `living()`, `thing(name)`, `is_thing(v)`, `contents(thing)` (who is inside),
-  `queue(thing)` (what it builds), `jobs(thing)` (the same whole: paid, filled, held); a thing's public fields are
+  `home(thing)` (the owner an emptied garrison goes back to), `queue(thing)` (what it builds), `jobs(thing)` (the same whole: paid, filled, held); a thing's public fields are
   read off it by their names (name template owner x y hp max_hp health ...: the readers' census, R3 12a);
 - scripts and players: `flags()`, `counters()`, `timers()` (name -> the mission second it runs out at), `objectives()`,
   `ending()`, `money()`, `income()`, `sciences(player)`, `player_upgrades(player)`, `power(player)`, `markers()`,
@@ -27,7 +27,7 @@ Three groups and an internal door:
 
 A table, list or set comes back read only and live (engine/ports/readonly.view: not a copy, a record reads every
 frame; its write half raises, to any depth -- review 1119z P2 #2); a thing comes back itself. The
-readers a Battlefield file is read through (contents, jobs, sciences, player_upgrades, power, relations: step S 11d,
+readers a Battlefield file is read through (contents, home, jobs, sciences, player_upgrades, power, relations: step S 11d,
 experimental/cnv/simbattlefield.py) give names and numbers only, so a game adapter can give the same."""
 from engine.kernel import module as kernel_module
 from engine.ports.readonly import view
@@ -72,6 +72,11 @@ class Observe:
         """The names of the things inside a building's garrison or a transport, in the order they came in ([] for
         a thing that holds none or cannot)."""
         return [p.name for p in self._w.garrison.held(thing)]
+
+    def home(self, thing):
+        """The owner a garrisoned building goes back to when its last passenger is out (the owner it had before its
+        first), None for one that holds none or a transport (which keeps its owner)."""
+        return self._w.garrison.home(thing)
 
     def queue(self, thing):
         """A factory's jobs in order: [(template, progress 0..1)] ([] for a thing that builds nothing). The world

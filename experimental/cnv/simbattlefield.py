@@ -8,9 +8,11 @@ host. Format `battlefield/1`:
   players   {player: {money, sciences, science_points, upgrades, power: {made, used}, relations}}; relations the
             explicit directed overrides {other listed player: 'Enemy' | 'Neutral' | 'Friend'}, the map's defaults
             left out
-  things    [{id, template, owner, x, y, z, angle, hp, max_hp, status, upgrades, level, contains, queue, team}]:
-            id unique (a body's name); z null = on the ground (not 0); angle radians; level from 1; contains the
-            ids of the things inside it, in order; queue its jobs in the queue's order [{template, progress, paid,
+  things    [{id, template, owner, x, y, z, angle, hp, max_hp, status, upgrades, level, contains, home, queue,
+            team}]: id unique (a body's name); z null = on the ground (not 0); angle radians; level from 1; contains
+            the ids of the things inside it, in order; home null or the owner a garrisoned building goes back to
+            when its last passenger is out (the one it had before its first: a building holding passengers only,
+            not a transport, which keeps its owner); queue its jobs in the queue's order [{template, progress, paid,
             full}]: progress 0..1, paid the money paid for it so far (a whole number), full null or the logic frame
             (the file's `frame` clock, not after it) it filled -- progress 1 then, waiting to come out
   script    {flags: {name: bool}, counters: {name: number}, timers: {name: deadline in t's seconds},
@@ -61,10 +63,12 @@ being inside gives is the host's own: the passenger at its holder's spot carryin
 none of them held as a script's: they go when it comes out), a garrisoned building owned by its first passenger, a
 single passenger's listener upgrades granted to the building (to be taken back when it leaves). Only then are angles,
 upgrades, status and health set (a building given a listener's upgrade before its passenger would keep it after).
-Preflight refuses a file whose holder's template has no garrison or transport in the host's data; a passenger the
-host's rules keep out (its PassengerFilter) is named by the read back, standing where the file has it. What the file
-does not carry -- the owner a garrisoned building goes back to when emptied -- is named for each such building: the
-host keeps the owner it has.
+Preflight refuses a file whose holder's template has no garrison or transport in the host's data, and a home on one
+with no garrison; a passenger the host's rules keep out (its PassengerFilter) is named by the read back, standing
+where the file has it. A garrisoned building's home is set once its passengers are in (the put keeps the file's
+owner, the first passenger's, as the one before): emptied, it goes back to the file's home, as the source's did; a
+file's null home on a building holding passengers is named by the read back (the host's goes back to the owner the
+file gives it).
 
 Step 7 places the factories' jobs, within place_things after the things are set (a factory's upgrades give its menu):
 each job goes into its thing's queue in the file's order as the host's own order would have put it (Sim.order_build:
@@ -80,7 +84,6 @@ import math
 import struct
 
 import simgarrison
-import simliving
 import simorder
 import simtech
 import simunits
@@ -93,7 +96,7 @@ TOP = ('format', 'map', 't', 'frame', 'players', 'things', 'script', 'gaps')
 PLAYER = ('money', 'sciences', 'science_points', 'upgrades', 'power', 'relations')
 POWER = ('made', 'used')
 THING = ('id', 'template', 'owner', 'x', 'y', 'z', 'angle', 'hp', 'max_hp', 'status', 'upgrades', 'level',
-         'contains', 'queue', 'team')
+         'contains', 'home', 'queue', 'team')
 JOB = ('template', 'progress', 'paid', 'full')
 SCRIPT = ('flags', 'counters', 'timers', 'objectives')
 RELATIONS = ('Enemy', 'Neutral', 'Friend')
@@ -226,6 +229,10 @@ def _thing(i, t, bad, frame=None):
         bad.append(f'{path}.level: not a whole number >= 1 ({t["level"]!r})')
     if 'contains' in t:
         _names(t['contains'], f'{path}.contains', bad)
+    if t.get('home') is not None and not _name(t['home']):
+        bad.append(f'{path}.home: not null or a name ({t["home"]!r})')
+    elif t.get('home') is not None and isinstance(t.get('contains'), list) and not t['contains']:
+        bad.append(f'{path}.home: {t["home"]!r} with no passengers (a home is where an emptied building goes back)')
     if 'team' in t and not isinstance(t['team'], str):
         bad.append(f'{path}.team: not a string ({t["team"]!r})')
     if 'queue' not in t:
@@ -372,6 +379,12 @@ def holds(template, own=None):
     return any(simunits.module_blocks(template, tag, own) for tag in simgarrison.TAGS + simgarrison.TRANSPORT)
 
 
+def garrisons(template, own=None):
+    """Whether the host's data gives `template` a garrison (GarrisonContain / ContestableGarrisonContain): a building
+    that is its first passenger's and goes back when emptied."""
+    return any(simunits.module_blocks(template, tag, own) for tag in simgarrison.TAGS)
+
+
 def map_name(sim):
     """The host's map as a Battlefield file names it: the map module's short name."""
     return sim.m.map.__name__.rsplit('.', 1)[-1]
@@ -411,8 +424,14 @@ def preflight(sim, doc, things=True):
         if not isinstance(t, dict):
             continue
         owner = t.get('owner')
-        if isinstance(owner, str) and owner and owner not in hosts and owner != CIV:
-            bad.append(f'things[{i}].owner: {owner!r} not a player of the host')
+        for k in ('owner', 'home'):
+            who = t.get(k)
+            if isinstance(who, str) and who and who not in hosts and who != CIV:
+                bad.append(f'things[{i}].{k}: {who!r} not a player of the host')
+        if _name(t.get('template')) and _name(t.get('home')) and known(t['template'], own) and not garrisons(
+                t['template'], own):
+            bad.append(f'things[{i}].home: a {t["template"]} has no garrison in the host\'s data (a transport keeps '
+                       f'its owner)')
         if _name(t.get('template')) and not known(t['template'], own):
             bad.append(f'things[{i}].template: {t["template"]!r} not defined in the host\'s data')
         elif _name(t.get('template')) and t.get('contains') and not holds(t['template'], own):
@@ -455,7 +474,6 @@ NOT_CARRIED = (
     'for one goes on where placed (each such job named)',
     "a player's hold on a job (the host models none)",
     'harvesters\' loads and trips',
-    'the owner a garrisoned building goes back to when emptied (a placed one keeps the owner it has)',
     'passengers on their way in, being ejected or in the air after it',
     'team instances beyond each thing\'s team name',
 )
@@ -490,7 +508,7 @@ def _job_rows(jobs, shift=0):
 
 
 def _export_thing(obs, b):
-    return dict(_own_fields(b), contains=obs.contents(b), queue=_job_rows(obs.jobs(b)))
+    return dict(_own_fields(b), contains=obs.contents(b), home=obs.home(b), queue=_job_rows(obs.jobs(b)))
 
 
 def _held(obs, things):
@@ -562,9 +580,10 @@ WHY = {
     'upgrades': 'a creation upgrade gives its rank\'s veterancy upgrades too',
     'contains': "a passenger the host's rules keep out (its PassengerFilter) stands where the file has it",
     'owner': "a garrisoned building is its first passenger's",
+    'home': "a garrisoned building holding passengers goes back to the owner before its first (the file's null: the "
+            "owner the file gives it); one the host's filter emptied has none",
     'queue': "a job the host's factory does not build is not placed; paid is held to the host's cost",
 }
-HOME = "the owner it had before its first passenger is not carried: the host's goes back to {owner!r} when it empties"
 
 
 def _set_thing(sim, b, row):
@@ -612,7 +631,7 @@ def place_things(sim, doc):
     for b in spare.values():                # made alongside, not in the file: the source has none
         if b.alive:
             _unmake(sim, b)
-    gaps += _put_crews(sim, placed)
+    _put_crews(sim, placed)
     for _, row, b in placed:                # after the crews: what a passenger gives its holder is the host's
         _set_thing(sim, b, row)
     shift = sim.frame_now() - doc['frame']  # a file's frame onto the host's
@@ -622,15 +641,15 @@ def place_things(sim, doc):
     sim.change()
     obs = Observe(sim)
     for i, row, b in placed:
-        got = _plain(dict(_own_fields(b), contains=[p.name for p in sim.garrison.held(b)],
+        got = _plain(dict(_own_fields(b), contains=[p.name for p in sim.garrison.held(b)], home=obs.home(b),
                           queue=_job_rows(obs.jobs(b), -shift)))
         for k in THING:
             if got[k] != row[k]:
                 gaps.append(f'things[{i}].{k}: {row[k]!r} in the file, the host reads {got[k]!r}'
                             + (f' -- {WHY[k]}' if k in WHY else ''))
     mine = {b.serial for _, _, b in placed}
-    for b in simliving.living(sim.world, sim.bodies, False):   # the host's living things are the file's, none besides
-        if b.serial not in mine:
+    for b in obs.things():                  # the host's living things are the file's, none besides (read as export does)
+        if b.alive and b.serial not in mine:
             gaps.append(f'things: {b.name!r} (a {b.owner} {b.template}) living on the host, not in the file')
     return gaps
 
@@ -687,17 +706,15 @@ def _unmake(sim, b):
 
 
 def _put_crews(sim, placed):
-    """Each placed thing's `contains` put into it, in order, as the script's instant garrison does; ['things[i].owner:
-    ...'] for each garrisoned building whose owner before its first passenger the file does not carry."""
+    """Each placed thing's `contains` put into it, in order, as the script's instant garrison does, then a garrisoned
+    building's home the file's (the put kept the file's owner as the one before); a null home, or one on a building
+    the host's filter left empty, the read back names."""
     bodies = {row['id']: b for _, row, b in placed}
-    gaps = []
-    for i, row, g in placed:
+    for _, row, g in placed:
         for c in row['contains']:
             sim.garrison.put(bodies[c], g, script=True)
-        box = simgarrison.contain(g)            # a house (not a transport, which keeps its owner)
-        if box is not None and box.home() and sim.garrison.held(g):
-            gaps.append(f'things[{i}].owner: ' + HOME.format(owner=box.home()[0]))
-    return gaps
+        if row['home'] is not None:
+            sim.garrison.set_home(g, row['home'])
 
 
 # Why a placed player's field reads other than the file's, where the host cannot give it (step 4).

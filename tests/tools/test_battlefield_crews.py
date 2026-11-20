@@ -3,9 +3,10 @@ bf_pack/plan.md): a run cut with three of the player's men in a civilian house a
 its file placed onto an empty run of the same map: every thing reads back whole (the passengers in order, at their
 holder's spot, carrying the bits it gives; the house the first passenger's), and after the same exits and the same kill
 the host reads as the source does -- a passenger's bits go when it comes out, a transport keeps its owner, a killed
-Bullfrog kills its riders. The one thing the file does not carry, the owner an emptied house goes back to, is named.
-Six into a five-place house (the script's instant garrison) read back six; a holder with no hold is refused; a
-passenger the host's filter keeps out is named."""
+Bullfrog kills its riders; the last man out, the house goes back to the civilians on both (its `home`). Six into a
+five-place house (the script's instant garrison) read back six; a holder with no hold is refused, and a home on a
+transport, on a house with no passengers or of no player; a file's null home on a held house is named; a passenger
+the host's filter keeps out is named."""
 import copy
 
 import pytest
@@ -18,8 +19,6 @@ from maps import probe_range  # noqa: E402
 
 P1, CIV = 'Player_1', 'PlyrCivilian'
 HOUSE, FROG, MAN, TANK = 'AM_Apartments_01', 'SovietAntiAirShip', 'SovietAntiInfantryInfantry', 'SovietAntiVehicleVehicleTech1'
-HOME = "things[0].owner: the owner it had before its first passenger is not carried: the host's goes back to " \
-       "'Player_1' when it empties"
 
 
 def _source(men=3):
@@ -49,6 +48,7 @@ def test_the_cut_holds_a_garrison_and_a_transport():
     got = {t['id']: t for t in doc['things']}
     assert (got['house']['contains'], got['frog']['contains']) == (['man 0', 'man 1', 'man 2'], ['rider 0', 'rider 1'])
     assert (got['house']['owner'], got['frog']['owner']) == (P1, P1)
+    assert (got['house']['home'], got['frog']['home'], got['man 0']['home']) == (CIV, None, None)
     assert 'ENCLOSED' in got['man 0']['status'] and 'ENCLOSED' in got['rider 0']['status']
     assert simbattlefield.check(doc) == []
 
@@ -56,7 +56,7 @@ def test_the_cut_holds_a_garrison_and_a_transport():
 def test_every_thing_reads_back_whole_the_crews_in_order():
     src, doc = _source()
     host, gaps = _host(doc)
-    assert gaps == [HOME]
+    assert gaps == []
     assert _things(host) == {t['id']: t for t in doc['things']}
     for b in host.living():                 # inside as the source's: the holder known by the thing
         g = src.garrison.where.get(src.bodies[b.name].serial)
@@ -73,12 +73,13 @@ def test_after_the_same_exits_the_host_reads_as_the_source():
             w.act('NAMED_EXIT_BUILDING', [u], 'T')
         w.run(w.t + 1.0)
     a, b = _things(src), _things(host)
-    keys = ('owner', 'status', 'contains', 'x', 'y')
+    keys = ('owner', 'status', 'contains', 'home', 'x', 'y')
     assert {k: {f: a[k][f] for f in keys} for k in a} == {k: {f: b[k][f] for f in keys} for k in b}
     assert 'ENCLOSED' not in b['man 0']['status'] and b['frog']['owner'] == P1 and b['house']['owner'] == P1
-    for w in (src, host):                   # the last one out: the source's house goes back to the civilians
+    for w in (src, host):                   # the last one out: both houses go back to the civilians
         w.act('NAMED_EXIT_BUILDING', ['man 2'], 'T')
-    assert (src.bodies['house'].owner, host.bodies['house'].owner) == (CIV, P1)    # HOME: not carried
+    assert (src.bodies['house'].owner, host.bodies['house'].owner) == (CIV, CIV)
+    assert _things(src)['house']['home'] is None and _things(host)['house']['home'] is None
 
 
 def test_a_killed_transport_kills_its_placed_riders():
@@ -92,7 +93,7 @@ def test_a_killed_transport_kills_its_placed_riders():
 def test_six_into_a_five_place_house_read_back_six():
     _, doc = _source(men=6)
     host, gaps = _host(doc)
-    assert gaps == [HOME]
+    assert gaps == []
     assert [p.name for p in host.garrison.held(host.bodies['house'])] == [f'man {k}' for k in range(6)]
 
 
@@ -119,3 +120,46 @@ def test_a_passenger_the_filter_keeps_out_is_named():
     said = [g for g in gaps if g.startswith('things[0].contains:')]
     assert len(said) == 1 and "keep out" in said[0] and "'tank'" in said[0]
     assert host.bodies['tank'].alive and host.garrison.where.get(host.bodies['tank'].serial) is None
+
+
+def _row(doc, tid):
+    return next(t for t in doc['things'] if t['id'] == tid)
+
+
+@pytest.mark.parametrize('why, edit, said', [
+    ('a transport', lambda d: _row(d, 'frog').update(home=CIV),
+     r"things\[\d+\]\.home: a SovietAntiAirShip has no garrison in the host's data"),
+    ('no player', lambda d: _row(d, 'house').update(home='Nobody'), r"things\[0\]\.home: 'Nobody' not a player"),
+    ('no passengers', lambda d: _row(d, 'man 0').update(home=CIV), r"things\[\d+\]\.home: 'PlyrCivilian' with no "
+                                                                    r"passengers"),
+])
+def test_a_home_no_building_could_have_is_refused(why, edit, said):
+    _, doc = _source()
+    doc = copy.deepcopy(doc)
+    edit(doc)
+    host = simsmall.small_world(model=False, map=probe_range)
+    with pytest.raises(ValueError, match=said):
+        simbattlefield.place(host, doc)
+    assert list(host.living()) == []
+
+
+def test_a_null_home_on_a_held_house_is_named_and_it_keeps_the_files_owner():
+    _, doc = _source()
+    doc = copy.deepcopy(doc)
+    _row(doc, 'house')['home'] = None       # a file from an engine that does not know the owner before
+    host, gaps = _host(doc)
+    assert gaps == ["things[0].home: None in the file, the host reads 'Player_1' -- " + simbattlefield.WHY['home']]
+    for k in range(3):
+        host.act('NAMED_EXIT_BUILDING', [f'man {k}'], 'T')
+    assert host.bodies['house'].owner == P1
+
+
+def test_a_home_other_than_the_sources_is_where_the_emptied_house_goes():
+    _, doc = _source()
+    doc = copy.deepcopy(doc)
+    _row(doc, 'house')['home'] = P1         # a house the player owned before it went in (a file may say so)
+    host, gaps = _host(doc)
+    assert gaps == [] and _things(host)['house']['home'] == P1
+    for k in range(3):
+        host.act('NAMED_EXIT_BUILDING', [f'man {k}'], 'T')
+    assert host.bodies['house'].owner == P1

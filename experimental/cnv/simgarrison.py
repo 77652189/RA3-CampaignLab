@@ -151,6 +151,23 @@ class Garrisons:
         m = self.boxes.get(getattr(g, 'serial', None)) if g is not None else None    # unbuilt: no box
         return m.passengers() if m is not None else []
 
+    def home(self, g):
+        """The owner the garrisoned building g goes back to when its last passenger is out (the owner it had before
+        its first), None when it holds none or is a transport (which keeps its owner): put keeps it with the first
+        passenger, out gives it back with the last."""
+        m = self.boxes.get(getattr(g, 'serial', None)) if g is not None else None
+        return m.home()[0] if m is not None and m.home() else None
+
+    def set_home(self, g, owner):
+        """The garrisoned building g, holding passengers, to go back to `owner` when emptied (a placed file's, S 11d:
+        the owner before its first passenger); False when g holds none or is a transport (nothing kept)."""
+        m = self.boxes.get(getattr(g, 'serial', None)) if g is not None else None
+        if m is None or not m.home():
+            return False
+        m.give_home()
+        m.keep_home(owner)
+        return True
+
     # ---- who
     def fits(self, u, sp):
         """The PassengerFilter."""
