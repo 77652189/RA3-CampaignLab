@@ -118,7 +118,18 @@ class Group:
     exactly them there. The bench reads no positions, so the box holds only till the group is first ordered."""
     name: str
     members: tuple                      # bound names
-    box: tuple                          # (x0, y0, x1, y1) world
+    box: tuple                          # (x0, y0, x1, y1) world; (x, y): a left click on its one member there
+
+
+@dataclasses.dataclass(frozen=True)
+class Target:
+    """An attack route: a bound thing not the player's, the world point the bench right-clicks it at (where it is
+    drawn: a thing standing above the ground the bench maps clicks on is clicked off its ground point), and its health
+    line (percent): an attack is confirmed when the line reads below what it read at the click."""
+    name: str
+    x: float
+    y: float
+    counter: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -145,6 +156,10 @@ class Contract:
     view: tuple | None = None           # where the mission puts the camera (bench_view): world clicks need it
     groups: tuple = ()                  # Group
     goals: tuple = ()                   # Goal
+    targets: tuple = ()                 # Target
+    # ((x, y, dy), ...): the world y the bench adds to these points on uneven ground before its flat mapping
+    # (harness.Session.to_screen: calib.Ground.lift of the built map, the camera on `view`); any other point: flat
+    lifts: tuple = ()
 
     def __post_init__(self):
         names = [ln.counter for ln in self.lines]
@@ -162,6 +177,9 @@ class Contract:
         for g in self.goals:
             if g.counter not in names or self.group(g.group) is None:
                 raise ValueError(f'goal of {g.group}: its counter {g.counter!r} or its group is not the contract one')
+        for t in self.targets:
+            if t.counter not in names or self.bound(t.name) is None or self.bound(t.name).owner == self.human:
+                raise ValueError(f'target {t.name!r}: not a bound thing of another player\'s with a line of its own')
 
     def bound(self, name):
         return next((b for b in self.things if b.name == name), None)
@@ -188,6 +206,22 @@ FORMSS = Contract(
     groups=tuple(Group(g, tuple(f'UNIT - CNV Form {t} {k}' for k in range(4)), (560.0, y - 55, 690.0, y + 55))
                  for g, t, y in _LANES),
     goals=tuple(Goal(g, 1000.0, y, 70.0, f'CNV_Form_{t}', 22) for g, t, y in _LANES))
+
+# The attack's bench map: CampSeeClick (experimental/cnv/checks/engine_see.py `click`). The player's Athena cannon E
+# stands on the low ground 400 east of Soviet_1's tower E up on the stonehenge ring; Tanya on the ring sees the tower
+# for it. The bench left-clicks the cannon and right-clicks the tower 14 west, 20 north of its ground point (where the
+# ring has it drawn). Lines: 看见 (towers discovered), each tower's health in percent. The lifts: calib.Ground of the
+# built map, the camera on the view (the run of 2026-11-20 recorded exactly these points' screen pixels).
+SEE = Contract(
+    mod='CampSeeClick', human='Player_1',
+    lines=(Line('Test See', '看见'), Line('Test Hp W', '血西'), Line('Test Hp E', '血东'), Line('Test Hp S', '血南')),
+    things=(Bound('UNIT - CNV See Cannon E', 'AlliedAntiStructureVehicle', 'Player_1'),
+            Bound('UNIT - CNV See Tower E', 'AlliedBaseDefense', 'Soviet_1')),
+    view=(2620.0, 1250.0),
+    groups=(Group('cannon E', ('UNIT - CNV See Cannon E',), (2820.0, 1250.0)),),
+    targets=(Target('UNIT - CNV See Tower E', 2406.0, 1270.0, 'Test Hp E'),),
+    lifts=((2820.0, 1250.0, -42.56), (2406.0, 1270.0, 12.64)))
+CONTRACTS = {c.mod: c for c in (FORMSS, SEE)}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -429,16 +463,17 @@ class GameObserve:
 
 
 # The inputs a transcript carries, and the start of what their pause records say (bench_mcp.after's note).
-NOTE = {'bench_view': 'camera set by the mission', 'bench_box': 'box select ', 'bench_click': 'right click at screen'}
+NOTE = {'bench_view': 'camera set by the mission', 'bench_box': 'box select ',
+        'bench_click': ('right click at screen', 'left click at screen')}
 
 
-def drawn(ask, view):
+def drawn(ask, view, lifts=()):
     """The note the bench's pause record writes for `ask` (bench_mcp's bench_view / bench_box / bench_click), the
     camera where the mission put it (`view`, the last bench_view's point; None: the start camera): its world points
     on screen by the bench's own mapping (calib; after a bench_view the view's point stands at (640, 350):
-    harness.Session.scripted_view), on flat ground -- the bench lifts a point by its map's heights where the built map
-    is readable (calib.Ground), so a contract on uneven ground needs that here first. Review 1120bb P2 #4: a check of
-    the note's start alone let a step's world point be changed under the record of another."""
+    harness.Session.scripted_view), each lifted by the contract's `lifts` under a view (the bench's calib.Ground;
+    a point not listed: flat ground). Review 1120bb P2 #4: a check of the note's start alone let a step's world point
+    be changed under the record of another."""
     tool = ask['tool']
     if tool == 'bench_view':
         return f'camera set by the mission on ({ask["x"]}, {ask["y"]})'
@@ -450,32 +485,34 @@ def drawn(ask, view):
         cu, cv = cal.world_to_screen_at(view[0], view[1], view)
 
         def screen(x, y):
-            u, v = cal.world_to_screen_at(x, y, view)
+            dy = next((d for px, py, d in lifts if (px, py) == (x, y)), 0.0)
+            u, v = cal.world_to_screen_at(x, y + dy, view)
             return u + 640.0 - cu, v + 350.0 - cv
-    if tool == 'bench_box':
+    if tool == 'bench_box' and not ask.get('right'):
         (u0, v0), (u1, v1) = screen(ask['x0'], ask['y0']), screen(ask['x1'], ask['y1'])
         return f'box select screen ({u0:.0f}, {v0:.0f})-({u1:.0f}, {v1:.0f})'
-    if tool == 'bench_click' and ask.get('right'):
+    if tool == 'bench_click' and not ask.get('air'):
         u, v = screen(ask['x'], ask['y'])
-        return f'right click at screen ({u:.0f}, {v:.0f})'
-    raise ValueError(f'{tool} {ask}: not an input a transcript carries ({sorted(NOTE)}; a click is a right one)')
+        return f'{"right" if ask.get("right") else "left"} click at screen ({u:.0f}, {v:.0f})'
+    raise ValueError(f'{tool} {ask}: not an input a transcript carries ({sorted(NOTE)})')
 
 
 class GameCommands:
-    """The command port's shape for a game (step 2, plan.md 会话 2): the human player's plain group move, given as the
-    bench's inputs -- the mission's camera once (bench_view, so world clicks land), the group's box (bench_box), a
-    right click at the point (bench_click right) -- each answered by its pause record (an archived frame: it becomes
-    the next sample). Only `move` of a whole group the contract publishes, by 'player', to a world point (`pos`, or
-    `place` '@x,y' as a sim line writes one), from the group's start: the bench reads no positions, so after a group's
-    move no box selects it again (a second move is refused). The box and the click are two pause records (the game
-    runs between: the recorded run's 101 frames), not one resume.
+    """The command port's shape for a game (step 2, plan.md 会话 2): the human player's plain group move or attack,
+    given as the bench's inputs -- the mission's camera once (bench_view, so world clicks land), the group's selection
+    (its box: bench_box; a one-member group's point: a left bench_click), a right click at the point or at the
+    target's click point (bench_click right) -- each answered by its pause record (an archived frame: it becomes the
+    next sample). Only `move` / `attack` of a whole group the contract publishes, by 'player', a move to a world point
+    (`pos`, or `place` '@x,y' as a sim line writes one), an attack on a target the contract publishes, from the
+    group's start: the bench reads no positions, so after a group's order nothing selects it again (a second order is
+    refused). The selection and the click are two pause records (the game runs between), not one resume.
 
     `do` keeps (ok, why): False refused (nothing sent, or nothing that orders a unit), None issued with no receipt yet
-    -- never True at once. The receipt is the map's own count: a goal of the group holding the point whose counter
-    reads below `done` at the click and `done` at a later sample (`sent()` then shows True). A point no goal holds,
-    or a goal already reading `done`, has no receipt route: the move stays None, and the run's end says so. Attack has
-    no route: no archived run right-clicks an enemy (handoff-r3 gap; recording one passes the stage gate first)."""
-    KINDS = frozenset({'move'})
+    -- never True at once. The receipt is the map's own count: a move's goal of the group holding the point whose
+    counter reads below `done` at the click and `done` at a later sample; an attack's target's health line reading
+    below what it read at the click (`sent()` then shows True). A point no goal holds, a goal already reading `done`,
+    or a line not read at the click, has no receipt route: the order stays None, and the run's end says so."""
+    KINDS = frozenset({'move', 'attack'})
 
     def __init__(self, adapter):
         self._a = adapter
@@ -487,8 +524,13 @@ class GameCommands:
     def kinds():
         return GameCommands.KINDS
 
-    @staticmethod
-    def _point(cmd):
+    def _target(self, cmd):
+        return next((t for t in self._a.contract.targets if t.name == cmd.target), None)
+
+    def _point(self, cmd):
+        if cmd.kind == 'attack':
+            t = self._target(cmd)
+            return None if t is None else (t.x, t.y)
         if cmd.pos is not None:
             return float(cmd.pos[0]), float(cmd.pos[1])
         if cmd.place.startswith('@'):
@@ -504,8 +546,6 @@ class GameCommands:
         """(ok, why) before anything is sent."""
         a, c = self._a, self._a.contract
         if cmd.kind not in self.KINDS:
-            if cmd.kind == 'attack':
-                return False, 'attack: no route yet -- no archived bench run right-clicks an enemy'
             return False, f'{cmd.kind}: no bench route'
         if cmd.by != 'player':
             return False, f'by {cmd.by!r}: the bench plays the human player only'
@@ -516,10 +556,12 @@ class GameCommands:
         if c.view is None:
             return False, f'{c.mod}: the mission sets no camera for world clicks'
         if self._point(cmd) is None:
+            if cmd.kind == 'attack':
+                return False, f'attack {cmd.target!r}: not a target the map publishes a click and a health line for'
             return False, f'move to {cmd.place!r}: a world point (pos, or @x,y); the bench clicks no named place'
         g = self._group(cmd)
         if g is None:
-            return False, 'move: the units are not one group the map publishes (a box selects a whole group only)'
+            return False, f'{cmd.kind}: the units are not one group the map publishes (the bench selects whole groups)'
         for m in g.members:
             b = c.bound(m)
             if b.owner != c.human:
@@ -531,8 +573,9 @@ class GameCommands:
         if g.name in self._spent:
             e = self._spent[g.name]
             if e['ok'] is None:
-                return False, f'{g.name}: no blind retry -- its move at frame {e["frame"]} has no receipt'
-            return False, f'{g.name}: moved at frame {e["frame"]}; the bench reads no positions, no box selects it now'
+                return False, f'{g.name}: no blind retry -- its {e["cmd"].kind} at frame {e["frame"]} has no receipt'
+            return False, (f'{g.name}: ordered at frame {e["frame"]}; the bench reads no positions, no box selects '
+                           f'it now')
         return True, ''
 
     def _send(self, ask):
@@ -540,7 +583,7 @@ class GameCommands:
         ans = self._a.transport.call(ask)
         if not isinstance(ans, dict) or 'id' not in ans:
             return f'{ask["tool"]}: no pause record ({ans!r})'
-        want = drawn(ask, self._a.contract.view)
+        want = drawn(ask, self._a.contract.view, self._a.contract.lifts)
         if ans.get('note') != want or ans.get('paused') is not True:
             return (f'{ask["tool"]}: archive frame {ans["id"]} records {ans.get("note")!r}, paused '
                     f'{ans.get("paused")} -- the input asked draws {want!r}')
@@ -551,7 +594,7 @@ class GameCommands:
         ok, why = self.check(cmd)
         if not ok:
             frame = self._a.sample.frame if self._a.sample is not None else MISSING
-            self._sent.append(dict(frame=frame, cmd=cmd, ok=False, why=why, goal=None))
+            self._sent.append(dict(frame=frame, cmd=cmd, ok=False, why=why, receipt=None))
             return False, why
         c, g, (x, y) = self._a.contract, self._group(cmd), self._point(cmd)
         if not self._viewed:
@@ -559,43 +602,57 @@ class GameCommands:
             if off:
                 return self._refused(cmd, off)
             self._viewed = True
-        x0, y0, x1, y1 = g.box
-        off = self._send(dict(tool='bench_box', x0=x0, y0=y0, x1=x1, y1=y1))
+        if len(g.box) == 4:
+            x0, y0, x1, y1 = g.box
+            off = self._send(dict(tool='bench_box', x0=x0, y0=y0, x1=x1, y1=y1))
+        else:
+            off = self._send(dict(tool='bench_click', x=g.box[0], y=g.box[1]))
         if off:
-            return self._refused(cmd, off)      # no unit ordered (a selection may be left: the next box replaces it)
+            return self._refused(cmd, off)      # no unit ordered (a selection may be left: the next one replaces it)
         boxed = self._a.sample
         off = self._send(dict(tool='bench_click', x=x, y=y, right=True))
         s = self._a.sample
-        e = dict(frame=s.frame, cmd=cmd, ok=None, goal=None,
-                 why=f'issued: box archive frame {boxed.archive_id} (frame {boxed.frame}), ' + (
-                     f'click unsure: {off}' if off else f'click archive frame {s.archive_id} (frame {s.frame})'))
-        goal = next((q for q in c.goals if q.group == g.name and q.holds(x, y)), None)
-        if goal is None:
-            e['why'] += '; no receipt route (the map counts no goal of the group there)'
-        elif not off:
-            v = self._a.observe.counters()[goal.counter]
-            if v is MISSING or v >= goal.done:
-                e['why'] += f'; no receipt route ({goal.counter} reads {v} at the click, not below {goal.done})'
+        e = dict(frame=s.frame, cmd=cmd, ok=None, receipt=None,
+                 why=f'issued: {"box" if len(g.box) == 4 else "pick"} archive frame {boxed.archive_id} '
+                     f'(frame {boxed.frame}), ' + (
+                         f'click unsure: {off}' if off else f'click archive frame {s.archive_id} (frame {s.frame})'))
+        route, read = None, self._a.observe.counters()
+        if cmd.kind == 'attack':            # confirmed by its health line falling below what it reads at the click
+            t = self._target(cmd)
+            if read[t.counter] is MISSING:
+                e['why'] += f'; no receipt route ({t.counter} not read at the click)'
             else:
-                e['goal'] = goal
+                route = (t.counter, '<', read[t.counter])
+        else:                               # by the goal's count reaching `done`
+            goal = next((q for q in c.goals if q.group == g.name and q.holds(x, y)), None)
+            if goal is None:
+                e['why'] += '; no receipt route (the map counts no goal of the group there)'
+            elif read[goal.counter] is MISSING or read[goal.counter] >= goal.done:
+                e['why'] += (f'; no receipt route ({goal.counter} reads {read[goal.counter]} at the click, '
+                             f'not below {goal.done})')
+            else:
+                route = (goal.counter, '==', goal.done)
+        if not off:
+            e['receipt'] = route
         self._sent.append(e)
         self._spent[g.name] = e
         return None, e['why']
 
     def _refused(self, cmd, why):
-        self._sent.append(dict(frame=self._a.sample.frame, cmd=cmd, ok=False, why=why, goal=None))
+        self._sent.append(dict(frame=self._a.sample.frame, cmd=cmd, ok=False, why=why, receipt=None))
         return False, why
 
     def receipts(self):
-        """A pending move whose goal counter reads `done` in this sample is confirmed (the adapter calls it per sample)."""
+        """A pending order whose receipt line reads as it must in this sample (a move's goal `done`, an attack's
+        target's health below the click's) is confirmed (the adapter calls it per sample)."""
         s = self._a.sample
         for e in self._sent:
-            if e['ok'] is None and e['goal'] is not None:
-                v = self._a.observe.counters()[e['goal'].counter]
-                if v is not MISSING and v == e['goal'].done:
+            if e['ok'] is None and e['receipt'] is not None:
+                counter, how, want = e['receipt']
+                v = self._a.observe.counters()[counter]
+                if v is not MISSING and (v == want if how == '==' else v < want):
                     e['ok'] = True
-                    e['why'] += (f'; receipt: {e["goal"].counter} reads {v} at archive frame {s.archive_id} '
-                                 f'(frame {s.frame})')
+                    e['why'] += f'; receipt: {counter} reads {v} at archive frame {s.archive_id} (frame {s.frame})'
 
     def close(self):
         """The run is over: a move still without its receipt says so (it stays None: not known, not refused)."""
@@ -644,7 +701,7 @@ def transcript_with_inputs(run_dir, contract, steps, read=None):
         if not str(fr.get('note', '')).startswith(NOTE[tool]):
             raise ValueError(f'archive frame {fr["id"]}: {fr.get("note")!r} is not a {tool}')
         ask = dict(tool=tool, **{k: v for k, v in args.items() if k != 'look'})
-        want = drawn(ask, view)
+        want = drawn(ask, view, contract.lifts)
         if fr.get('note') != want:
             raise ValueError(f'archive frame {fr["id"]}: records {fr.get("note")!r}, the step {ask} draws {want!r} '
                              f'-- not the input given then')
@@ -716,8 +773,8 @@ def replay(contract, transcript):
 
 
 def main(argv=None):
-    """record <run_dir> <out.json> [--steps steps.json]: the transcript of an archived CampFormSS run (with --steps,
-    the check's bench steps as JSON [[tool, args], ...]: its inputs too)."""
+    """record <run_dir> <out.json> [--steps steps.json]: the transcript of an archived run of a contract's map
+    (CONTRACTS, by the run's mod; with --steps, the check's bench steps as JSON [[tool, args], ...]: its inputs too)."""
     import argparse
     ap = argparse.ArgumentParser(description=main.__doc__)
     ap.add_argument('cmd', choices=['record'])
@@ -725,11 +782,13 @@ def main(argv=None):
     ap.add_argument('out')
     ap.add_argument('--steps')
     a = ap.parse_args(argv)
+    with open(os.path.join(a.run_dir, 'index.json'), encoding='utf-8') as f:
+        contract = CONTRACTS[json.load(f)['mod']]
     if a.steps:
         with open(a.steps, encoding='utf-8') as f:
-            tr = transcript_with_inputs(a.run_dir, FORMSS, [tuple(s) for s in json.load(f)])
+            tr = transcript_with_inputs(a.run_dir, contract, [tuple(s) for s in json.load(f)])
     else:
-        tr = transcript_from_archive(a.run_dir, FORMSS)
+        tr = transcript_from_archive(a.run_dir, contract)
     with open(a.out, 'w', encoding='utf-8') as f:
         json.dump(tr, f, ensure_ascii=False, indent=1)
     got = [c['answer'] for c in tr['calls'] if c['answer']]

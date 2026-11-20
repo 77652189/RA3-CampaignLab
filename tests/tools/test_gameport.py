@@ -270,7 +270,7 @@ def test_the_players_two_group_moves_go_as_the_bench_gave_them_and_the_maps_coun
     # plain: all four in by the formation box's record (frame 491); formation: by s80.3 (frame 670), not at s78.3
     assert (f1, c1, ok1) == (371, plain, True) and why1.endswith('CNV_Form_Plain reads 22 at archive frame 7 (frame 491)')
     assert (f2, c2, ok2) == (593, formation, True) and why2.endswith('reads 22 at archive frame 10 (frame 670)')
-    assert a.commands.kinds() == {'move'}
+    assert a.commands.kinds() == {'move', 'attack'}
 
 
 def test_a_move_the_bench_cannot_give_is_refused_with_nothing_sent():
@@ -280,7 +280,7 @@ def test_a_move_the_bench_cannot_give_is_refused_with_nothing_sent():
                      (move(PLAIN[:2] + FORMATION[:2], pos=(1000.0, 1230.0)), 'not one group'),
                      (move(PLAIN, place='Test Form Plain Goal'), 'no named place'),
                      (cp.Command('move', by='ai:Player_2', units=PLAIN, pos=(1000.0, 1230.0)), 'human player only'),
-                     (cp.Command('attack', units=PLAIN, target='enemy'), 'no archived bench run'),
+                     (cp.Command('attack', units=PLAIN, target='enemy'), 'not a target the map publishes'),
                      (cp.Command('stop', units=PLAIN), 'no bench route')]:
         ok, got = a.commands.do(cmd)
         assert ok is False and why in got
@@ -398,3 +398,41 @@ def test_a_member_not_here_is_not_moved():
     a = started(contract=dataclasses.replace(gp.FORMSS, things=things))
     ok, why = a.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))
     assert ok is False and 'UNIT - CNV Form Plain 0: not here' in why
+
+
+# tests/fixtures/gameport/see_1120_150326_inputs.json is `gameport.py record ... --steps` on the bench run of
+# engine_see `click` (2026-11-20): the view, a left click on cannon E, a right click on tower E up on the ring, each
+# its pause record; tower E reads 100 at the view's and the pick's records (towers W / S, ordered by script, at 1),
+# 40 at the right click's, 1 from the next sample on.
+SEE = json.loads((ROOT / 'tests' / 'fixtures' / 'gameport' / 'see_1120_150326_inputs.json').read_text('utf-8'))
+CANNON, TOWER = ('UNIT - CNV See Cannon E',), 'UNIT - CNV See Tower E'
+
+
+def see(contract=gp.SEE):
+    a = gp.replay(contract, SEE)
+    for _ in range(5):                  # the run's first watch: 5 samples, then its inputs
+        a.step()
+    return a
+
+
+def test_the_players_attack_goes_as_the_bench_gave_it_and_the_targets_health_confirms_it():
+    a = see()
+    attack = cp.Command('attack', units=CANNON, target=TOWER)
+    ok, why = a.commands.do(attack)
+    assert ok is None and 'pick archive frame 7' in why and 'click archive frame 8' in why
+    assert a.commands.do(attack)[0] is False                         # no blind retry
+    run_all(a)
+    (_, cmd, ok, why), _ = a.commands.sent()
+    assert (cmd, ok) == (attack, True) and why.endswith('Test Hp E reads 1 at archive frame 9 (frame MISSING)')
+
+
+def test_an_attack_the_bench_cannot_give_is_refused_and_a_click_drawn_flat_is_unsure():
+    a = see()
+    for cmd, why in [(cp.Command('attack', units=CANNON, target='UNIT - CNV See Tower W'), 'not a target'),
+                     (cp.Command('attack', units=CANNON + ('UNIT - CNV See Tanya',), target=TOWER), 'not one group')]:
+        assert a.commands.do(cmd) == (False, a.commands.sent()[-1][3]) and why in a.commands.sent()[-1][3]
+    with pytest.raises(ValueError):                                 # a target must be another player's
+        dataclasses.replace(gp.SEE, targets=(gp.Target(CANNON[0], 2820.0, 1250.0, 'Test Hp E'),))
+    flat = see(dataclasses.replace(gp.SEE, lifts=()))               # the ring's lift unknown: not the recorded click
+    ok, why = flat.commands.do(cp.Command('attack', units=CANNON, target=TOWER))
+    assert ok is False and 'records \'left click at screen (951, 383)\'' in why

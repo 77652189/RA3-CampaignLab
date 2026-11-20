@@ -80,8 +80,9 @@ def _test(m, clicked=None):
         t.waypoints['Test Eye'] = eye
         t.scripts.append(Script('Test - camera', [], [('MOVE_CAMERA_TO', 'Test Eye', 0.1, 0.0, 0.0, 0.0)]))
         t.bench = [('bench_watch', dict(seconds=ORDER, every=2, sheet=False, lines=lines)),
-                   ('bench_view', dict(x=eye[0], y=eye[1], look=False)),
-                   ('bench_click', dict(x=ax, y=ay, look=False)),
+                   # each input leaves its pause record (gameport's transcript answers every input by one)
+                   ('bench_view', dict(x=eye[0], y=eye[1], look=True)),
+                   ('bench_click', dict(x=ax, y=ay, look=True)),
                    # the ring stands higher than the ground the bench maps clicks on: the tower is drawn ~22 px left
                    # and ~24 px up of its ground point (bench 2026-11-04: a right click there was a move order)
                    ('bench_click', dict(x=tx - 14.0, y=ty + 20.0, right=True, look=True)),
