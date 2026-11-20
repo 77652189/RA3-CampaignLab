@@ -130,9 +130,12 @@ def _digest(*parts):
 
 
 def recorder_hash(root=ROOT):
+    """The cache key of what records: the recorder (RECORDER_RELS), its helpers and this file (prepare_tree: what a
+    base gets copied in). A change to how a base is prepared records it anew -- a `.failed` left by the old way is not
+    taken as done (review 1120dd P2: the readonly.py copy fixed, the old base failure still read and skipped)."""
     texts = []
-    for rel in RECORDER_RELS:
-        with open(os.path.join(root, rel), 'rb') as f:
+    for path in [os.path.join(root, rel) for rel in RECORDER_RELS + RECORDER_HELPERS] + [os.path.abspath(__file__)]:
+        with open(path, 'rb') as f:
             texts.append(f.read())
     return _digest(*texts)
 
@@ -450,8 +453,11 @@ def main():
         if run.failed('new', n):
             bad += 1
             print(f'{n:14} FAILED to record here:', run.failed('new', n)[-300:])
-        elif run.failed('base', n):
-            print(f'{n:14} skip: not recordable on the base')
+        elif run.failed('base', n):         # nothing compared: a failure unless the change declares the task (new)
+            if n not in run.changed:
+                bad += 1
+            print(f'{n:14} not recordable on the base' + (' (declared changed)' if n in run.changed else
+                                                          ' -- nothing compared:'), run.failed('base', n)[-300:])
         else:
             d = run.difference(n)
             if d and n not in run.changed:

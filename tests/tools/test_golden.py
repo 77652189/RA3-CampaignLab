@@ -142,6 +142,41 @@ def test_complete_counts_a_failed_task_as_done(tmp_path):
     assert golden.complete(str(tmp_path), ['heal_a', 'ai_open'])
 
 
+def test_a_change_to_how_a_base_is_prepared_is_a_new_cache_key(tmp_path, monkeypatch):
+    # review 1120dd P2: the readonly.py copy (RECORDER_HELPERS) fixed, the key stayed and the old base's .failed was
+    # read as done -- the key now covers the helpers and golden.py itself (prepare_tree)
+    for rel in golden.RECORDER_RELS + golden.RECORDER_HELPERS:
+        p = tmp_path / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text('x\n', encoding='utf-8')
+    one = golden.recorder_hash(str(tmp_path))
+    (tmp_path / golden.RECORDER_HELPERS[0]).write_text('y\n', encoding='utf-8')
+    two = golden.recorder_hash(str(tmp_path))
+    me = tmp_path / 'golden.py'
+    me.write_text('z\n', encoding='utf-8')
+    monkeypatch.setattr(golden, '__file__', str(me))
+    assert len({one, two, golden.recorder_hash(str(tmp_path))}) == 3
+
+
+def test_a_task_the_base_does_not_record_is_no_pass(tmp_path, monkeypatch, capsys):
+    # a base failure compared nothing: the CLI says why and fails, unless the change declares the task (a new one)
+    base, new = tmp_path / 'base', tmp_path / 'new'
+    for d in (base, new):
+        d.mkdir()
+        (d / 'heal_a.gz').write_bytes(b'')
+    (new / 'ai_open.gz').write_bytes(b'')
+    (base / 'ai_open.failed').write_text('')
+    (base / 'ai_open.txt').write_text("No module named 'engine.ports.readonly'", encoding='utf-8')
+    monkeypatch.setattr(golden.Run, 'difference', lambda self, name: None)
+    for changed, code in [(set(), 1), ({'ai_open'}, 0)]:
+        monkeypatch.setattr(golden, 'records', lambda *a, **k: golden.Run('1' * 40, str(base), str(new), changed,
+                                                                         ['heal_a', 'ai_open']))
+        monkeypatch.setattr(golden.sys, 'argv', ['golden.py'])
+        assert golden.main() == code
+        out = capsys.readouterr().out
+        assert 'ai_open        not recordable on the base' in out and 'engine.ports.readonly' in out
+
+
 def test_a_recorder_helper_the_base_lacks_is_copied_over_with_the_recorder(repo, tmp_path):
     """Review 1120bb P2 #3: the base tree got this checkout's simrecord and observe.py but not engine/ports/readonly.py,
     which observe.py had come to import -- a base before it could not be recorded (ModuleNotFoundError). A helper
