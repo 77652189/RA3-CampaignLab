@@ -8,6 +8,7 @@ set in the run (review 1119e #1-#4 #8 #9); a cut at the run's end refused (revie
 import gc
 import io
 import json
+import re
 
 import pytest
 
@@ -463,6 +464,20 @@ def test_a_snapshot_of_another_shape_is_refused_before_a_write():
         with pytest.raises(ValueError, match='not of this shape'):
             simsnap.restore(b, s)
         assert simsnap.snapshot(b) == before
+
+
+@pytest.mark.parametrize('made, differ', [({'level': 'hard'}, 'level 1 onto 2'),
+                                          ({'script': '不打'}, "script [] onto [{'$tuple'")])
+def test_a_snapshot_onto_a_run_of_another_level_or_script_is_refused_before_a_write(heal, made, differ):
+    """1119v P2 #1: the level decides which of the mission's scripts run (Sim.level, the executor's) -- a normal
+    run's snapshot written onto a hard one ran the hard-only scripts on. The run's setup goes with the snapshot;
+    another one refused whole, the new run as made."""
+    m, t, _, taken, _, _ = heal
+    b = sim.Sim(m, t, model=False, **made)
+    before = simsnap.snapshot(b)
+    with pytest.raises(ValueError, match=f'another setup: {re.escape(differ)}'):
+        simsnap.restore(b, json.loads(json.dumps(taken)))
+    assert simsnap.snapshot(b) == before
 
 
 def test_a_cut_with_no_frame_after_it_is_refused():

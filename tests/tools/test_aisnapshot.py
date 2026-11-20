@@ -359,6 +359,18 @@ def test_an_older_sim_part_is_refused_before_a_brain_is_made(half):
     assert not w.brains and simsnap.snapshot(w.sim) == before
 
 
+def test_a_snapshot_onto_a_host_of_another_level_is_refused_before_a_brain_is_made(half):
+    """1119v P2 #1: the AI's level the same, the host's another (its scripts by level: a normal run's snapshot onto a
+    hard host ran the hard-only scripts) -- refused whole by the Sim's part, before a brain is made."""
+    _, taken, _, _ = half
+    m, t = build.resolve(*simrecord.TASKS['ai_open'][1])[:2]
+    w = simai.SimAI(sim.Sim(m, t, level='hard', model=False))
+    before = simsnap.snapshot(w.sim)
+    with pytest.raises(ValueError, match='simsnap.restore: a snapshot of another setup: level 1 onto 2'):
+        simaisnap.restore(w, json.loads(json.dumps(taken)))
+    assert taken['brains'] and not w.brains and simsnap.snapshot(w.sim) == before
+
+
 def test_guard_7_takes_an_ai_task_cut_and_its_record_goes_on_as_the_whole_one():
     """11b-4d: `simrecord snap` on an AI task (run_task through simaisnap): the record of the run taken at half,
     written back onto a SimAI made anew and run on is the whole run's line for line, the ends (the AI's snapshot with

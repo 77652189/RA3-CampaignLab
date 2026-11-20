@@ -96,13 +96,13 @@ def cache_dir():
 
 
 def shape():
-    """What a kept start's shape hangs on: '<simsnap VERSION>-<simaisnap VERSION>-<model pin, 7>'. A file named by
-    another is not read (taken again)."""
+    """What a kept start's shape hangs on: '<simsnap VERSION>-<simaisnap VERSION>-<the model's whole pin>' (the
+    commit modelpin lets load: review 1119v P2 #2). A file named by another is not read (taken again); one taken in
+    another and put under this name is refused by load."""
+    import modelpin
     import simaisnap
     import simsnap
-    with open(os.path.join(HERE, 'inventory_model.rev'), encoding='utf-8') as f:
-        pin = f.read().strip()[:7]
-    return f'{simsnap.VERSION}-{simaisnap.VERSION}-{pin}'
+    return f'{simsnap.VERSION}-{simaisnap.VERSION}-{modelpin.pinned()}'
 
 
 def cached(name):

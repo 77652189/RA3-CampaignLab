@@ -32,7 +32,8 @@ from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 12            # 12: the build queues keyed by the factory's serial, not its name (same-name sweep 11-19b
+VERSION = 13            # 13: 'setup', the run's level and script (review 1119v P2 #1: a normal run's
+                        # snapshot came back onto a hard host, its hard-only scripts ran); 12: the build queues keyed by the factory's serial, not its name (same-name sweep 11-19b
                         # O31); 11: a cast's caster by serial (same-name sweep 11-19b O38); 10: acting, a sequential
                         # step's unit by its name (review 11-19 n P3; empty between frames);
                         # 9: W3, the fight's clocks / pre_locks / fire_gate are the shooter's WeaponSet's STATE, not
@@ -355,7 +356,7 @@ class _Codec:
 
 
 def snapshot(sim, roots=()):
-    """The run as it stands (at a tick's end): {'version', 'mission', 'kernel', 'bodies', 'others' (the things held
+    """The run as it stands (at a tick's end): {'version', 'mission', 'setup' (_setup), 'kernel', 'bodies', 'others' (the things held
     but not in bodies, _things; `roots` as there), 'parts', 'host', 'executor'}, in
     values json.dumps keeps. A value it cannot keep, a thing held that is not a body of the run, an executor without
     snapshots: an error naming it, never a part left out."""
@@ -385,8 +386,8 @@ def snapshot(sim, roots=()):
     others = [[b.serial, b.name, b.template, own(b)] for b in things[len(sim.bodies):]]
     host = [['.'.join(p), snap.encode(_get(sim, p), c.extra, 'sim.' + '.'.join(p))] for p in paths]
     parts = [[f, type(v).__module__, type(v).__qualname__] for f, v in _fields(sim).items() if isinstance(SIM.get(f), dict)]
-    out = {'version': VERSION, 'mission': getattr(sim.m, 'name', None), 'kernel': kernel, 'bodies': bodies,
-           'others': others, 'parts': parts, 'host': host, 'executor': sim.executor.snapshot()}
+    out = {'version': VERSION, 'mission': getattr(sim.m, 'name', None), 'setup': _setup(sim), 'kernel': kernel,
+           'bodies': bodies, 'others': others, 'parts': parts, 'host': host, 'executor': sim.executor.snapshot()}
     found = _serials(out)
     stray = sorted(set(found) - held)
     if stray:
@@ -516,22 +517,37 @@ def _table_state(table=SIM, at=()):
 def check(sim, s):
     """What restore asks of `s` before it writes anything onto `sim` (a wrapper writing its own part first, simaisnap,
     asks it first: review 1119m #1, an older version refused whole, not half restored): its version, its mission,
-    its shape."""
+    its shape, its setup (level, script: review 1119v P2 #1)."""
     if s.get('version') != VERSION:
         raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {VERSION}')
     if s['mission'] != getattr(sim.m, 'name', None):
         raise ValueError(f'simsnap.restore: a snapshot of {s["mission"]!r} onto {getattr(sim.m, "name", None)!r}')
     _check(s)
+    here = _setup(sim)
+    differ = [f'{f} {s["setup"][f]!r} onto {v!r}' for f, v in here.items() if s['setup'][f] != v]
+    if differ:
+        raise ValueError(f'simsnap.restore: a snapshot of another setup: {", ".join(differ)}')
+
+
+def _setup(sim):
+    """What the run was made with besides its mission (Sim(mission, test, level, script)): a snapshot goes back only
+    onto a run made at the same level with the same script -- the level decides which of the mission's scripts run
+    (review 1119v P2 #1: a normal run's snapshot came back onto a hard host and the hard-only scripts ran). The test
+    (a Test, parts of the mission, no name of its own) is not asked: another one's things differ by name or template
+    (restore's per-body check)."""
+    return {'level': sim.level, 'script': snap.encode(sim.script)}
 
 
 def _check(s):
     """The snapshot's shape, whole, before restore writes anything (review 1119i #6: a snapshot of an older shape
     passed the version and failed half written): its parts, the rows of bodies and others, the host's fields each
     one SIM sorts STATE, the parts SIM names."""
-    want = {'version', 'mission', 'kernel', 'bodies', 'others', 'parts', 'host', 'executor'}
+    want = {'version', 'mission', 'setup', 'kernel', 'bodies', 'others', 'parts', 'host', 'executor'}
     bad = []
     if set(s) != want:
         bad.append(f'parts {sorted(set(s) ^ want)}')
+    elif not isinstance(s['setup'], dict) or set(s['setup']) != {'level', 'script'}:
+        bad.append('setup')
     else:
         bad += [f'body row {r[:3]}' for r in s['bodies'] if not (isinstance(r, list) and len(r) == 5)]
         bad += [f'other row {r[:2]}' for r in s['others'] if not (isinstance(r, list) and len(r) == 4)]

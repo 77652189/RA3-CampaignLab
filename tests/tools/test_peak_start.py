@@ -52,6 +52,28 @@ def test_a_start_restore_refuses_is_taken_again(tmp_path, capsys):
     assert info3['taken'] and info3['sha'] == info['sha']
 
 
+def test_a_start_taken_under_another_model_pin_is_taken_again(tmp_path, capsys, monkeypatch):
+    """1119v P2 #2 (closed by snapfile/2, 85ffa2e5): a start taken under another engine model pin -- given by its
+    path, or its very bytes put under this shape's default name -- is not read: the file carries its shape (the
+    whole pin), load refuses it and the start is taken again."""
+    other = str(tmp_path / 'other.json.gz')
+    _, info = simbench_peak.ai_start(AT, SCENE, other)
+    meta, s = snapfile.load(other)
+    head, pin = snapfile.shape().rsplit('-', 1)
+    assert len(pin) == 40                   # the whole pin, not its first 7 (review v P2 #2)
+    monkeypatch.setattr(snapfile, 'shape', lambda: f'{head}-22c8407{pin[7:]}')     # only the pin another
+    snapfile.save(other, s, **meta)
+    monkeypatch.undo()
+    here = str(tmp_path / 'here.json.gz')
+    with open(other, 'rb') as a, open(here, 'wb') as b:
+        b.write(a.read())
+    for path in (other, here):
+        capsys.readouterr()
+        _, again = simbench_peak.ai_start(AT, SCENE, path)
+        assert again['taken'] and 'refused: snapfile.load' in capsys.readouterr().out
+        assert again['sha'] == info['sha']
+
+
 def test_a_start_of_another_scene_or_time_is_not_read(tmp_path, capsys):
     path = str(tmp_path / 'start.json.gz')
     simbench_peak.ai_start(AT, SCENE, path)
