@@ -116,9 +116,28 @@ def test_the_power_comes_after_the_attachment_and_only_a_timed_self_armor_one():
     seen = []
     body = types.SimpleNamespace(auras_on={})
     host = simdamage.EffectHost(None, types.SimpleNamespace(frame_now=lambda: 100), types.SimpleNamespace(
-        modify=seen.append))
+        modify=seen.append, lift_timers=types.SimpleNamespace(hit=None), garrison=types.SimpleNamespace(fits=None)))
     host.wear(body, 'M', 30, 'xml')
     assert body.auras_on == {'M': (130, 'xml')} and seen == [body]
+
+
+def test_the_modifier_comes_last_and_a_gate_other_than_player_or_no_duration_is_a_gap():
+    """Step N3c: AttributeModifier runs after SpecialPower; the cases the characterization tests leave open (an
+    OBJECT gate, a modifier without a Duration): nothing put on, a gap."""
+    effect = dict(modifier='M', required_upgrade='U', forbidden_upgrade='')
+    w = dict(reversed(list(dict(_weapon(), hit_modifiers=[effect], special_powers=[dict(power='P')]).items())))
+    assert [k for k, _ in registry.effects(w)] == ['Damage', 'SpecialPower', 'AttributeModifier']
+
+    def run(gate, frames):
+        done = []
+        host = types.SimpleNamespace(upgrade_gate=lambda *_: (gate, True), modifier=lambda *_: (dict(frames=frames), ''),
+                                     wear=lambda body, mid, *_: done.append(mid))
+        effects = [('AttributeModifier', [effect])]
+        registry.run('effect', types.SimpleNamespace(effects=effects, by=types.SimpleNamespace(template='T'),
+                                                     target=None, host=host, gap=lambda tag, _: done.append(('gap', tag))))
+        return done
+    assert run('PLAYER', 30) == ['M']
+    assert run('OBJECT', 30) == [('gap', 'AttributeModifierNugget')] and run('PLAYER', None) == [('gap', 'M')]
 
 
 def test_registration_order_does_not_decide_the_run(monkeypatch):

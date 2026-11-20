@@ -13,11 +13,12 @@ import types
 # (LineDamageNugget); a victim effect runs once for each victim: its damage, then the leech claims on it, then the
 # strip (step N2a: Leech*DamageNugget, StripMaxHealthPercentDamageNugget); an effect runs once a volley, after the
 # victims' damage is added and before the frame's damage is dealt, on the aimed target only (step N3a: the lift, the
-# attachment; N3b: the caster's power on itself)
+# attachment; N3b: the caster's power on itself; N3c: the weapon's modifier on the target)
 ORDER = (('Projectile', 'launch'), ('DOT', 'hit'), ('DamageContained', 'hit'), ('SecondaryDamage', 'hit'),
          ('Suppression', 'hit'), ('Paralyze', 'hit'), ('LineDamage', 'aim'), ('Damage', 'victim'),
          ('LeechPercentMaxHealth', 'victim'), ('LeechHealth', 'victim'), ('StripMaxHealthPercent', 'victim'),
-         ('Lift', 'effect'), ('Attach', 'effect'), ('SpecialPower', 'effect'))
+         ('Lift', 'effect'), ('Attach', 'effect'), ('SpecialPower', 'effect'),
+         ('AttributeModifier', 'effect'))
 
 _HANDLERS = {}
 HANDLERS = types.MappingProxyType(_HANDLERS)
@@ -76,7 +77,8 @@ class Context:
     `emp_until()` (serial -> frame, the host makes it on first use). `victims` starts as [target] (an aim may change it); `victim` is the
     one a victim effect runs for. `claims`: the frame's leech claims (victim serial -> list; engine/combat/leech),
     the host's ledger, paid once the frame's damage is dealt. `host`: the host's narrow calls for the 'effect' phase
-    (simdamage.EffectHost: lift_rule / lift_hit / LIFT_LANDING, attachments / attach, refresh_modifiers)."""
+    (simdamage.EffectHost: lift_rule / lift_hit / LIFT_LANDING, attachments / attach, refresh_modifiers, upgrade_gate / self_power /
+    disguise / modifier / wear, fits)."""
     __slots__ = ('world', 'by', 'target', 'weapon', 'n', 'hurt', 'scalar', 'armor', 'speed', 'frames', 'gap',
                  'queue_hit', 'detonate', 'clear_notice', 'can_hit', 'held', 'cold_of', 'dots', 'mark_cold',
                  'suppression_fields', 'emp_until', 'effects', 'victims', 'victim', 'claims', 'host')

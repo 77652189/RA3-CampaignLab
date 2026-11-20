@@ -44,6 +44,7 @@ LAYER_OF = {
     'engine.combat.line_damage': 3, 'engine.combat.projectile': 3,
     'engine.combat.leech': 3, 'engine.combat.strip': 3,     # N2a
     'engine.combat.lift': 3, 'engine.combat.attach': 3, 'engine.combat.special_power': 3,     # N3a, N3b
+    'engine.combat.attribute_modifier': 3,     # N3c
     'engine.combat.dot': 3, 'engine.combat.contained': 3, 'engine.combat.secondary': 3,     # N2b
     'engine.combat.suppression': 3, 'engine.combat.paralyze': 3,
     'simrange': 3,          # the weapon reach rules (R3 13f-2b)

@@ -48,15 +48,18 @@ class Peers:
 
 
 class EffectHost:
-    """The host's calls an 'effect' phase handler (engine/combat: Lift, Attach, SpecialPower) makes -- registry.Context.host. The
+    """The host's calls an 'effect' phase handler (engine/combat: Lift, Attach, SpecialPower, AttributeModifier) makes -- registry.Context.host. The
     game-data reads and their caches stay here (engine/ reads no game data); the peers are read when used."""
-    __slots__ = ('damage', 'world', 'peers')
+    __slots__ = ('damage', 'world', 'peers', 'lift_hit', 'refresh_modifiers', 'fits')
     # what a lift still lacks (a gap after each lift; the report is private, so its pointer stays out of engine/)
     LIFT_LANDING = ('计时释放不清状态；SoftLanding自击及修正器到期清位缺Lift接地事件，垂直运动/落地武器未接通；'
                     '见work/re/c_lift_landing_gate_report.md')
 
     def __init__(self, damage, world, peers):
         self.damage, self.world, self.peers = damage, world, peers
+        # the peers' own calls as they are: lift_hit(caster, target, increment, maximum), refresh_modifiers(body) (the
+        # host's modify), fits(body, filter) (the garrison's PassengerFilter)
+        self.lift_hit, self.refresh_modifiers, self.fits = peers.lift_timers.hit, peers.modify, peers.garrison.fits
 
     def lift_rule(self, template):
         """The caster template's LiftObjectUpdate rule (simunits.lift_module, cached in Damage.lift_modules)."""
@@ -64,13 +67,6 @@ class EffectHost:
         if template not in cache:
             cache[template] = simunits.lift_module(template, self.world.own)
         return cache[template]
-
-    def lift_hit(self, caster, target, increment, maximum):
-        self.peers.lift_timers.hit(caster, target, increment, maximum)
-
-    def refresh_modifiers(self, body):
-        """Re-read the body's modifiers (the host's modify)."""
-        self.peers.modify(body)
 
     def upgrade_gate(self, by, required, forbidden):
         """(the gate's type -- simunits.upgrade_type of the upgrade named, None: no gate --, whether `by` passes it:
@@ -442,7 +438,7 @@ class Damage:
         peers.lift_timers.tick()
         hurt = {}
         leech_events = {}       # the frame's leech claims (engine/combat/leech), paid after the damage
-        host = EffectHost(self, world, peers)       # the 'effect' phase's calls (engine/combat: lift, attach)
+        host = EffectHost(self, world, peers)       # the 'effect' phase's calls (engine/combat)
 
         def gap(tag, why):
             world.gap(GAP_WEAPON, tag, why)
@@ -490,32 +486,7 @@ class Damage:
                         ctx.victim = victim
                         registry.run('victim', ctx)       # its damage, the leech claims, the strip (registry.ORDER)
                         h[2] = by
-                    registry.run('effect', ctx)           # the lift, the attachment, the power (registry.ORDER)
-                    for hit_modifier in w.get('hit_modifiers', []):
-                        mid = hit_modifier
-                        if isinstance(hit_modifier, dict):
-                            required = hit_modifier['required_upgrade']
-                            forbidden = hit_modifier['forbidden_upgrade']
-                            gate_type = simunits.upgrade_type(required or forbidden, world.own) if required or forbidden else None
-                            if (required or forbidden) and gate_type != 'PLAYER':
-                                world.gap(GAP_WEAPON, 'AttributeModifierNugget', '仅PLAYER升级门槛已对拍')
-                                continue
-                            held = {up.lower() for up in peers.player_ups.get(by.owner, ())}
-                            if (required and required.lower() not in held) or (forbidden and forbidden.lower() in held):
-                                continue
-                            flt = hit_modifier.get('target_filter')
-                            if flt and (not peers.garrison.fits(t, dict(flt, kinds=set(flt['kinds']),
-                                                                 unkinds=set(flt['unkinds'])))
-                                    or set(flt['status_exclude']) & (t.status | t.script_status)):
-                                continue
-                            mid = hit_modifier['modifier']
-                        xml = world.xml_of(by.template)
-                        modifier = simunits.modifier(xml, mid)
-                        if modifier and modifier['frames'] is not None:
-                            t.auras_on[mid] = (world.frame_now() + modifier['frames'], xml)
-                            peers.modify(t)
-                        else:
-                            world.gap(GAP_WEAPON, mid, '命中修正未找到或缺少已解释的Duration')
+                    registry.run('effect', ctx)           # the lift, the attachment, the power, the modifier (registry.ORDER)
         self.dots[:] = dot.tick(self.dots, world.frame_now(), hurt, armor_scalar, gap)    # the frame-end DOT ledger
         for t, dmg, by in hurt.values():
             if world.frame_now() < t.immune_until or t.shielded or t.indestructible:
