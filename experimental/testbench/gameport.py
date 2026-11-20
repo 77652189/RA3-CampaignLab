@@ -428,8 +428,37 @@ class GameObserve:
         raise Unsupported(f'{name}: no bench channel (work/re/sim_split/adapter_pack/census.md)')
 
 
-# What the bench's pause record of each input says (bench_mcp.after's note), to check it is the input asked for.
+# The inputs a transcript carries, and the start of what their pause records say (bench_mcp.after's note).
 NOTE = {'bench_view': 'camera set by the mission', 'bench_box': 'box select ', 'bench_click': 'right click at screen'}
+
+
+def drawn(ask, view):
+    """The note the bench's pause record writes for `ask` (bench_mcp's bench_view / bench_box / bench_click), the
+    camera where the mission put it (`view`, the last bench_view's point; None: the start camera): its world points
+    on screen by the bench's own mapping (calib; after a bench_view the view's point stands at (640, 350):
+    harness.Session.scripted_view), on flat ground -- the bench lifts a point by its map's heights where the built map
+    is readable (calib.Ground), so a contract on uneven ground needs that here first. Review 1120bb P2 #4: a check of
+    the note's start alone let a step's world point be changed under the record of another."""
+    tool = ask['tool']
+    if tool == 'bench_view':
+        return f'camera set by the mission on ({ask["x"]}, {ask["y"]})'
+    cal = _tool('calib')
+    if view is None:
+        def screen(x, y):
+            return cal.world_to_screen(x, y)
+    else:
+        cu, cv = cal.world_to_screen_at(view[0], view[1], view)
+
+        def screen(x, y):
+            u, v = cal.world_to_screen_at(x, y, view)
+            return u + 640.0 - cu, v + 350.0 - cv
+    if tool == 'bench_box':
+        (u0, v0), (u1, v1) = screen(ask['x0'], ask['y0']), screen(ask['x1'], ask['y1'])
+        return f'box select screen ({u0:.0f}, {v0:.0f})-({u1:.0f}, {v1:.0f})'
+    if tool == 'bench_click' and ask.get('right'):
+        u, v = screen(ask['x'], ask['y'])
+        return f'right click at screen ({u:.0f}, {v:.0f})'
+    raise ValueError(f'{tool} {ask}: not an input a transcript carries ({sorted(NOTE)}; a click is a right one)')
 
 
 class GameCommands:
@@ -511,8 +540,10 @@ class GameCommands:
         ans = self._a.transport.call(ask)
         if not isinstance(ans, dict) or 'id' not in ans:
             return f'{ask["tool"]}: no pause record ({ans!r})'
-        if not str(ans.get('note', '')).startswith(NOTE[ask['tool']]) or ans.get('paused') is not True:
-            return f'{ask["tool"]}: archive frame {ans["id"]} records {ans.get("note")!r}, paused {ans.get("paused")}'
+        want = drawn(ask, self._a.contract.view)
+        if ans.get('note') != want or ans.get('paused') is not True:
+            return (f'{ask["tool"]}: archive frame {ans["id"]} records {ans.get("note")!r}, paused '
+                    f'{ans.get("paused")} -- the input asked draws {want!r}')
         self._a.take(ans)
         return ''
 
@@ -585,7 +616,8 @@ def transcript_with_inputs(run_dir, contract, steps, read=None):
     """The transcript of an archived run with its inputs: `steps` the check's bench steps ([tool, args], world
     units, as build.steps hands them to the bench). A bench_watch's frames are `sample` asks; each other step is its
     own ask (args less `look`: the adapter always takes the pause record), answered by its archived frame with
-    `paused` as cnv_result.txt recorded it. Each frame's note must be its step's (NOTE), every frame used once."""
+    `paused` as cnv_result.txt recorded it. Each frame's note must be its step's as the bench draws it (`drawn`: the
+    step's world points on screen, the camera of the bench_view before), every frame used once."""
     if read is None:
         read = _read_png
     with open(os.path.join(run_dir, 'index.json'), encoding='utf-8') as f:
@@ -600,16 +632,25 @@ def transcript_with_inputs(run_dir, contract, steps, read=None):
     def answer(fr):
         return dict(id=fr['id'], second=fr.get('second'), frame=fr.get('frame'), note=fr.get('note', ''), menu=False,
                     values=list(read(os.path.join(run_dir, f'{fr["id"]:04d}.png'), n)))
+    view = None
     for tool, args in steps:
         if tool == 'bench_watch':
             while frames and str(frames[0].get('note', '')).startswith('watch'):
                 calls.append(dict(ask=sample, answer=answer(frames.pop(0))))
             continue
+        if not frames:
+            raise ValueError(f'{tool} {args}: no archived frame left for it')
         fr = frames.pop(0)
         if not str(fr.get('note', '')).startswith(NOTE[tool]):
             raise ValueError(f'archive frame {fr["id"]}: {fr.get("note")!r} is not a {tool}')
-        line = next((x for x in log if x.startswith(f'{tool}: ') and f' frame {fr["id"]} at ' in x), '')
         ask = dict(tool=tool, **{k: v for k, v in args.items() if k != 'look'})
+        want = drawn(ask, view)
+        if fr.get('note') != want:
+            raise ValueError(f'archive frame {fr["id"]}: records {fr.get("note")!r}, the step {ask} draws {want!r} '
+                             f'-- not the input given then')
+        if tool == 'bench_view':
+            view = (float(args['x']), float(args['y']))
+        line = next((x for x in log if x.startswith(f'{tool}: ') and f' frame {fr["id"]} at ' in x), '')
         calls.append(dict(ask=ask, answer=dict(answer(fr), paused=line.endswith('; paused'))))
     if frames:
         raise ValueError(f'archive frames {[fr["id"] for fr in frames]} are no step\'s')
@@ -641,18 +682,23 @@ def transcript_from_archive(run_dir, contract, read=None):
     return dict(mod=contract.mod, run=os.path.basename(os.path.normpath(run_dir)), source='archive', calls=calls)
 
 
-_COUNTERS = []
+_TOOLS = {}
+
+
+def _tool(name):
+    """The bench's own module `name` (counters, calib) beside this file, loaded once by its path."""
+    if name not in _TOOLS:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(name, os.path.join(os.path.dirname(__file__), f'{name}.py'))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _TOOLS[name] = mod
+    return _TOOLS[name]
 
 
 def _read_png(path, n):
-    import importlib.util
     from PIL import Image
-    if not _COUNTERS:
-        spec = importlib.util.spec_from_file_location('counters', os.path.join(os.path.dirname(__file__), 'counters.py'))
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        _COUNTERS.append(mod)
-    return _COUNTERS[0].read(Image.open(path).convert('RGB'), n)
+    return _tool('counters').read(Image.open(path).convert('RGB'), n)
 
 
 def sample_ask(contract):

@@ -309,6 +309,7 @@ def test_a_move_with_no_receipt_stays_unknown_to_the_end():
     # lane never reading 22
     tr = copy.deepcopy(INPUTS)
     tr['calls'][5]['ask']['x'] = 900.0
+    tr['calls'][5]['answer']['note'] = 'right click at screen (767, 431)'     # where the bench draws (900, 1230)
     a = started(tr)
     ok, why = a.commands.do(move(PLAIN, pos=(900.0, 1230.0)))
     assert ok is None and 'no receipt route' in why
@@ -336,6 +337,59 @@ def test_an_input_answered_by_another_record_is_not_taken_as_given():
     ok, why = a.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))
     assert ok is None and 'click unsure' in why
     assert 'no blind retry' in a.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))[1]
+
+
+def archived(tmp_path, tr=INPUTS):
+    """An archived run folder put back from a transcript with inputs (the run's own folder is no longer on disk):
+    index.json's frames, cnv_result.txt's step lines (`; paused` as recorded), and a reader that gives each frame's
+    recorded values."""
+    got = [c for c in tr['calls'] if c['answer'] is not None]
+    (tmp_path / 'index.json').write_text(json.dumps(dict(mod=tr['mod'], frames=[
+        {k: c['answer'][k] for k in ('id', 'second', 'frame', 'note')} for c in got])), 'utf-8')
+    (tmp_path / 'cnv_result.txt').write_text('\n'.join(
+        f'{c["ask"]["tool"]}: {c["answer"]["note"]} frame {c["answer"]["id"]} at mission second '
+        f'{c["answer"]["second"]}{"; paused" if c["answer"]["paused"] else ""}'
+        for c in got if c['ask']['tool'] != 'sample') + '\n', 'utf-8')
+    values = {c['answer']['id']: c['answer']['values'] for c in got}
+    return str(tmp_path), (lambda p, n: values[int(Path(p).stem)])
+
+
+def test_an_archived_runs_inputs_convert_only_as_the_bench_drew_them(tmp_path):
+    # review 1120bb P2 #4: the converter checked a record's note by its start only, so the first click's step moved
+    # from (1000, 1230) to (1010, 1230) still took the record of a click drawn at (924, 421), and the replay then
+    # confirmed the changed point with the run's real count
+    run, read = archived(tmp_path)
+    tr = gp.transcript_with_inputs(run, gp.FORMSS, INPUTS['steps'], read=read)
+    assert {k: v for k, v in tr.items() if k != 'run'} == {k: v for k, v in INPUTS.items() if k != 'run'}
+    for i, key, value, frame in [(3, 'x', 1010.0, 6), (3, 'y', 1231.0, 6), (2, 'x1', 700.0, 5), (1, 'x', 826.0, 4),
+                                 (5, 'y', 1380.0, 8)]:
+        steps = copy.deepcopy(INPUTS['steps'])
+        steps[i][1][key] = value
+        with pytest.raises(ValueError, match=f'archive frame {frame}: records .* -- not the input given then'):
+            gp.transcript_with_inputs(run, gp.FORMSS, steps, read=read)
+    with pytest.raises(ValueError, match='no archived frame left'):
+        gp.transcript_with_inputs(run, gp.FORMSS, INPUTS['steps'] + [INPUTS['steps'][3]], read=read)
+
+
+def test_a_record_of_another_point_confirms_no_move():
+    # the same change made in the transcript itself (the ask at 1010, the record still the click drawn at 1000): the
+    # click's record is not the input asked, the move stays unknown -- the plain count reaching 22 confirms nothing
+    tr = copy.deepcopy(INPUTS)
+    tr['calls'][5]['ask']['x'] = 1010.0
+    a = started(tr)
+    ok, why = a.commands.do(move(PLAIN, pos=(1010.0, 1230.0)))
+    assert ok is None and "click unsure: bench_click: archive frame 6 records 'right click at screen (924, 421)'" in why
+    assert "the input asked draws 'right click at screen (939, 420)'" in why
+    a.commands.do(move(FORMATION, pos=(1000.0, 1390.0)))
+    run_all(a)
+    (_, _, ok1, why1), (_, _, ok2, _) = a.commands.sent()
+    assert ok1 is None and why1.endswith("no receipt by the run's end") and ok2 is True
+    tr = copy.deepcopy(INPUTS)
+    tr['calls'][4]['ask']['x1'] = 700.0                                   # the box's ask, its record kept
+    a = started(tr, dataclasses.replace(gp.FORMSS, groups=(dataclasses.replace(gp.FORMSS.groups[0], box=(
+        560.0, 1175.0, 700.0, 1285.0)),) + gp.FORMSS.groups[1:]))
+    ok, why = a.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))
+    assert ok is False and 'bench_box: archive frame 5' in why and 'the input asked draws' in why
 
 
 def test_a_member_not_here_is_not_moved():
