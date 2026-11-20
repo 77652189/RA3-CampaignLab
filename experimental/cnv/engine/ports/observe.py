@@ -26,7 +26,10 @@ Three groups and an internal door:
   (`on_frame`, `on_tick`, `on_act`, `on_sample`, `on_happen`, `scripts`).
 
 A table, list or set comes back read only and live (engine/ports/readonly.view: not a copy, a record reads every
-frame; its write half raises, to any depth -- review 1119z P2 #2); a thing comes back itself. The
+frame; its write half raises, to any depth -- review 1119z P2 #2); ground_map's arrays as copies one cannot write. A
+thing comes back itself -- `thing`, `living`, and a field that holds one (`state(u)['goal']`) hand the live object,
+whose fields can be set through it: the read-only promise covers tables and arrays, not things (review 1120dd P2;
+a read-only thing handle is an open question, handoff-r3). The
 readers a Battlefield file is read through (contents, home, jobs, sciences, player_upgrades, power, relations: step S 11d,
 experimental/cnv/simbattlefield.py) give names and numbers only, so a game adapter can give the same."""
 from engine.kernel import module as kernel_module
@@ -34,9 +37,10 @@ from engine.ports.readonly import view
 
 
 def _fixed(a):
-    """An array read only and live: a numpy view of it with the write flag off (review 1120bb P2 #2: ground_map's
-    grids were the routing grid itself)."""
-    v = a.view()
+    """An array as it is now, its own copy with the write flag off: ground_map's grids were the routing grid itself
+    (review 1120bb P2 #2), and a view with the flag off could turn it back on (`setflags(write=True)`: the view's
+    base writeable, review 1120dd P2) -- a copy turned writeable writes only itself."""
+    v = a.copy()
     v.flags.writeable = False
     return v
 

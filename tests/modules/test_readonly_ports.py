@@ -169,4 +169,9 @@ def test_a_things_state_and_the_ground_map_are_read_only():
     for grid in (walk, water, z):
         with pytest.raises(ValueError):
             grid[0, 0] = grid[0, 0]
-    assert walk.base is not None and (walk == w.ground.grids['ground']).all()
+    assert (walk == w.ground.grids['ground']).all()
+    # review 1120dd P2: a view with the flag off could be made writeable again (its base was the routing grid)
+    before = w.ground.grids['ground'].copy()
+    walk.setflags(write=True)
+    walk[...] = 0
+    assert (w.ground.grids['ground'] == before).all() and (o.ground_map()[0] == before).all()
