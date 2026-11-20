@@ -40,7 +40,8 @@ objects the action picked itself (a team's members: found as picked, a reference
 place -- review 11-19 f #1). A line verb's command may pin what its names picked: `('unit_serials', (n, ...))` the
 serials of the objects `units` names (one each, as picked) and `('target_serial', n)` the target's -- the route is the
 line's own, the names stay for the record (its noted line), and a name a role or another object also answers to
-cannot take the order (the page's click, review 1119z P2 #1; `Commands.line` writes no such command). A route that cannot go on without its object (a factory, the unit to unpack) refuses a
+cannot take the order (the page's click, review 1119z P2 #1; `Commands.line` writes no such command); a pin of an
+object by another name, or with none of its objects left, is refused (`do`, review 1120bb P2 #1). A route that cannot go on without its object (a factory, the unit to unpack) refuses a
 missing one; a press the world turns down (a target gone, out of range) is refused (review 11-19 f #4 #5).
 
 A line's tails `强制` / `由 P` (in a line a player or a play wrote, or `text` wrote for a command that has them) read as
@@ -317,9 +318,29 @@ class Commands:
         """Now: the kind's order call (a script line's order, run by `Sim.happen`, comes here). (ok, why)."""
         ok, why = self.check(cmd)
         if ok:
+            ok, why = self._pinned(cmd)
+        if ok:
             ok, why = getattr(self, '_' + cmd.kind)(cmd)
         self._issued.append((self._w.frame_now(), cmd, ok, why or 'done'))
         return ok, why
+
+    def _pinned(self, cmd):
+        """(ok, why) of a command's `unit_serials`: one serial for each name in `units`, each the object of that name
+        when it was picked. A pin whose object here goes by another name (a foe's serial beside `bob`) refuses the
+        whole command, nothing ordered; one whose object is gone is not ordered, and when none is left the command is
+        refused -- a name made again since does not take the order (review 1120bb P2 #1)."""
+        pins = cmd.arg('unit_serials')
+        if pins is None:
+            return True, ''
+        if len(pins) != len(cmd.units):
+            return False, f'{len(pins)} 个编号对 {len(cmd.units)} 个名字'
+        found = {b.serial: b for b in self._w.bodies.values() if b.serial in set(pins)}
+        for name, s in zip(cmd.units, pins):
+            if s in found and found[s].name != name:
+                return False, f'编号 {s} 是 {found[s].name}，不是 {name}'
+        if not any(s in found for s in pins):
+            return False, f'找不到 {"、".join(cmd.units)}（编号 {"、".join(map(str, pins))} 已不在）'
+        return True, ''
 
     def issued(self):
         """(frame, Command, ok, why) for every command posted or done, in order. A record: nothing in a run reads it."""

@@ -1087,3 +1087,32 @@ def test_the_ais_micro_view_names_a_member_and_a_beacon_made_again_apart_from_th
     lead, beacon = s.bodies['lead'], s.bodies['beacon']
     assert look('lead', 'wing') == ([f'lead#{lead.serial}', 'wing'],
                                     [(f'beacon#{beacon.serial}', sorted([f'lead#{lead.serial}', 'wing']))])
+
+
+def test_a_pinned_order_moves_only_the_object_its_name_picked_and_a_gone_one_is_refused():
+    """Review 1120bb P2 #1: `unit_serials` pins the objects `units` names (one each). A pin of another object (a foe's
+    serial beside `bob`) orders nothing and is refused; a pin whose object is gone (bob deleted and made again: a new
+    serial) is refused, and the new `bob` is not ordered (the pin is the object clicked, not its name)."""
+    import parts
+    from maps import probe_range
+    tank = 'AlliedAntiVehicleVehicleTech1'
+    make = ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'bob', tank, 'Player_1/t', '@1060,1230')
+    w = sim.Sim(parts.Mission(name='Review', map=probe_range, scripts=[
+        parts.Script('Setup', [], [make, ('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', 'foe', tank, 'Player_2/t', '@990,1390')]),
+        parts.Script('Removal', [('TIMER_EXPIRED', 'Remove')], [('NAMED_DELETE', 'bob'), make])]), model=False)
+    w.advance(1)
+    bob, foe = w.bodies['bob'], w.bodies['foe']
+
+    def move(serial):
+        return w.commands.do(Command('move', units=('bob',), place='@1360,1450', args=(('unit_serials', (serial,)),)))
+    ok, why = move(foe.serial)
+    assert not ok and 'foe' in why
+    assert foe.move_to is None and bob.move_to is None
+    w.executor.action('SET_TIMER', ['Remove', 1])
+    w.advance(1)
+    new = w.bodies['bob']
+    assert not bob.alive and new.serial != bob.serial
+    ok, why = move(bob.serial)
+    assert not ok and 'bob' in why
+    assert new.move_to is None
+    assert move(new.serial) == (True, '') and new.move_to is not None     # the live one, pinned: ordered
