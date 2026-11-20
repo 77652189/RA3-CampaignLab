@@ -834,3 +834,23 @@ def test_the_players_power_casts_with_an_observer_tapping_the_actions():
     assert s.order_power(s.bodies['cannon'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
     assert [c[1] for c in s.casts] == ['Player_1']
     assert seen == [('before', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT'), ('after', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT')]
+
+
+def test_the_ais_recruiting_wraps_the_new_unit_not_the_dead_one_of_its_name():
+    """A recruit's Unit wrapper is its object's, by serial (review 11-19 q P2 #1: keyed by name, a `lead` made again
+    after the first one died was handed the dead one's wrapper, and the AI's orders to it went to the dead body)."""
+    import simai
+    if not simai.available():
+        pytest.skip('ra3model.ai unavailable')
+    s = simsmall.small_world([('lead', APOC, 'Player_1', 0.0, 0.0)], model=False)
+    old = s.bodies['lead']
+    host = simai.SimAI(s)
+    br = object.__new__(simai.Brain)
+    br.host, br.world, br.peers, br.player, br.ids, br.hp, br.wrappers = host, s, host.peers, 'Player_1', {}, {}, {}
+    first, = br.units(None, 0)
+    assert first.body is old
+    s.delete(old, 'test')
+    again = s.add('lead', APOC, 'Player_1', 400.0, 0.0)
+    now, = br.units(None, 1)
+    assert now.body is again and now is not first and now.body.alive
+    assert br.units(None, 2) == [now]

@@ -281,7 +281,7 @@ class Brain:
         self.yard_rest = {}             # yard name -> the last frame it starts nothing (the one after a put)
         self.unit_q = []                # [template] waiting for a free, unpacked factory that makes it
         self.made = {}                  # body name -> frame it came (structures: unpack; units: the trace)
-        self.wrappers = {}              # body name -> Unit
+        self.wrappers = {}              # body serial -> Unit (by serial: review 11-19 q P2 #1)
         self.later = []                 # (frame, template, (x, y), team): a refinery's miner
         self.trace = []                 # (frame, 'own' | 'out', template): what came when
         self.born = self.frame = frame  # the brain thinks from here (its states and teams: before the wake)
@@ -607,7 +607,7 @@ class Brain:
         if bare == f'defaultSkirmishTeam{self.player}':
             held = {id(u) for t in self.ai.teams.teams.values() for u in t.members}
             return True, [b for b in self.living() if b.owner == self.player and 'STRUCTURE' not in b.kinds
-                          and b.speed > 0 and id(self.wrappers.get(b.name)) not in held]
+                          and b.speed > 0 and id(self.wrappers.get(b.serial)) not in held]
         key = self.engine_team_names().get(bare)
         if key is None:
             parts = bare.rsplit('_', 2)
@@ -1341,9 +1341,12 @@ class Brain:
                 continue
             if self.host.garrison.busy(b) or self.host.pullback.busy(b):
                 continue
-            if b.name not in self.wrappers:
-                self.wrappers[b.name] = Unit(b, self.peers)
-            out.append(self.wrappers[b.name])
+            # by serial, not name (review 11-19 q P2 #1: a unit made again under a dead one's name got the dead
+            # one's wrapper, and the orders the AI gave it went to the dead body). The dead ones' stay: a model team
+            # may still hold their Unit, and the snapshot builds its `$unit` table from here
+            if b.serial not in self.wrappers:
+                self.wrappers[b.serial] = Unit(b, self.peers)
+            out.append(self.wrappers[b.serial])
         return out
 
     def owned(self, ai, frame):

@@ -185,8 +185,9 @@ def _take_brain(w, b, held):
 
     fields = {f: snap.encode(own[f], extra, f'Brain {b.player}.{f}') for f in _OWN if f in own}
     held.extend(x for f in _OWN if f in own for x in [own[f]])      # the things in them: simsnap's roots
-    fields['wrappers'] = [[name, u.body.serial, {f: sess.ref(vars(u)[f], f'{name}.{f}') for f in _UNIT_MODEL
-                                                 if f in vars(u)}] for name, u in b.wrappers.items()]
+    fields['wrappers'] = [[u.body.name, u.body.serial, {f: sess.ref(vars(u)[f], f'{u.body.name}.{f}')
+                                                        for f in _UNIT_MODEL if f in vars(u)}]
+                          for u in b.wrappers.values()]
     held.extend(u.body for u in b.wrappers.values())
     if '_exp_teams' in own:
         fields['_exp_teams'] = [[sess.ref(t, '_exp_teams'), snap.encode(p)] for t, p in b._exp_teams]
@@ -303,8 +304,8 @@ def _write_brain(w, b, fields, model, things):
     Unit = simsnap.host_class(w, 'Unit', 'wrap a brain\'s unit (simaisnap.restore)')
     b.wrappers = {}
     units = {}
-    for name, serial, _team in fields['wrappers']:
-        b.wrappers[name] = units[serial] = Unit(things[serial], b.peers)
+    for _name, serial, _team in fields['wrappers']:     # keyed by serial (Brain.units)
+        b.wrappers[serial] = units[serial] = Unit(things[serial], b.peers)
 
     def obj(mark):
         (k, serial), = mark.items()
@@ -337,9 +338,9 @@ def _write_brain(w, b, fields, model, things):
             setattr(b, f, snap.decode(fields[f], things, extra))
         elif f in vars(b):
             delattr(b, f)
-    for name, _serial, model_fields in fields['wrappers']:
+    for _name, serial, model_fields in fields['wrappers']:
         for f, k in model_fields.items():
-            setattr(b.wrappers[name], f, sess.get(k))
+            setattr(b.wrappers[serial], f, sess.get(k))
     if '_exp_teams' in fields:
         b._exp_teams = [(sess.get(k), snap.decode(p, {})) for k, p in fields['_exp_teams']]
     elif '_exp_teams' in vars(b):

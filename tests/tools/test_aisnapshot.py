@@ -115,7 +115,7 @@ def test_the_brains_taken_and_written_back_equal(half):
     for player, b in run.brains.items():
         nb = restored.brains[player]
         assert nb is not b and nb.made_as == b.made_as
-        assert {n: u.body.serial for n, u in nb.wrappers.items()} == {n: u.body.serial for n, u in b.wrappers.items()}
+        assert {k: u.body.serial for k, u in nb.wrappers.items()} == {k: u.body.serial for k, u in b.wrappers.items()}
         assert all(u.body is restored.sim.world.numbered[u.body.serial] for u in nb.wrappers.values())
         assert [(n, p.serial) for n, p in nb._protos.items()] == [(n, p.serial) for n, p in b._protos.items()]
         assert all(p.name not in restored.sim.bodies for p in nb._protos.values())
