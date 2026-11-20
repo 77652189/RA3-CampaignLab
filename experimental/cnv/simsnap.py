@@ -32,7 +32,8 @@ from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 13            # 13: 'setup', the run's level and script (review 1119v P2 #1: a normal run's
+VERSION = 14            # 14: a movement power's job keyed by the presser's serial (same-name sweep 11-19b O58);
+                        # 13: 'setup', the run's level and script (review 1119v P2 #1: a normal run's
                         # snapshot came back onto a hard host, its hard-only scripts ran); 12: the build queues keyed by the factory's serial, not its name (same-name sweep 11-19b
                         # O31); 11: a cast's caster by serial (same-name sweep 11-19b O38); 10: acting, a sequential
                         # step's unit by its name (review 11-19 n P3; empty between frames);

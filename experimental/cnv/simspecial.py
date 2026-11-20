@@ -33,7 +33,7 @@ class Specials:
         self.wfires = []               # a WeaponFireSpecialAbilityUpdate press waiting to go off (wfire_due)
         self.leaps_due = []            # (landing frame, body, point): a ProjectileSelf leap in the air
         self.leap_ground_hits = []     # (frame, body, weapon, centre): a landed leap's ground weapon to go off
-        self.movement_due = {}         # body name -> (end frame, body, bits, old speed): a MovementSpecialPower on
+        self.movement_due = {}         # body serial -> (end frame, body, bits, old speed): a MovementSpecialPower on
         self.self_bits_due = []        # (frame, body, bits): a self power's trigger / shield bits to drop
 
     def blast_due(self, world, frame, blasts, first_death, destroy):
@@ -65,13 +65,13 @@ class Specials:
             world.guessed.add('MovementSpecialPower: out-of-range approach unmodelled')
             return False
         jobs = self.movement_due
-        if b.name in jobs:
+        if b.serial in jobs:           # the pressing thing's own, not its name's (same-name sweep 11-19b O58)
             world.guessed.add('MovementSpecialPower: repeated press unmodelled')
             return False
         now = world.frame_now()
         new = sp['bits'] - b.script_status
         old_speed = b.base['speed'] if b.base is not None else b.speed
-        jobs[b.name] = (now + sp['duration'], b, new, old_speed)
+        jobs[b.serial] = (now + sp['duration'], b, new, old_speed)
         b.script_status |= new
         speed = simunits.locomotor_speed(b.template, world.own, sp['locomotor']) if sp['locomotor'] else None
         if speed is not None and b.base is not None:

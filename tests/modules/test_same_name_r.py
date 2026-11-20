@@ -322,3 +322,23 @@ def test_an_unpacked_builders_archive_key_leaves_a_living_one_under_its_counted_
     s.build_due(s.frame_now() + 10)
     assert s.bodies['#packed 1 mcv'] is held and held.alive
     assert s.bodies['#packed 2 mcv'] is mcv and s.bodies['mcv'].template == 'AlliedConstructionYard'
+
+
+RUSH = 'Command_TriggerRushAttackSpecialPower'
+
+
+def test_a_movement_power_running_on_a_dead_one_does_not_block_or_end_one_made_under_its_name():
+    """Same-name sweep 11-19b O58: the rush in flight is the pressing thing's own (simspecial.movement_due by serial)."""
+    s = simsmall.small_world()
+    p = s.add('p', 'JapanAntiVehicleVehicleTech3', 'Player_1', 300.0, 300.0)
+    assert s.movement_power_press(p, RUSH, (p.x + 250, p.y))
+    s.advance(30)                                                     # apart by more than a tick (advance's step)
+    s.destroy(p, 'test')
+    p2 = s.add('p', 'JapanAntiVehicleVehicleTech3', 'Player_1', 300.0, 600.0)
+    assert s.movement_power_press(p2, RUSH, (p2.x + 250, p2.y))       # not "a repeated press"
+    (due2, *_), = [v for v in s.specials.movement_due.values() if v[1] is p2]
+    assert set(s.specials.movement_due) == {p.serial, p2.serial}
+    old_due = s.specials.movement_due[p.serial][0]
+    assert old_due < due2
+    s.advance(old_due - s.frame_now() + 1)                            # the old one's rush ends: only its own
+    assert set(s.specials.movement_due) == {p2.serial} and p2.dest is not None
