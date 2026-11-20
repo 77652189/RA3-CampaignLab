@@ -1,9 +1,9 @@
-"""The AI's pullbacks (experimental/cnv/simpullback.py): a returner is kept by its serial, never by its name (same-name
+"""The AI's pullbacks (experimental/cnv/engine/ai/pullback.py): a returner is kept by its serial, never by its name (same-name
 review 1119b O60 / N05). The return order itself and its filter: tests/test_ai_reverse_*.py on the bench."""
 from types import SimpleNamespace
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simpullback  # noqa: E402
+import engine.ai.pullback as simpullback  # noqa: E402
 
 
 class _Commands:

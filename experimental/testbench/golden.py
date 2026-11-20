@@ -51,7 +51,7 @@ RECORDER_RELS = (SIMRECORD_REL, os.path.join('experimental', 'cnv', 'engine', 'p
 RECORDER_HELPERS = (os.path.join('experimental', 'cnv', 'engine', 'ports', 'readonly.py'),)
 # the modules of experimental/cnv the recorder imports and reads off the base as it is: the base's own simulator
 # (tests/tools/test_golden.py: each one the recorder files import is here or goes over with them)
-RECORDER_READS = ('build', 'engine.kernel.interfaces', 'engine.kernel.module', 'retail', 'sim', 'simai', 'simaisnap', 'simsnap', 'snapfile')
+RECORDER_READS = ('build', 'engine.kernel.interfaces', 'engine.kernel.module', 'retail', 'sim', 'engine.ai.core', 'engine.state.ai_snapshot', 'engine.state.snapshot', 'snapfile')
 PIN_REL = 'experimental/cnv/inventory_model.rev'
 TRAILER = 'golden-changed:'
 KEEP = 4                       # cached record sets kept under work\logs\golden (about 130 MB each)

@@ -35,7 +35,7 @@ def retail_xml(template):
 def movers(templates, own=None):
     """{template: speed} of those that walk, drive or sail: not buildings, not aircraft (an air group keeps its own
     pace: a fighter would stall at a tank's speed). own: {id: xml text} of the mission's units."""
-    import simunits
+    import engine.data.units as simunits
     out = {}
     for t in templates:
         st = simunits.stats(t, own)

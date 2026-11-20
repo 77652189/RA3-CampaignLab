@@ -4,8 +4,8 @@ the old defaults when it has none, and in the frame record where the body's fiel
 checks/engine_crush.py (tests/test_simbench.py), engine_dynamics (tests/test_simbench_c.py)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
-import simunits  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import crush  # noqa: E402
 

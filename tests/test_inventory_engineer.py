@@ -13,7 +13,7 @@ engineer_audit = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(engineer_audit)
 import inventory
 import retailmodules
-import simunits
+import engine.data.units as simunits
 
 
 def test_engineer_indirect_bridge_routes_remain_unbenched():

@@ -1,4 +1,4 @@
-"""Battlefield's placing of crews (experimental/cnv/simbattlefield.py place_things; step S 11d step 6, work/re/sim_split/
+"""Battlefield's placing of crews (experimental/cnv/engine/state/battlefield.py place_things; step S 11d step 6, work/re/sim_split/
 bf_pack/plan.md): a run cut with three of the player's men in a civilian house and two riding the player's Bullfrog,
 its file placed onto an empty run of the same map: every thing reads back whole (the passengers in order, at their
 holder's spot, carrying the bits it gives; the house the first passenger's), and after the same exits and the same kill
@@ -12,8 +12,8 @@ import copy
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simbattlefield  # noqa: E402
-import simsmall  # noqa: E402
+import engine.state.battlefield as simbattlefield  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 from maps import probe_range  # noqa: E402
 

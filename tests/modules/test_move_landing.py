@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-import simsmall
+import engine.testing.small as simsmall
 from sim import Ground
 
 

@@ -6,7 +6,7 @@ import inspect
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simsmall  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.ports import ai as ai_port  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 from engine.ports.readonly import MapView, SeqView, SetView, view  # noqa: E402

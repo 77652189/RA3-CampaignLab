@@ -105,7 +105,7 @@ def rank(m):
 def ailock(m):
     """Every protocol locked for Soviet_1 in the first frame (PLAYER_LOCK_PLAYER_TECH on: the AI's choice skips a
     locked one), none for Soviet_2."""
-    import simtech
+    import engine.players.tech as simtech
     t = Test()
     s1, s2 = m.player('s1'), m.player('s2')
     t.scripts.append(Script('Test - lock all', [], [('PLAYER_LOCK_PLAYER_TECH', s1, pid, 1)

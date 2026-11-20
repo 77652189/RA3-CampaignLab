@@ -1,4 +1,4 @@
-"""Battlefield's export (experimental/cnv/simbattlefield.py export; step S 11d step 2, work/re/sim_split/bf_pack/
+"""Battlefield's export (experimental/cnv/engine/state/battlefield.py export; step S 11d step 2, work/re/sim_split/bf_pack/
 plan.md): the three cuts the hand-made files were taken at (tests/fixtures/battlefield) read through the observation
 port alone give back every field each file lists, for the players and things it lists (ai_open lists four of its
 291 things); the whole export passes the contract and the preflight onto an empty run of the map, is plain JSON, comes
@@ -11,11 +11,11 @@ import pytest
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import build  # noqa: E402
 import sim  # noqa: E402
-import simai  # noqa: E402
-import simbattlefield  # noqa: E402
+import engine.ai.core as simai  # noqa: E402
+import engine.state.battlefield as simbattlefield  # noqa: E402
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
-import simsnap  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.state.snapshot as simsnap  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 
 DATA = Path(__file__).resolve().parent.parent / 'fixtures' / 'battlefield'

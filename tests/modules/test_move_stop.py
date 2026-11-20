@@ -1,5 +1,5 @@
 """Stopping early and exhausting a fallback route retain the command's intent."""
-import simsmall
+import engine.testing.small as simsmall
 from engine.ports.command import Command
 
 

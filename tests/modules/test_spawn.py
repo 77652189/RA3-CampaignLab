@@ -5,7 +5,7 @@ and not before; the parent's death emptying the queue; a child template without 
 forwards with the old defaults. The bench replays: tests/test_simspawn.py."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simrecord  # noqa: E402
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import spawn  # noqa: E402
 
@@ -133,7 +133,7 @@ def test_two_queued_replacements_each_come_on_their_own_frame():
 
 
 def test_a_child_without_slavedupdate_is_given_one_and_the_record_keeps_the_old_fields():
-    import simsmall
+    import engine.testing.small as simsmall
     e = simsmall.small_world([('factory', 'AlliedWarFactory', 'Player_1', 100.0, 100.0)])
     parent = e.bodies['factory']
     (sp,) = parent.find(interfaces.Spawn)

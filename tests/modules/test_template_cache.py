@@ -6,8 +6,8 @@ import dataclasses
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import model  # noqa: E402
 import parts  # noqa: E402
-import simsmall  # noqa: E402
-import simunits  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 
 UNIT = 'AlliedAntiInfantryVehicle'          # a retail unit a mission may override
 BASE = 'CNVCacheBase'                       # a template defined only inside a mission file (not under its own key)

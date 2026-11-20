@@ -33,8 +33,8 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import labpaths                                 # noqa: E402
 
 AI_DATA = os.path.join(labpaths.SDK3, 'SageXML', 'SkirmishAI')
-AI_CODE = [os.path.join(labpaths.ENGINE_MODEL, 'ra3model', 'ai'), os.path.join(os.path.dirname(__file__), 'simai.py'),
-           os.path.join(os.path.dirname(__file__), 'simtech.py')]
+AI_CODE = [os.path.join(labpaths.ENGINE_MODEL, 'ra3model', 'ai'), os.path.join(os.path.dirname(__file__), 'engine/ai/core.py'),
+           os.path.join(os.path.dirname(__file__), 'engine/players/tech.py')]
 # The private model is read at this committed revision, never at its working tree: every workspace (and every lane's
 # model clone) renders the same pages. Move it with `inventory_ai.py pin` (origin/main), then regenerate the pages.
 MODEL_REV_FILE = os.path.join(HERE, 'inventory_model.rev')

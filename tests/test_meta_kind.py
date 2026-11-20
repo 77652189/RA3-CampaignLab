@@ -51,7 +51,7 @@ def test_meta_kind_replays_native_dispatch_health_and_neighbour_path(
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import name
 
     m, t, _ = build.resolve('engine_knock_kind', check)
@@ -101,7 +101,7 @@ def test_meta_kind_empty_any_replays_native_no_dispatch(lane, monkeypatch):
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import name
 
     m, t, _ = build.resolve('engine_knock_kind', 'b')

@@ -1,8 +1,8 @@
 """Unit orders as rules (simorder, L5, ADR 0029 step ⑧ "测试分两层"): on the minimal world, only the order functions
 run. The whole-mission versions against the bench: test_simbench.py (engine_acts_y hunt, engine_runoffmap, waypaths)."""
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simorder  # noqa: E402
-import simsmall  # noqa: E402
+import engine.orders.order as simorder  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 
 APOC = 'SovietAntiVehicleVehicleTech3'
 

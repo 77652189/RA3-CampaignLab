@@ -12,7 +12,7 @@ _spec.loader.exec_module(_module)
 
 def test_infiltrator_batch_retail_configuration():
     import build
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     m, t, mod = build.resolve('engine_infbatch', 'a')
     assert len(mod) <= 15 and '_' not in mod
     assert len(t.counters) == 4
@@ -29,7 +29,7 @@ def test_infiltrator_batch_retail_configuration():
 
 def test_infiltrator_batch_requires_real_retail_markers():
     import build
-    import simunits
+    import engine.data.units as simunits
     m, _, _ = build.resolve('engine_infbatch', 'a')
     missing = [obj.template for obj in m.objects if not simunits.retail_xml(obj.template)]
     assert not missing, missing

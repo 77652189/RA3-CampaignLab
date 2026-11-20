@@ -496,7 +496,7 @@ def test_a_unit_ordered_from_standing_turns_in_place_then_drives_and_turns_to_it
     facing it was sent with (east, 90 deg: 5 frames) and only then has stopped moving (simai's Unit.moving, the AI
     form-up's gate)."""
     import math
-    import simai
+    import engine.ai.core as simai
     s, tank, (x, y) = _hammer_facing_south()
     assert sim.DRIVE_WITHIN == 9.0 and tank.turn_rate == 288.0
     s.send(tank, (x, y + 300), face=0.0)

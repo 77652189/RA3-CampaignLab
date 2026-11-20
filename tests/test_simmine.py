@@ -4,9 +4,9 @@ sharing."""
 from types import SimpleNamespace
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simmine  # noqa: E402
-import simmoney  # noqa: E402
-import simsmall  # noqa: E402
+import engine.objects.mine as simmine  # noqa: E402
+import engine.players.money as simmoney  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 
 
 def test_a_miner_unloads_a_load_8_a_frame_and_the_rest_on_the_last():

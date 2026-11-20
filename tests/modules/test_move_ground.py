@@ -1,7 +1,7 @@
 """Ground locomotion from route request to consumption of its last point."""
 import pytest
 
-import simsmall
+import engine.testing.small as simsmall
 
 
 def test_open_ground_keeps_exact_goal_and_records_arrival_inside_a_coarse_tick():

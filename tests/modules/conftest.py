@@ -4,7 +4,7 @@ from functools import cache
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-from simsmall import island  # noqa: E402
+from engine.testing.small import island  # noqa: E402
 
 
 @pytest.fixture(scope='session')

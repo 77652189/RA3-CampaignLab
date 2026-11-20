@@ -1,5 +1,5 @@
 """An attack-mover's detour and abandonment of its own chase."""
-import simsmall
+import engine.testing.small as simsmall
 from engine.ports.command import Command
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'

@@ -47,7 +47,7 @@ def test_meta_invert_velocity_replays_native_neighbour(lane, centre, velocity):
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import name
 
     m, t, _ = build.resolve('engine_knock_invert', 'b')
@@ -64,7 +64,7 @@ def test_meta_invert_velocity_replays_native_neighbour(lane, centre, velocity):
 def test_meta_invert_plain_probe_retains_unsupported_filter_and_vertical_variants():
     import re
     import build
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_invert import retail_shock
 
     m, _, _ = build.resolve('engine_knock_invert', 'b')

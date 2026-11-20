@@ -12,7 +12,7 @@ def test_manager_body_script_damage_preserves_retail_bridge_proxy():
     """engine_managerbody:a: untouched / NAMED_DAMAGE 200, HP and live retail proxy."""
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from engine.ports.templates import attr
     from parts import contract, merged
 

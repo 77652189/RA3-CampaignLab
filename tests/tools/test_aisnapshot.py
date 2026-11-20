@@ -1,4 +1,4 @@
-"""A run's snapshot with the skirmish AI (experimental/cnv/simaisnap.py; step S 11b-4, docs/engine/sim-modules.md
+"""A run's snapshot with the skirmish AI (experimental/cnv/engine/state/ai_snapshot.py; step S 11b-4, docs/engine/sim-modules.md
 9.2): a SimAI with no brain taken at heal_a's half, through JSON and back equal, written onto a SimAI made anew,
 taken again equal (4.2) and run on to the end as the one never stopped; with brains (guard 7's ai_open, the engine
 model here) every field of the SimAI, its brains and their Units sorted (4.3); the brains through the plugin's own
@@ -11,10 +11,10 @@ import pytest
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import build  # noqa: E402
 import sim  # noqa: E402
-import simai  # noqa: E402
-import simaisnap  # noqa: E402
+import engine.ai.core as simai  # noqa: E402
+import engine.state.ai_snapshot as simaisnap  # noqa: E402
 import simrecord  # noqa: E402
-import simsnap  # noqa: E402
+import engine.state.snapshot as simsnap  # noqa: E402
 
 FPS = 15
 _, _WHERE, END = simrecord.TASKS['heal_a']

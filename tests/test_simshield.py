@@ -2,7 +2,7 @@
 INVULNERABLE and sets the Iron Curtain status bit stops all damage while the unit holds it (bench: docs/engine/
 upgrades.md 4; units/tower_ball.py, A9's dark balls). INVULNERABLE alone does not (the same bench)."""
 from test_plans import named, small  # (puts experimental/cnv on the path)  # noqa: F401, I001
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from units import tower_ball  # noqa: E402
 
 

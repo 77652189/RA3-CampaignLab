@@ -6,9 +6,9 @@ import pytest
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import platmap  # noqa: E402
 import sim  # noqa: E402
-import simpath  # noqa: E402
-import simsmall  # noqa: E402
-import simsnap  # noqa: E402
+import engine.objects.path as simpath  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.state.snapshot as simsnap  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
 
 

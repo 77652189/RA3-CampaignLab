@@ -41,9 +41,9 @@ FILES = {
     'experimental/cnv/simleaf.py': 'class Heal:\n    def autoheal(self, w, f):\n        return f\n',
     'experimental/cnv/simother.py': 'import simleaf\n\ndef go(a):\n    return a\n',
     'experimental/cnv/simconst.py': 'LAG = 3\n',
-    'experimental/cnv/simsmall.py': 'import sim\n',
+    'experimental/cnv/engine/testing/small.py': 'import sim\n',
     'experimental/cnv/simshow.py': 'import sim\nimport simleaf\n',            # sits on top: imports sim itself
-    'tests/test_plans.py': 'import simsmall\n',
+    'tests/test_plans.py': 'import engine.testing.small as simsmall\n',
     'tests/test_leaf.py': 'import simleaf\n\ndef test_a():\n    pass\n',
     'tests/test_by_file.py': "import importlib.util\nS = importlib.util.spec_from_file_location('o', 'experimental/cnv/simother.py')\n",
     'tests/test_facade.py': ('from test_plans import simsmall\n\n\ndef test_heals(s):\n    s.heal.autoheal(s, 0)\n\n\n'

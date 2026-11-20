@@ -1,7 +1,7 @@
 """Air routing and the frame-by-frame startup of the measured jet."""
 import pytest
 
-import simsmall
+import engine.testing.small as simsmall
 
 
 def test_first_eastbound_vindicator_move_uses_the_air_route_and_frame_budget():

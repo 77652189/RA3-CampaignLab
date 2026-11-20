@@ -9,12 +9,12 @@ import types
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simact_object  # noqa: E402
-import simact_world  # noqa: E402
-import simcond_object  # noqa: E402
-import simcond_world  # noqa: E402
-import simmine  # noqa: E402
-import simsmall  # noqa: E402
+import engine.script.act_object as simact_object  # noqa: E402
+import engine.script.act_world as simact_world  # noqa: E402
+import engine.script.cond_object as simcond_object  # noqa: E402
+import engine.script.cond_world as simcond_world  # noqa: E402
+import engine.objects.mine as simmine  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 
 GI = 'AlliedAntiInfantryInfantry'
@@ -347,7 +347,7 @@ def test_a_movement_power_running_on_a_dead_one_does_not_block_or_end_one_made_u
 def _bare_brain(s, unpack):
     """A bare Brain of Player_1 on the small world (test_command_port._brain's way): no model, the host's unpack
     frames `unpack` for every template."""
-    import simai
+    import engine.ai.core as simai
     host = simai.SimAI(s, lib=object(), data=object())
     host.unpack = lambda template: unpack
     br = object.__new__(simai.Brain)
@@ -450,7 +450,7 @@ def test_a_text_build_at_a_named_factory_still_reads_the_role():
 # still holds a module of as taken too
 
 def test_an_unpacked_builders_archive_key_leaves_a_dead_one_the_schedule_still_holds_in_place():
-    import simsnap
+    import engine.state.snapshot as simsnap
     s = simsmall.small_world(model=False)                                 # (the private model takes no snapshots)
     mcv = s.add('mcv', 'AlliedMCV', 'Player_1', 300.0, 300.0)
     mcv.replace = True

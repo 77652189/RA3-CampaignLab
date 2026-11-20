@@ -34,7 +34,7 @@ def test_meta_kindgate_controls():
 
 
 def test_meta_kindgate_parses_only_measured_combo():
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_kindgate import payload
 
     def parse(xml):
@@ -87,7 +87,7 @@ def test_meta_kindgate_noninf_native_trajectory(monkeypatch):
 def _replay(check, lane, delta, monkeypatch, verify_noninf=False):
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_objectgate import BIT
     from checks.engine_knock_probe import name
 

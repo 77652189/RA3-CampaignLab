@@ -5,7 +5,7 @@ import pytest
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import engine.combat  # noqa: E402,F401  (registers the handlers)
 from engine.combat import registry  # noqa: E402
-import simdamage  # noqa: E402
+import engine.combat.host as simdamage  # noqa: E402
 
 
 def _weapon(**extra):

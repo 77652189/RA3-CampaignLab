@@ -23,23 +23,23 @@ _ef_spec.loader.exec_module(enginefiles)
 # module -> layer (0 world, 1 data, 2 object modules, 3 combat, 4 player systems, 5 unit orders, 6 scripts,
 # 7 frame loop, 8 skirmish AI, 9 report)
 LAYER_OF = {
-    'simworld': 0,
+    'engine.world.handle': 0,
     'engine': 0, 'engine.kernel': 0, 'engine.kernel.interfaces': 0, 'engine.kernel.module': 0,   # the kernel
     'engine.kernel.factory': 0, 'engine.kernel.schedule': 0, 'engine.kernel.world': 0,          # (tests/test_kernel.py)
     'engine.kernel.snap': 0,                                                                     # step S's values
     'engine.ports.templates': 0, 'engine.modules.weaponset': 0,     # W1: simunits' weapon readers read its data
-    'simsnap': 9,                                                       # step S, the host's part (a whole run's)
-    'simaisnap': 9,                                                     # step S 11b-4, the SimAI's around it
-    'simbattlefield': 9,                                                # step S 11d, the exchange file's
-    'simunits': 1,
-    'simtopple': 2, 'simjet': 2, 'simcrush': 2, 'simheal': 2, 'simmine': 2, 'simstatus': 2, 'simpower': 2, 'simgarrison': 2,
-    'simproduce': 2,
-    'simmodifier': 2, 'simlevel': 2, 'simlocomotion': 2, 'simpath': 2,
-    'simbody': 2,
-    'simtoggle': 2,
-    'simspecial': 2,
-    'simorder': 5,
-    'simdamage': 3,
+    'engine.state.snapshot': 9,                                                       # step S, the host's part (a whole run's)
+    'engine.state.ai_snapshot': 9,                                                     # step S 11b-4, the SimAI's around it
+    'engine.state.battlefield': 9,                                                # step S 11d, the exchange file's
+    'engine.data.units': 1,
+    'engine.objects.topple': 2, 'engine.objects.jet': 2, 'engine.objects.crush': 2, 'engine.objects.heal': 2, 'engine.objects.mine': 2, 'engine.objects.status': 2, 'engine.objects.power': 2, 'engine.objects.garrison': 2,
+    'engine.players.production': 2,
+    'engine.objects.modifier': 2, 'engine.objects.level': 2, 'engine.objects.locomotion': 2, 'engine.objects.path': 2,
+    'engine.objects.body': 2,
+    'engine.objects.toggle': 2,
+    'engine.objects.special': 2,
+    'engine.orders.order': 5,
+    'engine.combat.host': 3,
     'engine.combat': 3, 'engine.combat.registry': 3, 'engine.combat.damage': 3,      # N1 the nugget handlers
     'engine.combat.line_damage': 3, 'engine.combat.projectile': 3,
     'engine.combat.leech': 3, 'engine.combat.strip': 3,     # N2a
@@ -47,25 +47,25 @@ LAYER_OF = {
     'engine.combat.attribute_modifier': 3, 'engine.combat.sweep': 3,     # N3c, N3d
     'engine.combat.dot': 3, 'engine.combat.contained': 3, 'engine.combat.secondary': 3,     # N2b
     'engine.combat.suppression': 3, 'engine.combat.paralyze': 3,
-    'simrange': 3,          # the weapon reach rules (R3 13f-2b)
-    'simtech': 4, 'simmoney': 4,
-    'simact': 6, 'simact_vision': 6, 'simact_player': 6, 'simact_order': 6, 'simact_object': 6, 'simact_ability': 6, 'simact_world': 6, 'simact_show': 6, 'simscript': 6,
-    'simcond': 6, 'simcond_world': 6, 'simcond_object': 6, 'simcond_vision': 6, 'simcond_player': 6, 'simcond_show': 6,
-    'simloop': 7,
-    'simassign': 2,
-    'simsweep': 3,
-    'siminfiltrator': 2, 'simrepair': 2,
-    'simmicro': 5, 'simpullback': 8,
-    'simai': 8,             # the skirmish AI (R3 13f-2d: it names no Sim; its run is simai_run.py, an entry point)
-    'engine.ports.scripts': 0, 'engine.ports.command': 0, 'engine.script': 6, 'engine.script.executor': 6, 'engine.script.lists': 6, 'simexec': 6,   # P1 the script port, Z its lists
+    'engine.combat.range': 3,          # the weapon reach rules (R3 13f-2b)
+    'engine.players.tech': 4, 'engine.players.money': 4,
+    'engine.script.act': 6, 'engine.script.act_vision': 6, 'engine.script.act_player': 6, 'engine.script.act_order': 6, 'engine.script.act_object': 6, 'engine.script.act_ability': 6, 'engine.script.act_world': 6, 'engine.script.act_show': 6, 'engine.script.common': 6,
+    'engine.script.cond': 6, 'engine.script.cond_world': 6, 'engine.script.cond_object': 6, 'engine.script.cond_vision': 6, 'engine.script.cond_player': 6, 'engine.script.cond_show': 6,
+    'engine.loop.frame': 7,
+    'engine.objects.assign': 2,
+    'engine.combat.sweeps': 3,
+    'engine.objects.infiltrator': 2, 'engine.objects.repair': 2,
+    'engine.orders.micro': 5, 'engine.ai.pullback': 8,
+    'engine.ai.core': 8,             # the skirmish AI (R3 13f-2d: it names no Sim; its run is simai_run.py, an entry point)
+    'engine.ports.scripts': 0, 'engine.ports.command': 0, 'engine.script': 6, 'engine.script.executor': 6, 'engine.script.lists': 6, 'engine.script.host': 6,   # P1 the script port, Z its lists
 }
 # the skirmish AI's side (step 9d): simai and the parts only it imports. The inventory counts the player's run
 # (simcoverage.sim_files walks down from sim and simproxy, never into simai; inventory_ai counts the AI apart), so
 # test_simcoverage_files leaves these out; no other simulator module imports them (test_nothing_else_imports_the_ai).
-AI_SIDE = {'simai', 'simmicro', 'simpullback'}
+AI_SIDE = {'engine.ai.core', 'engine.orders.micro', 'engine.ai.pullback'}
 # tools over a whole run (step S's snapshot): layered for the import rule (never import sim), not a part of the
 # simulator, so the inventory does not count their strings (tests/test_simcoverage_files.py)
-OVER_THE_RUN = {'simsnap', 'simaisnap', 'simbattlefield'}
+OVER_THE_RUN = {'engine.state.snapshot', 'engine.state.ai_snapshot', 'engine.state.battlefield'}
 # what any layer may import though it is no layer of the simulator (R3 13f-2d): the ports the AI asks its host
 # through (adapters over the Sim, not parts of the run -- the inventory does not count them, the forwarder guard
 # does not hold them) and modelpin (the private model's pin and package loader). Each imports nothing above L0.
@@ -82,25 +82,25 @@ def ai_import_breaks(mods=None, source=None):
 
 
 # modules that take the world as an argument (rule 2): they reach it only through WORLD_API
-WORLD_TAKERS = {'simheal', 'simmine', 'simmoney', 'simmodifier', 'simlocomotion',
-                'simbody',
-                'simtoggle',
-                'simspecial',
-                'simorder',
-                'simcrush', 'simjet', 'simmicro', 'simassign',
-                'simdamage',
-                'simlevel', 'simpullback', 'simsweep',
-                'simgarrison', 'siminfiltrator', 'simrepair',
-                'simai',
+WORLD_TAKERS = {'engine.objects.heal', 'engine.objects.mine', 'engine.players.money', 'engine.objects.modifier', 'engine.objects.locomotion',
+                'engine.objects.body',
+                'engine.objects.toggle',
+                'engine.objects.special',
+                'engine.orders.order',
+                'engine.objects.crush', 'engine.objects.jet', 'engine.orders.micro', 'engine.objects.assign',
+                'engine.combat.host',
+                'engine.objects.level', 'engine.ai.pullback', 'engine.combat.sweeps',
+                'engine.objects.garrison', 'engine.objects.infiltrator', 'engine.objects.repair',
+                'engine.ai.core',
                 'simproxy'}
 # (simpullback, L8 -- the AI tactics' pullback adapter -- is not in LAYER_OF for simmicro's reason: only simai imports it)
 
 # modules that reach their host beyond the world through a Peers loan: every `peers.X` they read is in their PEERS
-PEER_TAKERS = {'simorder', 'simdamage',
-               'simpullback', 'simsweep',
-               'simgarrison', 'siminfiltrator',
-               'simai',
-               'simproxy', 'simproduce'}
+PEER_TAKERS = {'engine.orders.order', 'engine.combat.host',
+               'engine.ai.pullback', 'engine.combat.sweeps',
+               'engine.objects.garrison', 'engine.objects.infiltrator',
+               'engine.ai.core',
+               'simproxy', 'engine.players.production'}
 # (simai, step 9d-2: a world and peers taker holding them as self.world / self.peers; since R3 13f-2d it names no
 # sim -- a target object is a kernel Thing, the run is simai_run.py)
 SIM_NAMES_UNTIL_10 = {}
@@ -113,20 +113,20 @@ SIM_NAMES_UNTIL_10['simproxy'] = {'Body', 'Sim', 'LEVELS'}
 FIELD_OWNER = {'heal_at': 'engine.modules.autoheal', 'hurt': 'engine.modules.autoheal',
                'life_end': 'engine.modules.lifetime',
                'toppled': 'engine.modules.topple', 'topple_end': 'engine.modules.topple',
-               'mine': 'engine.modules.oreminer', 'nodes': 'simmine', 'mined_to': 'simmine',
-               'level_rate': 'simmodifier',
-               'level_vision': 'simmodifier', 'shielded': 'simmodifier', 'taken': 'simmodifier', 'dealt': 'simmodifier',
-               'stood_for': 'simlocomotion', 'set_off': 'simlocomotion', 'jet_motion': 'simlocomotion',
-               'frame_move': 'simlocomotion',
-               'deleted': 'simbody', 'died_at': 'simbody', 'sell_end': 'engine.modules.sell', 'unpack_end': 'engine.modules.unpack', 'lose_of': 'simbody',
+               'mine': 'engine.modules.oreminer', 'nodes': 'engine.objects.mine', 'mined_to': 'engine.objects.mine',
+               'level_rate': 'engine.objects.modifier',
+               'level_vision': 'engine.objects.modifier', 'shielded': 'engine.objects.modifier', 'taken': 'engine.objects.modifier', 'dealt': 'engine.objects.modifier',
+               'stood_for': 'engine.objects.locomotion', 'set_off': 'engine.objects.locomotion', 'jet_motion': 'engine.objects.locomotion',
+               'frame_move': 'engine.objects.locomotion',
+               'deleted': 'engine.objects.body', 'died_at': 'engine.objects.body', 'sell_end': 'engine.modules.sell', 'unpack_end': 'engine.modules.unpack', 'lose_of': 'engine.objects.body',
                'toggle_at': 'engine.modules.toggle', 'armor_up': 'engine.modules.toggle',
-               'wfires': 'simspecial', 'leaps_due': 'simspecial', 'leap_ground_hits': 'simspecial',
-               'movement_due': 'simspecial', 'self_bits_due': 'simspecial',
-               'flee': 'simorder', 'follow': 'simorder', 'move_to': 'simorder', 'unpack_here': 'simorder',
+               'wfires': 'engine.objects.special', 'leaps_due': 'engine.objects.special', 'leap_ground_hits': 'engine.objects.special',
+               'movement_due': 'engine.objects.special', 'self_bits_due': 'engine.objects.special',
+               'flee': 'engine.orders.order', 'follow': 'engine.orders.order', 'move_to': 'engine.orders.order', 'unpack_here': 'engine.orders.order',
                **dict.fromkeys(('incoming', 'projectile_hits', 'projectile_speeds', 'impact_body', 'knock_drowns',
-                                'dots', 'cold_on', 'lift_modules', 'nugget_powers', 'hit_reaction_of'), 'simdamage'),
-               'spot': 'simorder',
-               'level_rank': 'simlevel'}
+                                'dots', 'cold_on', 'lift_modules', 'nugget_powers', 'hit_reaction_of'), 'engine.combat.host'),
+               'spot': 'engine.orders.order',
+               'level_rank': 'engine.objects.level'}
 # (a body's `alive` is assigned only in simbody too, but simai's teams.alive callback shares the name)
 
 
@@ -169,7 +169,7 @@ def _held(e, name):
 
 
 def world_breaks(takers=WORLD_TAKERS, source=None):
-    api = _load('simworld').WORLD_API
+    api = _load('engine.world.handle').WORLD_API
     out = []
     for mod in takers:
         tree = ast.parse(source) if source is not None else _tree(mod)
@@ -206,9 +206,9 @@ def test_layered_modules_import_downward_only():
 
 def test_import_guard_bites():
     """Mutation check: a layer that imported one above it, or sim, would be caught."""
-    assert ('simtech', 'simunits', 'L4 imports L5') in import_breaks({**LAYER_OF, 'simunits': 5})
-    assert any(b[0] == 'simjet' and b[1] == 'simtopple' for b in import_breaks({**LAYER_OF, 'simtopple': 3}))
-    assert ('simai', 'modelpin', 'not layered') in import_breaks(boundary=BOUNDARY - {'modelpin'})
+    assert ('engine.players.tech', 'engine.data.units', 'L4 imports L5') in import_breaks({**LAYER_OF, 'engine.data.units': 5})
+    assert any(b[0] == 'engine.objects.jet' and b[1] == 'engine.objects.topple' for b in import_breaks({**LAYER_OF, 'engine.objects.topple': 3}))
+    assert ('engine.ai.core', 'modelpin', 'not layered') in import_breaks(boundary=BOUNDARY - {'modelpin'})
     assert ('engine.ports.observe', 'engine.kernel.module', 'L0 imports L3') in \
         import_breaks({**LAYER_OF, 'engine.kernel.module': 3})
 
@@ -263,13 +263,14 @@ def chain_names(source=None, method='act'):
     return out
 
 
-def group_actions(hub='simact', var='ACTIONS'):
+def group_actions(hub='engine.script.act', var='ACTIONS'):
     """action (condition) file -> the names its ACTIONS (CONDITIONS) table has (read from the source: `'X': fn` and
     `**dict.fromkeys(CONST, fn)` with CONST a tuple in that file), for the files simact.GROUPS (simcond.GROUPS)
     lists."""
     groups = next(n.value for n in _tree(hub).body if isinstance(n, ast.Assign) and n.targets[0].id == 'GROUPS')
     out = {}
-    for g in (e.id for e in groups.elts):
+    bindings = enginefiles.bindings(_tree(hub))
+    for g in (bindings[e.id] for e in groups.elts):
         tree = _tree(g)
         consts = {n.targets[0].id: ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
                   and isinstance(n.targets[0], ast.Name) and isinstance(n.value, ast.Tuple)}
@@ -312,7 +313,7 @@ def test_home_guard_bites():
 def test_each_condition_has_one_home():
     """Step 3c (cond as a table): no two condition files have a name, Sim.cond keeps no chain of its own (the old
     cond_retail* tail gone), and every name the old chain answered has a home."""
-    groups = group_actions('simcond', 'CONDITIONS')
+    groups = group_actions('engine.script.cond', 'CONDITIONS')
     assert len(groups) >= 2 and all(groups.values())
     assert not chain_names(method='cond')
     assert not home_breaks(groups, set())
@@ -324,7 +325,7 @@ def test_each_condition_has_one_home():
 
 def test_condition_home_guard_bites():
     """Mutation check: a condition in two files, or a branch back in Sim.cond_retail, is caught."""
-    groups = group_actions('simcond', 'CONDITIONS')
+    groups = group_actions('engine.script.cond', 'CONDITIONS')
     first, second = list(groups)[:2]
     name = next(iter(groups[first]))
     assert home_breaks({**groups, second: groups[second] | {name}}, set())
@@ -336,7 +337,7 @@ def _loop():
     """simloop's CELLS (names), its orders (every tuple of names assigned at module level) and its functions, read
     from the source: importing it needs simworld on sys.path."""
     out, orders, defs = {}, {}, set()
-    for n in _tree('simloop').body:
+    for n in _tree('engine.loop.frame').body:
         if isinstance(n, ast.FunctionDef):
             defs.add(n.name)
         elif isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name) and isinstance(n.value, ast.Tuple) \
@@ -362,7 +363,7 @@ def test_frame_orders_share_one_roster():
     assert loop.FRAME.index('tech') < loop.FRAME.index('scripts') < loop.FRAME.index('lose_health')
     assert loop.FRAME[-1] == 'deal'                    # damage last, after the frame's scripts (R6)
     for path in map(Path, enginefiles.files()):
-        if enginefiles.name_of(path) != 'simloop':
+        if enginefiles.name_of(path) != 'engine.loop.frame':
             assert 'eng.step()' not in path.read_text(encoding='utf-8'), path.name
 
 
@@ -419,7 +420,7 @@ def test_move_tail_guard_bites():
 
 # the skirmish AI and the player proxy (L8, step 9d): they play the Sim through its methods; a field of it they
 # changed would bypass the field's owner (simmoney's wallet, the team registry, the AI's personalities, the sight)
-HOST_USERS = ('simai', 'simproxy')
+HOST_USERS = ('engine.ai.core', 'simproxy')
 MUTATORS = {'append', 'pop', 'update', 'add', 'setdefault', 'remove', 'discard', 'clear', 'extend', 'insert'}
 # what the two hold of the Sim: itself, the world API, the Peers loan, and the AI port's Settings (R3 13f-2a: the
 # mission's AI settings, read through; its two writes are its methods) and PlayerSystems (13f-2c: the production
@@ -473,10 +474,10 @@ def test_host_write_guard_bites():
            "        self.sim.income[p] = (1, 0)\n        self.sim.team_names.append(g)\n"
            "        s.bodies.pop(n, None)\n        s.seen = {}\n        s.t += 1\n"
            "        s.wallet.charge(p, 3)\n        self.sim = s\n")
-    assert host_write_breaks(('simai',), src) == [('simai', f) for f in
+    assert host_write_breaks(('engine.ai.core',), src) == [('engine.ai.core', f) for f in
                                                    ('bodies', 'income', 'money', 'seen', 't', 'team_names')]
-    assert host_write_breaks(('simai',), "def f(self):\n    self.settings.ai_paused.add(p)\n") == \
-        [('simai', 'ai_paused')]
+    assert host_write_breaks(('engine.ai.core',), "def f(self):\n    self.settings.ai_paused.add(p)\n") == \
+        [('engine.ai.core', 'ai_paused')]
 
 
 # R3 13f-2a: the mission's AI settings reach simai through the AI port (engine/ports/ai.py Settings), not the Peers
@@ -493,7 +494,7 @@ def settings_breaks(source=None):
     """(line, name) for each `settings.X` in simai that the AI port's Settings does not have, and ('PEERS', name) for
     each Settings name (or `advance`) PEERS still lends."""
     names = {n for n in vars(_ai_port().Settings) if not n.startswith('_')}
-    tree = ast.parse(source) if source is not None else _tree('simai')
+    tree = ast.parse(source) if source is not None else _tree('engine.ai.core')
     out = [(n.lineno, n.attr) for n in ast.walk(tree) if isinstance(n, ast.Attribute) and _held(n.value, 'settings')
            and n.attr not in names]
     lent = next((ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
@@ -507,7 +508,7 @@ def test_the_ai_reads_its_settings_through_the_ai_port():
 
 def test_settings_guard_bites():
     """Mutation check on the real file: a Settings name lent by Peers again, a setting read that Settings lacks."""
-    src = (CNV / 'simai.py').read_text(encoding='utf-8')
+    src = (CNV / 'engine/ai/core.py').read_text(encoding='utf-8')
     assert settings_breaks(src.replace("PEERS = frozenset({'modify'", "PEERS = frozenset({'ai_paused', "
                                        "'modify'")) == [('PEERS', 'ai_paused')]
     assert [n for _, n in settings_breaks(src.replace('self.settings.ai_switches.get(',
@@ -529,12 +530,12 @@ def observe_breaks(source=None):
     """(line, name) for each `observe.X` in simai that Observe does not have, and ('PEERS', name) for each name
     PEERS lends that simai reads through Observe or off simrange."""
     names = _defs(CNV / 'engine' / 'ports' / 'observe.py', 'Observe')
-    tree = ast.parse(source) if source is not None else _tree('simai')
+    tree = ast.parse(source) if source is not None else _tree('engine.ai.core')
     read = [n for n in ast.walk(tree) if isinstance(n, ast.Attribute) and _held(n.value, 'observe')]
     out = [(n.lineno, n.attr) for n in read if n.attr not in names]
     lent = next((ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
                  and getattr(n.targets[0], 'id', '') == 'PEERS'), set())
-    moved = {n.attr for n in read} | _defs(CNV / 'simrange.py')
+    moved = {n.attr for n in read} | _defs(CNV / 'engine/combat/range.py')
     return out + [('PEERS', n) for n in sorted(lent & moved)]
 
 
@@ -545,7 +546,7 @@ def test_the_ai_reads_the_fight_through_the_observation_port():
 def test_observe_guard_bites():
     """Mutation check on the real file: a name read through Observe lent by Peers again, a simrange rule lent again,
     an observe read that Observe lacks."""
-    src = (CNV / 'simai.py').read_text(encoding='utf-8')
+    src = (CNV / 'engine/ai/core.py').read_text(encoding='utf-8')
     assert observe_breaks(src.replace("PEERS = frozenset({'modify'", "PEERS = frozenset({'money', 'reach_of', "
                                       "'modify'")) == [('PEERS', 'money'), ('PEERS', 'reach_of')]
     assert [n for _, n in observe_breaks(src.replace('self.observe.attachments()',
@@ -564,7 +565,7 @@ def systems_breaks(source=None):
     """(line, name) for each `systems.X` in simai that PlayerSystems does not have, and ('PEERS', name) for each name
     PEERS lends beyond AI_PEERS_LEFT."""
     names = {n for n in vars(_ai_port().PlayerSystems) if not n.startswith('_')}
-    tree = ast.parse(source) if source is not None else _tree('simai')
+    tree = ast.parse(source) if source is not None else _tree('engine.ai.core')
     out = [(n.lineno, n.attr) for n in ast.walk(tree) if isinstance(n, ast.Attribute) and _held(n.value, 'systems')
            and n.attr not in names]
     lent = next((ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
@@ -579,7 +580,7 @@ def test_the_ai_asks_the_player_systems_through_the_ai_port():
 def test_systems_guard_bites():
     """Mutation check on the real file: a player system or the command port lent by Peers again, a systems read that
     PlayerSystems lacks (the wallet itself, not its three methods)."""
-    src = (CNV / 'simai.py').read_text(encoding='utf-8')
+    src = (CNV / 'engine/ai/core.py').read_text(encoding='utf-8')
     assert systems_breaks(src.replace("PEERS = frozenset({'modify'", "PEERS = frozenset({'queues', 'commands', "
                                       "'modify'")) == [('PEERS', 'commands'), ('PEERS', 'queues')]
     assert [n for _, n in systems_breaks(src.replace('systems.instal(self.player, job, nxt)',
@@ -594,7 +595,7 @@ AI_RAW_SIM = {'SimAI.__init__', 'run', 'main'}
 PROXY_RAW_SIM = {'SimWorld.__init__', 'play', 'main'}
 
 
-def ai_sim_breaks(source=None, mod='simai', raw=AI_RAW_SIM):
+def ai_sim_breaks(source=None, mod='engine.ai.core', raw=AI_RAW_SIM):
     """(function, line) for each `<x>.sim` in simai (or `mod`) outside AI_RAW_SIM (or `raw`)."""
     tree = ast.parse(source) if source is not None else _tree(mod)
     out = []
@@ -637,14 +638,14 @@ def test_ai_read_guard_bites():
     assert ai_sim_breaks("class Brain:\n    def f(self):\n        return self.sim.money\n") == [('Brain.f', 3)]
     assert ai_sim_breaks("class SimAI:\n    def __init__(self, s):\n        self.sim = s\n") == []
     src = "PEERS = frozenset({'money'})\nclass Brain:\n    def f(self):\n        return self.peers.money\n"
-    assert not peer_breaks(['simai'], src)
-    assert peer_breaks(['simai'], src.replace('peers.money', 'peers.order_move')) == [('simai', 'order_move')]
-    assert world_breaks(['simai'], "def f(self):\n    return self.world.order_move, sim.Body\n") == \
-        [('simai', 'order_move'), ('simai', 'sim')]         # R3 13f-2d: simai names no sim, Body neither
+    assert not peer_breaks(['engine.ai.core'], src)
+    assert peer_breaks(['engine.ai.core'], src.replace('peers.money', 'peers.order_move')) == [('engine.ai.core', 'order_move')]
+    assert world_breaks(['engine.ai.core'], "def f(self):\n    return self.world.order_move, sim.Body\n") == \
+        [('engine.ai.core', 'order_move'), ('engine.ai.core', 'sim')]         # R3 13f-2d: simai names no sim, Body neither
     assert world_breaks(['simproxy'], "def f(self):\n    return sim.Body\n") == []
     assert world_breaks(['simproxy'], "def f(self):\n    return sim.Thing\n") == [('simproxy', 'sim')]
-    assert host_write_breaks(('simai',), "class B:\n    def f(self):\n        self.world.money[p] = 3\n") == \
-        [('simai', 'money')]
+    assert host_write_breaks(('engine.ai.core',), "class B:\n    def f(self):\n        self.world.money[p] = 3\n") == \
+        [('engine.ai.core', 'money')]
 
 
 def test_nothing_else_imports_the_ai():
@@ -653,8 +654,8 @@ def test_nothing_else_imports_the_ai():
 
 def test_ai_import_guard_bites():
     """Mutation check: a simulator module importing simmicro at its top or simai inside a function is caught."""
-    assert ai_import_breaks(['sim'], "import simmicro\ndef f():\n    import simai\n") == \
-        [('sim', 'simai'), ('sim', 'simmicro')]
+    assert ai_import_breaks(['sim'], "import engine.orders.micro as simmicro\ndef f():\n    import engine.ai.core as simai\n") == \
+        [('sim', 'engine.ai.core'), ('sim', 'engine.orders.micro')]
 
 
 # step 9d: the skirmish AI writes no field of a body either (rule "L8 changes no object field"): a goal, a team, a
@@ -667,7 +668,7 @@ AI_RECORDS = {'f', 'state'}
 def ai_object_write_breaks(source=None):
     """(function, line, target) for each write in simai on an attribute of anything but itself and AI_RECORDS: an
     assignment, augmented assignment or item set, a mutating call (append, add, ...) or a setattr."""
-    tree = ast.parse(source) if source is not None else _tree('simai')
+    tree = ast.parse(source) if source is not None else _tree('engine.ai.core')
     out = []
 
     def outside(e):

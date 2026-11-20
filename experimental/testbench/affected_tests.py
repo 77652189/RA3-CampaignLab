@@ -402,7 +402,7 @@ CNV = 'experimental/cnv'
 RUN_ENDS = ('sim', 'simproxy')          # simcoverage.RUN_ENDS: the player-style run
 SEARCH = (CNV, 'experimental/campaign', '', 'tests')    # where a bare import is looked for after the importer's folder
 SKIP_DIRS = {'__pycache__', 'archive', 'node_modules'}
-PY_STRING = re.compile(r'^(?:[\w./\\-]*[/\\])?([A-Za-z_]\w*)\.py$')     # 'simai.py', 'experimental/cnv/simai.py'
+PY_STRING = re.compile(r'^(?:[\w./\\-]*[/\\])?([A-Za-z_]\w*)\.py$')     # 'engine/ai/core.py', 'experimental/cnv/engine/ai/core.py'
 FORWARDER_STMTS = 3                     # a Sim method this short that reaches a part module is that module's forwarder
 
 
@@ -488,7 +488,7 @@ class ImportGraph:
                 m = PY_STRING.match(n.value.strip())
                 if m:
                     whole = n.value.strip().replace('\\', '/')
-                    strs.add(whole if whole in self.paths else self.resolve(m.group(1), p))
+                    strs.add(whole if whole in self.paths else (self.resolve(whole[:-3].replace('/', '.'), p) or self.resolve(m.group(1), p)))
         if p.endswith('/__init__.py') and enginefiles.loads_its_folder(tree):     # engine/modules: every file in it
             folder = p[:-len('__init__.py')]
             loaded = {f for f in self.paths if f.startswith(folder) and f != p and
@@ -613,7 +613,7 @@ def is_sim_path(path):
 
 
 def module_name(path):
-    """The module name of a file of experimental/cnv: experimental/cnv/simheal.py -> simheal,
+    """The module name of a file of experimental/cnv: experimental/cnv/engine/objects/heal.py -> simheal,
     experimental/cnv/engine/objects/heal.py -> engine.objects.heal."""
     return enginefiles.name_of(path, CNV)
 

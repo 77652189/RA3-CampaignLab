@@ -7,7 +7,7 @@ on the bench: checks/engine_weaponset.py. Step W2 (below): the WeaponSet module 
 armed by Sim.add, written back by the modifier pass, read through the body's forwards and in the frame record."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simcoverage  # noqa: E402
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.modules import weaponset  # noqa: E402
 
 CANNON, PAINTER = 'AlliedAntiVehicleVehicleTech1Cannon', 'AlliedAntiVehicleVehicleTech1TargetPainter'
@@ -111,7 +111,7 @@ def test_a_retail_units_weapons_are_read_once_in_the_cache_shape():
 # --- step W2: the module holds the thing's weapons and slots ------------------------------------------------------
 
 def _world():
-    import simsmall
+    import engine.testing.small as simsmall
     return simsmall.small_world([('tank', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 0.0, 0.0),
                                  ('plant', 'SovietPowerPlant', 'Player_1', 300.0, 0.0),
                                  ('tut', 'Tutorial_AlliedTech1Tank', 'Player_1', 600.0, 0.0)])
@@ -173,7 +173,7 @@ def test_the_ais_fill_arms_an_unknown_templates_body_through_its_module(monkeypa
     """simbody.fill (the skirmish AI's factory made a template simunits does not know): the weapons of the template
     without its last '_' part, held by the body's WeaponSet -- one attached when it has none."""
     import types
-    import simbody
+    import engine.objects.body as simbody
     from engine.kernel import interfaces
     s = _world()
     lib = types.SimpleNamespace(template=lambda name: types.SimpleNamespace(kinds=('VEHICLE',)))
@@ -233,8 +233,8 @@ def test_a_per_target_weapon_gates_only_its_shooter_and_that_target():
 
 def test_the_firing_state_is_left_out_of_the_frame_record_and_kept_by_a_snapshot():
     import simrecord
-    import simsmall
-    import simsnap
+    import engine.testing.small as simsmall
+    import engine.state.snapshot as simsnap
     from engine.kernel import interfaces
     objects = [('tank', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 0.0, 0.0),
                ('plant', 'SovietPowerPlant', 'Player_1', 300.0, 0.0)]
@@ -260,7 +260,7 @@ def test_a_second_set_block_arms_the_one_module_with_every_blocks_slots():
     readers (fight, weapon_sets) walk every block, so the thing has one WeaponSet holding what they read (INFERRED:
     how the game fires two sets is not measured). The same with the child block's id Main is review l's case."""
     from engine.kernel import interfaces
-    import simsmall
+    import engine.testing.small as simsmall
     ak = 'SovietAntiInfantryInfantryAK47'
     parent = _tank('CNV_RevParent', f'<WeaponSetUpdate id="Main"><WeaponSlotHardpoint ID="1"><Weapon '
                                     f'Ordering="PRIMARY_WEAPON" Template="{ak}" ObjectStatus="GENERIC_TOGGLE_STATE"/>'

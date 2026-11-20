@@ -1,5 +1,5 @@
 """Movement's swept segment, using the CrusherInfo modules on the bodies."""
-import simsmall
+import engine.testing.small as simsmall
 
 
 def test_swept_crush_kills_only_the_lower_level_enemy_inside_its_own_radius():

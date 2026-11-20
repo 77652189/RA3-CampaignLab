@@ -29,8 +29,8 @@ CAPTION_ALLOWED = {
     'experimental/cnv/ctx.py',          # the outlet itself (Ctx.say)
     'experimental/cnv/model.py',
     'experimental/cnv/sim.py',
-    'experimental/cnv/simscript.py',    # the simulator reading the action (SHOWN), moved out of sim.py (ADR 0029)
-    'experimental/cnv/simact_show.py',  # the same: its Sim.act branch, moved out of sim.py
+    'experimental/cnv/engine/script/common.py',    # the simulator reading the action (SHOWN), moved out of sim.py (ADR 0029)
+    'experimental/cnv/engine/script/act_show.py',  # the same: its Sim.act branch, moved out of sim.py
 }
 
 # G4: how many tracked .py files still edit sys.path. Only lower it.

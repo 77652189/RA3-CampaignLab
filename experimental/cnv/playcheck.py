@@ -183,7 +183,7 @@ class Compiler:
             return [('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', n, 'Command_CaptureBuilding', goal)
                     for n in self.who(who, now)]
         if verb == '生产':                  # the factory's build button (a script's press = the player's click: bench
-            import simunits                 # engine_production e)
+            import engine.data.units as simunits                 # engine_production e)
             what, where = rest
             tmpl, own = self.template(what), {u.id: u.xml for u in self.m.units}
             out = []

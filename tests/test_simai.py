@@ -1,4 +1,4 @@
-"""The skirmish AI on the plan simulator (experimental/cnv/simai.py): the engine line's layer-4 model plays the enemy
+"""The skirmish AI on the plan simulator (experimental/cnv/engine/ai/core.py): the engine line's layer-4 model plays the enemy
 -- its opening against the bench (checks/engine_aiopen.py f1-f3 and m, frames from the wake), and on a small
 skirmish (missions/aiskirm_bench.py) it builds, makes units, teams them up and attacks the player's base. Skipped
 where ra3model.ai is not on this computer (labpaths.ENGINE_MODEL), as the simulator's engine model is."""

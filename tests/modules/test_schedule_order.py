@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-from simsmall import small_world  # noqa: E402
+from engine.testing.small import small_world  # noqa: E402
 
 BODY = '<Body><ActiveBody MaxHealth="100"/></Body>'
 LIFETIME = '<LifetimeUpdate MinLifetime="2s" MaxLifetime="2s"/>'

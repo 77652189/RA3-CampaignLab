@@ -1,4 +1,4 @@
-"""Battlefield's AI yards (experimental/cnv/simbattlefield.py step 9; step S 11d after step 8, the coordinator's 11-20
+"""Battlefield's AI yards (experimental/cnv/engine/state/battlefield.py step 9; step S 11d after step 8, the coordinator's 11-20
 scope): a yard builds its structures in the skirmish AI's own queue (simai Brain.yard_q), so ai_open's cut at 41 s lost
 the three its yard had queued (a refinery 55 % built, a refinery and a power plant not started). With the run's AI the
 export lists them in the yard's queue; placed onto an empty run of the map with its AI they go into the host AI's
@@ -9,10 +9,10 @@ import pytest
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import build  # noqa: E402
 import sim  # noqa: E402
-import simai  # noqa: E402
-import simbattlefield  # noqa: E402
+import engine.ai.core as simai  # noqa: E402
+import engine.state.battlefield as simbattlefield  # noqa: E402
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 from test_battlefield_export import CUTS, _run  # noqa: E402
 

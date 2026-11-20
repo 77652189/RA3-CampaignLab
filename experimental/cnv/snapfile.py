@@ -100,8 +100,8 @@ def shape():
     commit modelpin lets load: review 1119v P2 #2). A file named by another is not read (taken again); one taken in
     another and put under this name is refused by load."""
     import modelpin
-    import simaisnap
-    import simsnap
+    import engine.state.ai_snapshot as simaisnap
+    import engine.state.snapshot as simsnap
     return f'{simsnap.VERSION}-{simaisnap.VERSION}-{modelpin.pinned()}'
 
 

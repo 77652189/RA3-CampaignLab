@@ -27,7 +27,7 @@ def test_any_other_shape_is_false():
 
 def test_the_body_forwards_its_rules_and_the_known_statuses():
     import sim
-    import simsmall
+    import engine.testing.small as simsmall
     e = simsmall.small_world()
     e.own['CNV_TestAttach'] = ('<GameObject id="CNV_TestAttach" Side="Neutral" KindOf="INFANTRY"><Behaviors>'
                                f'<AttachUpdate{HEAD} /></Behaviors></GameObject>')

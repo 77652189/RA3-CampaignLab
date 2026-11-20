@@ -4,8 +4,8 @@ RequiredObjectStatusFlags, AllowSelf), its refresh beat (the first at once, then
 first, a late ask moved to the latest refresh due), and the port reading inherited auras.
 The stasis zone on the map: tests/test_simmodifier.py."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simsmall  # noqa: E402
-import simunits  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import aura  # noqa: E402
 

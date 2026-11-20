@@ -4,7 +4,7 @@ check; the ones healing others a gap), a thing taken out of the world off the sc
 record where the body's fields were. The healing itself: tests/test_simheal.py; on the bench: test_simbench.py."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import autoheal  # noqa: E402
 

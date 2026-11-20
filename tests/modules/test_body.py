@@ -6,7 +6,7 @@ work/re/sim_split/b2_draft/b2_census.py: 3448 retail + 520 own templates, no dif
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.modules import body  # noqa: E402
 
 BASE = ('<GameObject id="CNVBodyBase"><Body><ActiveBody id="B" MaxHealth="400"/></Body>'
@@ -88,7 +88,7 @@ def test_a_campaign_override_is_read_first_as_max_health_reads_it():
 # --- step B2b: the module (one a thing, made by Sim.add; hp / max_hp / health_floor its state)
 
 def _world(*objects):
-    import simsmall
+    import engine.testing.small as simsmall
     return simsmall.small_world([(n, t, 'Player_1', 0.0, 0.0) for n, t in objects], model=False)
 
 
@@ -168,7 +168,7 @@ def test_the_fields_live_on_the_module_read_only_on_the_body_and_recorded_by_the
 def test_the_last_damage_and_the_indestructible_flag_live_on_the_module_step_b3():
     import pytest
     import sim
-    import simact_object
+    import engine.script.act_object as simact_object
     from engine.ports.observe import Observe
     s = _world(('p', 'AlliedPowerPlant'), ('q', 'AlliedPowerPlant'))
     p, q = s.bodies['p'], s.bodies['q']
@@ -197,8 +197,8 @@ def test_the_last_damage_and_the_indestructible_flag_live_on_the_module_step_b3(
 
 def test_a_damage_kill_keeps_its_bits_readable_that_frame_on_the_module_step_b4a():
     import pytest
-    import simact_object
-    import simcond_object
+    import engine.script.act_object as simact_object
+    import engine.script.cond_object as simcond_object
     from engine.ports.observe import Observe
     s = _world(('p', 'AlliedPowerPlant'), ('q', 'AlliedPowerPlant'), ('r', 'AlliedPowerPlant'))
     p, q, r = s.bodies['p'], s.bodies['q'], s.bodies['r']

@@ -104,7 +104,7 @@ def test_queuedock_present_replays_measured_unload_duration_and_amount():
 
 
 def test_queuedock_presence_follows_parent_and_ignores_comments():
-    import simunits
+    import engine.data.units as simunits
     own = {'DockParent': '<GameObject id="DockParent"><Behaviors>'
            '<QueueDockBehavior id="dock"/></Behaviors></GameObject>',
            'DockChild': '<GameObject id="DockChild" inheritFrom="DockParent"/>',

@@ -23,7 +23,7 @@ def test_spy_vehicle_factory_as_on_the_bench():
     """
     import build
     import sim
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     m, t, mod = build.resolve('engine_infveh', 'a')
     assert len(mod) <= 15 and '_' not in mod
     rule = siminfiltrator.spec('AlliedWarFactory')
@@ -245,7 +245,7 @@ def test_spy_ordinary_vision_as_on_the_bench(check, template):
     """
     import build
     import sim
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     m, t, mod = build.resolve('engine_infvis', check)
     assert len(mod) <= 15 and '_' not in mod
     assert all(m.role(role).template == template for role in ('enemy', 'ally'))
@@ -280,7 +280,7 @@ def test_spy_superweapon_reset_entry_window_as_on_the_bench(check, until, entere
     """
     import build
     import sim
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     m, t, _ = build.resolve('engine_infreset', check)
     rule = siminfiltrator.spec('SovietSuperWeapon')
     assert {k: v for k, v in rule.items() if k not in ('xmlns', 'id')} == {'Effect': 'RESET'}
@@ -364,7 +364,7 @@ def test_spy_superweapon_reset_as_on_the_bench(check, until, windows):
     """
     import build
     import sim
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     m, t, mod = build.resolve('engine_infreset', check)
     assert len(mod) <= 15 and '_' not in mod
     assert siminfiltrator.spec('SovietSuperWeapon')['Effect'] == 'RESET'
@@ -393,7 +393,7 @@ def test_spy_refinery_transfer_window_as_on_the_bench():
     """
     import build
     import sim
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     m, t, mod = build.resolve('engine_infmon', 'a')
     assert len(mod) <= 15 and '_' not in mod
     rule = siminfiltrator.spec('AlliedRefinery')
@@ -479,7 +479,7 @@ def test_spy_refinery_money_as_on_the_bench():
     """
     import build
     import sim
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     m, t, mod = build.resolve('engine_infmon', 'a')
     assert len(mod) <= 15 and '_' not in mod
     assert all(m.role(role).template == 'AlliedRefinery' for role in ('enemy', 'ally'))

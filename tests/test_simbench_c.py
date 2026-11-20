@@ -276,7 +276,7 @@ def test_levelup_veteran_damage_persists_at_elite_and_heroic_without_gated_targe
 
 def test_a_mission_file_holding_two_game_objects_gives_each_its_own_crush_levels():
     import build
-    import simunits
+    import engine.data.units as simunits
     from engine.modules import crush
     m, _, _ = build.resolve('engine_dynamics', 'a')
     own = {u.id: u.xml for u in m.units}
@@ -329,7 +329,7 @@ def test_suppression_predictions():
     import build
     from checks import engine_clip, engine_suppression
     import sim
-    import simunits
+    import engine.data.units as simunits
     from parts import contract, merged
     import struct
     import package
@@ -673,7 +673,7 @@ def test_weapon_bench_register_points_to_replayed_engine_probes():
 def test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead():
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     assert any(w.get('projectile')=='SovietAntiVehicleVehicleTech1TankProjectile'
                for w in simunits.weapon_table().values())
     m,t,_=build.resolve('engine_projectile','flight')
@@ -728,7 +728,7 @@ def test_emp_blocks_an_ordered_shot_and_allows_a_new_shot_after_expiry():
 def test_special_power_nugget_dispatches_the_casters_self_modifier_only_with_module_and_eligible_target():
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     retail=simunits._fight_data()['weapons']['JapanLightTransportVehicleDisguiser']
     assert retail['special_powers'][0]['power']=='SpecialPower_JapanLightTransportVehicleDisguise'
     m,t,_=build.resolve('engine_spn','a')
@@ -739,7 +739,7 @@ def test_special_power_nugget_dispatches_the_casters_self_modifier_only_with_mod
 def test_attach_nugget_sets_parent_child_status_and_follows_the_moving_parent():
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     retail=simunits._fight_data()['weapons']['JapanScoutInfantryAttachWeaponWarhead']
     assert retail['attach'][0]['module']=='ModuleTag_Attach'
     m,t,_=build.resolve('engine_attach','a')

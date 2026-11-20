@@ -4,8 +4,8 @@ stood (only one read off the template: the skirmish AI's late lifetime leaves no
 death in the air making the first airborne module's wrecks fall (World.create airborne). On the bench:
 checks/engine_life.py (the ice core's wall), checks/engine_crash_fall.py (the Apollo's wreck)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simbody  # noqa: E402
-import simsmall  # noqa: E402
+import engine.objects.body as simbody  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces, module  # noqa: E402
 from engine.modules import createobjectdie as cod  # noqa: E402
 

@@ -50,7 +50,7 @@ def test_meta_objectgate_replays_native_dispatch_and_path(check, lane, frame, de
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_objectgate import BIT
     from checks.engine_knock_probe import name
 
@@ -97,7 +97,7 @@ def test_meta_objectgate_replays_native_dispatch_and_path(check, lane, frame, de
 
 
 def test_meta_objectgate_retains_unmeasured_combinations_as_gaps():
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_objectgate import payload
 
     for shock in (payload().replace('LEECHED_TARGET_ACTIVE', 'NO_ATTACK'),

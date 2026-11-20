@@ -661,7 +661,7 @@ class WeaponSet(Interface):
 
 class Clocked(Interface):
     """A module whose state holds the logic frames it wakes or acts at, as a Battlefield file carries them (step S 11d,
-    experimental/cnv/simbattlefield.py: autoheal, lifetime, sale, unpacking): clocks() -> {name: a frame or None (a
+    experimental/cnv/engine/state/battlefield.py: autoheal, lifetime, sale, unpacking): clocks() -> {name: a frame or None (a
     flag: a bool)}, on this world's clock; set_clocks(values) writes them and wakes the module as its own setters do
     (a thing placed by the map load, given the source's)."""
     __slots__ = ()

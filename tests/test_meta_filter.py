@@ -57,7 +57,7 @@ def test_meta_filter_replays_native_ground_dispatch(check, lane, frame, centre, 
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import name
 
     velocities = dict(velocities)

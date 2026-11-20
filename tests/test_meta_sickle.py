@@ -59,7 +59,7 @@ def test_meta_sickle_replays_real_landing_dispatch_and_path(check, lane, x, monk
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks import engine_knock_sickle as s
 
     m, t, _ = build.resolve('engine_knock_sickle', check)

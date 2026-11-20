@@ -1,5 +1,5 @@
 """A force order's behavior after dispatch, including the allied-only edge."""
-import simsmall
+import engine.testing.small as simsmall
 from engine.ports.command import Command
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'

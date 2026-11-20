@@ -89,7 +89,7 @@ def test_conftest_marks_exactly_the_listed_files():
 def test_daily_pick_leaves_replays_out_unless_the_change_edits_them():
     replays = {'tests/test_r.py': 'game', 'tests/test_s.py': 'bench'}
     picked = {'tests/test_r.py', 'tests/test_s.py::test_one', 'tests/test_plain.py'}
-    kept, out = at.drop_replays(picked, replays, changed={'experimental/cnv/simheal.py'})
+    kept, out = at.drop_replays(picked, replays, changed={'experimental/cnv/engine/objects/heal.py'})
     assert kept == {'tests/test_plain.py'} and out == {'tests/test_r.py', 'tests/test_s.py::test_one'}
     kept, out = at.drop_replays(picked, replays, changed={'tests/test_r.py'})
     assert kept == {'tests/test_r.py', 'tests/test_plain.py'}

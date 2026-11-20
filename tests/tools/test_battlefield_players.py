@@ -1,4 +1,4 @@
-"""Battlefield's placing of players (experimental/cnv/simbattlefield.py place_players / place; step S 11d step 4,
+"""Battlefield's placing of players (experimental/cnv/engine/state/battlefield.py place_players / place; step S 11d step 4,
 work/re/sim_split/bf_pack/plan.md): the three hand-made files and the three runs they were cut from, placed whole onto
 an empty run of their map, read back player for player -- money, protocols and points, player upgrades, relations and
 the power the host recomputes from the placed things. Protocols a file holds are held, not bought again (the points
@@ -13,11 +13,11 @@ import pytest
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import build  # noqa: E402
 import sim  # noqa: E402
-import simai  # noqa: E402
-import simbattlefield  # noqa: E402
+import engine.ai.core as simai  # noqa: E402
+import engine.state.battlefield as simbattlefield  # noqa: E402
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
-import simtech  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.players.tech as simtech  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 from maps import niagara, probe_range  # noqa: E402
 

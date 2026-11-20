@@ -2,7 +2,7 @@
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-from simpath import sees  # noqa: E402
+from engine.objects.path import sees  # noqa: E402
 
 
 @pytest.mark.parametrize(('rows', 'start', 'end'), [

@@ -27,7 +27,7 @@ def test_lift_historical_bench_counters(check, expected):
 
 
 def test_lift_timer_truncation_renewal_cap_and_caster_ownership():
-    import simunits
+    import engine.data.units as simunits
     own = {'Caster': '<GameObject id="Caster"><LiftObjectUpdate TimeIncrement="0.5s" MaxTimeLifted="8s"/></GameObject>'}
     rule = simunits.lift_module('Caster', own)
     assert rule == dict(increment=7, maximum=120)
@@ -78,7 +78,7 @@ def test_lift_hit_enters_caster_ledger_and_release_keeps_status():
     'Include="VEHICLE"/></ActivateLiftObjectNugget>',
 ])
 def test_lift_dispatch_survives_inheritance_and_warhead(nugget):
-    import simunits
+    import engine.data.units as simunits
     xml = ('<WeaponTemplate id="LiftBase"><Nuggets>' + nugget + '</Nuggets></WeaponTemplate>'
            '<WeaponTemplate id="LiftChild" inheritFrom="LiftBase"/>'
            '<WeaponTemplate id="LiftShot"><Nuggets><ProjectileNugget '
@@ -91,7 +91,7 @@ def test_lift_dispatch_survives_inheritance_and_warhead(nugget):
 
 
 def test_lift_unsupported_filter_stays_a_gap():
-    import simunits
+    import engine.data.units as simunits
     weapons = simunits._weapons(['<WeaponTemplate id="Lift"><Nuggets>'
         '<ActivateLiftObjectNugget><SpecialObjectFilter Rule="ALL" Include="VEHICLE"/>'
         '</ActivateLiftObjectNugget></Nuggets></WeaponTemplate>'])

@@ -11,7 +11,7 @@ import pytest
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import sim  # noqa: E402
-import simsmall  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.ports import command as command_port  # noqa: E402
 from engine.ports.command import Command, Commands, ROUTED, command, event, queued, text  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
@@ -473,7 +473,7 @@ def test_a_line_capture_refused_by_the_world_is_refused():
 def test_a_team_button_presses_its_members_not_a_reference_of_their_name():
     """TEAM_USE_COMMANDBUTTON_ABILITY gives the button to the members it picked (review 11-19 i #2: a reference `lead`
     pointing at another player's Peacekeeper took lead's press)."""
-    import simact_ability
+    import engine.script.act_ability as simact_ability
     pk = 'AlliedAntiInfantryInfantry'
     s = simsmall.small_world([('lead', pk, 'Player_1', 0.0, 0.0), ('other', pk, 'Player_2', 300.0, 0.0)],
                              model=False)
@@ -491,7 +491,7 @@ def test_a_team_build_button_queues_at_the_member_not_a_reference_of_its_name():
     """TEAM_USE_COMMANDBUTTON_ABILITY's build button queues at the factory the team action picked (same-name sweep
     11-19b O07: the port read the press's factory again by name, so a reference `f` pointing at the player's other
     barracks took the engineer); a factory gone since is refused, not another's queue."""
-    import simact_ability
+    import engine.script.act_ability as simact_ability
     s = simsmall.small_world([('f', 'AlliedBarracks', 'Player_1', 0.0, 0.0),
                               ('other', 'AlliedBarracks', 'Player_1', 600.0, 0.0)], model=False)
     asked = []
@@ -510,7 +510,7 @@ def test_a_team_build_button_queues_at_the_member_not_a_reference_of_its_name():
 
 
 def _cast_world():
-    import simcond_player
+    import engine.script.cond_player as simcond_player
     s = simsmall.small_world([('lead', 'AlliedSuperWeaponAdvanced', 'Player_1', 0.0, 0.0)], model=False)
     assert s.order_power(s.bodies['lead'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
     _run_frames(s)                          # read from the next frame's scripts
@@ -770,7 +770,7 @@ def test_a_sequential_step_reads_the_unit_only_where_it_wrote_this_object():
     unit is read as itself without the reference being written over, so a reference the step points at the unit
     stays (#3: the restore took it back), and a point by its name is the unit's too (#4: the camera went to a unit
     made under its name since)."""
-    import simorder
+    import engine.orders.order as simorder
     s, lead, other = _seq_world([('MOVE_NAMED_UNIT_TO', 'lead', 'dest')])
     s.seq_due()
     assert (lead.move_to, other.move_to, s.refs['lead']) == (None, (600.0, 300.0), other)
@@ -886,7 +886,7 @@ def test_proxy_ids_run_one_two_three_and_are_never_given_again():
 
 def _brain(s, player='Player_1'):
     """A bare Brain of `player` on the small world: its Thing ids and outlets, no model."""
-    import simai
+    import engine.ai.core as simai
     host = simai.SimAI(s, lib=object(), data=object())
     br = object.__new__(simai.Brain)
     br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, player, {}, {}
@@ -927,7 +927,7 @@ def test_the_ais_micro_fires_and_dodges_with_the_unit_it_viewed_not_a_reference_
     `world.body(u.name)` and `dodge_move` matched team members by name, so the reference `lead` pointing at another
     miner of the same player fired that miner's armour, and a team still holding the old `lead` moved that one)."""
     from types import SimpleNamespace
-    import simai
+    import engine.ai.core as simai
     if not simai.available():
         pytest.skip('ra3model.ai unavailable')
     s = simsmall.small_world([('lead', 'SovietMiner', 'Player_1', 0.0, 0.0),
@@ -962,7 +962,7 @@ def test_the_ais_hunt_goes_on_with_its_member_not_a_reference_of_its_name():
     `world.body(name)`, so with the pursuit dead and the path cancelled the reference `lead` pointing at another
     tank of the same player took the walk on)."""
     from types import SimpleNamespace
-    import simai
+    import engine.ai.core as simai
     if not simai.available():
         pytest.skip('ra3model.ai unavailable')
     s = simsmall.small_world([('lead', APOC, 'Player_1', 0.0, 0.0), ('decoy', APOC, 'Player_1', 0.0, 300.0),
@@ -1008,7 +1008,7 @@ def test_the_players_power_casts_with_an_observer_tapping_the_actions():
 def test_the_ais_recruiting_wraps_the_new_unit_not_the_dead_one_of_its_name():
     """A recruit's Unit wrapper is its object's, by serial (review 11-19 q P2 #1: keyed by name, a `lead` made again
     after the first one died was handed the dead one's wrapper, and the AI's orders to it went to the dead body)."""
-    import simai
+    import engine.ai.core as simai
     if not simai.available():
         pytest.skip('ra3model.ai unavailable')
     s = simsmall.small_world([('lead', APOC, 'Player_1', 0.0, 0.0)], model=False)
@@ -1033,7 +1033,7 @@ def test_the_ais_yard_orders_end_with_their_yard_not_go_on_at_a_new_one_of_its_n
     """A yard's build queues are its object's, by serial (review 11-19 q P2 #2: keyed by the yard's name, a yard
     deleted and made again elsewhere under it took the old one's structure order and its defence order and placed
     them)."""
-    import simai
+    import engine.ai.core as simai
     if not simai.available():
         pytest.skip('ra3model.ai unavailable')
     s = simsmall.small_world([('yard', 'SovietConstructionYard', 'Player_1', 2000.0, 2000.0),
@@ -1065,7 +1065,7 @@ def test_the_ais_micro_view_names_a_member_and_a_beacon_made_again_apart_from_th
     or a beacon made again under an earlier one's name a name of its own (`name#serial`) -- the new member does not
     take the old one's flight point from the old beacon; one never replaced keeps its plain name."""
     from types import SimpleNamespace
-    import simai
+    import engine.ai.core as simai
     if not simai.available():
         pytest.skip('ra3model.ai unavailable')
     s = simsmall.small_world([('lead', 'SovietConscript', 'Player_1', 0.0, 0.0),

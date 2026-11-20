@@ -34,8 +34,8 @@ def test_another_format_is_refused(tmp_path):
 def test_a_kept_start_is_named_by_its_shape():
     """A start under work/cache/snaps is read only by the shape it was taken in (simsnap's, simaisnap's versions,
     the model pin): a newer shape takes it again."""
-    import simaisnap
-    import simsnap
+    import engine.state.ai_snapshot as simaisnap
+    import engine.state.snapshot as simsnap
     p = snapfile.cached('aiskrand_s_600')
     assert os.path.dirname(p) == snapfile.cache_dir() and p.endswith('.json.gz')
     assert f'_v{simsnap.VERSION}-{simaisnap.VERSION}-' in os.path.basename(p)
@@ -116,11 +116,11 @@ def test_a_fresh_process_reads_a_file_of_this_shape(tmp_path):
     import sys
     from pathlib import Path
 
-    import simsnap
+    import engine.state.snapshot as simsnap
     path = str(tmp_path / 's.json.gz')
     snapfile.save(path, {'a': 1}, task='t')
     cnv = Path(__file__).resolve().parents[2] / 'experimental' / 'cnv'
-    code = ('import sys, snapfile, simsnap; assert "engine.modules" not in sys.modules; '
+    code = ('import sys, snapfile, engine.state.snapshot as simsnap; assert "engine.modules" not in sys.modules; '
             'print(snapfile.load(sys.argv[1])[0]["task"], simsnap.version())')
     out = subprocess.run([sys.executable, '-B', '-X', 'utf8', '-c', code, path], capture_output=True, text=True,
                          env={**os.environ, 'PYTHONPATH': str(cnv)}, timeout=300)

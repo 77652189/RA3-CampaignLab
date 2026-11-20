@@ -4,7 +4,7 @@ death fires its DeathWeapon (World.fire -> simbody.Life.fire: the weapon's Damag
 deletion fires nothing; a falling wreck's weapons come from its template's module data (Life.wreck_blasts). On the
 bench: checks/engine_spawn.py refill (the exploding MiG), checks/engine_crash_fall.py (the Apollo's wreck)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simsmall  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces, module  # noqa: E402
 from engine.modules import fireweaponwhendead as fw  # noqa: E402
 
@@ -86,7 +86,7 @@ def test_an_inherited_player_power_weapon_needs_its_status():
 def test_a_falling_wreck_fires_what_a_normal_death_of_no_status_sets_off():
     """Life.wreck_blasts: JapanAntiAirShipAirborne_Dying's inherited kamikaze weapon (PLAYER_POWER_1) stays out --
     only its crash weapon (150 EXPLOSIVE radius 20, allies 50 %), as the old reader read it."""
-    import simbody
+    import engine.objects.body as simbody
     s = simsmall.small_world()
     blasts = simbody.Life().wreck_blasts(s, 'JapanAntiAirShipAirborne_Dying')
     assert [(d[0], d[1], d[2], d[5]) for d in blasts] == [(150.0, 'EXPLOSIVE', 20.0, 0.5)]

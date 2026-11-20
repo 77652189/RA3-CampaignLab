@@ -110,7 +110,7 @@ def test_jet_unmeasured_motion_does_not_reuse_startup(variant):
     elif variant == 'speed-change':
         assert jet.jet_motion is not None
         jet.speed = 90
-        import simjet
+        import engine.objects.jet as simjet
         assert simjet.distance(e, jet) == 6
         jet.speed = 180
         assert simjet.distance(e, jet) == 12  # cannot restart the measured acceleration

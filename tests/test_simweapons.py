@@ -5,7 +5,7 @@ from pathlib import Path
 
 # loaded by file (no new sys.path edit: guard G4's ceiling); simunits puts what it needs on the path itself
 _spec = importlib.util.spec_from_file_location(
-    'simunits', Path(__file__).resolve().parent.parent / 'experimental' / 'cnv' / 'simunits.py')
+    'engine.data.units', Path(__file__).resolve().parent.parent / 'experimental' / 'cnv' / 'engine/data/units.py')
 simunits = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simunits)
 

@@ -7,8 +7,8 @@ the body's fields were. On the bench: engine_suppress_probe tail / lifetime / du
 (tests/test_simbench_c.py)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
-import simunits  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.kernel import interfaces, module, world as kernel_world  # noqa: E402
 from engine.modules import suppression  # noqa: E402
 

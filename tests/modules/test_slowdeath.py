@@ -4,7 +4,7 @@ a commented-out block not read (the port merges as the SDK compiler, which reads
 fields in the frame record where they were. On the bench: checks/engine_crush.py (a crushed conscript lay 127 frames)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces, module  # noqa: E402
 from engine.modules import slowdeath  # noqa: E402
 

@@ -26,7 +26,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 import glossary  # noqa: E402
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 # A reader of the run through the observation port (engine/ports/observe.py; tests/guards/test_ports READERS): the
 # simulator itself (sim, plan) is imported only in the harness -- walk makes and drives the run, spelt gives what the
 # report prints in the simulator's own terms.

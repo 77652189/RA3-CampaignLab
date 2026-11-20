@@ -151,7 +151,7 @@ class Picture:
     def now(self, since, stages):
         """The run now: the units, the shown counters, captions, the camera, the production menu, the lines heard from
         the `since`-th on, the `stages` flags reached."""
-        import simunits
+        import engine.data.units as simunits
         obs, show, mmss = self.obs, self.show, self.mmss
         t = obs.t
         seen_cache = {}

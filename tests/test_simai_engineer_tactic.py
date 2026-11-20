@@ -13,7 +13,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / 'experimental/cnv'), str(ROOT / 'experimental/campaign')]
-import simai  # noqa: E402
+import engine.ai.core as simai  # noqa: E402
 import simai_run  # noqa: E402
 
 WAKE = 11.0                         # the first simulator second the counters are written (missions.aiskirm_bench)

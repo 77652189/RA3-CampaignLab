@@ -18,8 +18,8 @@ import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import simbench_peak  # noqa: E402
-import simloop  # noqa: E402
-import simsmall  # noqa: E402
+import engine.loop.frame as simloop  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 
 BASELINE = 1.13         # the whole run's simulated / wall seconds at 016c411a (B0 11-17; raise it as steps speed up)
 WORST = 0.45            # the slowest 10 s then (the first): the peak, the one under real time
@@ -57,7 +57,7 @@ def test_the_peak_runs_faster_than_real_time(peak):
 def ai_peak():
     """The AI scene's busy stretch (aipeak from AI_FROM, step S 11c-2): its start kept in work/cache/snaps, so only
     the first run (or one after the snapshot's shape changes) plays the minutes up to it."""
-    import simai
+    import engine.ai.core as simai
     if not simai.available():
         pytest.skip('the engine model (ra3model.ai) is not on this computer')
     return simbench_peak.run_ai(simbench_peak.SECS, simbench_peak.AI_FROM)

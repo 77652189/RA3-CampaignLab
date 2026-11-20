@@ -17,7 +17,7 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import glossary  # noqa: E402
 import graybox  # noqa: E402
 import offline  # noqa: E402
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 # A reader through the observation port (tests/guards/test_ports READERS): sim and plan only in world, the harness.
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'campaign')))
 import labpaths  # noqa: E402

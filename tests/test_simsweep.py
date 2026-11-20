@@ -25,7 +25,7 @@ def _series(check, until):
 def test_linear_damage_reads_the_shooters_update_speed_a_frame_and_the_sweep_weapon():
     import build
     import sim
-    import simsweep
+    import engine.combat.sweeps as simsweep
     m, t, _ = build.resolve('engine_sweepoff', 'a')
     d = simsweep.linear_damage('CNV_Sweep', sim.Sim(m, t).own)
     assert (d['start'], d['radius'], d['length'], d['speed']) == (50.0, 10.0, 450.0, 12.0)    # Speed 60 / 5

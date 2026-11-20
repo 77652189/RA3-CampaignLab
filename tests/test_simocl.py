@@ -56,7 +56,7 @@ def test_iron_curtain_zero_count_ocl_reference():
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     m, t, _ = build.resolve('engine_oclzero', 'a')
     s = sim.Sim(m, t).run(34.0)
     rows = [row for _, row in s.series if 90 <= row[0] <= 180]
@@ -87,7 +87,7 @@ def test_iron_curtain_copied_ocl_reference():
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     m, t, _ = build.resolve('engine_oclcopy', 'a')
     s = sim.Sim(m, t).run(34.0)
     rows = [row for _, row in s.series if 90 <= row[0] <= 180]

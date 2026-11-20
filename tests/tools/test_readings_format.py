@@ -321,7 +321,7 @@ def test_the_repository_readings_load_and_sit_beside_their_bench():
 
 
 def _simai_constant(name):
-    tree = ast.parse((ROOT / 'experimental' / 'cnv' / 'simai.py').read_text(encoding='utf-8'))
+    tree = ast.parse((ROOT / 'experimental' / 'cnv' / 'engine/ai/core.py').read_text(encoding='utf-8'))
     return [ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign) and
             any(getattr(t, 'id', None) == name for t in n.targets)]
 

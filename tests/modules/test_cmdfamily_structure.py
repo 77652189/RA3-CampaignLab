@@ -1,5 +1,5 @@
 """Structure targeting depends on the target kinds, AI auto-acquire, and explicit orders."""
-import simsmall
+import engine.testing.small as simsmall
 from engine.ports.command import Command
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'

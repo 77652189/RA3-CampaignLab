@@ -1,4 +1,4 @@
-"""A computer player's protocol lottery (experimental/cnv/simtech.py Book.ai_buy): its personality's PowerChoice
+"""A computer player's protocol lottery (experimental/cnv/engine/players/tech.py Book.ai_buy): its personality's PowerChoice
 lines, by weight, among the ones it may buy now; nothing without lines. Read from the program (engine line B round
 60); where the draw falls (simtech.DRAW) from the bench (round 74, checks/engine_aipower.py)."""
 import importlib.util
@@ -10,7 +10,7 @@ import pytest
 _spec = importlib.util.spec_from_file_location(
     'simbench', Path(__file__).resolve().parent.parent / 'experimental' / 'cnv' / 'simbench.py')
 _spec.loader.exec_module(importlib.util.module_from_spec(_spec))
-import simtech  # noqa: E402
+import engine.players.tech as simtech  # noqa: E402
 
 try:
     simtech._personalities()

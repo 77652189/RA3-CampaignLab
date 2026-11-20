@@ -30,7 +30,7 @@ RAW_ATTRS = RAW | {'eng', '_w'}         # ... and attributes (`eng` is also the 
 
 def simulator_modules():
     """Top-level module names that are the simulator's (every .py and package in experimental/cnv)."""
-    return {p.stem for p in CNV.glob('*.py')} | {p.name for p in CNV.iterdir() if (p / '__init__.py').exists()}
+    return set(_layers.LAYER_OF) | {p.stem for p in CNV.glob('*.py')} | {p.name for p in CNV.iterdir() if (p / '__init__.py').exists()}
 
 
 def _functions(tree):
@@ -65,7 +65,7 @@ def import_breaks(src, sim=None, harness=HARNESS):
         else:
             continue
         for n in names:
-            if n.split('.')[0] in sim and not (n == 'engine.ports' or n.startswith('engine.ports.')) \
+            if (n in sim or (not n.startswith('engine.') and n.split('.')[0] in sim)) and not (n == 'engine.ports' or n.startswith('engine.ports.')) \
                     and where.get(node) not in harness:
                 out.append((node.lineno, n))
     return out
@@ -133,7 +133,7 @@ EXEMPT = [
     (CNV / 'simai_run.py', None, 'AI 的整局入口：造局（build / sim）交给 simai.SimAI（R3 13f-2d）'),
     (CNV / 'simproxy.py', None, '代理玩家：自己造局、驱动、读世界（下令经命令端口，GIVERS 守，R3 13e）'),
     (CNV / 'retail.py', None, '造原版关的局（同 build，造局的一边）'),
-    (CNV / 'simsmall.py', None, '规则测试的小世界：造局'),
+    (CNV / 'engine/testing/small.py', None, '规则测试的小世界：造局'),
     (CNV / 'simstatic.py', None, '静态半边：只用 sim.CMP 比较表和 sim.Ground 地面，不读跑着的世界'),
     (AUTOPLAY / 'levels.py', None, '只读 simproxy 的常量 LEADS / ESCORT（任务数据）'),
 ]
@@ -153,13 +153,13 @@ READERS = {
     CNV / 'simrecord.py': set(),
     CNV / 'simshow.py': {'ctx', 'model', 'strip'},
     AUTOPLAY / 'autoplay.py': set(),
-    AUTOPLAY / 'players.py': {'simunits'},
-    CNV / 'offline.py': {'glossary', 'simunits'},
-    CNV / 'graybox.py': {'offline', 'simunits'},
-    CNV / 'graybox_cards.py': {'glossary', 'graybox', 'offline', 'simunits'},
+    AUTOPLAY / 'players.py': {'engine.data.units'},
+    CNV / 'offline.py': {'glossary', 'engine.data.units'},
+    CNV / 'graybox.py': {'offline', 'engine.data.units'},
+    CNV / 'graybox_cards.py': {'glossary', 'graybox', 'offline', 'engine.data.units'},
     CNV / 'simbench.py': {'build'},
     CNV / 'simchecks.py': {'build'},
-    PLAYCHECK: {'build', 'model', 'parts', 'simunits'},
+    PLAYCHECK: {'build', 'model', 'parts', 'engine.data.units'},
     MAPPAGE: {'contract', 'parts', 'resources'},
 }
 
@@ -178,12 +178,12 @@ def spec(path):
 # Readers that are one class or function of a bigger file (the rest of the file is a None row of EXEMPT): (file, name,
 # the mission-data modules it may import). simui's game.py: what the page draws is the Picture's, the voices and the
 # replay record the Play's, and the stage flags / the key moments are read off the compiled mission / a run's Observe.
-READER_PARTS = [(GAME, 'Play', set()), (GAME, 'Picture', {'simunits'}), (GAME, 'phase_flags', set()),
+READER_PARTS = [(GAME, 'Play', set()), (GAME, 'Picture', {'engine.data.units'}), (GAME, 'phase_flags', set()),
                 (GAME, 'key_times', set())]
 
 # What makes or hands out a world (a sim.Sim): a file outside the simulator that imports one of these, or loads one by
 # file (`_load('sim', ...)`), touches the world and must be a reader or in EXEMPT.
-WORLD_MAKERS = {'sim', 'simai', 'simai_run', 'simproxy', 'retail', 'simsmall'}
+WORLD_MAKERS = {'sim', 'engine.ai.core', 'simai_run', 'simproxy', 'retail', 'engine.testing.small'}
 _spec = importlib.util.spec_from_file_location('test_sim_layers_registry_p', ROOT / 'tests' / 'test_sim_layers.py')
 _layers = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_layers)
@@ -211,7 +211,7 @@ def uses_world(src):
             names = [node.args[0].value]
         else:
             continue
-        if any(n.split('.')[0] in WORLD_MAKERS for n in names):
+        if any(n in WORLD_MAKERS or n.split('.')[0] in WORLD_MAKERS for n in names):
             return True
     return False
 
@@ -290,7 +290,7 @@ def test_a_world_user_outside_the_table_is_found():
     assert unlisted({planted: "x = _load('sim', 'sim.py')\n"})
     assert unlisted({planted: 'from simproxy import LEADS\n'})
     assert not unlisted({planted: 'import build\n'})
-    assert unlisted({planted: "import importlib\nm = importlib.import_module('simai')\n"})
+    assert unlisted({planted: "import importlib\nm = importlib.import_module('engine.ai.core')\n"})
     assert not unlisted({planted: "SIM = 'sim.py'\n"})
     assert not unlisted({planted: "ok = rel.startswith('sim')\n"})
     peak = CNV / 'simbench_peak.py'
@@ -330,11 +330,11 @@ def test_planted_breaks_in_the_other_readers_are_found():
     play = part_src(GAME, 'Play')
     assert raw_breaks(play.replace('obs = self.obs', 's = self.obs'))
     picture = part_src(GAME, 'Picture')
-    assert reader_breaks(picture.replace('clock=mmss(t)', 'clock=sim.mmss(t)'), set(), {'simunits'})
-    assert reader_breaks(picture.replace('shape = obs.blocks(b)', 'shape = obs._w.blocks(b)'), set(), {'simunits'})
-    assert reader_breaks(picture.replace('import simunits', 'import simunits\n        import sim'), set(), {'simunits'})
+    assert reader_breaks(picture.replace('clock=mmss(t)', 'clock=sim.mmss(t)'), set(), {'engine.data.units'})
+    assert reader_breaks(picture.replace('shape = obs.blocks(b)', 'shape = obs._w.blocks(b)'), set(), {'engine.data.units'})
+    assert reader_breaks(picture.replace('import engine.data.units as simunits', 'import engine.data.units as simunits\n        import sim'), set(), {'engine.data.units'})
     assert reader_breaks(picture.replace('readings = ex.readings()', 'readings = self.s.executor.readings()'),
-                         set(), {'simunits'})
+                         set(), {'engine.data.units'})
     assert reader_breaks(part_src(GAME, 'key_times').replace('ending = obs.ending()', 's = obs; ending = s.ending'),
                          set(), set())
     # the outcome readers (12c): a raw read, the simulator reached in a reader function, a run made outside play
@@ -400,10 +400,10 @@ ORDER_FIELDS = {'goal', 'path', 'dest', 'move_to', 'mode', 'stance', 'hold_fire'
 MUTATORS = {'clear', 'append', 'extend', 'pop', 'popitem', 'insert', 'remove', 'update', 'setdefault', 'sort',
             'reverse', 'add', 'discard', '__setitem__', '__delitem__', '__iadd__'}
 GIVERS = [AUTOPLAY / 'autoplay.py', AUTOPLAY / 'players.py', CNV / 'simproxy.py',   # simproxy: R3 13e
-          CNV / 'simai.py', CNV / 'simpullback.py']                                 # the skirmish AI: R3 13f-1
+          CNV / 'engine/ai/core.py', CNV / 'engine/ai/pullback.py']                                 # the skirmish AI: R3 13f-1
 # What a giver does round the port that is no order (its functions): the AI's refinery's free miner coming out
 # (Brain.later_due: the refinery's FreeUnit, a module's behaviour, the refinery module's when it moves).
-GIVER_SHORTCUTS = {CNV / 'simai.py': {'Brain.later_due'}}
+GIVER_SHORTCUTS = {CNV / 'engine/ai/core.py': {'Brain.later_due'}}
 
 
 def _receiver(call):
@@ -467,10 +467,10 @@ def giver_breaks(src, harness):
 GIVER_PARTS = [(GAME, 'Session'), (CNV / 'sim.py', 'Sim.happen')]
 # Script action files whose orders go through the port (R3 13d), with the functions that are no order: a teleport and
 # the AI hand-over drop the unit's order (stand) as the god's hand.
-SCRIPT_GIVERS = {CNV / 'simact_order.py': {'unit_teleport_to_waypoint', 'unit_ai_transfer'},
+SCRIPT_GIVERS = {CNV / 'engine/script/act_order.py': {'unit_teleport_to_waypoint', 'unit_ai_transfer'},
                  # a special power's cast is the SpecialPower module's effect (the player's power comes to it too), no
                  # order: the ice engineer's walk to build is that effect's (R3 13d-2)
-                 CNV / 'simact_ability.py': {'script_cast'}}
+                 CNV / 'engine/script/act_ability.py': {'script_cast'}}
 
 
 def test_the_givers_give_through_the_command_port():
@@ -483,7 +483,7 @@ def test_the_givers_give_through_the_command_port():
 
 
 def test_planted_orders_in_a_script_action_are_found():
-    f = CNV / 'simact_order.py'
+    f = CNV / 'engine/script/act_order.py'
     src = f.read_text(encoding='utf-8')
     for old, new in (("    _order(sim, 'stop', [a[0]])\n", "    sim.order_stop(sim.body(a[0]))\n"),
                      ("        _order(sim, 'stance', [a[0]], ('stance', int(a[1])))\n",
@@ -491,7 +491,7 @@ def test_planted_orders_in_a_script_action_are_found():
                      ("        _order(sim, 'face', [a[0]], place=a[1])\n", "        b.face = 0.0\n")):
         planted = src.replace(old, new)
         assert planted != src and giver_breaks(planted, SCRIPT_GIVERS[f]), new
-    f = CNV / 'simact_ability.py'
+    f = CNV / 'engine/script/act_ability.py'
     src = f.read_text(encoding='utf-8')
     for old, new in (("        _order(sim, 'power', who, ('via', 'self'), ('button', a[1]))\n",
                       "        sim.self_power_press(body(a[0]), a[1])\n"),
@@ -546,7 +546,7 @@ def test_planted_orders_round_the_port_are_found():
 def test_planted_orders_in_the_ai_are_found():
     """simai / simpullback (R3 13f-1): the AI's orders go through the port; an order call, a target dropped by hand or
     a structure set down by hand is red; the tactics block's stand and the pullbacks' send are not Sim's."""
-    f = CNV / 'simai.py'
+    f = CNV / 'engine/ai/core.py'
     src = f.read_text(encoding='utf-8')
     for old, new in (("            self.give('attack_move', b, pos=(t.x, t.y), args=(('drop_target', True),))\n",
                       "            self.peers.order_move(b, (t.x, t.y), True)\n"),
@@ -560,7 +560,7 @@ def test_planted_orders_in_the_ai_are_found():
         assert planted != src and giver_breaks(planted, giver_harness(f)), new
     assert not giver_breaks(src + '\ndef f(self):\n    self.tactics.stand(1)\n    self.host.pullback.send(1, 2)\n'
                             '    seen.add(3)\n', giver_harness(f))
-    f = CNV / 'simpullback.py'
+    f = CNV / 'engine/ai/pullback.py'
     src = f.read_text(encoding='utf-8')
     planted = src.replace("        peers.commands.do(Command('move', ", "        u.goal = None\n        peers.commands.do(Command('move', ")
     assert planted != src and giver_breaks(planted, giver_harness(f))

@@ -1,5 +1,5 @@
 """A group command gives each mover its own destination and route."""
-import simsmall
+import engine.testing.small as simsmall
 
 
 def test_three_infantry_fill_two_files_and_center_the_back_row():

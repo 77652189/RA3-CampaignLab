@@ -50,7 +50,7 @@ def _freed(node, parents):
 def spelt_keys(root=CNV):
     """(file, line, text) of each internal key spelt out without free_key / free_name."""
     out = []
-    for path in sorted(root.glob('sim*.py')):
+    for path in sorted((*root.glob('sim*.py'), *(root / 'engine').rglob('*.py'))):
         tree = ast.parse(path.read_text(encoding='utf-8'))
         parents = {c: p for p in ast.walk(tree) for c in ast.iter_child_nodes(p)}
         for node in ast.walk(tree):
@@ -78,7 +78,7 @@ def test_the_scan_sees_a_key_spelt_out(tmp_path):
     """The guard reads what it is meant to (a spelt key flagged, a freed one and a docstring not)."""
     (tmp_path / 'simx.py').write_text(
         '"""#made in a docstring."""\n'
-        "import simworld\n"
+        "import engine.world.handle as simworld\n"
         "def f(s, k):\n"
         "    s.add(f'#thing {k}', 'T', 'P', 0, 0)\n"
         "    s.add(k or f'#{k}', 'T', 'P', 0, 0)\n"

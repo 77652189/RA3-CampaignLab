@@ -335,9 +335,9 @@ def run_task(name, out, executor=None, snap=None, save=None, resume=None, record
                          'cannot be taken')
     if snap is not None:    # the AI's run through simaisnap (the Sim's part and the brains'), the rest simsnap
         if kind == 'ai':
-            import simaisnap as snaps
+            import engine.state.ai_snapshot as snaps
         else:
-            import simsnap as snaps
+            import engine.state.snapshot as snaps
 
     cut = None if snap in (None, 'whole') else float(snap) * until
     checking = resume and record is not None
@@ -355,7 +355,7 @@ def run_task(name, out, executor=None, snap=None, save=None, resume=None, record
             s = sim.Sim(m, t, 'normal', model=model, **which)
         w = None
         if kind == 'ai':
-            import simai
+            import engine.ai.core as simai
             w = simai.SimAI(s, 'normal', 1, None, None, simai.BLOCKS, False)
         if half:
             snaps.restore(s if w is None else w, taken if resume else json.loads(taken))

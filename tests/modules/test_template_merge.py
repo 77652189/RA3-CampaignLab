@@ -9,9 +9,9 @@ import pytest
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import model  # noqa: E402
 import parts  # noqa: E402
-import simgarrison  # noqa: E402
-import simsmall  # noqa: E402
-import simunits  # noqa: E402
+import engine.objects.garrison as simgarrison  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 
 
 BASE = 'CNVMergeBase'

@@ -7,12 +7,12 @@ import pytest
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import build  # noqa: E402
 import sim  # noqa: E402
-import simai  # noqa: E402
-import simaisnap  # noqa: E402
+import engine.ai.core as simai  # noqa: E402
+import engine.state.ai_snapshot as simaisnap  # noqa: E402
 import simbench_peak  # noqa: E402
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
-import simsnap  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.state.snapshot as simsnap  # noqa: E402
 import snapfile  # noqa: E402
 from engine.kernel import snap  # noqa: E402
 from engine.ports.command import Command  # noqa: E402

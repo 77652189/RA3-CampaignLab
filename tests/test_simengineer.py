@@ -153,7 +153,7 @@ def test_engineer_allied_defence_refusal_soviet_japan_as_on_the_bench():
 def test_engineer_filters_reject_wrong_template_and_enemy_defence_and_report_replacements():
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     m, t, _ = build.resolve('engine_engineer', 'a')
     s = sim.Sim(m, t)
     man = s.body(m.role('neutral man').name)

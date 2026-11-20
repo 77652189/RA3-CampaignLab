@@ -76,7 +76,7 @@ def test_paralyze_soviet_unmeasured_configuration_stays_a_gap():
     """A measured host must not silently admit unmeasured module overrides."""
     import build
     import sim
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     m, t, _ = build.resolve('engine_infpsov', 'a')
     s = sim.Sim(m, t)
     host = s.body(m.role('enemy').name)
@@ -116,7 +116,7 @@ def test_paralyze_japanese_unmeasured_configuration_stays_a_gap():
     """Host extension admits only the measured complete retail configuration."""
     import build
     import sim
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     m, t, _ = build.resolve('engine_infpjap', 'a')
     s = sim.Sim(m, t)
     host = s.body(m.role('enemy').name)
@@ -177,7 +177,7 @@ def test_paralyze_complete_configuration_as_on_the_bench(movement, variant, atta
     """
     import build
     import sim
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     for name, check, until in [(movement, variant, 50), (attack, 'a', 55)]:
         m, t, _ = build.resolve(name, check)
         s = sim.Sim(m, t)

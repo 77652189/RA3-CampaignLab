@@ -6,9 +6,9 @@ module, which the host's garrisons (simgarrison.Garrisons) find by interface. On
 del, engine_transport load (docs/engine/garrison.md)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import pytest  # noqa: E402
-import simgarrison  # noqa: E402
-import simsmall  # noqa: E402
-import simunits  # noqa: E402
+import engine.objects.garrison as simgarrison  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import contain  # noqa: E402
 

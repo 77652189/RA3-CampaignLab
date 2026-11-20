@@ -2,6 +2,8 @@
 
 决定见 [ADR 0031](../adr/0031-simulator-module-composition.md)（模块组合、端口和适配器、扩展点、绞杀者迁移）、[ADR 0032](../adr/0032-one-rules-source-per-part.md)（每块规则只留一份）、[ADR 0033](../adr/0033-kernel-no-private-dependency.md)（内核零依赖私有模型）和 [ADR 0034](../adr/0034-multi-battlefield-and-own-ai.md)（多战场：游戏适配器、快照、性能）。迁移顺序和逐字段归属在私有仓库 `work/re/sim_split/module_plan.md`；分层和层守卫仍按 [sim-layers.md](sim-layers.md)，内核是在层的基础上加扩展点。这里只写边界和约定：不写程序地址，不转写程序或《将军》源码，规则的来源只许是 XML、台上读数和行为说明（0032 第 1 条）。
 
+文件已归进 `engine/` 包（[ADR 0036](../adr/0036-simulator-package-layout.md)）；下文的 `simX` 是 ⑩ 之前的平铺名，新位置照 0036 的表找。
+
 ## 1. 四个东西
 
 | 东西 | 是什么 | 持有什么 | 不许 |

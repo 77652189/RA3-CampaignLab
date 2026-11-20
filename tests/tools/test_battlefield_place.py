@@ -1,4 +1,4 @@
-"""Battlefield's placing of things (experimental/cnv/simbattlefield.py place_things; step S 11d step 3, work/re/sim_split/
+"""Battlefield's placing of things (experimental/cnv/engine/state/battlefield.py place_things; step S 11d step 3, work/re/sim_split/
 bf_pack/plan.md): the three hand-made files (tests/fixtures/battlefield) placed onto an empty run of their map read back
 through the export thing for thing -- the refinery's one collector the host made, moved to the file's spot; the two
 rank 4 Mirages at 625 HP -- with nothing else living; ai_open's factory job at half, paid 100. A file the
@@ -10,8 +10,8 @@ from pathlib import Path
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simbattlefield  # noqa: E402
-import simsmall  # noqa: E402
+import engine.state.battlefield as simbattlefield  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 from maps import niagara, probe_range  # noqa: E402
 

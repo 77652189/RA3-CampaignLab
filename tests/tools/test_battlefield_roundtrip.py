@@ -1,4 +1,4 @@
-"""Battlefield's round trip (experimental/cnv/simbattlefield.py round_trip; step S 11d step 8, work/re/sim_split/bf_pack/
+"""Battlefield's round trip (experimental/cnv/engine/state/battlefield.py round_trip; step S 11d step 8, work/re/sim_split/bf_pack/
 plan.md): export -> place onto an empty run of the map -> export, read on the file's clock (rebase), equals the file in
 every field it carries, and each field that does not has the placing's gap naming it by its path. Sources: the three
 cuts of the hand-made files (tests/fixtures/battlefield; ai_open needs the engine model), a house and a transport with
@@ -8,8 +8,8 @@ gap they are not covered."""
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simbattlefield  # noqa: E402
-import simsmall  # noqa: E402
+import engine.state.battlefield as simbattlefield  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 from maps import probe_range  # noqa: E402
 from test_battlefield_crews import _source as _crews  # noqa: E402

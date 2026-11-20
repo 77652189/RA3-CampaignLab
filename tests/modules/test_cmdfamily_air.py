@@ -1,5 +1,5 @@
 """Air target eligibility and line of fire at the normal fight entry."""
-import simsmall
+import engine.testing.small as simsmall
 from engine.ports.command import Command
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'

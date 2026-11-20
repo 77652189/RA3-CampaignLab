@@ -31,8 +31,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 KERNEL_GUARD = 'tests/guards/test_kernel.py'
-CENTER_SOURCES = {'sim_src': 'experimental/cnv/sim.py', 'units_src': 'experimental/cnv/simunits.py',
-                  'loop_src': 'experimental/cnv/simloop.py'}
+CENTER_SOURCES = {'sim_src': 'experimental/cnv/sim.py', 'units_src': 'experimental/cnv/engine/data/units.py',
+                  'loop_src': 'experimental/cnv/engine/loop/frame.py'}
 WORKERS = 2          # until the CPU token pool (handoff-r2 T5) says how many
 
 

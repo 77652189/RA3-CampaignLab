@@ -19,7 +19,7 @@ def test_kill_crane_entry_as_on_the_bench():
     """
     import build
     import sim
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     m, t, mod = build.resolve('engine_infkill', 'a')
     assert len(mod) <= 15 and '_' not in mod
     s = sim.Sim(m, t)
@@ -45,7 +45,7 @@ def test_kill_unmeasured_configuration_stays_a_gap():
     """No fling scaling, extra fields or other spy templates gain acceptance."""
     import build
     import sim
-    import siminfiltrator
+    import engine.objects.infiltrator as siminfiltrator
     m, t, _ = build.resolve('engine_infkill', 'a')
     s = sim.Sim(m, t)
     host = s.body(m.role('enemy').name)

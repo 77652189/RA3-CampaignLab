@@ -32,7 +32,7 @@ def test_special_power_nugget_upgrade_gates_use_caster_not_victim(mission, expec
     '<RequiredUpgrade id="unexpected">A</RequiredUpgrade>',
 ])
 def test_special_power_nugget_upgrade_gates_reject_unmeasured_forms(inner):
-    import simunits
+    import engine.data.units as simunits
     xml = ('<WeaponTemplate id="GateTest"><Nuggets><SpecialPowerNugget '
            'SpecialPowerTemplate="Power">' + inner + '</SpecialPowerNugget></Nuggets></WeaponTemplate>')
     w = simunits._weapons([xml])['GateTest']
@@ -93,7 +93,7 @@ def test_special_power_nugget_player_gate_does_not_accept_object_or_unknown(mode
 
 
 def test_special_power_nugget_upgrade_gates_survive_retail_cache():
-    import simunits
+    import engine.data.units as simunits
     weapon = simunits._fight_data()['weapons']['AlliedAntiVehicleVehicleTech1TargetPainter']
     assert [(p['required_upgrade'], p['forbidden_upgrade']) for p in weapon['special_powers']] == [
         ('', 'Upgrade_AlliedHighTechnology'), ('Upgrade_AlliedHighTechnology', '')]
@@ -112,7 +112,7 @@ def test_special_power_nugget_retail_painter_consumer():
     assert all(tuple(row) == measured for sec, row in result.series if sec >= 14)
     assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
     assert (sim.GAP_WEAPON, 'AttributeModifierNugget') not in e.unmodeled
-    import simunits
+    import engine.data.units as simunits
     weapon = simunits._fight_data()['weapons']['AlliedAntiVehicleVehicleTech1TargetPainter']
     assert [(p['required_upgrade'], p['forbidden_upgrade']) for p in weapon['hit_modifiers']] == [
         ('', 'Upgrade_AlliedHighTechnology'), ('Upgrade_AlliedHighTechnology', '')]
@@ -150,7 +150,7 @@ def test_special_power_nugget_closure_conserves_retail_consumers():
 def test_special_power_nugget_retail_active_consumer_is_not_silently_ignored():
     """A real active companion must remain a gap, unlike the commented retail beam."""
     import build
-    import simunits
+    import engine.data.units as simunits
     m, _, _ = build.resolve('engine_spnret', 'a')
     caster = m.units[0]
     power = 'SpecialPower_PaintTargetTrigger'
@@ -172,7 +172,7 @@ def test_special_power_nugget_retail_active_consumer_is_not_silently_ignored():
     '<SpecialObjectFilter Rule="ANY" Include="VEHICLE"/>',
 ])
 def test_retail_attribute_gates_reject_unmeasured_forms(inner):
-    import simunits
+    import engine.data.units as simunits
     xml = ('<WeaponTemplate id="GateTest"><Nuggets><AttributeModifierNugget '
            'AttributeModifierName="Paint">' + inner + '</AttributeModifierNugget></Nuggets></WeaponTemplate>')
     weapon = simunits._weapons([xml])['GateTest']
@@ -226,7 +226,7 @@ def test_special_power_nugget_retail_scrambler_unresolved_consumers_remain_gaps(
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_spnscr import POWER
     m, t, _ = build.resolve('engine_spnscr', 'a')
     e = sim.Sim(m, t)
@@ -302,7 +302,7 @@ def test_retail_scrambler_filter_dispatch(kinds, template, status, allowed, stat
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     m, t, _ = build.resolve('engine_spnscr', 'a')
     e = sim.Sim(m, t)
     caster, victim = [e.body('SCR base ' + role) for role in ('caster', 'victim')]
@@ -331,14 +331,14 @@ def test_retail_scrambler_filter_dispatch(kinds, template, status, allowed, stat
 
 
 def test_retail_scrambler_filter_survives_retail_cache():
-    import simunits
+    import engine.data.units as simunits
     w = simunits._fight_data()['weapons']['AlliedAntiAirShipWeaponScrambler']
     assert w['hit_modifiers'][0]['target_filter']['status_exclude'] == ['UNDER_IRON_CURTAIN']
 
 
 @pytest.mark.parametrize('change', ['rule', 'relationship', 'child', 'gate', 'duplicate'])
 def test_retail_scrambler_filter_unknown_combinations_remain_gaps(change):
-    import simunits
+    import engine.data.units as simunits
     import re
     from checks.engine_spnscr import retail_parts
     nugget = re.search(r'<AttributeModifierNugget\b.*?</AttributeModifierNugget>', retail_parts()[1], re.S).group()
@@ -368,7 +368,7 @@ def test_retail_scrambler_modifier_expiry_clears_script_status(script_frame):
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     m, t, _ = build.resolve('engine_spnscr', 'a')
     e = sim.Sim(m, t)
     b = e.body('SCR base victim')
@@ -514,7 +514,7 @@ def test_disguise_model_condition_script_interface():
 @pytest.mark.parametrize('change', ['instant', 'local_power'])
 def test_native_disguise_rejects_unmeasured_configuration(change):
     import build
-    import simunits
+    import engine.data.units as simunits
     m, _, _ = build.resolve('engine_spndisguise', 'a')
     own = {u.id: u.xml for u in m.units}
     template = 'CNV_SPSpyBase'
@@ -551,7 +551,7 @@ def test_special_power_nugget_native_transport_disguise_bench_replay():
 def test_native_transport_disguise_rejects_unmeasured_configuration(change):
     """Do not silently extend settled-bit evidence to other handlers/powers."""
     import build
-    import simunits
+    import engine.data.units as simunits
     m, _, _ = build.resolve('engine_spntrans', 'a')
     own = {u.id: u.xml for u in m.units}
     template = 'CNV_SPTrBase'

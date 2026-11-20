@@ -4,9 +4,9 @@ from types import SimpleNamespace
 import numpy as np
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from sim import Ground  # noqa: E402
-from simsmall import small_world  # noqa: E402
+from engine.testing.small import small_world  # noqa: E402
 
 FRAME = 1 / 15
 

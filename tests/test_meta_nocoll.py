@@ -52,7 +52,7 @@ def test_meta_nocoll_replays_native_status_dispatch_and_neighbour_path(
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import name
 
     m, t, _ = build.resolve('engine_knock_nocoll', check)

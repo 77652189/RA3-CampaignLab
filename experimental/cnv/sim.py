@@ -62,43 +62,43 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
 import parts  # noqa: E402
-import simact  # noqa: E402
-import simcond  # noqa: E402
-import simdamage  # noqa: E402
-import simgarrison  # noqa: E402
-import simheal  # noqa: E402
-import simliving  # noqa: E402
-import simlocomotion  # noqa: E402
-import simbody  # noqa: E402
-import simmine  # noqa: E402
-import simpath  # noqa: E402
-from simpath import Ground  # noqa: E402,F401  (the routing world, M1; tests and simstatic read sim.Ground)
-import simmodifier  # noqa: E402
-import simmoney  # noqa: E402
-import siminfiltrator  # noqa: E402
-import simorder  # noqa: E402
-import simpower  # noqa: E402
-import simproduce  # noqa: E402
-import simrange  # noqa: E402
-import simspecial  # noqa: E402
-import simsweep  # noqa: E402
-import simtech  # noqa: E402
-import simtoggle  # noqa: E402
-import simunits  # noqa: E402
-import simlevel  # noqa: E402
+import engine.script.act as simact  # noqa: E402
+import engine.script.cond as simcond  # noqa: E402
+import engine.combat.host as simdamage  # noqa: E402
+import engine.objects.garrison as simgarrison  # noqa: E402
+import engine.objects.heal as simheal  # noqa: E402
+import engine.world.living as simliving  # noqa: E402
+import engine.objects.locomotion as simlocomotion  # noqa: E402
+import engine.objects.body as simbody  # noqa: E402
+import engine.objects.mine as simmine  # noqa: E402
+import engine.objects.path as simpath  # noqa: E402
+from engine.objects.path import Ground  # noqa: E402,F401  (the routing world, M1; tests and simstatic read sim.Ground)
+import engine.objects.modifier as simmodifier  # noqa: E402
+import engine.players.money as simmoney  # noqa: E402
+import engine.objects.infiltrator as siminfiltrator  # noqa: E402
+import engine.orders.order as simorder  # noqa: E402
+import engine.objects.power as simpower  # noqa: E402
+import engine.players.production as simproduce  # noqa: E402
+import engine.combat.range as simrange  # noqa: E402
+import engine.objects.special as simspecial  # noqa: E402
+import engine.combat.sweeps as simsweep  # noqa: E402
+import engine.players.tech as simtech  # noqa: E402
+import engine.objects.toggle as simtoggle  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
+import engine.objects.level as simlevel  # noqa: E402
 from engine.kernel import factory as kernel_factory, interfaces as kernel_interfaces  # noqa: E402
 from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
 from engine.ports import command as command_port  # noqa: E402  (happen gives the player's orders through it)
 import engine.modules  # noqa: E402,F401  (imports, so registers, every module file in it)
 from engine.modules import slowdeath as kernel_slowdeath, weaponset as kernel_weaponset  # noqa: E402
-import simloop  # noqa: E402
-import simworld  # noqa: E402
-import simexec  # noqa: E402
+import engine.loop.frame as simloop  # noqa: E402
+import engine.world.handle as simworld  # noqa: E402
+import engine.script.host as simexec  # noqa: E402
 import scriptplugin  # noqa: E402
 from ctx import FUNC_LATE, PANEL_CLEAR  # noqa: E402
 from model import coord, facing  # noqa: E402
-from simscript import TEAM_FOLLOWS, TEAM_COMMANDS  # noqa: E402,F401  (the script vocabulary, L6)
-from simscript import SHOW_FLAG, SCENE_FLAG, WON, LOST  # noqa: E402,F401  (flags SET_FLAG reads, L6)
+from engine.script.common import TEAM_FOLLOWS, TEAM_COMMANDS  # noqa: E402,F401  (the script vocabulary, L6)
+from engine.script.common import SHOW_FLAG, SCENE_FLAG, WON, LOST  # noqa: E402,F401  (flags SET_FLAG reads, L6)
 
 DT = simloop.DT                 # seconds a tick (the frame loop's, simloop.DT)
 DRIVE_WITHIN = 9.0              # ordered from standing, a unit drives on the frame that starts this near its way (deg;
@@ -106,19 +106,19 @@ DRIVE_WITHIN = 9.0              # ordered from standing, a unit drives on the fr
 UNTIL = 1800.0                  # a run stops here at the latest (30 minutes)
 QUIET = 120.0                   # nothing pending this long and no ending: stuck
 
-from simpower import SUPERWEAPON_HITS, RELOAD_LAG, CURTAIN, hit_at, UNPACK_POWER, PACK_POWER, PACK_FRAMES  # noqa: E402,F401  (special powers, L2)
+from engine.objects.power import SUPERWEAPON_HITS, RELOAD_LAG, CURTAIN, hit_at, UNPACK_POWER, PACK_POWER, PACK_FRAMES  # noqa: E402,F401  (special powers, L2)
 CIV = simworld.CIV
 # The container's (Heidelberg, retail a03's SidesList) sides with aiTactical 255 (aiTeamBuilder alike); StartingUnits
 # and Soviet_5 are 240 (retail data read 11-14, round 216): Sim.tactical
 TACTICAL_SIDES = {'Player_1', 'Player_2', 'Soviet_1', 'Soviet_2', 'Soviet_3', 'Soviet_4', 'Soviet_6'}
-from simscript import CMP, SURFACES, RELATION_OF  # noqa: E402,F401  (a condition's comparison / surface / relation, L6)
+from engine.script.common import CMP, SURFACES, RELATION_OF  # noqa: E402,F401  (a condition's comparison / surface / relation, L6)
 LEVELS = {'easy': 0, 'normal': 1, 'hard': 2}
 NEAR = 800.0                    # an enemy this close to something of the player's is a threat (the tension curve)
 ATTACK_SLACK = 10.0             # R3: an attacker stops this far inside its range of the target (a guess)
-from simmodifier import UNDERSIZE  # noqa: E402,F401  (a weapon reach less this, L2)
+from engine.objects.modifier import UNDERSIZE  # noqa: E402,F401  (a weapon reach less this, L2)
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 SPREAD = 30.0                   # a reinforcement team's units this far apart round its waypoint (Sim.reinforce, INFERRED)
-from simworld import GRID  # noqa: E402,F401  (routing cells, world units; L0)
+from engine.world.handle import GRID  # noqa: E402,F401  (routing cells, world units; L0)
 HOLD_SPOTS = True              # every move's goal kept off other units' spots (Sim.claims): the game's (bench 11-09,
                                # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
 ORE_PLATE = (60.0, 45.0)        # an ore node's base plate, half-extents (OreNode.xml's last BOX): Sim.goal_off_nodes
@@ -127,8 +127,8 @@ RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's 
                                # the factory's centre through it: INFERRED, fitted to bench 11-11 engine_production
                                # h / i (barracks, (40, 18): stops ~(75-80, 24-33)) and engine_rally tank (war
                                # factory, (80, 20): ~(112-127, 25-34); x 1.9 from the centre would be (152, 38))
-from simspecial import WFIRE_LAG, WFIRE_REAIM, NONE_TARGET_LAG  # noqa: E402,F401  (weapon-fire abilities, L2)
-from simorder import IDLE_SCAN_FROM  # noqa: E402,F401  (an idle unit's first scan frame, bench engine_dam BR; L5)
+from engine.objects.special import WFIRE_LAG, WFIRE_REAIM, NONE_TARGET_LAG  # noqa: E402,F401  (weapon-fire abilities, L2)
+from engine.orders.order import IDLE_SCAN_FROM  # noqa: E402,F401  (an idle unit's first scan frame, bench engine_dam BR; L5)
 BUILD_STEP = 5.0               # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
@@ -262,14 +262,14 @@ ALIGN = {**kernel_factory.align(), **simheal.ALIGN,     # the kernel modules' ow
                    'shuts again (about 9 s by default) and ENEMY_SIGHTED (a range query: true on the high ground '
                    'where NAMED_DISCOVERED is not) are not modelled',
 }
-from simscript import RA3_ONLY  # noqa: E402,F401  (RA3's own actions and conditions, L6)
+from engine.script.common import RA3_ONLY  # noqa: E402,F401  (RA3's own actions and conditions, L6)
 
-from simworld import GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS  # noqa: E402,F401
-from simstatus import ACTED_STATUS, AI_ONLY_STATUS  # noqa: E402,F401  (status bits acted on, L2)
-from simscript import BUTTON_ACTIONS, refined  # noqa: E402,F401  (an action's refined name, L6)
+from engine.world.handle import GAP_WEAPON, GAP_UPGRADE, GAP_ACTION, GAP_CONDITION, GAP_COMMAND, GAP_STATUS  # noqa: E402,F401
+from engine.objects.status import ACTED_STATUS, AI_ONLY_STATUS  # noqa: E402,F401  (status bits acted on, L2)
+from engine.script.common import BUTTON_ACTIONS, refined  # noqa: E402,F401  (an action's refined name, L6)
 
 
-from simscript import SHOWN, IGNORED  # noqa: E402,F401  (logged-only / dropped actions, L6)
+from engine.script.common import SHOWN, IGNORED  # noqa: E402,F401  (logged-only / dropped actions, L6)
 # HAS_FINISHED_AUDIO / _VIDEO (work/re/l2_scripts1.md 2.3 / 2.4): the game waits for the clients' end-of-play report,
 # not a time; we place it. A dubbed line, x1 as a player hears it (bench 11-04 checks/engine_dialog.py): heard
 # AUDIO_LEAD s after the play, done at its length after that (4.34 s line -> 5.3 s). A radar clip (bench movie.py
@@ -277,11 +277,11 @@ from simscript import SHOWN, IGNORED  # noqa: E402,F401  (logged-only / dropped 
 # a full-screen one never reads done. Lengths we cannot read (a retail line, a retail clip) take the guesses below.
 AUDIO_LEAD, AUDIO_GUESS, VIDEO_GUESS = 0.9, 2.5, 4.0
 SOUND_PLAYS = ('PLAY_SOUND_EFFECT', 'PLAY_SOUND_AS_IF_IT_WAS_AN_EVA_EVENT')
-from simact_player import AI_SWITCHES  # noqa: E402,F401  (simai reads sim.AI_SWITCHES)
+from engine.script.act_player import AI_SWITCHES  # noqa: E402,F401  (simai reads sim.AI_SWITCHES)
 
 # ---- the engine line's script engine (ADR 0019 layer 1). Where it is not on this computer (a clean clone) the
 # public executor runs the scripts (engine/script/executor.py): once a frame, timers in frames, NOT as a plain negation.
-from simexec import SEEN_CORE, CHANGES  # noqa: E402,F401  (what the world watches of the plug-in's core actions, L6)
+from engine.script.host import SEEN_CORE, CHANGES  # noqa: E402,F401  (what the world watches of the plug-in's core actions, L6)
 _MODEL = {}
 
 
@@ -481,7 +481,7 @@ class Body(kernel_module.Thing):
     weapons = kernel_module.forward(kernel_interfaces.WeaponSet, lambda m: m.held(), [])    # step W2: its guns; the
     slots = kernel_module.forward(kernel_interfaces.WeaponSet, lambda m: m.choices())   # ones by status (None: fixed)
 
-from simworld import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
+from engine.world.handle import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
 
 
 class Areas(dict):
@@ -558,7 +558,7 @@ def power_factor(supply, demand, rules=LOW_POWER):
     return f32(f) if f > 0 else f32(0.01)
 
 
-from simworld import mmss  # noqa: E402,F401  (m:ss, L0; autoplay / offline / batch read sim.mmss)
+from engine.world.handle import mmss  # noqa: E402,F401  (m:ss, L0; autoplay / offline / batch read sim.mmss)
 
 
 def seconds(s):
@@ -660,7 +660,7 @@ class Sim:
         self.players = dict(mission.map.PLAYERS)
         self.human = self.players['p1']
         self.foe = self.players.get('s1')
-        import simtech
+        import engine.players.tech as simtech
         sides = getattr(mission, 'sides', {}) if self.retail else {}
         self.books = {}                     # player -> simtech.Book: protocols, protocol points (a playable faction's)
         for p in dict.fromkeys(self.players.values()):
@@ -677,9 +677,9 @@ class Sim:
         for _, xml, link in getattr(self.mm, 'assets', ()):    # a retail map (Merged) links none
             if link.startswith('GameObject:'):
                 self.own[link.split(':', 1)[1]] = xml
-        import simrepair
+        import engine.objects.repair as simrepair
         self.repairs = simrepair.Repairs(self, self.wallet, self.ai_switches, self.level)
-        import simassign
+        import engine.objects.assign as simassign
         self.assignments = simassign.Assignments(self)
         self.heal = simheal.Heal()          # AutoHeal / PassiveAreaEffect (L2)
         self.hunts = []                     # TEAM_HUNT's crews: [movers, target, frame to re-pick at] (Sim.hunt_due)
@@ -869,7 +869,7 @@ class Sim:
             if m.rule():                              # links may set are known ones (simcond_object)
                 self.attachment_known_status.update(m.rule()['child'] | m.rule()['parent'])
         if b.topple:                            # a ToppleUpdate (engine/modules/topple.py)
-            import simtopple
+            import engine.objects.topple as simtopple
             a, c, _, _ = simtopple.shape(template, self.own)
             b.radius = math.hypot(a, c)
             b.vision = b.sight = 0.0         # a prop has no sight (stats' unit-only table otherwise guesses 100)
@@ -2750,10 +2750,10 @@ class Sim:
                     continue
             left = b.speed * (dt - spent + extra)
             if precise and b.jet_motion is not None:
-                import simjet
+                import engine.objects.jet as simjet
                 left = simjet.distance(self, b)
             elif precise:
-                import simtopple
+                import engine.objects.topple as simtopple
                 speed, acceleration = simtopple.motion(b.template, self.own)
                 base = simunits.stats(b.template, self.own)['speed']
                 speed = speed * b.speed / base if speed is not None and base else b.speed
@@ -2812,7 +2812,7 @@ class Sim:
             if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):
                 self.crush_along(b, x0, y0)
                 if precise:                    # toppled only frame by frame: a way across one is a frame mover's
-                    import simtopple           # (simlocomotion.go_to), with or without the model (bench engine_crush)
+                    import engine.objects.topple as simtopple           # (simlocomotion.go_to), with or without the model (bench engine_crush)
                     for o in self.topples:
                         if not o.alive or o.toppled or o.crushable is None or b.crusher <= o.crushable:
                             continue

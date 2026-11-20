@@ -100,7 +100,7 @@ def test_meta_impact_neighbour_velocity_and_ground_launch_match_engine_knock_pro
     Exact direct-hit direction is collision noise and is not a stable target.
     """
     import build
-    import simunits
+    import engine.data.units as simunits
 
     m, _, _ = build.resolve('engine_knock_probe', check)
     weapons = simunits.weapon_table({u.id: u.xml for u in m.units})
@@ -125,7 +125,7 @@ def test_meta_impact_neighbour_velocity_and_ground_launch_match_engine_knock_pro
     ((0, -5.7344, 6.0928), 42, 63.9749, (2300, 3500, 212.5)),
 ])
 def test_meta_impact_ground_launch_replays_observed_direct_hit_vectors(velocity, steps, height, landing):
-    import simunits
+    import engine.data.units as simunits
 
     plan = simunits.meta_impact_ground_launch((2300, 3750, 212.5), velocity)
     assert plan['steps'] == steps
@@ -136,7 +136,7 @@ def test_meta_impact_ground_launch_replays_observed_direct_hit_vectors(velocity,
 def test_meta_impact_partial_interface_retains_unsupported_variants_and_retail_gap():
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
 
     weapons = simunits._weapons(['''<WeaponTemplate id="head"><Nuggets>
         <MetaImpactNugget ShockWaveAmount="89" ShockWaveRadius="250" ShockWaveZMult="8.5"
@@ -208,7 +208,7 @@ def test_meta_impact_collision_event_replays_engine_knock_probe_neighbour_five_f
 
 
 def test_meta_impact_default_curve_uses_ceil_and_caps_long_observed_launches():
-    import simunits
+    import engine.data.units as simunits
 
     for velocity, frames, landing in [((4.5010, 0, .0004), 5, (2380, 3740, 212.5)),
                                      ((0, -2.1463, 45.6088), 127, (2300, 3060, 212.5)),
@@ -402,7 +402,7 @@ def test_physics_p3_a_shock_under_the_hammers_resistance_90_launches_nothing(che
     gates the nugget's raw amount -- at 91 and 90 all three fly, the dry one too though its falloff leaves it
     0.63 x 90 = 57; at 89 none (no ra3ext `shock` line) -- and the ones that fly land as the engine's `build` lines say
     (simunits.meta_impact_resistance, Sim.meta_impact_detonate)."""
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import PROBE_TANK
     from checks.engine_knock_water import name
 
@@ -429,7 +429,7 @@ def test_meta_impact_omitted_z_replays_engine_knock_z_tall_neighbour():
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import name
 
     m, t, _ = build.resolve('engine_knock_z', 'a')
@@ -483,7 +483,7 @@ def test_meta_impact_delay_probe_keeps_phase_gap_and_publishes_projectiles(lane,
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import name
 
     m, t, _ = build.resolve('engine_knock_delay', 'a')
@@ -523,7 +523,7 @@ def test_meta_impact_delay_queue_replays_engine_knock_delay_due_frames(lane, col
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import name
 
     m, t, _ = build.resolve('engine_knock_delay', 'a')
@@ -574,7 +574,7 @@ def test_meta_impact_delayed_collision_replays_observed_shock_frame(lane, collis
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import name
 
     m, t, _ = build.resolve('engine_knock_delay', 'a')
@@ -597,7 +597,7 @@ def test_meta_impact_delayed_collision_replays_observed_shock_frame(lane, collis
 
 
 def test_meta_impact_delay_queue_keeps_other_events_and_rejects_unmodeled_variants():
-    import simunits
+    import engine.data.units as simunits
 
     queue = simunits.MetaImpactDelayQueue()
     effect = dict(amount=89, radius=250, zmult=1, taper=0, delay_seconds=1.9)
@@ -631,7 +631,7 @@ def test_physics_a_knocked_man_keeps_still_38_frames_after_landing_then_walks_hi
     bench's own launch vector (the direct hit's direction is collision noise, not simulated)."""
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import MOVE, ORDER, name
 
     m, t, _ = build.resolve('engine_knock_probe', check)
@@ -671,7 +671,7 @@ def test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands()
     The simulator's 2-D reach has the target from frame 292, ~840 up: no fire in the air (INFERRED, not told apart)."""
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import name
 
     m, t, _ = build.resolve('engine_knock_probe', 'fire')
@@ -789,7 +789,7 @@ def test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravit
     """Bench 11-11 engine_crash_fall (CampCFFall_mcp_1111_221320): an Apollo copy killed 175 up drops its wreck
     copy; the wreck's own GravityMultiplier (1 / 30) sets the fall, the logged landing, N 30 / 8 and every probe z."""
     import build
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_crash_fall import BENCH, LANES
     m, t, name = build.resolve('engine_crash_fall', 'fall')
     assert name == 'CampCFFall'
@@ -807,7 +807,7 @@ def test_physics_p5_the_apollo_s_air_death_reads_its_crash_from_the_data():
     Apollo killed in the air leaves one of Collapse (no weapon) and Dying (x 0.5, falls, 150 EXPLOSIVE radius 20,
     allies 50 %), 175 up; the wreck's fall from the bench's kill (engine_crash_fall plain) hits 29 frames on, at
     (3160, 1500)."""
-    import simunits
+    import engine.data.units as simunits
     from engine.modules import createobjectdie
     mods = [createobjectdie.CreateObjectDieData.parse(*b)
             for b in simunits.module_blocks('AlliedFighterAircraft', 'CreateObjectDie')]
@@ -816,8 +816,8 @@ def test_physics_p5_the_apollo_s_air_death_reads_its_crash_from_the_data():
     choose, wrecks = simunits.ocl_wrecks(air[0])
     assert choose and [w['template'] for w in wrecks] == ['AlliedFighterAircraft_Collapse', 'AlliedFighterAircraft_Dying']
     dying = wrecks[1]
-    import simbody
-    import simsmall
+    import engine.objects.body as simbody
+    import engine.testing.small as simsmall
     s = simsmall.small_world()                  # the wreck's death weapons: its FireWeaponWhenDead's data (step B5c)
     assert (dying['scale'], dying['gravity'], dying['falls']) == (0.5, 1.0, True)
     assert not simbody.Life().wreck_blasts(s, wrecks[0]['template'])
@@ -854,7 +854,7 @@ def test_physics_p5_a_hovering_apollo_s_crash_hurts_what_is_under_it_as_on_the_b
 def test_physics_p5_the_flying_apollo_s_wreck_hits_its_last_point_as_on_the_bench():
     """The flying lane from the bench's kill (fall's plain start, logged again in CampCHHit): 30 points, the hit on
     the last -- counted 30 frames (crash_frames + 1, as the hovering ones' 37 + 1 = 38)."""
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_crash_fall import BENCH, HIT_BENCH
     start, v, landing, n, _ = BENCH['plain']
     frames, end = simunits.crash_frames(start, v, 212.5)
@@ -1006,7 +1006,7 @@ def test_meta_impact_relation_rejects_missing_source_and_ineligible_bodies(gate)
 @pytest.mark.parametrize('extra', ['ShockWaveArc="5d"', 'ShockwaveDelaySeconds="1s"',
                                   'FutureField="1"'])
 def test_meta_impact_relation_keeps_unmeasured_payload_variants_as_gaps(extra):
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_relation import retail_shock
 
     payload = retail_shock().replace('<MetaImpactNugget', '<MetaImpactNugget ' + extra, 1)

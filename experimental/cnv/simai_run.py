@@ -14,7 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
 import sim  # noqa: E402
-import simai  # noqa: E402
+import engine.ai.core as simai  # noqa: E402
 
 
 def run(build, check='', until=200.0, level='normal', seed=1, lib=None, data=None, blocks=simai.BLOCKS, record=False,

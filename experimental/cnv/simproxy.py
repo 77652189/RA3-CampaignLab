@@ -45,9 +45,9 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import labpaths  # noqa: E402
 import modelpin  # noqa: E402
 import sim  # noqa: E402
-import simrange  # noqa: E402
-import simunits  # noqa: E402
-import simworld  # noqa: E402
+import engine.combat.range as simrange  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
+import engine.world.handle as simworld  # noqa: E402
 from engine.modules import lifetime as lifetime_module  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
 

@@ -3,7 +3,7 @@ minimal world, only the frame order's autoheal cell runs. The whole-mission vers
 the reading autoheal_an_apocalypse_mends_two_points_every_7_frames_after_a_15_frame_wait (checks/engine_heal.readings.toml).
 The module's own tests: tests/modules/test_autoheal.py."""
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simsmall  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.modules.autoheal import AutoHeal  # noqa: E402
 
 APOC = 'SovietAntiVehicleVehicleTech3'        # AutoHealBehavior: 2 points every 7 frames, 15 frames after a hurt

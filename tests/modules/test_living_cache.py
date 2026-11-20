@@ -1,8 +1,8 @@
 """The world and AI views share ordered membership across repeated calls."""
 from test_plans import small  # noqa: F401,I001
-import simai  # noqa: E402
-import simsmall  # noqa: E402
-import simsnap  # noqa: E402
+import engine.ai.core as simai  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.state.snapshot as simsnap  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 

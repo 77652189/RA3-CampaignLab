@@ -13,7 +13,7 @@ simbench = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simbench)
 import build  # noqa: E402
 import sim  # noqa: E402
-import simpath  # noqa: E402
+import engine.objects.path as simpath  # noqa: E402
 from checks import engine_drop  # noqa: E402
 
 # the bench's stops, in the order sent (runs CampDropLanes_mcp_1117_170137, CampRingTens_mcp_1117_170616)

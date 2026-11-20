@@ -41,7 +41,7 @@ def test_nugget_form_split_rejects_unmeasured_fields_children_and_mixed_inherita
 
 def test_retail_nugget_partitions_conserve_uses_and_only_register_measured_forms():
     import retailmodules as rm
-    import simunits
+    import engine.data.units as simunits
 
     if not Path(rm.SAGEXML).is_dir():
         pytest.skip('requires retail XML')

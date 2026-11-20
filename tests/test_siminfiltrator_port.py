@@ -12,8 +12,8 @@ _spec.loader.exec_module(_module)
 
 def test_port_configuration():
     import build
-    import siminfiltrator
-    import simunits
+    import engine.objects.infiltrator as siminfiltrator
+    import engine.data.units as simunits
     m, t, mod = build.resolve('engine_infport', 'a')
     assert len(mod) <= 15 and '_' not in mod
     assert build.show('engine_infport', 'a').endswith('contract: ok')

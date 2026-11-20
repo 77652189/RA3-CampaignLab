@@ -3,7 +3,7 @@ import math
 
 import pytest
 
-import simsmall
+import engine.testing.small as simsmall
 from engine.ports.command import Command
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'

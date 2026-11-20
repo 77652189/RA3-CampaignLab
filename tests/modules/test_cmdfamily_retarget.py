@@ -1,5 +1,5 @@
 """A named attack after its target dies (without a team follow-up order)."""
-import simsmall
+import engine.testing.small as simsmall
 from engine.ports.command import Command
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'

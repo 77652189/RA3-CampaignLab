@@ -4,9 +4,9 @@ import json
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simsnap  # noqa: E402
+import engine.state.snapshot as simsnap  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
-from simsmall import small_world  # noqa: E402
+from engine.testing.small import small_world  # noqa: E402
 
 PLAYER = 'Player_1'
 TECH = 'Upgrade_JapanBarracksTech2'

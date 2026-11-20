@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simai  # noqa: E402
+import engine.ai.core as simai  # noqa: E402
 
 CANNON = {'range': 150.0, 'anti': ('ANTI_GROUND',)}
 
@@ -70,7 +70,7 @@ def test_the_chase_is_its_own_target():
 @pytest.mark.parametrize('d, inside', [(160.0, True), (175.0, False)])
 def test_out_of_reach_is_not_combat(d, inside):
     """Reach is edge to edge (simrange.in_range): 150 + both radii 10 less UNDERSIZE."""
-    import simrange
+    import engine.combat.range as simrange
     assert simrange.in_range(body(), foe(d), CANNON) is inside
     assert simai.Unit(body(goal=foe(d)), Port()).in_combat is inside
 

@@ -4,8 +4,8 @@ SelfAudio), the retail structures' block read through their include (Includes/Ge
 repair under way / the refusal kept on the module, which the host's loop (simrepair.Repairs.due) finds by interface.
 On the bench: repairai / repairq / repairt / repairzero (tests/test_simrepair_ai.py)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simsmall  # noqa: E402
-import simunits  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import repair  # noqa: E402
 

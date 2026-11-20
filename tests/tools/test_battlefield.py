@@ -1,4 +1,4 @@
-"""Battlefield's contract (experimental/cnv/simbattlefield.py; step S 11d step 1, work/re/sim_split/bf_pack/plan.md):
+"""Battlefield's contract (experimental/cnv/engine/state/battlefield.py; step S 11d step 1, work/re/sim_split/bf_pack/plan.md):
 the three hand-made files (tests/fixtures/battlefield, cut from levelvision_a, mine_cap and ai_open) hold; each way
 of breaking one is refused before anything is placed, the field's path named; the host an empty run of the map."""
 import copy
@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simbattlefield  # noqa: E402
-import simsmall  # noqa: E402
+import engine.state.battlefield as simbattlefield  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from maps import niagara, probe_range  # noqa: E402
 
 DATA = Path(__file__).resolve().parent.parent / 'fixtures' / 'battlefield'

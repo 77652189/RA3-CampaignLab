@@ -30,7 +30,7 @@ import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import factory, interfaces, module, schedule, world  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 from maps import probe_block  # noqa: E402
@@ -259,7 +259,7 @@ def test_module_guard_bites():
           '        for m in self.thing.find(interfaces.Update):\n'
           '            m.wake_me()\n')
     assert not module_breaks({'engine.modules.a': ok})
-    bad = {'engine.modules.b': 'import engine.modules.a\nimport simunits\n',
+    bad = {'engine.modules.b': 'import engine.modules.a\nimport engine.data.units as simunits\n',
            'engine.modules.c': 'def f(self, other):\n    other.hp = 1\n    for m in self.thing.modules:\n        pass\n',
            'engine.modules.d': 'import engine.modules.a as a\ndef f(m):\n    return isinstance(m, a.A) or hasattr(m, "x")\n'}
     got = {(f, why.split()[0]) for f, why in module_breaks(bad)}
@@ -284,8 +284,8 @@ def _old_code(fn):
 
 def center(sim_src=None, units_src=None, loop_src=None):
     sim_src = sim_src if sim_src is not None else (CNV / 'sim.py').read_text(encoding='utf-8')
-    units_src = units_src if units_src is not None else (CNV / 'simunits.py').read_text(encoding='utf-8')
-    loop_src = loop_src if loop_src is not None else (CNV / 'simloop.py').read_text(encoding='utf-8')
+    units_src = units_src if units_src is not None else (CNV / 'engine/data/units.py').read_text(encoding='utf-8')
+    loop_src = loop_src if loop_src is not None else (CNV / 'engine/loop/frame.py').read_text(encoding='utf-8')
     tree = ast.parse(sim_src)
     cls = {n.name: n for n in tree.body if isinstance(n, ast.ClassDef)}
     loop = ast.parse(loop_src)
@@ -314,7 +314,7 @@ def test_centre_guard_bites():
     now = center()
     sim_src = (CNV / 'sim.py').read_text(encoding='utf-8').replace('class Sim:\n', 'class Sim:\n    def extra(self):\n        pass\n', 1)
     assert grown(center(sim_src=sim_src))['Sim methods'] == (now['Sim methods'] + 1, CENTER['Sim methods'])
-    loop_src = (CNV / 'simloop.py').read_text(encoding='utf-8')
+    loop_src = (CNV / 'engine/loop/frame.py').read_text(encoding='utf-8')
     emptied = loop_src.replace("def passive_area_heal(s, frame, tick):\n    s.heal.passive_area_heal(s)\n",
                                "def passive_area_heal(s, frame, tick):\n    \"\"\"Its modules only.\"\"\"\n", 1)
     assert emptied != loop_src
@@ -396,9 +396,9 @@ CONTAINERS = {'dict', 'list', 'set', 'defaultdict', 'OrderedDict', 'Counter', 'd
 # today's process caches of read-only retail data (and the private model's loaders): only shrinks; a line goes when
 # its cache moves into the template data port's instance
 PROCESS_CACHES = {
-    ('sim', '_MODEL'), ('simai', '_AI'), ('simproxy', '_PROXY'), ('simgarrison', '_memo'), ('simsweep', '_weapon_blocks'),
-    ('simunits', '_reads'),     # T9 (11-18, coordinator's order): the SDK text / template reads, read-only data
-    *(('simunits', n) for n in (
+    ('sim', '_MODEL'), ('engine.ai.core', '_AI'), ('simproxy', '_PROXY'), ('engine.objects.garrison', '_memo'), ('engine.combat.sweeps', '_weapon_blocks'),
+    ('engine.data.units', '_reads'),     # T9 (11-18, coordinator's order): the SDK text / template reads, read-only data
+    *(('engine.data.units', n) for n in (
         '_acquire', '_all_defines', '_command_powers', '_equivalent', '_fight',
         '_flee_memo', '_globals', '_hp_memo', '_index', '_ocl_text', '_ocls', '_own_weapons', '_prop_memo', '_radii',
         '_resolved', '_retail_commands', '_retail_files', '_retail_mods', '_retail_powers',
@@ -492,7 +492,7 @@ def _world_b():
 
 
 def simrecord_dt():
-    import simworld
+    import engine.world.handle as simworld
     return simworld.DT
 
 
@@ -570,12 +570,12 @@ def unwired(classes, frame):
 
 
 def test_every_phase_is_a_frame_cell():
-    import simloop
+    import engine.loop.frame as simloop
     assert not unwired(set(factory.TAGS.values()), simloop.FRAME)
 
 
 def test_phase_guard_bites():
-    import simloop
+    import engine.loop.frame as simloop
     typo = type('Typo', (Ticker,), {'PHASE': 'auto_heal'})
     assert unwired({Ticker, typo, Mender}, simloop.FRAME) == ['Typo']
 
@@ -591,7 +591,7 @@ def _probes(s, phases, log):
 
 
 def test_every_frame_cell_runs_its_modules_in_the_frame_order():
-    import simloop
+    import engine.loop.frame as simloop
     s = simsmall.small_world((), model=False)
     log = []
     _probes(s, simloop.FRAME, log)
@@ -605,7 +605,7 @@ def test_every_frame_cell_runs_its_modules_in_the_frame_order():
 
 def test_cell_guard_bites():
     """A frame loop that skips a cell's modules leaves its probe idle."""
-    import simloop
+    import engine.loop.frame as simloop
     s = simsmall.small_world((), model=False)
     log = []
     _probes(s, ('autoheal', 'deal'), log)
@@ -621,6 +621,20 @@ PRIVATE_NAMES = ('RA3-EngineModel', 'ra3model', 'labpaths', 'modelpin', 'engine_
                  'inventory_model', 'work/re', 'work\\re')
 
 
+# the host's files (ADR 0036): a kernel file imports none of them
+HOST_MODULES = {'engine.' + n for n in (
+    'ai.core', 'ai.pullback', 'combat.host', 'combat.range', 'combat.sweeps', 'data.units', 'loop.frame',
+    'objects.assign', 'objects.body', 'objects.crush', 'objects.garrison', 'objects.heal', 'objects.infiltrator',
+    'objects.jet', 'objects.level', 'objects.locomotion', 'objects.mine', 'objects.modifier', 'objects.path',
+    'objects.power', 'objects.repair', 'objects.special', 'objects.status', 'objects.toggle', 'objects.topple',
+    'orders.micro', 'orders.order', 'players.money', 'players.production', 'players.tech', 'script.act',
+    'script.act_ability', 'script.act_object', 'script.act_order', 'script.act_player', 'script.act_show',
+    'script.act_vision', 'script.act_world', 'script.common', 'script.cond', 'script.cond_object',
+    'script.cond_player', 'script.cond_show', 'script.cond_vision', 'script.cond_world', 'script.host',
+    'state.ai_snapshot', 'state.battlefield', 'state.snapshot', 'testing.small', 'world.handle', 'world.living',
+)}
+
+
 def private_breaks(sources):
     """(file, what) for a private name in a kernel file, or an import other than engine.* and the standard library."""
     out = []
@@ -629,7 +643,8 @@ def private_breaks(sources):
         for node in ast.walk(ast.parse(src)):
             mods = [a.name for a in node.names] if isinstance(node, ast.Import) else \
                 [node.module] if isinstance(node, ast.ImportFrom) and node.module and not node.level else []
-            out += [(name, m) for m in mods if m.split('.')[0] != 'engine' and m.split('.')[0] not in sys.stdlib_module_names]
+            out += [(name, m) for m in mods if m in HOST_MODULES or
+                    (m.split('.')[0] != 'engine' and m.split('.')[0] not in sys.stdlib_module_names)]
             if isinstance(node, ast.Call) and getattr(node.func, 'attr', '') in ('spec_from_file_location', 'import_module') \
                     and not _own_folder_load(node):
                 out.append((name, ast.unparse(node.func)))
@@ -646,7 +661,7 @@ def _own_folder_load(call):
 
 def engine_sources():
     return {enginefiles.name_of(p): Path(p).read_text(encoding='utf-8') for p in enginefiles.files()
-            if Path(p).is_relative_to(ENGINE)}
+            if Path(p).is_relative_to(ENGINE) and enginefiles.name_of(p) not in HOST_MODULES}
 
 
 def test_the_kernel_knows_nothing_private():
@@ -654,10 +669,10 @@ def test_the_kernel_knows_nothing_private():
 
 
 def test_private_guard_bites():
-    bad = {'engine.kernel.x': 'import modelpin\nimport simunits\nimport importlib\nP = "../RA3-EngineModel"\n'
+    bad = {'engine.kernel.x': 'import modelpin\nimport engine.data.units as simunits\nimport importlib\nP = "../RA3-EngineModel"\n'
                               'm = importlib.import_module("ra3model.scripts")\n'}
     got = {w for _, w in private_breaks(bad)}
-    assert {'modelpin', 'simunits', 'RA3-EngineModel', 'ra3model', 'importlib.import_module'} <= got
+    assert {'modelpin', 'engine.data.units', 'RA3-EngineModel', 'ra3model', 'importlib.import_module'} <= got
     assert not private_breaks({'engine.kernel.y': 'import types\nfrom engine.kernel import module\n'})
     own = 'import importlib\nimportlib.import_module("." + n, __name__)\n'
     assert not private_breaks({'engine.modules': own})
@@ -733,7 +748,7 @@ def health_writes(sources=None):
             writes = [t for st in ast.walk(fn) if id(st) not in inner and isinstance(st, (ast.Assign, ast.AugAssign))
                       for t in (st.targets if isinstance(st, ast.Assign) else [st.target]) for x in ast.walk(t)
                       if isinstance(x, ast.Attribute) and x.attr in ('hp', 'max_hp') and isinstance(x.ctx, ast.Store)
-                      and not (name == 'simai.py' and isinstance(x.value, ast.Name) and x.value.id == 'self')]
+                      and not (name == 'engine/ai/core.py' and isinstance(x.value, ast.Name) and x.value.id == 'self')]
             if writes:
                 found[(name, qual)] = any(isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and
                                           c.func.attr == 'health_moved' for c in ast.walk(fn))
@@ -753,12 +768,12 @@ def test_health_is_written_only_inside_the_body():
 
 def test_health_guard_bites():
     sources = health_sources()
-    raw = dict(sources, **{'simrepair.py': sources['simrepair.py'].replace('b.mend(heal)', 'b.hp = min(b.max_hp, b.hp + heal)', 1)})
-    assert raw['simrepair.py'] != sources['simrepair.py'] and health_breaks(health_writes(raw)) == [('simrepair.py', 'Repairs.due')]
+    raw = dict(sources, **{'engine/objects/repair.py': sources['engine/objects/repair.py'].replace('b.mend(heal)', 'b.hp = min(b.max_hp, b.hp + heal)', 1)})
+    assert raw['engine/objects/repair.py'] != sources['engine/objects/repair.py'] and health_breaks(health_writes(raw)) == [('engine/objects/repair.py', 'Repairs.due')]
     # a write outside the Body that tells is still outside it (as simlevel's elite multiplier was before step B1)
-    told = dict(sources, **{'simlevel.py': sources['simlevel.py'].replace(
+    told = dict(sources, **{'engine/objects/level.py': sources['engine/objects/level.py'].replace(
         'b.set_hp(b.hp * multiplier, b.max_hp * multiplier)', 'b.max_hp *= multiplier; b.health_moved(0, 0)', 1)})
-    assert told['simlevel.py'] != sources['simlevel.py'] and health_breaks(health_writes(told)) == [('simlevel.py', 'receive')]
+    assert told['engine/objects/level.py'] != sources['engine/objects/level.py'] and health_breaks(health_writes(told)) == [('engine/objects/level.py', 'receive')]
     # a module writing its thing's health
     mod = 'engine/modules/autoheal.py'
     assert mod in sources
@@ -776,7 +791,7 @@ def test_health_guard_bites():
     # set_health telling no one
     body = dict(sources, **{bm: sources[bm].replace('            self.thing.health_moved(was, hp)\n', '            pass\n', 1)})
     assert body[bm] != sources[bm] and health_breaks(health_writes(body)) == [(bm, 'Body.set_health')]
-    assert not health_breaks(health_writes(dict(sources, **{'simai.py': 'class A:\n    def f(self):\n        self.hp = {}\n'})))
+    assert not health_breaks(health_writes(dict(sources, **{'engine/ai/core.py': 'class A:\n    def f(self):\n        self.hp = {}\n'})))
 
 
 # --- 9. a module's state is all in its STATE (step S, the snapshot; work/re sim_split/snapshot.md 4.3) -------------
@@ -854,10 +869,10 @@ def test_module_state_guard_bites():
 # Life._out, the one function that writes a body's alive / deleted / died_at. A write anywhere else in
 # experimental/cnv/sim*.py or engine/, or a third caller of _out, breaks the guard (step B4c hangs the Die
 # modules' broadcast on the death entry alone).
-DEATH_WRITES = {('simbody.py', 'Life._out')}
-DEATH_ENTRIES = {('simbody.py', 'Life.kill'), ('simbody.py', 'Life.delete')}      # the callers of Life._out
+DEATH_WRITES = {('engine/objects/body.py', 'Life._out')}
+DEATH_ENTRIES = {('engine/objects/body.py', 'Life.kill'), ('engine/objects/body.py', 'Life.delete')}      # the callers of Life._out
 DEATH_EXEMPT = {('engine/ports/observe.py', 'Observe.specimen'),   # a specimen made dead, never in the fight
-                ('simai.py', 'Brain.attach')}                      # the AI's teams.alive hook, not a body's field
+                ('engine/ai/core.py', 'Brain.attach')}                      # the AI's teams.alive hook, not a body's field
 
 
 def death_writes(sources=None):
@@ -892,7 +907,7 @@ def test_a_thing_ends_only_through_the_two_entries():
     assert not death_breaks(found), death_breaks(found)
     assert found == (DEATH_WRITES, DEATH_ENTRIES), f'an end entry is gone: lower DEATH_WRITES / DEATH_ENTRIES {found}'
     import sim
-    import simbody
+    import engine.objects.body as simbody
     assert 'delete' not in inspect.signature(sim.Sim.destroy).parameters      # one entry each, no flag between them
     assert {'kill', 'delete'} <= set(vars(simbody.Life)) and 'destroy' not in vars(simbody.Life)
 
@@ -900,18 +915,18 @@ def test_a_thing_ends_only_through_the_two_entries():
 def test_death_guard_bites():
     sources = health_sources()
     # a script action marking its thing dead itself
-    act = dict(sources, **{'simact_object.py': sources['simact_object.py'] + '\n\ndef gone(b):\n    b.alive = False\n'})
-    assert death_breaks(death_writes(act)) == [('simact_object.py', 'gone')]
+    act = dict(sources, **{'engine/script/act_object.py': sources['engine/script/act_object.py'] + '\n\ndef gone(b):\n    b.alive = False\n'})
+    assert death_breaks(death_writes(act)) == [('engine/script/act_object.py', 'gone')]
     # a module deleting its thing past the host
     mod = 'engine/modules/sell.py'
     assert mod in sources
     sold = dict(sources, **{mod: sources[mod] + '\n\ndef gone(thing, t):\n    thing.deleted, thing.died_at = True, t\n'})
     assert death_breaks(death_writes(sold)) == [(mod, 'gone')]
     # a third entry into the shared part
-    third = dict(sources, **{'simbody.py': sources['simbody.py'] + '\n\ndef sneak(life, w, b, g):\n    life._out(w, b, g, True)\n'})
-    assert death_breaks(death_writes(third)) == [('simbody.py', 'sneak')]
+    third = dict(sources, **{'engine/objects/body.py': sources['engine/objects/body.py'] + '\n\ndef sneak(life, w, b, g):\n    life._out(w, b, g, True)\n'})
+    assert death_breaks(death_writes(third)) == [('engine/objects/body.py', 'sneak')]
     # the kill writing its own alive past _out
-    bm = 'simbody.py'
+    bm = 'engine/objects/body.py'
     past = dict(sources, **{bm: sources[bm].replace('        self._out(world, b, why, False, death, cause)\n',
                                                     '        b.alive = False\n', 1)})
     assert past[bm] != sources[bm] and death_breaks(death_writes(past)) == [(bm, 'Life.kill')]
@@ -923,8 +938,8 @@ def test_death_guard_bites():
 # besides: a Slaved module telling its maker's Spawn module (child_died), the garrison cell emptying a building found
 # dead (simgarrison.Garrisons.due) and the host's World.vacate hook (Sim.__init__).
 END_CALLS = {'on_die', 'on_destroy', 'child_died', 'parent_died', 'died'}
-END_BROADCAST = {('simbody.py', 'Life._out'), ('engine/modules/spawn.py', 'Slaved.on_die'),
-                 ('simgarrison.py', 'Garrisons.due'), ('sim.py', 'Sim.__init__')}
+END_BROADCAST = {('engine/objects/body.py', 'Life._out'), ('engine/modules/spawn.py', 'Slaved.on_die'),
+                 ('engine/objects/garrison.py', 'Garrisons.due'), ('sim.py', 'Sim.__init__')}
 
 
 def end_calls(sources=None):
@@ -950,14 +965,14 @@ def test_a_things_end_reaches_its_modules_through_one_broadcast():
 
 def test_end_broadcast_guard_bites():
     sources = health_sources()
-    told = dict(sources, **{'simact_object.py': sources['simact_object.py']
+    told = dict(sources, **{'engine/script/act_object.py': sources['engine/script/act_object.py']
                             + '\n\ndef tell(b):\n    for m in b.modules:\n        m.on_die(None)\n'})
-    assert end_calls(told) - END_BROADCAST == {('simact_object.py', 'tell')}
-    bm = 'simbody.py'
+    assert end_calls(told) - END_BROADCAST == {('engine/script/act_object.py', 'tell')}
+    bm = 'engine/objects/body.py'
     gone = dict(sources, **{bm: sources[bm].replace('                m.on_die(info)\n', '                pass\n', 1)})
-    assert gone[bm] != sources[bm] and ('simbody.py', 'Life._out') in end_calls(gone)     # on_destroy still there
+    assert gone[bm] != sources[bm] and ('engine/objects/body.py', 'Life._out') in end_calls(gone)     # on_destroy still there
     both = dict(gone, **{bm: gone[bm].replace('            m.on_destroy()\n', '            pass\n', 1)})
-    assert both[bm] != gone[bm] and ('simbody.py', 'Life._out') not in end_calls(both)
+    assert both[bm] != gone[bm] and ('engine/objects/body.py', 'Life._out') not in end_calls(both)
 
 
 # --- 10. no table keyed by id() (step S, the snapshot; docs/engine/sim-modules.md 9.2) -----------------------------
@@ -965,15 +980,15 @@ def test_end_broadcast_guard_bites():
 # (and a freed object's id can come back on a new one). Keys are names or World.build's serial (Thing.serial). The
 # id() calls left, by the function they are in, with why -- only shrinks.
 ID_CALLS = {
-    ('simorder.py', 'follow_due'): 3,                   # `done`: one call's set of follow dicts, by identity
-    ('simai.py', 'Brain.team_named'): 2,                # `held`: one call's set of wrappers, by identity
+    ('engine/orders/order.py', 'follow_due'): 3,                   # `done`: one call's set of follow dicts, by identity
+    ('engine/ai/core.py', 'Brain.team_named'): 2,                # `held`: one call's set of wrappers, by identity
     ('simcoverage.py', 'code_strings'): 2,              # an AST walk's own nodes (a tool, no state of a run)
-    ('simunits.py', '_ModuleTemplates._effective'): 1,  # the template port's inheritance trail (one lookup's cycle check)
-    ('simai.py', 'Brain.stand'): 1,                     # tactics.runs: the private model's own key, changed on its side
-    ('simsnap.py', '_Codec._put'): 1,                   # one snapshot's identity maps (taken or written in one
-    ('simsnap.py', '_Codec.template_data'): 1,          # call, never kept): the template data a body holds, a
-    ('simsnap.py', '_Codec.count'): 2,                  # container held in two places
-    ('simsnap.py', '_Codec.extra'): 1,
+    ('engine/data/units.py', '_ModuleTemplates._effective'): 1,  # the template port's inheritance trail (one lookup's cycle check)
+    ('engine/ai/core.py', 'Brain.stand'): 1,                     # tactics.runs: the private model's own key, changed on its side
+    ('engine/state/snapshot.py', '_Codec._put'): 1,                   # one snapshot's identity maps (taken or written in one
+    ('engine/state/snapshot.py', '_Codec.template_data'): 1,          # call, never kept): the template data a body holds, a
+    ('engine/state/snapshot.py', '_Codec.count'): 2,                  # container held in two places
+    ('engine/state/snapshot.py', '_Codec.extra'): 1,
 }
 
 
@@ -1005,11 +1020,11 @@ def test_no_table_is_keyed_by_id():
 
 def test_id_guard_bites():
     sources = health_sources()
-    keyed = dict(sources, **{'simact_object.py': sources['simact_object.py']
+    keyed = dict(sources, **{'engine/script/act_object.py': sources['engine/script/act_object.py']
                              + '\n\ndef mark(world, b):\n    world.marks[id(b)] = 1\n'})
-    assert id_calls(keyed)[('simact_object.py', 'mark')] == 1
+    assert id_calls(keyed)[('engine/script/act_object.py', 'mark')] == 1
     assert id_calls(keyed) != ID_CALLS
-    fo = 'simorder.py'
+    fo = 'engine/orders/order.py'
     less = dict(sources, **{fo: sources[fo].replace('        done.add(id(leg))\n', '        pass\n', 1)})
     assert less[fo] != sources[fo] and id_calls(less)[(fo, 'follow_due')] == 2
     ex = 'engine/script/executor.py'

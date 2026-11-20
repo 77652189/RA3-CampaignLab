@@ -12,13 +12,13 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def _load(name):
     # loaded by file: the cnv modules put their folders on the path themselves (guard G4)
-    spec = importlib.util.spec_from_file_location(name, ROOT / 'experimental' / 'cnv' / f'{name}.py')
+    spec = importlib.util.spec_from_file_location(name, ROOT / 'experimental' / 'cnv' / (name.replace('.', '/') + '.py'))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
 
-simunits = sys.modules.setdefault('simunits', _load('simunits'))
+simunits = sys.modules.setdefault('engine.data.units', _load('engine.data.units'))
 
 HAMMER = 'SovietAntiVehicleVehicleTech1'
 SELF = f'<GameObject id="{HAMMER}" inheritFrom="{HAMMER}"></GameObject>'   # a mission file patching the Hammer

@@ -10,9 +10,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('simai', ROOT / 'experimental/cnv/simai.py')
-simai = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simai)
+spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
+_run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(_run)
+simai = _run.simai
 
 
 @pytest.mark.parametrize('build,expected', [('aivitalon', [24, 4, 4, 140]),

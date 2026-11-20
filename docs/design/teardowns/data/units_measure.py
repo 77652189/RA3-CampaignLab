@@ -47,7 +47,7 @@ import timeline_measure as TM  # noqa: E402
 from layout_measure import mapstudy, mapxml  # noqa: E402
 
 sys.path.insert(0, os.path.join(LM.ROOT, 'experimental', 'cnv'))
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 
 OUT_JSON = os.path.join(HERE, 'units.json')
 OUT_MD = os.path.join(HERE, 'units.md')

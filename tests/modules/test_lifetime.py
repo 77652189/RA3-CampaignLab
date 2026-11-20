@@ -3,10 +3,10 @@
 its death leaves, read only from a mission's own template, set late from outside (the skirmish AI), and its die frame
 in the frame record where the body's field was. On the bench: checks/engine_life.py."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simbody  # noqa: E402
+import engine.objects.body as simbody  # noqa: E402
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
-import simunits  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import lifetime  # noqa: E402
 

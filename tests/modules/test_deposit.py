@@ -5,11 +5,11 @@ read from the merged template, and its rules and next frame in the frame record
 where the body's fields were. On the bench: checks/a4 derrick (tests/test_simbench.py), engine_bankcapture."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
-import simunits  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import deposit  # noqa: E402
-from simworld import CIV  # noqa: E402
+from engine.world.handle import CIV  # noqa: E402
 
 DERRICK = '''<GameObject id="CNV_TestDerrick" Side="Neutral" KindOf="STRUCTURE">
   <Behaviors>

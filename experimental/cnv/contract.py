@@ -74,7 +74,7 @@ def spellbook_powers():
     global _SPELLBOOK
     if _SPELLBOOK is None:
         import os
-        import simunits
+        import engine.data.units as simunits
         try:
             with open(os.path.join(simunits.SAGEXML, 'System', 'PlayerSpellBook.xml'), encoding='utf-8',
                       errors='replace') as f:

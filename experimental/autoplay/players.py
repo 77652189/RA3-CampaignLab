@@ -19,7 +19,7 @@ import math
 import os
 import re
 
-import simunits     # template data; autoplay.py loads this file after the simulator, whose import puts the cnv
+import engine.data.units as simunits     # template data; autoplay.py loads this file after the simulator, whose import puts the cnv
                     # folders on the path
 
 

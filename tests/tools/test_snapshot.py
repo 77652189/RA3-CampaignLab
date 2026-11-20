@@ -1,4 +1,4 @@
-"""A whole run's snapshot (experimental/cnv/simsnap.py; step S, docs/engine/sim-modules.md 9.2, guard 7): heal_a
+"""A whole run's snapshot (experimental/cnv/engine/state/snapshot.py; step S, docs/engine/sim-modules.md 9.2, guard 7): heal_a
 taken at its half, through JSON and back equal, written onto a Sim made anew for the same mission, taken again
 equal (4.2), and run on to its end as the one never stopped; every field of the Sim, its parts and its bodies
 sorted (4.3); the fields called static the same on the new world; what it cannot keep an error. The kernel's and
@@ -17,10 +17,10 @@ import build  # noqa: E402
 import parts  # noqa: E402
 import sim  # noqa: E402
 import simrecord  # noqa: E402
-import simbody  # noqa: E402
-import simpower  # noqa: E402
-import simsmall  # noqa: E402
-import simsnap  # noqa: E402
+import engine.objects.body as simbody  # noqa: E402
+import engine.objects.power as simpower  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.state.snapshot as simsnap  # noqa: E402
 from engine.kernel import interfaces, snap  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
@@ -92,7 +92,7 @@ def test_the_version_is_the_tables_digest(heal, monkeypatch):
     changes with that table -- the guard and the version read one table. A module class's STATE, the AI part's
     tables and SEMANTICS change it too; the same tables filled in another order do not; a test's module subclass is
     not counted."""
-    import simaisnap
+    import engine.state.ai_snapshot as simaisnap
     from engine.kernel import factory
     run = heal[2]
     v0, ai0 = simsnap.VERSION, simaisnap.VERSION

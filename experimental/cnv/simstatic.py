@@ -156,7 +156,7 @@ def long_detours(mm, ground=None):
     Returns lines naming the script, the team, the straight and the way lengths and the surface."""
     import math
 
-    import simunits
+    import engine.data.units as simunits
     ground = ground or sim.Ground(mm.map)
     own = {u.id: u.xml for u in mm.units}
     placed = {o.name: o for o in mm.objects if o.name}
@@ -207,7 +207,7 @@ def landings(mm, ground=None):
     import numpy as np
     from scipy import ndimage
 
-    import simunits
+    import engine.data.units as simunits
     ground = ground or sim.Ground(mm.map)
     own = {u.id: u.xml for u in mm.units}
     sites = getattr(mm.map, 'SITES', {})

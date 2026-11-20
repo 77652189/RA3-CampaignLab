@@ -12,7 +12,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'experimental', 'campaign'))
 sys.path.insert(0, os.path.join(HERE, '..', 'experimental', 'cnv'))
 import labpaths  # noqa: E402
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 
 
 def _tree(tmp_path, own):

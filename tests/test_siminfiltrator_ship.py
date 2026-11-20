@@ -12,8 +12,8 @@ _spec.loader.exec_module(_module)
 
 def test_ship_configuration():
     import build
-    import siminfiltrator
-    import simunits
+    import engine.objects.infiltrator as siminfiltrator
+    import engine.data.units as simunits
     import re
     m, t, mod = build.resolve('engine_infship', 'a')
     assert len(mod) <= 15 and '_' not in mod

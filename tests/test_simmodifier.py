@@ -4,8 +4,8 @@ effect; sim.Sim.modify / aura_tick). Bench: docs/engine/upgrades.md 1 (an upgrad
 still runs out), 5 (the stasis zone: an aura, everyone within stops, free within 1 s of the zone's going)."""
 from test_plans import named, small  # (puts experimental/cnv on the path)  # noqa: F401, I001
 import sim  # noqa: E402
-import simunits  # noqa: E402
-import simworld  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
+import engine.world.handle as simworld  # noqa: E402
 from engine.kernel import world as kernel_world  # noqa: E402
 from engine.modules import aura  # noqa: E402
 from units import platform, stasis_zone, tower_ball  # noqa: E402

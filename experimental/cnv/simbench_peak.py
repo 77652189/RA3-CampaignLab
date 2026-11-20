@@ -33,8 +33,8 @@ import subprocess
 import sys
 import time
 
-import simloop
-import simsmall
+import engine.loop.frame as simloop
+import engine.testing.small as simsmall
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 _spec = importlib.util.spec_from_file_location(
@@ -166,8 +166,8 @@ def ai_start(at, scene=AI_SCENE, path=None):
     from a written-back world either way: the one just taken is read back too. info: {'scene', 'at', 'file', 'sha'
     (the file's: two results from different starts do not compare), 'taken' (taken this run), 'restore' (s)}."""
     import build as bld
-    import simai
-    import simaisnap
+    import engine.ai.core as simai
+    import engine.state.ai_snapshot as simaisnap
     import snapfile
 
     scene = tuple(scene)
@@ -210,7 +210,7 @@ def ai_start(at, scene=AI_SCENE, path=None):
 def run_ai(secs=SECS, start=None, scene=AI_SCENE, path=None):
     """Build with simai_run.run, then time its normal AI-and-world advance in slices. start: from the scene's snapshot
     `start` seconds in (ai_start), the result's 'start' naming it."""
-    import simai
+    import engine.ai.core as simai
     import simai_run
 
     frames = int(secs * simai.FPS)

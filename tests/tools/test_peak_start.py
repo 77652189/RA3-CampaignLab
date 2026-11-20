@@ -8,8 +8,8 @@ import json
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simai  # noqa: E402
-import simaisnap  # noqa: E402
+import engine.ai.core as simai  # noqa: E402
+import engine.state.ai_snapshot as simaisnap  # noqa: E402
 import simbench_peak  # noqa: E402
 import simrecord  # noqa: E402
 import snapfile  # noqa: E402

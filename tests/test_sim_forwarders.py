@@ -41,12 +41,12 @@ enginefiles = _layers.enginefiles     # module name -> file (simX, or engine.<la
 FORWARDER_CALLS = {
     # simact_ability: a special power's cast walking the ice engineer to his spot (its buttons go through the command
     # port, R3 13d-2)
-    ('simact_ability', 'send'): 1,
+    ('engine.script.act_ability', 'send'): 1,
     # simact_object: kill / sell / move / capture an object
-    ('simact_object', 'delete'): 2, ('simact_object', 'destroy'): 5, ('simact_object', 'modify'): 1, ('simact_object', 'order_capture'): 1,
-    ('simact_object', 'sell'): 2, ('simact_object', 'send'): 1, ('simact_object', 'stand'): 1,
+    ('engine.script.act_object', 'delete'): 2, ('engine.script.act_object', 'destroy'): 5, ('engine.script.act_object', 'modify'): 1, ('engine.script.act_object', 'order_capture'): 1,
+    ('engine.script.act_object', 'sell'): 2, ('engine.script.act_object', 'send'): 1, ('engine.script.act_object', 'stand'): 1,
     # simact_order: a teleport's and the AI hand-over's dropped order (its orders go through the command port, R3 13d-1)
-    ('simact_order', 'stand'): 2,
+    ('engine.script.act_order', 'stand'): 2,
     # the command port: the one caller of the order calls for the givers moved onto it (R3 13b-13d; the order family's
     # move into AIUpdate turns these into its module's command)
     ('engine.ports.command', 'flee_start'): 1, ('engine.ports.command', 'hunt_due'): 1,
@@ -60,40 +60,40 @@ FORWARDER_CALLS = {
     ('engine.ports.command', 'order_unpack'): 1, ('engine.ports.command', 'self_power_press'): 1,
     ('engine.ports.command', 'toggle_press'): 1, ('engine.ports.command', 'wfire_press'): 1,
     # simact_player / simact_world: upgrades and a team's stop
-    ('simact_player', 'modify'): 1, ('simact_world', 'stand'): 1,
+    ('engine.script.act_player', 'modify'): 1, ('engine.script.act_world', 'stand'): 1,
     # simdamage's Peers loan
-    ('simdamage', 'destroy'): 4, ('simdamage', 'modify'): 2, ('simdamage', 'projectile_detonate'): 2,
-    ('simdamage', 'queue_projectile_hit'): 1,
+    ('engine.combat.host', 'destroy'): 4, ('engine.combat.host', 'modify'): 2, ('engine.combat.host', 'projectile_detonate'): 2,
+    ('engine.combat.host', 'queue_projectile_hit'): 1,
     # simgarrison's Peers loan (R3 ⑨c)
-    ('simgarrison', 'delete'): 1, ('simgarrison', 'destroy'): 1, ('simgarrison', 'modify'): 3, ('simgarrison', 'order_move'): 2,
-    ('simgarrison', 'send'): 1,
+    ('engine.objects.garrison', 'delete'): 1, ('engine.objects.garrison', 'destroy'): 1, ('engine.objects.garrison', 'modify'): 3, ('engine.objects.garrison', 'order_move'): 2,
+    ('engine.objects.garrison', 'send'): 1,
     # siminfiltrator's Peers loan (R3 ⑨c: the calls it made on the whole Sim before, counted once it was layered)
-    ('siminfiltrator', 'delete'): 10, ('siminfiltrator', 'destroy'): 1, ('siminfiltrator', 'send'): 1,
+    ('engine.objects.infiltrator', 'delete'): 10, ('engine.objects.infiltrator', 'destroy'): 1, ('engine.objects.infiltrator', 'send'): 1,
     # simloop: the frame table's cells, each the Sim's forwarder of its block
-    **dict.fromkeys([('simloop', n) for n in (
+    **dict.fromkeys([('engine.loop.frame', n) for n in (
         'aura_tick', 'blast_due', 'capture_due', 'deal', 'death_blast_due', 'fight', 'flee_due',
         'follow_due', 'hunt_due', 'lose_health', 'self_power_due', 'seq_due', 'suppression_tick',
         'wfire_due')], 1),
     # simorder's Peers loan
-    ('simorder', 'delete'): 3, ('simorder', 'modify'): 1, ('simorder', 'send'): 12, ('simorder', 'toggle_press'): 1,
+    ('engine.orders.order', 'delete'): 3, ('engine.orders.order', 'modify'): 1, ('engine.orders.order', 'send'): 12, ('engine.orders.order', 'toggle_press'): 1,
     # simsweep's Peers loan (simpullback's order_move went through the command port, R3 13f-1)
-    ('simsweep', 'destroy'): 1,
+    ('engine.combat.sweeps', 'destroy'): 1,
     # simai's Peers loan (step 9d-2, R: the calls it made on self.sim before, counted since it joined the registry;
     # step 10 can call simorder / simmodifier / simdamage itself; its orders go through the command port since R3
     # 13f-1). Not the Sim's: self.tactics.stand (the tactics block, 1; the AI's hunt state's expire went off the count
     # with Sim.expire, step M10)
-    ('simai', 'expected_damage'): 1, ('simai', 'modify'): 1,
-    ('simai', 'stand'): 1,
+    ('engine.ai.core', 'expected_damage'): 1, ('engine.ai.core', 'modify'): 1,
+    ('engine.ai.core', 'stand'): 1,
     # simproxy: none (its orders go through the command port since R3 13e)
     # living: a forwarder since the living cache (Sim.living -> simliving.living); these are the layers' calls the day
     # it became one, the rule's home being world.living(). The count only shrinks from here.
-    ('simact_ability', 'living'): 2, ('simact_object', 'living'): 3, ('simact_order', 'living'): 3,
-    ('simact_player', 'living'): 3, ('simact_world', 'living'): 1, ('simai', 'living'): 23,
-    ('simcond_object', 'living'): 8, ('simcond_player', 'living'): 1, ('simcond_vision', 'living'): 3,
-    ('simcond_world', 'living'): 1, ('simdamage', 'living'): 3, ('simgarrison', 'living'): 1,
-    ('siminfiltrator', 'living'): 3, ('simmine', 'living'): 4, ('simmodifier', 'living'): 1,
-    ('simorder', 'living'): 6, ('simproxy', 'living'): 3, ('simpullback', 'living'): 1,
-    ('simspecial', 'living'): 2, ('simsweep', 'living'): 1,
+    ('engine.script.act_ability', 'living'): 2, ('engine.script.act_object', 'living'): 3, ('engine.script.act_order', 'living'): 3,
+    ('engine.script.act_player', 'living'): 3, ('engine.script.act_world', 'living'): 1, ('engine.ai.core', 'living'): 23,
+    ('engine.script.cond_object', 'living'): 8, ('engine.script.cond_player', 'living'): 1, ('engine.script.cond_vision', 'living'): 3,
+    ('engine.script.cond_world', 'living'): 1, ('engine.combat.host', 'living'): 3, ('engine.objects.garrison', 'living'): 1,
+    ('engine.objects.infiltrator', 'living'): 3, ('engine.objects.mine', 'living'): 4, ('engine.objects.modifier', 'living'): 1,
+    ('engine.orders.order', 'living'): 6, ('simproxy', 'living'): 3, ('engine.ai.pullback', 'living'): 1,
+    ('engine.objects.special', 'living'): 2, ('engine.combat.sweeps', 'living'): 1,
 }
 
 _CONTAINER = set(dir(dict)) | set(dir(list)) | set(dir(set))   # self.players.get(...) is a lookup, not a forwarder
@@ -199,5 +199,5 @@ def test_forwarder_guard_bites():
     assert ratchet_breaks(found, {}) == [('simx', 'hop', 4, 0)]                        # a new one
     assert ratchet_breaks({}, {('simx', 'hop'): 4}) == [('simx', 'hop', 0, 4)]         # stale: delete the line
     real = forwarder_calls(forwarders(), {**{m: _src(m) for m in LAYERED},
-                                          'simtech': _src('simtech') + "\ndef z(world):\n    world.order_move(1)\n"})
-    assert ('simtech', 'order_move', 1, 0) in ratchet_breaks(real)
+                                          'engine.players.tech': _src('engine.players.tech') + "\ndef z(world):\n    world.order_move(1)\n"})
+    assert ('engine.players.tech', 'order_move', 1, 0) in ratchet_breaks(real)

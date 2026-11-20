@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('simunits', ROOT / 'experimental/cnv/simunits.py')
+_spec = importlib.util.spec_from_file_location('engine.data.units', ROOT / 'experimental/cnv/engine/data/units.py')
 simunits = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simunits)
 

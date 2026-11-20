@@ -1,4 +1,4 @@
-"""Battlefield's placing of the script's state (experimental/cnv/simbattlefield.py place_script / place; step S 11d
+"""Battlefield's placing of the script's state (experimental/cnv/engine/state/battlefield.py place_script / place; step S 11d
 step 5, work/re/sim_split/bf_pack/plan.md): a run cut while one timer runs, one has run out and one is stopped, its
 file placed onto a run of the same map whose clock reads another time: each table reads back on the file's clock, and
 the scripts that wait on those timers fire as many frames after the placing as the source's did after the cut (the
@@ -10,8 +10,8 @@ from pathlib import Path
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import parts  # noqa: E402
 import sim  # noqa: E402
-import simbattlefield  # noqa: E402
-import simsmall  # noqa: E402
+import engine.state.battlefield as simbattlefield  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 from maps import probe_range  # noqa: E402
 
@@ -141,7 +141,7 @@ def test_a_deadline_no_whole_number_of_host_frames_is_refused_before_anything_is
     """Review 1120bb P2: a finite deadline so far from the cut that x the host's frame rate it is infinite (1.3e308,
     -1.3e308, or a cut that far from it) is named by preflight; placing it raises the refusal and the host's exact
     snapshot is as it was (it raised OverflowError after the counters were already the file's)."""
-    import simsnap
+    import engine.state.snapshot as simsnap
     for at, deadline in (('Huge', 1.3e308), ('Huge', -1.3e308), ('t', 1.3e308)):
         doc = json.loads((DATA / 'levelvision_a.json').read_text(encoding='utf-8'))
         if at == 't':

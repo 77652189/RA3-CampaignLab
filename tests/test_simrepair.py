@@ -11,7 +11,7 @@ _spec.loader.exec_module(_module)
 def test_repair_update_defaults_do_not_claim_the_failed_activation_as_implemented():
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     import inventory
     m, t, _ = build.resolve('engine_repair', 'a')
     e = sim.Sim(m, t)

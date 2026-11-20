@@ -6,7 +6,7 @@ from test_plans import named, small  # (puts experimental/cnv on the path)  # no
 import contract  # noqa: E402
 import parts  # noqa: E402
 import sim  # noqa: E402
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from maps import festival  # noqa: E402
 from parts import Mission, Script, square  # noqa: E402
 from plantime import PlanError  # noqa: E402

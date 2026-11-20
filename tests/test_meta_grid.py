@@ -57,7 +57,7 @@ def _replay(check, lane, monkeypatch, verify_noninf=False):
     """Replay observed collision input; same-frame dispatch remains INFERRED."""
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_objectgate import BIT
     from checks.engine_knock_probe import name
 

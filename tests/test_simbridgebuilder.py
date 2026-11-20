@@ -11,7 +11,7 @@ _spec.loader.exec_module(_module)
 def test_bridgebuilder_counts_short_and_long_retail_bridges():
     """engine_bridgebuilder:a: exact five-template counts, 270 / 700, four rows."""
     import build
-    import simunits
+    import engine.data.units as simunits
     from parts import contract, merged
 
     m, t, mod = build.resolve('engine_bridgebuilder', 'a')
@@ -71,7 +71,7 @@ def test_bridgebuilder_counts_short_and_long_retail_bridges():
 def test_bridgebuilder_mixed_retail_end_marker_counts():
     """engine_bridgebuilder_b:b: HB start / Bridge1a end, four measured rows."""
     import build
-    import simunits
+    import engine.data.units as simunits
     from parts import contract, merged
 
     m, t, mod = build.resolve('engine_bridgebuilder_b', 'b')

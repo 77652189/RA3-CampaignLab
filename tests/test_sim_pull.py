@@ -85,7 +85,7 @@ def test_legs_are_checked_on_the_ten_cells():
     first leg out of its yard; its line then passed 12 further from the player's power plant, out of reach, and it
     drove on out of the 900 square the bench's stays in. On the 10 cells (the game's own) the corner is open."""
     import numpy as np
-    import simpath
+    import engine.objects.path as simpath
     fine = np.ones((12, 12), bool)
     fine[7, 4] = False                              # one 10 cell of the 20 cell (3, 2)
     grid = fine.reshape(6, 2, 6, 2).all(axis=(1, 3))
@@ -99,7 +99,7 @@ def test_a_diagonal_run_past_a_shut_corner_sample_is_one_leg():
     one leg, as on the grid (the 10 cells alone: pull looped forever on retail maps, and s01's #223 bent on its
     diagonal, 11-18). Run with a timeout: the loop does not end."""
     import numpy as np
-    import simpath
+    import engine.objects.path as simpath
     fine = np.ones((8, 8), bool)
     fine[3, 1] = False                              # crossed going from (1, 1) to (2, 0); the 20 cell (1, 0) shut
     grid = fine.reshape(4, 2, 4, 2).all(axis=(1, 3))

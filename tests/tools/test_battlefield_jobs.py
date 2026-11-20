@@ -1,4 +1,4 @@
-"""Battlefield's placing of factory jobs (experimental/cnv/simbattlefield.py place_things; step S 11d step 7, work/re/
+"""Battlefield's placing of factory jobs (experimental/cnv/engine/state/battlefield.py place_things; step S 11d step 7, work/re/
 sim_split/bf_pack/plan.md): a run cut with the player's barracks part way through a scout (some of its 200 paid), its file
 placed onto an empty run of the same map: the job reads back whole, and run on the host pays only what is left and
 comes out as many frames after the cut as on the source; a job full and waiting at its door at the cut comes out at
@@ -10,8 +10,8 @@ import json
 from pathlib import Path
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simbattlefield  # noqa: E402
-import simsmall  # noqa: E402
+import engine.state.battlefield as simbattlefield  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 from maps import niagara, probe_range  # noqa: E402
 

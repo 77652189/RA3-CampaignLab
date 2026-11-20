@@ -1,5 +1,5 @@
 """An approach stays pending until movement reaches entry range."""
-import simsmall
+import engine.testing.small as simsmall
 
 
 def test_garrison_approach_enters_with_a_route_still_pending_at_the_building_edge():

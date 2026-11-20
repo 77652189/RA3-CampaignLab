@@ -30,7 +30,7 @@ LAYER_OF = _LAYERS.LAYER_OF
 def simulator_modules():
     """The player's run: the AI's side (test_sim_layers.AI_SIDE) is counted apart, by inventory_ai; the tools over a
     run (OVER_THE_RUN, the snapshot) are not the simulator."""
-    return sorted((set(LAYER_OF) | {'sim', 'simunits', 'simproxy'}) - _LAYERS.AI_SIDE - _LAYERS.OVER_THE_RUN)
+    return sorted((set(LAYER_OF) | {'sim', 'engine.data.units', 'simproxy'}) - _LAYERS.AI_SIDE - _LAYERS.OVER_THE_RUN)
 
 
 def uncounted(code, status):
@@ -53,17 +53,17 @@ def test_the_inventory_counts_every_file_of_the_simulator():
 def test_reading_sim_py_by_name_would_be_caught():
     """The pre-11-17 reading (sim.py, simunits.py, simproxy.py by name) misses status bits and module names that moved
     out of sim.py: the guard above sees it."""
-    old = ('sim', 'simunits', 'simproxy')
+    old = ('sim', 'engine.data.units', 'simproxy')
     code = set().union(*(sc.code_strings(sc.enginefiles.file_of(m)) for m in old))
     status = set(sc.STATUS_TEST.findall((CNV / 'sim.py').read_text(encoding='utf-8'))) | {'IN_STASIS'}
     missed = uncounted(code, status)
-    assert ('simcond_vision', 'status', 'SHROUD_REVEAL_TO_ALL') in missed
-    assert ('simheal', 'status', 'GENERIC_TOGGLE_STATE') in missed
-    assert ('simlevel', 'string', 'LevelUpUpgrade/permanent') in missed     # its tag went to the module in step M12
+    assert ('engine.script.cond_vision', 'status', 'SHROUD_REVEAL_TO_ALL') in missed
+    assert ('engine.objects.heal', 'status', 'GENERIC_TOGGLE_STATE') in missed
+    assert ('engine.objects.level', 'string', 'LevelUpUpgrade/permanent') in missed     # its tag went to the module in step M12
 
 
 def test_a_module_that_imports_sim_is_not_a_part_of_it():
     """simshow and simchecks sit on top of the simulator (they import sim): their strings are not its code."""
     files = sc.sim_files()
-    assert 'sim' in files and 'simproxy' in files and 'simunits' in files
+    assert 'sim' in files and 'simproxy' in files and 'engine.data.units' in files
     assert 'simshow' not in files and 'simchecks' not in files and 'simcoverage' not in files

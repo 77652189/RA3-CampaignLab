@@ -2,7 +2,7 @@
 import pytest
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 
-import simsmall  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces, module  # noqa: E402
 
 

@@ -50,7 +50,7 @@ def test_meta_statusgate_replays_native_dispatch_and_path(check, lane, frame, de
     """
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
     from checks.engine_knock_probe import name
 
     m, t, _ = build.resolve('engine_knock_statusgate', check)

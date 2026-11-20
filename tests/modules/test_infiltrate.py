@@ -4,9 +4,9 @@ inner text kept as the unmeasured-children marker), the retail structures' block
 (siminfiltrator.Infiltrators) reading the first module's rule, a KILL host with siblings marked. On the bench:
 engine_infpower / infvis / infkill / infport ... (tests/test_siminfiltrator*.py)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simsmall  # noqa: E402
-import siminfiltrator  # noqa: E402
-import simunits  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
+import engine.objects.infiltrator as siminfiltrator  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import infiltrate  # noqa: E402
 

@@ -31,7 +31,7 @@ thing comes back itself -- `thing`, `living`, and a field that holds one (`state
 whose fields can be set through it: the read-only promise covers tables and arrays, not things (review 1120dd P2;
 a read-only thing handle is an open question, handoff-r3). The
 readers a Battlefield file is read through (contents, home, jobs, clocks, sciences, player_upgrades, power, relations: step S 11d,
-experimental/cnv/simbattlefield.py) give names and numbers only, so a game adapter can give the same."""
+experimental/cnv/engine/state/battlefield.py) give names and numbers only, so a game adapter can give the same."""
 from engine.kernel import interfaces
 from engine.kernel import module as kernel_module
 from engine.ports.readonly import view

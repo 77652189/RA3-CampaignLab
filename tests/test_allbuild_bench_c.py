@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location('allbuild_simbench', ROOT / 'experimental/cnv/simbench.py')
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
-import simai
+import engine.ai.core as simai
 
 
 @pytest.mark.parametrize('name', ['aiallbuildon', 'aiallbuildoff'])

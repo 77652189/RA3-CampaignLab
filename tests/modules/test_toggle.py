@@ -5,7 +5,7 @@ state with a DisabledType or a waiting press taking no press, a dead thing's wai
 toggle_at / armor_up in the frame record as the fields were. On the bench: engine_toggle a-f, engine_acts_tgl."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import toggle  # noqa: E402
 

@@ -44,7 +44,7 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import enginefiles  # noqa: E402
 import parts  # noqa: E402
 import sim  # noqa: E402
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from engine.ports import templates  # noqa: E402
 
 WEAPON, UPGRADE, ACTION, IGNORED_ACTION, CONDITION, DEVICE, COMMAND, STUCK = (

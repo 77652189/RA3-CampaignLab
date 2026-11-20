@@ -4,8 +4,8 @@ unloading, node claims): tests/test_simmine.py, tests/test_simqueuedock.py; benc
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simmine  # noqa: E402
-import simsmall  # noqa: E402
+import engine.objects.mine as simmine  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 
 MINERS = ('AlliedMiner', 'AlliedMiner_Naval', 'SovietMiner', 'SovietMiner_Naval', 'JapanMiner', 'JapanMiner_Naval')

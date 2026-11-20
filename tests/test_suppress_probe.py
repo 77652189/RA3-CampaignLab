@@ -13,7 +13,7 @@ _spec = importlib.util.spec_from_file_location(
     'simbench_sp', Path(__file__).resolve().parents[1] / 'experimental' / 'cnv' / 'simbench.py')
 _spec.loader.exec_module(importlib.util.module_from_spec(_spec))
 
-import simunits  # noqa: E402
+import engine.data.units as simunits  # noqa: E402
 from checks import engine_suppression  # noqa: E402
 
 

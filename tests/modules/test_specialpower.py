@@ -23,7 +23,7 @@ def test_every_tag_is_named_here_and_reads_its_power():
 
 
 def _collider():
-    import simsmall
+    import engine.testing.small as simsmall
     e = simsmall.small_world()
     e.add('collider', COLLIDER, 'Player_1', 300.0, 300.0)
     return e, e.bodies['collider']
@@ -45,7 +45,7 @@ def test_a_template_gets_one_module_a_block_and_no_reload_before_a_cast():
 
 def test_the_cannon_module_refuses_the_click_until_its_reload_ends():
     import sim
-    import simpower
+    import engine.objects.power as simpower
     e, b = _collider()
     now = e.frame_now()
     simpower.start_reload(e, b, CANNON, now + 100)
@@ -61,7 +61,7 @@ def test_the_cannon_module_refuses_the_click_until_its_reload_ends():
 
 def test_a_power_no_block_serves_gets_a_module_attached():
     import sim
-    import simpower
+    import engine.objects.power as simpower
     e, b = _collider()
     simpower.start_reload(e, b, 'Command_X', 77)
     simpower.start_reload(e, b, 'Command_X', 88)        # the attached one is found again, not a second
@@ -123,7 +123,7 @@ def test_assign_reads_the_plain_shape_only():
     assert plain.plain and plain.power == 'SpecialPower_TargetedRepairVehicle'
     assert not specialpower.AssignData.parse(' id="M" SpecialPowerTemplate="X" Other="1"', '').plain
     assert not specialpower.AssignData.parse(' id="M" SpecialPowerTemplate="X"', '<Child/>').plain
-    import simsmall
+    import engine.testing.small as simsmall
     from engine.kernel import interfaces
     s = simsmall.small_world()
     factory = s.add('factory', 'AlliedWarFactory', 'Player_1', 300.0, 300.0)
@@ -172,7 +172,7 @@ def test_assign_stops_once_anything_moves(disturb):
 def test_assign_press_keeps_its_first_target_and_one_dispatcher_a_target():
     """The host's press (simassign): a second press of a dispatching factory does not retarget it, and a target
     already healed by one is not given another (both unmeasured, deliberately not inferred)."""
-    import simsmall
+    import engine.testing.small as simsmall
     from engine.kernel import interfaces
     s = simsmall.small_world()
     one = s.add('one', 'AlliedWarFactory', 'Player_1', 300.0, 300.0)

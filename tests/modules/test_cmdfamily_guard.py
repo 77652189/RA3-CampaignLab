@@ -1,7 +1,7 @@
 """Guard area hands off to idle acquisition and the stance's return rule."""
 import pytest
 
-import simsmall
+import engine.testing.small as simsmall
 from engine.ports.command import Command
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'

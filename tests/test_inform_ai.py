@@ -177,7 +177,7 @@ def test_inform_ai_off_changes_only_the_base_launch_nugget_and_expectation():
 def test_inform_ai_response_is_reported_as_a_gap_including_retail_cache():
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
 
     retail = simunits._fight_data()['weapons']['SovietAntiVehicleVehicleTech1CannonWeapon']
     assert 'InformTargetNugget' in retail['unmodeled_effects']
@@ -216,7 +216,7 @@ def test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe(check
     from types import SimpleNamespace
     import build
     import sim
-    import simai
+    import engine.ai.core as simai
     import labpaths
 
     log = Path(labpaths.WORK) / 'testbench/runs' / run_name / 'ra3ext.log'
@@ -385,7 +385,7 @@ def test_inform_max_launch_matches_engine_inform_max_observed_deadline(run_name,
 def test_inform_launch_formula_and_matching_hit_lifecycle(monkeypatch):
     import build
     import sim
-    import simunits
+    import engine.data.units as simunits
 
     m, t, _ = build.resolve('engine_inform_ai', 'a')
     e = sim.Sim(m, t)

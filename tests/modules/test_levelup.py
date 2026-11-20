@@ -3,9 +3,9 @@ elements -- not an attribute --, LevelsToGain, LevelCap, Permanent), several on 
 grant has it in force, and the body's level_modules forward (the ids in force) where the field was. The grant itself
 (rank, upgrades, elite health) is benched in tests/test_simbench_c.py (engine_levelup a / b / c)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
-import simlevel  # noqa: E402
+import engine.objects.level as simlevel  # noqa: E402
 import simrecord  # noqa: E402
-import simsmall  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import levelup  # noqa: E402
 

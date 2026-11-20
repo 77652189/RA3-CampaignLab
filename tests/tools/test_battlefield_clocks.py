@@ -1,4 +1,4 @@
-"""Battlefield's modules' timers (experimental/cnv/simbattlefield.py step 10, S 11d): a run cut while an Apocalypse
+"""Battlefield's modules' timers (experimental/cnv/engine/state/battlefield.py step 10, S 11d): a run cut while an Apocalypse
 waits to mend (and one hurt the moment before the cut), a power plant unpacks, another is being sold, a core's
 lifetime runs and a tank's late lifetime (simbody.last_until) runs, its file placed onto an empty run of the same map:
 each timed module's clocks read back on the file's clock, and run on, the host mends, gives power, deletes and kills
@@ -7,9 +7,9 @@ check refuses a row of no known tag, a missing field, a frame not a whole number
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import simbattlefield  # noqa: E402
-import simbody  # noqa: E402
-import simsmall  # noqa: E402
+import engine.state.battlefield as simbattlefield  # noqa: E402
+import engine.objects.body as simbody  # noqa: E402
+import engine.testing.small as simsmall  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 from maps import probe_range  # noqa: E402
 

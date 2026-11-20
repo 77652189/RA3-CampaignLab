@@ -412,7 +412,7 @@ def test_shot_clock_the_coil_shoots_every_31_s_one_shot_a_tank(monkeypatch):
 
 def crush_levels(template, own=None):
     """(crusher, crushable) as the CrusherInfo module reads them (engine/modules/crush.py; no block: (0, None))."""
-    import simunits
+    import engine.data.units as simunits
     from engine.modules import crush
     d = crush.CrushData.parse(*(simunits.module_blocks(template, 'CrusherInfo', own) or [('', '')])[0])
     return d.crusher, d.crushable
@@ -576,7 +576,7 @@ def test_seal_a_walled_in_soldier_walks_to_the_wall_nearest_the_goal_and_stands(
 def test_line_of_fire_is_the_weapons_flag():
     """`los` = ATTACK_NEEDS_LINE_OF_SIGHT in the WeaponTemplate's Flags: the peacekeeper's shotgun and the Guardian's
     cannon have it, the Athena's lob (AthenaCannonWeapon) does not."""
-    import simunits
+    import engine.data.units as simunits
     assert all(w['los'] for w in simunits.fight('AlliedAntiInfantryInfantry')['weapons'])
     assert all(w['los'] for w in simunits.fight('AlliedAntiVehicleVehicleTech1')['weapons'])
     assert not any(w['los'] for w in simunits.fight('AlliedAntiStructureVehicle')['weapons'])
@@ -599,7 +599,7 @@ def test_a_weapon_doing_nothing_to_the_armour_never_takes_the_target():
     """Tanya's pistol (SNIPER) at a faction building's armour (SNIPER 0 %): Generals estimateWeaponDamage 0 ->
     INVALID_SHOT, ordered or not (the a6 Tanya who stood firing at a building); the peacekeeper's GUN (100 %) can."""
     import sim
-    import simunits
+    import engine.data.units as simunits
     plant = sim.Body('p', 'AlliedPowerPlant', 's1', 0.0, 0.0)
     plant.armor, plant.kinds = simunits.fight('AlliedPowerPlant')['armor'], frozenset({'STRUCTURE'})
     s = sim.Sim.__new__(sim.Sim)
@@ -610,7 +610,7 @@ def test_a_weapon_doing_nothing_to_the_armour_never_takes_the_target():
 def test_idle_acquiring_is_the_units_own_word():
     """AutoAcquireEnemiesWhenIdle: the peacekeeper YES, the MCV NO, the Riptide writes none (Generals' 0: no idle
     acquiring); the one ATTACK_BUILDINGS is a squad's."""
-    import simunits
+    import engine.data.units as simunits
     assert simunits.acquire('AlliedAntiInfantryInfantry') == ['YES']
     assert simunits.acquire('AlliedMCV') == ['NO']
     assert simunits.acquire('AlliedAntiInfantryVehicle') == []
@@ -659,7 +659,7 @@ def test_nanocore_deploys_at_a_far_waypoint_as_the_bench():
     =$BASE_DEFENSE_EGG_KINDOFS defined in BaseEgg.xml, its own LocomotorSet Speed 60 -- round 139). Not held: the
     bench's PLAYER_HAS_OBJECT_COMPARISON(JapanBaseDefense) stayed 0 while the area count held (场帧 522); the sim
     counts it owned."""
-    import simunits
+    import engine.data.units as simunits
     egg = simunits.stats('JapanBaseDefenseEgg')
     assert egg['speed'] == 60.0 and egg['surface'] == 'both' and 'VEHICLE' in egg['kinds'] and not egg['guessed']
     frames, unit, yard, name = _sim_run('engine_unpack_egg', 'go', 40.0).series[-1][1]
