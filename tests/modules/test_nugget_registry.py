@@ -20,6 +20,30 @@ def test_effects_follow_order_not_the_weapons_field_order():
     assert [k for k, _ in registry.effects(_weapon())] == ['Damage']     # a zero-field weapon still deals its dmg
 
 
+def test_a_direct_hit_books_the_dot_then_the_passengers_the_cold_the_suppression_and_the_emp(monkeypatch):
+    """Step N2b: the 'hit' phase runs DOT -> DamageContained -> SecondaryDamage -> Suppression -> Paralyze, whatever
+    the weapon's field order, and only those (no launch, aim or victim handler)."""
+    contained = [dict(damage=5.0, type='CANNON', maximum=1, include=[], exclude=[])]
+    w = dict(reversed(list(dict(_weapon(), emp_seconds=[2.0], suppression=[(30.0, 40.0, 1.0)], sd=3.0,
+                                contained=contained, dot=[dict(damage=1.0)], projectile='Shell',
+                                line=dict(dynamic=False)).items())))
+    hits = ['DOT', 'DamageContained', 'SecondaryDamage', 'Suppression', 'Paralyze']
+    effects = registry.effects(w)
+    assert [k for k, _ in effects] == ['Projectile', *hits, 'LineDamage', 'Damage']
+    seen = []
+
+    class Recorder:
+        def __init__(self, kind, phase):
+            self.kind, self.phase = kind, phase
+
+        def apply(self, context, payload):
+            seen.append(self.kind)
+
+    monkeypatch.setattr(registry, '_HANDLERS', {k: Recorder(k, h.phase) for k, h in registry.HANDLERS.items()})
+    assert registry.run('hit', types.SimpleNamespace(effects=effects)) is False
+    assert seen == hits
+
+
 def test_a_victim_takes_its_damage_then_the_leech_claims_then_the_strip():
     """Step N2: a victim's effects run Damage -> LeechPercentMaxHealth -> LeechHealth -> StripMaxHealthPercent."""
     w = dict(reversed(list(dict(_weapon(), strip_max_health=[(0.1, 'CANNON')], leech_health=0.5,

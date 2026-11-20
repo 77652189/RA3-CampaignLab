@@ -43,3 +43,27 @@ def test_the_first_and_last_ticks_are_both_included(monkeypatch):
     s.deal(FRAME)
     assert target.hp == before + 1
     assert not s._harm().dots
+
+
+def test_only_a_direct_single_first_hit_books_a_dot(monkeypatch):
+    """Step N2b: a volley of two, or a second hit on a target already on the book, books nothing and is a gap."""
+    s = small_world(model=False)
+    caster = s.add('caster', 'AlliedAntiInfantryInfantry', 'Player_1', 1250, 2500)
+    target = s.add('target', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1350, 2500)
+    xml = ('<WeaponTemplate id="SampleHit" RequiredAntiMask="ANTI_GROUND"><Nuggets>'
+           '<DOTNugget Damage="7" DamageType="UNRESISTABLE" DamageInterval="0.2s" DamageDuration="2s"/>'
+           '</Nuggets></WeaponTemplate>')
+    weapons = simunits._weapons([xml])
+    weapon = simunits._resolve(weapons['SampleHit'], weapons)
+    shots = [2]
+    monkeypatch.setattr(s, 'shots_due', lambda *_: shots[0])
+    s.volleys = [(target, weapon, caster)]
+    s.deal(FRAME)
+    assert not s._harm().dots and any(name == 'DOTNugget' for _, name in s.unmodeled)
+    s.unmodeled.clear()
+    shots[0] = 1
+    s.deal(FRAME)
+    assert len(s._harm().dots) == 1 and not any(name == 'DOTNugget' for _, name in s.unmodeled)
+    s.clock.frame += 1
+    s.deal(FRAME)
+    assert len(s._harm().dots) == 1 and any(name == 'DOTNugget' for _, name in s.unmodeled)

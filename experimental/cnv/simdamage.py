@@ -57,8 +57,14 @@ def flank_of(victim, attacker):
 def hit_scalar(victim, damage_type, attacker):
     """What one point of `damage_type` from `attacker` does to `victim` on a direct hit: its armor percent x taken
     (UNRESISTABLE: 1), x the flank (registry.Context.scalar, for the nugget handlers)."""
+    return armor_scalar(victim, damage_type) * flank_of(victim, attacker)
+
+
+def armor_scalar(victim, damage_type):
+    """What one point of `damage_type` does to `victim` without the flank: its armor percent x taken (UNRESISTABLE:
+    1) -- a passenger's (DamageContained), a DOT tick's (registry.Context.armor)."""
     return (1.0 if damage_type == 'UNRESISTABLE' else
-            simunits.percent(victim.armor, damage_type) / 100.0 * victim.taken) * flank_of(victim, attacker)
+            simunits.percent(victim.armor, damage_type) / 100.0 * victim.taken)
 
 
 def straight_speed(projectile, own):
@@ -396,49 +402,20 @@ class Damage:
                 if n:
                     self.inform_launch(world, t, by, w, n)
                     # the volley's nugget handlers (engine/combat, registry.ORDER): a launch may take it over
-                    ctx = registry.Context(world, by, t, w, n, hurt, scalar=hit_scalar,
-                                           speed=lambda p: self.projectile_speed(world, p),
+                    ctx = registry.Context(world, by, t, w, n, hurt, scalar=hit_scalar, armor=armor_scalar,
+                                           speed=lambda p: self.projectile_speed(world, p), frames=simunits._frames,
                                            gap=gap, queue_hit=peers.queue_projectile_hit,
                                            detonate=peers.projectile_detonate, clear_notice=self.incoming_hit,
-                                           can_hit=peers.can_hit, claims=leech_events)
+                                           can_hit=peers.can_hit, held=peers.garrison.held, cold_of=peers.cold_of,
+                                           dots=self.dots, mark_cold=self.mark_cold,
+                                           suppression_fields=peers.suppression_fields,
+                                           emp_until=lambda: peers.emp_until, claims=leech_events)
                     if registry.run('launch', ctx):
                         continue
                     projectile = w.get('projectile')
                     if not projectile:
                         self.incoming_hit(t, by.serial, w.get('weapon_key'))
-                    for effect in w.get('dot', []):
-                        dots = self.dots
-                        if projectile or n != 1 or any(d['target'] is t for d in dots):
-                            world.gap(GAP_WEAPON, 'DOTNugget', '仅直接单发首次DOT已对拍；弹体/叠加/刷新未建模')
-                        else:
-                            dots.append(dict(target=t, by=by, effect=effect, next=world.frame_now(),
-                                             end=world.frame_now() + effect['duration'], hp=t.hp))
-                    # DamageContainedNugget damages eligible passengers, not the house.
-                    # GUESSED priority: entry order; the bench asserts only aggregate HP.
-                    for effect in w.get('contained', []):
-                        eligible = [p for p in peers.garrison.held(t) if p.alive
-                                    and (not effect['include'] or set(effect['include']) & p.kinds)
-                                    and not set(effect['exclude']) & p.kinds]
-                        for passenger in eligible[:max(0, effect['maximum'])]:
-                            armor = (1.0 if effect['type'] == 'UNRESISTABLE' else
-                                     simunits.percent(passenger.armor, effect['type']) / 100 * passenger.taken)
-                            h = hurt.setdefault(passenger.serial, [passenger, 0.0, by])
-                            h[1] += n * effect['damage'] * by.dealt * armor
-                    # SecondaryDamageNugget.Amount is per hit, not a partial clip's mean DPS.
-                    if w.get('sd'):
-                        if projectile:
-                            world.gap(GAP_WEAPON, 'SecondaryDamageNugget', '弹体冷冻值的到达事件尚未建模')
-                        elif not t.shielded and peers.cold_of(t)[0] is not None:
-                            t.find(interfaces.Freeze).add(n * w['sd'] * by.dealt)   # SecondaryDamageTracker
-                            self.cold_on[t.serial] = (t, by)
-                            world.used.add('freeze')
-                    for radius, value, seconds in w.get('suppression', []):
-                        peers.suppression_fields.extend(
-                            (world.frame_now() + simunits._frames(seconds), value, t.x, t.y, radius)
-                            for _ in range(n))
-                    for seconds in w.get('emp_seconds', []):
-                        deadlines = peers.emp_until
-                        deadlines[t.serial] = max(deadlines.get(t.serial, 0), world.frame_now() + simunits._frames(seconds))
+                    registry.run('hit', ctx)      # the DOT, passengers, cold, suppression, EMP (registry.ORDER)
                     if w.get('sweep'):
                         peers.sweeps.fire(by, t, w['sweep'])
                     registry.run('aim', ctx)              # a dynamic line picks the victims (LineDamage)
@@ -591,6 +568,11 @@ class Damage:
                     world.first_death = (world.t, t, by)
                 peers.destroy(t, f'被 {world.label(by)} 打掉')
         self.chill(world, dt, peers)
+
+    def mark_cold(self, target, by):
+        """`by` is the one of record for the cold `target` took this frame (cold_on, read by chill;
+        registry.Context.mark_cold: SecondaryDamage)."""
+        self.cold_on[target.serial] = (target, by)
 
     def hit_reaction_damage(self, world, target, damage, peers):
         """E172 gun-hit condition only; rotation/animation are unmodelled.

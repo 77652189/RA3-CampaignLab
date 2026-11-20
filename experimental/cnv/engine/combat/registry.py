@@ -7,11 +7,14 @@ context's effects of one phase in that order. ORDER is the one place the order i
 under its (kind, phase) pair there, and each kind once."""
 import types
 
-# (kind, phase) in the order the host runs them: a launch takes the hit over or not (ProjectileNugget), an aim picks
-# the victims (LineDamageNugget), a victim effect runs once for each victim: its damage, then the leech claims on it,
-# then the strip (step N2: Leech*DamageNugget, StripMaxHealthPercentDamageNugget)
-ORDER = (('Projectile', 'launch'), ('LineDamage', 'aim'), ('Damage', 'victim'), ('LeechPercentMaxHealth', 'victim'),
-         ('LeechHealth', 'victim'), ('StripMaxHealthPercent', 'victim'))
+# (kind, phase) in the order the host runs them: a launch takes the hit over or not (ProjectileNugget); a direct hit's
+# effects on the aimed target, once a volley: the DOT booked, the passengers hit, the cold, the suppression fields,
+# the EMP (step N2b: DOT / DamageContained / SecondaryDamage / Suppression / ParalyzeNugget); an aim picks the victims
+# (LineDamageNugget); a victim effect runs once for each victim: its damage, then the leech claims on it, then the
+# strip (step N2a: Leech*DamageNugget, StripMaxHealthPercentDamageNugget)
+ORDER = (('Projectile', 'launch'), ('DOT', 'hit'), ('DamageContained', 'hit'), ('SecondaryDamage', 'hit'),
+         ('Suppression', 'hit'), ('Paralyze', 'hit'), ('LineDamage', 'aim'), ('Damage', 'victim'),
+         ('LeechPercentMaxHealth', 'victim'), ('LeechHealth', 'victim'), ('StripMaxHealthPercent', 'victim'))
 
 _HANDLERS = {}
 HANDLERS = types.MappingProxyType(_HANDLERS)
@@ -61,20 +64,29 @@ class Context:
     """One volley as its host sees it this frame: the world, the shooter `by`, the aimed `target`, the resolved
     `weapon`, the shots `n`, this frame's damage `hurt` (add) and the host's rules and calls a handler may make (the
     rules read the game data, which this package does not): `scalar(victim, type, attacker)` (armor x taken x flank,
-    hit), `speed(projectile)` (straight-line muzzle speed, 0: none), `gap(tag, why)`, `queue_hit` / `detonate` (the
-    host's arrival queue and MetaImpact dispatch, swappable), `clear_notice` (the target's incoming-fire
-    notification) and `can_hit`. `victims` starts as [target] (an aim may change it); `victim` is the one a victim
-    effect runs for. `claims`: the frame's leech claims (victim serial -> list; engine/combat/leech), the host's
-    ledger, paid once the frame's damage is dealt."""
-    __slots__ = ('world', 'by', 'target', 'weapon', 'n', 'hurt', 'scalar', 'speed', 'gap', 'queue_hit', 'detonate',
-                 'clear_notice', 'can_hit', 'effects', 'victims', 'victim', 'claims')
+    hit), `armor(victim, type)` (armor x taken, no flank: a passenger's, a DOT tick's), `speed(projectile)`
+    (straight-line muzzle speed, 0: none), `frames(seconds)` (the host's frame count of a time), `gap(tag, why)`,
+    `queue_hit` / `detonate` (the host's arrival queue and MetaImpact dispatch, swappable), `clear_notice` (the
+    target's incoming-fire notification), `can_hit`, `held(house)` (its passengers, the garrison's order) and
+    `cold_of(body)` (its freeze threshold first, None: never cold). The host's books a hit writes: `dots` (the DOT
+    entries), `mark_cold(body, shooter)` (whose cold it is, for the frame's chill), `suppression_fields` and
+    `emp_until()` (serial -> frame, the host makes it on first use). `victims` starts as [target] (an aim may change it); `victim` is the
+    one a victim effect runs for. `claims`: the frame's leech claims (victim serial -> list; engine/combat/leech),
+    the host's ledger, paid once the frame's damage is dealt."""
+    __slots__ = ('world', 'by', 'target', 'weapon', 'n', 'hurt', 'scalar', 'armor', 'speed', 'frames', 'gap',
+                 'queue_hit', 'detonate', 'clear_notice', 'can_hit', 'held', 'cold_of', 'dots', 'mark_cold',
+                 'suppression_fields', 'emp_until', 'effects', 'victims', 'victim', 'claims')
 
-    def __init__(self, world, by, target, weapon, n, hurt, *, scalar, speed, gap, queue_hit, detonate, clear_notice,
-                 can_hit, claims=None):
+    def __init__(self, world, by, target, weapon, n, hurt, *, scalar, armor, speed, frames, gap, queue_hit,
+                 detonate, clear_notice, can_hit, held, cold_of, dots, mark_cold, suppression_fields, emp_until,
+                 claims=None):
         self.world, self.by, self.target, self.weapon, self.n, self.hurt = world, by, target, weapon, n, hurt
         self.claims = {} if claims is None else claims
-        self.scalar, self.speed, self.gap = scalar, speed, gap
+        self.scalar, self.armor, self.speed, self.frames, self.gap = scalar, armor, speed, frames, gap
         self.queue_hit, self.detonate, self.clear_notice, self.can_hit = queue_hit, detonate, clear_notice, can_hit
+        self.held, self.cold_of = held, cold_of
+        self.dots, self.mark_cold = dots, mark_cold
+        self.suppression_fields, self.emp_until = suppression_fields, emp_until
         self.effects = effects(weapon)
         self.victims = [target]
         self.victim = None
