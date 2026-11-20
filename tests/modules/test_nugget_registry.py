@@ -20,6 +20,15 @@ def test_effects_follow_order_not_the_weapons_field_order():
     assert [k for k, _ in registry.effects(_weapon())] == ['Damage']     # a zero-field weapon still deals its dmg
 
 
+def test_a_victim_takes_its_damage_then_the_leech_claims_then_the_strip():
+    """Step N2: a victim's effects run Damage -> LeechPercentMaxHealth -> LeechHealth -> StripMaxHealthPercent."""
+    w = dict(reversed(list(dict(_weapon(), strip_max_health=[(0.1, 'CANNON')], leech_health=0.5,
+                                leech_percent=0.2).items())))
+    assert [k for k, _ in registry.effects(w)] == \
+        ['Damage', 'LeechPercentMaxHealth', 'LeechHealth', 'StripMaxHealthPercent']
+    assert dict(registry.effects(w))['LeechHealth'] == (0.5, 10.0, 'CANNON')
+
+
 def test_registration_order_does_not_decide_the_run(monkeypatch):
     """Registered the other way round, the same effects run in the same order."""
     handlers = dict(registry.HANDLERS)

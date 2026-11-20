@@ -19,6 +19,7 @@ nugget_powers, hit_reaction_of.
 import math
 
 import simunits
+from engine.combat import leech
 from engine.combat import projectile as flight
 from engine.combat import registry
 from engine.kernel import interfaces
@@ -369,7 +370,10 @@ class Damage:
         tick that killed the trucks at 4:23). Bodies at 0 die, the last hit their killer's."""
         peers.lift_timers.tick()
         hurt = {}
-        leech_events = {}
+        leech_events = {}       # the frame's leech claims (engine/combat/leech), paid after the damage
+
+        def gap(tag, why):
+            world.gap(GAP_WEAPON, tag, why)
         self.meta_impact_tick(world, peers)
         for hit in flight.due(self.projectile_hits, world.frame_now()):     # shells fired before land first
             flight.arrive(hit, hurt, peers.projectile_detonate, self.incoming_hit)
@@ -394,9 +398,9 @@ class Damage:
                     # the volley's nugget handlers (engine/combat, registry.ORDER): a launch may take it over
                     ctx = registry.Context(world, by, t, w, n, hurt, scalar=hit_scalar,
                                            speed=lambda p: self.projectile_speed(world, p),
-                                           gap=lambda tag, why: world.gap(GAP_WEAPON, tag, why),
-                                           queue_hit=peers.queue_projectile_hit, detonate=peers.projectile_detonate,
-                                           clear_notice=self.incoming_hit, can_hit=peers.can_hit)
+                                           gap=gap, queue_hit=peers.queue_projectile_hit,
+                                           detonate=peers.projectile_detonate, clear_notice=self.incoming_hit,
+                                           can_hit=peers.can_hit, claims=leech_events)
                     if registry.run('launch', ctx):
                         continue
                     projectile = w.get('projectile')
@@ -441,20 +445,7 @@ class Damage:
                     for victim in ctx.victims:
                         h = hurt.setdefault(victim.serial, [victim, 0.0, by])
                         ctx.victim = victim
-                        registry.run('victim', ctx)       # the direct damage (Damage)
-                        # Leech and Strip read the same victims after their damage (N2 moves them to handlers)
-                        if w.get('leech_percent'):
-                            leech_events.setdefault(victim.serial, []).append((by, 'maximum', w['leech_percent'], 0.0))
-                        if w.get('leech_health') or w.get('strip_max_health'):
-                            side = flank_of(victim, by)
-                        if w.get('leech_health'):
-                            armor = (1.0 if w['type'] == 'UNRESISTABLE' else
-                                     simunits.percent(victim.armor, w['type']) / 100.0 * victim.taken) * side
-                            leech_events.setdefault(victim.serial, []).append((by, 'damage', w['leech_health'], n * w['dmg'] * by.dealt * armor))
-                        for fraction, damage_type in w.get('strip_max_health', []):
-                            scalar = (1.0 if damage_type == 'UNRESISTABLE' else       # the flank: INFERRED
-                                      simunits.percent(victim.armor, damage_type) / 100 * victim.taken) * side
-                            h[1] += n * victim.max_hp * fraction * by.dealt * scalar
+                        registry.run('victim', ctx)       # its damage, the leech claims, the strip (registry.ORDER)
                         h[2] = by
                     for effect in w.get('lift', []):
                         if ((effect['include'] and not set(effect['include']) & t.kinds)
@@ -593,22 +584,7 @@ class Damage:
             before_hp = t.hp
             t.damage(dmg)
             self.hit_reaction_damage(world, t, before_hp - t.hp, peers)
-            events = leech_events.get(t.serial, [])
-            if events:
-                if len(events) == 1:
-                    healer, basis, fraction, raw = events[0]
-                    amount = 0.0
-                    if basis == 'maximum' and t.hp <= 0:
-                        amount = t.max_hp * fraction
-                    elif basis == 'damage' and t.hp > 0:
-                        amount = min(raw, max(0.0, before_hp - t.hp)) * fraction
-                    else:
-                        tag = 'LeechPercentMaxHealthDamageNugget' if basis == 'maximum' else 'LeechHealthDamageNugget'
-                        world.gap(GAP_WEAPON, tag, '最大血量吸取仅致死、实伤吸取仅非致死场景已验证')
-                    if healer.alive:
-                        healer.mend(amount)
-                else:
-                    world.gap(GAP_WEAPON, 'leech', '并发吸取的伤害归属与回补尚未建模')
+            leech.refund(leech_events.get(t.serial), t, before_hp, gap)
             t.set_last_damage(by.owner, by)
             if t.hp <= 0 and t.alive:
                 if world.first_death is None:

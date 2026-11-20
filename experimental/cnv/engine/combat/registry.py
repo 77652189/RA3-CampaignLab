@@ -8,8 +8,10 @@ under its (kind, phase) pair there, and each kind once."""
 import types
 
 # (kind, phase) in the order the host runs them: a launch takes the hit over or not (ProjectileNugget), an aim picks
-# the victims (LineDamageNugget), a victim effect runs once for each victim (DamageNugget)
-ORDER = (('Projectile', 'launch'), ('LineDamage', 'aim'), ('Damage', 'victim'))
+# the victims (LineDamageNugget), a victim effect runs once for each victim: its damage, then the leech claims on it,
+# then the strip (step N2: Leech*DamageNugget, StripMaxHealthPercentDamageNugget)
+ORDER = (('Projectile', 'launch'), ('LineDamage', 'aim'), ('Damage', 'victim'), ('LeechPercentMaxHealth', 'victim'),
+         ('LeechHealth', 'victim'), ('StripMaxHealthPercent', 'victim'))
 
 _HANDLERS = {}
 HANDLERS = types.MappingProxyType(_HANDLERS)
@@ -62,13 +64,15 @@ class Context:
     hit), `speed(projectile)` (straight-line muzzle speed, 0: none), `gap(tag, why)`, `queue_hit` / `detonate` (the
     host's arrival queue and MetaImpact dispatch, swappable), `clear_notice` (the target's incoming-fire
     notification) and `can_hit`. `victims` starts as [target] (an aim may change it); `victim` is the one a victim
-    effect runs for."""
+    effect runs for. `claims`: the frame's leech claims (victim serial -> list; engine/combat/leech), the host's
+    ledger, paid once the frame's damage is dealt."""
     __slots__ = ('world', 'by', 'target', 'weapon', 'n', 'hurt', 'scalar', 'speed', 'gap', 'queue_hit', 'detonate',
-                 'clear_notice', 'can_hit', 'effects', 'victims', 'victim')
+                 'clear_notice', 'can_hit', 'effects', 'victims', 'victim', 'claims')
 
     def __init__(self, world, by, target, weapon, n, hurt, *, scalar, speed, gap, queue_hit, detonate, clear_notice,
-                 can_hit):
+                 can_hit, claims=None):
         self.world, self.by, self.target, self.weapon, self.n, self.hurt = world, by, target, weapon, n, hurt
+        self.claims = {} if claims is None else claims
         self.scalar, self.speed, self.gap = scalar, speed, gap
         self.queue_hit, self.detonate, self.clear_notice, self.can_hit = queue_hit, detonate, clear_notice, can_hit
         self.effects = effects(weapon)
