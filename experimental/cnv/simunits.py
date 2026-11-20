@@ -1358,6 +1358,12 @@ class _ModuleTemplates:
     POSITION = f'{{{XAI}}}insertPosition'
     XSD = '{http://www.w3.org/2001/XMLSchema}'
     GROUPS = frozenset({'Behaviors', 'Body', 'AI', 'Draws', 'ClientUpdates', 'ClientBehaviors'})
+    # The attribute a repeated element is matched by in a container of this type, 'id' elsewhere (xml_merge.md b).
+    # Review l P2 (W2b, INFERRED: xml_merge.md measured the lower-case id only): a WeaponSetUpdate's slots by their
+    # ID (each slot kind its own schema element, so by (tag, ID)); a child's slot of a new ID is still added after
+    # the parent's. A slot's <Weapon> lines have no key (one slot holds several lines of one Ordering, each under its
+    # own status: 295 templates, w2b_draft): a child's lines are added after the parent's in the merged slot.
+    KEYS = {'WeaponSetUpdateModuleData': 'ID'}
 
     @classmethod
     def _document(cls, text):
@@ -1505,13 +1511,14 @@ class _ModuleTemplates:
             nested, slot, many = layout.get(node.tag, default)
             match, position = None, len(parent)
             if inherit:
-                key = node.get('id')
+                attr = cls.KEYS.get(type_name, 'id')
+                key = node.get(attr)
                 top = node.get(cls.POSITION) == 'Top'
                 match_index = None
                 for i, old in enumerate(parent):
                     old_slot = layout.get(old.tag, default)[1]
                     same = old_slot == slot and (node.tag in layout or old.tag == node.tag)
-                    if same and (not many or key is not None and old.get('id') == key):
+                    if same and (not many or key is not None and old.get(attr) == key):
                         match, match_index = old, i
                     if old_slot > slot or (same and top):
                         position = min(position, i)

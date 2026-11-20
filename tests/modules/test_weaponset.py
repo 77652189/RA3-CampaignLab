@@ -277,3 +277,29 @@ def test_a_second_set_block_arms_the_one_module_with_every_blocks_slots():
         u.script_status = set(u.script_status) | {'GENERIC_TOGGLE_STATE'}    # the modify pass rebuilds status
         s.modify(u)
         assert sorted(_keys(u.weapons)) == sorted([ak, CANNON]), sid
+
+
+def test_a_childs_slot_of_the_parents_id_is_merged_into_that_slot():
+    """Review l P2 (W2b, INFERRED: xml_merge.md measured the lower-case id; a slot's key is its ID): a child writing
+    WeaponSlotHardpoint ID="1" in the parent's set id gets one slot ID 1, not two -- the slot's attributes and lines
+    merge as any same-key element (its lines have no key: the child's are added after the parent's). A slot of
+    another kind with the same ID is another slot. Before, the port matched the lower-case id only and gave the
+    parent's and the child's slot 1 side by side (red: three slots). Over the 3969 indexed and mission templates no
+    data changes (work/re/sim_split/w2b_draft/w2b_dump.py)."""
+    ak = 'SovietAntiInfantryInfantryAK47'
+    parent = _tank('CNV_RevParent', f'<WeaponSetUpdate id="Main"><WeaponSlotHardpoint ID="1" AutoChooseWeapon="false">'
+                                    f'<Weapon Ordering="PRIMARY_WEAPON" Template="{ak}" '
+                                    f'ObjectStatus="GENERIC_TOGGLE_STATE"/></WeaponSlotHardpoint></WeaponSetUpdate>')
+    child = _tank('CNV_RevChild', f'<WeaponSetUpdate id="Main"><WeaponSlotHardpoint ID="1"><Weapon '
+                                  f'Ordering="SECONDARY_WEAPON" Template="{CANNON}"/></WeaponSlotHardpoint>'
+                                  f'<WeaponSlotTurret ID="1"><Weapon Ordering="PRIMARY_WEAPON" Template="{PAINTER}"/>'
+                                  f'</WeaponSlotTurret></WeaponSetUpdate>', up='CNV_RevParent')
+    own = {'CNV_RevParent': parent, 'CNV_RevChild': child}
+    blocks = simunits.module_blocks('CNV_RevChild', 'WeaponSetUpdate', own)
+    assert len(blocks) == 1 and 'AutoChooseWeapon="false"' in blocks[0][1]
+    (d,) = weaponset.read(blocks)
+    assert [s.kind for s in d.slots] == ['WeaponSlotHardpoint', 'WeaponSlotTurret']
+    hard = d.slots[0]
+    assert [(x.ordering, x.template, sorted(x.status)) for x in hard.lines] == [
+        ('PRIMARY_WEAPON', ak, ['GENERIC_TOGGLE_STATE']), ('SECONDARY_WEAPON', CANNON, [])]
+    assert d.picks() == [ak, PAINTER]
