@@ -600,7 +600,8 @@ WHY = {
     'owner': "a garrisoned building is its first passenger's",
     'home': "a garrisoned building holding passengers goes back to the owner before its first (the file's null: the "
             "owner the file gives it); one the host's filter emptied has none",
-    'queue': "a job the host's factory does not build is not placed; paid is held to the host's cost",
+    'queue': "a job the host's factory does not build is not placed; paid is held to the host's cost; progress is "
+             "the host's per cent (float32), a job not full kept below 100",
 }
 
 
@@ -677,6 +678,9 @@ def _f32(x):
     return struct.unpack('f', struct.pack('f', x))[0]
 
 
+# The float32 just below 100 per cent: a job the file has not full, whose progress rounds to 100 (0.999999999).
+BELOW_100 = struct.unpack('f', struct.pack('I', struct.unpack('I', struct.pack('f', 100.0))[0] - 1))[0]
+
 
 def _set_jobs(sim, i, row, b, shift):
     """The file's jobs of thing i into its queue as Sim.order_build would have queued them, at the file's progress and
@@ -701,7 +705,10 @@ def _set_jobs(sim, i, row, b, shift):
             continue
         if job['paid'] > cost:
             gaps.append(f'things[{i}].queue[{j}].paid: {job["paid"]!r} over the host\'s cost {cost!r} (held to it)')
-        made.update(owner=b.owner, cost=cost, secs=secs, progress=_f32(job['progress'] * 100.0),
+        pct = _f32(job['progress'] * 100.0)
+        if job['full'] is None and pct >= 100.0:    # not full in the file, so not here: it fills on the host's next step
+            pct = BELOW_100
+        made.update(owner=b.owner, cost=cost, secs=secs, progress=pct,
                     paid=min(job['paid'], cost), full=None if job['full'] is None else job['full'] + shift)
         jobs.append(made)
     if jobs:

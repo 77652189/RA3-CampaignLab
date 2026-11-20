@@ -150,3 +150,23 @@ def test_a_job_full_before_the_placing_reads_back_before_frame_0_and_places_agai
     src.money[P1] = host.money[P1] = again.money[P1] = 0
     out = _go_on(src, 2.0)
     assert _go_on(host, 2.0) == _go_on(again, 2.0) == out and len(out[1]) == 1
+
+
+def test_a_job_not_full_whose_progress_rounds_to_100_stays_not_full():
+    """Review 1120cc P3: 0.999999999 is a job not full; as the host's float32 per cent it would round to 100 -- placed
+    it is held just below (named by the queue's read-back), its export a file the check takes, and it fills on the
+    host's next step, paying what is left."""
+    doc = simbattlefield.export(Observe(_source(0.5)))
+    i = next(k for k, t in enumerate(doc['things']) if t['id'] == 'barracks')
+    doc['things'][i]['queue'][0]['progress'] = 0.999999999
+    assert simbattlefield.check(doc) == []
+    host, gaps = _host(doc)
+    assert [g for g in gaps if g.startswith(f'things[{i}].queue')] == gaps and len(gaps) == 1
+    [job] = _job(simbattlefield.export(Observe(host)), 'barracks')
+    assert job['full'] is None and 0.9999999 < job['progress'] < 1
+    assert simbattlefield.check(simbattlefield.export(Observe(host))) == []
+    host.money[P1] = 1000
+    paid = job['paid']
+    host.run(host.t + 1.0 / host.fps)
+    [full] = host.queues[host.bodies['barracks'].serial]
+    assert full['full'] is not None and host.money[P1] == 1000 - (200 - paid)
