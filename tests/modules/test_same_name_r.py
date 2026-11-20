@@ -480,6 +480,24 @@ def test_an_unnamed_map_object_does_not_take_the_index_key_a_named_one_placed_be
     assert [(b.x, b.alive) for b in other] == [(1550.0, True)] and s.bodies[other[0].name] is other[0]
 
 
+def test_an_unnamed_map_object_does_not_take_the_index_key_a_named_one_placed_after_holds():
+    """Review 1120aa P2 (1119y #4's rest): the free key an unnamed object moved to is not the name of one placed later
+    in the same load -- the named one would push it out of the world."""
+    import parts
+    import sim
+    from maps import island
+    k = len(getattr(island, 'OBJECTS', []))
+    m = parts.Mission(name='T', map=island, scripts=[], objects=[
+        parts.Obj(GI, 1250, 2360, side='p1', name=f'#{k + 1}'),     # the unnamed one's index key, so it moves on
+        parts.Obj(GI, 1550, 2360, side='p1'),
+        parts.Obj(GI, 1850, 2360, side='p1', name=f'#{k + 2}')])    # ... to the key this one is named
+    s = sim.Sim(m, model=False)
+    placed = sorted((b.x, b.name) for b in s.living() if b.template == GI)
+    assert [x for x, _ in placed] == [1250.0, 1550.0, 1850.0]
+    assert s.bodies[f'#{k + 1}'].x == 1250.0 and s.bodies[f'#{k + 2}'].x == 1850.0
+    assert all(s.bodies[n].x == x for x, n in placed)
+
+
 def test_a_script_line_make_does_not_take_the_counted_key_a_living_one_holds():
     s = simsmall.small_world()
     held = s.add('UNIT - SIM Made 1', GI, 'Player_1', 900.0, 900.0)

@@ -973,8 +973,8 @@ class Sim:
         teams = getattr(mission.map, 'TEAMS', {})
         self.active = set(teams.values())               # teams with an instance: a whole-team order to any other is lost (E3)
         self.lost_orders = []                           # (t, script, order, team) given to a team nobody had joined
-        for k, o in enumerate(list(getattr(mission.map, 'OBJECTS', [])) + self.mm.objects):
-            b = self.add(o.name or simworld.free_key(self, '#{}'.format, k), o.template, self.owner_of(o.side), o.x, o.y, shadow=True)  # simliving
+        for o, key in simworld.load_keys(self, list(getattr(mission.map, 'OBJECTS', [])) + self.mm.objects):
+            b = self.add(key, o.template, self.owner_of(o.side), o.x, o.y, shadow=True)  # simliving
             # a bare object is on its player's default team (island.like writes 'Soviet_5/teamSoviet_5'; the container
             # has teamSoviet_2 .. 6 too): bench 11-14 engine_acts_x own, PLAYER_TRANSFER_OWNERSHIP_PLAYER leaves it
             b.team = teams.get(o.side) or (self.mm.team(o.side) if hasattr(self.mm, 'team')    # a retail map (Merged)

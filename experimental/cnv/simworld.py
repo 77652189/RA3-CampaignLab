@@ -93,17 +93,27 @@ def held(world, b):
     return b if b is not None and world.bodies.get(b.name) is b else None
 
 
-def free_key(world, make, n):
+def free_key(world, make, n, taken=()):
     """The first internal key make(n), make(n + 1), ... nothing still holds: not a living thing (Sim.add refuses its
     name) nor a dead one the schedule still runs a module of (review 1119y P2 #3: a key written straight into bodies,
     as the unpack archive does, would leave that module held with its thing gone -- a snapshot fails). A dead one with
-    nothing scheduled may be taken again, as Sim.add lets it. Every key the simulator makes up goes through here
-    (tests/guards/test_free_key.py)."""
+    nothing scheduled may be taken again, as Sim.add lets it. `taken`: names still to come, kept free too (the map
+    load's named objects placed after this one: review 1120aa, 1119y #4's rest). Every key the simulator makes up goes
+    through here (tests/guards/test_free_key.py)."""
     seq = world.world.schedule.seq
-    while (b := world.bodies.get(make(n))) is not None and (
+    while make(n) in taken or (b := world.bodies.get(make(n))) is not None and (
             b.alive or any(m in seq for m in getattr(b, 'modules', ()))):
         n += 1
     return make(n)
+
+
+def load_keys(world, objects):
+    """(object, key) for each map object in turn, as the load places them: its own name, else '#k' (k its index) or
+    the next free key that is none of the names in this load (review 1120aa, 1119y #4's rest: a named one placed later
+    would push it out of the world). Lazy: each key is taken against the bodies the ones before have made."""
+    names = {o.name for o in objects if o.name}
+    for k, o in enumerate(objects):
+        yield o, o.name or free_key(world, '#{}'.format, k, names)
 
 
 def free_name(world, head, tail):
