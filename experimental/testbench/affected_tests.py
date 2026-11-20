@@ -833,6 +833,8 @@ def pick(cov, changes, sources, remaps, fallback, graph=None, facade=(None, None
 
     def add(found, reason):
         for t in found:
+            if t.split('::')[0].rsplit('/', 1)[-1] == 'conftest.py':
+                continue        # fixtures, not tests: named on the command line it collides with tests/modules/conftest.py
             tests.add(t)
             why.setdefault(t, [])
             if reason not in why[t] and len(why[t]) < 3:

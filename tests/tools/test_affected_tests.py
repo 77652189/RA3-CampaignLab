@@ -121,6 +121,15 @@ def test_pick_falls_back_by_name_and_takes_changed_tests(tmp_path):
     assert why['tests/test_x.py'] == ['by name: data/units.xml']
 
 
+def test_pick_never_names_a_conftest():
+    """A conftest named on the command line collides with tests/modules/conftest.py (pytest 'import file mismatch');
+    pytest loads the conftests by itself (11-19: a golden.py change picked tests/conftest.py by name)."""
+    changes = [('data/units.xml', 'data/units.xml', [(1, 1, 1, 1)], False)]
+    tests, _, _ = at.pick(None, changes, {}, {},
+                          lambda _: {'tests/conftest.py', 'tests/modules/conftest.py', 'tests/test_x.py'})
+    assert tests == {'tests/test_x.py'}
+
+
 def test_pick_follows_a_split_path_to_a_dynamically_loaded_module(tmp_path):
     port = 'experimental/cnv/engine/ports/command.py'
     ui_test = 'tests/test_page.py'
