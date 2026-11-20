@@ -443,14 +443,14 @@ class GameCommands:
 
     `do` keeps (ok, why): False refused (nothing sent, or nothing that orders a unit), None issued with no receipt yet
     -- never True at once. The receipt is the map's own count: a goal of the group holding the point whose counter
-    reads below `done` at the click and `done` at a later sample (`issued()` then shows True). A point no goal holds,
+    reads below `done` at the click and `done` at a later sample (`sent()` then shows True). A point no goal holds,
     or a goal already reading `done`, has no receipt route: the move stays None, and the run's end says so. Attack has
     no route: no archived run right-clicks an enemy (handoff-r3 gap; recording one passes the stage gate first)."""
     KINDS = frozenset({'move'})
 
     def __init__(self, adapter):
         self._a = adapter
-        self._issued = []                   # dict(frame, cmd, ok, why, goal)
+        self._sent = []                   # dict(frame, cmd, ok, why, goal)
         self._spent = {}                    # group -> its move's entry
         self._viewed = False
 
@@ -520,7 +520,7 @@ class GameCommands:
         ok, why = self.check(cmd)
         if not ok:
             frame = self._a.sample.frame if self._a.sample is not None else MISSING
-            self._issued.append(dict(frame=frame, cmd=cmd, ok=False, why=why, goal=None))
+            self._sent.append(dict(frame=frame, cmd=cmd, ok=False, why=why, goal=None))
             return False, why
         c, g, (x, y) = self._a.contract, self._group(cmd), self._point(cmd)
         if not self._viewed:
@@ -547,18 +547,18 @@ class GameCommands:
                 e['why'] += f'; no receipt route ({goal.counter} reads {v} at the click, not below {goal.done})'
             else:
                 e['goal'] = goal
-        self._issued.append(e)
+        self._sent.append(e)
         self._spent[g.name] = e
         return None, e['why']
 
     def _refused(self, cmd, why):
-        self._issued.append(dict(frame=self._a.sample.frame, cmd=cmd, ok=False, why=why, goal=None))
+        self._sent.append(dict(frame=self._a.sample.frame, cmd=cmd, ok=False, why=why, goal=None))
         return False, why
 
     def receipts(self):
         """A pending move whose goal counter reads `done` in this sample is confirmed (the adapter calls it per sample)."""
         s = self._a.sample
-        for e in self._issued:
+        for e in self._sent:
             if e['ok'] is None and e['goal'] is not None:
                 v = self._a.observe.counters()[e['goal'].counter]
                 if v is not MISSING and v == e['goal'].done:
@@ -568,14 +568,14 @@ class GameCommands:
 
     def close(self):
         """The run is over: a move still without its receipt says so (it stays None: not known, not refused)."""
-        for e in self._issued:
+        for e in self._sent:
             if e['ok'] is None and not e['why'].endswith('no receipt by the run\'s end'):
                 e['why'] += '; no receipt by the run\'s end'
 
-    def issued(self):
+    def sent(self):
         """(frame, Command, ok, why) for every command given, in order (ok: True receipt, None not known, False
         refused); the frame is the click's pause record's (a refusal's: the sample's)."""
-        return tuple((e['frame'], e['cmd'], e['ok'], e['why']) for e in self._issued)
+        return tuple((e['frame'], e['cmd'], e['ok'], e['why']) for e in self._sent)
 
     def __getattr__(self, name):
         raise Unsupported(f'{name}: no bench channel (work/re/sim_split/adapter_pack/census.md)')

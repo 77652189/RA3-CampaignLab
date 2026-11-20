@@ -250,7 +250,7 @@ def test_the_players_two_group_moves_go_as_the_bench_gave_them_and_the_maps_coun
     assert a.commands.do(formation)[0] is None
     samples = run_all(a)
     assert a.transport.left() == 0 and a.sample.seq == 29 and len(samples) == 21
-    (f1, c1, ok1, why1), (f2, c2, ok2, why2) = a.commands.issued()
+    (f1, c1, ok1, why1), (f2, c2, ok2, why2) = a.commands.sent()
     # plain: all four in by the formation box's record (frame 491); formation: by s80.3 (frame 670), not at s78.3
     assert (f1, c1, ok1) == (371, plain, True) and why1.endswith('CNV_Form_Plain reads 22 at archive frame 7 (frame 491)')
     assert (f2, c2, ok2) == (593, formation, True) and why2.endswith('reads 22 at archive frame 10 (frame 670)')
@@ -268,7 +268,7 @@ def test_a_move_the_bench_cannot_give_is_refused_with_nothing_sent():
                      (cp.Command('stop', units=PLAIN), 'no bench route')]:
         ok, got = a.commands.do(cmd)
         assert ok is False and why in got
-    assert a.transport.left() == left and all(ok is False for *_, ok, _ in a.commands.issued())
+    assert a.transport.left() == left and all(ok is False for *_, ok, _ in a.commands.sent())
     fresh = gp.replay(gp.FORMSS, INPUTS)
     assert fresh.commands.do(move(PLAIN, pos=(1000.0, 1230.0))) == (False, 'no sample yet')
     with pytest.raises(gp.Unsupported):
@@ -304,7 +304,7 @@ def test_a_move_with_no_receipt_stays_unknown_to_the_end():
     b.commands.do(move(PLAIN, pos=(1000.0, 1230.0)))
     b.commands.do(move(FORMATION, pos=(1000.0, 1390.0)))
     run_all(b)
-    (_, _, ok1, why1), (_, _, ok2, _) = b.commands.issued()
+    (_, _, ok1, why1), (_, _, ok2, _) = b.commands.sent()
     assert ok1 is None and why1.endswith("no receipt by the run's end") and ok2 is True
 
 
