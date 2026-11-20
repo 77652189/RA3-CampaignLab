@@ -24,7 +24,7 @@ from maps import niagara, probe_range  # noqa: E402
 DATA = Path(__file__).resolve().parent.parent / 'fixtures' / 'battlefield'
 FILES = {'levelvision_a': probe_range, 'mine_cap': probe_range, 'ai_open': niagara}
 CUTS = {'levelvision_a': 12.5, 'mine_cap': 15, 'ai_open': 41}     # as test_battlefield_export
-LEFT = {'ai_open': ['things[2].queue: factory jobs are not placed yet (bf_pack plan step 7)']}
+LEFT = {}     # every file's things, its factory's job too, read back whole (step 7)
 
 
 def _load(name):

@@ -8,8 +8,8 @@ Names are the ones the object and the world carry today, so a reader never renam
 Three groups and an internal door:
 - the clock: `t`, `fps`, `frame()`;
 - things (objects): `things()`, `living()`, `thing(name)`, `is_thing(v)`, `contents(thing)` (who is inside),
-  `queue(thing)` (what it builds); a thing's public fields are read off it by their names (name template owner x y
-  hp max_hp health ...: the readers' census, R3 12a);
+  `queue(thing)` (what it builds), `jobs(thing)` (the same whole: paid, filled, held); a thing's public fields are
+  read off it by their names (name template owner x y hp max_hp health ...: the readers' census, R3 12a);
 - scripts and players: `flags()`, `counters()`, `timers()` (name -> the mission second it runs out at), `objectives()`,
   `ending()`, `money()`, `income()`, `sciences(player)`, `player_upgrades(player)`, `power(player)`, `markers()`,
   `countdowns()`, `waypoints()`, `banned()`;
@@ -27,7 +27,7 @@ Three groups and an internal door:
 
 A table, list or set comes back read only and live (engine/ports/readonly.view: not a copy, a record reads every
 frame; its write half raises, to any depth -- review 1119z P2 #2); a thing comes back itself. The
-readers a Battlefield file is read through (contents, queue, sciences, player_upgrades, power, relations: step S 11d,
+readers a Battlefield file is read through (contents, jobs, sciences, player_upgrades, power, relations: step S 11d,
 experimental/cnv/simbattlefield.py) give names and numbers only, so a game adapter can give the same."""
 from engine.kernel import module as kernel_module
 from engine.ports.readonly import view
@@ -77,6 +77,19 @@ class Observe:
         """A factory's jobs in order: [(template, progress 0..1)] ([] for a thing that builds nothing). The world
         keeps a job's progress in per cent (float32): read here / 100, a job done and waiting to come out at 1."""
         return [(job['template'], min(1.0, job['progress'] / 100)) for job in self._w.queues.get(thing.serial, ())]
+
+    def jobs(self, thing):
+        """A factory's jobs in order, whole: [(template, progress 0..1, paid so far, the logic frame it filled or None,
+        held)] -- held: a job not full that stands for a ban (its unit off the owner's menu, the owner's unit
+        construction disabled: the hold Sim.produce_due keeps a unit job to, upgrades' never). [] for a thing that
+        builds nothing (a Battlefield file's queue, S 11d step 7)."""
+        w = self._w
+
+        def held(job):
+            return job['full'] is None and 'upgrade' not in job and (
+                (job['owner'], job['template'].lower()) in w.banned or job['owner'] in w.unit_construction_disabled)
+        return [(job['template'], min(1.0, job['progress'] / 100), job['paid'], job['full'], held(job))
+                for job in w.queues.get(thing.serial, ())]
 
     # --- scripts and players
     def flags(self):

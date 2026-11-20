@@ -78,7 +78,19 @@ SHAPE = [
     ('progress over 1', _set(['things', 1, 'queue'], [{'template': 'AlliedScoutInfantry', 'progress': 1.5}]),
      'things[1].queue[0].progress: 1.5 outside [0, 1]'),
     ('a job missing a part', _set(['things', 1, 'queue'], [{'template': 'AlliedScoutInfantry'}]),
-     'things[1].queue[0]: missing progress'),
+     'things[1].queue[0]: missing progress, paid, full'),
+    ('paid negative', _set(['things', 1, 'queue'], [{'template': 'AlliedScoutInfantry', 'progress': 0.5,
+                                                      'paid': -1, 'full': None}]),
+     'things[1].queue[0].paid: not a whole number >= 0'),
+    ('full but not at 1', _set(['things', 1, 'queue'], [{'template': 'AlliedScoutInfantry', 'progress': 0.5,
+                                                          'paid': 0, 'full': 3}]),
+     'things[1].queue[0].full: 3 with progress 0.5'),
+    ('at 1 but no frame', _set(['things', 1, 'queue'], [{'template': 'AlliedScoutInfantry', 'progress': 1,
+                                                          'paid': 0, 'full': None}]),
+     'things[1].queue[0].full: None with progress 1'),
+    ('full after the cut', _set(['things', 1, 'queue'], [{'template': 'AlliedScoutInfantry', 'progress': 1,
+                                                           'paid': 0, 'full': 10 ** 6}]),
+     "things[1].queue[0].full: 1000000 after the file's frame"),
     ('a thing with an unknown field', _set(['things', 1, 'veterancy'], 2), 'things[1]: unknown veterancy'),
     ('a flag not a bool', _set(['script', 'flags'], {'F': 1}), 'script.flags.F: not true / false'),
     ('a timer not finite', _set(['script', 'timers', 'Level eye remove'], math.inf),
@@ -189,7 +201,7 @@ def test_the_host_is_asked_too(hosts):
     doc['players']['Nobody'] = copy.deepcopy(doc['players']['Player_1'])
     doc['things'][1]['owner'] = 'Nobody'
     doc['things'][2]['template'] = 'NoSuchTemplate'
-    doc['things'][3]['queue'] = [{'template': 'NoSuchUnit', 'progress': 0.5}]
+    doc['things'][3]['queue'] = [{'template': 'NoSuchUnit', 'progress': 0.5, 'paid': 0, 'full': None}]
     bad = simbattlefield.preflight(host, doc)
     for said in ("map: 'niagara', the host is 'probe_range'", 'players.Nobody: not a player of the host',
                  "things[1].owner: 'Nobody' not a player of the host",

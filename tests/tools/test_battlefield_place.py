@@ -1,7 +1,7 @@
 """Battlefield's placing of things (experimental/cnv/simbattlefield.py place_things; step S 11d step 3, work/re/sim_split/
 bf_pack/plan.md): the three hand-made files (tests/fixtures/battlefield) placed onto an empty run of their map read back
 through the export thing for thing -- the refinery's one collector the host made, moved to the file's spot; the two
-rank 4 Mirages at 625 HP -- with nothing else living; ai_open's factory job named as not placed yet. A file the
+rank 4 Mirages at 625 HP -- with nothing else living; ai_open's factory job at half, paid 100. A file the
 preflight refuses places nothing; what the host cannot give (an explicit height, a rank without its creation upgrade,
 another max health, a status bit it derives) and what a later step places are named by field path."""
 import json
@@ -17,7 +17,7 @@ from maps import niagara, probe_range  # noqa: E402
 
 DATA = Path(__file__).resolve().parent.parent / 'fixtures' / 'battlefield'
 FILES = {'levelvision_a': probe_range, 'mine_cap': probe_range, 'ai_open': niagara}
-LEFT = {'ai_open': ['things[2].queue: factory jobs are not placed yet (bf_pack plan step 7)']}
+LEFT = {}     # every file's things, its factory's job too, read back whole (step 7)
 
 
 def _load(name):
@@ -37,7 +37,7 @@ def test_each_file_reads_back_thing_for_thing(name):
     out = simbattlefield.export(Observe(host))
     assert simbattlefield.check(out) == []
     got = {t['id']: t for t in out['things']}
-    want = [dict(t, queue=[]) for t in doc['things']]        # a factory's jobs: step 7
+    want = doc['things']
     assert [got[t['id']] for t in want] == want
     assert sorted(b.name for b in host.living()) == sorted(t['id'] for t in doc['things'])
 

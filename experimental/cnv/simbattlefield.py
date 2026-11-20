@@ -10,7 +10,9 @@ host. Format `battlefield/1`:
             left out
   things    [{id, template, owner, x, y, z, angle, hp, max_hp, status, upgrades, level, contains, queue, team}]:
             id unique (a body's name); z null = on the ground (not 0); angle radians; level from 1; contains the
-            ids of the things inside it, in order; queue [{template, progress}] with progress 0..1
+            ids of the things inside it, in order; queue its jobs in the queue's order [{template, progress, paid,
+            full}]: progress 0..1, paid the money paid for it so far (a whole number), full null or the logic frame
+            (the file's `frame` clock, not after it) it filled -- progress 1 then, waiting to come out
   script    {flags: {name: bool}, counters: {name: number}, timers: {name: deadline in t's seconds},
             objectives: {name: 0 hidden / 1 shown / 2 done / 3 failed}}
   gaps      [what this file leaves out, in words]: a state not listed is not carried
@@ -31,8 +33,7 @@ angle, team, upgrades (a creation upgrade gives the rank, simlevel), status and 
 alongside it (a refinery's collector, a factory's drones) is the file's thing of that name when one is listed, of the
 same template and owner, moved to the file's spot, and taken out when none is; then the way is blocked anew. It reads
 every placed thing back through the export's own reader and returns ['field path: why', ...] for each field that
-differs (an explicit height, a rank or a max health the host does not give, a status bit the host derives) and for
-what a later step places (factory jobs). Players and the script are not touched.
+differs (an explicit height, a rank or a max health the host does not give, a status bit the host derives). Players and the script are not touched.
 
 Step 4 places the players: `place_players(sim, doc)` refuses a file whose players the host cannot take (preflight
 with things=False: the map, each listed player one with a protocol book, each protocol one the host's data defines),
@@ -63,15 +64,29 @@ upgrades, status and health set (a building given a listener's upgrade before it
 Preflight refuses a file whose holder's template has no garrison or transport in the host's data; a passenger the
 host's rules keep out (its PassengerFilter) is named by the read back, standing where the file has it. What the file
 does not carry -- the owner a garrisoned building goes back to when emptied -- is named for each such building: the
-host keeps the owner it has."""
+host keeps the owner it has.
+
+Step 7 places the factories' jobs, within place_things after the things are set (a factory's upgrades give its menu):
+each job goes into its thing's queue in the file's order as the host's own order would have put it (Sim.order_build:
+a unit its menu builds, an upgrade its buttons buy), with the file's progress (per cent, float32, as the host keeps
+it) and what was paid (no money moves now: the host's production pays the rest frame by frame, as the source's would
+have), so a half-built scout goes on from half, paying only what is left; a full job waits to come out as many
+frames after its filling as on the source (full in the host's frames = full - the file's frame + the host's). A job
+the host's factory does not build (a construction yard's structures: the host has no such queue; a unit its menu
+lacks) is not placed and named by its field path, the jobs behind it placed; what was paid over the host's cost is
+named too. What the file does not carry: a build ban a script set (the export names each job the source held for one:
+placed, it goes on) and a player's hold on a job (the host models none)."""
 import math
+import struct
 
 import simgarrison
+import simliving
 import simorder
 import simtech
 import simunits
 from simscript import LOST, WON
 from simworld import CIV
+from engine.ports.observe import Observe
 
 FORMAT = 'battlefield/1'
 TOP = ('format', 'map', 't', 'frame', 'players', 'things', 'script', 'gaps')
@@ -79,7 +94,7 @@ PLAYER = ('money', 'sciences', 'science_points', 'upgrades', 'power', 'relations
 POWER = ('made', 'used')
 THING = ('id', 'template', 'owner', 'x', 'y', 'z', 'angle', 'hp', 'max_hp', 'status', 'upgrades', 'level',
          'contains', 'queue', 'team')
-JOB = ('template', 'progress')
+JOB = ('template', 'progress', 'paid', 'full')
 SCRIPT = ('flags', 'counters', 'timers', 'objectives')
 RELATIONS = ('Enemy', 'Neutral', 'Friend')
 OBJECTIVES = (0, 1, 2, 3)
@@ -187,7 +202,8 @@ def _player(name, p, listed, bad):
             bad.append(f'{at}: not a listed player')
 
 
-def _thing(i, t, bad):
+def _thing(i, t, bad, frame=None):
+    """One thing's shape; `frame` the file's (a full job's frame is not after it), None when it is broken."""
     path = f'things[{i}]'
     if not _keys(t, THING, path, bad):
         return
@@ -219,11 +235,23 @@ def _thing(i, t, bad):
         return
     for j, job in enumerate(t['queue']):
         at = f'{path}.queue[{j}]'
-        if _keys(job, JOB, at, bad):
-            if 'template' in job and not _name(job['template']):
-                bad.append(f'{at}.template: not a name ({job["template"]!r})')
-            if 'progress' in job:
-                _finite(job['progress'], f'{at}.progress', bad, 0, 1)
+        if not _keys(job, JOB, at, bad):
+            continue
+        if 'template' in job and not _name(job['template']):
+            bad.append(f'{at}.template: not a name ({job["template"]!r})')
+        progress = 'progress' in job and _finite(job['progress'], f'{at}.progress', bad, 0, 1)
+        if 'paid' in job and (not _whole(job['paid']) or job['paid'] < 0):
+            bad.append(f'{at}.paid: not a whole number >= 0 ({job["paid"]!r})')
+        if 'full' not in job:
+            continue
+        full = job['full']
+        if full is not None and (not _whole(full) or full < 0):
+            bad.append(f'{at}.full: not null or a whole number >= 0 ({full!r})')
+        elif full is not None and frame is not None and full > frame:
+            bad.append(f'{at}.full: {full!r} after the file\'s frame {frame!r}')
+        elif progress and (full is not None) != (job['progress'] == 1):
+            bad.append(f'{at}.full: {full!r} with progress {job["progress"]!r} (a job is full at progress 1, '
+                       f'and names the frame it filled)')
 
 
 def _crews(things, bad):
@@ -306,8 +334,9 @@ def check(doc):
         bad.append('things: not a list')
     else:
         seen = {}
+        frame = doc['frame'] if _whole(doc.get('frame')) else None
         for i, t in enumerate(things):
-            _thing(i, t, bad)
+            _thing(i, t, bad, frame)
             tid = t.get('id') if isinstance(t, dict) else None
             if isinstance(tid, str):
                 if tid in seen:
@@ -330,6 +359,11 @@ def known(template, own=None):
     if (own or {}).get(template):
         return True
     return simunits.stats(template)['guessed'] != ['all']
+
+
+def upgrade(name, own=None):
+    """Whether `name` is an upgrade the host's data defines (a mission's declaration, else retail upgrade.xml)."""
+    return simunits.upgrade_type(name, own) != ''
 
 
 def holds(template, own=None):
@@ -385,7 +419,8 @@ def preflight(sim, doc, things=True):
             bad.append(f'things[{i}].contains: a {t["template"]} holds nothing in the host\'s data (no garrison or '
                        f'transport)')
         for j, job in enumerate(t.get('queue') if isinstance(t.get('queue'), list) else ()):
-            if isinstance(job, dict) and _name(job.get('template')) and not known(job['template'], own):
+            if isinstance(job, dict) and _name(job.get('template')) and not (
+                    known(job['template'], own) or upgrade(job['template'], own)):
                 bad.append(f'things[{i}].queue[{j}].template: {job["template"]!r} not defined in the host\'s data')
         tid = t.get('id')
         body = sim.bodies.get(tid) if isinstance(tid, str) else None
@@ -416,7 +451,9 @@ NOT_CARRIED = (
     'a thing\'s experience toward its next level, and when each upgrade came',
     "a player's experience toward its next rank (a placed player starts its rank anew)",
     "a player's protocol locks and point cap, and a power its scripts added (they set them)",
-    'what a job in a queue was paid so far',
+    'build bans a script set (ALLOW_DISALLOW_ONE_BUILDING, unit construction disabled): a job the source held '
+    'for one goes on where placed (each such job named)',
+    "a player's hold on a job (the host models none)",
     'harvesters\' loads and trips',
     'the owner a garrisoned building goes back to when emptied (a placed one keeps the owner it has)',
     'passengers on their way in, being ejected or in the air after it',
@@ -446,9 +483,25 @@ def _own_fields(b):
             'level': b.level_rank, 'team': b.team or ''}
 
 
+def _job_rows(jobs, shift=0):
+    """Observe.jobs as a file's queue, a full job's frame moved by `shift` (the host's frame onto the file's)."""
+    return [{'template': t, 'progress': p, 'paid': paid, 'full': None if full is None else full + shift}
+            for t, p, paid, full, _ in jobs]
+
+
 def _export_thing(obs, b):
-    return dict(_own_fields(b), contains=obs.contents(b),
-                queue=[{'template': t, 'progress': p} for t, p in obs.queue(b)])
+    return dict(_own_fields(b), contains=obs.contents(b), queue=_job_rows(obs.jobs(b)))
+
+
+def _held(obs, things):
+    """['things[i].queue[j]: ...'] for each job the source holds for a ban (the file does not carry the ban)."""
+    out = []
+    for i, b in enumerate(things):
+        for j, (t, _, _, _, held) in enumerate(obs.jobs(b)):
+            if held:
+                out.append(f'things[{i}].queue[{j}]: {t} held by a build ban the file does not carry (placed, it '
+                           f'goes on)')
+    return out
 
 
 def _player_row(money, tech, upgrades, power):
@@ -486,10 +539,11 @@ def export(obs):
         if tech is not None:
             players[p] = _player_row(obs.money().get(p, 0), tech, obs.player_upgrades(p), obs.power(p))
     dropped = _relations(players, obs.relations(), _start(obs.mission()))
-    things = [_export_thing(obs, b) for b in obs.things() if b.alive]     # living, in the order they were made
+    living = [b for b in obs.things() if b.alive]                       # in the order they were made
+    things = [_export_thing(obs, b) for b in living]
     script = {'flags': {k: bool(v) for k, v in obs.flags().items()}, 'counters': dict(obs.counters()), 'timers': dict(obs.timers()),
               'objectives': dict(obs.objectives())}
-    gaps = list(NOT_CARRIED)
+    gaps = list(NOT_CARRIED) + _held(obs, living)
     if dropped:
         gaps.append('relations toward or of a player not listed: ' + ', '.join(dropped))
     return _plain({'format': FORMAT, 'map': obs.mission().map.__name__.rsplit('.', 1)[-1], 't': obs.t,
@@ -508,8 +562,8 @@ WHY = {
     'upgrades': 'a creation upgrade gives its rank\'s veterancy upgrades too',
     'contains': "a passenger the host's rules keep out (its PassengerFilter) stands where the file has it",
     'owner': "a garrisoned building is its first passenger's",
+    'queue': "a job the host's factory does not build is not placed; paid is held to the host's cost",
 }
-LATER = {'queue': 'factory jobs are not placed yet (bf_pack plan step 7)'}
 HOME = "the owner it had before its first passenger is not carried: the host's goes back to {owner!r} when it empties"
 
 
@@ -561,20 +615,60 @@ def place_things(sim, doc):
     gaps += _put_crews(sim, placed)
     for _, row, b in placed:                # after the crews: what a passenger gives its holder is the host's
         _set_thing(sim, b, row)
+    shift = sim.frame_now() - doc['frame']  # a file's frame onto the host's
+    for i, row, b in placed:                # after the upgrades: a factory's menu may come with one
+        gaps += _set_jobs(sim, i, row, b, shift)
     sim.reblock()
     sim.change()
+    obs = Observe(sim)
     for i, row, b in placed:
-        got = _plain(dict(_own_fields(b), contains=[p.name for p in sim.garrison.held(b)]))
+        got = _plain(dict(_own_fields(b), contains=[p.name for p in sim.garrison.held(b)],
+                          queue=_job_rows(obs.jobs(b), -shift)))
         for k in THING:
-            if k in LATER and row[k]:
-                gaps.append(f'things[{i}].{k}: {LATER[k]}')
-            elif k not in LATER and got[k] != row[k]:
+            if got[k] != row[k]:
                 gaps.append(f'things[{i}].{k}: {row[k]!r} in the file, the host reads {got[k]!r}'
                             + (f' -- {WHY[k]}' if k in WHY else ''))
     mine = {b.serial for _, _, b in placed}
-    for b in sim.living():                  # the host's living things are the file's, none besides
+    for b in simliving.living(sim.world, sim.bodies, False):   # the host's living things are the file's, none besides
         if b.serial not in mine:
             gaps.append(f'things: {b.name!r} (a {b.owner} {b.template}) living on the host, not in the file')
+    return gaps
+
+
+def _f32(x):
+    """x as a single float (the host keeps a job's progress so: sim.f32)."""
+    return struct.unpack('f', struct.pack('f', x))[0]
+
+
+def _set_jobs(sim, i, row, b, shift):
+    """The file's jobs of thing i into its queue as Sim.order_build would have queued them, at the file's progress and
+    paid (no money moves now), a full one at its frame on the host's clock; ['things[i].queue[j]: ...'] for a job the
+    host's factory does not build (not placed) and one paid over the host's cost."""
+    sim.queues.pop(b.serial, None)
+    if not row['queue']:
+        return []
+    gaps, jobs = [], []
+    ups = dict(simunits.upgrade_menu(b.template, sim.own, b.upgrades))
+    units = simunits.menu(b.template, sim.own, b.upgrades)
+    for j, job in enumerate(row['queue']):
+        t = job['template']
+        if t in ups:
+            cost, secs = simunits.upgrade_cost(t)
+            made = {'template': t, 'upgrade': t, 'kind': ups[t]}
+        elif t in units:
+            cost, secs = simunits.production(t, sim.own)
+            made = {'template': t}
+        else:
+            gaps.append(f'things[{i}].queue[{j}]: a {b.template} builds no {t} in the host\'s data (not placed)')
+            continue
+        if job['paid'] > cost:
+            gaps.append(f'things[{i}].queue[{j}].paid: {job["paid"]!r} over the host\'s cost {cost!r} (held to it)')
+        made.update(owner=b.owner, cost=cost, secs=secs, progress=_f32(job['progress'] * 100.0),
+                    paid=min(job['paid'], cost), full=None if job['full'] is None else job['full'] + shift)
+        jobs.append(made)
+    if jobs:
+        sim.queues[b.serial] = jobs
+        sim.used.add('production')
     return gaps
 
 
