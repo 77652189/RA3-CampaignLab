@@ -250,3 +250,30 @@ def test_the_firing_state_is_left_out_of_the_frame_record_and_kept_by_a_snapshot
     assert t.pre_lock(BAZOOKA)[0] is target.bodies['plant'] and t.pre_lock(BAZOOKA)[1] == m.pre_lock(BAZOOKA)[1]
     assert weaponset.gate(target.bodies['tank'], target.bodies['plant']) == weaponset.gate(tank, plant) > 0
     assert simsnap.snapshot(target) == saved
+
+
+def test_a_second_set_block_arms_the_one_module_with_every_blocks_slots():
+    """Review r P2: a child adds a WeaponSetUpdate of another id to its parent's (the SDK's BehaviorModules repeat;
+    the port gives both blocks). Before, the factory made one module per block and Thing.find raised on two; the
+    readers (fight, weapon_sets) walk every block, so the thing has one WeaponSet holding what they read (INFERRED:
+    how the game fires two sets is not measured). The same with the child block's id Main is review l's case."""
+    from engine.kernel import interfaces
+    import simsmall
+    ak = 'SovietAntiInfantryInfantryAK47'
+    parent = _tank('CNV_RevParent', f'<WeaponSetUpdate id="Main"><WeaponSlotHardpoint ID="1"><Weapon '
+                                    f'Ordering="PRIMARY_WEAPON" Template="{ak}" ObjectStatus="GENERIC_TOGGLE_STATE"/>'
+                                    f'</WeaponSlotHardpoint></WeaponSetUpdate>')
+    for sid in ('Another', 'Main'):
+        child = _tank('CNV_RevChild', f'<WeaponSetUpdate id="{sid}"><WeaponSlotHardpoint ID="2"><Weapon '
+                                      f'Ordering="PRIMARY_WEAPON" Template="{CANNON}"/></WeaponSlotHardpoint>'
+                                      f'</WeaponSetUpdate>', up='CNV_RevParent')
+        s = simsmall.small_world(model=False)
+        s.own.update({'CNV_RevParent': parent, 'CNV_RevChild': child})
+        s.add('u', 'CNV_RevChild', 'Player_1', 0.0, 0.0)
+        u = s.bodies['u']
+        m = u.find(interfaces.WeaponSet)
+        assert m is not None and len([x for x in u.modules if isinstance(x, interfaces.WeaponSet)]) == 1, sid
+        assert _keys(u.weapons) == [CANNON], sid
+        u.script_status = set(u.script_status) | {'GENERIC_TOGGLE_STATE'}    # the modify pass rebuilds status
+        s.modify(u)
+        assert sorted(_keys(u.weapons)) == sorted([ak, CANNON]), sid

@@ -33,7 +33,8 @@ def align(tags=TAGS):
 
 
 def build(thing, blocks, data, tags=TAGS, world=None):
-    """The modules of a thing: for each registered tag, one instance per block of it in the template.
+    """The modules of a thing: for each registered tag, one instance per block of it in the template (a
+    Module.JOINED class: one for them all).
     blocks(template, tag) -> [(head, inner)] (the template data port); data: the world's parse cache
     {(template, tag, index): ModuleData}; tags: the registry (a test passes its own); world: the World the modules
     live in (Module.world)."""
@@ -47,9 +48,16 @@ def build(thing, blocks, data, tags=TAGS, world=None):
             # The template has 15s and 5s modules. The host's single Unpack keeps its previous 5s pick.
             picked = [(k, block) for k, block in indexed if ' id="ModuleTag_StructureUnpack_02"' in block[0]]
             indexed = picked or enumerate(entries)
+        parsed = []
         for k, (head, inner) in indexed:
             key = (thing.template, tag, k)
             if key not in data:
                 data[key] = cls.DATA.parse(head, inner).seal()
-            out.append(cls(thing, data[key], world))
+            parsed.append(data[key])
+        if cls.JOINED and len(parsed) > 1:      # one instance on every block's data (Module.JOINED)
+            key = (thing.template, tag, 'joined')
+            if key not in data:
+                data[key] = cls.DATA.join(parsed).seal()
+            parsed = [data[key]]
+        out.extend(cls(thing, d, world) for d in parsed)
     return tuple(out)

@@ -90,6 +90,11 @@ class WeaponSetUpdateData(module.ModuleData):
     def parse(cls, head, inner):
         return cls(tuple(WeaponSlot.parse(m.group(1), m.group(0)) for m in _SLOT.finditer(inner or ''))).seal()
 
+    @classmethod
+    def join(cls, datas):
+        """A template's several blocks as one (WeaponSet.JOINED): their slots in block order."""
+        return cls(tuple(s for d in datas for s in d.slots))
+
     def picks(self):
         """The template each slot holds by read_fight's rule (WeaponSlot.pick), the slots with none left out."""
         return [p for p in (s.pick() for s in self.slots) if p]
@@ -115,7 +120,9 @@ class WeaponSet(module.Module, interfaces.WeaponSet):
     still decides when (Sim.shots_due, Sim.first_shot, simdamage.deal); this keeps what it decided. Not in the frame
     record (the host's dicts never were: RECORDED leaves them out)."""
     DATA = WeaponSetUpdateData
-    STATE = ('weapons', 'slots', 'clocks', 'pre_locks', 'fire_gate')
+    JOINED = True       # review r P2: two blocks (a child adding a set of another id) make one module, armed with what
+    #                     the readers read walking every block (INFERRED: how the game fires two sets is unmeasured)
+    STATE =('weapons', 'slots', 'clocks', 'pre_locks', 'fire_gate')
     RECORDED = ('weapons', 'slots')
     weapons = []        # the held weapons (never changed in place: a new list each write)
     slots = None        # simunits.weapon_sets' slots, None: the weapons are fixed

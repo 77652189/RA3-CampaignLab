@@ -200,9 +200,12 @@ class Module:
     class that names STATE but not RECORDED records all of its STATE, one that names neither keeps its base's two.
     world: the World it lives in -- for the kernel's services (the audit set), not to reach other things.
     ALIGN: what its family assumes of the engine, {key it puts in world.used: the line the report prints as 待对齐}
-    (factory.align gathers them into sim.ALIGN; tests/guards/test_align.py)."""
+    (factory.align gathers them into sim.ALIGN; tests/guards/test_align.py).
+    JOINED: one instance for all of a template's blocks of its tag, its data DATA.join(each block's parse) -- a family
+    the host reads as one whatever the block count (WeaponSetUpdate: its readers walk every block)."""
     DATA = ModuleData
     TAGS = ()
+    JOINED = False
     STATE = ()
     RECORDED = ()
     ALIGN = types.MappingProxyType({})
