@@ -746,18 +746,18 @@ class Ground:
 
     def way(self, surface, p, q, closest):
         from skimage import graph
-        g = self.grids[surface] & ~self.blocked
-        a, z = simpath.open_cell(g, self.cell(*p)), simpath.open_cell(g, self.cell(*q))
+        grid = simpath.route_grid(self, surface)
+        a, z = grid.endpoint(self.cell(*p)), grid.endpoint(self.cell(*q))
         if a is None or z is None:
             return None
         key = (surface, z)
         if key not in self.cache:
-            m = graph.MCP_Geometric(np.where(g, 1.0, np.inf))
+            m = graph.MCP_Geometric(np.where(grid.cells, 1.0, np.inf))
             cost, _ = m.find_costs([z])
             self.cache[key] = (m, cost)
         m, cost = self.cache[key]
         if not np.isfinite(cost[a]):
-            return self.closest(g, a, z, surface) if closest else None
+            return self.closest(grid.cells, a, z, surface) if closest else None
         legs = ('legs', surface, a, z)              # the same way asked again (an AI's path checks: 23670 asks,
         if legs not in self.cache:                  # 320 ways in simrecord's ai_open); set_blocks clears the cache
             cells = m.traceback(a)[::-1]            # traceback runs from the goal (the costs' source) to a
@@ -804,11 +804,11 @@ class Ground:
         if surface == 'air':
             return [q]
         from skimage import graph
-        g = self.grids[surface] & ~self.blocked
-        a = simpath.open_cell(g, self.cell(*p))
+        grid = simpath.route_grid(self, surface)
+        a = grid.endpoint(self.cell(*p))
         if a is None:
             return None
-        m = graph.MCP_Geometric(np.where(g, 1.0, np.inf))
+        m = graph.MCP_Geometric(np.where(grid.cells, 1.0, np.inf))
         cost, _ = m.find_costs([a])
         jj, ii = np.nonzero(np.isfinite(cost))
         x = (ii * self.d - self.b) * platmap.CELL

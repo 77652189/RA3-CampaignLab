@@ -33,6 +33,40 @@ import math
 import numpy as np
 
 
+class RouteGrid:
+    """One map's open cells and endpoint results for one surface and obstacle version.
+
+    This is derived data, not STATE. Ground owns the cache per map instance and clears it
+    on obstacle changes and snapshot restore. Surface is the locomotor's only input to
+    this grid: hull size and crush level affect movement elsewhere, not endpoint snapping.
+    """
+
+    ENDPOINT_LIMIT = 32_768
+
+    def __init__(self, grid, blocked):
+        self.cells = grid & ~blocked
+        self.endpoints = {}
+
+    def endpoint(self, cell):
+        try:
+            return self.endpoints[cell]
+        except KeyError:
+            result = open_cell(self.cells, cell)
+            if len(self.endpoints) < self.ENDPOINT_LIMIT:
+                self.endpoints[cell] = result
+            return result
+
+
+def route_grid(ground, surface):
+    key = ('route grid', ground.version, surface)
+    try:
+        return ground.cache[key]
+    except KeyError:
+        grid = RouteGrid(ground.grids[surface], ground.blocked)
+        ground.cache[key] = grid
+        return grid
+
+
 class Sight:
     """Which straight lines between a way's cells are clear, asked on a finer mask: `mask` walkable cells d to a
     way's cell a side (way cell c's point is mask cell c * d, as sim.Ground.world puts it). Ground's routing cells are
