@@ -41,12 +41,23 @@ paid, the rank the generic rank protocols say (simtech.Book.place) -- the player
 (GIVE_PLAYER_UPGRADE) and the directed relations (PLAYER_RELATES_PLAYER); it reads each player back as the export
 does, power recomputed from the host's living things, and returns ['players.<p>.<field>: why', ...] for what differs.
 `place(sim, doc)` is steps 3 and 4 in the order a run has them: the players' upgrades first (a thing made after one
-is made with it, as the source's was), then the things, then the players read back (their power is the things')."""
+is made with it, as the source's was), then the things, then the players read back (their power is the things').
+
+Step 5 places the script's state: `place_script(sim, doc)` makes the host's four tables the file's -- each flag, each
+counter (a stopped timer is one: its frames left kept, as STOP_TIMER keeps them), each objective's status and each
+running timer -- written into the tables themselves, not through the script's actions: placing runs no script, notes
+nothing on the timeline and decides no ending (a won or lost flag is placed and named). A timer's deadline is in the
+file's seconds (`t` its clock): the host holds the frames left from the cut, round((deadline - t) x the host's frame
+rate), so it runs out as many frames after the placing as the source's did after the cut, whatever the host's own clock
+reads; one out before the cut is held as just out (-1, as the executor keeps it). It reads the tables back on the
+file's clock (a running timer's deadline = t + frames left / frame rate, as the export reads it at the cut) and returns
+['script.<table>.<name>: why', ...] for what differs. `place` does it last."""
 import math
 
 import simorder
 import simtech
 import simunits
+from simscript import LOST, WON
 from simworld import CIV
 
 FORMAT = 'battlefield/1'
@@ -377,7 +388,9 @@ NOT_CARRIED = (
     'reload, aim and fire gates',
     'special power cooldowns (a thing\'s and the player\'s)',
     'the skirmish AI\'s state (teams, build queues, plans)',
-    "the script executor's history (which scripts ran, subroutines, its random state)",
+    "the script executor's history (which scripts ran, subroutines, its random state, when an interval script is due)",
+    'which counters the screen shows (DISPLAY_COUNTER) and which things an objective marks',
+    "a run's ending (a won or lost flag is placed, the host does not end on it)",
     'a thing\'s experience toward its next level, and when each upgrade came',
     "a player's experience toward its next rank (a placed player starts its rank anew)",
     "a player's protocol locks and point cap, and a power its scripts added (they set them)",
@@ -450,7 +463,7 @@ def export(obs):
             players[p] = _player_row(obs.money().get(p, 0), tech, obs.player_upgrades(p), obs.power(p))
     dropped = _relations(players, obs.relations(), _start(obs.mission()))
     things = [_export_thing(obs, b) for b in obs.things() if b.alive]     # living, in the order they were made
-    script = {'flags': dict(obs.flags()), 'counters': dict(obs.counters()), 'timers': dict(obs.timers()),
+    script = {'flags': {k: bool(v) for k, v in obs.flags().items()}, 'counters': dict(obs.counters()), 'timers': dict(obs.timers()),
               'objectives': dict(obs.objectives())}
     gaps = list(NOT_CARRIED)
     if dropped:
@@ -585,10 +598,73 @@ def place_players(sim, doc):
     return _read_players(sim, doc)
 
 
+# Why a placed script table reads other than the file's (step 5).
+WHY_SCRIPT = {
+    'timers': "a deadline is held to the host's frame (round((deadline - t) x its frame rate)), and one out before the "
+              'cut as just out (-1 frames left, as the executor keeps it)',
+}
+ENDINGS = (WON, LOST)
+
+
+def _frames_left(sim, doc, deadline):
+    """A running timer's frames left on the host: its time after the file's cut in the host's frames, -1 at least."""
+    return max(-1, round((deadline - doc['t']) * sim.fps))
+
+
+def _set_script(sim, doc):
+    """The host's flags, counter-and-timer table and objectives made the file's, written as they are (no action)."""
+    s = doc['script']
+    table = sim.executor.counters           # one table: name -> [value, is a running timer] (simexec.Counters)
+    for k in list(table):
+        del table[k]
+    for k, v in sorted(s['counters'].items()):
+        table[k] = [v, False]
+    for k, d in sorted(s['timers'].items()):
+        table[k] = [_frames_left(sim, doc, d), True]
+    for k in list(sim.flags):
+        del sim.flags[k]
+    for k, v in sorted(s['flags'].items()):
+        sim.flags[k] = int(v)               # as SET_FLAG keeps it: 0 / 1
+    sim.objectives.clear()
+    sim.objectives.update(sorted(s['objectives'].items()))
+    sim.change()
+
+
+def _read_script(sim, doc):
+    """The tables read back on the file's clock, ['script.<table>.<name>: why', ...] where they differ from it."""
+    table = sim.executor.counters
+    got = {'flags': {k: bool(v) for k, v in sim.flags.items()},
+           'counters': {k: c[0] for k, c in table.items() if not c[1]},
+           'timers': {k: doc['t'] + c[0] / sim.fps for k, c in table.items() if c[1]},
+           'objectives': dict(sim.objectives)}
+    gaps = []
+    for part in SCRIPT:
+        want, have = doc['script'][part], _plain(got[part])
+        for k in sorted(set(want) | set(have)):
+            if have.get(k) != want.get(k):
+                gaps.append(f'script.{part}.{k}: {want.get(k)!r} in the file, the host reads {have.get(k)!r}'
+                            + (f' -- {WHY_SCRIPT[part]}' if part in WHY_SCRIPT else ''))
+    for k in ENDINGS:
+        if doc['script']['flags'].get(k):
+            gaps.append(f'script.flags.{k}: placed, the host does not end on it (placing decides no ending)')
+    return gaps
+
+
+def place_script(sim, doc):
+    """The file's script state onto the host `sim` (its map's run): see the module's step 5. ['field path: why', ...]
+    for what does not read back as the file has it, and a won or lost flag placed."""
+    refuse(sim, doc, things=False)
+    _set_script(sim, doc)
+    return _read_script(sim, doc)
+
+
 def place(sim, doc):
-    """Steps 3 and 4 onto the host `sim` (an empty run of the file's map): the players' state, the things, the players
-    read back. ['field path: why', ...] as place_things and place_players give them."""
+    """Steps 3 to 5 onto the host `sim` (an empty run of the file's map): the players' state, the things, the players
+    read back, the script's state. ['field path: why', ...] as place_things, place_players and place_script give
+    them."""
     refuse(sim, doc)
     _set_players(sim, doc)
     gaps = place_things(sim, doc)
-    return gaps + _read_players(sim, doc)
+    gaps += _read_players(sim, doc)
+    _set_script(sim, doc)
+    return gaps + _read_script(sim, doc)
