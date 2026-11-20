@@ -1296,3 +1296,13 @@ def test_a_target_serial_alone_is_the_route_s_target_or_refused():
     assert seen == [s.bodies['foe']]
     assert s.commands.do(Command('move', units=('a',), place='@500,0', args=pin)) == \
         (False, f'move: 不带目标，编号 {pin[0][1]} 无处可用')
+
+
+@pytest.mark.parametrize('kind,units', [('move', ('a',)), ('move', ('a', 'b')), ('attack_move', ('a', 'b'))])
+def test_a_move_to_a_point_goes_there(kind, units):
+    """gameport step 3: the player's move to `pos` (no place) was answered ok and nobody moved (`_move` and
+    `_attack_move` read `place` alone)."""
+    s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0), ('b', APOC, 'Player_1', 0.0, 60.0)], model=False)
+    assert s.commands.do(Command(kind, units=units, pos=(300.0, 30.0))) == (True, '')
+    goals = [s.bodies[u].dest for u in units]        # the small world has no ground to walk: the goal given
+    assert all(g is not None and math.dist(g, (300.0, 30.0)) < 100 for g in goals), goals

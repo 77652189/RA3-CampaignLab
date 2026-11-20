@@ -234,6 +234,12 @@ def command(e, by='script', named=None):
     return Command(kind, by, units=(rest[0],), target=rest[1])
 
 
+def _where(cmd):
+    """A move's goal: `pos`, else `place` (the player's and the AI's moves read `place` alone: a `pos` move was answered
+    ok and nobody moved -- gameport step 3, one plug-in's move on the simulator)."""
+    return cmd.place if cmd.pos is None else cmd.pos
+
+
 class Commands:
     """The command port of one world (today a sim.Sim)."""
 
@@ -419,19 +425,19 @@ class Commands:
         if cmd.arg('objects'):
             return self._script_move(cmd, True)
         for b in self._units(cmd):          # each unit's own attack-move (ATTACK_MOVE_NAMED_UNIT_TO)
-            self._w.order_move(b, cmd.place, True, on_grid=True)
+            self._w.order_move(b, _where(cmd), True, on_grid=True)
         return True, ''
 
     def _move(self, cmd):                    # several at once: a group move (MOVE_NAMED_UNIT_TO)
         if cmd.arg('objects'):
             return self._script_move(cmd, False)
-        self._w.order_group(self._units(cmd), cmd.place, False, on_grid=True)
+        self._w.order_group(self._units(cmd), _where(cmd), False, on_grid=True)
         return True, ''
 
     def _script_move(self, cmd, attacking):
         """A map script's move: a team's (`group`: one group move, MOVE_TEAM_TO) or each unit's own; to `pos` or the
         place; `on_grid`: snapped (engine_drop)."""
-        w, where, grid = self._w, cmd.place if cmd.pos is None else cmd.pos, cmd.arg('on_grid', False)
+        w, where, grid = self._w, _where(cmd), cmd.arg('on_grid', False)
         if cmd.arg('group'):
             units = self._units(cmd)
             if cmd.arg('drop_target'):      # the player's click on a selection: his move replaces their attack
