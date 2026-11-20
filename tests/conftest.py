@@ -3,7 +3,7 @@ test file has to change. The full run (pytest tests) runs them; `pytest -m "not 
 daily pick (experimental/testbench/affected_tests.py) leaves them out unless --with-replays.
 
 Every test without a `timeout` marker of its own gets its layer's limit (experimental/testbench/time_budget.py
-TEST_TIMEOUT, T7): one that hangs is red and named; RA3_TEST_TIMEOUT_SCALE=0 runs with no limit (a debugger)."""
+TEST_TIMEOUT, T7). RA3_TEST_TIMEOUT_SCALE scales those limits (0 disables them for a debugger)."""
 import contextlib
 import importlib.util
 import os

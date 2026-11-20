@@ -49,15 +49,16 @@ CEILING = {
 # command line. On Windows pytest-timeout ends the process (os._exit) after dumping the stacks ("Stack of
 # pytest_timeout <test id>"): under xdist that is the worker -- the run says "worker 'gwN' crashed while running <test
 # id>", counts it failed and starts another worker -- with -n 0 the whole run. A dead process's CPU token is free
-# (cpupool: no live pid, no token). From the 11-18 full run's single-test times (work/logs/junit_full_1118b.xml): the
-# longest module test 12 s, tool 10 s, guard 81 s (test_architecture's g3b), any other non-replay 99 s, a replay
-# 456 s (golden retail_a02); about 5-10 times that, for a loaded machine. Raise one only with the test's measured time.
+# (cpupool: no live pid, no token). Across junit_full_1118b.xml and junit_full_1119d.xml, the slowest passing tests
+# took 12.225 s (modules), 18.960 s (tools), 129.504 s (guards), 125.865 s (other), and 753.084 s (replays).
+# Each is below half its layer's limit, so no file needs a higher budget.
+_OTHER_TEST_TIMEOUT = 900.0
 TEST_TIMEOUT = {
     'modules': 120.0,       # tests/modules/
     'tools': 120.0,         # tests/tools/
-    'content': 120.0,       # tests/content/
+    'content': _OTHER_TEST_TIMEOUT,
     'guards': 600.0,        # tests/guards/
-    'other': 900.0,         # every other file not on tests/replay_tests.txt
+    'other': _OTHER_TEST_TIMEOUT,  # every other file not on tests/replay_tests.txt, including content
     'replay': 2400.0,       # a file on tests/replay_tests.txt (whole games, the conformance runner, golden)
 }
 TIMEOUT_SCALE_ENV = 'RA3_TEST_TIMEOUT_SCALE'    # multiplies every limit (0: none; the T7 test shrinks them)
