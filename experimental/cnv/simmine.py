@@ -141,8 +141,9 @@ class Mining:
             self._leg(world, b, fr, (node.x, node.y), 'to node')
         elif st == 'to node':
             m['leg'] = None
-            if held(world, om.node) is None:        # the node picked has left the world (one made under its name
-                m['state'] = 'locate'               # since is another): it looks again (INFERRED)
+            if held(world, om.node) is None or not om.node.alive:  # the node picked has left the world (one made
+                m['state'] = 'locate'               # under its name since is another) or died: it looks again
+                                                    # (INFERRED; review 1119u P2 #4: a dead one is still in bodies)
                 return
             n = self.nodes.setdefault(om.node.serial, {'free': 0, 'gathered': 0, 'at': None})
             if (n['at'] is not None and n['at'] is not b and self._docked(world, n['at'], om.node)) \
@@ -152,7 +153,8 @@ class Mining:
             n['at'] = b
             m['state'], m['due'] = 'docked', max(fr + 1, n['free'])
         elif st == 'docked':                        # the node's first loading frame
-            if held(world, om.node) is None:        # the node has left the world before its batch was reserved:
+            if held(world, om.node) is None or not om.node.alive:  # the node has left the world or died before
+                                                    # its batch was reserved (review 1119u P2 #4):
                 self._undock(b)                     # it looks again, as on its way there (review 1119p #4;
                 m['state'] = 'locate'               # INFERRED)
                 return

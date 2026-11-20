@@ -154,6 +154,25 @@ def test_a_miner_docked_before_loading_takes_nothing_from_a_node_that_has_left_t
     assert b.find(interfaces.OreMiner).node is new
 
 
+@pytest.mark.parametrize('end_it', ['destroy', 'delete'])
+@pytest.mark.parametrize('stage', ['to node', 'docked'])
+def test_a_node_killed_or_deleted_before_its_batch_is_reserved_gives_no_ore(stage, end_it):
+    """Review 1119u P2 #4: a node destroyed stays in the world's bodies (dead) -- held() finds it by identity, so the
+    miner on its way there or docked at it still reserved MINE_LOAD off it. Its batch not yet reserved, a dead or
+    deleted node gives nothing; the miner looks again (no other node here: nothing is ever paid). INFERRED (no
+    bench reading); a batch already reserved (loading) is left to its own rule."""
+    s, mining = _mining()
+    paid = []
+    b = s.bodies['miner']
+    old = s.bodies['node']
+    end = _run(s, mining, (1, 2000), paid, lambda: b.mine is not None and b.mine['state'] == stage)
+    assert b.mine['state'] == stage
+    getattr(s, end_it)(old, 'test')
+    _run(s, mining, (end + 1, 3000), paid)
+    assert mining.nodes[old.serial]['gathered'] == 0 and mining.nodes[old.serial]['at'] is not b
+    assert paid == [] and b.mine['state'] == 'locate'
+
+
 def test_a_load_goes_to_the_refinery_picked_not_a_thing_made_under_its_name():
     s, mining = _mining()
     paid = []
