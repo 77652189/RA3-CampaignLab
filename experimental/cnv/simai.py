@@ -198,8 +198,9 @@ class Unit:
     """One of the AI's movers as teams.py wants it: template, kindof, surface, pos, team (TeamMaker writes it).
     One object a body for the whole run (teams test membership by identity)."""
 
-    def __init__(self, body, observe=None):
+    def __init__(self, body, observe=None, hunted=None):
         self.body, self.observe = body, observe     # the observation port, for in_combat's firing / volleys
+        self.hunted = hunted                        # serial -> the AI's recorded unit target (Brain.hunt_target)
         self.template = body.template
         self.kindof = set(body.kinds)
         self.surface = 'AIR' if 'AIRCRAFT' in body.kinds else 'AMPHIBIOUS' if 'AMPHIBIOUS' in body.kinds else \
@@ -225,11 +226,26 @@ class Unit:
 
     @property
     def in_combat(self):
-        """What TeamTemplate.AllowRecruitUnitsInCombat false keeps out (teams.recruit, work/re b220): a live target
-        within the current weapon's range. Here: the body aimed at someone last tick (Sim.aim picks only targets in
-        range) -- INFERRED: the engine keeps the target between shots; this sees it only on the ticks it fires."""
-        observe = self.observe
-        return observe is not None and any(a is self.body for _, _, a in observe.firing() + observe.volleys())
+        """What TeamTemplate.AllowRecruitUnitsInCombat false keeps out (teams.recruit, work/re b220): the unit's own
+        attack target, alive, that one of its weapons can hit and reaches (simrange.in_range) at the recruiting
+        frame. Its own target: the order's (body.goal) or the one it went after by itself (body.chase); else the one
+        it aimed at this tick (firing / volleys: the simulator keeps no auto-acquired target between ticks,
+        INFERRED); else the AI's recorded target for it (the hunt state's). A dead target is no target (the K2 cut:
+        a stale fire entry on a dead foe kept the Hammers out past the swap); firing, reloading or a pre-attack wait
+        decide nothing (bench k2gate0 / k2gate1: a Guardian 60 s in pre-attack at a live foe in range is refused
+        with the switch off, taken with it on). The range edge, weapon switching and the team fallback are not
+        benched (work/re/k2_recruit_gate_1119.md)."""
+        b, observe = self.body, self.observe
+        if observe is None or not b.alive:
+            return False
+        t = next((g for g in (getattr(b, 'goal', None), getattr(b, 'chase', None)) if getattr(g, 'alive', False)),
+                 None)
+        if t is None:
+            t = next((pick for pick, _, a in observe.firing() + observe.volleys() if a is b and pick.alive), None)
+        if t is None and self.hunted is not None:
+            t = self.hunted(b.serial)
+            t = t if getattr(t, 'alive', False) else None
+        return t is not None and any(observe.can_hit(w, t) and simrange.in_range(b, t, w) for w in b.weapons)
 
     def __repr__(self):
         return f'Unit({self.template} {self.body.name})'
@@ -582,6 +598,12 @@ class Brain:
         serial = next((k for k, v in self.ids.items() if v == tid), None)
         b = self.world.world.numbered.get(serial) if serial is not None else None
         return b if b is not None and self.world.bodies.get(b.name) is b else None
+
+    def hunt_target(self, serial):
+        """The target the AI recorded for its unit `serial` (the hunt state's, set by a team's attack order), or None:
+        Unit.in_combat's last resort when the unit holds no target of its own."""
+        state = self.__dict__.get('_hunt_goals', {}).get(serial)
+        return state.target if state is not None else None
 
     def engine_team_names(self):
         """{engine name: model team key}: the name table the engine builds once when the AI is made -- every strategic
@@ -1375,7 +1397,7 @@ class Brain:
             # one's wrapper, and the orders the AI gave it went to the dead body). The dead ones' stay: a model team
             # may still hold their Unit, and the snapshot builds its `$unit` table from here
             if b.serial not in self.wrappers:
-                self.wrappers[b.serial] = Unit(b, self.observe)
+                self.wrappers[b.serial] = Unit(b, self.observe, self.hunt_target)
             out.append(self.wrappers[b.serial])
         return out
 

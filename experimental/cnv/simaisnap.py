@@ -86,7 +86,7 @@ _BY_HAND = ('wrappers', '_exp_teams', '_rec_mem')
 _OWN = [f for f, k in BRAIN.items() if k == STATE and f not in _BY_HAND]
 _MODEL = [f for f, k in BRAIN.items() if k == MODEL]
 
-UNIT = {'body': STATE, 'observe': WIRE, 'template': STATIC, 'kindof': STATIC, 'surface': STATIC, 'team': MODEL,
+UNIT = {'body': STATE, 'observe': WIRE, 'hunted': WIRE, 'template': STATIC, 'kindof': STATIC, 'surface': STATIC, 'team': MODEL,
         'escort_of': MODEL}     # the team a member escorts (teams.py writes it)
 _UNIT_MODEL = [f for f, k in UNIT.items() if k == MODEL]
 
@@ -345,7 +345,7 @@ def _write_brain(w, b, fields, model, things):
     b.wrappers = {}
     units = {}
     for _name, serial, _team in fields['wrappers']:     # keyed by serial (Brain.units)
-        b.wrappers[serial] = units[serial] = Unit(things[serial], b.observe)
+        b.wrappers[serial] = units[serial] = Unit(things[serial], b.observe, b.hunt_target)
 
     def obj(mark):
         (k, serial), = mark.items()

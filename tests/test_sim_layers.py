@@ -28,7 +28,6 @@ LAYER_OF = {
     'engine.kernel.factory': 0, 'engine.kernel.schedule': 0, 'engine.kernel.world': 0,          # (tests/test_kernel.py)
     'engine.kernel.snap': 0,                                                                     # step S's values
     'engine.ports.templates': 0, 'engine.modules.weaponset': 0,     # W1: simunits' weapon readers read its data
-    'engine.ports.readonly': 0,                                     # the ports' read-only views (review 1119z P2 #2)
     'simsnap': 9,                                                       # step S, the host's part (a whole run's)
     'simaisnap': 9,                                                     # step S 11b-4, the SimAI's around it
     'simbattlefield': 9,                                                # step S 11d, the exchange file's
@@ -64,7 +63,9 @@ OVER_THE_RUN = {'simsnap', 'simaisnap', 'simbattlefield'}
 # what any layer may import though it is no layer of the simulator (R3 13f-2d): the ports the AI asks its host
 # through (adapters over the Sim, not parts of the run -- the inventory does not count them, the forwarder guard
 # does not hold them) and modelpin (the private model's pin and package loader). Each imports nothing above L0.
-BOUNDARY = {'engine.ports.ai', 'engine.ports.observe', 'modelpin'}
+# engine.ports.readonly: the read-only views those ports hand out (review 1119z P2 #2); read by them and simrecord
+# only, no part of the player's run (it was in LAYER_OF and the inventory guard counted its strings as uncounted).
+BOUNDARY = {'engine.ports.ai', 'engine.ports.observe', 'engine.ports.readonly', 'modelpin'}
 
 
 def ai_import_breaks(mods=None, source=None):
