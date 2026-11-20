@@ -391,6 +391,24 @@ def test_an_ai_unit_goes_to_the_ready_factory_it_picked_not_one_still_unpacking(
     assert br.unit_q == [] and list(s.queues) == [b.serial] and a.serial != b.serial
 
 
+def test_an_ai_unit_goes_past_a_first_factory_that_lacks_the_tier():
+    """Review 1120aa P2 (N03's): the AI picks among the free factories one that may build the unit there (can_build:
+    the Guardian's Tech2 is held only near a yard holding it, bench engine_tech) -- an earlier one out of the yard's
+    reach no longer takes every order and refuses it while the one in reach gets none."""
+    s = simsmall.small_world(model=False)
+    s.money['Player_1'] = 10000
+    br = _bare_brain(s, unpack=0)
+    far = s.add('far', 'AlliedWarFactory', 'Player_1', 2500.0, 2500.0)       # first in factories(), out of reach
+    yard = s.add('yard', 'AlliedConstructionYard', 'Player_1', 300.0, 300.0)
+    yard.upgrades.add('Upgrade_AlliedTech2')
+    near = s.add('near', 'AlliedWarFactory', 'Player_1', 600.0, 300.0)
+    assert [f.serial for f in br.factories()][:1] == [far.serial]
+    assert not s.can_build('Player_1', TANK, far) and s.can_build('Player_1', TANK, near)
+    br.unit_q = [TANK]
+    br.unit_due(30)
+    assert br.unit_q == [] and list(s.queues) == [near.serial]
+
+
 # ---- review 1119y P2 #3 / #4: every internal key goes through simworld.free_key, which counts a key the schedule
 # still holds a module of as taken too
 
