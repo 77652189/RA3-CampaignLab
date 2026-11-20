@@ -56,7 +56,7 @@ class AutoHealData(module.ModuleData):
 
 
 @factory.module('AutoHealBehavior')
-class AutoHeal(module.Module, interfaces.Update, interfaces.Damage, interfaces.Upgrade):
+class AutoHeal(module.Module, interfaces.Update, interfaces.Damage, interfaces.Upgrade, interfaces.Clocked):
     """In the frame order's autoheal cell: runs when made, then at its next mend; asleep at full health, dead,
     inactive or with its status check failing. A hurt (on_damaged) wakes it to restart the wait; health back to full,
     or below a moved maximum (on_healed), wakes an idle one; its upgrade (on_upgrade) wakes it to mend the next frame.
@@ -138,3 +138,14 @@ class AutoHeal(module.Module, interfaces.Update, interfaces.Damage, interfaces.U
     def on_remove(self):
         self.hurt = False
         self.heal_at = None
+
+    def clocks(self):
+        """mend: heal_at; ok: next_ok; hurt: a hurt told since its last run (it runs the next frame, its wait anew)."""
+        return {'mend': self.heal_at, 'ok': self.next_ok, 'hurt': self.hurt}
+
+    def set_clocks(self, values):
+        self.heal_at, self.next_ok, self.hurt = values['mend'], values['ok'], values['hurt']
+        if self.hurt:
+            self.world.wake(self)               # as on_damaged: its next run starts the wait
+        if self.heal_at is not None:
+            self.world.wake(self, self.heal_at)

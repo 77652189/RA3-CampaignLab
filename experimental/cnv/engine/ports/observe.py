@@ -8,7 +8,7 @@ Names are the ones the object and the world carry today, so a reader never renam
 Three groups and an internal door:
 - the clock: `t`, `fps`, `frame()`;
 - things (objects): `things()`, `living()`, `thing(name)`, `is_thing(v)`, `contents(thing)` (who is inside),
-  `home(thing)` (the owner an emptied garrison goes back to), `queue(thing)` (what it builds), `jobs(thing)` (the same whole: paid, filled, held); a thing's public fields are
+  `home(thing)` (the owner an emptied garrison goes back to), `queue(thing)` (what it builds), `jobs(thing)` (the same whole: paid, filled, held), `clocks(thing)` (its timed modules' frames); a thing's public fields are
   read off it by their names (name template owner x y hp max_hp health ...: the readers' census, R3 12a);
 - scripts and players: `flags()`, `counters()`, `timers()` (name -> the mission second it runs out at), `objectives()`,
   `ending()`, `money()`, `income()`, `sciences(player)`, `player_upgrades(player)`, `power(player)`, `markers()`,
@@ -30,8 +30,9 @@ frame; its write half raises, to any depth -- review 1119z P2 #2); ground_map's 
 thing comes back itself -- `thing`, `living`, and a field that holds one (`state(u)['goal']`) hand the live object,
 whose fields can be set through it: the read-only promise covers tables and arrays, not things (review 1120dd P2;
 a read-only thing handle is an open question, handoff-r3). The
-readers a Battlefield file is read through (contents, home, jobs, sciences, player_upgrades, power, relations: step S 11d,
+readers a Battlefield file is read through (contents, home, jobs, clocks, sciences, player_upgrades, power, relations: step S 11d,
 experimental/cnv/simbattlefield.py) give names and numbers only, so a game adapter can give the same."""
+from engine.kernel import interfaces
 from engine.kernel import module as kernel_module
 from engine.ports.readonly import view
 
@@ -107,6 +108,11 @@ class Observe:
                 (job['owner'], job['template'].lower()) in w.banned or job['owner'] in w.unit_construction_disabled)
         return [(job['template'], min(1.0, job['progress'] / 100), job['paid'], job['full'], held(job))
                 for job in w.queues.get(thing.serial, ())]
+
+    def clocks(self, thing):
+        """Its timed modules' frames in the order made (interfaces.Clocked: autoheal, lifetime, sale, unpacking):
+        [(the module's XML tag, {name: logic frame or None; autoheal's hurt a bool})] ([] for a thing with none)."""
+        return [(type(m).TAGS[0], dict(m.clocks())) for m in thing.find(interfaces.Clocked)] if thing.modules else []
 
     # --- scripts and players
     def flags(self):

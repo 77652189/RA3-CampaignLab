@@ -28,7 +28,7 @@ class LifetimeData(module.ModuleData):
 
 
 @factory.module('LifetimeUpdate')
-class Lifetime(module.Module, interfaces.Update, interfaces.Create, interfaces.Lifetime):
+class Lifetime(module.Module, interfaces.Update, interfaces.Create, interfaces.Lifetime, interfaces.Clocked):
     """In the frame order's expire cell: asleep until its die frame, then kills its thing (World.kill: '寿命到了').
     life_end: the frame it dies in (None until set; the name the body's field had, so the frame record is unchanged)."""
     DATA = LifetimeData
@@ -53,6 +53,14 @@ class Lifetime(module.Module, interfaces.Update, interfaces.Create, interfaces.L
     def set_die_frame(self, frame):
         self.life_end = frame
         self.world.wake(self, frame)
+
+    def clocks(self):
+        return {'dies': self.life_end}
+
+    def set_clocks(self, values):
+        self.life_end = values['dies']
+        if self.life_end is not None:
+            self.world.wake(self, self.life_end)
 
     def update(self, frame):
         if self.life_end is None or not self.thing.alive:

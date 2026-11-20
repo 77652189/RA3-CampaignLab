@@ -7,9 +7,9 @@
     "Player_1": {"money": 250, "sciences": ["playertech_allied", "playertech_generic_rank_1"], "science_points": 1, "upgrades": [], "power": {"made": 0, "used": 50}, "relations": {}}
   },
   "things": [
-    {"id": "#0", "template": "OreNode", "owner": "PlyrCivilian", "x": 3127.3, "y": 4327.3, "z": null, "angle": 3.9269908169872414, "hp": 10000, "max_hp": 10000, "status": [], "upgrades": [], "level": 1, "contains": [], "home": null, "queue": [], "team": ""},
-    {"id": "UNIT - CNV Mine Refinery", "template": "AlliedRefinery", "owner": "Player_1", "x": 3000, "y": 4200, "z": null, "angle": 0.7853981633974483, "hp": 2000, "max_hp": 2000, "status": [], "upgrades": [], "level": 1, "contains": [], "home": null, "queue": [], "team": "Player_1/teamPlayer_1"},
-    {"id": "#unpack UNIT - CNV Mine Refinery", "template": "AlliedMiner", "owner": "Player_1", "x": 3102.5472222222224, "y": 4302.547222222222, "z": null, "angle": 0.0, "hp": 500, "max_hp": 500, "status": [], "upgrades": [], "level": 1, "contains": [], "home": null, "queue": [], "team": ""}
+    {"id": "#0", "template": "OreNode", "owner": "PlyrCivilian", "x": 3127.3, "y": 4327.3, "z": null, "angle": 3.9269908169872414, "hp": 10000, "max_hp": 10000, "status": [], "upgrades": [], "level": 1, "contains": [], "home": null, "queue": [], "clocks": [{"module": "StructureUnpackUpdate", "unpacked": null}], "team": ""},
+    {"id": "UNIT - CNV Mine Refinery", "template": "AlliedRefinery", "owner": "Player_1", "x": 3000, "y": 4200, "z": null, "angle": 0.7853981633974483, "hp": 2000, "max_hp": 2000, "status": [], "upgrades": [], "level": 1, "contains": [], "home": null, "queue": [], "clocks": [{"gone": null, "module": "StructureSellUpdate"}, {"module": "StructureUnpackUpdate", "unpacked": null}], "team": "Player_1/teamPlayer_1"},
+    {"id": "#unpack UNIT - CNV Mine Refinery", "template": "AlliedMiner", "owner": "Player_1", "x": 3102.5472222222224, "y": 4302.547222222222, "z": null, "angle": 0.0, "hp": 500, "max_hp": 500, "status": [], "upgrades": [], "level": 1, "contains": [], "home": null, "queue": [], "clocks": [{"hurt": false, "mend": null, "module": "AutoHealBehavior", "ok": 0}], "team": ""}
   ],
   "script": {"flags": {}, "counters": {"CNV_Mine_Money": 250, "CNV_Mine_First": 111, "CNV_Mine_Second": 233, "CNV_Mine_Third": 233}, "timers": {}, "objectives": {}},
   "gaps": ["只列参与方 Player_1", "未带矿车采矿进度、矿场出生关系和钱包上限", "未带脚本执行历史"]

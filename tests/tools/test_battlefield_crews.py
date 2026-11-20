@@ -57,7 +57,8 @@ def test_every_thing_reads_back_whole_the_crews_in_order():
     src, doc = _source()
     host, gaps = _host(doc)
     assert gaps == []
-    assert _things(host) == {t['id']: t for t in doc['things']}
+    back = simbattlefield.rebase(simbattlefield.export(Observe(host)), doc['t'], doc['frame'])    # its clocks' frames
+    assert {t['id']: t for t in back['things']} == {t['id']: t for t in doc['things']}
     for b in host.living():                 # inside as the source's: the holder known by the thing
         g = src.garrison.where.get(src.bodies[b.name].serial)
         assert getattr(host.garrison.where.get(b.serial), 'name', None) == getattr(g, 'name', None)

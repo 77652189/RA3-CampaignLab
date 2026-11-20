@@ -42,6 +42,7 @@ def test_each_file_reads_back_thing_for_thing(name):
     assert gaps == LEFT.get(name, [])
     out = simbattlefield.export(Observe(host))
     assert simbattlefield.check(out) == []
+    out = simbattlefield.rebase(out, doc['t'], doc['frame'])       # the clocks' frames on the file's (step 10)
     got = {t['id']: t for t in out['things']}
     want = doc['things']
     assert [got[t['id']] for t in want] == want

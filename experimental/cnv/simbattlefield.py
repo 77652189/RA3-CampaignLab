@@ -9,13 +9,17 @@ host. Format `battlefield/1`:
             explicit directed overrides {other listed player: 'Enemy' | 'Neutral' | 'Friend'}, the map's defaults
             left out
   things    [{id, template, owner, x, y, z, angle, hp, max_hp, status, upgrades, level, contains, home, queue,
-            team}]: id unique (a body's name); z null = on the ground (not 0); angle radians; level from 1; contains
+            clocks, team}]: id unique (a body's name); z null = on the ground (not 0); angle radians; level from 1; contains
             the ids of the things inside it, in order; home null or the owner a garrisoned building goes back to
             when its last passenger is out (the one it had before its first: a building holding passengers only,
             not a transport, which keeps its owner); queue its jobs in the queue's order [{template, progress, paid,
             full}]: progress 0..1, paid the money paid for it so far (a whole number), full null or the logic frame
             (the file's `frame` clock, not after it; before 0 too -- a job full at the cut, placed onto a run at
-            frame 0, filled before it) it filled -- progress 1 then, waiting to come out
+            frame 0, filled before it) it filled -- progress 1 then, waiting to come out; clocks its timed modules
+            in the order made [{module: XML tag, its fields (CLOCKS)}], each field a logic frame on the file's clock
+            or null (autoheal's hurt a bool): AutoHealBehavior mend (its next mend), ok (its last mend's delay out),
+            hurt (a hurt since its last run); LifetimeUpdate dies; StructureSellUpdate gone (sold: deleted then);
+            StructureUnpackUpdate unpacked (unpacking until then)
   script    {flags: {name: bool}, counters: {name: number}, timers: {name: deadline in t's seconds},
             objectives: {name: 0 hidden / 1 shown / 2 done / 3 failed}}
   gaps      [what this file leaves out, in words]: a state not listed is not carried
@@ -93,6 +97,14 @@ the file's progress and paid, and its production pays the rest (a refinery half 
 on the host, or none running the yard's owner, the structure is not placed and named by its path. The rest of the
 AI's state is not carried (NOT_CARRIED): a placed AI starts its plans anew.
 
+Step 10 carries the modules' timers, within place_things last: each thing's clocks go into its timed modules
+(engine.kernel.interfaces.Clocked) -- the k-th row of a tag into its k-th module of that tag -- moved onto the host's
+clock (a frame + the host's frame - the file's), each module woken as its own setter wakes it: a hurt Apocalypse
+mends as many frames after the cut as on the source, a lifetime ends, a sold plant goes, an unpacking one gives power
+at the same frame. A lifetime the host's thing lacks (one the source attached late: simbody.last_until) is attached;
+another tag it lacks is named by the read back. Set after the health (the host's set_hp tells its autoheal of a hurt)
+and the upgrades (one granting an autoheal sets its first mend).
+
 Step 8 is the round trip: `round_trip(host, doc)` places an export onto an empty run of its map, exports the host and
 reads that on the file's clock (`rebase`: the cut, a running timer's deadline and a full job's frame moved by the
 clocks' difference), then compares field by field -- a thing by its id, named by its place in the file (one only on
@@ -103,12 +115,14 @@ path has None."""
 import math
 import struct
 
+import simbody
 import simgarrison
 import simorder
 import simtech
 import simunits
 from simscript import LOST, WON
 from simworld import CIV
+from engine.kernel import interfaces
 from engine.ports.observe import Observe
 
 FORMAT = 'battlefield/1'
@@ -116,8 +130,12 @@ TOP = ('format', 'map', 't', 'frame', 'players', 'things', 'script', 'gaps')
 PLAYER = ('money', 'sciences', 'science_points', 'upgrades', 'power', 'relations')
 POWER = ('made', 'used')
 THING = ('id', 'template', 'owner', 'x', 'y', 'z', 'angle', 'hp', 'max_hp', 'status', 'upgrades', 'level',
-         'contains', 'home', 'queue', 'team')
+         'contains', 'home', 'queue', 'clocks', 'team')
 JOB = ('template', 'progress', 'paid', 'full')
+CLOCKS = {'AutoHealBehavior': ('mend', 'ok', 'hurt'), 'LifetimeUpdate': ('dies',), 'StructureSellUpdate': ('gone',),
+          'StructureUnpackUpdate': ('unpacked',)}       # a timed module's fields (step 10): frames but hurt
+FLAGS = ('hurt',)
+_FRAMES = {f for fields in CLOCKS.values() for f in fields if f not in FLAGS}
 SCRIPT = ('flags', 'counters', 'timers', 'objectives')
 RELATIONS = ('Enemy', 'Neutral', 'Friend')
 OBJECTIVES = (0, 1, 2, 3)
@@ -255,6 +273,7 @@ def _thing(i, t, bad, frame=None):
         bad.append(f'{path}.home: {t["home"]!r} with no passengers (a home is where an emptied building goes back)')
     if 'team' in t and not isinstance(t['team'], str):
         bad.append(f'{path}.team: not a string ({t["team"]!r})')
+    _clocks(path, t, bad)
     if 'queue' not in t:
         return
     if not isinstance(t['queue'], list):
@@ -279,6 +298,30 @@ def _thing(i, t, bad, frame=None):
         elif progress and (full is not None) != (job['progress'] == 1):
             bad.append(f'{at}.full: {full!r} with progress {job["progress"]!r} (a job is full at progress 1, '
                        f'and names the frame it filled)')
+
+
+def _clocks(path, t, bad):
+    """A thing's clocks: a list of rows, each a known tag's fields (CLOCKS) -- a frame null or a whole number, a flag a
+    bool."""
+    if 'clocks' not in t:
+        return
+    if not isinstance(t['clocks'], list):
+        bad.append(f'{path}.clocks: not a list')
+        return
+    for k, row in enumerate(t['clocks']):
+        at = f'{path}.clocks[{k}]'
+        tag = row.get('module') if isinstance(row, dict) else None
+        if not isinstance(tag, str) or tag not in CLOCKS:
+            bad.append(f'{at}.module: not one of {sorted(CLOCKS)} ({tag!r})')
+            continue
+        if not _keys(row, ('module',) + CLOCKS[tag], at, bad):
+            continue
+        for f in (f for f in CLOCKS[tag] if f in row):
+            v = row[f]
+            if f in FLAGS and not isinstance(v, bool):
+                bad.append(f'{at}.{f}: not a bool ({v!r})')
+            elif f not in FLAGS and v is not None and not _whole(v):
+                bad.append(f'{at}.{f}: not null or a whole number ({v!r})')
 
 
 def _crews(things, bad):
@@ -486,7 +529,8 @@ def refuse(sim, doc, things=True):
 NOT_CARRIED = (
     'shots in flight and pending hits',
     'paths, goals and orders under way',
-    "modules' timers (autoheal, lifetime, sale, unpacking) and when each wakes",
+    "modules' timers but autoheal's, lifetime's, a sale's and unpacking's (a deposit's next payment, a toggle's "
+    "waiting press, a spy's blocked port, an aura's beat, suppression, toppling, a repair under way)",
     'reload, aim and fire gates',
     'special power cooldowns (a thing\'s and the player\'s)',
     "the skirmish AI's state but its yards' queues (which players it runs, its teams and plans, the units it waits "
@@ -542,8 +586,15 @@ def _jobs(obs, ai, b):
     return own + [(t, p, paid, full, False) for t, p, paid, full in ai.yard_jobs(b)] if ai is not None else own
 
 
+def _clock_rows(obs, b, shift=0):
+    """Observe.clocks as a file's clocks, each frame moved by `shift` (the host's frame onto the file's)."""
+    return [dict({f: v + shift if f in _FRAMES and v is not None else v for f, v in values.items()}, module=tag)
+            for tag, values in obs.clocks(b)]
+
+
 def _export_thing(obs, b, ai=None):
-    return dict(_own_fields(b), contains=obs.contents(b), home=obs.home(b), queue=_job_rows(_jobs(obs, ai, b)))
+    return dict(_own_fields(b), contains=obs.contents(b), home=obs.home(b), queue=_job_rows(_jobs(obs, ai, b)),
+                clocks=_clock_rows(obs, b))
 
 
 def _held(obs, things):
@@ -621,6 +672,8 @@ WHY = {
     'queue': "a job the host's factory does not build (or no AI of the host takes) is not placed; paid is held to the "
              "host's cost; progress is the host's per cent (float32), a job not full kept below 100; a yard's "
              "structures read after its own jobs, its structures' before its defences'",
+    'clocks': "a timed module the host's thing lacks (its template's data has none) keeps no clock; one the file "
+              "does not list keeps the host's own",
 }
 
 
@@ -676,12 +729,14 @@ def place_things(sim, doc, ai=None):
     shift = sim.frame_now() - doc['frame']  # a file's frame onto the host's
     for i, row, b in placed:                # after the upgrades: a factory's menu may come with one
         gaps += _set_jobs(sim, i, row, b, shift, ai)
+    for _, row, b in placed:                # after health and upgrades: they set an autoheal's own (step 10)
+        _set_clocks(sim, row, b, shift)
     sim.reblock()
     sim.change()
     obs = Observe(sim)
     for i, row, b in placed:
         got = _plain(dict(_own_fields(b), contains=[p.name for p in sim.garrison.held(b)], home=obs.home(b),
-                          queue=_job_rows(_jobs(obs, ai, b), -shift)))
+                          queue=_job_rows(_jobs(obs, ai, b), -shift), clocks=_clock_rows(obs, b, -shift)))
         for k in THING:
             if got[k] != row[k]:
                 gaps.append(f'things[{i}].{k}: {row[k]!r} in the file, the host reads {got[k]!r}'
@@ -691,6 +746,25 @@ def place_things(sim, doc, ai=None):
         if b.alive and b.serial not in mine:
             gaps.append(f'things: {b.name!r} (a {b.owner} {b.template}) living on the host, not in the file')
     return gaps
+
+
+def _set_clocks(sim, row, b, shift):
+    """The file's clocks into b's timed modules, the k-th row of a tag into its k-th module of that tag, each frame
+    moved by `shift`; a lifetime it lacks attached (simbody.last_until), a row of another tag it lacks left (the read
+    back names it)."""
+    mods = {}
+    for m in b.find(interfaces.Clocked) if b.modules else ():
+        mods.setdefault(type(m).TAGS[0], []).append(m)
+    seen = {}
+    for clock in row['clocks']:
+        tag = clock['module']
+        k = seen[tag] = seen.get(tag, -1) + 1
+        values = {f: clock[f] + shift if f in _FRAMES and clock[f] is not None else clock[f] for f in CLOCKS[tag]}
+        have = mods.get(tag, ())
+        if k < len(have):
+            have[k].set_clocks(values)
+        elif tag == 'LifetimeUpdate' and k == 0 and values['dies'] is not None:
+            simbody.last_until(sim, b, values['dies'])
 
 
 def _f32(x):
@@ -917,7 +991,9 @@ def rebase(doc, t, frame):
     out = dict(doc, t=t, frame=frame)
     out['script'] = dict(doc['script'], timers={k: d + dt for k, d in doc['script']['timers'].items()})
     out['things'] = [dict(row, queue=[dict(j, full=None if j['full'] is None else j['full'] + df)
-                                      for j in row['queue']]) for row in doc['things']]
+                                      for j in row['queue']],
+                          clocks=[{f: v + df if f in _FRAMES and v is not None else v for f, v in c.items()}
+                                  for c in row['clocks']]) for row in doc['things']]
     return out
 
 

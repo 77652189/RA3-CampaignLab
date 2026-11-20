@@ -659,6 +659,20 @@ class WeaponSet(Interface):
         raise NotImplementedError
 
 
+class Clocked(Interface):
+    """A module whose state holds the logic frames it wakes or acts at, as a Battlefield file carries them (step S 11d,
+    experimental/cnv/simbattlefield.py: autoheal, lifetime, sale, unpacking): clocks() -> {name: a frame or None (a
+    flag: a bool)}, on this world's clock; set_clocks(values) writes them and wakes the module as its own setters do
+    (a thing placed by the map load, given the source's)."""
+    __slots__ = ()
+
+    def clocks(self):
+        raise NotImplementedError
+
+    def set_clocks(self, values):
+        raise NotImplementedError
+
+
 class AIUpdate(Interface):
     """The command state machine (move, attack, guard, follow ...) and the movement's physics."""
     __slots__ = ()
@@ -670,6 +684,6 @@ class AIUpdate(Interface):
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
 FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze,
           LevelUp, Aura, Repair, Assign, Infiltrate, SlowDeath, CreateOnDeath,
-          DeathWeapon, WeaponSet)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+          DeathWeapon, WeaponSet, Clocked)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze,
                  WeaponSet})  # a thing has at most one of these: Thing.find gives it

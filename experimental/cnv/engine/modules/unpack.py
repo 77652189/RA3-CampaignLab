@@ -24,7 +24,7 @@ class UnpackData(module.ModuleData):
 
 
 @factory.module('StructureUnpackUpdate')
-class Unpack(module.Module, interfaces.Unpack):
+class Unpack(module.Module, interfaces.Unpack, interfaces.Clocked):
     """Its unpacking's end, no update of its own (the frame's readers compare it with the frame now). unpack_end: the
     frame it is unpacked by (None: it never unpacked; the name the body's field had, so the frame record is
     unchanged)."""
@@ -40,3 +40,9 @@ class Unpack(module.Module, interfaces.Unpack):
 
     def set_end(self, frame):
         self.unpack_end = frame
+
+    def clocks(self):
+        return {'unpacked': self.unpack_end}
+
+    def set_clocks(self, values):
+        self.unpack_end = values['unpacked']

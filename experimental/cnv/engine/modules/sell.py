@@ -26,7 +26,7 @@ class SellData(module.ModuleData):
 
 
 @factory.module('StructureSellUpdate')
-class Sell(module.Module, interfaces.Update, interfaces.Sell):
+class Sell(module.Module, interfaces.Update, interfaces.Sell, interfaces.Clocked):
     """In the frame order's expire cell: asleep until sold, then until its delete frame, then deletes its thing.
     sell_end: that frame (None: not sold; the name the body's field had, so the frame record is unchanged)."""
     DATA = SellData
@@ -41,6 +41,14 @@ class Sell(module.Module, interfaces.Update, interfaces.Sell):
         self.sell_end = frame + self.data.frames
         self.world.wake(self, self.sell_end)
         return self.sell_end
+
+    def clocks(self):
+        return {'gone': self.sell_end}
+
+    def set_clocks(self, values):
+        self.sell_end = values['gone']
+        if self.sell_end is not None:
+            self.world.wake(self, self.sell_end)
 
     def update(self, frame):
         if self.sell_end is None or not self.thing.alive:
