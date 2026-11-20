@@ -974,7 +974,7 @@ class Sim:
         self.active = set(teams.values())               # teams with an instance: a whole-team order to any other is lost (E3)
         self.lost_orders = []                           # (t, script, order, team) given to a team nobody had joined
         for k, o in enumerate(list(getattr(mission.map, 'OBJECTS', [])) + self.mm.objects):
-            b = self.add(o.name or f'#{k}', o.template, self.owner_of(o.side), o.x, o.y, shadow=True)  # simliving
+            b = self.add(o.name or simworld.free_key(self, '#{}'.format, k), o.template, self.owner_of(o.side), o.x, o.y, shadow=True)  # simliving
             # a bare object is on its player's default team (island.like writes 'Soviet_5/teamSoviet_5'; the container
             # has teamSoviet_2 .. 6 too): bench 11-14 engine_acts_x own, PLAYER_TRANSFER_OWNERSHIP_PLAYER leaves it
             b.team = teams.get(o.side) or (self.mm.team(o.side) if hasattr(self.mm, 'team')    # a retail map (Merged)
@@ -990,7 +990,7 @@ class Sim:
         import platprops
         for k, o in enumerate(getattr(mission.map, 'SCENERY', [])):
             if o.template in platprops.STRUCTURE:
-                b = self.add(f'#scenery {k}', o.template, CIV, o.x, o.y)
+                b = self.add(simworld.free_key(self, '#scenery {}'.format, k), o.template, CIV, o.x, o.y)
                 b.scenery = True
                 b.kinds = frozenset(b.kinds | {'STRUCTURE'})
         self.script = parse_script(script)
@@ -2240,7 +2240,7 @@ class Sim:
             elif p is None:
                 self.note('剧本', f'找不到地点 {where}')
             else:
-                b = self.add(f'UNIT - SIM Made {len(self.bodies)}', tmpl, self.human, *p, by='剧本', at=self.t)
+                b = self.add(simworld.free_key(self, 'UNIT - SIM Made {}'.format, len(self.bodies)), tmpl, self.human, *p, by='剧本', at=self.t)
                 b.angle = angle
                 if self.blocks(b):
                     self.reblock()

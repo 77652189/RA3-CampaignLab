@@ -389,3 +389,47 @@ def test_an_ai_unit_goes_to_the_ready_factory_it_picked_not_one_still_unpacking(
     br.unit_q = [GI]
     br.unit_due(30)
     assert br.unit_q == [] and list(s.queues) == [b.serial] and a.serial != b.serial
+
+
+# ---- review 1119y P2 #3 / #4: every internal key goes through simworld.free_key, which counts a key the schedule
+# still holds a module of as taken too
+
+def test_an_unpacked_builders_archive_key_leaves_a_dead_one_the_schedule_still_holds_in_place():
+    import simsnap
+    s = simsmall.small_world(model=False)                                 # (the private model takes no snapshots)
+    mcv = s.add('mcv', 'AlliedMCV', 'Player_1', 300.0, 300.0)
+    mcv.replace = True
+    mcv.building = ('AlliedConstructionYard', (300.0, 300.0), 50.0)
+    assert s.at_site(mcv, 0.0)
+    held = s.add('#packed 2 mcv', GI, 'Player_1', 900.0, 900.0)          # living, under the count after the pop
+    dead = s.add('#packed 3 mcv', GI, 'Player_1', 1500.0, 900.0)
+    s.destroy(dead, 'test')
+    assert len(s.bodies) == 3 and any(m in s.world.schedule.seq for m in dead.modules)   # its AutoHeal still runs
+    s.build_due(s.frame_now() + 10)
+    assert s.bodies['#packed 2 mcv'] is held and s.bodies['#packed 3 mcv'] is dead
+    assert s.bodies['#packed 4 mcv'] is mcv and s.bodies['mcv'].template == 'AlliedConstructionYard'
+    simsnap.snapshot(s)                                                   # every scheduled module's thing is held
+
+
+def test_an_unnamed_map_object_does_not_take_the_index_key_a_named_one_placed_before_holds():
+    import parts
+    import sim
+    from maps import island
+    k = len(getattr(island, 'OBJECTS', []))
+    m = parts.Mission(name='T', map=island, scripts=[],
+                      objects=[parts.Obj(GI, 1250, 2360, side='p1', name=f'#{k + 1}'), parts.Obj(GI, 1550, 2360, side='p1')])
+    s = sim.Sim(m, model=False)
+    named = s.bodies[f'#{k + 1}']
+    assert named.alive and named.x == 1250.0
+    other = [b for b in s.living() if b.template == GI and b is not named]
+    assert [(b.x, b.alive) for b in other] == [(1550.0, True)] and s.bodies[other[0].name] is other[0]
+
+
+def test_a_script_line_make_does_not_take_the_counted_key_a_living_one_holds():
+    s = simsmall.small_world()
+    held = s.add('UNIT - SIM Made 1', GI, 'Player_1', 900.0, 900.0)
+    s.commands.post_line(f'0 造 {GI} 在 @1500,2400')
+    s.advance(1)
+    assert s.bodies['UNIT - SIM Made 1'] is held and held.alive
+    made = [b for b in s.living() if b is not held and b.template == GI]
+    assert len(made) == 1 and (made[0].x, made[0].y) == (1500.0, 2400.0)

@@ -93,15 +93,24 @@ def held(world, b):
     return b if b is not None and world.bodies.get(b.name) is b else None
 
 
+def free_key(world, make, n):
+    """The first internal key make(n), make(n + 1), ... nothing still holds: not a living thing (Sim.add refuses its
+    name) nor a dead one the schedule still runs a module of (review 1119y P2 #3: a key written straight into bodies,
+    as the unpack archive does, would leave that module held with its thing gone -- a snapshot fails). A dead one with
+    nothing scheduled may be taken again, as Sim.add lets it. Every key the simulator makes up goes through here
+    (tests/guards/test_free_key.py)."""
+    seq = world.world.schedule.seq
+    while (b := world.bodies.get(make(n))) is not None and (
+            b.alive or any(m in seq for m in getattr(b, 'modules', ()))):
+        n += 1
+    return make(n)
+
+
 def free_name(world, head, tail):
     """The internal key a thing made without a name of its own goes under, f'{head} {n} {tail}': n the count of
-    bodies, as ever, else the next n no living thing holds (review 1119w P2 #1 / #3: Sim.add refuses a living one's
-    name, and bodies shrink as things are deleted, so the count can come round to a key a living one still holds).
-    A dead one's key is taken again, as Sim.add lets it."""
-    n = len(world.bodies)
-    while (b := world.bodies.get(f'{head} {n} {tail}')) is not None and b.alive:
-        n += 1
-    return f'{head} {n} {tail}'
+    bodies, as ever, else the next free one (free_key; review 1119w P2 #1 / #3: bodies shrink as things are deleted,
+    so the count can come round to a key still held)."""
+    return free_key(world, lambda n: f'{head} {n} {tail}', len(world.bodies))
 
 
 def mmss(t):
