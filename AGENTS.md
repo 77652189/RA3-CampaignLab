@@ -26,6 +26,7 @@
 - 测试：收尾跑 `python -X utf8 experimental/testbench/affected_tests.py --cmd` 打出的命令（模拟器文件按导入关系挑、其余按覆盖率图挑，含守卫；默认不带 `tests/replay_tests.txt` 里的整局和台子关回放，改的正是某个回放测试或要拿它当对拍证据时加 `--with-replays`；整机重活共用 CPU 令牌池 `experimental/testbench/cpupool.py`：`-n` 按现在空着的令牌算、一次最多 2 个（独占 `RA3_CPU_EXCLUSIVE=1` 才拿全部），先来先到排队，别自己另开并行）；挑得太多、慢文件跑不完的，在提交说明里写"留给总控全量"。工具报错时退回：改到的测试文件、`git grep -l <模块名> tests/`、`tests/test_inventory*.py`、`tests/guards/test_docs.py`、`tests/guards/test_architecture.py`（G4：新文件别加 `sys.path.insert`，按文件路径加载）、`tests/guards/test_no_program_addresses.py`（守公开文件里不出现程序地址）。不跑全量，全量由总控跑。
 - 输出只看结论：长输出写 `work/logs/<名字>.log`，屏幕只看末几行；`pytest -q | tail -n 5`；能用数字（`cnv_check`、`bench_counters`）就不截图；读文件先搜索再按行读。数字解释不了时再看画面，别猜。
 - 上下文快满：写交接（在做什么、下一步、没提交的改动、坑；只写指针）→ 提交推送 → 停掉后台任务 → 最后一行"可以清空：读 <交接> 接着做 <下一步>"。
+- 交接是每次开工都整份读的：**限 150 行、2 万字，单行 1500 字**（`python work/re/scripts/handoff_size.py` 查）。更新 = 改写那一段，做完的项删掉、细节挪进自己的 `handoff-<线>-archive.md`（平时不读），不写"以下是之前的"往后追加（11-19 R2 交接 8 万字，一开工先吃 5 万多 token，一个窗口只够做一步）。
 
 ## 地图
 | 要做 | 先读 |
