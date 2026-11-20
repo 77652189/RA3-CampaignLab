@@ -348,7 +348,12 @@ def seq_due(world, peers):
         act = acts[r['step']]
         args = [b.name if x == '<This Object>' else (b.team if x == '<This Team>' else x) for x in act.args]
         if '<This Object>' in act.args:
-            _as_itself(world, b, lambda: world.executor.action(act.name, args, r['script']))
+            written = {}                    # the unit's name written as well: that one reads as written -- the
+            if b.name in act.args and world.body(b.name) is not None:   # reference or the object of that name, not
+                tok = b.name + ' <as written>'                          # the unit (same-name audit 11-19b O19)
+                written[tok] = world.body(b.name)
+                args = [tok if x == b.name else y for x, y in zip(act.args, args)]
+            _as_itself(world, b, lambda: world.executor.action(act.name, args, r['script']), written)
         else:
             world.executor.action(act.name, args, r['script'])
         if not b.alive and r in peers.seq:
@@ -358,24 +363,26 @@ def seq_due(world, peers):
 _NONE = object()
 
 
-def _as_itself(world, b, step):
+def _as_itself(world, b, step, written=()):
     """Run `step` (a sequential script's action, <This Object> written as `b`'s name) with that name reading as `b`
     itself: a reference of the same name, or another object made under it since, cannot take the unit's place
     (same-name audit 11-19, S5). For the step's length the name is in world.acting, which world.body and world.point
     read before the references (every action finds its object by name through them, either executor); the
     references are not written, so one the step points at the name itself stays (review 11-19 n P3 #3; #4: a point
     by the name is the unit's). Only a step written with <This Object> runs here (the caller; #2). Arguments and the
-    log's text unchanged. Not told apart: a step writing both <This Object> and the shadowed reference's name reads
-    the unit for both."""
-    had = world.acting.get(b.name, _NONE)
+    log's text unchanged. A step writing both <This Object> and the unit's name gives the written one as a token of
+    its own in `written` (token -> what the name read before the step: O19), in world.acting for the step too."""
+    had = {k: world.acting.get(k, _NONE) for k in (b.name, *written)}
     world.acting[b.name] = b
+    world.acting.update(written)
     try:
         step()
     finally:
-        if had is _NONE:
-            world.acting.pop(b.name, None)
-        else:
-            world.acting[b.name] = had
+        for k, v in had.items():
+            if v is _NONE:
+                world.acting.pop(k, None)
+            else:
+                world.acting[k] = v
 
 
 def path_start(world, label, at):

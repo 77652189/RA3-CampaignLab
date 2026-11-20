@@ -141,7 +141,7 @@ def test_engage_dead_pursuit_continues_cancelled_path():
     brain = simai.Brain.__new__(simai.Brain)
     brain.player = 'Player_2'
     moves = []      # the AI's orders go through the command port (R3 13f-1): its attack-move, target dropped first
-    brain.world = brain.peers = SimpleNamespace(world=SimpleNamespace(numbered={7: body}),
+    brain.world = brain.peers = SimpleNamespace(world=SimpleNamespace(numbered={7: body}), bodies={'member': body},
                                                commands=SimpleNamespace(do=lambda cmd: moves.append(cmd) or (True, '')))
     brain._hunt_goals = {7: state}
     brain.hunt_threats(1)  # no partition scan before the first eligible frame

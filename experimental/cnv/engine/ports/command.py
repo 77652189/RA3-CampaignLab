@@ -390,8 +390,8 @@ class Commands:
                 ok = w.order_attack(b, t, cmd.force)
                 if b is not None:
                     sent.append(ok)
-                if cmd.arg('team') is not None:     # TEAM_ATTACK_TEAM ('' the default team's, f #2): the fight
-                    # takes the team's next one when this dies
+                if ok and b is not None and cmd.arg('team') is not None:    # TEAM_ATTACK_TEAM ('' the default
+                    # team's, f #2): the fight takes the team's next one when this dies; a refused one none (o #2)
                     w.team_targets[b.serial] = cmd.arg('team')
             return self._attacked(cmd, sent)
         targets = w.pick(cmd.target)        # the one picked is given as it is: read again by its name, a script

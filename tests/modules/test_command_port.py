@@ -494,7 +494,8 @@ def test_the_proxy_players_click_reaches_his_units_not_a_reference_of_their_name
     s = simsmall.small_world([('a', APOC, 'Player_1', 1250.0, 2500.0), ('b', APOC, 'Player_1', 1300.0, 2500.0),
                               ('enemy', APOC, 'Player_2', 1350.0, 2500.0), ('t', APOC, 'Player_2', 1600.0, 2500.0)],
                              model=False)
-    s.refs['a'] = s.bodies['enemy']
+    s.relations[('Player_1', 'Player_2')] = s.relations[('Player_2', 'Player_1')] = 'Enemy'   # an attack the port
+    s.refs['a'] = s.bodies['enemy']                                                           # takes (o #1)
     w = object.__new__(simproxy.SimWorld)
     w.sim = w.world = s
     w.peers, w.me, w.refused = simproxy.Peers(s), 'Player_1', []
@@ -738,6 +739,17 @@ def test_a_sequential_step_reads_the_unit_only_where_it_wrote_this_object():
     assert at == [(300.0, 300.0)] and s.point('lead') == (700.0, 600.0)
 
 
+def test_a_step_writing_this_object_and_the_units_name_reads_the_name_as_written():
+    """`NAMED_ATTACK_NAMED <This Object> lead` with the reference `lead` at an enemy: the queued unit attacks that
+    enemy (same-name audit 11-19b O19: both read as the unit, the attack on its own side was turned down)."""
+    s, lead, other = _seq_world([('NAMED_ATTACK_NAMED', '<This Object>', 'lead')])
+    foe = s.add('foe', 'SovietAntiInfantryInfantry', 'Player_2', 500.0, 300.0)
+    s.relations[('Player_1', 'Player_2')] = s.relations[('Player_2', 'Player_1')] = 'Enemy'
+    s.refs['lead'] = foe
+    s.seq_due()
+    assert lead.goal is foe and not s.acting and s.refs['lead'] is foe
+
+
 def test_the_proxy_does_not_keep_the_objects_it_saw():
     """An object the proxy saw (gave an id) is reclaimed once the world lets go of it, its id row with it (review
     11-19 m: 30 same-name replacements seen kept 30 objects alive); an old id still orders nothing."""
@@ -775,6 +787,41 @@ def test_an_attack_on_ones_own_side_is_refused_by_the_port():
     assert s.commands.do(Command('attack', units=('a',), target='mate'))[0] is False
     assert s.commands.do(Command('attack', units=('a',), target='mate', force=True)) == (True, '')
     assert s.bodies['a'].goal is mate
+
+
+def test_a_refused_team_attack_registers_no_follow_up():
+    """TEAM_ATTACK_TEAM turned down for a unit leaves no next-target look-up for it (review 11-19 o #2: registered all
+    the same, the fight took the team's member later); a unit not there is skipped, not read for its serial."""
+    s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0), ('mate', APOC, 'Player_1', 400.0, 0.0)],
+                             model=False)
+    a, mate = s.bodies['a'], s.bodies['mate']
+    cmd = _ai('attack', a, target='mate', args=(('target_serial', mate.serial), ('team', 'T')))
+    assert s.commands.do(cmd)[0] is False and a.serial not in s.team_targets
+    gone = Command('attack', 'script', units=('nobody',), target='mate', force=True, args=OBJ + (('team', 'T'),))
+    s.commands.do(gone)
+    assert s.team_targets == {}
+
+
+def test_the_proxy_says_no_to_an_attack_the_port_turned_down():
+    """The proxy's attack answers with the port's say (review 11-19 o #1: a target turned his own after he saw it was
+    refused by the port and the proxy still said yes)."""
+    from types import SimpleNamespace
+    s, w = _proxy([('a', APOC, 'Player_1', 1250.0, 2500.0), ('t', APOC, 'Player_2', 1400.0, 2500.0)])
+    me, t = w._id(s.bodies['a']), w._id(s.bodies['t'])
+    s.bodies['t'].owner = 'Player_1'
+    assert not w.issue(SimpleNamespace(kind='attack', units=(me,), target=t, pos=None, power='', template=''))
+    assert w.refused and 'attack refused' in str(w.refused[-1]) and s.bodies['a'].goal is None
+
+
+def test_proxy_ids_run_one_two_three_and_are_never_given_again():
+    """Ids are 1, 2, ... in the order first seen, and a reclaimed object's id is not handed out again (review 11-19
+    o #3: the next id scanned every id given)."""
+    s, w = _proxy([('a', APOC, 'Player_1', 1250.0, 2500.0), ('t', APOC, 'Player_2', 1400.0, 2500.0)])
+    assert [w._id(s.bodies['a']), w._id(s.bodies['t']), w._id(s.bodies['a'])] == [1, 2, 1]
+    s.bodies['t'].alive = False
+    del s.bodies['t']
+    gc.collect()
+    assert w._id(s.add('t', APOC, 'Player_2', 1500.0, 2500.0)) == 3
 
 
 def _brain(s, player='Player_1'):
@@ -836,6 +883,10 @@ def test_the_ais_micro_fires_and_dodges_with_the_unit_it_viewed_not_a_reference_
     assert lead.armor_up and not decoy.armor_up and not old.armor_up
     br.dodge_move(SimpleNamespace(teams=SimpleNamespace(teams={'k': team})), 'k', mu, (0.0, 300.0))
     assert br.peers.commands.issued()[-1][1].units == (lead.serial,)
+    names = [u.name for u in br.micro_team(None, 0, team).units]    # the model keys its plans by name (review 11-19
+    assert len(set(names)) == 2 and f'lead#{lead.serial}' in names  # q #3): two of one name in a team differ
+    alone = SimpleNamespace(members=[simai.Unit(lead, br.peers)])
+    assert [u.name for u in br.micro_team(None, 0, alone).units] == ['lead']     # one keeps its name
 
 
 def test_the_ais_hunt_goes_on_with_its_member_not_a_reference_of_its_name():
@@ -861,6 +912,10 @@ def test_the_ais_hunt_goes_on_with_its_member_not_a_reference_of_its_name():
     br.hunt_threats(1)
     last = br.peers.commands.issued()[-1][1]
     assert (last.kind, last.units, last.pos) == ('attack_move', (lead.serial,), (400.0, 0.0))
+    n, lead.path = len(br.peers.commands.issued()), []      # another object now holds its name (review 11-19 s P3):
+    s.bodies['lead'] = decoy                                # the state is no longer that member's, its walk stops
+    br.hunt_threats(2)
+    assert len(br.peers.commands.issued()) == n
 
 
 def test_the_players_power_casts_with_an_observer_tapping_the_actions():
@@ -872,6 +927,11 @@ def test_the_players_power_casts_with_an_observer_tapping_the_actions():
     assert s.order_power(s.bodies['cannon'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
     assert [c[1] for c in s.casts] == ['Player_1']
     assert seen == [('before', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT'), ('after', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT')]
+    got = []                                # Sim.act's unit given in its place, not by keyword (review 11-19 u P3)
+    s.act = lambda name, a, script, unit=None: got.append(unit)
+    Observe(s).on_act(None, None)
+    s.act('X', [], None, s.bodies['cannon'])
+    assert got == [s.bodies['cannon']]
 
 
 def test_the_ais_recruiting_wraps_the_new_unit_not_the_dead_one_of_its_name():

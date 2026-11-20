@@ -61,6 +61,7 @@ HOOKS (what this file would rather have from sim.py; for A through the coordinat
      PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS, ENCLOSED among them, since A round 164); no fire from inside.
 """
 import argparse
+from collections import Counter
 import functools
 import importlib
 import math
@@ -1079,6 +1080,10 @@ class Brain:
         # the view's units -> the objects they were made of: the manager fires / moves this same batch right after
         # (MicroBlock.tick), so the outlets take the object, not a lookup of its name (same-name sweep S6b)
         self._micro_units = seen = []
+        # the model keys its plans / dodges by name: two members of one name are told apart by serial (review 11-19
+        # q P3 #3); a name alone in the team stays as it is
+        names = Counter(u.body.name for u in team.members)
+        view = lambda b: f'{b.name}#{b.serial}' if names[b.name] > 1 else b.name     # noqa: E731
         for u in team.members:
             b = u.body
             reach = max((w.get('range') or 0.0 for w in b.weapons), default=0.0)
@@ -1092,7 +1097,7 @@ class Brain:
                                   'SpecialPower_ToggleArmorUp'), '')
                     cache[b.template] = mc.parse_toggle(ET.fromstring('<update>' + inner + '</update>'))
                 toggles = cache[b.template]
-            units.append(mu := mc.Unit(b.name, (b.x, b.y), b.hp, b.max_hp,
+            units.append(mu := mc.Unit(view(b), (b.x, b.y), b.hp, b.max_hp,
                                  [powers[c] for c in self.host.command_set(b.template)
                                   if c in powers and simmicro.ready(self.world, b, c)],
                                  target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=t.name),
@@ -1123,7 +1128,7 @@ class Brain:
                 # Retail fixed lifetime was not loaded by simunits' bounded reader.
                 # INFERRED first-seen birth frame; Sim owns expiry/deletion thereafter.
                 simbody.last_until(self.world, b, frame + mc.frames(mc.seconds(life.get('MinLifetime'))))
-            eligible = frozenset(u.body.name for u in team.members if u.body.alive
+            eligible = frozenset(view(u.body) for u in team.members if u.body.alive
                                  and 'AIRCRAFT' not in u.body.kinds
                                  and not (getattr(u.body, 'z', None) or 0) > 0)
             threats.append(mc.DodgeThreat(b.name, (b.x, b.y), float(info.get('DodgeSafetyDistance')),
@@ -1812,9 +1817,9 @@ class Brain:
         cell = lambda b: (int(b.x * .05), int(b.y * .05))
         for serial, state in states.items():
             # the member the state is of, by serial: a reference of its name or an object made again under it is
-            # not that member (same-name sweep S6b)
-            b = self.world.world.numbered.get(serial)
-            if b is None or not b.alive:
+            # not that member (same-name sweep S6b), nor is it once another object holds its name (s P3)
+            b = self.present(serial)
+            if b is None:
                 continue
             arrived = self.hunt_arrived(b, state)
             state.expire(lambda t: t is not None and t.alive, arrived=arrived)

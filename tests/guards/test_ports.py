@@ -570,8 +570,8 @@ def test_planted_orders_in_the_proxy_are_found():
     """simproxy (R3 13e): its player's clicks go through the port; an order call or a target dropped by hand is red."""
     f = CNV / 'simproxy.py'
     src = f.read_text(encoding='utf-8')
-    for old, new in (("            self._do('attack', units, target=t.name, args=(('target_serial', t.serial),))   # as clicked (j #1)\n",
-                      "            for b in units:\n                self.sim.order_attack(b, t.name)\n"),
+    for old, new in (("            ok, why = self._do('attack', units, target=t.name, args=(('target_serial', t.serial),))   # as clicked\n",
+                      "            ok, why = True, ''\n            for b in units:\n                self.sim.order_attack(b, t.name)\n"),
                      ("        units = [b for b in units if b is not None and b.owner == self.me]\n",
                       "        units = [b for b in units if b is not None and b.owner == self.me]\n"
                       "        for b in units:\n            b.goal = None\n"),

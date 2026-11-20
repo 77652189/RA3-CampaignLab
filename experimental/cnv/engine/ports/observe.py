@@ -288,10 +288,10 @@ class Observe:
         w = self._w
         inner = w.act
 
-        def act(name, a, script, **kw):
+        def act(name, a, script, *rest, **kw):     # Sim.act's unit by place too (review 11-19 u P3)
             if before is not None:
                 before(name, a, script)
-            r = inner(name, a, script, **kw)
+            r = inner(name, a, script, *rest, **kw)
             if after is not None:
                 after(name, a, script)
             return r

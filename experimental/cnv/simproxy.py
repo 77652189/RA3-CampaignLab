@@ -228,7 +228,7 @@ class SimWorld:
         if b.serial not in self.ids:
             # never one given before (names keeps every id); the object held weakly and its serial's row dropped
             # when it is reclaimed: seeing an object kept it, and its World.late row, alive (review 11-19 m)
-            i = self.ids[b.serial] = max(self.names, default=0) + 1
+            i = self.ids[b.serial] = len(self.names) + 1    # names only grows, ids 1, 2, ... in a row (o #3)
             self.names[i], self.things[i] = b.name, b
             weakref.finalize(b, self.ids.pop, b.serial, None)
         return self.ids[b.serial]
@@ -405,8 +405,8 @@ class SimWorld:
             t = self._body(o.target)
             if t is None:
                 return self._refuse(o, 'target gone')
-            self._do('attack', units, target=t.name, args=(('target_serial', t.serial),))   # as clicked (j #1)
-            return True
+            ok, why = self._do('attack', units, target=t.name, args=(('target_serial', t.serial),))   # as clicked
+            return True if ok else self._refuse(o, 'attack refused: ' + why)   # (j #1); the port's say (o #1)
         if o.kind == 'power':
             if o.power == 'SpecialPower_JAIV_Transform':
                 if o.target is not None or o.pos is not None:
