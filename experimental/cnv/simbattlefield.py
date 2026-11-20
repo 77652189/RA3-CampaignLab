@@ -23,9 +23,19 @@ ValueError naming every problem, before anything is placed. Each problem is 'fie
 Step 2 is the export: `export(obs)` reads a run through its observation port only (engine/ports/observe.py: the
 readers a game adapter can give too) into a file `check` passes -- every playable player (one with protocols), every
 living thing in the order they were made, the script's four tables; keys sorted, lists in a stable order, plain JSON
-values. Reading changes nothing in the world."""
+values. Reading changes nothing in the world.
+
+Step 3 places the things: `place_things(sim, doc)` refuses a file preflight does not pass, then makes each thing as the
+map load does (complete, not unpacking), in the file's order (the export's: a maker before what it made), and sets its
+angle, team, upgrades (a creation upgrade gives the rank, simlevel), status and health; what a placed thing makes
+alongside it (a refinery's collector, a factory's drones) is the file's thing of that name when one is listed, of the
+same template and owner, moved to the file's spot, and taken out when none is; then the way is blocked anew. It reads
+every placed thing back through the export's own reader and returns ['field path: why', ...] for each field that
+differs (an explicit height, a rank or a max health the host does not give, a status bit the host derives) and for
+what later steps place (crews, factory jobs). Players and the script are not touched."""
 import math
 
+import simorder
 import simunits
 from simworld import CIV
 
@@ -331,11 +341,16 @@ def _plain(v):
     raise TypeError(f'simbattlefield: {v!r} is not a JSON value')
 
 
-def _export_thing(obs, b):
+def _own_fields(b):
+    """A thing's fields of its own (all but contains and queue, which its host's parts hold)."""
     return {'id': b.name, 'template': b.template, 'owner': b.owner, 'x': b.x, 'y': b.y, 'z': b.z, 'angle': b.angle,
             'hp': b.hp, 'max_hp': b.max_hp, 'status': sorted(b.status), 'upgrades': sorted(b.upgrades),
-            'level': b.level_rank, 'contains': obs.contents(b),
-            'queue': [{'template': t, 'progress': p} for t, p in obs.queue(b)], 'team': b.team or ''}
+            'level': b.level_rank, 'team': b.team or ''}
+
+
+def _export_thing(obs, b):
+    return dict(_own_fields(b), contains=obs.contents(b),
+                queue=[{'template': t, 'progress': p} for t, p in obs.queue(b)])
 
 
 def export(obs):
@@ -367,3 +382,77 @@ def export(obs):
         gaps.append('relations toward or of a player not listed: ' + ', '.join(dropped))
     return _plain({'format': FORMAT, 'map': obs.mission().map.__name__.rsplit('.', 1)[-1], 't': obs.t,
                    'frame': obs.frame(), 'players': players, 'things': things, 'script': script, 'gaps': gaps})
+
+
+LABEL = 'Battlefield'       # the script name the placing's writes go under (the script's own actions: status, delete)
+
+# Why a placed thing's field reads other than the file's, where the host cannot give it (step 3).
+WHY = {
+    'z': 'an explicit height is not placed: the thing stands on the ground',
+    'level': 'a rank comes from creation upgrades only (simlevel); combat experience is not carried',
+    'max_hp': "the host's own of the template, its upgrades and rank, kept",
+    'hp': "the file's share of the max health kept",
+    'status': 'a bit the host derives (upgrades, toggles) is not taken off',
+    'upgrades': 'a creation upgrade gives its rank\'s veterancy upgrades too',
+}
+LATER = {'contains': 'crews are not placed yet (bf_pack plan step 6)',
+         'queue': 'factory jobs are not placed yet (bf_pack plan step 7)'}
+
+
+def _set_thing(sim, b, row):
+    """A made thing given the file's angle, upgrades, status and health (its spot, owner and team made with it)."""
+    b.angle = float(row['angle'])                   # as the map load puts it (Sim.__init__)
+    for up in row['upgrades']:
+        if up not in b.upgrades:                    # a creation upgrade may have given the later ones already
+            sim.give_upgrade(b, up)
+    want = set(row['status'])
+    for bit in sorted(want - b.status):             # a bit the host does not derive: held as a script's
+        sim.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, bit, True], LABEL)
+    for bit in sorted(b.script_status - want):      # a startup bit the file has not (a wall's)
+        sim.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, bit, False], LABEL)
+    hp =row['hp'] if b.max_hp == row['max_hp'] else row['hp'] / row['max_hp'] * b.max_hp
+    b.set_hp(min(hp, b.max_hp), tell=False)         # no damage told: nothing hit it
+
+
+def place_things(sim, doc):
+    """The file's things onto the host `sim` (an empty run of its map; refuse first): see the module's step 3.
+    ['field path: why', ...] for what is not placed as the file has it, empty when every thing reads back whole."""
+    refuse(sim, doc)
+    spare = {}          # name -> a thing made alongside a placed one, until the file's of that name takes it
+    placed = []
+    gaps = []
+    for i, row in enumerate(doc['things']):
+        b = spare.pop(row['id'], None)
+        if b is not None and not b.alive:
+            b = None
+        if b is not None and (b.template, b.owner) != (row['template'], row['owner']):
+            gaps.append(f'things[{i}]: the host made {row["id"]!r} alongside its maker, a {b.owner} {b.template}; '
+                        f'taken out, the file\'s placed instead')
+            sim.act('NAMED_DELETE', [b.name], LABEL)
+            b = None
+        if b is None:
+            before = dict(sim.bodies)
+            b = sim.add(row['id'], row['template'], row['owner'], row['x'], row['y'], at=sim.t, team=row['team'])
+            spare.update((name, o) for name, o in sim.bodies.items() if o is not b and before.get(name) is not o)
+        else:
+            b.x, b.y = float(row['x']), float(row['y'])
+            simorder.stand(b)
+            b.team = row['team']
+        if row['team']:
+            sim.active.add(row['team'])     # a team a thing is in has an instance (its number is not carried)
+        _set_thing(sim, b, row)
+        placed.append((i, row, b))
+    for name, b in spare.items():           # made alongside, not in the file: the source has none
+        if b.alive:
+            sim.act('NAMED_DELETE', [name], LABEL)
+    sim.reblock()
+    sim.change()
+    for i, row, b in placed:
+        got = _plain(_own_fields(b))
+        for k in THING:
+            if k in LATER and row[k]:
+                gaps.append(f'things[{i}].{k}: {LATER[k]}')
+            elif k not in LATER and got[k] != row[k]:
+                gaps.append(f'things[{i}].{k}: {row[k]!r} in the file, the host reads {got[k]!r}'
+                            + (f' -- {WHY[k]}' if k in WHY else ''))
+    return gaps
