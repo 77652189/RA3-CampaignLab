@@ -486,6 +486,51 @@ def test_a_team_button_presses_its_members_not_a_reference_of_their_name():
     assert 'GENERIC_TOGGLE_STATE' in s.bodies['lead'].status and 'GENERIC_TOGGLE_STATE' not in s.bodies['other'].status
 
 
+def test_a_team_build_button_queues_at_the_member_not_a_reference_of_its_name():
+    """TEAM_USE_COMMANDBUTTON_ABILITY's build button queues at the factory the team action picked (same-name sweep
+    11-19b O07: the port read the press's factory again by name, so a reference `f` pointing at the player's other
+    barracks took the engineer); a factory gone since is refused, not another's queue."""
+    import simact_ability
+    s = simsmall.small_world([('f', 'AlliedBarracks', 'Player_1', 0.0, 0.0),
+                              ('other', 'AlliedBarracks', 'Player_1', 600.0, 0.0)], model=False)
+    asked = []
+    s.order_build = lambda player, tmpl, factory=None, press=False: asked.append((player, factory)) or True
+    s.bodies['f'].team = 'T'
+    s.refs['f'] = s.bodies['other']
+    s.members = lambda team: [s.bodies['f']] if team == 'T' else []
+    simact_ability.team_use_commandbutton_ability(s, 'TEAM_USE_COMMANDBUTTON_ABILITY',
+                                                  ['T', 'Command_ConstructAlliedEngineer'], None)
+    rec = s.commands.issued()[-1]
+    assert rec[1].kind == 'build' and rec[1].target == 'f' and rec[2] is True
+    assert asked == [('Player_1', s.bodies['f'])]
+    del s.bodies['f']                       # the factory the press picked is no longer in the world's table
+    assert s.commands.do(rec[1]) == (False, '找不到工厂 f') and len(asked) == 1
+
+
+def _cast_world():
+    import simcond_player
+    s = simsmall.small_world([('lead', 'AlliedSuperWeaponAdvanced', 'Player_1', 0.0, 0.0)], model=False)
+    assert s.order_power(s.bodies['lead'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
+    _run_frames(s)                          # read from the next frame's scripts
+    read = lambda who: simcond_player.player_triggered_special_power(  # noqa: E731
+        s, 'PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED', ['Player_1', 'SpecialPowerParticleCannon', who])
+    return s, read
+
+
+def test_a_cast_from_named_is_the_casters_not_a_name_it_had():
+    """PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED reads the cast's own object (same-name sweep 11-19b O38, Generals keeps
+    the caster's ObjectID: by name, a `lead` made after the caster died took its cast, and a reference pointing at the
+    caster missed it); a cast is kept for a reader of its own caster."""
+    s, read = _cast_world()
+    old = s.bodies['lead']
+    old.alive = False
+    s.add('lead', 'AlliedSuperWeaponAdvanced', 'Player_1', 600.0, 0.0)
+    assert s.bodies['lead'] is not old and read('lead') is False and len(s.casts) == 1
+    s, read = _cast_world()
+    s.refs['alias'] = s.bodies['lead']
+    assert read('alias') is True and s.casts == []
+
+
 def test_the_proxy_players_click_reaches_his_units_not_a_reference_of_their_name():
     """simproxy.SimWorld.issue gives the units it picked (alive, his) by serial (review 11-19 h #1: by name, a script
     reference `a` pointing at an enemy took a's move; the attack and the transform went astray the same way)."""

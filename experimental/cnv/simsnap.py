@@ -32,7 +32,8 @@ from engine.ports.command import Command
 from engine.script import lists as script_lists
 
 STATE, ALIAS, KERNEL, EXECUTOR, CACHE, WIRE, STATIC = 'state', 'alias', 'kernel', 'executor', 'cache', 'wire', 'static'
-VERSION = 10            # 10: acting, a sequential step's unit by its name (review 11-19 n P3; empty between frames);
+VERSION = 11            # 11: a cast's caster by serial (same-name sweep 11-19b O38); 10: acting, a sequential
+                        # step's unit by its name (review 11-19 n P3; empty between frames);
                         # 9: W3, the fight's clocks / pre_locks / fire_gate are the shooter's WeaponSet's STATE, not
                         # the host's; 8: W2, a body's weapons / slots are its WeaponSet module's STATE; 2: 'others', the things held but not in bodies (_things); 3: the kernel's 'late';
                         # 4: areas.missing (4.4, 11-19); 5: the queue's events -- a posted command as itself

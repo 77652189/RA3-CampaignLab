@@ -240,7 +240,7 @@ class Specials:
             self.wfires.remove(job)
             # engine_acts_wet (round 226): each bear's roar seen cast once by PLAYER_TRIGGERED_SPECIAL_POWER, the
             # ones pressed _ON_NAMED when the bear has walked up to its target
-            casts.append((frame, b.owner, ab['power'].lower(), b.name, None))
+            casts.append((frame, b.owner, ab['power'].lower(), b.serial, None))
             eff = job['eff']
             for dmg, typ, reach, after in eff['damage']:
                 death_blasts.append((frame + simunits._frames(after), b.x, b.y, dmg, typ, reach,

@@ -50,7 +50,10 @@ def named_buttons(sim, name, a, script, unit=None):
         # tier, a factory still unpacking -- INFERRED, not measured)
         f = body(a[0])
         tmpl = simunits.built(f.template, a[1], sim.own, f.upgrades)
-        if not _order(sim, 'build', None, ('press', True), player=f.owner, template=tmpl, target=a[0])[0]:
+        # the factory as the action found it, by serial (same-name sweep 11-19b O07: by name the port read `a[0]`
+        # again, a reference of a member's name took its press)
+        if not _order(sim, 'build', None, ('press', True), ('target_serial', f.serial), player=f.owner,
+                      template=tmpl, target=a[0])[0]:
             sim.note('生产', f'{sim.label(f)} 按 {a[1]}：现在造不了 {tmpl}')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and simgarrison.ejects(a[1], sim.own):
         # a transport's eject at the spot (simgarrison; bench 11-10 engine_transport load 跳)
@@ -104,7 +107,7 @@ def named_buttons(sim, name, a, script, unit=None):
         # (PLAYER_TRIGGERED_SPECIAL_POWER) the player's and the computer's alike -- and nobody comes, in six
         # runs (its OCL's CREATE_AT_EDGE_NEAR_SOURCE not explained: inventory NOTES)
         b = body(a[0])
-        sim.casts.append((sim.frame_now(), b.owner, simunits.command_power(a[1], sim.own).lower(), b.name,
+        sim.casts.append((sim.frame_now(), b.owner, simunits.command_power(a[1], sim.own).lower(), b.serial,
                            sim.point(a[2])))
         sim.note('技能', f'{sim.label(b)} 按 {a[1]}：算放了，没出东西（推断）')
     elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and \
@@ -132,7 +135,7 @@ def named_buttons(sim, name, a, script, unit=None):
         b = body(a[0])
         power, n = simunits.press_records(b.template, a[1], sim.own)
         sim.used.add('special power')
-        sim.casts += [(sim.frame_now(), b.owner, power.lower(), b.name, None)] * n
+        sim.casts += [(sim.frame_now(), b.owner, power.lower(), b.serial, None)] * n
         sim.note('技能', f'{sim.label(b)} 按 {a[1]}：记 {n} 次施放')
     elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
         script_cast(sim, name, a, unit)
@@ -154,7 +157,7 @@ def script_cast(sim, name, a, unit=None):
     if b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT':
         # bench 11-09 engine_scripts8b pfire / pdis: every script cast (the player-level one too, a second
         # one in the reload that hurts nobody) is seen by PLAYER_TRIGGERED_SPECIAL_POWER for one frame
-        sim.casts.append((sim.frame_now(), b.owner, str(a[1]).lower(), b.name,
+        sim.casts.append((sim.frame_now(), b.owner, str(a[1]).lower(), b.serial,
                            sim.point(a[2]) if len(a) > 2 else None))
     got = b and b.alive and name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT' and \
         simunits.assemble(b.template, a[1], sim.own)

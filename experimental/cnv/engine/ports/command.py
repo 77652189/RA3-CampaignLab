@@ -438,8 +438,9 @@ class Commands:
     def _build(self, cmd):
         w = self._w
         if cmd.arg('objects'):              # a map script's press of that factory's build button (press: queued while
-            f = w.body(cmd.target)          # banned, bench engine_production g); the action names the template
-            if f is None:                   # no factory: refused, not another's queue (review 11-19 f #5)
+            f = self._target(cmd, w.body)   # banned, bench engine_production g); the action names the template
+            if f is None:                   # no factory: refused, not another's queue (review 11-19 f #5; by serial,
+                                            # one gone since: same-name sweep 11-19b O07)
                 return False, f'找不到工厂 {cmd.target}'
             if w.order_build(cmd.player, cmd.template, factory=f, press=cmd.arg('press', False)):
                 return True, ''

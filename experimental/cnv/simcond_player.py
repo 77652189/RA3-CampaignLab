@@ -38,14 +38,16 @@ def player_triggered_special_power(sim, name, a):
     # (+16: two entries, simunits.press_records); 区 1 / 5 -- IN_AREA looks at the cast's point (the hive's
     # own zone never), the cast outside both zones taken by PLAYER_TRIGGERED, FROM_NAMED(hive) never.
     # Seen from the next frame's scripts (bench 11-09 engine_scripts8b pfire 施放数 1, pdis 2). INFERRED:
-    # FROM_NAMED with the named unit dead is false (Generals looks the object up)
+    # FROM_NAMED with the named unit dead is false (Generals looks the object up). The cast keeps its caster's
+    # serial (Generals: the ObjectID; same-name sweep 11-19b O38 -- by name, a unit made under the dead caster's name
+    # took its cast, and a reference pointing at the caster missed it)
     now = sim.frame_now()
     for k, (f, owner, power, who, q) in enumerate(sim.casts):
         if f >= now or owner != a[0] or power != str(a[1]).lower():
             continue
         if name.endswith('_FROM_NAMED'):
             src = sim.body(a[2])
-            if src is None or not src.alive or who != a[2]:
+            if src is None or not src.alive or src.serial != who:
                 continue
         if name.endswith('_IN_AREA') and not (q and inside(sim.areas[a[2]], *q)):
             continue

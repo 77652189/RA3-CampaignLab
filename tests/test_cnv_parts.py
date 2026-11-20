@@ -158,6 +158,23 @@ def test_contract_catches_what_nobody_published():
         m2.ability('carrier', 'fly')
 
 
+def test_contract_refuses_a_role_key_that_is_another_objects_name():
+    """A role's key that is another object's name, or an object named as a numbered group of roles stands, reads the
+    role in a line (Sim.pick): the player's and autoplay's orders to the object went to another (same-name sweep 11-19b
+    O22 / O23). A role keyed by its own object's name is fine."""
+    from maps import island
+    m = parts.Mission(name='X', map=island, units=[a8.mission().units[0]])
+    uid = m.units[0].id
+    m.put(uid, 'west shore', name='C', role='C')                         # its own name: fine
+    m.put(uid, 'east 1', name='D', role='carrier')
+    assert parts.contract(m) == []
+    m.put(uid, 'east 2', name='carrier')                                 # an object named as the role 'carrier'
+    m.put(uid, 'east 3', name='E', role='guard 1')
+    m.put(uid, 'east field', name='guard')                                 # named as the roles 'guard 1' ... stand
+    assert parts.contract(m) == ["cast carrier: the key is another object's name (the role is 'D')",
+                                 "object guard: named as the roles guard 1, guard 2 ... are (a line naming it reads them)"]
+
+
 def test_ab_pair():
     m, t = build.PAIRS['liberty_ride_ab']()
     ids = [u.id for u in m.units]

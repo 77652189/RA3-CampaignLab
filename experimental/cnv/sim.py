@@ -958,7 +958,7 @@ class Sim:
         self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
         self.due = []                       # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
         self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
-        self.casts = []                     # (frame, owner, power, caster, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
+        self.casts = []                     # (frame, owner, power, caster's serial, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
         self.power_at = {}                  # (player, spellbook power lower) -> the frame it is ready from (spellbook_ready)
         self.queues = {}                    # factory name -> [job]: production (order_build, produce_due)
         self.produced_to = None             # the last frame produce_due ran

@@ -679,6 +679,15 @@ def contract(mission):
     created |= {args[2] for s in m.scripts for name, *args in s.do if name == POINTS_AT_TEAMS}
     out += [f'cast {k}: no object named {r.name!r}' for k, r in m.cast.items()
             if r.name and r.name not in named and r.name not in created]
+    # a role's key is no other object's name, and no object is named as a numbered group of roles stands ('guard'
+    # beside roles 'guard 1', 'guard 2'): a line naming the object reads the role (Sim.pick), so the player's and
+    # autoplay's orders to it would go to another (same-name sweep 11-19b O22 / O23; 0 of 1,098 builds had one)
+    for x in sorted(set(named) | created):
+        if x in m.cast:
+            if m.cast[x].name != x:
+                out.append(f'cast {x}: the key is another object\'s name (the role is {m.cast[x].name!r})')
+        elif [r.name for k, r in m.cast.items() if re.fullmatch(re.escape(x) + r' \d+', k)] not in ([], [x]):
+            out.append(f'object {x}: named as the roles {x} 1, {x} 2 ... are (a line naming it reads them)')
     out += [f'mark {k}: no waypoint {w!r}' for k, w in m.marks.items() if w not in m.waypoints]
     powers = {}                         # {ability: units publishing it} (a shared toggle: several kinds, one command)
     for u in m.units:
