@@ -31,6 +31,20 @@ class _LivingViews:
         return (self._unspawned if unspawned else self._live).copy()
 
 
+def refuse_living(bodies, name):
+    """Sim.add's rule for a name (coord ruling 11-19 17:15, the same-name sweep): one a living thing holds is refused
+    (ValueError) before anything is made. The game makes no second object to a name (CREATE_NAMED_ON_TEAM_AT_WAYPOINT,
+    simact_world), and whatever keeps a thing by identity (a walk-in, a queue, a mine) must not be left holding one
+    that silently left the world. A dead or deleted one's name may be taken again.
+    The one exception is the map load (Sim.add shadow=True): a map naming two objects alike (15 of the 27 retail
+    maps, e.g. a01 'UNIT - Bench 01' three times) -- the later takes the name in the earlier's place in bodies, the
+    earlier leaves the world before anything holds it, as before this rule. The game keeping both, the name the
+    first's, is INFERRED and an intended change of its own (work/re/handoff-r.md)."""
+    held = bodies.get(name)
+    if held is not None and held.alive:
+        raise ValueError(f'Sim.add: {name!r} is held by a living {held.template}; kill or delete it first')
+
+
 def living(world, bodies, unspawned):
     views = world._living_views
     if views is None:

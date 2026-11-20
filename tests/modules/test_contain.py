@@ -112,7 +112,7 @@ def test_a_thing_under_a_taken_name_has_none_of_the_old_ones_passengers(end):
     house = s.add('house', 'AM_Apartments_01', None, 300.0, 300.0)
     gi = s.add('gi', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 300.0)
     assert s.garrison.put(gi, house, script=True)
-    tank = s.add('house', 'SovietAntiVehicleVehicleTech3', 'Player_1', 600.0, 300.0)
+    tank = s.add('house', 'SovietAntiVehicleVehicleTech3', 'Player_1', 600.0, 300.0, shadow=True)  # (map load's path)
     assert s.garrison.held(tank) == [] and s.garrison.held(house) == [gi]
     s.garrison.due()                                # it rides with its own host, not the tank
     assert (gi.x, gi.y) == (300.0, 300.0)
@@ -133,7 +133,7 @@ def test_a_pending_evacuation_stays_with_its_host_when_its_name_is_taken(filled)
     old = s.add('host', 'AM_Apartments_01', None, 300.0, 300.0)
     p = s.add('p', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 300.0)
     assert s.garrison.put(p, old, script=True) and s.garrison.evacuate(old)
-    new = s.add('host', 'AM_Apartments_01', None, 600.0, 300.0)
+    new = s.add('host', 'AM_Apartments_01', None, 600.0, 300.0, shadow=True)  # (map load's path)
     q = s.add('q', 'AlliedAntiInfantryInfantry', 'Player_1', 700.0, 300.0)
     if filled:
         assert s.garrison.put(q, new, script=True)

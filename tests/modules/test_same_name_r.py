@@ -6,6 +6,8 @@ taken again is rare in the retail scripts)."""
 import math
 import types
 
+import pytest
+
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simact_object  # noqa: E402
 import simact_world  # noqa: E402
@@ -24,7 +26,7 @@ def test_one_sent_into_a_building_is_the_one_that_goes_in_not_a_thing_made_under
     house = s.add('house', 'AM_Apartments_01', 'PlyrCivilian', 300.0, 300.0)
     p = s.add('p', GI, 'Player_1', 900.0, 300.0)
     s.garrison.send(p, house)
-    p2 = s.add('p', GI, 'Player_1', 300.0, 320.0)      # at the door, under the name
+    p2 = s.add('p', GI, 'Player_1', 300.0, 320.0, shadow=True)  # at the door, under the name
     s.garrison.due()
     assert s.garrison.held(house) == [] and not s.garrison.busy(p2)
     assert s.garrison.put(p2, house)                    # it may go in: the walk was simply not its own
@@ -45,7 +47,7 @@ def test_one_inside_is_that_thing_a_thing_made_under_its_name_is_not_inside_nor_
     house = s.add('house', 'AM_Apartments_01', None, 300.0, 300.0)
     p = s.add('p', GI, 'Player_1', 300.0, 320.0)
     assert s.garrison.put(p, house, script=True)
-    p2 = s.add('p', GI, 'Player_1', 600.0, 300.0)
+    p2 = s.add('p', GI, 'Player_1', 600.0, 300.0, shadow=True)  # (map load's path)
     assert not s.garrison.busy(p2) and not s.garrison.out(p2)
     assert s.garrison.held(house) == [p] and s.garrison.where[p.serial] is house and (p2.x, p2.y) == (600.0, 300.0)
     (box,) = house.find(interfaces.Contain)
@@ -61,7 +63,7 @@ def test_the_attacked_by_conditions_read_the_object_that_hit_not_a_thing_made_un
     assert simcond_object.named_attacked_by_player(s, 'NAMED_ATTACKED_BY_PLAYER', ['victim', 'Player_2'])
     gun.owner = 'Player_3'                              # changed hands: counts for its new owner (the game's id)
     assert simcond_object.named_attacked_by_player(s, 'NAMED_ATTACKED_BY_PLAYER', ['victim', 'Player_3'])
-    s.add('gun', GI, 'Player_2', 500.0, 300.0)          # the name taken by another player's infantry
+    s.add('gun', GI, 'Player_2', 500.0, 300.0, shadow=True)  # the name taken by another player's infantry
     assert victim.last_by == 'gun' and victim.find(interfaces.Body).last_attacker() is gun
     assert not simcond_object.named_attacked_by_player(s, 'NAMED_ATTACKED_BY_PLAYER', ['victim', 'Player_2'])
     assert not simcond_object.named_attacked_by_objecttype(s, 'NAMED_ATTACKED_BY_OBJECTTYPE', ['victim', GI])
@@ -98,7 +100,7 @@ def test_an_unpack_due_is_the_builders_own_a_thing_made_under_its_name_is_not_re
     mcv.replace = True
     mcv.building = ('AlliedConstructionYard', (300.0, 300.0), 50.0)
     assert s.at_site(mcv, 0.0)
-    mcv2 = s.add('mcv', 'AlliedMCV', 'Player_1', 600.0, 300.0)
+    mcv2 = s.add('mcv', 'AlliedMCV', 'Player_1', 600.0, 300.0, shadow=True)  # (map load's path)
     mcv2.replace = True
     was = set(s.bodies)
     s.build_due(s.frame_now() + 10)
@@ -128,7 +130,7 @@ def test_a_node_made_under_the_old_ones_name_has_none_of_its_ore_taken():
     end = _run(s, mining, (1, 2000), paid, lambda: sum(g for _, g in paid) >= simmine.MINE_LOAD)
     taken = mining.nodes[old.serial]['gathered']
     assert taken >= simmine.MINE_LOAD
-    new = s.add('node', 'OreNode', 'PlyrCivilian', 300.0, 0.0)
+    new = s.add('node', 'OreNode', 'PlyrCivilian', 300.0, 0.0, shadow=True)  # (map load's path)
     _run(s, mining, (end + 1, 6000), paid, lambda: sum(g for _, g in paid) >= taken + 2 * simmine.MINE_LOAD)
     assert mining.nodes[old.serial]['gathered'] == taken                # the old node's ore: no more taken
     assert 0 < mining.nodes[new.serial]['gathered'] <= sum(g for _, g in paid) - taken + simmine.MINE_LOAD
@@ -145,7 +147,7 @@ def test_a_miner_docked_before_loading_takes_nothing_from_a_node_that_has_left_t
     old = s.bodies['node']
     end = _run(s, mining, (1, 2000), paid, lambda: b.mine is not None and b.mine['state'] == 'docked')
     assert mining.nodes[old.serial]['gathered'] == 0 and mining.nodes[old.serial]['at'] is b
-    new = s.add('node', 'OreNode', 'PlyrCivilian', 900.0, 0.0)
+    new = s.add('node', 'OreNode', 'PlyrCivilian', 900.0, 0.0, shadow=True)  # (map load's path)
     _run(s, mining, (end + 1, 6000), paid, lambda: sum(g for _, g in paid) >= simmine.MINE_LOAD)
     assert mining.nodes[old.serial]['gathered'] == 0 and mining.nodes[old.serial]['at'] is None
     assert mining.nodes[new.serial]['gathered'] >= simmine.MINE_LOAD     # (the next batch may be reserved)
@@ -158,7 +160,7 @@ def test_a_load_goes_to_the_refinery_picked_not_a_thing_made_under_its_name():
     b = s.bodies['miner']
     end = _run(s, mining, (1, 2000), paid, lambda: b.mine is not None and b.mine['state'] == 'to refinery')
     assert b.mine['state'] == 'to refinery' and paid == []
-    s.add('ref', TANK, 'Player_2', 0.0, 0.0)                # an enemy tank under the name
+    s.add('ref', TANK, 'Player_2', 0.0, 0.0, shadow=True)  # an enemy tank under the name
     _run(s, mining, (end + 1, end + 600), paid)
     assert [g for o, g in paid if o == 'Player_1'] == [] and b.mine['state'] == 'find refinery'    # none of its
                                                             # own left: it keeps looking
@@ -179,7 +181,7 @@ def test_a_load_cut_off_mid_unload_brings_only_what_is_left_to_the_next_refinery
                and b.mine['n'] == 10)
     got = sum(g for o, g in paid if o == 'Player_1')
     assert 0 < got < simmine.MINE_LOAD and b.mine['load'] == simmine.MINE_LOAD
-    s.add('ref', TANK, 'Player_2', 0.0, 0.0)                # an enemy tank under the near one's name
+    s.add('ref', TANK, 'Player_2', 0.0, 0.0, shadow=True)  # an enemy tank under the near one's name
     end = _run(s, mining, (end + 1, end + 2000), paid, lambda: b.mine['state'] == 'locate')
     assert b.find(interfaces.OreMiner).refinery is s.bodies['ref2']
     assert sum(g for o, g in paid if o == 'Player_1') == simmine.MINE_LOAD     # one load's money, not 330
@@ -193,7 +195,7 @@ def test_a_nodes_claim_and_dock_are_the_miners_own_not_a_thing_made_under_its_na
     n = mining.nodes[node.serial]
     assert n['claim'] is a
     n['at'] = a
-    a2 = s.add('miner', 'AlliedMiner', 'Player_1', 300.0, 60.0)
+    a2 = s.add('miner', 'AlliedMiner', 'Player_1', 300.0, 60.0, shadow=True)  # (map load's path)
     om = a2.find(interfaces.OreMiner)
     om.set_trip({'state': 'docked', 'node': None, 'ref': None, 'due': 10 ** 9, 'load': 0, 'n': 0, 'leg': None})
     om.head_for(node=node)
@@ -210,8 +212,32 @@ def test_the_attachment_status_goes_on_the_linked_things_not_on_ones_made_under_
     s.attachments[child.serial] = (child, parent, {'child': {'ATTACHED'}, 'parent': {'VEHICLE_ATTACHED'}})
     s.attachment_tick()
     assert child.attachment_status == {'ATTACHED'} and parent.attachment_status == {'VEHICLE_ATTACHED'}
-    child2 = s.add('child', GI, 'Player_1', 500.0, 300.0)
-    parent2 = s.add('parent', TANK, 'Player_1', 500.0, 300.0)
+    child2 = s.add('child', GI, 'Player_1', 500.0, 300.0, shadow=True)  # (map load's path)
+    parent2 = s.add('parent', TANK, 'Player_1', 500.0, 300.0, shadow=True)  # (map load's path)
     s.attachment_tick()
     assert child2.attachment_status == set() and parent2.attachment_status == set()
     assert child2.serial not in s.attachments
+
+
+def test_a_name_a_living_thing_holds_is_refused_and_nothing_is_made():
+    """Coord ruling 11-19 17:15: Sim.add never puts a second thing under a living one's name -- what keeps the first
+    by identity (a walk-in, a queue, a mine) would be left holding one that silently left the world."""
+    s = simsmall.small_world()
+    p = s.add('p', GI, 'Player_1', 300.0, 300.0)
+    names, serials = set(s.bodies), {b.serial for b in s.living()}
+    with pytest.raises(ValueError, match="'p' is held by a living"):
+        s.add('p', TANK, 'Player_2', 600.0, 300.0)
+    assert set(s.bodies) == names and {b.serial for b in s.living()} == serials
+    assert s.bodies['p'] is p and p.alive and p in s.living()
+
+
+def test_a_dead_or_deleted_ones_name_may_be_taken_again():
+    s = simsmall.small_world()
+    p = s.add('p', GI, 'Player_1', 300.0, 300.0)
+    q = s.add('q', GI, 'Player_1', 400.0, 300.0)
+    s.destroy(p, 'test')
+    s.delete(q, 'test')
+    p2 = s.add('p', GI, 'Player_1', 300.0, 300.0)
+    q2 = s.add('q', TANK, 'Player_1', 400.0, 300.0)
+    assert s.bodies['p'] is p2 and s.bodies['q'] is q2 and p2 in s.living() and q2 in s.living()
+    assert p not in s.living() and q not in s.living()

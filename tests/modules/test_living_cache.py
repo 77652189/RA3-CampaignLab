@@ -47,6 +47,7 @@ def test_living_cache_tracks_same_frame_world_and_spawn_changes():
     _assert_view(world.living(), old_a, b)
     _assert_view(brain.living(), old_a, b)
 
+    world.delete(old_a, 'test')                         # (Sim.add refuses a living one's name)
     a = world.add('a', UNIT, world.human, 350, 300)
     _assert_view(world.living(), a, b)  # a reused name keeps its dict position
     world.proto('proto', UNIT, world.human)

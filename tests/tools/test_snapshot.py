@@ -131,7 +131,7 @@ def _shadowed(m, t):
     s = sim.Sim(m, t, model=False)
     old = next(iter(s.bodies.values()))
     s.refs['old'] = old
-    s.add(old.name, old.template, old.owner, old.x + 30.0, old.y)
+    s.add(old.name, old.template, old.owner, old.x + 30.0, old.y, shadow=True)  # (map load's path)
     return s, old
 
 
@@ -300,6 +300,8 @@ def test_a_thing_made_in_the_run_and_a_module_attached_come_back():
 def _replace_attached(s, n):
     """`n` times a new 'same' in the name's place, each with a late lifetime (World.attach); the last one's serial."""
     for _ in range(n):
+        if 'same' in s.bodies:                          # (Sim.add refuses a living one's name)
+            s.delete(s.bodies['same'], 'test')
         b = s.add('same', 'AlliedAntiInfantryInfantry', 'Player_1', 350, 300)
         simbody.last_until(s, b, s.world.frame + 300)
     serial = b.serial
@@ -396,7 +398,7 @@ def test_another_worlds_thing_at_a_serial_left_free_is_an_error():
     """1119h P3: the first of two things of one name, held by nothing once the second took its name, leaves its
     serial free in what the snapshot reaches; another run's thing of that serial is still not this run's."""
     a = simsmall.small_world([('same', 'AlliedAntiInfantryInfantry', 'Player_1', 300, 300)], model=False)
-    a.add('same', 'AlliedAntiInfantryInfantry', 'Player_1', 320, 300)
+    a.add('same', 'AlliedAntiInfantryInfantry', 'Player_1', 320, 300, shadow=True)  # (map load's path)
     other = simsmall.small_world([('same', 'AlliedAntiInfantryInfantry', 'Player_1', 1600, 300)], model=False)
     assert other.bodies['same'].serial == 0 and a.bodies['same'].serial == 1
     a.refs['check'] = other.bodies['same']

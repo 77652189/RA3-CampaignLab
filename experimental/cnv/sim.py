@@ -973,7 +973,7 @@ class Sim:
         self.active = set(teams.values())               # teams with an instance: a whole-team order to any other is lost (E3)
         self.lost_orders = []                           # (t, script, order, team) given to a team nobody had joined
         for k, o in enumerate(list(getattr(mission.map, 'OBJECTS', [])) + self.mm.objects):
-            b = self.add(o.name or f'#{k}', o.template, self.owner_of(o.side), o.x, o.y)
+            b = self.add(o.name or f'#{k}', o.template, self.owner_of(o.side), o.x, o.y, shadow=True)  # simliving
             # a bare object is on its player's default team (island.like writes 'Soviet_5/teamSoviet_5'; the container
             # has teamSoviet_2 .. 6 too): bench 11-14 engine_acts_x own, PLAYER_TRANSFER_OWNERSHIP_PLAYER leaves it
             b.team = teams.get(o.side) or (self.mm.team(o.side) if hasattr(self.mm, 'team')    # a retail map (Merged)
@@ -1066,14 +1066,14 @@ class Sim:
         self.world.drop(self.bodies.pop(name))
         return b
 
-    def add(self, name, template, owner, x, y, by='', at=0.0, team=''):
+    def add(self, name, template, owner, x, y, by='', at=0.0, team='', shadow=False):
+        if not shadow:                          # a living one's name: refused (ValueError); the map load's: shadowed
+            simliving.refuse_living(self.bodies, name)
         st = simunits.stats(template, self.own)
         b = Body(name, template, owner, float(x), float(y), st['speed'], st['surface'],
                  max(st['vision'] or 0.0, st['shroud'] or 0.0), frozenset(st['kinds']), made_by=by, made_at=at)
-        b.guessed = st['guessed']
-        b.clear_height = st['clear_height']
-        b.radius = st.get('radius') or 0.0
-        b.sight = st['vision'] or 0.0
+        b.guessed, b.clear_height = st['guessed'], st['clear_height']
+        b.radius, b.sight = st.get('radius') or 0.0, st['vision'] or 0.0
         if b.speed > 0 and b.surface != 'air':      # aircraft bank as they fly: not benched, they turn at once
             b.turn_rate, limit = simunits.turning(template, self.own)
             b.turn_first = limit is not None
@@ -1124,7 +1124,7 @@ class Sim:
             b.radius = math.hypot(a, c)
             b.vision = b.sight = 0.0         # a prop has no sight (stats' unit-only table otherwise guesses 100)
             self.topples.append(b)
-        self.world.drop(self.bodies.get(name))  # a body under the same name leaves the world
+        self.world.drop(self.bodies.get(name))  # a dead one under the same name leaves the world (a living one: above)
         self.bodies[name] = b
         spawns = b.find(kernel_interfaces.Spawn)    # SpawnBehavior (engine/modules/spawn.py)
         for m in spawns:

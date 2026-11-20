@@ -744,6 +744,8 @@ def test_the_proxy_does_not_keep_the_objects_it_saw():
     s, w = _proxy([])
     seen = []
     for _ in range(30):
+        if 'same' in s.bodies:                          # (Sim.add refuses a living one's name)
+            s.delete(s.bodies['same'], 'test')
         b = s.add('same', APOC, 'Player_1', 1250.0, 2500.0)
         seen.append(weakref.ref(b))
         w._id(b)
