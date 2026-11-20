@@ -401,8 +401,9 @@ def test_move_tail_guard_bites():
 HOST_USERS = ('simai', 'simproxy')
 MUTATORS = {'append', 'pop', 'update', 'add', 'setdefault', 'remove', 'discard', 'clear', 'extend', 'insert'}
 # what the two hold of the Sim: itself, the world API, the Peers loan, and the AI port's Settings (R3 13f-2a: the
-# mission's AI settings, read through; its two writes are its methods)
-HOST_HANDLES = ('sim', 'world', 'peers', 'settings')
+# mission's AI settings, read through; its two writes are its methods) and PlayerSystems (13f-2c: the production
+# queues read through; the wallet's writes are its methods)
+HOST_HANDLES = ('sim', 'world', 'peers', 'settings', 'systems')
 
 
 def host_write_breaks(mods=HOST_USERS, source=None):
@@ -486,8 +487,8 @@ def test_the_ai_reads_its_settings_through_the_ai_port():
 def test_settings_guard_bites():
     """Mutation check on the real file: a Settings name lent by Peers again, a setting read that Settings lacks."""
     src = (CNV / 'simai.py').read_text(encoding='utf-8')
-    assert settings_breaks(src.replace("PEERS = frozenset({'can_build',", "PEERS = frozenset({'ai_paused', "
-                                       "'can_build',")) == [('PEERS', 'ai_paused')]
+    assert settings_breaks(src.replace("PEERS = frozenset({'modify'", "PEERS = frozenset({'ai_paused', "
+                                       "'modify'")) == [('PEERS', 'ai_paused')]
     assert [n for _, n in settings_breaks(src.replace('self.settings.ai_switches.get(',
                                                       'self.settings.switches.get('))] == ['switches']
 
@@ -524,10 +525,44 @@ def test_observe_guard_bites():
     """Mutation check on the real file: a name read through Observe lent by Peers again, a simrange rule lent again,
     an observe read that Observe lacks."""
     src = (CNV / 'simai.py').read_text(encoding='utf-8')
-    assert observe_breaks(src.replace("PEERS = frozenset({'can_build',", "PEERS = frozenset({'money', 'reach_of', "
-                                      "'can_build',")) == [('PEERS', 'money'), ('PEERS', 'reach_of')]
+    assert observe_breaks(src.replace("PEERS = frozenset({'modify'", "PEERS = frozenset({'money', 'reach_of', "
+                                      "'modify'")) == [('PEERS', 'money'), ('PEERS', 'reach_of')]
     assert [n for _, n in observe_breaks(src.replace('self.observe.attachments()',
                                                      'self.observe.attached()'))] == ['attached']
+
+
+# R3 13f-2c: the players' systems (power, the build permissions, the upgrades for sale, the production queues, the
+# wallet) reach simai through the AI port's PlayerSystems (held as `systems`) and its orders through the command port
+# it holds (`commands`): every `systems.X` it reads is a PlayerSystems name, and PEERS lends nothing but AI_PEERS_LEFT
+# -- `modify`, the micro's charge recomputing a body's attributes (an effect of the power: it goes with toggle / power
+# into the command family)
+AI_PEERS_LEFT = frozenset({'modify'})
+
+
+def systems_breaks(source=None):
+    """(line, name) for each `systems.X` in simai that PlayerSystems does not have, and ('PEERS', name) for each name
+    PEERS lends beyond AI_PEERS_LEFT."""
+    names = {n for n in vars(_ai_port().PlayerSystems) if not n.startswith('_')}
+    tree = ast.parse(source) if source is not None else _tree('simai')
+    out = [(n.lineno, n.attr) for n in ast.walk(tree) if isinstance(n, ast.Attribute) and _held(n.value, 'systems')
+           and n.attr not in names]
+    lent = next((ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
+                 and getattr(n.targets[0], 'id', '') == 'PEERS'), set())
+    return out + [('PEERS', n) for n in sorted(lent - AI_PEERS_LEFT)]
+
+
+def test_the_ai_asks_the_player_systems_through_the_ai_port():
+    assert not systems_breaks()
+
+
+def test_systems_guard_bites():
+    """Mutation check on the real file: a player system or the command port lent by Peers again, a systems read that
+    PlayerSystems lacks (the wallet itself, not its three methods)."""
+    src = (CNV / 'simai.py').read_text(encoding='utf-8')
+    assert systems_breaks(src.replace("PEERS = frozenset({'modify'", "PEERS = frozenset({'queues', 'commands', "
+                                      "'modify'")) == [('PEERS', 'commands'), ('PEERS', 'queues')]
+    assert [n for _, n in systems_breaks(src.replace('systems.held(self.player)',
+                                                     'systems.wallet.held(self.player)'))] == ['wallet']
 
 
 # step 9d-2: simai reads its host only through the world API and its Peers loan; the raw Sim it is handed is kept as

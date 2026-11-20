@@ -552,8 +552,8 @@ def test_planted_orders_in_the_ai_are_found():
                       "            self.peers.order_move(b, (t.x, t.y), True)\n"),
                      ("        face = float(arg[2]) if len(arg) > 2 and arg[2] is not None else None\n",
                       "        b.goal = None\n        face = float(arg[2]) if len(arg) > 2 and arg[2] is not None else None\n"),
-                     ("        self.peers.commands.do(Command('place', ",
-                      "        world.add(name, template, self.player, x, y)\n        self.peers.commands.do(Command('place', "),
+                     ("        self.commands.do(Command('place', ",
+                      "        world.add(name, template, self.player, x, y)\n        self.commands.do(Command('place', "),
                      ("        if b and b.owner == self.player and self.give('toggle', b, args=(('button', info.command),))[0]:\n",
                       "        if b and b.owner == self.player and self.peers.toggle_miner_armor(b, info.command):\n")):
         planted = src.replace(old, new)

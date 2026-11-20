@@ -143,6 +143,7 @@ def test_engage_dead_pursuit_continues_cancelled_path():
     moves = []      # the AI's orders go through the command port (R3 13f-1): its attack-move, target dropped first
     brain.world = brain.peers = SimpleNamespace(world=SimpleNamespace(numbered={7: body}), bodies={'member': body},
                                                commands=SimpleNamespace(do=lambda cmd: moves.append(cmd) or (True, '')))
+    brain.commands = brain.peers.commands       # the Brain holds the command port itself (R3 13f-2c)
     brain._hunt_goals = {7: state}
     brain.hunt_threats(1)  # no partition scan before the first eligible frame
     assert state.state == 33 and state.target is retained

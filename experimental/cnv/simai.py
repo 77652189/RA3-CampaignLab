@@ -87,13 +87,14 @@ from engine.ports import ai as ai_port  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 import simrange  # noqa: E402
 
-# What the skirmish AI reads on its host (the Sim) beyond the world (simworld.WORLD_API): the command port its orders
-# go through (R3 13f-1) and the player systems it asks (power, production, the wallet; 13f-2c moves them). The
-# mission's AI settings come through the AI port's Settings and the frame loop is its runner's (R3 13f-2a,
-# engine/ports/ai.py); money, flags and the fight it reads through the observation port, the weapon reach rules
-# off L3 simrange (13f-2b). It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
-PEERS = frozenset({'can_build', 'commands', 'engineer_entry', 'modify', 'offers', 'power', 'proto', 'queues',
-                   'upgrade_sellers', 'wallet'})
+# What the skirmish AI borrows on its host (the Sim) beyond the world (simworld.WORLD_API) and the ports: only
+# `modify`, the attributes worked out again after its micro's charge (simmicro.fire) -- an effect of the power, a
+# shortcut that goes with toggle / power into the command family. Everything else comes through ports: its orders
+# through the command port (`commands`, R3 13f-1); the mission's AI settings and the players' systems (power,
+# production, the wallet) through the AI port's Settings and PlayerSystems, the frame loop its runner's (13f-2a /
+# 13f-2c, engine/ports/ai.py); money, flags and the fight through the observation port, the weapon reach rules off
+# L3 simrange (13f-2b). It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
+PEERS = frozenset({'modify'})
 
 
 class Peers:
@@ -238,6 +239,8 @@ class Brain:
 
     def __init__(self, host, player, side, personality, frame):
         self.host, self.world, self.peers, self.player = host, host.world, host.peers, player
+        self.commands = host.commands   # the command port its orders go through (13f-1)
+        self.systems = host.systems     # the players' systems it asks (power, production, the wallet; 13f-2c)
         self.settings = host.settings   # the mission's AI settings (the AI port)
         self.observe = host.observe     # the observation port (its reads of the fight, money, flags: 13f-2b)
         self.made_as = (side, personality)      # how SimAI.attach made it (a snapshot's brain is made again so)
@@ -255,7 +258,7 @@ class Brain:
         # ResourceMultiplierCheat: the AI's deposits x the line for its difficulty (Sim.mine_due; data.resource_multiplier)
         mult = getattr(host.data, 'resource_multiplier', lambda *a: 1.0)(personality, self.ai.difficulty)
         if mult != 1.0:
-            self.peers.wallet.multiply_income(player, mult)         # simmoney (L4)
+            self.systems.multiply_income(player, mult)              # the AI port's PlayerSystems (shortcut)
         self.paths = {}                 # (surface, template, condition) -> (frame asked, answer)
         self.path_rng = random.Random(host.seed)    # the spot's start angles (the engine: the logic random)
         self.tower_rng = random.Random(host.seed)   # a base defence's angle and radius jitter (its own: no other draw moves)
@@ -777,7 +780,7 @@ class Brain:
             if not foes:
                 return None
             who = foes[0]
-        sup, dem = self.peers.power(who)
+        sup, dem = self.systems.power(who)
         return sup - dem
 
     def has_target(self, st):
@@ -857,7 +860,7 @@ class Brain:
         t = kw.get('target')
         if t is not None and not isinstance(t, str):    # an object the AI picked: by serial, its name for the record
             kw['target'], args = t.name, args + (('target_serial', t.serial),)
-        return self.peers.commands.do(Command(kind, f'ai:{self.player}', units=(b.serial,), args=args, **kw))
+        return self.commands.do(Command(kind, f'ai:{self.player}', units=(b.serial,), args=args, **kw))
 
     def expansion_slots(self, team, p):
         """SimpleExpansion's formation move to node p (EXPANSION_ROW): {member name: (p, slot, facing)}, every living
@@ -916,7 +919,7 @@ class Brain:
         t = self.body_of(thing.id) if thing is not None else None
         if t is None or not t.alive or t.owner == self.player:
             return True
-        live = [u.body for u in team.members if u.body.alive and self.peers.engineer_entry(u.body, t)]
+        live = [u.body for u in team.members if u.body.alive and self.systems.engineer_entry(u.body, t)]
         for b in live:
             if b.mode != 'capture' or b.goal is not t:
                 self.give('capture', b, target=t)
@@ -1207,12 +1210,12 @@ class Brain:
         """AIPlayer.build_offers: of `templates`, the structures the AI could order now -- a yard, can_build, and
         nothing waiting in that template's queue (one order a queue at a time, INFERRED) -- as (template, cost,
         kinds)."""
-        world, peers, ys = self.world, self.peers, self.yards()
+        world, systems, ys = self.world, self.systems, self.yards()
         if not ys or self.player in self.settings.base_construction_disabled:   # bench aibgate:a (A269)
             return []
         out = []
         for t in templates:
-            if not self.is_structure(t) or not peers.can_build(self.player, t):
+            if not self.is_structure(t) or not systems.can_build(self.player, t):
                 continue
             q = self.queue_of(t)
             if all(self.yard_q.get(q(y)) for y in ys):
@@ -1223,19 +1226,19 @@ class Brain:
     def power_now(self, ai, frame):
         """AIPlayer.power: (supply, demand) as Sim.power (a structure still unpacking on neither side), the energy of
         everything in the AI's yard queues (built or not, till it is placed), and the structure templates it owns."""
-        world, peers = self.world, self.peers
-        sup, dem = peers.power(self.player)
+        world, systems = self.world, self.systems
+        sup, dem = systems.power(self.player)
         queued = sum(simunits.energy(j['template'], world.own) for q in self.yard_q.values() for j in q)
         owned = {b.template for b in world.living() if b.owner == self.player and 'STRUCTURE' in b.kinds}
         return sup, dem, queued, owned
 
     def build(self, template):
         """AIPlayer.builder: True once the order is taken (queued), False when nothing of the AI's can make it now."""
-        world, peers = self.world, self.peers
+        world, systems = self.world, self.systems
         if self.is_structure(template):
             ys = self.yards()
             if not ys or self.player in self.settings.base_construction_disabled \
-                    or not peers.can_build(self.player, template):
+                    or not systems.can_build(self.player, template):
                 return False        # base-disabled: bench aibgate:a (A269), no structure order taken till enabled
             q = self.queue_of(template)
             y = min(ys, key=lambda y: len(self.yard_q.get(q(y), [])))
@@ -1245,7 +1248,7 @@ class Brain:
                  'paid': 0, 'full': None})
             world.note('AI', f'{world.who(self.player)} 建造场排 {template}（{cost}，{secs:g} 秒）')
             return True
-        if not peers.can_build(self.player, template) or \
+        if not systems.can_build(self.player, template) or \
                 not any(template in self.host.menu(f.template) for f in self.factories()):
             return False
         self.unit_q.append(template)
@@ -1254,13 +1257,13 @@ class Brain:
     def upgrade_offers(self, ai, frame, upgrades):
         """AIPlayer.upgrade_offers: {upgrade: cost} of `upgrades` a structure of the AI's buys now (Sim.upgrade_sellers:
         its GameDependency met, not held, not in a queue)."""
-        peers = self.peers
-        return {u: simunits.upgrade_cost(u)[0] for u in upgrades if peers.upgrade_sellers(self.player, u)}
+        systems = self.systems
+        return {u: simunits.upgrade_cost(u)[0] for u in upgrades if systems.upgrade_sellers(self.player, u)}
 
     def upgrade(self, upgrade):
         """AIPlayer.upgrader: queue the upgrade at the structure that buys it (Sim.order_build; paid as it builds)."""
-        return bool(self.peers.upgrade_sellers(self.player, upgrade)) and \
-            self.peers.commands.do(Command('build', f'ai:{self.player}', player=self.player, template=upgrade))[0]
+        return bool(self.systems.upgrade_sellers(self.player, upgrade)) and \
+            self.commands.do(Command('build', f'ai:{self.player}', player=self.player, template=upgrade))[0]
 
     def offers(self, ai, frame):
         """AIPlayer.offers: the units the AI's live factories can build now (Sim.offers), as teams.Offer with the unit
@@ -1268,14 +1271,14 @@ class Brain:
         unit_q it would take, 1 = all such factories are busy; a unit only unpacking factories make is left out
         (state 2, cannot build now)."""
         tm = self.host.mod['teams']
-        peers, frame = self.peers, self.frame
+        systems, frame = self.systems, self.frame
         ready = [f for f in self.factories() if frame >= self.made.get(f.name, -10 ** 9) + self.host.unpack(f.template)]
         out = []
-        for t, _, _ in peers.offers(self.player):
+        for t, _, _ in systems.offers(self.player):
             fs = [f for f in ready if t in self.host.menu(f.template)]
             if not fs:
                 continue
-            idles = tuple(f.name for f in fs if not peers.queues.get(f.serial)
+            idles = tuple(f.name for f in fs if not systems.queues.get(f.serial)
                           and not any(q in self.host.menu(f.template) for q in self.unit_q))
             idle = bool(idles)
             kinds = self.host.kinds(t)
@@ -1292,10 +1295,10 @@ class Brain:
         itself too, scenery not) whose 2D distance to its centre <= distance + their radius, each with its
         relationship to the player: SAME_PLAYER, NEUTRAL (the civilian player or a Neutral relation), ENEMIES,
         else ALLIES. bench 2026-11-12 engine_aiskirm y aiskblkn / aiskblkf / aiskblkr."""
-        world, peers = self.world, self.peers
+        world, systems = self.world, self.systems
         ready = [f for f in self.factories() if self.frame >= self.made.get(f.name, -10 ** 9)
                  + self.host.unpack(f.template) and template in self.host.menu(f.template)
-                 and not peers.queues.get(f.serial) and not any(q in self.host.menu(f.template) for q in self.unit_q)]
+                 and not systems.queues.get(f.serial) and not any(q in self.host.menu(f.template) for q in self.unit_q)]
         if not ready:
             return []
         live = [b for b in self.living() if not b.scenery]
@@ -1342,7 +1345,7 @@ class Brain:
     def _proto(self, template):
         """A Body of the template that is not in the world (Sim.add, then taken out again)."""
         name = f'__proto_{self.player}_{template}'
-        return self.peers.proto(name, template, self.player)
+        return self.systems.proto(name, template, self.player)
 
     def units(self, ai, frame):
         out = []
@@ -1510,7 +1513,7 @@ class Brain:
         strips x26 y9 / x28 y11 (k -3, r ~250 of the east nodes 4173,2987 / 4279,3093, facing 0), no third; aiskin0
         (Ticks 0) = aiskin1 (StartDistanceDelta 1000): x27 y18, x16 y8, x27 y25, then two more by the yard."""
         import platprops
-        world, peers = self.world, self.peers
+        world = self.world
         a = self.ai.personality.attrs
         near, start, inc, ticks = (float(a.get(k)) if a.get(k) is not None else d for k, d in REFINERY_FIELDS)
         r = platprops.radius(template) if template in platprops.CATALOG else 40.0
@@ -1536,7 +1539,7 @@ class Brain:
         if mk not in memo:
             memo.clear()
             yard = min(yards, key=lambda y: min((math.hypot(n.x - y.x, n.y - y.y) for n in nodes), default=0.0))
-            memo[mk] = (self._refinery_search(world, peers, r, reach, near, start, inc, int(ticks), yards, nodes, mine, taken,
+            memo[mk] = (self._refinery_search(world, r, reach, near, start, inc, int(ticks), yards, nodes, mine, taken,
                                               shape, [n for n in nodes if self._near_builder(n, reach, bodies)])
                         or self.node_side_spot(yard, template, nodes)
                         or self.spot(yard, template))
@@ -1648,7 +1651,7 @@ class Brain:
             memo[n.template] = float(off.get('x', 180.0))
         return memo[n.template]
 
-    def _refinery_search(self, world, peers, r, reach, near, start, inc, ticks, yards, nodes, mine, taken, shape, tried):
+    def _refinery_search(self, world, r, reach, near, start, inc, ticks, yards, nodes, mine, taken, shape, tried):
         rects = list(getattr(world.m.map, 'BORDERS', {}).values())
         x0, y0, x1, y1 = rects[self.settings.border] if self.settings.border < len(rects) else (-1e9, -1e9, 1e9, 1e9)
         hx, hy = ((float(shape.get('MajorRadius', reach)), float(shape.get('MinorRadius', reach)))
@@ -1707,7 +1710,7 @@ class Brain:
         return None
 
     def yard_due(self, frame):
-        world, peers = self.world, self.peers
+        world, systems = self.world, self.systems
         for name in list(self.yard_q):
             y, q = self.present(name[0] if isinstance(name, tuple) else name), self.yard_q[name]
             if y is None or not q:
@@ -1727,10 +1730,10 @@ class Brain:
             step = f32(100.0 / job['frames'])
             nxt = f32(job['progress'] + step)
             owe = min(job['cost'], math.ceil(round(job['cost'] * nxt / 100.0, 9))) - job['paid']
-            have = peers.wallet.held(self.player)                     # simmoney (L4)
+            have = systems.held(self.player)                         # the AI port's PlayerSystems
             if owe > have:
                 continue
-            peers.wallet.charge(self.player, owe)
+            systems.charge(self.player, owe)
             job['paid'] += owe
             job['progress'] = nxt
             if nxt >= 100.0:
@@ -1747,7 +1750,7 @@ class Brain:
             spot = self.general_spot(yard, template)
         x, y = spot or self.spot(yard, template)
         name = simworld.free_name(world, '#ai', template)
-        self.peers.commands.do(Command('place', f'ai:{self.player}', player=self.player, template=template,
+        self.commands.do(Command('place', f'ai:{self.player}', player=self.player, template=template,
                                        pos=(float(x), float(y)), args=(('name', name), ('team', yard.team))))
         self.made[name] = frame
         self.trace.append((frame, 'own', template))
@@ -1768,7 +1771,7 @@ class Brain:
 
     # ---- units, one at a time a factory
     def unit_due(self, frame):
-        world, peers = self.world, self.peers
+        world, systems = self.world, self.systems
         for b in world.living():                    # what came out of a factory since: the trace
             if b.owner == self.player and b.name.startswith('#made') and b.name not in self.made:
                 self.made[b.name] = frame
@@ -1777,8 +1780,8 @@ class Brain:
         for t in list(self.unit_q):
             free = [f for f in self.factories() if t in self.host.menu(f.template)
                     and frame >= self.made.get(f.name, -10 ** 9) + self.host.unpack(f.template)
-                    and not peers.queues.get(f.serial)]
-            if free and peers.commands.do(Command('build', f'ai:{self.player}', player=self.player, template=t))[0]:
+                    and not systems.queues.get(f.serial)]
+            if free and self.commands.do(Command('build', f'ai:{self.player}', player=self.player, template=t))[0]:
                 self.unit_q.remove(t)
 
     @property
@@ -2004,6 +2007,8 @@ class SimAI:
         mod = model()                   # None: no brain is ever made (NoModel where one would be)
         self.sim, self.mod, self.level, self.seed = s, mod, level, seed   # sim: for the callers (main, tests)
         self.world, self.peers = s, Peers(s)    # all the AI reads of its host: the world API and its loan (PEERS)
+        self.commands = s.commands      # the command port (R3 13f-1)
+        self.systems = ai_port.PlayerSystems(s)     # and the players' systems (the AI port, R3 13f-2c)
         self.settings = ai_port.Settings(s)     # and the mission's AI settings (the AI port)
         self.observe = Observe(s)       # and the observation port (R3 13f-2b)
         self.lib = lib if lib is not None or mod is None else mod['xmldata'].Library()

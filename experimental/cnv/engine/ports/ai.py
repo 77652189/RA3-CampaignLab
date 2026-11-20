@@ -15,8 +15,13 @@ world when asked (a snapshot restored writes the world's fields anew), never cop
 `plugin.tick(frame)` with the frame now; it stops early at an ending. Today the world is a sim.Sim and the plug-in
 simai.SimAI (its `advance` hands itself here); a world with no plug-in is just advanced.
 
-What the AI still reads on its host beyond these (simai.PEERS: the observation reads 13f-2b moves, the player
-systems 13f-2c) is listed there."""
+`PlayerSystems` is what a player has in the game beyond its things -- power, the build permissions, the upgrades for
+sale, the production queues, the wallet -- that the AI asks before it builds or buys (R3 13f-2c). Today no module
+keeps them: each forwards to the world's method of the same name, so moving them into modules changes only here.
+Two of the wallet's are writes the AI makes as shortcuts, not orders: `charge` (it pays for a structure it places
+at once; cmd_port.md's shortcut column) and `multiply_income` (its personality's resource multiplier, once).
+
+What the AI still borrows on its host beyond the ports (simai.PEERS) is listed there."""
 
 
 class Settings:
@@ -56,6 +61,56 @@ class Settings:
 
     def add_team_lookup(self, look):
         self._w.add_team_lookup(look)
+
+
+class PlayerSystems:
+    """The players' systems on one world (today a sim.Sim): each read when asked (a snapshot restored writes the
+    world anew), never copied."""
+    __slots__ = ('_w',)
+
+    def __init__(self, world):
+        self._w = world
+
+    def power(self, player):
+        """(supply, demand) of the player's power."""
+        return self._w.power(player)
+
+    def can_build(self, player, template, factory=None, ban=True):
+        """Whether the player may build the template (its prerequisites, the mission's bans; at that factory)."""
+        return self._w.can_build(player, template, factory, ban)
+
+    def upgrade_sellers(self, player, upgrade):
+        """The player's living things that sell the upgrade."""
+        return self._w.upgrade_sellers(player, upgrade)
+
+    def offers(self, player):
+        """What the player's factories offer now."""
+        return self._w.offers(player)
+
+    @property
+    def queues(self):
+        """factory serial -> its production jobs."""
+        return self._w.queues
+
+    def proto(self, name, template, player):
+        """A thing of the template the world never placed, to read its figures off."""
+        return self._w.proto(name, template, player)
+
+    def engineer_entry(self, body, target):
+        """Whether the target building lets the body in to capture it."""
+        return self._w.engineer_entry(body, target)
+
+    def held(self, player):
+        """The player's money now (its wallet)."""
+        return self._w.wallet.held(player)
+
+    def charge(self, player, amount):
+        """Take the amount off the player's wallet (a shortcut: the AI paying for what it places at once)."""
+        return self._w.wallet.charge(player, amount)
+
+    def multiply_income(self, player, mult):
+        """Scale the player's income (a shortcut: the AI personality's resource multiplier)."""
+        return self._w.wallet.multiply_income(player, mult)
 
 
 def drive(world, plugin, frames):
