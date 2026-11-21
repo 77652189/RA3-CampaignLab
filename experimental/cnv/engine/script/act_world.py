@@ -7,6 +7,7 @@ Each action is `fn(sim, name, a, script)`, moved verbatim out of Sim.act's chain
 import math
 
 import engine.data.units as simunits
+import engine.orders.seq as simseq
 import engine.world.handle as simworld
 from engine.script.common import LOST, SCENE_FLAG, SHOW_FLAG, WON
 
@@ -177,22 +178,18 @@ def team_transfer_to_player(sim, name, a, script):
 
 
 def unit_stop_sequential_script(sim, name, a, script):
-    # engine_seqstop:a: clear both active and queued scripts; leave the
-    # already issued move running, and allow a fresh script afterwards.
-    b = sim.body(a[0])
+    b = sim.body(a[0])                  # (unit) simseq.stop
     if b is not None:
-        sim.seq[:] = [r for r in sim.seq if r['b'] is not b]
+        simseq.stop(sim.seq, b)
 
 
 def unit_execute_sequential_script(sim, name, a, script):
-    # (unit, script) d115 14: queued on the unit (behind its others), one action a frame once it is idle
-    # (seq_due); the script becomes a subroutine. The record's loop count is 0 here (one run; the catalog's
-    # action has no third argument)
+    # (unit, script) d115 14: queued on the unit (simseq.queue). The loop count is 0 here (one run; the
+    # catalog's action has no third argument)
     b = sim.body(a[0])
     sc = sim.executor.script_named(a[1])
     if b and b.alive and sc is not None:
-        sc.subroutine = True
-        sim.seq.append({'b': b, 'script': sc, 'step': -1, 'loops': int(a[2]) if len(a) > 2 else 0})
+        simseq.queue(sim.seq, b, sc, int(a[2]) if len(a) > 2 else 0)
 
 
 def set_unit_health_percentage_to_counter(sim, name, a, script):

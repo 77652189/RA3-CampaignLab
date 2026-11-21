@@ -1,8 +1,20 @@
 """L5 UNIT_EXECUTE_SEQUENTIAL_SCRIPT (ADR 0029): each unit's queue of sequential scripts moves one step a frame once
 the unit is idle -- apart from engine.orders.order. Over the world (WORLD_API only); the host by simorder.Peers
-(PEERS): the queue lives on it (Sim.seq, the scripts' records, filled and cleared by engine.script.act_world)."""
+(PEERS): the queue lives on it (Sim.seq, the scripts' records, written here alone: the script actions call queue /
+stop)."""
 
 PEERS = frozenset({'seq', 'garrison'})
+
+
+def queue(seq, b, script, loops):
+    """UNIT_EXECUTE_SEQUENTIAL_SCRIPT: `script` behind the unit's others, a subroutine now; `loops` runs more."""
+    script.subroutine = True
+    seq.append({'b': b, 'script': script, 'step': -1, 'loops': loops})
+
+
+def stop(seq, b):
+    """UNIT_STOP_SEQUENTIAL_SCRIPT (engine_seqstop:a): the unit's scripts go (a move a step gave goes on)."""
+    seq[:] = [r for r in seq if r['b'] is not b]
 
 
 def idle(peers, b):
