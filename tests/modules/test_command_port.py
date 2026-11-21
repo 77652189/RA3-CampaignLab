@@ -712,6 +712,22 @@ def test_a_player_power_is_cast_by_the_object_it_picked_not_a_reference_of_its_n
     assert [c[1] for c in s.casts] == ['Player_1']
 
 
+def test_a_player_power_on_a_team_or_the_nearest_object_goes_off_by_the_teams_middle():
+    """FIRE_SPECIAL_POWER_ON_TEAM at the middle of the team's members; ..._ON_NEAREST_OBJECTTYPE_BY_PLAYER at the target
+    player's object of the type nearest that middle -- not the first member's, nor another owner's (work/re a283)."""
+    s = simsmall.small_world([('caster', 'JapanAntiInfantryVehicle', 'Player_1', 0.0, 0.0),
+                              ('lead', APOC, 'Player_1', 0.0, 0.0), ('next', APOC, 'Player_1', 1600.0, 0.0),
+                              ('by lead', APOC, 'Player_2', 0.0, 900.0), ('mid', APOC, 'Player_2', 800.0, 800.0),
+                              ('own', APOC, 'Player_1', 800.0, 100.0)], model=False)
+    for n in ('lead', 'next'):
+        s.bodies[n].team = 'T'
+    s.active.add('T')
+    power = 'SpecialPower_JAIV_Transform'
+    _act(s, 'FIRE_SPECIAL_POWER_ON_TEAM', 'Player_1', power, 'T')
+    _act(s, 'FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER', 'Player_1', power, APOC, 'T', 'Player_2')
+    assert [c[4] for c in s.casts] == [(800.0, 0.0), (800.0, 800.0)]
+
+
 def test_a_line_attack_and_capture_go_at_the_object_picked_not_a_reference_of_its_name():
     """A line's attack / capture order the object `pick` found, as it is (11-19 same-name sweep S3: read again by its
     name, the reference `target` pointing at another enemy took the attack, and one pointing at a tank turned the

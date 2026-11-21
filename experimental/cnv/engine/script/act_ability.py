@@ -259,6 +259,30 @@ def player_fire_special_power_at_waypoint(sim, name, a, script):
         sim.gap(GAP_ACTION, refined(name, a), f'{a[0]} 没有带 {a[1]} 的物体（协议类不模拟）')
 
 
+def fire_special_power_on_team(sim, name, a, script):
+    # (player, power, team): as PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT at the middle of the team's members; none,
+    # nothing (work/re a283)
+    crew = sim.members(a[2])
+    if crew:
+        x, y = _middle(crew)
+        player_fire_special_power_at_waypoint(sim, name, [a[0], a[1], f'@{x},{y}'], script)
+
+
+def fire_special_power_on_nearest_objecttype_by_player(sim, name, a, script):
+    # (player, power, type, team, target player): as PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT at the target player's
+    # living object of that type nearest the middle of the team's members (an empty team: the map's corner,
+    # INFERRED); none of them: nothing (work/re a283)
+    x, y, want = *_middle(sim.members(a[3])), sim.of_types(a[2])
+    goal = min((o for o in sim.bodies.values() if o.alive and o.owner == a[4] and o.template.lower() in want),
+               key=lambda o: math.hypot(o.x - x, o.y - y), default=None)
+    if goal is not None:
+        player_fire_special_power_at_waypoint(sim, name, [a[0], a[1], f'@{goal.x},{goal.y}'], script)
+
+
+def _middle(crew):
+    return (sum(b.x for b in crew) / len(crew), sum(b.y for b in crew) / len(crew)) if crew else (0.0, 0.0)
+
+
 def team_use_commandbutton_ability(sim, name, a, script):
     # (team, button) l2_scripts1 8: the button on every living member, no target. Bench 11-08 button: both
     # Peacekeepers of the crew raised their shields
@@ -287,6 +311,8 @@ ACTIONS = {
     'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT': named_buttons,
     'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED': named_buttons,
     'PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT': player_fire_special_power_at_waypoint,
+    'FIRE_SPECIAL_POWER_ON_TEAM': fire_special_power_on_team,
+    'FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER': fire_special_power_on_nearest_objecttype_by_player,
     'TEAM_USE_COMMANDBUTTON_ABILITY': team_use_commandbutton_ability,
     'TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT': team_use_commandbutton_ability_at_waypoint,
 }
