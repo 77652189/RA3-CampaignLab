@@ -1,5 +1,7 @@
 """Coverage accounting must preserve placement weight and unmeasured branches."""
+import functools
 import importlib.util
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -11,6 +13,15 @@ spec.loader.exec_module(bootstrap)
 import contain_audit
 import inventory
 import retailmodules
+
+
+@functools.cache
+def _module_rows():  # one unpatched collect for the file; tests that patch the audit collect their own
+    return tuple(inventory.collect((inventory.MODULE,)))
+
+
+def _rows(kind):
+    return [deepcopy(r) for r in _module_rows() if r['name'].startswith('Behaviors/' + kind)]
 
 
 def test_containment_forms_conserve_inventory_weight_and_keep_gaps():
@@ -66,8 +77,7 @@ def test_engineer_generic_split_preserves_weight_and_other_configuration_gaps():
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')
     assert contain_audit.engineer_capture_share() == {'campaign': 63, 'templates': 87}
-    rows = [r for r in inventory.collect((inventory.MODULE,))
-            if r['name'].startswith('Behaviors/EngineerContain')]
+    rows = _rows('EngineerContain')
     assert len(rows) == 3
     assert sum(r['uses'] for r in rows) == 70
     assert sum(r['all'] for r in rows) == 105
@@ -130,8 +140,7 @@ def test_infiltrator_energy_split_preserves_weight_and_other_effect_gaps():
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')
     assert contain_audit.infiltrator_energy_share() == {'campaign': 4, 'templates': 6}
-    rows = [r for r in inventory.collect((inventory.MODULE,))
-            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    rows = _rows('InfiltratorContain')
     assert len(rows) == 12
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
@@ -165,8 +174,7 @@ def test_infiltrator_money_split_preserves_weight_and_level_scope():
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')
     assert contain_audit.infiltrator_money_share() == {'campaign': 3, 'templates': 4}
-    rows = [r for r in inventory.collect((inventory.MODULE,))
-            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    rows = _rows('InfiltratorContain')
     assert sum(r['uses'] for r in rows) == 34
     assert sum(r['all'] for r in rows) == 38
     money = next(r for r in rows if r['name'].endswith(':STEAL_MONEY'))
@@ -237,8 +245,7 @@ def test_infiltrator_reset_configuration_stays_guessed_until_cooldown_replays():
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')
     assert contain_audit.infiltrator_reset_share() == {'campaign': 5, 'templates': 6}
-    rows = [r for r in inventory.collect((inventory.MODULE,))
-            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    rows = _rows('InfiltratorContain')
     reset = next(r for r in rows if r['name'].endswith(':RESET'))
     assert (reset['uses'], reset['all'], reset['state']) == (5, 6, inventory.GUESSED)
     assert (inventory.MODULE, reset['name']) not in inventory.BENCHED_TESTS
@@ -251,8 +258,7 @@ def test_infiltrator_vehicle_configuration_stays_guessed_until_discovery_replays
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')
     assert contain_audit.infiltrator_vehicle_share() == {'campaign': 4, 'templates': 4}
-    rows = [r for r in inventory.collect((inventory.MODULE,))
-            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    rows = _rows('InfiltratorContain')
     vehicle = next(r for r in rows if r['name'].endswith(':VISION_UNITS_VEHICLE'))
     assert (vehicle['uses'], vehicle['all'], vehicle['state']) == (4, 4, inventory.GUESSED)
     assert (inventory.MODULE, vehicle['name']) not in inventory.BENCHED_TESTS
@@ -293,8 +299,7 @@ def test_infiltrator_ordinary_vision_configuration_keeps_timing_gap():
     assert (share['campaign'], share['templates']) == (5, 5)
     assert 'JapanConstructionYard' in share['template_ids']
     assert 'AlliedNavalYard' not in share['template_ids']
-    rows = [r for r in inventory.collect((inventory.MODULE,))
-            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    rows = _rows('InfiltratorContain')
     vision = next(r for r in rows if r['name'].endswith(':VISION'))
     assert (vision['uses'], vision['all'], vision['state']) == (5, 5, inventory.GUESSED)
     assert (inventory.MODULE, vision['name']) not in inventory.BENCHED_TESTS
@@ -307,8 +312,7 @@ def test_infiltrator_aircraft_configuration_keeps_discovery_gap():
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')
     assert contain_audit.infiltrator_aircraft_share() == {'campaign': 2, 'templates': 2}
-    rows = [r for r in inventory.collect((inventory.MODULE,))
-            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    rows = _rows('InfiltratorContain')
     aircraft = next(r for r in rows if r['name'].endswith(':VISION_UNITS_AIRCRAFT'))
     assert (aircraft['uses'], aircraft['all'], aircraft['state']) == (2, 2, inventory.GUESSED)
     assert (inventory.MODULE, aircraft['name']) not in inventory.BENCHED_TESTS
@@ -321,8 +325,7 @@ def test_infiltrator_infantry_configuration_keeps_discovery_gap():
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')
     assert contain_audit.infiltrator_infantry_share() == {'campaign': 3, 'templates': 3}
-    rows = [r for r in inventory.collect((inventory.MODULE,))
-            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    rows = _rows('InfiltratorContain')
     infantry = next(r for r in rows if r['name'].endswith(':VISION_UNITS_INFANTRY'))
     assert (infantry['uses'], infantry['all'], infantry['state']) == (3, 3, inventory.GUESSED)
     assert (inventory.MODULE, infantry['name']) not in inventory.BENCHED_TESTS
@@ -335,8 +338,7 @@ def test_infiltrator_ship_configuration_keeps_discovery_gap():
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')
     assert contain_audit.infiltrator_ship_share() == {'campaign': 3, 'templates': 3}
-    rows = [r for r in inventory.collect((inventory.MODULE,))
-            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    rows = _rows('InfiltratorContain')
     ship = next(r for r in rows if r['name'].endswith(':VISION_UNITS_SHIP'))
     assert (ship['uses'], ship['all'], ship['state']) == (3, 3, inventory.GUESSED)
     assert (inventory.MODULE, ship['name']) not in inventory.BENCHED_TESTS
@@ -355,8 +357,7 @@ def test_infiltrator_port_configuration_partition():
     if not Path(retailmodules.SAGEXML).is_dir() or not Path(retailmodules.RETAILREF).is_dir():
         pytest.skip('needs SDK and retail placement cache')
     assert contain_audit.infiltrator_port_share() == {'campaign': 1, 'templates': 1}
-    rows = [r for r in inventory.collect((inventory.MODULE,))
-            if r['name'].startswith('Behaviors/InfiltratorContain')]
+    rows = _rows('InfiltratorContain')
     port = next(r for r in rows if r['name'].endswith(':VISION_PORT'))
     assert (port['uses'], port['all'], port['state']) == (1, 1, inventory.BENCHED)
     assert inventory.BENCHED_TESTS[inventory.MODULE, port['name']] == (
@@ -395,7 +396,6 @@ def test_infiltrator_paralyze_configuration_partition(monkeypatch):
     assert scope[(inventory.MODULE, 'Behaviors/InfiltratorContain:KILL')]['a1'] == {'SovietCrane'}
     raw = contain_audit.engineer_audit.audit('InfiltratorContain')
     monkeypatch.setattr(contain_audit.engineer_audit, 'audit', lambda kind: raw)
-    from copy import deepcopy
     original = deepcopy(raw)
     for field, value in [('Duration', '29s'), ('UnitFilter', 'OtherFilter'),
                          ('BlockedDuration', '1s'), ('Effect', 'RESET')]:
@@ -430,7 +430,6 @@ def test_infiltrator_kill_complete_configuration_partition(monkeypatch):
     assert scope[inventory.MODULE, 'Behaviors/InfiltratorContain']['a1'] == {'UnknownCrane'}
     raw = contain_audit.engineer_audit.audit('InfiltratorContain')
     monkeypatch.setattr(contain_audit.engineer_audit, 'audit', lambda kind: raw)
-    from copy import deepcopy
     original = deepcopy(raw)
     for field, value in [('Amount', '1'), ('EvaEventForInfiltratedPlayer', 'OtherEvent'),
                          ('Duration', '1s'), ('Effect', 'RESET'),
