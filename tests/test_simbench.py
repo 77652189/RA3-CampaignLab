@@ -13,7 +13,7 @@ _spec = importlib.util.spec_from_file_location('simbench', ROOT / 'experimental'
 simbench = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simbench)
 import engine.loop.frame as simloop  # noqa: E402
-import engine.orders.order as simorder  # noqa: E402
+import engine.orders.ability as simability  # noqa: E402
 
 
 # DEMO_KILL (strict xfail 2026-11-07, green since simorder.held_up): the opening demo's pair, stopped by the ice 157
@@ -259,11 +259,11 @@ def test_skill_the_players_click_keeps_off_objects_and_unpathable_ground():
     (box 33 x 41) refuses a2, 75 from its centre, not a point 123 from it; the sea (w) and the cliff (c1) refuse."""
     m, s = _skill('d')
     power = m.ability('engineer a', 'freeze')
-    got = [simorder.power_refusal(s, simorder.Peers(s), s.body(m.role(f'engineer b{k}').name), power, *s.point(m.mark(f'b{k}'))) for k in (1, 2, 3)]
+    got = [simability.power_refusal(s, s._order_peers(),s.body(m.role(f'engineer b{k}').name), power, *s.point(m.mark(f'b{k}'))) for k in (1, 2, 3)]
     assert got == [None, None, None]
     a, d = s.body(m.role('engineer a').name), s.body(m.role('engineer d').name)
-    assert simorder.power_refusal(s, simorder.Peers(s), a, power, *s.point(m.mark('a2'))) == 'too near an object'
-    assert simorder.power_refusal(s, simorder.Peers(s), d, power, 790.0, 2100.0) is None
+    assert simability.power_refusal(s, s._order_peers(),a, power, *s.point(m.mark('a2'))) == 'too near an object'
+    assert simability.power_refusal(s, s._order_peers(),d, power, 790.0, 2100.0) is None
     for e, spot in (('engineer w', 'w'), ('engineer c', 'c1')):
         assert s.order_power(s.body(m.role(e).name), power, s.point(m.mark(spot))) == (False, 'not pathable')
 

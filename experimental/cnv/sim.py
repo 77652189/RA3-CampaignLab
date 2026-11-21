@@ -76,7 +76,7 @@ from engine.objects.path import Ground  # noqa: E402,F401  (the routing world, M
 import engine.objects.modifier as simmodifier  # noqa: E402
 import engine.players.money as simmoney  # noqa: E402
 import engine.objects.infiltrator as siminfiltrator  # noqa: E402
-import engine.orders.order as simorder  # noqa: E402
+from engine.orders import order as simorder, ability as simability  # noqa: E402
 import engine.objects.power as simpower  # noqa: E402
 import engine.players.production as simproduce  # noqa: E402
 import engine.combat.range as simrange  # noqa: E402
@@ -1428,12 +1428,12 @@ class Sim:
         return simorder.order_guard(self, self._order_peers(), b, area)
 
     def order_power(self, b, power, pos):
-        """simorder.order_power (L5)."""
-        return simorder.order_power(self, self._order_peers(), b, power, pos)
+        """simability.order_power (L5)."""
+        return simability.order_power(self, self._order_peers(), b, power, pos)
 
     def order_transform(self, b, power):
-        """simorder.order_transform (L5)."""
-        return simorder.order_transform(self, self._order_peers(), b, power)
+        """simability.order_transform (L5)."""
+        return simability.order_transform(self, self._order_peers(), b, power)
 
     def order_stop(self, b):
         """simorder.order_stop (L5)."""
@@ -2474,8 +2474,8 @@ class Sim:
                 or b.serial in self.__dict__.get('script_disabled', {}))
 
     def order_unpack(self, b, p, button=None, where=None, stand=None, here=False, send=True):
-        """simorder.order_unpack (L5)."""
-        return simorder.order_unpack(self, self._order_peers(), b, p, button, where, stand, here, send)
+        """simability.order_unpack (L5)."""
+        return simability.order_unpack(self, self._order_peers(), b, p, button, where, stand, here, send)
 
     def blast_due(self, frame):
         """simspecial.Specials.blast_due (L2): a superweapon's hits landing by `frame` (SUPERWEAPON_HITS)."""

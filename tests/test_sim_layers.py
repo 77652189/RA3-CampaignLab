@@ -39,7 +39,7 @@ LAYER_OF = {
     'engine.objects.body': 2,
     'engine.objects.toggle': 2,
     'engine.objects.special': 2,
-    'engine.orders.order': 5,
+    'engine.orders.order': 5, 'engine.orders.ability': 5,
     'engine.combat.host': 3,
     'engine.combat': 3, 'engine.combat.registry': 3, 'engine.combat.damage': 3,      # N1 the nugget handlers
     'engine.combat.line_damage': 3, 'engine.combat.projectile': 3,
@@ -87,7 +87,7 @@ WORLD_TAKERS = {'engine.objects.heal', 'engine.objects.mine', 'engine.players.mo
                 'engine.objects.body',
                 'engine.objects.toggle',
                 'engine.objects.special',
-                'engine.orders.order',
+                'engine.orders.order', 'engine.orders.ability',
                 'engine.objects.crush', 'engine.objects.jet', 'engine.orders.micro', 'engine.objects.assign',
                 'engine.combat.host',
                 'engine.objects.level', 'engine.ai.pullback', 'engine.combat.sweeps',
@@ -97,7 +97,7 @@ WORLD_TAKERS = {'engine.objects.heal', 'engine.objects.mine', 'engine.players.mo
 # (simpullback, L8 -- the AI tactics' pullback adapter -- is not in LAYER_OF for simmicro's reason: only simai imports it)
 
 # modules that reach their host beyond the world through a Peers loan: every `peers.X` they read is in their PEERS
-PEER_TAKERS = {'engine.orders.order', 'engine.combat.host',
+PEER_TAKERS = {'engine.orders.order', 'engine.orders.ability', 'engine.combat.host',
                'engine.ai.pullback', 'engine.combat.sweeps',
                'engine.objects.garrison', 'engine.objects.infiltrator',
                'engine.ai.core',
@@ -123,7 +123,7 @@ FIELD_OWNER = {'heal_at': 'engine.modules.autoheal', 'hurt': 'engine.modules.aut
                'toggle_at': 'engine.modules.toggle', 'armor_up': 'engine.modules.toggle',
                'wfires': 'engine.objects.special', 'leaps_due': 'engine.objects.special', 'leap_ground_hits': 'engine.objects.special',
                'movement_due': 'engine.objects.special', 'self_bits_due': 'engine.objects.special',
-               'flee': 'engine.orders.order', 'follow': 'engine.orders.order', 'move_to': 'engine.orders.order', 'unpack_here': 'engine.orders.order',
+               'flee': 'engine.orders.order', 'follow': 'engine.orders.order', 'move_to': 'engine.orders.order', 'unpack_here': 'engine.orders.ability',
                **dict.fromkeys(('incoming', 'projectile_hits', 'projectile_speeds', 'impact_body', 'knock_drowns',
                                 'dots', 'cold_on', 'lift_modules', 'nugget_powers', 'hit_reaction_of'), 'engine.combat.host'),
                'spot': 'engine.orders.order',
