@@ -2,15 +2,18 @@
 
 `go_to` holds no command state (no mode, no target: the command layer's order_move sets those and comes here). It
 reaches the world only through simworld.WORLD_API; the frame-mover registry and the toppled bodies are handed in by
-the caller (Sim.send). The driving along the way (`drive`, `turn`) is Sim.move's past its gates.
+the caller (Sim.send). The driving along the way (`drive`, `turn`) is Sim.move's past its gates, `crush` its tail.
 """
 import math
+
+import numpy as np
 
 import engine.data.units as simunits
 import engine.modules.locomotor as locomotor
 import engine.objects.jet as simjet
 import engine.objects.topple as simtopple
 import engine.world.handle as simworld
+from engine.kernel import interfaces
 
 
 def go_to(world, b, target, reach, face, frame_movers, topples):
@@ -173,3 +176,39 @@ def drive(world, b, dt, precise, targets, entry, at_site):
     if b.building:
         at_site(b, walked - left)
     return x0, y0, at, stopped
+
+
+def crush(world, b, x0, y0, precise, pool, attached, topples, destroy):
+    """R9 (docs/engine/crush.md, bench 11-06 engine_crush), the tail of b's drive from (x0, y0) (precise: a frame
+    mover's frame): a crusher (interfaces.Crush) kills what its footprint passes over that is a lower level -- strictly
+    greater kills, 20 against 20 and 30 against 30 live; the crushed does not step aside and lies its SlowDeath out
+    (`destroy`'s death CRUSHED, B5a). The segment passing within the CRUSHED's own radius of its centre (FITTED to two
+    readings: Hammer / conscript at frame 43, Apocalypse / guardian at 69 -- touching at the radii's sum would be ~12
+    and ~30 frames earlier still; the simulator has no acceleration). Whose units: the crusher's enemies' only
+    (INFERRED: one's own / neutral units not measured). `pool`: Sim.move's, new each move, filled at its first crusher
+    that drives (the crushable ones, not `attached`, as arrays: a big map's tanks all drive). A prop (`topples`) is
+    toppled only frame by frame: a way across one is a frame mover's (go_to), with or without the model."""
+    if b.crusher <= 0 or b.surface != 'ground' or (b.x, b.y) == (x0, y0):
+        return
+    dx, dy = b.x - x0, b.y - y0
+    seg = dx * dx + dy * dy
+    if not pool:
+        low = [o for o in world.bodies.values() if o.alive and o.crushable is not None and not o.scenery  # living()
+               and not o.topple and o.surface == 'ground' and o.serial not in attached]
+        pool += [low, np.array([o.x for o in low]), np.array([o.y for o in low]),
+                 np.array([o.radius for o in low]), np.array([o.crushable for o in low])]
+    low, ox, oy, orad, olevel = pool
+    if low:
+        k = np.clip(((ox - x0) * dx + (oy - y0) * dy) / seg, 0.0, 1.0) if seg else np.zeros(len(low))
+        near = np.hypot(ox - (x0 + k * dx), oy - (y0 + k * dy)) <= orad
+        for j in np.nonzero(near & (olevel < b.crusher))[0]:
+            o = low[j]
+            if o is b or not o.alive or not world.enemy(b.owner, o.owner):
+                continue
+            world.used.add('crush')
+            o.set_last_damage(b.owner, b)
+            destroy(o, f'被 {world.label(b)} 压死', death='CRUSHED')
+    for o in topples if precise else ():
+        if o.alive and not o.toppled and o.crushable is not None and b.crusher > o.crushable and \
+                simtopple.crosses(b, o, (x0, y0), (b.x, b.y), world.own):
+            o.find(interfaces.Topple).knock(world.frame_now(), b.drive_speed / simunits.LIFE_FPS)

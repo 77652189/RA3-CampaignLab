@@ -4,8 +4,8 @@ cannot be crushed). Crushed when the crusher's level is strictly greater (crush.
 live). Each level is the nearest template's up the inheritance chain that writes it (the template data port reads
 CrusherInfo merged: simunits.MERGED) -- the Hammer's own 20 over BaseVehicle's 10.
 
-Data only: no update, no state. Who crushes what stays outside (the movement: Sim.crush_along over the swept
-footprint, simpath.claims' spot search, Sim.move's topple contact, simcrush for the AI)."""
+Data only: no update, no state. Who crushes what stays outside (the movement: locomotion.crush over the swept
+footprint and its topple contact, simpath.claims' spot search, simcrush for the AI)."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 

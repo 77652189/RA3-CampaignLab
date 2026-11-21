@@ -6,7 +6,7 @@ conscript, 8.5 s, lay 127 frames; a plant killed by script was gone the next fra
 What the simulator keeps of it: the delay is that of the first block whose attributes name no DeathTypes /
 DeathFlags (in the merged GameObject's module order, the template data port), 0 without one -- a commented-out block is
 not read (the SDK compiler reads no XML comments; slow_death read 25 templates' commented-out blocks: a behaviour
-change of step B5a); only a crushed body (module.Death's death CRUSHED, Sim.crush_along) lies it out -- any other death lies
+change of step B5a); only a crushed body (module.Death's death CRUSHED, locomotion.crush) lies it out -- any other death lies
 LINGER, 0 (bench 2026-10-28: a killed unit is gone from areas at once; INFERRED that the crush is the one death that
 lies). The ToppleUpdate reads the delay for its own (engine/modules/topple.py). SinkDelay, Fade, the DieMux's death
 types and the probability weights are not read.

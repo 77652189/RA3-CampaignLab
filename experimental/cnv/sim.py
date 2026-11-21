@@ -2310,39 +2310,9 @@ class Sim:
         """simdamage.death_blast_due (L3): the death weapons going off by `frame`."""
         simdamage.death_blast_due(self, frame, simdamage.Peers(self))
 
-    def crush_along(self, b, x0, y0):
-        """R9: a driving crusher kills what its footprint passes over that is a lower level (docs/engine/crush.md,
-        bench 11-06 engine_crush: strictly greater kills, 20 against 20 and 30 against 30 live; the crushed does not
-        step aside; the dead lie their SlowDeath out). The segment this tick passing within the CRUSHED's own radius
-        of its centre (FITTED to two readings: Hammer / conscript at frame 43, Apocalypse / guardian at 69 -- touching
-        at the radii's sum would be ~12 and ~30 frames earlier still; the simulator has no acceleration). Whose
-        units: the crusher's enemies' only (INFERRED: crushing one's own / neutral units was not measured)."""
-        dx, dy = b.x - x0, b.y - y0
-        seg = dx * dx + dy * dy
-        pool = self._crushable_pool
-        if pool is None:                        # once a tick: the crushable ones, as arrays (a big map's tanks all drive)
-            low = [o for o in self.living() if o.crushable is not None and not o.scenery and not o.topple
-                   and o.surface == 'ground' and o.serial not in self.attachments]
-            pool = self._crushable_pool = (low, np.array([o.x for o in low]), np.array([o.y for o in low]),
-                                           np.array([o.radius for o in low]), np.array([o.crushable for o in low]))
-        low, ox, oy, orad, olevel = pool
-        if not low:
-            return
-        k = np.clip(((ox - x0) * dx + (oy - y0) * dy) / seg, 0.0, 1.0) if seg else np.zeros(len(low))
-        near = np.hypot(ox - (x0 + k * dx), oy - (y0 + k * dy)) <= orad
-        for j in np.nonzero(near & (olevel < b.crusher))[0]:
-            o = low[j]
-            if o is b or not o.alive or not self.enemy(b.owner, o.owner):
-                continue
-            self.used.add('crush')
-            o.set_last_damage(b.owner, b)
-            self.destroy(o, f'被 {self.label(b)} 压死', death='CRUSHED')    # lies its SlowDeath out (B5a)
-
-    _crushable_pool = None
-
     def move(self, dt=DT, precise=False):
         """Move a coarse tick, or one frame for topple collisions / measured Jet startup."""
-        self._crushable_pool = None
+        pool = []                               # the crushable ones (simlocomotion.crush), new each move
         for b in list(self.frame_movers.values()) if precise else self.living():
             if not b.alive or b.frame_move != precise:
                 continue
@@ -2381,16 +2351,7 @@ class Sim:
                 # stopped with a foe in range, or its way ended mid-tick (an idle chase, an order's end): it aims
                 # from that frame, not the next tick's fight (bench engine_acquire idle220, A round 231)
                 self.mid_aims[b.serial] = (self.t + at, b)
-            if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):
-                self.crush_along(b, x0, y0)
-                if precise:                    # toppled only frame by frame: a way across one is a frame mover's
-                    import engine.objects.topple as simtopple           # (simlocomotion.go_to), with or without the model (bench engine_crush)
-                    for o in self.topples:
-                        if not o.alive or o.toppled or o.crushable is None or b.crusher <= o.crushable:
-                            continue
-                        if not simtopple.crosses(b, o, (x0, y0), (b.x, b.y), self.own):
-                            continue
-                        o.find(kernel_interfaces.Topple).knock(self.frame_now(), b.drive_speed / simunits.LIFE_FPS)
+            simlocomotion.crush(self, b, x0, y0, precise, pool, self.attachments, self.topples, self.destroy)
             self.change()
         self.attachment_tick()
         # what follows a coarse move in the frame (follow_due, capture_due, infiltrators.tick, auto_kill_due) are

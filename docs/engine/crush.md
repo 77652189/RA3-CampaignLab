@@ -37,7 +37,7 @@
 
 ## 模拟器对拍（引擎线 C 第 3 轮，2026-11-09）
 
-模拟器现在有碾压和慢死（`Sim.crush_along`、`Sim.dying`，数据读 CrusherInfo 模块 `engine/modules/crush.py`（M3 起）/ 慢死模块 `engine/modules/slowdeath.py`（B5a 起）），等级、慢死和建筑死亡的台上读数见 `checks/engine_crush.readings.toml`，由一致性跑器核对。
+模拟器现在有碾压和慢死（`engine/objects/locomotion.crush`、`Sim.dying`，数据读 CrusherInfo 模块 `engine/modules/crush.py`（M3 起）/ 慢死模块 `engine/modules/slowdeath.py`（B5a 起）），等级、慢死和建筑死亡的台上读数见 `checks/engine_crush.readings.toml`，由一致性跑器核对。
 
 - **等级**：CrusherLevel / CrushableLevel 读自 CrusherInfo（子模板自己写的数压过基类的），压的等级严格大于被压的才压死；只压敌人（**推断**：压自己人、中立单位没测）。
 - **何时压死**：压的一方走过被压者**自己半径以内**（拟合两个读数：铁锤压动员兵第 43 帧、天启压守护者第 69 帧；按两个半径之和算会早 12 / 30 帧）。模拟器没有加速，所以坦克比台上早到约 25 帧、压死早几到 15 帧；测试按带宽比。

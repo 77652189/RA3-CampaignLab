@@ -109,7 +109,7 @@ def test_a_death_queues_the_weapon_where_it_died_and_a_deletion_nothing():
 
 def test_the_death_s_own_type_decides_a_crush_its_crushed():
     """The module asks the death's type (the old reader always asked NORMAL): a crush passes CRUSHED
-    (Sim.destroy(..., death='CRUSHED') from Sim.crush_along, step B5a)."""
+    (Sim.destroy(..., death='CRUSHED') from locomotion.crush, step B5a)."""
     s = simsmall.small_world()
     s.own.update(CNV_TestBomb=_bomb('CNV_TestBomb', '<DieMuxData DeathTypes="CRUSHED" />') + BURST)
     s.add('shot', 'CNV_TestBomb', 'Player_1', 0.0, 0.0)

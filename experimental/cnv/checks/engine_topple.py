@@ -6,7 +6,7 @@ BaseTree) have `KillWhenToppled=true` and a SlowDeath (SinkDelay 2 s, Destructio
 20, of an Apocalypse 30, of a conscript 0. Questions: does the Hammer drive straight through (reach its goal) or go
 round / stop; is the prop dead (NAMED_NOT_DESTROYED false) or dying (NAMED_DYING) afterwards, and when; can a conscript
 (level 0, not strictly above the prop's 0) topple one; does the simulator's rule "a crusher strictly above the crushable
-level kills it" (Sim.crush_along) apply to a prop at all.
+level kills it" (locomotion.crush) apply to a prop at all.
 
 On the festival map, west field, lanes along +x, 300 apart; every unit on HOLD_FIRE. Per lane the player's vehicle 200
 west of the prop (the prop is neutral, 'civ'), ordered at 'Test Go' (1 s in) to a point 200 east of it:

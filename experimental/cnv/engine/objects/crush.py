@@ -1,7 +1,7 @@
 """C-line Crush eligibility for the AI host; preference/timing stay in tactics.
 
 Levels follow engine_crush (strictly greater). Enemy-only is INFERRED for
-allies/neutrals, matching Sim.crush_along. This is not a full Crush replay.
+allies/neutrals, matching locomotion.crush. This is not a full Crush replay.
 L2 locomotion (ADR 0029): reaches the world only through simworld.WORLD_API; the attached bodies (`attached`, the
 simulator's attachments) are handed in by the caller.
 """
