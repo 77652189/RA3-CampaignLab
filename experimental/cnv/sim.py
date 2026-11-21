@@ -672,7 +672,7 @@ class Sim:
         self.tech_to = 0                    # the last frame tech_due ran
         self.tech_read = False              # a script has read the points or the protocols (pending: a rank to come)
         self.ground = Ground(mission.map)
-        self.own = {**{g: x for u in self.mm.units for x in (getattr(u, 'files', None) or {}).values() for g in re.findall(r'<GameObject\b[^>]*?\bid="([^"]+)"', x)}, **{u.id: u.xml for u in self.mm.units}}   # the units, and the GameObjects of their own files (engine_bezier_e: its rocket)
+        self.own = {**parts.compiled_objects(self.mm.units), **{u.id: u.xml for u in self.mm.units}}   # the units, and the GameObjects of the own files their build compiles (engine_bezier_e: its rocket)
         # Retail objects replaced by linked assets must use the same XML as
         # the built mod (E167 removes only the factory's Tech2 receiver).
         for _, xml, link in getattr(self.mm, 'assets', ()):    # a retail map (Merged) links none

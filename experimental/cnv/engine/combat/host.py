@@ -17,6 +17,7 @@ Fields it owns: incoming, projectile_hits, projectile_speeds, impact_body, knock
 nugget_powers, hit_reaction_of.
 """
 import math
+import re
 
 import engine.data.units as simunits
 from engine.combat import dot, leech, meta_impact
@@ -159,17 +160,19 @@ def straight_speed(projectile, own):
     StateMachine="StraightLineProjectile"'s MoveInStraightLine MuzzleVelocity (map units a frame); flight.BEZIER for a
     BezierProjectile; flight.NO_FLIGHT for a template of its own (no inheritFrom) with no flight module at all (bench
     E168 engine_bezier_e: the rocket without its BezierProjectile never reaches its victim); 0 for any other flight or
-    no file."""
+    no file. The first flight module up the inheritFrom chain answers, comments not counted (review 1121mm #4)."""
     try:
-        xml = simunits._xml(projectile, own) or ''
-        if '<BezierProjectile' in xml:
-            return flight.BEZIER
-        if xml and '<ProjectileUpdate' not in xml and 'inheritFrom=' not in xml:
-            return flight.NO_FLIGHT
-        update = next(simunits._blocks(xml, 'ProjectileUpdate'), ('', ''))
-        movement = next(simunits._blocks(update[1] or '', 'MoveInStraightLine'), ('', ''))
-        return (simunits._num(simunits._attr(movement[0], 'MuzzleVelocity'))
-                if simunits._attr(update[0], 'StateMachine') == 'StraightLineProjectile' else 0)
+        xml = ''
+        for _, text in simunits.xml_chain(projectile, own):
+            xml = re.sub(r'<!--.*?-->', '', text or '', flags=re.S)
+            if '<BezierProjectile' in xml:
+                return flight.BEZIER
+            update = next(simunits._blocks(xml, 'ProjectileUpdate'), None)
+            if update:
+                movement = next(simunits._blocks(update[1], 'MoveInStraightLine'), ('', ''))
+                return (simunits._num(simunits._attr(movement[0], 'MuzzleVelocity'))
+                        if simunits._attr(update[0], 'StateMachine') == 'StraightLineProjectile' else 0)
+        return flight.NO_FLIGHT if xml and 'inheritFrom=' not in xml else 0
     except (OSError, ValueError):
         return 0
 

@@ -22,6 +22,6 @@ from contract import (AREA_ARG, COMMAND_ARG, CREATES_NAMED, MUSIC_EVENT_ARG, OBJ
                       POINTS_AT_UNNAMED, POWER_ARG, RETAIL_COMMANDS, SOUND_ARG, STRING_ARG, TEAM_ARG, TEMPLATE_ARG,
                       WAYPOINT_ARG, contract, missing_areas)
 from model import (COUNTER_LINES, MAX_NAME, NOT, Goal, Mission, Obj, Part, Role, Script, Site, Test, Unit,  # noqa: F401
-                   _enum, counted, kindof, merged, side_by_side, square, status, unnot)
+                   _enum, compiled_objects, counted, kindof, merged, side_by_side, square, status, unnot)
 from package import (CAMPAIGN, HERE, SIDECAR, assemble, game_running, mod_busy, preview, sdk_build_lock,  # noqa: F401
                      write_map, write_sidecar)

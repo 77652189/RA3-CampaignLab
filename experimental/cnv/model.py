@@ -109,6 +109,21 @@ class Unit:
     params: dict = dataclasses.field(default_factory=dict)      # published: the options it was made with
 
 
+def compiled_objects(units):
+    """{GameObject id: its file's text} of the units' own files the build compiles: named in a unit's `also` (included
+    type="all") or included (DATA:CNVUnits/Data/<name>) by a unit's XML or by such a file. A file nothing includes is
+    written beside them and never compiled: its ids are nobody's (review 1121mm #1: an unused file's 5 HP structure
+    under the Hammer's id took the tank's place in the simulator)."""
+    files = {n: x for u in units for n, x in (getattr(u, 'files', None) or {}).items()}
+    got = {n for u in units for n in getattr(u, 'also', ()) if n in files}
+    while True:
+        texts = [u.xml for u in units] + [files[n] for n in got]
+        new = {n for n in files if n not in got and any('CNVUnits/Data/' + n in t for t in texts)}
+        if not new:
+            return {g: files[n] for n in got for g in re.findall(r'<GameObject\b[^>]*?\bid="([^"]+)"', files[n])}
+        got |= new
+
+
 @dataclasses.dataclass
 class Site:
     """A place a map publishes: where, how far it reaches, what it is good for. Missions place by site name."""
