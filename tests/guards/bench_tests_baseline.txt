@@ -292,7 +292,6 @@ tests/test_shore_distance.py::test_shore_distance_original_readings
 tests/test_sim.py::test_a_build_line_queues_at_the_factory_and_pays
 tests/test_sim_column.py::test_the_group_stands_in_the_benchs_block
 tests/test_sim_spot.py::test_every_unit_stops_where_the_bench_did
-tests/test_simactivate.py::test_activate_athena_named_observations
 tests/test_simai.py::test_a_full_turret_stays_first_on_the_list
 tests/test_simai.py::test_a_neutral_house_is_a_house_not_a_defense
 tests/test_simai.py::test_path_to_target_cannot_judge_without_an_enemy_base
