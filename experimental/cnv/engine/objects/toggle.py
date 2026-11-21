@@ -38,7 +38,8 @@ def press(world, b, command, short_of_power):
 
 def entered(world, b, m, modify):
     """A toggle module of b entered its next state (World.toggled): the miner's armour noted, the modifiers re-set,
-    the state's LocomotorSet speed taken (engine_acts_btn TT / VT: the Tengu's jet, the VX's flight)."""
+    the state's LocomotorSet speed and surface taken, a way under way re-routed on the new surface (engine_acts_btn
+    TT / VT: the Tengu's jet, the VX's flight)."""
     tm = m.rules()
     if tm['power'] == 'SpecialPower_ToggleArmorUp':
         world.used.add('miner armor')
@@ -50,7 +51,13 @@ def entered(world, b, m, modify):
         # (AIRBORNE_TARGET) and over the bank; NORMAL (DEEP_WATER) back on the water
         if b.base is not None:
             b.base['speed'] = speed
-        locomotor.write(world.world, b, speed=speed, **({'surface': locomotor.surface_of(surf, b.kinds)} if surf else {}))
+        surface = locomotor.surface_of(surf, b.kinds) if surf else b.surface
+        if b.path and surface != b.surface:
+            # review 1121nn P2: a way on the old surface is not taken on the new one -- re-routed to where it was
+            # sent (back on the water short of a land point: no way, it stops; INFERRED, the bench never landed it
+            # mid-flight)
+            locomotor.write(world.world, b, path=world.ground.route(surface, (b.x, b.y), b.dest, closest=True) or [])
+        locomotor.write(world.world, b, speed=speed, surface=surface)
     world.used.add('toggle')
     world.change()
 

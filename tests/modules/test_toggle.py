@@ -120,3 +120,19 @@ def test_a_state_s_locomotor_set_brings_its_surfaces_the_sea_wing_up_and_down_ag
     assert (b.surface, b.speed, up()) == ('air', 150.0, True)       # engine_acts_wing WT: up from the press
     m.press(_made(s) + 1)
     assert (b.surface, b.speed, up()) == ('water', 125.0, False)    # WB: back on the water
+
+
+def test_back_on_the_water_the_sea_wing_drops_its_air_way_onto_the_land():
+    # review 1121nn P2: pressed back mid-flight it went on along its air way over the bank (y 3600 on: land)
+    from maps import probe_air
+    s = simsmall.small_world(map=probe_air)
+    s.add('w', 'JapanAntiAirShip', 'Player_1', 2200.0, 3200.0)
+    b = s.bodies['w']
+    (m,) = [t for t in b.find(interfaces.Toggle) if t.rules()['power'] == 'SpecialPower_JAAS_Transform']
+    m.press(_made(s))
+    s.send(b, (2200.0, 3850.0))
+    assert b.path == [(2200.0, 3850.0)]                             # up: straight over the bank
+    s.advance(30)
+    m.press(_made(s) + 1)
+    s.advance(150)
+    assert b.surface == 'water' and s.ground.open('water', b.x, b.y)
