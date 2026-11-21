@@ -102,8 +102,6 @@ from engine.script.common import TEAM_FOLLOWS, TEAM_COMMANDS  # noqa: E402,F401 
 from engine.script.common import SHOW_FLAG, SCENE_FLAG, WON, LOST  # noqa: E402,F401  (flags SET_FLAG reads, L6)
 
 DT = simloop.DT                 # seconds a tick (the frame loop's, simloop.DT)
-DRIVE_WITHIN = 9.0              # ordered from standing, a unit drives on the frame that starts this near its way (deg;
-                                # bench airev1t / airevgt / airevat, A round 227: 8 drove, 10 / 15 did not; INFERRED 9)
 UNTIL = 1800.0                  # a run stops here at the latest (30 minutes)
 QUIET = 120.0                   # nothing pending this long and no ending: stuck
 
@@ -128,7 +126,6 @@ RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's 
                                # h / i (barracks, (40, 18): stops ~(75-80, 24-33)) and engine_rally tank (war
                                # factory, (80, 20): ~(112-127, 25-34); x 1.9 from the centre would be (152, 38))
 from engine.objects.special import WFIRE_LAG, WFIRE_REAIM, NONE_TARGET_LAG  # noqa: E402,F401  (weapon-fire abilities, L2)
-BUILD_STEP = 5.0               # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
                                 # no line of sight; ENEMY_SIGHTED is a range query and ignores it
@@ -2500,82 +2497,16 @@ class Sim:
                     or self.infiltrators.movement_blocked(b)):
                 b.rolling, b.carry = False, 0.0
                 continue
-            if not b.path:
-                b.rolling, b.carry = False, 0.0
-                if b.face is not None:                  # arrived: turns in place to the facing it was given
-                    simlocomotion.turn(self, b, b.face, dt)
+            moved = simlocomotion.drive(self, b, dt, precise, self.range_targets, self.range_entry,
+                                        self.production.at_site)
+            if moved is None:
                 continue
-            spent, extra, b.carry = 0.0, (b.carry if not precise else 0.0), 0.0
-            if not b.rolling and b.jet_motion is None and b.turn_first:     # from standing: turns in place until
-                # near its way. Infantry (TestReactiveLocomotorHUMAN, no TurnThresholdHS) walk off at once, turning as
-                # they go: bench airevit (A round 231) -- Conscripts' form-up order f26, each moved ~3.2 a frame from
-                # f26 on (full speed) while the heading went -180 -135 -90 -72 (45 a frame)
-                way = next(((tx, ty) for tx, ty in b.path if (tx, ty) != (b.x, b.y)), None)
-                if way is not None:
-                    spent = simlocomotion.turn(self, b, math.atan2(way[1] - b.y, way[0] - b.x), dt, DRIVE_WITHIN)
-                if spent >= dt:
-                    continue
-            left = b.speed * (dt - spent + extra)
-            if precise and b.jet_motion is not None:
-                import engine.objects.jet as simjet
-                left = simjet.distance(self, b)
-            elif precise:
-                import engine.objects.topple as simtopple
-                speed, acceleration = simtopple.motion(b.template, self.own)
-                base = simunits.stats(b.template, self.own)['speed']
-                speed = speed * b.speed / base if speed is not None and base else b.speed
-                b.drive_speed = min(speed, b.drive_speed + speed * dt / acceleration) if acceleration else speed
-                left = b.drive_speed * (dt - spent)
-            walked = left
-            x0, y0 = b.x, b.y
-            reach = None if precise else self.range_targets(b)
-            while left > 0 and b.path:
-                tx, ty = b.path[0]
-                d = math.hypot(tx - b.x, ty - b.y)
-                step = min(BUILD_STEP, left)
-                if b.building and d > step:                 # a builder: in short steps, to see where he reaches it
-                    b.x += (tx - b.x) * step / d
-                    b.y += (ty - b.y) * step / d
-                    left -= step
-                    if self.production.at_site(b, walked - left):
-                        break
-                    continue
-                if reach and d > 0:                         # an attack-mover stops where it gets a foe in range
-                    s = self.range_entry(b, reach, tx, ty, min(d, left))
-                    if s is not None:
-                        b.x += (tx - b.x) * s / d
-                        b.y += (ty - b.y) * s / d
-                        left -= s
-                        self.mid_aims[b.serial] = (self.t + max(spent + (walked - left) / b.speed - extra, 0.0), b)
-                        break
-                if d <= left:
-                    b.x, b.y, left = tx, ty, left - d
-                    b.path.pop(0)
-                else:
-                    b.x += (tx - b.x) * left / d
-                    b.y += (ty - b.y) * left / d
-                    left = 0
-            if not b.path and not precise and b.speed > 0:      # where in the tick its way ended (Sim.on_the_move)
-                b.stops_at = math.floor(self.t / DT + 1e-6) * DT + max(spent + (walked - left) / b.speed - extra, 0.0)
-            if not b.path and not precise and self.combat and b.serial not in self.mid_aims \
-                    and any(a is b for a in self._field[1]):
-                # its way ended mid-tick (an idle chase's walk to reach, an order's end): it aims from that frame,
-                # not the next tick's fight (bench engine_acquire idle220, A round 231)
-                self.mid_aims[b.serial] = (self.t + max(spent + (walked - left) / b.speed - extra, 0.0), b)
-            b.rolling = True       # it drove this tick: a next leg given at once (follow_due) is driven on, no stop
-                                    # (bench engine_waypath line / exact: no time lost at the 90 deg corners)
-            if (b.x, b.y) != (x0, y0):
-                # once it drives, the hull faces its way: the last DRIVE_WITHIN of a turn from standing, a turn on a
-                # new way while it drives (bench airevgt f170: no stop, 24 deg a frame on moving frames) and the
-                # bends taken at once (INFERRED; bench engine_hull, round 187: no reversing)
-                b.angle = math.atan2(b.y - y0, b.x - x0)
-            if not b.path and b.follow is not None and not precise and b.speed > 0:
-                b.carry = min(left / b.speed, dt)
-            if not b.path and b.face is not None:      # arrived this tick: from the next frame on it turns
-                rate = b.drive_speed if precise and b.jet_motion is None else b.speed
-                simlocomotion.turn(self, b, b.face, (left / rate if rate > 0 else 0.0) - 1.0 / simunits.LIFE_FPS)
-            if b.building:
-                self.production.at_site(b, walked - left)
+            x0, y0, at, stopped = moved
+            if at is not None and (stopped or not precise and self.combat and b.serial not in self.mid_aims
+                                   and any(a is b for a in self._field[1])):
+                # stopped with a foe in range, or its way ended mid-tick (an idle chase, an order's end): it aims
+                # from that frame, not the next tick's fight (bench engine_acquire idle220, A round 231)
+                self.mid_aims[b.serial] = (self.t + at, b)
             if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):
                 self.crush_along(b, x0, y0)
                 if precise:                    # toppled only frame by frame: a way across one is a frame mover's

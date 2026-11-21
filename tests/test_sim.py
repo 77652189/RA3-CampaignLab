@@ -498,7 +498,7 @@ def test_a_unit_ordered_from_standing_turns_in_place_then_drives_and_turns_to_it
     import math
     import engine.ai.core as simai
     s, tank, (x, y) = _hammer_facing_south()
-    assert sim.DRIVE_WITHIN == 9.0 and tank.turn_rate == 288.0
+    assert sim.simlocomotion.DRIVE_WITHIN == 9.0 and tank.turn_rate == 288.0
     s.send(tank, (x, y + 300), face=0.0)
     s.run(0.0)
     assert (tank.x, tank.y) == (x, y) and abs(math.degrees(tank.angle) - (-90 + 7.5 * 19.2)) < 1e-6

@@ -2,7 +2,7 @@
 
 `go_to` holds no command state (no mode, no target: the command layer's order_move sets those and comes here). It
 reaches the world only through simworld.WORLD_API; the frame-mover registry and the toppled bodies are handed in by
-the caller (Sim.send). The per-frame driving along the way (Sim.move) comes here at step 8; turning in place (`turn`) has.
+the caller (Sim.send). The driving along the way (`drive`, `turn`) is Sim.move's past its gates.
 """
 import math
 
@@ -10,6 +10,7 @@ import engine.data.units as simunits
 import engine.modules.locomotor as locomotor
 import engine.objects.jet as simjet
 import engine.objects.topple as simtopple
+import engine.world.handle as simworld
 
 
 def go_to(world, b, target, reach, face, frame_movers, topples):
@@ -88,3 +89,85 @@ def turn(world, b, want, dt, within=0.0):
     b.angle = math.atan2(math.sin(a), math.cos(a))
     world.change()
     return dt
+
+
+DRIVE_WITHIN = 9.0      # ordered from standing, a unit drives on the frame that starts this near its way (deg;
+                        # bench airev1t / airevgt / airevat, A round 227: 8 drove, 10 / 15 did not; INFERRED 9)
+BUILD_STEP = 5.0        # a builder on his way (R5) moves in steps this long, to see where he gets within range
+
+
+def drive(world, b, dt, precise, targets, entry, at_site):
+    """Sim.move past its gates: b's tick (precise: a frame mover's frame) along its way. A builder stops where
+    at_site(b, walked) says, an attack-mover (targets: Sim.range_targets) where entry (Sim.range_entry) finds a foe.
+    None: it did not drive; else (x0, y0, at, stopped): where it set out, the seconds into the tick it stopped
+    (None: it goes on), whether entry stopped it."""
+    if not b.path:
+        b.rolling, b.carry = False, 0.0
+        if b.face is not None:                  # arrived: turns in place to the facing it was given
+            turn(world, b, b.face, dt)
+        return None
+    spent, extra, b.carry = 0.0, (b.carry if not precise else 0.0), 0.0
+    if not b.rolling and b.jet_motion is None and b.turn_first:     # from standing: turns in place until near its
+        # way. Infantry (TestReactiveLocomotorHUMAN, no TurnThresholdHS) walk off at once, turning as they go: bench
+        # airevit (A round 231) -- Conscripts' form-up order f26, each moved ~3.2 a frame from f26 on (full speed)
+        # while the heading went -180 -135 -90 -72 (45 a frame)
+        way = next(((tx, ty) for tx, ty in b.path if (tx, ty) != (b.x, b.y)), None)
+        if way is not None:
+            spent = turn(world, b, math.atan2(way[1] - b.y, way[0] - b.x), dt, DRIVE_WITHIN)
+        if spent >= dt:
+            return None
+    left = b.speed * (dt - spent + extra)
+    if precise and b.jet_motion is not None:
+        left = simjet.distance(world, b)
+    elif precise:
+        speed, acceleration = simtopple.motion(b.template, world.own)
+        base = simunits.stats(b.template, world.own)['speed']
+        speed = speed * b.speed / base if speed is not None and base else b.speed
+        b.drive_speed = min(speed, b.drive_speed + speed * dt / acceleration) if acceleration else speed
+        left = b.drive_speed * (dt - spent)
+    walked, x0, y0, stopped = left, b.x, b.y, False
+    reach = None if precise else targets(b)
+    while left > 0 and b.path:
+        tx, ty = b.path[0]
+        d = math.hypot(tx - b.x, ty - b.y)
+        step = min(BUILD_STEP, left)
+        if b.building and d > step:                 # a builder: in short steps, to see where he reaches it
+            b.x += (tx - b.x) * step / d
+            b.y += (ty - b.y) * step / d
+            left -= step
+            if at_site(b, walked - left):
+                break
+            continue
+        if reach and d > 0:                         # an attack-mover stops where it gets a foe in range
+            s = entry(b, reach, tx, ty, min(d, left))
+            if s is not None:
+                b.x += (tx - b.x) * s / d
+                b.y += (ty - b.y) * s / d
+                left -= s
+                stopped = True
+                break
+        if d <= left:
+            b.x, b.y, left = tx, ty, left - d
+            b.path.pop(0)
+        else:
+            b.x += (tx - b.x) * left / d
+            b.y += (ty - b.y) * left / d
+            left = 0
+    at = max(spent + (walked - left) / b.speed - extra, 0.0) if (stopped or not b.path) and b.speed > 0 else None
+    if not b.path and not precise and at is not None:   # where in the tick its way ended (Sim.on_the_move)
+        b.stops_at = math.floor(world.t / simworld.DT + 1e-6) * simworld.DT + at
+    b.rolling = True       # it drove this tick: a next leg given at once (follow_due) is driven on, no stop
+                            # (bench engine_waypath line / exact: no time lost at the 90 deg corners)
+    if (b.x, b.y) != (x0, y0):
+        # once it drives, the hull faces its way: the last DRIVE_WITHIN of a turn from standing, a turn on a new way
+        # while it drives (bench airevgt f170: no stop, 24 deg a frame on moving frames) and the bends taken at once
+        # (INFERRED; bench engine_hull, round 187: no reversing)
+        b.angle = math.atan2(b.y - y0, b.x - x0)
+    if not b.path and b.follow is not None and not precise and b.speed > 0:
+        b.carry = min(left / b.speed, dt)
+    if not b.path and b.face is not None:      # arrived this tick: from the next frame on it turns
+        rate = b.drive_speed if precise and b.jet_motion is None else b.speed
+        turn(world, b, b.face, (left / rate if rate > 0 else 0.0) - 1.0 / simunits.LIFE_FPS)
+    if b.building:
+        at_site(b, walked - left)
+    return x0, y0, at, stopped
