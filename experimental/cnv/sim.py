@@ -898,7 +898,7 @@ class Sim:
         placement remains INFERRED (no autonomous repair flight). A child template without SlavedUpdate is given
         one (World.attach), so every child knows its maker."""
         k = len(parent.spawned_children)
-        name = simworld.free_key(self, lambda n: f'#spawn {parent.name} {spawner.module_id()} {k}' + '#' * n, 0)
+        name = simworld.free_key(self, lambda n: f'#spawn {parent.name} {spawner.module_id()} {k}' + '#' * n, 0, self.bodies)
         child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
         self.world.bind_slave(child, parent, spawner)
         spawner.adopt(child)
@@ -908,7 +908,7 @@ class Sim:
         """SpawnOnUnpack (engine/modules/spawn.py): a refinery the map places gives its one collector at the start, on
         its own spot (bench 2026-11-12 mineturn<k> / mineniag p: the first money by the drive from there; the spot and
         the 1 s fade INFERRED). Its own unit: it outlives the refinery (no SpawnedRequireSpawner)."""
-        name = simworld.free_key(self, lambda n: f'#unpack {parent.name}' + '#' * n, 0)
+        name = simworld.free_key(self, lambda n: f'#unpack {parent.name}' + '#' * n, 0, self.bodies)
         child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
         child.unpack_parent = parent                # the owner's default team, as Generals' createSpawn (team '')
         return child

@@ -98,7 +98,8 @@ def free_key(world, make, n, taken=()):
     name) nor a dead one the schedule still runs a module of (review 1119y P2 #3: a key written straight into bodies,
     as the unpack archive does, would leave that module held with its thing gone -- a snapshot fails). A dead one with
     nothing scheduled may be taken again, as Sim.add lets it. `taken`: names still to come, kept free too (the map
-    load's named objects placed after this one: review 1120aa, 1119y #4's rest). Every key the simulator makes up goes
+    load's named objects placed after this one: review 1120aa, 1119y #4's rest; a spawned / unpacked child passes
+    bodies, stepping over a deleted one too: review 1120hh). Every key the simulator makes up goes
     through here (tests/guards/test_free_key.py)."""
     seq = world.world.schedule.seq
     while make(n) in taken or (b := world.bodies.get(make(n))) is not None and (

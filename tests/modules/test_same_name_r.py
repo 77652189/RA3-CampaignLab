@@ -578,3 +578,18 @@ def test_a_last_attacker_does_not_keep_one_gone_from_the_world():
     before.set_last_damage('Player_2', hitter)
     assert simcond_object.attacker(s, before) is hitter
     assert before.find(interfaces.Body).last_attacker() is hitter
+
+
+def test_a_spawned_or_unpacked_childs_key_steps_over_a_deleted_one_still_in_bodies():
+    """Review 1120hh P2 #1 / #2: a deleted thing (nothing scheduled) still in bodies keeps its key from a drone's
+    refill and an unpacked collector, as before free_key: else a script making it again under that name is refused
+    and a Battlefield placement's collector loses its maker."""
+    s = simsmall.small_world()
+    fac = s.add('fac', 'AlliedWarFactory', 'Player_1', 900.0, 900.0)
+    (sp,) = fac.find(interfaces.Spawn)
+    keys = (f'#spawn fac {sp.module_id()} 3', '#unpack fac')
+    for k in keys:
+        s.add(k, 'AlliedWall', 'Player_1', 600.0, 600.0)     # a wall: no module of it scheduled once deleted
+        s.act('NAMED_DELETE', [k], types.SimpleNamespace(name='S'))
+    assert s.spawn_child(fac, sp, sp.child(), s.t).name == keys[0] + '#'
+    assert s.unpack_child(fac, 'AlliedMiner', s.t).name == keys[1] + '#'
