@@ -132,6 +132,7 @@ class Garrisons:
                                     # boxes (B5 review g #1: a thing made under its name since neither drops nor takes
                                     # the job)
         self.flying = []            # [lands at, passenger body, the spot]
+        self.leaving = []           # emptied hosts whose eject runs them off (RunOffMapWhenDone): L5's flee_due's
 
     def _box(self, b):
         """b's contain module a script may put a unit into: a building's garrison, else a TransportContain."""
@@ -376,11 +377,16 @@ class Garrisons:
         per = simunits._secs(simunits._attr(h, 'TimePerPassenger') or '0.5s')
         reach = simunits._num(simunits._attr(h, 'StartAbilityRange'), 0.0) or \
             (ARRIVE if math.hypot(where[0] - g.x, where[1] - g.y) > ARRIVE else 0.0)
-        self.ejecting[g.serial] = [where, per, reach, None]
+        self.ejecting[g.serial] = [where, per, reach, None, simunits._attr(h, 'RunOffMapWhenDone') == 'true']
         if reach and math.hypot(where[0] - g.x, where[1] - g.y) > reach:
             peers.send(g, where)                     # INFERRED: drives in, then throws
         world.note('驻军', f'{world.label(g)} 往外弹乘员')
         return True
+
+    def run_off(self):
+        """The living emptied hosts to run off (an eject's RunOffMapWhenDone), handed over once."""
+        out, self.leaving = [g for g in self.leaving if g.alive], []
+        return out
 
     def evacuate(self, g):
         """An EVACUATE button (LogicCommand Type EVACUATE: the Twinblade's): every passenger out where g is, together,
@@ -402,10 +408,12 @@ class Garrisons:
             box = self.boxes.get(serial)                # the host itself, by its serial (never its name: g #1)
             g = box.thing if box is not None else None
             held = [u for u in (box.passengers() if box else ()) if u.alive]
+            where, per, reach, at, *off = job
             if g is None or not g.alive or not held:
                 del self.ejecting[serial]
+                if off and off[0] and g is not None and g.alive:
+                    self.leaving.append(g)              # RunOffMapWhenDone: its RunOffMapBehavior takes it off
                 continue
-            where, per, reach, at = job
             if at is None:
                 if reach and math.hypot(where[0] - g.x, where[1] - g.y) > reach:
                     continue

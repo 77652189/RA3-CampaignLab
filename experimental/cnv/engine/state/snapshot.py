@@ -71,7 +71,7 @@ SIM = {
     'heal': {'passive_area_of': CACHE},
     'life': {'lose_of': CACHE, 'blasts_of': CACHE},
     'garrison': {'world': WIRE, 'peers': WIRE, 'boxes': STATE, 'where': STATE, 'going': STATE, 'log': STATE,
-                 'ejecting': STATE, 'flying': STATE},
+                 'ejecting': STATE, 'flying': STATE, 'leaving': STATE},
     'infiltrators': {'world': WIRE, 'peers': WIRE, 'wallet': WIRE, 'going': STATE, 'off_until': STATE,
                      'observers': STATE, 'unit_observers': STATE, 'paralyzed_until': STATE, 'attack_until': STATE},
     'lift_timers': {'remaining': STATE},

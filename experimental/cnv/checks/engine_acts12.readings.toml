@@ -30,7 +30,8 @@ scene = {build = "engine_acts_mix", check = "all", until = 25}
 bench = """all, bench 11-21 `run_queue engine_acts_mix:all` (CampActsMixAll_mcp_1121_062114, round 275; the build since b940bbb8 \
 takes the bomber in, round 224's 兵 0 was the build of then): 兵 46 s2-s25 -- 6 GIs + 4 Javelins in the 400 square round \
 the spot from the press's reading on"""
-proves = "sim act_ability._drop: the bomber drop store's button brings its full load (two bombers' InitialPayload) to the spot"
+proves = """sim act_ability._drop: the bomber drop store's button brings its full load (two bombers' InitialPayload) to the \
+spot -- there, riding or out: a passenger is counted where its bomber is (review 1121mm #5; the unload is not proved)"""
 let = {at = "dict(zip(times, vals(rows)))"}
 expect = "all(at[k][3] == 46 for k in range(4, 25))"
 
@@ -40,8 +41,9 @@ item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAll
 scene = {build = "engine_acts_drop", check = "own", until = 31}
 bench = """own, bench 11-17 `run_queue engine_acts_drop:own` (CampActsDropOwn_mcp_1117_034720, round 272): 机 兵 敌 援 s1 0 0 0 0 | \
 s2-s12 0 46 0 0 | s13-s31 0 46 46 46 -- DP's button at 3 s, DS by name and DA's AI-handed button at 12 s, each a full load"""
-proves = """sim act_ability._drop: the button, the cast by name (script_cast) and an AI's store alike drop 6 GIs + 4 Javelins \
-round the spot; the bombers are not counted (cond_object: SUMMONED)"""
+proves = """sim act_ability._drop: the button, the cast by name (script_cast) and an AI's store alike bring 6 GIs + 4 \
+Javelins to the spot (riding or out: review 1121mm #5, the unload not proved); the bombers are not counted (cond_object: \
+not SELECTABLE)"""
 let = {at = "dict(zip(times, vals(rows)))"}
 expect = ["all(at[k][1] == 46 for k in range(4, 31))", "all(at[k][2:] == [46, 46] for k in range(15, 31))",
           "all(v[0] == 0 for v in at.values())"]
@@ -79,7 +81,7 @@ for 26 frames, within 150 of the spot from frame 83, no bomber counted any frame
 (CampActsDropAir_mcp_1121_071236: a strip along the north edge y 4900-5100, a box y 4300-4850) had the strip 0 every \
 frame and the whole load in the box from frame 52: the bombers are made at the store, not at the map's edge 700 off"""
 proves = """sim act_ability._drop: the bombers made at the store (CREATE_AT_EDGE_NEAR_SOURCE: INFERRED the source's place) \
-with the load inside, counted where they are (garrison); the bombers themselves never (cond_object: SUMMONED)"""
+with the load inside, counted where they are (garrison); the bombers themselves never (cond_object: not SELECTABLE)"""
 expect = ["rows[3]['帧'] - rows[3]['店'] == 45", "all(r['机'] == 0 for r in rows)"]
 
 [[reading]]
@@ -89,3 +91,39 @@ bench = "air as above: 26 frames round the store, 帧 - 近 = 83"
 proves = "sim the bombers' flight from rest to the spot"
 expect = ["rows[7]['店'] == 26", "{r['帧'] - r['近'] for r in rows[6:12]} == {83}"]
 mismatch = "sim 10 frames round the store, 帧 - 近 = 70 (full speed from their making); bench 26, 83"
+
+[[reading]]
+id = "acts_drop_age_unselectable_not_counted"
+scene = {build = "engine_acts_drop", check = "age", until = 24}
+bench = """age, bench 11-21 `run_queue engine_acts_drop:age` (CampActsDropAge_mcp_1121_102723, round 279): 类 1101 every \
+reading s1-s25 -- of the GI copies with one of the drop bomber's bits each, the -SELECTABLE one is not counted in its \
+square, the +SUMMONED / +IGNORES_SELECT_ALL / +NO_COLLIDE ones are; 见 0 or 100 every reading: the bomber never counted \
+by _COMPLETELY_BUILT in Test A12 Whole (nor by PLAYER_HAS_OBJECT_COMPARISON: 机 0)"""
+proves = """sim cond_object: the plain type area count leaves out one without SELECTABLE (review 1121mm #3: not SUMMONED), \
+_COMPLETELY_BUILT the same (INFERRED the same bit)"""
+expect = ["all(r['类'] == 1101 for r in rows)", "all(r['见'] // 10 % 10 == 0 for r in rows)"]
+
+[[reading]]
+id = "acts_drop_age_the_bomber_leaves"
+scene = {build = "engine_acts_drop", check = "age", until = 24}
+bench = """age as above: 见 100 (an AIRCRAFT in Test A12 Whole) from frame 52 to 128, 0 from frame 135 to the end (409)"""
+proves = """sim garrison._throw: the eject's RunOffMapWhenDone sends the emptied bomber off (flee_start; review 1121mm #2: it \
+stayed for good)"""
+expect = ["any(r['见'] >= 100 for r in rows if 60 <= r['帧'] <= 120)", "all(r['见'] < 100 for r in rows if r['帧'] >= 240)"]
+
+[[reading]]
+id = "acts_drop_age_the_bomber_leaves_soon"
+scene = {build = "engine_acts_drop", check = "age", until = 24}
+bench = "age as above: no AIRCRAFT in Test A12 Whole from frame 135 (about 20 frames after the last passenger)"
+proves = "sim the flight off: gone from the map's square within ~1.5 s of the press + flight + unload"
+expect = "all(r['见'] < 100 for r in rows if r['帧'] >= 140)"
+mismatch = """sim 101 at frame 151, 0 from ~205: the flee walks 1000 along the facing at Speed and is removed 3 frames after \
+(engine_runoffmap's ground rule); bench gone from Whole by 135 -- open whether it is removed, or not counted while fleeing"""
+
+[[reading]]
+id = "acts_drop_age_owned_not_counted"
+scene = {build = "engine_acts_drop", check = "age", until = 24}
+bench = "age as above: 机 0 every reading -- PLAYER_HAS_OBJECT_COMPARISON never counts the player's bomber"
+proves = "sim cond_object.player_has_object_comparison leaves the drop bomber out (which bit: not isolated)"
+expect = "all(r['机'] == 0 for r in rows)"
+mismatch = "sim 159 frames (46-205: counted as long as it lives); bench 0"

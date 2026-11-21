@@ -5,7 +5,7 @@ import math
 import engine.data.units as simunits
 from engine.objects.power import UNPACK_POWER, start_reload
 
-PEERS = frozenset({'act', 'delete', 'modify', 'powers_off', 'production', 'send', 'toggle_press', 'toggles_of'})
+PEERS = frozenset({'act', 'delete', 'garrison', 'modify', 'powers_off', 'production', 'send', 'toggle_press', 'toggles_of'})
 FLEE_GONE = 3
 
 
@@ -135,6 +135,8 @@ def flee_start(world, peers, b):
 
 def flee_due(world, peers, frame):
     """One frame of every runner: its place on the straight line, the removal when its time comes."""
+    for b in peers.garrison.run_off():          # emptied transports' RunOffMapWhenDone (garrison._throw)
+        flee_start(world, peers, b)
     for b in [b for b in world.living() if getattr(b, 'flee', None)]:
         f0, x0, y0, x1, y1, d, step = b.flee
         k = frame - f0

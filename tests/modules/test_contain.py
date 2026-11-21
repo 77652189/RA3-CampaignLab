@@ -181,4 +181,13 @@ def test_the_bomber_drop_flies_its_load_to_the_spot_before_it_ejects():
     assert s.garrison.held(g) == [gi]
     g.y = 695.0
     s.garrison.due()
-    assert s.garrison.held(g) == []
+    assert s.garrison.held(g) == [] and not getattr(g, 'flee', None)
+    s.garrison.due()                             # emptied: RunOffMapWhenDone sends it off (review 1121mm #2)
+    assert s.garrison.leaving == [g]
+    s.flee_due(0)
+    assert g.flee and 'FLEE_OFF_MAP' in g.script_status
+    import engine.script.cond_object as cond     # the type area counts leave out one without SELECTABLE (mm #3)
+    s.areas['a'] = [(0, 0), (1000, 0), (1000, 1000), (0, 1000)]
+    for name, fn in (('', cond.player_has_comparison_unit_type_in_trigger_area),
+                     ('_COMPLETELY_BUILT', cond.player_has_comparison_unit_type_in_trigger_area_completely_built)):
+        assert [fn(s, name, ['Player_1', 3, 1, t, 'a']) for t in (bomber, 'AlliedAntiInfantryInfantry')] == [False, True]

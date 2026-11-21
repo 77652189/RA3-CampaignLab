@@ -39,8 +39,11 @@ Counters:
     (unpack 0.5 s + 250 at 300 a second: Sim.leap_press), LQ drove there as fast (not telling). BD: nobody round the
     spot in 22 s -- not explained (inventory NOTES), the simulator does nothing either.
 """
+from pathlib import Path
+
+import labpaths
 from maps import probe_border
-from parts import Mission, Test, square, status
+from parts import Mission, Test, Unit, kindof, square, status
 import checks.engine_scripts8 as s8
 
 MAN = 'SovietAntiInfantryInfantry'
@@ -222,6 +225,46 @@ def air(m):
     return t
 
 
+GI_KINDS = 'SELECTABLE CAN_ATTACK CAN_CAST_REFLECTIONS INFANTRY SCORE'
+# life: copies of the GI, one KindOf bit of the bomber's each -> (its KindOf, its weight in 类)
+KINDS = {'CNVA12Sum': (GI_KINDS + ' SUMMONED', 1), 'CNVA12Uns': (GI_KINDS.replace('SELECTABLE ', ''), 10),
+         'CNVA12Ign': (GI_KINDS + ' IGNORES_SELECT_ALL', 100), 'CNVA12Noc': (GI_KINDS + ' NO_COLLIDE', 1000)}
+
+
+def life(m):
+    """The bomber's life and the bit that keeps it out of the area count: DP's press alone at 3 s, by the frame --
+    帧 = frames run, 机 = frames the player owns >= 1 bomber (PLAYER_HAS_OBJECT_COMPARISON), 见 = now: 1 that
+    comparison + 10 a bomber in Test A12 Whole completely built (_COMPLETELY_BUILT) + 100 an AIRCRAFT there (the kind
+    area count), 类 = now: KINDS' copies of the GI in their square, each by the plain type area count (1 +SUMMONED,
+    10 -SELECTABLE, 100 +IGNORES_SELECT_ALL, 1000 +NO_COLLIDE).
+    [data: the eject's RunOffMapWhenDone + RunOffMapBehavior (RequiresSpecificTrigger, FlyingOffMap, no waypoint
+    named): the bomber flies off after its last passenger; review mm #3: which bit keeps it out of the count]
+    BENCH 11-21 (round 279, CampActsDropAge_mcp_1121_102723): 类 1101 (-SELECTABLE the one left out), 机 0, 见 100
+    frames 52-128 then 0 (gone from Whole by 135). Readings data."""
+    gi = (Path(labpaths.SDK3) / 'SageXML' / 'Allied' / 'Units' / f'{GI}.xml').read_text(encoding='utf-8-sig')
+    assert gi.count(f'KindOf="{GI_KINDS}"') == 1
+    for k, (ident, (kinds, _w)) in enumerate(KINDS.items()):
+        m.units.append(Unit(ident, gi.replace(f'"{GI}"', f'"{ident}"').replace(GI_KINDS, kinds)))
+        m.put(ident, 'stop row', 500.0 + 60.0 * k - O[0], 3400.0 - O[1], role=ident.lower(), name=_n(ident))
+    t = Test()
+    s8.at(t, 'reveal', 0.1, [('MAP_REVEAL_ALL_PERM', m.player('p1')),
+                             ('NAMED_SET_SPECIAL_POWER_COUNTDOWN', _n('DP'), 'SpecialPowerCAMPAlliedBomberDrop2', 0)])
+    s8.at(t, 'press', PRESS, [('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', _n('DP'), 'Command_CAMPAlliedBomberDrop2',
+                               m.mark('spot DP'))])
+    whole, p1 = 'Test A12 Whole', m.player('p1')
+    t.areas[whole] = square(2500.0, 2500.0, 2800.0)
+    t.areas['Test A12 Kinds'] = square(590.0, 3400.0, 150.0)
+    owns = ('PLAYER_HAS_OBJECT_COMPARISON', p1, 3, 1, BOMBER)
+    s8.frames(t, 'CNV_A12_Frame', '帧', [])
+    s8.frames(t, 'CNV_A12_Life', '机', [owns])
+    s8.total(t, 'CNV_A12_Seen', '见', [
+        (1, owns), (10, ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA_COMPLETELY_BUILT', p1, 3, 1, BOMBER, whole)),
+        (100, ('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', p1, 3, 1, kindof('AIRCRAFT'), whole))])
+    s8.total(t, 'CNV_A12_Kind', '类', [(w, _has(m, 'p1', ident, 1, 'Test A12 Kinds')) for ident, (_k, w) in KINDS.items()])
+    s8.watch(t, 24.0, every=0.5)
+    return t
+
+
 def _has(m, side, tmpl, k, area):
     return 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', m.player(side), 3, k, tmpl, area
 
@@ -258,6 +301,6 @@ def _presses(m, drops):
 MISSION = {'engine_acts_mix': mission, 'engine_acts_drop': drop_mission,
            'engine_acts_ally': lambda: drop_mission(allied=True), 'engine_acts_edge': lambda: drop_mission(edge=True),
            'engine_acts_dropx': lambda: drop_mission(entry=True)}
-CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own, 'at': when, 'air': air},
+CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own, 'at': when, 'air': air, 'age': life},
           'engine_acts_ally': {'own': own},
           'engine_acts_edge': {'edge': edge}, 'engine_acts_dropx': {'own': own}}

@@ -49,10 +49,10 @@ def player_has_object_comparison(sim, name, a):
 
 
 def player_has_comparison_unit_type_in_trigger_area(sim, name, a):
-    # a SUMMONED one is not counted: the bomber drop's bombers (+SUMMONED -SELECTABLE) never, flying with their load
-    # counted (engine_acts_drop air 机 0 every frame; INFERRED which of the two kinds it is)
+    # one without SELECTABLE is not counted (engine_acts_drop age 类 1101: of four GI copies each with one of the drop
+    # bomber's bits, only the -SELECTABLE one left out; +SUMMONED counted -- review 1121mm #3)
     n = sum(1 for b in sim.living() if b.owner == a[0] and b.template.lower() == a[3].lower()
-            and 'SUMMONED' not in b.kinds and inside(sim.areas[a[4]], b.x, b.y))
+            and 'SELECTABLE' in b.kinds and inside(sim.areas[a[4]], b.x, b.y))
     return CMP[a[1]](n, a[2])
 
 
@@ -267,9 +267,10 @@ def player_has_comparison_unit_type_in_trigger_area_completely_built(sim, name, 
     # (player, comparison, n, type, area): the _IN_TRIGGER_AREA count of the player's own (建成 21 -> 31:
     # Soviet_4's plant counts for Soviet_4 only; lower case too); a plant made by script counts at once,
     # while it unpacks. One under construction (a player's placed one) would be left out: INFERRED, not
-    # benched, and the simulator builds nothing that way
+    # benched, and the simulator builds nothing that way. The drop bomber is not counted either (engine_acts_drop age 见:
+    # INFERRED the plain count's SELECTABLE)
     n = sum(1 for b in sim.living() if b.owner == a[0] and b.template.lower() == str(a[3]).lower()
-            and inside(sim.areas[a[4]], b.x, b.y))
+            and 'SELECTABLE' in b.kinds and inside(sim.areas[a[4]], b.x, b.y))
     return CMP[int(a[1])](n, int(a[2]))
 
 
