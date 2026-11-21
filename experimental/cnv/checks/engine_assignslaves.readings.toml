@@ -5,7 +5,6 @@ id = "the_commanded_fourth_heals_and_the_control_stays"
 scene = {build = "engine_assignrace", check = "b", until = 25}
 bench = "E181 (engine_assignrace:b, frozen at script frame 360): 脚本帧 360, 指定目标血量 70, 对照目标血量 20"
 proves = "物体模块 AssignSlavesTargetObjectSpecialPower: the retail repair bay's command sends a drone to the fourth vehicle (480 HP, 20 HP/s from f180); the lane without the module leaves it at 20%"
-item = "物体模块 Behaviors/AssignSlavesTargetObjectSpecialPower"
 expect = ["counter('E181Frame') == 360", "counter('E181On') == 70", "counter('E181Off') == 20"]
 
 [[reading]]
