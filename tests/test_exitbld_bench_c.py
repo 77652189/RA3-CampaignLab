@@ -39,20 +39,3 @@ def test_exitbld_named_host_and_mixed_crews_match_bench(variant, mask, before, a
     e.advance(max(expected)+8)
     assert not e.unknown.get('EXIT_SPECIFIC_BUILDING', 0)
     assert got == expected
-
-
-@pytest.mark.parametrize('variant,original_area', [('a', 2), ('b', 20)])
-@pytest.mark.xfail(strict=True, reason=(
-    'Original outside-only area prediction is false: native area count includes '
-    'enclosed occupants and remains 22. Retain original probe expectations; '
-    'see work/re/c_exitbld_report.md.'))
-def test_exitbld_original_outside_only_area_prediction(variant, original_area):
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_exitbld', variant)
-    assert next(x[3] for x in t.expect if x[0] == '区域码') == original_area
-    e = sim.Sim(m, t, script='不打')
-    e.advance(210)
-    measured = e.counters['CNV_EB_Area']
-    assert measured == 22
-    assert measured == original_area

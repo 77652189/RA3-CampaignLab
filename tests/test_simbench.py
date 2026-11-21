@@ -19,7 +19,7 @@ import engine.orders.order as simorder  # noqa: E402
 # DEMO_KILL (strict xfail 2026-11-07, green since simorder.held_up): the opening demo's pair, stopped by the ice 157
 # from the player's engineer, counted idle and shot him at 61.7 s; on the bench (`a4 demoeng`) he lives the whole
 # demonstration. A plain move stopped short is still on its move now: no fire, no chase till its next order.
-@pytest.mark.parametrize('check', ['detour', 'queue', 'melt', 'smoke', 'smash', 'win', 'derrick'])
+@pytest.mark.parametrize('check', ['detour', 'queue', 'melt', 'smoke', 'win'])
 def test_the_simulators_version_of_the_check_holds(check):
     status, lines = simbench.run(check)
     assert status == 0, '\n'.join(lines)
@@ -37,15 +37,6 @@ def _sim_run(build_name, check, until):
     import sim
     m, t, _ = build.resolve(build_name, check)
     return sim.Sim(m, t).run(until)
-
-
-def test_r7_the_ghost_king_lands_as_on_the_bench():
-    """smash: the bench (2026-11-07) read the Ghost King ashore at s58; before R7 the simulator had s75."""
-    status, lines = simbench.run('smash')
-    import re
-    row = next(x for x in lines if x.startswith('counters'))
-    start = next(int(s) for s, _, king in re.findall(r's(\d+)(?:-s\d+)?: (\S+) (\S+)', row) if king != '0')
-    assert abs(start - 58) <= 3, row
 
 
 def test_advance_in_slices_is_run():
@@ -97,6 +88,7 @@ def test_r4_the_engineer_takes_the_derrick_as_on_the_bench():
     """R4 (sim.Sim.capture_due / engine/modules/deposit.py): bench 2026-11-07 `cnv_check a4 derrick` -- the derrick the player's
     at the first reading after the order (s4) with 500 (the capture bonus), 515 at s7, 800 at s46 (15 every 2 s)."""
     status, lines = simbench.run('derrick')
+    assert status == 0, '\n'.join(lines)
     got = _series(lines)
     taken = next(s for s, (ours, _) in got if ours == '1')
     money = {s: int(v) for s, (_, v) in got}
@@ -111,7 +103,10 @@ def test_r3_the_ghost_king_smashes_the_wall_as_on_the_bench():
     41 s76, 18 s79, 6 s82, the wall gone at s82 (smashed, before its 30 s were up). Before R3's way the simulator
     took the King round the wall's far side: first damage s78, the wall melted at 40."""
     status, lines = simbench.run('smash')
+    assert status == 0, '\n'.join(lines)
     got = _series(lines, 3)
+    landed = next(s for s, (_, king, _) in got if king != '0')
+    assert abs(landed - 58) <= 3, got
     hurt = next(s for s, (_, _, h) in got if h not in ('0', '100'))
     gone = next(s for s, (w, _, _) in got if s > 40 and w == '0')
     assert abs(hurt - 69) <= 2 and abs(gone - 82) <= 3, got

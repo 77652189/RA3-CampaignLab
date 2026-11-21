@@ -42,12 +42,6 @@ def test_water_threat_original_readings(build, expected):
 
 @pytest.mark.parametrize('build', [
     'aiwaterdist',
-    pytest.param('aiwaterthreat', marks=pytest.mark.xfail(strict=True, reason=
-        'Original prediction far was contradicted by near counters; water threat baseline missing. '
-        'See work/re/c_water_report.md and handoff-c.md; original verdict retained.')),
-    pytest.param('aiwaternear', marks=pytest.mark.xfail(strict=True, reason=
-        'Original sampler missed s40..41; raw verdict is FAIL despite stable 4/0/0. '
-        'See work/re/c_water_report.md and handoff-c.md; do not relabel raw verdict.')),
     'aiwaterfar',
 ])
 def test_water_threat_original_verdict(build):

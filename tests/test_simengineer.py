@@ -181,12 +181,6 @@ def test_engineer_filters_reject_wrong_template_and_enemy_defence_and_report_rep
     assert not simunits.engineer_contain('Filtered', own)['supported']
 
 
-def test_engineer_capture_keeps_the_existing_derrick_bonus_and_deposit():
-    import simbench
-    status, lines = simbench.run('derrick')
-    assert status == 0, '\n'.join(lines)
-
-
 def test_engineer_partial_slice_does_not_register_the_whole_module_as_benched():
     import inventory
     key = inventory.MODULE, 'Behaviors/EngineerContain'

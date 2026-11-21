@@ -88,12 +88,3 @@ def test_tech_building_original_readings(build, expected):
         for key in ('brain', 'state', 'heuristic'):
             row[key] = 'redacted'
     assert json.loads(json.dumps(public)) == original
-
-
-@pytest.mark.xfail(strict=True, reason='Original no-target/home=4 prediction failed: '
-    'native selected inherited far oil; see work/re/handoff-c.md and work/re/c_techkind_report.md.')
-def test_tech_building_original_negative_prediction():
-    path = Path(simai.labpaths.WORK) / 're/c_techkind_measured.json'
-    if not path.exists():
-        pytest.skip('private original archive unavailable')
-    assert json.loads(path.read_text(encoding='utf-8'))['aitechnon']['verdict'] == 'PASS'

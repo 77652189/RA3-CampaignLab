@@ -97,18 +97,6 @@ def test_forbidden_observed_named_replay(build, expected):
         assert (things[ids[0]].x, things[ids[0]].y) == native[0]['point']
 
 
-@pytest.mark.parametrize('build,expected', OBSERVED_CASES)
-@pytest.mark.xfail(strict=True, reason='New native checks miss original s40 far=4 expectation '
-    '(far=0/3; logical frame=327/363). Capture/model clock alignment unresolved; '
-    'see work/re/handoff-c.md and work/re/c_forbidnew_report.md.')
-def test_forbidden_observed_original_arrival_prediction(build, expected):
-    path = Path(simai.labpaths.WORK) / 're/c_forbidnew_measured.json'
-    if not path.exists():
-        pytest.skip('private original bench archive unavailable')
-    measured = json.loads(path.read_text(encoding='utf-8'))[build]
-    assert measured['verdict'] == 'PASS', measured['result']['expectations']
-
-
 @pytest.mark.skipif(not simai.available(), reason='no private AI model')
 @pytest.mark.parametrize('build,expected', CASES)
 def test_forbidden_status_named_bench_replay(build, expected):

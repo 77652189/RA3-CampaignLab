@@ -11,7 +11,7 @@ E144: two preparatory starts (mobile/native host) crashed before readings.
 The final native-host recipe below has corrected local module references and
 structure anti-mask, and has NOT been run. Stop further engine attempts until
 the startup failure is explained; no effect or timing is established.
-See work/re/e144_attackassist.md and tests/test_simattackassist.py (strict xfail).
+See work/re/e144_attackassist.md.
 """
 import re
 from pathlib import Path

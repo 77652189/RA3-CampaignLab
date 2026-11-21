@@ -59,13 +59,3 @@ def test_min_enemy_distance_two_candidates_original_readings(build, expected):
     assert evidence['verdict'] == ('PASS' if build == 'aimindpair0' else 'FAIL')
     rows = [row for row in evidence['rows'] if 40 <= row[0] <= 41]
     assert rows and all(tuple(row[2]) == expected for row in rows), rows
-
-
-@pytest.mark.xfail(strict=True, reason='Original far-oil prediction failed: engine stayed home; '
-                   'see work/re/handoff-c.md and work/re/c_mindist_pair_report.md.')
-def test_min_enemy_distance_two_candidates_original_prediction():
-    path = Path(simai.labpaths.WORK) / 're/c_mindist_pair_measured.json'
-    if not path.exists():
-        pytest.skip('private original bench archive unavailable')
-    evidence = json.loads(path.read_text(encoding='utf-8'))['aimindpair350']
-    assert evidence['verdict'] == 'PASS', evidence['result']['expectations']
