@@ -1,0 +1,17 @@
+# Bench readings of checks/engine_aitoponly.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# HighestPriorityEnemyPlayersOnly (C 2026-11-12, work/re/c_toponly_report.md; moved from tests/test_top_enemy_only.py).
+
+[[reading]]
+id = "top_enemy_only_true_stays_home_false_falls_to_the_lower_tier"
+scene = {build = "aitopon", check = "a", until = 42}
+each = [{build = "aitopon", got = [0, 0, 0, 4]}, {build = "aitopoff", got = [0, 4, 0, 0]},
+        {build = "aitopctl", got = [0, 4, 0, 0]}]
+bench = """\
+(到电厂, 到兵营, 到坦克, 在家) at s40-s41, priorities s4=30 / p1=10 set at the wake, s4 (top) has only a yard, p1 a \
+barracks (2026-11-12, all PASS): aitopon (true) 0/0/0/4 all run; aitopoff (false) 0/4/0/0 from s23; aitopctl (true, \
+the barracks handed to s4) 0/4/0/0 from s23"""
+proves = """\
+simai targets: HighestPriorityEnemyPlayersOnly true -- no candidate in the top enemy tier, the heuristic fails (no \
+fallback to a lower tier); false falls through (one player per tier; ties and changing priorities not benched)"""
+item = "AI 目标/AITargetingHeuristic.HighestPriorityEnemyPlayersOnly"
+expect = "[win(40, 41, k) for k in ('到电厂', '到兵营', '到坦克', '在家')] == [[g, g] for g in got]"
