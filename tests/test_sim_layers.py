@@ -130,6 +130,12 @@ FIELD_OWNER = {'heal_at': 'engine.modules.autoheal', 'hurt': 'engine.modules.aut
                'level_rank': 'engine.objects.level',
                **dict.fromkeys(('queues', 'placing', 'pack_hold'), 'engine.players.production')}
 # (a body's `alive` is assigned only in simbody too, but simai's teams.alive callback shares the name)
+# the writes outside the owner that owner_breaks finds and that stay for now, one row per write: the guard asks
+# for exactly these (a fixed one comes off, a new one is red)
+OWNER_KNOWN = {('engine.combat.registry', 'hurt'): "the hit Context's own slot (self.hurt), not the body field",
+               ('engine.combat.registry', 'dots'): "the hit Context's own slot (self.dots), not the host's table",
+               ('engine.orders.ability', 'move_to'): "flee_start's clearing unpack (b.path, ..., b.move_to = ...); "
+                                                     "to move behind an order.py call"}
 
 
 def _load(name):
@@ -186,15 +192,20 @@ def world_breaks(takers=WORLD_TAKERS, source=None):
     return out
 
 
-def owner_breaks(owners=FIELD_OWNER):
-    """(file, field) for each assignment `<x>.field = / += / [k] =` outside the field's owner."""
+def owner_breaks(owners=FIELD_OWNER, sources=None):
+    """(file, field) for each assignment `<x>.field = / += / [k] =` outside the field's owner, also as one of
+    several targets (`a.f = b.g = v`) or inside an unpacking (`a.f, *b.g = v`). `sources`: {module: text} in place
+    of the engine files (the self-test)."""
     out = []
-    for path in map(Path, enginefiles.files()):
-        stem = enginefiles.name_of(path)
-        for node in ast.walk(ast.parse(path.read_text(encoding='utf-8'))):
-            targets = node.targets if isinstance(node, ast.Assign) else \
+    for stem, text in (sources or {enginefiles.name_of(p): Path(p).read_text(encoding='utf-8')
+                                   for p in enginefiles.files()}).items():
+        for node in ast.walk(ast.parse(text)):
+            targets = list(node.targets) if isinstance(node, ast.Assign) else \
                 [node.target] if isinstance(node, (ast.AugAssign, ast.AnnAssign)) else []
             for t in targets:
+                if isinstance(t, (ast.Tuple, ast.List, ast.Starred)):
+                    targets += [t.value] if isinstance(t, ast.Starred) else t.elts
+                    continue
                 while isinstance(t, ast.Subscript):
                     t = t.value
                 if isinstance(t, ast.Attribute) and t.attr in owners and stem != owners[t.attr]:
@@ -220,7 +231,14 @@ def test_world_takers_reach_only_the_world_api():
 
 
 def test_field_owners():
-    assert not owner_breaks()
+    assert sorted(owner_breaks()) == sorted(OWNER_KNOWN)
+
+
+def test_owner_guard_bites():
+    """Mutation check: a field written outside its owner is caught inside an unpacking and in a chained assignment."""
+    src = "def f(b, u):\n    b.path, (b.move_to, *u.follow) = 1, (2, 3)\n    u.x = b.spot = 4\n    b.flee = 5\n"
+    assert owner_breaks(sources={'engine.orders.ability': src}) == \
+        [('engine.orders.ability', 'move_to'), ('engine.orders.ability', 'follow'), ('engine.orders.ability', 'spot')]
 
 
 def peer_breaks(takers=PEER_TAKERS, source=None):
