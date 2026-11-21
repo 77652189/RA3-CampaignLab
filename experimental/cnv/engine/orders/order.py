@@ -74,7 +74,7 @@ def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None, 
         simability.stop_flee(b)             # INFERRED: any move order takes the run over, as STOP does
         m = b.aiupdate                      # ... and a waypoint path (order_follow sets it again after its legs)
         m.follow = m.ground_fire = None     # ... and a fire at the ground
-        m.mode = 'attack' if attacking else 'move'
+        m.mode, m.ordered = 'attack' if attacking else 'move', False
         p = world.point(where) if isinstance(where, str) else where
         if p is not None and b.alive and b.speed > 0:
             spot = simpath.free_spot(world, b, simpath.goal_off_nodes(world, b, p),
@@ -127,7 +127,8 @@ def order_attack(world, peers, b, target_name, force=False):
         #                 13: FORCE_ATTACK_NAMED is the order that takes any relation); a neutral one not benched, kept
     if not (b and target and target.alive and b.alive):
         return False
-    walk = b.goal is not target or b.mode != 'attack'   # a goal the AI's pursuit set alone is not on it (review jj #1)
+    walk = b.goal is not target or b.mode != 'attack' or not b.aiupdate.ordered   # a goal the AI's pursuit set
+    #                                                       alone, after a ground fire or attack-move: not on it (jj #1, kk #2)
     b.aiupdate.command('attack', target)
     if walk:
         b.aiupdate.follow = None

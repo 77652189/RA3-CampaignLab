@@ -20,6 +20,13 @@ def test_hold_fire_keeps_an_attack_unfired_till_another_stance_or_order():
     a.aiupdate.command('ground', (100.0, 0.0)), a.aiupdate.command('goal', a)  # review jj #1: a goal set alone
     a.aiupdate.follow = 'path'
     assert s.order_attack(a, a, True) and (a.mode, a.ground_fire, a.follow) == ('attack', None, None)
+    a.aiupdate.follow = 'path'
+    a.aiupdate.command('goal', a)                       # the AI's pursuit on what it is told to attack
+    assert s.order_attack(a, a, True) and a.follow == 'path'    # already on it: no walk
+    for pursuit in (lambda: a.aiupdate.command('goal', a), lambda: None):   # review kk #2: after an attack-move
+        s.order_move(a, (500.0, 0.0), True), pursuit()  # (the AI's goal set on its way or still the old one) it walks
+        a.aiupdate.follow = 'path'
+        assert s.order_attack(a, a, True) and a.follow is None
     a.aiupdate.set_auto_acquire(True)
     assert a.ai_acquire
 

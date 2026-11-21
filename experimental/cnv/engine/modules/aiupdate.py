@@ -8,8 +8,9 @@ from engine.kernel import factory, interfaces, module
 @factory.module('AIOrderState')
 class AIOrderState(module.Module, interfaces.AIUpdate):
     STATE = ('hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'ground_fire',
-             'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged', 'follow', 'move_to')
+             'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged', 'follow', 'move_to', 'ordered')
     hold_fire, hold_paused, stance, ai_acquire, acquire = False, False, 0, False, frozenset()
+    ordered = False     # its goal is an attack order's (not the AI's pursuit alone; an attack-move clears it)
     goal, mode, ground_fire = None, 'idle', None    # goal: a point or a thing; mode: 'move' / 'attack' (stops to fight) ...
     # idle_chase: the enemy it went after by itself, where it stood (walks back to), the way's end that rule gave it;
     chase = home = auto_to = resume = spot = None   # attack_chase: the attack-move's end; (goal id, x, y) of a fire_spot
@@ -33,6 +34,8 @@ class AIOrderState(module.Module, interfaces.AIUpdate):
             self.hold_paused = False
         if order != 'goal':
             self.ground_fire = target if order == 'ground' else None
+        if order != 'goal' or target is not self.goal:
+            self.ordered = order == 'attack'
         self.goal = target if order in ('attack', 'goal') else None
         if order not in ('goal', 'stop'):
             self.mode = 'attack' if order == 'attack' else 'idle'
