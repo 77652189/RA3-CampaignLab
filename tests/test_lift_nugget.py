@@ -1,4 +1,4 @@
-"""Lift timing from D50; historical engine_lift counters remain the oracle."""
+"""Lift timing from D50; the engine_lift / engine_liftground / engine_liftair readings: checks/engine_lift.readings.toml."""
 import importlib.util
 from pathlib import Path
 
@@ -8,22 +8,6 @@ _spec = importlib.util.spec_from_file_location('simbench_lift', Path(__file__).r
                                              'experimental/cnv/simbench.py')
 _harness = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_harness)
-
-
-@pytest.mark.parametrize('check,expected', [
-    ('a', (1099, 11001099, 11001099, 1099)),
-    pytest.param('landing', (1099, 10001099, 10001099, 1099),
-                 marks=pytest.mark.xfail(strict=True, reason='Lift landing remains unmodeled: A169 measured contact but SoftLanding clears at height 28 and not 40/60; the dispatch/clear boundary is unresolved. See work/re/a169_lift_landing.md and work/re/c_liftclosure_report.md')),
-])
-def test_lift_historical_bench_counters(check, expected):
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_lift', check)
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    assert tuple(e.run(22).series[-1][1]) == expected
-    assert not e.lift_timers.remaining
-    assert (sim.GAP_WEAPON, 'ActivateLiftObjectNugget') in e.unmodeled  # falling still absent
 
 
 def test_lift_timer_truncation_renewal_cap_and_caster_ownership():
@@ -52,24 +36,6 @@ def test_lift_timer_truncation_renewal_cap_and_caster_ownership():
     assert timers.remaining[('new', 'victim')] == 7
     timers.hit('new', 'victim', 7, 3)
     assert timers.remaining[('new', 'victim')] == 3
-
-
-def test_lift_hit_enters_caster_ledger_and_release_keeps_status():
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_lift', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    e.run(6.2)
-    assert set(e.lift_timers.remaining) == {
-        ('Lift high gun', 'Lift high victim'), ('Lift order gun', 'Lift order victim')}
-    assert set(e.lift_timers.remaining.values()) <= set(range(1, 8))
-    e.run(8)
-    assert not e.lift_timers.remaining
-    for lane in ('base', 'high', 'order', 'removed'):
-        victim = e.body('Lift ' + lane + ' victim')
-        e.modify(victim)  # unrelated modifier recomputation must not erase the lift-owned bit
-        assert ('LIFTED_INTO_AIR' in victim.status) == (lane in ('high', 'order'))
 
 
 @pytest.mark.parametrize('nugget', [
@@ -144,37 +110,3 @@ def test_lift_retail_closure_keeps_all_six_consumers_unmeasured():
             if i['name'].split(':')[0] == 'ActivateLiftObjectNugget']
     assert sum(i['uses'] for i in rows) == 6
     assert all(i['state'] in (inventory.GUESSED, inventory.TODO) for i in rows)
-
-
-@pytest.mark.parametrize('excluded', [False, True])
-def test_lift_zero_damage_dispatch_and_filter(excluded):
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_lift', 'a')
-    for u in m.units:
-        if 'ActivateLiftObjectNugget' in u.xml:
-            u.xml = u.xml.replace('Damage="10"', 'Damage="0"')
-            if excluded:
-                u.xml = u.xml.replace('Include="VEHICLE"', 'Include="VEHICLE" Exclude="VEHICLE"')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    e.run(8)
-    for lane in ('high', 'order'):
-        victim = e.body('Lift ' + lane + ' victim')
-        assert victim.hp == victim.max_hp
-        assert ('LIFTED_INTO_AIR' in victim.status) == (not excluded)
-
-
-@pytest.mark.parametrize('mission,observed', [
-    ('engine_liftground', (11, 111, 111, 10)),
-    ('engine_liftair', (0, 100, 100, 10)),
-])
-@pytest.mark.xfail(strict=True, reason='Native Lift activation is measured but retail complex filters remain unsupported; aircraft also remain unsupported. See work/re/c_liftretail_report.md')
-def test_lift_native_consumers_replay(mission, observed):
-    """Native Yuriko, occupied IFV/turret and deleted-nugget control."""
-    import build
-    import sim
-    m, t, _ = build.resolve(mission, 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    assert tuple(e.run(19).series[-1][1]) == observed

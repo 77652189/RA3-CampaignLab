@@ -35,3 +35,7 @@ def test_ground_lift_releases_the_timer_and_keeps_the_status(weapon_world):
     s.deal(FRAME)
     assert (caster.name, amphibian.name) not in s.lift_timers.remaining
     assert 'LIFTED_INTO_AIR' not in amphibian.status
+
+    other = s.add('other', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1350, 2580)
+    fire(xml.replace('Include="VEHICLE"', 'Include="VEHICLE" Exclude="VEHICLE"'), other, caster)
+    assert 'LIFTED_INTO_AIR' not in other.status    # Exclude wins over Include
