@@ -1,0 +1,11 @@
+# Bench readings of checks/engine_techreceiver.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Each count bit is the check's own exact holder count at f60 / f180 / f300 (its docstring): 15 = all four held.
+
+[[reading]]
+id = "a_yards_tech2_reaches_the_factory_in_range_and_goes_with_it"
+scene = {build = "engine_techrecvon", check = "a", until = 23}
+each = [{build = "engine_techrecvon"}, {build = "engine_techrecvoff"}]
+bench = "E167 (bench 11-14): on / off both frame 330, baseline / grant / removed 15 / 15 / 15 -- f180 Tech2 holders near 2 / 1 (factory 300 away), far 1 / 1 (750); f300 none, both factories alive"
+proves = "物体模块 TechUpgradeReceiver: the retail war factory's Level2 receiver takes the yard's Tech2 within its 600 radius, not beyond, and loses it when the yard goes; the factory without the include never holds it"
+item = "物体模块 Behaviors/TechUpgradeReceiver"
+expect = ["[counter(c) for c in ('E167Frame', 'E167Base', 'E167Grant', 'E167Gone')] == [330, 15, 15, 15]"]
