@@ -96,8 +96,10 @@ def order_group(world, peers, bodies, where, attacking, on_grid=False):
         return
     world.used.add('group move')
     given = []                                  # (x, y, radius) spots handed out to the group so far
-    for b, q in simpath.formation_spots(world, movers, p):
-        order_move(world, peers, b, q, attacking, given, movers, on_grid=on_grid)
+    foot = [b for b in movers if 'INFANTRY' in b.kinds]     # the block's men skip the whole group, the rest only
+    rest = [b for b in movers if b not in foot] if len(foot) >= 2 else movers   # each other: a man held up short
+    for b, q in simpath.formation_spots(world, movers, p):  # of his spot still holds where he stands (review 1121ll #1)
+        order_move(world, peers, b, q, attacking, given, rest if b in rest else movers, on_grid=on_grid)
         given.append(tuple(b.dest or (b.x, b.y)) + (b.radius,))
 
 
