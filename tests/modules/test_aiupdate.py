@@ -18,7 +18,7 @@ def test_hold_fire_keeps_an_attack_unfired_till_another_stance_or_order():
     a.aiupdate.set_stance(1, True), a.aiupdate.set_stance(3, True)
     assert s.order_attack(a, a, True) and not a.hold_paused     # already on it too
     a.aiupdate.command('ground', (100.0, 0.0)), a.aiupdate.command('goal', a)  # review jj #1: a goal set alone
-    a.follow = 'path'
+    a.aiupdate.follow = 'path'
     assert s.order_attack(a, a, True) and (a.mode, a.ground_fire, a.follow) == ('attack', None, None)
     a.aiupdate.set_auto_acquire(True)
     assert a.ai_acquire

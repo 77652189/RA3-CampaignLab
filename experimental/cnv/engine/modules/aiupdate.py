@@ -1,19 +1,20 @@
 """The AIUpdate family's order state (cmd_pack C2): a unit's stance (GUARD 0, AGGRESSIVE 1, HOLD_POSITION 2, HOLD_FIRE
 3; stance.md), TEAM_ALLOW_AI_AUTOACQUIRE, an armed unit's AutoAcquireEnemiesWhenIdle words, its goal, mode and fire at
-the ground; (C3) its chase, whose rules (they ask other things) stay engine.orders.order's: Body fields once (Body's
-forwards). Attached at its first setting (`of`, Body's `aiupdate`), else defaults."""
+the ground; (C3) its chase, (C4) its waypoint path and plain move's end, whose rules (they ask other things) stay
+engine.orders.order's: Body fields once (Body's forwards). Attached at its first setting (`of`, Body's `aiupdate`), else defaults."""
 from engine.kernel import factory, interfaces, module
 
 
 @factory.module('AIOrderState')
 class AIOrderState(module.Module, interfaces.AIUpdate):
     STATE = ('hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'ground_fire',
-             'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged')
+             'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged', 'follow', 'move_to')
     hold_fire, hold_paused, stance, ai_acquire, acquire = False, False, 0, False, frozenset()
     goal, mode, ground_fire = None, 'idle', None    # goal: a point or a thing; mode: 'move' / 'attack' (stops to fight) ...
     # idle_chase: the enemy it went after by itself, where it stood (walks back to), the way's end that rule gave it;
     chase = home = auto_to = resume = spot = None   # attack_chase: the attack-move's end; (goal id, x, y) of a fire_spot
     engaged = False                                 # an attack-mover with an enemy in range holds
+    follow = move_to = None     # order_follow's {label, waypoint, ...} (a team shares one); a plain move's end (held_up)
 
     def engage(self):
         """Sim.aim fired (none engaged before it: fight, aim_due): an attack-mover holds while it fights."""

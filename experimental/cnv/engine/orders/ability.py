@@ -126,7 +126,7 @@ def flee_start(world, peers, b):
     goal = world.waypoints.get(name or 'RunOffMap') or (b.x + 1000.0 * math.cos(b.angle), b.y + 1000.0 * math.sin(b.angle))
     d = math.hypot(goal[0] - b.x, goal[1] - b.y)
     b.flee = (world.frame_now(), b.x, b.y, goal[0], goal[1], d, b.speed / simunits.LIFE_FPS)
-    b.path, b.goal, b.mode, b.move_to = [], None, 'idle', None
+    b.path, b.goal, b.mode, b.aiupdate.move_to = [], None, 'idle', None
     b.script_status.add('FLEE_OFF_MAP')
     peers.modify(b)
     world.used.add('flee off map')

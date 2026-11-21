@@ -270,7 +270,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 2802, 'Sim methods': 170, 'Body fields': 47, 'simunits defs': 136,
+CENTER = {'sim.py lines': 2802, 'Sim methods': 170, 'Body fields': 45, 'simunits defs': 136,
           'cells with old code': 31}
 
 
@@ -347,7 +347,7 @@ BODY_FORWARDS = {'hp': 'Body', 'max_hp': 'Body', 'health_floor': 'Body', 'immort
                  **dict.fromkeys(('speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face', 'set_off',
                                   'stood_for', 'frame_move', 'jet_motion', 'rolling', 'carry', 'stops_at'), 'LocomotorState'),
                  **dict.fromkeys(('hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'chase',
-                                  'home', 'auto_to', 'resume', 'spot', 'engaged'), 'AIOrderState')}
+                                  'home', 'auto_to', 'resume', 'spot', 'engaged', 'follow', 'move_to'), 'AIOrderState')}
 WRITTEN = {'path', 'dest', 'face', 'acquire', 'goal', 'mode'}  # written through a setter for now (M2 3, C2b): only shrinks
 
 
@@ -990,7 +990,7 @@ def test_end_broadcast_guard_bites():
 # (and a freed object's id can come back on a new one). Keys are names or World.build's serial (Thing.serial). The
 # id() calls left, by the function they are in, with why -- only shrinks.
 ID_CALLS = {
-    ('engine/orders/order.py', 'follow_due'): 3,                   # `done`: one call's set of follow dicts, by identity
+    ('engine/orders/order.py', 'follow_due'): 2,                  # `done`: one call's set of follow dicts, by identity
     ('engine/ai/core.py', 'Brain.team_named'): 2,                # `held`: one call's set of wrappers, by identity
     ('simcoverage.py', 'code_strings'): 2,              # an AST walk's own nodes (a tool, no state of a run)
     ('engine/data/units.py', '_ModuleTemplates._effective'): 1,  # the template port's inheritance trail (one lookup's cycle check)
@@ -1036,7 +1036,7 @@ def test_id_guard_bites():
     assert id_calls(keyed) != ID_CALLS
     fo = 'engine/orders/order.py'
     less = dict(sources, **{fo: sources[fo].replace('        done.add(id(leg))\n', '        pass\n', 1)})
-    assert less[fo] != sources[fo] and id_calls(less)[(fo, 'follow_due')] == 2
+    assert less[fo] != sources[fo] and id_calls(less)[(fo, 'follow_due')] == 1
     ex = 'engine/script/executor.py'
     back = dict(sources, **{ex: sources[ex].replace('self._next.get(key, 0)', 'self._next.get(id(s), 0)', 1)})
     assert back[ex] != sources[ex] and id_calls(back)[(ex, 'PublicExecutor.execute')] == 1

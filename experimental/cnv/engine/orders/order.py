@@ -72,15 +72,15 @@ def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None, 
     face: the facing (radians) it turns to once there (the AI's form-up slots; send)."""
     if b:
         simability.stop_flee(b)             # INFERRED: any move order takes the run over, as STOP does
-        b.follow = None                     # ... and a waypoint path (order_follow sets it again after its legs)
-        b.ground_fire = None                # ... and a fire at the ground
-        b.mode = 'attack' if attacking else 'move'
+        m = b.aiupdate                      # ... and a waypoint path (order_follow sets it again after its legs)
+        m.follow = m.ground_fire = None     # ... and a fire at the ground
+        m.mode = 'attack' if attacking else 'move'
         p = world.point(where) if isinstance(where, str) else where
         if p is not None and b.alive and b.speed > 0:
             spot = peers.free_spot(b, peers.goal_off_nodes(b, p), peers.claims(b, skip) + list(given), on_grid)
             where = where if spot == p else spot
         peers.send(b, where, face=face)
-        b.move_to = b.dest if not attacking else None
+        m.move_to = b.dest if not attacking else None
 
 
 def order_group(world, peers, bodies, where, attacking, on_grid=False):
@@ -150,7 +150,7 @@ def order_attack(world, peers, b, target_name, force=False):
     walk = b.goal is not target or b.mode != 'attack'   # a goal the AI's pursuit set alone is not on it (review jj #1)
     b.aiupdate.command('attack', target)
     if walk:
-        b.follow = None
+        b.aiupdate.follow = None
         peers.send(b, (target.x, target.y), reach=peers.reach(b, target))
     return True
 
@@ -213,21 +213,21 @@ def capture_due(world, peers):
 def order_guard(world, peers, b, area):
     world.used.add('guard')
     if b:
-        b.follow = None
-    if b and not inside(world.areas[area], b.x, b.y):
-        peers.send(b, area)
+        b.aiupdate.follow = None
+        if not inside(world.areas[area], b.x, b.y):
+            peers.send(b, area)
 
 
 def order_stop(b):
     if b:
-        b.path, b.follow = [], None
+        b.path, b.aiupdate.follow = [], None
         b.aiupdate.command('stop')
         simability.stop_flee(b)             # a later order takes the run over (engine_runoffmap d; the status stays)
 
 
 def stand(b):
     """Its order dropped, nothing new: idle where it is (the AI's command 5: l2_scripts1 3, 6)."""
-    b.path, b.move_to, b.follow = [], None, None
+    b.path, b.aiupdate.move_to, b.aiupdate.follow = [], None, None
     b.aiupdate.command('idle')
 
 
@@ -300,11 +300,11 @@ def follow_leg(world, peers, movers, how):
             ox, oy = how['offset'].get(b.serial, (0.0, 0.0))
             order_move(world, peers, b, (wx + ox, wy + oy), how['attacking'], given=given, skip=movers)
             given.append((wx + ox, wy + oy, b.radius))
-            b.follow = how
+            b.aiupdate.follow = how
     else:
         for b in movers:
             order_move(world, peers, b, how['at'], how['attacking'])
-            b.follow = dict(how, team=False)
+            b.aiupdate.follow = dict(how, team=False)
 
 
 def follow_due(world, peers):
@@ -315,19 +315,13 @@ def follow_due(world, peers):
         how = b.follow
         if how is None or id(how) in done:
             continue
-        if how['team']:                     # the first member there moves the team's waypoint on
-            group = [o for o in world.living() if o.follow is how]
-            if all(o.path or o.engaged or o.resume is not None or isinstance(o.goal, type(o)) for o in group):
-                continue
-            done.add(id(how))
-        else:
-            if b.path or b.engaged or b.resume is not None or isinstance(b.goal, type(b)):
-                continue                    # resume: turned aside to fight (attack_chase), the leg not done
-            group = [b]
+        group = [o for o in world.living() if o.follow is how] if how['team'] else [b]   # a team: its first member
+        if all(o.path or o.engaged or o.resume is not None or isinstance(o.goal, type(o)) for o in group):  # there
+            continue                        # moves it on; resume: turned aside to fight (attack_chase), the leg not done
         nxt = path_next(world, how['at'])
         if nxt is None or nxt not in world.waypoints:
             for o in group:
-                o.follow = None
+                o.aiupdate.follow = None
             continue
         leg = dict(how, at=nxt)
         done.add(id(leg))

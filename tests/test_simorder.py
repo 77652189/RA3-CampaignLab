@@ -37,10 +37,10 @@ def test_a_new_hunt_takes_its_members_out_of_their_old_crews_and_picks_at_once()
 def test_stop_and_stand_drop_the_order_and_a_short_move_is_held_up():
     s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)])
     b = s.bodies['a']
-    b.mode, b.goal, b.path, b.move_to, b.dest = 'move', None, [], (500.0, 0.0), (500.0, 0.0)
+    b.mode, b.goal, b.path, b.aiupdate.move_to, b.dest = 'move', None, [], (500.0, 0.0), (500.0, 0.0)
     assert simorder.held_up(b)                           # its way ended 500 short of where it was sent
     b.dest = (b.x + simorder.ARRIVE / 2, 0.0)
-    b.move_to = b.dest
+    b.aiupdate.move_to = b.dest
     assert not simorder.held_up(b)                       # within ARRIVE: it got there
     simorder.stand(b)
     assert b.mode == 'idle' and b.move_to is None and simseq.idle(simorder.Peers(s), b)

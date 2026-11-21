@@ -134,7 +134,7 @@ FIELD_OWNER = {'heal_at': 'engine.modules.autoheal', 'hurt': 'engine.modules.aut
 # for exactly these (a fixed one comes off, a new one is red)
 OWNER_KNOWN = {('engine.combat.registry', 'hurt'): "the hit Context's own slot (self.hurt), not the body field",
                ('engine.combat.registry', 'dots'): "the hit Context's own slot (self.dots), not the host's table",
-               ('engine.orders.ability', 'move_to'): "flee_start's clearing unpack (b.path, ..., b.move_to = ...); "
+               ('engine.orders.ability', 'move_to'): "flee_start's clearing unpack (b.path, ..., b.aiupdate.move_to = ...); "
                                                      "to move behind an order.py call"}
 
 

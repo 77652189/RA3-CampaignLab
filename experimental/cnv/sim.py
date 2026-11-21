@@ -356,11 +356,9 @@ class Body(kernel_module.Thing):
     level_vision: float = 1.0                                   # ENEMY_SIGHTED only; heroic auto-acquire not benched
     base: dict = None                                           # speed, vision, sight, weapons before modifiers
     died_at: float = None                                       # killed or deleted then
-    move_to: tuple = None                                       # where its last plain move sent it (held_up)
     fired_at: float = None                                      # a bombarder's last shot (seen by all a while)
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
     replace: bool = False                                       # building = its ReplaceSelfSpecialAbility: it turns into it
-    follow: dict = None                                         # order_follow: label, next waypoint, mode; shared by one team
     drive_speed: float = 0.0
     jet_started: bool = False
     z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
@@ -399,7 +397,7 @@ class Body(kernel_module.Thing):
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules',
                 'lies', 'linger', 'weapons', 'slots', 'speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face',
                 'hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'set_off', 'stood_for', 'frame_move', 'jet_motion', 'rolling', 'carry', 'stops_at',
-                'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged')
+                'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged', 'follow', 'move_to')
     hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
     max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
@@ -463,6 +461,8 @@ class Body(kernel_module.Thing):
     resume = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.resume)
     spot = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.spot)
     engaged = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.engaged, False)
+    follow = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.follow)    # C4: order.py's
+    move_to = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.move_to)
     ground_fire = aiupdate.ground_fire                  # no forward: in the record only once written
     aiupdate = property(aiupdate.of)                    # the module itself (attached at its first setting)
     set_off = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.set_off, -1)      # M3 1: go_to's

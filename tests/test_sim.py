@@ -452,6 +452,16 @@ def test_a_team_follows_a_path_as_one_with_group_moves():
     assert s.lost_orders[-1][2] == 'TEAM_FOLLOW_WAYPOINTS'
 
 
+def test_a_team_path_moves_on_when_its_first_member_is_there():
+    """asTeam: the first member at the leg's end sends the whole team, one still walking too, on to the next."""
+    s = _road()
+    x, y = s.waypoints['R1']
+    crew = [s.add(f'u{i}', 'JapanAntiInfantryInfantry', s.foe, x - 40 * i, y) for i in range(3)]
+    s.order_follow(crew, 'Road', False, start='R1', as_team=True)
+    crew[0].path = crew[1].path = []
+    assert crew[2].path and s.follow_due() is None and crew[0].follow is crew[2].follow and crew[2].follow['at'] == 'R2'
+
+
 def test_a_path_follower_loses_no_time_at_its_waypoints():
     """Sim.move / Body.carry (A round 228): a leg ending mid-tick hands the rest of that tick to the next leg (follow_due
     gives it only after the tick) -- along the path the unit is speed x time from where it started, every tick but the
