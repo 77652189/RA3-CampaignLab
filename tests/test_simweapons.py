@@ -1,13 +1,7 @@
 """simunits weapon reading: a campaign override (inheritFrom its own id) changes the earlier template instead of
 replacing it; a LineDamageNugget's damage counts; a mission's own WeaponTemplate is read, inheriting a retail one."""
-import importlib.util
-from pathlib import Path
-
-# loaded by file (no new sys.path edit: guard G4's ceiling); simunits puts what it needs on the path itself
-_spec = importlib.util.spec_from_file_location(
-    'engine.data.units', Path(__file__).resolve().parent.parent / 'experimental' / 'cnv' / 'engine/data/units.py')
-simunits = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simunits)
+from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
+import engine.data.units as simunits  # noqa: E402
 
 BASE = '''<WeaponTemplate id="Gun" AttackRange="150.0" ClipSize="3">
   <FiringDuration MinSeconds="0.2s" MaxSeconds="0.2s"/>

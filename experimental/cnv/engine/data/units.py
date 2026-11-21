@@ -63,40 +63,22 @@ _surf_memo = None
 
 
 def _surfaces():
-    """Locomotor template id -> its Surfaces (GROUND, WATER, AIR ...)."""
+    """Locomotor template id -> its engine.modules.locomotor.Locomotor (Surfaces, turning)."""
+    from engine.modules import locomotor
     global _surf_memo
     if _surf_memo is None:
-        _surf_memo = _read_surfaces()
+        _surf_memo = locomotor.library(open(LOCOMOTORS, encoding='utf-8', errors='replace').read()
+                                       if os.path.exists(LOCOMOTORS) else '')
     return _surf_memo
-
-
-def _read_surfaces():
-    if not os.path.exists(LOCOMOTORS):
-        return {}
-    text = open(LOCOMOTORS, encoding='utf-8', errors='replace').read()
-    out = {}
-    for m in re.finditer(r'<LocomotorTemplate\b(.*?)>', text, re.S):
-        head = m.group(1)
-        i, s = re.search(r'\bid="([^"]+)"', head), re.search(r'\bSurfaces="([^"]+)"', head)
-        if i:
-            out[i.group(1)] = s.group(1).split() if s else []
-    return out
 
 
 def _own_fields(text, surfaces):
     """What one GameObject block writes itself (None: left to what it inherits): speed and its locomotor's surfaces
     (the NORMAL LocomotorSet), vision, shroud, clear height, radius."""
-    speed, surf = None, None
-    for m in re.finditer(r'<LocomotorSet\b(.*?)/?>', text, re.S):
-        a = m.group(1)
-        cond = re.search(r'\bCondition="([^"]+)"', a)
-        if cond and cond.group(1) != 'NORMAL':
-            continue
-        sp, lo = re.search(r'\bSpeed="([\d.]+)"', a), re.search(r'\bLocomotor="([^"]+)"', a)
-        if sp and speed is None:
-            speed = float(sp.group(1))
-            surf = surfaces.get(lo.group(1), []) if lo else []
-    return dict(speed=speed, surf=surf, vision=number(text, 'VisionRange'), shroud=number(text, 'ShroudClearingRange'),
+    from engine.modules import locomotor
+    normal = locomotor.speed_of(locomotor.sets(text), 'NORMAL')
+    loco = surfaces.get(normal.locomotor) if normal else None
+    return dict(speed=normal and normal.speed, surf=normal and (loco.surfaces if loco else []), vision=number(text, 'VisionRange'), shroud=number(text, 'ShroudClearingRange'),
                 clear_height=number(text, 'ShroudClearingHeight'), radius=radius(text))
 
 
@@ -199,9 +181,10 @@ def resolve(template, own=None, surfaces=None, xml=None, depth=0):
 def read_xml(template, own=None, surfaces=None):
     """One unit's table entry: speed (the NORMAL LocomotorSet), surface, vision, kinds -- resolve()d up its chain;
     a building (sorted STRUCTURE) counts STRUCTURE among its kinds."""
+    from engine.modules import locomotor
     r = resolve(template, own, surfaces)
     kinds = set(r['kinds']) | ({'STRUCTURE'} if r['sorting'] == 'STRUCTURE' else set())
-    return dict(speed=r['speed'], surface=surface_of(r['surf'] or [], kinds), vision=r['vision'],
+    return dict(speed=r['speed'], surface=locomotor.surface_of(r['surf'] or [], kinds), vision=r['vision'],
                 shroud=r['shroud'], kinds=sorted(kinds), clear_height=r['clear_height'], radius=r['radius'])
 
 
@@ -222,21 +205,6 @@ def radius(text):
         minor = float(minor.group(1)) if minor else 0.0
         return (major * major + minor * minor) ** 0.5
     return major
-
-
-def surface_of(surf, kinds):
-    """A locomotor's Surfaces as a routing grid. DEEP_WATER is water: the ships' and the dolphin's locomotors write
-    DEEP_WATER alone (round 252, engine_dam: read as 'ground' before, the dolphin was routed over the bank and a dry
-    dam). The routing's water grid does not tell deep from shallow (INFERRED)."""
-    s = set(surf)
-    wet = bool(s & {'WATER', 'DEEP_WATER'})
-    if 'AIRCRAFT' in kinds or 'AIR' in s:
-        return 'air'
-    if 'AMPHIBIOUS' in kinds or ('GROUND' in s and wet):
-        return 'both'
-    if wet:
-        return 'water'
-    return 'ground'
 
 
 def units():
@@ -2456,15 +2424,10 @@ def upgrade_mods(xml, upgrades):
 def locomotor_speed(template, own, condition):
     """The Speed of the template's LocomotorSet for that Condition (NORMAL, SUPERSONIC ...), up its chain; None when
     it has none (a toggle's state switches it: the Tengu's jet 200 against 100 on the ground)."""
-    def first(xml):
-        for m in re.finditer(r'<LocomotorSet\b(.*?)/?>', xml or '', re.S):
-            a = m.group(1)
-            cond, sp = re.search(r'\bCondition="([^"]+)"', a), re.search(r'\bSpeed="([\d.]+)"', a)
-            if cond and cond.group(1) == condition and sp:
-                return float(sp.group(1))
-        return None
+    from engine.modules import locomotor
     try:
-        return _chain(template, own, first)
+        return _chain(template, own, lambda xml: getattr(locomotor.speed_of(locomotor.sets(xml), condition), 'speed',
+                                                         None))
     except (OSError, ValueError):
         return None
 
@@ -2473,32 +2436,21 @@ _turning_memo = {}
 
 
 def turning(template, own=None):
-    """(degrees per second, threshold degrees or None): how fast the template turns -- 360 / TurnTimeSeconds of the
-    Locomotor its NORMAL LocomotorSet names -- and that Locomotor's TurnThresholdHS. Bench airev1t (B round 195, A
-    round 227, tests/test_turn_rate.py): Hammers (1.25 s), Guardians (1.0 s) and Apocalypses (3 s) turn 19 / 24 / 8
-    deg a frame in place from the order frame on, drive on the frame that starts within ~9 deg of their way, and
-    turn to the form-up facing the frame after they arrive; a 51 deg turn (under the threshold) in place too.
-    Infantry (TestReactiveLocomotorHUMAN, 0.5 s, no threshold) not benched. None when the template has no
-    locomotor (a building)."""
+    """The engine.modules.locomotor.Locomotor the template's NORMAL LocomotorSet names, up its chain: how fast it
+    turns (360 / TurnTimeSeconds) and its TurnThresholdHS. Bench airev1t (B round 195, A round 227,
+    tests/test_turn_rate.py): Hammers (1.25 s), Guardians (1.0 s) and Apocalypses (3 s) turn 19 / 24 / 8 deg a frame
+    in place from the order frame on, drive on the frame that starts within ~9 deg of their way, and turn to the
+    form-up facing the frame after they arrive; a 51 deg turn (under the threshold) in place too. Infantry
+    (TestReactiveLocomotorHUMAN, 0.5 s, no threshold) not benched. None when the template has no locomotor (a
+    building)."""
+    from engine.modules import locomotor
     key = (template, (own or {}).get(template))
     if key not in _turning_memo:
-        def read(xml):
-            for h, _ in _blocks(xml or '', 'LocomotorSet'):
-                if _attr(h, 'Condition', 'NORMAL') == 'NORMAL' and _attr(h, 'Locomotor'):
-                    return _attr(h, 'Locomotor')
-            return None
         try:
-            locomotor = _chain(template, own, read)
+            normal = _chain(template, own, lambda xml: locomotor.speed_of(locomotor.sets(xml), 'NORMAL'))
         except (OSError, ValueError):
-            locomotor = None
-        h = ''
-        if locomotor:
-            text = open(LOCOMOTORS, encoding='utf-8').read()
-            h = next((h for h, _ in _blocks(text, 'LocomotorTemplate') if _attr(h, 'id') == locomotor), '')
-        secs = _secs(_attr(h, 'TurnTimeSeconds')) if h else 0.0
-        limit = _attr(h, 'TurnThresholdHS') if h else None
-        _turning_memo[key] = (360.0 / secs if secs > 0 else None,
-                              _num(limit.rstrip('d')) if limit else None)
+            normal = None
+        _turning_memo[key] = _surfaces().get(normal.locomotor) if normal else None
     return _turning_memo[key]
 
 

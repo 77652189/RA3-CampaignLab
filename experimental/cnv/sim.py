@@ -90,6 +90,7 @@ from engine.kernel import factory as kernel_factory, interfaces as kernel_interf
 from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
 from engine.ports import command as command_port  # noqa: E402  (happen gives the player's orders through it)
 import engine.modules  # noqa: E402,F401  (imports, so registers, every module file in it)
+from engine.modules import locomotor  # noqa: E402
 from engine.modules import slowdeath as kernel_slowdeath, weaponset as kernel_weaponset  # noqa: E402
 import engine.loop.frame as simloop  # noqa: E402
 import engine.world.handle as simworld  # noqa: E402
@@ -822,9 +823,7 @@ class Sim:
                  max(st['vision'] or 0.0, st['shroud'] or 0.0), frozenset(st['kinds']), made_by=by, made_at=at)
         b.guessed, b.clear_height = st['guessed'], st['clear_height']
         b.radius, b.sight = st.get('radius') or 0.0, st['vision'] or 0.0
-        if b.speed > 0 and b.surface != 'air':      # aircraft bank as they fly: not benched, they turn at once
-            b.turn_rate, limit = simunits.turning(template, self.own)
-            b.turn_first = limit is not None
+        b.turn_rate, b.turn_first = locomotor.turns(simunits.turning(template, self.own), b.speed, b.surface)
         f = simunits.fight(template, self.own)
         proxy_hp = None                         # the Body module's health is made below, once the modules are
         if self.world.blocks_of(template, 'ManagerBody'):

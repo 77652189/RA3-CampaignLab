@@ -6,15 +6,13 @@ taken from the runs' ra3ext.log). A turn goes 360 / TurnTimeSeconds degrees a se
 last step whatever is left; a turn over the Locomotor's TurnThresholdHS is done in place -- the unit does not move
 while its heading changes.
 """
-import importlib.util
 from pathlib import Path
 
 import pytest
+from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
+import engine.data.units as simunits  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location('engine.data.units', ROOT / 'experimental/cnv/engine/data/units.py')
-simunits = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simunits)
 
 FIXTURES = ROOT / 'tests/fixtures/a_turn'
 BUILDS = {'airev1t': 'SovietAntiVehicleVehicleTech1',     # build -> the AI's tank in it: Hammer 1.25 s (19.2 a frame)
@@ -65,7 +63,7 @@ def turns(build):
 
 @pytest.mark.parametrize('build', sorted(BUILDS))
 def test_a_turn_goes_the_locomotors_rate_a_frame(build):
-    rate, _ = simunits.turning(BUILDS[build])
+    rate = simunits.turning(BUILDS[build]).turn_rate
     per_frame = rate / 15.0
     steps = turns(build)
     assert len(steps) >= 10, build
@@ -83,7 +81,7 @@ def test_a_turn_is_made_in_place(build):
     (airevat 3173 f38: -84 -> -76 moving; Hammer 3172 f32: 15 off, still in place; Apocalypse 3170 f37: 10 off, in
     place). Also for the Guardians' 51 deg turn -- under TurnThresholdHS 90 it is not driven round either. Not
     covered: a turn ordered while driving (airevgt f170, the attack order: turned 24 deg on a moving frame)."""
-    _, limit = simunits.turning(BUILDS[build])
+    limit = simunits.turning(BUILDS[build]).limit
     assert limit == 90.0
     assert not [s for s in turns(build) if s[3] and s[2] > DRIVE_WITHIN]
     assert len([s for s in turns(build) if not s[3]]) >= 10
@@ -95,7 +93,7 @@ def test_infantry_walk_off_turning():
     at the walking pace it keeps after it (~3.2 a frame): no turn in place (sim.Body.turn_first False). Turning to
     the form-up facing once it stands (3170 f45-47) it does not move. The step is 45 a frame, not 720 / 15 = 48
     (not modelled: the simulator turns infantry at the data's rate)."""
-    assert simunits.turning('SovietAntiInfantryInfantry')[1] is None
+    assert simunits.turning('SovietAntiInfantryInfantry').limit is None
     rows = frames('airevit')
     steps = turns('airevit')
     assert 22 not in rows and 25 not in rows                # nothing changed f22-25 (the log writes changes)
@@ -110,8 +108,11 @@ def test_infantry_walk_off_turning():
 
 
 def test_the_data_rates():                         # the simulator's turn (Sim.turn): tests/test_sim.py test_*turn*
-    assert simunits.turning('SovietAntiVehicleVehicleTech1') == (288.0, 90.0)   # 1.25 s: 19.2 a frame (bench 19)
-    assert simunits.turning('AlliedAntiVehicleVehicleTech1') == (360.0, 90.0)
-    assert simunits.turning('SovietAntiVehicleVehicleTech3') == (120.0, 90.0)
-    assert simunits.turning('SovietAntiInfantryInfantry') == (720.0, None)
-    assert simunits.turning('AlliedPowerPlant') == (None, None)
+    def turning(template):
+        loco = simunits.turning(template)
+        return loco and (loco.turn_rate, loco.limit)
+    assert turning('SovietAntiVehicleVehicleTech1') == (288.0, 90.0)   # 1.25 s: 19.2 a frame (bench 19)
+    assert turning('AlliedAntiVehicleVehicleTech1') == (360.0, 90.0)
+    assert turning('SovietAntiVehicleVehicleTech3') == (120.0, 90.0)
+    assert turning('SovietAntiInfantryInfantry') == (720.0, None)
+    assert turning('AlliedPowerPlant') is None

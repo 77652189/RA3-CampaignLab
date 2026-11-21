@@ -28,6 +28,7 @@ LAYER_OF = {
     'engine.kernel.factory': 0, 'engine.kernel.schedule': 0, 'engine.kernel.world': 0,          # (tests/test_kernel.py)
     'engine.kernel.snap': 0,                                                                     # step S's values
     'engine.ports.templates': 0, 'engine.modules.weaponset': 0,     # W1: simunits' weapon readers read its data
+    'engine.modules.locomotor': 0,                                  # M2: and its Locomotor readers
     'engine.state.snapshot': 9,                                                       # step S, the host's part (a whole run's)
     'engine.state.ai_snapshot': 9,                                                     # step S 11b-4, the SimAI's around it
     'engine.state.battlefield': 9,                                                # step S 11d, the exchange file's

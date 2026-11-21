@@ -10,7 +10,7 @@ probe_air's trench): 跳 1010 for the first four readings (both dolphins in the 
 pool and not yet down: in the air over the dam), then 1001 to the end"""
 proves = """sim the jump crosses the dam, the swimmer told to the same 250 north stays in the south pool (DQ: 1000 throughout, never \
 in its square). The simulator lands the jump at once (Sim.leap_press: no in-flight reading, INFERRED) and needed \
-DEEP_WATER read as water (simunits.surface_of; before, the dolphin routed as a land unit over the bank and the dam). The \
+DEEP_WATER read as water (engine.modules.locomotor.surface_of; before, the dolphin routed as a land unit over the bank and the dam). The \
 landing frame is not compared: 帧 grew only 8-10 a reading on the bench (not explained)."""
 let = {at = "dict(zip(times, vals(rows)))"}
 expect = [
