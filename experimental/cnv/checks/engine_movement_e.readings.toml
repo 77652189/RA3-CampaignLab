@@ -1,0 +1,13 @@
+# Bench readings of checks/engine_movement_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# 完成帧 counts script frames to 210, so the readings place the bench's HUD frames to a row; On weighs 1, Off 10.
+
+[[reading]]
+id = "the_rush_button_sends_the_oni_off_and_clears_after"
+scene = {build = "engine_movement_e", check = "a", until = 18}
+bench = "E171 (bench 11-16, CampMovementEA_mcp_1116_002328): f59 0/0/0, f73 1/0/0; frozen 210 / 1 / 1 / 11 (完成帧 / 激活位 / 位移位 / 结束位)"
+proves = "物体模块 MovementSpecialPower: the retail Oni's rush at a waypoint 250 away (the press at f60) sets SPECIALABILITY_ACTIVE, takes it out of its starting square and clears the status by f210; the Oni without the module does neither"
+item = "物体模块 Behaviors/MovementSpecialPower"
+expect = ["all(r['激活位'] == 0 for r in rows if r['完成帧'] < 60)",
+          "all(r['激活位'] == 1 for r in rows if r['完成帧'] >= 73)",
+          "all(r['位移位'] == r['结束位'] == 0 for r in rows if r['完成帧'] < 210)",
+          "[counter(c) for c in ('E171Frame', 'E171Active', 'E171Moved', 'E171Clear')] == [210, 1, 1, 11]"]
