@@ -109,8 +109,8 @@ def test_path_cache_invalidates_when_the_builder_sets_down_the_structure():
     x, y = ground.world(c)
     builder = world.add('builder', 'AlliedAntiInfantryInfantry', 'Player_1', x, y)
     builder.building = (PLANT, (x, y), 0)
-    assert world.at_site(builder, 0)
-    world.build_due(world.due[0][0])
+    assert world.production.at_site(builder, 0)
+    world.production.put_down(world.production.placing[0][0])
     assert_endpoint_blocked(ground, c, old, version)
 
 

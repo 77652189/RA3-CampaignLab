@@ -100,13 +100,13 @@ def test_an_unpack_due_is_the_builders_own_a_thing_made_under_its_name_is_not_re
     mcv = s.add('mcv', 'AlliedMCV', 'Player_1', 300.0, 300.0)
     mcv.replace = True
     mcv.building = ('AlliedConstructionYard', (300.0, 300.0), 50.0)
-    assert s.at_site(mcv, 0.0)
+    assert s.production.at_site(mcv, 0.0)
     mcv2 = s.add('mcv', 'AlliedMCV', 'Player_1', 600.0, 300.0, shadow=True)  # (map load's path)
     mcv2.replace = True
     was = set(s.bodies)
-    s.build_due(s.frame_now() + 10)
+    s.production.put_down(s.frame_now() + 10)
     assert mcv2.alive and not mcv2.deleted and s.bodies['mcv'] is mcv2 and set(s.bodies) == was
-    assert s.due == []
+    assert s.production.placing == []
 
 
 def _mining():
@@ -289,14 +289,29 @@ def test_a_unit_queued_at_a_factory_that_died_does_not_come_out_of_one_made_unde
     s.production.due(30 * 60)
     assert not [b for b in s.living() if b.template == GI]
     assert s.money['Player_1'] == 100000 - paid and s.money['Player_2'] == 100000     # gone with it, not refunded
-    assert not s.queues                                     # the dead one's queue went along
-    assert s.order_build('Player_2', GI, factory=f2) and list(s.queues) == [f2.serial]
+    assert not s.production.queues                                     # the dead one's queue went along
+    assert s.order_build('Player_2', GI, factory=f2) and list(s.production.queues) == [f2.serial]
 
 
 def test_an_object_upgrade_bought_at_a_structure_that_died_does_not_arrive_on_one_made_under_its_name():
     s, f2, _ = _queued_at_a_dead_factory('Upgrade_AlliedTech2')
     s.production.due(30 * 60)
     assert 'Upgrade_AlliedTech2' not in f2.upgrades and not s.player_ups.get('Player_1')
+
+
+def test_a_factory_still_alive_but_off_its_name_takes_its_queue_along():
+    """The factory moved off its name while it lives (as put_down's '#packed' archive moves one) and a new one made
+    under it: the queue is the world's no more (simworld.held), nothing comes out of either."""
+    s = simsmall.small_world()
+    s.money['Player_1'] = s.money['Player_2'] = 100000
+    f = s.add('f', 'AlliedBarracks', 'Player_1', 300.0, 300.0)
+    assert s.order_build('Player_1', GI, factory=f)
+    s.production.due(30)
+    s.bodies['#archived f'] = s.bodies.pop('f')
+    s.add('f', f.template, 'Player_2', 1500.0, 1500.0)
+    s.production.due(30 * 60)
+    assert f.alive and not s.production.queues and not [b for b in s.living() if b.template == GI]
+    assert s.money['Player_2'] == 100000
 
 
 # ---- review 1119w P2 #1 / #3: a thing made without a name goes under a key no living thing holds
@@ -318,9 +333,9 @@ def test_an_unpacked_builders_archive_key_leaves_a_living_one_under_its_counted_
     mcv = s.add('mcv', 'AlliedMCV', 'Player_1', 300.0, 300.0)
     mcv.replace = True
     mcv.building = ('AlliedConstructionYard', (300.0, 300.0), 50.0)
-    assert s.at_site(mcv, 0.0)
+    assert s.production.at_site(mcv, 0.0)
     held = s.add('#packed 1 mcv', GI, 'Player_1', 900.0, 900.0)   # the count the key reads (the builder popped)
-    s.build_due(s.frame_now() + 10)
+    s.production.put_down(s.frame_now() + 10)
     assert s.bodies['#packed 1 mcv'] is held and held.alive
     assert s.bodies['#packed 2 mcv'] is mcv and s.bodies['mcv'].template == 'AlliedConstructionYard'
 
@@ -370,11 +385,11 @@ def test_an_ai_factory_made_under_a_dead_unpacking_ones_name_builds_at_once():
     (old,) = [b for b in s.living() if b.template == 'AlliedBarracks']
     br.unit_q = [GI]
     br.unit_due(30)
-    assert br.unit_q == [GI] and not s.queues           # the old one still unpacking: nothing yet
+    assert br.unit_q == [GI] and not s.production.queues           # the old one still unpacking: nothing yet
     s.destroy(old, 'test')
     new = s.add(old.name, 'AlliedBarracks', 'Player_1', 600.0, 300.0)   # not the AI's: ready
     br.unit_due(31)
-    assert br.unit_q == [] and list(s.queues) == [new.serial]
+    assert br.unit_q == [] and list(s.production.queues) == [new.serial]
 
 
 def test_an_ai_unit_goes_to_the_ready_factory_it_picked_not_one_still_unpacking():
@@ -389,7 +404,7 @@ def test_an_ai_unit_goes_to_the_ready_factory_it_picked_not_one_still_unpacking(
     b = s.add('ready barracks', 'AlliedBarracks', 'Player_1', 600.0, 300.0)   # B: ready
     br.unit_q = [GI]
     br.unit_due(30)
-    assert br.unit_q == [] and list(s.queues) == [b.serial] and a.serial != b.serial
+    assert br.unit_q == [] and list(s.production.queues) == [b.serial] and a.serial != b.serial
 
 
 def test_an_ai_unit_goes_past_a_first_factory_that_lacks_the_tier():
@@ -407,7 +422,7 @@ def test_an_ai_unit_goes_past_a_first_factory_that_lacks_the_tier():
     assert not s.can_build('Player_1', TANK, far) and s.can_build('Player_1', TANK, near)
     br.unit_q = [TANK]
     br.unit_due(30)
-    assert br.unit_q == [] and list(s.queues) == [near.serial]
+    assert br.unit_q == [] and list(s.production.queues) == [near.serial]
 
 
 RIPTIDE = 'AlliedAntiInfantryVehicle_Ground'
@@ -432,7 +447,7 @@ def test_an_ai_unit_ordered_at_a_factory_is_the_template_it_chose_not_a_role_of_
     near = s.add('near', 'AlliedWarFactory', 'Player_1', 600.0, 300.0)
     br.unit_q = [TANK]
     br.unit_due(30)
-    assert br.unit_q == [] and [j['template'] for j in s.queues[near.serial]] == [TANK]
+    assert br.unit_q == [] and [j['template'] for j in s.production.queues[near.serial]] == [TANK]
 
 
 def test_a_text_build_at_a_named_factory_still_reads_the_role():
@@ -444,7 +459,7 @@ def test_a_text_build_at_a_named_factory_still_reads_the_role():
     near = s.add('near', 'AlliedWarFactory', 'Player_1', 600.0, 300.0)
     ok, why = s.commands.do(Command('build', 'script', player='Player_1', template=TANK, target='near'))
     assert ok, why
-    assert [j['template'] for j in s.queues[near.serial]] == [RIPTIDE]
+    assert [j['template'] for j in s.production.queues[near.serial]] == [RIPTIDE]
 
 
 # ---- review 1119y P2 #3 / #4: every internal key goes through simworld.free_key, which counts a key the schedule
@@ -456,12 +471,12 @@ def test_an_unpacked_builders_archive_key_leaves_a_dead_one_the_schedule_still_h
     mcv = s.add('mcv', 'AlliedMCV', 'Player_1', 300.0, 300.0)
     mcv.replace = True
     mcv.building = ('AlliedConstructionYard', (300.0, 300.0), 50.0)
-    assert s.at_site(mcv, 0.0)
+    assert s.production.at_site(mcv, 0.0)
     held = s.add('#packed 2 mcv', GI, 'Player_1', 900.0, 900.0)          # living, under the count after the pop
     dead = s.add('#packed 3 mcv', GI, 'Player_1', 1500.0, 900.0)
     s.destroy(dead, 'test')
     assert len(s.bodies) == 3 and any(m in s.world.schedule.seq for m in dead.modules)   # its AutoHeal still runs
-    s.build_due(s.frame_now() + 10)
+    s.production.put_down(s.frame_now() + 10)
     assert s.bodies['#packed 2 mcv'] is held and s.bodies['#packed 3 mcv'] is dead
     assert s.bodies['#packed 4 mcv'] is mcv and s.bodies['mcv'].template == 'AlliedConstructionYard'
     simsnap.snapshot(s)                                                   # every scheduled module's thing is held

@@ -25,8 +25,8 @@ def test_unit_queue_pays_in_frames_and_starts_its_next_job_before_the_door_opens
     assert s.commands.do(sidebar) == (True, '')  # now second has the shorter queue
     assert s.commands.do(at_first) == (True, '')
     assert s.money[PLAYER] == 2000
-    head, following = s.queues[first.serial]
-    other, = s.queues[second.serial]
+    head, following = s.production.queues[first.serial]
+    other, = s.production.queues[second.serial]
 
     # Engineer: $500 over 10 s at 15 fps; ceil($500 * 16/150) = $54 per factory.
     s.production.due(1)
@@ -61,7 +61,7 @@ def test_unit_queue_stalls_for_cash_and_uses_current_power_when_it_resumes():
     f = s.bodies['factory']
     s.money[PLAYER] = 2
     assert s.commands.do(Command('build', player=PLAYER, template=ENGINEER)) == (True, '')
-    job, = s.queues[f.serial]
+    job, = s.production.queues[f.serial]
     assert s.power(PLAYER) == (0, 25)
     s.production.due(1)
     # With zero supply, trunc(10/0.3)*15 = 495 frames. First charge is ceil(500/495) = 2.
@@ -89,7 +89,7 @@ def test_the_proxy_can_spend_the_bank_less_what_its_own_queued_jobs_still_take()
     s.production.due(10)
     w = object.__new__(simproxy.SimWorld)
     w.peers, w.me = simproxy.Peers(s), PLAYER
-    job, = s.queues[s.bodies['factory'].serial]
+    job, = s.production.queues[s.bodies['factory'].serial]
     assert 0 < job['paid'] < job['cost'] and w.money() == s.money[PLAYER] - (job['cost'] - job['paid'])
 
 

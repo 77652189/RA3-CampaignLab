@@ -18,7 +18,7 @@ def test_a_script_gate_keeps_the_paid_head_and_waiting_jobs_until_reenabled(gate
     sidebar = Command('build', player=PLAYER, template=ENGINEER)
     assert s.commands.do(sidebar) == (True, '')
     s.production.due(1)
-    head, = s.queues[f.serial]
+    head, = s.production.queues[f.serial]
     progress = head['progress']
     assert progress == pytest.approx(100 / 150)
     assert head['paid'] == 4 and s.money[PLAYER] == 996  # ceil(500/150)
@@ -29,9 +29,9 @@ def test_a_script_gate_keeps_the_paid_head_and_waiting_jobs_until_reenabled(gate
     else:
         s.act('PLAYER_DISABLE_UNIT_CONSTRUCTION', [PLAYER], None)
     s.act('NAMED_USE_COMMANDBUTTON_ABILITY', [f.name, 'Command_ConstructAlliedEngineer'], None)
-    waiting = s.queues[f.serial][1]
+    waiting = s.production.queues[f.serial][1]
     s.production.due(20)
-    assert s.queues[f.serial] == [head, waiting]
+    assert s.production.queues[f.serial] == [head, waiting]
     assert head['progress'] == progress and head['paid'] == 4 and s.money[PLAYER] == 996
     assert waiting['progress'] == waiting['paid'] == 0
 

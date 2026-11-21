@@ -57,7 +57,6 @@ SIM = {
     'step': WIRE,       # an observer's tick hook (Observe.on_tick wraps the run's step; simrecord's Recorder): the
                         # new run's observer hooks its own (11b-4d: simaisnap's scan met it)
     'used': ALIAS, 'unmodeled': ALIAS, 'money': ALIAS, 'income': ALIAS, 'sharing': ALIAS, 'money_cap': ALIAS,
-    'queues': ALIAS,
     # caches (template -> what its data says)
     'declared': CACHE, 'energies': CACHE, '_engineer_rules': CACHE, '_wsets': CACHE, '_xmls': CACHE,
     '_toggles': CACHE, '_invis': CACHE, '_xy': CACHE, '_crushable_pool': CACHE,
@@ -76,7 +75,8 @@ SIM = {
     'infiltrators': {'world': WIRE, 'peers': WIRE, 'wallet': WIRE, 'going': STATE, 'off_until': STATE,
                      'observers': STATE, 'unit_observers': STATE, 'paralyzed_until': STATE, 'attack_until': STATE},
     'lift_timers': {'remaining': STATE},
-    'production': {'world': WIRE, 'peers': WIRE, 'queues': STATE, 'produced_to': STATE},
+    'production': {'world': WIRE, 'peers': WIRE, 'queues': STATE, 'produced_to': STATE, 'placing': STATE,
+                   'pack_hold': STATE},
     'sweeps': {'world': WIRE, 'peers': WIRE, 'lines': STATE},
     'commands': {'_w': WIRE, '_issued': STATE},
     'specials': {'wfires': STATE, 'leaps_due': STATE, 'leap_ground_hits': STATE, 'movement_due': STATE,
@@ -92,11 +92,10 @@ for _f in ('t log box_log panel_log asked up scenes unknown flags objectives mar
            'selected script_disabled kills attacked_by cond_memory made_frame relations team_team_rel '
            'team_player_rel player_team_rel team_targets books tech_to tech_read hunts bodies attachments '
            '_attachment_marked attachment_known_status suppression_fields topples frame_movers refs acting object_lists '
-           'base_power powers_off series threat first_threat known known_at guessed due blasts casts power_at '
+           'base_power powers_off series threat first_threat known known_at guessed blasts casts power_at '
            'player_ups instances active lost_orders seen firing mid_aims '
            '_field first_death death_blasts events anchored hotspots waypoints volleys chilling _fire_obstacles '
-           'impact_flights emp_until knock_hold tech_to '
-           'pack_hold').split():     # pack_hold: a yard packing's frames held, by serial (review 1119p #3: unsorted)
+           'impact_flights emp_until knock_hold tech_to').split():
     SIM.setdefault(_f, STATE)
 # World.snapshot takes its own STATE. This table is for the field guard.
 WORLD = {
@@ -109,8 +108,7 @@ WORLD = {
 # a second name -> the path of the object it names
 ALIASES = {('used',): ('world', 'used'), ('unmodeled',): ('world', 'gaps'),
            ('money',): ('wallet', 'money'), ('income',): ('wallet', 'income'), ('sharing',): ('wallet', 'sharing'),
-           ('money_cap',): ('wallet', 'money_cap'), ('repairs', 'ai_switches'): ('ai_switches',),
-           ('queues',): ('production', 'queues')}
+           ('money_cap',): ('wallet', 'money_cap'), ('repairs', 'ai_switches'): ('ai_switches',)}
 
 BODY = {'modules': KERNEL, 'serial': KERNEL, '_find_cache': CACHE}     # the last two: Thing's slots
 for _f in ('name template owner x y z speed surface vision kinds immune_until armor acquire radius sight chase '

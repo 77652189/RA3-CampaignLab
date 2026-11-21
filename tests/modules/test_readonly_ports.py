@@ -115,7 +115,7 @@ def test_the_guard_finds_a_planted_door(world):
         __slots__ = ()
 
         def jobs(self):
-            return self._w.queues
+            return self._w.production.queues
     names = []
     for name, read in _members(Leaky(world)):
         if _leaks(read):
@@ -133,7 +133,7 @@ def test_the_review_repro_raises(world):
                   lambda: obs.flags().__setitem__('f', 1), lambda: obs.counters().__delitem__('c')):
         with pytest.raises((AttributeError, TypeError)):
             write()
-    assert world.queues[serial] and world.ai_paused == {'Player_2'} and world.ai_switches['Player_2'] == {'x': 1}
+    assert world.production.queues[serial] and world.ai_paused == {'Player_2'} and world.ai_switches['Player_2'] == {'x': 1}
 
 
 def test_a_view_is_live_and_reads_as_its_container(world):

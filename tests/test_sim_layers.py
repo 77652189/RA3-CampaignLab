@@ -126,7 +126,8 @@ FIELD_OWNER = {'heal_at': 'engine.modules.autoheal', 'hurt': 'engine.modules.aut
                **dict.fromkeys(('incoming', 'projectile_hits', 'projectile_speeds', 'impact_body', 'knock_drowns',
                                 'dots', 'cold_on', 'lift_modules', 'nugget_powers', 'hit_reaction_of'), 'engine.combat.host'),
                'spot': 'engine.orders.order',
-               'level_rank': 'engine.objects.level'}
+               'level_rank': 'engine.objects.level',
+               **dict.fromkeys(('queues', 'placing', 'pack_hold'), 'engine.players.production')}
 # (a body's `alive` is assigned only in simbody too, but simai's teams.alive callback shares the name)
 
 

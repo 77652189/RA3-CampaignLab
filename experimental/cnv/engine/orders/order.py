@@ -12,7 +12,7 @@ body aims (L3 `aim`) and fires, rounds a blocked line, and chases by itself (`ch
 `attack_chase`, anyone else's `idle_chase`).
 All over the world it is given (simworld.WORLD_API only). Its host's other parts come in as `peers` (`Peers`, the
 names in PEERS only, read when used): L2 locomotion (send, claims, free_spot, goal_off_nodes, column_ends), L2
-bodies (delete, modify, engineer_entry, at_site, the garrison, toggles_of / toggle_press), L3 targeting and fire
+bodies (delete, modify, engineer_entry, the garrison, production's at_site, toggles_of / toggle_press), L3 targeting and fire
 (reach, fight_field, aim, can_hit, in_range, shot_blocked, fire_spot, side_sees, takes_by_itself, the unshot
 templates), L4 money (wallet) and power switches (powers_off), L6 act, the team registry
 (members, team_targets) and the order queues the scripts fill (seq, hunts). The fight's per-tick state on the host
@@ -39,9 +39,9 @@ HUNT_REPICK = 45                    # frames from a hunted target's death to the
 IDLE_SCAN_FROM = 2
 
 WRITES = frozenset({'_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims', 'seen', 'volleys'})
-PEERS = frozenset({'act', 'at_site', 'claims', 'column_ends', 'delete', 'engineer_entry', 'free_spot', 'garrison',
+PEERS = frozenset({'act', 'claims', 'column_ends', 'delete', 'engineer_entry', 'free_spot', 'garrison',
                    'goal_off_nodes', 'hunts', 'modify', 'powers_off', 'reach', 'send', 'seq', 'toggle_press',
-                   'toggles_of', 'wallet',
+                   'toggles_of', 'wallet', 'production',
                    'aim', 'can_hit', 'fight_field', 'fire_spot', 'in_range', 'members', 'shot_blocked',
                    'side_sees', 'takes_by_itself', 'team_targets', 'unshot',
                    '_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims', 'seen', 'volleys'})
@@ -585,7 +585,7 @@ def order_unpack(world, peers, b, p, button=None, where=None, stand=None, here=F
         b.goal, b.mode = None, 'move'
     world.note('技能', f'{world.label(b)} 去 {where or "(%.0f, %.0f)" % tuple(p)} 展开成 {into}'
               + (f'（{stand:g} 内原地）' if here else ''))
-    if not peers.at_site(b, 0.0) and send:
+    if not peers.production.at_site(b, 0.0) and send:
         peers.send(b, p)
     return True
 

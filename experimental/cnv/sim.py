@@ -122,7 +122,6 @@ from engine.world.handle import GRID  # noqa: E402,F401  (routing cells, world u
 HOLD_SPOTS = True              # every move's goal kept off other units' spots (Sim.claims): the game's (bench 11-09,
                                # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
 ORE_PLATE = (60.0, 45.0)        # an ore node's base plate, half-extents (OreNode.xml's last BOX): Sim.goal_off_nodes
-REPLACE_FRAMES = 6             # a ReplaceSelfSpecialAbility at its point: the replacement 6 frames on (engine_build a)
 RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's NaturalRallyPoint, on the line from
                                # the factory's centre through it: INFERRED, fitted to bench 11-11 engine_production
                                # h / i (barracks, (40, 18): stops ~(75-80, 24-33)) and engine_rally tank (war
@@ -705,12 +704,10 @@ class Sim:
         self.known_at = []                  # (t, km2 known)
         self.guessed = set()
         self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
-        self.due = []                       # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
         self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
         self.casts = []                     # (frame, owner, power, caster's serial, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
         self.power_at = {}                  # (player, spellbook power lower) -> the frame it is ready from (spellbook_ready)
         self.production = simproduce.Production(self, simproduce.Peers(self))     # the factories' queues, run (S7b)
-        self.queues = self.production.queues    # factory serial -> [job], a second name (order_build, simbattlefield)
         self.energies = {}                  # template -> EnergyProduction (simunits.energy; power)
         self.player_ups = {}                # player -> upgrades GIVE_PLAYER_UPGRADE gave (a unit's NeededUpgrade)
         self.templates = getattr(self.mm, 'templates', None) or {}     # team templates (Sim.reinforce)
@@ -1292,10 +1289,10 @@ class Sim:
         False: nothing of the owner's builds / buys it now (`factory`: that one does not, review 1120cc P2 #3)."""
         sellers = [b for b in self.upgrade_sellers(owner, template) if factory is None or b is factory]
         if sellers:
-            b = min(sellers, key=lambda b: len(self.queues.get(b.serial, [])))
+            b = min(sellers, key=lambda b: len(self.production.jobs(b.serial)))
             cost, secs = simunits.upgrade_cost(template)
             kind = dict(simunits.upgrade_menu(b.template, self.own, b.upgrades))[template]
-            self.queues.setdefault(b.serial, []).append(
+            self.production.queue(b.serial,
                 {'template': template, 'upgrade': template, 'kind': kind, 'owner': owner, 'cost': cost,
                  'secs': secs, 'progress': 0.0, 'paid': 0, 'full': None})
             self.used.add('production')
@@ -1305,9 +1302,9 @@ class Sim:
               and self.can_build(owner, template, f, ban=not press) and (factory is None or f is factory)]
         if not fs:
             return False
-        f = min(fs, key=lambda f: len(self.queues.get(f.serial, [])))
+        f = min(fs, key=lambda f: len(self.production.jobs(f.serial)))
         cost, secs = simunits.production(template, self.own)
-        self.queues.setdefault(f.serial, []).append(
+        self.production.queue(f.serial,
             {'template': template, 'owner': owner, 'cost': cost, 'secs': secs, 'progress': 0.0, 'paid': 0,
              'full': None})
         self.used.add('production')
@@ -2511,44 +2508,6 @@ class Sim:
         """simorder.order_unpack (L5)."""
         return simorder.order_unpack(self, self._order_peers(), b, p, button, where, stand, here, send)
 
-    def at_site(self, b, walked):
-        """R5: a builder within his stand of the spot he was told to build at stops; the structure is made there the
-        frame after he got there (`walked` this tick before that: bench 2026-11-07 engine_life, the ice core one frame
-        after an order given within range). False while he is still short of it."""
-        structure, (x, y), stand = b.building
-        if math.hypot(b.x - x, b.y - y) > stand + 1e-6:
-            return False
-        if getattr(b, 'unpack_here', False):    # order_unpack here=True: the structure where b stands (D157)
-            x, y = b.x, b.y
-        got = self.frame_now() + (math.ceil(round(walked / b.speed * simunits.LIFE_FPS, 6)) if walked else 0)
-        self.due.append((got + (REPLACE_FRAMES if b.replace else 1), structure, b.owner, b.team, x, y, b))
-        b.building, b.path, b.dest = None, [], None
-        self.note('技能', f'{self.label(b)} 到位，造 {structure}')
-        return True
-
-    def build_due(self, frame):
-        """The structures builders (the things that got there) put down by `frame` (at_site); a replaced one gone."""
-        for d in [d for d in self.due if d[0] <= frame]:
-            del self.due[next(i for i, e in enumerate(self.due) if e is d)]
-            _, structure, owner, team, x, y, was = d
-            by = was.name
-            if was.replace:                         # engine_unpack: the replacement takes its name and health share
-                if not was.alive or self.bodies.get(by) is not was:
-                    continue
-                share = was.hp / was.max_hp if was.max_hp else 1.0
-                self.delete(was, f'展开成 {structure}')
-                self.bodies[simworld.free_name(self, '#packed', by)] = self.bodies.pop(by)
-                n = self.add(by, structure, owner, was.x, was.y, by=by, at=self.t)
-                n.set_hp(n.max_hp * share, tell=False)
-                hold = self.__dict__.get('pack_hold', {}).pop(was.serial, 0)
-                if hold:                    # DISABLE_NEW_OBJECT_DURING_UNPACK: stands still (engine_pack), as EMP'd
-                    self.__dict__.setdefault('emp_until', {})[n.serial] = self.frame_now() + hold
-            else:
-                n = self.add(simworld.free_name(self, '#built', f'by {by}'), structure, owner, x, y, by=by, at=self.t)
-            n.team = team
-            if self.blocks(n):
-                self.reblock()
-
     def blast_due(self, frame):
         """simspecial.Specials.blast_due (L2): a superweapon's hits landing by `frame` (SUPERWEAPON_HITS)."""
         self._specials().blast_due(self, frame, self.blasts, self.mark_first_death, self.destroy)
@@ -2651,7 +2610,7 @@ class Sim:
                 elif not b.path or math.hypot(b.path[-1][0] - g.x, b.path[-1][1] - g.y) > 150:
                     if int(self.t / DT) % 8 == 0:                    # re-aimed every 4 s
                         self.send(b, (g.x, g.y), reach=self.reach(b, g) if b.mode == 'attack' else 0.0)
-            if b.building and self.at_site(b, 0.0):
+            if b.building and self.production.at_site(b, 0.0):
                 continue
             if b.frame_move != precise:          # chasing a moving target may have replanned into / out of prop contact
                 continue
@@ -2696,7 +2655,7 @@ class Sim:
                     b.x += (tx - b.x) * step / d
                     b.y += (ty - b.y) * step / d
                     left -= step
-                    if self.at_site(b, walked - left):
+                    if self.production.at_site(b, walked - left):
                         break
                     continue
                 if reach and d > 0:                         # an attack-mover stops where it gets a foe in range
@@ -2734,7 +2693,7 @@ class Sim:
                 rate = b.drive_speed if precise and b.jet_motion is None else b.speed
                 self.turn(b, b.face, (left / rate if rate > 0 else 0.0) - 1.0 / simunits.LIFE_FPS)
             if b.building:
-                self.at_site(b, walked - left)
+                self.production.at_site(b, walked - left)
             if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):
                 self.crush_along(b, x0, y0)
                 if precise:                    # toppled only frame by frame: a way across one is a frame mover's
@@ -2813,8 +2772,8 @@ class Sim:
         """Something still to come: a timer running, a unit moving, a script event, a rank to come where a script
         reads the points or the protocols."""
         return bool(self.events) or bool(self.anchored) or any(v > self.t for v in self.timers.values()) or \
-            bool(self.due) or any(b.path or b.building or b.life_end is not None or b.topple_end is not None
-                                 for b in self.living()) or \
+            bool(self.production.placing) or \
+            any(b.path or b.building or b.life_end is not None or b.topple_end is not None for b in self.living()) or \
             (self.tech_read and any(b.grows() for b in self.books.values()))
 
     def run(self, until=UNTIL):

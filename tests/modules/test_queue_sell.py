@@ -23,7 +23,7 @@ def test_sale_refunds_the_structure_and_the_queue_runs_only_while_it_is_alive(
     assert s.commands.do(Command('build', player=PLAYER, template=ENGINEER)) == (True, '')
     s.production.due(1)
     s.production.due(sale_frame)
-    assert s.queues[f.serial][0]['paid'] == paid_before_sale  # ceil($500 * sale_frame/150)
+    assert s.production.queues[f.serial][0]['paid'] == paid_before_sale  # ceil($500 * sale_frame/150)
 
     s.clock.frame = sale_frame
     s.act('SELL_OBJECT', [f.name], None)
@@ -35,7 +35,7 @@ def test_sale_refunds_the_structure_and_the_queue_runs_only_while_it_is_alive(
     s.t = s.clock.frame / s.fps
     s.advance(30)  # the real frame loop runs expire before produce
 
-    assert f.deleted and not f.alive and f.serial not in s.queues
+    assert f.deleted and not f.alive and f.serial not in s.production.queues
     assert s.power(PLAYER) == (100, 0)
     assert s.money[PLAYER] == 1000 + 250 - final_paid  # only the building refund
     assert [b.made_by for b in s.living() if b.template == ENGINEER] == ([f.name] if made else [])

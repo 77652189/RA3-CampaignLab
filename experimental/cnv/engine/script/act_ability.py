@@ -92,10 +92,9 @@ def named_buttons(sim, name, a, script, unit=None):
         _, into = simunits.replace_self(b.template, a[1], sim.own)
         sim.used.add('unpack')
         b.replace = True
-        sim.__dict__.setdefault('pack_hold', {})[b.serial] = simunits.replace_unpack_frames(b.template, a[1], sim.own)
-        sim.due.append((sim.frame_now() + PACK_FRAMES, into, b.owner, b.team, b.x, b.y, b))   # by the thing (sweep)
+        sim.production.pack(b, into, PACK_FRAMES, simunits.replace_unpack_frames(b.template, a[1], sim.own))
         sim.note('技能', f'{sim.label(b)} 收起成 {into}')
-        sim.build_due(sim.frame_now())        # the press frame's later scripts already see the MCV
+        sim.production.put_down(sim.frame_now())     # the press frame's later scripts already see the MCV
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and \
             body(a[0]) and body(a[0]).alive and \
             sim.assignments.press(body(a[0]), a[1], sim.body(a[2])):
@@ -169,7 +168,7 @@ def script_cast(sim, name, a, unit=None):
             start_reload(sim, b, a[1], sim.frame_now() + rules['reload'])   # (RA3 1.13, read, l2_ability.md)
         b.building, b.goal, b.mode = (got[1], p, got[0]), None, 'move'
         sim.note('技能', f'{sim.label(b)} 去 {a[2]} 造 {got[1]}')
-        if not sim.at_site(b, 0.0):
+        if not sim.production.at_site(b, 0.0):
             sim.send(b, p)
     else:
         sim.used.add('special power')

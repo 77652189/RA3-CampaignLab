@@ -1216,9 +1216,9 @@ def test_a_target_pin_is_the_object_its_name_picked():
     for cmd in wrong:
         ok, why = w.commands.do(cmd)
         assert not ok and 'wrong' in why, (cmd.kind, why)
-    assert bob.goal is None and eng.move_to is None and not w.garrison.going and not w.queues
+    assert bob.goal is None and eng.move_to is None and not w.garrison.going and not w.production.queues
     assert w.commands.do(dataclasses.replace(wrong[0], target='foe')) == (True, '') and bob.goal is foe
-    assert w.commands.do(dataclasses.replace(wrong[3], target='fac')) == (True, '') and fac.serial in w.queues
+    assert w.commands.do(dataclasses.replace(wrong[3], target='fac')) == (True, '') and fac.serial in w.production.queues
 
 
 def test_the_ais_pursuit_takes_no_dead_target():
@@ -1247,10 +1247,10 @@ def test_an_upgrade_is_bought_at_the_structure_named_or_refused():
                                      args=(('target_serial', f.serial),)))
     assert w.upgrade_sellers('Player_1', 'Upgrade_AlliedTech2') == [yard]
     ok, why = buy('foeyard', foeyard)
-    assert not ok and not w.queues, why
-    assert not w.order_build('Player_1', 'Upgrade_AlliedTech2', factory=foeyard) and not w.queues
+    assert not ok and not w.production.queues, why
+    assert not w.order_build('Player_1', 'Upgrade_AlliedTech2', factory=foeyard) and not w.production.queues
     assert buy('yard', yard) == (True, '')
-    assert [j['template'] for j in w.queues[yard.serial]] == ['Upgrade_AlliedTech2']
+    assert [j['template'] for j in w.production.queues[yard.serial]] == ['Upgrade_AlliedTech2']
 
 
 @pytest.mark.parametrize('after', ['made_again_his', 'made_again_foes', 'taken'])
@@ -1274,7 +1274,7 @@ def test_a_posted_build_goes_to_the_factory_clicked_not_one_made_under_its_name(
     s.advance(60)
     ran = [(ok, why) for _, c, ok, why in s.commands._issued if c.kind == 'build' and why != 'posted']
     assert len(ran) == 1 and not ran[0][0], ran
-    assert not s.queues and s.money == {**s.money, 'Player_1': 100000, 'Player_2': 100000}
+    assert not s.production.queues and s.money == {**s.money, 'Player_1': 100000, 'Player_2': 100000}
     assert not [b for b in s.living() if b.template == gi]
 
 

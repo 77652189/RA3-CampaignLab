@@ -177,7 +177,7 @@ def test_a_scripts_press_of_the_build_button_builds_as_the_click():
     assert money.get(148) == 1506 and money.get(153) == 1500
     assert next(rd['帧数'] for rd in rows if rd['工程师'] >= 1) == 160
     s, rows, _ = _production_rows('f', order=False)
-    assert not any(rd['工程师'] for rd in rows) and s.money.get(s.human, 0) == 0 and s.queues
+    assert not any(rd['工程师'] for rd in rows) and s.money.get(s.human, 0) == 0 and s.production.queues
 
 
 def test_a_ban_holds_the_queue_and_does_not_cancel():

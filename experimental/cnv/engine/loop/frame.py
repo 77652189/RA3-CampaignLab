@@ -117,7 +117,7 @@ def frame_movers(s, frame, tick):
 
 
 def build(s, frame, tick):
-    s.build_due(frame)
+    s.production.put_down(frame)
 
 
 def blast(s, frame, tick):

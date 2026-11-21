@@ -786,7 +786,7 @@ def _set_jobs(sim, i, row, b, shift, ai=None):
     paid (no money moves now), a full one at its frame on the host's clock -- a structure at a yard into the host's
     skirmish AI's queue of it (`ai`, step 9); ['things[i].queue[j]: ...'] for a job the host's factory does not build
     or no AI of the host takes (not placed) and one paid over the host's cost."""
-    sim.queues.pop(b.serial, None)
+    sim.production.put(b.serial, None)
     if not row['queue']:
         return []
     gaps, jobs, yard = [], [], []
@@ -811,7 +811,7 @@ def _set_jobs(sim, i, row, b, shift, ai=None):
                     paid=min(job['paid'], cost), full=None if job['full'] is None else job['full'] + shift)
         jobs.append(made)
     if jobs:
-        sim.queues[b.serial] = jobs
+        sim.production.put(b.serial, jobs)
         sim.used.add('production')
     if yard:
         costs = [simunits.production(job['template'], sim.own)[0] for _, job in yard]

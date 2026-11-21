@@ -26,7 +26,7 @@ def test_object_upgrade_survives_snapshot_and_applies_before_the_unit_door_delay
     s.act('PLAYER_DISABLE_UNIT_CONSTRUCTION', [PLAYER], None)   # a unit gate holds no upgrade (INFERRED, simproduce)
     s.production.due(1)
     # $500 over 30 s at full power (100 supply, 75 demand): ceil(500/450) = 2.
-    job, = s.queues[seller.serial]
+    job, = s.production.queues[seller.serial]
     assert job['progress'] == pytest.approx(100 / 450)
     assert job['paid'] == 2 and s.money[PLAYER] == 998
     s.production.due(450)
@@ -39,7 +39,7 @@ def test_object_upgrade_survives_snapshot_and_applies_before_the_unit_door_delay
     simsnap.restore(restored, json.loads(json.dumps(simsnap.snapshot(s))))
     b = restored.bodies['seller']
     assert b.serial == seller.serial
-    assert restored.queues[b.serial] == [job] and restored.production.produced_to == 451
+    assert restored.production.queues[b.serial] == [job] and restored.production.produced_to == 451
     assert restored.money[PLAYER] == 500 and TECH not in b.upgrades
     restored.production.due(451)
     assert TECH not in b.upgrades
@@ -47,5 +47,5 @@ def test_object_upgrade_survives_snapshot_and_applies_before_the_unit_door_delay
     restored.production.due(452)
     assert b.upgrades == {TECH} and b.up_since[TECH] == 452
     assert TECH not in restored.player_ups.get(PLAYER, ())
-    assert restored.money[PLAYER] == 500 and not restored.queues[b.serial]
+    assert restored.money[PLAYER] == 500 and not restored.production.queues[b.serial]
     assert not restored.commands.do(order)[0]  # held by the only seller now

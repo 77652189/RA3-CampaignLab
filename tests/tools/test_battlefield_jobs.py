@@ -98,7 +98,7 @@ def test_the_sample_barracks_reads_back_at_half_paid_100():
     doc = _load('ai_open')
     host = simsmall.small_world(model=False, map=niagara)
     assert simbattlefield.place_things(host, doc) == []
-    [job] = host.queues[host.bodies['#ai 285 AlliedBarracks'].serial]
+    [job] = host.production.queues[host.bodies['#ai 285 AlliedBarracks'].serial]
     assert (job['template'], job['owner'], job['paid'], job['full'], job['cost']) == (SCOUT, 'Soviet_1', 100, None, 200)
     host.money['Soviet_1'] = 1000
     host.run(host.t + 3.0)
@@ -130,7 +130,7 @@ def test_a_job_the_host_does_not_build_is_named_the_one_behind_placed():
     host, gaps = _host(doc)
     assert gaps[:2] == [f"things[{i}].queue[0]: a {BARRACKS} builds no AlliedPowerPlant in the host's data (not placed)",
                         f"things[{i}].queue[1].paid: 500 over the host's cost 200 (held to it)"]
-    assert [(j['template'], j['paid']) for j in host.queues[host.bodies['barracks'].serial]] == [(SCOUT, 200)]
+    assert [(j['template'], j['paid']) for j in host.production.queues[host.bodies['barracks'].serial]] == [(SCOUT, 200)]
     assert gaps[2].startswith(f'things[{i}].queue: ')
 
 
@@ -169,7 +169,7 @@ def test_a_job_not_full_whose_progress_rounds_to_100_stays_not_full():
     host.money[P1] = 1000
     paid = job['paid']
     host.run(host.t + 1.0 / host.fps)
-    [full] = host.queues[host.bodies['barracks'].serial]
+    [full] = host.production.queues[host.bodies['barracks'].serial]
     assert full['full'] is not None and host.money[P1] == 1000 - (200 - paid)
 
 
