@@ -396,7 +396,7 @@ class Run:
             return None
         try:
             with open(os.path.join(folder, name + '.txt'), encoding='utf-8', errors='replace') as f:
-                return f.read()[-1500:]
+                return f.read()[-1500:] or '(empty log)'     # '' would read as not failed (review ff P3)
         except OSError:
             return '(no log)'
 

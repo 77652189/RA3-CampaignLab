@@ -1115,7 +1115,7 @@ class Brain:
         # (same-name sweep 11-19b N01: the model keeps a dodge job by (unit name, threat name), so a member or a
         # beacon made again under the old one's name got the old one's flight point)
         names = Counter(u.body.name for u in team.members)
-        view = lambda b: f'{b.name}#{b.serial}' if not self.first_of(b) or names[b.name] > 1 else b.name  # noqa: E731
+        view = lambda b: self.view_name(b, names[b.name] > 1)  # noqa: E731
         for u in team.members:
             b = u.body
             reach = max((w.get('range') or 0.0 for w in b.weapons), default=0.0)
@@ -1163,7 +1163,7 @@ class Brain:
             eligible = frozenset(view(u.body) for u in team.members if u.body.alive
                                  and 'AIRCRAFT' not in u.body.kinds
                                  and not (getattr(u.body, 'z', None) or 0) > 0)
-            threats.append(mc.DodgeThreat(b.name if self.first_of(b) else f'{b.name}#{b.serial}', (b.x, b.y),
+            threats.append(mc.DodgeThreat(self.view_name(b), (b.x, b.y),
                                           float(info.get('DodgeSafetyDistance')),
                                           b.owner, b.life_end - frame, eligible))
         return mc.Team(units, enemies=enemies, threats=threats)
@@ -1171,6 +1171,12 @@ class Brain:
     def first_of(self, b):
         """Whether b is the first object the micro view met under its name (`_view_names` name -> that serial)."""
         return self.__dict__.setdefault('_view_names', {}).setdefault(b.name, b.serial) == b.serial
+
+    def view_name(self, b, twins=False):
+        """b's name in the micro view: `name#serial` for one of twins, one not first_of its name, or a name with a #
+        in it (so a thing named `lead#1` never reads as lead's serial 1: review 11-19 w #6), else the name."""
+        first = self.first_of(b)            # asked every time: it marks the name's first holder
+        return f'{b.name}#{b.serial}' if twins or not first or '#' in b.name else b.name
 
     def micro_body(self, u):
         """The object micro_team made the view's unit u of (None for a unit of no view of this brain's)."""

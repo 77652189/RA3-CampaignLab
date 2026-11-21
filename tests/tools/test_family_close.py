@@ -50,9 +50,13 @@ def test_golden_a_base_gap_not_declared_is_red():
     assert 'boom' in log.getvalue()
 
 
-def test_golden_not_recordable_here_is_red():
+def test_golden_not_recordable_here_is_red(tmp_path):
     ok, _ = fc.golden_line(FakeRun({'a': 'fail-new'}), io.StringIO())
     assert not ok
+    (tmp_path / 'a.failed').touch()     # the real Run: a failure with an empty log is still one (review ff P3)
+    (tmp_path / 'a.txt').touch()
+    golden = fc._load('golden', str(ROOT / 'experimental' / 'testbench' / 'golden.py'))
+    assert golden.Run('abc', str(tmp_path), str(tmp_path), set(), ['a']).failed('base', 'a')
 
 
 TABLE = {'sim.py lines': 100, 'Body fields': 10}

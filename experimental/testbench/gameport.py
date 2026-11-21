@@ -276,7 +276,7 @@ class Replay:
         if self._at >= len(self._calls):
             raise TranscriptError(f'ask {ask!r} after the transcript\'s {len(self._calls)} calls')
         rec = self._calls[self._at]
-        if rec['ask'] != ask:
+        if json.dumps(rec['ask'], sort_keys=True) != json.dumps(ask, sort_keys=True):    # 4.0 is not 4 (review aa P3)
             raise TranscriptError(f'call {self._at + 1}: asked {ask!r}, the transcript has {rec["ask"]!r}')
         self._at += 1
         return rec['answer']
@@ -298,8 +298,16 @@ class Recorder:
         return answer
 
     def save(self, path):
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(self.transcript, f, ensure_ascii=False, indent=1)
+        save(self.transcript, path)
+
+
+def save(transcript, path):
+    """A transcript as JSON, a list's items one a line (review gg: indent=1 took 650 lines for 30 samples)."""
+    one = lambda v: json.dumps(v, ensure_ascii=False)   # noqa: E731
+    rows = [f'{one(k)}: [\n  ' + ',\n  '.join(map(one, v)) + ']' if isinstance(v, list) and v else f'{one(k)}: {one(v)}'
+            for k, v in transcript.items()]
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write('{' + ',\n '.join(rows) + '}\n')
 
 
 class GameAdapter:
@@ -824,9 +832,8 @@ def main(argv=None):
             tr = transcript_with_inputs(a.run_dir, contract, [tuple(s) for s in json.load(f)])
     else:
         tr = transcript_from_archive(a.run_dir, contract)
-    with open(a.out, 'w', encoding='utf-8') as f:
-        json.dump(tr, f, ensure_ascii=False, indent=1)
-    got = [c['answer'] for c in tr['calls'] if c['answer']]
+    save(tr, a.out)
+    got =[c['answer'] for c in tr['calls'] if c['answer']]
     print(f'{len(got)} samples, {sum(None in c["values"] for c in got)} with a line not read -> {a.out}')
 
 

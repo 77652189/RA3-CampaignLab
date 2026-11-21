@@ -131,9 +131,10 @@ TARGETED = frozenset({'attack', 'capture', 'build', 'enter'})     # the routes t
 
 
 def takes_target(cmd):
-    """Whether cmd's route reads a target: TARGETED's, and a power pressed at one (`via` 'wfire'); the rest go to a
-    place or nowhere, so a `target_serial` given them would be checked by `_pinned` and then never used."""
-    return cmd.kind in TARGETED or (cmd.kind == 'power' and cmd.arg('via') == 'wfire')
+    """Whether cmd's route reads a target: TARGETED's, and a script's power pressed at one (`via` 'wfire' with
+    `objects`; without, it goes by place: review ff P3); the rest go to a place or nowhere, so a `target_serial`
+    given them would be checked by `_pinned` and then never used."""
+    return cmd.kind in TARGETED or (cmd.kind == 'power' and cmd.arg('via') == 'wfire' and bool(cmd.arg('objects')))
 
 
 def by_player(s):

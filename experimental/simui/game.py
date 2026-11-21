@@ -182,7 +182,8 @@ class Picture:
             can = [o for o in offers if o['tp'] in menu]
             sold |= {o['tp'] for o in can}
             factories.append(dict(id=f.name, lb=obs.label(f), can=can,
-                                  queue=[dict(tp=tp, p=round(p * 100, 1)) for tp, p in obs.queue(f)]))
+                                  queue=[dict(tp=tp, p=round(round(p * 100, 6), 1))   # the port's /100: 28.75 back as 28.7499..
+                                         for tp, p in obs.queue(f)]))
         if factories:                               # upgrades: bought at whichever structure sells them
             factories[0]['can'] += [o for o in offers if o['tp'] not in sold]
         ending, flags = obs.ending(), obs.flags()

@@ -90,6 +90,8 @@ def test_the_replay_refuses_an_ask_out_of_order_or_past_the_end():
     r = gp.Replay(TRANSCRIPT)
     with pytest.raises(gp.TranscriptError, match='call 1'):
         r.call(dict(tool='sample', lines=3))
+    with pytest.raises(gp.TranscriptError, match='call 1'):     # equal as numbers is not the same ask (aa P3)
+        gp.Replay(dict(calls=[dict(ask=dict(n=4), answer=1)])).call(dict(n=4.0))
     a = gp.replay(gp.FORMSS, TRANSCRIPT)
     run_all(a)
     with pytest.raises(gp.TranscriptError, match='after the transcript'):

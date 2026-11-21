@@ -955,6 +955,9 @@ def test_the_ais_micro_fires_and_dodges_with_the_unit_it_viewed_not_a_reference_
     assert [u.name for u in br.micro_team(None, 0, alone).units] == ['lead']     # one keeps its name
     alone = SimpleNamespace(members=[simai.Unit(lead, br.observe)])     # ... but the view met `old` under it first
     assert [u.name for u in br.micro_team(None, 0, alone).units] == [f'lead#{lead.serial}']     # (11-19b N01)
+    odd = s.add(f'lead#{lead.serial}', 'SovietMiner', 'Player_1', 0.0, 200.0)     # a name that reads as one (w #6)
+    team = SimpleNamespace(members=[simai.Unit(b, br.observe) for b in (old, lead, odd)])
+    assert len({u.name for u in br.micro_team(None, 0, team).units}) == 3
 
 
 def test_the_ais_hunt_goes_on_with_its_member_not_a_reference_of_its_name():
@@ -1296,6 +1299,8 @@ def test_a_target_serial_alone_is_the_route_s_target_or_refused():
     assert seen == [s.bodies['foe']]
     assert s.commands.do(Command('move', units=('a',), place='@500,0', args=pin)) == \
         (False, f'move: 不带目标，编号 {pin[0][1]} 无处可用')
+    ground = Command('power', units=('a',), power='X', place='@500,0', args=(('via', 'wfire'),) + pin)   # ff P3
+    assert s.commands.do(ground) == (False, f'power: 不带目标，编号 {pin[0][1]} 无处可用')
 
 
 @pytest.mark.parametrize('kind,units', [('move', ('a',)), ('move', ('a', 'b')), ('attack_move', ('a', 'b'))])
