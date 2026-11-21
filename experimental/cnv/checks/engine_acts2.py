@@ -17,7 +17,7 @@ places, clear of probe_range's lanes and start); enemies on Soviet_4. What the s
     s1 1 0 11 0 | s2 1 0 11 1 | s3-s4 11 11 11 1 | s5-s6 11 11 11 0 | s7 11 11 11 2 | s8-s41 111 11 11 2.
     Against the prediction: 等 11 from the first second -- the IDLE_FOR_SECONDS step held the next back not at all
     (d115 14 has IDLE_FOR_* write the record's wait; on a standing unit it did not). The rest as predicted; the
-    simulator fixed (sim.Sim.seq_due keeps no wait).
+    simulator fixed (engine.orders.seq keeps no wait).
   more    garrison: crew G1 (7 conscripts) and crew Frogs1 (two of the player's Bullfrogs, 5 places each); crew G2 (6)
                and Frogs2 (one); TEAM_GARRISON_TEAM_INSTANTLY(G1, Frogs1), (G2, Frogs2) at 2 s; NAMED_KILL the first
                Bullfrog of Frogs1 at KILL (KillPassengersOnDeath: its passengers die).

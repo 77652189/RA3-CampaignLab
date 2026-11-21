@@ -76,7 +76,7 @@ from engine.objects.path import Ground  # noqa: E402,F401  (the routing world, M
 import engine.objects.modifier as simmodifier  # noqa: E402
 import engine.players.money as simmoney  # noqa: E402
 import engine.objects.infiltrator as siminfiltrator  # noqa: E402
-from engine.orders import order as simorder, ability as simability, target as simtarget, hunt as simhunt  # noqa: E402
+from engine.orders import order as simorder, ability as simability, target as simtarget, hunt as simhunt, seq as simseq  # noqa: E402
 import engine.objects.power as simpower  # noqa: E402
 import engine.players.production as simproduce  # noqa: E402
 import engine.combat.range as simrange  # noqa: E402
@@ -699,7 +699,7 @@ class Sim:
         self.suppression_fields = []        # (end, value, x, y, radius): stationary hit contributions
         self.topples = []                   # ToppleUpdate objects; neutral props can be knocked over too
         self.frame_movers = {}              # topple contact paths and measured Jet startup
-        self.refs, self.acting = {}, {}     # UNITRef name -> the Body SET_REF_TO_... set; acting: simorder._as_itself
+        self.refs, self.acting = {}, {}     # UNITRef name -> the Body SET_REF_TO_... set; acting: simseq._as_itself
         self.object_lists = {}              # OBJECTLIST_ADDOBJECTTYPE: list name -> {template}, both lower case
         self.base_power = {}                # PLAYER_SET_BASE_POWER: player -> supply added to its objects' (INFERRED)
         self.powers_off = {}                # PLAYER_SPECIAL_POWER_AVAILABILITY: (player, power lower) -> its word
@@ -1447,8 +1447,8 @@ class Sim:
         return simorder.stand(b)
 
     def seq_due(self):
-        """simorder.seq_due (L5)."""
-        return simorder.seq_due(self, self._order_peers())
+        """simseq.seq_due (L5)."""
+        return simseq.seq_due(self, self._order_peers())
 
     def order_follow(self, bodies, label, attacking, exact=False, start=None, as_team=False):
         """simorder.order_follow (L5)."""
@@ -1487,11 +1487,11 @@ class Sim:
         return (start.x, start.y) if start is not None else (2500.0, 2500.0)
 
     def point(self, name):
-        """A waypoint, an area's middle, a mark, a site, a named object, '@x,y' (simorder.AS_WRITTEN: places by name)."""
+        """A waypoint, an area's middle, a mark, a site, a named object, '@x,y' (simseq.AS_WRITTEN: places by name)."""
         c = coord(name)
         if c is not None:
             return c
-        place = name[:-len(simorder.AS_WRITTEN)] if name in self.acting and name.endswith(simorder.AS_WRITTEN) else name
+        place = name[:-len(simseq.AS_WRITTEN)] if name in self.acting and name.endswith(simseq.AS_WRITTEN) else name
         if place in self.waypoints:
             return self.waypoints[place]
         if place in self.areas:

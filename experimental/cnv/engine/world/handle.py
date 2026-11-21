@@ -37,7 +37,7 @@ WORLD_API = frozenset({
     'reblock',         # re-read the blocked ground
     'body',            # a script's object name -> its Body (a reference followed, dead or not), None where none
     'acting',          # a sequential script's step written with <This Object>: the unit's name -> the unit, one step
-                       # long (simorder._as_itself; body and point read it before the references)
+                       # long (simseq._as_itself; body and point read it before the references)
     'relation',        # (player, player) -> 'ALLIES' / 'ENEMIES' / 'NEUTRAL'
     'hostile',         # (body, body) -> does the first take the second as an enemy (team overrides first)
     'who',             # player -> its name as the log shows it

@@ -3,6 +3,7 @@ run. The whole-mission versions against the bench: test_simbench.py (engine_acts
 from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
 import engine.orders.hunt as simhunt  # noqa: E402
 import engine.orders.order as simorder  # noqa: E402
+import engine.orders.seq as simseq  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402
 
 APOC = 'SovietAntiVehicleVehicleTech3'
@@ -42,4 +43,4 @@ def test_stop_and_stand_drop_the_order_and_a_short_move_is_held_up():
     b.move_to = b.dest
     assert not simorder.held_up(b)                       # within ARRIVE: it got there
     simorder.stand(b)
-    assert b.mode == 'idle' and b.move_to is None and simorder.idle(simorder.Peers(s), b)
+    assert b.mode == 'idle' and b.move_to is None and simseq.idle(simorder.Peers(s), b)

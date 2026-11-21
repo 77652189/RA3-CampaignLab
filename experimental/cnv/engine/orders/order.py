@@ -4,8 +4,8 @@ The order entries set a body's mode and goal and hand the walk to L2 (`peers.sen
 (`order_move`, a group's `order_group`), an attack (`order_attack`), an engineer's capture (`order_capture`), a guard,
 stop / stand, a waypoint path (`order_follow`, `path_start`, `path_next`, `follow_leg`); a stance and auto-acquire are
 the unit's AIUpdate's (engine/modules/aiupdate.py). The dues are their frame parts:
-a capture at the building's side, the next leg of a path, a sequential script's next step
-(`capture_due`, `follow_due`, `seq_due`). A run off the map is engine.orders.ability's, a hunt engine.orders.hunt's.
+a capture at the building's side, the next leg of a path (`capture_due`, `follow_due`). A run off the map is
+engine.orders.ability's, a hunt engine.orders.hunt's, a sequential script engine.orders.seq's.
 The fight (`fight`, once a tick) is the attack state machine: a team attack goes on to the next member, each armed
 body aims (L3 `aim`) and fires, rounds a blocked line, and chases by itself (`chase_step`: an attack-mover's
 `attack_chase`, anyone else's `idle_chase`).
@@ -15,8 +15,8 @@ bodies (delete, modify, engineer_entry, the garrison), L3 targeting and fire (re
 in_range, shot_blocked, fire_spot, side_sees, the unshot templates and AI sides: engine.orders.target's), L4 money (wallet), the team
 registry (members, team_targets) and the order queues the scripts fill (seq, hunts). The fight's per-tick state on the host
 (WRITES: seen, firing, volleys, chilling, mid_aims, the fire obstacles, the field) is reset through `peers` too --
-the only names it may set. This module never imports them. The loan serves engine.orders.ability and
-engine.orders.hunt too (their PEERS).
+the only names it may set. This module never imports them. The loan serves engine.orders.ability,
+engine.orders.hunt and engine.orders.seq too (their PEERS).
 """
 import math
 
@@ -230,86 +230,6 @@ def stand(b):
     """Its order dropped, nothing new: idle where it is (the AI's command 5: l2_scripts1 3, 6)."""
     b.path, b.move_to, b.follow = [], None, None
     b.aiupdate.command('idle')
-
-
-def idle(peers, b):
-    """The unit's AI has nothing to do (a sequential script's next step waits for it, d115 14): no way to walk,
-    no living target, no path, not firing at the ground, not running off."""
-    return not b.path and not (isinstance(b.goal, type(b)) and b.goal.alive) and not b.follow \
-        and not getattr(b, 'ground_fire', None) and not getattr(b, 'flee', None) \
-        and b.serial not in peers.garrison.going
-
-
-def seq_due(world, peers):
-    """UNIT_EXECUTE_SEQUENTIAL_SCRIPT's frame (d115 14, the engine's "Advancing SeqScript"): of each unit's queue
-    only the head moves -- the unit idle, its next action run (with <This Object> = the unit); past the last one
-    it is done (loops 0), or goes to the back of the unit's queue to run again (loops - 1; -1 for ever). A dead
-    unit's records go. Bench 11-13 engine_acts_seq: 跑 1 -> 11 at P -> 111 back and no more (one run, each step
-    after the move before it), 排 0 -> 11 (the second script after the first's move). d115 14's wait frames
-    (IDLE_FOR_* writing them) are not kept: 等 11 from the first second -- UNIT_IDLE_FOR_SECONDS 5 on the standing
-    unit held the next step back not at all (what writes the wait: not known)."""
-    heads = set()
-    for r in list(peers.seq):
-        b = r['b']
-        if b.serial in heads:
-            continue
-        heads.add(b.serial)
-        if not b.alive:
-            peers.seq.remove(r)
-            continue
-        if not idle(peers, b):
-            continue
-        r['step'] += 1
-        acts = [x for x in r['script'].actions if x.enabled]
-        if r['step'] >= len(acts):
-            peers.seq.remove(r)
-            if r['loops']:
-                r['loops'] -= r['loops'] != -1
-                r['step'] = -1
-                peers.seq.append(r)
-            continue
-        act = acts[r['step']]
-        args = [b.name if x == '<This Object>' else (b.team if x == '<This Team>' else x) for x in act.args]
-        if '<This Object>' in act.args:
-            written = {}                    # the unit's name written as well: that one reads as written -- the
-            if b.name in act.args and world.body(b.name) is not None:   # reference or the object of that name, not
-                tok = b.name + AS_WRITTEN                               # the unit (same-name audit 11-19b O19)
-                written[tok] = world.body(b.name)
-                args = [tok if x == b.name else y for x, y in zip(act.args, args)]
-            _as_itself(world, b, lambda: world.executor.action(act.name, args, r['script']), written)
-        else:
-            world.executor.action(act.name, args, r['script'])
-        if not b.alive and r in peers.seq:
-            peers.seq.remove(r)
-
-
-_NONE = object()
-# the suffix of a sequential step's token for the unit's name written as well as <This Object> (O19): the token reads
-# as the object the name read before the step; a place by the name (Sim.point: waypoint, area, mark, site) is read by
-# the name itself, before any object, as without the token (review 11-19 w P2 #2)
-AS_WRITTEN = ' <as written>'
-
-
-def _as_itself(world, b, step, written=()):
-    """Run `step` (a sequential script's action, <This Object> written as `b`'s name) with that name reading as `b`
-    itself: a reference of the same name, or another object made under it since, cannot take the unit's place
-    (same-name audit 11-19, S5). For the step's length the name is in world.acting, which world.body and world.point
-    read before the references (every action finds its object by name through them, either executor); the
-    references are not written, so one the step points at the name itself stays (review 11-19 n P3 #3; #4: a point
-    by the name is the unit's). Only a step written with <This Object> runs here (the caller; #2). Arguments and the
-    log's text unchanged. A step writing both <This Object> and the unit's name gives the written one as a token of
-    its own in `written` (token -> what the name read before the step: O19), in world.acting for the step too."""
-    had = {k: world.acting.get(k, _NONE) for k in (b.name, *written)}
-    world.acting[b.name] = b
-    world.acting.update(written)
-    try:
-        step()
-    finally:
-        for k, v in had.items():
-            if v is _NONE:
-                world.acting.pop(k, None)
-            else:
-                world.acting[k] = v
 
 
 def path_start(world, label, at):

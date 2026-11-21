@@ -773,25 +773,42 @@ def _seq_world(actions):
     return s, lead, other
 
 
+def test_a_sequential_script_moves_only_its_units_head_and_only_once_the_unit_is_idle():
+    """seq_due: a unit's second script waits behind its first, a step waits for the unit to be idle, and a script
+    with loops left goes to the back of the queue to run again."""
+    s, lead, _ = _seq_world([('MOVE_NAMED_UNIT_TO', '<This Object>', 'dest')])
+    first = s.seq[0]
+    first['loops'] = 1
+    second = dict(first, loops=0)
+    s.seq.append(second)
+    s.seq_due()
+    lead.path = [(600.0, 300.0)]                    # on its way (this world routes in the move cell)
+    s.seq_due()
+    assert (first['step'], second['step'], lead.move_to) == (0, -1, (600.0, 300.0))
+    sim.simorder.stand(lead)
+    s.seq_due()
+    assert s.seq == [second, first] and (first['step'], first['loops']) == (-1, 0)
+
+
 def test_a_sequential_step_reads_the_unit_only_where_it_wrote_this_object():
     """Only a step written with <This Object> reads the unit's name as the unit (review 11-19 n P3 #2: S5 shadowed
     the name in every step, so a literal `lead` -- the reference -- moved the queued unit instead); during one the
     unit is read as itself without the reference being written over, so a reference the step points at the unit
     stays (#3: the restore took it back), and a point by its name is the unit's too (#4: the camera went to a unit
     made under its name since)."""
-    import engine.orders.order as simorder
+    import engine.orders.seq as simseq
     s, lead, other = _seq_world([('MOVE_NAMED_UNIT_TO', 'lead', 'dest')])
     s.seq_due()
     assert (lead.move_to, other.move_to, s.refs['lead']) == (None, (600.0, 300.0), other)
     s, lead, other = _seq_world([('MOVE_NAMED_UNIT_TO', '<This Object>', 'dest')])
     seen = []
-    simorder._as_itself(s, lead, lambda: (seen.append((s.body('lead'), s.refs['lead'])),
+    simseq._as_itself(s, lead, lambda: (seen.append((s.body('lead'), s.refs['lead'])),
                                           s.refs.__setitem__('lead', lead)))
     assert seen == [(lead, other)] and s.refs['lead'] is lead and s.body('lead') is lead and not s.acting
     s.world.drop(s.bodies.pop('lead'))
     s.add('lead', 'AlliedAntiInfantryInfantry', 'Player_1', 700.0, 600.0)
     at = []
-    simorder._as_itself(s, lead, lambda: at.append(s.point('lead')))
+    simseq._as_itself(s, lead, lambda: at.append(s.point('lead')))
     assert at == [(300.0, 300.0)] and s.point('lead') == (700.0, 600.0)
 
 

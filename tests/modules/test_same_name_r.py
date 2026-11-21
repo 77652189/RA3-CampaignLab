@@ -15,6 +15,7 @@ import engine.script.cond_object as simcond_object  # noqa: E402
 import engine.script.cond_world as simcond_world  # noqa: E402
 import engine.objects.mine as simmine  # noqa: E402
 import engine.orders.order as simorder  # noqa: E402
+import engine.orders.seq as simseq  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 
@@ -34,13 +35,13 @@ def test_one_sent_into_a_building_is_the_one_that_goes_in_not_a_thing_made_under
 
 
 def test_one_on_its_way_into_a_building_is_not_idle():
-    """A sequential script's next step waits for it (simorder.idle reads the walk-ins by the thing)."""
+    """A sequential script's next step waits for it (simseq.idle reads the walk-ins by the thing)."""
     s = simsmall.small_world()
     house = s.add('house', 'AM_Apartments_01', 'PlyrCivilian', 300.0, 300.0)
     p = s.add('p', GI, 'Player_1', 900.0, 300.0)
     s.garrison.send(p, house)
     p.path = []                                         # only the walk-in keeps it busy
-    assert p.serial in s.garrison.going and not simorder.idle(simorder.Peers(s), p)
+    assert p.serial in s.garrison.going and not simseq.idle(simorder.Peers(s), p)
 
 
 def test_one_inside_is_that_thing_a_thing_made_under_its_name_is_not_inside_nor_let_out():
