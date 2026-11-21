@@ -462,14 +462,6 @@ NOTES = {
         '实机两组采样s14后均近4/远0/家0；模型ThreatToWater选远，按名回放strict xfail。'
         'tests/test_water_threat.py独立断言原计数并保留原预测FAIL；近处Named对照因s40-41无采样亦strict xfail。'
         '无同帧候选资格/实际water威胁值/水域样本资格，不改模型、不晋升；见work/re/c_water_report.md'),
-    '目标/AITargetingHeuristic.MinDistanceFromEnemy': (GUESSED,
-        'C按名台子engine_aimindist：同一中立油井，TechBuilding阈值0组采样s6起目标区4，'
-        '2000组采样s1-55在家4/目标区0；NamedObject阳性对照同0组。'
-        'tests/test_min_enemy_distance.py断言原计数并按名回放；无同帧实际距离/候选资格，'
-        '追加双油井aimindpair0/350:a仅切0/350，近油井距固定敌电厂200、远约1230；'
-        's40近/远/家/总数实机4/0/0/4与0/0/4/4，模型350选远，strict xfail；原预测FAIL独立strict xfail。'
-        '采样时钟未对齐游戏帧，缺远油井同帧资格/最近候选拒绝后的回退次序，保持推断、不晋升；'
-        '见work/re/c_mindist_report.md、work/re/c_mindist_pair_report.md'),
     '目标/AITargetingHeuristic.MaxDistanceToShore': (GUESSED,
         'C按名台子engine_aishore：同一岸边电厂仅上限2000改1，2000组s14目标区4/s25全离家，'
         '1组s1-65在家4/目标区0；普通EnemyStructure阳性对照同2000组。'

@@ -687,6 +687,12 @@ class Brain:
                                    under_attack=frame - self.hurt_at.get(i, -10 ** 9) <= 2 * FPS,
                                    name=b.name))                    # script name (NamedObject)
         self.view.things = things
+        if 'targets' in self.host.blocks:
+            # the read target types measure from the AI base centre, which the engine re-averages every few frames over
+            # the player's living units, structures not counted (none: a point the brain keeps, INFERRED the yard);
+            # work/re/b1121_mindist.md
+            us = [(t.x, t.y) for t in things if t.owner == self.player and 'STRUCTURE' not in t.kindof]
+            self.targets.home = (sum(p[0] for p in us) / len(us), sum(p[1] for p in us) / len(us)) if us else self.home
         if self.base is not None:
             self.base.buildings = tuple(t.id for t in things if t.owner == self.player and 'STRUCTURE' in t.kindof)
 

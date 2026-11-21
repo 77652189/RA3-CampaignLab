@@ -22,3 +22,25 @@ expect = [
     "all(tuple(v) == (0, 0, 0, 0) for v in sel)",
 ]
 mismatch = "sim 0/0/0/4; bench 0/0/0/0"
+
+[[reading]]
+id = "min_enemy_distance_named_bench_replay"
+scene = {build = "aimind0", check = "a", until = 41}
+each = [{build = "aimind0", want = [4, 0, 0, 0]}, {build = "aimindhi", want = [0, 0, 0, 4]},
+        {build = "aimindctl", want = [4, 0, 0, 0]}]
+bench = "C 2026-11-11, one neutral oil: MinDistanceFromEnemy 0 at the oil from s6, 2000 home s1-55; NamedObject control as 0. Counters (to oil, to barracks, to tank, at home) at s40-41."
+proves = "TechBuilding MinDistanceFromEnemy: an enemy within it rules the candidate out (2000 keeps the team home)"
+item = "AI 目标/AITargetingHeuristic.MinDistanceFromEnemy"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
+expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]
+
+[[reading]]
+id = "min_enemy_distance_two_candidates"
+scene = {build = "aimindpair0", check = "a", until = 41}
+each = [{build = "aimindpair0", want = [4, 0, 0, 4]}, {build = "aimindpair350", want = [0, 0, 4, 4]},
+        {build = "aimindpairclr", want = [0, 0, 4, 4]}, {build = "aimindpairfar", want = [0, 4, 0, 4]}]
+bench = "Two oils (C 2026-11-13, B 2026-11-21), counters (near oil, far oil, home, total) at s40-41: 0 -> 4/0/0/4; 350 -> 0/0/4/4; 350 with the scenery round the far oil cleared -> 0/0/4/4; 350 with SearchRange 3000 -> 0/4/0/4 (from s31)."
+proves = "TechBuilding: the near oil (200 from an enemy plant) fails 350, the far one passes it but lies beyond SearchRange 1200 from the AI base centre, the centroid of the AI's units (not its yard); work/re/b1121_mindist.md"
+item = "AI 目标/AITargetingHeuristic.MinDistanceFromEnemy"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
+expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]
