@@ -8,12 +8,14 @@ import engine.data.units as simunits  # noqa: E402
 from sim import Ground  # noqa: E402
 from engine.testing.small import small_world  # noqa: E402
 from engine.combat.host import impact_ground_z  # noqa: E402
+from engine.world.handle import GAP_WEAPON  # noqa: E402
 
 FRAME = 1 / 15
 
 
-def test_the_collision_launches_a_neighbour_and_landing_starts_the_hold():
-    """MetaImpactNugget moves a grounded body and starts a 38-frame hold at landing."""
+def _shot():
+    """A shock at a man on level ground (and one 30 off its centre), its arrival queued: (world, target, outside,
+    centre, the frame)."""
     s = small_world(model=False)
     # A level site lets either infantry trajectory land at its launch height.
     elevation = np.full((40, 48), 400.0)
@@ -29,10 +31,15 @@ def test_the_collision_launches_a_neighbour_and_landing_starts_the_hold():
     weapons = simunits._weapons([xml])
     weapon = simunits._resolve(weapons['SampleShock'], weapons)
     centre = (target.x, target.y, impact_ground_z(s, target.x, target.y))
-    now, before = s.frame_now(), target.hp
-
     s.volleys = []
-    s.queue_projectile_hit(now, target, 0, caster, weapon, centre)
+    s.queue_projectile_hit(s.frame_now(), target, 0, caster, weapon, centre)
+    return s, target, outside, centre, s.frame_now()
+
+
+def test_the_collision_launches_a_neighbour_and_landing_starts_the_hold():
+    """MetaImpactNugget moves a grounded body and starts a 38-frame hold at landing."""
+    s, target, outside, centre, now = _shot()
+    before = target.hp
     s.deal(FRAME)
     assert outside.serial not in s.impact_flights  # 30 from the centre, outside radius 20
     (body, start, points) = s.impact_flights[target.serial]
@@ -48,3 +55,19 @@ def test_the_collision_launches_a_neighbour_and_landing_starts_the_hold():
     assert target.z is None
     assert target.serial not in s.impact_flights
     assert s.knock_hold[target.serial] == landing + 38  # ceil((1 + 1.5) × 15)
+
+
+def test_a_curve_dipping_under_the_smoothed_ground_is_a_gap_and_no_flight(monkeypatch):
+    """One sample 50 under the smoothed terrain, the end on its landing's ground: the engine's height queries the
+    simulator lacks -- a gap, the body stays."""
+    s, target, _, _, _ = _shot()
+    curve = simunits.meta_impact_trajectory
+
+    def dipping(*args):
+        points = curve(*args)
+        x, y, z = points[1]
+        return [points[0], (x, y, z - 50), *points[2:]]
+    monkeypatch.setattr(simunits, 'meta_impact_trajectory', dipping)
+    s.deal(FRAME)
+    assert target.serial not in s.impact_flights and target.z is None
+    assert s.unmodeled[(GAP_WEAPON, 'MetaImpactNugget')]['what'] == '坡地轨迹和地形查询未建模'
