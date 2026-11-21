@@ -1,0 +1,26 @@
+# Bench readings of checks/engine_passivearea.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E70 / E72 / E73: one retail engineer's PassiveAreaEffectBehavior, its GENERIC_TOGGLE_STATE scripted (work/re/e_passive_e7*.md).
+
+[[reading]]
+id = "the_active_engineer_heals_only_near_allied_infantry"
+scene = {build = "engine_passivearea", check = "a", until = 40}
+bench = "E70 (bench 11-11 PASS): near / far / vehicle / inactive HP 100 / 50 / 50 / 50 at s24-s26; status off and near hurt again at 30 s: 50 / 50 / 50 / 50 at s35-s38"
+proves = "物体模块 PassiveAreaEffectBehavior: heals allied INFANTRY within the radius (100) while GENERIC_TOGGLE_STATE is set; not a target 400 away, not a vehicle, not around the engineer without the status, and no more once the status clears"
+item = "物体模块 Behaviors/PassiveAreaEffectBehavior"
+let = {hp = "lambda t0, t1: [win(t0, t1, k + ' HP') for k in ('near', 'far', 'vehicle', 'inactive')]"}
+expect = ["hp(24, 26) == [[100] * 3, [50] * 3, [50] * 3, [50] * 3]", "hp(35, 38) == [[50] * 4] * 4",
+          "verdicts() and all(ok for ok, _ in verdicts())"]
+
+[[reading]]
+id = "the_heal_comes_in_20_frame_batches"
+scene = {build = "engine_passivearea", check = "f", until = 25}
+bench = "E72: frames below 51 / 64 / 78 / 91 HP after the hurt at 8 s = 11 / 31 / 51 / 71 (gaps 20 / 20 / 20, the pre-run batch prediction)"
+proves = "PassiveAreaEffectBehavior: 10%/s comes as 13 1/3 points every 20 frames, not continuously (the phase is INFERRED)"
+expect = ["list(rows[-1].values()) == [11, 31, 51, 71]", "verdicts() and all(ok for ok, _ in verdicts())"]
+
+[[reading]]
+id = "the_batch_phase_does_not_follow_the_activation"
+scene = {build = "engine_passivearea", check = "g", until = 25}
+bench = "E73: the same with the hurt at 9 s: 16 / 36 / 56 / 76 (the fixed-phase prediction; a fixed delay would give 11 / 31 / 51 / 71)"
+proves = "PassiveAreaEffectBehavior: the 20-frame batches keep one phase, shifted activation lands in it (clock source a gap)"
+expect = ["list(rows[-1].values()) == [16, 36, 56, 76]", "verdicts() and all(ok for ok, _ in verdicts())"]

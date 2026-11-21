@@ -1,0 +1,17 @@
+# Bench readings of checks/engine_areaself.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E165: bits per role (source 1, off 2, ally 4, peer 8) set when its HP is exact at f61 (50) / f210 (predicted); frame saturates at 240.
+
+[[reading]]
+id = "the_engineer_does_not_heal_itself"
+scene = {build = "engine_areaself", check = "a", until = 17}
+bench = "E165 a: f240 frame 240, f61 hurt 7, f210 healed 6, alive 7 -- the source's own 100 prediction failed (its HP stays below), the inactive engineer 50 and the infantry 100 hold"
+proves = "PassiveAreaEffectBehavior: the healing source is not its own beneficiary"
+expect = "[counter(c) for c in ('E165Frame', 'E165Baseline', 'E165Final', 'E165Alive')] == [240, 7, 6, 7]"
+
+[[reading]]
+id = "another_engineer_is_healed"
+scene = {build = "engine_areaselfpeer", check = "a", until = 17}
+bench = "E165 peer: 240 / 15 / 15 / 15 -- source / inactive engineer / infantry / a second inactive engineer beside the source at f210 HP 50 / 50 / 100 / 100, all alive"
+proves = "PassiveAreaEffectBehavior: only the source itself is excluded; another engineer in range is healed"
+expect = ["[counter(c) for c in ('E165Frame', 'E165Baseline', 'E165Final', 'E165Alive')] == [240, 15, 15, 15]",
+          "verdicts() and all(ok for ok, _ in verdicts())"]

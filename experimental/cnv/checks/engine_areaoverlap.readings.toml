@@ -1,0 +1,17 @@
+# Bench readings of checks/engine_areaoverlap.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E166: bits per target (single 1, double 2, off 4) in its HP band, sources full and all alive above; frame saturates at 240.
+
+[[reading]]
+id = "two_sources_do_not_heal_to_full_by_f100"
+scene = {build = "engine_areaoverlap", check = "a", until = 17}
+bench = "E166 a: frame 240, f61 31, f100 29, f210 31 -- at f100 the double-covered infantry is not at 100 (the additive prediction failed)"
+proves = "PassiveAreaEffectBehavior: two overlapping engineers do not add up"
+expect = "[counter(c) for c in ('E166Frame', 'E166Base', 'E166Mid', 'E166Late')] == [240, 31, 29, 31]"
+
+[[reading]]
+id = "two_sources_heal_as_one"
+scene = {build = "engine_areaoverlap", check = "b", until = 17}
+bench = "E166 b: 240 / 31 / 31 / 31 -- at f100 single and double both 75..80, off 50; all 100 / 100 / 50 at f210"
+proves = "PassiveAreaEffectBehavior: overlapping sources of one rule give one contribution"
+expect = ["[counter(c) for c in ('E166Frame', 'E166Base', 'E166Mid', 'E166Late')] == [240, 31, 31, 31]",
+          "verdicts() and all(ok for ok, _ in verdicts())"]
