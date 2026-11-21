@@ -2,7 +2,7 @@
 <LocomotorTemplate>s of GlobalData/Locomotor.xml they name -- a named resource, not a module, like a WeaponTemplate.
 simunits' readers (stats' speed and surface, turning, locomotor_speed) walk the chain and read each text here.
 Step 2: a thing's locomotion state (LocomotorState), the four Body fields speed / surface / turn_rate / turn_first;
-step 3: path / dest / face."""
+step 3: path / dest / face; M3 step 1: go_to's set_off / stood_for / frame_move / jet_motion."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -75,10 +75,13 @@ class LocomotorState(module.Module, interfaces.Locomotor):
     """The Body fields it was, by the same names (the frame record, Body's forwards): speed from Sim.add (the NORMAL
     set's), the modifier pass, a toggle state and the AI's fill; surface (surface_of) and turning (turns). The host
     attaches it (write): no block makes it, no update of its own (engine/objects/locomotion.py drives by it)."""
-    STATE = ('speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face')
+    STATE = ('speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face', 'set_off', 'stood_for',
+             'frame_move', 'jet_motion')
     speed, surface, turn_rate, turn_first = 0.0, 'ground', None, False
     path, dest, face = [], None, None   # step 3: the way still to go, where it was sent, the facing once there (the
     # defaults write compares; each module its own path list)
+    set_off, stood_for, frame_move, jet_motion = -1, None, False, None  # M3 1, go_to's: the frame it was sent from
+    # standing, the goal it stands short of, frame-sized steps (topple contact / Jet startup), simjet's startup
 
     def __init__(self, *args):
         super().__init__(*args)

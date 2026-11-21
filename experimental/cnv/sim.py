@@ -336,7 +336,6 @@ class Body(kernel_module.Thing):
     home: tuple = None                                          # where it stood then (it walks back),
     auto_to: tuple = None                                       # and the way's end that rule gave it
     resume: tuple = None                                        # attack_chase: where the attack-move was going
-    stood_for: tuple = None                                     # the goal it was told and stands short of (send)
     spot: tuple = None                                          # (goal id, goal x, y): sent to a fire_spot for it
     engaged: bool = False                                       # an attack-mover with an enemy in range: holds
     alive: bool = simliving.Alive()
@@ -355,7 +354,6 @@ class Body(kernel_module.Thing):
     carry: float = 0.0                                          # seconds of the last tick left when its leg ended on a
                                                                 # waypoint path (follow_due gives the next leg after
                                                                 # the tick): driven on the next tick, none lost
-    set_off: int = -1                                           # the frame it was sent from standing (Sim.on_the_move)
     stops_at: float = -1.0                                      # mission seconds its last way ended, within the tick
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
@@ -382,9 +380,7 @@ class Body(kernel_module.Thing):
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
     replace: bool = False                                       # building = its ReplaceSelfSpecialAbility: it turns into it
     follow: dict = None                                         # order_follow: label, next waypoint, mode; shared by one team
-    frame_move: bool = False                                    # topple contact / measured Jet startup need frame-sized steps
     drive_speed: float = 0.0
-    jet_motion: dict = None                                     # simjet: measured first eastbound startup only
     jet_started: bool = False
     z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
     unpack_parent: object = None                                # SpawnOnUnpack's producer, outlived and never replaced (M10)
@@ -421,7 +417,7 @@ class Body(kernel_module.Thing):
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules',
                 'lies', 'linger', 'weapons', 'slots', 'speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face',
-                'hold_fire', 'hold_paused', 'stance', 'ai_acquire')
+                'hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'set_off', 'stood_for', 'frame_move', 'jet_motion')
     hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
     max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
@@ -477,6 +473,10 @@ class Body(kernel_module.Thing):
     stance = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.stance, 0)
     ai_acquire = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.ai_acquire, False)
     aiupdate = property(aiupdate.of)                    # the module itself (attached at its first setting)
+    set_off = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.set_off, -1)      # M3 1: go_to's
+    stood_for = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.stood_for)     # (Sim.on_the_move,
+    frame_move = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.frame_move, False)    # Sim.move,
+    jet_motion = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.jet_motion)   # simjet read them)
 
 from engine.world.handle import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
 
@@ -1558,9 +1558,7 @@ class Sim:
     in_range = staticmethod(simrange.in_range)
 
     def send(self, b, target, by='', reach=0.0, face=None):
-        """Put b on a way to target (a point, or a waypoint / area name); face: the facing (radians) to turn to at the
-        way's end (move), None for none -- a new way drops an old one's. From standing it first turns in place toward
-        its way (move, Sim.turn), whoever gave the order. The rule is simlocomotion.go_to (L2); `by` is unused."""
+        """Put b on a way to target: simlocomotion.go_to (L2) says how; `by` is unused."""
         simlocomotion.go_to(self, b, target, reach, face, self.frame_movers, self.topples)
 
     def turn(self, b, want, dt, within=0.0):

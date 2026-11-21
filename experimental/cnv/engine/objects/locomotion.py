@@ -4,6 +4,7 @@
 reaches the world only through simworld.WORLD_API; the frame-mover registry and the toppled bodies are handed in by
 the caller (Sim.send). The per-frame driving along the way (Sim.move) comes here at step 8.
 """
+import engine.modules.locomotor as locomotor
 import engine.objects.jet as simjet
 import engine.objects.topple as simtopple
 
@@ -27,7 +28,7 @@ def go_to(world, b, target, reach, face, frame_movers, topples):
         path = world.ground.route(b.surface, (b.x, b.y), p, closest=True)
         stands = path == []
     if not b.path:
-        b.set_off = world.frame_now()
+        locomotor.write(world, b, set_off=world.frame_now())
     b.dest = p
     if path is None:
         world.note('卡住', f'{world.label(b)} 到不了 {target if isinstance(target, str) else "目标"}'
@@ -38,12 +39,12 @@ def go_to(world, b, target, reach, face, frame_movers, topples):
         # walled in, where it stands is the nearest it gets: it stays (bench engine_seal move); not stuck
         world.note('够不着', f'{world.label(b)} 走不到 {target if isinstance(target, str) else "目标"}，'
                             f'原地就是能到的最近处，站着')
-        b.stood_for = b.dest
-    b.jet_motion = simjet.start(world, b, path)
+        locomotor.write(world, b, stood_for=b.dest)
+    jet = simjet.start(world, b, path)
     points = [(b.x, b.y)] + path
-    b.frame_move = (b.jet_motion is not None or any(o.alive and simtopple.crosses(b, o, a, z, world.own)
-                                              for o in topples if o is not b
-                                              for a, z in zip(points, points[1:])))
+    locomotor.write(world, b, jet_motion=jet, frame_move=jet is not None or any(
+        o.alive and simtopple.crosses(b, o, a, z, world.own) for o in topples if o is not b
+        for a, z in zip(points, points[1:])))
     if b.frame_move:
         if not b.path:
             b.drive_speed = 0.0

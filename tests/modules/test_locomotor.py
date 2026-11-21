@@ -41,3 +41,5 @@ def test_the_state_goes_on_a_moving_thing_only_and_the_forwards_read_it():
     p.path, u.face = [(5.0, 5.0)], 1.0
     assert p.find(interfaces.Locomotor).path == [(5.0, 5.0)] and u.path == [] and (m.face, m.dest) == (1.0, None)
     assert m.path is not p.path and m.path is not loco.LocomotorState.path
+    s.send(u, (400.0, 300.0))                       # M3 1: go_to writes its fields on the module
+    assert u.set_off == m.set_off == s.frame_now() and m.dest == (400.0, 300.0)
