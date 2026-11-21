@@ -1162,10 +1162,6 @@ class Sim:
         at = simpath.spot(want, b.radius, held, lambda x, y: self.ground.open(b.surface, x, y), GRID, on_grid)
         return want if at is None else at
 
-    def held_up(self, b):
-        """simorder.held_up (L5)."""
-        return simorder.held_up(b)
-
     def order_attack(self, b, target_name, force=False):
         """simorder.order_attack (L5)."""
         return simorder.order_attack(self, self._order_peers(), b, target_name, force)
@@ -1195,12 +1191,6 @@ class Sim:
     def capture_due(self):
         """simorder.capture_due (L5)."""
         return simorder.capture_due(self, self._order_peers())
-
-    def earn(self, owner, amount):
-        self.wallet.earn(self, owner, amount)
-
-    def mine_due(self, frame):
-        self.mining.mine_due(self, frame, lambda owner, give: self.wallet.collect(self, owner, give))   # simmine (L2)
 
     # ---- production: the second hook for simproxy's player (docs/engine/production.md, bench 2026-11-05)
     def factories(self, owner):
@@ -1443,10 +1433,6 @@ class Sim:
         """simorder.order_guard (L5)."""
         return simorder.order_guard(self, self._order_peers(), b, area)
 
-    def power_refusal(self, b, power, x, y):
-        """simorder.power_refusal (L5)."""
-        return simorder.power_refusal(self, self._order_peers(), b, power, x, y)
-
     def order_power(self, b, power, pos):
         """simorder.order_power (L5)."""
         return simorder.order_power(self, self._order_peers(), b, power, pos)
@@ -1463,29 +1449,13 @@ class Sim:
         """simorder.stand (L5)."""
         return simorder.stand(b)
 
-    def idle(self, b):
-        """simorder.idle (L5)."""
-        return simorder.idle(self._order_peers(), b)
-
     def seq_due(self):
         """simorder.seq_due (L5)."""
         return simorder.seq_due(self, self._order_peers())
 
-    def path_start(self, label, at):
-        """simorder.path_start (L5)."""
-        return simorder.path_start(self, label, at)
-
-    def path_next(self, at):
-        """simorder.path_next (L5)."""
-        return simorder.path_next(self, at)
-
     def order_follow(self, bodies, label, attacking, exact=False, start=None, as_team=False):
         """simorder.order_follow (L5)."""
         return simorder.order_follow(self, self._order_peers(), bodies, label, attacking, exact, start, as_team)
-
-    def follow_leg(self, movers, how):
-        """simorder.follow_leg (L5)."""
-        return simorder.follow_leg(self, self._order_peers(), movers, how)
 
     def follow_due(self):
         """simorder.follow_due (L5)."""
@@ -2487,10 +2457,6 @@ class Sim:
         if b.template not in self.__dict__.setdefault('_cold', {}):
             self._cold[b.template] = simunits.frozen_armor(b.template, self.own)
         return (m and m.rules()), self._cold[b.template]
-
-    def chill(self, dt):
-        """simdamage.Damage.chill (L3): `dt` seconds of cryo beams and melting."""
-        self._harm().chill(self, dt, simdamage.Peers(self))
 
     def peeking(self):
         """The MAP_REVEAL_AT_WAYPOINT reveals still open this frame, as (x, y, r)."""

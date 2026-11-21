@@ -12,9 +12,11 @@ ROOT = Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location('simbench', ROOT / 'experimental' / 'cnv' / 'simbench.py')
 simbench = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simbench)
+import engine.loop.frame as simloop  # noqa: E402
+import engine.orders.order as simorder  # noqa: E402
 
 
-# DEMO_KILL (strict xfail 2026-11-07, green since sim.Sim.held_up): the opening demo's pair, stopped by the ice 157
+# DEMO_KILL (strict xfail 2026-11-07, green since simorder.held_up): the opening demo's pair, stopped by the ice 157
 # from the player's engineer, counted idle and shot him at 61.7 s; on the bench (`a4 demoeng`) he lives the whole
 # demonstration. A plain move stopped short is still on its move now: no fire, no chase till its next order.
 @pytest.mark.parametrize('check', ['detour', 'queue', 'melt', 'smoke', 'smash', 'win', 'derrick'])
@@ -262,11 +264,11 @@ def test_skill_the_players_click_keeps_off_objects_and_unpathable_ground():
     (box 33 x 41) refuses a2, 75 from its centre, not a point 123 from it; the sea (w) and the cliff (c1) refuse."""
     m, s = _skill('d')
     power = m.ability('engineer a', 'freeze')
-    got = [s.power_refusal(s.body(m.role(f'engineer b{k}').name), power, *s.point(m.mark(f'b{k}'))) for k in (1, 2, 3)]
+    got = [simorder.power_refusal(s, simorder.Peers(s), s.body(m.role(f'engineer b{k}').name), power, *s.point(m.mark(f'b{k}'))) for k in (1, 2, 3)]
     assert got == [None, None, None]
     a, d = s.body(m.role('engineer a').name), s.body(m.role('engineer d').name)
-    assert s.power_refusal(a, power, *s.point(m.mark('a2'))) == 'too near an object'
-    assert s.power_refusal(d, power, 790.0, 2100.0) is None
+    assert simorder.power_refusal(s, simorder.Peers(s), a, power, *s.point(m.mark('a2'))) == 'too near an object'
+    assert simorder.power_refusal(s, simorder.Peers(s), d, power, 790.0, 2100.0) is None
     for e, spot in (('engineer w', 'w'), ('engineer c', 'c1')):
         assert s.order_power(s.body(m.role(e).name), power, s.point(m.mark(spot))) == (False, 'not pathable')
 
@@ -467,7 +469,7 @@ def _mining(miners=1, frames=1200, turn=135.0):
     s.money[p] = 0
     got = []
     for fr in range(frames):
-        s.mine_due(fr)
+        simloop.mine(s, fr, None)
         got.append(s.money[p])
     return got
 
@@ -513,7 +515,7 @@ def test_mining_niagara_east_ore_trips_in_185_as_the_ai_s_miner_did():
     s.money[miner.owner] = 0
     got = []
     for fr in range(1500):
-        s.mine_due(fr)
+        simloop.mine(s, fr, None)
         got.append(s.money[miner.owner])
     trips = _trips(got)
     assert len(trips) >= 5 and set(trips) == {185}, trips
@@ -536,7 +538,7 @@ def test_mining_niagara_at_retail_s_facing_trips_as_mineturn0_did():
     s.money[miner.owner] = 0
     got = []
     for fr in range(1500):
-        s.mine_due(fr)
+        simloop.mine(s, fr, None)
         got.append(s.money[miner.owner])
     trips = _trips(got)
     assert len(trips) >= 5 and set(trips) == {MINE_TURN_BENCH[0][0]}, trips

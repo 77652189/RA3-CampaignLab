@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('queuedock_bootstrap', ROOT / 'experimental/cnv/simbench.py')
 bootstrap = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bootstrap)
+import engine.loop.frame as simloop  # noqa: E402
 
 
 def test_queuedock_probe_is_a_single_module_control():
@@ -71,7 +72,7 @@ def test_queuedock_missing_refinery_rejects_first_delivery_before_payment():
     s.money[miner.owner] = 0
     with pytest.raises(ValueError, match='QueueDock missing on refinery.*E152 Refinery.*E152 Miner'):
         for frame in range(600):
-            s.mine_due(frame)
+            simloop.mine(s, frame, None)
     assert miner.mine['state'] == 'find refinery'
     assert miner.mine['ref'] == m.role('refinery').name
     assert miner.mine['load'] == 250
@@ -92,7 +93,7 @@ def test_queuedock_present_replays_measured_unload_duration_and_amount():
     paid = []
     for frame in range(600):
         before = s.money[miner.owner]
-        s.mine_due(frame)
+        simloop.mine(s, frame, None)
         if s.money[miner.owner] != before:
             paid.append(frame)
         if s.money[miner.owner] >= 250:
@@ -126,7 +127,7 @@ def test_queuedock_load_lands_only_when_loading_finishes():
     miner = s.bodies[m.role('miner').name]
     samples = []
     for frame in range(600):
-        s.mine_due(frame)
+        simloop.mine(s, frame, None)
         samples.append((miner.mine['state'], miner.mine['load']))
         if miner.mine['state'] == 'find refinery':
             break
@@ -148,7 +149,7 @@ def test_queuedock_measured_loading_elapsed_frames():
     miner = s.bodies[m.role('miner').name]
     start = None
     for frame in range(600):
-        s.mine_due(frame)
+        simloop.mine(s, frame, None)
         if miner.mine['state'] == 'loading' and start is None:
             start = frame
         if miner.mine['state'] == 'find refinery':

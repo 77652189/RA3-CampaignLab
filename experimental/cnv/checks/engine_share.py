@@ -24,7 +24,7 @@ refinery's own collector alone, the placed one deleted at the start -- engine_mi
     s52-s67 374 188 188. Against the prediction: the earner keeps the rest, not one share (two sharers: 124 / 63 / 63
     a load -- each Friend 8 // 3 = 2 of a deposit of 8, the earner 4); SELECT_OBJECT replaces (2 alone at s5), an
     enemy's object is selected too (16); DESELECT changes nothing (2 to s10, 16 to s16); TYPE_SELECTED never true
-    (no 4 / 8 / 32); the killed pick still selected ~3 s (1 to s23). Simulator: sim.Sim.earn, SELECT_OBJECT,
+    (no 4 / 8 / 32); the killed pick still selected ~3 s (1 to s23). Simulator: Money.earn, SELECT_OBJECT,
     NAMED_SELECTED / TYPE_SELECTED (tests/test_simbench.py test_share_all_as_the_bench).
 """
 from checks import engine_mining as mining

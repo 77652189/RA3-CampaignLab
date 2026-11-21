@@ -1,4 +1,5 @@
 """Stopping early and exhausting a fallback route retain the command's intent."""
+import engine.orders.order as simorder
 import engine.testing.small as simsmall
 from engine.ports.command import Command
 
@@ -15,7 +16,7 @@ def test_stop_cancels_the_remaining_way_without_resetting_the_plain_move():
     # STOP clears the path, while mode and the original move_to stay put.
     assert (b.x, b.y) == (1230, 2500) and b.path == []
     assert b.mode == 'move' and b.move_to == (1320, 2500)
-    assert s.held_up(b) and not b.rolling
+    assert simorder.held_up(b) and not b.rolling
 
 
 def test_stop_cancels_a_pending_run_off_map():
@@ -45,4 +46,4 @@ def test_give_up_at_nearest_reachable_cell_keeps_the_requested_destination():
     s.move()
     s.t = 0.5
     s.move()
-    assert (b.x, b.y) == (1240, 2500) and b.path == [] and s.held_up(b)
+    assert (b.x, b.y) == (1240, 2500) and b.path == [] and simorder.held_up(b)

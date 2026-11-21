@@ -272,7 +272,7 @@ class Brain:
         # the short-opening rule (opening.kept_orders) covers structure Builds only: a unit Build is kept (D157,
         # INFERRED -- bench aiexpb*: Time 0s Deposit, Build AlliedMiner, Time 5s made its miner)
         self.ai.structure_of = self.is_structure
-        # ResourceMultiplierCheat: the AI's deposits x the line for its difficulty (Sim.mine_due; data.resource_multiplier)
+        # ResourceMultiplierCheat: the AI's deposits x the line for its difficulty (Mining.mine_due; data.resource_multiplier)
         mult = getattr(host.data, 'resource_multiplier', lambda *a: 1.0)(personality, self.ai.difficulty)
         if mult != 1.0:
             self.systems.multiply_income(player, mult)              # the AI port's PlayerSystems (shortcut)
@@ -1841,7 +1841,7 @@ class Brain:
 
     def earn(self):
         """AIPlayer.money: the player's money now (AIPlayer.available: an account spends its Deposits + its budget
-        share of the money -- INFERRED, bench engine_aiskirm d / f; the income is in it, Sim.mine_due, HOOKS 7)."""
+        share of the money -- INFERRED, bench engine_aiskirm d / f; the income is in it, Mining.mine_due, HOOKS 7)."""
         self.ai.money = self.observe.money().get(self.player, 0)
 
     def tick(self, frame):

@@ -1,5 +1,5 @@
 """Engine unit test: the freeze (SecondaryDamageTracker, ADR 0019 layer 3; engine line C round 7) -- how fast a cryo
-beam freezes a tank, how long it stays frozen once the beam is gone. The simulator's rule (Sim.chill, INFERRED from the
+beam freezes a tank, how long it stays frozen once the beam is gone. The simulator's rule (Damage.chill, INFERRED from the
 SDK data, never benched): the cryocopter's beam adds 75 cold a second, the tracker melts 25 a second (BaseVehicle:
 DissipateAmount 25 per UpdateDuration, cap 200 % of max health), the highest step reached by Fraction of max health
 applies its modifier, 1.0 = UNDER_FROZEN (stopped, silent, armour CryoBeamFrozenArmor). For a Hammer (550 health):

@@ -441,10 +441,10 @@ NOTES = {
     (ACTION, 'SET_COOP_AI_COMMAND_UI_ENABLED'): (NA,'纯界面：开关玩家给盟友 AI 下令的按钮；模拟器的玩家没有给盟友'
                                                      '下令的命令，开关无从起作用（以后加了这个命令再算）'),
     # engine A round 107: the freeze; what the front modules are, read in the SDK data
-    (MODULE, 'Behaviors/SecondaryDamageTracker'): (GUESSED, 'Sim.chill（ALIGN freeze）：冷冻光束的冷冻值累计、每秒'
+    (MODULE, 'Behaviors/SecondaryDamageTracker'): (GUESSED, 'Damage.chill（ALIGN freeze）：冷冻光束的冷冻值累计、每秒'
                                                             '消散、按生命值分档减速、满档冻住（CryoBeamFrozenArmor '
                                                             '90000%，一碰就碎）；规则读自 SDK 数据，程序和台上都没对'),
-    (NUGGET, 'SecondaryDamageNugget'): (GUESSED, 'simunits._weapons 读 Amount（不要升级的那条）→ sdps，Sim.chill'),
+    (NUGGET, 'SecondaryDamageNugget'): (GUESSED, 'simunits._weapons 读 Amount（不要升级的那条）→ sdps，Damage.chill'),
     (MODULE, 'Behaviors/Physics'): (TODO, 'RA3 的 Physics 只有击飞曲线、反弹、落地后倒地/起身、重力倍数（没有 Generals 的 '
                                           'Mass/摩擦/推挤），会动的战役模板全是默认字段（仅 6 个改 GravityMultiplier）。'
                                           '已测：落地后锁 38 帧再走移动令（engine_knock_probe stand / standlate，'
