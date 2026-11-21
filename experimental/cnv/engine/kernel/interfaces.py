@@ -659,6 +659,16 @@ class WeaponSet(Interface):
         raise NotImplementedError
 
 
+class Locomotor(Interface):
+    """A thing's locomotion, one a thing (move_pack M2 step 2), read as its fields (Body's forwards): speed now (the
+    template's, the modifier pass's scaled one, a toggle state's), surface (the routing grid: ground / water / both /
+    air), turn_rate (degrees a second, None: at once), turn_first (turns in place first); set writes any of them."""
+    __slots__ = ()
+
+    def set(self, **values):
+        raise NotImplementedError
+
+
 class Clocked(Interface):
     """A module whose state holds the logic frames it wakes or acts at, as a Battlefield file carries them (step S 11d,
     experimental/cnv/engine/state/battlefield.py: autoheal, lifetime, sale, unpacking): clocks() -> {name: a frame or None (a
@@ -684,6 +694,6 @@ class AIUpdate(Interface):
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
 FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze,
           LevelUp, Aura, Repair, Assign, Infiltrate, SlowDeath, CreateOnDeath,
-          DeathWeapon, WeaponSet, Clocked)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
+          DeathWeapon, WeaponSet, Locomotor, Clocked)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze,
-                 WeaponSet})  # a thing has at most one of these: Thing.find gives it
+                 WeaponSet, Locomotor})  # a thing has at most one of these: Thing.find gives it

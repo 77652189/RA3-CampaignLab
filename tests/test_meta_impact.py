@@ -9,6 +9,7 @@ _spec = importlib.util.spec_from_file_location('impact_simbench', ROOT / 'experi
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 from engine.combat.host import Peers, impact_ground_z  # noqa: E402
+from engine.modules import locomotor  # noqa: E402
 
 
 def test_meta_impact_arc_probe_has_one_retail_payload_and_one_unfiltered_control():
@@ -886,7 +887,8 @@ def _face_health():
     s.eng.frame = 105
     for k, (y, _) in FACE_LANES.items():
         b = s.bodies[face_name(k)]
-        b.x, b.y, b.z, b.path, b.speed, b.engaged = 2885.0, y, None, [(4200.0, y)], 15.0 * 15, None
+        b.x, b.y, b.z, b.path, b.engaged = 2885.0, y, None, [(4200.0, y)], None
+        locomotor.write(s.world, b, speed=15.0 * 15)
         ocl = next(m for m in b.find(interfaces.CreateOnDeath) if m.takes_airborne()).creation_list()
         s._life().air_crash(s, b, ocl, s.death_blasts, lambda x, y: impact_ground_z(s, x, y))
     s.death_blast_due(105 + 40)

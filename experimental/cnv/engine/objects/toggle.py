@@ -10,6 +10,7 @@ Fields it owns: none (the body's toggle_at / armor_up are read-only forwards of 
 """
 import engine.data.units as simunits
 from engine.kernel import interfaces
+from engine.modules import locomotor
 
 
 def press(world, b, command, short_of_power):
@@ -47,7 +48,7 @@ def entered(world, b, m, modify):
     if speed:
         if b.base is not None:
             b.base['speed'] = speed
-        b.speed = speed
+        locomotor.write(world.world, b, speed=speed)
     world.used.add('toggle')
     world.change()
 

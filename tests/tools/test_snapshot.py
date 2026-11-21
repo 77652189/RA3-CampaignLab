@@ -354,11 +354,11 @@ def test_a_replaced_things_attached_row_goes_with_it():
     thing ever attached to) -- on the run and on one written back (its rows bound to the restored table)."""
     a = _island()
     last = _replace_attached(a, 30)
-    assert sorted(a.world.late) == [last]
+    assert sorted(a.world.late) == [0, last]            # 0: the unit's own (its LocomotorState, Sim.add)
     b = _island()
     _fork(a, b)
     last = _replace_attached(b, 3)
-    assert sorted(b.world.late) == [last]
+    assert sorted(b.world.late) == [0, last]
 
 
 def _yard():

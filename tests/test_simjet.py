@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location('jet_simbench', ROOT / 'experimental/cnv/simbench.py')
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
+from engine.modules import locomotor  # noqa: E402
 
 
 @pytest.mark.parametrize('check', ['a', 'b'])
@@ -109,10 +110,10 @@ def test_jet_unmeasured_motion_does_not_reuse_startup(variant):
         assert jet.jet_motion is None
     elif variant == 'speed-change':
         assert jet.jet_motion is not None
-        jet.speed = 90
+        locomotor.write(e.world, jet, speed=90)
         import engine.objects.jet as simjet
         assert simjet.distance(e, jet) == 6
-        jet.speed = 180
+        locomotor.write(e.world, jet, speed=180)
         assert simjet.distance(e, jet) == 12  # cannot restart the measured acceleration
     else:
         assert jet.jet_motion is None

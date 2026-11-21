@@ -8,6 +8,7 @@ import engine.objects.body as simbody  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces, module  # noqa: E402
 from engine.modules import createobjectdie as cod  # noqa: E402
+from engine.modules import locomotor  # noqa: E402
 
 CORE = '''<GameObject id="CNV_TestCore" Side="Neutral" KindOf="IMMOBILE">
   <Behaviors>
@@ -102,11 +103,11 @@ def test_a_death_in_the_air_makes_the_first_airborne_module_s_wrecks_fall_and_on
     host = _Host()
     for m in mods:
         m.world = host
-    b.surface = 'air'
+    locomotor.write(s.world, b, surface='air')
     for m in mods:
         m.on_die(module.Death(10, 'shot'))
     assert host.made == [('AUFighterAircraft_Dying_OCL', True)]
-    b.surface = 'ground'
+    locomotor.write(s.world, b, surface='ground')
     for m in mods:
         m.on_die(module.Death(10, 'shot'))
     assert host.made == [('AUFighterAircraft_Dying_OCL', True)]
@@ -122,7 +123,7 @@ def test_of_two_airborne_modules_only_the_first_makes_its_wrecks_fall():
     host = _Host()
     for m in mods:
         m.world = host
-    b.surface = 'air'
+    locomotor.write(s.world, b, surface='air')
     for m in mods:
         m.on_die(module.Death(10, 'shot'))
     assert len(host.made) == 1 and host.made[0][1]
@@ -153,7 +154,7 @@ def test_the_airborne_pick_matches_the_status_the_thing_has():
     host = _Host()
     for m in mods:
         m.world = host
-    b.surface = 'air'
+    locomotor.write(s.world, b, surface='air')
     made = []
     for status in ({'SPECIAL_ARMOR_ACTIVE', 'UNDER_FROZEN'}, {'UNDER_FROZEN'}):
         b.status = set(status)
@@ -177,7 +178,8 @@ def test_one_death_makes_one_wreck_list_by_the_status_it_began_with():
     host = _Host()
     for m in mods:
         m.world = host
-    b.surface, b.status = 'air', {'SPECIAL_ARMOR_ACTIVE'}
+    b.status = {'SPECIAL_ARMOR_ACTIVE'}
+    locomotor.write(s.world, b, surface='air')
     info = module.Death(10, 'shot', status=module.status_now(b))
     for m in mods:
         m.on_die(info)
@@ -186,7 +188,8 @@ def test_one_death_makes_one_wreck_list_by_the_status_it_began_with():
     # the host's death broadcast (simbody.Life._out) gives the status the death began with
     s.add('plane2', 'CNV_TestPlane', 'Player_1', 200.0, 100.0)
     b = s.bodies['plane2']
-    b.surface, b.status = 'air', {'SPECIAL_ARMOR_ACTIVE'}
+    b.status = {'SPECIAL_ARMOR_ACTIVE'}
+    locomotor.write(s.world, b, surface='air')
     told = []
     for m in b.find(interfaces.CreateOnDeath):
         m.on_die = told.append

@@ -1,12 +1,13 @@
 """An approach stays pending until movement reaches entry range."""
 import engine.testing.small as simsmall
+from engine.modules import locomotor  # noqa: E402
 
 
 def test_garrison_approach_enters_with_a_route_still_pending_at_the_building_edge():
     s = simsmall.small_world(model=False)
     house = s.add('house', 'AM_Apartments_01', 'PlyrCivilian', 1400, 2500)
     b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1240, 2500)
-    b.speed = 120
+    locomotor.write(s.world, b, speed=120)
     assert s.garrison.send(b, house)
     assert s.garrison.going[b.serial] == (b, house) and s.garrison.held(house) == []
 

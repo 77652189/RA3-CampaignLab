@@ -2,12 +2,13 @@
 import pytest
 
 import engine.testing.small as simsmall
+from engine.modules import locomotor  # noqa: E402
 
 
 def test_open_ground_keeps_exact_goal_and_records_arrival_inside_a_coarse_tick():
     s = simsmall.small_world(model=False)
     b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1200, 2500)
-    b.speed = 60
+    locomotor.write(s.world, b, speed=60)
     goal = (1240, 2500)
     s.send(b, goal)
     assert b.path == [goal] and b.dest == goal

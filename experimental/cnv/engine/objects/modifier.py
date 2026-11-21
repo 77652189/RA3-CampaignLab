@@ -14,6 +14,7 @@ import math
 import engine.objects.level as simlevel
 import engine.data.units as simunits
 from engine.kernel import interfaces
+from engine.modules import locomotor
 from engine.objects.status import ACTED_STATUS
 from engine.world.handle import GAP_STATUS, GAP_UPGRADE
 
@@ -90,7 +91,7 @@ class Modifiers:
         b.armor = cold_of(b)[1] if step and step[3] and cold_of(b)[1] else b.base['armor']
         b.status = st
         # Suppression SPEED75%:50->37.5 (bench44->59); retain fractional speed.
-        b.speed = b.base['speed'] * e['SPEED']
+        locomotor.write(world.world, b, speed=b.base['speed'] * e['SPEED'])
         b.vision, b.sight = b.base['vision'] * e['VISION'], b.base['sight'] * e['VISION']
         if level_shroud != 1.0:
             # engine_levelshroud a measures discovery, not VISION/auto-acquire.

@@ -2,12 +2,13 @@
 import engine.orders.order as simorder
 import engine.testing.small as simsmall
 from engine.ports.command import Command
+from engine.modules import locomotor  # noqa: E402
 
 
 def test_stop_cancels_the_remaining_way_without_resetting_the_plain_move():
     s = simsmall.small_world(model=False)
     b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1200, 2500)
-    b.speed = 60
+    locomotor.write(s.world, b, speed=60)
     s.order_move(b, (1320, 2500), False)
     s.move()
     assert (b.x, b.y) == (1230, 2500) and b.path
@@ -35,7 +36,7 @@ def test_stop_cancels_a_pending_run_off_map():
 def test_give_up_at_nearest_reachable_cell_keeps_the_requested_destination():
     s = simsmall.small_world(model=False)
     b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1200, 2500)
-    b.speed = 60
+    locomotor.write(s.world, b, speed=60)
     s.ground.set_blocks([(1260, 2500, 0, 20, 10000)])
     goal = (1320, 2500)
     assert s.ground.route('ground', (1200, 2500), goal) is None

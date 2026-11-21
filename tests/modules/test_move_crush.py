@@ -1,5 +1,6 @@
 """Movement's swept segment, using the CrusherInfo modules on the bodies."""
 import engine.testing.small as simsmall
+from engine.modules import locomotor  # noqa: E402
 
 
 def test_swept_crush_kills_only_the_lower_level_enemy_inside_its_own_radius():
@@ -11,7 +12,8 @@ def test_swept_crush_kills_only_the_lower_level_enemy_inside_its_own_radius():
     friendly = s.add('friendly', template, 'Player_1', 1250, 2500)
     outside = s.add('outside', template, 'Soviet_1', 1260, 2500)
     outside.y += outside.radius + 1
-    hammer.speed, hammer.angle = 160, 0
+    hammer.angle = 0
+    locomotor.write(s.world, hammer, speed=160)
     s.send(hammer, (1280, 2500))
     s.move()
 

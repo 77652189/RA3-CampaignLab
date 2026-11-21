@@ -1,7 +1,8 @@
 """The Locomotor family's data (move_pack M2 step 1, ADR 0029): a GameObject's <LocomotorSet>s and the
 <LocomotorTemplate>s of GlobalData/Locomotor.xml they name -- a named resource, not a module, like a WeaponTemplate.
-simunits' readers (stats' speed and surface, turning, locomotor_speed) walk the chain and read each text here."""
-from engine.kernel import module
+simunits' readers (stats' speed and surface, turning, locomotor_speed) walk the chain and read each text here.
+Step 2: a thing's locomotion state (LocomotorState), the four Body fields speed / surface / turn_rate / turn_first."""
+from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
 
@@ -66,3 +67,26 @@ def turns(loco, speed, surface):
     """(turn_rate, turn_first) of a thing on `loco` (None: none): a TurnThresholdHS turns it in place before it drives
     off (tests/test_turn_rate.py). Aircraft bank as they fly (not benched): they and a standing thing turn at once."""
     return (loco.turn_rate, loco.limit is not None) if speed > 0 and surface != 'air' and loco else (None, False)
+
+
+@factory.module('LocomotorState')
+class LocomotorState(module.Module, interfaces.Locomotor):
+    """The Body fields it was, by the same names (the frame record, Body's forwards): speed from Sim.add (the NORMAL
+    set's), the modifier pass, a toggle state and the AI's fill; surface (surface_of) and turning (turns). The host
+    attaches it (write): no block makes it, no update of its own (engine/objects/locomotion.py drives by it)."""
+    STATE = ('speed', 'surface', 'turn_rate', 'turn_first')
+    speed, surface, turn_rate, turn_first = 0.0, 'ground', None, False
+
+    def set(self, **values):
+        assert set(values) <= set(self.STATE), values
+        for k, v in values.items():
+            setattr(self, k, v)
+
+
+def write(world, thing, **values):
+    """Write `thing`'s locomotion (LocomotorState.set): its module, one attached (World.attach) unless it has none and
+    every value is the default (a building made, a speed of 0 kept) -- a thing with none reads the defaults."""
+    m = thing.find(interfaces.Locomotor)
+    if m is None and all(getattr(LocomotorState, k) == v for k, v in values.items()):
+        return
+    (m or world.attach(thing, 'LocomotorState')).set(**values)

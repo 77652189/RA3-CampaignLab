@@ -7,6 +7,7 @@ from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its c
 import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces, module  # noqa: E402
 from engine.modules import fireweaponwhendead as fw  # noqa: E402
+from engine.modules import locomotor  # noqa: E402
 
 BURST = ('<WeaponTemplate id="CNV_TestBurst" RadiusDamageAffects="ALLIES ENEMIES NEUTRALS"><Nuggets>'
          '<DamageNugget Damage="100" DamageType="UNRESISTABLE" Radius="10" DelayTimeSeconds="0.2s"/></Nuggets>'
@@ -61,7 +62,7 @@ def test_the_time_bomb_fires_its_level_on_the_ground_and_the_weaker_in_the_air()
     for m in mods:
         m.world = host
     for surface in ('ground', 'air'):
-        b.surface = surface
+        locomotor.write(s.world, b, surface=surface)
         for m in mods:
             m.on_die(module.Death(10, 'shot'))
     assert host.fired == ['AlliedTimeBomb_Level2', 'AlliedTimeBomb_Level1']

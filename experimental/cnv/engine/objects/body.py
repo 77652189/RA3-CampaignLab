@@ -18,6 +18,7 @@ import math
 import engine.data.units as simunits
 import engine.world.handle as simworld
 from engine.kernel import interfaces, module
+from engine.modules import locomotor
 
 SELL_PERCENT = 0.5              # SellPercentage (SDK default); SellTime: engine/modules/sell.py
 HOVER_DRIFT = 0.2               # a frame: a hovering plane's velocity (air_crash)
@@ -246,8 +247,8 @@ def fill(world, b, lib):
         return
     ro = importlib.import_module('ra3model.objects.runoffmap')
     b.kinds = frozenset(tpl.kinds)
-    b.speed = float(ro.normal_speed(lib, tpl) or 0.0)
-    b.surface = 'both' if 'AMPHIBIOUS' in tpl.kinds else 'air' if 'AIRCRAFT' in tpl.kinds else b.surface
+    locomotor.write(world.world, b, speed=float(ro.normal_speed(lib, tpl) or 0.0),
+                    surface='both' if 'AMPHIBIOUS' in tpl.kinds else 'air' if 'AIRCRAFT' in tpl.kinds else b.surface)
     base = b.template.rsplit('_', 1)[0]
     if base != b.template:
         st, f = simunits.stats(base, own), simunits.fight(base, own)
@@ -259,5 +260,6 @@ def fill(world, b, lib):
                 m = world.world.attach(b, 'WeaponSetUpdate')
             if m is not None:
                 m.hold(f['weapons'])
-        b.surface, b.sight = st['surface'], st['vision'] or b.sight
+        locomotor.write(world.world, b, surface=st['surface'])
+        b.sight = st['vision'] or b.sight
     b.guessed = ['all: simai.fill']

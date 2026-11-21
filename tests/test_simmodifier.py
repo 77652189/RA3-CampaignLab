@@ -60,11 +60,12 @@ def _at(s, secs):
 
 
 def _body(s, name, template, owner, x, kinds, speed=30.0, armed=True):
-    b = sim.Body(name, template, owner, float(x), 0.0, speed, kinds=frozenset(kinds))
+    b = sim.Body(name, template, owner, float(x), 0.0, kinds=frozenset(kinds))
     b.vision = b.sight = 300.0
     mods = s.world.build(b, s.clock.frame)                  # as Sim.add makes them
     if mods:
         b.modules = mods
+    sim.locomotor.write(s.world, b, speed=speed)
     guns = [{'range': 150.0, 'dps': 10.0, 'type': 'ARMOR_PIERCING', 'anti': set()}] if armed else []
     sim.kernel_weaponset.equip(s.world, b, guns, None)      # its WeaponSet module holds them (step W2)
     if b.find(sim.kernel_interfaces.Body) is None:          # no Body block: Sim.add attaches one (step B2b)

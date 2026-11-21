@@ -69,9 +69,10 @@ def test_crush_host_dispatch(name, expected):
                              (guard, 'owner', tank.owner),
                              (guard, 'surface', 'air'), (tank, 'surface', 'air')]:
         old = getattr(obj, attr)
-        setattr(obj, attr, value)
+        put = (lambda o, a, v: sim.locomotor.write(w.sim.world, o, surface=v)) if attr == 'surface' else setattr
+        put(obj, attr, value)
         assert not callback(brain.ai, f, foe), (attr, value)
-        setattr(obj, attr, old)
+        put(obj, attr, old)
     # The levels are the CrusherInfo module's (step M3): the guard's swapped for one at the tank's own level.
     from engine.kernel import interfaces
     from engine.modules import crush

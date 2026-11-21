@@ -325,8 +325,6 @@ class Body(kernel_module.Thing):
     owner: str
     x: float
     y: float
-    speed: float = 0.0
-    surface: str = 'ground'
     vision: float = 0.0
     kinds: frozenset = frozenset()
     immune_until: int = -1          # the frame an Iron Curtain's protection ends (weapons and superweapons, not scripts)
@@ -354,10 +352,6 @@ class Body(kernel_module.Thing):
     guessed: list = dataclasses.field(default_factory=list)    # what of its numbers simunits only guessed
     clear_height: float = HIGH_STEP                             # its ShroudClearingHeight (simunits: 50 unless written)
     angle: float = 0.0
-    turn_rate: float = None                                     # deg a second it turns (simunits.turning; None: at once)
-    turn_first: bool = False                                    # turns in place before it drives off (its Locomotor
-                                                                # has a TurnThresholdHS: bench airev1t / gt / at; the
-                                                                # infantry's has none and walks off turning, airevit)
     face: float = None                                          # the facing (radians) to turn to once it arrives
     rolling: bool = False                                       # it drove the last tick (a new way: no turn in place)
     carry: float = 0.0                                          # seconds of the last tick left when its leg ended on a
@@ -436,7 +430,7 @@ class Body(kernel_module.Thing):
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules',
-                'lies', 'linger', 'weapons', 'slots')
+                'lies', 'linger', 'weapons', 'slots', 'speed', 'surface', 'turn_rate', 'turn_first')
     hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
     max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
@@ -480,6 +474,10 @@ class Body(kernel_module.Thing):
                                    kernel_slowdeath.LINGER)                                 # death lies (a crush: it)
     weapons = kernel_module.forward(kernel_interfaces.WeaponSet, lambda m: m.held(), [])    # step W2: its guns; the
     slots = kernel_module.forward(kernel_interfaces.WeaponSet, lambda m: m.choices())   # ones by status (None: fixed)
+    speed = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.speed, 0.0)    # M2 step 2: its
+    surface = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.surface, 'ground')    # LocomotorState
+    turn_rate = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.turn_rate)
+    turn_first = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.turn_first, False)
 
 from engine.world.handle import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
 
@@ -819,11 +817,10 @@ class Sim:
         if not shadow:                          # a living one's name: refused (ValueError); the map load's: shadowed
             simliving.refuse_living(self.bodies, name)
         st = simunits.stats(template, self.own)
-        b = Body(name, template, owner, float(x), float(y), st['speed'], st['surface'],
-                 max(st['vision'] or 0.0, st['shroud'] or 0.0), frozenset(st['kinds']), made_by=by, made_at=at)
+        b = Body(name, template, owner, float(x), float(y), max(st['vision'] or 0.0, st['shroud'] or 0.0),
+                 frozenset(st['kinds']), made_by=by, made_at=at)
         b.guessed, b.clear_height = st['guessed'], st['clear_height']
         b.radius, b.sight = st.get('radius') or 0.0, st['vision'] or 0.0
-        b.turn_rate, b.turn_first = locomotor.turns(simunits.turning(template, self.own), b.speed, b.surface)
         f = simunits.fight(template, self.own)
         proxy_hp = None                         # the Body module's health is made below, once the modules are
         if self.world.blocks_of(template, 'ManagerBody'):
@@ -852,6 +849,8 @@ class Sim:
                 self.gap(GAP_WEAPON, template, f'XML 有 {", ".join(self.declared[template])}，读成没有武器')
         b.acquire =frozenset(simunits.acquire(template, self.own)) if weapons else frozenset()
         b.modules = self.world.build(b, self.clock.frame)     # none: the setter keeps it unset
+        rate, first = locomotor.turns(simunits.turning(template, self.own), st['speed'], st['surface'])
+        locomotor.write(self.world, b, speed=st['speed'], surface=st['surface'], turn_rate=rate, turn_first=first)
         kernel_weaponset.equip(self.world, b, weapons, slots, self.clock.frame)
         body = b.find(kernel_interfaces.Body) or self.world.attach(b, 'ActiveBody', self.clock.frame)  # no block: one
         hp = proxy_hp or (body.data.max_health if body.is_immortal() else f['hp'] or body.data.max_health)

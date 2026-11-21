@@ -270,7 +270,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 2962, 'Sim methods': 173, 'Body fields': 74, 'simunits defs': 136,
+CENTER = {'sim.py lines': 2961, 'Sim methods': 173, 'Body fields': 70, 'simunits defs': 136,
           'cells with old code': 31}
 
 
@@ -343,7 +343,8 @@ BODY_FORWARDS = {'hp': 'Body', 'max_hp': 'Body', 'health_floor': 'Body', 'immort
                  'unpack_end': 'StructureUnpackUpdate', 'sell_end': 'StructureSellUpdate',
                  'cold': 'SecondaryDamageTracker', 'cold_step': 'SecondaryDamageTracker',
                  'level_modules': 'LevelUpUpgrade', 'lies': 'SlowDeath', 'linger': 'SlowDeath',
-                 'weapons': 'WeaponSetUpdate', 'slots': 'WeaponSetUpdate'}
+                 'weapons': 'WeaponSetUpdate', 'slots': 'WeaponSetUpdate',
+                 **dict.fromkeys(('speed', 'surface', 'turn_rate', 'turn_first'), 'LocomotorState')}
 
 
 def body_forwards(sim_src=None):
