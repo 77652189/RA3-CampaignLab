@@ -1,0 +1,25 @@
+# Bench readings of checks/engine_modulebatch.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# HUD lines pack two lanes: on/one counts 1, off/all counts 10 (enemy: 1 / 10 when that lane's enemy is at 50%).
+
+[[reading]]
+id = "the_upgrade_menu_builds_only_with_the_module"
+scene = {build = "engine_modulebatch", check = "a", until = 35}
+bench = "E145 (engine_modulebatch:a): products 0 at s4-s6 (empty menus), 1 at s30-s34 (on 1 / off 0 after Tech2 at 8 s)"
+proves = "物体模块 CommandSetUpgrade: Tech2 swaps the host's empty command set for the upgrade's, whose build button then works; the barracks without the module stays on the empty set"
+item = "物体模块 Behaviors/CommandSetUpgrade"
+expect = ["win(4, 6, 'products') == [0] * 3", "win(30, 34, 'products') == [1] * 5"]
+
+[[reading]]
+id = "the_monitor_shows_the_power_ready"
+scene = {build = "engine_modulebatch", check = "a", until = 35}
+bench = "E145: ready 1 at s12-s16 (countdown set to 0 at 8 s), 0 at s25-s34 (countdown 10000 at 20 s)"
+proves = "MonitorSpecialPowerTimerUpdate: SPECIALPOWER1_READY follows the power's countdown, only with the module"
+expect = ["win(12, 16, 'ready') == [1] * 5", "win(25, 34, 'ready') == [0] * 10"]
+mismatch = "sim ready 0 throughout (bench 1 at s12-s16): NAMED_SET_SPECIAL_POWER_COUNTDOWN and the monitor's ready output not modeled"
+
+[[reading]]
+id = "max_beneficiaries_caps_the_healed"
+scene = {build = "engine_modulebatch", check = "a", until = 35}
+bench = "E145: healed 31 at s10-s11 (cap 1: one, cap 0: three), 33 at s30-s34; enemy 11 at s10-s34 (both enemies stay 50%)"
+proves = "PassiveAreaEffectBehavior MaxBeneficiaries 1 / 0 (unlimited); the enemy is not healed"
+expect = ["win(10, 11, 'healed') == [31] * 2", "win(30, 34, 'healed') == [33] * 5", "win(10, 34, 'enemy') == [11] * 25"]
