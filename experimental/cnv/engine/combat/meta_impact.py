@@ -2,7 +2,7 @@
 (weapon, attacker, centre), apart from the frame's volleys, so it is not in registry.ORDER: the host calls detonate at a
 projectile's arrival (or launch at a known centre) and tick once a frame before the frame's arrivals land. `host` is
 combat.host.EffectHost: the world, the peers (impact_flights, knock_hold, attachments, has_model_condition,
-knock_landing*, destroy), gap, and the game-data reads (body_of, ground_z, smooth_z, velocity, ground_launch,
+destroy), gap, and the game-data reads (body_of, ground_z, smooth_z, velocity, ground_launch,
 trajectory, landing_hold) with the drowning book knock_drowns (Damage's)."""
 import math
 
@@ -27,7 +27,7 @@ def launch(host, weapon, centre, attacker):
     """Dispatch ordinary immediate warhead shocks, separately from damage radius.
 
     First slice: default Physics, grounded bodies, landings on level, lower or higher ground (Physics P3: a landing
-    moved off the water, a vehicle's drowning, knock_landing / knock_landing_vehicle). Other cases
+    moved off the water, a vehicle's drowning: Ground.landing / drowns). Other cases
     stay explicit gaps; no airborne relaunch. After landing the body keeps still landing_hold frames
     (tick: knock_hold, read by move).
     INFERRED selection: feet-centre sphere. Sickle relation uses the launcher; arc remains a gap.
@@ -94,16 +94,16 @@ def launch(host, weapon, centre, attacker):
                 continue
             velocity = host.velocity(effect, position, centre, height, detonation=True)
             end = host.ground_launch(position, velocity)['landing']
-            landing, drowns = None, False
-            if 'INFANTRY' not in b.kinds:
-                landing = peers.knock_landing_vehicle(end)
-                if landing is None:
+            landing, drowns, vehicle = None, False, 'INFANTRY' not in b.kinds
+            if vehicle or not world.ground.stand(b.surface, end[0], end[1]):
+                spot = world.ground.landing(end[0], end[1], None if vehicle else b.surface)
+                if spot is None:
+                    gap(TAG, '击飞落点附近没有能站的格')
                     continue
-                drowns = world.ground.drowns(landing[0], landing[1])
-            elif not world.ground.stand(b.surface, end[0], end[1]):
-                landing = peers.knock_landing(b, end)
-                if landing is None:
-                    continue
+                if spot[2]:
+                    world.used.add('knock landing moved')
+                landing = (spot[0], spot[1], host.ground_z(spot[0], spot[1]))
+                drowns = vehicle and world.ground.drowns(spot[0], spot[1])
             points = host.trajectory(position, velocity, landing)
             if len(points) < 2:
                 continue

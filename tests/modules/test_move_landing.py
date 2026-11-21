@@ -3,7 +3,6 @@ from types import SimpleNamespace
 
 import numpy as np
 
-import engine.testing.small as simsmall
 from sim import Ground
 
 
@@ -21,19 +20,14 @@ def test_amphibious_route_lands_by_the_shallows():
 
 
 def test_knock_landing_moves_inland_and_uses_the_vehicle_half_cell_offset():
-    s = simsmall.small_world(model=False)
     elevation = np.full((24, 24), 400.0)
     elevation[:, :10] = 300.0
-    s.ground = Ground(SimpleNamespace(DIMS=(24, 24, 0), WATERLINE=320,
-                                     ground=lambda: SimpleNamespace(e=elevation)))
-    b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 120, 100)
+    g = Ground(SimpleNamespace(DIMS=(24, 24, 0), WATERLINE=320, ground=lambda: SimpleNamespace(e=elevation)))
 
     # x=80 is wet. x=100 is the first dry four-corner cell on the
     # man's 20-unit lattice. A vehicle first snaps to (90, 110), then
-    # searches its offset lattice and finds (110, 110). z is 400 * 0.625.
-    # A dry point already has a valid offset cell and takes the direct return.
-    assert s.knock_landing_vehicle((120, 100)) == (130, 110, 250)
-    assert 'knock landing moved' not in s.used
-
-    assert s.knock_landing(b, (80, 100)) == (100, 100, 250)
-    assert s.knock_landing_vehicle((80, 100)) == (110, 110, 250)
+    # searches its offset lattice and finds (110, 110).
+    # A dry point already has a valid offset cell and takes the direct return (not moved).
+    assert g.landing(120, 100) == (130, 110, False)
+    assert g.landing(80, 100, 'ground') == (100, 100, True)
+    assert g.landing(80, 100) == (110, 110, True)

@@ -447,6 +447,31 @@ class Ground:
         return bool(corners is not None and corners.min() > self.waterline + 10 and
                     corners.max() - corners.min() <= platmap.STEEP and free)
 
+    KNOCK_SEARCH = 15               # lattice steps the nearest-standable search reaches (INFERRED: the search routine is unread, work/re/handoff.md)
+
+    def landing(self, x, y, surface=None):
+        """Physics P3 (bench 11-11 engine_knock_water, work/re/a_physics_plan.md): where a body knocked to (x, y) comes
+        down -- (x, y, moved), or None when no cell within KNOCK_SEARCH steps of 20 will do. A man (`surface`: his) on
+        a landing he cannot stand on (water, a cliff) goes to the nearest one he can, not back along the line: man
+        2220 -> 2080 on his bank, far 2420 -> 2500 the far bank's top. A vehicle (None; ra3ext.log `build ... land=`)
+        lands on the men's 20 grid point + 10 in x and y (2460.5 -> 2470, 3338.5 -> 3330; all nine landings), one it
+        cannot land on (stand_vehicle: the water) on the nearest it can on that lattice (tank: 2410 in the trench ->
+        2490 on the far bank's slope; the lattice INFERRED -- the 10 grid gives the same); whether it drowns: drowns."""
+        if surface is None:
+            x, y, ok = math.floor(x / 20) * 20 + 10, math.floor(y / 20) * 20 + 10, self.stand_vehicle
+        else:
+            ok = lambda px, py: self.stand(surface, px, py)
+        if ok(x, y):
+            return x, y, False
+        step, best = 20.0, None
+        for j in range(-self.KNOCK_SEARCH, self.KNOCK_SEARCH + 1):
+            for i in range(-self.KNOCK_SEARCH, self.KNOCK_SEARCH + 1):
+                px, py = x + i * step, y + j * step
+                d = math.hypot(px - x, py - y)
+                if (best is None or d < best[0]) and ok(px, py):
+                    best = (d, px, py)
+        return None if best is None else (best[1], best[2], True)
+
     def corners(self, x, y):
         """(the four corner heights of the CELL cell [x, x + CELL) x [y, y + CELL) or None off the map, not blocked now)."""
         import platmap

@@ -330,7 +330,7 @@ KNOCK_WATER = {'man': (5, {1: (2065.0, 3295.0, 220.36), 2: (2069.9, 3290.1, 222.
 def test_physics_p3_a_man_knocked_toward_water_lands_on_the_nearest_cell_he_can_stand_on(check):
     """engine_knock_water man / far (bench 11-11): his own landing in the trench (man 2220, far 2420) is moved to the
     nearest standable cell -- man back to his bank's 2080, far on to the far bank's top 2500, not back along the line --
-    and the curve is rebuilt to it with the launch's height (Sim.knock_landing, Ground.stand); he lives."""
+    and the curve is rebuilt to it with the launch's height (Ground.landing, Ground.stand); he lives."""
     import sim
     e, wet, dry = _knock_water(check)
     count, frames = KNOCK_WATER[check]
@@ -371,7 +371,7 @@ def test_physics_p3_a_hammer_lands_on_the_plus_10_grid_and_drowns_within_10_of_t
     climb's wet one is pushed up the table's ramp and lands on its top, 56.25 higher, where its own landing says
     (2930, 850), the curve's controls 1.3 a over the landing;
     tank's wet one, its landing 2410 in the trench, goes to the nearest cell over the water, (2490, 3330) on the
-    far bank's slope (Sim.knock_landing_vehicle, Ground.stand_vehicle); a landing cell within 10 of the water kills
+    far bank's slope (Ground.landing, Ground.stand_vehicle); a landing cell within 10 of the water kills
     the frame it lands -- tank's wet one 178, its direct hit 192 (Ground.drowns) -- while ramp's dry slope (65 over)
     and edge's bank top (20 over) do not; the curves down to lower ground match the engine's frames
     (simunits.meta_impact_trajectory)."""

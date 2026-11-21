@@ -9,7 +9,7 @@ HitReaction. The module functions are the stateless rules: the flank scalar, the
 sampling and death blasts. All over the world it is given (simworld.WORLD_API only).
 Its host's other parts come in as `peers` (`Peers`, the names in PEERS only, read when used so a swapped-in method
 still answers): the L2 body / modifier / status / locomotion calls (destroy, modify, emp_disabled, cold_of, the model
-conditions, attachment_tick, knock_landing*), the same-layer can_hit / shots_due, the host's own projectile_detonate /
+conditions, attachment_tick), the same-layer can_hit / shots_due, the host's own projectile_detonate /
 queue_projectile_hit (a test may intercept an arrival) and the fight state it shares (firing, volleys, the
 garrison, infiltrators, sweeps, attachments, player_ups, lift_timers, suppression_fields, death_blasts, chilling, the
 knock flights and holds, the EMP deadlines). This module never imports them.
@@ -26,7 +26,7 @@ from engine.kernel import interfaces
 from engine.modules import weaponset
 from engine.world.handle import GAP_WEAPON
 
-PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'destroy', 'emp_disabled', 'emp_until', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'knock_landing', 'knock_landing_vehicle', 'lift_timers', 'modify', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'suppression_fields', 'sweeps', 'volleys'})
+PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'destroy', 'emp_disabled', 'emp_until', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'lift_timers', 'modify', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'suppression_fields', 'sweeps', 'volleys'})
 LAZY = frozenset({'impact_flights', 'knock_hold', 'emp_until'})     # the host makes these dicts on first use
 
 

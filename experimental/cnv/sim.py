@@ -2199,40 +2199,6 @@ class Sim:
         """simdamage.Damage.projectile_detonate (L3): the non-damage payload of a projectile arrival."""
         self._harm().projectile_detonate(self, weapon, target, centre, attacker, simdamage.Peers(self))
 
-    KNOCK_SEARCH = 15               # lattice steps the nearest-standable search reaches (INFERRED: the search routine is unread, work/re/handoff.md)
-
-    def knock_landing(self, b, end):
-        """Physics P3 (bench 11-11 engine_knock_water, work/re/a_physics_plan.md): a knocked body's own landing
-        point that it cannot stand on (water, a cliff) is moved to the nearest one it can -- not back along the
-        line: man 2220 -> 2080 on his bank, far 2420 -> 2500 the far bank's top. Men, on their 20 landing grid
-        (a vehicle's: knock_landing_vehicle). None: not modelled (gap recorded)."""
-        return self._knock_nearest(end, lambda x, y: self.ground.stand(b.surface, x, y))
-
-    def knock_landing_vehicle(self, end):
-        """Physics P3 for a vehicle (bench 11-11 engine_knock_water tank / ramp / edge, ra3ext.log `build ... land=`):
-        its landing is the men's 20 grid point + 10 in x and y (2460.5 -> 2470, 3338.5 -> 3330; all nine landings);
-        one it cannot land on (Ground.stand_vehicle: the water) goes to the nearest one it can on that lattice (tank:
-        2410 in the trench -> 2490 on the far bank's slope; the lattice INFERRED -- the 10 grid gives the same).
-        Whether it then drowns is Ground.drowns. None: no cell (gap recorded)."""
-        end = (math.floor(end[0] / 20) * 20 + 10, math.floor(end[1] / 20) * 20 + 10)
-        if self.ground.stand_vehicle(*end):
-            return (end[0], end[1], simdamage.impact_ground_z(self, *end))
-        return self._knock_nearest(end, self.ground.stand_vehicle)
-
-    def _knock_nearest(self, end, ok):
-        step, best = 20.0, None
-        for j in range(-self.KNOCK_SEARCH, self.KNOCK_SEARCH + 1):
-            for i in range(-self.KNOCK_SEARCH, self.KNOCK_SEARCH + 1):
-                x, y = end[0] + i * step, end[1] + j * step
-                d = math.hypot(x - end[0], y - end[1])
-                if (best is None or d < best[0]) and ok(x, y):
-                    best = (d, x, y)
-        if best is None:
-            self.gap(GAP_WEAPON, 'MetaImpactNugget', '击飞落点附近没有能站的格')
-            return None
-        self.used.add('knock landing moved')
-        return (best[1], best[2], simdamage.impact_ground_z(self, best[1], best[2]))
-
     def deal(self, dt):
         """simdamage.Damage.deal (L3, R6): `dt` seconds of aimed fire, projectiles and DOTs dealt; bodies at 0 die."""
         self._harm().deal(self, dt, simdamage.Peers(self))
