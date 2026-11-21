@@ -1,13 +1,24 @@
-"""The AIUpdate family's order state (cmd_pack C2a): a unit's stance (GUARD 0, AGGRESSIVE 1, HOLD_POSITION 2, HOLD_FIRE
-3; stance.md) and TEAM_ALLOW_AI_AUTOACQUIRE, the Body fields they were (Body's forwards). Attached at its first setting
-(`of`, Body's `aiupdate`); a unit never given one reads the defaults."""
+"""The AIUpdate family's order state (cmd_pack C2): a unit's stance (GUARD 0, AGGRESSIVE 1, HOLD_POSITION 2, HOLD_FIRE
+3; stance.md), TEAM_ALLOW_AI_AUTOACQUIRE, an armed unit's AutoAcquireEnemiesWhenIdle words, its goal, mode and fire at
+the ground: Body fields once (Body's forwards). Attached at its first setting (`of`, Body's `aiupdate`), else defaults."""
 from engine.kernel import factory, interfaces, module
 
 
 @factory.module('AIOrderState')
 class AIOrderState(module.Module, interfaces.AIUpdate):
-    STATE = ('hold_fire', 'hold_paused', 'stance', 'ai_acquire')
-    hold_fire, hold_paused, stance, ai_acquire = False, False, 0, False
+    STATE = ('hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'ground_fire')
+    hold_fire, hold_paused, stance, ai_acquire, acquire = False, False, 0, False, frozenset()
+    goal, mode, ground_fire = None, 'idle', None    # goal: a point or a thing; mode: 'move' / 'attack' (stops to fight) ...
+
+    def command(self, order, target=None):
+        """An order's own writes (C2; the port resolves unit and target, keeps the walk): 'attack' (`target` its goal,
+        attacking), 'goal' (`target` its goal alone: the AI's pursuit, INFERRED e135), 'stop' (no goal), 'idle' (no
+        goal, idle), 'ground' (idle, firing at the point `target` till another order); all but 'goal' end a ground fire."""
+        if order != 'goal':
+            self.ground_fire = target if order == 'ground' else None
+        self.goal = target if order in ('attack', 'goal') else None
+        if order not in ('goal', 'stop'):
+            self.mode = 'attack' if order == 'attack' else 'idle'
 
     def set_stance(self, stance, aimed):
         """UNIT_SET_STANCE; `aimed`: it is on an object -- going HOLD_FIRE keeps that attack without firing it."""
@@ -23,3 +34,15 @@ class AIOrderState(module.Module, interfaces.AIUpdate):
 def of(thing):
     """`thing`'s AIOrderState, attached the first time (World.attach, its Body module's world)."""
     return thing.find(interfaces.AIUpdate) or thing.find(interfaces.Body).world.attach(thing, 'AIOrderState')
+
+
+def writer(field):
+    """Body's setter of a C2b field till its writers' families move (guard: WRITTEN): none attached for a default (an
+    unarmed unit's acquire), but a ground_fire is in the record once written (STATE; no forward), None too."""
+    def write(thing, value):
+        if field == 'ground_fire' or value != getattr(AIOrderState, field) or thing.find(interfaces.AIUpdate):
+            setattr(of(thing), field, value)
+    return write
+
+
+ground_fire = property(lambda thing: getattr(thing.find(interfaces.AIUpdate), 'ground_fire', None), writer('ground_fire'))

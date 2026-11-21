@@ -461,7 +461,7 @@ class Commands:
             if aimed and (t is None or not t.alive):    # no serial: review 11-19 m): the goal dropped (a charge
                 return False, f'找不到 {cmd.target or cmd.arg("target_serial")}'  # ended); a dead one: none (cc P2 #2)
             for b in self._units(cmd):
-                b.goal = t
+                b.aiupdate.command('goal', t)
             return True, ''
         if cmd.arg('objects'):
             t = cmd.target if cmd.arg('target_serial') is None else self._target(cmd, None)
@@ -585,7 +585,7 @@ class Commands:
         p = self._w.point(cmd.place)
         for b in self._units(cmd):
             self._w.stand(b)
-            b.ground_fire = p
+            b.aiupdate.command('ground', p)
         return True, ''
 
     def _face(self, cmd):                    # stand and turn to the point

@@ -150,7 +150,8 @@ def order_attack(world, peers, b, target_name, force=False):
     if b.hold_paused:                       # an order given under HOLD_FIRE fires (stance.md b)
         b.aiupdate.hold_paused = False
     if b.goal is not target:
-        b.goal, b.mode, b.follow, b.ground_fire = target, 'attack', None, None
+        b.aiupdate.command('attack', target)
+        b.follow = None
         peers.send(b, (target.x, target.y), reach=peers.reach(b, target))
     return True
 
@@ -220,14 +221,15 @@ def order_guard(world, peers, b, area):
 
 def order_stop(b):
     if b:
-        b.path, b.goal, b.follow, b.ground_fire = [], None, None, None
+        b.path, b.follow = [], None
+        b.aiupdate.command('stop')
         simability.stop_flee(b)             # a later order takes the run over (engine_runoffmap d; the status stays)
 
 
 def stand(b):
     """Its order dropped, nothing new: idle where it is (the AI's command 5: l2_scripts1 3, 6)."""
-    b.path, b.goal, b.mode, b.move_to, b.follow = [], None, 'idle', None, None
-    b.ground_fire = None
+    b.path, b.move_to, b.follow = [], None, None
+    b.aiupdate.command('idle')
 
 
 def idle(peers, b):

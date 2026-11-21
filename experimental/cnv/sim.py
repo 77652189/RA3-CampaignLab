@@ -329,7 +329,6 @@ class Body(kernel_module.Thing):
     kinds: frozenset = frozenset()
     immune_until: int = -1          # the frame an Iron Curtain's protection ends (weapons and superweapons, not scripts)
     armor: dict = dataclasses.field(default_factory=dict)      # damage type -> percent taken (simunits.fight)
-    acquire: frozenset = frozenset({'YES'})                     # AutoAcquireEnemiesWhenIdle words (simunits.acquire)
     radius: float = 0.0                                         # R8: Geometry's bounding circle (simunits.radius)
     sight: float = 0.0                                          # R8: its VisionRange alone (vision: with the shroud)
     chase: object = None                                        # R8 idle_chase: the enemy it went after by itself,
@@ -340,7 +339,6 @@ class Body(kernel_module.Thing):
     engaged: bool = False                                       # an attack-mover with an enemy in range: holds
     alive: bool = simliving.Alive()
     deleted: bool = False
-    goal: object = None                                         # what it is after: a point, or a Body (attack)
     close_since: float = None                                   # since the enemy came within the player's REACH (自动打掉)
     made_by: str = ''                                           # the script that created it
     made_at: float = 0.0
@@ -373,8 +371,6 @@ class Body(kernel_module.Thing):
     level_vision: float = 1.0                                   # ENEMY_SIGHTED only; heroic auto-acquire not benched
     base: dict = None                                           # speed, vision, sight, weapons before modifiers
     died_at: float = None                                       # killed or deleted then
-    mode: str = 'idle'                                          # 'move' (a plain move: fires, does not stop) or
-                                                                # 'attack' (attack-move, attack named: stops to fight)
     move_to: tuple = None                                       # where its last plain move sent it (held_up)
     fired_at: float = None                                      # a bombarder's last shot (seen by all a while)
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
@@ -417,7 +413,7 @@ class Body(kernel_module.Thing):
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules',
                 'lies', 'linger', 'weapons', 'slots', 'speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face',
-                'hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'set_off', 'stood_for', 'frame_move', 'jet_motion')
+                'hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'set_off', 'stood_for', 'frame_move', 'jet_motion')
     hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
     max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
@@ -472,6 +468,10 @@ class Body(kernel_module.Thing):
     hold_paused = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.hold_paused, False)  # AIOrderState
     stance = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.stance, 0)
     ai_acquire = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.ai_acquire, False)
+    acquire = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.acquire, frozenset(), aiupdate.writer('acquire'))
+    goal = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.goal, None, aiupdate.writer('goal'))  # C2b
+    mode = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.mode, 'idle', aiupdate.writer('mode'))
+    ground_fire = aiupdate.ground_fire                  # no forward: in the record only once written
     aiupdate = property(aiupdate.of)                    # the module itself (attached at its first setting)
     set_off = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.set_off, -1)      # M3 1: go_to's
     stood_for = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.stood_for)     # (Sim.on_the_move,
@@ -857,12 +857,12 @@ class Sim:
                 self.declared[template] = simunits.declared_weapons(template, self.own)
             if self.declared[template]:
                 self.gap(GAP_WEAPON, template, f'XML 有 {", ".join(self.declared[template])}，读成没有武器')
-        b.acquire =frozenset(simunits.acquire(template, self.own)) if weapons else frozenset()
         b.modules = self.world.build(b, self.clock.frame)     # none: the setter keeps it unset
         rate, first = locomotor.turns(simunits.turning(template, self.own), st['speed'], st['surface'])
         locomotor.write(self.world, b, speed=st['speed'], surface=st['surface'], turn_rate=rate, turn_first=first)
         kernel_weaponset.equip(self.world, b, weapons, slots, self.clock.frame)
         body = b.find(kernel_interfaces.Body) or self.world.attach(b, 'ActiveBody', self.clock.frame)  # no block: one
+        b.acquire = frozenset(simunits.acquire(template, self.own)) if weapons else frozenset()    # AIOrderState
         hp = proxy_hp or (body.data.max_health if body.is_immortal() else f['hp'] or body.data.max_health)
         body.make(hp or (2000.0 if 'STRUCTURE' in b.kinds else 300.0), proxy_hp * 0.01 if proxy_hp else None,
                   body.kind() == 'PropBody' and simunits.prop_death(template, self.own))
