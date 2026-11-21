@@ -75,7 +75,6 @@ SIM_FIELDS = ('log', 'flags', 'counters', 'timers', 'objectives', 'money', 'inco
               'series', 'done', 'disabled', 'events')
 SKIP_BODY = frozenset({'heal_seen', 'hurt'})   # K2: AutoHeal's last-frame health became a hurt flag (bookkeeping
                                                # nobody sees; heal_at, what it decides, is still recorded)
-SKIP_BODY |= {'ordered'}        # review kk #2: AIOrderState's own flag, read by order_attack alone
 SKIP_BODY |= {'leaves'}         # B5b: what a death of age makes is the CreateObjectDie modules' read of the
                                 # template (no state); the body's list of it is gone
 EXECUTORS = ('public', 'model', 'public@model')   # --executor (engine/ports/scripts.py): Sim(model=False) /

@@ -7,8 +7,9 @@ from engine.kernel import factory, interfaces, module
 
 @factory.module('AIOrderState')
 class AIOrderState(module.Module, interfaces.AIUpdate):
-    STATE = ('hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'ground_fire',
-             'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged', 'follow', 'move_to', 'ordered')
+    RECORDED = ('hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'ground_fire',
+                'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged', 'follow', 'move_to')
+    STATE = RECORDED + ('ordered',)     # read by order_attack alone: in the snapshot, not the frame record
     hold_fire, hold_paused, stance, ai_acquire, acquire = False, False, 0, False, frozenset()
     ordered = False     # its goal is an attack order's (not the AI's pursuit alone; an attack-move clears it)
     goal, mode, ground_fire = None, 'idle', None    # goal: a point or a thing; mode: 'move' / 'attack' (stops to fight) ...
