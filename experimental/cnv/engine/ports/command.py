@@ -627,7 +627,7 @@ class Commands:
         the scripts' way at a waypoint), 'transform' (`power` untargeted)."""
         w, button, via = self._w, cmd.arg('button'), cmd.arg('via')
         if via in ('click', 'transform'):
-            return self._player_power(cmd, via)
+            return w.player_power(self._units(cmd), cmd.power, cmd.pos, via)
         if via not in ('wfire', 'leap', 'movement', 'self'):
             return False, f'power: no press route {via!r}'
         pressed = []                        # each press's answer: False where the world turned it down (f #4)
@@ -643,17 +643,6 @@ class Commands:
                 pressed.append(w.self_power_press(b, button))
         return (True, '') if all(pressed) else (False, f'{button}: not pressed (a target gone, out of range)')
 
-    def _player_power(self, cmd, via):
-        """Each unit's own click; refused only when every unit's is (why: their refusals, sorted, once each)."""
-        w, units, refused = self._w, self._units(cmd), []
-        for b in units:
-            ok, why = w.order_power(b, cmd.power, cmd.pos) if via == 'click' else w.order_transform(b, cmd.power)
-            if not ok:
-                refused.append(why)
-        if units and len(refused) == len(units):
-            return False, ', '.join(sorted(set(refused)))
-        return True, ''
-
     def _unpack(self, cmd):                  # drive to the place, turn into the button's replacement there (M10)
         """At the place, or at `pos` (the AI's SimpleExpansion: armed, `stand` its Distance, `here` where it stands
         then, `send` False -- its team's move walks it)."""
@@ -662,10 +651,9 @@ class Commands:
         units = self._units(cmd)
         if not units or None in units:      # no unit to unpack: refused before the order call (f #5)
             return False, 'no unit to unpack'
-        if all([w.order_unpack(b, p, cmd.arg('button'), where, stand=cmd.arg('stand'), here=cmd.arg('here', False),
-                               send=cmd.arg('send', True)) for b in units]):
-            return True, ''
-        return False, 'no unpack button of his'
+        ok = all([w.order_unpack(b, p, cmd.arg('button'), where, stand=cmd.arg('stand'), here=cmd.arg('here', False),
+                                 send=cmd.arg('send', True)) for b in units])
+        return (True, '') if ok else (False, 'no unpack button of his')
 
     def _toggle(self, cmd):                  # the toggle module (M5) steps to its next ToggleState
         if all([self._w.toggle_press(b, cmd.arg('button')) for b in self._units(cmd)]):

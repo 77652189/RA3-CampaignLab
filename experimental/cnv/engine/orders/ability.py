@@ -53,12 +53,9 @@ def order_power(world, peers, b, power, pos):
 
 
 def order_transform(world, peers, b, power):
-    """E206: player's untargeted Tengu transform; reuse the measured button effect.
-
-    Reload/availability use the existing player-power gate. The 15 s reload
-    is XML-derived (INFERRED for this input); this bench measures the state
-    and locomotor, not a player's cooldown or animation-frame boundaries.
-    """
+    """E206: the player's untargeted Tengu transform, the measured button effect. Reload / availability: the player
+    power gate (power_refusal); the 15 s reload is XML-derived (INFERRED for this input) -- the bench measured the state
+    and locomotor, not a player's cooldown or animation-frame boundaries."""
     if power != 'SpecialPower_JAIV_Transform':
         return False, 'unmeasured self power'
     if not b or not b.alive:
@@ -72,6 +69,17 @@ def order_transform(world, peers, b, power):
         return False, 'not a toggle of his'
     start_reload(world, b, power, world.frame_now() + simunits.power_rules(b.template, power, world.own)['reload'])
     return True, None
+
+
+def player_power(world, peers, units, power, pos, via):
+    """The player's own press for each of `units` (the command port's power, simproxy's, R3 13e): `via` 'click' casts
+    at `pos` (order_power), 'transform' untargeted (order_transform); refused only when every unit's is (why: their
+    refusals, sorted, once each)."""
+    refused = [why for ok, why in ((order_power(world, peers, b, power, pos) if via == 'click' else
+                                    order_transform(world, peers, b, power)) for b in units) if not ok]
+    if units and len(refused) == len(units):
+        return False, ', '.join(sorted(set(refused)))
+    return True, ''
 
 
 def order_unpack(world, peers, b, p, button=None, where=None, stand=None, here=False, send=True):

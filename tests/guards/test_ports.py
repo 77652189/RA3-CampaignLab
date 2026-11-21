@@ -379,7 +379,7 @@ def test_planted_breaks_are_found():
 # actions, simproxy and simai follow, cmd_port.md). What giving an order round the port looks like: a call of the
 # world's order methods, the script event queue, or a write of a field an order sets.
 ORDER_CALLS = {'order_move', 'order_group', 'order_attack', 'order_capture', 'order_build', 'order_guard',
-               'order_power', 'order_transform', 'order_stop', 'order_follow', 'order_unpack', 'sell', 'stand', 'send',
+               'order_power', 'player_power', 'order_stop', 'order_follow', 'order_unpack', 'sell', 'stand', 'send',
                'happen', 'parse_script', 'flee_start', 'hunt_due', 'drop_goal', 'set_goal',
                # a button's module entry (R3 13d-2: the script actions press them through the port)
                'toggle_press', 'wfire_press', 'leap_press', 'movement_power_press', 'self_power_press',

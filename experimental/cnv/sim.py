@@ -1431,9 +1431,9 @@ class Sim:
         """simability.order_power (L5)."""
         return simability.order_power(self, self._order_peers(), b, power, pos)
 
-    def order_transform(self, b, power):
-        """simability.order_transform (L5)."""
-        return simability.order_transform(self, self._order_peers(), b, power)
+    def player_power(self, units, power, pos, via):
+        """simability.player_power (L5)."""
+        return simability.player_power(self, self._order_peers(), units, power, pos, via)
 
     def order_stop(self, b):
         """simorder.order_stop (L5)."""

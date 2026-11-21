@@ -262,7 +262,8 @@ def test_the_proxy_players_build_and_power_answer_the_world():
     cmd = Command('power', 'proxy', units=('a', 'b'), power='Command_ReviewMissing', pos=(500.0, 0.0),
                   args=OBJ + (('via', 'click'),))
     assert s.commands.do(cmd) == (False, ', '.join(whys))
-    want = sorted({direct.order_transform(direct.bodies[n], 'SpecialPower_JAIV_Transform')[1] for n in 'ab'})
+    want = sorted({direct.player_power([direct.bodies[n]], 'SpecialPower_JAIV_Transform', None, 'transform')[1]
+                   for n in 'ab'})
     cmd = Command('power', 'proxy', units=('a', 'b'), power='SpecialPower_JAIV_Transform',
                   args=OBJ + (('via', 'transform'),))
     assert s.commands.do(cmd) == (False, ', '.join(want))
@@ -721,6 +722,15 @@ def test_the_ais_enter_into_a_dead_building_is_refused():
     assert s.commands.issued()[-1][2] is False
     hut.alive = True
     assert s.commands.do(enter) == (True, '') and s.garrison.going == {eng.serial: (eng, hut)}
+
+
+def test_a_players_power_goes_when_one_of_his_units_can():
+    """The proxy's click is refused only when every unit's is (R3 13e): the apoc's refusal is not the answer."""
+    s = simsmall.small_world([('cannon', 'AlliedSuperWeaponAdvanced', 'Player_1', 0.0, 0.0),
+                              ('a', APOC, 'Player_1', 900.0, 0.0)], model=False)
+    cmd = Command('power', 'proxy', units=('a', 'cannon'), power='SpecialPowerParticleCannon', pos=(500.0, 300.0),
+                  args=OBJ + (('via', 'click'),))
+    assert s.commands.do(cmd) == (True, '') and [c[1] for c in s.casts] == ['Player_1']
 
 
 def test_the_players_power_is_cast_by_the_object_he_picked_not_a_reference_of_its_name():
