@@ -1,27 +1,20 @@
 """Characterize DOTNugget in a small world."""
-from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import engine.data.units as simunits  # noqa: E402
-from engine.testing.small import small_world  # noqa: E402
 
 FRAME = 1 / 15
 
 
-def test_the_first_and_last_ticks_are_both_included(monkeypatch):
+def test_the_first_and_last_ticks_are_both_included(weapon_world):
     """DOTNugget ticks immediately, then at each interval including exact expiry."""
-    s = small_world(model=False)
+    s, fire = weapon_world
     caster = s.add('caster', 'AlliedAntiInfantryInfantry', 'Player_1', 1250, 2500)
     target = s.add('target', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1350, 2500)
     xml = ('<WeaponTemplate id="SampleHit" RequiredAntiMask="ANTI_GROUND"><Nuggets>'
            '<DOTNugget Damage="7" DamageType="UNRESISTABLE" DamageInterval="0.2s" '
            'DamageDuration="0.4s" RemoveIfHealed="true"/>'
            '</Nuggets></WeaponTemplate>')
-    weapons = simunits._weapons([xml])
-    weapon = simunits._resolve(weapons['SampleHit'], weapons)
-    s.volleys = [(target, weapon, caster)]
-    monkeypatch.setattr(s, 'shots_due', lambda *_: 1)
     now = s.frame_now()
     before = target.hp
-    s.deal(FRAME)
+    weapon = fire(xml, target, caster)
     assert before - target.hp == 7
     s.volleys.clear()
     for elapsed, expected in ((2, 7), (3, 14), (5, 14), (6, 21), (7, 21)):
@@ -45,20 +38,16 @@ def test_the_first_and_last_ticks_are_both_included(monkeypatch):
     assert not s._harm().dots
 
 
-def test_only_a_direct_single_first_hit_books_a_dot(monkeypatch):
+def test_only_a_direct_single_first_hit_books_a_dot(weapon_world):
     """Step N2b: a volley of two, or a second hit on a target already on the book, books nothing and is a gap."""
-    s = small_world(model=False)
+    s, fire = weapon_world
     caster = s.add('caster', 'AlliedAntiInfantryInfantry', 'Player_1', 1250, 2500)
     target = s.add('target', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1350, 2500)
     xml = ('<WeaponTemplate id="SampleHit" RequiredAntiMask="ANTI_GROUND"><Nuggets>'
            '<DOTNugget Damage="7" DamageType="UNRESISTABLE" DamageInterval="0.2s" DamageDuration="2s"/>'
            '</Nuggets></WeaponTemplate>')
-    weapons = simunits._weapons([xml])
-    weapon = simunits._resolve(weapons['SampleHit'], weapons)
     shots = [2]
-    monkeypatch.setattr(s, 'shots_due', lambda *_: shots[0])
-    s.volleys = [(target, weapon, caster)]
-    s.deal(FRAME)
+    fire(xml, target, caster, shots_due=lambda *_: shots[0])
     assert not s._harm().dots and any(name == 'DOTNugget' for _, name in s.unmodeled)
     s.unmodeled.clear()
     shots[0] = 1

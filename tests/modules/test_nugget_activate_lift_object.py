@@ -1,14 +1,11 @@
 """Characterize ActivateLiftObjectNugget in a small world."""
-from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import engine.data.units as simunits  # noqa: E402
-from engine.testing.small import small_world  # noqa: E402
 
 FRAME = 1 / 15
 
 
-def test_ground_lift_releases_the_timer_and_keeps_the_status(monkeypatch):
+def test_ground_lift_releases_the_timer_and_keeps_the_status(weapon_world):
     """ActivateLiftObjectNugget adds a caster-owned countdown and a target lift bit."""
-    s = small_world(model=False)
+    s, fire = weapon_world
     s.own['SampleCaster'] = (
         '<GameObject id="SampleCaster" KindOf="INFANTRY"><Behaviors>'
         '<LiftObjectUpdate id="Lift" TimeIncrement="0.2s" MaxTimeLifted="1s"/>'
@@ -20,11 +17,7 @@ def test_ground_lift_releases_the_timer_and_keeps_the_status(monkeypatch):
            '<ActivateLiftObjectNugget><SpecialObjectFilter Rule="ANY" '
            'Include="VEHICLE"/></ActivateLiftObjectNugget>'
            '</Nuggets></WeaponTemplate>')
-    weapons = simunits._weapons([xml])
-    weapon = simunits._resolve(weapons['SampleHit'], weapons)
-    s.volleys = [(target, weapon, caster)]
-    monkeypatch.setattr(s, 'shots_due', lambda *_: 1)
-    s.deal(FRAME)
+    weapon = fire(xml, target, caster)
     timer = (caster.name, target.name)
     assert s.lift_timers.remaining == {timer: 3}  # trunc(.2 × 15)
     assert 'LIFTED_INTO_AIR' in target.status

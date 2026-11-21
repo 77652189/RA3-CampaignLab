@@ -1,14 +1,11 @@
 """Characterize ProjectileNugget in a small world."""
-from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import engine.data.units as simunits  # noqa: E402
-from engine.testing.small import small_world  # noqa: E402
 
 FRAME = 1 / 15
 
 
-def test_the_straight_shell_arrives_after_full_distance_steps(monkeypatch):
+def test_the_straight_shell_arrives_after_full_distance_steps(weapon_world):
     """ProjectileNugget resolves the warhead and snapshots damage until a straight shell arrives."""
-    s = small_world(model=False)
+    s, fire = weapon_world
     caster = s.add('caster', 'AlliedAntiInfantryInfantry', 'Player_1', 1250, 2500)
     target = s.add('target', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1360, 2500)
     xml = ('<WeaponTemplate id="SampleHit" RequiredAntiMask="ANTI_GROUND"><Nuggets>'
@@ -23,14 +20,10 @@ def test_the_straight_shell_arrives_after_full_distance_steps(monkeypatch):
     xml += ('<WeaponTemplate id="SampleWarhead"><Nuggets>'
             '<DamageNugget Damage="40" DamageType="CANNON"/>'
             '</Nuggets></WeaponTemplate>')
-    weapons = simunits._weapons([xml])
-    weapon = simunits._resolve(weapons['SampleHit'], weapons)
-    s.volleys = [(target, weapon, caster)]
-    monkeypatch.setattr(s, 'shots_due', lambda *_: 1)
     start = s.frame_now()
     before = target.hp
     target.armor = {'CANNON': 50}
-    s.deal(FRAME)
+    fire(xml, target, caster)
     assert target.hp == before
     assert [(hit[0], hit[1], hit[2]) for hit in s._harm().projectile_hits] == [
         (start + 4, target, 20),  # floor(110 / 25); 40 warhead × 50% armor

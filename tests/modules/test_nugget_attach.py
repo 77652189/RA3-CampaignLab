@@ -1,14 +1,11 @@
 """Characterize AttachNugget in a small world."""
-from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the path)
-import engine.data.units as simunits  # noqa: E402
-from engine.testing.small import small_world  # noqa: E402
 
 FRAME = 1 / 15
 
 
-def test_attachment_teleports_the_child_and_tracks_the_parent(monkeypatch):
+def test_attachment_teleports_the_child_and_tracks_the_parent(weapon_world):
     """AttachNugget links a caster to a ground vehicle and applies the two sets of status bits."""
-    s = small_world(model=False)
+    s, fire = weapon_world
     s.own['SampleCaster'] = (
         '<GameObject id="SampleCaster" KindOf="INFANTRY"><Behaviors>'
         '<AttachUpdate id="Hook" Flags="STICK_TO_PARENT TELEPORT" Range="120"'
@@ -21,11 +18,7 @@ def test_attachment_teleports_the_child_and_tracks_the_parent(monkeypatch):
            '<AttachNugget AttachModuleId="Hook"><SpecialObjectFilter Rule="ANY" '
            'Include="VEHICLE"/></AttachNugget>'
            '</Nuggets></WeaponTemplate>')
-    weapons = simunits._weapons([xml])
-    weapon = simunits._resolve(weapons['SampleHit'], weapons)
-    s.volleys = [(target, weapon, caster)]
-    monkeypatch.setattr(s, 'shots_due', lambda *_: 1)
-    s.deal(FRAME)
+    fire(xml, target, caster)
     # A 121-unit centre distance is outside the AttachUpdate range of 120.
     assert caster.serial not in s.attachments
     assert (caster.x, caster.y) == (1250, 2500)
