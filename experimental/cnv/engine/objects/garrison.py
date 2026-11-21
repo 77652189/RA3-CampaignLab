@@ -43,6 +43,7 @@ import math
 import re
 
 import engine.data.units as simunits
+import engine.modules.locomotor as locomotor
 from engine.kernel import interfaces
 
 TAGS = ('GarrisonContain', 'ContestableGarrisonContain')
@@ -100,8 +101,9 @@ PEERS = frozenset({'_upgrade', 'delete', 'destroy', 'modify', 'order_move', 'sen
 
 class Peers:
     """What the garrisons may reach on their host (the Sim) beyond the world: the names in PEERS, read when used --
-    L2 upgrades (_upgrade), the body's end (destroy / delete), modifiers (modify), its walk (send) and L5's move
-    (order_move)."""
+    L2 upgrades (_upgrade), the body's end (destroy / delete), modifiers (modify), its walk (send) and L5's command
+    order_move lent (the enter order's walk: mode, move_to, its spot; a bare go_to lets an idle walker turn to fight,
+    unbenched -- the enter order moves up into order.py at the move family's close)."""
     __slots__ = ('host',)
 
     def __init__(self, host):
@@ -211,7 +213,8 @@ class Garrisons:
         peers = self.peers
         if u.alive and g.alive:
             self.going[u.serial] = (u, g)
-            u.goal = None
+            if u.goal is not None:
+                u.aiupdate.command('goal')
             peers.order_move(u, (g.x, g.y), False)
             return True
         return False                        # one of them dead: not sent (the port answers so: review 11-19 k #4)
@@ -292,7 +295,7 @@ class Garrisons:
         self.where[u.serial] = g
         self.going.pop(u.serial, None)
         self.log.append((world.t, u.name, g.name, script))
-        u.x, u.y, u.path, u.goal = g.x, g.y, [], None
+        self._set_down(u, g.x, g.y)
         u.script_status |= bits
         if house:
             g.owner = held[0].owner
@@ -301,6 +304,13 @@ class Garrisons:
         world.note('驻军', f'{world.label(u)} 进 {world.label(g)}')
         world.change()
         return True
+
+    def _set_down(self, u, x, y):
+        """u put at (x, y) with no way left (its Locomotor's) and no goal (its AIUpdate's: dropped alone)."""
+        u.x, u.y = x, y
+        locomotor.write(None, u, path=[])
+        if u.goal is not None:
+            u.aiupdate.command('goal')
 
     def out(self, u):
         """u out of the building it is in (where the building stands, INFERRED)."""
@@ -406,7 +416,7 @@ class Garrisons:
                 self.flying.remove(f)
                 u = f[1]
                 if u.alive:
-                    u.x, u.y, u.path, u.goal = f[2][0], f[2][1], [], None
+                    self._set_down(u, f[2][0], f[2][1])
                     peers.modify(u)
                     world.change()
 

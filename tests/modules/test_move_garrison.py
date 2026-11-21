@@ -8,8 +8,9 @@ def test_garrison_approach_enters_with_a_route_still_pending_at_the_building_edg
     house = s.add('house', 'AM_Apartments_01', 'PlyrCivilian', 1400, 2500)
     b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1240, 2500)
     locomotor.write(s.world, b, speed=120)
+    b.goal = house                      # sending it (and putting it in, below) drops a goal it had
     assert s.garrison.send(b, house)
-    assert s.garrison.going[b.serial] == (b, house) and s.garrison.held(house) == []
+    assert s.garrison.going[b.serial] == (b, house) and s.garrison.held(house) == [] and b.goal is None
 
     route = b.path.copy()
     assert route
@@ -26,6 +27,7 @@ def test_garrison_approach_enters_with_a_route_still_pending_at_the_building_edg
     s.t = 0.5
     s.move()
     assert (b.x, b.y) == (1360, 2500) and b.path
+    b.goal = house
     s.garrison.due()
     assert b.serial not in s.garrison.going and s.garrison.held(house) == [b]
-    assert 'ENCLOSED' in b.script_status and b.path == []
+    assert 'ENCLOSED' in b.script_status and b.path == [] and b.goal is None
