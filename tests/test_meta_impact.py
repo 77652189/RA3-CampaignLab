@@ -254,12 +254,16 @@ def test_meta_impact_straight_projectile_dispatches_on_arrival_not_launch(monkey
 
     def record_arrival(weapon, target, centre=None, attacker=None):
         arrived.append(e.frame_now())
+        assert ticked[-1] == e.frame_now()      # the flights stepped before this frame's arrivals, not after
         assert attacker is e.bodies[name('rocket', 'gun')]
         assert not attacker.alive
         detonate(weapon, target, centre, attacker)
 
     monkeypatch.setattr(e, 'queue_projectile_hit', record_queue)
     monkeypatch.setattr(e, 'projectile_detonate', record_arrival)
+    from engine.combat import meta_impact
+    ticked, tick = [], meta_impact.tick
+    monkeypatch.setattr(meta_impact, 'tick', lambda host: (ticked.append(e.frame_now()), tick(host)))
     e.run(26)
     assert len(queued) == len(arrived) == 1
     launch, arrival = queued[0]
@@ -278,6 +282,11 @@ def test_meta_impact_dispatch_retains_nondefault_physics_and_outside_radius_gaps
     e = sim.Sim(m, t)
     by, near = (e.bodies[name('rocket', part)] for part in ('gun', 'near'))
     weapon, = by.weapons
+    met = lambda: e.unmodeled.get((sim.GAP_WEAPON, 'MetaImpactNugget'), {}).get('n', 0)
+    before, near.alive = met(), False
+    e.projectile_detonate(weapon, near)         # no centre, no living target to take half its height from: a gap
+    assert met() == before + 1 and not getattr(e, 'impact_flights', None)
+    near.alive = True
     e.meta_impact_detonate(weapon, (2300, 3750, 219))
     assert near.serial in e.impact_flights
     # The instant control lane, 1500 away, must not be selected.

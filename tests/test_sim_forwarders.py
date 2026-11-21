@@ -62,7 +62,7 @@ FORWARDER_CALLS = {
     # simact_player / simact_world: upgrades and a team's stop
     ('engine.script.act_player', 'modify'): 1, ('engine.script.act_world', 'stand'): 1,
     # simdamage's Peers loan
-    ('engine.combat.host', 'destroy'): 4, ('engine.combat.host', 'modify'): 2, ('engine.combat.host', 'projectile_detonate'): 2,
+    ('engine.combat.host', 'destroy'): 3, ('engine.combat.meta_impact', 'destroy'): 1, ('engine.combat.host', 'modify'): 2, ('engine.combat.host', 'projectile_detonate'): 2,
     ('engine.combat.host', 'queue_projectile_hit'): 1,
     # simgarrison's Peers loan (R3 ⑨c)
     ('engine.objects.garrison', 'delete'): 1, ('engine.objects.garrison', 'destroy'): 1, ('engine.objects.garrison', 'modify'): 3, ('engine.objects.garrison', 'order_move'): 2,
@@ -90,7 +90,7 @@ FORWARDER_CALLS = {
     ('engine.script.act_ability', 'living'): 2, ('engine.script.act_object', 'living'): 3, ('engine.script.act_order', 'living'): 3,
     ('engine.script.act_player', 'living'): 3, ('engine.script.act_world', 'living'): 1, ('engine.ai.core', 'living'): 23,
     ('engine.script.cond_object', 'living'): 8, ('engine.script.cond_player', 'living'): 1, ('engine.script.cond_vision', 'living'): 3,
-    ('engine.script.cond_world', 'living'): 1, ('engine.combat.host', 'living'): 3, ('engine.objects.garrison', 'living'): 1,
+    ('engine.script.cond_world', 'living'): 1, ('engine.combat.host', 'living'): 2, ('engine.combat.meta_impact', 'living'): 1, ('engine.objects.garrison', 'living'): 1,
     ('engine.objects.infiltrator', 'living'): 3, ('engine.objects.mine', 'living'): 4, ('engine.objects.modifier', 'living'): 1,
     ('engine.orders.order', 'living'): 6, ('simproxy', 'living'): 3, ('engine.ai.pullback', 'living'): 1,
     ('engine.objects.special', 'living'): 2, ('engine.combat.sweeps', 'living'): 1,

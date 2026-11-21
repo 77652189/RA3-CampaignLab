@@ -19,7 +19,7 @@ nugget_powers, hit_reaction_of.
 import math
 
 import engine.data.units as simunits
-from engine.combat import dot, leech
+from engine.combat import dot, leech, meta_impact
 from engine.combat import projectile as flight
 from engine.combat import registry
 from engine.kernel import interfaces
@@ -48,9 +48,10 @@ class Peers:
 
 
 class EffectHost:
-    """The host's calls an 'effect' phase handler (engine/combat: Lift, Attach, SpecialPower, AttributeModifier) or the Sweep makes -- registry.Context.host. The
+    """The host's calls an 'effect' phase handler (engine/combat: Lift, Attach, SpecialPower, AttributeModifier), the Sweep or the MetaImpact makes -- registry.Context.host. The
     game-data reads and their caches stay here (engine/ reads no game data); the peers are read when used."""
-    __slots__ = ('damage', 'world', 'peers', 'lift_hit', 'refresh_modifiers', 'fits', 'sweep')
+    __slots__ = ('damage', 'world', 'peers', 'lift_hit', 'refresh_modifiers', 'fits', 'sweep', 'gap',
+                 'velocity', 'ground_launch', 'trajectory', 'landing_hold')
     # what a lift still lacks (a gap after each lift; the report is private, so its pointer stays out of engine/)
     LIFT_LANDING = ('计时释放不清状态；SoftLanding自击及修正器到期清位缺Lift接地事件，垂直运动/落地武器未接通；'
                     '见work/re/c_lift_landing_gate_report.md')
@@ -61,6 +62,30 @@ class EffectHost:
         # host's modify), fits(body, filter) (the garrison's PassengerFilter), sweep(shooter, target, life) (Sweeps.fire)
         self.lift_hit, self.refresh_modifiers, self.fits = peers.lift_timers.hit, peers.modify, peers.garrison.fits
         self.sweep = peers.sweeps.fire
+        self.gap = lambda tag, why: world.gap(GAP_WEAPON, tag, why)
+        # MetaImpact's flight physics as simunits reads them (engine/combat/meta_impact)
+        self.velocity, self.ground_launch = simunits.meta_impact_velocity, simunits.meta_impact_ground_launch
+        self.trajectory, self.landing_hold = simunits.meta_impact_trajectory, simunits.meta_impact_landing_hold
+
+    def body_of(self, template):
+        """(MetaImpact body height, ShockwaveResistance) of the template (simunits, cached in Damage.impact_body)."""
+        cache, own = self.damage.impact_body, self.world.own
+        if template not in cache:
+            cache[template] = (simunits.meta_impact_body(template, own), simunits.meta_impact_resistance(template, own))
+        return cache[template]
+
+    @property
+    def knock_drowns(self):
+        """Damage's book of knocked vehicles that drown where they land (add / discard only)."""
+        return self.damage.knock_drowns
+
+    def ground_z(self, x, y):
+        return impact_ground_z(self.world, x, y)
+
+    def smooth_z(self, x, y):
+        """The smoothed terrain's world height (a knocked curve dipping under it is a gap)."""
+        import terrain_rules
+        return terrain_rules.world(self.world.ground.z_smooth(x, y))
 
     def lift_rule(self, template):
         """The caster template's LiftObjectUpdate rule (simunits.lift_module, cached in Damage.lift_modules)."""
@@ -288,147 +313,16 @@ class Damage:
         flight.queue(self.projectile_hits, when, target, damage, attacker, weapon, centre)
 
     def projectile_detonate(self, world, weapon, target, centre, attacker, peers):
-        """Dispatch the non-damage payload of a projectile arrival."""
-        if not weapon.get('meta_impacts'):
-            return
-        if centre is None and target.alive:
-            height = simunits.meta_impact_body(target.template, world.own)
-            if height is not None:
-                centre = (target.x, target.y, impact_ground_z(world, target.x, target.y) + height/2)
-        if centre is None:
-            world.gap(GAP_WEAPON, 'MetaImpactNugget', '缺少弹体实际爆心，未派发冲击')
-        else:
-            self.meta_impact_detonate(world, weapon, centre, attacker, peers)
+        """Dispatch the non-damage payload of a projectile arrival (engine/combat/meta_impact.detonate)."""
+        meta_impact.detonate(EffectHost(self, world, peers), weapon, target, centre, attacker)
 
     def meta_impact_detonate(self, world, weapon, centre, attacker, peers):
-        """Dispatch ordinary immediate warhead shocks, separately from damage radius.
-
-        First slice: default Physics, grounded bodies, landings on level, lower or higher ground (Physics P3: a landing
-        moved off the water, a vehicle's drowning, knock_landing / knock_landing_vehicle). Other cases
-        stay explicit gaps; no airborne relaunch. After landing the body keeps still meta_impact_landing_hold frames
-        (meta_impact_tick: knock_hold, read by move).
-        INFERRED selection: feet-centre sphere. Sickle relation uses the launcher; arc remains a gap.
-        The whole nugget therefore retains its unmodeled registration.
-        """
-        import terrain_rules
-        flights = peers.impact_flights
-        cache = self.impact_body
-        for effect in weapon.get('meta_impacts', []):
-            if effect['radius'] <= 0:
-                world.gap(GAP_WEAPON, 'MetaImpactNugget', '非正冲击半径的选人范围未建模')
-                continue
-            target_filter = effect.get('target_filter')
-            magnetic = target_filter and target_filter.get('magnetic_ground')
-            if target_filter and not magnetic and attacker is None:
-                world.gap(GAP_WEAPON, 'MetaImpactNugget', '筛选缺少发射者关系，未派发冲击')
-                continue
-            for b in world.living():
-                # CampKOG a/b: the explicit forbidden object-status field.
-                # Only the isolated measured spelling is parsed by simunits.
-                if any(flag in b.status for flag in effect.get('forbidden_status', [])):
-                    continue
-                # CampKFilter: amphibious Terror Drone is grounded on this land
-                # site. Water launches remain outside the measured slice.
-                grounded = b.surface == 'ground' or (b.surface == 'both'
-                            and world.ground.stand('ground', b.x, b.y))
-                if magnetic:
-                    # CampKFilter a/b: explicit identities override INFANTRY,
-                    # but UNDER_IRON_CURTAIN wins over explicit inclusion.
-                    # Airborne eligibility remains a gap, never a kind-only guess.
-                    if not grounded or 'AIRCRAFT' in b.kinds:
-                        world.gap(GAP_WEAPON, 'MetaImpactNugget', '磁力筛选的飞机资格尚未对拍')
-                        continue
-                    if ('UNDER_IRON_CURTAIN' in b.status or ('INFANTRY' in b.kinds
-                            and b.template not in target_filter['include_templates'])):
-                        continue
-                elif target_filter and target_filter.get('rush_infantry'):
-                    # CampKKG a/b: independently measured kind/status gates.
-                    if 'INFANTRY' not in b.kinds:
-                        continue
-                elif target_filter:
-                    # CampKSG a/b: NO_COLLISIONS rejects only when the XML
-                    # excludes it; no independent status gate in this slice.
-                    if (world.relation(attacker.owner, b.owner) != target_filter['relation']
-                            or 'INFANTRY' not in b.kinds
-                            or any(s in b.status for s in target_filter.get('status_exclude', []))):
-                        continue
-                    if any(peers.has_model_condition(b, c) for c in target_filter['forbidden']):
-                        continue
-                    # INFERRED: Physics flights / landing hold represent the three
-                    # forbidden knock states; their native bit timing is still a gap.
-                    if b.serial in flights or peers.knock_hold.get(b.serial, -1) > world.frame_now():
-                        continue
-                ground = impact_ground_z(world, b.x, b.y)
-                position = (b.x, b.y, ground if b.z is None else b.z)
-                if math.dist(position, centre) > effect['radius']:
-                    continue
-                if b.template not in cache:
-                    cache[b.template] = (simunits.meta_impact_body(b.template, world.own),
-                                         simunits.meta_impact_resistance(b.template, world.own))
-                height, resistance = cache[b.template]
-                if effect['amount'] < resistance:
-                    # Physics P3 gate (bench 11-11, engine_knock_water gate89/90/91): under the body's
-                    # ShockwaveResistance, no shock at all (no ra3ext `shock` line); equal to it still flies
-                    world.used.add('knock resistance gate')
-                    continue
-                if height is None or not grounded or b.serial in peers.attachments or b.serial in flights:
-                    world.gap(GAP_WEAPON, 'MetaImpactNugget', '仅默认Physics的未附着地面起飞已接通；筛选/重入待核')
-                    continue
-                velocity = simunits.meta_impact_velocity(effect, position, centre, height, detonation=True)
-                end = simunits.meta_impact_ground_launch(position, velocity)['landing']
-                landing, drowns = None, False
-                if 'INFANTRY' not in b.kinds:
-                    landing = peers.knock_landing_vehicle(end)
-                    if landing is None:
-                        continue
-                    drowns = world.ground.drowns(landing[0], landing[1])
-                elif not world.ground.stand(b.surface, end[0], end[1]):
-                    landing = peers.knock_landing(b, end)
-                    if landing is None:
-                        continue
-                points = simunits.meta_impact_trajectory(position, velocity, landing)
-                if len(points) < 2:
-                    continue
-                if drowns:
-                    # gone the frame it lands, whatever the curve passes over (tank: the wet one 178, the direct
-                    # hit 192 = 173 + its points - 1; meta_impact_tick)
-                    self.knock_drowns.add(b.serial)
-                    world.used.add('knock landing drowns')
-                else:
-                    # the curve may cross lower ground (far: over the trench to the far bank), end lower (ramp:
-                    # down the slope) or higher (climb: up the table's ramp, simunits.meta_impact_trajectory); one
-                    # off its landing's ground (a man's own landing on other ground) or dipping into the terrain
-                    # needs the engine's height queries
-                    end_ground = impact_ground_z(world, *points[-1][:2])
-                    if (abs(points[-1][2] - end_ground) > 1e-5 or
-                            any(z < terrain_rules.world(world.ground.z_smooth(x, y)) - 1e-5 for x, y, z in points)):
-                        world.gap(GAP_WEAPON, 'MetaImpactNugget', '坡地轨迹和地形查询未建模')
-                        continue
-                flights[b.serial] = (b, world.frame_now(), points)
-                b.z = position[2]
-                world.used.add('meta impact')
+        """A warhead's shocks at `centre` (engine/combat/meta_impact.launch)."""
+        meta_impact.launch(EffectHost(self, world, peers), weapon, centre, attacker)
 
     def meta_impact_tick(self, world, peers):
-        """Advance each active trajectory by one sample per simulation frame."""
-        flights = peers.impact_flights
-        for key, (b, start, points) in list(flights.items()):
-            if not b.alive:
-                flights.pop(key)
-                continue
-            k = min(len(points)-1, max(0, world.frame_now()-start))
-            b.x, b.y, b.z = points[k]
-            if k == len(points)-1:
-                flights.pop(key)
-                b.z = None
-                if key in self.knock_drowns:
-                    self.knock_drowns.discard(key)
-                    peers.destroy(b, '击飞落水')     # Ground.drowns: gone the frame it lands
-                    world.change()
-                    continue
-                # on the ground: lies, then gets up (Physics ShockStunnedTime + ShockStandingTime); a kept move
-                # order resumes after it (bench 11-11 engine_knock_probe stand)
-                peers.knock_hold[key] = world.frame_now() + simunits.meta_impact_landing_hold()
-            world.change()
+        """Each knocked body one trajectory sample on (engine/combat/meta_impact.tick)."""
+        meta_impact.tick(EffectHost(self, world, peers))
 
     def deal(self, world, dt, peers):
         """R6: `dt` seconds of the aimed fire (`fight`) from shooters and at targets still alive. With the engine model
@@ -443,7 +337,7 @@ class Damage:
 
         def gap(tag, why):
             world.gap(GAP_WEAPON, tag, why)
-        self.meta_impact_tick(world, peers)
+        meta_impact.tick(host)
         for hit in flight.due(self.projectile_hits, world.frame_now()):     # shells fired before land first
             flight.arrive(hit, hurt, peers.projectile_detonate, self.incoming_hit)
         # A cached aim is not permission to fire after a script/modifier stops
