@@ -429,7 +429,9 @@ def test_the_players_attack_goes_as_the_bench_gave_it_and_the_targets_health_con
 def test_an_attack_the_bench_cannot_give_is_refused_and_a_click_drawn_flat_is_unsure():
     a = see()
     for cmd, why in [(cp.Command('attack', units=CANNON, target='UNIT - CNV See Tower W'), 'not a target'),
-                     (cp.Command('attack', units=CANNON + ('UNIT - CNV See Tanya',), target=TOWER), 'not one group')]:
+                     (cp.Command('attack', units=CANNON + ('UNIT - CNV See Tanya',), target=TOWER), 'not one group'),
+                     (cp.Command('attack', units=CANNON, target=TOWER, args=(('target_serial', 999),)),
+                      'target_serial: the bench clicks by name')]:
         assert a.commands.do(cmd) == (False, a.commands.sent()[-1][3]) and why in a.commands.sent()[-1][3]
     with pytest.raises(ValueError):                                 # a target must be another player's
         dataclasses.replace(gp.SEE, targets=(gp.Target(CANNON[0], 2820.0, 1250.0, 'Test Hp E'),))
@@ -498,7 +500,7 @@ def test_the_driver_ticks_once_per_new_sample_stops_at_the_ending_and_refuses_wh
     # read at the formation box's record (frame 491): its click is not sent, no step after
     assert p.ticks[-1][0] == 71 and a.sample.frame == 491 and a.transport.left() > 0
     assert p.given[1][1] == (False, 'bench_click: not sent, the ending read at archive frame 7')
-    for needs in [(('t', 'timers'), ()), (('t',), ('move', 'build'))]:
+    for needs in [(('t', 'timers'), ()), (('t',), ('move', 'build')), (('ending',), ()), (('living',), ())]:
         a = gp.replay(gp.FORMSS, INPUTS)
         p = Plugin(a.observe, a.commands, [])
         p.NEEDS = needs

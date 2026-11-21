@@ -432,10 +432,19 @@ class GameObserve:
         """The bound things only (the bench lists no others)."""
         return [self.thing(b.name) for b in self._a.contract.things]
 
+    def gap(self, call):
+        """Why the mission's contract cannot give `call` at all (read before any sample: drive), '' where it can."""
+        c = self._a.contract
+        if call == 'ending' and c.ending is None:
+            return f'ending: {c.mod} does not report its end'
+        if call == 'living' and any(not b.presence for b in c.things):
+            return 'living: the map publishes no presence line for ' + ', '.join(
+                b.name for b in c.things if not b.presence)
+        return ''
+
     def living(self):
-        if any(not b.presence for b in self._a.contract.things):
-            raise Unsupported('living: the map publishes no presence line for '
-                              + ', '.join(b.name for b in self._a.contract.things if not b.presence))
+        if self.gap('living'):
+            raise Unsupported(self.gap('living'))
         out = []
         for g in self.things():
             if g.alive is MISSING:
@@ -449,8 +458,8 @@ class GameObserve:
         return isinstance(v, GameThing)
 
     def ending(self):
-        if self._a.contract.ending is None:
-            raise Unsupported(f'ending: {self._a.contract.mod} does not report its end')
+        if self.gap('ending'):
+            raise Unsupported(self.gap('ending'))
         self._now()
         return self._a.ended
 
@@ -549,6 +558,8 @@ class GameCommands:
             return False, f'{cmd.kind}: no bench route'
         if cmd.by != 'player':
             return False, f'by {cmd.by!r}: the bench plays the human player only'
+        if cmd.args:            # target_serial, unit_serials: the bench clicks by name and cannot check a serial
+            return False, f'{", ".join(k for k, _ in cmd.args)}: the bench clicks by name, it checks no args'
         if a.sample is None:
             return False, 'no sample yet'
         if a.ended is not None:
@@ -683,6 +694,9 @@ def drive(adapter, plugin):
     lack = [c for c in calls if c not in GameObserve.SUPPORTED] + sorted(set(kinds) - GameCommands.KINDS)
     if lack:
         raise Unsupported(f'{type(plugin).__name__} needs {lack}: no bench channel (census.md)')
+    gaps = [w for w in map(adapter.observe.gap, calls) if w]        # what this mission's contract cannot give
+    if gaps:
+        raise Unsupported(f'{type(plugin).__name__}: ' + '; '.join(gaps))
     while adapter.ended is None and (s := adapter.step()) is not None:
         if s.fresh:
             plugin.tick(s.frame)
