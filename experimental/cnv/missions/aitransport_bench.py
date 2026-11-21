@@ -47,6 +47,16 @@ def mission(use, inf=4, name=None, site='station', boat=RIPTIDE):
     return m
 
 
+def player_shot():
+    """E 11-21: aitranst0's Twinblade hits the plant at half the data's rate (every other rocket clip misses). Here
+    the Twinblade is the player's own, put on the line it hovered on (400 out, east-north-east of the plant), and a
+    script force-attacks the plant: no AI orders. Every clip lands -> the AI's re-sent orders cost the clips."""
+    m = mission(False, inf=0, name='CampAITransTP')         # the Riptide alone: nobody is recruited (B222 aitransr)
+    m.put(TWINBLADE, 'station', 344.0, 204.0, angle=-2.6, name='UNIT - CNV Twinblade', role='player twinblade')
+    m.facts |= {'air transport': 1, 'player shot': 1}
+    return m
+
+
 # B222: aitrans0 / 1 with the ra3ext host: the target pick finds the island plant, the team is made (f17) and
 # stays empty, remade every ~90 frames -- nobody is recruited. aitransr: the Riptide alone (no infantry), the
 # flag at its default: is the Riptide itself turned away (its own way to the island, or as a transport) or do the
@@ -66,4 +76,5 @@ MISSION = {'aitrans0': lambda: mission(False), 'aitrans1': lambda: mission(True)
            # reach the target, tries it again with a member that can carry it (their surfaces or'd): a Twinblade
            # (AIR) in the team lets the Peacekeepers in as its passengers, so the pair forms and the flag can tell
            'aitranst0': lambda: mission(False, name='CampAITransT0', boat=TWINBLADE),
-           'aitranst1': lambda: mission(True, name='CampAITransT1', boat=TWINBLADE)}
+           'aitranst1': lambda: mission(True, name='CampAITransT1', boat=TWINBLADE),
+           'aitranstp': player_shot}

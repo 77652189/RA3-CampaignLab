@@ -31,7 +31,20 @@ expect = [
     "win(44, 59, '电厂血')[0] - win(44, 59, '电厂血')[-1] <= 15",
     "min(win(80, 85, '电厂血')) >= 10",
 ]
-mismatch = "sim (coarse clock) 98 at s23, then 3.3 %/s to 0 at s53 (rockets 22.7/s + cannon 10.6/s); bench from s41 ~19 hp/s, 13 left at s86. Not explained: why every other rocket clip misses with the shooter still (hypotheses in work/re handoff-e)"
+mismatch = "sim (coarse clock) 98 at s23, then 3.3 %/s to 0 at s53 (rockets 22.7/s + cannon 10.6/s); bench from s41 ~19 hp/s, 13 left at s86. Not explained: why every other rocket clip misses with the shooter still (not the AI's orders: twinblade_plant_damage_player; hypotheses in work/re handoff-e)"
+
+
+[[reading]]
+id = "twinblade_plant_damage_player"
+scene = {build = "aitranstp", check = "a", until = 86}
+bench = "E 2026-11-21 aitranstp (the Twinblade the player's own, 400 out on the AI one's line, a start script force-attacks the plant; no AI orders): 电厂血 99 s3, 94 s13-15, 90 s16, 82 s17, 72 s18, 63 s34-36, 52 s37, 44 s38, 41 s39, 34 s52-54, 27 s57, 19 s58, 11 s59, 2 s76-86 (CampAITransTPA_mcp_1121_151337): a rocket clip takes ~22 % about every 20 s, the cannon ~0.5 %/s between"
+proves = "the alternate-clip miss of twinblade_plant_damage is the Twinblade's own, not the AI's re-sent orders"
+expect = [
+    "win(15, 18, '电厂血')[0] - win(15, 18, '电厂血')[-1] >= 15",
+    "win(19, 36, '电厂血')[0] - win(19, 36, '电厂血')[-1] <= 10",
+    "min(win(80, 85, '电厂血')) >= 1",
+]
+mismatch = "sim (coarse clock) 98 at s2, then 3.3 %/s to 0 at s32; bench ~1 %/s (every other clip lands, the cannon ~0.5 %/s), 2 left at s86"
 
 
 [[reading]]

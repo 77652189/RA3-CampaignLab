@@ -46,6 +46,9 @@ def a(m):
     t = Test()
     s1 = m.player('s1')
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    if m.facts.get('player shot'):          # E 11-21 aitranstp: the player's Twinblade at its own plant
+        t.scripts.append(Script('Test - shoot', [], [('NAMED_FORCE_ATTACK_NAMED', 'UNIT - CNV Twinblade',
+                                                       'UNIT - CNV AI Player Target')]))
     if m.facts['target on island']:
         t.areas[ISLAND] = [(X0, Y0), (X1, Y0), (X1, Y1), (X0, Y1)]
     else:
@@ -71,4 +74,4 @@ def a(m):
 
 
 CHECKS = {name: {'a': a} for name in ('aitrans0', 'aitrans1', 'aitransr', 'aitransw0', 'aitransw1',
-                                              'aitransrw', 'aitransre', 'aitranst0', 'aitranst1')}
+                                              'aitransrw', 'aitransre', 'aitranst0', 'aitranst1', 'aitranstp')}
