@@ -572,3 +572,19 @@ proves = "simai team recruitment: the AlliedScout team (NEVER_RELEASE) keeps its
 let = {out = "next((i for i, r in enumerate(rows) if r['警犬总数'] - r['警犬在家'] >= 1), None)"}
 expect = ["out is not None and times[out] < 60",
           "all(r['警犬总数'] - r['警犬在家'] >= 1 for t, r in zip(times, rows) if times[out] <= t <= 178)"]
+
+[[reading]]
+id = "skirmish_ai_engineer_tactic_captures_the_derrick"
+scene = {build = "aiskirm", check = "et", until = 230}
+bench = """\
+engine_aiskirm et (2026-11-13, line A round 203): AlliedCaptureTech_MEDIUM_EngineerTactic_0_0 absent (99) to s127, \
+empty s128, the engineer joins s144, at the derrick s216, the derrick s1's s222 and the team gone that second; \
+never at the ore node. Simulator 11-21: empty s131, joins s145, at the derrick s218, s1's s224 (its counters start \
+at its wake s11, 0 before)"""
+proves = "simai tactics act: an Engineer tactic's team (read by its engine name) sends its engineer to capture the tech target, then ends"
+item = "AI 战术/Tactic.Tactic=Engineer"
+let = {after = "lambda key, v, t0=0: next((t for t, r in zip(times, rows) if t >= t0 and r[key] == v), None)", owned = "after('油井', 1)"}
+expect = ["125 <= after('工程队', 0, 11) <= 132 and 141 <= after('工程队', 1, 11) <= 147",
+          "all(r['工程队'] == 99 for t, r in zip(times, rows) if 11 <= t < 125)",
+          "all(r['到矿点'] == 0 for r in rows) and 210 <= after('到油井', 1) <= 222",
+          "owned is not None and 216 <= owned <= 228 and all(r['工程队'] == 99 for t, r in zip(times, rows) if t > owned)"]

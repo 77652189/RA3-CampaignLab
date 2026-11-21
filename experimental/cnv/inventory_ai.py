@@ -396,13 +396,6 @@ NOTES = {
         'tests/test_count_modifier.py按名回放s40原人数。B206 b：两组都在开局存款2000花到剩100时停'
         '（原版兵营2狗+2/3标枪），模型加开局只有存款时按价格挡；'
         'gap：原版兵营兵种搭配（模型3狗+1标枪+1维和）使高组模型停在8/2（strict xfail）；见work/re/c_countmodifier_report.md'),
-    '战术/Tactic.Tactic=Engineer': (GUESSED,
-        'A第203轮 engine_aiskirm aiskirm:et原版（11-13）：AlliedCaptureTech_MEDIUM_EngineerTactic_0_0'
-        ' s128空队、s144工程师入队、s216到油井、s222油井归AI同秒队消失，矿点旁始终0。'
-        'tests/test_simai_engineer_tactic.py按名回放队伍出现/入队通过；模型（fca219e）目标选了AI基地旁矿点、'
-        'Engineer到达动作空实现不占领（strict xfail）。A第205轮：模型分支a204-tech-filter + Brain.act占领 + '
-        '陆路回退看地形，模拟器s230到、s236占（晚14 s，台上像游水走近直线，both网格下不了这岸）；'
-        '另aieng/aiengctl（E111）单独台未招到工程师，见work/re/handoff.md第203轮、e111_engineer.md'),
     '人格/BaseSelection.PreferredBaseTypes': (BENCHED,
         'C aibp1old/aibp1new:b初始双基地固定OLD、反偏好为空，仅切偏好OLDEST/MOST_RECENT；'
         'f274两基地均合格，分数1/0选0与0/1选1；f284点命令东矿/崖矿。'

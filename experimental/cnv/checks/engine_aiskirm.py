@@ -934,7 +934,7 @@ def et(m):
     MEASURED (bench 2026-11-13, head 7020cbfc, work/bench_results/aiskirm__et.json, PASS): s1-127 99 0 0 0 |
     s128-143 0 0 0 0 | s144-215 1 0 0 0 | s216-221 1 0 1 0 | s222 0 1 0 0 | s223-284 99 1 0 0 -- the derrick: the
     engineer reaches it s216, s1 owns it s222 and the team is gone that second; never at the ore node. The model
-    gets the team (s131 / s145), not the target or the capture (tests/test_simai_engineer_tactic.py)."""
+    (fca219e) got the team, not the target or the capture; the simulator now does both (the readings data)."""
     t = Test()
     for tpl in ARMY:
         m.spawns.add(tpl)
