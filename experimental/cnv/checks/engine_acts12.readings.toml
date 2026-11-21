@@ -11,8 +11,8 @@ item = [
 ]
 scene = {build = "engine_acts_mix", check = "all", until = 25}
 bench = """all, bench 11-14 `run_queue engine_acts_mix:all` (CampActsMixAll, round 224; bench row s_k = mission k + 2): 技 101 \
-s2-s6, 1101 s7, 3101 s8-s10, 3000 s11 on; 吼 1 s2-s11, 0 s12 on; 跳 11 from s3; 兵 0 all along (the bomber drop brought \
-nobody, NOTES)"""
+s2-s6, 1101 s7, 3101 s8-s10, 3000 s11 on; 吼 1 s2-s11, 0 s12 on; 跳 11 from s3; 兵 0 all along (the build of then left \
+the bomber out: acts_mix_drop_lands)"""
 proves = """sim the smoke bomb's NON_AUTOACQUIRABLE and the energized armor's GENERIC_TOGGLE_STATE about 10 s from the press, the \
 armored Tsunami at its square a reading before its twin (SPEED 125 %); the plain roar held its conscript 10 s, the one \
 pressed _ON_NAMED nobody; the Sickle's leap 250 off landed within two readings. Off by one reading at the modifiers' end \
@@ -21,5 +21,39 @@ let = {at = "dict(zip(times, vals(rows)))", bench = "{**{k: (101, 1, 11) for k i
 expect = [
     "all(tuple(at[k + 2][:3]) == want for k, want in bench.items())",
     "at[4][0] == 101 and at[4][2] == 0",
-    "all(v[3] == 0 for v in at.values())",
 ]
+
+[[reading]]
+id = "acts_mix_drop_lands"
+scene = {build = "engine_acts_mix", check = "all", until = 25}
+bench = """all, bench 11-21 `run_queue engine_acts_mix:all` (CampActsMixAll_mcp_1121_062114, round 275; the build since b940bbb8 \
+takes the bomber in, round 224's 兵 0 was the build of then): 兵 46 s2-s25 -- 6 GIs + 4 Javelins round the spot from the \
+press's reading on"""
+proves = "sim the bomber drop store's button: a full load lands round the spot within a reading of the press"
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = "all(at[k][3] == 46 for k in range(5, 26))"
+mismatch = "sim 0 all along (act_ability: the cast recorded, nobody made); bench 46 from s2"
+
+[[reading]]
+id = "acts_drop_own_every_store_drops"
+scene = {build = "engine_acts_drop", check = "own", until = 31}
+bench = """own, bench 11-17 `run_queue engine_acts_drop:own` (CampActsDropOwn_mcp_1117_034720, round 272): 机 兵 敌 援 s1 0 0 0 0 | \
+s2-s12 0 46 0 0 | s13-s31 0 46 46 46 -- DP's button at 3 s, DS by name and DA's AI-handed button at 12 s, each a full load"""
+proves = "sim the bomber drop: the button, the cast by name and an AI's store alike drop 6 GIs + 4 Javelins round the spot"
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = ["all(at[k][1] == 46 for k in range(6, 32))", "all(at[k][2:] == [46, 46] for k in range(16, 32))",
+          "all(v[0] == 0 for v in at.values())"]
+mismatch = "sim 0 0 0 0 all along (the cast recorded, nobody made); bench as above"
+
+[[reading]]
+id = "acts_drop_at_frames"
+scene = {build = "engine_acts_drop", check = "at", until = 21}
+bench = """at, bench 11-21 `run_queue engine_acts_drop:at` (CampActsDropAt_mcp_1121_062451, round 275): 帧 到 满 近 s1 44 0 0 0 | \
+s2 58 6 6 0 | s3 73 21 21 0 | s4 88 36 36 5 | s5 104 52 52 21 ... s21 345 293 293 262: 帧 - 到 = 52 every reading, 到 = 满 \
+(the whole load in the 400 square at once, frame 52, 7 after the press at 45), 帧 - 近 = 83 from s4 (a GI within 150 of \
+the spot). The 400 square reaches the map's edge (y 5000) where the data has the bombers made: the load counted in its \
+bombers at their making, the 150 one when they are over the spot (INFERRED, handoff round 275)"""
+proves = "sim the bomber drop's timing: the load counted at the edge 7 frames after the press, round the spot 38 after"
+let = {inn = "{r['帧'] - r['到'] for r in rows[2:]}", near = "{r['帧'] - r['近'] for r in rows[4:]}"}
+expect = ["inn == {52}", "near == {83}", "all(r['满'] == r['到'] for r in rows)"]
+mismatch = "sim nobody made (帧 - 到 = 帧); bench 帧 - 到 = 52, 帧 - 近 = 83"

@@ -7,7 +7,7 @@ item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_ActivateRo
 scene = {build = "engine_acts_wet", check = "all", until = 27}
 bench = """all, bench 11-14 `run_queue engine_acts_wet:all` (CampActsWetAll_mcp_1114_091622, round 226; bench row s_k = simulator \
 k + 1): 跳 11 from s4; 吼 1111 s5-s12 (C1 out s13, C2 s14, C4 s17); 放 10101 s3 -> 20101 s4 -> 30101 s7 -> 30202 s12; \
-机 0: no bomber ever (NOTES)"""
+机 0: the build of then left the bomber out (acts_wet_drop_lands)"""
 proves = """sim the dolphin's jump 250 off and its swimming twin both there (not telling apart); the bear pressed _ON_NAMED 300 off \
 walked up to its conscript (1000), both conscripts pressed _ON_NAMED were held as the plain roar's; both stores' drop \
 button seen cast (1 / 100), each roar once (10 000), the by-name casts at 12 s once more. The _ON_NAMED roars go off \
@@ -21,5 +21,15 @@ expect = [
     "all(at[k][1] == 1100 for k in range(16, 19)) and all(at[k][1] == 1000 for k in range(19, 27))",
     "[at[k][2] for k in (4, 5)] == [10101, 20101]",
     "all(at[k][2] == 30101 for k in range(8, 13)) and all(at[k][2] == 30202 for k in range(13, 27))",
-    "all(v[3] == 0 for v in at.values())",
 ]
+
+[[reading]]
+id = "acts_wet_drop_lands"
+scene = {build = "engine_acts_wet", check = "all", until = 27}
+bench = """all, bench 11-21 `run_queue engine_acts_wet:all` (CampActsWetAll_mcp_1121_062229, round 275; the build since b940bbb8 \
+takes the bomber in, round 226's 机 0 was the build of then): 机 1100 s2-s27 -- GIs round both stores' spots from the \
+press's reading on, no bomber counted anywhere"""
+proves = "sim the bomber drop store's button, the player's and the computer's: GIs round each spot within a reading"
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = "all(at[k][3] == 1100 for k in range(5, 28))"
+mismatch = "sim 0 all along (the cast recorded, nobody made); bench 1100 from s2"

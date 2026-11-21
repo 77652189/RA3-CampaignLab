@@ -185,7 +185,45 @@ def edge(m):
     return _own(m, EDGE)
 
 
+def when(m):
+    """own's presses, counted by the frame (four counters fit): 帧 = frames run; 到 / 满 / 近 = frames with >= 1 of DP's
+    GIs in its 400 square / its full load (6 GIs + 4 Javelins) there / >= 1 GI within 150 of the spot. A frame-counted
+    difference (帧 - 到) is the first frame the GIs are in, whatever second the screen is read at. [data: the
+    bombers start at the edge nearest the store (CREATE_AT_EDGE_NEAR_SOURCE, here y 5000, 300 north of the spot),
+    eject 5 each, 0.25 s a passenger, ignoring the target (IgnoreTargetLocation): the first GI ~1 s after the press
+    (frame ~60), the load 1.25 s later, near the spot if they fly there first]
+    BENCH 11-21 (round 275, engine_acts_drop:at, CampActsDropAt_mcp_1121_062451): 帧 - 到 = 52 at every reading, 到 = 满
+    (all ten at once, 7 frames after the press), 帧 - 近 = 83: the square's 400 reaches the edge, so the load is seen
+    in its bombers as they are made (INFERRED); within 150 of the spot 38 frames after the press. Readings data."""
+    t = _presses(m, DROPS)
+    t.areas['Test A12 Near DP'] = square(*DROPS['DP'][3], 150.0)
+    s8.frames(t, 'CNV_A12_Frame', '帧', [])
+    s8.frames(t, 'CNV_A12_In', '到', [_has(m, 'p1', GI, 1, 'Test A12 Spot DP')])
+    s8.frames(t, 'CNV_A12_Full', '满', [_has(m, 'p1', GI, 6, 'Test A12 Spot DP'),
+                                        _has(m, 'p1', JAV, 4, 'Test A12 Spot DP')])
+    s8.frames(t, 'CNV_A12_Near', '近', [_has(m, 'p1', GI, 1, 'Test A12 Near DP')])
+    s8.watch(t, 20.0)
+    return t
+
+
+def _has(m, side, tmpl, k, area):
+    return 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', m.player(side), 3, k, tmpl, area
+
+
 def _own(m, drops):
+    t = _presses(m, drops)
+    s8.total(t, 'CNV_A12_Bomb', '机', [(w, _has(m, side, BOMBER, k, 'Test A12 Whole'))
+                                       for side, w in (('p1', 1), ('s4', 10), ('s5', 100)) for k in (1, 2)])
+    for r, counter, label in (('DP', 'CNV_A12_DropP', '兵'), ('DS', 'CNV_A12_DropS', '敌'),
+                              ('DA', 'CNV_A12_DropA', '援')):
+        side = drops[r][2]
+        s8.total(t, counter, label, [(w, _has(m, side, tmpl, k, f'Test A12 Spot {r}'))
+                                     for tmpl, w, top in ((GI, 1, 6), (JAV, 10, 4)) for k in range(1, top + 1)])
+    s8.watch(t, 30.0)
+    return t
+
+
+def _presses(m, drops):
     t = Test()
     s8.at(t, 'reveal', 0.1, [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('UNIT_AI_TRANSFER', _n('DA'), 1),
                              ('NAMED_SET_SPECIAL_POWER_COUNTDOWN', _n('DP'), 'SpecialPowerCAMPAlliedBomberDrop2', 0)])
@@ -198,21 +236,12 @@ def _own(m, drops):
     t.areas['Test A12 Whole'] = square(2500.0, 2500.0, 2800.0)
     for r, (_x, _y, _side, spot) in drops.items():
         t.areas[f'Test A12 Spot {r}'] = square(*spot, 400.0)
-    has = lambda side, tmpl, k, area: ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', m.player(side), 3, k,  # noqa
-                                       tmpl, area)
-    s8.total(t, 'CNV_A12_Bomb', '机', [(w, has(side, BOMBER, k, 'Test A12 Whole'))
-                                       for side, w in (('p1', 1), ('s4', 10), ('s5', 100)) for k in (1, 2)])
-    for r, counter, label in (('DP', 'CNV_A12_DropP', '兵'), ('DS', 'CNV_A12_DropS', '敌'),
-                              ('DA', 'CNV_A12_DropA', '援')):
-        side = drops[r][2]
-        s8.total(t, counter, label, [(w, has(side, tmpl, k, f'Test A12 Spot {r}'))
-                                     for tmpl, w, top in ((GI, 1, 6), (JAV, 10, 4)) for k in range(1, top + 1)])
-    s8.watch(t, 30.0)
     return t
 
 
 MISSION = {'engine_acts_mix': mission, 'engine_acts_drop': drop_mission,
            'engine_acts_ally': lambda: drop_mission(allied=True), 'engine_acts_edge': lambda: drop_mission(edge=True),
            'engine_acts_dropx': lambda: drop_mission(entry=True)}
-CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own}, 'engine_acts_ally': {'own': own},
+CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own, 'at': when},
+          'engine_acts_ally': {'own': own},
           'engine_acts_edge': {'edge': edge}, 'engine_acts_dropx': {'own': own}}
