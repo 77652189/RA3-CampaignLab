@@ -38,5 +38,4 @@ test_inventory.py
 test_inventory_contain.py
 test_inventory_levels.py
 test_nodes_full.py
-test_radar_bench_e.py
 test_simai_mintime.py

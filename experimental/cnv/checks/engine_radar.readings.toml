@@ -46,3 +46,13 @@ proves = "脚本动作 SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of an object a scri
 expect = "[at(f)[1] for f in (196, 374)] == [0, 0]"
 let = {at = "lambda f: [[r[k] for k in ('死亡', '血量', '供电前置')] for r in rows if r['帧数'] <= f][-1]"}
 mismatch = "sim 50 / 50 at f196 (the first once-a-second row after the death at f182) / f374 (engine/script/act_world.py: 0 only when the health script runs after the kill in the same frame, else the last value); bench 0 / 0"
+
+[[reading]]
+id = "a_script_hands_the_dish_over_at_12_s"
+each = [{build = "engine_radarout", before = 91, owner_before = 1, after = 312, owner_after = 2},
+        {build = "engine_radarin", before = 87, owner_before = 2, after = 282, owner_after = 1}]
+scene = {check = "a", until = 22}
+bench = "E162 (bench 11-15): owner / alive / both sides powered with four live supports, out f91 = 1 / 1 / 1 -> f312 = 2 / 1 / 1, in f87 = 2 / 1 / 1 -> f282 = 1 / 1 / 1 (NAMED_TRANSFER_OWNERSHIP_PLAYER at 12 s, not an engineer's capture); the local HUD as old owner terrain -> emblem, as new owner emblem -> terrain"
+proves = "the owner-transfer scene's prerequisites: the transfer moves the dish between Player_1 and Soviet_4 both ways, it stays alive, both sides keep their yard, plant and PLAYER_HAS_POWER (the radar following the owner is the HUD's, not read here)"
+let = {at = "lambda f: [[r[k] for k in ('归属量', '存活量', '供电前置')] for r in rows if r['帧数'] <= f][-1]"}
+expect = ["at(before) == [owner_before, 1, 1]", "at(after) == [owner_after, 1, 1]"]
