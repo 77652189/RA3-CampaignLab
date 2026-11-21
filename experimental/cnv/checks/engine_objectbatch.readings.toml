@@ -1,0 +1,26 @@
+# Bench readings of checks/engine_objectbatch.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# One map, three treatments; heal / drain pack on + 1000 * off (the check's docstring). b is a's diagnostic variant
+# (its second line shows gates for money off).
+
+[[reading]]
+id = "an_owned_bank_pays_its_owner_until_it_goes"
+scene = {build = "engine_objectbatch", check = "a", until = 26}
+bench = "E146 a (bench 11-13): money on +5 a second from s10, 60 at s11-s26 (the bank deleted at 12 s); money off 0 throughout"
+proves = "物体模块 AutoDepositUpdate: a Swiss bank owned from the start pays its owner 5 a second; the same bank without the module pays nothing"
+item = "物体模块 Behaviors/AutoDepositUpdate"
+expect = ["win(20, 25, 'money on') == [60] * 6", "all(r['money off'] == 0 for r in rows)"]
+
+[[reading]]
+id = "the_crate_and_the_drain_do_nothing_here"
+scene = {build = "engine_objectbatch", check = "a", until = 26}
+bench = "E146 a: heal 50050 (both men stay at 50) and drain 100100 (both tanks stay at 100) throughout"
+proves = "HealCrateCollide with a same-owner crate heals nobody; the transplanted LoseHealthUpdate at 101% drains nothing -- negative results, not the modules' effects"
+expect = "all(r['heal'] == 50050 and r['drain'] == 100100 for r in rows[2:])"
+
+[[reading]]
+id = "b_neutral_crate_and_zero_trigger_still_do_nothing"
+scene = {build = "engine_objectbatch", check = "b", until = 26}
+bench = "E146 b: money on 60 at s11-s26; gates 111111 at s11-s26 (arrived, toggle, curtain on both); heal 50050, drain 100100 throughout"
+proves = "a neutral crate heals nobody either, and the drain at 0% stays off though its toggle / curtain gates hold"
+expect = ["win(20, 25, 'money on') == [60] * 6", "win(20, 25, 'gates') == [111111] * 6",
+          "all(r['heal'] == 50050 and r['drain'] == 100100 for r in rows[2:])"]
