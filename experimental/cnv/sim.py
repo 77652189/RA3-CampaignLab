@@ -441,7 +441,7 @@ class Body(kernel_module.Thing):
     surface = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.surface, 'ground')    # LocomotorState
     turn_rate = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.turn_rate)
     turn_first = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.turn_first, False)
-    path = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.path, [], locomotor.writer('path'))  # M2 3:
+    path = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.path, (), locomotor.writer('path'))  # M2 3:
     dest = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.dest, None, locomotor.writer('dest'))  # the
     face = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.face, None, locomotor.writer('face'))  # way
     hold_fire = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.hold_fire, False)  # C2a: its

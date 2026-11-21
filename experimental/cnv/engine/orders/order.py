@@ -202,14 +202,16 @@ def order_guard(world, peers, b, area):
 
 def order_stop(b):
     if b:
-        b.path, b.aiupdate.follow = [], None
+        locomotor.write(None, b, path=[], rolling=False, carry=0.0)  # a move this frame sets off from standing,
+        b.aiupdate.follow = None            # not on the old leg's carry (review 1121kk #3; INFERRED, not benched)
         b.aiupdate.command('stop')
         simability.stop_flee(b)             # a later order takes the run over (engine_runoffmap d; the status stays)
 
 
 def stand(b):
     """Its order dropped, nothing new: idle where it is (the AI's command 5: l2_scripts1 3, 6)."""
-    b.path, b.aiupdate.move_to, b.aiupdate.follow = [], None, None
+    locomotor.write(None, b, path=[], rolling=False, carry=0.0)     # as order_stop
+    b.aiupdate.move_to, b.aiupdate.follow = None, None
     b.aiupdate.command('idle')
 
 

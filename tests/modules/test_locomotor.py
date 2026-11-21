@@ -41,7 +41,8 @@ def test_the_state_goes_on_a_moving_thing_only_and_the_forwards_read_it():
     with pytest.raises(AttributeError):
         u.speed = 1.0
     p.path, p.dest = [], None                       # step 3's setters: a building's cleared way attaches none,
-    assert p.find(interfaces.Locomotor) is None     # a way given one; each module its own list
+    assert p.find(interfaces.Locomotor) is None and p.path == ()    # a way given one; each module its own list,
+    # a thing with none an empty tuple (review 1120ii #2: not one list every such thing shares)
     p.path, u.face = [(5.0, 5.0)], 1.0
     assert p.find(interfaces.Locomotor).path == [(5.0, 5.0)] and u.path == [] and (m.face, m.dest) == (1.0, None)
     assert m.path is not p.path and m.path is not loco.LocomotorState.path

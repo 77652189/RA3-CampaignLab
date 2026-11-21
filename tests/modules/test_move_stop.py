@@ -11,13 +11,14 @@ def test_stop_cancels_the_remaining_way_without_resetting_the_plain_move():
     locomotor.write(s.world, b, speed=60)
     s.order_move(b, (1320, 2500), False)
     s.move()
-    assert (b.x, b.y) == (1230, 2500) and b.path
+    assert (b.x, b.y) == (1230, 2500) and b.path and b.rolling
+    locomotor.write(s.world, b, carry=0.375)        # a leg's end left over
     s.order_stop(b)
+    assert not b.rolling and b.carry == 0.0         # a move this frame sets off from standing (review 1121kk #3)
     s.move()
     # STOP clears the path, while mode and the original move_to stay put.
     assert (b.x, b.y) == (1230, 2500) and b.path == []
-    assert b.mode == 'move' and b.move_to == (1320, 2500)
-    assert simorder.held_up(b) and not b.rolling
+    assert b.mode == 'move' and b.move_to == (1320, 2500) and simorder.held_up(b)
 
 
 def test_stop_cancels_a_pending_run_off_map():
