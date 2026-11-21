@@ -270,7 +270,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 2804, 'Sim methods': 170, 'Body fields': 50, 'simunits defs': 136,
+CENTER = {'sim.py lines': 2802, 'Sim methods': 170, 'Body fields': 47, 'simunits defs': 136,
           'cells with old code': 31}
 
 
@@ -345,7 +345,7 @@ BODY_FORWARDS = {'hp': 'Body', 'max_hp': 'Body', 'health_floor': 'Body', 'immort
                  'level_modules': 'LevelUpUpgrade', 'lies': 'SlowDeath', 'linger': 'SlowDeath',
                  'weapons': 'WeaponSetUpdate', 'slots': 'WeaponSetUpdate',
                  **dict.fromkeys(('speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face', 'set_off',
-                                  'stood_for', 'frame_move', 'jet_motion'), 'LocomotorState'),
+                                  'stood_for', 'frame_move', 'jet_motion', 'rolling', 'carry', 'stops_at'), 'LocomotorState'),
                  **dict.fromkeys(('hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'chase',
                                   'home', 'auto_to', 'resume', 'spot', 'engaged'), 'AIOrderState')}
 WRITTEN = {'path', 'dest', 'face', 'acquire', 'goal', 'mode'}  # written through a setter for now (M2 3, C2b): only shrinks

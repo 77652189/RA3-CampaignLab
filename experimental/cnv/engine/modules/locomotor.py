@@ -76,10 +76,12 @@ class LocomotorState(module.Module, interfaces.Locomotor):
     set's), the modifier pass, a toggle state and the AI's fill; surface (surface_of) and turning (turns). The host
     attaches it (write): no block makes it, no update of its own (engine/objects/locomotion.py drives by it)."""
     STATE = ('speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face', 'set_off', 'stood_for',
-             'frame_move', 'jet_motion')
+             'frame_move', 'jet_motion', 'rolling', 'carry', 'stops_at')
     speed, surface, turn_rate, turn_first = 0.0, 'ground', None, False
     path, dest, face = [], None, None   # step 3: the way still to go, where it was sent, the facing once there (the
     # defaults write compares; each module its own path list)
+    rolling, carry, stops_at = False, 0.0, -1.0     # M3 3, drive's: it drove the last tick (a new way: no turn in
+    # place), seconds of the last tick left at a waypoint leg's end (driven on next tick), when its way ended
     set_off, stood_for, frame_move, jet_motion = -1, None, False, None  # M3 1, go_to's: the frame it was sent from
     # standing, the goal it stands short of, frame-sized steps (topple contact / Jet startup), simjet's startup
 

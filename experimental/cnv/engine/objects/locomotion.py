@@ -102,11 +102,12 @@ def drive(world, b, dt, precise, targets, entry, at_site):
     None: it did not drive; else (x0, y0, at, stopped): where it set out, the seconds into the tick it stopped
     (None: it goes on), whether entry stopped it."""
     if not b.path:
-        b.rolling, b.carry = False, 0.0
+        locomotor.write(world, b, rolling=False, carry=0.0)
         if b.face is not None:                  # arrived: turns in place to the facing it was given
             turn(world, b, b.face, dt)
         return None
-    spent, extra, b.carry = 0.0, (b.carry if not precise else 0.0), 0.0
+    spent, extra = 0.0, (b.carry if not precise else 0.0)
+    locomotor.write(world, b, carry=0.0)
     if not b.rolling and b.jet_motion is None and b.turn_first:     # from standing: turns in place until near its
         # way. Infantry (TestReactiveLocomotorHUMAN, no TurnThresholdHS) walk off at once, turning as they go: bench
         # airevit (A round 231) -- Conscripts' form-up order f26, each moved ~3.2 a frame from f26 on (full speed)
@@ -155,8 +156,8 @@ def drive(world, b, dt, precise, targets, entry, at_site):
             left = 0
     at = max(spent + (walked - left) / b.speed - extra, 0.0) if (stopped or not b.path) and b.speed > 0 else None
     if not b.path and not precise and at is not None:   # where in the tick its way ended (Sim.on_the_move)
-        b.stops_at = math.floor(world.t / simworld.DT + 1e-6) * simworld.DT + at
-    b.rolling = True       # it drove this tick: a next leg given at once (follow_due) is driven on, no stop
+        locomotor.write(world, b, stops_at=math.floor(world.t / simworld.DT + 1e-6) * simworld.DT + at)
+    locomotor.write(world, b, rolling=True)    # it drove this tick: a next leg given at once (follow_due) is driven on, no stop
                             # (bench engine_waypath line / exact: no time lost at the 90 deg corners)
     if (b.x, b.y) != (x0, y0):
         # once it drives, the hull faces its way: the last DRIVE_WITHIN of a turn from standing, a turn on a new way
@@ -164,7 +165,7 @@ def drive(world, b, dt, precise, targets, entry, at_site):
         # (INFERRED; bench engine_hull, round 187: no reversing)
         b.angle = math.atan2(b.y - y0, b.x - x0)
     if not b.path and b.follow is not None and not precise and b.speed > 0:
-        b.carry = min(left / b.speed, dt)
+        locomotor.write(world, b, carry=min(left / b.speed, dt))
     if not b.path and b.face is not None:      # arrived this tick: from the next frame on it turns
         rate = b.drive_speed if precise and b.jet_motion is None else b.speed
         turn(world, b, b.face, (left / rate if rate > 0 else 0.0) - 1.0 / simunits.LIFE_FPS)

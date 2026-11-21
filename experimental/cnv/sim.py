@@ -338,11 +338,6 @@ class Body(kernel_module.Thing):
     guessed: list = dataclasses.field(default_factory=list)    # what of its numbers simunits only guessed
     clear_height: float = HIGH_STEP                             # its ShroudClearingHeight (simunits: 50 unless written)
     angle: float = 0.0
-    rolling: bool = False                                       # it drove the last tick (a new way: no turn in place)
-    carry: float = 0.0                                          # seconds of the last tick left when its leg ended on a
-                                                                # waypoint path (follow_due gives the next leg after
-                                                                # the tick): driven on the next tick, none lost
-    stops_at: float = -1.0                                      # mission seconds its last way ended, within the tick
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
     attachment_status: set = dataclasses.field(default_factory=set)  # owned by direct attachment links, not scripts
@@ -403,7 +398,7 @@ class Body(kernel_module.Thing):
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules',
                 'lies', 'linger', 'weapons', 'slots', 'speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face',
-                'hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'set_off', 'stood_for', 'frame_move', 'jet_motion',
+                'hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'set_off', 'stood_for', 'frame_move', 'jet_motion', 'rolling', 'carry', 'stops_at',
                 'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged')
     hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
     max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
@@ -474,6 +469,9 @@ class Body(kernel_module.Thing):
     stood_for = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.stood_for)     # (Sim.on_the_move,
     frame_move = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.frame_move, False)    # Sim.move,
     jet_motion = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.jet_motion)   # simjet read them)
+    rolling = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.rolling, False)  # M3 3: drive's
+    carry = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.carry, 0.0)
+    stops_at = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.stops_at, -1.0)
 
 from engine.world.handle import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
 
@@ -2495,7 +2493,7 @@ class Sim:
                 continue
             if ('IMMOBILE' in b.status or b.engaged or self.emp_disabled(b)
                     or self.infiltrators.movement_blocked(b)):
-                b.rolling, b.carry = False, 0.0
+                locomotor.write(self, b, rolling=False, carry=0.0)
                 continue
             moved = simlocomotion.drive(self, b, dt, precise, self.range_targets, self.range_entry,
                                         self.production.at_site)
