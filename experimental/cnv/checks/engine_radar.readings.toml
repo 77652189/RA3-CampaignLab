@@ -1,0 +1,14 @@
+# Bench readings of checks/engine_radar.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E158-E162: one retail Allied radar dish, the native PlayerSpellBook radar removed (work/re/e158_radar.md ...).
+# The counters are the scene's prerequisites (dish / support alive, PLAYER_HAS_POWER, owner), NOT the radar: the
+# minimap was read off the saved HUD frames, which the simulator does not model -- so no reading carries
+# 物体模块 Behaviors/RadarBehavior (inventory.py keeps it 推断).
+
+[[reading]]
+id = "the_dish_goes_at_12_s_and_its_supports_stay_powered"
+each = [{build = "engine_radar", alive = 151, gone = 303}, {build = "engine_radaroff", alive = 149, gone = 308}]
+scene = {check = "a", until = 22}
+bench = "E158 (bench 11-15): dish / support / power f151 = 1 / 1 / 1, f303 = 0 / 1 / 1 (off build f149 / f308 the same); HUD minimap terrain then the Allied emblem with the module, the emblem both times without it"
+proves = "the RadarBehavior scene's prerequisites: NAMED_DELETE at 12 s takes the dish, the yard and plant stay, PLAYER_HAS_POWER holds (the radar itself is the HUD's, not read here)"
+let = {at = "lambda f: [[r[k] for k in ('宿主量', '前置量', '供电量')] for r in rows if r['帧数'] <= f][-1]"}
+expect = ["at(alive) == [1, 1, 1]", "at(gone) == [0, 1, 1]", "verdicts() and all(ok for ok, _ in verdicts())"]
