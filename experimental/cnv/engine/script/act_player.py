@@ -135,6 +135,12 @@ def skirmish_ai_set_all_enemy_players_priorities(sim, name, a, script):
     sim.ai_switches.setdefault(a[0], {})[name] = int(a[1])     # they do is simai's (engine line B)
 
 
+def skirmish_ai_consider_all_enemies_when_building(sim, name, a, script):
+    # (player): nothing on top -- the AI's building enemies follow the relations as they change (simai's view.enemies);
+    # bench A274 aiallflip: on / late / won pick as off / woff, frame for frame (work/re/a273_consider_all.md)
+    return None
+
+
 def skirmish_ai_set_enemy_player_priority(sim, name, a, script):
     # (player, enemy, n): one entry of the AI's enemy
     sim.ai_priorities.setdefault(a[0], []).append((a[1], int(a[2])))     # table, in order (simai)
@@ -214,6 +220,7 @@ ACTIONS = {
     'PLAYER_LOCK_PLAYER_TECH': player_set_max_player_power_points,
     **dict.fromkeys(AI_SWITCHES, skirmish_ai_set_all_enemy_players_priorities),
     'SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY': skirmish_ai_set_enemy_player_priority,
+    'SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING': skirmish_ai_consider_all_enemies_when_building,
     'SKIRMISH_AI_SET_FAVORED_ENEMY': skirmish_ai_set_favored_enemy,
     'SKIRMISH_AI_TRANSFER_ALL': skirmish_ai_transfer_all,
     'PLAYER_TOGGLE_SKIRMISH_AI': player_toggle_skirmish_ai,
