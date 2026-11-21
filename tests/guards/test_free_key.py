@@ -2,20 +2,16 @@
 a key spelt out where a thing is added or written into bodies -- f'#{k}', f'UNIT - SIM Made {n}' -- can come round to
 one a living thing holds (Sim.add refuses it, or the map load's shadow puts the new one in its place) or a dead one
 the schedule still runs a module of (written straight into bodies, a snapshot fails). The scan: every string or
-f-string in experimental/cnv/sim*.py that spells an internal key (starts '#<word>' or 'UNIT - SIM Made') is an
-argument of free_key / free_name (or a `.format` handed to free_key), or is one of KEPT."""
+f-string in experimental/cnv/sim*.py and engine/ that spells an internal key (starts '#<word>', '#<digit>',
+'__proto_' or 'UNIT - SIM Made') is an argument of free_key / free_name (or a `.format` handed to free_key) -- no
+exceptions by prefix (review 1120aa P3: '#12', '__proto_' and a '#spawn' without its loop went through)."""
 import ast
 import pathlib
 import re
 
 CNV = pathlib.Path(__file__).resolve().parents[2] / 'experimental' / 'cnv'
-KEY = re.compile(r'#[a-z{]|UNIT - SIM Made')
+KEY = re.compile(r'#[\w{]|UNIT - SIM Made|__proto_')
 FREE = {'free_key', 'free_name'}
-# keys that avoid a holder themselves, each with why
-KEPT = {
-    ('sim.py', '#spawn'): "a spawned child's key is its parent's name, spawner and count of the parent's children",
-    ('sim.py', '#unpack'): "the unpack child's key is its parent's (one at a time)",
-}
 
 
 def _text(node):
@@ -41,7 +37,7 @@ def _freed(node, parents):
                 return True
             if not (isinstance(p.func, ast.Attribute) and p.func.attr == 'format' and node is p.func):
                 return False
-        elif not isinstance(p, (ast.Attribute, ast.Lambda, ast.JoinedStr, ast.FormattedValue)):
+        elif not isinstance(p, (ast.Attribute, ast.Lambda, ast.JoinedStr, ast.FormattedValue, ast.BinOp)):
             return False
         node = p
     return False
@@ -64,8 +60,6 @@ def spelt_keys(root=CNV):
                 continue                        # a docstring
             if isinstance(p, ast.Call) and _callee(p) in ('startswith', 'endswith'):
                 continue                        # a key read by its head, not made
-            if (path.name, text.split(' ', 1)[0]) in KEPT:
-                continue
             out.append((path.name, node.lineno, text))
     return out
 
@@ -85,5 +79,9 @@ def test_the_scan_sees_a_key_spelt_out(tmp_path):
         "    s.add(f'{k}#{k}', 'T', 'P', 0, 0)\n"
         "    s.add(simworld.free_key(s, '#ok {}'.format, k), 'T', 'P', 0, 0)\n"
         "    s.add(simworld.free_name(s, '#fine', 'x'), 'T', 'P', 0, 0)\n"
-        "    s.bodies['UNIT - SIM Made 3'] = None\n", encoding='utf-8')
-    assert sorted((ln, t) for _, ln, t in spelt_keys(tmp_path)) == [(4, '#thing '), (5, '#{'), (9, 'UNIT - SIM Made 3')]
+        "    s.bodies['UNIT - SIM Made 3'] = None\n"
+        "    s.add('#12', 'T', 'P', 0, 0)\n"
+        "    s.add(f'__proto_{k}', 'T', 'P', 0, 0)\n"
+        "    s.add(f'#unpack {k}', 'T', 'P', 0, 0)\n", encoding='utf-8')
+    assert sorted((ln, t) for _, ln, t in spelt_keys(tmp_path)) == [
+        (4, '#thing '), (5, '#{'), (9, 'UNIT - SIM Made 3'), (10, '#12'), (11, '__proto_'), (12, '#unpack ')]

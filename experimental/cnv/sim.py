@@ -806,9 +806,10 @@ class Sim:
     def owner_of(self, side):
         return self.players.get(side, CIV)
 
-    def proto(self, name, template, owner):
+    def proto(self, template, owner):
         """A Body of the template that is not in the world (made by add, then taken out of the registry again):
         what the skirmish AI reads a template's figures off (simai Brain._proto)."""
+        name = simworld.free_key(self, lambda n: f'__proto_{owner}_{template}' + '#' * n, 0)
         b = self.add(name, template, owner, -1e6, -1e6)
         self.world.drop(self.bodies.pop(name))
         return b
@@ -898,9 +899,8 @@ class Sim:
         """One thing a parent's Spawn module (engine/modules/spawn.py) makes: the measured drone group only; centre
         placement remains INFERRED (no autonomous repair flight). A child template without SlavedUpdate is given
         one (World.attach), so every child knows its maker."""
-        name = f'#spawn {parent.name} {spawner.module_id()} {len(parent.spawned_children)}'
-        while name in self.bodies:
-            name += '#'
+        k = len(parent.spawned_children)
+        name = simworld.free_key(self, lambda n: f'#spawn {parent.name} {spawner.module_id()} {k}' + '#' * n, 0)
         child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
         self.world.bind_slave(child, parent, spawner)
         spawner.adopt(child)
@@ -910,9 +910,7 @@ class Sim:
         """SpawnOnUnpack (engine/modules/spawn.py): a refinery the map places gives its one collector at the start, on
         its own spot (bench 2026-11-12 mineturn<k> / mineniag p: the first money by the drive from there; the spot and
         the 1 s fade INFERRED). Its own unit: it outlives the refinery (no SpawnedRequireSpawner)."""
-        name = f'#unpack {parent.name}'
-        while name in self.bodies:
-            name += '#'
+        name = simworld.free_key(self, lambda n: f'#unpack {parent.name}' + '#' * n, 0)
         child = self.add(name, template, parent.owner, parent.x, parent.y, by=parent.name, at=at)
         child.unpack_parent = parent                # the owner's default team, as Generals' createSpawn (team '')
         return child

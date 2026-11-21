@@ -95,9 +95,9 @@ class PlayerSystems:
         """Whether the factory has a production job queued."""
         return self._w.production.busy(factory.serial)
 
-    def proto(self, name, template, player):
+    def proto(self, template, player):
         """A thing of the template the world never placed, to read its figures off."""
-        return self._w.proto(name, template, player)
+        return self._w.proto(template, player)
 
     def engineer_entry(self, body, target):
         """Whether the target building lets the body in to capture it."""

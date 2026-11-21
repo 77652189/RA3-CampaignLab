@@ -108,8 +108,8 @@ def test_a_block_healing_others_is_a_gap_and_heals_nobody():
 
 def test_a_thing_taken_out_of_the_world_leaves_the_schedule():
     s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)])
-    proto = s.proto('p', APOC, 'Player_1')             # the AI's figures body: made, then out of the registry
-    assert 'p' not in s.bodies and proto.modules
+    proto = s.proto(APOC, 'Player_1')                  # the AI's figures body: made, then out of the registry
+    assert proto.name not in s.bodies and proto.modules
     assert set(s.world.schedule.cells['autoheal']) == set(heals(s.bodies['a']))
     s.delete(s.bodies['a'], 'test')                     # (Sim.add refuses a living one's name)
     s.add('a', APOC, 'Player_1', 10.0, 0.0)            # a new body under the name: the old one leaves

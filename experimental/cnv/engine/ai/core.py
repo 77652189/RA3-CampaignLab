@@ -1392,8 +1392,7 @@ class Brain:
 
     def _proto(self, template):
         """A Body of the template that is not in the world (Sim.add, then taken out again)."""
-        name = f'__proto_{self.player}_{template}'
-        return self.systems.proto(name, template, self.player)
+        return self.systems.proto(template, self.player)
 
     def units(self, ai, frame):
         out = []
