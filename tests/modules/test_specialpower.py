@@ -75,7 +75,7 @@ def test_a_power_no_block_serves_gets_a_module_attached():
 
 
 # --- AssignSlavesTargetObjectSpecialPower (step M13): a SpecialPower with a dispatch, its healing in the assignments
-# cell. The bench replay: tests/test_simassignslaves.py (E67 / E181).
+# cell. The bench replay: checks/engine_assignslaves.readings.toml (E66 / E67 / E181).
 
 class _Drones:
     """A SpawnBehavior stand-in: the drones it made."""

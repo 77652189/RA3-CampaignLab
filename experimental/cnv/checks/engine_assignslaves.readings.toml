@@ -1,0 +1,41 @@
+# Bench readings of checks/engine_assignslaves.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "the_commanded_fourth_heals_and_the_control_stays"
+scene = {build = "engine_assignrace", check = "b", until = 25}
+bench = "E181 (engine_assignrace:b, frozen at script frame 360): 脚本帧 360, 指定目标血量 70, 对照目标血量 20"
+proves = "物体模块 AssignSlavesTargetObjectSpecialPower: the retail repair bay's command sends a drone to the fourth vehicle (480 HP, 20 HP/s from f180); the lane without the module leaves it at 20%"
+item = "物体模块 Behaviors/AssignSlavesTargetObjectSpecialPower"
+expect = ["counter('E181Frame') == 360", "counter('E181On') == 70", "counter('E181Off') == 20"]
+
+[[reading]]
+id = "three_drones_are_busy_before_the_command"
+scene = {build = "engine_assignrace", check = "b", until = 25}
+bench = "E181: 前置占用 33 at f150 (three UNDERGOING_REPAIR targets in each lane)"
+proves = "the drones acquire damaged vehicles on their own (auto-acquisition, not modeled)"
+expect = "win(24, 24, '前置占用') == [33]"
+mismatch = "sim 0, bench 33: autonomous acquisition / repair status not modeled"
+
+[[reading]]
+id = "auto_repair_controls"
+scene = {build = "engine_assignon", check = "a", until = 28}
+each = [{build = "engine_assignon"}, {build = "engine_assignoff"}]
+bench = "E66: both lanes heal 20->100, status 10->110->0, cast event on/off 1/0"
+proves = "the drone repairs on its own; only the cast event tells the module lane apart"
+expect = "all(ok for ok, _ in verdicts())"
+mismatch = "sim: status 0 throughout, cast 0 in both lanes, on heals 20->95 by s26 (bench 100), off stays 20 (bench heals to 100): drone auto-acquisition / repair status not modeled"
+
+[[reading]]
+id = "competition_occupancy_and_capture_timing"
+scene = {build = "engine_assignrace", check = "a", until = 28}
+bench = "E67: occupied 3 in both lanes from s8, on fourth HP 25 at s11-12, 86 at s26, 92 at s27; off fourth stays 20"
+proves = "the command heals the fourth with three drones still busy"
+expect = "all(ok for ok, _ in verdicts())"
+mismatch = "sim occupied 0 (bench 3 from s8); on fourth HP 100 at s11 / 74 at s26 (bench 25 / 86, E68: capture seconds not aligned with mission time, rate and duration not fitted)"
+
+[[reading]]
+id = "the_command_heals_the_fourth_without_the_control"
+scene = {build = "engine_assignrace", check = "a", until = 25}
+bench = "E67: on fourth HP above 20 by s25, off fourth HP 20 s11-s27"
+proves = "AssignSlavesTargetObjectSpecialPower direction: the commanded target heals, the control does not"
+expect = ["win(24, 24, 'on fourth HP')[0] > 20", "win(13, 24, 'off fourth HP') == [20] * 12"]
