@@ -81,6 +81,7 @@ import modelpin  # noqa: E402
 import engine.data.units as simunits  # noqa: E402
 import engine.orders.micro as simmicro  # noqa: E402
 import engine.objects.body as simbody  # noqa: E402
+import engine.objects.garrison as garrison  # noqa: E402
 import engine.world.handle as simworld  # noqa: E402
 from engine.kernel import module as kernel_module  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
@@ -397,6 +398,7 @@ class Brain:
         self.ai.teams.alive = lambda ai, i: i in self.targets.points or any(t.id == i for t in self.view.things)
         # PathfindingCheckType at recruiting (a model that has it, D152): the slot's target as a point
         self.ai.teams.reach = self.reach_target
+        self.ai.teams.carry = self.carry
         if 'defense' in which:
             self.defense = df.DefenseBlock(self.tactics, lambda ai, f: self.view, bases=lambda ai, f: self.bases,
                                            busy=self.busy, aesthetics=self.stand, radius=self.radius_of,
@@ -536,6 +538,12 @@ class Brain:
                 if g.open(b.surface, *q) and g.can_route(b.surface, here, q):
                     return True
         return False
+
+    def carry(self, ai, t, u):
+        """TeamMaker's carry hook: t's free slots if its TransportContain's PassengerFilter takes u, else 0
+        (INFERRED: one slot a passenger, the relation not asked; the engine's own test is not read)."""
+        m, g = garrison.contain(t.body, ('TransportContain',)), self.host.garrison
+        return m.rules()['max'] - len(g.held(t.body)) if m is not None and g.fits(u.body, m.rules()) else 0
 
     def reach_target(self, ai, u, target, check):
         """TeamMaker's reach hook: reach() to the target id's point (a thing in view or a Waypoint target's point);

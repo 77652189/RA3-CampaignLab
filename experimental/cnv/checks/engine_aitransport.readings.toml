@@ -11,7 +11,7 @@ expect = [
     "win(50, 85, '激流在岛') == [1] * 36",
     "win(40, 48, '步兵在家') == [2] * 9",
 ]
-mismatch = "sim s0-47 0 0 0 4, s48-49 0 0 1 4, s50-85 0 0 0 4 (the model's recruit has no pairing: the Peacekeepers are not taken, the Twinblade passes the box); bench 0, Twinblade 1 from s49, 2 at home"
+mismatch = "sim s0-17 0 0 0 4, s20-85 0 at home, Twinblade 1 only s52-53 (all five taken at f152 as on the bench, but the form-up point is 106 ahead, not ~250: formed f212, the team goes before the no-way kick, the Peacekeepers walk off with it); bench 0, Twinblade 1 from s49, 2 at home (kicked at f248, the form-up's idle time out, before the go at f251)"
 
 
 [[reading]]
@@ -23,5 +23,5 @@ expect = [
     "win(27, 31, '车内步兵') == [4] * 5",
     "win(32, 85, '步兵在家') == [0] * 54",
 ]
-mismatch = "sim 0 aboard, 4 at home to s85 (no pairing, no boarding); bench 4 aboard s27-31, 0 at home from s32"
+mismatch = "sim 0 aboard, 0 at home from s20 (paired, but no boarding: they walk off with the team); bench 4 aboard s27-31, 0 at home from s32"
 
