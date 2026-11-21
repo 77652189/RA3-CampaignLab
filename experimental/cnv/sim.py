@@ -341,7 +341,6 @@ class Body(kernel_module.Thing):
     engaged: bool = False                                       # an attack-mover with an enemy in range: holds
     alive: bool = simliving.Alive()
     deleted: bool = False
-    path: list = dataclasses.field(default_factory=list)       # world points still to go
     goal: object = None                                         # what it is after: a point, or a Body (attack)
     close_since: float = None                                   # since the enemy came within the player's REACH (自动打掉)
     made_by: str = ''                                           # the script that created it
@@ -352,12 +351,10 @@ class Body(kernel_module.Thing):
     guessed: list = dataclasses.field(default_factory=list)    # what of its numbers simunits only guessed
     clear_height: float = HIGH_STEP                             # its ShroudClearingHeight (simunits: 50 unless written)
     angle: float = 0.0
-    face: float = None                                          # the facing (radians) to turn to once it arrives
     rolling: bool = False                                       # it drove the last tick (a new way: no turn in place)
     carry: float = 0.0                                          # seconds of the last tick left when its leg ended on a
                                                                 # waypoint path (follow_due gives the next leg after
                                                                 # the tick): driven on the next tick, none lost
-    dest: object = None                                         # where it was sent (rerouted when the way changes)
     set_off: int = -1                                           # the frame it was sent from standing (Sim.on_the_move)
     stops_at: float = -1.0                                      # mission seconds its last way ended, within the tick
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
@@ -430,7 +427,7 @@ class Body(kernel_module.Thing):
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules',
-                'lies', 'linger', 'weapons', 'slots', 'speed', 'surface', 'turn_rate', 'turn_first')
+                'lies', 'linger', 'weapons', 'slots', 'speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face')
     hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
     max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
@@ -478,6 +475,9 @@ class Body(kernel_module.Thing):
     surface = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.surface, 'ground')    # LocomotorState
     turn_rate = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.turn_rate)
     turn_first = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.turn_first, False)
+    path = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.path, [], locomotor.writer('path'))  # M2 3:
+    dest = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.dest, None, locomotor.writer('dest'))  # the
+    face = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.face, None, locomotor.writer('face'))  # way
 
 from engine.world.handle import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
 

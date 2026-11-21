@@ -85,10 +85,11 @@ class Thing:
                     m.on_remove()
 
 
-def forward(interface, read, default=None):
+def forward(interface, read, default=None, write=None):
     """A read-only attribute of a thing for a field moved into a module that outside code still reads (sim.Body
     FORWARDS; docs/engine/sim-modules.md 10): read(the thing's `interface` module, one of interfaces.ONE; else the
-    tuple of its modules of that interface), `default` (the field's old default) when it has none."""
+    tuple of its modules of that interface), `default` (the field's old default) when it has none. `write(thing,
+    value)`: a field outside code still writes too (only hands the value on to the module's own write)."""
     def get(thing):
         # The modules setter clears this lookup; the reader still sees the module's current state.
         try:
@@ -96,7 +97,7 @@ def forward(interface, read, default=None):
         except (AttributeError, KeyError):
             m = thing.find(interface) if thing.modules else None
         return default if m is None or m == () else read(m)
-    return property(get)
+    return property(get, write)
 
 
 class Trigger:

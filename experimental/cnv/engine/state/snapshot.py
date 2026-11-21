@@ -112,8 +112,8 @@ ALIASES = {('used',): ('world', 'used'), ('unmodeled',): ('world', 'gaps'),
 
 BODY = {'modules': KERNEL, 'serial': KERNEL, '_find_cache': CACHE}     # the last two: Thing's slots
 for _f in ('name template owner x y z vision kinds immune_until armor acquire radius sight chase '
-           'home auto_to resume stood_for spot engaged alive deleted path goal close_since made_by made_at scenery team '
-           'instance guessed clear_height angle face rolling carry dest set_off stops_at status '
+           'home auto_to resume stood_for spot engaged alive deleted goal close_since made_by made_at scenery team '
+           'instance guessed clear_height angle rolling carry set_off stops_at status '
            'attachment_status lift_status upgrades up_since level_rank script_status auras_on shielded taken '
            'model_conditions dealt level_rate level_vision base died_at mode move_to fired_at leaves building replace '
            'follow frame_move drive_speed jet_motion jet_started hold_fire hold_paused stance ai_acquire unpack_parent '

@@ -1,7 +1,8 @@
 """The Locomotor family's data (move_pack M2 step 1, ADR 0029): a GameObject's <LocomotorSet>s and the
 <LocomotorTemplate>s of GlobalData/Locomotor.xml they name -- a named resource, not a module, like a WeaponTemplate.
 simunits' readers (stats' speed and surface, turning, locomotor_speed) walk the chain and read each text here.
-Step 2: a thing's locomotion state (LocomotorState), the four Body fields speed / surface / turn_rate / turn_first."""
+Step 2: a thing's locomotion state (LocomotorState), the four Body fields speed / surface / turn_rate / turn_first;
+step 3: path / dest / face."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -74,8 +75,14 @@ class LocomotorState(module.Module, interfaces.Locomotor):
     """The Body fields it was, by the same names (the frame record, Body's forwards): speed from Sim.add (the NORMAL
     set's), the modifier pass, a toggle state and the AI's fill; surface (surface_of) and turning (turns). The host
     attaches it (write): no block makes it, no update of its own (engine/objects/locomotion.py drives by it)."""
-    STATE = ('speed', 'surface', 'turn_rate', 'turn_first')
+    STATE = ('speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face')
     speed, surface, turn_rate, turn_first = 0.0, 'ground', None, False
+    path, dest, face = [], None, None   # step 3: the way still to go, where it was sent, the facing once there (the
+    # defaults write compares; each module its own path list)
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.path = []
 
     def set(self, **values):
         assert set(values) <= set(self.STATE), values
@@ -85,8 +92,15 @@ class LocomotorState(module.Module, interfaces.Locomotor):
 
 def write(world, thing, **values):
     """Write `thing`'s locomotion (LocomotorState.set): its module, one attached (World.attach) unless it has none and
-    every value is the default (a building made, a speed of 0 kept) -- a thing with none reads the defaults."""
+    every value is the default (a building made, a speed of 0 kept) -- a thing with none reads the defaults. `world`
+    None: its Body module's (writer)."""
     m = thing.find(interfaces.Locomotor)
     if m is None and all(getattr(LocomotorState, k) == v for k, v in values.items()):
         return
-    (m or world.attach(thing, 'LocomotorState')).set(**values)
+    (m or (world or thing.find(interfaces.Body).world).attach(thing, 'LocomotorState')).set(**values)
+
+
+def writer(field):
+    """Body's setter of step 3's `field` (path / dest / face): only hands the value on to write. The writes of those
+    go through the setter for now, each moved to call write when its own family moves (R 11-20; guard: WRITTEN)."""
+    return lambda thing, value: write(None, thing, **{field: value})
