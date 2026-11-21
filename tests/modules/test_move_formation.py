@@ -1,5 +1,19 @@
 """A group command gives each mover its own destination and route (the files: tests/test_sim_column.py)."""
+import pytest
+
 import engine.testing.small as simsmall
+
+
+@pytest.mark.parametrize('spots, goals', [
+    # Each man keeps the slot on his own side, each route is the slot alone (no start point).
+    ([(1220, 2480), (1220, 2520)], [(1400, 2480), (1400, 2520)]),
+    ([(1220, 2480), (1220, 2520), (1200, 2500)], [(1400, 2480), (1400, 2520), (1360, 2500)]),
+])
+def test_infantry_group_slots_and_routes(spots, goals):
+    s = simsmall.small_world(model=False)
+    men = [s.add(f'm{i}', 'AlliedAntiInfantryInfantry', 'Player_1', *xy) for i, xy in enumerate(spots)]
+    s.order_group(men[::-1], (1400, 2500), False)
+    assert [(b.dest, b.path) for b in men] == [(g, [g]) for g in goals]
 
 
 def test_vehicle_group_uses_the_nearest_as_anchor_and_caps_the_offset():

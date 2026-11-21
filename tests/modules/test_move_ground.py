@@ -1,4 +1,4 @@
-"""Ground locomotion from route request to consumption of its last point."""
+"""Ground (and one air) locomotion from route request to consumption of its last point."""
 import pytest
 
 import engine.testing.small as simsmall
@@ -43,3 +43,14 @@ def test_ground_attack_route_stops_at_the_first_cell_in_range():
     # The near edge of the range circle is two 20-unit cells west of the
     # target. The physical endpoint differs from the requested destination.
     assert b.path == [(1280, 2500)] and b.dest == target
+
+
+def test_air_route_ignores_ground_blocks_and_lands_exactly_on_its_last_point():
+    s = simsmall.small_world(model=False)
+    jet = s.add('jet', 'AlliedAntiGroundAircraft', 'Player_1', 1200, 2500)
+    s.ground.set_blocks([(1220, 2500, 10)])
+    s.order_move(jet, (1220, 2500), False)
+    assert jet.path == [(1220, 2500)]  # a blocked ground goal does not refuse an air route
+    for _ in range(5):
+        s.move(1 / 15, precise=True)
+    assert (jet.x, jet.y) == (1220, 2500) and jet.path == []
