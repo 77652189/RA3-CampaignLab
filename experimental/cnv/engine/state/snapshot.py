@@ -116,7 +116,7 @@ for _f in ('name template owner x y z vision kinds immune_until armor acquire ra
            'instance guessed clear_height angle rolling carry set_off stops_at status '
            'attachment_status lift_status upgrades up_since level_rank script_status auras_on shielded taken '
            'model_conditions dealt level_rate level_vision base died_at mode move_to fired_at leaves building replace '
-           'follow frame_move drive_speed jet_motion jet_started hold_fire hold_paused stance ai_acquire unpack_parent '
+           'follow frame_move drive_speed jet_motion jet_started unpack_parent '
            'flee ground_fire unpack_here last_by').split():
     BODY.setdefault(_f, STATE)
 

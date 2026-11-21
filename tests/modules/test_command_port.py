@@ -239,10 +239,9 @@ SCRIPT_ORDERS = {      # a map script's order (R3 13d-1: simact_order) -> what t
     'idle': (Command('idle', 'script', units=('a', 'b'), args=OBJ), lambda s, a, b: (s.stand(a), s.stand(b))),
     'flee': (Command('flee', 'script', units=('a',), args=OBJ), lambda s, a, b: s.flee_start(a)),
     'auto_acquire': (Command('auto_acquire', 'script', units=('a',), args=OBJ + (('on', True),)),
-                     lambda s, a, b: setattr(a, 'ai_acquire', True)),
+                     lambda s, a, b: a.aiupdate.set_auto_acquire(True)),
     'stance': (Command('stance', 'script', units=('a',), args=OBJ + (('stance', 3),)),
-               lambda s, a, b: (setattr(a, 'hold_paused', isinstance(a.goal, type(a))), setattr(a, 'hold_fire', True),
-                                setattr(a, 'stance', 3))),
+               lambda s, a, b: a.aiupdate.set_stance(3, isinstance(a.goal, type(a)))),
     # the proxy player's clicks (R3 13e: simproxy.SimWorld.issue): a selection's move drops their targets first
     'proxy move': (Command('attack_move', 'proxy', units=('a', 'b'), pos=(400.0, 300.0),
                            args=OBJ + (('group', True), ('on_grid', True), ('drop_target', True))),

@@ -2,8 +2,8 @@
 
 The order entries set a body's mode and goal and hand the walk to L2 (`peers.send`): a plain or attack move
 (`order_move`, a group's `order_group`), an attack (`order_attack`), an engineer's capture (`order_capture`), a guard,
-stop / stand, a waypoint path (`order_follow`, `path_start`, `path_next`, `follow_leg`), an object goal dropped or set
-alone (`drop_goal`, `set_goal`: the skirmish AI's, which writes no body field itself). The dues are their frame parts:
+stop / stand, a waypoint path (`order_follow`, `path_start`, `path_next`, `follow_leg`); a stance and auto-acquire are
+the unit's AIUpdate's (engine/modules/aiupdate.py). The dues are their frame parts:
 a capture at the building's side, the next leg of a path, a sequential script's next step, a hunt's next pick
 (`capture_due`, `follow_due`, `seq_due`, `hunt_due`). A run off the map is engine.orders.ability's.
 The fight (`fight`, once a tick) is the attack state machine: a team attack goes on to the next member, each armed
@@ -147,7 +147,8 @@ def order_attack(world, peers, b, target_name, force=False):
         #                 13: FORCE_ATTACK_NAMED is the order that takes any relation); a neutral one not benched, kept
     if not (b and target and target.alive and b.alive):
         return False
-    b.hold_paused = False                   # an order given under HOLD_FIRE fires (stance.md b)
+    if b.hold_paused:                       # an order given under HOLD_FIRE fires (stance.md b)
+        b.aiupdate.hold_paused = False
     if b.goal is not target:
         b.goal, b.mode, b.follow, b.ground_fire = target, 'attack', None, None
         peers.send(b, (target.x, target.y), reach=peers.reach(b, target))
@@ -227,18 +228,6 @@ def stand(b):
     """Its order dropped, nothing new: idle where it is (the AI's command 5: l2_scripts1 3, 6)."""
     b.path, b.goal, b.mode, b.move_to, b.follow = [], None, 'idle', None, None
     b.ground_fire = None
-
-
-def drop_goal(b):
-    """The unit forgets the object it was going for; its mode, path and follow stay (the skirmish AI does this
-    before it re-sends a member: a hunt's or a move's fresh walk, a charge ended, a pursuit's target gone)."""
-    b.goal = None
-
-
-def set_goal(b, target):
-    """The unit's object goal set alone -- no fresh attack order, its mode, path and follow untouched (the skirmish
-    AI's pursuit picks a threat this way: simai.Brain.hunt_threats, INFERRED, work/re/e135_engage_host.md)."""
-    b.goal = target
 
 
 def idle(peers, b):

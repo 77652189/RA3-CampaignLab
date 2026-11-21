@@ -608,13 +608,14 @@ class Commands:
             self._w.flee_start(b)
         return True, ''
 
-    def _stance(self, cmd):                  # an AI setting, no order dropped: GUARD 0 AGGRESSIVE 1 HOLD_POSITION 2 HOLD_FIRE 3
-        stance = cmd.arg('stance')
+    def _stance(self, cmd):                  # an AI setting, no order dropped: the unit's AIUpdate's (aiupdate.py)
         for b in self._units(cmd):
-            hold = stance == 3               # going HOLD_FIRE stops a standing attack without dropping it (stance.md)
-            if hold != b.hold_fire:
-                b.hold_paused = hold and isinstance(b.goal, type(b))
-            b.hold_fire, b.stance = hold, stance
+            b.aiupdate.set_stance(cmd.arg('stance'), isinstance(b.goal, type(b)))
+        return True, ''
+
+    def _auto_acquire(self, cmd):            # an AI setting: takes what only a computer's units take by themselves
+        for b in self._units(cmd):
+            b.aiupdate.set_auto_acquire(cmd.arg('on'))
         return True, ''
 
     # --- the map scripts' button presses (simact_ability's since R3 13d-2): the button's module entry with no refusal (a
@@ -680,9 +681,4 @@ class Commands:
         if w.blocks(b):
             w.reblock()
         w.change()
-        return True, ''
-
-    def _auto_acquire(self, cmd):            # an AI setting: takes what only a computer's units take by themselves
-        for b in self._units(cmd):
-            b.ai_acquire = cmd.arg('on')
         return True, ''

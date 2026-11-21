@@ -90,7 +90,7 @@ from engine.kernel import factory as kernel_factory, interfaces as kernel_interf
 from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
 from engine.ports import command as command_port  # noqa: E402  (happen gives the player's orders through it)
 import engine.modules  # noqa: E402,F401  (imports, so registers, every module file in it)
-from engine.modules import locomotor  # noqa: E402
+from engine.modules import aiupdate, locomotor  # noqa: E402
 from engine.modules import slowdeath as kernel_slowdeath, weaponset as kernel_weaponset  # noqa: E402
 import engine.loop.frame as simloop  # noqa: E402
 import engine.world.handle as simworld  # noqa: E402
@@ -386,13 +386,6 @@ class Body(kernel_module.Thing):
     drive_speed: float = 0.0
     jet_motion: dict = None                                     # simjet: measured first eastbound startup only
     jet_started: bool = False
-    hold_fire: bool = False                                     # UNIT_SET_STANCE 3 (HOLD_FIRE): fires only at a
-                                                                # target it was ordered on (stance.md a / b / d / e)
-    hold_paused: bool = False                                   # an attack order taken BEFORE HOLD_FIRE: kept, not
-                                                                # fired; back to another stance it fires again (a / f)
-    stance: int = 0                                             # UNIT_SET_STANCE: GUARD 0, AGGRESSIVE 1, HOLD_POSITION
-                                                                # 2, HOLD_FIRE 3 (idle_chase reads 1 / 2)
-    ai_acquire: bool = False                                    # TEAM_ALLOW_AI_AUTOACQUIRE (takes_by_itself)
     z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
     unpack_parent: object = None                                # SpawnOnUnpack's producer, outlived and never replaced (M10)
 
@@ -427,7 +420,8 @@ class Body(kernel_module.Thing):
                 'toggle_at', 'armor_up', 'suppression_rule', 'suppression_hits', 'suppressed', 'suppressed_until',
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules',
-                'lies', 'linger', 'weapons', 'slots', 'speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face')
+                'lies', 'linger', 'weapons', 'slots', 'speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face',
+                'hold_fire', 'hold_paused', 'stance', 'ai_acquire')
     hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
     max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
@@ -478,6 +472,11 @@ class Body(kernel_module.Thing):
     path = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.path, [], locomotor.writer('path'))  # M2 3:
     dest = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.dest, None, locomotor.writer('dest'))  # the
     face = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.face, None, locomotor.writer('face'))  # way
+    hold_fire = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.hold_fire, False)  # C2a: its
+    hold_paused = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.hold_paused, False)  # AIOrderState
+    stance = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.stance, 0)
+    ai_acquire = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.ai_acquire, False)
+    aiupdate = property(aiupdate.of)                    # the module itself (attached at its first setting)
 
 from engine.world.handle import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
 

@@ -380,7 +380,7 @@ def test_planted_breaks_are_found():
 # world's order methods, the script event queue, or a write of a field an order sets.
 ORDER_CALLS = {'order_move', 'order_group', 'order_attack', 'order_capture', 'order_build', 'order_guard',
                'order_power', 'player_power', 'order_stop', 'order_follow', 'order_unpack', 'sell', 'stand', 'send',
-               'happen', 'parse_script', 'flee_start', 'hunt_due', 'drop_goal', 'set_goal',
+               'happen', 'parse_script', 'flee_start', 'hunt_due',
                # a button's module entry (R3 13d-2: the script actions press them through the port)
                'toggle_press', 'wfire_press', 'leap_press', 'movement_power_press', 'self_power_press',
                'toggle_miner_armor'}    # Sim's alias of toggle_press (simai's name before R3 13f-1)
