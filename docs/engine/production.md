@@ -28,7 +28,7 @@
 `ALLOW_DISALLOW_ONE_BUILDING(玩家, 'alliedengineer', 0/1)`（0 是禁）。开局禁工程师，脚本按兵营按钮（`NAMED_USE_COMMANDBUTTON_ABILITY`）在 2、8、19 秒，6 秒解禁、21 秒再禁、30 秒再解（`CampProdG_mcp_1109_055742`）：
 - **禁着按也进队列**，只是不动不扣钱；6 秒一解禁马上开造，第一个工程师和 a 一样在 帧数 160 出来。玩家自己点是点不了的（按钮上锁，第 10-28 轮 ban_bench）。
 - **造到一半禁 = 暂停**：第二个扣到 1286 停住（s20～s28 九秒不动），不取消、不退钱；30 秒解禁接着扣，s35 出第二个。第三个排在后面一起等，解禁后照常造（s45 扣到 500）。
-- 模拟器：`Sim.order_build(press=True)` 脚本按的不看禁令；`Sim.produce_due` 队首是被禁的单位就停住。对拍 `tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel`。
+- 模拟器：`Sim.order_build(press=True)` 脚本按的不看禁令；`Sim.production.due` 队首是被禁的单位就停住。对拍 `tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel`。
 
 ## 5. 用法
 

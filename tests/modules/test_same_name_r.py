@@ -275,7 +275,7 @@ def _queued_at_a_dead_factory(what):
         s.add('ref', 'AlliedRefinery', 'Player_1', 700.0, 700.0)
         f = s.add('f', 'AlliedConstructionYard', 'Player_1', 300.0, 300.0)
     assert s.order_build('Player_1', what, factory=f if what == GI else None)
-    s.produce_due(30)
+    s.production.due(30)
     paid = 100000 - s.money['Player_1']
     assert paid > 0
     s.destroy(f, 'test')
@@ -285,7 +285,7 @@ def _queued_at_a_dead_factory(what):
 
 def test_a_unit_queued_at_a_factory_that_died_does_not_come_out_of_one_made_under_its_name():
     s, f2, paid = _queued_at_a_dead_factory(GI)
-    s.produce_due(30 * 60)
+    s.production.due(30 * 60)
     assert not [b for b in s.living() if b.template == GI]
     assert s.money['Player_1'] == 100000 - paid and s.money['Player_2'] == 100000     # gone with it, not refunded
     assert not s.queues                                     # the dead one's queue went along
@@ -294,7 +294,7 @@ def test_a_unit_queued_at_a_factory_that_died_does_not_come_out_of_one_made_unde
 
 def test_an_object_upgrade_bought_at_a_structure_that_died_does_not_arrive_on_one_made_under_its_name():
     s, f2, _ = _queued_at_a_dead_factory('Upgrade_AlliedTech2')
-    s.produce_due(30 * 60)
+    s.production.due(30 * 60)
     assert 'Upgrade_AlliedTech2' not in f2.upgrades and not s.player_ups.get('Player_1')
 
 

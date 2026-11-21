@@ -20,14 +20,14 @@ def test_teamhp_current_mixed_members_and_controls_match_bench(variant):
     m, t, _ = build.resolve('engine_teamhp', variant)
     e = sim.Sim(m, t, script='不打')
     got = {}
-    tick = e.produce_due
+    tick = e.production.due
 
     def observe(frame):
         tick(frame)
         if frame in expected:
             got[frame] = [e.counters.get(k, 0) for k, _ in t.counters]
 
-    e.produce_due = observe
+    e.production.due = observe
     e.advance(max(expected)+8)
     assert not e.unknown.get('TEAM_SET_HEALTH', 0)
     assert got == expected

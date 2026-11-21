@@ -40,14 +40,14 @@ def test_mousehud_failed_activation_baseline_replay(variant):
     assert [label for _, label in t.counters] == ['存活', '资金', '逻辑帧']
     e = sim.Sim(m, t, script='不打')
     got = {}
-    tick = e.produce_due
+    tick = e.production.due
 
     def observe(frame):
         tick(frame)
         if frame in expected:
             got[frame] = [e.counters.get(k, 0) for k, _ in t.counters]
 
-    e.produce_due = observe
+    e.production.due = observe
     e.advance(max(expected) + 1)
     assert got == expected
     assert all(v[:2] == [5, 2400] for v in expected.values())

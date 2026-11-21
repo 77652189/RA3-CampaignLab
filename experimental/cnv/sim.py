@@ -709,9 +709,8 @@ class Sim:
         self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
         self.casts = []                     # (frame, owner, power, caster's serial, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
         self.power_at = {}                  # (player, spellbook power lower) -> the frame it is ready from (spellbook_ready)
-        self.queues = {}                    # factory serial -> [job]: production (order_build, produce_due)
-        self.produced_to = None             # the last frame produce_due ran
-        self.production = simproduce.Production(simproduce.Peers(self))     # the queues' read side (S7b)
+        self.production = simproduce.Production(self, simproduce.Peers(self))     # the factories' queues, run (S7b)
+        self.queues = self.production.queues    # factory serial -> [job], a second name (order_build, simbattlefield)
         self.energies = {}                  # template -> EnergyProduction (simunits.energy; power)
         self.player_ups = {}                # player -> upgrades GIVE_PLAYER_UPGRADE gave (a unit's NeededUpgrade)
         self.templates = getattr(self.mm, 'templates', None) or {}     # team templates (Sim.reinforce)
@@ -1297,7 +1296,7 @@ class Sim:
         """Queue `template` at the owner's factory that builds it with the shortest queue (`factory`: that one only, a
         Body -- a script's press of its build button, which bench 2026-11-08 engine_production e measured the same
         as the player's click: paid as it builds, 160 frames to the engineer) -- or an upgrade at the structure
-        whose button buys it; nothing is paid now (produce_due pays frame by frame, an upgrade as a unit).
+        whose button buys it; nothing is paid now (production.due pays frame by frame, an upgrade as a unit).
         press: a script's press, queued even while the unit is banned (ALLOW_DISALLOW_ONE_BUILDING 0) -- it waits
         unbuilt until let go (bench 2026-11-09 engine_production g); the player's click is not (the button is locked).
         False: nothing of the owner's builds / buys it now (`factory`: that one does not, review 1120cc P2 #3)."""
@@ -1324,45 +1323,6 @@ class Sim:
         self.used.add('production')
         self.note('生产', f'{self.who(owner)} 在 {self.label(f)} 排 {template}（{cost}，{secs:g} 秒）')
         return True
-
-    def produce_due(self, frame):
-        """Each factory's queue up to `frame`, a frame at a time: the first job not yet full goes on 100 / frames
-        (single float, so a 150-frame build fills at the 151st), paying up to ceil(cost x progress / 100) -- a frame
-        the owner cannot pay the difference stands still; the next job starts the frame after one fills; a full one
-        comes out DoorOpeningTime later at the factory's UnitCreatePoint (turned with it), on the factory's team,
-        and walks to its NaturalRallyPoint (bench 2026-11-05 engine_production a-d: 150 / 151 frames, 54 paid at
-        the 16th, a 250 budget stalls at 3 left, out 10 frames after full). A banned unit's job
-        (ALLOW_DISALLOW_ONE_BUILDING 0) stands, keeps what it paid and goes on when let go -- not cancelled, not
-        refunded (bench 2026-11-09 engine_production g). A factory gone takes its queue (keyed by serial: O31)."""
-        start = frame if self.produced_to is None else self.produced_to + 1
-        self.produced_to = frame
-        if not self.queues:
-            return
-        for fr in range(start, frame + 1):
-            for serial in list(self.queues):
-                f, q = simworld.held(self, self.world.numbered.get(serial)), self.queues[serial]
-                if f is None or not f.alive or not q:
-                    del self.queues[serial]
-                    continue
-                create, rally, door = simunits.exit_of(f.template, self.own)
-                for job in [j for j in q if j['full'] is not None and fr >= j['full'] + (0 if 'upgrade' in j else door)]:
-                    if not self.wallet.instal(job['owner'], job, 100.0):
-                        continue            # a file's full job not paid up (simbattlefield) waits for its rest
-                    q.remove(job)
-                    if 'upgrade' in job:
-                        self.upgrade_done(f, job)
-                    else:
-                        self.produce_out(f, job, create, rally)
-                job = next((j for j in q if j['full'] is None), None)
-                if job is None or self.production.held(job):
-                    continue                # banned: the first job stands, paid so far kept, the queue behind it too
-                step = f32(100.0 / self.build_frames(job['secs'], job['owner']))
-                nxt = f32(job['progress'] + step)
-                if not self.wallet.instal(job['owner'], job, nxt):
-                    continue
-                job['progress'] = nxt
-                if nxt >= 100.0:
-                    job['full'] = fr
 
     def upgrade_done(self, b, job):
         """A bought upgrade arrives: OBJECT on the structure that bought it, PLAYER on its owner."""

@@ -15,14 +15,14 @@ def _replay(mission, expected):
     m, t, _ = build.resolve(mission, 'a')
     e = sim.Sim(m, t, script='不打')
     got = {}
-    tick = e.produce_due
+    tick = e.production.due
 
     def observe(frame):
         tick(frame)
         if frame in expected:
             got[frame] = [e.counters.get(k, 0) for k, _ in t.counters]
 
-    e.produce_due = observe
+    e.production.due = observe
     e.advance(max(expected)+8)
     assert got == expected
     assert not e.unknown.get('NAMED_SET_SPECIAL_POWER_COUNTDOWN', 0)

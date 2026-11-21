@@ -26,14 +26,14 @@ def test_teamgarr_nearest_and_team_scope_match_bench(which, owner, frames):
     m, t, _ = build.resolve('engine_teamgarr', which)
     e = sim.Sim(m, t, script='不打')
     got = {}
-    tick = e.produce_due
+    tick = e.production.due
 
     def observe(frame):
         tick(frame)
         if frame in expected:
             got[frame] = [e.counters.get(k, 0) for k, _ in t.counters]
 
-    e.produce_due = observe
+    e.production.due = observe
     e.advance(max(expected)+8)
     assert not e.unknown.get('TEAM_GARRISON_NEAREST_BUILDING', 0)
     assert got == expected

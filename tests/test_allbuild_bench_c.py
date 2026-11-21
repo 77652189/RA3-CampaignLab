@@ -76,13 +76,13 @@ def test_allbuild_on_named_production_replay():
     e = sim.Sim(m, t)
     w = simai.SimAI(e, lib=simai.model()['xmldata'].Library())
     got = {}
-    tick = e.produce_due
+    tick = e.production.due
 
     def observe(frame):
         tick(frame)
         if frame == 598:
             got[frame] = [e.counters.get(k, 0) for k, _ in t.counters]
 
-    e.produce_due = observe
+    e.production.due = observe
     w.advance(599)
     assert got == {598: [0, 4, 20, 598]}

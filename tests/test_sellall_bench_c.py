@@ -150,14 +150,14 @@ def test_sellall_owner_refund_and_repeat_match_bench(which):
     m, t, _ = build.resolve('engine_sellall', which)
     e = sim.Sim(m, t, script='不打')
     got = {}
-    tick = e.produce_due
+    tick = e.production.due
 
     def observe(frame):
         tick(frame)
         if frame in expected:
             got[frame] = [e.counters.get(k, 0) for k, _ in t.counters]
 
-    e.produce_due = observe
+    e.production.due = observe
     e.advance(max(expected)+8)
     assert not e.unknown.get('PLAYER_SELL_EVERYTHING', 0)
     assert got == expected

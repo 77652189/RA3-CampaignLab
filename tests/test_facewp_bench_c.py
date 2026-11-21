@@ -21,7 +21,7 @@ def test_facewp_named_heading_and_untouched_control_match_bench(variant):
     e = sim.Sim(m, t, script='不打')
     expected = {row['frame']: row for row in measured}
     got = {}
-    tick = e.produce_due
+    tick = e.production.due
 
     def observe(frame):
         tick(frame)
@@ -30,7 +30,7 @@ def test_facewp_named_heading_and_untouched_control_match_bench(variant):
             got[frame] = [math.degrees(b.angle) for b in bodies]
             assert e.counters['CNV_FW_Alive'] == 7
 
-    e.produce_due = observe
+    e.production.due = observe
     e.advance(max(expected)+8)
     assert not e.unknown.get('NAMED_FACE_WAYPOINT', 0)
     assert got.keys() == expected.keys()

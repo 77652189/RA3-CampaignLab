@@ -28,14 +28,14 @@ def replay(variant):
     m, t, _ = build.resolve('engine_attackarea', variant)
     e = sim.Sim(m, t, script='不打')
     got = {}
-    tick = e.produce_due
+    tick = e.production.due
 
     def observe(frame):
         tick(frame)
         if frame in expected:
             got[frame] = [e.counters.get(k, 0) for k, _ in t.counters]
 
-    e.produce_due = observe
+    e.production.due = observe
     e.advance(max(expected)+8)
     return expected, got, e.unknown.get('NAMED_ATTACK_AREA', 0)
 

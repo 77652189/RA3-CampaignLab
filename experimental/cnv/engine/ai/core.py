@@ -16,7 +16,7 @@ the wake (bench aialobsw) -- and a side handed over without one gets the default
 'make base' the frame the mission hands it to the AI (UNIT_AI_TRANSFER_ALL / SKIRMISH_AI_MAKE_BASE: Sim.ai). Then
 every frame (the simulator moves in DT ticks; the AI is ticked for each frame of a tick right after it):
   structures  the simulator builds none (a yard's CommandSet has no UNIT_BUILD), so this file is the yard: one queue a
-              yard, the float32 progress of Sim.produce_due paid frame by frame from Sim.money, owned PLACE_DELAY (1)
+              yard, the float32 progress of Sim.production.due paid frame by frame from Sim.money, owned PLACE_DELAY (1)
               frame after full, the next started the frame after (bench aiopen f1-f3); put down on rings round the
               yard (INFERRED: the first free spot, from the side away from the map's middle). A refinery brings its
               miner its UnpackTime later (bench aiopen: 667 = refinery + 60).
@@ -48,7 +48,7 @@ HOOKS (what this file would rather have from sim.py; for A through the coordinat
      left the door starts up to 7 frames late (Riptides 165 apart, bench 161), and the yard is paid after the tick's
      unit production;
   2. a structure queue (yard production) and a placement rule in Sim, so a human player's yard works the same;
-  3. Sim.produce_due starts a factory's next job the frame after the last is full; the AI bench (aiopen) shows the
+  3. Sim.production.due starts a factory's next job the frame after the last is full; the AI bench (aiopen) shows the
      next starting when the last has left the door -- which holds for a human's queue is not measured;
   4. a factory's UnpackTime in Sim (no unit before it has unpacked);
   5. AI unit powers: toggles and the bounded Bonzai bridge execute; other unit powers / player powers record intent;
@@ -1448,7 +1448,7 @@ class Brain:
         f = min(foes, key=lambda b: math.hypot(b.x - hx, b.y - hy))
         return (f.x, f.y)
 
-    # ---- the yard (Sim.produce_due's rule, for structures)
+    # ---- the yard (Sim.production.due's rule, for structures)
     def spot(self, yard, template):
         """Where a structure goes: the first free point on the rings round the yard (INFERRED)."""
         import platprops

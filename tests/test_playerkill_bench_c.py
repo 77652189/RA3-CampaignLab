@@ -17,14 +17,14 @@ def test_playerkill_owned_units_and_buildings_match_bench():
     m, t, _ = build.resolve('engine_playerkill', 'a')
     e = sim.Sim(m, t, script='不打')
     got = {}
-    tick = e.produce_due
+    tick = e.production.due
 
     def observe(frame):
         tick(frame)
         if frame in expected:
             got[frame] = [e.counters.get(k, 0) for k, _ in t.counters]
 
-    e.produce_due = observe
+    e.production.due = observe
     e.advance(max(expected)+8)
     assert not e.unknown.get('PLAYER_KILL', 0)
     assert got == expected

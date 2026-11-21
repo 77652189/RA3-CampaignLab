@@ -24,14 +24,14 @@ def test_object_upgrade_survives_snapshot_and_applies_before_the_unit_door_delay
     assert s.money[PLAYER] == 1000
 
     s.act('PLAYER_DISABLE_UNIT_CONSTRUCTION', [PLAYER], None)   # a unit gate holds no upgrade (INFERRED, simproduce)
-    s.produce_due(1)
+    s.production.due(1)
     # $500 over 30 s at full power (100 supply, 75 demand): ceil(500/450) = 2.
     job, = s.queues[seller.serial]
     assert job['progress'] == pytest.approx(100 / 450)
     assert job['paid'] == 2 and s.money[PLAYER] == 998
-    s.produce_due(450)
+    s.production.due(450)
     assert job['full'] is None and job['paid'] == 500  # the single-precision sum needs one more step
-    s.produce_due(451)
+    s.production.due(451)
     assert job['full'] == 451 and TECH not in seller.upgrades
     s.clock.frame = 451
 
@@ -39,12 +39,12 @@ def test_object_upgrade_survives_snapshot_and_applies_before_the_unit_door_delay
     simsnap.restore(restored, json.loads(json.dumps(simsnap.snapshot(s))))
     b = restored.bodies['seller']
     assert b.serial == seller.serial
-    assert restored.queues[b.serial] == [job] and restored.produced_to == 451
+    assert restored.queues[b.serial] == [job] and restored.production.produced_to == 451
     assert restored.money[PLAYER] == 500 and TECH not in b.upgrades
-    restored.produce_due(451)
+    restored.production.due(451)
     assert TECH not in b.upgrades
     restored.clock.frame = 452
-    restored.produce_due(452)
+    restored.production.due(452)
     assert b.upgrades == {TECH} and b.up_since[TECH] == 452
     assert TECH not in restored.player_ups.get(PLAYER, ())
     assert restored.money[PLAYER] == 500 and not restored.queues[b.serial]

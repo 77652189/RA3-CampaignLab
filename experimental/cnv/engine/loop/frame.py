@@ -149,7 +149,7 @@ def mine(s, frame, tick):
 
 
 def produce(s, frame, tick):
-    s.produce_due(frame)
+    s.production.due(frame)
 
 
 def counters(s, frame, tick):

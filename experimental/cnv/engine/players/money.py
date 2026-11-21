@@ -79,7 +79,7 @@ class Money:
     def instal(self, player, job, progress):
         """A build job's instalment to `progress` (per cent; 100: a full job's rest) taken if held -- its cost so far
         rounded up less what it paid, never below 0 (a battlefield job paid over its progress gets no refund); whether
-        it was. Sim.produce_due and the AI's yards (simai Brain.yard_due)."""
+        it was. Sim.production.due and the AI's yards (simai Brain.yard_due)."""
         owe = max(0, min(job['cost'], math.ceil(round(job['cost'] * progress / 100.0, 9))) - job['paid'])
         if owe and owe > self.held(player):     # nothing owed goes through on any money (a script's -1: review 1120ff)
             return False

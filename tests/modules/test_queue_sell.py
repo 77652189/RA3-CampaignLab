@@ -21,8 +21,8 @@ def test_sale_refunds_the_structure_and_the_queue_runs_only_while_it_is_alive(
     f = s.bodies['factory']
     s.money[PLAYER] = 1000
     assert s.commands.do(Command('build', player=PLAYER, template=ENGINEER)) == (True, '')
-    s.produce_due(1)
-    s.produce_due(sale_frame)
+    s.production.due(1)
+    s.production.due(sale_frame)
     assert s.queues[f.serial][0]['paid'] == paid_before_sale  # ceil($500 * sale_frame/150)
 
     s.clock.frame = sale_frame

@@ -29,22 +29,22 @@ def test_unit_queue_pays_in_frames_and_starts_its_next_job_before_the_door_opens
     other, = s.queues[second.serial]
 
     # Engineer: $500 over 10 s at 15 fps; ceil($500 * 16/150) = $54 per factory.
-    s.produce_due(1)
-    s.produce_due(16)
+    s.production.due(1)
+    s.production.due(16)
     assert head['paid'] == other['paid'] == 54
     assert s.money[PLAYER] == 1892
-    s.produce_due(16)
+    s.production.due(16)
     assert s.money[PLAYER] == 1892  # the same frame is not charged twice
 
-    s.produce_due(150)
+    s.production.due(150)
     assert head['paid'] == 500 and head['full'] is None  # single-precision sum is still below 100
-    s.produce_due(151)
+    s.production.due(151)
     assert head['full'] == 151 and following['paid'] == 0
-    s.produce_due(152)
+    s.production.due(152)
     assert following['paid'] == 4  # ceil($500/150), before the preceding engineer exits
-    s.produce_due(160)
+    s.production.due(160)
     assert not [b for b in s.living() if b.template == ENGINEER]
-    s.produce_due(161)  # Barracks DoorOpeningTime rounds to 10 frames.
+    s.production.due(161)  # Barracks DoorOpeningTime rounds to 10 frames.
     made = {b.made_by: b for b in s.living() if b.template == ENGINEER}
     assert set(made) == {first.name, second.name}
     b = made[first.name]
@@ -63,17 +63,17 @@ def test_unit_queue_stalls_for_cash_and_uses_current_power_when_it_resumes():
     assert s.commands.do(Command('build', player=PLAYER, template=ENGINEER)) == (True, '')
     job, = s.queues[f.serial]
     assert s.power(PLAYER) == (0, 25)
-    s.produce_due(1)
+    s.production.due(1)
     # With zero supply, trunc(10/0.3)*15 = 495 frames. First charge is ceil(500/495) = 2.
     assert job['progress'] == pytest.approx(100 / 495)
     assert job['paid'] == 2 and s.money[PLAYER] == 0
-    s.produce_due(5)
+    s.production.due(5)
     assert job['progress'] == pytest.approx(100 / 495)
     assert job['paid'] == 2 and s.money[PLAYER] == 0
 
     s.add('plant', 'AlliedPowerPlant', PLAYER, 900, 600)
     s.act('PLAYER_GIVE_MONEY', [PLAYER, 100], None)
-    s.produce_due(6)
+    s.production.due(6)
     assert s.power(PLAYER) == (100, 25)
     assert job['progress'] == pytest.approx(100 / 495 + 100 / 150)
     assert job['paid'] == 5 and s.money[PLAYER] == 97  # ceil(500*(1/495+1/150)) = 5
@@ -86,7 +86,7 @@ def test_the_proxy_can_spend_the_bank_less_what_its_own_queued_jobs_still_take()
                      ('foe', 'AlliedBarracks', 'Player_2', 900, 600)], model=False)
     s.money.update({PLAYER: 2000, 'Player_2': 2000})
     assert s.order_build(PLAYER, ENGINEER) and s.order_build('Player_2', ENGINEER)
-    s.produce_due(10)
+    s.production.due(10)
     w = object.__new__(simproxy.SimWorld)
     w.peers, w.me = simproxy.Peers(s), PLAYER
     job, = s.queues[s.bodies['factory'].serial]

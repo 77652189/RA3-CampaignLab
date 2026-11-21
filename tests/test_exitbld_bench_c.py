@@ -28,14 +28,14 @@ def test_exitbld_named_host_and_mixed_crews_match_bench(variant, mask, before, a
     expected = {f: [15, 22, 127, f] for f in before}
     expected.update({f: [mask, 22, 127, f] for f in after})
     got = {}
-    tick = e.produce_due
+    tick = e.production.due
 
     def observe(frame):
         tick(frame)
         if frame in expected:
             got[frame] = [e.counters.get(k, 0) for k, _ in t.counters]
 
-    e.produce_due = observe
+    e.production.due = observe
     e.advance(max(expected)+8)
     assert not e.unknown.get('EXIT_SPECIFIC_BUILDING', 0)
     assert got == expected

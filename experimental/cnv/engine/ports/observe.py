@@ -99,7 +99,7 @@ class Observe:
     def jobs(self, thing):
         """A factory's jobs in order, whole: [(template, progress 0..1, paid so far, the logic frame it filled or None,
         held)] -- held: a job not full that stands for a ban (its unit off the owner's menu, the owner's unit
-        construction disabled: the hold Sim.produce_due keeps a unit job to, upgrades' never). [] for a thing that
+        construction disabled: the hold Sim.production.due keeps a unit job to, upgrades' never). [] for a thing that
         builds nothing (a Battlefield file's queue, S 11d step 7)."""
         p = self._w.production
         return [(job['template'], min(1.0, job['progress'] / 100), job['paid'], job['full'], p.held(job))

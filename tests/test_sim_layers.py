@@ -92,7 +92,7 @@ WORLD_TAKERS = {'engine.objects.heal', 'engine.objects.mine', 'engine.players.mo
                 'engine.objects.level', 'engine.ai.pullback', 'engine.combat.sweeps',
                 'engine.objects.garrison', 'engine.objects.infiltrator', 'engine.objects.repair',
                 'engine.ai.core',
-                'simproxy'}
+                'simproxy', 'engine.players.production'}
 # (simpullback, L8 -- the AI tactics' pullback adapter -- is not in LAYER_OF for simmicro's reason: only simai imports it)
 
 # modules that reach their host beyond the world through a Peers loan: every `peers.X` they read is in their PEERS

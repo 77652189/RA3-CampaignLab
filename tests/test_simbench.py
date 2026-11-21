@@ -139,12 +139,12 @@ def _production_rows(check, order=True):
     import sim
     m, t, _ = build.resolve('engine_production', check)
     s = sim.Sim(m, t)
-    rows, done = [], s.produce_due
+    rows, done = [], s.production.due
 
     def read(frame):
         done(frame)
         rows.append({lab: s.counters.get(c, 0) for c, lab in t.counters})
-    s.produce_due = read
+    s.production.due = read
     s.advance(30)
     offered = [o[0] for o in s.offers(s.human)]
     if order:
@@ -189,7 +189,7 @@ def test_a_ban_holds_the_queue_and_does_not_cancel():
     at 30 s. Bench: 2000 until the let-go (the 2 s press was queued and waited), the first engineer at 帧数 160 as a;
     the second job stands at 1286 from s20 to s28 (paid kept, nothing refunded, nothing cancelled), goes on at s29,
     the second engineer at s35; the third job pays down to 500 by s45. The simulator: the press queues past the ban,
-    a banned job stands (Sim.order_build press, Sim.produce_due)."""
+    a banned job stands (Sim.order_build press, Sim.production.due)."""
     s, rows, _ = _production_rows('g', order=False)
     assert all(rd['资金'] == 2000 for rd in rows[:90])
     assert next(rd['帧数'] for rd in rows if rd['工程师'] >= 1) == 160
