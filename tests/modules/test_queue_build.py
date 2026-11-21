@@ -91,3 +91,14 @@ def test_the_proxy_can_spend_the_bank_less_what_its_own_queued_jobs_still_take()
     w.peers, w.me = simproxy.Peers(s), PLAYER
     job, = s.queues[s.bodies['factory'].serial]
     assert 0 < job['paid'] < job['cost'] and w.money() == s.money[PLAYER] - (job['cost'] - job['paid'])
+
+
+def test_a_paid_job_goes_through_on_any_money():
+    """Review 1120ff P2: nothing owed is no check of the money -- a job paid in full comes out when a script set the
+    money to -1; a job still owing waits."""
+    from engine.players.money import Money
+    m = Money()
+    m.money['p'] = -1
+    paid, owing = {'cost': 100, 'paid': 100}, {'cost': 100, 'paid': 50}
+    assert m.instal('p', paid, 100) and m.held('p') == -1
+    assert not m.instal('p', owing, 100) and owing['paid'] == 50
