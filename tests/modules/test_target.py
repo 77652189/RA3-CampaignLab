@@ -44,5 +44,8 @@ def test_structures_and_the_reach_cut():
     assert pick(body(0, 'us'), [hq, gun]) is gun
     assert pick(body(0, 'us', acquire=('ATTACK_BUILDINGS',)), [hq]) is hq
     assert target.takes_by_itself(body(0, 'us'), hq, types.SimpleNamespace(unshot=set(), ai={'us'}))
+    near = body(3)                                              # review ll #4: a nearer tank, both rules still pick hq
+    assert pick(body(0, 'us', ai_acquire=True), [hq]) is hq      # AI auto-acquire takes a plain structure
+    assert pick(body(0, 'us', goal=hq), [near, hq]) is hq       # an order naming the structure beats the nearer foe
     big = body(60, radius=50.0)                                 # 60 by centre, 10 by edge: the biggest radius pads it
     assert pick(body(0, 'us'), [big]) is big

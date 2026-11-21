@@ -33,14 +33,15 @@ def seq_due(world, peers):
     after the move before it), 排 0 -> 11 (the second script after the first's move). d115 14's wait frames
     (IDLE_FOR_* writing them) are not kept: 等 11 from the first second -- UNIT_IDLE_FOR_SECONDS 5 on the standing
     unit held the next step back not at all (what writes the wait: not known)."""
-    heads = set()
-    for r in list(peers.seq):
+    heads, firsts = set(), []               # each unit's first record, picked before any step (review ll #2: not
+    for r in peers.seq:                     # a scan of the queue for every record behind it)
+        if r['b'].serial not in heads:
+            heads.add(r['b'].serial)
+            firsts.append(r)
+    for r in firsts:
         if all(x is not r for x in peers.seq):
             continue                        # stopped this frame by another unit's step (review kk #1)
         b = r['b']
-        if b.serial in heads:
-            continue
-        heads.add(b.serial)
         if not b.alive:
             peers.seq.remove(r)
             continue
