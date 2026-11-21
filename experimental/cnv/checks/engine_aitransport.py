@@ -28,6 +28,11 @@ goes. So this map (no bridges, no library, LAND AMPHIBIOUS) does not turn it awa
 somewhere the east bank has no ground way to (the island, the west bank): the recruit turns the Riptide away there
 too. A passenger is paired only when it cannot reach the target itself, and such a unit is not recruited, so no
 layout of this bench forms a pair and UseTransports stays untold apart. Stopped, not registered (handoff-b 223).
+RESULTS (2026-11-21, B): the recruit tries a unit that cannot reach again or'd with a member that can carry it, and
+an AIR mask always passes (work/re b1121_transports.md): aitranst0 / aitranst1 put a Twinblade in for the Riptide
+(激流在岛 then counts the Twinblade). The flag tells: true -> all four board s24-27, carried off from s32; false ->
+the team takes all five (f153), nobody boards, the Peacekeepers drop out (f248), the Twinblade crosses alone (s49).
+Readings in engine_aitransport.readings.toml, both a mismatch (the model's recruit does not pair).
 """
 from parts import Script, Test, counted, square, status
 
@@ -50,7 +55,9 @@ def a(m):
     counted('CNV_TR_Boat', '激流在岛', t, named='UNIT - CNV AI Riptide', area=ISLAND)
     t.areas[HOME] = square(*m.site('east base'), 450.0)          # B222: aiteamfilter's home box
     counted('CNV_TR_Home', '步兵在家', t, template='AlliedAntiInfantryInfantry', area=HOME, player=s1)
-    if not m.facts['ai infantry']:                                # aitransr: the Riptide alone
+    if m.facts.get('air transport'):                              # B 11-21: what the bench read
+        t.expect = [('车内步兵', 30, '==', 4 if m.facts['use transports'] else 0, 31)]
+    elif not m.facts['ai infantry']:                                # aitransr: the Riptide alone
         t.expect = [('激流在岛', AT, '==', 1, AT + 1)]
     elif m.facts['use transports']:
         t.expect = [('岛上步兵', AT, '>=', 1, AT + 1)]
@@ -61,4 +68,4 @@ def a(m):
 
 
 CHECKS = {name: {'a': a} for name in ('aitrans0', 'aitrans1', 'aitransr', 'aitransw0', 'aitransw1',
-                                              'aitransrw', 'aitransre')}
+                                              'aitransrw', 'aitransre', 'aitranst0', 'aitranst1')}

@@ -1,0 +1,27 @@
+# Bench readings of checks/engine_aitransport.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "use_transports_false_twinblade"
+scene = {build = "aitranst0", check = "a", until = 86}
+bench = "B 2026-11-21 aitranst0 (UseTransports false, a Twinblade and four Peacekeepers, the plant on Goat Island, no bridges): counters (aboard, Peacekeepers on the island, Twinblade on the island, Peacekeepers at home) s1-33 0 0 0 4, s35-48 0 0 0 2, s49-86 0 0 1 2. ra3ext: the team takes all five at f153; the Peacekeepers are out of it by f248."
+proves = "Tactic UseTransports false: the paired passengers are never put aboard, the transport crosses alone; the recruit pairs the Peacekeepers with the Twinblade (they cannot reach the island themselves)"
+item = "AI 战术/Tactic.UseTransports"
+expect = [
+    "max(win(1, 85, '车内步兵')) == 0",
+    "win(50, 85, '激流在岛') == [1] * 36",
+    "win(40, 48, '步兵在家') == [2] * 9",
+]
+mismatch = "sim s0-47 0 0 0 4, s48-49 0 0 1 4, s50-85 0 0 0 4 (the model's recruit has no pairing: the Peacekeepers are not taken, the Twinblade passes the box); bench 0, Twinblade 1 from s49, 2 at home"
+
+
+[[reading]]
+id = "use_transports_true_twinblade"
+scene = {build = "aitranst1", check = "a", until = 86}
+bench = "B 2026-11-21 aitranst1 (the same, UseTransports true): counters s1-23 0 0 0 4, s24 1, s25 2, s26 3, s27-31 4 0 0 4, s32-86 4 0 0 0 (all four aboard, carried off home; the Twinblade not in the island box by s86)."
+proves = "Tactic UseTransports true: the team puts its paired passengers aboard before it moves"
+expect = [
+    "win(27, 31, '车内步兵') == [4] * 5",
+    "win(32, 85, '步兵在家') == [0] * 54",
+]
+mismatch = "sim 0 aboard, 4 at home to s85 (no pairing, no boarding); bench 4 aboard s27-31, 0 at home from s32"
+
