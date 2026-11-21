@@ -127,5 +127,44 @@ def acts(m):
     return t
 
 
-MISSION = {'engine_acts_v': mission}
-CHECKS = {'engine_acts_v': {'acts': acts}}
+# Round 280: ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER (team, type, player; j04 / j05). s4's crew Am (tanks
+# m0 / m1, 1600 apart) to the player's plants: X is nearest their middle, Y m0's, Z m1's, D (s4's own) nearest of all.
+# s4's tank TA (crew Ae) to the player's engineer EN, teleported 1560 off a second after the order: followed?
+NEAR = {'m0': (1800.0, 1500.0), 'm1': (3400.0, 1500.0), 'X': (2600.0, 2700.0), 'Y': (1800.0, 2700.0),
+        'Z': (3600.0, 2800.0), 'D': (2600.0, 1700.0), 'TA': (4400.0, 4000.0), 'EN': (4400.0, 3400.0)}
+EN_TO = (3400.0, 4600.0)
+ENGINEER = 'AlliedEngineer'
+
+
+def near_mission():
+    m = Mission(name='CampActsNear', map=probe_border, units=[], facts={})
+    m.spawns |= {TANK, PLANT, ENGINEER}
+    for role, (x, y) in NEAR.items():
+        crew = {'m0': 'Am', 'm1': 'Am', 'TA': 'Ae'}.get(role)
+        tmpl = TANK if crew else ENGINEER if role == 'EN' else PLANT
+        _unit(m, role, 's4' if crew or role == 'D' else 'p1', tmpl, x, y, crew=crew)
+    m.waypoint('en to', 'Test Act5 En To', 'stop row', EN_TO[0] - O[0], EN_TO[1] - O[1])
+    return m
+
+
+def near(m):
+    """位 = Am's tanks within 400 of X (ones), Y (tens), Z (hundreds); 打 = X attacked by a tank 1, Y 2, Z 4 + TA within
+    400 of EN's first place 10, of its second 100 + EN attacked by a tank 1000."""
+    t = Test()
+    go = 'ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER'
+    s8.at(t, 'a1', 1.0, [(go, m.teams['Am'], PLANT, m.player()), (go, m.teams['Ae'], ENGINEER, m.player())])
+    s8.at(t, 'a2', 2.0, [('UNIT_TELEPORT_TO_WAYPOINT', _n('EN'), m.mark('en to'))])
+    for k, at in (('X', NEAR['X']), ('Y', NEAR['Y']), ('Z', NEAR['Z']), ('En', NEAR['EN']), ('Ento', EN_TO)):
+        t.areas[f'Test Act5 By {k}'] = square(*at, 400.0)
+    s8.total(t, 'CNV_Act5_Near', '位', [(w, ('NAMED_INSIDE_AREA', _n(u), f'Test Act5 By {k}'))
+                                        for k, w in (('X', 1), ('Y', 10), ('Z', 100)) for u in ('m0', 'm1')])
+    s8.total(t, 'CNV_Act5_Hit', '打', [(w, ('NAMED_ATTACKED_BY_OBJECTTYPE', _n(k), TANK))
+                                       for k, w in (('X', 1), ('Y', 2), ('Z', 4), ('EN', 1000))]
+             + [(10, ('NAMED_INSIDE_AREA', _n('TA'), 'Test Act5 By En')),
+                (100, ('NAMED_INSIDE_AREA', _n('TA'), 'Test Act5 By Ento'))])
+    s8.watch(t, RUN)
+    return t
+
+
+MISSION = {'engine_acts_v': mission, 'engine_acts_near': near_mission}
+CHECKS = {'engine_acts_v': {'acts': acts}, 'engine_acts_near': {'all': near}}

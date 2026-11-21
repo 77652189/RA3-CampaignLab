@@ -349,6 +349,23 @@ def test_a_team_order_reaches_the_members_not_a_reference_of_their_name():
     assert s.commands._units(s.commands.issued()[-1][1]) == [s.bodies['outsider']]
 
 
+def test_attack_move_to_the_players_nearest_of_a_type_is_the_first_members():
+    """ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER: the player's object of the type nearest the team's first
+    member (bench round 280, engine_acts_near), not its middle's nor another owner's; none: no order."""
+    s = simsmall.small_world([('lead', APOC, 'Player_1', 0.0, 0.0), ('next', APOC, 'Player_1', 1600.0, 0.0),
+                              ('mid', APOC, 'Player_2', 800.0, 1200.0), ('own', APOC, 'Player_1', 800.0, 200.0),
+                              ('by lead', APOC, 'Player_2', 0.0, 1200.0)], model=False)
+    for n in ('lead', 'next'):
+        s.bodies[n].team = 'T'
+    s.active.add('T')
+    _act(s, 'ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER', 'T', APOC, 'Player_3')
+    assert not s.commands.issued()
+    _act(s, 'ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER', 'T', APOC, 'Player_2')
+    cmd = s.commands.issued()[-1][1]
+    assert (cmd.kind, cmd.pos, cmd.units) == ('attack_move', (0.0, 1200.0), (s.bodies['lead'].serial,
+                                                                             s.bodies['next'].serial))
+
+
 def test_an_empty_team_name_keeps_the_follow_up_attack():
     """TEAM_ATTACK_TEAM on the default team ('') registers the next-target look-up (review 11-19 f #2: '' was read as
     no team)."""

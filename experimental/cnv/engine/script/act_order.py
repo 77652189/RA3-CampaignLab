@@ -265,6 +265,17 @@ def attack_move_team_to_named_object(sim, name, a, script):
         _order_bodies(sim, 'attack_move', sim.members(a[0]), ('group', True), pos=(o.x, o.y))
 
 
+def attack_move_team_to_nearest_object_of_type_of_player(sim, name, a, script):
+    # (team, type, player): the same order as ATTACK_MOVE_TEAM_TO_NAMED_OBJECT, to the player's living object of that
+    # type nearest the team's first member (INFERRED: not its middle); none of them: nothing done
+    crew = sim.members(a[0])
+    want = sim.of_types(a[1])
+    goal = crew and min((o for o in sim.living() if o.owner == a[2] and o.template.lower() in want),
+                        key=lambda o: math.hypot(o.x - crew[0].x, o.y - crew[0].y), default=None)
+    if goal:
+        _order_bodies(sim, 'attack_move', crew, ('group', True), pos=(goal.x, goal.y))
+
+
 def player_set_all_units_to_flee(sim, name, a, script):
     # (player) engine_runoffmap: every one with RunOffMapBehavior runs
     _order_bodies(sim, 'flee', [b for b in sim.living() if b.owner == a[0]])
@@ -325,6 +336,7 @@ ACTIONS = {
     'NAMED_FORCE_ATTACK_NAMED': named_force_attack_named,
     'NAMED_FORCE_ATTACK_WAYPOINT': named_force_attack_waypoint,
     'ATTACK_MOVE_TEAM_TO_NAMED_OBJECT': attack_move_team_to_named_object,
+    'ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER': attack_move_team_to_nearest_object_of_type_of_player,
     'PLAYER_SET_ALL_UNITS_TO_FLEE': player_set_all_units_to_flee,
     'UNIT_SET_STANCE': unit_set_stance,
 }

@@ -14,3 +14,21 @@ expect = [
     "sum(r['位'] in (201, 210) for r in rows[1:]) <= 2",
     "changes('守')[-2:] == [2, 12] and rows[-1]['守'] == 12",
 ]
+
+[[reading]]
+id = "acts_near_goes_to_the_first_members_nearest"
+item = "脚本动作 ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER"
+scene = {build = "engine_acts_near", check = "all", until = 41}
+bench = """all, bench 11-21 `run_queue engine_acts_near:all` (CampActsNearAll_mcp_1121_111645, round 280; bench row s_k = simulator \
+k + 1): 位 0 s1-s9, 10 s10-s15, 11 s16-s18, 20 s19-s41; 打 0 s1, 10 s2-s41"""
+proves = """sim act_order.attack_move_team_to_nearest_object_of_type_of_player: the crew went to Y, the player's plant nearest its \
+first member (m0, made first), not X nearest its middle nor s4's own D nearest of all, and stayed there, no plant attacked; \
+TA went to the engineer's place at the order and stayed, the engineer teleported off a second later not followed nor \
+attacked (the place taken at the order, as ATTACK_MOVE_TEAM_TO_NAMED_OBJECT's). The simulator's tanks come a reading \
+late (start-up, R2's)"""
+let = {at = "dict(zip(times, vals(rows)))", first = "min(t for t in at if at[t][0])"}
+expect = [
+    "abs(first - 11) <= 1 and {at[k][0] for k in at} == {0, 10, 11, 20}",
+    "all(at[k][0] == 20 for k in range(22, 41))",
+    "at[1][1] == 0 and all(at[k][1] == 10 for k in range(5, 41))",
+]
