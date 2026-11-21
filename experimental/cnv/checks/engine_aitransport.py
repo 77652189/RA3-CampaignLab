@@ -51,7 +51,10 @@ def a(m):
     else:
         t.areas[ISLAND] = square(m.facts['target x'], m.facts['target y'], 350.0)   # 'front' / B223 'east gate'
     counted('CNV_TR_In', '车内步兵', t, status=status('ENCLOSED'), player=s1)
-    counted('CNV_TR_Isle', '岛上步兵', t, template='AlliedAntiInfantryInfantry', area=ISLAND, player=s1)
+    if m.facts.get('air transport'):        # E 11-21: what the Twinblade does to the plant (four lines fit)
+        counted('CNV_TR_Plant', '电厂血', t, health='UNIT - CNV AI Player Target')
+    else:
+        counted('CNV_TR_Isle', '岛上步兵', t, template='AlliedAntiInfantryInfantry', area=ISLAND, player=s1)
     counted('CNV_TR_Boat', '激流在岛', t, named='UNIT - CNV AI Riptide', area=ISLAND)
     t.areas[HOME] = square(*m.site('east base'), 450.0)          # B222: aiteamfilter's home box
     counted('CNV_TR_Home', '步兵在家', t, template='AlliedAntiInfantryInfantry', area=HOME, player=s1)

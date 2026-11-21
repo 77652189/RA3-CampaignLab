@@ -15,10 +15,23 @@ expect = [
 [[reading]]
 id = "use_transports_false_twinblade_stays"
 scene = {build = "aitranst0", check = "a", until = 86}
-bench = "the same run: the Twinblade in the island box s49-86 (it attacks the plant, 1000 health, and takes 2.5 off)"
+bench = "the same run: the Twinblade in the island box s49-86 (it attacks the plant from f345; the plant still stands at s86, see twinblade_plant_damage)"
 proves = "the lone transport stays at its target"
 expect = ["win(50, 85, '激流在岛') == [1] * 36"]
-mismatch = "sim: the Twinblade on the island s23-54, it destroys the plant (f789, the tactic then rampages off); the bench Twinblade barely harms it -- damage, not the form-up (kick f244 / go f245 as on the bench f248 / f251)"
+mismatch = "sim: the Twinblade on the island s23-54, it destroys the plant (s53, the tactic then rampages off): it gets there 16 s early and deals twice the bench's damage (twinblade_plant_damage) -- not the form-up (kick f244 / go f245 as on the bench f248 / f251)"
+
+
+[[reading]]
+id = "twinblade_plant_damage"
+scene = {build = "aitranst0", check = "a", until = 86}
+bench = "E 2026-11-21 aitranst0 (counter 电厂血 = the plant's health %, in place of 岛上步兵): 100 to s40, 99 s41, 86 s42, 78 s43, 66 s59, 58 s60, 48 s61, 39 s76, 33 s77, 22 s78, 13 s85-86 (CampAITransT0A_mcp_1121_142200, the frames the same as B's run). ra3ext: the Twinblade hovers at (2733,2729), 155 from the plant; first hit f345 997.5 (one AUTO_CANNON round, 5 x 50 %: B's '2.5 off' was this, the under-attack log writes only an attacker's first hit); rocket clips launched f353 / f486 / f623 (8.9 s apart, ClipReloadTime 8 s), but only every other one takes ~20 % (s42-43, s60-61, s77-78); between them ~0.75 %/s (the cannon, 3 rounds a second, half its data rate)"
+proves = "the Twinblade's two weapons at a structure: AUTO_CANNON at 50 % and a rocket clip of 8 x 25 ROCKET land as the data say; the rate does not (every other rocket clip misses, the cannon fires half as often)"
+expect = [
+    "win(41, 41, '电厂血')[0] >= 95",
+    "win(44, 59, '电厂血')[0] - win(44, 59, '电厂血')[-1] <= 15",
+    "min(win(80, 85, '电厂血')) >= 10",
+]
+mismatch = "sim (coarse clock) 98 at s23, then 3.3 %/s to 0 at s53 (rockets 22.7/s + cannon 10.6/s); bench from s41 ~19 hp/s, 13 left at s86. Not explained: why every other rocket clip misses with the shooter still (hypotheses in work/re handoff-e)"
 
 
 [[reading]]
