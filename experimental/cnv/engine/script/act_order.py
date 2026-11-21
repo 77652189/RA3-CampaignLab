@@ -101,12 +101,16 @@ def team_move_to_nearest_object_of_type(sim, name, a, script):
     # any owner INFERRED); no such object: nothing done (INFERRED)
     crew = sim.members(a[0])
     if crew:
-        mx, my = sum(b.x for b in crew) / len(crew), sum(b.y for b in crew) / len(crew)
         want = str(a[1]).split(':')[-1].lower()
-        goal = min((o for o in sim.living() if o.template.lower() == want),
-                   key=lambda o: math.hypot(o.x - mx, o.y - my), default=None)
-        if goal is not None:
-            _order_bodies(sim, 'move', crew, ('group', True), pos=(goal.x, goal.y))
+        mid = (sum(b.x for b in crew) / len(crew), sum(b.y for b in crew) / len(crew))
+        _to_nearest(sim, 'move', crew, mid, lambda o: o.template.lower() == want)
+
+
+def _to_nearest(sim, kind, crew, at, which):
+    """The crew's group order to the living object `which` takes nearest the point `at`; none: nothing done."""
+    goal = min((o for o in sim.living() if which(o)), key=lambda o: math.hypot(o.x - at[0], o.y - at[1]), default=None)
+    if goal is not None:
+        _order_bodies(sim, kind, crew, ('group', True), pos=(goal.x, goal.y))
 
 
 def team_guard_area_from_position(sim, name, a, script):
@@ -268,12 +272,10 @@ def attack_move_team_to_named_object(sim, name, a, script):
 def attack_move_team_to_nearest_object_of_type_of_player(sim, name, a, script):
     # (team, type, player): the same order as ATTACK_MOVE_TEAM_TO_NAMED_OBJECT, to the player's living object of that
     # type nearest the team's first member (INFERRED: not its middle); none of them: nothing done
-    crew = sim.members(a[0])
-    want = sim.of_types(a[1])
-    goal = crew and min((o for o in sim.living() if o.owner == a[2] and o.template.lower() in want),
-                        key=lambda o: math.hypot(o.x - crew[0].x, o.y - crew[0].y), default=None)
-    if goal:
-        _order_bodies(sim, 'attack_move', crew, ('group', True), pos=(goal.x, goal.y))
+    crew, want = sim.members(a[0]), sim.of_types(a[1])
+    if crew:
+        _to_nearest(sim, 'attack_move', crew, (crew[0].x, crew[0].y),
+                    lambda o: o.owner == a[2] and o.template.lower() in want)
 
 
 def player_set_all_units_to_flee(sim, name, a, script):
