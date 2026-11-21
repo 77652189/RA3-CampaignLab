@@ -524,7 +524,7 @@ def restore(sim, s):
     a module attached in the run (World.attach) is made again the same way. A thing of the new run the snapshot has
     not: an error. Returns the things, serial -> Thing (a thing made bare that nothing of the Sim's holds is held
     only by this: a caller's root, simaisnap)."""
-    check(sim, s)
+    made = check(sim, s)
     have = {b.serial: b for b in _things(sim)}
     things = {}
     every = [(serial, name, template, fields) for _key, serial, name, template, fields in s['bodies']] + s['others']
@@ -553,9 +553,8 @@ def restore(sim, s):
             _write(b, f, e, lambda x: snap.decode(x, things, extra), c)
     sim.bodies.clear()
     sim.bodies.update((key, things[serial]) for key, serial, *_ in s['bodies'])
-    for f, mod, name in s['parts']:     # a part the run made on first use (Sim.harm, Sim.specials ...): made anew
-        if f not in _fields(sim):
-            setattr(sim, f, _maker(mod, name)())
+    for f, part in made.items():    # a part the run made on first use (Sim.harm, Sim.specials ...): check made it
+        setattr(sim, f, part)
     taken = {path for path, _ in s['host']}
     for p, kind in list(_state_paths(sim)):
         if kind == STATE and '.'.join(p) not in taken:
@@ -578,17 +577,19 @@ def _table_state(table=SIM, at=()):
 def check(sim, s):
     """What restore asks of `s` before it writes anything onto `sim` (a wrapper writing its own part first, simaisnap,
     asks it first: review 1119m #1, an older version refused whole, not half restored): its version, its mission,
-    its shape, its setup (level, script: review 1119v P2 #1)."""
+    its shape, its setup (level, script: review 1119v P2 #1). Returns the parts the run made on first use, made
+    anew (restore sets them)."""
     v = version()
     if s.get('version') != v:
         raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {v}')
     if s['mission'] != getattr(sim.m, 'name', None):
         raise ValueError(f'simsnap.restore: a snapshot of {s["mission"]!r} onto {getattr(sim.m, "name", None)!r}')
-    _check(s)
+    made = _check(s, _fields(sim))
     here = _setup(sim)
     differ = [f'{f} {s["setup"][f]!r} onto {v!r}' for f, v in here.items() if s['setup'][f] != v]
     if differ:
         raise ValueError(f'simsnap.restore: a snapshot of another setup: {", ".join(differ)}')
+    return made
 
 
 def _setup(sim):
@@ -600,12 +601,14 @@ def _setup(sim):
     return {'level': sim.level, 'script': snap.encode(sim.script)}
 
 
-def _check(s):
+def _check(s, have):
     """The snapshot's shape, whole, before restore writes anything (review 1119i #6: a snapshot of an older shape
     passed the version and failed half written): its parts, the rows of bodies and others, the host's fields each
-    one SIM sorts STATE, the parts SIM names."""
+    one SIM sorts STATE, the parts SIM names -- one the host has (`have`, its fields) of the row's class, kept; one it
+    has not made here, returned (review 1120gg #1, hh #3: a module of the old file layout, a class that will not be
+    made, refused before a write; the executor's, a class made inside a function, is the host's own)."""
     want = {'version', 'mission', 'setup', 'kernel', 'bodies', 'others', 'parts', 'host', 'executor'}
-    bad = []
+    bad, made = [], {}
     if set(s) != want:
         bad.append(f'parts {sorted(set(s) ^ want)}')
     elif not isinstance(s['setup'], dict) or set(s['setup']) != {'level', 'script'}:
@@ -616,21 +619,22 @@ def _check(s):
         state = set(_table_state())
         bad += [f'host field {r[0] if isinstance(r, list) and r else r!r}' for r in s['host']
                 if not (isinstance(r, list) and len(r) == 2 and r[0] in state)]
-        bad += [f'part {r!r}' for r in s['parts']
-                if not (isinstance(r, list) and len(r) == 3 and isinstance(SIM.get(r[0]), dict) and _maker(*r[1:]))]
+        for r in s['parts']:
+            ok = isinstance(r, list) and len(r) == 3 and isinstance(SIM.get(r[0]), dict)
+            if ok and r[0] in have:
+                ok = [type(have[r[0]]).__module__, type(have[r[0]]).__qualname__] == r[1:]
+            elif ok:
+                try:
+                    made[r[0]] = getattr(importlib.import_module(r[1]), r[2])()
+                except Exception:   # noqa: BLE001 -- whatever stops it being made refuses the snapshot
+                    ok = False
+            if not ok:
+                bad.append(f'part {r!r}')
         kernel = {'made', 'frame', 'used', 'gaps', 'schedule', 'things', 'late'}     # World.snapshot's (review k
         k = s['kernel']                                                             # #3: one missing failed after
         if not isinstance(k, dict) or set(k) != kernel:                             # the executor was written)
             bad.append(f'kernel {sorted(set(k) ^ kernel) if isinstance(k, dict) else type(k).__name__}')
     if bad:
         raise ValueError(f'simsnap.restore: the snapshot is not of this shape ({version()}): {", ".join(bad[:5])}')
-
-
-def _maker(mod, name):
-    """The class a part row names, None if this checkout has no such module or name (review 1120gg #1: a snapshot from
-    before ADR 0036's file move names `simbody`; it failed half restored, the bodies written, the host at frame 0)."""
-    try:
-        return getattr(importlib.import_module(mod), name, None)
-    except ImportError:
-        return None
+    return made
 
