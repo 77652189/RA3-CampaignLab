@@ -557,7 +557,7 @@ def restore(sim, s):
     sim.bodies.update((key, things[serial]) for key, serial, *_ in s['bodies'])
     for f, mod, name in s['parts']:     # a part the run made on first use (Sim.harm, Sim.specials ...): made anew
         if f not in _fields(sim):
-            setattr(sim, f, getattr(importlib.import_module(mod), name)())
+            setattr(sim, f, _maker(mod, name)())
     taken = {path for path, _ in s['host']}
     for p, kind in list(_state_paths(sim)):
         if kind == STATE and '.'.join(p) not in taken:
@@ -619,11 +619,20 @@ def _check(s):
         bad += [f'host field {r[0] if isinstance(r, list) and r else r!r}' for r in s['host']
                 if not (isinstance(r, list) and len(r) == 2 and r[0] in state)]
         bad += [f'part {r!r}' for r in s['parts']
-                if not (isinstance(r, list) and len(r) == 3 and isinstance(SIM.get(r[0]), dict))]
+                if not (isinstance(r, list) and len(r) == 3 and isinstance(SIM.get(r[0]), dict) and _maker(*r[1:]))]
         kernel = {'made', 'frame', 'used', 'gaps', 'schedule', 'things', 'late'}     # World.snapshot's (review k
         k = s['kernel']                                                             # #3: one missing failed after
         if not isinstance(k, dict) or set(k) != kernel:                             # the executor was written)
             bad.append(f'kernel {sorted(set(k) ^ kernel) if isinstance(k, dict) else type(k).__name__}')
     if bad:
         raise ValueError(f'simsnap.restore: the snapshot is not of this shape ({version()}): {", ".join(bad[:5])}')
+
+
+def _maker(mod, name):
+    """The class a part row names, None if this checkout has no such module or name (review 1120gg #1: a snapshot from
+    before ADR 0036's file move names `simbody`; it failed half restored, the bodies written, the host at frame 0)."""
+    try:
+        return getattr(importlib.import_module(mod), name, None)
+    except ImportError:
+        return None
 
