@@ -2447,7 +2447,8 @@ def turning(template, own=None):
     key = (template, (own or {}).get(template))
     if key not in _turning_memo:
         try:
-            normal = _chain(template, own, lambda xml: locomotor.speed_of(locomotor.sets(xml), 'NORMAL'))
+            normal = _chain(template, own, lambda xml: next((s for s in locomotor.sets(xml) if s.condition ==
+                                                             'NORMAL' and s.locomotor), None))   # by name, not speed
         except (OSError, ValueError):
             normal = None
         _turning_memo[key] = _surfaces().get(normal.locomotor) if normal else None

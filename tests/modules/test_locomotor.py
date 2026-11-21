@@ -4,6 +4,7 @@ Sim.add takes. The census against the readers it replaced (stats' speed and surf
 now counts as NORMAL for locomotor_speed too, as stats and turning already read it."""
 import pytest
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
+import engine.data.units as units  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import locomotor as loco  # noqa: E402
@@ -21,6 +22,9 @@ def test_the_sets_the_library_and_the_turn_rule():
     assert loco.turns(lib['Man'], 30.0, 'ground') == (720.0, False)         # none: walks off turning
     assert loco.turns(lib['Tank'], 30.0, 'air') == loco.turns(lib['Tank'], 0.0, 'water') == \
         loco.turns(None, 30.0, 'ground') == (None, False)                     # aircraft, standing, no locomotor
+    own = {'X': '<GameObject id="X" inheritFrom="AlliedAntiVehicleVehicleTech1"><LocomotorSet Speed="=$S" '
+                'Locomotor="TestReactiveLocomotorHUMAN"/></GameObject>'}    # review 1120ii #1: a macro speed (the
+    assert units.turning('X', own).turn_rate == 720.0       # parent's) still turns by its own NORMAL's Locomotor
 
 
 def test_the_state_goes_on_a_moving_thing_only_and_the_forwards_read_it():
