@@ -1,11 +1,12 @@
-"""L5 the button orders (ADR 0029): a ground power, the Tengu's transform, an unpack -- apart from engine.orders.order's
-targeting, chase and moves. Over the world (WORLD_API only); the host through simorder.Peers, reading only PEERS."""
+"""L5 the button orders (ADR 0029): a ground power, the Tengu's transform, an unpack, a run off the map (flee_*) -- apart
+from engine.orders.order's targeting, chase and moves. Over the world (WORLD_API only); the host by simorder.Peers (PEERS)."""
 import math
 
 import engine.data.units as simunits
 from engine.objects.power import UNPACK_POWER, start_reload
 
-PEERS = frozenset({'act', 'powers_off', 'production', 'send', 'toggle_press', 'toggles_of'})
+PEERS = frozenset({'act', 'delete', 'modify', 'powers_off', 'production', 'send', 'toggle_press', 'toggles_of'})
+FLEE_GONE = 3
 
 
 def power_refusal(world, peers, b, power, x, y):
@@ -62,8 +63,7 @@ def order_transform(world, peers, b, power):
         return False, 'gone'
     if not any(tm['power'] == power for tm in peers.toggles_of(b)):
         return False, 'not a toggle of his'
-    why = power_refusal(world, peers, b, power, b.x, b.y)
-    if why:
+    if why := power_refusal(world, peers, b, power, b.x, b.y):
         return False, why
     if not peers.toggle_press(b, 'Command_JAIV_Transform'):
         return False, 'not a toggle of his'
@@ -111,3 +111,40 @@ def order_unpack(world, peers, b, p, button=None, where=None, stand=None, here=F
     if not peers.production.at_site(b, 0.0) and send:
         peers.send(b, p)
     return True
+
+
+def flee_start(world, peers, b):
+    """RunOffMapBehavior (simunits.run_off_map; engine line C round 8, engine_runoffmap a-d, bench 11-06): from the
+    order's frame the body walks straight to the waypoint named `RunOffMap` (none: 1000 along its facing), at its
+    speed, carrying FLEE_OFF_MAP, and FLEE_GONE frames after it arrives it is removed without a death (not dying).
+    The counting scripts' frames give 64064 / 304304 and the 15 frames in the end's area at lag 0, gone 3 (a grid
+    of lag 0-4 x gone 0-5 had that one fit). Not modelled: the path (a straight line), a way that cannot be walked,
+    flying off. A later move or stop takes the run over (stop_flee, engine.orders.order's)."""
+    name = simunits.run_off_map(b.template, world.own)
+    if name is None or not b.alive or b.speed <= 0:
+        return
+    goal = world.waypoints.get(name or 'RunOffMap') or (b.x + 1000.0 * math.cos(b.angle), b.y + 1000.0 * math.sin(b.angle))
+    d = math.hypot(goal[0] - b.x, goal[1] - b.y)
+    b.flee = (world.frame_now(), b.x, b.y, goal[0], goal[1], d, b.speed / simunits.LIFE_FPS)
+    b.path, b.goal, b.mode, b.move_to = [], None, 'idle', None
+    b.script_status.add('FLEE_OFF_MAP')
+    peers.modify(b)
+    world.used.add('flee off map')
+    world.change()
+
+
+def flee_due(world, peers, frame):
+    """One frame of every runner: its place on the straight line, the removal when its time comes."""
+    for b in [b for b in world.living() if getattr(b, 'flee', None)]:
+        f0, x0, y0, x1, y1, d, step = b.flee
+        k = frame - f0
+        walked = min(d, max(0, k) * step) / d if d else 1.0
+        b.x, b.y = x0 + (x1 - x0) * walked, y0 + (y1 - y0) * walked
+        world.change()                          # (the deletion's own too)
+        if walked >= 1.0 and k - math.ceil(d / step - 1e-9) >= FLEE_GONE:
+            b.flee = None
+            peers.delete(b, '逃出地图')
+
+
+def stop_flee(b):
+    b.flee = None

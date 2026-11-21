@@ -2,10 +2,10 @@
 
 The order entries set a body's mode and goal and hand the walk to L2 (`peers.send`): a plain or attack move
 (`order_move`, a group's `order_group`), an attack (`order_attack`), an engineer's capture (`order_capture`), a guard,
-stop / stand, a waypoint path (`order_follow`, `path_start`, `path_next`, `follow_leg`), a run off the map
-(`flee_start`), an object goal dropped or set alone (`drop_goal`, `set_goal`: the skirmish AI's, which writes no body field itself). The dues are
-their frame parts: a capture at the building's side, the next leg of a path, a sequential script's next step, a hunt's
-next pick, a runner's walk out (`capture_due`, `follow_due`, `seq_due`, `hunt_due`, `flee_due`).
+stop / stand, a waypoint path (`order_follow`, `path_start`, `path_next`, `follow_leg`), an object goal dropped or set
+alone (`drop_goal`, `set_goal`: the skirmish AI's, which writes no body field itself). The dues are their frame parts:
+a capture at the building's side, the next leg of a path, a sequential script's next step, a hunt's next pick
+(`capture_due`, `follow_due`, `seq_due`, `hunt_due`). A run off the map is engine.orders.ability's.
 The fight (`fight`, once a tick) is the attack state machine: a team attack goes on to the next member, each armed
 body aims (L3 `aim`) and fires, rounds a blocked line, and chases by itself (`chase_step`: an attack-mover's
 `attack_chase`, anyone else's `idle_chase`).
@@ -23,11 +23,11 @@ import numpy as np
 
 import engine.data.units as simunits
 from engine.kernel import interfaces
+from engine.orders import ability as simability
 from engine.world.handle import CIV, GRID, inside
 
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
-FLEE_GONE = 3
 HUNT_REPICK = 45                    # frames from a hunted target's death to the crew's next pick (fit, hunt_due)
 # an idle unit takes nothing by itself in the mission's first logic frame (bench 11-15 engine_dam BR: a bear 60 from an
 # enemy conscript, NO_ATTACK from 0.1 s = frame 2, never left its 8-half start square; the simulator had it chase from
@@ -70,7 +70,7 @@ def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None, 
     already handed out to a group being ordered, `skip` that group (its members' old goals are dropped first).
     face: the facing (radians) it turns to once there (the AI's form-up slots; send)."""
     if b:
-        b.flee = None                       # INFERRED: any move order takes the run over, as STOP does
+        simability.stop_flee(b)             # INFERRED: any move order takes the run over, as STOP does
         b.follow = None                     # ... and a waypoint path (order_follow sets it again after its legs)
         b.ground_fire = None                # ... and a fire at the ground
         b.mode = 'attack' if attacking else 'move'
@@ -219,7 +219,7 @@ def order_guard(world, peers, b, area):
 def order_stop(b):
     if b:
         b.path, b.goal, b.follow, b.ground_fire = [], None, None, None
-        b.flee = None                       # a later order takes the run over (engine_runoffmap d; the status stays)
+        simability.stop_flee(b)             # a later order takes the run over (engine_runoffmap d; the status stays)
 
 
 def stand(b):
@@ -423,28 +423,6 @@ def follow_due(world, peers):
         follow_leg(world, peers, group, leg)
 
 
-def flee_start(world, peers, b):
-    """RunOffMapBehavior (simunits.run_off_map; engine line C round 8, engine_runoffmap a-d, bench 11-06): from the
-    order's frame the body walks straight to the waypoint named `RunOffMap` (none: 1000 along its facing), at its
-    speed, carrying FLEE_OFF_MAP, and FLEE_GONE frames after it arrives it is removed without a death (not dying).
-    The counting scripts' frames give 64064 / 304304 and the 15 frames in the end's area at lag 0, gone 3 (a grid
-    of lag 0-4 x gone 0-5 had that one fit). Not modelled: the path (a straight line),
-    a way that cannot be walked, flying off."""
-    name = simunits.run_off_map(b.template, world.own)
-    if name is None or not b.alive or b.speed <= 0:
-        return
-    goal = world.waypoints.get(name or 'RunOffMap')
-    if goal is None:
-        goal = (b.x + 1000.0 * math.cos(b.angle), b.y + 1000.0 * math.sin(b.angle))
-    d = math.hypot(goal[0] - b.x, goal[1] - b.y)
-    b.flee = (world.frame_now(), b.x, b.y, goal[0], goal[1], d, b.speed / simunits.LIFE_FPS)
-    b.path, b.goal, b.mode, b.move_to = [], None, 'idle', None
-    b.script_status.add('FLEE_OFF_MAP')
-    peers.modify(b)
-    world.used.add('flee off map')
-    world.change()
-
-
 def hunt_due(world, peers, frame):
     """TEAM_HUNT's crews (Sim.act): one with no living target, its re-pick frame come, attack-moves to the
     hostile object (unit or structure, not civilian) nearest its middle. Bench 11-14 engine_acts_y hunt: an
@@ -471,23 +449,6 @@ def hunt_due(world, peers, frame):
             continue
         h[1] = goal
         order_group(world, peers, movers, (goal.x, goal.y), True)
-
-
-def flee_due(world, peers, frame):
-    """One frame of every runner: its place on the straight line, the removal when its time comes."""
-    for b in world.living():
-        f = getattr(b, 'flee', None)
-        if not f:
-            continue
-        f0, x0, y0, x1, y1, d, step = f
-        k = frame - f0
-        walked = min(d, max(0, k) * step) / d if d else 1.0
-        b.x, b.y = x0 + (x1 - x0) * walked, y0 + (y1 - y0) * walked
-        if walked >= 1.0 and k - math.ceil(d / step - 1e-9) >= FLEE_GONE:
-            b.flee = None
-            peers.delete(b, '逃出地图')
-        else:
-            world.change()
 
 
 def fight(world, peers):

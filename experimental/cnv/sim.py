@@ -1919,16 +1919,16 @@ class Sim:
         return simloop.step(self)
 
     def flee_start(self, b):
-        """simorder.flee_start (L5)."""
-        return simorder.flee_start(self, self._order_peers(), b)
+        """simability.flee_start (L5)."""
+        return simability.flee_start(self, self._order_peers(), b)
 
     def hunt_due(self, frame):
         """simorder.hunt_due (L5)."""
         return simorder.hunt_due(self, self._order_peers(), frame)
 
     def flee_due(self, frame):
-        """simorder.flee_due (L5)."""
-        return simorder.flee_due(self, self._order_peers(), frame)
+        """simability.flee_due (L5)."""
+        return simability.flee_due(self, self._order_peers(), frame)
 
     def lose_health(self, frame):
         """simbody.Life.lose_health (L2): LoseHealthUpdate while the body's own toggle carries its statuses."""

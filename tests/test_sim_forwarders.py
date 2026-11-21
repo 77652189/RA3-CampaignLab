@@ -75,7 +75,8 @@ FORWARDER_CALLS = {
         'follow_due', 'hunt_due', 'lose_health', 'self_power_due', 'seq_due', 'suppression_tick',
         'wfire_due')], 1),
     # simorder's Peers loan
-    ('engine.orders.order', 'delete'): 3, ('engine.orders.order', 'modify'): 1, ('engine.orders.order', 'send'): 11, ('engine.orders.ability', 'send'): 1, ('engine.orders.ability', 'toggle_press'): 1,
+    ('engine.orders.order', 'delete'): 2, ('engine.orders.order', 'send'): 11,
+    ('engine.orders.ability', 'delete'): 1, ('engine.orders.ability', 'modify'): 1, ('engine.orders.ability', 'send'): 1, ('engine.orders.ability', 'toggle_press'): 1,
     # simsweep's Peers loan (simpullback's order_move went through the command port, R3 13f-1)
     ('engine.combat.sweeps', 'destroy'): 1,
     # simai's Peers loan (step 9d-2, R: the calls it made on self.sim before, counted since it joined the registry;
@@ -92,7 +93,7 @@ FORWARDER_CALLS = {
     ('engine.script.cond_object', 'living'): 8, ('engine.script.cond_player', 'living'): 1, ('engine.script.cond_vision', 'living'): 3,
     ('engine.script.cond_world', 'living'): 1, ('engine.combat.host', 'living'): 2, ('engine.combat.meta_impact', 'living'): 1, ('engine.objects.garrison', 'living'): 1,
     ('engine.objects.infiltrator', 'living'): 3, ('engine.objects.mine', 'living'): 4, ('engine.objects.modifier', 'living'): 1,
-    ('engine.orders.order', 'living'): 5, ('engine.orders.ability', 'living'): 1,('simproxy', 'living'): 3, ('engine.ai.pullback', 'living'): 1,
+    ('engine.orders.order', 'living'): 4, ('engine.orders.ability', 'living'): 2, ('simproxy', 'living'): 3, ('engine.ai.pullback', 'living'): 1,
     ('engine.objects.special', 'living'): 2, ('engine.combat.sweeps', 'living'): 1,
 }
 

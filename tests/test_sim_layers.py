@@ -123,7 +123,7 @@ FIELD_OWNER = {'heal_at': 'engine.modules.autoheal', 'hurt': 'engine.modules.aut
                'toggle_at': 'engine.modules.toggle', 'armor_up': 'engine.modules.toggle',
                'wfires': 'engine.objects.special', 'leaps_due': 'engine.objects.special', 'leap_ground_hits': 'engine.objects.special',
                'movement_due': 'engine.objects.special', 'self_bits_due': 'engine.objects.special',
-               'flee': 'engine.orders.order', 'follow': 'engine.orders.order', 'move_to': 'engine.orders.order', 'unpack_here': 'engine.orders.ability',
+               'flee': 'engine.orders.ability', 'follow': 'engine.orders.order', 'move_to': 'engine.orders.order', 'unpack_here': 'engine.orders.ability',
                **dict.fromkeys(('incoming', 'projectile_hits', 'projectile_speeds', 'impact_body', 'knock_drowns',
                                 'dots', 'cold_on', 'lift_modules', 'nugget_powers', 'hit_reaction_of'), 'engine.combat.host'),
                'spot': 'engine.orders.order',
