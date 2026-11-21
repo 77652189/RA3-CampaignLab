@@ -1,0 +1,21 @@
+# Bench readings of checks/engine_detector.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E156 bench 2026-11-15 (CampDetectEA_mcp_1115_150500, work/re/e156_detector.md): 揭露 is on 1 / off 10 / far 100
+# (a retail dog at 150, the same without StealthDetectorUpdate at 150, a retail dog at 450), each target under a
+# mirage aura; the dogs deleted at 15 s. Frames from the 帧数 counter.
+
+[[reading]]
+id = "a_dog_in_range_shows_the_hidden_target_and_its_mark_goes_with_it"
+scene = {build = "engine_detector", check = "a", until = 23}
+bench = "揭露 1 f112-f226, 0 f234-f415 (the dogs deleted at 15 s); off and far never; 存活 111 throughout; 证据 3 from f271"
+proves = "物体模块 StealthDetectorUpdate: an enemy detector within DetectionRange shows the target an aura hides (INVISIBLE_DETECTED); none without the module or out of range; the mark goes with the detector"
+item = "物体模块 Behaviors/StealthDetectorUpdate"
+expect = ["win(8, 15, '揭露') == [1] * 8", "win(16, 22, '揭露') == [0] * 7",
+          "win(19, 22, '证据') == [3] * 4", "all(r['存活'] == 111 for r in rows)"]
+
+[[reading]]
+id = "the_first_reveal_comes_about_7_s_in"
+scene = {build = "engine_detector", check = "a", until = 23}
+bench = "揭露 0 f45-f105, 1 from f112 (the dog's first scans see the target before the aura hides it)"
+proves = "物体模块 StealthDetectorUpdate: when the first reveal comes"
+expect = "win(3, 6, '揭露') == [0] * 4"
+mismatch = "sim 1 from s1 (f16: the host takes the detector every tick from the start); bench 0 to f105"

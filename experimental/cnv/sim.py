@@ -2040,14 +2040,10 @@ class Sim:
                 self.used.add('combat')
 
     def cloaked(self, live):
-        """ids of the bodies an InvisibilityBroadcastUpdate hides this tick (simunits.invis_broadcast; engine line C
-        round 9, engine_stealth a / b, bench 11-05, docs/engine/stealth.md 1-2): a broadcaster carrying the status its
-        ObjectStatusValidation wants (the mirage tank: GENERIC_TOGGLE_STATE, which a script gives) hides what its filter
-        takes within BroadcastRange, centre to centre (relation, KindOf, status exclusions; not itself unless AffectsSelf).
-        A hidden body is no target for the other side while the aura holds -- an attack order on it stays, fire starts
-        the moment it shows and stops the moment it hides (bench 开关血 / 后隐血). Taken every tick, not on the
-        UpdatePeriod (0.2 s, finer than the tick; the entry's own lifetime not read). Not modelled: a detector's
-        reveal (StealthDetectorUpdate, ~6 s in on the bench), the garrison's stealth template."""
+        """ids of the bodies an InvisibilityBroadcastUpdate hides this tick, no targets (simunits.invis_broadcast; bench
+        engine_stealth a / b, docs/engine/stealth.md 1-2): a broadcaster with its ObjectStatusValidation's status hides
+        what its filter takes within BroadcastRange, each tick; an enemy detector within reach shows it again with
+        INVISIBLE_DETECTED (engine/modules/detector.py, engine_detector:a). Not modelled: the garrison's template."""
         cache = self.__dict__.setdefault('_invis', {})
         out = set()
         for e in live:
@@ -2062,9 +2058,13 @@ class Sim:
                     continue
                 if math.hypot(t.x - e.x, t.y - e.y) <= r['range']:
                     out.add(t.serial)
+        shown = {t.serial for t in live if t.serial in out and any(d.sees(t, self.relation(e.owner, t.owner))
+                                                                   for e in live for d in e.find(kernel_interfaces.Detector))}
+        for t in live:
+            (t.status.add if t.serial in shown else t.status.discard)('INVISIBLE_DETECTED')
         if out:
             self.used.add('stealth')
-        return out
+        return out - shown
 
     @property
     def incoming(self):
