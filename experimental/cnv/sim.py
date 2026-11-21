@@ -359,7 +359,6 @@ class Body(kernel_module.Thing):
     fired_at: float = None                                      # a bombarder's last shot (seen by all a while)
     building: tuple = None                                      # (structure, (x, y), stand): told to build there (R5)
     replace: bool = False                                       # building = its ReplaceSelfSpecialAbility: it turns into it
-    drive_speed: float = 0.0
     jet_started: bool = False
     z: float = None                                         # None: on terrain; airborne MetaImpact sets world z
     unpack_parent: object = None                                # SpawnOnUnpack's producer, outlived and never replaced (M10)
@@ -397,7 +396,7 @@ class Body(kernel_module.Thing):
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules',
                 'lies', 'linger', 'weapons', 'slots', 'speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face',
                 'hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'set_off', 'stood_for', 'frame_move', 'jet_motion', 'rolling', 'carry', 'stops_at',
-                'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged', 'follow', 'move_to')
+                'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged', 'follow', 'move_to', 'drive_speed')
     hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
     max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
@@ -472,6 +471,7 @@ class Body(kernel_module.Thing):
     rolling = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.rolling, False)  # M3 3: drive's
     carry = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.carry, 0.0)
     stops_at = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.stops_at, -1.0)
+    drive_speed = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.drive_speed, 0.0)  # M4: drive's
 
 from engine.world.handle import inside, same_team  # noqa: E402,F401  (point in polygon, a team as a script names it, L0)
 

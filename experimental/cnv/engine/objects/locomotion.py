@@ -51,7 +51,7 @@ def go_to(world, b, target, reach, face, frame_movers, topples):
         for a, z in zip(points, points[1:])))
     if b.frame_move:
         if not b.path:
-            b.drive_speed = 0.0
+            locomotor.write(world, b, drive_speed=0.0)
         frame_movers[b.name] = b
     else:
         frame_movers.pop(b.name, None)
@@ -124,7 +124,8 @@ def drive(world, b, dt, precise, targets, entry, at_site):
         speed, acceleration = simtopple.motion(b.template, world.own)
         base = simunits.stats(b.template, world.own)['speed']
         speed = speed * b.speed / base if speed is not None and base else b.speed
-        b.drive_speed = min(speed, b.drive_speed + speed * dt / acceleration) if acceleration else speed
+        locomotor.write(world, b, drive_speed=min(speed, b.drive_speed + speed * dt / acceleration)
+                        if acceleration else speed)
         left = b.drive_speed * (dt - spent)
     walked, x0, y0, stopped = left, b.x, b.y, False
     reach = None if precise else targets(b)
