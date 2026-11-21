@@ -157,12 +157,14 @@ def main():
            '-C', a.dir, *sum((['--add-dir', d] for d in a.read_dir), []), '--json', '-o', out, prompt]
     before = changed(a.dir)
     t0, ended, usage = time.time(), 'ok', None
-    with open(events, 'w', encoding='utf-8') as ev:
+    # stderr to a file, not a pipe: a grandchild Codex leaves running holds a pipe open, and run() then waits on it
+    # past the timeout (11-20: queue b stuck six hours on an answered brief)
+    with open(events, 'w', encoding='utf-8') as ev, open(base + '.stderr.txt', 'w+', encoding='utf-8') as err:
         try:
-            r = subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=ev, stderr=subprocess.PIPE, text=True,
-                               encoding='utf-8', errors='replace', timeout=a.minutes * 60)
+            r = subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=ev, stderr=err, timeout=a.minutes * 60)
             if r.returncode:
-                ended = f'exit {r.returncode}: ' + (r.stderr.strip().splitlines() or [''])[-1][:300]
+                err.seek(0)
+                ended = f'exit {r.returncode}: ' + (err.read().strip().splitlines() or [''])[-1][:300]
         except subprocess.TimeoutExpired:
             ended = 'timeout'
     with open(events, encoding='utf-8', errors='replace') as ev:

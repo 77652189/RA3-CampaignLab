@@ -51,7 +51,7 @@ def run_one(brief, minutes, done_dir):
                               stdout=out, stderr=subprocess.STDOUT, cwd=ROOT).returncode
     os.makedirs(done_dir, exist_ok=True)
     base = os.path.splitext(brief)[0]
-    for p in [brief] + glob.glob(base + '.answer.md') + glob.glob(base + '.events.jsonl'):
+    for p in [brief] + glob.glob(base + '.answer.md') + glob.glob(base + '.events.jsonl') + glob.glob(base + '.stderr.txt'):
         shutil.move(p, os.path.join(done_dir, os.path.basename(p)))
     return {'brief': os.path.basename(brief), 'tree': tree, 'log': log, 'exit': code,
             'seconds': round(time.time() - t0)}
