@@ -28,3 +28,21 @@ bench = "E160 (bench 11-15): first / second / power-and-supports f114 = 1 / 1 / 
 proves = "the two-provider scene's prerequisites: two same-template dishes deleted by name one at 12 s and one at 24 s, the yard, the plant and PLAYER_HAS_POWER throughout (the radar going only with the last one is the HUD's, not read here)"
 let = {at = "lambda f: [[r[k] for k in ('宿主量', '第二宿主', '供电量')] for r in rows if r['帧数'] <= f][-1]"}
 expect = ["at(114) == [1, 1, 1]", "at(197) == [0, 1, 1]", "at(386) == [0, 0, 1]"]
+
+[[reading]]
+id = "the_dish_is_hurt_at_6_s_and_killed_at_12_s"
+scene = {build = "engine_radardeath", check = "a", until = 26}
+bench = "E161 (bench 11-15): gone / HP / power-and-supports f87 = 0 / 100 / 1, f95 and f173 = 0 / 50 / 1, f182 / f192 / f374 = 1 / 0 / 1 (500 HP, NAMED_DAMAGE 250 at 6 s, 1000 at 12 s); HUD terrain to f173, the off transition at f182, the emblem after; the check's expectations PASS"
+proves = "the death scene's prerequisites: NAMED_DAMAGE halves the 500 HP dish, the second kills it (NAMED_DESTROYED), the yard, the plant and PLAYER_HAS_POWER stay (the radar going with the death is the HUD's, not read here)"
+let = {at = "lambda f: [[r[k] for k in ('死亡', '血量', '供电前置')] for r in rows if r['帧数'] <= f][-1]"}
+expect = ["at(87) == [0, 100, 1]", "at(173) == [0, 50, 1]", "[r['帧数'] for r in rows if r['死亡']][0] == 196", "at(374)[0::2] == [1, 1]",
+          "verdicts() and all(ok for ok, _ in verdicts())"]
+
+[[reading]]
+id = "the_killed_dish_reads_0_health"
+scene = {build = "engine_radardeath", check = "a", until = 26}
+bench = "E161: the health counter (SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER every frame, the script listed before the lethal NAMED_DAMAGE) reads 0 at f182 / f192 / f374"
+proves = "脚本动作 SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of an object a script's damage killed: 0 the frames after (the dish's SlowDeath keeps it in the world; INFERRED)"
+expect = "[at(f)[1] for f in (196, 374)] == [0, 0]"
+let = {at = "lambda f: [[r[k] for k in ('死亡', '血量', '供电前置')] for r in rows if r['帧数'] <= f][-1]"}
+mismatch = "sim 50 / 50 at f196 (the first once-a-second row after the death at f182) / f374 (engine/script/act_world.py: 0 only when the health script runs after the kill in the same frame, else the last value); bench 0 / 0"
