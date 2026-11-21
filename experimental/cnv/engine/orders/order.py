@@ -147,10 +147,9 @@ def order_attack(world, peers, b, target_name, force=False):
         #                 13: FORCE_ATTACK_NAMED is the order that takes any relation); a neutral one not benched, kept
     if not (b and target and target.alive and b.alive):
         return False
-    if b.hold_paused:                       # an order given under HOLD_FIRE fires (stance.md b)
-        b.aiupdate.hold_paused = False
-    if b.goal is not target:
-        b.aiupdate.command('attack', target)
+    walk = b.goal is not target or b.mode != 'attack'   # a goal the AI's pursuit set alone is not on it (review jj #1)
+    b.aiupdate.command('attack', target)
+    if walk:
         b.follow = None
         peers.send(b, (target.x, target.y), reach=peers.reach(b, target))
     return True

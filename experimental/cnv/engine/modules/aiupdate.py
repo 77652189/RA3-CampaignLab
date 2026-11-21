@@ -26,7 +26,10 @@ class AIOrderState(module.Module, interfaces.AIUpdate):
     def command(self, order, target=None):
         """An order's own writes (C2; the port resolves unit and target, keeps the walk): 'attack' (`target` its goal,
         attacking), 'goal' (`target` its goal alone: the AI's pursuit, INFERRED e135), 'stop' (no goal), 'idle' (no
-        goal, idle), 'ground' (idle, firing at the point `target` till another order); all but 'goal' end a ground fire."""
+        goal, idle), 'ground' (idle, firing at the point `target` till another order); all but 'goal' end a ground fire.
+        An attack given under HOLD_FIRE fires (stance.md b)."""
+        if order == 'attack':
+            self.hold_paused = False
         if order != 'goal':
             self.ground_fire = target if order == 'ground' else None
         self.goal = target if order in ('attack', 'goal') else None
