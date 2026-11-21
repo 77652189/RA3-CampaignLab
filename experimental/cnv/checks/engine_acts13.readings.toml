@@ -33,3 +33,21 @@ press's reading on, no bomber counted anywhere"""
 proves = "sim act_ability._drop, the player's store and the computer's: GIs round each spot within a reading, no bomber counted"
 let = {at = "dict(zip(times, vals(rows)))"}
 expect = "all(at[k][3] == 1100 for k in range(3, 27))"
+
+[[reading]]
+id = "acts_wing_takes_off"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAS_Transform"
+scene = {build = "engine_acts_wing", check = "all", until = 19}
+bench = """all, bench 11-21 `run_queue engine_acts_wing:all` (CampActsWingAll_mcp_1121_092207, round 278; bench row s_k = simulator \
+k + 1): 态 1111 s2-s4, 1101 s5, 101 s6-s19; 岸 0 s1-s8, 1 s9-s19"""
+proves = """sim the toggle's LocomotorSet takes its Locomotor's Surfaces too (engine/objects/toggle.entered): the Sea-Wing pressed is \
+TRANSFORMATION_TOGGLE_STATE and AIRBORNE_TARGET from the press's reading (SUPERSONIC: Surfaces AIR; UNIT_HAS_OBJECT_STATUS \
+reads module.status_now), flies over the bank to its land point (WT, a reading after the bench's: the jet's start-up, R2's); \
+pressed again it is back on the water (WB: the bench holds AIRBORNE_TARGET a reading longer, its landing not modelled) and \
+stays there with the never pressed WP"""
+let = {at = "dict(zip(times, vals(rows)))", first = "min(t for t in at if at[t][1])"}
+expect = [
+    "[at[k] for k in (2, 3, 4, 5)] == [[0, 0], [1111, 0], [1111, 0], [1111, 0]]",
+    "at[6][0] in (101, 1101) and all(at[k][0] == 101 for k in range(7, 19))",
+    "abs(first - 10) <= 1 and all(at[k][1] == 1 for k in range(first, 19))",
+]

@@ -1,6 +1,6 @@
 """The Locomotor family's data (move_pack M2 step 1, ADR 0029): a GameObject's <LocomotorSet>s and the
 <LocomotorTemplate>s of GlobalData/Locomotor.xml they name -- a named resource, not a module, like a WeaponTemplate.
-simunits' readers (stats' speed and surface, turning, locomotor_speed) walk the chain and read each text here.
+simunits' readers (stats' speed and surface, turning, locomotor_of) walk the chain and read each text here.
 Step 2: a thing's locomotion state (LocomotorState), the four Body fields speed / surface / turn_rate / turn_first;
 step 3: path / dest / face; M3 step 1: go_to's set_off / stood_for / frame_move / jet_motion; M4: drive_speed;
 M5 3b: progress, the command family's read of the way still to go."""

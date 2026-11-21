@@ -73,7 +73,7 @@ class Specials:
         old_speed = b.base['speed'] if b.base is not None else b.speed
         jobs[b.serial] = (now + sp['duration'], b, new, old_speed)
         b.script_status |= new
-        speed = simunits.locomotor_speed(b.template, world.own, sp['locomotor']) if sp['locomotor'] else None
+        speed = simunits.locomotor_of(b.template, world.own, sp['locomotor'])[0] if sp['locomotor'] else None
         if speed is not None and b.base is not None:
             b.base['speed'] = speed
         xml = world.xml_of(b.template)

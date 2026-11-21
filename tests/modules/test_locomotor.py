@@ -1,7 +1,7 @@
 """engine.modules.locomotor (move_pack M2 step 1): the LocomotorSet / LocomotorTemplate readers and the turn rule
-Sim.add takes. The census against the readers it replaced (stats' speed and surface, turning, locomotor_speed):
+Sim.add takes. The census against the readers it replaced (stats' speed and surface, turning, locomotor_of):
 3448 retail + 88 mission-own templates, one difference -- BaseMagneticSatelliteEffect's set writes no Condition and
-now counts as NORMAL for locomotor_speed too, as stats and turning already read it."""
+now counts as NORMAL for locomotor_of too, as stats and turning already read it."""
 import pytest
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import engine.data.units as units  # noqa: E402

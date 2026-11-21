@@ -28,6 +28,7 @@ RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j0
                    'Command_UnPackJapanBaseDefenseEgg', # a Japanese egg unfolds (engine_unpack egg)
                    'Command_JAIV_Transform',            # the Tengu transforms (JapanAntiInfantryVehicle)
                    'Command_JAAVT1_Transform',          # the VX transforms (JapanAntiAirVehicleTech1)
+                   'Command_JAAS_Transform',            # the Sea-Wing takes off (JapanAntiAirShip, engine_acts_wing)
                    'Command_ToggleSpiderHole',          # the Tankbuster digs in (engine_acts_btn SH)
                    'Command_SovietAntiGroundAircraftEvacuate',  # the Twinblade lands its passengers (EVACUATE)
                    'Command_ToggleMirageField',         # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)

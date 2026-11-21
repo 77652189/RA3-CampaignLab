@@ -106,3 +106,17 @@ def test_the_record_keeps_toggle_at_and_armor_up_where_the_fields_were():
     state = simrecord.body_state(s.bodies['t'])
     assert (state['toggle_at'], state['armor_up']) == ({}, False)
     assert not {'at', 'moved', 'due_at'} & set(state)       # several toggles a thing: one record field for all
+
+
+def test_a_state_s_locomotor_set_brings_its_surfaces_the_sea_wing_up_and_down_again():
+    import engine.script.cond_object as cond
+    s = _world()
+    s.add('w', 'JapanAntiAirShip', 'Player_1', 100.0, 100.0)      # NORMAL: DEEP_WATER; SUPERSONIC: AIR, 150
+    b = s.bodies['w']
+    (m,) = [t for t in b.find(interfaces.Toggle) if t.rules()['power'] == 'SpecialPower_JAAS_Transform']
+    up = lambda: cond.unit_has_object_status(s, 'UNIT_HAS_OBJECT_STATUS', ['w', 'AIRBORNE_TARGET'])  # noqa: E731
+    assert (b.surface, b.speed, up()) == ('water', 125.0, False)
+    m.press(_made(s))
+    assert (b.surface, b.speed, up()) == ('air', 150.0, True)       # engine_acts_wing WT: up from the press
+    m.press(_made(s) + 1)
+    assert (b.surface, b.speed, up()) == ('water', 125.0, False)    # WB: back on the water

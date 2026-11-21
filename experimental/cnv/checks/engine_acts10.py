@@ -35,7 +35,7 @@ Counters:
     EJ as predicted (one out every 1.25 s from the press). EV: the men ENCLOSED inside (the XML's ObjectStatusOfContained
     says UNSELECTABLE NO_ATTACK only), all three out together 1-2 s after the press (simgarrison.EVACUATE_DELAY 1.5,
     INFERRED). TB as round 152's J. SH as predicted: the order given in the hole did not move it. TT s9 / VT s11 /
-    TP s12 / VP s15: the SUPERSONIC locomotors (simunits.locomotor_speed). The simulator after: 弹 / 队 / 态 the same
+    TP s12 / VP s15: the SUPERSONIC locomotors (simunits.locomotor_of). The simulator after: 弹 / 队 / 态 the same
     every row from s2, 到 within 1 s.
 """
 from maps import probe_border

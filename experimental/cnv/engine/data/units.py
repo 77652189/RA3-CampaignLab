@@ -2422,15 +2422,17 @@ def upgrade_mods(xml, upgrades):
     return out
 
 
-def locomotor_speed(template, own, condition):
-    """The Speed of the template's LocomotorSet for that Condition (NORMAL, SUPERSONIC ...), up its chain; None when
-    it has none (a toggle's state switches it: the Tengu's jet 200 against 100 on the ground)."""
+def locomotor_of(template, own, condition):
+    """(Speed, its Locomotor's Surfaces) of the template's LocomotorSet for that Condition (NORMAL, SUPERSONIC ...), up
+    its chain; (None, []) when it has none (a toggle's state switches it: the Tengu's jet 200 against 100 on the
+    ground; the Sea-Wing's SUPERSONIC on AIR, engine_acts_wing)."""
     from engine.modules import locomotor
     try:
-        return _chain(template, own, lambda xml: getattr(locomotor.speed_of(locomotor.sets(xml), condition), 'speed',
-                                                         None))
+        found = _chain(template, own, lambda xml: locomotor.speed_of(locomotor.sets(xml), condition))
     except (OSError, ValueError):
-        return None
+        found = None
+    loco = _surfaces().get(found.locomotor) if found else None
+    return (found.speed if found else None), (loco.surfaces if loco else [])
 
 
 _turning_memo = {}

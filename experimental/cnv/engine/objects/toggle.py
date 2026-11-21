@@ -44,11 +44,13 @@ def entered(world, b, m, modify):
         world.used.add('miner armor')
     modify(b)
     loc = tm['states'][m.state()].get('locomotor')
-    speed = simunits.locomotor_speed(b.template, world.own, loc) if loc else None
+    speed, surf = simunits.locomotor_of(b.template, world.own, loc) if loc else (None, [])
     if speed:
+        # engine_acts_wing (round 278): the Sea-Wing's SUPERSONIC set (Surfaces AIR) took it up the press's second
+        # (AIRBORNE_TARGET) and over the bank; NORMAL (DEEP_WATER) back on the water
         if b.base is not None:
             b.base['speed'] = speed
-        locomotor.write(world.world, b, speed=speed)
+        locomotor.write(world.world, b, speed=speed, **({'surface': locomotor.surface_of(surf, b.kinds)} if surf else {}))
     world.used.add('toggle')
     world.change()
 

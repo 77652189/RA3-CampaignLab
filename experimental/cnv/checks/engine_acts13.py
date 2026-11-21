@@ -123,5 +123,45 @@ def all_(m):
     return t
 
 
-MISSION = {'engine_acts_wet': mission}
-CHECKS = {'engine_acts_wet': {'all': all_}}
+WING = 'JapanAntiAirShip'                          # the Sea-Wing: on the water, Command_JAAS_Transform takes it up
+WINGS = {'WT': 2200.0, 'WB': 2300.0, 'WP': 2400.0}  # x in the trench, all at y 3200
+SHORE = 650.0                                      # each one's land point, north of it (y 3850: past the bank)
+BACK = PRESS + 3.0
+
+
+def wing_mission():
+    """Round 278 (j05's AAS -> AVA, 7 uses): WT pressed at PRESS, WB at PRESS and again at BACK, WP never; all three
+    MOVEd to their land point a second after BACK. [the second ToggleState: TRANSFORMATION_TOGGLE_STATE, LocomotorSet
+    SUPERSONIC 150, the JetAIUpdate: WT flies over the bank (~650 at 150); WB / WP on the water locomotor stay put]"""
+    m = Mission(name='CampActsWing', map=probe_air, units=[], facts={})
+    m.spawns |= {WING}
+    o = probe_air.SITES[SEA]
+    for row, x in WINGS.items():
+        m.put(WING, SEA, x - o.x, 3200.0 - o.y, angle=1.5708, name=_n(row), role=row.lower())
+        m.waypoint(f'shore {row}', f'CNV A13 Shore {row}', SEA, x - o.x, 3200.0 + SHORE - o.y)
+    return m
+
+
+def wing(m):
+    """态 = WT TRANSFORMATION_TOGGLE_STATE + 10 x WB's + 100 x WT AIRBORNE_TARGET + 1000 x WB's;
+    岸 = WT in its land square (100) + 10 x WB + 100 x WP."""
+    t = Test()
+    s8.at(t, 'hold', 0.1, [('UNIT_CHANGE_OBJECT_STATUS', _n(r), status('NO_ATTACK'), 1) for r in WINGS] +
+          [('MAP_REVEAL_ALL_PERM', m.player('p1'))])
+    s8.at(t, 'press', PRESS, [('NAMED_USE_COMMANDBUTTON_ABILITY', _n(r), 'Command_JAAS_Transform') for r in ('WT', 'WB')])
+    s8.at(t, 'back', BACK, [('NAMED_USE_COMMANDBUTTON_ABILITY', _n('WB'), 'Command_JAAS_Transform')])
+    s8.at(t, 'move', BACK + 1.0, [('MOVE_NAMED_UNIT_TO', _n(r), m.mark(f'shore {r}')) for r in WINGS])
+    for r in WINGS:
+        t.areas[f'Test A13 Shore {r}'] = square(*m.point(f'shore {r}'), 100.0)
+    has = lambda r, bit: ('UNIT_HAS_OBJECT_STATUS', _n(r), status(bit))  # noqa: E731
+    s8.total(t, 'CNV_A13_Wing', '态', [(1, has('WT', 'TRANSFORMATION_TOGGLE_STATE')),
+                                       (10, has('WB', 'TRANSFORMATION_TOGGLE_STATE')),
+                                       (100, has('WT', 'AIRBORNE_TARGET')), (1000, has('WB', 'AIRBORNE_TARGET'))])
+    s8.total(t, 'CNV_A13_Shore', '岸', [(w, ('NAMED_INSIDE_AREA', _n(r), f'Test A13 Shore {r}'))
+                                        for r, w in (('WT', 1), ('WB', 10), ('WP', 100))])
+    s8.watch(t, 18.0)
+    return t
+
+
+MISSION = {'engine_acts_wet': mission, 'engine_acts_wing': wing_mission}
+CHECKS = {'engine_acts_wet': {'all': all_}, 'engine_acts_wing': {'all': wing}}
