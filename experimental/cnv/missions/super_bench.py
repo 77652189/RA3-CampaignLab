@@ -31,6 +31,7 @@ PSI_DIST = {0: (0.0, 0.0), 150: (150.0, 0.0), 250: (250.0, 0.0), 350: (350.0, 0.
 VAC, POWER_V = 'SovietSuperWeaponAdvanced', 'SpecialPowerVacuumBomb'
 VAC_AT, VAC_SPOT = (-300.0, -500.0), (270.0, -600.0)
 VAC_DIST = {0: (0.0, 0.0), 150: (150.0, 0.0), 280: (280.0, 0.0), 350: (-350.0, 0.0)}
+FT_AT = {'ft a': (0.0, -450.0), 'ft b': (0.0, -1250.0)}   # engine_scripts8bs: p1's crew Ft; vtargets 0 / 350 s4's crew Vt
 
 # g / h: curtain radius with one foe per tank (checks/engine_super.py): spot and tank directions, far from any base
 RAD_SPOTS = {'g': ('Test Radius Spot', (-110.0, 1355.0)), 'h': ('Test Radius Far', (1170.0, -75.0)),
@@ -44,7 +45,7 @@ def _n(part):
     return f'UNIT - CNV Super {part}'
 
 
-def mission(name='CampSuper'):
+def mission(name='CampSuper', crews=False):
     m = Mission(name=name, map=resources.measured(niagara), units=[], facts={})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies'}
     m.spawns |= {COLLIDER, CURTAIN, TARGET, TANK, VAC, NANO, PSI}
@@ -63,8 +64,11 @@ def mission(name='CampSuper'):
     m.put(VAC, SITE, *VAC_AT, angle=0.0, role='vacuum', name=_n('Vacuum'))
     m.waypoint('vacuum spot', 'Test Vacuum Spot', SITE, *VAC_SPOT)
     for d, (dx, dy) in VAC_DIST.items():
-        m.put(TARGET, SITE, VAC_SPOT[0] + dx, VAC_SPOT[1] + dy, side='s1', angle=0.0, role=f'vtarget {d}',
-              name=_n(f'VTarget {d}'))
+        vt = crews and d in (0, 350)
+        m.put(TARGET, SITE, VAC_SPOT[0] + dx, VAC_SPOT[1] + dy, side='s4' if vt else 's1', angle=0.0,
+              role=f'vtarget {d}', name=_n(f'VTarget {d}'), props={'originalOwner': m.crew('Vt', 's4')} if vt else {})
+    for role, (x, y) in FT_AT.items() if crews else ():
+        m.put(TANK, SITE, x, y, angle=0.0, role=role, name=_n(role.title()), props={'originalOwner': m.crew('Ft')})
     for d, (dx, dy) in FOE_AT.items():
         m.put(TANK, SITE, CURTAIN_SPOT[0] + dx, CURTAIN_SPOT[1] + dy, side='s1', angle=0.0,
               role=f'foe {d}', name=_n(f'Foe {d}'))
@@ -86,4 +90,4 @@ def mission(name='CampSuper'):
     return m
 
 
-MISSION = {'engine_super': mission, 'engine_scripts8bs': lambda: mission('CampS8bS')}   # checks/engine_scripts8b
+MISSION = {'engine_super': mission, 'engine_scripts8bs': lambda: mission('CampS8bS', True)}   # checks/engine_scripts8b

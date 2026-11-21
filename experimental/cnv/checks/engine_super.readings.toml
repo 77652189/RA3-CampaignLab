@@ -86,3 +86,19 @@ expect = [
     "abs(rows[-1]['满血帧'] - 56) <= 1 and rows[-1]['血0'] == 44 and rows[-1]['施放数'] == 2",
     "24 <= times[first('施放数', lambda v: v == 2)] <= 26",
 ]
+
+[[reading]]
+id = "scripts8b_the_nearest_of_the_target_players_type_to_the_crews_middle_is_hit"
+item = "脚本动作 FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER"
+scene = {build = "engine_scripts8bs", check = "near", until = 21}
+bench = "near, bench 11-21 CampS8bSNear_mcp_1121_151706: 血0 / 血150 / 血280 / 血350 100 to s7, 62 / 44 / 48 / 100 at s8, end 21 / 44 / 2 / 100 -- s1's vtarget 150 (nearest the crew's middle) hit, s4's 350 (nearer, another owner) whole (sim end 6 / 44 / 11 / 100)"
+proves = "sim FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER: the player's power at the target player's object of the type nearest the middle of the crew, not another owner's nearer one (act_ability)"
+expect = "rows[-1]['血150'] == 44 and rows[-1]['血0'] < 50 and rows[-1]['血280'] < 50 and rows[-1]['血350'] == 100"
+
+[[reading]]
+id = "scripts8b_the_power_on_a_team_goes_to_its_middle"
+item = "脚本动作 FIRE_SPECIAL_POWER_ON_TEAM"
+scene = {build = "engine_scripts8bs", check = "team", until = 21}
+bench = "team, bench 11-21 CampS8bSTeam_mcp_1121_151922: 血0 / 血150 / 血280 / 血350 100 to s7, 53 / 100 / 100 / 65 at s8, end 11 / 100 / 100 / 27 -- crew Vt's two (0 and 350, 350 apart) both hit, 150 (150 off member 0) whole: the middle, not the first member (sim end 7 / 100 / 100 / 7)"
+proves = "sim FIRE_SPECIAL_POWER_ON_TEAM: the player's power at the middle of the team's members (act_ability)"
+expect = "rows[-1]['血0'] < 50 and rows[-1]['血350'] < 50 and rows[-1]['血150'] == rows[-1]['血280'] == 100"
