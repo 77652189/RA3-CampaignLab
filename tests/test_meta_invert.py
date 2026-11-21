@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location('invert_simbench', ROOT / 'experimental/cnv/simbench.py')
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
+from engine.combat.host import impact_ground_z  # noqa: E402
 
 
 def test_meta_invert_probe_keeps_retail_filter_and_changes_only_inversion():
@@ -117,7 +118,7 @@ def test_meta_invert_collision_replays_native_neighbour_frames(lane, collision, 
         e.eng.frame = frame
         e.move(1/15)
         e.deal(1/15)
-        assert (near.x, near.y, e.impact_ground_z(near.x, near.y) if near.z is None else near.z
+        assert (near.x, near.y, impact_ground_z(e, near.x, near.y) if near.z is None else near.z
                 ) == pytest.approx(xyz, abs=.051)
     assert near.serial not in e.impact_flights
 

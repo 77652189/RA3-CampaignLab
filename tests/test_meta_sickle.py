@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location('sickle_simbench', ROOT / 'experimental/cnv/simbench.py')
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
+from engine.combat.host import Peers, impact_ground_z  # noqa: E402
 
 
 def test_meta_sickle_controls_preserve_real_leap_and_only_remove_meta():
@@ -96,8 +97,8 @@ def test_meta_sickle_replays_real_landing_dispatch_and_path(check, lane, x, monk
                if check in ('a', 'c') else [(x,3550,212.5)] * 3)
     for frame, xyz in enumerate(samples, 116):
         e.eng.frame = frame
-        e.meta_impact_tick()
-        z = e.impact_ground_z(enemy.x, enemy.y) if enemy.z is None else enemy.z
+        e._harm().meta_impact_tick(e, Peers(e))
+        z = impact_ground_z(e, enemy.x, enemy.y) if enemy.z is None else enemy.z
         assert (enemy.x, enemy.y, z) == pytest.approx(xyz, abs=.051)
     assert enemy.serial not in e.impact_flights
     e.self_power_due(118)

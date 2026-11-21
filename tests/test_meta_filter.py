@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location('filter_simbench', ROOT / 'experimental/cnv/simbench.py')
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
+from engine.combat.host import Peers  # noqa: E402
 
 
 def test_meta_filter_controls_keep_original_template_ids():
@@ -84,7 +85,7 @@ def test_meta_filter_replays_native_ground_dispatch(check, lane, frame, centre, 
     monkeypatch.setattr(simunits, 'meta_impact_velocity', observe)
     gun = e.bodies[name(lane, 'gun')]
     weapon, = gun.weapons
-    e.meta_impact_detonate(weapon, centre, gun)
+    e._harm().meta_impact_detonate(e, weapon, centre, gun, Peers(e))
     ground = ('man', 'normal', 'drone', 'tesla', 'near', 'teslaic', 'infantry')
     assert {part for part in ground if name(lane, part) in called} == set(velocities)
     assert {part for part in ground if e.bodies[name(lane, part)].serial in e.impact_flights} == set(velocities)
@@ -92,7 +93,7 @@ def test_meta_filter_replays_native_ground_dispatch(check, lane, frame, centre, 
         assert called[name(lane, part)] == pytest.approx(velocity, abs=.00006)
     for tick in range(frame + 1, 211):
         e.eng.frame = tick
-        e.meta_impact_tick()
+        e._harm().meta_impact_tick(e, Peers(e))
     normal = e.bodies[name(lane, 'normal')]
     near = e.bodies[name(lane, 'near')]
     assert (normal.x, normal.y) == pytest.approx((810, 3730) if lane == 'yuri' else (2330, 3710), abs=.051)

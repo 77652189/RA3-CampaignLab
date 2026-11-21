@@ -7,6 +7,7 @@ from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the p
 import engine.data.units as simunits  # noqa: E402
 from sim import Ground  # noqa: E402
 from engine.testing.small import small_world  # noqa: E402
+from engine.combat.host import impact_ground_z  # noqa: E402
 
 FRAME = 1 / 15
 
@@ -27,7 +28,7 @@ def test_the_collision_launches_a_neighbour_and_landing_starts_the_hold():
            '</Nuggets></WeaponTemplate>')
     weapons = simunits._weapons([xml])
     weapon = simunits._resolve(weapons['SampleShock'], weapons)
-    centre = (target.x, target.y, s.impact_ground_z(target.x, target.y))
+    centre = (target.x, target.y, impact_ground_z(s, target.x, target.y))
     now, before = s.frame_now(), target.hp
 
     s.volleys = []

@@ -394,7 +394,7 @@ def test_shot_clock_the_coil_shoots_every_31_s_one_shot_a_tank(monkeypatch):
     """Engine line C round 2: with Sim.shot_clock the coil (SovietBaseDefenseAdvancedTeslaGun: PreAttack 2.5 +
     Firing 0.5 + Reload 0.1 = 3.1 s, Damage 450 against a 480-health tank) loses a tank every 48 frames (round 6: the weapon's own frames, engine_clip)
     (the clock works): the tanks face north with the coil behind them, 450 x Rear 110 % = 495 (engine line A round
-    186, Sim.flank_of) -- one tank a shot, as on the bench (checks/engine_powerdef.py). The bench's interval is ~125
+    186, combat.host.flank_of) -- one tank a shot, as on the bench (checks/engine_powerdef.py). The bench's interval is ~125
     (~4.15 s a shot): ~1 s a shot the weapon data does not say, not found -- why the clock stays off by default and
     the xfail above stands. Frames 100-150 when found."""
     import sim

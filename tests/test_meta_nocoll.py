@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location('nocoll_simbench', ROOT / 'experimental/cnv/simbench.py')
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
+from engine.combat.host import Peers, impact_ground_z  # noqa: E402
 
 
 def test_meta_nocoll_controls_change_only_observed_neighbour_status():
@@ -85,7 +86,7 @@ def test_meta_nocoll_replays_native_status_dispatch_and_neighbour_path(
     assert near.hp == 150
     for tick, xyz in enumerate(samples, frame + 1):
         e.eng.frame = tick
-        e.meta_impact_tick()
-        assert (near.x, near.y, e.impact_ground_z(near.x, near.y) if near.z is None else near.z
+        e._harm().meta_impact_tick(e, Peers(e))
+        assert (near.x, near.y, impact_ground_z(e, near.x, near.y) if near.z is None else near.z
                 ) == pytest.approx(xyz, abs=.051)
     assert near.serial not in e.impact_flights

@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location('kind_simbench', ROOT / 'experimental/cnv/simbench.py')
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
+from engine.combat.host import Peers, impact_ground_z  # noqa: E402
 
 
 def test_meta_kind_controls_preserve_real_kind_and_only_remove_inclusion():
@@ -86,8 +87,8 @@ def test_meta_kind_replays_native_dispatch_health_and_neighbour_path(
     samples = [(x,3746.7,213.40), (x,3743.4,213.40), (x,3740,212.50)] if moves else [(x,3750,212.5)] * 3
     for tick, xyz in enumerate(samples, frame + 1):
         e.eng.frame = tick
-        e.meta_impact_tick()
-        assert (near.x, near.y, e.impact_ground_z(near.x, near.y) if near.z is None else near.z
+        e._harm().meta_impact_tick(e, Peers(e))
+        assert (near.x, near.y, impact_ground_z(e, near.x, near.y) if near.z is None else near.z
                 ) == pytest.approx(xyz, abs=.051)
     assert near.serial not in e.impact_flights
 
@@ -116,11 +117,11 @@ def test_meta_kind_empty_any_replays_native_no_dispatch(lane, monkeypatch):
 
     monkeypatch.setattr(simunits, 'meta_impact_velocity', observe)
     weapon, = gun.weapons
-    e.meta_impact_detonate(weapon, (victim.x, victim.y, 219), gun)
+    e._harm().meta_impact_detonate(e, weapon, (victim.x, victim.y, 219), gun, Peers(e))
     assert called == []
     assert not e.impact_flights
     for frame in (180, 195, 210):
         e.eng.frame = frame
-        e.meta_impact_tick()
+        e._harm().meta_impact_tick(e, Peers(e))
         assert (victim.x, victim.y) == (800 if lane == 'yuri' else 2300, 3750)
         assert (near.x, near.y) == (840 if lane == 'yuri' else 2340, 3750)

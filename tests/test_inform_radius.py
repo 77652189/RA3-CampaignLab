@@ -35,7 +35,7 @@ def test_inform_radius_launch_replays_measured_neighbours(check_name, monkeypatc
     for lane, source in zip(('base', 'high', 'order', 'removed'), (12, 13, 14, 15)):
         gun = e.body('Info gun ' + lane)
         weapon, = gun.weapons
-        e.inform_launch(bodies[lane + ' main'], gun, weapon)
+        e._harm().inform_launch(e, bodies[lane + ' main'], gun, weapon)
         primary = e.incoming.get(bodies[lane + ' main'].serial, [])
         assert len(primary) == len(observed[lane + ' main'])
         for label in ('main', 'near', 'far'):

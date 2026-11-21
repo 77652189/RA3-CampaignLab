@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location('grid_simbench', ROOT / 'experimental/cnv/simbench.py')
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
+from engine.combat.host import Peers, impact_ground_z  # noqa: E402
 
 
 def test_meta_grid_controls():
@@ -97,8 +98,8 @@ def _replay(check, lane, monkeypatch, verify_noninf=False):
                 (x+40,3740,212.5)])
     for tick, xyz in enumerate(samples, frame + 1):
         e.eng.frame = tick
-        e.meta_impact_tick()
-        z = lambda b: e.impact_ground_z(b.x, b.y) if b.z is None else b.z
+        e._harm().meta_impact_tick(e, Peers(e))
+        z = lambda b: impact_ground_z(e, b.x, b.y) if b.z is None else b.z
         assert (near.x, near.y, z(near)) == pytest.approx(xyz, abs=.051)
         if lane == 'yuri' or verify_noninf:
             other_xyz = (x+20,3750,212.5) if lane == 'yuri' else (xyz[0]+20,xyz[1],xyz[2])

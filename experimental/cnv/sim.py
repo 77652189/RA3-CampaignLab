@@ -592,7 +592,8 @@ class Sim:
         self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own),   # engine/kernel
                                         kill=lambda b, why, death, cause: self.destroy(b, why, death, cause),
                                         create=lambda b, ocl, air: self._life().create(
-                                            self, b, ocl, air, self.death_blasts, self.impact_ground_z),
+                                            self, b, ocl, air, self.death_blasts,
+                                            lambda x, y: simdamage.impact_ground_z(self, x, y)),
                                         fire=lambda b, weapon: self._life().fire(self, b, weapon, self.death_blasts),
                                         remove=lambda b, why: self.delete(b, why), modify=lambda b: self.modify(b),
                                         pay=lambda b, amount: self.wallet.deposit(b.owner, amount),
@@ -2127,7 +2128,7 @@ class Sim:
                                  '连续DPS没有逐发命中事件；压制贡献仅在离散命中时钟中模拟')
                     self.firing.append((pick, w['dps'] * a.dealt * (1.0 if w['type'] == 'UNRESISTABLE' else
                                         simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken)
-                                        * self.flank_of(pick, a), a))
+                                        * simdamage.flank_of(pick, a), a))
             if w.get('sdps') and not self.shot_clock:
                 self.chilling.append((pick, w['sdps'] * a.dealt, a))
             fired = True
@@ -2244,10 +2245,6 @@ class Sim:
             self.used.add('stealth')
         return out
 
-    def incoming_add(self, target, source, key, damage, hit, expiry):
-        """simdamage.Damage.incoming_add (L3): one observed/predicted notification on a tracking target."""
-        self._harm().incoming_add(self, target, source, key, damage, hit, expiry)
-
     @property
     def incoming(self):
         """{target.serial: [(source, weapon key, damage, hit frame, expiry frame)]}: simdamage.Damage's notifications."""
@@ -2265,21 +2262,9 @@ class Sim:
             h = self.harm = simdamage.Damage()
         return h
 
-    def incoming_hit(self, target, source, key):
-        """simdamage.Damage.incoming_hit (L3): a damage notification deletes matching source + weapon entries."""
-        self._harm().incoming_hit(target, source, key)
-
     def expected_damage(self, target, behind, ahead, now=None):
         """simdamage.Damage.expected_damage (L3): the micro's incoming-damage callback."""
         return self._harm().expected_damage(self, target, behind, ahead, now)
-
-    def flank_of(self, victim, attacker):
-        """simdamage.flank_of (L3): the side / rear scalar of a direct hit by where the attacker stands."""
-        return simdamage.flank_of(victim, attacker)
-
-    def inform_launch(self, target, attacker, weapon, count=1):
-        """simdamage.Damage.inform_launch (L3): ordinary launch notification."""
-        self._harm().inform_launch(self, target, attacker, weapon, count)
 
     def toggles_of(self, b):
         """The rules of b's template's toggle modules (engine/modules/toggle.py, step M5), in their blocks' order --
@@ -2303,17 +2288,9 @@ class Sim:
         """simdamage.Damage.queue_projectile_hit (L3): a projectile's arrival event."""
         self._harm().queue_projectile_hit(when, target, damage, attacker, weapon, centre)
 
-    def impact_ground_z(self, x, y):
-        """simdamage.impact_ground_z (L3): world z of the ground at (x, y) for physics."""
-        return simdamage.impact_ground_z(self, x, y)
-
     def projectile_detonate(self, weapon, target, centre=None, attacker=None):
         """simdamage.Damage.projectile_detonate (L3): the non-damage payload of a projectile arrival."""
         self._harm().projectile_detonate(self, weapon, target, centre, attacker, simdamage.Peers(self))
-
-    def meta_impact_detonate(self, weapon, centre, attacker=None):
-        """simdamage.Damage.meta_impact_detonate (L3): a warhead's shocks (MetaImpactNugget)."""
-        self._harm().meta_impact_detonate(self, weapon, centre, attacker, simdamage.Peers(self))
 
     KNOCK_SEARCH = 15               # lattice steps the nearest-standable search reaches (INFERRED: the search routine is unread, work/re/handoff.md)
 
@@ -2332,7 +2309,7 @@ class Sim:
         Whether it then drowns is Ground.drowns. None: no cell (gap recorded)."""
         end = (math.floor(end[0] / 20) * 20 + 10, math.floor(end[1] / 20) * 20 + 10)
         if self.ground.stand_vehicle(*end):
-            return (end[0], end[1], self.impact_ground_z(*end))
+            return (end[0], end[1], simdamage.impact_ground_z(self, *end))
         return self._knock_nearest(end, self.ground.stand_vehicle)
 
     def _knock_nearest(self, end, ok):
@@ -2347,11 +2324,7 @@ class Sim:
             self.gap(GAP_WEAPON, 'MetaImpactNugget', '击飞落点附近没有能站的格')
             return None
         self.used.add('knock landing moved')
-        return (best[1], best[2], self.impact_ground_z(best[1], best[2]))
-
-    def meta_impact_tick(self):
-        """simdamage.Damage.meta_impact_tick (L3): each knocked body one trajectory sample on."""
-        self._harm().meta_impact_tick(self, simdamage.Peers(self))
+        return (best[1], best[2], simdamage.impact_ground_z(self, best[1], best[2]))
 
     def deal(self, dt):
         """simdamage.Damage.deal (L3, R6): `dt` seconds of aimed fire, projectiles and DOTs dealt; bodies at 0 die."""
@@ -2542,7 +2515,8 @@ class Sim:
 
     def self_power_due(self, frame):
         """simspecial.Specials.self_power_due (L2): leaps landing, rushes and self powers' bits running out."""
-        self._specials().self_power_due(self, frame, self.modify, self.projectile_detonate, self.impact_ground_z)
+        self._specials().self_power_due(self, frame, self.modify, self.projectile_detonate,
+                                        lambda x, y: simdamage.impact_ground_z(self, x, y))
 
     def wfire_press(self, b, button, target=None):
         """simspecial.Specials.wfire_press (L2): a WeaponFireSpecialAbilityUpdate's button."""

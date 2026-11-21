@@ -77,7 +77,7 @@ def test_inform_expiry_replays_observed_launch_deadlines(check_name, monkeypatch
         e.add('Expiry ' + lane, 'SovietMiner', m.player('s1'), gun.x, gun.y + 442)
         target = e.body('Expiry ' + lane)
         weapon, = gun.weapons
-        e.inform_launch(target, gun, weapon)
+        e._harm().inform_launch(e, target, gun, weapon)
         assert e.incoming[target.serial] == [(gun.serial, weapon['weapon_key'], *observed[source][:3])]
         assert target.hp == 500
 
@@ -109,7 +109,7 @@ def test_inform_expiry_replays_observed_autonomous_table_cleanup(check_name, lan
     damage, hit, expiry, removal = observed[source]
     e.eng.frame = 302
     e.t = 302 / 15
-    e.incoming_add(target, gun.serial, 'observed', damage, hit, expiry)
+    e._harm().incoming_add(e, target, gun.serial, 'observed', damage, hit, expiry)
     while e.eng.frame < removal - 1:
         e.step()
         e.t = e.eng.frame / 15
@@ -253,7 +253,7 @@ def test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe(check
         if source in observed:
             key, damage, hit, expiry = observed[source]
             assert (damage, hit, expiry) == (50 if lane == 'removed' else 150, 377, 404)
-            e.incoming_add(bodies[lane], source, key, damage, hit, expiry)
+            e._harm().incoming_add(e, bodies[lane], source, key, damage, hit, expiry)
     assert (12 in observed) == (check_name == 'a')
     host = simai.SimAI(e)
     brain = object.__new__(simai.Brain)
@@ -290,12 +290,12 @@ def test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe(check
         manager.round(347, again)
         assert base.armor_up
         # Wrong source/key cannot delete it; the original removal does.
-        e.incoming_hit(base, 99, observed[12][0])
+        e._harm().incoming_hit(base, 99, observed[12][0])
         assert e.expected_damage(base, 0, 2) == 150
         clock[0] = 389
         if lines:
             assert sum('frame=389 n=0' in line for line in lines) == 3
-        e.incoming_hit(base, 12, observed[12][0])
+        e._harm().incoming_hit(base, 12, observed[12][0])
         assert e.expected_damage(base, 0, 2) == 0
         clock[0] = brain.frame = 390
         manager.round(390, brain.micro_team(None, 390, team))
@@ -366,7 +366,7 @@ def test_inform_max_launch_matches_engine_inform_max_observed_deadline(run_name,
         target = e.body('Max replay ' + lane)
         weapon, = gun.weapons
         assert weapon['inform'] == [dict(min=.85, max=1.6 if lane == 'base' else 1.15)]
-        e.inform_launch(target, gun, weapon)
+        e._harm().inform_launch(e, target, gun, weapon)
         assert e.incoming[target.serial] == [(gun.serial, weapon['weapon_key'], damage, hit, expiry)]
         assert target.hp == 500
         if lane == 'order':
@@ -377,7 +377,7 @@ def test_inform_max_launch_matches_engine_inform_max_observed_deadline(run_name,
             clock[0] = 347
             assert e.expected_damage(target, 0, 2) == damage
             clock[0] = 389
-        e.incoming_hit(target, gun.serial, weapon['weapon_key'])
+        e._harm().incoming_hit(target, gun.serial, weapon['weapon_key'])
         assert not e.incoming[target.serial]
         clock[0] = 302
 
@@ -397,12 +397,12 @@ def test_inform_launch_formula_and_matching_hit_lifecycle(monkeypatch):
     weapon, = gun.weapons
     assert weapon['inform'] == [dict(min=0.85, max=1.15)]
     assert weapon['weapon_speed'] == 75
-    e.inform_launch(target, gun, weapon)
+    e._harm().inform_launch(e, target, gun, weapon)
     assert e.incoming[target.serial] == [(gun.serial, weapon['weapon_key'], 150, 377, 404)]
     # No tracking module, no table entry; no damage or HP mutation on notification.
-    e.inform_launch(gun, gun, weapon)
+    e._harm().inform_launch(e, gun, gun, weapon)
     assert gun.serial not in e.incoming and target.hp == 500
-    e.incoming_add(target, 999, 'other', 10, 377, 450)
+    e._harm().incoming_add(e, target, 999, 'other', 10, 377, 450)
     clock[0] = 347
     assert e.expected_damage(target, 0, 2) == 160
     assert e.expected_damage(target, 0, 0) == 0
@@ -422,12 +422,12 @@ def test_inform_launch_formula_and_matching_hit_lifecycle(monkeypatch):
     clock[0] = 302
     target.y = gun.y + 103.75
     custom = dict(weapon, inform=[dict(min=0.5, max=1.6)], weapon_key='custom', dmg=100)
-    e.inform_launch(target, gun, custom)
+    e._harm().inform_launch(e, target, gun, custom)
     assert e.incoming[target.serial] == [(gun.serial, 'custom', 100, 312, 336)]
     assert e.expected_damage(target, 0, 10/15) / target.max_hp == 0.2
-    e.incoming_hit(target, gun.serial, 'custom')
+    e._harm().incoming_hit(target, gun.serial, 'custom')
     instant = dict(custom, weapon_speed=0)
-    e.inform_launch(target, gun, instant)
+    e._harm().inform_launch(e, target, gun, instant)
     assert e.incoming[target.serial] == [(gun.serial, 'custom', 100, 302, 302)]
 
 
@@ -470,5 +470,5 @@ def test_inform_normal_fire_records_launch_and_deletes_on_arrival(check_name, mo
     clock[0] = arrival
     e.deal(1/15)
     assert all(not rows for rows in e.incoming.values())
-    # the miners take the shell side-on: x 1.05 (Sim.flank_of), the bench's 68 / 68 / 89 % (checks/engine_inform_ai.py)
+    # the miners take the shell side-on: x 1.05 (combat.host.flank_of), the bench's 68 / 68 / 89 % (checks/engine_inform_ai.py)
     assert [e.body('Dispatch ' + lane).hp for lane in ('base', 'high', 'removed')] == [342.5, 342.5, 447.5]
