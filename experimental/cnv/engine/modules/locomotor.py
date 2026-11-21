@@ -2,7 +2,10 @@
 <LocomotorTemplate>s of GlobalData/Locomotor.xml they name -- a named resource, not a module, like a WeaponTemplate.
 simunits' readers (stats' speed and surface, turning, locomotor_speed) walk the chain and read each text here.
 Step 2: a thing's locomotion state (LocomotorState), the four Body fields speed / surface / turn_rate / turn_first;
-step 3: path / dest / face; M3 step 1: go_to's set_off / stood_for / frame_move / jet_motion; M4: drive_speed."""
+step 3: path / dest / face; M3 step 1: go_to's set_off / stood_for / frame_move / jet_motion; M4: drive_speed;
+M5 3b: progress, the command family's read of the way still to go."""
+import math
+
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -110,3 +113,10 @@ def writer(field):
     """Body's setter of step 3's `field` (path / dest / face): only hands the value on to write. The writes of those
     go through the setter for now, each moved to call write when its own family moves (R 11-20; guard: WRITTEN)."""
     return lambda thing, value: write(None, thing, **{field: value})
+
+
+def progress(thing):
+    """Read only: (waypoints of `thing`'s way still to go, how far it stands from where it was sent -- 0.0 sent
+    nowhere). The command family's arrival tests (simorder.follow_due: none left; held_up: none left, short of it)."""
+    m = thing.find(interfaces.Locomotor) or LocomotorState
+    return len(m.path), 0.0 if m.dest is None else math.hypot(m.dest[0] - thing.x, m.dest[1] - thing.y)

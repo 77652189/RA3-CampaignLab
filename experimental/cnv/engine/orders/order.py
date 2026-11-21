@@ -25,6 +25,7 @@ import numpy as np
 import engine.data.units as simunits
 import engine.objects.path as simpath
 from engine.kernel import interfaces
+from engine.modules import locomotor
 from engine.orders import ability as simability
 from engine.orders import target as simtarget
 from engine.world.handle import GRID, inside
@@ -107,8 +108,8 @@ def held_up(b):
     in the simulator), never shot him in the 2 s before their turn order; the simulator, counting them idle once
     stopped, had him dead at 61.7 s. INFERRED (RA3's AI move state not read); not told apart on the bench: that
     they stop farther off than the simulator's wall lets them (out of reach)."""
-    return b.mode == 'move' and not b.path and b.goal is None and b.move_to is not None and \
-        b.dest == b.move_to and math.hypot(b.dest[0] - b.x, b.dest[1] - b.y) > ARRIVE
+    left, off = locomotor.progress(b)           # off > ARRIVE: dest is not None, nor move_to
+    return b.mode == 'move' and not left and b.goal is None and b.dest == b.move_to and off > ARRIVE
 
 
 def _target(world, target):
@@ -255,17 +256,15 @@ def order_follow(world, peers, bodies, label, attacking, exact=False, start=None
     if not movers:
         return
     world.used.add('follow path')
-    if start is None:
-        n = len(movers)
-        start = path_start(world, label, (sum(b.x for b in movers) / n, sum(b.y for b in movers) / n))
+    n = len(movers)
+    cx, cy = sum(b.x for b in movers) / n, sum(b.y for b in movers) / n
+    start = path_start(world, label, (cx, cy)) if start is None else start
     if start is None or start not in world.waypoints:
         for b in movers:
             world.note('卡住', f'{world.label(b)} 找不到路 {label}')
         return
     how = {'label': label, 'at': start, 'attacking': attacking, 'exact': exact, 'team': as_team}
-    if as_team and len(movers) > 1:
-        n = len(movers)
-        cx, cy = sum(b.x for b in movers) / n, sum(b.y for b in movers) / n
+    if as_team and n > 1:
         how['offset'] = {b.serial: (b.x - cx, b.y - cy) for b in movers}
         world.used.add('team path')
     follow_leg(world, peers, movers, how)
@@ -297,7 +296,7 @@ def follow_due(world, peers):
         if how is None or id(how) in done:
             continue
         group = [o for o in world.living() if o.follow is how] if how['team'] else [b]   # a team: its first member
-        if all(o.path or o.engaged or o.resume is not None or isinstance(o.goal, type(o)) for o in group):  # there
+        if all(locomotor.progress(o)[0] or o.engaged or o.resume is not None or isinstance(o.goal, type(o)) for o in group):  # there
             continue                        # moves it on; resume: turned aside to fight (attack_chase), the leg not done
         nxt = path_next(world, how['at'])
         if nxt is None or nxt not in world.waypoints:
