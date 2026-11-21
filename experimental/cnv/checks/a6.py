@@ -6,6 +6,7 @@ win: the phases in a few seconds: the outer tower razed by test script, then the
 lose: Tanya razed by test script: the mission ends lost, the lost flag 0 before.
 """
 import playcheck
+from checks.a2 import raze
 from parts import Script, Test
 
 FIRST = 8.0
@@ -21,12 +22,6 @@ def lost_counter(t):
     t.counters.append(('Test Lost', '输了'))
     t.scripts += [Script('Test - lost zero', [], [('SET_COUNTER', 'Test Lost', 0)], once=False),
                   Script('Test - lost on', [('FLAG', 'Mission Lost', 1)], [('SET_COUNTER', 'Test Lost', 1)], once=False)]
-
-
-def raze(t, name, k, at):
-    timer = f'Test Raze {k}'
-    t.scripts += [Script(f'Test - raze set {k}', [], [('SET_MILLISECOND_TIMER', timer, at)]),
-                  Script(f'Test - raze {k}', [('TIMER_EXPIRED', timer)], [('NAMED_KILL', name)])]
 
 
 def win(m):

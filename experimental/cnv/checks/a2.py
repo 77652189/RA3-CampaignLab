@@ -15,6 +15,7 @@ frog: the plan's Bullfrogs (`待做` 3): three of them from the river mouth orde
   (NAMED_ATTACK_NAMED): they come up under the dam's south cliff but do not hurt it (the dam stays whole). `ray`
   (three Stingrays, tesla guns) and `dread` (one Dreadnought) are the same run with other ships: the same answer.
 """
+from checks.a1 import lost_counter
 from parts import Obj, Script, Test
 from model import counted, square
 
@@ -24,13 +25,6 @@ RAZE_AT = 3 * PHASE + 4.0                  # the last phase has begun (the bench
 WIN_BY = RAZE_AT + 14.0
 FIRST, SECOND = 8.0, 10.0
 LOSE_BY = SECOND + 14.0
-
-
-def lost_counter(t):
-    """A counter for the lost flag the plan's Lose scripts set ('Mission Lost'), so an end reads as won or lost."""
-    t.counters.append(('Test Lost', '输了'))
-    t.scripts += [Script('Test - lost zero', [], [('SET_COUNTER', 'Test Lost', 0)], once=False),
-                  Script('Test - lost on', [('FLAG', 'Mission Lost', 1)], [('SET_COUNTER', 'Test Lost', 1)], once=False)]
 
 
 def raze(t, name, k, at):

@@ -30,17 +30,12 @@ FIRE = '''
 			</FireWeaponUpdate>'''                  # the Tesla trooper's (SovietHeavyAntiVehicleInfantry.xml)
 
 
-def sub1(x, old, new):
-    assert x.count(old) == 1, (old[:60], x.count(old))
-    return x.replace(old, new, 1)
-
-
 @look.named('tesla')
 def tesla(id='CNV_TeslaTank', fire=True):
     x = open(os.path.join(SAGE, 'SovietAntiVehicleVehicleTech2.xml'), encoding='utf-8').read()
-    x = sub1(x, 'id="SovietAntiVehicleVehicleTech2"', f'id="{id}"')
-    x = sub1(x, 'EditorName="SovietAntiVehicleVehicleTech2"', f'EditorName="{id}"')
+    x = look.sub1(x, 'id="SovietAntiVehicleVehicleTech2"', f'id="{id}"')
+    x = look.sub1(x, 'EditorName="SovietAntiVehicleVehicleTech2"', f'EditorName="{id}"')
     if fire:
-        x = sub1(x, TOGGLE_END, TOGGLE_END + FIRE)
+        x = look.sub1(x, TOGGLE_END, TOGGLE_END + FIRE)
     return Unit(id, x, abilities={'surge': SURGE_COMMAND},
                 what='磁暴坦克（原版删除单位）：磁暴线圈射程 150；surge 切换电涌（原地不动，半径 50 内敌方车辆瘫痪）')

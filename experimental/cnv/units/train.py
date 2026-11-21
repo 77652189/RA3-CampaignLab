@@ -20,17 +20,12 @@ from units import look
 SAGE = labpaths.SDK3 + '/SageXML'
 
 
-def sub1(x, old, new):
-    assert x.count(old) == 1, (old[:60], x.count(old))
-    return x.replace(old, new, 1)
-
-
 def gun(id, reach):
     w = open(os.path.join(SAGE, 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
     m = re.search(r'<WeaponTemplate\s+id="SovietAntiVehicleVehicleTech2TeslaGun".*?</WeaponTemplate>', w, flags=re.S)
-    g = sub1(m.group(0), 'id="SovietAntiVehicleVehicleTech2TeslaGun"', f'id="{id}"')
-    g = sub1(g, 'AttackRange="150.0"', f'AttackRange="{reach}.0"')
-    return sub1(g, 'AcceptableAimDelta="20d"', 'AcceptableAimDelta="360d"')
+    g = look.sub1(m.group(0), 'id="SovietAntiVehicleVehicleTech2TeslaGun"', f'id="{id}"')
+    g = look.sub1(g, 'AttackRange="150.0"', f'AttackRange="{reach}.0"')
+    return look.sub1(g, 'AcceptableAimDelta="20d"', 'AcceptableAimDelta="360d"')
 
 
 TOGGLE_POWER, TOGGLE_COMMAND = 'SpecialPower_ToggleTargetPainter', 'Command_ToggleTargetPainter'   # the Guardian's
@@ -43,11 +38,11 @@ def train(id='CNV_Train', health=3000, reach=250):
     second at most."""
     weapon, brake, commands = f'{id}_TeslaGun', f'AttributeModifier_{id}_Brake', f'{id}CommandSet'
     x = open(os.path.join(SAGE, 'Soviet', 'Units_Campaign', 'RussianTrain.xml'), encoding='utf-8').read()
-    x = sub1(x, 'id="RussianTrain"', f'id="{id}"')
-    x = sub1(x, 'EditorName="RussianTrain"', f'EditorName="{id}"')
-    x = sub1(x, 'CommandSet="RussianTrainCommandSet"', f'CommandSet="{commands}"')
+    x = look.sub1(x, 'id="RussianTrain"', f'id="{id}"')
+    x = look.sub1(x, 'EditorName="RussianTrain"', f'EditorName="{id}"')
+    x = look.sub1(x, 'CommandSet="RussianTrainCommandSet"', f'CommandSet="{commands}"')
     # the brake: a toggle that holds it where it stands (IMMOBILE, as the jammer's); firing while braked not tested
-    x = sub1(x, '</Behaviors>', f'''	<SpecialPower id="ModuleTag_CNV_BrakeTrigger" SpecialPowerTemplate="{TOGGLE_POWER}"/>
+    x = look.sub1(x, '</Behaviors>', f'''	<SpecialPower id="ModuleTag_CNV_BrakeTrigger" SpecialPowerTemplate="{TOGGLE_POWER}"/>
 			<ToggleStatusSpecialAbilityUpdate id="ModuleTag_CNV_Brake" Options="RECONSTITUTE_STORED_COMMAND"
 				SpecialPowerTemplate="{TOGGLE_POWER}">
 				<ToggleState>
@@ -58,26 +53,26 @@ def train(id='CNV_Train', health=3000, reach=250):
 				</ToggleState>
 			</ToggleStatusSpecialAbilityUpdate>
 		</Behaviors>''')
-    x = sub1(x, '</AssetDeclaration>', f'''	<AttributeModifier id="{brake}" Category="NONE" ObjectStatusToSet="IMMOBILE"/>
+    x = look.sub1(x, '</AssetDeclaration>', f'''	<AttributeModifier id="{brake}" Category="NONE" ObjectStatusToSet="IMMOBILE"/>
 	<LogicCommandSet id="{commands}">
 		<Cmd>{TOGGLE_COMMAND}</Cmd>
 		<Cmd>Command_AttackMove</Cmd>
 	</LogicCommandSet>
 </AssetDeclaration>''')
-    x = sub1(x, 'MaxHealth="300"', f'MaxHealth="{health}"')
+    x = look.sub1(x, 'MaxHealth="300"', f'MaxHealth="{health}"')
     x = re.sub(r'\s*<GameDependency>.*?</GameDependency>', '', x, count=1, flags=re.S)
     # retail's prop train picks no targets of its own; ours must, on the move (bench 2026-10-22: with false it never
     # fired at the conscripts shooting it from 150 away)
-    x = sub1(x, 'CanPickDynamicTargets="false"', 'CanPickDynamicTargets="true"')
+    x = look.sub1(x, 'CanPickDynamicTargets="false"', 'CanPickDynamicTargets="true"')
     # sees as far as it shoots: with retail's 500 it went for enemies 300 away while still standing at its start
-    x = sub1(x, 'VisionRange="500"', f'VisionRange="{reach}"')
-    x = sub1(x, '<Behaviors>', f'''<Behaviors>
+    x = look.sub1(x, 'VisionRange="500"', f'VisionRange="{reach}"')
+    x = look.sub1(x, '<Behaviors>', f'''<Behaviors>
 			<WeaponSetUpdate id="ModuleTag_CNV_Guns">
 				<WeaponSlotHardpoint ID="1">
 					<Weapon Ordering="PRIMARY_WEAPON" Template="{weapon}"/>
 				</WeaponSlotHardpoint>
 			</WeaponSetUpdate>''')
-    x = sub1(x, '</AssetDeclaration>', f'\t{gun(weapon, reach)}\n</AssetDeclaration>')
+    x = look.sub1(x, '</AssetDeclaration>', f'\t{gun(weapon, reach)}\n</AssetDeclaration>')
     return Unit(id, x, link=[f'WeaponTemplate:{weapon}', f'AttributeModifier:{brake}', f'LogicCommandSet:{commands}'],
                 abilities={'brake': TOGGLE_COMMAND},
                 what=f'装甲列车：原版战役火车，{health} 血，固定挂点磁暴炮（射程 {reach}，全向、边走边打）；由任务脚本沿路点开，'

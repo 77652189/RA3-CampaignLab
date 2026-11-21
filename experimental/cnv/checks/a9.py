@@ -7,18 +7,12 @@ win: the whole run in a few seconds: the nine balls razed one after another by t
 dark: the shield on the real ball: a sentry gun at the dark ball 6 does no harm, one at the lit ball 1 does.
 """
 import playcheck
+from checks.a1 import lost_counter
 from parts import Obj, Script, Test
 
 KILLS = 3.0                                     # seconds between two razes
 FIRST = 8.0
 WIN_BY = FIRST + KILLS * 9 + 25.0
-
-
-def lost_counter(t):
-    """A counter for the lost flag the plan's Lose scripts set ('Mission Lost'), so an end reads as won or lost."""
-    t.counters.append(('Test Lost', '输了'))
-    t.scripts += [Script('Test - lost zero', [], [('SET_COUNTER', 'Test Lost', 0)], once=False),
-                  Script('Test - lost on', [('FLAG', 'Mission Lost', 1)], [('SET_COUNTER', 'Test Lost', 1)], once=False)]
 
 
 def win(m):

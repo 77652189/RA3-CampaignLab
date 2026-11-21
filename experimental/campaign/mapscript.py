@@ -243,10 +243,6 @@ class MapFile:
         else:
             self.script(into).kids.append(node)
 
-    def remove_script(self, name):
-        _, kids, i = self.scripts()[name]
-        return kids.pop(i)
-
     def contents(self, script_name, content_name=None):
         """The content nodes of a script (all, or only those calling `content_name`), in file order."""
         out = [n for _, n in self.walk(self.script(script_name).kids) if n.name in CONTENT]
@@ -271,10 +267,6 @@ class MapFile:
             return keep
         s.kids = prune(s.kids)
         return gone
-
-    def add_action(self, script_name, node, index=None):
-        kids = self.script(script_name).kids
-        kids.insert(len(kids) if index is None else index, node)
 
     def add_condition(self, script_name, node, group=0):
         """AND `node` into OR group `group` of the script (a new group when `group` == number of groups)."""

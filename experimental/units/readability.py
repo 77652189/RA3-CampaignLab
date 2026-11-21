@@ -221,11 +221,6 @@ def bbox(mask):
     return int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
 
 
-def score_answer(answer, truth):
-    """answer {number: name} vs truth {number: name} -> (hits, total)."""
-    return sum(1 for k, v in truth.items() if str(answer.get(str(k), '')).strip().lower() == v.lower()), len(truth)
-
-
 def parse_json(text):
     """The first {...} object in a model's reply (it may wrap it in prose or a fence)."""
     a, b = text.find('{'), text.rfind('}')

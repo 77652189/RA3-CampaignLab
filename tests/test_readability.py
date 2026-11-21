@@ -74,7 +74,6 @@ def test_team_box_is_learned_from_the_patch_and_fraction_matches():
 def test_pass_range_and_answers():
     assert R.pass_range([0.2, 0.05, 0.3]) == (0.05, 0.3)
     assert R.in_range(0.1, (0.05, 0.3)) and not R.in_range(0.4, (0.05, 0.3))
-    assert R.score_answer({'1': 'Guardian', '2': 'x'}, {'1': 'guardian', '2': 'athena'}) == (1, 2)
     assert R.parse_json('Here: ```json\n{"1": "a"}\n```') == {'1': 'a'}
     assert R.parse_json('no json') is None
 

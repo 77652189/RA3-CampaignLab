@@ -16,11 +16,6 @@ from units import look
 SAGE = os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Units')
 
 
-def sub1(x, old, new):
-    assert x.count(old) == 1, (old[:60], x.count(old))
-    return x.replace(old, new, 1)
-
-
 @look.named('beacon')
 def beacon(id='CNV_Beacon', radius=150, reach=1500, reload='30s', land=(40, 140)):
     """radius: around the aimed point, who is pulled. reach: how far from him he may aim. land: the ring around
@@ -28,17 +23,17 @@ def beacon(id='CNV_Beacon', radius=150, reach=1500, reload='30s', land=(40, 140)
     ids = dict(power=f'SpecialPower_{id}_Pull', command=f'Command_{id}_Pull', commandset=f'{id}CommandSet',
                button=f'Button_{id}_Pull')
     x = open(os.path.join(SAGE, 'AlliedAntiInfantryInfantry.xml'), encoding='utf-8').read()
-    x = sub1(x, 'id="AlliedAntiInfantryInfantry"', f'id="{id}"')
-    x = sub1(x, 'EditorName="AlliedAntiInfantryInfantry"', f'EditorName="{id}"')
-    x = sub1(x, 'CommandSet="AlliedAntiInfantryInfantryCommandSet"', f'CommandSet="{ids["commandset"]}"')
-    x = sub1(x, '</Behaviors>', f'''	<SpecialPower id="ModuleTag_CNV_Pull" SpecialPowerTemplate="{ids['power']}"
+    x = look.sub1(x, 'id="AlliedAntiInfantryInfantry"', f'id="{id}"')
+    x = look.sub1(x, 'EditorName="AlliedAntiInfantryInfantry"', f'EditorName="{id}"')
+    x = look.sub1(x, 'CommandSet="AlliedAntiInfantryInfantryCommandSet"', f'CommandSet="{ids["commandset"]}"')
+    x = look.sub1(x, '</Behaviors>', f'''	<SpecialPower id="ModuleTag_CNV_Pull" SpecialPowerTemplate="{ids['power']}"
 				UpdateModuleStartsAttack="true"/>
 			<TeleportToCasterSpecialPower id="ModuleTag_CNV_PullUpdate" SpecialPowerTemplate="{ids['power']}"
 				StartAbilityRange="99999.0" UnpackTime="0.5s" PackTime="0s" Radius="{radius}"
 				MinDestinationRadius="{land[0]}" MaxDestinationRadius="{land[1]}"
 				MaxRangeFromCasterSP="{reach}" MaxRangeFromCasterMP="{reach}" KillObjectsIfPlacedInBadSpot="false"/>
 		</Behaviors>''')
-    x = sub1(x, '</AssetDeclaration>', f'''	<SpecialPowerTemplate id="{ids['power']}" ReloadTime="{reload}" TargetType="LOCATION" MaxCastRange="{reach}"
+    x = look.sub1(x, '</AssetDeclaration>', f'''	<SpecialPowerTemplate id="{ids['power']}" ReloadTime="{reload}" TargetType="LOCATION" MaxCastRange="{reach}"
 		Flags="LIMIT_DISTANCE FOGGED_SHROUDED_CELLS_OK CAN_NOT_BE_SCRAMBLED" WaypointModeTerminal="false">
 		<ObjectFilter Rule="ANY" Include="INFANTRY VEHICLE" Relationship="SAME_PLAYER ALLIES"
 			StatusBitFlagsExclude="SUBMERGED NOT_IN_WORLD"/>

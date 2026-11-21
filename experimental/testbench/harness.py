@@ -232,20 +232,6 @@ def game_running():
     return bool(re.search(r'\bra3(_1\.\d+\.game|\.exe|ep1)', out))
 
 
-def lock_holder():
-    """Who holds the shared bench lock now (reslock's rule), or None."""
-    if not os.path.exists(LOCK):
-        return None
-    with open(LOCK, encoding='utf-8-sig') as f:
-        held = json.load(f)
-    if held.get('until'):
-        live = datetime.datetime.fromisoformat(held['until']) > datetime.datetime.now()
-    else:
-        live = bool(re.search(rf'\b{held.get("pid")}\b', subprocess.run(
-            ['tasklist', '/FI', f'PID eq {held.get("pid")}'], capture_output=True, text=True, errors='replace').stdout))
-    return held if live else None
-
-
 def skudef(mod):
     if mod.lower().endswith('.skudef'):
         return mod

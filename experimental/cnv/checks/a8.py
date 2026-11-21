@@ -7,6 +7,7 @@ beat: the swell's wiring, read as counters (no pictures): the three platform gro
 """
 import re
 
+from checks.a1 import lost_counter
 from parts import Obj, Script, Test
 
 
@@ -92,13 +93,6 @@ KILLS = (10.0, 15.0, 20.0)                      # win: when each platform is raz
 WIN_BY = 40.0
 LOSE_TIMER = 40.0                               # lose: the 12-minute warm-up countdown, cut to this
 LOSE_BY = 60.0
-
-
-def lost_counter(t):
-    """A counter for the lost flag the plan's Lose scripts set ('Mission Lost'), so an end reads as won or lost."""
-    t.counters.append(('Test Lost', '输了'))
-    t.scripts += [Script('Test - lost zero', [], [('SET_COUNTER', 'Test Lost', 0)], once=False),
-                  Script('Test - lost on', [('FLAG', 'Mission Lost', 1)], [('SET_COUNTER', 'Test Lost', 1)], once=False)]
 
 
 def win(m):

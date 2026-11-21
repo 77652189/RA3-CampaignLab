@@ -16,19 +16,14 @@ SAGE = os.path.join(labpaths.SDK3, 'SageXML', 'Japan', 'Units')
 TOGGLE_POWER, TOGGLE_COMMAND = 'SpecialPower_ToggleTargetPainter', 'Command_ToggleTargetPainter'   # the Guardian's
 
 
-def sub1(x, old, new):
-    assert x.count(old) == 1, (old[:60], x.count(old))
-    return x.replace(old, new, 1)
-
-
 @look.named('shikigami')
 def shikigami(id='CNV_Shikigami', radius=200, armor='65%'):
     on, commands = f'AttributeModifier_{id}_Guard', f'{id}CommandSet'
     x = open(os.path.join(SAGE, 'JapanAntiInfantryInfantry.xml'), encoding='utf-8').read()
-    x = sub1(x, 'id="JapanAntiInfantryInfantry"', f'id="{id}"')
-    x = sub1(x, 'EditorName="JapanAntiInfantryInfantry"', f'EditorName="{id}"')
-    x = sub1(x, 'CommandSet="JapanAntiInfantryInfantryCommandSet"', f'CommandSet="{commands}"')
-    x = sub1(x, '</Behaviors>', f'''	<SpecialPower id="ModuleTag_CNV_GuardTrigger" SpecialPowerTemplate="{TOGGLE_POWER}"/>
+    x = look.sub1(x, 'id="JapanAntiInfantryInfantry"', f'id="{id}"')
+    x = look.sub1(x, 'EditorName="JapanAntiInfantryInfantry"', f'EditorName="{id}"')
+    x = look.sub1(x, 'CommandSet="JapanAntiInfantryInfantryCommandSet"', f'CommandSet="{commands}"')
+    x = look.sub1(x, '</Behaviors>', f'''	<SpecialPower id="ModuleTag_CNV_GuardTrigger" SpecialPowerTemplate="{TOGGLE_POWER}"/>
 			<ToggleStatusSpecialAbilityUpdate id="ModuleTag_CNV_Guard" Options="RECONSTITUTE_STORED_COMMAND"
 				SpecialPowerTemplate="{TOGGLE_POWER}">
 				<ToggleState>
@@ -44,7 +39,7 @@ def shikigami(id='CNV_Shikigami', radius=200, armor='65%'):
 					StatusBitFlagsExclude="MAGNETIZED"/>
 			</MagneticEffectUpdate>
 		</Behaviors>''')
-    x = sub1(x, '</AssetDeclaration>', f'''	<AttributeModifier id="{on}" Category="NONE">
+    x = look.sub1(x, '</AssetDeclaration>', f'''	<AttributeModifier id="{on}" Category="NONE">
 		<Modifier Type="ARMOR" Value="{armor}"/>
 	</AttributeModifier>
 	<LogicCommandSet id="{commands}">

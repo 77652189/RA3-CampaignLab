@@ -22,11 +22,6 @@ TOGGLE_POWER, TOGGLE_COMMAND = 'SpecialPower_ToggleTargetPainter', 'Command_Togg
 UNLOAD_COMMAND = 'Command_Evacuate'
 
 
-def sub1(x, old, new):
-    assert x.count(old) == 1, (old[:60], x.count(old))
-    return x.replace(old, new, 1)
-
-
 @look.named('burrower')
 def burrower(id='CNV_Burrower', speed='75%', status='UNATTACKABLE NO_ATTACK', payload=None):
     """speed: underground, of the surface speed. status: what being underground sets. payload: (template, count)
@@ -34,13 +29,13 @@ def burrower(id='CNV_Burrower', speed='75%', status='UNATTACKABLE NO_ATTACK', pa
     under, commands = f'AttributeModifier_{id}_Under', f'{id}CommandSet'
     x = open(os.path.join(SAGE, 'SovietAntiAirShip.xml'), encoding='utf-8').read()
     if payload:
-        x = sub1(x, '\t\t\t</TransportContain>', f'\t\t\t\t<InitialPayload Name="{payload[0]}" Count="{payload[1]}"/>\n'
+        x = look.sub1(x, '\t\t\t</TransportContain>', f'\t\t\t\t<InitialPayload Name="{payload[0]}" Count="{payload[1]}"/>\n'
                                                  '\t\t\t</TransportContain>')
     x = re.sub(r'\s*<GameObject\s+id="SovietAntiAirShip_Ground".*?</GameObject>', '', x, flags=re.S)
-    x = sub1(x, 'id="SovietAntiAirShip"', f'id="{id}"')
-    x = sub1(x, 'EditorName="SovietAntiAirShip"', f'EditorName="{id}"')
-    x = sub1(x, 'CommandSet="SovietAntiAirShipCommandSet"', f'CommandSet="{commands}"')
-    x = sub1(x, '</Behaviors>', f'''			<SpecialPower id="ModuleTag_CNV_BurrowTrigger" SpecialPowerTemplate="{TOGGLE_POWER}"/>
+    x = look.sub1(x, 'id="SovietAntiAirShip"', f'id="{id}"')
+    x = look.sub1(x, 'EditorName="SovietAntiAirShip"', f'EditorName="{id}"')
+    x = look.sub1(x, 'CommandSet="SovietAntiAirShipCommandSet"', f'CommandSet="{commands}"')
+    x = look.sub1(x, '</Behaviors>', f'''			<SpecialPower id="ModuleTag_CNV_BurrowTrigger" SpecialPowerTemplate="{TOGGLE_POWER}"/>
 			<ToggleStatusSpecialAbilityUpdate id="ModuleTag_CNV_Burrow" Options="RECONSTITUTE_STORED_COMMAND"
 				SpecialPowerTemplate="{TOGGLE_POWER}">
 				<ToggleState>
@@ -51,7 +46,7 @@ def burrower(id='CNV_Burrower', speed='75%', status='UNATTACKABLE NO_ATTACK', pa
 				</ToggleState>
 			</ToggleStatusSpecialAbilityUpdate>
 		</Behaviors>''')
-    x = sub1(x, '</AssetDeclaration>', f'''	<AttributeModifier id="{under}" Category="NONE" ObjectStatusToSet="{status}">
+    x = look.sub1(x, '</AssetDeclaration>', f'''	<AttributeModifier id="{under}" Category="NONE" ObjectStatusToSet="{status}">
 		<Modifier Type="SPEED" Value="{speed}"/>
 	</AttributeModifier>
 	<LogicCommandSet id="{commands}">

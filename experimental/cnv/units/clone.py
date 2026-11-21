@@ -27,11 +27,6 @@ from units import look
 SAGE = os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Units')
 
 
-def sub1(x, old, new):
-    assert x.count(old) == 1, (old[:60], x.count(old))
-    return x.replace(old, new, 1)
-
-
 MARK = 'IS_BEING_HARVESTED'     # a C&C3 status RA3 does nothing with: "a clone holds me"
 
 
@@ -56,9 +51,9 @@ def clone(id='CNV_Clone', radius=65, reload='10s', needs=None, marks=True, hold_
     ids = dict(power=f'SpecialPower_{id}_Control', command=f'Command_{id}_Control', commandset=f'{id}CommandSet',
                button=f'Button_{id}_Control')
     x = open(os.path.join(SAGE, 'AlliedInfiltrationInfantry.xml'), encoding='utf-8').read()
-    x = sub1(x, 'id="AlliedInfiltrationInfantry"', f'id="{id}"')
-    x = sub1(x, 'EditorName="AlliedInfiltrationInfantry"', f'EditorName="{id}"')
-    x = sub1(x, 'CommandSet="AlliedInfiltrationInfantryCommandSet"', f'CommandSet="{ids["commandset"]}"')
+    x = look.sub1(x, 'id="AlliedInfiltrationInfantry"', f'id="{id}"')
+    x = look.sub1(x, 'EditorName="AlliedInfiltrationInfantry"', f'EditorName="{id}"')
+    x = look.sub1(x, 'CommandSet="AlliedInfiltrationInfantryCommandSet"', f'CommandSet="{ids["commandset"]}"')
     x = re.sub(r'\s*<GameDependency>.*?</GameDependency>', '', x, count=1, flags=re.S)   # Allied tech 2
     bribe = re.search(r'\s*<SpecialPower\s+id="ModuleTag_Bribe".*?</DominateEnemySpecialPower>', x, flags=re.S)
     assert bribe, 'the spy has no bribe'
@@ -74,7 +69,7 @@ def clone(id='CNV_Clone', radius=65, reload='10s', needs=None, marks=True, hold_
 				Range="{hold_range}" InitiallyActive="true" AllowSelf="false">
 				<ObjectFilter Rule="ANY" Relationship="SAME_PLAYER" Include="VEHICLE INFANTRY"/>
 			</AttributeModifierAuraUpdate>''' if marks else '') + x[bribe.end():]
-    x = sub1(x, '</AssetDeclaration>', (f'''	<AttributeModifier id="{mark}" Category="NONE" Duration="1s"
+    x = look.sub1(x, '</AssetDeclaration>', (f'''	<AttributeModifier id="{mark}" Category="NONE" Duration="1s"
 		ObjectStatusToSet="{MARK}"/>
 ''' if marks else '') + f'''	<SpecialPowerTemplate id="{ids['power']}" ReloadTime="{reload}" TargetType="NONE"
 		Flags="NEEDS_OBJECT_FILTER" WaypointModeTerminal="false">

@@ -26,19 +26,14 @@ JOINED = 'CONTAINER_OCCUPIED'                   # the parent's status while the 
 PART_COMMAND = 'Command_Evacuate'
 
 
-def sub1(x, old, new):
-    assert x.count(old) == 1, (old[:60], x.count(old))
-    return x.replace(old, new, 1)
-
-
 def breaker(id, damage):
     """The joined form's weapon: the King Oni's veteran beam, at buildings only (ANTI_STRUCTURE), `damage` a shot."""
     w = open(os.path.join(labpaths.SDK3, 'SageXML', 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
     m = re.search(r'<WeaponTemplate\s+id="JapanAntiVehicleVehicleTech3BeamWeapon_Veteran".*?</WeaponTemplate>', w,
                   flags=re.S)
-    g = sub1(m.group(0), 'id="JapanAntiVehicleVehicleTech3BeamWeapon_Veteran"', f'id="{id}"')
-    g = sub1(g, 'RequiredAntiMask="ANTI_GROUND ANTI_STRUCTURE ANTI_WATER"', 'RequiredAntiMask="ANTI_STRUCTURE"')
-    return sub1(g, 'Damage="175.0"', f'Damage="{damage}.0"')
+    g = look.sub1(m.group(0), 'id="JapanAntiVehicleVehicleTech3BeamWeapon_Veteran"', f'id="{id}"')
+    g = look.sub1(g, 'RequiredAntiMask="ANTI_GROUND ANTI_STRUCTURE ANTI_WATER"', 'RequiredAntiMask="ANTI_STRUCTURE"')
+    return look.sub1(g, 'Damage="175.0"', f'Damage="{damage}.0"')
 
 
 @look.named('combo_parent')
@@ -47,24 +42,24 @@ def parent(id='CNV_ComboParent', child_id='CNV_ComboChild', damage=700):
     nothing else meanwhile; parted, two quick machines that can be in two places."""
     commands, weapon = f'{id}CommandSet', f'{id}_Breaker'
     x = open(os.path.join(SAGE, 'JapanAntiVehicleVehicleTech3.xml'), encoding='utf-8').read()
-    x = sub1(x, 'id="JapanAntiVehicleVehicleTech3"', f'id="{id}"')
-    x = sub1(x, 'EditorName="JapanAntiVehicleVehicleTech3"', f'EditorName="{id}"')
-    x = sub1(x, 'CommandSet="JapanAntiVehicleVehicleTech3CommandSet"', f'CommandSet="{commands}"')
+    x = look.sub1(x, 'id="JapanAntiVehicleVehicleTech3"', f'id="{id}"')
+    x = look.sub1(x, 'EditorName="JapanAntiVehicleVehicleTech3"', f'EditorName="{id}"')
+    x = look.sub1(x, 'CommandSet="JapanAntiVehicleVehicleTech3CommandSet"', f'CommandSet="{commands}"')
     # bench 2026-10-22: with one seat neither a script nor a right click put the child in -- a vehicle takes five
     # (BaseVehicle TransportSlotCount, the Twinblade's ContainMax); retail's transports also carry KindOf TRANSPORT
-    x = sub1(x, 'CAN_BE_FAVORITE_UNIT T3_UNIT"', 'CAN_BE_FAVORITE_UNIT T3_UNIT TRANSPORT"')
+    x = look.sub1(x, 'CAN_BE_FAVORITE_UNIT T3_UNIT"', 'CAN_BE_FAVORITE_UNIT T3_UNIT TRANSPORT"')
     # joined: the breaker instead of the plain beam
-    x = sub1(x, 'Template="JapanAntiVehicleVehicleTech3BeamWeapon"\n\t\t\t\t\t\tForbiddenObjectStatus="SPECIALABILITY_ACTIVE '
+    x = look.sub1(x, 'Template="JapanAntiVehicleVehicleTech3BeamWeapon"\n\t\t\t\t\t\tForbiddenObjectStatus="SPECIALABILITY_ACTIVE '
                 'GENERIC_TOGGLE_STATE WEAPON_UPGRADED_01"/>',
              'Template="JapanAntiVehicleVehicleTech3BeamWeapon"\n\t\t\t\t\t\tForbiddenObjectStatus="SPECIALABILITY_ACTIVE '
              f'GENERIC_TOGGLE_STATE WEAPON_UPGRADED_01 {JOINED}"/>\n'
              '\t\t\t\t\t<Weapon\n\t\t\t\t\t\tOrdering="PRIMARY_WEAPON"\n'
              f'\t\t\t\t\t\tTemplate="{weapon}"\n'
              f'\t\t\t\t\t\tForbiddenObjectStatus="SPECIALABILITY_ACTIVE GENERIC_TOGGLE_STATE"\n\t\t\t\t\t\tObjectStatus="{JOINED}"/>')
-    x = sub1(x, '</AssetDeclaration>', f'\t{breaker(weapon, damage)}\n</AssetDeclaration>')
+    x = look.sub1(x, '</AssetDeclaration>', f'\t{breaker(weapon, damage)}\n</AssetDeclaration>')
     # as the Twinblade's (it carries one vehicle): CONTAINER_OCCUPIED is set by ObjectStatusWhileContaining, not by
     # being occupied; ConditionForEntry INVALID and a vehicle's PassengerData as it has them
-    x = sub1(x, '</Behaviors>', f'''	<TransportContain id="ModuleTag_CNV_Seat" ObjectStatusOfContained="UNSELECTABLE ENCLOSED"
+    x = look.sub1(x, '</Behaviors>', f'''	<TransportContain id="ModuleTag_CNV_Seat" ObjectStatusOfContained="UNSELECTABLE ENCLOSED"
 				ObjectStatusWhileContaining="{JOINED}" ContainMax="5" AllowEnemiesInside="false"
 				AllowAlliesInside="true" AllowNeutralInside="false" AllowOwnPlayerInsideOverride="true" ShowPips="true"
 				EnterSound="VehicleEnter" ExitSound="VehicleExit" KillPassengersOnDeath="true"
@@ -78,7 +73,7 @@ def parent(id='CNV_ComboParent', child_id='CNV_ComboChild', damage=700):
 				</PassengerData>
 			</TransportContain>
 		</Behaviors>''')
-    x = sub1(x, '</AssetDeclaration>', f'''	<LogicCommandSet id="{commands}">
+    x = look.sub1(x, '</AssetDeclaration>', f'''	<LogicCommandSet id="{commands}">
 		<Cmd>Command_AttackMove</Cmd>
 		<Cmd>{PART_COMMAND}</Cmd>
 		<Cmd>Command_TriggerRushAttackSpecialPower</Cmd>
@@ -93,6 +88,6 @@ def parent(id='CNV_ComboParent', child_id='CNV_ComboChild', damage=700):
 def child(id='CNV_ComboChild'):
     x = open(os.path.join(SAGE, 'JapanAntiVehicleVehicleTech1.xml'), encoding='utf-8').read()
     x = re.sub(r'\s*<GameObject\s+id="JapanAntiVehicleVehicleTech1_Naval".*?</GameObject>', '', x, flags=re.S)
-    x = sub1(x, 'id="JapanAntiVehicleVehicleTech1"', f'id="{id}"')
-    x = sub1(x, 'EditorName="JapanAntiVehicleVehicleTech1"', f'EditorName="{id}"')
+    x = look.sub1(x, 'id="JapanAntiVehicleVehicleTech1"', f'id="{id}"')
+    x = look.sub1(x, 'EditorName="JapanAntiVehicleVehicleTech1"', f'EditorName="{id}"')
     return Unit(id, x, what='合体机甲子体（海啸底）：开进母体就合体')

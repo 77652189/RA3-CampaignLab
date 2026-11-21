@@ -15,21 +15,16 @@ SAGE = os.path.join(labpaths.SDK3, 'SageXML', 'Soviet', 'Units')
 TOGGLE_POWER, TOGGLE_COMMAND = 'SpecialPower_ToggleTargetPainter', 'Command_ToggleTargetPainter'   # the Guardian's
 
 
-def sub1(x, old, new):
-    assert x.count(old) == 1, (old[:60], x.count(old))
-    return x.replace(old, new, 1)
-
-
 @look.named('jammer')
 def jammer(id='CNV_Jammer', radius=250, speed='40%', friends=True):
     """friends: our own units within `radius` are slowed too (the user's decision, 2026-10-22: where it stands becomes
     a choice -- in front of the line, not on our own counter-attack's way); False = enemies only."""
     on, slow, commands = f'AttributeModifier_{id}_On', f'AttributeModifier_{id}_Slow', f'{id}CommandSet'
     x = open(os.path.join(SAGE, 'SovietAntiInfantryVehicle.xml'), encoding='utf-8').read()
-    x = sub1(x, 'id="SovietAntiInfantryVehicle"', f'id="{id}"')
-    x = sub1(x, 'EditorName="SovietAntiInfantryVehicle"', f'EditorName="{id}"')
-    x = sub1(x, 'CommandSet="SovietAntiInfantryVehicleCommandSet"', f'CommandSet="{commands}"')
-    x = sub1(x, '</Behaviors>', f'''	<SpecialPower id="ModuleTag_CNV_JamTrigger" SpecialPowerTemplate="{TOGGLE_POWER}"/>
+    x = look.sub1(x, 'id="SovietAntiInfantryVehicle"', f'id="{id}"')
+    x = look.sub1(x, 'EditorName="SovietAntiInfantryVehicle"', f'EditorName="{id}"')
+    x = look.sub1(x, 'CommandSet="SovietAntiInfantryVehicleCommandSet"', f'CommandSet="{commands}"')
+    x = look.sub1(x, '</Behaviors>', f'''	<SpecialPower id="ModuleTag_CNV_JamTrigger" SpecialPowerTemplate="{TOGGLE_POWER}"/>
 			<ToggleStatusSpecialAbilityUpdate id="ModuleTag_CNV_Jam" Options="RECONSTITUTE_STORED_COMMAND"
 				SpecialPowerTemplate="{TOGGLE_POWER}">
 				<ToggleState>
@@ -45,7 +40,7 @@ def jammer(id='CNV_Jammer', radius=250, speed='40%', friends=True):
 					Include="VEHICLE INFANTRY"/>
 			</AttributeModifierAuraUpdate>
 		</Behaviors>''')
-    x = sub1(x, '</AssetDeclaration>', f'''	<AttributeModifier id="{on}" Category="NONE" ObjectStatusToSet="IMMOBILE"/>
+    x = look.sub1(x, '</AssetDeclaration>', f'''	<AttributeModifier id="{on}" Category="NONE" ObjectStatusToSet="IMMOBILE"/>
 	<AttributeModifier id="{slow}" Category="NONE" Duration="1s">
 		<Modifier Type="SPEED" Value="{speed}"/>
 	</AttributeModifier>

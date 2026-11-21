@@ -18,7 +18,6 @@ _spec = importlib.util.spec_from_file_location('affected_tests', os.path.join(os
 at = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(at)
 
-DURATIONS_TESTS = os.path.join(at.MAPDIR, 'durations_tests.json')
 
 # item -> ceiling in seconds of test time (summed over tests: serial, not wall). Set at T4 (11-18):
 #   modules: ADR 0035 6 gives the module layer "a few minutes" as its whole budget. It is the layer meant to grow

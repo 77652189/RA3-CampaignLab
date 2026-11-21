@@ -34,11 +34,6 @@ LOOK = 'CNChrono'                               # experimental/units/chrono_kit.
 DEPLOYED = 'CNChronoDep'                        # deployed: tripo_unit.py chronolag_dep (user 2026-11-17), its gun turns
 
 
-def sub1(x, old, new):
-    assert x.count(old) == 1, (old[:60], x.count(old))
-    return x.replace(old, new, 1)
-
-
 def nugget(modifier, include, owner=None):
     own = f'\n\t\t\t\tAttributeModifierOwnerName="{owner}"' if owner else ''
     return f'''			<AttributeModifierNugget Radius="10" PartitionFilterTestType="SPHERE"
@@ -60,15 +55,15 @@ def dress(unit, model=LOOK, deployed=DEPLOYED):
         x, n = re.subn(r'<ModelConditionState\b[^>]*ConditionsYes="[^"]*\bUSER_1\b[^"]*".*?</ModelConditionState>',
                        lambda m: m.group(0).replace(f'"{model.upper()}"', f'"{deployed.upper()}"'), x, flags=re.S)
         assert n == 3, n                        # USER_1, USER_1 DAMAGED, USER_1 REALLYDAMAGED
-        x = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{deployed}.w3x" />')
+        x = look.sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{deployed}.w3x" />')
     x = re.sub(r'AnimationName="[^"]*"', f'AnimationName="{model.upper()}_IDLE"', x)
     x = re.sub(r'\s*<TreadScrollingMap\b[^>]*/>', '', x)
-    x = sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{model}.w3x" />'
+    x = look.sub1(x, '<Includes>', f'<Includes>\n\t\t<Include type="all" source="ART:{model}.w3x" />'
                               f'\n\t\t<Include type="all" source="ART:{model}_IDLE.w3x" />'
                               f'\n\t\t<Include type="all" source="ART:{model}Button.xml" />'
                               f'\n\t\t<Include type="all" source="ART:{model}Portrait.xml" />')
-    x = sub1(x, f'ButtonImage="Button_{RETAIL}_on"', f'ButtonImage="Button_{model}"')
-    x = sub1(x, f'SelectPortrait="Portrait_{RETAIL}"', f'SelectPortrait="Portrait_{model}"')
+    x = look.sub1(x, f'ButtonImage="Button_{RETAIL}_on"', f'ButtonImage="Button_{model}"')
+    x = look.sub1(x, f'SelectPortrait="Portrait_{RETAIL}"', f'SelectPortrait="Portrait_{model}"')
     for k in ('Button', 'Portrait'):
         unit.link += [f'PackedTextureImage:{k}_{model}', f'Texture:{model}{k}_tex']
     # deployed (USER_1, the painter toggle's state) the Guardian lights its painter laser: a pink flare, drawn at the
@@ -76,8 +71,8 @@ def dress(unit, model=LOOK, deployed=DEPLOYED):
     glow = f'{unit.id}_DeployGlow'
     x, n = re.subn(r'FXParticleSystemTemplate="Allied_Target_Laser"', f'FXParticleSystemTemplate="{glow}"', x)
     assert n == 3, n
-    x = sub1(x, '<Includes>', '<Includes>\n\t\t<Include type="instance" source="ART:FXLenzFlare03.xml" />')
-    x = sub1(x, '</AssetDeclaration>', f'''	<FXParticleSystemTemplate IsEmitAboveGroundOnly="true" ParticleTexture="FXLenzFlare03"
+    x = look.sub1(x, '<Includes>', '<Includes>\n\t\t<Include type="instance" source="ART:FXLenzFlare03.xml" />')
+    x = look.sub1(x, '</AssetDeclaration>', f'''	<FXParticleSystemTemplate IsEmitAboveGroundOnly="true" ParticleTexture="FXLenzFlare03"
 		PerParticleAttachedSystem="" Priority="ALWAYS_RENDER" Type="GPU_PARTICLE" id="{glow}">
 		<Lifetime High="5" Low="3"/>
 		<Size High="75" Low="50"/>
@@ -126,9 +121,9 @@ def dress(unit, model=LOOK, deployed=DEPLOYED):
 	</FXParticleSystemTemplate>
 </AssetDeclaration>''')
     unit.link.append(f'FXParticleSystemTemplate:{glow}')
-    x = sub1(x, f'Description="Desc:{RETAIL}"', f'Description="Desc:{unit.id}"')
-    x = sub1(x, f'TypeDescription="Type:{RETAIL}"', f'TypeDescription="Type:{unit.id}"')
-    x = sub1(x, f'>Name:{RETAIL}<', f'>Name:{unit.id}<')
+    x = look.sub1(x, f'Description="Desc:{RETAIL}"', f'Description="Desc:{unit.id}"')
+    x = look.sub1(x, f'TypeDescription="Type:{RETAIL}"', f'TypeDescription="Type:{unit.id}"')
+    x = look.sub1(x, f'>Name:{RETAIL}<', f'>Name:{unit.id}<')
     models = {model.upper()} | ({deployed.upper()} if deployed else set())
     assert set(re.findall(r'<Model\s+Name="([^"]*)"', x)) == models, re.findall(r'<Model\s+Name="([^"]*)"', x)
     unit.xml = x
@@ -175,25 +170,25 @@ def chronolag(id='CNV_ChronoLag', unit_time='8s', structure_time='15s', reload='
     w = open(os.path.join(SAGE, 'GlobalData', 'Weapon.xml'), encoding='utf-8').read()
     s = re.search(rf'\t*<WeaponTemplate\s+id="{RETAIL}Cannon".*?</WeaponTemplate>\n', w, re.S).group(0)
     s = s.replace(f'id="{RETAIL}Cannon"', f'id="{m["shell"]}"')
-    s = sub1(s, 'AttackRange="150.0"', f'AttackRange="{reach}.0"')
-    s = sub1(s, 'CanFireWhileMoving="true"', f'CanFireWhileMoving="true"\n\t\tForbiddenFiringObjectStatus="{COOLDOWN_BIT}"')
+    s = look.sub1(s, 'AttackRange="150.0"', f'AttackRange="{reach}.0"')
+    s = look.sub1(s, 'CanFireWhileMoving="true"', f'CanFireWhileMoving="true"\n\t\tForbiddenFiringObjectStatus="{COOLDOWN_BIT}"')
     s = s.replace(f'WarheadTemplate="{RETAIL}Warhead"', f'WarheadTemplate="{m["warhead"]}"')
-    s = sub1(s, '\t\t\t<InformTargetNugget />', nugget(m['tag'], 'VEHICLE INFANTRY STRUCTURE', owner=m['cooldown'])
+    s = look.sub1(s, '\t\t\t<InformTargetNugget />', nugget(m['tag'], 'VEHICLE INFANTRY STRUCTURE', owner=m['cooldown'])
              + '\t\t\t<InformTargetNugget />')
 
     x = open(os.path.join(SAGE, 'Allied', 'Units', RETAIL + '.xml'), encoding='utf-8').read()
-    x = sub1(x, f'id="{RETAIL}"', f'id="{id}"')
-    x = sub1(x, f'EditorName="{RETAIL}"', f'EditorName="{id}"')
-    x = sub1(x, f'Template="{RETAIL}Cannon"', f'Template="{m["shell"]}"')
-    x = sub1(x, 'VisionRange="200"', f'VisionRange="{vision}"')
+    x = look.sub1(x, f'id="{RETAIL}"', f'id="{id}"')
+    x = look.sub1(x, f'EditorName="{RETAIL}"', f'EditorName="{id}"')
+    x = look.sub1(x, f'Template="{RETAIL}Cannon"', f'Template="{m["shell"]}"')
+    x = look.sub1(x, 'VisionRange="200"', f'VisionRange="{vision}"')
     if deploy:
         x, n = re.subn(rf'Template="{m["shell"]}"\s*ForbiddenObjectStatus="GENERIC_TOGGLE_STATE"/>\s*<Weapon\s*'
                        rf'Ordering="SECONDARY_WEAPON"\s*Template="{RETAIL}TargetPainter"\s*'
                        r'ObjectStatus="GENERIC_TOGGLE_STATE"/>',
                        f'Template="{m["shell"]}"\n\t\t\t\t\t\tObjectStatus="GENERIC_TOGGLE_STATE"/>', x)
         assert n == 1, n
-        x = sub1(x, 'AttributeModifier="AttributeModifier_TargetPaintVisionBonus"', f'AttributeModifier="{m["deploy"]}"')
-    x = sub1(x, '</AssetDeclaration>', decl + s + '</AssetDeclaration>')
+        x = look.sub1(x, 'AttributeModifier="AttributeModifier_TargetPaintVisionBonus"', f'AttributeModifier="{m["deploy"]}"')
+    x = look.sub1(x, '</AssetDeclaration>', decl + s + '</AssetDeclaration>')
     u = Unit(id, x, link=[f'AttributeModifier:{v}' for k, v in m.items() if k not in ('shell', 'warhead')]
              + [f'WeaponTemplate:{m["shell"]}', f'WeaponTemplate:{m["warhead"]}'],
              names=dict(m, unit=id), abilities={'deploy': TOGGLE_COMMAND} if deploy else {},

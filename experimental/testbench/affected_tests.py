@@ -623,14 +623,6 @@ def module_path(name, sim_files):
     return next((p for p in sim_files if module_name(p) == name), '%s/%s.py' % (CNV, name.replace('.', '/')))
 
 
-def new_side_lines(hunks):
-    """Changed lines in the NEW file's numbering (a pure deletion: the lines on both sides of the cut)."""
-    lines = set()
-    for a, b, c, d in hunks:
-        lines.update(range(c, c + d) if d else (c, c + 1))
-    return {n for n in lines if n >= 1}
-
-
 def _sim_methods(source):
     """{line: (method name, its def node)} for the lines of each method defined directly in a class of `source`."""
     out = {}

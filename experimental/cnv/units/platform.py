@@ -22,11 +22,6 @@ from units import look
 SAGE = labpaths.SDK3 + '/SageXML'
 
 
-def sub1(x, old, new):
-    assert x.count(old) == 1, (old[:60], x.count(old))
-    return x.replace(old, new, 1)
-
-
 @look.named('tide_gun')
 def tide_gun(id='CNV_TideGun', high=2.0, low=0.6, health=None, vision=2.0):
     """The turret. high / low: the range multipliers of the two states (1.0 is retail's reach). vision: the VISION
@@ -38,17 +33,17 @@ def tide_gun(id='CNV_TideGun', high=2.0, low=0.6, health=None, vision=2.0):
     mod_on, mod_off = f'AttributeModifier_{id}_High', f'AttributeModifier_{id}_Low'
     seen = f'\n\t\t<Modifier Type="VISION" Value="{round(vision * 100)}%"/>' if vision else ''
     x = open(os.path.join(SAGE, 'Soviet', 'Structures', 'SovietBaseDefenseGround.xml'), encoding='utf-8').read()
-    x = sub1(x, 'id="SovietBaseDefenseGround"', f'id="{id}"')
-    x = sub1(x, 'EditorName="SovietBaseDefenseGround"', f'EditorName="{id}"')
-    x = sub1(x, '<GameDependency>\n\t\t\t<RequiredObject>SovietPowerPlant</RequiredObject>\n\t\t</GameDependency>', '')
-    x = sub1(x, '<Behaviors>', f'''<Behaviors>
+    x = look.sub1(x, 'id="SovietBaseDefenseGround"', f'id="{id}"')
+    x = look.sub1(x, 'EditorName="SovietBaseDefenseGround"', f'EditorName="{id}"')
+    x = look.sub1(x, '<GameDependency>\n\t\t\t<RequiredObject>SovietPowerPlant</RequiredObject>\n\t\t</GameDependency>', '')
+    x = look.sub1(x, '<Behaviors>', f'''<Behaviors>
 			<AttributeModifierUpgrade id="ModuleTag_CNV_SwellHigh" AttributeModifier="{mod_on}">
 				<TriggeredBy>{up_on}</TriggeredBy>
 			</AttributeModifierUpgrade>
 			<AttributeModifierUpgrade id="ModuleTag_CNV_SwellLow" AttributeModifier="{mod_off}">
 				<TriggeredBy>{up_off}</TriggeredBy>
 			</AttributeModifierUpgrade>''')
-    x = sub1(x, '</AssetDeclaration>', f'''	<UpgradeTemplate id="{up_on}" Type="OBJECT"/>
+    x = look.sub1(x, '</AssetDeclaration>', f'''	<UpgradeTemplate id="{up_on}" Type="OBJECT"/>
 	<UpgradeTemplate id="{up_off}" Type="OBJECT"/>
 	<AttributeModifier id="{mod_on}" Category="NONE">
 		<Modifier Type="RANGE" Value="{round(high * 100)}%"/>{seen}

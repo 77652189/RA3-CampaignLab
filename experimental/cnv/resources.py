@@ -31,7 +31,6 @@ OIL_CLEAR = 400.0       # a derrick stands at least this far from any base (reta
 BASE_ORE = 1000.0       # a base has a group of ore within this far (map-language.md: 开局 1000 以内有一组矿)
 PAD = 200.0             # the square a refinery pad keeps flat when it serves a base
 
-DIAGONALS = (45.0, 135.0, 225.0, 315.0)       # retail's refinery angles, degrees
 
 
 @dataclasses.dataclass

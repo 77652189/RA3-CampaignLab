@@ -14,7 +14,7 @@ fit in all), and expects what the simulator and the bench agreed on (EXPECT): th
 interface the moment the win / lose flag comes up) and each phase begins inside its window -- one-sided early too (a
 counter already up before the window is a miss), because "by then" hides a bench that is much faster. A window is the
 reading +-WINDOW (15 %, ADR 0023: past it, stop and find out why) and at least SLACK seconds. Won or lost is not a counter
-(they are hidden by then): it is the end card on the run's last frames (RESULT_CARD), read by looking.
+(they are hidden by then): it is the end card on the run's last frames, read by looking.
 
 Not translated (the simulator's own verbs for a script that stands for something the bench cannot be told): `血量`,
 `打`, `占领 <who>` (one object, at once), `不打`, `自动打掉`, a unit named by its template (an unnamed object cannot be addressed by a script):
@@ -62,7 +62,6 @@ BENCH_ENDS = {  # level -> the mission seconds the bench watches end at: a watch
 EXPECT = {
     'a3': (1, 85.6, [(2, 23.0), (3, 55.0)]),     # bench 2026-11-08: PASS (phases s21 / s51, the flag s79-81, the victory card)
 }
-RESULT_CARD = {1: '胜利', 2: '失败'}   # the card the library shows (frame of the run: win / lose); the check cannot read it
 
 
 def wording(level):
@@ -282,7 +281,7 @@ def window_expect(result, end, phases):
     lo, hi = window(end)                    # `end`: the second the plan's Mission Won / Lost flag comes up
     # the counters go with the interface the moment the flag comes up (bench 2026-11-08, a3 play: no counter on the frame
     # after it, the victory card 2 s later), so ENDED is the flag's second, and the counters cannot say won or lost: that is
-    # the end card on the last frames of the run (RESULT_CARD)
+    # the end card on the last frames of the run
     out.append(('ENDED', lo, '', None, hi))
     return out
 

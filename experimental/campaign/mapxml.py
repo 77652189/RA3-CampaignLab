@@ -8,11 +8,7 @@ GameMap (every placed object, 371 KB) and per-player GameScriptLists. WorldBuild
 .map (the SDK's 360_DLC_TestMap shows the format: Includes of every object XML used, GameMap, TerrainTextureAtlas,
 GameScriptList) and BinaryAssetBuilder compiles that; BAB does compile it here (2026-10-16).
 
-The SDK has no terrain texture sources (no ART:Terrain/*.tga), so BAB cannot build a real atlas; the atlas instance
-is taken from a retail map stream instead (append_instance), which is fine for maps that reuse a retail map's
-terrain textures. A non-official map (map cache flags 0) takes terrain, objects and scripts from the .map itself
-(our script edits in CampNew5/6 work while the stream still has retail Heidelberg's GameMap / GameScriptLists), so
-this first compiler leaves GameMap and the script lists out: Includes + atlas only.
+map_xml writes object includes and GameMap, and can build the terrain atlas with the SDK v3 textures.
 """
 import json
 import os
@@ -403,23 +399,6 @@ def write_stream(h, E, chunks, bufs, heads):
     h[10], h[11], h[12], h[13] = (len(x) for x in bufs)
     man = struct.pack(sa.HEADER, *h) + b''.join(struct.pack(sa.ENTRY, *e) for e in E) + b''.join(bufs)
     return [man] + [heads[n] + b''.join(c[n] for c in chunks) for n in range(3)]
-
-
-def append_instance(stream, other, name):
-    """Copy the instance called `name` (no references of its own, e.g. a TerrainTextureAtlas) from the parsed
-    stream `other` to the end of `stream`; both are (parse() result, raw files)."""
-    (h, E, chunks, bufs), raw = stream
-    (_, oE, oC, oB), _ = other
-    k = next(k for k, e in enumerate(oE) if sa.cstr(oB[2], e[6]).decode() == name)
-    e = list(oE[k])
-    assert e[5] == 0, f'{name} references other assets'
-    bufs = list(bufs)
-    e[4] = len(bufs[0])
-    e[6] = len(bufs[2])
-    bufs[2] = bufs[2] + name.encode('latin-1') + b'\0'
-    e[7] = len(bufs[3])
-    bufs[3] = bufs[3] + sa.cstr(oB[3], oE[k][7]) + b'\0'
-    return write_stream(h, E + [e], chunks + [oC[k]], bufs, (raw[1][:4], raw[2][:4], raw[3][:4]))
 
 
 # ------------------------------------------------------------------ linker
