@@ -147,5 +147,36 @@ def tower(m):
     return t
 
 
-MISSION = {'engine_acts_tgl': mission, 'engine_acts_twr': tower_mission}
-CHECKS = {'engine_acts_tgl': {'all': all_}, 'engine_acts_twr': {'t': tower}}
+# Round 284: Command_ToggleDeployWeapon (s03, 5 uses): the Ore Collector's gun (ToggleStatusSpecialAbilityUpdate, the
+# second state GENERIC_TOGGLE_STATE + WEAPONSTATE_ONE = JapanMinerGun). Two empty miners of the player, an s4 conscript
+# (NO_ATTACK) 150 east of each; JM pressed at 3 s and again at 12 s, JC never.
+MINERS = {'JM': (700.0, 4900.0), 'JC': (2200.0, 4900.0)}
+
+
+def miner_mission():
+    m = Mission(name='CampActsJmn', map=probe_border, units=[], facts={})
+    m.spawns |= {'JapanMiner', MAN}
+    for row, (x, y) in MINERS.items():
+        m.put('JapanMiner', 'stop row', x - O[0], y - O[1], angle=0.0, name=_n(row), role=row.lower())
+        m.put(MAN, 'stop row', x + 150.0 - O[0], y - O[1], side='s4', angle=3.1416, name=_n(f'{row} man'),
+              role=f'{row.lower()} man')
+    return m
+
+
+def miner(m):
+    """态 = JM GENERIC_TOGGLE_STATE 1 + JC 10; 血M / 血C = the conscript beside JM / JC, health %."""
+    t = Test()
+    s8.at(t, 'hold', 0.1, [('UNIT_CHANGE_OBJECT_STATUS', _n(f'{r} man'), status('NO_ATTACK'), 1) for r in MINERS])
+    s8.at(t, 'on', PRESS, [('NAMED_USE_COMMANDBUTTON_ABILITY', _n('JM'), 'Command_ToggleDeployWeapon')])
+    s8.at(t, 'off', 12.0, [('NAMED_USE_COMMANDBUTTON_ABILITY', _n('JM'), 'Command_ToggleDeployWeapon')])
+    s8.total(t, 'CNV_A11_Gun', '态', [(1, _bit('JM', 'GENERIC_TOGGLE_STATE')), (10, _bit('JC', 'GENERIC_TOGGLE_STATE'))])
+    for r, lab in (('JM', '血M'), ('JC', '血C')):
+        t.counters.append((f'CNV_A11_{r}', lab))
+        t.scripts.append(Script(f'Test - A11 {r} man', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', _n(f'{r} man'),
+                                                              f'CNV_A11_{r}')], once=False))
+    s8.watch(t, 20.0)
+    return t
+
+
+MISSION = {'engine_acts_tgl': mission, 'engine_acts_twr': tower_mission, 'engine_acts_jmn': miner_mission}
+CHECKS = {'engine_acts_tgl': {'all': all_}, 'engine_acts_twr': {'t': tower}, 'engine_acts_jmn': {'g': miner}}

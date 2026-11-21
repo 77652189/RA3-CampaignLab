@@ -38,3 +38,19 @@ proves = """sim command-button toggle on the tower: all's JB, its owner with no 
 unpacking; Command_ToggleBinaryWeapon (a04 presses it on the tower too) never does anything there."""
 let = {at = "dict(zip(times, vals(rows)))"}
 expect = ["all(at[k] == [1] for k in range(4, 35))", "all(at[k] == [11] for k in range(36, 41))"]
+
+[[reading]]
+id = "acts_jmn_the_ore_collectors_gun_toggles_on_and_off"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ToggleDeployWeapon"
+scene = {build = "engine_acts_jmn", check = "g", until = 21}
+bench = "g, bench 11-21 CampActsJmnG_mcp_1121_153118 (round 284; bench row s_k = mission k + 2): 态 1 s1-s9, 0 from s10 (JM pressed at 3 s and 12 s; JC never); 血C 100 throughout"
+proves = "sim toggle (ToggleStatusSpecialAbilityUpdate): the Ore Collector's Command_ToggleDeployWeapon sets GENERIC_TOGGLE_STATE at the press, the second press clears it; the miner not pressed stays as it was"
+expect = "all(r['态'] == (1 if 3 <= t < 12 else 0) and r['血C'] == 100 for t, r in zip(times, rows))"
+
+[[reading]]
+id = "acts_jmn_the_armed_ore_collector_shoots_the_conscript_beside_it"
+scene = {build = "engine_acts_jmn", check = "g", until = 21}
+bench = "血M (s4 conscript ~150 off JM, NO_ATTACK) 100 at s1, 70 s2, 28 s3, 0 from s4: the armed miner (JapanMinerGun, ObjectStatus GENERIC_TOGGLE_STATE; AIUpdate OreMinerOffensiveStateMachine, AutoAcquireEnemiesWhenIdle YES) takes it by itself"
+proves = "sim: an idle armed JapanMiner acquires an enemy in range"
+expect = "rows[-1]['血M'] == 0"
+mismatch = "sim 血M 100 throughout: JM holds JapanMinerGun (range 150) from the press but never acquires, not even at 119 (round 284 probe) -- the idle acquiring skips the miner (oreminer job?); bench 0 from s4"

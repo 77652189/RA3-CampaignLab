@@ -27,6 +27,7 @@ RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j0
                    'Command_PackJapanMCV',
                    'Command_UnPackJapanBaseDefenseEgg', # a Japanese egg unfolds (engine_unpack egg)
                    'Command_UnPackJapanPowerPlantEgg',  # j08's power plant eggs (engine_unpack pwr)
+                   'Command_ToggleDeployWeapon',        # s03's Ore Collector gun (engine_acts_jmn)
                    'Command_JAIV_Transform',            # the Tengu transforms (JapanAntiInfantryVehicle)
                    'Command_JAAVT1_Transform',          # the VX transforms (JapanAntiAirVehicleTech1)
                    'Command_JAAS_Transform',            # the Sea-Wing takes off (JapanAntiAirShip, engine_acts_wing)
