@@ -996,9 +996,11 @@ def rebase(doc, t, frame):
     out = dict(doc, t=t, frame=frame)
     out['script'] = dict(doc['script'], timers={k: d + dt for k, d in doc['script']['timers'].items()})
     out['things'] = [dict(row, queue=[dict(j, full=None if j['full'] is None else j['full'] + df)
-                                      for j in row['queue']],
-                          clocks=[{f: v + df if f in _FRAMES and v is not None else v for f, v in c.items()}
-                                  for c in row.get('clocks', ())]) for row in doc['things']]   # none before step 10
+                                      for j in row['queue']]) for row in doc['things']]
+    for row in out['things']:
+        if 'clocks' in row:     # none before step 10: left out, so placing still says why (review hh #4)
+            row['clocks'] = [{f: v + df if f in _FRAMES and v is not None else v for f, v in c.items()}
+                             for c in row['clocks']]
     return out
 
 

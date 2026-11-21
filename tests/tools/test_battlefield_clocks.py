@@ -85,7 +85,7 @@ def test_the_cut_holds_each_timer_and_the_host_reads_them_back_on_the_files_cloc
     back = simbattlefield.rebase(simbattlefield.export(Observe(host)), doc['t'], doc['frame'])
     assert {t['id']: t['clocks'] for t in back['things']} == {t['id']: t['clocks'] for t in doc['things']}
     old = dict(doc, things=[{k: v for k, v in t.items() if k != 'clocks'} for t in doc['things']])   # before step 10
-    assert all(t['clocks'] == [] for t in simbattlefield.rebase(old, doc['t'] + 1, doc['frame'] + 15)['things'])
+    assert all('clocks' not in t for t in simbattlefield.rebase(old, doc['t'] + 1, doc['frame'] + 15)['things'])
 
 
 def test_run_on_the_host_mends_gives_power_deletes_and_kills_at_the_sources_ticks():
