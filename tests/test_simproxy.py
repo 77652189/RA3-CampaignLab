@@ -46,7 +46,7 @@ def _after_scene(w, extra=0.0, demo_holds_fire=False):
 
 
 def test_a4_the_convoy_reaches_the_halt_alive_with_a_report(a4_run):
-    """sim.HOLD_SPOTS on (the game's, bench 11-09 checks/engine_spots.py): the proxy's army stands apart, beats the
+    """simpath.HOLD_SPOTS on (the game's, bench 11-09 checks/engine_spots.py): the proxy's army stands apart, beats the
     venue's waves, and all three trucks halt alive (the harbour phase on). Then 北营 wants a base vehicle deployed and
     its command post razed: the proxy has no deploy or build (docs/story/handoff-phase4.md, A4 待办), so the run
     goes to the clock -- judged here is the first leg only.
@@ -202,7 +202,7 @@ def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
     plain, _ = simproxy.play('a4', style=w.p['player'].Style(block=0), label='不放冰', lib=lib)
     assert not [m for m in plain['moments'] if m['what'] == 'block']
     assert not plain['goals']['会场冻街口']['met'] and not plain['goals']['最后一程冻口子']['met']
-    # sim.HOLD_SPOTS on (11-09): both plays' convoys halt with no truck lost and the runs go to the clock (the proxy
+    # simpath.HOLD_SPOTS on (11-09): both plays' convoys halt with no truck lost and the runs go to the clock (the proxy
     # cannot take 北营) -- the plain play no longer loses on the way (level line's to-do, handoff-phase4.md A4)
     # round 121: the default play loses in the venue (see the test above: the old timeout was a tie-break); the
     # plain play, never icing, halts and goes to the clock -- icing does the proxy no good here (level line's to read)

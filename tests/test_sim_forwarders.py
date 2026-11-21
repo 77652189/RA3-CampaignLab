@@ -95,6 +95,7 @@ FORWARDER_CALLS = {
     ('engine.objects.infiltrator', 'living'): 3, ('engine.objects.mine', 'living'): 4, ('engine.objects.modifier', 'living'): 1,
     ('engine.orders.order', 'living'): 3, ('engine.orders.ability', 'living'): 2, ('engine.orders.hunt', 'living'): 1, ('simproxy', 'living'): 3, ('engine.ai.pullback', 'living'): 1,
     ('engine.objects.special', 'living'): 2, ('engine.combat.sweeps', 'living'): 1,
+    ('engine.objects.path', 'living'): 2,       # claims / goal_off_nodes, moved off the Sim (R3 M5 3a)
 }
 
 _CONTAINER = set(dir(dict)) | set(dir(list)) | set(dir(set))   # self.players.get(...) is a lookup, not a forwarder

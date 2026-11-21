@@ -1,4 +1,4 @@
-"""R3 step X, a move's goal spot (sim.Sim.free_spot -> simpath.spot) against the bench: `engine_drop lanes` and
+"""R3 step X, a move's goal spot (simpath.free_spot -> spot) against the bench: `engine_drop lanes` and
 `engine_dropring tens` 2026-11-17 (experimental/cnv/checks/engine_drop.py; CNVProbe stops read by
 work/re/scripts/x_drop.py): units of one kind sent one at a time to one point, on the probe map's open ground."""
 import importlib.util

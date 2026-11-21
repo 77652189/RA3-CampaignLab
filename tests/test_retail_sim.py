@@ -95,7 +95,7 @@ def test_question_1_the_squad_walks_to_the_point(mission):
 
 
 def test_question_1_the_squad_stands_round_the_point(mission):
-    """The squad stops apart, its middle short of the point: an infantry group's block (Sim.column_ends ->
+    """The squad stops apart, its middle short of the point: an infantry group's block (simpath.formation_spots ->
     simpath.block). Bench 11-17 checks/engine_a01sq.py squad (run CampA01SqSquad_mcp_1117_223430, read by
     work/re/scripts/x_a01sq.py): a01's squad copied with CNVProbe -- 4 Peacekeepers and 2 dogs standing as at the
     hand-over, the point as far and the same way, shifted by whole cells -- sent by one MOVE_TEAM_TO: each man's stop

@@ -425,7 +425,7 @@ def test_crush_levels_come_from_the_data_and_the_greater_wins():
 
 
 def test_a_crushers_move_onto_a_crushable_enemy_keeps_its_goal_and_allies_still_hold_theirs():
-    """Sim.claims (Generals' Pathfinder::checkDestination): a Hammer's spot search holds its allies' spots and a
+    """simpath.claims (Generals' Pathfinder::checkDestination): a Hammer's spot search holds its allies' spots and a
     standing enemy it cannot crush (the guardian, 20 against 20), not a crushable one (the conscript, 10) -- sent onto
     the conscript, it keeps the conscript's spot as its goal (aicrush1's first Crush move had it moved 31.6 aside,
     work/re/c_crush_path_report.md). An ally sent there is moved off the Hammer's goal."""
@@ -438,7 +438,7 @@ def test_a_crushers_move_onto_a_crushable_enemy_keeps_its_goal_and_allies_still_
     conscript = next(b for b in ground if b.template == 'SovietAntiInfantryInfantry' and s.enemy(hammer.owner, b.owner))
     guardian = next(b for b in ground if b.template == 'AlliedAntiVehicleVehicleTech1' and s.enemy(hammer.owner, b.owner))
     allies = [b for b in ground if b is not hammer and b.owner == hammer.owner]
-    held = {(x, y) for x, y, _ in s.claims(hammer)}
+    held = {(x, y) for x, y, _ in sim.simpath.claims(s, hammer)}
     assert (conscript.x, conscript.y) not in held and (guardian.x, guardian.y) in held
     assert allies and all((b.x, b.y) in held for b in allies)
     s.order_move(hammer, (conscript.x, conscript.y), False)

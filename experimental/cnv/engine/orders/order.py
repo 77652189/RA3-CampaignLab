@@ -10,7 +10,7 @@ The fight (`fight`, once a tick) is the attack state machine: a team attack goes
 body aims (L3 `aim`) and fires, rounds a blocked line, and chases by itself (`chase_step`: an attack-mover's
 `attack_chase`, anyone else's `idle_chase`).
 All over the world it is given (simworld.WORLD_API only). Its host's other parts come in as `peers` (`Peers`, the
-names in PEERS only, read when used): L2 locomotion (send, claims, free_spot, goal_off_nodes, column_ends), L2
+names in PEERS only, read when used): L2 locomotion (send; a goal's spot is engine.objects.path's), L2
 bodies (delete, modify, engineer_entry, the garrison), L3 targeting and fire (reach, fight_field, aim, can_hit,
 in_range, shot_blocked, fire_spot, side_sees, the unshot templates and AI sides: engine.orders.target's), L4 money (wallet), the team
 registry (members, team_targets) and the order queues the scripts fill (seq, hunts). The fight's per-tick state on the host
@@ -23,6 +23,7 @@ import math
 import numpy as np
 
 import engine.data.units as simunits
+import engine.objects.path as simpath
 from engine.kernel import interfaces
 from engine.orders import ability as simability
 from engine.orders import target as simtarget
@@ -37,8 +38,7 @@ ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from 
 IDLE_SCAN_FROM = 2
 
 WRITES = frozenset({'_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims', 'seen', 'volleys'})
-PEERS = frozenset({'act', 'claims', 'column_ends', 'delete', 'engineer_entry', 'free_spot', 'garrison',
-                   'goal_off_nodes', 'hunts', 'modify', 'powers_off', 'reach', 'send', 'seq', 'toggle_press',
+PEERS = frozenset({'act', 'delete', 'engineer_entry', 'garrison', 'hunts', 'modify', 'powers_off', 'reach', 'send', 'seq', 'toggle_press',
                    'toggles_of', 'wallet', 'production',
                    'aim', 'can_hit', 'fight_field', 'fire_spot', 'in_range', 'members', 'shot_blocked',
                    'side_sees', 'ai', 'team_targets', 'unshot',
@@ -77,22 +77,16 @@ def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None, 
         m.mode = 'attack' if attacking else 'move'
         p = world.point(where) if isinstance(where, str) else where
         if p is not None and b.alive and b.speed > 0:
-            spot = peers.free_spot(b, peers.goal_off_nodes(b, p), peers.claims(b, skip) + list(given), on_grid)
+            spot = simpath.free_spot(world, b, simpath.goal_off_nodes(world, b, p),
+                                     simpath.claims(world, b, skip) + list(given), on_grid)
             where = where if spot == p else spot
         peers.send(b, where, face=face)
         m.move_to = b.dest if not attacking else None
 
 
 def order_group(world, peers, bodies, where, attacking, on_grid=False):
-    """A move order to several units at once (a team's MOVE_TEAM_TO, a selection's click): Generals'
-    AIGroup::groupMoveToPosition without a formation (GL/AI/AIGroup.cpp; work/re/generals-source-map.md). The unit
-    nearest the goal is the centre and walks to the point; the others, nearest first, each to the point plus where
-    it stands from that centre, the offset cut to 6 times its radius (computeIndividualDestination), then moved
-    off spots already held (free_spot). Bench 2026-11-08 acceptance question 1 (a01's squad, 4 Peacekeepers + 2
-    dogs): the squad's middle ~18-23 short of the point, the units apart -- the simulator had all six on the point.
-    INFERRED for RA3 (its group move not read, docs/engine/pathing.md 5: the script's MOVE_TEAM_TO hands the team
-    to one group command): the line check from the group's goal to the spot is left out. Two or more infantry stand
-    in their block instead (column_ends -> simpath.block, bench 2026-11-17 engine_column)."""
+    """A move order to several units at once (a team's MOVE_TEAM_TO, a selection's click): each mover sent, in turn,
+    to its spot of the group (simpath.formation_spots), off the spots already held and handed out to the group."""
     movers = [b for b in bodies if b and b.alive and b.speed > 0 and 'IMMOBILE' not in b.status]
     p = world.point(where) if isinstance(where, str) else where
     if len(movers) < 2 or p is None:
@@ -100,23 +94,9 @@ def order_group(world, peers, bodies, where, attacking, on_grid=False):
             order_move(world, peers, b, where, attacking, on_grid=on_grid)
         return
     world.used.add('group move')
-    movers.sort(key=lambda b: (b.x - p[0]) ** 2 + (b.y - p[1]) ** 2)
     given = []                                  # (x, y, radius) spots handed out to the group so far
-    foot = [b for b in movers if 'INFANTRY' in b.kinds]
-    if len(foot) >= 2:      # bench engine_colgate: 2 men, and 6 sent 20 short, stand in the block too
-        world.used.add('column march')
-        peers.column_ends(foot, p, attacking, given, movers, on_grid)
-        movers = [b for b in movers if b not in foot]
-    if not movers:
-        return
-    cx, cy = movers[0].x, movers[0].y
-    for b in movers:
-        vx, vy = b.x - cx, b.y - cy
-        n = math.hypot(vx, vy)
-        cap = 6 * b.radius
-        if n > cap:
-            vx, vy = vx * cap / n, vy * cap / n
-        order_move(world, peers, b, (p[0] + vx, p[1] + vy), attacking, given, movers, on_grid=on_grid)
+    for b, q in simpath.formation_spots(world, movers, p):
+        order_move(world, peers, b, q, attacking, given, movers, on_grid=on_grid)
         given.append(tuple(b.dest or (b.x, b.y)) + (b.radius,))
 
 

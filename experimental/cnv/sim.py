@@ -118,9 +118,6 @@ from engine.objects.modifier import UNDERSIZE  # noqa: E402,F401  (a weapon reac
 REACH = 300.0                  # 自动打掉: an enemy this close to something of the player's is being fought
 SPREAD = 30.0                   # a reinforcement team's units this far apart round its waypoint (Sim.reinforce, INFERRED)
 from engine.world.handle import GRID  # noqa: E402,F401  (routing cells, world units; L0)
-HOLD_SPOTS = True              # every move's goal kept off other units' spots (Sim.claims): the game's (bench 11-09,
-                               # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
-ORE_PLATE = (60.0, 45.0)        # an ore node's base plate, half-extents (OreNode.xml's last BOX): Sim.goal_off_nodes
 RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's NaturalRallyPoint, on the line from
                                # the factory's centre through it: INFERRED, fitted to bench 11-11 engine_production
                                # h / i (barracks, (40, 18): stops ~(75-80, 24-33)) and engine_rally tank (war
@@ -783,14 +780,14 @@ class Sim:
             # its own bounding circle (box 33 x 41 -> 52.6), not the 40 a building out of platprops gets: with 40 the
             # SimpleExpansion miner's way to its slot 67 behind the node slid past it 45 off and unpacked inside
             # Distance 50 (aiexpb50); the bench miner goes round, never nearer than 89 (D round 168/169). D176: its
-            # base plate (ORE_PLATE) grown by GRID, a 2-cell unit's half footprint (goal_off_nodes' rule on the
+            # base plate (simpath.ORE_PLATE) grown by GRID, a 2-cell unit's half footprint (goal_off_nodes' rule on the
             # routing grid's corners); with the circle aiexpb200's miner came at the node from the south and
             # unpacked at (4127, 2788), with the plate from the west, (4014, 2847) -- the bench (4012, 2903).
             # INFERRED: one clearance for every unit's size. A structure's placement keeps the round (place): with
             # the plate the refinery search found no third refinery's spot (test_simai_bench_b third_refinery)
             if place:
                 return (b.x, b.y, b.radius)
-            return (b.x, b.y, b.angle, 2 * (ORE_PLATE[0] + GRID), 2 * (ORE_PLATE[1] + GRID))
+            return (b.x, b.y, b.angle, 2 * (simpath.ORE_PLATE[0] + GRID), 2 * (simpath.ORE_PLATE[1] + GRID))
         if 'STRUCTURE' in b.kinds and 'bridge' not in b.template.lower():
             import platprops
             return (b.x, b.y, platprops.radius(b.template) if b.template in platprops.CATALOG else 40.0)
@@ -1070,96 +1067,9 @@ class Sim:
             p = self.order_peers = simorder.Peers(self)
         return p
 
-    def claims(self, b, skip=()):
-        """The spots other mobile ground units hold (x, y, radius): where they are going, or where they stand; none for
-        aircraft in the air or for `skip`; none unless HOLD_SPOTS. free_spot (simpath.spot) keeps a move's goal off
-        them (bench 2026-11-17 checks/engine_drop.py: allies sent one after another to one point stood in the rings'
-        order, each off every one before it -- all of them there already; that a goal is held while its unit is
-        still on its way is from engine_spots 'same' below). Benched 11-09: the rule is the game's (a01, two
-        infantry sent alone to one point stood ~22 apart),
-        and the game's a4 gets all trucks to the 80-wide halt area (checks/a4.py hold PASS). The simulator's trucks
-        2 and 3, their goals moved 30 aside, ran on grid rows 40 off the road's middle the whole way, on the halt
-        area's edges, and drove past it: its ways were not pulled straight (Ground.pull since; now 2854,2479 and
-        2794,2521 at the halt at s315, like the switch off). On since bench 11-09 checks/engine_spots.py: three
-        trucks on teams of their own sent to one point (at once, or 20 s apart) end one on it, two 10-80 off (the
-        simulator 0 / 50 / 44.7). With it the a4 proxy's army stands apart, beats the second wave at x~1950 (off: all
-        three trucks shot there at s232-240, lost at s248), the convoy halts alive, and the run goes to the clock:
-        the proxy has no base-vehicle deploy, builds nothing and never takes 北营's command post (the level line's
-        to-do, docs/story/handoff-phase4.md). j7 / a3's compiled plays ended 0.5-3.6 s off their own scripts
-        (j7 126.9 vs 130.5): the script's 派 went straight to `send`, past this; it is order_move now, as its compiled
-        ATTACK_MOVE_NAMED_UNIT_TO (test_playcheck). The script's 走 is a group move (order_group) but compiles to one
-        MOVE_NAMED_UNIT_TO per unit -- no play has 走 for several units yet.
-        Whose spots: an ally's (own units too) goal always; an enemy's or a neutral's only where it stands still and b
-        cannot crush it -- a moving enemy's goal and a crushable one's spot are b's to take (INFERRED: no bench sent a
-        unit onto an enemy's spot yet; the crush case is aicrush1's, below). Until 11-11 every unit's spot was held:
-        aicrush1's first Crush move (checks/engine_aicrush.py, work/re/c_crush_path_report.md) had its goal, the
-        guard's own spot, moved 31.6 aside, and the tank drove past the guard it was sent over."""
-        if b.surface == 'air' or not HOLD_SPOTS:
-            return []
-        out = []
-        for o in self.living():
-            if o is b or o in skip or o.speed <= 0 or o.surface == 'air' or o.scenery:
-                continue
-            moving = bool(o.path and o.dest)
-            if self.relation(b.owner, o.owner) != 'ALLIES' and (
-                    moving or (b.crusher is not None and o.crushable is not None and b.crusher > o.crushable)):
-                continue
-            out.append(tuple(o.dest if moving else (o.x, o.y)) + (o.radius,))
-        return out
-
     def order_group(self, bodies, where, attacking, on_grid=False):
         """simorder.order_group (L5)."""
         return simorder.order_group(self, self._order_peers(), bodies, where, attacking, on_grid)
-
-    def column_ends(self, foot, p, attacking, given, skip, on_grid=False):
-        """An infantry group's ends (simpath.block, bench engine_column): each man sent to his spot in the block, a
-        move's goal like any other (snapped by order_move's free_spot when on_grid)."""
-        for b, q in zip(foot, simpath.block([(b.x, b.y) for b in foot], p)):
-            self.order_move(b, q, attacking, given, skip, on_grid=on_grid)
-            given.append(tuple(b.dest or (b.x, b.y)) + (b.radius,))
-
-    def goal_off_nodes(self, b, want):
-        """A ground move's goal whose footprint touches an ore node's: the nearest goal clear of every node, on the
-        pathfinder's GRID cells (D round 176). The footprint is simpath.footprint, floor(2 r / GRID + 0.3) cells, an
-        even one round a cell corner, an odd one round a cell centre (bench 2026-11-17 checks/engine_drop.py: Guardians
-        2 cells, Peacekeepers 1, snapped so); a node's is its base plate (OreNode.xml's 60 x 45 half-extent box, every other shape of it inside),
-        turned with the node, and a cell touching it is shut. Bench aiexpb50n (only node 44 by the slot, D175): the
-        miner sent to its slot (4215, 3039), 7 off the plate's edge, turned off its straight way 37 short and stood
-        at (4221, 3061) -- this rule's (4220, 3060), the nearest corner whose four cells clear the plate. Not yet
-        explained: aiexpb50 (node 45 too) stood at (4201, 3081), the rule's (4180, 3060)."""
-        if b.surface == 'air' or 'ORE_NODE' in b.kinds:
-            return want
-        nodes = [(o.x, o.y, o.angle) for o in self.living() if 'ORE_NODE' in o.kinds]
-        if not nodes:
-            return want
-        hx, hy = ORE_PLATE
-        diam = max(1, math.floor(2 * b.radius / GRID + 0.3))
-        m, off = diam * GRID / 2, 0.0 if diam % 2 == 0 else GRID / 2
-
-        def clear(x, y):
-            for nx, ny, a in nodes:
-                u = (x - nx) * math.cos(a) + (y - ny) * math.sin(a)
-                v = -(x - nx) * math.sin(a) + (y - ny) * math.cos(a)
-                if abs(u) < hx + m and abs(v) < hy + m:
-                    return False
-            return True
-        if clear(*want):
-            return want
-        cx, cy = round((want[0] - off) / GRID), round((want[1] - off) / GRID)
-        spots = [((cx + i) * GRID + off, (cy + j) * GRID + off) for i in range(-8, 9) for j in range(-8, 9)]
-        spots = [s for s in spots if clear(*s) and self.ground.open(b.surface, *s)]
-        if not spots:
-            return want
-        return min(spots, key=lambda s: (s[0] - want[0]) ** 2 + (s[1] - want[1]) ** 2)
-
-    def free_spot(self, b, want, held, on_grid=False):
-        """simpath.spot (L2: the goal snapped to the grid by b's footprint, off the spots `held`; bench engine_drop):
-        aircraft in the air, or no spot (none free, or `want` off its ground: the way finder's closest point decides,
-        R7) -> `want`."""
-        if b.surface == 'air':
-            return want
-        at = simpath.spot(want, b.radius, held, lambda x, y: self.ground.open(b.surface, x, y), GRID, on_grid)
-        return want if at is None else at
 
     def order_attack(self, b, target_name, force=False):
         """simorder.order_attack (L5)."""
