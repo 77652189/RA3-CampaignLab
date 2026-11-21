@@ -887,7 +887,7 @@ def _face_health():
     s.eng.frame = 105
     for k, (y, _) in FACE_LANES.items():
         b = s.bodies[face_name(k)]
-        b.x, b.y, b.z, b.path, b.engaged = 2885.0, y, None, [(4200.0, y)], None
+        b.x, b.y, b.z, b.path = 2885.0, y, None, [(4200.0, y)]
         locomotor.write(s.world, b, speed=15.0 * 15)
         ocl = next(m for m in b.find(interfaces.CreateOnDeath) if m.takes_airborne()).creation_list()
         s._life().air_crash(s, b, ocl, s.death_blasts, lambda x, y: impact_ground_z(s, x, y))

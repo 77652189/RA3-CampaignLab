@@ -443,7 +443,8 @@ def fight(world, peers):
             else:
                 del peers.team_targets[a.serial]
     for a in armed:
-        a.engaged = False
+        m = a.aiupdate
+        m.engaged = False
         if held_up(a):                 # stopped short on a plain move: still moving (DEMO_KILL)
             continue
         got = peers.aim(a, targets, aimable, tx, ty)
@@ -453,11 +454,11 @@ def fight(world, peers):
         fired, d, idx = got
         g = a.goal
         if not fired and isinstance(g, type(a)) and g.alive and not a.path and g.serial in aimable and \
-                (a.spot is None or a.spot[0] != g.serial or math.hypot(g.x - a.spot[1], g.y - a.spot[2]) > 150) and \
+                (m.spot is None or m.spot[0] != g.serial or math.hypot(g.x - m.spot[1], g.y - m.spot[2]) > 150) and \
                 any(peers.can_hit(w, g) and peers.shot_blocked(a, g, w) for w in a.weapons) and \
                 not any(peers.can_hit(w, g) and peers.in_range(a, g, w) and not peers.shot_blocked(a, g, w)
                         for w in a.weapons):
-            a.spot = (g.serial, g.x, g.y)          # told to attack, the line blocked: round to a clear spot
+            m.spot = (g.serial, g.x, g.y)          # told to attack, the line blocked: round to a clear spot
             p = peers.fire_spot(a, g)
             if p is not None:
                 world.note('绕位', f'{world.label(a)} 打不着 {world.label(g)}（中间有建筑），绕到 ({p[0]:.0f},{p[1]:.0f})')
@@ -494,18 +495,19 @@ def attack_chase(world, peers, a, fired, near):
     distance (Team::getTeamTargetObject), was wrong: there tank 3 walked to A itself, 212 from the enemy, within
     its own scan 223.3; order_follow keeps no places for the attack version).
     INFERRED: the scan's rate (MoodAttackCheckRate) and the way back (straight to the leg's end, not to the path)."""
-    if a.chase is not None and a.path and a.dest != a.auto_to:      # an order since: its own way, not ours
-        a.chase = a.resume = a.auto_to = None
+    m = a.aiupdate
+    if m.chase is not None and a.path and a.dest != m.auto_to:      # an order since: its own way, not ours
+        m.forget()
     if a.building or a.speed <= 0 or 'IMMOBILE' in a.status or fired:
         return
-    c = a.chase
+    c = m.chase
     if c is not None and c.alive and peers.side_sees(a.owner, c) and \
             math.hypot(c.x - a.x, c.y - a.y) - c.radius <= a.sight:
         if not a.path:                      # got there and it is still out of reach: after it again
             peers.send(a, (c.x, c.y), reach=peers.reach(a, c))
-            a.auto_to = a.dest
+            m.auto_to = a.dest
         return
-    a.chase = None
+    m.chase = None
     for dist, t in near:
         if dist - t.radius > a.sight:
             break                           # sorted by centre
@@ -513,15 +515,15 @@ def attack_chase(world, peers, a, fired, near):
             continue
         if not any(peers.can_hit(w, t) and not peers.shot_blocked(a, t, w) for w in a.weapons):
             continue
-        if a.resume is None:
-            a.resume = a.dest
-        a.chase = t
+        if m.resume is None:
+            m.resume = a.dest
+        m.chase = t
         world.used.add('acquire')
         peers.send(a, (t.x, t.y), reach=peers.reach(a, t))
-        a.auto_to = a.dest
+        m.auto_to = a.dest
         return
-    if a.resume is not None:                # nothing left: on to where the move was going
-        r, a.resume, a.auto_to = a.resume, None, None
+    if m.resume is not None:                # nothing left: on to where the move was going
+        r, m.resume, m.auto_to = m.resume, None, None
         peers.send(a, r)
 
 
@@ -538,27 +540,28 @@ def idle_chase(world, peers, a, fired, near):
     in place at 180 as GUARD does but at 220 never moves nor fires -- it walks after nothing; AGGRESSIVE takes the
     same reach (220 yes, 240 / 260 nothing) but stays where the chase ended, never walking back (near 1 to s26
     against GUARD's home at s16). A stance set in the middle of a chase: INFERRED from these."""
-    mine = a.path and a.dest is not None and a.dest == a.auto_to
+    m = a.aiupdate
+    mine = a.path and a.dest is not None and a.dest == m.auto_to
     if a.path and not mine:                 # an order of its own since: not idle, nothing of ours to keep
-        a.chase = a.home = a.auto_to = None
+        m.chase = m.home = m.auto_to = None
         return
     if a.goal is not None or a.building or a.speed <= 0 or 'IMMOBILE' in a.status:
         return
-    if a.home is not None and a.chase is None and not a.path:
-        a.home = a.auto_to = None           # back home
+    if m.home is not None and m.chase is None and not a.path:
+        m.home = m.auto_to = None           # back home
     if fired:
         return
     if a.stance == 2:                       # HOLD_POSITION: goes after nothing (hold220)
         return
     sight = a.sight
-    c = a.chase
+    c = m.chase
     if c is not None and c.alive and peers.side_sees(a.owner, c) and \
             math.hypot(c.x - a.x, c.y - a.y) - c.radius <= sight:
         if not a.path:                      # got there and it is still out of reach: after it again
             peers.send(a, (c.x, c.y), reach=peers.reach(a, c))
-            a.auto_to = a.dest
+            m.auto_to = a.dest
         return
-    a.chase = None
+    m.chase = None
     if 'YES' not in a.acquire or world.frame_now() < IDLE_SCAN_FROM:
         near = []                           # AutoAcquireEnemiesWhenIdle NO / none, or the opening frame: nothing
     for dist, t in near:
@@ -568,16 +571,16 @@ def idle_chase(world, peers, a, fired, near):
             continue
         if not any(peers.can_hit(w, t) and not peers.shot_blocked(a, t, w) for w in a.weapons):
             continue                        # bench engine_seal row: a target behind a structure is not gone after
-        if a.home is None:
-            a.home = (a.x, a.y)
-        a.chase = t
+        if m.home is None:
+            m.home = (a.x, a.y)
+        m.chase = t
         world.used.add('acquire')
         peers.send(a, (t.x, t.y), reach=peers.reach(a, t))
-        a.auto_to = a.dest
+        m.auto_to = a.dest
         return
     if a.stance == 1:                       # AGGRESSIVE: stays where the chase ended (agg220)
-        a.home = None
-    if a.home is not None and (a.path or math.hypot(a.home[0] - a.x, a.home[1] - a.y) > 1.0):
-        if a.dest != a.home:
-            peers.send(a, a.home)
-            a.auto_to = a.dest
+        m.home = None
+    if m.home is not None and (a.path or math.hypot(m.home[0] - a.x, m.home[1] - a.y) > 1.0):
+        if a.dest != m.home:
+            peers.send(a, m.home)
+            m.auto_to = a.dest

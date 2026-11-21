@@ -128,7 +128,6 @@ RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's 
                                # h / i (barracks, (40, 18): stops ~(75-80, 24-33)) and engine_rally tank (war
                                # factory, (80, 20): ~(112-127, 25-34); x 1.9 from the centre would be (152, 38))
 from engine.objects.special import WFIRE_LAG, WFIRE_REAIM, NONE_TARGET_LAG  # noqa: E402,F401  (weapon-fire abilities, L2)
-from engine.orders.order import IDLE_SCAN_FROM  # noqa: E402,F401  (an idle unit's first scan frame, bench engine_dam BR; L5)
 BUILD_STEP = 5.0               # a builder on his way (R5) moves in steps this long, to see where he gets within range
 HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
                                 # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
@@ -331,12 +330,6 @@ class Body(kernel_module.Thing):
     armor: dict = dataclasses.field(default_factory=dict)      # damage type -> percent taken (simunits.fight)
     radius: float = 0.0                                         # R8: Geometry's bounding circle (simunits.radius)
     sight: float = 0.0                                          # R8: its VisionRange alone (vision: with the shroud)
-    chase: object = None                                        # R8 idle_chase: the enemy it went after by itself,
-    home: tuple = None                                          # where it stood then (it walks back),
-    auto_to: tuple = None                                       # and the way's end that rule gave it
-    resume: tuple = None                                        # attack_chase: where the attack-move was going
-    spot: tuple = None                                          # (goal id, goal x, y): sent to a fire_spot for it
-    engaged: bool = False                                       # an attack-mover with an enemy in range: holds
     alive: bool = simliving.Alive()
     deleted: bool = False
     close_since: float = None                                   # since the enemy came within the player's REACH (自动打掉)
@@ -413,7 +406,8 @@ class Body(kernel_module.Thing):
                 'suppression_next', 'attachment_rules', 'spawned_children', 'spawn_refills', 'spawn_parent',
                 'spawn_module', 'ready_at', 'mine', 'unpack_end', 'sell_end', 'cold', 'cold_step', 'level_modules',
                 'lies', 'linger', 'weapons', 'slots', 'speed', 'surface', 'turn_rate', 'turn_first', 'path', 'dest', 'face',
-                'hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'set_off', 'stood_for', 'frame_move', 'jet_motion')
+                'hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'set_off', 'stood_for', 'frame_move', 'jet_motion',
+                'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged')
     hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.health(), 100.0)     # step B2b: the Body
     max_hp = kernel_module.forward(kernel_interfaces.Body, lambda m: m.max_health(), 100.0)     # module's
     health_floor = kernel_module.forward(kernel_interfaces.Body, lambda m: m.floor(), 1.0)
@@ -471,6 +465,12 @@ class Body(kernel_module.Thing):
     acquire = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.acquire, frozenset(), aiupdate.writer('acquire'))
     goal = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.goal, None, aiupdate.writer('goal'))  # C2b
     mode = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.mode, 'idle', aiupdate.writer('mode'))
+    chase = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.chase)      # C3: fight_step's
+    home = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.home)
+    auto_to = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.auto_to)
+    resume = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.resume)
+    spot = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.spot)
+    engaged = kernel_module.forward(kernel_interfaces.AIUpdate, lambda m: m.engaged, False)
     ground_fire = aiupdate.ground_fire                  # no forward: in the record only once written
     aiupdate = property(aiupdate.of)                    # the module itself (attached at its first setting)
     set_off = kernel_module.forward(kernel_interfaces.Locomotor, lambda m: m.set_off, -1)      # M3 1: go_to's
@@ -2051,8 +2051,7 @@ class Sim:
             if w.get('sdps') and not self.shot_clock:
                 self.chilling.append((pick, w['sdps'] * a.dealt, a))
             fired = True
-            if a.mode == 'attack':
-                a.engaged = True
+            a.aiupdate.engage()
         return fired, got[0], got[1]
 
     def first_shot(self, a, w, pick):

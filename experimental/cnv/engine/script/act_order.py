@@ -134,7 +134,7 @@ def unit_teleport_to_waypoint(sim, name, a, script, unit=None):
         # ready) is idle and ready (16:1) the frame after the teleport, its team still in state 6
         b.x, b.y = p[0], p[1]
         sim.stand(b)
-        b.chase = b.resume = b.auto_to = None
+        b.aiupdate.forget()
         sim.change()
 
 
