@@ -1,0 +1,31 @@
+# Bench readings of checks/engine_queuedock.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E152 bench 2026-11-15 (run_queue, head 4d4eecf8): its rows are bench seconds, the frames from the 帧数 counter.
+# The off arm (no QueueDock on the refinery) faults the game at the first delivery (D165 f200): no rows to read;
+# the simulator refuses that set-up instead (tests/modules/test_queuedock.py).
+
+[[reading]]
+id = "the_miner_pays_250_a_trip_every_270_frames"
+scene = {build = "engine_queuedock", check = "a", until = 61}
+bench = "资金 0 to f296, 250 f329-f555, 500 f597-f820, 750 f859-f1089 (one load each trip, ~268 frames apart)"
+proves = "物体模块 QueueDock with one miner at one refinery: each trip delivers the whole load, 250, the trips ~270 frames apart (the loop of engine/objects/mine.py)"
+expect = ["win(23, 36, '资金') == [250] * 14",
+          "win(41, 54, '资金') == [500] * 14",
+          "win(58, 60, '资金') == [750] * 3"]
+
+[[reading]]
+id = "the_unload_pays_8_a_frame"
+scene = {build = "engine_queuedock", check = "a", until = 60}
+bench = "资金 mid-unload f296 48, f306 128, f317 216; f565 298, f575 378, f583 442; f829 508, f841 604, f850 676: 8 a frame (250 // 30, the rest on the last; D165 dockphase: Unload f289-319, 30 frames)"
+proves = "物体模块 QueueDock: the docked miner unloads over 30 frames, load // 30 a frame"
+let = {rise = "[b['资金'] - a['资金'] for a, b in zip(rows, rows[1:]) if a['资金'] % 250 and b['资金'] % 250 and b['资金'] > a['资金']]"}
+expect = ["len(rise) >= 3", "all(d == 8 * 15 for d in rise)"]
+
+[[reading]]
+id = "the_miner_is_on_the_pad_only_about_its_unload"
+scene = {build = "engine_queuedock", check = "a", until = 60}
+bench = "同帧 (thousands digit: the miner in the 70-box at the dock pad) 11000 f271-f340, 10000 f351-f530, 11000 f543-f605, 10000 f619-f800 (f786 10000: E152's snapshot), 11000 f809-f881: on the pad ~75 frames a trip, out ~25 frames after the last coin"
+proves = "物体模块 QueueDock: the miner comes onto the dock pad shortly before its unload and leaves soon after it"
+expect = ["win(16, 17, '同帧') == [10000] * 2",
+          "win(24, 32, '同帧') == [10000] * 9",
+          "win(50, 52, '同帧') == [10000] * 3"]
+mismatch = "sim: on the pad f226-f361, f496-f631, f766-f901 (~135 frames a trip: it drives to the refinery's centre, not the dock bones, and leaves 45 frames after the last coin); bench ~75 frames. The coins themselves within ~10 frames (the readings above)"

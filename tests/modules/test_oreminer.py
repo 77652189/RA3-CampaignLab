@@ -1,6 +1,6 @@
 """The OreMinerBehavior module (engine/modules/oreminer.py, step M9): a miner's trip, kept on the module and read
 through the body's `mine` forward; which things mine is "has this module". The collector loop's rules (loads, the
-unloading, node claims): tests/test_simmine.py, tests/test_simqueuedock.py; bench replays: tests/test_simbench.py."""
+unloading, node claims): tests/test_simmine.py, tests/modules/test_queuedock.py; bench replays: tests/test_simbench.py."""
 import pytest
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
