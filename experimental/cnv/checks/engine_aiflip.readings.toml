@@ -17,4 +17,4 @@ scenes = {off = {build = "aiallflipoff", check = "a", until = 30}, never = {buil
 bench = "first unit out by f450 (s30): off 标枪 1 维和 0 (f428), never 维和 1 标枪 0 (f433): the pick scores count s5's tanks once it is an enemy (1666.833 vs 1666.836), Javelins against them"
 proves = "simai build scoring: the enemies scored are the relations' as they are now (view.enemies)"
 expect = "off[-1]['标枪'] >= 1 and off[-1]['维和'] == 0 and never[-1]['维和'] >= 1 and never[-1]['标枪'] == 0"
-mismatch = "sim: off and never alike, 维和 1 标枪 0 at s27-30 (the first a PK in all six runs); bench off 标枪 1 维和 0 -- the AI's build pick does not weigh s5's tanks (engine line B)"
+mismatch = "sim off and never 维和 1 标枪 0 at s27-30: s5 is counted once it turns enemy (off picks Javelins from f391), but the first two orders (f301 / f333) are Peacekeepers -- the bench's are dogs, scored 1666.833 = NEEDED_UNIT 10001 / 6 states, a NEEDED_UNIT list the model keeps empty (B handoff 11-21: the teams' wanted list fits this bench and breaks four engine_aiskirm readings)"

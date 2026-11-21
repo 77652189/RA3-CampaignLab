@@ -322,8 +322,7 @@ class Brain:
         self.settings.add_team_lookup(self.team_named)
         self.home = (0.0, 0.0)
         tg = m['targets']
-        foes = frozenset(p for p in self.world.players.values() if p != player and self.world.enemy(player, p))
-        self.view = tg.View(player, [], enemies=foes, waypoints=self.world.waypoints,
+        self.view = tg.View(player, [], enemies=self.foes(), waypoints=self.world.waypoints,
                             # E81/E87: Location uses terrain, including stationary water structures.
                             # INFERRED at shorelines, bridges and for airborne targets.
                             water_at=lambda x, y: self.world.ground.z(x, y) < self.world.ground.water,
@@ -661,6 +660,11 @@ class Brain:
         attack. Whether the engine's unit category and the target scan skip slaves (work/re/l4_efficiency.md) is NOT READ."""
         return self.world.living(unspawned=True)
 
+    def foes(self):
+        """The players this one takes as enemies now (Sim.enemy)."""
+        w = self.world
+        return frozenset(p for p in w.players.values() if p != self.player and w.enemy(self.player, p))
+
     def look(self, frame):
         """The view's things (living bodies, including garrisonable scenery, but not other scenery or slaves; the whole map,
         INFERRED) and who got hurt. Rebuilt once a DT tick (bodies move and fight once a tick)."""
@@ -668,6 +672,9 @@ class Brain:
         if self.seen_t == world.t:
             return
         self.seen_t = world.t
+        # the enemies follow the relations as they change, no action needed: bench A274 aiallflip, the build picks
+        # count s5 from the first pass after PLAYER_RELATES_PLAYER turns it enemy (engine_aiflip)
+        self.view.enemies = self.foes()
         things = []
         for b in self.living():
             # NeutralGarrison's native candidate scan includes retail map houses
