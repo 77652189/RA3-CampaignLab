@@ -566,7 +566,18 @@ def seconds(s):
     return float(s)
 
 
+def _late(sim, f):
+    """Sim.LATE's part f, made on first use (a Sim built without __init__ has none yet)."""
+    m = sim.__dict__.get(f)
+    if m is None:
+        m = type(sim).LATE[f]()
+        setattr(sim, f, m)
+    return m
+
+
 class Sim:
+    LATE = {'modifiers': simmodifier.Modifiers, 'life': simbody.Life, 'specials': simspecial.Specials,   # the parts
+            'harm': simdamage.Damage}       # made on first use (_late); simsnap.check makes one a snapshot has by it
     model_scripts = False               # the model's plug-in runs the scripts (its tables): simexec.attach
     shot_clock = False                  # opt-in frame clock: discrete shots and movement between script frames;
                                         # default movement retains its benched coarse tick (work/re/handoff-c.md)
@@ -1352,11 +1363,7 @@ class Sim:
         self._modifiers().modify(self, b, self.toggles_of, self.cold_of, self.weapon_upgrades, self.player_ups)
 
     def _modifiers(self):
-        """The simmodifier.Modifiers (L2), made on first use (a Sim built without __init__ has none yet)."""
-        m = self.__dict__.get('modifiers')
-        if m is None:
-            m = self.modifiers = simmodifier.Modifiers()
-        return m
+        return _late(self, 'modifiers')
 
     def relation(self, a, b):
         """ENEMIES / NEUTRAL / ALLIES: how owner b stands to owner a (an aura's ObjectFilter Relationship)."""
@@ -1624,11 +1631,7 @@ class Sim:
         self._life().delete(self, b, why)
 
     def _life(self):
-        """The simbody.Life (L2), made on first use (a Sim built without __init__ has none yet)."""
-        m = self.__dict__.get('life')
-        if m is None:
-            m = self.life = simbody.Life()
-        return m
+        return _late(self, 'life')
 
     # ---- conditions
     def holds(self, c):
@@ -2201,11 +2204,7 @@ class Sim:
         return self._harm().projectile_hits
 
     def _harm(self):
-        """The simdamage.Damage (L3), made on first use (a Sim built without __init__ has none yet)."""
-        h = self.__dict__.get('harm')
-        if h is None:
-            h = self.harm = simdamage.Damage()
-        return h
+        return _late(self, 'harm')
 
     def expected_damage(self, target, behind, ahead, now=None):
         """simdamage.Damage.expected_damage (L3): the micro's incoming-damage callback."""
@@ -2440,11 +2439,7 @@ class Sim:
         return self.__dict__.setdefault('emp_until', {})
 
     def _specials(self):
-        """The simspecial.Specials (L2), made on first use (a Sim built without __init__ has none yet)."""
-        m = self.__dict__.get('specials')
-        if m is None:
-            m = self.specials = simspecial.Specials()
-        return m
+        return _late(self, 'specials')
 
     def movement_power_press(self, b, button, point):
         """simspecial.Specials.movement_power_press (L2): a MovementSpecialPower's rush to a point in range."""

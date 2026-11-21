@@ -490,14 +490,15 @@ def test_a_modules_slot_set_in_the_run_is_unclassified():
 def test_a_snapshot_of_another_shape_is_refused_before_a_write():
     """1119i #6: a snapshot of an older shape (an executor row short of `subroutine`, a host field this one does not
     keep, a part made by a module of the old file layout: 1120gg #1, one made on first use whose class will not be
-    made: hh #3) is refused whole, the new run as made -- not written half and failed."""
+    made or is not the host's: hh #3, ii #3) is refused whole, the new run as made -- not written half and failed."""
     a = _seq_world()
     a.advance(15)
     taken = json.loads(json.dumps(simsnap.snapshot(a)))
     part = next(f for f, kind in simsnap.SIM.items() if isinstance(kind, dict))
     for spoil in (lambda s: s['executor']['active'][0].pop(), lambda s: s['host'].append(['gone_field', 1]),
                   lambda s: s['bodies'][0].pop(), lambda s: s['parts'].append([part, 'simbody', 'Life']),
-                  lambda s: s['parts'].append(['life', 'engine.objects.body', 'Body'])):
+                  lambda s: s['parts'].append(['life', 'engine.objects.body', 'Body']),
+                  lambda s: s['parts'].append(['specials', 'builtins', 'dict'])):
         s = json.loads(json.dumps(taken))
         spoil(s)
         b = _seq_world()

@@ -584,7 +584,7 @@ def check(sim, s):
         raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {v}')
     if s['mission'] != getattr(sim.m, 'name', None):
         raise ValueError(f'simsnap.restore: a snapshot of {s["mission"]!r} onto {getattr(sim.m, "name", None)!r}')
-    made = _check(s, _fields(sim))
+    made = _check(s, _fields(sim), type(sim).LATE)
     here = _setup(sim)
     differ = [f'{f} {s["setup"][f]!r} onto {v!r}' for f, v in here.items() if s['setup'][f] != v]
     if differ:
@@ -601,12 +601,12 @@ def _setup(sim):
     return {'level': sim.level, 'script': snap.encode(sim.script)}
 
 
-def _check(s, have):
+def _check(s, have, late):
     """The snapshot's shape, whole, before restore writes anything (review 1119i #6: a snapshot of an older shape
     passed the version and failed half written): its parts, the rows of bodies and others, the host's fields each
     one SIM sorts STATE, the parts SIM names -- one the host has (`have`, its fields) of the row's class, kept; one it
-    has not made here, returned (review 1120gg #1, hh #3: a module of the old file layout, a class that will not be
-    made, refused before a write; the executor's, a class made inside a function, is the host's own)."""
+    has not made here, made by the host's own class for it (`late`) and returned (review 1120gg #1, hh #3, ii #3: a
+    module of the old file layout, a class that will not be made or is not the host's, refused before a write; the executor's, a class made inside a function, is the host's own)."""
     want = {'version', 'mission', 'setup', 'kernel', 'bodies', 'others', 'parts', 'host', 'executor'}
     bad, made = [], {}
     if set(s) != want:
@@ -623,11 +623,11 @@ def _check(s, have):
             ok = isinstance(r, list) and len(r) == 3 and isinstance(SIM.get(r[0]), dict)
             if ok and r[0] in have:
                 ok = [type(have[r[0]]).__module__, type(have[r[0]]).__qualname__] == r[1:]
-            elif ok:
-                try:
-                    made[r[0]] = getattr(importlib.import_module(r[1]), r[2])()
-                except Exception:   # noqa: BLE001 -- whatever stops it being made refuses the snapshot
-                    ok = False
+            elif ok:        # one made on first use: the host's own class (Sim.LATE) under the row's name, or none
+                cls = late.get(r[0])
+                ok = cls is not None and [cls.__module__, cls.__qualname__] == r[1:]
+                if ok:
+                    made[r[0]] = cls()
             if not ok:
                 bad.append(f'part {r!r}')
         kernel = {'made', 'frame', 'used', 'gaps', 'schedule', 'things', 'late'}     # World.snapshot's (review k
