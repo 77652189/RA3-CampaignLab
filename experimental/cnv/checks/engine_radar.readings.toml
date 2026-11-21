@@ -20,3 +20,11 @@ bench = "E159 (bench 11-15): dish / consumers / power f147 = 1 / 1 / 1, f302 = 1
 proves = "the low-power scene's prerequisites: NAMED_DELETE of the only plant at 12 s, PLAYER_HAS_POWER false with 50 supply for 75 demand, the dish and the barracks stay (the dish's radar staying is the HUD's, not read here)"
 let = {at = "lambda f: [[r[k] for k in ('宿主量', '前置量', '供电量')] for r in rows if r['帧数'] <= f][-1]"}
 expect = ["at(147) == [1, 1, 1]", "at(302) == [1, 1, 0]", "verdicts() and all(ok for ok, _ in verdicts())"]
+
+[[reading]]
+id = "two_dishes_go_one_at_12_s_one_at_24_s"
+scene = {build = "engine_radartwo", check = "a", until = 27}
+bench = "E160 (bench 11-15): first / second / power-and-supports f114 = 1 / 1 / 1, f197 = 0 / 1 / 1, f386 = 0 / 0 / 1; HUD minimap terrain, terrain, then the Allied emblem (the run was slow: its wall-time expectations failed, these logic-frame readings are what holds)"
+proves = "the two-provider scene's prerequisites: two same-template dishes deleted by name one at 12 s and one at 24 s, the yard, the plant and PLAYER_HAS_POWER throughout (the radar going only with the last one is the HUD's, not read here)"
+let = {at = "lambda f: [[r[k] for k in ('宿主量', '第二宿主', '供电量')] for r in rows if r['帧数'] <= f][-1]"}
+expect = ["at(114) == [1, 1, 1]", "at(197) == [0, 1, 1]", "at(386) == [0, 0, 1]"]

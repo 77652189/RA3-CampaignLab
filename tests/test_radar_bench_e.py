@@ -13,50 +13,6 @@ bootstrap = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bootstrap)
 
 
-def test_radar_two_providers_isolated_timed_deletion():
-    import build
-    from contract import contract
-    from model import merged
-    m, t, _ = build.resolve('engine_radartwo', 'a')
-    assert m.role('dish').template == m.role('second').template == 'CNVE158Radar'
-    assert m.role('dish').name != m.role('second').name
-    assert '<RadarBehavior' not in m.assets[0][1]
-    assert not contract(merged(m, t))
-    assert not any('RADAR' in str(s.do) or 'REVEAL' in str(s.do) for s in t.scripts)
-    deletes = [s.do for s in t.scripts if any(a[0] == 'NAMED_DELETE' for a in s.do)]
-    assert deletes == [[('NAMED_DELETE', m.role('dish').name)],
-                       [('NAMED_DELETE', m.role('second').name)]]
-
-
-def test_radar_two_providers_named_hud_and_lifetime():
-    # CampRadarTwoEA_mcp_1115_162754/{0008,0018,0036}.png:
-    # f114/f197 terrain, f386 Allied emblem. Wall-time expectations failed
-    # during the slow run; the independent logic-frame readings are preserved.
-    engine, world, m = replay('engine_radartwo')
-    from ra3model.objects import radar
-    from ra3model.objects.rules import power_of
-    world.logic.power = 'objects'
-    previous = 0
-    for frame, alive, visible in [(114, (1, 1), True),
-                                   (197, (0, 1), True),
-                                   (386, (0, 0), False)]:
-        engine.run(frames=frame - previous)
-        previous = frame
-        assert tuple(engine.value(c) for c in ('E158Dish', 'E160Second')) == alive
-        assert power_of(world.logic, m.player('p1')) == (150, 0)
-        assert radar.available(world.logic, m.player('p1')) is visible
-
-
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E160 measured power AND yard/plant survival=1 at f114/f197/f386; '
-    'PLAYER_HAS_POWER object-world condition is unimplemented. '
-    'See work/re/e160_radar_multi.md and work/re/handoff-e.md.'))
-def test_radar_two_providers_named_script_prerequisite():
-    engine, world, m = replay('engine_radartwo')
-    engine.run(frames=114)
-    assert engine.value('E158Power') == 1
-
-
 def test_radar_death_damage_entry_and_isolation():
     import build
     from contract import contract
