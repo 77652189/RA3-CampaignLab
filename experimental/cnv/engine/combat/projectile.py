@@ -6,6 +6,11 @@ from engine.combat.registry import accumulate, nugget
 # a weapon with any of these flies no shell yet: its effects are dealt as a direct hit (the old fallback)
 COMPOUND = ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd', 'dot', 'contained',
             'special_powers', 'attach', 'lift')
+# Context.speed's two non-speed answers (host.straight_speed). A Bezier rocket lands a fixed time after launch whatever
+# the distance (docs/engine/missile.md 1: retail V4 at 250 and 450 alike, launch 35-40 frames after the order and
+# first hit at 108; INFERRED: the flight's 70 of them); a shell with no flight module never lands (bench E168).
+BEZIER, NO_FLIGHT = -1.0, -2.0
+BEZIER_FRAMES = 70
 
 
 def queue(pending, when, target, damage, attacker, weapon, centre=None):
@@ -46,9 +51,11 @@ class Projectile:
     def apply(self, context, projectile):
         speed = context.speed(projectile)
         w = context.weapon
-        if speed > 0 and not any(w.get(k) for k in COMPOUND):
+        if speed == NO_FLIGHT:
+            return True
+        if (speed == BEZIER or speed > 0) and not any(w.get(k) for k in COMPOUND):
             t, by = context.target, context.by
-            frames = int(math.hypot(t.x - by.x, t.y - by.y) / speed)
+            frames = BEZIER_FRAMES if speed == BEZIER else int(math.hypot(t.x - by.x, t.y - by.y) / speed)
             # GUESSED until dynamic-armor bench: snapshot scalars at launch (the flank too: bench engine_inform_ai,
             # the side-facing miners' 68 %, from the launch)
             damage = context.n * w['dmg'] * by.dealt * context.hit(t, w['type'])

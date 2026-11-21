@@ -408,7 +408,6 @@ NOTES = {
     (MODULE, 'Behaviors/WallBuilderBehavior'): (GUESSED, '部分：engine_wallinit:a有/无模块对照10/11/10，仅StartInSecondaryModel默认WALL_SEGMENT初始化；6/6权重保留，建墙/连接/段数上限/生死联动及自定义配置仍gap，未登记完整已对拍；见 work/re/e_wallbuilder_e58.md'),
     (MODULE, 'Behaviors/GateOpenAndCloseBehavior'): (TODO, 'E190原版门/删模块初始化台被SDK Behaviors拒绝该模块且缺模型资源；原生地图摆放同样强制编译失败。改用engine_gate_e:a运行时同动作创建两门与电厂哨兵，一局PASS，f180=180/0/0/1（完成/Romania门/Sanitarium门/哨兵存活）。tests/test_gate_bench_e.py按名回放帧数与哨兵通过，SDK模型两门均1对台0，2 strict xfail；未改模型，不登记模块效果覆盖。缺templateResolved/createAccepted/rejectReason，倾向模板在当前运行环境不可用（INFERRED）；开闭/通行/复位均gap，同输入暂停，重开需可创建宿主及合法开关入口，见work/re/e190_gate.md'),
     (MODULE, 'Behaviors/SlavedUpdate'): (TODO, f'{_NOT_IN_SIM}（没有随从跟随）'),
-    (MODULE, 'Behaviors/BezierProjectile'): (GUESSED, 'E168 engine_bezier_e:a单发原版V4火箭/仅删Bezier模块对照，f60满血编码3、f240冻结目标HP95/100；tests/test_bezier_bench_e.py按名字以私有物体模型回放，修复无飞行模块仍直接伤害目标的退化分支。公开Sim曲线弹接线、精确飞行/命中帧、追踪/移动目标、碰撞/地形、其他配置仍gap；无模块立即清理为INFERRED，不登记整个模块已对拍。两局原录像秒窗口FAIL保留，冻结帧判定见work/re/e168_bezier.md'),
     (MODULE, 'Behaviors/ProjectileUpdate'): (TODO, f'{_NOT_IN_SIM}（开火按每秒伤害直接扣血，没有弹体飞行时间）'),
     (MODULE, 'Behaviors/AttachUpdate'): (GUESSED, '部分：engine_attach a验证瞬移/跟随/父子状态；engine_attach_parent a验证简单模块脚本杀父后子活/清理链接，NO_COLLISIONS读数差异为严格xfail；原版模块死亡前无稳定链接，不推广死亡规则；子死/直接删除/维修/吸血/解除/自主扫描仍gap'),
     (MODULE, 'Behaviors/StoreObjectsSpecialPower'): (TODO, f'{_NOT_IN_SIM}（没有存放单位）'),

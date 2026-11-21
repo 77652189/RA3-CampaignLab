@@ -155,12 +155,18 @@ def armor_scalar(victim, damage_type):
 
 
 def straight_speed(projectile, own):
-    """The projectile template's straight-line muzzle speed (map units a frame): ProjectileUpdate
-    StateMachine="StraightLineProjectile"'s MoveInStraightLine MuzzleVelocity; 0 for any other flight or no file
-    (registry.Context.speed, cached in Damage.projectile_speeds)."""
+    """The projectile template's flight (registry.Context.speed, cached in Damage.projectile_speeds): ProjectileUpdate
+    StateMachine="StraightLineProjectile"'s MoveInStraightLine MuzzleVelocity (map units a frame); flight.BEZIER for a
+    BezierProjectile; flight.NO_FLIGHT for a template of its own (no inheritFrom) with no flight module at all (bench
+    E168 engine_bezier_e: the rocket without its BezierProjectile never reaches its victim); 0 for any other flight or
+    no file."""
     try:
-        xml = simunits._xml(projectile, own)
-        update = next(simunits._blocks(xml or '', 'ProjectileUpdate'), ('', ''))
+        xml = simunits._xml(projectile, own) or ''
+        if '<BezierProjectile' in xml:
+            return flight.BEZIER
+        if xml and '<ProjectileUpdate' not in xml and 'inheritFrom=' not in xml:
+            return flight.NO_FLIGHT
+        update = next(simunits._blocks(xml, 'ProjectileUpdate'), ('', ''))
         movement = next(simunits._blocks(update[1] or '', 'MoveInStraightLine'), ('', ''))
         return (simunits._num(simunits._attr(movement[0], 'MuzzleVelocity'))
                 if simunits._attr(update[0], 'StateMachine') == 'StraightLineProjectile' else 0)
