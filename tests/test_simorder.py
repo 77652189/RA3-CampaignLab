@@ -31,7 +31,8 @@ def test_a_new_hunt_takes_its_members_out_of_their_old_crews_and_picks_at_once()
     c1, c2 = s.bodies['c1'], s.bodies['c2']
     s.hunts.append([[c1, c2], None, 10 ** 6])            # an old crew, its pick far off
     simhunt.hunt_due(s, simorder.Peers(s), 5, [c1])
-    assert s.hunts == [[[c1], s.bodies['foe'], 5]] and c1.mode == 'attack' and c2.mode != 'attack'
+    assert s.hunts == [[[c2], None, 10 ** 6], [[c1], s.bodies['foe'], 5]]   # c2 hunts on (review jj #2)
+    assert c1.mode == 'attack' and c2.mode != 'attack'
 
 
 def test_stop_and_stand_drop_the_order_and_a_short_move_is_held_up():

@@ -18,8 +18,11 @@ def hunt_due(world, peers, frame, crew=None):
     spot at s39 and back past home (s49) for the barracks; another crew's bait died at s13, the next attacked at
     s29 -- HUNT_REPICK 45 frames (3 s) has each a second later, the bench's usual lag (0: the same but the
     second bait 2 s early; 75: 2-3 s late). INFERRED: a fit, the program's re-pick rule not read. A crew's members dying, joining other teams: not followed (the crew as ordered)."""
-    if crew is not None:
-        peers.hunts[:] = [h for h in peers.hunts if not any(b in crew for b in h[0])] + [[crew, None, frame]]
+    if crew is not None:                    # the rest of an old crew hunts on, its target and re-pick kept (review jj #2)
+        new = {b.serial for b in crew}
+        for h in peers.hunts:
+            h[0] = [b for b in h[0] if b.serial not in new]
+        peers.hunts.append([crew, None, frame])
     for h in list(peers.hunts):
         movers = [b for b in h[0] if b.alive]
         if not movers:
