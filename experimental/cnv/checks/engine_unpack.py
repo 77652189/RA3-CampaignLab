@@ -26,13 +26,21 @@ frame 128). egg 586 39108 478478 586 (round 139: the defense from frame 108; the
 simunits.resolve read EditorSorting / KindOf up its chain from BaseEgg -- its own LocomotorSet writes Speed 60;
 test_nanocore_deploys_at_a_far_waypoint_as_the_bench). The bench's owned count of the defense (场帧's thousands 0)
 is not modelled: the sim counts it owned.
+
+Round 281 (11-21): pwr = j08's power plant egg at the waypoint; pin / mid = a07 / s07's untargeted press
+NAMED_USE_COMMANDBUTTON_ABILITY(egg, Command_UnPackJapanBaseDefenseEgg), standing (pin) or 1 s into its unpack trip
+(mid); 场帧's thousands then count a defense within 290 of the start (the way there) instead of owned. Bench pin
+CampUnpackPinGo_mcp_1121_123012 633 633 0 633, mid CampUnpackMidGo_mcp_1121_123227 632 632 0 632: nothing unfolds,
+and mid's egg stops short of the point. pwr CampUnpackPwrGo_mcp_1121_123504 632 28105 527 632: as egg (the plant from
+frame 105, never counted owned). Readings: engine_unpack.readings.toml.
 """
 import resources
 from maps import niagara
 from parts import Mission, Script, Test, square
 
-KINDS = {'mcv': ('AlliedMCV', 'AlliedConstructionYard', 'Command_UnPackAlliedMCV'),
-         'egg': ('JapanBaseDefenseEgg', 'JapanBaseDefense', 'Command_UnPackJapanBaseDefenseEgg')}
+EGG = ('JapanBaseDefenseEgg', 'JapanBaseDefense', 'Command_UnPackJapanBaseDefenseEgg')
+KINDS = {'mcv': ('AlliedMCV', 'AlliedConstructionYard', 'Command_UnPackAlliedMCV'), 'egg': EGG,
+         'pwr': ('JapanPowerPlantEgg', 'JapanPowerPlant', 'Command_UnPackJapanPowerPlantEgg'), 'pin': EGG, 'mid': EGG}
 VARIANTS = tuple(KINDS)
 AT, THERE = ('west field', -200.0, 0.0), ('west field', 200.0, 0.0)
 NAME = 'UNIT - CNV Unpack'
@@ -46,18 +54,26 @@ def mission(variant='mcv'):
     m.spawns |= {yard}
     m.put(unit, AT[0], *AT[1:], angle=0.0, role='unit', name=NAME)
     m.waypoint('there', 'Test Unpack There', *THERE)
+    m.waypoint('short', 'Test Unpack Short', *AT)
     return m
 
 
 def frames(m):
     t = Test()
-    unit, yard, button = KINDS[VARIANTS[m.facts['variant']]]
+    v = VARIANTS[m.facts['variant']]
+    unit, yard, button = KINDS[v]
     p1 = m.player('p1')
     t.areas['Test There'] = square(*m.point('there'), 100.0)
-    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1), ('SET_MILLISECOND_TIMER', 'Test Go', 1.0)]))
+    t.areas['Test Short'] = square(*m.point('short'), 290.0)    # pin / mid: west of There, the egg's way included
+    press = ('NAMED_USE_COMMANDBUTTON_ABILITY', NAME, button)
+    t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1), ('SET_MILLISECOND_TIMER', 'Test Go', 1.0),
+                                                 ('SET_MILLISECOND_TIMER', 'Test Mid', 2.0)]))
     t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test Go')],
-                            [('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', NAME, button, m.mark('there')),
+                            [press if v == 'pin' else
+                             ('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', NAME, button, m.mark('there')),
                              ('SET_FLAG', 'Test Going', 1)]))
+    if v == 'mid':      # pressed again untargeted on its way (a07 / s07's eggs when attacked)
+        t.scripts.append(Script('Test - mid', [('TIMER_EXPIRED', 'Test Mid')], [press]))
     going = ('FLAG', 'Test Going', 1)
 
     def per_frame(counter, label, rows):
@@ -71,7 +87,9 @@ def frames(m):
                                           (('PLAYER_HAS_OBJECT_COMPARISON', p1, 3, 1, unit), 1)])
     per_frame('CNV_Unpack_Yard', '场帧', [(('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 3, 1, yard,
                                             'Test There'), 1),
-                                          (('PLAYER_HAS_OBJECT_COMPARISON', p1, 3, 1, yard), 1000)])
+                                          (('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 3, 1, yard, 'Test Short')
+                                           if v in ('pin', 'mid') else ('PLAYER_HAS_OBJECT_COMPARISON', p1, 3, 1, yard),
+                                           1000)])
     per_frame('CNV_Unpack_Name', '名字帧', [(('NAMED_NOT_DESTROYED', NAME), 1)])
     t.expect = [('帧数', 0, 'ever>=', 1, RUN)]
     t.bench = [('bench_watch', dict(seconds=RUN, every=1, sheet=False, lines=len(t.counters)))]

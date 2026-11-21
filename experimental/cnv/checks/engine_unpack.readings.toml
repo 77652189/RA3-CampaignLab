@@ -15,3 +15,29 @@ expect = [
     "yard % 1000 == frames - unit % 1000 and yard // 1000 == yard % 1000",
     "name == frames",
 ]
+
+[[reading]]
+id = "an_untargeted_egg_unpack_press_unfolds_nothing_and_stops_it_short"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanBaseDefenseEgg"
+scene = {build = "engine_unpack_pin", check = "go", until = 41}
+each = [{build = "engine_unpack_pin"}, {build = "engine_unpack_mid"}]
+bench = """\
+NAMED_USE_COMMANDBUTTON_ABILITY(egg, Command_UnPackJapanBaseDefenseEgg) untargeted, standing (pin) or 1 s after the \
+order to unpack 400 east (mid) (bench 11-21 CampUnpackPinGo_mcp_1121_123012 / CampUnpackMidGo_mcp_1121_123227, s41 \
+633 633 0 633 / 632 632 0 632): the egg stays an egg to the end, no defense anywhere, and mid's never comes within \
+100 of the point"""
+proves = "sim named_buttons: an untargeted unpack press is a stop -- nothing unfolds, an unpack on its way is dropped"
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = "frames > 500 and unit == frames and yard == 0 and name == frames"
+
+[[reading]]
+id = "a_power_plant_egg_unfolds_at_a_far_waypoint_as_the_bench"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanPowerPlantEgg"
+scene = {build = "engine_unpack_pwr", check = "go", until = 41}
+bench = """\
+NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT(egg, Command_UnPackJapanPowerPlantEgg, 400 east) (bench 11-21 \
+CampUnpackPwrGo_mcp_1121_123504, s41 632 28105 527 632): the egg drives there and is the plant on the point from frame \
+105 (sim 100), the name passed on; the plant never counted owned (场帧's thousands 0; sim counts it, not asserted)"""
+proves = "sim unpack at a waypoint: j08's power plant egg drives to the point, becomes the plant there, the name passes on"
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = ["95 <= unit % 1000 <= 115 and unit // 1000 > 0", "yard % 1000 == frames - unit % 1000", "name == frames"]

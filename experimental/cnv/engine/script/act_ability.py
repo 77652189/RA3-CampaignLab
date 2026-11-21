@@ -84,6 +84,10 @@ def named_buttons(sim, name, a, script, unit=None):
         b, p = body(a[0]), sim.point(a[2])
         if not (b and p is not None and _order(sim, 'unpack', who, ('button', a[1]), place=a[2])[0]):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有能展开的单位或路点')
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and simunits.command_power(a[1], sim.own) == UNPACK_POWER:
+        # untargeted (a07 / s07's eggs when hit): nothing unfolds, and one on its way to unpack stops short (bench
+        # engine_unpack pin / mid; a stop: INFERRED)
+        _order(sim, 'stop', who)
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
             simunits.command_power(a[1], sim.own) == PACK_POWER and \
             simunits.replace_self(body(a[0]).template, a[1], sim.own):
