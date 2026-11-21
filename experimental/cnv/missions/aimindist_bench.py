@@ -43,6 +43,7 @@ def two_candidates(name, limit):
     enemy = m.find(m.role('tank').name)
     near = m.find(m.role('plant').name)
     enemy.x, enemy.y = near.x, near.y + 200
+    m.ext, m.ext_logs = True, ('target',)  # B 11-21: tgt: lines give each oil's verdict per find
     m.facts['minimum enemy distance'] = limit
     m.facts['expect near oil'] = 4 if limit == 0 else 0
     m.facts['expect far oil'] = 0 if limit == 0 else 4
