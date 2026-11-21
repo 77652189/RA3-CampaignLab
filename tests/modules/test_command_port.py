@@ -759,10 +759,11 @@ def test_a_sequential_scripts_this_object_is_the_unit_queued_not_a_reference_of_
     assert (lead.move_to, other.move_to, s.refs['lead']) == ((600.0, 300.0), None, other)
 
 
-def _seq_world(actions):
+def _seq_world(actions, *more):
     import parts
     s = sim.Sim(parts.Mission(name='T', map=simsmall.island, scripts=[
-        parts.Script('seqtask', [], actions, once=False)]), model=False)
+        parts.Script('seqtask', [], actions, once=False), *(parts.Script(n, [], a, once=False) for n, a in more)]),
+        model=False)
     for name in list(s.bodies):
         s.world.drop(s.bodies.pop(name))
     lead = s.add('lead', 'AlliedAntiInfantryInfantry', 'Player_1', 300.0, 300.0)
@@ -788,6 +789,16 @@ def test_a_sequential_script_moves_only_its_units_head_and_only_once_the_unit_is
     sim.simorder.stand(lead)
     s.seq_due()
     assert s.seq == [second, first] and (first['step'], first['loops']) == (-1, 0)
+
+
+def test_a_sequential_script_stopped_this_frame_by_another_units_step_runs_no_more():
+    """lead's step stops other's sequential scripts; other's, behind it in the queue, runs no step that frame
+    (review kk #1: the frame's copy of the queue still ran it, or list.remove threw on its finished record)."""
+    s, lead, other = _seq_world([('UNIT_STOP_SEQUENTIAL_SCRIPT', 'other')],
+                                ('seqB', [('MOVE_NAMED_UNIT_TO', '<This Object>', 'dest')]))
+    s.act('UNIT_EXECUTE_SEQUENTIAL_SCRIPT', ['other', 'seqB'], None)
+    s.seq_due()
+    assert (other.move_to, [r['b'] for r in s.seq]) == (None, [lead])
 
 
 def test_a_sequential_step_reads_the_unit_only_where_it_wrote_this_object():

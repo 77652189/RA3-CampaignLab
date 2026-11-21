@@ -23,6 +23,8 @@ def seq_due(world, peers):
     unit held the next step back not at all (what writes the wait: not known)."""
     heads = set()
     for r in list(peers.seq):
+        if all(x is not r for x in peers.seq):
+            continue                        # stopped this frame by another unit's step (review kk #1)
         b = r['b']
         if b.serial in heads:
             continue
