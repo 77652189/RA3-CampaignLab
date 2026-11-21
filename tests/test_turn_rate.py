@@ -107,7 +107,7 @@ def test_infantry_walk_off_turning():
         not [s for s in steps if s[0] == '3170' and s[1] in (45, 46, 47) and s[3]]
 
 
-def test_the_data_rates():                         # the simulator's turn (Sim.turn): tests/test_sim.py test_*turn*
+def test_the_data_rates():                         # the simulator's turn (locomotion.turn): tests/test_sim.py test_*turn*
     def turning(template):
         loco = simunits.turning(template)
         return loco and (loco.turn_rate, loco.limit)

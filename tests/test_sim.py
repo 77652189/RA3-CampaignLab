@@ -490,7 +490,7 @@ def _hammer_facing_south():
 
 
 def test_a_unit_ordered_from_standing_turns_in_place_then_drives_and_turns_to_its_facing():
-    """Sim.move / Sim.turn (A round 228; the rates and the bench: tests/test_turn_rate.py): a Hammer facing south sent
+    """Sim.move / locomotion.turn (A round 228; the rates and the bench: tests/test_turn_rate.py): a Hammer facing south sent
     300 north turns 180 deg in place at 19.2 a frame -- 9 frames to within DRIVE_WITHIN, more than the first 0.5 s tick
     (7.5 frames): it stands that tick, then drives the rest of the second (60 a second); at the end it turns to the
     facing it was sent with (east, 90 deg: 5 frames) and only then has stopped moving (simai's Unit.moving, the AI

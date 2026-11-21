@@ -1568,37 +1568,6 @@ class Sim:
         """Put b on a way to target: simlocomotion.go_to (L2) says how; `by` is unused."""
         simlocomotion.go_to(self, b, target, reach, face, self.frame_movers, self.topples)
 
-    def turn(self, b, want, dt, within=0.0):
-        """Turn b in place toward the facing `want` (radians) for up to dt seconds, at its turn_rate a frame (bench
-        airev1t / airevgt / airevat, A round 227, tests/test_turn_rate.py: 360 / the Locomotor's TurnTimeSeconds a
-        second from the order frame; TurnThresholdHS is not seen -- a 51 deg turn is made in place too). Stops
-        `within` degrees short (DRIVE_WITHIN: the rest is made as it drives). Returns the seconds it took (dt: not
-        there yet). Turning to its face (within 0) drops the face once it is reached: Unit.moving is false from then.
-        turn_rate None (aircraft, no locomotor): at once."""
-        off = math.degrees(math.atan2(math.sin(want - b.angle), math.cos(want - b.angle)))
-        need = abs(off) - within
-        if need <= 1e-9 or b.turn_rate is None:
-            if within <= 0:
-                b.angle, b.face = want, None
-            return 0.0
-        per_frame = b.turn_rate / simunits.LIFE_FPS
-        frames = math.ceil(need / per_frame - 1e-9)
-        took = frames / simunits.LIFE_FPS
-        if dt <= 0:
-            return dt
-        if took <= dt + 1e-9:
-            if within <= 0:
-                b.angle, b.face = want, None
-            else:
-                a = b.angle + math.radians(math.copysign(min(abs(off), frames * per_frame), off))
-                b.angle = math.atan2(math.sin(a), math.cos(a))
-            self.change()
-            return took
-        a = b.angle + math.radians(math.copysign(b.turn_rate * dt, off))
-        b.angle = math.atan2(math.sin(a), math.cos(a))
-        self.change()
-        return dt
-
     def label(self, b):
         role = next((k for k, r in self.m.cast.items() if r.name == b.name and b.name), '')
         return role or b.name or b.template
@@ -2535,7 +2504,7 @@ class Sim:
             if not b.path:
                 b.rolling, b.carry = False, 0.0
                 if b.face is not None:                  # arrived: turns in place to the facing it was given
-                    self.turn(b, b.face, dt)
+                    simlocomotion.turn(self, b, b.face, dt)
                 continue
             spent, extra, b.carry = 0.0, (b.carry if not precise else 0.0), 0.0
             if not b.rolling and b.jet_motion is None and b.turn_first:     # from standing: turns in place until
@@ -2544,7 +2513,7 @@ class Sim:
                 # f26 on (full speed) while the heading went -180 -135 -90 -72 (45 a frame)
                 way = next(((tx, ty) for tx, ty in b.path if (tx, ty) != (b.x, b.y)), None)
                 if way is not None:
-                    spent = self.turn(b, math.atan2(way[1] - b.y, way[0] - b.x), dt, DRIVE_WITHIN)
+                    spent = simlocomotion.turn(self, b, math.atan2(way[1] - b.y, way[0] - b.x), dt, DRIVE_WITHIN)
                 if spent >= dt:
                     continue
             left = b.speed * (dt - spent + extra)
@@ -2605,7 +2574,7 @@ class Sim:
                 b.carry = min(left / b.speed, dt)
             if not b.path and b.face is not None:      # arrived this tick: from the next frame on it turns
                 rate = b.drive_speed if precise and b.jet_motion is None else b.speed
-                self.turn(b, b.face, (left / rate if rate > 0 else 0.0) - 1.0 / simunits.LIFE_FPS)
+                simlocomotion.turn(self, b, b.face, (left / rate if rate > 0 else 0.0) - 1.0 / simunits.LIFE_FPS)
             if b.building:
                 self.production.at_site(b, walked - left)
             if b.crusher > 0 and b.surface == 'ground' and (b.x, b.y) != (x0, y0):

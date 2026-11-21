@@ -220,7 +220,7 @@ class Unit:
         return getattr(self.body, 'angle', None)
 
     @property
-    def moving(self):                   # still on a path, or turning to the facing it was sent with (Sim.turn; the
+    def moving(self):                   # still on a path, or turning to the facing it was sent with (locomotion.turn; the
         b = self.body                   # form-up waits for every member to stop: bench airev1t, A round 227)
         return bool(b.alive and (getattr(b, 'path', None) or getattr(b, 'face', None) is not None))
 
