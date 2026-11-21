@@ -93,7 +93,7 @@ FORWARDER_CALLS = {
     ('engine.script.cond_object', 'living'): 8, ('engine.script.cond_player', 'living'): 1, ('engine.script.cond_vision', 'living'): 3,
     ('engine.script.cond_world', 'living'): 1, ('engine.combat.host', 'living'): 2, ('engine.combat.meta_impact', 'living'): 1, ('engine.objects.garrison', 'living'): 1,
     ('engine.objects.infiltrator', 'living'): 3, ('engine.objects.mine', 'living'): 4, ('engine.objects.modifier', 'living'): 1,
-    ('engine.orders.order', 'living'): 4, ('engine.orders.ability', 'living'): 2, ('simproxy', 'living'): 3, ('engine.ai.pullback', 'living'): 1,
+    ('engine.orders.order', 'living'): 3, ('engine.orders.ability', 'living'): 2, ('engine.orders.hunt', 'living'): 1, ('simproxy', 'living'): 3, ('engine.ai.pullback', 'living'): 1,
     ('engine.objects.special', 'living'): 2, ('engine.combat.sweeps', 'living'): 1,
 }
 

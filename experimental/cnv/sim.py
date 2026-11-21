@@ -76,7 +76,7 @@ from engine.objects.path import Ground  # noqa: E402,F401  (the routing world, M
 import engine.objects.modifier as simmodifier  # noqa: E402
 import engine.players.money as simmoney  # noqa: E402
 import engine.objects.infiltrator as siminfiltrator  # noqa: E402
-from engine.orders import order as simorder, ability as simability, target as simtarget  # noqa: E402
+from engine.orders import order as simorder, ability as simability, target as simtarget, hunt as simhunt  # noqa: E402
 import engine.objects.power as simpower  # noqa: E402
 import engine.players.production as simproduce  # noqa: E402
 import engine.combat.range as simrange  # noqa: E402
@@ -1891,9 +1891,9 @@ class Sim:
         """simability.flee_start (L5)."""
         return simability.flee_start(self, self._order_peers(), b)
 
-    def hunt_due(self, frame):
-        """simorder.hunt_due (L5)."""
-        return simorder.hunt_due(self, self._order_peers(), frame)
+    def hunt_due(self, frame, crew=None):
+        """simhunt.hunt_due (L5)."""
+        return simhunt.hunt_due(self, self._order_peers(), frame, crew)
 
     def flee_due(self, frame):
         """simability.flee_due (L5)."""

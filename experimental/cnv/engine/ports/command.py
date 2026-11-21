@@ -596,11 +596,7 @@ class Commands:
         return True, ''
 
     def _hunt(self, cmd):                    # the crew attack-moves to the nearest hostile, again after each dies
-        w = self._w
-        movers = self._units(cmd)
-        w.hunts = [h for h in w.hunts if not any(b in movers for b in h[0])]
-        w.hunts.append([movers, None, w.frame_now()])
-        w.hunt_due(w.frame_now())
+        self._w.hunt_due(self._w.frame_now(), self._units(cmd))
         return True, ''
 
     def _flee(self, cmd):                    # RunOffMapBehavior's run

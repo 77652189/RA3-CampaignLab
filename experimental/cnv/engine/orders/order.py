@@ -4,8 +4,8 @@ The order entries set a body's mode and goal and hand the walk to L2 (`peers.sen
 (`order_move`, a group's `order_group`), an attack (`order_attack`), an engineer's capture (`order_capture`), a guard,
 stop / stand, a waypoint path (`order_follow`, `path_start`, `path_next`, `follow_leg`); a stance and auto-acquire are
 the unit's AIUpdate's (engine/modules/aiupdate.py). The dues are their frame parts:
-a capture at the building's side, the next leg of a path, a sequential script's next step, a hunt's next pick
-(`capture_due`, `follow_due`, `seq_due`, `hunt_due`). A run off the map is engine.orders.ability's.
+a capture at the building's side, the next leg of a path, a sequential script's next step
+(`capture_due`, `follow_due`, `seq_due`). A run off the map is engine.orders.ability's, a hunt engine.orders.hunt's.
 The fight (`fight`, once a tick) is the attack state machine: a team attack goes on to the next member, each armed
 body aims (L3 `aim`) and fires, rounds a blocked line, and chases by itself (`chase_step`: an attack-mover's
 `attack_chase`, anyone else's `idle_chase`).
@@ -15,7 +15,8 @@ bodies (delete, modify, engineer_entry, the garrison), L3 targeting and fire (re
 in_range, shot_blocked, fire_spot, side_sees, the unshot templates and AI sides: engine.orders.target's), L4 money (wallet), the team
 registry (members, team_targets) and the order queues the scripts fill (seq, hunts). The fight's per-tick state on the host
 (WRITES: seen, firing, volleys, chilling, mid_aims, the fire obstacles, the field) is reset through `peers` too --
-the only names it may set. This module never imports them. The loan serves engine.orders.ability too (its PEERS).
+the only names it may set. This module never imports them. The loan serves engine.orders.ability and
+engine.orders.hunt too (their PEERS).
 """
 import math
 
@@ -25,11 +26,10 @@ import engine.data.units as simunits
 from engine.kernel import interfaces
 from engine.orders import ability as simability
 from engine.orders import target as simtarget
-from engine.world.handle import CIV, GRID, inside
+from engine.world.handle import GRID, inside
 
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
 ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from where it was sent stopped short (held_up)
-HUNT_REPICK = 45                    # frames from a hunted target's death to the crew's next pick (fit, hunt_due)
 # an idle unit takes nothing by itself in the mission's first logic frame (bench 11-15 engine_dam BR: a bear 60 from an
 # enemy conscript, NO_ATTACK from 0.1 s = frame 2, never left its 8-half start square; the simulator had it chase from
 # frame 1 and stand at the conscript's feet by frame 15). INFERRED: the program's first idle scan not read -- 2 is the
@@ -413,34 +413,6 @@ def follow_due(world, peers):
         leg = dict(how, at=nxt)
         done.add(id(leg))
         follow_leg(world, peers, group, leg)
-
-
-def hunt_due(world, peers, frame):
-    """TEAM_HUNT's crews (Sim.act): one with no living target, its re-pick frame come, attack-moves to the
-    hostile object (unit or structure, not civilian) nearest its middle. Bench 11-14 engine_acts_y hunt: an
-    engineer died at s15, the crew by the next one (566 on) at s21; that one died at s29, the crew out of its
-    spot at s39 and back past home (s49) for the barracks; another crew's bait died at s13, the next attacked at
-    s29 -- HUNT_REPICK 45 frames (3 s) has each a second later, the bench's usual lag (0: the same but the
-    second bait 2 s early; 75: 2-3 s late). INFERRED: a fit, the program's re-pick rule not read. A crew's members dying, joining other teams: not followed (the crew as ordered)."""
-    for h in list(peers.hunts):
-        movers = [b for b in h[0] if b.alive]
-        if not movers:
-            peers.hunts.remove(h)
-            continue
-        if h[1] is not None and h[1].alive:
-            continue
-        if h[1] is not None:                # its target just died: the re-pick waits
-            h[1], h[2] = None, frame + HUNT_REPICK
-        if frame < h[2]:
-            continue
-        mx, my = sum(b.x for b in movers) / len(movers), sum(b.y for b in movers) / len(movers)
-        goal = min((o for o in world.living() if o.owner != CIV and world.hostile(movers[0], o)),
-                   key=lambda o: (math.hypot(o.x - mx, o.y - my), o.name), default=None)
-        if goal is None:
-            peers.hunts.remove(h)
-            continue
-        h[1] = goal
-        order_group(world, peers, movers, (goal.x, goal.y), True)
 
 
 def fight(world, peers):

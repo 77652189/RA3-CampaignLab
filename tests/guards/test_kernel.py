@@ -636,7 +636,7 @@ HOST_MODULES = {'engine.' + n for n in (
     'objects.assign', 'objects.body', 'objects.crush', 'objects.garrison', 'objects.heal', 'objects.infiltrator',
     'objects.jet', 'objects.level', 'objects.locomotion', 'objects.mine', 'objects.modifier', 'objects.path',
     'objects.power', 'objects.repair', 'objects.special', 'objects.status', 'objects.toggle', 'objects.topple',
-    'orders.ability', 'orders.micro', 'orders.order', 'orders.target', 'players.money', 'players.production', 'players.tech', 'script.act',
+    'orders.ability', 'orders.hunt', 'orders.micro', 'orders.order', 'orders.target', 'players.money', 'players.production', 'players.tech', 'script.act',
     'script.act_ability', 'script.act_object', 'script.act_order', 'script.act_player', 'script.act_show',
     'script.act_vision', 'script.act_world', 'script.common', 'script.cond', 'script.cond_object',
     'script.cond_player', 'script.cond_show', 'script.cond_vision', 'script.cond_world', 'script.host',

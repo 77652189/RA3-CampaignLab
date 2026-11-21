@@ -35,7 +35,7 @@ structure' west to pb (e1 out of sight behind it); after e1 dies, re-picking the
     dead s13, then b6 (800 on) attacked s29, dead s31. NAMED_HUNT: Soviet_3's n3 (its AI woken by the container)
     never left home, nor c3. New: a dead engineer's NAMED_ATTACKED_BY_OBJECTTYPE stays true 7 s (s15-s21, s13-s19,
     s29-s35, s31-s37) while NAMED_NOT_DESTROYED is false at once -- its body lingers (the simulator's linger for it
-    is shorter: not fixed here, a unit-data matter). After the bench the simulator (Sim.hunt_due, HUNT_REPICK 45)
+    is shorter: not fixed here, a unit-data matter). After the bench the simulator (engine.orders.hunt, HUNT_REPICK 45)
     reads each step a second later: 11200 at 8, 220 at 22, e2 attacked 27, dead 30, b6 attacked 30, 0 at 39, home
     50 / 52 / 60 / 61.
 """
