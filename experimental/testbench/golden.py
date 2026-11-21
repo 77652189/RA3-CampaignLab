@@ -13,8 +13,8 @@ a commit means to change behaviour):
     what it will sit on); with none, HEAD~1 (the commit against its parent).
 The base is checked out in its own worktree beside this one, <LAB>\RA3-CampaignLab-golden (a sibling, so labpaths
 gives it the main checkout's work\ without a junction), with this checkout's simrecord.py copied over its own: both
-sides are recorded by the same recorder. Records are cached under work\logs\golden\ by commit (and, for uncommitted
-work, by the hash of the diff), so a second run is a compare only; the oldest beyond KEEP are removed.
+sides are recorded by the same recorder. Records are cached under work\logs\golden\ by commit and engine model HEAD
+(and, for uncommitted work, by the hash of the diff), so a second run is a compare only; the oldest beyond KEEP are removed.
 
 A commit that means to change behaviour says so in its message, one line per commit:
     Golden-Changed: old_heal_a ai_open        (or "Golden-Changed: all")
@@ -78,6 +78,7 @@ def _load(name, path):
 
 
 labpaths = _load('labpaths', os.path.join(ROOT, 'experimental', 'campaign', 'labpaths.py'))
+modelpin = _load('modelpin', os.path.join(ROOT, 'experimental', 'cnv', 'modelpin.py'))
 simrecord = _load('simrecord', os.path.join(ROOT, SIMRECORD_REL))
 CACHE = os.path.join(labpaths.WORK, 'logs', 'golden')
 
@@ -130,14 +131,15 @@ def _digest(*parts):
 
 
 def recorder_hash(root=ROOT):
-    """The cache key of what records: the recorder (RECORDER_RELS), its helpers and this file (prepare_tree: what a
-    base gets copied in). A change to how a base is prepared records it anew -- a `.failed` left by the old way is not
-    taken as done (review 1120dd P2: the readonly.py copy fixed, the old base failure still read and skipped)."""
+    """The cache suffix covers the engine model HEAD, the recorder (RECORDER_RELS), its helpers and this file
+    (prepare_tree: what a base gets copied in). A change to base preparation records it anew -- a `.failed` left by
+    the old way is not taken as done (review 1120dd P2: the readonly.py copy fixed, the old base failure still read
+    and skipped)."""
     texts = []
     for path in [os.path.join(root, rel) for rel in RECORDER_RELS + RECORDER_HELPERS] + [os.path.abspath(__file__)]:
         with open(path, 'rb') as f:
             texts.append(f.read())
-    return _digest(*texts)
+    return _digest(*texts, modelpin.head(labpaths.ENGINE_MODEL) or '')
 
 
 def work_key(root):

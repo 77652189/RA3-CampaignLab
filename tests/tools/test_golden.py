@@ -84,6 +84,19 @@ def test_this_checkouts_side_is_recorded_anew_when_the_work_changes(repo):
     assert golden.work_key(str(r)) != two
 
 
+def test_work_key_changes_with_the_engine_model_head(repo, tmp_path, monkeypatch):
+    checkout = str(repo[0])
+    model = tmp_path / 'model'
+    model.mkdir()
+    _git(model, 'init', '-q')
+    _commit(model, 'first model', {'marker': 'one'})
+    monkeypatch.setattr(golden.labpaths, 'ENGINE_MODEL', str(model))
+    first = golden.work_key(checkout)
+    assert golden.work_key(checkout) == first
+    _commit(model, 'second model', {'marker': 'two'})
+    assert golden.work_key(checkout) != first
+
+
 def test_the_pin_is_read_at_the_base_and_here(repo):
     r, first, second = repo
     assert golden.pin_at(str(r), first) == 'aaa'
