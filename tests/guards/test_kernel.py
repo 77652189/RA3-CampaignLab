@@ -270,7 +270,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 2961, 'Sim methods': 173, 'Body fields': 67, 'simunits defs': 136,
+CENTER = {'sim.py lines': 2913, 'Sim methods': 171, 'Body fields': 67, 'simunits defs': 136,
           'cells with old code': 31}
 
 
@@ -634,7 +634,7 @@ HOST_MODULES = {'engine.' + n for n in (
     'objects.assign', 'objects.body', 'objects.crush', 'objects.garrison', 'objects.heal', 'objects.infiltrator',
     'objects.jet', 'objects.level', 'objects.locomotion', 'objects.mine', 'objects.modifier', 'objects.path',
     'objects.power', 'objects.repair', 'objects.special', 'objects.status', 'objects.toggle', 'objects.topple',
-    'orders.ability', 'orders.micro', 'orders.order', 'players.money', 'players.production', 'players.tech', 'script.act',
+    'orders.ability', 'orders.micro', 'orders.order', 'orders.target', 'players.money', 'players.production', 'players.tech', 'script.act',
     'script.act_ability', 'script.act_object', 'script.act_order', 'script.act_player', 'script.act_show',
     'script.act_vision', 'script.act_world', 'script.common', 'script.cond', 'script.cond_object',
     'script.cond_player', 'script.cond_show', 'script.cond_vision', 'script.cond_world', 'script.host',

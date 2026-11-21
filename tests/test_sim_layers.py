@@ -39,7 +39,7 @@ LAYER_OF = {
     'engine.objects.body': 2,
     'engine.objects.toggle': 2,
     'engine.objects.special': 2,
-    'engine.orders.order': 5, 'engine.orders.ability': 5,
+    'engine.orders.order': 5, 'engine.orders.ability': 5, 'engine.orders.target': 5,
     'engine.combat.host': 3,
     'engine.combat': 3, 'engine.combat.registry': 3, 'engine.combat.damage': 3,      # N1 the nugget handlers
     'engine.combat.line_damage': 3, 'engine.combat.projectile': 3,

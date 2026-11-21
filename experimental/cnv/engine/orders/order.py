@@ -12,7 +12,7 @@ body aims (L3 `aim`) and fires, rounds a blocked line, and chases by itself (`ch
 All over the world it is given (simworld.WORLD_API only). Its host's other parts come in as `peers` (`Peers`, the
 names in PEERS only, read when used): L2 locomotion (send, claims, free_spot, goal_off_nodes, column_ends), L2
 bodies (delete, modify, engineer_entry, the garrison), L3 targeting and fire (reach, fight_field, aim, can_hit,
-in_range, shot_blocked, fire_spot, side_sees, takes_by_itself, the unshot templates), L4 money (wallet), the team
+in_range, shot_blocked, fire_spot, side_sees, the unshot templates and AI sides: engine.orders.target's), L4 money (wallet), the team
 registry (members, team_targets) and the order queues the scripts fill (seq, hunts). The fight's per-tick state on the host
 (WRITES: seen, firing, volleys, chilling, mid_aims, the fire obstacles, the field) is reset through `peers` too --
 the only names it may set. This module never imports them. The loan serves engine.orders.ability too (its PEERS).
@@ -24,6 +24,7 @@ import numpy as np
 import engine.data.units as simunits
 from engine.kernel import interfaces
 from engine.orders import ability as simability
+from engine.orders import target as simtarget
 from engine.world.handle import CIV, GRID, inside
 
 CAPTURE_REACH = 20.0           # R4: an engineer this far outside a building's round is at its side (a guess)
@@ -40,7 +41,7 @@ PEERS = frozenset({'act', 'claims', 'column_ends', 'delete', 'engineer_entry', '
                    'goal_off_nodes', 'hunts', 'modify', 'powers_off', 'reach', 'send', 'seq', 'toggle_press',
                    'toggles_of', 'wallet', 'production',
                    'aim', 'can_hit', 'fight_field', 'fire_spot', 'in_range', 'members', 'shot_blocked',
-                   'side_sees', 'takes_by_itself', 'team_targets', 'unshot',
+                   'side_sees', 'ai', 'team_targets', 'unshot',
                    '_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims', 'seen', 'volleys'})
 
 
@@ -545,8 +546,7 @@ def attack_chase(world, peers, a, fired, near):
     for dist, t in near:
         if dist - t.radius > a.sight:
             break                           # sorted by centre
-        if t.template in peers.unshot or not peers.takes_by_itself(a, t) or not peers.side_sees(a.owner, t) or \
-                'NON_AUTOACQUIRABLE' in t.status:
+        if not simtarget.takes_by_itself(a, t, peers) or not peers.side_sees(a.owner, t) or 'NON_AUTOACQUIRABLE' in t.status:
             continue
         if not any(peers.can_hit(w, t) and not peers.shot_blocked(a, t, w) for w in a.weapons):
             continue
@@ -601,8 +601,7 @@ def idle_chase(world, peers, a, fired, near):
     for dist, t in near:
         if dist - t.radius > sight:
             break                           # sorted by centre; a radius over 0 only cuts more
-        if t.template in peers.unshot or not peers.takes_by_itself(a, t) or not peers.side_sees(a.owner, t) or \
-                'NON_AUTOACQUIRABLE' in t.status:
+        if not simtarget.takes_by_itself(a, t, peers) or not peers.side_sees(a.owner, t) or 'NON_AUTOACQUIRABLE' in t.status:
             continue
         if not any(peers.can_hit(w, t) and not peers.shot_blocked(a, t, w) for w in a.weapons):
             continue                        # bench engine_seal row: a target behind a structure is not gone after

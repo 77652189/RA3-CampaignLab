@@ -76,7 +76,7 @@ from engine.objects.path import Ground  # noqa: E402,F401  (the routing world, M
 import engine.objects.modifier as simmodifier  # noqa: E402
 import engine.players.money as simmoney  # noqa: E402
 import engine.objects.infiltrator as siminfiltrator  # noqa: E402
-from engine.orders import order as simorder, ability as simability  # noqa: E402
+from engine.orders import order as simorder, ability as simability, target as simtarget  # noqa: E402
 import engine.objects.power as simpower  # noqa: E402
 import engine.players.production as simproduce  # noqa: E402
 import engine.combat.range as simrange  # noqa: E402
@@ -1959,30 +1959,6 @@ class Sim:
             return 'ANTI_STRUCTURE' in anti or 'ANTI_GROUND' in anti
         return 'ANTI_GROUND' in anti or 'ANTI_WATER' in anti
 
-    def takes_by_itself(self, a, t):
-        """Whether `a` may take `t` with no order naming it (idle, firing on a plain move, attack-moving, going after:
-        Generals AIUpdateInterface::getNextMoodTarget -> AI::findClosestEnemy, every such path): never a structure
-        (PartitionFilterRejectBuildings) unless `a` is ATTACK_BUILDINGS or `t` a base defence (FS_BASE_DEFENSE; a
-        garrisoned building that can fire is the other exception, not modelled: no garrisons here), never a
-        NOT_AUTOACQUIRABLE one (INFERRED by its name). Bench 2026-11-08 engine_seal: the player's idle peacekeeper
-        leaves the enemy's bunkers alone (erow), the enemy's (a computer player's: Generals would let it take
-        buildings) idle and attack-moving past leaves the player's bunker and plant alone (ebld / ebldam) -- RA3 drops
-        Generals' computer exception; the a4 ice nobody shoots (2026-10-28) is the same rule. An order naming the
-        target (`a.goal`) is not filtered here. A side run by the skirmish AI (`self.ai`, woken) keeps Generals'
-        exception and takes buildings (INFERRED: the bench's s1 had no AI; a skirmish AI's attack does pull down
-        buildings -- tests/test_simai)."""
-        if 'NOT_AUTOACQUIRABLE' in t.kinds and not ('AUTO_ACQUIRABLE_BY_AI' in t.kinds and a.ai_acquire):
-            return False
-        if 'STRUCTURE' in t.kinds and not a.ai_acquire:
-            return ('ATTACK_BUILDINGS' in a.acquire or 'FS_BASE_DEFENSE' in t.kinds
-                    or a.owner in getattr(self, 'ai', ()))
-        return True
-
-    def auto_acquires(self, a):
-        """Whether `a` takes targets by itself now: an attack-mover always; idle or on a plain move (Generals'
-        calledDuringIdle: the idle state and the turret's scan) only with AutoAcquireEnemiesWhenIdle YES."""
-        return a.mode == 'attack' or 'YES' in a.acquire
-
     def shot_blocked(self, a, t, w):
         """Line of fire (docs/engine/pathing.md 7c; bench 2026-11-08 engine_seal idle / row / cut): a weapon with
         ATTACK_NEEDS_LINE_OF_SIGHT in its Flags (simunits `los`: the peacekeeper's shotgun, tank cannons, the IFV's
@@ -2075,34 +2051,12 @@ class Sim:
     def aim(self, a, targets, aimable, tx, ty):
         """`a`'s pick for each of its weapons where it stands (fight): the aimed fire into self.firing / volleys /
         chilling, engaged when it is attack-moving. None: no foe at all; else (fired, the foes' centre distances,
-        their indexes in targets)."""
-        foes = [k for k, t in enumerate(targets) if t is not a and self.hostile(a, t)]
-        if not foes:
+        their indexes in targets). The picks are engine.orders.target's."""
+        got = simtarget.picks(a, targets, aimable, tx, ty, self)
+        if got is None:
             return None
-        idx = np.array(foes)
-        d = np.hypot(tx[idx] - a.x, ty[idx] - a.y)
-        pad = max(targets[k].radius for k in foes)          # the biggest foe's radius: the scan's cut-off (R8)
         fired = False
-        for w in a.weapons:
-            order = np.argsort(d, kind='stable')    # ties (two foes made on one point) by list order: the
-            pick = None                              # default quicksort broke them by the array's length (a4 r121)
-            if isinstance(a.goal, Body) and a.goal.alive and a.goal.serial in aimable and \
-                    self.in_range(a, a.goal, w) and self.can_hit(w, a.goal) and \
-                    self.side_sees(a.owner, a.goal) and not self.shot_blocked(a, a.goal, w):
-                pick = a.goal
-            elif self.auto_acquires(a):
-                for j in order:
-                    if d[j] - a.radius - pad > self.reach_of(w):   # sorted by centre: nobody nearer after this
-                        break
-                    t = targets[idx[j]]
-                    if not self.in_range(a, t, w, d[j]):
-                        continue
-                    if t.template in self.unshot or not self.takes_by_itself(a, t) or \
-                            'NON_AUTOACQUIRABLE' in t.status:
-                        continue                # a building / our ice: only when ordered (takes_by_itself)
-                    if self.can_hit(w, t) and self.side_sees(a.owner, t) and not self.shot_blocked(a, t, w):
-                        pick = t
-                        break
+        for w, pick in zip(a.weapons, got[2]):
             if pick is None:
                 continue
             if a.vision and w['range'] > a.vision:
@@ -2130,7 +2084,7 @@ class Sim:
             fired = True
             if a.mode == 'attack':
                 a.engaged = True
-        return fired, d, idx
+        return fired, got[0], got[1]
 
     def first_shot(self, a, w, pick):
         """A PreAttackType PER_TARGET weapon waits its PreAttackDelay (whole frames, simunits._frames) before its first
@@ -2161,11 +2115,9 @@ class Sim:
             return None
         out = []
         for t in self._field[2]:
-            if t is b or not t.alive or not self.hostile(b, t) or not self.side_sees(b.owner, t):
-                continue
-            ordered = isinstance(b.goal, Body) and b.goal is t
-            if not ordered and (t.template in self.unshot or not self.takes_by_itself(b, t)
-                                or 'NON_AUTOACQUIRABLE' in t.status):
+            if t is b or not t.alive or not self.hostile(b, t) or not self.side_sees(b.owner, t) or \
+                    (b.goal is not t and (not simtarget.takes_by_itself(b, t, self)       # the order's, or one
+                                          or 'NON_AUTOACQUIRABLE' in t.status)):          # it takes by itself
                 continue
             for w in b.weapons:
                 if self.can_hit(w, t) and not self.in_range(b, t, w):
