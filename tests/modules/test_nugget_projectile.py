@@ -85,7 +85,8 @@ def test_only_the_own_files_the_build_compiles_reach_the_simulator():
     id) is nobody's; named in `also` or included by the unit it is compiled and the simulator has it (review 1121mm #1)."""
     shadow = '<GameObject id="SovietAntiVehicleVehicleTech1" inheritFrom="AlliedPowerPlant"></GameObject>'
     include = '<Include type="all" source="DATA:CNVUnits/Data/Shadow.xml"/>'
-    for also, inc, has in [([], '', False), (['Shadow.xml'], '', True), ([], include, True)]:
+    for also, inc, has in [([], '', False), (['Shadow.xml'], '', True), ([], include, True),
+                           ([], f'<!-- {include} -->', False)]:     # a file named in a comment is not included
         unit = parts.Unit('CNV_TestMarker', f'<GameObject id="CNV_TestMarker">{inc}</GameObject>',
                           files={'Shadow.xml': shadow}, also=also)
         s = sim.Sim(parts.Mission(name='T', map=island, scripts=[], units=[unit]), model=False)

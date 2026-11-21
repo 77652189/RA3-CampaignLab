@@ -8,5 +8,4 @@ bench = """\
 CampHitReactEB_mcp_1116_004505: frozen f180 HUD, s15..80: frame 180, original HP 99, module-removed HP 99, gate bits 895 \
 (bit 64 is the original's ever-on reaction; no timing / orientation claim)"""
 proves = "HitReactionBehavior: a shielded legal hit costs both arms the same HP; the reaction bit is the only difference"
-item = "物体模块 Behaviors/HitReactionBehavior"
 expect = "list(rows[-1].values()) == [180, 99, 99, 895]"

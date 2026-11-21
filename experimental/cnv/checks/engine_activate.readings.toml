@@ -6,8 +6,7 @@ id = "the_button_turns_the_linked_shield_on_for_twenty_seconds"
 scene = {build = "engine_activate", check = "a", until = 32}
 bench = "E153 (bench 11-15): 激活 111 (GENERIC_TOGGLE_STATE + IGNORING_STEALTH + alive) f76..371, 100 from f379; 对照 100 throughout; 证据 7"
 proves = "物体模块 ActivateModuleSpecialPower: the retail Athena button activates its linked ShieldSphereUpdate (its statuses) for 20 s from the press at 5 s; the Athena without the module gets neither"
-item = "物体模块 Behaviors/ActivateModuleSpecialPower"
 expect = ["all(r['激活'] == 111 for r in rows if 76 <= r['帧数'] <= 371)",
           "all(r['激活'] == 100 for r in rows if r['帧数'] < 76 or r['帧数'] >= 379)",
           "all(r['对照'] == 100 for r in rows)",
-          "counter('E153Evidence') == 7"]
+          "counter('E153Evidence') == 7", "counter('E153At152') == counter('E153At379') == 1"]

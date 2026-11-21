@@ -117,7 +117,7 @@ def compiled_objects(units):
     files = {n: x for u in units for n, x in (getattr(u, 'files', None) or {}).items()}
     got = {n for u in units for n in getattr(u, 'also', ()) if n in files}
     while True:
-        texts = [u.xml for u in units] + [files[n] for n in got]
+        texts = [re.sub(r'<!--.*?-->', '', t, flags=re.S) for t in [u.xml for u in units] + [files[n] for n in got]]
         new = {n for n in files if n not in got and any('CNVUnits/Data/' + n in t for t in texts)}
         if not new:
             return {g: files[n] for n in got for g in re.findall(r'<GameObject\b[^>]*?\bid="([^"]+)"', files[n])}

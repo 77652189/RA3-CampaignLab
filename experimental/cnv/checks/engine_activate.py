@@ -61,6 +61,9 @@ def check(m):
                        ('COUNTER', 'E153on', 2, 100), ('COUNTER', 'E153off', 2, 100)])]:
         t.scripts.append(Script('Test - E153 evidence ' + tag, conds,
             [('INCREMENT_COUNTER', bit, 'E153Evidence'), ('SET_FLAG', 'E153 ' + tag, 1)]))
+    for frame, value in ((152, 111), (379, 100)):   # the two HUD frames, read off the bench on the frame itself
+        t.scripts.append(Script(f'Test - E153 at f{frame}', [('COUNTER', 'E153Frame', 2, frame),
+            ('COUNTER', 'E153on', 2, value), ('COUNTER', 'E153off', 2, 100)], [('SET_COUNTER', f'E153At{frame}', 1)]))
     t.expect = [('帧数', 0, 'ever>=', 450), ('对照', 0, '==', 100),
                 ('激活', 7, 'ever==', 111, 22), ('证据', 28, 'ever==', 7)]
     t.bench = [('bench_watch', dict(seconds=32, every=0.5, sheet=False, lines=4))]
