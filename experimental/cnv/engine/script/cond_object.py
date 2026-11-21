@@ -49,8 +49,10 @@ def player_has_object_comparison(sim, name, a):
 
 
 def player_has_comparison_unit_type_in_trigger_area(sim, name, a):
+    # a SUMMONED one is not counted: the bomber drop's bombers (+SUMMONED -SELECTABLE) never, flying with their load
+    # counted (engine_acts_drop air 机 0 every frame; INFERRED which of the two kinds it is)
     n = sum(1 for b in sim.living() if b.owner == a[0] and b.template.lower() == a[3].lower()
-            and inside(sim.areas[a[4]], b.x, b.y))
+            and 'SUMMONED' not in b.kinds and inside(sim.areas[a[4]], b.x, b.y))
     return CMP[a[1]](n, a[2])
 
 

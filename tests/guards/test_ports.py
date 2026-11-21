@@ -470,7 +470,7 @@ GIVER_PARTS = [(GAME, 'Session'), (CNV / 'sim.py', 'Sim.happen')]
 SCRIPT_GIVERS = {CNV / 'engine/script/act_order.py': {'unit_teleport_to_waypoint', 'unit_ai_transfer'},
                  # a special power's cast is the SpecialPower module's effect (the player's power comes to it too), no
                  # order: the ice engineer's walk to build is that effect's (R3 13d-2)
-                 CNV / 'engine/script/act_ability.py': {'script_cast'}}
+                 CNV / 'engine/script/act_ability.py': {'script_cast', '_drop'}}
 
 
 def test_the_givers_give_through_the_command_port():

@@ -25,25 +25,37 @@ expect = [
 
 [[reading]]
 id = "acts_mix_drop_lands"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2"
 scene = {build = "engine_acts_mix", check = "all", until = 25}
 bench = """all, bench 11-21 `run_queue engine_acts_mix:all` (CampActsMixAll_mcp_1121_062114, round 275; the build since b940bbb8 \
-takes the bomber in, round 224's 兵 0 was the build of then): 兵 46 s2-s25 -- 6 GIs + 4 Javelins round the spot from the \
-press's reading on"""
-proves = "sim the bomber drop store's button: a full load lands round the spot within a reading of the press"
+takes the bomber in, round 224's 兵 0 was the build of then): 兵 46 s2-s25 -- 6 GIs + 4 Javelins in the 400 square round \
+the spot from the press's reading on"""
+proves = "sim act_ability._drop: the bomber drop store's button brings its full load (two bombers' InitialPayload) to the spot"
 let = {at = "dict(zip(times, vals(rows)))"}
-expect = "all(at[k][3] == 46 for k in range(5, 26))"
-mismatch = "sim 0 all along (act_ability: the cast recorded, nobody made); bench 46 from s2"
+expect = "all(at[k][3] == 46 for k in range(4, 25))"
 
 [[reading]]
 id = "acts_drop_own_every_store_drops"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2"
 scene = {build = "engine_acts_drop", check = "own", until = 31}
 bench = """own, bench 11-17 `run_queue engine_acts_drop:own` (CampActsDropOwn_mcp_1117_034720, round 272): 机 兵 敌 援 s1 0 0 0 0 | \
 s2-s12 0 46 0 0 | s13-s31 0 46 46 46 -- DP's button at 3 s, DS by name and DA's AI-handed button at 12 s, each a full load"""
-proves = "sim the bomber drop: the button, the cast by name and an AI's store alike drop 6 GIs + 4 Javelins round the spot"
+proves = """sim act_ability._drop: the button, the cast by name (script_cast) and an AI's store alike drop 6 GIs + 4 Javelins \
+round the spot; the bombers are not counted (cond_object: SUMMONED)"""
 let = {at = "dict(zip(times, vals(rows)))"}
-expect = ["all(at[k][1] == 46 for k in range(6, 32))", "all(at[k][2:] == [46, 46] for k in range(16, 32))",
+expect = ["all(at[k][1] == 46 for k in range(4, 31))", "all(at[k][2:] == [46, 46] for k in range(15, 31))",
           "all(v[0] == 0 for v in at.values())"]
-mismatch = "sim 0 0 0 0 all along (the cast recorded, nobody made); bench as above"
+
+[[reading]]
+id = "acts_drop_own_far_spot_late"
+scene = {build = "engine_acts_drop", check = "own", until = 31}
+bench = """own as above: s12 (mission 14, 2 s after the 12 s presses) 敌 援 0 0 -- DS's / DA's square starts 300 north of the \
+store, the load not there yet"""
+proves = "sim the bombers' start from rest: 300 off takes more than 2 s"
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = "at[14][2:] == [0, 0]"
+mismatch = """sim 46 46 at 14: the bombers fly at full speed from their making (no wait, no acceleration: L2 locomotion's); \
+bench 0 0 (air: ~6 frames' wait, then AccelerationSeconds 1 s to Speed 150 fits 店 / 近)"""
 
 [[reading]]
 id = "acts_drop_at_frames"
@@ -51,9 +63,29 @@ scene = {build = "engine_acts_drop", check = "at", until = 21}
 bench = """at, bench 11-21 `run_queue engine_acts_drop:at` (CampActsDropAt_mcp_1121_062451, round 275): 帧 到 满 近 s1 44 0 0 0 | \
 s2 58 6 6 0 | s3 73 21 21 0 | s4 88 36 36 5 | s5 104 52 52 21 ... s21 345 293 293 262: 帧 - 到 = 52 every reading, 到 = 满 \
 (the whole load in the 400 square at once, frame 52, 7 after the press at 45), 帧 - 近 = 83 from s4 (a GI within 150 of \
-the spot). The 400 square reaches the map's edge (y 5000) where the data has the bombers made: the load counted in its \
-bombers at their making, the 150 one when they are over the spot (INFERRED, handoff round 275)"""
-proves = "sim the bomber drop's timing: the load counted at the edge 7 frames after the press, round the spot 38 after"
-let = {inn = "{r['帧'] - r['到'] for r in rows[2:]}", near = "{r['帧'] - r['近'] for r in rows[4:]}"}
+the spot). The square's south side is the store's line (y 4300): the load riding its bombers crosses it (air, round 276)"""
+proves = "sim the bomber drop's timing: the load past the store's line 7 frames after the press, within 150 of the spot 38 after"
+let = {inn = "{r['帧'] - r['到'] for r in rows[3:]}", near = "{r['帧'] - r['近'] for r in rows[5:]}"}
 expect = ["inn == {52}", "near == {83}", "all(r['满'] == r['到'] for r in rows)"]
-mismatch = "sim nobody made (帧 - 到 = 帧); bench 帧 - 到 = 52, 帧 - 近 = 83"
+mismatch = "sim 帧 - 到 = 45, 帧 - 近 = 70 (full speed from the press frame); bench 52, 83"
+
+[[reading]]
+id = "acts_drop_air_at_the_store"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop2"
+scene = {build = "engine_acts_drop", check = "air", until = 12}
+bench = """air, bench 11-21 `run_queue engine_acts_drop:air` (CampActsDropAir_mcp_1121_071630, round 276): 帧 店 近 机 s1 46 1 0 0 | \
+s2 53 8 0 0 | s3 76 26 0 0 | s4 92 26 9 0 ... s9 166 26 83 0: a GI within 120 of the store from the press's frame (45) \
+for 26 frames, within 150 of the spot from frame 83, no bomber counted any frame. An earlier form \
+(CampActsDropAir_mcp_1121_071236: a strip along the north edge y 4900-5100, a box y 4300-4850) had the strip 0 every \
+frame and the whole load in the box from frame 52: the bombers are made at the store, not at the map's edge 700 off"""
+proves = """sim act_ability._drop: the bombers made at the store (CREATE_AT_EDGE_NEAR_SOURCE: INFERRED the source's place) \
+with the load inside, counted where they are (garrison); the bombers themselves never (cond_object: SUMMONED)"""
+expect = ["rows[3]['帧'] - rows[3]['店'] == 45", "all(r['机'] == 0 for r in rows)"]
+
+[[reading]]
+id = "acts_drop_air_flight"
+scene = {build = "engine_acts_drop", check = "air", until = 12}
+bench = "air as above: 26 frames round the store, 帧 - 近 = 83"
+proves = "sim the bombers' flight from rest to the spot"
+expect = ["rows[7]['店'] == 26", "{r['帧'] - r['近'] for r in rows[6:12]} == {83}"]
+mismatch = "sim 10 frames round the store, 帧 - 近 = 70 (full speed from their making); bench 26, 83"

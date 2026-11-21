@@ -22,7 +22,7 @@ import engine.data.units as simunits
 from engine.ports.command import Command
 from engine.objects.power import CURTAIN, PACK_FRAMES, PACK_POWER, RELOAD_LAG, SUPERWEAPON_HITS, UNPACK_POWER, start_reload
 from engine.script.common import refined
-from engine.world.handle import GAP_ACTION
+from engine.world.handle import GAP_ACTION, free_name
 
 
 def _order(sim, kind, unit, *args, **fields):
@@ -103,12 +103,12 @@ def named_buttons(sim, name, a, script, unit=None):
             sim.point(a[2]) is not None and simunits.ocl_power(
                 body(a[0]).template, simunits.command_power(a[1], sim.own) or '', sim.own):
         # engine_acts_wet DP / DS (round 226): the campaign bomber drop store's button is seen cast
-        # (PLAYER_TRIGGERED_SPECIAL_POWER) the player's and the computer's alike -- and nobody comes, in six
-        # runs (its OCL's CREATE_AT_EDGE_NEAR_SOURCE not explained: inventory NOTES)
+        # (PLAYER_TRIGGERED_SPECIAL_POWER) the player's and the computer's alike; its load: _drop
         b = body(a[0])
         sim.casts.append((sim.frame_now(), b.owner, simunits.command_power(a[1], sim.own).lower(), b.serial,
                            sim.point(a[2])))
-        sim.note('技能', f'{sim.label(b)} 按 {a[1]}：算放了，没出东西（推断）')
+        if not _drop(sim, b, simunits.command_power(a[1], sim.own), sim.point(a[2])):
+            sim.note('技能', f'{sim.label(b)} 按 {a[1]}：算放了，没出东西（推断）')
     elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and \
             body(a[0]) and body(a[0]).alive and \
             simunits.weapon_fire_ability(body(a[0]).template, a[1], sim.own):
@@ -216,8 +216,30 @@ def script_cast(sim, name, a, unit=None):
                 if (kinds is None or t.kinds & kinds) and \
                         math.hypot(t.x - q[0], t.y - q[1]) - t.radius <= reach:
                     t.immune_until = sim.frame_now() + lasts
-        if b and b.alive and not ((hits or a[1] in CURTAIN) and q is not None):
+        if b and b.alive and not ((hits or a[1] in CURTAIN) and q is not None) and \
+                not (q is not None and _drop(sim, b, a[1], q)):
             sim.gap(GAP_ACTION, refined(name, a), f'{a[1]} 只记进时间线（special power），没有效果')
+
+
+def _drop(sim, b, power, p):
+    """b's OCLSpecialPower `power` at p when its OCL makes transports firing their eject (the campaign bomber drop:
+    two bombers, 3 GIs + 2 Javelins in each). Bench engine_acts_drop air / at (round 276): the load is counted (in
+    its bombers) round the store the press's frame, past its line 7 frames on, within 150 of the spot 38 on, all
+    ten round the spot after; the bombers themselves never (Sim.counted). CREATE_AT_EDGE_NEAR_SOURCE made them at
+    the store, not at the map's edge 700 off (INFERRED: the source's place); each flies to the spot + its offset
+    and empties there (garrison.eject). False when the OCL makes no such thing."""
+    module = simunits.ocl_power(b.template, power, sim.own)
+    drops = simgarrison.ocl_transports(module['OCL'], sim.own) if module else []
+    for template, dx, dy, eject in drops:
+        g = sim.add(free_name(sim, '#created', template), template, b.owner, b.x + dx, b.y + dy, at=sim.t)
+        for name, n in simgarrison.initial_payload(template, sim.own):
+            for _ in range(n):
+                sim.garrison.put(sim.add(free_name(sim, '#created', name), name, b.owner, g.x, g.y,
+                                         at=sim.t), g, script=True)
+        sim.garrison.eject(g, None, (p[0] + dx, p[1] + dy), power=eject)
+    if drops:
+        sim.note('技能', f'{sim.label(b)} 放 {power}：{len(drops)} 架运输机从它那儿飞去')
+    return bool(drops)
 
 
 def player_fire_special_power_at_waypoint(sim, name, a, script):

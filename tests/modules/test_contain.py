@@ -163,3 +163,22 @@ def test_at_the_reallydamaged_line_everyone_comes_out():
     house.set_hp(house.max_hp * .33, tell=False)
     s.garrison.hurt(house)
     assert s.garrison.held(house) == [] and house.owner is None
+
+
+def test_the_bomber_drop_flies_its_load_to_the_spot_before_it_ejects():
+    """engine_acts_drop air (round 276): the drop OCL's two bombers carry their InitialPayload; StartAbilityRange 0
+    with the spot away: the load stays aboard until the bomber is there (garrison.ARRIVE), then goes out."""
+    bomber = 'CAMP_AlliedBomberAircraft_Infantry_1'
+    assert simgarrison.ocl_transports('OCL_CAMPAlliedBomberDrop2') == [
+        (bomber, -70.0, 0.0, 'SpecialPower_EjectPassengers'), (bomber, 70.0, 0.0, 'SpecialPower_EjectPassengers')]
+    assert simgarrison.initial_payload(bomber) == [('AlliedAntiInfantryInfantry', 3), ('AlliedAntiVehicleInfantry', 2)]
+    s = simsmall.small_world()
+    g = s.add('bomber', bomber, 'Player_1', 300.0, 300.0)
+    gi = s.add('gi', 'AlliedAntiInfantryInfantry', 'Player_1', 300.0, 300.0)
+    assert s.garrison.put(gi, g, script=True)
+    assert s.garrison.eject(g, None, (300.0, 700.0), power='SpecialPower_EjectPassengers')
+    s.garrison.due()
+    assert s.garrison.held(g) == [gi]
+    g.y = 695.0
+    s.garrison.due()
+    assert s.garrison.held(g) == []

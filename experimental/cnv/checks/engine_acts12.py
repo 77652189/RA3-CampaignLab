@@ -193,8 +193,8 @@ def when(m):
     eject 5 each, 0.25 s a passenger, ignoring the target (IgnoreTargetLocation): the first GI ~1 s after the press
     (frame ~60), the load 1.25 s later, near the spot if they fly there first]
     BENCH 11-21 (round 275, engine_acts_drop:at, CampActsDropAt_mcp_1121_062451): 帧 - 到 = 52 at every reading, 到 = 满
-    (all ten at once, 7 frames after the press), 帧 - 近 = 83: the square's 400 reaches the edge, so the load is seen
-    in its bombers as they are made (INFERRED); within 150 of the spot 38 frames after the press. Readings data."""
+    (all ten at once, 7 frames after the press), 帧 - 近 = 83: the square's south side is the store's line, the load
+    riding its bombers from the store crosses it (air); within 150 of the spot 38 frames after the press. Readings data."""
     t = _presses(m, DROPS)
     t.areas['Test A12 Near DP'] = square(*DROPS['DP'][3], 150.0)
     s8.frames(t, 'CNV_A12_Frame', '帧', [])
@@ -203,6 +203,22 @@ def when(m):
                                         _has(m, 'p1', JAV, 4, 'Test A12 Spot DP')])
     s8.frames(t, 'CNV_A12_Near', '近', [_has(m, 'p1', GI, 1, 'Test A12 Near DP')])
     s8.watch(t, 20.0)
+    return t
+
+
+def air(m):
+    """Where the load is first seen: own's presses, by the frame -- 店 = frames with >= 1 of DP's GIs within 120 of its
+    store, 近 = within 150 of its spot, 机 = >= 1 of the player's bombers anywhere.
+    BENCH 11-21 (round 276, CampActsDropAir_mcp_1121_071630): 店 from the press's frame (45) for 26 frames, 帧 - 近 =
+    83, 机 0 every frame -- the bombers made at the store, the load counted in them. Readings data."""
+    t = _presses(m, DROPS)
+    t.areas['Test A12 Store DP'] = square(*DROPS['DP'][:2], 120.0)
+    t.areas['Test A12 Near DP'] = square(*DROPS['DP'][3], 150.0)
+    s8.frames(t, 'CNV_A12_Frame', '帧', [])
+    s8.frames(t, 'CNV_A12_Store', '店', [_has(m, 'p1', GI, 1, 'Test A12 Store DP')])
+    s8.frames(t, 'CNV_A12_Near', '近', [_has(m, 'p1', GI, 1, 'Test A12 Near DP')])
+    s8.frames(t, 'CNV_A12_Bomb', '机', [_has(m, 'p1', BOMBER, 1, 'Test A12 Whole')])
+    s8.watch(t, 12.0, every=0.5)
     return t
 
 
@@ -242,6 +258,6 @@ def _presses(m, drops):
 MISSION = {'engine_acts_mix': mission, 'engine_acts_drop': drop_mission,
            'engine_acts_ally': lambda: drop_mission(allied=True), 'engine_acts_edge': lambda: drop_mission(edge=True),
            'engine_acts_dropx': lambda: drop_mission(entry=True)}
-CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own, 'at': when},
+CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own, 'at': when, 'air': air},
           'engine_acts_ally': {'own': own},
           'engine_acts_edge': {'edge': edge}, 'engine_acts_dropx': {'own': own}}

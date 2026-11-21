@@ -53,6 +53,7 @@ EJECT_FLIGHT = 2.0             # INFERRED from bench 11-10 engine_transport load
                                 # the far square 0 2 3 at s4-s6: out 0.5 s apart, down ~2 s later, 500 away)
 REALLY_DAMAGED = 33.333333      # ActiveBody.xsd MaxHealthReallyDamagedPercentage's default (percent)
 ENTER_REACH = 20.0              # INFERRED: in at the building's side (its round + this; as Sim.capture_due's)
+ARRIVE = 10.0                   # INFERRED: StartAbilityRange 0's "there" (a frame of the bomber's flight, 150 / 15)
 INSIDE_STATUS = frozenset({'IMMOBILE', 'UNATTACKABLE'})     # INFERRED: a passenger neither walks nor is shot at
                                                             # by itself (the building takes the hits)
 CIV = 'PlyrCivilian'
@@ -351,11 +352,13 @@ class Garrisons:
                 (peers.delete if delete else peers.destroy)(u, '随楼删掉' if delete else '楼毁乘员同死')
         self.boxes.pop(g.serial, None)
 
-    def eject(self, g, command, where):
-        """The button `command` pressed on g at the spot `where`: True when an EjectPassengersSpecialAbilityUpdate of
-        g serves its power (then the passengers go out one by one in due())."""
+    def eject(self, g, command, where, power=None):
+        """The button `command` pressed on g at the spot `where` (or the power itself fired: an OCL's
+        FIRE_SPECIAL_POWER): True when an EjectPassengersSpecialAbilityUpdate of g serves its power (then the
+        passengers go out one by one in due()). StartAbilityRange 0 with a spot away: it goes there first, out on
+        arrival (engine_acts_drop air: the bomber drop's load rides its bombers from the store to the spot)."""
         world, peers = self.world, self.peers
-        power = simunits.command_power(command, world.own)
+        power = power or simunits.command_power(command, world.own)
         found = []
 
         def walk(xml):
@@ -371,7 +374,8 @@ class Garrisons:
             return False
         h = found[0]
         per = simunits._secs(simunits._attr(h, 'TimePerPassenger') or '0.5s')
-        reach = simunits._num(simunits._attr(h, 'StartAbilityRange'), 0.0)
+        reach = simunits._num(simunits._attr(h, 'StartAbilityRange'), 0.0) or \
+            (ARRIVE if math.hypot(where[0] - g.x, where[1] - g.y) > ARRIVE else 0.0)
         self.ejecting[g.serial] = [where, per, reach, None]
         if reach and math.hypot(where[0] - g.x, where[1] - g.y) > reach:
             peers.send(g, where)                     # INFERRED: drives in, then throws
@@ -460,3 +464,42 @@ class Garrisons:
                 and 'GARRISONABLE_UNTIL_DESTROYED' not in g.kinds:
             world.note('驻军', f'{world.label(g)} 残血，乘员全出来')
             self.empty(g)
+
+
+def ocl_transports(ocl, own=None):
+    """The OCL's FIRE_SPECIAL_POWER nuggets (the campaign bomber drop's: transports made carrying their InitialPayload
+    and casting their eject): [(template, dx, dy, the power fired)], [] for any other list. Looked for in the
+    mission's texts and retail's ObjectCreationLists.xml (_ocl), then in any retail file (the drop's list is kept in
+    the file of the bomber it makes, which the SageXML index does not name)."""
+    got = simunits._ocl(ocl, own) or _ocl_anywhere(ocl)
+    out = []
+    for ch, cb in re.findall(r'<CreateObject\b(\s[^>]*)>(.*?</CreateObject>)\s*</CreateObject>', got[1] if got else '',
+                             re.S):
+        made, off = re.search(r'<CreateObject>\s*([^<\s]+)', cb), re.search(r'<Offset\b([^>]*)', cb)
+        if made and 'FIRE_SPECIAL_POWER' in (simunits._attr(ch, 'Options') or ''):
+            out.append((made.group(1), simunits._num(simunits._attr(off.group(1), 'x') if off else 0),
+                        simunits._num(simunits._attr(off.group(1), 'y') if off else 0),
+                        simunits._attr(ch, 'FireSpecialPowerTemplate')))
+    return out
+
+
+def _ocl_anywhere(ocl):
+    if ('ocl anywhere', ocl) not in simunits._reads:
+        simunits.retail_xml('')
+        tag = f'id="{ocl}"'
+        simunits._reads['ocl anywhere', ocl] = next(
+            ((h, b) for p in simunits._retail_files.values() if tag in simunits._text(p)
+             for h, b in simunits._blocks(re.sub(r'<!--.*?-->', '', simunits._text(p), flags=re.S),
+                                           'ObjectCreationList')
+             if simunits._attr(h, 'id') == ocl), None)
+    return simunits._reads['ocl anywhere', ocl]
+
+
+def initial_payload(template, own=None):
+    """Its TransportContain's InitialPayload: [(template, count)], [] without one."""
+    def read(xml):
+        got = [(simunits._attr(h, 'Name'), int(simunits._num(simunits._attr(h, 'Count'), 1))) for _, tb in
+               simunits._blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'TransportContain')
+               for h, _ in simunits._blocks(tb, 'InitialPayload')]
+        return got or None
+    return simunits._chain(template, own, read) or []

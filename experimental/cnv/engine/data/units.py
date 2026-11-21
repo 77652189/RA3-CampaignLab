@@ -2081,7 +2081,8 @@ def ocl_power(template, power, own=None):
                  ('SpecialPowerTemplate', 'OCL', 'CreateLocation', 'CanAffectObjectFilter')}
                 for head in heads] or None
     modules = _inherited(template, own, read, None) or []
-    return next((module for module in modules if module['SpecialPowerTemplate'] == power), None)
+    return next((module for module in modules if (module['SpecialPowerTemplate'] or '').lower() == power.lower()),
+                None)
 
 
 def empty_ocl(ocl, own=None):
