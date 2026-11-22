@@ -22,6 +22,8 @@ A file is a list of [[reading]] tables:
                           default false (the benched coarse tick)
     blocks = []           which of A's blocks the AI brains get (simai.SimAI blocks, each of BLOCKS at most once, in
                           any order); default all of them; [] = the opening, states and teams only (the opening benches)
+    teams = true          the AI brains keep their team trail (simai record, the model's Brain.snap) for teams()
+                          below -- the bench's side is its ext log's team: lines; default false (not kept)
 - scenes = {name = {build, check, until}, ...} for a reading comparing runs: each name is bound to that run's rows
   (script / shot_clock / blocks as in scene, each scene its own).
 - each = [{build = "aiowt", plants = 0}, ...]: one reading per entry, id[build]; build (and check / until / script /
@@ -47,7 +49,9 @@ Expressions see: rows (list of {counter label: value}, row i ~ mission second i 
 second), first(key, pred=None, rows=rows), vals(rows) (each row's values in counter order), win(t0, t1, key)
 (the key's values at mission seconds t0..t1, asserting every second is there), counter(name, scene=None) (a script
 counter's value at until, by its name in the scripts: shown on the counter display or not), verdicts(scene=None)
-(the check's own expectations judged on the rows to until, build.judge: [(ok, text)]), the scene names, the
+(the check's own expectations judged on the rows to until, build.judge: [(ok, text)]), teams(scene=None) (with
+teams = true: every AI frame's team rows to until, the model's Brain.snap rows: frame, state_key, state, foe_id,
+members, ...; [] without), the scene names, the
 each-entry keys, and the builtins. With scenes, counter / verdicts name the scene."""
 import collections
 import os
@@ -60,7 +64,7 @@ KEYS = {'id', 'scene', 'scenes', 'each', 'bench', 'proves', 'expect', 'mismatch'
 NEEDED = {'id', 'bench', 'proves', 'expect'}
 BLOCKS = ('targets', 'defense', 'micro', 'specials')   # simai.BLOCKS (checked by tests/tools/test_readings_format.py)
 # how the simulator runs a scene: name -> (its TOML type, its default as a run key holds it)
-RUN_OPTS = {'script': (str, ''), 'shot_clock': (bool, False), 'blocks': (list, BLOCKS)}
+RUN_OPTS = {'script': (str, ''), 'shot_clock': (bool, False), 'blocks': (list, BLOCKS), 'teams': (bool, False)}
 SCENE_KEYS = {'build', 'check', 'until'} | set(RUN_OPTS)
 
 
@@ -220,7 +224,7 @@ def untils(readings):
 
 def snapshots(start, advance, rows_of, wanted):
     """Run each (build, check, opts) once: start(build, check, **opts) -> world (no keyword for a scene with the
-    default options), advance(world, frames), rows_of(world) -> (times, rows, counters, verdicts).
+    default options), advance(world, frames), rows_of(world) -> (times, rows, counters, verdicts[, teams]).
     {(build, check, until, opts): Run} for every until in wanted, the world advanced to each in turn: counters
     {script counter name: value} then, verdicts the check's own [(ok, text)] on the rows so far."""
     out = {}
@@ -230,8 +234,9 @@ def snapshots(start, advance, rows_of, wanted):
             frames = int(u * FPS) - done
             advance(w, frames)
             done += frames
-            times, rows, counters, verdicts = rows_of(w)
-            out[(b, c, u, opts)] = Run(list(times), [dict(r) for r in rows], dict(counters), list(verdicts))
+            times, rows, counters, verdicts, *teams = rows_of(w)
+            out[(b, c, u, opts)] = Run(list(times), [dict(r) for r in rows], dict(counters), list(verdicts),
+                                       list(teams[0]) if teams else [])
     return out
 
 
@@ -241,7 +246,7 @@ def label(key):
     return b + (f'.{c}' if c else '') + ''.join(_opt_text(k, v) for k, v in opts)
 
 
-Run = collections.namedtuple('Run', 'times rows counters verdicts')     # one snapshot (see snapshots)
+Run = collections.namedtuple('Run', 'times rows counters verdicts teams')     # one snapshot (see snapshots)
 
 
 FPS = 15     # simai.FPS (checked by tests/tools/test_readings_format.py against the simulator's)
@@ -259,6 +264,7 @@ def namespace(reading, runs):
         return runs[reading['scenes']['rows' if scene is None else scene]]
     ns['counter'] = lambda name, scene=None: run_of(scene).counters[name]
     ns['verdicts'] = lambda scene=None: run_of(scene).verdicts
+    ns['teams'] = lambda scene=None: run_of(scene).teams
     if reading['single']:
         times, rows = runs[reading['scenes']['rows']][:2]
         ns['times'] = times

@@ -384,13 +384,6 @@ NOTES = {
         'TreatLikeSuccess f92换地面厂/f500进入攻击态。tests/test_ai_cannot_reaction.py按名回放生命周期；'
         '仅显式三值、SimpleAttack/RAMPAGE；精确周期、模板资格、缺省、回家和多队仍gap；'
         '见work/re/c_cannot_report.md、e122_cannot.md'),
-    '微操/IgnoreTargets.Rule': (GUESSED,
-        'E118 engine_aiignore_rule aiignrany/aiignrall：原版EASY包含标记不变，仅切ANY/ALL；'
-        '同帧两成员，首伤396/397，前置失配0；f406/421分别状态0有目标与8无目标。'
-        'ALL保留墙钟s22造出1导致的诊断FAIL，游戏帧前置成立；'
-        'B 11-21读到：工程师/矿车进被动列表，敌方工程师离本方非防御建筑200内→状态0（AlphaStrike），'
-        '模拟器两组都对上；tests/test_ai_ignore_rule.py按名回放（队伍状态是CNVTeams日志，读数跑器读不到，'
-        '迁不进读数数据，不晋升）；见 work/re/e118_ignore_rule.md、b1121_ignore.md'),
     '造兵/BuildEntry.CountModifier': (BENCHED,
         'C engine_countmodifier a：同经济/工厂/候选和初始新维和4/新标枪2，仅切0.5/4；'
         '台上低组s27先补标枪、s38–66人数4/5，高组s27先补维和、s39–66人数7/2。'

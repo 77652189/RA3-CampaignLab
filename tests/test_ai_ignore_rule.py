@@ -1,15 +1,12 @@
-"""Single Rule contrast; measured selection and bypass damage stay separate."""
+"""The IgnoreTargets.Rule benches differ in the Rule alone; their readings are checks/engine_aiignore_rule.readings.toml."""
 import importlib.util
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-import pytest
-
 ROOT = Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/cnv/simai_run.py')
 simai_run = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(simai_run)
-simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
+_spec.loader.exec_module(simai_run)      # puts experimental/cnv on the path (build, contract, model)
 
 
 def test_ignore_rule_fixture_changes_only_rule():
@@ -33,44 +30,3 @@ def test_ignore_rule_fixture_changes_only_rule():
         views.append((ET.tostring(xml), m.objects, m.scripts, m.waypoints,
                       m.facts, m.cnv_named, t))
     assert views[0] == views[1]
-
-
-@pytest.fixture(scope='module')
-def rule_replays():
-    return {}
-
-
-def _replay(name, cache):
-    if name not in cache:
-        cache[name] = simai_run.run(name, 'r', until=33, record=True)
-    return cache[name]
-
-
-@pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
-@pytest.mark.parametrize('name', ['aiignrany', 'aiignrall'])
-def test_ignore_rule_named_damage_and_prerequisites(name, rule_replays):
-    """Both rules hurt targets; this measures bypass damage, not Rule coverage."""
-    w = _replay(name, rule_replays)
-    rows = [v for _, v in w.sim.series]
-    before = [v for v in rows if 375 <= v[0] < 390]
-    assert before and all(v[1:] == [2, 0, 0] for v in before), before
-    after = [v for v in rows if 421 <= v[0] <= 480]
-    assert after and all(v[1] == 2 and v[2] >= 390 and v[3] == 0 for v in after), after
-    assert len({v[2] for v in after}) == 1
-
-
-@pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
-@pytest.mark.parametrize('name, state, has_target', [
-    ('aiignrany', 0, True),
-    ('aiignrall', 8, False),
-])
-def test_ignore_rule_named_target_state(name, state, has_target, rule_replays):
-    """Same-run CNVTeams readings, two members; target IDs do not imply identity. ANY: the engineers are passive
-    targets (KindOf ENGINEER), one is the current enemy and the AI's barracks within 200 of it makes the team state
-    AlphaStrike's 0 (work/re/b1121_ignore.md)."""
-    w = _replay(name, rule_replays)
-    rows = [row for brain in w.brains.values() for row in brain.rec['frames']
-            if row['state_key'] == 'CNVStateMicro' and len(row['members']) == 2]
-    actual = [(row['frame'], row['state'], row['foe_id'] is not None)
-              for row in rows if row['frame'] in (406, 421)]
-    assert actual == [(406, state, has_target), (421, state, has_target)], actual

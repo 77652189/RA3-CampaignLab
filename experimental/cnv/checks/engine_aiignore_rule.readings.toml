@@ -1,0 +1,27 @@
+# IgnoreTargets.Rule ANY / ALL (E118 aiignrany / aiignrall: the retail EASY Include kept, only the Rule switched)
+
+[[reading]]
+id = "ignore_rule_team_state_and_target"
+scene = {build = "aiignrany", check = "r", until = 33, teams = true}
+each = [{build = "aiignrany", state = 0, foe = true}, {build = "aiignrall", state = 8, foe = false}]
+bench = """\
+E118 aiignrany:r / aiignrall:r (one run each, ra3ext CNVTeams lines, game frames): the micro team of two \
+(CNVStateMicro) at f406 and f421 -- ANY state 0 with a target, ALL state 8 with none; both two members at \
+f376 / f391 in the same places, the prerequisite latch 0 (work/re e118_ignore_rule.md)"""
+proves = "simai IgnoreTargets.Rule: ANY lets the engineers (KindOf ENGINEER, the passive list) be the micro team's enemy and AlphaStrike's state 0 follows (an enemy engineer within 200 of the AI's barracks); ALL drops them, the team stays 8 with no enemy (B 11-21 b1121_ignore.md)"
+item = "AI 微操/IgnoreTargets.Rule"
+let = {seen = "[(r['frame'], r['state'], r['foe_id'] is not None) for r in teams() if r['state_key'] == 'CNVStateMicro' and len(r['members']) == 2 and r['frame'] in (406, 421)]"}
+expect = "seen == [(406, state, foe), (421, state, foe)]"
+
+[[reading]]
+id = "ignore_rule_hurts_either_way_after_a_like_start"
+scene = {build = "aiignrany", check = "r", until = 33, teams = true}
+each = [{build = "aiignrany"}, {build = "aiignrall"}]
+bench = "E118 (the same runs): 造出 2, 首伤 0, 失配 0 over f375-389; first hurt f396 (ANY) / f397 (ALL), latched; 失配 0 to the end"
+proves = "simai IgnoreTargets.Rule: the Rule picks the micro target only -- a plain attack still hurts under ALL (no Rule coverage from damage alone)"
+let = {before = "[r for r in rows if 375 <= r['帧数'] < 390]", after = "[r for r in rows if 421 <= r['帧数'] <= 480]"}
+expect = [
+    "before and all((r['造出'], r['首伤'], r['失配']) == (2, 0, 0) for r in before)",
+    "after and all(r['造出'] == 2 and r['首伤'] >= 390 and r['失配'] == 0 for r in after)",
+    "len({r['首伤'] for r in after}) == 1",
+]

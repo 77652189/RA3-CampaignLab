@@ -36,14 +36,14 @@ def _rows_of(w):
     import build                                   # on the path once simai is loaded
     labels = [lab for _, lab in w.sim.test.counters]
     return ([t for t, _ in w.sim.series], [dict(zip(labels, v)) for _, v in w.sim.series], dict(w.sim.counters),
-            build.judge(w.sim.test, w.sim.series))
+            build.judge(w.sim.test, w.sim.series), [r for b in w.brains.values() for r in b.rec['frames']])
 
 
-def _start(lib, build, check, script='', shot_clock=False, blocks=simai.BLOCKS):
+def _start(lib, build, check, script='', shot_clock=False, blocks=simai.BLOCKS, teams=False):
     """A scene's run at frame 0 (readings.RUN_OPTS): the player's script given to the Sim, its clock set before a frame,
-    the AI brains given the blocks."""
+    the AI brains given the blocks and (teams) keeping their team trail."""
     try:
-        w = simai_run.run(build, check, 0, lib=lib, script=script, blocks=blocks)
+        w = simai_run.run(build, check, 0, lib=lib, script=script, blocks=blocks, record=teams)
     except simai.NoModel as e:
         pytest.skip(f'needs ra3model.ai: {e}')
     w.sim.shot_clock = shot_clock

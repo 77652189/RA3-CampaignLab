@@ -40,7 +40,8 @@ def run(readings, model=True):
     for keys, group in rd.groups(readings):
         out += rd.run_group(keys, group, Fake, lambda w, f: w.advance(f),
                             lambda w: ([t for t, _ in w.series], [r for _, r in w.series], {'frame': w.frame, **w.opts},
-                                       [(w.frame % 2 == 0, f'frame {w.frame}')]), model)
+                                       [(w.frame % 2 == 0, f'frame {w.frame}')])
+                            + (([{'frame': w.frame}],) if w.opts.get('teams') else ()), model)
     return out
 
 
@@ -253,6 +254,29 @@ def test_script_and_shot_clock_make_a_run_of_their_own(tmp_path):
     assert [rd.label(k) for ks in keys for k in ks] == [
         'b1.a', 'b1.a~shot_clock', 'b1.a~script=5 摧毁 camp', 'b1.a~script=不打', 'b1.a~script=不打~shot_clock', 'b2.a']
     assert [len(ks) for ks in keys] == [2, 1, 1, 1, 1]               # the comparison joins b1.a and b1.a~shot_clock
+
+
+TEAMS = '''
+[[reading]]
+id = "kept"
+scene = {build = "b1", check = "a", until = 3, teams = true}
+bench = "-"
+proves = "x: y"
+expect = "teams() == [{'frame': 45}]"
+
+[[reading]]
+id = "not_kept"
+scene = {build = "b1", check = "a", until = 3}
+bench = "-"
+proves = "x: y"
+expect = "teams() == []"
+'''
+
+
+def test_teams_is_a_run_of_its_own_and_teams_reads_its_trail(tmp_path):
+    rs = rd.load(write(tmp_path, TEAMS))
+    assert run(rs) == []
+    assert sorted(Fake.started, key=str) == [('b1', 'a'), ('b1', 'a', {'teams': True})]
 
 
 @pytest.mark.parametrize('scene, why', [('shot_clock = 1', 'shot_clock is a bool'), ('script = 5', 'script is a str'),
