@@ -31,10 +31,11 @@ CLEAR_ALL = 'SKIRMISH_AI_CLEAR_ALL_ENEMY_PLAYERS_PRIORITIES'
 CLEAR_ONE = 'SKIRMISH_AI_CLEAR_ENEMY_PLAYER_PRIORITY'
 AUTO = 'SKIRMISH_AI_USE_AUTOMATIC_ENEMY_PLAYER_PRIORITY_SCHEME'
 # build -> (mod name, what the wake adds after aipriodef's SET_ALL 20: (action, arguments after Soviet_1))
-EXTRA = {
-    'aipriofav': ('CampAIPrioFav', [(FAVORED, 's4')]),
-    'aiprioclr': ('CampAIPrioClr', [(CLEAR_ALL,), ('SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY', 's4', 10)]),
-    'aiprioclr1': ('CampAIPrioClr1', [(CLEAR_ONE, 'p1')]),
+SET_ONE = 'SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY'
+EXTRA = {     # fav / clr1: Player_1 a tier up first (30), so the action undone sends them to the far plant (review ss #6)
+    'aipriofav': ('CampAIPrioFav', [(SET_ONE, 'p1', 30), (FAVORED, 's4')]),
+    'aiprioclr': ('CampAIPrioClr', [(CLEAR_ALL,), (SET_ONE, 's4', 10)]),
+    'aiprioclr1': ('CampAIPrioClr1', [(SET_ONE, 'p1', 30), (CLEAR_ONE, 'p1')]),
     'aiprioauto': ('CampAIPrioAuto', [(AUTO, 'NearestFirst_AllowTies')]),
 }
 
