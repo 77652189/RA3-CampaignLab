@@ -457,11 +457,6 @@ NOTES = {
         'target_picks仍无两位原状态与运行时掩码，why.stat仅拒绝分类，不据此证明一般掩码公式；'
         '原版技能及AIRBORNE_TARGET/SUBMERGED仍gap，整字段不晋升；'
         '见work/re/c_forbidnew_report.md（旧证据见c_forbidframe_report.md及该报告指针）'),
-    '目标/AITargetingHeuristic.SortType=ThreatToWater': (GUESSED,
-        'C按名台子engine_aiwater：两电厂/近处守护者/AI两栖矿车，仅切Distance与ThreatToWater，'
-        '实机两组采样s14后均近4/远0/家0；模型ThreatToWater选远，按名回放strict xfail。'
-        'tests/test_water_threat.py独立断言原计数并保留原预测FAIL；近处Named对照因s40-41无采样亦strict xfail。'
-        '无同帧候选资格/实际water威胁值/水域样本资格，不改模型、不晋升；见work/re/c_water_report.md'),
     '目标/AITargetingHeuristic.MaxDistanceToShore': (GUESSED,
         'C按名台子engine_aishore：同一岸边电厂仅上限2000改1，2000组s14目标区4/s25全离家，'
         '1组s1-65在家4/目标区0；普通EnemyStructure阳性对照同2000组。'

@@ -706,8 +706,13 @@ class Brain:
             # the read target types measure from the AI base centre, which the engine re-averages every few frames over
             # the player's living units, structures not counted (none: a point the brain keeps, INFERRED the yard);
             # work/re/b1121_mindist.md
-            us = [(t.x, t.y) for t in things if t.owner == self.player and 'STRUCTURE' not in t.kindof]
+            units = [t for t in things if t.owner == self.player and 'STRUCTURE' not in t.kindof]
+            us = [(t.x, t.y) for t in units]
             self.targets.home = (sum(p[0] for p in us) / len(us), sum(p[1] for p in us) / len(us)) if us else self.home
+            # ThreatToWater's samples are the units of mine afloat now (or submerged, INFERRED); with none every
+            # water threat is 0 and the first candidate wins (work/re/b1121_water.md; bench aiwaterthreat: near)
+            wet = any(t.water or 'SUBMERGED' in t.status for t in units)
+            self.view.own_domains = frozenset({'ground', 'air', 'water'} if wet else {'ground', 'air'})
         if self.base is not None:
             self.base.buildings = tuple(t.id for t in things if t.owner == self.player and 'STRUCTURE' in t.kindof)
 

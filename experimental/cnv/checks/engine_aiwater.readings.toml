@@ -1,0 +1,12 @@
+# Bench readings of checks/engine_aiwater.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "water_threat_named_bench_replay"
+scene = {build = "aiwaterdist", check = "a", until = 41}
+each = [{build = "aiwaterdist", want = [4, 0, 0]}, {build = "aiwaterthreat", want = [4, 0, 0]},
+        {build = "aiwaternear", want = [4, 0, 0]}, {build = "aiwaterfar", want = [0, 4, 0]}]
+bench = "C 2026-11-12, two enemy plants, a Guardian by the near one, the AI's amphibious miner on land; counters (near, far, home): Distance 4/0/0 from s13.8, ThreatToWater 4/0/0 from s14.1, NamedObject near 4/0/0 from s5.2, NamedObject far 0/4/0 from s14.3 (work/re/c_water_measured.json)."
+proves = "ThreatToWater: with no unit of the AI's afloat (or submerged) to sample, every water threat is 0 and the first candidate wins, the Guardian by the near plant notwithstanding; work/re/b1121_water.md"
+item = "AI 目标/AITargetingHeuristic.SortType=ThreatToWater"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
+expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]

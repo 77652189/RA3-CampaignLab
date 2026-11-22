@@ -522,6 +522,3 @@ tests/test_unitban_bench_c.py::test_unitban_queued_engineer_waits_for_enable
 tests/test_unitban_bench_c.py::test_unitban_second_job_measured_payment
 tests/test_vital_status_c.py::test_vital_original_readings
 tests/test_wallbuilder.py::test_wallbuilder_startup_replays_named_bench_readings
-tests/test_water_threat.py::test_water_threat_named_bench_replay
-tests/test_water_threat.py::test_water_threat_original_readings
-tests/test_water_threat.py::test_water_threat_original_verdict
