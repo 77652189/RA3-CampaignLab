@@ -957,11 +957,17 @@ class Brain:
         no Distance (driven to the node and unpacked there, the script's path)."""
         if kind == 'SimpleExpansion':
             return self.approach(team, kind, thing, None)
-        if kind != 'Engineer':
+        if kind not in ('Engineer', 'GarrisonBuilding'):
             return True
         t = self.body_of(thing.id) if thing is not None else None
         if t is None or not t.alive or t.owner == self.player:
             return True
+        if kind == 'GarrisonBuilding':          # every living member into the house (INFERRED: bench aigarrbld,
+            live = [u for u in team.members if u.body.alive]    # the shop the AI's at s56.7 with both alive)
+            for u in live:
+                if u.body.goal is not t:
+                    self.order(u, 'enter', thing.id)
+            return not live
         live = [u.body for u in team.members if u.body.alive and self.systems.engineer_entry(u.body, t)]
         for b in live:
             if b.mode != 'capture' or b.goal is not t:

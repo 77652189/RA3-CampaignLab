@@ -15,8 +15,15 @@ scene = {build = "aigarrbld", check = "b", until = 75.0}
 bench = "aigarrbld: 商店归AI 0 to s56.2, 1 from s56.7 to s76.9; 步兵数 2 all along (in the shop: alive at the end)"
 proves = "simai GarrisonBuilding: the team goes into its target house and the house turns the AI's"
 expect = ["win(58, 74, '商店归AI') == [1] * 17", "rows[-1]['步兵数'] == 2"]
+item = "AI 战术/Tactic.Tactic=GarrisonBuilding"
+
+[[reading]]
+id = "the_garrison_team_takes_the_shop_after_s56"
+scene = {build = "aigarrbld", check = "b", until = 75.0}
+bench = "aigarrbld: 商店归AI 0 to s56.2 (步兵在家 0 from s11)"
+proves = "simai GarrisonBuilding: when the team gets in -- the team state's fight on the way, then the walk"
+expect = "win(12, 56, '商店归AI') == [0] * 45"
 mismatch = """\
-sim 商店归AI 0 all along: the model's go-and-act move to the shop's centre walks the two Peacekeepers ~60 out of \
-home and they stand there (3351, 3343), phase 'go', never within ARRIVE_RADIUS; and SimAI.act's GarrisonBuilding \
-is 'done on arrival', it sends nobody in. Bench s56.7 is ~46 s after the wake for ~670 of way: the walk's time \
-not read (handoff-b GarrisonBuilding)"""
+sim 商店归AI 1 from s40 (out of home s8): the team state fights the player's plant from ~4 s after the wake till \
+it falls (~25 s), the tactic sends the team on and both go in. Bench 16 s later: whether the bench team fought \
+the plant too and how long it took not read (no plant counter on the bench; handoff-b GarrisonBuilding)"""
