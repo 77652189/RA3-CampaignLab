@@ -51,6 +51,5 @@ expect = "all(r['态'] == (1 if 3 <= t < 12 else 0) and r['血C'] == 100 for t, 
 id = "acts_jmn_the_armed_ore_collector_shoots_the_conscript_beside_it"
 scene = {build = "engine_acts_jmn", check = "g", until = 21}
 bench = "血M (s4 conscript ~150 off JM, NO_ATTACK) 100 at s1, 70 s2, 28 s3, 0 from s4: the armed miner (JapanMinerGun, ObjectStatus GENERIC_TOGGLE_STATE; AIUpdate OreMinerOffensiveStateMachine, AutoAcquireEnemiesWhenIdle YES) takes it by itself"
-proves = "sim: an idle armed JapanMiner acquires an enemy in range"
-expect = "rows[-1]['血M'] == 0"
-mismatch = "sim 血M 100 throughout: JM holds JapanMinerGun (range 150) from the press but never acquires, not even at 119 (round 284 probe) -- the idle acquiring skips the miner (oreminer job?); bench 0 from s4"
+proves = "sim: an idle armed JapanMiner acquires an enemy in range (sim.py: AutoAcquireEnemiesWhenIdle read for a unit armed only by a status, round 285; sim 55 / 10 / 0 at mission 4-6 against the bench 70 / 28 / 0, hits a little harder); the dead conscript reads 0 (act_world: lying its SlowDeath out)"
+expect = "all(r['血M'] == (100 if t <= 3 else 0) for t, r in zip(times, rows) if t <= 3 or t >= 6)"

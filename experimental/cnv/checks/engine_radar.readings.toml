@@ -45,7 +45,6 @@ bench = "E161: the health counter (SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER every f
 proves = "脚本动作 SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of an object a script's damage killed: 0 the frames after (the dish's SlowDeath keeps it in the world; INFERRED)"
 expect = "[at(f)[1] for f in (196, 374)] == [0, 0]"
 let = {at = "lambda f: [[r[k] for k in ('死亡', '血量', '供电前置')] for r in rows if r['帧数'] <= f][-1]"}
-mismatch = "sim 50 / 50 at f196 (the first once-a-second row after the death at f182) / f374 (engine/script/act_world.py: 0 only when the health script runs after the kill in the same frame, else the last value); bench 0 / 0"
 
 [[reading]]
 id = "a_script_hands_the_dish_over_at_12_s"

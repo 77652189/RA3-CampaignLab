@@ -33,10 +33,12 @@ def test_hold_fire_keeps_an_attack_unfired_till_another_stance_or_order():
 
 def test_an_orders_writes_and_what_attaches_one():    # C2b
     s = simsmall.small_world([('a', 'SovietAntiVehicleVehicleTech3', 'Player_1', 0.0, 0.0),
-                              ('p', 'AlliedPowerPlant', 'Player_2', 300.0, 0.0)], model=False)
+                              ('p', 'AlliedPowerPlant', 'Player_2', 300.0, 0.0),
+                              ('m', 'JapanMiner', 'Player_1', 0.0, 300.0)], model=False)
     a, p = s.bodies['a'], s.bodies['p']
     p.goal, p.mode = None, 'idle'                       # unarmed, defaults written: none attached, no words
     assert p.acquire == frozenset() and 'YES' in a.acquire and p.find(interfaces.AIUpdate) is None
+    assert not s.bodies['m'].weapons and 'YES' in s.bodies['m'].acquire    # armed by its gun's status later (A285)
     p.ground_fire = None                                # but a ground fire records once set
     assert Observe.state(p)['ground_fire'] is None
     a.mode = 'move'

@@ -854,7 +854,7 @@ class Sim:
         locomotor.write(self.world, b, speed=st['speed'], surface=st['surface'], turn_rate=rate, turn_first=first)
         kernel_weaponset.equip(self.world, b, weapons, slots, self.clock.frame)
         body = b.find(kernel_interfaces.Body) or self.world.attach(b, 'ActiveBody', self.clock.frame)  # no block: one
-        b.acquire = frozenset(simunits.acquire(template, self.own)) if weapons else frozenset()    # AIOrderState
+        b.acquire = frozenset(simunits.acquire(template, self.own)) if weapons or slots else frozenset()  # AIOrderState; slots: armed later (A284 JapanMiner)
         hp = proxy_hp or (body.data.max_health if body.is_immortal() else f['hp'] or body.data.max_health)
         body.make(hp or (2000.0 if 'STRUCTURE' in b.kinds else 300.0), proxy_hp * 0.01 if proxy_hp else None,
                   body.kind() == 'PropBody' and simunits.prop_death(template, self.own))

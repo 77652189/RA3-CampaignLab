@@ -198,13 +198,14 @@ def set_unit_health_percentage_to_counter(sim, name, a, script):
         sim.used.add('health of the dead')
         if b.alive:                     # whole percent, rounded down (engine_garrison hp: 200 of 3000 reads 6)
             sim.counters[a[1]] = math.floor(b.health + 1e-6)
-        elif b.died_at == sim.t and not b.deleted:
-            # killed by a script earlier this frame: it is still there, at 0 (a NAMED_DELETE leaves the last
-            # value: engine_immortal b, bench 11-09, health 1 beside gone 1)
+        elif not b.deleted and sim.t - b.died_at <= b.lies + 1e-9:
+            # still in the world, at 0: killed earlier this frame, or lying its SlowDeath's DestructionDelay out
+            # (E161 engine_radardeath: the dish, 8 s, 0 at f374; engine_acts_jmn g: the conscript, 8.5 s, 0 from
+            # s4). A NAMED_DELETE leaves the last value (engine_immortal b, bench 11-09, health 1 beside gone 1)
             sim.counters[a[1]] = 0
-        # dead before this frame (a weapon's kill lands after the frame's scripts): the counter keeps the last
-        # value read (bench 11-09 pend_scripts9 rel: 12 to the end, the tank gone on the minimap; engine_float,
-        # engine_spawn, engine_super saw the same freeze)
+        # gone (no SlowDeath: a weapon's kill lands after the frame's scripts): the counter keeps the last value
+        # read (bench 11-09 pend_scripts9 rel: the Guardian, DestroyDie alone, 12 to the end; engine_float,
+        # engine_spawn, engine_super saw the same freeze). Which SlowDeath a death type picks: INFERRED (the plain one)
 
 
 def set_player_ownership_of_type_counter(sim, name, a, script):
