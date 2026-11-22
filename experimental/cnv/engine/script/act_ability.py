@@ -130,6 +130,11 @@ def named_buttons(sim, name, a, script, unit=None):
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
             simunits.self_module_power(body(a[0]).template, a[1], sim.own):
         _order(sim, 'power', who, ('via', 'self'), ('button', a[1]))
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
+            _order(sim, 'power', who, ('via', 'micro'), power=a[1])[0]:
+        # the warrior's Bonzai (y01 / y03): the AI micro's charge (engine_aimicro c: the press is seen charging;
+        # its reload heeded, INFERRED: retail presses once)
+        pass
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and \
             _order(sim, 'toggle', who, ('button', a[1]))[0]:
         sim.note('技能', f'{a[0]} 按 {a[1]} 切换状态')

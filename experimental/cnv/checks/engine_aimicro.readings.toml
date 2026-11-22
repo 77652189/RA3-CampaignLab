@@ -112,3 +112,22 @@ expect = "fc(off) is not None and fc(on) is not None and fc(off) < fc(on)"
 mismatch = """\
 simulator (11-18): on charges 263 frames after the wake (271 - 8 at s28), off never (曾冲 0 through s61): the \
 other way round from the bench (see engage_hostile_off_still_fights_and_charges)"""
+
+[[reading]]
+id = "script_bonzai_charges_at_each_press_reload_or_not"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_JapanAntiInfantryInfantryBonzai"
+scene = {build = "aimicnear", check = "d", until = 86}
+bench = """\
+aimicnear d, bench 11-22 `run_queue aimicnear:d` (CampAIMicNearD_mcp_1122_102028, round 304; 帧数 冲1 冲2 开2): s31 \
+345 0 45 46 | s41 497 0 197 151 | s56 723 0 423 301 | s71 951 0 651 451 | s76-s86 ... 451 -- the script's presses at \
+帧数 300 / 525 / 765 each put the charge on warrior 2 for 150 frames, the second inside the 30 s reload; the AI's \
+warrior 1 never charges. c (CampAIMicNearC_mcp_1122_102146): 冲2 = 帧数 - 300 from the press, as on 11-07"""
+proves = """sim act_ability named_buttons -> the port's power via micro (micro.fire, heed_reload False for a script): \
+the charge from the press frame, every press, the reload not heeded. The simulator's coarse tick ends each charge one \
+frame late (454)"""
+let = {last = "rows[-1]", at = "dict(zip(times, rows))"}
+expect = [
+    "at[31]['冲2'] - at[31]['帧数'] == -300",
+    "450 <= last['开2'] <= 457",
+    "last['冲1'] == 0",
+]

@@ -238,6 +238,27 @@ CHECKS['aimicengoff'] = {'r': lambda m: probe_built(m, 'aimicengoff'),
                          'w': lambda m: probe_built(m, 'aimicengoff', where=True)}
 CHECKS['aimicspon']['w'] = lambda m: probe_built(m, 'aimicspon', where=True)
 CHECKS['aimicnear']['c'] = lambda m: probe(m, press=True)
+AGAIN = (225, 465)      # d: frames after the first press the script presses warrior 2's charge again (reload 30 s)
+
+
+def probe_presses(m):
+    """d (A304, retail y01 / y03's scripted Bonzai): c's press, and again AGAIN later (inside / past the reload);
+    开2 counts the frames warrior 2 has the charge on (one charge 150): 300 if a script's press heeds the reload,
+    450 if not."""
+    t = probe(m, press=True)
+    w2 = names(m, 'warrior')[1]
+    t.counters[-1] = ('CNV_AM_On2', '开2')          # in place of 再冲1 (four lines)
+    t.scripts = [s for s in t.scripts if not s.name.startswith('Test - again')]
+    t.scripts.append(Script('Test - on count 2', [('UNIT_HAS_OBJECT_STATUS', w2, status(CHARGE))],
+                            [('INCREMENT_COUNTER', 1, 'CNV_AM_On2')], once=False))
+    t.scripts += [Script(f'Test - press 2 again {k}', [('FLAG', 'Test Woke', 1),
+                                                         ('COUNTER', 'CNV_AM_Frames', 2, PRESS_AT + d)],
+                         [('NAMED_USE_COMMANDBUTTON_ABILITY', w2, COMMAND)]) for k, d in enumerate(AGAIN)]
+    t.bench = [('bench_watch', dict(seconds=m.facts['wake at'] + 75, every=5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS['aimicnear']['d'] = probe_presses
 
 
 def probe_engage_clock(m):

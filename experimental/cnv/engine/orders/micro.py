@@ -42,9 +42,11 @@ def ready(world, body, command):
     return command != COMMAND or body.ready_at.get(command, 0) <= world.frame_now()
 
 
-def fire(world, body, command, modify):
+def fire(world, body, command, modify, heed_reload=True):
+    """heed_reload False: a script's press -- charges in the reload and starts it anew (bench engine_aimicro d: three
+    presses 0 / 225 / 465 frames apart, three 150-frame charges; the restart INFERRED, as the script casts)."""
     got = recipe(world, body, command)
-    if got is None or not body.alive or not ready(world, body, command):
+    if got is None or not body.alive or (heed_reload and not ready(world, body, command)):
         return False
     xml, mid, duration, reload = got
     now = world.frame_now()

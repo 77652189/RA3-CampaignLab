@@ -525,8 +525,9 @@ class Commands:
 
     def _power(self, cmd):
         w, r = self._w, self._r
-        if cmd.arg('via') == 'micro':       # the AI micro manager's self-power (micro.fire): refused when none fires
-            fired = [r.micro.fire(w, b, cmd.power, r.refresh_modifiers) for b in self._units(cmd)]
+        if cmd.arg('via') == 'micro':       # the AI micro manager's self-power (micro.fire): refused when none fires;
+            # a script's press heeds no reload (engine_aimicro d)
+            fired = [r.micro.fire(w, b, cmd.power, r.refresh_modifiers, cmd.by != 'script') for b in self._units(cmd)]
             return (True, '') if fired and all(fired) else (False, f'{cmd.power}: not fired')
         if cmd.arg('objects'):
             return self._script_press(cmd)
