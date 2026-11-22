@@ -55,3 +55,16 @@ def test_a_thing_without_the_block_has_no_module_and_never_unpacks():
     s = simsmall.small_world()
     s.add('tank', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 0.0, 0.0, by='script', at=s.t)
     assert s.bodies['tank'].find(interfaces.Unpack) is None and s.bodies['tank'].unpack_end is None
+
+
+def test_an_untargeted_unpack_button_stops_only_a_unit_whose_command_set_holds_it():
+    # review 1121oo #1: a Guardian on its way kept going when a script pressed an egg's button on it
+    s = simsmall.small_world([('tank', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 2000.0, 2500.0),
+                              ('egg', 'JapanBaseDefenseEgg', 'Player_1', 2000.0, 2800.0)], model=False)
+    for n in ('tank', 'egg'):
+        s.act('MOVE_NAMED_UNIT_TO', [n, '@3000,2500'], None)
+    s.advance(10)
+    for n in ('tank', 'egg'):
+        s.act('NAMED_USE_COMMANDBUTTON_ABILITY', [n, 'Command_UnPackJapanBaseDefenseEgg'], None)
+    s.advance(60)
+    assert s.bodies['tank'].path and not s.bodies['egg'].path

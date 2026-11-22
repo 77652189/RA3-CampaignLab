@@ -87,8 +87,10 @@ def named_buttons(sim, name, a, script, unit=None):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有能展开的单位或路点')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and simunits.command_power(a[1], sim.own) == UNPACK_POWER:
         # untargeted (a07 / s07's eggs when hit): nothing unfolds, and one on its way to unpack stops short (bench
-        # engine_unpack pin / mid; a stop: INFERRED)
-        _order(sim, 'stop', who)
+        # engine_unpack pin / mid; a stop: INFERRED) -- only one whose own CommandSet holds the button (review 1121oo #1)
+        b = body(a[0])
+        if b and a[1] in simunits._commands(sim.own)[0].get(simunits.command_set(b.template, b.upgrades, sim.own), ()):
+            _order(sim, 'stop', who)
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
             simunits.command_power(a[1], sim.own) == PACK_POWER and \
             simunits.replace_self(body(a[0]).template, a[1], sim.own):
@@ -283,7 +285,9 @@ def fire_special_power_on_team(sim, name, a, script):
 def fire_special_power_on_nearest_objecttype_by_player(sim, name, a, script):
     # (player, power, type, team, target player): as PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT at the target player's
     # living object of that type nearest the middle of the team's members (an empty team: the map's corner,
-    # INFERRED); none of them: nothing (work/re a283)
+    # INFERRED); none of them, or no such team: nothing (work/re a283)
+    if sim.absent_team(a[3]) or not sim.team_active(a[3]):
+        return
     x, y, want = *_middle(sim.members(a[3])), sim.of_types(a[2])
     goal = min((o for o in sim.bodies.values() if o.alive and o.owner == a[4] and o.template.lower() in want),
                key=lambda o: math.hypot(o.x - x, o.y - y), default=None)

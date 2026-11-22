@@ -188,3 +188,14 @@ def test_assign_press_keeps_its_first_target_and_one_dispatcher_a_target():
     assert s.assignments.press(one, 'Command_RepairVehicle', b) and m.target() is a
     (n,) = two.find(interfaces.Assign)
     assert s.assignments.press(two, 'Command_RepairVehicle', a) and n.target() is None
+
+
+def test_a_cast_at_the_nearest_needs_the_team_to_be_found():
+    # review 1121oo #2 (work/re a283): no such team, nothing; the team found, the cast at the target player's nearest
+    import engine.testing.small as simsmall
+    s = simsmall.small_world([('gun', COLLIDER, 'Player_1', 1500.0, 2500.0),
+                              ('pill', 'AlliedBaseDefense', 'Player_2', 3000.0, 2500.0)], model=False)
+    for team in ('Player_1/teamNone', 'Player_1/teamPlayer_1'):
+        s.act('FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER',
+              ['Player_1', CANNON, 'AlliedBaseDefense', team, 'Player_2'], None)
+    assert [c[-1] for c in s.casts] == [(3000.0, 2500.0)]
