@@ -9,7 +9,7 @@ This is a template prerequisite diagnostic, NOT a gate-module deletion
 control or opening/pathing coverage. See work/re/e190_gate.md for the failed
 four-door initialization probe and the exact compiler evidence.
 MEASURED a PASS: f180=180/0/0/1; only the known building exists at sampling.
-The SDK-backed model produces both doors (two strict xfails). Missing versus
+The simulator makes both doors (readings: a mismatch row). Missing versus
 rejected creation is INFERRED; no template-resolution/acceptance field is
 available in the four HUD rows. No gate effect coverage is registered.
 """
