@@ -5,7 +5,7 @@ id = "use_transports_false_twinblade"
 scene = {build = "aitranst0", check = "a", until = 50}
 bench = "B 2026-11-21 aitranst0 (UseTransports false, a Twinblade and four Peacekeepers, the plant on Goat Island, no bridges; CampAITransT0A_mcp_1121_111841, ~6.5 logic frames a wall second, read by index.json's frames as logic seconds, frame / 15): counters (aboard, Peacekeepers on the island, Twinblade on the island, Peacekeepers at home) f41 (s2.7) 0 0 0 4, f240 (s16) 0 0 0 3, f247 (s16.5) 0 0 0 2, f333-560 (s22.2-37.3) 0 0 1 2. ra3ext: the team takes all five at f153; the Peacekeepers are out of it by f248."
 proves = "Tactic UseTransports false: the paired passengers are never put aboard, the transport crosses alone; the recruit pairs the Peacekeepers with the Twinblade (they cannot reach the island themselves)"
-item = "AI 战术/Tactic.UseTransports"
+# no item: boarding (use_transports_true_twinblade) is not modelled, so Tactic.UseTransports stays INFERRED
 expect = [
     "max(win(3, 37, '车内步兵')) == 0",
     "win(17, 37, '步兵在家') == [2] * 21",
