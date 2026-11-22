@@ -1,0 +1,19 @@
+# Bench readings of checks/engine_eggcmd.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Retail's legacy Command_UnPackJapanEgg against the concrete buttons (work/re/c_eggcmd_report.md, c_eggnav_report.md).
+
+[[reading]]
+id = "eggcmd_legacy_and_concrete_buttons_match_display_counters"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg"
+scene = {build = "engine_eggcmd", check = "a", until = 38}
+each = [{build = "engine_eggcmd", built = 4, alive = 15, home = 11},
+        {build = "engine_eggnav", until = 34, built = 2, alive = 7, home = 5}]
+bench = """\
+engine_eggcmd:a / engine_eggnav:a (bits 1 / 2 / 4 / 8 as in the bench's docstring): before the press 0 / all / all; \
+after it the legacy button leaves the defense / power / naval cores home, the concrete button deploys on its point, \
+the untouched one stays: land f249 / 393 / 560 4/15/11, naval f247 / 390 / 496 2/7/5"""
+proves = "sim named_buttons: the legacy egg button does nothing on the three hosts, the concrete one unpacks at the point"
+let = {r = "vals(rows)"}
+expect = [
+    "all(v[:3] == [0, alive, alive] for v in r if v[3] <= 56)",
+    "[v for v in r if v[3] >= 249] and all(v[:3] == [built, alive, home] for v in r if v[3] >= 249)",
+]

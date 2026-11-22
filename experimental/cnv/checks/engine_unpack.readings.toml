@@ -20,13 +20,16 @@ expect = [
 id = "an_untargeted_egg_unpack_press_unfolds_nothing_and_stops_it_short"
 item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanBaseDefenseEgg"
 scene = {build = "engine_unpack_pin", check = "go", until = 41}
-each = [{build = "engine_unpack_pin"}, {build = "engine_unpack_mid"}]
+each = [{build = "engine_unpack_pin"}, {build = "engine_unpack_mid"}, {build = "engine_unpack_crs"}]
 bench = """\
 NAMED_USE_COMMANDBUTTON_ABILITY(egg, Command_UnPackJapanBaseDefenseEgg) untargeted, standing (pin) or 1 s after the \
 order to unpack 400 east (mid) (bench 11-21 CampUnpackPinGo_mcp_1121_123012 / CampUnpackMidGo_mcp_1121_123227, s41 \
 633 633 0 633 / 632 632 0 632): the egg stays an egg to the end, no defense anywhere, and mid's never comes within \
-100 of the point"""
-proves = "sim named_buttons: an untargeted unpack press is a stop -- nothing unfolds, an unpack on its way is dropped"
+100 of the point; crs, the power plant egg's button at the waypoint (CampUnpackCrsGo_mcp_1121_202104, 633 633 0 633): \
+the same, the egg never leaves (sim before A290 drove it there and unfolded the defense, 600 39108 492492 600)"""
+proves = """\
+sim named_buttons: an untargeted unpack press is a stop -- nothing unfolds, an unpack on its way is dropped; an \
+unpack button the egg's CommandSet lacks does nothing though its ReplaceSelf takes the same power"""
 let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
 expect = "frames > 500 and unit == frames and yard == 0 and name == frames"
 

@@ -71,13 +71,14 @@ def named_buttons(sim, name, a, script, unit=None):
         # the Twinblade's evacuate (s09's Hinds): lands, all out together where it is (engine_acts_btn EV)
         if not sim.garrison.evacuate(body(a[0])):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有载着人的载具')
-    elif (name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and a[1] == 'Command_UnPackJapanEgg'
-          and simunits.command_power(a[1], sim.own) is None
-          and body(a[0]) and body(a[0]).template in
-          ('JapanBaseDefenseEgg', 'JapanPowerPlantEgg', 'JapanNavalYardEgg')):
-        # engine_eggcmd:a / engine_eggnav:a: legacy id leaves these cores home; concrete buttons deploy.
-        # Other hosts and map-local command definitions remain gaps, not aliases for UnpackReplaceSelf.
-        pass
+    elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT') and body(a[0]) \
+            and (a[1] == 'Command_UnPackJapanEgg' or
+                 simunits.command_power(a[1], sim.own) in (UNPACK_POWER, PACK_POWER)) and a[1] not in \
+            simunits._commands(sim.own)[0].get(simunits.command_set(body(a[0]).template, body(a[0]).upgrades, sim.own), ()):
+        # an unpack / pack button the unit's own CommandSet lacks does nothing, though its ReplaceSelf module takes
+        # the same power: retail's legacy egg id (engine_eggcmd / engine_eggnav), the power plant egg's button on
+        # the defense egg (engine_unpack crs), an egg's on a Guardian (review 1121oo #1); the pack side INFERRED
+        sim.note('技能', f'{a[0]} 按 {a[1]}：它的 CommandSet 里没有这个按钮，不动')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and \
             simunits.command_power(a[1], sim.own) == UNPACK_POWER:
         # an MCV / a Japanese egg deploys at the point: drives there, then turns into its replacement (bench
@@ -87,10 +88,8 @@ def named_buttons(sim, name, a, script, unit=None):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有能展开的单位或路点')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and simunits.command_power(a[1], sim.own) == UNPACK_POWER:
         # untargeted (a07 / s07's eggs when hit): nothing unfolds, and one on its way to unpack stops short (bench
-        # engine_unpack pin / mid; a stop: INFERRED) -- only one whose own CommandSet holds the button (review 1121oo #1)
-        b = body(a[0])
-        if b and a[1] in simunits._commands(sim.own)[0].get(simunits.command_set(b.template, b.upgrades, sim.own), ()):
-            _order(sim, 'stop', who)
+        # engine_unpack pin / mid; a stop: INFERRED)
+        _order(sim, 'stop', who)
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
             simunits.command_power(a[1], sim.own) == PACK_POWER and \
             simunits.replace_self(body(a[0]).template, a[1], sim.own):
