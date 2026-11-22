@@ -24,6 +24,7 @@ TAGS = ('SpecialPower', 'OCLSpecialPower', 'MovementSpecialPower', 'DominateEnem
 FPS = 15                        # the game's logic frames a second (bench 2026-10-28, probe align)
 ASSIGN = 'AssignSlavesTargetObjectSpecialPower'     # its own class below (AssignSlaves: a SpecialPower with a dispatch)
 RECALL = 'RecallUnitsSpecialPower'                  # its own class below (RecallUnits: whom a cast calls home)
+RETURN = 'ReturnToProducerSpecialPower'             # its own class below (ReturnToProducer: a plane flies home)
 
 
 class SpecialPowerData(module.ModuleData):
@@ -35,7 +36,7 @@ class SpecialPowerData(module.ModuleData):
         return cls(templates.attr(head, 'SpecialPowerTemplate'))
 
 
-@factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL)))
+@factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN)))
 class SpecialPower(module.Module, interfaces.SpecialPower):
     """Data and a reload frame; no update of its own (a reload is over once the frame passes it)."""
     DATA = SpecialPowerData
@@ -71,10 +72,36 @@ class RecallUnits(SpecialPower, interfaces.Recall):
     produced Apollo benched: which ones past the cap, the way home, landing and parking slots INFERRED / not modelled."""
     DATA = RecallData
 
-    def members(self, things):
+    def flights(self, things):
         me = self.thing
-        return [b for b in things if b.alive and b.made_by == me.name and b.owner == me.owner
+        return [(b, me) for b in things if b.alive and b.made_by == me.name and b.owner == me.owner
                 and 'AIRCRAFT' in b.kinds][:self.data.most]
+
+
+class ReturnData(SpecialPowerData):
+    def __init__(self, power=None, condition=None, seconds=0.0):
+        super().__init__(power)
+        self.condition, self.seconds = condition, seconds      # SetModelCondition, SetModelConditionTime
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(templates.attr(head, 'SpecialPowerTemplate'), templates.attr(head, 'SetModelCondition'),
+                   templates.secs(templates.attr(head, 'SetModelConditionTime')))
+
+
+@factory.module(RETURN)
+class ReturnToProducer(SpecialPower, interfaces.Recall):
+    """ReturnToProducerSpecialPower (E173, checks/engine_returnproducer_e.readings.toml): a cast flies its holder back to
+    the living thing that made it and sets SetModelCondition for SetModelConditionTime (the Apollo: USER_1 30 s, seen at
+    the cast). Its AttributeModifier (the speed home), landing and the parking slot are not modelled."""
+    DATA = ReturnData
+
+    def flights(self, things):
+        me = self.thing
+        return [(me, b) for b in things if b.alive and b.name == me.made_by][:1]
+
+    def mark(self):
+        return (self.data.condition, self.data.seconds) if self.data.condition else None
 
 
 class AssignData(SpecialPowerData):

@@ -573,11 +573,15 @@ class Parking(Interface):
 
 
 class Recall(Interface):
-    """RecallUnitsSpecialPower, a SpecialPower too: the planes a cast calls home (members: of the living, in order)."""
+    """RecallUnitsSpecialPower / ReturnToProducerSpecialPower, SpecialPowers too: a cast sends planes home (flights:
+    (plane, home) pairs, of every thing given; mark: the model condition and seconds a cast sets on its holder, or None)."""
     __slots__ = ()
 
-    def members(self, living):
+    def flights(self, things):
         raise NotImplementedError
+
+    def mark(self):
+        return None
 
 
 class Repair(Interface):

@@ -143,12 +143,15 @@ def named_buttons(sim, name, a, script, unit=None):
         sim.note('技能', f'{sim.label(b)} 按 {a[1]}：记 {n} 次施放')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and any(
             m.power() == simunits.command_power(a[1], sim.own) for m in body(a[0]).find(interfaces.Recall)):
-        # engine_recall_e (E184): the airport's recall seen cast once; the plane it made flies back to it
+        # engine_recall_e (E184): the airport's recall seen cast once, the plane it made flies back to it;
+        # engine_returnproducer_e (E173): the Apollo's own return, cast once, USER_1 on, it flies to its airport
         b, power = body(a[0]), simunits.command_power(a[1], sim.own)
         sim.casts.append((sim.frame_now(), b.owner, power.lower(), b.serial, None))
-        for m in b.find(interfaces.Recall):
-            for p in m.members(sim.bodies.values()) if m.power() == power else ():
-                _order(sim, 'move', p, pos=(b.x, b.y))
+        for m in (m for m in b.find(interfaces.Recall) if m.power() == power):
+            if m.mark():
+                sim.set_model_condition(b, *m.mark())
+            for p, home in m.flights(sim.bodies.values()):
+                _order(sim, 'move', p, pos=(home.x, home.y))
     elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
         script_cast(sim, name, a, unit)
     else:

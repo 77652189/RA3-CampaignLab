@@ -1,0 +1,15 @@
+# Bench readings of checks/engine_returnproducer_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E173 bench 2026-11-16 (work/bench_results/engine_returnon_e__a.json, _returnoff_e__a.json): the airport builds an Apollo at
+# f30, it is named at f240 and sent to the sortie at f270; the plane's own return button at f420. Bits: 出发位 1 live /
+# 2 near the airport at f255, 4 at the sortie at f405; 结束位 the same three at f660, 8 USER_1 seen after f419.
+# returnoff_e:a read the same 660/7/11/1: its stripped XML was not linked over the retail Apollo (no Mission.replaces;
+# b adds it, never run), so it is no removal run and not a reading here.
+
+[[reading]]
+id = "the_apollo_return_flies_it_home_boosted"
+scene = {build = "engine_returnon_e", check = "a", until = 45}
+bench = "完成帧 660, 出发位 7, 结束位 11 (live, near the airport, USER_1), 施放数 1"
+proves = "物体模块 ReturnToProducerSpecialPower: the plane's cast sends it to the airport that built it, USER_1 set"
+item = "物体模块 Behaviors/ReturnToProducerSpecialPower"
+expect = ["counter('E173Frame') == 660", "counter('E173Depart') == 7", "counter('E173Final') == 11",
+          "counter('E173Cast') == 1"]
