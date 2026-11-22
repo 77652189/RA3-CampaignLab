@@ -349,6 +349,18 @@ def test_a_team_order_reaches_the_members_not_a_reference_of_their_name():
     assert s.commands._units(s.commands.issued()[-1][1]) == [s.bodies['outsider']]
 
 
+def test_a_team_order_finds_an_ai_team_by_the_ais_lookup():
+    """MOVE_TEAM_TO an AI tactic team (no map team: engine.script.common.team_crew) moves its members; a name the AI
+    has no instance of is lost (E3)."""
+    s = simsmall.small_world([('lead', APOC, 'Player_1', 1400.0, 2400.0)], model=False)
+    s.add_team_lookup(lambda t: {'Player_1/X_0_0': (True, [s.bodies['lead']]), 'Player_1/X_0_1': (False, [])}.get(t))
+    for team in ('Player_1/X_0_1', 'Player_1/X_0_0'):
+        _act(s, 'MOVE_TEAM_TO', team, '@1900,2400')
+    assert [o[2:] for o in s.lost_orders] == [('MOVE_TEAM_TO', 'Player_1/X_0_1')]
+    s.advance(3)
+    assert s.bodies['lead'].x > 1410
+
+
 def test_attack_move_to_the_players_nearest_of_a_type_is_the_first_members():
     """ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER: the player's object of the type nearest the team's first
     member (bench round 280, engine_acts_near), not its middle's nor another owner's; none: no order."""

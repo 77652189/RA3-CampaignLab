@@ -14,7 +14,7 @@ teleport and the AI hand-over (they drop the unit's order with `stand`, a god's 
 import math
 
 from engine.ports.command import Command
-from engine.script.common import TEAM_COMMANDS, TEAM_FOLLOWS
+from engine.script.common import TEAM_COMMANDS, TEAM_FOLLOWS, team_crew
 from engine.world.handle import CIV, GAP_ACTION
 
 
@@ -32,12 +32,15 @@ def _order_bodies(sim, kind, bodies, *args, **fields):
 
 
 def team_commands(sim, name, a, script):
-    if name in TEAM_COMMANDS and not sim.team_active(a[0]):
-        # the game looks the team up without making it: nobody joined it, so the order does nothing (E3)
+    if name not in TEAM_COMMANDS:
+        return False
+    crew = team_crew(sim, a[0])
+    if crew is None:
+        # the game looks the team up without making it: no team by the name, so the order does nothing (E3)
         sim.lost_orders.append((sim.t, script.name, name, a[0]))
-        sim.note('无效命令', f'{name} {a[0]}：这个队还没有人加入，命令落空')
+        sim.note('无效命令', f'{name} {a[0]}：找不到这个队（没人加入 / AI 还没组），命令落空')
     elif name in ('MOVE_TEAM_TO', 'ATTACK_MOVE_TEAM_TO'):
-        _order_bodies(sim, 'attack_move' if name == 'ATTACK_MOVE_TEAM_TO' else 'move', sim.members(a[0]),
+        _order_bodies(sim, 'attack_move' if name == 'ATTACK_MOVE_TEAM_TO' else 'move', crew,
                ('group', True), ('on_grid', True), place=a[1])
     elif name in TEAM_FOLLOWS:
         # (team, path, asTeam[, ?][, start waypoint]); the fourth flag (work/re/handoff-archive.md) not read: ignored.
@@ -46,17 +49,15 @@ def team_commands(sim, name, a, script):
         # why); the team only picks the join (the waypoint nearest its middle: the first try, P and Q 427 off
         # the middle each, both went to Q)
         attack = name == 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS'
-        _order_bodies(sim, 'follow_path', sim.members(a[0]), ('exact', name.endswith('_EXACT')),
+        _order_bodies(sim, 'follow_path', crew, ('exact', name.endswith('_EXACT')),
                ('as_team', bool(int(a[2])) and not attack),
                ('start', a[-1] if name.endswith('_AT_WAYPOINT') else None), place=a[1], attacking=attack)
     elif name == 'TEAM_ATTACK_NAMED':
-        _order_bodies(sim, 'attack', sim.members(a[0]), target=a[1])
+        _order_bodies(sim, 'attack', crew, target=a[1])
     elif name == 'TEAM_GUARD_AREA':
-        _order_bodies(sim, 'guard', sim.members(a[0]), place=a[1])
-    elif name == 'TEAM_STOP':
-        _order_bodies(sim, 'stop', sim.members(a[0]))
+        _order_bodies(sim, 'guard', crew, place=a[1])
     else:
-        return False
+        _order_bodies(sim, 'stop', crew)
 
 
 def move_named_unit_to(sim, name, a, script):

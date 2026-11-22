@@ -950,17 +950,6 @@ class Sim:
                 return got
         return None
 
-    def absent_team(self, team):
-        """A named AI team with no instance now: the game finds no team by that name and the team conditions read
-        false (bench 11-11 aiskirm:m, CampAISkirmM_mcp_1111_221811: BalancedCleanup_SimpleAttack_0_0's
-        TEAM_COMPARE_NUM_MEMBERS == n holds for no n -- the counter stays 99 -- until the team is made; the same
-        name's TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF likewise, checks/engine_aiskirm.py _kind_members)."""
-        named = self.named_team(team)
-        if named is not None and not named[0]:
-            self.used.add('ai team absent')
-            return True
-        return False
-
     def reinforce(self, team, waypoint, script, at=None):
         """CREATE_REINFORCEMENT_TEAM(team, waypoint): a new instance of the team template (mission.templates:
         {'Owner/name': {'units': [(template, min, max)], 'instances': n}}), every line's MAX count of its template, at

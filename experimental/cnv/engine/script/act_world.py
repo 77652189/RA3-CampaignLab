@@ -9,7 +9,7 @@ import math
 import engine.data.units as simunits
 import engine.orders.seq as simseq
 import engine.world.handle as simworld
-from engine.script.common import LOST, SCENE_FLAG, SHOW_FLAG, WON
+from engine.script.common import LOST, SCENE_FLAG, SHOW_FLAG, WON, team_crew
 
 
 def set_flag(sim, name, a, script):
@@ -191,8 +191,9 @@ def unit_execute_sequential_script(sim, name, a, script):
     # (A288 read: an AI team not made yet, or no such script -> nothing)
     sc = sim.executor.script_named(a[1])
     if name.startswith('TEAM_'):
-        if sc is not None and not sim.absent_team(a[0]):
-            simseq.queue(sim.seq, None, sc, 0, team=a[0], group=sim.members(a[0]))
+        crew = team_crew(sim, a[0])
+        if sc is not None and crew is not None:
+            simseq.queue(sim.seq, None, sc, 0, team=a[0], group=crew)
         return
     b = sim.body(a[0])
     if b and b.alive and sc is not None:

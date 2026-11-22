@@ -3,6 +3,8 @@ conditions share, moved out of sim.py so the action files (simact_*) can read th
 re-exports each (`sim.TEAM_COMMANDS` still works)."""
 import re
 
+from engine.world.handle import same_team
+
 SHOW_FLAG = re.compile(r'CNV_\w+_Show_\d+')       # ctx.Talk.show: a 功能 line's caption is asked for
 SCENE_FLAG = re.compile(r'CNV_\w+_InScene')       # ctx.Talk.scening
 WON, LOST = 'Mission Won', 'Mission Lost'
@@ -56,8 +58,18 @@ def refined(name, a):
     return name
 
 
-def team_found(sim, team):
-    """The game finds a team by this name -- where the name is looked up: an AI's (Sim.named_team) while it has an
-    instance (absent_team), a map / script team's once it has one (team_active). Review 1121pp #1: an AI tactic team
-    of 5 was turned away for not being a map team."""
-    return sim.team_active(team) if sim.named_team(team) is None else not sim.absent_team(team)
+def team_crew(sim, team, every=False):
+    """The team the game finds by this name, looked up without making it (D 115): its living members (the oldest
+    instance's, as Sim.members; every instance's with `every`, as TEAM_HAS_UNITS), None when none goes by it -- an
+    AI's (Sim.named_team) with no instance now (bench 11-11 aiskirm:m: a ..._0_0 team's TEAM_COMPARE_NUM_MEMBERS
+    == n held for no n until made), a map / script team nobody joined (team_active; INFERRED for the conditions D
+    115 did not read). Every team action / condition asking whether the team is there asks here (review 1121pp #1
+    and its class: an AI tactic team turned away as no map team)."""
+    named = sim.named_team(team)
+    if named is not None:
+        if not named[0]:
+            sim.used.add('ai team absent')
+        return named[1] if named[0] else None
+    if not sim.team_active(team):
+        return None
+    return [b for b in sim.bodies.values() if b.alive and same_team(b.team, team)] if every else sim.members(team)

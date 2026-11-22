@@ -5,7 +5,7 @@ Each condition is `fn(sim, name, a)`, moved verbatim out of Sim.cond's chain; si
 CONDITIONS. None back: not taken (a gap)."""
 import math
 
-from engine.script.common import RELATION_OF, team_found
+from engine.script.common import RELATION_OF, team_crew
 
 
 def enemy_sighted(sim, name, a):
@@ -41,7 +41,8 @@ def enemy_sighted_by_team(sim, name, a):
     # unseen, 180 seen (sight 200: centre to centre, as ENEMY_SIGHTED -- not D 115's sight + both radii; the
     # edge between 200 and 223 INFERRED); a killed one seen while it lies (&1 ~11 s after NAMED_KILL; the
     # simulator's Guardian lies 0 s -- its SlowDeath time is not this condition's). View angle not modelled
-    if not team_found(sim, a[0]):
+    crew = team_crew(sim, a[0])
+    if crew is None:
         return False
     rel = a[1][2] or a[1][0] if isinstance(a[1], tuple) else a[1]
     want = RELATION_OF.get(rel)
@@ -49,7 +50,7 @@ def enemy_sighted_by_team(sim, name, a):
             and not ({'INERT', 'MOVE_ONLY'} & set(t.kinds))]
     return any((want is None or sim.relation(m.owner, t.owner) == want)
                and math.hypot(t.x - m.x, t.y - m.y) <= m.sight * m.level_vision
-               for m in sim.members(a[0]) if m.sight > 0 for t in them)
+               for m in crew if m.sight > 0 for t in them)
 
 
 def team_discovered(sim, name, a):
@@ -58,11 +59,9 @@ def team_discovered(sim, name, a):
     # not hidden from it; the player's own members always. Bench 11-13 engine_conds sight 发现&1: a member on
     # the move is not (near, in plain sight, off the second or two it moved; INFERRED: its fog status is
     # re-read once it stands, Generals' partition data)
-    if not team_found(sim, a[1]):
-        return False
     live = list(sim.living())
     hidden = sim.cloaked(live)
-    for m in sim.members(a[1]):
+    for m in team_crew(sim, a[1]) or ():
         air = m.surface == 'air'
         if m.owner == a[0]:
             return True

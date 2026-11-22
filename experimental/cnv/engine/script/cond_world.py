@@ -5,7 +5,7 @@ is the script executor's own (engine/script/executor.py: the timers are its tabl
 Each condition is `fn(sim, name, a)`, moved verbatim out of Sim.cond's chain; simcond.cond looks them up in
 CONDITIONS. None back: not taken (a gap)."""
 from engine.script.cond_object import attacker
-from engine.script.common import CMP, SURFACES, team_found
+from engine.script.common import CMP, SURFACES, team_crew
 from engine.world.handle import inside, same_team
 
 
@@ -19,12 +19,16 @@ def counter(sim, name, a):
 
 def team_destroyed(sim, name, a):
     # INFERRED (Generals evaluateIsDestroyed: the team has no object left; not read in RA3): the dying count
-    # as there, as PLAYER_HAS_OBJECT_COMPARISON's; a team nobody was ever in is not destroyed
+    # as there, as PLAYER_HAS_OBJECT_COMPARISON's; a team nobody was ever in is not destroyed; an AI's (its
+    # members carry no map team name) when it holds none
     sim.used.add('team destroyed')
-    if not sim.team_active(a[0]):
+    crew = team_crew(sim, a[0])
+    if crew is None:
         return False
     ever = [b for b in sim.bodies.values() if same_team(b.team, a[0])]
-    if ever and all(b.instance >= 1 for b in ever):
+    if not ever:
+        return not crew
+    if all(b.instance >= 1 for b in ever):
         # bench 11-13 engine_conds team: a reinforcement team emptied by TEAM_KILL never reads destroyed
         # (队形&64), a map team TEAM_KILLed does (&128). INFERRED: an emptied instance made by a script is
         # gone, and the name finds no team (while one lives it is not destroyed either)
@@ -34,20 +38,17 @@ def team_destroyed(sim, name, a):
 
 def team_compare_num_members(sim, name, a):
     # (team, op, n) the living members (bench 11-08 engine_scripts1 xfer
-    if sim.absent_team(a[0]):          # 队里几个 2 -> 0 at the hand-over; engine_aixfer 队)
-        return False
-    return CMP[a[1]](len(sim.members(a[0])) + sim.hidden_members(a[0]), a[2])
+    crew = team_crew(sim, a[0])       # 队里几个 2 -> 0 at the hand-over; engine_aixfer 队)
+    return crew is not None and CMP[a[1]](len(crew) + sim.hidden_members(a[0]), a[2])
 
 
 def team_has_fewer_than_x_units_with_kindof(sim, name, a):
     # (team, n, kind): fewer than n living members with the KindOf (bench 11-11 aiskirm:m 池兵: the AI pool's
     # CAN_ATTACK members 0 while the defense team holds the eight, 2 at s134). INFERRED: the dying are not
-    # counted (as TEAM_COMPARE_NUM_MEMBERS here); a map team nobody is in reads as empty, not absent
+    # counted (as TEAM_COMPARE_NUM_MEMBERS here)
     sim.used.add('team kindof')
-    if sim.absent_team(a[0]):
-        return False
-    kind = a[2][2] if isinstance(a[2], tuple) else a[2]
-    return sum(1 for b in sim.members(a[0]) if kind in b.kinds) < int(a[1])
+    crew, kind = team_crew(sim, a[0]), a[2][2] if isinstance(a[2], tuple) else a[2]
+    return crew is not None and sum(1 for b in crew if kind in b.kinds) < int(a[1])
 
 
 def current_platform(sim, name, a):
@@ -57,20 +58,16 @@ def current_platform(sim, name, a):
 
 def team_has_units(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
-    if not team_found(sim, a[0]):
-        return False                        # D 115: looked up without activating -- no instance, no team: false
     # 码: any instance of the team's prototype with a living member that is no STRUCTURE / PROJECTILE /
-    # IGNORE_FOR_VICTORY (a dying one is DESTROYED: not counted)
-    named = sim.named_team(a[0])
-    crew = named[1] if named is not None else [b for b in sim.living() if same_team(b.team, a[0])]
-    return any(not ({'STRUCTURE', 'PROJECTILE', 'IGNORE_FOR_VICTORY'} & set(b.kinds)) for b in crew)
+    # IGNORE_FOR_VICTORY (a dying one is DESTROYED: not counted); no such team: false
+    return any(not ({'STRUCTURE', 'PROJECTILE', 'IGNORE_FOR_VICTORY'} & set(b.kinds))
+               for b in team_crew(sim, a[0], every=True) or ())
 
 
 def team_inside_area_partially(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
-    if not team_found(sim, a[0]):
-        return False                        # D 115: looked up without activating -- no instance, no team: false
-    # 码: the members considered (living, not INERT / MOVE_ONLY; k a bit of the AI module's set);
+    # 码: no such team (common.team_crew): false. The members considered (living, not INERT / MOVE_ONLY; k a
+    # bit of the AI module's set);
     # PARTIALLY = one of them inside, ENTIRELY = all and one at least. Bench 11-13 engine_conds team: a
     # Guardian passes k 0 only (状态&16 / &32 / &128, k 3 / 7 / 1, never on). D 119 (码 + the retail uses): k is
     # a Locomotor Surface's index (GROUND 0, WATER 1, CLIFF 2, AIR 3 ... DEEP_WATER 7), a member counted when
@@ -78,7 +75,7 @@ def team_inside_area_partially(sim, name, a):
     # sight). The game reads each object's area record, updated when its whole-number position changes
     # (Generals): INFERRED the same as where it stands
     k = int(a[2])
-    crew = [b for b in sim.members(a[0]) if not ({'INERT', 'MOVE_ONLY'} & set(b.kinds))]
+    crew = [b for b in team_crew(sim, a[0]) or () if not ({'INERT', 'MOVE_ONLY'} & set(b.kinds))]
     if k != 0:
         sim.used.add('team area k')
     face = SURFACES[k] if 0 <= k < len(SURFACES) else None
@@ -89,31 +86,26 @@ def team_inside_area_partially(sim, name, a):
 
 def team_created(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
-    if not team_found(sim, a[0]):
-        return False                        # D 115: looked up without activating -- no instance, no team: false
-    # bench 11-13 engine_conds team: one frame after a script made it (建队帧 1), a map team never (队形&32
-    # off all along); which frame of the two INFERRED -- the one after the making
+    # bench 11-13 engine_conds team: one frame after a script made it (建队帧 1: Sim.reinforce, which makes the
+    # team there too), a map team never (队形&32 off all along); which frame of the two INFERRED -- the one after
     f = next((v for k, v in sim.made_frame.items() if same_team(k, a[0])), None)
     return f is not None and sim.frame_now() == f + 1
 
 
 def team_some_have_object_status(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
-    if not team_found(sim, a[0]):
-        return False                        # D 115: looked up without activating -- no instance, no team: false
-    # INFERRED (Generals evaluateTeamHasObjectStatus): the living members' bit; ALL holds on an empty team
-    st = a[1][2] if isinstance(a[1], tuple) else a[1]
-    has = [st in b.status for b in sim.members(a[0])]
-    return any(has) if name.startswith('TEAM_SOME') else all(has)
+    # INFERRED (Generals evaluateTeamHasObjectStatus): the living members' bit; ALL holds on an empty team, not
+    # on none (common.team_crew)
+    crew, st = team_crew(sim, a[0]), a[1][2] if isinstance(a[1], tuple) else a[1]
+    has = [st in b.status for b in crew or ()]
+    return crew is not None and (any(has) if name.startswith('TEAM_SOME') else all(has))
 
 
 def team_attacked_by_player(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
-    if not team_found(sim, a[0]):
-        return False                        # D 115: looked up without activating -- no instance, no team: false
     # 码 (the player one): a living member's last damage recorded that player (its owner then, the attacker
-    # gone or not). The object type one INFERRED: the attacker's template, read the same way
-    crew = sim.members(a[0])
+    # gone or not); no such team (common.team_crew): false. The object type one INFERRED: the attacker's template
+    crew = team_crew(sim, a[0]) or ()
     if name == 'TEAM_ATTACKED_BY_PLAYER':
         return any(b.last_by is not None and b.last_hit == a[1] for b in crew)
     want = sim.of_types(a[1])

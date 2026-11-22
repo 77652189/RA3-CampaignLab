@@ -22,7 +22,7 @@ import engine.data.units as simunits
 from engine.kernel import interfaces
 from engine.ports.command import Command
 from engine.objects.power import CURTAIN, PACK_FRAMES, PACK_POWER, RELOAD_LAG, SUPERWEAPON_HITS, UNPACK_POWER, start_reload
-from engine.script.common import refined, team_found
+from engine.script.common import refined, team_crew
 from engine.world.handle import GAP_ACTION, free_name
 
 
@@ -285,9 +285,10 @@ def fire_special_power_on_nearest_objecttype_by_player(sim, name, a, script):
     # (player, power, type, team, target player): as PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT at the target player's
     # living object of that type nearest the middle of the team's members (an empty team: the map's corner,
     # INFERRED); none of them, or no such team: nothing (work/re a283)
-    if not team_found(sim, a[3]):
+    crew = team_crew(sim, a[3])
+    if crew is None:
         return
-    x, y, want = *_middle(sim.members(a[3])), sim.of_types(a[2])
+    x, y, want = *_middle(crew), sim.of_types(a[2])
     goal = min((o for o in sim.bodies.values() if o.alive and o.owner == a[4] and o.template.lower() in want),
                key=lambda o: math.hypot(o.x - x, o.y - y), default=None)
     if goal is not None:
