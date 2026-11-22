@@ -44,3 +44,21 @@ CampUnpackPwrGo_mcp_1121_123504, s41 632 28105 527 632): the egg drives there an
 proves = "sim unpack at a waypoint: j08's power plant egg drives to the point, becomes the plant there, the name passes on"
 let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
 expect = ["95 <= unit % 1000 <= 115 and unit // 1000 > 0", "yard % 1000 == frames - unit % 1000", "name == frames"]
+
+[[reading]]
+id = "barracks_refinery_factory_eggs_unfold_at_a_far_waypoint_as_the_bench"
+item = ["脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanBarracksEgg",
+        "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanRefineryEgg",
+        "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanWarFactoryEgg"]
+scene = {build = "engine_unpack_brk", check = "go", until = 41}
+each = [{build = "engine_unpack_brk"}, {build = "engine_unpack_ref"}, {build = "engine_unpack_fac"}]
+bench = """\
+NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT(egg, its own unpack button, 400 east), a07 / j08 / s07's barracks, \
+refinery and war factory eggs (bench 11-22 CampUnpackBrkGo_mcp_1122_064354 / CampUnpackRefGo_mcp_1122_064622 / \
+CampUnpackFacGo_mcp_1122_064854, s41 633 28105 528 633 / 632 28105 227527 632 / 631 28105 281526 631): as the power \
+plant egg, each drives there and is its building on the point from frame 105 (sim 100), the name passed on; the \
+owned count of the building holds for the refinery from frame ~405 and the war factory from ~350, never for the \
+barracks (sim counts each owned at once, not asserted)"""
+proves = "sim unpack at a waypoint: the barracks / refinery / war factory egg drives to the point, becomes its building there, the name passes on"
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = ["95 <= unit % 1000 <= 115 and unit // 1000 > 0", "yard % 1000 == frames - unit % 1000", "name == frames"]

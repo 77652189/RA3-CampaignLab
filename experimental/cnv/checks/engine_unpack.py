@@ -33,7 +33,8 @@ NAMED_USE_COMMANDBUTTON_ABILITY(egg, Command_UnPackJapanBaseDefenseEgg), standin
 CampUnpackPinGo_mcp_1121_123012 633 633 0 633, mid CampUnpackMidGo_mcp_1121_123227 632 632 0 632: nothing unfolds,
 and mid's egg stops short of the point. pwr CampUnpackPwrGo_mcp_1121_123504 632 28105 527 632: as egg (the plant from
 frame 105, never counted owned). crs = the defense egg pressed at the waypoint with the power plant egg's button (the
-same SpecialPower_UnpackReplaceSelf, not in its CommandSet). Readings: engine_unpack.readings.toml.
+same SpecialPower_UnpackReplaceSelf, not in its CommandSet). brk / ref / fac = a07 / j08's barracks, refinery and war
+factory eggs at the waypoint, as pwr. Readings: engine_unpack.readings.toml.
 """
 import resources
 from maps import niagara
@@ -42,7 +43,9 @@ from parts import Mission, Script, Test, square
 EGG = ('JapanBaseDefenseEgg', 'JapanBaseDefense', 'Command_UnPackJapanBaseDefenseEgg')
 KINDS = {'mcv': ('AlliedMCV', 'AlliedConstructionYard', 'Command_UnPackAlliedMCV'), 'egg': EGG,
          'pwr': ('JapanPowerPlantEgg', 'JapanPowerPlant', 'Command_UnPackJapanPowerPlantEgg'), 'pin': EGG, 'mid': EGG,
-         'crs': EGG[:2] + ('Command_UnPackJapanPowerPlantEgg',)}
+         'crs': EGG[:2] + ('Command_UnPackJapanPowerPlantEgg',),
+         **{v: (f'Japan{k}Egg', f'Japan{k}', f'Command_UnPackJapan{k}Egg')          # a07 / j08 / s07's eggs
+            for v, k in (('brk', 'Barracks'), ('ref', 'Refinery'), ('fac', 'WarFactory'))}}
 VARIANTS = tuple(KINDS)
 AT, THERE = ('west field', -200.0, 0.0), ('west field', 200.0, 0.0)
 NAME = 'UNIT - CNV Unpack'
