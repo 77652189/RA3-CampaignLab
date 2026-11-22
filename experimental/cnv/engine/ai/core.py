@@ -444,8 +444,8 @@ class Brain:
             if enemy is None:       # SET_FAVORED_ENEMY's clear (sim.py, A 220 bench engine_aifav: the table emptied)
                 self.ai.tell(Command('enemy priorities', {'n': 0}))
                 continue
-            if enemy == '*':        # SET_ALL (act_player): every enemy now
-                self.ai.tell(Command('enemy priorities', {'n': n, 'enemies': sorted(self.view.enemies)}))
+            if enemy == '*':        # SET_ALL (act_player): every enemy now, the frame's relations (look() runs later;
+                self.ai.tell(Command('enemy priorities', {'n': n, 'enemies': sorted(self.foes())}))   # review uu #4)
                 continue
             self.ai.tell(Command('enemy priority', {'player': enemy, 'n': n}))
         self._prio_seen = len(calls)

@@ -43,6 +43,8 @@ def b(m, health=False):
         counted('CNV_GB_Count', '步兵数', t, template=INF, player=s1)
     counted('CNV_GB_Plant', '电厂在', t, template='AlliedPowerPlant', player=m.player('p1'))  # the team state's fight
     counted('CNV_GB_Shop', '商店归AI', t, template='HV_Shop01', player=s1)
+    t.scripts.append(Script('Test - count CNV_GB_Row', [], [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'AM_RowHouse01', s1,
+                                                            'CNV_GB_Row')], once=False))   # off screen (OCR reads 4)
     end = m.facts['wake at'] + 60.0
     t.expect = [('步兵在家', m.facts['wake at'] + 5, 'ever==', 0, end)]      # the model: the team leaves for a house
     t.bench = [('bench_watch', dict(seconds=end + at.LAG, every=1, sheet=False, lines=len(t.counters)))]

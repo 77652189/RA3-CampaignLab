@@ -21,9 +21,9 @@ expect = "2.7 <= rate <= 3.6"
 [[reading]]
 id = "the_garrison_team_leaves_and_the_row_house_stays_neutral"
 scene = {build = "aigarrbld", check = "b", until = 75.0}
-bench = "aigarrbld: 步兵在家 0 from s11 (both runs); 排屋归AI 0 all along in run 032006 (no longer counted: the shop is)"
+bench = "aigarrbld: 步兵在家 0 from s11 (both runs); 排屋归AI 0 all along in run 032006 (now CNV_GB_Row, off screen)"
 proves = "simai Garrison state: the GarrisonBuilding team of two Peacekeepers leaves home for the shop, not the row house"
-expect = "win(12, 74, '步兵在家') == [0] * 63"
+expect = ["win(12, 74, '步兵在家') == [0] * 63", "counter('CNV_GB_Row') == 0"]
 
 [[reading]]
 id = "the_garrison_team_takes_the_shop"
@@ -39,7 +39,7 @@ scene = {build = "aigarrbld", check = "b", until = 75.0}
 bench = "aigarrbld: 电厂在 1 to s40.6, 0 from s41.0; 商店归AI 1 from s56.3 (the plant falls first)"
 proves = "simai GarrisonBuilding: the team state takes the team on the way into a fight with the player's plant, the tactic sends it on after"
 let = {gone = "next(k for k, r in enumerate(rows) if r['电厂在'] == 0)", taken = "next(k for k, r in enumerate(rows) if r['商店归AI'] == 1)"}
-expect = ["rows[-1]['电厂在'] == 0", "gone < taken"]
+expect = ["win(3, 10, '电厂在') == [1] * 8", "rows[-1]['电厂在'] == 0", "gone < taken"]
 
 [[reading]]
 id = "the_garrison_team_takes_the_plant_down_after_s40"
