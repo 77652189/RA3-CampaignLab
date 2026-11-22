@@ -225,11 +225,7 @@ NOTES = {
         'C engine_ailastexp ailastexp:a：原版27关有效依赖仅60s/240s，另设常量阳性组；'
         '同图一局12条预写断言PASS，在家人数s19-62为4/4/0、s64-242为0/4/0、s244-345为0/0/0。'
         'experimental/cnv/checks/engine_ailastexp.readings.toml 读数核对四个窗口一致，无模型修改。'
-        '仅首次扩张前计时；SDK其他Time取值、初始时刻精确值、真实扩张后重置/Past=false/逐帧边界仍gap；'
-        '见work/re/c_lastexp_report.md'),
-    '启发条件/TimeSinceLastExpansionHeuristic': (GUESSED,
-        'C engine_ailastexp的60s/240s首次计时已对拍，Time字段单独登记；'
-        '真实扩张后时间戳来源/重置消费者未测，初始时间戳0保持INFERRED，整条件保持推断；'
+        '扩张后重置见 ailastx200/50 读数（B 11-22）；SDK其他Time取值、初始时刻精确值、Past=false/逐帧边界仍gap；'
         '见work/re/c_lastexp_report.md'),
     '启发条件/AllNearbyNodesFullHeuristic': (BENCHED,
         'B208-B210：simai facts 给 nodes full（Brain.open_nodes，与"还要不要矿场"同一扫描，已读）；'

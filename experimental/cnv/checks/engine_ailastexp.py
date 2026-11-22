@@ -28,4 +28,21 @@ def a(m):
     return t
 
 
-CHECKS = {'ailastexp': {'a': a}}
+def x(m):
+    """B 11-22 (ailastx200 / ailastx50): the Time=150s gate's two cannons on their spots (their team goes for the
+    player's yard across the river; the simulator's stop ~270 on to shell the healed plant at the gate) and the AI's
+    outposts; aiexpb's heals kept (its escorts shoot the player's base)."""
+    t = Test()
+    s1 = m.player('s1')
+    t.areas['LastExp home'] = square(*m.site('east base', 150.0, -110.0), 100.0)
+    counted('LastExp_outpost', '前哨', t, template=m.facts['outpost'], player=s1)
+    counted('LastExp_cannons', '炮在家', t, template=m.facts['cannon'], player=s1, area='LastExp home')
+    t.scripts.append(Script('LastExp keep targets', [], [('UNIT_SET_HEALTH', m.role(r).name, 100.0)
+                                                          for r in ('plant', 'barracks', 'tank', 'player yard')],
+                            once=False))
+    t.expect += [('炮在家', 120, '==', 2, 140)]
+    t.bench = [('bench_watch', dict(seconds=300, every=2, sheet=False, lines=3))]
+    return t
+
+
+CHECKS = {'ailastexp': {'a': a}, 'ailastx200': {'x': x}, 'ailastx50': {'x': x}}

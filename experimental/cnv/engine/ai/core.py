@@ -301,6 +301,7 @@ class Brain:
         self.wrappers = {}              # body serial -> Unit (by serial: review 11-19 q P2 #1)
         self.trace = []                 # (frame, 'own' | 'out', template): what came when
         self.born = self.frame = frame  # the brain thinks from here (its states and teams: before the wake)
+        self.last_expansion = 0         # the frame its newest outpost came (facts' 'last expansion')
         self.woke = None                # the frame 'make base' was told (the mission's wake): wake()
         self.ids, self.hp, self.hurt_at = {}, {}, {}     # body name -> Thing id; last hp; id -> frame last hurt
         self.seen_t = None              # the sim time the view was last built at
@@ -736,7 +737,12 @@ class Brain:
             building |= self.host.kinds(t)
         near = functools.partial(self.enemy_near, tuple(self.home))     # a partial, not a closure: the AI's
         foes = sorted(self.view.enemies)                                # snapshot keeps it (simaisnap)
+        # TimeSinceLastExpansion's clock restarts as an outpost of its own comes and keeps that frame (bench ailastx200:
+        # the miner's unpack f1061, the base f1070, the Time=150s team at f3326 = ailastx50's f2261 + 1065; which of
+        # the two frames, and an outpost lost, INFERRED)
+        self.last_expansion = max([self.last_expansion] + [round(b.made_at * FPS) for b in mine if 'OUTPOST' in b.kinds])
         out = {'flags': self.host.flags(self.player), 'has': {b.template for b in mine}, 'building': building,
+               'last expansion': self.last_expansion,
                'enemy nearby': near,
                # ObjectOfTypeExists by the filter's Relationship (bench aihoe*): the enemies' / allies' / neutral's
                'has enemy': {t.template for t in self.view.things if t.owner in self.view.enemies},

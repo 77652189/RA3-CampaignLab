@@ -6,3 +6,12 @@ scene = {build = "ailastexp", check = "a", until = 286}
 bench = "ailastexp:a retail: home counts (60 s, 240 s, constant) 4/4/0 at s40-49, 0/4/0 at s100-109 and s220-229, 0/0/0 at s275-284."
 proves = "simai TimeSinceLastExpansionHeuristic.Time: the 60 s and 240 s thresholds with no expansion"
 expect = "all(list(zip(win(s, s + 9, '六十在家'), win(s, s + 9, '二四零家'), win(s, s + 9, '常量在家'))) == [e] * 10 for s, e in ((40, (4, 4, 0)), (100, (0, 4, 0)), (220, (0, 4, 0)), (275, (0, 0, 0))))"
+
+[[reading]]
+id = "last_expansion_clock_restarts_at_an_outpost"
+scene = {build = "ailastx200", check = "x", until = 230}
+bench = "B 2026-11-22 (runs CampAILastX200X_mcp_1122_132834, CampAILastX50X_mcp_1122_132718; ext log): a Time=150s state's two cannons, their team sent across the river. aiexpb50 (no outpost): on their spots to s152.6, gone s154.6, first order f2261. aiexpb200: the miner unpacks f1061, the base f1070, outpost counted s103; on their spots to s222.5, gone s224.5, first order f3326 = f2261 + 1065."
+proves = "simai Brain.facts 'last expansion': an outpost of the AI's own restarts TimeSinceLastExpansion's clock (unpack or base frame INFERRED)"
+item = "AI 启发条件/TimeSinceLastExpansionHeuristic"
+each = [{build = "ailastx200", stay = 220, gone = 226}, {build = "ailastx50", stay = 150, gone = 156}]
+expect = ["set(win(130, stay, '炮在家')) == {2}", "win(gone, gone, '炮在家') == [0]"]
