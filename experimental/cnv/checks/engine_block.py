@@ -133,17 +133,23 @@ def foot(m):
     return t
 
 
-def gate(m, kill=False, nocoll=False):
+def gate(m, kill=False, nocoll=False, rows=()):
     """s02's cage doors (UNIT_CHANGE_OBJECT_STATUS NO_COLLISIONS on a door NAMED_KILL has just killed): foot's late
     row with GATE bars in place of its three structures across the straight way; at OPEN the bars killed (kill) and
     given NO_COLLISIONS (nocoll), then foot's order. Counters as foot's (11 round, 10 through) and the objects
-    carrying NO_COLLISIONS (无碰撞). Read (2026-11-22): engine_block.readings.toml; the player's ownership-of-type
-    counter reads 0 for these bars, standing or not, so it is not one."""
+    carrying NO_COLLISIONS (无碰撞). rows: map-placed bars instead (gr one row, a 5.3 line; gd three, 15+ deep).
+    Read (2026-11-22): engine_block.readings.toml; the player's ownership-of-type counter reads 0 for these bars,
+    standing or not, so it is not one."""
     t = foot(m)
     m.spawns.add(GATE)                             # made by script, nobody casts it
     make = next(s for s in t.scripts if s.name == 'Test - late wall')
     x0, y = probe_block.BOXES['late'][0][0], probe_block.ROW['late'][0][1]
     make.do = [a for a in make.do if not (a[0].startswith('CREATE') and abs(t.waypoints[a[4]][0] - x0 - 200) < 50)]
+    if rows:        # map-placed (as s02's), 19 bars 5 apart over the way a row: gd's 3 rows solid whichever way they lie
+        for dx in range(150, 241, 5):
+            for dy in rows:
+                m.put(GATE, 'late wall', dx - 15.0, dy, angle=0.0)
+        return t
     bars = [f'UNIT - CNV Block Gate {k}' for k in range(len(GATE_XS))]
     for name, dx in zip(bars, GATE_XS):
         t.waypoints[name[11:]] = (x0 + dx, y)
@@ -185,4 +191,5 @@ def plugs(m):
 # the builds this module makes and their checks (cnv/registry.py)
 MISSION = {'engine_block': mission}
 CHECKS = {'engine_block': {'wall': wall, 'made': made, 'foot': foot, 'enemy': enemy, 'plugs': plugs,
-                           'gk': lambda m: gate(m, kill=True), 'gn': lambda m: gate(m, nocoll=True)}}
+                           'gk': lambda m: gate(m, kill=True), 'gn': lambda m: gate(m, nocoll=True),
+                           'gd': lambda m: gate(m, rows=(-5.0, 0.0, 5.0)), 'gr': lambda m: gate(m, rows=(0.0,))}}
