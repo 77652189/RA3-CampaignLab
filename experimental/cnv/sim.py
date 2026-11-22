@@ -338,7 +338,8 @@ class Body(kernel_module.Thing):
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
     attachment_status: set = dataclasses.field(default_factory=set)  # owned by direct attachment links, not scripts
-    lift_status: set = dataclasses.field(default_factory=set)  # survives timer release; landing is unresolved
+    engine_status: set = dataclasses.field(default_factory=set)  # bits an engine rule holds, each its own: lift's
+    # LIFTED_INTO_AIR (survives timer release; landing is unresolved), Sim.cloaked's INVISIBLE_DETECTED
     upgrades: set = dataclasses.field(default_factory=set)     # NAMED_RECEIVE_UPGRADE / _REMOVE_UPGRADE (modify)
     up_since: dict = dataclasses.field(default_factory=dict)   # upgrade -> the frame it was given (a Duration runs)
     level_rank: int = 1                                      # LevelUpUpgrade creation grants; not combat XP (the Object's ExperienceTracker, no module's: M12)
@@ -2046,11 +2047,10 @@ class Sim:
                     out.add(t.serial)
         shown = {t.serial for t in live if t.serial in out and any(d.sees(t, self.relation(e.owner, t.owner))
                                                                    for e in live for d in e.find(kernel_interfaces.Detector))}
-        mine = self.__dict__.setdefault('_shown', set())     # the scan's own marks: a script's INVISIBLE_DETECTED stays
-        for t in live:
-            if (t.serial in shown) != (t.serial in mine) and (t.serial in mine or 'INVISIBLE_DETECTED' not in t.status):
-                (t.status.add if t.serial in shown else t.status.discard)('INVISIBLE_DETECTED')
-                mine ^= {t.serial}
+        for t in live:                      # the scan's mark: its bit of engine_status, a script's own stays apart
+            if (t.serial in shown) != ('INVISIBLE_DETECTED' in t.engine_status):
+                (t.engine_status.add if t.serial in shown else t.engine_status.discard)('INVISIBLE_DETECTED')
+                self.modify(t)
         if out:
             self.used.add('stealth')
         return out - shown

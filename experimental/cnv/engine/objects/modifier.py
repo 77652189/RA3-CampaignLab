@@ -75,9 +75,10 @@ class Modifiers:
         player_bits = {up for up in player_ups.get(b.owner, ())
                        if simunits.upgrade_type(up, world.own) == 'PLAYER'}
         on, off = simunits.status_bits(xml, b.upgrades | player_bits)
-        e = simunits.effect(mods, on | b.script_status | b.attachment_status | b.lift_status | toggle_bits, off)
+        own = b.script_status | b.attachment_status | b.engine_status
+        e = simunits.effect(mods, on | own | toggle_bits, off)
         if not mods and not on and not off and b.base is None:
-            b.status = set(b.script_status | b.attachment_status | b.lift_status | toggle_bits)
+            b.status = own | toggle_bits
             if b.slots:
                 b.find(interfaces.WeaponSet).hold(simunits.pick_weapons(b.slots, b.status, upgrades_of(b)))
             return
@@ -111,7 +112,7 @@ class Modifiers:
         for m in mods:
             for ty in sorted(set(m['types']) - simunits.ACTING_TYPES) if m else ():
                 world.gap(GAP_UPGRADE, m['id'], f'修正类型 {ty} 没模拟')
-        for bit in sorted(e['status'] - b.script_status - b.attachment_status - b.lift_status - ACTED_STATUS - ({'UNDER_IRON_CURTAIN'} if b.shielded else set())):
+        for bit in sorted(e['status'] - own - ACTED_STATUS - ({'UNDER_IRON_CURTAIN'} if b.shielded else set())):
             world.gap(GAP_STATUS, bit, f'{b.template} 身上的修正 / 升级给的，只记下来')
 
     def aura_tick(self, world, relation, modify):

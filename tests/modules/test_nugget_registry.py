@@ -79,7 +79,7 @@ def test_the_effects_lift_then_attach_only_on_a_direct_single_shot():
 
     def tank(**kw):
         return types.SimpleNamespace(**{'name': 'tank', 'serial': 2, 'kinds': {'VEHICLE'}, 'status': set(),
-                                        'surface': 'ground', 'x': 10.0, 'y': 0.0, 'lift_status': set(), **kw})
+                                        'surface': 'ground', 'x': 10.0, 'y': 0.0, 'engine_status': set(), **kw})
     assert run(tank()) == ['lift', 'attach']
     assert run(tank(), n=2) == run(tank(), projectile='Shell') == []
     parent = tank()

@@ -16,13 +16,19 @@ def _hidden(dog_owner):
 def test_an_enemy_dog_makes_the_hidden_target_a_target_again():
     s, t = _hidden('Soviet_1')
     assert t.serial not in s.cloaked(s.living()) and 'INVISIBLE_DETECTED' in t.status
+    t.script_status.add('NO_ATTACK')                            # a script sets another bit: the status is re-set
+    s.modify(t)
+    assert t.serial not in s.cloaked(s.living()) and 'INVISIBLE_DETECTED' in t.status
     s.bodies['dog'].x = 450.0                                   # out of DetectionRange 300: hidden, unmarked
     assert t.serial in s.cloaked(s.living()) and 'INVISIBLE_DETECTED' not in t.status
 
 
 def test_the_scan_leaves_a_scripts_own_mark():
-    s, t = _hidden('Player_1')
-    t.status.add('INVISIBLE_DETECTED')                          # a script's UNIT_SET_OBJECT_STATUS
+    s, t = _hidden('Soviet_1')
+    s.cloaked(s.living())                                       # the scan marks first, then the script
+    t.script_status.add('INVISIBLE_DETECTED')
+    s.modify(t)
+    s.bodies['dog'].x = 450.0
     s.cloaked(s.living())
     assert 'INVISIBLE_DETECTED' in t.status
 

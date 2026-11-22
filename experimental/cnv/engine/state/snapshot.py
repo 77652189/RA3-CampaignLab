@@ -60,7 +60,6 @@ SIM = {
     # caches (template -> what its data says)
     'declared': CACHE, 'energies': CACHE, '_engineer_rules': CACHE, '_wsets': CACHE, '_xmls': CACHE,
     '_toggles': CACHE, '_invis': CACHE, '_xy': CACHE, '_cold': CACHE,
-    '_shown': STATE,    # the INVISIBLE_DETECTED marks Sim.cloaked's scan set (a script's own it leaves)
     # parts
     'clock': {'frame': STATE},
     'wallet': {'money': STATE, 'income': STATE, 'sharing': STATE, 'money_cap': STATE},
@@ -115,7 +114,7 @@ BODY = {'modules': KERNEL, 'serial': KERNEL, '_find_cache': CACHE}     # the las
 for _f in ('name template owner x y z vision kinds immune_until armor radius sight '
            'alive deleted close_since made_by made_at scenery team '
            'instance guessed clear_height angle status '
-           'attachment_status lift_status upgrades up_since level_rank script_status auras_on shielded taken '
+           'attachment_status engine_status upgrades up_since level_rank script_status auras_on shielded taken '
            'model_conditions dealt level_rate level_vision base died_at fired_at leaves building replace '
            'jet_started unpack_parent '
            'flee unpack_here last_by').split():

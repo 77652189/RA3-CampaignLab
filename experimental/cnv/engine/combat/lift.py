@@ -27,6 +27,6 @@ class Lift:
                 context.gap('ActivateLiftObjectNugget', '仅直接单发、显式计时字段和地面目标已接通')
                 continue
             host.lift_hit(by.name, t.name, rule['increment'], rule['maximum'])
-            t.lift_status.add('LIFTED_INTO_AIR')
+            t.engine_status.add('LIFTED_INTO_AIR')
             host.refresh_modifiers(t)
             context.gap('ActivateLiftObjectNugget', host.LIFT_LANDING)
