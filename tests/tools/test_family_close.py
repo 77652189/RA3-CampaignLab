@@ -55,7 +55,7 @@ def test_golden_not_recordable_here_is_red(tmp_path):
     assert not ok
     (tmp_path / 'a.failed').touch()     # the real Run: a failure with an empty log is still one (review ff P3)
     (tmp_path / 'a.txt').touch()
-    golden = fc._load('golden', str(ROOT / 'experimental' / 'testbench' / 'golden.py'))
+    golden = fc.cpupool._load('golden', str(ROOT / 'experimental' / 'testbench' / 'golden.py'))
     assert golden.Run('abc', str(tmp_path), str(tmp_path), set(), ['a']).failed('base', 'a')
 
 
@@ -157,7 +157,7 @@ def test_light_skips_the_affected_tests_and_says_they_are_left_to_the_full_run(t
     import types
     fake = types.SimpleNamespace(base_rev=lambda root, env: 'abcdef123456', records=lambda env, jobs: FakeRun({'a': 'same'}),
                                  labpaths=types.SimpleNamespace(WORK=str(tmp_path)), Skip=RuntimeError)
-    monkeypatch.setattr(fc, '_load', lambda name, path: fake)
+    monkeypatch.setattr(fc.cpupool, '_load', lambda name, path: fake)
     monkeypatch.setattr(fc, 'git', lambda root, *args: 'abcdef1234')
     monkeypatch.setattr(fc, 'centre', lambda root, base: (True, 'same'))
     called = []
@@ -171,7 +171,7 @@ def test_light_runs_the_test_files_the_step_changed(tmp_path, monkeypatch, capsy
     import types
     fake = types.SimpleNamespace(base_rev=lambda root, env: 'abcdef123456', records=lambda env, jobs: FakeRun({'a': 'same'}),
                                  labpaths=types.SimpleNamespace(WORK=str(tmp_path)), Skip=RuntimeError)
-    monkeypatch.setattr(fc, '_load', lambda name, path: fake)
+    monkeypatch.setattr(fc.cpupool, '_load', lambda name, path: fake)
     diff = 'tests/test_simai.py\ntests/guards/test_kernel.py\ntests/conftest.py\nexperimental/cnv/sim.py\ntests/test_gone.py\n'
     monkeypatch.setattr(fc, 'git', lambda root, *args: diff if args[0] == 'diff' else 'abcdef1234')
     monkeypatch.setattr(fc, 'centre', lambda root, base: (True, 'same'))
