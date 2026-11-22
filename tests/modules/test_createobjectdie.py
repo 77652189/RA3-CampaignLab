@@ -95,10 +95,11 @@ class _Host:
             self.made.append((ocl, airborne))
 
 
-def test_a_structure_dead_in_a_fight_leaves_its_owner_the_survivor_its_list_makes():
+def test_a_structure_dead_in_a_fight_leaves_its_owner_the_survivor_its_list_makes(monkeypatch):
     """Bench 11-22 aigarrbld 054620: the player's AlliedPowerPlant dies in a fight and leaves the player a Peacekeeper
     (OCL_GenericAlliedBuildingDestruction, Min/MaxHealth 0.3/0.75: the middle, INFERRED) -- not its collapse (its
     other list's), and not when its status is exempt (SOLD); a SUICIDED death is the Suicide list's, at full health."""
+    monkeypatch.setattr(cod, 'FIGHT', True)     # off for now (the module's FIGHT)
     s = simsmall.small_world()
     for name, x in (('pp', 100.0), ('pp2', 600.0), ('pp3', 1100.0)):
         s.add(name, 'AlliedPowerPlant', 'Player_1', x, 100.0)
