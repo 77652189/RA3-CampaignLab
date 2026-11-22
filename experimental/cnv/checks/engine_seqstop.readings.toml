@@ -50,7 +50,6 @@ id = "seqteam_attack_move_keeps_the_teams_spread"
 scene = {build = "engine_seqteam", check = "t", until = 25}
 bench = """engine_seqteam:t (as above): after ATTACK_MOVE_TEAM_TO(<This Team>, W2) neither tank is in the 150 square at \
 W2 (位 56 from f219 on); w1 crossed it (58 at f173-203) and went on: the two kept their 600 spread round W2"""
-proves = """sim team move: the members' spots keep the team's spread (formation) round the point"""
-expect = "vals(rows)[-1][2] & 6 == 0"
-mismatch = """sim 位 62 (both tanks in W2's square, 走 1111 at ~f286); bench 56 (neither, 1111 at f254): the group move \
-keeps the members' offsets -- movement (R2), not the sequential script"""
+proves = """sim team move: the vehicles' spots keep the team's spread round the point (each drives the same ~600), \
+so they arrive together (simpath.formation_spots)"""
+expect = ["vals(rows)[-1][2] & 6 == 0", "245 <= next(v for v in vals(rows) if v[0] == 1111)[3] <= 265"]

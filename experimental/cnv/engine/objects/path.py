@@ -346,15 +346,13 @@ def block(starts, point):
 
 def formation_spots(world, movers, p):
     """Where each of a group sent to `p` as one goes, before order_move keeps its goal off held spots
-    (free_spot): [(body, (x, y))], nearest `p` first. Generals' AIGroup::groupMoveToPosition without a formation
-    (GL/AI/AIGroup.cpp; work/re/generals-source-map.md): the unit nearest the goal is the centre and walks to the
-    point; the others each to the point plus where it stands from that centre, the offset cut to 6 times its
-    radius (computeIndividualDestination). Bench 2026-11-08 acceptance question 1 (a01's squad, 4 Peacekeepers + 2
-    dogs): the squad's middle ~18-23 short of the point, the units apart -- the simulator had all six on the point.
-    INFERRED for RA3 (its group move not read, docs/engine/pathing.md 5: the script's MOVE_TEAM_TO hands the team
-    to one group command): the line check from the group's goal to the spot is left out. Two or more infantry stand
-    in their block instead (`block`, bench 2026-11-17 engine_column; bench engine_colgate: 2 men, and 6 sent 20
-    short, stand in the block too), first."""
+    (free_spot): [(body, (x, y))], nearest `p` first. The vehicles keep the group's shape: each goes to `p` plus where
+    it stands from their middle (bench 11-21 engine_seqteam:t, A289: two tanks 612 apart sent 300 past the nearer one
+    each drove ~600 and arrived together, neither in W2's 150 square -- not Generals' nearest-as-centre with the
+    offset cut to 6 radii, which stood both on it); engine_acts_near's two 1600 apart both ended within 400 of the
+    point: the offset is cut (SPREAD). INFERRED: the middle as the mean, the cut's size within its bracket, the
+    line check from the goal to the spot. Two or more infantry stand in their block instead (`block`, bench
+    2026-11-17 engine_column; bench engine_colgate: 2 men, and 6 sent 20 short, stand in the block too), first."""
     movers = sorted(movers, key=lambda b: (b.x - p[0]) ** 2 + (b.y - p[1]) ** 2)
     foot = [b for b in movers if 'INFANTRY' in b.kinds]
     out = []
@@ -362,14 +360,17 @@ def formation_spots(world, movers, p):
         world.used.add('column march')
         out = list(zip(foot, block([(b.x, b.y) for b in foot], p)))
         movers = [b for b in movers if b not in foot]
-    for b in movers:
-        vx, vy = b.x - movers[0].x, b.y - movers[0].y
-        n = math.hypot(vx, vy)
-        cap = 6 * b.radius
-        if n > cap:
-            vx, vy = vx * cap / n, vy * cap / n
-        out.append((b, (p[0] + vx, p[1] + vy)))
+    if movers:
+        mx, my = sum(b.x for b in movers) / len(movers), sum(b.y for b in movers) / len(movers)
+        for b in movers:
+            vx, vy = b.x - mx, b.y - my
+            k = min(1.0, SPREAD * b.radius / (math.hypot(vx, vy) or 1.0))
+            out.append((b, (p[0] + vx * k, p[1] + vy * k)))
     return out
+
+
+SPREAD = 15     # a group member's offset from the middle is cut to this many radii: the benches put it between 13
+#                 and 17 for Guardians (seqteam's 306 kept, both in at f254; engine_acts_near's 800 cut under 400)
 
 
 HOLD_SPOTS = True              # every move's goal kept off other units' spots (claims): the game's (bench 11-09,

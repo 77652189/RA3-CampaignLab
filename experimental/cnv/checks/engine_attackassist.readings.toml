@@ -1,0 +1,11 @@
+# Bench readings of checks/engine_attackassist.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "no_assist_marker_reaches_the_notifier"
+scene = {build = "engine_attackassist", check = "a", until = 20}
+bench = """engine_attackassist:a, `run_queue` CampAssistA_mcp_1121_204920 (bef97c78; E144's two starts crashed, this recipe \
+enters): on / off source 100 throughout; both targets 100 -> 97 from s8 (the order) on"""
+proves = """a negative baseline only: the sources fire, neither responder's marker hit its source -- not evidence that the \
+response module does nothing (notify / dispatch not seen in this recipe; the simulator has no assist response)"""
+expect = ["all(r['on source'] == r['off source'] == 100 for r in rows)",
+          "rows[-1]['on target'] < 100 and rows[-1]['off target'] < 100"]

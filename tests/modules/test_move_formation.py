@@ -16,18 +16,19 @@ def test_infantry_group_slots_and_routes(spots, goals):
     assert [(b.dest, b.path) for b in men] == [(g, [g]) for g in goals]
 
 
-def test_vehicle_group_uses_the_nearest_as_anchor_and_caps_the_offset():
+def test_vehicle_group_keeps_its_spread_round_the_point():
+    # bench engine_seqteam:t: the group's middle goes to the point, each its whole offset (not the nearest on it).
     s = simsmall.small_world(model=False)
     template = 'AlliedAntiVehicleVehicleTech1'
     near = s.add('near', template, 'Player_1', 1400, 2500)
-    far = s.add('far', template, 'Player_1', 1200, 2500)
+    far = s.add('far', template, 'Player_1', 1200, 2400)
     s.order_group([far, near], (1600, 2500), False)
-
-    # The anchor keeps the click. The follower's 200-unit offset is capped
-    # at six of its own radii, which still leaves its goal free.
-    assert near.dest == (1600, 2500) and near.path == [near.dest]
-    assert 6 * far.radius < 200
-    assert far.dest == (1600 - 6 * far.radius, 2500) and far.path == [far.dest]
+    assert (near.dest, far.dest) == ((1700, 2550), (1500, 2450)) and near.path == [near.dest]
+    # bench engine_acts_near: 1600 apart, the offsets are cut (SPREAD radii) and both end near the point.
+    a, b = s.add('a', template, 'Player_1', 1000, 3500), s.add('b', template, 'Player_1', 2600, 3500)
+    s.order_group([a, b], (1800, 4500), False)
+    cut = 15 * a.radius
+    assert (a.dest, b.dest) == ((1800 - cut, 4500), (1800 + cut, 4500))
 
 
 def test_vehicle_keeps_off_a_man_held_up_short_of_his_slot():

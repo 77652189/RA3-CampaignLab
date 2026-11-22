@@ -10,10 +10,20 @@ let = {changes = "lambda key: [r[key] for i, r in enumerate(rows[1:]) if i == 0 
 expect = [
     "changes('状')[-2:] == [5, 20]",
     "changes('旗')[:2] == [16, 20] and set(changes('旗')) <= {16, 20}",
-    "[v for v in changes('位') if v not in (201, 210)] == [0, 1, 2, 102, 202, 200, 220]",
+    "[v for v in changes('位') if v not in (102, 201, 210)] == [0, 1, 2, 202, 200, 220]",
     "sum(r['位'] in (201, 210) for r in rows[1:]) <= 2",
     "changes('守')[-2:] == [2, 12] and rows[-1]['守'] == 12",
 ]
+
+[[reading]]
+id = "acts_v_guard_tanks_come_in_a_second_apart"
+scene = {build = "engine_acts_v", check = "acts", until = 41}
+bench = "CampActsVActs round 215: 位 2 -> 102 (s5) -> 202 (s6): one of Gd's two tanks (80 apart) by 'gd from' a second first"
+proves = "sim the guard crew's two tanks reach 'gd from' one after the other"
+expect = "102 in changes('位')"
+let = {changes = "lambda key: [r[key] for i, r in enumerate(rows[1:]) if i == 0 or r[key] != rows[i][key]]"}
+mismatch = """sim 2 -> 202 the same frame: the group move gives each the same way (simpath.formation_spots, from \
+engine_seqteam); what puts one a second ahead on the bench is not known (INFERRED: the orders handed out in turn)"""
 
 [[reading]]
 id = "acts_near_goes_to_the_first_members_nearest"
