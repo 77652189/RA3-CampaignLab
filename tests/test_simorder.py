@@ -45,6 +45,10 @@ def test_stop_and_stand_drop_the_order_and_a_short_move_is_held_up():
     assert not simorder.held_up(b)                       # within ARRIVE: it got there
     simorder.stand(b)
     assert b.mode == 'idle' and b.move_to is None and simseq.idle(simorder.Peers(s), b)
+    b.face = 1.0                                         # turning: not idle -- unless it cannot turn (review vv #4)
+    assert not simseq.idle(simorder.Peers(s), b)
+    b.status.add('IMMOBILE')
+    assert simseq.idle(simorder.Peers(s), b)
 
 
 def test_an_idle_writes_its_wait_on_the_units_or_the_teams_first_record():
@@ -64,3 +68,4 @@ def test_an_idle_writes_its_wait_on_the_units_or_the_teams_first_record():
     simseq.wait(seq, 9, team='P/Q')
     simseq.stop(seq, None, 'T')
     assert seq == [{'b': None, 'team': 'Q', 'wait': 7}]
+    assert simseq._key({'b': None, 'team': 'P/T'}) == simseq._key({'b': None, 'team': 'T'})    # one head (vv P3)

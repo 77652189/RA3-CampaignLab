@@ -37,15 +37,18 @@ def wait(seq, frames, b=None, team=None):
 
 
 def _key(r):
-    return r['team'] if r['b'] is None else r['b'].serial
+    # a team's by its bare name: 'P/T' and 'T' queued the same frame are one head (review vv P3; a map's team names
+    # are its own, not per player: INFERRED)
+    return r['team'].split('/', 1)[-1] if r['b'] is None else r['b'].serial
 
 
 def idle(peers, b):
     """The unit's AI has nothing to do (a sequential script's next step waits for it, d115 14): no way to walk,
-    no living target, no path, not turning to a facing (engine_seqguard:g: a half turn holds the next step 8 frames),
+    no living target, no path, not turning to a facing (engine_seqguard:g: a half turn holds the next step 8 frames;
+    an IMMOBILE one never turns -- Sim.move skips it -- so its facing holds nothing: review vv #4, INFERRED),
     not firing at the ground, not running off."""
-    return not b.path and b.face is None and not (isinstance(b.goal, type(b)) and b.goal.alive) and not b.follow \
-        and not getattr(b, 'ground_fire', None) and not getattr(b, 'flee', None) \
+    return not b.path and (b.face is None or 'IMMOBILE' in b.status) and not b.follow \
+        and not (isinstance(b.goal, type(b)) and b.goal.alive) and not getattr(b, 'ground_fire', None) and not getattr(b, 'flee', None) \
         and b.serial not in peers.garrison.going
 
 
