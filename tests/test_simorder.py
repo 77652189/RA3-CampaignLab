@@ -59,3 +59,8 @@ def test_an_idle_writes_its_wait_on_the_units_or_the_teams_first_record():
     simseq.wait(seq, 75, u)
     simseq.wait(seq, 9, team='nobody')
     assert [r.get('wait') for r in seq] == [None, 88, 73, None]
+    seq = [{'b': None, 'team': 'P/T'}, {'b': None, 'team': 'Q'}]    # 1122uu #5: a bare name finds 'player/team', and back
+    simseq.wait(seq, 9, team='T')
+    simseq.wait(seq, 9, team='P/Q')
+    simseq.stop(seq, None, 'T')
+    assert seq == [{'b': None, 'team': 'Q', 'wait': 7}]

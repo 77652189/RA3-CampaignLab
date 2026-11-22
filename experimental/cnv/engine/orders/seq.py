@@ -3,7 +3,14 @@ the unit is idle -- apart from engine.orders.order. Over the world (WORLD_API on
 (PEERS): the queue lives on it (Sim.seq, the scripts' records, written here alone: the script actions call queue /
 stop)."""
 
+from engine.world.handle import same_team
+
 PEERS = frozenset({'seq', 'garrison'})
+
+
+def _of_team(r, team):
+    """r is the team's record: one name bare, the other 'player/team', either way round (same_team; 1122uu #5)."""
+    return r['b'] is None and (same_team(r['team'], team) or same_team(team, r['team']))
 
 
 def queue(seq, b, script, loops, team=None, group=()):
@@ -16,7 +23,7 @@ def queue(seq, b, script, loops, team=None, group=()):
 def stop(seq, b, team=None):
     """UNIT_STOP_SEQUENTIAL_SCRIPT (engine_seqstop:a): the unit's scripts go (a move a step gave goes on); with
     `team` (b None) TEAM_STOP_SEQUENTIAL_SCRIPT: the team's (engine_seqteam:t)."""
-    seq[:] = [r for r in seq if r['b'] is not b or (team is not None and r['team'] != team)]
+    seq[:] = [r for r in seq if r['b'] is not b or (team is not None and not _of_team(r, team))]
 
 
 def wait(seq, frames, b=None, team=None):
@@ -24,7 +31,7 @@ def wait(seq, frames, b=None, team=None):
     before the next step (d115 14 step 2, l2_scripts1 3); no record, nothing written. engine_seqguard:g: from the step
     before to the step after, exactly the count (90 / 90 / 75 frames), the two steps' own frames inside it (INFERRED
     why: not read) -- so 2 fewer frames skipped."""
-    r = next((r for r in seq if r['b'] is b and (b is not None or r['team'] == team)), None)
+    r = next((r for r in seq if r['b'] is b and (b is not None or _of_team(r, team))), None)
     if r is not None:
         r['wait'] = frames - 2
 
@@ -35,8 +42,9 @@ def _key(r):
 
 def idle(peers, b):
     """The unit's AI has nothing to do (a sequential script's next step waits for it, d115 14): no way to walk,
-    no living target, no path, not firing at the ground, not running off."""
-    return not b.path and not (isinstance(b.goal, type(b)) and b.goal.alive) and not b.follow \
+    no living target, no path, not turning to a facing (engine_seqguard:g: a half turn holds the next step 8 frames),
+    not firing at the ground, not running off."""
+    return not b.path and b.face is None and not (isinstance(b.goal, type(b)) and b.goal.alive) and not b.follow \
         and not getattr(b, 'ground_fire', None) and not getattr(b, 'flee', None) \
         and b.serial not in peers.garrison.going
 

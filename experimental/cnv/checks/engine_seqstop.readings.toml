@@ -57,14 +57,29 @@ expect = ["vals(rows)[-1][2] & 6 == 0", "245 <= next(v for v in vals(rows) if v[
 [[reading]]
 id = "seqguard_team_guard_and_idle_hold_the_teams_next_step"
 scene = {build = "engine_seqguard", check = "g", until = 21}
-bench = """engine_seqguard:g, `run_queue` CampSeqGuard_mcp_1122_025013 (A298), 守帧 / 闲帧 / 单帧 / 位: s1 24 24 28 0, s5 76 76 75 4, \
-s6-s12 90 90 75 7, s13-s21 90 90 75 31 -- TEAM_GUARD_FOR_SECONDS 6 and TEAM_IDLE_FOR_SECONDS 6 hold the next step 90 \
-frames each, UNIT_IDLE_FOR_SECONDS 5 (an integer) 75; both crews then reach their goals"""
+bench = """engine_seqguard:g, `run_queue` CampSeqGuardG_mcp_1122_073359 (A302; A298's CampSeqGuard_mcp_1122_025013 read the \
+same 90 / 90 / 75 / 31), 守闲帧 = G's wait frames + 1000 x K's / 单帧 / 位: s1 29021 29 0, s5 90082 75 4, s6-s11 90090 75 7, \
+s13-s21 90090 75 31 -- TEAM_GUARD_FOR_SECONDS 6 and TEAM_IDLE_FOR_SECONDS 6 hold the next step 90 frames each, \
+UNIT_IDLE_FOR_SECONDS 5 (an integer) 75; both crews then reach their goals"""
 proves = """sim TEAM_GUARD_FOR_SECONDS is the team idle (A298 read): the team's sequential script waits n x 15 frames, as \
-TEAM_IDLE_FOR_SECONDS and the unit's UNIT_IDLE_FOR_SECONDS do (engine.orders.seq.wait); TEAM_FACE_WAYPOINT in the \
-script is not lost and holds nothing back; the move after the wait goes."""
-item = ["脚本动作 TEAM_GUARD_FOR_SECONDS", "脚本动作 TEAM_FACE_WAYPOINT"]
+TEAM_IDLE_FOR_SECONDS and the unit's UNIT_IDLE_FOR_SECONDS do (engine.orders.seq.wait); the move after the wait goes."""
+item = ["脚本动作 TEAM_GUARD_FOR_SECONDS"]
 expect = [
-    "vals(rows)[-1][:3] == [90, 90, 75]",
-    "vals(rows)[-1][3] == 31 and any(v[3] == 7 for v in vals(rows))",
+    "vals(rows)[-1][:2] == [90090, 75]",
+    "vals(rows)[-1][2] == 31 and any(v[2] == 7 for v in vals(rows))",
 ]
+
+[[reading]]
+id = "seqguard_team_face_turns_the_hulls_before_the_next_step"
+scene = {build = "engine_seqguard", check = "g", until = 21, shot_clock = true}
+bench = """engine_seqguard:g, CampSeqGuardG_mcp_1122_073359 (A302): crew G (two IFVs facing east) is given \
+TEAM_FACE_WAYPOINT to a waypoint west of it, crew K not; then both wait 90 and drive 600 east. 守闲帧 s1 29021: G's wait \
+began 8 frames after K's (the half turn, 360 deg/s); 行帧 = G's frames on the move + 1000 x K's, s14-s21 117123: G 123, \
+K 117 -- G turns back east before it drives"""
+proves = """sim TEAM_FACE_WAYPOINT turns each member's hull to the waypoint (act_order.team_face_waypoint: a face order, \
+locomotion.turn), and a sequential script's next step waits for the turn (engine.orders.seq.idle: a facing still to \
+reach is not idle). A face that turned nothing reads lag 1, G - K 0 (1122uu P2). Frame clock: on the coarse tick the 8 \
+frames are a tick's 15"""
+item = ["脚本动作 TEAM_FACE_WAYPOINT"]
+let = {lag = "next(v[0] // 1000 - v[0] % 1000 for v in vals(rows) if v[0] % 1000 and v[0] < 90000)", move = "vals(rows)[-1][3]"}
+expect = ["6 <= lag <= 10", "4 <= move % 1000 - move // 1000 <= 10"]

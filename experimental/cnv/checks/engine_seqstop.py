@@ -131,7 +131,7 @@ def guard_mission():
               angle=0., props={'originalOwner': m.crew(k)})
     for k, y in GUARD.items():
         m.waypoint(k, f'CNV SeqGuard {k} Goal', 'stop row', 1200. - o.x, y - o.y)
-    m.waypoint('N', 'CNV SeqGuard North', 'stop row', 900. - o.x, 5400. - o.y)
+    m.waypoint('W', 'CNV SeqGuard West', 'stop row', 200. - o.x, 4160. - o.y)    # G's back: a half turn and back
     return m
 
 
@@ -140,7 +140,7 @@ def guard(m):
     c = {k: 'CNV_SeqGuard_' + k for k in ('G', 'K', 'I')}
     wait = {'G': 'TEAM_GUARD_FOR_SECONDS', 'K': 'TEAM_IDLE_FOR_SECONDS'}
     t.scripts += [Script(f'Test SeqGuard {k}', [], [
-        ('INCREMENT_COUNTER', 1, c[k]), ('TEAM_FACE_WAYPOINT', '<This Team>', m.mark('N')),
+        ('INCREMENT_COUNTER', 1, c[k])] + [('TEAM_FACE_WAYPOINT', '<This Team>', m.mark('W'))] * (k == 'G') + [
         ('INCREMENT_COUNTER', 10, c[k]), (w, '<This Team>', 6), ('INCREMENT_COUNTER', 100, c[k]),
         ('MOVE_TEAM_TO', '<This Team>', m.mark(k)), ('INCREMENT_COUNTER', 1000, c[k])], sub=True)
         for k, w in wait.items()]
@@ -149,14 +149,19 @@ def guard(m):
         ('INCREMENT_COUNTER', 10, c['I'])], sub=True))
     s8.at(t, 'seqguard go', 1., [('TEAM_EXECUTE_SEQUENTIAL_SCRIPT', m.crew(k), f'Test SeqGuard {k}') for k in wait] +
           [('UNIT_EXECUTE_SEQUENTIAL_SCRIPT', m.role('I1').name, 'Test SeqGuard I')])
-    for k, label, n in (('G', '守帧', 11), ('K', '闲帧', 11), ('I', '单帧', 1)):
-        s8.frames(t, f'CNV_SeqGuard_{k}W', label, [('COUNTER', c[k], 2, n)])
+    def tally(counter, label, parts):       # the frames each (weight, crew, step) holds, weighted: four lines fit
+        t.counters.append((counter, label))
+        t.scripts.extend(Script(f'Test - {counter} {k}{n}', [('COUNTER', c[k], 2, n)],
+                                [('INCREMENT_COUNTER', w, counter)], once=False) for w, k, n in parts)
+    tally('CNV_SeqGuard_W', '守闲帧', [(1, 'G', 11), (1000, 'K', 11)])
+    s8.frames(t, 'CNV_SeqGuard_IW', '单帧', [('COUNTER', c['I'], 2, 1)])
     for k in GUARD:
         t.areas['SeqGuard ' + k] = square(*m.point(k), 80.)
     s8.total(t, 'CNV_SeqGuard_Where', '位', [
         (1, ('COUNTER', c['G'], 3, 111)), (2, ('COUNTER', c['K'], 3, 111)), (4, ('COUNTER', c['I'], 3, 11)),
         (8, ('NAMED_INSIDE_AREA', m.role('G1').name, 'SeqGuard G')),
         (16, ('NAMED_INSIDE_AREA', m.role('K1').name, 'SeqGuard K'))])
+    tally('CNV_SeqGuard_M', '行帧', [(1, 'G', 111), (1000, 'K', 111)])     # G faced west first, K did not
     s8.watch(t, 20., .5)
     return t
 
