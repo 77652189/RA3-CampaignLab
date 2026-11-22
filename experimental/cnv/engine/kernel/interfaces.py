@@ -143,7 +143,8 @@ class Destroy(Interface):
 class SlowDeath(Interface):
     """SlowDeathBehavior (step B5a): its DestructionDelay (lies, seconds), how long this death lies (lie: the delay
     for a crush, else LINGER) and whether its attributes name no death types (is_plain: the one the body lies by);
-    told of its thing's death before the Die modules (begin: `info` a module.Death; B5 review e #7)."""
+    told of its thing's death before the Die modules (begin: `info` a module.Death; B5 review e #7); a deletion
+    ends the lie where it is (cut: `lain` seconds since the death; review vv P3)."""
     __slots__ = ()
 
     def begin(self, info):
@@ -156,6 +157,9 @@ class SlowDeath(Interface):
         raise NotImplementedError
 
     def is_plain(self):
+        raise NotImplementedError
+
+    def cut(self, lain):
         raise NotImplementedError
 
 

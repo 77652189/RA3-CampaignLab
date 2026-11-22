@@ -392,6 +392,7 @@ class Garrisons:
 
     def _throw(self):
         world = self.world
+        now = world.t
         for serial, job in list(self.ejecting.items()):
             box = self.boxes.get(serial)                # the host itself, by its serial (never its name: g #1)
             g = box.thing if box is not None else None
@@ -405,14 +406,14 @@ class Garrisons:
             if at is None:
                 if reach and math.hypot(where[0] - g.x, where[1] - g.y) > reach:
                     continue
-                at = job[3] = world.t
-            if world.t + 1e-9 >= at:
+                at = job[3] = now
+            if now + 1e-9 >= at:
                 u = held[0]
                 self.out(u)
-                self.flying.append([world.t + EJECT_FLIGHT, u, where])
+                self.flying.append([now + EJECT_FLIGHT, u, where])
                 job[3] = at + per
         for f in list(self.flying):
-            if world.t + 1e-9 >= f[0]:
+            if now + 1e-9 >= f[0]:
                 self.flying.remove(f)
                 u = f[1]
                 if u.alive:

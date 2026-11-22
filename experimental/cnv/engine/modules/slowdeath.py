@@ -64,6 +64,9 @@ class SlowDeath(module.Module, interfaces.SlowDeath):
     def is_plain(self):
         return self.data.plain
 
+    def cut(self, lain):
+        self.linger = min(self.linger, lain)
+
 
 def _plain(mods):
     return next((m for m in mods if m.is_plain()), None)

@@ -92,7 +92,7 @@ SIM_SURFACE = {
     'engine.modules': 'gap*3 pick used*3',
     'engine.objects': 'add blocks*4 bodies*8 body change*21 cold_of enemy*2 frame_movers*2 frame_now*32 gap*61 ground*5 '
                       'guessed*5 human*11 kills*2 label*27 living*13 looks m*2 note*20 own*40 player_ups players*2 point '
-                      'reblock*2 relation*6 relations*4 shot_clock t*9 toggles_of topples used*18 weapon_upgrades world*22 '
+                      'reblock*2 relation*6 relations*4 shot_clock t*7 toggles_of topples used*18 weapon_upgrades world*22 '
                       'xml_of*6',
     'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 engineer_entry*2 '
                      'fight_field fire_spot firing*2 frame_now*7 gap garrison*2 ground*3 hostile hunts*5 in_range label*9 '

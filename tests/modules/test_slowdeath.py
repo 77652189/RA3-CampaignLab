@@ -67,6 +67,10 @@ def test_a_crushed_body_lies_its_delay_out_and_a_script_kill_lies_nothing():
     assert not s.dying(crushed) and not s.present(crushed)
     crushed.died_at = s.t - 8.4
     assert s.dying(crushed) and not s.dying(killed)
+    s.world.remove(crushed, 'delete')                # mid-lie (review vv P3): its name kept this frame, not after
+    assert s.present(crushed) and not s.dying(crushed)
+    crushed.died_at -= 0.1
+    assert not s.present(crushed) and s.holds(('NAMED_DESTROYED', 'crushed'))
 
 
 def test_a_plain_module_takes_only_the_crush_and_a_named_one_none():
