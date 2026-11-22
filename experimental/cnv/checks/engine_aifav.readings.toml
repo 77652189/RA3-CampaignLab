@@ -1,0 +1,28 @@
+# Bench readings of checks/engine_aifav.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The enemy table emptied by script (program 0x8d72a0, work/re a219_skirmish_transfer.md 2), each after aipriodef's
+# SET_ALL 20 -- without the clear Player_1 at 20 stays the top tier and the far plant goes first (aipriodef).
+# The first reading moved from tests/test_simai_favored.py (same run, 70 s).
+
+[[reading]]
+id = "favored_enemy_alone_in_the_table_goes_for_its_plant"
+scene = {build = "aipriofav", check = "a", until = 70.0}
+bench = "aipriofav (CampAIPrioFavA_mcp_1114_035402, 11-14): 到近厂 2 @ s14, 4 s15-s21; 到远厂 0 to s69"
+proves = "SET_FAVORED_ENEMY: the table emptied, that enemy alone in it at 10"
+let = {near = "first('到近厂')"}
+expect = "near is not None and abs(near - 14) <= 2 and first('到远厂') is None"
+
+[[reading]]
+id = "clear_all_then_one_enemy_goes_for_its_plant"
+scene = {build = "aiprioclr", check = "a", until = 70.0}
+bench = "aiprioclr (CLEAR_ALL, then Soviet_4 10; CampAIPrioClrA_mcp_1122_003028): 到近厂 4 @ s16, 4 s18-s22; 到远厂 0 to s68"
+proves = "CLEAR_ALL_ENEMY_PLAYERS_PRIORITIES: the table emptied (Player_1 out), the next put alone in it"
+let = {near = "first('到近厂')"}
+expect = "near is not None and abs(near - 15) <= 2 and first('到远厂') is None"
+
+[[reading]]
+id = "clear_one_enemy_leaves_the_other_alone"
+scene = {build = "aiprioclr1", check = "a", until = 70.0}
+bench = "aiprioclr1 (CLEAR_ENEMY_PLAYER_PRIORITY Player_1; CampAIPrioClr1A_mcp_1122_002725): 到近厂 3 @ s15, 4 s17-s22; 到远厂 0 to s68"
+proves = "CLEAR_ENEMY_PLAYER_PRIORITY: that enemy's entry out, the others kept (Soviet_4 alone at 20)"
+let = {near = "first('到近厂')"}
+expect = "near is not None and abs(near - 14) <= 2 and first('到远厂') is None"

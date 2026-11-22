@@ -157,6 +157,12 @@ def skirmish_ai_set_favored_enemy(sim, name, a, script):
     sim.ai_priorities.setdefault(a[0], []).extend([(None, 0), (a[1], 10)])
 
 
+def skirmish_ai_clear_enemy_player_priority(sim, name, a, script):
+    # CLEAR_ALL (player): the favored enemy's clear alone (program: the same call); CLEAR_ENEMY_PLAYER_PRIORITY
+    # (player, enemy): that entry out, the re-sort off -- SET_ENEMY_PLAYER_PRIORITY's n 0. Bench A295 engine_aifav
+    sim.ai_priorities.setdefault(a[0], []).append((a[1] if len(a) > 1 else None, 0))
+
+
 def skirmish_ai_transfer_all(sim, name, a, script):
     # (player, on): UNIT_AI_TRANSFER_ALL's team step without its AI wake (program, work/re
     # a219_skirmish_transfer.md; the wake left out is INFERRED, not benched). Bench 11-14 engine_acts_z all:
@@ -226,6 +232,8 @@ ACTIONS = {
     'SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY': skirmish_ai_set_enemy_player_priority,
     **dict.fromkeys(AI_NO_EFFECT, skirmish_ai_no_effect),
     'SKIRMISH_AI_SET_FAVORED_ENEMY': skirmish_ai_set_favored_enemy,
+    'SKIRMISH_AI_CLEAR_ALL_ENEMY_PLAYERS_PRIORITIES': skirmish_ai_clear_enemy_player_priority,
+    'SKIRMISH_AI_CLEAR_ENEMY_PLAYER_PRIORITY': skirmish_ai_clear_enemy_player_priority,
     'SKIRMISH_AI_TRANSFER_ALL': skirmish_ai_transfer_all,
     'PLAYER_TOGGLE_SKIRMISH_AI': player_toggle_skirmish_ai,
     'UNIT_AI_TRANSFER_ALL': unit_ai_transfer_all,
