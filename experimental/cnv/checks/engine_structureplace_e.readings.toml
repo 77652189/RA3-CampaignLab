@@ -1,0 +1,17 @@
+# Bench readings of checks/engine_structureplace_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E183 (work/re/e183_structureplace.md): the retail refinery and a copy without its StructurePlacementBehavior include;
+# a power plant ordered 120 ahead of it, in the reserved box.
+
+[[reading]]
+id = "no_plant_stands_with_the_refinery_module"
+scene = {build = "structpon", check = "a", until = 20}
+bench = "E183 structpon:a: 电厂总数 and 前方电厂 0 throughout; money rose from 10000 by mining (11750 / 12000), never the 9200 payment sentinel"
+proves = "a negative baseline only: no plant was placed in the run -- not evidence that the reserved box refused it (queue / placement acceptance was not established; inventory TODO stays)"
+expect = ["all(r['电厂总数'] == 0 and r['前方电厂'] == 0 for r in rows)"]
+
+[[reading]]
+id = "no_plant_stands_without_it_either"
+scene = {build = "structpoff", check = "a", until = 20}
+bench = "E183 structpoff:a (only the include removed): the same, 0 / 0 throughout"
+proves = "a negative baseline only (as structpon)"
+expect = ["all(r['电厂总数'] == 0 and r['前方电厂'] == 0 for r in rows)"]
