@@ -105,22 +105,14 @@ def test_ignore_distance_replays_named_damage_observation(name):
 @pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 @pytest.mark.parametrize('name, expected', [
     ('aiignzero', [(391, 8, False), (406, 8, False), (421, 8, False)]),
-    pytest.param('aiignnear', [(391, 8, False), (406, 0, True), (421, 0, True)],
-                 marks=pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-                     'Distance filtering is consumed, but passive/engineer eligibility '
-                     'and exact carrier replay remain gaps; see work/re/e103_ignore_distance.md.'))),
+    ('aiignnear', [(391, 8, False), (406, 0, True), (421, 0, True)]),
     ('aiignzt', [(391, 8, False), (406, 8, False), (421, 8, False)]),
-    pytest.param('aiignnt', [(391, 8, False), (406, 0, True), (421, 0, True)],
-                 marks=pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-                     'Same-run logic-clock pair confirms state 0/nonempty target at 406/421; '
-                     'model still has state 2/no target. Candidate classification and engineer '
-                     'eligibility remain gaps; see work/re/e103_ignore_distance.md.'))),
+    ('aiignnt', [(391, 8, False), (406, 0, True), (421, 0, True)]),
 ])
 def test_ignore_distance_micro_target_state_replays_observed_pair(name, expected):
     """Damage can coincide while the measured team targets differ.
 
-    Diagnostic carrier equivalence remains a gap. These exact state readings
-    are observations, not a fitted distance rule; work/re/c_ignore_state_report.md.
+    Both carriers replay the same sampled states and target presence.
     The observer pair was rerun with same-run logic-clock anchors in E103:
     work/re/e103_ignore_distance.md. No target identity is inferred from IDs.
     """
