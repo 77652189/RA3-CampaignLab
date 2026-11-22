@@ -22,6 +22,7 @@
 | [skirmish-ai.md](skirmish-ai.md) | 自己写遭遇战 AI：AI 数据能改到哪一层（开局、状态、队伍编成、地图旗标切换、头像、语音），拿来控难度、每段换敌人构成、做副指挥官；第一个要测的检查 | 第 2～4 步 |
 | [plan-template.md](plan-template.md) | 策划案模板的增补建议，以及 plancheck 能查什么（只是建议，策划案和编译器归关卡线） | 第 3～4 步 |
 | [playtest.md](playtest.md) | 给用户的试玩问题：玩哪两关原版，每关问什么；A4 的问题在试点里 | 第 5 步 |
+| [toolbox-allied.md](toolbox-allied.md) | 盟军 A1–A9 工具箱成长表草案（11-22）：每关能造、给的、新东西、考什么，撞车和火力缺口 | 第 1 步：课程表 |
 | [teardowns/](teardowns/) | 准则的证据：原版任务的拆解卡，加布局卡和测量数据 | 证据 |
 
 和其他文档的分工：
