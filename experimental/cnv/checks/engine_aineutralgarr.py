@@ -27,7 +27,7 @@ def a(m):
 
 
 def b(m):
-    """aigarrbld: the Garrison state's team -- Peacekeepers at home / in all, each neutral house the AI's."""
+    """aigarrbld: the Garrison state's team -- Peacekeepers at home / in all, the player's plant standing, the shop the AI's."""
     from checks import engine_aitarget as at
     from parts import counted, square
     INF = m.role('ai inf 1').template
@@ -37,7 +37,7 @@ def b(m):
     t.areas[at.HOME] = square(*m.site('east base'), 450.0)
     counted('CNV_GB_Home', '步兵在家', t, template=INF, area=at.HOME, player=s1)
     counted('CNV_GB_Count', '步兵数', t, template=INF, player=s1)
-    counted('CNV_GB_Row', '排屋归AI', t, template='AM_RowHouse01', player=s1)
+    counted('CNV_GB_Plant', '电厂在', t, template='AlliedPowerPlant', player=m.player('p1'))  # the team state's fight
     counted('CNV_GB_Shop', '商店归AI', t, template='HV_Shop01', player=s1)
     end = m.facts['wake at'] + 60.0
     t.expect = [('步兵在家', m.facts['wake at'] + 5, 'ever==', 0, end)]      # the model: the team leaves for a house
