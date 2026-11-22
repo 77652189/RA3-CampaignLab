@@ -5,6 +5,7 @@ id = "killcount_native_type_and_player_match_bench[a]"
 scene = {build = "engine_killcount", check = "a", until = 25}
 bench = "engine_killcount: the first row reads 0/0/0/255 and the last 2/1/0/240 (kills by type, by player, alive mask)."
 proves = "simai SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER: kill credit by type and by player"
+item = "脚本动作 SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER"
 expect = [
     "vals(rows)[0] == [0, 0, 0, 255]",
     "vals(rows)[-1] == [2, 1, 0, 240]",
