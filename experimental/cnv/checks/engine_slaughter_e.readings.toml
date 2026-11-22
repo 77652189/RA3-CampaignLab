@@ -1,0 +1,19 @@
+# Bench readings of checks/engine_slaughter_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E170 (work/re/e170_slaughter.md): the retail Aircraft Carrier and a copy without SlaughterHordeContain, each told to
+# attack a held target; counters frozen at script frames 180 (攻击期数量) and 600 (返航后数量).
+
+[[reading]]
+id = "the_carriers_show_no_drone_in_either_count"
+scene = {build = "engine_slaughter_e", check = "a", until = 41}
+bench = "E170 a and b (b counts AIRCRAFT in place of DRONE): both runs 完成帧 600, 宿主存活 11, 攻击期数量 0, 返航后数量 0"
+proves = "a negative baseline only: the counts the map encodes see no drone at f180 or f600 with or without the module -- not evidence that sortie, return or the container's consumption is modelled (inventory TODO stays)"
+expect = ["counter('E170Frame') == 600", "counter('E170Hosts') == 11",
+          "all(r['攻击期数量'] == 0 and r['返航后数量'] == 0 for r in rows)"]
+
+[[reading]]
+id = "the_carriers_show_no_aircraft_either"
+scene = {build = "engine_slaughter_e", check = "b", until = 41}
+bench = "the same as a, counted as AIRCRAFT: 600 / 11 / 0 / 0"
+proves = "a negative baseline only (as a)"
+expect = ["counter('E170Frame') == 600", "counter('E170Hosts') == 11",
+          "all(r['攻击期数量'] == 0 and r['返航后数量'] == 0 for r in rows)"]
