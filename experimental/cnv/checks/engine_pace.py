@@ -13,12 +13,21 @@ still west of the first leg's (approximately: strips 300 wide across the lane).
 
 Read (测, 2026-11-04, docs/engine/pathing.md 5): pace 11 at s33 (both at once, never ahead); legs 1 from s25, 11 at
 s33 (the IFV waits at each leg point, 8 s early on the last leg); guard 10 at s33 (the IFV never reached the goal).
+
+engine_guard:go -- TEAM_GUARD_OBJECT(team, object) (retail a05: two boat crews guard a rescue boat). On the same lanes a
+retail IFV on a team of its own guards a retail engineer, both the player's; the guard order at 1 s:
+  静 (pace lane)   the engineer stands 1 000 east of the IFV
+  走 (legs lane)   both at the start, as guard above; the engineer alone is moved to the goal (1 500 east) at 2 s
+  近 (guard lane)  the engineer stands 300 east of the IFV
+Counters (every frame): each IFV's and the moving engineer's (工) 100-wide strip along its lane, k = round((x - 300) /
+100) (the start x 500 = 2, the goal 2 000 = 17; 0 off the lane).
 """
 import os
 
 import labpaths
 from maps import probe_range
 from parts import Mission, Script, Test, Unit, square
+from checks import engine_scripts8 as s8
 
 IFV = 'AlliedAntiAirVehicleTech1'
 ENGINEER = 'AlliedEngineer'
@@ -112,6 +121,41 @@ def pace(m):
     return t
 
 
+GUARD = {'pace': ('静', 1000.0), 'legs': ('走', 0.0), 'guard': ('近', 300.0)}   # lane: label, the engineer's x off
+
+
+def guard_mission():
+    m = Mission(name='CampGuard', map=probe_range, units=[], facts={})
+    for lane, (_, dx) in GUARD.items():
+        m.put(IFV, f'{lane} start', 0, 40.0, role=f'{lane} ifv', name=f'UNIT - CNV Guard {_key(lane)} Ifv')
+        m.put(ENGINEER, f'{lane} start', dx, -40.0, role=f'{lane} eng', name=f'UNIT - CNV Guard {_key(lane)} Eng')
+    m.waypoint('goal', 'Test Guard Goal', 'legs goal')
+    return m
+
+
+def guard(m):
+    t = Test()
+    ifv = {lane: m.role(f'{lane} ifv').name for lane in GUARD}
+    eng = {lane: m.role(f'{lane} eng').name for lane in GUARD}
+    orders = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
+    for lane in GUARD:
+        crew = m.crew(f'Guard{_key(lane)}')
+        orders += [('UNIT_SET_TEAM', ifv[lane], crew), ('TEAM_GUARD_OBJECT', crew, eng[lane])]
+    s8.at(t, 'guard', 1.0, orders)
+    s8.at(t, 'walk', 2.0, m.order('move', [eng['legs']], m.mark('goal'), crew='GuardWalk'))
+    for lane, (label, _) in GUARD.items():
+        y = m.site(f'{lane} start')[1]
+        strip = {k: f'Test Guard {_key(lane)} {k}' for k in range(1, 20)}
+        for k, n in strip.items():
+            t.areas[n] = [(250 + 100 * k, y - 200), (350 + 100 * k, y - 200), (350 + 100 * k, y + 200),
+                          (250 + 100 * k, y + 200)]
+        for who, lab, tag in [(ifv[lane], label, 'Ifv')] + ([(eng[lane], '工', 'Eng')] if lane == 'legs' else []):
+            s8.total(t, f'CNV_Guard_{_key(lane)}_{tag}', lab,
+                     [(k, ('NAMED_INSIDE_AREA', who, n)) for k, n in strip.items()])
+    s8.watch(t, 45.0, 1.0)
+    return t
+
+
 # the builds this module makes and their checks (cnv/registry.py)
-MISSION = {'engine_pace': mission}
-CHECKS = {'engine_pace': {'pace': pace}}
+MISSION = {'engine_pace': mission, 'engine_guard': guard_mission}
+CHECKS = {'engine_pace': {'pace': pace}, 'engine_guard': {'go': guard}}

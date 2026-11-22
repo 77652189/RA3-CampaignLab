@@ -125,6 +125,13 @@ def team_guard_area_from_position(sim, name, a, script):
     _order_bodies(sim, 'move', sim.members(a[0]), ('group', True), ('on_grid', True), place=a[2])
 
 
+def team_guard_object(sim, name, a, script):
+    # (team, object): bench 11-22 engine_guard:go -- an idle IFV told to guard an engineer 300 / 1 000 off, standing
+    # or walked away, never left its spot in 45 s: no move given. Whether it fights for the object: not read
+    # (INFERRED: as any idle unit, nothing more)
+    pass
+
+
 def named_face_waypoint(sim, name, a, script):
     # Native hull headings: engine_facewpai:b, west 180 / north-west 117,
     # untouched 0. Reuse the measured locomotor turn rate. Exact order
@@ -352,6 +359,7 @@ ACTIONS = {
     'TEAM_CONTEXT_SENSITIVE_ATTACK': unit_context_sensitive_attack,
     'TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE': team_move_to_nearest_object_of_type,
     'TEAM_GUARD_AREA_FROM_POSITION': team_guard_area_from_position,
+    'TEAM_GUARD_OBJECT': team_guard_object,
     'NAMED_FACE_WAYPOINT': named_face_waypoint,
     'TEAM_FACE_WAYPOINT': team_face_waypoint,
     'UNIT_TELEPORT_TO_WAYPOINT': unit_teleport_to_waypoint,
