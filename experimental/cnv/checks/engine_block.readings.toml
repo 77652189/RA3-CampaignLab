@@ -36,7 +36,7 @@ expect = [
 id = "block_a_script_sets_no_collisions_on_a_standing_object"
 scene = {build = "engine_block", check = "gn", until = 31}
 bench = "four GV_Ring02 bars (s02's cage doors) made at the start, at 2 s each given NO_COLLISIONS: 4 objects carry it from the s1 frame to s61 (bench 2026-11-22 run_queue engine_block gn; the same with the doors killed first)"
-proves = "script.act_object.unit_change_object_status: the bit is set on a standing object and read by PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS"
+proves = "script.act_object.unit_change_object_status: the bit is set on a standing object and read by PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS -- only that: what the bit does to movement is not shown (these bars stop nobody with it or without, block_standing_cage_doors_stop_nobody; Sim.blocks does not read it; review 1122tt #8)"
 item = "脚本动作 UNIT_CHANGE_OBJECT_STATUS:NO_COLLISIONS"
 expect = "rows[-1]['无碰撞'] == 4"
 
