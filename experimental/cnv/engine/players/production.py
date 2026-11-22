@@ -10,6 +10,7 @@ import numpy as np
 
 import engine.world.handle as simworld
 from engine.data import units as simunits
+from engine.kernel import interfaces
 from engine.ports.readonly import view
 
 REPLACE_FRAMES = 6             # a ReplaceSelfSpecialAbility at its point: the replacement 6 frames on (engine_build a)
@@ -110,6 +111,17 @@ class Production:
         """Whether an upgrade (lower case) is queued for the player anywhere."""
         return any(j.get('upgrade', '').lower() == upgrade for q in self.queues.values() for j in q
                    if j['owner'] == player)
+
+    def admits(self, f, template):
+        """Whether factory f takes an order for `template` (Sim.order_build): a LIMITED_PRODUCTION_AIRCRAFT only while
+        f's ParkingPlaceBehavior spots (engine/modules/parking.py; none: 0) outnumber the planes of that kind it made
+        still alive and those in its queue (bench engine_parking: 4 of 5 presses made, none without the module)."""
+        kind = 'LIMITED_PRODUCTION_AIRCRAFT'
+        if kind not in simunits.stats(template, self.world.own)['kinds']:
+            return True
+        kept = sum(1 for b in self.world.living() if b.made_by == f.name and kind in b.kinds) + sum(
+            1 for j in self.queues.get(f.serial, ()) if kind in simunits.stats(j['template'], self.world.own)['kinds'])
+        return kept < sum(p.spots for p in f.find(interfaces.Parking))
 
     def held(self, job):
         """A unit job not full that stands for a ban: its unit off the owner's menu (ALLOW_DISALLOW_ONE_BUILDING 0) or

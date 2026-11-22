@@ -1,0 +1,27 @@
+# Bench readings of checks/engine_parking.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E157 bench 2026-11-15 (CampParkEA_mcp_1115_151840 / CampParkSwapEA_mcp_1115_152202, work/re/e157_parking.md):
+# five Apollo presses 12 s apart at the retail airfield (on) and at its copy without ParkingPlaceBehavior (off);
+# frames from the 帧数 counter. The swap run's sortie / return prediction failed (near stays 1): not read here.
+
+[[reading]]
+id = "the_airfield_makes_4_of_5_planes_and_none_without_parking"
+scene = {build = "engine_parking", check = "a", until = 66}
+bench = "原机产出 1 f194, 2 f376, 3 f544, 4 f731-f1023 after the fifth press; 删后产出 0 throughout"
+proves = "物体模块 ParkingPlaceBehavior: LIMITED_PRODUCTION_AIRCRAFT only at a factory with the module, up to its LimitedProductionAircraftSpots (4) alive and queued"
+item = "物体模块 Behaviors/ParkingPlaceBehavior"
+expect = ["max(r['原机产出'] for r in rows) == 4", "rows[-1]['原机产出'] == 4", "all(r['删后产出'] == 0 for r in rows)"]
+
+[[reading]]
+id = "each_plane_comes_out_about_180_frames_after_its_press"
+scene = {build = "engine_parking", check = "a", until = 66}
+bench = "原机产出 0 f178 -> 1 f194, 1 f361 -> 2 f376, 2 f530 -> 3 f544, 3 f718 -> 4 f731 (presses at 2, 14, 26, 38 s)"
+proves = "物体模块 ParkingPlaceBehavior: the admitted planes come out on the production clock (no wait for a spot)"
+let = {made = "[rows[first('原机产出', lambda v, n=n: v >= n)]['帧数'] for n in (1, 2, 3, 4)]"}
+expect = "all(abs(a - b) <= 15 for a, b in zip(made, [194, 376, 544, 731]))"
+
+[[reading]]
+id = "the_swapped_players_make_the_same_1_and_0"
+scene = {build = "engine_parkingswap", check = "a", until = 59}
+bench = "原机产出 1, 删后产出 0 from f196 to f877 (the airfields' owners swapped; one press each)"
+proves = "物体模块 ParkingPlaceBehavior: the module, not the player, decides"
+expect = ["rows[-1]['原机产出'] == 1", "all(r['删后产出'] == 0 for r in rows)"]

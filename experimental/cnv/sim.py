@@ -1192,9 +1192,8 @@ class Sim:
         return list(out.values())
 
     def order_build(self, owner, template, factory=None, press=False):
-        """Queue `template` at the owner's factory that builds it with the shortest queue (`factory`: that one only, a
-        Body -- a script's press of its build button, which bench 2026-11-08 engine_production e measured the same
-        as the player's click: paid as it builds, 160 frames to the engineer) -- or an upgrade at the structure
+        """Queue `template` at the owner's factory that builds it with the shortest queue (`factory`: that one only -- a
+        script's press, the same as the player's click: bench engine_production e) -- or an upgrade at the structure
         whose button buys it; nothing is paid now (production.due pays frame by frame, an upgrade as a unit).
         press: a script's press, queued even while the unit is banned (ALLOW_DISALLOW_ONE_BUILDING 0) -- it waits
         unbuilt until let go (bench 2026-11-09 engine_production g); the player's click is not (the button is locked).
@@ -1211,7 +1210,8 @@ class Sim:
             self.note('生产', f'{self.who(owner)} 在 {self.label(b)} 买 {template}（{cost}，{secs:g} 秒）')
             return True
         fs = [f for f in self.factories(owner) if template in simunits.menu(f.template, self.own, f.upgrades)
-              and self.can_build(owner, template, f, ban=not press) and (factory is None or f is factory)]
+              and self.can_build(owner, template, f, ban=not press) and (factory is None or f is factory)
+              and self.production.admits(f, template)]       # an airfield's spots (engine/modules/parking.py)
         if not fs:
             return False
         f = min(fs, key=lambda f: len(self.production.jobs(f.serial)))

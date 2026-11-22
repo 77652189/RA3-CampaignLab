@@ -89,8 +89,6 @@ BENCHED_TESTS = {
         'tests/test_teamexit_bench_c.py::test_teamexit_mixed_building_and_transport_match_bench',
     (ACTION, 'PLAYER_KILL'):
         'tests/test_playerkill_bench_c.py::test_playerkill_owned_units_and_buildings_match_bench',
-    (MODULE, 'Behaviors/ParkingPlaceBehavior'):
-        'tests/test_parking_bench_e.py::test_parking_named_object_model_observations',
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg'):
         'tests/test_eggcmd_bench_c.py::test_eggcmd_naval_legacy_and_concrete_buttons_match_display_counters',
     (ACTION, 'TEAM_UPGRADE'):
@@ -366,7 +364,6 @@ NOTES = {
     (MODULE, 'Behaviors/ActivateModuleSpecialPower'): (GUESSED, 'E153只证按钮给链接护盾的状态位20秒；真正激活链接模块、吸收伤害、提前耗尽没建模'),
     (MODULE, 'Behaviors/HitReactionBehavior'): (GUESSED, 'E172只证受击的HIT_REACTION位；RotateToSourceWhenDamaged的受击转向没建模'),
     (MODULE, 'Behaviors/SecondaryObjectListenerModule'): (GUESSED, 'E174只证工程师进出时授/撤升级；该升级启用的维修武器（ABD_RepairWeapon）没接通'),
-    (MODULE, 'Behaviors/ParkingPlaceBehavior'): (BENCHED, 'E188复用E157两局旧台，tests/test_parking_bench_e.py按名字回放原机场/仅删模块f194=1/0、f982=4/0及交换玩家f196=1/0全部通过；消费LIMITED_PRODUCTION_AIRCRAFT及配置配额4，修空闲队列后续唤醒。只覆盖本机场Apollo生产差异；准入发生在下单阶段、排队/出场预留为INFERRED，精确生产帧、筛选、物理机位、返航预约/占用/释放、航母及其他机型仍gap；旧队伍飞离预测失败仍保留，不追加实机；见work/re/e188_parking.md'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),
     (NUGGET, 'MetaImpactNugget'): (TODO, '剩余复杂写法：延迟、Arc、飞机资格等；engine_knock_filter a/b两局99/99/3/3，原版每路4次冲击、删除筛选7次。tests/test_meta_filter.py具名回放地面派发/速度/铁锤落点：恐怖机器人和磁暴步兵显式包含越过INFANTRY，铁幕状态仍拒绝；飞机两局无冲击且缺逐帧高度/拒绝原因，完整消费者不晋升，见work/re/c_filter_report.md。engine_knock_invert水平反向回放已绿；engine_knock_objectgate a/b均99/99/1/0，保留ForbiddenTargetObjectStatus拒绝脚本LEECHED_TARGET_ACTIVE邻人、仅删字段后放行，tests/test_meta_objectgate.py具名回放派发/七帧路径；该隔离台移除Arc/模型条件/步兵过滤；engine_knock_kindgate a/b均99/99/11/0，保留INFANTRY子筛选及状态门时仅无位步兵邻人冲击，删子筛选后无位合成非步兵亦冲击，带位两邻人仍拒绝。tests/test_meta_kindgate.py具名回放派发/初速度和步兵七帧路径；合成非步兵落点网格轨迹strict xfail，原生吸血生命周期及Arc/模型条件组合仍gap，见work/re/c_kindgate_report.md；普通延迟只解析及隔离队列，Physics相位未解。ShockWaveSpeed/Cyclonic、非默认Physics、坡地及V4到达仍gap'),
     (NUGGET, 'ParalyzeNugget'): (GUESSED, '部分：engine_emp phase实测PASS16051/31066/61096、hit1；engine_empfire a实测PASS901090/901100/901080/901090，失能窗口按令不开火、到期后新令恢复；仅无筛选EMP，其他类型/筛选/装填相位未验证'),
