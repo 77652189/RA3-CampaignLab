@@ -483,7 +483,7 @@ def write_md(data):
         lines.append(f"| {short(name)} | {v['faction']} | {v['enemy_kinds']} | {fmt_mix(v['mix'])} | {len(sts)} | "
                      f"{shifts} | {round(one * 100)}% | {'、'.join(gaps) or '—'} | {'、'.join(v['enemy_ai']) or '—'} | "
                      f"{feud} |")
-        detail.append(f"### {short(name)}（玩家能用：{'、'.join(v['roster']) or '—'}）")
+        detail.append(f"### {short(name)}（关里给的单位：{'、'.join(v['roster']) or '—'}）")
         detail.append('')
         detail.append('| 段 | 开始 | 构成 | 主要敌人（个数，专打） | 答案 | 一招鲜 | 换 |')
         detail.append('|---|---|---|---|---|---|---|')
