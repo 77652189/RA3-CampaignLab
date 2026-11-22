@@ -254,6 +254,31 @@ class Unit:
         return f'Unit({self.template} {self.body.name})'
 
 
+# The engine model's callbacks a brain answers (ADR 0037 core step 5): model part -> (attribute, the brain's method
+# of that name, or a maker of the answer for one brain). Bound only where the model has the attribute (a model
+# without the structure build states has no power, one without REFINERY no refinery_spot): 'ai' when the brain is
+# made, 'tactics' and 'teams' when the targets block attaches.
+MODEL_HOOKS = {
+    'ai': (('structure_of', 'is_structure'), ('builder', 'build'), ('units', 'units'), ('owned', 'owned'),
+           ('army', 'army'), ('team_point', 'team_point'), ('offers', 'offers'), ('build_offers', 'build_offers'),
+           ('power', 'power_now'), ('energy_of', lambda b: lambda t: simunits.energy(t, b.world.own)),
+           ('near_factory', 'near_factory'), ('upgrade_offers', 'upgrade_offers'), ('upgrader', 'upgrade'),
+           ('refinery_spot', lambda b: lambda ai, frame, template: b.refinery_spot(template)),
+           # BEST_UNIT_* scores with host.efficiency (SimAI.efficiency): the build states then take the idle
+           # barracks every second and the unit builder (every 10 s) finds it busy -- the bench (engine_aiskirm z)
+           # builds only the counter (B handoff 131); off = the unit builder alone, as before round 129
+           ('expected', lambda b: b.expected if getattr(b.host, 'efficiency', False) else None)),
+    # PathfindingCheckType's kick (D152); SimpleExpansion unpacks within Distance on the way (D157); AlphaStrike (a)
+    'tactics': (('reach', 'reach'), ('approach', 'approach'), ('allied', 'allied')),
+    # a slot's team is made once the slot has a target (l4_states.md 1/7; the teams tick before the blocks: INFERRED
+    # one-think lag); a gathering team whose slot's target is gone ends (TeamMaker._slots); PathfindingCheckType at
+    # recruiting (D152): the slot's target as a point
+    'teams': (('has_target', lambda b: lambda ai, key, n: b.slot_target(ai, key, n) is not None),
+              ('target_of', 'slot_target'), ('reach', 'reach_target'), ('carry', 'carry'),
+              ('alive', lambda b: lambda ai, i: i in b.targets.points or any(t.id == i for t in b.view.things))),
+}
+
+
 class Brain:
     """One AI player of the simulator's: the AIPlayer and the world it is given (yard, factories, units, the view)."""
 
@@ -273,8 +298,8 @@ class Brain:
                                        ctx={'path to target': self.path_to_target}, rng=random.Random(host.seed),
                                        index=side_index(side), side=faction and f'PlayerTemplate:{faction}')
         # the short-opening rule (opening.kept_orders) covers structure Builds only: a unit Build is kept (D157,
-        # INFERRED -- bench aiexpb*: Time 0s Deposit, Build AlliedMiner, Time 5s made its miner)
-        self.ai.structure_of = self.is_structure
+        # INFERRED -- bench aiexpb*: Time 0s Deposit, Build AlliedMiner, Time 5s made its miner): structure_of
+        self.hook('ai', self.ai)
         # ResourceMultiplierCheat: the AI's deposits x the line for its difficulty (Mining.mine_due; data.resource_multiplier)
         mult = getattr(host.data, 'resource_multiplier', lambda *a: 1.0)(personality, self.ai.difficulty)
         if mult != 1.0:
@@ -283,27 +308,6 @@ class Brain:
         self.path_rng = random.Random(host.seed)    # the spot's start angles (the engine: the logic random)
         self.tower_rng = random.Random(host.seed)   # a base defence's angle and radius jitter (its own: no other draw moves)
         self.place_rng = random.Random(host.seed + 7)   # the general placement's angle and radius draws (its own too)
-        self.ai.builder = self.build
-        self.ai.units = self.units
-        if hasattr(self.ai, 'owned'):
-            self.ai.owned = self.owned
-        if hasattr(self.ai, 'army'):
-            self.ai.army = self.army
-        self.ai.team_point = self.team_point
-        self.ai.offers = self.offers
-        self.ai.build_offers = self.build_offers
-        if hasattr(self.ai, 'power'):       # an engine model with the structure build states (POWER / TECH)
-            self.ai.power = self.power_now
-            self.ai.energy_of = lambda t: simunits.energy(t, self.world.own)
-        self.ai.near_factory = self.near_factory
-        self.ai.upgrade_offers = self.upgrade_offers
-        self.ai.upgrader = self.upgrade
-        if hasattr(self.ai, 'refinery_spot'):   # an engine model with REFINERY (B round 187)
-            self.ai.refinery_spot = lambda ai, frame, template: self.refinery_spot(template)
-        # BEST_UNIT_* scores (expected below) with host.efficiency (SimAI.efficiency): the build states then
-        # take the idle barracks every second and the unit builder (every 10 s) finds it busy -- the bench (engine_
-        # aiskirm z) builds only the counter (B handoff 131); off = the unit builder alone, as before round 129
-        self.ai.expected = self.expected if getattr(host, 'efficiency', False) else None
         self._protos = {}               # template -> a Body never placed (expected: the candidate)
         self.yard_q = {}                # yard serial, or (serial, 'defense') -> [job]
         self.yard_rest = {}             # the same key -> the last frame it starts nothing (the one after a put)
@@ -383,27 +387,13 @@ class Brain:
                                        gather_point=lambda ai, tac: self.world.waypoints.get(getattr(tac, 'gather', '')
                                                                                            or None))
         self.tactics.rng = random.Random(h.seed)    # state 2's RandomTargetScoreModifier / TimeToKeepTarget
-        self.tactics.reach = self.reach             # PathfindingCheckType's kick (a model that has it; D152)
-        self.tactics.approach = self.approach       # SimpleExpansion unpacks within Distance on the way (D157)
-        # AlphaStrike (a)'s own / allied objects: not the enemies', the civilians' or a Neutral player's
-        self.tactics.allied = lambda ai: self.fighters([
-            b for b in self.living() if not b.scenery and b.owner and b.owner != simworld.CIV
-            and b.owner not in self.view.enemies and self.world.relations.get((self.player, b.owner)) != 'Neutral'])
+        self.hook('tactics', self.tactics)
         self.targets = tg.TargetsBlock(h.data_of('targets'), self.active, lambda ai, f: self.view,
                                        lambda ai, st: self.home, home=self.home, base_of=self.base_of,
                                        held=self.tactics.held)
         self.tactics.targets = self.targets
         self.ai.blocks += [self.targets, self.tactics]
-        # a slot's team is made once the slot has a target (l4_states.md 1/7); the teams tick before the blocks,
-        # so they see the slots of the last think (INFERRED one-think lag)
-        self.ai.teams.has_target = lambda ai, key, n: self.targets.slot_target(
-            self.tactics.state_of(ai, key), n) is not None
-        # a gathering team whose slot's target is gone ends (teams.TeamMaker._slots, work/re/l4_states.md)
-        self.ai.teams.target_of = lambda ai, key, n: self.targets.slot_target(self.tactics.state_of(ai, key), n)
-        self.ai.teams.alive = lambda ai, i: i in self.targets.points or any(t.id == i for t in self.view.things)
-        # PathfindingCheckType at recruiting (a model that has it, D152): the slot's target as a point
-        self.ai.teams.reach = self.reach_target
-        self.ai.teams.carry = self.carry
+        self.hook('teams', self.ai.teams)
         if 'defense' in which:
             self.defense = df.DefenseBlock(self.tactics, lambda ai, f: self.view, bases=lambda ai, f: self.bases,
                                            busy=self.busy, aesthetics=self.stand, radius=self.radius_of,
@@ -416,6 +406,22 @@ class Brain:
             self.ai.blocks.append(self.micro)
         if 'specials' in which:
             self.powers = m['specials'].PlayerPowers([], DIFFICULTY.get(h.level, 'MEDIUM'))
+
+    def hook(self, part, model):
+        """Bind MODEL_HOOKS[part] on that part of the brain's own engine model: each callback the model has."""
+        for name, answer in MODEL_HOOKS[part]:
+            if hasattr(model, name):
+                setattr(model, name, getattr(self, answer) if isinstance(answer, str) else answer(self))
+
+    def allied(self, ai):
+        """AlphaStrike (a)'s own / allied objects: not the enemies', the civilians' or a Neutral player's."""
+        return self.fighters([
+            b for b in self.living() if not b.scenery and b.owner and b.owner != simworld.CIV
+            and b.owner not in self.view.enemies and self.world.relations.get((self.player, b.owner)) != 'Neutral'])
+
+    def slot_target(self, ai, key, n):
+        """The target of slot n of the team template `key`'s state, None when it has none."""
+        return self.targets.slot_target(self.tactics.state_of(ai, key), n)
 
     def active(self, ai, frame):
         """The states whose target slots are picked this think. INFERRED from the slot-pick rule, work/re/l4_states.md (a slot with a busy team does

@@ -716,8 +716,9 @@ def test_ai_import_guard_bites():
 # step 9d: the skirmish AI writes no field of a body either (rule "L8 changes no object field"): a goal, a team, a
 # lifetime, the stats of a body simunits does not know go through their owners (the command port's goal_only,
 # world.add(team=), simbody.last_until / fill); what it marks for itself it keeps (Brain._unpack_ordered). Its own
-# records it may write: a tactics Fighter (`f`) and a hunt goal's state (`state`).
-AI_RECORDS = {'f', 'state'}
+# records it may write: a tactics Fighter (`f`), a hunt goal's state (`state`) and its own engine model's parts the
+# callbacks are bound on (`model`, Brain.hook: MODEL_HOOKS).
+AI_RECORDS = {'f', 'state', 'model'}
 
 
 def ai_object_write_breaks(source=None):
