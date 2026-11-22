@@ -32,6 +32,14 @@ unresolved = {'include': 0, 'parse': 0}
 _incl_cache = {}
 
 
+def clear_caches():
+    """Discard the parsed retail inputs and all the summaries derived from them."""
+    global _state, _census, _wcensus, _camp, _orphans
+    _state = _census = _wcensus = _camp = _orphans = None
+    _incl_cache.clear()
+    unresolved.update(include=0, parse=0)
+
+
 def _check_dirs():
     for p in (SAGEXML, RETAILREF):
         assert os.path.isdir(p), 'retailmodules: required directory missing: %s' % p

@@ -422,8 +422,12 @@ class Inst:
             entry, chunks, refs, name, source, layer
 
 
+def _archive_path(archive):
+    return archive if os.path.isabs(archive) else os.path.join(sa.DATA, archive)
+
+
 def _archive_get(archive):
-    path = archive if os.path.isabs(archive) else os.path.join(sa.DATA, archive)
+    path = _archive_path(archive)
     cache = {}
 
     def get(name):

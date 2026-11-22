@@ -26,6 +26,14 @@ pytestmark = pytest.mark.skipif(
 
 @lru_cache(maxsize=1)
 def _collect(parts, key):
+    import inventory_levels
+    import retailmodules
+    import simcoverage
+
+    # A miss must rebuild the tables and source census for this input snapshot.
+    retailmodules.clear_caches()
+    inventory_levels._retail = None
+    simcoverage._code.clear()
     return inventory.collect(parts)
 
 
@@ -40,6 +48,40 @@ def items():
                       inventory.RETAIL_SCRIPTS, RETAILREF, SAGEXML, AI_DATA, COMPILED, MODEL_REV_FILE)
     # The collector reads private AI files from the pinned Git object, not the working tree.
     return deepcopy(_collect(inventory.PARTS, (key, labpaths.ENGINE_MODEL, os.getenv('CNV_MUSIC_CAPTIONS'))))
+
+
+def test_inventory_cache_refreshes_retail_xml_and_placements(tmp_path, monkeypatch):
+    import inventory_levels as levels
+    import retailmodules
+
+    # Keep this tiny retail census separate from the real data other tests use.
+    spec = importlib.util.spec_from_file_location('retailmodules', retailmodules.__file__)
+    rm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rm)
+    monkeypatch.setitem(sys.modules, 'retailmodules', rm)
+    monkeypatch.setattr(levels, 'rm', rm)
+    monkeypatch.setattr(levels, '_retail', None)
+    monkeypatch.setattr(inventory, 'PARTS', (inventory.MODULE,))
+    sdk, retail = tmp_path / 'sdk', tmp_path / 'retail'
+    sdk.mkdir()
+    retail.mkdir()
+    monkeypatch.setattr(rm, 'SAGEXML', str(sdk))
+    monkeypatch.setattr(rm, 'RETAILREF', str(retail))
+    (sdk / 'object.xml').write_text(
+        '<GameObject id="CacheProbe" xmlns:xi="http://www.w3.org/2001/XInclude">'
+        '<Behaviors><xi:include href="DATA:behavior.xml"/></Behaviors></GameObject>', encoding='utf-8')
+    behavior, placements = sdk / 'behavior.xml', retail / 'map.json'
+    behavior.write_text('<CacheProbeBefore/>', encoding='utf-8')
+    placements.write_text('{"objects": [{"t": "CacheProbe"}]}', encoding='utf-8')
+
+    def census():
+        return [(row['name'], row['all'], row['uses']) for row in items()]
+
+    assert census() == [('Behaviors/CacheProbeBefore', 1, 1)]
+    placements.write_text('{"objects": []}', encoding='utf-8')
+    assert census() == [('Behaviors/CacheProbeBefore', 1, 0)]
+    behavior.write_text('<CacheProbeAfter/>', encoding='utf-8')
+    assert census() == [('Behaviors/CacheProbeAfter', 1, 0)]
 
 
 def test_the_generator_writes_the_page_it_renders(tmp_path, monkeypatch):

@@ -186,7 +186,8 @@ def reuse_shell_assets():
     decoded, rendered = {}, {}
 
     def files(slots, picture=None, screens=True):
-        source = content_key(ARCHIVE, mapxml.__file__, mapxml.sa.__file__, mapxml.refpack.__file__)
+        source = content_key(Path(mapxml._archive_path('Apt.big')).absolute(), mapxml.__file__, mapxml.sa.__file__,
+                             mapxml.big.__file__, mapxml.refpack.__file__)
         key = (source, tuple(slots.items()), screens, repr(shell.T),
                content_key(shell.__file__, apt_textures.__file__, Path(mapxml.__file__).with_name('apt_movie.py'),
                            shell.FONT, shell.VOSS))
@@ -263,6 +264,16 @@ def test_the_commander_overview_shows_no_retail_commander_in_either_edition(edit
         assert sp.prefix_overrides == {'PERSONALITY:': shell.T['officer']} and \
             sp.overrides['APT:COCOMMANDER_NAME_TITLE'] == shell.T['notes_title'] and \
             sp.overrides['APT:CO_COMMANDER'] == sp.overrides['APT:MISSION_COMMANDERS'] == shell.T['officer_title']
+
+
+@needs_game
+def test_reused_shell_assets_follow_the_archive_path(edition, reuse_shell_assets, tmp_path, monkeypatch):
+    with reuse_shell_assets():
+        sp = shell.make('x', 'CampA4', 'zh', later=True)
+        assert any(name.endswith('.bin') for name, _ in sp.files)
+        monkeypatch.setattr(apt_textures.mapxml.sa, 'DATA', str(tmp_path))
+        with pytest.raises(FileNotFoundError, match=r'Apt\.big'):
+            shell.make('x', 'CampA4', 'zh', later=True)
 
 
 def _container_map():
