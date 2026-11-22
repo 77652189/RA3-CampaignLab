@@ -11,6 +11,8 @@ from engine.world.handle import GAP_ACTION
 
 # the skirmish AI's script switches, kept per player for simai (work/re l4_aiswitches.md; docs/engine/aiswitches.md)
 AI_SWITCHES = ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM')
+AI_NO_EFFECT = ('SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING', 'PLAYER_AI_CHANGEUNITBUILDER',      # skirmish_ai_no_effect
+                'PLAYER_AI_CHANGETEAMBUILDER', 'PLAYER_AI_CHANGE_ECONOMY_MANAGER')
 
 
 def player_transfer_ownership_player(sim, name, a, script):
@@ -135,9 +137,11 @@ def skirmish_ai_set_all_enemy_players_priorities(sim, name, a, script):
     sim.ai_switches.setdefault(a[0], {})[name] = int(a[1])     # they do is simai's (engine line B)
 
 
-def skirmish_ai_consider_all_enemies_when_building(sim, name, a, script):
-    # (player): nothing on top -- the AI's building enemies follow the relations as they change (simai's view.enemies);
-    # bench A274 aiallflip: on / late / won pick as off / woff, frame for frame (work/re/a273_consider_all.md)
+def skirmish_ai_no_effect(sim, name, a, script):
+    # nothing on top. CONSIDER_ALL (player): the AI's building enemies follow the relations as they change (simai's
+    # view.enemies); bench A274 aiallflip: on / late / won pick as off / woff, frame for frame. PLAYER_AI_CHANGE*
+    # (player, on): bench A294 aichange: unit builder 0 (and 1 again at 40 s), team builder 0 + economy manager 0 build
+    # what no switch builds, the same units at the same frames +-3
     return None
 
 
@@ -220,7 +224,7 @@ ACTIONS = {
     'PLAYER_LOCK_PLAYER_TECH': player_set_max_player_power_points,
     **dict.fromkeys(AI_SWITCHES, skirmish_ai_set_all_enemy_players_priorities),
     'SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY': skirmish_ai_set_enemy_player_priority,
-    'SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING': skirmish_ai_consider_all_enemies_when_building,
+    **dict.fromkeys(AI_NO_EFFECT, skirmish_ai_no_effect),
     'SKIRMISH_AI_SET_FAVORED_ENEMY': skirmish_ai_set_favored_enemy,
     'SKIRMISH_AI_TRANSFER_ALL': skirmish_ai_transfer_all,
     'PLAYER_TOGGLE_SKIRMISH_AI': player_toggle_skirmish_ai,

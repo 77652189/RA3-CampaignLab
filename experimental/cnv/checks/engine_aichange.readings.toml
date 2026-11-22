@@ -1,0 +1,10 @@
+# A round 294 (11-21): missions/aichange_bench.py, four runs (work/testbench/runs/CampAISw*A_mcp_1121_22*-23*); the
+# switch pressed in the wake script (10 s), right after s1's AI takes over. Program notes: private work/re/a293_changebuilder.md.
+
+[[reading]]
+id = "the_ai_builder_switches_change_nothing_built"
+scenes = {on = {build = "aiubon", check = "a", until = 45}, off = {build = "aiuboff", check = "a", until = 45}, back = {build = "aiubback", check = "a", until = 45}, tb = {build = "aitboff", check = "a", until = 45}}
+bench = "维和/标枪/警犬 by logical frame, all four alike to f603 (~40 s): dogs f344 / f376 (+-1), Javelins f428-431 / f460-463 / f515 / f548 / f601-603, no Peacekeeper; on, back and tb row for row, off missed the f515 sample (3 -> 4 by f576) and ends 0/5/2 at f603 as the others"
+proves = "script actions PLAYER_AI_CHANGEUNITBUILDER (0, and 1 again), PLAYER_AI_CHANGETEAMBUILDER 0, PLAYER_AI_CHANGE_ECONOMY_MANAGER 0: no effect on what the AI builds or when (act_player)"
+item = ["脚本动作 PLAYER_AI_CHANGEUNITBUILDER", "脚本动作 PLAYER_AI_CHANGETEAMBUILDER", "脚本动作 PLAYER_AI_CHANGE_ECONOMY_MANAGER"]
+expect = ["off == on and back == on and tb == on", "off[-1]['标枪'] >= 1"]
