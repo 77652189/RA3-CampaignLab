@@ -4,7 +4,7 @@
 [[reading]]
 id = "the_ai_builder_switches_change_nothing_built"
 scenes = {on = {build = "aiubon", check = "a", until = 45}, off = {build = "aiuboff", check = "a", until = 45}, back = {build = "aiubback", check = "a", until = 45}, tb = {build = "aitboff", check = "a", until = 45}}
-bench = "维和/标枪/警犬 by logical frame, all four alike to f603 (~40 s): dogs f344 / f376 (+-1), Javelins f428-431 / f460-463 / f515 / f548 / f601-603, no Peacekeeper; on, back and tb row for row, off missed the f515 sample (3 -> 4 by f576) and ends 0/5/2 at f603 as the others"
+bench = "维和/标枪/警犬 by logical frame, all four alike to f603 (~40 s): dogs f344 / f376 (+-1), Javelins f428-431 / f460-463 / f515 / f548 / f601-603, no Peacekeeper; on, back and tb row for row, off missed the f515 sample (3 -> 4 by f576) and ends 0/5/2 at f603 as the others. Again 11-22 with s5's tanks 250 south (off the scenery; CampAISw*A_mcp_1122_0623-0627): all four dogs f343-345 / f374-375, Javelins f428-430 / f460-462 / f514-516 / f548-549 / f600-602"
 proves = "script actions PLAYER_AI_CHANGEUNITBUILDER (0, and 1 again), PLAYER_AI_CHANGETEAMBUILDER 0, PLAYER_AI_CHANGE_ECONOMY_MANAGER 0: no effect on what the AI builds or when (act_player)"
 item = ["脚本动作 PLAYER_AI_CHANGEUNITBUILDER", "脚本动作 PLAYER_AI_CHANGETEAMBUILDER", "脚本动作 PLAYER_AI_CHANGE_ECONOMY_MANAGER"]
 expect = ["off == on and back == on and tb == on", "off[-1]['标枪'] >= 1"]

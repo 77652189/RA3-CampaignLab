@@ -23,6 +23,8 @@ BACK_AT = 40.
 def mission(name, off=(), back=False):
     m = allbuild(False)
     m.name = name
+    for o in m.objects:     # s5's tanks 250 south: AllBuild's grid stands six on trees and fences (tests/test_maps.py)
+        o.y -= 250. if o.name.startswith('CNV AllB tank') else 0.
     m.scripts = [s for s in m.scripts if not s.name.startswith('CNV AllB')]      # no 70 s friendship
     ai = m.player('s1')
     m.facts['switched off'] = ' '.join(off) or 'none'
