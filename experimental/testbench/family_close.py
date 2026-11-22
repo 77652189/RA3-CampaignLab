@@ -58,7 +58,7 @@ def centre_tools(guard_src):
     for n in tree.body:
         if isinstance(n, ast.Assign) and any(getattr(t, 'id', '') == 'CENTER' for t in n.targets):
             table = ast.literal_eval(n.value)
-        elif isinstance(n, ast.FunctionDef) and n.name in ('center', '_old_code'):
+        elif isinstance(n, ast.FunctionDef) and n.name in ('center', '_old_code', '_sim_fields'):
             defs.append(n)
     if table is None or not any(d.name == 'center' for d in defs):
         raise ValueError(f'{KERNEL_GUARD} has no CENTER table or center() any more')

@@ -1,5 +1,6 @@
 """Air target eligibility and line of fire at the normal fight entry."""
 import engine.testing.small as simsmall
+import engine.orders.order as simorder
 from engine.ports.command import Command
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
@@ -19,7 +20,7 @@ def test_ground_cannon_rejects_ordered_aircraft_but_antiair_can_aim_past_a_build
     assert s.line_blocked(ifv.x, ifv.y, air, ifv)  # plant intersects even this sight line in 2D
     for attacker in (tank, ifv):
         assert s.commands.do(Command('attack', units=(attacker.name,), target='air')) == (True, '')
-    s.fight()
+    simorder.fight(s, simorder.Peers(s))
     # The cannon falls back to a ground foe. The IFV has ANTI_AIRBORNE,
     # and the line-of-fire obstacle check exempts air.
     assert [(a.name, target.name) for target, _, a in s.firing] == [('tank', 'ground'), ('ifv', 'air')]

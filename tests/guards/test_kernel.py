@@ -271,7 +271,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 2628, 'Sim methods': 161, 'Sim fields': 145, 'Body fields': 44, 'simunits defs': 136,
+CENTER = {'sim.py lines': 2600, 'Sim methods': 155, 'Sim fields': 145, 'Body fields': 44, 'simunits defs': 136,
           'cells with old code': 31}
 
 
@@ -281,6 +281,16 @@ def _old_code(fn):
     body = [n for n in fn.body if not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant)) and
             not isinstance(n, ast.Pass)]
     return bool(body)
+
+
+def _sim_fields(cls):
+    """The names the Sim stores on self or sets in its body, its methods aside (test_sim_layers.sim_members)."""
+    methods = {n.name for n in cls.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    stored = {t.attr for t in ast.walk(cls) if isinstance(t, ast.Attribute) and isinstance(t.ctx, ast.Store)
+              and isinstance(t.value, ast.Name) and t.value.id == 'self'}
+    stored |= {t.id for n in cls.body if isinstance(n, (ast.Assign, ast.AnnAssign))
+               for t in (n.targets if isinstance(n, ast.Assign) else [n.target]) if isinstance(t, ast.Name)}
+    return len(stored - methods)
 
 
 def center(sim_src=None, units_src=None, loop_src=None):
@@ -295,7 +305,7 @@ def center(sim_src=None, units_src=None, loop_src=None):
     cells = {n.name: n for n in loop.body if isinstance(n, ast.FunctionDef)}
     return {'sim.py lines': len(sim_src.splitlines()),
             'Sim methods': sum(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) for n in cls['Sim'].body),
-            'Sim fields': len(_layers.sim_members(sim_src)[1]),
+            'Sim fields': _sim_fields(cls['Sim']),
             'Body fields': sum(isinstance(n, ast.AnnAssign) for n in cls['Body'].body),
             'simunits defs': sum(isinstance(n, ast.FunctionDef) for n in ast.parse(units_src).body),
             'cells with old code': sum(c not in cells or _old_code(cells[c]) for c in frame)}
@@ -310,6 +320,7 @@ def test_the_centre_only_shrinks():
     now = center()
     assert not grown(now), f'the centre grew: {grown(now)}'
     assert now == CENTER, f'the centre shrank: lower CENTER to {now}'
+    assert now['Sim fields'] == len(_layers.sim_members()[1])      # one rule with SIM_SURFACE's names
 
 
 def test_centre_guard_bites():

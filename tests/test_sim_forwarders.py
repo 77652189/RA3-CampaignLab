@@ -71,9 +71,8 @@ FORWARDER_CALLS = {
     ('engine.objects.infiltrator', 'delete'): 10, ('engine.objects.infiltrator', 'destroy'): 1, ('engine.objects.infiltrator', 'send'): 1,
     # simloop: the frame table's cells, each the Sim's forwarder of its block
     **dict.fromkeys([('engine.loop.frame', n) for n in (
-        'aura_tick', 'blast_due', 'capture_due', 'deal', 'death_blast_due', 'fight', 'flee_due',
-        'follow_due', 'hunt_due', 'lose_health', 'self_power_due', 'seq_due', 'suppression_tick',
-        'wfire_due')], 1),
+        'aura_tick', 'blast_due', 'deal', 'death_blast_due', 'lose_health', 'self_power_due', 'suppression_tick',
+        'wfire_due')], 1),     # S2 (ADR 0037): seq / flee / hunt / fight / follow / capture call engine.orders
     # simorder's Peers loan
     ('engine.orders.order', 'delete'): 2, ('engine.orders.order', 'send'): 11,
     ('engine.orders.ability', 'delete'): 1, ('engine.orders.ability', 'modify'): 1, ('engine.orders.ability', 'send'): 1, ('engine.orders.ability', 'toggle_press'): 1,
@@ -102,7 +101,7 @@ FORWARDER_CALLS = {
 # `<r>.name` with <r> one of RECEIVERS (`sim.t`, `world.order_move`, `self._w.stand`, `context.world.bodies`). Only
 # shrinks: a name a package newly reaches is red (reach the part's own home instead), and so is a count above the
 # code's -- lower it in the same commit. Packages are engine.<layer> and the top-level sim*.py files.
-SIM_SURFACE = {'engine.ai': 21, 'engine.combat': 37, 'engine.kernel': 1, 'engine.loop': 43, 'engine.modules': 4,
+SIM_SURFACE = {'engine.ai': 21, 'engine.combat': 37, 'engine.kernel': 1, 'engine.loop': 38, 'engine.modules': 4,
                'engine.objects': 34, 'engine.orders': 48, 'engine.players': 19, 'engine.ports': 102,
                'engine.script': 139, 'engine.state': 27, 'engine.testing': 3, 'engine.world': 2, 'simai_run': 2, 'simbench': 2,
                'simbench_peak': 9, 'simproxy': 29, 'simrecord': 6, 'simshow': 1}

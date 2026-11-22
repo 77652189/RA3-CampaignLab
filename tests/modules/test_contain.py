@@ -8,6 +8,7 @@ from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its c
 import pytest  # noqa: E402
 import engine.objects.garrison as simgarrison  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402
+from engine.orders import order as simorder, ability as simability  # noqa: E402
 import engine.data.units as simunits  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import contain  # noqa: E402
@@ -184,7 +185,7 @@ def test_the_bomber_drop_flies_its_load_to_the_spot_before_it_ejects():
     assert s.garrison.held(g) == [] and not getattr(g, 'flee', None)
     s.garrison.due()                             # emptied: RunOffMapWhenDone sends it off (review 1121mm #2)
     assert s.garrison.leaving == [g]
-    s.flee_due(0)
+    simability.flee_due(s, simorder.Peers(s), 0)
     assert g.flee and 'FLEE_OFF_MAP' in g.script_status
     import engine.script.cond_object as cond     # the type area counts leave out one without SELECTABLE (mm #3)
     s.areas['a'] = [(0, 0), (1000, 0), (1000, 1000), (0, 1000)]

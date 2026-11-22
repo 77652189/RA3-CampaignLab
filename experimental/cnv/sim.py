@@ -1087,10 +1087,6 @@ class Sim:
             return None
         return rule
 
-    def capture_due(self):
-        """simorder.capture_due (L5)."""
-        return simorder.capture_due(self, self._order_peers())
-
     # ---- production: the second hook for simproxy's player (docs/engine/production.md, bench 2026-11-05)
     def factories(self, owner):
         """The owner's living structures that build units (their CommandSet has UNIT_BUILD buttons)."""
@@ -1344,17 +1340,9 @@ class Sim:
         """simorder.stand (L5)."""
         return simorder.stand(b)
 
-    def seq_due(self):
-        """simseq.seq_due (L5)."""
-        return simseq.seq_due(self, self._order_peers())
-
     def order_follow(self, bodies, label, attacking, exact=False, start=None, as_team=False):
         """simorder.order_follow (L5)."""
         return simorder.order_follow(self, self._order_peers(), bodies, label, attacking, exact, start, as_team)
-
-    def follow_due(self):
-        """simorder.follow_due (L5)."""
-        return simorder.follow_due(self, self._order_peers())
 
     def enemy(self, a, b):
         """Player a takes player b as an enemy."""
@@ -1790,21 +1778,9 @@ class Sim:
         """simhunt.hunt_due (L5)."""
         return simhunt.hunt_due(self, self._order_peers(), frame, crew)
 
-    def flee_due(self, frame):
-        """simability.flee_due (L5)."""
-        return simability.flee_due(self, self._order_peers(), frame)
-
     def lose_health(self, frame):
         """simbody.Life.lose_health (L2): LoseHealthUpdate while the body's own toggle carries its statuses."""
         self._life().lose_health(self, frame, self.toggles_of)
-
-    def release(self):
-        """The script events anchored to a flag that is up now: due `delta` after this moment."""
-        for e in list(self.anchored):
-            if self.flags.get(e[0][1]) == 1:
-                self.anchored.remove(e)
-                self.events.append((round(self.t + e[0][2], 6),) + tuple(e[1:]))
-                self.events.sort(key=lambda x: x[0])
 
     def can_hit(self, w, t):
         """A weapon's anti mask against a target: aircraft need ANTI_AIRBORNE, buildings ANTI_STRUCTURE (or
@@ -1890,10 +1866,6 @@ class Sim:
             return True
         x0, y0, x1, y1 = rect[self.border]
         return x0 <= b.x <= x1 and y0 <= b.y <= y1
-
-    def fight(self):
-        """simorder.fight (L5)."""
-        return simorder.fight(self, self._order_peers())
 
     def fight_field(self):
         """(live, armed, targets) for this moment's fight: who is in it, who can fire, who can be shot."""

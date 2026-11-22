@@ -12,6 +12,7 @@ import pytest
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import sim  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402
+from engine.orders import order as simorder, seq as simseq  # noqa: E402
 from engine.ports import command as command_port  # noqa: E402
 from engine.ports.command import Command, Commands, ROUTED, command, event, queued, text  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
@@ -800,7 +801,7 @@ def test_a_sequential_scripts_this_object_is_the_unit_queued_not_a_reference_of_
     s.waypoints['dest'] = (600.0, 300.0)
     s.act('UNIT_EXECUTE_SEQUENTIAL_SCRIPT', ['lead', 'seqtask'], None)
     s.refs['lead'] = other
-    s.seq_due()
+    simseq.seq_due(s, simorder.Peers(s))
     assert (lead.move_to, other.move_to, s.refs['lead']) == ((600.0, 300.0), None, other)
 
 
@@ -827,12 +828,12 @@ def test_a_sequential_script_moves_only_its_units_head_and_only_once_the_unit_is
     first['loops'] = 1
     second = dict(first, loops=0)
     s.seq.append(second)
-    s.seq_due()
+    simseq.seq_due(s, simorder.Peers(s))
     lead.path = [(600.0, 300.0)]                    # on its way (this world routes in the move cell)
-    s.seq_due()
+    simseq.seq_due(s, simorder.Peers(s))
     assert (first['step'], second['step'], lead.move_to) == (0, -1, (600.0, 300.0))
     sim.simorder.stand(lead)
-    s.seq_due()
+    simseq.seq_due(s, simorder.Peers(s))
     assert s.seq == [second, first] and (first['step'], first['loops']) == (-1, 0)
 
 
@@ -842,7 +843,7 @@ def test_a_sequential_script_stopped_this_frame_by_another_units_step_runs_no_mo
     s, lead, other = _seq_world([('UNIT_STOP_SEQUENTIAL_SCRIPT', 'other')],
                                 ('seqB', [('MOVE_NAMED_UNIT_TO', '<This Object>', 'dest')]))
     s.act('UNIT_EXECUTE_SEQUENTIAL_SCRIPT', ['other', 'seqB'], None)
-    s.seq_due()
+    simseq.seq_due(s, simorder.Peers(s))
     assert (other.move_to, [r['b'] for r in s.seq]) == (None, [lead])
 
 
@@ -854,7 +855,7 @@ def test_a_sequential_step_reads_the_unit_only_where_it_wrote_this_object():
     made under its name since)."""
     import engine.orders.seq as simseq
     s, lead, other = _seq_world([('MOVE_NAMED_UNIT_TO', 'lead', 'dest')])
-    s.seq_due()
+    simseq.seq_due(s, simorder.Peers(s))
     assert (lead.move_to, other.move_to, s.refs['lead']) == (None, (600.0, 300.0), other)
     s, lead, other = _seq_world([('MOVE_NAMED_UNIT_TO', '<This Object>', 'dest')])
     seen = []
@@ -875,7 +876,7 @@ def test_a_step_writing_this_object_and_the_units_name_reads_the_name_as_written
     foe = s.add('foe', 'SovietAntiInfantryInfantry', 'Player_2', 500.0, 300.0)
     s.relations[('Player_1', 'Player_2')] = s.relations[('Player_2', 'Player_1')] = 'Enemy'
     s.refs['lead'] = foe
-    s.seq_due()
+    simseq.seq_due(s, simorder.Peers(s))
     assert lead.goal is foe and not s.acting and s.refs['lead'] is foe
 
 
@@ -887,7 +888,7 @@ def test_a_place_written_with_this_object_and_the_units_name_is_still_the_place(
     foe = s.add('foe', 'SovietAntiInfantryInfantry', 'Player_2', 500.0, 300.0)
     s.refs['lead'] = foe
     s.waypoints['lead'] = (650.0, 420.0)
-    s.seq_due()
+    simseq.seq_due(s, simorder.Peers(s))
     assert lead.move_to is not None and other.move_to is None and not s.acting
     assert math.hypot(lead.move_to[0] - 650.0, lead.move_to[1] - 420.0) < 20.0
 

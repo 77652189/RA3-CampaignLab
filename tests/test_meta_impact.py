@@ -10,6 +10,7 @@ _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 from engine.combat.host import Peers, impact_ground_z  # noqa: E402
 from engine.modules import locomotor  # noqa: E402
+from engine.orders import order as simorder  # noqa: E402
 
 
 def test_meta_impact_arc_probe_has_one_retail_payload_and_one_unfiltered_control():
@@ -701,7 +702,7 @@ def test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands()
         if e.eng.frame == 240:
             e.order_attack(man, target.name)
         e.move(1 / 15)
-        e.fight()
+        simorder.fight(e, simorder.Peers(e))
         e.deal(1 / 15)
         if first is None and target.health < full:
             first = e.eng.frame
@@ -744,7 +745,7 @@ def test_physics_p4b_a_knocked_man_does_not_fire_in_the_air_with_the_target_in_r
             e.order_attack(man, target.name)
         e._harm().meta_impact_tick(e, Peers(e))
         e.move(1 / 15)
-        e.fight()
+        simorder.fight(e, simorder.Peers(e))
         e.deal(1 / 15)
         if sim.Sim.in_range(man, target, weapon):
             reach.append(e.eng.frame)
@@ -788,7 +789,7 @@ def test_physics_p4b_an_attack_order_kept_through_the_knock_walks_at_landing_plu
             e.order_attack(man, target.name)
         e._harm().meta_impact_tick(e, Peers(e))
         e.move(1 / 15)
-        e.fight()
+        simorder.fight(e, simorder.Peers(e))
         e.deal(1 / 15)
         if e.eng.frame > 199 and (man.x, man.y) != (1560, 3280):
             first = e.eng.frame

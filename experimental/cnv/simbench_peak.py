@@ -24,6 +24,7 @@ again when none is kept or restore refuses it), on Sim(model=False), the result'
 Run it through experimental/testbench/cpupool.py run -n 1 -- to share the machine with other jobs."""
 import sim  # noqa: I001  (first: it puts experimental/cnv and campaign on the path)
 import argparse
+import contextlib
 import dataclasses
 import hashlib
 import importlib.util
@@ -89,17 +90,30 @@ def scene(units=UNITS, model=True):
     return s
 
 
-def _clock(s, name, totals):
-    """s.<name> timed into totals[name] (an instance attribute over the method, this Sim only)."""
-    plain = getattr(s, name)
-
+def _timed(plain, name, totals):
     def timed(*a, **k):
         t0 = time.perf_counter()
         try:
             return plain(*a, **k)
         finally:
             totals[name] = totals.get(name, 0.0) + time.perf_counter() - t0
-    setattr(s, name, timed)
+    return timed
+
+
+@contextlib.contextmanager
+def _clocked(s, totals):
+    """INSIDE timed into totals while in the block: s.aura_tick / s.move as instance attributes over the methods (this
+    Sim only); the fight, the rule the frame loop calls (engine.orders.order.fight, ADR 0037 S2), swapped on its
+    module and put back on leaving."""
+    for name in INSIDE:
+        if name != 'fight':
+            setattr(s, name, _timed(getattr(s, name), name, totals))
+    rule = simloop.simorder.fight
+    simloop.simorder.fight = _timed(rule, 'fight', totals)
+    try:
+        yield
+    finally:
+        simloop.simorder.fight = rule
 
 
 def rev():
@@ -117,17 +131,16 @@ def run(secs=SECS, units=UNITS, model=True):
     build = time.perf_counter() - t0
     start = len(s.bodies)
     cells, inside = {}, {}
-    for name in INSIDE:
-        _clock(s, name, inside)
     frame = simloop.timed(cells)
     s.step = lambda: simloop.step(s, frame)
     slices, done = [], 0.0
-    while done < secs - 1e-9:
-        step = min(SLICE, secs - done)
-        t0 = time.perf_counter()
-        s.advance(int(round(step * s.fps)))
-        slices.append((step, time.perf_counter() - t0))
-        done += step
+    with _clocked(s, inside):
+        while done < secs - 1e-9:
+            step = min(SLICE, secs - done)
+            t0 = time.perf_counter()
+            s.advance(int(round(step * s.fps)))
+            slices.append((step, time.perf_counter() - t0))
+            done += step
     wall = sum(w for _, w in slices)
     owners = [owner for _, owner, *_ in SIDES]
     return {'rev': rev(), 'units': units, 'secs': secs, 'model': s.eng is not None, 'build': round(build, 2),
@@ -225,22 +238,21 @@ def run_ai(secs=SECS, start=None, scene=AI_SCENE, path=None):
     s = ai.sim
     placed, first_frame = len(s.bodies), ai.frame
     cells, inside = {}, {}
-    for name in INSIDE:
-        _clock(s, name, inside)
     frame = simloop.timed(cells)
     s.step = lambda: simloop.step(s, frame)
     slices = []
-    for offset in range(0, frames, int(SLICE * simai.FPS)):
-        before = ai.frame
-        count = min(int(SLICE * simai.FPS), frames - offset)
-        t0 = time.perf_counter()
-        ai.advance(count)
-        elapsed = time.perf_counter() - t0
-        advanced = ai.frame - before
-        if advanced:
-            slices.append((advanced / simai.FPS, elapsed))
-        if advanced < count:
-            break
+    with _clocked(s, inside):
+        for offset in range(0, frames, int(SLICE * simai.FPS)):
+            before = ai.frame
+            count = min(int(SLICE * simai.FPS), frames - offset)
+            t0 = time.perf_counter()
+            ai.advance(count)
+            elapsed = time.perf_counter() - t0
+            advanced = ai.frame - before
+            if advanced:
+                slices.append((advanced / simai.FPS, elapsed))
+            if advanced < count:
+                break
     advanced = ai.frame - first_frame
     if not advanced:
         raise RuntimeError(f'{"/".join(scene)} did not advance')

@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / 'experimental' / 'campaign'))
 import parts  # noqa: E402
 import sim  # noqa: E402
 import simstatic  # noqa: E402
+from engine.orders import order as simorder  # noqa: E402
 from maps import festival  # noqa: E402
 from parts import NOT, Mission, Script, square  # noqa: E402
 
@@ -459,7 +460,7 @@ def test_a_team_path_moves_on_when_its_first_member_is_there():
     crew = [s.add(f'u{i}', 'JapanAntiInfantryInfantry', s.foe, x - 40 * i, y) for i in range(3)]
     s.order_follow(crew, 'Road', False, start='R1', as_team=True)
     crew[0].path = crew[1].path = []
-    assert crew[2].path and s.follow_due() is None and crew[0].follow is crew[2].follow and crew[2].follow['at'] == 'R2'
+    assert crew[2].path and simorder.follow_due(s, simorder.Peers(s)) is None and crew[0].follow is crew[2].follow and crew[2].follow['at'] == 'R2'
 
 
 def test_a_path_follower_loses_no_time_at_its_waypoints():

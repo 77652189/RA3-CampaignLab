@@ -2,6 +2,7 @@
 import pytest
 
 import engine.testing.small as simsmall
+import engine.orders.order as simorder
 from engine.ports.command import Command
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
@@ -29,7 +30,7 @@ def test_guard_area_uses_idle_scan_and_stance_after_quarry_dies(stance, returns)
     assert tank.x > HOME[0]
 
     s.destroy(foe, '测试')
-    s.fight()
+    simorder.fight(s, simorder.Peers(s))
     assert tank.chase is None
     if returns:
         assert (tank.home, tank.dest, tank.auto_to) == (HOME, HOME, HOME) and tank.path

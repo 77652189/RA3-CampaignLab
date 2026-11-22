@@ -16,6 +16,7 @@ import math
 from time import perf_counter
 
 from engine.world.handle import DT          # seconds a tick (sim.DT; the fight's damage step reads it too, L0)
+from engine.orders import order as simorder, ability as simability, hunt as simhunt, seq as simseq   # L5 rules
 LAG = 0.0                        # the readings' clock: mission seconds, as the bench's since 4aed60f (ADR 0007: the
                                  # bench counts mission time, at 8x). Expectations written before that counted wall
                                  # seconds from the menus' end; the simulator's versions of the checks carry their own
@@ -33,7 +34,12 @@ class Tick:
 
 # ---- cells (the rules stay in their owners; a cell only calls one and holds its gate)
 def release(s, frame, tick):
-    s.release()
+    """The script events anchored to a flag that is up now: due `delta` after this moment."""
+    for e in list(s.anchored):
+        if s.flags.get(e[0][1]) == 1:
+            s.anchored.remove(e)
+            s.events.append((round(s.t + e[0][2], 6),) + tuple(e[1:]))
+            s.events.sort(key=lambda x: x[0])
 
 
 def events(s, frame, tick):
@@ -52,7 +58,7 @@ def scripts(s, frame, tick):
 
 def seq(s, frame, tick):
     if s.seq:
-        s.seq_due()
+        simseq.seq_due(s, simorder.Peers(s))
 
 
 def handed(s, frame, tick):
@@ -87,12 +93,12 @@ def suppression(s, frame, tick):
 
 
 def flee(s, frame, tick):
-    s.flee_due(frame)
+    simability.flee_due(s, simorder.Peers(s), frame)
 
 
 def hunt(s, frame, tick):
     if s.hunts:
-        s.hunt_due(frame)
+        simhunt.hunt_due(s, simorder.Peers(s), frame, None)
 
 
 def toggles(s, frame, tick):
@@ -168,7 +174,7 @@ def tick_first(s, frame, tick):
         tick.moved = True
         s.aura_tick()
         if s.combat:
-            s.fight()
+            simorder.fight(s, simorder.Peers(s))
         if not s.shot_clock:
             s.move()
             tick.coarse = frame
@@ -183,12 +189,12 @@ def shot_clock(s, frame, tick):
 # ---- right after a coarse move, on its frame only (tick_first / shot_clock): what move's tail was
 def follow(s, frame, tick):
     if tick.coarse == frame:
-        s.follow_due()
+        simorder.follow_due(s, simorder.Peers(s))
 
 
 def capture(s, frame, tick):
     if tick.coarse == frame:
-        s.capture_due()
+        simorder.capture_due(s, simorder.Peers(s))
 
 
 def infiltrate(s, frame, tick):

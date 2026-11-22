@@ -1,5 +1,6 @@
 """Stopping early and exhausting a fallback route retain the command's intent."""
 import engine.orders.order as simorder
+import engine.orders.ability as simability
 import engine.testing.small as simsmall
 from engine.ports.command import Command
 from engine.modules import locomotor  # noqa: E402
@@ -30,7 +31,7 @@ def test_stop_cancels_a_pending_run_off_map():
     start = (runner.x, runner.y)
     s.order_stop(runner)
     assert runner.flee is None
-    s.flee_due(s.frame_now() + 1)
+    simability.flee_due(s, simorder.Peers(s), s.frame_now() + 1)
     assert (runner.x, runner.y) == start
 
 

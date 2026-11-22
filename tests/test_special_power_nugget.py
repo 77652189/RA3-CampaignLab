@@ -7,6 +7,7 @@ _spec = importlib.util.spec_from_file_location('simbench_spng', Path(__file__).r
                                              'experimental/cnv/simbench.py')
 _harness = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_harness)
+from engine.orders import order as simorder  # noqa: E402
 
 
 @pytest.mark.parametrize('mission,expected', [
@@ -254,7 +255,7 @@ def test_scrambler_kept_order_stops_cached_fire_and_resumes_after_expiry():
     now = [300]
     e.frame_now = lambda: now[0]
     e.t = 20
-    e.fight()
+    simorder.fight(e, simorder.Peers(e))
     assert any(by is victim for _, _, by in e.volleys)
     hp = sink.hp
     mid = re.search(r'AttributeModifierName="([^"]+)"', retail_parts()[1]).group(1)
@@ -272,7 +273,7 @@ def test_scrambler_kept_order_stops_cached_fire_and_resumes_after_expiry():
     assert 'NO_ATTACK' not in victim.status
     assert victim.goal is sink
     # No NAMED_ATTACK or order_attack here: only expiry releases the old order.
-    e.fight()
+    simorder.fight(e, simorder.Peers(e))
     for frame in range(315, 330):
         now[0], e.t = frame, frame / 15
         e.deal(1 / 15)
