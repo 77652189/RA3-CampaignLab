@@ -1,7 +1,7 @@
-"""Named conyard diagnostic replays; distance semantics remain unverified.
+"""The conyard diagnostic's private original archive; distance semantics remain unverified.
 
-Measured eligibility gate: work/re/c_conyard_report.md. These tests must not
-be registered as acceptance for either conyard distance or its time exemption.
+Measured eligibility gate: work/re/c_conyard_report.md. The simulator replay is a reading
+(checks/engine_aiconyard.readings.toml), not acceptance of the conyard distance or its time exemption.
 """
 import importlib.util
 import json
@@ -14,14 +14,6 @@ spec = importlib.util.spec_from_file_location('simai_run', ROOT / 'experimental/
 simai_run = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(simai_run)
 simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
-
-
-@pytest.mark.skipif(not simai.available(), reason='no private AI model')
-@pytest.mark.parametrize('build', ['aicyard0', 'aicyard300'])
-def test_conyard_named_gate_replay(build):
-    w = simai_run.run(build, 'a', until=36)
-    rows = [tuple(values) for second, values in w.sim.series if 30 <= second <= 35]
-    assert rows and all(row == (1, 0, 0, 1) for row in rows), rows[-3:]
 
 
 @pytest.mark.parametrize('build', ['aicyard0', 'aicyard300'])

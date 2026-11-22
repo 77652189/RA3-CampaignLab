@@ -152,7 +152,7 @@ NOTES = {
     '目标/AITargetingHeuristic.MinDistanceFromConyardEntrance': (TODO,
         'C engine_aiconyard aicyard0/300:a仅切出口距离0/300、保留原15s豁免，两局核心/电厂/近处电厂/宿主均1/0/0/1。'
         'CNVStateTP队伍均无成员、目标-1，tgt未发布该状态记录；不能以无行推断未调用或以基地锚点代出口。'
-        'tests/test_conyard_target.py仅断言诊断读数和具名回放，缺同帧真实出口/候选资格/选址点/起算帧；'
+        '读数checks/engine_aiconyard.readings.toml只是诊断回放，缺同帧真实出口/候选资格/选址点/起算帧；'
         '两局预算耗完，暂停且整字段未做，不晋升；见work/re/c_conyard_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=Team': (TODO,
         'C核对SDK两原名宿主AITarget_S01_Warriors/Attackers，编译状态AIState_S01_KillWarriors01引用两者；'
