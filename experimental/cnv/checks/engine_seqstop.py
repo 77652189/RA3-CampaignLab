@@ -18,6 +18,16 @@ team, a group of its members made at the call; a step waits till the group is id
   [simulator, the group idle = every living member idle: 走 1 -> 11 once w1 is at WF (~7 s; not at once, w2 being
   idle) -> 111, 1111 once both are at W2 (~16 s); 位 1 -> 6; 停 1 -> 1001 at 20 s, s1 still at SF (8); L 1 -> 11 at
   the kill (the dead member out of the group: 位 16 -> 48)]
+
+engine_seqguard:g -- TEAM_FACE_WAYPOINT / TEAM_GUARD_FOR_SECONDS as retail j04 writes them in a team's sequential script
+(A298 read of the handlers: the team face is NAMED_FACE_WAYPOINT on each member with an AI; the team guard is the team
+idle's handler -- each member's order dropped, the team's record waits n x 15 frames). Two two-tank crews and a tank:
+  G: [+1, TEAM_FACE_WAYPOINT(<This Team>, N), +10, TEAM_GUARD_FOR_SECONDS(<This Team>, 6), +100,
+      MOVE_TEAM_TO(<This Team>, GF 600 east), +1000];  K: the same with TEAM_IDLE_FOR_SECONDS 6 (the same handler);
+  I: UNIT_EXECUTE_SEQUENTIAL_SCRIPT [+1, UNIT_IDLE_FOR_SECONDS(<This Object>, 5), +10] -- 5 an integer (engine_acts2's
+     5.0 went into the argument's float slot; the handler reads the integer one).
+  守帧 / 闲帧 / 单帧 = frames with G == 11 / K == 11 / I == 1 (the wait); 位 = 1 G >= 111, 2 K >= 111, 4 I >= 11,
+  8 g1 in GF, 16 k1 in KF.
 """
 from maps import probe_border
 from parts import Mission, Script, Test, square
@@ -109,5 +119,47 @@ def team(m):
     return t
 
 
-MISSION = {'engine_seqstop': mission, 'engine_seqteam': team_mission}
-CHECKS = {'engine_seqstop': {'a': check}, 'engine_seqteam': {'t': team}}
+GUARD = {'G': 4100., 'K': 4400.}
+
+
+def guard_mission():
+    m = Mission(name='CampSeqGuard', map=probe_border, units=[], facts={})
+    o = probe_border.SITES['stop row']
+    rows = [(k + str(i), k, 600., y + 120. * (i - 1)) for k, y in GUARD.items() for i in (1, 2)] + [('I1', 'I', 600., 4700.)]
+    for role, k, x, y in rows:
+        m.put('AlliedAntiVehicleVehicleTech1', 'stop row', x - o.x, y - o.y, name=f'CNV SeqGuard {role}', role=role,
+              angle=0., props={'originalOwner': m.crew(k)})
+    for k, y in GUARD.items():
+        m.waypoint(k, f'CNV SeqGuard {k} Goal', 'stop row', 1200. - o.x, y - o.y)
+    m.waypoint('N', 'CNV SeqGuard North', 'stop row', 900. - o.x, 5400. - o.y)
+    return m
+
+
+def guard(m):
+    t = Test()
+    c = {k: 'CNV_SeqGuard_' + k for k in ('G', 'K', 'I')}
+    wait = {'G': 'TEAM_GUARD_FOR_SECONDS', 'K': 'TEAM_IDLE_FOR_SECONDS'}
+    t.scripts += [Script(f'Test SeqGuard {k}', [], [
+        ('INCREMENT_COUNTER', 1, c[k]), ('TEAM_FACE_WAYPOINT', '<This Team>', m.mark('N')),
+        ('INCREMENT_COUNTER', 10, c[k]), (w, '<This Team>', 6), ('INCREMENT_COUNTER', 100, c[k]),
+        ('MOVE_TEAM_TO', '<This Team>', m.mark(k)), ('INCREMENT_COUNTER', 1000, c[k])], sub=True)
+        for k, w in wait.items()]
+    t.scripts.append(Script('Test SeqGuard I', [], [
+        ('INCREMENT_COUNTER', 1, c['I']), ('UNIT_IDLE_FOR_SECONDS', '<This Object>', 5),
+        ('INCREMENT_COUNTER', 10, c['I'])], sub=True))
+    s8.at(t, 'seqguard go', 1., [('TEAM_EXECUTE_SEQUENTIAL_SCRIPT', m.crew(k), f'Test SeqGuard {k}') for k in wait] +
+          [('UNIT_EXECUTE_SEQUENTIAL_SCRIPT', m.role('I1').name, 'Test SeqGuard I')])
+    for k, label, n in (('G', '守帧', 11), ('K', '闲帧', 11), ('I', '单帧', 1)):
+        s8.frames(t, f'CNV_SeqGuard_{k}W', label, [('COUNTER', c[k], 2, n)])
+    for k in GUARD:
+        t.areas['SeqGuard ' + k] = square(*m.point(k), 80.)
+    s8.total(t, 'CNV_SeqGuard_Where', '位', [
+        (1, ('COUNTER', c['G'], 3, 111)), (2, ('COUNTER', c['K'], 3, 111)), (4, ('COUNTER', c['I'], 3, 11)),
+        (8, ('NAMED_INSIDE_AREA', m.role('G1').name, 'SeqGuard G')),
+        (16, ('NAMED_INSIDE_AREA', m.role('K1').name, 'SeqGuard K'))])
+    s8.watch(t, 20., .5)
+    return t
+
+
+MISSION = {'engine_seqstop': mission, 'engine_seqteam': team_mission, 'engine_seqguard': guard_mission}
+CHECKS = {'engine_seqstop': {'a': check}, 'engine_seqteam': {'t': team}, 'engine_seqguard': {'g': guard}}

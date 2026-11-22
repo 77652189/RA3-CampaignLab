@@ -45,3 +45,17 @@ def test_stop_and_stand_drop_the_order_and_a_short_move_is_held_up():
     assert not simorder.held_up(b)                       # within ARRIVE: it got there
     simorder.stand(b)
     assert b.mode == 'idle' and b.move_to is None and simseq.idle(simorder.Peers(s), b)
+
+
+def test_an_idle_writes_its_wait_on_the_units_or_the_teams_first_record():
+    # A298 (engine_seqguard:g): n x 15 frames for _SECONDS, the argument's integer slot (a float reads 0); the wait
+    # spans the steps either side of it (2 fewer frames skipped); a unit's record, or the team's (b None)
+    import engine.script.act_order as act
+    assert (act._wait('TEAM_GUARD_FOR_SECONDS', 6), act._wait('UNIT_IDLE_FOR_FRAMECOUNT', 30),
+            act._wait('UNIT_IDLE_FOR_SECONDS', 5.0)) == (90, 30, 0)
+    u, other = object(), object()
+    seq = [{'b': other, 'team': 'T'}, {'b': None, 'team': 'T'}, {'b': u, 'team': 'T'}, {'b': u, 'team': 'T'}]
+    simseq.wait(seq, 90, team='T')
+    simseq.wait(seq, 75, u)
+    simseq.wait(seq, 9, team='nobody')
+    assert [r.get('wait') for r in seq] == [None, 88, 73, None]

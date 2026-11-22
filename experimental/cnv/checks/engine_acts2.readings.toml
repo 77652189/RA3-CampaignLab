@@ -8,7 +8,8 @@ bench = """seq, bench 11-13 `run_queue engine_acts_seq:seq` (CampActsSSeq, round
 the same unit waits for the first -- 排 0 then 11 (never 10); UNIT_IDLE_FOR_SECONDS in it holds nothing back -- 等 11 \
 from the first second (the bench is 1-2 s ahead)"""
 proves = """sim UNIT_EXECUTE_SEQUENTIAL_SCRIPT runs the subroutine once, each step after the move before it is done; a second \
-one given to the same unit waits for the first; UNIT_IDLE_FOR_SECONDS in it holds nothing back."""
+one given to the same unit waits for the first; UNIT_IDLE_FOR_SECONDS 5.0 in it holds nothing back (written as a float: \
+the handler reads the argument's integer slot, 0 -- engine_seqguard:g has the integer wait)."""
 let = {S = "list(zip(times, vals(rows)))[1:]", dedup = "lambda xs: [k for j, k in enumerate(xs) if j == 0 or xs[j - 1] != k]", column = "lambda k: dedup([v[k] for t, v in S])"}
 expect = [
     "column(0) == [1, 11, 111]",

@@ -53,3 +53,18 @@ W2 (位 56 from f219 on); w1 crossed it (58 at f173-203) and went on: the two ke
 proves = """sim team move: the vehicles' spots keep the team's spread round the point (each drives the same ~600), \
 so they arrive together (simpath.formation_spots)"""
 expect = ["vals(rows)[-1][2] & 6 == 0", "245 <= next(v for v in vals(rows) if v[0] == 1111)[3] <= 265"]
+
+[[reading]]
+id = "seqguard_team_guard_and_idle_hold_the_teams_next_step"
+scene = {build = "engine_seqguard", check = "g", until = 21}
+bench = """engine_seqguard:g, `run_queue` CampSeqGuard_mcp_1122_025013 (A298), 守帧 / 闲帧 / 单帧 / 位: s1 24 24 28 0, s5 76 76 75 4, \
+s6-s12 90 90 75 7, s13-s21 90 90 75 31 -- TEAM_GUARD_FOR_SECONDS 6 and TEAM_IDLE_FOR_SECONDS 6 hold the next step 90 \
+frames each, UNIT_IDLE_FOR_SECONDS 5 (an integer) 75; both crews then reach their goals"""
+proves = """sim TEAM_GUARD_FOR_SECONDS is the team idle (A298 read): the team's sequential script waits n x 15 frames, as \
+TEAM_IDLE_FOR_SECONDS and the unit's UNIT_IDLE_FOR_SECONDS do (engine.orders.seq.wait); TEAM_FACE_WAYPOINT in the \
+script is not lost and holds nothing back; the move after the wait goes."""
+item = ["脚本动作 TEAM_GUARD_FOR_SECONDS", "脚本动作 TEAM_FACE_WAYPOINT"]
+expect = [
+    "vals(rows)[-1][:3] == [90, 90, 75]",
+    "vals(rows)[-1][3] == 31 and any(v[3] == 7 for v in vals(rows))",
+]

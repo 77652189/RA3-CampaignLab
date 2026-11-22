@@ -14,6 +14,7 @@ teleport and the AI hand-over (they drop the unit's order with `stand`, a god's 
 import math
 
 import engine.orders.order as simorder
+import engine.orders.seq as simseq
 from engine.ports.command import Command
 from engine.script.common import TEAM_COMMANDS, TEAM_FOLLOWS, team_crew
 from engine.world.handle import CIV, GAP_ACTION
@@ -134,6 +135,19 @@ def named_face_waypoint(sim, name, a, script):
         sim.change()
 
 
+def _crew(sim, name, who):
+    """A TEAM_ action's members, else the living unit of that name (none: [])."""
+    return sim.members(who) if name.startswith('TEAM_') else [b for b in [sim.body(who)] if b and b.alive]
+
+
+def team_face_waypoint(sim, name, a, script):
+    # (team, waypoint) A298 read: NAMED_FACE_WAYPOINT on each member with an AI
+    crew = [b for b in _crew(sim, name, a[0]) if b.speed]
+    if crew and sim.point(a[1]) is not None:
+        _order_bodies(sim, 'face', crew, place=a[1])
+        sim.change()
+
+
 def unit_teleport_to_waypoint(sim, name, a, script, unit=None):
     # `unit`: the member a team action picked (the object itself, not a reference of its name: 11-19 sweep)
     b, p = unit if unit is not None else sim.body(a[0]), sim.point(a[1])
@@ -169,15 +183,29 @@ def player_allow_ai_autoacquire(sim, name, a, script):
         _order_bodies(sim, 'auto_acquire', crew, ('on', bool(int(a[1]))))
 
 
+def _wait(name, n):
+    """An IDLE_FOR_* / GUARD_FOR_SECONDS count as its sequential-script wait in frames (l2_scripts1 3): the argument's
+    integer slot -- a float written (mapscript.encode_arg's float slot: engine_acts2's 5.0) reads 0; _SECONDS x 15."""
+    n = n if isinstance(n, int) else 0
+    return n * 15 if name.endswith('_SECONDS') else n
+
+
+def _hold(sim, name, n, b=None, team=None):
+    """The wait on the unit's / team's sequential script (simseq.wait)."""
+    simseq.wait(sim.seq, _wait(name, n), b, team)
+
+
 def team_idle_for_seconds(sim, name, a, script):
-    # (team, n) INFERRED: the unit version on every member (it drops the order: engine_scripts7 idle)
+    # (team, n) the members' orders dropped (engine_scripts7 idle) and the team's sequential script waits (A298:
+    # TEAM_GUARD_FOR_SECONDS is this handler, engine_seqguard:g)
     _order_bodies(sim, 'idle', [b for b in sim.members(a[0]) if b.speed])
+    _hold(sim, name, a[1], team=a[0])
 
 
 def team_attack_team(sim, name, a, script):
     # (team / unit, team) INFERRED (Generals groupAttackTeam): each attacker on the target team's nearest
     # living member; when that one dies the fight picks the next (auto target). pending_scripts9 atk
-    crew = sim.members(a[0]) if name == 'TEAM_ATTACK_TEAM' else [b for b in [sim.body(a[0])] if b and b.alive]
+    crew = _crew(sim, name, a[0])
     them = sim.members(a[1])
     for b in crew:
         if them:                # the nearest member by serial (its name for the record): no reference stands in
@@ -192,6 +220,7 @@ def unit_idle_for_framecount(sim, name, a, script):
     b = sim.body(a[0])
     if b and b.alive and b.speed:
         _order(sim, 'idle', [a[0]])
+        _hold(sim, name, a[1], b)
 
 
 def team_hunt(sim, name, a, script):
@@ -209,7 +238,7 @@ def team_hunt(sim, name, a, script):
     # barracks), and NAMED_HUNT moved a woken AI's (Soviet_3's) conscript neither. So: an attack-move of the
     # crew to the nearest hostile object, again after each target dies (Sim.hunt_due; the AI's own HuntTactic
     # in the model is engine line B's: work/re/a216_hunt_interface.md)
-    crew = sim.members(a[0]) if name == 'TEAM_HUNT' else [b for b in [sim.body(a[0])] if b and b.alive]
+    crew = _crew(sim, name, a[0])
     movers = [b for b in crew if b.speed > 0]
     if name == 'TEAM_HUNT' and movers and sim.tactical(movers[0].owner):
         _order_bodies(sim, 'hunt', movers)
@@ -224,7 +253,7 @@ def unit_ai_transfer(sim, name, a, script):
     # notes read no order cleared, yet a move given in the same script or 3 s before never arrived; the
     # player's crew kept both. Handed back (off): not benched, nothing done. What a woken AI then does with
     # them is engine B's (AI not simulated)
-    crew = sim.members(a[0]) if name == 'TEAM_AI_TRANSFER' else [b for b in [sim.body(a[0])] if b and b.alive]
+    crew = _crew(sim, name, a[0])
     theirs = [b for b in crew if b.owner not in (sim.human, CIV)]
     if theirs and int(a[1]):
         for b in theirs:
@@ -324,12 +353,14 @@ ACTIONS = {
     'TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE': team_move_to_nearest_object_of_type,
     'TEAM_GUARD_AREA_FROM_POSITION': team_guard_area_from_position,
     'NAMED_FACE_WAYPOINT': named_face_waypoint,
+    'TEAM_FACE_WAYPOINT': team_face_waypoint,
     'UNIT_TELEPORT_TO_WAYPOINT': unit_teleport_to_waypoint,
     'TEAM_TELEPORT_TO_WAYPOINT': team_teleport_to_waypoint,
     'UNIT_ALLOW_AI_AUTOACQUIRE': unit_allow_ai_autoacquire,
     'PLAYER_ALLOW_AI_AUTOACQUIRE': player_allow_ai_autoacquire,
     'TEAM_IDLE_FOR_SECONDS': team_idle_for_seconds,
     'TEAM_IDLE_FOR_FRAMECOUNT': team_idle_for_seconds,
+    'TEAM_GUARD_FOR_SECONDS': team_idle_for_seconds,
     'TEAM_ATTACK_TEAM': team_attack_team,
     'NAMED_ATTACK_TEAM': team_attack_team,
     'UNIT_IDLE_FOR_FRAMECOUNT': unit_idle_for_framecount,
