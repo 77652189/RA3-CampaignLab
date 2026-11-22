@@ -42,3 +42,19 @@ expect = [
     "all(at[k][0] == 20 for k in range(22, 41))",
     "at[1][1] == 0 and all(at[k][1] == 10 for k in range(5, 41))",
 ]
+
+[[reading]]
+id = "acts_tow_goes_to_any_owners_nearest"
+item = "脚本动作 TEAM_ATTACK_MOVE_TOWARDS_NEAREST_OBJECT_TYPE"
+scene = {build = "engine_acts_near", check = "tow", until = 41}
+bench = """tow, bench 11-22 `run_queue engine_acts_near:tow` (CampActsNearTow, 11:12, round 305; bench row s_k = simulator k + 1): \
+位 0 s1-s4, 2000 s5-s41; 打 0 throughout"""
+proves = """sim act_order.attack_move_team_to_nearest_object_of_type_of_player with no player (the program's one handler for both \
+actions; this one's player string empty, no owner filter): both tanks went to D, s4's own plant nearest the first member, \
+not the player's Y (the one with the player filter) nor X / Z, and stayed, nothing attacked. Simulator a reading late \
+(start-up, R2's)"""
+let = {at = "dict(zip(times, vals(rows)))", first = "min(t for t in at if at[t][0])"}
+expect = [
+    "abs(first - 6) <= 1 and {at[k][0] for k in at} == {0, 2000}",
+    "all(at[k][1] == 0 for k in at)",
+]

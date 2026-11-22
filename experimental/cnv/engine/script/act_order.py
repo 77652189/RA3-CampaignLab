@@ -311,11 +311,13 @@ def attack_move_team_to_named_object(sim, name, a, script):
 
 def attack_move_team_to_nearest_object_of_type_of_player(sim, name, a, script):
     # (team, type, player): the same order as ATTACK_MOVE_TEAM_TO_NAMED_OBJECT, to the player's living object of that
-    # type nearest the team's first member (INFERRED: not its middle); none of them: nothing done
+    # type nearest the team's first member (INFERRED: not its middle); none of them: nothing done.
+    # TEAM_ATTACK_MOVE_TOWARDS_NEAREST_OBJECT_TYPE (team, type) is the same handler with no player: any owner's
+    # (bench round 305, engine_acts_near tow: the crew went to its own side's plant)
     crew, want = sim.members(a[0]), sim.of_types(a[1])
     if crew:
         _to_nearest(sim, 'attack_move', crew, (crew[0].x, crew[0].y),
-                    lambda o: o.owner == a[2] and o.template.lower() in want)
+                    lambda o: (len(a) < 3 or o.owner == a[2]) and o.template.lower() in want)
 
 
 def player_set_all_units_to_flee(sim, name, a, script):
@@ -383,6 +385,7 @@ ACTIONS = {
     'NAMED_FORCE_ATTACK_WAYPOINT': named_force_attack_waypoint,
     'ATTACK_MOVE_TEAM_TO_NAMED_OBJECT': attack_move_team_to_named_object,
     'ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER': attack_move_team_to_nearest_object_of_type_of_player,
+    'TEAM_ATTACK_MOVE_TOWARDS_NEAREST_OBJECT_TYPE': attack_move_team_to_nearest_object_of_type_of_player,
     'PLAYER_SET_ALL_UNITS_TO_FLEE': player_set_all_units_to_flee,
     'UNIT_SET_STANCE': unit_set_stance,
 }

@@ -92,3 +92,15 @@ bench = "loop: C linked back to A -- 段1 back at A at s23 43 63 84 (laps 20-21 
 proves = "sim order_follow: a path linked back to its start goes round and round, a lap about 20 s"
 let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", back = "[t for (t, v), (_, w) in zip(chg[1:], chg) if v['段1'] == 1 and w['段1'] == 3]"}
 expect = "len(back) >= 4 and all(b <= s <= b + 3 for b, s in zip((23, 43, 63, 84), back))"
+
+[[reading]]
+id = "waypath_team_path_from_a_named_waypoint"
+item = "脚本动作 TEAM_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT"
+scene = {build = "engine_waypath", check = "tstart", until = 46}
+bench = "tstart (team W23 from C, the path's last; flags 1, 1): 段2 and 段3 0 s1-s7, 3 s8-s46, never 1 or 2 (bench 11-22, run_queue 11-22, round 305)"
+proves = "sim order_follow (team, start given): the team goes straight to the named waypoint, the ones before it never; the simulator 2 s later (the waypath LAG)"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", hit = "lambda k, v, b: (lambda g: g is not None and b <= g <= b + 2)(at(k, lambda x: x == v))"}
+expect = [
+    "hit('段2', 3, 8) and hit('段3', 3, 8)",
+    "all(r['段2'] in (0, 3) and r['段3'] in (0, 3) for t, r in chg) and rows[-1]['段2'] == 3",
+]

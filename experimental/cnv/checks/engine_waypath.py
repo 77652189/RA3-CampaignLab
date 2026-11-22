@@ -146,5 +146,17 @@ def texact(m):
     return t
 
 
+def tstart(m):
+    """TEAM_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT team W23 'CNVRoad' (1, 1: s04's flags) from C, the last (from B
+    the boxes of 100 take A on the way); boxes 100."""
+    t = Test()
+    _road(t, m, 'CNVRoad')
+    _at(t, 'go', 1.0, [('TEAM_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT', m.crew('W23'), 'CNVRoad', 1, 1,
+                        'Test Waypath C')])
+    _legs(t, m, (2, 3), half=100.0)
+    _watch(t, RUN['texact'])
+    return t
+
+
 CHECKS = {'engine_waypath': {'line': line, 'exact': exact, 'near': near, 'loop': loop, 'team': team,
-                             'start': start, 'texact': texact}}
+                             'start': start, 'texact': texact, 'tstart': tstart}}

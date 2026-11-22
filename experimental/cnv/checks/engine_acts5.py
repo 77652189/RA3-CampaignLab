@@ -166,5 +166,20 @@ def near(m):
     return t
 
 
+def tow(m):
+    """TEAM_ATTACK_MOVE_TOWARDS_NEAREST_OBJECT_TYPE (team, type; a03 / s03): the same handler with no player, so any
+    owner's. 位 = Am's tanks within 400 of X (ones), Y (tens), Z (hundreds), s4's own D (thousands); 打 = D attacked
+    by a tank 1, Y 2."""
+    t = Test()
+    s8.at(t, 'a1', 1.0, [('TEAM_ATTACK_MOVE_TOWARDS_NEAREST_OBJECT_TYPE', m.teams['Am'], PLANT)])
+    for k in 'XYZD':
+        t.areas[f'Test Act5 By {k}'] = square(*NEAR[k], 400.0)
+    s8.total(t, 'CNV_Act5_Near', '位', [(w, ('NAMED_INSIDE_AREA', _n(u), f'Test Act5 By {k}'))
+                                        for k, w in zip('XYZD', (1, 10, 100, 1000)) for u in ('m0', 'm1')])
+    s8.total(t, 'CNV_Act5_Hit', '打', [(w, ('NAMED_ATTACKED_BY_OBJECTTYPE', _n(k), TANK)) for k, w in (('D', 1), ('Y', 2))])
+    s8.watch(t, RUN)
+    return t
+
+
 MISSION = {'engine_acts_v': mission, 'engine_acts_near': near_mission}
-CHECKS = {'engine_acts_v': {'acts': acts}, 'engine_acts_near': {'all': near}}
+CHECKS = {'engine_acts_v': {'acts': acts}, 'engine_acts_near': {'all': near, 'tow': tow}}
