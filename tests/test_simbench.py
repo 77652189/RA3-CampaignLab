@@ -14,6 +14,7 @@ simbench = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simbench)
 import engine.loop.frame as simloop  # noqa: E402
 import engine.orders.ability as simability  # noqa: E402
+import engine.orders.order as simorder  # noqa: E402
 
 
 # DEMO_KILL (strict xfail 2026-11-07, green since simorder.held_up): the opening demo's pair, stopped by the ice 157
@@ -247,11 +248,11 @@ def test_skill_the_players_click_waits_for_the_reload():
     Bench engine_skill d (by hand): his second click 8 s after the first refused, 21 s after it went."""
     m, s = _skill('a')
     b, power = s.body(m.role('engineer a').name), m.ability('engineer a', 'freeze')
-    assert s.order_power(b, power, s.point(m.mark('a1'))) == (True, None)
+    assert simability.order_power(s, simorder.Peers(s), b, power, s.point(m.mark('a1'))) == (True, None)
     s.advance(8 * 15)
-    assert s.order_power(b, power, s.point(m.mark('a3'))) == (False, 'reloading')
+    assert simability.order_power(s, simorder.Peers(s), b, power, s.point(m.mark('a3'))) == (False, 'reloading')
     s.advance(300 - 8 * 15)
-    assert s.order_power(b, power, s.point(m.mark('a3')))[0]      # (a2 lies by an ore node: refused for that)
+    assert simability.order_power(s, simorder.Peers(s), b, power, s.point(m.mark('a3')))[0]      # (a2 lies by an ore node: refused for that)
 
 
 def test_skill_the_players_click_keeps_off_objects_and_unpathable_ground():
@@ -259,13 +260,13 @@ def test_skill_the_players_click_keeps_off_objects_and_unpathable_ground():
     (box 33 x 41) refuses a2, 75 from its centre, not a point 123 from it; the sea (w) and the cliff (c1) refuse."""
     m, s = _skill('d')
     power = m.ability('engineer a', 'freeze')
-    got = [simability.power_refusal(s, s._order_peers(),s.body(m.role(f'engineer b{k}').name), power, *s.point(m.mark(f'b{k}'))) for k in (1, 2, 3)]
+    got = [simability.power_refusal(s, simorder.Peers(s),s.body(m.role(f'engineer b{k}').name), power, *s.point(m.mark(f'b{k}'))) for k in (1, 2, 3)]
     assert got == [None, None, None]
     a, d = s.body(m.role('engineer a').name), s.body(m.role('engineer d').name)
-    assert simability.power_refusal(s, s._order_peers(),a, power, *s.point(m.mark('a2'))) == 'too near an object'
-    assert simability.power_refusal(s, s._order_peers(),d, power, 790.0, 2100.0) is None
+    assert simability.power_refusal(s, simorder.Peers(s),a, power, *s.point(m.mark('a2'))) == 'too near an object'
+    assert simability.power_refusal(s, simorder.Peers(s),d, power, 790.0, 2100.0) is None
     for e, spot in (('engineer w', 'w'), ('engineer c', 'c1')):
-        assert s.order_power(s.body(m.role(e).name), power, s.point(m.mark(spot))) == (False, 'not pathable')
+        assert simability.order_power(s, simorder.Peers(s), s.body(m.role(e).name), power, s.point(m.mark(spot))) == (False, 'not pathable')
 
 
 def test_super_a_scripts_cast_starts_the_retail_reload():
@@ -279,9 +280,9 @@ def test_super_a_scripts_cast_starts_the_retail_reload():
     s.advance(30 * 15)
     b = next(b for b in s.bodies.values() if b.template == 'AlliedSuperWeaponAdvanced')
     power = 'SpecialPowerParticleCannon'
-    assert b.ready_at[power] - s.frame_now() > 5400 - 30 * 15 and abs(b.ready_at[power] - 90 - 5550) <= 2 and s.order_power(b, power, (b.x + 500, b.y))[1] == 'reloading'
+    assert b.ready_at[power] - s.frame_now() > 5400 - 30 * 15 and abs(b.ready_at[power] - 90 - 5550) <= 2 and simability.order_power(s, simorder.Peers(s), b, power, (b.x + 500, b.y))[1] == 'reloading'
     s.advance(b.ready_at[power] - s.frame_now())
-    assert s.order_power(b, power, (b.x + 500, b.y)) == (True, None)
+    assert simability.order_power(s, simorder.Peers(s), b, power, (b.x + 500, b.y)) == (True, None)
 
 
 # ---- tech tiers: what lets a factory build a tier-2 unit (sim.Sim.holds_upgrade / can_build / upgrade_sellers)
@@ -441,9 +442,9 @@ def test_a_crushers_move_onto_a_crushable_enemy_keeps_its_goal_and_allies_still_
     held = {(x, y) for x, y, _ in sim.simpath.claims(s, hammer)}
     assert (conscript.x, conscript.y) not in held and (guardian.x, guardian.y) in held
     assert allies and all((b.x, b.y) in held for b in allies)
-    s.order_move(hammer, (conscript.x, conscript.y), False)
+    simorder.order_move(s, simorder.Peers(s), hammer, (conscript.x, conscript.y), False)
     assert tuple(hammer.dest) == (conscript.x, conscript.y)
-    s.order_move(allies[0], (conscript.x, conscript.y), False)
+    simorder.order_move(s, simorder.Peers(s), allies[0], (conscript.x, conscript.y), False)
     assert tuple(allies[0].dest) != (conscript.x, conscript.y)
 
 

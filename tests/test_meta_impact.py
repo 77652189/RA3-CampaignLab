@@ -700,7 +700,7 @@ def test_physics_p4_a_knocked_man_fires_his_order_while_lying_before_he_stands()
     while e.eng.frame < 345:
         e.eng.frame += 1
         if e.eng.frame == 240:
-            e.order_attack(man, target.name)
+            simorder.order_attack(e, simorder.Peers(e), man, target.name)
         e.move(1 / 15)
         simorder.fight(e, simorder.Peers(e))
         e.deal(1 / 15)
@@ -742,7 +742,7 @@ def test_physics_p4b_a_knocked_man_does_not_fire_in_the_air_with_the_target_in_r
     while e.eng.frame < 199:
         e.eng.frame += 1
         if e.eng.frame == 176:
-            e.order_attack(man, target.name)
+            simorder.order_attack(e, simorder.Peers(e), man, target.name)
         e._harm().meta_impact_tick(e, Peers(e))
         e.move(1 / 15)
         simorder.fight(e, simorder.Peers(e))
@@ -786,7 +786,7 @@ def test_physics_p4b_an_attack_order_kept_through_the_knock_walks_at_landing_plu
     while e.eng.frame < 260 and first is None:
         e.eng.frame += 1
         if e.eng.frame == 176:
-            e.order_attack(man, target.name)
+            simorder.order_attack(e, simorder.Peers(e), man, target.name)
         e._harm().meta_impact_tick(e, Peers(e))
         e.move(1 / 15)
         simorder.fight(e, simorder.Peers(e))

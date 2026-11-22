@@ -3,6 +3,7 @@ from test_simai_bench_b import lib, _probe_run, pytestmark  # noqa: F401
 from test_simai_bench_b import simai, simai_run
 from types import SimpleNamespace
 import pytest
+import engine.orders.order as simorder  # noqa: E402
 
 
 @pytest.fixture(scope='module')
@@ -83,7 +84,7 @@ def test_pullback_detachment_cancels_on_replacement_order_or_facility_loss(facil
     tank.aiupdate.move_to = (0, 0)             # a new movement destination replaces the return order
     assert not w.pullback.busy(tank)
     assert w.pullback.send(tank, crane)
-    w.sim.order_stop(tank)            # STOP keeps move_to, but replaces the active path
+    simorder.order_stop(tank)            # STOP keeps move_to, but replaces the active path
     assert not w.pullback.busy(tank)
     assert w.pullback.send(tank, crane)
     crane.alive = False

@@ -97,13 +97,13 @@ def ejects(command, own=None):
     return str(simunits.command_power(command, own) or '').startswith('SpecialPower_EjectPassengers')
 
 
-PEERS = frozenset({'_upgrade', 'delete', 'destroy', 'modify', 'order_move', 'send'})
+PEERS = frozenset({'_upgrade', 'delete', 'destroy', 'modify', 'send'})
 
 
 class Peers:
     """What the garrisons may reach on their host (the Sim) beyond the world: the names in PEERS, read when used --
-    L2 upgrades (_upgrade), the body's end (destroy / delete), modifiers (modify), its walk (send) and L5's command
-    order_move lent (the enter order's walk: mode, move_to, its spot; a bare go_to lets an idle walker turn to fight,
+    L2 upgrades (_upgrade), the body's end (destroy / delete), modifiers (modify) and its walk (send). L5's order_move
+    is handed in as `move` (the enter order's walk: mode, move_to, its spot; a bare go_to lets an idle walker turn to fight,
     unbenched -- the enter order moves up into order.py at the move family's close)."""
     __slots__ = ('host',)
 
@@ -117,8 +117,8 @@ class Peers:
 
 
 class Garrisons:
-    def __init__(self, world, peers):
-        self.world, self.peers = world, peers     # simworld.WORLD_API only; the host's other parts (Peers)
+    def __init__(self, world, peers, move):
+        self.world, self.peers, self.move = world, peers, move    # WORLD_API only; the host's other parts (Peers); L5's move
         self.boxes = {}             # host serial (Thing.serial) -> its contain module (interfaces.Contain: the
                                     # passengers, the owner before, the listener's upgrades), in the order first put
                                     # into (the cell's order); by the thing, not its name: a thing made under a taken
@@ -212,12 +212,11 @@ class Garrisons:
         return out
 
     def send(self, u, g):
-        peers = self.peers
         if u.alive and g.alive:
             self.going[u.serial] = (u, g)
             if u.goal is not None:
                 u.aiupdate.command('goal')
-            peers.order_move(u, (g.x, g.y), False)
+            self.move(u, (g.x, g.y), False)
             return True
         return False                        # one of them dead: not sent (the port answers so: review 11-19 k #4)
 
@@ -440,7 +439,7 @@ class Garrisons:
     def due(self):
         """Once a frame: the ones sent in that have got there; a building at or under its REALLYDAMAGED line empties;
         the dead inside are let go of."""
-        world, peers = self.world, self.peers
+        world = self.world
         for key, (u, g) in list(self.going.items()):
             if not u.alive or not g.alive or world.bodies.get(u.name) is not u:     # dead, or out of the world
                 del self.going[key]
@@ -450,7 +449,7 @@ class Garrisons:
             d = math.hypot(g.x - u.x, g.y - u.y)
             if d > r and (u.path or d > 2 * r):
                 if not u.path and u.goal is None:
-                    peers.order_move(u, (g.x, g.y), False)          # stopped short (a fight): on its way again
+                    self.move(u, (g.x, g.y), False)          # stopped short (a fight): on its way again
                 continue
             del self.going[key]
             self.put(u, g)

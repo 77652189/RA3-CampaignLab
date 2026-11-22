@@ -8,6 +8,7 @@ _spec = importlib.util.spec_from_file_location('jet_simbench', ROOT / 'experimen
 _module = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_module)
 from engine.modules import locomotor  # noqa: E402
+import engine.orders.order as simorder  # noqa: E402
 
 
 @pytest.mark.parametrize('check', ['a', 'b'])
@@ -101,12 +102,12 @@ def test_jet_unmeasured_motion_does_not_reuse_startup(variant):
         jet.angle = 1
     elif variant == 'configuration':
         e.own[jet.template] = '<GameObject id="AlliedAntiGroundAircraft" inheritFrom="AlliedAntiGroundAircraft"/>'
-    e.order_move(jet, 'Jet Goal', False)
+    simorder.order_move(e, simorder.Peers(e), jet, 'Jet Goal', False)
     if variant == 'repeated':
         assert jet.jet_motion is not None
-        e.order_move(jet, 'Jet Goal', False)
+        simorder.order_move(e, simorder.Peers(e), jet, 'Jet Goal', False)
         jet.path = []
-        e.order_move(jet, 'Jet Goal', False)
+        simorder.order_move(e, simorder.Peers(e), jet, 'Jet Goal', False)
         assert jet.jet_motion is None
     elif variant == 'speed-change':
         assert jet.jet_motion is not None
@@ -128,7 +129,7 @@ def test_jet_routing_leaves_ground_movement_on_its_existing_clock():
     m.objects[0].template = 'AlliedAntiInfantryVehicle'
     e = sim.Sim(m, t)
     vehicle = e.body(m.role('jet').name)
-    e.order_move(vehicle, 'Jet Goal', False)
+    simorder.order_move(e, simorder.Peers(e), vehicle, 'Jet Goal', False)
     assert vehicle.path and not vehicle.frame_move and vehicle.jet_motion is None
     assert not vehicle.jet_started and not e.frame_movers
     assert not any(kind in ('jet movement', 'JetAIUpdate') for kind, _ in e.unmodeled)

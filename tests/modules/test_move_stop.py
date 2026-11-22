@@ -10,11 +10,11 @@ def test_stop_cancels_the_remaining_way_without_resetting_the_plain_move():
     s = simsmall.small_world(model=False)
     b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1200, 2500)
     locomotor.write(s.world, b, speed=60)
-    s.order_move(b, (1320, 2500), False)
+    simorder.order_move(s, simorder.Peers(s), b, (1320, 2500), False)
     s.move()
     assert (b.x, b.y) == (1230, 2500) and b.path and b.rolling
     locomotor.write(s.world, b, carry=0.375)        # a leg's end left over
-    s.order_stop(b)
+    simorder.order_stop(b)
     assert not b.rolling and b.carry == 0.0         # a move this frame sets off from standing (review 1121kk #3)
     s.move()
     # STOP clears the path, while mode and the original move_to stay put.
@@ -29,7 +29,7 @@ def test_stop_cancels_a_pending_run_off_map():
                                  args=(('objects', True),))) == (True, '')
     assert runner.flee is not None
     start = (runner.x, runner.y)
-    s.order_stop(runner)
+    simorder.order_stop(runner)
     assert runner.flee is None
     simability.flee_due(s, simorder.Peers(s), s.frame_now() + 1)
     assert (runner.x, runner.y) == start
@@ -42,7 +42,7 @@ def test_give_up_at_nearest_reachable_cell_keeps_the_requested_destination():
     s.ground.set_blocks([(1260, 2500, 0, 20, 10000)])
     goal = (1320, 2500)
     assert s.ground.route('ground', (1200, 2500), goal) is None
-    s.order_move(b, goal, False)
+    simorder.order_move(s, simorder.Peers(s), b, goal, False)
     # The bar shuts the x=1260 column; x=1240 is the nearest open column
     # on the starting side, and y=2500 minimizes distance within it.
     assert b.path == [(1240, 2500)] and b.dest == goal

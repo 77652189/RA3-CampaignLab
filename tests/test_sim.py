@@ -458,7 +458,7 @@ def test_a_team_path_moves_on_when_its_first_member_is_there():
     s = _road()
     x, y = s.waypoints['R1']
     crew = [s.add(f'u{i}', 'JapanAntiInfantryInfantry', s.foe, x - 40 * i, y) for i in range(3)]
-    s.order_follow(crew, 'Road', False, start='R1', as_team=True)
+    simorder.order_follow(s, simorder.Peers(s), crew, 'Road', False, start='R1', as_team=True)
     crew[0].path = crew[1].path = []
     assert crew[2].path and simorder.follow_due(s, simorder.Peers(s)) is None and crew[0].follow is crew[2].follow and crew[2].follow['at'] == 'R2'
 

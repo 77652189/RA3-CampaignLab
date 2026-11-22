@@ -7,6 +7,7 @@ Each action is `fn(sim, name, a, script)`, moved verbatim out of Sim.act's chain
 import math
 
 import engine.data.units as simunits
+import engine.orders.order as simorder
 import engine.orders.seq as simseq
 import engine.world.handle as simworld
 from engine.script.common import LOST, SCENE_FLAG, SHOW_FLAG, WON, team_crew
@@ -172,7 +173,7 @@ def team_transfer_to_player(sim, name, a, script):
     # engine_scripts1 xfer: owned by the new player at once, the move it was on dropped, the team left empty
     for b in sim.members(a[0]):
         b.owner, b.team = a[1], f'{a[1]}/team{a[1]}'
-        sim.stand(b)
+        simorder.stand(b)
         sim.note('易主', f'{sim.label(b)} 归 {sim.who(a[1])}（命令清掉）')
     sim.change()
 

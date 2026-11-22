@@ -13,6 +13,7 @@ picked one (review 11-19 f #1). An action keeps what decides who is ordered and 
 teleport and the AI hand-over (they drop the unit's order with `stand`, a god's hand)."""
 import math
 
+import engine.orders.order as simorder
 from engine.ports.command import Command
 from engine.script.common import TEAM_COMMANDS, TEAM_FOLLOWS, team_crew
 from engine.world.handle import CIV, GAP_ACTION
@@ -140,7 +141,7 @@ def unit_teleport_to_waypoint(sim, name, a, script, unit=None):
         # the unit's orders go too: bench aiaeson (work/re d150) member 3166 attacking (AI state 10, not
         # ready) is idle and ready (16:1) the frame after the teleport, its team still in state 6
         b.x, b.y = p[0], p[1]
-        sim.stand(b)
+        simorder.stand(b)
         b.aiupdate.forget()
         sim.change()
 
@@ -228,7 +229,7 @@ def unit_ai_transfer(sim, name, a, script):
     if theirs and int(a[1]):
         for b in theirs:
             b.team = ''
-            sim.stand(b)
+            simorder.stand(b)
     elif theirs:
         sim.gap(GAP_ACTION, name, '收回（开关 0）没上台量过，不模拟')
     if any(b.owner in sim.ai for b in theirs):

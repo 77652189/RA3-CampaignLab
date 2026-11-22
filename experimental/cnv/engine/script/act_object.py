@@ -5,6 +5,7 @@ Each action is `fn(sim, name, a, script)`, moved verbatim out of Sim.act's chain
 import math
 
 import engine.data.units as simunits
+import engine.orders.order as simorder
 from engine.kernel import interfaces
 from engine.script.common import refined
 from engine.objects.status import ACTED_STATUS, AI_ONLY_STATUS
@@ -75,7 +76,7 @@ def team_garrison_team_instantly(sim, name, a, script):
             sp = sim.garrison.box(g)
             if (free or len(sim.garrison.held(g)) < sp['max']) and \
                     sim.garrison.put(m, g, script=True):
-                sim.stand(m)
+                simorder.stand(m)
                 break
 
 
@@ -220,7 +221,7 @@ def named_garrison_specific_building(sim, name, a, script):
     if b and g and 'INFILTRATOR' in b.kinds and sim.infiltrators.spec(g) is not None:
         sim.infiltrators.send(b, g)
     elif b and g and simunits.engineer_contain(g.template, sim.own) is not None:
-        sim.order_capture(b, g)         # the building looked at above, not its name read again (same-name sweep)
+        simorder.order_capture(sim, simorder.Peers(sim), b, g)         # the building looked at above, not its name read again (same-name sweep)
     elif b and g and sim.garrison.spec(g) is not None:      # walks to it, in if it may (simgarrison; INFERRED)
         sim.garrison.send(b, g)
     elif b and g:

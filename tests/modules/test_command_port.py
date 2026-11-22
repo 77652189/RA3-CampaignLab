@@ -16,6 +16,7 @@ from engine.orders import order as simorder, seq as simseq  # noqa: E402
 from engine.ports import command as command_port  # noqa: E402
 from engine.ports.command import Command, Commands, ROUTED, command, event, queued, text  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
+import engine.orders.ability as simability  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 APOC = 'SovietAntiVehicleVehicleTech3'
@@ -33,7 +34,7 @@ LINES = [Command('attack_move', units=('guardian',), place='approach 1'),
 
 
 def _port():
-    return Commands(simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)], model=False))
+    return Commands(simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)], model=False), **sim.ORDER_RULES)
 
 
 @pytest.mark.parametrize('cmd', LINES, ids=lambda c: c.kind)
@@ -75,7 +76,7 @@ def test_a_command_holds_names_and_numbers_only():
 
 def test_unknown_and_unrouted_kinds_are_refused():
     s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)], model=False)
-    port = Commands(s)
+    port = Commands(s, **sim.ORDER_RULES)
     assert port.do(Command('teleport', units=('a',)))[0] is False
     ok, why = port.post(Command('sell', units=('a',)), 5.0)
     assert not ok and 'no route' in why and not s.events
@@ -87,7 +88,7 @@ def test_unknown_and_unrouted_kinds_are_refused():
 
 def test_post_queues_as_the_line_and_pending_keeps_the_order():
     s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)], model=False)
-    port = Commands(s)
+    port = Commands(s, **sim.ORDER_RULES)
     port.post(LINES[0], 9.0)
     port.post(LINES[1], ('@', 'go', 2.0))
     port.post_line('3 造 tank 在 inside 1')
@@ -101,7 +102,7 @@ def test_post_queues_as_the_line_and_pending_keeps_the_order():
 
 def test_post_line_gives_what_it_queued_and_refuses_a_run_switch():
     s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)], model=False)
-    port = Commands(s)
+    port = Commands(s, **sim.ORDER_RULES)
     assert port.post_line('4 走 a 去 @10,10') == tuple(sim.parse_script('4 走 a 去 @10,10'))
     with pytest.raises(command_port.RunSwitch):
         port.post_line('不打')
@@ -167,7 +168,8 @@ def test_a_run_line_reads_as_its_replay_does():
                              model=False)
     _, out = ap.attach(s, SimpleNamespace(escort=()))
     asked = []
-    s.order_power = lambda b, power, pos: asked.append((b.name, power)) or (True, None)
+    s.commands._r.ability = SimpleNamespace(
+        order_power=lambda w, peers, b, power, pos: asked.append((b.name, power)) or (True, None))
     out.power(s.bodies['a'], 'x y', (800, 300))
     assert list(s.events) == sim.parse_script('\n'.join(out.lines))
     _run_frames(s)
@@ -183,7 +185,7 @@ def test_do_power_answers_the_worlds_refusal():
     11-19 d #7: it recorded a success)."""
     s = simsmall.small_world([('a', APOC, 'Player_1', 300.0, 300.0)], model=False)
     cmd = Command('power', units=('a',), power='Command_ReviewMissing', place='@500,300')
-    want = s.order_power(s.bodies['a'], cmd.power, (500.0, 300.0))
+    want = simability.order_power(s, simorder.Peers(s), s.bodies['a'], cmd.power, (500.0, 300.0))
     assert want[0] is False
     assert s.commands.do(cmd) == want
     assert s.commands.issued()[-1][2:] == want
@@ -208,14 +210,14 @@ def test_do_gives_the_world_what_the_order_call_gives(kind):
     port_world, direct = _pair()
     if kind == 'attack':
         cmd = Command('attack', units=('a',), target='foe', force=True)     # the small world has no foes
-        direct.order_attack(direct.bodies['a'], 'foe', True)
+        simorder.order_attack(direct, simorder.Peers(direct), direct.bodies['a'], 'foe', True)
     elif kind == 'move':
         cmd = Command('move', units=('a',), place='@400,300')
-        direct.order_group([direct.bodies['a']], '@400,300', False, on_grid=True)
+        simorder.order_group(direct, simorder.Peers(direct), [direct.bodies['a']], '@400,300', False, on_grid=True)
     else:
         cmd = Command('attack_move', units=('a',), place='@400,300')
-        direct.order_move(direct.bodies['a'], '@400,300', True, on_grid=True)
-    assert Commands(port_world).do(cmd) == (True, '')
+        simorder.order_move(direct, simorder.Peers(direct), direct.bodies['a'], '@400,300', True, on_grid=True)
+    assert Commands(port_world, **sim.ORDER_RULES).do(cmd) == (True, '')
     idle = _world()
     for s in (port_world, direct, idle):
         for _ in range(30):
@@ -228,17 +230,17 @@ def test_do_gives_the_world_what_the_order_call_gives(kind):
 OBJ = (('objects', True),)
 SCRIPT_ORDERS = {      # a map script's order (R3 13d-1: simact_order) -> what the action called before
     'move each': (Command('move', 'script', units=('a',), place='@400,300', args=OBJ + (('on_grid', True),)),
-                  lambda s, a, b: s.order_move(a, '@400,300', False, on_grid=True)),
+                  lambda s, a, b: simorder.order_move(s, simorder.Peers(s), a, '@400,300', False, on_grid=True)),
     'attack_move group': (Command('attack_move', 'script', units=('a', 'b'), pos=(400.0, 300.0),
                                   args=OBJ + (('group', True),)),
-                          lambda s, a, b: s.order_group([a, b], (400.0, 300.0), True)),
+                          lambda s, a, b: simorder.order_group(s, simorder.Peers(s), [a, b], (400.0, 300.0), True)),
     'attack team': (Command('attack', 'script', units=('a',), target='foe', force=True, args=OBJ + (('team', 'T'),)),
-                    lambda s, a, b: (s.order_attack(a, 'foe', True), s.team_targets.__setitem__(a.serial, 'T'))),
+                    lambda s, a, b: (simorder.order_attack(s, simorder.Peers(s), a, 'foe', True), s.team_targets.__setitem__(a.serial, 'T'))),
     'missing unit': (Command('attack', 'script', units=('nobody',), target='foe', args=OBJ),
-                     lambda s, a, b: s.order_attack(None, 'foe')),
-    'stop': (Command('stop', 'script', units=('a',), args=OBJ), lambda s, a, b: s.order_stop(a)),
-    'idle': (Command('idle', 'script', units=('a', 'b'), args=OBJ), lambda s, a, b: (s.stand(a), s.stand(b))),
-    'flee': (Command('flee', 'script', units=('a',), args=OBJ), lambda s, a, b: s.flee_start(a)),
+                     lambda s, a, b: simorder.order_attack(s, simorder.Peers(s), None, 'foe')),
+    'stop': (Command('stop', 'script', units=('a',), args=OBJ), lambda s, a, b: simorder.order_stop(a)),
+    'idle': (Command('idle', 'script', units=('a', 'b'), args=OBJ), lambda s, a, b: (simorder.stand(a), simorder.stand(b))),
+    'flee': (Command('flee', 'script', units=('a',), args=OBJ), lambda s, a, b: simability.flee_start(s, simorder.Peers(s), a)),
     'auto_acquire': (Command('auto_acquire', 'script', units=('a',), args=OBJ + (('on', True),)),
                      lambda s, a, b: a.aiupdate.set_auto_acquire(True)),
     'stance': (Command('stance', 'script', units=('a',), args=OBJ + (('stance', 3),)),
@@ -247,7 +249,7 @@ SCRIPT_ORDERS = {      # a map script's order (R3 13d-1: simact_order) -> what t
     'proxy move': (Command('attack_move', 'proxy', units=('a', 'b'), pos=(400.0, 300.0),
                            args=OBJ + (('group', True), ('on_grid', True), ('drop_target', True))),
                    lambda s, a, b: (setattr(a, 'goal', None), setattr(b, 'goal', None),
-                                    s.order_group([a, b], (400.0, 300.0), True, on_grid=True))),
+                                    simorder.order_group(s, simorder.Peers(s), [a, b], (400.0, 300.0), True, on_grid=True))),
 }
 
 
@@ -258,11 +260,11 @@ def test_the_proxy_players_build_and_power_answer_the_world():
     want = direct.order_build('Player_1', APOC)
     assert s.commands.do(Command('build', 'proxy', player='Player_1', template=APOC))[0] is want
     assert want is False                                     # the small world has no factory
-    whys = sorted({direct.order_power(direct.bodies[n], 'Command_ReviewMissing', (500.0, 0.0))[1] for n in 'ab'})
+    whys = sorted({simability.order_power(direct, simorder.Peers(direct), direct.bodies[n], 'Command_ReviewMissing', (500.0, 0.0))[1] for n in 'ab'})
     cmd = Command('power', 'proxy', units=('a', 'b'), power='Command_ReviewMissing', pos=(500.0, 0.0),
                   args=OBJ + (('via', 'click'),))
     assert s.commands.do(cmd) == (False, ', '.join(whys))
-    want = sorted({direct.player_power([direct.bodies[n]], 'SpecialPower_JAIV_Transform', None, 'transform')[1]
+    want = sorted({simability.player_power(direct, simorder.Peers(direct), [direct.bodies[n]], 'SpecialPower_JAIV_Transform', None, 'transform')[1]
                    for n in 'ab'})
     cmd = Command('power', 'proxy', units=('a', 'b'), power='SpecialPower_JAIV_Transform',
                   args=OBJ + (('via', 'transform'),))
@@ -276,9 +278,9 @@ def test_a_script_order_gives_what_the_action_called(case):
     cmd, direct_call = SCRIPT_ORDERS[case]
     port_world, direct = _pair()
     for s in (port_world, direct):
-        s.order_move(s.bodies['a'], '@200,500', False)         # an order going on: the new one replaces it
+        simorder.order_move(s, simorder.Peers(s), s.bodies['a'], '@200,500', False)         # an order going on: the new one replaces it
     direct_call(direct, direct.bodies['a'], direct.bodies['b'])
-    assert Commands(port_world).do(cmd) == (True, '')
+    assert Commands(port_world, **sim.ORDER_RULES).do(cmd) == (True, '')
     assert _states(port_world) == _states(direct)
     assert port_world.team_targets == direct.team_targets and port_world.used == direct.used
     for s in (port_world, direct):
@@ -292,12 +294,12 @@ def test_a_script_order_gives_what_the_action_called(case):
 def test_a_script_order_at_a_place(kind):
     port_world, direct = _pair()
     a = direct.bodies['a']
-    direct.stand(a)
+    simorder.stand(a)
     if kind == 'face':
         a.face = __import__('math').atan2(300.0 - a.y, 400.0 - a.x)
     else:
         a.ground_fire = direct.point('@400,300')
-    Commands(port_world).do(Command(kind, 'script', units=('a',), place='@400,300', args=OBJ))
+    Commands(port_world, **sim.ORDER_RULES).do(Command(kind, 'script', units=('a',), place='@400,300', args=OBJ))
     assert _states(port_world) == _states(direct)
     assert (port_world.bodies['a'].face, port_world.bodies['a'].ground_fire) == (a.face, a.ground_fire)
 
@@ -316,7 +318,7 @@ def test_a_script_line_order_is_the_runs_port_do():
 
 def test_a_refused_build_says_why():
     s = _world()
-    ok, why = Commands(s).do(Command('build', template=APOC, target='nowhere'))
+    ok, why = Commands(s, **sim.ORDER_RULES).do(Command('build', template=APOC, target='nowhere'))
     assert not ok and why == '找不到工厂 nowhere'
 
 
@@ -556,7 +558,7 @@ def test_a_team_build_button_queues_at_the_member_not_a_reference_of_its_name():
 def _cast_world():
     import engine.script.cond_player as simcond_player
     s = simsmall.small_world([('lead', 'AlliedSuperWeaponAdvanced', 'Player_1', 0.0, 0.0)], model=False)
-    assert s.order_power(s.bodies['lead'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
+    assert simability.order_power(s, simorder.Peers(s), s.bodies['lead'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
     _run_frames(s)                          # read from the next frame's scripts
     read = lambda who: simcond_player.player_triggered_special_power(  # noqa: E731
         s, 'PLAYER_TRIGGERED_SPECIAL_POWER_FROM_NAMED', ['Player_1', 'SpecialPowerParticleCannon', who])
@@ -664,7 +666,7 @@ def test_the_ais_orders_give_what_its_calls_gave():
     assert port_world.commands.do(_ai('attack_move', a, pos=(400.0, 300.0),
                                       args=(('drop_target', True), ('face', 1.25)))) == (True, '')
     d.goal = None
-    direct.order_move(d, (400.0, 300.0), True, face=1.25)
+    simorder.order_move(direct, simorder.Peers(direct), d, (400.0, 300.0), True, face=1.25)
     assert port_world.commands.do(_ai('attack', port_world.bodies['b'], target='foe',
                                       args=(('goal_only', True),))) == (True, '')
     direct.bodies['b'].goal = direct.bodies['foe']
@@ -798,7 +800,7 @@ def test_the_players_power_is_cast_by_the_object_he_picked_not_a_reference_of_it
     s = simsmall.small_world([('cannon', 'AlliedSuperWeaponAdvanced', 'Player_1', 0.0, 0.0),
                               ('other', APOC, 'Player_2', 900.0, 0.0)], model=False)
     s.refs['cannon'] = s.bodies['other']
-    assert s.order_power(s.bodies['cannon'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
+    assert simability.order_power(s, simorder.Peers(s), s.bodies['cannon'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
     assert [c[1] for c in s.casts] == ['Player_1']
 
 
@@ -1095,7 +1097,7 @@ def test_the_players_power_casts_with_an_observer_tapping_the_actions():
     s = simsmall.small_world([('cannon', 'AlliedSuperWeaponAdvanced', 'Player_1', 0.0, 0.0)], model=False)
     seen = []
     Observe(s).on_act(lambda n, a, sc: seen.append(('before', n)), lambda n, a, sc: seen.append(('after', n)))
-    assert s.order_power(s.bodies['cannon'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
+    assert simability.order_power(s, simorder.Peers(s), s.bodies['cannon'], 'SpecialPowerParticleCannon', (500.0, 300.0)) == (True, None)
     assert [c[1] for c in s.casts] == ['Player_1']
     assert seen == [('before', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT'), ('after', 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT')]
     got = []                                # Sim.act's unit given in its place, not by keyword (review 11-19 u P3)

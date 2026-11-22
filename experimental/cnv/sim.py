@@ -48,6 +48,7 @@ A script (剧本), one event a line (or ';' between them), times in seconds or m
 import argparse
 import collections.abc
 import dataclasses
+import functools
 import importlib.util
 import math
 import os
@@ -93,6 +94,8 @@ import engine.modules  # noqa: E402,F401  (imports, so registers, every module f
 from engine.modules import aiupdate, locomotor  # noqa: E402
 from engine.modules import slowdeath as kernel_slowdeath, weaponset as kernel_weaponset  # noqa: E402
 import engine.loop.frame as simloop  # noqa: E402
+# the unit orders' rules the command port's routes call (ADR 0037 S1: the port, L0, imports none of them)
+ORDER_RULES = {'order': simorder, 'ability': simability, 'hunt': simhunt, 'toggle': simtoggle}
 import engine.world.handle as simworld  # noqa: E402
 import engine.script.host as simexec  # noqa: E402
 import scriptplugin  # noqa: E402
@@ -685,7 +688,8 @@ class Sim:
         self.assignments = simassign.Assignments(self)
         self.heal = simheal.Heal()          # AutoHeal / PassiveAreaEffect (L2)
         self.hunts = []                     # TEAM_HUNT's crews: [movers, target, frame to re-pick at] (Sim.hunt_due)
-        self.garrison = simgarrison.Garrisons(self, simgarrison.Peers(self))    # GarrisonContain / ContestableGarrisonContain
+        self.garrison = simgarrison.Garrisons(self, simgarrison.Peers(self), functools.partial(     # GarrisonContain /
+            simorder.order_move, self, simorder.Peers(self)))                  # ContestableGarrisonContain; its walk
         self.infiltrators = siminfiltrator.Infiltrators(self, siminfiltrator.Peers(self), self.wallet)
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
         self.attachments = {}              # child serial -> (child, parent, module rule): by the thing (11-19 sweep)
@@ -756,7 +760,8 @@ class Sim:
         self.sweeps = simsweep.Sweeps(self, simsweep.Peers(self))  # ActivateLinearDamageNugget + LinearDamageUpdate: the lines walking
         self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
         self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
-        self.commands = command_port.Commands(self)     # the command port: one per run (happen's orders, the givers')
+        self.commands = command_port.Commands(self, **ORDER_RULES)  # the command port: one per run (happen's orders, the
+        # givers')
         self.areas = Areas(self.mm.areas)
         # the map's hot spots (MissionHotSpots): name -> on; off at the start, only SET_..._ACTIVENESS (and the player's
         # popup, not simulated) turns one on or off (d115_script_semantics.md 4). The name as written: bench 11-13
@@ -1046,29 +1051,6 @@ class Sim:
                         self.note('协议', f'玩家：{what}')
         self.tech_to = max(self.tech_to, frame)
 
-    def order_move(self, b, where, attacking, given=(), skip=(), face=None, on_grid=False):
-        """simorder.order_move (L5)."""
-        return simorder.order_move(self, self._order_peers(), b, where, attacking, given, skip, face, on_grid)
-
-    def _order_peers(self):
-        """simorder.Peers: what the unit orders (L5) may reach on this Sim beyond the world, made on first use."""
-        p = self.__dict__.get('order_peers')
-        if p is None:
-            p = self.order_peers = simorder.Peers(self)
-        return p
-
-    def order_group(self, bodies, where, attacking, on_grid=False):
-        """simorder.order_group (L5)."""
-        return simorder.order_group(self, self._order_peers(), bodies, where, attacking, on_grid)
-
-    def order_attack(self, b, target_name, force=False):
-        """simorder.order_attack (L5)."""
-        return simorder.order_attack(self, self._order_peers(), b, target_name, force)
-
-    def order_capture(self, b, target_name):
-        """simorder.order_capture (L5)."""
-        return simorder.order_capture(self, self._order_peers(), b, target_name)
-
     def engineer_entry(self, b, target):
         """The target building's EngineerContain admits the entering template/relation.
         Unmeasured replacement/filters are gaps, never unconditional captures."""
@@ -1319,30 +1301,6 @@ class Sim:
             b.mode = 'move'
             self.send(b, at((rally[0] * k, rally[1] * k)))
         self.change()
-
-    def order_guard(self, b, area):
-        """simorder.order_guard (L5)."""
-        return simorder.order_guard(self, self._order_peers(), b, area)
-
-    def order_power(self, b, power, pos):
-        """simability.order_power (L5)."""
-        return simability.order_power(self, self._order_peers(), b, power, pos)
-
-    def player_power(self, units, power, pos, via):
-        """simability.player_power (L5)."""
-        return simability.player_power(self, self._order_peers(), units, power, pos, via)
-
-    def order_stop(self, b):
-        """simorder.order_stop (L5)."""
-        return simorder.order_stop(b)
-
-    def stand(self, b):
-        """simorder.stand (L5)."""
-        return simorder.stand(b)
-
-    def order_follow(self, bodies, label, attacking, exact=False, start=None, as_team=False):
-        """simorder.order_follow (L5)."""
-        return simorder.order_follow(self, self._order_peers(), bodies, label, attacking, exact, start, as_team)
 
     def enemy(self, a, b):
         """Player a takes player b as an enemy."""
@@ -1770,14 +1728,6 @@ class Sim:
         frame, with the engine model or without it)."""
         return simloop.step(self)
 
-    def flee_start(self, b):
-        """simability.flee_start (L5)."""
-        return simability.flee_start(self, self._order_peers(), b)
-
-    def hunt_due(self, frame, crew=None):
-        """simhunt.hunt_due (L5)."""
-        return simhunt.hunt_due(self, self._order_peers(), frame, crew)
-
     def lose_health(self, frame):
         """simbody.Life.lose_health (L2): LoseHealthUpdate while the body's own toggle carries its statuses."""
         self._life().lose_health(self, frame, self.toggles_of)
@@ -2055,12 +2005,6 @@ class Sim:
             cache[b.template] = [d.rules() for d in world.data_of(b.template, 'ToggleStatusSpecialAbilityUpdate')]
         return cache[b.template]
 
-    def toggle_press(self, b, command):
-        """simtoggle.press (L2): a toggle button steps b's toggle module to its next ToggleState. False when b has no
-        toggle for that button."""
-        return simtoggle.press(self, b, command, self.short_of_power)
-
-    toggle_miner_armor = toggle_press           # simai's name (the AI micro's toggles)
 
     def queue_projectile_hit(self, when, target, damage, attacker, weapon, centre=None):
         """simdamage.Damage.queue_projectile_hit (L3): a projectile's arrival event."""
@@ -2220,10 +2164,6 @@ class Sim:
         """
         return (self.frame_now() < self.__dict__.get('emp_until', {}).get(b.serial, 0)
                 or b.serial in self.__dict__.get('script_disabled', {}))
-
-    def order_unpack(self, b, p, button=None, where=None, stand=None, here=False, send=True):
-        """simability.order_unpack (L5)."""
-        return simability.order_unpack(self, self._order_peers(), b, p, button, where, stand, here, send)
 
     def blast_due(self, frame):
         """simspecial.Specials.blast_due (L2): a superweapon's hits landing by `frame` (SUPERWEAPON_HITS)."""

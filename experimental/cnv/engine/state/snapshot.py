@@ -53,7 +53,6 @@ SIM = {
     'modifiers': {}, 'assignments': {'world': WIRE},
     # the kernel, the script port, wiring
     'world': KERNEL, 'executor': EXECUTOR, 'eng': WIRE, 'counters': WIRE, 'timers': WIRE, 'team_names': WIRE,
-    'order_peers': WIRE,
     'step': WIRE,       # an observer's tick hook (Observe.on_tick wraps the run's step; simrecord's Recorder): the
                         # new run's observer hooks its own (11b-4d: simaisnap's scan met it)
     'used': ALIAS, 'unmodeled': ALIAS, 'money': ALIAS, 'income': ALIAS, 'sharing': ALIAS, 'money_cap': ALIAS,
@@ -70,7 +69,7 @@ SIM = {
     'repairs': {'world': WIRE, 'wallet': WIRE, 'ai_switches': ALIAS, 'blocked': STATE, 'players': STATE},
     'heal': {'passive_area_of': CACHE},
     'life': {'lose_of': CACHE, 'blasts_of': CACHE},
-    'garrison': {'world': WIRE, 'peers': WIRE, 'boxes': STATE, 'where': STATE, 'going': STATE, 'log': STATE,
+    'garrison': {'world': WIRE, 'peers': WIRE, 'move': WIRE, 'boxes': STATE, 'where': STATE, 'going': STATE, 'log': STATE,
                  'ejecting': STATE, 'flying': STATE, 'leaving': STATE},
     'infiltrators': {'world': WIRE, 'peers': WIRE, 'wallet': WIRE, 'going': STATE, 'off_until': STATE,
                      'observers': STATE, 'unit_observers': STATE, 'paralyzed_until': STATE, 'attack_until': STATE},
@@ -78,7 +77,7 @@ SIM = {
     'production': {'world': WIRE, 'peers': WIRE, 'queues': STATE, 'produced_to': STATE, 'placing': STATE,
                    'pack_hold': STATE, 'gifts': STATE},
     'sweeps': {'world': WIRE, 'peers': WIRE, 'lines': STATE},
-    'commands': {'_w': WIRE, '_issued': STATE},
+    'commands': {'_w': WIRE, '_r': WIRE, '_issued': STATE},
     'specials': {'wfires': STATE, 'leaps_due': STATE, 'leap_ground_hits': STATE, 'movement_due': STATE,
                  'self_bits_due': STATE},
     'harm': {'incoming': STATE, 'projectile_hits': STATE, 'knock_drowns': STATE, 'dots': STATE, 'cold_on': STATE,

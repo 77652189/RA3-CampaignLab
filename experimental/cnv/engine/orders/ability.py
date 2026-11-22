@@ -3,9 +3,10 @@ from engine.orders.order's targeting, chase and moves. Over the world (WORLD_API
 import math
 
 import engine.data.units as simunits
+import engine.objects.toggle as simtoggle
 from engine.objects.power import UNPACK_POWER, start_reload
 
-PEERS = frozenset({'act', 'delete', 'garrison', 'modify', 'powers_off', 'production', 'send', 'toggle_press', 'toggles_of'})
+PEERS = frozenset({'act', 'delete', 'garrison', 'modify', 'powers_off', 'production', 'send', 'short_of_power', 'toggles_of'})
 FLEE_GONE = 3
 
 
@@ -65,7 +66,7 @@ def order_transform(world, peers, b, power):
         return False, 'not a toggle of his'
     if why := power_refusal(world, peers, b, power, b.x, b.y):
         return False, why
-    if not peers.toggle_press(b, 'Command_JAIV_Transform'):
+    if not simtoggle.press(world, b, 'Command_JAIV_Transform', peers.short_of_power):
         return False, 'not a toggle of his'
     start_reload(world, b, power, world.frame_now() + simunits.power_rules(b.template, power, world.own)['reload'])
     return True, None

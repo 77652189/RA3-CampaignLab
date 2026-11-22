@@ -58,6 +58,7 @@ it; so a snapshot does not hold it: R2 13a)."""
 import dataclasses
 import math
 import sys
+import types
 
 # The commands a player or the AI can give in the game (the port's whole vocabulary; module_plan §2 order family and
 # the modules they go to). The line verbs below are the ones a script line, so `post`, carries today.
@@ -242,10 +243,13 @@ def _where(cmd):
 
 
 class Commands:
-    """The command port of one world (today a sim.Sim)."""
+    """The command port of one world (today a sim.Sim). `rules`: the unit orders' rule modules its routes call --
+    order, ability, hunt (engine.orders, L5) and toggle (engine.objects.toggle) -- handed in by the world's maker
+    (sim.ORDER_RULES): this port imports none of them, so a giver of any layer may use it (ADR 0037 S1)."""
 
-    def __init__(self, world):
+    def __init__(self, world, **rules):
         self._w = world
+        self._r = types.SimpleNamespace(**rules, peers=rules['order'].Peers(world))
         self._issued = []
 
     @staticmethod
@@ -423,38 +427,40 @@ class Commands:
         return self._serials((s,)).get(s)     # `_pinned` checked it: living, of that name
 
     def _attack_move(self, cmd):
+        r = self._r
         if cmd.arg('objects'):
             return self._script_move(cmd, True)
         for b in self._units(cmd):          # each unit's own attack-move (ATTACK_MOVE_NAMED_UNIT_TO)
-            self._w.order_move(b, _where(cmd), True, on_grid=True)
+            r.order.order_move(self._w, r.peers, b, _where(cmd), True, on_grid=True)
         return True, ''
 
     def _move(self, cmd):                    # several at once: a group move (MOVE_NAMED_UNIT_TO)
+        r = self._r
         if cmd.arg('objects'):
             return self._script_move(cmd, False)
-        self._w.order_group(self._units(cmd), _where(cmd), False, on_grid=True)
+        r.order.order_group(self._w, r.peers, self._units(cmd), _where(cmd), False, on_grid=True)
         return True, ''
 
     def _script_move(self, cmd, attacking):
         """A map script's move: a team's (`group`: one group move, MOVE_TEAM_TO) or each unit's own; to `pos` or the
         place; `on_grid`: snapped (engine_drop)."""
-        w, where, grid = self._w, _where(cmd), cmd.arg('on_grid', False)
+        w, r, where, grid = self._w, self._r, _where(cmd), cmd.arg('on_grid', False)
         if cmd.arg('group'):
             units = self._units(cmd)
             if cmd.arg('drop_target'):      # the player's click on a selection: his move replaces their attack
                 for b in units:
                     b.goal = None
-            w.order_group(units, where, attacking, on_grid=grid)
+            r.order.order_group(w, r.peers, units, where, attacking, on_grid=grid)
         else:                               # each unit's own (the AI re-sends a member: `drop_target` first; a
             face = cmd.arg('face')          # form-up slot's `face`, radians, turned to once there)
             for b in self._units(cmd):
                 if cmd.arg('drop_target'):
                     b.goal = None
-                w.order_move(b, where, attacking, face=face, on_grid=grid)
+                r.order.order_move(w, r.peers, b, where, attacking, face=face, on_grid=grid)
         return True, ''
 
     def _attack(self, cmd):
-        w = self._w
+        w, r = self._w, self._r
         if cmd.arg('goal_only'):            # the AI's pursuit takes a threat as the unit's goal alone: no fresh attack
             aimed = bool(cmd.target) or cmd.arg('target_serial') is not None    # order, its mode / path / follow
             t = self._target(cmd, w.bodies.get) if aimed else None  # untouched (INFERRED, e135); no target (no name,
@@ -469,7 +475,7 @@ class Commands:
                 return False, f'找不到 {cmd.target}'
             sent = []                       # a unit not there is ordered all the same and refuses nothing (as before)
             for b in self._units(cmd):
-                ok = w.order_attack(b, t, cmd.force)
+                ok = r.order.order_attack(w, r.peers, b, t, cmd.force)
                 if b is not None:
                     sent.append(ok)
                 if ok and b is not None and cmd.arg('team') is not None:    # TEAM_ATTACK_TEAM ('' the default
@@ -479,7 +485,7 @@ class Commands:
         t = self._target(cmd, lambda n: next(iter(w.pick(n)), None))  # the one picked is given as it is: read
         if t is None:                       # again by its name, a script reference of that name took its place
             return False, f'找不到 {cmd.target}'   # (11-19 same-name sweep S3); pinned, by its serial (z #1)
-        return self._attacked(cmd, [w.order_attack(b, t, cmd.force) for b in self._units(cmd)])
+        return self._attacked(cmd, [r.order.order_attack(w, r.peers, b, t, cmd.force) for b in self._units(cmd)])
 
     @staticmethod
     def _attacked(cmd, sent):
@@ -488,7 +494,7 @@ class Commands:
         return (True, '') if all(sent) else (False, f'不能攻击 {cmd.target}')
 
     def _power(self, cmd):
-        w = self._w
+        w, r = self._w, self._r
         if cmd.arg('objects'):
             return self._script_press(cmd)
         p = w.point(cmd.place)
@@ -498,7 +504,7 @@ class Commands:
             if p is None:
                 w.note('剧本', f'找不到地点 {cmd.place}')
             else:
-                ok, why = w.order_power(b, (u.abilities.get(cmd.power) if u else None) or cmd.power, p)
+                ok, why = r.ability.order_power(w, r.peers, b, (u.abilities.get(cmd.power) if u else None) or cmd.power, p)
                 if not ok:
                     refused.append(why)
         if p is None:
@@ -506,15 +512,15 @@ class Commands:
         return (False, refused[0]) if refused else (True, '')
 
     def _capture(self, cmd):
-        w = self._w
+        w, r = self._w, self._r
         if cmd.arg('objects'):              # refused when no unit goes (none there, or none may enter it: f #4)
             t = cmd.target if cmd.arg('target_serial') is None else self._target(cmd, None)
-            sent = [w.order_capture(b, t) for b in self._units(cmd)] if t is not None else []
+            sent = [r.order.order_capture(w, r.peers, b, t) for b in self._units(cmd)] if t is not None else []
             return (True, '') if sent and all(sent) else (False, f'没有能去占 {cmd.target} 的工兵')
         t = self._target(cmd, lambda n: next(iter(w.pick(n)), None))  # the one picked, as it is (S3, as _attack)
         if t is None:
             return False, f'找不到 {cmd.target}'
-        sent = [w.order_capture(b, t) for b in self._units(cmd)]     # each one's answer (i #3)
+        sent = [r.order.order_capture(w, r.peers, b, t) for b in self._units(cmd)]     # each one's answer (i #3)
         return (True, '') if sent and all(sent) else (False, f'没有能去占 {cmd.target} 的工兵')
 
     def _build(self, cmd):
@@ -562,46 +568,54 @@ class Commands:
     # --- the map scripts' orders (simact_order's actions give them through `do` since R3 13d-1; the actions keep what
     # decides who is ordered -- a team's members, the living ones, the movers -- the routes are the order calls)
     def _guard(self, cmd):
+        r = self._r
         for b in self._units(cmd):
-            self._w.order_guard(b, cmd.place)
+            r.order.order_guard(self._w, r.peers, b, cmd.place)
         return True, ''
 
     def _stop(self, cmd):
+        r = self._r
         for b in self._units(cmd):
-            self._w.order_stop(b)
+            r.order.order_stop(b)
         return True, ''
 
     def _idle(self, cmd):                    # its order dropped, nothing new (the AI's command 5)
+        r = self._r
         for b in self._units(cmd):
-            self._w.stand(b)
+            r.order.stand(b)
         return True, ''
 
     def _follow_path(self, cmd):
-        self._w.order_follow(self._units(cmd), cmd.place, cmd.attacking, exact=cmd.arg('exact', False),
+        r = self._r
+        r.order.order_follow(self._w, r.peers, self._units(cmd), cmd.place, cmd.attacking, exact=cmd.arg('exact', False),
                              start=cmd.arg('start'), as_team=cmd.arg('as_team', False))
         return True, ''
 
     def _attack_ground(self, cmd):           # fire at the spot till another order replaces it (fight: ground_fire)
+        r = self._r
         p = self._w.point(cmd.place)
         for b in self._units(cmd):
-            self._w.stand(b)
+            r.order.stand(b)
             b.aiupdate.command('ground', p)
         return True, ''
 
     def _face(self, cmd):                    # stand and turn to the point
+        r = self._r
         p = self._w.point(cmd.place)
         for b in self._units(cmd):
-            self._w.stand(b)
+            r.order.stand(b)
             b.face = math.atan2(p[1] - b.y, p[0] - b.x)
         return True, ''
 
     def _hunt(self, cmd):                    # the crew attack-moves to the nearest hostile, again after each dies
-        self._w.hunt_due(self._w.frame_now(), self._units(cmd))
+        r = self._r
+        r.hunt.hunt_due(self._w, r.peers, self._w.frame_now(), self._units(cmd))
         return True, ''
 
     def _flee(self, cmd):                    # RunOffMapBehavior's run
+        r = self._r
         for b in self._units(cmd):
-            self._w.flee_start(b)
+            r.ability.flee_start(self._w, r.peers, b)
         return True, ''
 
     def _stance(self, cmd):                  # an AI setting, no order dropped: the unit's AIUpdate's (aiupdate.py)
@@ -622,9 +636,9 @@ class Commands:
         (ActivateModuleSpecialPower) -- a script's press, no refusal; or the player's own (simproxy, R3 13e), which
         answer the world's refusals: 'click' (`power` at `pos`: reload, ground, ForbiddenObjectRange, reach -- then
         the scripts' way at a waypoint), 'transform' (`power` untargeted)."""
-        w, button, via = self._w, cmd.arg('button'), cmd.arg('via')
+        w, r, button, via = self._w, self._r, cmd.arg('button'), cmd.arg('via')
         if via in ('click', 'transform'):
-            return w.player_power(self._units(cmd), cmd.power, cmd.pos, via)
+            return r.ability.player_power(w, r.peers, self._units(cmd), cmd.power, cmd.pos, via)
         if via not in ('wfire', 'leap', 'movement', 'self'):
             return False, f'power: no press route {via!r}'
         pressed = []                        # each press's answer: False where the world turned it down (f #4)
@@ -643,17 +657,18 @@ class Commands:
     def _unpack(self, cmd):                  # drive to the place, turn into the button's replacement there (M10)
         """At the place, or at `pos` (the AI's SimpleExpansion: armed, `stand` its Distance, `here` where it stands
         then, `send` False -- its team's move walks it)."""
-        w = self._w
+        w, r = self._w, self._r
         p, where = (w.point(cmd.place), cmd.place) if cmd.pos is None else (cmd.pos, None)
         units = self._units(cmd)
         if not units or None in units:      # no unit to unpack: refused before the order call (f #5)
             return False, 'no unit to unpack'
-        ok = all([w.order_unpack(b, p, cmd.arg('button'), where, stand=cmd.arg('stand'), here=cmd.arg('here', False),
+        ok = all([r.ability.order_unpack(w, r.peers, b, p, cmd.arg('button'), where, stand=cmd.arg('stand'), here=cmd.arg('here', False),
                                  send=cmd.arg('send', True)) for b in units])
         return (True, '') if ok else (False, 'no unpack button of his')
 
     def _toggle(self, cmd):                  # the toggle module (M5) steps to its next ToggleState
-        if all([self._w.toggle_press(b, cmd.arg('button')) for b in self._units(cmd)]):
+        r = self._r
+        if all([r.toggle.press(self._w, b, cmd.arg('button'), self._w.short_of_power) for b in self._units(cmd)]):
             return True, ''
         return False, 'not a toggle of his'
 

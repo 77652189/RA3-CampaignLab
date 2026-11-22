@@ -35,6 +35,7 @@ import sys
 import time
 
 import engine.loop.frame as simloop
+import engine.orders.order as simorder
 import engine.testing.small as simsmall
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -85,8 +86,8 @@ def scene(units=UNITS, model=True):
         for k in range(QUEUED):
             s.order_build(owner, army[k % len(army)])
     for _, owner, _, _, _ in SIDES:
-        s.order_group([b for b in s.bodies.values() if b.owner == owner and b.name.startswith(owner + '_u')],
-                      CENTRE, True)
+        simorder.order_group(s, simorder.Peers(s), [b for b in s.bodies.values()
+                                                    if b.owner == owner and b.name.startswith(owner + '_u')], CENTRE, True)
     return s
 
 

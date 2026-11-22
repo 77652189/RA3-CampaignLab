@@ -43,29 +43,19 @@ FORWARDER_CALLS = {
     # port, R3 13d-2)
     ('engine.script.act_ability', 'send'): 1,
     # simact_object: kill / sell / move / capture an object
-    ('engine.script.act_object', 'delete'): 2, ('engine.script.act_object', 'destroy'): 5, ('engine.script.act_object', 'modify'): 1, ('engine.script.act_object', 'order_capture'): 1,
-    ('engine.script.act_object', 'sell'): 2, ('engine.script.act_object', 'send'): 1, ('engine.script.act_object', 'stand'): 1,
-    # simact_order: a teleport's and the AI hand-over's dropped order (its orders go through the command port, R3 13d-1)
-    ('engine.script.act_order', 'stand'): 2,
-    # the command port: the one caller of the order calls for the givers moved onto it (R3 13b-13d; the order family's
-    # move into AIUpdate turns these into its module's command)
-    ('engine.ports.command', 'flee_start'): 1, ('engine.ports.command', 'hunt_due'): 1,
-    ('engine.ports.command', 'order_attack'): 2, ('engine.ports.command', 'order_capture'): 2,
-    ('engine.ports.command', 'order_follow'): 1, ('engine.ports.command', 'order_group'): 2,
-    ('engine.ports.command', 'order_guard'): 1, ('engine.ports.command', 'order_move'): 2,
-    ('engine.ports.command', 'order_power'): 1, ('engine.ports.command', 'order_stop'): 1,
-    ('engine.ports.command', 'player_power'): 1,
-    ('engine.ports.command', 'stand'): 3,
+    ('engine.script.act_object', 'delete'): 2, ('engine.script.act_object', 'destroy'): 5, ('engine.script.act_object', 'modify'): 1,
+    ('engine.script.act_object', 'sell'): 2, ('engine.script.act_object', 'send'): 1,
+    # the command port: the special powers' presses (S1, ADR 0037: its orders call the rules it is handed; these wait
+    # for Specials as a part of its own, S3)
     ('engine.ports.command', 'leap_press'): 1, ('engine.ports.command', 'movement_power_press'): 1,
-    ('engine.ports.command', 'order_unpack'): 1, ('engine.ports.command', 'self_power_press'): 1,
-    ('engine.ports.command', 'toggle_press'): 1, ('engine.ports.command', 'wfire_press'): 1,
-    # simact_player / simact_world: upgrades and a team's stop
-    ('engine.script.act_player', 'modify'): 1, ('engine.script.act_world', 'stand'): 1,
+    ('engine.ports.command', 'self_power_press'): 1, ('engine.ports.command', 'wfire_press'): 1,
+    # simact_player: upgrades
+    ('engine.script.act_player', 'modify'): 1,
     # simdamage's Peers loan
     ('engine.combat.host', 'destroy'): 3, ('engine.combat.meta_impact', 'destroy'): 1, ('engine.combat.host', 'modify'): 2, ('engine.combat.host', 'projectile_detonate'): 2,
     ('engine.combat.host', 'queue_projectile_hit'): 1,
     # simgarrison's Peers loan (R3 ⑨c)
-    ('engine.objects.garrison', 'delete'): 1, ('engine.objects.garrison', 'destroy'): 1, ('engine.objects.garrison', 'modify'): 3, ('engine.objects.garrison', 'order_move'): 2,
+    ('engine.objects.garrison', 'delete'): 1, ('engine.objects.garrison', 'destroy'): 1, ('engine.objects.garrison', 'modify'): 3,
     ('engine.objects.garrison', 'send'): 1,
     # siminfiltrator's Peers loan (R3 ⑨c: the calls it made on the whole Sim before, counted once it was layered)
     ('engine.objects.infiltrator', 'delete'): 10, ('engine.objects.infiltrator', 'destroy'): 1, ('engine.objects.infiltrator', 'send'): 1,
@@ -75,15 +65,14 @@ FORWARDER_CALLS = {
         'wfire_due')], 1),     # S2 (ADR 0037): seq / flee / hunt / fight / follow / capture call engine.orders
     # simorder's Peers loan
     ('engine.orders.order', 'delete'): 2, ('engine.orders.order', 'send'): 11,
-    ('engine.orders.ability', 'delete'): 1, ('engine.orders.ability', 'modify'): 1, ('engine.orders.ability', 'send'): 1, ('engine.orders.ability', 'toggle_press'): 1,
+    ('engine.orders.ability', 'delete'): 1, ('engine.orders.ability', 'modify'): 1, ('engine.orders.ability', 'send'): 1,
     # simsweep's Peers loan (simpullback's order_move went through the command port, R3 13f-1)
     ('engine.combat.sweeps', 'destroy'): 1,
     # simai's Peers loan (step 9d-2, R: the calls it made on self.sim before, counted since it joined the registry;
     # step 10 can call simorder / simmodifier / simdamage itself; its orders go through the command port since R3
-    # 13f-1). Not the Sim's: self.tactics.stand (the tactics block, 1; the AI's hunt state's expire went off the count
-    # with Sim.expire, step M10)
+    # 13f-1). (The AI's hunt state's expire went off the count with Sim.expire, step M10; self.tactics.stand with
+    # Sim.stand, S1)
     ('engine.ai.core', 'expected_damage'): 1, ('engine.ai.core', 'modify'): 1,
-    ('engine.ai.core', 'stand'): 1,
     # simproxy: none (its orders go through the command port since R3 13e)
     # living: a forwarder since the living cache (Sim.living -> simliving.living); these are the layers' calls the day
     # it became one, the rule's home being world.living(). The count only shrinks from here.
@@ -102,9 +91,9 @@ FORWARDER_CALLS = {
 # shrinks: a name a package newly reaches is red (reach the part's own home instead), and so is a count above the
 # code's -- lower it in the same commit. Packages are engine.<layer> and the top-level sim*.py files.
 SIM_SURFACE = {'engine.ai': 21, 'engine.combat': 37, 'engine.kernel': 1, 'engine.loop': 38, 'engine.modules': 4,
-               'engine.objects': 34, 'engine.orders': 48, 'engine.players': 19, 'engine.ports': 102,
-               'engine.script': 139, 'engine.state': 27, 'engine.testing': 3, 'engine.world': 2, 'simai_run': 2, 'simbench': 2,
-               'simbench_peak': 9, 'simproxy': 29, 'simrecord': 6, 'simshow': 1}
+               'engine.objects': 33, 'engine.orders': 48, 'engine.players': 19, 'engine.ports': 89,
+               'engine.script': 137, 'engine.state': 27, 'engine.testing': 3, 'engine.world': 2, 'simai_run': 2, 'simbench': 2,
+               'simbench_peak': 8, 'simproxy': 29, 'simrecord': 6, 'simshow': 1}
 RECEIVERS = {'sim', 's', 'w', 'world', 'host', 'peers', '_w'}
 
 _CONTAINER = set(dir(dict)) | set(dir(list)) | set(dir(set))   # self.players.get(...) is a lookup, not a forwarder
@@ -210,8 +199,8 @@ def test_forwarder_guard_bites():
     assert ratchet_breaks(found, {}) == [('simx', 'hop', 4, 0)]                        # a new one
     assert ratchet_breaks({}, {('simx', 'hop'): 4}) == [('simx', 'hop', 0, 4)]         # stale: delete the line
     real = forwarder_calls(forwarders(), {**{m: _src(m) for m in LAYERED},
-                                          'engine.players.tech': _src('engine.players.tech') + "\ndef z(world):\n    world.order_move(1)\n"})
-    assert ('engine.players.tech', 'order_move', 1, 0) in ratchet_breaks(real)
+                                          'engine.players.tech': _src('engine.players.tech') + "\ndef z(world):\n    world.leap_press(1)\n"})
+    assert ('engine.players.tech', 'leap_press', 1, 0) in ratchet_breaks(real)
 
 
 def _package(module):

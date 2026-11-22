@@ -10,6 +10,8 @@ import pytest
 
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 from engine.modules import specialpower  # noqa: E402
+import engine.orders.order as simorder  # noqa: E402
+import engine.orders.ability as simability  # noqa: E402
 
 COLLIDER, CANNON = 'AlliedSuperWeaponAdvanced', 'SpecialPowerParticleCannon'
 
@@ -52,11 +54,11 @@ def test_the_cannon_module_refuses_the_click_until_its_reload_ends():
     # Compiled AlliedSuperWeaponAdvanced: only OCLSpecialPower ModuleTag_ParticleCannon serves the cannon.
     assert [m.ready_at() for m in b.find(sim.kernel_interfaces.SpecialPower)] == [now + 100]
     assert b.ready_at == {CANNON: now + 100}
-    assert e.order_power(b, CANNON, (b.x + 500, b.y))[1] == 'reloading'
+    assert simability.order_power(e, simorder.Peers(e), b, CANNON, (b.x + 500, b.y))[1] == 'reloading'
     simpower.start_reload(e, b, CANNON, now + 30)       # every cast starts it anew
     assert b.ready_at == {CANNON: now + 30}
     e.advance(30)
-    assert e.order_power(b, CANNON, (b.x + 500, b.y))[1] != 'reloading'
+    assert simability.order_power(e, simorder.Peers(e), b, CANNON, (b.x + 500, b.y))[1] != 'reloading'
 
 
 def test_a_power_no_block_serves_gets_a_module_attached():

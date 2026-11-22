@@ -3,6 +3,7 @@ import pytest
 
 import engine.testing.small as simsmall
 from engine.modules import locomotor  # noqa: E402
+import engine.orders.order as simorder  # noqa: E402
 
 
 def test_open_ground_keeps_exact_goal_and_records_arrival_inside_a_coarse_tick():
@@ -49,7 +50,7 @@ def test_air_route_ignores_ground_blocks_and_lands_exactly_on_its_last_point():
     s = simsmall.small_world(model=False)
     jet = s.add('jet', 'AlliedAntiGroundAircraft', 'Player_1', 1200, 2500)
     s.ground.set_blocks([(1220, 2500, 10)])
-    s.order_move(jet, (1220, 2500), False)
+    simorder.order_move(s, simorder.Peers(s), jet, (1220, 2500), False)
     assert jet.path == [(1220, 2500)]  # a blocked ground goal does not refuse an air route
     for _ in range(5):
         s.move(1 / 15, precise=True)

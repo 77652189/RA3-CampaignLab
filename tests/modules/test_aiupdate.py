@@ -3,6 +3,7 @@ from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its c
 import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
+import engine.orders.order as simorder  # noqa: E402
 
 
 def test_hold_fire_keeps_an_attack_unfired_till_another_stance_or_order():
@@ -14,19 +15,19 @@ def test_hold_fire_keeps_an_attack_unfired_till_another_stance_or_order():
     a.aiupdate.set_stance(1, True)                      # another stance: it fires again
     assert (a.stance, a.hold_fire, a.hold_paused) == (1, False, False)
     a.aiupdate.set_stance(3, True)
-    assert s.order_attack(a, a, True) and not a.hold_paused     # an order under HOLD_FIRE fires
+    assert simorder.order_attack(s, simorder.Peers(s), a, a, True) and not a.hold_paused     # an order under HOLD_FIRE fires
     a.aiupdate.set_stance(1, True), a.aiupdate.set_stance(3, True)
-    assert s.order_attack(a, a, True) and not a.hold_paused     # already on it too
+    assert simorder.order_attack(s, simorder.Peers(s), a, a, True) and not a.hold_paused     # already on it too
     a.aiupdate.command('ground', (100.0, 0.0)), a.aiupdate.command('goal', a)  # review jj #1: a goal set alone
     a.aiupdate.follow = 'path'
-    assert s.order_attack(a, a, True) and (a.mode, a.ground_fire, a.follow) == ('attack', None, None)
+    assert simorder.order_attack(s, simorder.Peers(s), a, a, True) and (a.mode, a.ground_fire, a.follow) == ('attack', None, None)
     a.aiupdate.follow = 'path'
     a.aiupdate.command('goal', a)                       # the AI's pursuit on what it is told to attack
-    assert s.order_attack(a, a, True) and a.follow == 'path'    # already on it: no walk
+    assert simorder.order_attack(s, simorder.Peers(s), a, a, True) and a.follow == 'path'    # already on it: no walk
     for pursuit in (lambda: a.aiupdate.command('goal', a), lambda: None):   # review kk #2: after an attack-move
-        s.order_move(a, (500.0, 0.0), True), pursuit()  # (the AI's goal set on its way or still the old one) it walks
+        simorder.order_move(s, simorder.Peers(s), a, (500.0, 0.0), True), pursuit()  # (the AI's goal set on its way or still the old one) it walks
         a.aiupdate.follow = 'path'
-        assert s.order_attack(a, a, True) and a.follow is None
+        assert simorder.order_attack(s, simorder.Peers(s), a, a, True) and a.follow is None
     a.aiupdate.set_auto_acquire(True)
     assert a.ai_acquire
 
