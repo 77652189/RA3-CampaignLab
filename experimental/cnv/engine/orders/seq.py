@@ -6,15 +6,21 @@ stop)."""
 PEERS = frozenset({'seq', 'garrison'})
 
 
-def queue(seq, b, script, loops):
-    """UNIT_EXECUTE_SEQUENTIAL_SCRIPT: `script` behind the unit's others, a subroutine now; `loops` runs more."""
+def queue(seq, b, script, loops, team=None, group=()):
+    """UNIT_EXECUTE_SEQUENTIAL_SCRIPT: `script` behind the unit's others, a subroutine now; `loops` runs more.
+    TEAM_EXECUTE_SEQUENTIAL_SCRIPT: b None, behind the team's others, `group` its members at the call (d115 14)."""
     script.subroutine = True
-    seq.append({'b': b, 'script': script, 'step': -1, 'loops': loops})
+    seq.append({'b': b, 'team': team, 'group': list(group), 'script': script, 'step': -1, 'loops': loops})
 
 
-def stop(seq, b):
-    """UNIT_STOP_SEQUENTIAL_SCRIPT (engine_seqstop:a): the unit's scripts go (a move a step gave goes on)."""
-    seq[:] = [r for r in seq if r['b'] is not b]
+def stop(seq, b, team=None):
+    """UNIT_STOP_SEQUENTIAL_SCRIPT (engine_seqstop:a): the unit's scripts go (a move a step gave goes on); with
+    `team` (b None) TEAM_STOP_SEQUENTIAL_SCRIPT: the team's (engine_seqteam:t)."""
+    seq[:] = [r for r in seq if r['b'] is not b or (team is not None and r['team'] != team)]
+
+
+def _key(r):
+    return r['team'] if r['b'] is None else r['b'].serial
 
 
 def idle(peers, b):
@@ -35,18 +41,19 @@ def seq_due(world, peers):
     unit held the next step back not at all (what writes the wait: not known)."""
     heads, firsts = set(), []               # each unit's first record, picked before any step (review ll #2: not
     for r in peers.seq:                     # a scan of the queue for every record behind it)
-        if r['b'].serial not in heads:
-            heads.add(r['b'].serial)
+        if _key(r) not in heads:
+            heads.add(_key(r))
             firsts.append(r)
     for r in firsts:
         if all(x is not r for x in peers.seq):
             continue                        # stopped this frame by another unit's step (review kk #1)
         b = r['b']
-        if not b.alive:
-            peers.seq.remove(r)
+        group = [b] if b is not None else [x for x in r['group'] if x.alive]
+        if not all(x.alive for x in group) or not group:
+            peers.seq.remove(r)             # the unit dead, the team's group empty (d115 14)
             continue
-        if not idle(peers, b):
-            continue
+        if not all(idle(peers, x) for x in group):
+            continue                        # a team's: every living member of its group idle (INFERRED)
         r['step'] += 1
         acts = [x for x in r['script'].actions if x.enabled]
         if r['step'] >= len(acts):
@@ -57,6 +64,9 @@ def seq_due(world, peers):
                 peers.seq.append(r)
             continue
         act = acts[r['step']]
+        if b is None:
+            world.executor.action(act.name, [r['team'] if x == '<This Team>' else x for x in act.args], r['script'])
+            continue
         args = [b.name if x == '<This Object>' else (b.team if x == '<This Team>' else x) for x in act.args]
         if '<This Object>' in act.args:
             written = {}                    # the unit's name written as well: that one reads as written -- the

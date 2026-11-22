@@ -178,6 +178,8 @@ def team_transfer_to_player(sim, name, a, script):
 
 
 def unit_stop_sequential_script(sim, name, a, script):
+    if name.startswith('TEAM_'):        # (team) its records go
+        return simseq.stop(sim.seq, None, a[0])
     b = sim.body(a[0])                  # (unit) simseq.stop
     if b is not None:
         simseq.stop(sim.seq, b)
@@ -185,9 +187,14 @@ def unit_stop_sequential_script(sim, name, a, script):
 
 def unit_execute_sequential_script(sim, name, a, script):
     # (unit, script) d115 14: queued on the unit (simseq.queue). The loop count is 0 here (one run; the
-    # catalog's action has no third argument)
-    b = sim.body(a[0])
+    # catalog's action has no third argument). TEAM_: (team, script) queued on the team, its group the members now
+    # (A288 read: an AI team not made yet, or no such script -> nothing)
     sc = sim.executor.script_named(a[1])
+    if name.startswith('TEAM_'):
+        if sc is not None and not sim.absent_team(a[0]):
+            simseq.queue(sim.seq, None, sc, 0, team=a[0], group=sim.members(a[0]))
+        return
+    b = sim.body(a[0])
     if b and b.alive and sc is not None:
         simseq.queue(sim.seq, b, sc, int(a[2]) if len(a) > 2 else 0)
 
@@ -297,6 +304,8 @@ ACTIONS = {
     'TEAM_TRANSFER_TO_PLAYER': team_transfer_to_player,
     'UNIT_STOP_SEQUENTIAL_SCRIPT': unit_stop_sequential_script,
     'UNIT_EXECUTE_SEQUENTIAL_SCRIPT': unit_execute_sequential_script,
+    'TEAM_STOP_SEQUENTIAL_SCRIPT': unit_stop_sequential_script,
+    'TEAM_EXECUTE_SEQUENTIAL_SCRIPT': unit_execute_sequential_script,
     'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER': set_unit_health_percentage_to_counter,
     'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER': set_player_ownership_of_type_counter,
     'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER_INCLUDE_DEAD': set_player_ownership_of_type_counter,
