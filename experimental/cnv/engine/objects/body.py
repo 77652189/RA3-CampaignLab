@@ -238,7 +238,7 @@ def fill(world, b, lib):
     AlliedAntiInfantryVehicle_Ground the war factory's button makes: speed 0, no KindOf -- HOOKS 6): KindOf and
     speed from the model's library `lib`, health / armour / weapons from the template of the name without its last
     '_' part when simunits knows that one (INFERRED: the same unit; the weapons fixed, its WeaponSet module armed
-    -- attached when it has none). The skirmish AI calls it for what its factories made (simai.Brain.unit_due)."""
+    -- attached when it has none). The skirmish AI's fill_body (the command port) for what its factories made."""
     own = world.own
     if 'all' not in (b.guessed or []):
         return

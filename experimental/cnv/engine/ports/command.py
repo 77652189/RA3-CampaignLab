@@ -65,7 +65,7 @@ import types
 KINDS = frozenset({
     'move', 'attack_move', 'attack', 'attack_ground', 'stop', 'idle', 'guard', 'follow_path', 'capture', 'enter',
     'exit', 'power', 'toggle', 'stance', 'build', 'place', 'unpack', 'sell', 'buy_science', 'hunt', 'flee',
-    'auto_acquire', 'face', 'set_lifetime'})
+    'auto_acquire', 'face', 'set_lifetime', 'fill_body'})
 VERB = {'attack_move': '派', 'move': '走', 'attack': '攻击', 'power': '放', 'capture': '占领', 'build': '生产',
         'buy_science': '买'}
 KIND = {v: k for k, v in VERB.items()}
@@ -74,7 +74,8 @@ KIND = {v: k for k, v in VERB.items()}
 # INFERRED for RA3) joined with them.
 # The skirmish AI's (13f-1): enter (a garrison / its own base defense), place (a structure set down: INFERRED, below).
 ROUTED = frozenset(VERB) | {'guard', 'stop', 'idle', 'follow_path', 'attack_ground', 'face', 'hunt', 'flee', 'stance',
-                            'auto_acquire', 'unpack', 'toggle', 'enter', 'place', 'set_lifetime'}
+                            'auto_acquire', 'unpack', 'toggle', 'enter', 'place', 'set_lifetime',
+                            'fill_body'}
 GIVERS = ('player', 'ai', 'script', 'proxy', 'test')     # `by`: 'player', 'ai:<player>', ...
 DATA = (str, int, float, bool, type(None))
 
@@ -244,7 +245,7 @@ def _where(cmd):
 
 class Commands:
     """The command port of one world (today a sim.Sim). `rules`: the unit orders' rule modules its routes call --
-    order, ability, hunt, micro (engine.orders, L5), toggle (engine.objects.toggle) and body (the AI's late lifetime) --
+    order, ability, hunt, micro (engine.orders, L5), toggle (engine.objects.toggle) and body (the AI's lifetime, fill) --
     handed in by the world's maker (sim.ORDER_RULES) with `refresh_modifiers`, the world's re-read of a body's
     attribute modifiers (the micro's charge): this port imports none of them, so a giver of any layer may use it (ADR
     0037 S1, B3)."""
@@ -253,6 +254,12 @@ class Commands:
         self._w = world
         self._r = types.SimpleNamespace(**rules, peers=rules['order'].Peers(world))
         self._issued = []
+        self._libs = {}                     # player -> his AI's template library getter, which `fill_body` reads
+
+    def library(self, player, get):
+        """Wire `player`'s AI template library (`get()`, read when used) for `fill_body`: the Brain does when made (a
+        snapshot keeps none; the Brain made again on restore wires it again)."""
+        self._libs[player] = get
 
     @staticmethod
     def kinds():
@@ -633,6 +640,14 @@ class Commands:
         for b in live:
             self._r.body.last_until(self._w, b, cmd.arg('die_frame'))
         return (True, '') if live else (False, 'set_lifetime: none living')
+
+    def _fill_body(self, cmd):               # a factory's unit the template reader knows nothing of: his AI's library
+        get, own = self._libs.get(self._giver(cmd)), self._units(cmd)
+        if get is None or not own:
+            return False, 'fill_body: no library or none of his living'
+        for b in own:
+            self._r.body.fill(self._w, b, get())
+        return True, ''
 
     def _auto_acquire(self, cmd):            # an AI setting: takes what only a computer's units take by themselves
         for b in self._units(cmd):

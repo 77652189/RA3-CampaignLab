@@ -82,7 +82,7 @@ def test_unknown_and_unrouted_kinds_are_refused():
     assert not ok and 'no route' in why and not s.events
     ok, why = port.post(Command('hunt', units=('a',)), 5.0)          # routed, but no script line carries it
     assert not ok and 'not queued' in why and not s.events
-    assert set(ROUTED) < port.kinds() and len(port.kinds()) == 24
+    assert set(ROUTED) < port.kinds() and len(port.kinds()) == 25
     assert [r[2] for r in port.issued()] == [False, False, False]
 
 
@@ -1249,6 +1249,39 @@ def test_the_ais_dodge_sets_a_foes_beacon_lifetime_once_from_its_own_frame_throu
     assert s.bodies['beacon'].life_end == 660 and old.life_end == 560
     assert [(c.kind, c.by, c.arg('die_frame'), ok) for _, c, ok, _ in s.commands.issued()] == [
         ('set_lifetime', 'ai:Player_1', 560, True), ('set_lifetime', 'ai:Player_1', 660, True)]
+
+
+def test_the_ais_unknown_factory_unit_is_filled_once_through_the_port_from_its_library(monkeypatch):
+    """B3 step 3: a `#made` body of the AI's of a template the reader knows nothing of, first met in unit_due at 40:
+    `fill_body` by serial with the library its Brain wired -- the same fields as simbody.fill on a twin, once (41 adds
+    nothing); one not `#made`, another player's, untouched; with no library wired, refused."""
+    import types
+    import engine.objects.body as simbody
+    tank = 'AlliedAntiVehicleVehicleTech1'
+    s = simsmall.small_world([('#made 1', tank, 'Player_1', 0.0, 0.0), ('twin', tank, 'Player_1', 0.0, 100.0),
+                              ('plain', tank, 'Player_1', 0.0, 200.0), ('#made 2', tank, 'Player_2', 0.0, 300.0)],
+                             model=False)
+    monkeypatch.setattr(simbody.importlib, 'import_module',
+                        lambda name: types.SimpleNamespace(normal_speed=lambda lib, tpl: 60.0))
+    for b in s.bodies.values():
+        b.template, b.guessed = tank + '_Ground', ['all']
+    made, twin = s.bodies['#made 1'], s.bodies['twin']
+    apart = {k for k, v in Observe.state(made).items() if Observe.state(twin)[k] != v}     # where, name, serial
+    br, _ = _brain(s)
+    br.made, br.trace, br.unit_q = {}, [], []
+    br.unit_due(40)
+    assert made.guessed == ['all'] and br.made == {made.serial: 40}     # no library wired: refused, nothing filled
+    br.made, br.trace = {}, []
+    br.host.lib = types.SimpleNamespace(template=lambda name: types.SimpleNamespace(kinds=('VEHICLE', 'AMPHIBIOUS')))
+    s.commands.library('Player_1', lambda: br.host.lib)     # what Brain.__init__ wires
+    simbody.fill(s, twin, br.host.lib)
+    br.unit_due(40)
+    br.unit_due(41)
+    assert {k for k, v in Observe.state(made).items() if Observe.state(twin)[k] != v} == apart
+    assert made.speed == 60.0 and 'AMPHIBIOUS' in made.kinds and made.guessed == ['all: simai.fill']
+    assert br.made == {made.serial: 40} and br.trace == [(40, 'out', tank + '_Ground')]
+    assert s.bodies['plain'].guessed == s.bodies['#made 2'].guessed == ['all']
+    assert [(c.kind, ok) for _, c, ok, _ in s.commands.issued()] == [('fill_body', False), ('fill_body', True)]
 
 
 def test_a_pinned_order_moves_only_the_object_its_name_picked_and_a_gone_one_is_refused():

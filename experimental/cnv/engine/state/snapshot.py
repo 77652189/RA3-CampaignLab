@@ -77,7 +77,7 @@ SIM = {
     'production': {'world': WIRE, 'peers': WIRE, 'queues': STATE, 'produced_to': STATE, 'placing': STATE,
                    'pack_hold': STATE, 'gifts': STATE},
     'sweeps': {'world': WIRE, 'peers': WIRE, 'lines': STATE},
-    'commands': {'_w': WIRE, '_r': WIRE, '_issued': STATE},
+    'commands': {'_w': WIRE, '_r': WIRE, '_issued': STATE, '_libs': WIRE},
     'specials': {'wfires': STATE, 'leaps_due': STATE, 'leap_ground_hits': STATE, 'movement_due': STATE,
                  'self_bits_due': STATE},
     'harm': {'incoming': STATE, 'projectile_hits': STATE, 'knock_drowns': STATE, 'dots': STATE, 'cold_on': STATE,

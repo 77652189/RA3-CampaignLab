@@ -80,7 +80,6 @@ import labpaths  # noqa: E402
 import modelpin  # noqa: E402
 import engine.data.units as simunits  # noqa: E402
 import engine.orders.micro as simmicro  # noqa: E402
-import engine.objects.body as simbody  # noqa: E402
 import engine.world.handle as simworld  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
 from engine.ports import ai as ai_port, templates  # noqa: E402
@@ -269,6 +268,7 @@ class Brain:
     def __init__(self, host, player, side, personality, frame):
         self.host, self.world, self.player = host, host.world, player
         self.commands = host.commands   # the command port its orders go through (13f-1)
+        self.commands.library(player, lambda: host.lib)     # its fill_body's library (B3), the host's when used
         self.systems = host.systems     # the players' systems it asks (power, production, the wallet; 13f-2c)
         self.settings = host.settings   # the mission's AI settings (the AI port)
         self.observe = host.observe     # the observation port (its reads of the fight, money, flags: 13f-2b)
@@ -1842,7 +1842,7 @@ class Brain:
             if b.owner == self.player and b.name.startswith('#made') and b.serial not in self.made:
                 self.made[b.serial] = frame
                 self.trace.append((frame, 'out', b.template))
-                simbody.fill(world, b, self.host.lib)     # a body simunits does not know (HOOKS 6)
+                self.give('fill_body', b)       # a body simunits does not know (HOOKS 6)
         for t in list(self.unit_q):
             free = [f for f in self.factories() if t in self.host.menu(f.template)
                     and frame >= self.made.get(f.serial, -10 ** 9) + self.host.unpack(f.template)
