@@ -69,3 +69,16 @@ def test_an_idle_writes_its_wait_on_the_units_or_the_teams_first_record():
     simseq.stop(seq, None, 'T')
     assert seq == [{'b': None, 'team': 'Q', 'wait': 7}]
     assert simseq._key({'b': None, 'team': 'P/T'}) == simseq._key({'b': None, 'team': 'T'})    # one head (vv P3)
+
+
+def test_a_team_entering_an_object_goes_to_the_object_not_a_waypoint_of_its_name(monkeypatch):
+    # review ww P2: the argument is an object; a waypoint sharing its name is not where the team goes
+    import engine.script.act_order as act
+    s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0), ('field', APOC, 'Player_1', 700.0, 0.0)])
+    s.waypoints['field'] = (0.0, 900.0)
+    sent = []
+    crew = act._crew
+    monkeypatch.setattr(act, '_crew', lambda sim, name, who: [s.bodies['a']] if who == 'T' else crew(sim, name, who))
+    monkeypatch.setattr(act, '_order_bodies', lambda sim, kind, crew, *args, place: sent.append((kind, place)))
+    act.team_enter_named(s, 'TEAM_ENTER_NAMED', ['T', 'field'], None)
+    assert sent == [('move', '@700.0,0.0')]

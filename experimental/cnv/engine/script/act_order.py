@@ -136,8 +136,10 @@ def team_enter_named(sim, name, a, script):
     # (team, object): bench 11-22 engine_airin:go -- Apollos (own or a friend's) and cryocopters (which the airfield's
     # CanParkHereFilter excludes) told to enter an airfield 700 off all reached it in ~2 s; the Apollos then landed and
     # parked (not modelled: no landing / parking), the copters hovered over it. Taken as a group move to the object
-    # (a dead or missing object: not read; its last spot / none as sim.point gives)
-    _to_place(sim, 'move', _crew(sim, name, a[0]), a[1], ('group', True))
+    # (a dead or missing object: not read; no order, INFERRED). The argument is an object, not a place: never a
+    # waypoint of the same name (review ww P2)
+    for b in _crew(sim, 'NAMED', a[1]):                 # the object, if alive (no Sim access of its own)
+        _to_place(sim, 'move', _crew(sim, name, a[0]), f'@{b.x},{b.y}', ('group', True))
 
 
 def named_face_waypoint(sim, name, a, script):
