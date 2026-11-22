@@ -48,8 +48,8 @@ bench = "aigarrbld: 电厂在 1 to s40.6 (the plant's health from 100 at s10.9 d
 proves = "simai GarrisonBuilding: when the team state's fight with the plant starts (its rate: the reading above)"
 expect = "win(12, 40, '电厂在') == [1] * 29"
 mismatch = """\
-sim 电厂在 0 from s28 (bench s41.0): 52 hp a second from s9 (bench 33 from s11.3, the reading above), the team \
-starting on the plant about 2 s early the rest"""
+sim 电厂在 0 from s40 (bench s41.0), the damage right (the reading above): the team turns on the plant ~400 off it \
+on both, the sim's there ~2.5 s early -- it walks from s0.5 (bench ordered f29) and straight (the bench's path bends)"""
 
 [[reading]]
 id = "the_garrison_team_takes_the_shop_after_s56"
@@ -58,5 +58,6 @@ bench = "aigarrbld: 商店归AI 0 to s56.2 (步兵在家 0 from s11)"
 proves = "simai GarrisonBuilding: when the team gets in -- the team state's fight on the way, then the walk"
 expect = "win(12, 56, '商店归AI') == [0] * 45"
 mismatch = """\
-sim 商店归AI 1 from s40 (out of home s8): 16 s early = the plant falls 13 s early (sim s28, bench s41: the damage \
-and the fight's start, readings above), plant to shop 12 s (bench 15.3 s)"""
+sim 商店归AI 1 from s52: 4 s early = the plant falls ~1 s early (reading above), plant to shop 12 s (bench 15.3: \
+the plant's death list leaves the player a Peacekeeper, run 054620's ext log f631-f659, the team fights it -- the \
+sim's CreateObjectDie makes no list on such a death)"""
