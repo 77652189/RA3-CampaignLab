@@ -245,11 +245,12 @@ def _drop(sim, b, power, p):
     ten round the spot after; the bombers themselves never (Sim.counted). CREATE_AT_EDGE_NEAR_SOURCE made them at
     the store, not at the map's edge 700 off (INFERRED: the source's place); each flies to the spot + its offset
     and empties there (garrison.eject). False when the OCL makes no such thing."""
-    module = simunits.ocl_power(b.template, power, sim.own)
-    drops = simgarrison.ocl_transports(module['OCL'], sim.own) if module else []
+    own = sim.own
+    module = simunits.ocl_power(b.template, power, own)
+    drops = simgarrison.ocl_transports(module['OCL'], own) if module else []
     for template, dx, dy, eject in drops:
         g = sim.add(free_name(sim, '#created', template), template, b.owner, b.x + dx, b.y + dy, at=sim.t)
-        for name, n in simgarrison.initial_payload(template, sim.own):
+        for name, n in simgarrison.initial_payload(template, own):
             for _ in range(n):
                 sim.garrison.put(sim.add(free_name(sim, '#created', name), name, b.owner, g.x, g.y,
                                          at=sim.t), g, script=True)
@@ -289,10 +290,53 @@ def fire_special_power_on_nearest_objecttype_by_player(sim, name, a, script):
     if crew is None:
         return
     x, y, want = *_middle(crew), sim.of_types(a[2])
-    goal = min((o for o in sim.bodies.values() if o.alive and o.owner == a[4] and o.template.lower() in want),
+    goal = min((o for o in _owned(sim, a[4]) if o.template.lower() in want),
                key=lambda o: math.hypot(o.x - x, o.y - y), default=None)
     if goal is not None:
         player_fire_special_power_at_waypoint(sim, name, [a[0], a[1], f'@{goal.x},{goal.y}'], script)
+
+
+def skirmish_fire_special_power_at_most_cost(sim, name, a, script):
+    # (player, power): the player's power where the human's things are worth most (work/re a297). R = the power's
+    # RadiusCursorRadius (50 at least); a <= 10 x 10 grid over the box of the human's structures, its x sides (only)
+    # pulled in by R (flipped: the middle), worth within 2R; then 11 x 11 steps of R/10 round the best, worth within
+    # R, ties averaged. The foe: the script player's AI's current enemy, none for a campaign AI -> the first human
+    # (bench engine_scripts8bm most: the y sides kept -- both pulled in missed the 300 one). INFERRED: a human caster
+    # (no AI) aims at nothing
+    head = next((v for k, v in simunits._retail_power_heads().items() if k.lower() == a[1].lower()), '')
+    r = max(50.0, simunits._num(simunits._attr(head, 'RadiusCursorRadius'), 0.0))
+    human = sim.human
+    if a[0] == human:
+        return
+    foe, own = _owned(sim, human), sim.own
+    xs, ys = [b.x for b in foe if 'STRUCTURE' in b.kinds] or [0.0], [b.y for b in foe if 'STRUCTURE' in b.kinds] or [0.0]
+    lo, hi = min(xs) + r, max(xs) - r
+    axes = [(lo, hi) if lo <= hi else ((lo + hi) / 2,) * 2, (min(ys), max(ys))]
+    n = [min(10, math.ceil((hi - lo) / r) + 1) for lo, hi in axes]
+    grid = [(axes[0][0] + i * (axes[0][1] - axes[0][0]) / n[0], axes[1][0] + j * (axes[1][1] - axes[1][0]) / n[1])
+            for i in range(n[0]) for j in range(n[1])]
+    bx, by = max(grid, key=lambda p: _worth(own, foe, p, 2 * r))
+    fine = [(bx + (i - 5) * r / 10, by + (j - 5) * r / 10) for i in range(11) for j in range(11)]
+    top = max(_worth(own, foe, p, r) for p in fine)
+    best = [p for p in fine if _worth(own, foe, p, r) == top]
+    x, y = sum(p[0] for p in best) / len(best), sum(p[1] for p in best) / len(best)
+    player_fire_special_power_at_waypoint(sim, name, [a[0], a[1], f'@{x},{y}'], script)
+
+
+def _worth(own, foe, p, r):
+    # what the foe's things within r of p cost, each by 1 - d / 2r (a command centre's a tenth, then over 3000 a tenth;
+    # flying aircraft not counted), whole (a297's 82f8e0)
+    r, total = max(r, 80.0), 0.0
+    for b in foe:
+        d = math.hypot(b.x - p[0], b.y - p[1])
+        if d < r and not ('AIRCRAFT' in b.kinds and b.surface == 'air'):
+            cost = simunits.production(b.template, own)[0] * (0.1 if 'COMMANDCENTER' in b.kinds else 1.0)
+            total += cost * (0.1 if cost > 3000 else 1.0) * (1 - d / (2 * r))
+    return int(total)
+
+
+def _owned(sim, player):
+    return [o for o in sim.bodies.values() if o.alive and o.owner == player]
 
 
 def _middle(crew):
@@ -329,6 +373,7 @@ ACTIONS = {
     'PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT': player_fire_special_power_at_waypoint,
     'FIRE_SPECIAL_POWER_ON_TEAM': fire_special_power_on_team,
     'FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER': fire_special_power_on_nearest_objecttype_by_player,
+    'SKIRMISH_FIRE_SPECIAL_POWER_AT_MOST_COST': skirmish_fire_special_power_at_most_cost,
     'TEAM_USE_COMMANDBUTTON_ABILITY': team_use_commandbutton_ability,
     'TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT': team_use_commandbutton_ability_at_waypoint,
 }

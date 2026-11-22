@@ -45,23 +45,26 @@ def _n(part):
     return f'UNIT - CNV Super {part}'
 
 
-def mission(name='CampSuper', crews=False):
+def mission(name='CampSuper', crews=False, most=False):
     m = Mission(name=name, map=resources.measured(niagara), units=[], facts={})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies'}
     m.spawns |= {COLLIDER, CURTAIN, TARGET, TANK, VAC, NANO, PSI}
     m.put('AlliedConstructionYard', 'base yard', angle=0.0, role='yard', name=_n('Yard'))
     m.put('AlliedPowerPlant', 'base power', angle=0.0, role='power', name=_n('Power'))
-    m.put(COLLIDER, SITE, *COLLIDER_AT, angle=0.0, role='collider', name=_n('Collider'))
+    m.put(COLLIDER, SITE, *COLLIDER_AT, side='s1' if most else 'p1', angle=0.0, role='collider', name=_n('Collider'))
     m.put(CURTAIN, SITE, *CURTAIN_AT, angle=0.0, role='curtain', name=_n('Curtain'))
     m.waypoint('proton spot', 'Test Proton Spot', SITE, *PROTON_AT)
     m.waypoint('curtain spot', 'Test Curtain Spot', SITE, *CURTAIN_SPOT)
     for d, (dx, dy) in PROTON_DIST.items():
-        m.put(TARGET, SITE, PROTON_AT[0] + dx, PROTON_AT[1] + dy, side='s1', angle=0.0, role=f'target {d}',
+        m.put(TARGET, SITE, PROTON_AT[0] + dx, PROTON_AT[1] + dy, side='p1' if most else 's1', angle=0.0, role=f'target {d}',
               name=_n(f'Target {d}'))
     for d, (dx, dy) in TANK_DIST.items():
         m.put(TANK, SITE, CURTAIN_SPOT[0] + dx, CURTAIN_SPOT[1] + dy, angle=0.0, role=f'tank {d}',
               name=_n(f'Tank {d}'))
-    m.put(VAC, SITE, *VAC_AT, angle=0.0, role='vacuum', name=_n('Vacuum'))
+    if most:     # engine_scripts8bm: the collider is s1's (a computer player), powered by this plant in the imploder's place
+        m.put('AlliedPowerPlant', SITE, *VAC_AT, side='s1', angle=0.0, role='spower', name=_n('SPower'))
+    else:
+        m.put(VAC, SITE, *VAC_AT, angle=0.0, role='vacuum', name=_n('Vacuum'))
     m.waypoint('vacuum spot', 'Test Vacuum Spot', SITE, *VAC_SPOT)
     for d, (dx, dy) in VAC_DIST.items():
         vt = crews and d in (0, 350)
@@ -90,4 +93,5 @@ def mission(name='CampSuper', crews=False):
     return m
 
 
-MISSION = {'engine_super': mission, 'engine_scripts8bs': lambda: mission('CampS8bS', True)}   # checks/engine_scripts8b
+MISSION = {'engine_super': mission, 'engine_scripts8bs': lambda: mission('CampS8bS', True),   # checks/engine_scripts8b
+           'engine_scripts8bm': lambda: mission('CampS8bM', most=True)}

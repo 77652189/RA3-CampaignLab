@@ -10,7 +10,7 @@ def map_reveal_all(sim, name, a, script):
     # Bench 11-10 engine_vision all / allundo (docs/engine/vision.md 2): MAP_REVEAL_ALL lapses as a waypoint
     # reveal does (137 frames by default, 15 x N - 13); _PERM holds until MAP_REVEAL_ALL_UNDO_PERM, which
     # shuts it the frame it runs (no reshroud delay). Another side's: kept for good (INFERRED, not benched)
-    if a and a[0] != sim.human and a[0] in sim.players.values():   # another side's: its own sight
+    if _another_side(sim, a):   # another side's: its own sight
         sim.revealed_to.add(a[0])
     elif name == 'MAP_REVEAL_ALL':
         hold = max(0, int(round(sim.reshroud * 15)) - 13)
@@ -21,8 +21,12 @@ def map_reveal_all(sim, name, a, script):
         sim.note('揭图', '全图')
 
 
+def _another_side(sim, a):
+    return a and a[0] != sim.human and a[0] in sim.players.values()
+
+
 def map_reveal_all_undo_perm(sim, name, a, script):
-    if a and a[0] != sim.human and a[0] in sim.players.values():
+    if _another_side(sim, a):
         sim.revealed_to.discard(a[0])
     else:
         sim.reveal_all = False

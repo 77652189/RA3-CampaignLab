@@ -102,3 +102,19 @@ scene = {build = "engine_scripts8bs", check = "team", until = 21}
 bench = "team, bench 11-21 CampS8bSTeam_mcp_1121_151922: 血0 / 血150 / 血280 / 血350 100 to s7, 53 / 100 / 100 / 65 at s8, end 11 / 100 / 100 / 27 -- crew Vt's two (0 and 350, 350 apart) both hit, 150 (150 off member 0) whole: the middle, not the first member (sim end 7 / 100 / 100 / 7)"
 proves = "sim FIRE_SPECIAL_POWER_ON_TEAM: the player's power at the middle of the team's members (act_ability)"
 expect = "rows[-1]['血0'] < 50 and rows[-1]['血350'] < 50 and rows[-1]['血150'] == rows[-1]['血280'] == 100"
+
+[[reading]]
+id = "scripts8bm_the_power_goes_where_the_humans_things_are_worth_most"
+item = "脚本动作 SKIRMISH_FIRE_SPECIAL_POWER_AT_MOST_COST"
+scene = {build = "engine_scripts8bm", check = "most", until = 21}
+bench = "most, bench 11-22 CampS8bMMost (run_queue): the computer s1's collider at the human's base defenses 0 / 150 / 240 / 300 (x 1480 / 1630 / 1720 / 1180, y 3075) and its yard (5000, 1250 / 2500): 血0 / 血240 / 血300 / 血Y 100 to s7, 44 / 65 / 100 / 100 at s8, end 44 / 16 / 33 / 100 -- the yard (the dearest) whole, all three defenses hit (sim lands at 1450 / 3033: end 30 / 100 / 100 / 100)"
+proves = "sim SKIRMISH_FIRE_SPECIAL_POWER_AT_MOST_COST: the first human's things' worth (cost x 1 - d / 2r, a command centre's a tenth) gridded over the box of its structures, x sides only pulled in by R, then refined at R / 10 (act_ability; work/re a297)"
+expect = "rows[-1]['血Y'] == 100 and rows[-1]['血0'] < 50"
+
+[[reading]]
+id = "scripts8bm_the_collider_reaches_273"
+scene = {build = "engine_scripts8bm", check = "most", until = 21}
+bench = "most: the defenses 273 off the cast (240 and 300) end 16 / 33 (engine_scripts8b pfire: 300 off untouched)"
+proves = "the proton collider's reach (power.SUPERWEAPON_HITS) passes 273, short of 300"
+expect = "rows[-1]['血240'] < 50 and rows[-1]['血300'] < 50"
+mismatch = "sim 100 / 100: SUPERWEAPON_HITS' last ring is 250 (fitted to 0 / 150 / 240); bench 16 / 33"

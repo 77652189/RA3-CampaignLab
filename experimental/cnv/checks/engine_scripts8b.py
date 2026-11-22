@@ -40,7 +40,7 @@ from parts import Script, Test, status
 import checks.engine_scripts8 as s8
 
 OFF_AT, CAST, LATER = 10.0, 75, 300
-RUN = {'status': 20.0, 'power': 10.0, 'pfire': 20.0, 'pdis': 40.0, 'near': 20.0, 'team': 20.0}
+RUN = {'status': 20.0, 'power': 10.0, 'pfire': 20.0, 'pdis': 40.0, 'near': 20.0, 'team': 20.0, 'most': 20.0}
 GE = 3
 LEVELS = (0, 1, 300, 1000, 1001, 1300)
 TEAM_STATUS, BASE_POWER = 'TEAM_CHANGE_OBJECT_STATUS', 'PLAYER_SET_BASE_POWER'
@@ -48,6 +48,8 @@ P_FIRE, P_AVAIL = 'PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'PLAYER_SPECIAL_POWER
 POWER_P = 'SpecialPowerParticleCannon'      # missions/super_bench.py's collider power (G5: a check asks no mission)
 TARGET, VDIST = 'AlliedBaseDefense', (0, 150, 280, 350)
 NEAREST, ON_TEAM = 'FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER', 'FIRE_SPECIAL_POWER_ON_TEAM'
+AT_MOST = 'SKIRMISH_FIRE_SPECIAL_POWER_AT_' + 'MOST_COST'
+PDIST = (0, 150, 240, 300)
 
 
 def mission():
@@ -84,12 +86,13 @@ def _super(m, which):
     t = Test()
     p1 = m.player('p1')
     AIMS = {'near': lambda: (NEAREST, p1, POWER_P, TARGET, m.teams['Ft'], m.player('s1')),
-            'team': lambda: (ON_TEAM, p1, POWER_P, m.teams['Vt'])}
+            'team': lambda: (ON_TEAM, p1, POWER_P, m.teams['Vt']),
+            'most': lambda: (AT_MOST, m.player('s1'), POWER_P)}
     power, spot = POWER_P, m.mark('proton spot')
-    hit = [f'vtarget {d}' for d in VDIST] if which in AIMS else [f'target {d}' for d in (0, 150, 240, 300)]
-    keep = {'collider', 'yard', 'power', 'ft a', 'ft b'} | set(hit)
+    hit = [f'vtarget {d}' for d in VDIST] if which in ('near', 'team') else [f'target {d}' for d in PDIST]
+    keep = {'collider', 'yard', 'power', 'ft a', 'ft b'} - ({'power'} if which == 'most' else set()) | {'spower'} | set(hit)
     start = [('MAP_REVEAL_ALL_PERM', p1)]
-    start += [('UNIT_CHANGE_OBJECT_STATUS', m.role(r).name, 'NO_ATTACK', 1) for r in hit + ['ft a', 'ft b']]
+    start += [('UNIT_CHANGE_OBJECT_STATUS', m.role(r).name, 'NO_ATTACK', 1) for r in hit + (['yard'] if which == 'most' else ['ft a', 'ft b'])]
     start += [('NAMED_DELETE', r.name) for k, r in m.cast.items() if k not in keep and r.name]
     if which == 'pdis':
         start.append((P_AVAIL, p1, power, 'Disabled'))
@@ -99,10 +102,11 @@ def _super(m, which):
                             [AIMS.get(which, lambda: (P_FIRE, p1, power, spot))(), ('SET_FLAG', 'Test S8 Cast', 1)]))
     on = ('FLAG', 'Test S8 Cast', 1)
     if which in AIMS:
-        for d in VDIST:
+        rows = [(f'target {d}', d) for d in (0, 240, 300)] + [('yard', 'Y')] if which == 'most' else [(f'vtarget {d}', d) for d in VDIST]
+        for role, d in rows:
             t.counters.append((f'CNV_S8_V{d}', f'血{d}'))
             t.scripts.append(Script(f'Test - S8 health {d}', [on], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER',
-                                                                     m.role(f'vtarget {d}').name, f'CNV_S8_V{d}')], once=False))
+                                                                     m.role(role).name, f'CNV_S8_V{d}')], once=False))
         t.expect = []
         s8.watch(t, RUN[which], 0.5)
         return t
@@ -122,6 +126,7 @@ def _super(m, which):
     return t
 
 
-MISSION = {'engine_scripts8b': mission}     # engine_scripts8bs: missions/super_bench.py makes it
+MISSION = {'engine_scripts8b': mission}     # engine_scripts8bs / 8bm: missions/super_bench.py makes them
 CHECKS = {'engine_scripts8b': {'status': status_, 'power': power},
-          'engine_scripts8bs': {w: (lambda m, w=w: _super(m, w)) for w in ('pfire', 'pdis', 'near', 'team')}}
+          'engine_scripts8bs': {w: (lambda m, w=w: _super(m, w)) for w in ('pfire', 'pdis', 'near', 'team')},
+          'engine_scripts8bm': {'most': lambda m: _super(m, 'most')}}

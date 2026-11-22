@@ -757,6 +757,19 @@ def test_a_player_power_on_a_team_or_the_nearest_object_goes_off_by_the_teams_mi
     assert [c[4] for c in s.casts] == [(800.0, 0.0), (800.0, 800.0)]
 
 
+def test_a_power_at_most_cost_goes_where_the_humans_things_are_worth_most():
+    """SKIRMISH_FIRE_SPECIAL_POWER_AT_MOST_COST (work/re a297): the box of the human's structures has its x sides
+    pulled in by R (300; x flips to its middle 50) and its y sides kept (a 3-row grid 0 / 187 / 373), worth within 2R;
+    then R/10 steps round the best, worth within R; cost x (1 - d / 2r), the yard (5000) a tenth."""
+    s = simsmall.small_world([('collider', 'AlliedSuperWeaponAdvanced', 'Player_2', -2000.0, 0.0),
+                              ('lone', 'AlliedBaseDefense', 'Player_1', 0.0, 0.0),
+                              ('yard', 'AlliedConstructionYard', 'Player_1', 100.0, 0.0),
+                              ('pair a', 'AlliedBaseDefense', 'Player_1', 0.0, 500.0),
+                              ('pair b', 'AlliedBaseDefense', 'Player_1', 0.0, 560.0)], model=False)
+    _act(s, 'SKIRMISH_FIRE_SPECIAL_POWER_AT_MOST_COST', 'Player_2', 'SpecialPowerParticleCannon')
+    assert [c[4] for c in s.casts] == [pytest.approx((20.0, 283.333), abs=0.01)]
+
+
 def test_a_line_attack_and_capture_go_at_the_object_picked_not_a_reference_of_its_name():
     """A line's attack / capture order the object `pick` found, as it is (11-19 same-name sweep S3: read again by its
     name, the reference `target` pointing at another enemy took the attack, and one pointing at a tank turned the
