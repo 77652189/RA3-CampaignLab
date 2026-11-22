@@ -21,9 +21,11 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_the_level_scope_a_page_is_generated_from_the_items(tmp_path, monkeypatch):
+    from test_inventory import items as all_items
+
     # generated on demand (not committed, ADR 0030): python -I -X utf8 experimental/cnv/inventory_levels.py --write;
     # its rows carry the inventory's states (plus 0-use rows for a weapon form the inventory has no refinement of)
-    items = [i for i in inventory.collect() if i['part'] in inventory_levels.PARTS]
+    items = [i for i in all_items() if i['part'] in inventory_levels.PARTS]
     scope, missing = inventory_levels.level_scope()
     want = inventory_levels.render(items, scope, missing)
     state = {(i['part'], i['name']): i['state'] for i in items}

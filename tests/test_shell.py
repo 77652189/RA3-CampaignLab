@@ -3,9 +3,12 @@ byte of the stream, the template edits land where intended, and the mod's name i
 import os
 import re
 import sys
+from contextlib import contextmanager
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
+from conftest import content_key
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'experimental' / 'cnv'))
@@ -175,6 +178,45 @@ def edition():
     shell.use_lang('zh')
 
 
+@pytest.fixture(scope='module')
+def reuse_shell_assets():
+    """Share retail decodes and finished placeholder streams within this test worker."""
+    mapxml = apt_textures.mapxml
+    decode, render = mapxml.read_stream, shell.apt_files
+    decoded, rendered = {}, {}
+
+    def files(slots, picture=None, screens=True):
+        source = content_key(ARCHIVE, mapxml.__file__, mapxml.sa.__file__, mapxml.refpack.__file__)
+        key = (source, tuple(slots.items()), screens, repr(shell.T),
+               content_key(shell.__file__, apt_textures.__file__, Path(mapxml.__file__).with_name('apt_movie.py'),
+                           shell.FONT, shell.VOSS))
+        placeholders = picture is None and all(not slot[1] for slot in slots.values())
+        if placeholders and key in rendered:
+            return list(rendered[key])
+
+        def read(prefix, get):
+            stream = (source, prefix)
+            if stream not in decoded:
+                decoded[stream] = decode(prefix, get)
+            return deepcopy(decoded[stream])
+
+        # apt_files and its helpers read their source and donor streams from Apt.big.
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(mapxml, 'read_stream', read)
+            result = render(slots, picture, screens)
+        if placeholders:
+            rendered[key] = tuple(result)
+        return result
+
+    @contextmanager
+    def reuse():
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(shell, 'apt_files', files)
+            yield
+
+    return reuse
+
+
 def test_the_english_missions_are_the_chinese_ones_translated_slot_for_slot(edition):
     zh = shell.missions()
     edition('intl')
@@ -214,9 +256,10 @@ def test_the_launcher_has_two_edition_buttons_remembers_the_last_and_starts_that
     assert launcher.MOD == shell.NAME
 
 
-def test_the_commander_overview_shows_no_retail_commander_in_either_edition(edition):
+def test_the_commander_overview_shows_no_retail_commander_in_either_edition(edition, reuse_shell_assets):
     for lang in ('zh', 'intl'):
-        sp = shell.make('x', 'CampA4', lang)
+        with reuse_shell_assets():
+            sp = shell.make('x', 'CampA4', lang, later=True)
         assert sp.prefix_overrides == {'PERSONALITY:': shell.T['officer']} and \
             sp.overrides['APT:COCOMMANDER_NAME_TITLE'] == shell.T['notes_title'] and \
             sp.overrides['APT:CO_COMMANDER'] == sp.overrides['APT:MISSION_COMMANDERS'] == shell.T['officer_title']
@@ -229,19 +272,17 @@ def _container_map():
 
 
 @pytest.fixture(scope='module')
-def shipped(tmp_path_factory):
+def shipped(tmp_path_factory, reuse_shell_assets):
     """The shell as the build ships it (Chinese edition: make(.., later=True), the built slot's files drawn from a map as
     build_mod hands it over) and the string table it starts from: made once for the tests below."""
     from dataclasses import replace
     if not ARCHIVE.exists():
         pytest.skip('no game install')
     shell.use_lang('zh')
-    sp = shell.make('x', 'CampA4', 'zh', later=True)
-    keep, shell.MAP_PICTURE = shell.MAP_PICTURE, str(tmp_path_factory.mktemp('shell') / 'map.png')   # not work/shell's
-    try:
+    with reuse_shell_assets(), pytest.MonkeyPatch.context() as patch:
+        sp = shell.make('x', 'CampA4', 'zh', later=True)
+        patch.setattr(shell, 'MAP_PICTURE', str(tmp_path_factory.mktemp('shell') / 'map.png'))
         drawn = [f for make in sp.map_files for f in make(_container_map())]
-    finally:
-        shell.MAP_PICTURE = keep
     return replace(sp, files=sp.files + drawn), shell.retail_labels(), sp.files, drawn
 
 
@@ -486,7 +527,7 @@ def test_short_names_are_the_first_part_of_the_title_and_fit_their_card():
     shell.use_lang('zh')
 
 
-def test_a_campaign_of_levels_carries_each_on_its_own_map_and_keeps_the_editions_labels():
+def test_a_campaign_of_levels_carries_each_on_its_own_map_and_keeps_the_editions_labels(reuse_shell_assets):
     """shell.campaign: each level in its slot on its own map folder (package.level_stem), every label of every level in the
     one mod; a label a stand-in level (another edition) shares keeps the edition's text, and a clash between two levels
     of the edition stops the build."""
@@ -494,13 +535,14 @@ def test_a_campaign_of_levels_carries_each_on_its_own_map_and_keeps_the_editions
                         strings={'AUTOSAVE:X': 'New campaign', 'A2:only': 'two'})
     b = package.ModSpec(name='b', mission='CampA8', map_name='island', goals=((3400.0, 2200.0), (1300.0, 2300.0)),
                         strings={'AUTOSAVE:X': '新战役', 'A8:only': 'eight'})
-    sp = shell.campaign({2: a, 8: b}, 'CampX', 'intl', fallback={8})
+    with reuse_shell_assets():
+        sp = shell.campaign({2: a, 8: b}, 'CampX', 'intl', fallback={8})
     assert [k for k, _ in sp.levels] == [2, 8] and sp.slot['slot'] == 2
     assert sp.slot['maps'] == {k: f'data{B}maps{B}official{B}{package.level_stem(k)}{B}{package.level_stem(k)}.map'
                                for k in (2, 8)}
     assert sp.strings['AUTOSAVE:X'] == 'New campaign' and sp.strings['A8:only'] == 'eight'
     assert all(len(lv.map_files) == 1 for _, lv in sp.levels)  # each level's own screens, drawn from its own map
-    with pytest.raises(SystemExit, match='AUTOSAVE:X'):
+    with reuse_shell_assets(), pytest.raises(SystemExit, match='AUTOSAVE:X'):
         shell.campaign({2: a, 8: b}, 'CampX', 'intl')
     shell.use_lang('zh')
 

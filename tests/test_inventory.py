@@ -6,8 +6,12 @@ import json
 import os
 import re
 import sys
+from copy import deepcopy
+from functools import lru_cache
+from pathlib import Path
 
 import pytest
+from conftest import content_key
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # loaded by file (guard G4: no new sys.path edits); inventory.py puts the cnv folders on the path itself
@@ -19,13 +23,23 @@ pytestmark = pytest.mark.skipif(
     not os.path.isdir(inventory.RETAIL_SCRIPTS) or not __import__('sim').engine_model(),
     reason='needs the retail scripts cache (work/retailref) and the private engine model: the states depend on them')
 
-_items = {}
+
+@lru_cache(maxsize=1)
+def _collect(parts, key):
+    return inventory.collect(parts)
 
 
 def items():
-    if 'all' not in _items:
-        _items['all'] = inventory.collect()
-    return _items['all']
+    from inventory_ai import AI_DATA, COMPILED, MODEL_REV_FILE
+    from retailmodules import RETAILREF, SAGEXML
+    import labpaths
+
+    root = Path(ROOT)
+    key = content_key(root / 'experimental', root / 'docs' / 'story', inventory.ENGINE_DOCS,
+                      inventory.TESTS, inventory.CHECKS, inventory.READINGS, inventory.CATALOG,
+                      inventory.RETAIL_SCRIPTS, RETAILREF, SAGEXML, AI_DATA, COMPILED, MODEL_REV_FILE)
+    # The collector reads private AI files from the pinned Git object, not the working tree.
+    return deepcopy(_collect(inventory.PARTS, (key, labpaths.ENGINE_MODEL, os.getenv('CNV_MUSIC_CAPTIONS'))))
 
 
 def test_the_generator_writes_the_page_it_renders(tmp_path, monkeypatch):

@@ -99,16 +99,20 @@ def test_the_maps_own_ai_assets_are_all_read_back():
 
 
 @needs_states
-def test_items_only_the_compiled_maps_write_are_in_the_inventory():
+def test_items_only_the_compiled_maps_write_are_in_the_inventory(monkeypatch):
     """原版编译状态 is a census source: what only the maps' own compiled states write is an inventory item, and the 27's
     AI scope names nothing the inventory does not know."""
     import inventory_ai as A
+    from test_inventory import items
     got = A.census()
     for name in ('战术/Tactic.UseTransports', '战术/Tactic.GatherWaypoint', '战术/Tactic.UpdateTime',
                  '战术/Tactic.CombatLeashSlack', '战术/Tactic.Tactic=SimpleDefense',
                  '启发条件/StructureOrHarvesterUnderAttackHeuristic',
                  '启发条件/StructureOrHarvesterUnderAttackHeuristic.TimeSinceAttacked'):
         assert got.get(name, [0])[0] > 0, name
+    rows = items()
+    # used_items() asks for ALL, then scope() uses only the MODULE/NUGGET form membership.
+    monkeypatch.setattr(R.I, 'collect', lambda parts: [row for row in rows if row['part'] in parts])
     assert not [u for u in R.used_items()[1] if u[0] == I.AI]
 
 
