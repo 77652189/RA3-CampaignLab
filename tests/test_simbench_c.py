@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 _spec = importlib.util.spec_from_file_location('simbench_c', ROOT / 'experimental' / 'cnv' / 'simbench.py')
 simbench = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simbench)
+import engine.objects.modifier as simmodifier  # noqa: E402
 
 
 def _clocks(b):
@@ -39,7 +40,7 @@ def test_levelup_heroic_vision_sights_inner_engineer_after_near_controls_are_del
     assert [b.sight for b in guns] == [200] * 4  # automatic acquisition remains unmeasured
     assert [b.vision for b in guns] == [500, 625, 500, 625]  # independent shroud modifier
     for _ in range(3):
-        e.modify(guns[1])
+        e.world.modify(guns[1])
         assert guns[1].sight * guns[1].level_vision == 250
         assert guns[1].vision == 625
     for lane in SHROUD_LANES:
@@ -80,7 +81,7 @@ def test_levelup_heroic_shroud_discovers_inner_target_only_without_changing_sigh
         assert (b.x, b.y) == (obj.x, obj.y)
     assert not e.reveal_all and not e.reveals and not any(_clocks(b) for b in e.bodies.values())
     for _ in range(3):
-        e.modify(guns[1])
+        e.world.modify(guns[1])
         assert (guns[1].vision, guns[1].sight) == (625, 200)
     gap = e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
     assert 'SHROUD_CLEARING' not in gap and 'VISION' in gap
@@ -110,7 +111,7 @@ def test_levelup_heroic_rate_changes_three_intershot_spans_without_scaling_each_
         assert (b.x, b.y) == (obj.x, obj.y)
     gun = guns[2]
     for _ in range(3):
-        e.modify(gun)
+        e.world.modify(gun)
         assert gun.dealt == 1.25
         assert gun.level_rate == 1.2
     # Range refreshes copy the heroic weapon; copies must share its one clock.
@@ -129,8 +130,8 @@ def test_levelup_elite_health_persists_at_heroic_and_freezes_before_healing():
     assert [e.body(m.role(lane).name).max_hp for lane in ('base', 'high', 'order', 'removed')] == [500, 500, 625, 625]
     heroic = e.body(m.role('removed').name)
     for upgrade in ('VETERAN', 'ELITE', 'HEROIC'):
-        e.give_upgrade(heroic, 'Upgrade_CreationVeterancy_' + upgrade)
-        e.modify(heroic)
+        simmodifier.upgrade(e, heroic, 'Upgrade_CreationVeterancy_' + upgrade, True)
+        e.world.modify(heroic)
     assert heroic.max_hp == 625  # held grants and modifier refresh must not stack health
 
 
@@ -152,8 +153,8 @@ def test_levelup_injured_elite_promotion_preserves_fraction_and_scales_current_h
     assert (sim.GAP_UPGRADE, 'LevelUpUpgrade/injured-health') not in e.unmodeled
     for b in bodies[1:]:
         for upgrade in ('VETERAN', 'ELITE'):
-            e.give_upgrade(b, 'Upgrade_CreationVeterancy_' + upgrade)
-            e.modify(b)
+            simmodifier.upgrade(e, b, 'Upgrade_CreationVeterancy_' + upgrade, True)
+            e.world.modify(b)
     assert [b.max_hp for b in bodies] == [500, 625, 625, 625]
     assert [b.hp for b in bodies] == [150, 400, 212.5, 25]
 
@@ -192,10 +193,10 @@ def test_levelup_creation_remove_keeps_rank_and_regrant_can_trigger_twice():
     assert [b.max_hp for b in bodies] == [500, 625, 625, 625]
     assert (sim.GAP_UPGRADE, 'LevelUpUpgrade/regrant') not in e.unmodeled
     # Grants that are still held must remain idempotent after reactivation too.
-    e.give_upgrade(bodies[0], CREATION[0])
+    simmodifier.upgrade(e, bodies[0], CREATION[0], True)
     assert bodies[0].level_rank == 2
     for b in bodies[1:3]:
-        e.give_upgrade(b, CREATION[0])
+        simmodifier.upgrade(e, b, CREATION[0], True)
         assert b.level_rank == 4 and b.max_hp == 625
 
 
@@ -217,8 +218,8 @@ def test_levelup_elite_and_heroic_creation_regrants_each_need_two_reactivations(
     assert [set(CREATION) & b.upgrades for b in bodies] == [
         {CREATION[0]}, {CREATION[1]}, {CREATION[2]}, set()]
     for b, up in zip(bodies[:3], CREATION):
-        e.give_upgrade(b, up)
-        e.modify(b)
+        simmodifier.upgrade(e, b, up, True)
+        e.world.modify(b)
     assert [b.level_rank for b in bodies] == [2, 4, 4, 4]
     assert [b.max_hp for b in bodies] == [500, 625, 625, 625]
 
@@ -250,7 +251,7 @@ def test_levelup_heroic_range_reaches_only_the_inner_target_without_moving():
     assert e.in_range(gun, target, gun.weapons[0])
     assert target.hp == 67.5  # one 250 * DAMAGE_MULT125 hit, no XP from a kill
     for _ in range(3):
-        e.modify(gun)
+        e.world.modify(gun)
         assert gun.weapons[0]['range'] == 187.5
     gap = e.unmodeled[sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Heroic']['what']
     assert 'RANGE' not in gap and 'RATE_OF_FIRE' not in gap and 'VISION' in gap

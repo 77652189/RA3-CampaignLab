@@ -1,5 +1,5 @@
 """The simulator's attribute modifiers, one interface for their two sources (simunits.modifier / upgrade_mods / auras /
-effect; sim.Sim.modify / aura_tick). Bench: docs/engine/upgrades.md 1 (an upgrade taken away takes its modifier),
+effect; simmodifier.modify / aura_tick). Bench: docs/engine/upgrades.md 1 (an upgrade taken away takes its modifier),
 2 (RANGE the weapon only, VISION the sight), 4 (INVULNERABLE + UNDER_IRON_CURTAIN; a Duration hung through an upgrade
 still runs out), 5 (the stasis zone: an aura, everyone within stops, free within 1 s of the zone's going)."""
 from test_plans import named, small  # (puts experimental/cnv on the path)  # noqa: F401, I001
@@ -9,6 +9,7 @@ import engine.world.handle as simworld  # noqa: E402
 from engine.kernel import world as kernel_world  # noqa: E402
 from engine.modules import aura  # noqa: E402
 from units import platform, stasis_zone, tower_ball  # noqa: E402
+import engine.objects.modifier as simmodifier  # noqa: E402
 
 
 def test_stacking_adds_the_raises_and_multiplies_the_cuts():
@@ -81,16 +82,16 @@ def test_the_zone_stops_friend_and_foe_within_and_lets_go_once_gone():
     ours =_body(s, 'ours', 'Tank', 'PlyrHuman', 100, ['VEHICLE'])
     theirs = _body(s, 'theirs', 'Tank', 'PlyrEnemy', 150, ['VEHICLE'])
     out = _body(s, 'out', 'Tank', 'PlyrHuman', 400, ['VEHICLE'])
-    s.aura_tick()
+    simmodifier.aura_tick(s)
     for b in (ours, theirs):
         assert b.speed == 0.0 and {'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE', 'IN_STASIS'} <= b.status
     assert out.speed == 30.0 and not out.status and 'modifier' in s.used
     zone.alive = False                          # gone: held for the modifier's 1 s, then free
     _at(s, 0.5)
-    s.aura_tick()
+    simmodifier.aura_tick(s)
     assert ours.speed == 0.0
     _at(s, 1.0)
-    s.aura_tick()
+    simmodifier.aura_tick(s)
     assert ours.speed == 30.0 and not ours.status and theirs.weapons[0]['range'] == 150.0
 
 
@@ -99,9 +100,9 @@ def test_a_script_status_stays_under_the_modifiers():
     s = _world({u.id: u.xml})
     gun = _body(s, 'gun', u.id, 'PlyrHuman', 0, ['STRUCTURE'], speed=0.0)
     gun.script_status.add('UNATTACKABLE')
-    s.give_upgrade(gun, u.names['on'])
+    simmodifier.upgrade(s, gun, u.names['on'], True)
     assert gun.weapons[0]['range'] == 300.0 and gun.sight == 600.0 and gun.status == {'UNATTACKABLE'}
-    s._upgrade(gun, u.names['on'], False)
+    simmodifier.upgrade(s, gun, u.names['on'], False)
     assert gun.weapons[0]['range'] == 150.0 and gun.sight == 300.0 and gun.status == {'UNATTACKABLE'}
 
 
@@ -116,7 +117,7 @@ def test_the_zone_holds_by_the_centre_and_a_short_hold_flickers_with_the_refresh
     seen = []
     for k in range(4):
         _at(s, 0.5 * k)
-        s.aura_tick()
+        simmodifier.aura_tick(s)
         seen.append(near.speed == 0.0)
         assert edge.speed == 30.0
     assert seen == [True, False, True, False]

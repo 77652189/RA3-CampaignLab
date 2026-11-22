@@ -8,6 +8,7 @@ import simrecord  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import levelup  # noqa: E402
+import engine.objects.modifier as simmodifier  # noqa: E402
 
 HEAD = ' id="ModuleTag_Vet" LevelsToGain="3" LevelCap="4" Permanent="true" TriggeredBy="Ignored"'
 INNER = '<TriggeredBy>Upgrade_A Upgrade_B</TriggeredBy>\n<TriggeredBy>Upgrade_C</TriggeredBy>'
@@ -57,11 +58,11 @@ def test_a_permanent_module_stays_in_force_and_a_new_grant_gains_no_more(monkeyp
     s.own['CNV_TestVetP'] = PERMANENT
     s.add('vet', 'CNV_TestVetP', 'Player_1', 100.0, 100.0)
     b = s.bodies['vet']
-    s.give_upgrade(b, 'Upgrade_A')
+    simmodifier.upgrade(s, b, 'Upgrade_A', True)
     assert b.level_rank == 2 and b.level_modules == {'ModuleTag_P'}
-    s._upgrade(b, 'Upgrade_A', False)
+    simmodifier.upgrade(s, b, 'Upgrade_A', False)
     assert b.level_modules == {'ModuleTag_P'}
-    s.give_upgrade(b, 'Upgrade_A')
+    simmodifier.upgrade(s, b, 'Upgrade_A', True)
     assert b.level_rank == 2
 
 

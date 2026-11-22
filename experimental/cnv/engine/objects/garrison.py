@@ -44,6 +44,7 @@ import re
 
 import engine.data.units as simunits
 import engine.modules.locomotor as locomotor
+import engine.objects.modifier as simmodifier
 from engine.kernel import interfaces
 
 TAGS = ('GarrisonContain', 'ContestableGarrisonContain')
@@ -97,12 +98,12 @@ def ejects(command, own=None):
     return str(simunits.command_power(command, own) or '').startswith('SpecialPower_EjectPassengers')
 
 
-PEERS = frozenset({'_upgrade', 'delete', 'destroy', 'modify', 'send'})
+PEERS = frozenset({'delete', 'destroy', 'send'})
 
 
 class Peers:
     """What the garrisons may reach on their host (the Sim) beyond the world: the names in PEERS, read when used --
-    L2 upgrades (_upgrade), the body's end (destroy / delete), modifiers (modify) and its walk (send). L5's order_move
+    the body's end (destroy / delete) and its walk (send); upgrades and modifiers are simmodifier's. L5's order_move
     is handed in as `move` (the enter order's walk: mode, move_to, its spot; a bare go_to lets an idle walker turn to fight,
     unbenched -- the enter order moves up into order.py at the move family's close)."""
     __slots__ = ('host',)
@@ -242,7 +243,7 @@ class Garrisons:
         if box is None:
             return
         for up in box.granted():
-            peers._upgrade(g, up, False)
+            simmodifier.upgrade(world, g, up, False)
         box.set_granted(())
         held = box.passengers()
         if len(held) != 1:
@@ -272,7 +273,7 @@ class Garrisons:
         upgrades = simunits._chain(g.template, world.own, read) or set()
         added = upgrades - g.upgrades
         for up in added:
-            peers._upgrade(g, up, True)
+            simmodifier.upgrade(world, g, up, True)
         if added:
             box.set_granted(added)
 
@@ -306,7 +307,7 @@ class Garrisons:
         if house:
             g.owner = held[0].owner
         self.secondary(g)
-        peers.modify(u)
+        simmodifier.modify(world, u)
         world.note('驻军', f'{world.label(u)} 进 {world.label(g)}')
         world.change()
         return True
@@ -329,7 +330,7 @@ class Garrisons:
         held = box.passengers() if box is not None else []
         u.x, u.y = g.x, g.y
         if u.alive:
-            peers.modify(u)
+            simmodifier.modify(world, u)
         if held:
             g.owner = held[0].owner
         elif box is not None and box.home():
@@ -433,7 +434,7 @@ class Garrisons:
                 u = f[1]
                 if u.alive:
                     self._set_down(u, f[2][0], f[2][1])
-                    peers.modify(u)
+                    simmodifier.modify(world, u)
                     world.change()
 
     def due(self):

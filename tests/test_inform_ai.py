@@ -282,7 +282,7 @@ def test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe(check
         base = bodies['base']
         assert {'SPECIAL_ARMOR_ACTIVE', 'GENERIC_TOGGLE_STATE'} <= base.status
         assert base.taken < 1 and base.hp == 500
-        e.modify(base)
+        e.world.modify(base)
         assert 'SPECIAL_ARMOR_ACTIVE' in base.status
         # New wrappers must preserve the already active state.
         again = brain.micro_team(None, 347, team)

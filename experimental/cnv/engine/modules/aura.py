@@ -1,9 +1,9 @@
 """AttributeModifierAuraUpdate (bench upgrades.md 5 / 5.1, engine_stasis_edge / _leave; moved from simunits.auras and
-simmodifier.Modifiers' aura_cache / aura_beat in step M12, ADR 0029, docs/engine/sim-modules.md 4): an object that hangs
+simmodifier's aura_cache / aura_beat in step M12, ADR 0029, docs/engine/sim-modules.md 4): an object that hangs
 its AttributeModifier on what its ObjectFilter takes within Range, once every RefreshDelay.
 
 It keeps its rule and the frame of its last refresh (pulse); who it hangs the modifier on, for how long and the
-re-reading of their modifiers stay in the host's aura tick (simmodifier.Modifiers.aura_tick), in the order it had.
+re-reading of their modifiers stay in the host's aura tick (simmodifier.aura_tick), in the order it had.
 The port reads the block from the template's own XML alone (simunits.SELF_ONLY, as the reader it replaced: 354 retail
 templates that inherit an aura -- the garrisoned civilian buildings' -- read none; reading it inherited is a
 behaviour change). Its beat is its own now, not kept by the aura object's name: a thing made again under the name of

@@ -7,6 +7,7 @@ import simrecord  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import autoheal  # noqa: E402
+import engine.objects.modifier as simmodifier  # noqa: E402
 
 APOC = 'SovietAntiVehicleVehicleTech3'        # AutoHealBehavior: 2 points every 7 frames, 15 frames after a hurt
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'    # one AutoHealBehavior: BaseVehicle's heroic heal
@@ -62,7 +63,7 @@ def test_an_idle_heroic_heal_ignores_hurts_mends_two_frames_after_its_upgrade_an
     assert m.hurt is False and m.heal_at is None        # idle: the hurt was not heard
     s.world.frame = 30
     g.upgrades.add('Upgrade_Veterancy_HEROIC')
-    s.modify(g)                                         # the upgrade broadcast (simmodifier.modify)
+    s.world.modify(g)                                         # the upgrade broadcast (simmodifier.modify)
     assert m.upgraded and m.heal_at == 32               # two frames on (bench f)
     hp = g.hp
     s.world.schedule.run('autoheal', 31)
@@ -70,7 +71,7 @@ def test_an_idle_heroic_heal_ignores_hurts_mends_two_frames_after_its_upgrade_an
     s.world.schedule.run('autoheal', 32)
     assert g.hp == hp + m.data.rule[0] and m.heal_at == 39
     g.upgrades.discard('Upgrade_Veterancy_HEROIC')
-    s.modify(g)
+    s.world.modify(g)
     assert not m.upgraded and m.heal_at is None
     for f in range(33, 60):
         s.world.schedule.run('autoheal', f)

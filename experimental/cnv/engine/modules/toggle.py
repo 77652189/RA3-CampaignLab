@@ -6,7 +6,7 @@ their count. The first state holds from the start; a press reads the new state t
 with UNPACK_LAG 0 counted from the press's cell); a state with a DisabledType takes no further press (d, f; INFERRED
 that DisabledType is the cause, not read in the program), nor does one while a press waits out its UnpackTime.
 
-What a state switches -- its ObjectStatus / AttributeModifier (Sim.modify), its LocomotorSet's speed -- the host
+What a state switches -- its ObjectStatus / AttributeModifier (simmodifier.modify), its LocomotorSet's speed -- the host
 re-sets when told (World.toggled: today simtoggle.entered). Which button presses which module (the command's
 special power), a POWERED thing short of power and the notes stay outside (simtoggle.press).
 

@@ -88,7 +88,7 @@ def test_the_effects_lift_then_attach_only_on_a_direct_single_shot():
         assert run(target, chains=chains) == ['lift']
 
 
-def test_the_power_comes_after_the_attachment_and_only_a_timed_self_armor_one():
+def test_the_power_comes_after_the_attachment_and_only_a_timed_self_armor_one(monkeypatch):
     """Step N3b: SpecialPower runs after Attach (the caster's new place counts for the reach); the cases the
     characterization tests leave open (an excluded target, a shell or two shots, out of reach, a modifier with a
     status or a type other than ARMOR); the host puts the modifier on and re-reads the caster's modifiers."""
@@ -118,9 +118,10 @@ def test_the_power_comes_after_the_attachment_and_only_a_timed_self_armor_one():
     assert run(modifier=dict(frames=30, status=['STEALTHED'], types=['ARMOR'])) == []
     assert run(modifier=dict(frames=30, status=[], types=['ARMOR', 'DAMAGE_MULT'])) == []
     seen = []
+    monkeypatch.setattr(simdamage.simmodifier, 'modify', lambda w, b: seen.append(b))
     body = types.SimpleNamespace(auras_on={})
     host = simdamage.EffectHost(None, types.SimpleNamespace(frame_now=lambda: 100), types.SimpleNamespace(
-        modify=seen.append, lift_timers=types.SimpleNamespace(hit=None), garrison=types.SimpleNamespace(fits=None),
+        lift_timers=types.SimpleNamespace(hit=None), garrison=types.SimpleNamespace(fits=None),
         sweeps=types.SimpleNamespace(fire=None)))
     host.wear(body, 'M', 30, 'xml')
     assert body.auras_on == {'M': (130, 'xml')} and seen == [body]

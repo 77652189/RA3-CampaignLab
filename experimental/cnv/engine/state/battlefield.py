@@ -118,6 +118,7 @@ import struct
 
 import engine.objects.body as simbody
 import engine.objects.garrison as simgarrison
+import engine.objects.modifier as simmodifier
 import engine.orders.order as simorder
 import engine.players.tech as simtech
 import engine.data.units as simunits
@@ -684,7 +685,7 @@ def _set_thing(sim, b, row):
     b.angle = float(row['angle'])                   # as the map load puts it (Sim.__init__)
     for up in row['upgrades']:
         if up not in b.upgrades:                    # a creation upgrade may have given the later ones already
-            sim.give_upgrade(b, up)
+            simmodifier.upgrade(sim, b, up, True)
     want = set(row['status'])
     for bit in sorted(want - b.status):             # a bit the host does not derive: held as a script's
         sim.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, bit, True], LABEL)

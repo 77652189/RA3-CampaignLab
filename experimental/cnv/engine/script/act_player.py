@@ -7,6 +7,7 @@ Sim directly (sim.money, sim.books, ...): once the player systems are behind sim
 those."""
 import engine.players.tech as simtech
 import engine.data.units as simunits
+import engine.objects.modifier as simmodifier
 from engine.world.handle import GAP_ACTION
 
 # the skirmish AI's script switches, kept per player for simai (work/re l4_aiswitches.md; docs/engine/aiswitches.md)
@@ -78,14 +79,14 @@ def team_upgrade(sim, name, a, script):
     # engine_teamup:a measures two Guardians and untouched other teams;
     # future members, absent/dead teams and map-local upgrades remain gaps.
     for b in sim.members(a[0]):
-        sim.give_upgrade(b, a[1])
+        simmodifier.upgrade(sim, b, a[1], True)
 
 
 def named_receive_upgrade(sim, name, a, script):
     # (upgrade, object): recorded; of what an upgrade
     b = sim.body(a[1])                                              # does to a unit only the SPEED modifier is
     if b:                                                            # simulated (units/pace.py's 齐步); a range,
-        sim._upgrade(b, a[0], name == 'NAMED_RECEIVE_UPGRADE')     # a shield are not; a tier (can_build) is
+        simmodifier.upgrade(sim, b, a[0], name == 'NAMED_RECEIVE_UPGRADE')     # a shield are not; a tier (can_build) is
 
 
 def allow_disallow_one_upgrade(sim, name, a, script):
@@ -118,7 +119,7 @@ def give_player_upgrade(sim, name, a, script):
     sim.player_ups.setdefault(a[0], set()).add(a[1])
     for b in sim.living():
         if b.owner == a[0]:
-            sim.modify(b)
+            simmodifier.modify(sim, b)
 
 
 def player_set_max_player_power_points(sim, name, a, script):

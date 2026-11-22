@@ -123,7 +123,7 @@ def sim_code(cnv=HERE):
 def status_modelled():
     """The object statuses the simulator acts on (a `'X' in b.status` test in any of sim_files)."""
     src = '\n'.join(_source(m) for m in sim_files())
-    return set(STATUS_TEST.findall(src)) | {'IN_STASIS'}                                    # Sim.modify: IN_STASIS
+    return set(STATUS_TEST.findall(src)) | {'IN_STASIS'}                                    # simmodifier.modify: IN_STASIS
                                                                                             # = IMMOBILE NO_ATTACK UNATTACKABLE
 
 
@@ -310,7 +310,7 @@ def weapon_items(inf):
 # the unit looks like: nothing a script or the fight asks about)
 READ_OR_VISUAL = {'AttributeModifierUpgrade', 'CommandSetUpgrade', 'NeededUpgrade', 'TechUpgrade',
                   'ModelConditionUpgrade', 'SubObjectsUpgrade', 'StatusBitsUpgrade'}
-# A modifier hung through an upgrade or an aura is read (simunits.upgrade_mods / the aura modules -> sim.Sim.modify); of what it
+# A modifier hung through an upgrade or an aura is read (simunits.upgrade_mods / the aura modules -> simmodifier.modify); of what it
 # carries the simulator acts on simunits.ACTING_TYPES and ACTING_BITS. Hung any other way (a ToggleState the player
 # flips, a weapon's AttributeModifierNugget): not read at all.
 def upgrade_items(inf):
@@ -333,7 +333,7 @@ def upgrade_items(inf):
                 '不是升级或光环给的（开关、武器等）'
             for ty in dict.fromkeys(types):
                 if read and ty in simunits.ACTING_TYPES:
-                    continue                               # sim.Sim.modify acts on it
+                    continue                               # simmodifier.modify acts on it
                 out.append(Item(inf.name, UPGRADE, f'{uid}:{ty}', f'属性修改器 {mid} 的 {ty}（{via}）模拟器不读'
                                 + ('' if read else '（只读升级和光环挂的）')))
             for st in (status or '').split():
@@ -362,7 +362,7 @@ def upgrade_items(inf):
             tmpl = objs.get(who)
             xml = simunits._xml(tmpl, inf.own) if tmpl else ''
             if xml and (simunits.upgrade_mods(xml, {up}) or any(simunits.status_bits(xml, {up}))):
-                continue                                   # sim.Sim.modify reads what it hangs
+                continue                                   # simmodifier.modify reads what it hangs
             out.append(Item(inf.name, UPGRADE, up, f'原版升级 {up}（{name}）：单位身上没有它触发的修正或状态位模块，效果不模拟'))
     seen = set()
     for a in inf.actions.get('GIVE_PLAYER_UPGRADE', []):
@@ -625,7 +625,7 @@ def first(level, name, text):
 
 SIMPY = 'python -I -X utf8 experimental/cnv/sim.py'
 A9 = gap(f'python -I -X utf8 experimental/cnv/simcoverage.py a9 --verbose | grep -F NO_BRIBE',
-         'a9 球的暗修正另设 NO_BRIBE（不可收买）：模拟器没有收买，这一位不起作用（暗球无敌已由 Sim.modify 模拟）')
+         'a9 球的暗修正另设 NO_BRIBE（不可收买）：模拟器没有收买，这一位不起作用（暗球无敌已由 simmodifier.modify 模拟）')
 WEAPON_BITS = gap(f'python -I -X utf8 experimental/cnv/simcoverage.py --verbose | grep -F WEAPON_UPGRADED',
                   '原版继承来的 StatusBitsUpgrade 设 WEAPON_UPGRADED_0x（武器升级后换 WeaponSet）：模拟器不换武器组')
 A6_ATHENA = gap(f'{SIMPY} a6 --script experimental/cnv/plays/a6.txt --until 400 --all',

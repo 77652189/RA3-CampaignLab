@@ -8,6 +8,7 @@ import engine.testing.small as simsmall  # noqa: E402
 import engine.data.units as simunits  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
 from engine.modules import aura  # noqa: E402
+import engine.objects.modifier as simmodifier  # noqa: E402
 
 HEAD = (' id="ModuleTag_Aura" AttributeModifierName="Slow" Range="150" RefreshDelay="0.5s" InitiallyActive="false"'
         ' RequiredObjectStatusFlags="GENERIC_TOGGLE_STATE" AllowSelf="true"')
@@ -49,12 +50,12 @@ def test_an_inherited_aura_is_read():
     assert aura.AuraData.parse(*block).rule == aura.AuraData.parse(HEAD, INNER).rule
 
 
-def test_the_worlds_modify_asks_the_host_when_called():
-    """Review 1119d #10: World.modify (the modifiers' re-read the modules call) looks the host's Sim.modify up at the
-    call, not at the world's making -- a Sim.modify put in its place since is the one told."""
+def test_the_worlds_modify_asks_the_host_when_called(monkeypatch):
+    """Review 1119d #10: World.modify (the modifiers' re-read the modules call) looks the rule (simmodifier.modify) up
+    at the call, not at the world's making -- one put in its place since is the one told."""
     s = simsmall.small_world([('tank', 'SovietAntiVehicleVehicleTech3', 'Player_1', 300, 300)], model=False)
     calls = []
-    modify = s.modify
-    s.modify = lambda b: calls.append(b.name) or modify(b)
+    modify = simmodifier.modify
+    monkeypatch.setattr(simmodifier, 'modify', lambda w, b: calls.append(b.name) or modify(w, b))
     s.world.modify(s.bodies['tank'])
     assert calls == ['tank']

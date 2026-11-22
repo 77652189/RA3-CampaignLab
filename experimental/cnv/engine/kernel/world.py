@@ -137,7 +137,7 @@ class World:
 
     def toggled(self, thing, module):
         """A toggle module entered its next ToggleState (ToggleStatusSpecialAbilityUpdate): the host re-sets what the
-        state switches -- today simtoggle.entered (Sim.modify for its ObjectStatus / AttributeModifier, the
+        state switches -- today simtoggle.entered (simmodifier.modify for its ObjectStatus / AttributeModifier, the
         LocomotorSet's speed), until the modifier and movement families read the Toggle interface themselves."""
         if self._toggled is None:
             raise RuntimeError(f'World.toggled({thing.name!r}): this world has no host to tell')
@@ -145,7 +145,7 @@ class World:
 
     def modify(self, thing):
         """A module's state moved what a thing's attribute modifiers are (SuppressionUpdate entering or leaving): the
-        host re-reads them -- today Sim.modify, until the modifier family is a module of its own."""
+        host re-reads them -- today simmodifier.modify, until the modifier family is a module of its own."""
         if self._modify is None:
             raise RuntimeError(f'World.modify({thing.name!r}): this world has no host to tell')
         self._modify(thing)

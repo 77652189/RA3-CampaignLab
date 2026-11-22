@@ -8,6 +8,7 @@ _spec = importlib.util.spec_from_file_location('simbench_spng', Path(__file__).r
 _harness = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_harness)
 from engine.orders import order as simorder  # noqa: E402
+import engine.objects.modifier as simmodifier  # noqa: E402
 
 
 @pytest.mark.parametrize('mission,expected', [
@@ -260,7 +261,7 @@ def test_scrambler_kept_order_stops_cached_fire_and_resumes_after_expiry():
     hp = sink.hp
     mid = re.search(r'AttributeModifierName="([^"]+)"', retail_parts()[1]).group(1)
     victim.auras_on[mid] = (315, '')
-    e.modify(victim)
+    e.world.modify(victim)
     e.act('UNIT_CHANGE_OBJECT_STATUS', [victim.name, 'NO_ATTACK', 1], 'frame interface')
     # Reuse fight's cached aim: the object status must gate each fire frame.
     for frame in range(300, 315):
@@ -269,7 +270,7 @@ def test_scrambler_kept_order_stops_cached_fire_and_resumes_after_expiry():
         assert sink.hp == hp
         assert victim.goal is sink and victim.mode == 'attack'
     now[0], e.t = 315, 21
-    e.aura_tick()
+    simmodifier.aura_tick(e)
     assert 'NO_ATTACK' not in victim.status
     assert victim.goal is sink
     # No NAMED_ATTACK or order_attack here: only expiry releases the old order.
@@ -323,10 +324,10 @@ def test_retail_scrambler_filter_dispatch(kinds, template, status, allowed, stat
         assert victim.auras_on[mid][0] == 105
         assert {'NO_ATTACK', 'SCRAMBLED'} <= victim.status
         now[0] = 104
-        e.modify(victim)
+        e.world.modify(victim)
         assert mid in victim.auras_on
         now[0] = 105
-        e.modify(victim)
+        e.world.modify(victim)
         assert mid not in victim.auras_on
         assert not {'NO_ATTACK', 'SCRAMBLED'} & victim.status
 
@@ -387,16 +388,16 @@ def test_retail_scrambler_modifier_expiry_clears_script_status(script_frame):
     if script_frame == 0:
         e.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, 'NO_ATTACK', 1], 'expiry interface')
     b.auras_on[mid] = (105, '')
-    e.modify(b)
+    e.world.modify(b)
     assert modifier['status'] <= b.status
     if script_frame and script_frame > 0:
         now[0] = script_frame
         e.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, 'NO_ATTACK', 1], 'expiry interface')
     now[0] = 104
-    e.modify(b)
+    e.world.modify(b)
     assert modifier['status'] <= b.status
     now[0] = 105
-    e.aura_tick()
+    simmodifier.aura_tick(e)
     assert not modifier['status'] & b.status
     assert not modifier['status'] & b.script_status
     assert 'IMMOBILE' in b.status
@@ -404,7 +405,7 @@ def test_retail_scrambler_modifier_expiry_clears_script_status(script_frame):
     # A later script write must work: expiry is a one-time clear, not a mask.
     now[0] = 106
     e.act('UNIT_CHANGE_OBJECT_STATUS', [b.name, 'NO_ATTACK', 1], 'expiry interface')
-    e.aura_tick()
+    simmodifier.aura_tick(e)
     assert {'NO_ATTACK', 'IMMOBILE'} <= b.status
 
 

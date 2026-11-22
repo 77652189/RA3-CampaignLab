@@ -302,7 +302,7 @@ def test_a_placed_objects_starting_health():
 def test_acted_status_is_what_the_source_tests():
     """sim.ACTED_STATUS (what a status-bit gap is measured against) holds every `'X' in b.status` test in the
     simulator's files (simcoverage.status_modelled reads them: simcoverage.sim_files) (IN_STASIS, UNDER_FROZEN: tested
-    on the modifiers' bits in Sim.modify; SOLD: set by Sim.sell; GENERIC_TOGGLE_STATE:
+    on the modifiers' bits in simmodifier.modify; SOLD: set by Sim.sell; GENERIC_TOGGLE_STATE:
     the mirage aura's ObjectStatusValidation, Sim.cloaked, tested through the module's own set;
     NO_COLLISIONS: the MetaImpact XML status_exclude list, consumed through a variable;
     native keep/remove-exclusion replays live in tests/test_meta_statusgate.py)."""

@@ -103,18 +103,19 @@ def _timed(plain, name, totals):
 
 @contextlib.contextmanager
 def _clocked(s, totals):
-    """INSIDE timed into totals while in the block: s.aura_tick / s.move as instance attributes over the methods (this
-    Sim only); the fight, the rule the frame loop calls (engine.orders.order.fight, ADR 0037 S2), swapped on its
-    module and put back on leaving."""
-    for name in INSIDE:
-        if name != 'fight':
-            setattr(s, name, _timed(getattr(s, name), name, totals))
-    rule = simloop.simorder.fight
-    simloop.simorder.fight = _timed(rule, 'fight', totals)
+    """INSIDE timed into totals while in the block: s.move as an instance attribute over the method (this Sim only);
+    the fight and the aura tick, the rules the frame loop calls (engine.orders.order.fight, ADR 0037 S2;
+    engine.objects.modifier.aura_tick, S3), swapped on their modules and put back on leaving."""
+    s.move = _timed(s.move, 'move', totals)
+    rules = ((simloop.simorder, 'fight'), (simloop.simmodifier, 'aura_tick'))
+    plain = [getattr(m, n) for m, n in rules]
+    for (m, n), rule in zip(rules, plain):
+        setattr(m, n, _timed(rule, n, totals))
     try:
         yield
     finally:
-        simloop.simorder.fight = rule
+        for (m, n), rule in zip(rules, plain):
+            setattr(m, n, rule)
 
 
 def rev():

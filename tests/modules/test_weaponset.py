@@ -149,10 +149,10 @@ def test_the_modifier_pass_writes_the_status_pick_back_to_the_module():
     tank = s.bodies['tank']
     m = tank.find(interfaces.WeaponSet)
     tank.script_status.add('GENERIC_TOGGLE_STATE')          # the painter's line: no gun of its own
-    s.modify(tank)
+    s.world.modify(tank)
     assert m.held() == [] and tank.weapons == []
     tank.script_status.discard('GENERIC_TOGGLE_STATE')
-    s.modify(tank)
+    s.world.modify(tank)
     assert _keys(m.held()) == [CANNON] and tank.weapons is m.held()
 
 
@@ -277,7 +277,7 @@ def test_a_second_set_block_arms_the_one_module_with_every_blocks_slots():
         assert m is not None and len([x for x in u.modules if isinstance(x, interfaces.WeaponSet)]) == 1, sid
         assert _keys(u.weapons) == [CANNON], sid
         u.script_status = set(u.script_status) | {'GENERIC_TOGGLE_STATE'}    # the modify pass rebuilds status
-        s.modify(u)
+        s.world.modify(u)
         assert sorted(_keys(u.weapons)) == sorted([ak, CANNON]), sid
 
 

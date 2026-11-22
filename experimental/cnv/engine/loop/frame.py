@@ -16,6 +16,7 @@ import math
 from time import perf_counter
 
 from engine.world.handle import DT          # seconds a tick (sim.DT; the fight's damage step reads it too, L0)
+from engine.objects import modifier as simmodifier     # L2 rules
 from engine.orders import order as simorder, ability as simability, hunt as simhunt, seq as simseq   # L5 rules
 LAG = 0.0                        # the readings' clock: mission seconds, as the bench's since 4aed60f (ADR 0007: the
                                  # bench counts mission time, at 8x). Expectations written before that counted wall
@@ -172,7 +173,7 @@ def tick_first(s, frame, tick):
     """Default movement and acquisition: once a tick, on its first frame."""
     if not tick.moved and s.ending is None and s.t >= tick.t0 - 1e-9:
         tick.moved = True
-        s.aura_tick()
+        simmodifier.aura_tick(s)
         if s.combat:
             simorder.fight(s, simorder.Peers(s))
         if not s.shot_clock:

@@ -24,10 +24,11 @@ from engine.combat import dot, leech, meta_impact
 from engine.combat import projectile as flight
 from engine.combat import registry
 from engine.kernel import interfaces
+import engine.objects.modifier as simmodifier
 from engine.modules import weaponset
 from engine.world.handle import GAP_WEAPON
 
-PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'destroy', 'emp_disabled', 'emp_until', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'lift_timers', 'modify', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'suppression_fields', 'sweeps', 'volleys'})
+PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'destroy', 'emp_disabled', 'emp_until', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'lift_timers', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'suppression_fields', 'sweeps', 'volleys'})
 LAZY = frozenset({'impact_flights', 'knock_hold', 'emp_until'})     # the host makes these dicts on first use
 
 
@@ -60,8 +61,9 @@ class EffectHost:
     def __init__(self, damage, world, peers):
         self.damage, self.world, self.peers = damage, world, peers
         # the peers' own calls as they are: lift_hit(caster, target, increment, maximum), refresh_modifiers(body) (the
-        # host's modify), fits(body, filter) (the garrison's PassengerFilter), sweep(shooter, target, life) (Sweeps.fire)
-        self.lift_hit, self.refresh_modifiers, self.fits = peers.lift_timers.hit, peers.modify, peers.garrison.fits
+        # modifiers' re-read, simmodifier.modify), fits(body, filter) (the garrison's PassengerFilter), sweep(shooter, target, life) (Sweeps.fire)
+        self.lift_hit, self.refresh_modifiers, self.fits = peers.lift_timers.hit, lambda b: simmodifier.modify(world, b), \
+            peers.garrison.fits
         self.sweep = peers.sweeps.fire
         self.gap = lambda tag, why: world.gap(GAP_WEAPON, tag, why)
         # MetaImpact's flight physics as simunits reads them (engine/combat/meta_impact)
@@ -452,7 +454,7 @@ class Damage:
             if m.held() <= 0:
                 del cold[k]
             if moved:
-                peers.modify(t)
+                simmodifier.modify(world, t)
                 if step >= 0:
                     world.note('冷冻', f'{world.label(t)} 冷冻到第 {step + 1} 档（{tr["steps"][step][0]:.0%} 生命值）')
                 if step >= 0 and tr['steps'][step][4] and t.alive:

@@ -5,6 +5,7 @@ Each action is `fn(sim, name, a, script)`, moved verbatim out of Sim.act's chain
 import math
 
 import engine.data.units as simunits
+import engine.objects.modifier as simmodifier
 import engine.orders.order as simorder
 from engine.kernel import interfaces
 from engine.script.common import refined
@@ -194,7 +195,7 @@ def unit_change_object_status(sim, name, a, script, unit=None):
     st = a[1][2] if isinstance(a[1], tuple) else a[1]
     if b:
         (b.script_status.add if a[2] else b.script_status.discard)(st)
-        sim.modify(b)
+        simmodifier.modify(sim, b)
     if st not in ACTED_STATUS | AI_ONLY_STATUS:
         sim.gap(GAP_ACTION, refined(name, a), f'状态位 {st} 只记下来；模拟器只认 {"、".join(sorted(ACTED_STATUS))}')
 

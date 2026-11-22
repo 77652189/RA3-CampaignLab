@@ -3,10 +3,11 @@ from engine.orders.order's targeting, chase and moves. Over the world (WORLD_API
 import math
 
 import engine.data.units as simunits
+import engine.objects.modifier as simmodifier
 import engine.objects.toggle as simtoggle
 from engine.objects.power import UNPACK_POWER, start_reload
 
-PEERS = frozenset({'act', 'delete', 'garrison', 'modify', 'powers_off', 'production', 'send', 'short_of_power', 'toggles_of'})
+PEERS = frozenset({'act', 'delete', 'garrison', 'powers_off', 'production', 'send', 'short_of_power', 'toggles_of'})
 FLEE_GONE = 3
 
 
@@ -129,7 +130,7 @@ def flee_start(world, peers, b):
     b.flee = (world.frame_now(), b.x, b.y, goal[0], goal[1], d, b.speed / simunits.LIFE_FPS)
     b.path, b.goal, b.mode, b.aiupdate.move_to = [], None, 'idle', None
     b.script_status.add('FLEE_OFF_MAP')
-    peers.modify(b)
+    simmodifier.modify(world, b)
     world.used.add('flee off map')
     world.change()
 

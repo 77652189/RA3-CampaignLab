@@ -403,7 +403,7 @@ NOTES = {
     (ACTION, 'UNIT_CLEAR_MODELCONDITION'): (NA, '纯表现：同 UNIT_SET_MODELCONDITION_GENERIC，清掉画法状态'),
     (MODULE, 'Behaviors/ObjectSMCHelper'): (NA, '纯表现：《将军》ObjectSMCHelper 到时清掉"定时模型状态"'
                                                 '（UNIT_SET_MODELCONDITION_GENERIC 的秒数），只换画法'),
-    (MODULE, 'Behaviors/AttributeModifierPoolUpdate'): (GUESSED, 'Sim.modify：属性修正挂在这个池里，到期规则'
+    (MODULE, 'Behaviors/AttributeModifierPoolUpdate'): (GUESSED, 'simmodifier.modify：属性修正挂在这个池里，到期规则'
                                                                  '（到期帧 >= 即失效、再挂覆盖不叠加）读自程序，'
                                                                  'work/re/l2_ability.md 第 51 轮'),
     (ACTION, 'PLAYER_ALLOWED_TOBE_COOPAI'): (NA, 'A219 读程序：只写 AI 脑的"可当合作 AI"位；读它的只有合作 AI 的'

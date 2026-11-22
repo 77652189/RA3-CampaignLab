@@ -50,7 +50,7 @@ SIM = {
     'auto_kill': STATIC, 'combat': STATIC, 'high': STATIC, 'unshot': STATIC,
     'areas': {'missing': STATE},    # the map's areas (the dict: the setup); the names looked up the map has not (the
                                     # report's line): retail_s01's first half lost it written back (4.4, 11-19)
-    'modifiers': {}, 'assignments': {'world': WIRE},
+    'assignments': {'world': WIRE},
     # the kernel, the script port, wiring
     'world': KERNEL, 'executor': EXECUTOR, 'eng': WIRE, 'counters': WIRE, 'timers': WIRE, 'team_names': WIRE,
     'step': WIRE,       # an observer's tick hook (Observe.on_tick wraps the run's step; simrecord's Recorder): the

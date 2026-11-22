@@ -43,29 +43,27 @@ FORWARDER_CALLS = {
     # port, R3 13d-2)
     ('engine.script.act_ability', 'send'): 1,
     # simact_object: kill / sell / move / capture an object
-    ('engine.script.act_object', 'delete'): 2, ('engine.script.act_object', 'destroy'): 5, ('engine.script.act_object', 'modify'): 1,
+    ('engine.script.act_object', 'delete'): 2, ('engine.script.act_object', 'destroy'): 5,
     ('engine.script.act_object', 'sell'): 2, ('engine.script.act_object', 'send'): 1,
     # the command port: the special powers' presses (S1, ADR 0037: its orders call the rules it is handed; these wait
     # for Specials as a part of its own, S3)
     ('engine.ports.command', 'leap_press'): 1, ('engine.ports.command', 'movement_power_press'): 1,
     ('engine.ports.command', 'self_power_press'): 1, ('engine.ports.command', 'wfire_press'): 1,
-    # simact_player: upgrades
-    ('engine.script.act_player', 'modify'): 1,
     # simdamage's Peers loan
-    ('engine.combat.host', 'destroy'): 3, ('engine.combat.meta_impact', 'destroy'): 1, ('engine.combat.host', 'modify'): 2, ('engine.combat.host', 'projectile_detonate'): 2,
+    ('engine.combat.host', 'destroy'): 3, ('engine.combat.meta_impact', 'destroy'): 1, ('engine.combat.host', 'projectile_detonate'): 2,
     ('engine.combat.host', 'queue_projectile_hit'): 1,
     # simgarrison's Peers loan (R3 ⑨c)
-    ('engine.objects.garrison', 'delete'): 1, ('engine.objects.garrison', 'destroy'): 1, ('engine.objects.garrison', 'modify'): 3,
+    ('engine.objects.garrison', 'delete'): 1, ('engine.objects.garrison', 'destroy'): 1,
     ('engine.objects.garrison', 'send'): 1,
     # siminfiltrator's Peers loan (R3 ⑨c: the calls it made on the whole Sim before, counted once it was layered)
     ('engine.objects.infiltrator', 'delete'): 10, ('engine.objects.infiltrator', 'destroy'): 1, ('engine.objects.infiltrator', 'send'): 1,
     # simloop: the frame table's cells, each the Sim's forwarder of its block
     **dict.fromkeys([('engine.loop.frame', n) for n in (
-        'aura_tick', 'blast_due', 'deal', 'death_blast_due', 'lose_health', 'self_power_due', 'suppression_tick',
+        'blast_due', 'deal', 'death_blast_due', 'lose_health', 'self_power_due', 'suppression_tick',
         'wfire_due')], 1),     # S2 (ADR 0037): seq / flee / hunt / fight / follow / capture call engine.orders
     # simorder's Peers loan
     ('engine.orders.order', 'delete'): 2, ('engine.orders.order', 'send'): 11,
-    ('engine.orders.ability', 'delete'): 1, ('engine.orders.ability', 'modify'): 1, ('engine.orders.ability', 'send'): 1,
+    ('engine.orders.ability', 'delete'): 1, ('engine.orders.ability', 'send'): 1,
     # simsweep's Peers loan (simpullback's order_move went through the command port, R3 13f-1)
     ('engine.combat.sweeps', 'destroy'): 1,
     # simai's Peers loan (step 9d-2, R: the calls it made on self.sim before, counted since it joined the registry;
@@ -97,22 +95,22 @@ SIM_SURFACE = {
                  'note*4 own*15 players*6 relation relations*3 t*4 waypoints*2 who*4 world xml_of*2',
     'engine.combat': 'attachment_tick attachments*4 can_hit change*2 cold_of*3 death_blasts*2 destroy*5 '
                      'emp_disabled*3 firing first_death*4 frame_now*17 gap*6 garrison*2 ground*6 guessed '
-                     'has_model_condition hostile infiltrators*2 label*5 lift_timers*2 living*5 mark_first_death '
-                     'modify*2 note own*7 player_ups projectile_detonate*2 queue_projectile_hit relation*3 '
-                     'set_model_condition*2 shots_due suppression_fields*3 sweeps t*4 used*7 world*2 xml_of*2',
+                     'has_model_condition hostile infiltrators*2 label*5 lift_timers*2 living*5 mark_first_death note '
+                     'own*7 player_ups projectile_detonate*2 queue_projectile_hit relation*3 set_model_condition*2 '
+                     'shots_due suppression_fields*3 sweeps t*4 used*7 world*2 xml_of*2',
     'engine.kernel': 'seq*2',
-    'engine.loop': 'aim_due anchored*2 aura_tick auto_kill_due blast_due clock combat*3 deal death_blast_due ending*4 '
-                   'events*5 flags frame_movers garrison handed*3 happen heal hunts infiltrators lose_health mid_aims '
-                   'mining move*3 off_teams production*2 repairs self_power_due seq series shot_clock*2 '
-                   'suppression_tick sweeps t*8 tech_due test*3 wallet wfire_due world*2',
-    'engine.modules': 'gap*3 modify pick used*3',
-    'engine.objects': '_upgrade*2 add blocks*4 bodies*8 body change*21 delete*11 destroy*2 enemy*2 frame_now*31 '
-                      'gap*61 ground*5 guessed*5 human*11 kills*2 label*27 living*13 looks m*2 modify*3 note*20 '
-                      'own*40 players*2 point reblock*2 relation*5 relations*4 send*2 shot_clock t*9 used*18 world*9 '
-                      'xml_of*6',
+    'engine.loop': 'aim_due anchored*2 auto_kill_due blast_due clock combat*3 deal death_blast_due ending*4 events*5 '
+                   'flags frame_movers garrison handed*3 happen heal hunts infiltrators lose_health mid_aims mining '
+                   'move*3 off_teams production*2 repairs self_power_due seq series shot_clock*2 suppression_tick '
+                   'sweeps t*8 tech_due test*3 wallet wfire_due world*2',
+    'engine.modules': 'gap*3 pick used*3',
+    'engine.objects': 'add blocks*4 bodies*8 body change*21 cold_of delete*11 destroy*2 enemy*2 frame_now*32 gap*61 '
+                      'ground*5 guessed*5 human*11 kills*2 label*27 living*13 looks m*2 note*20 own*40 player_ups '
+                      'players*2 point reblock*2 relation*6 relations*4 send*2 shot_clock t*9 toggles_of used*18 '
+                      'weapon_upgrades world*9 xml_of*6',
     'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 delete*3 '
                      'engineer_entry*2 fight_field fire_spot firing*2 frame_now*7 gap garrison*2 ground*3 hostile '
-                     'hunts*5 in_range label*9 living*6 members mid_aims mm*2 modify note*7 own*11 point*2 powers_off '
+                     'hunts*5 in_range label*9 living*6 members mid_aims mm*2 note*7 own*11 point*2 powers_off '
                      'production reach*5 relation*2 seen send*12 seq*7 short_of_power shot_blocked*4 side_sees*4 '
                      'team_targets*3 toggles_of used*13 wallet waypoints*8 who xml_of',
     'engine.players': '_life add*3 banned blocks bodies*4 build_frames emp_book frame_now*3 label note own*4 '
@@ -126,31 +124,31 @@ SIM_SURFACE = {
                     'player_ups players point*7 power*2 production*5 proto reblock relations sample*2 seen sees '
                     'self_power_press series short_of_power side_sees step*2 t*2 take_personality team_targets text '
                     'timers unknown unmodeled*2 upgrade_sellers wallet*4 waypoints wfire_press who world',
-    'engine.script': '_tier_held _upgrade act*4 active*7 add*5 ai*4 ai_paused*2 ai_priorities ai_switches '
-                     'all_revealed areas*11 asked*3 assignments attachment_known_status*2 attacked_by*2 audio_end '
-                     'banned*2 banned_ups*2 base_construction_disabled*2 base_power blasts blocks*2 bodies*12 body*57 '
+    'engine.script': '_tier_held act*4 active*7 add*5 ai*4 ai_paused*2 ai_priorities ai_switches all_revealed '
+                     'areas*11 asked*3 assignments attachment_known_status*2 attacked_by*2 audio_end banned*2 '
+                     'banned_ups*2 base_construction_disabled*2 base_power blasts blocks*2 bodies*12 body*57 '
                      'book_players books*2 books_of*3 border*4 buildable camera*2 camera_been*2 casts*6 change*17 '
                      'cloaked*3 clock*4 commands*3 cond_memory*2 countdowns*3 counters*15 delete*2 destroy*5 dying*3 '
-                     'end*2 engineer_entry flags*4 frame_now*19 gap*19 garrison*27 give_upgrade ground handed*2 '
+                     'end*2 engineer_entry flags*4 frame_now*19 gap*19 garrison*27 ground handed*2 '
                      'has_model_condition hidden_home*2 hidden_members hotspots*3 human*9 infiltrators*4 input*2 '
                      'kills*4 label*12 level*3 library_ai*2 living*24 looks lost_orders m*6 made_frame markers '
-                     'members*32 mm*6 model_scripts*2 modify*2 money*9 money_cap named_team nearest_ref*3 note*35 '
-                     'object_lists objectives*2 of_types*12 off_teams*2 on_the_move own*41 peeks personality_of*2 '
-                     'player_team_rel player_ups players*7 point*19 power power_at*2 powers_off present*16 '
-                     'production*3 ra3_only*3 reblock*2 reinforce*2 relation*2 relations reshroud*3 retail*5 '
-                     'reveal_all*2 reveal_all_until*2 reveal_areas*2 revealed_to*2 reveals*3 scenes*4 '
-                     'script_disabled*2 sees*4 selected*2 sell*2 send*2 seq*5 set_model_condition*3 sharing*2 '
-                     'short_of_power show_caption show_subtitle spellbook_ready start_camera surfaces t*18 tactical '
-                     'team_active*2 team_entered team_player_rel team_team_rel tech_read*2 text*4 timers*2 '
-                     'unit_construction_disabled*2 unknown*6 up used*31 video_end waypoints*2 who*6',
-    'engine.state': 'act*5 active add bodies*11 books*4 change*3 flags*4 frame_now garrison*3 give_upgrade ground '
-                    'level m*6 money*2 objectives*3 own*8 player_ups*2 players power production*2 reblock refs*2 '
-                    'relations*2 script t used*3 world*9',
+                     'members*32 mm*6 model_scripts*2 money*9 money_cap named_team nearest_ref*3 note*35 object_lists '
+                     'objectives*2 of_types*12 off_teams*2 on_the_move own*41 peeks personality_of*2 player_team_rel '
+                     'player_ups players*7 point*19 power power_at*2 powers_off present*16 production*3 ra3_only*3 '
+                     'reblock*2 reinforce*2 relation*2 relations reshroud*3 retail*5 reveal_all*2 reveal_all_until*2 '
+                     'reveal_areas*2 revealed_to*2 reveals*3 scenes*4 script_disabled*2 sees*4 selected*2 sell*2 '
+                     'send*2 seq*5 set_model_condition*3 sharing*2 short_of_power show_caption show_subtitle '
+                     'spellbook_ready start_camera surfaces t*18 tactical team_active*2 team_entered team_player_rel '
+                     'team_team_rel tech_read*2 text*4 timers*2 unit_construction_disabled*2 unknown*6 up used*31 '
+                     'video_end waypoints*2 who*6',
+    'engine.state': 'act*5 active add bodies*11 books*4 change*3 flags*4 frame_now garrison*3 ground level m*6 '
+                    'money*2 objectives*3 own*8 player_ups*2 players power production*2 reblock refs*2 relations*2 '
+                    'script t used*3 world*9',
     'engine.testing': 'add bodies*2 world',
     'engine.world': 'bodies*3 world',
     'simai_run': 'advance who',
     'simbench': 'run waypoints',
-    'simbench_peak': 'advance*2 bodies*9 ending money order_build players step*2 t*4',
+    'simbench_peak': 'advance*2 bodies*9 ending money move*2 order_build players step*2 t*4',
     'simproxy': 'advance bodies*5 commands countdowns end ending ending_line enemy*3 forget_sight frame_now*2 guessed '
                 'human input label level*2 living*3 log*2 m*8 money note offers own players point*7 production '
                 'side_sees t timers*2 world',

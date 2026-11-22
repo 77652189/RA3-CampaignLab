@@ -18,7 +18,7 @@ pytestmark = pytest.mark.skipif(sc.sim.engine_model() is None, reason='no ra3mod
 
 SIX = [('a6', '命令', '技能 SpecialPower_AthenaCannonTrigger'),
        # (11-08: the Athena's weapon is read -- its OCL; Tanya no longer fires at what she cannot hurt -- d4297bd;
-       # a9's dark shield and a3's stasis zone are modelled -- simunits.effect, Sim.modify / aura_tick)
+       # a9's dark shield and a3's stasis zone are modelled -- simunits.effect, simmodifier.modify / aura_tick)
        ('a7', '命令', '占领'), ('j7', '脚本动作', 'NAMED_USE_COMMANDBUTTON_ABILITY:Command_CNV_Jammer_jam')]
 
 

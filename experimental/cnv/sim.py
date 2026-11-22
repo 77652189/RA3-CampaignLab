@@ -86,7 +86,6 @@ import engine.combat.sweeps as simsweep  # noqa: E402
 import engine.players.tech as simtech  # noqa: E402
 import engine.objects.toggle as simtoggle  # noqa: E402
 import engine.data.units as simunits  # noqa: E402
-import engine.objects.level as simlevel  # noqa: E402
 from engine.kernel import factory as kernel_factory, interfaces as kernel_interfaces  # noqa: E402
 from engine.kernel import module as kernel_module, world as kernel_world  # noqa: E402
 from engine.ports import command as command_port  # noqa: E402  (happen gives the player's orders through it)
@@ -195,7 +194,7 @@ ALIGN = {**kernel_factory.align(), **simheal.ALIGN,     # the kernel modules' ow
               '90000 %: any hit breaks it), DIE_ON_ENTER kills. INFERRED from the SDK data (the tracker\'s update '
               'not read in the program, not benched): Fraction of max health, only the highest step\'s modifier, '
               'no armour on the Amount, the Iron Curtain keeps it off',
-    'modifier': 'attribute modifiers (simunits.effect, Sim.modify / aura_tick) from upgrades held and aura objects '
+    'modifier': 'attribute modifiers (simunits.effect, simmodifier.modify / aura_tick) from upgrades held and aura objects '
                 'near: SPEED x speed, RANGE x weapon range only, VISION x sight, INVULNERABLE + UNDER_IRON_CURTAIN '
                 'no damage, a Duration runs out (bench docs/engine/upgrades.md 1, 2, 4); an aura hangs its modifier '
                 'on its filter\'s units within Range for the Duration, IN_STASIS stops, silences, shields (5: the '
@@ -572,8 +571,8 @@ def _late(sim, f):
 
 
 class Sim:
-    LATE = {'modifiers': simmodifier.Modifiers, 'life': simbody.Life, 'specials': simspecial.Specials,   # the parts
-            'harm': simdamage.Damage}       # made on first use (_late); simsnap.check makes one a snapshot has by it
+    LATE = {'life': simbody.Life, 'specials': simspecial.Specials, 'harm': simdamage.Damage}    # the parts made on
+                                    # first use (_late); simsnap.check makes one a snapshot has by it
     model_scripts = False               # the model's plug-in runs the scripts (its tables): simexec.attach
     shot_clock = False                  # opt-in frame clock: discrete shots and movement between script frames;
                                         # default movement retains its benched coarse tick (work/re/handoff-c.md)
@@ -600,9 +599,9 @@ class Sim:
                                             self, b, ocl, air, self.death_blasts,
                                             lambda x, y: simdamage.impact_ground_z(self, x, y)),
                                         fire=lambda b, weapon: self._life().fire(self, b, weapon, self.death_blasts),
-                                        remove=lambda b, why: self.delete(b, why), modify=lambda b: self.modify(b),
+                                        remove=lambda b, why: self.delete(b, why), modify=lambda b: simmodifier.modify(self, b),
                                         pay=lambda b, amount: self.wallet.deposit(b.owner, amount),
-                                        toggled=lambda b, m: simtoggle.entered(self, b, m, self.modify),
+                                        toggled=lambda b, m: simtoggle.entered(self, b, m, self.world.modify),
                                         suppression_at=lambda b, f: simdamage.suppression_at(
                                             self.suppression_fields, b, f),
                                         spawn=lambda b, m, template: self.spawn_child(b, m, template, self.t),
@@ -846,7 +845,7 @@ class Sim:
             self._wsets[template] = simunits.weapon_sets(template, self.own)
         slots = self._wsets[template] if weapons else None    # guns not read at all stay a gap (below)
         for tm in self.toggles_of(b):         # a first ToggleState's bits hold from the start (engine_toggle c / e;
-            b.status = set(b.status) | tm['states'][0]['status']      # Sim.modify keeps them; retail first states
+            b.status = set(b.status) | tm['states'][0]['status']      # simmodifier.modify keeps them; retail first states
                                                                       # have no AttributeModifier)
         if slots:                             # the weapon lines name a status: the held one is chosen from it
             weapons = simunits.pick_weapons(slots, b.status, self.weapon_upgrades(b))
@@ -1195,25 +1194,11 @@ class Sim:
         """A bought upgrade arrives: OBJECT on the structure that bought it, PLAYER on its owner."""
         up = job['upgrade']
         if job['kind'] == 'OBJECT':
-            self.give_upgrade(b, up)
+            simmodifier.upgrade(self, b, up, True)
         else:
             self.player_ups.setdefault(job['owner'], set()).add(up)
         self.note('生产', f'{self.who(job["owner"])} 的 {self.label(b)} 买好 {up}')
         self.change()
-
-    def give_upgrade(self, b, up):
-        """An object upgrade on b (bought, or NAMED_RECEIVE_UPGRADE): a SPEED modifier acts on a unit."""
-        self._upgrade(b, up, True)
-
-    def _upgrade(self, b, up, on):
-        newly_held = up not in b.upgrades
-        (b.upgrades.add if on else b.upgrades.discard)(up)
-        if on:
-            b.up_since[up] = self.frame_now()
-        else:
-            b.up_since.pop(up, None)
-        simlevel.receive(self, b, up, on, newly_held)
-        self.modify(b)
 
     def xml_of(self, template):
         """The template's XML (a mission's own, else retail; '' where none), kept."""
@@ -1231,13 +1216,6 @@ class Sim:
         simgarrison handles the bounded single-passenger SecondaryObjectListener grant."""
         return set(b.upgrades) | set(getattr(self, 'player_ups', {}).get(b.owner, ()))
 
-    def modify(self, b):
-        """simmodifier.Modifiers.modify (L2): b's acting values from the attribute modifiers on it."""
-        self._modifiers().modify(self, b, self.toggles_of, self.cold_of, self.weapon_upgrades, self.player_ups)
-
-    def _modifiers(self):
-        return _late(self, 'modifiers')
-
     def relation(self, a, b):
         """ENEMIES / NEUTRAL / ALLIES: how owner b stands to owner a (an aura's ObjectFilter Relationship)."""
         if self.enemy(a, b):
@@ -1245,10 +1223,6 @@ class Sim:
         if a != b and CIV in (a, b):
             return 'NEUTRAL'
         return 'ALLIES'
-
-    def aura_tick(self):
-        """simmodifier.Modifiers.aura_tick (L2): the auras hang their modifiers, then every modified body is re-set."""
-        self._modifiers().aura_tick(self, self.relation, self.modify)
 
     def power(self, owner):
         """(supply, demand) of the owner: its living objects' EnergyProduction, > 0 summed into the supply, < 0 into
@@ -1430,7 +1404,7 @@ class Sim:
 
     def sell(self, b):
         """simbody.Life.sell (L2): SELL_OBJECT -- the refund paid at once (simmoney.Money.credit), deleted 30 frames on."""
-        self._life().sell(self, b, self.garrison, self.modify, self.wallet.credit)
+        self._life().sell(self, b, self.garrison, self.world.modify, self.wallet.credit)
 
     def destroy(self, b, why, death='NORMAL', cause=''):
         """simbody.Life.kill (L2), the one death entry: b killed, its Die modules told its death type and cause."""
@@ -1972,7 +1946,7 @@ class Sim:
         for t in live if mark else ():      # the scan's mark: its bit of engine_status, a script's own stays apart
             if (t.serial in shown) != ('INVISIBLE_DETECTED' in t.engine_status):
                 (t.engine_status.add if t.serial in shown else t.engine_status.discard)('INVISIBLE_DETECTED')
-                self.modify(t)
+                self.world.modify(t)
         if out:
             self.used.add('stealth')
         return out - shown
@@ -2056,7 +2030,7 @@ class Sim:
             want = bits[key][1] if key in bits else set()
             if self.bodies.get(b.name) is b and b.attachment_status != want:
                 b.attachment_status = want
-                self.modify(b)
+                self.world.modify(b)
         self._attachment_marked = {k: v[0] for k, v in bits.items()}
 
     def suppression_tick(self):
@@ -2183,11 +2157,11 @@ class Sim:
 
     def movement_power_press(self, b, button, point):
         """simspecial.Specials.movement_power_press (L2): a MovementSpecialPower's rush to a point in range."""
-        return self._specials().movement_power_press(self, b, button, point, self.modify, self.send)
+        return self._specials().movement_power_press(self, b, button, point, self.world.modify, self.send)
 
     def self_power_press(self, b, button):
         """simspecial.Specials.self_power_press (L2): an ActivateModuleSpecialPower on self."""
-        return self._specials().self_power_press(self, b, button, self.modify)
+        return self._specials().self_power_press(self, b, button, self.world.modify)
 
     def leap_press(self, b, button, p):
         """simspecial.Specials.leap_press (L2): a ProjectileSelf leap (the Sickle's) to a point."""
@@ -2195,7 +2169,7 @@ class Sim:
 
     def self_power_due(self, frame):
         """simspecial.Specials.self_power_due (L2): leaps landing, rushes and self powers' bits running out."""
-        self._specials().self_power_due(self, frame, self.modify, self.projectile_detonate,
+        self._specials().self_power_due(self, frame, self.world.modify, self.projectile_detonate,
                                         lambda x, y: simdamage.impact_ground_z(self, x, y))
 
     def wfire_press(self, b, button, target=None):

@@ -1,4 +1,4 @@
-"""The simulator's upgrade shield (simunits.shielded, sim.Sim._upgrade): an upgrade whose AttributeModifier is
+"""The simulator's upgrade shield (simunits.shielded, simmodifier.upgrade): an upgrade whose AttributeModifier is
 INVULNERABLE and sets the Iron Curtain status bit stops all damage while the unit holds it (bench: docs/engine/
 upgrades.md 4; units/tower_ball.py, A9's dark balls). INVULNERABLE alone does not (the same bench)."""
 from test_plans import named, small  # (puts experimental/cnv on the path)  # noqa: F401, I001

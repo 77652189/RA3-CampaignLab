@@ -4,7 +4,7 @@ LevelCap, once until a removal of the trigger rearms it (Permanent=true: the rem
 
 It keeps only whether a grant has it in force; the rank it gave is the thing's own (the engine's ExperienceTracker is
 the Object's, not a module's: Body.level_rank), and the grant's algorithm -- the rank table, the veterancy upgrades and
-the elite health -- stays in simlevel.receive, told by the host's upgrade grant (Sim._upgrade), as before the move.
+the elite health -- stays in simlevel.receive, told by the host's upgrade grant (simmodifier.upgrade), as before the move.
 Not an interfaces.Upgrade: the kernel's broadcast (Thing.upgrades_moved) would act at modify, not at the grant.
 
 Its state is shown in the frame record by the body's forward `level_modules` (the ids of those in force): several of
