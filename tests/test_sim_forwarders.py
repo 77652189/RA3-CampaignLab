@@ -108,7 +108,7 @@ SIM_SURFACE = {
     'engine.modules': 'gap*3 modify pick used*3',
     'engine.objects': '_upgrade*2 add blocks*4 bodies*8 body change*21 delete*11 destroy*2 enemy*2 frame_now*31 '
                       'gap*61 ground*5 guessed*5 human*11 kills*2 label*27 living*13 looks m*2 modify*3 note*20 '
-                      'own*39 players*2 point reblock*2 relation*5 relations*4 send*2 shot_clock t*9 used*18 world*9 '
+                      'own*40 players*2 point reblock*2 relation*5 relations*4 send*2 shot_clock t*9 used*18 world*9 '
                       'xml_of*6',
     'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 delete*3 '
                      'engineer_entry*2 fight_field fire_spot firing*2 frame_now*7 gap garrison*2 ground*3 hostile '
@@ -128,7 +128,7 @@ SIM_SURFACE = {
                     'timers unknown unmodeled*2 upgrade_sellers wallet*4 waypoints wfire_press who world',
     'engine.script': '_tier_held _upgrade act*4 active*7 add*5 ai*4 ai_paused*2 ai_priorities*3 ai_switches '
                      'all_revealed areas*11 asked*3 assignments attachment_known_status*2 attacked_by*2 audio_end '
-                     'banned*2 banned_ups*2 base_construction_disabled*2 base_power blasts blocks*2 bodies*11 body*59 '
+                     'banned*2 banned_ups*2 base_construction_disabled*2 base_power blasts blocks*2 bodies*12 body*59 '
                      'book_players books*2 books_of*3 border*4 buildable camera*2 camera_been*2 casts*6 change*16 '
                      'cloaked*3 clock*4 commands*3 cond_memory*2 countdowns*3 counters*15 delete*2 destroy*5 dying*3 '
                      'end*2 engineer_entry flags*4 frame_now*19 gap*19 garrison*27 give_upgrade ground handed*2 '

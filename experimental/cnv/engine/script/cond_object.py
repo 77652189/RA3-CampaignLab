@@ -116,9 +116,11 @@ def unit_has_object_status(sim, name, a):
 def player_has_number_objects_with_object_status(sim, name, a):
     # (player, cmp, n, status): the player's living objects with that bit, compared with n (know-how 97; the
     # count probes model.counted(status=), engine_aimicro 冲 / 曾冲). INFERRED: the dying not counted, as
-    # UNIT_HAS_OBJECT_STATUS reads false from the kill -- no bench separates it
+    # UNIT_HAS_OBJECT_STATUS reads false from the kill -- no bench separates it; but a dead one that stays (no die
+    # module, body.kill: NO_COLLISIONS) is counted (engine_block gk)
     st = a[3][2] if isinstance(a[3], tuple) else a[3]
-    mine = [b for b in sim.living() if b.owner == a[0]]
+    stay = [b for b in sim.bodies.values() if not b.alive and 'NO_COLLISIONS' in b.engine_status]
+    mine = [b for b in sim.living() + stay if b.owner == a[0]]
     n = sum(1 for b in mine if st in b.status)
     if not n and st not in ACTED_STATUS and st not in sim.attachment_known_status:
         sim.gap(GAP_CONDITION, name, f'状态位 {st}：模拟器只知道脚本设的和 {"、".join(sorted(ACTED_STATUS))}')

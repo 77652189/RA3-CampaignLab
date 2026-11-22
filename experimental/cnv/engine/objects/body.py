@@ -98,6 +98,11 @@ class Life:
             return
         self._out(world, b, why, False, death, cause)
         b.set_hp(0.0, tell=False)
+        if simunits.prop_death(b.template, world.own) == 'stays':
+            # engine_block gk (bench 11-22): a killed GV_Ring02 (no DestroyDie / SlowDeath up its chain) stays where
+            # it stood with NO_COLLISIONS, still one of its player's objects to a status count
+            b.engine_status.add('NO_COLLISIONS')
+            b.status = b.status | {'NO_COLLISIONS'}
         self._gone(world, b, why, False)
 
     def fire(self, world, b, weapon, death_blasts):

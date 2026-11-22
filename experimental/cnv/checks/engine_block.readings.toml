@@ -46,7 +46,6 @@ scene = {build = "engine_block", check = "gk", until = 31}
 bench = "the four bars only NAMED_KILLed at 2 s: still 4 objects with NO_COLLISIONS to s61 -- a dead GV_Ring02 (no die module) stays and death sets the bit, so s02's own line adds nothing to it (bench 2026-11-22 gk)"
 proves = "objects.body: a dead structure without a die module stays in the world, NO_COLLISIONS on"
 expect = "rows[-1]['无碰撞'] == 4"
-mismatch = "sim 0 (a killed structure is gone at once, Body._gone); bench 4"
 
 [[reading]]
 id = "block_standing_cage_doors_stop_nobody"
