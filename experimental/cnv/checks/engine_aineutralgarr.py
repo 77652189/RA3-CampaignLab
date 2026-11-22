@@ -26,8 +26,9 @@ def a(m):
     return t
 
 
-def b(m):
-    """aigarrbld: the Garrison state's team -- Peacekeepers at home / in all, the player's plant standing, the shop the AI's."""
+def b(m, health=False):
+    """aigarrbld: the Garrison state's team -- Peacekeepers at home / in all, the player's plant standing, the shop the
+    AI's; c (health): the plant's health % in place of the Peacekeepers' count (how fast they take it down)."""
     from checks import engine_aitarget as at
     from parts import counted, square
     INF = m.role('ai inf 1').template
@@ -36,7 +37,10 @@ def b(m):
     t.scripts.append(Script('Garr reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
     t.areas[at.HOME] = square(*m.site('east base'), 450.0)
     counted('CNV_GB_Home', '步兵在家', t, template=INF, area=at.HOME, player=s1)
-    counted('CNV_GB_Count', '步兵数', t, template=INF, player=s1)
+    if health:
+        counted('CNV_GB_Count', '电厂血', t, health=m.role('plant').name)
+    else:
+        counted('CNV_GB_Count', '步兵数', t, template=INF, player=s1)
     counted('CNV_GB_Plant', '电厂在', t, template='AlliedPowerPlant', player=m.player('p1'))  # the team state's fight
     counted('CNV_GB_Shop', '商店归AI', t, template='HV_Shop01', player=s1)
     end = m.facts['wake at'] + 60.0
@@ -46,4 +50,4 @@ def b(m):
 
 
 CHECKS = {build: {'a': a} for build in ('aigarron', 'aigarroff')}
-CHECKS['aigarrbld'] = {'b': b}
+CHECKS['aigarrbld'] = {'b': b, 'c': lambda m: b(m, health=True)}

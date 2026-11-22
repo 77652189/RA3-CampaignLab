@@ -3,8 +3,21 @@
 #   s2.8-s9.7 2 2 0 0 | s10.1-s10.5 1 2 0 0 | s11.0-s56.2 0 2 0 0 | s56.7-s76.9 0 2 0 1
 # aigarrbld b (bench 2026-11-22, CampGarrBldB_mcp_1122_054620; counters 步兵在家 步兵数 电厂在 商店归AI):
 #   s2.7-s9.7 2 2 1 0 | s10.1-s10.5 1 2 1 0 | s10.9-s40.6 0 2 1 0 | s41.0-s55.8 0 2 0 0 | s56.3-s76.7 0 2 0 1
-# probe (CampGarrBldB_mcp_1122_055027, 步兵数 swapped for the plant's health %): 100 to s10.9, 97 s11.3, 64 s21.0,
-#   33 s30.5, 3 s40.1, 1 s40.6, gone s41.0 -- about 3.3 %/s (33 hp/s of 1000) from s11.3; the shop the AI's from s56.3
+# aigarrbld c (bench 2026-11-22, CampGarrBldB_mcp_1122_055027, run as b with 步兵数 swapped for 电厂血 = check c;
+#   counters 步兵在家 电厂血 电厂在 商店归AI): 电厂血 100 to s10.9, 97 s11.3, 84 s14.9-s15.8, 64 s21.0, 33 s30.5,
+#   18 s34.7-s35.6, 3 s40.1, 1 s40.6, gone s41.0 -- about 2.5 % a shot, 3.3 %/s; the shop the AI's from s56.3
+
+[[reading]]
+id = "two_peacekeepers_take_a_tenth_of_the_plant_in_3_seconds"
+scene = {build = "aigarrbld", check = "c", until = 40.0}
+bench = "aigarrbld c: 电厂血 84 at s15, 54 at s25 (3 to 3.3 % a second: 25 of 1000 a shot, a shot each 1.5 s)"
+proves = "weapon taper: a DamageDealtAtSelfPosition shotgun (Peacekeeper, Damage 40, DamageTaperOff 25, Radius 155) hurts what it aims at tapered by distance, not whole (INFERRED: no aimed victim at the shooter's position)"
+let = {rate = "(win(15, 15, '电厂血')[0] - win(25, 25, '电厂血')[0]) / 10"}
+expect = "2.7 <= rate <= 3.6"
+mismatch = """\
+sim 5.2 % a second (40 a shot, the aimed plant hit whole). Tapering the aimed victim too gives 3.3 and turns three \
+mismatches right (aibasedef aibd1 / aibdwho, airetreat) but breaks engine_seal attack (a Peacekeeper on an MCV: \
+bench about 23 hp a second, untapered 13, tapered 8): not pushed (work/re handoff-b, the patch beside it)"""
 
 [[reading]]
 id = "the_garrison_team_leaves_and_the_row_house_stays_neutral"
@@ -33,11 +46,11 @@ expect = ["rows[-1]['电厂在'] == 0", "gone < taken"]
 id = "the_garrison_team_takes_the_plant_down_after_s40"
 scene = {build = "aigarrbld", check = "b", until = 75.0}
 bench = "aigarrbld: 电厂在 1 to s40.6 (the plant's health from 100 at s10.9 down about 3.3 % a second)"
-proves = "how fast two Peacekeepers take a 1000-hp AlliedPowerPlant down (the fight's start and its damage)"
+proves = "simai GarrisonBuilding: when the team state's fight with the plant starts (its rate: the reading above)"
 expect = "win(12, 40, '电厂在') == [1] * 29"
 mismatch = """\
-sim 电厂在 0 from s28: the plant loses 52 hp a second from s9 (bench about 33 from s11.3, 63 %): the damage of \
-two Peacekeepers on the plant (weapons, line C) is most of it, the fight starting 2.3 s early the rest"""
+sim 电厂在 0 from s28 (bench s41.0): 52 hp a second from s9 (bench 33 from s11.3, the reading above), the team \
+starting on the plant about 2 s early the rest"""
 
 [[reading]]
 id = "the_garrison_team_takes_the_shop_after_s56"
@@ -46,5 +59,5 @@ bench = "aigarrbld: 商店归AI 0 to s56.2 (步兵在家 0 from s11)"
 proves = "simai GarrisonBuilding: when the team gets in -- the team state's fight on the way, then the walk"
 expect = "win(12, 56, '商店归AI') == [0] * 45"
 mismatch = """\
-sim 商店归AI 1 from s40 (out of home s8): 16 s early = the fight starts 2.3 s early, the plant falls 13 s early \
-(sim s28, bench s41: the damage, reading above), plant to shop 12 s (bench 15.3 s)"""
+sim 商店归AI 1 from s40 (out of home s8): 16 s early = the plant falls 13 s early (sim s28, bench s41: the damage \
+and the fight's start, readings above), plant to shop 12 s (bench 15.3 s)"""
