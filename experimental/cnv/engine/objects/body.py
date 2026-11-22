@@ -120,8 +120,10 @@ class Life:
         if b.alive:
             self._out(world, b, why, True)
             self._gone(world, b, why, True)
-        elif 'NO_COLLISIONS' in b.engine_status:    # a dead one that stayed (kill): deleted, no longer counted
-            b.engine_status.discard('NO_COLLISIONS')    # (review tt P2 #4: NAMED_KILL then NAMED_DELETE)
+        elif not b.deleted and 'DESTROYED' not in b.engine_status:
+            # a dead one still about (lying, or stayed): deleted -- no longer counted (review tt P2 #4: NAMED_KILL then
+            # NAMED_DELETE) nor dying, even in that frame (tt closure P2; Sim.dying); its death kept (NAMED_DESTROYED)
+            b.engine_status = b.engine_status - {'NO_COLLISIONS'} | {'DESTROYED'}
             b.status = b.status - {'NO_COLLISIONS'}
             self._gone(world, b, why, True)
 

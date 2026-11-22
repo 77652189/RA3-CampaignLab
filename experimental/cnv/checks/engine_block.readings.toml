@@ -51,17 +51,15 @@ expect = "rows[-1]['无碰撞'] == 4"
 id = "block_standing_cage_doors_stop_nobody"
 scene = {build = "engine_block", check = "gn", until = 31}
 bench = "the late row with the four bars 25 apart (each 26.7 long, 5.3 thick) where it crosses the straight way: the soldier 10 (straight through) by s13 with the bars standing, with or without NO_COLLISIONS, killed or not; the IFV 10 by s7 (bench 2026-11-22 gl / gn / gk / gkn alike)"
-proves = "sim.Sim.blocks: a line of GV_Ring02 5.3 thick is not in a new order's way"
+proves = "sim.Sim.blocks, simpath.BARS / covered: a line of GV_Ring02 5.3 thick is not in a new order's way -- the game's 10 cells shut by their centres (795 / 805 miss a line on 800), not the routing grid's points (on it)"
 expect = "rows[-1]['后建墙步兵'] == 10 and rows[-1]['后建墙'] == 10"
-mismatch = "sim 11 / 11 (Sim.blocks: a structure out of platprops a 40 round); its SDK box alone does not do it either: the routing grid's points (20 apart) lie on the doors' line, RA3's 10 cells' centres (795 / 805) miss it"
 
 [[reading]]
 id = "block_one_row_of_cage_doors_stops_nobody"
 scene = {build = "engine_block", check = "gr", until = 31}
 bench = "19 map-placed bars 5 apart in one row across the way, angle 0 (a line 5.3 thick if the long axis lies along the facing, a block 26.7 deep if across): the IFV 10 by s7, the soldier 10 by s13 (bench 2026-11-22 run_queue engine_block gr) -- the long axis lies along the facing"
-proves = "sim.Sim.blocks: a GV_Ring02's length lies along its facing, and a line of them 5.3 thick leaves the way open"
+proves = "sim.Sim.blocks, simpath.BARS / covered: a GV_Ring02's length lies along its facing, and a line of them 5.3 thick leaves the way open"
 expect = "rows[-1]['后建墙步兵'] == 10 and rows[-1]['后建墙'] == 10"
-mismatch = "sim 11 / 11, as gn"
 
 [[reading]]
 id = "block_a_solid_cluster_of_cage_doors_sends_both_round"

@@ -709,7 +709,7 @@ class Sim:
         self.known = None                   # cells ever seen (GRID)
         self.known_at = []                  # (t, km2 known)
         self.guessed = set()
-        self.walls = {u.id: u.params for u in self.mm.units if 'length' in u.params}   # our bars of ice, gates
+        self.walls = {**simpath.BARS, **{u.id: u.params for u in self.mm.units if 'length' in u.params}}  # ours, props'
         self.blasts = []                    # (frame, x, y, [(distance, damage)], owner, by): a superweapon's hits
         self.casts = []                     # (frame, owner, power, caster's serial, (x, y) or None): PLAYER_TRIGGERED_SPECIAL_POWER
         self.power_at = {}                  # (player, spellbook power lower) -> the frame it is ready from (spellbook_ready)
@@ -1398,9 +1398,9 @@ class Sim:
         return self.t - b.died_at <= b.linger + 1e-9
 
     def dying(self, b):
-        """NAMED_DYING: killed (not deleted) and still lying -- the kill frame at least; a crushed infantryman its
-        SlowDeath's DestructionDelay (bench 11-06 engine_crush: 127 frames; a plant killed by script: one frame)."""
-        return b is not None and not b.alive and not b.deleted and self.t - b.died_at <= b.linger + 1e-9
+        """NAMED_DYING: killed, not deleted since, still lying (its SlowDeath's delay; the kill frame at least)."""
+        return (b is not None and not b.alive and not b.deleted and 'DESTROYED' not in b.engine_status
+                and self.t - b.died_at <= b.linger + 1e-9)
 
     def sell(self, b):
         """simbody.Life.sell (L2): SELL_OBJECT -- the refund paid at once (simmoney.Money.credit), deleted 30 frames on."""

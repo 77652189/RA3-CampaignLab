@@ -140,22 +140,31 @@ class Sight:
         return sees(self.flat, self.w, (c0[0] * d, c0[1] * d), (c1[0] * d, c1[1] * d))
 
 
-def covered(shapes, x, y):
+def covered(shapes, x, y, side=0.0):
     """Cells whose point (x, y: world coordinates, x along axis 1 and y along axis 0, both rising) is inside any of
     `shapes`: (x, y, angle, length, thick) a bar, or (x, y, r) a round building (Ground.set_blocks). Each shape
-    is tested on the cells of its own bounding box only."""
+    is tested on the cells of its own bounding box only. A bar thinner than the game's 10 cell (CELL) is tested on
+    the centres of the CELL cells in each cell's `side` square north-east of its point instead (any one inside shuts
+    it): bench 11-22 engine_block gn / gr, GV_Ring02 bars 5.3 thick in a line on y = 800 left the way open (both 10),
+    a line on a cell's edge misses both centres (795 / 805) -- on the points (on 800) it shut the way; three rows 5
+    apart (gd) went round. INFERRED: the game's cells shut by their centres for every shape."""
+    import platmap
     m = np.zeros(x.shape, bool)
     xs, ys = x[0], y[:, 0]
     for s in shapes:
         r = s[2] if len(s) == 3 else math.hypot(s[3], s[4]) / 2
-        j0, j1 = np.searchsorted(ys, s[1] - r), np.searchsorted(ys, s[1] + r, 'right')
-        i0, i1 = np.searchsorted(xs, s[0] - r), np.searchsorted(xs, s[0] + r, 'right')
-        bx, by = x[j0:j1, i0:i1] - s[0], y[j0:j1, i0:i1] - s[1]
-        if len(s) == 3:
-            m[j0:j1, i0:i1] |= bx ** 2 + by ** 2 <= r ** 2
-        else:
-            u, v = bx * math.cos(s[2]) + by * math.sin(s[2]), -bx * math.sin(s[2]) + by * math.cos(s[2])
-            m[j0:j1, i0:i1] |= (abs(u) <= s[3] / 2) & (abs(v) <= s[4] / 2)
+        offs = (0.0,) if len(s) == 3 or s[4] >= platmap.CELL or not side else \
+            np.arange(platmap.CELL / 2, side, platmap.CELL)
+        j0, j1 = np.searchsorted(ys, s[1] - r - side), np.searchsorted(ys, s[1] + r, 'right')
+        i0, i1 = np.searchsorted(xs, s[0] - r - side), np.searchsorted(xs, s[0] + r, 'right')
+        for ox in offs:
+            for oy in offs:
+                bx, by = x[j0:j1, i0:i1] + ox - s[0], y[j0:j1, i0:i1] + oy - s[1]
+                if len(s) == 3:
+                    m[j0:j1, i0:i1] |= bx ** 2 + by ** 2 <= r ** 2
+                else:
+                    u, v = bx * math.cos(s[2]) + by * math.sin(s[2]), -bx * math.sin(s[2]) + by * math.cos(s[2])
+                    m[j0:j1, i0:i1] |= (abs(u) <= s[3] / 2) & (abs(v) <= s[4] / 2)
     return m
 
 
@@ -375,6 +384,8 @@ SPREAD = 15     # a group member's offset from the middle is cut to this many ra
 
 HOLD_SPOTS = True              # every move's goal kept off other units' spots (claims): the game's (bench 11-09,
                                # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
+BARS = {'GV_Ring02': {'length': 26.6892, 'thick': 5.32658}}  # retail props in the way as their SDK box (Sim.blocks;
+# the long axis along the facing, bench 11-22 engine_block gr), not platprops' 40 round; INFERRED for other props
 ORE_PLATE = (60.0, 45.0)        # an ore node's base plate, half-extents (OreNode.xml's last BOX): goal_off_nodes
 
 
@@ -541,7 +552,7 @@ class Ground:
         return False
 
     def _mask(self, shapes):
-        return covered(shapes, *self.xy) & ~self.deck
+        return covered(shapes, *self.xy, GRID) & ~self.deck
 
     def open(self, surface, x, y, place=False):
         """A world point a unit of that surface may stand on now (its routing cell walkable and not blocked); place:
@@ -693,7 +704,7 @@ class Ground:
             import platmap
             fine, d = self.fine[surface], self.d
             jj, ii = np.mgrid[0:fine.shape[0], 0:fine.shape[1]]
-            fb = covered(self.shapes, (ii - self.b) * platmap.CELL, (jj - self.b) * platmap.CELL)
+            fb = covered(self.shapes, (ii - self.b) * platmap.CELL, (jj - self.b) * platmap.CELL, platmap.CELL)
             fb &= ~self.deck.repeat(d, 0).repeat(d, 1)
             self.cache['sight', surface] = Sight.of(self.grids[surface], fine, self.blocked, fb)
         return self.cache['sight', surface]

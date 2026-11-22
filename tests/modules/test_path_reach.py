@@ -48,7 +48,7 @@ def test_reach_rebuilds_components_when_blocks_change():
     ground = terrain([[1, 1, 1]] * 3)
     p, q = (1, 0), (1, 2)
     assert_way(ground, p, q, True)
-    assert ground.set_blocks([(*ground.world((1, 1)), np.pi / 2, 60, 6)])
+    assert ground.set_blocks([(*ground.world((1, 1)), np.pi / 2, 60, 20)])     # not thinner than a CELL (covered)
     assert_way(ground, p, q, False)
     assert ground.set_blocks([])
     assert_way(ground, p, q, True)
