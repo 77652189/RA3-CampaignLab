@@ -1,4 +1,4 @@
-"""CannotAttackTargetReaction measured lifecycle, replayed by test_ai_cannot_reaction.
+"""CannotAttackTargetReaction measured lifecycle, read in engine_aicannot.readings.toml.
 
 SDK predicts Ignore continues, Disband releases, TreatLikeSuccess uses RAMPAGE.
 Counters only validate the scene and its game clock. Team lifecycle/aims must

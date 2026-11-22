@@ -1,0 +1,34 @@
+# CannotAttackTargetReaction (C 11-13 aicantig / aicantdi / aicantsu: one CNVCannot team of two Guardians given an
+# air target it cannot hit; only the reaction switched). The bench's clock is the team carrier's, not the map's, so
+# the readings check the team's lifecycle order from the first frame it holds the air target, not its frames.
+
+[[reading]]
+id = "cannot_ignore_keeps_both_and_the_air_target"
+scene = {build = "aicantig", check = "r", until = 65, teams = true}
+bench = """\
+C 11-13 aicantig:r (CampCantIgR_mcp_1113_030033 ra3ext CNVTeams lines, carrier frames): two members from f21, the \
+air target from f51, held through f1771 with two members and micro state 8, never cleared (work/re/c_cannot_report.md)"""
+proves = "simai CannotAttackTargetReaction=Ignore: the team keeps its unreachable target and its members"
+item = "AI 战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction"
+let = {held = "(lambda t: t[next(i for i, r in enumerate(t) if len(r['members']) == 2 and r['target'] == 'UNIT - CNV Cannot Air'):])([r for r in teams() if r['state_key'] == 'CNVCannot'])"}
+expect = "all(len(r['members']) == 2 and r['target'] == 'UNIT - CNV Cannot Air' and r['state'] == 8 for r in held)"
+
+[[reading]]
+id = "cannot_disband_clears_the_team_and_it_recruits_again"
+scene = {build = "aicantdi", check = "r", until = 65, teams = true}
+bench = """\
+C 11-13 aicantdi:r (CampCantDiR_mcp_1113_025859): the air target at f51, zero members and no target at f95, two \
+again at f97, the air target again at f127; clearing and recruiting again repeat to f1937 (the frames are no rule)"""
+proves = "simai CannotAttackTargetReaction=Disband: the team holding an unreachable target is emptied, then recruits again"
+let = {held = "(lambda t: t[next(i for i, r in enumerate(t) if len(r['members']) == 2 and r['target'] == 'UNIT - CNV Cannot Air'):])([r for r in teams() if r['state_key'] == 'CNVCannot'])", cleared = "next(i for i, r in enumerate(held) if not r['members'])"}
+expect = "any(len(r['members']) == 2 for r in held[cleared + 1:])"
+
+[[reading]]
+id = "cannot_treat_like_success_takes_the_ground_yard"
+scene = {build = "aicantsu", check = "r", until = 65, teams = true}
+bench = """\
+C 11-13 aicantsu:r (CampCantSuR_mcp_1113_030206): the air target at f51, the target changed at f92 to the map's \
+only enemy ground structure (base yard), micro state 6 on it at f500"""
+proves = "simai CannotAttackTargetReaction=TreatLikeSuccess (EndBehavior RAMPAGE): the team leaves the air target for the enemy's ground structure and fights it"
+let = {held = "(lambda t: t[next(i for i, r in enumerate(t) if len(r['members']) == 2 and r['target'] == 'UNIT - CNV Cannot Air'):])([r for r in teams() if r['state_key'] == 'CNVCannot'])"}
+expect = "any(r['target'] not in (None, 'UNIT - CNV Cannot Air') and r['state'] == 6 for r in held)"

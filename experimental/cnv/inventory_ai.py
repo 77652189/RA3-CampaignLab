@@ -381,7 +381,7 @@ NOTES = {
        for v in ('', '=None', '=QuickDoesAttackPathExist')},
     '战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction': (BENCHED,
         'engine_aicannot aicantig/di/su:r：Ignore保留两人和空靶；Disband f95清空/f97重招；'
-        'TreatLikeSuccess f92换地面厂/f500进入攻击态。tests/test_ai_cannot_reaction.py按名回放生命周期；'
+        'TreatLikeSuccess f92换地面厂/f500进入攻击态，读数 checks/engine_aicannot.readings.toml；'
         '仅显式三值、SimpleAttack/RAMPAGE；精确周期、模板资格、缺省、回家和多队仍gap；'
         '见work/re/c_cannot_report.md、e122_cannot.md'),
     '造兵/BuildEntry.CountModifier': (BENCHED,
