@@ -1838,7 +1838,7 @@ class Sim:
                                  '连续DPS没有逐发命中事件；压制贡献仅在离散命中时钟中模拟')
                     self.firing.append((pick, w['dps'] * a.dealt * (1.0 if w['type'] == 'UNRESISTABLE' else
                                         simunits.percent(pick.armor, w['type']) / 100.0 * pick.taken)
-                                        * simdamage.flank_of(pick, a), a))
+                                        * simdamage.flank_of(pick, a) * simdamage.taper_of(w, pick, a), a))
             if w.get('sdps') and not self.shot_clock:
                 self.chilling.append((pick, w['sdps'] * a.dealt, a))
             fired = True

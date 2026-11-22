@@ -17,10 +17,6 @@ aibd1 / aibdwho: one Peacekeeper goes into the first turret (进炮塔 1 or more
 attack-moving one turns aside to a foe in sight)"""
 proves = "simai base defenses: EnterBaseDefenses sends one Peacekeeper into the first turret"
 expect = "any(r['进炮塔'] >= 1 for r in rows)"
-mismatch = """\
-B round 196: nobody goes into turret 1 since the SimpleAttack form-up (B round 194: form f2, go f55), which the \
-bench has too (it forms up in every SimpleAttack run with a teams host); the way past turret 1 from the form point \
-vs the garrison pass is not attributed"""
 
 [[reading]]
 id = "a_full_turret_keeps_its_sitter_and_nobody_else_goes_in"

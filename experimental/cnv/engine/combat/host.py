@@ -144,6 +144,12 @@ def flank_of(victim, attacker):
     return simunits.flank(victim.armor, victim.angle, attacker.x - victim.x, attacker.y - victim.y)
 
 
+def taper_of(w, victim, attacker):
+    """The continuous fire's share of weapon w's damage that reaches `victim` (combat/damage.tapered; 1 without)."""
+    from engine.combat.damage import tapered
+    return tapered(w['dmg'], w['taper'], attacker, victim) / w['dmg'] if w.get('taper') and w['dmg'] else 1.0
+
+
 def hit_scalar(victim, damage_type, attacker):
     """What one point of `damage_type` from `attacker` does to `victim` on a direct hit: its armor percent x taken
     (UNRESISTABLE: 1), x the flank (registry.Context.scalar, for the nugget handlers)."""

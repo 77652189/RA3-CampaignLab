@@ -25,12 +25,6 @@ unformed, ~220 deep"""
 proves = "simai team retreat: how long the team stays home, and that nobody is lost on the later trips"
 let = {out = "first('步兵在家', lambda v: v == 0)", back = "first('步兵在家', lambda v: v == 4, rows[out:]) + out", again = "first('步兵在家', lambda v: v < 4, rows[back:]) + back"}
 expect = "14 <= again - back <= 18 and all(r['步兵数'] == 4 for r in rows)"
-mismatch = """\
-simulator (A 234, engine model b212e66): one Peacekeeper lost at s77 on the third trip; bench 4 to s87.6. The \
-simulator brings them home stacked in two pairs on one point, walks them bunched, and three guards have come out \
-to y 2500 -> nearest 124 / 140 at its retreat rounds (f690 / f1140); the bench's leader 3735:2646 is ~186 off the \
-guard ring at its retreat round (f740). Missing: where a retreat's move to the base leaves each member, and \
-whether the bench's guards chase out (no guard rows logged)"""
 
 [[reading]]
 id = "disband_after_retreat_team_size_ends_the_tactic_as_on_the_bench"

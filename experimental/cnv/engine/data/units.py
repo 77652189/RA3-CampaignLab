@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v43.json')    # v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v44.json')    # v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -687,6 +687,10 @@ def _weapons(texts, base_table=None):
                 got['damage'] = sum(d for d, _ in dmg)
                 if any(t for _, t in dmg):                  # an override writing only Damage keeps the type
                     got['type'] = next(t for _, t in dmg if t)
+            taper = [(_num(_attr(h, 'Radius', '0')), _num(_attr(h, 'MinRadius', '0')), _num(_attr(h, 'DamageTaperOff')))
+                     for h, _ in _blocks(bare, 'DamageNugget') if _attr(h, 'DamageTaperOff') is not None]
+            if _attr(head, 'DamageDealtAtSelfPosition') == 'true' and len(taper) == 1:
+                got['taper'] = taper[0]                     # (Radius, MinRadius, DamageTaperOff): combat/damage.py
             if any(war):
                 got['warhead'] = next(w for w in war if w)
             if _attr(head, 'ClipSize'):
@@ -777,7 +781,7 @@ def _resolve(w, weapons):
                 attach=w.get('attach', weapons.get(w.get('warhead'), {}).get('attach', [])),
                 lift=w.get('lift', weapons.get(w.get('warhead'), {}).get('lift', [])),
                 inform=w.get('inform', []), weapon_speed=w.get('weapon_speed', 999999.0),
-                weapon_key=w.get('weapon_key'),
+                weapon_key=w.get('weapon_key'), **({'taper': w['taper']} if w.get('taper') else {}),
                 meta_impacts=w.get('meta_impacts', weapons.get(w.get('warhead'), {}).get('meta_impacts', [])),
                 delayed_meta_impacts=w.get('delayed_meta_impacts',
                     weapons.get(w.get('warhead'), {}).get('delayed_meta_impacts', [])),

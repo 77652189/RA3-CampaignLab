@@ -115,3 +115,8 @@ expect = [
     "next(t for t, r in zip(times, rows) if r['敌车血量'] < 100) <= 13",
     "rows[times.index(61)]['敌车血量'] <= 90",
 ]
+mismatch = """\
+the damage is not settled on the bench: 11-08 85 % at s61 (~20 hp a wall second, more than one untapered shot \
+in 23 frames can do); rerun 11-22 (CampSealAttack_mcp_1122_064738, wall seconds, no ext log) the MCV 99 % all \
+run, and open's idle soldier did not fire either (CampSealOpen_mcp_1122_064507). The sim's tapered shotgun \
+(aineutralgarr c, read to the hit) leaves the MCV above 90 at s61"""

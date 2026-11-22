@@ -11,13 +11,12 @@
 id = "two_peacekeepers_take_a_tenth_of_the_plant_in_3_seconds"
 scene = {build = "aigarrbld", check = "c", until = 40.0}
 bench = "aigarrbld c: 电厂血 84 at s15, 54 at s25 (3 to 3.3 % a second: 25 of 1000 a shot, a shot each 1.5 s)"
-proves = "weapon taper: a DamageDealtAtSelfPosition shotgun (Peacekeeper, Damage 40, DamageTaperOff 25, Radius 155) hurts what it aims at tapered by distance, not whole (INFERRED: no aimed victim at the shooter's position)"
+proves = """combat/damage.tapered: a DamageDealtAtSelfPosition shotgun (Peacekeeper, Damage 40, DamageTaperOff 25, \
+Radius 155) hurts what it aims at tapered by the distance from the shooter less the victim's bounding circle (the \
+plant's 54.08). Run 055027's ext log: a shot each 23 frames a man, 40 hits kill the 1000 plant, the first leaves \
+974.4 -- shooter 203.0 off the plant's centre gives 974.42 (sim untapered: 5.2 % a second)"""
 let = {rate = "(win(15, 15, '电厂血')[0] - win(25, 25, '电厂血')[0]) / 10"}
 expect = "2.7 <= rate <= 3.6"
-mismatch = """\
-sim 5.2 % a second (40 a shot, the aimed plant hit whole). Tapering the aimed victim too gives 3.3 and turns three \
-mismatches right (aibasedef aibd1 / aibdwho, airetreat) but breaks engine_seal attack (a Peacekeeper on an MCV: \
-bench about 23 hp a second, untapered 13, tapered 8): not pushed (work/re handoff-b, the patch beside it)"""
 
 [[reading]]
 id = "the_garrison_team_leaves_and_the_row_house_stays_neutral"
