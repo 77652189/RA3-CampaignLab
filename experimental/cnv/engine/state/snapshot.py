@@ -59,7 +59,7 @@ SIM = {
     'used': ALIAS, 'unmodeled': ALIAS, 'money': ALIAS, 'income': ALIAS, 'sharing': ALIAS, 'money_cap': ALIAS,
     # caches (template -> what its data says)
     'declared': CACHE, 'energies': CACHE, '_engineer_rules': CACHE, '_wsets': CACHE, '_xmls': CACHE,
-    '_toggles': CACHE, '_invis': CACHE, '_xy': CACHE,
+    '_toggles': CACHE, '_invis': CACHE, '_xy': CACHE, '_cold': CACHE,
     # parts
     'clock': {'frame': STATE},
     'wallet': {'money': STATE, 'income': STATE, 'sharing': STATE, 'money_cap': STATE},
