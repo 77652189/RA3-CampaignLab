@@ -5,11 +5,9 @@ daily pick (experimental/testbench/affected_tests.py) leaves them out unless --w
 Every test without a `timeout` marker of its own gets its layer's limit (experimental/testbench/time_budget.py
 TEST_TIMEOUT, T7). RA3_TEST_TIMEOUT_SCALE scales those limits (0 disables them for a debugger)."""
 import contextlib
-import hashlib
 import importlib.util
 import os
 import sys
-from pathlib import Path
 
 import pytest
 
@@ -27,22 +25,6 @@ _cpu_spec = importlib.util.spec_from_file_location(
 cpupool = importlib.util.module_from_spec(_cpu_spec)
 _cpu_spec.loader.exec_module(cpupool)
 _held = contextlib.ExitStack()
-
-
-def content_key(*paths):
-    """Key test-only reuse on paths and bytes, including additions and removals in input trees."""
-    digest = hashlib.sha256()
-    for path in dict.fromkeys(map(Path, paths)):
-        digest.update(os.fsencode(path) + b'\0')
-        files = [path]
-        if path.is_dir():
-            files = sorted(p for p in path.rglob('*') if p.is_file() and p.suffix != '.pyc')
-        for file in files:
-            digest.update(os.fsencode(file) + b'\0')
-            if file.is_file():
-                with file.open('rb') as source:
-                    digest.update(hashlib.file_digest(source, 'sha256').digest())
-    return digest.digest()
 
 
 def pytest_configure(config):

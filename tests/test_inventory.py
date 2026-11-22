@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import pytest
-from conftest import content_key
+from testcache import content_key
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # loaded by file (guard G4: no new sys.path edits); inventory.py puts the cnv folders on the path itself

@@ -8,7 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
-from conftest import content_key
+from testcache import content_key
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'experimental' / 'cnv'))

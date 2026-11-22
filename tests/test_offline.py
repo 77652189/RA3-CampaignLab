@@ -4,7 +4,7 @@ import sys
 from copy import copy, deepcopy
 from pathlib import Path
 
-from conftest import content_key
+from testcache import content_key
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [os.path.join(ROOT, 'experimental', 'cnv'), os.path.join(ROOT, 'experimental', 'campaign')]
