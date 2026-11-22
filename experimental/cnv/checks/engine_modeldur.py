@@ -21,6 +21,9 @@ def mission():
     for k, role in enumerate(('short', 'long', 'control', 'held')):
         m.put('SovietAntiInfantryInfantry', 'stop row', k * 200., -500.,
               name='CNV ModelDur '+role, role=role)
+    for k, role in enumerate(('e1', 'e2', 'loner')):            # t: s03's Japanese engineer team + one outside it
+        props = {} if role == 'loner' else {'originalOwner': m.crew('E')}
+        m.put('JapanEngineer', 'stop row', 800. + k * 200., -500., name='CNV ModelDur '+role, role=role, props=props)
     return m
 
 
@@ -48,5 +51,36 @@ def b(m):
     return check(m, (1., 2.))
 
 
+def _team(m, condition, fires, seconds):
+    """The engineer team's members e1 / e2 and the loner outside it: mask of `condition` (1 / 2 / 4), each member's
+    frames with it, the clock; `fires` [(mission seconds, label, action)]."""
+    t = Test()
+    t.scripts.append(Script('Test - modeldur team setup', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    for secs, label, action in fires:
+        s8.at(t, label, secs, [action])
+    s8.total(t, 'CNV_ModelDur_Team', '状态', [
+        (2**k, ('UNIT_HAS_MODELCONDITION', m.role(role).name, condition))
+        for k, role in enumerate(('e1', 'e2', 'loner'))])
+    for role in ('e1', 'e2'):
+        s8.frames(t, 'CNV_ModelDur_'+role, role+'帧', [('UNIT_HAS_MODELCONDITION', m.role(role).name, condition)])
+    s8.frames(t, 'CNV_ModelDur_Clock', '逻辑帧', [])
+    t.bench = [('bench_watch', dict(seconds=seconds, every=.5, sheet=False, lines=4))]
+    return t
+
+
+def t(m):
+    """TEAM_SET_MODELCONDITION_FOR_DURATION as s03 calls it (EMOTION_CELEBRATING, 10 s, 1.0) on the team at 2 s:
+    predict both members (mask 3, never the loner's 4) for 151 inclusive frames, as the unit action."""
+    return _team(m, 'EMOTION_CELEBRATING', [(2., 'modeldur team set', (
+        'TEAM_SET_MODELCONDITION_FOR_DURATION', m.crew('E'), 'EMOTION_CELEBRATING', 10., 1.))], 16.)
+
+
+def u(m):
+    """TEAM_SET_MODELCONDITION as a08 calls it (USER_2 on, later off) on the team at 2 s, off at 8 s: predict mask 3
+    (never the loner's 4) from the 2 s frame to the 8 s one."""
+    return _team(m, 'USER_2', [(2., 'modeldur team on', ('TEAM_SET_MODELCONDITION', m.crew('E'), 2, 1)),
+                               (8., 'modeldur team off', ('TEAM_SET_MODELCONDITION', m.crew('E'), 2, 0))], 12.)
+
+
 MISSION = {'engine_modeldur': mission}
-CHECKS = {'engine_modeldur': {'a': check, 'b': b}}
+CHECKS = {'engine_modeldur': {'a': check, 'b': b, 't': t, 'u': u}}

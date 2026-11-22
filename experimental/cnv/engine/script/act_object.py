@@ -154,9 +154,11 @@ def named_set_max_health(sim, name, a, script):
 
 def unit_set_modelcondition(sim, name, a, script):
     # (unit, n, on): ModelState USER_<n> set / cleared, held till cleared. Bench 11-13 engine_acts_v mc: 1 -> USER_1,
-    # 2 -> USER_2, 3 -> USER_3 (a08's saluting conscripts: USER_2 is the conscript's STATE_Saluting), 0 clears
-    b = sim.body(a[0])
-    if sim.present(b):
+    # 2 -> USER_2, 3 -> USER_3 (a08's saluting conscripts: USER_2 is the conscript's STATE_Saluting), 0 clears;
+    # the team action every member alike (engine_modeldur:u)
+    for b in [sim.body(a[0])] if name.startswith('UNIT') else sim.members(a[0]):
+        if not sim.present(b):
+            continue
         if int(a[2]):
             sim.set_model_condition(b, f'USER_{int(a[1])}')
         else:
@@ -164,14 +166,15 @@ def unit_set_modelcondition(sim, name, a, script):
 
 
 def unit_set_modelcondition_for_duration(sim, name, a, script):
-    b = sim.body(a[0])
     condition = a[1][2] if isinstance(a[1], tuple) else a[1]
     if float(a[2]) <= 0 or float(a[3]) != 1.:
         sim.gap(GAP_ACTION, name, '仅已量正持续时间和第四参数1.0；见work/re/c_modeldur_report.md')
-    elif sim.present(b):
-        # engine_modeldur:a: 3/7 seconds query true for 46/106 frames.
-        # Include the duration boundary; do not change other producers.
-        b.model_conditions[condition] = sim.frame_now() + math.ceil(float(a[2]) * simunits.LIFE_FPS) + 1
+        return
+    # engine_modeldur:a: 3/7 seconds query true for 46/106 frames (the boundary included); :t the team action
+    # on every member alike. Other producers untouched.
+    for b in [sim.body(a[0])] if name.startswith('UNIT') else sim.members(a[0]):
+        if sim.present(b):
+            b.model_conditions[condition] = sim.frame_now() + math.ceil(float(a[2]) * simunits.LIFE_FPS) + 1
 
 
 def unit_set_modelcondition_generic(sim, name, a, script):
@@ -328,7 +331,9 @@ ACTIONS = {
     'TEAM_SET_HEALTH': team_set_health,
     'NAMED_SET_MAX_HEALTH': named_set_max_health,
     'UNIT_SET_MODELCONDITION': unit_set_modelcondition,
+    'TEAM_SET_MODELCONDITION': unit_set_modelcondition,
     'UNIT_SET_MODELCONDITION_FOR_DURATION': unit_set_modelcondition_for_duration,
+    'TEAM_SET_MODELCONDITION_FOR_DURATION': unit_set_modelcondition_for_duration,
     'UNIT_SET_MODELCONDITION_GENERIC': unit_set_modelcondition_generic,
     'UNIT_CLEAR_MODELCONDITION': unit_set_modelcondition_generic,
     'UNIT_CHANGE_OBJECT_STATUS': unit_change_object_status,
