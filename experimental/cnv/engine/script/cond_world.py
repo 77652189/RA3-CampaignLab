@@ -19,12 +19,11 @@ def counter(sim, name, a):
 
 def team_destroyed(sim, name, a):
     # INFERRED (Generals evaluateIsDestroyed: the team has no object left; not read in RA3): the dying count
-    # as there, as PLAYER_HAS_OBJECT_COMPARISON's; a team nobody was ever in is not destroyed; an AI's (its
-    # members carry no map team name) when it holds none
+    # as there, as PLAYER_HAS_OBJECT_COMPARISON's; a team nobody was ever in is not destroyed
     sim.used.add('team destroyed')
     crew = team_crew(sim, a[0])
-    if crew is None:
-        return False
+    if crew is None or not sim.team_active(a[0]):   # an AI's team (its pool too) never reads destroyed, as before
+        return False                                 # 7971301c (review 1122rr #1; INFERRED, not benched)
     ever = [b for b in sim.bodies.values() if same_team(b.team, a[0])]
     if not ever:
         return not crew

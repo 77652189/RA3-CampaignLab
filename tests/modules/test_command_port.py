@@ -362,6 +362,20 @@ def test_a_team_order_finds_an_ai_team_by_the_ais_lookup():
     assert s.bodies['lead'].x > 1410
 
 
+def test_a_map_team_is_its_name_before_the_ais_lookup_and_a_missing_team_is_asked_nothing():
+    """Review 1122rr #1: an emptied map team named like an AI's reads destroyed, an AI's team never; #2: TEAM_DISCOVERED
+    of a team no one is touches no detection (Sim.cloaked latches it)."""
+    s = simsmall.small_world([('lone', APOC, 'Player_1', 0.0, 0.0)], model=False)
+    s.bodies['lone'].team = 'Player_1/G_0_0'
+    s.active.add('Player_1/G_0_0')
+    s.add_team_lookup(lambda t: {'Player_1/G_0_0': (False, []), 'Player_1/X_0_0': (True, [])}.get(t))
+    _act(s, 'NAMED_DELETE', 'lone')
+    s.advance(1)
+    assert s.cond('TEAM_DESTROYED', ['Player_1/G_0_0']) and not s.cond('TEAM_DESTROYED', ['Player_1/X_0_0'])
+    s.cloaked = None
+    assert not s.cond('TEAM_DISCOVERED', ['Player_2', 'Player_1/Nobody'])
+
+
 def test_attack_move_to_the_players_nearest_of_a_type_is_the_first_members():
     """ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER: the player's object of the type nearest the team's first
     member (bench round 280, engine_acts_near), not its middle's nor another owner's; none: no order."""

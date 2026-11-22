@@ -1,5 +1,5 @@
 # Bench readings of checks/engine_aifav.py (format: experimental/cnv/readings.py; runner: tests/conformance).
-# The enemy table emptied by script (program 0x8d72a0, work/re a219_skirmish_transfer.md 2), each after aipriodef's
+# The enemy table emptied by script (program: work/re a219_skirmish_transfer.md 2, a295_clear_priorities.md), each after aipriodef's
 # SET_ALL 20 -- without the clear Player_1 at 20 stays the top tier and the far plant goes first (aipriodef).
 # The first reading moved from tests/test_simai_favored.py (same run, 70 s).
 

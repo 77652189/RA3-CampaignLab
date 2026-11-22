@@ -64,12 +64,11 @@ def team_crew(sim, team, every=False):
     AI's (Sim.named_team) with no instance now (bench 11-11 aiskirm:m: a ..._0_0 team's TEAM_COMPARE_NUM_MEMBERS
     == n held for no n until made), a map / script team nobody joined (team_active; INFERRED for the conditions D
     115 did not read). Every team action / condition asking whether the team is there asks here (review 1121pp #1
-    and its class: an AI tactic team turned away as no map team)."""
+    and its class: an AI tactic team turned away as no map team). A map / script team the name is is that team: the
+    AI's lookup only for names none is (review 1122rr #1: an emptied map team ..._0_0 taken for an absent AI team)."""
+    if sim.team_active(team):
+        return [b for b in sim.bodies.values() if b.alive and same_team(b.team, team)] if every else sim.members(team)
     named = sim.named_team(team)
-    if named is not None:
-        if not named[0]:
-            sim.used.add('ai team absent')
-        return named[1] if named[0] else None
-    if not sim.team_active(team):
-        return None
-    return [b for b in sim.bodies.values() if b.alive and same_team(b.team, team)] if every else sim.members(team)
+    if named is not None and not named[0]:
+        sim.used.add('ai team absent')
+    return named[1] if named is not None and named[0] else None

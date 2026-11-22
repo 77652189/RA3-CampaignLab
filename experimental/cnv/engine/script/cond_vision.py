@@ -59,9 +59,12 @@ def team_discovered(sim, name, a):
     # not hidden from it; the player's own members always. Bench 11-13 engine_conds sight 发现&1: a member on
     # the move is not (near, in plain sight, off the second or two it moved; INFERRED: its fog status is
     # re-read once it stands, Generals' partition data)
+    crew = team_crew(sim, a[1])
+    if not crew:                # before cloaked: it latches detection (review 1122rr #2: a query has no side effect)
+        return False
     live = list(sim.living())
     hidden = sim.cloaked(live)
-    for m in team_crew(sim, a[1]) or ():
+    for m in crew:
         air = m.surface == 'air'
         if m.owner == a[0]:
             return True
