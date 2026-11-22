@@ -110,3 +110,4 @@ def far(m):
 
 MISSION = {'engine_movement_e': mission}
 CHECKS = {'engine_movement_e': {'a': check, 'b': far}}
+CONTROL_ARMS = {'engine_movement_e': ('On', 'Off')}

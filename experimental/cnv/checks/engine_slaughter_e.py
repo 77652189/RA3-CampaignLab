@@ -81,3 +81,6 @@ def check(m, corrected=False):
 
 MISSION = {'engine_slaughter_e': mission}
 CHECKS = {'engine_slaughter_e': {'a': check, 'b': lambda m: check(m, corrected=True)}}
+# Each arm's drones are counted by its own player, so the hosts (and targets) swap sides: a confound, held here
+# as the one freedom; both arms read 0 (a negative baseline). Put both on p1 and count by area when E170 reopens.
+CONTROL_ARMS = {'engine_slaughter_e': ('On', 'Off', 'side')}

@@ -64,3 +64,4 @@ def check(m):
 
 MISSION = {'engine_substructure_e': mission}
 CHECKS = {'engine_substructure_e': {'a': check}}
+CONTROL_ARMS = {'engine_substructure_e': ('On', 'Off')}

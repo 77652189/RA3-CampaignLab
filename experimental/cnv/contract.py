@@ -811,7 +811,40 @@ def _off(v):
     return v.replace('On', 'Off') if isinstance(v, str) else v
 
 
-def _drift(x, y, at, out, took, free=()):
+def arm_drift(parts, a, b, *free):
+    """Two arms of one build on one map (review 1119 qq P3, step 2), one line each: [] when the control arm keeps to
+    its original -- each object and waypoint whose name says `a` ('E172 On gun', 'CNVE168On'; not 'RevealShroudOnFire') has its
+    twin saying `b`, all of them one shift away and alike else (template, side, facing, properties); each unit of
+    ours named for `a` has its twin lacking one whole XML element of it, nothing else, and some unit does. parts: the
+    resolved Mission and Test; free: more Obj fields that may differ, said (and why) where CONTROL_ARMS declares them.
+    Scripts are not held (an arm's counter weights differ by design)."""
+    was, now = (re.compile(rf'(?<![a-z]){t}(?![a-z])') for t in (a, b))
+    off = lambda v: was.sub(b, v) if isinstance(v, str) else v     # noqa: E731
+    out, took, shift = [], [], set()
+    things = [(o.name, o.x, o.y, o) for p in parts for o in p.objects] + \
+             [(n, x, y, None) for p in parts for n, (x, y) in p.waypoints.items()]
+    twins = {n: (x, y, o) for n, x, y, o in things if now.search(n)}
+    for n, x, y, o in things:
+        if was.search(n):
+            if off(n) not in twins:
+                out.append(f'{n!r}: no twin {off(n)!r}')
+                continue
+            tx, ty, t = twins.pop(off(n))
+            shift.add((round(tx - x, 3), round(ty - y, 3)))
+            if o is not None:
+                _drift(o, t, n, out, took, ('x', 'y', 'site') + free, off)
+    units = {u.id: u for p in parts for u in p.units}
+    for u in [u for u in units.values() if was.search(u.id)]:
+        if off(u.id) in units:
+            _drift(u, units.pop(off(u.id)), u.id, out, took, (), off)
+        else:
+            out.append(f'{u.id!r}: no twin {off(u.id)!r}')
+    out += [f'{n!r}: no twin saying {a}' for n in list(twins) + [u for u in units if now.search(u)]]
+    return out + ([f'arm {b} is not one shift of arm {a}: {sorted(shift)}'] if len(shift) != 1 else []) + \
+        ([] if took else [f'arm {b} takes nothing out of arm {a}'])
+
+
+def _drift(x, y, at, out, took, free=(), off=_off):
     import dataclasses
     import types
     if x is y:
@@ -821,28 +854,28 @@ def _drift(x, y, at, out, took, free=()):
     if dataclasses.is_dataclass(x) and type(x) is type(y):
         for f in dataclasses.fields(x):
             if f.name not in free:
-                _drift(getattr(x, f.name), getattr(y, f.name), f'{at}.{f.name}', out, took)
+                _drift(getattr(x, f.name), getattr(y, f.name), f'{at}.{f.name}', out, took, (), off)
     elif isinstance(x, dict) and isinstance(y, dict):
-        keys = {k if k in y else _off(k): k for k in x}         # the control's key -> the original's
+        keys = {k if k in y else off(k): k for k in x}         # the control's key -> the original's
         for k in sorted(keys.keys() | y.keys(), key=repr):
             if k in keys and k in y:
-                _drift(x[keys[k]], y[k], f'{at}[{k!r}]', out, took)
+                _drift(x[keys[k]], y[k], f'{at}[{k!r}]', out, took, (), off)
             else:
                 out.append(f'{at}[{k!r}]: only in the ' + ('control' if k in y else 'original'))
     elif isinstance(x, (set, frozenset)) and isinstance(y, (set, frozenset)):
-        if {v if v in y else _off(v) for v in x} != y:
+        if {v if v in y else off(v) for v in x} != y:
             out.append(f'{at}: {sorted(x, key=repr)} -> {sorted(y, key=repr)}')
     elif isinstance(x, (list, tuple)) and isinstance(y, (list, tuple)) and len(x) == len(y):
         for k, (a, b) in enumerate(zip(x, y)):
-            _drift(a, b, f'{at}[{k}]', out, took)
-    elif _less_one(x, y):
+            _drift(a, b, f'{at}[{k}]', out, took, (), off)
+    elif _less_one(x, y, off):
         took.append(at)
-    elif not (x == y or _off(x) == y):
+    elif not (x == y or off(x) == y):
         short = lambda v: repr(v) if len(repr(v)) < 80 else repr(v)[:60] + f'... ({len(repr(v))} chars)'
         out.append(f'{at}: {short(x)} -> {short(y)}')
 
 
-def _less_one(x, y):
+def _less_one(x, y, off=_off):
     """y is the XML text x with one whole element (and all it holds) taken out, nothing else changed."""
     import xml.etree.ElementTree as ET
     if not (isinstance(x, str) and isinstance(y, str) and x != y and x.lstrip().startswith('<')):
@@ -851,22 +884,22 @@ def _less_one(x, y):
         a, b = (ET.fromstring(re.sub(r'^\s*<\?xml[^>]*\?>', '', t)) for t in (x, y))
     except ET.ParseError:
         return False
-    return _one_out(a, b)
+    return _one_out(a, b, off)
 
 
-def _one_out(a, b):
-    if not _same(a, b, deep=False):
+def _one_out(a, b, off):
+    if not _same(a, b, off, deep=False):
         return False
     ka, kb = list(a), list(b)
     if len(ka) == len(kb) + 1:
-        return any(all(_same(p, q) for p, q in zip(ka[:k] + ka[k + 1:], kb)) for k in range(len(ka)))
-    odd = [(p, q) for p, q in zip(ka, kb) if not _same(p, q)]
-    return len(ka) == len(kb) and len(odd) == 1 and _one_out(*odd[0])
+        return any(all(_same(p, q, off) for p, q in zip(ka[:k] + ka[k + 1:], kb)) for k in range(len(ka)))
+    odd = [(p, q) for p, q in zip(ka, kb) if not _same(p, q, off)]
+    return len(ka) == len(kb) and len(odd) == 1 and _one_out(*odd[0], off)
 
 
-def _same(a, b, deep=True):
+def _same(a, b, off, deep=True):
     """Elements a, b alike: tag, attributes (a value may say Off for On), text; with deep, their elements too."""
     if a.tag != b.tag or (a.text or '').strip() != (b.text or '').strip() or a.attrib.keys() != b.attrib.keys() \
-            or any(v != b.attrib[k] and _off(v) != b.attrib[k] for k, v in a.attrib.items()):
+            or any(v != b.attrib[k] and off(v) != b.attrib[k] for k, v in a.attrib.items()):
         return False
-    return not deep or (len(a) == len(b) and all(_same(p, q) for p, q in zip(a, b)))
+    return not deep or (len(a) == len(b) and all(_same(p, q, off) for p, q in zip(a, b)))

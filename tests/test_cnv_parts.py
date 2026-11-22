@@ -355,6 +355,29 @@ def test_every_control_build_takes_one_module_out_and_nothing_else():
     drift = {f'{off} --check {c}': d for off, on in reg.controls.items() for c in reg.checks.get(on) or ['']
              for d in [contract.control_drift(build.resolve(on, c)[:2], build.resolve(off, c)[:2])] if d}
     assert drift == {}
+    arms = {f'{n} --check {c}': d for n, tags in reg.arms.items() for c in reg.checks.get(n) or ['']
+            for d in [contract.arm_drift([p for p in build.resolve(n, c)[:2] if p], *tags)] if d}
+    assert len(reg.arms) >= 8 and arms == {}
+
+
+def test_arm_drift_allows_one_shift_and_the_module_out():
+    import contract
+    xml = '<G id="XOn"><B><M a="1"/><K/></B></G>'
+
+    def arms(off_xml=xml.replace('<K/>', '').replace('XOn', 'XOff'), dx=500.0, side='p1', point=(0.0, 0.0), gun='gun'):
+        m = parts.Mission(name='Camp', units=[parts.Unit('XOn', xml), parts.Unit('XOff', off_xml)])
+        m.objects += [parts.Obj('XOn', 0.0, 0.0, name='X On'), parts.Obj('XOff', 500.0, 0.0, name='X Off'),
+                      parts.Obj('Y', 0.0, 9.0, name='X On gun'), parts.Obj('Y', dx, 9.0, side=side, name='X Off ' + gun)]
+        m.waypoints = {'start On': (0.0, 0.0), 'start Off': (500.0 + point[0], point[1])}
+        return contract.arm_drift([m], 'On', 'Off')
+    assert arms() == []
+    assert arms(xml.replace('XOn', 'XOff')) == ['arm Off takes nothing out of arm On']
+    assert [d.split(':')[0] for d in arms(xml.replace('<K/>', '<K>2</K>').replace('XOn', 'XOff'))] == [
+        'XOn.xml', 'arm Off takes nothing out of arm On']
+    assert arms(dx=501.0) == ['arm Off is not one shift of arm On: [(500.0, 0.0), (501.0, 0.0)]']
+    assert arms(point=(0.0, 1.0)) == ['arm Off is not one shift of arm On: [(500.0, 0.0), (500.0, 1.0)]']
+    assert arms(side='s1') == ["X On gun.side: 'p1' -> 's1'"]
+    assert arms(gun='cannon') == ["'X On gun': no twin 'X Off gun'", "'X Off cannon': no twin saying On"]
 
 
 def test_control_drift_allows_only_the_module_out_and_on_said_off():

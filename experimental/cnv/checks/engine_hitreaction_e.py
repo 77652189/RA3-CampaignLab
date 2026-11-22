@@ -93,3 +93,4 @@ def check(m, corrected=False):
 
 MISSION = {'engine_hitreaction_e': mission}
 CHECKS = {'engine_hitreaction_e': {'a': check, 'b': lambda m: check(m, corrected=True)}}
+CONTROL_ARMS = {'engine_hitreaction_e': ('On', 'Off')}

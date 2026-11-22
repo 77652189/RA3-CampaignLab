@@ -63,3 +63,4 @@ def check(m):
 
 MISSION = {'engine_specialability_e': mission}
 CHECKS = {'engine_specialability_e': {'a': check}}
+CONTROL_ARMS = {'engine_specialability_e': ('On', 'Off')}

@@ -82,3 +82,4 @@ def check(m):
 
 MISSION = {'engine_bezier_e': mission}
 CHECKS = {'engine_bezier_e': {'a': check}}
+CONTROL_ARMS = {'engine_bezier_e': ('On', 'Off')}

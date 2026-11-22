@@ -95,3 +95,4 @@ def check(m, firing=False):
 MISSION = {'engine_animal_e': mission, 'engine_animalfire_e': lambda: mission(firing=True)}
 CHECKS = {'engine_animal_e': {'a': check},
           'engine_animalfire_e': {'a': lambda m: check(m, firing=True)}}
+CONTROL_ARMS = {name: ('Near', 'Off') for name in MISSION}
