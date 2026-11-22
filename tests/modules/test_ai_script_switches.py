@@ -9,3 +9,13 @@ def test_consider_all_enemies_is_taken_and_leaves_the_ai_as_it_was():
     for name in ('PLAYER_AI_CHANGEUNITBUILDER', 'PLAYER_AI_CHANGETEAMBUILDER', 'PLAYER_AI_CHANGE_ECONOMY_MANAGER'):
         s.act(name, ['Player_2', 0], None)          # bench A294 aichange (checks/engine_aichange.readings.toml)
     assert not s.unknown and not s.ai_switches and not s.ai_priorities
+
+
+def test_the_enemy_priority_calls_are_one_table_in_script_order():
+    # review 1122ss #2: CLEAR then SET_ALL in one frame ends at SET_ALL's n; a SET_ALL to the same n again counts
+    s = simsmall.small_world(model=False)
+    for name, args in [('SKIRMISH_AI_CLEAR_ALL_ENEMY_PLAYERS_PRIORITIES', ['Player_2']),
+                       ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', ['Player_2', 20]),
+                       ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', ['Player_2', 20])]:
+        s.act(name, args, None)
+    assert s.ai_priorities['Player_2'] == [(None, 0), ('*', 20), ('*', 20)] and not s.ai_switches

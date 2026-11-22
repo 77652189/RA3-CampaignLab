@@ -431,21 +431,21 @@ class Brain:
         for name, v in got.items():
             if seen.get(name) == v:
                 continue
-            if name == 'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES':
-                self.ai.tell(Command('enemy priorities', {'n': v, 'enemies': sorted(self.view.enemies)}))
-            elif name == 'SKIRMISH_AI_USE_REPAIRS':
+            if name == 'SKIRMISH_AI_USE_REPAIRS':
                 self.ai.tell(Command('use repairs', {'on': v}))
             elif name == 'SKIRMISH_AI_USE_REBUILD_SYSTEM':
                 own = [(b.template, b.x, b.y) for b in self.world.living()
                        if b.owner == self.player and 'STRUCTURE' in b.kinds and not b.scenery]
                 self.ai.tell(Command('use rebuild', {'on': v, 'structures': own}))
         self._switched = dict(got)
-        # SET_ENEMY_PLAYER_PRIORITY, each call once in order (bench 11-10 checks/engine_aiprio.py); a frame's calls
-        # after its SET_ALL (one before it in the same frame is not ordered: INFERRED rare)
+        # the enemy-priority calls, each once in script order (bench 11-10 checks/engine_aiprio.py; review 1122ss #2)
         calls = self.settings.ai_priorities.get(self.player, [])
         for enemy, n in calls[getattr(self, '_prio_seen', 0):]:
             if enemy is None:       # SET_FAVORED_ENEMY's clear (sim.py, A 220 bench engine_aifav: the table emptied)
                 self.ai.tell(Command('enemy priorities', {'n': 0}))
+                continue
+            if enemy == '*':        # SET_ALL (act_player): every enemy now
+                self.ai.tell(Command('enemy priorities', {'n': n, 'enemies': sorted(self.view.enemies)}))
                 continue
             self.ai.tell(Command('enemy priority', {'player': enemy, 'n': n}))
         self._prio_seen = len(calls)

@@ -126,7 +126,7 @@ SIM_SURFACE = {
                     'player_ups players point*7 power*2 production*5 proto reblock relations sample*2 seen sees '
                     'self_power_press series short_of_power side_sees step*2 t*2 take_personality team_targets text '
                     'timers unknown unmodeled*2 upgrade_sellers wallet*4 waypoints wfire_press who world',
-    'engine.script': '_tier_held _upgrade act*4 active*7 add*5 ai*4 ai_paused*2 ai_priorities*3 ai_switches '
+    'engine.script': '_tier_held _upgrade act*4 active*7 add*5 ai*4 ai_paused*2 ai_priorities ai_switches '
                      'all_revealed areas*11 asked*3 assignments attachment_known_status*2 attacked_by*2 audio_end '
                      'banned*2 banned_ups*2 base_construction_disabled*2 base_power blasts blocks*2 bodies*12 body*57 '
                      'book_players books*2 books_of*3 border*4 buildable camera*2 camera_been*2 casts*6 change*17 '

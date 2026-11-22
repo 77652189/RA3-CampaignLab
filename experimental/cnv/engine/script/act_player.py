@@ -10,7 +10,7 @@ import engine.data.units as simunits
 from engine.world.handle import GAP_ACTION
 
 # the skirmish AI's script switches, kept per player for simai (work/re l4_aiswitches.md; docs/engine/aiswitches.md)
-AI_SWITCHES = ('SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES', 'SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM')
+AI_SWITCHES = ('SKIRMISH_AI_USE_REPAIRS', 'SKIRMISH_AI_USE_REBUILD_SYSTEM')
 AI_NO_EFFECT = ('SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING', 'PLAYER_AI_CHANGEUNITBUILDER',      # skirmish_ai_no_effect
                 'PLAYER_AI_CHANGETEAMBUILDER', 'PLAYER_AI_CHANGE_ECONOMY_MANAGER')
 
@@ -132,9 +132,19 @@ def player_set_max_player_power_points(sim, name, a, script):
             sim.gap(GAP_ACTION, name, f'{a[1]} 不是协议：游戏也不管')
 
 
-def skirmish_ai_set_all_enemy_players_priorities(sim, name, a, script):
+def skirmish_ai_switch(sim, name, a, script):
     # (player, value): the skirmish AI's script switches; what
     sim.ai_switches.setdefault(a[0], {})[name] = int(a[1])     # they do is simai's (engine line B)
+
+
+def _priority(sim, player, *calls):
+    # the AI's enemy-priority calls, one table in script order (simai reads each once): a SET_ALL kept apart ran
+    # before a CLEAR of its frame and dropped a re-set to the same n (review 1122ss #2)
+    sim.ai_priorities.setdefault(player, []).extend(calls)
+
+
+def skirmish_ai_set_all_enemy_players_priorities(sim, name, a, script):
+    _priority(sim, a[0], ('*', int(a[1])))      # (player, n): every enemy ('*') now at n
 
 
 def skirmish_ai_no_effect(sim, name, a, script):
@@ -147,20 +157,20 @@ def skirmish_ai_no_effect(sim, name, a, script):
 
 def skirmish_ai_set_enemy_player_priority(sim, name, a, script):
     # (player, enemy, n): one entry of the AI's enemy
-    sim.ai_priorities.setdefault(a[0], []).append((a[1], int(a[2])))     # table, in order (simai)
+    _priority(sim, a[0], (a[1], int(a[2])))     # table, in order (simai)
 
 
 def skirmish_ai_set_favored_enemy(sim, name, a, script):
     # (player, enemy): the enemy table emptied, then that enemy alone at score 10 (program, work/re
     # a219_skirmish_transfer.md 2; bench checks/engine_aifav.py). (None, 0) = the clear: simai tells the
     # model 'enemy priorities' 0 (asked of engine line B, work/re a220_favored_enemy.md)
-    sim.ai_priorities.setdefault(a[0], []).extend([(None, 0), (a[1], 10)])
+    _priority(sim, a[0], (None, 0), (a[1], 10))
 
 
 def skirmish_ai_clear_enemy_player_priority(sim, name, a, script):
     # CLEAR_ALL (player): the favored enemy's clear alone (program: the same call); CLEAR_ENEMY_PLAYER_PRIORITY
     # (player, enemy): that entry out, the re-sort off -- SET_ENEMY_PLAYER_PRIORITY's n 0. Bench A295 engine_aifav
-    sim.ai_priorities.setdefault(a[0], []).append((a[1] if len(a) > 1 else None, 0))
+    _priority(sim, a[0], (a[1] if len(a) > 1 else None, 0))
 
 
 def skirmish_ai_transfer_all(sim, name, a, script):
@@ -228,7 +238,8 @@ ACTIONS = {
     'PLAYER_SET_MAX_PLAYER_POWER_POINTS': player_set_max_player_power_points,
     'PLAYER_SET_PLAYER_POWER_POINTS': player_set_max_player_power_points,
     'PLAYER_LOCK_PLAYER_TECH': player_set_max_player_power_points,
-    **dict.fromkeys(AI_SWITCHES, skirmish_ai_set_all_enemy_players_priorities),
+    **dict.fromkeys(AI_SWITCHES, skirmish_ai_switch),
+    'SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES': skirmish_ai_set_all_enemy_players_priorities,
     'SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY': skirmish_ai_set_enemy_player_priority,
     **dict.fromkeys(AI_NO_EFFECT, skirmish_ai_no_effect),
     'SKIRMISH_AI_SET_FAVORED_ENEMY': skirmish_ai_set_favored_enemy,
