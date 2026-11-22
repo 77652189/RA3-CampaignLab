@@ -5,3 +5,4 @@ The phases come from ra3ext's `dock:` lines (teamlog.dock_phases), not from coun
 from checks.engine_queuedock import check
 
 CHECKS = {'dockphase': {'a': check}, 'dockphaseoff': {'a': check}}
+CONTROLS = {'dockphaseoff': 'dockphase'}

@@ -59,3 +59,4 @@ def check(m):
 
 
 CHECKS = {'engine_queuedock': {'a': check}, 'queuedockoff': {'a': check}}
+CONTROLS = {'queuedockoff': 'engine_queuedock'}

@@ -81,3 +81,4 @@ def check(m):
 
 MISSION = {'assistpon': lambda: mission(True), 'assistpoff': lambda: mission(False)}
 CHECKS = {name: {'a': check} for name in MISSION}
+CONTROLS = {'assistpoff': 'assistpon'}

@@ -90,3 +90,4 @@ MISSION = {'recallon_e': mission, 'recalloff_e': lambda: mission(False)}
 CHECKS = {name: {'a': check} for name in MISSION}
 
 
+CONTROLS = {'recalloff_e': 'recallon_e'}

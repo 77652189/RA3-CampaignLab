@@ -70,3 +70,4 @@ def check(m):
 
 MISSION = {'dischargeon_e': mission, 'dischargeoff_e': lambda: mission(False)}
 CHECKS = {name: {'a': check} for name in MISSION}
+CONTROLS = {'dischargeoff_e': 'dischargeon_e'}

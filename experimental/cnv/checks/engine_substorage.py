@@ -73,3 +73,4 @@ def check(m):
 MISSION = {'engine_substorage_on': mission, 'engine_substorage_off': lambda: mission(False)}
 CHECKS = {name: {'a': check} for name in MISSION}
 
+CONTROLS = {'engine_substorage_off': 'engine_substorage_on'}

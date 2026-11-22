@@ -69,3 +69,4 @@ def check(m):
 
 MISSION = {'structpon': lambda: mission(True), 'structpoff': lambda: mission(False)}
 CHECKS = {name: {'a': check} for name in MISSION}
+CONTROLS = {'structpoff': 'structpon'}

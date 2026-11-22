@@ -790,3 +790,83 @@ def observes(mission, test):
             elif OBSERVE[x[0]] is not None and x[OBSERVE[x[0]]] in used:
                 out.append(f'{s.name}: {x[0]} writes {x[OBSERVE[x[0]]]!r}, which the mission itself uses')
     return out
+
+
+CONTROL_FREE = ('name', 'facts', 'expect')      # what a control build may change of its original (Mission, Test)
+
+
+def control_drift(original, control):
+    """What a control build changes of its original besides the module it takes out, one line each: [] when it keeps
+    to it (review 1119 qq P3 / pp P3 #7: two builds told apart by one module and nothing else -- the same placement,
+    scripts, counters, bench calls). original, control: (Mission, Test) each. Free: the mod name, the facts, what it
+    expects of its counters. A name may say Off where the original's says On (CNVE177On -> CNVE177Off); an XML text
+    may lack one whole element of the original's (the module taken out), nothing else -- and some XML text must."""
+    out, took = [], []
+    for x, y in zip(original, control):
+        _drift(x, y, type(x).__name__, out, took, CONTROL_FREE)
+    return out + ([] if took else ['the control takes nothing out of its original'])
+
+
+def _off(v):
+    return v.replace('On', 'Off') if isinstance(v, str) else v
+
+
+def _drift(x, y, at, out, took, free=()):
+    import dataclasses
+    import types
+    if x is y:
+        return
+    if isinstance(x, types.ModuleType) and isinstance(y, types.ModuleType):   # a map, or a copy made for one build
+        x, y = ({k: v for k, v in vars(m).items() if not k.startswith('__')} for m in (x, y))
+    if dataclasses.is_dataclass(x) and type(x) is type(y):
+        for f in dataclasses.fields(x):
+            if f.name not in free:
+                _drift(getattr(x, f.name), getattr(y, f.name), f'{at}.{f.name}', out, took)
+    elif isinstance(x, dict) and isinstance(y, dict):
+        keys = {k if k in y else _off(k): k for k in x}         # the control's key -> the original's
+        for k in sorted(keys.keys() | y.keys(), key=repr):
+            if k in keys and k in y:
+                _drift(x[keys[k]], y[k], f'{at}[{k!r}]', out, took)
+            else:
+                out.append(f'{at}[{k!r}]: only in the ' + ('control' if k in y else 'original'))
+    elif isinstance(x, (set, frozenset)) and isinstance(y, (set, frozenset)):
+        if {v if v in y else _off(v) for v in x} != y:
+            out.append(f'{at}: {sorted(x, key=repr)} -> {sorted(y, key=repr)}')
+    elif isinstance(x, (list, tuple)) and isinstance(y, (list, tuple)) and len(x) == len(y):
+        for k, (a, b) in enumerate(zip(x, y)):
+            _drift(a, b, f'{at}[{k}]', out, took)
+    elif _less_one(x, y):
+        took.append(at)
+    elif not (x == y or _off(x) == y):
+        short = lambda v: repr(v) if len(repr(v)) < 80 else repr(v)[:60] + f'... ({len(repr(v))} chars)'
+        out.append(f'{at}: {short(x)} -> {short(y)}')
+
+
+def _less_one(x, y):
+    """y is the XML text x with one whole element (and all it holds) taken out, nothing else changed."""
+    import xml.etree.ElementTree as ET
+    if not (isinstance(x, str) and isinstance(y, str) and x != y and x.lstrip().startswith('<')):
+        return False
+    try:
+        a, b = (ET.fromstring(re.sub(r'^\s*<\?xml[^>]*\?>', '', t)) for t in (x, y))
+    except ET.ParseError:
+        return False
+    return _one_out(a, b)
+
+
+def _one_out(a, b):
+    if not _same(a, b, deep=False):
+        return False
+    ka, kb = list(a), list(b)
+    if len(ka) == len(kb) + 1:
+        return any(all(_same(p, q) for p, q in zip(ka[:k] + ka[k + 1:], kb)) for k in range(len(ka)))
+    odd = [(p, q) for p, q in zip(ka, kb) if not _same(p, q)]
+    return len(ka) == len(kb) and len(odd) == 1 and _one_out(*odd[0])
+
+
+def _same(a, b, deep=True):
+    """Elements a, b alike: tag, attributes (a value may say Off for On), text; with deep, their elements too."""
+    if a.tag != b.tag or (a.text or '').strip() != (b.text or '').strip() or a.attrib.keys() != b.attrib.keys() \
+            or any(v != b.attrib[k] and _off(v) != b.attrib[k] for k, v in a.attrib.items()):
+        return False
+    return not deep or (len(a) == len(b) and all(_same(p, q) for p, q in zip(a, b)))

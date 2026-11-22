@@ -346,6 +346,38 @@ def test_every_registered_build_and_check_resolves():
     assert len(listed) >= len(reg.builds) + len(reg.pairs)
 
 
+def test_every_control_build_takes_one_module_out_and_nothing_else():
+    """Review 1119 qq P3 / pp P3 #7: a two-build control (CONTROLS) keeps its original's placement, scripts, counters
+    and bench calls; held here for every one, not in each reading file."""
+    import contract
+    reg = registry.get()
+    assert len(reg.controls) >= 11
+    drift = {f'{off} --check {c}': d for off, on in reg.controls.items() for c in reg.checks.get(on) or ['']
+             for d in [contract.control_drift(build.resolve(on, c)[:2], build.resolve(off, c)[:2])] if d}
+    assert drift == {}
+
+
+def test_control_drift_allows_only_the_module_out_and_on_said_off():
+    import contract
+    xml = '<?xml version="1.0"?><G id="XOn"><B><M a="1"/><K/></B><L/></G>'
+
+    def pair(xml, x=1.0, bench=('go',), name='CampOn'):
+        m = parts.Mission(name=name, units=[parts.Unit(name.replace('Camp', 'X'), xml)], facts={'on': name})
+        m.objects.append(parts.Obj(name.replace('Camp', 'X'), x, 0.0, name='X ' + name))
+        return m, parts.Test(bench=list(bench), expect=[name])
+    on = pair(xml)
+    assert contract.control_drift(on, pair(xml.replace('<M a="1"/>', '').replace('XOn', 'XOff'), name='CampOff')) == []
+    assert contract.control_drift(on, pair(xml)) == ['the control takes nothing out of its original']
+    for changed in [xml.replace('<M a="1"/>', '<M a="2"/>').replace('<L/>', ''),
+                    xml.replace('<K/>', '<K>2</K>').replace('<L/>', ''), xml.replace('<M a="1"/><K/>', ''),
+                    xml.replace('<B><M a="1"/><K/></B>', '<M a="1"/><K/>')]:
+        assert [d.split(':')[0] for d in contract.control_drift(on, pair(changed))] == [
+            'Mission.units[0].xml', 'the control takes nothing out of its original']
+    gone = xml.replace('<L/>', '')
+    assert contract.control_drift(on, pair(gone, x=2.0)) == ['Mission.objects[0].x: 1.0 -> 2.0']
+    assert contract.control_drift(on, pair(gone, bench=('stop',))) == ["Test.bench[0]: 'go' -> 'stop'"]
+
+
 def fake_modules(monkeypatch, **tables):
     """Put modules declaring `tables` ({'MISSION': {...}, 'CHECKS': {...}}) in place of the real ones for registry.load."""
     import types

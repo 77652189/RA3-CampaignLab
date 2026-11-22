@@ -76,3 +76,4 @@ def check(m):
 
 MISSION = {'spideron_e': mission, 'spideroff_e': lambda: mission(False)}
 CHECKS = {name: {'a': check} for name in MISSION}
+CONTROLS = {'spideroff_e': 'spideron_e'}

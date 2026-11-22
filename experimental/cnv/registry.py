@@ -3,6 +3,8 @@
   missions/<x>.py   MISSION = {build name: factory() -> Mission}        one module often makes several builds
   checks/<x>.py     CHECKS = {build name: {check name: check(mission) -> Test}}
   either folder     PAIR_BUILDS = {build name: factory() -> (Mission, Test)}   a build that is both outright
+  either folder     CONTROLS = {control build: original build}   one module taken out of the original, nothing else
+                    changed (contract.control_drift holds it to that, tests/test_cnv_parts.py)
 
 load() reads the source of every module in the two folders and imports only those that declare one of the three
 names at module level (a bench scene that pulls in something heavy declares nothing and is reached lazily, see
@@ -17,7 +19,7 @@ from dataclasses import dataclass
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FOLDERS = ('missions', 'checks')
-NAMES = ('MISSION', 'CHECKS', 'PAIR_BUILDS')
+NAMES = ('MISSION', 'CHECKS', 'PAIR_BUILDS', 'CONTROLS')
 
 
 class RegistryError(Exception):
@@ -30,6 +32,7 @@ class Registry:
     checks: dict            # build name -> {check name: check(mission) -> Test}
     pairs: dict             # build name -> factory() -> (Mission, Test)
     where: dict             # build name -> 'missions.a4' (module that makes it)
+    controls: dict          # control build -> its original (the same checks)
 
 
 def declared(path):
@@ -56,7 +59,7 @@ def modules():
 
 
 def load():
-    builds, checks, pairs, where, check_where = {}, {}, {}, {}, {}
+    builds, checks, pairs, where, check_where, controls = {}, {}, {}, {}, {}, {}
     for name in modules():
         module = importlib.import_module(name)
         for build, make in getattr(module, 'MISSION', {}).items():
@@ -73,10 +76,17 @@ def load():
                 if not callable(fn):
                     raise RegistryError(f'{name}: check {build}/{check} is not callable')
             checks[build] = dict(table)
+        for off, on in getattr(module, 'CONTROLS', {}).items():
+            if off in controls:
+                raise RegistryError(f'{name}: control {off!r} declared twice')
+            controls[off] = on
     for build, name in check_where.items():
         if build not in builds:
             raise RegistryError(f'{name}: checks for build {build!r}, which no mission module makes')
-    return Registry(builds, checks, pairs, where)
+    for off, on in controls.items():
+        if not {off, on} <= where.keys() or checks.get(off, {}).keys() != checks.get(on, {}).keys():
+            raise RegistryError(f'control {off!r} of {on!r}: both must be made, with the same checks')
+    return Registry(builds, checks, pairs, where, controls)
 
 
 def _claim(where, build, module):

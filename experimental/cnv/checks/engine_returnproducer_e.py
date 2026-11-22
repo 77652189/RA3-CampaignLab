@@ -104,3 +104,4 @@ def check(m, corrected=False):
 
 MISSION = {'engine_returnon_e': mission, 'engine_returnoff_e': lambda: mission(False)}
 CHECKS = {name: {'a': check, 'b': lambda m: check(m, corrected=True)} for name in MISSION}
+CONTROLS = {'engine_returnoff_e': 'engine_returnon_e'}

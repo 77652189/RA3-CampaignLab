@@ -179,3 +179,4 @@ def frame_check(m):
 
 
 CHECKS['engine_assignrace']['b'] = frame_check
+CONTROLS = {'engine_assignoff': 'engine_assignon'}

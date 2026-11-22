@@ -244,3 +244,4 @@ CHECKS = {name: {'a': {'engine_radarlow': low_power_check,
                       'engine_radartwo': two_provider_check,
                       'engine_radarout': transfer_check, 'engine_radarin': transfer_check,
                       'engine_radardeath': death_check}.get(name, check)} for name in MISSION}
+CONTROLS = {'engine_radaroff': 'engine_radar'}
