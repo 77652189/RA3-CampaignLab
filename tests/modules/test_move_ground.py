@@ -1,6 +1,7 @@
 """Ground (and one air) locomotion from route request to consumption of its last point."""
 import pytest
 
+import engine.objects.locomotion as simlocomotion  # noqa: E402
 import engine.testing.small as simsmall
 from engine.modules import locomotor  # noqa: E402
 import engine.orders.order as simorder  # noqa: E402
@@ -11,7 +12,7 @@ def test_open_ground_keeps_exact_goal_and_records_arrival_inside_a_coarse_tick()
     b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1200, 2500)
     locomotor.write(s.world, b, speed=60)
     goal = (1240, 2500)
-    s.send(b, goal)
+    simlocomotion.go_to(s, b, goal)
     assert b.path == [goal] and b.dest == goal
 
     # At 60 units/s, the first half-second tick covers 30 units.
@@ -39,7 +40,7 @@ def test_ground_attack_route_stops_at_the_first_cell_in_range():
     s = simsmall.small_world(model=False)
     b = s.add('walker', 'AlliedAntiInfantryInfantry', 'Player_1', 1200, 2500)
     target = (1320, 2500)
-    s.send(b, target, reach=40)
+    simlocomotion.go_to(s, b, target, reach=40)
 
     # The near edge of the range circle is two 20-unit cells west of the
     # target. The physical endpoint differs from the requested destination.

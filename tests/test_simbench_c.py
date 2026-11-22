@@ -632,7 +632,7 @@ def test_weapon_first_hit_is_observed_one_frame_after_the_order_script():
     assert tuple(engine.run(16).series[-1][1])==(16051,31066,61096,1)
 
 
-# ---- FireWeaponWhenDead (engine/modules/fireweaponwhendead.py; Sim.destroy / death_blast_due): bench 2026-11-05 engine_spawn_refill
+# ---- FireWeaponWhenDead (engine/modules/fireweaponwhendead.py; World.kill / death_blast_due): bench 2026-11-05 engine_spawn_refill
 # (checks/engine_spawn.py, docs/engine/spawn.md 5). Two S02_ExplodingMig (1000 GRENADE, radius 100, .3 s) killed by
 # script, at 8 s and 11 s, each beside a Guardian at 20 % health 57 off its centre: each Guardian dies with its mig and
 # its health counter freezes there; the keep factory (its edge > 100 from either) stands.

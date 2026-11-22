@@ -271,7 +271,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 2514, 'Sim methods': 135, 'Sim fields': 143, 'Body fields': 44, 'simunits defs': 135,
+CENTER = {'sim.py lines': 2495, 'Sim methods': 130, 'Sim fields': 143, 'Body fields': 44, 'simunits defs': 135,
           'cells with old code': 31}
 
 
@@ -887,8 +887,8 @@ def test_module_state_guard_bites():
     assert type('Hidden', (Stateful,), {'STATE': ('kept', 'x'), 'RECORDED': ()}).RECORDED == ()
 
 
-# Guard 10 (step B4b): a thing's end has two entries, Sim.destroy -> simbody.Life.kill (a death: lethal damage to an
-# immortal, a prop's fall, death weapons, an air crash) and Sim.delete -> Life.delete (no death); both go through
+# Guard 10 (step B4b): a thing's end has two entries, World.kill -> simbody.Life.kill (a death: lethal damage to an
+# immortal, a prop's fall, death weapons, an air crash) and World.remove -> Life.delete (no death); both go through
 # Life._out, the one function that writes a body's alive / deleted / died_at. A write anywhere else in
 # experimental/cnv/sim*.py or engine/, or a third caller of _out, breaks the guard (step B4c hangs the Die
 # modules' broadcast on the death entry alone).
@@ -929,9 +929,8 @@ def test_a_thing_ends_only_through_the_two_entries():
     found = death_writes()
     assert not death_breaks(found), death_breaks(found)
     assert found == (DEATH_WRITES, DEATH_ENTRIES), f'an end entry is gone: lower DEATH_WRITES / DEATH_ENTRIES {found}'
-    import sim
     import engine.objects.body as simbody
-    assert 'delete' not in inspect.signature(sim.Sim.destroy).parameters      # one entry each, no flag between them
+    assert 'delete' not in inspect.signature(simbody.Life.kill).parameters      # one entry each, no flag between them
     assert {'kill', 'delete'} <= set(vars(simbody.Life)) and 'destroy' not in vars(simbody.Life)
 
 

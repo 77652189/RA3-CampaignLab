@@ -27,6 +27,8 @@ WORLD_API = frozenset({
     'label',           # body -> its name as the log shows it (its cast role, else name, else template)
     'point',           # a waypoint / area / site / mark / named object / '@x,y' -> its (x, y), None where none
     'ground',          # the pathing grid (within / route)
+    'frame_movers',    # name -> Body moved frame by frame (simlocomotion.go_to registers it, the moving cell drives)
+    'topples',         # the bodies a way may push over (simlocomotion.go_to reads them)
     'eng',             # the private engine model's handle, None without it
     'executor',        # the script executor (engine/ports/scripts.py): a sequential script's steps are its actions
     'change',          # () -> note that something changed now (last_change)

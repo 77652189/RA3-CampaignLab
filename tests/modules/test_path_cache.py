@@ -145,7 +145,7 @@ def test_path_cache_invalidates_when_a_structure_goes(action):
     assert old.endpoint(c) != c
     if action == 'sell':
         world.clock.frame = max(world.frame_now(), obstacle.unpack_end or 0)
-        world.sell(obstacle)
+        world._life().sell(world, obstacle, world.garrison, world.world.modify, world.wallet.credit)
         assert obstacle.alive and obstacle.sell_end is not None
         assert ground.version == version and grid(ground) is old
         world.world.schedule.run('expire', obstacle.sell_end)
@@ -157,7 +157,7 @@ def test_path_cache_invalidates_when_a_structure_goes(action):
             assert world.garrison.out(gi)
             assert ground.version == version and grid(ground) is old
             assert world.garrison.put(gi, obstacle, script=True)
-        world.destroy(obstacle, 'test')
+        world.world.kill(obstacle, 'test')
     assert ground.version == version + 1
     assert not ground.cache
     assert grid(ground) is not old and grid(ground).endpoint(c) == c

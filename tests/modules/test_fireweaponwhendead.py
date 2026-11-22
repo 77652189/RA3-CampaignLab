@@ -39,7 +39,7 @@ def test_an_empty_death_types_fires_on_no_death():
     s = simsmall.small_world()
     s.own.update(CNV_TestBomb=_bomb('CNV_TestBomb', '<DieMuxData DeathTypes="" />') + BURST)
     s.add('shot', 'CNV_TestBomb', 'Player_1', 0.0, 0.0)
-    s.destroy(s.bodies['shot'], 'test')
+    s.world.kill(s.bodies['shot'], 'test')
     assert s.death_blasts == []
 
 
@@ -75,12 +75,12 @@ def test_an_inherited_player_power_weapon_needs_its_status():
     s.add('tank', 'JapanAntiVehicleVehicleTech1', 'Player_1', 100.0, 100.0)
     b = s.bodies['tank']
     assert 'EnhancedKamikazeDeathPlayerPowerWeapon' in [m.death_weapon() for m in b.find(interfaces.DeathWeapon)]
-    s.destroy(b, 'test')
+    s.world.kill(b, 'test')
     assert s.death_blasts == []
     s.add('tank2', 'JapanAntiVehicleVehicleTech1', 'Player_1', 100.0, 100.0)
     b2 = s.bodies['tank2']
     b2.status = set(b2.status) | {'PLAYER_POWER_1'}
-    s.destroy(b2, 'test')
+    s.world.kill(b2, 'test')
     assert [blast[8].name for blast in s.death_blasts][:1] == ['tank2']
 
 
@@ -98,10 +98,10 @@ def test_a_death_queues_the_weapon_where_it_died_and_a_deletion_nothing():
     s.own.update(CNV_TestBomb=_bomb('CNV_TestBomb', '') + BURST)
     s.add('bomb', 'CNV_TestBomb', 'Player_1', 100.0, 50.0)
     s.add('gone', 'CNV_TestBomb', 'Player_1', 0.0, 0.0)
-    s.delete(s.bodies['gone'], 'test')
+    s.world.remove(s.bodies['gone'], 'test')
     assert s.death_blasts == []
     now = s.frame_now()
-    s.destroy(s.bodies['bomb'], 'test')
+    s.world.kill(s.bodies['bomb'], 'test')
     ((frame, x, y, dmg, typ, reach, affects, owner, by, ally, crash),) = s.death_blasts
     assert (frame - now, x, y, dmg, typ, reach, owner, by.name, ally, crash) == (
         3, 100.0, 50.0, 100.0, 'UNRESISTABLE', 10.0, 'Player_1', 'bomb', 1.0, False)
@@ -109,12 +109,12 @@ def test_a_death_queues_the_weapon_where_it_died_and_a_deletion_nothing():
 
 def test_the_death_s_own_type_decides_a_crush_its_crushed():
     """The module asks the death's type (the old reader always asked NORMAL): a crush passes CRUSHED
-    (Sim.destroy(..., death='CRUSHED') from locomotion.crush, step B5a)."""
+    (World.kill(..., death='CRUSHED') from locomotion.crush, step B5a)."""
     s = simsmall.small_world()
     s.own.update(CNV_TestBomb=_bomb('CNV_TestBomb', '<DieMuxData DeathTypes="CRUSHED" />') + BURST)
     s.add('shot', 'CNV_TestBomb', 'Player_1', 0.0, 0.0)
-    s.destroy(s.bodies['shot'], 'test')
+    s.world.kill(s.bodies['shot'], 'test')
     assert s.death_blasts == []
     s.add('flat', 'CNV_TestBomb', 'Player_1', 0.0, 0.0)
-    s.destroy(s.bodies['flat'], 'test', 'CRUSHED')
+    s.world.kill(s.bodies['flat'], 'test', 'CRUSHED')
     assert [blast[8].name for blast in s.death_blasts] == ['flat']

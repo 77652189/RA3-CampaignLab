@@ -31,7 +31,7 @@ def test_a_sold_structure_goes_in_the_expire_cell_30_frames_on_deleted_not_kille
     now = s.frame_now()
     s.world.schedule.run('expire', now)         # its first run, unsold: asleep (the sale must wake it)
     s.clock.frame = now = now + 1
-    s.sell(plant)
+    s._life().sell(s, plant, s.garrison, s.world.modify, s.wallet.credit)
     assert plant.sell_end == now + 30 == m.gone_frame() and 'SOLD' in plant.script_status
     assert simrecord.body_state(plant)['sell_end'] == now + 30
     with pytest.raises(AttributeError):
@@ -47,10 +47,10 @@ def test_a_second_sale_does_nothing_and_one_killed_meanwhile_stays_dead_not_dele
     s = _world()
     plant = s.bodies['plant']
     now = s.frame_now()
-    s.sell(plant)
+    s._life().sell(s, plant, s.garrison, s.world.modify, s.wallet.credit)
     s.clock.frame = now + 10
-    s.sell(plant)
+    s._life().sell(s, plant, s.garrison, s.world.modify, s.wallet.credit)
     assert plant.sell_end == now + 30 and [w for _, w, *_ in s.log].count('出售') == 1
-    s.destroy(plant, 'test')
+    s.world.kill(plant, 'test')
     s.world.schedule.run('expire', now + 30)
     assert not plant.alive and not plant.deleted

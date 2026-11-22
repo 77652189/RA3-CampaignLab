@@ -4,8 +4,8 @@
 (`movement_power_press`), a ProjectileSelf leap (`leap_press`), a WeaponFireSpecialAbilityUpdate (`wfire_press` /
 `start` / `wfire_due`), what those leave running out (`self_power_due`) and a superweapon's hits (`blast_due`), over the
 world it is given (simworld.WORLD_API only). The peers it needs are handed in by the caller (Sim.self_power_press /
-... / Sim.blast_due): the modifiers' re-set (`modify`, L2), a body's route (`send`, L2 simlocomotion), its death
-(`destroy`, L2 simbody), who stands still till when (`emp_until`: () -> the {body.serial: frame} book, made on first
+... / Sim.blast_due): the modifiers' re-set (`modify`, L2; a body's route is simlocomotion.go_to's), its death
+(`destroy`, the kernel World's kill), who stands still till when (`emp_until`: () -> the {body.serial: frame} book, made on first
 use), the queues other blocks share (the superweapon `blasts` a script casts, the `casts` a script condition reads,
 the `death_blasts` L3 fires), the players' upgrades (`player_ups`, L4), how two owners stand (`relation`), the fight's
 first death (`first_death(body, killer)`), and L3's detonation and ground height for a leap's landing (`detonate`,
@@ -15,6 +15,7 @@ Fields it owns: its own `wfires`, `leaps_due`, `leap_ground_hits`, `movement_due
 import math
 
 import engine.data.units as simunits
+import engine.objects.locomotion as simlocomotion
 from engine.objects.power import hit_at
 from engine.world.handle import CIV, GAP_WEAPON
 
@@ -52,7 +53,7 @@ class Specials:
                     first_death(t, by)
                     destroy(t, f'被 {world.label(by)} 的超武打掉')
 
-    def movement_power_press(self, world, b, button, point, modify, send):
+    def movement_power_press(self, world, b, button, point, modify):
         """E171: a static waypoint rush; ordinary path movement with SDK speed. A292 (retail j07: made and pressed in
         one script, 542 / 770 away): a script's press past MaxCastRange rushes at once, the whole way -- no walk-in, no
         refusal -- and when the status runs out the unit goes on to the point at its own speed.
@@ -83,7 +84,7 @@ class Specials:
             b.auras_on[sp['modifier']] = (now + mod['frames'], xml)
         modify(b)
         b.goal, b.mode = None, 'move'
-        send(b, point)
+        simlocomotion.go_to(world, b, point)
         world.used.add('movement special power')
         world.guessed.add('MovementSpecialPower: exact phase timing, cooldown and collisions unmodelled')
         return True
@@ -116,7 +117,7 @@ class Specials:
         world.note('技能', f'{world.label(b)} 按 {button}：{sp["modifier"]}')
         return True
 
-    def leap_press(self, world, b, button, p, send, emp_until):
+    def leap_press(self, world, b, button, p, emp_until):
         """A WeaponFireSpecialAbilityUpdate whose weapon is ProjectileSelf (the Sickle's leap, AT_WAYPOINT): b stands
         its UnpackTime, then flies to the point at the WeaponSpeed and lands there (engine_acts_mix LP: 250 off, in its
         square by the second reading after the press). Beyond StartAbilityRange: drives there instead (INFERRED, not
@@ -128,7 +129,7 @@ class Specials:
         if d > ab['range']:
             world.note('技能', f'{world.label(b)} 按 {button}：超出 {ab["range"]:.0f}，开过去')
             b.goal, b.mode = None, 'move'
-            send(b, p)
+            simlocomotion.go_to(world, b, p)
             return True
         land = world.frame_now() + ab['unpack'] + int(math.ceil(d / speed * simunits.LIFE_FPS))
         b.path, b.dest = [], None
@@ -181,7 +182,7 @@ class Specials:
                 job[1].script_status.difference_update(job[2])
                 modify(job[1])
 
-    def wfire_press(self, world, b, button, target, send, emp_until):
+    def wfire_press(self, world, b, button, target, emp_until):
         """A WeaponFireSpecialAbilityUpdate's button (simunits.weapon_fire_ability; bench 11-11 engine_wfire): the
         caster walks to within StartAbilityRange of a named target first, then stands UnpackTime and the SpecialWeapon
         goes off once (wfire_due); it stands on through PackTime when BUSY_DURING_PACK, FreezeAfterTriggerDuration
@@ -202,7 +203,7 @@ class Specials:
         world.note('技能', f'{world.label(b)} 按 {button}' + (f' 对 {world.label(t)}' if t else ''))
         if t and math.hypot(t.x - b.x, t.y - b.y) - t.radius > ab['range']:
             b.goal, b.mode = None, 'move'
-            send(b, (t.x, t.y))
+            simlocomotion.go_to(world, b, (t.x, t.y))
         else:
             self.start(world, job, emp_until)
         return True
@@ -216,7 +217,7 @@ class Specials:
         deadlines = emp_until()       # stands still (INFERRED: as EMP'd)
         deadlines[b.serial] = max(deadlines.get(b.serial, 0), hold)
 
-    def wfire_due(self, world, frame, casts, death_blasts, player_ups, relation, send, emp_until):
+    def wfire_due(self, world, frame, casts, death_blasts, player_ups, relation, emp_until):
         """The weapon-fire abilities going off by `frame` (wfire_press): the weapon's DamageNuggets as a death blast
         round the caster (radius, delay, RadiusDamageAffects), its ParalyzeNuggets on the target (radius 0) or on
         what the filter takes within the radius: EMP pauses it (emp_until), UNMANNED hands a vehicle to the
@@ -235,7 +236,7 @@ class Specials:
                     # the target walked off the spot the caster was sent to: after it where it is now (a01's
                     # intro bears, StartAbilityRange 0, sent at Peacekeepers that set off on a path 10 s later
                     # never got there to roar; INFERRED: re-aimed once it is a path node off)
-                    send(b, (t.x, t.y))
+                    simlocomotion.go_to(world, b, (t.x, t.y))
                 continue
             if frame < job['fire_at']:
                 continue

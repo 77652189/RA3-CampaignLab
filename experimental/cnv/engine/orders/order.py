@@ -10,8 +10,8 @@ The fight (`fight`, once a tick) is the attack state machine: a team attack goes
 body aims (L3 `aim`) and fires, rounds a blocked line, and chases by itself (`chase_step`: an attack-mover's
 `attack_chase`, anyone else's `idle_chase`).
 All over the world it is given (simworld.WORLD_API only). Its host's other parts come in as `peers` (`Peers`, the
-names in PEERS only, read when used): L2 locomotion (send; a goal's spot is engine.objects.path's), L2
-bodies (delete, modify, engineer_entry, the garrison), L3 targeting and fire (reach, fight_field, aim, can_hit,
+names in PEERS only, read when used): L2 bodies (modify, engineer_entry, the garrison; a walk is
+simlocomotion.go_to's, a goal's spot engine.objects.path's, a deletion the kernel World's), L3 targeting and fire (reach, fight_field, aim, can_hit,
 in_range, shot_blocked, fire_spot, side_sees, the unshot templates and AI sides: engine.orders.target's), L4 money (wallet), the team
 registry (members, team_targets) and the order queues the scripts fill (seq, hunts). The fight's per-tick state on the host
 (WRITES: seen, firing, volleys, chilling, mid_aims, the fire obstacles, the field) is reset through `peers` too --
@@ -23,6 +23,7 @@ import math
 import numpy as np
 
 import engine.data.units as simunits
+import engine.objects.locomotion as simlocomotion
 import engine.objects.path as simpath
 from engine.kernel import interfaces
 from engine.modules import locomotor
@@ -39,7 +40,7 @@ ARRIVE = 1.5 * GRID             # a plain move that ends farther than this from 
 IDLE_SCAN_FROM = 2
 
 WRITES = frozenset({'_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims', 'seen', 'volleys'})
-PEERS = frozenset({'act', 'delete', 'engineer_entry', 'garrison', 'hunts', 'powers_off', 'reach', 'send', 'seq', 'short_of_power',
+PEERS = frozenset({'act', 'engineer_entry', 'garrison', 'hunts', 'powers_off', 'reach', 'send', 'seq', 'short_of_power',
                    'toggles_of', 'wallet', 'production',
                    'aim', 'can_hit', 'fight_field', 'fire_spot', 'in_range', 'members', 'shot_blocked',
                    'side_sees', 'ai', 'team_targets', 'unshot',
@@ -81,7 +82,7 @@ def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None, 
             spot = simpath.free_spot(world, b, simpath.goal_off_nodes(world, b, p),
                                      simpath.claims(world, b, skip) + list(given), on_grid)
             where = where if spot == p else spot
-        peers.send(b, where, face=face)
+        simlocomotion.go_to(world, b, where, face=face)
         m.move_to = b.dest if not attacking else None
 
 
@@ -135,7 +136,7 @@ def order_attack(world, peers, b, target_name, force=False):
     b.aiupdate.command('attack', target)
     if walk:
         b.aiupdate.follow = None
-        peers.send(b, (target.x, target.y), reach=peers.reach(b, target))
+        simlocomotion.go_to(world, b, (target.x, target.y), reach=peers.reach(b, target))
     return True
 
 
@@ -146,7 +147,7 @@ def order_capture(world, peers, b, target_name):
     target = _target(world, target_name)
     if b and b.alive and target and target.alive and peers.engineer_entry(b, target):
         b.goal, b.mode = target, 'capture'
-        peers.send(b, (target.x, target.y))
+        simlocomotion.go_to(world, b, (target.x, target.y))
         return True
     return False
 
@@ -182,7 +183,7 @@ def capture_due(world, peers):
                 continue
             g.mend(math.inf)
             world.note('修理', f'{world.label(b)} 修复 {world.label(g)}')
-            peers.delete(b, '进楼修理')
+            world.world.remove(b, '进楼修理')
             world.change()
             continue
         g.owner = b.owner
@@ -190,7 +191,7 @@ def capture_due(world, peers):
         m = g.find(interfaces.Deposit) if g.modules else None
         if m is not None:                               # engine/modules/deposit.py (step M4)
             peers.wallet.credit(b.owner, m.capture(world.frame_now()))
-        peers.delete(b, '进楼占领')
+        world.world.remove(b, '进楼占领')
         world.change()
 
 
@@ -199,7 +200,7 @@ def order_guard(world, peers, b, area):
     if b:
         b.aiupdate.follow = None
         if not inside(world.areas[area], b.x, b.y):
-            peers.send(b, area)
+            simlocomotion.go_to(world, b, area)
 
 
 def order_stop(b):
@@ -359,7 +360,7 @@ def fight(world, peers):
             p = peers.fire_spot(a, g)
             if p is not None:
                 world.note('绕位', f'{world.label(a)} 打不着 {world.label(g)}（中间有建筑），绕到 ({p[0]:.0f},{p[1]:.0f})')
-                peers.send(a, p)
+                simlocomotion.go_to(world, a, p)
         chase_step(world, peers, a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d, kind='stable')])
     if peers.firing or peers.volleys:
         world.used.add('combat')
@@ -401,7 +402,7 @@ def attack_chase(world, peers, a, fired, near):
     if c is not None and c.alive and peers.side_sees(a.owner, c) and \
             math.hypot(c.x - a.x, c.y - a.y) - c.radius <= a.sight:
         if not a.path:                      # got there and it is still out of reach: after it again
-            peers.send(a, (c.x, c.y), reach=peers.reach(a, c))
+            simlocomotion.go_to(world, a, (c.x, c.y), reach=peers.reach(a, c))
             m.auto_to = a.dest
         return
     m.chase = None
@@ -416,12 +417,12 @@ def attack_chase(world, peers, a, fired, near):
             m.resume = a.dest
         m.chase = t
         world.used.add('acquire')
-        peers.send(a, (t.x, t.y), reach=peers.reach(a, t))
+        simlocomotion.go_to(world, a, (t.x, t.y), reach=peers.reach(a, t))
         m.auto_to = a.dest
         return
     if m.resume is not None:                # nothing left: on to where the move was going
         r, m.resume, m.auto_to = m.resume, None, None
-        peers.send(a, r)
+        simlocomotion.go_to(world, a, r)
 
 
 def idle_chase(world, peers, a, fired, near):
@@ -455,7 +456,7 @@ def idle_chase(world, peers, a, fired, near):
     if c is not None and c.alive and peers.side_sees(a.owner, c) and \
             math.hypot(c.x - a.x, c.y - a.y) - c.radius <= sight:
         if not a.path:                      # got there and it is still out of reach: after it again
-            peers.send(a, (c.x, c.y), reach=peers.reach(a, c))
+            simlocomotion.go_to(world, a, (c.x, c.y), reach=peers.reach(a, c))
             m.auto_to = a.dest
         return
     m.chase = None
@@ -472,12 +473,12 @@ def idle_chase(world, peers, a, fired, near):
             m.home = (a.x, a.y)
         m.chase = t
         world.used.add('acquire')
-        peers.send(a, (t.x, t.y), reach=peers.reach(a, t))
+        simlocomotion.go_to(world, a, (t.x, t.y), reach=peers.reach(a, t))
         m.auto_to = a.dest
         return
     if a.stance == 1:                       # AGGRESSIVE: stays where the chase ended (agg220)
         m.home = None
     if m.home is not None and (a.path or math.hypot(m.home[0] - a.x, m.home[1] - a.y) > 1.0):
         if a.dest != m.home:
-            peers.send(a, m.home)
+            simlocomotion.go_to(world, a, m.home)
             m.auto_to = a.dest

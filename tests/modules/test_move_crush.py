@@ -1,4 +1,5 @@
 """Movement's swept segment, using the CrusherInfo modules on the bodies."""
+import engine.objects.locomotion as simlocomotion  # noqa: E402
 import engine.testing.small as simsmall
 from engine.modules import locomotor  # noqa: E402
 
@@ -14,7 +15,7 @@ def test_swept_crush_kills_only_the_lower_level_enemy_inside_its_own_radius():
     outside.y += outside.radius + 1
     hammer.angle = 0
     locomotor.write(s.world, hammer, speed=160)
-    s.send(hammer, (1280, 2500))
+    simlocomotion.go_to(s, hammer, (1280, 2500))
     s.move()
 
     # The half-second sweep is 80 units. The victim's centre lies on that

@@ -97,7 +97,7 @@ class World:
             self._attached(thing, tag, head)
 
     def kill(self, thing, why, death='NORMAL', cause=''):
-        """A module kills its thing (LifetimeUpdate): the host's death -- today Sim.destroy -- of type `death`
+        """A module kills its thing (LifetimeUpdate): the host's death -- today simbody.Life.kill -- of type `death`
         (module.Death's death) and `cause` (its cause: 'lifetime' for a death of age). A world with no host kills
         nothing."""
         if self._kill is None:
@@ -123,7 +123,7 @@ class World:
 
     def remove(self, thing, why):
         """A module takes its thing out, no death (a toppled prop gone: ToppleUpdate): the host's deletion -- today
-        Sim.delete. A world with no host removes nothing."""
+        simbody.Life.delete. A world with no host removes nothing."""
         if self._remove is None:
             raise RuntimeError(f'World.remove({thing.name!r}): this world has no host to remove with')
         self._remove(thing, why)

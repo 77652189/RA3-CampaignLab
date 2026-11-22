@@ -5,6 +5,7 @@ Each action is `fn(sim, name, a, script)`, moved verbatim out of Sim.act's chain
 import math
 
 import engine.data.units as simunits
+import engine.objects.locomotion as simlocomotion
 import engine.objects.modifier as simmodifier
 import engine.orders.order as simorder
 from engine.kernel import interfaces
@@ -19,7 +20,7 @@ def team_delete(sim, name, a, script):
     for b in sim.members(a[0]):
         if name == 'TEAM_KILL':
             b.set_last_damage(None)
-        (sim.destroy if name == 'TEAM_KILL' else sim.delete)(b, '脚本' if name == 'TEAM_KILL' else '脚本删掉')
+        (sim.world.kill if name == 'TEAM_KILL' else sim.world.remove)(b, '脚本' if name == 'TEAM_KILL' else '脚本删掉')
 
 
 def team_change_object_status(sim, name, a, script):
@@ -54,7 +55,7 @@ def unit_kill_all_in_area(sim, name, a, script):
         for b in [b for b in sim.living() if b.owner == a[0] and inside(sim.areas[a[1]], b.x, b.y)
                   and 'DRONE' not in b.kinds and a[0] != '']:
             b.set_last_damage(None)
-            sim.destroy(b, '脚本')
+            sim.world.kill(b, '脚本')
 
 
 def team_garrison_team_instantly(sim, name, a, script):
@@ -87,8 +88,9 @@ def select_object(sim, name, a, script):
 
 
 def sell_object(sim, name, a, script):
-    # (object) engine_sell: sell(), refused while unpacking
-    sim.sell(sim.body(a[0]))
+    # (object) engine_sell: simbody.Life.sell, refused while unpacking
+    b = sim.body(a[0])
+    sim._life().sell(sim, b, sim.garrison, sim.world.modify, sim.wallet.credit)
 
 
 def player_sell_everything(sim, name, a, script):
@@ -96,7 +98,7 @@ def player_sell_everything(sim, name, a, script):
     # Other sellable structures use existing sell() rules (INFERRED); see work/re/c_sellall_report.md.
     for b in list(sim.living()):
         if b.owner == a[0]:
-            sim.sell(b)
+            sim._life().sell(sim, b, sim.garrison, sim.world.modify, sim.wallet.credit)
 
 
 def named_damage(sim, name, a, script):
@@ -106,7 +108,7 @@ def named_damage(sim, name, a, script):
         b.set_last_damage(None)
         b.damage(float(a[1]))
         if b.hp <= 0.0:
-            sim.destroy(b, '脚本伤害')
+            sim.world.kill(b, '脚本伤害')
             b.find(interfaces.Body).set_bits_read_until(sim.frame_now())    # step B4a: the Body module's
         else:                           # under REALLYDAMAGED: out in this frame (engine_garrison 伤争敌 1230)
             sim.garrison.hurt(b)
@@ -117,7 +119,7 @@ def named_kill(sim, name, a, script):
     if b:
         if name == 'NAMED_KILL':
             b.set_last_damage(None)   # the game's kill damage comes from nobody (INVALID_ID)
-        (sim.delete if name == 'NAMED_DELETE' else sim.destroy)(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉')
+        (sim.world.remove if name == 'NAMED_DELETE' else sim.world.kill)(b, '脚本' if name == 'NAMED_KILL' else '脚本删掉')
 
 
 def player_kill(sim, name, a, script):
@@ -127,7 +129,7 @@ def player_kill(sim, name, a, script):
     for b in list(sim.living()):
         if b.owner == a[0]:
             b.set_last_damage(None)
-            sim.destroy(b, '玩家脚本清理')
+            sim.world.kill(b, '玩家脚本清理')
 
 
 def unit_set_health(sim, name, a, script):
@@ -230,7 +232,7 @@ def named_garrison_specific_building(sim, name, a, script):
         # game, but s01's intro then needs CONTAINER_OCCUPIED, the eject and the flyby's relation, not modelled
         # (Natasha would ride a Bullfrog the simulator lets die) -- round 213 handoff. To where that one stands
         # (11-19 same-name sweep: not the name read again as a point -- a waypoint or the body table's thing)
-        sim.send(b, (g.x, g.y))
+        simlocomotion.go_to(sim, b, (g.x, g.y))
 
 
 def team_garrison_nearest_building(sim, name, a, script):

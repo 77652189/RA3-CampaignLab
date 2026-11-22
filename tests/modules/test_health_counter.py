@@ -11,7 +11,7 @@ def test_the_dead_read_0_while_lying_and_keep_the_last_value_once_gone():
                               ('gone', 'SovietAntiInfantryInfantry', 'Player_2', 600.0, 0.0)], model=False)
     for n in s.bodies:
         s.counters[n] = 12
-    s.destroy(s.bodies['man'], 'test'), s.destroy(s.bodies['tank'], 'test'), s.destroy(s.bodies['gone'], 'test')
+    s.world.kill(s.bodies['man'], 'test'), s.world.kill(s.bodies['tank'], 'test'), s.world.kill(s.bodies['gone'], 'test')
     s.bodies['gone'].deleted = True
     s.advance(30)                                       # a second on: the tank is gone, the man still lies (8.5 s)
     for n in s.bodies:

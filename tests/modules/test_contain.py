@@ -92,19 +92,19 @@ def test_a_buildings_end_empties_it_through_its_module():
     (m,) = house.find(interfaces.Contain)
     assert isinstance(m, interfaces.Die) and isinstance(m, interfaces.Destroy)
     assert s.garrison.put(gi, house, script=True)
-    s.destroy(house, 'test')
+    s.world.kill(house, 'test')
     assert gi.alive and m.passengers() == [] and 'ENCLOSED' not in gi.script_status
     assert told == [('house', False, 1)]            # a death empties it once (review 1119d #5: no second, deleting)
     house2 = s.add('house2', 'AM_Apartments_01', None, 300.0, 600.0)
     gi2 = s.add('gi2', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 600.0)
     assert s.garrison.put(gi2, house2, script=True)
-    s.delete(house2, 'test')
+    s.world.remove(house2, 'test')
     (m2,) = house2.find(interfaces.Contain)
     assert not gi2.alive and gi2.deleted and m2.passengers() == []
     assert told[1:] == [('house2', True, 1)]
 
 
-@pytest.mark.parametrize('end', ['destroy', 'delete'])
+@pytest.mark.parametrize('end', ['kill', 'remove'])
 def test_a_thing_under_a_taken_name_has_none_of_the_old_ones_passengers(end):
     """Review 1119d #1 (coordinator 11-19, INFERRED: no bench): the passengers are the host thing's, not its name's --
     a tank made under the house's name and ended leaves the house's passenger in the house, now and after the
@@ -117,12 +117,12 @@ def test_a_thing_under_a_taken_name_has_none_of_the_old_ones_passengers(end):
     assert s.garrison.held(tank) == [] and s.garrison.held(house) == [gi]
     s.garrison.due()                                # it rides with its own host, not the tank
     assert (gi.x, gi.y) == (300.0, 300.0)
-    getattr(s, end)(tank, 'test')
+    getattr(s.world, end)(tank, 'test')
     assert gi.alive and s.garrison.where.get(gi.serial) is house and s.garrison.held(house) == [gi]
     s.garrison.due()
     assert gi.alive and s.garrison.where.get(gi.serial) is house and (gi.x, gi.y) == (300.0, 300.0)
-    getattr(s, end)(house, 'test')
-    assert gi.serial not in s.garrison.where and s.garrison.held(house) == [] and gi.alive == (end == 'destroy')
+    getattr(s.world, end)(house, 'test')
+    assert gi.serial not in s.garrison.where and s.garrison.held(house) == [] and gi.alive == (end == 'kill')
 
 
 @pytest.mark.parametrize('filled', [False, True])

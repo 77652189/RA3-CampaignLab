@@ -112,7 +112,7 @@ def test_a_thing_taken_out_of_the_world_leaves_the_schedule():
     proto = s.proto(APOC, 'Player_1')                  # the AI's figures body: made, then out of the registry
     assert proto.name not in s.bodies and proto.modules
     assert set(s.world.schedule.cells['autoheal']) == set(heals(s.bodies['a']))
-    s.delete(s.bodies['a'], 'test')                     # (Sim.add refuses a living one's name)
+    s.world.remove(s.bodies['a'], 'test')                     # (Sim.add refuses a living one's name)
     s.add('a', APOC, 'Player_1', 10.0, 0.0)            # a new body under the name: the old one leaves
     assert set(s.world.schedule.cells['autoheal']) == set(heals(s.bodies['a']))
 

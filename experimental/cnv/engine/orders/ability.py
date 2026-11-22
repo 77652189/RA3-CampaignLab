@@ -3,11 +3,12 @@ from engine.orders.order's targeting, chase and moves. Over the world (WORLD_API
 import math
 
 import engine.data.units as simunits
+import engine.objects.locomotion as simlocomotion
 import engine.objects.modifier as simmodifier
 import engine.objects.toggle as simtoggle
 from engine.objects.power import UNPACK_POWER, start_reload
 
-PEERS = frozenset({'act', 'delete', 'garrison', 'powers_off', 'production', 'send', 'short_of_power', 'toggles_of'})
+PEERS = frozenset({'act', 'garrison', 'powers_off', 'production', 'short_of_power', 'toggles_of'})
 FLEE_GONE = 3
 
 
@@ -111,7 +112,7 @@ def order_unpack(world, peers, b, p, button=None, where=None, stand=None, here=F
     world.note('技能', f'{world.label(b)} 去 {where or "(%.0f, %.0f)" % tuple(p)} 展开成 {into}'
               + (f'（{stand:g} 内原地）' if here else ''))
     if not peers.production.at_site(b, 0.0) and send:
-        peers.send(b, p)
+        simlocomotion.go_to(world, b, p)
     return True
 
 
@@ -147,7 +148,7 @@ def flee_due(world, peers, frame):
         world.change()                          # (the deletion's own too)
         if walked >= 1.0 and k - math.ceil(d / step - 1e-9) >= FLEE_GONE:
             b.flee = None
-            peers.delete(b, '逃出地图')
+            world.world.remove(b, '逃出地图')
 
 
 def stop_flee(b):

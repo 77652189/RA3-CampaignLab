@@ -74,6 +74,6 @@ def test_a_lifetime_set_late_attaches_the_module_and_kills_at_that_frame_a_dead_
     assert not w.alive
     s.add('core', 'CNV_TestCore', 'Player_1', 100.0, 100.0)
     core = s.bodies['core']
-    s.destroy(core, 'test')
+    s.world.kill(core, 'test')
     s.world.schedule.run('expire', core.life_end)
     assert [b for b in s.bodies.values() if b.template == 'CNV_TestWall'] == [w]     # no wall: it died otherwise

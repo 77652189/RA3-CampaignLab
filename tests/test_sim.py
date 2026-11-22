@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / 'experimental' / 'campaign'))
 import parts  # noqa: E402
 import sim  # noqa: E402
 import simstatic  # noqa: E402
+import engine.objects.locomotion as simlocomotion  # noqa: E402
 from engine.orders import order as simorder  # noqa: E402
 from maps import festival  # noqa: E402
 from parts import NOT, Mission, Script, square  # noqa: E402
@@ -302,7 +303,7 @@ def test_a_placed_objects_starting_health():
 def test_acted_status_is_what_the_source_tests():
     """sim.ACTED_STATUS (what a status-bit gap is measured against) holds every `'X' in b.status` test in the
     simulator's files (simcoverage.status_modelled reads them: simcoverage.sim_files) (IN_STASIS, UNDER_FROZEN: tested
-    on the modifiers' bits in simmodifier.modify; SOLD: set by Sim.sell; GENERIC_TOGGLE_STATE:
+    on the modifiers' bits in simmodifier.modify; SOLD: set by Life.sell; GENERIC_TOGGLE_STATE:
     the mirage aura's ObjectStatusValidation, Sim.cloaked, tested through the module's own set;
     NO_COLLISIONS: the MetaImpact XML status_exclude list, consumed through a variable;
     native keep/remove-exclusion replays live in tests/test_meta_statusgate.py)."""
@@ -510,7 +511,7 @@ def test_a_unit_ordered_from_standing_turns_in_place_then_drives_and_turns_to_it
     import engine.ai.core as simai
     s, tank, (x, y) = _hammer_facing_south()
     assert sim.simlocomotion.DRIVE_WITHIN == 9.0 and tank.turn_rate == 288.0
-    s.send(tank, (x, y + 300), face=0.0)
+    simlocomotion.go_to(s, tank, (x, y + 300), face=0.0)
     s.run(0.0)
     assert (tank.x, tank.y) == (x, y) and abs(math.degrees(tank.angle) - (-90 + 7.5 * 19.2)) < 1e-6
     s.run(0.5)
@@ -534,7 +535,7 @@ def test_infantry_ordered_from_standing_walk_off_at_once():
     man = s.add('man', 'SovietAntiInfantryInfantry', s.human, a.x, a.y)
     man.angle = -math.pi / 2
     assert man.turn_rate == 720.0 and not man.turn_first
-    s.send(man, (a.x, a.y + 300))
+    simlocomotion.go_to(s, man, (a.x, a.y + 300))
     s.run(0.0)
     assert man.x == a.x and abs(man.y - a.y - man.speed * sim.DT) < 1e-6
 
@@ -542,9 +543,9 @@ def test_infantry_ordered_from_standing_walk_off_at_once():
 def test_a_driving_unit_takes_a_new_way_without_stopping_to_turn():
     """Bench airevgt f170 (the attack order given while the Guardians drove): turned on moving frames, no stop."""
     s, tank, (x, y) = _hammer_facing_south()
-    s.send(tank, (x, y - 300))                          # the way it faces: drives at once
+    simlocomotion.go_to(s, tank, (x, y - 300))                          # the way it faces: drives at once
     s.run(0.0)
     assert tank.rolling and abs(tank.y - (y - 30)) < 1e-6
-    s.send(tank, (x + 300, y - 30))
+    simlocomotion.go_to(s, tank, (x + 300, y - 30))
     s.run(0.5)
     assert abs(tank.x - (x + 30)) < 1e-6

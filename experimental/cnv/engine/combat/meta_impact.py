@@ -141,7 +141,7 @@ def tick(host):
             b.z = None
             if key in host.knock_drowns:
                 host.knock_drowns.discard(key)
-                peers.destroy(b, '击飞落水')     # Ground.drowns: gone the frame it lands
+                world.world.kill(b, '击飞落水')     # Ground.drowns: gone the frame it lands
                 world.change()
                 continue
             # on the ground: lies, then gets up (Physics ShockStunnedTime + ShockStandingTime); a kept move

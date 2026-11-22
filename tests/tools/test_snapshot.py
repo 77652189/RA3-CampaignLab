@@ -354,7 +354,7 @@ def _replace_attached(s, n):
     """`n` times a new 'same' in the name's place, each with a late lifetime (World.attach); the last one's serial."""
     for _ in range(n):
         if 'same' in s.bodies:                          # (Sim.add refuses a living one's name)
-            s.delete(s.bodies['same'], 'test')
+            s.world.remove(s.bodies['same'], 'test')
         b = s.add('same', 'AlliedAntiInfantryInfantry', 'Player_1', 350, 300)
         simbody.last_until(s, b, s.world.frame + 300)
     serial = b.serial

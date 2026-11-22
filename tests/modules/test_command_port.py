@@ -727,7 +727,7 @@ def test_team_attack_team_and_its_follow_up_take_the_member_not_a_reference_of_i
     _act(s, 'TEAM_ATTACK_TEAM', 'A', 'T')
     atk = s.bodies['atk']
     assert atk.goal is s.bodies['lead'] and s.commands.issued()[-1][1].arg('target_serial') == s.bodies['lead'].serial
-    s.destroy(s.bodies['lead'], '测试')
+    s.world.kill(s.bodies['lead'], '测试')
     _run_frames(s)
     assert atk.goal is s.bodies['next']
 
@@ -930,7 +930,7 @@ def test_the_proxy_does_not_keep_the_objects_it_saw():
     seen = []
     for _ in range(30):
         if 'same' in s.bodies:                          # (Sim.add refuses a living one's name)
-            s.delete(s.bodies['same'], 'test')
+            s.world.remove(s.bodies['same'], 'test')
         b = s.add('same', APOC, 'Player_1', 1250.0, 2500.0)
         seen.append(weakref.ref(b))
         w._id(b)
@@ -1088,7 +1088,7 @@ def test_the_ai_micro_charge_is_a_power_of_its_own_living_unit():
     assert charge(mine) and mine.auras_on and mine.ready_at[simmicro.COMMAND] > s.frame_now()
     aura = dict(mine.auras_on)
     assert not charge(mine) and mine.auras_on == aura          # reloading
-    s.destroy(mine, 'test')
+    s.world.kill(mine, 'test')
     mine.ready_at.clear()
     assert not charge(mine)
 
@@ -1157,7 +1157,7 @@ def test_the_ais_recruiting_wraps_the_new_unit_not_the_dead_one_of_its_name():
     br.commands, br.systems = host.commands, host.systems   # the command port, the players' systems (13f-2c)
     first, = br.units(None, 0)
     assert first.body is old
-    s.delete(old, 'test')
+    s.world.remove(old, 'test')
     again = s.add('lead', APOC, 'Player_1', 400.0, 0.0)
     now, = br.units(None, 1)
     assert now.body is again and now is not first and now.body.alive
@@ -1188,7 +1188,7 @@ def test_the_ais_yard_orders_end_with_their_yard_not_go_on_at_a_new_one_of_its_n
     assert sorted(map(str, br.yard_q)) == sorted(map(str, [old.serial, (old.serial, 'defense')]))
     br.yard_due(1)
     paid = s.money['Player_1']
-    s.delete(old, 'test')
+    s.world.remove(old, 'test')
     new = s.add('yard', 'SovietConstructionYard', 'Player_1', 2700.0, 2400.0)
     for f in range(2, 400):
         br.yard_due(f)
@@ -1219,7 +1219,7 @@ def test_the_ais_micro_view_names_a_member_and_a_beacon_made_again_apart_from_th
     assert look('lead', 'wing') == (['lead', 'wing'], [('beacon', ['lead', 'wing'])])
     for n, x in (('lead', -50.0), ('beacon', -100.0)):         # both made again: the new ones west of the old
         old = s.bodies[n]
-        s.destroy(old, 'test')
+        s.world.kill(old, 'test')
         s.add(n, old.template, old.owner, x, old.y)
     lead, beacon = s.bodies['lead'], s.bodies['beacon']
     assert look('lead', 'wing') == ([f'lead#{lead.serial}', 'wing'],
@@ -1244,7 +1244,7 @@ def test_the_ais_dodge_sets_a_foes_beacon_lifetime_once_from_its_own_frame_throu
     assert old.life_end is None and s.frame_now() == 0
     assert [d.remaining for d in br.micro_team(None, 500, team).threats] == [60] and old.life_end == 560
     assert [d.remaining for d in br.micro_team(None, 520, team).threats] == [40] and old.life_end == 560
-    s.destroy(old, 'test')
+    s.world.kill(old, 'test')
     s.add('beacon', old.template, old.owner, 100.0, 0.0)
     assert [d.remaining for d in br.micro_team(None, 600, team).threats] == [60]
     assert s.bodies['beacon'].life_end == 660 and old.life_end == 560
@@ -1511,7 +1511,7 @@ def test_a_posted_build_goes_to_the_factory_clicked_not_one_made_under_its_name(
     if after == 'taken':
         f.owner = 'Player_2'
     else:
-        s.destroy(f, 'test')
+        s.world.kill(f, 'test')
         s.add('f', 'AlliedBarracks', 'Player_1' if after == 'made_again_his' else 'Player_2', 900.0, 900.0)
     s.advance(60)
     ran = [(ok, why) for _, c, ok, why in s.commands._issued if c.kind == 'build' and why != 'posted']

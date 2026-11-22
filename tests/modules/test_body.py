@@ -231,8 +231,8 @@ def test_a_killed_prop_that_stays_is_counted_until_deleted():
     from engine.script.cond_object import player_has_number_objects_with_object_status as count
     s = simsmall.small_world([('cage', 'GV_Ring02', 'Player_1', 300, 300)], model=False)
     cage, ask = s.bodies['cage'], ('Player_1', 2, 1, 'NO_COLLISIONS')
-    s.destroy(cage, 'kill')
+    s.world.kill(cage, 'kill')
     assert not cage.alive and count(s, 'c', ask) and s.dying(cage)
-    s.delete(cage, 'delete')                                    # the same frame: no longer dying (tt closure P2)
+    s.world.remove(cage, 'delete')                                    # the same frame: no longer dying (tt closure P2)
     assert not count(s, 'c', ask) and count(s, 'c', ask[:2] + (0,) + ask[3:]) and not s.dying(cage)
     assert s.holds(('NAMED_DESTROYED', 'cage'))

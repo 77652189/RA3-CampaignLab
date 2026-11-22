@@ -75,16 +75,16 @@ def test_spawn_refill_tracks_actual_death_frame_and_parent_removal_cancels_pendi
         e.advance(45)  # arbitrary death time, unrelated to recipe's explosion timers
         child = parent.spawned_children[0]
         died = e.frame_now()
-        e.destroy(child, 'test death')
-        e.destroy(child, 'duplicate notification')
+        e.world.kill(child, 'test death')
+        e.world.kill(child, 'duplicate notification')
         assert len(parent.spawn_refills) == 1
         e.world.schedule.run('spawn', died + 149)    # the spawn cell's modules (spawn.py)
         assert sum(c.alive for c in parent.spawned_children) == 2
         e.world.schedule.run('spawn', died + 150)    # the spawn cell's modules (spawn.py)
         assert sum(c.alive for c in parent.spawned_children) == 3
-        e.destroy(parent.spawned_children[-1], 'replacement death')
+        e.world.kill(parent.spawned_children[-1], 'replacement death')
         assert len(parent.spawn_refills) == 1
-        (e.delete if delete else e.destroy)(parent, 'parent removed')
+        (e.world.remove if delete else e.world.kill)(parent, 'parent removed')
         assert not parent.spawn_refills
         e.world.schedule.run('spawn', died + 1000)    # the spawn cell's modules (spawn.py)
         assert len(parent.spawned_children) == 4
@@ -127,7 +127,7 @@ def test_a_placed_refinery_gives_its_collector_a_built_one_does_not():
     own = [b for b in e.bodies.values() if b.unpack_parent is ref]
     assert len(own) == 1 and own[0].template == 'AlliedMiner' and own[0].owner == ref.owner
     assert (own[0].x, own[0].y) == (ref.x, ref.y)
-    e.destroy(ref, 'test')
+    e.world.kill(ref, 'test')
     assert own[0].alive
     late = e.add('late refinery', 'AlliedRefinery', ref.owner, 100, 100, by='builder', at=1.0)
     assert not [b for b in e.bodies.values() if b.unpack_parent is late]

@@ -19,6 +19,7 @@ import math
 
 import engine.objects.garrison as simgarrison
 import engine.data.units as simunits
+import engine.objects.locomotion as simlocomotion
 from engine.kernel import interfaces
 from engine.ports.command import Command
 from engine.objects.power import CURTAIN, PACK_FRAMES, PACK_POWER, RELOAD_LAG, SUPERWEAPON_HITS, UNPACK_POWER, start_reload
@@ -191,7 +192,7 @@ def script_cast(sim, name, a, unit=None):
         b.building, b.goal, b.mode = (got[1], p, got[0]), None, 'move'
         sim.note('技能', f'{sim.label(b)} 去 {a[2]} 造 {got[1]}')
         if not sim.production.at_site(b, 0.0):
-            sim.send(b, p)
+            simlocomotion.go_to(sim, b, p)
     else:
         sim.used.add('special power')
         sim.note('技能', f'{a[0]} 用 {a[1]}' + (f' 打 {a[2]}' if len(a) > 2 else ''))

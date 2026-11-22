@@ -39,7 +39,7 @@ def _source():
     w.bodies['apoc'].damage(300)            # its mend waits 15 frames from its next run
     w.add('core', 'CNV_TestCore', CIV_OWNER, 1500.0, 1500.0, at=w.t)
     w.add('built', PLANT, P1, 2900.0, 2900.0, by='script', at=w.t)     # made in the run: it unpacks
-    w.sell(w.bodies['sold'])
+    w._life().sell(w, w.bodies['sold'], w.garrison, w.world.modify, w.wallet.credit)
     simbody.last_until(w, w.bodies['tank'], w.frame_now() + 40)        # a late lifetime: no block of the tank's
     w.run(1.5)
     w.bodies['hurt'].damage(300)            # the moment before the cut: told, not run yet

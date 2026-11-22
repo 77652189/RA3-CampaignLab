@@ -22,7 +22,7 @@ def test_dead_named_goal_falls_back_to_the_nearest_target_on_the_next_scan(monke
         picks.extend((frame, t.name) for t, _, a in s.firing if a is tank)
         deal(dt)
         if frame == 0:  # kill after the first frame's shot, within the first half-second tick
-            s.destroy(ordered, '测试')
+            s.world.kill(ordered, '测试')
 
     monkeypatch.setattr(s, 'deal', record)
     s.advance(1)

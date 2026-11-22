@@ -229,7 +229,7 @@ def test_production_needs_a_factory_and_its_prerequisites():
     s.act('ALLOW_DISALLOW_ONE_BUILDING', [s.human, 'alliedengineer', 0], None)
     assert 'AlliedEngineer' not in [o[0] for o in s.offers(s.human)] and not s.order_build(s.human, 'AlliedEngineer')
     for f in s.factories(s.human):
-        s.delete(f, 'test')
+        s.world.remove(f, 'test')
     assert [o for o in s.offers(s.human) if not o[0].startswith('Upgrade_')] == [] and \
         not s.order_build(s.human, 'AlliedAntiInfantryInfantry')
 
@@ -347,7 +347,7 @@ def test_tech_banned_and_needs_the_refinery():
     assert not any(o[0] == 'Upgrade_AlliedTech2' for o in s.offers(s.human))
     s.act('ALLOW_DISALLOW_ONE_UPGRADE', [s.human, 'upgrade_alliedtech2', 1], None)
     ref = next(b for b in s.living() if b.owner == s.human and b.template == 'AlliedRefinery')
-    s.delete(ref, 'test')
+    s.world.remove(ref, 'test')
     assert not s.order_build(s.human, 'Upgrade_AlliedTech2')
 
 
@@ -529,7 +529,7 @@ def test_mining_niagara_at_retail_s_facing_trips_as_mineturn0_did():
     m.map = niagara
     s = sim.Sim(m, None)
     for b in [b for b in s.living() if b.unpack_parent is not None]:    # the refinery's own (round 177): the placed
-        s.delete(b, 'test')                                           # one's trip alone, as before
+        s.world.remove(b, 'test')                                           # one's trip alone, as before
     miner = s.bodies[m.cast['ai miner'].name]
     s.money[miner.owner] = 0
     got = []
@@ -553,7 +553,7 @@ def _sim_resolve(build_name, check):
     return m, t, sim.Sim(m, t)
 
 
-# ---- walled in, no way (sim.Ground.closest, Sim.send): docs/engine/pathing.md 6, A4 horn troopers behind the ice
+# ---- walled in, no way (sim.Ground.closest, simlocomotion.go_to): docs/engine/pathing.md 6, A4 horn troopers behind the ice
 def _seal_rows(check, secs=30.0):
     _, t, s = _sim_resolve('engine_seal', check)
     s.run(secs)

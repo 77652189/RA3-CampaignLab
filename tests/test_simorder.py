@@ -16,7 +16,7 @@ def test_a_hunt_waits_its_repick_after_its_target_dies_then_attack_moves_on_the_
     hunt = [crew, s.bodies['near'], 0]
     s.hunts.append(hunt)
     peers = simorder.Peers(s)
-    s.destroy(s.bodies['near'], 'test')
+    s.world.kill(s.bodies['near'], 'test')
     simhunt.hunt_due(s, peers, 10)                       # its target just died: the re-pick waits
     assert hunt[1] is None and hunt[2] == 10 + simhunt.HUNT_REPICK
     simhunt.hunt_due(s, peers, 10 + simhunt.HUNT_REPICK - 1)

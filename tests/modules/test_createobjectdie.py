@@ -67,9 +67,9 @@ def test_a_death_of_age_makes_the_list_its_death_type_takes_where_it_stood_that_
 def test_any_other_death_makes_nothing():
     s = _world()
     s.add('core', 'CNV_TestCore', 'Player_1', 100.0, 100.0)
-    s.destroy(s.bodies['core'], 'test')                 # NORMAL, no cause: the rubble's types take it, still nothing
+    s.world.kill(s.bodies['core'], 'test')                 # NORMAL, no cause: the rubble's types take it, still nothing
     s.add('core2', 'CNV_TestCore', 'Player_1', 0.0, 0.0)
-    s.destroy(s.bodies['core2'], 'test', 'FADED')       # the wall's type, but no death of age
+    s.world.kill(s.bodies['core2'], 'test', 'FADED')       # the wall's type, but no death of age
     assert _walls(s) == []
 
 
@@ -102,10 +102,10 @@ def test_a_structure_dead_in_a_fight_leaves_its_owner_the_survivor_its_list_make
     s = simsmall.small_world()
     for name, x in (('pp', 100.0), ('pp2', 600.0), ('pp3', 1100.0)):
         s.add(name, 'AlliedPowerPlant', 'Player_1', x, 100.0)
-    s.destroy(s.bodies['pp'], 'shot')
-    s.destroy(s.bodies['pp2'], 'shot', 'SUICIDED')
+    s.world.kill(s.bodies['pp'], 'shot')
+    s.world.kill(s.bodies['pp2'], 'shot', 'SUICIDED')
     s.bodies['pp3'].status = s.bodies['pp3'].status | {'SOLD'}
-    s.destroy(s.bodies['pp3'], 'shot')
+    s.world.kill(s.bodies['pp3'], 'shot')
     left = sorted((b.x, b.template, b.owner, b.hp / b.max_hp) for b in s.bodies.values() if b.alive)
     assert left == [(100.0, 'AlliedAntiInfantryInfantry', 'Player_1', 0.525),
                     (600.0, 'AlliedAntiInfantryInfantry', 'Player_1', 1.0)]
@@ -210,5 +210,5 @@ def test_one_death_makes_one_wreck_list_by_the_status_it_began_with():
     told = []
     for m in b.find(interfaces.CreateOnDeath):
         m.on_die = told.append
-    s.destroy(b, 'shot')
+    s.world.kill(b, 'shot')
     assert told and all(i.status == {'SPECIAL_ARMOR_ACTIVE', 'AIRBORNE_TARGET'} for i in told)

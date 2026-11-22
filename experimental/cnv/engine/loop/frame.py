@@ -69,7 +69,7 @@ def handed(s, frame, tick):
 
 
 def lose_health(s, frame, tick):
-    s.lose_health(frame)
+    s._life().lose_health(s, frame, s.toggles_of)
 
 
 def autoheal(s, frame, tick):

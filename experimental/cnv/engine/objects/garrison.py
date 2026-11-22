@@ -37,13 +37,15 @@ Transports (TransportContain: the Bullfrog, the Riptide, the bomber; bench 11-10
   not          the REALLYDAMAGED walk-out (a house's only), the passengers' fire, the parachute (untargeted) eject
 Not modelled: fire from inside (the passengers keep their own weapons; a turret's weapon set by its passenger), the
 garrison aura, clearing weapons, the exit point (they come out where the building stands), EjectSpeed.
-L2 (ADR 0029, docs/engine/sim-layers.md): the world is reached only through simworld.WORLD_API (`world`), the host's
-other parts through `peers` (Peers: the names in PEERS, read when used). This module never imports sim."""
+L2 (ADR 0029, docs/engine/sim-layers.md): the world is reached only through simworld.WORLD_API (`world`); a body's end is
+the kernel World's (kill / remove), its walk simlocomotion.go_to, the enter order's walk L5's order_move handed in as
+`move`. This module never imports sim."""
 import math
 import re
 
 import engine.data.units as simunits
 import engine.modules.locomotor as locomotor
+import engine.objects.locomotion as simlocomotion
 import engine.objects.modifier as simmodifier
 from engine.kernel import interfaces
 
@@ -98,28 +100,9 @@ def ejects(command, own=None):
     return str(simunits.command_power(command, own) or '').startswith('SpecialPower_EjectPassengers')
 
 
-PEERS = frozenset({'delete', 'destroy', 'send'})
-
-
-class Peers:
-    """What the garrisons may reach on their host (the Sim) beyond the world: the names in PEERS, read when used --
-    the body's end (destroy / delete) and its walk (send); upgrades and modifiers are simmodifier's. L5's order_move
-    is handed in as `move` (the enter order's walk: mode, move_to, its spot; a bare go_to lets an idle walker turn to fight,
-    unbenched -- the enter order moves up into order.py at the move family's close)."""
-    __slots__ = ('host',)
-
-    def __init__(self, host):
-        object.__setattr__(self, 'host', host)
-
-    def __getattr__(self, name):
-        if name not in PEERS:
-            raise AttributeError(f'simgarrison.Peers: {name} is not lent (PEERS)')
-        return getattr(self.host, name)
-
-
 class Garrisons:
-    def __init__(self, world, peers, move):
-        self.world, self.peers, self.move = world, peers, move    # WORLD_API only; the host's other parts (Peers); L5's move
+    def __init__(self, world, move):
+        self.world, self.move = world, move     # WORLD_API only; L5's order_move
         self.boxes = {}             # host serial (Thing.serial) -> its contain module (interfaces.Contain: the
                                     # passengers, the owner before, the listener's upgrades), in the order first put
                                     # into (the cell's order); by the thing, not its name: a thing made under a taken
@@ -238,7 +221,7 @@ class Garrisons:
         dispatch, SelfValidation, kind filters and multiple secondaries remain gaps.
         Keep upgrades that were already present before the listener granted them.
         """
-        world, peers = self.world, self.peers
+        world = self.world
         box = self.boxes.get(g.serial)
         if box is None:
             return
@@ -279,7 +262,7 @@ class Garrisons:
 
     def put(self, u, g, script=False):
         """u into g now; True when it is inside. script: the script's ..._INSTANTLY (no relation, no room)."""
-        world, peers = self.world, self.peers
+        world = self.world
         sp = self.box(g) if g is not None and g.alive else None     # walked in: a transport asks the room too
         if sp is None or u is None or not u.alive or u is g or u.serial in self.where or not self.fits(u, sp):
             return False
@@ -321,7 +304,7 @@ class Garrisons:
 
     def out(self, u):
         """u out of the building it is in (where the building stands, INFERRED)."""
-        world, peers = self.world, self.peers
+        world = self.world
         g = self.where.pop(u.serial, None) if u is not None else None
         if g is None:
             return False
@@ -344,18 +327,17 @@ class Garrisons:
             self.out(u)
 
     def died(self, g, delete=False):
-        """Sim.destroy / delete: the building is gone. Killed: KillPassengersOnDeath kills them, else they come out
+        """World.kill / delete: the building is gone. Killed: KillPassengersOnDeath kills them, else they come out
         alive; deleted: they go with it."""
         held = list(self.held(g))
         if not held:
             return
         sp = self.box(g) or {}
-        peers = self.peers
         self.ejecting.pop(g.serial, None)
         for u in held:
             self.out(u)
             if u.alive and (delete or sp.get('kill')):
-                (peers.delete if delete else peers.destroy)(u, '随楼删掉' if delete else '楼毁乘员同死')
+                (self.world.world.remove if delete else self.world.world.kill)(u, '随楼删掉' if delete else '楼毁乘员同死')
         self.boxes.pop(g.serial, None)
 
     def eject(self, g, command, where, power=None):
@@ -363,7 +345,7 @@ class Garrisons:
         FIRE_SPECIAL_POWER): True when an EjectPassengersSpecialAbilityUpdate of g serves its power (then the
         passengers go out one by one in due()). StartAbilityRange 0 with a spot away: it goes there first, out on
         arrival (engine_acts_drop air: the bomber drop's load rides its bombers from the store to the spot)."""
-        world, peers = self.world, self.peers
+        world = self.world
         power = power or simunits.command_power(command, world.own)
         found = []
 
@@ -384,7 +366,7 @@ class Garrisons:
             (ARRIVE if math.hypot(where[0] - g.x, where[1] - g.y) > ARRIVE else 0.0)
         self.ejecting[g.serial] = [where, per, reach, None, simunits._attr(h, 'RunOffMapWhenDone') == 'true']
         if reach and math.hypot(where[0] - g.x, where[1] - g.y) > reach:
-            peers.send(g, where)                     # INFERRED: drives in, then throws
+            simlocomotion.go_to(world, g, where)                     # INFERRED: drives in, then throws
         world.note('驻军', f'{world.label(g)} 往外弹乘员')
         return True
 
@@ -408,7 +390,7 @@ class Garrisons:
         return True
 
     def _throw(self):
-        world, peers = self.world, self.peers
+        world = self.world
         for serial, job in list(self.ejecting.items()):
             box = self.boxes.get(serial)                # the host itself, by its serial (never its name: g #1)
             g = box.thing if box is not None else None

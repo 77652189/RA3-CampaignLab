@@ -101,6 +101,6 @@ def test_a_dead_derrick_pays_nothing():
     s.add('mine', 'CNV_TestDerrick', 'Player_1', 100.0, 100.0)
     mine = s.bodies['mine']
     at, before = mine.deposit_at, s.wallet.held('Player_1')
-    s.destroy(mine, 'test')
+    s.world.kill(mine, 'test')
     _run(s, [at, at + 30])
     assert s.wallet.held('Player_1') == before

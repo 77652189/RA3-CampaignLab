@@ -155,7 +155,7 @@ def skirmish_player_has_been_attacked_by_player(sim, name, a):
 
 def player_has_killed_named_unit(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
-    # INFERRED: kills by weapon (self.kills, Sim.destroy); n of a type at least n
+    # INFERRED: kills by weapon (self.kills, World.kill); n of a type at least n
     if name == 'PLAYER_HAS_KILLED_NAMED_UNIT':
         return any(k[0] == a[0] and k[3] == a[1] for k in sim.kills)
     if name == 'PLAYER_HAS_KILLED_TYPE_UNITS':

@@ -20,13 +20,14 @@ E195 RESET only consumes the hostile spy at a Soviet Iron Curtain; readiness
 and actual cooldown remain unresolved. Entry reach/clock remain INFERRED.
 Entry reach/clock remain INFERRED; the discovery trace uses an entry-relative clock.
 L2 (ADR 0029, docs/engine/sim-layers.md): the world is reached only through simworld.WORLD_API (`world`), the host's
-other parts through `peers` (Peers: the names in PEERS, read when used), the money through simmoney.Money (`wallet`:
+other parts through `peers` (Peers: the names in PEERS, read when used; a body's end is the kernel World's), the money through simmoney.Money (`wallet`:
 held / charge / credit). This module never imports sim.
 """
 import math
 import re
 
 import engine.data.units as simunits
+import engine.objects.locomotion as simlocomotion
 from engine.kernel import factory, interfaces
 
 
@@ -67,7 +68,7 @@ def filter_spec(name):
     return None
 
 
-PEERS = frozenset({'delete', 'destroy', 'looks', 'send'})
+PEERS = frozenset({'looks'})
 
 
 class Peers:
@@ -306,7 +307,7 @@ class Infiltrators:
         return _rule(found[0].rules(), len(found)) if found else None
 
     def send(self, spy, target):
-        world, peers = self.world, self.peers
+        world = self.world
         rule = self.spec(target)
         if not rule or not spy.alive or not target.alive:
             return
@@ -369,10 +370,10 @@ class Infiltrators:
             return
         self.going[spy.serial] = (spy, target)
         spy.goal, spy.mode = target, 'infiltrate'
-        peers.send(spy, (target.x, target.y))
+        simlocomotion.go_to(world, spy, (target.x, target.y))
 
     def tick(self):
-        world, peers = self.world, self.peers
+        world = self.world
         for key, (spy, target) in list(self.going.items()):
             if not spy.alive or not target.alive or spy.mode != 'infiltrate' or spy.goal is not target:
                 self.going.pop(key)
@@ -405,7 +406,7 @@ class Infiltrators:
                 self.observers.append((spy.owner, target, world.frame_now()))
                 world.gap('InfiltratorContain', target.template,
                       '港口精确入楼/观察者/死亡清理/阻断到期未对拍，见 work/re/e201_port.md')
-                peers.delete(spy, '进港渗透')
+                world.world.remove(spy, '进港渗透')
                 world.change()
                 continue
             if self.aircraft_rule(target, rule):
@@ -416,7 +417,7 @@ class Infiltrators:
                 self.unit_vision(spy, target, rule)
                 world.gap('InfiltratorContain', target.template,
                       '飞机VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
-                peers.delete(spy, '进楼渗透')
+                world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue
             if self.infantry_rule(target, rule):
@@ -427,7 +428,7 @@ class Infiltrators:
                 self.unit_vision(spy, target, rule)
                 world.gap('InfiltratorContain', target.template,
                       '步兵VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
-                peers.delete(spy, '进楼渗透')
+                world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue
             if self.ship_rule(target, rule):
@@ -438,7 +439,7 @@ class Infiltrators:
                 self.unit_vision(spy, target, rule)
                 world.gap('InfiltratorContain', target.template,
                       '舰船VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e200_ship.md')
-                peers.delete(spy, '进楼渗透')
+                world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue
             if self.reset_rule(target, rule):
@@ -450,7 +451,7 @@ class Infiltrators:
                 # Never interpret the short ready interruption as a reload time.
                 world.gap('InfiltratorContain', target.template,
                       'RESET真实冷却与就绪条件未闭环，见 work/re/e195_reset.md')
-                peers.delete(spy, '进楼渗透')
+                world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue
             if self.vehicle_rule(target, rule):
@@ -461,7 +462,7 @@ class Infiltrators:
                 self.unit_vision(spy, target, rule)
                 world.gap('InfiltratorContain', target.template,
                       '车辆VISION_UNITS观察者内部/完整筛选/到期未闭合，见 work/re/e199_vision_clock.md')
-                peers.delete(spy, '进楼渗透')
+                world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue
             if self.kill_rule(target, rule):
@@ -471,7 +472,7 @@ class Infiltrators:
                 world.gap('InfiltratorContain', target.template,
                       'KILL存活及玩家击杀归属已接，抛飞/死亡模块派发未对拍，见 work/re/e205_kill.md')
                 prior_attacker = spy.last_by is not None
-                peers.destroy(spy, '起重机拒绝渗透')
+                world.world.kill(spy, '起重机拒绝渗透')
                 if not spy.alive and not prior_attacker:
                     # E205 c measures the host player's named-victim credit.
                     # No named killer was measured: do not invent one here.
@@ -491,14 +492,14 @@ class Infiltrators:
                 self.mark(target, 'money')
                 # E60 observed subsequent miner income. Do not invent a 30s
                 # income freeze from BlockedDuration; its consumer remains a gap.
-                peers.delete(spy, '进楼渗透')
+                world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue
             if self.vision_rule(target, rule):
                 # INFERRED: sampled consumption at s11, first local discovery at s16.
                 # No engine mechanism or exact first-frame claim follows from this fit.
                 self.observers.append((spy.owner, target, world.frame_now() + 5 * simunits.LIFE_FPS))
-                peers.delete(spy, '进楼渗透')
+                world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue
             if self.paralyze_rule(target, rule):
@@ -519,7 +520,7 @@ class Infiltrators:
                     self.paralyzed_until[body.serial] = end
                     if target.template in ('AlliedTechStructure', 'SovietTechStructure', 'JapanTechStructure'):
                         self.attack_until[body.serial] = end
-                peers.delete(spy, '进楼渗透')
+                world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue
             structure = filter_spec(rule.get('StructureFilter', ''))
@@ -535,7 +536,7 @@ class Infiltrators:
                 world.gap('InfiltratorContain', target.template, '重复渗透续期INFERRED，未对拍')
             end = world.frame_now() + round(duration * simunits.LIFE_FPS)
             self.off_until[target.owner] = max(self.off_until.get(target.owner, 0), end)
-            peers.delete(spy, '进楼渗透')
+            world.world.remove(spy, '进楼渗透')
             world.change()
 
     def disabled(self, owner):

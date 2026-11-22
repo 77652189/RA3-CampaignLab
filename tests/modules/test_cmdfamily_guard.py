@@ -29,7 +29,7 @@ def test_guard_area_uses_idle_scan_and_stance_after_quarry_dies(stance, returns)
     assert s.frame_now() == 15 and tank.chase is foe and tank.home == HOME
     assert tank.x > HOME[0]
 
-    s.destroy(foe, '测试')
+    s.world.kill(foe, '测试')
     simorder.fight(s, simorder.Peers(s))
     assert tank.chase is None
     if returns:

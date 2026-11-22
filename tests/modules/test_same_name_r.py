@@ -156,7 +156,7 @@ def test_a_miner_docked_before_loading_takes_nothing_from_a_node_that_has_left_t
     assert b.find(interfaces.OreMiner).node is new
 
 
-@pytest.mark.parametrize('end_it', ['destroy', 'delete'])
+@pytest.mark.parametrize('end_it', ['kill', 'remove'])
 @pytest.mark.parametrize('stage', ['to node', 'docked'])
 def test_a_node_killed_or_deleted_before_its_batch_is_reserved_gives_no_ore(stage, end_it):
     """Review 1119u P2 #4: a node destroyed stays in the world's bodies (dead) -- held() finds it by identity, so the
@@ -169,7 +169,7 @@ def test_a_node_killed_or_deleted_before_its_batch_is_reserved_gives_no_ore(stag
     old = s.bodies['node']
     end = _run(s, mining, (1, 2000), paid, lambda: b.mine is not None and b.mine['state'] == stage)
     assert b.mine['state'] == stage
-    getattr(s, end_it)(old, 'test')
+    getattr(s.world, end_it)(old, 'test')
     _run(s, mining, (end + 1, 3000), paid)
     assert mining.nodes[old.serial]['gathered'] == 0 and mining.nodes[old.serial]['at'] is not b
     assert paid == [] and b.mine['state'] == 'locate'
@@ -256,8 +256,8 @@ def test_a_dead_or_deleted_ones_name_may_be_taken_again():
     s = simsmall.small_world()
     p = s.add('p', GI, 'Player_1', 300.0, 300.0)
     q = s.add('q', GI, 'Player_1', 400.0, 300.0)
-    s.destroy(p, 'test')
-    s.delete(q, 'test')
+    s.world.kill(p, 'test')
+    s.world.remove(q, 'test')
     p2 = s.add('p', GI, 'Player_1', 300.0, 300.0)
     q2 = s.add('q', TANK, 'Player_1', 400.0, 300.0)
     assert s.bodies['p'] is p2 and s.bodies['q'] is q2 and p2 in s.living() and q2 in s.living()
@@ -280,7 +280,7 @@ def _queued_at_a_dead_factory(what):
     s.production.due(30)
     paid = 100000 - s.money['Player_1']
     assert paid > 0
-    s.destroy(f, 'test')
+    s.world.kill(f, 'test')
     f2 = s.add('f', f.template, 'Player_2', 1500.0, 1500.0)
     return s, f2, paid
 
@@ -350,7 +350,7 @@ def test_a_movement_power_running_on_a_dead_one_does_not_block_or_end_one_made_u
     p = s.add('p', 'JapanAntiVehicleVehicleTech3', 'Player_1', 300.0, 300.0)
     assert s.movement_power_press(p, RUSH, (p.x + 250, p.y))
     s.advance(30)                                                     # apart by more than a tick (advance's step)
-    s.destroy(p, 'test')
+    s.world.kill(p, 'test')
     p2 = s.add('p', 'JapanAntiVehicleVehicleTech3', 'Player_1', 300.0, 600.0)
     assert s.movement_power_press(p2, RUSH, (p2.x + 250, p2.y))       # not "a repeated press"
     (due2, *_), = [v for v in s.specials.movement_due.values() if v[1] is p2]
@@ -392,7 +392,7 @@ def test_an_ai_factory_made_under_a_dead_unpacking_ones_name_builds_at_once():
     br.unit_q = [GI]
     br.unit_due(30)
     assert br.unit_q == [GI] and not s.production.queues           # the old one still unpacking: nothing yet
-    s.destroy(old, 'test')
+    s.world.kill(old, 'test')
     new = s.add(old.name, 'AlliedBarracks', 'Player_1', 600.0, 300.0)   # not the AI's: ready
     br.unit_due(31)
     assert br.unit_q == [] and list(s.production.queues) == [new.serial]
@@ -478,7 +478,7 @@ def test_an_unpacked_builders_archive_key_leaves_a_dead_one_the_schedule_still_h
     assert s.production.at_site(mcv, 0.0)
     held = s.add('#packed 2 mcv', GI, 'Player_1', 900.0, 900.0)          # living, under the count after the pop
     dead = s.add('#packed 3 mcv', GI, 'Player_1', 1500.0, 900.0)
-    s.destroy(dead, 'test')
+    s.world.kill(dead, 'test')
     assert len(s.bodies) == 3 and any(m in s.world.schedule.seq for m in dead.modules)   # its AutoHeal still runs
     s.production.put_down(s.frame_now() + 10)
     assert s.bodies['#packed 2 mcv'] is held and s.bodies['#packed 3 mcv'] is dead
@@ -547,7 +547,7 @@ def test_a_name_an_attached_pair_holds_is_refused_and_the_link_stays():
     assert s.bodies['child'] is child and s.bodies['parent'] is parent
     assert s.attachments == {child.serial: (child, parent, link)}
     assert child.attachment_status == {'ATTACHED'} and parent.attachment_status == {'VEHICLE_ATTACHED'}
-    s.destroy(parent, 'test')
+    s.world.kill(parent, 'test')
     again = s.add('parent', TANK, 'Player_1', 360.0, 300.0)
     s.attachment_tick()
     again.x = 420.0
@@ -569,7 +569,7 @@ def test_a_last_attacker_does_not_keep_one_gone_from_the_world():
     before = s.add('u', GI, 'Player_1', 300.0, 300.0)
     gone = []
     for _ in range(32):
-        s.delete(before, 'test')
+        s.world.remove(before, 'test')
         now = s.add('u', GI, 'Player_1', 300.0, 300.0)
         now.set_last_damage('Player_2', before)
         gone.append(weakref.ref(before))

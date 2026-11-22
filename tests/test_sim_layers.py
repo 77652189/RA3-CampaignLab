@@ -98,8 +98,7 @@ WORLD_TAKERS = {'engine.objects.heal', 'engine.objects.mine', 'engine.players.mo
 
 # modules that reach their host beyond the world through a Peers loan: every `peers.X` they read is in their PEERS
 PEER_TAKERS = {'engine.orders.order', 'engine.orders.ability', 'engine.orders.hunt', 'engine.orders.seq', 'engine.combat.host',
-               'engine.ai.pullback', 'engine.combat.sweeps',
-               'engine.objects.garrison', 'engine.objects.infiltrator',
+               'engine.ai.pullback', 'engine.combat.sweeps', 'engine.objects.infiltrator',
                'engine.ai.core',
                'simproxy', 'engine.players.production'}
 # (simai, step 9d-2: a world and peers taker holding them as self.world / self.peers; since R3 13f-2d it names no

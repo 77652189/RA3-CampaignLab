@@ -4,7 +4,7 @@
 (`fire`) and an aircraft's falling wreck (`create`, `air_crash`) queued as death blasts) or deletes it (`delete`: no death) -- the one entry each (step B4b) --, sells a structure
 (`sell`: the refund; its StructureSellUpdate module deletes it later, as a lifetime's and a toppled prop's modules end
 theirs -- the expire cell's modules since steps M1, M2, M10) and runs LoseHealthUpdate (`lose_health`), over the world
-it is given (simworld.WORLD_API only). The peers it needs are handed in by the caller (Sim.destroy / delete / sell / lose_health): the garrison (simgarrison, L2), the
+it is given (simworld.WORLD_API only). The peers it needs are handed in by the caller (the kernel World's kill / remove, the script's sell, the frame's lose_health): the garrison (simgarrison, L2), the
 death-blast queue (L2 queues, L3's death_blast_due fires them), the ground's height, the template's toggles and the
 modifiers (L2), `destroy` itself for a lifetime's death, and the money's `credit` (L4) for a sale's refund -- this
 module never imports them.
@@ -87,7 +87,7 @@ class Life:
         world.note('出售', f'{world.label(b)}（退 {refund}）')
 
     def kill(self, world, b, why, death='NORMAL', cause=''):
-        """The one death entry (Sim.destroy, step B4b): b killed -- its Die modules told (module.Death, `death` its
+        """The one death entry (World.kill, step B4b): b killed -- its Die modules told (module.Death, `death` its
         death type: a crush's CRUSHED lies its SlowDeath out; `cause` 'lifetime' a death of age: its CreateObjectDie
         leaves its list, World.create; an aircraft's makes its wreck fall; its FireWeaponWhenDead fires, World.fire),
         then its Destroy modules (_out); an immortal body takes lethal damage instead, and a prop that cannot die falls
@@ -125,7 +125,7 @@ class Life:
                                  affects, b.owner, b, ally, False))
 
     def delete(self, world, b, why):
-        """The one deletion entry (Sim.delete, step B4b): b taken out, no death -- no lethal damage, no death weapon,
+        """The one deletion entry (World.remove, step B4b): b taken out, no death -- no lethal damage, no death weapon,
         no Die module told; its Destroy modules take its spawned children and passengers with it (_out)."""
         if b.alive:
             self._out(world, b, why, True)

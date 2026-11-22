@@ -594,12 +594,12 @@ class Sim:
         self.asked, self.up = {}, []        # a 功能 caption asked for (flag -> t), and shown: (flag, asked, shown)
         self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
         self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own),   # engine/kernel
-                                        kill=lambda b, why, death, cause: self.destroy(b, why, death, cause),
+                                        kill=lambda b, why, death, cause: self._life().kill(self, b, why, death, cause),
                                         create=lambda b, ocl, air, fight: self._life().create(
                                             self, b, ocl, air, self.death_blasts,
                                             lambda x, y: simdamage.impact_ground_z(self, x, y), fight),
                                         fire=lambda b, weapon: self._life().fire(self, b, weapon, self.death_blasts),
-                                        remove=lambda b, why: self.delete(b, why), modify=lambda b: simmodifier.modify(self, b),
+                                        remove=lambda b, why: self._life().delete(self, b, why), modify=lambda b: simmodifier.modify(self, b),
                                         pay=lambda b, amount: self.wallet.deposit(b.owner, amount),
                                         toggled=lambda b, m: simtoggle.entered(self, b, m, self.world.modify),
                                         suppression_at=lambda b, f: simdamage.suppression_at(
@@ -687,7 +687,7 @@ class Sim:
         self.assignments = simassign.Assignments(self)
         self.heal = simheal.Heal()          # AutoHeal / PassiveAreaEffect (L2)
         self.hunts = []                     # TEAM_HUNT's crews: [movers, target, frame to re-pick at] (Sim.hunt_due)
-        self.garrison = simgarrison.Garrisons(self, simgarrison.Peers(self), functools.partial(     # GarrisonContain /
+        self.garrison = simgarrison.Garrisons(self, functools.partial(     # GarrisonContain /
             simorder.order_move, self, simorder.Peers(self)))                  # ContestableGarrisonContain; its walk
         self.infiltrators = siminfiltrator.Infiltrators(self, siminfiltrator.Peers(self), self.wallet)
         self.bodies = {}                    # name -> Body (named ones), plus unnamed under '#k'
@@ -1273,7 +1273,7 @@ class Sim:
             r = math.hypot(*rally)
             k = (r + RALLY_PUSH) / r if r else 1.0
             b.mode = 'move'
-            self.send(b, at((rally[0] * k, rally[1] * k)))
+            simlocomotion.go_to(self, b, at((rally[0] * k, rally[1] * k)))
         self.change()
 
     def enemy(self, a, b):
@@ -1379,10 +1379,6 @@ class Sim:
     reach_of = staticmethod(simrange.reach_of)
     in_range = staticmethod(simrange.in_range)
 
-    def send(self, b, target, by='', reach=0.0, face=None):
-        """Put b on a way to target: simlocomotion.go_to (L2) says how; `by` is unused."""
-        simlocomotion.go_to(self, b, target, reach, face, self.frame_movers, self.topples)
-
     def label(self, b):
         role = next((k for k, r in self.m.cast.items() if r.name == b.name and b.name), '')
         return role or b.name or b.template
@@ -1402,19 +1398,8 @@ class Sim:
         return (b is not None and not b.alive and not b.deleted and 'DESTROYED' not in b.engine_status
                 and self.t - b.died_at <= b.linger + 1e-9)
 
-    def sell(self, b):
-        """simbody.Life.sell (L2): SELL_OBJECT -- the refund paid at once (simmoney.Money.credit), deleted 30 frames on."""
-        self._life().sell(self, b, self.garrison, self.world.modify, self.wallet.credit)
-
-    def destroy(self, b, why, death='NORMAL', cause=''):
-        """simbody.Life.kill (L2), the one death entry: b killed, its Die modules told its death type and cause."""
-        self._life().kill(self, b, why, death, cause)
-
-    def delete(self, b, why):
-        """simbody.Life.delete (L2), the one deletion entry: b taken out, no death (children, passengers with it)."""
-        self._life().delete(self, b, why)
-
     def _life(self):
+        """simbody.Life (L2): kill / delete / sell / lose_health; world.kill / world.remove are its death and deletion."""
         return _late(self, 'life')
 
     # ---- conditions
@@ -1664,7 +1649,7 @@ class Sim:
                     self.note('剧本', f'{self.label(b)} 打不动（UNATTACKABLE），没摧毁')
                     continue
                 b.set_last_damage(self.human, None)
-                (self.delete if verb == '删除' else self.destroy)(b, '剧本')
+                (self.world.remove if verb == '删除' else self.world.kill)(b, '剧本')
         elif verb == '血量':
             for b in self.pick(rest[0]):
                 b.health = float(rest[1])
@@ -1701,10 +1686,6 @@ class Sim:
         """One DT tick from self.t (the caller moves self.t on): the frame loop's table (simloop.FRAME, frame by
         frame, with the engine model or without it)."""
         return simloop.step(self)
-
-    def lose_health(self, frame):
-        """simbody.Life.lose_health (L2): LoseHealthUpdate while the body's own toggle carries its statuses."""
-        self._life().lose_health(self, frame, self.toggles_of)
 
     def can_hit(self, w, t):
         """A weapon's anti mask against a target: aircraft need ANTI_AIRBORNE, buildings ANTI_STRUCTURE (or
@@ -2141,7 +2122,7 @@ class Sim:
 
     def blast_due(self, frame):
         """simspecial.Specials.blast_due (L2): a superweapon's hits landing by `frame` (SUPERWEAPON_HITS)."""
-        self._specials().blast_due(self, frame, self.blasts, self.mark_first_death, self.destroy)
+        self._specials().blast_due(self, frame, self.blasts, self.mark_first_death, self.world.kill)
 
     def mark_first_death(self, t, by):
         """The fight's first death (first_death: run time, body, killer), kept once."""
@@ -2157,7 +2138,7 @@ class Sim:
 
     def movement_power_press(self, b, button, point):
         """simspecial.Specials.movement_power_press (L2): a MovementSpecialPower's rush to a point in range."""
-        return self._specials().movement_power_press(self, b, button, point, self.world.modify, self.send)
+        return self._specials().movement_power_press(self, b, button, point, self.world.modify)
 
     def self_power_press(self, b, button):
         """simspecial.Specials.self_power_press (L2): an ActivateModuleSpecialPower on self."""
@@ -2165,7 +2146,7 @@ class Sim:
 
     def leap_press(self, b, button, p):
         """simspecial.Specials.leap_press (L2): a ProjectileSelf leap (the Sickle's) to a point."""
-        return self._specials().leap_press(self, b, button, p, self.send, self.emp_book)
+        return self._specials().leap_press(self, b, button, p, self.emp_book)
 
     def self_power_due(self, frame):
         """simspecial.Specials.self_power_due (L2): leaps landing, rushes and self powers' bits running out."""
@@ -2174,12 +2155,12 @@ class Sim:
 
     def wfire_press(self, b, button, target=None):
         """simspecial.Specials.wfire_press (L2): a WeaponFireSpecialAbilityUpdate's button."""
-        return self._specials().wfire_press(self, b, button, target, self.send, self.emp_book)
+        return self._specials().wfire_press(self, b, button, target, self.emp_book)
 
     def wfire_due(self, frame):
         """simspecial.Specials.wfire_due (L2): the weapon-fire abilities going off by `frame`."""
         self._specials().wfire_due(self, frame, self.casts, self.death_blasts, self.player_ups, self.relation,
-                                   self.send, self.emp_book)
+                                   self.emp_book)
 
     def death_blast_due(self, frame):
         """simdamage.death_blast_due (L3): the death weapons going off by `frame`."""
@@ -2207,7 +2188,7 @@ class Sim:
                     pass                            # at / on the way to its fire_spot while the goal stays near it
                 elif not b.path or math.hypot(b.path[-1][0] - g.x, b.path[-1][1] - g.y) > 150:
                     if int(self.t / DT) % 8 == 0:                    # re-aimed every 4 s
-                        self.send(b, (g.x, g.y), reach=self.reach(b, g) if b.mode == 'attack' else 0.0)
+                        simlocomotion.go_to(self, b, (g.x, g.y), self.reach(b, g) if b.mode == 'attack' else 0.0)
             if b.building and self.production.at_site(b, 0.0):
                 continue
             if b.frame_move != precise:          # chasing a moving target may have replanned into / out of prop contact
@@ -2226,7 +2207,7 @@ class Sim:
                 # stopped with a foe in range, or its way ended mid-tick (an idle chase, an order's end): it aims
                 # from that frame, not the next tick's fight (bench engine_acquire idle220, A round 231)
                 self.mid_aims[b.serial] = (self.t + at, b)
-            simlocomotion.crush(self, b, x0, y0, precise, pool, self.attachments, self.topples, self.destroy)
+            simlocomotion.crush(self, b, x0, y0, precise, pool, self.attachments, self.topples, self.world.kill)
             self.change()
         self.attachment_tick()
         # what follows a coarse move in the frame (follow_due, capture_due, infiltrators.tick, auto_kill_due) are
@@ -2245,7 +2226,7 @@ class Sim:
             b.close_since = (b.close_since if b.close_since is not None else self.t) if close else None
             if close and self.t - b.close_since >= self.auto_kill:
                 b.set_last_damage(self.human, None)
-                self.destroy(b, f'自动打掉：在玩家 {REACH:g} 以内 {self.auto_kill:g} 秒')
+                self.world.kill(b, f'自动打掉：在玩家 {REACH:g} 以内 {self.auto_kill:g} 秒')
 
     def sample(self):
         """Every 10 seconds: the threat; every 30: what the player has seen (a check's counters: simloop.counters)."""

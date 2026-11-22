@@ -8,7 +8,7 @@ and flies the knocked bodies (`projectile_detonate`, `meta_impact_*`), melts and
 HitReaction. The module functions are the stateless rules: the flank scalar, the physics ground height, suppression
 sampling and death blasts. All over the world it is given (simworld.WORLD_API only).
 Its host's other parts come in as `peers` (`Peers`, the names in PEERS only, read when used so a swapped-in method
-still answers): the L2 body / modifier / status / locomotion calls (destroy, modify, emp_disabled, cold_of, the model
+still answers): the L2 body / modifier / status / locomotion calls (emp_disabled, cold_of, the model
 conditions, attachment_tick), the same-layer can_hit / shots_due, the host's own projectile_detonate /
 queue_projectile_hit (a test may intercept an arrival) and the fight state it shares (firing, volleys, the
 garrison, infiltrators, sweeps, attachments, player_ups, lift_timers, suppression_fields, death_blasts, chilling, the
@@ -28,7 +28,7 @@ import engine.objects.modifier as simmodifier
 from engine.modules import weaponset
 from engine.world.handle import GAP_WEAPON
 
-PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'destroy', 'emp_disabled', 'emp_until', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'lift_timers', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'suppression_fields', 'sweeps', 'volleys'})
+PEERS = frozenset({'attachment_tick', 'attachments', 'can_hit', 'chilling', 'cold_of', 'death_blasts', 'emp_disabled', 'emp_until', 'firing', 'garrison', 'has_model_condition', 'impact_flights', 'infiltrators', 'knock_hold', 'lift_timers', 'player_ups', 'projectile_detonate', 'queue_projectile_hit', 'set_model_condition', 'shots_due', 'suppression_fields', 'sweeps', 'volleys'})
 LAZY = frozenset({'impact_flights', 'knock_hold', 'emp_until'})     # the host makes these dicts on first use
 
 
@@ -242,7 +242,7 @@ def death_blast_due(world, frame, peers):
             if t.hp <= 0 and t.alive:
                 if world.first_death is None:
                     world.first_death = (world.t, t, by)
-                peers.destroy(t, f'被 {world.label(by)} 的死亡武器炸掉')
+                world.world.kill(t, f'被 {world.label(by)} 的死亡武器炸掉')
 
 
 class Damage:
@@ -409,7 +409,7 @@ class Damage:
             if t.hp <= 0 and t.alive:
                 if world.first_death is None:
                     world.first_death = (world.t, t, by)
-                peers.destroy(t, f'被 {world.label(by)} 打掉')
+                world.world.kill(t, f'被 {world.label(by)} 打掉')
         self.chill(world, dt, peers)
 
     def mark_cold(self, target, by):
@@ -464,4 +464,4 @@ class Damage:
                 if step >= 0:
                     world.note('冷冻', f'{world.label(t)} 冷冻到第 {step + 1} 档（{tr["steps"][step][0]:.0%} 生命值）')
                 if step >= 0 and tr['steps'][step][4] and t.alive:
-                    peers.destroy(t, f'被 {world.label(by)} 冻死')
+                    world.world.kill(t, f'被 {world.label(by)} 冻死')

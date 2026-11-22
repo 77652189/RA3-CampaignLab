@@ -1,8 +1,8 @@
 """L2 locomotion (ADR 0029, docs/engine/sim-layers.md): putting a body on its way -- the way's end and the route.
 
 `go_to` holds no command state (no mode, no target: the command layer's order_move sets those and comes here). It
-reaches the world only through simworld.WORLD_API; the frame-mover registry and the toppled bodies are handed in by
-the caller (Sim.send). The driving along the way (`drive`, `turn`) is Sim.move's past its gates, `crush` its tail.
+reaches the world only through simworld.WORLD_API (the frame-mover registry and the toppled bodies too); whoever
+sends a body calls it. The driving along the way (`drive`, `turn`) is Sim.move's past its gates, `crush` its tail.
 """
 import math
 
@@ -16,7 +16,7 @@ import engine.world.handle as simworld
 from engine.kernel import interfaces
 
 
-def go_to(world, b, target, reach, face, frame_movers, topples):
+def go_to(world, b, target, reach=0.0, face=None):
     """Put b on a way to target (a point, or a waypoint / area name); face: the facing (radians) to turn to at the
     way's end (move), None for none -- a new way drops an old one's. From standing it first turns in place toward
     its way (move, turn), whoever gave the order."""
@@ -50,14 +50,14 @@ def go_to(world, b, target, reach, face, frame_movers, topples):
     jet = simjet.start(world, b, path)
     points = [(b.x, b.y)] + path
     locomotor.write(world, b, jet_motion=jet, frame_move=jet is not None or any(
-        o.alive and simtopple.crosses(b, o, a, z, world.own) for o in topples if o is not b
+        o.alive and simtopple.crosses(b, o, a, z, world.own) for o in world.topples if o is not b
         for a, z in zip(points, points[1:])))
     if b.frame_move:
         if not b.path:
             locomotor.write(world, b, drive_speed=0.0)
-        frame_movers[b.name] = b
+        world.frame_movers[b.name] = b
     else:
-        frame_movers.pop(b.name, None)
+        world.frame_movers.pop(b.name, None)
     b.path = path
     world.change()
 

@@ -18,7 +18,7 @@ Not modelled: FollowTerrain (flat maps), SweepFXList, ObjectStatusValidation, a 
 starts another; retail has one per module -- INFERRED harmless at the bench's reload).
 
 L3 (combat). It is given the world (simworld.WORLD_API only); its host's other parts come in as `peers` (`Peers`, the
-names in PEERS only, read when used): L2 bodies' removal (destroy) and the fight's first death (mark_first_death)."""
+names in PEERS only, read when used): the fight's first death (mark_first_death); a death is the kernel World's (kill)."""
 import math
 import re
 
@@ -26,7 +26,7 @@ import engine.data.units as simunits
 
 _memo, _weapon_blocks = {}, None
 
-PEERS = frozenset({'destroy', 'mark_first_death'})
+PEERS = frozenset({'mark_first_death'})
 
 
 class Peers:
@@ -145,4 +145,4 @@ class Sweeps:
                 t.set_last_damage(by.owner, by)
                 if t.hp <= 0 and t.alive:
                     peers.mark_first_death(t, by)
-                    peers.destroy(t, f'被 {world.label(by)} 的伤害线打掉')
+                    world.world.kill(t, f'被 {world.label(by)} 的伤害线打掉')

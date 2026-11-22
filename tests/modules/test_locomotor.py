@@ -4,6 +4,7 @@ Sim.add takes. The census against the readers it replaced (stats' speed and surf
 now counts as NORMAL for locomotor_of too, as stats and turning already read it."""
 import pytest
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
+import engine.objects.locomotion as simlocomotion  # noqa: E402
 import engine.data.units as units  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces  # noqa: E402
@@ -46,5 +47,5 @@ def test_the_state_goes_on_a_moving_thing_only_and_the_forwards_read_it():
     p.path, u.face = [(5.0, 5.0)], 1.0
     assert p.find(interfaces.Locomotor).path == [(5.0, 5.0)] and u.path == [] and (m.face, m.dest) == (1.0, None)
     assert m.path is not p.path and m.path is not loco.LocomotorState.path
-    s.send(u, (400.0, 300.0))                       # M3 1: go_to writes its fields on the module
+    simlocomotion.go_to(s, u, (400.0, 300.0))                       # M3 1: go_to writes its fields on the module
     assert u.set_off == m.set_off == s.frame_now() and m.dest == (400.0, 300.0)

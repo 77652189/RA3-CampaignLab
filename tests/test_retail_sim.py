@@ -148,7 +148,7 @@ def test_objective_1_completes_when_the_soviets_are_gone(mission):
     assert not any('目标完成' in text for _, kind, text in s.log if kind == '目标')
     for b in s.living():
         if b.owner == 'Soviet_1' and b.template.lower() in s.of_types('objective 01 - soviet infantry'):
-            s.destroy(b, 'test')
+            s.world.kill(b, 'test')
     s.advance(5 * 15)
     done = [t for t, kind, text in s.log if kind == '目标' and text == '目标完成：MISSIONOBJ:A01_OBJECTIVE_1']
     assert done and 31 <= done[0] <= 32, s.log[-20:]

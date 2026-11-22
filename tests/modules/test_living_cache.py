@@ -47,7 +47,7 @@ def test_living_cache_tracks_same_frame_world_and_spawn_changes():
     _assert_view(world.living(), old_a, b)
     _assert_view(brain.living(), old_a, b)
 
-    world.delete(old_a, 'test')                         # (Sim.add refuses a living one's name)
+    world.world.remove(old_a, 'test')                         # (Sim.add refuses a living one's name)
     a = world.add('a', UNIT, world.human, 350, 300)
     _assert_view(world.living(), a, b)  # a reused name keeps its dict position
     world.proto(UNIT, world.human)
@@ -68,11 +68,11 @@ def test_living_cache_tracks_same_frame_world_and_spawn_changes():
     _assert_view(world.living(), a, b, house, yard, *drones)
     assert [p for p in brain.living() if p.owner == world.human] == [a, b, yard]
 
-    world.destroy(yard, 'test')  # the same broadcast deletes its drones
+    world.world.kill(yard, 'test')  # the same broadcast deletes its drones
     (pk,) = [p for p in world.living() if p.name.startswith('#left')]     # and leaves its Peacekeeper (CreateObjectDie)
-    world.delete(pk, 'test')
+    world.world.remove(pk, 'test')
     _assert_view(world.living(), a, b, house)
-    world.delete(b, 'test')
+    world.world.remove(b, 'test')
     _assert_view(brain.living(), a, house)
     _assert_view(world.living(), a, house)
     assert world.frame_now() == frame
@@ -82,7 +82,7 @@ def test_living_cache_is_rebuilt_on_same_frame_snapshot_restore():
     source = simsmall.small_world(OBJECTS, model=False)
     target = simsmall.small_world(OBJECTS, model=False)
     a, b = target.bodies.values()
-    source.delete(source.bodies['a'], 'test')
+    source.world.remove(source.bodies['a'], 'test')
     saved = simsnap.snapshot(source)
     source.living()
     assert not simsnap.unclassified(source)

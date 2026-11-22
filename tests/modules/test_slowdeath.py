@@ -59,8 +59,8 @@ def test_a_crushed_body_lies_its_delay_out_and_a_script_kill_lies_nothing():
     s.add('crushed', 'CNV_TestGuy', 'Player_1', 100.0, 100.0)
     s.add('killed', 'CNV_TestGuy', 'Player_1', 200.0, 100.0)
     crushed, killed = s.bodies['crushed'], s.bodies['killed']
-    s.destroy(crushed, 'crushed', death='CRUSHED')
-    s.destroy(killed, 'killed')
+    s.world.kill(crushed, 'crushed', death='CRUSHED')
+    s.world.kill(killed, 'killed')
     assert not crushed.alive and crushed.linger == 8.5 and s.dying(crushed) and s.present(crushed)
     assert not killed.alive and killed.linger == 0.0
     crushed.died_at = killed.died_at = s.t - 8.6                 # past the crushed one's lie
@@ -99,7 +99,7 @@ def test_a_die_module_before_the_slow_death_reads_this_deaths_lie(monkeypatch):
     s.add('first', 'CNV_TestFirst', 'Player_1', 600.0, 100.0)
     read = []
     monkeypatch.setattr(createobjectdie.CreateObjectDie, 'on_die', lambda self, info: read.append(self.thing.linger))
-    s.destroy(s.bodies['first'], 'crushed', death='CRUSHED')
+    s.world.kill(s.bodies['first'], 'crushed', death='CRUSHED')
     assert read == [2.0, 2.0]
 
 
@@ -118,5 +118,5 @@ def test_the_fields_are_in_the_frame_record_where_the_body_had_them():
     guy = s.bodies['guy3']
     state = simrecord.body_state(guy)
     assert (state['lies'], state['linger']) == (8.5, 0.0)
-    s.destroy(guy, 'crushed', death='CRUSHED')
+    s.world.kill(guy, 'crushed', death='CRUSHED')
     assert simrecord.body_state(guy)['linger'] == 8.5
