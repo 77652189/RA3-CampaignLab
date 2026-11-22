@@ -251,6 +251,14 @@ def _fork(a, b):
     assert simsnap.snapshot(b) == taken
 
 
+def test_a_sequential_script_for_no_team_leaves_the_script_alone():
+    """1121qq #1: TEAM_EXECUTE_SEQUENTIAL_SCRIPT to a team the name finds none of (engine.script.common.team_crew)
+    neither queues nor turns the script into a subroutine (it went on running as an ordinary script)."""
+    a = _seq_world()
+    a.act('TEAM_EXECUTE_SEQUENTIAL_SCRIPT', ['Player_1/teamNobody', 'seqtask'], None)
+    assert (a.seq, a.executor.script_named('seqtask').subroutine) == ([], False)
+
+
 def test_a_sequential_script_run_is_not_run_again():
     """1119e #1: the queued script turned subroutine; written back it stays one (not run every frame)."""
     a = _seq_world()
