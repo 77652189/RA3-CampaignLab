@@ -16,6 +16,7 @@ by the gap s7, at the goal s13; the soldier s10 / s22. A made structure is in a 
 """
 from maps import probe_block
 from parts import Mission, Script, Test, counted, square
+from model import status
 
 IFV = 'AlliedAntiAirVehicleTech1'
 TANK = 'AlliedAntiVehicleVehicleTech1'
@@ -24,6 +25,9 @@ PLUG = 'AlliedMCV'
 FOOT = 'AlliedAntiInfantryInfantry'
 LATE = 1.0
 AFTER = 4.0                        # foot: the order, 3 s after the late row is made
+GATE = 'GV_Ring02'                 # s02's cage doors: a retail civilian prop with no die module (a dead one stays)
+GATE_XS = (160.0, 185.0, 210.0, 235.0)     # gate: its bars across the straight way, x - x0 (each 26.7 long)
+OPEN = 2.0                         # gate: when the bars are killed / let through, 2 s before the order (s02's idle)
 LABEL = {'bits': '位图墙', 'built': '建筑墙', 'late': '后建墙', 'enemy move': '敌堵移动', 'enemy attack': '敌堵攻移'}
 
 
@@ -129,6 +133,29 @@ def foot(m):
     return t
 
 
+def gate(m, kill=False, nocoll=False):
+    """s02's cage doors (UNIT_CHANGE_OBJECT_STATUS NO_COLLISIONS on a door NAMED_KILL has just killed): foot's late
+    row with GATE bars in place of its three structures across the straight way; at OPEN the bars killed (kill) and
+    given NO_COLLISIONS (nocoll), then foot's order. Counters as foot's (11 round, 10 through) and the objects
+    carrying NO_COLLISIONS (无碰撞). Read (2026-11-22): engine_block.readings.toml; the player's ownership-of-type
+    counter reads 0 for these bars, standing or not, so it is not one."""
+    t = foot(m)
+    m.spawns.add(GATE)                             # made by script, nobody casts it
+    make = next(s for s in t.scripts if s.name == 'Test - late wall')
+    x0, y = probe_block.BOXES['late'][0][0], probe_block.ROW['late'][0][1]
+    make.do = [a for a in make.do if not (a[0].startswith('CREATE') and abs(t.waypoints[a[4]][0] - x0 - 200) < 50)]
+    bars = [f'UNIT - CNV Block Gate {k}' for k in range(len(GATE_XS))]
+    for name, dx in zip(bars, GATE_XS):
+        t.waypoints[name[11:]] = (x0 + dx, y)
+        make.do.append(('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', name, GATE, m.team('p1'), name[11:]))
+    make.do.append(('SET_MILLISECOND_TIMER', 'Test Block Gate', OPEN))
+    opened = [('NAMED_KILL', n) for n in bars if kill] + \
+        [('UNIT_CHANGE_OBJECT_STATUS', n, 'NO_COLLISIONS', 1) for n in bars if nocoll]
+    t.scripts.append(Script('Test - gate', [('TIMER_EXPIRED', 'Test Block Gate')], opened))
+    counted('Test Block NoColl', '无碰撞', t, status=status('NO_COLLISIONS'))
+    return t
+
+
 def enemy(m):
     t = Test()
     order = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
@@ -157,4 +184,5 @@ def plugs(m):
 
 # the builds this module makes and their checks (cnv/registry.py)
 MISSION = {'engine_block': mission}
-CHECKS = {'engine_block': {'wall': wall, 'made': made, 'foot': foot, 'enemy': enemy, 'plugs': plugs}}
+CHECKS = {'engine_block': {'wall': wall, 'made': made, 'foot': foot, 'enemy': enemy, 'plugs': plugs,
+                           'gk': lambda m: gate(m, kill=True), 'gn': lambda m: gate(m, nocoll=True)}}

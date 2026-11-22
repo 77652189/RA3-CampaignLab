@@ -31,3 +31,27 @@ expect = [
     "abs(first('后建墙', lambda v: v == 11) - 13) <= 2",
     "abs(first('后建墙步兵', lambda v: v == 11) - 22) <= 2",
 ]
+
+[[reading]]
+id = "block_a_script_sets_no_collisions_on_a_standing_object"
+scene = {build = "engine_block", check = "gn", until = 31}
+bench = "four GV_Ring02 bars (s02's cage doors) made at the start, at 2 s each given NO_COLLISIONS: 4 objects carry it from the s1 frame to s61 (bench 2026-11-22 run_queue engine_block gn; the same with the doors killed first)"
+proves = "script.act_object.unit_change_object_status: the bit is set on a standing object and read by PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS"
+item = "脚本动作 UNIT_CHANGE_OBJECT_STATUS:NO_COLLISIONS"
+expect = "rows[-1]['无碰撞'] == 4"
+
+[[reading]]
+id = "block_a_killed_door_stays_and_carries_no_collisions"
+scene = {build = "engine_block", check = "gk", until = 31}
+bench = "the four bars only NAMED_KILLed at 2 s: still 4 objects with NO_COLLISIONS to s61 -- a dead GV_Ring02 (no die module) stays and death sets the bit, so s02's own line adds nothing to it (bench 2026-11-22 gk)"
+proves = "objects.body: a dead structure without a die module stays in the world, NO_COLLISIONS on"
+expect = "rows[-1]['无碰撞'] == 4"
+mismatch = "sim 0 (a killed structure is gone at once, Body._gone); bench 4"
+
+[[reading]]
+id = "block_standing_cage_doors_stop_nobody"
+scene = {build = "engine_block", check = "gn", until = 31}
+bench = "the late row with the four bars where it crosses the straight way: the soldier 10 (straight through) by s13 with the bars standing, with or without NO_COLLISIONS, killed or not; the IFV 10 by s7 (bench 2026-11-22 gl / gn / gk / gkn alike; the camera was off the lane, the bars' facing not seen)"
+proves = "sim.Sim.blocks: a GV_Ring02 is not in a new order's way"
+expect = "rows[-1]['后建墙步兵'] == 10 and rows[-1]['后建墙'] == 10"
+mismatch = "sim 11 / 11 in gn (Sim.blocks: a structure out of platprops a 40 round; routes round by the gap); bench 10 / 10"
