@@ -8,7 +8,7 @@ it is given (simworld.WORLD_API only). The peers it needs are handed in by the c
 death-blast queue (L2 queues, L3's death_blast_due fires them), the ground's height, the template's toggles and the
 modifiers (L2), `destroy` itself for a lifetime's death, and the money's `credit` (L4) for a sale's refund -- this
 module never imports them.
-Fields it owns: its own `lose_of`; on a body `alive`, `deleted`, `died_at`.
+Fields it owns: its own `lose_of`, `blasts_of`, `made_of`; on a body `alive`, `deleted`, `died_at`.
 Two entries for the skirmish AI, which writes no body field itself: `last_until` (a lifetime the reader missed) and
 `fill` (the stats of a body simunits does not know, from the model's library).
 """
@@ -28,24 +28,34 @@ class Life:
     def __init__(self):
         self.lose_of = {}              # template -> simunits.lose_health rule
         self.blasts_of = {}            # death weapon -> simunits.weapon_blasts (the world's own templates are fixed)
+        self.made_of = {}              # (ObjectCreationList, fight) -> what Life.leave makes
 
-    def create(self, world, b, ocl, airborne, death_blasts, ground_z):
+    def create(self, world, b, ocl, airborne, death_blasts, ground_z, fight=False):
         """The kernel's make (World.create) for a CreateObjectDie (engine/modules/createobjectdie.py, step B5b): a
-        death in the air makes its wrecks fall (air_crash), a death of age leaves its list's objects (leave)."""
+        death in the air makes its wrecks fall (air_crash), a death of age or in a fight leaves (leave)."""
         if airborne:
             self.air_crash(world, b, ocl, death_blasts, ground_z)
         else:
-            self.leave(world, b, ocl)
+            self.leave(world, b, ocl, fight)
 
-    def leave(self, world, b, ocl):
+    def leave(self, world, b, ocl, fight=False):
         """What a death of age leaves (b killed, NAMED_DESTROYED, gone from areas at once -- bench 2026-11-07
         engine_life, no body lingers): each object its ObjectCreationList lists made where it stood, that frame, its
-        owner's, team's and facing (the ice core's wall)."""
-        for tmpl in simunits.ocl_objects(ocl, world.own):
+        owner's, team's and facing (the ice core's wall), at its nugget's health share (simunits.ocl_objects); a
+        death in a fight only the list's infantry (bench 11-22 aigarrbld: a power plant's Peacekeeper; in retail
+        only the structures' BuildingDestruction / BuildingSuicide lists make any -- the rubble, debris and effects
+        of the others are not made, INFERRED)."""
+        own = world.own
+        if (ocl, fight) not in self.made_of:
+            self.made_of[ocl, fight] = [(t, share) for t, share in simunits.ocl_objects(ocl, own)
+                                        if not fight or 'INFANTRY' in simunits.resolve(t, own)['kinds']]
+        for tmpl, share in self.made_of[ocl, fight]:
             n = world.add(simworld.free_name(world, '#left', f'of {b.name}'), tmpl, b.owner, b.x, b.y,
                           by=b.name, at=world.t)
             n.team, n.angle = b.team, b.angle
-            world.note('留下', f'{tmpl}（{world.label(b)} 寿命到了）')
+            if share < 1.0:
+                n.set_hp(n.max_hp * share)
+            world.note('留下', f'{tmpl}（{world.label(b)} {"被摧毁" if fight else "寿命到了"}）')
             if world.blocks(n):
                 world.reblock()
 

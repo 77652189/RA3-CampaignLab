@@ -104,14 +104,14 @@ class World:
             raise RuntimeError(f'World.kill({thing.name!r}): this world has no host to kill with')
         self._kill(thing, why, death, cause)
 
-    def create(self, thing, ocl, airborne):
+    def create(self, thing, ocl, airborne, fight=False):
         """A CreateObjectDie module's thing died and its ObjectCreationList `ocl` is to be made (step B5b): the host
         makes it where the thing died -- today a death of age's objects as things (simbody.Life.leave), and with
-        `airborne` a death in the air's falling wrecks as their landing's death blasts (simbody.Life.air_crash). A
-        world with no host makes nothing."""
+        `airborne` a death in the air's falling wrecks as their landing's death blasts (simbody.Life.air_crash), and with
+        `fight` a structure's death in a fight its survivors (Life.leave). A world with no host makes nothing."""
         if self._create is None:
             raise RuntimeError(f'World.create({thing.name!r}): this world has no host to make with')
-        self._create(thing, ocl, airborne)
+        self._create(thing, ocl, airborne, fight)
 
     def fire(self, thing, weapon):
         """A FireWeaponWhenDead module's thing died and its DeathWeapon goes off (step B5c): the host fires the

@@ -1955,10 +1955,17 @@ def ocl_wrecks(name, own=None):
 
 
 def ocl_objects(name, own=None):
-    """The templates an ObjectCreationList's <CreateObject> nuggets list, in order (each once a listing; Count, the
-    disposition and the other nuggets not read): what a death of age leaves (CreateObjectDie, Life.leave)."""
-    got = _ocl(name, own) if name else None
-    return re.findall(r'<CreateObject>\s*([^<\s]+)\s*</CreateObject>', got[1]) if got else []
+    """[(template, health share)] an ObjectCreationList's <CreateObject> nuggets list, in order (each once a listing;
+    Count, the disposition and the other nuggets not read): what a death of age or a structure's in a fight leaves
+    (CreateObjectDie, Life.leave). The share is the middle of the nugget's MinHealth..MaxHealth (default 1; the game
+    rolls it -- bench 11-22 aigarrbld: one Peacekeeper of ~0.55 off 0.3..0.75, INFERRED)."""
+    got, made, share = _ocl(name, own) if name else None, [], 1.0
+    for head, inner in re.findall(r'<CreateObject\b([^>]*)>([^<]*)', got[1] if got else ''):
+        if inner.strip():
+            made.append((inner.strip(), share))
+        else:                                               # the outer element: its health share
+            share = (_num(_attr(head, 'MinHealth'), 1.0) + _num(_attr(head, 'MaxHealth'), 1.0)) / 2
+    return made
 
 
 def crash_frames(position, velocity, ground, gravity=1.0):

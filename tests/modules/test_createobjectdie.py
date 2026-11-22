@@ -90,8 +90,25 @@ class _Host:
     def __init__(self):
         self.made = []
 
-    def create(self, thing, ocl, airborne):
-        self.made.append((ocl, airborne))
+    def create(self, thing, ocl, airborne, fight=False):
+        if not fight:                       # a death in a fight makes only infantry: none of these lists has any
+            self.made.append((ocl, airborne))
+
+
+def test_a_structure_dead_in_a_fight_leaves_its_owner_the_survivor_its_list_makes():
+    """Bench 11-22 aigarrbld 054620: the player's AlliedPowerPlant dies in a fight and leaves the player a Peacekeeper
+    (OCL_GenericAlliedBuildingDestruction, Min/MaxHealth 0.3/0.75: the middle, INFERRED) -- not its collapse (its
+    other list's), and not when its status is exempt (SOLD); a SUICIDED death is the Suicide list's, at full health."""
+    s = simsmall.small_world()
+    for name, x in (('pp', 100.0), ('pp2', 600.0), ('pp3', 1100.0)):
+        s.add(name, 'AlliedPowerPlant', 'Player_1', x, 100.0)
+    s.destroy(s.bodies['pp'], 'shot')
+    s.destroy(s.bodies['pp2'], 'shot', 'SUICIDED')
+    s.bodies['pp3'].status = s.bodies['pp3'].status | {'SOLD'}
+    s.destroy(s.bodies['pp3'], 'shot')
+    left = sorted((b.x, b.template, b.owner, b.hp / b.max_hp) for b in s.bodies.values() if b.alive)
+    assert left == [(100.0, 'AlliedAntiInfantryInfantry', 'Player_1', 0.525),
+                    (600.0, 'AlliedAntiInfantryInfantry', 'Player_1', 1.0)]
 
 
 def test_a_death_in_the_air_makes_the_first_airborne_module_s_wrecks_fall_and_on_the_ground_none():

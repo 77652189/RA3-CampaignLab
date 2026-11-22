@@ -595,9 +595,9 @@ class Sim:
         self.scenes = []                    # [start, end] of each 过场 (end None while it runs)
         self.world = kernel_world.World(lambda t, tag: simunits.module_blocks(t, tag, self.own),   # engine/kernel
                                         kill=lambda b, why, death, cause: self.destroy(b, why, death, cause),
-                                        create=lambda b, ocl, air: self._life().create(
+                                        create=lambda b, ocl, air, fight: self._life().create(
                                             self, b, ocl, air, self.death_blasts,
-                                            lambda x, y: simdamage.impact_ground_z(self, x, y)),
+                                            lambda x, y: simdamage.impact_ground_z(self, x, y), fight),
                                         fire=lambda b, weapon: self._life().fire(self, b, weapon, self.death_blasts),
                                         remove=lambda b, why: self.delete(b, why), modify=lambda b: simmodifier.modify(self, b),
                                         pay=lambda b, amount: self.wallet.deposit(b.owner, amount),

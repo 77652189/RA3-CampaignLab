@@ -8,13 +8,9 @@ def trips(lib):
     return {b: _probe_run(b, lib, 60.0)[1] for b in ('aifbshort', 'aifblong')}
 
 
-@pytest.mark.xfail(strict=True, raises=(AssertionError, StopIteration),
-                   reason='B round 230: since 65873f7c (Sim.reach_of = (AttackRange - 5) x the range multiplier, '
-                   'D162 read -- kept) aifbshort loses one Peacekeeper at s34-36 on the way home (步兵数 3 from row '
-                   '36; bench: four home s35-52, the retreat walks through the guards unhurt). Bisected with the '
-                   'model fixed at 22fde2a; why the shorter reach lets the guards hit the retreating team is not '
-                   'found (handoff-b 230)')
 def test_fallback_distance_both_teams_return_alive(trips):
+    # B round 230's xfail (aifbshort lost one Peacekeeper on the way home since 65873f7c) passes since structures
+    # dead in a fight leave their survivor (E, CreateObjectDie, model da5b198 and be5d767 alike); why not traced
     """checks/engine_aifallback.py: both reach the far area and return with four."""
     for build in ('aifbshort', 'aifblong'):
         rows = trips[build]

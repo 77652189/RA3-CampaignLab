@@ -4,8 +4,7 @@ it makes its ObjectCreationList when its DieMuxData takes the death (the private
 isDieApplicable): the death type in DeathTypes ('ALL' less its '-X's, or the types it names) and not in
 DeathTypesForbidden, the thing's status holding every RequiredStatus bit and no ExemptStatus bit.
 
-What the simulator keeps of it (INFERRED, kept from the readers it replaced; making every death's list -- the hulks,
-debris and rubble nearly every retail template has -- is a behaviour change for later, on the bench):
+What the simulator keeps of it (INFERRED, the first two kept from the readers it replaced):
   * a death of age (module.Death's cause LIFETIME, from a LifetimeUpdate read off the template -- a mission's own,
     the port's LifetimeUpdate rule; the skirmish AI's late one leaves nothing) makes the list's objects where it
     stood that frame (World.create: the ice core's wall; bench 2026-11-07 engine_life);
@@ -14,7 +13,13 @@ debris and rubble nearly every retail template has -- is a behaviour change for 
     (module.status_now: its status bits, AIRBORNE_TARGET in the air; B5 review e #6) (World.create airborne:
     Life.air_crash, checks/engine_crash_fall.py) -- the one list simunits.air_wrecks read; the death type is not
     read there (it read none);
-  * any other death makes nothing.
+  * any other death on the ground its block takes (death type, status as the death began) makes the list's infantry
+    only, at the middle of the nugget's MinHealth..MaxHealth (World.create fight: Life.leave, simunits.ocl_objects;
+    bench 11-22 aigarrbld 054620: the player's power plant dies in a fight and leaves the player a Peacekeeper of
+    150 at ~0.55 health that fires the next frame). In retail only the structures' Generic / ConYard
+    BuildingDestruction and BuildingSuicide lists make infantry; the hulks, rubble and debris the others make are
+    not made. Not read: UpgradeForbidden (Upgrade_NoSpawnUponDestruction, a PLAYER upgrade nothing in retail grants)
+    and REQUIRES_LIVE_PLAYER (the simulator has no defeated player); INFERRED.
 VeterancyLevels and the list's other nuggets (FX, debris, weapons) are not read.
 
 Kept from step B5b (B5 review e #5, the coordinator's ruling 11-19): the list is found by its name over every
@@ -57,6 +62,9 @@ class CreateObjectDie(module.Module, interfaces.Die, interfaces.CreateOnDeath):
         d, thing = self.data, self.thing
         if info.cause == LIFETIME and d.takes(info.death):
             self.world.create(thing, d.ocl, False)
+        elif thing.surface != 'air' and d.takes(info.death) and d.holds(
+                module.status_now(thing) if info.status is None else info.status):
+            self.world.create(thing, d.ocl, False, fight=True)
         if thing.surface == 'air' and self._first_airborne(info.status):
             self.world.create(thing, d.ocl, True)
 

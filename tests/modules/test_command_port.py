@@ -1517,7 +1517,7 @@ def test_a_posted_build_goes_to_the_factory_clicked_not_one_made_under_its_name(
     ran = [(ok, why) for _, c, ok, why in s.commands._issued if c.kind == 'build' and why != 'posted']
     assert len(ran) == 1 and not ran[0][0], ran
     assert not s.production.queues and s.money == {**s.money, 'Player_1': 100000, 'Player_2': 100000}
-    assert not [b for b in s.living() if b.template == gi]
+    assert not [b for b in s.living() if b.template == gi and not b.name.startswith('#left')]   # not a survivor
 
 
 def test_a_target_serial_alone_is_the_route_s_target_or_refused():

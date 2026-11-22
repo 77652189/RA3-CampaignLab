@@ -55,9 +55,10 @@ on both, the sim's there ~2.5 s early -- it walks from s0.5 (bench ordered f29) 
 id = "the_garrison_team_takes_the_shop_after_s56"
 scene = {build = "aigarrbld", check = "b", until = 75.0}
 bench = "aigarrbld: 商店归AI 0 to s56.2 (步兵在家 0 from s11)"
-proves = "simai GarrisonBuilding: when the team gets in -- the team state's fight on the way, then the walk"
+proves = """simai GarrisonBuilding: when the team gets in -- the team state's fight on the way, then the walk; the \
+plant's death in the fight leaves the player a Peacekeeper (CreateObjectDie, 054620 ext f631) the team fights in \
+state 2 (f635-f659) before it is sent on (f662)"""
 expect = "win(12, 56, '商店归AI') == [0] * 45"
 mismatch = """\
-sim 商店归AI 1 from s52: 4 s early = the plant falls ~1 s early (reading above), plant to shop 12 s (bench 15.3: \
-the plant's death list leaves the player a Peacekeeper, run 054620's ext log f631-f659, the team fights it -- the \
-sim's CreateObjectDie makes no list on such a death)"""
+sim 商店归AI 1 from s55 (bench s56.3): plant to shop now 15 s (bench 15.3, the Peacekeeper fought and the team sent \
+on, model be5d767); the 1.3 s left is the plant falling ~1 s early (the reading above)"""

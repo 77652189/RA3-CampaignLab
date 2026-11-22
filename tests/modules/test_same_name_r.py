@@ -288,7 +288,7 @@ def _queued_at_a_dead_factory(what):
 def test_a_unit_queued_at_a_factory_that_died_does_not_come_out_of_one_made_under_its_name():
     s, f2, paid = _queued_at_a_dead_factory(GI)
     s.production.due(30 * 60)
-    assert not [b for b in s.living() if b.template == GI]
+    assert not [b for b in s.living() if b.template == GI and not b.name.startswith('#left')]   # not its survivor
     assert s.money['Player_1'] == 100000 - paid and s.money['Player_2'] == 100000     # gone with it, not refunded
     assert not s.production.queues                                     # the dead one's queue went along
     assert s.order_build('Player_2', GI, factory=f2) and list(s.production.queues) == [f2.serial]
