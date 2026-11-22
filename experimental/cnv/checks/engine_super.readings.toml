@@ -118,3 +118,11 @@ bench = "most: the defenses 273 off the cast (240 and 300) end 16 / 33 (engine_s
 proves = "the proton collider's reach (power.SUPERWEAPON_HITS) passes 273, short of 300"
 expect = "rows[-1]['血240'] < 50 and rows[-1]['血300'] < 50"
 mismatch = "sim 100 / 100: SUPERWEAPON_HITS' last ring is 250 (fitted to 0 / 150 / 240); bench 16 / 33"
+
+[[reading]]
+id = "scripts8bm_two_the_power_goes_to_the_dearer_cluster"
+item = "脚本动作 SKIRMISH_FIRE_SPECIAL_POWER_AT_MOST_COST"
+scene = {build = "engine_scripts8bm", check = "two", until = 21}
+bench = "two, bench 11-22 CampS8bMTwo_mcp_1122_061345: most's build, the human keeping defenses 240 / 300 (x 1720 / 1180, y 3075) and the yard, plus four more (dtargets 0 / 150 / 250 / 350: x 1370-1720, y 1625): 血t240 / 血t300 / 血d0 / 血d150 100 to s7, end 100 / 100 / 33 / 50 -- the four hit, the two whole; most's landing (1450 / 3033) or its fixed spot would hit the two (sim end 100 / 100 / 9 / 31)"
+proves = "sim SKIRMISH_FIRE_SPECIAL_POWER_AT_MOST_COST picks the dearer of two clusters of the human's things (worth, not a fixed spot or the box's middle). The foe is the first human: a campaign AI (AIPlayer) has no current enemy -- a skirmish AI's (AISkirmishPlayer) is not modelled (act_ability; work/re a297)"
+expect = "rows[-1]['血t240'] == rows[-1]['血t300'] == 100 and rows[-1]['血d0'] < 50"

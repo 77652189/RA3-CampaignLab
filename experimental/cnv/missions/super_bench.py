@@ -62,6 +62,7 @@ def mission(name='CampSuper', crews=False, most=False):
         m.put(TANK, SITE, CURTAIN_SPOT[0] + dx, CURTAIN_SPOT[1] + dy, angle=0.0, role=f'tank {d}',
               name=_n(f'Tank {d}'))
     if most:     # engine_scripts8bm: the collider is s1's (a computer player), powered by this plant in the imploder's place
+        #          (and the dtargets the human's: a second, dearer cluster for checks/engine_scripts8b two)
         m.put('AlliedPowerPlant', SITE, *VAC_AT, side='s1', angle=0.0, role='spower', name=_n('SPower'))
     else:
         m.put(VAC, SITE, *VAC_AT, angle=0.0, role='vacuum', name=_n('Vacuum'))
@@ -82,7 +83,7 @@ def mission(name='CampSuper', crews=False, most=False):
     m.put(PSI, SITE, *PSI_AT, angle=0.0, role='psi', name=_n('Psi'))
     m.waypoint('psi spot', 'Test Psi Spot', SITE, *PSI_SPOT)
     for d, (dx, dy) in PSI_DIST.items():
-        m.put(TARGET, SITE, PSI_SPOT[0] + dx, PSI_SPOT[1] + dy, side='s1', angle=0.0, role=f'dtarget {d}',
+        m.put(TARGET, SITE, PSI_SPOT[0] + dx, PSI_SPOT[1] + dy, side='p1' if most else 's1', angle=0.0, role=f'dtarget {d}',
               name=_n(f'DTarget {d}'))
     for w, (key, (sx, sy)) in RAD_SPOTS.items():
         m.waypoint(f'radius spot {w}', key, SITE, sx, sy)
