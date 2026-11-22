@@ -83,7 +83,7 @@ import engine.orders.micro as simmicro  # noqa: E402
 import engine.objects.body as simbody  # noqa: E402
 import engine.world.handle as simworld  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
-from engine.ports import ai as ai_port  # noqa: E402
+from engine.ports import ai as ai_port, templates  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 import engine.combat.range as simrange  # noqa: E402
 
@@ -2163,8 +2163,7 @@ class SimAI:
         """round(UnpackTime x 15) (tools/aiopen.unpack_frames); 0 without the module."""
         tpl = self.lib.template(template)
         m = tpl.first('StructureUnpackUpdate') if tpl is not None else None
-        s = (m.attrs.get('UnpackTime') or '0s') if m is not None else '0s'
-        return round(float(s.rstrip('s')) * FPS)
+        return round(templates.secs(m.attrs.get('UnpackTime')) * FPS) if m is not None else 0
 
     def kinds(self, template):
         """KindOf of a template: simunits', else the model's library's (HOOKS 6)."""

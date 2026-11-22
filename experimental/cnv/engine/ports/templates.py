@@ -28,8 +28,8 @@ def num(v, default=0.0):
 
 
 def secs(v):
-    """A duration attribute ('0.5s') in seconds; nothing: 0."""
-    return num(v.rstrip('s')) if v else 0.0
+    """A duration attribute ('0.5s', '500ms') in seconds; nothing: 0."""
+    return (num(v[:-2]) / 1000 if v.endswith('ms') else num(v.rstrip('s'))) if v else 0.0
 
 
 def names(head, inner, name):
