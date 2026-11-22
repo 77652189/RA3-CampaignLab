@@ -818,7 +818,8 @@ def arm_drift(parts, a, b, *free):
     twin saying `b`, all of them one shift away and alike else (template, side, facing, properties); each unit of
     ours named for `a` has its twin lacking one whole XML element of it, nothing else, and some unit does. parts: the
     resolved Mission and Test; free: more Obj fields that may differ, said (and why) where CONTROL_ARMS declares them.
-    Scripts are not held (an arm's counter weights differ by design)."""
+    Scripts: each condition / action naming one arm's thing has its twin naming the other's (the rest, an arm's
+    counter weights, differ by design)."""
     was, now = (re.compile(rf'(?<![a-z]){t}(?![a-z])') for t in (a, b))
     off = lambda v: was.sub(b, v) if isinstance(v, str) else v     # noqa: E731
     out, took, shift = [], [], set()
@@ -841,6 +842,11 @@ def arm_drift(parts, a, b, *free):
         else:
             out.append(f'{u.id!r}: no twin {off(u.id)!r}')
     out += [f'{n!r}: no twin saying {a}' for n in list(twins) + [u for u in units if now.search(u)]]
+    said = lambda t: collections.Counter(repr(tuple(map(off, i))) for p in parts for s in getattr(p, 'scripts', ())  # noqa: E731
+                                         for i in s.when + s.do + s.orelse if any(t.search(str(v)) for v in i))
+    lost, more = said(was) - said(now), said(now) - said(was)      # a condition / action naming an arm's thing has
+    out += [f'script {k}: only in arm {a}' for k in sorted(lost)] + \
+        [f'script {k}: only in arm {b}' for k in sorted(more)]     # its twin in the other (weights free: tt P3 #7)
     if len(shift) == 1:     # an object named for neither arm inside one arm's box has its alike twin in the other
         (dx, dy), box = next(iter(shift)), {}
         for n, x, y, _ in things:
