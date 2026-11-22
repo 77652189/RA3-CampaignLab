@@ -5,7 +5,7 @@ is the script executor's own (engine/script/executor.py: the timers are its tabl
 Each condition is `fn(sim, name, a)`, moved verbatim out of Sim.cond's chain; simcond.cond looks them up in
 CONDITIONS. None back: not taken (a gap)."""
 from engine.script.cond_object import attacker
-from engine.script.common import CMP, SURFACES
+from engine.script.common import CMP, SURFACES, team_found
 from engine.world.handle import inside, same_team
 
 
@@ -57,7 +57,7 @@ def current_platform(sim, name, a):
 
 def team_has_units(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
-    if sim.absent_team(a[0]) or not sim.team_active(a[0]):
+    if not team_found(sim, a[0]):
         return False                        # D 115: looked up without activating -- no instance, no team: false
     # 码: any instance of the team's prototype with a living member that is no STRUCTURE / PROJECTILE /
     # IGNORE_FOR_VICTORY (a dying one is DESTROYED: not counted)
@@ -68,7 +68,7 @@ def team_has_units(sim, name, a):
 
 def team_inside_area_partially(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
-    if sim.absent_team(a[0]) or not sim.team_active(a[0]):
+    if not team_found(sim, a[0]):
         return False                        # D 115: looked up without activating -- no instance, no team: false
     # 码: the members considered (living, not INERT / MOVE_ONLY; k a bit of the AI module's set);
     # PARTIALLY = one of them inside, ENTIRELY = all and one at least. Bench 11-13 engine_conds team: a
@@ -89,7 +89,7 @@ def team_inside_area_partially(sim, name, a):
 
 def team_created(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
-    if sim.absent_team(a[0]) or not sim.team_active(a[0]):
+    if not team_found(sim, a[0]):
         return False                        # D 115: looked up without activating -- no instance, no team: false
     # bench 11-13 engine_conds team: one frame after a script made it (建队帧 1), a map team never (队形&32
     # off all along); which frame of the two INFERRED -- the one after the making
@@ -99,7 +99,7 @@ def team_created(sim, name, a):
 
 def team_some_have_object_status(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
-    if sim.absent_team(a[0]) or not sim.team_active(a[0]):
+    if not team_found(sim, a[0]):
         return False                        # D 115: looked up without activating -- no instance, no team: false
     # INFERRED (Generals evaluateTeamHasObjectStatus): the living members' bit; ALL holds on an empty team
     st = a[1][2] if isinstance(a[1], tuple) else a[1]
@@ -109,7 +109,7 @@ def team_some_have_object_status(sim, name, a):
 
 def team_attacked_by_player(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
-    if sim.absent_team(a[0]) or not sim.team_active(a[0]):
+    if not team_found(sim, a[0]):
         return False                        # D 115: looked up without activating -- no instance, no team: false
     # 码 (the player one): a living member's last damage recorded that player (its owner then, the attacker
     # gone or not). The object type one INFERRED: the attacker's template, read the same way

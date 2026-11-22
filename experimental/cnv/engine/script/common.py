@@ -54,3 +54,10 @@ def refined(name, a):
     if name in BUTTON_ACTIONS and len(a) > 1:
         return f'{name}:{a[1]}'
     return name
+
+
+def team_found(sim, team):
+    """The game finds a team by this name -- where the name is looked up: an AI's (Sim.named_team) while it has an
+    instance (absent_team), a map / script team's once it has one (team_active). Review 1121pp #1: an AI tactic team
+    of 5 was turned away for not being a map team."""
+    return sim.team_active(team) if sim.named_team(team) is None else not sim.absent_team(team)
