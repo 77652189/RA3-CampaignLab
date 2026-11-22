@@ -14,7 +14,7 @@
 |---|---|---|
 | 引擎 A（脚本层、物体模块、武器效果、录像比对） | 按总清单补规则，先补原版用量大的；录像解码 `experimental/replay/ra3replay.py` 已能读本机录像的命令 | 本机 `work/re/handoff.md` |
 | 引擎 B（遭遇战 AI） | AI 部分的清单已生成，按清单推进；几条一开就和测试台对不上的规则仍关着 | 本机 `work/re/handoff-b.md` |
-| 关卡 | 不推新关。A4 对照局收尾（测试台和模拟器的差别已归因到战斗模型，见 [story/sim-vs-bench-a4.md](story/sim-vs-bench-a4.md)）；接着做原版战役关验收题（测试台 mod 任务不写录像，原版关能否存录像还没试）和自动玩家框架 | [story/handoff-phase4.md](story/handoff-phase4.md) 最末一节 |
+| 关卡 | 纸面设计只做盟军 9 关，苏联、帝国两条线停着（用户 2026-11-22："先集中精力做盟军线"；Dot 的 J4 / J5 / S7 / S8 研究留在各流程稿末尾待定）。不推新关。A4 对照局收尾（测试台和模拟器的差别已归因到战斗模型，见 [story/sim-vs-bench-a4.md](story/sim-vs-bench-a4.md)）；接着做原版战役关验收题（测试台 mod 任务不写录像，原版关能否存录像还没试）和自动玩家框架 | [story/handoff-phase4.md](story/handoff-phase4.md) 最末一节 |
 | 模拟器界面 | 浏览器里能玩（`experimental/simui/`）；试玩版的快进和跳过场已做成开发热键（`experimental/cnv/playtest.py`）；跳阶段要读的阶段存档点清单格式是草稿，随关卡暂停 | [simui/handoff.md](simui/handoff.md) |
 | 策划 | A4 地图诊断 [story/map-diagnosis-a4.md](story/map-diagnosis-a4.md) 做完，原版实测规律并进 [story/map-language.md](story/map-language.md) 4.3；用户："先不做，先记文档，然后整理一下文档"——**地图先不改**，地图设计 skill 暂停 | [story/planning-handoff.md](story/planning-handoff.md) |
 | 外壳 | 11-06 做完笔记本演示包、I21、I22；能改的地图页、画新地图随关卡暂停 | [shell/handoff.md](shell/handoff.md) |
