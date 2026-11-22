@@ -71,9 +71,9 @@ class RecallUnits(SpecialPower, interfaces.Recall):
     produced Apollo benched: which ones past the cap, the way home, landing and parking slots INFERRED / not modelled."""
     DATA = RecallData
 
-    def members(self, living):
+    def members(self, things):
         me = self.thing
-        return [b for b in living if b.made_by == me.name and b.owner == me.owner
+        return [b for b in things if b.alive and b.made_by == me.name and b.owner == me.owner
                 and 'AIRCRAFT' in b.kinds][:self.data.most]
 
 

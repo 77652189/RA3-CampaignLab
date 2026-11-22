@@ -119,7 +119,7 @@ class Production:
         kind = 'LIMITED_PRODUCTION_AIRCRAFT'
         if kind not in simunits.stats(template, self.world.own)['kinds']:
             return True
-        kept = sum(1 for b in self.world.living() if b.made_by == f.name and kind in b.kinds) + sum(
+        kept = sum(1 for b in self.world.bodies.values() if b.alive and b.made_by == f.name and kind in b.kinds) + sum(
             1 for j in self.queues.get(f.serial, ()) if kind in simunits.stats(j['template'], self.world.own)['kinds'])
         return kept < sum(p.spots for p in f.find(interfaces.Parking))
 

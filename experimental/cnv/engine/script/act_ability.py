@@ -147,7 +147,7 @@ def named_buttons(sim, name, a, script, unit=None):
         b, power = body(a[0]), simunits.command_power(a[1], sim.own)
         sim.casts.append((sim.frame_now(), b.owner, power.lower(), b.serial, None))
         for m in b.find(interfaces.Recall):
-            for p in m.members(sim.living()) if m.power() == power else ():
+            for p in m.members(sim.bodies.values()) if m.power() == power else ():
                 _order(sim, 'move', p, pos=(b.x, b.y))
     elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
         script_cast(sim, name, a, unit)
