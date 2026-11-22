@@ -928,8 +928,8 @@ class Sim:
     def members(self, team):
         """A team's living members; a team template's (several instances: CREATE_REINFORCEMENT_TEAM) the OLDEST
         instance's that still has any (bench 11-10 engine_reinf old: the order by the name moved the first instance,
-        not the one made since; an emptied instance giving the name to the next is INFERRED)."""
-        named = self.named_team(team)
+        not the one made since; an emptied one giving the name on: INFERRED). A map team before an AI's (1122ss #3)."""
+        named = None if self.team_active(team) else self.named_team(team)
         if named is not None:
             return named[1]
         crew = [b for b in self.living() if same_team(b.team, team)]

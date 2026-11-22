@@ -22,7 +22,7 @@ def a(m):
     t.scripts.append(Script('Release - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
     for key, counter, label in [('release defense', 'CNV_R_Def', '防御人数'),
                                  ('release attack', 'CNV_R_Atk', '进攻人数')]:
-        team = m.map.TEAMS[key]
+        team = m.map.AI_TEAMS[key]
         t.counters.append((counter, label))
         t.scripts.append(Script(f'Release - {key} absent', [], [('SET_COUNTER', counter, 99)], once=False))
         for n in range(3):

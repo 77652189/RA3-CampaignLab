@@ -35,8 +35,8 @@ def mission(never):
                       '    <StrategicState id="CNVStateTF" State="CNVStateTF"/>\n'
                       '    <StrategicState id="CNVReleaseAttack" State="CNVReleaseAttack"/>')
     m.assets[0] = filename, xml, asset
-    m.map.TEAMS.update({'release defense': 'Soviet_1/CNVStateTF_StaticDefense_0_0',
-                        'release attack': 'Soviet_1/CNVReleaseAttack_SimpleAttack_0_0'})
+    m.map.AI_TEAMS.update({'release defense': 'Soviet_1/CNVStateTF_StaticDefense_0_0',
+                           'release attack': 'Soviet_1/CNVReleaseAttack_SimpleAttack_0_0'})
     m.facts.update({'never release': int(never), 'attack at': 35.0})
     # Same passive carrier as D's engine_aiteams.host_unit; keep content here
     # so the C check consumes only the mission interface (G5).

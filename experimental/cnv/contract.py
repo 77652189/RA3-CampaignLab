@@ -288,7 +288,7 @@ def team_orders_land(m):
     the order), or the team is one of the map's own or has a member placed in the map. A TEAM_STOP only needs the team
     to be joined by some script of the level (it adds nobody, so it follows an order given before)."""
     placed = {o.props.get('originalOwner') for o in m.objects if isinstance(getattr(o, 'props', {}).get('originalOwner'), str)}
-    own = set(getattr(m.map, 'TEAMS', {}).values()) | placed
+    own = set(getattr(m.map, 'TEAMS', {}).values()) | set(getattr(m.map, 'AI_TEAMS', {}).values()) | placed
     joined = {a[JOINS_TEAM[name]] for s in m.scripts if not s.name.startswith('Test')
               for name, *a in s.do if name in JOINS_TEAM}
     out = []
@@ -699,7 +699,8 @@ def contract(mission):
     for u in m.units:
         for p in u.abilities.values():
             powers.setdefault(p, []).append(u)
-    known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values()) | set(m.teams.values())),
+    known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values()) | set(getattr(m.map, 'AI_TEAMS', {}).values())
+                                    | set(m.teams.values())),
              WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values()) | {ALL_PLAYERS}),
              OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', set(powers) | RETAIL_POWERS | spellbook_powers()),
              COMMAND_ARG: ('command button', set(powers) | RETAIL_COMMANDS), OBJECTIVE_ARG: ('objective', {g.name for g in m.objectives}),

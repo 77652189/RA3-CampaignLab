@@ -15,7 +15,7 @@ from parts import Unit
 def mission(minimum, observe=False):
     m = team_mission(f'CampAICr{minimum}', tanks=0, inf=4, late=3, max_units=3)
     m.map = ai_map(m.map, library=False)
-    m.map.TEAMS['create team'] = f'{m.player("s1")}/CNVStateTF_SimpleAttack_0_0'
+    m.map.AI_TEAMS['create team'] = f'{m.player("s1")}/CNVStateTF_SimpleAttack_0_0'
     filename, xml, asset = m.assets[0]
     xml = xml.replace('</TeamTemplate>',
                       f'<CreateUnits UnitName="AlliedAntiVehicleVehicleTech1" '

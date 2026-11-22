@@ -819,7 +819,7 @@ def _teams(m, which):
     for tpl in ARMY:
         m.spawns.add(tpl)
     s1 = m.player('s1')
-    ai = {k[3:]: v for k, v in m.map.TEAMS.items() if k.startswith('ai ')}      # missions/aiskirm_bench.AI_TEAMS
+    ai = m.map.AI_TEAMS                                     # missions/aiskirm_bench.AI_TEAMS
     pool = ai['pool']
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
     if which == 'g':
@@ -940,7 +940,7 @@ def et(m):
         m.spawns.add(tpl)
     s1 = m.player('s1')
     m.spawns |= {'AlliedEngineer', 'OilDerrick'}          # the scripts' contract: templates the counters name
-    team = {k[3:]: v for k, v in m.map.TEAMS.items() if k.startswith('ai ')}['capture tech']
+    team = m.map.AI_TEAMS['capture tech']
     (dx, dy), = m.map.DERRICKS
     t.areas['Test Derrick'] = square(dx, dy, 250)
     t.areas['Test Ore'] = square(*ORE_TARGET, 120)      # small: the AI's base is ~600 away

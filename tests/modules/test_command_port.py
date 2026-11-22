@@ -371,6 +371,7 @@ def test_a_map_team_is_its_name_before_the_ais_lookup_and_a_missing_team_is_aske
     s.bodies['lone'].team = 'Player_1/G_0_0'
     s.active.add('Player_1/G_0_0')
     s.add_team_lookup(lambda t: {'Player_1/G_0_0': (False, []), 'Player_1/X_0_0': (True, [])}.get(t))
+    assert s.cond('TEAM_COMPARE_NUM_MEMBERS', ['Player_1/G_0_0', 2, 1])     # 1122ss #3: Sim.members map team first
     _act(s, 'NAMED_DELETE', 'lone')
     s.advance(1)
     assert s.cond('TEAM_DESTROYED', ['Player_1/G_0_0']) and not s.cond('TEAM_DESTROYED', ['Player_1/X_0_0'])

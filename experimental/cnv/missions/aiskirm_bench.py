@@ -50,7 +50,7 @@ AI_TEAMS.update({k: 'Soviet_1/' + v for k, v in OTHER_STATES.items()})
 
 
 def ai_map(base, library=True, player='Soviet_1'):
-    """`base` (a map module) with AI_TEAMS published; library=False also empties `player`'s script library list: the
+    """`base` (a map module) with AI_TEAMS published (review 1122ss #1: one in TEAMS read 0 members, not absent); library=False also empties `player`'s script library list: the
     container gives Player_2 and Soviet_1/2/3 Lib_Skirmish_Setup, whose start-up scripts (MAKE_BASE,
     UNIT_AI_TRANSFER_ALL, USE_REPAIRS 1 ...) run at frame 0, before this mission's own wake (handoff.md round 135).
     Same trick as engine_scripts9 _libraries."""
@@ -58,7 +58,7 @@ def ai_map(base, library=True, player='Soviet_1'):
     import mapstudy
     mod = types.ModuleType(base.__name__)
     mod.__dict__.update({k: v for k, v in vars(base).items() if not k.startswith('__')})
-    mod.TEAMS = dict(base.TEAMS, **{f'ai {k}': v for k, v in AI_TEAMS.items()})
+    mod.AI_TEAMS = dict(AI_TEAMS)      # not TEAMS: those are the map's own, a team with an instance (Sim.active)
     if not library:
         mod.LIBRARIES = dict(getattr(base, 'LIBRARIES', {}), **{player: ()})    # what model.libraries reads (line A)
 

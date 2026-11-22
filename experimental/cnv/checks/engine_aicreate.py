@@ -40,7 +40,7 @@ def a(m):
     counted('CNV_CR_Total', '坦克总数', t, template=tank, player=s1)
     counted('CNV_CR_Home', '坦克在家', t, template=tank, player=s1, area=area)
     counted('CNV_CR_Inf', '步兵在家', t, template=infantry, player=s1, area=area)
-    team = m.team('create team')
+    team = m.map.AI_TEAMS['create team']
     t.counters.append(('CNV_CR_Team', '招人队员'))
     t.scripts.append(Script('Test - unknown', [], [('SET_COUNTER', 'CNV_CR_Team', 99)], once=False))
     for n in range(9):
