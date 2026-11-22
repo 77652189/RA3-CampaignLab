@@ -75,10 +75,6 @@ class Body(Interface):
         """None unless a PropBody; then what a script kill does to it: 'dies' / 'stays'."""
         raise NotImplementedError
 
-    def damage_state(self):
-        """'pristine' / 'damaged' / 'really_damaged'."""
-        raise NotImplementedError
-
     def last_damage(self):
         """(player, object name) of the damage that came last (step B3, the Generals ActiveBody's last DamageInfo):
         player None -- a script's kill, or never hit; object None -- no object of ours (a run script's hit)."""

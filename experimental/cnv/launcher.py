@@ -34,11 +34,6 @@ HTA = os.path.join(HERE, 'play.hta')       # the launcher's window (two buttons)
 
 # ---- the icon ------------------------------------------------------------------------------------------------------
 
-def _star(cx, cy, tip, inner, first, n=5):
-    return [(cx + (tip if i % 2 == 0 else inner) * math.cos(first + i * math.pi / n),
-             cy + (tip if i % 2 == 0 else inner) * math.sin(first + i * math.pi / n)) for i in range(2 * n)]
-
-
 def draw_icon(size=1024):
     """The icon's master picture (RGBA, `size` square): drawn at twice the size and scaled down for smooth edges."""
     from PIL import Image, ImageDraw, ImageFilter

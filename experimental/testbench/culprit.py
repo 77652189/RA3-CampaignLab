@@ -173,9 +173,9 @@ def main(argv=None, root=ROOT):
     spec = importlib.util.spec_from_file_location('family_close', HERE / 'family_close.py')
     family = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(family)
-    golden = family._load('culprit_golden', HERE / 'golden.py')
-    cpupool = family._load('culprit_cpupool', HERE / 'cpupool.py')
-    model = family._load('culprit_modelpin', ROOT / 'experimental/cnv/modelpin.py')
+    golden = family.cpupool._load('culprit_golden', HERE / 'golden.py')
+    cpupool = family.cpupool._load('culprit_cpupool', HERE / 'cpupool.py')
+    model = family.cpupool._load('culprit_modelpin', ROOT / 'experimental/cnv/modelpin.py')
     logs = Path(golden.labpaths._work(root=os.fspath(root))) / 'logs'
     logs.mkdir(parents=True, exist_ok=True)
     log = logs / f'culprit_{datetime.datetime.now():%Y%m%d_%H%M%S_%f}.log'

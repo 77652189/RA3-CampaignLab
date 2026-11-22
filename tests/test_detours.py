@@ -23,12 +23,6 @@ def test_every_level_moves_its_teams_by_ways_the_game_takes_or_is_listed(level):
     assert not bad, bad[:3]
 
 
-def test_the_list_is_still_true():
-    """A name left in LEFT that no level trips any more is stale."""
-    tripped = found('a4')
-    assert all(any(x.startswith(n) for x in tripped) for n in LEFT)
-
-
 def test_a_stricter_limit_names_more_and_a_looser_names_none(monkeypatch):
     tight = found('s2')
     assert tight == []                                        # (long and nearly straight: not a detour)

@@ -35,12 +35,9 @@ CENTER_SOURCES = {'sim_src': 'experimental/cnv/sim.py', 'units_src': 'experiment
                   'loop_src': 'experimental/cnv/engine/loop/frame.py'}
 WORKERS = 2          # until the CPU token pool (handoff-r2 T5) says how many
 
-
-def _load(name, path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+_cpu_spec = importlib.util.spec_from_file_location('_cpupool_for_family_close', os.path.join(HERE, 'cpupool.py'))
+cpupool = importlib.util.module_from_spec(_cpu_spec)
+_cpu_spec.loader.exec_module(cpupool)
 
 
 def git(root, *args):
@@ -228,7 +225,7 @@ def main(argv=None):
     ap.add_argument('--light', action='store_true',
                     help='a small family (user 11-18): checks 1-4, the affected tests left to the coordinator\'s full run')
     a = ap.parse_args(argv)
-    golden = _load('golden', os.path.join(HERE, 'golden.py'))
+    golden = cpupool._load('golden', os.path.join(HERE, 'golden.py'))
     env = dict(os.environ)
     if a.base:
         env['GOLDEN_BASE'] = a.base
