@@ -28,11 +28,18 @@ Bench 11-12 (round 187, run_queue at c2a4fde5, both PASS):
 
 Model (sim.Sim.move): a body that moved this step faces its step's direction at once (INFERRED: instant; the
 true rate is only known to be above that).
+
+  rev    vshort / vnorth / vback / vtwice: NEXT_MOVE_IS_REVERSE (a08's Mirage, s02's Tsunamis) set at the start, then
+         sent as short / north, vback back to its spot and vtwice 60 further north 4 s later. Predicted from the data
+         (CanReverseMove, ReverseMoveSpeed 75 %): 40 40 40 44 if one move reverses. Bench 11-22 (A307): 44 44 40 44 --
+         each drove forward, as without the bit; pace (north plain / with the bit, 25-wide strips): the same strip
+         every half second. The bit changes nothing a script move shows (the model records it only).
 """
 from maps import probe_range
 from parts import Mission, Script, Test
 from checks.engine_missile import LOST_MAX, TARGET_ID, target
 from checks.engine_shot import FLANK_DAMAGE, DAMAGE, _nuggets, shot_v4
+from checks import engine_scripts8 as s8
 
 SHOOTER = 'CNV_HullV4'
 HULL_AT, HULL_REACH = 300.0, 250.0          # the Hammer this far north of its spot, the V4 this far south of it
@@ -44,9 +51,17 @@ PAIRS = {
     'east': ('removed', -300.0, (600.0, 0.0), 2.5), 'short': ('switch', 0.0, (0.0, 120.0), 2.5),
     'r15': ('order', -300.0, (0.0, 600.0), 0.15), 'r30': ('order', 300.0, (0.0, 600.0), 0.3),
     'r50': ('low', -300.0, (0.0, 600.0), 0.5), 'r80': ('low', 300.0, (0.0, 600.0), 0.8),
+    'vshort': ('base', 300.0, (0.0, 120.0), 2.5), 'vnorth': ('high', 300.0, (0.0, 600.0), 2.5),
+    'vback': ('switch', 300.0, (0.0, 120.0), 6.5), 'vtwice': ('removed', 300.0, (0.0, 120.0), 6.5),
 }
-GROUPS = {'turn': ('still', 'north', 'east', 'short'), 'rate': ('r15', 'r30', 'r50', 'r80')}
-RUN = MOVE + 2.5 + 3.0                       # the last fire order and its first hit, not the second
+# NEXT_MOVE_IS_REVERSE (a08, s02): these Hammers get the bit at the start; vback / vtwice are sent again this long
+# after the first move, back to where they stood / 60 further north (the bit used up by the first move, or not: the
+# V4 reaches 500, from 200); 'pace' fires nothing: the strip its Hammer is in
+REVERSED = {'vshort', 'vnorth', 'vback', 'vtwice'}
+AGAIN = {'vback': (4.0, (0.0, 0.0)), 'vtwice': (4.0, (0.0, 180.0))}
+GROUPS = {'turn': ('still', 'north', 'east', 'short'), 'rate': ('r15', 'r30', 'r50', 'r80'),
+          'rev': ('vshort', 'vnorth', 'vback', 'vtwice'), 'pace': ('north', 'vnorth')}
+STRIP = 25.0                                 # pace: a counter step is this far north of where the Hammer stood
 
 
 def _n(pair, part):
@@ -71,6 +86,7 @@ def hull_test(m, group):
     start = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
     start += [('UNIT_CHANGE_OBJECT_STATUS', _n(pair, part), 'NO_ATTACK', 1) for pair in PAIRS
               for part in ('Shooter', 'Target')]
+    start += [('UNIT_CHANGE_OBJECT_STATUS', _n(pair, 'Target'), 'NEXT_MOVE_IS_REVERSE', 1) for pair in REVERSED]
     start += [('SET_MILLISECOND_TIMER', 'Test Move', MOVE)]
     t.scripts.append(Script('Test - start', [], start))
     moves = []
@@ -81,8 +97,24 @@ def hull_test(m, group):
             spot = f'Test Hull {pair.title()} Goal'
             t.waypoints[spot] = (x + dx + go[0], y + HULL_AT + go[1])
             moves.append(('MOVE_NAMED_UNIT_TO', _n(pair, 'Target'), spot))
-        moves.append(('SET_MILLISECOND_TIMER', f'Test Fire {pair.title()}', fire))
+        if pair in AGAIN:
+            secs, go2 = AGAIN[pair]
+            t.waypoints[spot + ' 2'] = (x + dx + go2[0], y + HULL_AT + go2[1])
+            moves.append(('SET_MILLISECOND_TIMER', f'Test Again {pair.title()}', secs))
+            t.scripts.append(Script(f'Test - again {pair}', [('TIMER_EXPIRED', f'Test Again {pair.title()}')],
+                                    [('MOVE_NAMED_UNIT_TO', _n(pair, 'Target'), spot + ' 2')]))
+        if group != 'pace':
+            moves.append(('SET_MILLISECOND_TIMER', f'Test Fire {pair.title()}', fire))
     t.scripts.append(Script('Test - move', [('TIMER_EXPIRED', 'Test Move')], moves))
+    if group == 'pace':
+        for k, pair in enumerate(GROUPS[group]):
+            lane, dx, _, _ = PAIRS[pair]
+            x, y = m.site(f'{lane} gun')[:2]
+            y += HULL_AT
+            s8.total(t, f'CNV_Hull_P{k}', pair, [(j, ('NAMED_INSIDE_AREA', _n(pair, 'Target'), _strip(
+                t, f'Test Hull {pair.title()} {j}', x + dx, y + STRIP * j))) for j in range(1, 27)])
+        s8.watch(t, MOVE + 10.0, 0.5)
+        return t
     for k, pair in enumerate(GROUPS[group]):
         s, tg = _n(pair, 'Shooter'), _n(pair, 'Target')
         t.scripts.append(Script(f'Test - fire {pair}', [('TIMER_EXPIRED', f'Test Fire {pair.title()}')],
@@ -91,9 +123,16 @@ def hull_test(m, group):
         t.counters.append((c, pair))
         t.scripts += [Script(f'Test - {c} lost {j}', [('UNIT_HEALTH', tg, 0, 100 - j + 1)],
                              [('INCREMENT_COUNTER', 1, c)]) for j in range(1, LOST_MAX + 1)]
-    t.expect = [(GROUPS[group][0], 0, 'ever>=', 1, RUN - 1)]
-    t.bench = [('bench_watch', dict(seconds=RUN, every=1, sheet=False, lines=6))]
+    run = MOVE + max(PAIRS[p][3] for p in GROUPS[group]) + 3.0     # the last fire order and its first hit
+    t.expect = [(GROUPS[group][0], 0, 'ever>=', 1, run - 1)]
+    t.bench = [('bench_watch', dict(seconds=run, every=1, sheet=False, lines=6))]
     return t
+
+
+def _strip(t, name, x, y):
+    t.areas[name] = [(x - 100, y - STRIP / 2), (x + 100, y - STRIP / 2), (x + 100, y + STRIP / 2),
+                     (x - 100, y + STRIP / 2)]
+    return name
 
 
 MISSION = {'engine_hull': mission}

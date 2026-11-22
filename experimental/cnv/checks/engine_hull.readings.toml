@@ -13,3 +13,18 @@ scene = {build = "engine_hull", check = "rate", until = 9.5, shot_clock = true}
 bench = "11-12 round 187 rate: 44/44/44/44 percent lost (s5-s12)."
 proves = "Vehicle locomotion and ArmorTemplate rear damage: Hammers sent north already take the 110% rear scalar at the earliest tested fire delay, 0.15 s."
 expect = "list(rows[-1].values()) == [44, 44, 44, 44]"
+
+[[reading]]
+id = "hull_next_move_is_reverse_leaves_a_script_move_driven_forward"
+item = "脚本动作 UNIT_CHANGE_OBJECT_STATUS:NEXT_MOVE_IS_REVERSE"
+scene = {build = "engine_hull", check = "rev", until = 11.5, shot_clock = true}
+bench = "11-22 A307 run_queue engine_hull rev (CampHullRev_mcp_1122_132949): four Hammers given NEXT_MOVE_IS_REVERSE, then sent 120 / 600 north (behind them), 120 north then back, 120 then 60 more north: 44 / 44 / 40 / 44 (s9-s10) -- every one turned and drove forward, as the plain 'short' / 'north' Hammers of turn."
+proves = "act_object.unit_change_object_status: the bit is only recorded; a script's MOVE_NAMED_UNIT_TO after it is driven hull first (a reversed drive would show 40 / 40 / 44 / 40 or 40 / 40 / 40 / 44)."
+expect = "list(rows[-1].values()) == [44, 44, 40, 44]"
+
+[[reading]]
+id = "hull_next_move_is_reverse_keeps_the_full_speed"
+scene = {build = "engine_hull", check = "pace", until = 15}
+bench = "11-22 A307 run_queue engine_hull pace (CampHullPace_mcp_1122_133152): 25-wide strips north of the start, a Hammer sent 600 north plain and one with NEXT_MOVE_IS_REVERSE: the same strip every half second (1 at s3 ... 22 at s10, 24 from s11) -- no ReverseMoveSpeed 75 %."
+proves = "act_object.unit_change_object_status with locomotion.drive: the bit leaves the speed of a script move alone."
+expect = "all(r['north'] == r['vnorth'] for r in rows) and rows[-1]['vnorth'] == 24 and any(0 < r['vnorth'] < 24 for r in rows)"
