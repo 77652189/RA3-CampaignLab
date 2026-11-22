@@ -43,6 +43,7 @@ class Production:
         self.produced_to = None         # the last frame due ran
         self.placing = []               # (frame, structure, owner, team, x, y, by): a builder's, to put down (R5)
         self.pack_hold = {}             # a yard packing's frames held after, by serial (review 1119p #3: unsorted)
+        self.gifts = []                 # (due, unit, owner, x, y, team): free units brought, out when due (bring)
 
     def queue(self, serial, job):
         """Sim.order_build's job at the end of the factory's queue."""
@@ -152,6 +153,25 @@ class Production:
         """A yard packing (a script's button): b turns into `into` `frames` on, standing still `hold` frames after."""
         self.pack_hold[b.serial] = hold
         self.placing.append((self.world.frame_now() + frames, into, b.owner, b.team, b.x, b.y, b))   # by the thing
+
+    def bring(self, due, structure, owner, x, y, team):
+        """A structure the skirmish AI's yard set down whole brings its free unit -- a refinery its miner, by name
+        (INFERRED, bench aiopen 采矿车) -- out at `due` (its UnpackTime on, the giver's: bench aiopen 667 = refinery
+        + 60), 60 south of (x, y) on `team`; another structure nothing."""
+        if 'REFINERY' in simunits.stats(structure, self.world.own)['kinds']:
+            unit = structure.replace('Refinery', 'Miner')
+            if simunits.table().get(unit.lower()):
+                self.gifts.append((due, unit, owner, x, y, team))
+
+    def brought(self, frame, owner):
+        """The owner's free units due by `frame` made, in the order brought (its giver's tick asks: Brain.later_due)."""
+        world, out = self.world, []
+        for g in [g for g in self.gifts if g[0] <= frame and g[2] == owner]:
+            self.gifts.remove(g)
+            _, t, _, x, y, team = g
+            out.append(world.add(simworld.free_name(world, '#ai', t), t, owner, x, y + 60.0, by='skirmish AI',
+                                 at=world.t, team=team))
+        return out
 
     def put_down(self, frame):
         """The structures builders (the things that got there) put down by `frame` (at_site, pack); a replaced one

@@ -371,8 +371,15 @@ def _bare_brain(s, unpack):
     br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
     br.settings, br.observe = host.settings, host.observe
     br.commands, br.systems = host.commands, host.systems   # the command port, the players' systems (R3 13f-2c)
-    br.made, br.unit_q, br.trace, br.later = {}, [], [], []
+    br.made, br.unit_q, br.trace = {}, [], []
     return br
+
+
+def _ai_barracks(s, br):
+    """A barracks the AI set down at frame 0 (its made frame: unpacking from then on)."""
+    b = s.add('#ai AlliedBarracks', 'AlliedBarracks', 'Player_1', 300.0, 360.0, by='skirmish AI', at=s.t)
+    br.made[b.serial] = 0
+    return b
 
 
 def test_an_ai_factory_made_under_a_dead_unpacking_ones_name_builds_at_once():
@@ -381,9 +388,7 @@ def test_an_ai_factory_made_under_a_dead_unpacking_ones_name_builds_at_once():
     s = simsmall.small_world(model=False)
     s.money['Player_1'] = 10000
     br = _bare_brain(s, unpack=300)
-    br.later.append((0, 'AlliedBarracks', (300.0, 300.0), ''))
-    br.later_due(0)                                     # the AI's own: born now, unpacking 300 frames
-    (old,) = [b for b in s.living() if b.template == 'AlliedBarracks']
+    old = _ai_barracks(s, br)                           # the AI's own: born now, unpacking 300 frames
     br.unit_q = [GI]
     br.unit_due(30)
     assert br.unit_q == [GI] and not s.production.queues           # the old one still unpacking: nothing yet
@@ -399,9 +404,7 @@ def test_an_ai_unit_goes_to_the_ready_factory_it_picked_not_one_still_unpacking(
     s = simsmall.small_world(model=False)
     s.money['Player_1'] = 10000
     br = _bare_brain(s, unpack=300)
-    br.later.append((0, 'AlliedBarracks', (300.0, 300.0), ''))
-    br.later_due(0)                                     # A: the AI's own, unpacking 300 frames
-    (a,) = [b for b in s.living() if b.template == 'AlliedBarracks']
+    a = _ai_barracks(s, br)                             # A: the AI's own, unpacking 300 frames
     b = s.add('ready barracks', 'AlliedBarracks', 'Player_1', 600.0, 300.0)   # B: ready
     br.unit_q = [GI]
     br.unit_due(30)

@@ -27,7 +27,7 @@ def _world(w):
                     tuple((r.phase, r.state, r.was, r.target) for r in getattr(b, 'tactics', None).runs.values())
                     if getattr(b, 'tactics', None) else ())
                    for p, b in sorted(w.brains.items(), key=lambda kv: repr(kv[0])))
-    return bodies, tuple(sorted(s.money.items(), key=repr)), tuple(w.garrison.log), brains
+    return bodies, tuple(sorted(s.money.items(), key=repr)), tuple(s.garrison.log), brains
 
 
 def _steps(build, check, secs, record, lib):

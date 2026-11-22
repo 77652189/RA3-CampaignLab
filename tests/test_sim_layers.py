@@ -668,10 +668,8 @@ def test_ai_read_guard_bites():
         [('engine.ai.core', 'money')]
 
 
-# ADR 0037 phase 1: the AI (engine/ai) reaches only its AI_WORLD of the world API; the reads left beyond it, one row
-# each, come off as the steps move them behind the ports (a new one is red)
+# ADR 0037 phase 1: the AI (engine/ai) reaches only its AI_WORLD of the world API (step 4 took the last name beyond it)
 AI_PACKAGE = ('engine.ai.core', 'engine.ai.pullback')
-AI_WORLD_LEAKS = {('engine.ai.core', 'add')}   # the refinery's free miner (step 4: to the production rules)
 
 
 def _ai_world(source=None):
@@ -681,7 +679,7 @@ def _ai_world(source=None):
 
 
 def test_the_ai_reaches_only_its_world_names():
-    assert set(world_breaks(AI_PACKAGE, api=_ai_world())) == AI_WORLD_LEAKS
+    assert world_breaks(AI_PACKAGE, api=_ai_world()) == []
 
 
 def test_ai_world_guard_bites():

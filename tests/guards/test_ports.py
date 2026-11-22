@@ -401,9 +401,6 @@ MUTATORS = {'clear', 'append', 'extend', 'pop', 'popitem', 'insert', 'remove', '
             'reverse', 'add', 'discard', '__setitem__', '__delitem__', '__iadd__'}
 GIVERS = [AUTOPLAY / 'autoplay.py', AUTOPLAY / 'players.py', CNV / 'simproxy.py',   # simproxy: R3 13e
           CNV / 'engine/ai/core.py', CNV / 'engine/ai/pullback.py']                                 # the skirmish AI: R3 13f-1
-# What a giver does round the port that is no order (its functions): the AI's refinery's free miner coming out
-# (Brain.later_due: the refinery's FreeUnit, a module's behaviour, the refinery module's when it moves).
-GIVER_SHORTCUTS = {CNV / 'engine/ai/core.py': {'Brain.later_due'}}
 
 
 def _receiver(call):
@@ -413,10 +410,6 @@ def _receiver(call):
         return None
     v = f.value
     return v.id if isinstance(v, ast.Name) else v.attr if isinstance(v, ast.Attribute) else None
-
-
-def giver_harness(f):
-    return harness(f) | GIVER_SHORTCUTS.get(f, set())
 
 
 def _order_field(node):
@@ -475,7 +468,7 @@ SCRIPT_GIVERS = {CNV / 'engine/script/act_order.py': {'unit_teleport_to_waypoint
 
 def test_the_givers_give_through_the_command_port():
     for f in GIVERS:
-        assert giver_breaks(f.read_text(encoding='utf-8'), giver_harness(f)) == [], f.name
+        assert giver_breaks(f.read_text(encoding='utf-8'), harness(f)) == [], f.name
     for path, name in GIVER_PARTS:
         assert giver_breaks(part_src(path, name), set()) == [], (path.name, name)
     for path, gods_hand in SCRIPT_GIVERS.items():
@@ -557,13 +550,13 @@ def test_planted_orders_in_the_ai_are_found():
                      ("        if b and b.owner == self.player and self.give('toggle', b, args=(('button', info.command),))[0]:\n",
                       "        if b and b.owner == self.player and self.peers.toggle_miner_armor(b, info.command):\n")):
         planted = src.replace(old, new)
-        assert planted != src and giver_breaks(planted, giver_harness(f)), new
+        assert planted != src and giver_breaks(planted, harness(f)), new
     assert not giver_breaks(src + '\ndef f(self):\n    self.tactics.stand(1)\n    self.host.pullback.send(1, 2)\n'
-                            '    seen.add(3)\n', giver_harness(f))
+                            '    seen.add(3)\n', harness(f))
     f = CNV / 'engine/ai/pullback.py'
     src = f.read_text(encoding='utf-8')
     planted = src.replace("        peers.commands.do(Command('move', ", "        u.goal = None\n        peers.commands.do(Command('move', ")
-    assert planted != src and giver_breaks(planted, giver_harness(f))
+    assert planted != src and giver_breaks(planted, harness(f))
 
 
 def test_planted_orders_in_the_proxy_are_found():

@@ -115,6 +115,14 @@ class PlayerSystems:
         """Whether the factory has a production job queued."""
         return self._w.production.busy(factory.serial)
 
+    def bring(self, due, structure, player, x, y, team):
+        """A structure the player's AI set down brings its free unit (a refinery's miner) out at `due`."""
+        self._w.production.bring(due, structure, player, x, y, team)
+
+    def brought(self, player, frame):
+        """The player's free units due by `frame`, made now (in the order brought)."""
+        return self._w.production.brought(frame, player)
+
     def proto(self, template, player):
         """A thing of the template the world never placed, to read its figures off."""
         return self._w.proto(template, player)

@@ -96,8 +96,7 @@ import engine.combat.range as simrange  # noqa: E402
 # L3 simrange (13f-2b). It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
 PEERS = frozenset({'modify'})
 # ADR 0037 phase 1: the names of the world API the AI reaches (16, under half; the mission and the garrisons through the
-# settings and observation ports); it adds no body (a refinery's free
-# miner, world.add, is the one left, on its way to the production rules: tests/test_sim_layers.py AI_WORLD_LEAKS)
+# settings and observation ports); it adds no body (a refinery's free miner is the production rules': systems.bring)
 AI_WORLD = frozenset({'bodies', 'blocks', 'enemy', 'frame_now', 'ground', 'human', 'living', 'note', 'own',
                       'players', 'relation', 'relations', 't', 'waypoints', 'who', 'xml_of'})
 
@@ -311,7 +310,6 @@ class Brain:
         self.unit_q = []                # [template] waiting for a free, unpacked factory that makes it
         self.made = {}                  # body serial -> frame it came (same-name sweep 11-19b O63: not by name) (structures: unpack; units: the trace)
         self.wrappers = {}              # body serial -> Unit (by serial: review 11-19 q P2 #1)
-        self.later = []                 # (frame, template, (x, y), team): a refinery's miner
         self.trace = []                 # (frame, 'own' | 'out', template): what came when
         self.born = self.frame = frame  # the brain thinks from here (its states and teams: before the wake)
         self.woke = None                # the frame 'make base' was told (the mission's wake): wake()
@@ -1839,19 +1837,12 @@ class Brain:
             self.made[placed.serial] = frame
         self.trace.append((frame, 'own', template))
         world.note('AI', f'{world.who(self.player)} 放下 {template}')
-        miner = self.host.free_unit(template)
-        if miner:
-            self.later.append((frame + self.host.unpack(template), miner, (x, y), yard.team))
+        self.systems.bring(frame + self.host.unpack(template), template, self.player, x, y, yard.team)
 
     def later_due(self, frame):
-        world = self.world
-        for job in [j for j in self.later if j[0] <= frame]:
-            self.later.remove(job)
-            _, t, (x, y), team = job
-            b = world.add(simworld.free_name(world, '#ai', t), t, self.player, x, y + 60.0, by='skirmish AI',
-                          at=world.t, team=team)
+        for b in self.systems.brought(self.player, frame):     # a refinery's free miner (the production rules')
             self.made[b.serial] = frame
-            self.trace.append((frame, 'out', t))
+            self.trace.append((frame, 'out', b.template))
 
     # ---- units, one at a time a factory
     def unit_due(self, frame):
@@ -2182,13 +2173,6 @@ class SimAI:
             tpl = None if st['kinds'] else self.lib.template(template)
             self._kinds[template] = set(st['kinds']) if st['kinds'] else set(tpl.kinds) if tpl is not None else set()
         return self._kinds[template]
-
-    def free_unit(self, template):
-        """The unit a structure brings along (a refinery's miner; INFERRED by name, bench aiopen 采矿车)."""
-        if 'REFINERY' in simunits.stats(template, self.world.own)['kinds']:
-            miner = template.replace('Refinery', 'Miner')
-            return miner if simunits.table().get(miner.lower()) else None
-        return None
 
     def own_personalities(self):
         """The AI personalities the mission writes into its mod (Mission.assets, AIPersonalityDefinition:...) added to
