@@ -28,7 +28,7 @@ def minimum(name, limit, named=False):
     return m
 
 
-def two_candidates(name, limit, clear=False, search=1200):
+def two_candidates(name, limit, clear=False, search=1200, enemy='AlliedPowerPlant'):
     """Only the minimum changes: near oil has an enemy plant 200 away.
 
     The farther oil is over 1000 from that stationary enemy. At zero the
@@ -38,12 +38,13 @@ def two_candidates(name, limit, clear=False, search=1200):
     B 11-21 (work/re/b1121_mindist.md): not the scenery by the far oil (clear:
     still home); SearchRange 3000 takes the far oil -- at 1200 it is out of
     range from the engine's AI base point (not the yard, 1011 off) at f16.
+    enemy: the p1 structure 200 from the near oil (a wall should not count).
     """
     m = minimum(name, limit)
     asset, xml, ref = m.assets[0]   # B 11-21 H7: the SearchRange the find measures from the AI base
     m.assets[0] = asset, xml.replace('SearchRange="1200"', f'SearchRange="{search}"'), ref
     for role, template, side in (('barracks', 'OilDerrick', 'neutral'),
-                                 ('tank', 'AlliedPowerPlant', 'p1')):
+                                 ('tank', enemy, 'p1')):
         obj = m.find(m.role(role).name)
         obj.template, obj.side = template, side
         m.cast[role] = dataclasses.replace(m.cast[role], template=template, side=side)
@@ -52,8 +53,9 @@ def two_candidates(name, limit, clear=False, search=1200):
     enemy.x, enemy.y = near.x, near.y + 200
     m.ext, m.ext_logs = True, ('target',)  # B 11-21: tgt: lines give each oil's verdict per find
     m.facts['minimum enemy distance'] = limit
-    m.facts['expect near oil'] = 4 if limit == 0 else 0
-    m.facts['expect far oil'] = 0 if limit == 0 else 4
+    near_ok = limit == 0 or 'Wall' in enemy.template     # the enemy-distance find skips walls (b1121_mindist.md)
+    m.facts['expect near oil'] = 4 if near_ok else 0
+    m.facts['expect far oil'] = 0 if near_ok else 4
     if clear:   # B 11-21: the map's civilian scenery (fences, houses, trees) within 600 of the far oil removed
         far = m.find(m.role('barracks').name)
         layout = types.ModuleType(m.map.__name__)
@@ -97,6 +99,7 @@ MISSION = {
     'aimindpair350': lambda: two_candidates('CampMinPair350', 350),
     'aimindpairclr': lambda: two_candidates('CampMinPairClr', 350, clear=True),
     'aimindpairfar': lambda: two_candidates('CampMinPairFar', 350, search=3000),
+    'aimindpairwal': lambda: two_candidates('CampMinPairWal', 350, search=3000, enemy='AlliedWallSegmentPiece'),
     'aitechkind': lambda: tech_kind('CampTechKind'),
     'aitechnon': lambda: tech_kind('CampTechNon', False),
 }

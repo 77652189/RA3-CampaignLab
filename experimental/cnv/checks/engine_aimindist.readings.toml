@@ -38,9 +38,10 @@ expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]
 id = "min_enemy_distance_two_candidates"
 scene = {build = "aimindpair0", check = "a", until = 41}
 each = [{build = "aimindpair0", want = [4, 0, 0, 4]}, {build = "aimindpair350", want = [0, 0, 4, 4]},
-        {build = "aimindpairclr", want = [0, 0, 4, 4]}, {build = "aimindpairfar", want = [0, 4, 0, 4]}]
-bench = "Two oils (C 2026-11-13, B 2026-11-21), counters (near oil, far oil, home, total) at s40-41: 0 -> 4/0/0/4; 350 -> 0/0/4/4; 350 with the scenery round the far oil cleared -> 0/0/4/4; 350 with SearchRange 3000 -> 0/4/0/4 (from s31)."
-proves = "TechBuilding: the near oil (200 from an enemy plant) fails 350, the far one passes it but lies beyond SearchRange 1200 from the AI base centre, the centroid of the AI's units (not its yard); work/re/b1121_mindist.md"
+        {build = "aimindpairclr", want = [0, 0, 4, 4]}, {build = "aimindpairfar", want = [0, 4, 0, 4]},
+        {build = "aimindpairwal", want = [4, 0, 0, 4]}]
+bench = "Two oils (C 2026-11-13, B 2026-11-21), counters (near oil, far oil, home, total) at s40-41: 0 -> 4/0/0/4; 350 -> 0/0/4/4; 350 with the scenery round the far oil cleared -> 0/0/4/4; 350 with SearchRange 3000 -> 0/4/0/4 (from s31); the same with the enemy plant swapped for an enemy wall piece -> 4/0/0/4 (from s9)."
+proves = "TechBuilding: the near oil (200 from an enemy plant) fails 350, the far one passes it but lies beyond SearchRange 1200 from the AI base centre, the centroid of the AI's units (not its yard); an enemy wall does not count as the enemy within it; work/re/b1121_mindist.md"
 item = "AI 目标/AITargetingHeuristic.MinDistanceFromEnemy"
 let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
 expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]

@@ -43,5 +43,5 @@ def pair(m):
     return t
 
 CHECKS = {build: {'a': a} for build in ('aimind0', 'aimindhi', 'aimindctl')}
-CHECKS.update({build: {'a': pair} for build in ('aimindpair0', 'aimindpair350', 'aimindpairclr', 'aimindpairfar')})
+CHECKS.update({build: {'a': pair} for build in ('aimindpair0', 'aimindpair350', 'aimindpairclr', 'aimindpairfar', 'aimindpairwal')})
 CHECKS.update({build: {'a': a} for build in ('aitechkind', 'aitechnon')})
