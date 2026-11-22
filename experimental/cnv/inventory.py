@@ -185,10 +185,6 @@ BENCHED_TESTS = {
     # too), re-picked after each one dies; NAMED_HUNT moves a woken AI's unit neither
     # round 219 (checks/engine_acts9.py all): on -- off every team; off -- back onto the map default team, with a
     # hidden member (the AI wake UNIT_AI_TRANSFER_ALL adds is not in it: program, not benched)
-    # round 221 (checks/engine_acts10.py all): ability buttons in one run -- the bomber's untargeted eject, the
-    # Twinblade's evacuate, the spider hole, the two transforms (with their locomotors), the team's button at a spot
-    (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY:Command_AlliedAntiInfantryVehicleEvacuate'):
-        'tests/test_ifvevac_bench_e.py::test_ifvevac_named_measured_snapshots',
     # round 223 (checks/engine_acts11.py all): EVACUATE on a ground transport / a civilian block (out at once), the
     # Apocalypse's harpoon, both mirage fields, the Kirov's afterburners (its LoseHealthUpdate while on)
     # (engine_acts11.py t): the Japanese tower's toggle takes a press only with power; the Sickle's button on it: none

@@ -7,3 +7,4 @@ scene = {build = "ifvevac_e", check = "a", until = 12}
 bench = "E179 original Riptide evacuation button: frame 120, before the press 11, after 10, alive 1111 (named bench replay)"
 proves = "transport evacuation (IFV): the button unloads one crew member; the unpressed twin and the others stay"
 expect = "list(rows[-1].values()) == [120, 11, 10, 1111]"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_AlliedAntiInfantryVehicleEvacuate"
