@@ -57,13 +57,16 @@ def test_a4_the_convoy_reaches_the_halt_alive_with_a_report(a4_run):
     leg is on a knife edge for the proxy (level line's, docs/story/handoff-phase4.md A4).
     11-18 (R3, adfe8a0e path straightening from the bench's rule, 有意改行为): the edge tips back -- the convoy halts
     with all three trucks alive and the run goes to the clock (no bench reading of this run; the simulator's own
-    outcome, work/logs/r3_a4_main.log)."""
+    outcome, work/logs/r3_a4_main.log).
+    11-22 (B, 981e1b30 the Peacekeeper's taper, bench aigarrbld): the relief's Peacekeepers clear the ice and the
+    horn troops at ~25 a shot, not 40 -- the convoy still halts, but one truck dies on the way (untapered the last
+    of the three halted on 64). Judged: the leg is won, two trucks at least."""
     rep, w = a4_run
     s = w.sim
     assert rep['result'] == 'timeout'
     assert s.flags.get('CNV_A4_Halted')
     trucks = [b for n, b in s.bodies.items() if b.template == 'CNV_ConvoyTruck']
-    assert len(trucks) == 3 and all(b.alive for b in trucks)
+    assert len(trucks) == 3 and sum(b.alive for b in trucks) >= 2
     assert json.loads(json.dumps(rep, ensure_ascii=False)) == rep   # plain JSON values
     assert set(rep['goals']) == {'会场冻街口', '最后一程冻口子', '拆北营指挥所'}
     assert rep['sorties'] >= 1 and rep['peak_army'] >= 10          # it fought: the ten it starts with, the engineers
@@ -79,7 +82,7 @@ def test_the_score_screen_is_the_simulators_deaths(a4_run):
     dead = [b for b in w.sim.bodies.values() if not b.alive and not b.deleted and not b.scenery
             and b.life_end is None]
     assert len(got) == len(dead)
-    assert got                                                      # (no truck among them: all three halt alive)
+    assert got                                                      # (one truck among them since 981e1b30: an ally's)
     assert all(l.owner != w.me for l in got if l.template == 'CNV_ConvoyTruck')   # the convoy is an ally's
     assert all(l.kind in w.pw.KINDS for l in got)
     assert [l.frame for l in got] == sorted(l.frame for l in got)
