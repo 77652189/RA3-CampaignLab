@@ -86,12 +86,14 @@ def named_stop(sim, name, a, script):
 def unit_context_sensitive_attack(sim, name, a, script):
     # (unit, target). Bench 11-13 engine_acts_u: an engineer on an enemy plant takes it (SKIRMISH_AI_DO_NOT_TAKE
     # on it or not, the uncommanded one beside another plant does not); a tank on an enemy plant 210 off never
-    # fired in 30 s, on its own plant neither -- so not "attack". What else it does (repair, enter) INFERRED: nothing
-    b, g = sim.body(a[0]), sim.body(a[1])
-    if b and g and b.alive and g.alive and sim.engineer_entry(b, g):
-        _order(sim, 'capture', [a[0]], target=a[1])
-    elif b and g:
-        sim.note('无效命令', f'{name} {a[0]} -> {a[1]}：只认工兵占楼（台上坦克对敌楼不开火）')
+    # fired in 30 s, on its own plant neither -- so not "attack". What else it does (repair, enter) INFERRED: nothing.
+    # The team action: the same on every member (its handler loops the members through the unit one's call)
+    g = sim.body(a[1])
+    for b in [sim.body(a[0])] if name.startswith('UNIT') else sim.members(a[0]):
+        if b and g and b.alive and g.alive and sim.engineer_entry(b, g):
+            _order_bodies(sim, 'capture', [b], target=a[1])
+        elif b and g:
+            sim.note('无效命令', f'{name} {b.name} -> {a[1]}：只认工兵占楼（台上坦克对敌楼不开火）')
 
 
 def team_move_to_nearest_object_of_type(sim, name, a, script):
@@ -316,6 +318,7 @@ ACTIONS = {
     'UNIT_GUARD_AREA': unit_guard_area,
     'NAMED_STOP': named_stop,
     'UNIT_CONTEXT_SENSITIVE_ATTACK': unit_context_sensitive_attack,
+    'TEAM_CONTEXT_SENSITIVE_ATTACK': unit_context_sensitive_attack,
     'TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE': team_move_to_nearest_object_of_type,
     'TEAM_GUARD_AREA_FROM_POSITION': team_guard_area_from_position,
     'NAMED_FACE_WAYPOINT': named_face_waypoint,

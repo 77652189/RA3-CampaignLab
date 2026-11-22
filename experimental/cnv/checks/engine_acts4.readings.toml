@@ -27,3 +27,23 @@ expect = [
     "vals(rows)[-1][3] == 18400",
     "4.0 <= pows[-1] - pows[0] <= 5.5",
 ]
+
+[[reading]]
+id = "acts_ut_team"
+item = [
+    "脚本动作 TEAM_CONTEXT_SENSITIVE_ATTACK",
+    "脚本动作 SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER_INCLUDE_DEAD",
+]
+scene = {build = "engine_acts_ut", check = "team", until = 20}
+bench = """team, bench 11-21 `run_queue engine_acts_ut:team` (CampActsTTeam_mcp_1121_171540, round 287): 旗 / 活 / 含死 / 列表 \
+s1 0 2 2 2 | s2 0 1 2 2 | s3-s9 1 1 2 2 | s10-s21 1 1 1 1"""
+proves = """sim TEAM_CONTEXT_SENSITIVE_ATTACK is the unit action on every member: the team's engineer (made after its tank) \
+takes the plant, no tank fires on the plant nor on the enemy engineer (j08's shape); _INCLUDE_DEAD counts the killed \
+conscript ~8 s more (its SlowDeath lying out), an object list as its type alike, the plain counter drops at the kill."""
+let = {first = "lambda col, v: next(t for t, x in zip(times, vals(rows)) if x[col] == v)"}
+expect = [
+    "sorted({x[0] for x in vals(rows)}) == [0, 1]",
+    "0 <= first(0, 1) - first(1, 1) <= 2.5",
+    "7.5 <= first(2, 1) - first(1, 1) <= 9.5",
+    "all(x[2] == x[3] for x in vals(rows))",
+]

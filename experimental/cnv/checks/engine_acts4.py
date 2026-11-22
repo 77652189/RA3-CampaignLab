@@ -125,5 +125,51 @@ def acts(m):
     return t
 
 
-MISSION = {'engine_acts_u': mission}
-CHECKS = {'engine_acts_u': {'acts': acts}}
+MAN, LIST = 'SovietAntiInfantryInfantry', 'CNV ActT list'
+# team: crew C (tank 'ct' made first, engineer 'ce') beside Soviet_4's plant 'tcp'; crew F (tanks 'f1' 'f2', their
+# autoacquire off) beside Soviet_4's unarmed engineer 'fe' (j08: a fodder team on an enemy unit); Soviet_4's
+# conscripts 'k1' 'k2' far off
+TEAM = {'ct': ('C', 'p1', TANK, (2000.0, 4000.0)), 'ce': ('C', 'p1', ENG, (2050.0, 4100.0)),
+        'tcp': (None, 's4', PLANT, (2200.0, 4100.0)), 'f1': ('F', 'p1', TANK, (2790.0, 4000.0)),
+        'f2': ('F', 'p1', TANK, (2790.0, 4100.0)), 'fe': (None, 's4', ENG, (3000.0, 4050.0)),
+        'k1': (None, 's4', MAN, (4300.0, 4700.0)), 'k2': (None, 's4', MAN, (4400.0, 4700.0))}
+
+
+def team_mission():
+    m = Mission(name='CampActsT', map=probe_border, units=[], facts={})
+    m.spawns |= {TANK, PLANT, ENG, MAN}
+    for role, (crew, side, template, (x, y)) in TEAM.items():
+        m.put(template, 'stop row', x - O[0], y - O[1], side=side, angle=0.0 if side == 'p1' else 3.1416,
+              name=_n(role), role=role, props={'originalOwner': m.crew(crew)} if crew else {})
+    return m
+
+
+def team(m):
+    """TEAM_CONTEXT_SENSITIVE_ATTACK (j04 / j08) at 2 s: C -> tcp, F -> fe; NAMED_KILL k1 at 3 s.
+    旗 = NAMED_OWNED_BY_PLAYER(P1, tcp) 1 + NAMED_ATTACKED_BY_OBJECTTYPE(tcp, tank) 2 (fe, tank) 4.
+    活 / 含死 / 列表 = SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER(conscript, Soviet_4) / _INCLUDE_DEAD(conscript, ...) /
+    _INCLUDE_DEAD(list LIST = conscript + dog, ...) every frame (j04's _INCLUDE_DEAD takes object lists).
+    [simulator: the engineer takes tcp (旗 1; every member, not the first only), no tank fires; 活 2 -> 1 at 3 s,
+    含死 / 列表 2 until k1's SlowDeath has lain out (the health counter's 8.5 s, E161), then 1]"""
+    t = Test()
+    p1, s4 = m.player(), m.player('s4')
+    t.scripts.append(Script('Test - ActT start', [], [
+        ('OBJECTLIST_ADDOBJECTTYPE', MAN.lower(), LIST), ('OBJECTLIST_ADDOBJECTTYPE', DOG.lower(), LIST),
+        ('TEAM_ALLOW_AI_AUTOACQUIRE', m.crew('F'), 0)]))
+    s8.at(t, 't2', 2.0, [('TEAM_CONTEXT_SENSITIVE_ATTACK', m.crew('C'), _n('tcp')),
+                         ('TEAM_CONTEXT_SENSITIVE_ATTACK', m.crew('F'), _n('fe'))])
+    s8.at(t, 't3', 3.0, [('NAMED_KILL', _n('k1'))])
+    s8.total(t, 'CNV_ActT_Flags', '旗', [
+        (1, ('NAMED_OWNED_BY_PLAYER', p1, _n('tcp'))), (2, ('NAMED_ATTACKED_BY_OBJECTTYPE', _n('tcp'), TANK)),
+        (4, ('NAMED_ATTACKED_BY_OBJECTTYPE', _n('fe'), TANK))])
+    for counter, label, action, kind in (('CNV_ActT_L', '活', 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', MAN),
+                                         ('CNV_ActT_D', '含死', 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER_INCLUDE_DEAD', MAN),
+                                         ('CNV_ActT_T', '列表', 'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER_INCLUDE_DEAD', LIST)):
+        t.counters.append((counter, label))
+        t.scripts.append(Script(f'Test - {counter}', [], [(action, kind, s4, counter)], once=False))
+    s8.watch(t, 20.0, every=0.5)
+    return t
+
+
+MISSION = {'engine_acts_u': mission, 'engine_acts_ut': team_mission}
+CHECKS = {'engine_acts_u': {'acts': acts}, 'engine_acts_ut': {'team': team}}

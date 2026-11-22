@@ -209,10 +209,14 @@ def set_unit_health_percentage_to_counter(sim, name, a, script):
 
 
 def set_player_ownership_of_type_counter(sim, name, a, script):
-    # a template's EquivalentTo counts under that name too (simunits.equivalent_to; bench engine_aiopen b)
-    name = a[0].lower()
-    sim.counters[a[2]] = sum(1 for b in sim.living() if b.owner == a[1] and
-                              (b.template.lower() == name or simunits.equivalent_to(b.template, sim.own) == name))
+    # a template's EquivalentTo counts under that name too (simunits.equivalent_to; bench engine_aiopen b); an object
+    # list's types each. _INCLUDE_DEAD: the same handler without its "not destroyed" test, so the dead still in the
+    # world (lying a SlowDeath's DestructionDelay out, as set_unit_health_percentage_to_counter) count too
+    want = sim.of_types(a[0])
+    pool = sim.bodies.values() if name.endswith('INCLUDE_DEAD') else sim.living()
+    sim.counters[a[2]] = sum(1 for b in pool if b.owner == a[1] and (b.alive or not b.deleted and sim.t - b.died_at
+                                                                        <= b.lies + 1e-9) and
+                              (b.template.lower() in want or simunits.equivalent_to(b.template, sim.own) in want))
 
 
 def set_player_money_to_counter(sim, name, a, script):
@@ -295,6 +299,7 @@ ACTIONS = {
     'UNIT_EXECUTE_SEQUENTIAL_SCRIPT': unit_execute_sequential_script,
     'SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER': set_unit_health_percentage_to_counter,
     'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER': set_player_ownership_of_type_counter,
+    'SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER_INCLUDE_DEAD': set_player_ownership_of_type_counter,
     'SET_PLAYER_MONEY_TO_COUNTER': set_player_money_to_counter,
     'SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER': set_player_kills_of_type_to_counter,
     'MARK_MISSION_OBJECTIVE_COMPLETED': mark_mission_objective_completed,
