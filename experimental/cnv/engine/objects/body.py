@@ -120,6 +120,10 @@ class Life:
         if b.alive:
             self._out(world, b, why, True)
             self._gone(world, b, why, True)
+        elif 'NO_COLLISIONS' in b.engine_status:    # a dead one that stayed (kill): deleted, no longer counted
+            b.engine_status.discard('NO_COLLISIONS')    # (review tt P2 #4: NAMED_KILL then NAMED_DELETE)
+            b.status = b.status - {'NO_COLLISIONS'}
+            self._gone(world, b, why, True)
 
     def _out(self, world, b, why, delete, death='NORMAL', cause=''):
         """What a death and a deletion share: b out of the fight -- the only write of a body's alive / deleted /

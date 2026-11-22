@@ -222,3 +222,16 @@ def test_a_damage_kill_keeps_its_bits_readable_that_frame_on_the_module_step_b4a
     assert not has(s, 'UNIT_HAS_OBJECT_STATUS', ['p', 'IMMOBILE'])
     _one(r).set_bits_read_until(s.frame_now())                       # a living thing reads its bits anyway
     assert has(s, 'UNIT_HAS_OBJECT_STATUS', ['r', 'IMMOBILE'])
+
+
+def test_a_killed_prop_that_stays_is_counted_until_deleted():
+    """engine_block gk: a killed GV_Ring02 (no die module) stays with NO_COLLISIONS and a status count sees it; a
+    NAMED_DELETE after the kill takes it out of the count (review tt P2 #4)."""
+    import engine.testing.small as simsmall
+    from engine.script.cond_object import player_has_number_objects_with_object_status as count
+    s = simsmall.small_world([('cage', 'GV_Ring02', 'Player_1', 300, 300)], model=False)
+    cage, ask = s.bodies['cage'], ('Player_1', 2, 1, 'NO_COLLISIONS')
+    s.destroy(cage, 'kill')
+    assert not cage.alive and count(s, 'c', ask)
+    s.delete(cage, 'delete')
+    assert not count(s, 'c', ask) and count(s, 'c', ask[:2] + (0,) + ask[3:])
