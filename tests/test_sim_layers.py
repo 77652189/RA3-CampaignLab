@@ -176,8 +176,8 @@ def _held(e, name):
         (isinstance(e, ast.Attribute) and e.attr == name and isinstance(e.value, ast.Name) and e.value.id == 'self')
 
 
-def world_breaks(takers=WORLD_TAKERS, source=None):
-    api = _load('engine.world.handle').WORLD_API
+def world_breaks(takers=WORLD_TAKERS, source=None, api=None):
+    api = _load('engine.world.handle').WORLD_API if api is None else api
     out = []
     for mod in takers:
         tree = ast.parse(source) if source is not None else _tree(mod)
@@ -666,6 +666,31 @@ def test_ai_read_guard_bites():
     assert world_breaks(['simproxy'], "def f(self):\n    return sim.Thing\n") == [('simproxy', 'sim')]
     assert host_write_breaks(('engine.ai.core',), "class B:\n    def f(self):\n        self.world.money[p] = 3\n") == \
         [('engine.ai.core', 'money')]
+
+
+# ADR 0037 phase 1: the AI (engine/ai) reaches only its AI_WORLD of the world API; the reads left beyond it, one row
+# each, come off as the steps move them behind the ports (a new one is red)
+AI_PACKAGE = ('engine.ai.core', 'engine.ai.pullback')
+AI_WORLD_LEAKS = {('engine.ai.core', 'add')}   # the refinery's free miner (step 4: to the production rules)
+
+
+def _ai_world(source=None):
+    tree = ast.parse(source) if source is not None else _tree('engine.ai.core')
+    return next(ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
+                and getattr(n.targets[0], 'id', '') == 'AI_WORLD')
+
+
+def test_the_ai_reaches_only_its_world_names():
+    assert set(world_breaks(AI_PACKAGE, api=_ai_world())) == AI_WORLD_LEAKS
+
+
+def test_ai_world_guard_bites():
+    """Mutation check on the real file: a world name AI_WORLD lacks is caught, in the AI and in its pullbacks."""
+    src = (CNV / 'engine/ai/core.py').read_text(encoding='utf-8')
+    assert ('engine.ai.core', 'waypoints') in world_breaks(['engine.ai.core'], src,
+                                                           _ai_world(src.replace("'waypoints', ", '')))
+    assert world_breaks(['engine.ai.pullback'], 'def f(world):\n    return world.timers\n', _ai_world()) == \
+        [('engine.ai.pullback', 'timers')]
 
 
 def test_nothing_else_imports_the_ai():

@@ -97,6 +97,10 @@ import engine.combat.range as simrange  # noqa: E402
 # 13f-2c, engine/ports/ai.py); money, flags and the fight through the observation port, the weapon reach rules off
 # L3 simrange (13f-2b). It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
 PEERS = frozenset({'modify'})
+# ADR 0037 phase 1: the names of the world API the AI reaches, about half of it; it adds no body (a refinery's free
+# miner, world.add, is the one left, on its way to the production rules: tests/test_sim_layers.py AI_WORLD_LEAKS)
+AI_WORLD = frozenset({'bodies', 'blocks', 'enemy', 'frame_now', 'ground', 'human', 'living', 'm', 'note', 'own',
+                      'players', 'relation', 'relations', 't', 'waypoints', 'who', 'world', 'xml_of'})
 
 
 class Peers:
