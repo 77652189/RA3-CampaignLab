@@ -52,7 +52,7 @@ RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j0
                    'Command_ToggleHarpoonSpecialPower', 'Command_ToggleAfterburners',  # Apocalypse / Kirov toggles
                    'Command_SmokeBombSpecialPower', 'Command_ToggleEnergizedArmorSpecialPower',  # engine_acts_mix:
                    'Command_ActivateRoarSpecialPower', 'Command_ActivateLeapSpecialPower',       # shinobi, Tsunami,
-                   'Command_CAMPAlliedBomberDrop2',     # bear, Sickle, the campaign's bomber drop store
+                   'Command_CAMPAlliedBomberDrop2', 'Command_CAMPAlliedBomberDrop1',  # bear, Sickle, the drop store
                    'Command_ActivateJumpSpecialPower',  # the dolphin's jump (engine_acts_wet)
                    'Command_ActivateMechaKingShockwave',  # King Oni's shockwave, Tanya's time belt (retail j03 /
                    'Command_TimeBeltSpecialPower'}        # a02 read them cast: engine_cast)

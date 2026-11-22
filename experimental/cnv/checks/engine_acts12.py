@@ -265,6 +265,22 @@ def life(m):
     return t
 
 
+def one(m):
+    """Command_CAMPAlliedBomberDrop1 (j05, 3 uses; its stores Allied04's): DP's (p1) and the AI-handed DA's (s5) at
+    PRESS. The store's other OCLSpecialPower, OCL_CAMPAlliedBomberDrop1: four bombers (x / y +-35) to Drop2's two.
+    兵 / 援 = GIs round DP's / DA's spot (0-12) + 10 x Javelins (0-8). [data: 92 92 a reading after the press]"""
+    t = Test()
+    s8.at(t, 'reveal', 0.1, [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('UNIT_AI_TRANSFER', _n('DA'), 1)])
+    s8.at(t, 'press', PRESS, [('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', _n(r), 'Command_CAMPAlliedBomberDrop1',
+                               m.mark(f'spot {r}')) for r in ('DP', 'DA')])
+    for r, counter, label in (('DP', 'CNV_A12_DropP', '兵'), ('DA', 'CNV_A12_DropA', '援')):
+        t.areas[f'Test A12 Spot {r}'] = square(*DROPS[r][3], 400.0)
+        s8.total(t, counter, label, [(w, _has(m, DROPS[r][2], tmpl, k, f'Test A12 Spot {r}'))
+                                     for tmpl, w, top in ((GI, 1, 12), (JAV, 10, 8)) for k in range(1, top + 1)])
+    s8.watch(t, 12.0)
+    return t
+
+
 def _has(m, side, tmpl, k, area):
     return 'PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', m.player(side), 3, k, tmpl, area
 
@@ -301,6 +317,6 @@ def _presses(m, drops):
 MISSION = {'engine_acts_mix': mission, 'engine_acts_drop': drop_mission,
            'engine_acts_ally': lambda: drop_mission(allied=True), 'engine_acts_edge': lambda: drop_mission(edge=True),
            'engine_acts_dropx': lambda: drop_mission(entry=True)}
-CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own, 'at': when, 'air': air, 'age': life},
+CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own, 'at': when, 'air': air, 'age': life, 'one': one},
           'engine_acts_ally': {'own': own},
           'engine_acts_edge': {'edge': edge}, 'engine_acts_dropx': {'own': own}}

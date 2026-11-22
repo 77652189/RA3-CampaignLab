@@ -127,3 +127,16 @@ bench = "age as above: 机 0 every reading -- PLAYER_HAS_OBJECT_COMPARISON never
 proves = "sim cond_object.player_has_object_comparison leaves the drop bomber out (which bit: not isolated)"
 expect = "all(r['机'] == 0 for r in rows)"
 mismatch = "sim 159 frames (46-205: counted as long as it lives); bench 0"
+
+[[reading]]
+id = "acts_drop_one_four_bombers"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_CAMPAlliedBomberDrop1"
+scene = {build = "engine_acts_drop", check = "one", until = 15}
+bench = """one, bench 11-22 `run_queue engine_acts_drop:one` (CampActsDropOne_mcp_1122_080947, round 303; bench row s_k = \
+mission k + 2): 兵 援 s1-s2 46 0 | s3 92 0 | s4 92 46 | s5-s13 92 92 -- the press's reading has half DP's load past the \
+store's line (the two bombers made 35 north of it), then 12 GIs + 8 Javelins round each spot, the player's and s5's"""
+proves = """sim act_ability._drop: the store's other OCL (OCL_CAMPAlliedBomberDrop1: four bombers at x / y +-35) brings \
+12 GIs + 8 Javelins to the spot, the player's press and an AI-handed store's alike. The sim is a reading early after the \
+press (46 -> 92 at 4, 援 at 5 / 6): the bombers' start from rest, acts_drop_own_far_spot_late's mismatch (R2)"""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = ["at[3] == [46, 0]", "all(at[k] == [92, 92] for k in range(7, 15))"]
