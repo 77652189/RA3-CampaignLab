@@ -45,6 +45,9 @@ def b(m, health=False):
     counted('CNV_GB_Shop', '商店归AI', t, template='HV_Shop01', player=s1)
     t.scripts.append(Script('Test - count CNV_GB_Row', [], [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', 'AM_RowHouse01', s1,
                                                             'CNV_GB_Row')], once=False))   # off screen (OCR reads 4)
+    t.scripts += [Script('Test - CNV_GB_Row ever 0', [], [('SET_COUNTER', 'CNV_GB_RowEver', 0)]),
+                  Script('Test - CNV_GB_Row ever', [('COUNTER', 'CNV_GB_Row', 3, 1)],     # latched: the row house
+                         [('SET_COUNTER', 'CNV_GB_RowEver', 1)])]                         # the AI's at any time
     end = m.facts['wake at'] + 60.0
     t.expect = [('步兵在家', m.facts['wake at'] + 5, 'ever==', 0, end)]      # the model: the team leaves for a house
     t.bench = [('bench_watch', dict(seconds=end + at.LAG, every=1, sheet=False, lines=len(t.counters)))]

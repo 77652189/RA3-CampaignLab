@@ -92,7 +92,11 @@ def order_unpack(world, peers, b, p, button=None, where=None, stand=None, here=F
     b is dead or has no such button. The AI's SimpleExpansion (simai approach) arms it instead: stand = the
     Tactic's Distance (in place of the replacement's stand), here = the structure goes where b stands when it
     first comes within stand of p (at_site), send=False = b is not driven to p (its team's orders walk it)."""
-    if not b.alive:
+    def real(v):
+        return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+    # a bad point or stand is refused before b is touched (review vv P3: the unpack was written, then the note raised)
+    if not b.alive or not (isinstance(p, (tuple, list)) and len(p) >= 2 and all(map(real, p[:2]))) or \
+            not (stand is None or real(stand)):
         return False
     if button is None:
         sets, _ = simunits._commands(world.own)

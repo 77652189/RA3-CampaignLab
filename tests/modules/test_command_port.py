@@ -1329,6 +1329,11 @@ def test_a_route_to_a_place_it_cannot_find_is_refused_before_the_unit_is_touched
         ok, why = s.commands.do(Command(kind, units=units, **kw))
         assert not ok and '找不到地点' in why
         assert (t1.goal, t1.aiupdate.mode, m1.building, m1.aiupdate.mode) == before
+    # review vv P3: an unpack's bad stand (here or not) is refused the same way
+    for stand, here in (('x', True), (float('nan'), True), ('x', False)):
+        args = (('objects', True), ('stand', stand), ('here', here), ('send', False))
+        assert not s.commands.do(Command('unpack', units=('m1',), pos=(0.0, 300.0), args=args))[0]
+        assert (m1.building, m1.aiupdate.mode) == before[2:]
     assert s.commands.do(Command('face', units=('t1',), place='@100,100'))[0]
 
 

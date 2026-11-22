@@ -145,7 +145,10 @@ def _priority(sim, player, *calls):
 
 
 def skirmish_ai_set_all_enemy_players_priorities(sim, name, a, script):
-    _priority(sim, a[0], ('*', int(a[1])))      # (player, n): every enemy ('*') now at n
+    # (player, n): every enemy ('*') at n -- the enemies when the action runs (the model's contract: the call fills
+    # the table; review vv: a player turned enemy after it, or back to neutral, in the same frame changes nothing)
+    foes = tuple(sorted(p for p in sim.players.values() if p != a[0] and sim.enemy(a[0], p)))
+    _priority(sim, a[0], ('*', int(a[1]), foes))
 
 
 def skirmish_ai_no_effect(sim, name, a, script):

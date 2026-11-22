@@ -441,12 +441,12 @@ class Brain:
         self._switched = dict(got)
         # the enemy-priority calls, each once in script order (bench 11-10 checks/engine_aiprio.py; review 1122ss #2)
         calls = self.settings.ai_priorities.get(self.player, [])
-        for enemy, n in calls[getattr(self, '_prio_seen', 0):]:
+        for enemy, n, *foes in calls[getattr(self, '_prio_seen', 0):]:
             if enemy is None:       # SET_FAVORED_ENEMY's clear (sim.py, A 220 bench engine_aifav: the table emptied)
                 self.ai.tell(Command('enemy priorities', {'n': 0}))
                 continue
-            if enemy == '*':        # SET_ALL (act_player): every enemy now, the frame's relations (look() runs later;
-                self.ai.tell(Command('enemy priorities', {'n': n, 'enemies': sorted(self.foes())}))   # review uu #4)
+            if enemy == '*':        # SET_ALL (act_player): the enemies when the action ran (review vv)
+                self.ai.tell(Command('enemy priorities', {'n': n, 'enemies': list(foes[0])}))
                 continue
             self.ai.tell(Command('enemy priority', {'player': enemy, 'n': n}))
         self._prio_seen = len(calls)
