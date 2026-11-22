@@ -44,7 +44,7 @@ expect = [
     "win(19, 36, '电厂血')[0] - win(19, 36, '电厂血')[-1] <= 10",
     "min(win(80, 85, '电厂血')) >= 1",
 ]
-mismatch = "sim (coarse clock) 98 at s2, then 3.3 %/s to 0 at s32; bench ~1 %/s (every other clip lands, the cannon ~0.5 %/s), 2 left at s86"
+mismatch = "sim (coarse clock) 98 at s2, then 3.3 %/s to 0 at s32; bench ~1 %/s (every other clip lands, the cannon ~0.5 %/s), 2 left at s86. The run's ua log has every clip fired, 8 rockets each ~135 frames apart (f142, f278, f413, f550: ClipSize 8, ClipReloadTime 8 s as the data say), and each clip's 8 go off; only the 2nd, 4th, 6th take the plant's health -- not a long reload, not a rocket lost in flight (~9 frames of a 135-frame cycle). Where the odd clips land is not read"
 
 
 [[reading]]
