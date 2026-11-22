@@ -54,6 +54,17 @@ def test_reach_rebuilds_components_when_blocks_change():
     assert_way(ground, p, q, True)
 
 
+def test_only_a_measured_thin_bar_shuts_cells_by_their_centres():
+    """A 6-thick bar on the cells' points: ours shuts them (review vv #2), a measured prop's (BARS, `centres`) misses
+    every CELL centre and leaves the way open (bench 11-22 engine_block gr)."""
+    ground = terrain([[1, 1, 1]] * 3)
+    p, q = (1, 0), (1, 2)
+    assert ground.set_blocks([(*ground.world((1, 1)), np.pi / 2, 60, 6, False)])
+    assert_way(ground, p, q, False)
+    assert ground.set_blocks([(*ground.world((1, 1)), np.pi / 2, 60, 6, True)])
+    assert_way(ground, p, q, True)
+
+
 def test_reach_can_step_diagonally_between_two_blocked_cells():
     ground = terrain([[1, 0], [0, 1]])
     assert_way(ground, (0, 0), (1, 1), True)

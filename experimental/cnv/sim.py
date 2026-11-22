@@ -600,7 +600,7 @@ class Sim:
                                             lambda x, y: simdamage.impact_ground_z(self, x, y), fight),
                                         fire=lambda b, weapon: self._life().fire(self, b, weapon, self.death_blasts),
                                         remove=lambda b, why: self._life().delete(self, b, why), modify=lambda b: simmodifier.modify(self, b),
-                                        pay=lambda b, amount: self.wallet.deposit(b.owner, amount),
+                                        pay=lambda b, amount: self.wallet.deposit(b.owner, amount), upgrades=lambda b: {u.lower() for u in {*b.upgrades, *self.player_ups.get(b.owner, ())}},
                                         toggled=lambda b, m: simtoggle.entered(self, b, m, self.world.modify),
                                         suppression_at=lambda b, f: simdamage.suppression_at(
                                             self.suppression_fields, b, f),
@@ -780,7 +780,7 @@ class Sim:
             p = self.walls[b.template]
             if p.get('shape') == 'disc':
                 return (b.x, b.y, p['length'] / 2)
-            return (b.x, b.y, b.angle, p['length'], p['length'] if p.get('shape') == 'square' else p['thick'])
+            return (b.x, b.y, b.angle, p['length'], p['length'] if p.get('shape') == 'square' else p['thick'], p.get('centres', False))
         if 'ORE_NODE' in b.kinds and b.radius:
             # its own bounding circle (box 33 x 41 -> 52.6), not the 40 a building out of platprops gets: with 40 the
             # SimpleExpansion miner's way to its slot 67 behind the node slid past it 45 off and unpacked inside

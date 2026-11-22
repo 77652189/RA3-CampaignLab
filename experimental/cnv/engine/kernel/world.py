@@ -12,7 +12,7 @@ def no_blocks(template, tag):
 
 class World:
     def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None, pay=None, toggled=None,
-                 modify=None, suppression_at=None, spawn=None, vacate=None, create=None, fire=None):
+                 modify=None, suppression_at=None, spawn=None, vacate=None, create=None, fire=None, upgrades=None):
         """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry;
         kill(thing, why, death, cause): the host's death of a thing (World.kill); create(thing, ocl, airborne): the
         host's making of what a thing's death lists (World.create); fire(thing, weapon): the host's firing of a
@@ -26,7 +26,7 @@ class World:
         (World.vacate)."""
         self.blocks, self.tags, self._kill, self._remove, self._pay = blocks, tags, kill, remove, pay
         self._toggled, self._modify, self._suppression_at = toggled, modify, suppression_at
-        self._spawn, self._vacate, self._create, self._fire = spawn, vacate, create, fire
+        self._spawn, self._vacate, self._create, self._fire, self._upgrades = spawn, vacate, create, fire, upgrades
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
@@ -112,6 +112,11 @@ class World:
         if self._create is None:
             raise RuntimeError(f'World.create({thing.name!r}): this world has no host to make with')
         self._create(thing, ocl, airborne, fight)
+
+    def upgrades(self, thing):
+        """The upgrades `thing` holds and its owner's player upgrades, lower case (upgrades(thing), the host's: today
+        Body.upgrades and Sim.player_ups) -- a Die module's UpgradeForbidden. A world with no host: none."""
+        return self._upgrades(thing) if self._upgrades else frozenset()
 
     def fire(self, thing, weapon):
         """A FireWeaponWhenDead module's thing died and its DeathWeapon goes off (step B5c): the host fires the

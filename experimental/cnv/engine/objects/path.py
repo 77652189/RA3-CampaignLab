@@ -142,18 +142,19 @@ class Sight:
 
 def covered(shapes, x, y, side=0.0):
     """Cells whose point (x, y: world coordinates, x along axis 1 and y along axis 0, both rising) is inside any of
-    `shapes`: (x, y, angle, length, thick) a bar, or (x, y, r) a round building (Ground.set_blocks). Each shape
-    is tested on the cells of its own bounding box only. A bar thinner than the game's 10 cell (CELL) is tested on
-    the centres of the CELL cells in each cell's `side` square north-east of its point instead (any one inside shuts
-    it): bench 11-22 engine_block gn / gr, GV_Ring02 bars 5.3 thick in a line on y = 800 left the way open (both 10),
-    a line on a cell's edge misses both centres (795 / 805) -- on the points (on 800) it shut the way; three rows 5
-    apart (gd) went round. INFERRED: the game's cells shut by their centres for every shape."""
+    `shapes`: (x, y, angle, length, thick[, centres]) a bar, or (x, y, r) a round building (Ground.set_blocks).
+    Each shape is tested on the cells of its own bounding box only. A bar marked `centres` (a measured prop of BARS)
+    thinner than the game's 10 cell (CELL) is tested on the centres of the CELL cells in each cell's `side` square
+    north-east of its point instead (any one inside shuts it): bench 11-22 engine_block gn / gr, GV_Ring02 bars 5.3
+    thick in a line on y = 800 left the way open (both 10), a line on a cell's edge misses both centres (795 / 805)
+    -- on the points (on 800) it shut the way; three rows 5 apart (gd) went round. Other thin bars (a mission's own
+    wall) keep the points (review vv #2: a 5.3 wall of ours on y = 800 is not walked through). INFERRED."""
     import platmap
     m = np.zeros(x.shape, bool)
     xs, ys = x[0], y[:, 0]
     for s in shapes:
         r = s[2] if len(s) == 3 else math.hypot(s[3], s[4]) / 2
-        offs = (0.0,) if len(s) == 3 or s[4] >= platmap.CELL or not side else \
+        offs = (0.0,) if len(s) < 6 or not s[5] or s[4] >= platmap.CELL or not side else \
             np.arange(platmap.CELL / 2, side, platmap.CELL)
         j0, j1 = np.searchsorted(ys, s[1] - r - side), np.searchsorted(ys, s[1] + r, 'right')
         i0, i1 = np.searchsorted(xs, s[0] - r - side), np.searchsorted(xs, s[0] + r, 'right')
@@ -384,7 +385,7 @@ SPREAD = 15     # a group member's offset from the middle is cut to this many ra
 
 HOLD_SPOTS = True              # every move's goal kept off other units' spots (claims): the game's (bench 11-09,
                                # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
-BARS = {'GV_Ring02': {'length': 26.6892, 'thick': 5.32658}}  # retail props in the way as their SDK box (Sim.blocks;
+BARS = {'GV_Ring02': {'length': 26.6892, 'thick': 5.32658, 'centres': True}}  # retail props in the way as their SDK box (Sim.blocks;
 # the long axis along the facing, bench 11-22 engine_block gr), not platprops' 40 round; INFERRED for other props
 ORE_PLATE = (60.0, 45.0)        # an ore node's base plate, half-extents (OreNode.xml's last BOX): goal_off_nodes
 

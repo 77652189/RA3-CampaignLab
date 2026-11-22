@@ -110,6 +110,10 @@ def test_a_structure_dead_in_a_fight_leaves_its_owner_the_survivor_its_list_make
     left = sorted((b.x, b.template, b.owner, b.hp / b.max_hp) for b in s.bodies.values() if b.alive)
     assert left == [(100.0, 'AlliedAntiInfantryInfantry', 'Player_1', 0.525),
                     (600.0, 'AlliedAntiInfantryInfantry', 'Player_1', 1.0)]
+    s.add('pp4', 'AlliedPowerPlant', 'Player_2', 1600.0, 100.0)     # its owner holds the block's UpgradeForbidden
+    s.player_ups['Player_2'] = {'Upgrade_NoSpawnUponDestruction'}   # (review vv #3)
+    s.world.kill(s.bodies['pp4'], 'shot')
+    assert not any(b.alive and b.owner == 'Player_2' for b in s.bodies.values())
 
 
 def test_a_death_in_the_air_makes_the_first_airborne_module_s_wrecks_fall_and_on_the_ground_none():
