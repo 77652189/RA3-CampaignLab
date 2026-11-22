@@ -43,7 +43,7 @@ SEMANTICS = 2           # manual fallback for a format change outside version()'
 SETUP = ('level', 'seed', 'blocks', 'record')
 
 SIMAI = {
-    'sim': HOST, 'world': ALIAS, 'garrison': ALIAS, 'peers': WIRE, 'settings': WIRE,   # the AI port's view (13f-2a)
+    'sim': HOST, 'world': ALIAS, 'peers': WIRE, 'settings': WIRE,   # the AI port's view (13f-2a)
     'observe': WIRE,                    # the observation port (13f-2b)
     'commands': ALIAS, 'systems': WIRE,     # the command port (13f-1, the Sim's own) and the players' systems (13f-2c)
     'mod': STATIC, 'level': STATIC, 'seed': STATIC, 'blocks': STATIC, 'record': STATIC,
@@ -55,7 +55,7 @@ SIMAI = {
     'pullback': {'world': WIRE, 'peers': WIRE, 'returning': STATE, 'log': STATE, 'armies': STATIC,
                  'filters': CACHE},
 }
-ALIASES = {('world',): ('sim',), ('garrison',): ('sim', 'garrison'), ('commands',): ('sim', 'commands')}
+ALIASES = {('world',): ('sim',), ('commands',): ('sim', 'commands')}
 
 BRAIN = {
     'host': WIRE, 'world': WIRE, 'peers': WIRE, 'settings': WIRE, 'observe': WIRE, 'player': STATIC,

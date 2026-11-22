@@ -224,6 +224,11 @@ class Garrisons:
     def busy(self, u):
         return u.serial in self.going or u.serial in self.where
 
+    def room(self, t, u):
+        """The free slots of t's TransportContain if its PassengerFilter takes u, else 0 (also for t without one)."""
+        m = contain(t, ('TransportContain',))
+        return m.rules()['max'] - len(self.held(t)) if m is not None and self.fits(u, m.rules()) else 0
+
     # ---- in and out
     def secondary(self, g):
         """E174: one contained secondary grants matching explicit-template upgrades.

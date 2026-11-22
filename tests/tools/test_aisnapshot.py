@@ -95,14 +95,14 @@ def test_every_field_of_the_simai_its_brains_and_units_is_sorted(skirm):
 def test_a_new_field_or_a_broken_alias_is_named(skirm):
     b = next(iter(skirm.brains.values()))
     u = next(iter(b.wrappers.values()))
-    garrison = skirm.garrison
+    commands = skirm.commands
     try:
-        b.fresh_field, u.fresh_field, skirm.garrison = 1, 2, object()
+        b.fresh_field, u.fresh_field, skirm.commands = 1, 2, object()
         assert simaisnap.unclassified(skirm) == ['Brain.fresh_field', 'Unit.fresh_field',
-                                                 'simai.garrison (not the object it names)']
+                                                 'simai.commands (not the object it names)']
     finally:
         del b.fresh_field, u.fresh_field
-        skirm.garrison = garrison
+        skirm.commands = commands
 
 
 # ---- 11b-4c: the brains through the plugin's own port (the engine model's ra3model/ai/snapshot.py, a session a

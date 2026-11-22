@@ -86,6 +86,35 @@ class Observe:
         a thing that holds none or cannot)."""
         return [p.name for p in self._w.garrison.held(thing)]
 
+    def by_serial(self, serial):
+        """The thing made with this serial (dead too, None once deleted or never made)."""
+        return self._w.world.numbered.get(serial)
+
+    def fighting(self, thing):
+        """Whether a unit is busy fighting: engaged, or its order's target is a thing."""
+        return thing.engaged or isinstance(thing.goal, kernel_module.Thing)
+
+    def garrisons(self, thing, own_defenses):
+        """The buildings a unit could be sent into, in the world's order: its player's base defenses
+        (own_defenses), else the other garrisons (Garrisons.places)."""
+        return self._w.garrison.places(thing, own_defenses)
+
+    def inside(self, thing):
+        """The garrison or transport a unit is inside now, None when it is in none."""
+        return self._w.garrison.where.get(thing.serial)
+
+    def heading(self, thing):
+        """The building a unit was sent into and is on its way to, None when it is not walking into one."""
+        return (self._w.garrison.going.get(thing.serial) or (None, None))[1]
+
+    def boarding(self, thing):
+        """Whether a unit is inside a garrison or transport, or sent into one and on its way."""
+        return self._w.garrison.busy(thing)
+
+    def room(self, transport, thing):
+        """The free slots of a transport if it takes the unit, else 0 (Garrisons.room)."""
+        return self._w.garrison.room(transport, thing)
+
     def home(self, thing):
         """The owner a garrisoned building goes back to when its last passenger is out (the owner it had before its
         first), None for one that holds none or a transport (which keeps its owner)."""

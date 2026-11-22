@@ -60,6 +60,26 @@ class Settings:
     def border(self):
         return view(self._w.border)
 
+    @property
+    def borders(self):
+        """The map's border rects (x0, y0, x1, y1) in order, `border` the one in play; () for a map without."""
+        return tuple(getattr(self._w.m.map, 'BORDERS', {}).values())
+
+    @property
+    def sides(self):
+        """The mission's sides: side -> its setup (playerFaction, aiPersonality, ...); {} for a mission without."""
+        return view(getattr(self._w.m, 'sides', None) or {})
+
+    @property
+    def facts(self):
+        """The mission's facts ('dual bases', 'expansion', ...)."""
+        return view(self._w.m.facts)
+
+    @property
+    def assets(self):
+        """The mission's own files ((path, text, kind), ...): a probe's AI personality among them."""
+        return view(getattr(self._w.m, 'assets', None) or [])
+
     def take_personality(self, player, personality):
         self._w.take_personality(player, personality)
 

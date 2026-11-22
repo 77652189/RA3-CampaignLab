@@ -81,9 +81,7 @@ import modelpin  # noqa: E402
 import engine.data.units as simunits  # noqa: E402
 import engine.orders.micro as simmicro  # noqa: E402
 import engine.objects.body as simbody  # noqa: E402
-import engine.objects.garrison as garrison  # noqa: E402
 import engine.world.handle as simworld  # noqa: E402
-from engine.kernel import module as kernel_module  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
 from engine.ports import ai as ai_port  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
@@ -97,10 +95,11 @@ import engine.combat.range as simrange  # noqa: E402
 # 13f-2c, engine/ports/ai.py); money, flags and the fight through the observation port, the weapon reach rules off
 # L3 simrange (13f-2b). It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
 PEERS = frozenset({'modify'})
-# ADR 0037 phase 1: the names of the world API the AI reaches, about half of it; it adds no body (a refinery's free
+# ADR 0037 phase 1: the names of the world API the AI reaches (16, under half; the mission and the garrisons through the
+# settings and observation ports); it adds no body (a refinery's free
 # miner, world.add, is the one left, on its way to the production rules: tests/test_sim_layers.py AI_WORLD_LEAKS)
-AI_WORLD = frozenset({'bodies', 'blocks', 'enemy', 'frame_now', 'ground', 'human', 'living', 'm', 'note', 'own',
-                      'players', 'relation', 'relations', 't', 'waypoints', 'who', 'world', 'xml_of'})
+AI_WORLD = frozenset({'bodies', 'blocks', 'enemy', 'frame_now', 'ground', 'human', 'living', 'note', 'own',
+                      'players', 'relation', 'relations', 't', 'waypoints', 'who', 'xml_of'})
 
 
 class Peers:
@@ -270,7 +269,7 @@ class Brain:
         import engine.players.tech as simtech
         # the player's faction (the map's playerFaction, else by name) for the openings' Side (d66_b_fields.md:
         # an opening of another faction is skipped; none left = the opening is complete at once)
-        faction = simtech.faction_of(player, (getattr(self.world.m, 'sides', {}) or {}).get(side))
+        faction = simtech.faction_of(player, self.settings.sides.get(side))
         self.ai = m['player'].AIPlayer(host.data, personality, DIFFICULTY.get(host.level, 'MEDIUM'),
                                        ctx={'path to target': self.path_to_target}, rng=random.Random(host.seed),
                                        index=side_index(side), side=faction and f'PlayerTemplate:{faction}')
@@ -332,8 +331,8 @@ class Brain:
                             # INFERRED at shorelines, bridges and for airborne targets.
                             water_at=lambda x, y: self.world.ground.z(x, y) < self.world.ground.water,
                             expansion_candidates=(self.expansion_candidates
-                                                  if (self.world.m.facts.get('dual bases')
-                                                      or self.world.m.facts.get('expansion')) else None))
+                                                  if (self.settings.facts.get('dual bases')
+                                                      or self.settings.facts.get('expansion')) else None))
         self.base = self.powers = None
         self.attach(host.blocks)
         self._set_initial_yards(self.yards())
@@ -348,7 +347,7 @@ class Brain:
         self.expansion_anchor = yards[0] if len(yards) == 1 else None
         # Initial-yard registration order is INFERRED from the two-base probe;
         # retain stable ids when a yard disappears, never enumerate live yards.
-        self.expansion_initial_yards = tuple(yards) if self.world.m.facts.get('initial dual bases') else ()
+        self.expansion_initial_yards = tuple(yards) if self.settings.facts.get('initial dual bases') else ()
         if 'targets' in self.host.blocks:
             self.targets.home = self.home
         if self.defense is not None:
@@ -550,8 +549,7 @@ class Brain:
     def carry(self, ai, t, u):
         """TeamMaker's carry hook: t's free slots if its TransportContain's PassengerFilter takes u, else 0
         (INFERRED: one slot a passenger, the relation not asked; the engine's own test is not read)."""
-        m, g = garrison.contain(t.body, ('TransportContain',)), self.host.garrison
-        return m.rules()['max'] - len(g.held(t.body)) if m is not None and g.fits(u.body, m.rules()) else 0
+        return self.observe.room(t.body, u.body)
 
     def reach_target(self, ai, u, target, check):
         """TeamMaker's reach hook: reach() to the target id's point (a thing in view or a Waypoint target's point);
@@ -611,7 +609,7 @@ class Brain:
         """The object the AI gave Thing id `tid`, while the world still has it (under its name, dead or not, as
         before); None once it is gone or another object holds its name."""
         serial = next((k for k, v in self.ids.items() if v == tid), None)
-        b = self.world.world.numbered.get(serial) if serial is not None else None
+        b = self.observe.by_serial(serial) if serial is not None else None
         return b if b is not None and self.world.bodies.get(b.name) is b else None
 
     def hunt_target(self, serial):
@@ -889,7 +887,7 @@ class Brain:
                 state = self.__dict__.get('_hunt_goals', {}).get(b.serial)
                 if state is not None:
                     state.state, state.target = 26, t
-                if t.owner == self.player and t in self.host.garrison.places(b, True):
+                if t.owner == self.player and t in self.observe.garrisons(b, True):
                     # "attacking" one's own base defense = entering it (d133_airevk2.md 1: the team state 6's 0x210
                     # at the AI's own turret, bench aibdi0 / aibdi2)
                     self.give('enter', b, target=t, args=(('via', 'garrison'),))
@@ -1073,10 +1071,10 @@ class Brain:
         b = u.body
         if not b.alive or 'INFANTRY' not in b.kinds or 'SKIRMISH_AI_DONT_GARRISON' in b.kinds:
             return []
-        return [(self.tid(g), (g.x, g.y)) for g in self.host.garrison.places(b, own_defenses)]
+        return [(self.tid(g), (g.x, g.y)) for g in self.observe.garrisons(b, own_defenses)]
 
     def busy(self, team):
-        return any(u.body.engaged or isinstance(u.body.goal, kernel_module.Thing) for u in team.members)
+        return any(self.observe.fighting(u.body) for u in team.members)
 
     def stand(self, team, p, r, outer):
         """Consume the model's aesthetics gates; formation member destinations remain a gap.
@@ -1120,7 +1118,7 @@ class Brain:
         if state is not None:
             return state.target if state.target is not None and state.target.alive else None
         return next((t for t in (b.goal, getattr(b, 'chase', None))
-                     if isinstance(t, kernel_module.Thing) and t.alive and t.owner in self.view.enemies), None)
+                     if self.observe.is_thing(t) and t.alive and t.owner in self.view.enemies), None)
 
     def aim_of(self, b, reach):
         """The unit's current target for the micro (work/re/l4_micro_heur.md; RUSH_ATTACK reads it): its ordered or
@@ -1130,7 +1128,7 @@ class Brain:
         if state is not None:
             return state.target if state.target is not None and state.target.alive else None
         for t in (b.goal, getattr(b, 'chase', None)):
-            if isinstance(t, kernel_module.Thing) and t.alive and t.owner in self.view.enemies:
+            if self.observe.is_thing(t) and t.alive and t.owner in self.view.enemies:
                 return t
         near = [(math.hypot(t.x - b.x, t.y - b.y), k, t) for k, t in enumerate(self.living())
                 if not t.scenery and t.owner in self.view.enemies]
@@ -1291,7 +1289,7 @@ class Brain:
     def present(self, serial):
         """The object of `serial` while it is alive and still the one the world holds under its name; None once it
         is gone, dead, or another object took its name (Sim.add over a living one)."""
-        b = self.world.world.numbered.get(serial)
+        b = self.observe.by_serial(serial)
         return b if b is not None and b.alive and self.world.bodies.get(b.name) is b else None
 
     def build_offers(self, ai, frame, templates):
@@ -1448,7 +1446,7 @@ class Brain:
             # the free and placed ones as not the AI's to take) is not read, only these three fit it
             if 'HARVESTER' in b.kinds and not b.name.startswith('#made'):
                 continue
-            if self.host.garrison.busy(b) or self.host.pullback.busy(b):
+            if self.observe.boarding(b) or self.host.pullback.busy(b):
                 continue
             # by serial, not name (review 11-19 q P2 #1: a unit made again under a dead one's name got the dead
             # one's wrapper, and the orders the AI gave it went to the dead body). The dead ones' stay: a model team
@@ -1466,7 +1464,7 @@ class Brain:
         for b in self.living():
             if b.owner != self.player or 'STRUCTURE' in b.kinds or b.speed <= 0:
                 continue
-            if b.serial in self.host.garrison.where:
+            if self.observe.inside(b) is not None:
                 continue
             out[b.template] = out.get(b.template, 0) + 1
         return out
@@ -1534,7 +1532,7 @@ class Brain:
             return None
         import platprops
         world = self.world
-        rects = list(getattr(world.m.map, 'BORDERS', {}).values())
+        rects = self.settings.borders
         if rects:
             x0, y0, x1, y1 = max(rects, key=lambda q: (q[2] - q[0]) * (q[3] - q[1]))
         else:
@@ -1739,7 +1737,7 @@ class Brain:
         return memo[n.template]
 
     def _refinery_search(self, world, r, reach, near, start, inc, ticks, yards, nodes, mine, taken, shape, tried):
-        rects = list(getattr(world.m.map, 'BORDERS', {}).values())
+        rects = self.settings.borders
         x0, y0, x1, y1 = rects[self.settings.border] if self.settings.border < len(rects) else (-1e9, -1e9, 1e9, 1e9)
         hx, hy = ((float(shape.get('MajorRadius', reach)), float(shape.get('MinorRadius', reach)))
                   if shape else (reach, reach))
@@ -1962,7 +1960,7 @@ class Brain:
         """garrisons() without handing out Thing ids: [(name, x, y)] in the list's order."""
         if not b.alive or 'INFANTRY' not in b.kinds or 'SKIRMISH_AI_DONT_GARRISON' in b.kinds:
             return []
-        return [(g.name, g.x, g.y) for g in self.host.garrison.places(b, own_defenses)]
+        return [(g.name, g.x, g.y) for g in self.observe.garrisons(b, own_defenses)]
 
     def snap(self, frame):
         """One row a team run a frame into rec['frames'] (a finished run once, the frame it ended):
@@ -1980,7 +1978,7 @@ class Brain:
         tactics = getattr(self, 'tactics', None)
         if tactics is None:
             return
-        tc, g = self.host.mod['tactics'], self.host.garrison
+        tc = self.host.mod['tactics']
         for r in list(tactics.runs.values()):
             n = next((i for i, x in enumerate(self._rec_runs, 1) if x is r), 0)
             if not n:
@@ -2000,10 +1998,10 @@ class Brain:
                 aim = self.aim_of(b, reach) if b.alive else None
                 goal, chase = b.goal, getattr(b, 'chase', None)
                 hunt = self.__dict__.get('_hunt_goals', {}).get(b.serial)
-                going, inside = (g.going.get(b.serial) or (None, None))[1], g.where.get(b.serial)
+                going, inside = self.observe.heading(b), self.observe.inside(b)
                 mem.append({'name': b.name, 'id': self.ids.get(b.serial), 'pos': (b.x, b.y), 'hp': b.hp,
-                            'alive': b.alive, 'goal': goal.name if isinstance(goal, kernel_module.Thing) else goal,
-                            'chase': chase.name if isinstance(chase, kernel_module.Thing) else chase,
+                            'alive': b.alive, 'goal': goal.name if self.observe.is_thing(goal) else goal,
+                            'chase': chase.name if self.observe.is_thing(chase) else chase,
                             'aim': aim.name if aim is not None else None,
                             'unit_state': hunt.state if hunt is not None else None,
                             'pursuit': getattr(hunt.pursuit, 'name', None) if hunt is not None else None,
@@ -2106,12 +2104,11 @@ class SimAI:
         self.brains = {}                # player -> Brain
         self.done_to = None             # the last frame the AI ran
         self._data, self._cost, self._menu, self._cs, self._kinds, self._std = {}, {}, {}, {}, {}, {}
-        self.garrison = s.garrison      # HOOKS 8: the simulator's garrisons (simgarrison) take the 'enter' orders
         import engine.ai.pullback as simpullback
         self.pullback = simpullback.Pullbacks(s, simpullback.Peers(s))
         self.record = record            # HOOKS 9: each Brain.rec gets the read-only trail (Brain.snap); off: none
         self._assigned = {}             # player -> its personality, settled before the first frame (the engine does
-        for side, info in (getattr(s.m, 'sides', None) or {}).items():   # it as it makes the player; bench aisksd2
+        for side, info in self.settings.sides.items():   # it as it makes the player; bench aisksd2
             player, pid = s.players.get(side), ((info or {}).get('aiPersonality') or '').split(':')[-1]   # 136 at s1)
             if pid and player is not None and player != s.human:
                 self.no_model(side)
@@ -2199,7 +2196,7 @@ class SimAI:
         if getattr(self, '_own_done', False):
             return
         self._own_done = True
-        for a in getattr(self.world.m, 'assets', None) or []:
+        for a in self.settings.assets:
             if len(a) >= 3 and str(a[2]).startswith('AIPersonalityDefinition:'):
                 self.data.add_text(a[1])
                 if 'defense' in self.blocks:
@@ -2220,7 +2217,7 @@ class SimAI:
         if pick is None:
             return pid
         import engine.players.tech as simtech
-        faction = simtech.faction_of(player, (getattr(self.world.m, 'sides', {}) or {}).get(side))
+        faction = simtech.faction_of(player, self.settings.sides.get(side))
         got = pick(pid, faction and f'PlayerTemplate:{faction}', random.Random(self.seed + 11)) or pid
         if got != pid:
             self.settings.take_personality(player, got)
@@ -2233,7 +2230,7 @@ class SimAI:
         handed over without one gets the default personality then."""
         world, settings = self.world, self.settings
         sides = {v: k for k, v in world.players.items()}
-        for side, info in (getattr(world.m, 'sides', None) or {}).items():
+        for side, info in self.settings.sides.items():
             player = world.players.get(side)
             pid = ((info or {}).get('aiPersonality') or '').split(':')[-1]
             if pid and player is not None and player != world.human and player not in self.brains:
@@ -2248,7 +2245,7 @@ class SimAI:
             if player not in self.brains:
                 side = sides.get(player, '')
                 self.no_model(side or player)
-                pid = (world.m.sides.get(side) or {}).get('aiPersonality', '').split(':')[-1] or '1AlliedBalanced'
+                pid = (self.settings.sides.get(side) or {}).get('aiPersonality', '').split(':')[-1] or '1AlliedBalanced'
                 self.own_personalities()
                 self.brains[player] = Brain(self, player, side, pid, int(round(settings.ai[player] * FPS)))
             self.brains[player].wake(int(round(settings.ai[player] * FPS)))

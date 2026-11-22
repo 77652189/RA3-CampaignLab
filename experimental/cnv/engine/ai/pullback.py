@@ -93,7 +93,7 @@ class Pullbacks:
         if not u.alive or u.max_hp <= 0 or u.surface != 'ground':
             return None
         side = next((side for side, owner in world.players.items() if owner == brain.player), '')
-        faction = (world.m.sides.get(side) or {}).get('playerFaction')
+        faction = (brain.settings.sides.get(side) or {}).get('playerFaction')
         template = self.armies.get(faction)
         places = []
         for g in world.living():
