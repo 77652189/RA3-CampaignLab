@@ -572,6 +572,14 @@ class Parking(Interface):
     spots = 0
 
 
+class Recall(Interface):
+    """RecallUnitsSpecialPower, a SpecialPower too: the planes a cast calls home (members: of the living, in order)."""
+    __slots__ = ()
+
+    def members(self, living):
+        raise NotImplementedError
+
+
 class Repair(Interface):
     """RepairUpdate (step M13): its rules (rules: rate, toggleable, dead, cost), whether its block is the measured
     shape (measured: no field outside rules' read), the repair under way (job: the host's dict, None none), setting it
@@ -709,7 +717,7 @@ class AIUpdate(Interface):
 
 CORE = (Update, Body, Damage, Die, Destroy, Create, Upgrade, Contain, Collide, Production, SpecialPower, AIUpdate)
 FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, Attach, OreMiner, Unpack, Sell, Freeze,
-          LevelUp, Aura, Detector, Parking, Repair, Assign, Infiltrate, SlowDeath, CreateOnDeath,
+          LevelUp, Aura, Detector, Parking, Recall, Repair, Assign, Infiltrate, SlowDeath, CreateOnDeath,
           DeathWeapon, WeaponSet, Locomotor, Clocked)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze,
                  WeaponSet, Locomotor})  # a thing has at most one of these: Thing.find gives it

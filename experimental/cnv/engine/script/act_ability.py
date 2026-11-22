@@ -19,6 +19,7 @@ import math
 
 import engine.objects.garrison as simgarrison
 import engine.data.units as simunits
+from engine.kernel import interfaces
 from engine.ports.command import Command
 from engine.objects.power import CURTAIN, PACK_FRAMES, PACK_POWER, RELOAD_LAG, SUPERWEAPON_HITS, UNPACK_POWER, start_reload
 from engine.script.common import refined
@@ -140,6 +141,14 @@ def named_buttons(sim, name, a, script, unit=None):
         sim.used.add('special power')
         sim.casts += [(sim.frame_now(), b.owner, power.lower(), b.serial, None)] * n
         sim.note('技能', f'{sim.label(b)} 按 {a[1]}：记 {n} 次施放')
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and any(
+            m.power() == simunits.command_power(a[1], sim.own) for m in body(a[0]).find(interfaces.Recall)):
+        # engine_recall_e (E184): the airport's recall seen cast once; the plane it made flies back to it
+        b, power = body(a[0]), simunits.command_power(a[1], sim.own)
+        sim.casts.append((sim.frame_now(), b.owner, power.lower(), b.serial, None))
+        for m in b.find(interfaces.Recall):
+            for p in m.members(sim.living()) if m.power() == power else ():
+                _order(sim, 'move', p, pos=(b.x, b.y))
     elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
         script_cast(sim, name, a, unit)
     else:

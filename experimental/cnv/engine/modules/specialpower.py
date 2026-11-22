@@ -23,6 +23,7 @@ TAGS = ('SpecialPower', 'OCLSpecialPower', 'MovementSpecialPower', 'DominateEnem
         'PrematureDischargeSpecialPower', 'ReturnToDockSpecialPower')
 FPS = 15                        # the game's logic frames a second (bench 2026-10-28, probe align)
 ASSIGN = 'AssignSlavesTargetObjectSpecialPower'     # its own class below (AssignSlaves: a SpecialPower with a dispatch)
+RECALL = 'RecallUnitsSpecialPower'                  # its own class below (RecallUnits: whom a cast calls home)
 
 
 class SpecialPowerData(module.ModuleData):
@@ -34,7 +35,7 @@ class SpecialPowerData(module.ModuleData):
         return cls(templates.attr(head, 'SpecialPowerTemplate'))
 
 
-@factory.module(*(t for t in TAGS if t != ASSIGN))
+@factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL)))
 class SpecialPower(module.Module, interfaces.SpecialPower):
     """Data and a reload frame; no update of its own (a reload is over once the frame passes it)."""
     DATA = SpecialPowerData
@@ -50,6 +51,30 @@ class SpecialPower(module.Module, interfaces.SpecialPower):
 
     def set_ready_at(self, frame):
         self.ready = frame
+
+
+class RecallData(SpecialPowerData):
+    def __init__(self, power=None, most=4):
+        super().__init__(power)
+        self.most = most            # MaxAircraftToRecall (the XSD's default 4)
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(templates.attr(head, 'SpecialPowerTemplate'),
+                   int(templates.num(templates.attr(head, 'MaxAircraftToRecall'), 4.0)))
+
+
+@factory.module(RECALL)
+class RecallUnits(SpecialPower, interfaces.Recall):
+    """RecallUnitsSpecialPower (E184, checks/engine_recall_e.readings.toml): a cast calls home the living AIRCRAFT its
+    holder made for its owner, MaxAircraftToRecall of them in the order made (the host sends them: act_ability). One
+    produced Apollo benched: which ones past the cap, the way home, landing and parking slots INFERRED / not modelled."""
+    DATA = RecallData
+
+    def members(self, living):
+        me = self.thing
+        return [b for b in living if b.made_by == me.name and b.owner == me.owner
+                and 'AIRCRAFT' in b.kinds][:self.data.most]
 
 
 class AssignData(SpecialPowerData):

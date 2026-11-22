@@ -1,0 +1,22 @@
+# Bench readings of checks/engine_recall_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E184 bench 2026-11-15/16 (work/bench_results/recallon_e__a.json, recalloff_e__a.json; work/re/e184_recall.md,
+# e187_recall.md): the airport builds one Apollo at f30, it is named at f240 and sent to the sortie at f270; the
+# airport's recall button at f420. Bits: 出发位 1 live / 2 near the airport at f255, 4 at the sortie at f405;
+# 结束位 the same three at f660.
+
+[[reading]]
+id = "the_airport_recall_brings_its_plane_back"
+scene = {build = "recallon_e", check = "a", until = 45}
+bench = "完成帧 660, 出发位 7, 结束位 3 (live, near the airport), 施放数 1 (the cast event at f421)"
+proves = "物体模块 RecallUnitsSpecialPower: the airport's recall power sends the plane it built home"
+item = "物体模块 Behaviors/RecallUnitsSpecialPower"
+expect = ["counter('E184Frame') == 660", "counter('E184Depart') == 7", "counter('E184Final') == 3",
+          "counter('E184Cast') == 1"]
+
+[[reading]]
+id = "without_the_module_the_plane_stays_out"
+scene = {build = "recalloff_e", check = "a", until = 45}
+bench = "完成帧 660, 出发位 7, 结束位 5 (live, at the sortie), 施放数 0"
+proves = "物体模块 RecallUnitsSpecialPower: the airport without the module recalls nothing"
+expect = ["counter('E184Frame') == 660", "counter('E184Depart') == 7", "counter('E184Final') == 5",
+          "all(r['施放数'] == 0 for r in rows)"]
