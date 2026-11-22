@@ -43,7 +43,7 @@ SEMANTICS = 2           # manual fallback for a format change outside version()'
 SETUP = ('level', 'seed', 'blocks', 'record')
 
 SIMAI = {
-    'sim': HOST, 'world': ALIAS, 'peers': WIRE, 'settings': WIRE,   # the AI port's view (13f-2a)
+    'sim': HOST, 'world': ALIAS, 'settings': WIRE,   # the AI port's view (13f-2a)
     'observe': WIRE,                    # the observation port (13f-2b)
     'commands': ALIAS, 'systems': WIRE,     # the command port (13f-1, the Sim's own) and the players' systems (13f-2c)
     'mod': STATIC, 'level': STATIC, 'seed': STATIC, 'blocks': STATIC, 'record': STATIC,
@@ -58,7 +58,7 @@ SIMAI = {
 ALIASES = {('world',): ('sim',), ('commands',): ('sim', 'commands')}
 
 BRAIN = {
-    'host': WIRE, 'world': WIRE, 'peers': WIRE, 'settings': WIRE, 'observe': WIRE, 'player': STATIC,
+    'host': WIRE, 'world': WIRE, 'settings': WIRE, 'observe': WIRE, 'player': STATIC,
     'commands': WIRE, 'systems': WIRE,      # the command port and the players' systems the SimAI hands on (13f-2c)
     'made_as': STATIC,      # (side, personality): the snapshot's row, the new brain made with them
     # the plugin's: the AI player and the blocks Brain.attach gives it, the view it is handed, the defence's bases

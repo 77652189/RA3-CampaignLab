@@ -72,7 +72,7 @@ FORWARDER_CALLS = {
     # step 10 can call simorder / simmodifier / simdamage itself; its orders go through the command port since R3
     # 13f-1). (The AI's hunt state's expire went off the count with Sim.expire, step M10; self.tactics.stand with
     # Sim.stand, S1)
-    ('engine.ai.core', 'expected_damage'): 1, ('engine.ai.core', 'modify'): 1,
+    ('engine.ai.core', 'expected_damage'): 1,
     # simproxy: none (its orders go through the command port since R3 13e)
     # living: a forwarder since the living cache (Sim.living -> simliving.living); these are the layers' calls the day
     # it became one, the rule's home being world.living(). The count only shrinks from here.
@@ -93,7 +93,7 @@ FORWARDER_CALLS = {
 # the line the failure prints, in the same commit (review rr #8: a names-only count let a swap through). Packages are
 # engine.<layer> and the top-level sim*.py files.
 SIM_SURFACE = {
-    'engine.ai': 'blocks*11 bodies*4 commands*3 enemy*3 flags frame_now*3 ground*8 human*2 level living*24 modify '
+    'engine.ai': 'blocks*11 bodies*4 commands*3 enemy*3 flags frame_now*3 ground*8 human*2 level living*24 '
                  'note*4 own*15 players*6 relation relations*3 t*4 waypoints*2 who*4 world xml_of*2',
     'engine.combat': 'attachment_tick attachments*4 can_hit change*2 cold_of*3 death_blasts*2 destroy*5 '
                      'emp_disabled*3 firing first_death*4 frame_now*17 gap*6 garrison*2 ground*6 guessed '

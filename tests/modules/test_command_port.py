@@ -988,7 +988,7 @@ def _brain(s, player='Player_1'):
     import engine.ai.core as simai
     host = simai.SimAI(s, lib=object(), data=object())
     br = object.__new__(simai.Brain)
-    br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, player, {}, {}
+    br.host, br.world, br.player, br.ids, br.hp = host, s, player, {}, {}
     br.settings = host.settings     # the AI port's settings (R3 13f-2a)
     br.observe = host.observe       # the observation port (R3 13f-2b)
     br.commands, br.systems = host.commands, host.systems   # the command port, the players' systems (13f-2c)
@@ -1037,7 +1037,7 @@ def test_the_ais_micro_fires_and_dodges_with_the_unit_it_viewed_not_a_reference_
     s.refs['lead'] = decoy
     host = simai.SimAI(s)
     br = object.__new__(simai.Brain)
-    br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
+    br.host, br.world, br.player, br.ids, br.hp = host, s, 'Player_1', {}, {}
     br.settings = host.settings     # the AI port's settings (R3 13f-2a)
     br.observe = host.observe       # the observation port (R3 13f-2b)
     br.commands, br.systems = host.commands, host.systems   # the command port, the players' systems (13f-2c)
@@ -1059,6 +1059,26 @@ def test_the_ais_micro_fires_and_dodges_with_the_unit_it_viewed_not_a_reference_
     assert len({u.name for u in br.micro_team(None, 0, team).units}) == 3
 
 
+def test_the_ai_micro_charge_is_a_power_of_its_own_living_unit():
+    """B3: the AI micro manager's Bonzai is `power` via 'micro' by serial -- another's warrior, a dead one, one
+    reloading: refused and nothing set (an empty set is no success); its own: the charge and its reload."""
+    import engine.orders.micro as simmicro
+    s = simsmall.small_world([('mine', 'JapanAntiInfantryInfantry', 'Player_1', 0.0, 0.0),
+                              ('theirs', 'JapanAntiInfantryInfantry', 'Player_2', 300.0, 0.0)], model=False)
+    mine, theirs = s.bodies['mine'], s.bodies['theirs']
+
+    def charge(b):
+        return s.commands.do(Command('power', 'ai:Player_1', units=(b.serial,), power=simmicro.COMMAND,
+                                     args=(('objects', 'serial'), ('via', 'micro'))))[0]
+    assert not charge(theirs) and not theirs.auras_on and simmicro.COMMAND not in theirs.ready_at
+    assert charge(mine) and mine.auras_on and mine.ready_at[simmicro.COMMAND] > s.frame_now()
+    aura = dict(mine.auras_on)
+    assert not charge(mine) and mine.auras_on == aura          # reloading
+    s.destroy(mine, 'test')
+    mine.ready_at.clear()
+    assert not charge(mine)
+
+
 def test_the_ais_hunt_goes_on_with_its_member_not_a_reference_of_its_name():
     """A hunt state is its member's, by serial (11-19 same-name sweep S6b: keyed by name and read back by
     `world.body(name)`, so with the pursuit dead and the path cancelled the reference `lead` pointing at another
@@ -1073,7 +1093,7 @@ def test_the_ais_hunt_goes_on_with_its_member_not_a_reference_of_its_name():
     lead, decoy, foe = s.bodies['lead'], s.bodies['decoy'], s.bodies['foe']
     host = simai.SimAI(s)
     br = object.__new__(simai.Brain)
-    br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
+    br.host, br.world, br.player, br.ids, br.hp = host, s, 'Player_1', {}, {}
     br.settings = host.settings     # the AI port's settings (R3 13f-2a)
     br.observe = host.observe       # the observation port (R3 13f-2b)
     br.commands, br.systems = host.commands, host.systems   # the command port, the players' systems (13f-2c)
@@ -1117,7 +1137,7 @@ def test_the_ais_recruiting_wraps_the_new_unit_not_the_dead_one_of_its_name():
     old = s.bodies['lead']
     host = simai.SimAI(s)
     br = object.__new__(simai.Brain)
-    br.host, br.world, br.peers, br.player, br.ids, br.hp, br.wrappers = host, s, host.peers, 'Player_1', {}, {}, {}
+    br.host, br.world, br.player, br.ids, br.hp, br.wrappers = host, s, 'Player_1', {}, {}, {}
     br.settings = host.settings     # the AI port's settings (R3 13f-2a)
     br.observe = host.observe       # the observation port (R3 13f-2b)
     br.commands, br.systems = host.commands, host.systems   # the command port, the players' systems (13f-2c)
@@ -1144,7 +1164,7 @@ def test_the_ais_yard_orders_end_with_their_yard_not_go_on_at_a_new_one_of_its_n
     s.money['Player_1'] = 10000
     host = simai.SimAI(s)
     br = object.__new__(simai.Brain)
-    br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
+    br.host, br.world, br.player, br.ids, br.hp = host, s, 'Player_1', {}, {}
     br.settings = host.settings     # the AI port's settings (R3 13f-2a)
     br.observe = host.observe       # the observation port (R3 13f-2b)
     br.commands, br.systems = host.commands, host.systems   # the command port, the players' systems (13f-2c)

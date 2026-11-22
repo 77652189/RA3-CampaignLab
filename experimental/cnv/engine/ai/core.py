@@ -87,31 +87,15 @@ from engine.ports import ai as ai_port, templates  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 import engine.combat.range as simrange  # noqa: E402
 
-# What the skirmish AI borrows on its host (the Sim) beyond the world (simworld.WORLD_API) and the ports: only
-# `modify`, the attributes worked out again after its micro's charge (simmicro.fire) -- an effect of the power, a
-# shortcut that goes with toggle / power into the command family. Everything else comes through ports: its orders
-# through the command port (`commands`, R3 13f-1); the mission's AI settings and the players' systems (power,
-# production, the wallet) through the AI port's Settings and PlayerSystems, the frame loop its runner's (13f-2a /
-# 13f-2c, engine/ports/ai.py); money, flags and the fight through the observation port, the weapon reach rules off
-# L3 simrange (13f-2b). It sets nothing there (no WRITES: ⑨d-1 moved its writes onto the owners' methods).
-PEERS = frozenset({'modify'})
+# The skirmish AI borrows nothing on its host (the Sim) beyond the world (simworld.WORLD_API) and the ports: its
+# orders, its micro's charge too (`power` via 'micro', B3), through the command port (`commands`, R3 13f-1); the
+# mission's AI settings and the players' systems (power, production, the wallet) through the AI port's Settings and
+# PlayerSystems, the frame loop its runner's (13f-2a / 13f-2c, engine/ports/ai.py); money, flags and the fight through
+# the observation port, the weapon reach rules off L3 simrange (13f-2b). It sets nothing there (⑨d-1).
 # ADR 0037 phase 1: the names of the world API the AI reaches (16, under half; the mission and the garrisons through the
 # settings and observation ports); it adds no body (a refinery's free miner is the production rules': systems.bring)
 AI_WORLD = frozenset({'bodies', 'blocks', 'enemy', 'frame_now', 'ground', 'human', 'living', 'note', 'own',
                       'players', 'relation', 'relations', 't', 'waypoints', 'who', 'xml_of'})
-
-
-class Peers:
-    """What the skirmish AI may read on its host (the Sim) beyond the world: the names in PEERS, read when used."""
-    __slots__ = ('host',)
-
-    def __init__(self, host):
-        self.host = host
-
-    def __getattr__(self, name):
-        if name not in PEERS:
-            raise AttributeError(f'simai.Peers: {name} is not lent (PEERS)')
-        return getattr(self.host, name)
 
 
 FPS = 15
@@ -283,7 +267,7 @@ class Brain:
     """One AI player of the simulator's: the AIPlayer and the world it is given (yard, factories, units, the view)."""
 
     def __init__(self, host, player, side, personality, frame):
-        self.host, self.world, self.peers, self.player = host, host.world, host.peers, player
+        self.host, self.world, self.player = host, host.world, player
         self.commands = host.commands   # the command port its orders go through (13f-1)
         self.systems = host.systems     # the players' systems it asks (power, production, the wallet; 13f-2c)
         self.settings = host.settings   # the mission's AI settings (the AI port)
@@ -1232,7 +1216,7 @@ class Brain:
         if b and b.owner == self.player and self.give('toggle', b, args=(('button', info.command),))[0]:
             self.world.note('AI', f'{u.name} 执行 {info.command}')
             return
-        if b and b.owner == self.player and simmicro.fire(self.world, b, info.command, self.peers.modify):
+        if b and b.owner == self.player and self.give('power', b, power=info.command, args=(('via', 'micro'),))[0]:
             state = self.__dict__.get('_hunt_goals', {}).get(b.serial)
             if (state is not None and state.state == 33
                     and info.command == simmicro.COMMAND):
@@ -2090,7 +2074,7 @@ class SimAI:
     def __init__(self, s, level='normal', seed=1, lib=None, data=None, blocks=BLOCKS, record=False):
         mod = model()                   # None: no brain is ever made (NoModel where one would be)
         self.sim, self.mod, self.level, self.seed = s, mod, level, seed   # sim: for the callers (main, tests)
-        self.world, self.peers = s, Peers(s)    # all the AI reads of its host: the world API and its loan (PEERS)
+        self.world = s                  # the world API: all the AI reads of its host beyond the ports
         self.commands = s.commands      # the command port (R3 13f-1)
         self.systems = ai_port.PlayerSystems(s)     # and the players' systems (the AI port, R3 13f-2c)
         self.settings = ai_port.Settings(s)     # and the mission's AI settings (the AI port)

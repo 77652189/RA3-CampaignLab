@@ -368,7 +368,7 @@ def _bare_brain(s, unpack):
     host = simai.SimAI(s, lib=object(), data=object())
     host.unpack = lambda template: unpack
     br = object.__new__(simai.Brain)
-    br.host, br.world, br.peers, br.player, br.ids, br.hp = host, s, host.peers, 'Player_1', {}, {}
+    br.host, br.world, br.player, br.ids, br.hp = host, s, 'Player_1', {}, {}
     br.settings, br.observe = host.settings, host.observe
     br.commands, br.systems = host.commands, host.systems   # the command port, the players' systems (R3 13f-2c)
     br.made, br.unit_q, br.trace = {}, [], []

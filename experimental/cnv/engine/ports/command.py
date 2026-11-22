@@ -244,8 +244,9 @@ def _where(cmd):
 
 class Commands:
     """The command port of one world (today a sim.Sim). `rules`: the unit orders' rule modules its routes call --
-    order, ability, hunt (engine.orders, L5) and toggle (engine.objects.toggle) -- handed in by the world's maker
-    (sim.ORDER_RULES): this port imports none of them, so a giver of any layer may use it (ADR 0037 S1)."""
+    order, ability, hunt, micro (engine.orders, L5) and toggle (engine.objects.toggle) -- handed in by the world's maker
+    (sim.ORDER_RULES) with `refresh_modifiers`, the world's re-read of a body's attribute modifiers (the micro's charge): this
+    port imports none of them, so a giver of any layer may use it (ADR 0037 S1, B3)."""
 
     def __init__(self, world, **rules):
         self._w = world
@@ -495,6 +496,9 @@ class Commands:
 
     def _power(self, cmd):
         w, r = self._w, self._r
+        if cmd.arg('via') == 'micro':       # the AI micro manager's self-power (micro.fire): refused when none fires
+            fired = [r.micro.fire(w, b, cmd.power, r.refresh_modifiers) for b in self._units(cmd)]
+            return (True, '') if fired and all(fired) else (False, f'{cmd.power}: not fired')
         if cmd.arg('objects'):
             return self._script_press(cmd)
         p = w.point(cmd.place)

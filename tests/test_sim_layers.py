@@ -63,7 +63,7 @@ LAYER_OF = {
 # the skirmish AI's side (step 9d): simai and the parts only it imports. The inventory counts the player's run
 # (simcoverage.sim_files walks down from sim and simproxy, never into simai; inventory_ai counts the AI apart), so
 # test_simcoverage_files leaves these out; no other simulator module imports them (test_nothing_else_imports_the_ai).
-AI_SIDE = {'engine.ai.core', 'engine.orders.micro', 'engine.ai.pullback'}
+AI_SIDE = {'engine.ai.core', 'engine.ai.pullback'}   # (engine.orders.micro: a command port rule since B3)
 # tools over a whole run (step S's snapshot): layered for the import rule (never import sim), not a part of the
 # simulator, so the inventory does not count their strings (tests/test_simcoverage_files.py)
 OVER_THE_RUN = {'engine.state.snapshot', 'engine.state.ai_snapshot', 'engine.state.battlefield'}
@@ -261,7 +261,7 @@ def peer_breaks(takers=PEER_TAKERS, source=None):
         tree = ast.parse(source) if source is not None else _tree(mod)   # read from the source (no sys.path)
         table = {n.targets[0].id: ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
                  and getattr(n.targets[0], 'id', '') in ('PEERS', 'WRITES')}
-        lent, writes = table['PEERS'], table.get('WRITES', set())
+        lent, writes = table.get('PEERS', set()), table.get('WRITES', set())   # no PEERS: lends nothing (simai, B3)
         for n in ast.walk(tree):
             if isinstance(n, ast.Attribute) and _held(n.value, 'peers'):
                 if n.attr not in lent or (isinstance(n.ctx, ast.Store) and n.attr not in writes):
@@ -523,15 +523,11 @@ def _ai_port():
 
 
 def settings_breaks(source=None):
-    """(line, name) for each `settings.X` in simai that the AI port's Settings does not have, and ('PEERS', name) for
-    each Settings name (or `advance`) PEERS still lends."""
+    """(line, name) for each `settings.X` in simai that the AI port's Settings does not have."""
     names = {n for n in vars(_ai_port().Settings) if not n.startswith('_')}
     tree = ast.parse(source) if source is not None else _tree('engine.ai.core')
-    out = [(n.lineno, n.attr) for n in ast.walk(tree) if isinstance(n, ast.Attribute) and _held(n.value, 'settings')
-           and n.attr not in names]
-    lent = next((ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
-                 and getattr(n.targets[0], 'id', '') == 'PEERS'), set())
-    return out + [('PEERS', n) for n in sorted(lent & (names | {'advance'}))]
+    return [(n.lineno, n.attr) for n in ast.walk(tree) if isinstance(n, ast.Attribute) and _held(n.value, 'settings')
+            and n.attr not in names]
 
 
 def test_the_ai_reads_its_settings_through_the_ai_port():
@@ -539,10 +535,8 @@ def test_the_ai_reads_its_settings_through_the_ai_port():
 
 
 def test_settings_guard_bites():
-    """Mutation check on the real file: a Settings name lent by Peers again, a setting read that Settings lacks."""
+    """Mutation check on the real file: a setting read that Settings lacks."""
     src = (CNV / 'engine/ai/core.py').read_text(encoding='utf-8')
-    assert settings_breaks(src.replace("PEERS = frozenset({'modify'", "PEERS = frozenset({'ai_paused', "
-                                       "'modify'")) == [('PEERS', 'ai_paused')]
     assert [n for _, n in settings_breaks(src.replace('self.settings.ai_switches.get(',
                                                       'self.settings.switches.get('))] == ['switches']
 
@@ -559,16 +553,11 @@ def _defs(path, cls=None):
 
 
 def observe_breaks(source=None):
-    """(line, name) for each `observe.X` in simai that Observe does not have, and ('PEERS', name) for each name
-    PEERS lends that simai reads through Observe or off simrange."""
+    """(line, name) for each `observe.X` in simai that Observe does not have."""
     names = _defs(CNV / 'engine' / 'ports' / 'observe.py', 'Observe')
     tree = ast.parse(source) if source is not None else _tree('engine.ai.core')
     read = [n for n in ast.walk(tree) if isinstance(n, ast.Attribute) and _held(n.value, 'observe')]
-    out = [(n.lineno, n.attr) for n in read if n.attr not in names]
-    lent = next((ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
-                 and getattr(n.targets[0], 'id', '') == 'PEERS'), set())
-    moved = {n.attr for n in read} | _defs(CNV / 'engine/combat/range.py')
-    return out + [('PEERS', n) for n in sorted(lent & moved)]
+    return [(n.lineno, n.attr) for n in read if n.attr not in names]
 
 
 def test_the_ai_reads_the_fight_through_the_observation_port():
@@ -576,33 +565,24 @@ def test_the_ai_reads_the_fight_through_the_observation_port():
 
 
 def test_observe_guard_bites():
-    """Mutation check on the real file: a name read through Observe lent by Peers again, a simrange rule lent again,
-    an observe read that Observe lacks."""
+    """Mutation check on the real file: an observe read that Observe lacks."""
     src = (CNV / 'engine/ai/core.py').read_text(encoding='utf-8')
-    assert observe_breaks(src.replace("PEERS = frozenset({'modify'", "PEERS = frozenset({'money', 'reach_of', "
-                                      "'modify'")) == [('PEERS', 'money'), ('PEERS', 'reach_of')]
     assert [n for _, n in observe_breaks(src.replace('self.observe.attachments()',
                                                      'self.observe.attached()'))] == ['attached']
 
 
 # R3 13f-2c: the players' systems (power, the build permissions, the upgrades for sale, the production queues, the
 # wallet) reach simai through the AI port's PlayerSystems (held as `systems`) and its orders through the command port
-# it holds (`commands`): every `systems.X` it reads is a PlayerSystems name, and PEERS lends nothing but AI_PEERS_LEFT
-# -- `modify`, the micro's charge recomputing a body's attributes (an effect of the power: it goes with toggle / power
-# into the command family)
-AI_PEERS_LEFT = frozenset({'modify'})
+# it holds (`commands`): every `systems.X` it reads is a PlayerSystems name. It has no Peers loan (B3: the micro's
+# charge, the last name lent, is the command port's `power` via 'micro'): PEER_TAKERS holds it, so any `peers.X` is red
 
 
 def systems_breaks(source=None):
-    """(line, name) for each `systems.X` in simai that PlayerSystems does not have, and ('PEERS', name) for each name
-    PEERS lends beyond AI_PEERS_LEFT."""
+    """(line, name) for each `systems.X` in simai that PlayerSystems does not have."""
     names = {n for n in vars(_ai_port().PlayerSystems) if not n.startswith('_')}
     tree = ast.parse(source) if source is not None else _tree('engine.ai.core')
-    out = [(n.lineno, n.attr) for n in ast.walk(tree) if isinstance(n, ast.Attribute) and _held(n.value, 'systems')
-           and n.attr not in names]
-    lent = next((ast.literal_eval(n.value.args[0]) for n in tree.body if isinstance(n, ast.Assign)
-                 and getattr(n.targets[0], 'id', '') == 'PEERS'), set())
-    return out + [('PEERS', n) for n in sorted(lent - AI_PEERS_LEFT)]
+    return [(n.lineno, n.attr) for n in ast.walk(tree) if isinstance(n, ast.Attribute) and _held(n.value, 'systems')
+            and n.attr not in names]
 
 
 def test_the_ai_asks_the_player_systems_through_the_ai_port():
@@ -610,11 +590,12 @@ def test_the_ai_asks_the_player_systems_through_the_ai_port():
 
 
 def test_systems_guard_bites():
-    """Mutation check on the real file: a player system or the command port lent by Peers again, a systems read that
-    PlayerSystems lacks (the wallet itself, not its three methods)."""
+    """Mutation check on the real file: a systems read that PlayerSystems lacks (the wallet itself, not its three
+    methods), and a Peers read again (the micro's charge by its old loan)."""
     src = (CNV / 'engine/ai/core.py').read_text(encoding='utf-8')
-    assert systems_breaks(src.replace("PEERS = frozenset({'modify'", "PEERS = frozenset({'queues', 'commands', "
-                                      "'modify'")) == [('PEERS', 'commands'), ('PEERS', 'queues')]
+    old = "self.give('power', b, power=info.command, args=(('via', 'micro'),))[0]"
+    assert peer_breaks(['engine.ai.core'], src.replace(old, 'simmicro.fire(self.world, b, info.command, self.peers.modify)')) \
+        == [('engine.ai.core', 'modify')]
     assert [n for _, n in systems_breaks(src.replace('systems.instal(self.player, job, nxt)',
                                                      'systems.wallet.instal(self.player, job, nxt)'))] == ['wallet']
 
@@ -708,9 +689,9 @@ def test_nothing_else_imports_the_ai():
 
 
 def test_ai_import_guard_bites():
-    """Mutation check: a simulator module importing simmicro at its top or simai inside a function is caught."""
-    assert ai_import_breaks(['sim'], "import engine.orders.micro as simmicro\ndef f():\n    import engine.ai.core as simai\n") == \
-        [('sim', 'engine.ai.core'), ('sim', 'engine.orders.micro')]
+    """Mutation check: a simulator module importing simpullback at its top or simai inside a function is caught."""
+    assert ai_import_breaks(['sim'], "import engine.ai.pullback as simpullback\ndef f():\n    import engine.ai.core as simai\n") == \
+        [('sim', 'engine.ai.core'), ('sim', 'engine.ai.pullback')]
 
 
 # step 9d: the skirmish AI writes no field of a body either (rule "L8 changes no object field"): a goal, a team, a

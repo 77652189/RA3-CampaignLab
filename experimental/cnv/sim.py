@@ -77,7 +77,7 @@ from engine.objects.path import Ground  # noqa: E402,F401  (the routing world, M
 import engine.objects.modifier as simmodifier  # noqa: E402
 import engine.players.money as simmoney  # noqa: E402
 import engine.objects.infiltrator as siminfiltrator  # noqa: E402
-from engine.orders import order as simorder, ability as simability, target as simtarget, hunt as simhunt, seq as simseq  # noqa: E402
+from engine.orders import order as simorder, ability as simability, target as simtarget, hunt as simhunt, seq as simseq, micro as simmicro  # noqa: E402
 import engine.objects.power as simpower  # noqa: E402
 import engine.players.production as simproduce  # noqa: E402
 import engine.combat.range as simrange  # noqa: E402
@@ -95,7 +95,7 @@ from engine.modules import aiupdate, locomotor  # noqa: E402
 from engine.modules import slowdeath as kernel_slowdeath, weaponset as kernel_weaponset  # noqa: E402
 import engine.loop.frame as simloop  # noqa: E402
 # the unit orders' rules the command port's routes call (ADR 0037 S1: the port, L0, imports none of them)
-ORDER_RULES = {'order': simorder, 'ability': simability, 'hunt': simhunt, 'toggle': simtoggle}
+ORDER_RULES = {'order': simorder, 'ability': simability, 'hunt': simhunt, 'toggle': simtoggle, 'micro': simmicro}
 import engine.world.handle as simworld  # noqa: E402
 import engine.script.host as simexec  # noqa: E402
 import scriptplugin  # noqa: E402
@@ -760,8 +760,8 @@ class Sim:
         self.sweeps = simsweep.Sweeps(self, simsweep.Peers(self))  # ActivateLinearDamageNugget + LinearDamageUpdate: the lines walking
         self.events = sorted((e for e in self.script if isinstance(e[0], float)), key=lambda e: e[0])
         self.anchored = [e for e in self.script if isinstance(e[0], tuple)]       # (('@', flag, delta), verb, ...)
-        self.commands = command_port.Commands(self, **ORDER_RULES)  # the command port: one per run (happen's orders, the
-        # givers')
+        self.commands = command_port.Commands(self, **ORDER_RULES, refresh_modifiers=lambda b: self.world.modify(b))  # the
+        # command port: one per run (happen's orders, the givers'); the micro's re-read the host's when called
         self.areas = Areas(self.mm.areas)
         # the map's hot spots (MissionHotSpots): name -> on; off at the start, only SET_..._ACTIVENESS (and the player's
         # popup, not simulated) turns one on or off (d115_script_semantics.md 4). The name as written: bench 11-13

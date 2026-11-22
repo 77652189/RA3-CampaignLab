@@ -6,7 +6,7 @@ and speed. ArmorSetType, suppression immunity, garrison contest and bark
 immunity remain explicit gaps; this does not establish full Bonzai combat.
 Other commands retain their explicit unmodeled execution path.
 L5 orders (ADR 0029): reaches the world only through simworld.WORLD_API; the modifiers' re-set (`modify`, L2) is
-handed in by the caller (simai).
+handed in by the caller (the command port's `power` via 'micro', B3: the AI's charge goes through it).
 """
 import engine.objects.power as simpower
 import engine.data.units as simunits
