@@ -225,8 +225,8 @@ class Life:
 def last_until(world, b, frame):
     """A lifetime the template data port left out (retail LifetimeUpdate, simunits.OWN_ONLY), set from outside: the
     body dies at `frame` as any other (engine/modules/lifetime.py), its module attached now when it has none. The
-    skirmish AI's dodge read of a retail fixed LifetimeUpdate does this (simai.Brain.micro_team; INFERRED: the frame
-    it first sees the body as its birth)."""
+    skirmish AI's dodge read of a retail fixed LifetimeUpdate does this (the command port's set_lifetime; INFERRED:
+    the frame it first sees the body as its birth)."""
     m = b.find(interfaces.Lifetime) if b.modules else None
     if m is None:
         m = world.world.attach(b, 'LifetimeUpdate')

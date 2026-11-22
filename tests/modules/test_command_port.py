@@ -82,7 +82,7 @@ def test_unknown_and_unrouted_kinds_are_refused():
     assert not ok and 'no route' in why and not s.events
     ok, why = port.post(Command('hunt', units=('a',)), 5.0)          # routed, but no script line carries it
     assert not ok and 'not queued' in why and not s.events
-    assert set(ROUTED) < port.kinds() and len(port.kinds()) == 23
+    assert set(ROUTED) < port.kinds() and len(port.kinds()) == 24
     assert [r[2] for r in port.issued()] == [False, False, False]
 
 
@@ -1223,6 +1223,32 @@ def test_the_ais_micro_view_names_a_member_and_a_beacon_made_again_apart_from_th
     lead, beacon = s.bodies['lead'], s.bodies['beacon']
     assert look('lead', 'wing') == ([f'lead#{lead.serial}', 'wing'],
                                     [(f'beacon#{beacon.serial}', sorted([f'lead#{lead.serial}', 'wing']))])
+
+
+def test_the_ais_dodge_sets_a_foes_beacon_lifetime_once_from_its_own_frame_through_the_port():
+    """B3 step 2: a foe's beacon whose retail fixed lifetime (4 s) the reader left out, first seen by the dodge view at
+    the brain's frame (500; the host's is 0): `set_lifetime` through the port, dies at 560, 60 left; seen again later
+    not put off; one made again under its name its own from its first sight, the old one left as it was."""
+    from types import SimpleNamespace
+    import engine.ai.core as simai
+    if not simai.available():
+        pytest.skip('ra3model.ai unavailable')
+    s = simsmall.small_world([('lead', 'SovietConscript', 'Player_1', 0.0, 0.0),
+                              ('beacon', 'AlliedPrecisionStrikeBeacon', 'Player_2', 100.0, 0.0)], model=False)
+    s.relations[('Player_1', 'Player_2')] = s.relations[('Player_2', 'Player_1')] = 'Enemy'
+    br, simai = _brain(s)
+    br.view, br.aim_of = SimpleNamespace(things=[], enemies=frozenset({'Player_2'})), lambda b, r: None
+    team = SimpleNamespace(members=[simai.Unit(s.bodies['lead'], br.observe)])
+    old = s.bodies['beacon']
+    assert old.life_end is None and s.frame_now() == 0
+    assert [d.remaining for d in br.micro_team(None, 500, team).threats] == [60] and old.life_end == 560
+    assert [d.remaining for d in br.micro_team(None, 520, team).threats] == [40] and old.life_end == 560
+    s.destroy(old, 'test')
+    s.add('beacon', old.template, old.owner, 100.0, 0.0)
+    assert [d.remaining for d in br.micro_team(None, 600, team).threats] == [60]
+    assert s.bodies['beacon'].life_end == 660 and old.life_end == 560
+    assert [(c.kind, c.by, c.arg('die_frame'), ok) for _, c, ok, _ in s.commands.issued()] == [
+        ('set_lifetime', 'ai:Player_1', 560, True), ('set_lifetime', 'ai:Player_1', 660, True)]
 
 
 def test_a_pinned_order_moves_only_the_object_its_name_picked_and_a_gone_one_is_refused():

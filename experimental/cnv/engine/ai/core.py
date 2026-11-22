@@ -1179,7 +1179,8 @@ class Brain:
                     continue
                 # Retail fixed lifetime was not loaded by simunits' bounded reader.
                 # INFERRED first-seen birth frame; Sim owns expiry/deletion thereafter.
-                simbody.last_until(self.world, b, frame + mc.frames(mc.seconds(life.get('MinLifetime'))))
+                die = frame + mc.frames(mc.seconds(life.get('MinLifetime')))
+                self.give('set_lifetime', b, args=(('die_frame', die),))
             eligible = frozenset(view(u.body) for u in team.members if u.body.alive
                                  and 'AIRCRAFT' not in u.body.kinds
                                  and not (getattr(u.body, 'z', None) or 0) > 0)

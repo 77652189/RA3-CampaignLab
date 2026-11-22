@@ -95,7 +95,7 @@ from engine.modules import aiupdate, locomotor  # noqa: E402
 from engine.modules import slowdeath as kernel_slowdeath, weaponset as kernel_weaponset  # noqa: E402
 import engine.loop.frame as simloop  # noqa: E402
 # the unit orders' rules the command port's routes call (ADR 0037 S1: the port, L0, imports none of them)
-ORDER_RULES = {'order': simorder, 'ability': simability, 'hunt': simhunt, 'toggle': simtoggle, 'micro': simmicro}
+ORDER_RULES = dict(order=simorder, ability=simability, hunt=simhunt, toggle=simtoggle, micro=simmicro, body=simbody)
 import engine.world.handle as simworld  # noqa: E402
 import engine.script.host as simexec  # noqa: E402
 import scriptplugin  # noqa: E402

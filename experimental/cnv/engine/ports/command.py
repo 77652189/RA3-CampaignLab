@@ -65,7 +65,7 @@ import types
 KINDS = frozenset({
     'move', 'attack_move', 'attack', 'attack_ground', 'stop', 'idle', 'guard', 'follow_path', 'capture', 'enter',
     'exit', 'power', 'toggle', 'stance', 'build', 'place', 'unpack', 'sell', 'buy_science', 'hunt', 'flee',
-    'auto_acquire', 'face'})
+    'auto_acquire', 'face', 'set_lifetime'})
 VERB = {'attack_move': '派', 'move': '走', 'attack': '攻击', 'power': '放', 'capture': '占领', 'build': '生产',
         'buy_science': '买'}
 KIND = {v: k for k, v in VERB.items()}
@@ -74,7 +74,7 @@ KIND = {v: k for k, v in VERB.items()}
 # INFERRED for RA3) joined with them.
 # The skirmish AI's (13f-1): enter (a garrison / its own base defense), place (a structure set down: INFERRED, below).
 ROUTED = frozenset(VERB) | {'guard', 'stop', 'idle', 'follow_path', 'attack_ground', 'face', 'hunt', 'flee', 'stance',
-                            'auto_acquire', 'unpack', 'toggle', 'enter', 'place'}
+                            'auto_acquire', 'unpack', 'toggle', 'enter', 'place', 'set_lifetime'}
 GIVERS = ('player', 'ai', 'script', 'proxy', 'test')     # `by`: 'player', 'ai:<player>', ...
 DATA = (str, int, float, bool, type(None))
 
@@ -244,9 +244,10 @@ def _where(cmd):
 
 class Commands:
     """The command port of one world (today a sim.Sim). `rules`: the unit orders' rule modules its routes call --
-    order, ability, hunt, micro (engine.orders, L5) and toggle (engine.objects.toggle) -- handed in by the world's maker
-    (sim.ORDER_RULES) with `refresh_modifiers`, the world's re-read of a body's attribute modifiers (the micro's charge): this
-    port imports none of them, so a giver of any layer may use it (ADR 0037 S1, B3)."""
+    order, ability, hunt, micro (engine.orders, L5), toggle (engine.objects.toggle) and body (the AI's late lifetime) --
+    handed in by the world's maker (sim.ORDER_RULES) with `refresh_modifiers`, the world's re-read of a body's
+    attribute modifiers (the micro's charge): this port imports none of them, so a giver of any layer may use it (ADR
+    0037 S1, B3)."""
 
     def __init__(self, world, **rules):
         self._w = world
@@ -626,6 +627,12 @@ class Commands:
         for b in self._units(cmd):
             b.aiupdate.set_stance(cmd.arg('stance'), isinstance(b.goal, type(b)))
         return True, ''
+
+    def _set_lifetime(self, cmd):            # the AI's late read of a retail fixed lifetime: dies at `die_frame`
+        live = [b for b in self._serials(cmd.units).values() if b.alive]     # its dodge's beacon, a foe's: no `_held`
+        for b in live:
+            self._r.body.last_until(self._w, b, cmd.arg('die_frame'))
+        return (True, '') if live else (False, 'set_lifetime: none living')
 
     def _auto_acquire(self, cmd):            # an AI setting: takes what only a computer's units take by themselves
         for b in self._units(cmd):
