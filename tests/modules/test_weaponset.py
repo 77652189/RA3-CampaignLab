@@ -83,10 +83,10 @@ def test_a_commented_slot_and_a_removed_set_are_not_read():
 
 
 def test_a_unit_whose_file_writes_no_set_holds_no_weapon():
-    """Kept from read_fight: the weapons are read only where the unit's own file writes a WeaponSetUpdate -- the
-    tutorial tank inherits the Guardian's, holds none, and its XML still names the cannon (Sim.add's gap)."""
-    assert simunits.fight('Tutorial_AlliedTech1Tank')['weapons'] == []
-    assert simunits.declared_weapons('Tutorial_AlliedTech1Tank') == [CANNON]
+    """Kept from read_fight: the weapons are read only where the unit's own file writes a WeaponSetUpdate. A
+    campaign unit outside the unit table reads its own file as stats() does (A309): the tutorial tank's file Replaces
+    the Guardian's set, so it holds the cannon (before: none, a gap)."""
+    assert _keys(simunits.fight('Tutorial_AlliedTech1Tank')['weapons']) == [CANNON]
     assert _keys(simunits.fight('AlliedAntiVehicleVehicleTech1')['weapons']) == [CANNON]
     # a retail unit with fight data whose file writes none: the Rushmore head's laser stays unread (3 such)
     assert simunits.fight('MR_LaserMtRushmore_Jefferson_Ready')['weapons'] == []
@@ -114,7 +114,7 @@ def _world():
     import engine.testing.small as simsmall
     return simsmall.small_world([('tank', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 0.0, 0.0),
                                  ('plant', 'SovietPowerPlant', 'Player_1', 300.0, 0.0),
-                                 ('tut', 'Tutorial_AlliedTech1Tank', 'Player_1', 600.0, 0.0)])
+                                 ('tut', 'MR_LaserMtRushmore_Jefferson_Ready', 'Player_1', 600.0, 0.0)])
 
 
 def test_the_module_holds_what_sim_add_armed_and_the_body_reads_it_through_forwards():

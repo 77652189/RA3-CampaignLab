@@ -86,5 +86,42 @@ def statusbits_test(m, which='a'):
     return t
 
 
-MISSION = {'engine_statusbits': mission}
-CHECKS = {'engine_statusbits': {'a': statusbits_test, 'b': lambda m: statusbits_test(m, 'b')}}
+# engine_kingbits:k (A309): retail j03 / j08 set WEAPON_UPGRADED_01 / 02 / 03 together on a JapanMechaKing at the start.
+# Its three katana slots name no status bit (SDK), so the data says: no effect. Two lanes: the 'high' King gets the
+# three bits, the 'base' King none; each is told at ORDER to attack a NO_ATTACK s1 King 120 north (10 000 hp, the
+# katana 5 000 / radius 100: several cuts). 设血 / 平血 = the two targets' health in percent; 位 = 1 x _01 + 10 x _02 +
+# 100 x _03 read back on the high King.
+KING = 'JapanMechaKing'
+KBITS = ('WEAPON_UPGRADED_01', 'WEAPON_UPGRADED_02', 'WEAPON_UPGRADED_03')
+
+
+def king_mission():
+    m = Mission(name='CampKbits', map=probe_range, units=[], facts={})
+    for lane in ('high', 'base'):
+        m.put(KING, f'{lane} gun', side='p1', role=f'{lane} king', name=_n(lane, 'King'))
+        m.put(KING, f'{lane} gun', 0.0, 120.0, side='s1', role=f'{lane} king target', name=_n(lane, 'Prey'))
+    return m
+
+
+def king_test(m):
+    t = Test()
+    t.scripts.append(Script('Test - start', [], [
+        ('UNIT_CHANGE_OBJECT_STATUS', _n(lane, 'Prey'), 'NO_ATTACK', 1) for lane in ('high', 'base')] + [
+        ('UNIT_CHANGE_OBJECT_STATUS', _n('high', 'King'), bit, 1) for bit in KBITS] + [
+        ('MAP_REVEAL_ALL_PERM', m.player('p1')), ('SET_MILLISECOND_TIMER', 'Test Order', ORDER)]))
+    t.scripts.append(Script('Test - order', [('TIMER_EXPIRED', 'Test Order')],
+                            [('NAMED_ATTACK_NAMED', _n(lane, 'King'), _n(lane, 'Prey')) for lane in ('high', 'base')]))
+    for lane, label in (('high', '设血'), ('base', '平血')):
+        counted(f'CNV_Kbits_{lane}', label, t, health=_n(lane, 'Prey'))
+    t.counters.append(('CNV_Kbits_Bits', '位'))
+    t.scripts += [Script('Test - kbits zero', [], [('SET_COUNTER', 'CNV_Kbits_Bits', 0)], once=False)] + [
+        Script(f'Test - kbits {k}', [('UNIT_HAS_OBJECT_STATUS', _n('high', 'King'), status(bit))],
+               [('INCREMENT_COUNTER', 10 ** k, 'CNV_Kbits_Bits')], once=False) for k, bit in enumerate(KBITS)]
+    t.expect = [('设血', 0, 'ever<=', 99, 20.0)]
+    t.bench = [('bench_watch', dict(seconds=20.0, every=0.5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+MISSION = {'engine_statusbits': mission, 'engine_kingbits': king_mission}
+CHECKS = {'engine_statusbits': {'a': statusbits_test, 'b': lambda m: statusbits_test(m, 'b')},
+          'engine_kingbits': {'k': king_test}}

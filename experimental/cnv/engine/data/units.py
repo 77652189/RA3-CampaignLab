@@ -1748,6 +1748,13 @@ def fight(template, own=None):
         return dict(hp=f['hp'], armor=f['armor'], weapons=guns(weapon_table(own), own) if f['sets'] else [])
     name = template.lower()
     u = d['units'].get(name)
+    if u is None and ('fight outside', name) not in _reads:     # outside the unit table, as stats(): a campaign unit
+        try:                                                    # (EditorSorting CAMPAIGN_UNITS: JapanMechaKing) reads
+            text = _xml(template)                               # its own file (A309)
+        except (OSError, ValueError):
+            text = ''
+        _reads['fight outside', name] = read_fight(text, d['armors']) if text else None
+    u = u or _reads.get(('fight outside', name))
     if u is None:
         return dict(hp=None, armor={}, weapons=[])
     key = ('fight weapons', name)
