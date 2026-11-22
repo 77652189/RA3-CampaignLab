@@ -17,7 +17,7 @@ def enemy_sighted(sim, name, a):
     viewer = sim.body(a[0])
     want = RELATION_OF.get(a[1])
     live = list(sim.living())
-    hidden = sim.cloaked(live)
+    hidden = sim.cloaked(live, mark=False)
     return bool(viewer and viewer.alive and want and any(
         target.owner == a[2] and sim.relation(viewer.owner, target.owner) == want
         and target.serial not in hidden
@@ -60,10 +60,10 @@ def team_discovered(sim, name, a):
     # the move is not (near, in plain sight, off the second or two it moved; INFERRED: its fog status is
     # re-read once it stands, Generals' partition data)
     crew = team_crew(sim, a[1])
-    if not crew:                # before cloaked: it latches detection (review 1122rr #2: a query has no side effect)
+    if not crew:
         return False
     live = list(sim.living())
-    hidden = sim.cloaked(live)
+    hidden = sim.cloaked(live, mark=False)
     for m in crew:
         air = m.surface == 'air'
         if m.owner == a[0]:
@@ -87,7 +87,7 @@ def type_sighted(sim, name, a):
     viewer = sim.body(a[0])
     want = str(a[1]).lower()
     live = list(sim.living())
-    hidden = sim.cloaked(live)
+    hidden = sim.cloaked(live, mark=False)
     return bool(viewer and viewer.alive and any(
         target.owner == a[2] and target.template.lower() == want and target.serial not in hidden
         and math.hypot(target.x - viewer.x, target.y - viewer.y) <= viewer.sight * viewer.level_vision

@@ -1951,9 +1951,9 @@ class Sim:
             if self.firing or self.volleys:
                 self.used.add('combat')
 
-    def cloaked(self, live):
-        """ids an InvisibilityBroadcastUpdate hides this tick, no targets (simunits.invis_broadcast, docs/engine/stealth.md
-        1-2); an enemy detector in reach shows them again with INVISIBLE_DETECTED (engine/modules/detector.py)."""
+    def cloaked(self, live, mark=True):
+        """ids an InvisibilityBroadcastUpdate hides, no targets (simunits.invis_broadcast, docs/engine/stealth.md 1-2); an
+        enemy detector in reach shows them with INVISIBLE_DETECTED (modules/detector.py) -- unless mark=False (a query)."""
         cache, out = self.__dict__.setdefault('_invis', {}), set()
         for e in live:
             if e.template not in cache:
@@ -1969,7 +1969,7 @@ class Sim:
                     out.add(t.serial)
         shown = {t.serial for t in live if t.serial in out and any(d.sees(t, self.relation(e.owner, t.owner))
                                                                    for e in live for d in e.find(kernel_interfaces.Detector))}
-        for t in live:                      # the scan's mark: its bit of engine_status, a script's own stays apart
+        for t in live if mark else ():      # the scan's mark: its bit of engine_status, a script's own stays apart
             if (t.serial in shown) != ('INVISIBLE_DETECTED' in t.engine_status):
                 (t.engine_status.add if t.serial in shown else t.engine_status.discard)('INVISIBLE_DETECTED')
                 self.modify(t)

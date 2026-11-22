@@ -33,6 +33,19 @@ def test_the_scan_leaves_a_scripts_own_mark():
     assert 'INVISIBLE_DETECTED' in t.status
 
 
+def test_a_script_conditions_query_marks_nothing():
+    """Review 1122ss #4: ENEMY_SIGHTED / TYPE_SIGHTED (no such viewer) and TEAM_DISCOVERED (an own team with members)
+    read the hidden set without writing the scan's mark; the tick's scan still writes it."""
+    s, t = _hidden('Soviet_1')
+    t.team = 'Player_1/G_0_0'
+    s.active.add(t.team)
+    s.cond('ENEMY_SIGHTED', ['nobody', 'Enemy', 'Player_1'])
+    s.cond('TYPE_SIGHTED', ['nobody', t.template, 'Player_1'])
+    assert s.cond('TEAM_DISCOVERED', ['Player_1', t.team]) and 'INVISIBLE_DETECTED' not in t.status
+    s.cloaked(s.living())
+    assert 'INVISIBLE_DETECTED' in t.status
+
+
 def test_a_friendly_dog_shows_nothing():
     s, t = _hidden('Player_1')
     assert t.serial in s.cloaked(s.living()) and 'INVISIBLE_DETECTED' not in t.status
