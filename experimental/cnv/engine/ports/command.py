@@ -129,6 +129,7 @@ ORDER = '命令'
 # The args a line verb's command may carry beside its line: what its names picked, by serial (its line, for the
 # record, names them; the command goes by the serials). A line written for a replay to read cannot hold them.
 PINS = ('unit_serials', 'target_serial')
+POINTED = frozenset({'move', 'attack_move', 'face', 'attack_ground', 'unpack'})     # the routes `_pointed` checks
 TARGETED = frozenset({'attack', 'capture', 'build', 'enter'})     # the routes that read `target` / `target_serial`
 
 
@@ -350,9 +351,26 @@ class Commands:
         if ok:
             ok, why = self._pinned(cmd)
         if ok:
+            ok, why = self._pointed(cmd)
+        if ok:
             ok, why = getattr(self, '_' + cmd.kind)(cmd)
         self._issued.append((self._w.frame_now(), cmd, ok, why or 'done'))
         return ok, why
+
+    def _pointed(self, cmd):
+        """(ok, why) of a route that goes to or turns to a point (POINTED): `pos` two finite numbers, else `place` one
+        this world finds -- checked before any unit is touched (review 1122tt closure P2: a bad place surfaced only
+        after the old order was dropped or the unpack written, the run stuck)."""
+        if cmd.kind not in POINTED:
+            return True, ''
+        p = self._spot(cmd)
+        if isinstance(p, (tuple, list)) and len(p) >= 2 and all(
+                isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in p[:2]):
+            return True, ''
+        return False, f'{cmd.kind}: 找不到地点 {cmd.place if cmd.pos is None else cmd.pos}'
+
+    def _spot(self, cmd):                    # a pointed route's point: `pos`, else where `place` is (None: not found)
+        return cmd.pos if cmd.pos is not None else self._w.point(cmd.place) if isinstance(cmd.place, str) else None
 
     def _pinned(self, cmd):
         """(ok, why) of a command's pins: a serial stands for the living object its name picked (review 1120cc P2).
@@ -608,7 +626,7 @@ class Commands:
 
     def _attack_ground(self, cmd):           # fire at the spot till another order replaces it (fight: ground_fire)
         r = self._r
-        p = self._w.point(cmd.place)
+        p = self._spot(cmd)
         for b in self._units(cmd):
             r.order.stand(b)
             b.aiupdate.command('ground', p)
@@ -616,7 +634,7 @@ class Commands:
 
     def _face(self, cmd):                    # stand and turn to the point
         r = self._r
-        p = self._w.point(cmd.place)
+        p = self._spot(cmd)
         for b in self._units(cmd):
             r.order.stand(b)
             b.face = math.atan2(p[1] - b.y, p[0] - b.x)

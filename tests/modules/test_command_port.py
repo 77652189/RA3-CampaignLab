@@ -1313,6 +1313,25 @@ def test_the_ais_port_commands_check_their_arguments_and_whose_before_they_write
     assert not do('set_lifetime', (beacon.serial,), args=(('die_frame', 9),)) and beacon.life_end == 6
 
 
+def test_a_route_to_a_place_it_cannot_find_is_refused_before_the_unit_is_touched():
+    """Review 1122tt closure P2: face, move and unpack to a missing place or a bad `pos` are refused with the unit as it
+    was (the old target kept, no unpack written) -- they had dropped the target or written the unpack, then raised."""
+    s = simsmall.small_world([('t1', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 0.0, 0.0),
+                              ('m1', 'AlliedMiner', 'Player_1', 0.0, 200.0),
+                              ('foe', 'AlliedAntiVehicleVehicleTech1', 'Player_2', 100.0, 0.0)], model=False)
+    t1, m1 = s.bodies['t1'], s.bodies['m1']
+    t1.goal = s.bodies['foe']
+    before = (t1.goal, t1.aiupdate.mode, m1.building, m1.aiupdate.mode)
+    for kind, units, kw in (('face', ('t1',), dict(place='missing')),
+                            ('move', ('t1',), dict(pos=('bad', 1), args=(('objects', True), ('drop_target', True)))),
+                            ('attack_move', ('t1',), dict(place='missing')),
+                            ('unpack', ('m1',), dict(place='missing', args=(('objects', True),)))):
+        ok, why = s.commands.do(Command(kind, units=units, **kw))
+        assert not ok and '找不到地点' in why
+        assert (t1.goal, t1.aiupdate.mode, m1.building, m1.aiupdate.mode) == before
+    assert s.commands.do(Command('face', units=('t1',), place='@100,100'))[0]
+
+
 def test_a_pinned_order_moves_only_the_object_its_name_picked_and_a_gone_one_is_refused():
     """Review 1120bb P2 #1: `unit_serials` pins the objects `units` names (one each). A pin of another object (a foe's
     serial beside `bob`) orders nothing and is refused; a pin whose object is gone (bob deleted and made again: a new
