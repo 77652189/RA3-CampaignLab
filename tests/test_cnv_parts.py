@@ -364,16 +364,21 @@ def test_arm_drift_allows_one_shift_and_the_module_out():
     import contract
     xml = '<G id="XOn"><B><M a="1"/><K/></B></G>'
 
-    def arms(off_xml=xml.replace('<K/>', '').replace('XOn', 'XOff'), dx=500.0, side='p1', point=(0.0, 0.0), gun='gun'):
+    def arms(off_xml=xml.replace('<K/>', '').replace('XOn', 'XOff'), dx=500.0, side='p1', point=(0.0, 0.0), gun='gun',
+             extra=None):
         m = parts.Mission(name='Camp', units=[parts.Unit('XOn', xml), parts.Unit('XOff', off_xml)])
         m.objects += [parts.Obj('XOn', 0.0, 0.0, name='X On'), parts.Obj('XOff', 500.0, 0.0, name='X Off'),
-                      parts.Obj('Y', 0.0, 9.0, name='X On gun'), parts.Obj('Y', dx, 9.0, side=side, name='X Off ' + gun)]
+                      parts.Obj('Y', 0.0, 9.0, name='X On gun'), parts.Obj('Y', dx, 9.0, side=side, name='X Off ' + gun),
+                      parts.Obj('Z', 0.0, 5.0), parts.Obj('Z', 500.0, 5.0)] + ([extra] if extra else [])
         m.waypoints = {'start On': (0.0, 0.0), 'start Off': (500.0 + point[0], point[1])}
         return contract.arm_drift([m], 'On', 'Off')
     assert arms() == []
-    assert arms(xml.replace('XOn', 'XOff')) == ['arm Off takes nothing out of arm On']
+    assert arms(xml.replace('XOn', 'XOff')) == ['arm Off takes nothing out']
     assert [d.split(':')[0] for d in arms(xml.replace('<K/>', '<K>2</K>').replace('XOn', 'XOff'))] == [
-        'XOn.xml', 'arm Off takes nothing out of arm On']
+        'XOn.xml', 'arm Off takes nothing out']
+    assert arms(extra=parts.Obj('Z', 500.0, 5.0)) == [f"'Z' at ({x}, 5): not as many in the other arm"
+                                                      for x in (0, 500)]   # one more in the control arm: tt P3 #7
+    assert arms(extra=parts.Obj('Z', 900.0, 5.0)) == []     # outside both arms: shared
     assert arms(dx=501.0) == ['arm Off is not one shift of arm On: [(500.0, 0.0), (501.0, 0.0)]']
     assert arms(point=(0.0, 1.0)) == ['arm Off is not one shift of arm On: [(500.0, 0.0), (500.0, 1.0)]']
     assert arms(side='s1') == ["X On gun.side: 'p1' -> 's1'"]
@@ -390,12 +395,16 @@ def test_control_drift_allows_only_the_module_out_and_on_said_off():
         return m, parts.Test(bench=list(bench), expect=[name])
     on = pair(xml)
     assert contract.control_drift(on, pair(xml.replace('<M a="1"/>', '').replace('XOn', 'XOff'), name='CampOff')) == []
-    assert contract.control_drift(on, pair(xml)) == ['the control takes nothing out of its original']
+    assert contract.control_drift(on, pair(xml)) == ['the control takes nothing out']
+    two, off = pair(xml), pair(xml.replace('<M a="1"/>', '').replace('XOn', 'XOff'), name='CampOff')
+    two[0].units *= 2       # a second XML pair, lacking another element in the control (tt P3 #7)
+    off[0].units.append(parts.Unit('XOff', xml.replace('<L/>', '').replace('XOn', 'XOff')))
+    assert contract.control_drift(two, off) == ["the control takes out modules ['L', 'M']"]
     for changed in [xml.replace('<M a="1"/>', '<M a="2"/>').replace('<L/>', ''),
                     xml.replace('<K/>', '<K>2</K>').replace('<L/>', ''), xml.replace('<M a="1"/><K/>', ''),
                     xml.replace('<B><M a="1"/><K/></B>', '<M a="1"/><K/>')]:
         assert [d.split(':')[0] for d in contract.control_drift(on, pair(changed))] == [
-            'Mission.units[0].xml', 'the control takes nothing out of its original']
+            'Mission.units[0].xml', 'the control takes nothing out']
     gone = xml.replace('<L/>', '')
     assert contract.control_drift(on, pair(gone, x=2.0)) == ['Mission.objects[0].x: 1.0 -> 2.0']
     assert contract.control_drift(on, pair(gone, bench=('stop',))) == ["Test.bench[0]: 'go' -> 'stop'"]

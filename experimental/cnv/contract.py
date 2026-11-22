@@ -804,7 +804,7 @@ def control_drift(original, control):
     out, took = [], []
     for x, y in zip(original, control):
         _drift(x, y, type(x).__name__, out, took, CONTROL_FREE)
-    return out + ([] if took else ['the control takes nothing out of its original'])
+    return out + _took(took, 'the control')
 
 
 def _off(v):
@@ -840,8 +840,27 @@ def arm_drift(parts, a, b, *free):
         else:
             out.append(f'{u.id!r}: no twin {off(u.id)!r}')
     out += [f'{n!r}: no twin saying {a}' for n in list(twins) + [u for u in units if now.search(u)]]
+    if len(shift) == 1:     # an object named for neither arm inside one arm's box has its alike twin in the other
+        (dx, dy), box = next(iter(shift)), {}
+        for n, x, y, _ in things:
+            for t, sx, sy in ((was, 0, 0), (now, dx, dy)):
+                if t.search(n):
+                    lo, hi = box.get(t, ((x, y), (x, y)))
+                    box[t] = ((min(lo[0], x), min(lo[1], y)), (max(hi[0], x), max(hi[1], y)))
+        plain = [o for p in parts for o in p.objects if not (was.search(o.name) or now.search(o.name))]
+        inside = lambda o, t: was in box and now in box and all(                        # noqa: E731
+            box[t][0][i] <= v <= box[t][1][i] for i, v in enumerate((o.x, o.y)))
+        out += sorted({f'{o.name or o.template!r} at ({o.x:g}, {o.y:g}): not as many in the other arm'
+                       for o in plain for t, k in ((was, 1), (now, -1)) if inside(o, t)
+                       and sum(_alike(o, q, 0, 0) for q in plain) != sum(_alike(o, q, k * dx, k * dy) for q in plain)})
     return out + ([f'arm {b} is not one shift of arm {a}: {sorted(shift)}'] if len(shift) != 1 else []) + \
-        ([] if took else [f'arm {b} takes nothing out of arm {a}'])
+        _took(took, f'arm {b}')
+
+
+def _alike(o, q, dx, dy):
+    import dataclasses
+    return abs(q.x - o.x - dx) < 1e-3 and abs(q.y - o.y - dy) < 1e-3 and \
+        dataclasses.replace(o, x=q.x, y=q.y, site=q.site) == q
 
 
 def _drift(x, y, at, out, took, free=(), off=_off):
@@ -868,33 +887,42 @@ def _drift(x, y, at, out, took, free=(), off=_off):
     elif isinstance(x, (list, tuple)) and isinstance(y, (list, tuple)) and len(x) == len(y):
         for k, (a, b) in enumerate(zip(x, y)):
             _drift(a, b, f'{at}[{k}]', out, took, (), off)
-    elif _less_one(x, y, off):
-        took.append(at)
+    elif (gone := _less_one(x, y, off)):
+        took.append((at, gone))
     elif not (x == y or off(x) == y):
         short = lambda v: repr(v) if len(repr(v)) < 80 else repr(v)[:60] + f'... ({len(repr(v))} chars)'
         out.append(f'{at}: {short(x)} -> {short(y)}')
 
 
 def _less_one(x, y, off=_off):
-    """y is the XML text x with one whole element (and all it holds) taken out, nothing else changed."""
+    """The tag of the one whole element (and all it holds) the XML text y lacks of x, nothing else changed; else None."""
     import xml.etree.ElementTree as ET
     if not (isinstance(x, str) and isinstance(y, str) and x != y and x.lstrip().startswith('<')):
-        return False
+        return None
     try:
         a, b = (ET.fromstring(re.sub(r'^\s*<\?xml[^>]*\?>', '', t)) for t in (x, y))
     except ET.ParseError:
-        return False
+        return None
     return _one_out(a, b, off)
 
 
 def _one_out(a, b, off):
+    """The tag of the one element b lacks of a, else None."""
     if not _same(a, b, off, deep=False):
-        return False
+        return None
     ka, kb = list(a), list(b)
     if len(ka) == len(kb) + 1:
-        return any(all(_same(p, q, off) for p, q in zip(ka[:k] + ka[k + 1:], kb)) for k in range(len(ka)))
+        return next((ka[k].tag for k in range(len(ka))
+                     if all(_same(p, q, off) for p, q in zip(ka[:k] + ka[k + 1:], kb))), None)
     odd = [(p, q) for p, q in zip(ka, kb) if not _same(p, q, off)]
-    return len(ka) == len(kb) and len(odd) == 1 and _one_out(*odd[0], off)
+    return _one_out(*odd[0], off) if len(ka) == len(kb) and len(odd) == 1 else None
+
+
+def _took(took, who):
+    """[] when the control takes out one module (one tag, from one XML text or several: a recall's copies), else why
+    (review tt P3 #7: a second XML pair lacking another element passed)."""
+    tags = sorted({t for _, t in took})
+    return [f'{who} takes nothing out'] if not tags else [] if len(tags) == 1 else [f'{who} takes out modules {tags}']
 
 
 def _same(a, b, off, deep=True):
