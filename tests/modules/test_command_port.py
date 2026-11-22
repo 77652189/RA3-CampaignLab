@@ -1284,6 +1284,34 @@ def test_the_ais_unknown_factory_unit_is_filled_once_through_the_port_from_its_l
     assert [(c.kind, ok) for _, c, ok, _ in s.commands.issued()] == [('fill_body', False), ('fill_body', True)]
 
 
+def test_the_ais_port_commands_check_their_arguments_and_whose_before_they_write():
+    """Review tt #1 / #2 / #3 / #6: by name the AI's power (micro) and fill_body take only its own living; set_lifetime
+    only a dodge beacon with no lifetime yet, at a whole frame to come; fill_body only what its library knows. Each
+    refused leaves the body as it was."""
+    import types
+    import engine.orders.micro as simmicro
+    s = simsmall.small_world([('w2', 'JapanAntiInfantryInfantry', 'Player_2', 300.0, 0.0),
+                              ('t1', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 0.0, 200.0),
+                              ('t2', 'AlliedAntiVehicleVehicleTech1', 'Player_2', 0.0, 300.0),
+                              ('beacon', 'AlliedPrecisionStrikeBeacon', 'Player_2', 100.0, 0.0)], model=False)
+    w2, t1, t2, beacon = (s.bodies[k] for k in ('w2', 't1', 't2', 'beacon'))
+    s.commands.library('Player_1', lambda: types.SimpleNamespace(template=lambda name: None))
+    for b in (t1, t2):
+        b.guessed = ['all']
+
+    def do(kind, units, **kw):
+        return s.commands.do(Command(kind, 'ai:Player_1', units=units, **kw))[0]
+    assert not do('power', ('w2',), power=simmicro.COMMAND, args=(('objects', True), ('via', 'micro'))) \
+        and not w2.auras_on
+    assert not do('fill_body', ('t2',), args=(('objects', True),)) and t2.guessed == ['all']
+    assert not do('fill_body', (t1.serial,), args=(('objects', 'serial'),)) and t1.guessed == ['all']   # lib misses it
+    for die in ('soon', True, 1.5, -1):
+        assert not do('set_lifetime', (beacon.serial,), args=(('die_frame', die),)) and beacon.life_end is None
+    assert not do('set_lifetime', (w2.serial,), args=(('die_frame', 6),)) and w2.life_end is None
+    assert do('set_lifetime', (beacon.serial,), args=(('die_frame', 6),)) and beacon.life_end == 6
+    assert not do('set_lifetime', (beacon.serial,), args=(('die_frame', 9),)) and beacon.life_end == 6
+
+
 def test_a_pinned_order_moves_only_the_object_its_name_picked_and_a_gone_one_is_refused():
     """Review 1120bb P2 #1: `unit_serials` pins the objects `units` names (one each). A pin of another object (a foe's
     serial beside `bob`) orders nothing and is refused; a pin whose object is gone (bob deleted and made again: a new

@@ -423,8 +423,11 @@ class Commands:
             found = self._serials(pins)
             return self._held(cmd, [found[s] for s in pins if s in found])
         if cmd.arg('objects'):              # a map script's: each name as Sim.body finds it, a missing one None
-            return [self._w.body(n) for n in cmd.units]
-        return [b for who in cmd.units for b in self._w.pick(who)]
+            named = [self._w.body(n) for n in cmd.units]
+        else:
+            named = [b for who in cmd.units for b in self._w.pick(who)]
+        # the AI's by name too: only its own living (review tt #1)
+        return self._held(cmd, [b for b in named if b is not None]) if cmd.by.startswith('ai:') else named
 
     def _target(self, cmd, lookup):
         """The target: `('target_serial', n)` the object the giver picked (`target` its name, for the record; one no
@@ -636,17 +639,25 @@ class Commands:
         return True, ''
 
     def _set_lifetime(self, cmd):            # the AI's late read of a retail fixed lifetime: dies at `die_frame`
-        live = [b for b in self._serials(cmd.units).values() if b.alive]     # its dodge's beacon, a foe's: no `_held`
+        # its dodge's beacon, a foe's (no `_held`): only a living dodge beacon with no lifetime yet, at a whole frame;
+        # everything checked before anything is written (review tt #2 / #3)
+        die = cmd.arg('die_frame')
+        if type(die) is not int or die < 0:
+            return False, f'set_lifetime: die_frame {die!r} is not a frame'
+        live = [b for b in self._serials(cmd.units).values() if b.alive and 'SKIRMISH_AI_ATTEMPT_TO_DODGE' in b.kinds
+                and getattr(b, 'life_end', None) is None]
         for b in live:
-            self._r.body.last_until(self._w, b, cmd.arg('die_frame'))
-        return (True, '') if live else (False, 'set_lifetime: none living')
+            self._r.body.last_until(self._w, b, die)
+        return (True, '') if live else (False, 'set_lifetime: no living dodge beacon without a lifetime')
 
     def _fill_body(self, cmd):               # a factory's unit the template reader knows nothing of: his AI's library
         get, own = self._libs.get(self._giver(cmd)), self._units(cmd)
-        if get is None or not own:
-            return False, 'fill_body: no library or none of his living'
+        lib = get() if get is not None else None
+        own = [b for b in own if 'all' in (b.guessed or []) and lib.template(b.template) is not None] if lib else []
+        if not own:                         # review tt #6: one the library misses is refused, not "filled"
+            return False, 'fill_body: no library, or none of his living it knows and the reader did not'
         for b in own:
-            self._r.body.fill(self._w, b, get())
+            self._r.body.fill(self._w, b, lib)
         return True, ''
 
     def _auto_acquire(self, cmd):            # an AI setting: takes what only a computer's units take by themselves

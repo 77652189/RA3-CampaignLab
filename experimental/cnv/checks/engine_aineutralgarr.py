@@ -29,8 +29,8 @@ def a(m):
 def b(m):
     """aigarrbld: the Garrison state's team -- Peacekeepers at home / in all, each neutral house the AI's."""
     from checks import engine_aitarget as at
-    from missions.aitarget_bench import INF
     from parts import counted, square
+    INF = m.role('ai inf 1').template
     t = Test()
     s1 = m.player('s1')
     t.scripts.append(Script('Garr reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
