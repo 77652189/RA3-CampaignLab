@@ -74,7 +74,7 @@ KIND = {v: k for k, v in VERB.items()}
 # INFERRED for RA3) joined with them.
 # The skirmish AI's (13f-1): enter (a garrison / its own base defense), place (a structure set down: INFERRED, below).
 ROUTED = frozenset(VERB) | {'guard', 'stop', 'idle', 'follow_path', 'attack_ground', 'face', 'hunt', 'flee', 'stance',
-                            'auto_acquire', 'unpack', 'toggle', 'enter', 'place', 'set_lifetime',
+                            'auto_acquire', 'unpack', 'toggle', 'enter', 'exit', 'place', 'set_lifetime',
                             'fill_body'}
 GIVERS = ('player', 'ai', 'script', 'proxy', 'test')     # `by`: 'player', 'ai:<player>', ...
 DATA = (str, int, float, bool, type(None))
@@ -728,6 +728,14 @@ class Commands:
             return True, ''
         return False, 'not a toggle of his'
 
+    def _garrisons(self):                    # the world's houses and transports (enter / exit), one way in
+        return self._w.garrison
+
+    def _exit(self, cmd):                    # every passenger out of the transport / garrison (the AI's UseTransports)
+        if all([self._garrisons().evacuate(b) for b in self._units(cmd)]):
+            return True, ''
+        return False, 'nobody inside'
+
     def _enter(self, cmd):                   # into a building (`via` 'garrison': GarrisonContain, the AI's own defense)
         w = self._w
         if cmd.arg('via') != 'garrison':
@@ -735,7 +743,7 @@ class Commands:
         g = self._target(cmd, w.bodies.get)
         if g is None:
             return False, f'找不到 {cmd.target}'
-        sent = [w.garrison.send(b, g) for b in self._units(cmd)]   # each one's answer (review 11-19 k #4: a dead
+        sent = [self._garrisons().send(b, g) for b in self._units(cmd)]   # each one's answer (review 11-19 k #4: a dead
         return (True, '') if sent and all(sent) else (False, f'进不去 {cmd.target}')    # building was a success)
 
     def _place(self, cmd):

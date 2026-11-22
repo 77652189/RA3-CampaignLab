@@ -252,7 +252,8 @@ MODEL_HOOKS = {
            # builds only the counter (B handoff 131); off = the unit builder alone, as before round 129
            ('expected', lambda b: b.expected if getattr(b.host, 'efficiency', False) else None)),
     # PathfindingCheckType's kick (D152); SimpleExpansion unpacks within Distance on the way (D157); AlphaStrike (a)
-    'tactics': (('reach', 'reach'), ('approach', 'approach'), ('allied', 'allied')),
+    'tactics': (('reach', 'reach'), ('approach', 'approach'), ('allied', 'allied'), ('carry', 'carry'),
+                ('board', 'board'), ('riding', 'riding'), ('unload', 'unload')),
     # a slot's team is made once the slot has a target (l4_states.md 1/7; the teams tick before the blocks: INFERRED
     # one-think lag); a gathering team whose slot's target is gone ends (TeamMaker._slots); PathfindingCheckType at
     # recruiting (D152): the slot's target as a point
@@ -538,6 +539,23 @@ class Brain:
         """TeamMaker's carry hook: t's free slots if its TransportContain's PassengerFilter takes u, else 0
         (INFERRED: one slot a passenger, the relation not asked; the engine's own test is not read)."""
         return self.observe.room(t.body, u.body)
+
+    def board(self, ai, u, t):
+        """TacticsBlock's boarding order (UseTransports): u walks into the carrier t as into a house."""
+        return self.give('enter', u.body, target=t.body, args=(('via', 'garrison'),))[0]
+
+    def unload(self, ai, t, at):
+        """TacticsBlock's unload (UseTransports, INFERRED): the carrier t lets every rider out where it is; an aircraft
+        only at the target (bench aitranst1: the Twinblade keeps its four in while it shoots the plant)."""
+        return (at or 'AIRCRAFT' not in t.body.kinds) and self.give('exit', t.body)[0]
+
+    def riding(self, ai, u, t=None):
+        """TacticsBlock: 'in' when u is inside t (None: any), 'going' when sent into it and on its way, else None."""
+        o = self.observe
+        for state, g in (('in', o.inside(u.body)), ('going', o.heading(u.body))):
+            if g is not None and (t is None or g is t.body):
+                return state
+        return None
 
     def reach_target(self, ai, u, target, check):
         """TeamMaker's reach hook: reach() to the target id's point (a thing in view or a Waypoint target's point);

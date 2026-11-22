@@ -33,13 +33,8 @@ expect = ["max(r['新维和'] for r in rows[:149]) == 2 and rows[60]['新维和'
 id = "after_s150_the_capped_unit_is_built_again"
 scene = {build = "aiskcap", check = "y", until = 170}
 bench = "aiskcap (bench 11-12): 新维和 3 at s150, 4 from s155 to s168 (the cap counts owned units outside a container)"
-proves = "simai specific unit cap: a unit counted out of its container lets the capped unit be built again"
+proves = "simai specific unit cap: a unit counted out of its container lets the capped unit be built again (the first wave rides its attack team's transport, D round 89 aiskcapt yl; held since the teams board, B 11-22)"
 expect = "rows[166]['新维和'] >= 3"
-mismatch = """\
-bench aiskcap built a 3rd CNVNewPK at s150 and a 4th at s155 (owned 4 to s168, none lost); the simulator keeps \
-2. Known since D round 89 (aiskcapt yl): the cap counts owned units outside a container -- the first wave rode \
-its attack team's transport, the barracks built two more, they got out. The model counts that way \
-(AIPlayer.owned); the simulator's teams board no transport"""
 
 [[reading]]
 id = "a_thing_near_the_factory_blocks_the_entry"
@@ -569,6 +564,26 @@ early: last building s214, so only the rule is read)"""
 proves = "simai team states: a gathering slot whose target is gone ends instead of recruiting; LandDefense holds the men let go"
 let = {gone = "first('我方建筑', lambda v: v == 0)"}
 expect = ["gone is not None", "all(r['清扫'] in (0, 99) for r in rows[gone:])", "rows[-1]['防御型'] >= 14"]
+
+[[reading]]
+id = "skirmish_ai_cleanup_rides_its_riptides_and_gets_out_at_the_base"
+scene = {build = "aiskirm", check = "pr", until = 240}
+bench = """\
+B 2026-11-22 aiskirm pr (CampAISkirmPr_mcp_1122_102300, again with ra3ext CampAISkirmPr_mcp_1122_102714, logic \
+seconds): Cleanup 8 s131; aboard 2 s134, 3 s136, 6 s138-158.2, 0 from s158.8 (f2382, the Riptides by the player's \
+base on the minimap; the first hit anywhere f2399 on the player's yard); the player's buildings 2 s207, 1 s224, 0 s227"""
+proves = "Tactic UseTransports (the XSD default true): a skirmish SimpleAttack team rides its Riptides and the riders get out at the target before the fight (the unload rule INFERRED, put together from two benches: here a ground carrier lets them out by the target or once the team fights, aitranst1 an aircraft keeps them in while it shoots; no program read)"
+item = "AI 战术/Tactic.UseTransports"
+let = {on = "first('车内步兵', lambda v: v >= 4)", drop = "first('我方建筑', lambda v: v < 3)", off = "next((i for i in range(on, len(rows)) if rows[i]['车内步兵'] == 0), None) if on is not None else None"}
+expect = ["on is not None and off is not None and drop is not None", "10 <= times[off] - times[on] <= 30", "off < drop"]
+
+[[reading]]
+id = "skirmish_ai_cleanup_boards_six_not_seven"
+scene = {build = "aiskirm", check = "pr", until = 240}
+bench = "B 2026-11-22 aiskirm pr (CampAISkirmPr_mcp_1122_102300 and 102714): at most 6 aboard (s138-158.2), never 7"
+proves = "Tactic UseTransports: how many of the Cleanup team ride its two Riptides (ContainMax 5 each)"
+expect = "max(r['车内步兵'] for r in rows) == 6"
+mismatch = "sim 7 aboard from s135 (every member the two Riptides hold); the bench 6 -- which one stays out is not read"
 
 [[reading]]
 id = "skirmish_ai_scout_dog_stays_out"

@@ -241,7 +241,7 @@ RESULTS g / h (bench 2026-11-10, aiskirm g / h and aiskirmnl g, all PASS (weak);
     (the base defense builder spends DEFENSE) and the barracks stays idle through the opening (its budget gives
     PRODUCTION 0 %). The simulator matches the infantry, not the towers (keeps the DEFENSE 2000).
 """
-from parts import Script, Test, counted, square
+from parts import Script, Test, counted, square, status
 
 AREA = 'CNV AI Base Area'
 RIPTIDE = 'AlliedAntiInfantryVehicle_Ground'     # the one a Riptide on land is (aiopen b counts both alike)
@@ -870,10 +870,14 @@ def _teams(m, which):
         for key, ctr, say, fsay in (('attack type', 'AtkT', '进攻型', '进攻帧'), ('overwhelm', 'Ovw', '压倒', '压倒帧')):
             _members(t, f'CNV_AK_{ctr}', say, ai[key])
             _lifetime(t, f'CNV_AK_{ctr}', f'CNV_AK_{ctr}F', fsay)
-    elif which == 'p':                 # past the player's last building: do the attack teams end and hand back?
+    elif which in ('p', 'pr'):         # past the player's last building: do the attack teams end and hand back?
         _built(t, m)
         _members(t, 'CNV_AK_Cln', '清扫', ai['cleanup'])
-        _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
+        if which == 'p':
+            _members(t, 'CNV_AK_DefT', '防御型', ai['defense type'])
+        else:                          # pr: does Cleanup ride its Riptides (UseTransports, the XSD default true)?
+            m.ext = True               # team: lines -- where and when the riders get out
+            counted('CNV_AK_In', '车内步兵', t, status=status('ENCLOSED'), player=s1)
         _sum(t, m, s1, 'CNV_AK_Army', '兵数', ARMY[:3])
     else:
         _members(t, 'CNV_AK_PoolAll', '池全', pool, most=40)
@@ -882,7 +886,7 @@ def _teams(m, which):
         _members(t, 'CNV_AK_AtkI', '进攻名', ai['attack id'])
     w = m.facts['wake at']
     t.expect += [(t.counters[0][1], w + 20.0, '>=', 0, w + 21.0)]      # weak: the readings exist
-    t.bench = [('bench_watch', dict(seconds=w + {'n': 175.0, 'o': 175.0, 'p': 232.0}.get(which, 160.0), every=1, sheet=False,
+    t.bench = [('bench_watch', dict(seconds=w + {'n': 175.0, 'o': 175.0, 'p': 232.0, 'pr': 232.0}.get(which, 160.0), every=1, sheet=False,
                                     lines=len(t.counters)))]
     return t
 
@@ -1089,6 +1093,11 @@ def p(m):
     building dies, do the attack teams end at once and hand their units back to the defense team (the model, ~197 s
     after the wake: AlliedScout target gone -> DISBAND, both Cleanups 'rampage: nobody left', LandDefense takes them)?"""
     return _teams(m, 'p')
+
+
+def pr(m):
+    """p with 车内步兵 (s1's objects carrying ENCLOSED) for 防御型: does the Cleanup team board its Riptides first?"""
+    return _teams(m, 'pr')
 
 
 def pt(m):
@@ -1404,7 +1413,7 @@ def rpb(m):
 
 
 CHECKS = {'aiskirm': {'a': a, 'b': b, 'c': c, 'd': d, 'g': g, 'h': h, 'i': i, 'j': j, 'k': k, 'l': l, 'm': m,
-                      'n': n, 'o': o, 'p': p, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ep': ep, 'eb': eb, 'es': es, 'ib': ib, 'rp': rp, 'rpx': rpx},
+                      'n': n, 'o': o, 'p': p, 'pr': pr, 'q': q, 'r': r, 'u': u, 'x': x, 'et': et, 'ep': ep, 'eb': eb, 'es': es, 'ib': ib, 'rp': rp, 'rpx': rpx},
           'aiskinb': {'ib': ib},
           'aiskinc': {'ib': ib},
           'aiskind': {'ib': ib},

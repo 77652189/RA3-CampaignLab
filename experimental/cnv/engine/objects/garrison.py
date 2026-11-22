@@ -25,7 +25,8 @@ in through the same object). The rules are the XML's (GarrisonContain's fields) 
                on a house with three in, none of them left)
 Transports (TransportContain: the Bullfrog, the Riptide, the bomber; bench 11-10 checks/engine_transport.py load):
   in           the script's TEAM_ / NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY as into a house -- no room, no relation
-               (six into the five-place Bullfrog, Soviet_4's two into the player's); the AI never picks one (places)
+               (six into the five-place Bullfrog, Soviet_4's two into the player's); the AI never picks one (places) but
+               UseTransports' boarding walks its riders in (below; the riders go after a transport that moves)
   walk in      the script's TEAM_GARRISON_SPECIFIC_BUILDING (not instantly): walks to it and goes in as into a house,
                the room asked (bench 11-13 engine_acts_tel: five of six into the five-place Bullfrog, one a second);
                the relation as a house's (INFERRED). The NAMED_ one still only walks to a transport (sim.py: s01)
@@ -433,7 +434,9 @@ class Garrisons:
             if d > r and (u.path or d > 2 * r):
                 if not u.path and u.goal is None:
                     self.move(u, (g.x, g.y), False)          # stopped short (a fight): on its way again
-                continue
+                elif u.path and math.hypot(u.path[-1][0] - g.x, u.path[-1][1] - g.y) > r and contain(g, TRANSPORT):
+                    self.move(u, (g.x, g.y), False)          # a transport moved off (coming to its riders): after it
+                continue                                     # (INFERRED, bench aitranst1: all four in 4 s)
             del self.going[key]
             self.put(u, g)
         for box in list(self.boxes.values()):

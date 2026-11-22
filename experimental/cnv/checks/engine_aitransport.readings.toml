@@ -5,7 +5,7 @@ id = "use_transports_false_twinblade"
 scene = {build = "aitranst0", check = "a", until = 50}
 bench = "B 2026-11-21 aitranst0 (UseTransports false, a Twinblade and four Peacekeepers, the plant on Goat Island, no bridges; CampAITransT0A_mcp_1121_111841, ~6.5 logic frames a wall second, read by index.json's frames as logic seconds, frame / 15): counters (aboard, Peacekeepers on the island, Twinblade on the island, Peacekeepers at home) f41 (s2.7) 0 0 0 4, f240 (s16) 0 0 0 3, f247 (s16.5) 0 0 0 2, f333-560 (s22.2-37.3) 0 0 1 2. ra3ext: the team takes all five at f153; the Peacekeepers are out of it by f248."
 proves = "Tactic UseTransports false: the paired passengers are never put aboard, the transport crosses alone; the recruit pairs the Peacekeepers with the Twinblade (they cannot reach the island themselves)"
-# no item: boarding (use_transports_true_twinblade) is not modelled, so Tactic.UseTransports stays INFERRED
+item = "AI 战术/Tactic.UseTransports"
 expect = [
     "max(win(3, 37, '车内步兵')) == 0",
     "win(17, 37, '步兵在家') == [2] * 21",
@@ -58,10 +58,10 @@ mismatch = "sim (coarse clock) 0 from s32: its cannon is steady 10.6/s; the benc
 id = "use_transports_true_twinblade"
 scene = {build = "aitranst1", check = "a", until = 42}
 bench = "B 2026-11-21 aitranst1 (the same, UseTransports true; CampAITransT1A_mcp_1121_112000, read by index.json's frames as logic seconds): counters f41 (s2.7) 0 0 0 4, aboard 1 / 2 / 3 / 4 from f197 / 204 / 211 / 217 (s13.1-14.5), f254-629 (s16.9-41.9, its last frame) 4 0 0 0 (all four aboard, carried off home; the Twinblade not in the island box)."
-proves = "Tactic UseTransports true: the team puts its paired passengers aboard before it moves"
+proves = "Tactic UseTransports true: the team puts its members aboard before it forms up and moves (read rule: work/re b1122_boarding.md); left: the sim is early, all in at s12 and out of home at s14 (bench s14.5 / s17)"
+item = "AI 战术/Tactic.UseTransports"
 expect = [
     "win(15, 41, '车内步兵') == [4] * 27",
     "win(17, 41, '步兵在家') == [0] * 25",
 ]
-mismatch = "sim 0 aboard, 0 at home from s20 (paired, but no boarding: they walk off with the team); bench 4 aboard from f217 (s14.5), 0 at home from f254 (s17)"
 
