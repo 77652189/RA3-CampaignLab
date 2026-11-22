@@ -26,4 +26,24 @@ def a(m):
     return t
 
 
+def b(m):
+    """aigarrbld: the Garrison state's team -- Peacekeepers at home / in all, each neutral house the AI's."""
+    from checks import engine_aitarget as at
+    from missions.aitarget_bench import INF
+    from parts import counted, square
+    t = Test()
+    s1 = m.player('s1')
+    t.scripts.append(Script('Garr reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    t.areas[at.HOME] = square(*m.site('east base'), 450.0)
+    counted('CNV_GB_Home', '步兵在家', t, template=INF, area=at.HOME, player=s1)
+    counted('CNV_GB_Count', '步兵数', t, template=INF, player=s1)
+    counted('CNV_GB_Row', '排屋归AI', t, template='AM_RowHouse01', player=s1)
+    counted('CNV_GB_Shop', '商店归AI', t, template='HV_Shop01', player=s1)
+    end = m.facts['wake at'] + 60.0
+    t.expect = [('步兵在家', m.facts['wake at'] + 5, 'ever==', 0, end)]      # the model: the team leaves for a house
+    t.bench = [('bench_watch', dict(seconds=end + at.LAG, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {build: {'a': a} for build in ('aigarron', 'aigarroff')}
+CHECKS['aigarrbld'] = {'b': b}

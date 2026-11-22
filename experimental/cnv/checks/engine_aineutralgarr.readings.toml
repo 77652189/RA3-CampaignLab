@@ -1,0 +1,22 @@
+# Bench readings of checks/engine_aineutralgarr.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# aigarrbld b (bench 2026-11-22, CampGarrBldB_mcp_1122_032006; counters 步兵在家 步兵数 排屋归AI 商店归AI):
+#   s2.8-s9.7 2 2 0 0 | s10.1-s10.5 1 2 0 0 | s11.0-s56.2 0 2 0 0 | s56.7-s76.9 0 2 0 1
+
+[[reading]]
+id = "the_garrison_team_leaves_and_the_row_house_stays_neutral"
+scene = {build = "aigarrbld", check = "b", until = 75.0}
+bench = "aigarrbld: 步兵在家 0 from s11; 排屋归AI 0 all along (GarrisonHeuristic takes the map's shop, as aigarron read)"
+proves = "simai Garrison state: the GarrisonBuilding team of two Peacekeepers leaves home for the shop, not the row house"
+expect = ["win(12, 74, '步兵在家') == [0] * 63", "all(r['排屋归AI'] == 0 for r in rows)"]
+
+[[reading]]
+id = "the_garrison_team_takes_the_shop"
+scene = {build = "aigarrbld", check = "b", until = 75.0}
+bench = "aigarrbld: 商店归AI 0 to s56.2, 1 from s56.7 to s76.9; 步兵数 2 all along (in the shop: alive at the end)"
+proves = "simai GarrisonBuilding: the team goes into its target house and the house turns the AI's"
+expect = ["win(58, 74, '商店归AI') == [1] * 17", "rows[-1]['步兵数'] == 2"]
+mismatch = """\
+sim 商店归AI 0 all along: the model's go-and-act move to the shop's centre walks the two Peacekeepers ~60 out of \
+home and they stand there (3351, 3343), phase 'go', never within ARRIVE_RADIUS; and SimAI.act's GarrisonBuilding \
+is 'done on arrival', it sends nobody in. Bench s56.7 is ~46 s after the wake for ~670 of way: the walk's time \
+not read (handoff-b GarrisonBuilding)"""
