@@ -16,7 +16,7 @@ started at once (default 2 = the slots).
 
 Results: work/bench_results/<mission>__<check>.json (the latest run of that check) and one line a run appended to
 work/bench_results/summary.tsv. Verdicts: PASS / FAIL (the counters against the check's expectations), NOEXPECT (the check
-expects nothing: readings only), DROPOUT (the capture stopped before the check was over, says nothing about the
+expects nothing: readings only), NOREAD (a window the run ended before, no FAIL), DROPOUT (the capture stopped before the check was over, says nothing about the
 mission), ERROR (build failed, bench error, no verdict in the output, timeout, crash).
 """
 import argparse
@@ -122,7 +122,7 @@ def subprocess_runner(timeout=3600, python=None):
 def judge(code, output):
     """(verdict, expectation lines, readings line) from what run_check printed."""
     lines = output.splitlines()
-    expectations = [x for x in lines if x.startswith(('PASS ', 'FAIL '))]
+    expectations = [x for x in lines if x.startswith(('PASS ', 'FAIL ', 'NO READING '))]
     readings = next((x for x in lines if x.startswith('counters (')), '')
     result = next((x[7:].strip() for x in lines if x.startswith('RESULT ')), '')
     if code is None or code != 0 or output.startswith('BUILD FAILED'):
@@ -131,8 +131,8 @@ def judge(code, output):
         verdict = 'DROPOUT'
     elif result in ('PASS', 'FAIL'):
         verdict = result
-    elif result == 'NO EXPECTATIONS':
-        verdict = 'NOEXPECT'
+    elif result in ('NO EXPECTATIONS', 'NO READING'):
+        verdict = {'NO EXPECTATIONS': 'NOEXPECT', 'NO READING': 'NOREAD'}[result]
     else:
         verdict = 'ERROR'                  # no RESULT line: the run stopped before the judge (bench_start failed ...)
     return verdict, expectations, readings

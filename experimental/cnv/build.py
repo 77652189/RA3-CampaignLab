@@ -205,14 +205,17 @@ def runs(pairs, show=str):
 
 
 def report(t, readings):
-    """The readings and the verdicts as lines; exit status 0 = all pass (or nothing expected), 1 = a FAIL."""
+    """The readings and the verdicts as lines; exit status 0 = all pass (or nothing expected), 1 = a FAIL or a window
+    with no reading (the run ended before it: neither a pass nor a fail, review pp #3)."""
     clock = ', logic seconds' if readings and isinstance(readings[0][0], float) else ''   # else the wall clock's
     lines = ['counters (' + ', '.join(label for _, label in t.counters) + f'{clock}): ' +
              runs(readings, lambda v: ' '.join('?' if x is None else str(x) for x in v))]
     verdicts = judge(t, readings)
-    lines += [('PASS ' if ok else 'FAIL ') + text for ok, text in verdicts]
+    lines += [{True: 'PASS ', False: 'FAIL ', None: 'NO READING '}[ok] + text for ok, text in verdicts]
     passed = bool(verdicts) and all(ok for ok, _ in verdicts)
-    lines.append('RESULT ' + ('PASS' if passed else 'FAIL' if verdicts else 'NO EXPECTATIONS'))
+    oks = {ok for ok, _ in verdicts}
+    lines.append('RESULT ' + ('PASS' if passed else 'FAIL' if False in oks else 'NO READING' if verdicts
+                              else 'NO EXPECTATIONS'))
     return lines, 0 if passed or not verdicts else 1
 
 
@@ -225,11 +228,15 @@ def judge(t, readings):
     """Each expectation (label, from second, op, value[, until second]) must hold on every reading from that second
     on (and before `until`); an op written 'ever==' (ever>=, ...) on at least one -- for a mission that ends (its
     counters go with it). Label ENDED: from that second some frame shows no counter at all after one that did -- the
-    mission ended (won or lost: the check's scripts make it the one they test); with `until`, it ended before then."""
+    mission ended (won or lost: the check's scripts make it the one they test); with `until`, it ended before then.
+    No reading in the window at all (the sampling stopped before it): ok None, not a fail."""
     labels = [label for _, label in t.counters]
     verdicts = []
     for e in t.expect:
         label, since, op, want, *until = e
+        if not any(since <= s < (until[0] if until and label != ENDED else float('inf')) for s, _ in readings):
+            verdicts.append((None, describe(e) + ': no reading'))
+            continue
         if label == ENDED:
             seen = [s for s, v in readings if any(x is not None for x in v)]
             gone = [s for s, v in readings if s >= since and seen and s > seen[0] and all(x is None for x in v)]
@@ -250,7 +257,7 @@ def judge(t, readings):
             last = max((j for j, (_, v) in enumerate(got) if v is not None), default=-1)
             covered = last >= 0 and all(s in up for s, _ in got[last + 1:])
             ok = bool(got) and covered and all(v is None or OPS[op](v, want) for _, v in got)
-        verdicts.append((ok, describe(e) + ': ' + (runs(got) or 'no reading')))
+        verdicts.append((ok, describe(e) + ': ' + runs(got)))
     return verdicts
 
 

@@ -308,8 +308,10 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
     go()
     S.speed_up(every)               # no faster than frames can follow
     start = S.second()              # frames on a schedule in mission time: k * every from here, capture time and all
-    end, rows, cuts, prev, prev_cap = start + max(0.0, min(120.0, seconds)), [], [], None, None
-    k = 0
+    span = max(0.0, min(120.0, seconds))
+    end, rows, cuts, prev, prev_cap = start + span, [], [], None, None
+    k, f0 = 0, None     # with ra3ext's logic frames the watch ends by game time, span x 15 frames from the first, the
+    # wall clock 3x only as a backstop (it ran 6-7.5 frames a wall second, wallclock_audit_1121; review pp #3)
     while True:
         try:
             fid, img = S.frame(f'watch {every} s')
@@ -334,8 +336,10 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
         if met:
             rows.append(f'UNTIL met: {met}')
             break
+        f = S.frames[-1].get('frame', -1)
+        f0 = f if f0 is None else f0
         k += 1
-        if start + k * every > end:
+        if (f - f0 >= span * 15 or start + k * every > end + 2 * span) if min(f, f0) >= 0 else start + k * every > end:
             break
         S.run_for(start + k * every - S.second())
     try:

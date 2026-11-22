@@ -36,3 +36,22 @@ def test_cnv_check_runs_the_mission_sped_up(monkeypatch):
     monkeypatch.setattr(bench_mcp, 'CHECK_SPEED', 8.0)
     assert 'RESULT PASS' in bench_mcp.cnv_check('x', 'win')
     assert seen == [8.0, 8.0] and bench_mcp.harness.SPEED == 1.0
+
+
+def test_watch_ends_by_game_time(monkeypatch):
+    """With ra3ext's frames a watch of 10 s ends at 150 logic frames on, not 10 wall seconds (review pp #3: the game
+    ran ~7 frames a wall second, a check's window after the wall end went unread and was judged FAIL)."""
+    from PIL import Image
+
+    class Game:
+        view, t = None, 0.0
+        window = resume = pause = speed_up = lambda self, *a: None
+        second = lambda self: self.t                                    # noqa: E731
+        def run_for(self, s): self.t += s                               # noqa: E301,E704
+        def frame(self, note):                                          # noqa: E301
+            self.frames.append({'second': self.t, 'frame': round(self.t * 7)})
+            return len(self.frames), Image.new('RGB', (1280, 720))
+    monkeypatch.setattr(bench_mcp, 'S', Game())
+    bench_mcp.S.frames = []
+    rows = bench_mcp.bench_watch(seconds=10, every=2, sheet=False)[0].split(' | ')
+    assert rows[-1].startswith('#12 s22.0 f154')

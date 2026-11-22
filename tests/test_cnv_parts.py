@@ -214,7 +214,8 @@ def test_judge():
     covered = [(5, [1, 1]), (12, [4, None]), (15, [3, 1])]       # unread a moment (the rank-up over the counters)
     assert [ok for ok, _ in build.judge(t, covered)] == [True, True]
     assert build.judge(t, [(5, [1, 1]), (12, [4, None]), (15, [3, 2])])[1][0] is False
-    assert build.judge(parts.Test(counters=[('a', 'A')], expect=[('A', 99, '==', 1)]), [(5, [1])])[0][0] is False
+    late = parts.Test(counters=[('a', 'A')], expect=[('A', 99, '==', 1)])    # the run stopped before s99: unread
+    assert build.judge(late, [(5, [1])])[0][0] is None and build.report(late, [(5, [1])])[0][-1] == 'RESULT NO READING'
     ended = [(5, [1]), (8, [0]), (9, [None])]                    # the mission ended: its counters went with it
     assert build.judge(parts.Test(counters=[('a', 'A')], expect=[('A', 6, 'ever==', 0)]), ended)[0][0] is True
 
