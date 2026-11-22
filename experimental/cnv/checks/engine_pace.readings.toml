@@ -1,6 +1,5 @@
 [[reading]]
 id = "a_guard_told_to_guard_an_engineer_stays_where_it_stands"
-item = "脚本动作 TEAM_GUARD_OBJECT"
 scene = {build = "engine_guard", check = "go", until = 45}
 bench = """\
 TEAM_GUARD_OBJECT(an IFV's own team, an engineer) at 1 s, the engineer standing 1 000 east (静) / 300 east (近) / at \
@@ -8,6 +7,7 @@ the IFV and walked 1 500 east from 2 s (走) (bench 11-22 engine_guard:go, s1-s4
 start; 工 2 -> 16 at s36, 17 at s46; sim 17 at s39, not asserted): no guard ever leaves its spot, near, far or followed"""
 proves = """\
 sim act_order.team_guard_object: no move is given (the guard stays put whether its object stands or walks off); \
-whether it fights for the object is not read"""
+whether it fights for the object is not read. No item: a no-op passes these too (review vv #1) while the game gives \
+the team a group guard-object order -- not 已对拍 until a reading the no-op fails (an enemy near the object)"""
 expect = ["win(2, 44, '静') == [2] * 43", "win(2, 44, '走') == [2] * 43", "win(2, 44, '近') == [2] * 43",
           "max(win(30, 44, '工')) >= 15"]

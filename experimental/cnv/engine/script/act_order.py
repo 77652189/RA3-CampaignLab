@@ -132,6 +132,14 @@ def team_guard_object(sim, name, a, script):
     pass
 
 
+def team_enter_named(sim, name, a, script):
+    # (team, object): bench 11-22 engine_airin:go -- Apollos (own or a friend's) and cryocopters (which the airfield's
+    # CanParkHereFilter excludes) told to enter an airfield 700 off all reached it in ~2 s; the Apollos then landed and
+    # parked (not modelled: no landing / parking), the copters hovered over it. Taken as a group move to the object
+    # (a dead or missing object: not read; its last spot / none as sim.point gives)
+    _to_place(sim, 'move', _crew(sim, name, a[0]), a[1], ('group', True))
+
+
 def named_face_waypoint(sim, name, a, script):
     # Native hull headings: engine_facewpai:b, west 180 / north-west 117,
     # untouched 0. Reuse the measured locomotor turn rate. Exact order
@@ -149,10 +157,16 @@ def _crew(sim, name, who):
 
 def team_face_waypoint(sim, name, a, script):
     # (team, waypoint) A298 read: NAMED_FACE_WAYPOINT on each member with an AI
-    crew = [b for b in _crew(sim, name, a[0]) if b.speed]
-    if crew and sim.point(a[1]) is not None:
-        _order_bodies(sim, 'face', crew, place=a[1])
+    if _to_place(sim, 'face', [b for b in _crew(sim, name, a[0]) if b.speed], a[1]):
         sim.change()
+
+
+def _to_place(sim, kind, crew, place, *args):
+    """The crew's order to `place` (a waypoint, a named object ...: sim.point); none if no crew or no such place."""
+    if crew and sim.point(place) is not None:
+        _order_bodies(sim, kind, crew, *args, place=place)
+        return True
+    return False
 
 
 def unit_teleport_to_waypoint(sim, name, a, script, unit=None):
@@ -362,6 +376,7 @@ ACTIONS = {
     'TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE': team_move_to_nearest_object_of_type,
     'TEAM_GUARD_AREA_FROM_POSITION': team_guard_area_from_position,
     'TEAM_GUARD_OBJECT': team_guard_object,
+    'TEAM_ENTER_NAMED': team_enter_named,
     'NAMED_FACE_WAYPOINT': named_face_waypoint,
     'TEAM_FACE_WAYPOINT': team_face_waypoint,
     'UNIT_TELEPORT_TO_WAYPOINT': unit_teleport_to_waypoint,
