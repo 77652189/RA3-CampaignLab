@@ -23,28 +23,36 @@ mismatch = "sim: the Twinblade on the island s23-54, it destroys the plant (s53,
 
 [[reading]]
 id = "twinblade_plant_damage"
-scene = {build = "aitranst0", check = "a", until = 86}
-bench = "E 2026-11-21 aitranst0 (counter 电厂血 = the plant's health %, in place of 岛上步兵): 100 to s40, 99 s41, 86 s42, 78 s43, 66 s59, 58 s60, 48 s61, 39 s76, 33 s77, 22 s78, 13 s85-86 (CampAITransT0A_mcp_1121_142200, the frames the same as B's run). ra3ext: the Twinblade hovers at (2733,2729), 155 from the plant; first hit f345 997.5 (one AUTO_CANNON round, 5 x 50 %: B's '2.5 off' was this, the under-attack log writes only an attacker's first hit); rocket clips launched f353 / f486 / f623 (8.9 s apart, ClipReloadTime 8 s), but only every other one takes ~20 % (s42-43, s60-61, s77-78); between them ~0.75 %/s (the cannon, 3 rounds a second, half its data rate)"
-proves = "the Twinblade's two weapons at a structure: AUTO_CANNON at 50 % and a rocket clip of 8 x 25 ROCKET land as the data say; the rate does not (every other rocket clip misses, the cannon fires half as often)"
+scene = {build = "aitranst0", check = "a", until = 50}
+bench = "E 2026-11-21 aitranst0 (counter 电厂血 = the plant's health %, in place of 岛上步兵; CampAITransT0A_mcp_1121_142200). The run went ~7.5 logic frames a wall second, so its sN are read here by the frames index.json gives them, as logic seconds (frame / 15): first hit f345 (s23), 78 at f369 (s24.6), 48 at f504 (s33.6), 22 at f634 (s42.3), 13 at f701 (s46.7). Rocket clips at f353 / f487 / f621, 8.9 s apart (ClipReloadTime 8 s), every clip ~20 %; the cannon between"
+proves = "the Twinblade's two weapons at a structure, under the AI: the plant falls at the data's rate"
 expect = [
-    "win(41, 41, '电厂血')[0] >= 95",
-    "win(44, 59, '电厂血')[0] - win(44, 59, '电厂血')[-1] <= 15",
-    "min(win(80, 85, '电厂血')) >= 10",
+    "win(23, 23, '电厂血')[0] >= 95",
+    "38 <= win(34, 34, '电厂血')[0] <= 58",
+    "8 <= win(47, 47, '电厂血')[0] <= 20",
 ]
-mismatch = "sim (coarse clock) 98 at s23, then 3.3 %/s to 0 at s53 (rockets 22.7/s + cannon 10.6/s); bench from s41 ~19 hp/s, 13 left at s86. Not explained: why every other rocket clip misses with the shooter still (not the AI's orders: twinblade_plant_damage_player; hypotheses in work/re handoff-e)"
+mismatch = "sim (coarse clock) 98 at s23, 62 at s34, 18 at s47 (3.3 %/s, rockets 22.7/s + cannon 10.6/s); bench 48 at s34: its first clip lands at once on the engagement (f353-369, 99 to 78), the coarse clock spreads every clip over its 9 s. Read 11-21 as every other clip missing -- that was the wall clock taken for 15 frames a second (run 3 below)"
 
 
 [[reading]]
 id = "twinblade_plant_damage_player"
-scene = {build = "aitranstp", check = "a", until = 86}
-bench = "E 2026-11-21 aitranstp (the Twinblade the player's own, 400 out on the AI one's line, a start script force-attacks the plant; no AI orders): 电厂血 99 s3, 94 s13-15, 90 s16, 82 s17, 72 s18, 63 s34-36, 52 s37, 44 s38, 41 s39, 34 s52-54, 27 s57, 19 s58, 11 s59, 2 s76-86 (CampAITransTPA_mcp_1121_151337): a rocket clip takes ~22 % about every 20 s, the cannon ~0.5 %/s between"
-proves = "the alternate-clip miss of twinblade_plant_damage is the Twinblade's own, not the AI's re-sent orders"
+scene = {build = "aitranstp", check = "a", until = 40}
+bench = "E 2026-11-21 aitranstp (the Twinblade the player's own, a start script force-attacks the plant; CampAITransTPA_mcp_1121_170850, ~6 logic frames a wall second, read by index.json's frames as logic seconds): 72 at f156 (s10.4), 42 at f300 (s20), 11 at f432 (s28.8), 2 at f549 (s36.6). ra3ext uahit (every hit on the plant, object 3132, 1000 hp): the cannon 2.5 a hit from f55; the four clips f142-155 / f278-291 / f413-429 / f550, every one of 8 rockets 25 off the plant (200 a clip); the plant dies to clip 4's first rocket; 3174 (150 hp) is what stands in its place after"
+proves = "the Twinblade's two weapons at a structure: AUTO_CANNON 2.5 a round and a clip of 8 x 25 every ~135 frames (ClipSize 8, ClipReloadTime 8 s), every clip landing"
 expect = [
-    "win(15, 18, '电厂血')[0] - win(15, 18, '电厂血')[-1] >= 15",
-    "win(19, 36, '电厂血')[0] - win(19, 36, '电厂血')[-1] <= 10",
-    "min(win(80, 85, '电厂血')) >= 1",
+    "62 <= win(11, 11, '电厂血')[0] <= 80",
+    "34 <= win(20, 20, '电厂血')[0] <= 50",
+    "4 <= win(29, 29, '电厂血')[0] <= 18",
 ]
-mismatch = "sim (coarse clock) 98 at s2, then 3.3 %/s to 0 at s32; bench ~1 %/s (every other clip lands, the cannon ~0.5 %/s), 2 left at s86. The run's ua log has every clip fired, 8 rockets each ~135 frames apart (f142, f278, f413, f550: ClipSize 8, ClipReloadTime 8 s as the data say), and each clip's 8 go off; only the 2nd, 4th, 6th take the plant's health -- not a long reload, not a rocket lost in flight (~9 frames of a 135-frame cycle). Not where they land either: a second run (CampAITransTPA_mcp_1121_165117, the same health steps) logged each rocket's spot as it went off -- all 32 of clips 1-4 within 35 of the plant's centre (2600, 2650), 7-40 above its base (z 212.5), odd and even clips alike. The odd clips go off on the plant and take nothing; why is not read"
+
+
+[[reading]]
+id = "twinblade_plant_lasts_to_the_fourth_clip"
+scene = {build = "aitranstp", check = "a", until = 40}
+bench = "the same run: the plant 6 to 3 % at f495-540 (s33-36), dead at f550 (s36.7)"
+proves = "the cannon between clips: ~3.75 hp a second at the end, the 4th clip the kill"
+expect = ["min(win(33, 36, '电厂血')) >= 1"]
+mismatch = "sim (coarse clock) 0 from s32: its cannon is steady 10.6/s; the bench's comes in bursts (2.5 every 2 frames, then every 10), the first clip 87 frames after the first round"
 
 
 [[reading]]
