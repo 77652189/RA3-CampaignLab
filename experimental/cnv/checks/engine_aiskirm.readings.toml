@@ -329,6 +329,14 @@ expect = [
 mismatch = "B round 143: engine builds dogs 7-9 at s146-s152 over cap 6 and an engineer at s144. Model holds at 6 dogs and draws a Javelin. Its teams do not board a transport."
 
 [[reading]]
+id = "test_against_conscripts_the_dogs_reach_their_cap_of_six"
+scene = {build = "aiskvinf", check = "t", until = 146}
+bench = "2026-11-12 (B round 140): 警犬 6 by s43, held at 6 to s145."
+proves = "simai build states: AlliedAntiInfantryOnlyBuildState (ENEMIES ANY INFANTRY) scores the dog with its whole bite (Maul 1 + warhead 200: simunits ai_parts) under BEST_UNIT_EXPECTED, up to the parent personality's cap of 6"
+expect = "win(43, 145, '警犬总数') == [6] * 103"
+mismatch = "sim 4 dogs at s43, 5 at s44, 6 from s47 (the uniform draw's stream, A owns it; cause of the delay unconfirmed); bench 6 from s43"
+
+[[reading]]
 id = "release_to_priority_named_transfer_skips_the_pool"
 scene = {build = "aiskirm", check = "m", until = 170}
 bench = "aiskirm:m retail 11-11: defense 8 / Cleanup 99 at s125-128, defense 0 / Cleanup 8 at s129, pool 0 with per-frame peak 1 at transfer."
@@ -432,7 +440,7 @@ expect = "again is not None and again <= 153"
 mismatch = """\
 B round 217: the first barracks unit after the opening at s164 (153.5 s after the simulator's wake; bound s153, \
 bench s133). Red already on e6dfeeb7 (D169) and with model 05d99e0 reverted; the same slower-production class as \
-test_a_child_cap_under_the_parents_line_does_not_bind (C 05d99e0 / D 1afb989a), its first-bad commit not bisected"""
+engine_aicap's specific_unit_cap[aicapmed] (C 05d99e0 / D 1afb989a), its first-bad commit not bisected"""
 
 [[reading]]
 id = "order_account_production_deposit_feeds_the_barracks"

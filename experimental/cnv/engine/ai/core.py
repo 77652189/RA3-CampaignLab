@@ -384,6 +384,10 @@ class Brain:
         self.tactics.rng = random.Random(h.seed)    # state 2's RandomTargetScoreModifier / TimeToKeepTarget
         self.tactics.reach = self.reach             # PathfindingCheckType's kick (a model that has it; D152)
         self.tactics.approach = self.approach       # SimpleExpansion unpacks within Distance on the way (D157)
+        # AlphaStrike (a)'s own / allied objects: not the enemies', the civilians' or a Neutral player's
+        self.tactics.allied = lambda ai: self.fighters([
+            b for b in self.living() if not b.scenery and b.owner and b.owner != simworld.CIV
+            and b.owner not in self.view.enemies and self.world.relations.get((self.player, b.owner)) != 'Neutral'])
         self.targets = tg.TargetsBlock(h.data_of('targets'), self.active, lambda ai, f: self.view,
                                        lambda ai, st: self.home, home=self.home, base_of=self.base_of,
                                        held=self.tactics.held)

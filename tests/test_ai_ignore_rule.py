@@ -61,14 +61,13 @@ def test_ignore_rule_named_damage_and_prerequisites(name, rule_replays):
 
 @pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 @pytest.mark.parametrize('name, state, has_target', [
-    pytest.param('aiignrany', 0, True, marks=pytest.mark.xfail(
-        strict=True, raises=AssertionError, reason=(
-            'ANY permits the measured micro target, but engineer candidate/Alpha '
-            'eligibility still replays state 2/no target; see work/re/e118_ignore_rule.md.'))),
+    ('aiignrany', 0, True),
     ('aiignrall', 8, False),
 ])
 def test_ignore_rule_named_target_state(name, state, has_target, rule_replays):
-    """Same-run CNVTeams readings, two members; target IDs do not imply identity."""
+    """Same-run CNVTeams readings, two members; target IDs do not imply identity. ANY: the engineers are passive
+    targets (KindOf ENGINEER), one is the current enemy and the AI's barracks within 200 of it makes the team state
+    AlphaStrike's 0 (work/re/b1121_ignore.md)."""
     w = _replay(name, rule_replays)
     rows = [row for brain in w.brains.values() for row in brain.rec['frames']
             if row['state_key'] == 'CNVStateMicro' and len(row['members']) == 2]
