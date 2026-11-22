@@ -25,7 +25,7 @@ def test_both_switches_on_the_idle_team_goes_into_the_turrets(lib):
     w, rows = _probe_run('aibdi1', lib, 56.0)
     got = {t: r['进炮塔'] for (t, _), r in zip(w.sim.series, rows)}
     assert all(got[t] >= 1 for t in range(15, 56)), got
-    entries = [e for e in w.garrison.log if not e[3]]
+    entries = [e for e in w.sim.garrison.log if not e[3]]
     assert entries and all(e[2].startswith('UNIT - CNV AI Turret ') for e in entries)
 
 
@@ -47,7 +47,7 @@ def test_either_switch_off_one_man_still_goes_in(lib, build):
     got = {t: r['进炮塔'] for (t, _), r in zip(w.sim.series, rows)}
     assert all(got[t] == 0 for t in range(1, 4)), got
     assert all(got[t] == 1 for t in range(5, 56)), got
-    assert [e[2] for e in w.garrison.log if not e[3]] == ['UNIT - CNV AI Turret 1']
+    assert [e[2] for e in w.sim.garrison.log if not e[3]] == ['UNIT - CNV AI Turret 1']
 
 
 @pytest.mark.parametrize('build', ['aibdi0', 'aibdi2'])

@@ -22,7 +22,7 @@ def test_recorded_base_defense_counter_replay(lib, build, expected):
     world, rows = _probe_run(build, lib, 76.0)
     assert rows
     enclosed = [r['进炮塔'] for r in rows]
-    entries = [e for e in world.garrison.log if not e[3]]
+    entries = [e for e in world.sim.garrison.log if not e[3]]
     print(build, 'max/final enclosed', max(enclosed), enclosed[-1], 'entries', entries)
     # Sim.series uses mission seconds starting at t=0; do not infer time from row index.
     window = [(t, r['进炮塔']) for (t, _), r in zip(world.sim.series, rows) if 21 <= t <= 75]

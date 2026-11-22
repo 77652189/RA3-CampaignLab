@@ -19,7 +19,7 @@ def test_garrison_distance_replays_recorded_near_far_and_disabled(lib, monkeypat
         world, rows = _probe_run(build, lib, 75.0)
         assert rows
         owned = [r['楼归AI'] for r in rows]
-        entries = [e for e in world.garrison.log if not e[3]]
+        entries = [e for e in world.sim.garrison.log if not e[3]]
         print(build, 'ownership_max/final', max(owned), owned[-1],
               'entries', len(entries), 'first_owned_row',
               next((i for i, v in enumerate(owned) if v), None))
@@ -48,5 +48,5 @@ def test_garrison_distance_replays_recorded_near_far_and_disabled(lib, monkeypat
     world, rows = _probe_run('aigar1', lib, 75.0)
     assert reads and set(reads) == {150.0}, reads
     assert all(r['楼归AI'] == 0 for r in rows)
-    assert not [e for e in world.garrison.log if not e[3]]
+    assert not [e for e in world.sim.garrison.log if not e[3]]
     print('model_only_distance0', 'field_reads', len(reads), 'ownership_max', 0)

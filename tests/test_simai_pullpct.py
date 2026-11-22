@@ -56,7 +56,7 @@ def facility_world(lib):
     owner = w.sim.players['s1']
     tank = next(b for b in w.sim.living() if b.owner == owner and 'VEHICLE' in b.kinds)
     crane = next(b for b in w.sim.living() if b.template == 'SovietCrane')
-    brain = SimpleNamespace(player=owner, tid=lambda b: b.name)
+    brain = SimpleNamespace(player=owner, tid=lambda b: b.name, settings=w.settings)
     return w, brain, tank, crane
 
 

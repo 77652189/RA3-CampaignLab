@@ -138,7 +138,7 @@ def _ai_hooks(build, lib):
     w = simai_run.run(build, 'a', 12.0, lib=lib)
     (b,) = w.brains.values()
     u = simai.Unit(next(x for x in w.sim.living() if x.owner == b.player and 'INFANTRY' in x.kinds
-                        and not w.garrison.busy(x)))
+                        and not w.sim.garrison.busy(x)))
     names = lambda got: [b.body_of(i).name for i, _ in got                    # noqa: E731
                          if not b.body_of(i).scenery]      # the map's own houses are on the list too (real ones)
     return w, names(b.garrisons(u, True)), names(b.garrisons(u, False))
