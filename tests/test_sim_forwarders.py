@@ -98,6 +98,16 @@ FORWARDER_CALLS = {
     ('engine.objects.path', 'living'): 2,       # claims / goal_off_nodes, moved off the Sim (R3 M5 3a)
 }
 
+# ADR 0037 S0: how many of the Sim's names (methods and fields) each package reaches on the world it is handed --
+# `<r>.name` with <r> one of RECEIVERS (`sim.t`, `world.order_move`, `self._w.stand`, `context.world.bodies`). Only
+# shrinks: a name a package newly reaches is red (reach the part's own home instead), and so is a count above the
+# code's -- lower it in the same commit. Packages are engine.<layer> and the top-level sim*.py files.
+SIM_SURFACE = {'engine.ai': 21, 'engine.combat': 37, 'engine.kernel': 1, 'engine.loop': 43, 'engine.modules': 4,
+               'engine.objects': 34, 'engine.orders': 48, 'engine.players': 19, 'engine.ports': 102,
+               'engine.script': 139, 'engine.state': 27, 'engine.testing': 3, 'engine.world': 2, 'simai_run': 2, 'simbench': 2,
+               'simbench_peak': 9, 'simproxy': 29, 'simrecord': 6, 'simshow': 1}
+RECEIVERS = {'sim', 's', 'w', 'world', 'host', 'peers', '_w'}
+
 _CONTAINER = set(dir(dict)) | set(dir(list)) | set(dir(set))   # self.players.get(...) is a lookup, not a forwarder
 
 
@@ -203,3 +213,46 @@ def test_forwarder_guard_bites():
     real = forwarder_calls(forwarders(), {**{m: _src(m) for m in LAYERED},
                                           'engine.players.tech': _src('engine.players.tech') + "\ndef z(world):\n    world.order_move(1)\n"})
     assert ('engine.players.tech', 'order_move', 1, 0) in ratchet_breaks(real)
+
+
+def _package(module):
+    parts = module.split('.')
+    return '.'.join(parts[:2]) if parts[0] == 'engine' and len(parts) > 2 else module
+
+
+def sim_surface(names=None, sources=None):
+    """package -> the Sim names its files reach (see SIM_SURFACE); `sources`: {module: text} in place of the files."""
+    names = names if names is not None else set().union(*_layers.sim_members())
+    sources = sources if sources is not None else {enginefiles.name_of(p): Path(p).read_text(encoding='utf-8')
+                                                   for p in enginefiles.files()}
+    out = collections.defaultdict(set)
+    for mod, text in sources.items():
+        for n in ast.walk(ast.parse(text)) if mod != 'sim' else ():
+            v = getattr(n, 'value', None)
+            if isinstance(n, ast.Attribute) and n.attr in names and getattr(v, 'id', getattr(v, 'attr', None)) in RECEIVERS:
+                out[_package(mod)].add(n.attr)
+    return out
+
+
+def surface_breaks(found, allowed=SIM_SURFACE):
+    """(package, found, allowed, names) for each count that differs from the list."""
+    return sorted((p, len(found.get(p, ())), allowed.get(p, 0), sorted(found.get(p, ())))
+                  for p in set(found) | set(allowed) if len(found.get(p, ())) != allowed.get(p, 0))
+
+
+def test_sim_surface_only_shrinks():
+    assert not surface_breaks(sim_surface())
+
+
+def test_sim_surface_guard_bites():
+    """Mutation check: a package reaching one Sim name more is caught, by whichever receiver; a stale count too."""
+    found = sim_surface({'order_move', 't'},
+                        {'engine.players.x': 'def f(sim, a):\n    sim.t\n    a.order_move\n',
+                         'engine.ports.y': 'class P:\n    def g(self):\n        self._w.order_move\n', 'sim': 'sim.t\n'})
+    assert found == {'engine.players': {'t'}, 'engine.ports': {'order_move'}}
+    real = sim_surface()
+    unused = sorted(set().union(*_layers.sim_members()) - real['engine.players'])[0]
+    real['engine.players'].add(unused)
+    assert surface_breaks(real)[0][:3] == ('engine.players', SIM_SURFACE['engine.players'] + 1,
+                                           SIM_SURFACE['engine.players'])
+    assert surface_breaks({}, {'engine.players': 1}) == [('engine.players', 0, 1, [])]

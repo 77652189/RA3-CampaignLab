@@ -149,6 +149,18 @@ def _tree(name):
     return enginefiles.parse(name)
 
 
+def sim_members(source=None):
+    """(methods, fields) of the Sim class: its defs, and the names it stores on self or sets in its body (ADR 0037)."""
+    tree = ast.parse(source) if source is not None else _tree('sim')
+    cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'Sim')
+    methods = {n.name for n in cls.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    stored = {t.attr for t in ast.walk(cls) if isinstance(t, ast.Attribute) and isinstance(t.ctx, ast.Store)
+              and isinstance(t.value, ast.Name) and t.value.id == 'self'}
+    stored |= {t.id for n in cls.body if isinstance(n, (ast.Assign, ast.AnnAssign))
+               for t in (n.targets if isinstance(n, ast.Assign) else [n.target]) if isinstance(t, ast.Name)}
+    return methods, stored - methods
+
+
 def _imports(tree):
     """The modules of experimental/cnv a tree imports, by full name (enginefiles.imports: `import engine.a.b` and
     `from engine.a import b` are engine.a.b, not engine); the standard library, numpy, experimental/campaign are not."""

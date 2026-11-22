@@ -2,7 +2,8 @@
 rules (factory, schedule, Thing.find, sealed data), and
 
 1. a module file imports no other module file, assigns only on itself and finds modules by interface;
-2. the centre only shrinks (CENTER: sim.py lines, Sim methods, Body fields, simunits defs, cells not on the schedule);
+2. the centre only shrinks (CENTER: sim.py lines, Sim methods, Sim fields, Body fields, simunits defs, cells not on
+   the schedule);
 3. no module-level mutable state and no `global` in the world's files (PROCESS_CACHES, today's exceptions, only
    shrinks);
 4. two worlds in one process, advanced in turn, each record as when run alone;
@@ -270,7 +271,7 @@ def test_module_guard_bites():
 
 # --- 2. the centre only shrinks -----------------------------------------------------------------------------------
 
-CENTER = {'sim.py lines': 2628, 'Sim methods': 161, 'Body fields': 44, 'simunits defs': 136,
+CENTER = {'sim.py lines': 2628, 'Sim methods': 161, 'Sim fields': 145, 'Body fields': 44, 'simunits defs': 136,
           'cells with old code': 31}
 
 
@@ -294,6 +295,7 @@ def center(sim_src=None, units_src=None, loop_src=None):
     cells = {n.name: n for n in loop.body if isinstance(n, ast.FunctionDef)}
     return {'sim.py lines': len(sim_src.splitlines()),
             'Sim methods': sum(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) for n in cls['Sim'].body),
+            'Sim fields': len(_layers.sim_members(sim_src)[1]),
             'Body fields': sum(isinstance(n, ast.AnnAssign) for n in cls['Body'].body),
             'simunits defs': sum(isinstance(n, ast.FunctionDef) for n in ast.parse(units_src).body),
             'cells with old code': sum(c not in cells or _old_code(cells[c]) for c in frame)}
