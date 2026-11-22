@@ -102,6 +102,7 @@
      - `bench_start(look=false)`：开局不截图。
    - **飞行单位画在地面点上方约 170 像素**：`bench_watch(air=true)` 把裁图上扩；框选用 `bench_box(..., air=true)`。
    - 一次完整测试的流程：start → watch（sheet=false）→ `bench_counters`，只返回文字，一张图都不用看。
+   - **sN 是墙钟秒 × 倍速，不是游戏时间**（11-21 审计 `work/logs/wallclock_audit_1121.md`：游戏常只跑 6–7.5 逻辑帧/墙钟秒）。带 ra3ext 时 watch / counters 每行带 `#截图号 sN fN`，`build.py --judge` 在每行都有帧时按 fN/15 判（报告首行写 `logic seconds`），否则退回墙钟秒。写读数一律用 fN/15。
    - **计数器认数字**：`experimental/testbench/counters.py`。OCR 用 `line_box` 从 y=578 开始每 16 像素扫一行（x=0 到 330），最多扫 4 行。数字模板在 `work/testbench/nav/digits/`（work 不进 git，丢了就重跑 `cnv.py make digits --calibrate`：地图显示 1234 / 5678 / 90，切出 0～9）。MCP 工具 `bench_counters(lines)` 把每帧的计数器读成"s19: 6 5"。
      - 任务显示的倒计时（`DISPLAY_COUNTDOWN_TIMER`）和计数器在同一张列表里，排在计数器上面，会把计数器往下挤一行。读数按字形识别并过滤倒计时；全被过滤时用原识别结果。
      - 标签最后一个字和数字挨得太近（如以"车"结尾，只隔 3 像素）时，数字会被并进标签读错；以"量"结尾的标签没问题。

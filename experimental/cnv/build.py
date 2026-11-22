@@ -174,13 +174,14 @@ def steps(mod, t):
 
 
 def parse_counters(text):
-    """bench_counters' text ('s3: 6 0 5 | s6: ...') -> [(second, [value or None, ...])]."""
-    readings = []
-    for part in text.split(' | '):
-        mm = re.match(r's(\d+): (.*)', part.strip())
-        if mm:
-            readings.append((int(mm.group(1)), [None if v == '?' else int(v) for v in mm.group(2).split()]))
-    return readings
+    """bench_counters' text ('#1 s3 f45: 6 0 5 | #2 s6 f80: ...') -> [(second, [value or None, ...])]: the logic second
+    (frame / 15, a float) when every row has its frame, else the bench's wall-clock second for all (an int; ra3ext off,
+    wallclock_audit_1121: the game ran 6-7.5 logic frames a wall second)."""
+    row = re.compile(r'(?:#\d+ )?s(\d+)(?: f(\d+))?: (.*)')
+    rows = [mm.groups() for mm in map(row.match, map(str.strip, text.split(' | '))) if mm]
+    logic = bool(rows) and all(f is not None for _, f, _ in rows)
+    return [(round(int(f) / 15, 2) if logic else int(s), [None if v == '?' else int(v) for v in vals.split()])
+            for s, f, vals in rows]
 
 
 def bench(mod, t):
@@ -205,7 +206,8 @@ def runs(pairs, show=str):
 
 def report(t, readings):
     """The readings and the verdicts as lines; exit status 0 = all pass (or nothing expected), 1 = a FAIL."""
-    lines = ['counters (' + ', '.join(label for _, label in t.counters) + '): ' +
+    clock = ', logic seconds' if readings and isinstance(readings[0][0], float) else ''   # else the wall clock's
+    lines = ['counters (' + ', '.join(label for _, label in t.counters) + f'{clock}): ' +
              runs(readings, lambda v: ' '.join('?' if x is None else str(x) for x in v))]
     verdicts = judge(t, readings)
     lines += [('PASS ' if ok else 'FAIL ') + text for ok, text in verdicts]

@@ -226,6 +226,11 @@ def test_judge_until_and_the_bench_round_trip():
     assert lines[1] == 'PASS A == 0 from s0 until s15: s3-s12: 0'
     assert lines[0] == 'counters (A): s3-s12: 0 | s18: 2 | s21: 4'
     assert build.report(t, build.parse_counters('s3: 0 | s14: 1 | s21: 4'))[1] == 1
+    # the logic frames when every row has one (the wall clock's s21 ran ~s10 of game time), the wall clock otherwise
+    assert build.parse_counters('#4 s3 f45: 0 | #5 s21 f150: 4') == [(3.0, [0]), (10.0, [4])]
+    assert build.parse_counters('#4 s3: 0 | #5 s21 f150: 4') == [(3, [0]), (21, [4])]
+    lines = build.report(t, build.parse_counters('#4 s3 f45: 0 | #5 s21 f300: 4'))[0]
+    assert lines[0] == 'counters (A, logic seconds): s3.0: 0 | s20.0: 4'
     plan = build.steps('CampX', build.resolve('liberty_riders', 'jump')[1])
     assert plan[0] == ['bench_start', {'mod': 'CampX', 'look': False}] and plan[-1] == ['bench_counters', {'lines': 3}]
     assert 'liberty_riders --check jump -> CampLibRJump' in build.listing()

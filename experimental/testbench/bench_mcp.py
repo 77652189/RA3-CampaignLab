@@ -272,6 +272,13 @@ UNTIL_OPS = {'==': lambda a, b: a == b, '>=': lambda a, b: a >= b, '<=': lambda 
              '<': lambda a, b: a < b}
 
 
+def logic(fid):
+    """' f<n>': the archived frame's logic frame (ra3ext's clock when the shot was asked for), '' without one -- the
+    game time a reading goes by; the s<n> beside it is wall time x the rate asked for (wallclock_audit_1121)."""
+    f = S.frames[fid - 1].get('frame')
+    return f' f{f}' if f is not None and f >= 0 else ''
+
+
 def until_met(until, vals):
     """'c1==0|c4==0' (counter lines from 1, any of them) against one frame's counter values."""
     import re
@@ -320,7 +327,7 @@ def bench_watch(seconds: float, every: float = 3.0, x0: float = 0, y0: float = 0
         if vals:
             text += ' [' + ' '.join('?' if v is None else str(v) for v in vals) + ']'
         shot_at = S.frames[-1]['second']        # when the shot was asked for, not when it was read back
-        rows.append(f'#{fid} s{shot_at} change {moved}{text}')
+        rows.append(f'#{fid} s{shot_at}{logic(fid)} change {moved}{text}')
         prev, prev_cap = cut, cap
         cuts.append((fid, shot_at, cut))
         met = until_met(until, vals) if until and vals else None
@@ -364,7 +371,8 @@ def bench_counters(lines: int, frames: str = 'all') -> str:
     rows = []
     for fid in ids:
         vals = counters.read(S.archived(fid), lines)
-        rows.append(f's{S.frames[fid - 1]["second"]:.0f}: ' + ' '.join('?' if v is None else str(v) for v in vals))
+        rows.append(f'#{fid} s{S.frames[fid - 1]["second"]:.0f}{logic(fid)}: '
+                    + ' '.join('?' if v is None else str(v) for v in vals))
     return ' | '.join(rows) or 'BENCH: no frames'
 
 
