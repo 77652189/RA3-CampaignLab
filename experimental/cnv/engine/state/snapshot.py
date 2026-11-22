@@ -160,14 +160,22 @@ def encoding_rules(*functions):
     return [_encoding_rule(f.__code__) for f in functions]
 
 
+def kept(table, carried=(STATE, KERNEL, EXECUTOR)):
+    """The part of a field table a snapshot carries: the kinds taken or handed to a port, every part by name (the
+    snapshot's `parts`). A WIRE / CACHE / STATIC / ALIAS field the new world makes, so one added or dropped leaves
+    the version, and old snapshots readable (review ss P3 #8: S1 changed wiring alone and refused them)."""
+    return {f: kept(k, carried) if isinstance(k, dict) else k for f, k in table.items()
+            if isinstance(k, dict) or k in carried}
+
+
 def version():
-    """The host snapshot's format depends on its field tables and the rules that encode its values and rows."""
+    """The host snapshot's format depends on the fields it carries and the rules that encode its values and rows."""
     rules = encoding_rules(snap.encode, snap.decode, snap._place, snap.module_state, snap.set_module_state,
                            _Codec._place_template, _Codec.count, _Codec.extra, _Codec.decode_extra,
                            _Codec._template_object, World.snapshot, World.restore, PublicExecutor.snapshot,
                            PublicExecutor.restore, PublicExecutor._key, PublicExecutor._by_key, snapshot, _setup)
     types = tuple(t.__name__ for t in (*snap._PLAIN, *_MUTABLE))
-    wire = digest(SIM, BODY, ALIASES, snap.MARKS, _NAMED, MODULE_WIRE, _module_states(), rules, types)
+    wire = digest(kept(SIM), kept(BODY), snap.MARKS, _NAMED, _module_states(), rules, types)
     return f'{wire}.{SEMANTICS}'
 
 
@@ -580,7 +588,8 @@ def check(sim, s):
     anew (restore sets them)."""
     v = version()
     if s.get('version') != v:
-        raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {v}')
+        raise ValueError(f'simsnap.restore: a snapshot of version {s.get("version")}, this is {v} (what a snapshot '
+                         'carries changed, no migration: take it again -- docs/engine/sim-modules.md 9.2)')
     if s['mission'] != getattr(sim.m, 'name', None):
         raise ValueError(f'simsnap.restore: a snapshot of {s["mission"]!r} onto {getattr(sim.m, "name", None)!r}')
     made = _check(s, _fields(sim), type(sim).LATE)

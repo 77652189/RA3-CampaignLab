@@ -107,6 +107,12 @@ def test_the_version_is_the_tables_digest(heal, monkeypatch):
     assert simsnap.VERSION == v1
     monkeypatch.undo()
     assert simsnap.VERSION == v0
+    monkeypatch.setitem(simsnap.SIM['commands'], 'review_hook', simsnap.WIRE)
+    monkeypatch.setitem(simaisnap.BRAIN, 'review_hook', simsnap.CACHE)
+    assert (simsnap.VERSION, simaisnap.VERSION) == (v0, ai0)   # what the new world makes: old ones read (ss P3 #8)
+    monkeypatch.setitem(simsnap.SIM['commands'], '_issued', simsnap.WIRE)
+    assert simsnap.VERSION != v0
+    monkeypatch.undo()
     cls = next(c for c in factory.TAGS.values() if c.__module__.startswith('engine.modules.') and c.STATE)
     monkeypatch.setattr(cls, 'STATE', tuple(cls.STATE) + ('review_timer',))
     assert simsnap.VERSION not in (v0, v1)

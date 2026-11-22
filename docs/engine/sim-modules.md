@@ -140,7 +140,7 @@
 | **精确快照** `simsnap.snapshot(sim)` / `restore(sim, data)`，带遭遇战 AI 用 `simaisnap` | 同任务的新实例可在另一个进程恢复 | JSON 快照含内核、宿主和脚本执行器状态。落盘用 `snapfile.save(path, snapshot, **meta)` / `load(path)`，将快照和调用方元数据封装成 gzip JSON，经临时文件原子替换 | 逐帧记录、末态快照和最终报告与连续运行一致 |
 | **局面交换** `Battlefield`（一个公开的数据格式） | 当前可在模拟侧导出和摆入，目标是真机局面交换 |模板、归属、位置朝向、血量、状态位、升级、等级、乘员及驻军前归属、生产进度及已付款、AI 建造场队列、模块计时（自愈、寿命、卖楼、展开）、玩家资源和外交、脚本旗标、计数器、计时器和目标 | 模拟侧 `round_trip` 逐字段核对，未还原的字段须有对应缺口；格式舍弃的状态见 `NOT_CARRIED` |
 
-宿主 `simsnap` 和外层 `simaisnap` 分别检查自己的格式版本（各自模块里的 `VERSION`），版本不符的快照整体拒绝。读 `VERSION` 时由 `version()` 生成 `<SHA-256 前 8 位十六进制>.<SEMANTICS>`。摘要包含字段归类表和选定编解码函数的语法树，宿主还纳入各登记模块类的 `STATE`。只有摘要未覆盖的格式语义变动才手加 `SEMANTICS`，并在提交说明里写原因。宿主保留 `areas.missing`、原样入队的命令和脚本参数，按对象或序号保存驻军、渗透、采矿等关系，武器和槽位在 `WeaponSet.STATE` 里。宿主先检查版本和结构，再由执行器检查并恢复自己的部分。AI 外层在创建大脑前检查两层格式，并拒绝 `level`、`seed`、`blocks` 或 `record` 不一致的快照。
+宿主 `simsnap` 和外层 `simaisnap` 分别检查自己的格式版本（各自模块里的 `VERSION`），版本不符的快照整体拒绝。读 `VERSION` 时由 `version()` 生成 `<SHA-256 前 8 位十六进制>.<SEMANTICS>`。摘要包含字段归类表里快照真正携带的部分（`simsnap.kept`：STATE、交给端口的 KERNEL / EXECUTOR / HOST / BRAINS / MODEL 和部件名；WIRE、CACHE、STATIC、ALIAS 由新世界自己造，增删不换版本）和选定编解码函数的语法树，宿主还纳入各登记模块类的 `STATE`。跨版本不迁移：拒绝时报错写明两边版本，调用方重拍。只有摘要未覆盖的格式语义变动才手加 `SEMANTICS`，并在提交说明里写原因。宿主保留 `areas.missing`、原样入队的命令和脚本参数，按对象或序号保存驻军、渗透、采矿等关系，武器和槽位在 `WeaponSet.STATE` 里。宿主先检查版本和结构，再由执行器检查并恢复自己的部分。AI 外层在创建大脑前检查两层格式，并拒绝 `level`、`seed`、`blocks` 或 `record` 不一致的快照。
 
 - `engine/kernel/snap.py` 负责 JSON 值和引用的编解码，物体引用按本局 serial 恢复，模块引用按物体 serial 和模块在该物体上的位置恢复，宿主专用值经 `extra` 扩展，无法编码的值会点名报错。模块按 `STATE` 序列化，宿主检查新增字段时同时查实例字典和 slots。
 - 精确快照依赖 §5 的实例状态归属。守卫检查状态声明及多世界隔离，模块和工具测试覆盖快照往返，`simrecord snap` 的验收见 [testing.md 的耗时一节](testing.md#耗时)。

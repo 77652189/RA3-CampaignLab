@@ -92,7 +92,9 @@ _UNIT_MODEL = [f for f, k in UNIT.items() if k == MODEL]
 def version():
     """The AI part's format depends on its own tables and encoding rules. The Sim has its own version."""
     rules = simsnap.encoding_rules(snapshot, _key_of, _take_brain, _mem_mark, _setup, _value, _write_brain)
-    return f'{simsnap.digest(SETUP, SIMAI, ALIASES, BRAIN, UNIT, _BY_HAND, _WALKS, rules)}.{SEMANTICS}'
+    carried = (STATE, HOST, BRAINS, MODEL)
+    tables = (simsnap.kept(t, carried) for t in (SIMAI, BRAIN, UNIT))
+    return f'{simsnap.digest(SETUP, *tables, _BY_HAND, _WALKS, rules)}.{SEMANTICS}'
 
 
 def __getattr__(name):
@@ -289,7 +291,8 @@ def _check(s):
     v = version()
     if (s.get('version') != v or set(s) != {'version', 'setup', 'sim', 'ai', 'brains'}
             or not isinstance(s['setup'], dict) or set(s['setup']) != set(SETUP)):
-        raise ValueError(f'simaisnap.restore: not a snapshot of this shape ({v})')
+        raise ValueError(f'simaisnap.restore: not a snapshot of this shape ({s.get("version")}, this is {v}; no '
+                         'migration: take it again -- docs/engine/sim-modules.md 9.2)')
     state = {'.'.join(p) for p in _paths()}
     bad = [r for r in s['ai'] if not (isinstance(r, list) and len(r) == 2 and r[0] in state)]
     if bad:
