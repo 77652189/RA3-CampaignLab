@@ -166,5 +166,40 @@ def production_test(m, which='a'):
     return t
 
 
-MISSION = {'engine_production': mission}
-CHECKS = {'engine_production': {w: (lambda m, w=w: production_test(m, w)) for w in 'abcdefghi'}}
+# engine_press (retail j07 / s08: a repeating script presses a factory's build button every frame while it holds):
+# a Japanese refinery and s08's war factory, two power plants (supply 200, demand 100), money MONEY_P; from PRESS_AT
+# one script presses both buttons PRESSES frames running. Counters: 资金, 按 (the presses made), each unit's count
+PRESSES, MONEY_P = 30, 20000
+PRESSED = (('Refinery', 'JapanRefinery', 'base refinery', 'Command_ConstructJapanMinerFromRefinery', 'JapanMiner', '矿车'),
+           ('Tesla', 'S08_SovietWarFactory', 'base factory', 'Command_ConstructSovietAntiVehicleVehicleTech2',
+            'SovietAntiVehicleVehicleTech2', '磁暴'))
+
+
+def press_mission():
+    m = Mission(name='CampPress', map=resources.measured(niagara), units=[], facts={})
+    for part, tmpl, site, _, unit, _ in PRESSED:
+        m.put(tmpl, site, angle=None if part == 'Refinery' else 3.1416, role=part.lower(), name=_n(part))  # pad's
+        m.spawns |= {unit}
+    for k in range(2):
+        m.put('SovietPowerPlant', 'base power', 0.0, 160.0 * k, angle=0.0, role=f'power {k + 1}', name=_n(f'Power {k}'))
+    return m
+
+
+def press_test(m):
+    t, p1 = Test(), m.player('p1')
+    t.scripts += [Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1), ('PLAYER_SET_MONEY', p1, MONEY_P),
+                                              ('SET_MILLISECOND_TIMER', 'Test Press', PRESS_AT)]),
+                  Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', p1, 'CNV_Prod_Money')], once=False),
+                  Script('Test - press', [('TIMER_EXPIRED', 'Test Press'), ('COUNTER', 'CNV_Prod_Press', 0, PRESSES)],
+                         [('NAMED_USE_COMMANDBUTTON_ABILITY', _n(part), button) for part, _, _, button, _, _ in PRESSED] +
+                         [('INCREMENT_COUNTER', 1, 'CNV_Prod_Press')], once=False)]
+    t.counters += [('CNV_Prod_Money', '资金'), ('CNV_Prod_Press', '按')]
+    for part, _, _, _, unit, label in PRESSED:
+        counted(f'CNV_Prod_{part}', label, t, template=unit, most=8)
+    t.bench = [('bench_watch', dict(every=0.5, sheet=False, lines=len(t.counters), seconds=75.0))]
+    return t
+
+
+MISSION = {'engine_production': mission, 'engine_press': press_mission}
+CHECKS = {'engine_production': {w: (lambda m, w=w: production_test(m, w)) for w in 'abcdefghi'},
+          'engine_press': {'a': press_test}}
