@@ -216,6 +216,10 @@ def test_judge():
     assert build.judge(t, [(5, [1, 1]), (12, [4, None]), (15, [3, 2])])[1][0] is False
     late = parts.Test(counters=[('a', 'A')], expect=[('A', 99, '==', 1)])    # the run stopped before s99: unread
     assert build.judge(late, [(5, [1])])[0][0] is None and build.report(late, [(5, [1])])[0][-1] == 'RESULT NO READING'
+    island = parts.Test(counters=[('a', 'A'), ('b', 'B')], expect=[('B', 75, '==', 0, 76), ('A', 75, 'ever==', 0)])
+    v = build.judge(island, build.parse_counters('s74 f1110: 0 0 | s75 f1125: 0 ?'))   # only B unread (review rr #4)
+    assert [ok for ok, _ in v] == [None, True]
+    assert build.judge(island, [(74, [0, 0]), (75, [None, None])])[0][0] is False      # nothing read: ended
     ended = [(5, [1]), (8, [0]), (9, [None])]                    # the mission ended: its counters went with it
     assert build.judge(parts.Test(counters=[('a', 'A')], expect=[('A', 6, 'ever==', 0)]), ended)[0][0] is True
 

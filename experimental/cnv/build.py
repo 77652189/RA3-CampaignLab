@@ -229,7 +229,8 @@ def judge(t, readings):
     on (and before `until`); an op written 'ever==' (ever>=, ...) on at least one -- for a mission that ends (its
     counters go with it). Label ENDED: from that second some frame shows no counter at all after one that did -- the
     mission ended (won or lost: the check's scripts make it the one they test); with `until`, it ended before then.
-    No reading in the window at all (the sampling stopped before it): ok None, not a fail."""
+    No reading in the window at all (the sampling stopped before it), or none of this counter while another reads in
+    each of those frames: ok None, not a fail."""
     labels = [label for _, label in t.counters]
     verdicts = []
     for e in t.expect:
@@ -246,6 +247,12 @@ def judge(t, readings):
             continue
         k, end = labels.index(label), until[0] if until else float('inf')
         got = [(s, v[k]) for s, v in readings if since <= s < end and k < len(v)]
+        up = {s for s, v in readings if any(x is not None for x in v)}
+        if all(v is None for _, v in got) and all(s in up for s, _ in got):
+            # this counter unread the whole window while others read in each of its frames: covered, not a fail
+            # (review rr #4: aitrans0's island '?' in its one s75 frame failed the run); nothing read = the mission gone
+            verdicts.append((None, describe(e) + ': no reading of ' + label))
+            continue
         if op.startswith('ever'):
             ok = any(v is not None and OPS[op[4:]](v, want) for _, v in got)
         else:
@@ -253,7 +260,6 @@ def judge(t, readings):
             # chevrons over the counters at s323 of two AI runs); missing to the end is the mission gone -- a fail --
             # unless another counter still reads in those frames: then it is still running, this one covered (bench
             # 2026-10-26, A7 east on the redrawn map: the chevrons stayed from s327 to the end over the short lines)
-            up = {s for s, v in readings if any(x is not None for x in v)}
             last = max((j for j, (_, v) in enumerate(got) if v is not None), default=-1)
             covered = last >= 0 and all(s in up for s, _ in got[last + 1:])
             ok = bool(got) and covered and all(v is None or OPS[op](v, want) for _, v in got)

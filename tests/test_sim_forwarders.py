@@ -86,14 +86,77 @@ FORWARDER_CALLS = {
     ('engine.objects.path', 'living'): 2,       # claims / goal_off_nodes, moved off the Sim (R3 M5 3a)
 }
 
-# ADR 0037 S0: how many of the Sim's names (methods and fields) each package reaches on the world it is handed --
-# `<r>.name` with <r> one of RECEIVERS (`sim.t`, `world.order_move`, `self._w.stand`, `context.world.bodies`). Only
-# shrinks: a name a package newly reaches is red (reach the part's own home instead), and so is a count above the
-# code's -- lower it in the same commit. Packages are engine.<layer> and the top-level sim*.py files.
-SIM_SURFACE = {'engine.ai': 21, 'engine.combat': 37, 'engine.kernel': 1, 'engine.loop': 38, 'engine.modules': 4,
-               'engine.objects': 33, 'engine.orders': 48, 'engine.players': 19, 'engine.ports': 89,
-               'engine.script': 137, 'engine.state': 27, 'engine.testing': 3, 'engine.world': 2, 'simai_run': 2, 'simbench': 2,
-               'simbench_peak': 8, 'simproxy': 29, 'simrecord': 6, 'simshow': 1}
+# ADR 0037 S0: the Sim's names (methods and fields) each package reaches on the world it is handed, with how many
+# access points (`name*3`; none = one) -- `<r>.name` with <r> one of RECEIVERS (`sim.t`, `world.order_move`,
+# `self._w.stand`, `context.world.bodies`). Only shrinks: a name a package newly reaches, or one more point of a name
+# it already does, is red (reach the part's own home instead), and so is a point the code no longer makes -- write
+# the line the failure prints, in the same commit (review rr #8: a names-only count let a swap through). Packages are
+# engine.<layer> and the top-level sim*.py files.
+SIM_SURFACE = {
+    'engine.ai': 'blocks*11 bodies*4 commands*3 enemy*3 flags frame_now*3 ground*8 human*2 level living*24 modify '
+                 'note*4 own*15 players*6 relation relations*3 t*4 waypoints*2 who*4 world xml_of*2',
+    'engine.combat': 'attachment_tick attachments*4 can_hit change*2 cold_of*3 death_blasts*2 destroy*5 '
+                     'emp_disabled*3 firing first_death*4 frame_now*17 gap*6 garrison*2 ground*6 guessed '
+                     'has_model_condition hostile infiltrators*2 label*5 lift_timers*2 living*5 mark_first_death '
+                     'modify*2 note own*7 player_ups projectile_detonate*2 queue_projectile_hit relation*3 '
+                     'set_model_condition*2 shots_due suppression_fields*3 sweeps t*4 used*7 world*2 xml_of*2',
+    'engine.kernel': 'seq*2',
+    'engine.loop': 'aim_due anchored*2 aura_tick auto_kill_due blast_due clock combat*3 deal death_blast_due ending*4 '
+                   'events*5 flags frame_movers garrison handed*3 happen heal hunts infiltrators lose_health mid_aims '
+                   'mining move*3 off_teams production*2 repairs self_power_due seq series shot_clock*2 '
+                   'suppression_tick sweeps t*8 tech_due test*3 wallet wfire_due world*2',
+    'engine.modules': 'gap*3 modify pick used*3',
+    'engine.objects': '_upgrade*2 add blocks*4 bodies*8 body change*21 delete*11 destroy*2 enemy*2 frame_now*31 '
+                      'gap*61 ground*5 guessed*5 human*11 kills*2 label*27 living*13 looks m*2 modify*3 note*20 '
+                      'own*39 players*2 point reblock*2 relation*5 relations*4 send*2 shot_clock t*9 used*18 world*9 '
+                      'xml_of*6',
+    'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 delete*3 '
+                     'engineer_entry*2 fight_field fire_spot firing*2 frame_now*7 gap garrison*2 ground*3 hostile '
+                     'hunts*5 in_range label*9 living*6 members mid_aims mm*2 modify note*7 own*11 point*2 powers_off '
+                     'production reach*5 relation*2 seen send*12 seq*7 short_of_power shot_blocked*4 side_sees*4 '
+                     'team_targets*3 toggles_of used*13 wallet waypoints*8 who xml_of',
+    'engine.players': '_life add*3 banned blocks bodies*4 build_frames emp_book frame_now*3 label note own*4 '
+                      'produce_out reblock relations t*3 unit_construction_disabled upgrade_done wallet*2 world',
+    'engine.ports': 'act*2 add*2 add_team_lookup advance ai ai_paused ai_priorities ai_switches anchored*3 areas '
+                    'attachments banned base_construction_disabled blocks*2 bodies*6 body*2 books*2 border box_at '
+                    'can_build can_hit change*2 countdowns counters ending*2 ending_line enemy engineer_entry '
+                    'events*4 expected_damage factories firing flags foe frame_now*9 garrison*8 ground*2 happen*2 '
+                    'human*5 income input label*3 late_captions leap_press living log*2 looks m*8 markers mm*3 money '
+                    'movement_power_press note*4 objectives offers*2 order_build*3 own panel_at pending pick*4 '
+                    'player_ups players point*7 power*2 production*5 proto reblock relations sample*2 seen sees '
+                    'self_power_press series short_of_power side_sees step*2 t*2 take_personality team_targets text '
+                    'timers unknown unmodeled*2 upgrade_sellers wallet*4 waypoints wfire_press who world',
+    'engine.script': '_tier_held _upgrade act*4 active*7 add*5 ai*4 ai_paused*2 ai_priorities*3 ai_switches '
+                     'all_revealed areas*11 asked*3 assignments attachment_known_status*2 attacked_by*2 audio_end '
+                     'banned*2 banned_ups*2 base_construction_disabled*2 base_power blasts blocks*2 bodies*11 body*59 '
+                     'book_players books*2 books_of*3 border*4 buildable camera*2 camera_been*2 casts*6 change*16 '
+                     'cloaked*3 clock*4 commands*3 cond_memory*2 countdowns*3 counters*15 delete*2 destroy*5 dying*3 '
+                     'end*2 engineer_entry flags*4 frame_now*19 gap*19 garrison*27 give_upgrade ground handed*2 '
+                     'has_model_condition hidden_home*2 hidden_members hotspots*3 human*9 infiltrators*4 input*2 '
+                     'kills*4 label*12 level*3 library_ai*2 living*24 looks lost_orders m*6 made_frame markers '
+                     'members*34 mm*6 model_scripts*2 modify*2 money*9 money_cap named_team nearest_ref*3 note*35 '
+                     'object_lists objectives*2 of_types*12 off_teams*2 on_the_move own*42 peeks personality_of*2 '
+                     'player_team_rel player_ups players*8 point*18 power power_at*2 powers_off present*16 '
+                     'production*3 ra3_only*3 reblock*2 reinforce*2 relation*2 relations reshroud*3 retail*5 '
+                     'reveal_all*2 reveal_all_until*2 reveal_areas*2 revealed_to*2 reveals*3 scenes*4 '
+                     'script_disabled*2 sees*4 selected*2 sell*2 send*2 seq*4 set_model_condition*3 sharing*2 '
+                     'short_of_power show_caption show_subtitle spellbook_ready start_camera surfaces t*18 tactical '
+                     'team_active*2 team_entered team_player_rel team_team_rel tech_read*2 text*4 timers*2 '
+                     'unit_construction_disabled*2 unknown*6 up used*31 video_end waypoints*2 who*6',
+    'engine.state': 'act*5 active add bodies*11 books*4 change*3 flags*4 frame_now garrison*3 give_upgrade ground '
+                    'level m*6 money*2 objectives*3 own*8 player_ups*2 players power production*2 reblock refs*2 '
+                    'relations*2 script t used*3 world*9',
+    'engine.testing': 'add bodies*2 world',
+    'engine.world': 'bodies*3 world',
+    'simai_run': 'advance who',
+    'simbench': 'run waypoints',
+    'simbench_peak': 'advance*2 bodies*9 ending money order_build players step*2 t*4',
+    'simproxy': 'advance bodies*5 commands countdowns end ending ending_line enemy*3 forget_sight frame_now*2 guessed '
+                'human input label level*2 living*3 log*2 m*8 money note offers own players point*7 production '
+                'side_sees t timers*2 world',
+    'simrecord': 'advance*3 ending*2 report run*3 t*8 world*4',
+    'simshow': 'run',
+}
 RECEIVERS = {'sim', 's', 'w', 'world', 'host', 'peers', '_w'}
 
 _CONTAINER = set(dir(dict)) | set(dir(list)) | set(dir(set))   # self.players.get(...) is a lookup, not a forwarder
@@ -209,23 +272,35 @@ def _package(module):
 
 
 def sim_surface(names=None, sources=None):
-    """package -> the Sim names its files reach (see SIM_SURFACE); `sources`: {module: text} in place of the files."""
+    """package -> Counter of the Sim names its files reach, one per access point (see SIM_SURFACE); `sources`:
+    {module: text} in place of the files."""
     names = names if names is not None else set().union(*_layers.sim_members())
     sources = sources if sources is not None else {enginefiles.name_of(p): Path(p).read_text(encoding='utf-8')
                                                    for p in enginefiles.files()}
-    out = collections.defaultdict(set)
+    out = collections.defaultdict(collections.Counter)
     for mod, text in sources.items():
         for n in ast.walk(ast.parse(text)) if mod != 'sim' else ():
             v = getattr(n, 'value', None)
             if isinstance(n, ast.Attribute) and n.attr in names and getattr(v, 'id', getattr(v, 'attr', None)) in RECEIVERS:
-                out[_package(mod)].add(n.attr)
+                out[_package(mod)][n.attr] += 1
     return out
 
 
+def surface_text(points):
+    """A Counter as SIM_SURFACE writes it: 'bodies*4 t' (no '*' = one point)."""
+    return ' '.join(n + (f'*{k}' if k > 1 else '') for n, k in sorted(points.items()))
+
+
 def surface_breaks(found, allowed=SIM_SURFACE):
-    """(package, found, allowed, names) for each count that differs from the list."""
-    return sorted((p, len(found.get(p, ())), allowed.get(p, 0), sorted(found.get(p, ())))
-                  for p in set(found) | set(allowed) if len(found.get(p, ())) != allowed.get(p, 0))
+    """(package, points beyond the list, points the list has that the code no longer makes, the line to write) for
+    each package whose access points differ from the list."""
+    out = []
+    for p in sorted(set(found) | set(allowed)):
+        may = collections.Counter({n: int(k or 1) for n, _, k in (w.partition('*') for w in allowed.get(p, '').split())})
+        have = found.get(p, collections.Counter())
+        if have != may:
+            out.append((p, sorted((have - may).elements()), sorted((may - have).elements()), surface_text(have)))
+    return out
 
 
 def test_sim_surface_only_shrinks():
@@ -233,14 +308,21 @@ def test_sim_surface_only_shrinks():
 
 
 def test_sim_surface_guard_bites():
-    """Mutation check: a package reaching one Sim name more is caught, by whichever receiver; a stale count too."""
+    """Mutation check: one more access point of a name a package already reaches, or one name swapped for another,
+    is caught, by whichever receiver (review rr #8: counting names alone let both through); a stale list too."""
     found = sim_surface({'order_move', 't'},
-                        {'engine.players.x': 'def f(sim, a):\n    sim.t\n    a.order_move\n',
+                        {'engine.players.x': 'def f(sim, a):\n    sim.t\n    sim.t\n    a.order_move\n',
                          'engine.ports.y': 'class P:\n    def g(self):\n        self._w.order_move\n', 'sim': 'sim.t\n'})
-    assert found == {'engine.players': {'t'}, 'engine.ports': {'order_move'}}
+    assert found == {'engine.players': {'t': 2}, 'engine.ports': {'order_move': 1}}
+    assert surface_breaks(found, {'engine.players': 't', 'engine.ports': 'order_move'}) == \
+        [('engine.players', ['t'], [], 't*2')]
     real = sim_surface()
-    unused = sorted(set().union(*_layers.sim_members()) - real['engine.players'])[0]
-    real['engine.players'].add(unused)
-    assert surface_breaks(real)[0][:3] == ('engine.players', SIM_SURFACE['engine.players'] + 1,
-                                           SIM_SURFACE['engine.players'])
-    assert surface_breaks({}, {'engine.players': 1}) == [('engine.players', 0, 1, [])]
+    old = sorted(real['engine.players'])[0]
+    real['engine.players'][old] += 1
+    assert surface_breaks(real) == [('engine.players', [old], [], surface_text(real['engine.players']))]
+    real['engine.players'][old] -= 1
+    new = sorted(set().union(*_layers.sim_members()) - set(real['engine.players']))[0]
+    real['engine.players'][new] = real['engine.players'].pop(old)
+    assert surface_breaks(real)[0][:3] == ('engine.players', [new] * real['engine.players'][new],
+                                           [old] * real['engine.players'][new])
+    assert surface_breaks({}, {'engine.players': 'x*2'}) == [('engine.players', [], ['x', 'x'], '')]
