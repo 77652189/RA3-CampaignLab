@@ -1,0 +1,25 @@
+# Bench readings of checks/engine_assistplace_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E169 (work/re/e169_assistplace.md): the retail refinery and a copy without its placement-hint include; the refinery
+# queued from the sidebar, then a click 30 off the hint pad.
+
+[[reading]]
+id = "no_refinery_stands_with_the_hint"
+scene = {build = "assistpon", check = "a", until = 60}
+bench = "E169 assistpon:a: 采样完成 / 矿场总数 / 提示位数量 0 throughout (to s191); the preview stayed red"
+proves = "a negative baseline only: no refinery was placed -- not evidence for or against snapping (placement acceptance was not established; inventory TODO stays)"
+expect = ["all(r['采样完成'] == 0 and r['矿场总数'] == 0 and r['提示位数量'] == 0 for r in rows)"]
+
+[[reading]]
+id = "no_refinery_stands_without_it_either"
+scene = {build = "assistpoff", check = "a", until = 60}
+bench = "E169 assistpoff:a (only the include removed): the same, 0 / 0 / 0 throughout (to s267)"
+proves = "a negative baseline only (as assistpon)"
+expect = ["all(r['采样完成'] == 0 and r['矿场总数'] == 0 and r['提示位数量'] == 0 for r in rows)"]
+
+[[reading]]
+id = "the_sidebar_queue_pays_the_refinery"
+scene = {build = "assistpon", check = "a", until = 60}
+bench = "E169 assistpon:a: 资金 10000 -> 8000 over about 30 s of the queue (wall s22-s52), then 8000 to the end; assistpoff the same"
+proves = "the bench's sidebar queue clicks are paid -- a UI-input baseline, not an AssistedPlacement rule"
+expect = "min(r['资金'] for r in rows) == 8000"
+mismatch = "sim 10000 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 8000"
