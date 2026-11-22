@@ -11,3 +11,18 @@ expect = ["all(r['激活位'] == 0 for r in rows if r['完成帧'] < 60)",
           "all(r['激活位'] == 1 for r in rows if r['完成帧'] >= 73)",
           "all(r['位移位'] == r['结束位'] == 0 for r in rows if r['完成帧'] < 210)",
           "[counter(c) for c in ('E171Frame', 'E171Active', 'E171Moved', 'E171Clear')] == [210, 1, 1, 11]"]
+
+[[reading]]
+id = "a_rush_pressed_past_its_reach_goes_at_once_and_on_to_the_point"
+scene = {build = "engine_movement_e", check = "b", until = 14}
+bench = """CampMovementEB_mcp_1121_212440 (clock to 900 then; 帧 / 激活 / 进 / 等): f44 11/0/0, f58 11/11/0, f76 11/33/0, \
+f95 0/56/0, f110 0/56/0, f127 0/66/0, f147 0/86/0, then 86 to the end"""
+proves = """NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT with the rush (retail j07: two Onis made and pressed in one \
+script, 542 / 770 away, MaxCastRange 300): no refusal and no walk-in -- both active from the first read (等 0), \
+the status gone by f95 (Duration 4 s); the 542 one at its point by then, the 770 one 500-600 out, going on at its \
+own speed to the point (simspecial.movement_power_press / self_power_due). Below MinCastRange not benched"""
+let = {at = "lambda f: next(r['进'] for r in rows if r['帧'] >= f)"}
+expect = ["all(r['激活'] == 11 for r in rows if 40 <= r['帧'] <= 76)",
+          "all(r['激活'] == 0 for r in rows if r['帧'] >= 95)", "all(r['等'] == 0 for r in rows)",
+          "at(90) == 56", "at(120) // 10 in (6, 7)", "at(150) == 86"]
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_TriggerRushAttackSpecialPower"

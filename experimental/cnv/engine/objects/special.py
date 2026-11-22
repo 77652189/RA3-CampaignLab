@@ -53,16 +53,17 @@ class Specials:
                     destroy(t, f'被 {world.label(by)} 的超武打掉')
 
     def movement_power_press(self, world, b, button, point, modify, send):
-        """E171: in-range static waypoint rush; ordinary path movement with SDK speed.
+        """E171: a static waypoint rush; ordinary path movement with SDK speed. A292 (retail j07: made and pressed in
+        one script, 542 / 770 away): a script's press past MaxCastRange rushes at once, the whole way -- no walk-in, no
+        refusal -- and when the status runs out the unit goes on to the point at its own speed.
 
-        INFERRED: status/speed last Duration from the press, expiry stops movement;
-        the bench proves activation, displacement and final exit, not those exact
-        boundaries. Turning/acceleration, collision and repeated orders remain gaps.
+        INFERRED: status/speed last Duration from the press; the bench proves activation, displacement and final
+        exit, not those exact boundaries. Below MinCastRange, turning/acceleration, collision and repeated orders
+        remain gaps.
         """
         sp = simunits.movement_power(b.template, button, world.own)
-        distance = math.hypot(point[0] - b.x, point[1] - b.y)
-        if distance < sp['minimum'] or (sp['maximum'] and distance > sp['maximum']):
-            world.guessed.add('MovementSpecialPower: out-of-range approach unmodelled')
+        if math.hypot(point[0] - b.x, point[1] - b.y) < sp['minimum']:
+            world.guessed.add('MovementSpecialPower: below MinCastRange unmodelled')
             return False
         jobs = self.movement_due
         if b.serial in jobs:           # the pressing thing's own, not its name's (same-name sweep 11-19b O58)
@@ -152,8 +153,7 @@ class Specials:
                 b.script_status.difference_update(bits)
                 if b.base is not None:
                     b.base['speed'] = old_speed
-                b.path, b.dest = [], None
-                modify(b)
+                modify(b)                       # and on to the point (A292: 770 away, s4 past 500, there by s8)
         for job in list(self.leaps_due):
             if frame >= job[0]:
                 self.leaps_due.remove(job)
