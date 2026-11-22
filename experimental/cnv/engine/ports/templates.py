@@ -1,8 +1,8 @@
 """The template data port (docs/engine/sim-modules.md 3, 6): the helpers a module's data class reads its XML block
 with. The port itself -- blocks(template, tag) -> [(attributes text, inner text)], from the nearest template up the
 inheritance chain that has the tag -- is handed to World by its host (today Sim: simunits.module_blocks); step P moves
-simunits' readers behind it. attr / num / secs are simunits' _attr / _num / _secs, kept there for its own readers
-until then."""
+simunits' readers behind it. attr / num are simunits' _attr / _num, kept there for its own readers until then;
+simunits._secs is this secs (review ss #5: two parsers read '500ms' two ways)."""
 import re
 
 

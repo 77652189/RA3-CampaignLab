@@ -399,7 +399,7 @@ class Infiltrators:
                 # INFERRED: XML duration beyond the measured second-entry window;
                 # E201 observes blocking through 41s, not its distant expiry.
                 self.module(target).block(world.frame_now()
-                    + simunits._frames(float(rule['BlockedDuration'][:-1])))
+                    + simunits._frames(simunits._secs(rule['BlockedDuration'])))
                 # INFERRED: attach local sight at accepted entry; exact activation
                 # phase/observer identity were not measured. Keep ordinary yards' delay.
                 self.observers.append((spy.owner, target, world.frame_now()))
@@ -508,7 +508,7 @@ class Infiltrators:
                     continue
                 # INFERRED: apply once to existing units at entry, for the XML duration.
                 # E128 b/E129 a/E133 a support stable movement windows, not exact expiry or new units.
-                end = world.frame_now() + simunits._frames(float(rule['Duration'][:-1]))
+                end = world.frame_now() + simunits._frames(simunits._secs(rule['Duration']))
                 self.mark(target, 'paralyze')
                 for body in world.living():
                     if body.owner != target.owner or body.template.lower() not in selected[0]:

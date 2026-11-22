@@ -697,9 +697,10 @@ def test_ai_import_guard_bites():
 # step 9d: the skirmish AI writes no field of a body either (rule "L8 changes no object field"): a goal, a team, a
 # lifetime, the stats of a body simunits does not know go through their owners (the command port's goal_only,
 # world.add(team=), simbody.last_until / fill); what it marks for itself it keeps (Brain._unpack_ordered). Its own
-# records it may write: a tactics Fighter (`f`), a hunt goal's state (`state`) and its own engine model's parts the
-# callbacks are bound on (`model`, Brain.hook: MODEL_HOOKS).
-AI_RECORDS = {'f', 'state', 'model'}
+# records it may write: a tactics Fighter (`f`), a hunt goal's state (`state`); and only inside Brain.hook its own
+# engine model's parts the callbacks are bound on (`model`, MODEL_HOOKS; review ss #7: not any `model` in the file).
+AI_RECORDS = {'f', 'state'}
+HOOK_RECORDS = {'Brain.hook': {'model'}}
 
 
 def ai_object_write_breaks(source=None):
@@ -708,10 +709,10 @@ def ai_object_write_breaks(source=None):
     tree = ast.parse(source) if source is not None else _tree('engine.ai.core')
     out = []
 
-    def outside(e):
+    def outside(e, q):
         while isinstance(e, (ast.Attribute, ast.Subscript)):
             e = e.value
-        return not (isinstance(e, ast.Name) and e.id in AI_RECORDS | {'self'})
+        return not (isinstance(e, ast.Name) and e.id in AI_RECORDS | HOOK_RECORDS.get(q, set()) | {'self'})
 
     def walk(node, q):
         for c in ast.iter_child_nodes(node):
@@ -723,14 +724,14 @@ def ai_object_write_breaks(source=None):
                 for x in (t.elts if isinstance(t, ast.Tuple) else [t]):
                     while isinstance(x, ast.Subscript):
                         x = x.value
-                    if q and isinstance(x, ast.Attribute) and outside(x):
+                    if q and isinstance(x, ast.Attribute) and outside(x, q):
                         out.append((q, c.lineno, ast.unparse(x)))
             if q and isinstance(c, ast.Call):
                 f = c.func
-                if isinstance(f, ast.Name) and f.id == 'setattr' and c.args and outside(c.args[0]):
+                if isinstance(f, ast.Name) and f.id == 'setattr' and c.args and outside(c.args[0], q):
                     out.append((q, c.lineno, 'setattr ' + ast.unparse(c.args[0])))
                 if isinstance(f, ast.Attribute) and f.attr in MUTATORS and isinstance(f.value, ast.Attribute) \
-                        and outside(f.value):
+                        and outside(f.value, q):
                     out.append((q, c.lineno, ast.unparse(f.value)))
             walk(c, cq)
     walk(tree, '')
@@ -747,7 +748,9 @@ def test_ai_object_write_guard_bites():
     src = ("class Brain:\n    def f(self, u, t):\n        b = u.body\n        b.goal = None\n        b.team = t\n"
            "        u.body.life_end = 9\n        b.max_hp = b.hp = 3\n        b.unpack_ordered = was = True\n"
            "        b.status.add('X')\n        setattr(b, 'speed', 1)\n"
-           "        f.kinds, state.target = (), t\n        self.made[b.name] = 1\n")
+           "        f.kinds, state.target = (), t\n        self.made[b.name] = 1\n"
+           "        model = u.body\n        model.hp = 1\n        setattr(model, 'speed', 0)\n"
+           "    def hook(self, part, model):\n        setattr(model, part, 1)\n")
     assert [w for _, _, w in ai_object_write_breaks(src)] == \
         ['b.goal', 'b.team', 'u.body.life_end', 'b.max_hp', 'b.hp', 'b.unpack_ordered', 'b.status',
-         'setattr b']
+         'setattr b', 'model.hp', 'setattr model']

@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 HERE = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'campaign'))
 import labpaths  # noqa: E402
+from engine.ports.templates import secs as _secs  # noqa: E402,F401  one duration parser, '500ms' too (review ss #5)
 
 CACHE = os.path.join(labpaths.WORK, 'sim_units_v7.json')     # v2: defines resolved (2026-10-29); v3: + ShroudClearingHeight;
                                                             # v4: + radius (R8); v5: radius read through 'Type= "BOX"'
@@ -323,10 +324,6 @@ def _num(v, default=0.0):
         return float(v)
     except (TypeError, ValueError):
         return default
-
-
-def _secs(v):
-    return _num(v.rstrip('s')) if v else 0.0
 
 
 def _weapon_files():
