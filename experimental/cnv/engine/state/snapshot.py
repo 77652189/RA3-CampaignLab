@@ -60,6 +60,7 @@ SIM = {
     # caches (template -> what its data says)
     'declared': CACHE, 'energies': CACHE, '_engineer_rules': CACHE, '_wsets': CACHE, '_xmls': CACHE,
     '_toggles': CACHE, '_invis': CACHE, '_xy': CACHE, '_cold': CACHE,
+    '_shown': STATE,    # the INVISIBLE_DETECTED marks Sim.cloaked's scan set (a script's own it leaves)
     # parts
     'clock': {'frame': STATE},
     'wallet': {'money': STATE, 'income': STATE, 'sharing': STATE, 'money_cap': STATE},

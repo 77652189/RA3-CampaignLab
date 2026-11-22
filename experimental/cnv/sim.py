@@ -2040,12 +2040,9 @@ class Sim:
                 self.used.add('combat')
 
     def cloaked(self, live):
-        """ids of the bodies an InvisibilityBroadcastUpdate hides this tick, no targets (simunits.invis_broadcast; bench
-        engine_stealth a / b, docs/engine/stealth.md 1-2): a broadcaster with its ObjectStatusValidation's status hides
-        what its filter takes within BroadcastRange, each tick; an enemy detector within reach shows it again with
-        INVISIBLE_DETECTED (engine/modules/detector.py, engine_detector:a). Not modelled: the garrison's template."""
-        cache = self.__dict__.setdefault('_invis', {})
-        out = set()
+        """ids an InvisibilityBroadcastUpdate hides this tick, no targets (simunits.invis_broadcast, docs/engine/stealth.md
+        1-2); an enemy detector in reach shows them again with INVISIBLE_DETECTED (engine/modules/detector.py)."""
+        cache, out = self.__dict__.setdefault('_invis', {}), set()
         for e in live:
             if e.template not in cache:
                 cache[e.template] = simunits.invis_broadcast(e.template, self.own)
@@ -2060,8 +2057,11 @@ class Sim:
                     out.add(t.serial)
         shown = {t.serial for t in live if t.serial in out and any(d.sees(t, self.relation(e.owner, t.owner))
                                                                    for e in live for d in e.find(kernel_interfaces.Detector))}
+        mine = self.__dict__.setdefault('_shown', set())     # the scan's own marks: a script's INVISIBLE_DETECTED stays
         for t in live:
-            (t.status.add if t.serial in shown else t.status.discard)('INVISIBLE_DETECTED')
+            if (t.serial in shown) != (t.serial in mine) and (t.serial in mine or 'INVISIBLE_DETECTED' not in t.status):
+                (t.status.add if t.serial in shown else t.status.discard)('INVISIBLE_DETECTED')
+                mine ^= {t.serial}
         if out:
             self.used.add('stealth')
         return out - shown

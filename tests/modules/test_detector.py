@@ -20,6 +20,13 @@ def test_an_enemy_dog_makes_the_hidden_target_a_target_again():
     assert t.serial in s.cloaked(s.living()) and 'INVISIBLE_DETECTED' not in t.status
 
 
+def test_the_scan_leaves_a_scripts_own_mark():
+    s, t = _hidden('Player_1')
+    t.status.add('INVISIBLE_DETECTED')                          # a script's UNIT_SET_OBJECT_STATUS
+    s.cloaked(s.living())
+    assert 'INVISIBLE_DETECTED' in t.status
+
+
 def test_a_friendly_dog_shows_nothing():
     s, t = _hidden('Player_1')
     assert t.serial in s.cloaked(s.living()) and 'INVISIBLE_DETECTED' not in t.status
