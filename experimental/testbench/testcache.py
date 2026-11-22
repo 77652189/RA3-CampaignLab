@@ -1,5 +1,5 @@
-"""Content keys for test-only caches. A module of its own: `from conftest import` reaches whichever conftest
-was imported last, tests/modules' one included."""
+"""Content keys for test-only caches. A module of its own, loaded by file: `from conftest import` reaches
+whichever conftest was imported last, tests/modules' one included."""
 import hashlib
 import os
 from pathlib import Path

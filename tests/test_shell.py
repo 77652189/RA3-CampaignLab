@@ -1,5 +1,6 @@
 """The campaign shell probe (experimental/cnv/shell.py, ADR 0014): a retail APT screen with our picture in it keeps every other
 byte of the stream, the template edits land where intended, and the mod's name is one the game starts with."""
+import importlib.util
 import os
 import re
 import sys
@@ -8,7 +9,12 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
-from testcache import content_key
+# by file (G4; tests/guards/test_layers.py keeps helpers out of the top level)
+_tc = importlib.util.spec_from_file_location(
+    '_testcache', Path(__file__).resolve().parents[1] / 'experimental' / 'testbench' / 'testcache.py')
+_testcache = importlib.util.module_from_spec(_tc)
+_tc.loader.exec_module(_testcache)
+content_key = _testcache.content_key
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'experimental' / 'cnv'))

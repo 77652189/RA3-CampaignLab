@@ -1,10 +1,16 @@
 """The plan's offline checks (experimental/cnv/offline.py) and the unit numbers they stand on (simunits)."""
+import importlib.util
 import os
 import sys
 from copy import copy, deepcopy
 from pathlib import Path
 
-from testcache import content_key
+# by file (G4; tests/guards/test_layers.py keeps helpers out of the top level)
+_tc = importlib.util.spec_from_file_location(
+    '_testcache', Path(__file__).resolve().parents[1] / 'experimental' / 'testbench' / 'testcache.py')
+_testcache = importlib.util.module_from_spec(_tc)
+_tc.loader.exec_module(_testcache)
+content_key = _testcache.content_key
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [os.path.join(ROOT, 'experimental', 'cnv'), os.path.join(ROOT, 'experimental', 'campaign')]

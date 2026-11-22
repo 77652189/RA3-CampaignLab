@@ -11,7 +11,12 @@ from functools import lru_cache
 from pathlib import Path
 
 import pytest
-from testcache import content_key
+# by file (G4; tests/guards/test_layers.py keeps helpers out of the top level)
+_tc = importlib.util.spec_from_file_location(
+    '_testcache', Path(__file__).resolve().parents[1] / 'experimental' / 'testbench' / 'testcache.py')
+_testcache = importlib.util.module_from_spec(_tc)
+_tc.loader.exec_module(_testcache)
+content_key = _testcache.content_key
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # loaded by file (guard G4: no new sys.path edits); inventory.py puts the cnv folders on the path itself
