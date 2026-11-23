@@ -22,8 +22,10 @@ scene = {build = "aicrush1", check = "a", until = 35}
 bench = "aicrush1: 守军数 0 at s28-s33, 坦克数 4"
 proves = "simai team attack + sim crush: the team drives through the guards and crushes them at once"
 expect = ["win(28, 33, '坦克数') == [4] * 6", "win(28, 33, '守军数') == [0] * 6"]
-mismatch = """B 11-22 (model 776963f): the simulator is about 1 s behind the bench all along -- guards 11 10 8 6 6 5 3 \
-1 1 at s20-28, 0 from s29 (bench 11 9 7 4 3 2 2 1 1 at s19-27, 0 from s28); only s28 (1, bench 0) misses. The tanks \
-reach the plant s15-16 on both; the simulator's crush moves start s18 (two) and s20 (two), when each one's \
-TimeToKeepTarget record on the plant runs out (a uniform 3-5 s draw): a draw's luck or the start of state 2 is the \
-1 s, not the drive. B round 196's 4, 4, 3, 2, 2, 1 at s28-33 is gone"""
+mismatch = """B 11-22 (model 776963f): seed 1 is the lucky one (0 from s29); seeds 2-11 leave 1-4 guards at s28 and \
+most still at s33, so not a draw's luck. The simulator's tanks stop about 250 from the plant's centre, out of their \
+150 reach, shooting the guards in reach (picks: an attacker takes a foe by itself when the order's target is out of \
+reach) and holding there; the plant falls only at s36, the guards go to the keep-record crush moves meanwhile. The \
+bench (aicrush1t 11-13 team rows) closes to about 222, the plant falls about f345, state 2 at f350 sends the tanks at \
+the guards. Probe: no target taken by itself under an attack order -> the plant falls s22-23 as on the bench, but \
+the crush after it is slower than the bench (2-5 guards at s35, 1-2 tanks lost): not the whole story, unresolved"""
