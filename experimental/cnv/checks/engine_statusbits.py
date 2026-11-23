@@ -122,6 +122,28 @@ def king_test(m):
     return t
 
 
+# engine_statusbits:n (A310): retail a08 sets NO_AUTO_ACQUIRE on its Mirage Tank at the start. Same lanes, no upgrade:
+# base's Mirage plain, high's and order's given the bit at s0; only order's is told at ORDER to attack its Tsunami.
+# 基准血 / 不找血 / 令血 = the three Tsunamis' health in percent; 位 = high's Mirage reads the bit.
+def acquire_test(m):
+    t = Test()
+    t.scripts.append(Script('Test - start', [], [
+        ('UNIT_CHANGE_OBJECT_STATUS', _n(lane, 'Tank'), 'NO_ATTACK', 1) for lane in LANES] + [
+        ('UNIT_CHANGE_OBJECT_STATUS', _n(lane, 'Man'), 'NO_AUTO_ACQUIRE', 1) for lane in ('high', 'order')] + [
+        ('MAP_REVEAL_ALL_PERM', m.player('p1')), ('SET_MILLISECOND_TIMER', 'Test Order', ORDER)]))
+    t.scripts.append(Script('Test - order', [('TIMER_EXPIRED', 'Test Order')],
+                            [('NAMED_ATTACK_NAMED', _n('order', 'Man'), _n('order', 'Tank'))]))
+    for lane, label in (('base', '基准血'), ('high', '不找血'), ('order', '令血')):
+        counted(f'CNV_Sbits_A{lane}', label, t, health=_n(lane, 'Tank'))
+    t.counters.append(('CNV_Sbits_ABit', '位'))
+    t.scripts += [Script('Test - abit zero', [], [('SET_COUNTER', 'CNV_Sbits_ABit', 0)], once=False),
+                  Script('Test - abit seen', [('UNIT_HAS_OBJECT_STATUS', _n('high', 'Man'), status('NO_AUTO_ACQUIRE'))],
+                         [('SET_COUNTER', 'CNV_Sbits_ABit', 1)], once=False)]
+    t.expect = [('基准血', 0, 'ever<=', 99, 15.0)]
+    t.bench = [('bench_watch', dict(seconds=15.0, every=0.5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 MISSION = {'engine_statusbits': mission, 'engine_kingbits': king_mission}
-CHECKS = {'engine_statusbits': {'a': statusbits_test, 'b': lambda m: statusbits_test(m, 'b')},
+CHECKS = {'engine_statusbits': {'a': statusbits_test, 'b': lambda m: statusbits_test(m, 'b'), 'n': acquire_test},
           'engine_kingbits': {'k': king_test}}

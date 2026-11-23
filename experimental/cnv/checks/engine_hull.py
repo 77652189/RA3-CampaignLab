@@ -33,10 +33,11 @@ true rate is only known to be above that).
          sent as short / north, vback back to its spot and vtwice 60 further north 4 s later. Predicted from the data
          (CanReverseMove, ReverseMoveSpeed 75 %): 40 40 40 44 if one move reverses. Bench 11-22 (A307): 44 44 40 44 --
          each drove forward, as without the bit; pace (north plain / with the bit, 25-wide strips): the same strip
-         every half second. The bit changes nothing a script move shows (the model records it only).
+         every half second. The bit changes nothing a script move shows; pace's 'bit' (A310: UNIT_HAS_OBJECT_STATUS on
+         vnorth / north) reads 0 throughout, before the move and after -- the model keeps no such bit.
 """
 from maps import probe_range
-from parts import Mission, Script, Test
+from parts import Mission, Script, Test, status
 from checks.engine_missile import LOST_MAX, TARGET_ID, target
 from checks.engine_shot import FLANK_DAMAGE, DAMAGE, _nuggets, shot_v4
 from checks import engine_scripts8 as s8
@@ -113,6 +114,9 @@ def hull_test(m, group):
             y += HULL_AT
             s8.total(t, f'CNV_Hull_P{k}', pair, [(j, ('NAMED_INSIDE_AREA', _n(pair, 'Target'), _strip(
                 t, f'Test Hull {pair.title()} {j}', x + dx, y + STRIP * j))) for j in range(1, 27)])
+        # the bit as a script reads it (review ww P3 #5): 1 vnorth's (set), 2 north's (never set)
+        s8.total(t, 'CNV_Hull_PBit', 'bit', [(k + 1, ('UNIT_HAS_OBJECT_STATUS', _n(p, 'Target'),
+                                                     status('NEXT_MOVE_IS_REVERSE'))) for k, p in enumerate(('vnorth', 'north'))])
         s8.watch(t, MOVE + 10.0, 0.5)
         return t
     for k, pair in enumerate(GROUPS[group]):

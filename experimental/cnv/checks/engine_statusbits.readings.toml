@@ -32,3 +32,15 @@ expect = "[r['设血'] for t, r in zip(times, rows) if round(t, 1) in (2.0, 5.0,
 mismatch = """sim one cut a second (74 49 24 0 at s1-s4): each of the three WeaponSlotHierarchicalTurret katanas fires on \
 its own 3 s cycle; the game cuts with one at a time (INFERRED: the turrets at 0 / 120 / 240 degrees, only the one \
 facing the target swings). For line C (weapons)."""
+
+[[reading]]
+id = "statusbits_no_auto_acquire_holds_the_fire_till_told"
+item = "脚本动作 UNIT_CHANGE_OBJECT_STATUS:NO_AUTO_ACQUIRE"
+scene = {build = "engine_statusbits", check = "n", until = 15}
+bench = "11-22 A310 run_queue engine_statusbits n (CampSbitsN_mcp_1122_161412): 基准血 不找血 令血 位 s1: 47 100 100 1 | s2-s16: 47 100 47 1 -- the plain Mirage fires at its Tsunami by itself, the one given NO_AUTO_ACQUIRE never does, the one given it and told at 3 s fires then."
+proves = "NO_AUTO_ACQUIRE (a08's Mirage) stops a unit's own take (orders.target.picks and order.idle_chase), not a script's attack order; the bit reads back."
+expect = [
+  "all(r['不找血'] == 100 and r['位'] == 1 for r in rows)",
+  "rows[-1]['基准血'] < 100 and rows[-1]['令血'] < 100",
+  "first('令血', lambda v: v < 100) > first('基准血', lambda v: v < 100)",
+]

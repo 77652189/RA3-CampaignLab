@@ -493,8 +493,9 @@ def idle_chase(world, peers, a, fired, near):
             m.auto_to = a.dest
         return
     m.chase = None
-    if 'YES' not in a.acquire or world.frame_now() < IDLE_SCAN_FROM:
-        near = []                           # AutoAcquireEnemiesWhenIdle NO / none, or the opening frame: nothing
+    if 'YES' not in a.acquire or 'NO_AUTO_ACQUIRE' in a.status or world.frame_now() < IDLE_SCAN_FROM:
+        near = []                           # AutoAcquireEnemiesWhenIdle NO / none (or a script's NO_AUTO_ACQUIRE:
+                                            # A310 statusbits n), or the opening frame: nothing
     for dist, t in near:
         if dist - t.radius > sight:
             break                           # sorted by centre; a radius over 0 only cuts more

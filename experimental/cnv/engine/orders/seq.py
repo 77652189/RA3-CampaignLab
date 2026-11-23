@@ -45,9 +45,9 @@ def _key(r):
 def idle(peers, b):
     """The unit's AI has nothing to do (a sequential script's next step waits for it, d115 14): no way to walk,
     no living target, no path, not turning to a facing (engine_seqguard:g: a half turn holds the next step 8 frames;
-    an IMMOBILE one never turns -- Sim.move skips it -- so its facing holds nothing: review vv #4, INFERRED),
-    not firing at the ground, not running off."""
-    return not b.path and (b.face is None or 'IMMOBILE' in b.status) and not b.follow \
+    an IMMOBILE one neither walks nor turns -- Sim.move skips it -- so its way and facing hold nothing: review vv #4,
+    ww P3, INFERRED), not firing at the ground, not running off."""
+    return ('IMMOBILE' in b.status or not b.path and b.face is None) and not b.follow \
         and not (isinstance(b.goal, type(b)) and b.goal.alive) and not getattr(b, 'ground_fire', None) and not getattr(b, 'flee', None) \
         and b.serial not in peers.garrison.going
 

@@ -49,6 +49,8 @@ def test_stop_and_stand_drop_the_order_and_a_short_move_is_held_up():
     assert not simseq.idle(simorder.Peers(s), b)
     b.status.add('IMMOBILE')
     assert simseq.idle(simorder.Peers(s), b)
+    b.path = [(500.0, 0.0)]                              # nor walk: a way left when set IMMOBILE holds nothing (ww P3)
+    assert simseq.idle(simorder.Peers(s), b)
 
 
 def test_an_idle_writes_its_wait_on_the_units_or_the_teams_first_record():

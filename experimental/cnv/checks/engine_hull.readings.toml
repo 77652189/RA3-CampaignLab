@@ -25,6 +25,14 @@ expect = "list(rows[-1].values()) == [44, 44, 40, 44]"
 [[reading]]
 id = "hull_next_move_is_reverse_keeps_the_full_speed"
 scene = {build = "engine_hull", check = "pace", until = 15}
-bench = "11-22 A307 run_queue engine_hull pace (CampHullPace_mcp_1122_133152): 25-wide strips north of the start, a Hammer sent 600 north plain and one with NEXT_MOVE_IS_REVERSE: the same strip every half second (1 at s3 ... 22 at s10, 24 from s11) -- no ReverseMoveSpeed 75 %."
+bench = "11-22 A307 run_queue engine_hull pace (CampHullPace_mcp_1122_133152; again A310 CampHullPace_mcp_1122_161257, the same strips): 25-wide strips north of the start, a Hammer sent 600 north plain and one with NEXT_MOVE_IS_REVERSE: the same strip every half second (1 at s3 ... 22 at s10, 24 from s11) -- no ReverseMoveSpeed 75 %."
 proves = "act_object.unit_change_object_status with locomotion.drive: the bit leaves the speed of a script move alone."
 expect = "all(r['north'] == r['vnorth'] for r in rows) and rows[-1]['vnorth'] == 24 and any(0 < r['vnorth'] < 24 for r in rows)"
+
+[[reading]]
+id = "hull_next_move_is_reverse_never_reads_back"
+item = "脚本动作 UNIT_CHANGE_OBJECT_STATUS:NEXT_MOVE_IS_REVERSE"
+scene = {build = "engine_hull", check = "pace", until = 15}
+bench = "11-22 A310 run_queue engine_hull pace (CampHullPace_mcp_1122_161257): bit = 1 x vnorth's Hammer reads NEXT_MOVE_IS_REVERSE (UNIT_HAS_OBJECT_STATUS) + 2 x north's (never set): 0 every half second, s1 to s15 -- before the move (s4) and after it."
+proves = "act_object.unit_change_object_status: NEXT_MOVE_IS_REVERSE is not kept on the unit (a script never reads it; INFERRED why), so a set that only records the bit reads 1 and goes red (review ww P3 #5)."
+expect = "all(r['bit'] == 0 for r in rows)"

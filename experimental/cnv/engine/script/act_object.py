@@ -195,7 +195,7 @@ def unit_change_object_status(sim, name, a, script, unit=None):
     # `unit`: the member a team action picked (the object itself, not a reference of its name: 11-19 sweep)
     b = unit if unit is not None else sim.body(a[0])
     st = a[1][2] if isinstance(a[1], tuple) else a[1]
-    if b:
+    if b and st != 'NEXT_MOVE_IS_REVERSE':  # A310 engine_hull pace: set at s0, a script never reads it (INFERRED: not kept)
         (b.script_status.add if a[2] else b.script_status.discard)(st)
         simmodifier.modify(sim, b)
     if st not in ACTED_STATUS | AI_ONLY_STATUS:

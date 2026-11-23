@@ -47,7 +47,7 @@ def picks(a, targets, aimable, tx, ty, q):
             out.append(g)
             continue
         out.append(None)
-        if a.mode != 'attack' and 'YES' not in a.acquire:
+        if a.mode != 'attack' and ('YES' not in a.acquire or 'NO_AUTO_ACQUIRE' in a.status):   # A310 statusbits n
             continue
         for j in order:
             if d[j] - a.radius - pad > q.reach_of(w):       # sorted by centre: nobody nearer after this
