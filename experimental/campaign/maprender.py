@@ -1,4 +1,5 @@
-r"""Top-down picture of a .map without starting the game: ground from the SDK's own terrain textures (tiles and
+r"""Top-down picture of a .map without starting the game: ground from the terrain textures (the SDK's, else the
+game's Terrain.big, read only) (tiles and
 blends as BlendTileData places them), hill shading, water, objects coloured by owner, waypoints, trigger areas and a
 world-coordinate grid -- to check a generated map's layout in seconds instead of a bench run.
 
@@ -41,6 +42,28 @@ import newmap  # noqa: E402
 from ra3voice import big  # noqa: E402
 
 TERRAIN_ART = os.path.join(labpaths.SDK3, 'Art', 'Terrain')
+# the textures the SDK has no source for (the streets' Pavement_Heidel01-03, Pavement_Yucatan01 ...): the game's own
+# colour maps, by Terrain.xml's file name for the texture id (Pavement_Heidel02 -> TPave_Heidel02.tga)
+TERRAIN_BIG = os.path.join(labpaths.GAME, 'Data', 'Terrain.big')
+TERRAIN_XML = os.path.join(labpaths.SDK3, 'SageXML', 'Terrain', 'Terrain.xml')
+
+
+def _retail_texture(name, _files={}):
+    """The retail colour map of a terrain texture id as an RGB image, or None (no game, no such texture)."""
+    import io
+    import re
+    if not _files and os.path.exists(TERRAIN_XML):
+        text = open(TERRAIN_XML, encoding='utf-8', errors='replace').read()
+        _files.update(re.findall(r'id="([^"]+)"[^>]*?\bTexture="([^"]+)"', text, re.S))
+    inner = 'art\\terrain\\' + _files.get(name, name + '.tga').lower()
+    if not os.path.exists(TERRAIN_BIG):
+        return None
+    from ra3voice import refpack
+    try:
+        raw = big.read_files(TERRAIN_BIG, [inner])[inner]
+        return Image.open(io.BytesIO(refpack.decompress(raw) if refpack.is_refpack(raw) else raw)).convert('RGB')
+    except (KeyError, OSError):
+        return None
 OUT_DIR = os.path.join(labpaths.WORK, 'maps')
 MODS = os.path.join(os.path.expanduser('~'), 'Documents', 'Red Alert 3', 'Mods')
 STAGING = os.path.join(labpaths.WORK, 'staging')
@@ -76,10 +99,10 @@ class _Textures:
         if name not in self.cache:
             side = 2 * size * self.px
             path = os.path.join(TERRAIN_ART, name + '.tga')
-            if os.path.exists(path):
-                img = Image.open(path).convert('RGB').resize((side, side), Image.LANCZOS)
-                a = np.asarray(img, dtype=np.float32)
-            else:       # retail-only texture (no SDK source, e.g. Dirt_Yucatan04): newmap's colour, or grey, + grain
+            img = Image.open(path).convert('RGB') if os.path.exists(path) else _retail_texture(name)
+            if img is not None:
+                a = np.asarray(img.resize((side, side), Image.LANCZOS), dtype=np.float32)
+            else:       # no source and no game (e.g. a clean checkout): newmap's colour, or grey, + grain
                 rgb = np.array(newmap.COLORS.get(name, (110, 110, 110)), np.float32)
                 grain = np.random.default_rng(len(name)).normal(1.0, 0.06, (side, side, 1)).astype(np.float32)
                 a = rgb * grain
