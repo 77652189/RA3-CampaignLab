@@ -210,7 +210,47 @@ def disguise(m):
     return t
 
 
+# Round 313: NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT Command_SovietAntiGroundAircraftEvacuate (a05 'HotSpot04-
+# ExitAtReactor', 2 uses: the Twinblade with its engineer, moved to the spot, pressed at it on arrival). Two Twinblades,
+# each loaded (1 s) with three conscripts; at 3 s WF is pressed at a point 600 east, WH at its own spot.
+# 门 = WF in 1 + WF out 10 + WH in 100 + WH out 1000; 到 = WF in its far square 1 + 10 x each WF man in it.
+# [WF flies there, lands, all out there; WH out where it is, 1-2 s] BENCH 11-22 (CampActsEvaW_mcp_1122_182849; bench
+# row s_k = mission k + 2): 门 303 s1-s2, 3030 s3-s21, 到 0: both out where they stood, the waypoint ignored.
+EVAC = {'WF': 600.0, 'WH': 0.0}
+
+
+def evac_mission():
+    m = Mission(name='CampActsEva', map=probe_border, units=[], facts={})
+    m.spawns |= {'SovietAntiGroundAircraft', MAN}
+    for row, y in (('WF', 3900.0), ('WH', 4500.0)):
+        m.put('SovietAntiGroundAircraft', 'stop row', 700.0 - O[0], y - O[1], angle=0.0, name=_n(row), role=row.lower())
+        c = m.crew(f'T{row}')
+        for k in range(3):
+            m.put(MAN, 'stop row', 600.0 + 40.0 * k - O[0], y - 90.0 - O[1], angle=0.0, name=_n(f'{row} {k}'),
+                  role=f'{row.lower()} {k}', props={'originalOwner': c})
+        m.waypoint(f'to {row}', f'CNV A11 To {row}', 'stop row', 700.0 + EVAC[row] - O[0], y - O[1])
+    return m
+
+
+def evac(m):
+    t = Test()
+    men = {r: [_n(f'{r} {k}') for k in range(3)] for r in EVAC}
+    s8.at(t, 'hold', 0.1, [('UNIT_CHANGE_OBJECT_STATUS', u, status('NO_ATTACK'), 1) for r in EVAC
+                           for u in [_n(r)] + men[r]] + [('MAP_REVEAL_ALL_PERM', m.player('p1'))])
+    s8.at(t, 'load', LOAD, [('TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY', m.teams[f'T{r}'], _n(r)) for r in EVAC])
+    s8.at(t, 'press', PRESS, [('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', _n(r),
+                               'Command_SovietAntiGroundAircraftEvacuate', m.mark(f'to {r}')) for r in EVAC])
+    t.areas['Test A11 To WF'] = square(*m.point('to WF'), 100.0)
+    enc = lambda u, w, *no: (w, ('UNIT_HAS_OBJECT_STATUS', u, status('ENCLOSED'), *no))  # noqa
+    s8.total(t, 'CNV_A11_Eva', '门', [enc(u, w * k, *no) for r, k in (('WF', 1), ('WH', 100)) for u in men[r]
+                                     for w, no in ((1, ()), (10, ('NOT',)))])
+    s8.total(t, 'CNV_A11_EvaTo', '到', [(w, ('NAMED_INSIDE_AREA', u, 'Test A11 To WF'))
+                                       for u, w in [(_n('WF'), 1)] + [(u, 10) for u in men['WF']]])
+    s8.watch(t, 20.0)
+    return t
+
+
 MISSION = {'engine_acts_tgl': mission, 'engine_acts_twr': tower_mission, 'engine_acts_jmn': miner_mission,
-           'engine_acts_dsg': disguise_mission}
+           'engine_acts_dsg': disguise_mission, 'engine_acts_eva': evac_mission}
 CHECKS = {'engine_acts_tgl': {'all': all_}, 'engine_acts_twr': {'t': tower}, 'engine_acts_jmn': {'g': miner},
-          'engine_acts_dsg': {'d': disguise}}
+          'engine_acts_dsg': {'d': disguise}, 'engine_acts_eva': {'w': evac}}

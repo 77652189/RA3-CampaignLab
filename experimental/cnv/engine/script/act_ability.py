@@ -67,9 +67,10 @@ def named_buttons(sim, name, a, script, unit=None):
         b = body(a[0])
         if not (b and sim.garrison.eject(b, a[1], (b.x, b.y))):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有能弹出乘员的载具')
-    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and \
+    elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT') and \
             (simunits._commands(sim.own)[1].get(a[1]) or ('',))[0] == 'EVACUATE':
-        # the Twinblade's evacuate (s09's Hinds): lands, all out together where it is (engine_acts_btn EV)
+        # the Twinblade's evacuate (s09's Hinds): lands, all out together where it is (engine_acts_btn EV); a
+        # waypoint given is ignored (a05's: engine_acts_eva w, nobody at the point 600 off)
         if not sim.garrison.evacuate(body(a[0])):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有载着人的载具')
     elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT') and body(a[0]) \

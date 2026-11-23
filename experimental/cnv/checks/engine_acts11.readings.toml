@@ -69,3 +69,14 @@ bench = "装 110 from s3 (mission 5): the retail JapanLightTransportVehicleDisgu
 proves = "sim: NAMED_ATTACK_NAMED with the retail Disguiser sets DISGUISED on the transport (UnpackTime 1 s)"
 expect = "all(r['装'] == (110 if t >= 5 else 0) for t, r in zip(times, rows))"
 mismatch = "sim 0 throughout: weaponset.armed takes a weapon with a SpecialPowerNugget alone (no damage) for no gun, so the transport has none and drives onto the boat; bench 110 from mission 5 (C: the spy's and the painter's weapons are power-only too)"
+
+[[reading]]
+id = "acts_eva_the_twinblade_evacuates_where_it_is_whatever_the_waypoint"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_SovietAntiGroundAircraftEvacuate"
+scene = {build = "engine_acts_eva", check = "w", until = 23}
+bench = "w, bench 11-22 CampActsEvaW_mcp_1122_182849 (round 313; bench row s_k = mission k + 2): 门 303 s1-s2, 3030 s3-s21; 到 0 throughout -- WF (pressed at a point 600 east) and WH (at its own spot) both put all three out where they stood, 1-2 s after the 3 s press; WF never went to the point"
+proves = "sim: the EVACUATE button pressed at a waypoint is the untargeted one (garrison.evacuate: lands, all out together where it is, EVACUATE_DELAY); the waypoint is ignored"
+expect = [
+    "all(r['门'] == (3030 if t >= 5 else 303) for t, r in zip(times, rows) if t >= 2)",
+    "all(r['到'] == 0 for r in rows)",
+]
