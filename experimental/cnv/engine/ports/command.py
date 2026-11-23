@@ -701,7 +701,9 @@ class Commands:
         pressed = []                        # each press's answer: False where the world turned it down (f #4)
         aim = (cmd.target or None) if cmd.arg('target_serial') is None else self._target(cmd, None)   # the object
         for b in self._units(cmd):          # picked by serial, not one of its name (review 1120ee P2 #4's class)
-            if via == 'wfire':
+            if w.emp_disabled(b):           # an EMP'd / script-disabled caster presses nothing (review 1122yy #2)
+                pressed.append(False)
+            elif via == 'wfire':
                 pressed.append(w.wfire_press(b, button, aim))
             elif via == 'leap':
                 pressed.append(w.leap_press(b, button, w.point(cmd.place)))

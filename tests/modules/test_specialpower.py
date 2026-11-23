@@ -219,21 +219,22 @@ def test_a_cast_at_the_nearest_needs_the_team_to_be_found():
 
 
 def test_the_shrink_ray_spares_an_airborne_target_and_a_scripts_own_condition():
-    # review 1122yy #2: an airborne target (excluded by AIRBORNE_TARGET) was shrunk; #3: the shrink's end cleared the
-    # SHRINK_EFFECT a script had set for good
+    # review 1122yy #2: an airborne target (excluded by AIRBORNE_TARGET) was shrunk, so was one an EMP'd caster
+    # pressed at; #3: the shrink's end cleared the SHRINK_EFFECT a script had set for good
     import engine.testing.small as simsmall
-    rows = ('kept', 'air')
+    rows = ('kept', 'air', 'emp')
     s = simsmall.small_world([o for i, r in enumerate(rows) for o in (
         (f'c {r}', 'AlliedSupportAircraft', 'Player_1', 1000.0, 1000.0 + 400 * i),
         (f'm {r}', 'JapanAntiAirShip' if r == 'air' else 'AlliedMCV', 'Player_1', 1200.0, 1000.0 + 400 * i))],
         model=False)
     s.set_model_condition(s.bodies['m kept'], 'SHRINK_EFFECT')
+    s.act('NAMED_SET_DISABLED', ['c emp', 'EMP', 1], None)
     s.act('NAMED_USE_COMMANDBUTTON_ABILITY', ['m air', 'Command_JAAS_Transform'], None)     # the Sea-Wing takes off
     s.advance(45)
     for r in rows:
         s.act('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', [f'c {r}', 'Command_AlliedSupportAircraftShrinkRay', f'm {r}'],
               None)
     s.advance(90)
-    assert ['SHRUNK' in s.bodies[f'm {r}'].status for r in rows] == [True, False]
+    assert ['SHRUNK' in s.bodies[f'm {r}'].status for r in rows] == [True, False, False]
     s.advance(450)
     assert 'SHRUNK' not in s.bodies['m kept'].status and s.has_model_condition(s.bodies['m kept'], 'SHRINK_EFFECT')
