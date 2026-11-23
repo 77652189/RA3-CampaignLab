@@ -1,0 +1,20 @@
+# Bench readings of checks/engine_drain.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench row s_k ~ mission second k + 2 (the press at 3 s shows first at s2).
+
+[[reading]]
+id = "the_dreadnought_drains_while_its_toggle_is_on"
+item = "物体模块 Behaviors/LoseHealthUpdate"
+scene = {build = "engine_drain", check = "a", until = 22}
+bench = """a, bench 11-23 CampDrainA_mcp_1123_111741: 血P 100 s1, 97 s2 .. 61 s13, 60 s14-s24; 血C 97 s2 .. 83 s6, 83 \
+to s24; 血S 100 throughout; 态 111 s2-s5, 1111 s6-s13, 1110 s14-s24"""
+proves = """LoseHealthUpdate on the retail Dreadnought: HealthTrigger 101 % drains from full health, 50 a second of 1500 while \
+its own toggle is on, stops with the second press; UNDER_IRON_CURTAIN (ForbiddenStatus) holds it; GENERIC_TOGGLE_STATE \
+given by script without the press drains nothing on the retail host too (E146's tank was not the reason)"""
+let = {hp = "[(t, r['血P'], r['血C'], r['血S'], r['态']) for t, r in zip(times, rows)]"}
+expect = [
+    "all(p == c == s == 100 and k == 0 for t, p, c, s, k in hp if t <= 2)",
+    "all(abs(p - (100 - (t - 3) * 10 / 3)) <= 2 and s == 100 for t, p, c, s, k in hp if 3 <= t <= 15)",
+    "all(abs(c - 83) <= 1 and k == 1111 for t, p, c, s, k in hp if 9 <= t <= 14)",
+    "all(abs(p - 60) <= 1 and abs(c - 83) <= 1 and s == 100 and k == 1110 for t, p, c, s, k in hp if t >= 16)",
+    "all(k == 111 for t, p, c, s, k in hp if 3 <= t <= 7)",
+]

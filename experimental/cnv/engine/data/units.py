@@ -1560,8 +1560,8 @@ def lose_health(template, own=None):
     """The template's state-gated LoseHealthUpdate: (DamagePerSecond, the ObjectStatusValidation RequiredStatus set),
     None without one. Bench 11-14 engine_acts_tgl (round 223): the Kirov's afterburners (GENERIC_TOGGLE_STATE) take
     200 a second of its 6000 from the press until the next press, 100 % -> 60 % over 12 s; HealthTrigger 0 % read as
-    no floor. One without a RequiredStatus is not modelled. The third item is the ForbiddenStatus set (read from the
-    data, not benched: E146's ported dreadnought drain never ran, so its UNDER_IRON_CURTAIN gate went unseen)."""
+    no floor; engine_drain a: the Dreadnought's 101 % drains from full health. One without a RequiredStatus is not
+    modelled. The third item is the ForbiddenStatus set (engine_drain a: UNDER_IRON_CURTAIN holds the drain)."""
     def read(xml):
         for head, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'LoseHealthUpdate'):
             v, _ = next(_blocks(inner, 'ObjectStatusValidation'), ('', ''))

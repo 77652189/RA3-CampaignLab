@@ -57,7 +57,8 @@ RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j0
                    'Command_CAMPAlliedBomberDrop2', 'Command_CAMPAlliedBomberDrop1',  # bear, Sickle, the drop store
                    'Command_ActivateJumpSpecialPower',  # the dolphin's jump (engine_acts_wet)
                    'Command_ActivateMechaKingShockwave',  # King Oni's shockwave, Tanya's time belt (retail j03 /
-                   'Command_TimeBeltSpecialPower'}        # a02 read them cast: engine_cast)
+                   'Command_TimeBeltSpecialPower',        # a02 read them cast: engine_cast)
+                   'Command_ToggleRapidLaunchSpecialPower'}  # the Dreadnought's drain toggle (engine_drain)
 # a factory's build button (a UNIT_BUILD command: Command_ConstructAlliedEngineer, retail j07's
 # Command_ConstructJapanMinerFromRefinery): a script's press builds as the player's click does -- paid, the build time
 # (bench 2026-11-08 engine_production e / f); the simulator and playcheck take the button from the factory's CommandSet

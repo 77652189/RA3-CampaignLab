@@ -231,7 +231,8 @@ class Life:
         (engine_acts_tgl KV: the Kirov's afterburners, pressed, drained 200/s). A script's UNIT_CHANGE_OBJECT_STATUS bit
         alone starts nothing (E146 engine_objectbatch a / b: the dreadnought's drain on a tank, GENERIC_TOGGLE_STATE
         given by script at 8 s and read back true, held 100 % to s25 with HealthTrigger 101 % and 0 % alike) --
-        INFERRED that the press is what wakes the update; the host (aircraft against tank) was not separated."""
+        engine_drain a: the retail Dreadnought too -- the press drains (its ToggleState names the module), the script bit
+        does not, UNDER_IRON_CURTAIN stops it."""
         cache = self.lose_of
         for b in world.bodies.values():
             if not b.alive:
