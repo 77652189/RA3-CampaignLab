@@ -2423,6 +2423,7 @@ def modifier(xml, mid):
         types.setdefault(ty, []).append(float(v) / 100.0)
     dur = _attr(head, 'Duration')
     return {'id': mid, 'types': types, 'status': set((_attr(head, 'ObjectStatusToSet') or '').split()),
+            'conditions': (_attr(head, 'ModelConditionsSet') or '').split(),
             'frames': int(round(_secs(dur) * LIFE_FPS)) if dur else None}
 
 
@@ -3097,7 +3098,8 @@ def special_weapon(weapon, own=None):
     """What a special ability's weapon does where it goes off (weapon_fire_ability): dict(affects (RadiusDamageAffects),
     damage [(damage, type, radius, delay s)] from its DamageNuggets, paralyze [dict(kind (ParalyzeType), radius,
     seconds, include (KindOf), relation, exclude (templates, lower), forbidden_upgrade)] from its ParalyzeNuggets, the
-    one SpecialObjectFilter each). Not read: MetaImpactNugget (the blast's shockwave: a push, gap)."""
+    one SpecialObjectFilter each), modifiers [dict(modifier, the upgrade gate, include / unkinds, status_exclude)] from
+    its AttributeModifierNuggets. Not read: MetaImpactNugget (the blast's shockwave: a push, gap)."""
     global _weapon_blocks
     if _weapon_blocks is None:
         _weapon_blocks = {}
@@ -3111,7 +3113,7 @@ def special_weapon(weapon, own=None):
     whead, wbody = mine.get(weapon) or _weapon_blocks.get(weapon, ('', ''))
     wbody = re.sub(r'<!--.*?-->', '', wbody or '', flags=re.S)
     out = dict(affects=frozenset((_attr(whead, 'RadiusDamageAffects') or 'ENEMIES NEUTRALS').split()), damage=[],
-               paralyze=[])
+               paralyze=[], modifiers=[])
     for nh, _ in _blocks(wbody, 'DamageNugget'):
         out['damage'].append((_num(_attr(nh, 'Damage'), 0.0), _attr(nh, 'DamageType') or '',
                               _num(_attr(nh, 'Radius'), 0.0), _secs(_attr(nh, 'DelayTimeSeconds') or '0s')))
@@ -3126,6 +3128,17 @@ def special_weapon(weapon, own=None):
             include=frozenset((_attr(fh, 'Include') or '').split()), relation=_attr(fh, 'Relationship') or '',
             exclude=frozenset(x.lower() for x in re.findall(r'<ExcludeThing>\s*([^<>\s]+)', fi or '')),
             forbidden_upgrade=forbidden[0] if forbidden else ''))
+    for nh, inner in _blocks(wbody, 'AttributeModifierNugget'):     # on the target (the shrink ray: engine_acts_shr)
+        fh, _ = next(_blocks(inner or '', 'SpecialObjectFilter'), ('', ''))
+        gate = [(re.findall(rf'<{g}>\s*([^<>\s]+)', inner or '') or [''])[0]
+                for g in ('RequiredUpgrade', 'ForbiddenUpgrade')]
+        mid = _attr(nh, 'AttributeModifierName')
+        src = next((text for text in (own or {}).values() if text and  # a mission's own, else retail's
+                    any(_attr(h, 'id') == mid for h, _ in _blocks(text, 'AttributeModifier'))), '')
+        kinds = {k: frozenset((_attr(fh, a) or '').split())
+                 for k, a in (('include', 'Include'), ('unkinds', 'Exclude'), ('status_exclude', 'StatusBitFlagsExclude'))}
+        out['modifiers'].append(dict(modifier=mid, xml=src, mod=modifier(src, mid), required_upgrade=gate[0],
+                                     forbidden_upgrade=gate[1], **kinds))
     return out
 
 

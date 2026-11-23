@@ -80,3 +80,14 @@ expect = [
     "all(r['门'] == (3030 if t >= 5 else 303) for t, r in zip(times, rows) if t >= 2)",
     "all(r['到'] == 0 for r in rows)",
 ]
+
+[[reading]]
+id = "acts_shr_the_shrink_ray_takes_an_own_mcv_but_not_once_the_copter_is_deleted"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_AlliedSupportAircraftShrinkRay"
+scene = {build = "engine_acts_shr", check = "s", until = 31}
+bench = "s, bench 11-22 CampActsShrS (round 314; bench row s_k = mission k + 2): 缩 and 状 0 s1-s2, 110 s3-s22, 0 s23-s31 -- SK (its own MCV, 500 off) and SE (an s4 MCV) shrunk 2 s after the 3 s press for 20 s; SD (deleted in the press script, a09's) never: a09's MCVs are not shrunk"
+proves = "sim: a WeaponFireSpecialAbilityUpdate's weapon puts its AttributeModifierNuggets on the target when it goes off (SHRINK_EFFECT + SHRUNK, Duration 20 s), an own target too; a caster deleted before that fires nothing"
+expect = [
+    "all(r['缩'] == (110 if 5 <= t < 25 else 0) for t, r in zip(times, rows))",
+    "all(r['状'] == r['缩'] for r in rows)",
+]

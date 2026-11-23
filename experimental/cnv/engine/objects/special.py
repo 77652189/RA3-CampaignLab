@@ -222,7 +222,7 @@ class Specials:
         deadlines = emp_until()       # stands still (INFERRED: as EMP'd)
         deadlines[b.serial] = max(deadlines.get(b.serial, 0), hold)
 
-    def wfire_due(self, world, frame, casts, death_blasts, player_ups, relation, emp_until):
+    def wfire_due(self, world, frame, casts, death_blasts, player_ups, relation, emp_until, modify):
         """The weapon-fire abilities going off by `frame` (wfire_press): the weapon's DamageNuggets as a death blast
         round the caster (radius, delay, RadiusDamageAffects), its ParalyzeNuggets on the target (radius 0) or on
         what the filter takes within the radius: EMP pauses it (emp_until), UNMANNED hands a vehicle to the
@@ -274,4 +274,17 @@ class Specials:
                         world.change()
                     else:
                         world.gap(GAP_WEAPON, 'ParalyzeNugget', f'{p["kind"]} 没模拟')
+            for m in eff['modifiers'] if t is not None else ():
+                # the Cryocopter's shrink ray on its target, own side too: SHRINK_EFFECT + SHRUNK its Duration (bench
+                # engine_acts_shr s: 20 s from 2 s after the press; nothing once the caster is deleted before it fires)
+                if (m['required_upgrade'] and m['required_upgrade'].lower() not in ups) or \
+                        (m['forbidden_upgrade'] and m['forbidden_upgrade'].lower() in ups) or \
+                        (m['include'] and not t.kinds & m['include']) or t.kinds & m['unkinds'] or \
+                        m['status_exclude'] & (t.status | t.script_status):
+                    continue
+                mod = m['mod']
+                if mod and mod['frames']:       # one without a Duration: not hung (none in retail's special weapons)
+                    t.auras_on[m['modifier']] = (frame + mod['frames'], m['xml'])
+                    t.model_conditions.update(dict.fromkeys(mod['conditions'], frame + mod['frames']))
+                    modify(t)
             world.note('技能', f'{world.label(b)} 的 {ab["weapon"]} 打出')

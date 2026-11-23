@@ -2160,7 +2160,7 @@ class Sim:
     def wfire_due(self, frame):
         """simspecial.Specials.wfire_due (L2): the weapon-fire abilities going off by `frame`."""
         self._specials().wfire_due(self, frame, self.casts, self.death_blasts, self.player_ups, self.relation,
-                                   self.emp_book)
+                                   self.emp_book, lambda b: simmodifier.modify(self, b))
 
     def death_blast_due(self, frame):
         """simdamage.death_blast_due (L3): the death weapons going off by `frame`."""

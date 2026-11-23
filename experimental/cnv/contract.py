@@ -46,6 +46,7 @@ RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j0
                    'Command_PsyonicBlastSpecialPower',          # Yuriko's blast (WeaponFireSpecialAbilityUpdate,
                    'Command_ActivatePilotSnipeSpecialPower',    # engine_wfire); Natasha's pilot snipe
                    'Command_ActivateBarkSpecialPower',          # the dog's bark
+                   'Command_AlliedSupportAircraftShrinkRay',    # the Cryocopter's shrink ray (engine_acts_shr)
                    'Command_DisguisedEvacuate', 'Command_CivilianStructureEvacuate',  # EVACUATE (engine_acts_tgl)
                    'Command_ActivateDisguiseSpecialPower',  # the spy's disguise, on the Sudden transport too (engine_acts_dsg)
                    'Command_AlliedAntiInfantryVehicleEvacuate',  # retail Riptide (engine_ifvevac_e)

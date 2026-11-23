@@ -250,7 +250,41 @@ def evac(m):
     return t
 
 
+# Round 314: NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED Command_AlliedSupportAircraftShrinkRay (a09 'Introduction - Shrink
+# Sequence 01/02', 2 uses: an Allied01 Cryocopter pressed on an Allied01 MCV ~500 off, then NAMED_DELETE in the same
+# script). The button (NEED_TARGET_ENEMY_OBJECT NEED_TARGET_NEUTRAL_OBJECT) fires WeaponFireSpecialAbilityUpdate's
+# AlliedSupportAircraftShrinkRay (StartAbilityRange 300, UnpackTime 0): AttributeMod_..ShrinkRay 20 s, SHRINK_EFFECT +
+# SHRUNK. Cryocopters 500 west of MCVs: SD pressed on its own MCV and deleted (a09's), SK the same kept, SE on an s4 MCV.
+# 缩 = MCV SHRINK_EFFECT: SD 1 + SK 10 + SE 100; 状 = the same with SHRUNK. [SE ~5 s - ~25 s; SD / SK never (an own
+# target, and SD gone before it flies)] BENCH 11-22 (CampActsShrS; bench row s_k = mission k + 2): 缩 状 0 s1-s2, 110
+# s3-s22, 0 s23-s31: SK and SE shrunk 2 s after the press for 20 s, SD never -- an own MCV is taken, a deleted copter fires
+# nothing (so a09's MCVs are never shrunk).
+SHRINK = {'SD': (3900.0, 'p1'), 'SK': (4300.0, 'p1'), 'SE': (4700.0, 's4')}
+
+
+def shrink_mission():
+    m = Mission(name='CampActsShr', map=probe_border, units=[], facts={})
+    m.spawns |= {'AlliedSupportAircraft', 'AlliedMCV'}
+    for row, (y, side) in SHRINK.items():
+        m.put('AlliedSupportAircraft', 'stop row', 700.0 - O[0], y - O[1], angle=0.0, name=_n(row), role=row.lower())
+        m.put('AlliedMCV', 'stop row', 1200.0 - O[0], y - O[1], side=side, angle=3.1416, name=_n(f'{row} mcv'),
+              role=f'{row.lower()} mcv')
+    return m
+
+
+def shrink(m):
+    t = Test()
+    s8.at(t, 'hold', 0.1, [('MAP_REVEAL_ALL_PERM', m.player('p1'))])
+    s8.at(t, 'press', PRESS, [('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', _n(r), 'Command_AlliedSupportAircraftShrinkRay',
+                               _n(f'{r} mcv')) for r in SHRINK] + [('NAMED_DELETE', _n('SD'))])
+    for counter, label, cond in (('CNV_A11_Shr', '缩', lambda u: ('UNIT_HAS_MODELCONDITION', u, 'SHRINK_EFFECT')),
+                                 ('CNV_A11_ShrS', '状', lambda u: ('UNIT_HAS_OBJECT_STATUS', u, status('SHRUNK')))):
+        s8.total(t, counter, label, [(w, cond(_n(f'{r} mcv'))) for r, w in (('SD', 1), ('SK', 10), ('SE', 100))])
+    s8.watch(t, 30.0)
+    return t
+
+
 MISSION = {'engine_acts_tgl': mission, 'engine_acts_twr': tower_mission, 'engine_acts_jmn': miner_mission,
-           'engine_acts_dsg': disguise_mission, 'engine_acts_eva': evac_mission}
+           'engine_acts_dsg': disguise_mission, 'engine_acts_eva': evac_mission, 'engine_acts_shr': shrink_mission}
 CHECKS = {'engine_acts_tgl': {'all': all_}, 'engine_acts_twr': {'t': tower}, 'engine_acts_jmn': {'g': miner},
-          'engine_acts_dsg': {'d': disguise}, 'engine_acts_eva': {'w': evac}}
+          'engine_acts_dsg': {'d': disguise}, 'engine_acts_eva': {'w': evac}, 'engine_acts_shr': {'s': shrink}}
