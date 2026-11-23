@@ -15,3 +15,22 @@ scene = {build = "structpoff", check = "a", until = 20}
 bench = "E183 structpoff:a (only the include removed): the same, 0 / 0 throughout"
 proves = "a negative baseline only (as structpon)"
 expect = ["all(r['电厂总数'] == 0 and r['前方电厂'] == 0 for r in rows)"]
+
+[[reading]]
+id = "the_reserved_box_refuses_a_paid_plant"
+scene = {build = "structpon", check = "b", until = 120}
+bench = """structpon:b (the clone CNVE183Ref 380 from the node, the plant clicked 140 ahead), run_queue CampSpOnB_mcp_1123_091402: \
+资金 down to 9450 (the 800 paid: 10000 + a 250 trip - 800), 电厂总数 / 前方电厂 0 from s4 to s148"""
+proves = """StructurePlacementBehavior's RestrictedAreaShape (box 30 x 45, 90 ahead): a paid, ready plant lapping 33 into it, \
+clear of the refinery's base and the node's no-build, is not placed -- against structpoff:b, same input"""
+expect = ["min(r['资金'] for r in rows) <= 9450", "all(r['电厂总数'] == 0 for r in rows)"]
+mismatch = "sim 资金 never paid: the simulator does not replay the bench's sidebar queue / placement clicks; bench paid, no plant"
+
+[[reading]]
+id = "without_it_the_same_click_places"
+scene = {build = "structpoff", check = "b", until = 120}
+bench = """structpoff:b (only the include removed), CampSpOffB_mcp_1123_091605: paid to 9450 the same, 电厂总数 / 前方电厂 \
+1 1 from s88 (f1349) to s133"""
+proves = "the control: with the module gone the same click stands the plant in the front box"
+expect = ["rows[-1]['电厂总数'] == 1", "rows[-1]['前方电厂'] == 1"]
+mismatch = "sim 电厂总数 0 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 1 1 from s88"

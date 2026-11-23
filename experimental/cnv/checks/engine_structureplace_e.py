@@ -8,9 +8,11 @@ rotation and exact edge rules remain gaps.
 MEASURED (11-16, a): zero plants in both -- the plant's GameDependency wants the retail yard (not the clone).
 11-23, b: with that dropped the plant is paid, but both previews are red alike: the ore node's own no-build
 (ProjectedBuildabilityInfo 120 x 105, refineries excepted) covers 60..300 ahead of a refinery 180 from it, the
-reserved box inside it: this geometry cannot tell the module. Next (not run): the refinery 200 further back (380
-from the node; platmap's ore lint then wants a node within 250, e.g. one behind it) and the plant 140 ahead:
-it laps 33 into the reserved box, ~27 clear of the refinery and the node's no-build (box test).
+reserved box inside it: this geometry cannot tell the module. So (11-23, b again): the refinery 200 further back
+(380 from the node) and the plant 140 ahead: it laps 33 into the reserved box, ~27 clear of the refinery and the
+node's no-build (box test). Any node 180 ahead (the ore contract, K4) covers the reserved box whole, so the probe is a
+clone CNVE183Ref (not a '...Refinery' the ore rules hold to their ore; only its id changes). a's readings were taken
+with the old geometry (the retail id on the pad, the plant 120 ahead).
 See work/re/e183_structureplace.md.
 """
 import re
@@ -21,18 +23,19 @@ from maps import probe_range
 from parts import Mission, Script, Test, Unit, counted, square
 from checks.engine_modulebatch import native
 
-CLICK = (3084.852814, 4284.852814)
+BACK = 200 / 2 ** 0.5                     # the refinery 200 behind the pad (45 degrees)
+CLICK = (2957.573593, 4157.573593)       # the plant 140 ahead of it
 INCLUDE = r'<xi:include\s+href="DATA:Includes/GenericRefineryStructurePlacementBehavior.xml"\s*/>'
 
 
 def mission(enabled=True):
-    xml = (Path(labpaths.SDK3) / 'SageXML/Allied/Structures/AlliedRefinery.xml').read_text(encoding='utf-8-sig')
+    refinery = native('AlliedRefinery', 'Structures', 'CNVE183Ref')
     if not enabled:
-        xml, n = re.subn(INCLUDE, '', xml)
+        refinery.xml, n = re.subn(INCLUDE, '', refinery.xml)
         assert n == 1
-    refinery = Unit('AlliedRefinery', xml)
     yard = native('AlliedConstructionYard', 'Structures', 'CNVE183Yard')
-    yard.xml = yard.xml.replace('="=2.0s"', '="2.0s"')
+    for u in (refinery, yard):    # native() puts the local Defines into '=' expressions: '=4s' would not parse
+        u.xml = re.sub(r'="=([0-9.]+s)"', r'="\1"', u.xml)
     yard.xml = yard.xml.replace('CommandSet="AlliedConstructionYardCommandSet"', 'CommandSet="CNVE183Menu"')
     yard.xml = yard.xml.replace('</AssetDeclaration>', '<LogicCommandSet id="CNVE183Menu"><Cmd>Command_ConstructAlliedPowerPlant</Cmd></LogicCommandSet></AssetDeclaration>')
     yard.link += ['LogicCommandSet:CNVE183Menu']
@@ -44,7 +47,7 @@ def mission(enabled=True):
                 units=[refinery, yard, Unit('AlliedPowerPlant', plant)])
     m.facts['enabled'] = enabled
     m.spawns.add('AlliedPowerPlant')
-    m.put(refinery.id, 'probe refinery', angle=0.7853981633974483, role='refinery', name='E183 Refinery')
+    m.put(refinery.id, 'probe refinery', -BACK, -BACK, angle=0.7853981633974483, role='refinery', name='E183 Refinery')
     m.put(yard.id, 'probe refinery', 0, -260, role='yard', name='E183 Yard')
     return m
 
