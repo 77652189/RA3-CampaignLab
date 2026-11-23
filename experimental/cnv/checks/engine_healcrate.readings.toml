@@ -1,0 +1,23 @@
+# Bench readings of checks/engine_healcrate.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Negative results: no lane's crate was taken, so HealCrateCollide's effect is still unmeasured (no item).
+
+[[reading]]
+id = "no_mover_takes_a_crate_it_passes"
+scene = {build = "engine_healcrate", check = "a", until = 18}
+bench = "engine_healcrate:a, run_queue CampHealCrateA_mcp_1122_202401: 箱子位 / 满血位 / On 兵血 / Off 兵血 15 0 50 50 at s1-s18"
+proves = """HealCrateCollide (negative): a neutral retail HealCrate stays and heals nobody when a script-moved unit of the \
+human player (a Peacekeeper, a Guardian) or of s2 is sent through it -- not the module's effect (E146 sent them onto it: \
+the same)"""
+expect = "all(r['箱子位'] == 15 and r['满血位'] == 0 and r['On 兵血'] == 50 and r['Off 兵血'] == 50 for r in rows)"
+
+[[reading]]
+id = "the_movers_do_cross_the_crates"
+scene = {build = "engine_healcrate", check = "b", until = 18}
+bench = """engine_healcrate:b, run_queue CampHealCrateB_mcp_1122_202838: 箱子位 / 路过位 / On 兵血 / Off 兵血 15 0 50 50 to s3, 15 8 50 50 s3-s4, \
+15 15 50 50 s4-s17"""
+proves = """the movers of a stand within 12 of their crate's centre (the Veh tank's bit from s3, all four from s4) and still no \
+crate goes: going round it is not why none is taken"""
+expect = ["all(r['箱子位'] == 15 and r['On 兵血'] == 50 and r['Off 兵血'] == 50 for r in rows)",
+          "rows[-1]['路过位'] == 15"]
+mismatch = """sim 路过位 7 from s6 (the three men, ~2 s late; the Veh tank's coarse-tick steps jump the 24-wide square), \
+bench 8 from s3, 15 from s4"""
