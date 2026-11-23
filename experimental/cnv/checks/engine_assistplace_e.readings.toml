@@ -25,13 +25,23 @@ expect = "min(r['资金'] for r in rows) == 8000"
 mismatch = "sim 10000 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 8000"
 
 [[reading]]
-id = "an_exact_camera_places_the_refinery_off_the_hint_pad"
+id = "the_hint_snaps_the_refinery_to_the_pad"
 scene = {build = "assistpon", check = "b", until = 60}
-bench = """assistpon:b, run_queue CampAsstOnB_mcp_1123_072422: 采样完成 / 资金 / 矿场总数 / 提示位数量 0 10000 0 0 to s19, paid down to \
-8000 by s42, 60 8000 1 0 at s57 (the pad click at 57.2 s: frame 20 a green preview, frame 21 the refinery set down where \
-clicked), 90 . 1 0 from s59 to s172; no ore node in sight in frames 20-28"""
-proves = """with the camera put by the mission (not bench_camera's minimap click) the pad click is accepted: E169's red preview \
-and zero refineries were the camera's ~100 offset, not the placement rule; the refinery stands outside the 8-square at the \
-hint pad -- no snap seen (the node not in sight: snapping not yet tested, AssistedPlacement stays TODO)"""
-expect = ["rows[-1]['矿场总数'] == 1", "all(r['提示位数量'] == 0 for r in rows)"]
-mismatch = "sim 矿场总数 0 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 1 from s57"
+bench = """assistpon:b, run_queue CampAsstOnB_mcp_1123_082312: 资金 / 矿场总数 / 提示位20内 / 点击处数量 10000 0 0 0 to s20, \
+paid to 8000, then 8000 1 1 0 from s61 (the click 30 east of the pad at 60.9 s) to s193; frame 21: the refinery in the \
+screen's middle (the pad), its dock turned to the node north-east"""
+proves = """AssistedPlacementBehavior (SnappingDistance 50, FACING_TOWARDS): a click 30 off the ore's suggested pad puts the \
+refinery within 20 of the pad (not within 8 of the click), turned to face the node -- against assistpoff:b, same input"""
+expect = ["rows[-1]['矿场总数'] == 1", "rows[-1]['提示位20内'] == 1", "rows[-1]['点击处数量'] == 0"]
+mismatch = "sim 矿场总数 0 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 1 1 0 from s61"
+
+[[reading]]
+id = "without_the_hint_it_stays_by_the_click"
+scene = {build = "assistpoff", check = "b", until = 60}
+bench = """assistpoff:b (only the hint include removed), CampAsstOffB_mcp_1123_081929: 8000 1 0 0 from s62 (the same click at \
+62.5 s) to s206; frame 20: the refinery right of the middle, under the click, in its default facing (not turned to the node)"""
+proves = """the control: with the module gone the same click is not pulled to the pad (0 within 20) -- it stands by the click, \
+though not within 8 of the computed click point (the bench's screen-to-world error)"""
+expect = ["rows[-1]['矿场总数'] == 1", "rows[-1]['提示位20内'] == 0"]
+mismatch = "sim 矿场总数 0 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 1 0 0 from s62"
+

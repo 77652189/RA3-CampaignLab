@@ -10,8 +10,8 @@ MEASURED: both original and module-removal runs paid the queue (8000 left),
 but produced zero refineries and left the completion sentinel at zero.
 Both previews remained red. The original predictions below are retained;
 this recipe has not established a legal placement or a snapping rule.
-b (11-23, the camera put by the mission): the click is accepted, one refinery where clicked, off the hint pad;
-no ore node in sight, so snapping is still untested.
+b (11-23, the camera put by the mission): the click is accepted; on puts the refinery within 20 of the pad turned
+to the node, off (same click) by the click in its default facing -- snapping seen; the sim replays no clicks.
 """
 import re
 import types
@@ -86,11 +86,21 @@ def exact(m):
     click is off by ~100, twice the snap distance), every click looked at, and a second click 330 from the yard (its +y)
     -- a spot near the yard and far from the node -- for when the pad's leaves the cursor up: is the pad itself red?"""
     t = check(m)
+    # where it stands, near the pad (20) or at the click (8), in place of the age and the pad's 8 (four lines fit)
+    t.counters = [c for c in t.counters if c[0] not in ('E169Age', 'E169Snap')]
+    t.areas.update({'E169 Near': square(*PAD, 20), 'E169 Click': square(*CLICK, 8)})
+    counted('E169Near', '提示位20内', t, template='AlliedRefinery', area='E169 Near', player=m.player('p1'), most=2)
+    counted('E169Click', '点击处数量', t, template='AlliedRefinery', area='E169 Click', player=m.player('p1'), most=2)
+    on = int(m.facts['enabled'])
+    t.expect = [('矿场总数', 0, 'ever==', 1), ('提示位20内', 0, 'ever==', on), ('点击处数量', 0, 'ever==', 1 - on)]
     from checks import engine_scripts8 as s8
     t.waypoints['E169 view'] = PAD
     s8.at(t, 'view', 1., [('MOVE_CAMERA_TO', 'E169 view', 0.5, 0.0, 1.0, 1.0)])
     x, y = m.site('probe refinery')
-    steps = [(name, dict(kw, look=True) if name == 'bench_click' else kw) for name, kw in t.bench]
+    # money is the first line now (the age left out): the sentinel reads c1
+    steps = [(name, dict(kw, look=True) if name == 'bench_click' else
+              dict(kw, until=kw.get('until', '').replace('c2', 'c1')) if name == 'bench_watch' else kw)
+             for name, kw in t.bench]
     steps[1] = ('bench_view', dict(x=PAD[0], y=PAD[1], look=True))
     t.bench = steps[:-1] + [('bench_watch', dict(steps[-1][1], seconds=5)),
                             ('bench_click', dict(x=x - 280, y=y + 70, look=True)), steps[-1]]
