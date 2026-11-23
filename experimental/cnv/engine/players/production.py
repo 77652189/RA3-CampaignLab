@@ -16,7 +16,7 @@ from engine.ports.readonly import view
 REPLACE_FRAMES = 6             # a ReplaceSelfSpecialAbility at its point: the replacement 6 frames on (engine_build a)
 
 PEERS = frozenset({'wallet', 'build_frames', 'upgrade_done', 'produce_out', 'banned', 'unit_construction_disabled',
-                   '_life', 'emp_book'})
+                   '_life', 'emp_book', 'script_disabled'})
 
 
 def f32(x):
@@ -63,7 +63,8 @@ class Production:
         and walks to its NaturalRallyPoint (bench 2026-11-05 engine_production a-d: 150 / 151 frames, 54 paid at
         the 16th, a 250 budget stalls at 3 left, out 10 frames after full). A banned unit's job
         (ALLOW_DISALLOW_ONE_BUILDING 0) stands, keeps what it paid and goes on when let go -- not cancelled, not
-        refunded (bench 2026-11-09 engine_production g). A factory gone takes its queue (keyed by serial: O31)."""
+        refunded (bench 2026-11-09 engine_production g). A factory a script disabled (NAMED_SET_DISABLED, any type)
+        pays nothing and makes nothing, click or press (bench engine_baseban e; its queue kept: INFERRED). A factory gone takes its queue (keyed by serial: O31)."""
         world, peers = self.world, self.peers
         start = frame if self.produced_to is None else self.produced_to + 1
         self.produced_to = frame
@@ -75,6 +76,8 @@ class Production:
                 if f is None or not f.alive or not q:
                     del self.queues[serial]
                     continue
+                if serial in peers.script_disabled:
+                    continue                # NAMED_SET_DISABLED on: nothing paid, nothing out (engine_baseban e)
                 create, rally, door = simunits.exit_of(f.template, world.own)
                 for job in [j for j in q if j['full'] is not None and fr >= j['full'] + (0 if 'upgrade' in j else door)]:
                     if not peers.wallet.instal(job['owner'], job, 100.0):

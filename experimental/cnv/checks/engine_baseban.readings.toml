@@ -1,0 +1,57 @@
+# engine_baseban: the human clicks the yard's first core between the measured frames 74 and 488 (the click is not
+# timed: the script's 5 s stands for it); s5's yard is pressed by script at 2 s. 核心 = p1's cores + 10 s5's
+# (+ 100 walker 0 at its end + 1000 walker 1 in d / e / f). A reading a check.
+
+[[reading]]
+id = "baseban_native_core_final_readings_a"
+scene = {build = "engine_baseban", check = "a", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBan 11-16 a (p1 base-disabled): final f488 1200/1200/11 (C, work/re/c_baseban_report.md)"
+proves = "PLAYER_DISABLE_BASE_CONSTRUCTION holds no UNIT_BUILD core order, the click or the press"
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 11]"
+
+[[reading]]
+id = "baseban_native_core_final_readings_b"
+scene = {build = "engine_baseban", check = "b", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBan 11-16 b (s5 base-disabled): final f364 1200/1200/11"
+proves = "the same for the scripted press"
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 11]"
+
+[[reading]]
+id = "baseban_scripted_core_measured_payment_frame"
+scene = {build = "engine_baseban", check = "b", until = 5, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "b at f75 2000/1413/0 (a at f74 2000/1426/0): the core pressed at 2 s still paying"
+proves = "production.due: a core's BuildTime 0 paid as the bench pays it"
+expect = "[rows[4][k] for k in ('乙资金', '核心')] == [1413, 0]"
+mismatch = "the simulator pays the core at once: 1200 and 10 at f75"
+
+[[reading]]
+id = "factories_off_lower_case_touches_no_yard"
+scene = {build = "engine_baseban", check = "c", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBanC_mcp_1122_171350 (j09's 'japanconstructionyard'): 1200/1200/11 s35-s53, as with no gate"
+proves = "PLAYER_DISABLE_FACTORIES disables no yard of the player's (SCRIPT_DISABLED would hold it: e)"
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 11]"
+item = "脚本动作 PLAYER_DISABLE_FACTORIES"
+
+[[reading]]
+id = "factories_off_own_case_touches_no_yard_nor_walker"
+scene = {build = "engine_baseban", check = "d", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBanD_mcp_1122_171801: 1200/1200/1111 s35-s53 -- every core made, both walkers at their ends"
+proves = "PLAYER_DISABLE_FACTORIES at frame 0 disables nothing: a yard or a unit, by a lower-case name or its own"
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 1111]"
+item = "脚本动作 PLAYER_DISABLE_FACTORIES"
+
+[[reading]]
+id = "factories_off_late_touches_no_yard_nor_walker"
+scene = {build = "engine_baseban", check = "f", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBanF_mcp_1122_172408 (d's gate at 0.5 s, as j09 calls it on a timer): 1200/1200/1111 s35-s50"
+proves = "PLAYER_DISABLE_FACTORIES disables nothing mid-game either"
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 1111]"
+item = "脚本动作 PLAYER_DISABLE_FACTORIES"
+
+[[reading]]
+id = "script_disabled_holds_production_and_walking"
+scene = {build = "engine_baseban", check = "e", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBanE_mcp_1122_172130: 2000/2000/0 s1-s53 -- nothing paid, no core, neither walker at its end"
+proves = """production.due: a factory NAMED_SET_DISABLED SCRIPT_DISABLED pays and makes nothing (the click and the \
+press); Sim.emp_disabled: SCRIPT_DISABLED holds a unit as EMP does (walker 1 EMP the control)"""
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [2000, 2000, 0]"

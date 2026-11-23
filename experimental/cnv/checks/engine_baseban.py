@@ -12,13 +12,19 @@ BENCH 11-16: A at f74 2000/1426/0, final f488 1200/1200/11;
 B at f75 2000/1413/0, final f364 1200/1200/11. Disabling either player
 does not block these UNIT_BUILD core orders. The base-construction consumer remains a gap;
 do not infer a no-op action or promote it from this control. Payment timing is strict xfail.
+C: PLAYER_DISABLE_FACTORIES(each, 'japanconstructionyard') as j09 writes it (lower case): the program sets every
+matching object of the player's script-disabled (type 9, for ever). Prediction: no core either side, money 2000.
+BENCH 11-22 (A311): C, D (the own case, two walkers too), F (D at 0.5 s): every core made, both walkers walk -- as
+with no gate; E (NAMED_SET_DISABLED SCRIPT_DISABLED on the yards and walker 0, EMP walker 1) 2000/2000/0 to s53: the
+type holds both. So the action reaches no object here (why: not found). Readings: engine_baseban.readings.toml.
 """
 from maps import probe_border
-from parts import Mission, Script, Test
+from parts import Mission, Script, Test, square
 from checks import engine_scripts8 as s8
 
 CORE = 'JapanPowerPlantEgg'
 BUTTON = 'Command_ConstructJapanPowerPlantEgg'
+WALKERS = (('AlliedAntiVehicleVehicleTech1', 200.), ('AlliedEngineer', 350.))
 
 
 def mission():
@@ -27,16 +33,19 @@ def mission():
     for side, dx in (('p1', 0.), ('s5', 1800.)):
         m.put('JapanConstructionYard', 'stop row', dx, -500., side=side,
               name=f'CNV BaseBan {side}', role=f'yard {side}')
+    for k, (unit, dy) in enumerate(WALKERS):      # D's probe of the disabled bit: does each still walk?
+        m.put(unit, 'stop row', 600., dy, name=f'CNV BaseBan W{k}', role=f'walker {k}')
+        m.waypoint(f'end {k}', f'CNV BaseBan End{k}', 'stop row', 1200., dy)
     return m
 
 
-def check(m, disabled):
+def check(m, gate, walk=False):
     t = Test()
     t.scripts.append(Script('Test - baseban setup', [], [
         ('MAP_REVEAL_ALL_PERM', m.player('p1')),
         ('PLAYER_SET_MONEY', m.player('p1'), 2000),
         ('PLAYER_SET_MONEY', m.player('s5'), 2000),
-        ('PLAYER_DISABLE_BASE_CONSTRUCTION', m.player(disabled))]))
+        *gate]))
     for side, label in (('p1', '甲资金'), ('s5', '乙资金')):
         counter = f'CNV_BaseBan_{side}'
         t.counters.append((counter, label))
@@ -44,7 +53,9 @@ def check(m, disabled):
             ('SET_PLAYER_MONEY_TO_COUNTER', m.player(side), counter)], once=False))
     s8.total(t, 'CNV_BaseBan_Cores', '核心', [
         (w, ('PLAYER_HAS_OBJECT_COMPARISON', m.player(side), 3, 1, CORE))
-        for side, w in (('p1', 1), ('s5', 10))])
+        for side, w in (('p1', 1), ('s5', 10))] + [
+        (100 * 10 ** k, ('NAMED_INSIDE_AREA', m.role(f'walker {k}').name, f'Test BaseBan End{k}'))
+        for k in range(len(WALKERS) if walk else 0)])
     s8.frames(t, 'CNV_BaseBan_Clock', '逻辑帧', [])
     s8.at(t, 'baseban press', 2., [
         ('NAMED_USE_COMMANDBUTTON_ABILITY', 'CNV BaseBan s5', BUTTON)])
@@ -58,12 +69,47 @@ def check(m, disabled):
 
 
 def a(m):
-    return check(m, 'p1')
+    return check(m, [('PLAYER_DISABLE_BASE_CONSTRUCTION', m.player('p1'))])
 
 
 def b(m):
-    return check(m, 's5')
+    return check(m, [('PLAYER_DISABLE_BASE_CONSTRUCTION', m.player('s5'))])
+
+
+def c(m):
+    return check(m, [('PLAYER_DISABLE_FACTORIES', m.player(s), 'japanconstructionyard') for s in ('p1', 's5')])
+
+
+def d(m, late=False):
+    """C's yards in the template's own case; walker 0 disabled by a lower-case name, walker 1 by its own, both sent
+    600 east at 1 s: 核心 adds 100 walker 0 at its end + 1000 walker 1 (within 100). F: the same at 0.5 s."""
+    return walked(m, late=late, gate=[('PLAYER_DISABLE_FACTORIES', m.player(s), 'JapanConstructionYard') for s in ('p1', 's5')] + [
+        ('PLAYER_DISABLE_FACTORIES', m.player('p1'), WALKERS[0][0].lower()),
+        ('PLAYER_DISABLE_FACTORIES', m.player('p1'), WALKERS[1][0])])
+
+
+def e(m):
+    """The same, each by NAMED_SET_DISABLED: the yards and walker 0 SCRIPT_DISABLED (the type C / D set), walker 1
+    EMP (the control: frozen, engine_emp)."""
+    return walked(m, [('NAMED_SET_DISABLED', n, 'SCRIPT_DISABLED', 1) for n in (
+        'CNV BaseBan p1', 'CNV BaseBan s5', m.role('walker 0').name)] + [
+        ('NAMED_SET_DISABLED', m.role('walker 1').name, 'EMP', 1)])
+
+
+def f(m):
+    return d(m, late=True)
+
+
+def walked(m, gate, late=False):
+    t = check(m, [] if late else gate, walk=True)
+    if late:
+        s8.at(t, 'baseban off', .5, gate)
+    s8.at(t, 'baseban walk', 1., [('MOVE_NAMED_UNIT_TO', m.role(f'walker {k}').name, m.mark(f'end {k}'))
+                                  for k in range(len(WALKERS))])
+    for k in range(len(WALKERS)):
+        t.areas[f'Test BaseBan End{k}'] = square(*m.point(f'end {k}'), 100.)
+    return t
 
 
 MISSION = {'engine_baseban': mission}
-CHECKS = {'engine_baseban': {'a': a, 'b': b}}
+CHECKS = {'engine_baseban': {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f}}

@@ -96,7 +96,7 @@ SIM_SURFACE = {
                       'xml_of*6',
     'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 engineer_entry*2 fight_field fire_spot firing*3 frame_now*8 gap garrison*2 ground*3 hostile hunts*5 in_range label*9 living*6 members mid_aims mm*2 note*7 own*12 point*2 powers_off production reach*5 relation*3 seen seq*7 short_of_power shot_blocked*4 side_sees*4 team_targets*3 toggles_of used*13 wallet waypoints*8 who world*4 xml_of*2',
     'engine.players': '_life add*3 banned blocks bodies*4 build_frames emp_book frame_now*3 label note own*4 '
-                      'produce_out reblock relations t*3 unit_construction_disabled upgrade_done wallet*2 world',
+                      'produce_out reblock relations script_disabled t*3 unit_construction_disabled upgrade_done wallet*2 world',
     'engine.ports': 'act*2 add*2 add_team_lookup advance ai ai_paused ai_priorities ai_switches anchored*3 areas '
                     'attachments banned base_construction_disabled blocks*2 bodies*6 body*2 books*2 border box_at '
                     'can_build can_hit change*2 countdowns counters ending*2 ending_line enemy engineer_entry '
