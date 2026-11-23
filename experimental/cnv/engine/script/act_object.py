@@ -127,10 +127,17 @@ def player_kill(sim, name, a, script):
     # Only the object cleanup slice measured; player defeat state and protected bodies remain gaps.
     # Ordinary lethal dispatch for other templates is INFERRED (work/re/c_playerkill_report.md). engine_pkallied:a
     # (review xx #2): an Allied plant so cleared leaves no Peacekeeper (its list REQUIRES_LIVE_PLAYER); NAMED_KILL's does
-    for b in list(sim.living()):
-        if b.owner == a[0]:
+    # What the clearing's deaths leave the player (a list's nugget without the option) is cleared too (review yy #9;
+    # INFERRED: retail's walk of the player's objects not read)
+    seen = set()
+    for _ in range(8):
+        left = [b for b in sim.living() if b.owner == a[0] and b.serial not in seen]
+        seen.update(b.serial for b in left)
+        for b in left:
             b.set_last_damage(None)
             sim.world.kill(b, '玩家脚本清理', cause=module.PLAYER_GONE)
+        if not left:
+            break
 
 
 def unit_set_health(sim, name, a, script):

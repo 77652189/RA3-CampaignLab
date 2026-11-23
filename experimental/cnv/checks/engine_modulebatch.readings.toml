@@ -12,10 +12,10 @@ expect = ["win(4, 6, 'products') == [0] * 3", "win(30, 34, 'products') == [1] * 
 [[reading]]
 id = "the_monitor_shows_the_power_ready"
 scene = {build = "engine_modulebatch", check = "a", until = 35}
-bench = "E145: ready 1 at s12-s16 (countdown set to 0 at 8 s), 0 at s25-s34 (countdown 10000 at 20 s)"
-proves = "MonitorSpecialPowerTimerUpdate: SPECIALPOWER1_READY follows the power's countdown, only with the module"
+bench = "E145: ready 0 at s1-s6 (AvailableAtStart false), 1 at s12-s16 (countdown set to 0 at 8 s), 0 at s25-s34 (countdown 10000 at 20 s)"
+proves = "MonitorSpecialPowerTimerUpdate: SPECIALPOWER1_READY follows the power's countdown, only with the module; not ready at the start"
 item = "物体模块 Behaviors/MonitorSpecialPowerTimerUpdate"
-expect = ["win(12, 16, 'ready') == [1] * 5", "win(25, 34, 'ready') == [0] * 10"]
+expect = ["win(1, 6, 'ready') == [0] * 6", "win(12, 16, 'ready') == [1] * 5", "win(25, 34, 'ready') == [0] * 10"]
 
 [[reading]]
 id = "max_beneficiaries_caps_the_healed"

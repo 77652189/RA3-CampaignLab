@@ -28,12 +28,14 @@ RETURN = 'ReturnToProducerSpecialPower'             # its own class below (Retur
 
 
 class SpecialPowerData(module.ModuleData):
-    def __init__(self, power=None):
+    def __init__(self, power=None, at_start=True):
         self.power = power          # SpecialPowerTemplate: the power it serves
+        self.at_start = at_start    # AvailableAtStart (XSD default true): ready before any reload was started
 
     @classmethod
     def parse(cls, head, inner):
-        return cls(templates.attr(head, 'SpecialPowerTemplate'))
+        return cls(templates.attr(head, 'SpecialPowerTemplate'),
+                   (templates.attr(head, 'AvailableAtStart') or 'true').lower() != 'false')
 
 
 @factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN)))
@@ -68,15 +70,19 @@ class MonitorData(SpecialPowerData):
 class Monitor(module.Module, interfaces.ReadyMonitor):
     """MonitorSpecialPowerTimerUpdate (E145, checks/engine_modulebatch.readings.toml): its thing has ReadyCondition
     while the reload of every SpecialPower module of its thing serving its power is over, and not otherwise (the
-    proton collider's SPECIALPOWER1_READY after a countdown of 0, gone after 10000; none on the one without it).
-    Asked when the condition is read (Sim.has_model_condition). Not modelled: AvailableAtStart="false" (the bench's
-    collider not ready at the start; the simulator's is), disabled / unpacking hosts (INFERRED: the reload alone)."""
+    proton collider's SPECIALPOWER1_READY after a countdown of 0, gone after 10000; none on the one without it). A
+    module with AvailableAtStart="false" no reload has started is not ready (the bench's collider: 0 at s1-s6), nor
+    is a power its thing has no module for (review yy #6). Asked when the condition is read (Sim.has_model_condition).
+    Not modelled: disabled / unpacking hosts (INFERRED: the reload alone); the cast itself still ignores
+    AvailableAtStart."""
     DATA = MonitorData
 
     def shows(self, condition, frame):
         d = self.data
-        return bool(d.condition) and condition == d.condition and all(
-            (m.ready_at() or 0) <= frame for m in self.thing.find(interfaces.SpecialPower) if m.power() == d.power)
+        mods = [m for m in self.thing.find(interfaces.SpecialPower) if m.power() == d.power]
+        return bool(d.condition) and condition == d.condition and bool(mods) and all(
+            (m.ready_at() if m.ready_at() is not None else 0 if m.data.at_start else frame + 1) <= frame
+            for m in mods)
 
 
 class RecallData(SpecialPowerData):

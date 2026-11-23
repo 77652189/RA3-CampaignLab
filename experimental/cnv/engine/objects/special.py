@@ -37,7 +37,7 @@ class Specials:
         self.leaps_due = []            # (landing frame, body, point): a ProjectileSelf leap in the air
         self.leap_ground_hits = []     # (frame, body, weapon, centre): a landed leap's ground weapon to go off
         self.movement_due = {}         # body serial -> (end frame, body, bits, old speed): a MovementSpecialPower on
-        self.self_bits_due = []        # (frame, body, bits): a self power's trigger / shield bits to drop
+        self.self_bits_due = []        # (frame, body, bits, shield id or None): a self power's bits to drop
 
     def blast_due(self, world, frame, blasts, first_death, destroy):
         """A superweapon's hits landing by `frame` (SUPERWEAPON_HITS): every living object, friend or foe, within the
@@ -113,17 +113,18 @@ class Specials:
         if sp['trigger'] and sp['pack']:
             new = sp['trigger'] - b.script_status
             b.script_status |= new
-            self.self_bits_due.append((now + sp['pack'], b, new))
-        for bits, duration in sp.get('shields', ()):
+            self.self_bits_due.append((now + sp['pack'], b, new, None))
+        for ident, bits, duration in sp.get('shields', ()):
             # E153 engine_activate: the linked consumer's status lifetime; its shells taken and early end: the module
             # (engine/modules/shield.py, bench engine_shield). INFERRED: overlapping/repeated activations use the same
             # bit ownership convention as the existing pack phase; only a single press is measured.
             world.guessed.add('ShieldSphereUpdate: allies inside, instant hits and repeated presses unmodelled')
             for m in b.find(interfaces.Shield):
-                m.start(now)
+                if m.data.ident == ident:   # the button's own module only (review yy #4)
+                    m.start(now)
             new = bits - b.script_status
             b.script_status |= new
-            self.self_bits_due.append((now + duration, b, new))
+            self.self_bits_due.append((now + duration, b, new, ident))
         modify(b)
         world.note('技能', f'{world.label(b)} 按 {button}：{sp["modifier"]}')
         return True
@@ -188,7 +189,7 @@ class Specials:
                     world.change()
         due = self.self_bits_due
         for job in list(due or ()):
-            shields = [m for m in job[1].find(interfaces.Shield) if m.over(frame)]
+            shields = [m for m in job[1].find(interfaces.Shield) if job[3] and m.data.ident == job[3] and m.over(frame)]
             if frame >= job[0] or shields:
                 for m in shields:
                     m.stop()

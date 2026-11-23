@@ -368,10 +368,12 @@ def team_use_commandbutton_ability_at_waypoint(sim, name, a, script):
 
 def named_set_special_power_countdown(sim, name, a, script):
     # (unit, power, s): its power's reload ends s whole seconds on (0: ready now). E145 engine_modulebatch: the
-    # monitor showed the collider ready after 0, not after 10000. Other values and the player-level READY: C's gap
+    # monitor showed the collider ready after 0, not after 10000; checks/engine_aispecial (first try): 5.2 / 5.4 acted
+    # as 0, the integer 5 as 75 frames (review yy #7). The player-level READY: C's gap
     b = sim.body(a[0])
     if b and b.alive:
-        start_reload(sim, b, str(a[1]), sim.frame_now() + int(float(a[2])) * simunits.LIFE_FPS)
+        s = float(a[2])
+        start_reload(sim, b, str(a[1]), sim.frame_now() + (int(s) if s == int(s) else 0) * simunits.LIFE_FPS)
 
 
 def _member(sim, name, a, script, b):

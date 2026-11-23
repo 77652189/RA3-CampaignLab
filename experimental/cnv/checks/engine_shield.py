@@ -70,7 +70,9 @@ def check(m):
         Script('Test - shield hp off', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', off, 'ShieldOff')], once=False),
         Script('Test - shield bit', [('UNIT_HAS_OBJECT_STATUS', on, status('GENERIC_TOGGLE_STATE'))],
                [('INCREMENT_COUNTER', 1000, 'ShieldOn'), ('INCREMENT_COUNTER', 1, 'ShieldDrop')], once=False)]
-    t.expect = [('帧数', 0, 'ever>=', 450), ('盾车', 0, 'ever>=', 1100)]
+    # 盾车 still 1100 after the first volley landed (f165-f173; bench 1100 to f204): a shield taking nothing reads
+    # 1085 by then (review yy #10)
+    t.expect = [('帧数', 0, 'ever>=', 450), ('盾车', 12, 'ever>=', 1100)]
     t.bench = [('bench_watch', dict(seconds=RUN, every=0.5, sheet=False, lines=4))]
     return t
 

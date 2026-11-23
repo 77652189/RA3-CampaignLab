@@ -32,10 +32,13 @@ def due(pending, now):
 def arrive(hit, hurt, detonate, clear):
     """An arrival: its MetaImpact payload goes off first (detonate, the host's, swappable), then a living target's
     notification clears (clear) and it takes the launch-time damage (a new entry's attacker is the shooter). A shield up
-    on the target (engine/modules/shield.py) takes the shell instead: nothing goes off, the notification clears."""
+    on the target (engine/modules/shield.py) takes the shell instead: nothing goes off, the notification clears.
+    The shooter counts as the shield's ally when it has the same owner (review yy #5; another allied player's shell
+    is still taken: a gap, the host's relation is not reached from here)."""
     when, target, damage, attacker, weapon, centre = hit
     away = math.hypot(target.x - attacker.x, target.y - attacker.y)
-    if any([m.absorb(when, damage, weapon.get('type'), away) for m in target.find(interfaces.Shield)]):
+    ally = attacker.owner == target.owner
+    if any([m.absorb(when, damage, weapon.get('type'), away, ally) for m in target.find(interfaces.Shield)]):
         clear(target, attacker.serial, weapon.get('weapon_key'))
         return
     detonate(weapon, target, centre, attacker)

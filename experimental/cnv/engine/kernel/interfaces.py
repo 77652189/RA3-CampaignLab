@@ -595,7 +595,7 @@ class Shield(Interface):
     def start(self, now):
         raise NotImplementedError
 
-    def absorb(self, now, damage, kind, distance):
+    def absorb(self, now, damage, kind, distance, ally=False):
         raise NotImplementedError
 
     def over(self, now):

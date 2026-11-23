@@ -34,7 +34,7 @@ class Life:
         """The kernel's make (World.create) for a CreateObjectDie (engine/modules/createobjectdie.py, step B5b): a
         death in the air makes its wrecks fall (air_crash), a death of age or in a fight leaves (leave)."""
         if airborne:
-            self.air_crash(world, b, ocl, death_blasts, ground_z)
+            self.air_crash(world, b, ocl, death_blasts, ground_z, fight == module.PLAYER_GONE)
         else:
             self.leave(world, b, ocl, fight)
 
@@ -166,7 +166,7 @@ class Life:
         if world.blocks(b):
             world.reblock()
 
-    def air_crash(self, world, b, ocl, death_blasts, ground_z):
+    def air_crash(self, world, b, ocl, death_blasts, ground_z, gone=False):
         """Physics P5 (checks/engine_crash_fall.py): an aircraft killed in the air is gone at once and its airborne
         CreateObjectDie (engine/modules/createobjectdie.py: its list `ocl`, simunits.ocl_wrecks) makes a wreck
         LIKE_EXISTING with its velocity x the OCL's VelocityScale;
@@ -177,11 +177,13 @@ class Life:
         its path's next point, else still (a hovering one). Of a CHOOSE_ONE list (the game draws one: the Apollo's
         Collapse or Dying) the first that falls and has a weapon (INFERRED choice: the crash that can hurt, the run
         repeatable). INFERRED: level ground (the landing's own height not looked up), the death on the frame it rests,
-        the nugget's MetaImpact (ShockWave 50, radius 50) not dispatched."""
+        the nugget's MetaImpact (ShockWave 50, radius 50) not dispatched. `gone`: PLAYER_KILL's death -- a nugget whose
+        Options hold REQUIRES_LIVE_PLAYER makes nothing (review yy #9, as Life.leave; INFERRED)."""
         got = simunits.ocl_wrecks(ocl, world.own)
         if not got:
             return
         choose, wrecks = got
+        wrecks = [w for w in wrecks if not (gone and w['live'])]
         blasts = {w['template']: self.wreck_blasts(world, w['template']) for w in wrecks}
         hits = [w for w in wrecks if w['falls'] and blasts[w['template']]]
         if choose and len(wrecks) > 1:

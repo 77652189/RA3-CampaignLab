@@ -1962,7 +1962,8 @@ def ocl_wrecks(name, own=None):
                 return p[0] if p else None
             ph = _chain(w, own, physics) or ''
             wrecks.append(dict(template=w, scale=scale, gravity=_num(_attr(ph, 'GravityMultiplier') or '1', 1.0),
-                               falls=(_attr(ph, 'KillWhenRestingOnGround') or '').lower() == 'true'))
+                               falls=(_attr(ph, 'KillWhenRestingOnGround') or '').lower() == 'true',
+                               live='REQUIRES_LIVE_PLAYER' in (_attr(ch, 'Options') or '').split()))
     _wreck_memo[key] = ('CHOOSE_ONE' in (_attr(head, 'Flags') or ''), wrecks)
     return _wreck_memo[key]
 
@@ -3034,7 +3035,7 @@ def self_module_power(template, button, own=None):
                 for shield, _ in _blocks(xml, 'ShieldSphereUpdate'):
                     if _attr(shield, 'id') == _attr(link, 'ModuleId') and \
                             _attr(shield, 'InitiallyActive', 'false') == 'false':
-                        shields.append((set((_attr(shield, 'ObjectStatus') or '').split()),
+                        shields.append((_attr(shield, 'id'), set((_attr(shield, 'ObjectStatus') or '').split()),
                                         _frames(_secs(expand(_attr(shield, 'Duration', '0s'))))))
             if not modifier and not shields:
                 continue

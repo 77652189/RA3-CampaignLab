@@ -71,7 +71,7 @@ class CreateObjectDie(module.Module, interfaces.Die, interfaces.CreateOnDeath):
                 not d.ups_forbidden & self.world.upgrades(thing):
             self.world.create(thing, d.ocl, False, fight=info.cause == module.PLAYER_GONE and module.PLAYER_GONE or True)
         if thing.surface == 'air' and self._first_airborne(info.status):
-            self.world.create(thing, d.ocl, True)
+            self.world.create(thing, d.ocl, True, fight=info.cause == module.PLAYER_GONE and module.PLAYER_GONE)
 
     def _first_airborne(self, status=None):
         """Is it the first module whose block takes a death in the air, by the status the death began with (review

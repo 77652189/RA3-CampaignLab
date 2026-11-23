@@ -66,7 +66,8 @@ def test_the_monitor_shows_its_condition_only_while_the_power_is_ready():
     import engine.objects.power as simpower
     e, b = _collider()
     now = e.frame_now()
-    assert e.has_model_condition(b, 'SPECIALPOWER1_READY') and not e.has_model_condition(b, 'SPECIALPOWER2_READY')
+    # its SpecialPower blocks are AvailableAtStart="false": not ready before a reload starts (review yy #6)
+    assert not e.has_model_condition(b, 'SPECIALPOWER1_READY') and not e.has_model_condition(b, 'SPECIALPOWER2_READY')
     simpower.start_reload(e, b, CANNON, now + 1)
     assert not e.has_model_condition(b, 'SPECIALPOWER1_READY')
     simpower.start_reload(e, b, CANNON, now)
