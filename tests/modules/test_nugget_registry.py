@@ -61,7 +61,7 @@ def test_a_victim_takes_its_damage_then_the_leech_claims_then_the_strip():
 def test_the_effects_lift_then_attach_only_on_a_direct_single_shot():
     """Step N3a: 'effect' runs Lift -> Attach (ORDER); the cases the characterization tests leave open (a shell or
     two shots, a forbidden status, a chained target, a parent already holding one, a non-vehicle)."""
-    w = dict(reversed(list(dict(_weapon(), lift=[dict(include=[], exclude=[])],
+    w = dict(reversed(list(dict(_weapon(), lift=[dict(include=[], exclude=[], things=[], status=[])],
                                 attach=[dict(module='A', forbidden=['STEALTHED'], include=[], exclude=[])]).items())))
     assert [k for k, _ in registry.effects(w)] == ['Damage', 'Lift', 'Attach']
 
@@ -79,6 +79,7 @@ def test_the_effects_lift_then_attach_only_on_a_direct_single_shot():
 
     def tank(**kw):
         return types.SimpleNamespace(**{'name': 'tank', 'serial': 2, 'kinds': {'VEHICLE'}, 'status': set(),
+                                        'template': 'Tank', 'script_status': set(),
                                         'surface': 'ground', 'x': 10.0, 'y': 0.0, 'engine_status': set(), **kw})
     assert run(tank()) == ['lift', 'attach']
     assert run(tank(), n=2) == run(tank(), projectile='Shell') == []
