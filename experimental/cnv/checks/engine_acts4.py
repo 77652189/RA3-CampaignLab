@@ -171,5 +171,36 @@ def team(m):
     return t
 
 
-MISSION = {'engine_acts_u': mission, 'engine_acts_ut': team_mission}
-CHECKS = {'engine_acts_u': {'acts': acts}, 'engine_acts_ut': {'team': team}}
+# engine_acts_ui (A328, s07: PLAYER_UNIT_TYPE_SPECIAL_POWER_IGNORE_REQUIREMENTS(drones, '_object list_japan all units',
+# the Emperor, 1), then FIRE_SPECIAL_POWER_ON_TEAM(drones, its mecha)): s4's / s5's Japanese tank on crew I / N; 1 s
+# s4 IGNORE (a list of the tank); 3 s each player's drones on its own crew. 'n' nothing held; 'g' both granted the
+# protocol and given a JapanConstructionYard. 挂 = tank POINT_DEFENSE_DRONE_ATTACHED s4 1 s5 2; 就绪 = READY s4 1 s5 2
+DRONES, JTANK, JCY = 'SpecialPower_PointDefenseDrones', 'JapanAntiVehicleVehicleTech1', 'JapanConstructionYard'
+
+
+def ign_mission():
+    m = Mission(name='CampActsI', map=probe_border, units=[], facts={})
+    for k, side in enumerate(('s4', 's5')):
+        m.put(JTANK, 'stop row', 700.0 + 1500.0 * k, -300.0, side=side, angle=3.1416, name=_n(f'j{side}'),
+              role=f'j{side}', props={'originalOwner': m.crew('IN'[k], side)})
+        _unit(m, f'y{side}', side, JCY, 2000.0 + 1500.0 * k, 4700.0)
+    return m
+
+
+def ign(m, held):
+    t, s4, s5 = Test(), m.player('s4'), m.player('s5')
+    t.scripts.append(Script('Test - ActI start', [], [('OBJECTLIST_ADDOBJECTTYPE', JTANK.lower(), 'CNV ActI list')]
+                            + [('PLAYER_GRANT_SPECIAL_POWER', DRONES, p) for p in (s4, s5) if held]
+                            + [('NAMED_DELETE', _n(f'y{s}')) for s in ('s4', 's5') if not held]))
+    s8.at(t, 'i1', 1.0, [('PLAYER_UNIT_TYPE_SPECIAL_POWER_IGNORE_REQUIREMENTS', DRONES, 'CNV ActI list', s4, 1)])
+    s8.at(t, 'i3', 3.0, [('FIRE_SPECIAL_POWER_ON_TEAM', p, DRONES, m.crew(c)) for p, c in ((s4, 'I'), (s5, 'N'))])
+    s8.total(t, 'CNV_ActI_On', '挂', [(w, ('UNIT_HAS_OBJECT_STATUS', _n(f'j{s}'), status('POINT_DEFENSE_DRONE_ATTACHED')))
+                                     for w, s in ((1, 's4'), (2, 's5'))])
+    s8.total(t, 'CNV_ActI_Rdy', '就绪', [(w, ('SKIRMISH_SPECIAL_POWER_READY', p, DRONES)) for w, p in ((1, s4), (2, s5))])
+    s8.watch(t, 10.0, every=0.5)
+    return t
+
+
+MISSION = {'engine_acts_u': mission, 'engine_acts_ut': team_mission, 'engine_acts_ui': ign_mission}
+CHECKS = {'engine_acts_u': {'acts': acts}, 'engine_acts_ut': {'team': team},
+          'engine_acts_ui': {'n': lambda m: ign(m, False), 'g': lambda m: ign(m, True)}}

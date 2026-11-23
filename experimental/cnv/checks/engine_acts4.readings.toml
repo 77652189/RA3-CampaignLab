@@ -47,3 +47,27 @@ expect = [
     "7.5 <= first(2, 1) - first(1, 1) <= 9.5",
     "all(x[2] == x[3] for x in vals(rows))",
 ]
+
+[[reading]]
+id = "acts_ui_n_ignore_requirements_changes_nothing"
+item = "脚本动作 PLAYER_UNIT_TYPE_SPECIAL_POWER_IGNORE_REQUIREMENTS"
+scene = {build = "engine_acts_ui", check = "n", until = 10}
+bench = "n, bench 11-23 CampActsIN_mcp_1123_133234 (round 328): 挂 / 就绪 0 0 at s1, 3 0 s2-s11 -- s4 (flagged) and s5 alike"
+proves = "sim drops PLAYER_UNIT_TYPE_SPECIAL_POWER_IGNORE_REQUIREMENTS (common.IGNORED): it flags only the listed types' own modules of the power (work/re a328), a protocol's sit on the PlayerSpellBook; s4 and s5 read alike (each bit pair 0 or 3)"
+expect = "all(v[0] in (0, 3) and v[1] in (0, 3) for v in vals(rows))"
+
+[[reading]]
+id = "acts_ui_g_ignore_requirements_changes_nothing"
+item = "脚本动作 PLAYER_UNIT_TYPE_SPECIAL_POWER_IGNORE_REQUIREMENTS"
+scene = {build = "engine_acts_ui", check = "g", until = 10}
+bench = "g, bench 11-23 CampActsIG_mcp_1123_133118: 挂 / 就绪 0 3 at s1, 3 0 s2-s11 -- both granted, both cast, both reloading"
+proves = "as n with the protocol held and a JapanConstructionYard each: the flagged player and the other alike"
+expect = "all(v[0] in (0, 3) and v[1] in (0, 3) for v in vals(rows))"
+
+[[reading]]
+id = "acts_ui_a_scripts_protocol_cast_asks_no_requirement"
+scene = {build = "engine_acts_ui", check = "n", until = 10}
+bench = "n / g (above): FIRE_SPECIAL_POWER_ON_TEAM of the drones hangs them on both tanks (挂 3) held or not, yard or not; g's READY 3 -> 0 after the cast (its 120 s reload)"
+proves = "nothing yet: the simulator casts no PlayerSpellBook protocol (act_ability.player_fire_special_power_at_waypoint finds no object holding it)"
+expect = "vals(rows)[-1][0] == 3"
+mismatch = "sim 挂 0 to the end (no protocol cast); bench 3 from s2"

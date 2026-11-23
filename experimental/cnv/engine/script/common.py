@@ -16,7 +16,10 @@ SHOWN = {'SHOW_MILITARY_CAPTION': '通报', 'CAMPAIGN_CREATE_AUTO_SAVE': '存档
 IGNORED = {'DISPLAY_COUNTER', 'HIDE_COUNTER',
            'CAMERA_LETTERBOX_BEGIN', 'CAMERA_LETTERBOX_END',
            'SET_COOP_AI_COMMAND_UI_ENABLED',
-           'PLAYER_DISABLE_FACTORIES'}         # disables nothing on the bench (engine_baseban c, d, f)
+           'PLAYER_DISABLE_FACTORIES',         # disables nothing on the bench (engine_baseban c, d, f)
+           # flags the power's own modules on the player's objects of the listed types (work/re a328): a protocol's sit
+           # on the PlayerSpellBook, which no list names; a script's cast never asked it (engine_acts_ui)
+           'PLAYER_UNIT_TYPE_SPECIAL_POWER_IGNORE_REQUIREMENTS'}
 
 TEAM_FOLLOWS = ('TEAM_FOLLOW_WAYPOINTS', 'TEAM_FOLLOW_WAYPOINTS_EXACT', 'TEAM_ATTACK_MOVE_FOLLOW_WAYPOINTS',
                 'TEAM_FOLLOW_WAYPOINTS_STARTING_AT_WAYPOINT')      # Sim.order_follow
