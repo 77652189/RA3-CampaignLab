@@ -43,6 +43,7 @@ def named_buttons(sim, name, a, script, unit=None):
     has its name: review 11-19 i #2)."""
     body = (lambda _n: unit) if unit is not None else sim.body
     who = unit if unit is not None else a[0]
+    evacuate = lambda: (simunits._commands(sim.own)[1].get(a[1]) or ('',))[0] == 'EVACUATE'    # noqa: E731
     if name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and a[1] == 'Command_CaptureBuilding':
         _order(sim, 'capture', who, target=a[2])
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
@@ -67,20 +68,21 @@ def named_buttons(sim, name, a, script, unit=None):
         b = body(a[0])
         if not (b and sim.garrison.eject(b, a[1], (b.x, b.y))):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有能弹出乘员的载具')
-    elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT') and \
-            (simunits._commands(sim.own)[1].get(a[1]) or ('',))[0] == 'EVACUATE':
-        # the Twinblade's evacuate (s09's Hinds): lands, all out together where it is (engine_acts_btn EV); a
-        # waypoint given is ignored (a05's: engine_acts_eva w, nobody at the point 600 off)
-        if not sim.garrison.evacuate(body(a[0])):
-            sim.note('技能', f'{a[0]} 按 {a[1]}：没有载着人的载具')
     elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT') and body(a[0]) \
-            and (a[1] == 'Command_UnPackJapanEgg' or
+            and (a[1] == 'Command_UnPackJapanEgg' or evacuate() or
                  simunits.command_power(a[1], sim.own) in (UNPACK_POWER, PACK_POWER)) and a[1] not in \
             simunits._commands(sim.own)[0].get(simunits.command_set(body(a[0]).template, body(a[0]).upgrades, sim.own), ()):
         # an unpack / pack button the unit's own CommandSet lacks does nothing, though its ReplaceSelf module takes
         # the same power: retail's legacy egg id (engine_eggcmd / engine_eggnav), the power plant egg's button on
-        # the defense egg (engine_unpack crs), an egg's on a Guardian (review 1121oo #1); the pack side INFERRED
+        # the defense egg (engine_unpack crs), an egg's on a Guardian (review 1121oo #1); the pack side INFERRED;
+        # so does an EVACUATE button not the host's (the Sudden transport's on a Twinblade, review 1122yy #1;
+        # INFERRED as the pack side: every benched evacuate was its host's own)
         sim.note('技能', f'{a[0]} 按 {a[1]}：它的 CommandSet 里没有这个按钮，不动')
+    elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT') and evacuate():
+        # the Twinblade's evacuate (s09's Hinds): lands, all out together where it is (engine_acts_btn EV); a
+        # waypoint given is ignored (a05's: engine_acts_eva w, nobody at the point 600 off)
+        if not sim.garrison.evacuate(body(a[0])):
+            sim.note('技能', f'{a[0]} 按 {a[1]}：没有载着人的载具')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and \
             simunits.command_power(a[1], sim.own) == UNPACK_POWER:
         # an MCV / a Japanese egg deploys at the point: drives there, then turns into its replacement (bench

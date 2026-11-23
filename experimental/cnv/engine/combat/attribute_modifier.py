@@ -1,6 +1,7 @@
 """AttributeModifierNugget (step N3c): a direct hit puts the weapon's modifier on the target for its Duration (the
 modifier read in the shooter's XML); a gated or filtered one only where the bench read it."""
 from engine.combat.registry import nugget
+from engine.kernel.module import status_now
 
 
 @nugget('AttributeModifier', 'effect')
@@ -26,7 +27,7 @@ class AttributeModifier:
                 flt = effect.get('target_filter')
                 if not passed or flt and (not (t.template.lower() in flt['include'] if 'include' in flt else
                                                host.fits(t, dict(flt, kinds=set(flt['kinds']), unkinds=set(flt['unkinds']))))
-                                          or set(flt['status_exclude']) & (t.status | t.script_status)):
+                                          or set(flt['status_exclude']) & (status_now(t) | t.script_status)):
                     continue
                 mid = effect['modifier']
             modifier, xml = host.modifier(by.template, mid)

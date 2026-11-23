@@ -152,6 +152,16 @@ def test_a_transport_keeps_its_owner_and_its_passengers_are_enclosed():
     assert boat.owner == 'Player_2' and 'ENCLOSED' in gi.script_status and s.garrison.held(boat) == [gi]
 
 
+def test_an_evacuate_button_empties_only_a_host_whose_command_set_holds_it():
+    # review 1122yy #1: the Sudden transport's DisguisedEvacuate pressed on a Twinblade emptied it all the same
+    s = simsmall.small_world(model=False)
+    boat = s.add('boat', 'AlliedAntiInfantryVehicle', 'Player_1', 300.0, 300.0)
+    assert s.garrison.put(s.add('gi', 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 300.0), boat, script=True)
+    for button, out in (('Command_DisguisedEvacuate', False), ('Command_AlliedAntiInfantryVehicleEvacuate', True)):
+        s.act('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', ['boat', button, '@900,300'], None)
+        assert (boat.serial in s.garrison.ejecting) == out
+
+
 def test_at_the_reallydamaged_line_everyone_comes_out():
     s = simsmall.small_world()
     house = s.add('house', 'AM_Apartments_01', None, 300.0, 300.0)

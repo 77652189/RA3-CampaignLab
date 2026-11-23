@@ -17,6 +17,7 @@ import math
 import engine.data.units as simunits
 import engine.objects.locomotion as simlocomotion
 from engine.kernel import interfaces
+from engine.kernel.module import status_now
 from engine.objects.power import hit_at
 from engine.world.handle import CIV, GAP_WEAPON
 
@@ -288,11 +289,14 @@ class Specials:
                 if (m['required_upgrade'] and m['required_upgrade'].lower() not in ups) or \
                         (m['forbidden_upgrade'] and m['forbidden_upgrade'].lower() in ups) or \
                         (m['include'] and not t.kinds & m['include']) or t.kinds & m['unkinds'] or \
-                        m['status_exclude'] & (t.status | t.script_status):
+                        m['status_exclude'] & (status_now(t) | t.script_status):     # in the air too (yy #2)
                     continue
                 mod = m['mod']
                 if mod and mod['frames']:       # one without a Duration: not hung (none in retail's special weapons)
                     t.auras_on[m['modifier']] = (frame + mod['frames'], m['xml'])
-                    t.model_conditions.update(dict.fromkeys(mod['conditions'], frame + mod['frames']))
+                    for c in mod['conditions']:     # one a script set for good or longer stays (review 1122yy
+                        if t.model_conditions.get(c, -1) is not None and \
+                                t.model_conditions.get(c, -1) < frame + mod['frames']:      # #3, INFERRED)
+                            t.model_conditions[c] = frame + mod['frames']
                     modify(t)
             world.note('技能', f'{world.label(b)} 的 {ab["weapon"]} 打出')
