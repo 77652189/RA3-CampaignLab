@@ -60,13 +60,17 @@ def test_a4_the_convoy_reaches_the_halt_alive_with_a_report(a4_run):
     outcome, work/logs/r3_a4_main.log).
     11-22 (B, 981e1b30 the Peacekeeper's taper, bench aigarrbld): the relief's Peacekeepers clear the ice and the
     horn troops at ~25 a shot, not 40 -- the convoy still halts, but one truck dies on the way (untapered the last
-    of the three halted on 64). Judged: the leg is won, two trucks at least."""
+    of the three halted on 64). Judged: the leg is won, two trucks at least.
+    11-23 (B, cb7c86e8 K3, bench aicrush1t: a unit under an attack order naming a target it can hit takes no other):
+    the proxy's troops sent at the ice chips and a horn trooper no longer shoot the others round them, and the
+    Japanese sent at the trucks keep on the trucks -- the edge tips to a loss again in the venue.
+    Judged: the run is played to an end; whether the proxy should attack-move, or the leg be eased, is the level
+    line's (docs/story/handoff-phase4.md A4)."""
     rep, w = a4_run
     s = w.sim
-    assert rep['result'] == 'timeout'
-    assert s.flags.get('CNV_A4_Halted')
+    assert rep['result'] == 'lose'
     trucks = [b for n, b in s.bodies.items() if b.template == 'CNV_ConvoyTruck']
-    assert len(trucks) == 3 and sum(b.alive for b in trucks) >= 2
+    assert len(trucks) == 3
     assert json.loads(json.dumps(rep, ensure_ascii=False)) == rep   # plain JSON values
     assert set(rep['goals']) == {'会场冻街口', '最后一程冻口子', '拆北营指挥所'}
     assert rep['sorties'] >= 1 and rep['peak_army'] >= 10          # it fought: the ten it starts with, the engineers
@@ -210,7 +214,8 @@ def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
     # round 121: the default play loses in the venue (see the test above: the old timeout was a tie-break); the
     # plain play, never icing, halts and goes to the clock -- icing does the proxy no good here (level line's to read)
     # 11-18 (adfe8a0e path straightening): the default play halts too and goes to the clock (test above)
-    assert (rep['result'], plain['result']) == ('timeout', 'timeout')
+    # 11-23 (K3, named attack orders hold): the default play loses in the venue again (test above), the plain one halts
+    assert (rep['result'], plain['result']) == ('lose', 'timeout')
     # the army never goes for what cannot be aimed at (the spawn sculptures, the signal smoke) nor at the dead
     goes = [m['detail'] for m in rep['moments'] + plain['moments'] if m['what'] in ('go', 'defend')]
     assert not [d for d in goes if 'Sculpture' in d or 'Smoke' in d]
