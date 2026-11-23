@@ -139,7 +139,7 @@ class RetailMission:
             if team:                                    # sim.Sim: a str originalOwner is the body's team
                 extra['originalOwner'] = f'{owner}/{team}'
             objs.append(Obj(o['template'], o['x'], o['y'], side=owner if owner in props else '', name=name,
-                            angle=o['angle'], props=extra))
+                            angle=o['angle'], props=extra, flags=o.get('flags')))    # a bridge's 16 / 32
         self.links = waypoint_links(m, ids)
         self.areas = m.trigger_areas()
         self.hotspots = m.hotspots()

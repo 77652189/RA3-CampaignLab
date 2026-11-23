@@ -36,8 +36,8 @@ def test_engineer_indirect_bridge_routes_remain_unbenched():
     for template in bridge_names:
         module = simunits.engineer_contain(template)
         # Some generated gatehouse ids are absent from the simulator's index;
-        # neither missing data nor an explicit bridge rejection is coverage.
-        assert module is None or not module['supported'], template
+        # the rest are read as a bridge's repair only (engine_bridgefix), never a capture.
+        assert module is None or module['bridge'], template
     # ReplaceWith is a schema option, with no declaration in this retail census.
     assert report['replacement_templates'] == report['replacement_campaign_templates'] == 0
     key = inventory.MODULE, 'Behaviors/EngineerContain'

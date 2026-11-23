@@ -71,6 +71,7 @@ import engine.objects.heal as simheal  # noqa: E402
 import engine.world.living as simliving  # noqa: E402
 import engine.objects.locomotion as simlocomotion  # noqa: E402
 import engine.objects.body as simbody  # noqa: E402
+import engine.objects.bridge as simbridge  # noqa: E402
 import engine.objects.mine as simmine  # noqa: E402
 import engine.objects.path as simpath  # noqa: E402
 from engine.objects.path import Ground  # noqa: E402,F401  (the routing world, M1; tests and simstatic read sim.Ground)
@@ -724,7 +725,8 @@ class Sim:
         teams = getattr(mission.map, 'TEAMS', {})
         self.active = set(teams.values())               # teams with an instance: a whole-team order to any other is lost (E3)
         self.lost_orders = []                           # (t, script, order, team) given to a team nobody had joined
-        for o, key in simworld.load_keys(self, list(getattr(mission.map, 'OBJECTS', [])) + self.mm.objects):
+        placed = list(getattr(mission.map, 'OBJECTS', [])) + self.mm.objects
+        for o, key in simworld.load_keys(self, placed):
             b = self.add(key, o.template, self.owner_of(o.side), o.x, o.y, shadow=True)  # simliving
             # a bare object is on its player's default team (island.like writes 'Soviet_5/teamSoviet_5'; the container
             # has teamSoviet_2 .. 6 too): bench 11-14 engine_acts_x own, PLAYER_TRANSFER_OWNERSHIP_PLAYER leaves it
@@ -738,6 +740,7 @@ class Sim:
                 b.team = crew
                 self.active.add(crew)
             b.angle = facing(o)                         # as the built map puts it (the player's north, others' south)
+        simbridge.gatehouses(self, placed)              # a named bridge's two (engine_bridgefix)
         import platprops
         for k, o in enumerate(getattr(mission.map, 'SCENERY', [])):
             if o.template in platprops.STRUCTURE:
@@ -829,10 +832,7 @@ class Sim:
         b.guessed, b.clear_height = st['guessed'], st['clear_height']
         b.radius, b.sight = st.get('radius') or 0.0, st['vision'] or 0.0
         f = simunits.fight(template, self.own)
-        proxy_hp = None                         # the Body module's health is made below, once the modules are
-        if self.world.blocks_of(template, 'ManagerBody'):
-            proxy_hp = simunits.manager_proxy_health(template, self.own)
-            self.gap('ManagerBody', template, '仅HB_Bridge_02整体代理脚本伤害已量；有效HP/内部下限映射INFERRED，其他配置、桥段生成、共享血量与维修未建模')
+        proxy_hp = simbridge.proxy_health(self, template)   # the Body module's health is made below, once the modules are
         wall_start = simunits.wall_builder_start(template, self.own)
         if wall_start:
             if not by and wall_start['secondary'] and wall_start['status'] == 'WALL_SEGMENT':

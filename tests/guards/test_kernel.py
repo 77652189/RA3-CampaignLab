@@ -647,7 +647,7 @@ PRIVATE_NAMES = ('RA3-EngineModel', 'ra3model', 'labpaths', 'modelpin', 'engine_
 # the host's files (ADR 0036): a kernel file imports none of them
 HOST_MODULES = {'engine.' + n for n in (
     'ai.core', 'ai.pullback', 'combat.host', 'combat.range', 'combat.sweeps', 'data.units', 'loop.frame',
-    'objects.assign', 'objects.body', 'objects.crush', 'objects.garrison', 'objects.heal', 'objects.infiltrator',
+    'objects.assign', 'objects.body', 'objects.bridge', 'objects.crush', 'objects.garrison', 'objects.heal', 'objects.infiltrator',
     'objects.jet', 'objects.level', 'objects.locomotion', 'objects.mine', 'objects.modifier', 'objects.path',
     'objects.power', 'objects.repair', 'objects.special', 'objects.status', 'objects.toggle', 'objects.topple',
     'orders.ability', 'orders.hunt', 'orders.seq', 'orders.micro', 'orders.order', 'orders.target', 'players.money', 'players.production', 'players.tech', 'script.act',

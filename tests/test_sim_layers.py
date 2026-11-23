@@ -55,7 +55,7 @@ LAYER_OF = {
     'engine.loop.frame': 7,
     'engine.objects.assign': 2,
     'engine.combat.sweeps': 3,
-    'engine.objects.infiltrator': 2, 'engine.objects.repair': 2,
+    'engine.objects.infiltrator': 2, 'engine.objects.repair': 2, 'engine.objects.bridge': 2,
     'engine.orders.micro': 5, 'engine.ai.pullback': 8,
     'engine.ai.core': 8,             # the skirmish AI (R3 13f-2d: it names no Sim; its run is simai_run.py, an entry point)
     'engine.ports.scripts': 0, 'engine.ports.command': 0, 'engine.script': 6, 'engine.script.executor': 6, 'engine.script.lists': 6, 'engine.script.host': 6,   # P1 the script port, Z its lists
@@ -91,7 +91,7 @@ WORLD_TAKERS = {'engine.objects.heal', 'engine.objects.mine', 'engine.players.mo
                 'engine.objects.crush', 'engine.objects.jet', 'engine.orders.micro', 'engine.objects.assign',
                 'engine.combat.host',
                 'engine.objects.level', 'engine.ai.pullback', 'engine.combat.sweeps',
-                'engine.objects.garrison', 'engine.objects.infiltrator', 'engine.objects.repair',
+                'engine.objects.garrison', 'engine.objects.infiltrator', 'engine.objects.repair', 'engine.objects.bridge',
                 'engine.ai.core',
                 'simproxy', 'engine.players.production'}
 # (simpullback, L8 -- the AI tactics' pullback adapter -- is not in LAYER_OF for simmicro's reason: only simai imports it)

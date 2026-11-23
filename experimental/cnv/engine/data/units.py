@@ -2031,9 +2031,9 @@ def engineer_contain(template, own=None):
                      and set(re.findall(r'(\w+)\s*=', fh)) <= {'Rule', 'Relationship'}
                      and not re.sub(r'<IncludeThing>[^<]+</IncludeThing>', '', fi).strip()
                      and relations <= {'ALLIES'}
-                     and not _attr(head, 'ReplaceWith')
-                     and _attr(head, 'id') != 'ModuleTag_EngineerContainBridge')
-        return dict(enabled=_attr(head, 'ImmediatelyEnabled', 'false').lower() == 'true',
+                     and not _attr(head, 'ReplaceWith'))
+        return dict(enabled=_attr(head, 'ImmediatelyEnabled', 'false').lower() == 'true',   # bridge: a gatehouse's
+                    bridge=_attr(head, 'id') == 'ModuleTag_EngineerContainBridge',      # (engine_bridgefix a)
                     allowed=allowed, relations=relations, supported=supported,
                     status=frozenset(_attr(head, 'ObjectStatusToSet', 'NO_REFUND').split()))
     return _chain(template, own, read)

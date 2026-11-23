@@ -152,7 +152,7 @@ class PropBody(Body):
 
 @factory.module('ManagerBody')
 class ManagerBody(Body):
-    """HB_Bridge_02's whole proxy only (Sim.add); its bridge pieces, shared health and repair: a gap."""
+    """HB_Bridge_02's whole proxy only (engine/objects/bridge.py); its gatehouses read its health; its pieces: a gap."""
 
 
 @factory.module('ManagedActiveBody')
@@ -162,7 +162,12 @@ class ManagedActiveBody(Body):
 
 @factory.module('ManagedImmortalBody')
 class ManagedImmortalBody(Body):
-    """Read as not immortal, as the reader it replaced (immortal_body named ImmortalBody alone): not benched."""
+    """Read as not immortal, as the reader it replaced (immortal_body named ImmortalBody alone): not benched. manager:
+    its bridge proxy's Body (engine/objects/bridge.py, a gatehouse), whose percent it reads (engine_bridgefix a)."""
+    manager = None
+
+    def percent(self):
+        return self.manager.percent() if self.manager else super().percent()
 
 
 @factory.module('HighlanderBody')

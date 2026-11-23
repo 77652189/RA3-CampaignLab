@@ -175,13 +175,15 @@ def capture_due(world, peers):
         d = math.hypot(g.x - b.x, g.y - b.y)
         if d > r and (b.path or d > 2 * r):
             continue
-        if world.relation(g.owner, b.owner) == 'ALLIES':
-            if g.hp >= g.max_hp:
+        if rule.get('bridge') or world.relation(g.owner, b.owner) == 'ALLIES':
+            # a bridge's gatehouse, whoever owns it, mends its bridge (engine_bridgefix a run 2: the owner, neutral, kept; an enemy's INFERRED)
+            fix = getattr(g.find(interfaces.Body), 'manager', None) or g.find(interfaces.Body)
+            if fix.health() >= fix.max_health():
                 # engine_engineer:b: full-health allies keep their owner/HP
-                # and all three nations' engineers survive. Travel INFERRED.
+                # and all three nations' engineers survive (a whole bridge's too: engine_bridgefix b). Travel INFERRED.
                 b.goal, b.mode, b.path = None, 'move', []
                 continue
-            g.mend(math.inf)
+            fix.attempt_healing(math.inf)
             world.note('修理', f'{world.label(b)} 修复 {world.label(g)}')
             world.world.remove(b, '进楼修理')
             world.change()
