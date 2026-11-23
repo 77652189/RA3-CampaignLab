@@ -142,7 +142,8 @@ def _blend_mask(px, direction, flags, two_sided):
     return np.maximum(ew, ns) if two_sided else np.minimum(ew, ns)
 
 
-def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, title=None, plain=False):
+def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, title=None, plain=False,
+           models=False):
     hm = mapterrain.HeightMap(m)
     tiles = mapterrain.Tiles(m, hm.width)
     tex = _Textures(tiles, px)
@@ -177,13 +178,21 @@ def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, 
     sea = np.array([30, 75, 110], np.float32) * (1 - 0.4 * depth)
     img = img * (1 - wet * 0.85) + sea * wet * 0.85
     pic = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8))
-    d = ImageDraw.Draw(pic, 'RGBA')
     f, small = _font(max(11, 3 * px)), _font(max(9, int(2.5 * px)))
     s = px / mapterrain.CELL                                          # pixels per world unit
 
     def at(x, y):
         px_, py_ = north_up(x, y, h * mapterrain.CELL)
         return px_ * s, py_ * s
+
+    drawn = set()
+    if models:                                  # the objects' retail models, rendered once (mapsprite.py)
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('mapsprite', os.path.join(HERE, 'mapsprite.py'))
+        mapsprite = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mapsprite)
+        pic, drawn = mapsprite.composite(pic, mapxml.objects(m), at, s)
+    d = ImageDraw.Draw(pic, 'RGBA')
 
     for g in range(0, 0 if plain else int(max(w, h) * mapterrain.CELL) + 1, 500):    # world grid every 500
         X, _ = at(g, 0)
@@ -201,6 +210,8 @@ def render(m, out, px=4, around=None, bench_view=False, water=newmap.WATERLINE, 
     for o in ([] if plain else mapxml.objects(m)):
         x, y = at(o['x'], o['y'])
         p = o['props']
+        if o['template'] in drawn and not p.get('objectName') and 'Player' not in str(p.get('originalOwner', '')):
+            continue                            # its model is on the picture; named and owned ones keep their mark
         if o['template'] == '*Waypoints/Waypoint':
             d.polygon([(x, y - 2 * px), (x + 2 * px, y), (x, y + 2 * px), (x - 2 * px, y)],
                       fill=(255, 220, 60, 230), outline=(0, 0, 0, 255))
@@ -302,10 +313,13 @@ def main():
     ap.add_argument('--water', type=float, default=newmap.WATERLINE)
     ap.add_argument('--plain', action='store_true', help='the ground only (no grid, areas, objects or labels): a picture '
                                                           'for players, e.g. the campaign shell\'s briefing map')
+    ap.add_argument('--models', action='store_true', help='the objects as their retail models seen from above '
+                                                           '(mapsprite.py; the first run renders them in Blender)')
     a = ap.parse_args()
     stem = os.path.splitext(os.path.basename(a.source))[0]
     out = a.out or os.path.join(OUT_DIR, stem + '.png')
-    print(render(load(a.source), out, a.px, a.around, a.bench_view, a.water, title=None if a.plain else stem, plain=a.plain))
+    print(render(load(a.source), out, a.px, a.around, a.bench_view, a.water, title=None if a.plain else stem,
+                 plain=a.plain, models=a.models))
 
 
 if __name__ == '__main__':
