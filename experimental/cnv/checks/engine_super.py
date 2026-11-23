@@ -230,6 +230,11 @@ VARIANTS = {
     'h': ('SpecialPowerIronCurtain', 'curtain', 'Test Radius Far', ['curtain'] + [f'{k} {d}' for d in (1200, 1600, 2000, 2400)
           for k in ('rtank', 'rfoe')], [], []),
 }
+# x: s03's spelling -- the hive made by the cast's own script (CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION,
+#    'japansuperweapon', at 'Test Vacuum Spot') and fired at once as 'specialpowernanoswarmhive'; else n
+VARIANTS['x'] = ('specialpowernanoswarmhive',) + VARIANTS['n'][1:]
+VARIANTS['y'] = ('SpecialPowerNanoSwarmHive',) + VARIANTS['n'][1:]      # y: x's control, the name as the SDK spells it
+RUN['x'] = RUN['y'] = RUN['n']
 RADIUS = {'a': (850, 950, 1050, 1150), 'g': (100, 300, 500, 800), 'h': (1200, 1600, 2000, 2400)}
 ALLROLES = (['collider', 'curtain', 'vacuum', 'nano', 'psi'] + [f'target {d}' for d in DIST]
             + [f'vtarget {d}' for d in VDIST] + [f'dtarget {d}' for d in (0, 150, 250, 350)]
@@ -242,8 +247,10 @@ def more_test(m, which):
     t = Test()
     p1 = m.player('p1')
     power, holder_role, spot, keep, shown, released = VARIANTS[which]
-    holder = m.role(holder_role).name
-    delete = [m.role(r).name for r in ALLROLES if r not in keep]
+    holder = m.role(holder_role).name + (' X' if which in 'xy' else '')
+    delete = [m.role(r).name for r in ALLROLES if r not in keep or which in 'xy' and r == 'nano']
+    make = [('CREATE_NAMED_ON_TEAM_AT_WAYPOINT_WITH_ORIENTATION', holder, 'japansuperweapon', m.team('p1'),
+             'Test Vacuum Spot', 0)] if which in 'xy' else []
     start = [('MAP_REVEAL_ALL_PERM', p1), ('SET_MILLISECOND_TIMER', 'Test Go', 1.0)]
     start += [('UNIT_CHANGE_OBJECT_STATUS', m.role(r).name, 'NO_ATTACK', 1)
               for r in keep if r.startswith(('tank', 'dtarget', 'foe', 'nfoe', 'rtank', 'rfoe'))]
@@ -255,9 +262,10 @@ def more_test(m, which):
     going = ('FLAG', 'Test Going', 1)
     t.scripts.append(Script('Test - tick', [going], [('INCREMENT_COUNTER', 1, 'CNV_Super_Tick')], once=False))
     t.scripts.append(Script('Test - cast', [going, ('COUNTER', 'CNV_Super_Tick', 2, CAST_FRAME)],
-                            [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', holder, power, spot), ('SET_FLAG', 'Test Cast', 1)]))
+                            [*make, ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', holder, power, spot),
+                             ('SET_FLAG', 'Test Cast', 1)]))
     cast_on = ('FLAG', 'Test Cast', 1)
-    if which in 'klmosncfgha':
+    if which in 'klmosncfghaxy':
         if which not in 'gha':       # g / h keep the four lines for the four tanks (the frame counter runs unshown)
             t.counters.append(('CNV_Super_Frames', '帧数'))
         t.scripts.append(Script('Test - frames', [cast_on], [('INCREMENT_COUNTER', 1, 'CNV_Super_Frames')], once=False))
@@ -278,8 +286,10 @@ def more_test(m, which):
                                 once=False))
     if released:
         t.scripts.append(Script('Test - foes fire', [cast_on, ('COUNTER', 'CNV_Super_Frames', 2, 15)],
-                                [('UNIT_CHANGE_OBJECT_STATUS', m.role(r).name, 'NO_ATTACK', 0) for r in released]))
-    if which == 'n':
+                                [('UNIT_CHANGE_OBJECT_STATUS', m.role(r).name, 'NO_ATTACK', 0) for r in released] +
+                                [('NAMED_ATTACK_NAMED', m.role(r).name, m.role(s).name)      # x: each foe at its tank
+                                 for r, s in zip(released, shown) if which in 'xy']))
+    if which in 'nxy':
         for k, h in enumerate(NANO_HITS):
             t.scripts.append(Script(f'Test - hit {k}', [cast_on, ('COUNTER', 'CNV_Super_Frames', 2, h)],
                                     [('NAMED_DAMAGE', m.role(r).name, DMG) for r in shown]))
@@ -315,4 +325,4 @@ def more_test(m, which):
 
 
 CHECKS = {'engine_super': {**{w: (lambda m, w=w: super_test(m, w)) for w in 'pqijvw'},
-                          **{w: (lambda m, w=w: more_test(m, w)) for w in 'klmosndecfgha'}}}
+                          **{w: (lambda m, w=w: more_test(m, w)) for w in 'klmosndecfghaxy'}}}

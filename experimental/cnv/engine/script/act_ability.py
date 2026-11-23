@@ -38,9 +38,18 @@ def _order(sim, kind, unit, *args, **fields):
     return sim.commands.do(Command(kind, 'script', units=units, args=(('objects', by),) + args, **fields))
 
 
+def power_spelling(power):
+    """A script's power name as the data spells it: retail writes 'specialpowernanoswarmhive' (s03, a07, j07) and the
+    game finds it whatever its case (bench engine_super x)."""
+    low = str(power).lower()
+    return next((k for k in (*SUPERWEAPON_HITS, *CURTAIN, *simunits._retail_power_heads()) if k.lower() == low), power)
+
+
 def named_buttons(sim, name, a, script, unit=None):
     """The button on `a[0]` -- or on `unit`, a member a team action picked (the object itself, not a reference that
     has its name: review 11-19 i #2)."""
+    if name == 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT':
+        a = [a[0], power_spelling(a[1]), *a[2:]]
     body = (lambda _n: unit) if unit is not None else sim.body
     who = unit if unit is not None else a[0]
     evacuate = lambda: (simunits._commands(sim.own)[1].get(a[1]) or ('',))[0] == 'EVACUATE'    # noqa: E731
@@ -273,7 +282,7 @@ def player_fire_special_power_at_waypoint(sim, name, a, script):
     # (player, power, waypoint) INFERRED: the player's first living object that has the power casts it, as
     # NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT (a script's cast: no reload asked); none, nothing. Retail fires
     # protocols this way mostly (orbital refuse, final squadron): those have no source object, not simulated
-    power = next((k for k in (*SUPERWEAPON_HITS, *CURTAIN) if k.lower() == str(a[1]).lower()), a[1])
+    power = power_spelling(a[1])
     src = next((b for b in sim.living() if b.owner == a[0]
                 and simunits.power_rules(b.template, power, sim.own)), None)
     if src:

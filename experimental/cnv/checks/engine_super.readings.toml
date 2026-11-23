@@ -44,6 +44,21 @@ proves = "sim nanoswarm (engine line C round 5): tanks within 200 of the hive ta
 expect = "[rows[-1]['血0'], rows[-1]['血150']] == [80, 80] and rows[-1]['血250'] <= 10"
 
 [[reading]]
+id = "super_s03s_lower_case_hive_made_and_fired_in_one_script_as_n"
+item = "脚本动作 NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT:specialpowernanoswarmhive"
+scenes = {x = {build = "engine_super", check = "x", until = 35}, y = {build = "engine_super", check = "y", until = 35}}
+bench = """\
+s03's cast: CREATE_NAMED_..._WITH_ORIENTATION('japansuperweapon') and at once NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT \
+as x 'specialpowernanoswarmhive' / y 'SpecialPowerNanoSwarmHive'; each foe NAMED_ATTACK_NAMED at its tank 15 frames on \
+(bench 11-23 CampSuperX_mcp_1123_090842 / CampSuperY_mcp_1123_090328, the two alike): tanks 0 / 150 only lose the two scripted 10 % hits (90 at 66, 80 at \
+154, to the end 532), 250 is shot from 27 down to 1 % at 180"""
+proves = "sim named_buttons: a script's power name is matched whatever its case, on a hive made the same frame"
+expect = [
+    "[x[-1]['血0'], x[-1]['血150']] == [80, 80] and x[-1]['血250'] <= 10",
+    "[y[-1]['血0'], y[-1]['血150']] == [80, 80] and y[-1]['血250'] <= 10",
+]
+
+[[reading]]
 id = "super_the_iron_curtain_reaches_800"
 scenes = {g = {build = "engine_super", check = "g", until = 35}, a = {build = "engine_super", check = "a", until = 35}}
 bench = "g / a (each tank shot by an enemy of its own): 满血 frames of tanks at 100 / 300 / 500 / 800 bench 353 / 357 / 351 / 354 (covered), at 850 / 950 / 1050 / 1150 bench 20 / 23 / 23 / 25 (not) (bench 2026-11-07 engine_super g / a)"
