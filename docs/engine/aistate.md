@@ -104,6 +104,7 @@
 
 给关卡线（测）：
 - 两个状态抢同一批兵时，**队伍 Priority 高的那队拿走全部**；一样高时归后写的那个状态（B），哪怕它的目标晚找到——不是"先找到目标的先招"。一样高时是按写的顺序还是抽签没分开。
+- 优先级只是个数，程序只比大小（严格大于才抢）：`DEFAULT < DEFENSE < LOW < STANDARD < DEFENSE_HIGH < HIGH < COOP < SCRIPTED < HOTSPOT`。COOP（11-23，`aicoophi` / `aicoopsc`，`checks/engine_aiteamfields.readings.toml`）：从 HIGH 的守队抢得走，从 SCRIPTED 的抢不走；模拟器对上。
 - 想让 AI 留着兵等优势再出门，别靠队伍的 MinPowerAdvantage，用状态的 PowerAdvantageHeuristic（见上"战力优势开关"）。
 - 模拟器：HIGH 对 STANDARD 那组对上；另三组模拟器给"全去电厂"，对不上（AI 战术队可被招走以后 aitpprh / aitpprl 两组也对上，只剩平局 aitpprs 对不上：`checks/engine_aitargetpick.readings.toml team_priority_as_on_the_bench_on_a_tie` 标 mismatch）。
 

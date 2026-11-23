@@ -1,0 +1,16 @@
+# Bench readings of checks/engine_aiteamfields.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "coop_ranks_between_high_and_scripted"
+item = "AI 组队招人/TeamTemplate.Priority=COOP"
+scene = {build = "aicoophi", check = "a", until = 69.0}
+each = [{build = "aicoophi", released = true}, {build = "aicoopsc", released = false}]
+bench = """\
+Bench 2026-11-23 (airelprio's 2 Guardians held by a StaticDefense team, RELEASE_TO_PRIORITY; a SimpleAttack state \
+from s35 wants them), PASS both: aicoophi (holder HIGH, recruiter COOP) the tanks out s41-42, 到目标 2 s45-65; \
+aicoopsc (holder SCRIPTED, recruiter COOP) 坦克在家 2 and 到目标 0 to s72. The simulator: out s45, 到目标 s48; kept"""
+proves = """\
+simai teams: a RELEASE_TO_PRIORITY holder gives its men only to a recruiter of a strictly higher Priority, and COOP \
+ranks above HIGH and below SCRIPTED (ra3model ai/teams.PRIORITY; CampaignLab work/re d130: the program compares the \
+number only, COOP 6)"""
+expect = ["rows[-1]['坦克总数'] == 2", "(max(r['到目标'] for r in rows) >= 1) == released"]

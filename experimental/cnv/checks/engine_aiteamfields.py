@@ -10,7 +10,8 @@ Three counters a build (a fourth reads '?'), once a second; the team states and 
             simai offers the Peacekeepers first, out s16): aimaxty1 -- 2 / 0 / 2; aimaxty3 -- 0 / 0 / 0 (out s18-21)
   aihot*    坦克总数 / 坦克在家 / 到目标   s1's Guardians; within 450 of the AI base; within 300 of the player's plant
             (the attack's ClosestStructure) -- to s69 (the attack state from s35, airelprio's transfer f541)
-            expected: released (aihotstd, aihotscr) -- 到目标 ever >= 1 by s69; kept (aihotdef) -- 到目标 0 all along
+            expected: released (aihotstd, aihotscr, aicoophi) -- 到目标 ever >= 1 by s69; kept (aihotdef, aicoopsc) --
+            到目标 0 all along
 """
 from checks import engine_aitarget as at
 from parts import Script, Test, counted, square
@@ -75,4 +76,4 @@ def hotspot(m):
 
 CHECKS = {**{k: {'a': gather} for k in ('aigathwp', 'aigathno', 'aigathbad')},
           **{k: {'a': max_types} for k in ('aimaxty1', 'aimaxty3')},
-          **{k: {'a': hotspot} for k in ('aihotstd', 'aihotdef', 'aihotscr')}}
+          **{k: {'a': hotspot} for k in ('aihotstd', 'aihotdef', 'aihotscr', 'aicoophi', 'aicoopsc')}}
