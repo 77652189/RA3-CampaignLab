@@ -65,19 +65,20 @@ def _add(n, counter):
     return ('INCREMENT_COUNTER', n, counter)
 
 
-SHOW = {'switch': ('帧', '开关', '自关', '子程序'), 'timers': ('否则', '随机', '计时')}
+SHOW = {'switch': ('帧', '开关', '自关', '子程序'), 'timers': ('否则', '随机', '计时', '随帧')}
 
 
 def core(m, show):
     t = Test()
-    F, SW, SELF, SUB, ELSE, RND, CLK = (f'CNV_S6_{k}' for k in ('Frames', 'Switch', 'Self', 'Sub', 'Else', 'Rnd',
-                                                                  'Clock'))
+    F, SW, SELF, SUB, ELSE, RND, CLK, RTM = (f'CNV_S6_{k}' for k in ('Frames', 'Switch', 'Self', 'Sub', 'Else', 'Rnd',
+                                                                       'Clock', 'RTim'))
     t.counters += [(F, '帧'), (SW, '开关'), (SELF, '自关'), (SUB, '子程序'), (ELSE, '否则'), (RND, '随机'),
-                   (CLK, '计时')]
+                   (CLK, '计时'), (RTM, '随帧')]
     never = ('FLAG', 'CNV S6 Never', 1)
     s = t.scripts
     s.append(Script('Test - S6 init', [], [('SET_COUNTER', c, 0) for c, _ in t.counters]
-                    + [('SET_COUNTER', 'CNV_S6_R', 9), ('SET_COUNTER', 'CNV_S6_K', 60)]))
+                    + [('SET_COUNTER', 'CNV_S6_R', 9), ('SET_COUNTER', 'CNV_S6_T', 9),
+                       ('SET_COUNTER', 'CNV_S6_K', 60)]))
     # 帧
     s.append(Script('Test - S6 frames', [('CONDITION_TRUE',)], [_add(1, F)], once=False))
     _at(t, 'off', OFF_AT, [('DISABLE_SCRIPT', 'Test - S6 frames')])
@@ -107,9 +108,10 @@ def core(m, show):
     # 随机
     s.append(Script('Test - S6 roll', [], [('SET_MILLISECOND_TIMER', 'Test S6 Roll', 0.5)]))
     s.append(Script('Test - S6 reroll', [('TIMER_EXPIRED', 'Test S6 Roll')],
-                    [('SET_RANDOM_COUNTER', 'CNV_S6_R', 1, 3), ('SET_MILLISECOND_TIMER', 'Test S6 Roll', 0.5)],
-                    once=False))
+                    [('SET_RANDOM_COUNTER', 'CNV_S6_R', 1, 3), ('SET_RANDOM_TIMER', 'CNV_S6_T', 1, 3),
+                     ('STOP_TIMER', 'CNV_S6_T'), ('SET_MILLISECOND_TIMER', 'Test S6 Roll', 0.5)], once=False))
     s += [Script(f'Test - S6 seen {v}', [('COUNTER', 'CNV_S6_R', EQ, v)], [_add(2 ** v, RND)]) for v in range(5)]
+    s += [Script(f'Test - S6 tseen {v}', [('COUNTER', 'CNV_S6_T', EQ, v)], [_add(2 ** v, RTM)]) for v in range(5)]
     # 计时
     s.append(Script('Test - S6 clocks', [], [('SET_TIMER', 'Test S6 Frames45', 45),
                                              ('SET_RANDOM_MSEC_TIMER', 'Test S6 Six', 6.0, 6.0),
@@ -122,7 +124,8 @@ def core(m, show):
           Script('Test - S6 lt12', [('COUNTER_SECONDS', 'Test S6 Twenty', LT, 12.0)], [_add(16, CLK)]),
           Script('Test - S6 k60', [('COUNTER_COUNTER', F, GE, 'CNV_S6_K')], [_add(32, CLK)])]
     t.expect += [('帧', 6, '>', 50), ('自关', 2, '==', 11), ('开关', RUN - 2, '==', 42), ('子程序', RUN - 2, '==', 21),
-                 ('否则', RUN - 2, '==', 21), ('随机', RUN - 2, '==', 14), ('计时', RUN - 2, '==', 63)]
+                 ('否则', RUN - 2, '==', 21), ('随机', RUN - 2, '==', 14), ('计时', RUN - 2, '==', 63),
+                 ('随帧', RUN - 2, '==', 14)]
     t.counters = [(c, label) for c, label in t.counters if label in SHOW[show]]     # four lines fit; all scripts run
     t.expect = [e for e in t.expect if e[0] in SHOW[show]]
     t.bench = [('bench_watch', dict(seconds=RUN, every=1.0, sheet=False, lines=len(t.counters)))]

@@ -242,8 +242,8 @@ class PublicExecutor(port.Executor):
             self.counter(a[0])[:] = [self.frames(a[2]), True]
         elif name == 'SET_TIMER':                   # (timer, frames)
             self.counter(a[0])[:] = [int(a[1]), True]
-        elif name == 'SET_RANDOM_TIMER':            # (timer, lo, hi) frames: the latest
-            self.counter(a[0])[:] = [int(a[2]), True]
+        elif name == 'SET_RANDOM_TIMER':            # (timer, lo, hi) frames at random, both ends in (engine_scripts6)
+            self.counter(a[0])[:] = [self.rng.randint(int(a[1]), int(a[2])), True]
         elif name == 'STOP_TIMER':                  # frames left kept; no longer expired (bench engine_timer)
             self.counter(a[0])[1] = False
         elif name == 'RESTART_TIMER':               # runs on only with frames left
