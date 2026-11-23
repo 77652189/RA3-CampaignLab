@@ -30,3 +30,11 @@ frames 7-8 the Peacekeeper boxed (its panel up) and right-clicked east, frame 8 
 proves = """HealCrateCollide (negative): the bench's own box select and right-click send On's Peacekeeper across its crate and \
 the crate still stays and heals none -- a player's order is not the missing trigger (the sim moves nobody here: no clicks)"""
 expect = "all(r['箱子位'] == 15 and r['满血位'] == 0 and r['On 兵血'] == 50 and r['Off 兵血'] == 50 for r in rows)"
+
+[[reading]]
+id = "the_retail_named_crate_is_not_taken_either"
+scene = {build = "engine_healcrate_r", check = "a", until = 18}
+bench = "engine_healcrate_r:a, run_queue CampHCRealA_mcp_1123_071522: 箱子位 / 满血位 / On 兵血 / Off 兵血 15 0 50 50 at s1-s17"
+proves = """HealCrateCollide (negative): a with On, Foe and Veh placing the retail HealCrate by its own name (no clone, no new id) -- \
+still none taken, none healed: the clone's id is not why (hypothesis 5)"""
+expect = "all(r['箱子位'] == 15 and r['满血位'] == 0 and r['On 兵血'] == 50 and r['Off 兵血'] == 50 for r in rows)"

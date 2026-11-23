@@ -23,14 +23,16 @@ CAST = {'On': [('man', MAN, 'p1', -200, 0), ('near', TANK, 'p1', 0, 70), ('far',
 CAST['Off'] = CAST['On']
 
 
-def mission():
-    m = Mission(name='CampHealCrate', map=probe_range, units=[])
+def mission(real=False):
+    """real (engine_healcrate_r, hypothesis 5): On, Foe and Veh place the retail HealCrate by its own name, no clone."""
+    m = Mission(name='CampHCReal' if real else 'CampHealCrate', map=probe_range, units=[])
     for tag, lane in LANES:
         crate = clone('Neutral/Crates/HealCrate.xml', 'HealCrate', 'CNVHC' + tag)
         if tag == 'Off':
             remove(crate, 'HealCrateCollide')
-        m.units.append(crate)
-        m.put(crate.id, lane + ' gun', side='neutral', role=tag + ' crate', name=f'HC {tag} crate')
+        if not real or tag == 'Off':
+            m.units.append(crate)
+        m.put(crate.id if crate in m.units else 'HealCrate', lane + ' gun', side='neutral', role=tag + ' crate', name=f'HC {tag} crate')
         for part, template, side, dx, dy in CAST[tag]:
             m.put(template, lane + ' gun', dx, dy, side=side, role=f'{tag} {part}', name=f'HC {tag} {part}')
     return m
@@ -92,6 +94,6 @@ def ordered(m):
     return t
 
 
-MISSION = {'engine_healcrate': mission}
-CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}}
+MISSION = {'engine_healcrate': mission, 'engine_healcrate_r': lambda: mission(True)}
+CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}, 'engine_healcrate_r': {'a': check}}
 CONTROL_ARMS = {'engine_healcrate': ('On', 'Off')}
