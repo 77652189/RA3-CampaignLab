@@ -34,7 +34,6 @@ from engine.ports import templates
 
 LIFETIME = module.LIFETIME      # module.Death's cause for a LifetimeUpdate's death of age
 AIRBORNE = module.AIRBORNE      # the status bit of a thing in the air
-FIGHT = False   # TEMPORARY (E 11-22): a death in a fight makes nothing until 7 AI readings' reds it brought are read
 
 
 class CreateObjectDieData(module.ModuleData, module.DieMux):
@@ -66,7 +65,7 @@ class CreateObjectDie(module.Module, interfaces.Die, interfaces.CreateOnDeath):
         d, thing = self.data, self.thing
         if info.cause == LIFETIME and d.takes(info.death):
             self.world.create(thing, d.ocl, False)
-        elif FIGHT and thing.surface != 'air' and d.takes(info.death) and d.holds(
+        elif thing.surface != 'air' and d.takes(info.death) and d.holds(
                 module.status_now(thing) if info.status is None else info.status) and \
                 not d.ups_forbidden & self.world.upgrades(thing):
             self.world.create(thing, d.ocl, False, fight=True)

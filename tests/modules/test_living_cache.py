@@ -69,7 +69,7 @@ def test_living_cache_tracks_same_frame_world_and_spawn_changes():
     assert [p for p in brain.living() if p.owner == world.human] == [a, b, yard]
 
     world.world.kill(yard, 'test')  # the same broadcast deletes its drones
-    for pk in [p for p in world.living() if p.name.startswith('#left')]:  # and its Peacekeeper (CreateObjectDie.FIGHT)
+    for pk in [p for p in world.living() if p.name.startswith('#left')]:  # and its Peacekeeper (CreateObjectDie)
         world.world.remove(pk, 'test')
     _assert_view(world.living(), a, b, house)
     world.world.remove(b, 'test')
