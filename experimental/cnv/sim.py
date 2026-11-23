@@ -1686,7 +1686,7 @@ class Sim:
         Tanya's pistol, SNIPER, at every faction building) cannot take it at all, ordered or not (Generals
         WeaponSet::getAbleToUseWeaponAgainstTarget: estimateWeaponDamage 0 -> ATTACKRESULT_INVALID_SHOT; the a6
         Tanya who stood firing at a building, 2026-11-08)."""
-        if simunits.percent(t.armor, w['type']) <= 0:
+        if w['type'] == 'HEALING' or simunits.percent(t.armor, w['type']) <= 0:     # a repair gun: host.mend
             return False
         anti = w['anti']
         if not anti:

@@ -71,3 +71,20 @@ def test_a_thing_without_one_reads_no_modules_in_force():
     s.add('p', 'AlliedPowerPlant', 'Player_1', 100.0, 100.0)
     b = s.bodies['p']
     assert b.find(interfaces.LevelUp) == () and b.level_modules == set()
+
+
+def test_script_points_add_up_to_the_retail_table_ranks():
+    """simlevel.give_xp (engine_shot vet: a V4's ranks at 3600 / 7200 / 10800; a copy ranks nothing)."""
+    s = simsmall.small_world()
+    s.add('v4', 'SovietAntiStructureVehicle', 'Player_1', 100.0, 100.0)
+    b = s.bodies['v4']
+    simlevel.give_xp(s, b, 3598)
+    assert b.level_rank == 1
+    simlevel.give_xp(s, b, 3599)
+    assert b.level_rank == 2 and 'Upgrade_Veterancy_VETERAN' in b.upgrades
+    simlevel.give_xp(s, b, 7200)
+    assert b.level_rank == 4 and {'Upgrade_Veterancy_ELITE', 'Upgrade_Veterancy_HEROIC'} <= b.upgrades
+    s.own['CNV_TestVet'] = UNIT
+    s.add('copy', 'CNV_TestVet', 'Player_1', 200.0, 100.0)
+    simlevel.give_xp(s, s.bodies['copy'], 10800)
+    assert s.bodies['copy'].level_rank == 1

@@ -19,7 +19,7 @@ from engine.kernel import interfaces
 
 @functools.lru_cache(maxsize=1)
 def profiles():
-    """Retail target -> rank -> (upgrades, modifiers), with template inheritance."""
+    """Retail target -> rank -> (upgrades, modifiers, RequiredExperience), with template inheritance."""
     root = ET.parse(os.path.join(simunits.SAGEXML, 'GlobalData', 'ExperienceLevels.xml')).getroot()
     tag = lambda name: '{uri:ea.com:eala:asset}' + name
     nodes = {e.get('id'): e for e in root.findall(tag('ExperienceLevelTemplate'))}
@@ -27,16 +27,17 @@ def profiles():
     @functools.lru_cache(maxsize=None)
     def resolved(name):
         e = nodes[name]
-        base = resolved(e.get('inheritFrom')) if e.get('inheritFrom') in nodes else (1, (), ())
+        base = resolved(e.get('inheritFrom')) if e.get('inheritFrom') in nodes else (1, (), (), 0.0)
         return (int(e.get('Rank', base[0])),
                 tuple(x.text.strip() for x in e.findall(tag('Upgrade'))) or base[1],
-                tuple(x.text.strip() for x in e.findall(tag('AttributeModifier'))) or base[2])
+                tuple(x.text.strip() for x in e.findall(tag('AttributeModifier'))) or base[2],
+                float(e.get('RequiredExperience', base[3])))
 
     out = {}
     for name, e in nodes.items():
-        rank, upgrades, modifiers = resolved(name)
+        rank, *rest = resolved(name)
         for target in e.findall(tag('Target')):
-            out.setdefault(target.text.strip().lower(), {})[rank] = (upgrades, modifiers)
+            out.setdefault(target.text.strip().lower(), {})[rank] = tuple(rest)
     return out
 
 
@@ -68,27 +69,50 @@ def receive(world, b, up, on, newly_held):
             world.gap('升级', 'LevelUpUpgrade/profile', f'{b.template} 缺等级表')
             continue
         lm.set_active(True)
-        b.level_rank = new
-        seen = {mid for rank, (_, mids) in profile.items() if rank <= old for mid in mids}
-        for rank in range(old + 1, new + 1):
-            upgrades, mids = profile[rank]
-            for modifier_id in mids:
-                if modifier_id in seen:
-                    continue
-                seen.add(modifier_id)
-                modifier = simunits.modifier(world.xml_of(b.template), modifier_id)
-                multipliers = modifier['types'].get('HEALTH_MULT', []) if modifier else []
-                if multipliers:
-                    if modifier_id != 'Unit_Elite' or multipliers != [1.25]:
-                        world.gap('升级', 'LevelUpUpgrade/' + modifier_id, '该等级血量倍率未对拍')
-                    else:
-                        # engine_levelhealth a/b: 500 -> 625 max HP; keep health fraction.
-                        for multiplier in multipliers:
-                            b.set_hp(b.hp * multiplier, b.max_hp * multiplier)     # told, as every write of the health
-            for upgrade in upgrades:
-                b.upgrades.add(upgrade)
-                b.up_since[upgrade] = world.frame_now()
+        rank_up(world, b, profile, new)
         world.used.add('levelup')
+
+
+def give_xp(world, b, points):
+    """For A's UNIT_GIVE_EXPERIENCE_POINTS / TEAM_SET_EXPERIENCE_POINTS: `points` more experience on b; every rank of
+    its retail table (profiles: the ExperienceLevelTemplate naming it as Target) whose RequiredExperience is reached
+    comes as a LevelUpUpgrade's does. Bench: engine_shot vet (a V4 given 3600 / 7200 / 10800 is ranks 2 / 3 / 4: the
+    rank's DAMAGE_MULT, the heroic's RATE_OF_FIRE), engine_heal e (a GI given 1800, its rank 4: the heroic heal). A
+    template without a table (a copy) ranks nothing (engine_shot vet's copy read rank 1). INFERRED: the points count
+    from the rank's own RequiredExperience (the body keeps no points: Body fields only shrink), so two gives below a
+    rank's step do not add up; kill experience (ExperienceAward) is a gap."""
+    profile = profiles().get(b.template.lower(), {})
+    have = profile.get(b.level_rank, ((), (), 0.0))[2] + points
+    new = b.level_rank
+    while new + 1 in profile and profile[new + 1][2] <= have:
+        new += 1
+    if new > b.level_rank:
+        rank_up(world, b, profile, new)
+
+
+def rank_up(world, b, profile, new):
+    """b from its rank to `new`: each rank's veterancy upgrades and its modifiers not yet held (elite HEALTH_MULT
+    1.25 keeps the health fraction; another health multiplier is a gap)."""
+    old, b.level_rank = b.level_rank, new
+    seen = {mid for rank, (_, mids, *_) in profile.items() if rank <= old for mid in mids}
+    for rank in range(old + 1, new + 1):
+        upgrades, mids, *_ = profile[rank]
+        for modifier_id in mids:
+            if modifier_id in seen:
+                continue
+            seen.add(modifier_id)
+            modifier = simunits.modifier(world.xml_of(b.template), modifier_id)
+            multipliers = modifier['types'].get('HEALTH_MULT', []) if modifier else []
+            if multipliers:
+                if modifier_id != 'Unit_Elite' or multipliers != [1.25]:
+                    world.gap('升级', 'LevelUpUpgrade/' + modifier_id, '该等级血量倍率未对拍')
+                else:
+                    # engine_levelhealth a/b: 500 -> 625 max HP; keep health fraction.
+                    for multiplier in multipliers:
+                        b.set_hp(b.hp * multiplier, b.max_hp * multiplier)     # told, as every write of the health
+        for upgrade in upgrades:
+            b.upgrades.add(upgrade)
+            b.up_since[upgrade] = world.frame_now()
 
 
 def damage_modifiers(world, b, xml):
@@ -96,7 +120,7 @@ def damage_modifiers(world, b, xml):
     if b.level_rank <= 1:
         return []
     out, seen = [], set()
-    for rank, (_, mids) in profiles().get(b.template.lower(), {}).items():
+    for rank, (_, mids, *_) in profiles().get(b.template.lower(), {}).items():
         if rank > b.level_rank:
             continue
         for mid in mids:

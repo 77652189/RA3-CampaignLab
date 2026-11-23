@@ -23,6 +23,7 @@ import engine.data.units as simunits
 from engine.combat import dot, leech, meta_impact
 from engine.combat import projectile as flight
 from engine.combat import registry
+from engine.combat.range import in_range
 from engine.kernel import interfaces
 import engine.objects.modifier as simmodifier
 from engine.modules import weaponset
@@ -161,6 +162,23 @@ def armor_scalar(victim, damage_type):
     1) -- a passenger's (DamageContained), a DOT tick's (registry.Context.armor)."""
     return (1.0 if damage_type == 'UNRESISTABLE' else
             simunits.percent(victim.armor, damage_type) / 100.0 * victim.taken)
+
+
+def mend(world, dt):
+    """A HEALING gun (ABD_RepairWeapon, the engineer's in a multigunner turret: Garrisons.secondary) mends the nearest
+    hurt friendly ground vehicle in its reach by its rate x the armor's HEALING percent. Bench engine_secondrep_e r: a
+    Guardian 40 off from 50 to 100 % in about 7 s (37.5 a second), one 150 off and an empty turret's do not.
+    INFERRED: the nearest first, its AttributeModifier_UnderRepair, REPAIR_ALLIES_WHEN_IDLE (fights before mending?)."""
+    live = world.living()
+    for a in live:
+        for w in a.weapons:
+            if w.get('type') != 'HEALING':
+                continue
+            hurt = [t for t in live if t is not a and t.hp < t.max_hp and 'VEHICLE' in t.kinds
+                    and t.surface != 'air' and world.relation(a.owner, t.owner) == 'ALLIES' and in_range(a, t, w)]
+            if hurt:
+                t = min(hurt, key=lambda t: math.hypot(t.x - a.x, t.y - a.y))
+                t.mend(w['dps'] * dt * simunits.percent(t.armor, 'HEALING') / 100.0)
 
 
 def straight_speed(projectile, own):
@@ -413,6 +431,7 @@ class Damage:
                     world.first_death = (world.t, t, by)
                 world.world.kill(t, f'被 {world.label(by)} 打掉')
         self.chill(world, dt, peers)
+        mend(world, dt)
 
     def mark_cold(self, target, by):
         """`by` is the one of record for the cold `target` took this frame (cold_on, read by chill;

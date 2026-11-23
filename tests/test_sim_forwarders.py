@@ -63,7 +63,7 @@ FORWARDER_CALLS = {
     ('engine.script.act_ability', 'living'): 2, ('engine.script.act_object', 'living'): 3, ('engine.script.act_order', 'living'): 3,
     ('engine.script.act_player', 'living'): 3, ('engine.script.act_world', 'living'): 1, ('engine.ai.core', 'living'): 23,
     ('engine.script.cond_object', 'living'): 8, ('engine.script.cond_player', 'living'): 1, ('engine.script.cond_vision', 'living'): 3,
-    ('engine.combat.host', 'living'): 2, ('engine.combat.meta_impact', 'living'): 1, ('engine.objects.garrison', 'living'): 1,
+    ('engine.combat.host', 'living'): 3, ('engine.combat.meta_impact', 'living'): 1, ('engine.objects.garrison', 'living'): 1,
     ('engine.objects.infiltrator', 'living'): 3, ('engine.objects.mine', 'living'): 3, ('engine.objects.modifier', 'living'): 1,
     ('engine.orders.order', 'living'): 3, ('engine.orders.ability', 'living'): 2, ('engine.orders.hunt', 'living'): 1, ('simproxy', 'living'): 3, ('engine.ai.pullback', 'living'): 1,
     ('engine.objects.special', 'living'): 2, ('engine.combat.sweeps', 'living'): 1,
@@ -81,8 +81,8 @@ SIM_SURFACE = {
                  'note*4 own*15 players*6 relation relations*3 t*4 waypoints*2 who*4 world xml_of*2',
     'engine.combat': 'attachment_tick attachments*4 can_hit change*2 cold_of*3 death_blasts*2 emp_disabled*3 firing '
                      'first_death*4 frame_now*17 gap*6 garrison*2 ground*6 guessed has_model_condition hostile infiltrators*2 '
-                     'label*5 lift_timers*2 living*5 mark_first_death note own*7 player_ups projectile_detonate*2 '
-                     'queue_projectile_hit relation*3 set_model_condition*2 shots_due suppression_fields*3 sweeps t*4 used*7 '
+                     'label*5 lift_timers*2 living*6 mark_first_death note own*7 player_ups projectile_detonate*2 '
+                     'queue_projectile_hit relation*4 set_model_condition*2 shots_due suppression_fields*3 sweeps t*4 used*7 '
                      'world*7 xml_of*2',
     'engine.kernel': 'seq*2',
     'engine.loop': '_life aim_due anchored*2 auto_kill_due blast_due clock combat*3 deal death_blast_due ending*4 events*5 '

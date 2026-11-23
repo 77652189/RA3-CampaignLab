@@ -796,7 +796,7 @@ def test_health_guard_bites():
     # a write outside the Body that tells is still outside it (as simlevel's elite multiplier was before step B1)
     told = dict(sources, **{'engine/objects/level.py': sources['engine/objects/level.py'].replace(
         'b.set_hp(b.hp * multiplier, b.max_hp * multiplier)', 'b.max_hp *= multiplier; b.health_moved(0, 0)', 1)})
-    assert told['engine/objects/level.py'] != sources['engine/objects/level.py'] and health_breaks(health_writes(told)) == [('engine/objects/level.py', 'receive')]
+    assert told['engine/objects/level.py'] != sources['engine/objects/level.py'] and health_breaks(health_writes(told)) == [('engine/objects/level.py', 'rank_up')]
     # a module writing its thing's health
     mod = 'engine/modules/autoheal.py'
     assert mod in sources

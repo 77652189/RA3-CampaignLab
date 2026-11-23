@@ -8,3 +8,12 @@ each = [{build = "engine_secondon_e", inside = 15}, {build = "engine_secondoff_e
 bench = "E174 frame 360, before 3, inside 15 (with the listener) / 7 (removed), after 3; the check's own expectations hold"
 proves = "IF_SecondaryObjectListener: the listener adds the secondary object's bits while the engineer is inside"
 expect = ["list(rows[-1].values()) == [360, 3, inside, 3]", "verdicts() and all(ok for ok, _ in verdicts())"]
+
+[[reading]]
+id = "secondary_repair_weapon_mends_the_near_guardian"
+scene = {build = "engine_secondrep_e", check = "r", until = 15}
+bench = "CampSecondRepER_mcp_1123_125236 (血N 血F 血C 态, once a wall second from the hurt at 2 s): 51 57 63 70 78 86 92 100 then 100; F and C 50 throughout; 态 11 (crew ENCLOSED, Uprade_IFV_Repair held)"
+proves = "IF_SecondaryObjectListener's Uprade_IFV_Repair holds ABD_RepairWeapon (5 HEALING every 2 frames, 37.5 a second, reach 25): the crewed turret mends a hurt Guardian 40 off; not one 150 off, not an empty turret's"
+item = "物体模块 Behaviors/SecondaryObjectListenerModule"
+expect = ["all(4 <= b - a <= 9 for a, b in zip(win(3, 7, '血N'), win(4, 8, '血N')))", "win(10, 14, '血N') == [100] * 5",
+          "win(3, 14, '血F') == [50] * 12 and win(3, 14, '血C') == [50] * 12"]
