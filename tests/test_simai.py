@@ -42,6 +42,12 @@ def skirmish(lib):
     return simai_run.run('aiskirm', until=300, lib=lib)
 
 
+@pytest.fixture(scope='module')
+def early(lib):
+    """aiskirm at 30 s, the player still standing (by 300 s the AI has wiped it out: all gone at ~240 s, 11-23)."""
+    return simai_run.run('aiskirm', until=30, lib=lib)
+
+
 def _first_attack(b):
     return next((e for e in b.ai.teams.log if e[1] == 'go'
                  and e[2][0].startswith(('BalancedAttack', 'BalancedCleanup'))), None)
@@ -73,19 +79,18 @@ def test_skirmish_ai_cleanup_full_the_next_units_go_to_its_other_slot(skirmish):
                                                                 (other[0] - b.started) / simai.FPS)
 
 
-def test_skirmish_ai_talks_about_itself(skirmish):
-    th = skirmish.thoughts()
-    (me,) = th.values()
+def test_skirmish_ai_talks_about_itself(skirmish, early):
+    (me,) = skirmish.thoughts().values()
     assert me['opening'] == 'AlliedStandard' and me['opening done']
+    (me,) = early.thoughts().values()      # targets while there is an enemy to pick
     assert 'targets' in me and any(me['targets'].values())
 
 
-def test_path_to_target_is_asked_on_the_simulators_grid(lib):
+def test_path_to_target_is_asked_on_the_simulators_grid(early):
     """PathToTargetHeuristic (work/re l4_states.md 3): the opening and the states ask the brain; the skirmish map is
     one piece of land, so infantry has a way and a ship finds no water spot (= no way). At 300 s the player's base
     is gone: no enemy with a base object, so it cannot judge (None, counted as a way)."""
-    w = simai_run.run('aiskirm', until=30, lib=lib)
-    (b,) = w.brains.values()
+    (b,) = early.brains.values()
     assert any(k[0] == 'Land' and v[1] is True for k, v in b.paths.items())   # the opening / states asked
     b.paths.clear()
     assert b.path_to_target('Land', 'AlliedAntiInfantryInfantry', 'NORMAL') is True
@@ -102,11 +107,10 @@ def test_path_to_target_cannot_judge_without_an_enemy_base(skirmish):
     assert b.path_to_target('Land', 'AlliedAntiInfantryInfantry', 'NORMAL') is None
 
 
-def test_strategic_facts_the_brain_gives(lib):
+def test_strategic_facts_the_brain_gives(early):
     """The cheap strategic-state facts (work/re l4_states.md 10, states.strategic): harvesters, money, the first
     enemy's money, no beacons, and PowerAdvantage asked lazily with tactics' rule; the rest stay unmodelled."""
-    w = simai_run.run('aiskirm', until=30, lib=lib)
-    (b,) = w.brains.values()
+    (b,) = early.brains.values()
     f = b.facts()
     st = b.host.mod['states']
     assert f['harvesters'] == sum('HARVESTER' in x.kinds for x in b.host.sim.living() if x.owner == b.player)
