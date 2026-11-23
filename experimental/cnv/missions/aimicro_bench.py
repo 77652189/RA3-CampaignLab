@@ -318,6 +318,17 @@ def keep_target(name, seconds=2):
     return m
 
 
+def random_score(name, m):
+    """RandomTargetScoreModifier only, on the zero-keep observed Engage carrier (aiegon): each state-2 pass every
+    member re-picks; m = 0 keeps the pick the score's, a large m draws it (score x uniform(1/(1+m), 1+m))."""
+    t = engage_clock(name, True)
+    t.assets = [(path, text.replace('EngageHostileTargets="true"',
+                    f'EngageHostileTargets="true" RandomTargetScoreModifier="{m:g}"'), key)
+                for path, text, key in t.assets]
+    t.facts['random score'] = float(m)
+    return t
+
+
 def dodge(name, enabled, reaction=0.5):
     """DodgeThreats only: recruited warriors fighting the same immortal conscripts.
 
@@ -397,6 +408,8 @@ def ignore_rule(name, rule):
 
 
 MISSION = {'aikeeptwo': lambda: keep_target('CampAIKeepTwo'),
+           'airands0': lambda: random_score('CampAIRandS0', 0),
+           'airandsx': lambda: random_score('CampAIRandSX', 1000),
            'aiignrany': lambda: ignore_rule('CampIgnRuleAny', 'ANY'),
            'aiignrall': lambda: ignore_rule('CampIgnRuleAll', 'ALL'),
            'aiegon': lambda: engage_clock('CampAIEgOn', True),

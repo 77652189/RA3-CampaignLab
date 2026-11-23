@@ -431,7 +431,7 @@ def base_choices(run, use=None):
 KASSIGN = re.compile(r'^kassign: frame=(-?\d+) team=(\S+) mstate=(-?\d+) src=(\S+) ra=\S+ mem=(\d+) tgt=(\d+) '
                      r'flag=(\d+) ret=(\d+) w=([01]) prev=(\S+) start=(-?\d+) until=(-?\d+) keep=(-?\d+) '
                      r'min=(\S+) max=(\S+) n=(\d+)$')
-KPASS = re.compile(r'^kpass: frame=(-?\d+) team=(\S+) cand=(\S*) keep=(\S*)(?: why=(\S*))?$')
+KPASS = re.compile(r'^kpass: frame=(-?\d+) team=(\S+) cand=(\S*) keep=(\S*)(?: why=(\S*))?(?: sc=\S*)?$')
 
 
 def target_orders(run, team=None):
