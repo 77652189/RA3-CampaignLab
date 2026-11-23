@@ -29,3 +29,24 @@ expect = ["win(16, 17, '同帧') == [10000] * 2",
           "win(24, 32, '同帧') == [10000] * 9",
           "win(50, 52, '同帧') == [10000] * 3"]
 mismatch = "sim: on the pad f226-f361, f496-f631, f766-f901 (~135 frames a trip: it drives to the refinery's centre, not the dock bones, and leaves 45 frames after the last coin); bench ~75 frames. The coins themselves within ~10 frames (the readings above)"
+
+# dockqueue: bench 2026-11-22 (run_queue, head 1b383c7c, CampDockQA_mcp_1122_204453, ra3ext dock phases; work/re/e207_dockqueue.md):
+# miner 1 (the front node's) asks "can I go direct" and is told yes every trip: straight to the action pad, no queue
+# place; miner 2 (the side node's) is told no: BestBone -> a queue bone (pos 1000) while the pad is held, then pad 0 ->
+# pad 1 (18 + 22 frames) once the other has left by pad 2 (14 frames after its unload). Unload 30 frames each.
+
+[[reading]]
+id = "a_queued_miner_unloads_once_the_other_has_left_the_pad_and_it_drove_in"
+scene = {build = "dockqueue", check = "a", until = 16}
+bench = "资金 250 from s7.87 (miner 1 unloads f86-116), 306 s11.87, 500 from s13.4: miner 2 came at f93 (MoveQueue), waited at a queue bone (pos 1000) to f130 (miner 1 done with pad 2), pad 0 f148, pad 1 f170, unload f170-200"
+proves = "物体模块 QueueDock: a miner coming while another holds the pads waits in the queue, and gets in only after the other has driven off by pad 2; then pad 0 -> pad 1 before it unloads (54 frames after the other's last coin)"
+expect = ["first('资金', lambda v: v >= 250) == 8", "first('资金', lambda v: v >= 500) == 14"]
+mismatch = "sim: 500 at s12 -- miner 2 arrives 39 frames after miner 1 (no queue) and unloads on arrival; its 'one at a time' would also start it on the frame the other's unload ends, not 54 later"
+
+[[reading]]
+id = "a_miner_that_goes_direct_unloads_beside_a_docked_one"
+scene = {build = "dockqueue", check = "a", until = 32}
+bench = "资金 758 s26.0, 830 s26.6, 918 s27.07, 1030 s27.53, 1144 s28.0, 1216 s28.6, 1250 s29.07: 16 a frame f406-420 -- miner 1 (CanGoDirect, pos 2000: no queue place) unloads f388-418 while miner 2 (pos 1) unloads f401-431"
+proves = "物体模块 QueueDock: the refinery does not hold a miner that can go direct to its action pad: two unloads at once"
+expect = ["max(b['资金'] - a['资金'] for a, b in zip(rows, rows[1:])) > 150"]
+mismatch = "sim: a refinery unloads one miner at a time (engine/objects/mine.py 'to refinery': the next waits for the busy one), its biggest second 130"

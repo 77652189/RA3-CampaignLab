@@ -58,5 +58,27 @@ def check(m):
     return t
 
 
-CHECKS = {'engine_queuedock': {'a': check}, 'queuedockoff': {'a': check}}
+def queue_check(m):
+    """dockqueue: two miners, one refinery. Money every frame (two unloads at once would rise 16 a frame); 同帧 digits:
+    miner 1 in the pad box 1, miner 2 10, both miners and the refinery alive 100. The queue itself: ra3ext's dock
+    phases (pos 1000+i waiting, MoveQueue / UpdateQueue)."""
+    t = Test()
+    t.areas['E152 Pad'] = square(*m.facts['dock pad'])
+    t.counters = [('E152Frame', '帧数'), ('E152Money', '资金'), ('E152State', '同帧')]
+    t.scripts = [Script('Test - E152 start', [], [
+        ('MAP_REVEAL_ALL_PERM', m.player('p1')), ('PLAYER_SET_MONEY', m.player('p1'), 0)]),
+        Script('Test - E152 frame', [], [('INCREMENT_COUNTER', 1, 'E152Frame'), ('SET_COUNTER', 'E152State', 0),
+            ('SET_PLAYER_MONEY_TO_COUNTER', m.player('p1'), 'E152Money')], once=False)]
+    miners = [m.role(f'miner{k}').name for k in (1, 2)]
+    for tag, bit, conds in [('pad 1', 1, [('NAMED_INSIDE_AREA', miners[0], 'E152 Pad')]),
+                            ('pad 2', 10, [('NAMED_INSIDE_AREA', miners[1], 'E152 Pad')]),
+                            ('alive', 100, [('NAMED_DESTROYED', n, NOT) for n in miners + [m.role('refinery').name]])]:
+        t.scripts.append(Script('Test - E152 state ' + tag, conds,
+            [('INCREMENT_COUNTER', bit, 'E152State')], once=False))
+    t.expect = [('资金', 0, 'ever>=', 1000, 50), ('帧数', 0, 'ever>=', 750)]
+    t.bench = [('bench_watch', dict(seconds=50, every=0.5, sheet=False, lines=3))]
+    return t
+
+
+CHECKS = {'engine_queuedock': {'a': check}, 'queuedockoff': {'a': check}, 'dockqueue': {'a': queue_check}}
 CONTROLS = {'queuedockoff': 'engine_queuedock'}
