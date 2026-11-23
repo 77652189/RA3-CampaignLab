@@ -205,7 +205,8 @@ def badge_folder(model):
 
 def badges():
     """BADGED's buttons and portraits -> work/units/badged/<model>/Button_<model>.tga, Portrait_<model>.tga: the
-    retail image, the ability icon at its bottom right (two fifths of the height, a dark rim); no retail image (None):
+    retail image, the button with the ability icon at its bottom right (two fifths of the height, a dark rim), the
+    portrait as it is; no retail image (None):
     the ability icon itself, filling the button (the portrait its middle band)."""
     import button_icon
     from PIL import ImageDraw
@@ -217,6 +218,8 @@ def badges():
             if name is None:
                 big = icon.resize((size[0], size[0]), Image.LANCZOS)
                 im = big.crop((0, (size[0] - size[1]) // 2, size[0], (size[0] + size[1]) // 2))
+            elif kind == 'Portrait':        # user 11-23: no badge on the portrait (the unit's intro clip sits there)
+                im = button_icon.retail(name)
             else:
                 im = button_icon.retail(name)
                 w, h = im.size
