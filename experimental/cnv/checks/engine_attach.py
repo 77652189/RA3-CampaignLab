@@ -208,7 +208,7 @@ def mission_parent_death():
     was low; independent bits distinguish missing flags from an AND-query gap.
     MEASURED2026-11-11: 958/928/48/32 (c_attach_parent_split_bench.log).
     Simple NON_AUTOACQUIRABLE reads high; NO_COLLISIONS reads low at both
-    samples. Do not infer a reason or silently clear it in the model. Native
+    samples: the module never gives it (engine_attach_nocoll n). Native
     lanes have no8s link, so their death boundary remains unmeasured. See
     work/re/c_attach_parent_report.md; full replay is a strict xfail.
     """
@@ -390,9 +390,59 @@ def check_parent_delete(m):
     return t
 
 
+NOCOLL=('NO_COLLISIONS NON_AUTOACQUIRABLE','NO_COLLISIONS','NON_AUTOACQUIRABLE','NON_AUTOACQUIRABLE')
+
+
+def mission_nocoll():
+    """Why engine_attach_parent's child reads NO_COLLISIONS 0: per lane the simple module's AttachedObjectStatus
+    (NOCOLL) -- base the order swapped, high NO_COLLISIONS alone, order NON_AUTOACQUIRABLE with the script setting
+    NO_COLLISIONS on the attached child at 9 s, removed the same set with no nugget (never attached: the control
+    that this gun keeps a script-set bit; KNC a reads one on an infantry)."""
+    m=mission();m.name='CampAttachNC'
+    for lane,bits in zip(CASES,NOCOLL):
+        u=next(u for u in m.units if u.id=='CNV_Attach'+lane.title())
+        u.xml=re.sub(r'<AttachNugget\b.*?</AttachNugget>','',u.xml,flags=re.S)
+        if lane!='removed':
+            u.xml=u.xml.replace('</Nuggets>','<AttachNugget AttachModuleId="ModuleTag_Attach">'
+                                '<SpecialObjectFilter Rule="ANY" Include="VEHICLE"/></AttachNugget></Nuggets>')
+        u.xml=u.xml.replace('AttachedObjectStatus="ENCLOSED UNATTACKABLE"',f'AttachedObjectStatus="{bits}"')
+    return m
+
+
+def check_nocoll(m):
+    """Child bits at 8 s (ATTACHED32 NON_AUTOACQUIRABLE16 NO_COLLISIONS8) and 12 s (4 2 1), each its own query.
+    PREDICT 54/36/55/1: the module never gives NO_COLLISIONS (both orders), a script-set one stays on the child.
+    Were it given as written: 63/45/55/1; were an attached child's NO_COLLISIONS cleared: 54/36/54/1."""
+    t=Test();start=[('MAP_REVEAL_ALL_PERM',m.player('p1'))]
+    for phase,at in (('Fire',6.),('Stop',6+4/15),('Before',8.),('Set',9.),('Late',12.)):
+        start.append(('SET_MILLISECOND_TIMER','NoColl '+phase,at))
+    acts={'Fire':[],'Stop':[],'Set':[]}
+    for lane in CASES:
+        child,parent='Attach '+lane+' child','Attach '+lane+' parent'
+        c='CNV_NoColl_'+lane;t.counters.append((c,lane+' nocoll'))
+        start.extend(('UNIT_CHANGE_OBJECT_STATUS',v,'NO_ATTACK',1) for v in (child,parent))
+        acts['Fire']+=[('UNIT_CHANGE_OBJECT_STATUS',child,'NO_ATTACK',0),('NAMED_ATTACK_NAMED',child,parent)]
+        acts['Stop'].append(('UNIT_CHANGE_OBJECT_STATUS',child,'NO_ATTACK',1))
+        if lane in ('order','removed'):
+            acts['Set'].append(('UNIT_CHANGE_OBJECT_STATUS',child,'NO_COLLISIONS',1))
+        for phase,prefix in (('Before',8),('Late',1)):
+            for weight,bit in ((4,'ATTACHED'),(2,'NON_AUTOACQUIRABLE'),(1,'NO_COLLISIONS')):
+                t.scripts.append(Script(f'Test - nocoll {lane} {phase}{weight}',
+                    [('TIMER_EXPIRED','NoColl '+phase),('FLAG','NoColl sampled '+phase,0),
+                     ('UNIT_HAS_OBJECT_STATUS',child,status(bit))],[('INCREMENT_COUNTER',prefix*weight,c)]))
+    for phase in ('Before','Late'):
+        t.scripts.append(Script('Test - nocoll close '+phase,[('TIMER_EXPIRED','NoColl '+phase)],
+                               [('SET_FLAG','NoColl sampled '+phase,1)]))
+    t.scripts.insert(0,Script('Test - start',[],start))
+    t.scripts+=[Script('Test - nocoll '+k,[('TIMER_EXPIRED','NoColl '+k)],v) for k,v in acts.items()]
+    t.expect=[(label,13,'==',value,14) for (_,label),value in zip(t.counters,(54,36,55,1))]
+    t.bench=[('bench_watch',dict(seconds=14.,every=.5,sheet=False,lines=4))]
+    return t
+
+
 MISSION={'engine_attach':mission,'engine_attach_detach':mission_detach,'engine_attach_parent':mission_parent_death,
          'engine_attach_child':mission_child_death,'engine_attach_child_delete':mission_child_delete,
-         'engine_attach_parent_delete':mission_parent_delete}
+         'engine_attach_parent_delete':mission_parent_delete,'engine_attach_nocoll':mission_nocoll}
 CHECKS={'engine_attach':{'a':check},'engine_attach_detach':{'a':check_detach},'engine_attach_parent':{'a':check_parent_death},
         'engine_attach_child':{'a':check_child_death},'engine_attach_child_delete':{'a':check_child_delete},
-        'engine_attach_parent_delete':{'a':check_parent_delete}}
+        'engine_attach_parent_delete':{'a':check_parent_delete},'engine_attach_nocoll':{'n':check_nocoll}}

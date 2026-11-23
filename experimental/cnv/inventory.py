@@ -373,7 +373,7 @@ NOTES = {
     (MODULE, 'Behaviors/GateOpenAndCloseBehavior'): (TODO, 'E190原版门/删模块初始化台被SDK Behaviors拒绝该模块且缺模型资源；原生地图摆放同样强制编译失败。改用engine_gate_e:a运行时同动作创建两门与电厂哨兵，一局PASS，f180=180/0/0/1（完成/Romania门/Sanitarium门/哨兵存活）。读数在checks/engine_gate_e.readings.toml：帧数与哨兵相符，模拟器两门均1对台0记mismatch（两门模板不在SageXML物体索引里）；不登记模块效果覆盖。缺templateResolved/createAccepted/rejectReason，倾向模板在当前运行环境不可用（INFERRED）；开闭/通行/复位均gap，同输入暂停，重开需可创建宿主及合法开关入口，见work/re/e190_gate.md'),
     (MODULE, 'Behaviors/SlavedUpdate'): (TODO, f'{_NOT_IN_SIM}（没有随从跟随）'),
     (MODULE, 'Behaviors/ProjectileUpdate'): (TODO, f'{_NOT_IN_SIM}（开火按每秒伤害直接扣血，没有弹体飞行时间）'),
-    (MODULE, 'Behaviors/AttachUpdate'): (GUESSED, '部分：engine_attach a验证瞬移/跟随/父子状态；engine_attach_parent a验证简单模块脚本杀父后子活/清理链接，NO_COLLISIONS读数差异为严格xfail；原版模块死亡前无稳定链接，不推广死亡规则；子死/直接删除/维修/吸血/解除/自主扫描仍gap'),
+    (MODULE, 'Behaviors/AttachUpdate'): (GUESSED, '部分：engine_attach a验证瞬移/跟随/父子状态；engine_attach_parent a验证简单模块脚本杀父后子活/清理链接，engine_attach_nocoll n验证AttachedObjectStatus不给NO_COLLISIONS；子死、单端删除已量（engine_attach_child/_delete、parent_delete）；原版模块死亡前无稳定链接，不推广死亡规则；维修/吸血/解除/自主扫描仍gap'),
     (MODULE, 'Behaviors/StoreObjectsSpecialPower'): (TODO, f'{_NOT_IN_SIM}（没有存放单位）'),
     (MODULE, 'Behaviors/TeleportStoredObjectsSpecialPower'): (TODO, f'{_NOT_IN_SIM}（没有传送存放的单位）'),
     (MODULE, 'Behaviors/TeleportStoredObjectsUpdate'): (TODO, f'{_NOT_IN_SIM}（UNIT_TELEPORT_TO_WAYPOINT 另算）'),

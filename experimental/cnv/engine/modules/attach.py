@@ -33,7 +33,8 @@ class AttachData(module.ModuleData):
             return cls(templates.attr(head, 'id'), False)
         return cls(templates.attr(head, 'id'), dict(
             flags=flags, range=templates.num(templates.attr(head, 'Range')),
-            child=set(templates.attr(head, 'AttachedObjectStatus', '').split()) | {'ATTACHED'},
+            # engine_attach_nocoll n: NO_COLLISIONS listed there is never given (alone or in either order)
+            child=set(templates.attr(head, 'AttachedObjectStatus', '').split()) - {'NO_COLLISIONS'} | {'ATTACHED'},
             parent=set(templates.attr(head, 'ParentStatus', '').split())))
 
 

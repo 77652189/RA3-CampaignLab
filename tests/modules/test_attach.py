@@ -14,6 +14,8 @@ def test_the_supported_subset_is_read():
                           parent={'X_P'})
     d = attach.AttachData.parse(HEAD.replace('TELEPORT"', 'TELEPORT ONE_ATTACH_PER_PARENT"'), '')
     assert 'ONE_ATTACH_PER_PARENT' in d.rule['flags']
+    # engine_attach_nocoll n: NO_COLLISIONS in AttachedObjectStatus is never given
+    assert attach.AttachData.parse(HEAD.replace('"X_C"', '"NO_COLLISIONS X_C"'), '').rule['child'] == {'X_C', 'ATTACHED'}
 
 
 def test_any_other_shape_is_false():

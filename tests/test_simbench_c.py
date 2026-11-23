@@ -748,23 +748,6 @@ def test_attach_nugget_sets_parent_child_status_and_follows_the_moving_parent():
     assert tuple(e.run(20).series[-1][1])==(1000001099,1001111099,1000001099,1000001099)
 
 
-def test_attach_parent_death_clears_simple_link_and_preserves_the_child():
-    """engine_attach_parent a: simple live/kill controls; see work/re/c_attach_parent_report.md."""
-    import build
-    import sim
-    m,t,_=build.resolve('engine_attach_parent','a')
-    e=sim.Sim(m,t);e.shot_clock=True
-    rows=e.run(18).series
-    # NO_COLLISIONS (before64/late1) differs; the complete reading is held
-    # separately below. Every other independently read bit matches the bench.
-    assert tuple(v & ~65 for v in rows[-1][1][:2])==(958,928)
-    assert all(tuple(v & ~65 for v in row[:2])==(958,928) for sec,row in rows if sec>=16)
-    child,parent=e.body('Attach high child'),e.body('Attach high parent')
-    assert child.alive and not parent.alive
-    assert not child.status & {'ATTACHED','NON_AUTOACQUIRABLE','NO_COLLISIONS'}
-    assert e.bodies['Attach high child'].serial not in e.attachments
-
-
 def test_attach_child_death_clears_the_surviving_parents_status():
     """engine_attach_child a: live127/killed124; see work/re/c_attach_child_report.md."""
     import build

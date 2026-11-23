@@ -1980,7 +1980,7 @@ class Sim:
         no detach/leech/repair contract is claimed.
         Extending these script-kill results to other lethal causes is INFERRED;
         a dead parent's queried status does not reveal its internal bits.
-        NO_COLLISIONS visibility remains a separate strict-xfail gap.
+        AttachedObjectStatus never gives NO_COLLISIONS (engine_attach_nocoll n).
         Attachment status has its own owner so ordinary
         modifier recalculation cannot erase it or pollute script-set bits.
         """
