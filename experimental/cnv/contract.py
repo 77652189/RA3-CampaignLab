@@ -676,6 +676,9 @@ def contract(mission):
     sites = getattr(m.map, 'SITES', {})
     named = {o.name: o for o in m.objects if o.name}
     named.update({o.name: o for o in getattr(m.map, 'STRONGPOINTS', {}).values()})     # the map's, published
+    # a named bridge's BridgeBuilder names its gatehouses (retail j07 'o_bridge_00_GateHouse2'; engine_bridgefix)
+    named.update({f'{o.name}_GateHouse{k}': o for o in m.objects if o.name and getattr(o, 'flags', 0) in (16, 32)
+                  for k in (1, 2)})
     out += [f'object {o.template} at ({o.x:g}, {o.y:g}): placed by raw coordinates, not by a map site'
             for o in m.objects if not o.site]
     out += [f'object {o.template}: map has no site {o.site!r}' for o in m.objects if o.site and o.site not in sites]
