@@ -63,3 +63,22 @@ ceil(percent x members) living members in placement order -- 100 % of 3 all, 50 
 (not round-down), 1 % of 3 one (not round); the others stay as they were"""
 let = {at = "dict(zip(times, vals(rows)))"}
 expect = ["at[2] == [0, 0, 0, 0]", "all(at[k] == [111, 11, 11, 1] for k in range(4, 11))"]
+
+[[reading]]
+id = "acts_ret_an_idle_member_hit_by_what_it_cannot_hit_for_5_s"
+item = "脚本条件 TEAM_IS_ATTACKED_AND_CANNOT_RETALIATE_ANY"
+scene = {build = "engine_acts_ret", check = "r", until = 21}
+bench = """r, bench 11-23 `run_queue engine_acts_ret:r` (CampActsRetR_mcp_1123_071255, round 321; attacks from 1 s, GONE 8 s; \
+bench row s_k = simulator k + 1): 还 基地车血 雕像血 11 99 99 s1-s6, 9 99 99 s7-s9, 9 99 98 s10, 8 99 98 s11-s17, 0 99 98 \
+s18-s19, 0 99 97 s20-s21"""
+proves = """sim cond_world.team_is_attacked_and_cannot_retaliate_any: the unarmed MCVs and the Guardian under the Twinblade \
+hold it (1 + 2 + 8); TD's attacker deleted: off at once; TU's walked off holding fire: on till about 5 s after its \
+last hit (the bench a reading earlier); the peacekeeper shooting back (4) and j04's statue (16, no AI, hit) never. \
+The Guardian's end (the bench 2 s later) is the fight's, not the condition's"""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = [
+    "all(at[k][0] == 11 for k in range(2, 8))",
+    "all(at[k][0] == 9 for k in range(8, 12)) and at[12][0] in (8, 9)",
+    "all(at[k][0] == 8 for k in range(13, 17)) and at[20][0] == 0",
+    "all(v[0] & 20 == 0 for v in at.values()) and at[20][1] < 100 and at[20][2] < 100",
+]

@@ -49,7 +49,7 @@ class Body(module.Module, interfaces.Body):
     template has no Body block gets an ActiveBody attached (Sim.add, World.attach: made by __init__, no on_create)."""
     DATA = BodyData
     RECORDED = ('hp', 'max_hp', 'health_floor', 'last_hit', 'last_by', 'indestructible', 'read_until')
-    STATE = RECORDED + ('immortal', 'prop', 'attacker_serial')  # make() sets these after the thing is made: the
+    STATE = RECORDED + ('immortal', 'prop', 'attacker_serial', 'hit_frame')  # make() sets these after it is made: the
                                                     # snapshot's only; attacker_serial: the last damage's object's
     IMMORTAL = False            # health changes cannot take it below its floor
     PROP = False                # no health: takes no damage, its percent reads 0 (engine_propbody a)
@@ -62,6 +62,7 @@ class Body(module.Module, interfaces.Body):
         self.immortal, self.prop = self.IMMORTAL, None
         self.last_hit = self.last_by = None     # step B3: the last damage's player and object (set_last_damage)
         self.attacker_serial = None     # that object's serial (last_by is its name, as the frame record shows it)
+        self.hit_frame = None           # the frame of that damage (the ActiveBody's last damage timestamp)
         self.indestructible = False
         self.read_until = None      # step B4a: killed by NAMED_DAMAGE in this frame -- its bits still read
 
@@ -121,6 +122,7 @@ class Body(module.Module, interfaces.Body):
     def set_last_damage(self, player, by=None):
         self.last_hit = player          # by: the object that hit (a name has no .name: refused)
         self.attacker_serial, self.last_by = (None, None) if by is None else (by.serial, by.name)
+        self.hit_frame = self.world.frame if self.world is not None else None
 
     def is_indestructible(self):
         return self.indestructible

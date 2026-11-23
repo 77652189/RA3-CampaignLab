@@ -31,7 +31,7 @@ Counters:
     OCL's creation (CREATE_AT_EDGE_NEAR_SOURCE), not the press; left inferred (inventory NOTES).
 """
 from maps import probe_air
-from parts import Mission, Script, Test, square, status
+from parts import Mission, Script, Test, counted, square, status
 import checks.engine_scripts8 as s8
 
 MAN = 'SovietAntiInfantryInfantry'
@@ -196,5 +196,45 @@ def partial(m):
     return t
 
 
-MISSION = {'engine_acts_wet': mission, 'engine_acts_wing': wing_mission, 'engine_acts_rkt': partial_mission}
-CHECKS = {'engine_acts_wet': {'all': all_}, 'engine_acts_wing': {'all': wing}, 'engine_acts_rkt': {'p': partial}}
+# Round 321: TEAM_IS_ATTACKED_AND_CANNOT_RETALIATE_ANY(team) (j04 'Japan02 - Counter Update', 2 uses, on teams of
+# statues and harbour buildings). Each target alone on a team of the player's, its attacker s4's, told at 1 s
+# NAMED_ATTACK_NAMED: TU / TD an MCV (unarmed) by a conscript -- at GONE TU's attacker holds fire and walks 700
+# north, TD's is deleted; TR a peacekeeper by a conscript (it shoots back); TA a Guardian by a Twinblade (it cannot
+# hit air); TS j04's statue by a conscript (no AI). 还 = the bit of each team the condition holds for; 血 = TU's MCV
+# health + 1000 x TS's statue's (both hit at all).
+MCV, STATUE, HELI = 'AlliedMCV', 'TH_EmperorFlagpoleStatue', 'SovietAntiGroundAircraft'
+HITS = {'TU': (MCV, MAN, 3000.0, 2000.0, 1), 'TD': (MCV, MAN, 3600.0, 2000.0, 2),
+        'TR': ('AlliedAntiInfantryInfantry', MAN, 4200.0, 2000.0, 4), 'TA': ('AlliedAntiVehicleVehicleTech1', HELI,
+        3900.0, 2700.0, 8), 'TS': (STATUE, MAN, 4500.0, 2700.0, 16)}
+GONE = 8.0
+
+
+def hit_mission():
+    m = Mission(name='CampActsRet', map=probe_air, units=[], facts={})
+    m.spawns |= {MCV, STATUE, HELI, MAN, 'AlliedAntiInfantryInfantry', 'AlliedAntiVehicleVehicleTech1'}
+    o = probe_air.SITES[LAND]
+    for row, (tmpl, foe, x, y, _) in HITS.items():
+        m.put(tmpl, LAND, x - o.x, y - o.y, angle=0.0, name=_n(row), role=row.lower(),
+              props={'originalOwner': m.crew(row)})
+        m.put(foe, LAND, x - o.x, y + 150.0 - o.y, side='s4', angle=3.1416, name=_n(f'{row} foe'), role=f'{row} foe')
+    m.waypoint('away', 'CNV A13 Away TU', LAND, 3000.0 - o.x, 2700.0 - o.y)
+    return m
+
+
+def hit(m):
+    t = Test()
+    s8.at(t, 'hit', 1.0, [('NAMED_ATTACK_NAMED', _n(f'{r} foe'), _n(r)) for r in HITS])
+    s8.at(t, 'gone', GONE, [('UNIT_CHANGE_OBJECT_STATUS', _n('TU foe'), status('NO_ATTACK'), 1),
+                            ('MOVE_NAMED_UNIT_TO', _n('TU foe'), m.mark('away')), ('NAMED_DELETE', _n('TD foe'))])
+    s8.total(t, 'CNV_A13_Ret', '还', [(w, ('TEAM_IS_ATTACKED_AND_CANNOT_RETALIATE_ANY', m.teams[r]))
+                                      for r, (*_, w) in HITS.items()])
+    counted('CNV_A13_HpU', '基地车血', t, health=_n('TU'))
+    counted('CNV_A13_HpS', '雕像血', t, health=_n('TS'))
+    s8.watch(t, 20.0)
+    return t
+
+
+MISSION = {'engine_acts_wet': mission, 'engine_acts_wing': wing_mission, 'engine_acts_rkt': partial_mission,
+           'engine_acts_ret': hit_mission}
+CHECKS = {'engine_acts_wet': {'all': all_}, 'engine_acts_wing': {'all': wing}, 'engine_acts_rkt': {'p': partial},
+          'engine_acts_ret': {'r': hit}}

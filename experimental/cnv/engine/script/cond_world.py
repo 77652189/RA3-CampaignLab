@@ -4,6 +4,10 @@ is the script executor's own (engine/script/executor.py: the timers are its tabl
 
 Each condition is `fn(sim, name, a)`, moved verbatim out of Sim.cond's chain; simcond.cond looks them up in
 CONDITIONS. None back: not taken (a gap)."""
+import engine.combat.range as simrange
+import engine.orders.seq as simseq
+from engine.data.units import LIFE_FPS
+from engine.kernel import interfaces
 from engine.script.cond_object import attacker
 from engine.script.common import CMP, SURFACES, team_crew
 from engine.world.handle import inside, same_team
@@ -112,6 +116,25 @@ def team_attacked_by_player(sim, name, a):
                and attacker(sim, b).template.lower() in want for b in crew)
 
 
+def team_is_attacked_and_cannot_retaliate_any(sim, name, a):
+    # j04 'Japan02 - Counter Update' (round 321, work/re a321): 码 -- a living member with an AI, its AI idle, hit
+    # in the last 5 s (round(speed x 15 x 5) frames) by an object that still stands, which it cannot hit with any
+    # weapon (the possible-to-attack filter: able now, or after moving if it moves), or can but has neither in
+    # range nor a way to it. j04's statues (no AI) never. INFERRED: an AI = a unit that moves or is armed; the
+    # program's range and path tests as Sim.in_range / the ground's route
+    now = sim.frame_now()
+    for b in team_crew(sim, a[0]) or ():
+        m, by = b.find(interfaces.Body) if b.modules else None, attacker(sim, b)
+        if not (b.speed or b.weapons) or m is None or m.hit_frame is None or now > m.hit_frame + 5 * LIFE_FPS \
+                or by is None or not by.alive or not simseq.idle(sim, b):
+            continue
+        ws = [w for w in b.weapons if sim.can_hit(w, by)] if 'NO_ATTACK' not in b.status else []
+        way = b.speed and (b.surface == 'air' or sim.ground.route(b.surface, (b.x, b.y), (by.x, by.y)) is not None)
+        if not ws or not (way or any(simrange.in_range(b, by, w) for w in ws)):
+            return True
+    return False
+
+
 def mission_hot_spot_active(sim, name, a):
     # retail batch 2 (round 210, checks/engine_conds.py sight; d115_script_semantics.md 4-6)
     # 码: the hot spot's on byte; a name the map lacks: false
@@ -160,6 +183,7 @@ CONDITIONS = {
     'TEAM_ALL_HAS_OBJECT_STATUS': team_some_have_object_status,
     'TEAM_ATTACKED_BY_PLAYER': team_attacked_by_player,
     'TEAM_ATTACKED_BY_OBJECTTYPE': team_attacked_by_player,
+    'TEAM_IS_ATTACKED_AND_CANNOT_RETALIATE_ANY': team_is_attacked_and_cannot_retaliate_any,
     'MISSION_HOT_SPOT_ACTIVE': mission_hot_spot_active,
     'TEAM_CAN_PATH_TO_WAYPOINT': team_can_path_to_waypoint,
     'TEAM_OUTSIDE_AREA_ENTIRELY': team_outside_area_entirely,
