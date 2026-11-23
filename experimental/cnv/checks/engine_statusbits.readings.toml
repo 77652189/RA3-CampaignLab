@@ -24,6 +24,16 @@ expect = [
 ]
 
 [[reading]]
+id = "kingbits_the_king_cuts_without_the_attack_order"
+scene = {build = "engine_kingbits", check = "k", until = 20}
+bench = "CampKbitsK_mcp_1122_183003 (A313, review xx #6): 设血 平血 令血 s1-s3 75 75 75 | s4 75 50 75 | s4-s6 50 50 50 | s7 50 25 50 | s7-s9 25 | s10 25 0 25 | s10-s21 0 0 0 -- the order lane's King, never told, cuts its NO_ATTACK target as the told ones do, from s1"
+proves = "the Mecha King takes the enemy beside it by itself (the readings above hold with or without the NAMED_ATTACK_NAMED at ORDER: it adds nothing)"
+expect = [
+  "sorted({r['令血'] for r in rows}) == sorted({r['设血'] for r in rows}) and rows[-1]['令血'] == 0",
+  "first('令血', lambda v: v < 100) <= first('设血', lambda v: v < 100)",
+]
+
+[[reading]]
 id = "kingbits_the_king_cuts_once_in_three_seconds"
 scene = {build = "engine_kingbits", check = "k", until = 20}
 bench = "CampKbitsK_mcp_1122_151844: 设血 75 at s1, 50 at s4, 25 at s7, 0 at s10 (2500 a cut, one cut each 3 s)"

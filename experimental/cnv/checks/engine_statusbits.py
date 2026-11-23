@@ -90,14 +90,16 @@ def statusbits_test(m, which='a'):
 # Its three katana slots name no status bit (SDK), so the data says: no effect. Two lanes: the 'high' King gets the
 # three bits, the 'base' King none; each is told at ORDER to attack a NO_ATTACK s1 King 120 north (10 000 hp, the
 # katana 5 000 / radius 100: several cuts). 设血 / 平血 = the two targets' health in percent; 位 = 1 x _01 + 10 x _02 +
-# 100 x _03 read back on the high King.
+# 100 x _03 read back on the high King. Review xx #6 (A313): the 'order' lane's King (no bits) is never told; 令血 = its
+# target's health in percent (does the King cut on its own before ORDER?). BENCH 11-22 CampKbitsK_mcp_1122_183003: it
+# does, as the told ones from s1 (75 50 25 0): the order adds nothing.
 KING = 'JapanMechaKing'
 KBITS = ('WEAPON_UPGRADED_01', 'WEAPON_UPGRADED_02', 'WEAPON_UPGRADED_03')
 
 
 def king_mission():
     m = Mission(name='CampKbits', map=probe_range, units=[], facts={})
-    for lane in ('high', 'base'):
+    for lane in ('high', 'base', 'order'):
         m.put(KING, f'{lane} gun', side='p1', role=f'{lane} king', name=_n(lane, 'King'))
         m.put(KING, f'{lane} gun', 0.0, 120.0, side='s1', role=f'{lane} king target', name=_n(lane, 'Prey'))
     return m
@@ -106,12 +108,12 @@ def king_mission():
 def king_test(m):
     t = Test()
     t.scripts.append(Script('Test - start', [], [
-        ('UNIT_CHANGE_OBJECT_STATUS', _n(lane, 'Prey'), 'NO_ATTACK', 1) for lane in ('high', 'base')] + [
+        ('UNIT_CHANGE_OBJECT_STATUS', _n(lane, 'Prey'), 'NO_ATTACK', 1) for lane in ('high', 'base', 'order')] + [
         ('UNIT_CHANGE_OBJECT_STATUS', _n('high', 'King'), bit, 1) for bit in KBITS] + [
         ('MAP_REVEAL_ALL_PERM', m.player('p1')), ('SET_MILLISECOND_TIMER', 'Test Order', ORDER)]))
     t.scripts.append(Script('Test - order', [('TIMER_EXPIRED', 'Test Order')],
                             [('NAMED_ATTACK_NAMED', _n(lane, 'King'), _n(lane, 'Prey')) for lane in ('high', 'base')]))
-    for lane, label in (('high', '设血'), ('base', '平血')):
+    for lane, label in (('high', '设血'), ('base', '平血'), ('order', '令血')):
         counted(f'CNV_Kbits_{lane}', label, t, health=_n(lane, 'Prey'))
     t.counters.append(('CNV_Kbits_Bits', '位'))
     t.scripts += [Script('Test - kbits zero', [], [('SET_COUNTER', 'CNV_Kbits_Bits', 0)], once=False)] + [
