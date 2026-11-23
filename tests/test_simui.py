@@ -140,13 +140,6 @@ def test_a_click_orders_the_object_clicked_not_a_role_of_its_name(monkeypatch, k
     assert cmds[1].target == aimed.name and cmds[1].arg('target_serial') == aimed.serial
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "plays/a4.txt no longer reaches stage 2: it was hill-climbed (2026-11-08) on a simulator whose infantry turned "
-    "before walking. After 54a14eb0 (A231, bench airevit: infantry walk off at once), A256 recorded truck 1 at "
-    "211.5 s and truck 2 at 217.0 s, both lost to CNV A4 HV2 V1 JapanAntiVehicleInfantry-1 -> Lose 1 at 226.4 s. "
-    "Now truck 1 (213.4 s) and truck 2 (217.8 s) fall to CNV A4 HV3 V2 JapanAntiVehicleInfantry-1 -> Lose 1 at 230.47 s, "
-    "with CNV_A4_Phase_2 still unset at handover. "
-    "The engine change is benched; the play script wants re-climbing (work/re/scripts/a4climb.py), see A256 handoff"))
 def test_a_stage_jump_hands_over_at_its_flag():
     se = game.Session('a4')
     assert se.stages[:2] == ['CNV_A4_Phase_1', 'CNV_A4_Phase_2']
