@@ -59,6 +59,12 @@ def current_platform(sim, name, a):
     return str(a[0]).upper() == 'PC'
 
 
+def player_triggered_script_event(sim, name, a):
+    # a human's order raises it (ATTACK_MOVE_ISSUED ...): the simulator takes none, so never (engine_conds pf; retail's
+    # one use, s01, sits behind CURRENT_PLATFORM('360') in every clause, false on PC). A clicked one INFERRED
+    return False
+
+
 def team_has_units(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
     # 码: any instance of the team's prototype with a living member that is no STRUCTURE / PROJECTILE /
@@ -175,6 +181,7 @@ CONDITIONS = {
     'TEAM_COMPARE_NUM_MEMBERS': team_compare_num_members,
     'TEAM_HAS_FEWER_THAN_X_UNITS_WITH_KINDOF': team_has_fewer_than_x_units_with_kindof,
     'CURRENT_PLATFORM': current_platform,
+    'PLAYER_TRIGGERED_SCRIPT_EVENT': player_triggered_script_event,
     'TEAM_HAS_UNITS': team_has_units,
     'TEAM_INSIDE_AREA_PARTIALLY': team_inside_area_partially,
     'TEAM_INSIDE_AREA_ENTIRELY': team_inside_area_partially,

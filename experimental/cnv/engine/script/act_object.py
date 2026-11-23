@@ -5,6 +5,7 @@ Each action is `fn(sim, name, a, script)`, moved verbatim out of Sim.act's chain
 import math
 
 import engine.data.units as simunits
+import engine.objects.level as simlevel
 import engine.objects.locomotion as simlocomotion
 import engine.objects.modifier as simmodifier
 import engine.orders.order as simorder
@@ -120,6 +121,19 @@ def damage_members_of_team(sim, name, a, script):
         named_damage(sim, name, a, script, unit=b)
 
 
+def give_experience_points(sim, name, a, script):
+    # (object / team, points): the retail ranks of the points (engine.objects.level.give_xp; engine_shot vet,
+    # engine_heal e); TEAM_SET on each living member as a give (INFERRED: the body keeps no points to set)
+    for b in _unit_or_team(sim, name, a):
+        if b and b.alive:
+            simlevel.give_xp(sim, b, float(a[1]))
+
+
+def _unit_or_team(sim, name, a):
+    """The UNIT_ action's object (None if gone) or the TEAM_ action's members."""
+    return [sim.body(a[0])] if name.startswith('UNIT') else sim.members(a[0])
+
+
 def named_kill(sim, name, a, script):
     b = sim.body(a[0])
     if b:
@@ -174,7 +188,7 @@ def unit_set_modelcondition(sim, name, a, script):
     # (unit, n, on): ModelState USER_<n> set / cleared, held till cleared. Bench 11-13 engine_acts_v mc: 1 -> USER_1,
     # 2 -> USER_2, 3 -> USER_3 (a08's saluting conscripts: USER_2 is the conscript's STATE_Saluting), 0 clears;
     # the team action every member alike (engine_modeldur:u)
-    for b in [sim.body(a[0])] if name.startswith('UNIT') else sim.members(a[0]):
+    for b in _unit_or_team(sim, name, a):
         if not sim.present(b):
             continue
         if int(a[2]):
@@ -190,7 +204,7 @@ def unit_set_modelcondition_for_duration(sim, name, a, script):
         return
     # engine_modeldur:a: 3/7 seconds query true for 46/106 frames (the boundary included); :t the team action
     # on every member alike. Other producers untouched.
-    for b in [sim.body(a[0])] if name.startswith('UNIT') else sim.members(a[0]):
+    for b in _unit_or_team(sim, name, a):
         if sim.present(b):
             b.model_conditions[condition] = sim.frame_now() + math.ceil(float(a[2]) * simunits.LIFE_FPS) + 1
 
@@ -350,6 +364,8 @@ ACTIONS = {
     'PLAYER_SELL_EVERYTHING': player_sell_everything,
     'NAMED_DAMAGE': named_damage,
     'DAMAGE_MEMBERS_OF_TEAM': damage_members_of_team,
+    'UNIT_GIVE_EXPERIENCE_POINTS': give_experience_points,
+    'TEAM_SET_EXPERIENCE_POINTS': give_experience_points,
     'NAMED_KILL': named_kill,
     'NAMED_DELETE': named_kill,
     'PLAYER_KILL': player_kill,

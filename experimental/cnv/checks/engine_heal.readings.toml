@@ -34,3 +34,12 @@ the upgrade itself given at frame 30: 低血 45038 (81 % at 38, 82 % at 45), 100
 frame 40 -- two mends, then none: 帧数 x 1000 + 38, 81 (bench 11-17, step K3, engine_heal__f / g)"""
 proves = "sim AutoHealBehavior: the heroic heal runs from the upgrade and stops when the upgrade is taken back"
 expect = "(f[-1]['低血'], f[-1]['血量']) == (45038, 100) and (g[-1]['低血'], g[-1]['血量']) == (g[-1]['帧数'] * 1000 + 38, 81)"
+
+[[reading]]
+id = "autoheal_a_gi_ranked_heroic_by_script_points_mends"
+item = "脚本动作 UNIT_GIVE_EXPERIENCE_POINTS"
+scenes = {e = {build = "engine_heal", check = "e", until = 19}}
+bench = "e: a GI hurt 30 at Go, 1800 points (its rank 4) at frame 30: 300 / 52038 / 100 (81 % at 38, 82 % at 52; CampHealE_mcp_1106_022823)"
+proves = "nothing yet: give_xp's rank_up adds Upgrade_Veterancy_HEROIC without telling the modules, so the heroic heal (f: the upgrade itself mends) never wakes"
+expect = "e[-1]['血量'] == 100"
+mismatch = "sim 80 to the end, 低血 frames x 1001: the heal asleep (E: rank_up's upgrades as modifier.upgrade's)"

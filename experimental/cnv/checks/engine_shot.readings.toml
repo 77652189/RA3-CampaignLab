@@ -13,3 +13,11 @@ scene = {build = "engine_shot", check = "armor", until = 9, shot_clock = true}
 bench = "11-05 round 33 armor: 10/5/15/1 percent lost on the first direct hit."
 proves = "ArmorTemplate damage-type scalars: four front hits use 50/25/75/5% of 2000 damage against 10000 HP; the display rounds a loss upward."
 expect = "list(rows[-1].values()) == [10, 5, 15, 1]"
+
+[[reading]]
+id = "shot_script_experience_ranks_a_v4_by_the_retail_table[vet]"
+item = ["脚本动作 UNIT_GIVE_EXPERIENCE_POINTS", "脚本动作 TEAM_SET_EXPERIENCE_POINTS"]
+scene = {build = "engine_shot", check = "vet", until = 15, shot_clock = true}
+bench = "11-05 round 33 vet: retail V4s given 0 / 3600 / 7200 / 10800 points by UNIT_GIVE_EXPERIENCE_POINTS lose their targets 5 / 7 / 7 / 7 percent on the first hit."
+proves = "sim UNIT_GIVE_EXPERIENCE_POINTS ranks by the template's ExperienceLevels RequiredExperience (give_xp): ranks 2-4 take the veteran's DAMAGE_MULT 125, rank 1 none. TEAM_SET_EXPERIENCE_POINTS the same on each member (INFERRED, s03's one use)."
+expect = "list(rows[-1].values()) == [5, 7, 7, 7]"

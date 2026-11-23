@@ -47,3 +47,11 @@ expect = [
     "column(2) == [88]",
     "column(3) == [1, 0, 2]",
 ]
+
+[[reading]]
+id = "conds_pf_the_pc_game_is_never_360_so_s01s_attack_move_event_never_fires"
+item = "脚本条件 PLAYER_TRIGGERED_SCRIPT_EVENT"
+scene = {build = "engine_conds", check = "pf", until = 6}
+bench = "pf, bench 11-23 run_queue engine_conds:pf (CampCondsPf_mcp_1123_135556, round 329): 平台 16 s1-s7"
+proves = "sim CURRENT_PLATFORM true for 'PC' only ('360' / 'PS3' false: the program, work/re a329), so s01's one PLAYER_TRIGGERED_SCRIPT_EVENT (every clause gated by '360') never holds; with no human order the event alone never either"
+expect = "all(v == [16] for v in vals(rows)[1:])"

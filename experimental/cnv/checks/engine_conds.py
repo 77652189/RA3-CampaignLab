@@ -62,6 +62,10 @@ checks/engine_scripts9.py). The enemy crew is on Soviet_4: placed units on a Sov
     for 发现&1 while it moves (s3, s8-s9); the lower-case hot spot name never on (&8). The rest as predicted -- D 119's
     ship never for k 0. The simulator fixed to the first, third and fourth (simcond); the wreck's time
     is the Guardian's SlowDeath (0 s in the simulator), left to the module lines.
+  pf      (round 329) no orders at all. 平台 (every frame) = 1 CURRENT_PLATFORM(360) 2 (PS3) 4 PLAYER_TRIGGERED_
+          SCRIPT_EVENT(Player_1, ATTACK_MOVE_ISSUED) 8 CURRENT_PLATFORM(360) and that event (s01's one use: every OR
+          clause of its script asks 360) 16 CURRENT_PLATFORM(PC). [simulator: 16 all along -- the program answers
+          true for 'PC' only (work/re a329); no human gives the event]
 
 BENCH 11-13 (round 208, run_queue; tests/test_simbench.py test_conds_team_as_the_bench / _fight_):
   team (with the 128 bits): 队形 / 状态 s1 4 13 | s2 12 13 | s3-s6 12 15 | s7-s8 5 15 | s9-s10 5 75 | s11-s21 7 75 |
@@ -235,5 +239,16 @@ def sight(m):
     return t
 
 
+def pf(m):
+    t, p1, n = Test(), m.player(), 'CNV_Cond_Plat'
+    s8.total(t, n, '平台', [(1, ('CURRENT_PLATFORM', '360')), (2, ('CURRENT_PLATFORM', 'PS3')),
+                            (4, ('PLAYER_TRIGGERED_SCRIPT_EVENT', p1, 'ATTACK_MOVE_ISSUED')),
+                            (16, ('CURRENT_PLATFORM', 'PC'))])
+    t.scripts.append(Script(f'Test - {n} s01', [('CURRENT_PLATFORM', '360'), ('PLAYER_TRIGGERED_SCRIPT_EVENT', p1,
+                                                 'ATTACK_MOVE_ISSUED')], [('INCREMENT_COUNTER', 8, n)], once=False))
+    s8.watch(t, 6.0)
+    return t
+
+
 MISSION = {'engine_conds': mission}
-CHECKS = {'engine_conds': {'team': team, 'fight': fight, 'sight': sight}}
+CHECKS = {'engine_conds': {'team': team, 'fight': fight, 'sight': sight, 'pf': pf}}
