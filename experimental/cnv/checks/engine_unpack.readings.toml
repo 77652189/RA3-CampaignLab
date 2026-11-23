@@ -34,6 +34,33 @@ let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[
 expect = "frames > 500 and unit == frames and yard == 0 and name == frames"
 
 [[reading]]
+id = "an_untargeted_mcv_unpack_press_unfolds_nothing"
+item = ["脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackAlliedMCV",
+        "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanMCV"]
+scene = {build = "engine_unpack_nvl", check = "go", until = 40}
+each = [{build = "engine_unpack_nvl"}, {build = "engine_unpack_jpn"}]
+bench = """\
+NAMED_USE_COMMANDBUTTON_ABILITY(MCV, its unpack button) untargeted, standing: j04's AlliedMCV_Naval and s02's \
+JapanMCV (bench 11-23 CampUnpackNvlGo_mcp_1123_080608 s40 618 618 0 618 / CampUnpackJpnGo_mcp_1123_080739 s41 632 632 \
+0 632): the MCV stays an MCV to the end, no yard within 290 of it, as the egg (pin)"""
+proves = "sim named_buttons: an untargeted MCV unpack press unfolds nothing (the stop of pin)"
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = "frames > 500 and unit == frames and yard == 0 and name == frames"
+
+[[reading]]
+id = "a_driving_mcv_pressed_the_yards_pack_button_at_a_waypoint_drives_on"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_PackJapanMCV"
+scene = {build = "engine_unpack_jpk", check = "go", until = 41}
+bench = """\
+s02's escape: JapanMCV ordered 400 east at 1 s, 1 s on NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT(it, \
+Command_PackJapanMCV, the point) -- a yard's button, not in the MCV's CommandSet (bench 11-23 \
+CampUnpackJpkGo_mcp_1123_081035, s41 630 510630 0 630): the press changes nothing, the MCV drives on, within 100 of \
+the point from frame 120 (sim 114), no yard anywhere, the name kept"""
+proves = "sim named_buttons: a pack button the unit's CommandSet lacks does nothing, a move under way kept"
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = "unit % 1000 == frames and 105 <= frames - unit // 1000 <= 130 and yard == 0 and name == frames"
+
+[[reading]]
 id = "a_power_plant_egg_unfolds_at_a_far_waypoint_as_the_bench"
 item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanPowerPlantEgg"
 scene = {build = "engine_unpack_pwr", check = "go", until = 41}

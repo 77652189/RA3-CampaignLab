@@ -5,6 +5,9 @@
 
 [[reading]]
 id = "a_yard_packs_into_its_mcv_at_once_and_the_mcv_stands_before_it_drives"
+item = ["脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_PackAlliedMCV",
+        "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_PackSovietMCV",
+        "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_PackJapanMCV"]
 scene = {build = "engine_pack_a", check = "go", until = 32}
 each = [
     {build = "engine_pack_a", until = 32, out = 50, there = 121},

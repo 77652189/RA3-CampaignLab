@@ -34,7 +34,9 @@ CampUnpackPinGo_mcp_1121_123012 633 633 0 633, mid CampUnpackMidGo_mcp_1121_1232
 and mid's egg stops short of the point. pwr CampUnpackPwrGo_mcp_1121_123504 632 28105 527 632: as egg (the plant from
 frame 105, never counted owned). crs = the defense egg pressed at the waypoint with the power plant egg's button (the
 same SpecialPower_UnpackReplaceSelf, not in its CommandSet). brk / ref / fac = a07 / j08's barracks, refinery and war
-factory eggs at the waypoint, as pwr. Readings: engine_unpack.readings.toml.
+factory eggs at the waypoint, as pwr. Round 322: nvl / jpn = j04's naval MCV and s02's Japanese MCV pressed their
+unpack button untargeted, standing (as pin); jpk = s02's escape, the MCV driving to the waypoint pressed the yard's
+Command_PackJapanMCV at it 1 s on (not in the MCV's CommandSet). Readings: engine_unpack.readings.toml.
 """
 import resources
 from maps import niagara
@@ -45,7 +47,11 @@ KINDS = {'mcv': ('AlliedMCV', 'AlliedConstructionYard', 'Command_UnPackAlliedMCV
          'pwr': ('JapanPowerPlantEgg', 'JapanPowerPlant', 'Command_UnPackJapanPowerPlantEgg'), 'pin': EGG, 'mid': EGG,
          'crs': EGG[:2] + ('Command_UnPackJapanPowerPlantEgg',),
          **{v: (f'Japan{k}Egg', f'Japan{k}', f'Command_UnPackJapan{k}Egg')          # a07 / j08 / s07's eggs
-            for v, k in (('brk', 'Barracks'), ('ref', 'Refinery'), ('fac', 'WarFactory'))}}
+            for v, k in (('brk', 'Barracks'), ('ref', 'Refinery'), ('fac', 'WarFactory'))},
+         'nvl': ('AlliedMCV_Naval', 'AlliedConstructionYard', 'Command_UnPackAlliedMCV'),      # j04's, untargeted
+         'jpn': ('JapanMCV', 'JapanConstructionYard', 'Command_UnPackJapanMCV'),                # s02's, untargeted
+         'jpk': ('JapanMCV', 'JapanConstructionYard', 'Command_PackJapanMCV')}                  # s02's, at a waypoint
+PLAIN = ('pin', 'nvl', 'jpn')       # pressed untargeted, standing
 VARIANTS = tuple(KINDS)
 AT, THERE = ('west field', -200.0, 0.0), ('west field', 200.0, 0.0)
 NAME = 'UNIT - CNV Unpack'
@@ -74,11 +80,14 @@ def frames(m):
     t.scripts.append(Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1), ('SET_MILLISECOND_TIMER', 'Test Go', 1.0),
                                                  ('SET_MILLISECOND_TIMER', 'Test Mid', 2.0)]))
     t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test Go')],
-                            [press if v == 'pin' else
+                            [press if v in PLAIN else ('MOVE_NAMED_UNIT_TO', NAME, m.mark('there')) if v == 'jpk' else
                              ('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', NAME, button, m.mark('there')),
                              ('SET_FLAG', 'Test Going', 1)]))
     if v == 'mid':      # pressed again untargeted on its way (a07 / s07's eggs when attacked)
         t.scripts.append(Script('Test - mid', [('TIMER_EXPIRED', 'Test Mid')], [press]))
+    if v == 'jpk':      # s02's escape: the packed MCV on its way pressed the yard's pack button at the point
+        t.scripts.append(Script('Test - mid', [('TIMER_EXPIRED', 'Test Mid')],
+                                [('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', NAME, button, m.mark('there'))]))
     going = ('FLAG', 'Test Going', 1)
 
     def per_frame(counter, label, rows):
@@ -93,7 +102,7 @@ def frames(m):
     per_frame('CNV_Unpack_Yard', '场帧', [(('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 3, 1, yard,
                                             'Test There'), 1),
                                           (('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', p1, 3, 1, yard, 'Test Short')
-                                           if v in ('pin', 'mid') else ('PLAYER_HAS_OBJECT_COMPARISON', p1, 3, 1, yard),
+                                           if v in PLAIN + ('mid',) else ('PLAYER_HAS_OBJECT_COMPARISON', p1, 3, 1, yard),
                                            1000)])
     per_frame('CNV_Unpack_Name', '名字帧', [(('NAMED_NOT_DESTROYED', NAME), 1)])
     t.expect = [('帧数', 0, 'ever>=', 1, RUN)]
