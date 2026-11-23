@@ -59,6 +59,9 @@ each = [{build = "airevp1"}, {build = "airevp0"}]
 bench = "airevp1 / airevp0 (the target healed): 近厂 4 all along, no back-up (bench 85 s)"
 proves = "simai reverse move: a team beside a healed plant stays, whatever the switch"
 expect = "all(r['近厂'] == 4 for r in rows)"
+mismatch = """the simulator's AI strikes the plant with its precision strike and its own Hammers go with it: on the bench \
+(airevp1t) the AI buys the strike and polls it but never casts -- its Hammers stop 111-114 off the plant, outside the \
+circle (50 + the plant's 54), while the simulator's drive on to 30-60 off; a stand-off (position) gap, not the cast"""
 
 [[reading]]
 id = "no_one_moves_when_the_gather_state_is_off_and_a_turret_is_the_target"

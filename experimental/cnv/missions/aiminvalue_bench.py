@@ -10,6 +10,7 @@ from missions import aistate_bench as setup
 
 def mission(high=False):
     m = setup.mission('CampAIMinHi' if high else 'CampAIMinValue', near=True)
+    m.draw = 0.1    # the AI's protocol draw (simtech.Book): bench aiminvaluet bought AirPower (0.1 on it)
     units = (setup.INF, setup.TANK, 'SovietAntiInfantryInfantry', 'SovietAntiVehicleInfantry')
     cases = ((1000, False, True), (2500, False, True),
              (2500, True, True), (2500, True, False))
@@ -50,4 +51,10 @@ def mission(high=False):
     return m
 
 
-MISSION = {'aiminvalue': mission, 'aiminvaluehi': lambda: mission(True)}
+def observed():
+    """B 11-23: aiminvaluehi + the teams host -- which protocol does the AI buy (cmd 24e)?"""
+    from missions.aiopath_bench import observed as host
+    return host(mission(True))
+
+
+MISSION = {'aiminvalue': mission, 'aiminvaluehi': lambda: mission(True), 'aiminvaluet': observed}

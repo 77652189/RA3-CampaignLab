@@ -428,7 +428,10 @@ class Brain:
             def fire(aim, command=command):
                 self.give('power', needs(), power=command, pos=aim.pos, args=(('via', 'ai player'),))
 
-            out.append(sp.Power(infos[command], ready=lambda ra=ready_at, n=needs: self.frame >= ra() and n() is not None,
+            def ready(ra=ready_at, n=needs, p=p):    # only what it bought (bench: 1fe polls the power held)
+                return self.frame >= ra() and n() is not None and self.systems.power_ready(self.player, p['power'])
+
+            out.append(sp.Power(infos[command], ready=ready,
                                 target=target, fire=fire, ready_at=ready_at))
         return out
 

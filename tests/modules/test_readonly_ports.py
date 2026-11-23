@@ -42,7 +42,7 @@ def _arg(world, name):
             'target': barracks, 'x': 0.0, 'y': 0.0, 'n': 0, 't': 0.0, 'key': 'x',
             'name': 'barracks', 'template': GI, 'upgrade': 'x', 'behind': 1.0, 'ahead': 1.0, 'v': yard,
             'job': {'cost': 0, 'paid': 0}, 'progress': 0.0, 'serial': barracks.serial, 'own_defenses': False,
-            'transport': barracks, 'due': 0, 'structure': GI, 'team': '', 'frame': 0}[name]
+            'transport': barracks, 'due': 0, 'structure': GI, 'team': '', 'frame': 0, 'power': 'SpecialPowerPrecisionStrike'}[name]
 
 
 def _members(port):

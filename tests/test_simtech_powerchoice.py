@@ -31,6 +31,13 @@ def test_an_unknown_personality_takes_its_factions_solo_base_lines():
     assert simtech.power_choices(None, 'Japan')
 
 
+def test_a_missions_own_personality_inherits_its_parents_lines():
+    own = '<AIPersonalityDefinition id="CNVProbe" inheritFrom="AlliedCoopBaseSkirmishPersonality"></AIPersonalityDefinition>'
+    assert simtech.power_choices('AIPersonalityDefinition:CNVProbe', 'Allies', [own]) == \
+        simtech.power_choices('AlliedCoopBaseSkirmishPersonality', 'Allies') != \
+        simtech.power_choices('CNVProbe', 'Allies')
+
+
 def test_a_personality_without_lines_never_buys():
     b = simtech.Book('Soviet', 15, 'AIPersonalityDefinition:HuntPersonality')
     for f in range(0, 60):

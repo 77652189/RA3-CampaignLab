@@ -665,14 +665,7 @@ class Sim:
         self.players = dict(mission.map.PLAYERS)
         self.human = self.players['p1']
         self.foe = self.players.get('s1')
-        import engine.players.tech as simtech
-        sides = getattr(mission, 'sides', {}) if self.retail else {}
-        self.books = {}                     # player -> simtech.Book: protocols, protocol points (a playable faction's)
-        for p in dict.fromkeys(self.players.values()):
-            f = simtech.faction_of(p, sides.get(p))
-            if f:
-                self.books[p] = simtech.Book(f, simunits.LIFE_FPS,    # its personality's PowerChoice lottery
-                                             (sides.get(p) or {}).get('aiPersonality'))
+        self.books = simtech.books(mission, self.players, simunits.LIFE_FPS)   # player -> Book: protocols, points
         self.tech_to = 0                    # the last frame tech_due ran
         self.tech_read = False              # a script has read the points or the protocols (pending: a rank to come)
         self.ground = Ground(mission.map)

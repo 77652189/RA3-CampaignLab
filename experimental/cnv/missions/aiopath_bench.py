@@ -44,6 +44,7 @@ def personality_xml(pid, tester, moves=(('AlliedStandard', 'true'), ('AlliedIsla
 
 def mission(name, pid, tester, **kw):
     m = aiopen_bench.mission(name=name)
+    m.draw = 0.1    # the AI's protocol draw (simtech.Book): benches aipclandt / aipcampht bought AirPower (0.1 on it)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
     m.assets.append((f'{pid}.xml', personality_xml(pid, tester, **kw), f'AIPersonalityDefinition:{pid}'))
     return m
@@ -104,7 +105,18 @@ def disconnected_ready(amphibious=False):
     return m
 
 
+def observed(m):
+    """B 11-23: + the teams host (ra3ext alone logs no cmd: lines) -- which protocol does the AI buy (cmd 24e)?"""
+    from missions.aiteams_bench import host_unit, HOST
+    m.units.append(host_unit())
+    m.put(HOST, 'east base', 250.0, 400.0, side='s1', role='teams host')
+    m.name, m.ext = m.name + 'T', True
+    return m
+
+
 MISSION = {
+    'aipclandt': lambda: observed(disconnected(False)),
+    'aipcampht': lambda: observed(disconnected(True)),
     'aipclandy': lambda: disconnected_ready(False),
     'aipcamphy': lambda: disconnected_ready(True),
     'aipcland': lambda: disconnected(False),

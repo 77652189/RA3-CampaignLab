@@ -30,7 +30,10 @@ stream with 0 (Generals InitRandom(0); RA3 INFERRED), so a mission draws the sam
 replay the stream, so it walks a fixed fraction DRAW of the sum. Bench 11-09 (checks/engine_aipower.py e, a Soviet
 computer player, two 1-point lines): 50/50 either order -> the first listed, 7 runs of 7; X 30% first / Y 70% -> X;
 X 10% / Y 90% -> Y. So there draw / sum lies in [0.1, 0.3), not "the heaviest line"; DRAW = 0.2 is that bracket's
-middle (INFERRED for other missions: the stream's position at frame 10 is their own).
+middle (INFERRED for other missions: the stream's position at frame 10 is their own). A mission whose bench run
+showed what its AI bought pins its own (Mission.draw): Allied AIs on CoopBase personalities (buyable at frame 10
+AirPower 1, PrecisionStrike 2, CryoSatellite 3) bought 8 / 13 / 26 across the bench's missions, a family of alike
+missions the same one (B 11-23, every ext log's cmd 24e).
 Not modelled: experience from kills (not found in the program), the red alert's multiplier (1.0 / 1.5 / 2.0 at
 yellow / orange / red; the simulator has no red alert), what a protocol does once held.
 """
@@ -104,13 +107,17 @@ def _personalities():
     for fn in sorted(os.listdir(root)):
         if not fn.lower().endswith('.xml'):
             continue
-        text = _xml('SkirmishAI', 'Personalities', fn)       # (_blocks would stop the head at a child's '/>')
-        for head, inner in re.findall(r'<AIPersonalityDefinition\b([^>]*)>(.*?)</AIPersonalityDefinition>', text, re.S):
-            pid = simunits._attr(head, 'id')
-            if pid:
-                lines = [(simunits._attr(h, 'PlayerPower'), _weight(simunits._attr(h, 'Weight')))
-                         for h, _ in simunits._blocks(inner, 'PowerChoice')]
-                out[pid.lower()] = (simunits._attr(head, 'inheritFrom'), lines)
+        _read(_xml('SkirmishAI', 'Personalities', fn), out)   # (_blocks would stop the head at a child's '/>')
+    return out
+
+
+def _read(text, out):
+    for head, inner in re.findall(r'<AIPersonalityDefinition\b([^>]*)>(.*?)</AIPersonalityDefinition>', text, re.S):
+        pid = simunits._attr(head, 'id')
+        if pid:
+            lines = [(simunits._attr(h, 'PlayerPower'), _weight(simunits._attr(h, 'Weight')))
+                     for h, _ in simunits._blocks(inner, 'PowerChoice')]
+            out[pid.lower()] = (simunits._attr(head, 'inheritFrom'), lines)
     return out
 
 
@@ -124,10 +131,11 @@ SOLO_BASE = {'Allies': 'alliedsolobasepersonality', 'Soviet': 'sovietsolobaseper
              'Japan': 'japansolobasepersonality'}
 
 
-def power_choices(personality, faction=None):
-    """A personality's PowerChoice lines [(protocol, weight)] through its inheritFrom chain, parents first. One the
-    SDK does not have (a retail map's own AIP_...), or none given: its faction's SoloBasePersonality's (INFERRED)."""
-    table = _personalities()
+def power_choices(personality, faction=None, own=()):
+    """A personality's PowerChoice lines [(protocol, weight)] through its inheritFrom chain, parents first. own: the
+    personality XML a mission writes into its mod (a bench's CNV... inheriting AlliedCoopBase...), read over the SDK's.
+    One neither has (a retail map's own AIP_...), or none given: its faction's SoloBasePersonality's (INFERRED)."""
+    table = _read(''.join(own), dict(_personalities())) if own else _personalities()
     key = str(personality or '').split(':')[-1].lower()
     if key not in table:
         key = SOLO_BASE.get(faction, '')
@@ -186,11 +194,25 @@ def faction_of(name, props=None):
     return None
 
 
+def books(mission, players, fps):
+    """player -> Book for each player of a playable faction: its side by player (retail) or by our slot ('s1'), its
+    personality's lottery (the mission's own personalities read too), the mission's pinned draw (Mission.draw)."""
+    sides, out = getattr(mission, 'sides', {}), {}
+    own = [x for _, x, link in getattr(mission, 'assets', ()) if str(link).startswith('AIPersonalityDefinition:')]
+    for slot, p in players.items():
+        props = sides.get(p) or sides.get(slot) or {}
+        f = faction_of(p, props)
+        if f and p not in out:
+            out[p] = Book(f, fps, props.get('aiPersonality'), getattr(mission, 'draw', None), own)
+    return out
+
+
 class Book:
-    def __init__(self, faction, fps=15, personality=None):
+    def __init__(self, faction, fps=15, personality=None, draw=None, own=()):
         f = factions()[faction]
         self.faction, self.fps = faction, fps
-        self.choices = power_choices(personality, faction)     # a computer player's lottery (ai_buy)
+        self.draw = DRAW if draw is None else draw
+        self.choices = power_choices(personality, faction, own)    # a computer player's lottery (ai_buy)
         self.rank_ids = f['ranks']
         self.pps = f['pps']
         self.points = self.earned = f['initial']
@@ -281,7 +303,7 @@ class Book:
         total = sum(w for _, w in lines)
         if total <= 0:
             return False
-        r = DRAW * total                    # the game's draw: the same every run (seed 0); DRAW from the bench
+        r = self.draw * total               # the game's draw: the same every run (seed 0); DRAW from the bench
         for p, w in lines:
             r -= w
             if r < 0:

@@ -46,4 +46,4 @@ def check(m):
     return t
 
 
-CHECKS = {name: {'a': check} for name in ('aipcland', 'aipcamph', 'aipclandy', 'aipcamphy')}
+CHECKS = {name: {'a': check} for name in ('aipcland', 'aipcamph', 'aipclandy', 'aipcamphy', 'aipclandt', 'aipcampht')}

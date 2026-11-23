@@ -26,4 +26,4 @@ def check(m):
     return t
 
 
-CHECKS = {name: {'a': check} for name in ('aipval1', 'aipval01')}
+CHECKS = {name: {'a': check} for name in ('aipval1', 'aipval01', 'aipval1t')}

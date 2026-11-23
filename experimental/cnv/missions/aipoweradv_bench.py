@@ -73,6 +73,7 @@ def mission(name, ai, player, miner=False, gate='power', expect=1, min_power=Non
     if out_by is not None:
         facts['out by'] = out_by
     m = Mission(name=name, map=resources.measured(niagara), facts=facts)
+    m.draw = 0.6    # the AI's protocol draw (simtech.Book): bench aipval1t bought the cryo satellite (0.6 on it)
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
     m.assets.append((f'{pid}.xml', personality_xml(pid, gate, min_power), f'AIPersonalityDefinition:{pid}'))
     m.cnv_units = (TANK,)

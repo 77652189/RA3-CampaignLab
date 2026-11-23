@@ -99,6 +99,10 @@ class PlayerSystems:
         """(supply, demand) of the player's power."""
         return self._w.power(player)
 
+    def power_ready(self, player, power):
+        """Whether the player's spellbook power may be cast now (its protocol held, countdown run, needs standing)."""
+        return self._w.spellbook_ready(player, power)
+
     def can_build(self, player, template, factory=None, ban=True):
         """Whether the player may build the template (its prerequisites, the mission's bans; at that factory)."""
         return self._w.can_build(player, template, factory, ban)

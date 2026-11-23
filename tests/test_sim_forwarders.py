@@ -104,7 +104,7 @@ SIM_SURFACE = {
                     'human*5 income input label*3 late_captions leap_press living log*2 looks m*8 markers mm*3 money '
                     'movement_power_press note*4 objectives offers*2 order_build*3 own panel_at pending pick*4 '
                     'player_ups players point*6 power*2 production*5 proto reblock relations sample*2 seen sees '
-                    'self_power_press series short_of_power side_sees step*2 t*2 take_personality team_targets text '
+                    'self_power_press series short_of_power side_sees spellbook_ready step*2 t*2 take_personality team_targets text '
                     'timers unknown unmodeled*2 upgrade_sellers wallet*4 waypoints wfire_press who world',
     'engine.script': '_life*2 _tier_held act*4 active*7 add*5 ai*4 ai_paused*2 ai_priorities ai_switches all_revealed areas*11 '
                      'asked*3 assignments attachment_known_status*2 attacked_by*2 audio_end banned*2 banned_ups*2 '

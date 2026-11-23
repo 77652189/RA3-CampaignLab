@@ -539,6 +539,7 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
     base = resources.measured(niagara)
     m = Mission(name=name, map=ai_map(flipped(base) if flip else base, lib), facts={'wake at': WAKE_AT, 'money': money})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': PERSONALITY}
+    m.draw = 0.6    # the AI's protocol draw (simtech.Book): bench aiskirmc bought the cryo satellite (0.6 on it)
     if side == 'none':                   # aisksd4 (check sd, d123 S4): s1 with no aiPersonality at all
         m.facts['side case'] = 4
         del m.sides['s1']['aiPersonality']
