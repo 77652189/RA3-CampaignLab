@@ -395,7 +395,42 @@ class Brain:
                                        rng=random.Random(h.seed).uniform, move=self.dodge_move)      # MicroManager's rng(lo, hi)
             self.ai.blocks.append(self.micro)
         if 'specials' in which:
-            self.powers = m['specials'].PlayerPowers([], DIFFICULTY.get(h.level, 'MEDIUM'))
+            self.powers = m['specials'].PlayerPowers(self.player_powers(), DIFFICULTY.get(h.level, 'MEDIUM'),
+                                                     use_at=self.ai.personality.attrs.get('UsePlayerPowersAtDifficulty'))
+            self.powers.clock.next = self.born + 1      # the bench's passes: frames 1, 16, 31 ... (aispecial; aicrush1t
+                                                        # 1fe from f16, the cast f166): its brain's first update, INFERRED
+
+    def player_powers(self):
+        """The AI's player powers (simpower.AI_POWERS: the precision strike) as the model's specials.Power: ready
+        `ready` frames after the brain is made and `reload` after a cast while the structure it needs stands; the aim
+        PLAYER_AOE_ATTACK's over the enemies' things (every owner's counted, each with its bounding radius)."""
+        import engine.objects.power as simpower
+        sp, infos = self.host.mod['specials'], self.host.data_of('player powers')
+        out = []
+        for command, p in simpower.AI_POWERS.items():
+            if command not in infos:
+                continue
+            def ready_at(command=command, p=p):     # from the brain's first frame (bench f11 buy), then the last
+                last = [f for f, c, _ in self.powers.fired if c == command]     # cast (kept by the snapshot)
+                return last[-1] + p['reload'] if last else self.born + p['ready']
+
+            def needs(p=p):
+                return next((b for b in self.living() if b.owner == self.player and b.template == p['needs']), None)
+
+            def target(info=infos[command], p=p):
+                bodies = [b for b in self.living() if not b.scenery]    # still: no path (INFERRED its speed 0)
+                things = [sp.Thing((b.x, b.y), frozenset(b.kinds), self.host.cost(b.template), b.hp,
+                                   b.speed if getattr(b, 'path', None) else 0.0, name=str(b.serial),
+                                   radius=getattr(b, 'radius', 0.0) or 0.0) for b in bodies]
+                foes = [t for t, b in zip(things, bodies) if b.owner in self.view.enemies]
+                return sp.aoe_attack(info, foes, p['radius'], p['damage'], others=things)
+
+            def fire(aim, command=command):
+                self.give('power', needs(), power=command, pos=aim.pos, args=(('via', 'ai player'),))
+
+            out.append(sp.Power(infos[command], ready=lambda ra=ready_at, n=needs: self.frame >= ra() and n() is not None,
+                                target=target, fire=fire, ready_at=ready_at))
+        return out
 
     def hook(self, part, model):
         """Bind MODEL_HOOKS[part] on that part of the brain's own engine model: each callback the model has."""
@@ -1928,6 +1963,8 @@ class Brain:
             self.look(frame)
             self.ai.ctx.update(self.facts())
         self.ai.tick(frame)
+        if self.powers is not None:         # the player powers' clock ends the brain's update (specials.py)
+            self.powers.tick(frame)
         self.hunt_threats(frame)
         if self.host.record:
             self.snap(frame)
@@ -2174,7 +2211,8 @@ class SimAI:
                                 'tactics micro': lambda: m['tactics'].MicroData(),
                                 'tactic attrs': lambda: m['defense'].TacticAttrs(),
                                 'micro': lambda: m['micro'].load_micro(),
-                                'unit powers': lambda: m['micro'].load_unit_powers()}[what]()
+                                'unit powers': lambda: m['micro'].load_unit_powers(),
+                                'player powers': lambda: m['specials'].load()}[what]()
         return self._data[what]
 
     def cost(self, template):

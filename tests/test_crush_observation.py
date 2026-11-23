@@ -175,7 +175,7 @@ def test_crush_switch_runs_the_guards_over_only_when_on(build):
     if not simai.available():
         pytest.skip('no ra3model.ai')
     lib = simai.model()['xmldata'].Library()
-    w = simai_run.run(build, 'a', 28.0, lib=lib)
+    w = simai_run.run(build, 'a', 28.1, lib=lib)      # through s28's own sample (28.0 ends on s27.97's)
     labels = [lab for _, lab in w.sim.test.counters]
     row = dict(zip(labels, w.sim.series[-1][1]))
     brain, = w.brains.values()

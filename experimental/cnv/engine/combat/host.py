@@ -219,7 +219,7 @@ def death_blast_due(world, frame, peers):
     for d in [d for d in peers.death_blasts if d[0] <= frame]:
         peers.death_blasts.remove(d)
         _, x, y, dmg, typ, reach, affects, owner, by, *rest = d
-        ally, ground_only, approach = tuple(rest) + (1.0, False, None)[len(rest):]
+        ally, ground_only, approach, structure = tuple(rest) + (1.0, False, None, 1.0)[len(rest):]
         for t in world.living():
             if math.hypot(t.x - x, t.y - y) > reach or frame < t.immune_until or t.shielded or t.indestructible:
                 continue
@@ -231,6 +231,8 @@ def death_blast_due(world, frame, peers):
             armor = 1.0 if typ == 'UNRESISTABLE' else simunits.percent(t.armor, typ) / 100.0 * t.taken
             if rel == 'ALLIES':
                 armor *= ally
+            if 'STRUCTURE' in t.kinds:      # a STRUCTURE DamageScalarDetails (the AI's precision strike: AI_POWERS)
+                armor *= structure
             dx, dy = x - t.x, y - t.y
             if math.hypot(dx, dy) < 1e-6 and approach:
                 dx, dy = -approach[0], -approach[1]

@@ -53,6 +53,15 @@ SUPERWEAPON_HITS = {
 # collider ready 5550 frames after the cast (ReloadTime 360 s = 5400; the 150 maybe the cast's own delay: INFERRED,
 # the others not measured).
 RELOAD_LAG = {'SpecialPowerParticleCannon': 150}
+# The skirmish AI's own player powers (engine.ai.core Brain.player_powers): LogicCommand -> its bomb. Precision strike,
+# bench aicrush1t / aicrush1g / airevkh: every Allied AI buys the protocol f11, casts f166 (cmd 1ff), the bomb lands 46
+# frames on -- 575 EXPLOSIVE within 50 of the aim (centre to centre: guards 60 off untouched, 40 off dead), its
+# ALLIES ENEMIES NEUTRALS, x 0.33 on a STRUCTURE (CampaignOverrides: 575 x 1.25 x 0.33 = 237.2 off the plant, read
+# 762.8 / 1000). `ready`: frames after the AI's start it can first fire (INFERRED: the bench pins it to 107..121 by
+# the f166 cast, 15-frame passes and READY_LAG 45); `needs`: the structure SpecialPowerTemplates names (its yard).
+AI_POWERS = {'Command_PrecisionStrike': dict(power='SpecialPowerPrecisionStrike', needs='AlliedConstructionYard',
+                                             ready=120, reload=3600, after=46, damage=575.0, type='EXPLOSIVE',
+                                             radius=50.0, affects='ALLIES ENEMIES NEUTRALS', structure=0.33)}
 CURTAIN = {'SpecialPowerIronCurtain': (800.0, 355, {'VEHICLE', 'STRUCTURE'}),
            'SpecialPowerNanoSwarmHive': (200.0, 497, None)}
 

@@ -25,13 +25,23 @@ expect = "win(28, 33, '坦克数') == [4] * 6"
 # mates' spots -- path.free_spot had moved it 20-40 aside and the tank stopped short). Seeds 1/2/3/5/7: guards 0 at
 # s28/36/28/30/37, all tanks alive on every seed (before: only seed 1 cleared, s29; one tank lost on seed 5).
 # K3 11-23: (1) is in (target.picks: no target of its own while an attack order names one it can hit). Before it the
-# reading held only because the tanks shot guards on the way in, which the bench does not do. Not in: (2).
+# reading held only because the tanks shot guards on the way in, which the bench does not do. B 11-23: (2) is in
+# (the AI's precision strike: cast f166, the plant 762.8 at f212, as the bench), the mismatch stays.
 [[reading]]
 id = "crush_runs_the_guards_over_at_once"
 scene = {build = "aicrush1", check = "a", until = 35}
 bench = "aicrush1: 守军数 0 at s28-s33, 坦克数 4"
 proves = "simai team attack + sim crush: the team drives through the guards and crushes them at once"
 expect = ["win(28, 33, '坦克数') == [4] * 6", "win(28, 33, '守军数') == [0] * 6"]
-mismatch = """sim 守军数 6 3 2 1 0 0 at s28-33 (0 from s32), 4 tanks throughout; bench 0 at s28-33. The plant falls \
-later: no AI special-power aircraft takes 237 off it at f212 ((2) above; with that taken off by hand the probe \
-cleared s31.5-33, work/logs/b_k4_*.log)"""
+mismatch = """sim 守军数 7 4 3 2 0 0 at s28-33 (0 from s32), 4 tanks throughout; bench 0 at s28-33. Not the plant's \
+237 at f212 (in since B 11-23; before it the sim read 6 3 2 1 0 0): the guards still go one by one, not at once"""
+
+# aicrush1g (bench CampAICrush1GA_mcp_1123_062513: aicrush1t with the guards 40 from the far plant): the AI's precision
+# strike f166 lands f212 within 50 of the plant, every guard dies at once (12 to s14, 0 from s15.13); a guard back
+# s22.93-27.07 (one out of the falling plant) and s62-66.
+[[reading]]
+id = "the_ai_precision_strike_kills_the_guards_round_the_plant"
+scene = {build = "aicrush1g", check = "a", until = 21}
+bench = "aicrush1g: 守军数 12 at s3-s14, 0 at s15.13-s21.93, 坦克数 4 (CampAICrush1GA_mcp_1123_062513)"
+proves = "simai player powers + sim death_blasts: the Allied AI casts its precision strike f166 on the plant ringed by the guards (PLAYER_AOE_ATTACK), the bomb kills all 12 at once 46 frames on"
+expect = ["win(3, 14, '守军数') == [12] * 12", "win(15, 20, '守军数') == [0] * 6"]

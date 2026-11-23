@@ -6,7 +6,7 @@ import engine.data.units as simunits
 import engine.objects.locomotion as simlocomotion
 import engine.objects.modifier as simmodifier
 import engine.objects.toggle as simtoggle
-from engine.objects.power import UNPACK_POWER, start_reload
+from engine.objects.power import AI_POWERS, UNPACK_POWER, start_reload
 
 PEERS = frozenset({'act', 'garrison', 'powers_off', 'production', 'short_of_power', 'toggles_of'})
 FLEE_GONE = 3
@@ -72,6 +72,21 @@ def order_transform(world, peers, b, power):
         return False, 'not a toggle of his'
     start_reload(world, b, power, world.frame_now() + simunits.power_rules(b.template, power, world.own)['reload'])
     return True, None
+
+
+def ai_player_power(world, units, command, pos, death_blasts):
+    """The skirmish AI's player power `command` cast at `pos` from its living `units` (the structure it needs): the
+    bomb queued on `death_blasts` (the world's: L3 fires it, through armor) to land AI_POWERS' `after` frames on.
+    Refused with no such structure."""
+    p = AI_POWERS.get(command)
+    b = next((b for b in units if b.alive and p and b.template == p['needs']), None)
+    if b is None or pos is None:
+        return False, f'{command}: no {p and p["needs"]}'
+    world.used.add('superweapon')
+    world.note('技能', f'{world.label(b)} 的 AI 放 {p["power"]} 打 ({pos[0]:.0f}, {pos[1]:.0f})')
+    death_blasts.append((world.frame_now() + p['after'], float(pos[0]), float(pos[1]), p['damage'], p['type'],
+                         p['radius'], p['affects'].split(), b.owner, b, 1.0, False, None, p['structure']))
+    return True, ''
 
 
 def player_power(world, peers, units, power, pos, via):

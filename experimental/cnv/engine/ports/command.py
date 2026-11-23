@@ -526,6 +526,8 @@ class Commands:
 
     def _power(self, cmd):
         w, r = self._w, self._r
+        if cmd.arg('via') == 'ai player':   # the skirmish AI's player power at `pos` (AI_POWERS), its yard the source
+            return r.ability.ai_player_power(w, self._units(cmd), cmd.power, cmd.pos, w.death_blasts)
         if cmd.arg('via') == 'micro':       # the AI micro manager's self-power (micro.fire): refused when none fires;
             # a script's press heeds no reload (engine_aimicro d)
             fired = [r.micro.fire(w, b, cmd.power, r.refresh_modifiers, cmd.by != 'script') for b in self._units(cmd)]

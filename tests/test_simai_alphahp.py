@@ -28,13 +28,15 @@ def test_alpha_threshold_first_cycle_retreats_with_the_target_alive(lib, build):
 
     Only first-cycle arrival/return and unchanged target HP are asserted;
     exact event frames and later cycles are not matched. This is not proof
-    that the AlphaStrike branch works (engine state is not observed).
+    that the AlphaStrike branch works (engine state is not observed). The bench's plant kept its 70 all the run
+    because the AI's f11 protocol was not the precision strike -- a lottery (airett, the same scene: AirPower, ext
+    log CampAIRetTA_mcp_1123_011506; aicrush1t / 1g / airevkh: the strike, cast f166 at the plant) -- so it is not
+    asserted: the simulator's AI holds the strike.
     """
     _, rows = _probe_run(build, lib, 40.0)
     assert rows[5]['目标血量'] == 70
     assert any(r['到远厂'] >= 1 for r in rows[10:35])
     assert any(r['步兵在家'] >= 1 and r['步兵数'] >= 1 for r in rows[25:40])
-    assert all(r['目标血量'] == 70 for r in rows)
 
 
 @pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
