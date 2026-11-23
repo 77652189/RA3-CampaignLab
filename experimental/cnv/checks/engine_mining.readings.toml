@@ -85,15 +85,23 @@ mismatch = "sim 自到矿 49 (the sim draws the waiting miner to the node), benc
 [[reading]]
 id = "mining_the_placed_collector_claims_the_node_whether_or_not_the_drives_meet"
 scenes = {g = {build = "engine_mining", check = "g", until = 31}, away = {build = "mineaway", check = "g", until = 31}, h = {build = "engine_mining", check = "h", until = 31}}
-bench = "bench 2026-11-12 engine_mining g / h, mineaway g: 首笔 290 / 261 / 239; the refinery's own leaves its pad at 19 either way; with the placed one far off any shared way (mineaway) it still comes second and waits (sim 首笔 277 / 266 / 240)"
+bench = "bench 2026-11-12 engine_mining g / h, mineaway g: 首笔 290 / 261 / 239; the refinery's own leaves its pad at 19 either way; with the placed one far off any shared way (mineaway) it still comes second and waits (sim 首笔 286 / 275 / 240)"
 proves = """sim.Sim._claimed (round 189): not a collision, the placed one (there before the refinery's own fades in) claims \
-the node when it looks for it. The placed one's first money within 15 (290: its drive round the refinery, not \
-modelled, the sim 277), mineaway's within 6, h's within 2."""
+the node when it looks for it: mineaway's first money is the placed one's, past the own one's alone (h). The placed \
+one's first money within 15 (290: its drive round the refinery, not modelled), h's within 2."""
 expect = [
     "abs(g[-1]['首笔'] - 290) <= 15",
-    "abs(away[-1]['首笔'] - 261) <= 6",
+    "away[-1]['首笔'] - h[-1]['首笔'] >= 15",
     "abs(h[-1]['首笔'] - 239) <= 2",
 ]
+
+[[reading]]
+id = "mining_a_collector_placed_away_drives_to_the_node_in_its_leg"
+scene = {build = "mineaway", check = "g", until = 31}
+bench = "mineaway g: 首笔 261, 名到矿 114 (bench 2026-11-12, round 189)"
+proves = "engine/objects/mine.py: a placed miner's first leg, 370 from a node turned 62 off it"
+expect = "abs(rows[-1]['首笔'] - 261) <= 6"
+mismatch = "sim 275: its leg 111 + 19 (MINE_TURN_EXTRA at 62, linear between 45 and 90, INFERRED) + 9 (MINE_PLACED_EXTRA, read on E207's two and fitting engine_mining b / g and engine_queuedock a); without the 9 it was 266"
 
 [[reading]]
 id = "mining_engine_mining_b_the_refinery_s_own_collector_waits"

@@ -36,6 +36,10 @@ MINE_TURN_EXTRA = ((0.0, -18.0), (45.0, 8.0), (90.0, 36.0), (135.0, 50.0), (180.
 # refinery's dock: mineturn0 q has it in the node square at 23, the later legs at 15 from the dock (+8; its first
 # money 111 = +7); from 45 on the first money is the period's - 29 within 2 (0). Between linear (INFERRED).
 MINE_SPAWN_EXTRA = ((0.0, 7.0), (45.0, 0.0))
+# A placed miner's first leg (from where it stands, not a refinery's dock): MINE_TURN_EXTRA's leg is dock to dock, the
+# refinery's end MINE_PLACED_EXTRA of its -18; E207 dockqueue a (miners half-way to their nodes) reach them f19 / f48,
+# the simulator without it f10 / f41 (INFERRED: one end's share, the other end's not read)
+MINE_PLACED_EXTRA = 9.0
 # A refinery's pads (E207 dockqueue a, work/re/e207_dockqueue.md; D187 work/re/d187_cangodirect.md): a miner holds them
 # from its unload to MINE_PAD2 frames after (the bench's from pad 0, MINE_PAD1 before: not kept, the side node's leg is
 # ~10 frames short). Off its node (MINE_PAD2 after loading, inside the leg) a miner finding them held queues, and once
@@ -106,8 +110,9 @@ class Mining:
         node = held(world, b.find(interfaces.OreMiner).node)
         far =(b.x, b.y) if state == 'to node' else to          # the leg's end away from the node
         extra = mine_extra(node, far) if node else 0.0
-        if b.mine.pop('spawned', False) and node and state == 'to node':     # from where it faded in
-            extra += _by_turn(MINE_SPAWN_EXTRA, _turned_off(node, far))
+        first = b.mine.pop('first', None)
+        if first and node and state == 'to node':  # from where it faded in, or was placed
+            extra += _by_turn(MINE_SPAWN_EXTRA, _turned_off(node, far)) if first == 'spawned' else MINE_PLACED_EXTRA
         frames = int(round(d / b.speed * simunits.LIFE_FPS + extra))
         b.mine.update(state=state, due=fr + frames, leg=((b.x, b.y), to, fr, fr + frames))
 
@@ -127,7 +132,8 @@ class Mining:
             return
         if m is None:
             m = {'state': 'locate', 'node': None, 'ref': None, 'due': fr, 'load': 0, 'n': 0, 'leg': None,
-                 'spawned': b.unpack_parent is not None and (b.x, b.y) == (b.unpack_parent.x, b.unpack_parent.y)}
+                 'first': 'spawned' if b.unpack_parent is not None and (b.x, b.y) == (b.unpack_parent.x,
+                                                                             b.unpack_parent.y) else 'placed'}
             b.find(interfaces.OreMiner).set_trip(m)
         if m['leg']:                                # drawn along its drive
             (x0, y0), (x1, y1), f0, f1 = m['leg']

@@ -47,7 +47,7 @@ def test_the_front_node_miner_goes_direct_and_one_finding_the_pads_held_queues()
                               ('m2', 'AlliedMiner', 'Player_1', 0.0, 300.0)])
     s.bodies['n1'].angle, s.bodies['n2'].angle = math.pi, -math.pi / 2       # facing the refinery
     mining, last, unloads, queued = simmine.Mining(), {}, {'m1': [], 'm2': []}, []
-    for frame in range(1, 640):
+    for frame in range(1, 660):
         mining.mine_due(s, frame, lambda owner, give: None)
         for n in unloads:
             st = s.bodies[n].mine['state']
@@ -56,7 +56,7 @@ def test_the_front_node_miner_goes_direct_and_one_finding_the_pads_held_queues()
                 queued += [(n, frame)] if st == 'to pad' and frame < mining.docks.get(s.bodies['ref'].serial, 0) else []
                 last[n] = st
     assert 0 < unloads['m1'][0] - unloads['m2'][0] < 30                       # beside it
-    assert queued == [('m1', 576)] and unloads['m1'][-1] == unloads['m2'][-1] + 30 + 14 + 18 + 22
+    assert queued == [('m1', 585)] and unloads['m1'][-1] == unloads['m2'][-1] + 30 + 14 + 18 + 22
 
 
 def test_the_cargo_shows_only_when_loading_ends():

@@ -17,8 +17,9 @@ id = "the_unload_pays_8_a_frame"
 scene = {build = "engine_queuedock", check = "a", until = 60}
 bench = "资金 mid-unload f296 48, f306 128, f317 216; f565 298, f575 378, f583 442; f829 508, f841 604, f850 676: 8 a frame (250 // 30, the rest on the last; D165 dockphase: Unload f289-319, 30 frames)"
 proves = "物体模块 QueueDock: the docked miner unloads over 30 frames, load // 30 a frame"
-let = {rise = "[b['资金'] - a['资金'] for a, b in zip(rows, rows[1:]) if a['资金'] % 250 and b['资金'] % 250 and b['资金'] > a['资金']]"}
-expect = ["len(rise) >= 3", "all(d == 8 * 15 for d in rise)"]
+let = {rise = "[b['资金'] - a['资金'] for a, b in zip(rows, rows[1:]) if a['资金'] % 250 and b['资金'] % 250 and b['资金'] > a['资金']]", mid = "[r['资金'] % 250 for r in rows if r['资金'] % 250]"}
+# a row a second: a 30-frame unload holds one or two of them by its phase (the sim's from f286, the bench's f291)
+expect = ["len(mid) >= 3", "all(v % 8 == 0 for v in mid)", "all(d == 8 * 15 for d in rise)"]
 
 [[reading]]
 id = "the_miner_is_on_the_pad_only_about_its_unload"
@@ -41,7 +42,6 @@ scene = {build = "dockqueue", check = "a", until = 16}
 bench = "资金 250 from s7.87 (miner 1 unloads f86-116), 306 s11.87, 500 from s13.4: miner 2 came at f93 (MoveQueue), waited at a queue bone (pos 1000) to f130 (miner 1 done with pad 2), pad 0 f148, pad 1 f170, unload f170-200"
 proves = "物体模块 QueueDock: a miner coming while another holds the pads waits in the queue, and gets in only after the other has driven off by pad 2; then pad 0 -> pad 1 before it unloads (54 frames after the other's last coin)"
 expect = ["first('资金', lambda v: v >= 250) == 8", "first('资金', lambda v: v >= 500) == 14"]
-mismatch = "sim: 500 at s13 -- the queue is right (miner 2 off its node f86 with the pads held, in f121 + 40, unloads f161-190), but the whole run is ~9 frames early: the first drive to the node from the half-way start takes 9 frames (MINE_TURN_EXTRA at 0, fitted to the node square), the bench's MovePad1 19"
 
 [[reading]]
 id = "a_miner_that_goes_direct_unloads_beside_a_docked_one"
