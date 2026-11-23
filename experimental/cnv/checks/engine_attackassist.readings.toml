@@ -9,3 +9,15 @@ proves = """a negative baseline only: the sources fire, neither responder's mark
 response module does nothing (notify / dispatch not seen in this recipe; the simulator has no assist response)"""
 expect = ["all(r['on source'] == r['off source'] == 100 for r in rows)",
           "rows[-1]['on target'] < 100 and rows[-1]['off target'] < 100"]
+
+[[reading]]
+id = "a_linked_prism_tower_hits_half_again_as_hard"
+scene = {build = "engine_attackassist", check = "b", until = 30}
+bench = """engine_attackassist:b, `run_queue` 11-22 15:18 (PASS): on / off target 95 97 (s1) .. 77 85 (s13) .. 55 70 (s28-30) \
+.. 50 67 (s31) -- off 3 a shot every 3 s (300 of 10000), on 4.5 (x1.5)"""
+proves = """retail's prism towers left to auto-acquire: the firing source calls the tower 250 behind it, whose link puts \
+AttributeMod_AlliedPrismAttackBoost (DAMAGE_MULT 150 %, 2 s) on it; the tower without the response module gives nothing. \
+The simulator's DPS clock gives the rate, not the steps; who is called (nearest, not firing) and the cadence INFERRED"""
+item = "物体模块 Behaviors/AttackAssistResponseBehavior"
+expect = ["52 <= rows[-1]['on target'] <= 58 and 67 <= rows[-1]['off target'] <= 73",
+          "100 - rows[-1]['on target'] > 1.35 * (100 - rows[-1]['off target'])"]

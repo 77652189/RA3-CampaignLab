@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v44.json')    # v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v45.json')    # v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -535,6 +535,12 @@ def _weapons(texts, base_table=None):
                                              unkinds=['INFANTRY'], exclude=[v.lower() for v in excluded],
                                              status_exclude=['UNDER_IRON_CURTAIN'])
                         inner = ''
+                    elif attrs == dict(Rule='NONE', Relationship='ALLIES') and len(included := re.findall(
+                            r'<IncludeThing>\s*([^<>\s]+)\s*</IncludeThing>', fi)) == 1 and not re.sub(
+                            r'<IncludeThing>\s*[^<>\s]+\s*</IncludeThing>', '', fi).strip():
+                        # the link guns' (prism, tesla): an ally of the one template (engine/modules/assist.py)
+                        target_filter = dict(include=[included[0].lower()], status_exclude=[])
+                        inner = re.sub(r'<SpecialObjectFilter\b.*?</SpecialObjectFilter>', '', inner, flags=re.S)
                 required = re.findall(r'<RequiredUpgrade>\s*([^<>\s]+)\s*</RequiredUpgrade>', inner)
                 forbidden = re.findall(r'<ForbiddenUpgrade>\s*([^<>\s]+)\s*</ForbiddenUpgrade>', inner)
                 rest = re.sub(r'<(RequiredUpgrade|ForbiddenUpgrade)>\s*[^<>\s]+\s*</\1>', '', inner).strip()

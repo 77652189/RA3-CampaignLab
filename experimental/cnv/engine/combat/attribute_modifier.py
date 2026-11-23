@@ -24,7 +24,8 @@ class AttributeModifier:
                     context.gap('AttributeModifierNugget', '仅PLAYER升级门槛已对拍')
                     continue
                 flt = effect.get('target_filter')
-                if not passed or flt and (not host.fits(t, dict(flt, kinds=set(flt['kinds']), unkinds=set(flt['unkinds'])))
+                if not passed or flt and (not (t.template.lower() in flt['include'] if 'include' in flt else
+                                               host.fits(t, dict(flt, kinds=set(flt['kinds']), unkinds=set(flt['unkinds']))))
                                           or set(flt['status_exclude']) & (t.status | t.script_status)):
                     continue
                 mid = effect['modifier']

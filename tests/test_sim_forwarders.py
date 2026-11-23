@@ -94,11 +94,7 @@ SIM_SURFACE = {
                       'guessed*5 human*11 kills*2 label*27 living*13 looks m*2 note*20 own*40 player_ups players*2 point '
                       'reblock*2 relation*6 relations*4 shot_clock t*7 toggles_of topples used*18 weapon_upgrades world*22 '
                       'xml_of*6',
-    'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 engineer_entry*2 '
-                     'fight_field fire_spot firing*2 frame_now*7 gap garrison*2 ground*3 hostile hunts*5 in_range label*9 '
-                     'living*6 members mid_aims mm*2 note*7 own*11 point*2 powers_off production reach*5 relation*2 seen seq*7 '
-                     'short_of_power shot_blocked*4 side_sees*4 team_targets*3 toggles_of used*13 wallet waypoints*8 who '
-                     'world*3 xml_of',
+    'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 engineer_entry*2 fight_field fire_spot firing*3 frame_now*8 gap garrison*2 ground*3 hostile hunts*5 in_range label*9 living*6 members mid_aims mm*2 note*7 own*12 point*2 powers_off production reach*5 relation*3 seen seq*7 short_of_power shot_blocked*4 side_sees*4 team_targets*3 toggles_of used*13 wallet waypoints*8 who world*4 xml_of*2',
     'engine.players': '_life add*3 banned blocks bodies*4 build_frames emp_book frame_now*3 label note own*4 '
                       'produce_out reblock relations t*3 unit_construction_disabled upgrade_done wallet*2 world',
     'engine.ports': 'act*2 add*2 add_team_lookup advance ai ai_paused ai_priorities ai_switches anchored*3 areas '

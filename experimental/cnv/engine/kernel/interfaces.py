@@ -565,6 +565,20 @@ class Detector(Interface):
         raise NotImplementedError
 
 
+class AssistNotify(Interface):
+    """NotifyWhenAttackingBehavior: may a firing thing call `friend` (callable); data: most, response (the module id
+    a friend answers with). The fight asks it (engine.orders.order.assist)."""
+    __slots__ = ()
+
+    def callable(self, friend, relation, distance):
+        raise NotImplementedError
+
+
+class AssistResponse(Interface):
+    """AttackAssistResponseBehavior: data tag (its module id) and ordering (the weapon it fires at a caller)."""
+    __slots__ = ()
+
+
 class Parking(Interface):
     """ParkingPlaceBehavior: how many LIMITED_PRODUCTION_AIRCRAFT the factory keeps (spots); the host's order asks it
     (Production.admits)."""

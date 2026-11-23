@@ -95,5 +95,32 @@ def probe(m):
     return t
 
 
+def retail(m):
+    """Check b, as retail plays it: towers auto-acquire (no script attack), retail weapons. Each lane's source is
+    retail's prism tower with the target 300 north (its 350 range); 250 south stands retail's tower (on) or the same
+    without AttackAssistResponseBehavior (off; not an AcceptableFriend either). Data prediction: on's link (+50 %
+    damage for 2 s per link) makes its target lose HP about 1.5x as fast as off's."""
+    t = Test()
+    quiet = tower('CNV_AssistQuiet')
+    for block in (r'<AttackAssistResponseBehavior\b[^>]*/>',      # its notifier too: one naming a response module
+                  r'<NotifyWhenAttackingBehavior\b.*?</NotifyWhenAttackingBehavior>'):   # its host lacks crashes (E144)
+        quiet.xml, n = re.subn(block, '', quiet.xml, flags=re.S)
+        assert n == 1, n
+    m.units.append(quiet)
+    starts = [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('PLAYER_SET_BASE_POWER', m.player('p1'), 1000)]
+    for lane, site, mate in (('on', 'base gun', 'AlliedBaseDefenseAdvanced'), ('off', 'order gun', quiet.id)):
+        for template, role, dy, side in (('AlliedBaseDefenseAdvanced', 'source', 0, 'p1'), (mate, 'mate', -250, 'p1'),
+                                         (TARGET_ID, 'target', 300, 's1')):
+            name = f'UNIT - Assist {lane} {role}'
+            m.put(template, site, 0, dy, side=side, role=name, name=name)
+            if role == 'target':
+                starts.append(('UNIT_CHANGE_OBJECT_STATUS', name, 'NO_ATTACK', 1))
+                counted('CNV_Assist_' + lane, lane + ' target', t, health=name)
+                t.expect.append((lane + ' target', 10, '<', 100, 30))
+    t.scripts = [Script('Test - Assist setup', [], starts)] + t.scripts
+    t.bench = [('bench_watch', dict(seconds=31, every=1, sheet=False, lines=2))]
+    return t
+
+
 MISSION = {'engine_attackassist': mission}
-CHECKS = {'engine_attackassist': {'a': probe}}
+CHECKS = {'engine_attackassist': {'a': probe, 'b': retail}}

@@ -26,7 +26,7 @@ import engine.data.units as simunits
 import engine.objects.locomotion as simlocomotion
 import engine.objects.path as simpath
 from engine.kernel import interfaces
-from engine.modules import locomotor
+from engine.modules import locomotor, weaponset
 from engine.orders import ability as simability
 from engine.orders import target as simtarget
 from engine.world.handle import GRID, inside
@@ -364,8 +364,41 @@ def fight(world, peers):
         chase_step(world, peers, a, fired, [(d[j], targets[idx[j]]) for j in np.argsort(d, kind='stable')])
     if peers.firing or peers.volleys:
         world.used.add('combat')
+        assist(world, peers, live)
     if peers.chilling:
         world.used.add('freeze')
+
+
+def assist(world, peers, live):
+    """The tick's firing notifiers call their friends (engine/modules/assist.py): up to `most` callable ones, nearest
+    first, not firing themselves, each answering with its response module's weapon line -- its hit modifiers (the link
+    guns' boost, simunits: an ally of the one template) go on the caller for their Duration (world.modify)."""
+    shooters = list({a.serial: a for _, _, a in peers.firing + peers.volleys}.values())
+    busy = {a.serial for a in shooters}
+    for a in shooters:
+        for n in a.find(interfaces.AssistNotify):
+            near = sorted(((math.hypot(f.x - a.x, f.y - a.y), f) for f in live if f is not a and f.alive and
+                           f.serial not in busy and f.find(interfaces.AssistResponse)), key=lambda p: p[0])
+            called = [f for d, f in near if n.callable(f, world.relation(a.owner, f.owner), d)][:n.data.most]
+            for f in called:
+                for r in f.find(interfaces.AssistResponse):
+                    if r.data.tag == n.data.response:
+                        respond(world, peers, f, r.data.ordering, a)
+
+
+def respond(world, peers, f, ordering, a):
+    """f's weapon line of `ordering` hits `a` with its hit modifiers (their target filter read)."""
+    own = world.own
+    sets = weaponset.read(simunits.module_blocks(f.template, 'WeaponSetUpdate', own))
+    names = [x.template for d in sets for s in d.slots for x in s.lines if x.ordering == ordering]
+    w = simunits.weapon_table(own).get(names[0], {}) if names else {}
+    xml = world.xml_of(f.template)
+    for e in w.get('hit_modifiers', []):
+        mid, flt = (e['modifier'], e.get('target_filter')) if isinstance(e, dict) else (e, None)
+        mod = simunits.modifier(xml, mid)
+        if mod and mod['frames'] and (not flt or a.template.lower() in flt.get('include', ())):
+            a.auras_on[mid] = (world.frame_now() + mod['frames'], xml)
+            world.world.modify(a)
 
 
 def chase_step(world, peers, a, fired, near):
