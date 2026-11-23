@@ -140,7 +140,10 @@ def compose(kind, render, out):
     alpha = unit.getchannel('A')
     unit = ImageEnhance.Contrast(unit.convert('RGB')).enhance(contrast).convert('RGBA')
     unit.putalpha(alpha)
-    s = fill * min((W - 2 * inset) / unit.width, (H - 2 * inset) / unit.height * 1.25)
+    # a wide unit may run a quarter past the top and bottom too; a tall one (the ice dragon) fits the inner height,
+    # else its head was cut off (11-22)
+    s = fill * min((W - 2 * inset) / unit.width,
+                   (H - 2 * inset) / unit.height * (1.25 if unit.width > unit.height else 1 / fill))
     unit = unit.resize((max(1, round(unit.width * s)), max(1, round(unit.height * s))), Image.LANCZOS)
     layer = Image.new('RGBA', (W, H))
     layer.paste(unit, ((W - unit.width) // 2, (H - unit.height) // 2 + 2), unit)

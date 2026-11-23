@@ -122,21 +122,35 @@ def generate(faction):
 def cells(faction):
     """The sheet's icons: each grid cell trimmed of the grey round it (pixels far from #D0D0D0), squared."""
     import numpy as np
+    from scipy import ndimage
     cols, rows, _, _ = FACTIONS[faction]
     im = Image.open(os.path.join(OUT, faction + '.png')).convert('RGB')
     a = np.asarray(im, float)
     ink = np.abs(a - 208).max(axis=2) > 24
     W, H = im.size
+    # each icon: the largest ink region centred in its grid cell (the grid is not quite even: a fixed cut took a
+    # strip of the neighbour's frame)
+    lab, n = ndimage.label(ink)
+    objs, sizes = ndimage.find_objects(lab), ndimage.sum(ink, lab, range(1, n + 1))
     out = {}
     for i, k in enumerate(keys(faction)):
         c, r = i % cols, i // cols
         x0, x1, y0, y1 = W * c // cols, W * (c + 1) // cols, H * r // rows, H * (r + 1) // rows
-        ys, xs = np.nonzero(ink[y0:y1, x0:x1])
-        bx0, bx1, by0, by1 = x0 + xs.min(), x0 + xs.max() + 1, y0 + ys.min(), y0 + ys.max() + 1
+        _, (ys, xs) = max(((s, o) for o, s in zip(objs, sizes)
+                           if x0 <= (o[1].start + o[1].stop) / 2 < x1 and y0 <= (o[0].start + o[0].stop) / 2 < y1),
+                          key=lambda t: t[0])
+        bx0, bx1, by0, by1 = xs.start, xs.stop, ys.start, ys.stop
         side = max(bx1 - bx0, by1 - by0)
         cx, cy = (bx0 + bx1) // 2, (by0 + by1) // 2
         box = (cx - side // 2, cy - side // 2, cx - side // 2 + side, cy - side // 2 + side)
-        icon = ImageEnhance.Contrast(im.crop(box).resize((SIZE, SIZE), Image.LANCZOS)).enhance(1.05)
+        crop = im.crop(box)
+        icon = ImageEnhance.Contrast(crop.resize((SIZE, SIZE), Image.LANCZOS)).enhance(1.05)
+        # the grey showing past the rounded corners transparent, as retail's (a light speck in game): the grey
+        # regions that reach a corner of the crop
+        grey, _ = ndimage.label(np.abs(np.asarray(crop, float) - 208).max(axis=2) <= 24)
+        corners = {grey[0, 0], grey[0, -1], grey[-1, 0], grey[-1, -1]} - {0}
+        icon.putalpha(Image.fromarray(np.where(np.isin(grey, list(corners)), 0, 255).astype(np.uint8))
+                      .resize((SIZE, SIZE), Image.LANCZOS))
         out[k] = icon
     return out
 
