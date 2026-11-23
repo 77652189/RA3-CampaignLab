@@ -13,7 +13,7 @@ MEASURED naval A: f57 0/7/7/57; f247/390/496 2/7/5/frame.
 Naval legacy/untouched cores stay home; concrete button deploys in water.
 """
 from maps import probe_border, niagara
-from parts import Mission, Test, square
+from parts import Mission, Script, Test, counted, square
 from checks import engine_scripts8 as s8
 
 ROLES = ('generic', 'power', 'concrete', 'control')
@@ -94,5 +94,32 @@ def naval_check(m):
     return t
 
 
-MISSION = {'engine_eggcmd': mission, 'engine_eggnav': naval_mission}
-CHECKS = {'engine_eggcmd': {'a': check}, 'engine_eggnav': {'a': naval_check}}
+# engine_navship (A327, retail a07: Japan06's placed JapanNavalYard is pressed Command_ConstructJapanAntiVehicleShip
+# once at the start; the ship needs Upgrade_JapanNavalYardTech2, which a07 gives that yard on Normal only, after a
+# timer): two yards in the eggs' water, 'yard' given the upgrade at s0, 'bare' not, a JapanPowerPlant (a yard draws 50),
+# money 20000; each pressed once at 2 s. 资金 / 船 (JapanAntiVehicleShip owned: 1800, BuildTime 18) / 逻辑帧.
+def ship_mission():
+    m = Mission(name='CampNavShip', map=niagara, units=[], facts={})
+    for k, role in enumerate(('bare', 'yard')):
+        m.put('JapanNavalYard', 'start', 1400., -1200. + 700. * k, role=role, name='CNV NavShip ' + role)
+    m.put('JapanPowerPlant', 'base power', role='power', name='CNV NavShip Power')
+    m.spawns.add('JapanAntiVehicleShip')
+    return m
+
+
+def ship_check(m):
+    t, p1 = Test(), m.player('p1')
+    s8.at(t, 'ship money', 0., [('MAP_REVEAL_ALL_PERM', p1), ('PLAYER_SET_MONEY', p1, 20000),
+                                ('NAMED_RECEIVE_UPGRADE', 'Upgrade_JapanNavalYardTech2', m.role('yard').name)])
+    s8.at(t, 'ship press', 2., [('NAMED_USE_COMMANDBUTTON_ABILITY', m.role(role).name,
+                                 'Command_ConstructJapanAntiVehicleShip') for role in ('bare', 'yard')])
+    t.scripts.append(Script('Test - ship money', [], [('SET_PLAYER_MONEY_TO_COUNTER', p1, 'CNV_NavShip_Money')], once=False))
+    t.counters.append(('CNV_NavShip_Money', '资金'))
+    counted('CNV_NavShip_Ship', '船', t, template='JapanAntiVehicleShip')
+    s8.frames(t, 'CNV_NavShip_Frame', '逻辑帧', [])
+    s8.watch(t, 30., .5)
+    return t
+
+
+MISSION = {'engine_eggcmd': mission, 'engine_eggnav': naval_mission, 'engine_navship': ship_mission}
+CHECKS = {'engine_eggcmd': {'a': check}, 'engine_eggnav': {'a': naval_check}, 'engine_navship': {'a': ship_check}}

@@ -35,6 +35,7 @@ RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j0
                    'Command_JAAS_Transform',            # the Sea-Wing takes off (JapanAntiAirShip, engine_acts_wing)
                    'Command_ToggleSpiderHole',          # the Tankbuster digs in (engine_acts_btn SH)
                    'Command_SovietAntiGroundAircraftEvacuate',  # the Twinblade lands its passengers (EVACUATE)
+                   'Command_Evacuate',                  # a06's Marine One (AlliedMarine1, engine_marine)
                    'Command_ToggleMirageField',         # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)
                    'Command_JapanAntiInfantryInfantryBonzai',   # the Imperial Warrior's Bonzai charge (engine_aimicro)
                    'Command_ToggleMolotovCocktailSpecialPower', 'Command_ToggleLeechBeam',     # engine_toggle b / c

@@ -59,10 +59,10 @@ def _n(part):
     return f'UNIT - CNV A10 {part}'
 
 
-def mission():
-    m = Mission(name='CampActsBtn', map=probe_border, units=[], facts={})
-    m.spawns |= {MAN, FROG, BOMBER, BLADE, BUSTER, TENGU, VX}
-    for row, (tmpl, x, y, n) in ROWS.items():
+def mission(rows=ROWS, name='CampActsBtn'):
+    m = Mission(name=name, map=probe_border, units=[], facts={})
+    m.spawns |= {MAN} | {tmpl for tmpl, *_ in rows.values()}
+    for row, (tmpl, x, y, n) in rows.items():
         props = {'originalOwner': m.crew('TB')} if row == 'TB' else {}
         m.put(tmpl, 'stop row', x - O[0], y - O[1], angle=0.0, name=_n(row), role=row.lower(), props=props)
         if n:
@@ -76,7 +76,7 @@ def mission():
 
 
 def _men(row):
-    return [_n(f'{row} {k}') for k in range(ROWS[row][3])]
+    return [_n(f'{row} {k}') for k in range({**ROWS, **MARINE}[row][3])]
 
 
 def _in(row, w):
@@ -120,5 +120,23 @@ def all_(m):
     return t
 
 
-MISSION = {'engine_acts_btn': mission}
-CHECKS = {'engine_acts_btn': {'all': all_}}
+# engine_marine (A327, retail a06: TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY puts the president's team in Marine One,
+# NAMED_USE_COMMANDBUTTON_ABILITY Command_Evacuate at the airbase): AlliedMarine1 (TransportContain 5, its CommandSet's
+# Command_Evacuate, Type EVACUATE) and 3 men loaded at LOAD, pressed at PRESS. 弹 = in (ENCLOSED) + 10 x out.
+MARINE = {'MO': ('AlliedMarine1', 700.0, 4100.0, 3)}
+
+
+def marine(m):
+    t = Test()
+    s8.at(t, 'hold', 0.1, [('MAP_REVEAL_ALL_PERM', m.player('p1'))])
+    s8.at(t, 'load', LOAD, [('TEAM_GARRISON_SPECIFIC_BUILDING_INSTANTLY', m.teams['TMO'], _n('MO'))])
+    s8.at(t, 'press', PRESS, [('NAMED_USE_COMMANDBUTTON_ABILITY', _n('MO'), 'Command_Evacuate')])
+    out = [(10, ('UNIT_HAS_OBJECT_STATUS', u, status('ENCLOSED'), 'NOT')) for u in _men('MO')]
+    s8.total(t, 'CNV_A10_Marine', '弹', _in('MO', 1) + out)
+    s8.frames(t, 'CNV_A10_Frame', '逻辑帧', [])
+    s8.watch(t, 12.0, .5)
+    return t
+
+
+MISSION = {'engine_acts_btn': mission, 'engine_marine': lambda: mission(MARINE, 'CampMarine')}
+CHECKS = {'engine_acts_btn': {'all': all_}, 'engine_marine': {'a': marine}}

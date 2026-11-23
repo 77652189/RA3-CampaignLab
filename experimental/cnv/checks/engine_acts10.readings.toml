@@ -28,3 +28,15 @@ expect = [
     "all(abs(first[w] - (s + 2)) <= 1 for w, s in ((1, 9), (100, 11), (10, 12), (1000, 15)))",
     "first[1] < first[100] <= first[10] < first[1000]",
 ]
+
+[[reading]]
+id = "marine_one_evacuate_puts_all_out_together"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_Evacuate"
+scene = {build = "engine_marine", check = "a", until = 12}
+bench = "A327 CampMarineA_mcp_1123_125626: 弹 3 at s1-s2 (3 men in, ENCLOSED), 30 from s3 on (all out together; frame 67 = mission ~4.4 s, ~1.5 s after the 3 s press)"
+proves = "AlliedMarine1's Command_Evacuate (EVACUATE, its own CommandSet's) lets all its passengers out together after the Twinblade's delay (a06: the president's team out of Marine One at the airbase)"
+expect = [
+  "rows[-1]['弹'] == 30",
+  "4 <= min(t for t, r in zip(times, rows) if r['弹'] == 30 and t > 1.5) <= 5.5",
+  "all(r['弹'] == 3 for t, r in zip(times, rows) if 2 <= t <= 4)",
+]

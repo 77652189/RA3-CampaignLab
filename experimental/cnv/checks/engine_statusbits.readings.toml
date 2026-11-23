@@ -54,3 +54,14 @@ expect = [
   "rows[-1]['基准血'] < 100 and rows[-1]['令血'] < 100",
   "first('令血', lambda v: v < 100) > first('基准血', lambda v: v < 100)",
 ]
+
+[[reading]]
+id = "statusbits_clearing_can_attack_keeps_the_fire"
+item = "脚本动作 UNIT_CHANGE_OBJECT_STATUS:CAN_ATTACK"
+scene = {build = "engine_statusbits", check = "c", until = 15}
+bench = "A327 CampSbitsC_mcp_1123_125119: 基准血 无攻血 攻位 s1-s16: 47 47 0 -- the Mirage cleared of CAN_ATTACK at s0 fires at its Tsunami by itself as the plain one does; neither reads the bit."
+proves = "a unit does not carry the CAN_ATTACK status and clearing it stops nothing (a06 clears it on a Rushmore head with no weapon: no effect); the simulator only records the bit."
+expect = [
+  "all(r['无攻血'] == r['基准血'] and r['攻位'] == 0 for r in rows)",
+  "rows[-1]['基准血'] < 100",
+]

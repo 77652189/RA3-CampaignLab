@@ -17,3 +17,15 @@ expect = [
     "all(v[:3] == [0, alive, alive] for v in r if v[3] <= 56)",
     "[v for v in r if v[3] >= 249] and all(v[:3] == [built, alive, home] for v in r if v[3] >= 249)",
 ]
+
+[[reading]]
+id = "navship_the_ship_button_builds_only_at_a_tech2_yard"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ConstructJapanAntiVehicleShip"
+scene = {build = "engine_navship", check = "a", until = 30}
+bench = "A327 CampNavShipA_mcp_1123_125405: 资金 19926 at s1, paid down ~100 a second to 18200 at s19; 船 0 -> 1 at s19, 1 to s31 -- one ship (1800) from the yard given Upgrade_JapanNavalYardTech2, none from the bare one."
+proves = "a script's press of a naval yard's UNIT_BUILD button queues the ship as a click (paid as it builds, BuildTime 18); a yard without the ship's NeededUpgrade refuses it (a07's yard 1 gets tech 2 on Normal only, after its timer: the intro press likely builds nothing, INFERRED)."
+expect = [
+  "rows[-1]['船'] == 1 and rows[-1]['资金'] == 20000 - 1800",
+  "17 <= first('船', lambda v: v >= 1) <= 22",
+  "all(a['资金'] >= b['资金'] for a, b in zip(rows, rows[1:]))",
+]
