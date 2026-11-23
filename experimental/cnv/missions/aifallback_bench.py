@@ -20,4 +20,5 @@ def mission(name, distance):
 MISSION = {
     'aifbshort': lambda: mission('CampAIFbShort', 100),
     'aifblong': lambda: mission('CampAIFbLong', 500),
+    'aifbshortt': lambda: ar.observe(mission('CampAIFbShort', 100), 'CampAIFbShortT'),  # + CNVTeams (B K3)
 }

@@ -6,4 +6,4 @@ See work/re/e123_keep_target.md for prediction and raw evidence.
 """
 from checks.engine_aimicro import probe_engage_clock
 
-CHECKS = {b: {'a': probe_engage_clock} for b in ('aikeeptwo', 'airands0', 'airandsx')}
+CHECKS = {b: {'a': probe_engage_clock} for b in ('aikeeptwo', 'aikeeprng', 'airands0', 'airandsx')}

@@ -302,19 +302,22 @@ def engage_clock(name, enabled):
     return m
 
 
-def keep_target(name, seconds=2):
+def keep_target(name, seconds=2, most=None):
     """Fixed nonzero keep duration on the existing observed Engage carrier.
 
     Min equals Max to remove the random interval from this clock measurement.
     Prediction: assignment at F expires at F + 15 * seconds; intervening
     state-2 passes hold, and the first pass at/after expiry may assign again.
+    most: TimeToKeepTargetMax alone differs (aikeeprng), each record's keep drawn in [seconds, most] s.
     """
     m = engage_clock(name, True)
     m.assets = [(path, text.replace('EngageHostileTargets="true"',
                     f'EngageHostileTargets="true" TimeToKeepTargetMin="{seconds:g}s" '
-                    f'TimeToKeepTargetMax="{seconds:g}s"'), key)
+                    f'TimeToKeepTargetMax="{most or seconds:g}s"'), key)
                 for path, text, key in m.assets]
     m.facts['keep seconds'] = seconds
+    if most:
+        m.facts['keep most'] = most
     return m
 
 
@@ -408,6 +411,7 @@ def ignore_rule(name, rule):
 
 
 MISSION = {'aikeeptwo': lambda: keep_target('CampAIKeepTwo'),
+           'aikeeprng': lambda: keep_target('CampAIKeepRng', 1, 4),
            'airands0': lambda: random_score('CampAIRandS0', 0),
            'airandsx': lambda: random_score('CampAIRandSX', 1000),
            'aiignrany': lambda: ignore_rule('CampIgnRuleAny', 'ANY'),

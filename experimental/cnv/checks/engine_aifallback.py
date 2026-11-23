@@ -40,4 +40,4 @@ def a(m):
     return t
 
 
-CHECKS = {k: {'a': a} for k in ('aifbshort', 'aifblong')}
+CHECKS = {k: {'a': a} for k in ('aifbshort', 'aifbshortt', 'aifblong')}

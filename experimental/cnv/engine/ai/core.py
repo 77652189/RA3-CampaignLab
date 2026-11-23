@@ -2001,7 +2001,8 @@ class Brain:
           ran this frame: state, foe, power, hostiles and cond are from it), target / target_id (the tactical
           target), foe / foe_id (the team's current enemy, Run.foe), power, hostiles (the hostile list's names);
           members: name, id (None while it has no Thing id), pos, hp, alive, goal (a body's name or a point), chase,
-          aim (the micro's current target, aim_of), going / inside (the garrison it walks to / is in);
+          aim (the micro's current target, aim_of), keep (the frame its keep record runs out, None: none / a crush's),
+          going / inside (the garrison it walks to / is in);
           cond (only when updated): the terms of the team state's tests as that micro update saw them -- alpha
           (AlphaStrike), retreat (the retreat test), engage (able, the flags), garrisons (EnterBaseDefenses / EnterGarrisons:
           each member's places with distance and alive, the reach).
@@ -2024,6 +2025,7 @@ class Brain:
             updated = r.was is not None and last is not None and r.mem is not last
             self._rec_mem[n] = r.mem
             mem = []
+            keep = getattr(r, 'keep', {})
             for u in r.team.members:
                 b = u.body
                 reach = max((w.get('range') or 0.0 for w in b.weapons), default=0.0)
@@ -2035,6 +2037,7 @@ class Brain:
                             'alive': b.alive, 'goal': goal.name if self.observe.is_thing(goal) else goal,
                             'chase': chase.name if self.observe.is_thing(chase) else chase,
                             'aim': aim.name if aim is not None else None,
+                            'keep': keep[u] if math.isfinite(keep.get(u, math.inf)) else None,
                             'unit_state': hunt.state if hunt is not None else None,
                             'pursuit': getattr(hunt.pursuit, 'name', None) if hunt is not None else None,
                             'going': getattr(going, 'name', going), 'inside': getattr(inside, 'name', inside)})

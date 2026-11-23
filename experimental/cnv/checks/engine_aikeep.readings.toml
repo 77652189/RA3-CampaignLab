@@ -28,3 +28,16 @@ proves = "simai state 2 pick with RandomTargetScoreModifier 1000: the score's ra
 item = "AI 微操/AIMicroManagerData.RandomTargetScoreModifier"
 let = {trails = "{n: [m['aim'] for r in teams() for m in r['members'] if m['name'] == n and m.get('aim')] for n in {m['name'] for r in teams() for m in r['members']}}", switches = "{n: sum(a != b for a, b in zip(t, t[1:])) for n, t in trails.items()}"}
 expect = "sum(v >= 3 for v in switches.values()) >= 2"
+
+[[reading]]
+id = "keep_target_drawn_between_min_and_max"
+scene = {build = "aikeeprng", check = "a", until = 50, teams = true}
+bench = """\
+B 11-23 aikeeprng:a (aiegon's carrier, TimeToKeepTargetMin 1s / Max 4s; CampAIKeepRngA_mcp_1123_011630 ra3ext \
+kassign): 8 state-2 records keep 36 47 45 19 39 32 21 38 frames (15 a second: all in 15..60, spread 28); each member \
+re-picked at the first pass at or after its until (514 -> 519, 540 -> 543, 564 -> 567). Also airett:a \
+(CampAIRetTA_mcp_1123_011506, Min 3s / Max 5s): 12 state-6 records keep 45-69 frames"""
+proves = "simai keep record: uniform(TimeToKeepTargetMin, Max) s per assignment, held until it runs out"
+item = "AI 微操/AIMicroManagerData.TimeToKeepTargetMax"
+let = {trail = "{n: [(r['frame'], m['keep']) for r in teams() for m in r['members'] if m['name'] == n and m.get('keep') is not None] for n in {m['name'] for r in teams() for m in r['members']}}", sets = "{n: [p for i, p in enumerate(t) if i == 0 or p[1] != t[i - 1][1]] for n, t in trail.items()}", lens = "[k - f for s in sets.values() for f, k in s]"}
+expect = "len(lens) >= 6 and all(15 <= x <= 60 for x in lens) and max(lens) - min(lens) >= 15 and all(b[0] >= a[1] for s in sets.values() for a, b in zip(s, s[1:]))"
