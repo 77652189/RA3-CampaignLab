@@ -59,7 +59,11 @@ id = "acts_dsg_the_spys_button_does_nothing_on_the_sudden_transport"
 item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateDisguiseSpecialPower"
 scene = {build = "engine_acts_dsg", check = "d", until = 14}
 bench = "d, bench 11-22 CampActsDsgD_mcp_1122_181357 (round 312; bench row s_k = mission k + 2): 装 0 s1-s2, 110 s3-s13 -- DP (pressed only) never DISGUISED; DA (pressed + NAMED_ATTACK_NAMED its Bullfrog) and DC (the attack only) both from s3"
-proves = "sim: the button (its power SpecialPower_InfantryDisguise, the spy's; the transport has no module of it) is logged and does nothing; whatever the attack does, DA does as DC (j01's press before its attack adds nothing)"
+proves = """sim: the button (its power SpecialPower_InfantryDisguise, the spy's; the transport has no module of it) is \
+logged and does nothing; whatever the attack does, DA does as DC (j01's press before its attack adds nothing). A \
+negative only (review 1122yy #11): with the press deleted it reads the same, so it shows this host unchanged, not the \
+dispatch. A spy control did not tell: two retail spies added beside (CampActsDsgD_mcp_1123_012232) read DISGUISED \
+from s1, before any press (the sim 0: not modelled)"""
 expect = "all(r['装'] % 10 == 0 and r['装'] // 10 % 10 == r['装'] // 100 for r in rows)"
 
 [[reading]]

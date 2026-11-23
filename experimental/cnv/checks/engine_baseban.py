@@ -39,7 +39,7 @@ def mission():
     return m
 
 
-def check(m, gate, walk=False):
+def check(m, gate, walk=False, more=()):
     t = Test()
     t.scripts.append(Script('Test - baseban setup', [], [
         ('MAP_REVEAL_ALL_PERM', m.player('p1')),
@@ -55,7 +55,7 @@ def check(m, gate, walk=False):
         (w, ('PLAYER_HAS_OBJECT_COMPARISON', m.player(side), 3, 1, CORE))
         for side, w in (('p1', 1), ('s5', 10))] + [
         (100 * 10 ** k, ('NAMED_INSIDE_AREA', m.role(f'walker {k}').name, f'Test BaseBan End{k}'))
-        for k in range(len(WALKERS) if walk else 0)])
+        for k in range(len(WALKERS) if walk else 0)] + list(more))
     s8.frames(t, 'CNV_BaseBan_Clock', '逻辑帧', [])
     s8.at(t, 'baseban press', 2., [
         ('NAMED_USE_COMMANDBUTTON_ABILITY', 'CNV BaseBan s5', BUTTON)])
@@ -111,5 +111,32 @@ def walked(m, gate, late=False):
     return t
 
 
-MISSION = {'engine_baseban': mission}
-CHECKS = {'engine_baseban': {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f}}
+def late_mission():
+    """G (review 1122yy #11, the positive control C-F lack): a yard made mid-game. Each side also has a JapanMCV,
+    unpacked where it stands at 0.2 s (the name passes on, engine_unpack); at 3 s PLAYER_DISABLE_FACTORIES(s5,
+    'JapanConstructionYard') -- s5's only, p1 the control; at 5 s each unpacked yard is pressed for a core.
+    核心 adds p1 >= 2 cores 100 + s5 >= 2 cores 1000 + p1 >= 2 yards 10000 + s5 >= 2 yards 100000.
+    [the gate reaches a yard made in play: 110111; it reaches none: 111111] BENCH 11-23 (CampBanLateG_mcp_1123_012105):
+    111111 s36-s54, money 400 / 400 -- none; no positive control found, the dispatch itself stays unshown."""
+    m = mission()
+    m.name = 'CampBanLate'
+    for side, dx in (('p1', 0.), ('s5', 1800.)):
+        m.put('JapanMCV', 'stop row', dx, 400., side=side, name=f'CNV BaseBan M{side}', role=f'mcv {side}')
+        m.waypoint(f'here {side}', f'CNV BaseBan Here{side}', 'stop row', dx, 400.)
+    return m
+
+
+def g(m):
+    t = check(m, [], more=[(w, ('PLAYER_HAS_OBJECT_COMPARISON', m.player(s), 3, 2, what)) for s, w, what in (
+        ('p1', 100, CORE), ('s5', 1000, CORE), ('p1', 10000, 'JapanConstructionYard'),
+        ('s5', 100000, 'JapanConstructionYard'))])
+    s8.at(t, 'baseban unpack', .2, [('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', m.role(f'mcv {s}').name,
+                                     'Command_UnPackJapanMCV', m.mark(f'here {s}')) for s in ('p1', 's5')])
+    s8.at(t, 'baseban off', 3., [('PLAYER_DISABLE_FACTORIES', m.player('s5'), 'JapanConstructionYard')])
+    s8.at(t, 'baseban late press', 5., [('NAMED_USE_COMMANDBUTTON_ABILITY', m.role(f'mcv {s}').name, BUTTON)
+                                        for s in ('p1', 's5')])
+    return t
+
+
+MISSION = {'engine_baseban': mission, 'engine_banlate': late_mission}
+CHECKS = {'engine_baseban': {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f}, 'engine_banlate': {'g': g}}

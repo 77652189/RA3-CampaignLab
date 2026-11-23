@@ -28,7 +28,9 @@ mismatch = "the simulator pays the core at once: 1200 and 10 at f75"
 id = "factories_off_lower_case_touches_no_yard"
 scene = {build = "engine_baseban", check = "c", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
 bench = "CampBaseBanC_mcp_1122_171350 (j09's 'japanconstructionyard'): 1200/1200/11 s35-s53, as with no gate"
-proves = "PLAYER_DISABLE_FACTORIES disables no yard of the player's (SCRIPT_DISABLED would hold it: e)"
+proves = """PLAYER_DISABLE_FACTORIES disables no yard of the player's (SCRIPT_DISABLED would hold it: e). A negative only \
+(review 1122yy #11): the same readings follow with the action deleted, so c / d / f / g show these hosts unheld, not \
+that the action is dispatched; no host that it holds was found (g: a yard made in play neither)"""
 expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 11]"
 item = "脚本动作 PLAYER_DISABLE_FACTORIES"
 
@@ -46,6 +48,14 @@ scene = {build = "engine_baseban", check = "f", until = 40, script = "不打; 5 
 bench = "CampBaseBanF_mcp_1122_172408 (d's gate at 0.5 s, as j09 calls it on a timer): 1200/1200/1111 s35-s50"
 proves = "PLAYER_DISABLE_FACTORIES disables nothing mid-game either"
 expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 1111]"
+item = "脚本动作 PLAYER_DISABLE_FACTORIES"
+
+[[reading]]
+id = "factories_off_touches_no_yard_made_in_play"
+scene = {build = "engine_banlate", check = "g", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBanLateG_mcp_1123_012105: 400/400/111111 s36-s54 -- each MCV unpacked at 0.2 s, s5's yards disabled at 3 s, each unpacked yard pressed at 5 s: both make their second core"
+proves = "PLAYER_DISABLE_FACTORIES holds no yard unpacked in play either (j09's yards are the player's own unpacked ones); still a negative only"
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [400, 400, 111111]"
 item = "脚本动作 PLAYER_DISABLE_FACTORIES"
 
 [[reading]]
