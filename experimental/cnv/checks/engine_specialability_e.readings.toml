@@ -7,3 +7,17 @@ scene = {build = "engine_specialability_e", check = "a", until = 17}
 bench = "E176 frame 240, ever-with-status 13, original end state 4, control end state 4 (retail pack-status removal control)"
 proves = "SpecialAbilityUpdate: the pack-status removal control ends in the same state as the original"
 expect = "list(rows[-1].values()) == [240, 13, 4, 4]"
+
+[[reading]]
+id = "a_shinobi_smoked_mid_walk_stands_its_pack_time_and_walks_on"
+scene = {build = "engine_specialability_e", check = "b", until = 12}
+bench = """E208 (bench 11-22, CampSpecAbilEB_mcp_1122_205858; 帧 / 原版走 / 对照走 / 无恢复走): s1 45 1045 45 1045, \
+s2 61 1061 54 1061, s3 76 1062 54 1076, s8.. 150 1062 54 1149"""
+proves = """SpecialAbilityUpdate (retail shinobi smoke, PackTime .5 s, pressed f20 of a 300 walk ordered f2): the module \
+stands the walker through UnpackTime + PackTime and, with Options RECONSTITUTE_STORED_COMMAND, it walks on (8 script \
+frames late; the plan 7, its stop and start not modelled); without the option it stays put; without the module it \
+walks on unstopped. With engine_specialability_e a (the UNATTACKABLE pack status) the module's reach: one press, \
+own ActivateModuleSpecialPower; repeated presses and being hit or killed mid-pack not benched"""
+item = "物体模块 Behaviors/SpecialAbilityUpdate"
+let = {at = "lambda k: rows[-1][k]"}
+expect = ["at('对照走') == 54", "at('原版走') - 1000 - at('对照走') in (7, 8)", "at('无恢复走') == 1149"]

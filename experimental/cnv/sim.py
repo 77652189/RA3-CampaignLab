@@ -2142,7 +2142,7 @@ class Sim:
 
     def self_power_press(self, b, button):
         """simspecial.Specials.self_power_press (L2): an ActivateModuleSpecialPower on self."""
-        return self._specials().self_power_press(self, b, button, self.world.modify)
+        return self._specials().self_power_press(self, b, button, self.world.modify, self.emp_book)
 
     def leap_press(self, b, button, p):
         """simspecial.Specials.leap_press (L2): a ProjectileSelf leap (the Sickle's) to a point."""

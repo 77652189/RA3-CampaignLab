@@ -3038,12 +3038,14 @@ def self_module_power(template, button, own=None):
                                         _frames(_secs(expand(_attr(shield, 'Duration', '0s'))))))
             if not modifier and not shields:
                 continue
-            trig, pack = set(), 0
+            trig, pack, hold, keep = set(), 0, 0, True
             for h, _ in _blocks(xml, 'SpecialAbilityUpdate'):
                 if _attr(h, 'SpecialPowerTemplate') == power:
                     trig = set((_attr(h, 'SetObjectStatusOnTrigger') or '').split())
                     pack = _frames(_secs(expand(_attr(h, 'PackTime', '0s'))))
-            return dict(modifier=modifier, power=power, trigger=trig, pack=pack, shields=shields)
+                    hold = pack + _frames(_secs(expand(_attr(h, 'UnpackTime', '0s'))))
+                    keep = 'RECONSTITUTE_STORED_COMMAND' in (_attr(h, 'Options') or '').split()
+            return dict(modifier=modifier, power=power, trigger=trig, pack=pack, shields=shields, hold=hold, keep=keep)
         return None
     return _chain(template, own, read)
 

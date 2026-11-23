@@ -90,15 +90,23 @@ class Specials:
         world.guessed.add('MovementSpecialPower: exact phase timing, cooldown and collisions unmodelled')
         return True
 
-    def self_power_press(self, world, b, button, modify):
+    def self_power_press(self, world, b, button, modify, emp_until):
         """An ActivateModuleSpecialPower on self (simunits.self_module_power): its AttributeModifier hangs on b for its
         Duration from the press (b.auras_on, so modify() takes its bits and SPEED and drops them when it runs out); the
-        power's SpecialAbilityUpdate SetObjectStatusOnTrigger bits through its PackTime (engine_acts_mix SB / EA)."""
+        power's SpecialAbilityUpdate SetObjectStatusOnTrigger bits through its PackTime (engine_acts_mix SB / EA).
+        That module stands b through its UnpackTime + PackTime, then b goes on with what it was doing when its Options
+        have RECONSTITUTE_STORED_COMMAND, else stays put (engine_specialability_e b: a shinobi smoked mid-walk gets
+        there 8 script frames late, without the option never; INFERRED: stands as EMP'd, firing held too)."""
         sp = simunits.self_module_power(b.template, button, world.own)
         xml = world.xml_of(b.template)
         mod = simunits.modifier(xml, sp['modifier'])
         now = world.frame_now()
         world.used.add('self power')
+        if not sp['keep']:
+            b.path, b.dest, b.goal = [], None, None
+        if sp['hold']:
+            deadlines = emp_until()
+            deadlines[b.serial] = max(deadlines.get(b.serial, 0), now + sp['hold'])
         if mod and mod['frames']:
             b.auras_on[sp['modifier']] = (now + mod['frames'], xml)
         if sp['trigger'] and sp['pack']:
