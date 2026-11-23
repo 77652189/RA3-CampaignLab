@@ -486,7 +486,8 @@ class Commands:
             for b in self._units(cmd):
                 if cmd.arg('drop_target'):
                     b.goal = None
-                r.order.order_move(w, r.peers, b, where, attacking, face=face, on_grid=grid)
+                r.order.order_move(w, r.peers, b, where, attacking, face=face, on_grid=grid,
+                                   exact=cmd.arg('exact', False))   # the AI's crush move (SimAI.order)
         return True, ''
 
     def _attack(self, cmd):

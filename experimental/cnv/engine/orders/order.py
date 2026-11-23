@@ -66,19 +66,21 @@ class Peers:
         setattr(self.host, name, value)
 
 
-def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None, on_grid=False):
+def order_move(world, peers, b, where, attacking, given=(), skip=(), face=None, on_grid=False, exact=False):
     """A plain move (attacking: an attack-move). The spot is adjusted first (free_spot: the goal kept off the spots
     other units hold; on_grid, for a unit sent to a point -- MOVE_NAMED_UNIT_TO, a team's or a selection's move --
     also snapped to the grid, bench engine_drop; other moves keep their exact point, INFERRED); `given` are spots
     already handed out to a group being ordered, `skip` that group (its members' old goals are dropped first).
-    face: the facing (radians) it turns to once there (the AI's form-up slots; send)."""
+    face: the facing (radians) it turns to once there (the AI's form-up slots; send). exact: not adjusted at all
+    (the AI's crush move onto its target: bench aicrush1, a mate's spot beside the guard moved it 20-40 aside and
+    the tank stopped short of him)."""
     if b:
         simability.stop_flee(b)             # INFERRED: any move order takes the run over, as STOP does
         m = b.aiupdate                      # ... and a waypoint path (order_follow sets it again after its legs)
         m.follow = m.ground_fire = None     # ... and a fire at the ground
         m.mode, m.ordered = 'attack' if attacking else 'move', False
         p = world.point(where) if isinstance(where, str) else where
-        if p is not None and b.alive and b.speed > 0:
+        if p is not None and b.alive and b.speed > 0 and not exact:
             spot = simpath.free_spot(world, b, simpath.goal_off_nodes(world, b, p),
                                      simpath.claims(world, b, skip) + list(given), on_grid)
             where = where if spot == p else spot

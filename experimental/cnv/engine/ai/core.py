@@ -371,7 +371,7 @@ class Brain:
                                        act=self.act, micro=h.data_of('tactics micro'), fight=self.fight,
                                        houses=lambda ai, u: self.garrisons(u, False),
                                        defenses=lambda ai, u: self.garrisons(u, True),
-                                       crush=lambda ai, f, foe: simcrush.eligible(self.world, f, foe, self.observe.attachments()),
+                                       crush=self._crush_hook(simcrush),
                                        pullback=lambda ai, u: h.pullback.query(self, u),
                                        # GatherWaypoint: the map's waypoint by name, None when absent (D148)
                                        gather_point=lambda ai, tac: self.world.waypoints.get(getattr(tac, 'gather', '')
@@ -870,6 +870,16 @@ class Brain:
         t = state.pursuit
         return t is not None and math.hypot(b.x - t.x, b.y - t.y) <= b.radius
 
+    def _crush_hook(self, simcrush):
+        """TacticsBlock's crush(ai, member, foe): it can crush him; the point a crush move would go to is kept for
+        the member's next order (order: a 'move' to it is that crush move, its goal not moved off the mates' spots)."""
+        def crush(ai, f, foe):
+            ok = simcrush.eligible(self.world, f, foe, self.observe.attachments())
+            if ok:
+                self.__dict__.setdefault('_crush_to', {})[f.body.serial] = tuple(map(float, foe.pos[:2]))
+            return ok
+        return crush
+
     def order(self, u, kind, arg):
         """TacticsBlock / DefenseBlock: 'move' or 'attack-move' to a point -> Sim.order_move; the point may carry a
         facing, (x, y, radians): the unit turns to it once there (the form-up slots)."""
@@ -919,6 +929,10 @@ class Brain:
                     self.give('enter', b, target=t, args=(('via', 'garrison'),))
             return
         face = float(arg[2]) if len(arg) > 2 and arg[2] is not None else None
+        crush = self.__dict__.get('_crush_to', {}).pop(b.serial, None)
+        if kind == 'move' and crush == (float(arg[0]), float(arg[1])):     # the crush move: onto the man as he
+            self.give('move', b, pos=crush, args=(('drop_target', True), ('exact', True)))  # stands (order_move)
+            return
         slot = self.__dict__.get('_exp_slots', {}).get(b.name)
         if kind == 'move' and slot is not None and math.hypot(float(arg[0]) - slot[0][0],
                                                               float(arg[1]) - slot[0][1]) < 1.0:

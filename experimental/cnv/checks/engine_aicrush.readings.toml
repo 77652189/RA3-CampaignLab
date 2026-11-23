@@ -16,25 +16,17 @@ bench = "aicrush1: 坦克数 4 at s28-s33, independent of the kill gap"
 proves = "sim crush: the crushing tanks take no harm"
 expect = "win(28, 33, '坦克数') == [4] * 6"
 
+# Bench rerun aicrush1t with ext (CampAICrush1TA_mcp_1122_201611): (1) the four tanks hold their attack on the plant
+# f230-346 under the guards' fire (no target taken by itself under an attack order); (2) an AI special-power aircraft
+# takes 237 off the plant at f212; (3) after the fall each tank whose target died gets a new crush move, the crush
+# pick's keep record untimed, its target no mate's pick (work/re d114_crush_members.md), 13 guards -> 0 by s32, 4 tanks.
+# B 11-23: (3) is in (model: the untimed record; the crush move's goal is the guard's own spot, not moved off the
+# mates' spots -- path.free_spot had moved it 20-40 aside and the tank stopped short). Seeds 1/2/3/5/7: guards 0 at
+# s28/36/28/30/37, all tanks alive on every seed (before: only seed 1 cleared, s29; one tank lost on seed 5). Not in:
+# (1) (target.picks, narrowed in work) and (2) (which power not read) -- seeds 2 and 7 are still slower than the bench.
 [[reading]]
 id = "crush_runs_the_guards_over_at_once"
 scene = {build = "aicrush1", check = "a", until = 35}
 bench = "aicrush1: 守军数 0 at s28-s33, 坦克数 4"
 proves = "simai team attack + sim crush: the team drives through the guards and crushes them at once"
 expect = ["win(28, 33, '坦克数') == [4] * 6", "win(28, 33, '守军数') == [0] * 6"]
-mismatch = """B 11-22 (model 776963f): seed 1 is the lucky one (0 from s29); seeds 2-11 leave 1-4 guards at s28 and \
-most still at s33, so not a draw's luck. The simulator's tanks stop about 250 from the plant's centre, out of their \
-150 reach, shooting the guards in reach (picks: an attacker takes a foe by itself when the order's target is out of \
-reach) and holding there; the plant falls only at s36, the guards go to the keep-record crush moves meanwhile. The \
-bench (aicrush1t 11-13 team rows) closes to about 222, the plant falls about f345, state 2 at f350 sends the tanks at \
-the guards. Probe: no target taken by itself under an attack order -> the plant falls s22-23 as on the bench, but \
-the crush after it is slower than the bench (2-5 guards at s35, 1-2 tanks lost): not the whole story. \
-B 11-23 bench rerun aicrush1t with ext (CampAICrush1TA_mcp_1122_201611, the same rows as 11-13): (1) the four tanks \
-hold their attack on the plant f230-346 while the guards hit them -- under an attack order no target is taken by \
-itself, as the probe's rule; (2) an AI special-power aircraft (2000 hp, in from the map corner) crosses the plant \
-f190-232 and takes 237 off it at f212, so the team goes to state 0 at f290 with no second state-2 round; the \
-simulator uses no power here, stays in state 2 at f270 and sends two tanks into the guards while the plant stands; \
-(3) after the fall (f346; a Peacekeeper spawned, 13 guards) every round each tank whose target died gets a new crush \
-move, the crush pick's keep record untimed (held until the target dies), 13 -> 0 by s32, 4 tanks. Probe rule (1) + \
-237 off the plant at f212, seeds 2/3/5/7: plant s21, 0 guards by s32 on seed 5 only, 1-3 left at s36 on the others, \
-tanks lost on 2 of 4: still slower; open: the crush keep record and the guards' damage on the tanks"""
