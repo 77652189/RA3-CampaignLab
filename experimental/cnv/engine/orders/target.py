@@ -31,7 +31,9 @@ def picks(a, targets, aimable, tx, ty, q):
     targets, [a target or None for each weapon]). A weapon takes the order's target when it is in range, can hit it,
     `a`'s side sees it and the line is clear; else, when `a` takes targets by itself now -- an attack-mover always,
     idle or on a plain move only with AutoAcquireEnemiesWhenIdle YES (Generals' calledDuringIdle: the idle state and
-    the turret's scan) -- the nearest foe in range it may take (takes_by_itself), can hit, sees, the line clear.
+    the turret's scan) -- the nearest foe in range it may take (takes_by_itself), can hit, sees, the line clear;
+    never while an attack order names a target in the fight the weapon can hit (out of reach or out of sight: the
+    four tanks hold on the plant as guards hit them).
     Nearest by centre, ties (two foes made on one point) by list order: the default quicksort broke them by the
     array's length (a4 r121); the scan stops at the biggest foe's radius past the reach (R8)."""
     ks = [k for k, t in enumerate(targets) if t is not a and q.hostile(a, t)]
@@ -49,6 +51,9 @@ def picks(a, targets, aimable, tx, ty, q):
         out.append(None)
         if a.mode != 'attack' and ('YES' not in a.acquire or 'NO_AUTO_ACQUIRE' in a.status):   # A310 statusbits n
             continue
+        if isinstance(g, type(a)) and g.alive and g.serial in aimable and q.can_hit(w, g) \
+                and getattr(a.aiupdate, 'ordered', False):
+            continue    # an attack order on a target it can hit: no other (bench aicrush1t ext 11-22, f230-346)
         for j in order:
             if d[j] - a.radius - pad > q.reach_of(w):       # sorted by centre: nobody nearer after this
                 break
