@@ -53,3 +53,19 @@ scene = {build = "engine_acts_jmn", check = "g", until = 21}
 bench = "血M (s4 conscript ~150 off JM, NO_ATTACK) 100 at s1, 70 s2, 28 s3, 0 from s4: the armed miner (JapanMinerGun, ObjectStatus GENERIC_TOGGLE_STATE; AIUpdate OreMinerOffensiveStateMachine, AutoAcquireEnemiesWhenIdle YES) takes it by itself"
 proves = "sim: an idle armed JapanMiner acquires an enemy in range (sim.py: AutoAcquireEnemiesWhenIdle read for a unit armed only by a status, round 285; sim 55 / 10 / 0 at mission 4-6 against the bench 70 / 28 / 0, hits a little harder); the dead conscript reads 0 (act_world: lying its SlowDeath out)"
 expect = "all(r['血M'] == (100 if t <= 3 else 0) for t, r in zip(times, rows) if t <= 3 or t >= 6)"
+
+[[reading]]
+id = "acts_dsg_the_spys_button_does_nothing_on_the_sudden_transport"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ActivateDisguiseSpecialPower"
+scene = {build = "engine_acts_dsg", check = "d", until = 14}
+bench = "d, bench 11-22 CampActsDsgD_mcp_1122_181357 (round 312; bench row s_k = mission k + 2): 装 0 s1-s2, 110 s3-s13 -- DP (pressed only) never DISGUISED; DA (pressed + NAMED_ATTACK_NAMED its Bullfrog) and DC (the attack only) both from s3"
+proves = "sim: the button (its power SpecialPower_InfantryDisguise, the spy's; the transport has no module of it) is logged and does nothing; whatever the attack does, DA does as DC (j01's press before its attack adds nothing)"
+expect = "all(r['装'] % 10 == 0 and r['装'] // 10 % 10 == r['装'] // 100 for r in rows)"
+
+[[reading]]
+id = "acts_dsg_the_sudden_transport_disguises_by_its_attack"
+scene = {build = "engine_acts_dsg", check = "d", until = 14}
+bench = "装 110 from s3 (mission 5): the retail JapanLightTransportVehicleDisguiser (a SpecialPowerNugget alone, AttackRange 999999) disguises DA and DC 1-2 s after the 3 s attack order, from 300 off"
+proves = "sim: NAMED_ATTACK_NAMED with the retail Disguiser sets DISGUISED on the transport (UnpackTime 1 s)"
+expect = "all(r['装'] == (110 if t >= 5 else 0) for t, r in zip(times, rows))"
+mismatch = "sim 0 throughout: weaponset.armed takes a weapon with a SpecialPowerNugget alone (no damage) for no gun, so the transport has none and drives onto the boat; bench 110 from mission 5 (C: the spy's and the painter's weapons are power-only too)"

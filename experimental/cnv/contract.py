@@ -47,6 +47,7 @@ RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j0
                    'Command_ActivatePilotSnipeSpecialPower',    # engine_wfire); Natasha's pilot snipe
                    'Command_ActivateBarkSpecialPower',          # the dog's bark
                    'Command_DisguisedEvacuate', 'Command_CivilianStructureEvacuate',  # EVACUATE (engine_acts_tgl)
+                   'Command_ActivateDisguiseSpecialPower',  # the spy's disguise, on the Sudden transport too (engine_acts_dsg)
                    'Command_AlliedAntiInfantryVehicleEvacuate',  # retail Riptide (engine_ifvevac_e)
                    'Command_JapanBaseDefenseToggleBinaryWeapon',   # the Japanese tower's air / ground toggle
                    'Command_ToggleHarpoonSpecialPower', 'Command_ToggleAfterburners',  # Apocalypse / Kirov toggles

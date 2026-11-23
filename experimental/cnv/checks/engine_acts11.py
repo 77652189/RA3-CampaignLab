@@ -178,5 +178,39 @@ def miner(m):
     return t
 
 
-MISSION = {'engine_acts_tgl': mission, 'engine_acts_twr': tower_mission, 'engine_acts_jmn': miner_mission}
-CHECKS = {'engine_acts_tgl': {'all': all_}, 'engine_acts_twr': {'t': tower}, 'engine_acts_jmn': {'g': miner}}
+# Round 312: Command_ActivateDisguiseSpecialPower on the Sudden transport (j01 'Transports-Disguise', 2 uses: pressed, then
+# NAMED_ATTACK_NAMED an enemy Bullfrog). The button's power is SpecialPower_InfantryDisguise (the spy's); the transport's
+# SpecialPower module is SpecialPower_JapanLightTransportVehicleDisguise, fired by its Disguiser weapon. Three transports,
+# an s4 Bullfrog (NO_ATTACK) 300 east of each; at 3 s DP is pressed, DA pressed + told to attack its boat, DC only told to
+# attack. 装 = DISGUISED: DP 1 + DA 10 + DC 100. [DP never; DA as DC, ~1 s (UnpackTime) after the order]
+# BENCH 11-22 (CampActsDsgD_mcp_1122_181357; bench row s_k = mission k + 2): 装 0 s1-s2, 110 s3-s13, as predicted.
+DISGUISERS = {'DP': 3900.0, 'DA': 4300.0, 'DC': 4700.0}
+DISGUISE = 'Command_ActivateDisguiseSpecialPower'
+
+
+def disguise_mission():
+    m = Mission(name='CampActsDsg', map=probe_border, units=[], facts={})
+    m.spawns |= {'JapanLightTransportVehicle', 'SovietAntiAirShip'}
+    for row, y in DISGUISERS.items():
+        m.put('JapanLightTransportVehicle', 'stop row', 700.0 - O[0], y - O[1], angle=0.0, name=_n(row), role=row.lower())
+        m.put('SovietAntiAirShip', 'stop row', 1000.0 - O[0], y - O[1], side='s4', angle=3.1416, name=_n(f'{row} boat'),
+              role=f'{row.lower()} boat')
+    return m
+
+
+def disguise(m):
+    t = Test()
+    s8.at(t, 'hold', 0.1, [('UNIT_CHANGE_OBJECT_STATUS', _n(f'{r} boat'), status('NO_ATTACK'), 1) for r in DISGUISERS] +
+          [('MAP_REVEAL_ALL_PERM', m.player('p1'))])
+    s8.at(t, 'press', PRESS, [('NAMED_USE_COMMANDBUTTON_ABILITY', _n(r), DISGUISE) for r in ('DP', 'DA')] +
+          [('NAMED_ATTACK_NAMED', _n(r), _n(f'{r} boat')) for r in ('DA', 'DC')])
+    s8.total(t, 'CNV_A11_Dsg', '装', [(w, ('UNIT_HAS_MODELCONDITION', _n(r), 'DISGUISED'))
+                                     for r, w in (('DP', 1), ('DA', 10), ('DC', 100))])
+    s8.watch(t, 12.0)
+    return t
+
+
+MISSION = {'engine_acts_tgl': mission, 'engine_acts_twr': tower_mission, 'engine_acts_jmn': miner_mission,
+           'engine_acts_dsg': disguise_mission}
+CHECKS = {'engine_acts_tgl': {'all': all_}, 'engine_acts_twr': {'t': tower}, 'engine_acts_jmn': {'g': miner},
+          'engine_acts_dsg': {'d': disguise}}
