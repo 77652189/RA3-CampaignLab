@@ -43,6 +43,7 @@ RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j0
                    'Command_ToggleRiotShieldSpecialPower',      # the Peacekeeper's riot shield (engine_aitoggle)
                    'Command_ActivateEjectPassengersSpecialPower',   # the Bullfrog's man cannon at a spot (engine_transport)
                    'Command_ActivateEjectPassengersSpecialPowerUntargeted',     # the bomber's paradrop (retail a01)
+                   'Command_VacuumBomb',                # s08's imploder at a waypoint (engine_super b / u)
                    'Command_PsyonicBlastSpecialPower',          # Yuriko's blast (WeaponFireSpecialAbilityUpdate,
                    'Command_ActivatePilotSnipeSpecialPower',    # engine_wfire); Natasha's pilot snipe
                    'Command_ActivateBarkSpecialPower',          # the dog's bark

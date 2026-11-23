@@ -3,6 +3,7 @@
 
 [[reading]]
 id = "a_weapon_fire_ability_goes_off_after_its_unpack_and_holds_the_caster_through_its_pack"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_PsyonicBlastSpecialPower"   # s02 presses it on the computer's Yuriko
 scene = {build = "engine_wfire", check = "all", until = 22, shot_clock = true}
 bench = "尤活 走帧 狙 吠 = 310016016 36039 8074031 15160 (bench 11-11 engine_wfire all, PASS)"
 proves = """sim WeaponFireSpecialAbilityUpdate (Sim.wfire_press / wfire_due), frame clock on: Yuriko's blast kills the \

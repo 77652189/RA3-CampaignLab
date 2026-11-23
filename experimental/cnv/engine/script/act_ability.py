@@ -52,6 +52,7 @@ def named_buttons(sim, name, a, script, unit=None):
         a = [a[0], power_spelling(a[1]), *a[2:]]
     body = (lambda _n: unit) if unit is not None else sim.body
     who = unit if unit is not None else a[0]
+    cpower = simunits.command_power(a[1], sim.own)      # the button's power (None for a power name or no such button)
     evacuate = lambda: (simunits._commands(sim.own)[1].get(a[1]) or ('',))[0] == 'EVACUATE'    # noqa: E731
     if name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and a[1] == 'Command_CaptureBuilding':
         _order(sim, 'capture', who, target=a[2])
@@ -79,7 +80,7 @@ def named_buttons(sim, name, a, script, unit=None):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有能弹出乘员的载具')
     elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT') and body(a[0]) \
             and (a[1] == 'Command_UnPackJapanEgg' or evacuate() or
-                 simunits.command_power(a[1], sim.own) in (UNPACK_POWER, PACK_POWER)) and a[1] not in \
+                 cpower in (UNPACK_POWER, PACK_POWER)) and a[1] not in \
             simunits._commands(sim.own)[0].get(simunits.command_set(body(a[0]).template, body(a[0]).upgrades, sim.own), ()):
         # an unpack / pack button the unit's own CommandSet lacks does nothing, though its ReplaceSelf module takes
         # the same power: retail's legacy egg id (engine_eggcmd / engine_eggnav), the power plant egg's button on
@@ -93,18 +94,18 @@ def named_buttons(sim, name, a, script, unit=None):
         if not sim.garrison.evacuate(body(a[0])):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有载着人的载具')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and \
-            simunits.command_power(a[1], sim.own) == UNPACK_POWER:
+            cpower == UNPACK_POWER:
         # an MCV / a Japanese egg deploys at the point: drives there, then turns into its replacement (bench
         # engine_unpack mcv / egg: the yard stands on the point, the name passes on)
         b, p = body(a[0]), sim.point(a[2])
         if not (b and p is not None and _order(sim, 'unpack', who, ('button', a[1]), place=a[2])[0]):
             sim.note('技能', f'{a[0]} 按 {a[1]}：没有能展开的单位或路点')
-    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and simunits.command_power(a[1], sim.own) == UNPACK_POWER:
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and cpower == UNPACK_POWER:
         # untargeted (a07 / s07's eggs when hit): nothing unfolds, and one on its way to unpack stops short (bench
         # engine_unpack pin / mid; a stop: INFERRED)
         _order(sim, 'stop', who)
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
-            simunits.command_power(a[1], sim.own) == PACK_POWER and \
+            cpower == PACK_POWER and \
             simunits.replace_self(body(a[0]).template, a[1], sim.own):
         # a construction yard packs back into its MCV where it stands (engine_pack a / s / j)
         b = body(a[0])
@@ -120,13 +121,13 @@ def named_buttons(sim, name, a, script, unit=None):
         sim.note('技能', f'{a[0]} 显式派发维修到 {a[2]}')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and body(a[0]) and body(a[0]).alive and \
             sim.point(a[2]) is not None and simunits.ocl_power(
-                body(a[0]).template, simunits.command_power(a[1], sim.own) or '', sim.own):
+                body(a[0]).template, cpower or '', sim.own):
         # engine_acts_wet DP / DS (round 226): the campaign bomber drop store's button is seen cast
         # (PLAYER_TRIGGERED_SPECIAL_POWER) the player's and the computer's alike; its load: _drop
         b = body(a[0])
-        sim.casts.append((sim.frame_now(), b.owner, simunits.command_power(a[1], sim.own).lower(), b.serial,
+        sim.casts.append((sim.frame_now(), b.owner, cpower.lower(), b.serial,
                            sim.point(a[2])))
-        if not _drop(sim, b, simunits.command_power(a[1], sim.own), sim.point(a[2])):
+        if not _drop(sim, b, cpower, sim.point(a[2])):
             sim.note('技能', f'{sim.label(b)} 按 {a[1]}：算放了，没出东西（推断）')
     elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and \
             body(a[0]) and body(a[0]).alive and \
@@ -161,16 +162,21 @@ def named_buttons(sim, name, a, script, unit=None):
         sim.casts += [(sim.frame_now(), b.owner, power.lower(), b.serial, None)] * n
         sim.note('技能', f'{sim.label(b)} 按 {a[1]}：记 {n} 次施放')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and any(
-            m.power() == simunits.command_power(a[1], sim.own) for m in body(a[0]).find(interfaces.Recall)):
+            m.power() == cpower for m in body(a[0]).find(interfaces.Recall)):
         # engine_recall_e (E184): the airport's recall seen cast once, the plane it made flies back to it;
         # engine_returnproducer_e (E173): the Apollo's own return, cast once, USER_1 on, it flies to its airport
-        b, power = body(a[0]), simunits.command_power(a[1], sim.own)
+        b, power = body(a[0]), cpower
         sim.casts.append((sim.frame_now(), b.owner, power.lower(), b.serial, None))
         for m in (m for m in b.find(interfaces.Recall) if m.power() == power):
             if m.mark():
                 sim.set_model_condition(b, *m.mark())
             for p, home in m.flights(sim.bodies.values()):
                 _order(sim, 'move', p, pos=(home.x, home.y))
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and \
+            cpower in SUPERWEAPON_HITS:
+        # a superweapon's button at a waypoint (s08's imploder): nothing, ready or not, no cast seen (bench
+        # engine_super b / u, the player's imploder; the computer's and the other superweapons' INFERRED the same)
+        pass
     elif name in ('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'NAMED_USE_COMMANDBUTTON_ABILITY'):
         script_cast(sim, name, a, unit)
     else:

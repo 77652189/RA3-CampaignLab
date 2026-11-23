@@ -19,6 +19,9 @@ bench 2026-11-07 (rows every ~7 frames; target base defense MaxHealth 1000 in th
   q CampSuperQ  frames from cast to first loss of target 0 = 56 (满血帧 56 = 3.7 s, +-1); 血0 100 -> 44 in one row,
                 no second step in 25 s.
   r             not run (see above).
+  b / u         (11-23, A326) the imploder's button: NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT Command_VacuumBomb at the
+                spot (u: NAMED_SET_SPECIAL_POWER_COUNTDOWN 0 at the start); counters 满血帧 血0 血280 施放数. Both: nothing,
+                满血帧 to the end, 100 / 100, 施放数 0 -- the button fires no superweapon, ready or not.
   i CampSuperI  cast counted (施放数 1) but NO protection seen: both tanks (centre 0 and 150) lost 10 % at every hit:
                 +1 s 90 / 90, +5 s 80 / 80, +19 s 70 / 70, +21 s 60 / 60. Either the scripted cast made no curtain, or
                 NAMED_DAMAGE bypasses invulnerability -- this probe cannot tell which; a control (player-click cast,
@@ -100,7 +103,8 @@ from parts import Script, Test
 
 CAST_FRAME, DMG = 75, 48
 HITS = (15, 75, 285, 315)           # frames after the cast: +1, +5, +19, +21 s
-RUN = {'p': 25.0, 'q': 25.0, 'r': 25.0, 'i': 30.0, 'j': 28.0, 'v': 30.0, 'w': 30.0}
+RUN = {'p': 25.0, 'q': 25.0, 'r': 25.0, 'i': 30.0, 'j': 28.0, 'v': 30.0, 'w': 30.0, 'b': 30.0, 'u': 30.0}
+BUTTON = {'r': 'Command_ParticleCannonSuperWeapon', 'b': 'Command_VacuumBomb', 'u': 'Command_VacuumBomb'}
 DIST = (0, 150, 240, 300)
 VDIST = (0, 150, 280, 350)
 
@@ -109,9 +113,8 @@ def super_test(m, which='p'):
     t = Test()
     p1 = m.player('p1')
     iron = which in 'ij'
-    vac = which in 'vw'
-    power = {'i': 'SpecialPowerIronCurtain', 'j': 'SpecialPowerIronCurtain', 'v': 'SpecialPowerVacuumBomb',
-             'w': 'SpecialPowerVacuumBomb'}.get(which, 'SpecialPowerParticleCannon')
+    vac = which in 'vwbu'
+    power = 'SpecialPowerIronCurtain' if iron else 'SpecialPowerVacuumBomb' if vac else 'SpecialPowerParticleCannon'
     holder = m.role('vacuum' if vac else 'curtain' if iron else 'collider').name
     spot = 'Test Vacuum Spot' if vac else 'Test Curtain Spot' if iron else 'Test Proton Spot'
     if vac:
@@ -132,6 +135,8 @@ def super_test(m, which='p'):
         start += [('UNIT_CHANGE_OBJECT_STATUS', m.role(f'foe {d}').name, 'NO_ATTACK', 1) for d in (0, 150)]
     if vac:
         start += [('UNIT_CHANGE_OBJECT_STATUS', m.role(f'vtarget {d}').name, 'NO_ATTACK', 1) for d in VDIST]
+    if which == 'u':
+        start.append(('NAMED_SET_SPECIAL_POWER_COUNTDOWN', holder, power, 0))      # engine_power: 0 makes it ready
     if not iron and not vac:
         start += [('UNIT_CHANGE_OBJECT_STATUS', m.role(f'target {d}').name, 'NO_ATTACK', 1) for d in DIST]
     start += [('NAMED_DELETE', n) for n in delete]
@@ -139,8 +144,8 @@ def super_test(m, which='p'):
     t.scripts.append(Script('Test - go', [('TIMER_EXPIRED', 'Test Go')], [('SET_FLAG', 'Test Going', 1)]))
     going = ('FLAG', 'Test Going', 1)
     t.scripts.append(Script('Test - tick', [going], [('INCREMENT_COUNTER', 1, 'CNV_Super_Tick')], once=False))
-    if which == 'r':
-        cast = [('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', holder, 'Command_ParticleCannonSuperWeapon', spot)]
+    if which in BUTTON:
+        cast = [('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', holder, BUTTON[which], spot)]
     else:
         cast = [('NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', holder, power, spot)]
     t.scripts.append(Script('Test - cast', [going, ('COUNTER', 'CNV_Super_Tick', 2, CAST_FRAME)],
@@ -176,8 +181,12 @@ def super_test(m, which='p'):
         t.counters.append(('CNV_Super_Full', '满血帧'))
         t.scripts.append(Script('Test - full', [cast_on, ('UNIT_HEALTH', m.role('vtarget 0').name, 3, 100)],
                                 [('INCREMENT_COUNTER', 1, 'CNV_Super_Full')], once=False))
-        for d in ((0, 150, 280) if which == 'v' else (0, 280, 350)):
+        for d in {'v': (0, 150, 280), 'w': (0, 280, 350)}.get(which, (0, 280)):
             health(m.role(f'vtarget {d}').name, f'血{d}', f'V{d}')
+        if which in 'bu':
+            t.counters.append(('CNV_Super_Cast', '施放数'))
+            t.scripts.append(Script('Test - cast seen', [going, ('PLAYER_TRIGGERED_SPECIAL_POWER', p1, power)],
+                                    [('INCREMENT_COUNTER', 1, 'CNV_Super_Cast')], once=False))
     elif which == 'q':
         t.counters.append(('CNV_Super_Full', '满血帧'))
         t.scripts.append(Script('Test - full', [cast_on, ('UNIT_HEALTH', m.role('target 0').name, 3, 100)],
@@ -324,5 +333,5 @@ def more_test(m, which):
     return t
 
 
-CHECKS = {'engine_super': {**{w: (lambda m, w=w: super_test(m, w)) for w in 'pqijvw'},
+CHECKS = {'engine_super': {**{w: (lambda m, w=w: super_test(m, w)) for w in 'pqijvwbu'},
                           **{w: (lambda m, w=w: more_test(m, w)) for w in 'klmosndecfghaxy'}}}

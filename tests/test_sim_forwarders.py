@@ -114,7 +114,7 @@ SIM_SURFACE = {
                      'gap*19 garrison*29 ground*2 handed*2 has_model_condition hidden_home*2 hidden_members hotspots*3 human*9 '
                      'infiltrators*4 input*2 kills*4 label*12 level*3 library_ai*2 living*24 looks lost_orders m*6 made_frame '
                      'markers members*32 mm*6 model_scripts*2 money*9 money_cap named_team nearest_ref*3 note*35 object_lists '
-                     'objectives*2 of_types*12 off_teams*2 on_the_move own*41 peeks personality_of*2 player_team_rel '
+                     'objectives*2 of_types*12 off_teams*2 on_the_move own*33 peeks personality_of*2 player_team_rel '
                      'player_ups players*8 point*19 power power_at*2 powers_off present*16 production*3 ra3_only*3 reblock*2 '
                      'reinforce*2 relation*2 relations reshroud*3 retail*5 reveal_all*2 reveal_all_until*2 reveal_areas*2 '
                      'revealed_to*2 reveals*3 scenes*4 script_disabled*2 sees*4 selected*2 seq*5 set_model_condition*3 '

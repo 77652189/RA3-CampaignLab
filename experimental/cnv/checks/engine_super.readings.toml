@@ -30,6 +30,17 @@ expect = [
 ]
 
 [[reading]]
+id = "super_the_imploders_button_at_a_waypoint_fires_nothing"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_VacuumBomb"
+scenes = {b = {build = "engine_super", check = "b", until = 31}, u = {build = "engine_super", check = "u", until = 31}}
+bench = "b (as built) / u (countdown 0 at the start): 满血帧 counts on to the end (399 at s31, 528 at s39), 血0 / 血280 100 / 100, 施放数 0 (bench 11-23 CampSuperB_mcp_1123_120624 / CampSuperU_mcp_1123_120348)"
+proves = "act_ability.named_buttons: NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT Command_VacuumBomb on the player's imploder fires nothing and no cast is seen, ready or not (v's NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT at the same spot kills). s08's press is the computer's: INFERRED the same"
+expect = [
+    "b[-1]['满血帧'] > 300 and [b[-1]['血0'], b[-1]['血280'], b[-1]['施放数']] == [100, 100, 0]",
+    "u[-1]['满血帧'] > 300 and [u[-1]['血0'], u[-1]['血280'], u[-1]['施放数']] == [100, 100, 0]",
+]
+
+[[reading]]
 id = "super_the_psionic_decimator_kills_within_300_at_61_frames"
 scene = {build = "engine_super", check = "e", until = 35}
 bench = "the base defenses (1000) at 0 and 250 whole 61 frames after the cast, then dead; 350 whole to the end (the bench's counters freeze at a dead object's last health, so only the 满血 frames compare) (bench 2026-11-07 engine_super e)"
