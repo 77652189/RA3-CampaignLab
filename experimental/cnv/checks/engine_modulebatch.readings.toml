@@ -14,8 +14,8 @@ id = "the_monitor_shows_the_power_ready"
 scene = {build = "engine_modulebatch", check = "a", until = 35}
 bench = "E145: ready 1 at s12-s16 (countdown set to 0 at 8 s), 0 at s25-s34 (countdown 10000 at 20 s)"
 proves = "MonitorSpecialPowerTimerUpdate: SPECIALPOWER1_READY follows the power's countdown, only with the module"
+item = "物体模块 Behaviors/MonitorSpecialPowerTimerUpdate"
 expect = ["win(12, 16, 'ready') == [1] * 5", "win(25, 34, 'ready') == [0] * 10"]
-mismatch = "sim ready 0 throughout (bench 1 at s12-s16): NAMED_SET_SPECIAL_POWER_COUNTDOWN and the monitor's ready output not modeled"
 
 [[reading]]
 id = "max_beneficiaries_caps_the_healed"

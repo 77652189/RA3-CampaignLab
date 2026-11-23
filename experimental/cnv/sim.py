@@ -2088,8 +2088,8 @@ class Sim:
                                          if seconds and seconds > 0 else None)
 
     def has_model_condition(self, b, condition):
-        if not self.present(b) or condition not in b.model_conditions:
-            return False
+        if not self.present(b) or condition not in b.model_conditions:      # or a module's (the power monitor's)
+            return self.present(b) and any(m.shows(condition, self.frame_now()) for m in b.find(kernel_interfaces.ReadyMonitor))
         until = b.model_conditions[condition]
         if until is not None and self.frame_now() >= until:
             b.model_conditions.pop(condition, None)

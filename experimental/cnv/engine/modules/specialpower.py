@@ -54,6 +54,31 @@ class SpecialPower(module.Module, interfaces.SpecialPower):
         self.ready = frame
 
 
+class MonitorData(SpecialPowerData):
+    def __init__(self, power=None, condition=None):
+        super().__init__(power)
+        self.condition = condition      # ReadyCondition: the model condition it sets while its power is ready
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(templates.attr(head, 'SpecialPowerTemplate'), templates.attr(head, 'ReadyCondition'))
+
+
+@factory.module('MonitorSpecialPowerTimerUpdate')
+class Monitor(module.Module, interfaces.ReadyMonitor):
+    """MonitorSpecialPowerTimerUpdate (E145, checks/engine_modulebatch.readings.toml): its thing has ReadyCondition
+    while the reload of every SpecialPower module of its thing serving its power is over, and not otherwise (the
+    proton collider's SPECIALPOWER1_READY after a countdown of 0, gone after 10000; none on the one without it).
+    Asked when the condition is read (Sim.has_model_condition). Not modelled: AvailableAtStart="false" (the bench's
+    collider not ready at the start; the simulator's is), disabled / unpacking hosts (INFERRED: the reload alone)."""
+    DATA = MonitorData
+
+    def shows(self, condition, frame):
+        d = self.data
+        return bool(d.condition) and condition == d.condition and all(
+            (m.ready_at() or 0) <= frame for m in self.thing.find(interfaces.SpecialPower) if m.power() == d.power)
+
+
 class RecallData(SpecialPowerData):
     def __init__(self, power=None, most=4):
         super().__init__(power)

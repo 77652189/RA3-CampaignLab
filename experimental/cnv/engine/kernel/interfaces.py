@@ -497,6 +497,14 @@ class SpecialPower(Interface):
         raise NotImplementedError
 
 
+class ReadyMonitor(Interface):
+    """MonitorSpecialPowerTimerUpdate: a model condition its thing has while a power of its thing is ready."""
+    __slots__ = ()
+
+    def shows(self, condition, frame):
+        raise NotImplementedError
+
+
 class Freeze(Interface):
     """SecondaryDamageTracker, one a thing (step M11): its rules (rules: every, melt, cap, steps), the cold it holds
     (held), the highest step reached (stage: -1, none), a hit's cold (add: the amount) and a tick's melting (melt: the

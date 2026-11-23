@@ -364,6 +364,14 @@ def team_use_commandbutton_ability_at_waypoint(sim, name, a, script):
         _member(sim, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', [b.name, a[1], a[2]], script, b)
 
 
+def named_set_special_power_countdown(sim, name, a, script):
+    # (unit, power, s): its power's reload ends s whole seconds on (0: ready now). E145 engine_modulebatch: the
+    # monitor showed the collider ready after 0, not after 10000. Other values and the player-level READY: C's gap
+    b = sim.body(a[0])
+    if b and b.alive:
+        start_reload(sim, b, str(a[1]), sim.frame_now() + int(float(a[2])) * simunits.LIFE_FPS)
+
+
 def _member(sim, name, a, script, b):
     """A team button on one member as the named action is on it (Sim.act's run of it: a branch declined is a gap),
     the member itself pressed -- a reference of its name cannot take its place (review 11-19 i #2)."""
@@ -373,6 +381,7 @@ def _member(sim, name, a, script, b):
 
 
 ACTIONS = {
+    'NAMED_SET_SPECIAL_POWER_COUNTDOWN': named_set_special_power_countdown,
     'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT': named_buttons,
     'NAMED_USE_COMMANDBUTTON_ABILITY': named_buttons,
     'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT': named_buttons,

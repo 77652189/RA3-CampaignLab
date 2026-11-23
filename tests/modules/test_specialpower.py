@@ -61,6 +61,18 @@ def test_the_cannon_module_refuses_the_click_until_its_reload_ends():
     assert simability.order_power(e, simorder.Peers(e), b, CANNON, (b.x + 500, b.y))[1] != 'reloading'
 
 
+def test_the_monitor_shows_its_condition_only_while_the_power_is_ready():
+    # MonitorSpecialPowerTimerUpdate (the collider's ReadyCondition SPECIALPOWER1_READY); bench: engine_modulebatch
+    import engine.objects.power as simpower
+    e, b = _collider()
+    now = e.frame_now()
+    assert e.has_model_condition(b, 'SPECIALPOWER1_READY') and not e.has_model_condition(b, 'SPECIALPOWER2_READY')
+    simpower.start_reload(e, b, CANNON, now + 1)
+    assert not e.has_model_condition(b, 'SPECIALPOWER1_READY')
+    simpower.start_reload(e, b, CANNON, now)
+    assert e.has_model_condition(b, 'SPECIALPOWER1_READY')
+
+
 def test_a_power_no_block_serves_gets_a_module_attached():
     import sim
     import engine.objects.power as simpower
