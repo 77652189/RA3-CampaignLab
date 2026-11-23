@@ -145,6 +145,10 @@ MODULES = ('data','player', 'opening', 'states', 'teams', 'targets', 'tactics', 
 _AI = {}
 
 
+def _walks(b):                      # a unit that can walk: speed, not IMMOBILE (UseTransports' riders, review ww #2)
+    return b.speed > 0 and 'IMMOBILE' not in b.status
+
+
 def model():
     """The engine model's ra3model.ai modules as a dict, or None (modelpin.package loads the package by file)."""
     if 'got' not in _AI:
@@ -542,8 +546,9 @@ class Brain:
         return self.observe.room(t.body, u.body)
 
     def board(self, ai, u, t):
-        """TacticsBlock's boarding order (UseTransports): u walks into the carrier t as into a house."""
-        return self.give('enter', u.body, target=t.body, args=(('via', 'garrison'),))[0]
+        """TacticsBlock's boarding order (UseTransports): u walks into the carrier t as into a house; one that cannot
+        walk is not sent -- the engine's can-enter test before it sends a rider again (INFERRED, review ww #2)."""
+        return _walks(u.body) and self.give('enter', u.body, target=t.body, args=(('via', 'garrison'),))[0]
 
     def unload(self, ai, t, at):
         """TacticsBlock's unload (UseTransports, INFERRED): the carrier t lets every rider out where it is; an aircraft
@@ -551,9 +556,10 @@ class Brain:
         return (at or 'AIRCRAFT' not in t.body.kinds) and self.give('exit', t.body)[0]
 
     def riding(self, ai, u, t=None):
-        """TacticsBlock: 'in' when u is inside t (None: any), 'going' when sent into it and on its way, else None."""
-        o = self.observe
-        for state, g in (('in', o.inside(u.body)), ('going', o.heading(u.body))):
+        """TacticsBlock: 'in' when u is inside t (None: any), 'going' when sent into it and walking there (one standing
+        is idle: the engine asks again whether it can get in, b1122_boarding), else None."""
+        o, b = self.observe, u.body
+        for state, g in (('in', o.inside(b)), ('going', o.heading(b) if _walks(b) and b.path else None)):
             if g is not None and (t is None or g is t.body):
                 return state
         return None

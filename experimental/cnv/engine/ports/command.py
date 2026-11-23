@@ -731,8 +731,9 @@ class Commands:
     def _garrisons(self):                    # the world's houses and transports (enter / exit), one way in
         return self._w.garrison
 
-    def _exit(self, cmd):                    # every passenger out of the transport / garrison (the AI's UseTransports)
-        if all([self._garrisons().evacuate(b) for b in self._units(cmd)]):
+    def _exit(self, cmd):                    # every passenger out of the transport / garrison (the AI's UseTransports):
+        units = self._held(cmd, [b for b in self._units(cmd) if b])     # the giver's own, one at least (review ww #1)
+        if units and all([self._garrisons().evacuate(b) for b in units]):
             return True, ''
         return False, 'nobody inside'
 

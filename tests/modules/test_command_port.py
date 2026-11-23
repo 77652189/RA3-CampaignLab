@@ -1555,3 +1555,33 @@ def test_a_move_to_a_point_goes_there(kind, units):
     assert s.commands.do(Command(kind, units=units, pos=(300.0, 30.0))) == (True, '')
     goals = [s.bodies[u].dest for u in units]        # the small world has no ground to walk: the goal given
     assert all(g is not None and math.dist(g, (300.0, 30.0)) < 100 for g in goals), goals
+
+
+def test_exit_lets_out_only_the_givers_own():
+    """Review ww #1: the player cannot let a foe's riders out by naming its carrier; nor the AI when its pick is a foe's
+    only; an empty pick is refused, not a success (all of nothing). The owner's own AI's goes."""
+    s = simsmall.small_world([('a', APOC, 'Player_1', 0.0, 0.0)], model=False)
+    house = s.add('house', 'AM_Apartments_01', 'Player_2', 300.0, 300.0)
+    gi = s.add('gi', 'AlliedAntiInfantryInfantry', 'Player_2', 400.0, 300.0)
+    assert s.garrison.put(gi, house, script=True)
+    pin = (('objects', 'serial'),)
+    assert s.commands.do(Command('exit', 'player', units=('house',)))[0] is False
+    assert s.commands.do(Command('exit', 'ai:Player_1', units=(house.serial,), args=pin))[0] is False
+    assert s.commands.do(Command('exit', 'player', units=('nobody',)))[0] is False
+    assert s.garrison.held(house) == [gi]
+    assert s.commands.do(Command('exit', 'ai:Player_2', units=(house.serial,), args=pin)) == (True, '')
+
+
+def test_a_rider_standing_still_is_not_on_its_way_and_one_that_cannot_walk_is_not_sent():
+    """Review ww #2 (UseTransports): a rider sent in is 'going' while it walks; standing -- IMMOBILE -- it is idle, and
+    the boarding resend refuses it, so the team's load list drops it and the rest go (bench note b1122_boarding)."""
+    s = simsmall.small_world([('gi', 'AlliedAntiInfantryInfantry', 'Player_1', 0.0, 0.0)], model=False)
+    house = s.add('house', 'AM_Apartments_01', 'Player_1', 300.0, 0.0)
+    br, simai = _brain(s)
+    gi = s.bodies['gi']
+    u, t = simai.Unit(gi, br.observe), simai.Unit(house, br.observe)
+    assert br.board(None, u, t)
+    gi.path = [(300.0, 0.0)]                         # the small world has no ground: the walk stood in
+    assert br.riding(None, u, t) == 'going'
+    gi.status = gi.status | {'IMMOBILE'}
+    assert br.riding(None, u, t) is None and not br.board(None, u, t)
