@@ -86,10 +86,13 @@ def named_attacked_by_player(sim, name, a):
     return bool(sim.present(by) and by.owner == a[1])
 
 
-def unit_has_modelcondition(sim, name, a):
-    b = sim.body(a[0])
-    condition = a[1][2] if isinstance(a[1], tuple) else a[1]
+def _reads(sim, b, condition):
     return sim.has_model_condition(b, condition)
+
+
+def unit_has_modelcondition(sim, name, a):
+    condition = a[1][2] if isinstance(a[1], tuple) else a[1]
+    return _reads(sim, sim.body(a[0]), condition)
 
 
 def unit_health(sim, name, a):
@@ -118,12 +121,16 @@ def player_has_number_objects_with_object_status(sim, name, a):
     # count probes model.counted(status=), engine_aimicro 冲 / 曾冲). INFERRED: the dying not counted, as
     # UNIT_HAS_OBJECT_STATUS reads false from the kill -- no bench separates it; but a dead one that stays (no die
     # module, body.kill: NO_COLLISIONS) is counted (engine_block gk)
+    # ..._WITH_MODELCONDITION (A318, engine_modeldur:n; s08's SUCKED_UP_HIGH): the objects that read the condition;
+    # its native producers (the magnetic satellite's SuckUpObjectsUpdate) are not modelled, only script-set ones
     st = a[3][2] if isinstance(a[3], tuple) else a[3]
     stay = [b for b in sim.bodies.values() if not b.alive and 'NO_COLLISIONS' in b.engine_status]
     mine = [b for b in sim.living() + stay if b.owner == a[0]]
-    n = sum(1 for b in mine if st in b.status)
-    if not n and st not in ACTED_STATUS and st not in sim.attachment_known_status:
-        sim.gap(GAP_CONDITION, name, f'状态位 {st}：模拟器只知道脚本设的和 {"、".join(sorted(ACTED_STATUS))}')
+    model = name.endswith('MODELCONDITION')
+    n = sum(1 for b in mine if (_reads(sim, b, st) if model else st in b.status))
+    if not n and (model or st not in ACTED_STATUS and st not in sim.attachment_known_status):
+        sim.gap(GAP_CONDITION, name, f'模型条件 {st}：模拟器只数脚本设的和就绪监视器的' if model else
+                f'状态位 {st}：模拟器只知道脚本设的和 {"、".join(sorted(ACTED_STATUS))}')
     return CMP[a[1]](n, a[2])
 
 
@@ -292,6 +299,7 @@ CONDITIONS = {
     'UNIT_HEALTH': unit_health,
     'UNIT_HAS_OBJECT_STATUS': unit_has_object_status,
     'PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS': player_has_number_objects_with_object_status,
+    'PLAYER_HAS_NUMBER_OBJECTS_WITH_MODELCONDITION': player_has_number_objects_with_object_status,
     'NAMED_EXITED_AREA': named_exited_area,
     'NAMED_ATTACKED_BY_OBJECTTYPE': named_attacked_by_objecttype,
     'SKIRMISH_PLAYER_HAS_BEEN_ATTACKED_BY_PLAYER': skirmish_player_has_been_attacked_by_player,

@@ -82,5 +82,23 @@ def u(m):
                                (8., 'modeldur team off', ('TEAM_SET_MODELCONDITION', m.crew('E'), 2, 0))], 12.)
 
 
+def n(m):
+    """PLAYER_HAS_NUMBER_OBJECTS_WITH_MODELCONDITION as s08 asks it (player, 3, 1, SUCKED_UP_HIGH): the condition set
+    by script on the team at 2 s for 10 s and on the loner at 4 s for 2 s, all p1's. Frames each query holds: predict
+    >= 1 151, == 2 120, == 3 31, s1 >= 1 never (another player's count)."""
+    t = Test()
+    t.scripts.append(Script('Test - modeldur number setup', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
+    s8.at(t, 'modeldur number team', 2., [
+        ('TEAM_SET_MODELCONDITION_FOR_DURATION', m.crew('E'), 'SUCKED_UP_HIGH', 10., 1.)])
+    s8.at(t, 'modeldur number loner', 4., [
+        ('UNIT_SET_MODELCONDITION_FOR_DURATION', m.role('loner').name, 'SUCKED_UP_HIGH', 2., 1.)])
+    for key, label, side, cmp, k in (('Ge1', '至少1', 'p1', 3, 1), ('Eq2', '正好2', 'p1', 2, 2),
+                                     ('Eq3', '正好3', 'p1', 2, 3), ('Foe', '敌方', 's1', 3, 1)):
+        s8.frames(t, 'CNV_ModelDur_'+key, label, [
+            ('PLAYER_HAS_NUMBER_OBJECTS_WITH_MODELCONDITION', m.player(side), cmp, k, 'SUCKED_UP_HIGH')])
+    t.bench = [('bench_watch', dict(seconds=14., every=.5, sheet=False, lines=4))]
+    return t
+
+
 MISSION = {'engine_modeldur': mission}
-CHECKS = {'engine_modeldur': {'a': check, 'b': b, 't': t, 'u': u}}
+CHECKS = {'engine_modeldur': {'a': check, 'b': b, 't': t, 'u': u, 'n': n}}

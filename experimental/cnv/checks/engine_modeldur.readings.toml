@@ -1,4 +1,4 @@
-# Bench readings of checks/engine_modeldur.py, variants t / u (format: experimental/cnv/readings.py; runner:
+# Bench readings of checks/engine_modeldur.py, variants t / u / n (format: experimental/cnv/readings.py; runner:
 # tests/conformance). The unit action's a / b are still the old test tests/test_modeldur_bench_c.py.
 
 [[reading]]
@@ -18,3 +18,11 @@ proves = "act_object TEAM_SET_MODELCONDITION: USER_2 on every team member until 
 expect = ["counter('CNV_ModelDur_e1') == 90", "counter('CNV_ModelDur_e2') == 90",
           "all(r['状态'] in (0, 3) for r in rows)", "rows[-1]['状态'] == 0"]
 item = "脚本动作 TEAM_SET_MODELCONDITION"
+
+[[reading]]
+id = "player_count_of_objects_with_a_model_condition"
+scene = {build = "engine_modeldur", check = "n", until = 14}
+bench = "CampModelDurN_mcp_1123_013856: 至少1 / 正好2 / 正好3 / 敌方 151 / 120 / 31 / 0 from s10 to the end (正好2 held at 30 through the loner's 31 frames, 敌方 0 every row)"
+proves = "cond_object PLAYER_HAS_NUMBER_OBJECTS_WITH_MODELCONDITION: the player's objects reading the condition, counted and compared (>= 1 / == 2 / == 3 over the team's and the loner's spans), another player's none"
+expect = ["counter('CNV_ModelDur_Ge1') == 151", "counter('CNV_ModelDur_Eq2') == 120",
+          "counter('CNV_ModelDur_Eq3') == 31", "all(r['敌方'] == 0 for r in rows)"]
