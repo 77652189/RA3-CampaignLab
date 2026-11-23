@@ -23,3 +23,15 @@ bench = "E169 assistpon:a: 资金 10000 -> 8000 over about 30 s of the queue (wa
 proves = "the bench's sidebar queue clicks are paid -- a UI-input baseline, not an AssistedPlacement rule"
 expect = "min(r['资金'] for r in rows) == 8000"
 mismatch = "sim 10000 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 8000"
+
+[[reading]]
+id = "an_exact_camera_places_the_refinery_off_the_hint_pad"
+scene = {build = "assistpon", check = "b", until = 60}
+bench = """assistpon:b, run_queue CampAsstOnB_mcp_1123_072422: 采样完成 / 资金 / 矿场总数 / 提示位数量 0 10000 0 0 to s19, paid down to \
+8000 by s42, 60 8000 1 0 at s57 (the pad click at 57.2 s: frame 20 a green preview, frame 21 the refinery set down where \
+clicked), 90 . 1 0 from s59 to s172; no ore node in sight in frames 20-28"""
+proves = """with the camera put by the mission (not bench_camera's minimap click) the pad click is accepted: E169's red preview \
+and zero refineries were the camera's ~100 offset, not the placement rule; the refinery stands outside the 8-square at the \
+hint pad -- no snap seen (the node not in sight: snapping not yet tested, AssistedPlacement stays TODO)"""
+expect = ["rows[-1]['矿场总数'] == 1", "all(r['提示位数量'] == 0 for r in rows)"]
+mismatch = "sim 矿场总数 0 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 1 from s57"

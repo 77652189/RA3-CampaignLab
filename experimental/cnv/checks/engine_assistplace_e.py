@@ -10,6 +10,8 @@ MEASURED: both original and module-removal runs paid the queue (8000 left),
 but produced zero refineries and left the completion sentinel at zero.
 Both previews remained red. The original predictions below are retained;
 this recipe has not established a legal placement or a snapping rule.
+b (11-23, the camera put by the mission): the click is accepted, one refinery where clicked, off the hint pad;
+no ore node in sight, so snapping is still untested.
 """
 import re
 import types
@@ -79,6 +81,22 @@ def check(m):
     return t
 
 
+def exact(m):
+    """b: a with the camera put on the pad by the mission (MOVE_CAMERA_TO at 1 s + bench_view: bench_camera's minimap
+    click is off by ~100, twice the snap distance), every click looked at, and a second click 330 from the yard (its +y)
+    -- a spot near the yard and far from the node -- for when the pad's leaves the cursor up: is the pad itself red?"""
+    t = check(m)
+    from checks import engine_scripts8 as s8
+    t.waypoints['E169 view'] = PAD
+    s8.at(t, 'view', 1., [('MOVE_CAMERA_TO', 'E169 view', 0.5, 0.0, 1.0, 1.0)])
+    x, y = m.site('probe refinery')
+    steps = [(name, dict(kw, look=True) if name == 'bench_click' else kw) for name, kw in t.bench]
+    steps[1] = ('bench_view', dict(x=PAD[0], y=PAD[1], look=True))
+    t.bench = steps[:-1] + [('bench_watch', dict(steps[-1][1], seconds=5)),
+                            ('bench_click', dict(x=x - 280, y=y + 70, look=True)), steps[-1]]
+    return t
+
+
 MISSION = {'assistpon': lambda: mission(True), 'assistpoff': lambda: mission(False)}
-CHECKS = {name: {'a': check} for name in MISSION}
+CHECKS = {name: {'a': check, 'b': exact} for name in MISSION}
 CONTROLS = {'assistpoff': 'assistpon'}
