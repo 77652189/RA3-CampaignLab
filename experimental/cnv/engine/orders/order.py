@@ -372,13 +372,15 @@ def fight(world, peers):
 def assist(world, peers, live):
     """The tick's firing notifiers call their friends (engine/modules/assist.py): up to `most` callable ones, nearest
     first, not firing themselves, each answering with its response module's weapon line -- its hit modifiers (the link
-    guns' boost, simunits: an ally of the one template) go on the caller for their Duration (world.modify)."""
+    guns' boost, simunits: an ally of the one template) go on the caller for their Duration (world.modify). One holding
+    NO_ATTACK answers nothing (bench 11-22 engine_attackassist:c: on / off targets both 70 at s30; review xx #5)."""
     shooters = list({a.serial: a for _, _, a in peers.firing + peers.volleys}.values())
     busy = {a.serial for a in shooters}
     for a in shooters:
         for n in a.find(interfaces.AssistNotify):
             near = sorted(((math.hypot(f.x - a.x, f.y - a.y), f) for f in live if f is not a and f.alive and
-                           f.serial not in busy and f.find(interfaces.AssistResponse)), key=lambda p: p[0])
+                           f.serial not in busy and 'NO_ATTACK' not in f.status and
+                           f.find(interfaces.AssistResponse)), key=lambda p: p[0])
             called = [f for d, f in near if n.callable(f, world.relation(a.owner, f.owner), d)][:n.data.most]
             for f in called:
                 for r in f.find(interfaces.AssistResponse):

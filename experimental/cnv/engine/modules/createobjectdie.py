@@ -19,8 +19,9 @@ What the simulator keeps of it (INFERRED, the first two kept from the readers it
     150 at ~0.55 health that fires the next frame). In retail only the structures' Generic / ConYard
     BuildingDestruction and BuildingSuicide lists make infantry; the hulks, rubble and debris the others make are
     not made -- none while the thing or its owner holds an UpgradeForbidden upgrade (World.upgrades; retail's survivor
-    blocks forbid Upgrade_NoSpawnUponDestruction, a PLAYER upgrade; review vv #3). Not read: REQUIRES_LIVE_PLAYER
-    (the simulator has no defeated player); INFERRED.
+    blocks forbid Upgrade_NoSpawnUponDestruction, a PLAYER upgrade; review vv #3). A nugget whose Options hold
+    REQUIRES_LIVE_PLAYER makes nothing in a death PLAYER_KILL dealt (module.PLAYER_GONE; bench 11-22
+    engine_pkallied:a); the simulator has no other defeated player; INFERRED.
 VeterancyLevels and the list's other nuggets (FX, debris, weapons) are not read.
 
 Kept from step B5b (B5 review e #5, the coordinator's ruling 11-19): the list is found by its name over every
@@ -68,7 +69,7 @@ class CreateObjectDie(module.Module, interfaces.Die, interfaces.CreateOnDeath):
         elif thing.surface != 'air' and d.takes(info.death) and d.holds(
                 module.status_now(thing) if info.status is None else info.status) and \
                 not d.ups_forbidden & self.world.upgrades(thing):
-            self.world.create(thing, d.ocl, False, fight=True)
+            self.world.create(thing, d.ocl, False, fight=info.cause == module.PLAYER_GONE and module.PLAYER_GONE or True)
         if thing.surface == 'air' and self._first_airborne(info.status):
             self.world.create(thing, d.ocl, True)
 

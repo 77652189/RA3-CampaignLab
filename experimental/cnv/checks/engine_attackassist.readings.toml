@@ -21,3 +21,13 @@ The simulator's DPS clock gives the rate, not the steps; who is called (nearest,
 item = "物体模块 Behaviors/AttackAssistResponseBehavior"
 expect = ["52 <= rows[-1]['on target'] <= 58 and 67 <= rows[-1]['off target'] <= 73",
           "100 - rows[-1]['on target'] > 1.35 * (100 - rows[-1]['off target'])"]
+
+[[reading]]
+id = "a_responder_holding_no_attack_links_nothing"
+scene = {build = "engine_attackassist", check = "c", until = 30}
+bench = """engine_attackassist:c, `run_queue` CampAssistC 11-22 (PASS): on / off target 97 97 (s1-3) .. 88 88 (s10-12) .. \
+70 70 (s28-30) -- on's mate held NO_ATTACK from the start"""
+proves = """AttackAssistResponseBehavior (review xx #5): a responder holding NO_ATTACK answers no call -- on's source gets no \
+boost and hits like off's (the simulator's assist skips it, engine/orders/order.py assist)"""
+item = "物体模块 Behaviors/AttackAssistResponseBehavior"
+expect = ["abs(rows[-1]['on target'] - rows[-1]['off target']) <= 2 and 66 <= rows[-1]['off target'] <= 73"]

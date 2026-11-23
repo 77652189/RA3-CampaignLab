@@ -1,0 +1,12 @@
+# Bench readings of checks/engine_playerkill.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "a_player_kill_leaves_no_live_player_survivor"
+scene = {build = "engine_pkallied", check = "a", until = 19}
+bench = """engine_pkallied:a, `run_queue` CampPKAlliedA_mcp_1122_191434: plant mask / s4 / s5 Peacekeepers 7 0 0 to f75, \
+1 0 1 from f83 to f321 (s20)"""
+proves = """CreateObjectDie (review xx #2): an Allied plant PLAYER_KILL clears leaves no Peacekeeper (its BuildingDestruction \
+list's nugget REQUIRES_LIVE_PLAYER; counted with the dying, so none was made and killed either); the one NAMED_KILL \
+kills leaves one that lives on. Other ways a player stops being live are not modelled (INFERRED)"""
+expect = ["all(r['s4 维和兵'] == 0 for r in rows)",
+          "rows[0]['电厂位'] == 7 and rows[-1]['电厂位'] == 1 and rows[-1]['s5 维和兵'] == 1"]

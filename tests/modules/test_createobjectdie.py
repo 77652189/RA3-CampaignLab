@@ -116,6 +116,10 @@ def test_a_structure_dead_in_a_fight_leaves_its_owner_the_survivor_its_list_make
     s.player_ups['Player_2'] = {'Upgrade_NoSpawnUponDestruction'}   # (review vv #3)
     s.world.kill(s.bodies['pp4'], 'shot')
     assert not any(b.alive and b.owner == 'Player_2' for b in s.bodies.values())
+    for name, death in (('pp5', 'NORMAL'), ('pp6', 'SUICIDED')):    # PLAYER_KILL's: its list REQUIRES_LIVE_PLAYER,
+        s.add(name, 'AlliedPowerPlant', 'Player_3', 2100.0, 100.0)   # the Suicide list does not (engine_pkallied)
+        s.world.kill(s.bodies[name], 'cleared', death, module.PLAYER_GONE)
+    assert sum(b.alive and b.owner == 'Player_3' for b in s.bodies.values()) == 1
 
 
 def test_a_death_in_the_air_makes_the_first_airborne_module_s_wrecks_fall_and_on_the_ground_none():

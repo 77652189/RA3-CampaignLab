@@ -47,8 +47,9 @@ class Life:
         of the others are not made, INFERRED)."""
         own = world.own
         if (ocl, fight) not in self.made_of:
-            self.made_of[ocl, fight] = [(t, share) for t, share in simunits.ocl_objects(ocl, own)
-                                        if not fight or 'INFANTRY' in simunits.resolve(t, own)['kinds']]
+            self.made_of[ocl, fight] = [(t, share) for t, share, live in simunits.ocl_objects(ocl, own)
+                                        if (not fight or 'INFANTRY' in simunits.resolve(t, own)['kinds'])
+                                        and not (live and fight == module.PLAYER_GONE)]
         for tmpl, share in self.made_of[ocl, fight]:
             n = world.add(simworld.free_name(world, '#left', f'of {b.name}'), tmpl, b.owner, b.x, b.y,
                           by=b.name, at=world.t)

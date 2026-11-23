@@ -121,6 +121,7 @@ class Trigger:
 
 
 LIFETIME = 'lifetime'           # Death.cause of a LifetimeUpdate's death of age (step B5b)
+PLAYER_GONE = 'player gone'     # Death.cause of PLAYER_KILL's: its owner no live player (REQUIRES_LIVE_PLAYER)
 
 
 class Death:

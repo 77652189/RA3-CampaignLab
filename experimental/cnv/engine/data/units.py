@@ -1968,16 +1968,18 @@ def ocl_wrecks(name, own=None):
 
 
 def ocl_objects(name, own=None):
-    """[(template, health share)] an ObjectCreationList's <CreateObject> nuggets list, in order (each once a listing;
-    Count, the disposition and the other nuggets not read): what a death of age or a structure's in a fight leaves
-    (CreateObjectDie, Life.leave). The share is the middle of the nugget's MinHealth..MaxHealth (default 1; the game
-    rolls it -- bench 11-22 aigarrbld: one Peacekeeper of ~0.55 off 0.3..0.75, INFERRED)."""
-    got, made, share = _ocl(name, own) if name else None, [], 1.0
+    """[(template, health share, live)] an ObjectCreationList's <CreateObject> nuggets list, in order (each once a
+    listing; Count, the disposition and the other nuggets not read): what a death of age or a structure's in a fight
+    leaves (CreateObjectDie, Life.leave). The share is the middle of the nugget's MinHealth..MaxHealth (default 1; the
+    game rolls it -- bench 11-22 aigarrbld: one Peacekeeper of ~0.55 off 0.3..0.75, INFERRED); live: its Options name
+    REQUIRES_LIVE_PLAYER."""
+    got, made, share, live = _ocl(name, own) if name else None, [], 1.0, False
     for head, inner in re.findall(r'<CreateObject\b([^>]*)>([^<]*)', got[1] if got else ''):
         if inner.strip():
-            made.append((inner.strip(), share))
-        else:                                               # the outer element: its health share
+            made.append((inner.strip(), share, live))
+        else:                                               # the outer element: its health share and options
             share = (_num(_attr(head, 'MinHealth'), 1.0) + _num(_attr(head, 'MaxHealth'), 1.0)) / 2
+            live = 'REQUIRES_LIVE_PLAYER' in (_attr(head, 'Options') or '').split()
     return made
 
 

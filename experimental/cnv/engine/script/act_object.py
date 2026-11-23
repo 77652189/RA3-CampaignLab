@@ -8,7 +8,7 @@ import engine.data.units as simunits
 import engine.objects.locomotion as simlocomotion
 import engine.objects.modifier as simmodifier
 import engine.orders.order as simorder
-from engine.kernel import interfaces
+from engine.kernel import interfaces, module
 from engine.script.common import refined
 from engine.objects.status import ACTED_STATUS, AI_ONLY_STATUS
 from engine.world.handle import GAP_ACTION, inside
@@ -125,11 +125,12 @@ def named_kill(sim, name, a, script):
 def player_kill(sim, name, a, script):
     # engine_playerkill:a: owned Guardian + plant die; other owners survive, empty/repeated calls harmless.
     # Only the object cleanup slice measured; player defeat state and protected bodies remain gaps.
-    # Ordinary lethal dispatch for other templates is INFERRED (work/re/c_playerkill_report.md).
+    # Ordinary lethal dispatch for other templates is INFERRED (work/re/c_playerkill_report.md). engine_pkallied:a
+    # (review xx #2): an Allied plant so cleared leaves no Peacekeeper (its list REQUIRES_LIVE_PLAYER); NAMED_KILL's does
     for b in list(sim.living()):
         if b.owner == a[0]:
             b.set_last_damage(None)
-            sim.world.kill(b, '玩家脚本清理')
+            sim.world.kill(b, '玩家脚本清理', cause=module.PLAYER_GONE)
 
 
 def unit_set_health(sim, name, a, script):

@@ -95,11 +95,12 @@ def probe(m):
     return t
 
 
-def retail(m):
+def retail(m, hushed=False):
     """Check b, as retail plays it: towers auto-acquire (no script attack), retail weapons. Each lane's source is
     retail's prism tower with the target 300 north (its 350 range); 250 south stands retail's tower (on) or the same
     without AttackAssistResponseBehavior (off; not an AcceptableFriend either). Data prediction: on's link (+50 %
-    damage for 2 s per link) makes its target lose HP about 1.5x as fast as off's."""
+    damage for 2 s per link) makes its target lose HP about 1.5x as fast as off's. Check c (hushed; review xx #5): on's
+    mate holds NO_ATTACK from the start -- prediction: it links nothing, on's target ends like off's."""
     t = Test()
     quiet = tower('CNV_AssistQuiet')
     for block in (r'<AttackAssistResponseBehavior\b[^>]*/>',      # its notifier too: one naming a response module
@@ -108,19 +109,22 @@ def retail(m):
         assert n == 1, n
     m.units.append(quiet)
     starts = [('MAP_REVEAL_ALL_PERM', m.player('p1')), ('PLAYER_SET_BASE_POWER', m.player('p1'), 1000)]
-    for lane, site, mate in (('on', 'base gun', 'AlliedBaseDefenseAdvanced'), ('off', 'order gun', quiet.id)):
+    # review xx #4: '<100' for both passed without the on lane's responder (71 / 71); on must end below off's floor
+    for lane, site, mate, op, bound in (('on', 'base gun', 'AlliedBaseDefenseAdvanced', '>=' if hushed else '<=',
+                                         64 if hushed else 62), ('off', 'order gun', quiet.id, '>=', 64)):
         for template, role, dy, side in (('AlliedBaseDefenseAdvanced', 'source', 0, 'p1'), (mate, 'mate', -250, 'p1'),
                                          (TARGET_ID, 'target', 300, 's1')):
             name = f'UNIT - Assist {lane} {role}'
             m.put(template, site, 0, dy, side=side, role=name, name=name)
-            if role == 'target':
+            if role == 'target' or hushed and (lane, role) == ('on', 'mate'):
                 starts.append(('UNIT_CHANGE_OBJECT_STATUS', name, 'NO_ATTACK', 1))
+            if role == 'target':
                 counted('CNV_Assist_' + lane, lane + ' target', t, health=name)
-                t.expect.append((lane + ' target', 10, '<', 100, 30))
+                t.expect += [(lane + ' target', 10, '<', 100, 30), (lane + ' target', 28, op, bound, 31)]
     t.scripts = [Script('Test - Assist setup', [], starts)] + t.scripts
     t.bench = [('bench_watch', dict(seconds=31, every=1, sheet=False, lines=2))]
     return t
 
 
 MISSION = {'engine_attackassist': mission}
-CHECKS = {'engine_attackassist': {'a': probe, 'b': retail}}
+CHECKS = {'engine_attackassist': {'a': probe, 'b': retail, 'c': lambda m: retail(m, True)}}

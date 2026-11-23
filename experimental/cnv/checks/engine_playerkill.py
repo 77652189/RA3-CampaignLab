@@ -46,5 +46,34 @@ def check(m):
     return t
 
 
-MISSION = {'engine_playerkill': mission}
-CHECKS = {'engine_playerkill': {'a': check}}
+PK = 'alliedantiinfantryinfantry'     # the Peacekeeper an Allied structure's death leaves (REQUIRES_LIVE_PLAYER)
+
+
+def allied():
+    """Review xx #2: s4's and s5's plants are Allied (their BuildingDestruction list leaves a Peacekeeper only while
+    the owner is a live player). s4 is cleared by PLAYER_KILL at 5 s and 9 s, s5's plant by NAMED_KILL at 5 s (does a
+    script death leave one at all); p1's Soviet plant stays."""
+    m = Mission(name='CampPKAllied', map=probe_border, units=[], facts={})
+    for k, (side, template) in enumerate((('p1', 'SovietPowerPlant'), ('s4', 'AlliedPowerPlant'),
+                                          ('s5', 'AlliedPowerPlant'))):
+        m.put(template, 'stop row', -200.+k*1500., -2300., side=side, role=side, name='CNV PKAllied '+side)
+    m.spawns |= {PK}
+    return m
+
+
+def check_allied(m):
+    t = Test()
+    s8.at(t, 'kill player', 5., [('PLAYER_KILL', m.player('s4')), ('NAMED_KILL', m.role('s5').name)])
+    s8.at(t, 'kill again', 9., [('PLAYER_KILL', m.player('s4'))])
+    s8.total(t, 'CNV_PKA_Plant', '电厂位', [(2**k, ('NAMED_NOT_DESTROYED', m.role(side).name))
+                                         for k, side in enumerate(('p1', 's4', 's5'))])
+    for side in ('s4', 's5'):           # counted with the dying (PLAYER_HAS_OBJECT_COMPARISON), up to 2
+        s8.total(t, 'CNV_PKA_'+side, side+' 维和兵', [(1, ('PLAYER_HAS_OBJECT_COMPARISON', m.player(side), 3, n, PK))
+                                                     for n in (1, 2)])
+    s8.frames(t, 'CNV_PKA_Frame', '逻辑帧', [])
+    s8.watch(t, 16., .5)
+    return t
+
+
+MISSION = {'engine_playerkill': mission, 'engine_pkallied': allied}
+CHECKS = {'engine_playerkill': {'a': check}, 'engine_pkallied': {'a': check_allied}}
