@@ -16,6 +16,7 @@ import math
 
 import engine.data.units as simunits
 import engine.objects.locomotion as simlocomotion
+from engine.kernel import interfaces
 from engine.objects.power import hit_at
 from engine.world.handle import CIV, GAP_WEAPON
 
@@ -105,11 +106,12 @@ class Specials:
             b.script_status |= new
             self.self_bits_due.append((now + sp['pack'], b, new))
         for bits, duration in sp.get('shields', ()):
-            # E153 engine_activate: only the linked consumer's status lifetime.
-            # Projectile interception, damage cap and early termination remain gaps.
-            # INFERRED: overlapping/repeated activations use the same bit ownership
-            # convention as the existing pack phase; only a single press is measured.
-            world.guessed.add('ShieldSphereUpdate: projectile absorption and early termination unmodelled')
+            # E153 engine_activate: the linked consumer's status lifetime; its shells taken and early end: the module
+            # (engine/modules/shield.py, bench engine_shield). INFERRED: overlapping/repeated activations use the same
+            # bit ownership convention as the existing pack phase; only a single press is measured.
+            world.guessed.add('ShieldSphereUpdate: allies inside, instant hits and repeated presses unmodelled')
+            for m in b.find(interfaces.Shield):
+                m.start(now)
             new = bits - b.script_status
             b.script_status |= new
             self.self_bits_due.append((now + duration, b, new))
@@ -177,7 +179,10 @@ class Specials:
                     world.change()
         due = self.self_bits_due
         for job in list(due or ()):
-            if frame >= job[0]:
+            shields = [m for m in job[1].find(interfaces.Shield) if m.over(frame)]
+            if frame >= job[0] or shields:
+                for m in shields:
+                    m.stop()
                 due.remove(job)
                 job[1].script_status.difference_update(job[2])
                 modify(job[1])

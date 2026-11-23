@@ -579,6 +579,24 @@ class AssistResponse(Interface):
     __slots__ = ()
 
 
+class Shield(Interface):
+    """ShieldSphereUpdate: started by its special power (start, the frame), it takes a shell landing on its thing
+    (absorb: True when taken) until its time and the damage taken use it up (over, at a frame); stop puts it down."""
+    __slots__ = ()
+
+    def start(self, now):
+        raise NotImplementedError
+
+    def absorb(self, now, damage, kind, distance):
+        raise NotImplementedError
+
+    def over(self, now):
+        raise NotImplementedError
+
+    def stop(self):
+        raise NotImplementedError
+
+
 class Parking(Interface):
     """ParkingPlaceBehavior: how many LIMITED_PRODUCTION_AIRCRAFT the factory keeps (spots); the host's order asks it
     (Production.admits)."""

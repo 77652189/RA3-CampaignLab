@@ -2,6 +2,7 @@
 import math
 
 from engine.combat.registry import accumulate, nugget
+from engine.kernel import interfaces
 
 # a weapon with any of these flies no shell yet: its effects are dealt as a direct hit (the old fallback)
 COMPOUND = ('suppression', 'hit_modifiers', 'line', 'emp_seconds', 'strip_max_health', 'sd', 'dot', 'contained',
@@ -30,8 +31,13 @@ def due(pending, now):
 
 def arrive(hit, hurt, detonate, clear):
     """An arrival: its MetaImpact payload goes off first (detonate, the host's, swappable), then a living target's
-    notification clears (clear) and it takes the launch-time damage (a new entry's attacker is the shooter)."""
+    notification clears (clear) and it takes the launch-time damage (a new entry's attacker is the shooter). A shield up
+    on the target (engine/modules/shield.py) takes the shell instead: nothing goes off, the notification clears."""
     when, target, damage, attacker, weapon, centre = hit
+    away = math.hypot(target.x - attacker.x, target.y - attacker.y)
+    if any([m.absorb(when, damage, weapon.get('type'), away) for m in target.find(interfaces.Shield)]):
+        clear(target, attacker.serial, weapon.get('weapon_key'))
+        return
     detonate(weapon, target, centre, attacker)
     if target.alive:
         clear(target, attacker.serial, weapon.get('weapon_key'))

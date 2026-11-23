@@ -344,7 +344,6 @@ NOTES = {
     (MODULE, 'Behaviors/OCLSpecialPower'): (BENCHED, '总控第四切片按已测边界收尾：tests/test_simocl.py具名回放engine_oclcurtain/engine_oclnone/engine_oclwrong a，铁幕宿主匹配模块才保护并记事件，删除/改绑模块无保护/事件；engine_oclempty a空声明无保护且事件1；engine_oclcopy a完整原版载荷改名仍保护100/100且事件1；engine_oclzero a仅外层Count=0无保护且事件1。只闭合铁幕派发和零数量不保护边界，未测生成数量/通用生成；其他非零数量/载荷/超武、位置/过滤、按钮/冷却仍gap，继承、等价空声明及格式等价INFERRED，不表示全模块全字段验证；见 work/re/e_ocl_e65.md'),
     (MODULE, 'Behaviors/RadarBehavior'): (GUESSED, 'E158-E162原版盟军雷达宿主（原生PlayerSpellBook雷达已去掉）：删宿主、只删电厂、两同类宿主先后删、受伤致死、脚本双向换主。台上小地图有无只从HUD截图读，模拟器不模拟雷达也没有计数器能读，所以读数（checks/engine_radar.readings.toml）只核对前提（存活、PLAYER_HAS_POWER、归属）、不挂本项；HUD结果写在读数bench里。精确注销/换主帧、建造中、工程师占领、其他宿主仍gap；见work/re/e158_radar.md等'),
     # review 1121nn: the readings stay (checks/engine_activate / _hitreaction_e / _secondary_e), the main behavior not modelled
-    (MODULE, 'Behaviors/ActivateModuleSpecialPower'): (GUESSED, 'E153只证按钮给链接护盾的状态位20秒；真正激活链接模块、吸收伤害、提前耗尽没建模'),
     (MODULE, 'Behaviors/HitReactionBehavior'): (GUESSED, 'E172只证受击的HIT_REACTION位；RotateToSourceWhenDamaged的受击转向没建模'),
     (MODULE, 'Behaviors/SecondaryObjectListenerModule'): (GUESSED, 'E174只证工程师进出时授/撤升级；该升级启用的维修武器（ABD_RepairWeapon）没接通'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),

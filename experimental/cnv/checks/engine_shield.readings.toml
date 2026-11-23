@@ -1,0 +1,27 @@
+# Bench readings of checks/engine_shield.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# 盾长 / the lanes' thousands: frames the shield's GENERIC_TOGGLE_STATE was on (the full Duration is 300).
+
+[[reading]]
+id = "the_shield_takes_a_volley_and_goes_down_early_with_no_further_hit"
+scene = {build = "engine_shield", check = "a", until = 41, shot_clock = true}
+bench = "11-22 (twice, CampShieldEA_mcp_1122_171525 and the rerun with the V4s held to the order): 盾车 1100 f31..f204, 100 from f220 with no hit between (盾长 189), 95/85 at f249/f264; 对照 85 from f173 (three rockets); 盾车 30 / 对照 25 at s41"
+proves = "物体模块 ShieldSphereUpdate via ActivateModuleSpecialPower: the shield up takes the rockets landing on its Athena (the 1500 of the first volley: no loss) and goes down 111 frames early by the damage taken, the volley after hurting in full"
+item = "物体模块 Behaviors/ActivateModuleSpecialPower"
+expect = ["all(r['盾车'] == 1100 for r in rows if r['盾车'] >= 1000)",
+          "any(r['对照'] < 100 and r['盾车'] == 1100 for r in rows)",
+          "abs(rows[-1]['盾长'] - 189) <= 4", "rows[-1]['盾车'] <= 60"]
+
+[[reading]]
+id = "one_or_three_v4s_use_the_shield_up_by_time_and_damage"
+scene = {build = "engine_shieldn", check = "a", until = 41, shot_clock = true}
+bench = "11-22 (twice): 一车 bit 227 frames (two rockets taken), 三车 189 (three taken in one volley, down with no hit); see engine_shield.py"
+proves = "物体模块 ShieldSphereUpdate: up while elapsed / Duration + taken / (2 x MaxDamage) < 1 (the 2 fitted, INFERRED)"
+expect = ["abs(rows[-1]['一车'] // 1000 - 227) <= 4", "abs(rows[-1]['三车'] // 1000 - 189) <= 4"]
+
+[[reading]]
+id = "two_v4s_end_the_shield_with_their_third_rocket"
+scene = {build = "engine_shieldn", check = "a", until = 41, shot_clock = true}
+bench = "11-22 (twice): 二车 bit 220 frames: two rockets of the first volley taken, the third (f251) taken and the shield down, the fourth hurts (5 % at f265)"
+proves = "物体模块 ShieldSphereUpdate: the hit that uses the shield up is still taken"
+expect = "abs(rows[-1]['二车'] // 1000 - 220) <= 4"
+mismatch = "sim 186: its V4s' second volley lands about 30 frames before the bench's (V4 timing, not the shield), so the shield runs out at the first volley's 1000 plus time; bench 220"
