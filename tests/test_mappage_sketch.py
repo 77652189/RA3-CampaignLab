@@ -136,6 +136,26 @@ def test_map_written(tmp_path):
     assert any(x.startswith('TERRAIN ') for x in r['study']), r['study']
 
 
+def test_grounds_pave_a_block_under_the_road(tmp_path):
+    """A ground paves its shape in the .map, the road crossing it keeps its own texture, the rest stays grass; the
+    module carries GROUNDS and an existing map's grounds come back out as a sketch's."""
+    import mapscript
+    import mapterrain
+    s = _trial()
+    s['grounds'] = [{'kind': 'rect', 'at': [300, 1300, 1000, 1700], 'texture': 'Pavement_Heidel01', 'what': 'block'}]
+    r = sk.report('trialtest', s, out=str(tmp_path))
+    assert r['ok'], r
+    m = mapscript.MapFile((ROOT / r['map']).read_bytes())
+    hm = mapterrain.HeightMap(m)
+    t, b = mapterrain.Tiles(m, hm.width), hm.border
+    at = lambda x, y: t.texture_at(x // 10 + b, y // 10 + b)       # noqa: E731
+    assert at(400, 1350) == 'Pavement_Heidel01' and at(700, 1450) == 'Pavement_Heidel02'
+    assert at(400, 1000).startswith('Grass')
+    mod = sk.load(sk.generate(s, str(tmp_path / 'gen')), 'grounds_trial')
+    assert sk.from_module(mod)['grounds'] == [{'kind': 'rect', 'at': [300, 1300, 1000, 1700], 'what': 'block',
+                                             'texture': 'Pavement_Heidel01'}]
+
+
 def test_pathing_skips_without_the_model(tmp_path):
     mod = sk.load(sk.generate(_trial(), str(tmp_path)))
     assert sk.pathing(mod, [('start', 'plateau')], model_dir=str(tmp_path / 'nowhere')) is None

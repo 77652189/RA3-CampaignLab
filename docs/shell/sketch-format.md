@@ -35,6 +35,7 @@ python -I -X utf8 experimental/mappage/sketch2map.py mymap --check --sketch my.j
 | `ramps` | `[{low, high, width, what}]` | 坡道：`low`、`high` 各 `[x, y]`，两端站在不同层的平地上；每格最多升 6.5 |
 | `bridges` | `[{a, b, template}]` | 桥：`a`、`b` 是两岸的 `[x, y]`，桥面宽 120；两端要在同一高度的干地上（设计检查会量）；`template` 默认 `HB_Bridge_02`；原版长度 270～1780 |
 | `roads` | `[{points, width, texture}]` | 路：只换地面贴图，不改高度；贴图默认 `Pavement_Heidel02` |
+| `grounds` | `[{kind, at, texture, what}]` | 地面：给一块地形（`kind`/`at` 同 `shapes`）整片换贴图，先铺地面再盖路；城区街块的铺装、院子的草都用它。原版城市图铺装约占干地一半，街面只有 20～28% |
 | `sites` | `{代码名: {x, y, r, zh, what, build, cast}}` | 命名地点。代码名英文小写，任务按它放东西；`zh` 中文名；`build` 要能建造的方块边长；`cast` 施法圆半径 |
 | `start` | `[x, y]` | 玩家出生点和开场镜头。`sites` 里的 `start` 会自动放在这里，**别再在同一位置另放一个地点**（检查会报"地点重合"） |
 | `fields` | `[{name, x, y, facing, twin, base, owner, build}]` | 矿场：(x, y) 是精炼厂位置，矿在 `facing`（45 东北 / 135 西北 / 225 西南 / 315 东南）方向 180 处；`twin` 1 / -1 两块、0 一块；`owner` `""` / `p1` / `s1`；`build` 200 = 精炼厂要建在这。自动出 `<name> refinery` 地点 |

@@ -19,6 +19,7 @@ The sketch (version 1), world units, +y north, as the map modules write them:
   walls [{points, width, tier, what}]   cliff walls: a strip along the polyline, painted after the shapes (each segment
                               a quad, each joint a circle): steep on every side, so nobody crosses it (no invisible wall)
   ramps [{low, high, width, what}], roads [{points, width, texture}]      platmap.Ramp / Road
+  grounds [{kind, at, texture, what}]   platmap.Ground: a texture over a shape (block pavement, a yard), under the roads
   sites {code: {x, y, r, zh, what, build, cast}}     zh is the Chinese name (<name>_names.py)
   start [x, y]                the player's start (Player_1_Start and the start camera are moved there)
   fields [{name, x, y, facing, twin, base, owner, build}], derricks [[x, y]]     resources.Field: ore made from the pad
@@ -198,6 +199,8 @@ def from_module(mod, names=None):
                     'use': b.use, 'what': b.what, 'high': b.high} for b in lay.blocks],
         'gaps': [{'x': _f(g.x), 'y': _f(g.y), 'width': _f(g.width), 'what': g.what} for g in lay.gaps],
         'brushes': [_brush_out(st) for st in getattr(lay, 'brushes', [])],
+        'grounds': [{**{k: v for k, v in _shape_out(g.at).items() if k != 'tier'}, 'texture': g.texture}
+                    for g in getattr(lay, 'grounds', [])],
         'bridges': bridges,
         'objects': objects,
         'scenery': [_obj_out(o) for o in getattr(mod, 'SCENERY', [])],
@@ -217,6 +220,9 @@ def check_sketch(s):
             out.append(f'shape {k + 1} ({sh.get("what") or "poly"}): a polygon needs 3 points at least')
         if sh.get('tier') not in tiers:
             out.append(f'shape {k + 1}: tier {sh.get("tier")!r} (one of {sorted(tiers)})')
+    for k, g in enumerate(s.get('grounds', [])):
+        if g.get('kind') not in ('poly', 'rect', 'circle') or (g['kind'] == 'poly' and len(g.get('at', [])) < 3):
+            out.append(f'ground {k + 1}: kind poly (3 points at least), rect or circle')
     for k, wl in enumerate(s.get('walls', [])):
         if len(wl.get('points', [])) < 2 or wl.get('width', 0) <= 0:
             out.append(f'wall {k + 1}: two points and a width at least')
@@ -336,7 +342,7 @@ def module_text(s):
          'import make_campnew18 as c18',
          'import platmap',
          'import resources',
-         'from platmap import Block, Gap, Layout, Ramp, Road, Shape',
+         'from platmap import Block, Gap, Ground, Layout, Ramp, Road, Shape',
          'from maps import island',
          'from parts import Obj, Site',
          '',
@@ -374,6 +380,8 @@ def module_text(s):
                              f"{_s(r.get('what', ''))})" for r in s.get('ramps', [])])
     L += _wrap('ROADS = [', [f"Road((" + ', '.join(_pt(p) for p in r['points']) + f"), {_r(r.get('width', 120))}, "
                              f"{_s(r.get('texture', 'Pavement_Heidel02'))})" for r in s.get('roads', [])])
+    L += _wrap('GROUNDS = [', [f"Ground({_shape_src({**g, 'tier': 0})}, {_s(g.get('texture', 'Pavement_Heidelberg10'))})"
+                               for g in s.get('grounds', [])])
     blocks = []
     for b in s.get('blocks', []):
         at = _shape_src(b['at']) if isinstance(b['at'], dict) else '(' + ', '.join(_r(v) for v in b['at']) + ')'
@@ -388,7 +396,7 @@ def module_text(s):
                                             + ["'dabs': [" + ', '.join(_r(v) for v in b['dabs']) + ']']) + '}'
                                for b in map(_brush_out, s.get('brushes', []))])
     L += [f"LAYOUT = Layout(shapes=SHAPES, ramps=RAMPS, roads=ROADS, base={int(s['base'])}, cliff={int(s['cliff'])}, "
-          'blocks=BLOCKS, gaps=GAPS, brushes=BRUSHES)',
+          'blocks=BLOCKS, gaps=GAPS, brushes=BRUSHES, grounds=GROUNDS)',
           '']
     L += ['# the look: retail objects placed as they are (a new map has none yet: the level line adds platprops)']
     L += _wrap('SCENERY = [', [_obj_src(o) for o in s.get('scenery', [])])

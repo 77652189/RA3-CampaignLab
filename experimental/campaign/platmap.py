@@ -55,7 +55,15 @@ class Road:
     texture: str = 'Pavement_Heidel02'
 
 
-USES = ('前线', '支线', '通道', '后方', '远景')
+@dataclasses.dataclass
+class Ground:
+    """A ground texture over a Shape (a city block's pavement, a yard's grass); heights are left alone. Laid in order,
+    before the roads: retail cities pave about half their dry land, the streets only 20-28 % of it."""
+    at: Shape
+    texture: str = 'Pavement_Heidelberg10'
+
+
+USES =('前线', '支线', '通道', '后方', '远景')
 EMPTY_MOST = 0.25               # of the ground the player can walk to, at most this much in no block (P24; retail 17 %)
 BACKDROP_MOST = 0.01            # km2 of a 远景 block the player may still walk to (a cliff foot's sliver)
 
@@ -94,6 +102,7 @@ class Layout:
     blocks: list = dataclasses.field(default_factory=list)     # [Block]: lint holds the map to them (P24)
     gaps: list = dataclasses.field(default_factory=list)       # [Gap]: lint measures each
     brushes: list = dataclasses.field(default_factory=list)    # height strokes laid last (brush(); the map page's)
+    grounds: list = dataclasses.field(default_factory=list)    # [Ground]: textures over shapes, under the roads
 
 
 BRUSH_OPS = ('raise', 'lower', 'flatten')
@@ -264,6 +273,8 @@ def apply(m, layout, seed=11, swap=None):
     slope = slope_of(e)
     patch = newmap.value_noise(seed, 150.0)
     road = np.zeros((h, w), object)
+    for g in layout.grounds:
+        road[_mask(g.at, w, h, b)] = g.texture
     for r in layout.roads:
         for p, q in zip(r.points, r.points[1:]):
             near, _ = _strip(p, q, r.width, w, h, b)
@@ -276,7 +287,7 @@ def apply(m, layout, seed=11, swap=None):
                 swap.get(*[newmap.texture_for(v, s, (i - b) * CELL, (j - b) * CELL, patch)] * 2)
             if s > STEEP and v > newmap.WATERLINE:
                 tiles.set_bit(0, i, j, True)
-    newmap.paint_grid(tiles, grid, [swap.get(t, t) for t in newmap.RANK] + sorted({r.texture for r in layout.roads}))
+    newmap.paint_grid(tiles, grid, [swap.get(t, t) for t in newmap.RANK] + sorted({r.texture for r in layout.roads + layout.grounds}))
     tiles.store()
     size = (w - 2 * b) * CELL
     newmap.set_water(m, -300.0, -300.0, size + 300.0, size + 300.0)
