@@ -249,5 +249,5 @@ def a(m, build):
 
 
 CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
-                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevgt', 'airevat', 'airevit', 'airevp1', 'airevp0', 'airevt1', 'airevt0',
+                                                           'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevgt', 'airevat', 'airevit', 'airevp1', 'airevp0', 'airevp1t', 'airevt1', 'airevt0',
                                                            'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0', 'airevkh')}

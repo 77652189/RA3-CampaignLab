@@ -161,6 +161,9 @@ MISSION = {
     # airev1 / 0 too alike: the target beside the tanks from the start, no guards (handoff-b 69's measure)
     'airevp1': lambda: mission('CampAIRevP1', close=True),
     'airevp0': lambda: mission('CampAIRevP0', close=True, ReverseMove='false'),
+    # B 11-23: airevp1 observed (the host: ra3ext alone logs no cmd: lines here): the simulator's AI casts its
+    # precision strike f166 at the plant, counting its own four Hammers 100 off -- does the game (24e / 1fe / 1ff)?
+    'airevp1t': lambda: mission('CampAIRevP1T', close=True, observe=True),
     # airevp1 / 0 alike (no back-up): a plant is a tactical target, the team in state 6. A hostile turret instead, and
     # state 2 forced: CleanupPowerAdvantage out of reach (no state 3), UseGatherState off (no state 5)
     'airevt1': lambda: mission('CampAIRevT1', close='turret', CleanupPowerAdvantage='1000.0', UseGatherState='false'),
