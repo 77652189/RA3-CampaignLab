@@ -75,6 +75,23 @@ def passed(m):
     return t
 
 
+def ordered(m):
+    """c: a without the script move -- the camera goes to On's crate at s1 and stays (the bench's steps take mission
+    seconds: a move back at s6 came before the box), the bench boxes On's Peacekeeper and right-clicks 200 east of the
+    crate: does the player's own order take it?"""
+    t = check(m)
+    t.scripts = [s for s in t.scripts if 'S8 go' not in s.name]
+    x, y = m.site('switch gun')
+    t.waypoints['HC view'] = (x, y)
+    s8.at(t, 'view', 1., [('MOVE_CAMERA_TO', 'HC view', 0.5, 0.0, 1.0, 1.0)])
+    run = t.bench[0][1]
+    t.bench = [('bench_watch', dict(run, seconds=2.0)), ('bench_view', dict(x=x, y=y, look=True)),
+               ('bench_box', dict(x0=x - 240, y0=y - 40, x1=x - 160, y1=y + 40, look=True)),
+               ('bench_click', dict(x=x + 200, y=y, right=True, look=True)),
+               ('bench_watch', dict(run, seconds=run['seconds'] - 2.0))]
+    return t
+
+
 MISSION = {'engine_healcrate': mission}
-CHECKS = {'engine_healcrate': {'a': check, 'b': passed}}
+CHECKS = {'engine_healcrate': {'a': check, 'b': passed, 'c': ordered}}
 CONTROL_ARMS = {'engine_healcrate': ('On', 'Off')}

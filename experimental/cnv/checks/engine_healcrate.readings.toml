@@ -21,3 +21,12 @@ expect = ["all(r['箱子位'] == 15 and r['On 兵血'] == 50 and r['Off 兵血']
           "rows[-1]['路过位'] == 15"]
 mismatch = """sim 路过位 7 from s6 (the three men, ~2 s late; the Veh tank's coarse-tick steps jump the 24-wide square), \
 bench 8 from s3, 15 from s4"""
+
+[[reading]]
+id = "a_player_ordered_mover_takes_no_crate_either"
+scene = {build = "engine_healcrate", check = "c", until = 18}
+bench = """engine_healcrate:c, run_queue CampHealCrateC_mcp_1123_070441: 箱子位 / 满血位 / On 兵血 / Off 兵血 15 0 50 50 at s1-s61; \
+frames 7-8 the Peacekeeper boxed (its panel up) and right-clicked east, frame 8 on the crate, frame 37 at the click"""
+proves = """HealCrateCollide (negative): the bench's own box select and right-click send On's Peacekeeper across its crate and \
+the crate still stays and heals none -- a player's order is not the missing trigger (the sim moves nobody here: no clicks)"""
+expect = "all(r['箱子位'] == 15 and r['满血位'] == 0 and r['On 兵血'] == 50 and r['Off 兵血'] == 50 for r in rows)"
