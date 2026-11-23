@@ -358,10 +358,10 @@ def test_bridge_closure_registers_replays_without_hiding_unmeasured_gaps():
     cases = (
         ('Body/ManagerBody', 32, 'tests/test_simmanagerbody.py',
          ('engine_managerbody', 'engine_managerbody_b'),
-         ('内部最大血量', '伤害转发', '显示下限', 'INFERRED')),
+         ('内部最大血量', '伤害转发', '显示下限', 'INFERRED', '共享血量', '损毁', '维修')),
         ('Behaviors/BridgeBuilder', 30, 'tests/test_simbridgebuilder.py',
-         ('engine_bridgebuilder', 'engine_bridgebuilder_b'),
-         ('世界物体生成/位置', '通行', '其他桥型/配置/长度')),
+         ('engine_bridgebuilder', 'engine_bridgebuilder_b'),  # gatehouse health / mending measured in engine_bridgefix
+         ('桥段物体生成/位置', '断桥通行', '其他桥型/配置/长度', 'engine_bridgefix')),
     )
     for name, all_templates, path, probes, gaps in cases:
         key = inventory.MODULE, name
@@ -375,7 +375,7 @@ def test_bridge_closure_registers_replays_without_hiding_unmeasured_gaps():
         for probe in probes:
             assert f"build.resolve('{probe}'," in source
             assert probe in row['why'] or name == 'Body/ManagerBody'
-        for gap in ('gap：', 'HV_Bridge_01', '共享血量', '损毁', '维修', *gaps):
+        for gap in ('gap：', 'HV_Bridge_01', *gaps):
             assert gap in row['why']
 
 
