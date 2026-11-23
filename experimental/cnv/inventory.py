@@ -87,8 +87,6 @@ BENCHED_TESTS = {
         'tests/test_teamexit_bench_c.py::test_teamexit_mixed_building_and_transport_match_bench',
     (ACTION, 'PLAYER_KILL'):
         'tests/test_playerkill_bench_c.py::test_playerkill_owned_units_and_buildings_match_bench',
-    (ACTION, 'TEAM_UPGRADE'):
-        'tests/test_teamup_bench_c.py::test_teamup_real_query_and_consumer_apply_only_to_current_team',
     (ACTION, 'UNIT_SET_MODELCONDITION_FOR_DURATION'):
         'tests/test_modeldur_bench_c.py::test_modeldur_real_bits_expire_after_measured_frames',
     (ACTION, 'PLAYER_ENABLE_UNIT_CONSTRUCTION'):
@@ -288,7 +286,7 @@ NOTES = {
     (ACTION, 'TEAM_EXIT_ALL_BUILDINGS'): (BENCHED, 'C engine_teamexit:a混装建筑/运输车一局：本队征召兵退出公寓和牛蛙，同容器异队保留；队外成员/两宿主均存活，空队伍与重复调用无误伤。f44..74本队驻/异队驻/存活位3/3/127，f82..287为0/3/127；tests/test_teamexit_bench_c.py按名逐33个实读逻辑帧回放四计数器。仅显式存活队伍普通退出切片；精确出门位置/时序、运输抛射、取消进驻中订单、死/缺队伍及AI实例仍gap，其他模板推广INFERRED；见work/re/c_teamexit_report.md'),
     (ACTION, 'PLAYER_KILL'): (BENCHED, 'C engine_playerkill:a一局：目标Soviet_4守护者/电厂死亡，Player_1与Soviet_5同类对照保留；空Soviet_6调用和重复调用未误伤。f45/61/75单位位/建筑位/死亡位7/7/0，f83/152/287为5/5/0；tests/test_playerkill_bench_c.py按名逐实读逻辑帧回放四计数器。仅所属普通对象清理切片已对拍；玩家失败/淘汰、保护对象、容器/子体、死亡瞬间和其他模板推广仍gap或INFERRED；见work/re/c_playerkill_report.md'),
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg'): (BENCHED, 'C engine_eggcmd:a与engine_eggnav:a两局：零售使用的防御/电厂/船厂三种核心，旧通用按钮均留原处；专用防御/船厂按钮到点展开，未下令对照留家。地面f249/393/560建筑位/存活位/原处位4/15/11，水域f247/390/496为2/7/5；读数checks/engine_eggcmd.readings.toml。A290起按类：单位CommandSet里没有的展开/收起按钮都不动（engine_unpack crs：防御蛋按电厂蛋按钮不动），旧通用按钮同此；收起一侧INFERRED；见work/re/c_eggcmd_report.md、work/re/c_eggnav_report.md'),
-    (ACTION, 'TEAM_UPGRADE'): (BENCHED, 'C engine_teamup:a真实玩家升级查询+守护者状态位：f150本队/异队/查询0/0/0，f157授予后3/0/3，f248移除一人后2/0/1，f332再授予3/0/3；同玩家异队和敌方异队均无位。tests/test_teamup_bench_c.py按名逐实读帧回放；仅当前存活显式队伍OBJECT升级派发/消费者切片，j05地图私有升级效果、未来成员、死/缺队伍和AI队伍实例仍gap；其他宿主推广INFERRED；见work/re/c_teamup_report.md'),
+    (ACTION, 'TEAM_UPGRADE'): (BENCHED, 'C engine_teamup:a真实玩家升级查询+守护者状态位：f150本队/异队/查询0/0/0，f157授予后3/0/3，f248移除一人后2/0/1，f332再授予3/0/3；同玩家异队和敌方异队均无位。读数 checks/engine_teamup.readings.toml（A313 由逐帧回放测试迁入，每秒一行）；仅当前存活显式队伍OBJECT升级派发/消费者切片，j05地图私有升级效果、未来成员、死/缺队伍和AI队伍实例仍gap；其他宿主推广INFERRED；见work/re/c_teamup_report.md'),
     (ACTION, 'UNIT_SET_MODELCONDITION_FOR_DURATION'): (BENCHED, 'C engine_modeldur:a真实UNIT_HAS_MODELCONDITION查询：3/7秒USER_1分别为真46/106逻辑帧，b的1/2秒为真16/31帧，均含到期边界；空白阴性始终无位，永久阳性保持，状态码11→10→8。tests/test_modeldur_bench_c.py按名回放同帧四计数器。仅正持续时间、第四参数1.0、独立USER_1写入/到期切片；其他位推广INFERRED，重复/覆盖、零时长、第四参数其他值及原生生产者均gap；见work/re/c_modeldur_report.md'),
     (ACTION, 'PLAYER_ENABLE_UNIT_CONSTRUCTION'): (BENCHED, 'C两局engine_unitban:a/b具名玩家盟军工程师原生按钮：禁用期可排队但不扣款；恢复后付款/进度续跑，不退款不重置。a第150帧甲2000/乙1603，恢复后第198帧1843/1500/10，末1000/1000/33；b第101至180帧甲保持1800，第195帧1753/1500/10、第285帧1500/1500/11。tests/test_unitban_bench_c.py按名回放实读；第二笔队列付款提前10帧留strict xfail。仅此玩家/工程师切片已量，其他模板门禁INFERRED，UI拒绝、升级、建筑、AI及This Player/All Players范围仍gap；见work/re/c_unitban_report.md'),
     (ACTION, 'PLAYER_DISABLE_BASE_CONSTRUCTION'): (BENCHED, 'A269 aibgate:a（B的aiskirm图，s1盟军AI 10秒醒、50000）：开局禁用，醒后到第1054帧钱50000、建筑数1，不下任何建筑单；70秒恢复后f1054起付款、f1208第二栋（对照aiskirm d醒后11秒第二栋）。模拟simai.build拒结构单：f1065/f1215。tests/test_basegate_bench_a.py按名回放。C的engine_baseban：日本核心（UNIT_BUILD）不受此门；A的engine_basegate:a：脚本按盟军建造厂电厂按钮两边都不扣钱，玩家建造厂队列量不到（未模拟）。This Player/All Players范围仍gap'),

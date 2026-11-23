@@ -1,0 +1,13 @@
+# Bench readings of checks/engine_teamup.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "test_teamup_real_query_and_consumer_apply_only_to_current_team"
+item = "脚本动作 TEAM_UPGRADE"
+scene = {build = "engine_teamup", check = "a", until = 31}
+bench = "a, line C (work/re/c_teamup_report.md), 本队位 异队位 升级查询 at logic frames: f150 0 0 0 | f157 3 0 3 | f240 3 0 3 | f248 2 0 1 | f323 2 0 1 | f332 3 0 3 | f453 3 0 3"
+proves = "TEAM_UPGRADE gives the OBJECT upgrade to the team's living members only (the Guardians' WEAPON_UPGRADED_02; the same owner's other team and the enemy's none) and the player's upgrade query counts them; NAMED_REMOVE_UPGRADE takes one back, a second TEAM_UPGRADE gives it again. Moved from the frame-exact replay (A313): rows once a second, the frames between a measured pair left free"
+let = {want = "lambda f: [0, 0, 0] if f <= 150 else [3, 0, 3] if 157 <= f <= 240 else [2, 0, 1] if 248 <= f <= 323 else [3, 0, 3] if f >= 332 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(0, 0, 0), (3, 0, 3), (2, 0, 1)}",
+]
