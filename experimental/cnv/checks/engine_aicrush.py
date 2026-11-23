@@ -36,7 +36,7 @@ def a(m, build):
     counted('CNV_CR_Far', '到远厂', t, template=tank, area=at.FAR, player=s1)
     wake = m.facts['wake at']
     end = wake + AFTER
-    if build in ('aicrush1', 'aicrush1t'):
+    if build in ('aicrush1', 'aicrush1t', 'aicrush1g'):
         t.expect += [('守军数', wake + SOON, '<', 8)]
     else:
         t.expect += [('守军数', wake + SOON, '>=', 8)]
@@ -44,4 +44,4 @@ def a(m, build):
     return t
 
 
-CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aicrush1', 'aicrush0', 'aicrushlo', 'aicrush1t')}
+CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aicrush1', 'aicrush0', 'aicrushlo', 'aicrush1t', 'aicrush1g')}

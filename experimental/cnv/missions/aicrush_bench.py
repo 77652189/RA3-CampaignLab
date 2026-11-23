@@ -44,4 +44,15 @@ MISSION = {
     'aicrush0': lambda: mission('CampAICrush0', Crush='false'),
     'aicrushlo': lambda: mission('CampAICrushLo', Crush='true', CrushPreference='0.01'),
     'aicrush1t': lambda: mission('CampAICrush1T', observe=True, Crush='true', CrushPreference='1.0'),
+    'aicrush1g': lambda: ringed(40.0, lambda: mission('CampAICrush1G', observe=True, Crush='true', CrushPreference='1.0')),
 }
+
+
+def ringed(r, make):
+    """aicrush1g: the guards 40 from the plant, not 60 -- the AI's precision strike (bomb radius 50, MinKillValue
+    1000: the plant's 800 + a guard's 200) then counts guards round the plant from the start."""
+    old, ar.GUARD_RING = ar.GUARD_RING, r
+    try:
+        return make()
+    finally:
+        ar.GUARD_RING = old
