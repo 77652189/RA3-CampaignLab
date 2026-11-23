@@ -2,11 +2,12 @@
 LiftObjectUpdate time; the countdown is the host's (by caster and target name, dropped the check after it runs out),
 the LIFTED_INTO_AIR bit stays on the target (the landing is not modelled: a gap, the host's text)."""
 from engine.combat.registry import nugget
+from engine.kernel.module import status_now
 
 
 @nugget('Lift', 'effect')
 class Lift:
-    """Each lift effect ({include, exclude}) whose filter the target's kinds pass: the caster's LiftObjectUpdate rule
+    """Each lift effect ({include, exclude kinds, things, status}) whose filter the target passes: the caster's LiftObjectUpdate rule
     (Context.host.lift_rule(template), the host's cache: None -- no module, the engine does nothing; False -- a
     timing it does not read) adds its increment to the (caster, target) countdown up to its maximum, sets the bit
     and re-reads the target's modifiers. Only a direct single shot at a ground target; anything else is a gap."""
@@ -17,8 +18,8 @@ class Lift:
     def apply(self, context, effects):
         t, by, host = context.target, context.by, context.host
         for effect in effects:
-            if ((effect['include'] and not set(effect['include']) & t.kinds)
-                    or set(effect['exclude']) & t.kinds):
+            if ((effect['include'] and not set(effect['include']) & t.kinds) or set(effect['exclude']) & t.kinds
+                    or t.template.lower() in effect['things'] or set(effect['status']) & (status_now(t) | t.script_status)):
                 continue
             rule = host.lift_rule(by.template)
             if rule is None:

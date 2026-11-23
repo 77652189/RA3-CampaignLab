@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v45.json')    # v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v46.json')    # v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -389,13 +389,16 @@ def _weapons(texts, base_table=None):
                 filters = list(_blocks(inner, 'SpecialObjectFilter'))
                 f, fi = filters[0] if len(filters) == 1 else ('', '')
                 rest = re.sub(r'<SpecialObjectFilter\b.*?(?:/>|>.*?</SpecialObjectFilter>)', '', inner, flags=re.S)
-                if (rest.strip() or fi.strip() or len(filters) > 1
+                things = re.findall(r'<ExcludeThing>\s*([^<>\s]+)\s*</ExcludeThing>', fi)
+                if (rest.strip() or re.sub(r'<ExcludeThing>[^<]*</ExcludeThing>', '', fi).strip() or len(filters) > 1
                         or (filters and _attr(f, 'Rule', 'ANY') != 'ANY')
-                        or set(re.findall(r'(\w+)\s*=', f)) - {'Rule', 'Include', 'Exclude'}
+                        or set(re.findall(r'(\w+)\s*=', f)) - {'Rule', 'Include', 'Exclude', 'StatusBitFlagsExclude'}
                         or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'Lifetime'}):
                     unsupported.append('ActivateLiftObjectNugget')
-                else:
-                    lifts.append(dict(include=_attr(f, 'Include', '').split(), exclude=_attr(f, 'Exclude', '').split()))
+                else:   # ExcludeThing and StatusBitFlagsExclude: the retail filters (engine_liftground)
+                    lifts.append(dict(include=_attr(f, 'Include', '').split(), exclude=_attr(f, 'Exclude', '').split(),
+                                      things=[t.lower() for t in things],
+                                      status=_attr(f, 'StatusBitFlagsExclude', '').split()))
             if lifts:
                 got['lift'] = lifts
             # Grappling still needs its unresolved caster update.
@@ -1673,7 +1676,7 @@ def weapon_sets(template, own=None):
     (need = ObjectStatus bits all present, forbid = ForbiddenObjectStatus bits none present, weapon = the resolved
     template, PRIMARY_WEAPON flagged). A line's Upgrade="X" is one more need, the bit UPGRADE_BIT + X lowercased: the
     line is held only while the object (or its player) has X (pick_weapons' upgrades) -- the IFV's passenger guns
-    (Uprade_IFV_*, granted by who rides in, not modelled) are not an empty IFV's; before, its slots 3-7 (one
+    (Uprade_IFV_*, granted by who rides in: Garrisons.secondary) are not an empty IFV's; before, its slots 3-7 (one
     upgrade line each) gave it a 750-dps pistol and the AI's expected efficiency 7.6 for it vs conscripts (B round
     132). None where no weapon line carries a status or upgrade condition (the unit's weapons are read_fight's,
     whatever its status). The data port's blocks (engine.modules.weaponset, step W1: slots in the SDK's kind order,

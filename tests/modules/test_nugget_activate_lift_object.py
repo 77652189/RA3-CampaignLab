@@ -39,3 +39,14 @@ def test_ground_lift_releases_the_timer_and_keeps_the_status(weapon_world):
     other = s.add('other', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1350, 2580)
     fire(xml.replace('Include="VEHICLE"', 'Include="VEHICLE" Exclude="VEHICLE"'), other, caster)
     assert 'LIFTED_INTO_AIR' not in other.status    # Exclude wins over Include
+
+    flt = 'Include="VEHICLE" StatusBitFlagsExclude="UNDER_IRON_CURTAIN"><ExcludeThing>AlliedAntiVehicleVehicleTech1'
+    retail = xml.replace('Include="VEHICLE"/>', flt + '</ExcludeThing></SpecialObjectFilter>')
+    named = s.add('named', 'AlliedAntiVehicleVehicleTech1', 'Soviet_1', 1350, 2620)
+    other.script_status.add('UNDER_IRON_CURTAIN')
+    fire(retail, other, caster)
+    fire(retail, named, caster)
+    assert named.surface == 'ground' and 'LIFTED_INTO_AIR' not in other.status | named.status    # engine_liftground
+    other.script_status.discard('UNDER_IRON_CURTAIN')
+    fire(retail, other, caster)
+    assert 'LIFTED_INTO_AIR' in other.status

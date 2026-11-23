@@ -290,8 +290,12 @@ class Garrisons:
         u.script_status |= bits
         if house:
             g.owner = held[0].owner
+        # any occupied container (INFERRED: the IFV's TransportContain writes no ObjectStatusWhileContaining): its
+        # default guns forbid it, the crew's Uprade_IFV_* lines take over (engine_liftground high / order)
+        g.engine_status.add('CONTAINER_OCCUPIED')
         self.secondary(g)
-        simmodifier.modify(world, u)
+        for b in (u, g):
+            simmodifier.modify(world, b)
         world.note('驻军', f'{world.label(u)} 进 {world.label(g)}')
         world.change()
         return True
@@ -319,7 +323,11 @@ class Garrisons:
             g.owner = held[0].owner
         elif box is not None and box.home():
             g.owner = box.give_home()
+        if not held:
+            g.engine_status.discard('CONTAINER_OCCUPIED')
         self.secondary(g)
+        if g.alive:
+            simmodifier.modify(world, g)
         world.change()
         return True
 

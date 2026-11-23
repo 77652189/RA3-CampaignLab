@@ -22,9 +22,8 @@ mismatch = "sim 1099 / 11001099 / 11001099 / 1099 (no landing model); bench 1099
 id = "native_ground_lifts_latch_on_yuriko_and_both_crewed_hosts"
 scene = {build = "engine_liftground", check = "a", until = 19, shot_clock = true}
 bench = "CampLiftGndA_mcp_1116_142008: s15-26 = 11 / 111 / 111 / 10 (ever LIFTED + alive*10 + crew ENCLOSED*100; the deleted-nugget Yuriko 10), work/re/c_liftretail_report.md"
-proves = "ActivateLiftObjectNugget through the three retail ground hosts' own filters (Rule ANY with Include / Exclude / StatusBitFlagsExclude / ExcludeThing)"
+proves = "ActivateLiftObjectNugget through the three retail ground hosts' own filters (Rule ANY with Include / Exclude / StatusBitFlagsExclude / ExcludeThing); the crewed IFV / turret swap to the crew's Uprade_IFV_PsyonicCrush guns (the occupied container's CONTAINER_OCCUPIED forbids their default ones)"
 expect = "vals(rows)[-1] == [11, 111, 111, 10]"
-mismatch = "sim 10 / 110 / 110 / 10 (retail complex filters not supported, no lift); bench 11 / 111 / 111 / 10"
 
 [[reading]]
 id = "native_air_lifts_kill_without_a_latched_bit"
