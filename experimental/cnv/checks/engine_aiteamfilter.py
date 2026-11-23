@@ -91,6 +91,7 @@ def a(m):
     return t
 
 
-CHECKS = {k: {'a': a} for k in ('aitfany', 'aitfnone', 'aitfall', 'aitfki', 'aitfke', 'aitfmax',
-                                 'aitfland', 'aitfamph', 'aitfwat', 'aitfosi', 'aitfosv', 'aitfosc', 'aiar0', 'aiar1', 'aiar2',
-                                 'aiar3', 'aiar4', 'aiar5', 'aiar6', 'aiar7', 'aiar8', 'aiar9', 'aiar10')}
+CHECKS = {k: {'a': a} for k in ('aitfany', 'aitfnone', 'aitfall', 'aitfki', 'aitfke', 'aitfmax', 'aitfoki', 'aitfokt',
+                                 'aitfoke', 'aitfokn', 'aitfland', 'aitfamph', 'aitfwat', 'aitfosi', 'aitfosv', 'aitfosc',
+                                 'aiar0', 'aiar1', 'aiar2', 'aiar3', 'aiar4', 'aiar5', 'aiar6', 'aiar7', 'aiar8', 'aiar9',
+                                 'aiar10')}

@@ -90,10 +90,10 @@ def personality_xml(pid, kinds, filt, max_units, locos='LAND AMPHIBIOUS', objset
         '</AssetDeclaration>', ''])
 
 
-def objfilter(rule, inc=(), exc=()):
+def objfilter(rule, inc=(), exc=(), kinds=''):
     body = [f'          <IncludeThing>{t}</IncludeThing>' for t in inc] + \
            [f'          <ExcludeThing>{t}</ExcludeThing>' for t in exc]
-    return '\n'.join(['', f'        <ObjectFilter Rule="{rule}">', *body, '        </ObjectFilter>'])
+    return '\n'.join(['', f'        <ObjectFilter Rule="{rule}"{kinds}>', *body, '        </ObjectFilter>'])
 
 
 def mission(name, kinds=KINDS, filt='', max_units=8, tanks=4, inf=4, tanks_home=0, inf_home=4, second=INF,
@@ -176,6 +176,18 @@ MISSION = {
     'aitfall': lambda: mission('CampAITFAll', filt=objfilter('ALL', exc=(TANK,)), tanks_home=4, inf_home=0),
     'aitfki': lambda: mission('CampAITFKi', kinds='IncludeKindOf="INFANTRY"', tanks_home=4, inf_home=0),
     'aitfke': lambda: mission('CampAITFKe', kinds='IncludeKindOf="CAN_ATTACK" ExcludeKindOf="INFANTRY"'),
+    # 11-23: the filter's own KindOf Include / Exclude (retail EngineerIdle ANY Include, BombardmentShipAttack
+    # ANY Include + IncludeThing, AttachedBurstDroneRemoval ALL Exclude; the model ignored them in a team). Guesses (the
+    # program's filter, CampaignLab work/re d61_b_fields.md 3 / d59 2): IncludeThing passes first; then Exclude kinds
+    # refuse; ALL passes; ANY = any Include kind; NONE = nothing but the IncludeThing list. Bench 11-23: the first
+    # three as guessed; aitfokn sent the Peacekeepers (NONE = ANY), expectation set to the reading.
+    'aitfoki': lambda: mission('CampAITFOKi', filt=objfilter('ANY', kinds=' Include="INFANTRY"'), tanks_home=4,
+                               inf_home=0),
+    'aitfokt': lambda: mission('CampAITFOKt', filt=objfilter('ANY', inc=(TANK,), kinds=' Include="INFANTRY"'),
+                               tanks_home=0, inf_home=0),
+    'aitfoke': lambda: mission('CampAITFOKe', filt=objfilter('ALL', kinds=' Exclude="INFANTRY"')),
+    'aitfokn': lambda: mission('CampAITFOKn', filt=objfilter('NONE', kinds=' Include="INFANTRY"'), tanks_home=4,
+                               inf_home=0),
     'aitfmax': lambda: mission('CampAITFMax', max_units=3, tanks=8, inf=0, tanks_home=5, inf_home=0),
     # round 81: AllowedLocomotorTypes (Guardians: no AMPHIBIOUS kind = LAND; Riptide ACVs: AMPHIBIOUS) and
     # RegisteredObjectSet (the model reads it but filters on nothing; the guesses are "a filter by kind")

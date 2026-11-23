@@ -69,6 +69,7 @@
 - **点名要哪几种兵**：`Rule="ANY"` 或 `Rule="NONE"` 加一串 `IncludeThing`，都是"只要这几种"。原版 `CaptureLandHusks`（"派 1 个基础步兵去占残骸"）就是 NONE 加步兵名单。**点名不要哪几种**：`Rule="ALL"` 加 `ExcludeThing`。
 - 按种类：`IncludeKindOf` 只收带这个种类的，`ExcludeKindOf` 把带这个种类的排掉。写了几个 IncludeKindOf 时是"有一个就行"还是"都得有"，这次只写一个，没分出来。
 - `MaxUnits` 是一队的人数上限；同一个目标只派一队（`MaxTargets` 1），所以多出来的兵留在家里。
+- 筛选自己的种类（11-23，`aitfoki` / `aitfokt` / `aitfoke` / `aitfokn`）：`Rule="ANY" Include="INFANTRY"` 只派维和；再加 IncludeThing 守护者两种都派（名单先放行，再按种类）；`Rule="ALL" Exclude="INFANTRY"` 只派守护者；`Rule="NONE" Include="INFANTRY"` 也只派维和——NONE 和 ANY 一样（原先按 D61 推断 NONE 什么都不放）。模拟器四组对上（同一读数文件 `the_filters_kinds_take_whom_the_bench_sent`）。
 - 模型原先把 NONE 当"不筛"，台上否了，已改（私有 `ai/teams.py`）；模拟器六组都对上（`checks/engine_aiteamfilter.readings.toml team_filters_take_whom_the_bench_sent`）。
 
 ### 移动方式和对象集（第 81 轮）

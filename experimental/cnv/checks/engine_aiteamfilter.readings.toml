@@ -63,6 +63,21 @@ proves = "simai teams: a team template's ObjectFilter / KindOf / MaxUnits pick w
 expect = "(rows[39]['坦克在家'], rows[39]['步兵在家']) == (tanks, inf)"
 
 [[reading]]
+id = "the_filters_kinds_take_whom_the_bench_sent"
+item = "AI 组队招人/ObjectFilter.Include"
+scene = {build = "aitfoki", check = "a", until = 41.0}
+each = [{build = "aitfoki", tanks = 4, inf = 0}, {build = "aitfokt", tanks = 0, inf = 0},
+        {build = "aitfoke", tanks = 0, inf = 4}, {build = "aitfokn", tanks = 4, inf = 0}]
+bench = """\
+Bench 2026-11-23, PASS each but aitfokn (guessed 4 / 4): (坦克在家, 步兵在家) from s22 on: ObjectFilter ANY Include \
+INFANTRY (4, 0) from s15; ANY Include INFANTRY + IncludeThing Guardian (0, 0), the tanks s20-21, the infantry s22; ALL \
+Exclude INFANTRY (0, 4) from s15; NONE Include INFANTRY (4, 0) from s15 -- NONE takes the Include kinds as ANY"""
+proves = """\
+simai teams: the ObjectFilter's Include / Exclude kinds (after its IncludeThing) pick whom a team takes; NONE = ANY \
+(the program's one filter, CampaignLab work/re d59_b_fields.md 2: the heuristics' ObjectOfTypeExists use it too)"""
+expect = "(rows[39]['坦克在家'], rows[39]['步兵在家']) == (tanks, inf)"
+
+[[reading]]
 id = "locomotor_types_and_object_sets_take_whom_the_bench_sent"
 scene = {build = "aitfland", check = "a", until = 41.0}
 each = [{build = "aitfland", tanks = 0, other = 4}, {build = "aitfamph", tanks = 4, other = 0},
