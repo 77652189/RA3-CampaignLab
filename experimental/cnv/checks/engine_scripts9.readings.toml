@@ -1,0 +1,12 @@
+# Bench readings of checks/engine_scripts9.py (format: experimental/cnv/readings.py).
+
+[[reading]]
+id = "scripts9_remove_all_overrides_clears_the_teams_own_not_the_players"
+item = "脚本动作 TEAM_REMOVE_ALL_OVERRIDE_RELATIONS"
+scene = {build = "engine_scripts9b", check = "rmv", until = 20}
+bench = "11-23 CampP9bRmv_mcp_1123_113125: 甲 乙 丙 100 to s7; 丙 87 at s9, ~12 a second down, 12 from s20 (as rel's Enemy, same day PASS); 甲 乙 100 to s25; 丁 12 from s13"
+proves = "sim act_world TEAM_REMOVE_ALL_OVERRIDE_RELATIONS: only the team's overrides to teams (C) go; its override to a player (A) and a player's to it (B) stay"
+expect = [
+    "win(1, 8, '甲') == win(1, 8, '乙') == win(1, 8, '丙') == [100] * 8",
+    "rows[-1]['丙'] < 100 and rows[-1]['甲'] == rows[-1]['乙'] == 100",
+]

@@ -133,7 +133,10 @@ def _hold(m, roles):
     return [('UNIT_CHANGE_OBJECT_STATUS', m.role(r).name, status('NO_ATTACK'), 1) for r in roles]
 
 
-def rel(m):
+def rel(m, remove=False):
+    """remove (rmv, s01's Legion): at OFF_AT TEAM_REMOVE_ALL_OVERRIDE_RELATIONS of FoeA / FoeB / FoeC, not Enemy.
+    Predicted (Generals) 甲 丙 as rel, 乙 100. BENCH 11-23 (CampP9bRmv): 丙 87 at s9, 12 from s20, as rel -- the
+    team-to-team override goes; 甲 and 乙 100 to s25 -- FoeA's override to the player stays, like the player's to FoeB."""
     t = Test()
     p1 = m.player()
     held = [f'{k} {ASKED[k]}' for k in REL]      # the one read is the one shot at: it does not shoot back
@@ -141,14 +144,16 @@ def rel(m):
                       ('PLAYER_SET_OVERRIDE_RELATION_TO_TEAM', p1, m.teams['FoeB'], r),
                       ('TEAM_SET_OVERRIDE_RELATION_TO_TEAM', m.teams['FoeC'], m.teams['MeC'], r)]
     t.scripts.append(Script('Test - S9 start', [], _hold(m, held) + over('Neutral')))
-    s8.at(t, 'off', OFF_AT, over('Enemy'))
+    s8.at(t, 'off', OFF_AT, [('TEAM_REMOVE_ALL_OVERRIDE_RELATIONS', m.teams[f'Foe{k}']) for k in 'ABC']
+          if remove else over('Enemy'))
     for k, label in zip(REL, '甲乙丙丁'):
         counter = f'CNV_S9_{k}'
         t.counters.append((counter, label))
         t.scripts.append(Script(f'Test - {counter}', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER',
                                                            m.role(f'{k} {ASKED[k]}').name, counter)], once=False))
     t.expect += [(x, 0, '==', 100, OFF_AT - 2) for x in '甲乙丙'] + [('丁', OFF_AT - 2, '<', 100)]
-    t.expect += [(x, RUN['rel'] - 2, '<', 100) for x in '甲乙丙']
+    t.expect += [(x, RUN['rel'] - 2, '<', 100) for x in ('丙' if remove else '甲乙丙')]
+    t.expect += [(x, RUN['rel'] - 2, '==', 100) for x in '甲乙'] if remove else []
     s8.watch(t, RUN['rel'])
     return t
 
@@ -339,7 +344,8 @@ MISSION = {'engine_scripts9': mission,
                                                map=_libraries({'Soviet_4': 'skirmish', 'Soviet_5': 'skirmish'}))}
 CHECKS = {'engine_scripts9': {'memb': memb, 'memb2': memb2, 'memb3': memb3,
                             'owner': owner},
-          'engine_scripts9b': {'memb4': memb4, 'rel': rel, 'atk': atk, 'atkr': atkr},
+          'engine_scripts9b': {'memb4': memb4, 'rel': rel, 'rmv': lambda m: rel(m, remove=True), 'atk': atk,
+                               'atkr': atkr},
           'engine_scripts9c': {'memb5': memb5}, 'engine_scripts9d': {'memb6': memb6},
           'engine_scripts9e': {'memb7': memb7}, 'engine_scripts9f': {'memb8': memb8},
           'engine_scripts9g': {'memb9': memb9}, 'engine_scripts9h': {'memb10': memb10},

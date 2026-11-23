@@ -152,10 +152,16 @@ def team_merge_into_team(sim, name, a, script):
 
 def team_set_override_relation_to_team(sim, name, a, script):
     # (team / player, team / player, Enemy / Neutral / Friend) INFERRED (Generals doTeam / doPlayer override
-    # relation): how the first takes the second from then on, over the players' relation (hostile)
-    table = {'TEAM_SET_OVERRIDE_RELATION_TO_TEAM': sim.team_team_rel,
-             'TEAM_SET_OVERRIDE_RELATION_TO_PLAYER': sim.team_player_rel}.get(name, sim.player_team_rel)
-    table[(a[0], a[1])] = a[2] if isinstance(a[2], str) else {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[a[2][0]]
+    # relation): how the first takes the second from then on, over the players' relation (hostile).
+    # TEAM_REMOVE_ALL_OVERRIDE_RELATIONS (team), bench 11-23 engine_scripts9b rmv: only the team's overrides to teams
+    # go; its override to a player and a player's to it stay (Generals also cleared the one to players)
+    table = {'TEAM_SET_OVERRIDE_RELATION_TO_PLAYER': sim.team_player_rel,
+             'PLAYER_SET_OVERRIDE_RELATION_TO_TEAM': sim.player_team_rel}.get(name, sim.team_team_rel)
+    if name == 'TEAM_REMOVE_ALL_OVERRIDE_RELATIONS':
+        for k in [k for k in table if simworld.same_team(k[0], a[0]) or simworld.same_team(a[0], k[0])]:
+            del table[k]
+    else:
+        table[(a[0], a[1])] = a[2] if isinstance(a[2], str) else {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[a[2][0]]
     sim.change()
 
 
@@ -302,6 +308,7 @@ ACTIONS = {
     'TEAM_SET_OVERRIDE_RELATION_TO_TEAM': team_set_override_relation_to_team,
     'TEAM_SET_OVERRIDE_RELATION_TO_PLAYER': team_set_override_relation_to_team,
     'PLAYER_SET_OVERRIDE_RELATION_TO_TEAM': team_set_override_relation_to_team,
+    'TEAM_REMOVE_ALL_OVERRIDE_RELATIONS': team_set_override_relation_to_team,
     'UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION': unit_spawn_named_object_on_team_at_named_object_location,
     'TEAM_TRANSFER_TO_PLAYER': team_transfer_to_player,
     'UNIT_STOP_SEQUENTIAL_SCRIPT': unit_stop_sequential_script,
