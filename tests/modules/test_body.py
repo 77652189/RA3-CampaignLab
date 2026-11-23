@@ -195,6 +195,21 @@ def test_the_last_damage_and_the_indestructible_flag_live_on_the_module_step_b3(
     assert (bare.last_hit, bare.last_by, bare.indestructible) == (None, None, False)
 
 
+def test_damage_members_of_team_takes_the_amount_off_each_member_unarmoured():
+    """engine_teamdmg (bench 11-23): DAMAGE_MEMBERS_OF_TEAM is NAMED_DAMAGE on each member -- the amount off, no
+    armour, a member it leaves at 0 dies; one off the team is untouched."""
+    import engine.script.act_object as simact_object
+    s = _world(('p', 'AlliedPowerPlant'), ('q', 'AlliedAntiVehicleVehicleTech1'), ('r', 'AlliedPowerPlant'))
+    p, q, r = (s.bodies[n] for n in 'pqr')
+    p.team = q.team = 'T'
+    s.active.add('T')
+    was = (p.hp, q.hp, r.hp)
+    simact_object.ACTIONS['DAMAGE_MEMBERS_OF_TEAM'](s, 'DAMAGE_MEMBERS_OF_TEAM', ['T', 50.0], None)
+    assert (p.hp, q.hp, r.hp) == (was[0] - 50.0, was[1] - 50.0, was[2])
+    simact_object.ACTIONS['DAMAGE_MEMBERS_OF_TEAM'](s, 'DAMAGE_MEMBERS_OF_TEAM', ['T', q.hp], None)
+    assert p.alive and not q.alive and r.hp == was[2]
+
+
 def test_a_damage_kill_keeps_its_bits_readable_that_frame_on_the_module_step_b4a():
     import pytest
     import engine.script.act_object as simact_object

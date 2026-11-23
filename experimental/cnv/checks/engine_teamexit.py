@@ -55,5 +55,35 @@ def check(m):
     return t
 
 
-MISSION = {'engine_teamexit': mission}
-CHECKS = {'engine_teamexit': {'a': check}}
+def mission_player():
+    # engine_plexit: j07's PLAYER_EXIT_ALL_BUILDINGS('Player_2'): the same five p1 men, and s4's man in a second house
+    m = mission()
+    m.name = 'CampPlExit'
+    m.put('AM_Apartments_01', 'stop row', 900., -1800., side='civ', role='house2', name='CNV TeamExit house2')
+    m.put(MAN, 'stop row', 1000., -2100., side='s4', role='foe', name='CNV TeamExit foe')
+    return m
+
+
+def check_player(m, side):
+    t = Test()
+    men = [r for r in ROLES if not r.endswith('outside')]
+    t.scripts.append(Script('Test - PlExit hold', [], [
+        ('UNIT_CHANGE_OBJECT_STATUS', m.role(r).name, status('NO_ATTACK'), 1) for r in (*ROLES, 'foe', 'frog')]))
+    s8.at(t, 'load', 1., [('NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY', m.role(r).name, m.role(r.split()[1]).name)
+                          for r in men] + [('NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY', m.role('foe').name,
+                                            m.role('house2').name)])
+    s8.at(t, 'empty exit', 3., [('PLAYER_EXIT_ALL_BUILDINGS', m.player('s6'))])
+    s8.at(t, 'player exit', 5., [('PLAYER_EXIT_ALL_BUILDINGS', m.player(side))])
+    s8.at(t, 'repeat exit', 9., [('PLAYER_EXIT_ALL_BUILDINGS', m.player(side))])
+    s8.total(t, 'CNV_PX_Own', '本方驻', [(2**k, ('UNIT_HAS_OBJECT_STATUS', m.role(r).name, status('ENCLOSED')))
+                                        for k, r in enumerate(men)])
+    s8.total(t, 'CNV_PX_Foe', '敌方驻', [(1, ('UNIT_HAS_OBJECT_STATUS', m.role('foe').name, status('ENCLOSED')))])
+    s8.total(t, 'CNV_PX_Alive', '存活位', [(2**k, ('NAMED_NOT_DESTROYED', m.role(r).name))
+                                         for k, r in enumerate((*ROLES, 'foe', 'house', 'frog', 'house2'))])
+    s8.frames(t, 'CNV_PX_Frame', '逻辑帧', [])
+    s8.watch(t, 12., .5)
+    return t
+
+
+MISSION = {'engine_teamexit': mission, 'engine_plexit': mission_player}
+CHECKS = {'engine_teamexit': {'a': check}, 'engine_plexit': {'a': lambda m: check_player(m, 'p1'), 'b': lambda m: check_player(m, 's4')}}

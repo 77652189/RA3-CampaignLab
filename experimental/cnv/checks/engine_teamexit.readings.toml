@@ -1,0 +1,17 @@
+# Bench readings of checks/engine_teamexit.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "plexit_the_human_players_men_stay_in"
+item = "脚本动作 PLAYER_EXIT_ALL_BUILDINGS"
+scene = {build = "engine_plexit", check = "a", until = 16}
+bench = "a, run_queue CampPlExitA_mcp_1123_083408 (11-23), 本方驻 敌方驻 存活位: 15 1 511 at every one of 25 readings f44..247 (the calls at 3 s on s6, 5 s and 9 s on p1)"
+proves = "PLAYER_EXIT_ALL_BUILDINGS on the human player does nothing: its four men in the civilian house and its own Bullfrog stay in through both calls, s4's man stays too. The program picks the players by the mask and calls into each one's AI object (work/re/a323_plexit.md)"
+expect = "all(v[:3] == [15, 1, 511] for v in vals(rows) if v[3] >= 30) and len(rows) >= 15"
+
+[[reading]]
+id = "plexit_a_campaign_computer_players_man_stays_in_too"
+item = "脚本动作 PLAYER_EXIT_ALL_BUILDINGS"
+scene = {build = "engine_plexit", check = "b", until = 16}
+bench = "b, run_queue CampPlExitB_mcp_1123_084038 (11-23), 本方驻 敌方驻 存活位: 15 1 511 at every one of 25 readings f44..247 (the calls at 5 s and 9 s on s4)"
+proves = "PLAYER_EXIT_ALL_BUILDINGS on a campaign computer player (s4, no skirmish AI) lets nobody out either: its man stays in the second house, p1's men stay in. The AI object's walk goes over a list of its own, not the player's units (work/re/a323_plexit.md); a skirmish AI player not benched"
+expect = "all(v[:3] == [15, 1, 511] for v in vals(rows) if v[3] >= 30) and len(rows) >= 15"

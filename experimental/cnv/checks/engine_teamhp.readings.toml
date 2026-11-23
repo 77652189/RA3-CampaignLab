@@ -1,0 +1,13 @@
+# Bench readings of checks/engine_teamhp.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "teamdmg_takes_the_amount_off_each_member_unarmoured"
+item = "脚本动作 DAMAGE_MEMBERS_OF_TEAM"
+scene = {build = "engine_teamdmg", check = "a", until = 14}
+bench = "a, run_queue CampTeamDmgA_mcp_1123_083114 (11-23), 屋坦血量码 兵血量 对照血量码 at logic frames: f44..60 100100 100 100100 | f67..120 89097 50 100100 | f127..237 7 0 100100 (25 readings)"
+proves = "DAMAGE_MEMBERS_OF_TEAM (j09's 1800 on a civilian building team) is NAMED_DAMAGE on each living member: 50 at 4 s takes 50 points off with no armour (the 2000 house 97 %, the Guardian 89 %, the 100 conscript 50 %), 1800 at 8 s leaves the house at 7 % and kills the Guardian and the conscript (a dead one reads 0); the same house and Guardian off the team stay 100"
+let = {want = "lambda f: [100100, 100, 100100] if f <= 60 else [89097, 50, 100100] if 67 <= f <= 120 else [7, 0, 100100] if f >= 127 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(100100, 100, 100100), (89097, 50, 100100), (7, 0, 100100)}",
+]

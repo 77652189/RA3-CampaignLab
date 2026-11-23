@@ -79,6 +79,20 @@ def test_the_host_puts_one_in_through_the_module():
     assert s.garrison.out(gi) and house.owner is None and 'ENCLOSED' not in gi.script_status and m.home() == ()
 
 
+def test_player_exit_all_buildings_lets_nobody_out():
+    """engine_plexit a / b (bench 11-23): PLAYER_EXIT_ALL_BUILDINGS on the human player or a campaign computer player
+    leaves every man in (unlike TEAM_EXIT_ALL_BUILDINGS), and it is a known action, no gap."""
+    import engine.script.act as simact
+    s = simsmall.small_world()
+    house, house2 = (s.add(n, 'AM_Apartments_01', None, 300.0, y) for n, y in (('house', 300.0), ('house2', 600.0)))
+    gi = s.add('gi', 'AlliedAntiInfantryInfantry', s.human, 400.0, 300.0)
+    foe = s.add('foe', 'AlliedAntiInfantryInfantry', 'Soviet_4', 400.0, 600.0)
+    assert s.garrison.put(gi, house, script=True) and s.garrison.put(foe, house2, script=True)
+    for who in (s.human, 'Soviet_4'):
+        assert simact.act(s, 'PLAYER_EXIT_ALL_BUILDINGS', [who], None)
+    assert s.garrison.held(house) == [gi] and s.garrison.held(house2) == [foe]
+
+
 def test_a_buildings_end_empties_it_through_its_module():
     """Step B4c: a house's death tells its Contain module (Die) -- the passenger out alive, no
     KillPassengersOnDeath -- and a deletion (Destroy only) takes the passenger with it."""

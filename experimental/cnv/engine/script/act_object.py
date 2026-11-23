@@ -9,7 +9,7 @@ import engine.objects.locomotion as simlocomotion
 import engine.objects.modifier as simmodifier
 import engine.orders.order as simorder
 from engine.kernel import interfaces, module
-from engine.script.common import refined
+from engine.script.common import refined, team_crew
 from engine.objects.status import ACTED_STATUS, AI_ONLY_STATUS
 from engine.world.handle import GAP_ACTION, inside
 
@@ -101,9 +101,9 @@ def player_sell_everything(sim, name, a, script):
             sim._life().sell(sim, b, sim.garrison, sim.world.modify, sim.wallet.credit)
 
 
-def named_damage(sim, name, a, script):
+def named_damage(sim, name, a, script, unit=None):
     # (object, amount) health points off, no armour; engine_sell b / e
-    b = sim.body(a[0])                  # the Indestructible panel flag does not stop it (engine_scripts7 panel)
+    b = unit or sim.body(a[0])          # the Indestructible panel flag does not stop it (engine_scripts7 panel)
     if b and b.alive:
         b.set_last_damage(None)
         b.damage(float(a[1]))
@@ -112,6 +112,12 @@ def named_damage(sim, name, a, script):
             b.find(interfaces.Body).set_bits_read_until(sim.frame_now())    # step B4a: the Body module's
         else:                           # under REALLYDAMAGED: out in this frame (engine_garrison 伤争敌 1230)
             sim.garrison.hurt(b)
+
+
+def damage_members_of_team(sim, name, a, script):
+    # (team, amount): NAMED_DAMAGE on every living member (engine_teamhp d)
+    for b in team_crew(sim, a[0]) or ():
+        named_damage(sim, name, a, script, unit=b)
 
 
 def named_kill(sim, name, a, script):
@@ -300,6 +306,13 @@ def team_exit_all_buildings(sim, name, a, script):
         sim.garrison.out(b)
 
 
+def player_exit_all_buildings(sim, name, a, script):
+    # engine_plexit a / b: nobody leaves -- not the human player's men, not a campaign computer player's. The program
+    # has the player's AI object walk a list of its own, not the player's units (work/re/a323_plexit.md); a
+    # skirmish AI player not benched (INFERRED: nothing either)
+    return None
+
+
 def player_disable_unit_construction(sim, name, a, script):
     # engine_unitban: the native scripted button still queues; payment/progress wait until enabled.
     # Only named players and engineer unit queues measured. UI rejection, upgrades, other production
@@ -336,6 +349,7 @@ ACTIONS = {
     'SELL_OBJECT': sell_object,
     'PLAYER_SELL_EVERYTHING': player_sell_everything,
     'NAMED_DAMAGE': named_damage,
+    'DAMAGE_MEMBERS_OF_TEAM': damage_members_of_team,
     'NAMED_KILL': named_kill,
     'NAMED_DELETE': named_kill,
     'PLAYER_KILL': player_kill,
@@ -359,6 +373,7 @@ ACTIONS = {
     'NAMED_EXIT_BUILDING': named_exit_building,
     'EXIT_SPECIFIC_BUILDING': exit_specific_building,
     'TEAM_EXIT_ALL_BUILDINGS': team_exit_all_buildings,
+    'PLAYER_EXIT_ALL_BUILDINGS': player_exit_all_buildings,
     'PLAYER_DISABLE_UNIT_CONSTRUCTION': player_disable_unit_construction,
     'PLAYER_ENABLE_UNIT_CONSTRUCTION': player_disable_unit_construction,
     'PLAYER_DISABLE_BASE_CONSTRUCTION': player_disable_base_construction,
