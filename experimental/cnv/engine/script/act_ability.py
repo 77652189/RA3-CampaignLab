@@ -355,8 +355,16 @@ def _middle(crew):
 def team_use_commandbutton_ability(sim, name, a, script):
     # (team, button) l2_scripts1 8: the button on every living member, no target. Bench 11-08 button: both
     # Peacekeepers of the crew raised their shields
-    for b in sim.members(a[0]):
-        _member(sim, 'NAMED_USE_COMMANDBUTTON_ABILITY', [b.name, a[1]], script, b)
+    team_partial_use_commandbutton(sim, name, [100.0, a[0], a[1]], script)
+
+
+def team_partial_use_commandbutton(sim, name, a, script):
+    # (percent, team, button): the button, no target, on the first ceil(percent x members) living members in their
+    # order (j05's Rocket Angels at 100). Bench 11-23 engine_acts_rkt:p: 50 % of 4 the first two, 50 % of 3 the first
+    # two, 1 % of 3 the first one (ceil, not round; max(1, round) not told apart: INFERRED)
+    crew = sim.members(a[1])
+    for b in crew[:math.ceil(float(a[0]) * len(crew) / 100.0)]:
+        _member(sim, 'NAMED_USE_COMMANDBUTTON_ABILITY', [b.name, a[2]], script, b)
 
 
 def team_use_commandbutton_ability_at_waypoint(sim, name, a, script):
@@ -395,5 +403,6 @@ ACTIONS = {
     'FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER': fire_special_power_on_nearest_objecttype_by_player,
     'SKIRMISH_FIRE_SPECIAL_POWER_AT_MOST_COST': skirmish_fire_special_power_at_most_cost,
     'TEAM_USE_COMMANDBUTTON_ABILITY': team_use_commandbutton_ability,
+    'TEAM_PARTIAL_USE_COMMANDBUTTON': team_partial_use_commandbutton,
     'TEAM_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT': team_use_commandbutton_ability_at_waypoint,
 }

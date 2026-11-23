@@ -51,3 +51,15 @@ expect = [
     "at[6][0] in (101, 1101) and all(at[k][0] == 101 for k in range(7, 19))",
     "abs(first - 10) <= 1 and all(at[k][1] == 1 for k in range(first, 19))",
 ]
+
+[[reading]]
+id = "acts_rkt_the_partial_button_presses_the_first_ceil_of_the_team"
+item = "脚本动作 TEAM_PARTIAL_USE_COMMANDBUTTON"
+scene = {build = "engine_acts_rkt", check = "p", until = 11}
+bench = """p, bench 11-23 `run_queue engine_acts_rkt:p` (CampActsRktP_mcp_1123_061851, round 320; pressed at 3 s): 甲 乙 丙 丁 \
+0 0 0 0 s1, 111 11 11 1 s2-s11"""
+proves = """sim act_ability.team_partial_use_commandbutton: Command_ToggleLockDownGunSpecialPower on the first \
+ceil(percent x members) living members in placement order -- 100 % of 3 all, 50 % of 4 the first two, 50 % of 3 two \
+(not round-down), 1 % of 3 one (not round); the others stay as they were"""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = ["at[2] == [0, 0, 0, 0]", "all(at[k] == [111, 11, 11, 1] for k in range(4, 11))"]

@@ -163,5 +163,38 @@ def wing(m):
     return t
 
 
-MISSION = {'engine_acts_wet': mission, 'engine_acts_wing': wing_mission}
-CHECKS = {'engine_acts_wet': {'all': all_}, 'engine_acts_wing': {'all': wing}}
+# Round 320: TEAM_PARTIAL_USE_COMMANDBUTTON(percent, team, button) (j05 'Rocket Angels Setup', 2 uses, both 100 %:
+# Command_ToggleLockDownGunSpecialPower, the Rocket Angel's ToggleStatusSpecialAbilityUpdate, its second state
+# GENERIC_TOGGLE_STATE + USER_6). Four teams of the player's Rocket Angels on the flat east of 'air B', pressed at 3 s:
+# PA 3 at 100, PB 4 at 50, PC 3 at 50, PD 3 at 1 (floor / round / ceiling: PC 1 / 2 / 2, PD 0 / 0 / 1). A team's
+# counter = 10^k for its k-th member (placement order) in GENERIC_TOGGLE_STATE: which members, not only how many.
+ANGEL = 'JapanAntiVehicleInfantryTech3'
+PARTS = {'PA': (100.0, 3, 2000.0, '甲'), 'PB': (50.0, 4, 2150.0, '乙'), 'PC': (50.0, 3, 2300.0, '丙'),
+         'PD': (1.0, 3, 2450.0, '丁')}
+
+
+def partial_mission():
+    m = Mission(name='CampActsRkt', map=probe_air, units=[], facts={})
+    m.spawns |= {ANGEL}
+    o = probe_air.SITES[LAND]
+    for row, (_, n, y, _) in PARTS.items():
+        c = m.crew(f'T{row}')
+        for k in range(n):
+            m.put(ANGEL, LAND, 3400.0 + 60.0 * k - o.x, y - o.y, angle=0.0, name=_n(f'{row} {k}'),
+                  role=f'{row.lower()} {k}', props={'originalOwner': c})
+    return m
+
+
+def partial(m):
+    t = Test()
+    s8.at(t, 'press', PRESS, [('TEAM_PARTIAL_USE_COMMANDBUTTON', pct, m.teams[f'T{row}'],
+                               'Command_ToggleLockDownGunSpecialPower') for row, (pct, *_) in PARTS.items()])
+    for row, (_, n, _, lab) in PARTS.items():
+        s8.total(t, f'CNV_A13_{row}', lab, [(10 ** k, ('UNIT_HAS_OBJECT_STATUS', _n(f'{row} {k}'),
+                                                       status('GENERIC_TOGGLE_STATE'))) for k in range(n)])
+    s8.watch(t, 10.0)
+    return t
+
+
+MISSION = {'engine_acts_wet': mission, 'engine_acts_wing': wing_mission, 'engine_acts_rkt': partial_mission}
+CHECKS = {'engine_acts_wet': {'all': all_}, 'engine_acts_wing': {'all': wing}, 'engine_acts_rkt': {'p': partial}}
