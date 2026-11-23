@@ -31,7 +31,11 @@ def main(names):
             print('not found:', n, [k.decode() for k in by if n.lower().encode()[:12] in k][:8])
             continue
         raw = bytes(inst.chunks[0])
-        im = Image.open(io.BytesIO(raw[raw.find(b'DDS '):]))
+        try:
+            im = Image.open(io.BytesIO(raw[raw.find(b'DDS '):]))
+        except NotImplementedError as e:            # a format PIL cannot read (113: half-float RGBA): leave it out
+            print('skipped:', n, e)
+            continue
         print(n, im.size, im.mode, 'DDS fourcc', raw[raw.find(b'DDS ') + 84:raw.find(b'DDS ') + 88])
         im.save(os.path.join(OUT, n + '.png'))
 
