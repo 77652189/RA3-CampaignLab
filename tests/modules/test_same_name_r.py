@@ -179,8 +179,9 @@ def test_a_load_goes_to_the_refinery_picked_not_a_thing_made_under_its_name():
     s, mining = _mining()
     paid = []
     b = s.bodies['miner']
-    end = _run(s, mining, (1, 2000), paid, lambda: b.mine is not None and b.mine['state'] == 'to refinery')
-    assert b.mine['state'] == 'to refinery' and paid == []
+    way = ('off node', 'to pad', 'to refinery')      # on its way there (engine/objects/mine.py)
+    end = _run(s, mining, (1, 2000), paid, lambda: b.mine is not None and b.mine['state'] in way)
+    assert b.mine['state'] in way and paid == []
     s.add('ref', TANK, 'Player_2', 0.0, 0.0, shadow=True)  # an enemy tank under the name
     _run(s, mining, (end + 1, end + 600), paid)
     assert [g for o, g in paid if o == 'Player_1'] == [] and b.mine['state'] == 'find refinery'    # none of its

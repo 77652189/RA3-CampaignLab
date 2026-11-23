@@ -64,7 +64,7 @@ FORWARDER_CALLS = {
     ('engine.script.act_player', 'living'): 3, ('engine.script.act_world', 'living'): 1, ('engine.ai.core', 'living'): 23,
     ('engine.script.cond_object', 'living'): 8, ('engine.script.cond_player', 'living'): 1, ('engine.script.cond_vision', 'living'): 3,
     ('engine.combat.host', 'living'): 2, ('engine.combat.meta_impact', 'living'): 1, ('engine.objects.garrison', 'living'): 1,
-    ('engine.objects.infiltrator', 'living'): 3, ('engine.objects.mine', 'living'): 4, ('engine.objects.modifier', 'living'): 1,
+    ('engine.objects.infiltrator', 'living'): 3, ('engine.objects.mine', 'living'): 3, ('engine.objects.modifier', 'living'): 1,
     ('engine.orders.order', 'living'): 3, ('engine.orders.ability', 'living'): 2, ('engine.orders.hunt', 'living'): 1, ('simproxy', 'living'): 3, ('engine.ai.pullback', 'living'): 1,
     ('engine.objects.special', 'living'): 2, ('engine.combat.sweeps', 'living'): 1,
     ('engine.objects.path', 'living'): 2,       # claims / goal_off_nodes, moved off the Sim (R3 M5 3a)
@@ -91,7 +91,7 @@ SIM_SURFACE = {
                    'toggles_of wallet wfire_due world*2',
     'engine.modules': 'gap*3 pick used*3',
     'engine.objects': 'add*2 blocks*4 bodies*9 body change*21 cold_of enemy*2 frame_movers*2 frame_now*32 gap*62 ground*5 '
-                      'guessed*5 human*11 kills*2 label*27 living*13 looks m*2 note*20 own*41 player_ups players*3 point '
+                      'guessed*5 human*11 kills*2 label*27 living*12 looks m*2 note*20 own*41 player_ups players*3 point '
                       'reblock*2 relation*6 relations*4 shot_clock t*7 toggles_of topples used*18 weapon_upgrades world*24 '
                       'xml_of*6',   # objects.bridge (A315): the ManagerBody gap / own / blocks_of moved out of Sim.add
     'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 engineer_entry*2 fight_field fire_spot firing*3 frame_now*8 gap garrison*2 ground*3 hostile hunts*5 in_range label*9 living*6 members mid_aims mm*2 note*7 own*12 point*2 powers_off production reach*5 relation*3 seen seq*7 short_of_power shot_blocked*4 side_sees*4 team_targets*3 toggles_of used*13 wallet waypoints*8 who world*4 xml_of*2',

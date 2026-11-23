@@ -36,6 +36,14 @@ MINE_TURN_EXTRA = ((0.0, -18.0), (45.0, 8.0), (90.0, 36.0), (135.0, 50.0), (180.
 # refinery's dock: mineturn0 q has it in the node square at 23, the later legs at 15 from the dock (+8; its first
 # money 111 = +7); from 45 on the first money is the period's - 29 within 2 (0). Between linear (INFERRED).
 MINE_SPAWN_EXTRA = ((0.0, 7.0), (45.0, 0.0))
+# A refinery's pads (E207 dockqueue a, work/re/e207_dockqueue.md; D187 work/re/d187_cangodirect.md): a miner holds them
+# from its unload to MINE_PAD2 frames after (the bench's from pad 0, MINE_PAD1 before: not kept, the side node's leg is
+# ~10 frames short). Off its node (MINE_PAD2 after loading, inside the leg) a miner finding them held queues, and once
+# free drives in by pad 0 and pad 1 (MINE_PAD0 + MINE_PAD1). Pads free, one whose spot (MINE_LEAVE ahead of the node) is
+# within 40 of the refinery's point DIRECT_AT ahead (or past it, within 63.2) goes direct and unloads beside one on the
+# pads; another waits at pad 0 for them. 40 / 63.2 read (D187); MINE_LEAVE and DIRECT_AT fitted to E207's front (yes)
+# and side (no) nodes and D165's turned node (no) (INFERRED)
+MINE_PAD0, MINE_PAD1, MINE_PAD2, MINE_LEAVE, DIRECT_AT = 18, 22, 14, 60.0, 120.0
 
 
 def _turned_off(node, far):
@@ -63,6 +71,7 @@ class Mining:
                                             # 'claim'}: the miners themselves (11-19 same-name sweep: a node or miner
                                             # made under the name since has none of the old one's)
         self.mined_to = None                # the last frame mine_due ran
+        self.docks = {}                     # refinery serial -> the frame its pads are free from
 
     def mine_due(self, world, frame, pay):
         """Every player's miner (an OreMinerBehavior, not the neutral side's) up to `frame`, a frame at a time, the
@@ -72,7 +81,8 @@ class Mining:
         last -> again. The node: its last one first (sticky), else the nearest (INFERRED: 'the first one found', the
         search order not read). A miner coming to a node where another is docked waits there for good (the retail node
         has no queue place: bench engine_mining b / e); one coming while the node plays its MINE_REST frames docks and
-        waits for it. A refinery unloads one miner at a time, the next waiting (INFERRED: its queue places not read).
+        waits for it. A refinery's pads take one miner at a time, the next queued; one that can go direct unloads
+        beside it (MINE_PAD0 .. DIRECT_AT).
         A leg is straight distance at the miner's speed + mine_extra (by the node's facing, no path finding); the miner is
         drawn along it. A harvester given a path (a script's move) drops its trip and starts over once it stands."""
         start = frame if self.mined_to is None else self.mined_to + 1
@@ -185,18 +195,39 @@ class Mining:
             # See work/re/e164_queuedock.md; absolute path timing remains a gap.
             if not simunits.queue_dock(r.template, world.own):
                 raise ValueError(f'QueueDock missing on refinery {r.name!r} selected by miner {b.name!r}')
+            m['direct'] = self._direct(world, b, r)
             self._leg(world, b, fr, (r.x, r.y), 'to refinery')
+            # off the node by its pad 2 (the leg holds it), then it asks the refinery: direct or by pad 0
+            m['state'], m['due'] = 'off node', min(fr + MINE_PAD2, m['due'])
+        elif st in ('off node', 'to pad'):
+            r = held(world, om.refinery)
+            if r is None or not r.alive:
+                m['state'], m['leg'] = 'find refinery', None
+                return
+            free = self.docks.get(r.serial, 0)
+            if st == 'off node':
+                if fr < free:                       # held: to the queue, in by pad 0 and pad 1 once free
+                    m['state'], m['wait'], m['due'] = 'to pad', MINE_PAD0 + MINE_PAD1, free
+                elif m['direct']:                   # straight to the action pad, beside one on the pads
+                    m['state'], m['due'] = 'to refinery', m['leg'][3]
+                else:                               # by pad 0 at the end of its drive (the pads it then holds
+                    m['state'], m['wait'], m['due'] = 'to pad', 0, m['leg'][3]   # from its unload: INFERRED)
+                del m['direct']
+            elif fr < free:                         # held: it waits (at pad 0, pad 1 still to drive: INFERRED)
+                m['due'], m['wait'] = free, m['wait'] or MINE_PAD1
+                return
+            else:
+                m['state'], m['due'] = 'to refinery', max(fr + m.pop('wait'), m['leg'][3])
+                self.docks[r.serial] = m['due'] + MINE_DOCK + MINE_PAD2
+            if m['due'] <= fr:
+                self._mine(world, b, fr, nodes, pay)
         elif st == 'to refinery':
             m['leg'] = None
             r = held(world, om.refinery)            # the one picked, not one made under its name since
             if r is None or not r.alive:
                 m['state'] = 'find refinery'
                 return
-            busy = next((o for o in world.living() if o is not b and o.mine and o.mine['state'] == 'unloading'
-                         and o.find(interfaces.OreMiner).refinery is r), None)
-            if busy is not None:                    # one at a time: wait for it to finish
-                m['due'] = busy.mine['due'] + MINE_DOCK - busy.mine['n']
-                return
+            self.docks[r.serial] = max(self.docks.get(r.serial, 0), fr + MINE_DOCK + MINE_PAD2)
             m['state'], m['n'] = 'unloading', 0
             self._mine(world, b, fr, nodes, pay)
         elif st == 'unloading':                     # money on the arrival frame and the next MINE_DOCK - 1
@@ -215,6 +246,17 @@ class Mining:
                 # when the next ore node begins loading.
                 m['load'] = 0
                 m['state'] = 'locate'
+
+    @staticmethod
+    def _direct(world, b, r):
+        """Whether `b`, setting off for refinery `r`, can go direct to its action pad (MINE_PAD0 .. DIRECT_AT)."""
+        node = held(world, b.find(interfaces.OreMiner).node)
+        x, y = b.x, b.y
+        if node is not None and math.hypot(node.x - x, node.y - y) < 1.0:     # its spot ahead of the node
+            x, y = x + MINE_LEAVE * math.cos(node.angle), y + MINE_LEAVE * math.sin(node.angle)
+        dx, dy = r.x + DIRECT_AT * math.cos(r.angle) - x, r.y + DIRECT_AT * math.sin(r.angle) - y
+        d2 = dx * dx + dy * dy
+        return d2 <= 1600.0 or (dx * (r.x - x) + dy * (r.y - y) < 0 and d2 <= 4000.0)
 
     def _claimed(self, world, n, b, node):
         """Whether another miner than `b` holds node `n` (the thing `node`): it looked for it first and is on its way
