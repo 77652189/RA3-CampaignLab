@@ -110,10 +110,9 @@ def declared(root, base, env, tasks):
     every task; a name that is not a task is an error (a typo would quietly declare nothing)."""
     text = git(root, 'log', '--format=%B', f'{base}..HEAD')
     names = []
-    for line in text.splitlines():
-        if line.strip().lower().startswith(TRAILER):
-            names += line.strip()[len(TRAILER):].replace(',', ' ').split()
-    names += env.get('GOLDEN_CHANGED', '').replace(',', ' ').split()
+    for line in text.splitlines() + ['golden-changed: ' + env.get('GOLDEN_CHANGED', '')]:
+        if line.strip().lower().startswith(TRAILER):   # "none" declares nothing; a "(why)" after the names is prose
+            names += [n for n in line.strip()[len(TRAILER):].split('(')[0].replace(',', ' ').split() if n != 'none']
     if 'all' in names:
         return set(tasks)
     unknown = sorted(set(names) - set(tasks))

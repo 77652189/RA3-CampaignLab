@@ -64,6 +64,14 @@ def test_declared_reads_every_commit_after_the_base_and_the_environment(repo):
     assert golden.declared(str(r), second, {'GOLDEN_CHANGED': 'all'}, TASKS) == set(TASKS)
 
 
+def test_none_and_a_reason_in_brackets_declare_nothing_more(repo):
+    r, first, second = repo
+    none = {'GOLDEN_CHANGED': 'none (11 runs the same before / after).'}
+    assert golden.declared(str(r), second, none, TASKS) == set()
+    named = {'GOLDEN_CHANGED': 'ai_open (see the model commit)'}
+    assert golden.declared(str(r), second, named, TASKS) == {'ai_open'}
+
+
 def test_a_declared_name_that_is_no_task_is_an_error(repo):
     r, first, second = repo
     with pytest.raises(ValueError, match='heal_b'):
