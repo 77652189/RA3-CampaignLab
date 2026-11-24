@@ -2,12 +2,14 @@
 # E152 bench 2026-11-15 (run_queue, head 4d4eecf8): its rows are bench seconds, the frames from the 帧数 counter.
 # The off arm (no QueueDock on the refinery) faults the game at the first delivery (D165 f200): no rows to read;
 # the simulator refuses that set-up instead (tests/modules/test_queuedock.py).
+# Loading at the node: the bench's Load phase is 30 frames (E180 f156-186), the sim's 29 (work/re/e180_queuedock_load.md): a frame a trip, not read here.
 
 [[reading]]
 id = "the_miner_pays_250_a_trip_every_270_frames"
 scene = {build = "engine_queuedock", check = "a", until = 61}
 bench = "资金 0 to f296, 250 f329-f555, 500 f597-f820, 750 f859-f1089 (one load each trip, ~268 frames apart)"
 proves = "物体模块 QueueDock with one miner at one refinery: each trip delivers the whole load, 250, the trips ~270 frames apart (the loop of engine/objects/mine.py)"
+item = "物体模块 Behaviors/QueueDockBehavior"
 expect = ["win(23, 36, '资金') == [250] * 14",
           "win(41, 54, '资金') == [500] * 14",
           "win(58, 60, '资金') == [750] * 3"]
@@ -17,6 +19,7 @@ id = "the_unload_pays_8_a_frame"
 scene = {build = "engine_queuedock", check = "a", until = 60}
 bench = "资金 mid-unload f296 48, f306 128, f317 216; f565 298, f575 378, f583 442; f829 508, f841 604, f850 676: 8 a frame (250 // 30, the rest on the last; D165 dockphase: Unload f289-319, 30 frames)"
 proves = "物体模块 QueueDock: the docked miner unloads over 30 frames, load // 30 a frame"
+item = "物体模块 Behaviors/QueueDockBehavior"
 let = {rise = "[b['资金'] - a['资金'] for a, b in zip(rows, rows[1:]) if a['资金'] % 250 and b['资金'] % 250 and b['资金'] > a['资金']]", mid = "[r['资金'] % 250 for r in rows if r['资金'] % 250]"}
 # a row a second: a 30-frame unload holds one or two of them by its phase (the sim's from f286, the bench's f291)
 expect = ["len(mid) >= 3", "all(v % 8 == 0 for v in mid)", "all(d == 8 * 15 for d in rise)"]
@@ -26,6 +29,7 @@ id = "the_miner_is_on_the_pad_only_about_its_unload"
 scene = {build = "engine_queuedock", check = "a", until = 60}
 bench = "同帧 (thousands digit: the miner in the 70-box at the dock pad) 11000 f271-f340, 10000 f351-f530, 11000 f543-f605, 10000 f619-f800 (f786 10000: E152's snapshot), 11000 f809-f881: on the pad ~75 frames a trip, out ~25 frames after the last coin"
 proves = "物体模块 QueueDock: the miner comes onto the dock pad shortly before its unload and leaves soon after it: by the node's pad 2, the refinery's pad 0, pad 1 (engine/objects/mine.py MINE_SPOTS, read off dockqueue's dock lines with places 11-23); sim f271-346, f541-616, f811-871"
+item = "物体模块 Behaviors/QueueDockBehavior"
 expect = ["win(16, 17, '同帧') == [10000] * 2",
           "win(24, 32, '同帧') == [10000] * 9",
           "win(50, 52, '同帧') == [10000] * 3"]
@@ -40,6 +44,7 @@ id = "a_queued_miner_unloads_once_the_other_has_left_the_pad_and_it_drove_in"
 scene = {build = "dockqueue", check = "a", until = 16}
 bench = "资金 250 from s7.87 (miner 1 unloads f86-116), 306 s11.87, 500 from s13.4: miner 2 came at f93 (MoveQueue), waited at a queue bone (pos 1000) to f130 (miner 1 done with pad 2), pad 0 f148, pad 1 f170, unload f170-200"
 proves = "物体模块 QueueDock: a miner coming while another holds the pads waits in the queue, and gets in only after the other has driven off by pad 2; then pad 0 -> pad 1 before it unloads (54 frames after the other's last coin)"
+item = "物体模块 Behaviors/QueueDockBehavior"
 expect = ["first('资金', lambda v: v >= 250) == 8", "first('资金', lambda v: v >= 500) == 14"]
 
 [[reading]]
@@ -47,4 +52,5 @@ id = "a_miner_that_goes_direct_unloads_beside_a_docked_one"
 scene = {build = "dockqueue", check = "a", until = 32}
 bench = "资金 758 s26.0, 830 s26.6, 918 s27.07, 1030 s27.53, 1144 s28.0, 1216 s28.6, 1250 s29.07: 16 a frame f406-420 -- miner 1 (CanGoDirect, pos 2000: no queue place) unloads f388-418 while miner 2 (pos 1) unloads f401-431"
 proves = "物体模块 QueueDock: the refinery does not hold a miner that can go direct to its action pad: two unloads at once"
+item = "物体模块 Behaviors/QueueDockBehavior"
 expect = ["max(b['资金'] - a['资金'] for a, b in zip(rows, rows[1:])) > 150"]
