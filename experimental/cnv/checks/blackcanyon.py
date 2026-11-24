@@ -19,12 +19,17 @@ over by s21, the control by s19). foot r7 (the powerhouse still neutral): the mo
 shot from the water, the powerhouse's three never set out (100) -- a neutral prop is no one's target, so the map
 gives it to the player. camp r7: the Teslas round east, Hammer 0 in the camp all run -- they stood in a warehouse
 (4200, 780), moved west of it. (The counter reader misreads a long line's last digit, 1 as 7: read the frames.)
+r8, the dam the player's Allied plants (readings: blackcanyon.readings.toml): ath, the Athena on an enemy plant 50
+beside the player's own: both 100 -> 25 -> 2 (its beam hurts SELF ALLIES too). sell: CANNOT_BE_SOLD set, SELL_OBJECT
+still sells it. roads (plan-wave team orders): conscripts over the bridge at crest west, Hammers down the bend at crest
+east, both shot down. last: lake Stingrays land at the beach and drive to crest west; V4s hit east from the road.
 """
 from parts import Obj, Script, Test
-from model import counted, square
+from model import counted, square, status
 
 RAY, V4 = 'SovietAntiNavyShipTech1', 'SovietAntiStructureVehicle'
 HAMMER, TESLA, PLANT = 'SovietAntiVehicleVehicleTech1', 'SovietAntiVehicleVehicleTech2', 'SovietPowerPlant'
+DAM, ATHENA, CONSCRIPT = 'AlliedPowerPlant', 'AlliedAntiStructureVehicle', 'SovietAntiInfantryInfantry'
 
 
 def _start(t, m, orders, at=4.0):
@@ -33,9 +38,9 @@ def _start(t, m, orders, at=4.0):
                   Script('Test - go', [('TIMER_EXPIRED', 'Test Go')], orders)]
 
 
-def _plant(t, m, site, tag):
+def _plant(t, m, site, tag, tpl=PLANT):
     name = f'UNIT - Test Plant {tag}'
-    t.objects.append(Obj(PLANT, *m.site(site), side='p1', name=name, site=site))
+    t.objects.append(Obj(tpl, *m.site(site), side='p1', name=name, site=site))
     return name
 
 
@@ -139,4 +144,85 @@ def crest(m):
     return t
 
 
-CHECKS = {'canyon': {'foot': foot, 'v4': v4, 'camp': camp, 'crest': crest}}
+def athena(m):
+    t = Test()
+    dam = _plant(t, m, 'st_dam_w', 'Dam', DAM)
+    x, y = m.site('st_dam_w')
+    foe, gun = 'UNIT - Test Foe Plant', 'UNIT - Test Athena'
+    t.objects += [Obj(PLANT, x, y + 50.0, side='s1', name=foe, site='st_dam_w'),
+                  Obj(ATHENA, x - 350.0, y, side='p1', name=gun, site='st_dam_w')]
+    counted('Test Dam hp', '坝血', t, health=dam)
+    counted('Test Foe hp', '靶血', t, health=foe)
+    _start(t, m, [('NAMED_ATTACK_NAMED', gun, foe)], at=6.0)
+    t.expect += [('靶血', 0, 'ever<=', 50), ('坝血', 0, 'ever<=', 90)]
+    t.bench = [('bench_watch', dict(seconds=50.0, every=5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def sell(m):
+    t = Test()
+    p1 = m.player('p1')
+    kept, sold = _plant(t, m, 'st_dam_w', 'Kept', DAM), _plant(t, m, 'st_dam_e', 'Sold', DAM)
+    t.counters.append(('Test Alive', '存活 留/卖'))      # a digit each, the kept one the ones
+    t.scripts.append(Script('Test - alive zero', [], [('SET_COUNTER', 'Test Alive', 0)], once=False))
+    t.scripts += [Script(f'Test - alive {k}', [('NAMED_NOT_DESTROYED', n)], [('INCREMENT_COUNTER', 10 ** k, 'Test Alive')],
+                         once=False) for k, n in enumerate((kept, sold))]
+    counted('Test Locked', '不能卖数', t, status=status('CANNOT_BE_SOLD'))
+    t.counters.append(('Test Money', '资金'))
+    t.scripts += [Script('Test - lock', [], [('UNIT_CHANGE_OBJECT_STATUS', kept, 'CANNOT_BE_SOLD', 1),
+                                             ('PLAYER_SET_MONEY', p1, 2000)]),
+                  Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', p1, 'Test Money')], once=False)]
+    _start(t, m, [('SELL_OBJECT', kept), ('SELL_OBJECT', sold)])
+    t.expect += [('存活 留/卖', 1, '==', 11, 3), ('不能卖数', 0, 'ever==', 1), ('存活 留/卖', 8, '==', 1),
+                 ('资金', 8, '==', 2400)]
+    t.bench = [('bench_watch', dict(seconds=16.0, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def _raid(t, m, groups, areas, seen):
+    """groups: (template, tag, count, site, dx, dy, target) each one team ordered like a plan wave (TEAM_ATTACK_NAMED);
+    seen: (label, tag, [area, ...]) a _seen line."""
+    orders, names = [], {}
+    for tpl, tag, n, site, dx, dy, target in groups:
+        names[tag] = [f'UNIT - Test {tag} {k}' for k in range(n)]
+        t.objects += [Obj(tpl, *m.site(site, dx + 40.0 * (k % 4), dy + 40.0 * (k // 4)), side='s1', name=u, site=site)
+                      for k, u in enumerate(names[tag])]
+        orders += m.order('attack', names[tag], target, 's1')
+    t.areas.update(areas)
+    for label, tag, where in seen:
+        _seen(t, f'Test {tag}', label, [(names[tag], a) for a in where])
+    _start(t, m, orders)
+
+
+def roads(m):
+    t = Test()
+    w, e = _plant(t, m, 'st_dam_w', 'West', DAM), _plant(t, m, 'st_dam_e', 'East', DAM)
+    counted('Test West hp', '西段血', t, health=w)
+    counted('Test East hp', '东段血', t, health=e)
+    _raid(t, m, [(CONSCRIPT, 'Conscript', 5, 'sov_camp', -450.0, -150.0, w), (HAMMER, 'Hammer', 3, 'sov_east', -120.0, 0.0, e)],
+          {'Test Bridge': square(2885.0, 1700.0, 200.0), 'Test East': square(3700.0, 2550.0, 250.0),
+           'Test Bend': square(*m.site('st_bend'), 250.0)},
+          [('动 桥/东', 'Conscript', ['Test Bridge', 'Test East']), ('锤 长坡', 'Hammer', ['Test Bend'])])
+    t.expect += [('西段血', 0, 'ever<=', 90), ('东段血', 0, 'ever<=', 90), ('动 桥/东', 0, 'ever==', 1),
+                 ('动 桥/东', 0, '<=', 1), ('锤 长坡', 0, 'ever==', 1)]
+    t.bench = [('bench_watch', dict(seconds=200.0, every=5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+def last(m):
+    t = Test()
+    w, e = _plant(t, m, 'st_dam_w', 'West', DAM), _plant(t, m, 'st_dam_e', 'East', DAM)
+    counted('Test West hp', '西段血', t, health=w)
+    counted('Test East hp', '东段血', t, health=e)
+    _raid(t, m, [(V4, 'V4', 2, 'sov_east', -120.0, 0.0, e), (RAY, 'Ray', 3, 'sov_lake', -60.0, 0.0, w)],
+          {'Test Overlook': square(*m.site('overlook'), 150.0), 'Test Face': square(2660.0, 3260.0, 150.0),
+           'Test Beach': square(*m.site('st_beach'), 250.0)},
+          [('V4 台上', 'V4', ['Test Overlook']), ('魟 坝面/湖滩', 'Ray', ['Test Face', 'Test Beach'])])
+    t.expect += [('东段血', 0, 'ever<=', 90), ('西段血', 0, 'ever<=', 90), ('魟 坝面/湖滩', 0, 'ever==', 1),
+                 ('魟 坝面/湖滩', 0, '<=', 1)]
+    t.bench = [('bench_watch', dict(seconds=150.0, every=5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {'canyon': {'foot': foot, 'v4': v4, 'camp': camp, 'crest': crest, 'ath': athena, 'sell': sell,
+                     'roads': roads, 'last': last}}

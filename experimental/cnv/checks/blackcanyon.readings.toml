@@ -1,0 +1,32 @@
+# Bench readings of checks/blackcanyon.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A2's dam made the player's (11-24, work/mappage/a2/notes.md r8): the three sections are the player's Allied plants.
+
+[[reading]]
+id = "the_athena_beam_takes_the_players_own_dam_section"
+scene = {build = "canyon", check = "ath", until = 50}
+bench = "bench 11-24 canyon ath (HEAD 469fdb4d + the check): 坝血 靶血 s1-s6 100 100 | s11 25 25 | s16-s51 2 2"
+proves = "AthenaCannonWeapon's RadiusDamageAffects SELF ALLIES ENEMIES NEUTRALS: the beam on an enemy plant 50 beside the player's own takes the player's as it takes the target (as the neutral dam on hoover 11-04, 100 -> 25 -> 2)"
+expect = "max(win(16, 49, '坝血')) <= 5"
+mismatch = "sim 100 all run (no splash in the fight model); bench 2 from s16"
+
+[[reading]]
+id = "cannot_be_sold_does_not_stop_a_script_sale"
+scene = {build = "canyon", check = "sell", until = 16}
+bench = "bench 11-24 canyon sell: 存活 留/卖, 不能卖数, 资金 s1 11 1 2000 | s3 11 1 2800 | s5-s17 0 0 2800 (the plant with CANNOT_BE_SOLD set is sold as the other)"
+proves = "SELL_OBJECT does not read the CANNOT_BE_SOLD status (body.sell: anything with a StructureSellUpdate sells): both 800 plants paid 400 each and gone; the native sell button not benched (engine_mousehud: clicks only select)"
+expect = ["win(8, 15, '存活 留/卖') == [0] * 8", "win(8, 15, '资金') == [2800] * 8"]
+
+[[reading]]
+id = "plain_attack_orders_go_for_the_players_dam_sections_by_road"
+scene = {build = "canyon", check = "roads", until = 200}
+bench = "bench 11-24 canyon roads: 西段血 东段血 动 桥/东 锤 长坡 s16 100 100 0 1 | s31 100 100 1 1 | s41 100 37 | s46 100 5 | s71 82 5 | s91-s210 1 5 1 1"
+proves = "a plan wave's TEAM_ATTACK_NAMED on a player's plant: conscripts from the Soviet camp at crest west go over the bridge (never east), Hammers from US-93 at crest east down the long bend; both sections shot down"
+expect = ["rows[-1]['西段血'] <= 10", "rows[-1]['东段血'] <= 10", "max(r['动 桥/东'] for r in rows) == 1", "max(r['锤 长坡'] for r in rows) == 1"]
+
+[[reading]]
+id = "the_lake_rays_land_on_the_beach_and_the_v4s_skip_the_overlook"
+scene = {build = "canyon", check = "last", until = 150}
+bench = "bench 11-24 canyon last: 西段血 东段血 V4台上 魟 坝面/湖滩 s26-s36 100 100 0 10 | s41-s66 100 37 0 10 | s71 92 | s86-s160 4 37 0 10 (the reader may misread a long line's last digit; frames not looked at -- the west section falls from s71, not s26, so they did not shoot from the face)"
+proves = "Stingrays from the lake's north end ordered at crest west do not shoot from the water under the dam: they land at Boulder Beach and drive round to it; V4s from US-93 at crest east fire from the road, never on the overlook, and stop at 37"
+expect = ["max(r['魟 坝面/湖滩'] for r in rows) == 10", "rows[-1]['西段血'] <= 10", "max(r['V4 台上'] for r in rows) == 0", "min(r['东段血'] for r in rows) < 90"]
+mismatch = "sim: rays at the face from s20, V4 on the overlook from s32, neither section hit (100 100); bench rays at the beach, west 4, V4 never up there, east 37"
