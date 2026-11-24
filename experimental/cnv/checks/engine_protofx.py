@@ -22,13 +22,14 @@ YARD = {'o': 'syard', 'd': 'syard', 'f': 'jyard'}          # the yard each proto
 def protofx(m, which):
     t, p1 = Test(), m.player('p1')
     kind, level = which
-    power = POWERS[kind] + ('3' if level == 'n' else level)
+    power = POWERS[kind] + ('3' if level in 'nx' else level)
     if kind == 'o':
         spot, shown = 'Test Psi Spot', [(f'dtarget {d}', f'血{d}') for d in (0, 150, 250, 350)]
     else:
         spot, shown = 'Test Protocol Spot', [(f'foe {d}', f'血{d}') for d in (0, 150, 200)]
         t.counters.append(('CNV_Proto_Frames', '帧数'))
     keep = {'yard', 'power'} | {r for r, _ in shown} | ({YARD[kind]} if level != 'n' else set())
+    keep -= {'dtarget 150'} if level == 'x' else set()     # ox: o3 with the defense at 150 gone (does the centre get it?)
     start = [('MAP_REVEAL_ALL_PERM', p1), ('SET_MILLISECOND_TIMER', 'Test Go', 1.0)]
     start += [('UNIT_CHANGE_OBJECT_STATUS', m.role(r).name, 'NO_ATTACK', 1) for r, _ in shown]
     start += [('NAMED_DELETE', r.name) for k, r in m.cast.items() if k not in keep and r.name]
@@ -50,4 +51,4 @@ def protofx(m, which):
     return t
 
 
-CHECKS = {'engine_protofx': {w: (lambda m, w=w: protofx(m, w)) for w in ('o1', 'o3', 'd3', 'dn', 'f3', 'fn')}}
+CHECKS = {'engine_protofx': {w: (lambda m, w=w: protofx(m, w)) for w in ('o1', 'o2', 'o3', 'ox', 'd1', 'd2', 'd3', 'dn', 'f1', 'f2', 'f3', 'fn')}}

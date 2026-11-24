@@ -8,6 +8,11 @@ import math
 from engine.script.common import RELATION_OF, team_crew
 
 
+def _stands(sim, a, b, want):
+    """How player a takes b is `want` (RELATION_OF's; None: any)."""
+    return want is None or sim.relation(a, b) == want
+
+
 def enemy_sighted(sim, name, a):
     # (viewer, relation, player): the viewer finds an object of the player's that stands to it as asked, within
     # its sight (engine_levelvision a: a range query, no shroud). Bench 11-14 engine_eyes all 看见 45 -> 47: the
@@ -19,7 +24,7 @@ def enemy_sighted(sim, name, a):
     live = list(sim.living())
     hidden = sim.cloaked(live, mark=False)
     return bool(viewer and viewer.alive and want and any(
-        target.owner == a[2] and sim.relation(viewer.owner, target.owner) == want
+        target.owner == a[2] and _stands(sim, viewer.owner, target.owner, want)
         and target.serial not in hidden
         # Centre-distance boundary/combined modifiers remain INFERRED.
         and math.hypot(target.x - viewer.x, target.y - viewer.y) <= viewer.sight * viewer.level_vision
@@ -48,7 +53,7 @@ def enemy_sighted_by_team(sim, name, a):
     want = RELATION_OF.get(rel)
     them = [t for t in sim.bodies.values() if t.owner == a[2] and (t.alive or sim.dying(t))
             and not ({'INERT', 'MOVE_ONLY'} & set(t.kinds))]
-    return any((want is None or sim.relation(m.owner, t.owner) == want)
+    return any(_stands(sim, m.owner, t.owner, want)
                and math.hypot(t.x - m.x, t.y - m.y) <= m.sight * m.level_vision
                for m in crew if m.sight > 0 for t in them)
 

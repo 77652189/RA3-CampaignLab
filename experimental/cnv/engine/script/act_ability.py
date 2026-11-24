@@ -16,6 +16,7 @@ R3 13d-2): a capture, a factory's build button, an unpack, a toggle, the weapon-
 - the god's-hand / effect branches of named_buttons: a yard packing back (replace, due), the drop store's and the
   time belt's recorded casts, the ejects and the repair dispatch (their own modules, no command kind yet)."""
 import math
+import random
 
 import engine.objects.garrison as simgarrison
 import engine.data.units as simunits
@@ -23,7 +24,8 @@ import engine.objects.locomotion as simlocomotion
 import engine.players.tech as simtech
 from engine.kernel import interfaces, module
 from engine.ports.command import Command
-from engine.objects.power import CURTAIN, PACK_FRAMES, PACK_POWER, PROTOCOL_HITS, RELOAD_LAG, SUPERWEAPON_HITS, UNPACK_POWER, start_reload
+from engine.objects.power import (CRASH, CRASH_AT, CRASHES, CURTAIN, PACK_FRAMES, PACK_POWER, PROTOCOL_HITS, RELOAD_LAG,
+                                  SQUADRON, SUPERWEAPON_HITS, UNPACK_POWER, start_reload)
 from engine.script.common import refined, team_crew
 from engine.world.handle import GAP_ACTION, free_name
 
@@ -310,8 +312,11 @@ def _seen(sim, owner, power, serial, q=None, n=1):
 
 
 def _land(sim, now, q, hits, owner, by):
-    """A superweapon table's hits (power.SUPERWEAPON_HITS / PROTOCOL_HITS) queued at q from frame `now`."""
-    sim.blasts.extend((now + after, q[0], q[1], table, owner, by) for after, table in hits)
+    """A superweapon table's hits (power.SUPERWEAPON_HITS / PROTOCOL_HITS) queued at q from frame `now`; a hit
+    (after, table, (dx, dy), keep) lands dx, dy off q and takes nothing below `keep` of its health."""
+    for after, table, *more in hits:
+        (dx, dy), keep = (more[0], more[1:]) if more else ((0, 0), ())
+        sim.blasts.append((now + after, q[0] + dx, q[1] + dy, table, owner, by, *keep))
 
 
 def _book_cast(sim, a, power, own, living):
@@ -320,14 +325,27 @@ def _book_cast(sim, a, power, own, living):
     ReloadTime starts (SKIRMISH_SPECIAL_POWER_READY reads it). The point defense drones: each of the player's own
     vehicles / ships within 100 (its bounding circle) is given POINT_DEFENSE_DRONE_ATTACHED (INFERRED: an allied
     player's left out; the drone itself, its leech and death, not simulated) -- True; every other protocol's effect is
-    not simulated -- False. Orbital refuse rank 1 and the desolator bomb 3 land as superweapon hits (PROTOCOL_HITS, bench
-    engine_protofx: the player's, no caster object)."""
+    not simulated -- False. Orbital refuse rank 1 and the desolator bombs land as superweapon hits (PROTOCOL_HITS, bench
+    engine_protofx: the player's, no caster object); the final squadron's crashes too (power.SQUADRON): CRASHES on
+    each enemy non-infantry in the radius, drawn in a random order, the aircraft left over at random points in it."""
     p, q, key = a[0], sim.point(a[2]), power.lower()
     now, rules = _seen(sim, p, power, None, q), simunits.power_rules('PlayerSpellBook', power, own)
     sim.power_at[(p, key)] = now + (rules['reload'] if rules else 0)
     sim.used.add('special power')
     if key in PROTOCOL_HITS and q is not None:
         _land(sim, now, q, PROTOCOL_HITS[key], p, None)
+        return True
+    if key in SQUADRON and q is not None:
+        planes, reach = SQUADRON[key]
+        rng = random.Random(f'{p} {key} {now}')        # the simulator's own draw: the same every run
+        foes = [t for t in living if sim.relation(p, t.owner) == 'ENEMIES' and 'INFANTRY' not in t.kinds
+                and math.hypot(t.x - q[0], t.y - q[1]) <= reach]
+        rng.shuffle(foes)
+        spots = [(t.x, t.y) for t in foes for _ in range(CRASHES)][:planes]
+        while len(spots) < planes:
+            turn, r = rng.uniform(0.0, 2 * math.pi), reach * math.sqrt(rng.random())
+            spots.append((q[0] + r * math.cos(turn), q[1] + r * math.sin(turn)))
+        _land(sim, now, q, [(CRASH_AT, CRASH, (x - q[0], y - q[1])) for x, y in spots], p, None)
         return True
     if key != 'specialpower_pointdefensedrones' or q is None:
         return False

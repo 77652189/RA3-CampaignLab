@@ -41,12 +41,14 @@ class Specials:
 
     def blast_due(self, world, frame, blasts, first_death, destroy):
         """A superweapon's hits landing by `frame` (SUPERWEAPON_HITS): every living object, friend or foe, within the
-        table's reach loses the damage read off its centre distance (linear between the measured distances)."""
+        table's reach loses the damage read off its centre distance (linear between the measured distances), down to
+        the hit's `keep` share of its health when it has one (a desolator field's vehicles)."""
         for d in [d for d in blasts if d[0] <= frame]:
             blasts.remove(d)
-            _, x, y, table, owner, by = d
+            _, x, y, table, owner, by, *keep = d
             for t in world.living():
                 dmg = hit_at(table, math.hypot(t.x - x, t.y - y))
+                dmg = min(dmg, t.hp - keep[0] * t.max_hp) if keep else dmg
                 if dmg <= 0 or frame < t.immune_until or t.shielded or t.indestructible:
                     continue
                 t.damage(dmg)

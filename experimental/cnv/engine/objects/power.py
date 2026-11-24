@@ -44,17 +44,31 @@ SUPERWEAPON_HITS = {
 # A player's protocol cast by script (act_ability._book_cast), keyed by the power's lower-case name, no caster object.
 # Bench 11-23 engine_protofx (base defenses of 1000 / tanks of 480; frames after the cast): orbital refuse rank 1 -- the
 # centre 55 % at ~70, 20 % from ~85, 150 / 250 / 350 untouched (XML: five debris of 300 radius 75; two hits INFERRED);
-# desolator bomb 3 -- tanks at 0 / 150 / 200 lose ~3 / 2.2 / 1 hp a frame from ~75 to ~520, a Soviet yard or not
-# (d3 = dn), and stop at 1 / 1 / 6 % (a hit every 15 frames from 80, the floor as a count of hits: INFERRED; the XML's
-# no-structure filter not modelled). Rank 3 and the final squadron land at random (o3: only the target at 150 hit;
-# f3 / fn differ): not simulated.
+# rank 2 hits nothing (o2, three runs; why not known). The desolator bombs: one field a bomber (OCL offsets 0 / y +-50 /
+# x 50, -50 y +-50; this bench fits them with x mirrored: the bombers' heading, INFERRED), each ~1 hp a frame on a tank
+# reaching 150 (+ its size) for 30 s from ~75 -- level 1 0 / 150 hit alike, 200 not; 2 the same twice as fast; 3 three /
+# two / one fields on 0 / 150 / 200 -- a Soviet yard or not (d3 = dn), a vehicle kept at 1 % (each hit floored there;
+# the XML's no-structure filter not modelled). Rank 3 (o3, three runs: the defense at 150 loses 81 % at ~140, the centre
+# and 250 nothing; ox, that defense gone: nothing hit) -- the one big debris is flung at a fixed angle, no spread (XML),
+# so it lands at one spot ~150 off (+x here, INFERRED), reaching < 100 (not the XML's 175); the 7 small ones hit nothing
+# (UsePlayerStore: no store, INFERRED).
+FIELD = [(0.0, 16.0), (175.0, 16.0)]       # a field's hit every 15 frames, flat (d1: 0 and 150 at 1 % by ~f506)
+FIELDS = {1: [(0, 0)], 2: [(0, -50), (0, 50)], 3: [(-50, 0), (50, 50), (50, -50)]}
 PROTOCOL_HITS = {
     'specialpowerorbitalrefuse_rank1': [(70, [(0.0, 450.0), (75.0, 450.0)]), (85, [(0.0, 350.0), (75.0, 350.0)])],
-    'specialpower_desolatorbomb_level3': [
-        (80 + 15 * k, [(0.0, 47.5 if k < 10 else 0.0), (150.0, 33.9 if k < 14 else 0.0), (200.0, 15.0)])
-        for k in range(30)
-    ],
+    'specialpowerorbitalrefuse_rank3': [(140, [(0.0, 810.0), (75.0, 810.0)], (150, 0))],
+    **{f'specialpower_desolatorbomb_level{n}': [(80 + 15 * k, FIELD, at, 0.01) for at in spots for k in range(30)]
+       for n, spots in FIELDS.items()},
 }
+# The final squadron (XML: 5 / 10 / 15 aircraft, the seed's chooser takes enemies but infantry within 50 / 75 / 100, at
+# most 2 / 3 / 4 attacks each, the rest CHOOSE_RANDOM_POSITION in the radius; a crash 100 EXPLOSIVE radius 20). Bench
+# f1 / f2 / f3 / fn, two runs each, the same: the tank in the radius loses ~38-48 % at ~75 frames, at every level, a
+# Japanese yard or not -- two crashes of 95 on a chosen target (INFERRED, not the XML's 2 / 3 / 4); a free aircraft
+# crashes at a random point in the radius (the simulator's draw) on whatever is within 20; the guns' strafing (the
+# tanks at 150 / 200 lose 0-15 %) not simulated.
+SQUADRON = {'specialpowerfinalsquadron_l1': (5, 50.0), 'specialpowerfinalsquadron_l2': (10, 75.0),
+            'specialpowerfinalsquadron_l3': (15, 100.0)}
+CRASH, CRASHES, CRASH_AT = [(0.0, 95.0), (20.0, 95.0)], 2, 75
 # Iron Curtain: engine_super j -- a scripted cast keeps tanks at 0 and 150 from the waypoint whole against enemy fire for
 # ~355 frames (the 20 s modifier + the 3 s effect); NAMED_DAMAGE goes through (i). XML: vehicles and structures, aura
 # 100, yet g / a (each tank shot by one enemy of its own, NAMED_ATTACK_NAMED, open ground): tanks at 100 / 300 / 500 /
