@@ -64,3 +64,34 @@ class FireWeaponWhenDead(module.Module, interfaces.Die, interfaces.DeathWeapon):
         """By its thing's status now (module.status_now: its object status bits, AIRBORNE_TARGET while in the air --
         the same match as CreateObjectDie's, B5 review e #6)."""
         return self.data.fires(death, module.status_now(self.thing))
+
+
+class FireWeaponCollideData(module.ModuleData):
+    def __init__(self, weapon='', flags=frozenset(), required=frozenset()):
+        self.weapon, self.flags, self.required = weapon, flags, required    # CollideWeapon, Flags, RequiredStatus
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(templates.attr(head, 'CollideWeapon', ''), templates.words(head, 'Flags'),
+                   templates.words(head, 'RequiredStatus'))
+
+
+@factory.module('FireWeaponCollide')
+class FireWeaponCollide(module.Module, interfaces.Die):
+    """FireWeaponCollide (E217, checks/engine_fwcollide.readings.toml), WHEN_BEING_CRUSHED only: its thing crushed
+    (death CRUSHED) under its RequiredStatus -- its toggles' ObjectStatus now counted (the Flak trooper's armed mine)
+    -- fires its CollideWeapon at the crusher (its last damage's object; World.fire `at`: Generals fires it at the
+    other). Bench: a Hammer crushing an armed trooper at frame 43 is below 70 % from 44, one crushing an unarmed
+    trooper whole (the trooper's own spot is 10.3 behind the Hammer that frame: radius 10 would miss). Not modelled:
+    the other Flags (a collision with a thing: the retail ones are projectiles, which the simulator does not make);
+    FireOnce holds (a crush is once)."""
+    DATA = FireWeaponCollideData
+    STATE = ()
+
+    def on_die(self, info):
+        d, b = self.data, self.thing
+        status = module.status_now(b).union(*(t.rules()['states'][t.state()]['status'] for t in b.find(interfaces.Toggle)))
+        if info.death == 'CRUSHED' and 'WHEN_BEING_CRUSHED' in d.flags and d.required <= status:
+            body = b.find(interfaces.Body)
+            by = body.last_attacker() if body is not None else None
+            self.world.fire(b, d.weapon, (by.x, by.y) if by is not None else None)

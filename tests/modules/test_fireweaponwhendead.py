@@ -118,3 +118,21 @@ def test_the_death_s_own_type_decides_a_crush_its_crushed():
     s.add('flat', 'CNV_TestBomb', 'Player_1', 0.0, 0.0)
     s.world.kill(s.bodies['flat'], 'test', 'CRUSHED')
     assert [blast[8].name for blast in s.death_blasts] == ['flat']
+
+
+def test_a_collide_weapon_goes_off_at_the_crusher_on_a_crush_only():
+    """FireWeaponCollide WHEN_BEING_CRUSHED (E217, checks/engine_fwcollide.readings.toml): a crush fires its
+    CollideWeapon on the crusher (its last attacker), any other death nothing; a RequiredStatus it lacks holds it."""
+    def mine(name, required=''):
+        return (f'<GameObject id="{name}" KindOf="INFANTRY"><Body><ActiveBody MaxHealth="100"/></Body><Behaviors>'
+                f'<FireWeaponCollide id="ModuleTag_Revenge" CollideWeapon="CNV_TestBurst" Flags="WHEN_BEING_CRUSHED" '
+                f'RequiredStatus="{required}" FireOnce="true"/></Behaviors></GameObject>')
+    s = simsmall.small_world()
+    s.own.update(CNV_TestMine=mine('CNV_TestMine') + BURST, CNV_TestHeld=mine('CNV_TestHeld', 'GENERIC_TOGGLE_STATE'))
+    for n, t in (('crushed', 'CNV_TestMine'), ('shot', 'CNV_TestMine'), ('held', 'CNV_TestHeld')):
+        s.add(n, t, 'Player_1', 0.0, 0.0)
+    s.add('tank', 'CNV_TestMine', 'Player_2', 12.0, 0.0)
+    for n, death in (('crushed', 'CRUSHED'), ('shot', 'NORMAL'), ('held', 'CRUSHED')):
+        s.bodies[n].set_last_damage('Player_2', s.bodies['tank'])
+        s.world.kill(s.bodies[n], 'test', death=death)
+    assert [(d[1], d[2]) for d in s.death_blasts] == [(12.0, 0.0)]

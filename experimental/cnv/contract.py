@@ -46,6 +46,7 @@ RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j0
                    'Command_ToggleMolotovCocktailSpecialPower', 'Command_ToggleLeechBeam',     # engine_toggle b / c
                    'Command_ToggleAlliedEngineerHeal', 'Command_ToggleBinaryWeapon',          # engine_toggle d / e
                    'Command_ToggleShortCircuit',                                              # engine_toggle f
+                   'Command_ToggleMagneticBombSpecialPower',    # the Flak trooper's mine (engine_fwcollide)
                    'Command_ToggleRiotShieldSpecialPower',      # the Peacekeeper's riot shield (engine_aitoggle)
                    'Command_ActivateEjectPassengersSpecialPower',   # the Bullfrog's man cannon at a spot (engine_transport)
                    'Command_ActivateEjectPassengersSpecialPowerUntargeted',     # the bomber's paradrop (retail a01)

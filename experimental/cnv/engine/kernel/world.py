@@ -118,13 +118,13 @@ class World:
         Body.upgrades and Sim.player_ups) -- a Die module's UpgradeForbidden. A world with no host: none."""
         return self._upgrades(thing) if self._upgrades else frozenset()
 
-    def fire(self, thing, weapon):
+    def fire(self, thing, weapon, at=None):
         """A FireWeaponWhenDead module's thing died and its DeathWeapon goes off (step B5c): the host fires the
-        WeaponTemplate `weapon` where the thing died, as the thing's -- today its DamageNuggets queued as death blasts
-        (simbody.Life.fire, simdamage.death_blast_due). A world with no host fires nothing."""
+        WeaponTemplate `weapon` where the thing died (or at `at`, (x, y): a FireWeaponCollide's crusher), as the
+        thing's -- today its DamageNuggets queued as death blasts (simbody.Life.fire, simdamage.death_blast_due)."""
         if self._fire is None:
             raise RuntimeError(f'World.fire({thing.name!r}): this world has no host to fire with')
-        self._fire(thing, weapon)
+        self._fire(thing, weapon, at)
 
     def remove(self, thing, why):
         """A module takes its thing out, no death (a toppled prop gone: ToppleUpdate): the host's deletion -- today

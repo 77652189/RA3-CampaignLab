@@ -116,13 +116,14 @@ class Life:
             b.status = b.status | {'NO_COLLISIONS'}
         self._gone(world, b, why, False)
 
-    def fire(self, world, b, weapon, death_blasts):
+    def fire(self, world, b, weapon, death_blasts, at=None):
         """The kernel's fire (World.fire) for a FireWeaponWhenDead (engine/modules/fireweaponwhendead.py, step B5c;
         bench 11-05 engine_spawn_refill): each DamageNugget of the WeaponTemplate `weapon` (simunits.weapon_blasts)
-        queued to go off where b died, its delay after, as b's (simdamage.death_blast_due)."""
+        queued to go off where b died (or at `at`), its delay after, as b's (simdamage.death_blast_due)."""
+        x, y = at or (b.x, b.y)
         for dmg, typ, reach, after, affects, ally in self.blasts(world, weapon):
             world.used.add('death weapon')
-            death_blasts.append((world.frame_now() + simunits._frames(after), b.x, b.y, dmg, typ, reach,
+            death_blasts.append((world.frame_now() + simunits._frames(after), x, y, dmg, typ, reach,
                                  affects, b.owner, b, ally, False))
 
     def delete(self, world, b, why):
