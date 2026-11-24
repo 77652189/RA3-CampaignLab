@@ -265,6 +265,9 @@ MODEL_HOOKS = {
     # recruiting (D152): the slot's target as a point
     'teams': (('has_target', lambda b: lambda ai, key, n: b.slot_target(ai, key, n) is not None),
               ('target_of', 'slot_target'), ('reach', 'reach_target'), ('carry', 'carry'),
+              # RequireCanAttackTarget (d61 2): some weapon of the unit takes the target object; range is moving's
+              ('can_attack', lambda b: lambda ai, u, i: (t := b.body_of(i)) is None
+               or any(b.observe.can_hit(w, t) for w in u.body.weapons)),
               ('alive', lambda b: lambda ai, i: i in b.targets.points or any(t.id == i for t in b.view.things))),
 }
 

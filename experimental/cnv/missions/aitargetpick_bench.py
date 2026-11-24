@@ -50,7 +50,7 @@ HEURISTICS = {
 KIROV = 'SovietBomberAircraft'
 
 
-def state_xml(sid, targets, max_targets, priority='STANDARD', end='RAMPAGE'):
+def state_xml(sid, targets, max_targets, priority='STANDARD', end='RAMPAGE', require=False):
     th = ['    <TargetHeuristic TargetHeuristic="{}"{}/>'.format(h, '' if p is None else f' Priority="{p}"')
           for h, p in targets]
     return '\n'.join([
@@ -62,19 +62,19 @@ def state_xml(sid, targets, max_targets, priority='STANDARD', end='RAMPAGE'):
         '''    <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="''' + end + '''" EndIfStateTurnsOff="true">
       <TeamTemplate MinUnits="1" MaxUnits="4" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
                     AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="''' + priority + '''" AlwaysRecruit="false"
-                    MicroManager="StandardMicroManager_MEDIUM"/>
+                    MicroManager="StandardMicroManager_MEDIUM"''' + (' RequireCanAttackTarget="true"' if require else '') + '''/>
     </Tactic>
   </AIStrategicStateDefinition>'''])
 
 
-def personality_xml(pid, targets, max_targets, priority='STANDARD', second=None, end='RAMPAGE'):
+def personality_xml(pid, targets, max_targets, priority='STANDARD', second=None, end='RAMPAGE', require=False):
     """second = (TargetHeuristic list, team Priority) of a second always-on state CNVStateTQ, or None."""
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
     every = list(targets) + (list(second[0]) if second else [])
     own = sorted({h for h, _ in every if h in HEURISTICS})
     heur = ['  <AITargetingHeuristic id="{}" {} />'.format(
         h, ' '.join(f'{k}="{v}"' for k, v in HEURISTICS[h].items())) for h in own]
-    states = [state_xml('CNVStateTP', targets, max_targets, priority, end)]
+    states = [state_xml('CNVStateTP', targets, max_targets, priority, end, require)]
     if second:
         states.append(state_xml('CNVStateTQ', second[0], max_targets, second[1]))
     return '\n'.join([
@@ -96,7 +96,7 @@ def personality_xml(pid, targets, max_targets, priority='STANDARD', second=None,
 
 
 def mission(name, targets, expect, max_targets=1, tanks=4, priority='STANDARD', second=None, end='RAMPAGE',
-            kill_at=None, kirov=None):
+            kill_at=None, kirov=None, require=False):
     """expect = (plant, barracks, tank, home): Guardians there at the end, the model's guess; kirov = the Guardians
     expected under a player Kirov south of the Guardians (None: no Kirov)."""
     pid = PID + name[-3:]
@@ -112,7 +112,7 @@ def mission(name, targets, expect, max_targets=1, tanks=4, priority='STANDARD', 
         m.put(KIROV, 'east base', -150.0, 650.0, name='UNIT - CNV TP Kirov', role='kirov')
         m.scripts.append(Script('CNV TP - Kirov holds fire', [], [('UNIT_SET_STANCE', 'UNIT - CNV TP Kirov', 3)]))
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
-    m.assets.append((f'{pid}.xml', personality_xml(pid, targets, max_targets, priority, second, end),
+    m.assets.append((f'{pid}.xml', personality_xml(pid, targets, max_targets, priority, second, end, require),
                      f'AIPersonalityDefinition:{pid}'))
     m.cnv_units = (TANK,)
     m.spawns |= {TANK}
@@ -149,6 +149,11 @@ MISSION = {
     'aitpmt2': lambda: mission('CampAITPMt2', [(CLOSEST, None)], (4, 4, 0, 0), max_targets=2, tanks=8),
     'aitpairn': lambda: mission('CampAITPAirN', [('CNVHSurface', None)], (4, 0, 0, 0), kirov=4),
     'aitpairf': lambda: mission('CampAITPAirF', [('CNVHSurfaceF', None)], (0, 0, 4, 0), kirov=0),
+    # TeamTemplate RequireCanAttackTarget="true" (work/re d61 2: the recruit gate takes a unit only if it can attack
+    # the slot's target object, now or after moving): aitpairn's Kirov -> no Guardian is taken, 4 at home;
+    # aitpunit's tank -> all 4 go as without it
+    'aitpairr': lambda: mission('CampAITPAirR', [('CNVHSurface', None)], (0, 0, 0, 4), kirov=0, require=True),
+    'aitpunr': lambda: mission('CampAITPUnR', [('CNVHVehicle', None)], (0, 0, 4, 0), require=True),
     # round 82: TeamTemplate.Priority -- two always-on states, P (CNVStateTP, the plant, a target from s13) and B
     # (CNVStateTQ, the barracks, from s19), both general-path teams of MaxUnits 4 over the same 4 Guardians.
     # The model guessed (4, 0, 0, 0) for all four (the plant's team first, no taking from another team); the bench

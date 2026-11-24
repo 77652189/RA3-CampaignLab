@@ -82,6 +82,17 @@ proves = "simai targets: ForbiddenObjectStatus AIRBORNE_TARGET skips a thing in 
 expect = "[min(max(x['到飞艇'] for x in rows[:20]), 3), min(max(x['到坦克'] for x in rows[:20]), 3)] == got"
 
 [[reading]]
+id = "require_can_attack_target_leaves_the_guardians_home_for_a_kirov"
+item = "AI 组队招人/TeamTemplate.RequireCanAttackTarget"
+scene = {build = "aitpairr", check = "a", until = 41.0}
+each = [{build = "aitpairr", got = [0, 4]}, {build = "aitpunr", got = [4, 0]}]
+bench = """\
+aitpairr / aitpunr (B 11-24, run_queue at f69abef2, both PASS): RequireCanAttackTarget="true" on aitpairn's team \
+(the Kirov the target): 在家 4 s1-s55, nobody leaves; on aitpunit's (the tank): 到坦克 3 @ s14, 4 s15-s29"""
+proves = "simai teams: RequireCanAttackTarget takes only units with a weapon for the slot's target object"
+expect = "[max(x['到坦克'] for x in rows[:30]), min(x['在家'] for x in rows[:41])] == got"
+
+[[reading]]
 id = "after_an_unhittable_kirov_rampage_takes_the_plant_as_on_the_bench"
 scene = {build = "aitpairn", check = "a", until = 41.0}
 bench = "aitpairn: the Guardians (no anti-air) leave the Kirov s17, 到电厂 4 from s21 to s55 -- RAMPAGE's nearest structure"

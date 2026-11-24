@@ -89,5 +89,5 @@ def a(m):
 
 
 CHECKS = {k: {'a': a} for k in ('aitpnear', 'aitpvk', 'aitpfk', 'aitpunit', 'aitpphi', 'aitpplo', 'aitpmt1',
-                                 'aitpmt2', 'aitpairn', 'aitpairf', 'aitpprs', 'aitpprh', 'aitpprp', 'aitpprl',
+                                 'aitpmt2', 'aitpairn', 'aitpairf', 'aitpairr', 'aitpunr', 'aitpprs', 'aitpprh', 'aitpprp', 'aitpprl',
                                  'aiendr', 'aiendd', 'aiendh', 'aiendp')}
