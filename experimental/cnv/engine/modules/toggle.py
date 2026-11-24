@@ -25,15 +25,16 @@ class ToggleData(module.ModuleData):
         self.power = power          # SpecialPowerTemplate: the button's special power that presses it
         self.pack = pack            # PackTime seconds (read, not acted on: engine_toggle b)
         self.unpack = unpack        # UnpackTime seconds: a press waits this long
-        self.states = states        # [{status: set, modifier, disabled, locomotor}] of its ToggleStates
+        self.states = states        # [{status: set, modifier, disabled, locomotor, modules: <Module> ids}] of its ToggleStates
 
     @classmethod
     def parse(cls, head, inner):
         states = [dict(status=set((templates.attr(h, 'ObjectStatus') or '').split()),
                        conditions=set((templates.attr(h, 'ModelConditions') or '').split()),
                        modifier=templates.attr(h, 'AttributeModifier'), disabled=templates.attr(h, 'DisabledType'),
-                       locomotor=templates.attr(h, 'LocomotorSet'), armor=templates.attr(h, 'ArmorSet'))
-                  for h, _ in templates.blocks(inner, 'ToggleState')]
+                       locomotor=templates.attr(h, 'LocomotorSet'), armor=templates.attr(h, 'ArmorSet'),
+                       modules={templates.attr(mh, 'ModuleId') for mh, _ in templates.blocks(i, 'Module')})
+                  for h, i in templates.blocks(inner, 'ToggleState')]
         return cls(templates.attr(head, 'SpecialPowerTemplate'), templates.secs(templates.attr(head, 'PackTime') or '0s'),
                    templates.secs(templates.attr(head, 'UnpackTime') or '0s'), states)
 

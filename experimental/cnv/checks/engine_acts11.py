@@ -34,7 +34,7 @@ Counters:
     s14-s24 3030 0 3000 60 | s25 3030 0 3000 61.
     DE / CV: all out within a second of the press (simgarrison.evacuate: only an aircraft waits to land). AP, KV, MA, MT
     as predicted, off by the second press. KV: 200 a second while GENERIC_TOGGLE_STATE (simunits.lose_health), but no
-    faster: both Kirovs in their squares s13-s14 (SwitchLocomotorUpdate not seen working; not modelled). JB: no press
+    faster: both Kirovs in their squares s13-s14 (pressed in the frame before its MOVE: standing, see kab). JB: no press
     taken -- the player has no power plant (tower below). s25 61: the Kirov's own heal starting (not tested).
   tower (engine_acts_twr:t, CampActsTwrT): the player has a SovietPowerPlant. BENCH 11-14 塔 s1-s33 1 | s34-s46 11:
     J1's press at 3 s toggles it (a placed tower is not held by its StructureUnpackUpdate), J2's at 35 s too, J3's
@@ -284,7 +284,53 @@ def shrink(m):
     return t
 
 
+# SwitchLocomotorUpdate (SovietBomberAircraft, the Kirov's afterburners: NORMAL_UPGRADED 55 against NORMAL 30,
+# UpdatePeriod 1 s, MinimumHealth 10 %). all's KV got the press and its MOVE in one frame and was no faster than KP.
+# kab: four Kirovs sent 900 east (the far square's edge 800 off): KS pressed and moved at 3 s (all's KV again), KL
+# pressed at 3 s and moved at 4.5 s, KM moved at 3 s and pressed at 4.5 s (RECONSTITUTE_STORED_COMMAND), KP moved at
+# 3 s, not pressed; pressed off at 22 s. [30 a second: there at ~30 s; 55: ~18 s (KL ~19 s)]
+# r: KS as k's KM; KL the same, sent there again at 8 s; KM pressed at 3 s standing, moved at 4.5 s, pressed off at
+# 8 s and on again at 9 s on its way; KP as k's.
+KIROVS = {'KS': 3850.0, 'KL': 4150.0, 'KM': 4450.0, 'KP': 4750.0}
+KX, KFAR = 1500.0, 900.0
+BURN = 'Command_ToggleAfterburners'
+KAB = {'k': {3.0: [('KS', BURN), ('KL', BURN), ('KS', 'go'), ('KM', 'go'), ('KP', 'go')],
+             4.5: [('KL', 'go'), ('KM', BURN)], 22.0: [('KS', BURN), ('KL', BURN), ('KM', BURN)]},
+       'r': {3.0: [('KM', BURN), ('KS', 'go'), ('KL', 'go'), ('KP', 'go')], 4.5: [('KS', BURN), ('KL', BURN), ('KM', 'go')],
+             8.0: [('KL', 'go'), ('KM', BURN)], 9.0: [('KM', BURN)], 22.0: [('KS', BURN), ('KL', BURN), ('KM', BURN)]}}
+
+
+def kirov_mission():
+    m = Mission(name='CampActsKab', map=probe_border, units=[], facts={})
+    m.spawns |= {'SovietBomberAircraft'}
+    for row, y in KIROVS.items():
+        m.put('SovietBomberAircraft', 'stop row', KX - O[0], y - O[1], angle=0.0, name=_n(row), role=row.lower())
+        for part, dx in (('half', KFAR / 2), ('far', KFAR)):
+            m.waypoint(f'{part} {row}', f'CNV A11 {part.title()} {row}', 'stop row', KX + dx - O[0], y - O[1])
+    return m
+
+
+def kirov(m, plan='k'):
+    t = Test()
+    s8.at(t, 'hold', 0.1, [('UNIT_CHANGE_OBJECT_STATUS', _n(r), status('NO_ATTACK'), 1) for r in KIROVS] +
+          [('MAP_REVEAL_ALL_PERM', m.player('p1'))])
+    for secs, acts in KAB[plan].items():
+        s8.at(t, f'kab {int(secs * 10)}', secs, [('MOVE_NAMED_UNIT_TO', _n(r), m.mark(f'far {r}')) if a == 'go' else
+                                       ('NAMED_USE_COMMANDBUTTON_ABILITY', _n(r), a) for r, a in acts])
+    weights = {'KS': 1, 'KL': 10, 'KM': 100, 'KP': 1000}
+    for part, counter, label in (('half', 'CNV_A11_Half', '半'), ('far', 'CNV_A11_Far', '到')):
+        parts = []
+        for r, w in weights.items():
+            t.areas[f'Test A11 {part} {r}'] = square(*m.point(f'{part} {r}'), FAR_R)
+            parts.append((w, ('NAMED_INSIDE_AREA', _n(r), f'Test A11 {part} {r}')))
+        s8.total(t, counter, label, parts)
+    s8.total(t, 'CNV_A11_Burn', '态', [(w, _bit(r, 'GENERIC_TOGGLE_STATE')) for r, w in weights.items()])
+    s8.watch(t, 34.0)
+    return t
+
+
 MISSION = {'engine_acts_tgl': mission, 'engine_acts_twr': tower_mission, 'engine_acts_jmn': miner_mission,
-           'engine_acts_dsg': disguise_mission, 'engine_acts_eva': evac_mission, 'engine_acts_shr': shrink_mission}
-CHECKS = {'engine_acts_tgl': {'all': all_}, 'engine_acts_twr': {'t': tower}, 'engine_acts_jmn': {'g': miner},
+           'engine_acts_dsg': disguise_mission, 'engine_acts_eva': evac_mission, 'engine_acts_shr': shrink_mission,
+           'engine_acts_kab': kirov_mission}
+CHECKS = {'engine_acts_kab': {'k': kirov, 'r': lambda m: kirov(m, 'r')},'engine_acts_tgl': {'all': all_}, 'engine_acts_twr': {'t': tower}, 'engine_acts_jmn': {'g': miner},
           'engine_acts_dsg': {'d': disguise}, 'engine_acts_eva': {'w': evac}, 'engine_acts_shr': {'s': shrink}}

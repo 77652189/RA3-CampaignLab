@@ -95,3 +95,30 @@ expect = [
     "all(r['缩'] == (110 if 5 <= t < 25 else 0) for t, r in zip(times, rows))",
     "all(r['状'] == r['缩'] for r in rows)",
 ]
+
+[[reading]]
+id = "acts_kab_k_the_afterburners_speed_a_kirov_pressed_on_its_way_only"
+item = "物体模块 Behaviors/SwitchLocomotorUpdate"
+scene = {build = "engine_acts_kab", check = "k", until = 35}
+bench = "k, bench 11-24 CampActsKabK_mcp_1124_101351 (E220; four Kirovs sent 900 east, 到 = 1 KS + 10 KL + 100 KM + 1000 KP in the far square): 到 100 from s18, 1101 s29, 1111 from s30; 半 100 s9-s12, 1001 s14, 1011 s15 -- KM (moved at 3 s, pressed at 4.5 s) there 11 s before KP (not pressed); KS (pressed and moved in one frame, all's KV) with KP; KL (pressed standing at 3 s, moved at 4.5 s) a second after KP"
+proves = "engine/objects/toggle.py entered: the ToggleState's <Module> names the SwitchLocomotorUpdate, its LocomotorSet NORMAL_UPGRADED (55 against 30) taken when pressed on the way; pressed standing (or in the frame of the MOVE, before it) nothing, the move after at 30"
+let = {f = "lambda w: first('到', lambda v: v // w % 10 >= 1)"}
+expect = [
+    "abs(f(1000) - f(100) - 11) <= 1",
+    "abs(f(1) - f(1000)) <= 1",
+    "0 <= f(10) - f(1000) <= 2",
+    "abs(f(1000) - 28) <= 2",
+]
+
+[[reading]]
+id = "acts_kab_r_a_new_move_keeps_the_afterburners_a_standing_press_waits_for_the_next"
+item = "物体模块 Behaviors/SwitchLocomotorUpdate"
+scene = {build = "engine_acts_kab", check = "r", until = 35}
+bench = "r, bench 11-24 CampActsKabR (E220): 到 11 from s17, 111 s20, 1111 from s28; 半 11 s9, 111 s12, 1100 s14 -- KS (moved 3 s, pressed 4.5 s) and KL (the same, sent there again at 8 s) together 11 s before KP; KM (pressed standing 3 s, moved 4.5 s, off at 8 s, on at 9 s on its way) 3 s after KS: fast from its second press"
+proves = "sim: a new MOVE keeps the afterburners' 55 (r KL; not reset by the order); a standing press is not taken later on the way, a press on the way is (r KM)"
+let = {f = "lambda w: first('到', lambda v: v // w % 10 >= 1)"}
+expect = [
+    "abs(f(1000) - f(1) - 11) <= 1",
+    "f(10) == f(1)",
+    "abs(f(100) - f(1) - 3) <= 1",
+]

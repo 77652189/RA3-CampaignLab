@@ -11,6 +11,7 @@ Fields it owns: none (the body's toggle_at / armor_up are read-only forwards of 
 import engine.data.units as simunits
 from engine.kernel import interfaces
 from engine.modules import locomotor
+from engine.ports import templates
 
 
 def press(world, b, command, short_of_power):
@@ -44,8 +45,19 @@ def entered(world, b, m, modify):
     if tm['power'] == 'SpecialPower_ToggleArmorUp':
         world.used.add('miner armor')
     modify(b)
-    loc = tm['states'][m.state()].get('locomotor')
-    speed, surf = simunits.locomotor_of(b.template, world.own, loc) if loc else (None, [])
+    own = world.own
+    chain = [xml for _, xml in simunits.xml_chain(b.template, own)] if any(
+        s.get('modules') for s in tm['states']) else []
+    switch = [next((templates.attr(h, 'LocomotorSet') for xml in chain
+                    for h, _ in templates.blocks(xml, 'SwitchLocomotorUpdate')
+                    if templates.attr(h, 'id') in s.get('modules', ())), None) for s in tm['states']]
+    # a state's own LocomotorSet, else its SwitchLocomotorUpdate's (the Kirov's afterburners, 55 against 30): bench
+    # engine_acts_kab k / r, taken only when pressed on its way -- pressed standing, the moves after stay at 30 (k KL,
+    # r KM till its second press on the way); a new MOVE keeps 55 (r KL). Its other state: NORMAL (pressed off
+    # standing INFERRED)
+    loc = tm['states'][m.state()].get('locomotor') or (switch[m.state()] if b.path else None) or \
+        ('NORMAL' if any(switch) else None)
+    speed, surf = simunits.locomotor_of(b.template, own, loc) if loc else (None, [])
     if speed:
         # engine_acts_wing (round 278): the Sea-Wing's SUPERSONIC set (Surfaces AIR) took it up the press's second
         # (AIRBORNE_TARGET) and over the bank; NORMAL (DEEP_WATER) back on the water
