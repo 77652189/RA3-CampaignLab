@@ -4,6 +4,7 @@ Prediction before measurement: 100% slush -> 2 plants; 0% -> 0 (INFERRED).
 The PRODUCTION share is the complement; no deposit is made. The test measures
 the opening's sensitivity, not account balances. See work/re/c_slush_report.md.
 """
+from checks.engine_aitower import f
 from parts import Script, Test, counted
 
 
@@ -30,3 +31,4 @@ def d(m):
 
 
 CHECKS.update({build: {'d': d} for build in ('aislsdef', 'aislddef')})
+CHECKS['aislrich'] = {'f': f}                # aitowerinc10r's: 塔在基地 and AI钱

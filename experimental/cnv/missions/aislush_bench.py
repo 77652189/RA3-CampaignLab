@@ -6,7 +6,7 @@ at s40. No deposits, income, combat teams or defense production are introduced.
 Original readings and ownership: work/re/c_slush_report.md.
 """
 from missions.aiomove_bench import ALL, mission as opening_mission
-from missions.aitower_bench import mission as tower_mission
+from missions.aitower_bench import RICH, RICH_WATCH, mission as tower_mission
 
 
 def mission(slush):
@@ -49,5 +49,15 @@ def defense(slush):
     return m
 
 
+def rich():
+    """Round three (B): aitowerinc10r (PRODUCTION 90 / DEFENSE 10, 20000 at the wake: two turrets, no third) plus
+    SLUSH_FUND 100 %. Read (work/re d64 2): the shares sum only the other accounts' lines, SLUSH_FUND takes what they
+    leave -- its own line is ignored, DEFENSE stays 10 %: two turrets. Counted (200 %, each halved): 5 %, one."""
+    m = tower_mission('CampAISlRich', 0.5, opener=False, refinery=True, defense=10, watch=RICH_WATCH, money=RICH)
+    name, xml, ref = m.assets[0]
+    m.assets[0] = name, xml.replace('Account="SLUSH_FUND" Percent="0%"', 'Account="SLUSH_FUND" Percent="100%"'), ref
+    return m
+
+
 MISSION = {'aislush100': lambda: mission(True), 'aislush0': lambda: mission(False),
-           'aislsdef': lambda: defense(True), 'aislddef': lambda: defense(False)}
+           'aislsdef': lambda: defense(True), 'aislddef': lambda: defense(False), 'aislrich': rich}

@@ -110,10 +110,10 @@ BENCHED_REG = {'人格/PowerChoice.Weight': 'docs/engine/aiopen.md#买协议（a
                               ('OpeningMove.Name', '每个探针按名字挂自写开局，都照它造'),
                               ('Order.Deposit', 'aiom15：带 Deposit 2000 照造、晚 4 秒'))},
               '开局/Order.Account': 'docs/engine/aiopen.md#开局存款进哪个账户（Order Account，第 116 轮）（aiskacp / aiskacd：PRODUCTION 兵营出兵、DEFENSE 兵营不出）',
-              '经济/AccountShare.Account': 'tests/test_slush_account.py::test_slush_defense_named_bench_replay'
+              '经济/AccountShare.Account': 'experimental/cnv/checks/engine_aislush.readings.toml::the_slush_fund_line_funds_no_defense'
                  '（C 的 engine_aislush aislddef / aislsdef：同一预算只把 100% 从 DEFENSE 挪到 SLUSH_FUND，'
-                 '台上炮塔 s28/48/68 1/2/3 座 vs 全程 0 座，模拟器按名回放 s60 2 / 0——Account 决定份额进哪个池、'
-                 '造防御只花 DEFENSE 池；PRODUCTION / DEFENSE 两值另有台子；SLUSH_FUND 自己花在哪单列未做；D 第 151 轮）',
+                 '台上炮塔 s28/48/68 1/2/3 座 vs 全程 0 座，模拟器 s60 2 / 0——Account 决定份额进哪个池、'
+                 '造防御只花 DEFENSE 池；PRODUCTION / DEFENSE 两值另有台子；D 第 151 轮）',
               '战略状态/StrategicState.State':'docs/engine/aistate.md#读数（人格只留台上写的状态，AI 只跑这些：aistateconst / aistateslash 等）',
               '战略状态/TargetHeuristic.TargetHeuristic': 'docs/engine/aitactics.md#读数（aitargetnear / aitargetsafe：按状态写的目标启发挑楼）',
               '战术/Tactic.Tactic': 'docs/engine/aitactics.md#读数（SimpleAttack / DefenseAvoidanceAttack / FlankAttack / StaticDefense 上台）',
@@ -454,12 +454,6 @@ NOTES = {
         '前者s15全离家、s18目标区4辆，后者s1-65在家4/目标区0；'
         'tests/test_enemyfilter.py保留原读数及按名回放，三组回放都过（B第155轮：模型的EnemyNearby读EnemyFilter，'
         '关系交给near、Include按KindOf过滤）；空Include、ALL规则没上台；见work/re/c_enemyfilter_report.md'),
-    '经济/AccountShare.Account=SLUSH_FUND': (TODO,
-        'C按名台子engine_aislush：aislush100/aislush0仅交换SLUSH_FUND与PRODUCTION份额，'
-        '两组电厂均s19一座、s29两座，零份额原预测FAIL保留；开局未区分此账户。'
-        '第二轮有收入无开局：aislsdef全程零炮塔，aislddef在s28/48/68造出1/2/3座，s60为2。'
-        'tests/test_slush_account.py原读数及模型回放；账户余额/实际支出消费者仍gap，'
-        '不以开局计数吻合晋升；见work/re/c_slush_report.md'),
     '目标/AITargetingHeuristic.HeuristicType=Expansion': (BENCHED,
         'C aiexpc:a东矿区4、崖矿区0、普通实体0；D104同帧基地中心3850/3400，'
         '三矿点state2，选44号4173/2987（最近524）；模型先选基地再取最近合格矿点。'

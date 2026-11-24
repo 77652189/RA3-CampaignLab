@@ -1,0 +1,25 @@
+# Bench readings of checks/engine_aislush.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# AccountShare SLUSH_FUND (CampaignLab work/re c_slush_report.md; the program: work/re d64 2-5).
+
+[[reading]]
+id = "the_opening_builds_its_plants_whatever_the_slush_share"
+scene = {build = "aislush100", check = "a", until = 42.0}
+each = [{build = "aislush100"}, {build = "aislush0"}]
+bench = """\
+Bench 2026-11-12 (C; aiom13's two-plant opening, the budget only swaps 100 % between SLUSH_FUND and PRODUCTION): \
+both one plant at s19, two at s29 and s40 -- the prediction "0 % slush, no plant" failed"""
+proves = "simai opening: the opening's builds are not paid from a budget share"
+expect = "win(40, 41, '电厂') == [2, 2]"
+
+[[reading]]
+id = "the_slush_fund_line_funds_no_defense"
+item = "AI 经济/AccountShare.Account=SLUSH_FUND"
+scene = {build = "aislsdef", check = "d", until = 62.0}
+each = [{build = "aislsdef", turrets = 0}, {build = "aislddef", turrets = 2}]
+bench = """\
+Bench 2026-11-12 (C; refinery income, no opening; the same budget moves 100 % from DEFENSE to SLUSH_FUND): \
+aislsdef no turret s1-s70; aislddef 1 / 2 / 3 at s28 / s48 / s68, 2 at s60"""
+proves = """\
+simai budget: the build state spends the DEFENSE share only; SLUSH_FUND (account 5) pays no builder (the program: \
+work/re d64 5, no affordability check reads account 5)"""
+expect = "win(60, 61, '炮塔') == [turrets] * 2"
