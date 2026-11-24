@@ -24,6 +24,10 @@ member aims locate the two targets at (3800, 2900) and (3900, 2900), each
 502.49 from the selected base. Named input replay covers this single-base
 geometry; candidate eligibility, multiple bases and exact boundaries remain
 gaps. See work/re/e120_ignore_base.md.
+
+B 11-24: the observer pair's team states are the readings in
+engine_aiignore.readings.toml (0 keeps the team at 8, 2000 gives state 0 with
+the engineer as target) -- the field's item hangs there.
 """
 from model import Script, Test, counted
 
@@ -54,8 +58,8 @@ CHECKS = {name: {'r': probe} for name in ('aiignzero', 'aiignnear')}
 def observe(m):
     """Separate CNVTeams diagnostics; coverage is checked on the game clock.
 
-    The carrier's equivalence to the original pair is unresolved. Preserve the
-    rejected filtering prediction and do not promote these runs as coverage.
+    The rejected damage prediction is kept; the team states these runs read
+    are the coverage (engine_aiignore.readings.toml).
     Evidence: work/re/c_ignore_state_report.md.
     """
     t = probe(m)

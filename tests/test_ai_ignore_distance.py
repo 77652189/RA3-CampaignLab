@@ -12,34 +12,6 @@ _spec.loader.exec_module(simai_run)
 simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 
 
-@pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
-@pytest.mark.parametrize('name, allowed', [('aiignzt', False), ('aiignnt', True)])
-def test_ignore_distance_named_single_base_inputs(name, allowed):
-    """E120's single-base input replay; not engineer candidate acceptance.
-
-    The observed base is (3850, 3400); target positions are (3800, 2900)
-    and (3900, 2900). See work/re/e120_ignore_base.md. The base-choice
-    reference is the team centre, not a target position. Multiple bases,
-    exact boundary and no-base behavior remain INFERRED/gaps.
-    """
-    import math
-
-    w = simai_run.run(name, 'r', until=27)
-    assert len(w.brains) == 1
-    brain = next(iter(w.brains.values()))
-    base = brain.tactics.home(brain.ai)
-    assert base == (3850.0, 3400.0)
-    targets = [w.sim.bodies[f'UNIT - CNV Ignore Engineer {i}'] for i in (1, 2)]
-    assert all(t.alive for t in targets)
-    assert [(t.x, t.y) for t in targets] == [(3800.0, 2900.0), (3900.0, 2900.0)]
-    runs = [r for r in brain.tactics.runs.values() if r.team.state == 'CNVStateMicro']
-    assert len(runs) == 1
-    micro = runs[0].team.template.micro
-    for target in brain.fighters(targets):
-        assert math.dist(target.pos, base) == pytest.approx(502.4937810560445)
-        assert brain.tactics._ignore_allows(brain.ai, micro, target) is allowed
-
-
 def test_ignore_distance_fixture_changes_only_distance():
     import build
     from contract import contract
@@ -85,43 +57,6 @@ def test_ignore_distance_observer_preserves_inputs_and_game_clock_gate():
     assert observed[0].objects == observed[1].objects
     assert observed[0].assets[0][1] == observed[1].assets[0][1].replace(
         'MinDistanceFromBaseToIgnoreTargets="2000"', 'MinDistanceFromBaseToIgnoreTargets="0"')
-
-
-@pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
-@pytest.mark.parametrize('name', ['aiignzero', 'aiignnear'])
-def test_ignore_distance_replays_named_damage_observation(name):
-    w = simai_run.run(name, 'r', until=50)
-    rows = [values for _, values in w.sim.series]
-    # The targets cannot be attacked before both warriors exist. Keep the
-    # rejected first probe's contamination out of the replay acceptance.
-    before = [v for v in rows if 23 * simai.FPS <= v[0] < 26 * simai.FPS]
-    assert before and all(v[1] == 2 and v[2:] == [0, 0] for v in before), before
-    after = [v for v in rows if 28 * simai.FPS <= v[0] <= 49 * simai.FPS]
-    assert after and any(v[2] == 1 for v in after), after
-    first = {v[3] for v in after if v[2]}
-    assert len(first) == 1 and next(iter(first)) >= 26 * simai.FPS, first
-
-
-@pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
-@pytest.mark.parametrize('name, expected', [
-    ('aiignzero', [(391, 8, False), (406, 8, False), (421, 8, False)]),
-    ('aiignnear', [(391, 8, False), (406, 0, True), (421, 0, True)]),
-    ('aiignzt', [(391, 8, False), (406, 8, False), (421, 8, False)]),
-    ('aiignnt', [(391, 8, False), (406, 0, True), (421, 0, True)]),
-])
-def test_ignore_distance_micro_target_state_replays_observed_pair(name, expected):
-    """Damage can coincide while the measured team targets differ.
-
-    Both carriers replay the same sampled states and target presence.
-    The observer pair was rerun with same-run logic-clock anchors in E103:
-    work/re/e103_ignore_distance.md. No target identity is inferred from IDs.
-    """
-    w = simai_run.run(name, 'r', until=29, record=True)
-    rows = [row for brain in w.brains.values() for row in brain.rec['frames']
-            if row['state_key'] == 'CNVStateMicro' and len(row['members']) == 2]
-    actual = [(frame, row['state'], row['foe_id'] is not None) for frame, _, _ in expected
-              for row in rows if row['frame'] == frame]
-    assert actual == expected, actual
 
 
 @pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')

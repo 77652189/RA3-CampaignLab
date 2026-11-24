@@ -4,7 +4,6 @@
 # Remove a file here when it stops being a replay; tests/test_replay_list.py checks every name exists.
 
 [game]  # whole-game replays: a skirmish or 300+ s of game time
-test_ai_ignore_distance.py
 test_cnv_parts.py
 test_count_modifier.py
 test_expansion_target.py

@@ -592,12 +592,6 @@ NOTES = {
         '读数 checks/engine_aipassive_distance.readings.toml（B 由回放测试迁入）：选择/存活对上，精确首选时钟 mismatch；'
         '本入口未显现消费者，零值全局语义/距离基准/其他入口仍gap，暂停、不加猜测消费者、不晋升；'
         '见 work/re/e104_passive_distance.md、work/re/handoff-e.md'),
-    '微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets': (TODO,
-        'E120 engine_aiignore aiignzt/aiignnt：同run基地选择与目标位置配对，0/2000首伤397/396；'
-        'f406/421零组状态8无目标、高组状态0有目标。消费者已接被动选敌、敌对可攻击及逐人分配过滤；'
-        '唯一基地(3850,3400)与home一致，两目标距基地502.49；'
-        'tests/test_ai_ignore_distance.py按名断言基地/目标位置与距离门，零组状态通过，高组资格仍strict xfail；'
-        '多基地选择/精确边界/无基地/候选资格仍gap，不晋升已对拍；见 work/re/e120_ignore_base.md'),
     '造兵/BuildEntry.Heuristic': (BENCHED,
         'E78 engine_aiskirm z：BEST_UNIT_EXPECTED 两组台上 PASS；[s150,s160) 征召兵组维和5→6、标枪0，'
         '锤子组标枪7→8→9、维和0；experimental/cnv/checks/engine_aiskirm.readings.toml::best_unit_expected_picks_the_counter_infantry '
