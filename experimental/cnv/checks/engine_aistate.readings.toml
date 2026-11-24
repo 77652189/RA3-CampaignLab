@@ -57,3 +57,22 @@ scene = {build = "aistateplain", check = "a", until = 75.0}
 bench = "aistateplain a (bench 2026-11-06): bare flag names -- nobody left, 步兵在家 / 坦克在家 4 / 4 to s127"
 proves = "simai flags: a bare SET_FLAG name is the script player's scope, not the empty one the AI's state reads"
 expect = "all(r['步兵在家'] == 4 and r['坦克在家'] == 4 for r in rows)"
+
+# ---- co-op command beacons (B 11-24): nobody places one on these benches; the simulator's players have no co-op
+# command (inventory.py PLAYER_ALLOWED_TOBE_COOPAI), so no beacon is the one case either side can show.
+
+[[reading]]
+id = "no_beacon_fails_exists_and_passes_its_negation"
+scene = {build = "aibeaconex", check = "bcn", until = 40.0}
+bench = "aibeaconex bcn (B 2026-11-24, run_queue PASS): 坦克在家 4 -> 3 @ s14, 0 @ s15; 步兵在家 4 s1-s45"
+proves = "BeaconExistsHeuristic with no ally's beacon: Exists=true never turns the infantry's state on, Exists=false turns the tanks' on at the wake (Type=Assault on both)"
+item = ["AI 启发条件/BeaconExistsHeuristic", "AI 启发条件/BeaconExistsHeuristic.Exists", "AI 启发条件/BeaconExistsHeuristic.Type"]
+expect = ["rows[-1]['坦克在家'] == 0", "all(r['步兵在家'] == 4 for r in rows)"]
+
+[[reading]]
+id = "a_beacon_heuristic_finds_nothing_without_a_beacon"
+scene = {build = "aibeacontg", check = "bcn", until = 40.0}
+bench = "aibeacontg bcn (B 2026-11-24, run_queue PASS): 坦克在家 4 -> 3 @ s18, 0 @ s20; 步兵在家 4 s1-s45"
+proves = "AITargetingHeuristic HeuristicType=Beacon (retail BeaconAssaultHeuristic_Land, Beacon=Assault) with no beacon: no target, the always-on infantry state sends no team while the tanks' goes"
+item = ["AI 目标/AITargetingHeuristic.HeuristicType=Beacon", "AI 目标/AITargetingHeuristic.Beacon"]
+expect = ["rows[-1]['坦克在家'] == 0", "all(r['步兵在家'] == 4 for r in rows)"]

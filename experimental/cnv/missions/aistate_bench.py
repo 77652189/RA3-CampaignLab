@@ -38,13 +38,13 @@ INHERITED = ('ScoutAircraft', 'EngineerIdle', 'JapanEggUnpacker', 'HarvesterCont
              'AlliedCaptureWaterHusks')
 
 
-def _state(sid, flag, unit, gate='flag', end='RAMPAGE'):
-    when = f'<ScriptedFlagHeuristic FlagName="{flag}"/>' if gate == 'flag' else '<ConstantHeuristic/>'
+def _state(sid, flag, unit, gate='flag', end='RAMPAGE', target='ClosestStructureHeuristic'):
+    when = {'flag': f'<ScriptedFlagHeuristic FlagName="{flag}"/>', 'const': '<ConstantHeuristic/>'}.get(gate, gate)
     return f'''  <AIStrategicStateDefinition id="{sid}" MaxTargets="1">
     <Heuristic>
       {when}
     </Heuristic>
-    <TargetHeuristic TargetHeuristic="ClosestStructureHeuristic"/>
+    <TargetHeuristic TargetHeuristic="{target}"/>
     <Tactic id="Attack" Tactic="SimpleAttack" EndBehavior="{end}" EndIfStateTurnsOff="true">
       <TeamTemplate MinUnits="2" MaxUnits="4" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"
                     AllowedLocomotorTypes="LAND AMPHIBIOUS" Priority="STANDARD" AlwaysRecruit="false"
@@ -77,13 +77,18 @@ def _hunt(copies):
   </AIStrategicStateDefinition>'''
 
 
-def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK), end='RAMPAGE', hunt=False, copies=None):
+def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK), end='RAMPAGE', hunt=False, copies=None, beacon=None):
     removed = [f'    <StrategicState id="{k}" xai:joinAction="Remove"/>' for k in INHERITED]
     if hunt:
         states = [_hunt(copies)]
         used = ['    <StrategicState id="CNVStateHunt" State="CNVStateHunt"/>']
     else:
-        states = [_state('CNVStateInf', flags[0], INF, gate, end), _state('CNVStateTank', flags[1], TANK, gate, end)]
+        beacons = {'exists': [dict(gate=f'<BeaconExistsHeuristic Exists="{on}" Type="Assault"/>')
+                              for on in ('true', 'false')],
+                   'target': [dict(gate='const', target='BeaconAssaultHeuristic_Land'), dict(gate='const')]}
+        inf, tank = beacons.get(beacon, [dict(gate=gate)] * 2)
+        states = [_state('CNVStateInf', flags[0], INF, end=end, **inf),
+                  _state('CNVStateTank', flags[1], TANK, end=end, **tank)]
         used = ['    <StrategicState id="CNVStateInf" State="CNVStateInf"/>',
                 '    <StrategicState id="CNVStateTank" State="CNVStateTank"/>']
     return '\n'.join([
@@ -103,7 +108,7 @@ def personality_xml(gate='flag', flags=(FLAG_INF, FLAG_TANK), end='RAMPAGE', hun
 
 
 def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_TANK), scope=None, off_at=None,
-            end='RAMPAGE', hunt=False, copies=None, far2=False):
+            end='RAMPAGE', hunt=False, copies=None, far2=False, beacon=None):
     """near: the player also has a power plant 300 west of the east gate, ~750 from the AI's units (the yard on the
     west bank is ~2600 away; A round 67 read: ClosestStructureHeuristic measures no distance, SearchRange is only the
     tech heuristic's -- aistatefar tests it). gate 'const': both states
@@ -111,12 +116,15 @@ def mission(name='CampAIState', near=False, gate='flag', flags=(FLAG_INF, FLAG_T
     ('/' = the empty scope, which ScriptedFlagHeuristic reads), the AI's FlagName stays the bare name.
     off_at: the infantry flag also goes off then (seconds); end: the tactics' EndBehavior.
     far2 (B round 19): the player also has a power plant on its own base (site base power, ~2400 from the AI): two
-    structures, both far -- does the infantry state go when there is a second target for it?"""
+    structures, both far -- does the infantry state go when there is a second target for it?
+    beacon (B 11-24): no player places a co-op command beacon here. 'exists': the infantry state on while an ally's
+    Assault beacon exists (BeaconExistsHeuristic Exists=true), the tanks' while none does (Exists=false); 'target':
+    both always on, the infantry aimed at retail BeaconAssaultHeuristic_Land (HeuristicType=Beacon) instead."""
     facts = {'wake at': WAKE_AT, 'infantry at': INF_AT, 'tanks at': TANK_AT, 'infantry off at': off_at,
              'hunt copies': (copies or 0) if hunt else None}   # 0: not written
     m = Mission(name=name, map=resources.measured(niagara), facts={k: v for k, v in facts.items() if v is not None})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{PID}'}
-    m.assets.append((f'{PID}.xml', personality_xml(gate, flags, end, hunt, copies), f'AIPersonalityDefinition:{PID}'))
+    m.assets.append((f'{PID}.xml', personality_xml(gate, flags, end, hunt, copies, beacon), f'AIPersonalityDefinition:{PID}'))
     if scope is not None:
         flags = tuple(scope + f for f in flags)
     m.cnv_flags = flags                     # the check counts with these names (as the scripts write them)
@@ -174,4 +182,6 @@ MISSION = {'aistate': mission,
            'aistateoffh': lambda: mission('CampAIOffH', near=True, flags=PLAIN, scope='/', off_at=INF_AT + 0.5),
            # round 10: a Targetless always-on state, one Peacekeeper a team -- how often, how many at once
            'aihunt': lambda: mission('CampAIHunt', near=True, hunt=True),
-           'aihunt2': lambda: mission('CampAIHunt2', near=True, hunt=True, copies=2)}
+           'aihunt2': lambda: mission('CampAIHunt2', near=True, hunt=True, copies=2),
+           'aibeaconex': lambda: mission('CampAIBcnEx', near=True, beacon='exists'),
+           'aibeacontg': lambda: mission('CampAIBcnTg', near=True, beacon='target')}

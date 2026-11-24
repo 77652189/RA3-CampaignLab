@@ -144,6 +144,19 @@ def hunt(m):
     return t
 
 
-CHECKS = {'aistate': {'a': a}, 'aistatenear': {'a': a}, 'aistateconst': {'a': a}, 'aistatefar': {'a': a}, 'aistatefar2': {'a': a},'aistateplain': {'a': a},
+BEACON_SECONDS = 40.0
+
+
+def beacon(m):
+    """aibeaconex / aibeacontg (missions/aistate_bench.py; nobody places a co-op command beacon): the tanks' state
+    sends its team, the infantry's never -- 坦克在家 0, 步兵在家 4 by BEACON_SECONDS (a's counters)."""
+    t = a(m)
+    t.expect = [('坦克在家', BEACON_SECONDS, '==', 0, BEACON_SECONDS + 1),
+                ('步兵在家', BEACON_SECONDS, '==', 4, BEACON_SECONDS + 1)]
+    t.bench = [('bench_watch', dict(seconds=BEACON_SECONDS + LAG, every=1, sheet=False, lines=len(t.counters)))]
+    return t
+
+
+CHECKS = {'aibeaconex': {'bcn': beacon}, 'aibeacontg': {'bcn': beacon}, 'aistate': {'a': a}, 'aistatenear': {'a': a}, 'aistateconst': {'a': a}, 'aistatefar': {'a': a}, 'aistatefar2': {'a': a},'aistateplain': {'a': a},
           'aistateslash': {'a': a}, 'aistateoff': {'off': off}, 'aistateoffhome': {'off': off},
           'aistateoff1': {'off': off}, 'aistateoffh': {'off': off}, 'aihunt': {'hunt': hunt}, 'aihunt2': {'hunt': hunt}}
