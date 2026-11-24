@@ -1252,7 +1252,7 @@ def test_the_ais_dodge_sets_a_foes_beacon_lifetime_once_from_its_own_frame_throu
         ('set_lifetime', 'ai:Player_1', 560, True), ('set_lifetime', 'ai:Player_1', 660, True)]
 
 
-def test_the_ais_unknown_factory_unit_is_filled_once_through_the_port_from_its_library(monkeypatch):
+def test_the_ais_unknown_factory_unit_is_filled_once_through_the_port_from_its_library():
     """B3 step 3: a `#made` body of the AI's of a template the reader knows nothing of, first met in unit_due at 40:
     `fill_body` by serial with the library its Brain wired -- the same fields as simbody.fill on a twin, once (41 adds
     nothing); one not `#made`, another player's, untouched; with no library wired, refused."""
@@ -1262,8 +1262,6 @@ def test_the_ais_unknown_factory_unit_is_filled_once_through_the_port_from_its_l
     s = simsmall.small_world([('#made 1', tank, 'Player_1', 0.0, 0.0), ('twin', tank, 'Player_1', 0.0, 100.0),
                               ('plain', tank, 'Player_1', 0.0, 200.0), ('#made 2', tank, 'Player_2', 0.0, 300.0)],
                              model=False)
-    monkeypatch.setattr(simbody.importlib, 'import_module',
-                        lambda name: types.SimpleNamespace(normal_speed=lambda lib, tpl: 60.0))
     for b in s.bodies.values():
         b.template, b.guessed = tank + '_Ground', ['all']
     made, twin = s.bodies['#made 1'], s.bodies['twin']
@@ -1273,7 +1271,11 @@ def test_the_ais_unknown_factory_unit_is_filled_once_through_the_port_from_its_l
     br.unit_due(40)
     assert made.guessed == ['all'] and br.made == {made.serial: 40}     # no library wired: refused, nothing filled
     br.made, br.trace = {}, []
-    br.host.lib = types.SimpleNamespace(template=lambda name: types.SimpleNamespace(kinds=('VEHICLE', 'AMPHIBIOUS')))
+    node = lambda **attrs: types.SimpleNamespace(attrs=attrs)     # the NORMAL set, its locomotor's Speed, not the first
+    sets = [node(Condition='PANIC', Speed='75'), node(Condition='NORMAL', Locomotor='L')]
+    br.host.lib = types.SimpleNamespace(locomotor=lambda name: node(Speed='60') if name == 'L' else None,
+                                        template=lambda name: types.SimpleNamespace(kinds=('VEHICLE', 'AMPHIBIOUS'),
+                                                                                    find=lambda tag: sets))
     s.commands.library('Player_1', lambda: br.host.lib)     # what Brain.__init__ wires
     simbody.fill(s, twin, br.host.lib)
     br.unit_due(40)

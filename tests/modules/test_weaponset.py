@@ -169,16 +169,15 @@ def test_equip_attaches_a_module_only_to_a_thing_that_has_something_to_hold():
     assert again is m and plant.weapons == [] and len(s.world.late[plant.serial]) == 1
 
 
-def test_the_ais_fill_arms_an_unknown_templates_body_through_its_module(monkeypatch):
+def test_the_ais_fill_arms_an_unknown_templates_body_through_its_module():
     """simbody.fill (the skirmish AI's factory made a template simunits does not know): the weapons of the template
     without its last '_' part, held by the body's WeaponSet -- one attached when it has none."""
     import types
     import engine.objects.body as simbody
     from engine.kernel import interfaces
     s = _world()
-    lib = types.SimpleNamespace(template=lambda name: types.SimpleNamespace(kinds=('VEHICLE',)))
-    monkeypatch.setattr(simbody.importlib, 'import_module',
-                        lambda name: types.SimpleNamespace(normal_speed=lambda lib, tpl: 60.0))
+    normal = types.SimpleNamespace(attrs={'Condition': 'NORMAL', 'Speed': '60'})
+    lib = types.SimpleNamespace(template=lambda name: types.SimpleNamespace(kinds=('VEHICLE',), find=lambda tag: [normal]))
     plant = s.bodies['plant']                       # no WeaponSet: stands in for the unknown template's body
     plant.template, plant.guessed = 'AlliedAntiVehicleVehicleTech1_Ground', ['all']
     simbody.fill(s, plant, lib)

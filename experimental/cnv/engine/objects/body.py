@@ -12,7 +12,6 @@ Fields it owns: its own `lose_of`, `blasts_of`, `made_of`; on a body `alive`, `d
 Two entries for the skirmish AI, which writes no body field itself: `last_until` (a lifetime the reader missed) and
 `fill` (the stats of a body simunits does not know, from the model's library).
 """
-import importlib
 import math
 
 import engine.data.units as simunits
@@ -272,6 +271,21 @@ def last_until(world, b, frame):
     m.set_die_frame(frame)
 
 
+def _normal_speed(lib, tpl):
+    """The speed of the template's normal LocomotorSet in the library: Condition NORMAL, else id DefaultLocomotor, else
+    the first (INFERRED; a library template merges its unnamed sets, the ships leaving the factory keep only theirs);
+    the Speed written on the set, else its locomotor's own."""
+    sets = tpl.find('LocomotorSet')
+    pick = (next((s for s in sets if s.attrs.get('Condition', '').upper() == 'NORMAL'), None)
+            or next((s for s in sets if s.attrs.get('id') == 'DefaultLocomotor'), None) or (sets[0] if sets else None))
+    if pick is None:
+        return 0.0
+    if 'Speed' in pick.attrs:
+        return float(pick.attrs['Speed'])
+    loc = lib.locomotor(pick.attrs.get('Locomotor', ''))
+    return float(loc.attrs.get('Speed', 0)) if loc is not None else 0.0
+
+
 def fill(world, b, lib):
     """A body simunits knows nothing of (its table misses the second GameObject of a file, such as the Riptide's
     AlliedAntiInfantryVehicle_Ground the war factory's button makes: speed 0, no KindOf -- HOOKS 6): KindOf and
@@ -284,9 +298,8 @@ def fill(world, b, lib):
     tpl = lib.template(b.template)
     if tpl is None:
         return
-    ro = importlib.import_module('ra3model.objects.runoffmap')
     b.kinds = frozenset(tpl.kinds)
-    locomotor.write(world.world, b, speed=float(ro.normal_speed(lib, tpl) or 0.0),
+    locomotor.write(world.world, b, speed=_normal_speed(lib, tpl),
                     surface='both' if 'AMPHIBIOUS' in tpl.kinds else 'air' if 'AIRCRAFT' in tpl.kinds else b.surface)
     base = b.template.rsplit('_', 1)[0]
     if base != b.template:
