@@ -7,7 +7,7 @@ re-selects each member (0x1f5 by id) before it orders it, so the frames of those
 fast 376, 384, 392, 400, ... (all 8 apart or a multiple of 8), slow 405, 466, 527 (61 apart: a float32 sum of 1/15 a
 frame reaches 4.0 on the 61st frame, not round(4 x 15) = 60). The model (tactics.MicroData.update_frames) gives the
 same periods; the phase (bench first beat 376 / 405, model 394 / 391) and the first-charge frame stay INFERRED
-(strict xfail in test_simai_bench_e).
+(mismatch readings in experimental/cnv/checks/engine_aimicro.readings.toml).
 """
 import importlib.util
 from pathlib import Path

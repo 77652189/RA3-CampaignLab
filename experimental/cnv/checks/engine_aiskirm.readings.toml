@@ -611,3 +611,14 @@ expect = ["125 <= after('工程队', 0, 11) <= 132 and 141 <= after('工程队',
           "all(r['工程队'] == 99 for t, r in zip(times, rows) if 11 <= t < 125)",
           "all(r['到矿点'] == 0 for r in rows) and 210 <= after('到油井', 1) <= 222",
           "owned is not None and 216 <= owned <= 228 and all(r['工程队'] == 99 for t, r in zip(times, rows) if t > owned)"]
+
+[[reading]]
+id = "best_unit_expected_picks_the_counter_infantry"
+scene = {build = "aiskvinf", check = "z", until = 160}
+each = [{build = "aiskvinf", chosen = "维和总数", other = "标枪总数"}, {build = "aiskvveh", chosen = "标枪总数", other = "维和总数"}]
+bench = """\
+E78 z on [s150, s160) (work/re/e_aiheur_e78.md): against ten conscripts (aiskvinf) Peacekeepers 5 then 6, Javelins 0; \
+against ten Hammers (aiskvveh) Javelins 7 then 8 then 9, Peacekeepers 0. The unit builder's uniform draw buys \
+barracks units too (t: a dog s23, an engineer s144) -- a counted one there would be the draw's luck, not this rule"""
+proves = "simai build states: BuildEntry.Heuristic=BEST_UNIT_EXPECTED ranks the counter infantry first (the other type never from a build state)"
+expect = ["all(v >= 4 for v in win(150, 159, chosen))", "win(150, 159, other) == [0] * 10"]

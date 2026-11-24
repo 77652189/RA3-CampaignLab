@@ -36,19 +36,21 @@ expect = [
 [[reading]]
 id = "aiaeson_keeps_one_live_member_through_the_stand"
 scene = {build = "aiaeson", check = "a", until = 34, teams = true}
-bench = "E106 aiaeson:a (CampAIAesOnA_mcp_1112_155111, clock s16.1 = f270, s31.1 = f495): at f166 / 196 / 256 / 461 / 496 one team row, its one member the same tank, alive"
+bench = "E106 aiaeson:a (CampAIAesOnA_mcp_1112_155111, clock s16.1 = f270, s31.1 = f495): at f166 / 196 / 256 / 461 / 496 one team row, its one member the same tank, alive; D78 (CampAIAesOnA_mcp_1112_111517): state 8 at f166 / 196 / 256"
 proves = "simai StaticDefense: the stand's team keeps its one retained member alive (the prerequisite of the order frames below)"
 let = {F = "(166, 196, 256, 461, 496)", at = "lambda f: [r for r in teams() if r['frame'] == f]"}
 expect = ["[len(at(f)) for f in F] == [1] * 5",
           "all(len(at(f)[0]['members']) == 1 and at(f)[0]['members'][0]['alive'] for f in F)",
-          "len({at(f)[0]['members'][0]['name'] for f in F}) == 1"]
+          "len({at(f)[0]['members'][0]['name'] for f in F}) == 1",
+          "[at(f)[0]['state'] for f in F[:3]] == [8] * 3"]
 
 [[reading]]
 id = "aiaeson_stand_moves_at_f191_and_f461"
 scene = {build = "aiaeson", check = "a", until = 34, teams = true}
 bench = """\
 E106 aiaeson:a (as above): in f150-500 the AI's move orders are at f191 and f461, none between; the last order up to \
-f166 points at (3850, 3400), up to f196 / 256 / 496 at the west point (1859.9, 3201). E108 / D83 replayed the enemy \
+f166 points at (3850, 3400), up to f196 / 256 / 496 at the west point (1859.9, 3201); D78 the same, the centre order \
+at f158 and the west stand at f191. E108 / D83 replayed the enemy \
 gate on the bench's own calls (tests/test_ai_aesthetics_clock.py): the first call with no enemy, then two gate=1 \
 calls emit, 102 gate=0 calls do not"""
 proves = "simai StaticDefense UseAestheticsManager: the stand's move order frames and command points"

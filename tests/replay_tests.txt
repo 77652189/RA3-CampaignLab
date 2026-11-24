@@ -19,7 +19,6 @@ test_simai.py
 test_simai_basedef_idle.py
 test_simai_bench_b.py
 test_simai_bench_c.py
-test_simai_bench_e.py
 test_simbench.py
 test_simbench_c.py
 test_simengineer.py

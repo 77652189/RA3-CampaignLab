@@ -494,7 +494,7 @@ NOTES = {
     '启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest': (GUESSED,
         'E84 engine_aiopathcond a：同JapanAntiAirShip仅切NORMAL深水/SUPERSONIC空中；'
         '两组s22-s24均兵营1/电厂0，水组原始Island预测FAIL、空中PASS。'
-        'tests/test_simai_bench_e.py按名回放实际计数通过，但不能区分条件生效与路径判定边界；'
+        'experimental/cnv/checks/engine_aiopathcond.readings.toml::path_locomotor_condition 读数核对实际计数，但不能区分条件生效与路径判定边界；'
         'C复核：旧配方Surface未显式指定，SDK移动器差异不能独立证明实际路径可达性；'
         'C断桥两组aipcland/aipcamph同模板切NORMAL地面/SUPERSONIC地面+水面：'
         's22-24仍均兵营1/电厂0，s40-44控制车均存活未到岸，两栖阳性未建立。'
@@ -523,14 +523,14 @@ NOTES = {
         'E82 engine_aiopenside a：固定盟军玩家显式挂载三电厂开局，仅切Side。'
         'Allies在[s55,s60)电厂3/兵营0，Soviet电厂2/兵营1。D66：Side和玩家阵营全等才进候选，'
         '候选全空=开局直接完成、不下单、不回退；模型照此（B第147节）。'
-        'experimental/cnv/checks/engine_aiopenside.readings.toml::opening_side[aiosallies]、test_an_opening_of_another_side_is_not_run'
-        '按名回放、断言台上读数（Soviet s19-s28 无电厂）。gap：Soviet之后的2电厂1兵营是没开局时的结构建造，'
+        'experimental/cnv/checks/engine_aiopenside.readings.toml::opening_side[aiosallies]、a_foreign_side_opening_orders_no_power_plant'
+        '读数核对（Soviet s19-s28 无电厂）。gap：Soviet之后的2电厂1兵营是没开局时的结构建造，'
         '模型没建（strict xfail，同第123节）；见 work/re/e_openside_e82.md'),
     **{f'人格/SpecificUnitCap.{k}': (BENCHED,
         'engine_aiskirm aiskcap:y（2026-11-12）：子人格给父人格没写的CNVNewPK四档Cap=2，'
         '新维和s33到2、停到s149（无上限aisknew2 s44已4），兵营改造标枪/维和；'
         'experimental/cnv/checks/engine_aiskirm.readings.toml::a_specific_unit_cap_holds_our_unit_at_two 读数核对、断言台上读数。'
-        'E80父人格已有维和Cap=20时子人格Cap=2不生效=第一条命中（test_simai_bench_e.py）。'
+        'E80父人格已有维和Cap=20时子人格Cap=2不生效=第一条命中（experimental/cnv/checks/engine_aicap.readings.toml::specific_unit_cap[aicapmed]）。'
         'gap：s150后又造到4、没死人，引擎拿什么数对上限未知（strict xfail '
         'experimental/cnv/checks/engine_aiskirm.readings.toml::after_s150_the_capped_unit_is_built_again）；见 work/re/handoff-b.md 第145节')
        for k in ('Unit', 'Difficulty', 'Cap')},
@@ -607,9 +607,8 @@ NOTES = {
         '多基地选择/精确边界/无基地/候选资格仍gap，不晋升已对拍；见 work/re/e120_ignore_base.md'),
     '造兵/BuildEntry.Heuristic': (BENCHED,
         'E78 engine_aiskirm z：BEST_UNIT_EXPECTED 两组台上 PASS；[s150,s160) 征召兵组维和5→6、标枪0，'
-        '锤子组标枪7→8→9、维和0；tests/test_simai_bench_e.py::test_best_unit_expected_infantry_choice '
-        '两组按来源断言通过（建造状态造的另一种=0；锤子组多的那个维和是单位生成器均匀抽签，台上 t 也抽2次：'
-        '狗 s23、工程师 s144）；B 第 149 轮模拟器侧排除"一帧多单""队列非空仍下单"；'
+        '锤子组标枪7→8→9、维和0；experimental/cnv/checks/engine_aiskirm.readings.toml::best_unit_expected_picks_the_counter_infantry '
+        '两组读数核对（另一种=0；它只会来自单位生成器的均匀抽签，台上 t 抽2次：狗 s23、工程师 s144）；B 第 149 轮模拟器侧排除"一帧多单""队列非空仍下单"；'
         'FEWEST_UNIT 见 aisknew2 y、RANDOM_UNIT 见 aiskrand s；抽签结果属运气不对拍，'
         '"每次评估无条件掷一次随机数"没建模；见 work/re/e_aiheur_e78.md、work/re/handoff-b.md 第 149 节'),
     '微操/AIMicroManagerData.DodgeThreats': (BENCHED,
@@ -734,7 +733,7 @@ NOTES = {
         '不是60）；模型同周期（快8、慢61），正常断言；相位（台上首拍376/405、模型394/391）和首冲帧仍strict xfail。旧记录：'
         'engine_aimicro aimicupft/aimicupst:a 仅切微操0.5/4s，15帧宿主、D81时钟重量；'
         '台内首冲帧371/317、首活均2，末图逻辑帧872/876；'
-        'tests/test_simai_bench_e.py 按名回放首活通过，精确首冲及人口峰值strict xfail；'
+        'experimental/cnv/checks/engine_aimicro.readings.toml::micro_update_d81_charge_survival 首活相符，精确首冲及人口峰值标 mismatch；'
         '资格/更新前置状态、观测宿主人口等价仍gap；旧时钟读数不用于晋升，非固定延迟；'
         '见work/re/e102_update_clock.md'),
     '微操/SpecificSpecialPowerDelay.MaximumDelay': (GUESSED,

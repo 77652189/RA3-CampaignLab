@@ -20,3 +20,10 @@ expect = [
     "win(55, 59, '兵营数') == [1] * 5",
 ]
 mismatch = "E82 s55-s59: engine builds 2 power plants and 1 barracks. Model skips the Soviet opening and builds 0 power plants and 0 barracks because structure build states are unmodelled."
+
+[[reading]]
+id = "a_foreign_side_opening_orders_no_power_plant"
+scene = {build = "aiossoviet", check = "a", until = 60}
+bench = "E82 s19-s28, Allied player with only a Soviet opening: no power plant (the opening's first order), a barracks"
+proves = "simai SkirmishOpeningMove.Side: no candidate of the player's side = the opening counts complete without an order (D66)"
+expect = "win(19, 28, '电厂数') == [0] * 10"

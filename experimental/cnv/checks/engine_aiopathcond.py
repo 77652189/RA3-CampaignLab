@@ -8,7 +8,7 @@ Count the opening's actual buildings, not an internal path score.
 Bench 2026-11-12: aiopwater FAIL, aiopair PASS; both have barracks=1,
 power=0 at s22-s24. The failed water prediction below is retained. These
 equal readings do not establish that the condition selects a locomotor.
-tests/test_simai_bench_e.py replays the observed counts, not that prediction.
+engine_aiopathcond.readings.toml holds the observed counts, not that prediction.
 Evidence and any mismatch: work/re/e_pathcond_e84.md.
 """
 from parts import Script, Test, counted
