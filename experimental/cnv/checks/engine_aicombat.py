@@ -7,7 +7,7 @@ full at one); on -> the fighter is taken, the idle one stays home throughout.
 
 RESULTS (2026-11-16, run_queue, both PASS): aicombat0 -- s1-s10 1 1 0 0, s11-s55 1 0 2 184 (idle leaves f184, the
 fighter stays). aicombat1 -- s1-s28 1 1 0 0, s29-s55 0 1 1 462: the fighter is taken but shoots on where it stands
-until its foe is deleted (s30), leaves f462; the idle one never leaves. tests/test_ai_recruit_combat.py.
+until its foe is deleted (s30), leaves f462; the idle one never leaves. Readings: engine_aicombat.readings.toml.
 """
 from model import Script, Test, counted, square
 

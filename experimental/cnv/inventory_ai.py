@@ -644,7 +644,7 @@ NOTES = {
     '组队招人/TeamTemplate.AllowRecruitUnitsInCombat': (BENCHED,
         '专用engine_aicombat aicombat0/aicombat1：容量1、先放守护者与玩家坦克对射、后放一辆闲着；'
         '关闭时闲车f184先离、战者留原位到s55，开启时战者被招走（打到敌人s30消失才f462离开）、闲车留原位；'
-        'tests/test_ai_recruit_combat.py 回放招谁；"入队后先打完再走"模拟器不符（strict xfail）；模拟器以"上一拍在开火"代替"目标在射程内"（INFERRED），'
+        '读数 checks/engine_aicombat.readings.toml（B 由回放测试迁入）：招谁对上；"入队后先打完再走"模拟器不符（mismatch）；模拟器以"上一拍在开火"代替"目标在射程内"（INFERRED），'
         'CreateUnits具名槽不查此门（INFERRED）；见 work/re/b220_recruit_combat.md'),
     '组队招人/CreateUnits.MinUnits': (BENCHED,
         'engine_aicreate aicr1c/aicr3c：最低1在(301,316]帧激活，最低3在(631,646]帧激活；'
