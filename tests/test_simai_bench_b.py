@@ -15,6 +15,19 @@ simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
 
 
+# lib and _probe_run are imported by the test_simai_* files of other benches (alphahp, basedef_idle, fallback, ...)
+@pytest.fixture(scope='module')
+def lib():
+    return simai.model()['xmldata'].Library()
+
+
+def _probe_run(build, lib, until, check='a'):
+    """(world, rows): the probe's counters once a second, row i ~ second i+1, each row {label: value}."""
+    w = simai_run.run(build, check, until, lib=lib)
+    labels = [lab for _, lab in w.sim.test.counters]
+    return w, [dict(zip(labels, v)) for _, v in w.sim.series]
+
+
 def test_a_level_personality_lists_our_units_in_a_build_state_of_its_own():
     """enemy_ai.personality(new_units=...) writes what aisknew2 benched (a ConstantHeuristic state, FEWEST_UNIT,
     the unit's file included): read by the engine model, the personality's build states list it with its
