@@ -10,3 +10,13 @@ expect = [
     "win(1, 8, '甲') == win(1, 8, '乙') == win(1, 8, '丙') == [100] * 8",
     "rows[-1]['丙'] < 100 and rows[-1]['甲'] == rows[-1]['乙'] == 100",
 ]
+
+[[reading]]
+id = "scripts9_player_overrides_take_no_alias"
+scenes = {ral = {build = "engine_scripts9b", check = "ral", until = 20}, ra1 = {build = "engine_scripts9b", check = "ra1", until = 20}}
+bench = "11-24 ral / ra1 (A348): 甲 乙 87 at s1, 50 at s7, 12 from s12 like 丁; 丙 100 to s8, 87 at s9, 12 at s21 (as rel)"
+proves = """sim act_world: TEAM_SET_OVERRIDE_RELATION_TO_PLAYER / PLAYER_SET_OVERRIDE_RELATION_TO_TEAM with an alias \
+("<1st Human Player's Allies incl Self>", retail s04's docks; "<1st Human Player>") set no override -- the team still \
+fires at the human from the start; the team-to-team one (C) as with a plain name"""
+expect = ["all(min(r['甲'] for r in s[:8]) < 100 and min(r['乙'] for r in s[:8]) < 100 for s in (ral, ra1))",
+          "all(min(r['丙'] for r in s[:8]) == 100 and s[-1]['丙'] < 100 for s in (ral, ra1))"]

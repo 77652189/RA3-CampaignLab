@@ -160,7 +160,7 @@ def team_set_override_relation_to_team(sim, name, a, script):
     if name == 'TEAM_REMOVE_ALL_OVERRIDE_RELATIONS':
         for k in [k for k in table if simworld.same_team(k[0], a[0]) or simworld.same_team(a[0], k[0])]:
             del table[k]
-    else:
+    else:       # an alias names nobody here (A348 engine_scripts9b ral / ra1: retail s04's docks' 8 lines set nothing)
         table[(a[0], a[1])] = a[2] if isinstance(a[2], str) else {0: 'Enemy', 1: 'Neutral', 2: 'Friend'}[a[2][0]]
     sim.change()
 

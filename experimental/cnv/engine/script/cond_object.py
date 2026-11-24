@@ -50,8 +50,10 @@ def player_has_object_comparison(sim, name, a):
 
 def player_has_comparison_unit_type_in_trigger_area(sim, name, a):
     # one without SELECTABLE is not counted (engine_acts_drop age 类 1101: of four GI copies each with one of the drop
-    # bomber's bits, only the -SELECTABLE one left out; +SUMMONED counted -- review 1121mm #3)
-    n = sum(1 for b in sim.living() if b.owner == a[0] and b.template.lower() == a[3].lower()
+    # bomber's bits, only the -SELECTABLE one left out; +SUMMONED counted -- review 1121mm #3). A mask: its players'
+    # summed (A348 engine_attack als)
+    who = set(players_of(sim, a[0]))
+    n = sum(1 for b in sim.living() if b.owner in who and b.template.lower() == a[3].lower()
             and 'SELECTABLE' in b.kinds and inside(sim.areas[a[4]], b.x, b.y))
     return CMP[a[1]](n, a[2])
 
@@ -71,20 +73,20 @@ def skirmish_player_has_units_in_area(sim, name, a):
 
 def named_owned_by_player(sim, name, a):
     b = sim.body(a[1])
-    return bool(sim.present(b) and b.owner == a[0])
+    return bool(sim.present(b) and b.owner in players_of(sim, a[0]))      # any player of the mask (A348)
 
 
 def named_attacked_by_player(sim, name, a):
     # the last damage only (ActiveBody's m_lastDamageInfo): a script's kill or another's hit clears it; the game
     # reads its source's id and looks that object up, so a source that is gone (dead and removed, deleted, self-
     # destructed) makes it false, and one that changed hands counts for its new owner (E2, reference 2026-11-04)
-    b = sim.body(a[0])
+    b, who = sim.body(a[0]), players_of(sim, a[1])        # any player of the mask (A348)
     if not sim.present(b):
         return False
     if b.last_by is None:               # a hit a run script made up (打 / 摧毁): taken as the player's, standing
-        return b.last_hit == a[1]
+        return b.last_hit in who
     by = attacker(sim, b)
-    return bool(sim.present(by) and by.owner == a[1])
+    return bool(sim.present(by) and by.owner in who)
 
 
 def _reads(sim, b, condition):

@@ -5,7 +5,7 @@ Each condition is `fn(sim, name, a)`, moved verbatim out of Sim.cond's chain; si
 CONDITIONS. None back: not taken (a gap)."""
 import math
 
-from engine.script.common import RELATION_OF, team_crew
+from engine.script.common import RELATION_OF, players_of, team_crew
 
 
 def _stands(sim, a, b, want):
@@ -34,7 +34,7 @@ def enemy_sighted(sim, name, a):
 def named_discovered(sim, name, a):
     sim.used.add('discovered')
     b = sim.body(a[1])
-    return bool(b and (sim.infiltrators.unit_discovered(a[0], b)
+    return bool(b and (any(sim.infiltrators.unit_discovered(p, b) for p in players_of(sim, a[0]))
                        or sim.sees(b.x, b.y, b.surface == 'air')))
 
 

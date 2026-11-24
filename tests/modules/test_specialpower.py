@@ -247,6 +247,8 @@ def test_an_availability_mask_sets_each_of_its_players_own_word():
     s.act('PLAYER_SPECIAL_POWER_AVAILABILITY', ['<All Players>', power, 'Disabled'], None)
     s.act('PLAYER_SPECIAL_POWER_AVAILABILITY', ['Player_1', power, 'Available'], None)
     assert why() == [None, 'disabled']
+    s.act('PLAYER_SET_BASE_POWER', ["<1st Human Player's Allies incl Self>", 9999], None)     # A348, retail twice
+    assert [s.power(p)[0] for p in ('Player_1', 'Soviet_1')] == [9999, 0]
 
 
 def test_the_shrink_ray_spares_an_airborne_target_and_a_scripts_own_condition():

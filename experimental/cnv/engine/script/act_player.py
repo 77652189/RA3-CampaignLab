@@ -42,8 +42,10 @@ def named_transfer_ownership_player(sim, name, a, script):
 
 
 def player_set_base_power(sim, name, a, script):
-    # (player, n) INFERRED: n supply on top of its objects'
-    sim.base_power[a[0]] = int(a[1])
+    # (player, n) INFERRED: n supply on top of its objects'; each player of the mask (A348: retail "<This Player's
+    # Allies incl Self>" twice)
+    for p in players_of(sim, a[0]):
+        sim.base_power[p] = int(a[1])
     sim.change()
 
 

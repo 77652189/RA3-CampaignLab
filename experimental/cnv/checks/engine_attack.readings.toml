@@ -15,3 +15,12 @@ expect = [
     "all(r['甲被我方打'] == 0 and r['乙被我方打'] == 0 for t, r in chg if t >= 7) and chg[-1][1]['甲被我方打'] == 0 and chg[-1][1]['乙被我方打'] == 0",
     "all(55 <= rows[-1][k] <= 75 for k in ('甲血量', '乙血量'))",
 ]
+
+[[reading]]
+id = "attack_alias_masks_any_player_and_area_type_summed"
+scene = {build = "engine_attack", check = "als", until = 9}
+bench = "als (A348, CampAttackAls 11-24), 打 主 型 every 0.5 s: s1-s9 10 21 15"
+proves = """a player mask in NAMED_ATTACKED_BY_PLAYER / NAMED_OWNED_BY_PLAYER / NAMED_DISCOVERED holds for any player of \
+it (the human's hit on target A: Allies incl Self and All Players yes, Enemies / Allies no); \
+PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA sums the mask's players (All Players >= 3 of four Guardians, two each)"""
+expect = ["vals(rows)[-1] == [10, 21, 15]", "all(v[1:] == [21, 15] for v in vals(rows))"]

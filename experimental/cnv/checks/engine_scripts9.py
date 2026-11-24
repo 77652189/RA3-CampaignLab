@@ -133,12 +133,15 @@ def _hold(m, roles):
     return [('UNIT_CHANGE_OBJECT_STATUS', m.role(r).name, status('NO_ATTACK'), 1) for r in roles]
 
 
-def rel(m, remove=False):
+def rel(m, remove=False, p1=None):
     """remove (rmv, s01's Legion): at OFF_AT TEAM_REMOVE_ALL_OVERRIDE_RELATIONS of FoeA / FoeB / FoeC, not Enemy.
     Predicted (Generals) 甲 丙 as rel, 乙 100. BENCH 11-23 (CampP9bRmv): 丙 87 at s9, 12 from s20, as rel -- the
-    team-to-team override goes; 甲 and 乙 100 to s25 -- FoeA's override to the player stays, like the player's to FoeB."""
+    team-to-team override goes; 甲 and 乙 100 to s25 -- FoeA's override to the player stays, like the player's to FoeB.
+    ral (A348): A and B name the player as retail s04's docks, "<1st Human Player's Allies incl Self>"; ra1 as
+    "<1st Human Player>". Predicted as rel (each player of the mask). BENCH 11-24: both 甲 乙 87 at s1, down as 丁, 丙 as
+    rel -- the two player overrides take no alias at all (INFERRED: a name lookup, not the mask parse)."""
     t = Test()
-    p1 = m.player()
+    p1 = p1 or m.player()
     held = [f'{k} {ASKED[k]}' for k in REL]      # the one read is the one shot at: it does not shoot back
     over = lambda r: [('TEAM_SET_OVERRIDE_RELATION_TO_PLAYER', m.teams['FoeA'], p1, r),
                       ('PLAYER_SET_OVERRIDE_RELATION_TO_TEAM', p1, m.teams['FoeB'], r),
@@ -345,6 +348,8 @@ MISSION = {'engine_scripts9': mission,
 CHECKS = {'engine_scripts9': {'memb': memb, 'memb2': memb2, 'memb3': memb3,
                             'owner': owner},
           'engine_scripts9b': {'memb4': memb4, 'rel': rel, 'rmv': lambda m: rel(m, remove=True), 'atk': atk,
+                               'ral': lambda m: rel(m, p1="<1st Human Player's Allies incl Self>"),
+                               'ra1': lambda m: rel(m, p1='<1st Human Player>'),
                                'atkr': atkr},
           'engine_scripts9c': {'memb5': memb5}, 'engine_scripts9d': {'memb6': memb6},
           'engine_scripts9e': {'memb7': memb7}, 'engine_scripts9f': {'memb8': memb8},
