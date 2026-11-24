@@ -1,22 +1,14 @@
 """The 时停区 device (devices/stasis.py), its object (units/stasis_zone.py) and A3 格林尼治时差, the level it was made for:
-the object is the engine line's probe unit (checks/engine_stasis.py, measured on the bench), the rings are made and
-taken away by script, and the plan's rings are in the order the plan says."""
+the rings are made and taken away by script, and the plan's rings are in the order the plan says (the object is the
+one checks/engine_stasis.py measured: it imports it)."""
 import pytest
 from test_plans import small  # (puts experimental/cnv on the path)  # noqa: F401, I001
 import build  # noqa: E402
 import parts  # noqa: E402
-from checks import a3, engine_stasis  # noqa: E402
+from checks import a3  # noqa: E402
 from devices import stasis  # noqa: E402
 from plantime import PlanError  # noqa: E402
 from units import stasis_zone  # noqa: E402
-
-
-def test_the_unit_is_the_probes_unit():
-    """units/stasis_zone.py is a copy of the zone the engine probe measured: a change to one is a change to the other."""
-    for kw in ({}, dict(radius=450.0), dict(id='CNV_X', radius=45.0, hold='2s', refresh='0.5s', include='VEHICLE')):
-        a, b = engine_stasis.zone(**kw), stasis_zone.zone(**kw)
-        assert a.xml == b.xml and a.link == b.link
-
 
 def test_a_ring_is_made_by_script_and_taken_by_script():
     m, t, _ = build.resolve('a3', 'freeze')

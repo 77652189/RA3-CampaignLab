@@ -38,57 +38,15 @@ Read (测, 2026-11-05, twice; the bench's seconds ~1 s ahead of the timers; runs
   tank through nor round the far gap in 60 s, the frozen MCV 100 % throughout, one tank frozen itself from s55.
 """
 import math
-import os
-import re
 
-import labpaths
 from checks import engine_block
 from maps import probe_range
-from parts import Mission, Script, Test, Unit, counted, square, status
+from parts import Mission, Script, Test, counted, square, status
+from units.stasis_zone import ID as ZONE, RADIUS, zone     # the zone object is the content's (A3's), measured here
 
-ZONE = 'CNV_StasisZone'
-RADIUS = 200.0
-HOLD = '1s'                 # the modifier's Duration: how long a unit stays frozen once the aura stops refreshing it
-REFRESH = '0.25s'
-STATUS = 'UNATTACKABLE NO_ATTACK NON_AUTOACQUIRABLE IN_STASIS'      # units/chronolag.py PHASE_STATUS
 GUARDIAN, HAMMER, FOOT = 'AlliedAntiVehicleVehicleTech1', 'SovietAntiVehicleVehicleTech1', 'AlliedAntiInfantryInfantry'
 GO, SHOOT, CHASE, OUT, MAKE, FREE, RUN = 3.0, 4.0, 5.0, 10.0, 14.0, 20.0, 34.0
 Z1, Z2 = 'high at 450', 'order at 450'
-
-
-def _sub1(x, old, new):
-    assert x.count(old) == 1, (old[:60], x.count(old))
-    return x.replace(old, new, 1)
-
-
-def zone(id=ZONE, radius=RADIUS, hold=HOLD, refresh=REFRESH, include='INFANTRY VEHICLE STRUCTURE'):
-    """The time-stop zone object: put it (or CREATE_NAMED_ON_TEAM_AT_WAYPOINT it) where the zone is, NAMED_DELETE it
-    when time is up. radius: the aura's reach from the object (a circle; a bigger area = several objects). hold: how
-    long a unit stays stopped after it was last refreshed. include: the KindOf it stops."""
-    mod = f'AttributeModifier_{id}'
-    x = open(os.path.join(labpaths.SDK3, 'SageXML', 'Soviet', 'Props', 'IronCurtainEffect.xml'),
-             encoding='utf-8').read()
-    x = _sub1(x, 'id="IronCurtainEffect"', f'id="{id}"')
-    x = _sub1(x, 'EditorName="IronCurtainEffect"', f'EditorName="{id}"')
-    x = _sub1(x, '<DisplayName>IronCurtainEffect</DisplayName>', f'<DisplayName>{id}</DisplayName>')
-    for module, tag in (('LifetimeUpdate', 'ModuleTag_LifetimeUpdate'), ('FireWeaponUpdate', 'ModuleTag_FireWeaponUpdate'),
-                        ('AttributeModifierAuraUpdate', 'ModuleTag_AttributeModifierAuraUpdate')):
-        x, n = re.subn(rf'\s*<{module}\s+id="{tag}"(?:[^>]*/>|.*?</{module}>)', '', x, count=1, flags=re.S)
-        assert n == 1, module
-    # no UNATTACKABLE in StatusBitFlagsExclude (retail's has it): the modifier sets it, the next refresh would skip
-    x = _sub1(x, '<Behaviors>', f'''<Behaviors>
-			<AttributeModifierAuraUpdate id="ModuleTag_CNV_StasisAura" AttributeModifierName="{mod}"
-				RefreshDelay="{refresh}" Range="{radius:g}" InitiallyActive="true" AllowSelf="false">
-				<ObjectFilter Rule="ANY" Relationship="ALLIES ENEMIES NEUTRAL" Include="{include}"/>
-			</AttributeModifierAuraUpdate>''')
-    x = _sub1(x, '</AssetDeclaration>', f'''	<AttributeModifier id="{mod}" Category="NONE" Duration="{hold}"
-		StackingLimit="1" ObjectStatusToSet="{STATUS}" Shader="ShaderOverride_ObjectsChronoRift">
-		<Modifier Type="SPEED" Value="0%"/>
-	</AttributeModifier>
-</AssetDeclaration>''')
-    return Unit(id, x, link=[f'AttributeModifier:{mod}'],
-                what=f'时停区：隐形光环物体，{radius:g} 内敌我中立的步兵、车辆、建筑推出时间（不能动、不能开火、打不坏），'
-                     f'离开或删掉物体后 {hold} 内恢复', params=dict(radius=radius, hold=hold, refresh=refresh))
 
 
 def mission():
