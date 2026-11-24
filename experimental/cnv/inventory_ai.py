@@ -747,6 +747,9 @@ NOTES = {
         '模型已读取；engine_aidelay 0/999实机配对仅改变MaximumDelay，'
         '本字段没有独立变量对照，不因探针出现字段名登记已对拍')
        for field in ('MinimumDelay', 'PowerType')},
+    '微操/SpecificSpecialPowerDelay.TogglePowerSubType': (GUESSED,
+        '模型 f9f7824：TOGGLE 的冷却子类型 = 要切到的那个状态的 ToggleHint（程序读到，切开和切回分开计时；原先恒 NO_HINT，'
+        '原版 TOGGLE_LOCKDOWN 20–40 s 从不生效）；没上台：原版 LOCKDOWN 的"该不该切"判据没读、模型不切；见 work/re/l4_toggle.md'),
     # D round 132: the idle StaticDefense bench (aibdi1/0/2) with the host's order log
     '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (BENCHED,
         'D132 engine_aibasedef aibdi1/0/2（守点队状态8、无敌人、己方4座炮塔）：两开关都开时进基地防御那段程序发进驻令'
