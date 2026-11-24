@@ -614,11 +614,43 @@ expect = ["125 <= after('工程队', 0, 11) <= 132 and 141 <= after('工程队',
 
 [[reading]]
 id = "best_unit_expected_picks_the_counter_infantry"
-scene = {build = "aiskvinf", check = "z", until = 160}
-each = [{build = "aiskvinf", chosen = "维和总数", other = "标枪总数"}, {build = "aiskvveh", chosen = "标枪总数", other = "维和总数"}]
+scene = {build = "aiskvinf", check = "z", until = 186}
+each = [{build = "aiskvinf", chosen = "维和总数", other = "标枪总数", bare = 169, by = 164, n = 7},
+        {build = "aiskvveh", chosen = "标枪总数", other = "维和总数", bare = 185, by = 170, n = 10}]
 bench = """\
 E78 z on [s150, s160) (work/re/e_aiheur_e78.md): against ten conscripts (aiskvinf) Peacekeepers 5 then 6, Javelins 0; \
-against ten Hammers (aiskvveh) Javelins 7 then 8 then 9, Peacekeepers 0. The unit builder's uniform draw buys \
-barracks units too (t: a dog s23, an engineer s144) -- a counted one there would be the draw's luck, not this rule"""
+against ten Hammers (aiskvveh) Javelins 7 then 8 then 9, Peacekeepers 0. The whole run (z RESULTS): aiskvinf \
+Peacekeepers 7 by s164, no Javelin to s169; aiskvveh Javelins 14 by s185 (the simulator 12 at s170, 13 at s185: \
+asked >= 10 at s170, the old test's bound), no Peacekeeper to s185. The unit builder's \
+uniform draw buys barracks units too (t: a dog s23, an engineer s144) -- a counted one would be the draw's luck"""
 proves = "simai build states: BuildEntry.Heuristic=BEST_UNIT_EXPECTED ranks the counter infantry first (the other type never from a build state)"
-expect = ["all(v >= 4 for v in win(150, 159, chosen))", "win(150, 159, other) == [0] * 10"]
+expect = ["all(v >= 4 for v in win(150, 159, chosen))", "win(150, 159, other) == [0] * 10",
+          "all(r[other] == 0 for t, r in zip(times, rows) if t <= bare)", "win(by, by, chosen)[0] >= n"]
+
+[[reading]]
+id = "the_war_factory_adds_riptides_only_against_infantry"
+scene = {build = "aiskvinf", check = "z", until = 186}
+each = [{build = "aiskvinf", lo = 5, hi = 6, t0 = 165, t1 = 169}, {build = "aiskvveh", lo = 3, hi = 3, t0 = 136, t1 = 185}]
+bench = """\
+z RESULTS: aiskvinf Riptides 1 s111 .. 6 s165 (three a team's order, the rest the amphibious build state's); aiskvveh \
+1 s112 .. 3 s133 and no more to s185 (the team's three; the state's war factory pick is not a Riptide)"""
+proves = "simai build states: the expected efficiency ranks the Riptide over the IFV against infantry only (an empty IFV holds only its missiles, simunits.weapon_sets reads Upgrade as a need)"
+expect = "all(lo <= v <= hi for v in win(t0, t1, '激流总数'))"
+
+[[reading]]
+id = "the_defensive_preference_turns_the_first_pick_against_tanks"
+scene = {build = "aiskvd9", check = "z", until = 170}
+each = [{build = "aiskvd9", chosen = "维和总数", other = "标枪总数"}, {build = "aiskvd0", chosen = "标枪总数", other = "维和总数"}]
+bench = """\
+B199 (aiskvveh's ten Hammers, only UnitBuilderOverallDefensivePreference 1000% / 0%): aiskvd9 Peacekeeper first \
+(s30), Javelins only from s151; aiskvd0 Javelins only (Peacekeepers 0 to s169)"""
+proves = "simai build states: the first barracks pick turns on K's time in frames and the template's weapons (one per slot, none needing an upgrade or a status: the Hammer counts its leech beam)"
+expect = "first(chosen) is not None and (first(other) is None or first(chosen) < first(other))"
+
+[[reading]]
+id = "at_1000_percent_the_javelins_wait_to_s151"
+scene = {build = "aiskvd9", check = "z", until = 170}
+bench = "B199 aiskvd9: 标枪 0 to s150, 1 s151, 3 s161"
+proves = "simai build states: UnitBuilderOverallDefensivePreference 1000% holds the Javelins back to s151"
+expect = "all(r['标枪总数'] == 0 for t, r in zip(times, rows) if t <= 150)"
+mismatch = "sim 标枪 1 s62, 4 s152 (bench 0 to s150, 1 s151): the preference is not only the first pick's ranking (B228)"

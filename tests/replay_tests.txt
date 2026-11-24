@@ -17,7 +17,6 @@ test_simrecord_golden.py  # tests/golden: the 11 simrecord tasks on the base com
 test_sim.py
 test_simai.py
 test_simai_basedef_idle.py
-test_simai_bench_b.py
 test_simai_bench_c.py
 test_simbench.py
 test_simbench_c.py
