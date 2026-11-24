@@ -6,7 +6,7 @@
 [[reading]]
 id = "consider_all_enemies_adds_nothing_to_the_relations"
 scenes = {on = {build = "aiallflipon", check = "a", until = 30}, off = {build = "aiallflipoff", check = "a", until = 30}, late = {build = "aiallfliplate", check = "a", until = 30}, woff = {build = "aiallflipwoff", check = "a", until = 30}, won = {build = "aiallflipwon", check = "a", until = 30}}
-bench = "bpick / border: on, off and late pick alike frame for frame to f374 (the shortest log; scout 1666.833 from f152, orders scout scout jav jav jav jav from f301), won as woff to f428; first unit out: on 标枪 at f438, off f428, woff f436, won f428 -- none 维和"
+bench = "bpick / border: on, off and late pick alike frame for frame to f374 (the shortest log; scout 1666.833 from f152, orders scout scout jav jav jav jav from f301), won as woff to f428 (woff's scout score 1666.836 to f225, 1666.833 from the first pass after, f229); first unit out: on 标枪 at f438, off f428, woff f436, won f428 -- none 维和"
 proves = "script action SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING: no effect on top of the relations (act_player)"
 item = "脚本动作 SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING"
 expect = ["on == off and late == off", "won == woff"]

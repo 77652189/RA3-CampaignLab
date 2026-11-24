@@ -1,0 +1,15 @@
+# Bench readings of checks/engine_aiallbuild.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# missions/aiallbuild_bench.py: s1's Allied AI against p1's conscripts and s5's twenty tanks, on / off the action
+# SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING (the action's own reading: engine_aiflip.readings.toml). Native picks
+# and orders in work/re/c_allbuild_measured.json (on: 31 picks, 307 orders, 7 out; off: 16 / 156 / 6; first six out
+# scout scout jav jav jav jav from f301).
+
+[[reading]]
+id = "allbuild_the_ai_puts_out_javelins_only"
+each = [{build = "aiallbuildon", lo = 547, hi = 598, out = [0, 4, 20]}, {build = "aiallbuildoff", lo = 431, hi = 459, out = [0, 1, 20]}]
+scene = {build = "aiallbuildon", check = "a", until = 41}
+bench = "维和 标枪 次敌坦克 at logic frames: on (CampAllBOnCA_mcp_1116_124308) 0 0 20 to f423, 0 1 20 from f429, 0 4 20 f547..598; off (CampAllBOffCA_mcp_1116_124631) 0 0 20 to f427, 0 1 20 f431..459"
+proves = "simai production against an infantry and a tank enemy: Javelins, no Peacekeepers, in the bench's window (neither run reaches the friendship at 70 s). Moved from the strict-xfail production replay (A338)"
+mismatch = "sim on 2 3 20 at f586 / 2 2 20 at f556, off 2 0 20 at f436..451 (bench 0 4 20 / 0 1 20): the simulator puts out Peacekeepers first (f406) -- the bench's first orders are dogs scored from a NEEDED_UNIT list the model keeps empty, as engine_aiflip's second reading (B)"
+let = {w = "[v[:3] for v in vals(rows) if lo <= v[3] <= hi]"}
+expect = "w[0] == out and all(x == w[0] for x in w)"
