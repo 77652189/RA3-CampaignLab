@@ -68,7 +68,7 @@
   - 能用的只有间谍收买 `DominateEnemySpecialPower` 的 `PermanentlyConvert="true"`：按下几秒内就换主人，克隆体死了也不还。`false` 什么都收不走；schema 里的 `TemporaryOwnerSpecialPower`（C&C3 留下的）会在 4 秒内弄死带着它的单位。
   - "克隆体活着才控制"靠关卡：每个克隆体站在自己的一方（底图 Heidelberg 自带闲着的 Soviet_2 到 Soviet_6，`maps/island.py` 的 `SPARE`），死了就用 `PLAYER_TRANSFER_OWNERSHIP_PLAYER` 把那一方的东西全还给玩家（`missions/clone_bench.release`）。只是换主人，血量和等级都在。
   - 只收被控的（心灵巫女）：克隆体用光环给自己这一方的单位挂一个闲置状态（`IS_BEING_HARVESTED`），巫女的收买过滤器写 `StatusBitFlags` 要这个状态——收买模块的过滤器认状态位。收买的实际范围比 `DominateRadius` 大：65 的克隆体收走了 110 外的巫女。
-  - 换了主人以后，按模板数"玩家有几个"（`SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER`）要等收买的间谍死了才算进来。要问归谁，用 `counted(owner=...)`（`NAMED_OWNED_BY_PLAYER`）。
+  - 换了主人以后，按模板数"玩家有几个"（`SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER`）要等收买的间谍死了才算进来。要问归谁，用 `counted(owner=...)`（`NAMED_OWNED_BY_PLAYER`）。日本蛋展开成的建筑这个计数器一直不算（11-24 aiplb：电厂 0，按区域数 1），数展开后的建筑用 `counted(area=...)`。
 - **"没武器"的目标先查**：帝国矿车带机枪，苏联矿车会自己开动、碾死步兵（克隆体第一轮全死在矿车手里，看着像单位没刷出来）。要找打不还手的靶子，用工程师。
 - **测试台的暂停会取消选位置**（冰幕工兵，2026-10-22）：`hold=true` 时每次工具调用之间按 Esc 暂停，正在选目标的技能（点了按钮、还没点地面）会被取消。要分几步做的手动操作（选中 → 按钮 → 点地面）用 `bench_start(hold=false)`。放建筑时，起点在红格（不能放的地方）就什么都不放。
 - **造出来的建筑朝向和挡路**（A4 冰墙，2026-10-23）：

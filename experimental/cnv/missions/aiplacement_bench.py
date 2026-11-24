@@ -50,6 +50,8 @@ def mission(distance, japan=False, built=False):
         # as retail JapanEggUnpacker's state. Bench 11-23, with it and without: the core built at s14.7 stays in the
         # default team, the ExactExpansion team never active (work/re/handoff-b.md, BuildingPlacementDistance)
         xml = xml.replace('id="CNVStateTP" MaxTargets="1">', 'id="CNVStateTP" MaxTargets="1" PathfindingCheckType="None">')
+        # the egg is IGNORES_SELECT_ALL, so retail JapanEggUnpacker's team excludes only HARVESTER (work/re/d191)
+        xml = xml.replace('ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"', 'ExcludeKindOf="HARVESTER"')
         wake = next(s for s in m.scripts if s.name == 'CNV AI - Wake')
         wake.do = [a if a[0] != 'PLAYER_SET_MONEY' else (a[0], a[1], MONEY) for a in wake.do]
     m.assets[0] = filename, xml, asset
