@@ -1762,7 +1762,7 @@ class Brain:
                    ((b, self._build_radius(b.template)) for b in bodies
                     if b.owner == self.player and 'STRUCTURE' in b.kinds) if br > 0)
 
-    def open_nodes(self, reach=None, bodies=None, miners=False, near=True):
+    def open_nodes(self, reach=None, bodies=None, miners=False, near=True, clear=0.0):
         """The ore nodes the AI could still use (D138 2 / B208, read): not served, and near one of its build-radius
         structures (_near_builder; reach: the scan's constant NODE_REACH, read). Served (INFERRED: the engine skips
         a node whose wrapper's taken count reached its capacity, the wrapper unread): an own refinery within SERVED
@@ -1788,17 +1788,16 @@ class Brain:
         if miners:
             have = sum(b.owner == self.player and 'HARVESTER' in b.kinds for b in bodies)
             served = set(sorted(served)[:have // NODE_MINERS])
-        return [n for n in nodes if n.name not in served and (not near or self._near_builder(n, reach, bodies))]
+        foes = [b for b in bodies if clear > 0 and b.owner in self.view.enemies and not NODE_WALLS & set(b.kinds)]
+        return [n for n in nodes if n.name not in served and (not near or self._near_builder(n, reach, bodies))
+                and all(math.hypot(f.x - n.x, f.y - n.y) >= clear for f in foes)]
 
     def open_node(self, distance):
         """facts' 'open node' (OpenNodeHeuristic, B 11-24 read, work/re l4_states.md 10): the same node table as
         open_nodes, without the near-a-builder test -- any node not full with no enemy object but a wall within
         `distance` of it (distance <= 0: no search). Bench aiopn1900 / aiopn2250: every node on the map counts, the
-        distance from the node. The search's edge (< or <=) INFERRED."""
-        bodies = self.world.living()
-        foes = [b for b in bodies if b.owner in self.view.enemies and not NODE_WALLS & set(b.kinds)]
-        return any(distance <= 0 or all(math.hypot(f.x - n.x, f.y - n.y) >= distance for f in foes)
-                   for n in self.open_nodes(bodies=bodies, miners=True, near=False))
+        distance from the node (open_nodes' clear). The search's edge (< or <=) INFERRED."""
+        return bool(self.open_nodes(miners=True, near=False, clear=distance))
 
     def allied_ok(self, x, y):
         """CanBuildInAlliedBuildRadii (B212 read, work/re l4_allied_radii.md): unless the personality says true, the
