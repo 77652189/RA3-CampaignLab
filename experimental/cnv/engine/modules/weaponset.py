@@ -122,7 +122,7 @@ class WeaponSet(module.Module, interfaces.WeaponSet):
     DATA = WeaponSetUpdateData
     JOINED = True       # review r P2: two blocks (a child adding a set of another id) make one module, armed with what
     #                     the readers read walking every block (INFERRED: how the game fires two sets is unmeasured)
-    STATE =('weapons', 'slots', 'clocks', 'pre_locks', 'fire_gate')
+    STATE =('weapons', 'slots', 'clocks', 'pre_locks', 'fire_gate', 'boosts')
     RECORDED = ('weapons', 'slots')
     weapons = []        # the held weapons (never changed in place: a new list each write)
     slots = None        # simunits.weapon_sets' slots, None: the weapons are fixed
@@ -132,6 +132,7 @@ class WeaponSet(module.Module, interfaces.WeaponSet):
     #                     it is due (Sim.first_shot)
     fire_gate = None    # target serial -> no fire dealt at it before this second (simdamage.deal). INFERRED: one gate
     #                     per shooter and target, its other weapons on that target wait with it (first_shot)
+    boosts = None       # weapon key -> its next volley's damage factor (start_clip: a charged shot's; spend_boost)
 
     def held(self):
         return self.weapons
@@ -152,6 +153,27 @@ class WeaponSet(module.Module, interfaces.WeaponSet):
         if self.clocks is None:
             self.clocks = {}
         self.clocks[key] = clock
+
+    def start_clip(self, key, weapon, t, old, cycle):
+        """Weapon `key`'s clip clock starting anew at second `t` (Sim.shots_due: its first, or after an idle gap;
+        `old`: the clock it had): its first shot one frame after the order. A ChargeWeaponUpdate on the thing
+        (interfaces.Charge), idle since the old cycle's end, moves the start back by the part charged of the first
+        shot's pre-attack (whole frames) and holds its damage boost for that shot (boost)."""
+        c = [t + 1 / 15, t]
+        charge = self.thing.find(interfaces.Charge)
+        if charge is not None:
+            cut, factor = charge.spend(t, old[0] + cycle if old else None)
+            if weapon.get('sched'):
+                c[0] -= round(weapon['sched'][0] * cut * 15) / 15
+            self.boosts = {**(self.boosts or {}), key: factor}
+        return c
+
+    def spend_boost(self, key):
+        """The damage factor of weapon `key`'s volley now, spent (start_clip's; 1.0: none)."""
+        factor = (self.boosts or {}).get(key, 1.0)
+        if self.boosts and key in self.boosts:
+            self.boosts = {k: v for k, v in self.boosts.items() if k != key}
+        return factor
 
     def pre_lock(self, key):
         return (self.pre_locks or {}).get(key)
@@ -188,6 +210,13 @@ def gate(shooter, target):
     """The second before which `shooter` deals no fire at `target` (first_shot's PER_TARGET wait), 0.0: none."""
     m = shooter.find(interfaces.WeaponSet)
     return m.gate_until(target) if m is not None else 0.0
+
+
+def boost(shooter, weapon):
+    """The damage factor of `shooter`'s volley of `weapon` now (WeaponSet.spend_boost: a charged first shot's), spent;
+    1.0 for a shooter without a WeaponSet."""
+    m = shooter.find(interfaces.WeaponSet)
+    return m.spend_boost(weapon.get('weapon_key')) if m is not None else 1.0
 
 
 def read(blocks):

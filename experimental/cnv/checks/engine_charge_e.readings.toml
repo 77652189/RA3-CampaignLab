@@ -1,17 +1,54 @@
 # Bench readings of checks/engine_charge_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
-# E213: ChargeWeaponUpdate, the Wave-Force tower as retail against the module taken out, both held 16 s then told to
-# attack. On / Off = the target's health % x 1000 at its first loss + frames from GO to it; End = On x 1000 + Off at END.
+# E213: ChargeWeaponUpdate, the Wave-Force tower as retail against the module taken out, both held GO (a 16 s, b 4 s,
+# c 6 s) then told to attack. On / Off = the target's health % x 1000 at its first loss + frames from GO to it;
+# End = On x 1000 + Off at END (GO + 150).
 
 [[reading]]
 id = "a_charged_wave_force_tower_fires_at_once_and_harder"
 scene = {build = "engine_charge_e", check = "a", until = 28, shot_clock = true}
+item = "物体模块 Behaviors/ChargeWeaponUpdate"
 bench = """\
 CampChargeEA_mcp_1124_032616 at 2ec9d0b6, PASS: 390 84010 89048 64068. Off: the first loss 48 frames after the \
-order (PreAttackDelay 45 + the order frame), 437.5 = 350 x EXPLOSIVE 125 % (89 %); On: 10 frames (no pre-attack; \
-likely the turret's turn, hidden under Off's delay), 16 % (1.4 x 437.5 = 612.5 -> 84.7 %)"""
-proves = """ChargeWeaponUpdate is not presentation: a Wave-Force tower idle past ChargeTime + OverChargeTime fires \
-its first shot without the PreAttackDelay and with OverChargePercent more damage. Not measured: a partial charge, \
-the charge after a shot (End: both arms 1-2 % above three plain shots -- the target's, not the module's)"""
-expect = ["counter('E213Frame') == 390", "counter('E213On') == 84010", "counter('E213Off') == 89048"]
-mismatch = """sim 89048 89048 (End 67067): no ChargeWeaponUpdate -- both arms wait the 3 s pre-attack and hit 437.5. \
-Off as the bench; End 1 % lower in both arms (the bench's target gets ~6 health a second back after a hit: not read)"""
+order (PreAttackDelay 45 + the order frame), 437.5 = 350 x EXPLOSIVE 125 % (89 %); On: 10 frames, 16 % \
+(1.4 x 437.5 = 612.5 -> 84.7 %)"""
+proves = """ChargeWeaponUpdate: a Wave-Force tower idle past ChargeTime + OverChargeTime fires its first shot with \
+OverChargePercent more damage, and far sooner than the PreAttackDelay (the frames: the next reading)"""
+expect = ["counter('E213Frame') == 390", "counter('E213On') // 1000 == 84", "counter('E213On') % 1000 < 45",
+          "counter('E213Off') == 89048"]
+
+[[reading]]
+id = "a_charged_first_shot_frames"
+scene = {build = "engine_charge_e", check = "a", until = 28, shot_clock = true}
+bench = "CampChargeEA_mcp_1124_032616: On 10 frames after the order"
+proves = "a fully charged tower's first shot comes the frame after the order's (c: 3 frames)"
+expect = "counter('E213On') % 1000 == 10"
+mismatch = """sim 3, bench 10: c (6 s idle) reads 3 on the bench as well; the 7 frames over are likely the turret's \
+idle scan turning it away (MaxIdleScanAngle 90, TurretTurnRate 180: up to 8 frames back) -- no turret modelled"""
+
+[[reading]]
+id = "b_part_charged_tower_cuts_its_pre_attack"
+scene = {build = "engine_charge_e", check = "b", until = 16, shot_clock = true}
+bench = "CampChargeEB_mcp_1124_042600 at 94e4c450, PASS: 210 89021 89048 69068 (4 s idle: On 21 frames, 89 %)"
+proves = """a charge short of ChargeTime still cuts the first shot's pre-attack (21 frames, not Off's 48) and adds no \
+damage"""
+expect = ["counter('E213On') // 1000 == 89", "counter('E213On') % 1000 < 45", "counter('E213Off') == 89048"]
+
+[[reading]]
+id = "b_part_charge_frames"
+scene = {build = "engine_charge_e", check = "b", until = 16, shot_clock = true}
+bench = "CampChargeEB_mcp_1124_042600: On 21 frames"
+proves = "how much a part charge cuts: the simulator's idle / ChargeTime of the pre-attack (INFERRED)"
+expect = "counter('E213On') == 89021"
+mismatch = """sim 89012 (4/5 of 45 cut: 9 left + 3), bench 89021: 9 over -- the turret's scan as a's 7, or the \
+charge starting ~1 s after the making (3/5 cut: 18 left + 3); one bench cannot tell"""
+
+[[reading]]
+id = "c_charged_not_overcharged_tower_fires_at_once_plain"
+scene = {build = "engine_charge_e", check = "c", until = 18, shot_clock = true}
+item = "物体模块 Behaviors/ChargeWeaponUpdate"
+bench = """\
+CampChargeEC_mcp_1124_042443 at 94e4c450, PASS: 240 89003 89049 58068 (6 s idle: On 3 frames, 89 %; Off 49 frames, \
+a frame over a's and b's 48)"""
+proves = """ChargeWeaponUpdate: idle ChargeTime but short of the over-charge, the first shot skips the whole \
+PreAttackDelay and deals no more (1 s of the 2 s over-charge adds nothing: 1.2 x would read 86 %)"""
+expect = ["counter('E213Frame') == 240", "counter('E213On') == 89003", "counter('E213Off') // 1000 == 89"]

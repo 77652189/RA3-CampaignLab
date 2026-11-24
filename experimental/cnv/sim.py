@@ -2037,7 +2037,7 @@ class Sim:
             else:
                 self.gap(GAP_UPGRADE, 'LevelUpUpgrade/rate-clock', '该武器的等级射速计时未对拍')
         if c is None or (t0 - c[1] > dt * 1.5 and c[0] + cycle <= t0 + eps):
-            c = [t0 + 1 / 15, t0]                       # [this cycle's start, the last window with a target]; the first
+            c = m.start_clip(key, w, t0, c, cycle)      # [this cycle's start, the last window with a target]; the first
             #                                             object hit is1 frame after order; scripts observe it next frame (engine_emp)
         else:
             c[1] = t0

@@ -403,7 +403,8 @@ class Damage:
                                            can_hit=peers.can_hit, held=peers.garrison.held, cold_of=peers.cold_of,
                                            dots=self.dots, mark_cold=self.mark_cold,
                                            suppression_fields=peers.suppression_fields,
-                                           emp_until=lambda: peers.emp_until, claims=leech_events, host=host)
+                                           emp_until=lambda: peers.emp_until, claims=leech_events, host=host,
+                                           boost=weaponset.boost(by, w))
                     if registry.run('launch', ctx):
                         continue
                     projectile = w.get('projectile')

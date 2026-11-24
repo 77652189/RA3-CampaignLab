@@ -717,6 +717,12 @@ class WeaponSet(Interface):
     def set_clip_clock(self, key, clock):
         raise NotImplementedError
 
+    def start_clip(self, key, weapon, t, old, cycle):
+        raise NotImplementedError
+
+    def spend_boost(self, key):
+        raise NotImplementedError
+
     def pre_lock(self, key):
         raise NotImplementedError
 
@@ -724,6 +730,17 @@ class WeaponSet(Interface):
         raise NotImplementedError
 
     def gate_until(self, target):
+        raise NotImplementedError
+
+
+class Charge(Interface):
+    """ChargeWeaponUpdate (engine/modules/charge.py): a weapon idle long enough has its next attack's first shot
+    charged. spend(t, idle_since) -> (cut, boost) for an attack starting at second t, the weapon idle since
+    `idle_since` (None: since its thing was made): its first shot skips that part (0..1) of the pre-attack, its
+    damage x boost."""
+    __slots__ = ()
+
+    def spend(self, t, idle_since):
         raise NotImplementedError
 
 
@@ -764,4 +781,4 @@ FAMILY = (Lifetime, Topple, Crush, Deposit, Toggle, Suppression, Spawn, Slaved, 
           LevelUp, Aura, Detector, Parking, Recall, Repair, Assign, Infiltrate, SlowDeath, CreateOnDeath,
           DeathWeapon, WeaponSet, Locomotor, Clocked)    # a family's own, added with its step (docs/engine/sim-modules.md 2)
 ONE = frozenset({Body, AIUpdate, Lifetime, Topple, Crush, Deposit, Suppression, Slaved, OreMiner, Unpack, Sell, Freeze,
-                 WeaponSet, Locomotor})  # a thing has at most one of these: Thing.find gives it
+                 WeaponSet, Locomotor, Charge})  # a thing has at most one of these: Thing.find gives it

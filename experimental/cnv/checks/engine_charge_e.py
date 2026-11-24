@@ -7,8 +7,12 @@ placed, so no StructureUnpackUpdate). Each holds fire (NO_ATTACK) until GO (16 s
 the power-up takes), then is told to attack an s1 SovietPowerPlantAdvanced (4000, holding fire) 300 north.
 Prediction, one of: the charge stands for the PreAttackDelay (On's first loss ~0 frames after GO, Off's ~45), or it
 scales the first shot's damage (On 1.4 x Off's loss), or neither (presentation, the same).
-Counters: frame (stops at END), On / Off = the target's health % x 1000 at its first loss + the frames from GO to it,
-End = On's target health % x 1000 + Off's at END.
+Variants (11-24, the partial charge): b GO 60 (4 s idle: short of ChargeTime), c GO 90 (6 s: charged, short of the
+over-charge). Prediction (a charge either is or is not, so is the over-charge): b as Off (48 frames, 89 %), c On's
+frames at Off's damage (89 %); a pre-attack cut by the part charged would read b ~12 frames, an over-charge in
+proportion c 86 % (1.2 x 437.5).
+Counters: frame (stops at END = GO + 150), On / Off = the target's health % x 1000 at its first loss + the frames from
+GO to it, End = On's target health % x 1000 + Off's at END.
 """
 import re
 from pathlib import Path
@@ -18,7 +22,7 @@ from maps import probe_range
 from parts import Mission, Script, Test, Unit, status
 
 HOST, TAG, TARGET = 'JapanBaseDefenseAdvanced', 'ChargeWeaponUpdate', 'SovietPowerPlantAdvanced'
-GO, END = 240, 390
+GO, LONG = 240, 150
 
 
 def mission():
@@ -39,10 +43,11 @@ def mission():
     return m
 
 
-def check(m):
+def check(m, go=GO):
+    end = go + LONG
     t = Test()
     t.counters = [('E213Frame', '完成帧'), ('E213On', '原版'), ('E213Off', '删模块'), ('E213End', '终血')]
-    t.scripts = [Script('Test - clock', [('COUNTER', 'E213Frame', 0, END)],
+    t.scripts = [Script('Test - clock', [('COUNTER', 'E213Frame', 0, end)],
                         [('INCREMENT_COUNTER', 1, 'E213Frame')], once=False),
                  Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))])]
     for arm in ('On', 'Off'):
@@ -52,28 +57,28 @@ def check(m):
             Script('Test - quiet ' + arm, [], [
                 ('UNIT_CHANGE_OBJECT_STATUS', shooter, status('NO_ATTACK'), 1),
                 ('UNIT_CHANGE_OBJECT_STATUS', target, status('NO_ATTACK'), 1)]),
-            Script('Test - go ' + arm, [('COUNTER', 'E213Frame', 2, GO)], [
+            Script('Test - go ' + arm, [('COUNTER', 'E213Frame', 2, go)], [
                 ('UNIT_CHANGE_OBJECT_STATUS', shooter, status('NO_ATTACK'), 0),
                 ('NAMED_ATTACK_NAMED', shooter, target)]),
-            Script('Test - wait ' + arm, [('COUNTER', 'E213Frame', 3, GO), ('COUNTER', 'E213Frame', 0, END),
+            Script('Test - wait ' + arm, [('COUNTER', 'E213Frame', 3, go), ('COUNTER', 'E213Frame', 0, end),
                                           ('UNIT_HEALTH', target, 3, 100)],
                    [('INCREMENT_COUNTER', 1, wait)], once=False),
-            Script('Test - first ' + arm, [('COUNTER', 'E213Frame', 3, GO), ('UNIT_HEALTH', target, 0, 100)], [
+            Script('Test - first ' + arm, [('COUNTER', 'E213Frame', 3, go), ('UNIT_HEALTH', target, 0, 100)], [
                 ('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', target, 'E213' + arm),
                 ('COUNTER_MATH_VALUE', 'E213' + arm, 2, 1000),
                 ('COUNTER_MATH_COUNTER', 'E213' + arm, 0, wait)]),
-            Script('Test - end ' + arm, [('COUNTER', 'E213Frame', 2, END)], [
+            Script('Test - end ' + arm, [('COUNTER', 'E213Frame', 2, end)], [
                 ('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', target, hp),
                 ('COUNTER_MATH_COUNTER', 'E213End', 0, hp)])]
         if arm == 'On':     # On's share x 1000 before Off's is added (scripts run in order; no arm named here)
-            t.scripts.append(Script('Test - end shift', [('COUNTER', 'E213Frame', 2, END)],
+            t.scripts.append(Script('Test - end shift', [('COUNTER', 'E213Frame', 2, end)],
                                     [('COUNTER_MATH_VALUE', 'E213End', 2, 1000)]))
-    t.expect = [('完成帧', 0, 'ever==', END), ('原版', 0, 'ever>=', 1000), ('删模块', 0, 'ever>=', 1000)]
+    t.expect = [('完成帧', 0, 'ever==', end), ('原版', 0, 'ever>=', 1000), ('删模块', 0, 'ever>=', 1000)]
     t.bench = [('bench_camera', dict(x=1150, y=550, look=False)),
-               ('bench_watch', dict(seconds=END // 15 + 25, every=1, sheet=False, lines=4))]
+               ('bench_watch', dict(seconds=end // 15 + 25, every=1, sheet=False, lines=4))]
     return t
 
 
 MISSION = {'engine_charge_e': mission}
-CHECKS = {'engine_charge_e': {'a': check}}
+CHECKS = {'engine_charge_e': {'a': check, 'b': lambda m: check(m, 60), 'c': lambda m: check(m, 90)}}
 CONTROL_ARMS = {'engine_charge_e': ('On', 'Off')}

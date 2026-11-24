@@ -30,4 +30,4 @@ class Damage:
         victim = context.victim
         if taper:
             dmg = tapered(dmg, taper, context.by, victim)
-        context.add(victim, context.n * dmg * context.by.dealt * context.hit(victim, damage_type))
+        context.add(victim, context.n * dmg * context.by.dealt * context.boost * context.hit(victim, damage_type))
