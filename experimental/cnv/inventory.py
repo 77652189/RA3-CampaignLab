@@ -352,6 +352,11 @@ NOTES = {
                                                      '都没填 SweepWeapon / SweepFXList；E211 engine_convlaser_e/s/o '
                                                      '三种摆法原版/删模块首伤同为 41 帧，1% 血差跟着先放的那臂走'
                                                      '（checks/engine_cosmetic_e.readings.toml）'),
+    (MODULE, 'Behaviors/SweepingLaserState'): (NA, '纯表现：LaserState 加光束末端扫动（Radius / SweepFXList / '
+                                                   'SweepFXTimeout），能伤人的只有 SweepWeapon，原版唯一一处（恐怖机器人，'
+                                                   'LaserId 0）没填；FX_SOV_ElectroRay 只有声音和粒子。麻痹由同一武器的 '
+                                                   'ParalyzeNugget + AttributeModifierNugget 给出。同族 LaserState、'
+                                                   'ConvergingLaserState 上台都无附加伤害或延迟（engine_laser、E211），未单独上台'),
     (MODULE, 'Behaviors/AimWeapon'): (TODO, 'E211 不是纯表现：标枪兵打直升机，原版比删模块首伤晚 1 个脚本帧（换位、'
                                             '换放置顺序都一样），f120 血量相同；设 AIM_HIGH（只有绘制模块读）。'
                                             '晚的这一帧等什么没读到，不拟合；读数 mismatch 见 checks/engine_cosmetic_e'),
