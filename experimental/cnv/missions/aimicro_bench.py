@@ -397,17 +397,19 @@ def ignore_distance(name, distance, observe=False):
     return m
 
 
-def ignore_rule(name, rule):
+def ignore_rule(name, rule, mask='Include="NEUTRAL_TECH TIME_BOMB"'):
     """Retail EASY inclusion mask, with only ANY/ALL varied on the same carrier.
 
     Engineers have neither NEUTRAL_TECH nor TIME_BOMB. ANY should allow them,
     ALL should ignore them; ordinary attacks may still bypass micro selection.
+    The other masks: ANY Include ENGINEER ignores them; ALL Exclude ENGINEER
+    does not (the Exclude kinds block before ALL lets everything through).
     Keep distance zero fixed; this does not reopen its paused boundary probe.
     """
     m = ignore_distance(name, 0, observe=True)
     m.assets = [(path, text.replace(
         '<IgnoreTargets Rule="ANY"><IncludeThing>AlliedEngineer</IncludeThing></IgnoreTargets>',
-        f'<IgnoreTargets Rule="{rule}" Include="NEUTRAL_TECH TIME_BOMB"/>'), asset)
+        f'<IgnoreTargets Rule="{rule}" {mask}/>'), asset)
         for path, text, asset in m.assets]
     return m
 
@@ -418,6 +420,8 @@ MISSION = {'aikeeptwo': lambda: keep_target('CampAIKeepTwo'),
            'airandsx': lambda: random_score('CampAIRandSX', 1000),
            'aiignrany': lambda: ignore_rule('CampIgnRuleAny', 'ANY'),
            'aiignrall': lambda: ignore_rule('CampIgnRuleAll', 'ALL'),
+           'aiignrinc': lambda: ignore_rule('CampIgnRuleInc', 'ANY', 'Include="ENGINEER"'),
+           'aiignrexc': lambda: ignore_rule('CampIgnRuleExc', 'ALL', 'Exclude="ENGINEER"'),
            'aiegon': lambda: engage_clock('CampAIEgOn', True),
            'aiegoff': lambda: engage_clock('CampAIEgOff', False),
            'aimicupfast': lambda: update_time('CampMicUpFast', 0.5),

@@ -11,6 +11,8 @@ members at f376/391 and prerequisite bad=0. ALL retains diagnostic FAIL:
 the wall-clock s22..24 owned count is still 1, although game-frame recruitment
 preconditions pass. Do not change that window to fit this run. Model ALL state
 replays; ANY candidate/Alpha eligibility remains a strict xfail, no promotion.
+aiignrinc (ANY Include ENGINEER) / aiignrexc (ALL Exclude ENGINEER), B 11-24:
+state 8 / 0 the same way (readings in engine_aiignore_rule.readings.toml).
 """
 from model import Script
 from checks.engine_aiignore import probe as distance_probe
@@ -33,4 +35,4 @@ def probe(m):
     return t
 
 
-CHECKS = {name: {'r': probe} for name in ('aiignrany', 'aiignrall')}
+CHECKS = {name: {'r': probe} for name in ('aiignrany', 'aiignrall', 'aiignrinc', 'aiignrexc')}
