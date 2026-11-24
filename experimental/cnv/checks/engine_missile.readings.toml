@@ -1,0 +1,29 @@
+# Bench readings of checks/engine_missile.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A lane's counter: frames from the order to its target's first loss + 1000 a percent lost (the module's docstring);
+# the late lanes (removed / switch) run ~8 frames behind the early ones (base / high) every run, whatever the shooter.
+
+[[reading]]
+id = "the_v4_lock_hint_does_not_hold_its_first_rocket"
+scene = {build = "engine_missile_lock", check = "lock", until = 13, shot_clock = true}
+bench = "CampMslLLock_mcp_1124_001609: s9-s14 5109 5108 5117 5116 (copy early, no-lock early, no-lock late, copy late)"
+proves = "the V4's WeaponAiHintInfo UseLongLockOnTimeCode is not what holds its launch to 35-40 frames after the order"
+let = {f = "lambda k: rows[-1][k] % 1000"}
+expect = ["abs(f('V4无锁跳不动') - f('复制V4跳不动')) <= 2"]
+
+[[reading]]
+id = "the_firing_duration_does_not_hold_the_first_rocket_the_pre_attack_does"
+scene = {build = "engine_missile_time", check = "time", until = 13, shot_clock = true}
+bench = "CampMslTTime_mcp_1124_001921: s10-s13 5109 5108 5116 5130 (copy, FiringDuration 0.1 early; FiringDuration 2, PreAttackDelay 1.5 late); second hits s15 / s14 / s17 / s17"
+proves = "a weapon's first shot waits its PreAttackDelay (1.5 s for 0.5: 14 frames later) and not its FiringDuration (0.1 / 1 / 2 s alike)"
+let = {f = "lambda k: rows[-1][k] % 1000"}
+expect = ["abs(f('射0.1跳不动') - f('复制V4跳不动')) <= 2", "abs(f('射2跳不动') - f('复制V4跳不动')) <= 9",
+          "abs(f('瞄1.5跳不动') - f('射2跳不动') - 14) <= 2"]
+
+[[reading]]
+id = "the_v4s_first_rocket_lands_108_frames_after_the_order"
+scene = {build = "engine_missile_time", check = "time", until = 13, shot_clock = true}
+bench = "as above: the copy 109, FiringDuration 0.1 108 (and engine_missile miss 11-05: 108 at 250 and 450)"
+proves = "the V4's first hit: launch 35-40 frames after the order (engine_missile_sweep jumps), ~70 frames' flight"
+let = {f = "lambda k: rows[-1][k] % 1000"}
+expect = "abs(f('复制V4跳不动') - 108) <= 3"
+mismatch = "sim 79: it launches after the 8-frame PreAttackDelay; the bench's ~29 frames more are neither the lock hint nor the FiringDuration (two runs 11-24, work/re/handoff-e.md)"

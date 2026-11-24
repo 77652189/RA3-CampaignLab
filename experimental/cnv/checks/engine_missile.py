@@ -56,11 +56,12 @@ def _sub1(x, old, new):
     return x.replace(old, new, 1)
 
 
-def home_v4(id=HOME, adjust=HOME_ADJUST, scatter=True):
+def home_v4(id=HOME, adjust=HOME_ADJUST, scatter=True, lock=True, times=None):
     """Retail's V4 under `id`, its rocket weapon swapped for a copy (`id`Rocket) whose projectile (`id`Projectile)
     is retail's V4 rocket with FlightPathAdjustDistPerSecond = adjust (retail 10). scatter=False also drops the
     weapon's own ScatterRadiusVsType 0.1 vs INFANTRY VEHICLE (with a scatter Generals launches at a position, not at
-    the victim, so nothing homes). Nothing else differs (ADR 0016 G5: the probe builds it)."""
+    the victim, so nothing homes); lock=False its WeaponAiHintInfo UseLongLockOnTimeCode; times = {'PreAttackDelay' /
+    'FiringDuration': seconds} sets those (Min = Max). Nothing else differs (ADR 0016 G5: the probe builds it)."""
     HOME_WEAPON, HOME_ROCKET = id + 'Rocket', id + 'Projectile'
     x = open(os.path.join(SAGE, 'Soviet', 'Units', V4 + '.xml'), encoding='utf-8').read()
     x = _sub1(x, f'id="{V4}"', f'id="{id}"')
@@ -75,6 +76,13 @@ def home_v4(id=HOME, adjust=HOME_ADJUST, scatter=True):
     if not scatter:
         s, k = re.subn(r'\s*<ScatterRadiusVsType\s+Radius="0\.1">.*?</ScatterRadiusVsType>', '', s, flags=re.S)
         assert k == 1, k
+    if not lock:
+        s, k = re.subn(r'\s*<WeaponAiHintInfo\s+UseLongLockOnTimeCode="true"\s*/>', '', s)
+        assert k == 1, k
+    for tag, sec in (times or {}).items():
+        s, k = re.subn(rf'<{tag}\s+MinSeconds="[^"]*"\s+MaxSeconds="[^"]*"',
+                       f'<{tag} MinSeconds="{sec:g}s" MaxSeconds="{sec:g}s"', s)
+        assert k == 1, (tag, k)
     x = _sub1(x, '</AssetDeclaration>', s + '</AssetDeclaration>')
     p = open(os.path.join(SAGE, 'Soviet', 'Props', V4_ROCKET + '.xml'), encoding='utf-8').read()
     # the file's second GameObject is retail's heroic variant (inherits the rocket): not ours, dropped
@@ -87,8 +95,10 @@ def home_v4(id=HOME, adjust=HOME_ADJUST, scatter=True):
     return Unit(id, x, files={fname: p}, also=[fname], link=[f'WeaponTemplate:{HOME_WEAPON}'],
                 names=dict(unit=id, weapon=HOME_WEAPON, rocket=HOME_ROCKET),
                 what=f'追踪加强的 V4（探针）：导弹每秒修正 {adjust:g}（原版 10）'
-                     f'{"" if scatter else "，去掉对车辆步兵的 0.1 散布"}，其余同原版',
-                params=dict(adjust=adjust, scatter=scatter))
+                     f'{"" if scatter else "，去掉对车辆步兵的 0.1 散布"}{"" if lock else "，去掉 UseLongLockOnTimeCode"}'
+                     + ''.join(f'，{t} {v:g} 秒' for t, v in (times or {}).items()) + '，其余同原版',
+                params=dict(adjust=adjust, scatter=scatter) | ({} if lock else {'lock': False})
+                | ({'times': times} if times else {}))
 
 
 def target(id=TARGET_ID, health=TARGET_HP):
@@ -240,7 +250,7 @@ def flight_test(m):
 # and a driving Hammer, 10 follows a jump but not a drive. The removed / switch / order lanes run ~8 frames later
 # than base / high every run, whatever the shooter (not read why).
 SWEEP_DODGE, DRIVE_TO, SWEEP_RUN = 150.0, 600.0, 24.0
-COPY, HOME_NS, V4_NS = 'CNV_MslCopy', 'CNV_MslHomeNS', 'CNV_MslV4NS'
+COPY, HOME_NS, V4_NS, NO_LOCK = 'CNV_MslCopy', 'CNV_MslHomeNS', 'CNV_MslV4NS', 'CNV_MslNoLock'
 WHO = {V4: 'V4', HOME: '追300', COPY: '复制V4', HOME_NS: '追300无散', V4_NS: 'V4无散'}
 BUILDS = {   # build: (mission name, units, {lane: shooter})
     'engine_missile_sweep': ('CampMslS', lambda: [home_v4(), target()],
@@ -254,8 +264,20 @@ BUILDS = {   # build: (mission name, units, {lane: shooter})
                                                 home_v4(V4_NS, 10.0, scatter=False),
                                                 home_v4('CNV_MslA20', 20.0, scatter=False), target()],
                            {'base': 'CNV_MslA2', 'high': 'CNV_MslA5', 'order': V4_NS, 'switch': 'CNV_MslA20'}),
+    # what holds the launch to 35-40 frames after the order (the sim: the 8-frame PreAttackDelay)? the copy against
+    # the copy without UseLongLockOnTimeCode, each on an early lane (base / high) and a late one (removed / switch)
+    'engine_missile_lock': ('CampMslL', lambda: [home_v4(COPY, 10.0), home_v4(NO_LOCK, 10.0, lock=False), target()],
+                            {'base': COPY, 'high': NO_LOCK, 'removed': NO_LOCK, 'switch': COPY}),
+    # lock (CampMslLLock_mcp_1124) 5109 / 5108 / 5117 / 5116: not the lock. Does the rocket leave at the end of its
+    # FiringDuration (1 s)? the copy; FiringDuration 0.1 (early lane); FiringDuration 2 and PreAttackDelay 1.5 (late)
+    'engine_missile_time': ('CampMslT', lambda: [home_v4(COPY, 10.0), *(home_v4(i, 10.0, times=t) for i, t in TIMED),
+                                                 target()],
+                            {'base': COPY, 'high': 'CNV_MslF01', 'removed': 'CNV_MslF2', 'switch': 'CNV_MslP15'}),
 }
-WHO |= {'CNV_MslA2': '修2', 'CNV_MslA5': '修5', 'CNV_MslA20': '修20'}
+TIMED = (('CNV_MslF01', {'FiringDuration': 0.1}), ('CNV_MslF2', {'FiringDuration': 2.0}),
+         ('CNV_MslP15', {'PreAttackDelay': 1.5}))
+WHO |= {'CNV_MslA2': '修2', 'CNV_MslA5': '修5', 'CNV_MslA20': '修20', NO_LOCK: 'V4无锁',
+        'CNV_MslF01': '射0.1', 'CNV_MslF2': '射2', 'CNV_MslP15': '瞄1.5'}
 JUMPS = (50.0, 80.0, SWEEP_DODGE)                     # the jump waypoints east of each target
 MOVES = {     # build: {check: (how, per lane frames after the order or (frames, jump east); None stays)}
     'engine_missile_sweep': {
@@ -269,6 +291,11 @@ MOVES = {     # build: {check: (how, per lane frames after the order or (frames,
         'nsdrive': ('drive', {'base': 40, 'high': 0, 'removed': 40, 'switch': 40})},
     'engine_missile_adj': {
         'adj': ('jump', {'base': 60, 'high': 60, 'order': 60, 'switch': 60})},
+    'engine_missile_lock': {
+        # the late lanes' targets jump only after the first hit (their labels differ from the early lanes')
+        'lock': ('jump', {'base': None, 'high': None, 'removed': (200, 50.0), 'switch': (200, 50.0)})},
+    'engine_missile_time': {
+        'time': ('jump', {'base': None, 'high': None, 'removed': None, 'switch': None})},
 }
 
 
