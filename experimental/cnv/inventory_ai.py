@@ -729,9 +729,6 @@ NOTES = {
         'experimental/cnv/checks/engine_aimicro.readings.toml::micro_update_d81_charge_survival 首活相符，精确首冲及人口峰值标 mismatch；'
         '资格/更新前置状态、观测宿主人口等价仍gap；旧时钟读数不用于晋升，非固定延迟；'
         '见work/re/e102_update_clock.md'),
-    '微操/SpecificSpecialPowerDelay.TogglePowerSubType': (GUESSED,
-        '模型 f9f7824：TOGGLE 的冷却子类型 = 要切到的那个状态的 ToggleHint（程序读到，切开和切回分开计时；原先恒 NO_HINT，'
-        '原版 TOGGLE_LOCKDOWN 20–40 s 从不生效）；没上台：原版 LOCKDOWN 的"该不该切"判据没读、模型不切；见 work/re/l4_toggle.md'),
     # D round 132: the idle StaticDefense bench (aibdi1/0/2) with the host's order log
     '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (BENCHED,
         'D132 engine_aibasedef aibdi1/0/2（守点队状态8、无敌人、己方4座炮塔）：两开关都开时进基地防御那段程序发进驻令'

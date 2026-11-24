@@ -39,7 +39,7 @@ every frame (the simulator moves in DT ticks; the AI is ticked for each frame of
   blocks      A's TargetsBlock + TacticsBlock (orders: 'move' / 'attack-move' -> Sim.order_move, 'enter' -> Garrisons;
               houses / defenses = Brain.garrisons, full ones listed too), DefenseBlock (one
               MAIN_BASE round the first yard; hurt = the body's hp fell; aesthetics = a circle round the point),
-              MicroBlock (unit powers from the CommandSet; the retail miner armor toggle executes; other uses
+              MicroBlock (unit powers from the CommandSet; toggles execute (toggles_of); other uses
               are only recorded), PlayerPowers (none yet: the simulator has no superweapon charge). The AI sees the whole
               map (INFERRED; the view's things are every living body that is not scenery).
 
@@ -1226,6 +1226,24 @@ class Brain:
         near = [n for n in near if n[0] - n[2].radius <= reach]
         return min(near)[2] if near else None
 
+    def toggles_of(self, b, powers, mc):
+        """The ToggleStates (mc.parse_toggle) of the module b's first TOGGLE button presses, and the state it is in
+        (the program takes a unit's first TOGGLE power, l4_toggle.md); ([], 0) without one. Was the miner's armour
+        alone: the Peacekeeper's shield and the rest never switched (B 11-24, aidelaytog)."""
+        cache = self.__dict__.setdefault('_toggles', {})
+        if b.template not in cache:
+            cache[b.template] = None
+            c = next((c for c in self.host.command_set(b.template) if c in powers and powers[c].heuristic == 'TOGGLE'),
+                     None)
+            power = c and simunits.command_power(c, self.world.own)
+            blocks = list(simunits._blocks(self.world.xml_of(b.template), 'ToggleStatusSpecialAbilityUpdate'))
+            for i, (h, inner) in enumerate(blocks):
+                if power and simunits._attr(h, 'SpecialPowerTemplate') == power:
+                    cache[b.template] = i, mc.parse_toggle(ET.fromstring('<update>' + inner + '</update>'))
+                    break
+        got = cache[b.template]
+        return ([], 0) if got is None else (got[1], b.toggle_at.get(got[0], 0))
+
     def micro_team(self, ai, frame, team):
         mc, sp = self.host.mod['micro'], self.host.mod['specials']
         powers = self.host.data_of('unit powers')
@@ -1243,22 +1261,14 @@ class Brain:
             b = u.body
             reach = max((w.get('range') or 0.0 for w in b.weapons), default=0.0)
             t = self.aim_of(b, reach)
-            toggles = []
-            if 'Command_ToggleArmorUp' in self.host.command_set(b.template):
-                cache = self.__dict__.setdefault('_miner_toggles', {})
-                if b.template not in cache:
-                    inner = next((inner for h, inner in simunits._blocks(self.world.xml_of(b.template),
-                                  'ToggleStatusSpecialAbilityUpdate') if simunits._attr(h, 'SpecialPowerTemplate') ==
-                                  'SpecialPower_ToggleArmorUp'), '')
-                    cache[b.template] = mc.parse_toggle(ET.fromstring('<update>' + inner + '</update>'))
-                toggles = cache[b.template]
+            toggles, at = self.toggles_of(b, powers, mc)
             units.append(mu := mc.Unit(view(b), (b.x, b.y), b.hp, b.max_hp,
                                  [powers[c] for c in self.host.command_set(b.template)
                                   if c in powers and simmicro.ready(self.world, b, c)],
                                  target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=t.name),
                                  weapon_range=reach, cost=self.host.cost(b.template),
                                  damage=lambda behind, ahead, b=b: self.observe.expected_damage(b, behind, ahead, now=frame),
-                                 toggles=toggles, toggle_index=int(b.armor_up)))
+                                 toggles=toggles, toggle_index=at))
             seen.append((mu, b))
         enemies = [sp.Thing((t.x, t.y), t.kindof, int(t.value), name=str(t.id)) for t in self.view.things
                    if t.owner in self.view.enemies]
@@ -2257,9 +2267,9 @@ class SimAI:
     def command_set(self, template):
         """The template's CommandSet's commands (simunits' reading of the SDK's GlobalData), cached."""
         if template not in self._cs:
-            cs = simunits._inherited(template, self.world.own,
-                                     lambda xml: (re.findall(r'\bCommandSet="([^"]+)"', xml) or [''])[0], '')
-            self._cs[template] = simunits._commands(self.world.own)[0].get(cs, [])
+            own = self.world.own
+            cs = simunits._inherited(template, own, lambda xml: (re.findall(r'\bCommandSet="([^"]+)"', xml) or [''])[0], '')
+            self._cs[template] = simunits._commands(own)[0].get(cs, [])
         return self._cs[template]
 
     def standard(self, template):

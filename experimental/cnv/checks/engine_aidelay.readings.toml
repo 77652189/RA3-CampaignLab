@@ -1,6 +1,7 @@
 # Bench readings of checks/engine_aidelay.py (format: experimental/cnv/readings.py; runner: tests/conformance).
 # SpecificSpecialPowerDelay MaximumDelay 0 / 999 on the aimicspon Hunt team (bench 2026-11-11, both PASS);
-# aidelaytype / aidelaymin (bench 2026-11-24, both PASS: two charging from s35, as 0).
+# aidelaytype / aidelaymin (bench 2026-11-24, both PASS: two charging from s35, as 0);
+# aidelaytog / aidelaytogdef (TogglePowerSubType, bench 2026-11-24, both PASS).
 
 [[reading]]
 id = "the_script_sees_a_charge_in_both_runs"
@@ -62,3 +63,19 @@ expect = "{r['帧数'] - r['曾冲'] for r in rows if r['曾冲'] > 0} == {362}"
 mismatch = """\
 simai 263 (the charge seen ~100 frames early), bench 362. Do not change B target / movement or fit MaximumDelay to \
 this offset: work/re/c_delay_clock_report.md, work/re/handoff-c.md"""
+
+[[reading]]
+id = "a_toggle_line_holds_only_its_own_sub_type"
+scene = {build = "aidelaytog", check = "t", until = 50.0}
+each = [{build = "aidelaytog", held = true}, {build = "aidelaytogdef", held = false}]
+item = ["AI 微操/SpecificSpecialPowerDelay.TogglePowerSubType"]
+bench = """\
+aidelaytog (TOGGLE_ALWAYS 999 s): 造出 2 from s20, 盾 1 from s22 to s51, 曾落 / 曾双 0 throughout; aidelaytogdef \
+(TOGGLE_DEFAULT 999 s): 盾 2 at s22, 曾落 latched 8 frames after 曾双 (one micro round), then both on and off \
+together (2 / 0 by turns to s51) (2026-11-24; simulator s23, the same shapes)"""
+proves = """\
+simai micro: a TOGGLE line on sub type TOGGLE_ALWAYS keeps the always-switching pair to one shield raised once \
+(never none again, never two); the same line on TOGGLE_DEFAULT holds nothing -- they switch on and off together"""
+expect = """\
+(max(r['曾落'] for r in rows) + max(r['曾双'] for r in rows) == 0) == held \
+and (not held or max(r['盾'] for r in rows) == 1)"""

@@ -19,7 +19,7 @@ the player status count (A round 164); engine_aidelay.readings.toml replays thes
 script counters.
 """
 from checks import engine_aimicro as ac
-from parts import Script
+from parts import Script, Test, counted, status
 
 
 def check(m):
@@ -88,5 +88,35 @@ def where(m):
     return t
 
 
+def toggled(m):
+    """t (aidelaytog*): s1's always-switching Peacekeepers, counted by player every frame, shown each second:
+      造出  how many s1 owns          盾  how many have the shield up (GENERIC_TOGGLE_STATE)
+      曾落 / 曾双  frames since s1 first had none up again after one was / two up at once
+    Predicted (missions/aidelay_bench.py): the TOGGLE_ALWAYS line -- one up for good, 曾落 and 曾双 never; the
+    TOGGLE_DEFAULT line -- 曾落 and 曾双 both (the two switch together every round)."""
+    t = Test()
+    p1, s1, shield = m.player('p1'), m.player('s1'), status('GENERIC_TOGGLE_STATE')
+    t.scripts += [Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', p1)]),
+                  Script('Test - keep the conscripts up', [],
+                         [('UNIT_SET_HEALTH', r.name, 100.0) for r in m.roles('conscript')], once=False),
+                  Script('Test - one up', [('PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', s1, 3, 1, shield)],
+                         [('SET_FLAG', 'Test One Up', 1)])]
+    counted('CNV_AD_Owned', '造出', t, template=m.cnv_units[0], player=s1)
+    counted('CNV_AD_Up', '盾', t, status=shield, player=s1)
+    seen = [('CNV_AD_Down', '曾落', [('FLAG', 'Test One Up', 1), (2, 0)]), ('CNV_AD_Two', '曾双', [(3, 2)])]
+    for counter, label, (*flag, (op, n)) in seen:
+        t.counters.append((counter, label))
+        cond = [*flag, ('PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS', s1, op, n, shield)]
+        t.scripts += [Script(f'Test - {counter} seen', cond, [('SET_FLAG', f'Test {counter}', 1)]),
+                      Script(f'Test - {counter} count', [('FLAG', f'Test {counter}', 1)],
+                             [('INCREMENT_COUNTER', 1, counter)], once=False)]
+    up = [('盾', 14, 'ever>=', 1, 50), ('曾落', 14, '==', 0, 50), ('曾双', 14, '==', 0, 50)] if m.facts['delayed'] \
+        else [('曾落', 14, 'ever>=', 1, 50), ('曾双', 14, 'ever>=', 1, 50)]
+    t.expect = [('造出', 14, 'ever>=', 2, 50), *up]
+    t.bench = [('bench_watch', dict(seconds=50, every=1, sheet=False, lines=4))]
+    return t
+
+
 CHECKS = {key: {'a': check} for key in ('aidelay0', 'aidelay999', 'aidelaytype', 'aidelaymin')}
+CHECKS.update({key: {'t': toggled} for key in ('aidelaytog', 'aidelaytogdef')})
 CHECKS['aidelay0']['p'] = where
