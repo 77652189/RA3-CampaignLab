@@ -144,8 +144,10 @@ def flee_start(world, peers, b, edge=False):
     of lag 0-4 x gone 0-5 had that one fit). Not modelled: the path (a straight line), a way that cannot be walked.
     A later move or stop takes the run over (stop_flee, engine.orders.order's). edge (an emptied transport's
     RunOffMapWhenDone, engine_acts_drop age / agx / flx): to the nearest point of the map's border, not its facing --
-    flx's bombers facing west went east (the nearest edge), age's on north, agx's back south; FLEE_OUT past it
-    (INFERRED: the three benches' gone frames fit within ~15 at the speed, the turn and the circling not modelled)."""
+    flx's bombers facing west went east (the nearest edge), age's on north, agx's back south (the program: the eject
+    itself hands RunOffMap the nearest border point, once, already on its first eject step -- we start it when emptied,
+    as the bench still leaves later); FLEE_OUT past it (INFERRED: the three benches' gone frames fit within ~15 at the
+    speed, the turn and the circling not modelled)."""
     name = simunits.run_off_map(b.template, world.own)
     if name is None or not b.alive or b.speed <= 0:
         return
