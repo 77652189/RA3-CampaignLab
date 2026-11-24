@@ -1,0 +1,36 @@
+# Bench readings of checks/engine_aistart.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "an_ai_neither_woken_nor_handed_its_yard_never_opens"
+item = "脚本动作 SKIRMISH_AI_START"
+scene = {check = "a"}
+each = [{build = "aistart", until = 78, last = 1154}, {build = "ainowake", until = 50, last = 746}, {build = "aixfer", until = 74, last = 1104}]
+bench = "bench 11-16 (A270), AI钱 建筑数: aistart 50000 1 from the money (f158) to f1154, ainowake to f746, aixfer to f1104"
+proves = "SKIRMISH_AI_START without the yard handed (it stays on teamSoviet_1), MAKE_BASE without a wake, and SKIRMISH_AI_TRANSFER_ALL (the team step, no wake) each leave the AI idle. Moved from the replay test (A335)"
+let = {idle = "[v for v in vals(rows) if 160 <= v[3] <= last]"}
+expect = "idle and all(v[:2] == [50000, 1] for v in idle)"
+
+[[reading]]
+id = "skirmish_ai_start_opens_an_ai_whose_yard_was_handed"
+item = "脚本动作 SKIRMISH_AI_START"
+scene = {build = "aistartx", check = "a", until = 30}
+bench = "aistartx:a, AI钱 建筑数: paying at f169 (49943), 建筑数 2 at f312 (f290 still 1), 3 at f461"
+proves = "UNIT_AI_TRANSFER(the yard) then SKIRMISH_AI_START (retail a07's way) opens the AI as aiskirm's own wake: paying, the second structure about 10 s after"
+let = {opening = "[v for v in vals(rows) if 169 <= v[3] <= 290]", second = "[v for v in vals(rows) if 312 <= v[3] <= 450]"}
+expect = [
+  "opening and all(0 < v[0] < 50000 and v[1] == 1 for v in opening)",
+  "second and all(v[1] == 2 for v in second)",
+]
+
+[[reading]]
+id = "toggle_skirmish_ai_off_freezes_the_ai_and_on_resumes_it"
+item = "脚本动作 PLAYER_TOGGLE_SKIRMISH_AI"
+scene = {build = "aipause", check = "a", until = 92}
+bench = "aipause:a, AI钱 建筑数: paying to 48300 at f457, flat to f1262 with 2 structures; 建筑数 3 at f1280 (finished while paused, placed at the 85 s resume), paying again from f1300"
+proves = "PLAYER_TOGGLE_SKIRMISH_AI off at 25 s freezes the AI (what was paid for finishes, nothing new), on at 85 s resumes it"
+let = {flat = "[v for v in vals(rows) if 500 <= v[3] <= 1260]", placed = "[v for v in vals(rows) if 1300 <= v[3] <= 1350]", paying = "[v for v in vals(rows) if v[3] >= 1350]"}
+expect = [
+  "flat and len({tuple(v[:2]) for v in flat}) == 1 and flat[0][1] == 2",
+  "placed and all(v[1] == 3 for v in placed)",
+  "paying and all(v[0] < flat[0][0] for v in paying)",
+]

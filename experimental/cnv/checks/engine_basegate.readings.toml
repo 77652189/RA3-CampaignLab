@@ -1,0 +1,13 @@
+# Bench readings of checks/engine_basegate.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "aibgate_disabled_ai_builds_nothing_until_enabled"
+item = ["脚本动作 PLAYER_DISABLE_BASE_CONSTRUCTION", "脚本动作 PLAYER_ENABLE_BASE_CONSTRUCTION"]
+scene = {build = "aibgate", check = "a", until = 85}
+bench = "aibgate:a (bench 11-16, A269), AI钱 建筑数 at logic frames: 50000 1 from the wake (f163) to f1054; paying from f1054 (49993), 建筑数 2 at f1208"
+proves = "a base-disabled skirmish AI (s1 AlliedBalanced, woken at 10 s with 50000) orders no structure and spends nothing until PLAYER_ENABLE_BASE_CONSTRUCTION at 70 s, then starts its base as at a wake. Moved from the replay test (A335)"
+let = {held = "[v for v in vals(rows) if 163 <= v[3] <= 1050]", after = "[v for v in vals(rows) if v[3] >= 1250]"}
+expect = [
+  "held and all(v[:2] == [50000, 1] for v in held)",
+  "after and all(v[0] < 50000 and v[1] == 2 for v in after)",
+]

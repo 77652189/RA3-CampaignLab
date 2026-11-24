@@ -6,7 +6,6 @@
 [game]  # whole-game replays: a skirmish or 300+ s of game time
 test_ai_ignore_distance.py
 test_ai_team_fields.py
-test_aistart_bench_a.py
 test_cnv_parts.py
 test_count_modifier.py
 test_expansion_target.py
