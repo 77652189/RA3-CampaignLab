@@ -9,7 +9,7 @@ WAYPOINT(Player_1, power, spot) 75 frames after Go; every target NO_ATTACK, s1's
            for 30 s, 20 RADIATION a 0.1 s; dn: p1's Soviet yard deleted -- the bombers start from it, maybe no cast]
   f3 / fn  SpecialPowerFinalSquadron_L3 at the same spot, same counters. [~15 s on (3000 at speed 200), each enemy
            non-infantry within 100 up to 4 x 100 EXPLOSIVE; fn: p1's Japanese yard deleted]
-No bench yet.
+Bench 11-23: engine_protofx.readings.toml (o1 and the desolator as predicted but no yard needed; o3 / f3 / fn random).
 """
 from parts import Script, Test
 

@@ -1,0 +1,53 @@
+# Bench readings of checks/engine_protofx.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench 11-23, one run each (work/bench_results/engine_protofx__<variant>.json); the cast ~s5, 帧数 = frames since it.
+
+[[reading]]
+id = "protofx_o1_orbital_rank1_hits_the_centre_only"
+item = "脚本动作 PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT:specialpowerorbitalrefuse_rank1"
+scene = {build = "engine_protofx", check = "o1", until = 20}
+bench = "o1: 血0 血150 血250 血350 100 100 100 100 to s9, 55 at s9 (~70 frames after the cast), 20 from s10 to s49; the others 100 throughout"
+proves = "sim PROTOCOL_HITS: two hits on the centre within 75, nothing at 150 and past"
+expect = ["55 in [v[0] for v in vals(rows)]", "tuple(vals(rows)[-1]) == (20, 100, 100, 100)"]
+
+[[reading]]
+id = "protofx_o3_orbital_rank3_lands_at_random"
+item = "脚本动作 PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT:specialpowerorbitalrefuse_rank3"
+scene = {build = "engine_protofx", check = "o3", until = 20}
+bench = "o3: 100 throughout but 血150: 19 at s14 (~145 frames after the cast), then +1 a second to 55 at s49; the centre, 250, 350 untouched"
+proves = "the rank 3 debris hit the target at 150, not the centre"
+expect = "vals(rows)[-1][1] <= 30 and vals(rows)[-1][0] == 100"
+mismatch = "sim 100 throughout: rank 3 not simulated -- the big debris is thrown from 1400 at random (BombardArea and Physics), one run cannot place it"
+
+[[reading]]
+id = "protofx_d3_desolator_fields_tanks_to_a_floor"
+item = "脚本动作 PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT:specialpower_desolatorbomb_level3"
+scene = {build = "engine_protofx", check = "d3", until = 45}
+bench = "d3: 帧数 血0 血150 血200: 100 till ~74, f142 55 68 85, f149 50 65 84, f203 16 40 72; 1 1 20 at f453, 1 1 6 from f520 to the end (f756)"
+proves = "sim PROTOCOL_HITS: hits every 15 frames from 80, 47.5 / 33.9 / 15 on 0 / 150 / 200, stopping at 1 / 1 / 6 %; near f150 (the bench's f149 / f157 mean 48 63 83) within 6"
+expect = ["[v for v in vals(rows) if 145 <= v[0] <= 155]", "all(abs(a - b) <= 6 for v in vals(rows) if 145 <= v[0] <= 155 for a, b in zip(v[1:], (48, 63, 83)))", "tuple(vals(rows)[-1][1:]) == (1, 1, 6)"]
+
+[[reading]]
+id = "protofx_dn_desolator_needs_no_soviet_yard"
+item = "脚本动作 PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT:specialpower_desolatorbomb_level3"
+scene = {build = "engine_protofx", check = "dn", until = 45}
+bench = "dn (p1's Soviet yard deleted): as d3 within 1 % row by row -- f142 54 68 85, f520 on 1 1 6"
+proves = "sim the bombers need no yard (the book's cast asks none)"
+expect = ["[v for v in vals(rows) if 145 <= v[0] <= 155]", "all(abs(a - b) <= 6 for v in vals(rows) if 145 <= v[0] <= 155 for a, b in zip(v[1:], (48, 63, 83)))", "tuple(vals(rows)[-1][1:]) == (1, 1, 6)"]
+
+[[reading]]
+id = "protofx_f3_final_squadron_hits_some"
+item = "脚本动作 PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT:specialpowerfinalsquadron_l3"
+scene = {build = "engine_protofx", check = "f3", until = 20}
+bench = "f3: 血150 first down at f35 (99), 85 from f73; 血0 down from f65, 60 from f81; 血200 97 from f96; no change after"
+proves = "the squadron arrives ~2-6 s after the cast and hurts all three, unevenly (fn: 52 / 100 / 92)"
+expect = "min(vals(rows)[-1][1:]) < 90"
+mismatch = "sim 100 throughout: the final squadron not simulated -- its aircraft pick targets at random (f3 60 / 85 / 97, fn 52 / 100 / 92)"
+
+[[reading]]
+id = "protofx_fn_final_squadron_needs_no_japanese_yard"
+item = "脚本动作 PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT:specialpowerfinalsquadron_l3"
+scene = {build = "engine_protofx", check = "fn", until = 20}
+bench = "fn (p1's Japanese yard deleted): 血0 down from f29, 53 at f74, 52 from f81; 血200 92 from f81; 血150 100"
+proves = "the squadron comes with no Japanese yard"
+expect = "min(vals(rows)[-1][1:]) < 90"
+mismatch = "sim 100 throughout: the final squadron not simulated"

@@ -41,6 +41,20 @@ SUPERWEAPON_HITS = {
     # dead 61 frames after the cast, 350 whole (XML: 4 s, damage 2000, radius 300 -- one hit, flat inside, INFERRED).
     'SpecialPowerTelekineticProjectorDevice': [(61, [(0.0, 2000.0), (300.0, 2000.0)])],
 }
+# A player's protocol cast by script (act_ability._book_cast), keyed by the power's lower-case name, no caster object.
+# Bench 11-23 engine_protofx (base defenses of 1000 / tanks of 480; frames after the cast): orbital refuse rank 1 -- the
+# centre 55 % at ~70, 20 % from ~85, 150 / 250 / 350 untouched (XML: five debris of 300 radius 75; two hits INFERRED);
+# desolator bomb 3 -- tanks at 0 / 150 / 200 lose ~3 / 2.2 / 1 hp a frame from ~75 to ~520, a Soviet yard or not
+# (d3 = dn), and stop at 1 / 1 / 6 % (a hit every 15 frames from 80, the floor as a count of hits: INFERRED; the XML's
+# no-structure filter not modelled). Rank 3 and the final squadron land at random (o3: only the target at 150 hit;
+# f3 / fn differ): not simulated.
+PROTOCOL_HITS = {
+    'specialpowerorbitalrefuse_rank1': [(70, [(0.0, 450.0), (75.0, 450.0)]), (85, [(0.0, 350.0), (75.0, 350.0)])],
+    'specialpower_desolatorbomb_level3': [
+        (80 + 15 * k, [(0.0, 47.5 if k < 10 else 0.0), (150.0, 33.9 if k < 14 else 0.0), (200.0, 15.0)])
+        for k in range(30)
+    ],
+}
 # Iron Curtain: engine_super j -- a scripted cast keeps tanks at 0 and 150 from the waypoint whole against enemy fire for
 # ~355 frames (the 20 s modifier + the 3 s effect); NAMED_DAMAGE goes through (i). XML: vehicles and structures, aura
 # 100, yet g / a (each tank shot by one enemy of its own, NAMED_ATTACK_NAMED, open ground): tanks at 100 / 300 / 500 /

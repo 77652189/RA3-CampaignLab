@@ -53,7 +53,7 @@ class Specials:
                 t.set_last_damage(owner, by)
                 if t.hp <= 0 and t.alive:
                     first_death(t, by)
-                    destroy(t, f'被 {world.label(by)} 的超武打掉')
+                    destroy(t, f'被 {world.label(by) if by else owner} 的超武打掉')
 
     def movement_power_press(self, world, b, button, point, modify):
         """E171: a static waypoint rush; ordinary path movement with SDK speed. A292 (retail j07: made and pressed in

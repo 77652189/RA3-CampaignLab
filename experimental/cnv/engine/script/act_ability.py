@@ -23,7 +23,7 @@ import engine.objects.locomotion as simlocomotion
 import engine.players.tech as simtech
 from engine.kernel import interfaces, module
 from engine.ports.command import Command
-from engine.objects.power import CURTAIN, PACK_FRAMES, PACK_POWER, RELOAD_LAG, SUPERWEAPON_HITS, UNPACK_POWER, start_reload
+from engine.objects.power import CURTAIN, PACK_FRAMES, PACK_POWER, PROTOCOL_HITS, RELOAD_LAG, SUPERWEAPON_HITS, UNPACK_POWER, start_reload
 from engine.script.common import refined, team_crew
 from engine.world.handle import GAP_ACTION, free_name
 
@@ -231,9 +231,7 @@ def script_cast(sim, name, a, unit=None):
         if hits and q is not None and cooling:
             sim.note('技能', f'{sim.label(b)} 的 {a[1]} 还在重装：没打出来')
         elif hits and q is not None:       # a script's cast fires though the power is not ready
-            now = sim.frame_now()
-            for after, table in hits:
-                sim.blasts.append((now + after, q[0], q[1], table, b.owner, b))
+            _land(sim, sim.frame_now(), q, hits, b.owner, b)
         curtain_host = True
         if a[1] == 'SpecialPowerIronCurtain' and b and b.alive:
             module = simunits.ocl_power(b.template, a[1], sim.own)
@@ -311,17 +309,26 @@ def _seen(sim, owner, power, serial, q=None, n=1):
     return now
 
 
+def _land(sim, now, q, hits, owner, by):
+    """A superweapon table's hits (power.SUPERWEAPON_HITS / PROTOCOL_HITS) queued at q from frame `now`."""
+    sim.blasts.extend((now + after, q[0], q[1], table, owner, by) for after, table in hits)
+
+
 def _book_cast(sim, a, power, own, living):
     """Player a[0]'s protocol `power` from its book at a[2]: held or not, ready or not, a yard or not (bench
     engine_acts_ui n / g, a328: both tanks got their drones, g's READY 3 -> 0); seen cast (no caster object); its
     ReloadTime starts (SKIRMISH_SPECIAL_POWER_READY reads it). The point defense drones: each of the player's own
     vehicles / ships within 100 (its bounding circle) is given POINT_DEFENSE_DRONE_ATTACHED (INFERRED: an allied
     player's left out; the drone itself, its leech and death, not simulated) -- True; every other protocol's effect is
-    not simulated -- False."""
+    not simulated -- False. Orbital refuse rank 1 and the desolator bomb 3 land as superweapon hits (PROTOCOL_HITS, bench
+    engine_protofx: the player's, no caster object)."""
     p, q, key = a[0], sim.point(a[2]), power.lower()
     now, rules = _seen(sim, p, power, None, q), simunits.power_rules('PlayerSpellBook', power, own)
     sim.power_at[(p, key)] = now + (rules['reload'] if rules else 0)
     sim.used.add('special power')
+    if key in PROTOCOL_HITS and q is not None:
+        _land(sim, now, q, PROTOCOL_HITS[key], p, None)
+        return True
     if key != 'specialpower_pointdefensedrones' or q is None:
         return False
     for t in living:
