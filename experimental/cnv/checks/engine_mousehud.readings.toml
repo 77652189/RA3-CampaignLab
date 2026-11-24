@@ -1,0 +1,26 @@
+# Bench readings of checks/engine_mousehud.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A negative baseline only: the simulator has no bench mouse-event consumer, and the native sale on b (SellButton
+# restored, predicted 4 / 2800) was never seen on the bench (f414 5 / 2400) -- the UI gate stays unmeasured
+# (DISABLE_MOUSE_HUD_FIXED_ELEMENT 未做, work/re/c_mousehud_report.md).
+
+[[reading]]
+id = "mousehud_a_disabled_sellbutton_click_sells_nothing"
+scene = {build = "engine_mousehud", check = "a", until = 25, script = "不打"}
+bench = "a, line C CampMouseHUDA_mcp_1116_131945 (work/re/c_mousehud_measured.json), 存活 资金 at logic frames: f43..53 7 2400 | f63..356 5 2400 (13 readings; clicks at screen (1126, 222) and (723, 393))"
+proves = "with SellButton disabled the native clicks sell nothing: only the script sale's two plants go, money stays 2400. Moved from the replay test (A338)"
+let = {want = "lambda f: [7, 2400] if 43 <= f <= 53 else [5, 2400] if 63 <= f <= 356 else None"}
+expect = [
+  "all(v[:2] == want(v[2]) for v in vals(rows) if want(v[2]) is not None)",
+  "{tuple(want(v[2])) for v in vals(rows) if want(v[2]) is not None} == {(7, 2400), (5, 2400)}",
+]
+
+[[reading]]
+id = "mousehud_b_restored_sellbutton_click_sells_nothing_either"
+scene = {build = "engine_mousehud", check = "b", until = 29, script = "不打"}
+bench = "b, line C CampMouseHUDB_mcp_1116_132428, 存活 资金 at logic frames: f45..61 7 2400 | f79..414 5 2400 (13 readings; the clicks only selected the plant)"
+proves = "SellButton disabled then restored: the native clicks still sell nothing (predicted 4 / 2800 not seen; per-call Esc may cancel sale mode, INFERRED), as the simulator, which has no mouse input. Moved from the replay test and its strict xfail (A338)"
+let = {want = "lambda f: [7, 2400] if 45 <= f <= 61 else [5, 2400] if 79 <= f <= 414 else None"}
+expect = [
+  "all(v[:2] == want(v[2]) for v in vals(rows) if want(v[2]) is not None)",
+  "{tuple(want(v[2])) for v in vals(rows) if want(v[2]) is not None} == {(7, 2400), (5, 2400)}",
+]

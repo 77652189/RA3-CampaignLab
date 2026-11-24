@@ -1,0 +1,38 @@
+# Bench readings of checks/engine_attackarea.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The bench's getter tail after f460 (a 位置码 30025, 7, 78025 ...) is post-death accumulation / OCR, not a reading.
+
+[[reading]]
+id = "attackarea_a_north_area_order_hits_nothing"
+scene = {build = "engine_attackarea", check = "a", until = 23, script = "不打"}
+bench = "a, line C (work/re/c_attackarea_report.md), 北靶血量 南靶血量 对照位置码 at logic frames: f41..329 100 100 3100 (36 readings)"
+proves = "the Dreadnought held from autoacquire and ordered NAMED_ATTACK_AREA on the north plant's area at 4 s: no damage anywhere up to the named attacks at 18 s, the control ship stays in its area. A quiet result, not area-attack semantics. Moved from the replay test (A338)"
+let = {w = "[v[:3] for v in vals(rows) if 41 <= v[3] <= 329]"}
+expect = "len(w) >= 15 and all(x == [100, 100, 3100] for x in w)"
+
+[[reading]]
+id = "attackarea_b_south_area_order_with_the_map_revealed_hits_nothing"
+scene = {build = "engine_attackarea", check = "b", until = 23, script = "不打"}
+bench = "b, line C (work/re/c_attackarea_report.md), 北靶血量 南靶血量 对照位置码 at logic frames: f48..334 100 100 3100 (33 readings)"
+proves = "the same with the map revealed (MAP_REVEAL_ALL_PERM) and the areas swapped (south): still no damage before the named attacks. Moved from the replay test (A338)"
+let = {w = "[v[:3] for v in vals(rows) if 48 <= v[3] <= 334]"}
+expect = "len(w) >= 15 and all(x == [100, 100, 3100] for x in w)"
+
+[[reading]]
+id = "attackarea_a_named_attacks_after_the_area_window_hit"
+item = "脚本动作 NAMED_ATTACK_AREA"
+scene = {build = "engine_attackarea", check = "a", until = 31, script = "不打"}
+bench = "a, line C: 北靶 南靶 位置码 f329 100 100 3100 | f337 100 75 3100 | f354 100 50 3075 | f369 100 25 3050 | f377..450 100 25 3025 (10 readings at f377..450)"
+proves = "the positive control: NAMED_ATTACK_NAMED at 18 s (gun on the south plant, control ship on the other) hits within a second, the south plant to 25 %, the other's 位置码 to 3025. Moved from the strict-xfail full replay (A338)"
+mismatch = "sim 100 100 3100 at every row to f451 (bench 100 25 3025 from f377): with the player's units holding fire (不打) the simulator's named attacks never fire, and NAMED_ATTACK_AREA is not recognised (sim unknown 1); full missile timing unresolved after two runs"
+let = {w = "[v[:3] for v in vals(rows) if 377 <= v[3] <= 450]"}
+expect = "w[0] == [100, 25, 3025] and all(x == w[0] for x in w)"
+
+[[reading]]
+id = "attackarea_b_named_attacks_after_the_area_window_hit"
+item = "脚本动作 NAMED_ATTACK_AREA"
+scene = {build = "engine_attackarea", check = "b", until = 31, script = "不打"}
+bench = "b, line C: 北靶 南靶 位置码 f334 100 100 3100 | f344 75 100 3075 | f354 50 100 3075 | f372..453 25 100 3025 (10 readings at f372..453)"
+proves = "the same with the areas swapped: the gun's named attack on the north plant takes it to 25 %. Moved from the strict-xfail full replay (A338)"
+mismatch = "sim 100 100 3100 at every row to f451 (bench 25 100 3025 from f372); as a"
+let = {w = "[v[:3] for v in vals(rows) if 372 <= v[3] <= 453]"}
+expect = "w[0] == [25, 100, 3025] and all(x == w[0] for x in w)"
