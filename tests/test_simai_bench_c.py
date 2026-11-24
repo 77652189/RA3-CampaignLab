@@ -371,7 +371,11 @@ def test_capture_tech_opens_with_the_cleanup_on_the_tech_building_share():
     absent at f1951 and present (empty, inactive) at f1966, the same sample as BalancedCleanup's first team. Its
     TechBuildingShare (100%, Above false) reads simai's 'tech buildings' (own, all, players): the map's one
     neutral OilDerrick (KindOf NEUTRAL_TECH) owned by nobody -> share 0 -> on. Without the fact the state never
-    opened (A round 191)."""
+    opened (A round 191).
+    The state can be drawn from the f1951 evaluation on (weight > 0, a target), the window's; which evaluation's
+    weighted draw (~25 draws over ~15 equal candidates) takes it is the draw's: model 929e5a8 (the egg state takes no
+    draw) moved it, seeds 1-6 made it f1952 / f1967 half and half (seed 1 f1967). One evaluation's slack, not the
+    sample shared with Cleanup."""
     w = simai_run.run('aiskirmc', 'm', until=132, lib=simai.model()['xmldata'].Library())
     brain, = w.brains.values()
     own, total, players = brain.facts()['tech buildings']
@@ -380,9 +384,7 @@ def test_capture_tech_opens_with_the_cleanup_on_the_tech_building_share():
     for frame, what, key, *_ in brain.ai.teams.log:
         if what == 'team':
             made.setdefault(key[0], frame)
-    assert 'AlliedCaptureTech_MEDIUM' in made
-    assert made['AlliedCaptureTech_MEDIUM'] == made['BalancedCleanup']
-    assert 1951 < made['AlliedCaptureTech_MEDIUM'] <= 1966
+    assert 1951 < made.get('AlliedCaptureTech_MEDIUM', 0) <= 1966 + brain.ai.states.every
 
 
 def test_capture_tech_holds_two_escorts_out_of_the_cleanup():
