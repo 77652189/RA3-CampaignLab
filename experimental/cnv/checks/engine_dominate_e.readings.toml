@@ -1,0 +1,14 @@
+# Bench readings of checks/engine_dominate_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E216: DominateEnemySpecialPower, the Allied spy's bribe pressed by the map at GO (2 s) with four s1 things around.
+# Inf / Veh = frames from GO the near infantry / the vehicle is still s1's; Taken = 1 + 10 + 100 + 1000 of those p1
+# owns at END (near infantry, vehicle, far infantry 90 out, sentry gun).
+
+[[reading]]
+id = "a_bribe_takes_the_enemy_infantry_and_vehicles_within_its_radius_at_once"
+scene = {build = "engine_dominate_e", check = "a", until = 13}
+item = "物体模块 Behaviors/DominateEnemySpecialPower"
+bench = "CampDominEA_mcp_1124_054131 at 4a997d63 + E216, PASS: 150 0 0 11 (s15-s50 the same)"
+proves = """DominateEnemySpecialPower: a cast takes for its holder's owner the ENEMIES of the Include kinds (VEHICLE \
+INFANTRY) within DominateRadius 65 -- the infantry 40 and the vehicle 50 away, not the infantry 90 away nor the \
+structure 50 away -- the press's frame itself (UnpackTime 0: not after the 3.66 s pack)"""
+expect = ["counter('E216Taken') == 11", "rows[-1]['近步兵'] == 0", "rows[-1]['近车'] == 0"]

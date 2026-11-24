@@ -23,6 +23,7 @@ PATH_ARG = 24                           # a waypoint path's label (*_FOLLOW_WAYP
 RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j04 legacy id; engine_eggcmd probes it
                    'Command_UnPackJapanNavalYardEgg',  # SDK JapanNavalYardEggCommandSet; engine_eggnav
                    'Command_CaptureBuilding',           # an engineer takes a building (AlliedEngineerCommandSet)
+                   'Command_ActivateBribeSpecialPower',  # the spy's bribe (engine_dominate_e)
                    'Command_ToggleArmorUp',            # retail SovietMiner's reactive armor (InformTarget control)
                    'Command_UnPackAlliedMCV',           # the MCV deploys (AlliedMCVCommandSet)
                    'Command_UnPackSovietMCV', 'Command_UnPackJapanMCV',     # the same ReplaceSelfSpecialAbility

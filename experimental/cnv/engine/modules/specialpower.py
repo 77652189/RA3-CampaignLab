@@ -9,6 +9,7 @@ started; simpower.ready_at): several of these on one thing record as one field, 
 A thing whose template has no block for a power cast on it (35 retail template / power pairs: ReplaceSelf's packs,
 the player spell book's nearest-template blocks, the structures' PlayerPowerManager powers; and simmicro's Bonzai,
 keyed by its command) is given one then (simpower.start_reload, World.attach), as the body's dict took any key."""
+import math
 import re
 
 from engine.kernel import factory, interfaces, module
@@ -25,6 +26,7 @@ FPS = 15                        # the game's logic frames a second (bench 2026-1
 ASSIGN = 'AssignSlavesTargetObjectSpecialPower'     # its own class below (AssignSlaves: a SpecialPower with a dispatch)
 RECALL = 'RecallUnitsSpecialPower'                  # its own class below (RecallUnits: whom a cast calls home)
 RETURN = 'ReturnToProducerSpecialPower'             # its own class below (ReturnToProducer: a plane flies home)
+DOMINATE = 'DominateEnemySpecialPower'              # its own class below (DominateEnemy: whom a cast takes)
 
 
 class SpecialPowerData(module.ModuleData):
@@ -38,7 +40,7 @@ class SpecialPowerData(module.ModuleData):
                    (templates.attr(head, 'AvailableAtStart') or 'true').lower() != 'false')
 
 
-@factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN)))
+@factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN, DOMINATE)))
 class SpecialPower(module.Module, interfaces.SpecialPower):
     """Data and a reload frame; no update of its own (a reload is over once the frame passes it)."""
     DATA = SpecialPowerData
@@ -107,6 +109,38 @@ class RecallUnits(SpecialPower, interfaces.Recall):
         me = self.thing
         return [(b, me) for b in things if b.alive and b.made_by == me.name and b.owner == me.owner
                 and 'AIRCRAFT' in b.kinds][:self.data.most]
+
+
+class DominateData(SpecialPowerData):
+    def __init__(self, power=None, radius=0.0, keep=False, rels=(), kinds=()):
+        super().__init__(power)
+        self.radius = radius        # DominateRadius
+        self.keep = keep            # PermanentlyConvert (false takes nothing: units/clone.py, bench 2026-10-22)
+        self.rels = rels            # AttributeModifierAffects Relationship / Include
+        self.kinds = kinds
+
+    @classmethod
+    def parse(cls, head, inner):
+        a = re.search(r'<AttributeModifierAffects\b[^>]*', inner or '')
+        f = lambda name: (templates.attr(a.group(0), name) or '').split() if a else []    # noqa: E731
+        keep = (templates.attr(head, 'PermanentlyConvert') or '').lower() == 'true' and not f('StatusBitFlags')
+        return cls(templates.attr(head, 'SpecialPowerTemplate'), templates.num(templates.attr(head, 'DominateRadius')),
+                   keep, f('Relationship'), f('Include'))
+
+
+@factory.module(DOMINATE)
+class DominateEnemy(SpecialPower, interfaces.Dominate):
+    """DominateEnemySpecialPower (E216, checks/engine_dominate_e.readings.toml): a cast takes for its holder's owner the
+    living things of the Relationship and an Include kind within DominateRadius of it, the press's frame (the host
+    hands them over: act_ability). The spy's bribe benched (40 / 50 taken, 90 and a structure not). INFERRED: the
+    centre distance, Rule ANY; not modelled: the pack / BUSY / stealth options, the FX, a StatusBitFlags filter (our
+    mind maiden's, units/clone.py: such a block takes nothing, as before)."""
+    DATA = DominateData
+
+    def taken(self, things, relation):
+        me, d = self.thing, self.data
+        return [t for t in things if t.alive and t is not me and relation(me.owner, t.owner) in d.rels
+                and set(d.kinds) & t.kinds and math.hypot(t.x - me.x, t.y - me.y) <= d.radius] if d.keep else []
 
 
 class ReturnData(SpecialPowerData):

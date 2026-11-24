@@ -165,6 +165,16 @@ def named_buttons(sim, name, a, script, unit=None):
         _seen(sim, b.owner, power, b.serial, n=n)
         sim.note('技能', f'{sim.label(b)} 按 {a[1]}：记 {n} 次施放')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and any(
+            m.power() == cpower for m in body(a[0]).find(interfaces.Dominate)):
+        # engine_dominate_e (E216): the spy's bribe takes the enemies around it the press's frame
+        b = body(a[0])
+        _seen(sim, b.owner, cpower, b.serial)
+        for m in (m for m in b.find(interfaces.Dominate) if m.power() == cpower):
+            for t in m.taken(list(sim.bodies.values()), sim.relation):
+                t.owner = b.owner
+                sim.note('易主', f'{sim.label(t)} 被收买')
+        sim.change()
+    elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and any(
             m.power() == cpower for m in body(a[0]).find(interfaces.Recall)):
         # engine_recall_e (E184): the airport's recall seen cast once, the plane it made flies back to it;
         # engine_returnproducer_e (E173): the Apollo's own return, cast once, USER_1 on, it flies to its airport

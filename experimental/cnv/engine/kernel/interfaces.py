@@ -624,6 +624,15 @@ class Recall(Interface):
         return None
 
 
+class Dominate(Interface):
+    """DominateEnemySpecialPower, a SpecialPower too: the things a cast takes for its holder's owner (taken: of the
+    living given, by a relation(owner, owner) -> 'ENEMIES' / ...)."""
+    __slots__ = ()
+
+    def taken(self, things, relation):
+        raise NotImplementedError
+
+
 class Repair(Interface):
     """RepairUpdate (step M13): its rules (rules: rate, toggleable, dead, cost), whether its block is the measured
     shape (measured: no field outside rules' read), the repair under way (job: the host's dict, None none), setting it
