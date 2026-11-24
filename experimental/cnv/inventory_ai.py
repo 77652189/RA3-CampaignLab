@@ -586,12 +586,6 @@ NOTES = {
         'gap：人数——模型（fca219e）s131防御9→0/清扫99→9，实机8（模型多造1个，造兵归B）；s134池峰2模型没有'
         '（mismatch experimental/cnv/checks/engine_aiskirm.readings.toml::release_to_priority_transfers_defense_without_a_pool_round_trip）；ALWAYS_RELEASE、'
         '精确时钟仍gap；见 work/re/handoff.md 第202轮、c_release_report.md'),
-    '微操/AIMicroManagerData.PassiveTargetSearchDistance': (TODO,
-        'E104 engine_aipassive_distance aipsdz/aipsdt/aipsds/aipsdl：0/1/200/600均f140状态6选四人旁厂，'
-        'f320状态0；中心距350.3、逐兵至少324.3，微操目标不同于战术目标。两轮未出现距离分离；'
-        '读数 checks/engine_aipassive_distance.readings.toml（B 由回放测试迁入）：选择/存活对上，精确首选时钟 mismatch；'
-        '本入口未显现消费者，零值全局语义/距离基准/其他入口仍gap，暂停、不加猜测消费者、不晋升；'
-        '见 work/re/e104_passive_distance.md、work/re/handoff-e.md'),
     '造兵/BuildEntry.Heuristic': (BENCHED,
         'E78 engine_aiskirm z：BEST_UNIT_EXPECTED 两组台上 PASS；[s150,s160) 征召兵组维和5→6、标枪0，'
         '锤子组标枪7→8→9、维和0；experimental/cnv/checks/engine_aiskirm.readings.toml::best_unit_expected_picks_the_counter_infantry '
