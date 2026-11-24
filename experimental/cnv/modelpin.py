@@ -1,5 +1,5 @@
-r"""The private engine model pinned by version (ADR 0030 item 1): the simulator (sim.engine_model) and the AI and the
-proxy player (package, which simai.model and simproxy.proxy load through) refuse to load RA3-EngineModel
+r"""The private engine model pinned by version (ADR 0030 item 1): the simulator (sim.engine_model) and the AI (package,
+which simai.model loads through; the proxy player is public, experimental/cnv/proxy) refuse to load RA3-EngineModel
 unless its HEAD is the commit experimental/cnv/inventory_model.rev names. One public commit then fixes the model the
 simulator runs, so a bisect, a full run and the refactor's frame-by-frame record compare like with like (11-17: the
 B228 public commit read red against a model checkout that was another commit).
@@ -65,8 +65,8 @@ def check(root, rev_file=REV_FILE):
 def package(folder):
     """The engine model's ra3model package, loaded by file as sim.engine_model does (nothing added to sys.path, guard
     G4): its submodules then import by name through the package's own path. Only the commit inventory_model.rev
-    pins loads (check, ADR 0030): simai.model and simproxy.proxy come through here (R3 13f-2d: moved from
-    simproxy, so the skirmish AI, a layered module, loads its model without importing the proxy player)."""
+    pins loads (check, ADR 0030): simai.model comes through here (R3 13f-2d: moved from simproxy, so the
+    skirmish AI, a layered module, loads its model without importing the proxy player)."""
     check(os.path.dirname(os.path.abspath(folder)))
     if 'ra3model' in sys.modules:
         return sys.modules['ra3model']

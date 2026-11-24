@@ -419,7 +419,7 @@ CONTAINERS = {'dict', 'list', 'set', 'defaultdict', 'OrderedDict', 'Counter', 'd
 # today's process caches of read-only retail data (and the private model's loaders): only shrinks; a line goes when
 # its cache moves into the template data port's instance
 PROCESS_CACHES = {
-    ('sim', '_MODEL'), ('engine.ai.core', '_AI'), ('simproxy', '_PROXY'), ('engine.objects.garrison', '_memo'), ('engine.combat.sweeps', '_weapon_blocks'),
+    ('sim', '_MODEL'), ('engine.ai.core', '_AI'), ('engine.objects.garrison', '_memo'), ('engine.combat.sweeps', '_weapon_blocks'),
     ('engine.data.units', '_reads'),     # T9 (11-18, coordinator's order): the SDK text / template reads, read-only data
     *(('engine.data.units', n) for n in (
         '_acquire', '_all_defines', '_command_powers', '_equivalent', '_fight',

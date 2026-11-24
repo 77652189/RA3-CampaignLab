@@ -1,7 +1,6 @@
 """The proxy player on the plan simulator (experimental/cnv/simproxy.py): A4 played from the start to its ending, a
 playtest report out of it, the world's seam (what the player sees, the orders it takes, the score screen) and the
-ice criterion (report.power_at: 冰在哪) on a real run. Skipped where the engine line's ra3model.proxy is not on this
-computer (labpaths.ENGINE_MODEL), as the simulator's engine model is."""
+ice criterion (report.power_at: 冰在哪) on a real run."""
 import importlib.util
 import json
 import math
@@ -15,19 +14,12 @@ _spec = importlib.util.spec_from_file_location('simproxy', ROOT / 'experimental'
 simproxy = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simproxy)
 
-pytestmark = pytest.mark.skipif(not simproxy.available(), reason='no ra3model.proxy (labpaths.ENGINE_MODEL)')
-
 FPS = simproxy.FPS
 
 
 @pytest.fixture(scope='module')
-def lib():
-    return simproxy.proxy()['xmldata'].Library()
-
-
-@pytest.fixture(scope='module')
-def a4_run(lib):
-    return simproxy.play('a4', lib=lib)
+def a4_run():
+    return simproxy.play('a4')
 
 
 def _after_scene(w, extra=0.0, demo_holds_fire=False):
@@ -92,8 +84,17 @@ def test_the_score_screen_is_the_simulators_deaths(a4_run):
     assert [l.frame for l in got] == sorted(l.frame for l in got)
 
 
-def test_what_the_player_sees_at_the_start(lib):
-    w = simproxy.SimWorld('a4', lib=lib)
+def test_the_matchup_reads_a_fresh_units_guns_against_the_victims_armour():
+    """proxy/matchup on the simulator's data: an empty IFV counts no rider gun (its upgrade lines), so it is made for
+    the air alone; the Javelin trooper's rocket is for vehicles and aircraft, not infantry."""
+    m = simproxy.matchup.Matchup()
+    assert m.good_against('AlliedAntiAirVehicleTech1') == {'air'}
+    assert m.good_against('AlliedAntiVehicleInfantry') == {'air', 'vehicle'}
+    assert m.dps('AlliedAntiAirVehicleTech1', 'AlliedAntiInfantryInfantry') > 0 and m.cost('AlliedPowerPlant') > 0
+
+
+def test_what_the_player_sees_at_the_start():
+    w = simproxy.SimWorld('a4')
     obs = w.observe()
     assert obs.me == w.sim.human and obs.frame == 0
     assert len(obs.mine) == 10                                      # 1 engineer, 3 Guardians, 4 Peacekeepers, 2 Javelins
@@ -115,8 +116,8 @@ def test_what_the_player_sees_at_the_start(lib):
     assert obs.cinematic and not w.issue(w.pw.Order('move', (obs.mine[0].id,), pos=(1200.0, 2680.0)))
 
 
-def test_orders_move_attack_and_refusals(lib):
-    w = simproxy.SimWorld('a4', lib=lib)
+def test_orders_move_attack_and_refusals():
+    w = simproxy.SimWorld('a4')
     _after_scene(w)
     obs = w.observe()
     pw = w.pw
@@ -136,11 +137,11 @@ def test_orders_move_attack_and_refusals(lib):
     assert b.goal is sign and b.mode == 'attack'
 
 
-def test_build_through_the_simulators_sidebar(lib):
+def test_build_through_the_simulators_sidebar():
     """engine_production a (a barracks, 2000): the lit buttons come as Offers with the data's counters, a build order
     queues at the barracks, the money the player sees drops by the whole cost at once (the queue's debt), and the
     unit comes out as one of the player's."""
-    w = simproxy.SimWorld('engine_production', check='a', lib=lib)
+    w = simproxy.SimWorld('engine_production', check='a')
     w.step(30)
     obs = w.observe()
     pw = w.pw
@@ -159,10 +160,10 @@ def test_build_through_the_simulators_sidebar(lib):
     assert not w.issue(pw.Order('build', template='AlliedInfiltrationInfantry'))
 
 
-def test_the_ice_goes_where_the_player_put_it(lib):
+def test_the_ice_goes_where_the_player_put_it():
     """A ground power: the engineer walks to the spot and the ice core stands there (the simulator's R5), and the
     report's 冰在哪 criterion (report.power_at) holds for that place and not for another."""
-    w = simproxy.SimWorld('a4', lib=lib)
+    w = simproxy.SimWorld('a4')
     # 8 s: the scene's own ice (a scripted cast) starts the engineer's 40 s reload anew (bench engine_skill c); it is
     # over ~5 s after the controls come back, and the player's click heeds it (Sim.order_power)
     _after_scene(w, 8, demo_holds_fire=True)
@@ -186,9 +187,9 @@ def test_the_ice_goes_where_the_player_put_it(lib):
     assert venue.test(tr) == f and last.test(tr) is None
 
 
-def test_a4_every_way_has_a_junction_on_the_convoys_road(lib):
+def test_a4_every_way_has_a_junction_on_the_convoys_road():
     """Where a guard waits for a wave: the way's x, the convoy road's y (CHOKES 'road'), one per way, each on the road."""
-    w = simproxy.SimWorld('a4', lib=lib)
+    w = simproxy.SimWorld('a4')
     j = w.junctions()
     ways = [c.name for c in w.observe().chokes]
     assert set(j) == set(ways) and len(ways) == 6
@@ -197,7 +198,7 @@ def test_a4_every_way_has_a_junction_on_the_convoys_road(lib):
     assert j['一号'] == (w.sim.point('inside 1')[0], road_y) and j['二号'][0] == w.sim.point('inside 2')[0]
 
 
-def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
+def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run):
     """The level gives only what a human sees (simproxy.CHOKES: the horn's countdown, the ways, the ice power); the
     proxy decides when and which (player._blocks). The default play ices the venue's streets before a horn and the
     report's 冰在哪 criterion sees it; Style(block=0) (the plain play) never ices, and compare() puts the two side by
@@ -206,7 +207,7 @@ def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
     blocks = [m for m in rep['moments'] if m['what'] == 'block']
     assert blocks and rep['goals']['会场冻街口']['met']
     assert all(m['detail'].split(' by ')[0] in {c[0] for c in simproxy.CHOKES['a4']['ways']} for m in blocks)
-    plain, _ = simproxy.play('a4', style=w.p['player'].Style(block=0), label='不放冰', lib=lib)
+    plain, _ = simproxy.play('a4', style=w.p['player'].Style(block=0), label='不放冰')
     assert not [m for m in plain['moments'] if m['what'] == 'block']
     assert not plain['goals']['会场冻街口']['met'] and not plain['goals']['最后一程冻口子']['met']
     # simpath.HOLD_SPOTS on (11-09): both plays' convoys halt with no truck lost and the runs go to the clock (the proxy
@@ -227,11 +228,11 @@ def test_a4_the_proxy_ices_the_streets_on_its_own_and_compares(a4_run, lib):
     assert '挡路 0 次' in table and '共 2 局' in table and '会场冻街口 1/2' in table
 
 
-def test_a4_show_run_reads_the_presentation_and_changes_no_rule(a4_run, lib):
+def test_a4_show_run_reads_the_presentation_and_changes_no_rule(a4_run):
     """--compare plays with simshow.Show on the run (presentation records on the port's taps): rep['world']['show'] is the problems a
     player would see (readable lines), and the run itself is the same as the plain one (same ending, same moment)."""
     rep, w = a4_run
-    shown, _ = simproxy.play('a4', label='看得见', lib=lib, show=True)
+    shown, _ = simproxy.play('a4', label='看得见', show=True)
     assert isinstance(shown['world']['show'], list) and all(isinstance(x, str) for x in shown['world']['show'])
     assert 'show' not in rep['world']
     assert shown['world']['simulator_ending'] == rep['world']['simulator_ending']

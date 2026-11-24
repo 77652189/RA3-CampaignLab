@@ -1,19 +1,18 @@
-r"""The proxy player on the plan simulator: sim.Sim behind the proxy player's World seam (the engine line's
-RA3-EngineModel ra3model/proxy, labpaths.ENGINE_MODEL), so a level is played start to end by a player who acts as the
+r"""The proxy player on the plan simulator: sim.Sim behind the proxy player's World seam (experimental/cnv/proxy, a
+public player of our own design: ADR 0033 3), so a level is played start to end by a player who acts as the
 user says he plays (counter by unit kind, pull back the wounded, knock out the pressure source first) and a playtest
 report comes out: won or lost, when, what each side lost, whether the level's clever solution (巧解) was used.
 
 This file only calls the simulator (Sim's own world: bodies, side_sees, act, step and sample as Sim.run does; its
-orders through the command port, engine/ports/command.py, R3 13e); it changes none of sim.py's rules. Where the proxy package is not on this computer (a clean
-clone) nothing here runs: available() is False and the tests skip, as sim.py's engine model does.
+orders through the command port, engine/ports/command.py, R3 13e); it changes none of sim.py's rules.
 
   python -I -X utf8 experimental/cnv/simproxy.py [level] [--until <seconds>] [--json <file>]
 
-What the world shows the player (Observation, ra3model/proxy/world.py):
+What the world shows the player (Observation, proxy/world.py):
   mine    the player's own units that move (no buildings, no scenery), as Mine; good_against / rates / cost from the
-          proxy's Matchup on the SDK's data when the template is a retail one, else roles_from_name (CNV_* parts)
+          proxy's Matchup on the simulator's unit data when the template is a retail one, else roles_from_name (CNV_* parts)
   seen    every living, non-scenery body of an enemy or of the civilians the player sees now (Sim.side_sees: vision,
-          the high-ground rule, reveals) as ai.targets.Thing; civilians' owner ''
+          the high-ground rule, reveals) as proxy world.Thing; civilians' owner ''
   money   Sim.money less what the player's queued builds still owe; offers: Sim.offers (the live factories' lit
           buttons) with Matchup's good_against / rates; a 'build' order is Sim.order_build (refused when no factory
           of the player's builds it now -- A4 has none)
@@ -31,8 +30,6 @@ not a body with a lifetime of its own -- ice walls melting are not losses), the 
 The end: Sim.ending ('赢' -> 'win', '输' -> 'lose'), else the run's frames run out ('timeout').
 """
 import argparse
-import importlib
-import importlib.util
 import json
 import math
 import os
@@ -42,14 +39,13 @@ import weakref
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 
-import labpaths  # noqa: E402
-import modelpin  # noqa: E402
 import sim  # noqa: E402
 import engine.combat.range as simrange  # noqa: E402
 import engine.data.units as simunits  # noqa: E402
 import engine.world.handle as simworld  # noqa: E402
 from engine.modules import lifetime as lifetime_module  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
+from proxy import matchup, player, report as preport, world as pworld  # noqa: E402
 
 FPS = 15
 DIFFICULTY = 'normal'
@@ -96,7 +92,7 @@ TARGET_GOALS = {
     'a4': (('拆北营指挥所', 'north command', '第 3 段：指挥所一倒港口的兵撤走、车队走最后一程'),),
 }
 
-_PROXY = {}
+PROXY = {'world': pworld, 'player': player, 'report': preport, 'matchup': matchup}   # SimWorld.p
 
 # What the proxy player reads on the Sim beyond the world (simworld.WORLD_API): the orders a player gives, the run's
 # end and its advance, the bank and the build queues, the lit buttons, the on-screen countdowns, the input lock, the log
@@ -121,38 +117,12 @@ class Peers:
 
 
 
-def proxy():
-    """The engine line's ra3model.proxy modules (world, player, report, matchup) as a namespace dict, or None."""
-    if 'got' not in _PROXY:
-        root = labpaths.ENGINE_MODEL
-        got = None
-        if os.path.isfile(os.path.join(root, 'ra3model', 'proxy', 'world.py')):
-            try:
-                modelpin.package(os.path.join(root, 'ra3model'))
-                got = {k: importlib.import_module(f'ra3model.proxy.{k}') for k in ('world', 'player', 'report',
-                                                                                   'matchup')}
-                got['targets'] = importlib.import_module('ra3model.ai.targets')
-                got['xmldata'] = importlib.import_module('ra3model.objects.xmldata')
-            except ImportError:
-                got = None
-        _PROXY['got'] = got
-    return _PROXY['got']
-
-
-def available():
-    return proxy() is not None
-
-
-
 class SimWorld:
     """A level in the plan simulator as the proxy player's World (observe / issue / step / losses)."""
 
-    def __init__(self, level='a4', check='', script='', difficulty=DIFFICULTY, leads=None, lib=None, show=False):
+    def __init__(self, level='a4', check='', script='', difficulty=DIFFICULTY, leads=None, show=False):
         import build
-        p = proxy()
-        if p is None:
-            raise RuntimeError(f'ra3model.proxy not found under {labpaths.ENGINE_MODEL}')
-        self.p, self.pw = p, p['world']
+        self.p, self.pw = PROXY, pworld
         self.level = level
         m, t, _ = build.resolve(level, check)
         self.sim = sim.Sim(m, t, difficulty, script)
@@ -172,7 +142,7 @@ class SimWorld:
         names = LEADS.get(level, ()) if leads is None else leads
         self.leads = [tuple(q) for q in (self.sim.point(n) for n in names) if q]
         self.escort = [s.m.cast[n].name for n in ESCORT.get(level, ()) if n in s.m.cast] if (s := self.sim) else []
-        self.match = p['matchup'].Matchup(lib if lib is not None else p['xmldata'].Library())
+        self.match = matchup.Matchup()
         self._offer = {}
         self.refused = []                       # (frame, Order, why) the world would not take
         self._blips, self._log_read = [], 0     # minimap flashes seen so far (blips), how far Sim.log is read
@@ -207,8 +177,7 @@ class SimWorld:
     def _data(self, template):
         """(cost, good_against, rates) of a template: the SDK's data, or the name's guess for a part of ours."""
         if template not in self._offer:
-            tpl = self.match.lib.template(template)
-            if tpl is not None:
+            if self.match.known(template):
                 o = self.match.offer(template)
                 self._offer[template] = (o.cost, o.good_against, o.rates)
             else:
@@ -229,7 +198,7 @@ class SimWorld:
     def _thing(self, b):
         cost, _, _ = self._data(b.template)
         goal = b.goal if isinstance(b.goal, sim.Body) else None
-        return self.p['targets'].Thing(self._id(b), '' if b.owner == simworld.CIV else b.owner, b.template,
+        return pworld.Thing(self._id(b), '' if b.owner == simworld.CIV else b.owner, b.template,
                                        frozenset(b.kinds), frozenset(b.status), b.x, b.y,
                                        water=b.surface == 'water', value=float(cost), hits=simrange.hits(b.weapons),
                                        attacking_us=bool(goal and not self.world.enemy(self.me, goal.owner)))
@@ -284,9 +253,8 @@ class SimWorld:
         proxy's Offers: KindOf / good_against / rates from the data (Matchup.offer), cost and time from the simulator."""
         out = []
         for template, cost, secs in self.peers.offers(self.me):
-            tpl = self.match.lib.template(template)
             _, good, rates = self._data(template)
-            out.append(self.pw.Offer(template, frozenset(tpl.kinds) if tpl is not None else frozenset(), int(cost),
+            out.append(self.pw.Offer(template, self.match.kinds(template), int(cost),
                                      good, float(secs), rates=rates))
         return out
 
@@ -401,7 +369,7 @@ class SimWorld:
             if b.alive or b.deleted or b.scenery or b.died_at is None or b.life_end is not None:
                 continue
             cost, _, _ = self._data(b.template)
-            kind = self.pw.kind_of(self.p['targets'].Thing(0, b.owner, b.template, frozenset(b.kinds),
+            kind = self.pw.kind_of(pworld.Thing(0, b.owner, b.template, frozenset(b.kinds),
                                                            water=b.surface == 'water'))
             out.append(self.pw.Loss(int(round(b.died_at * FPS)), '' if b.owner == simworld.CIV else b.owner,
                                     b.template, kind, int(cost)))
@@ -425,10 +393,10 @@ def goals(w):
 
 
 def play(level='a4', style=None, until=UNTIL, every=15, check='', script='', difficulty=DIFFICULTY, label='',
-         lib=None, show=False):
+         show=False):
     """One playtest: (report dict, the SimWorld). The proxy plays until the mission ends or `until` seconds.
     show=True also reads what the player saw off the run (simshow.problems) into rep['world']['show']."""
-    w = SimWorld(level, check, script, difficulty, lib=lib, show=show)
+    w = SimWorld(level, check, script, difficulty, show=show)
     p = w.p
     player = p['player'].ProxyPlayer(style)
     tr = p['report'].run(w, player, int(until * FPS), every, end=w.end, label=label or level)
@@ -454,16 +422,13 @@ def main():
     ap.add_argument('--json', default='', help='write the whole report here (with --compare: a list of both)')
     ap.add_argument('--compare', action='store_true', help="also play without the level's power and compare")
     a = ap.parse_args()
-    if not available():
-        print(f'没有代理玩家（{labpaths.ENGINE_MODEL} 下没有 ra3model/proxy）')
-        sys.exit(2)
     rep, w = play(a.level, until=a.until, difficulty=a.difficulty, label=f'{a.level} 默认', show=a.compare)
     reps = [rep]
     print(w.p['report'].summary(rep))
     print(rep['world']['simulator_ending'])
     if a.compare:
         plain, _ = play(a.level, style=w.p['player'].Style(block=0), until=a.until, difficulty=a.difficulty,
-                        label=f'{a.level} 不用关卡技能', lib=w.match.lib, show=True)
+                        label=f'{a.level} 不用关卡技能', show=True)
         reps.append(plain)
         print(w.p['report'].compare(reps))
         for r in reps:         # what the player saw on each run (simshow.problems: K5 black edge, K1 captions, I1, flow)

@@ -1,5 +1,5 @@
 """ADR 0030 item 1: the private engine model loads only at the commit experimental/cnv/inventory_model.rev pins
-(modelpin.check). sim.engine_model, and modelpin.package (simai.model and simproxy.proxy load through it), refuse
+(modelpin.check). sim.engine_model, and modelpin.package (simai.model loads through it), refuse
 any other HEAD with both commit ids and how to fix it; a clean clone without the model is not checked."""
 import os
 import subprocess
@@ -10,7 +10,6 @@ from test_plans import small  # noqa: F401,I001  (puts experimental/cnv on the p
 import labpaths  # noqa: E402
 import modelpin  # noqa: E402
 import sim  # noqa: E402
-import simproxy  # noqa: E402
 
 
 def _git(root, *args):
@@ -20,8 +19,7 @@ def _git(root, *args):
 def _model(tmp_path):
     """A one-commit git checkout holding the files the loaders look for; returns (root, its HEAD)."""
     root = tmp_path / 'RA3-EngineModel'
-    for rel in ('ra3model/__init__.py', 'ra3model/scripts.py', 'ra3model/ai/player.py',
-                'ra3model/proxy/world.py'):
+    for rel in ('ra3model/__init__.py', 'ra3model/scripts.py', 'ra3model/ai/player.py'):
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_text('raise AssertionError("the pin check runs before the model loads")\n')
     _git(tmp_path, 'init', '-q', str(root))
