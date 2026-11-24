@@ -708,7 +708,7 @@ NOTES = {
         'engine_aipullback airev1/0台上s1–10坦克4、s19–22近厂2；tests/test_simai_bench_b.py按名回放，'
         '存活前置正常断言、近厂计数strict xfail；airevp近厂4不能证明没有倒车；'
         'E115 airev1t/0t各PASS：同帧目标/位置/车身朝向已取得，两侧各23个有效目标相邻帧移动样本无负点积；'
-        'tests/test_ai_reverse_clock.py按名f263目标取得strict xfail；模型朝向/分支前置仍gap，暂停新台、不晋升；'
+        'f263四个成员瞄远厂（读数 engine_aipullback.readings.toml::the_observer_pairs_four_aim_the_far_plant_at_f263）；模型朝向/分支前置仍gap，暂停新台、不晋升；'
         '宿主台近厂读数不同于旧台，不假设等价；见work/re/e115_reverse_aim.md；'
         'D132 airevk1/0（玩家坦克目标）逐帧相同、无退后目的点，但前置未达：近的玩家坦克s13组队前被打死，'
         '入队2辆到目标中心距166–233 > R−10=135，与模型一致不算反例；airevkg1守护者未入队，无效；见work/re/d132_whenidle.md；'

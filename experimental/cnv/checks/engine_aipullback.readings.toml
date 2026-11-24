@@ -133,3 +133,18 @@ mismatch = """\
 近敌 counts all four Hammers, so it rests on recruitment, not ReverseMove: on the bench 2 of 4 join at f213 after the \
 near foe died s13 (the other 2 stay out and never back up); the simulator recruits all 4 and they back off the near \
 foes (s31-47 on 近敌 0, off 4; bench on 4, off 3). work/re/d132_whenidle.md, d134 in handoff-d"""
+
+[[reading]]
+id = "the_observer_pairs_four_aim_the_far_plant_at_f263"
+scene = {build = "airev1t", check = "a", until = 19.0, teams = true}
+each = [{build = "airev1t"}, {build = "airev0t"}]
+bench = """\
+E115 observer pair (work/re/e115_reverse_aim.md; fixtures dropped with tests/test_ai_reverse_clock.py), both builds: \
+members 3170-3173 join at host f21 aiming nothing, hulls -180; from f230 all four aim the far plant (3169, at \
+3700:2400) and still do at f263; f260 / f261 state 2; at f261 hulls -100 / -92 / -106 / 0, and the two members that \
+moved f260 -> f261 drove hull-forward (3172 by -2:-4, 3173 by 4:0) -- no reverse candidate in these samples (INFERRED \
+diagnostic, not every frame)"""
+proves = "simai team attack: the initial four members, alive, aim the far plant at the bench frame f263"
+let = {row = "next(r for r in teams() if r['frame'] == 263)"}
+expect = ["[m['alive'] for m in next(r for r in teams() if r['members'])['members']] == [True] * 4",
+          "[m['aim'] for m in row['members']] == ['UNIT - CNV AI Far Plant'] * 4"]

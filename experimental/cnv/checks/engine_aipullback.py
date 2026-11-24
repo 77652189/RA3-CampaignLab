@@ -76,7 +76,7 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   observations across consecutive frames in states 2/4 with the same valid goal, all positive hull-forward
   displacement dot products (no reverse candidate in those samples). This does not cover every frame or prove
   branch eligibility. Near-plant s19-s22 is zero on both observer builds, unlike the old uninstrumented record.
-  Exact goal acquisition replay remains a strict xfail; see work/re/e115_reverse_aim.md.
+  The f263 far-plant aim holds on the simulator (readings: engine_aipullback.readings.toml); work/re/e115_reverse_aim.md.
   (11-13, D round 132; two of the player's Guardians ~54 off the column, host observed; 坦克数 近敌 敌坦)
   airevk1  PASS, airevk0 PASS -- the same second for second: s1-12 4 4 2 | s13 4 4 1 | s14-85 4 3 1, and the host's
            samples the same frame for frame: only 2 tanks join the team (f213), go state 2 at f242 with aim = the

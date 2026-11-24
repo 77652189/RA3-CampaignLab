@@ -17,9 +17,6 @@ tests/test_ai_ignore_distance.py::test_ignore_distance_replays_named_damage_obse
 tests/test_ai_ignore_rule.py::test_ignore_rule_fixture_changes_only_rule
 tests/test_ai_keep_target.py::test_keep_target_named_clock_replay
 tests/test_ai_keep_target.py::test_keep_target_named_death_replay
-tests/test_ai_reverse_clock.py::test_reverse_member_same_frame_observations
-tests/test_ai_reverse_clock.py::test_reverse_named_replay_has_four_initial_members
-tests/test_ai_reverse_clock.py::test_reverse_named_replay_member_goal_at_engine_frame
 tests/test_ai_team_fields.py::test_bench
 tests/test_ai_team_fields.py::test_model
 tests/test_ai_team_fields.py::test_pairs_differ_in_one_field_only
