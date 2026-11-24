@@ -265,6 +265,40 @@ def life(m):
     return t
 
 
+def far(m):
+    """age's two mismatches told apart (round 351): a store DM far from the edge (spot (2500, 1400): north edge 3600
+    off), its press alone at 3 s; age's GI copies; a CAMP bomber put on the map (PB, west corner); a conscript with
+    CLONED (the count chain's unknown status bit, work/re ra3-script-reference E7-3, if the xsd's order holds) and a bear
+    with DO_NOT_SCORE, both set at 0.1 s. 帧 = frames run, 见 = frames with >= 2 AIRCRAFT in Test A12 Whole (PB + a
+    drop bomber), 类 = now: the copies by PLAYER_HAS_OBJECT_COMPARISON (weights as age), 机 = now: that comparison
+    of PB 1 + the conscript 10 + the bear 100 + 1000 the conscript reads CLONED.
+    [见 ~80 frames as age's (52-128) if the bomber stops counting at its flee; ~3600 / speed more if at the edge]"""
+    life(m)
+    m.spawns |= {MAN, 'SovietScoutInfantry'}
+    m.put('CAMP_PowerStore_AlliedBomberDrop', 'stop row', 2500.0 - O[0], 1000.0 - O[1], name=_n('DM'), role='dm')
+    m.waypoint('spot DM', 'CNV A12 Spot DM', 'stop row', 2500.0 - O[0], 1400.0 - O[1])
+    for row, tmpl, x in (('PB', BOMBER, 200.0), ('CL', MAN, 300.0), ('NS', 'SovietScoutInfantry', 360.0)):
+        m.put(tmpl, 'stop row', x - O[0], 2500.0 - O[1], name=_n(row), role=row.lower())
+    t, p1 = Test(), m.player('p1')
+    s8.at(t, 'reveal', 0.1, [('MAP_REVEAL_ALL_PERM', p1), ('UNIT_CHANGE_OBJECT_STATUS', _n('CL'), status('CLONED'), 1),
+                             ('UNIT_CHANGE_OBJECT_STATUS', _n('NS'), status('DO_NOT_SCORE'), 1),
+                             ('NAMED_SET_SPECIAL_POWER_COUNTDOWN', _n('DM'), 'SpecialPowerCAMPAlliedBomberDrop2', 0)])
+    s8.at(t, 'press', PRESS, [('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', _n('DM'), 'Command_CAMPAlliedBomberDrop2',
+                               m.mark('spot DM'))])
+    whole = 'Test A12 Whole'
+    t.areas[whole] = square(2500.0, 2500.0, 2800.0)
+    t.areas['Test A12 Kinds'] = square(590.0, 3400.0, 150.0)
+    owns = lambda tmpl: ('PLAYER_HAS_OBJECT_COMPARISON', p1, 3, 1, tmpl)  # noqa: E731
+    s8.frames(t, 'CNV_A12_Frame', '帧', [])
+    s8.frames(t, 'CNV_A12_Seen', '见', [('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', p1, 3, 2, kindof('AIRCRAFT'),
+                                         whole)])
+    s8.total(t, 'CNV_A12_Kind', '类', [(w, owns(ident)) for ident, (_k, w) in KINDS.items()])
+    s8.total(t, 'CNV_A12_Life', '机', [(1, owns(BOMBER)), (10, owns(MAN)), (100, owns('SovietScoutInfantry')),
+                                       (1000, _bit('CL', 'CLONED'))])
+    s8.watch(t, 24.0, every=0.5)
+    return t
+
+
 def one(m):
     """Command_CAMPAlliedBomberDrop1 (j05, 3 uses; its stores Allied04's): DP's (p1) and the AI-handed DA's (s5) at
     PRESS. The store's other OCLSpecialPower, OCL_CAMPAlliedBomberDrop1: four bombers (x / y +-35) to Drop2's two.
@@ -317,6 +351,6 @@ def _presses(m, drops):
 MISSION = {'engine_acts_mix': mission, 'engine_acts_drop': drop_mission,
            'engine_acts_ally': lambda: drop_mission(allied=True), 'engine_acts_edge': lambda: drop_mission(edge=True),
            'engine_acts_dropx': lambda: drop_mission(entry=True)}
-CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own, 'at': when, 'air': air, 'age': life, 'one': one},
+CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own, 'at': when, 'air': air, 'age': life, 'agx': far, 'one': one},
           'engine_acts_ally': {'own': own},
           'engine_acts_edge': {'edge': edge}, 'engine_acts_dropx': {'own': own}}

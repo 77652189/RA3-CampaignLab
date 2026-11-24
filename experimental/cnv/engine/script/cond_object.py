@@ -41,10 +41,12 @@ def named_inside_area(sim, name, a):
 
 
 def player_has_object_comparison(sim, name, a):
-    # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false); a type or an object list
+    # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false); a type or an object list. Not one
+    # without SELECTABLE (the drop bomber) nor one with CLONED (engine_acts_drop agx 类 1101 / 机 x1x0; work/re E7-3's
+    # unknown status bit; the bench still counted the CLONED one at f45, its first reading: a cached count, INFERRED)
     want = sim.of_types(a[3])
     n = sum(1 for b in sim.bodies.values() if b.owner == a[0] and b.template.lower() in want
-            and sim.present(b))
+            and sim.present(b) and 'SELECTABLE' in b.kinds and 'CLONED' not in module.status_now(b))
     return CMP[a[1]](n, a[2])
 
 

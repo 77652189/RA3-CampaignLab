@@ -119,15 +119,38 @@ bench = "age as above: no AIRCRAFT in Test A12 Whole from frame 135 (about 20 fr
 proves = "sim the flight off: gone from the map's square within ~1.5 s of the press + flight + unload"
 expect = "all(r['见'] < 100 for r in rows if r['帧'] >= 140)"
 mismatch = """sim 101 at frame 151, 0 from ~205: the flee walks 1000 along the facing at Speed and is removed 3 frames after \
-(engine_runoffmap's ground rule); bench gone from Whole by 135 -- open whether it is removed, or not counted while fleeing"""
+(engine_runoffmap's ground rule); bench gone from Whole by 135 -- it flies on and leaves the square (acts_drop_agx_far_from_the_edge_the_bomber_stays_longer)"""
 
 [[reading]]
 id = "acts_drop_age_owned_not_counted"
 scene = {build = "engine_acts_drop", check = "age", until = 24}
 bench = "age as above: 机 0 every reading -- PLAYER_HAS_OBJECT_COMPARISON never counts the player's bomber"
-proves = "sim cond_object.player_has_object_comparison leaves the drop bomber out (which bit: not isolated)"
+proves = "sim cond_object.player_has_object_comparison leaves the drop bomber out (-SELECTABLE: agx below)"
 expect = "all(r['机'] == 0 for r in rows)"
-mismatch = "sim 159 frames (46-205: counted as long as it lives); bench 0"
+
+[[reading]]
+id = "acts_drop_agx_owned_count_skips_unselectable_and_cloned"
+scene = {build = "engine_acts_drop", check = "agx", until = 24}
+bench = """agx, bench 11-24 `run_queue engine_acts_drop:agx` (CampActsDropAgx_mcp_1124_072245, round 351): 类 1101 every \
+reading (by PLAYER_HAS_OBJECT_COMPARISON, of age's GI copies the -SELECTABLE one is left out); 机 1110 at f45 then 1100 \
+to the end: the CAMP bomber put on the map never counted, the CLONED conscript counted at f45 only (reads CLONED all \
+along), the DO_NOT_SCORE bear always"""
+proves = """sim cond_object.player_has_object_comparison: SELECTABLE wanted, CLONED left out (work/re E7-3's unknown bit; the \
+f45 count a cached one, INFERRED)"""
+expect = ["all(r['类'] == 1101 for r in rows)", "all(r['机'] == 1100 for r in rows if r['帧'] >= 52)"]
+
+[[reading]]
+id = "acts_drop_agx_far_from_the_edge_the_bomber_stays_longer"
+scene = {build = "engine_acts_drop", check = "agx", until = 24}
+bench = """agx as above: 见 (>= 2 AIRCRAFT in Test A12 Whole: PB + a drop bomber) 7 at 帧 52, rising to 216 by 帧 264, \
+then 216 to the end -- the bombers in the map's square from f45 to ~f261, against age's ~f52-135 with the spot 300 \
+from the north edge (here 3600)"""
+proves = "how long the emptied bomber flies before it leaves the count: it grows with the way to the edge"
+expect = "210 <= rows[-1]['见'] <= 222"
+mismatch = """sim 160 (the flee 1000 along the facing at Speed, removed 3 frames after, as on the ground); fits both benches \
+if the bomber flies on along its facing (north) at ~27-30 a frame (~400-450 a second, not the Speed 150) until past \
+the square's edge (y 5300, 300 off the map): age 600 in ~20 frames, agx 3900 in ~146 -- INFERRED, the unload's end \
+in agx not read; FlyingOffMap not modelled (ability.flee_start)"""
 
 [[reading]]
 id = "acts_drop_one_four_bombers"
