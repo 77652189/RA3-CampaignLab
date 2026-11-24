@@ -1,0 +1,25 @@
+# Bench readings of checks/engine_exitbld.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "exitbld_a_empties_only_the_named_host"
+item = "脚本动作 EXIT_SPECIFIC_BUILDING"
+scene = {build = "engine_exitbld", check = "a", until = 21, script = "不打"}
+bench = "a, line C (work/re/c_exitbld_report.md), 进驻位 区域码 存活位 at logic frames: f45..75 15 22 127 | f82..257 12 22 127 (29 readings)"
+proves = "EXIT_SPECIFIC_BUILDING at 5 s empties the named host only (enclosed mask 15 -> 12: its mixed crews out, the other host's stay); the area count includes the enclosed men (22 before and after), nobody dies, a repeat at 9 s changes nothing. Moved from the frame-exact replay (A333)"
+let = {want = "lambda f: None if f < 45 else [15, 22, 127] if f <= 75 else [12, 22, 127] if f >= 82 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(15, 22, 127), (12, 22, 127)}",
+]
+
+[[reading]]
+id = "exitbld_b_empties_only_the_named_host"
+item = "脚本动作 EXIT_SPECIFIC_BUILDING"
+scene = {build = "engine_exitbld", check = "b", until = 21, script = "不打"}
+bench = "b, line C, 进驻位 区域码 存活位 at logic frames: f49..69 15 22 127 | f80..321 3 22 127 (29 readings)"
+proves = "the same with the other host named (mask 15 -> 3)"
+let = {want = "lambda f: None if f < 49 else [15, 22, 127] if f <= 69 else [3, 22, 127] if f >= 80 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(15, 22, 127), (3, 22, 127)}",
+]

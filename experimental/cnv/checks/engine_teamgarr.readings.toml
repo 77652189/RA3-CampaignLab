@@ -1,0 +1,25 @@
+# Bench readings of checks/engine_teamgarr.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "teamgarr_a_the_team_garrisons_the_nearest_building"
+item = "脚本动作 TEAM_GARRISON_NEAREST_BUILDING"
+scene = {build = "engine_teamgarr", check = "a", until = 27, script = "不打"}
+bench = "a, line C (work/re/c_teamgarr_report.md), 进驻位 楼归属 存活位 at logic frames: f44..69 0 0 31 | f245..386 3 1 31 (23 readings; the door crossing between not read)"
+proves = "TEAM_GARRISON_NEAREST_BUILDING at 5 s sends the named team into the nearest building (both men in, it is the first one's), an empty team's call at 2 s does nothing, nobody dies, the repeat changes nothing. Moved from the frame-exact replay (A333)"
+let = {want = "lambda f: None if f < 44 else [0, 0, 31] if f <= 69 else [3, 1, 31] if f >= 245 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(0, 0, 31), (3, 1, 31)}",
+]
+
+[[reading]]
+id = "teamgarr_b_the_team_garrisons_the_nearest_building"
+item = "脚本动作 TEAM_GARRISON_NEAREST_BUILDING"
+scene = {build = "engine_teamgarr", check = "b", until = 27, script = "不打"}
+bench = "b, line C, 进驻位 楼归属 存活位 at logic frames: f44..73 0 0 31 | f245..407 3 2 31 (26 readings)"
+proves = "the same with the team placed nearer the other building: that one is taken (楼归属 2)"
+let = {want = "lambda f: None if f < 44 else [0, 0, 31] if f <= 73 else [3, 2, 31] if f >= 245 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(0, 0, 31), (3, 2, 31)}",
+]
