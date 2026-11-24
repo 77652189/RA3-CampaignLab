@@ -1,0 +1,13 @@
+# Bench readings of checks/engine_oncreate_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E212: ActivateSpecialPowerOnCreate. On / Off = 1000 x status bits at f15 + 100 x at f45 (IN_SPIDER_HOLE 1,
+# IMMOBILE_ALLOW_ROTATE 2, NO_ATTACK 4) + frames before IN_SPIDER_HOLE is first seen; both press the toggle at f30.
+
+[[reading]]
+id = "the_ambush_tank_buster_starts_in_its_hole"
+scene = {build = "engine_oncreate_e", check = "a", until = 5}
+bench = "engine_oncreate_e:a 2026-11-24 02:54 at c95cf48f, PASS: s3-s30 60 7001 729 (s1-s2 before the f45 sample: 7000 700)"
+proves = """ActivateSpecialPowerOnCreate presses the thing's toggle of its power in its first update: retail \
+JapanAntiVehicleInfantry_Ambush is IN_SPIDER_HOLE / IMMOBILE_ALLOW_ROTATE / NO_ATTACK from the second script frame \
+and the f30 press takes it out (the toggle moved, not only the bits); the plain parent enters at the press"""
+item = "物体模块 Behaviors/ActivateSpecialPowerOnCreate"
+expect = ["counter('E212Frame') == 60", "counter('E212On') == 7001", "counter('E212Off') == 729"]

@@ -173,3 +173,13 @@ def test_the_players_tengu_transform_is_the_scripts_press_and_its_reload_and_hos
     s.advance(225)
     assert player(s, 'tt')[0] is True and 'TRANSFORMATION_TOGGLE_STATE' not in s.bodies['tt'].status
     assert s.bodies['tt'].speed == s.bodies['tp'].speed
+
+
+def test_activate_special_power_on_create_presses_its_toggle_in_its_first_update():
+    # ActivateSpecialPowerOnCreate (E212 engine_oncreate_e): the _Ambush tank buster in its hole, the plain one not
+    s = simsmall.small_world([('a', 'JapanAntiVehicleInfantry_Ambush', 'Player_1', 100.0, 100.0),
+                              ('p', 'JapanAntiVehicleInfantry', 'Player_1', 100.0, 300.0)], model=False)
+    s.advance(2)
+    a, p = s.bodies['a'], s.bodies['p']
+    assert 'IN_SPIDER_HOLE' in a.status and a.toggle_at == {0: 1}
+    assert 'IN_SPIDER_HOLE' not in p.status and p.toggle_at == {}

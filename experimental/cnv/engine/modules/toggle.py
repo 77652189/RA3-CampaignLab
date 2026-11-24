@@ -87,3 +87,29 @@ class Toggle(module.Module, interfaces.Update, interfaces.Toggle):
         if self.thing.alive:
             self._enter()
         return interfaces.SLEEP
+
+
+class OnCreateData(module.ModuleData):
+    def __init__(self, powers=frozenset()):
+        self.powers = powers        # the SpecialPowerTemplate(s) fired once the thing is made
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(templates.names(head, inner, 'SpecialPowerTemplate'))
+
+
+@factory.module('ActivateSpecialPowerOnCreate')
+class OnCreate(module.Module, interfaces.Update):
+    """Presses its thing's toggle of that power in its first update (E212 engine_oncreate_e: retail's one use, the
+    _Ambush tank buster, is IN_SPIDER_HOLE from the second script frame, the plain one never; a press at f30 takes it
+    out, so the toggle itself moved). A power served by no toggle: not benched, left alone."""
+    DATA = OnCreateData
+    PHASE = 'toggles'
+    STATE = ()
+    RECORDED = ()
+
+    def update(self, frame):
+        for m in self.thing.find(interfaces.Toggle):
+            if self.thing.alive and m.rules()['power'] in self.data.powers:
+                m.press(frame)
+        return interfaces.SLEEP
