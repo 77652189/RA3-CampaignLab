@@ -117,6 +117,11 @@ def held_up(b):
     return b.mode == 'move' and not left and b.goal is None and b.dest == b.move_to and off > ARRIVE
 
 
+def _relation(world, a, b):
+    """How a's owner stands to b's (the host's relation, reached here only)."""
+    return world.relation(a.owner, b.owner)
+
+
 def _target(world, target):
     """An order's target: an object the giver picked, given as it is (the 11-19 same-name sweep: read again by its
     name, a script reference of that name took its place), or a name, read as the world reads it (Sim.body)."""
@@ -128,7 +133,7 @@ def order_attack(world, peers, b, target_name, force=False):
     missing or dead, or one of its own side without force (review 11-19 m: the port read a success there)."""
     world.used.add('attack')
     target = _target(world, target_name)
-    if b and target and not force and world.relation(b.owner, target.owner) == 'ALLIES':
+    if b and target and not force and _relation(world, b, target) == 'ALLIES':
         return False    # bench 11-13 engine_acts flow 友血: NAMED_ATTACK_NAMED on one of its own side, no shot (d115
         #                 13: FORCE_ATTACK_NAMED is the order that takes any relation); a neutral one not benched, kept
     if not (b and target and target.alive and b.alive):
@@ -177,7 +182,7 @@ def capture_due(world, peers):
         d = math.hypot(g.x - b.x, g.y - b.y)
         if d > r and (b.path or d > 2 * r):
             continue
-        if rule.get('bridge') or world.relation(g.owner, b.owner) == 'ALLIES':
+        if rule.get('bridge') or _relation(world, g, b) == 'ALLIES':
             # a bridge's gatehouse, whoever owns it, mends its bridge (engine_bridgefix a run 2: the owner, neutral, kept; an enemy's INFERRED)
             fix = getattr(g.find(interfaces.Body), 'manager', None) or g.find(interfaces.Body)
             if fix.health() >= fix.max_health():
@@ -344,6 +349,11 @@ def fight(world, peers):
                 order_attack(world, peers, a, min(them, key=lambda t: math.hypot(t.x - a.x, t.y - a.y)))   # itself
             else:
                 del peers.team_targets[a.serial]
+    magnets = [(b, g) for b in live if b.modules for g in b.find(interfaces.Magnet)]
+    for a in armed if magnets else ():      # a black hole on draws a shooter near it (engine/modules/magnet.py)
+        pull = next((b for b, g in magnets if g.draws(a, _relation(world, b, a) == 'ENEMIES')), None)
+        if pull is not None and a.goal is not pull:
+            order_attack(world, peers, a, pull, force=True)
     for a in armed:
         m = a.aiupdate
         m.engaged = False
@@ -385,7 +395,7 @@ def assist(world, peers, live):
             near = sorted(((math.hypot(f.x - a.x, f.y - a.y), f) for f in live if f is not a and f.alive and
                            f.serial not in busy and 'NO_ATTACK' not in f.status and
                            f.find(interfaces.AssistResponse)), key=lambda p: p[0])
-            called = [f for d, f in near if n.callable(f, world.relation(a.owner, f.owner), d)][:n.data.most]
+            called = [f for d, f in near if n.callable(f, _relation(world, a, f), d)][:n.data.most]
             for f in called:
                 for r in f.find(interfaces.AssistResponse):
                     if r.data.tag == n.data.response:

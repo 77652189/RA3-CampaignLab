@@ -605,6 +605,14 @@ class Shield(Interface):
         raise NotImplementedError
 
 
+class Magnet(Interface):
+    """MagneticEffectUpdate: whether it draws `other` now (draws; enemy: the host's relation says so)."""
+    __slots__ = ()
+
+    def draws(self, other, enemy):
+        raise NotImplementedError
+
+
 class Parking(Interface):
     """ParkingPlaceBehavior: how many LIMITED_PRODUCTION_AIRCRAFT the factory keeps (spots); the host's order asks it
     (Production.admits)."""

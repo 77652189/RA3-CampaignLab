@@ -1,0 +1,12 @@
+# Bench readings of checks/engine_magnet_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E225 (bench 11-24, HEAD 2d77b4cc): the Assault Destroyer's black hole. A dead thing's counter keeps its last value.
+
+[[reading]]
+id = "the_black_hole_draws_the_tanks_ordered_at_the_vip"
+item = "物体模块 Behaviors/MagneticEffectUpdate"
+scene = {build = "engine_magnet_e", check = "a", until = 25}
+bench = """CampMagnetEA_mcp_1124_143833 (开要人 关要人 开舰 关舰, read from s15): s15 100 5 67 79, s25 100 5 41 24, \
+s40 100 5 1 1 (both destroyers dead), s42-s48 the On VIP 85 down to 5 -- the tanks on it only once its destroyer is dead"""
+proves = """MagneticEffectUpdate on (GENERIC_TOGGLE_STATE) turns the Hammers ordered at the VIP onto the destroyer within \
+its 200; off, they kill the VIP first (engine/modules/magnet.py, engine/orders/order.fight)"""
+expect = ["all(v[0] == 100 for v in vals(rows))", "vals(rows)[-1][1] <= 5 and vals(rows)[-1][2] < 100"]
