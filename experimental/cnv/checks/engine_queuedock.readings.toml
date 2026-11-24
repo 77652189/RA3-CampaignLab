@@ -25,11 +25,10 @@ expect = ["len(mid) >= 3", "all(v % 8 == 0 for v in mid)", "all(d == 8 * 15 for 
 id = "the_miner_is_on_the_pad_only_about_its_unload"
 scene = {build = "engine_queuedock", check = "a", until = 60}
 bench = "同帧 (thousands digit: the miner in the 70-box at the dock pad) 11000 f271-f340, 10000 f351-f530, 11000 f543-f605, 10000 f619-f800 (f786 10000: E152's snapshot), 11000 f809-f881: on the pad ~75 frames a trip, out ~25 frames after the last coin"
-proves = "物体模块 QueueDock: the miner comes onto the dock pad shortly before its unload and leaves soon after it"
+proves = "物体模块 QueueDock: the miner comes onto the dock pad shortly before its unload and leaves soon after it: by the node's pad 2, the refinery's pad 0, pad 1 (engine/objects/mine.py MINE_SPOTS, read off dockqueue's dock lines with places 11-23); sim f271-346, f541-616, f811-871"
 expect = ["win(16, 17, '同帧') == [10000] * 2",
           "win(24, 32, '同帧') == [10000] * 9",
           "win(50, 52, '同帧') == [10000] * 3"]
-mismatch = "sim: on the pad f226-f361, f496-f631, f766-f901 (~135 frames a trip: it drives to the refinery's centre, not the dock bones, and leaves 45 frames after the last coin); bench ~75 frames. The coins themselves within ~10 frames (the readings above)"
 
 # dockqueue: bench 2026-11-22 (run_queue, head 1b383c7c, CampDockQA_mcp_1122_204453, ra3ext dock phases; work/re/e207_dockqueue.md):
 # miner 1 (the front node's) asks "can I go direct" and is told yes every trip: straight to the action pad, no queue

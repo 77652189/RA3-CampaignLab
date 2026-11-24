@@ -44,10 +44,13 @@ MINE_PLACED_EXTRA = 9.0
 # from its unload to MINE_PAD2 frames after (the bench's from pad 0, MINE_PAD1 before: not kept, the side node's leg is
 # ~10 frames short). Off its node (MINE_PAD2 after loading, inside the leg) a miner finding them held queues, and once
 # free drives in by pad 0 and pad 1 (MINE_PAD0 + MINE_PAD1). Pads free, one whose spot (MINE_LEAVE ahead of the node) is
-# within 40 of the refinery's point DIRECT_AT ahead (or past it, within 63.2) goes direct and unloads beside one on the
-# pads; another waits at pad 0 for them. 40 / 63.2 read (D187); MINE_LEAVE and DIRECT_AT fitted to E207's front (yes)
-# and side (no) nodes and D165's turned node (no) (INFERRED)
-MINE_PAD0, MINE_PAD1, MINE_PAD2, MINE_LEAVE, DIRECT_AT = 18, 22, 14, 60.0, 120.0
+# within 40 of the refinery's pad 0 (DIRECT_AT ahead; or past it, within 63.2) goes direct and unloads beside one on the
+# pads; another waits at pad 0 for them. 40 / 63.2 read (D187); MINE_LEAVE, DIRECT_AT and the refinery's spots MINE_SPOTS
+# (pad 1 = the unload, pad 2's end; ahead of its centre) MEASURED: dock lines with places, CampDockQA_mcp_1123_231609
+# (a node's and a refinery's pad 2 end alike 77). Drawn, not timed: a leg to a refinery ends pad 0 -> pad 1 over its last
+# MINE_PAD1 frames, the next leaves pad 1 -> pad 2's end over its first MINE_PAD2 (timing still centre to centre)
+MINE_PAD0, MINE_PAD1, MINE_PAD2, MINE_LEAVE, DIRECT_AT = 18, 22, 14, 77.0, 86.3
+MINE_SPOTS = (31.0, 76.5)
 
 
 def _turned_off(node, far):
@@ -104,11 +107,40 @@ class Mining:
                 if b.alive:
                     self._mine(world, b, fr, nodes, pay)
 
+    @staticmethod
+    def _drawn(world, b, m, fr):
+        """Where `b` stands `fr` into its leg: straight along it, but at a refinery by its spots (MINE_SPOTS)."""
+        (x0, y0), (x1, y1), f0, f1 = m['leg']
+        r, st = held(world, b.find(interfaces.OreMiner).refinery), m['state']
+        at = (lambda k: (r.x + k * math.cos(r.angle), r.y + k * math.sin(r.angle))) if r else None
+        if at and st == 'to node' and m.get('out'):         # off pad 1 to pad 2's end, then on to the node
+            (x0, y0), (x1, y1), f1 = at(MINE_SPOTS[0]), at(MINE_SPOTS[1]), f0 + MINE_PAD2
+            if fr >= f1:
+                (x0, y0), (x1, y1), f0, f1 = (x1, y1), m['leg'][1], f1, m['leg'][3]
+        elif at and st != 'to node':                        # off the node by its pad 2's end (MINE_LEAVE ahead,
+            node = held(world, b.find(interfaces.OreMiner).node)    # MINE_PAD2 frames), by pad 0, then over
+            if node and math.hypot(node.x - x0, node.y - y0) < 1.0:  # MINE_PAD1 frames to pad 1
+                lx, ly = x0 + MINE_LEAVE * math.cos(node.angle), y0 + MINE_LEAVE * math.sin(node.angle)
+                if fr < f0 + MINE_PAD2:
+                    return x0 + (lx - x0) * (fr - f0) / MINE_PAD2, y0 + (ly - y0) * (fr - f0) / MINE_PAD2
+                (x0, y0), f0 = (lx, ly), f0 + MINE_PAD2
+            go = st == 'to refinery' or (st == 'to pad' and not m.get('wait'))
+            t = m['due'] - MINE_PAD1 if go else 10 ** 9
+            if fr >= t:
+                (x0, y0), (x1, y1), f0, f1 = at(DIRECT_AT), at(MINE_SPOTS[0]), t, t + MINE_PAD1
+            else:
+                (x1, y1), f1 = at(DIRECT_AT), max(f0 + 1, min(t, f1 - MINE_PAD1))
+        k = min(1.0, max(0.0, (fr - f0) / max(1, f1 - f0)))
+        return x0 + (x1 - x0) * k, y0 + (y1 - y0) * k
+
     def _leg(self, world, b, fr, to, state):
-        """Off to `to`: there mine_extra + distance / speed frames on, in `state` meanwhile."""
-        d = math.hypot(to[0] - b.x, to[1] - b.y)
+        """Off to `to`: there mine_extra + distance / speed frames on, in `state` meanwhile (from its refinery's
+        centre when it leaves one: the drawn spots are not timed)."""
+        r = held(world, b.find(interfaces.OreMiner).refinery) if b.mine.get('out') else None
+        x, y = (r.x, r.y) if r else (b.x, b.y)
+        d = math.hypot(to[0] - x, to[1] - y)
         node = held(world, b.find(interfaces.OreMiner).node)
-        far =(b.x, b.y) if state == 'to node' else to          # the leg's end away from the node
+        far = (x, y) if state == 'to node' else to          # the leg's end away from the node
         extra = mine_extra(node, far) if node else 0.0
         first = b.mine.pop('first', None)
         if first and node and state == 'to node':  # from where it faded in, or was placed
@@ -136,9 +168,7 @@ class Mining:
                                                                              b.unpack_parent.y) else 'placed'}
             b.find(interfaces.OreMiner).set_trip(m)
         if m['leg']:                                # drawn along its drive
-            (x0, y0), (x1, y1), f0, f1 = m['leg']
-            k = min(1.0, (fr - f0) / max(1, f1 - f0))
-            b.x, b.y = x0 + (x1 - x0) * k, y0 + (y1 - y0) * k
+            b.x, b.y = self._drawn(world, b, m, fr)
         if fr < m['due']:
             return
         st = m['state']
@@ -157,6 +187,7 @@ class Mining:
             self._leg(world, b, fr, (node.x, node.y), 'to node')
         elif st == 'to node':
             m['leg'] = None
+            m.pop('out', None)
             if held(world, om.node) is None or not om.node.alive:  # the node picked has left the world (one made
                 m['state'] = 'locate'               # under its name since is another) or died: it looks again
                                                     # (INFERRED; review 1119u P2 #4: a dead one is still in bodies)
@@ -251,7 +282,7 @@ class Mining:
                 # D165 / E164: native cargo clears when Unload finishes, not
                 # when the next ore node begins loading.
                 m['load'] = 0
-                m['state'] = 'locate'
+                m['state'], m['out'] = 'locate', True       # leaves from pad 1 (_drawn, _leg)
 
     @staticmethod
     def _direct(world, b, r):
