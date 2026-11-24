@@ -1,0 +1,20 @@
+# Bench readings of checks/engine_aienemyfilter.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# EnemyNearbyHeuristic's <EnemyFilter> on the near-miner host (4 guardians, an enemy Ore Collector 350 behind the yard).
+# Moved from tests/test_enemyfilter.py (C's bench 2026-11-12, work/re/c_enemyfilter_report.md; B round 155).
+
+[[reading]]
+id = "the_enemy_filter_decides_which_near_enemy_wakes_the_state"
+scene = {build = "aiefharv", check = "a", until = 61.0}
+each = [{build = "aiefharv", out = true}, {build = "aiefeng", out = false}, {build = "aiefself", out = false},
+        {build = "aiefall", out = true}, {build = "aiefnone", out = false}]
+bench = """\
+坦克在家 / 坦克出门: aiefharv (ENEMIES, Rule ANY, Include HARVESTER) 4/0 to s13, all gone s15, 0/4 s18-31; \
+aiefeng (Include ENGINEER) and aiefself (HARVESTER, SAME_PLAYER: the AI has no miner) 4/0 s1-65 (C 2026-11-12); \
+with Include ENGINEER, aiefall (Rule ALL) 4/0 to s13, all gone s16, 0/4 s19-31 and aiefnone (Rule NONE) \
+4/0 s1-65 (B 2026-11-24)"""
+proves = """\
+simai states.enemy_near: the filter's Relationship picks the owners and _filter_passes the template -- Include by \
+KindOf, Rule ALL passes every one, NONE reads Include as ANY does"""
+item = ["AI 人格/EnemyFilter.Include", "AI 人格/EnemyFilter.Relationship", "AI 人格/EnemyFilter.Rule"]
+expect = ["rows[19]['坦克在家'] == (0 if out else 4)", "rows[19]['坦克出门'] == (4 if out else 0)",
+          "rows[59]['坦克在家'] == (0 if out else 4)"]
