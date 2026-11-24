@@ -64,8 +64,8 @@ expect = ["[v for v in vals(rows) if 145 <= v[0] <= 155]", "all(abs(a - b) <= 6 
 
 [[reading]]
 id = "protofx_final_squadron_crashes_on_the_tank_in_its_radius"
-item = "脚本动作 PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT"
+item = ["脚本动作 PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT", "物体模块 Behaviors/StrafeAreaUpdate"]
 scenes = {f1 = {build = "engine_protofx", check = "f1", until = 20}, f2 = {build = "engine_protofx", check = "f2", until = 20}, f3 = {build = "engine_protofx", check = "f3", until = 20}, fn = {build = "engine_protofx", check = "fn", until = 20}}
 bench = "帧数 血0 血150 血200 at the end (two runs each, alike): f1 62 96 99, f2 60 86 99, f3 60 85 97, fn (no Japanese yard) 52 100 92; 血0 >= 91 till f60, its big drop at f73-81; 150 / 200 only strafed (0-15 %)"
-proves = "sim SQUADRON: two crashes of 95 at 75 frames on the one enemy in the radius, the free aircraft at random points (between two and four crashes on it: the draw), the guns not simulated (150 / 200 whole)"
+proves = "sim SQUADRON: two crashes of 95 at 75 frames (StrafeAreaUpdate fires the self-projectile kamikaze from its first frame, 1500 at speed 300) on the one enemy in the radius, the free aircraft at random points (between two and four crashes on it: the draw), the guns not simulated (150 / 200 whole)"
 expect = ["all(v[1] >= 90 for s in (f1, f2, f3, fn) for v in vals(s) if 0 < v[0] <= 60)", "all(20 <= vals(s)[-1][1] <= 64 for s in (f1, f2, f3, fn))", "all(min(vals(s)[-1][2:]) >= 85 for s in (f1, f2, f3, fn))"]

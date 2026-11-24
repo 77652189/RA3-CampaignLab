@@ -1,0 +1,10 @@
+# Bench readings of checks/engine_strafe_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench 11-24 (CampStrafeEA_mcp_1124_141626, HEAD 092a1eb1).
+
+[[reading]]
+id = "strafe_placed_s07_bomber_drops_nothing"
+item = "物体模块 Behaviors/StrafeAreaUpdate"
+scene = {build = "engine_strafe_e", check = "a", until = 34}
+bench = "血近 血远 头顶: s15-s19 100 100 0, s20 100 100 1 (over the far tank), s21-s54 100 100 0 -- the way back not seen over it (a jet's turn off the 100 square, not read)"
+proves = "sim no StrafeAreaUpdate on a placed S07 (program: only an OCL nugget sets its target): it flies over both tanks, both whole"
+expect = ["any(v[2] == 1 for v in vals(rows))", "all(v[:2] == [100, 100] for v in vals(rows))"]
