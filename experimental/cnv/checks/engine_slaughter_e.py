@@ -5,6 +5,17 @@ victims are deleted the retail carrier consumes returning drones, while the
 removal control retains them. Counts are living drones per owner, not parking
 slots or parent identity. Freeze at script frames 180 and 600. No AI tactical
 result is used as container evidence. Unmeasured lifecycle details stay gaps.
+
+Build p (E170 reopened): both carriers p1, both targets s1, so each arm is
+counted by its own area (half 850 round host and target, 1800 apart). Lines:
+frame; OnLate / OffLate, the frames f300-f600 with a p1 AIRCRAFT in that
+arm's area (the targets go at f240, so a drone then is one not taken back);
+gate bits: target attacked by an AlliedAttackDrone On 1 / Off 2, an AIRCRAFT
+in the area f60-f240 On 4 / Off 8, host alive at f600 On 16 / Off 32.
+Prediction from the data (OCL RETURN_TO_SOURCE; only SlaughterHordeContain
+takes a drone in -- the ParkingPlace stays in both): gate 63, OnLate small
+(the last sortie's way home), OffLate 300 (its drones stay out or parked on
+deck, still AIRCRAFT). A gate without 1 / 2 says the sortie never happened.
 """
 import re
 from pathlib import Path
@@ -16,9 +27,9 @@ from maps import infiltrator_batch
 from parts import Mission, Script, Test, Unit, kindof, square
 
 
-def mission():
-    m = Mission(name='CampSlaughterE', map=infiltrator_batch, units=[])
-    for tag, side, dx in [('On', 'p1', -1800), ('Off', 's1', 0)]:
+def mission(name='CampSlaughterE', sides=('p1', 's1')):
+    m = Mission(name=name, map=infiltrator_batch, units=[])
+    for tag, side, dx in [('On', sides[0], -1800), ('Off', sides[1], 0)]:
         ident = 'CNVE170' + tag
         xml = native('AlliedAntiStructureShip', 'Units', ident).xml
         # The included render states consume local defines too; expand them
@@ -38,6 +49,7 @@ def mission():
         m.put(ident, 'ship', dx, 0, side=side, role=tag + ' host', name='E170 ' + tag + ' host')
         m.put('SovietAntiAirShip', 'ship', dx, 500, side='s1' if side == 'p1' else 'p1',
               role=tag + ' target', name='E170 ' + tag + ' target')
+        m.waypoint(tag + ' mid', 'E170 ' + tag + ' mid', 'ship', dx, 250)
     m.spawns.add('AlliedAttackDrone')
     return m
 
@@ -79,8 +91,47 @@ def check(m, corrected=False):
     return t
 
 
-MISSION = {'engine_slaughter_e': mission}
-CHECKS = {'engine_slaughter_e': {'a': check, 'b': lambda m: check(m, corrected=True)}}
+def check_p(m):
+    """Build p: both arms p1, each counted in its own area (module docstring)."""
+    t = Test()
+    t.counters = [('E170Frame', '完成帧'), ('E170OnLate', '原版晚段帧'),
+                  ('E170OffLate', '删模块晚段帧'), ('E170Gate', '前置位')]
+    t.scripts = [Script('Test - frame', [('COUNTER', 'E170Frame', 0, 600)],
+                        [('INCREMENT_COUNTER', 1, 'E170Frame')], once=False),
+                 Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))])]
+    p1 = m.player('p1')
+    for tag, weight in [('On', 1), ('Off', 2)]:
+        host, victim, area = m.role(tag + ' host').name, m.role(tag + ' target').name, 'E170 ' + tag
+        t.areas[area] = square(*m.point(tag + ' mid'), 850)
+        air = ('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', p1, 3, 1, kindof('AIRCRAFT'), area)
+        t.scripts += [
+            Script('Test - quiet ' + tag, [], [
+                ('UNIT_CHANGE_OBJECT_STATUS', host, 'NO_ATTACK', 1),
+                ('UNIT_CHANGE_OBJECT_STATUS', victim, 'NO_ATTACK', 1),
+                ('UNIT_SET_HEALTH', victim, 100)]),
+            Script('Test - heal ' + tag, [('NAMED_NOT_DESTROYED', victim)], [('UNIT_SET_HEALTH', victim, 100)], once=False),
+            Script('Test - attack ' + tag, [('COUNTER', 'E170Frame', 2, 60)], [
+                ('UNIT_CHANGE_OBJECT_STATUS', host, 'NO_ATTACK', 0),
+                ('NAMED_ATTACK_NAMED', host, victim)]),
+            Script('Test - remove victim ' + tag, [('COUNTER', 'E170Frame', 2, 240)], [('NAMED_DELETE', victim)]),
+            Script('Test - hit ' + tag, [('COUNTER', 'E170Frame', 1, 240), ('NAMED_NOT_DESTROYED', victim),
+                   ('NAMED_ATTACKED_BY_OBJECTTYPE', victim, 'AlliedAttackDrone')],
+                   [('INCREMENT_COUNTER', weight, 'E170Gate')]),
+            Script('Test - out ' + tag, [('COUNTER', 'E170Frame', 3, 60), ('COUNTER', 'E170Frame', 1, 240), air],
+                   [('INCREMENT_COUNTER', 4 * weight, 'E170Gate')]),
+            Script('Test - late ' + tag, [('COUNTER', 'E170Frame', 3, 300), ('COUNTER', 'E170Frame', 0, 600), air],
+                   [('INCREMENT_COUNTER', 1, 'E170' + tag + 'Late')], once=False),
+            Script('Test - alive ' + tag, [('COUNTER', 'E170Frame', 2, 600), ('NAMED_NOT_DESTROYED', host)],
+                   [('INCREMENT_COUNTER', 16 * weight, 'E170Gate')])]
+    t.expect = [('完成帧', 0, 'ever==', 600), ('前置位', 0, 'ever==', 63)]
+    t.bench = [('bench_camera', dict(x=2900, y=3600, look=False)),
+               ('bench_watch', dict(seconds=100, every=1, sheet=False, lines=4))]
+    return t
+
+
+MISSION = {'engine_slaughter_e': mission, 'engine_slaughter_p': lambda: mission('CampSlaughterP', ('p1', 'p1'))}
+CHECKS = {'engine_slaughter_e': {'a': check, 'b': lambda m: check(m, corrected=True)},
+          'engine_slaughter_p': {'p': check_p}}
 # Each arm's drones are counted by its own player, so the hosts (and targets) swap sides: a confound, held here
 # as the one freedom; both arms read 0 (a negative baseline). Put both on p1 and count by area when E170 reopens.
-CONTROL_ARMS = {'engine_slaughter_e': ('On', 'Off', 'side')}
+CONTROL_ARMS = {'engine_slaughter_e': ('On', 'Off', 'side'), 'engine_slaughter_p': ('On', 'Off')}
