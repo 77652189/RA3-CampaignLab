@@ -357,6 +357,11 @@ NOTES = {
                                                    'LaserId 0）没填；FX_SOV_ElectroRay 只有声音和粒子。麻痹由同一武器的 '
                                                    'ParalyzeNugget + AttributeModifierNugget 给出。同族 LaserState、'
                                                    'ConvergingLaserState 上台都无附加伤害或延迟（engine_laser、E211），未单独上台'),
+    (MODULE, 'Behaviors/OCLMonitorUpdate'): (TODO, 'E222 娜塔莎轰炸台上读到：MASTER 一个主人同时只牵一架轰炸机（还牵着时'
+                                                  '不叫新的）；主人停止攻击就放走，RELEASE_WHEN_MASTER_CHANGES_TARGET '
+                                                  '换目标也放走；放走的不投弹。不换目标时有无模块首伤相同。模拟器不飞'
+                                                  '这条轰炸（SpecialPowerNugget→OCLSpecialPower 缺口，C 的 engine_spnbomb），'
+                                                  '读数 mismatch 见 checks/engine_oclmonitor_e'),
     (MODULE, 'Behaviors/AimWeapon'): (TODO, 'E211 不是纯表现：标枪兵打直升机，原版比删模块首伤晚 1 个脚本帧（换位、'
                                             '换放置顺序都一样），f120 血量相同；设 AIM_HIGH（只有绘制模块读）。'
                                             '晚的这一帧等什么没读到，不拟合；读数 mismatch 见 checks/engine_cosmetic_e'),

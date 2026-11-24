@@ -1,0 +1,38 @@
+# Bench readings of checks/engine_oclmonitor_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E222: Natasha's bombing-run monitor. Arms On (retail: MASTER RELEASE_WHEN_MASTER_CHANGES_TARGET), Mid (MASTER),
+# Off (taken out). Each arm counter = A's frames from GO to its first loss x 1000 + B's from SWITCH (GO + 67) to its
+# first loss, 400 / 333 = never; gate = targets alive at the end (A / B: 1 / 2 On, 4 / 8 Mid, 16 / 32 Off).
+
+[[reading]]
+id = "the_monitor_lets_her_bomb_a_target_she_stays_on"
+scene = {build = "engine_oclmon_n", check = "a", until = 32}
+bench = "CampOCLMonNA_mcp_1124_123108: 94124 93138 93123 0 -- A hit 93-94 frames after GO in all three arms"
+proves = """No switch: the monitor does not hold the first run back (A's first loss the same with and without it); B, \
+which she takes up herself once A is dead, falls to a run of its own in every arm"""
+expect = ["counter('E222On') // 1000 <= 95", "counter('E222Mid') // 1000 <= 95", "counter('E222Off') // 1000 <= 95",
+          "counter('E222Gate') == 0"]
+mismatch = "sim 400333 400333 400333 63 (no one hit): the simulator flies no bombing run (SpecialPowerNugget -> OCLSpecialPower is a gap, C's engine_spnbomb)"
+
+[[reading]]
+id = "a_master_holds_one_bomber_release_on_switch_drops_it"
+scene = {build = "engine_oclmon_e", check = "a", until = 32}
+bench = """CampOCLMonEA_mcp_1124_122950: 259093 94139 93093 0. Off: the first bomber still hits A (93) and B's own \
+comes 93 after the switch. Mid: A hit (94), B's 139 -- its call waits about 46 frames, till the first bomber is gone. \
+On: B's 93 as Off, A not on the first pass: 259 = B's death (160) + a third run once she takes A up again"""
+proves = """MASTER keeps one bomber per master (no new call while it is held); RELEASE_WHEN_MASTER_CHANGES_TARGET lets \
+it go on the switch, and the bomber let go drops nothing (no KILL_WHEN_RELEASED: killed or flown off not read)"""
+expect = ["counter('E222On') % 1000 == counter('E222Off') % 1000", "counter('E222On') // 1000 > 200",
+          "counter('E222Mid') // 1000 <= 95", "counter('E222Mid') % 1000 >= counter('E222Off') % 1000 + 40",
+          "counter('E222Off') // 1000 <= 95", "counter('E222Gate') == 0"]
+mismatch = "sim 400333 400333 400333 63 (no one hit): the simulator flies no bombing run (SpecialPowerNugget -> OCLSpecialPower is a gap, C's engine_spnbomb)"
+
+[[reading]]
+id = "a_master_that_stops_attacking_lets_its_bomber_go"
+scene = {build = "engine_oclmon_s", check = "a", until = 32}
+bench = """CampOCLMonSA_mcp_1124_123420: 400333 400333 93333 47 (SWITCH: NO_ATTACK + NAMED_STOP); the first run \
+(CampOCLMonEA_mcp_1124_122633, Natasha IMMOBILE: ordered on B, she never turned) read the same, 400333 400333 94333 47"""
+proves = """With MASTER, with or without RELEASE_WHEN_MASTER_CHANGES_TARGET, a master that stops attacking lets its \
+bomber go and it drops nothing; without the monitor the bomber hits A all the same"""
+expect = ["counter('E222On') == 400333", "counter('E222Mid') == 400333", "counter('E222Off') // 1000 <= 95",
+          "counter('E222Gate') == 47"]
+mismatch = "sim 400333 400333 400333 63 (no one hit): the simulator flies no bombing run (SpecialPowerNugget -> OCLSpecialPower is a gap, C's engine_spnbomb)"
