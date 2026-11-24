@@ -738,9 +738,9 @@ NOTES = {
         '资格/更新前置状态、观测宿主人口等价仍gap；旧时钟读数不用于晋升，非固定延迟；'
         '见work/re/e102_update_clock.md'),
     '微操/SpecificSpecialPowerDelay.MaximumDelay': (GUESSED,
-        '模型按成功施放后同类冷却消费上限；tests/test_simai_delay.py 验证上端点和真实冲锋执行接线；'
-        'engine_aidelay 0/999实机PASS，脚本冲峰值2/1且曾冲>0已有回放；'
-        '台上帧数减曾冲恒362、模型270，精确观测时钟strict xfail；'
+        '模型按成功施放后同类冷却消费上限；tests/test_simai_delay.py 验证上端点；'
+        'engine_aidelay 0/999实机PASS，读数 engine_aidelay.readings.toml：曾冲>0、999冲峰值1对上，0的峰值2标mismatch；'
+        '台上帧数减曾冲恒362、模型263，精确观测时钟标mismatch；'
         '随机分布及原版TOGGLE两种子类仍gap，不晋升原版用量；见work/re/c_delay_clock_report.md'),
     **{f'微操/SpecificSpecialPowerDelay.{field}': (GUESSED,
         '模型已读取；engine_aidelay 0/999实机配对仅改变MaximumDelay，'

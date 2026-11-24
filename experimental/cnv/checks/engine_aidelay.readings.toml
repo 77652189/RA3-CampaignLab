@@ -1,0 +1,44 @@
+# Bench readings of checks/engine_aidelay.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# SpecificSpecialPowerDelay MaximumDelay 0 / 999 on the aimicspon Hunt team (bench 2026-11-11, both PASS).
+
+[[reading]]
+id = "the_script_sees_a_charge_in_both_runs"
+scene = {build = "aidelay0", check = "a", until = 50.0}
+each = [{build = "aidelay0"}, {build = "aidelay999"}]
+bench = "aidelay0 / aidelay999: two warriors from s20; 曾冲 latched from s33 (Ever 11 at s33, 146 / 142 at s42)"
+proves = "simai micro: the RUSH_ATTACK charge fires (the positive control before reading the delay)"
+expect = "max(r['曾冲'] for r in rows) > 0"
+
+[[reading]]
+id = "a_long_maximum_delay_never_has_two_charging"
+scene = {build = "aidelay999", check = "a", until = 50.0}
+bench = "aidelay999: one charging at s33-s42, none from s43 (冲 never 2)"
+proves = "simai micro: after the first charge a 999 s MaximumDelay keeps the second warrior from charging with it"
+expect = "max(r['冲'] for r in rows) == 1"
+
+[[reading]]
+id = "a_zero_maximum_delay_has_both_charging_by_s42"
+scene = {build = "aidelay0", check = "a", until = 50.0}
+bench = "aidelay0: one charging at s33, two at s34-s42"
+proves = "simai micro: with MaximumDelay 0 both warriors charge together"
+expect = "max(win(14, 42, '冲')) == 2"
+mismatch = """\
+simai charges the pair one after the other (1 at most to s42; A round 250, with the D162 range less 5, \
+Sim.reach_of); it reaches 2 only later with a third warrior. Causes (A round 247): A230 stops the warriors at the \
+exact range edge, so conscript 2 shoots the same warrior and the other drops under HealthFraction 0.8 only after the \
+first dies; model ca13b7c sends the team in by a move. On the bench the warriors withdraw north s27-s30, the \
+simulator has none (INFERRED). Not chased further (coordinator)."""
+
+[[reading]]
+id = "the_first_seen_clock_is_362_frames_after_wake"
+scene = {build = "aidelay0", check = "a", until = 50.0}
+each = [{build = "aidelay0"}, {build = "aidelay999"}]
+bench = """\
+both builds: Frames - Ever = 362 in all 24 positive samples (wall second, Frames, Ever: both (33, 373, 11), zero \
+(42, 508, 146), long (42, 504, 142)); Ever is a latched script clock, not the engine's dispatch frame \
+(work/re/c_delay_pair_1111_readings.json)"""
+proves = "simai micro: the script first sees the charge 362 frames after wake"
+expect = "{r['帧数'] - r['曾冲'] for r in rows if r['曾冲'] > 0} == {362}"
+mismatch = """\
+simai 263 (the charge seen ~100 frames early), bench 362. Do not change B target / movement or fit MaximumDelay to \
+this offset: work/re/c_delay_clock_report.md, work/re/handoff-c.md"""

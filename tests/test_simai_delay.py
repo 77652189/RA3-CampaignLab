@@ -1,13 +1,9 @@
-"""MaximumDelay pair: real probe data and the actual AI execution callback.
-
-The bodies' status is read directly, and the script counters (PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS,
-counted by Sim.cond since A round 164) are replayed against the bench.
-"""
-import collections
+"""MaximumDelay pair: the probe's micro data as the map compiler takes it, and the micro manager's upper endpoint.
+The bench's script counters are readings: experimental/cnv/checks/engine_aidelay.readings.toml."""
 import xml.etree.ElementTree as ET
 import pytest
 
-from test_simai_bench_b import lib, _probe_run, pytestmark  # noqa: F401
+from test_simai_bench_b import pytestmark  # noqa: F401
 from test_simai_bench_b import simai
 
 
@@ -43,79 +39,3 @@ def test_maximum_endpoint_is_consumed_after_first_success(maximum, second):
     for frame in range(1, second + 1):
         manager.tick(frame, mc.Team(units))
     assert [(f, n) for f, n, _ in manager.fired] == [(8, 'a'), (second, 'b')]
-
-
-_PEAK_XFAIL = pytest.mark.xfail(strict=True, reason='aidelay0: the bench pair (the two warriors out from s20) '
-    'charges s33 and s34 and both stay charged to s42; the sim pair charges one after the other (A round 250, with '
-    'the D162 range less 5, Sim.reach_of: f418 / f538). The sim does reach 2 at once, but only s43-s46 and with a '
-    'third, later warrior (#292, f616) over #290 -- so these tests count the first pair by s42. Causes (A round '
-    '247, bisected before the D162 range): (1) A230 329e24cb stops the warriors at the exact range edge from '
-    'conscript 1, so conscript 2 shoots the same warrior and the other drops under HealthFraction 0.8 only after '
-    'the first dies; (2) model ca13b7c (D round 140, the hostile gate) sends the team in by a move instead of the '
-    'attack order. Not a deeper stop (H1 not supported, aidelay0:p bench, A round 249): the sides first meet at '
-    'the sim gap, then on the bench the warriors withdraw north s27-s30 and the conscripts follow to the '
-    'attack-move end -- the sim has no withdrawal (INFERRED; y only). Not chased further (coordinator).')
-
-
-@pytest.mark.parametrize('build', [pytest.param('aidelay0', marks=_PEAK_XFAIL), 'aidelay999'])
-def test_specific_maximum_delay_probe_trace(lib, build, monkeypatch):
-    observed = []
-    original = simai.Brain.fire_unit
-
-    def fire(brain, ai, key, unit, info):
-        original(brain, ai, key, unit, info)
-        bodies = [b for b in brain.host.sim.living() if b.owner == brain.player]
-        charged = {b.name for b in bodies if 'WEAPON_UPGRADED_02' in b.status}
-        observed.append((brain.frame, key, unit.name, charged))
-
-    monkeypatch.setattr(simai.Brain, 'fire_unit', fire)
-    world, rows = _probe_run(build, lib, 50)
-    (brain,) = world.brains.values()
-    rush = [e for e in brain.fired if 'Bonzai' in e[3]]
-    pair = set(list(dict.fromkeys(e[2] for e in observed))[:2])     # the bench's two warriors (out from s20)
-    peak = max(len(e[3] & pair if build == 'aidelay0' else e[3]) for e in observed)
-    print(build, 'rush records', rush[:6], 'peak charge', peak,
-          'first seen clock', max(r['曾冲'] for r in rows))
-    assert rush, 'successful positive control required before interpreting delay'
-    assert peak == (1 if build == 'aidelay999' else 2)
-    by_unit = collections.defaultdict(list)
-    for frame, _, name, _ in rush:
-        by_unit[name].append(frame)
-    assert all(b - a >= 450 for frames in by_unit.values() for a, b in zip(frames, frames[1:]))
-    if build == 'aidelay999':
-        by_team = collections.defaultdict(list)
-        for frame, key, _, _ in rush:
-            by_team[key].append(frame)
-        assert all(len(v) == 1 for v in by_team.values()), by_team
-
-
-@pytest.mark.parametrize('build, peak', [pytest.param('aidelay0', 2, marks=_PEAK_XFAIL), ('aidelay999', 1)])
-def test_maximum_delay_replays_bench_script_counters(lib, build, peak):
-    """engine_aidelay pair bench 2026-11-11: the script counters 冲 peak 2 / 1 and 曾冲 is set (Sim.cond counts
-    PLAYER_HAS_NUMBER_OBJECTS_WITH_OBJECT_STATUS since A round 164). The pair: by s42 (bench 2 at s34-s42)."""
-    _, rows = _probe_run(build, lib, 50)
-    assert max(r['冲'] for r in (rows[:42] if peak == 2 else rows)) == peak
-    assert max(r['曾冲'] for r in rows) > 0
-
-
-@pytest.mark.parametrize('build', ['aidelay0', 'aidelay999'])
-@pytest.mark.xfail(strict=True, reason='engine_aidelay both builds: bench Frames - Ever = 362 '
-    'in 24 positive samples each; current replay gives 270 (92 frames early). '
-    'Do not change B target/movement or fit MaximumDelay to this offset; '
-    'evidence and hypotheses: work/re/c_delay_clock_report.md; work/re/handoff-c.md.')
-def test_maximum_delay_first_seen_clock_replays_bench(lib, build):
-    """engine_aidelay a: wake-relative Frames - Ever is 362, not wall seconds.
-
-    Recorded script samples (wall second, Frames, Ever): both (33, 373, 11),
-    zero (42, 508, 146), long (42, 504, 142). Ever is a latched clock,
-    including after charging stops. This dates script observation, not the
-    engine's internal ability dispatch. Raw evidence: work/re/c_delay_pair_1111_readings.json.
-    """
-    world, rows = _probe_run(build, lib, 50)
-    samples = [(t, r['帧数'], r['曾冲'])
-               for (t, _), r in zip(world.sim.series, rows) if r['曾冲'] > 0]
-    assert samples, 'the script must actually observe a charge'
-    clocks = {frames - ever for _, frames, ever in samples}
-    print(build, 'mission-clock/Frames/Ever samples', samples[:2], samples[-2:],
-          'wake-relative first-seen clocks', sorted(clocks))
-    assert clocks == {362}

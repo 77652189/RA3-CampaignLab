@@ -15,8 +15,8 @@ none from s43; Ever 11 at s33 and 142 at s42. Both first-seen clocks
 give Frames - Ever = 362 after wake (24 positive samples per build).
 This is the latched script observation clock, not an internal dispatch frame.
 This single pair does not measure the RNG distribution. Sim.cond now supports
-the player status count (A round 164); tests/test_simai_delay.py replays these
-script counters separately from the simulator's body-state trace.
+the player status count (A round 164); engine_aidelay.readings.toml replays these
+script counters.
 """
 from checks import engine_aimicro as ac
 from parts import Script
