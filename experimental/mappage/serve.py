@@ -222,8 +222,7 @@ class Sketch:
     def generate(self, s):
         self.save(s)
         with self.lock:                                        # contract.map_design, the build: one at a time
-            # the engine line's pathfinding model too when it is on this computer (about a second): its "may stop
-            # half way" warnings (docs/engine/pathing.md 1) are the page's to show
+            # the simulator's routing too: its "may stop half way" warnings (docs/engine/pathing.md 1) are the page's
             return sketch2map().report(self.name, self.read(), with_map=self.with_map, with_pathing=True, out=self.dir)
 
     def report(self):

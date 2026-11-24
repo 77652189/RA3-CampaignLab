@@ -156,9 +156,14 @@ def test_grounds_pave_a_block_under_the_road(tmp_path):
                                              'texture': 'Pavement_Heidel01'}]
 
 
-def test_pathing_skips_without_the_model(tmp_path):
-    mod = sk.load(sk.generate(_trial(), str(tmp_path)))
-    assert sk.pathing(mod, [('start', 'plateau')], model_dir=str(tmp_path / 'nowhere')) is None
+def test_pathing_goes_up_the_ramp_or_stops_short(tmp_path):
+    """The simulator's routing: the mesa by its ramp, round the wall (longer than the beeline); no ramp, no way --
+    where the unit stops, short of the mesa."""
+    for ramp in (True, False):
+        mod = sk.load(sk.generate(_trial(ramp), str(tmp_path / str(ramp))), f'trial_{ramp}')
+        d, = sk.pathing(mod, [('start', 'mesa')])
+        assert d['found'] is ramp and ('gap' in d) is not ramp
+    assert d['gap'] > 50 and 1050 < sk.pathing(mod, [('start', 'plateau')])[0]['length'] < 2500
 
 
 # ---- the brush layer (raise / lower / flatten on a new map: platmap.Layout.brushes)

@@ -1,16 +1,14 @@
-"""Where the attacks go (map-design intent 3: few named crossings are where the AI's waves must pass): the engine
-line's pathfinding model (sketch2map.pathing_model, as --pathing) routes every Soviet barracks and the player's start
-to every power station of a sketch map, with the buildings (the caller's palette footprints) blocking; draws them on
-the map's models.png and prints the lengths.
+"""Where the attacks go (map-design intent 3: few named crossings are where the AI's waves must pass): the
+simulator's routing (sketch2map.way) routes every Soviet barracks and the player's start to every power station of a
+sketch map, with the buildings (the caller's palette footprints) blocking; draws them on the map's models.png and
+prints the lengths (the taut legs a unit drives; -1: no way).
 Usage: attack_routes.py <sketch name> [footprint .json ...]
   (work/mappage/<name>/: <name>.py, sketch.json, models.png; footprints default to work/logs/mapdesign_1123/palette*)"""
 import importlib.util
 import json
-import math
 import os
 import sys
 
-import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -20,37 +18,22 @@ if 'sketch2map' not in sys.modules:     # by file, as mappage.py does: it loads 
     _spec.loader.exec_module(sys.modules['sketch2map'])
 s2m = sys.modules['sketch2map']
 import labpaths                                                  # noqa: E402
-import platmap                                                   # noqa: E402
 BIG = 2500                                                       # footprints above this (w x h) block the way
 PALETTES = [os.path.join(labpaths.WORK, 'logs', 'mapdesign_1123', f) for f in ('palette.json', 'palette_props.json')]
 
 
 def main(name, palettes=PALETTES):
-    pf = s2m.pathing_model()
-    if pf is None:
-        sys.exit("the engine line's pathfinding model is not on this computer (labpaths.ENGINE_MODEL)")
     foot = {}
     for p in palettes:
         foot.update(json.load(open(p)))
     folder = os.path.join(s2m.OUT, name)
     mod = s2m.load(os.path.join(folder, name + '.py'))
     sk = json.load(open(os.path.join(folder, 'sketch.json'), encoding='utf-8'))
-    w, h, b = platmap.CONTAINER
-    walk = s2m.walk_of(mod)[b:h - b, b:w - b].copy()
-    C = platmap.CELL
-    n = walk.shape[0]
-    jj, ii = np.mgrid[0:n, 0:n]
-    X, Y = (ii + 0.5) * C, (jj + 0.5) * C
-    for o in sk['objects']:
-        f = foot.get(o['template'])
-        if not f or f[0] * f[1] < BIG or o.get('side', 'neutral') != 'neutral' or o.get('name'):
-            continue                                             # the barracks and stations are where the routes end
-        ca, sa = math.cos(o['angle']), math.sin(o['angle'])
-        dx, dy = X - o['x'], Y - o['y']
-        walk[(abs(dx * ca + dy * sa) <= f[0] / 2) & (abs(-dx * sa + dy * ca) <= f[1] / 2)] = False
-    for s in sk['sites'].values():                               # a site's own spot stays open (a house may stand on it)
-        walk[(X - s['x']) ** 2 + (Y - s['y']) ** 2 <= 70 ** 2] = True
-    grid = s2m.model_grid(pf, walk)
+    from engine.objects.path import Ground                       # on the path build.py set
+    g = Ground(mod)                     # a way's ends snap to the nearest open cell (a house may stand on a site)
+    g.set_blocks([(o['x'], o['y'], o['angle'], *foot[o['template']][:2]) for o in sk['objects']
+                  if foot.get(o['template']) and foot[o['template']][0] * foot[o['template']][1] >= BIG
+                  and o.get('side', 'neutral') == 'neutral' and not o.get('name')])   # barracks, stations: the ends
     sites = sk['sites']
     stations = [c for c in sites if c.startswith('st_')]
     sources = [c for c in sites if c.startswith('sov_')] + ['start']
@@ -65,16 +48,13 @@ def main(name, palettes=PALETTES):
         col = colour.get(src, reds[i % len(reds)])
         for st in stations:
             a, z = sites[src], sites[st]
-            r = pf.find_path(grid, pf.world_to_cell(a['x'], a['y']), pf.world_to_cell(z['x'], z['y']), cell_limit=400000)
-            if not r.found:
-                print('approx', src, st, r.reason)
-            if not r.cells:
-                table[(src, st)] = None
-                print('no path', src, st, r.reason)
-                continue
-            pts = [px(*pf.cell_center(*c)) for c in r.cells]
-            dr.line(pts, fill=col, width=3)
-            table[(src, st)] = round(pf.path_length_world(r.cells)) if r.found else -1
+            wet = g.grids['water'][g.cell(a['x'], a['y'])]       # a site on the water sends boats and amphibians
+            r = s2m.way(g, (a['x'], a['y']), (z['x'], z['y']), 'both' if wet else 'ground')
+            if not r['found']:
+                print('no way', src, st, f"(stops {r['gap']:.0f} short)" if 'gap' in r else '')
+            if len(r['points']) > 1:
+                dr.line([px(*c) for c in r['points']], fill=col, width=3)
+            table[(src, st)] = r['length'] if r['found'] else -1
     font = ImageFont.truetype('C:/Windows/Fonts/msyh.ttc', 16)
     for st in stations:
         p = px(sites[st]['x'], sites[st]['y'])

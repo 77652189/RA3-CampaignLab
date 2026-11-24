@@ -564,51 +564,40 @@ def regions(mod, e=None):
             'off ground': [s for s, v in at.items() if not v]}
 
 
-def pathing_model(model_dir=None):
-    """The engine line's pathfinding model (ra3model/pathing.py), None when it is not on this computer."""
-    path = os.path.join(model_dir or labpaths.ENGINE_MODEL, 'ra3model', 'pathing.py')
-    return _load('ra3model_pathing', path) if os.path.exists(path) else None
+def way(g, p, q, surface='ground'):
+    """A ground unit's way from p to q on g (the simulator's routing, engine/objects/path.py Ground: its 20-unit
+    grid, the taut legs a unit drives): found, the points from p, their length; no way -- the way to the reachable
+    point nearest q (RA3's plain move: the unit drives there and stops, pathing.md 1) as stop, gap its distance to q."""
+    pts = g.route(surface, p, q)
+    d = {'found': pts is not None}
+    if pts is None:
+        pts = g.route(surface, p, q, closest=True) or []
+        if pts:
+            d['stop'], d['gap'] = list(pts[-1]), round(math.hypot(pts[-1][0] - q[0], pts[-1][1] - q[1]), 1)
+    d['points'] = [tuple(p)] + [tuple(c) for c in pts]
+    d['length'] = round(sum(math.dist(u, v) for u, v in zip(d['points'], d['points'][1:])))
+    return d
 
 
-def model_grid(pf, walk):
-    """The model's classified grid of a walkable array in our 10-unit cells (row 0 = south)."""
-    k = max(1, int(round(float(pf.CELL_SIZE) / platmap.CELL)))     # the model's cell (RA3: 20) in our 10-unit cells
-    n = walk.shape[0] // k
-    walk = walk[:n * k, :n * k].reshape(n, k, n, k).all(axis=(1, 3))     # a model cell is clear only if all of it is
-    return pf.classify(pf.Grid([[pf.CLEAR if walk[j, i] else pf.IMPASSABLE for i in range(n)] for j in range(n)]))
-
-
-def pathing(mod, pairs, model_dir=None):
-    """Whether ground units find a way between pairs of sites, by the engine line's pathfinding model (ADR 0018: the
-    private repository RA3-EngineModel, labpaths.ENGINE_MODEL). None when the model is not on this computer -- the
-    caller says so and leaves the walkable regions as the answer. The model is still a skeleton (its own README):
-    use it when asked (--pathing), not by default."""
-    pf = pathing_model(model_dir)
-    if pf is None:
-        return None
-    w, h, b = platmap.CONTAINER
-    grid = model_grid(pf, walk_of(mod)[b:h - b, b:w - b])     # the playable square, row 0 = south, as the model's y
-    out = []
+def pathing(mod, pairs):
+    """Whether ground units find a way between pairs of sites (way(), on the map's own ground and bridges)."""
+    from engine.objects.path import Ground
+    g, out = Ground(mod), []
     for a, z in pairs:
         sa, sz = mod.SITES[a], mod.SITES[z]
-        r = pf.find_path(grid, pf.world_to_cell(sa.x, sa.y), pf.world_to_cell(sz.x, sz.y))
-        d = {'from': a, 'to': z, 'found': r.found, 'reason': r.reason, 'cells': len(r.cells), 'at': [sz.x, sz.y]}
-        if not r.found and getattr(r, 'approximate', False) and r.goal is not None:
-            # RA3's plain move: the unit drives to the searched cell nearest the goal and stops there (pathing.md 1)
-            d['stop'] = [float(v) for v in pf.cell_center(*r.goal)]
-            d['gap'] = round(float(r.gap) * float(pf.CELL_SIZE), 1)
-        out.append(d)
+        d = way(g, (sa.x, sa.y), (sz.x, sz.y))
+        out.append({'from': a, 'to': z, 'reason': '' if d['found'] else 'no way', 'at': [sz.x, sz.y],
+                    **{k: v for k, v in d.items() if k != 'points'}})
     return out
 
 
-STOP_WORDS = '游戏不报错，单位会开到半路停住；脚本派兵请分段下令；模型偏保守，可能多报'
+STOP_WORDS = '游戏不报错，单位会开到半路停住；脚本派兵请分段下令'
 
 
 def stops(paths, reg):
-    """The pairs the walkable regions join but the pathfinding model does not (docs/engine/pathing.md 1: over its
-    search budget the game says nothing, the unit drives to the searched cell nearest the goal and stops there). Not
-    a failure -- the model is cautious on long detours across a big map (trial2 / trial3: the lake shore reads
-    'budget', the game got there in 16 s / 13 s) -- a warning, kept apart from the sites nobody can walk to."""
+    """The pairs the walkable regions join but the routing does not (its 20-unit grid shuts a gap the 10-unit
+    regions keep open; the unit drives to the reachable point nearest the goal and stops there, pathing.md 1) -- a
+    warning, kept apart from the sites nobody can walk to."""
     if not isinstance(paths, list):
         return []
     cut = set(reg['cut off'])
@@ -767,8 +756,7 @@ def report(name, s=None, with_map=True, with_pathing=False, out=None):
     out['near'] = near_sites(mod)
     if with_pathing:
         pairs = [('start', k) for k in mod.SITES if k not in ('start', 'island') and not k.endswith(' refinery')]
-        res = pathing(mod, pairs)
-        out['pathing'] = res if res is not None else '引擎线的寻路模型不在这台电脑上（labpaths.ENGINE_MODEL），只看连通区'
+        out['pathing'] = pathing(mod, pairs)
     else:
         out['pathing'] = '没跑（--pathing 才跑）'
     out['stops'] = stops(out['pathing'], reg)          # warnings: they do not make the sketch fail
@@ -833,7 +821,7 @@ def text_report(r):
         f"{x['from']}→{x['to']} {'通' if x['found'] else '不通 ' + x['reason']}" for x in p)))
     for x in r.get('stops', []):
         at = f"，停在 ({x['stop'][0]:.0f}, {x['stop'][1]:.0f})，离目标 {x['gap']:.0f}" if x.get('stop') else ''
-        out.append(f"可能半路停住 {x['from']}→{x['to']}（连通区能到，模型 {x['reason']}{at}）：{STOP_WORDS}")
+        out.append(f"可能半路停住 {x['from']}→{x['to']}（连通区能到，寻路 {x['reason']}{at}）：{STOP_WORDS}")
     for x in r.get('narrow', []):
         out.append(f"贴边窄缝 ({x['x']:.0f}, {x['y']:.0f}) 宽约 {x['width']:.0f}、长 {x['length']:.0f}：{NARROW_WORDS}")
     for x in r.get('near', []):
@@ -867,7 +855,7 @@ def main():
     ap.add_argument('name')
     ap.add_argument('--from', dest='src', help='write the sketch of this existing map module (maps/<name>.py) first')
     ap.add_argument('--no-map', action='store_true', help='lint and regions only')
-    ap.add_argument('--pathing', action='store_true', help="the engine line's pathfinding model too (if present)")
+    ap.add_argument('--pathing', action='store_true', help="the simulator's routing too (way())")
     ap.add_argument('--sketch', metavar='FILE', help='a sketch written anywhere (- = stdin): saved as '
                     'work/mappage/<name>/sketch.json first (docs/shell/sketch-format.md)')
     ap.add_argument('--check', action='store_true', help='print a short summary (verdict, failures, warnings, file '
