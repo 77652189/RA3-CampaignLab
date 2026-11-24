@@ -564,23 +564,30 @@ def regions(mod, e=None):
             'off ground': [s for s, v in at.items() if not v]}
 
 
+def pathing_model(model_dir=None):
+    """The engine line's pathfinding model (ra3model/pathing.py), None when it is not on this computer."""
+    path = os.path.join(model_dir or labpaths.ENGINE_MODEL, 'ra3model', 'pathing.py')
+    return _load('ra3model_pathing', path) if os.path.exists(path) else None
+
+
+def model_grid(pf, walk):
+    """The model's classified grid of a walkable array in our 10-unit cells (row 0 = south)."""
+    k = max(1, int(round(float(pf.CELL_SIZE) / platmap.CELL)))     # the model's cell (RA3: 20) in our 10-unit cells
+    n = walk.shape[0] // k
+    walk = walk[:n * k, :n * k].reshape(n, k, n, k).all(axis=(1, 3))     # a model cell is clear only if all of it is
+    return pf.classify(pf.Grid([[pf.CLEAR if walk[j, i] else pf.IMPASSABLE for i in range(n)] for j in range(n)]))
+
+
 def pathing(mod, pairs, model_dir=None):
     """Whether ground units find a way between pairs of sites, by the engine line's pathfinding model (ADR 0018: the
     private repository RA3-EngineModel, labpaths.ENGINE_MODEL). None when the model is not on this computer -- the
     caller says so and leaves the walkable regions as the answer. The model is still a skeleton (its own README):
     use it when asked (--pathing), not by default."""
-    import labpaths
-    path = os.path.join(model_dir or labpaths.ENGINE_MODEL, 'ra3model', 'pathing.py')
-    if not os.path.exists(path):
+    pf = pathing_model(model_dir)
+    if pf is None:
         return None
-    pf = _load('ra3model_pathing', path)
     w, h, b = platmap.CONTAINER
-    walk = walk_of(mod)[b:h - b, b:w - b]               # the playable square, row 0 = south, as the model's y
-    k = max(1, int(round(float(pf.CELL_SIZE) / platmap.CELL)))     # the model's cell (RA3: 20) in our 10-unit cells
-    n = walk.shape[0] // k
-    walk = walk[:n * k, :n * k].reshape(n, k, n, k).all(axis=(1, 3))     # a model cell is clear only if all of it is
-    types = [[pf.CLEAR if walk[j, i] else pf.IMPASSABLE for i in range(n)] for j in range(n)]
-    grid = pf.classify(pf.Grid(types))
+    grid = model_grid(pf, walk_of(mod)[b:h - b, b:w - b])     # the playable square, row 0 = south, as the model's y
     out = []
     for a, z in pairs:
         sa, sz = mod.SITES[a], mod.SITES[z]
