@@ -14,3 +14,45 @@ simai teams: a RELEASE_TO_PRIORITY holder gives its men only to a recruiter of a
 ranks above HIGH and below SCRIPTED (ra3model ai/teams.PRIORITY; CampaignLab work/re d130: the program compares the \
 number only, COOP 6)"""
 expect = ["rows[-1]['坦克总数'] == 2", "(max(r['到目标'] for r in rows) >= 1) == released"]
+
+# D round 148 (bench 11-15; the counter series were tests/fixtures/d_teamfields, now in the bench texts).
+# Each pair differs in one field only (tests/test_ai_team_fields.py::test_pairs_differ_in_one_field_only).
+
+[[reading]]
+id = "a_gather_waypoint_comes_before_the_far_plant"
+item = "AI 战术/Tactic.GatherWaypoint"
+scene = {build = "aigathwp", check = "a", until = 72.0}
+each = [{build = "aigathwp", gathered = true}, {build = "aigathno", gathered = false},
+        {build = "aigathbad", gathered = false}]
+bench = """\
+步兵在家 到路点 到远厂: aigathwp (GatherWaypoint the target waypoint) 到路点 1 s4, 2 s5, 4 s9-s21, then on to the far \
+plant (s44); aigathno (none written) 到路点 0 throughout, 到远厂 2 s17, 4 s20-s39; aigathbad (a name no waypoint has) \
+as aigathno: 到路点 0, 到远厂 2 s15, 4 s17-s35"""
+proves = "simai team attack: a GatherWaypoint is reached (two members) before the target; none or a bad name goes straight"
+let = {wp = "next((t for t, r in zip(times, rows) if r['到路点'] >= 2), None)", far = "first('到远厂')"}
+expect = ["far is not None", "(wp is not None and wp < times[far]) if gathered else wp is None"]
+
+[[reading]]
+id = "max_types_of_units_limits_the_kinds_recruited"
+item = "AI 组队招人/TeamTemplate.MaxTypesOfUnits"
+scene = {build = "aimaxty1", check = "a", until = 72.0}
+each = [{build = "aimaxty1", kinds = 1}, {build = "aimaxty3", kinds = 3}]
+bench = """\
+坦克在家 步兵在家 标枪在家 (2 each at home): aimaxty1 (MaxTypesOfUnits 1) takes the Peacekeepers only, 2 0 2 from \
+s16; aimaxty3 takes all three kinds, 1 2 2 s20, 0 2 1 s21, 0 0 0 from s22"""
+proves = "simai teams: MaxTypesOfUnits caps how many unit kinds a team takes (1: one kind, 3: all three)"
+let = {home = "[r for t, r in zip(times, rows) if t <= 40][-1]"}
+expect = ["sorted(home[k] for k in ('坦克在家', '步兵在家', '标枪在家')) == ([0, 2, 2] if kinds == 1 else [0, 0, 0])"]
+
+[[reading]]
+id = "a_hotspot_recruiter_takes_from_standard_and_scripted_holders"
+item = "AI 组队招人/TeamTemplate.Priority=HOTSPOT"
+scene = {build = "aihotstd", check = "a", until = 72.0}
+each = [{build = "aihotstd", released = true}, {build = "aihotdef", released = false},
+        {build = "aihotscr", released = true}]
+bench = """\
+坦克总数 坦克在家 到目标 (2 Guardians held by a RELEASE_TO_PRIORITY team, a SimpleAttack wants them from s35): aihotstd \
+(holder STANDARD, recruiter HOTSPOT) out s40, 到目标 2 s43-s63; aihotscr (holder SCRIPTED, recruiter HOTSPOT) the \
+same; aihotdef (holder STANDARD, recruiter DEFAULT) 2 2 0 to s70. The simulator ~7 s later (s47 / s50, INFERRED)"""
+proves = "simai teams: a HOTSPOT recruiter takes a STANDARD or a SCRIPTED holder's men, a DEFAULT one does not"
+expect = "(max(r['到目标'] for r in rows) >= 1) == released"

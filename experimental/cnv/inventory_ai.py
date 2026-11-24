@@ -683,14 +683,14 @@ NOTES = {
         '读数 engine_aipullpct.readings.toml::pullback_threshold_high_returns_before_recycling 四车回家且不到远厂；'
         '同文件 low 对照先到远厂；仅初次回撤阈值，精确边界/晚段/吊车回收未闭环（回收读数标 mismatch）'),
     '战术/Tactic.GatherWaypoint': (BENCHED,
-        'D148：tests/test_ai_team_fields.py 按名跑 aigathwp/aigathno/aigathbad（只差 GatherWaypoint：路点名 / 不写 / '
+        'D148：读数 engine_aiteamfields.readings.toml 跑 aigathwp/aigathno/aigathbad（只差 GatherWaypoint：路点名 / 不写 / '
         '写错名，SimpleAttack 打远厂）：台上写路点的先到路点（s9-s21 四人）再去远厂（s44），不写和写错名直接去（s15/s17）；'
         '模型（simai 本轮接上 gather_point）同形，路点 s11、远厂 s38；精确等待时长（台上全队停稳判据，见 work/re d130）INFERRED'),
     '组队招人/TeamTemplate.MaxTypesOfUnits': (BENCHED,
-        'D150：tests/test_ai_team_fields.py 按名跑 aimaxty1/aimaxty3（只差 MaxTypesOfUnits 1/3，家里坦克/步兵/标枪各 2）：'
+        'D150：读数 engine_aiteamfields.readings.toml 跑 aimaxty1/aimaxty3（只差 MaxTypesOfUnits 1/3，家里坦克/步兵/标枪各 2）：'
         '台上 1 只收维和（s16 起 2/0/2），3 三种都收（s20-s22 全走）；模型同形；收兵顺序与时刻 INFERRED'),
     '组队招人/TeamTemplate.Priority=HOTSPOT': (BENCHED,
-        'D150：tests/test_ai_team_fields.py 按名跑 aihotstd/aihotscr/aihotdef（防守队 STANDARD/SCRIPTED 对 进攻队 '
+        'D150：读数 engine_aiteamfields.readings.toml 跑 aihotstd/aihotscr/aihotdef（防守队 STANDARD/SCRIPTED 对 进攻队 '
         'HOTSPOT/DEFAULT，只差一处）：台上 HOTSPOT 两局 s40 放人、s43 到目标，DEFAULT 到 s70 不放；模型同形（s47/s50，'
         '晚约 7 s，时刻 INFERRED）'),
     '微操/AIMicroManagerData.AlphaStrikeTargetHealthPct': (BENCHED,

@@ -1,4 +1,0 @@
-# aimaxty1: run_queue 2026-11-14T14:38:12 head 743ef803 PASS; one line a range start
-坦克在家 步兵在家 标枪在家
-s1 2 2 2
-s16 2 0 2

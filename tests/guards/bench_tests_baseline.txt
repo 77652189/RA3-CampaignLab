@@ -17,8 +17,6 @@ tests/test_ai_ignore_distance.py::test_ignore_distance_replays_named_damage_obse
 tests/test_ai_ignore_rule.py::test_ignore_rule_fixture_changes_only_rule
 tests/test_ai_keep_target.py::test_keep_target_named_clock_replay
 tests/test_ai_keep_target.py::test_keep_target_named_death_replay
-tests/test_ai_team_fields.py::test_bench
-tests/test_ai_team_fields.py::test_model
 tests/test_ai_team_fields.py::test_pairs_differ_in_one_field_only
 tests/test_attach_c4.py::test_native_c4_attachment_and_parent_gate_match_bench
 tests/test_attach_c4.py::test_native_c4_controls_preserve_host_and_only_delete_nugget

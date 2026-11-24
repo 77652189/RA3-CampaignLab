@@ -1,8 +1,0 @@
-# aihotstd: run_queue 2026-11-14T17:57:42 head d51166fd PASS; one line a range start
-坦克总数 坦克在家 到目标
-s1 2 2 0
-s40 2 1 0
-s40 2 0 0
-s43 2 0 2
-s64 2 0 1
-s65 2 0 0
