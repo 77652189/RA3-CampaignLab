@@ -93,17 +93,20 @@ def test_an_upgrade_bought_at_a_yard_goes_on_the_same():
     assert host.spent == src.spent > 0
 
 
-def test_the_sample_barracks_reads_back_at_half_paid_100():
+def test_the_sample_barracks_reads_back_part_paid():
+    """ai_open's barracks at frame 623 (since model 929e5a8 a Javelin, paid 60 of 300; before, a scout at 100 of 200)
+    reads back and pays the rest."""
     from test_battlefield_place import _load     # without the AI yard's structures (test_battlefield_ai)
     doc = _load('ai_open')
     host = simsmall.small_world(model=False, map=niagara)
     assert simbattlefield.place_things(host, doc) == []
     [job] = host.production.queues[host.bodies['#ai 285 AlliedBarracks'].serial]
-    assert (job['template'], job['owner'], job['paid'], job['full'], job['cost']) == (SCOUT, 'Soviet_1', 100, None, 200)
+    javelin = 'AlliedAntiVehicleInfantry'
+    assert (job['template'], job['owner'], job['paid'], job['full'], job['cost']) == (javelin, 'Soviet_1', 60, None, 300)
     host.money['Soviet_1'] = 1000
-    host.run(host.t + 3.0)
-    assert host.money['Soviet_1'] == 900
-    assert [b.template for b in host.living() if b.made_by == '#ai 285 AlliedBarracks'] == [SCOUT]
+    host.run(host.t + 5.0)
+    assert host.money['Soviet_1'] == 760
+    assert [b.template for b in host.living() if b.made_by == '#ai 285 AlliedBarracks'] == [javelin]
 
 
 def test_a_job_held_for_a_ban_is_named_and_goes_on_where_placed():
