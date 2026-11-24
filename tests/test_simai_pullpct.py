@@ -1,54 +1,10 @@
-"""Full PullbackInjuredHealthPct replay; no injected facility or orders."""
-from test_simai_bench_b import lib, _probe_run, pytestmark  # noqa: F401
-from test_simai_bench_b import simai, simai_run
+"""The pullback facility rules on a built aipullpcthi world (white box). The threshold replays are readings:
+experimental/cnv/checks/engine_aipullpct.readings.toml."""
+from test_simai_bench_b import lib, pytestmark  # noqa: F401
+from test_simai_bench_b import simai_run
 from types import SimpleNamespace
 import pytest
 import engine.orders.order as simorder  # noqa: E402
-
-
-@pytest.fixture(scope='module')
-def returns(lib):
-    return {b: _probe_run(b, lib, 40.0) for b in ('aipullpctlo', 'aipullpcthi')}
-
-
-def test_pullback_threshold_low_reaches_the_fight(returns):
-    """checks/engine_aipullpct.py: 30% is above threshold 0.2 initially."""
-    _, rows = returns['aipullpctlo']
-    assert any(r['血量'] == 30 for r in rows[8:13])
-    assert any(r['到远厂'] >= 3 for r in rows)
-    # Bench reaches the plant s15-17, then one survivor returns at s34 after
-    # further injury. This is an initial non-trigger control, never "no return".
-    assert all(r['回家'] == 0 for r in rows[14:30])
-
-
-def test_pullback_threshold_high_returns_before_recycling(returns):
-    # B round 194: red (an XPASS of the old strict xfail) and the low run's red were one cause -- the SimpleAttack
-    # team left at once, the bench's forms up beside itself first and leaves when every member is idle again
-    """checks/engine_aipullpct.py: threshold 0.5 sends the same 30% tanks home."""
-    w, rows = returns['aipullpcthi']
-    assert any(r['血量'] == 30 for r in rows[8:13])
-    home = next((i for i, r in enumerate(rows[14:], 14) if r['回家'] >= 1), None)
-    assert home is not None
-    assert len(w.pullback.log) == 4
-    assert all(b.tactics.pullback is not None for b in w.brains.values())
-    assert all(w.pullback.busy(w.sim.bodies[name]) for _, name, _ in w.pullback.log)
-    assert any(r['回家'] == 4 for r in rows[home:])
-    assert all(r['到远厂'] == 0 for r in rows)
-    assert all(r['坦克数'] == 4 for r in rows[14:home + 1])
-
-
-@pytest.mark.xfail(strict=True, reason='Crane arrival event/geometry is missing: D43 establishes immediate refund '
-                   'then deletion on actual arrival, but home-area entry cannot supply that event. '
-                   'Bench high0.5 has alive0 from s28; replay leaves four alive. '
-                   'See work/re/c_recycle_arrival_gate_report.md and work/re/handoff-c.md.')
-def test_pullback_threshold_high_is_recycled_after_return(returns):
-    """checks/engine_aipullpct.py: bench has no high tanks from s28 onward."""
-    w, rows = returns['aipullpcthi']
-    # Use the series clock (which includes t=0), not an assumed row offset.
-    # This checks observed counts only; home-area membership is not arrival.
-    samples = [(t, r['坦克数']) for (t, _), r in zip(w.sim.series, rows) if 28 <= t < 40]
-    assert [t for t, _ in samples] == list(range(28, 40))
-    assert [alive for _, alive in samples] == [0] * 12, samples
 
 
 @pytest.fixture

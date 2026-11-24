@@ -680,8 +680,8 @@ NOTES = {
         '仅地面车辆回撤，吊车回收仍 strict xfail，未验证空海军/精确时间'),
     '微操/AIMicroManagerData.PullbackInjuredHealthPct': (BENCHED,
         'engine_aipullpct 固定30%血量、苏联吊车，仅阈值0.2/0.5不同；'
-        'tests/test_simai_pullpct.py::test_pullback_threshold_high_returns_before_recycling 完整回放四车回家且不到远厂；'
-        '同文件 low 对照先到远厂；仅初次回撤阈值，精确边界/晚段/吊车回收未闭环（回收 strict xfail）'),
+        '读数 engine_aipullpct.readings.toml::pullback_threshold_high_returns_before_recycling 四车回家且不到远厂；'
+        '同文件 low 对照先到远厂；仅初次回撤阈值，精确边界/晚段/吊车回收未闭环（回收读数标 mismatch）'),
     '战术/Tactic.GatherWaypoint': (BENCHED,
         'D148：tests/test_ai_team_fields.py 按名跑 aigathwp/aigathno/aigathbad（只差 GatherWaypoint：路点名 / 不写 / '
         '写错名，SimpleAttack 打远厂）：台上写路点的先到路点（s9-s21 四人）再去远厂（s44），不写和写错名直接去（s15/s17）；'
@@ -750,7 +750,7 @@ NOTES = {
     '微操/AIMicroManagerData.EnterBaseDefensesWhenIdle': (BENCHED,
         'D132 engine_aibasedef aibdi1/0/2（守点队状态8、无敌人、己方4座炮塔）：两开关都开时进基地防御那段程序发进驻令'
         '（f50四条、f98三条），s2起进炮塔、s6起2人；只开一个时该程序不发令；'
-        'tests/test_simai_basedef_whenidle.py 按名回放：都开进炮塔、关一个时该程序不送人，正常断言；'
+        '读数 engine_aibasedef.readings.toml::both_switches_on_the_idle_team_goes_into_the_turrets 等四条：都开进炮塔、关一个时该程序不发进驻令；'
         '台上f50开局即发令、2人，模型s12.5、1人，strict xfail；两对照各有1人经另一段不受开关管的程序进炮塔'
         '（f80），模型没有这条路，strict xfail；见work/re/d132_whenidle.md。旧读数：'
         'engine_aibasedef aibd1 是战斗中总开关开、idle关的正例（s21起1人进炮塔）；'

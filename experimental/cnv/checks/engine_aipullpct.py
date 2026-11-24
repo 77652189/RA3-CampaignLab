@@ -12,8 +12,8 @@ Bench 2026-11-11, both checks PASS (health, alive, far, home):
            alive3 s24-25, 2 s26, 1 s27, 0 from s28 (Crane recycling).
 The simulator's live facility hook now distinguishes the initial return:
 high sends four vehicles home without reaching the far plant; low reaches
-the far plant first. tests/test_simai_pullpct.py separates the passing return
-from the strict-xfail Crane recycling. Exact seconds, late return and
+the far plant first. engine_aipullpct.readings.toml separates the passing return
+from the Crane recycling (a mismatch). Exact seconds, late return and
 recycling are not claimed by the passing threshold tests.
 """
 from checks.engine_aipullback import a as original

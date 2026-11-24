@@ -26,3 +26,56 @@ aibdpre (turret 1 holds a fifth Peacekeeper from s0): 进炮塔 1 s1-s15 (the si
 full nobody goes into turret 2 or 3, though 3 stand by turret 2 (s18-25)"""
 proves = "simai base defenses: the pass does not skip a full turret (nobody of the team goes into another one)"
 expect = ["win(1, 12, '进炮塔') == [1] * 12", "all(r['进炮塔'] <= 1 for r in rows)"]
+
+# D round 132 (bench 2026-11-13): aibdi1 / aibdi0 / aibdi2, a StaticDefense team of four Peacekeepers beside the
+# AI's yard, no enemy, micro state 8 (idle); counters 进炮塔 炮塔数 步兵数 and the teams host's order log
+# (work/re/d132_whenidle.md). The bench's logical frames run ~25 ahead of the mission clock (frames 50 / 80 are
+# mission s1.7 / s3.7); the model's AI thinks from mission frame 0 (D round 137), its rounds at s2 / s4.
+
+[[reading]]
+id = "both_switches_on_the_idle_team_goes_into_the_turrets"
+scene = {build = "aibdi1", check = "a", until = 56.0, teams = true}
+bench = """\
+aibdi1 (EnterBaseDefenses + WhenIdle on): 进炮塔 0 4 4 @ s1 | 1 @ s2-s5 | 2 @ s6-s55; the enter orders come from the \
+base-defense routine only (d131 section 2): 4 at frame 50 (all to turret 1), 3 at frame 98 (turret 2)"""
+proves = "simai base defenses: with both switches on the idle team's base-defense routine enters the AI's turrets"
+item = "AI 微操/AIMicroManagerData.EnterBaseDefensesWhenIdle"
+let = {enter = "[o['target'] for o in orders() if o['kind'] == 'enter']"}
+expect = ["min(win(15, 55, '进炮塔')) >= 1", "enter and all(t.startswith('UNIT - CNV AI Turret ') for t in enter)"]
+
+[[reading]]
+id = "both_switches_on_timing_and_count"
+scene = {build = "aibdi1", check = "a", until = 56.0, teams = true}
+bench = "aibdi1: 进炮塔 0 at s1, 1 at s2-s5, 2 at s6-s55"
+proves = "simai base defenses: one inside from the first round, two from the team made again"
+expect = "win(1, 55, '进炮塔') == [0] + [1] * 4 + [2] * 50"
+mismatch = """\
+simai: 2 inside from s3 (its first round, mission s2, sends Inf 4 to turret 2: turret 1 out of its reach); bench 1 \
+from s2, 2 from s6 (4 orders at frame 50 all to turret 1, 3 at frame 98 to turret 2). work/re/d132_whenidle.md"""
+
+[[reading]]
+id = "either_switch_off_one_man_still_goes_in"
+scene = {build = "aibdi0", check = "a", until = 56.0, teams = true}
+each = [{build = "aibdi0"}, {build = "aibdi2"}]
+bench = """\
+aibdi0 (WhenIdle off) / aibdi2 (EnterBaseDefenses off): 进炮塔 0 @ s1-s3 | 1 @ s4-s55. The base-defense routine \
+sends NO order; the one man inside comes from 4 orders at frame 80 from another routine, the same in both, a path \
+neither switch gates (D round 133: team state 8 -> 6, each member attacks the tactical target, the AI's own turret 1, \
+carried out as entering it, ContainMax 1)"""
+proves = """\
+simai base defenses: with either switch off the routine gives no enter order; the ungated state-6 attack on turret 1 \
+puts one man in"""
+expect = ["win(1, 3, '进炮塔') == [0] * 3", "win(5, 55, '进炮塔') == [1] * 51",
+          "not any(o['kind'] == 'enter' for o in orders())",
+          "{o['target'] for o in orders() if o['kind'] == 'attack'} == {'UNIT - CNV AI Turret 1'}"]
+
+[[reading]]
+id = "either_switch_off_one_man_in_from_s4"
+scene = {build = "aibdi0", check = "a", until = 56.0, teams = true}
+each = [{build = "aibdi0"}, {build = "aibdi2"}]
+bench = "aibdi0 / aibdi2: 1 inside from s4 (the order at logical frame 80 = mission s3.7)"
+proves = "simai base defenses: the ungated path's man is inside at s4"
+expect = "win(4, 4, '进炮塔') == [1]"
+mismatch = """\
+simai from s5 (its second round at mission frame 60, the order seen by the next half-second tick), bench s4: the \
+bench's AI runs ~25 frames before the mission clock (index.json), the model from its frame 0. work/re/d137_f80.md"""
