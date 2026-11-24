@@ -3,7 +3,7 @@ import importlib.util
 from pathlib import Path
 
 _spec = importlib.util.spec_from_file_location(
-    'cityblocks', Path(__file__).resolve().parent.parent / 'experimental' / 'mappage' / 'cityblocks.py')
+    'cityblocks', Path(__file__).resolve().parents[2] / 'experimental' / 'mappage' / 'cityblocks.py')
 cb = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cb)
 
