@@ -95,7 +95,7 @@ RAW_OBJECTS = [
     Obj('CC_Lighthouse01', 2700, 3270, side='neutral', angle=0, flags=0),
     Obj('CC_Lighthouse01', 2840, 3270, side='neutral', angle=0, flags=0),
     Obj('CC_Lighthouse01', 2940, 3250, side='neutral', angle=0, flags=0),
-    Obj('OD_Warehouse01', 2650, 2930, side='neutral', name=POWERHOUSE, angle=0, flags=0),
+    Obj('OD_Warehouse01', 2650, 2930, side='p1', name=POWERHOUSE, angle=0, flags=0),   # the player's: a neutral prop is no one's target (bench r7)
     Obj('OD_Warehouse02', 4200, 780, side='neutral', angle=0, flags=0),
     Obj('OD_Warehouse02', 4450, 1050, side='neutral', angle=0, flags=0),
     Obj('OD_Warehouse02', 4550, 800, side='neutral', angle=0, flags=0),

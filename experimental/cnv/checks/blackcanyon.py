@@ -2,9 +2,9 @@
 The mission is the bare map; each check puts down what it asks about. Predictions (from SageXML and the map's
 heights and walk grid, before the bench) are the expectations.
 
-foot:  three Stingrays and three Bullfrogs in the river below the dam, ordered at the powerhouse on the level-1 ledge
-       (river bed 220, ledge 340, crest 455). Predicted: the Stingrays (amphibious, tesla 125) come up the boat slip
-       and hurt it; the Bullfrogs cannot (flak only, anti-air).
+foot:  Stingrays in the river below the dam: three ordered at the powerhouse on the level-1 ledge (river bed 220,
+       ledge 340, crest 455), two at a player plant beside it, two only moved to the tailrace pool. Predicted: they
+       reach the pool (amphibious) and hurt both from it or up the boat slip (tesla 125).
 v4:    two V4s on the Arizona overlook (570 high), one ordered at a plant on the crest's east section, one at the
        west's. Predicted: rocket range 500 (minimum 200); east is 516 from the overlook's middle, ~380 from its west
        rim, so the first fires from up there; west is ~590 even from the rim, so the second drives off.
@@ -15,21 +15,16 @@ crest: eight Hammers moved across the crest east to west (760), eight on open gr
        control). The crest is 80 walkable across its whole run, both ends too (the rect is 130, the cliff takes 25 a
        side). Predicted: all eight get over, two abreast, the tail later than the control's.
 Bench 2026-11-24: v4 PASS (east 37 by s13 from up there; the west one off the overlook at s9). crest PASS (all eight
-over by s21, the control by s19). foot FAIL, open: the powerhouse 100 all run, no ship in the pool or on the ledge --
-cannot reach, or will not attack a neutral prop? camp FAIL, open: the Teslas seen on the east way at s29, the
-Hammers in neither area -- the counters sample every 4 s and a fast tank crosses an area between two samples.
+over by s21, the control by s19). foot r7 (the powerhouse still neutral): the movers in the pool, the plant 100 -> 4
+shot from the water, the powerhouse's three never set out (100) -- a neutral prop is no one's target, so the map
+gives it to the player. camp r7: the Teslas round east, Hammer 0 in the camp all run -- they stood in a warehouse
+(4200, 780), moved west of it. (The counter reader misreads a long line's last digit, 1 as 7: read the frames.)
 """
-from maps import blackcanyon
-from parts import Mission, Obj, Script, Test
+from parts import Obj, Script, Test
 from model import counted, square
 
-RAY, FROG, V4 = 'SovietAntiNavyShipTech1', 'SovietAntiAirShip', 'SovietAntiStructureVehicle'
+RAY, V4 = 'SovietAntiNavyShipTech1', 'SovietAntiStructureVehicle'
 HAMMER, TESLA, PLANT = 'SovietAntiVehicleVehicleTech1', 'SovietAntiVehicleVehicleTech2', 'SovietPowerPlant'
-POWERHOUSE = blackcanyon.POWERHOUSE
-
-
-def mission(name='CampCanyon'):
-    return Mission(name=name, map=blackcanyon, spawns={RAY, FROG, HAMMER, TESLA})     # what the checks count
 
 
 def _start(t, m, orders, at=4.0):
@@ -44,23 +39,39 @@ def _plant(t, m, site, tag):
     return name
 
 
+def _seen(t, counter, label, marks):
+    """marks: (names, area) a digit, the first one the ones: that digit turns 1 the first frame any of the names
+    stands in the area and never goes back (a 4 s sample misses a fast tank; only four counter lines fit)."""
+    t.counters.append((counter, label))
+    t.scripts.append(Script(f'Test - seen {counter} zero', [], [('SET_COUNTER', counter, 0)]))
+    for d, (names, area) in enumerate(marks):
+        flag = f'Test Seen {counter} {d}'
+        t.scripts += [Script(f'{flag} {k}', [('NAMED_INSIDE_AREA', n, area)], [('SET_FLAG', flag, 1)])
+                      for k, n in enumerate(names)]
+        t.scripts.append(Script(f'{flag} add', [('FLAG', flag, 1)], [('INCREMENT_COUNTER', 10 ** d, counter)]))
+
+
 def foot(m):
     t = Test()
-    rays = [f'UNIT - Test Ray {k}' for k in range(3)]
-    frogs = [f'UNIT - Test Frog {k}' for k in range(3)]
-    for k, n in enumerate(rays):                        # the river at y 2400 runs x ~2600 .. 2860
-        t.objects.append(Obj(RAY, 2690.0 + 50.0 * k, 2400.0, side='s1', name=n, site='st_foot', angle=1.5708))
-    for k, n in enumerate(frogs):
-        t.objects.append(Obj(FROG, 2700.0 + 60.0 * k, 2500.0, side='s1', name=n, site='st_foot', angle=1.5708))
+    hit, shoot, go = ([f'UNIT - Test Ray {tag} {k}' for k in range(n)]
+                      for tag, n in (('Hit', 3), ('Plant', 2), ('Go', 2)))
+    for k, n in enumerate(hit + shoot + go):            # the river at y 2400 .. 2500 runs x ~2600 .. 2860
+        t.objects.append(Obj(RAY, 2660.0 + 55.0 * (k % 4), 2400.0 + 80.0 * (k // 4), side='s1', name=n,
+                             site='st_foot', angle=1.5708))
+    plant = 'UNIT - Test Plant Ledge'                   # an enemy on the ledge by the slip's top, by the powerhouse
+    t.objects.append(Obj(PLANT, 2715.0, 2850.0, side='p1', name=plant, site='st_foot'))
+    t.waypoints['Test Pool'] = (2890.0, 2935.0)
     t.areas['Test Ledge'] = square(2650.0, 2910.0, 125.0)
     t.areas['Test Pool'] = square(2890.0, 2935.0, 100.0)
-    counted('Test Foot hp', '厂房血', t, health=POWERHOUSE)
-    counted('Test Ray ledge', '魟鱼上台', t, template=RAY, area='Test Ledge', player=m.player('s1'))
-    counted('Test Ray pool', '魟鱼到池', t, template=RAY, area='Test Pool', player=m.player('s1'))
-    counted('Test Frog pool', '牛蛙到池', t, template=FROG, area='Test Pool', player=m.player('s1'))
-    _start(t, m, [('NAMED_ATTACK_NAMED', n, POWERHOUSE) for n in rays + frogs])
-    t.expect += [('厂房血', 0, 'ever<=', 90)]
-    t.bench = [('bench_watch', dict(seconds=70.0, every=5, sheet=False, lines=len(t.counters)))]
+    counted('Test Foot hp', '厂房血', t, health=m.map.POWERHOUSE)
+    counted('Test Plant hp', '电厂血', t, health=plant)
+    _seen(t, 'Test Move', '移组 池/台', [(go, 'Test Pool'), (go, 'Test Ledge')])     # not 'Test Go': the timer's
+    _seen(t, 'Test Hit', '打组 厂池/厂台/电池/电台', [(hit, 'Test Pool'), (hit, 'Test Ledge'),
+                                                    (shoot, 'Test Pool'), (shoot, 'Test Ledge')])
+    _start(t, m, [('NAMED_ATTACK_NAMED', n, m.map.POWERHOUSE) for n in hit] +
+           [('NAMED_ATTACK_NAMED', n, plant) for n in shoot] + [('MOVE_NAMED_UNIT_TO', n, 'Test Pool') for n in go])
+    t.expect += [('移组 池/台', 0, 'ever>=', 1), ('电厂血', 0, 'ever<=', 90), ('厂房血', 0, 'ever<=', 90)]
+    t.bench = [('bench_watch', dict(seconds=90.0, every=5, sheet=False, lines=len(t.counters)))]
     return t
 
 
@@ -83,21 +94,25 @@ def v4(m):
 
 def camp(m):
     t = Test()
-    s1 = m.player('s1')
     west, east = _plant(t, m, 'st_dam_w', 'West'), _plant(t, m, 'st_dam_e', 'East')
     orders = []
     for tpl, tag, target, dy in ((HAMMER, 'Hammer', west, -150.0), (TESLA, 'Tesla', east, 150.0)):
         for k in range(3):
             n = f'UNIT - Test {tag} {k}'
-            t.objects.append(Obj(tpl, *m.site('sov_camp', -250.0 + 70.0 * k, dy), side='s1', name=n, site='sov_camp'))
+            t.objects.append(Obj(tpl, *m.site('sov_camp', -450.0 + 70.0 * k, dy), side='s1', name=n, site='sov_camp'))
             orders.append(('NAMED_ATTACK_NAMED', n, target))
+    t.areas['Test Bridge W'] = square(2480.0, 1700.0, 150.0)
     t.areas['Test Bridge'] = square(2885.0, 1700.0, 200.0)
     t.areas['Test East'] = square(3700.0, 2550.0, 250.0)
-    for tpl, tag, word in ((HAMMER, '锤', 'Hammer'), (TESLA, '磁', 'Tesla')):
-        counted(f'Test {word} bridge', f'{tag}过桥', t, template=tpl, area='Test Bridge', player=s1)
-        counted(f'Test {word} east', f'{tag}走东', t, template=tpl, area='Test East', player=s1)
-    _start(t, m, orders)
-    t.expect += [('锤过桥', 0, 'ever>=', 1), ('磁走东', 0, 'ever>=', 1), ('磁过桥', 0, '==', 0)]
+    for tag, word in (('锤', 'Hammer'), ('磁', 'Tesla')):
+        names = [f'UNIT - Test {word} {k}' for k in range(3)]
+        _seen(t, f'Test {word}', f'{tag} 桥西/桥/东', [(names, a) for a in ('Test Bridge W', 'Test Bridge', 'Test East')])
+    t.areas['Test Camp'] = square(*m.site('sov_camp'), 400.0)
+    counted('Test Hammer home', '锤0在营', t, named='UNIT - Test Hammer 0', area='Test Camp')
+    counted('Test West hp', '西段血', t, health=west)
+    _start(t, m, orders)                               # monotone: <= 11 all run = never east, <= 100 = never on the bridge
+    t.expect += [('锤 桥西/桥/东', 0, 'ever==', 11), ('锤 桥西/桥/东', 0, '<=', 11),
+                 ('磁 桥西/桥/东', 0, 'ever==', 100), ('磁 桥西/桥/东', 0, '<=', 100)]
     t.bench = [('bench_watch', dict(seconds=110.0, every=4, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -124,5 +139,4 @@ def crest(m):
     return t
 
 
-MISSION = {'canyon': mission}
 CHECKS = {'canyon': {'foot': foot, 'v4': v4, 'camp': camp, 'crest': crest}}
