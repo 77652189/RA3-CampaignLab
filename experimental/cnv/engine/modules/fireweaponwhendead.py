@@ -17,6 +17,8 @@ SovietPowerPlantAdvanced's not while UNPACKING (a status bit the simulator does 
 where the old one asked NORMAL (no template's weapons differ for a crush or a lifetime's DeathType).
 INFERRED, kept from the old reader: an upgrade-activated module (InitiallyActive false) never fires -- no upgrade
 turns it on --; VeterancyLevels not read; a deletion fires nothing (Generals' destroyObject skips the die modules)."""
+import math
+
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -90,8 +92,48 @@ class FireWeaponCollide(module.Module, interfaces.Die):
 
     def on_die(self, info):
         d, b = self.data, self.thing
-        status = module.status_now(b).union(*(t.rules()['states'][t.state()]['status'] for t in b.find(interfaces.Toggle)))
-        if info.death == 'CRUSHED' and 'WHEN_BEING_CRUSHED' in d.flags and d.required <= status:
+        if info.death == 'CRUSHED' and 'WHEN_BEING_CRUSHED' in d.flags and d.required <= _toggled(b):
             body = b.find(interfaces.Body)
             by = body.last_attacker() if body is not None else None
             self.world.fire(b, d.weapon, (by.x, by.y) if by is not None else None)
+
+
+def _toggled(b):
+    """Its status now (module.status_now) and its toggles' ObjectStatus in their state now."""
+    return module.status_now(b).union(*(t.rules()['states'][t.state()]['status'] for t in b.find(interfaces.Toggle)))
+
+
+class FireWeaponUpdateData(module.ModuleData):
+    def __init__(self, weapons=(), frames=1, required=frozenset()):
+        self.weapons = weapons      # each FireWeaponNugget's WeaponName
+        self.frames = frames        # FireInterval, whole frames rounded up (at least 1)
+        self.required = required    # ObjectStatusValidation RequiredStatus: every bit
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(tuple(templates.attr(h, 'WeaponName', '') for h, _ in templates.blocks(inner, 'FireWeaponNugget')),
+                   max(1, math.ceil(templates.secs(templates.attr(head, 'FireInterval')) * 15 - 1e-6)),
+                   templates.words(templates.child(inner, 'ObjectStatusValidation'), 'RequiredStatus'))
+
+
+@factory.module('FireWeaponUpdate')
+class FireWeaponUpdate(module.Module, interfaces.Update):
+    """FireWeaponUpdate (E218, checks/engine_fwupdate.readings.toml): while its thing holds the RequiredStatus (its
+    toggles' counted: the Tesla trooper's short circuit), fires each weapon where it stands (World.fire) every
+    FireInterval, from the frame the status is first seen. Not modelled: OneShot, ActiveWhenDisabled (the trooper's
+    HELD), a dead thing's (no retail AliveOnly false among the 27 missions' templates); the Athena cannon's effect is
+    no thing (simunits.ocl_round folds its weapon into the strike)."""
+    DATA = FireWeaponUpdateData
+    PHASE = 'toggles'
+    ORDER = 1                   # after the toggles' own cell runs: a press's state is seen the same frame
+    STATE = ()
+
+    def update(self, frame):
+        b, d = self.thing, self.data
+        if not b.alive:
+            return interfaces.SLEEP
+        if not d.required <= _toggled(b):
+            return 1
+        for w in d.weapons:
+            self.world.fire(b, w)
+        return d.frames

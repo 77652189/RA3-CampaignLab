@@ -226,6 +226,19 @@ def suppression_tick(world, peers):
     peers.suppression_fields[:] = [p for p in peers.suppression_fields if now < p[0]]
 
 
+def _filter(p, rel, t):
+    """A ParalyzeNugget's SpecialObjectFilter (simunits.special_weapon) takes `t`, standing `rel` to the firer: its
+    Relationship, its IncludeThing, else by Rule (ANY one of Include, ALL of them, NONE: nothing -- INFERRED, bench
+    engine_fwupdate: the short circuit's NONE nugget held no conscript), none of Exclude, ExcludeThing,
+    StatusBitFlagsExclude."""
+    if p['relation'] and rel.rstrip('S') not in {w.rstrip('S') for w in p['relation'].split()}:
+        return False
+    if t.template.lower() in p['exclude'] or t.kinds & p['unkinds'] or p['status_exclude'] & set(t.status):
+        return False
+    rule = p['rule'] == 'ANY' and t.kinds & p['include'] or p['rule'] == 'ALL' and p['include'] <= t.kinds
+    return bool(rule) or t.template.lower() in p['things']
+
+
 def death_blast_due(world, frame, peers):
     """A death weapon going off by `frame` (simbody.Life.fire: a FireWeaponWhenDead's): every living object within its
     radius, centre to centre, whose owner stands to the dead one's as the weapon's RadiusDamageAffects takes
@@ -237,13 +250,20 @@ def death_blast_due(world, frame, peers):
     for d in [d for d in peers.death_blasts if d[0] <= frame]:
         peers.death_blasts.remove(d)
         _, x, y, dmg, typ, reach, affects, owner, by, *rest = d
-        ally, ground_only, approach, structure = tuple(rest) + (1.0, False, None, 1.0)[len(rest):]
+        ally, ground_only, approach, structure, pulse = tuple(rest) + (1.0, False, None, 1.0, None)[len(rest):]
         for t in world.living():
-            if math.hypot(t.x - x, t.y - y) > reach or frame < t.immune_until or t.shielded or t.indestructible:
+            if math.hypot(t.x - x, t.y - y) > reach:
+                continue
+            rel = world.relation(owner, t.owner)
+            if pulse is not None:       # an EMP pulse (simbody.Life.fire): what its filter takes stands still
+                if t is not by and _filter(pulse, rel, t):
+                    book = peers.emp_until
+                    book[t.serial] = max(book.get(t.serial, 0), frame + simunits._frames(pulse['seconds']))
+                continue
+            if frame < t.immune_until or t.shielded or t.indestructible:
                 continue
             if ground_only and t.surface == 'air':
                 continue                    # a crash on the ground; the planes 175 over it are out of its 20
-            rel = world.relation(owner, t.owner)
             if (rel + 'S' if rel == 'NEUTRAL' else rel) not in affects:
                 continue
             armor = 1.0 if typ == 'UNRESISTABLE' else simunits.percent(t.armor, typ) / 100.0 * t.taken

@@ -1,0 +1,21 @@
+# Bench readings of checks/engine_fwupdate.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E218: FireWeaponUpdate, the Tesla trooper's short circuit. 近车 = frames from the press lane 1's enemy Hammer 30 /
+# Hammer 80 stands home (1 / 1000); 旁人 = the enemy conscript 30 / the own Hammer 30 (1 / 1000); 对照 = lane 2's
+# Hammer 30 by an unpressed trooper (1) + 1000 x frames lane 1's Hammer 30 is hurt.
+
+[[reading]]
+id = "a_tesla_trooper_short_circuit_holds_enemy_vehicles_within_50_till_a_second_after_it_dies"
+scene = {build = "engine_fwupdate", check = "a", until = 17, shot_clock = true}
+item = "物体模块 Behaviors/FireWeaponUpdate"
+bench = "CampFWUpdA at abd996d4 + E218 bench file, PASS: s15 228 23108 18014 23"
+proves = """FireWeaponUpdate under RequiredStatus GENERIC_TOGGLE_STATE (the toggle's state counted): the pressed trooper \
+fires its short circuit every 0.13 s, each pulse an EMP of 1.1 s on what its filter takes within 50 -- the enemy \
+Hammer 30 off stands till 1.1 s after the trooper is killed at frame 75 (home 108 frames, the control 23); the \
+Hammer 80 off, the own Hammer (ENEMIES NEUTRAL) and the enemy conscript (the Rule NONE nugget takes nothing, the \
+VEHICLE one no infantry) walk as the control; no damage"""
+let = {near = "rows[-1]['近车']", side = "rows[-1]['旁人']", ctl = "rows[-1]['对照']"}
+expect = [
+    "abs(near % 1000 - 108) <= 3 and abs(near // 1000 - ctl % 1000) <= 2",
+    "side % 1000 <= ctl % 1000 and side // 1000 <= ctl % 1000",
+    "ctl % 1000 <= 26 and ctl // 1000 == 0",
+]

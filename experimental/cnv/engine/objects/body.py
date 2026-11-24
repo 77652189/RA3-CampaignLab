@@ -119,12 +119,16 @@ class Life:
     def fire(self, world, b, weapon, death_blasts, at=None):
         """The kernel's fire (World.fire) for a FireWeaponWhenDead (engine/modules/fireweaponwhendead.py, step B5c;
         bench 11-05 engine_spawn_refill): each DamageNugget of the WeaponTemplate `weapon` (simunits.weapon_blasts)
-        queued to go off where b died (or at `at`), its delay after, as b's (simdamage.death_blast_due)."""
-        x, y = at or (b.x, b.y)
-        for dmg, typ, reach, after, affects, ally in self.blasts(world, weapon):
+        queued to go off where b died (or at `at`), its delay after, as b's (simdamage.death_blast_due); each EMP
+        ParalyzeNugget (simunits.special_weapon: a FireWeaponUpdate's short circuit, E218) a pulse there at once."""
+        (x, y), now = at or (b.x, b.y), world.frame_now()
+        blasts, pulses = self._weapon(world, weapon)
+        for dmg, typ, reach, after, affects, ally in blasts:
             world.used.add('death weapon')
-            death_blasts.append((world.frame_now() + simunits._frames(after), x, y, dmg, typ, reach,
+            death_blasts.append((now + simunits._frames(after), x, y, dmg, typ, reach,
                                  affects, b.owner, b, ally, False))
+        for p in pulses:
+            death_blasts.append((now, x, y, 0.0, 'EMP', p['radius'], frozenset(), b.owner, b, 1.0, False, None, 1.0, p))
 
     def delete(self, world, b, why):
         """The one deletion entry (World.remove, step B4b): b taken out, no death -- no lethal damage, no death weapon,
@@ -214,8 +218,14 @@ class Life:
 
     def blasts(self, world, weapon):
         """A death weapon's DamageNuggets (simunits.weapon_blasts), read once a world."""
+        return self._weapon(world, weapon)[0]
+
+    def _weapon(self, world, weapon):
+        """(its DamageNuggets, its EMP ParalyzeNuggets: simunits.special_weapon), read once a world."""
         if weapon not in self.blasts_of:
-            self.blasts_of[weapon] = simunits.weapon_blasts(weapon, world.own)
+            own = world.own
+            self.blasts_of[weapon] = (simunits.weapon_blasts(weapon, own),
+                                      [p for p in simunits.special_weapon(weapon, own)['paralyze'] if p['kind'] == 'EMP'])
         return self.blasts_of[weapon]
 
     def wreck_blasts(self, world, template):

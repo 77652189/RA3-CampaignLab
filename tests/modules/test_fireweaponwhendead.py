@@ -136,3 +136,12 @@ def test_a_collide_weapon_goes_off_at_the_crusher_on_a_crush_only():
         s.bodies[n].set_last_damage('Player_2', s.bodies['tank'])
         s.world.kill(s.bodies[n], 'test', death=death)
     assert [(d[1], d[2]) for d in s.death_blasts] == [(12.0, 0.0)]
+
+
+def test_a_fireweaponupdate_reads_its_weapons_interval_and_status():
+    """FireWeaponUpdate (E218; its run is benched, checks/engine_fwupdate.readings.toml): the interval in whole frames
+    rounded up (the Tesla trooper's 0.13 s: 2), the RequiredStatus of its ObjectStatusValidation."""
+    d = fw.FireWeaponUpdateData.parse(' FireInterval="0.13s" AliveOnly="true"',
+                                      '<FireWeaponNugget WeaponName="W" OneShot="false" />'
+                                      '<ObjectStatusValidation RequiredStatus="GENERIC_TOGGLE_STATE" />')
+    assert (d.weapons, d.frames, d.required) == (('W',), 2, frozenset({'GENERIC_TOGGLE_STATE'}))

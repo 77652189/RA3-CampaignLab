@@ -3107,7 +3107,8 @@ def self_projectile_speed(weapon, own=None):
 def special_weapon(weapon, own=None):
     """What a special ability's weapon does where it goes off (weapon_fire_ability): dict(affects (RadiusDamageAffects),
     damage [(damage, type, radius, delay s)] from its DamageNuggets, paralyze [dict(kind (ParalyzeType), radius,
-    seconds, include (KindOf), relation, exclude (templates, lower), forbidden_upgrade)] from its ParalyzeNuggets, the
+    seconds, include (KindOf), relation, exclude (templates, lower), forbidden_upgrade, rule, unkinds (Exclude),
+    status_exclude, things (IncludeThing, lower))] from its ParalyzeNuggets, the
     one SpecialObjectFilter each), modifiers [dict(modifier, the upgrade gate, include / unkinds, status_exclude)] from
     its AttributeModifierNuggets. Not read: MetaImpactNugget (the blast's shockwave: a push, gap)."""
     global _weapon_blocks
@@ -3137,7 +3138,10 @@ def special_weapon(weapon, own=None):
             seconds=_secs(_attr(nh, 'DurationSeconds') or '0s'),
             include=frozenset((_attr(fh, 'Include') or '').split()), relation=_attr(fh, 'Relationship') or '',
             exclude=frozenset(x.lower() for x in re.findall(r'<ExcludeThing>\s*([^<>\s]+)', fi or '')),
-            forbidden_upgrade=forbidden[0] if forbidden else ''))
+            forbidden_upgrade=forbidden[0] if forbidden else '', rule=_attr(fh, 'Rule') or 'ANY',
+            unkinds=frozenset((_attr(fh, 'Exclude') or '').split()),
+            status_exclude=frozenset((_attr(fh, 'StatusBitFlagsExclude') or '').split()),
+            things=frozenset(x.lower() for x in re.findall(r'<IncludeThing>\s*([^<>\s]+)', fi or ''))))
     for nh, inner in _blocks(wbody, 'AttributeModifierNugget'):     # on the target (the shrink ray: engine_acts_shr)
         fh, _ = next(_blocks(inner or '', 'SpecialObjectFilter'), ('', ''))
         gate = [(re.findall(rf'<{g}>\s*([^<>\s]+)', inner or '') or [''])[0]

@@ -324,8 +324,6 @@ NOTES = {
     (MODULE, 'AI/AIUpdate'): (GUESSED, 'Sim.fight / 移动（单位 AI 的状态机细项按引擎 B 的 AI 清单推进）'),
     (MODULE, 'AI/JetAIUpdate'): (BENCHED, '已测范围：engine_jet:a/b原版维和轰炸机静止正东起步，距离1200/600，首次入框97/47，框内1且血100%；simjet按逐帧位置实现首步2.7（机制INFERRED）、每帧+0.8至12；tests/test_simjet.py按名回放两种时钟均97/47，并核启动位置和入框112/62帧；未新增上台；gap：其他配置/机型、重复命令/转弯、MinSpeed、起飞高度/盘旋/降落、机场/跑道/停车位、返场补弹/耗尽伤害及攻击状态，配置与动作门禁保留；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母'),
     # the 26 the bench measured but the name rule called 未做 (checked 11-08 against sim.py / simunits.py)
-    (MODULE, 'Behaviors/FireWeaponUpdate'): (GUESSED, '部分：simunits.ocl_round 把召出物的 FireWeaponNugget + '
-                                                      'LifetimeUpdate 折成伤害，不模拟召出物本身'),
     (MODULE, 'Behaviors/GarrisonContain'): (GUESSED, 'simgarrison 同一套规则（不可争夺）；没单独上台对拍'),
     (MODULE, 'Behaviors/ReplaceSelfSpecialAbility'): (BENCHED, '三类用法都上台：基地车 / 帝国蛋到点展开（engine_unpack mcv / egg，'
                                                      '名字和血量比例跟过去）、三国建造场收起（engine_pack a/s/j，按下当帧就是基地车，'
