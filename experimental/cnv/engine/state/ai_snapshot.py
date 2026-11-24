@@ -77,7 +77,7 @@ BRAIN = {
     # are the same as the run never stopped
     '_protos': STATE,
     # template (or the yards and the structures standing) -> what its data says
-    '_team_names': CACHE, '_template_guns': CACHE, '_refinery_spots': CACHE, '_allied_radii': CACHE,
+    '_team_names': CACHE, '_template_guns': CACHE, '_toggles': CACHE, '_refinery_spots': CACHE, '_allied_radii': CACHE,
     '_build_radii': CACHE, '_node_offsets': CACHE, '_miner_toggles': CACHE, '_micro_units': CACHE,
 }
 _BY_HAND = ('wrappers', '_exp_teams', '_rec_mem')

@@ -187,6 +187,40 @@ def side_index(side):
         return 0
 
 
+class LockView:
+    """micro.Team.lock (TOGGLE_LOCKDOWN, work/re/l4_toggle.md hint 9): the micro view's units and enemies back to
+    objects. Rates are fight's (Brain.dps; INFERRED for the program's damage rates); a StateWeapon is its template's
+    weapon; an enemy can attack while it holds a weapon (INFERRED)."""
+
+    def __init__(self, brain):
+        self.brain = brain
+
+    def _body(self, x):
+        b = self.brain.micro_body(x) or (self.brain.body_of(int(x.name)) if x.name.isdigit() else None)
+        return b if b is not None and b.alive else None
+
+    def _gun(self, u, name):
+        b = self.brain.micro_body(u)
+        got = b and self.brain.__dict__.get('_toggles', {}).get(b.template)
+        return got[2].get(name) if got else None        # Brain.toggles_of's StateWeapons
+
+    def rate(self, u, weapon, e):
+        w, t = self._gun(u, weapon), self._body(e)
+        return self.brain.dps([w], t) if w and t else 0.0
+
+    def hits(self, u, weapon, e):
+        w, t = self._gun(u, weapon), self._body(e)
+        return bool(w and t and self.brain.observe.can_hit(w, t))
+
+    def armed(self, e):
+        t = self._body(e)
+        return bool(t and t.weapons)
+
+    def threat(self, e, m):
+        t, v = self._body(e), self._body(m)
+        return self.brain.dps(t.weapons, v) if t and v else 0.0
+
+
 class Unit:
     """One of the AI's movers as teams.py wants it: template, kindof, surface, pos, team (TeamMaker writes it).
     One object a body for the whole run (teams test membership by identity)."""
@@ -1113,6 +1147,14 @@ class Brain:
                 armed = b.building is not None or armed
         return not armed if was else True
 
+    def dps(self, guns, t):
+        """fight's rate of guns on body t: each weapon that can hit it, each damage part its own armour percent
+        (simunits ai_parts: the AI sums a weapon's nuggets and its warhead's, l4_efficiency.md 3, read); a weapon
+        without parts as fight does."""
+        return sum(sum(d * simunits.percent(t.armor, ty) / 100.0 for d, ty in w['ai_parts'])
+                   if w.get('ai_parts') else w['dps'] * simunits.percent(t.armor, w['type']) / 100.0
+                   for w in guns if self.observe.can_hit(w, t))
+
     def fighters(self, bodies, template=False):
         """Bodies as tactics.Fighter (fight's rule: rate by Sim.can_hit and the armour, vision = VisionRange).
         template: the rate counts the weapons the AI's template-against-template rate takes (simunits.template_weapons:
@@ -1131,14 +1173,7 @@ class Brain:
         def rate_of(b):
             guns = guns_of(b)
 
-            def rate(o):
-                t = o.body
-                # each damage part its own armour percent (simunits ai_parts: the AI sums a weapon's nuggets and
-                # its warhead's, l4_efficiency.md 3, read); a weapon without parts as fight does
-                return sum(sum(d * simunits.percent(t.armor, ty) / 100.0 for d, ty in w['ai_parts'])
-                           if w.get('ai_parts') else w['dps'] * simunits.percent(t.armor, w['type']) / 100.0
-                           for w in guns if observe.can_hit(w, t))
-            return rate
+            return lambda o: self.dps(guns, o.body)
 
         def fighter(b, i):
             # reach = the engine's longest-range read: the weapon's AttackRange less 5 (sim.Sim.reach_of), no radii
@@ -1235,11 +1270,15 @@ class Brain:
             cache[b.template] = None
             c = next((c for c in self.host.command_set(b.template) if c in powers and powers[c].heuristic == 'TOGGLE'),
                      None)
-            power = c and simunits.command_power(c, self.world.own)
+            own = self.world.own
+            power = c and simunits.command_power(c, own)
             blocks = list(simunits._blocks(self.world.xml_of(b.template), 'ToggleStatusSpecialAbilityUpdate'))
             for i, (h, inner) in enumerate(blocks):
                 if power and simunits._attr(h, 'SpecialPowerTemplate') == power:
-                    cache[b.template] = i, mc.parse_toggle(ET.fromstring('<update>' + inner + '</update>'))
+                    rules, table = mc.parse_toggle(ET.fromstring('<update>' + inner + '</update>')), simunits.weapon_table(own)
+                    # each state's StateWeapon resolved (LockView: TOGGLE_LOCKDOWN rates them)
+                    cache[b.template] = i, rules, {r.weapon: simunits._resolve(table[r.weapon], table)
+                                                   for r in rules if r.weapon in table}
                     break
         got = cache[b.template]
         return ([], 0) if got is None else (got[1], b.toggle_at.get(got[0], 0))
@@ -1265,7 +1304,7 @@ class Brain:
             units.append(mu := mc.Unit(view(b), (b.x, b.y), b.hp, b.max_hp,
                                  [powers[c] for c in self.host.command_set(b.template)
                                   if c in powers and simmicro.ready(self.world, b, c)],
-                                 target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=t.name),
+                                 target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=str(self.tid(t))),
                                  weapon_range=reach, cost=self.host.cost(b.template),
                                  damage=lambda behind, ahead, b=b: self.observe.expected_damage(b, behind, ahead, now=frame),
                                  toggles=toggles, toggle_index=at))
@@ -1302,7 +1341,7 @@ class Brain:
             threats.append(mc.DodgeThreat(self.view_name(b), (b.x, b.y),
                                           float(info.get('DodgeSafetyDistance')),
                                           b.owner, b.life_end - frame, eligible))
-        return mc.Team(units, enemies=enemies, threats=threats)
+        return mc.Team(units, enemies=enemies, threats=threats, lock=LockView(self))
 
     def first_of(self, b):
         """Whether b is the first object the micro view met under its name (`_view_names` name -> that serial)."""
@@ -1331,6 +1370,11 @@ class Brain:
         b = self.micro_body(u)
         if b and b.owner == self.player and self.give('toggle', b, args=(('button', info.command),))[0]:
             self.world.note('AI', f'{u.name} 执行 {info.command}')
+            n = u.target.name if u.target is not None else ''
+            if u.toggles and u.toggles[(u.toggle_index + 1) % len(u.toggles)].hint == 'TOGGLE_LOCKDOWN' and n.isdigit():
+                t = self.body_of(int(n))        # the lock's target micro.toggle wrote out: attack it (hint 9)
+                if t is not None:
+                    self.give('attack', b, target=t)
             return
         if b and b.owner == self.player and self.give('power', b, power=info.command, args=(('via', 'micro'),))[0]:
             state = self.__dict__.get('_hunt_goals', {}).get(b.serial)

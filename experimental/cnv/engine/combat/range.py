@@ -22,6 +22,20 @@ def in_range(a, t, w, d=None):
     return d - a.radius - t.radius <= reach_of(w)
 
 
+def takes(w, t):
+    """Sim.can_hit's anti mask test (its armour test aside): aircraft need ANTI_AIRBORNE, buildings ANTI_STRUCTURE
+    or ground, the rest ground or water -- or RA3's ANTI_VEHICLE / ANTI_INFANTRY for a vehicle / infantry off the
+    air (bench B 11-24 ailock2: the Rocket Angel's lockdown gun, ANTI_VEHICLE ANTI_INFANTRY alone, locks a Bullfrog;
+    the infantry bit INFERRED). No RequiredAntiMask: the SDK's default, not the air."""
+    anti = w['anti'] or ('ANTI_GROUND', 'ANTI_WATER', 'ANTI_STRUCTURE')
+    if t.surface == 'air':
+        return any(a.startswith('ANTI_AIRBORNE') for a in anti)
+    if 'STRUCTURE' in t.kinds:
+        return 'ANTI_STRUCTURE' in anti or 'ANTI_GROUND' in anti
+    return bool({'ANTI_GROUND', 'ANTI_WATER'} & set(anti)) or any(
+        f'ANTI_{k}' in anti and k in t.kinds for k in ('VEHICLE', 'INFANTRY'))
+
+
 def hits(weapons):
     """The domains a body's weapons hit (ai.targets.Thing.hits) from the simulator's anti masks (R3 13f-2d:
     moved from simproxy; read by the proxy player and the skirmish AI). A weapon that writes no RequiredAntiMask has

@@ -60,7 +60,52 @@ def mission(maximum, minimum=0, power='RUSH_ATTACK', name=None, sub=None):
     return m
 
 
-MISSION = {'aidelay0': lambda: mission(0), 'aidelay999': lambda: mission(999),
+LOCK_RA, LOCK_BARRACKS = 'CNVLockRA', 'CNVLockBarr'
+FOES = {'2': 'SovietAntiAirShip', '1': 'SovietAntiAirShip', 'm': 'SovietMiner'}
+
+
+def lock_ra():
+    """The Rocket Angel (SDK Japan/Units/JapanAntiVehicleInfantryTech3.xml) under LOCK_RA: its retail TOGGLE_LOCKDOWN
+    states untouched; cost 900 -> 200 (two inside the opener's deposit), MaxHealth x 100 (the Bullfrogs' flak), no
+    tech 3 upgrade needed (bench 11-24 first run: with it none was built, game and simulator alike)."""
+    import os
+    import labpaths
+    from parts import Unit
+    x = open(os.path.join(labpaths.SDK3, 'SageXML', 'Japan', 'Units', 'JapanAntiVehicleInfantryTech3.xml'),
+             encoding='utf-8').read()
+    for old, new in [*((f'{k}="JapanAntiVehicleInfantryTech3"', f'{k}="{LOCK_RA}"') for k in ('id', 'EditorName')),
+                     ('Amount="900"', 'Amount="200"'), ('MaxHealth="400"', 'MaxHealth="40000"'),
+                     # its GameDependency: the Japanese barracks' tech 3, which the copied barracks never gets
+                     ('<NeededUpgrade>Upgrade_JapanBarracksTech3</NeededUpgrade>', '')]:
+        assert x.count(old) == 1, old
+        x = x.replace(old, new)
+    return Unit(LOCK_RA, x, what='火箭天使换 id（锁定枪两个状态照原版），造价 200，血 ×100')
+
+
+def lock(team):
+    """ailock2 / ailock1 / ailockm (TOGGLE_LOCKDOWN, work/re/l4_toggle.md hint 9): the aimicspon Hunt team takes
+    LOCK_RA; no delay line. 2: two angels, two Bullfrogs (armed, their flak hits the angels) -- predicted one locks,
+    never two at once (the switch marks TOGGLE used for the round; a target another locks is skipped). 1: the team
+    takes one -- predicted never (a team of one never locks). m: two angels, two unarmed Ore Collectors -- predicted
+    never (no enemy can attack)."""
+    m = am.built('CampAL' + team, tactic='Hunt', foes=True, spow=True, unit=LOCK_RA, factory=LOCK_BARRACKS,
+                 foe=FOES[team])
+    ra = lock_ra()
+    m.units += [ra, production.building('AlliedBarracks', [ra.id], LOCK_BARRACKS)]
+    filename, xml, asset = m.assets[0]
+    # the angel walks on AIR (its locomotor's Surfaces): the team template's LAND AMPHIBIOUS never took it
+    for old, new in [('AllowedLocomotorTypes="LAND AMPHIBIOUS"', 'AllowedLocomotorTypes="LAND AMPHIBIOUS AIR"'),
+                     *([('MinUnits="2" MaxUnits="2"', 'MinUnits="1" MaxUnits="1"')] if team == '1' else [])]:
+        assert xml.count(old) == 1, old
+        xml = xml.replace(old, new)
+    m.assets[0] = filename, xml, asset
+    m.facts['delayed'] = team == '2'        # toggled(): 'up once, never two' against 'never up'
+    m.facts['lock team'] = 1.0 if team == '1' else 2.0
+    return m
+
+
+MISSION = {'ailock2': lambda: lock('2'), 'ailock1': lambda: lock('1'), 'ailockm': lambda: lock('m'),
+           'aidelay0':lambda: mission(0), 'aidelay999': lambda: mission(999),
            'aidelaytype': lambda: mission(999, power='AOE_ATTACK', name='Type'),
            'aidelaymin': lambda: mission(0, minimum=999, name='Min'),
            'aidelaytog': lambda: mission(999, power='TOGGLE', name='Tog', sub='TOGGLE_ALWAYS'),

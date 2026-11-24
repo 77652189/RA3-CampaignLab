@@ -110,13 +110,17 @@ def toggled(m):
         t.scripts += [Script(f'Test - {counter} seen', cond, [('SET_FLAG', f'Test {counter}', 1)]),
                       Script(f'Test - {counter} count', [('FLAG', f'Test {counter}', 1)],
                              [('INCREMENT_COUNTER', 1, counter)], once=False)]
-    up = [('盾', 14, 'ever>=', 1, 50), ('曾落', 14, '==', 0, 50), ('曾双', 14, '==', 0, 50)] if m.facts['delayed'] \
-        else [('曾落', 14, 'ever>=', 1, 50), ('曾双', 14, 'ever>=', 1, 50)]
-    t.expect = [('造出', 14, 'ever>=', 2, 50), *up]
-    t.bench = [('bench_watch', dict(seconds=50, every=1, sheet=False, lines=4))]
+    end = 80 if 'lock team' in m.facts else 50      # ailock*: the angels build 10 s each (aidelay_bench.lock)
+    up = [('盾', 14, 'ever>=', 1, end), ('曾双', 14, '==', 0, end)] if m.facts['delayed'] \
+        else [('盾', 14, '==', 0, end)] if 'lock team' in m.facts \
+        else [('曾落', 14, 'ever>=', 1, end), ('曾双', 14, 'ever>=', 1, end)]
+    if m.facts['delayed'] and 'lock team' not in m.facts:
+        up.append(('曾落', 14, '==', 0, end))
+    t.expect = [('造出', 14, 'ever>=', 2, end), *up]
+    t.bench = [('bench_watch', dict(seconds=end, every=1, sheet=False, lines=4))]
     return t
 
 
 CHECKS = {key: {'a': check} for key in ('aidelay0', 'aidelay999', 'aidelaytype', 'aidelaymin')}
-CHECKS.update({key: {'t': toggled} for key in ('aidelaytog', 'aidelaytogdef')})
+CHECKS.update({key: {'t': toggled} for key in ('aidelaytog', 'aidelaytogdef', 'ailock2', 'ailock1', 'ailockm')})
 CHECKS['aidelay0']['p'] = where

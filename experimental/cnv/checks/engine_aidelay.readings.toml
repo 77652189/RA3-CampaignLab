@@ -79,3 +79,29 @@ simai micro: a TOGGLE line on sub type TOGGLE_ALWAYS keeps the always-switching 
 expect = """\
 (max(r['曾落'] for r in rows) + max(r['曾双'] for r in rows) == 0) == held \
 and (not held or max(r['盾'] for r in rows) == 1)"""
+
+[[reading]]
+id = "a_lockdown_team_locks_only_as_a_pair_facing_armed_foes"
+scene = {build = "ailock2", check = "t", until = 80.0}
+each = [{build = "ailock2", locks = true}, {build = "ailock1", locks = false}, {build = "ailockm", locks = false}]
+item = ["AI 微操/SpecificSpecialPowerDelay.TogglePowerSubType=TOGGLE_LOCKDOWN"]
+bench = """\
+ailock2 (two Rocket Angels, two Bullfrogs): 造出 1 s19, 2 s30; 盾 1 from s32 to s81; ailock1 (a team of one) and \
+ailockm (two unarmed Ore Collectors): 造出 2 by s30, 盾 0 to s81 (2026-11-24, all PASS; simulator ailock2 s33)"""
+proves = """\
+simai micro TOGGLE_LOCKDOWN (work/re/l4_toggle.md hint 9; Sim.can_hit's ANTI_VEHICLE): a team of two facing \
+enemies that hit back switches the lockdown gun on; a team of one never does, nor a pair facing unarmed enemies"""
+expect = "max(r['造出'] for r in rows) == 2 and (max(r['盾'] for r in rows) >= 1) == locks"
+
+[[reading]]
+id = "a_lockdown_pair_locks_one_angel_and_holds_it"
+scene = {build = "ailock2", check = "t", until = 80.0}
+bench = "ailock2: 盾 1 from s32 to s81, 曾双 0 throughout (2026-11-24)"
+proves = "simai micro TOGGLE_LOCKDOWN: the second angel does not lock while the first holds its foe locked"
+expect = "max(r['曾双'] for r in rows) == 0 and rows[-1]['盾'] == 1"
+mismatch = """\
+simai locks both: the first at s33 on one Bullfrog (its target written out, micro.toggle), the second a round \
+later on the other -- its threat on the pair 75 (fight's rate of the flak) beats the pods' 72 on a Bullfrog; the \
+bench keeps the second off. Not settled which test holds it back there: the program's "the lock gun can take e" \
+(a fire-state check, a line / facing one INFERRED) or its damage rates (here Brain.dps); work/re handoff-b"""
+

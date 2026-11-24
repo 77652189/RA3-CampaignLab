@@ -230,13 +230,14 @@ def built_base(m, factory, money=BUILT_MONEY):
                once=False)]
 
 
-def built(name, tactic='StaticDefense', foes=None, spow=None, engage=True, unit=WARRIOR, factory='JapanBarracks'):
+def built(name, tactic='StaticDefense', foes=None, spow=None, engage=True, unit=WARRIOR, factory='JapanBarracks',
+          foe=CONSCRIPT):
     """tactic 'Hunt' (aimicbuilth): a membership test -- a Targetless Hunt team that takes the built warriors walks
     them off (the check counts them home round the barracks); no conscripts. foes (default: not Hunt) puts the
     conscripts in (aimicbuiltf: Hunt and conscripts -- recruited, with something to fight). spow (round 113,
     aimicspon / aimicspoff): the team's micro manager is SPOW_ID with UseSpecialPowers = spow; engage (round 115,
     aimicengoff): its EngageHostileTargets. unit / factory (aidelay_bench.py toggle builds): what the opener builds
-    and the team takes instead of the warriors, and where from."""
+    and the team takes instead of the warriors, and where from. foe: what stands in for the two conscripts."""
     hunt = tactic == 'Hunt'
     foes = not hunt if foes is None else foes
     facts = {'wake at': WAKE_AT, 'hand at': 0.0, 'distance': 0.0, 'health': 100.0, 'hunt': float(hunt), 'built': 1.0,
@@ -258,7 +259,7 @@ def built(name, tactic='StaticDefense', foes=None, spow=None, engage=True, unit=
     for k in range(2):
         n = f'UNIT - CNV AM Conscript {k + 1}'
         names.append(n)
-        m.put(CONSCRIPT, 'east base', APART * (k - 0.5), 2 * BARRACKS_DY + CONSCRIPT_DY, name=n,
+        m.put(foe, 'east base', APART * (k - 0.5), 2 * BARRACKS_DY + CONSCRIPT_DY, name=n,
               role=f'conscript {k + 1}')
     m.scripts.append(Script('CNV AM - Go', [('COUNTER', 'CNV_AI_Owned', 3, 2)],
                             m.order('attack_move', names, m.mark('factory spot'), 'p1')))
