@@ -158,13 +158,20 @@ def named_buttons(sim, name, a, script, unit=None):
         sim.note('技能', f'{a[0]} 按 {a[1]} 切换状态')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and \
             simunits.press_records(body(a[0]).template, a[1], sim.own):
-        # engine_cast (round 242): Tanya's time belt seen cast twice (simunits.press_records); her jump back in
-        # time is not simulated
+        # engine_cast (round 242): Tanya's time belt seen cast twice (simunits.press_records); engine_storestate_e
+        # (E223): it takes her back to the oldest state her StoreCurrentStateUpdate keeps, place and health
         b = body(a[0])
         power, n = simunits.press_records(b.template, a[1], sim.own)
         sim.used.add('special power')
         _seen(sim, b.owner, power, b.serial, n=n)
         sim.note('技能', f'{sim.label(b)} 按 {a[1]}：记 {n} 次施放')
+        back = next((m.oldest() for m in b.find(interfaces.Rewind) if m.oldest()), None) if n > 1 else None
+        if back:
+            b.x, b.y = back[:2]
+            if b.hp > back[2]:
+                b.damage(b.hp - back[2])
+            else:
+                b.mend(back[2] - b.hp)
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and any(
             m.power() == cpower for m in body(a[0]).find(interfaces.Dominate)):
         # engine_dominate_e (E216): the spy's bribe takes the enemies around it the press's frame

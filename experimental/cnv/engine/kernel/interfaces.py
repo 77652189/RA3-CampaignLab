@@ -633,6 +633,15 @@ class Dominate(Interface):
         raise NotImplementedError
 
 
+class Rewind(Interface):
+    """StoreCurrentStateUpdate: the states it keeps of its thing; oldest: the (x, y, health) a time belt takes it back
+    to, None when none is kept."""
+    __slots__ = ()
+
+    def oldest(self):
+        raise NotImplementedError
+
+
 class Repair(Interface):
     """RepairUpdate (step M13): its rules (rules: rate, toggleable, dead, cost), whether its block is the measured
     shape (measured: no field outside rules' read), the repair under way (job: the host's dict, None none), setting it
