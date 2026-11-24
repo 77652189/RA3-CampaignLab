@@ -26,7 +26,7 @@ def check(m):
     t = ac.probe_built(m, 'aimicspon')
     t.scripts = [s for s in t.scripts if s.name not in ('Test - control make', 'Test - control press')]
     t.expect = [('造出', 14, 'ever>=', 2, 50), ('曾冲', 14, 'ever>=', 1, 50)]
-    t.expect += [('冲', 14, '<=', 1, 50)] if m.facts['specific maximum'] else [('冲', 14, 'ever>=', 2, 50)]
+    t.expect += [('冲', 14, '<=', 1, 50)] if m.facts['delayed'] else [('冲', 14, 'ever>=', 2, 50)]
     t.bench = [('bench_watch', dict(seconds=50, every=1, sheet=False, lines=4))]
     return t
 
@@ -88,5 +88,5 @@ def where(m):
     return t
 
 
-CHECKS = {key: {'a': check} for key in ('aidelay0', 'aidelay999')}
+CHECKS = {key: {'a': check} for key in ('aidelay0', 'aidelay999', 'aidelaytype', 'aidelaymin')}
 CHECKS['aidelay0']['p'] = where

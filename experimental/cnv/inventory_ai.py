@@ -738,15 +738,6 @@ NOTES = {
         'experimental/cnv/checks/engine_aimicro.readings.toml::micro_update_d81_charge_survival 首活相符，精确首冲及人口峰值标 mismatch；'
         '资格/更新前置状态、观测宿主人口等价仍gap；旧时钟读数不用于晋升，非固定延迟；'
         '见work/re/e102_update_clock.md'),
-    '微操/SpecificSpecialPowerDelay.MaximumDelay': (GUESSED,
-        '模型按成功施放后同类冷却消费上限；tests/test_simai_delay.py 验证上端点；'
-        'engine_aidelay 0/999实机PASS，读数 engine_aidelay.readings.toml：曾冲>0、999冲峰值1对上，0的峰值2标mismatch；'
-        '台上帧数减曾冲恒362、模型263，精确观测时钟标mismatch；'
-        '随机分布及原版TOGGLE两种子类仍gap，不晋升原版用量；见work/re/c_delay_clock_report.md'),
-    **{f'微操/SpecificSpecialPowerDelay.{field}': (GUESSED,
-        '模型已读取；engine_aidelay 0/999实机配对仅改变MaximumDelay，'
-        '本字段没有独立变量对照，不因探针出现字段名登记已对拍')
-       for field in ('MinimumDelay', 'PowerType')},
     '微操/SpecificSpecialPowerDelay.TogglePowerSubType': (GUESSED,
         '模型 f9f7824：TOGGLE 的冷却子类型 = 要切到的那个状态的 ToggleHint（程序读到，切开和切回分开计时；原先恒 NO_HINT，'
         '原版 TOGGLE_LOCKDOWN 20–40 s 从不生效）；没上台：原版 LOCKDOWN 的"该不该切"判据没读、模型不切；见 work/re/l4_toggle.md'),

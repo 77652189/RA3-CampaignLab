@@ -1,5 +1,6 @@
 # Bench readings of checks/engine_aidelay.py (format: experimental/cnv/readings.py; runner: tests/conformance).
-# SpecificSpecialPowerDelay MaximumDelay 0 / 999 on the aimicspon Hunt team (bench 2026-11-11, both PASS).
+# SpecificSpecialPowerDelay MaximumDelay 0 / 999 on the aimicspon Hunt team (bench 2026-11-11, both PASS);
+# aidelaytype / aidelaymin (bench 2026-11-24, both PASS: two charging from s35, as 0).
 
 [[reading]]
 id = "the_script_sees_a_charge_in_both_runs"
@@ -8,6 +9,25 @@ each = [{build = "aidelay0"}, {build = "aidelay999"}]
 bench = "aidelay0 / aidelay999: two warriors from s20; 曾冲 latched from s33 (Ever 11 at s33, 146 / 142 at s42)"
 proves = "simai micro: the RUSH_ATTACK charge fires (the positive control before reading the delay)"
 expect = "max(r['曾冲'] for r in rows) > 0"
+
+[[reading]]
+id = "a_second_charge_follows_within_ten_seconds_unless_the_rush_is_delayed"
+scene = {build = "aidelay0", check = "a", until = 50.0}
+each = [{build = "aidelay0", second = true}, {build = "aidelay999", second = false},
+        {build = "aidelaytype", second = true}, {build = "aidelaymin", second = true}]
+item = ["AI 微操/SpecificSpecialPowerDelay.MaximumDelay", "AI 微操/SpecificSpecialPowerDelay.MinimumDelay",
+        "AI 微操/SpecificSpecialPowerDelay.PowerType"]
+bench = """\
+aidelay0: 冲 1 at s33, 2 at s34-s42; aidelay999: 1 at s33-s42, never 0 nor 2 till s42 (2026-11-11). \
+aidelaytype (the 999 line on AOE_ATTACK): 1 at s33-s34, 2 at s35-s41; aidelaymin (Minimum 999, Maximum 0): 1 at \
+s33-s34, 2 at s35-s42 (2026-11-24)"""
+proves = """\
+simai micro: within 10 s of the first charge a second one starts (two at once, or one again after none) unless the \
+RUSH_ATTACK line delays it -- a line on another PowerType does not, and a MinimumDelay at or above the MaximumDelay \
+gives the MaximumDelay (0), not a floor of 999"""
+expect = """\
+any(r['冲'] >= 2 or (r['冲'] >= 1 and any(q['冲'] == 0 for q in rows if 0 < q['曾冲'] < r['曾冲'])) \
+for r in rows if 0 < r['曾冲'] <= 150) == second"""
 
 [[reading]]
 id = "a_long_maximum_delay_never_has_two_charging"
