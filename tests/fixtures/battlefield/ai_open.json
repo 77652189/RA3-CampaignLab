@@ -5,7 +5,7 @@
   "frame": 623,
   "players": {
     "Player_1": {"money": 0, "sciences": ["playertech_allied", "playertech_generic_rank_1"], "science_points": 1, "upgrades": [], "power": {"made": 50, "used": 0}, "relations": {}},
-    "Soviet_1": {"money": 46593, "sciences": ["playertech_allied", "playertech_allied_precisionstrike", "playertech_generic_rank_1"], "science_points": 0, "upgrades": [], "power": {"made": 150, "used": 25}, "relations": {}}
+    "Soviet_1": {"money": 46733, "sciences": ["playertech_allied", "playertech_allied_precisionstrike", "playertech_generic_rank_1"], "science_points": 0, "upgrades": [], "power": {"made": 150, "used": 25}, "relations": {}}
   },
   "things": [
     {"id": "UNIT - CNV AI Yard", "template": "AlliedConstructionYard", "owner": "Soviet_1", "x": 3850, "y": 3400, "z": null, "angle": -1.5708, "hp": 4000, "max_hp": 4000, "status": [], "upgrades": [], "level": 1, "contains": [], "home": null, "queue": [
@@ -15,7 +15,7 @@
     ], "clocks": [{"gone": null, "module": "StructureSellUpdate"}, {"module": "StructureUnpackUpdate", "unpacked": null}], "team": ""},
     {"id": "UNIT - CNV AI Player Yard", "template": "AlliedConstructionYard", "owner": "Player_1", "x": 1250, "y": 2500, "z": null, "angle": 1.5708, "hp": 4000, "max_hp": 4000, "status": [], "upgrades": [], "level": 1, "contains": [], "home": null, "queue": [], "clocks": [{"gone": null, "module": "StructureSellUpdate"}, {"module": "StructureUnpackUpdate", "unpacked": null}], "team": "Player_1/teamPlayer_1"},
     {"id": "#ai 285 AlliedBarracks", "template": "AlliedBarracks", "owner": "Soviet_1", "x": 3614.0285799072153, "y": 3242.6857199381434, "z": null, "angle": 0.0, "hp": 1000, "max_hp": 1000, "status": [], "upgrades": [], "level": 1, "contains": [], "home": null, "queue": [
-      {"template": "AlliedScoutInfantry", "progress": 0.49999996185302736, "paid": 100, "full": null}
+      {"template": "AlliedAntiVehicleInfantry", "progress": 0.2, "paid": 60, "full": null}
     ], "clocks": [{"gone": null, "module": "StructureSellUpdate"}, {"module": "StructureUnpackUpdate", "unpacked": 338}], "team": ""},
     {"id": "#ai 288 AlliedPowerPlant", "template": "AlliedPowerPlant", "owner": "Soviet_1", "x": 4100.05501029209, "y": 3202.4480205904106, "z": null, "angle": 0.0, "hp": 1000, "max_hp": 1000, "status": [], "upgrades": [], "level": 1, "contains": [], "home": null, "queue": [], "clocks": [{"gone": null, "module": "StructureSellUpdate"}, {"module": "StructureUnpackUpdate", "unpacked": 503}], "team": ""}
   ],

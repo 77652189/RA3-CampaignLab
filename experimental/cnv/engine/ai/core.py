@@ -99,6 +99,7 @@ AI_WORLD = frozenset({'bodies', 'blocks', 'enemy', 'frame_now', 'ground', 'human
 
 
 FPS = 15
+EXPANSIONS = {'SimpleExpansion', 'ExactExpansion'}     # the act kinds whose members unpack (Brain.approach)
 # the engine's word for a tactic type in its team names where it is not the type itself (C's team log
 # tests/fixtures/c_release_teams/aiskirm_m.txt: Tactic="Engineer" -> AlliedCaptureTech_MEDIUM_EngineerTactic_0_0)
 TACTIC_NAME_WORDS = {'Engineer': 'EngineerTactic'}
@@ -813,7 +814,7 @@ class Brain:
             out['opponent funds'] = self.observe.money().get(foes[0], 0)
             out['income'] = (self.income(self.player), self.income(foes[0]))
         if 'targets' in self.host.blocks:
-            out['target'] = self.has_target
+            out['target'], out['free start'] = self.has_target, self.starts_free
         return out
 
     def income(self, owner):
@@ -905,6 +906,11 @@ class Brain:
         tiers = None if table is None else tg.table_tiers(table, self.view.enemies)
         return any(tg.find(td.heuristic(hid), self.view, self.home, tiers, None, self.home) is not None
                    for hid, _ in st.targets)
+
+    def starts_free(self, st):
+        """ctx 'free start' (states.evaluate): a heuristic of the state starts it with no target (targets.FREE_START)."""
+        tg, td = self.host.mod['targets'], self.host.data_of('targets')
+        return any(td.heuristic(hid).type in tg.FREE_START for hid, _ in st.targets)
 
     # ---- the blocks' outlets
     def hunt_arrived(self, b, state):
@@ -1041,7 +1047,7 @@ class Brain:
         the block's default (done on arrival).
         SimpleExpansion is approach's (TacticsBlock.EN_ROUTE); a model without that hook falls back to it here with
         no Distance (driven to the node and unpacked there, the script's path)."""
-        if kind == 'SimpleExpansion':
+        if kind in EXPANSIONS:      # ExactExpansion: the egg unpacks at its spot (bench aiplb600 / aiplb1500)
             return self.approach(team, kind, thing, None)
         if kind not in ('Engineer', 'GarrisonBuilding'):
             return True
@@ -1069,7 +1075,7 @@ class Brain:
         when no member can unpack. Bench D round 156 (missions/aisimpleexp_bench.py aiexpb*): 400 -> unpack f995 at
         397 from the node, 200 -> f1061 at 194, 50 -> the walk ends 98 away, no unpack to f1936. INFERRED: the done
         rule (the team is empty from f1070 on the bench, the miner replaced itself)."""
-        if kind != 'SimpleExpansion' or thing is None:
+        if kind not in EXPANSIONS or thing is None:
             return True
         p = (float(thing.x), float(thing.y))
         made = self.__dict__.setdefault('_exp_teams', [])   # [(team, node)], found by identity (a Team is not

@@ -14,4 +14,3 @@ proves = """\
 simai ExactExpansion + UnpackBuildingPlacement: the egg joins the team, the team finds its spot one ring \
 (the defence ring's formula) of radius Distance out, and unpacks there"""
 expect = "win(55, 59, '核心') == [0] * 5 and win(55, 59, '近450') == [near] * 5 and win(55, 59, '近1000') == [1] * 5"
-mismatch = "sim: the core stays packed (核心 1 to s60, no plant); bench 核心 0, the plant in the squares"
