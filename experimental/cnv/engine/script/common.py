@@ -62,6 +62,13 @@ def refined(name, a):
     return name
 
 
+def players_of(sim, player, books=False):
+    """The players a script's player argument names, slot order (l2_scripts1 1: the program parses every one to a
+    mask; a plain name is one bit): Sim.book_players, `books` those with a protocol book. Every action / condition
+    taking a player reaches the Sim's player table here, one point (A347): an action does each, a condition any."""
+    return sim.book_players(player, books=books)
+
+
 def team_crew(sim, team, every=False):
     """The team the game finds by this name, looked up without making it (D 115): its living members (the oldest
     instance's, as Sim.members; every instance's with `every`, as TEAM_HAS_UNITS), None when none goes by it -- an

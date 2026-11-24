@@ -8,9 +8,16 @@ Three of the player's guardians stand in the west field, two enemy warriors at t
     count 0; the enemy "has units" 0;
   camp (north base): the player's kind count 2 (the enemy's two warriors); the player's template count of warriors 0.
 probe/count asks the same in the west field and expects the per-player reading (it FAILs: the record of the guess).
+als (A347, l2_scripts1 1: a player argument is a mask): PLAYER_SET_MONEY 1000 for p1 and s1 at the start, 7000 for
+  "<1st Human Player's Enemies>" at 3 s (retail 9 times); 钱 = PLAYER_HAS_CREDITS >= 5000 s1 1 / p1 2 / the alias 4,
+  p1 >= 1000 8; 有 = SKIRMISH_PLAYER_HAS_UNITS_IN_AREA (retail 10 times with an alias) the enemies at the camp 1 /
+  in the field 2, the allies incl self in the field 4, the allies (not self) 8. Predicted: 8 then 13; 有 5.
 """
 from maps import festival
 from parts import Mission, Script, Test, counted, kindof, square
+import checks.engine_scripts8 as s8
+
+FOES, OURS, FRIENDS = (f"<1st Human Player's {k}>" for k in ('Enemies', 'Allies incl Self', 'Allies'))
 
 WARRIOR = 'JapanAntiInfantryInfantry'
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
@@ -57,6 +64,20 @@ def camp(m):
     return t
 
 
+def alias(m):
+    t = _test(m)
+    t.areas['Test field'], t.areas['Test camp'] = square(*m.site('west field'), 450), square(*m.site('north base', 90, 0), 150)
+    p1, s1 = m.player('p1'), m.player('s1')
+    t.scripts.append(Script('Test - money', [], [('PLAYER_SET_MONEY', p1, 1000), ('PLAYER_SET_MONEY', s1, 1000)]))
+    s8.at(t, 'foes', 3.0, [('PLAYER_SET_MONEY', FOES, 7000)])
+    s8.total(t, 'CNV_Area_Cash', '钱', [(w, ('PLAYER_HAS_CREDITS', who, 3, n)) for w, who, n in (
+        (1, s1, 5000), (2, p1, 5000), (4, FOES, 5000), (8, p1, 1000))])
+    s8.total(t, 'CNV_Area_Has', '有', [(w, ('SKIRMISH_PLAYER_HAS_UNITS_IN_AREA', who, area)) for w, who, area in (
+        (1, FOES, 'Test camp'), (2, FOES, 'Test field'), (4, OURS, 'Test field'), (8, FRIENDS, 'Test field'))])
+    s8.watch(t, 10, every=0.5)
+    return t
+
+
 # the builds this module makes and their checks (cnv/registry.py)
 MISSION = {'engine_area': mission}
-CHECKS = {'engine_area': {'field': field, 'camp': camp}}
+CHECKS = {'engine_area': {'field': field, 'camp': camp, 'als': alias}}

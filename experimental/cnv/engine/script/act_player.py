@@ -8,6 +8,7 @@ those."""
 import engine.players.tech as simtech
 import engine.data.units as simunits
 import engine.objects.modifier as simmodifier
+from engine.script.common import players_of
 from engine.world.handle import GAP_ACTION
 
 # the skirmish AI's script switches, kept per player for simai (work/re l4_aiswitches.md; docs/engine/aiswitches.md)
@@ -55,7 +56,7 @@ def player_grant_special_power(sim, name, a, script):
     power, who = (a[0], a[1]) if name == 'PLAYER_GRANT_SPECIAL_POWER' else (a[1], a[0])
     tech = simtech.power_needs(str(power))[0]
     grant = name == 'PLAYER_GRANT_SPECIAL_POWER'
-    for p in sim.book_players(who):
+    for p in players_of(sim, who, books=True):
         book = sim.books[p]
         if grant:
             book.owned.add(tech)
@@ -69,7 +70,7 @@ def player_special_power_availability(sim, name, a, script):
     # (player mask, power, Available / Disabled / Hidden): each player of the mask its own word (l2_specialpower 4.5;
     # A346: an alias too, retail ep01 j03 "<1st Human Player's Enemies>"). INFERRED: the player's click refused unless
     # Available (power_refusal); a script's cast goes all the same (engine_scripts8b pdis)
-    for p in sim.book_players(a[0], books=False):
+    for p in players_of(sim, a[0]):
         sim.powers_off[(p, str(a[1]).lower())] = str(a[2])
 
 
@@ -99,11 +100,14 @@ def allow_disallow_one_upgrade(sim, name, a, script):
 
 
 def player_set_money(sim, name, a, script):
-    sim.money[a[0]] = a[1]
+    # each player of the mask (A347: retail "<1st Human Player's Enemies>" 9 times; engine_area alias)
+    for p in players_of(sim, a[0]):
+        sim.money[p] = a[1]
 
 
 def player_give_money(sim, name, a, script):
-    sim.money[a[0]] = sim.money.get(a[0], 0) + a[1]
+    for p in players_of(sim, a[0]):
+        sim.money[p] = sim.money.get(p, 0) + a[1]
 
 
 def player_set_money_cap(sim, name, a, script):

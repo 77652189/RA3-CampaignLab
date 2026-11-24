@@ -12,3 +12,20 @@ take only the named player's); at the north base the player's kind count 2 (the 
 another player's) (bench 2026-10-25 / 11-04)"""
 proves = "sim area counts: a KindOf count takes every player's units, a template count and 'has units' only the named player's"
 expect = "vals(field)[-1] == [3, 3, 0, 0] and vals(camp)[-1] == [2, 0]"
+
+[[reading]]
+id = "area_alias_masks_set_each_enemy_and_count_any"
+scene = {build = "engine_area", check = "als", until = 10}
+bench = "als (A347, CampAreaAls_mcp_1124_031222), 钱 有 every 0.5 s: s1.1-s1.6 12 5 | s2.1-s11.1 13 5"
+proves = """PLAYER_SET_MONEY("<1st Human Player's Enemies>", 7000) sets Soviet_1 (>= 5000 after) and not the human (1000 \
+kept); SKIRMISH_PLAYER_HAS_UNITS_IN_AREA with an alias is any player of the mask: the enemies at the camp yes, in the \
+field (the player's Guardians) no, Allies incl Self yes, Allies (not self) no"""
+expect = ["all(v[1] == 5 for v in vals(rows))", "vals(rows)[-1] == [13, 5]"]
+
+[[reading]]
+id = "area_alias_another_enemy_starts_with_money"
+scene = {build = "engine_area", check = "als", until = 10}
+bench = "als (CampAreaAls_mcp_1124_031222): 钱 12 before the 3 s set (4 = the alias >= 5000 while Soviet_1 holds 1000)"
+proves = "some other enemy of the human (Soviet_2..6) holds >= 5000 from the start"
+mismatch = "sim 钱 8 before the set: the players no script gives money hold 0 (which one, and its start money: not read)"
+expect = "vals(rows)[0] == [12, 5]"

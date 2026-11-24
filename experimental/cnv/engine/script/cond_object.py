@@ -6,7 +6,7 @@ Each condition is `fn(sim, name, a)`, moved verbatim out of Sim.cond's chain; si
 CONDITIONS. None back: not taken (a gap)."""
 import math
 
-from engine.script.common import CMP
+from engine.script.common import CMP, players_of
 from engine.objects.status import ACTED_STATUS
 from engine.world.handle import GAP_CONDITION, held, inside
 from engine.kernel import interfaces, module
@@ -65,7 +65,8 @@ def player_has_comparison_unit_kind_in_trigger_area(sim, name, a):
 
 def skirmish_player_has_units_in_area(sim, name, a):
     sim.used.add('units in area')
-    return any(b.owner == a[0] and not b.scenery and inside(sim.areas[a[1]], b.x, b.y) for b in sim.living())
+    who = set(players_of(sim, a[0]))         # any player of the mask (A347, engine_area alias)
+    return any(b.owner in who and not b.scenery and inside(sim.areas[a[1]], b.x, b.y) for b in sim.living())
 
 
 def named_owned_by_player(sim, name, a):

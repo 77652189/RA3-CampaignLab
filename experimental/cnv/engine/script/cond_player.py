@@ -4,7 +4,7 @@ special powers ready and cast, power, credits, upgrades, and who plays the side 
 Each condition is `fn(sim, name, a)`, moved verbatim out of Sim.cond's chain; simcond.cond looks them up in
 CONDITIONS. None back: not taken (a gap; SKIRMISH_SPECIAL_POWER_READY of a power no protocol gives)."""
 import engine.players.tech as simtech
-from engine.script.common import CMP
+from engine.script.common import CMP, players_of
 from engine.world.handle import inside
 
 
@@ -97,7 +97,7 @@ def player_has_num_units_with_upgrade(sim, name, a):
 def player_has_credits(sim, name, a):
     # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
     # (player, comparison, n)
-    return CMP[int(a[1])](int(sim.money.get(a[0], 0)), int(a[2]))
+    return any(CMP[int(a[1])](int(sim.money.get(p, 0)), int(a[2])) for p in players_of(sim, a[0]))    # any (A347)
 
 
 CONDITIONS = {

@@ -26,7 +26,7 @@ from engine.kernel import interfaces, module
 from engine.ports.command import Command
 from engine.objects.power import (CRASH, CRASH_AT, CRASHES, CURTAIN, PACK_FRAMES, PACK_POWER, PROTOCOL_HITS, RELOAD_LAG,
                                   SQUADRON, SUPERWEAPON_HITS, UNPACK_POWER, start_reload)
-from engine.script.common import refined, team_crew
+from engine.script.common import players_of, refined, team_crew
 from engine.world.handle import GAP_ACTION, free_name
 
 
@@ -378,7 +378,7 @@ def fire_special_power_on_nearest_objecttype_by_player(sim, name, a, script):
     x, y, want = *_middle(crew), sim.of_types(a[2])
     goal = next((g for g in (min((o for o in _owned(sim, p) if o.template.lower() in want),
                                  key=lambda o: math.hypot(o.x - x, o.y - y), default=None)
-                             for p in (sim.book_players(a[4]) if a[4].startswith('<') else [a[4]])) if g), None)
+                             for p in players_of(sim, a[4])) if g), None)
     if goal is not None:
         player_fire_special_power_at_waypoint(sim, name, [a[0], a[1], f'@{goal.x},{goal.y}'], script)
 
