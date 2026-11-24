@@ -177,6 +177,16 @@ def _power_blocks():
     return out
 
 
+@functools.lru_cache(maxsize=None)
+def spellbook_powers():
+    """The powers (lower case) the PlayerSpellBook object carries a special power module of (System/PlayerSpellBook.xml:
+    OCLSpecialPower, SpecialPower, PlayerUpgradeSpecialPower ...; not its PlayerPowerManager / announcer lines): what a
+    player's script cast finds on the player's own book object first (work/re l2_specialpower 4.2, a328)."""
+    text = re.sub(r'<!--.*?-->', '', _xml('System', 'PlayerSpellBook.xml'), flags=re.S)
+    return frozenset(p.lower() for p in
+                     re.findall(r'<\w*SpecialPower\b[^>]*?SpecialPowerTemplate="([^"]+)"', text, re.S))
+
+
 def faction_of(name, props=None):
     """A player's faction: its SidesList playerFaction where the map gives it (retail), else by its name (ours:
     Player_1 the Allies, Soviet_N, Japan_N / Empire_N); None for a civilian or neutral one (no book)."""

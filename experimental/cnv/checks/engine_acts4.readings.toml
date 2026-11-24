@@ -68,6 +68,12 @@ expect = "all(v[0] in (0, 3) and v[1] in (0, 3) for v in vals(rows))"
 id = "acts_ui_a_scripts_protocol_cast_asks_no_requirement"
 scene = {build = "engine_acts_ui", check = "n", until = 10}
 bench = "n / g (above): FIRE_SPECIAL_POWER_ON_TEAM of the drones hangs them on both tanks (挂 3) held or not, yard or not; g's READY 3 -> 0 after the cast (its 120 s reload)"
-proves = "nothing yet: the simulator casts no PlayerSpellBook protocol (act_ability.player_fire_special_power_at_waypoint finds no object holding it)"
+proves = "sim a player's script cast takes the PlayerSpellBook's module first (act_ability._book_cast): no protocol held, no yard, the drones still on both tanks"
 expect = "vals(rows)[-1][0] == 3"
-mismatch = "sim 挂 0 to the end (no protocol cast); bench 3 from s2"
+
+[[reading]]
+id = "acts_ui_g_scripts_protocol_cast_starts_the_reload"
+scene = {build = "engine_acts_ui", check = "g", until = 10}
+bench = "g (above): READY 3 at s1, 0 from s2 to the end; 挂 3"
+proves = "sim the book's cast starts the power's 120 s ReloadTime (spellbook_ready false after it) and hangs the drones"
+expect = ["3 in [v[1] for v in vals(rows)]", "tuple(vals(rows)[-1]) == (3, 0)"]

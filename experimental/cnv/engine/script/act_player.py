@@ -54,12 +54,14 @@ def player_grant_special_power(sim, name, a, script):
         return False
     power, who = (a[0], a[1]) if name == 'PLAYER_GRANT_SPECIAL_POWER' else (a[1], a[0])
     tech = simtech.power_needs(str(power))[0]
+    grant = name == 'PLAYER_GRANT_SPECIAL_POWER'
     for p in sim.book_players(who):
-        if name == 'PLAYER_GRANT_SPECIAL_POWER':
-            sim.books[p].owned.add(tech)
-            sim.power_at[(p, str(power).lower())] = sim.frame_now()
-        elif sim.books[p].has(tech):
-            sim.power_at[(p, str(power).lower())] = sim.frame_now() + int(a[2]) * simunits.LIFE_FPS
+        book = sim.books[p]
+        if grant:
+            book.owned.add(tech)
+        elif not book.has(tech):
+            continue
+        sim.power_at[(p, str(power).lower())] = sim.frame_now() + (0 if grant else int(a[2]) * simunits.LIFE_FPS)
     sim.used.add('protocols')
 
 

@@ -20,7 +20,8 @@ import math
 import engine.objects.garrison as simgarrison
 import engine.data.units as simunits
 import engine.objects.locomotion as simlocomotion
-from engine.kernel import interfaces
+import engine.players.tech as simtech
+from engine.kernel import interfaces, module
 from engine.ports.command import Command
 from engine.objects.power import CURTAIN, PACK_FRAMES, PACK_POWER, RELOAD_LAG, SUPERWEAPON_HITS, UNPACK_POWER, start_reload
 from engine.script.common import refined, team_crew
@@ -125,9 +126,9 @@ def named_buttons(sim, name, a, script, unit=None):
         # engine_acts_wet DP / DS (round 226): the campaign bomber drop store's button is seen cast
         # (PLAYER_TRIGGERED_SPECIAL_POWER) the player's and the computer's alike; its load: _drop
         b = body(a[0])
-        sim.casts.append((sim.frame_now(), b.owner, cpower.lower(), b.serial,
-                           sim.point(a[2])))
-        if not _drop(sim, b, cpower, sim.point(a[2])):
+        q = sim.point(a[2])
+        sim.casts.append((sim.frame_now(), b.owner, cpower.lower(), b.serial, q))
+        if not _drop(sim, b, cpower, q):
             sim.note('技能', f'{sim.label(b)} 按 {a[1]}：算放了，没出东西（推断）')
     elif name in ('NAMED_USE_COMMANDBUTTON_ABILITY', 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED') and \
             body(a[0]) and body(a[0]).alive and \
@@ -159,14 +160,14 @@ def named_buttons(sim, name, a, script, unit=None):
         b = body(a[0])
         power, n = simunits.press_records(b.template, a[1], sim.own)
         sim.used.add('special power')
-        sim.casts += [(sim.frame_now(), b.owner, power.lower(), b.serial, None)] * n
+        _seen(sim, b.owner, power, b.serial, n=n)
         sim.note('技能', f'{sim.label(b)} 按 {a[1]}：记 {n} 次施放')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and any(
             m.power() == cpower for m in body(a[0]).find(interfaces.Recall)):
         # engine_recall_e (E184): the airport's recall seen cast once, the plane it made flies back to it;
         # engine_returnproducer_e (E173): the Apollo's own return, cast once, USER_1 on, it flies to its airport
         b, power = body(a[0]), cpower
-        sim.casts.append((sim.frame_now(), b.owner, power.lower(), b.serial, None))
+        _seen(sim, b.owner, power, b.serial)
         for m in (m for m in b.find(interfaces.Recall) if m.power() == power):
             if m.mark():
                 sim.set_model_condition(b, *m.mark())
@@ -225,11 +226,11 @@ def script_cast(sim, name, a, unit=None):
             start_reload(sim, b, a[1],                                                  # SDK GlobalData)
                          sim.frame_now() + rules['reload'] + RELOAD_LAG.get(a[1], 0))
         hits = SUPERWEAPON_HITS.get(a[1]) if b and b.alive else None
-        if hits and q is not None and cooling:
+        if hits and q is not None:
             sim.used.add('superweapon')
+        if hits and q is not None and cooling:
             sim.note('技能', f'{sim.label(b)} 的 {a[1]} 还在重装：没打出来')
         elif hits and q is not None:       # a script's cast fires though the power is not ready
-            sim.used.add('superweapon')
             now = sim.frame_now()
             for after, table in hits:
                 sim.blasts.append((now + after, q[0], q[1], table, b.owner, b))
@@ -285,16 +286,51 @@ def _drop(sim, b, power, p):
 
 
 def player_fire_special_power_at_waypoint(sim, name, a, script):
-    # (player, power, waypoint) INFERRED: the player's first living object that has the power casts it, as
-    # NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT (a script's cast: no reload asked); none, nothing. Retail fires
-    # protocols this way mostly (orbital refuse, final squadron): those have no source object, not simulated
-    power = power_spelling(a[1])
-    src = next((b for b in sim.living() if b.owner == a[0]
-                and simunits.power_rules(b.template, power, sim.own)), None)
+    # (player, power, waypoint) the program (work/re l2_specialpower 4.2): the player's own PlayerSpellBook object
+    # first when it has a module of the power, else its first living object that has it, as
+    # NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT (a script's cast: no reload asked); none, nothing
+    power, own, living = power_spelling(a[1]), sim.own, list(sim.living())
+    book = power.lower() in simtech.spellbook_powers() and a[0] in sim.books
+    src = None if book else next((b for b in living if b.owner == a[0]
+                                  and simunits.power_rules(b.template, power, own)), None)
     if src:
         _member(sim, 'NAMED_FIRE_SPECIAL_POWER_AT_WAYPOINT', [src.name, power, a[2]], script, src)   # itself
-    else:
-        sim.gap(GAP_ACTION, refined(name, a), f'{a[0]} 没有带 {a[1]} 的物体（协议类不模拟）')
+    elif not (book and _book_cast(sim, a, power, own, living)):
+        sim.gap(GAP_ACTION, refined(name, a), f'{a[0]} 用 {a[1]}：' + ('协议只进冷却和时间线，效果不模拟' if book else
+                                                                       '没有带它的物体'))
+
+
+DRONE_KINDS, DRONE_NOT = {'VEHICLE', 'HUGE_VEHICLE', 'SHIP'}, {'INFANTRY', 'AIRCRAFT', 'SUBMARINE'}   # GlobalDefines
+DRONE_NOT_STATUS = {'SUBMERGED', 'AIRBORNE_TARGET', 'IN_NANOHIVE', 'NOT_IN_WORLD'}    # and the drone's own bit
+
+
+def _seen(sim, owner, power, serial, q=None, n=1):
+    """n casts of `power` for PLAYER_TRIGGERED_SPECIAL_POWER (Sim.casts); the frame."""
+    now = sim.frame_now()
+    sim.casts += [(now, owner, power.lower(), serial, q)] * n
+    return now
+
+
+def _book_cast(sim, a, power, own, living):
+    """Player a[0]'s protocol `power` from its book at a[2]: held or not, ready or not, a yard or not (bench
+    engine_acts_ui n / g, a328: both tanks got their drones, g's READY 3 -> 0); seen cast (no caster object); its
+    ReloadTime starts (SKIRMISH_SPECIAL_POWER_READY reads it). The point defense drones: each of the player's own
+    vehicles / ships within 100 (its bounding circle) is given POINT_DEFENSE_DRONE_ATTACHED (INFERRED: an allied
+    player's left out; the drone itself, its leech and death, not simulated) -- True; every other protocol's effect is
+    not simulated -- False."""
+    p, q, key = a[0], sim.point(a[2]), power.lower()
+    now, rules = _seen(sim, p, power, None, q), simunits.power_rules('PlayerSpellBook', power, own)
+    sim.power_at[(p, key)] = now + (rules['reload'] if rules else 0)
+    sim.used.add('special power')
+    if key != 'specialpower_pointdefensedrones' or q is None:
+        return False
+    for t in living:
+        if t.owner == p and t.kinds & DRONE_KINDS and \
+                not t.kinds & DRONE_NOT and not module.status_now(t) & DRONE_NOT_STATUS and \
+                'POINT_DEFENSE_DRONE_ATTACHED' not in t.status and \
+                t.template != 'JapanPointDefenseDrone' and math.hypot(t.x - q[0], t.y - q[1]) - t.radius <= 100:
+            t.status.add('POINT_DEFENSE_DRONE_ATTACHED')
+    return True
 
 
 def fire_special_power_on_team(sim, name, a, script):
