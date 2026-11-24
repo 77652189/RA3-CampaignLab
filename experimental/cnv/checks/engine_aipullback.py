@@ -87,7 +87,7 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   airevk2  PASS: s1-12 4 4 2 | s13 4 4 1 | s14 4 3 1 | s15-30 4 3 4 | s31-48 4 4 4 | s49-85 4 3 4. Host: both members
            aim a spawned foe (f272); f302 member 3171 is stopped and sent to a point 135 (R - 10) from its target,
            along target -> member, and drives there hull-first at the target (reversing); 23 such orders in the run
-  airevk2o PASS: s1-12 4 4 2 | s13 4 4 1 | s14-15 4 3 1 | s16-85 4 3 4; no back-up order (tests/test_ai_reverse_k2.py)
+  airevk2o PASS: s1-12 4 4 2 | s13 4 4 1 | s14-15 4 3 1 | s16-85 4 3 4; no back-up order (readings: engine_aipullback.readings.toml)
   (11-14, D round 135b, "注入摆" -- PREMISE: THE START IS PLACED (前提是摆出来的), not the mission's own: at f250 the
   plan moves foe 1 / 2 50 west of members 3170 / 3171; foe 1 already dead (poke not found), foe 2 placed)
   airevkp1 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-17 4 3 1 | s18-85 4 2 1; f272 both members back up to 135 (R - 10)
@@ -112,7 +112,7 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   airevk0  CampAIRevK0A_*_1116: PASS, 4 4 2 all run (s1-129) = airevk1.
   So with the power off the join waits for the swap (f250 -> f253, the members aiming 0 then); the simulator's
   in_combat gate (a body that fired last tick) keeps all four out after the swap too: the spawned foe is in range
-  the same tick. tests/test_ai_reverse_k2.py's model test stays red on that (B's gate, not ReverseMove).
+  the same tick. The 近敌 counter reading stays a mismatch on that (B's gate, not ReverseMove).
 """
 import inject
 from checks import engine_aitarget as at

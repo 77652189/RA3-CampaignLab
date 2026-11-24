@@ -23,7 +23,7 @@ A file is a list of [[reading]] tables:
     blocks = []           which of A's blocks the AI brains get (simai.SimAI blocks, each of BLOCKS at most once, in
                           any order); default all of them; [] = the opening, states and teams only (the opening benches)
     teams = true          the AI brains keep their team trail (simai record, the model's Brain.snap) for teams()
-                          below -- the bench's side is its ext log's team: lines; default false (not kept)
+                          and orders() below -- the bench's side is its ext log's team: / cmd: lines; default false
 - scenes = {name = {build, check, until}, ...} for a reading comparing runs: each name is bound to that run's rows
   (script / shot_clock / blocks as in scene, each scene its own).
 - each = [{build = "aiowt", plants = 0}, ...]: one reading per entry, id[build]; build (and check / until / script /
@@ -51,7 +51,8 @@ second), first(key, pred=None, rows=rows), vals(rows) (each row's values in coun
 counter's value at until, by its name in the scripts: shown on the counter display or not), verdicts(scene=None)
 (the check's own expectations judged on the rows to until, build.judge: [(ok, text)]), teams(scene=None) (with
 teams = true: every AI frame's team rows to until, the model's Brain.snap rows: frame, state_key, state, foe_id,
-members, ...; [] without), the scene names, the
+members, ...; [] without), orders(scene=None) (with teams = true: every order the AI's blocks gave, rec['orders']:
+frame, member, kind, target, point; [] without), the scene names, the
 each-entry keys, and the builtins. With scenes, counter / verdicts name the scene."""
 import collections
 import os
@@ -224,7 +225,7 @@ def untils(readings):
 
 def snapshots(start, advance, rows_of, wanted):
     """Run each (build, check, opts) once: start(build, check, **opts) -> world (no keyword for a scene with the
-    default options), advance(world, frames), rows_of(world) -> (times, rows, counters, verdicts[, teams]).
+    default options), advance(world, frames), rows_of(world) -> (times, rows, counters, verdicts[, teams, orders]).
     {(build, check, until, opts): Run} for every until in wanted, the world advanced to each in turn: counters
     {script counter name: value} then, verdicts the check's own [(ok, text)] on the rows so far."""
     out = {}
@@ -234,9 +235,9 @@ def snapshots(start, advance, rows_of, wanted):
             frames = int(u * FPS) - done
             advance(w, frames)
             done += frames
-            times, rows, counters, verdicts, *teams = rows_of(w)
+            times, rows, counters, verdicts, *trail = rows_of(w)
             out[(b, c, u, opts)] = Run(list(times), [dict(r) for r in rows], dict(counters), list(verdicts),
-                                       list(teams[0]) if teams else [])
+                                       *(list(x) for x in (trail + [[], []])[:2]))
     return out
 
 
@@ -246,7 +247,7 @@ def label(key):
     return b + (f'.{c}' if c else '') + ''.join(_opt_text(k, v) for k, v in opts)
 
 
-Run = collections.namedtuple('Run', 'times rows counters verdicts teams')     # one snapshot (see snapshots)
+Run = collections.namedtuple('Run', 'times rows counters verdicts teams orders')     # one snapshot (see snapshots)
 
 
 FPS = 15     # simai.FPS (checked by tests/tools/test_readings_format.py against the simulator's)
@@ -265,6 +266,7 @@ def namespace(reading, runs):
     ns['counter'] = lambda name, scene=None: run_of(scene).counters[name]
     ns['verdicts'] = lambda scene=None: run_of(scene).verdicts
     ns['teams'] = lambda scene=None: run_of(scene).teams
+    ns['orders'] = lambda scene=None: run_of(scene).orders
     if reading['single']:
         times, rows = runs[reading['scenes']['rows']][:2]
         ns['times'] = times

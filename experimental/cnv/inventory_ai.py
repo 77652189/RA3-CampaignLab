@@ -714,10 +714,9 @@ NOTES = {
         '入队2辆到目标中心距166–233 > R−10=135，与模型一致不算反例；airevkg1守护者未入队，无效；见work/re/d132_whenidle.md；'
         'D133 airevk2/airevk2o（s16.7删掉远处玩家坦克、在每辆锤子身上生成玩家守护者）：开的那局f302起成员停下、'
         '下移动令到离目标135（R−10）、车头对着目标倒着开（位移与车头点积<0），全局23条；关的那局0条；'
-        'tests/test_ai_reverse_k2.py按名读台上样本正常断言；'
-        'D134 模拟器接上成员自己的攻击目标（simai ordered_aim）和射程AttackRange−5：'
-        'test_model_backs_up_after_the_swap_only_with_the_switch_on 开的那局换敌后下倒车令、关的那局0条，正常断言，晋升；'
-        '近敌计数回放仍strict xfail（台上只2辆入队、近敌s13先死，模拟器4辆全入队，是招兵不是倒车）；'
+        'D134 模拟器接上成员自己的攻击目标（simai ordered_aim）和射程AttackRange−5：读数 '
+        'engine_aipullback.readings.toml::the_model_backs_up_after_the_swap_only_with_the_switch_on 开的那局换敌后下倒车令、'
+        '关的那局0条，晋升（B 由回放测试迁入）；近敌计数读数标 mismatch（台上只2辆入队、近敌s13先死，模拟器4辆全入队，是招兵不是倒车）；'
         '见work/re/d133_airevk2.md'),
     # B round 108: a test names the probe but only the switch-off case matches; the effect itself is a strict xfail
     '微操/AIMicroManagerData.Crush': (BENCHED,

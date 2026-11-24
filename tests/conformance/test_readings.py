@@ -36,7 +36,8 @@ def _rows_of(w):
     import build                                   # on the path once simai is loaded
     labels = [lab for _, lab in w.sim.test.counters]
     return ([t for t, _ in w.sim.series], [dict(zip(labels, v)) for _, v in w.sim.series], dict(w.sim.counters),
-            build.judge(w.sim.test, w.sim.series), [r for b in w.brains.values() for r in b.rec['frames']])
+            build.judge(w.sim.test, w.sim.series), [r for b in w.brains.values() for r in b.rec['frames']],
+            [o for b in w.brains.values() for o in b.rec['orders']])
 
 
 def _start(lib, build, check, script='', shot_clock=False, blocks=simai.BLOCKS, teams=False):

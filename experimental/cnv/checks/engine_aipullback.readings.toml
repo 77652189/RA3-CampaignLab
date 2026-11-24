@@ -93,3 +93,43 @@ proves = "simai reverse move: a member whose own target is within R - 10 backs o
 expect = "win(t0, 85, '近敌') == [near] * (86 - t0)"
 mismatch = """the simulator keeps 近敌 4 all along on both (敌坦 1 from s15): it carries out no plan poke (t.inject), and its \
 team is late closing in as in airev1's mismatch above"""
+
+[[reading]]
+id = "the_swap_probe_starts_with_four_tanks_near_two_foes"
+scene = {build = "airevk2", check = "a", until = 13.0, teams = true}
+each = [{build = "airevk2"}, {build = "airevk2o"}]
+bench = "airevk2 / airevk2o (D round 133): 坦克数 近敌 敌坦 4 4 2 at s1-12"
+proves = "simai reverse move: the swap probe starts with four tanks near the foes, two foes alive"
+expect = ["win(1, 12, '坦克数') == [4] * 12", "win(1, 12, '近敌') == [4] * 12", "win(1, 12, '敌坦') == [2] * 12"]
+
+[[reading]]
+id = "the_model_backs_up_after_the_swap_only_with_the_switch_on"
+scene = {build = "airevk2", check = "a", until = 40.0, teams = true}
+each = [{build = "airevk2", on = true}, {build = "airevk2o", on = false}]
+item = "AI 微操/AIMicroManagerData.ReverseMove"
+bench = """\
+D round 133 (work/re/d133_airevk2.md; fixtures dropped with tests/test_ai_reverse_k2.py): two Hammers join the \
+attack team f213, state 2 f242 aiming at a far Guardian 166+ off; at 16.7 s (f250) the check deletes the far foes and \
+spawns a player Guardian on each Hammer, so by f300 both aim at a spawned foe inside R - 10 = 135 (AttackRange 150). \
+airevk2 (on): f302 member 3171 leaves its target and gets a move to a point 135 from it along target -> member, \
+driven with the hull still on the target (displacement against hull forward, f302-313 and f316-329): it backs up; 23 \
+such orders in the run. airevk2o (off): no such move order in the whole run, the members keep their targets"""
+proves = """\
+simai reverse move (D round 134: Fighter.aim = the member's own attack target, reach AttackRange - 5): back-up \
+orders after the swap with the switch on (simulator first f308), none in the whole run with it off"""
+let = {rev = "[o['frame'] for o in orders() if o['kind'] == 'reverse']"}
+expect = "bool(rev) == on and all(f > 250 for f in rev)"
+
+[[reading]]
+id = "the_swap_probe_near_foe_counts_after_the_swap"
+scene = {build = "airevk2", check = "a", until = 48.0, teams = true}
+each = [{build = "airevk2", near = 4}, {build = "airevk2o", near = 3}]
+bench = """\
+counters 坦克数 近敌 敌坦: on s1-12 4 4 2 | s13 4 4 1 | s14 4 3 1 | s15-30 4 3 4 | s31-48 4 4 4 | s49-85 4 3 4; \
+off s1-12 4 4 2 | s13 4 4 1 | s14-15 4 3 1 | s16-85 4 3 4"""
+proves = "simai reverse move: who stays near the spawned foes after the swap (rests on who joined the team)"
+expect = "win(31, 47, '近敌') == [near] * 17"
+mismatch = """\
+近敌 counts all four Hammers, so it rests on recruitment, not ReverseMove: on the bench 2 of 4 join at f213 after the \
+near foe died s13 (the other 2 stay out and never back up); the simulator recruits all 4 and they back off the near \
+foes (s31-47 on 近敌 0, off 4; bench on 4, off 3). work/re/d132_whenidle.md, d134 in handoff-d"""

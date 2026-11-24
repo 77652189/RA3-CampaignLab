@@ -3,7 +3,7 @@
 The rule (work/re/k2_recruit_gate_1119.md): the unit's own attack target -- the order's (goal) or the one it went after
 (chase), else this tick's aim, else the AI's recorded target -- alive, that one of its weapons can hit and reaches.
 Firing decides nothing: bench k2gate0 refuses a Guardian 60 s in pre-attack (no shot) at a live foe in range, and the
-K2 cut's stale fire entries on dead foes kept the Hammers out past the swap (test_ai_reverse_k2). The whole-run
+K2 cut's stale fire entries on dead foes kept the Hammers out past the swap (airevk2). The whole-run
 readings are checks/engine_k2gate.readings.toml."""
 from types import SimpleNamespace
 
