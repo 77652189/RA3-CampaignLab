@@ -1,12 +1,13 @@
 """ChargeWeaponUpdate (E213, bench engine_charge_e a-c): the next attack's first shot skips the part of its pre-attack
 the weapon has charged (idle / ChargeTime, at most all of it); idle ChargeTime + OverChargeTime, that shot also deals
 OverChargePercent more damage, none short of it. Retail's one block is the Wave-Force tower's (5 s, 2 s, 40 %,
-ForbiddenStatus IS_FIRING_WEAPON IS_RELOADING_WEAPON). Bench: idle 16 s 10 frames / x 1.4, 6 s 3 frames / x 1.0 (the
-simulator's both: 3), 4 s 21 frames (the simulator 12: the cut in proportion is INFERRED -- a's and b's 7-9 frames
-over may be the turret's idle scan, MaxIdleScanAngle 90 at 180 deg/s, not modelled).
+ForbiddenStatus IS_FIRING_WEAPON IS_RELOADING_WEAPON). Bench, the turret's idle scan out (engine_charge_n): idle 16 s
+3 frames / x 1.4, 6 s 3 / x 1.0, 5 s 11, 4 s 20 -- in proportion from 13 frames after the making (LATE; with the scan,
+engine_charge_e, 16 s reads 10: the turret turned away, not modelled).
 The host asks it when a weapon's clip clock starts anew (WeaponSet.start_clip): idle = from the old cycle's end (none:
-the thing's making) to the attack. INFERRED: the forbidden status is the clip clock's busy span (the simulator sets
-neither bit), a charge the thing's only weapon's, power and other statuses not read."""
+LATE after the thing's making) to the attack. INFERRED: the cut in proportion and LATE (two points fit it), LATE for
+the over-charge too, the forbidden status is the clip clock's busy span (the simulator sets neither bit), a charge the
+thing's only weapon's, power and other statuses not read."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -26,13 +27,14 @@ class ChargeWeaponData(module.ModuleData):
 
 @factory.module('ChargeWeaponUpdate')
 class ChargeWeapon(module.Module, interfaces.Create, interfaces.Charge):
-    """made: the second its thing was made (the idle start of its first attack)."""
+    """made: the second its first charge starts (LATE after its making: the idle start of its first attack)."""
     DATA = ChargeWeaponData
     STATE = ('made',)
+    LATE = 13 / 15.0
     made = 0.0
 
     def on_create(self, frame):
-        self.made = frame / 15.0
+        self.made = frame / 15.0 + self.LATE
 
     def on_build_complete(self):
         pass

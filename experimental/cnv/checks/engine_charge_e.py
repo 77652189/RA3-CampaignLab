@@ -25,9 +25,12 @@ HOST, TAG, TARGET = 'JapanBaseDefenseAdvanced', 'ChargeWeaponUpdate', 'SovietPow
 GO, LONG = 240, 150
 
 
-def mission():
-    m = Mission(name='CampChargeE', map=probe_range, units=[])
+def mission(scan=True):
+    m = Mission(name='CampChargeE' if scan else 'CampChargeN', map=probe_range, units=[])
     source = (Path(labpaths.SDK3) / 'SageXML/Japan/Structures' / (HOST + '.xml')).read_text(encoding='utf-8-sig')
+    if not scan:    # engine_charge_n: no idle scan, the turret stays on the target's bearing (a/b's frames over?)
+        source, n = re.subn(r'MaxIdleScanAngle="[^"]*"', 'MaxIdleScanAngle="0.0"', source)
+        assert n == 1, n
     for k in (1, 2):
         m.put('SovietPowerPlant', f'power {k}', 0.0, 0.0, role=f'pp{k}', name=f'E213 pp{k}')
     for arm, dx in [('On', 0.0), ('Off', 700.0)]:
@@ -79,6 +82,7 @@ def check(m, go=GO):
     return t
 
 
-MISSION = {'engine_charge_e': mission}
-CHECKS = {'engine_charge_e': {'a': check, 'b': lambda m: check(m, 60), 'c': lambda m: check(m, 90)}}
-CONTROL_ARMS = {'engine_charge_e': ('On', 'Off')}
+_GOS = {'a': check, 'b': lambda m: check(m, 60), 'c': lambda m: check(m, 90), 'd': lambda m: check(m, 75)}
+MISSION = {'engine_charge_e': mission, 'engine_charge_n': lambda: mission(scan=False)}
+CHECKS = {'engine_charge_e': _GOS, 'engine_charge_n': _GOS}
+CONTROL_ARMS = {'engine_charge_e': ('On', 'Off'), 'engine_charge_n': ('On', 'Off')}

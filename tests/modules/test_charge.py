@@ -16,10 +16,11 @@ def _tower(at):
     return s, b, b.weapons[0]
 
 
-@pytest.mark.parametrize('idle, first, factor', [(4.0, 0, 1.0), (6.0, 1, 1.0), (7.0, 1, 1.4)])
+@pytest.mark.parametrize('idle, first, factor', [(5.0, 0, 1.0), (6.0, 1, 1.0), (8.0, 1, 1.4)])
 def test_an_idle_tower_cuts_its_pre_attack_by_its_charge_and_hits_harder_overcharged(idle, first, factor):
     s, b, w = _tower(idle)
-    assert s.shots_due(b, w, 0.5) == first          # charged: the shot one frame on; 4 s: 0.6 s of the 3 s left
+    assert s.shots_due(b, w, 0.5) == first          # charged: the shot one frame on; 5 s: 0.52 s left (the charge
+    #                                                 starts 13 frames after the making)
     assert weaponset.boost(b, w) == pytest.approx(factor)
     assert weaponset.boost(b, w) == 1.0             # spent by the first volley
 

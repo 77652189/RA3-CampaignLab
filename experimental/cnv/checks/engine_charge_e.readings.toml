@@ -22,8 +22,8 @@ scene = {build = "engine_charge_e", check = "a", until = 28, shot_clock = true}
 bench = "CampChargeEA_mcp_1124_032616: On 10 frames after the order"
 proves = "a fully charged tower's first shot comes the frame after the order's (c: 3 frames)"
 expect = "counter('E213On') % 1000 == 10"
-mismatch = """sim 3, bench 10: c (6 s idle) reads 3 on the bench as well; the 7 frames over are likely the turret's \
-idle scan turning it away (MaxIdleScanAngle 90, TurretTurnRate 180: up to 8 frames back) -- no turret modelled"""
+mismatch = """sim 3, bench 10: the 7 frames over are the turret's idle scan turning it away (MaxIdleScanAngle 90, \
+TurretTurnRate 180: up to 8 frames back; engine_charge_n a, the scan out, reads 3) -- no turret modelled"""
 
 [[reading]]
 id = "b_part_charged_tower_cuts_its_pre_attack"
@@ -39,8 +39,8 @@ scene = {build = "engine_charge_e", check = "b", until = 16, shot_clock = true}
 bench = "CampChargeEB_mcp_1124_042600: On 21 frames"
 proves = "how much a part charge cuts: the simulator's idle / ChargeTime of the pre-attack (INFERRED)"
 expect = "counter('E213On') == 89021"
-mismatch = """sim 89012 (4/5 of 45 cut: 9 left + 3), bench 89021: 9 over -- the turret's scan as a's 7, or the \
-charge starting ~1 s after the making (3/5 cut: 18 left + 3); one bench cannot tell"""
+mismatch = """sim 89020 (the charge from 13 frames after the making), bench 89021: the frame over is the turret's \
+idle scan (engine_charge_n b, the scan out: 20) -- no turret modelled"""
 
 [[reading]]
 id = "c_charged_not_overcharged_tower_fires_at_once_plain"
@@ -52,3 +52,32 @@ a frame over a's and b's 48)"""
 proves = """ChargeWeaponUpdate: idle ChargeTime but short of the over-charge, the first shot skips the whole \
 PreAttackDelay and deals no more (1 s of the 2 s over-charge adds nothing: 1.2 x would read 86 %)"""
 expect = ["counter('E213Frame') == 240", "counter('E213On') == 89003", "counter('E213Off') // 1000 == 89"]
+
+# engine_charge_n: the same with the turret's idle scan taken out (MaxIdleScanAngle 0) in both arms.
+[[reading]]
+id = "n_a_unscanned_charged_tower_fires_the_frame_after_the_order"
+scene = {build = "engine_charge_n", check = "a", until = 28, shot_clock = true}
+item = "物体模块 Behaviors/ChargeWeaponUpdate"
+bench = """\
+CampChargeNA_mcp_1124_051142 at 9887baa8, PASS: 390 84003 89048 53068 (a's 10 frames were the idle scan: 3 without \
+it, as c)"""
+proves = "a fully charged tower's first shot comes 3 frames after the order once the turret is not scanned away"
+expect = ["counter('E213On') == 84003", "counter('E213Off') == 89048"]
+
+[[reading]]
+id = "n_b_unscanned_part_charge_frames"
+scene = {build = "engine_charge_n", check = "b", until = 16, shot_clock = true}
+bench = "CampChargeNB_mcp_1124_051302 at 9887baa8, PASS: 210 89020 89048 69068 (21 with the scan: 1 frame of it)"
+proves = """how much a part charge (4 s idle) cuts, the scan out of the way: not the scan (21 -> 20 without it); 17 of \
+45 left = 3.1 s of 5 charged in 4 s, in proportion from 13 frames after the making (INFERRED; d below the second point)"""
+item = "物体模块 Behaviors/ChargeWeaponUpdate"
+expect = "counter('E213On') == 89020"
+
+[[reading]]
+id = "n_d_charge_starts_13_frames_after_the_making"
+scene = {build = "engine_charge_n", check = "d", until = 17, shot_clock = true}
+item = "物体模块 Behaviors/ChargeWeaponUpdate"
+bench = "CampChargeND_mcp_1124_051842 at 9887baa8, PASS: 225 89011 89048 69068 (5 s idle: On 11 frames, 89 %)"
+proves = """predicted from b before the run: a charge from the making would read 3 (5 s = ChargeTime), one 13 frames \
+late 11 -- it reads 11 and no more damage"""
+expect = ["counter('E213On') == 89011", "counter('E213Off') == 89048"]
