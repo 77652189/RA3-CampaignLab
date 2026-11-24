@@ -1682,15 +1682,14 @@ class Sim:
 
     def can_hit(self, w, t):
         """A weapon's anti mask against a target: aircraft need ANTI_AIRBORNE, buildings ANTI_STRUCTURE (or
-        ground), the rest ground or water. A weapon that does nothing to the target's armour (its damage type at 0 %:
-        Tanya's pistol, SNIPER, at every faction building) cannot take it at all, ordered or not (Generals
-        WeaponSet::getAbleToUseWeaponAgainstTarget: estimateWeaponDamage 0 -> ATTACKRESULT_INVALID_SHOT; the a6
-        Tanya who stood firing at a building, 2026-11-08)."""
+        ground), the rest ground or water; no RequiredAntiMask = the SDK's default ANTI_GROUND ANTI_WATER
+        ANTI_STRUCTURE (AssetTypeWeaponTemplate.xsd), not the air. A weapon that does nothing to the target's armour
+        (its damage type at 0 %: Tanya's pistol, SNIPER, at every faction building) cannot take it at all, ordered or
+        not (Generals WeaponSet::getAbleToUseWeaponAgainstTarget: estimateWeaponDamage 0 -> ATTACKRESULT_INVALID_SHOT;
+        the a6 Tanya who stood firing at a building, 2026-11-08)."""
         if w['type'] == 'HEALING' or simunits.percent(t.armor, w['type']) <= 0:     # a repair gun: host.mend
             return False
-        anti = w['anti']
-        if not anti:
-            return True
+        anti = w['anti'] or ('ANTI_GROUND', 'ANTI_WATER', 'ANTI_STRUCTURE')
         if t.surface == 'air':
             return any(a.startswith('ANTI_AIRBORNE') for a in anti)
         if 'STRUCTURE' in t.kinds:

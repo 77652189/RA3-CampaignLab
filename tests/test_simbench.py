@@ -3,6 +3,7 @@ the simulator can stand in for pass on the current plan and map, and fail when t
 are judging something); a reading the simulator has no rule for is listed as SKIP, never as PASS."""
 import importlib.util
 import math
+import types
 from pathlib import Path
 
 import pytest
@@ -603,6 +604,9 @@ def test_a_weapon_doing_nothing_to_the_armour_never_takes_the_target():
     s = sim.Sim.__new__(sim.Sim)
     assert not any(s.can_hit(w, plant) for w in simunits.fight('AlliedCommandoTech1')['weapons'])
     assert all(s.can_hit(w, plant) for w in simunits.fight('AlliedAntiInfantryInfantry')['weapons'])
+    bare = {'type': 'GUN', 'anti': []}              # no RequiredAntiMask: the SDK's ground / water / structure
+    plane = types.SimpleNamespace(armor=plant.armor, kinds=frozenset({'AIRCRAFT'}), surface='air')
+    assert s.can_hit(bare, plant) and not s.can_hit(bare, plane)
 
 
 def test_idle_acquiring_is_the_units_own_word():
