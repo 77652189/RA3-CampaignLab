@@ -1,0 +1,27 @@
+# Bench readings of checks/engine_namedcount.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "namedcount_iron_curtain_ready_after_the_swap"
+item = "脚本动作 NAMED_SET_SPECIAL_POWER_COUNTDOWN"
+scene = {build = "engine_namedcount", check = "a", until = 22, script = "不打"}
+bench = "a, line C (work/re/c_namedcount_report.md, CampNamedCountA_mcp_1116_065413), 就绪位 宿主位 供电位 at logic frames: f43..143 0 7 0 | f153..315 7 7 0 (12 + 19 readings)"
+proves = "three players' Iron Curtains, countdowns set 0 / 2 at 1 s and swapped at 7 s, the third untouched: all three read ready from f153. Moved from the strict-xfail replay (A337)"
+mismatch = "sim 就绪位 0 throughout (bench 7 from f153): the named countdown and the building's READY world / timing are unresolved after two runs"
+let = {want = "lambda f: [0, 7, 0] if 43 <= f <= 143 else [7, 7, 0] if 153 <= f <= 315 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(0, 7, 0), (7, 7, 0)}",
+]
+
+[[reading]]
+id = "namedcount_vacuum_bomb_ready_after_the_swap"
+item = "脚本动作 NAMED_SET_SPECIAL_POWER_COUNTDOWN"
+scene = {build = "engine_namedvac", check = "a", until = 21, script = "不打"}
+bench = "a, line C (CampNamedVacA_mcp_1116_065548), 就绪位 宿主位 供电位 at logic frames: f41..148 0 7 0 | f155..300 3 7 0 (13 + 18 readings)"
+proves = "the same with vacuum-bomb hosts: two of the three read ready from f155. Moved from the strict-xfail replay (A337)"
+mismatch = "sim 就绪位 0 throughout (bench 3 from f155)"
+let = {want = "lambda f: [0, 7, 0] if 41 <= f <= 148 else [3, 7, 0] if 155 <= f <= 300 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(0, 7, 0), (3, 7, 0)}",
+]
