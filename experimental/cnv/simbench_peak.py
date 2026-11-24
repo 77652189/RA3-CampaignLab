@@ -224,7 +224,15 @@ def ai_start(at, scene=AI_SCENE, path=None):
 
 def run_ai(secs=SECS, start=None, scene=AI_SCENE, path=None):
     """Build with simai_run.run, then time its normal AI-and-world advance in slices. start: from the scene's snapshot
-    `start` seconds in (ai_start), the result's 'start' naming it."""
+    `start` seconds in (ai_start), the result's 'start' naming it. The AI casts no player power here (its start too):
+    the precision strike (c4ed9230) leaves Soviet_1 12 alive at the minute's end, 51 without -- no longer a peak load."""
+    from unittest import mock
+    import engine.objects.power as power
+    with mock.patch.dict(power.AI_POWERS, clear=True):
+        return _run_ai(secs, start, scene, path)
+
+
+def _run_ai(secs, start, scene, path):
     import engine.ai.core as simai
     import simai_run
 
