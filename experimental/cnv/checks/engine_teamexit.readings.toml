@@ -15,3 +15,15 @@ scene = {build = "engine_plexit", check = "b", until = 16}
 bench = "b, run_queue CampPlExitB_mcp_1123_084038 (11-23), 本方驻 敌方驻 存活位: 15 1 511 at every one of 25 readings f44..247 (the calls at 5 s and 9 s on s4)"
 proves = "PLAYER_EXIT_ALL_BUILDINGS on a campaign computer player (s4, no skirmish AI) lets nobody out either: its man stays in the second house, p1's men stay in. The AI object's walk goes over a list of its own, not the player's units (work/re/a323_plexit.md); a skirmish AI player not benched"
 expect = "all(v[:3] == [15, 1, 511] for v in vals(rows) if v[3] >= 30) and len(rows) >= 15"
+
+[[reading]]
+id = "teamexit_only_the_named_teams_men_leave_building_and_transport"
+item = "脚本动作 TEAM_EXIT_ALL_BUILDINGS"
+scene = {build = "engine_teamexit", check = "a", until = 10, script = "不打"}
+bench = "a, line C CampTeamExitA_mcp_1116_064136 (work/re/c_teamexit_report.md), 本队驻 异队驻 存活位 at logic frames: f44..74 3 3 127 | f82..287 0 3 127 (33 readings)"
+proves = "TEAM_EXIT_ALL_BUILDINGS takes the named team's conscripts out of the apartment and the Bullfrog; the other team's in the same hosts stay, nobody (members, hosts) dies, an empty team and a repeat call hurt nothing. Moved from the frame-exact replay (A332)"
+let = {want = "lambda f: None if f < 44 else [3, 3, 127] if f <= 74 else [0, 3, 127] if f >= 82 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(3, 3, 127), (0, 3, 127)}",
+]

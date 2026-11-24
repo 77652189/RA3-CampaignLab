@@ -1,5 +1,5 @@
-# Bench readings of checks/engine_modeldur.py, variants t / u / n (format: experimental/cnv/readings.py; runner:
-# tests/conformance). The unit action's a / b are still the old test tests/test_modeldur_bench_c.py.
+# Bench readings of checks/engine_modeldur.py, variants t / u / n / a / b (format: experimental/cnv/readings.py;
+# runner: tests/conformance).
 
 [[reading]]
 id = "team_timed_condition_on_every_member_for_the_unit_span"
@@ -26,3 +26,28 @@ bench = "CampModelDurN_mcp_1123_013856: 至少1 / 正好2 / 正好3 / 敌方 151
 proves = "cond_object PLAYER_HAS_NUMBER_OBJECTS_WITH_MODELCONDITION: the player's objects reading the condition, counted and compared (>= 1 / == 2 / == 3 over the team's and the loner's spans), another player's none"
 expect = ["counter('CNV_ModelDur_Ge1') == 151", "counter('CNV_ModelDur_Eq2') == 120",
           "counter('CNV_ModelDur_Eq3') == 31", "all(r['敌方'] == 0 for r in rows)"]
+
+[[reading]]
+id = "unit_timed_condition_3_and_7_seconds_include_the_end_frame"
+item = "脚本动作 UNIT_SET_MODELCONDITION_FOR_DURATION"
+scene = {build = "engine_modeldur", check = "a", until = 12, script = "不打"}
+bench = "a, line C (work/re/c_modeldur_report.md), 状态 短帧 长帧 at logic frames: f44 11 14 14 | f75 11 45 45 | f83 10 46 53 | f134 10 46 104 | f144 8 46 106 | f283 8 46 106"
+proves = "UNIT_SET_MODELCONDITION_FOR_DURATION (USER_1, 4th argument 1.0) at 2 s: 3 s on the short one, 7 s on the long one, each for the span plus its end frame (46 / 106 frames), then off; the untouched control never, the permanent one (8) always. Moved from the frame-exact replay (A332)"
+let = {want = "lambda f: None if f < 44 else 11 if f <= 75 else 10 if 83 <= f <= 134 else 8 if f >= 144 else None"}
+expect = [
+  "all(r['状态'] == want(r['逻辑帧']) for r in rows if want(r['逻辑帧']) is not None)",
+  "{want(r['逻辑帧']) for r in rows} >= {11, 10, 8}",
+  "rows[-1]['短帧'] == 46 and rows[-1]['长帧'] == 106",
+]
+
+[[reading]]
+id = "unit_timed_condition_1_and_2_seconds_include_the_end_frame"
+item = "脚本动作 UNIT_SET_MODELCONDITION_FOR_DURATION"
+scene = {build = "engine_modeldur", check = "b", until = 10, script = "不打"}
+bench = "b, line C, 状态 短帧 长帧 at logic frames: f44 11 14 14 | f54 10 16 24 | f62 8 16 31 | f284 8 16 31"
+proves = "the same with 1 s and 2 s: 16 / 31 frames, the end frame included"
+let = {want = "lambda f: 8 if f >= 62 else None"}
+expect = [
+  "all(r['状态'] == want(r['逻辑帧']) for r in rows if want(r['逻辑帧']) is not None)",
+  "rows[-1]['短帧'] == 16 and rows[-1]['长帧'] == 31",
+]
