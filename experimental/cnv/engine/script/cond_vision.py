@@ -5,12 +5,7 @@ Each condition is `fn(sim, name, a)`, moved verbatim out of Sim.cond's chain; si
 CONDITIONS. None back: not taken (a gap)."""
 import math
 
-from engine.script.common import RELATION_OF, players_of, team_crew
-
-
-def _stands(sim, a, b, want):
-    """How player a takes b is `want` (RELATION_OF's; None: any)."""
-    return want is None or sim.relation(a, b) == want
+from engine.script.common import RELATION_OF, players_of, stands, team_crew
 
 
 def enemy_sighted(sim, name, a):
@@ -24,7 +19,7 @@ def enemy_sighted(sim, name, a):
     live = list(sim.living())
     hidden = sim.cloaked(live, mark=False)
     return bool(viewer and viewer.alive and want and any(
-        target.owner == a[2] and _stands(sim, viewer.owner, target.owner, want)
+        target.owner == a[2] and stands(sim, viewer.owner, target.owner, want)
         and target.serial not in hidden
         # Centre-distance boundary/combined modifiers remain INFERRED.
         and math.hypot(target.x - viewer.x, target.y - viewer.y) <= viewer.sight * viewer.level_vision
@@ -53,7 +48,7 @@ def enemy_sighted_by_team(sim, name, a):
     want = RELATION_OF.get(rel)
     them = [t for t in sim.bodies.values() if t.owner == a[2] and (t.alive or sim.dying(t))
             and not ({'INERT', 'MOVE_ONLY'} & set(t.kinds))]
-    return any(_stands(sim, m.owner, t.owner, want)
+    return any(stands(sim, m.owner, t.owner, want)
                and math.hypot(t.x - m.x, t.y - m.y) <= m.sight * m.level_vision
                for m in crew if m.sight > 0 for t in them)
 

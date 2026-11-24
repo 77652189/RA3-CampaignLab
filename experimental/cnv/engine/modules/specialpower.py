@@ -137,9 +137,9 @@ class DominateEnemy(SpecialPower, interfaces.Dominate):
     mind maiden's, units/clone.py: such a block takes nothing, as before)."""
     DATA = DominateData
 
-    def taken(self, things, relation):
+    def taken(self, things, stands):
         me, d = self.thing, self.data
-        return [t for t in things if t.alive and t is not me and relation(me.owner, t.owner) in d.rels
+        return [t for t in things if t.alive and t is not me and stands(me.owner, t.owner, d.rels)
                 and set(d.kinds) & t.kinds and math.hypot(t.x - me.x, t.y - me.y) <= d.radius] if d.keep else []
 
 

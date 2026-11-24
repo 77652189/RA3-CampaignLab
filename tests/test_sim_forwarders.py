@@ -108,19 +108,19 @@ SIM_SURFACE = {
                     'timers unknown unmodeled*2 upgrade_sellers wallet*4 waypoints wfire_press who world',
     'engine.script': '_life*2 _tier_held act*4 active*7 add*5 ai*4 ai_paused*2 ai_priorities ai_switches all_revealed areas*11 '
                      'asked*3 assignments attachment_known_status*2 attacked_by*2 audio_end banned*2 banned_ups*2 '
-                     'base_construction_disabled*2 base_power blasts blocks*2 bodies*13 body*57 book_players books*2 '
-                     'books_of*3 border*4 buildable camera*2 camera_been*2 can_hit casts*5 change*18 cloaked*3 clock*4 '
+                     'base_construction_disabled*2 base_power blasts blocks*2 bodies*12 body*57 book_players books*2 '
+                     'books_of*3 border*4 buildable camera*2 camera_been*2 can_hit casts*5 change*16 cloaked*3 clock*4 '
                      'commands*3 cond_memory*2 countdowns*3 counters*15 dying*3 end*2 enemy engineer_entry flags*4 frame_now*19 '
                      'gap*19 garrison*29 ground*2 handed*2 has_model_condition hidden_home*2 hidden_members hotspots*3 human*9 '
-                     'infiltrators*4 input*2 kills*4 label*13 level*3 library_ai*2 living*24 looks lost_orders m*6 made_frame '
-                     'markers members*31 mm*6 model_scripts*2 money*9 money_cap named_team nearest_ref*3 note*36 object_lists '
+                     'infiltrators*4 input*2 kills*4 label*11 level*3 library_ai*2 living*24 looks lost_orders m*6 made_frame '
+                     'markers members*31 mm*6 model_scripts*2 money*9 money_cap named_team nearest_ref*3 note*34 object_lists '
                      'objectives*2 of_types*12 off_teams*2 on_the_move own*33 peeks personality_of*2 player_team_rel '
                      'player_ups players*8 point*19 power power_at*2 powers_off present*16 production*3 ra3_only*3 reblock*2 '
-                     'reinforce*2 relation*3 relations reshroud*3 retail*5 reveal_all*2 reveal_all_until*2 reveal_areas*2 '
+                     'reinforce*2 relation relations reshroud*3 retail*5 reveal_all*2 reveal_all_until*2 reveal_areas*2 '
                      'revealed_to*2 reveals*3 scenes*4 script_disabled*2 sees*4 selected*2 seq*5 set_model_condition*3 '
                      'sharing*2 short_of_power show_caption show_subtitle spellbook_ready start_camera surfaces t*18 tactical '
                      'team_active*2 team_entered team_player_rel team_team_rel tech_read*2 text*4 timers*2 '
-                     'unit_construction_disabled*2 unknown*6 up used*31 video_end wallet*2 waypoints*2 who*6 world*9',
+                     'unit_construction_disabled*2 unknown*6 up used*31 video_end wallet*2 waypoints*2 who*5 world*9',
     'engine.state': 'act*5 active add bodies*11 books*4 change*3 flags*4 frame_now garrison*3 ground level m*6 '
                     'money*2 objectives*3 own*8 player_ups*2 players power production*2 reblock refs*2 relations*2 '
                     'script t used*3 world*9',

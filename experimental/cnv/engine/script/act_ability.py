@@ -26,7 +26,7 @@ from engine.kernel import interfaces, module
 from engine.ports.command import Command
 from engine.objects.power import (CRASH, CRASH_AT, CRASHES, CURTAIN, PACK_FRAMES, PACK_POWER, PROTOCOL_HITS, RELOAD_LAG,
                                   SQUADRON, SUPERWEAPON_HITS, UNPACK_POWER, start_reload)
-from engine.script.common import players_of, refined, team_crew
+from engine.script.common import hand_over, players_of, refined, stands, team_crew
 from engine.world.handle import GAP_ACTION, free_name
 
 
@@ -56,6 +56,7 @@ def named_buttons(sim, name, a, script, unit=None):
     body = (lambda _n: unit) if unit is not None else sim.body
     who = unit if unit is not None else a[0]
     cpower = simunits.command_power(a[1], sim.own)      # the button's power (None for a power name or no such button)
+    things = sim.bodies.values()                        # the recall's and the bribe's
     evacuate = lambda: (simunits._commands(sim.own)[1].get(a[1]) or ('',))[0] == 'EVACUATE'    # noqa: E731
     if name == 'NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED' and a[1] == 'Command_CaptureBuilding':
         _order(sim, 'capture', who, target=a[2])
@@ -169,11 +170,8 @@ def named_buttons(sim, name, a, script, unit=None):
         # engine_dominate_e (E216): the spy's bribe takes the enemies around it the press's frame
         b = body(a[0])
         _seen(sim, b.owner, cpower, b.serial)
-        for m in (m for m in b.find(interfaces.Dominate) if m.power() == cpower):
-            for t in m.taken(list(sim.bodies.values()), sim.relation):
-                t.owner = b.owner
-                sim.note('易主', f'{sim.label(t)} 被收买')
-        sim.change()
+        hand_over(sim, [t for m in b.find(interfaces.Dominate) if m.power() == cpower
+                        for t in m.taken(list(things), lambda x, y, w: stands(sim, x, y, w))], b.owner, '被收买')
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY' and body(a[0]) and body(a[0]).alive and any(
             m.power() == cpower for m in body(a[0]).find(interfaces.Recall)):
         # engine_recall_e (E184): the airport's recall seen cast once, the plane it made flies back to it;
@@ -183,7 +181,7 @@ def named_buttons(sim, name, a, script, unit=None):
         for m in (m for m in b.find(interfaces.Recall) if m.power() == power):
             if m.mark():
                 sim.set_model_condition(b, *m.mark())
-            for p, home in m.flights(sim.bodies.values()):
+            for p, home in m.flights(things):
                 _order(sim, 'move', p, pos=(home.x, home.y))
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and \
             cpower in SUPERWEAPON_HITS:
@@ -348,7 +346,7 @@ def _book_cast(sim, a, power, own, living):
     if key in SQUADRON and q is not None:
         planes, reach = SQUADRON[key]
         rng = random.Random(f'{p} {key} {now}')        # the simulator's own draw: the same every run
-        foes = [t for t in living if sim.relation(p, t.owner) == 'ENEMIES' and 'INFANTRY' not in t.kinds
+        foes = [t for t in living if stands(sim, p, t.owner, 'ENEMIES') and 'INFANTRY' not in t.kinds
                 and math.hypot(t.x - q[0], t.y - q[1]) <= reach]
         rng.shuffle(foes)
         spots = [(t.x, t.y) for t in foes for _ in range(CRASHES)][:planes]

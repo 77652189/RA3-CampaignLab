@@ -626,10 +626,10 @@ class Recall(Interface):
 
 class Dominate(Interface):
     """DominateEnemySpecialPower, a SpecialPower too: the things a cast takes for its holder's owner (taken: of the
-    living given, by a relation(owner, owner) -> 'ENEMIES' / ...)."""
+    living given, by stands(owner, owner, relations): the first takes the second as one of them)."""
     __slots__ = ()
 
-    def taken(self, things, relation):
+    def taken(self, things, stands):
         raise NotImplementedError
 
 

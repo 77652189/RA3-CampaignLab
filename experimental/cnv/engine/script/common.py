@@ -52,6 +52,19 @@ SURFACES = ('GROUND', 'WATER', 'CLIFF', 'AIR', 'RUBBLE', 'OBSTACLE', 'IMPASSABLE
 RELATION_OF = {'Enemy': 'ENEMIES', 0: 'ENEMIES', 'Neutral': 'NEUTRAL', 1: 'NEUTRAL', 'Friend': 'ALLIES', 2: 'ALLIES'}
 
 
+def stands(sim, a, b, want):
+    """How player a takes b is `want` (RELATION_OF's, or one of a list: DominateEnemy's Relationship; None: any)."""
+    return want is None or sim.relation(a, b) in ([want] if isinstance(want, str) else want)
+
+
+def hand_over(sim, things, owner, why=None):
+    """The things become owner's, each noted (易主: why, else 归 the owner): the transfers' and a bribe's one door."""
+    for b in things:
+        b.owner = owner
+        sim.note('易主', f'{sim.label(b)} {why or "归 " + sim.who(owner)}')
+    sim.change()
+
+
 def refined(name, a):
     """An action's name told apart by what it is told to do where that matters: the status bit, the power, the button
     (simcoverage.refined's spelling: NAME:ARG)."""

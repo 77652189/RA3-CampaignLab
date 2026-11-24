@@ -8,7 +8,7 @@ those."""
 import engine.players.tech as simtech
 import engine.data.units as simunits
 import engine.objects.modifier as simmodifier
-from engine.script.common import players_of
+from engine.script.common import hand_over, players_of
 from engine.world.handle import GAP_ACTION
 
 # the skirmish AI's script switches, kept per player for simai (work/re l4_aiswitches.md; docs/engine/aiswitches.md)
@@ -24,21 +24,15 @@ def player_transfer_ownership_player(sim, name, a, script):
     # conscript UNIT_AI_TRANSFER took off its crew; ones on a team stay (teamSoviet_5's tank, Soviet_6's
     # conscript, a crew's, a Soviet_2 conscript put back on a crew). The giver's money goes whole to the
     # receiver (Player_1 1000 -> ~6000, Soviet_5 5000 -> < 100). Structures alike (INFERRED: only units placed)
-    for b in sim.living():
-        if b.owner == a[0] and not b.team:
-            b.owner = a[1]
-            sim.note('易主', f'{sim.label(b)} 归 {sim.who(a[1])}')
+    hand_over(sim, [b for b in sim.living() if b.owner == a[0] and not b.team], a[1])
     sim.money[a[1]] = sim.money.get(a[1], 0) + sim.money.get(a[0], 0)
     sim.money[a[0]] = 0
-    sim.change()
 
 
 def named_transfer_ownership_player(sim, name, a, script):
     b = sim.body(a[0])
     if b and b.owner != a[1]:
-        b.owner = a[1]
-        sim.note('易主', f'{sim.label(b)} 归 {sim.who(a[1])}')
-        sim.change()
+        hand_over(sim, [b], a[1])
 
 
 def player_set_base_power(sim, name, a, script):
