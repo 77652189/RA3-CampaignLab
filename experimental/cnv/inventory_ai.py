@@ -672,8 +672,8 @@ NOTES = {
         '两组各5条PASS：on先离300、传送后回900再离，off回双圈，存活/锁存均1；'
         'tests/test_simai_bench_c.py关闭组完整轨迹已回放；探针战术附加属性现传入消费者；'
         'E108按D83实际调用回放：首次遇敌gate=0仍发，后续102次gate=0不发、两次gate=1发；'
-        '完整模拟首发154对台191且漏461，选敌/成员目的地/ready仍gap、strict xfail，不晋升；'
-        'tests/test_ai_aesthetics_clock.py；见 work/re/e108_aesthetics_gate.md'),
+        '完整模拟首发153对台191且漏461，选敌/成员目的地/ready仍gap，'
+        '读数aiaeson_stand_moves_at_f191_and_f461标mismatch；见 work/re/e108_aesthetics_gate.md'),
     '微操/AIMicroManagerData.PullbackInjured': (BENCHED,
         'engine_aipullback aipullsov 残血坦克离队回吊车；'
         'experimental/cnv/checks/engine_aipullback.readings.toml::a_hurt_soviet_tank_team_is_pulled_back_to_the_crane 回放；普通盟军/日本工厂不可进入；'

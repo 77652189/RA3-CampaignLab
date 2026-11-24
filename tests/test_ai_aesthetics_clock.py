@@ -1,14 +1,13 @@
-"""E106 aesthetics replay on the repaired observer clock.
+"""E108: the stand's enemy gate replayed on the bench's own D83 calls (aiaeson:a).
 
-Named probe aiaeson:a, CampAIAesOnA_mcp_1112_155111 (5/5 PASS).
-The bench clock anchors s16.1/f270 and s31.1/f495. Command frames
-come directly from this run, with no wall-time scaling or frame shift.
-Evidence and unresolved readiness: work/re/e106_aesthetics_clock.md.
+The integrated replay's order frames and points are readings now:
+checks/engine_aiaesthetics.readings.toml::aiaeson_stand_moves_at_f191_and_f461 (mismatch).
+Evidence: work/re/e106_aesthetics_clock.md, work/re/e108_aesthetics_gate.md.
 """
 import importlib.util
 import json
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -18,50 +17,6 @@ simai_run = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(simai_run)
 simai = simai_run.simai    # one copy of simai, the run's (R3 13f-2d)
 pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (labpaths.ENGINE_MODEL)')
-
-
-@pytest.fixture(scope='module')
-def aesthetics_record():
-    world = simai_run.run('aiaeson', 'a', until=34,
-                      lib=simai.model()['xmldata'].Library(), record=True)
-    brain, = world.brains.values()
-    return brain.rec
-
-
-def test_aiaeson_clock_replay_has_live_retained_member(aesthetics_record):
-    """Keep survival/membership prerequisites outside the expected failures."""
-    names = set()
-    for frame in (166, 196, 256, 461, 496):
-        rows = [row for row in aesthetics_record['frames'] if row['frame'] == frame]
-        assert len(rows) == 1, (frame, rows)
-        member, = rows[0]['members']
-        assert member['alive'], (frame, member)
-        names.add(member['name'])
-    assert len(names) == 1, names
-
-
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'D83 aiaeson:a emits at 191/461; E108 conditional gate replay passes, '
-    'but integrated replay starts at 154 and misses 461. Enemy lookup timing and '
-    'member destination/ready remain gaps; see work/re/e108_aesthetics_gate.md.'))
-def test_aiaeson_clock_replays_stand_emission_frames(aesthetics_record):
-    """Both measured orders, and absence of intervening repeats, are required."""
-    orders = [o for o in aesthetics_record['orders'] if 150 <= o['frame'] <= 500
-              and o['kind'] == 'move']
-    assert [o['frame'] for o in orders] == [191, 461], orders
-
-
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason=(
-    'E108 reaches the west command point but emits it at 154, before the measured 191. '
-    'Enemy selection timing/member ready remain gaps; see work/re/e108_aesthetics_gate.md.'))
-def test_aiaeson_clock_replays_last_command_points(aesthetics_record):
-    """Logged command-point precision, independent of formation member positions."""
-    expected = {166: (3850.0, 3400.0), 196: (1859.9, 3201.0),
-                256: (1859.9, 3201.0), 496: (1859.9, 3201.0)}
-    for frame, point in expected.items():
-        orders = [o for o in aesthetics_record['orders'] if o['frame'] <= frame]
-        assert orders, frame
-        assert orders[-1]['point'] == pytest.approx(point, abs=0.05), (frame, orders[-1])
 
 
 def test_aiaeson_d83_enemy_gate_replays_actual_calls():

@@ -2,7 +2,7 @@
 
 [[reading]]
 id = "tactic_aesthetics_displacement_and_survival"
-scene = {build = "aiaeson", check = "a", until = 67}
+scene = {build = "aiaeson", check = "a", until = 67, teams = true}
 each = [{build = "aiaeson"}, {build = "aiaesoff"}]
 bench = "Both retail switch settings latch successful displacement and have one live tank at s65."
 proves = "simai StaticDefense UseAestheticsManager: both lanes retain the displaced Guardian"
@@ -11,7 +11,7 @@ expect = "(at(65)['传送出圈'], at(65)['坦克总数']) == (1, 1)"
 
 [[reading]]
 id = "tactic_aesthetics_replays_named_location_transitions"
-scene = {build = "aiaeson", check = "a", until = 76}
+scene = {build = "aiaeson", check = "a", until = 76, teams = true}
 each = [{build = "aiaeson", enabled = true}, {build = "aiaesoff", enabled = false}]
 bench = "Retail occupancy (300, 900): enabled leaves 300 before displacement, then 00 -> 01 -> 00; disabled stays in both before displacement, then 00 -> 01 -> 11."
 proves = "simai StaticDefense UseAestheticsManager: reproduce pre-displacement occupancy and ordered post-displacement transitions"
@@ -23,7 +23,7 @@ expect = [
 
 [[reading]]
 id = "tactic_aesthetics_switch_after_displacement"
-scene = {build = "aiaeson", check = "a", until = 76}
+scene = {build = "aiaeson", check = "a", until = 76, teams = true}
 each = [{build = "aiaeson", enabled = true}, {build = "aiaesoff", enabled = false}]
 bench = "D round 145 retail: after displacement enabled returns to 900 then leaves it (s65 0/0); disabled returns inside both squares (s65 1/1). Both retain one tank."
 proves = "simai StaticDefense UseAestheticsManager: reproduce the two post-displacement return paths"
@@ -32,3 +32,30 @@ expect = [
     "transitions == ([(0, 0), (0, 1), (0, 0)] if enabled else [(0, 0), (0, 1), (1, 1)])",
     "(at(65)['圈300'], at(65)['圈900'], at(65)['坦克总数']) == (home, home, 1)",
 ]
+
+[[reading]]
+id = "aiaeson_keeps_one_live_member_through_the_stand"
+scene = {build = "aiaeson", check = "a", until = 34, teams = true}
+bench = "E106 aiaeson:a (CampAIAesOnA_mcp_1112_155111, clock s16.1 = f270, s31.1 = f495): at f166 / 196 / 256 / 461 / 496 one team row, its one member the same tank, alive"
+proves = "simai StaticDefense: the stand's team keeps its one retained member alive (the prerequisite of the order frames below)"
+let = {F = "(166, 196, 256, 461, 496)", at = "lambda f: [r for r in teams() if r['frame'] == f]"}
+expect = ["[len(at(f)) for f in F] == [1] * 5",
+          "all(len(at(f)[0]['members']) == 1 and at(f)[0]['members'][0]['alive'] for f in F)",
+          "len({at(f)[0]['members'][0]['name'] for f in F}) == 1"]
+
+[[reading]]
+id = "aiaeson_stand_moves_at_f191_and_f461"
+scene = {build = "aiaeson", check = "a", until = 34, teams = true}
+bench = """\
+E106 aiaeson:a (as above): in f150-500 the AI's move orders are at f191 and f461, none between; the last order up to \
+f166 points at (3850, 3400), up to f196 / 256 / 496 at the west point (1859.9, 3201). E108 / D83 replayed the enemy \
+gate on the bench's own calls (tests/test_ai_aesthetics_clock.py): the first call with no enemy, then two gate=1 \
+calls emit, 102 gate=0 calls do not"""
+proves = "simai StaticDefense UseAestheticsManager: the stand's move order frames and command points"
+let = {last = "lambda f: [o for o in orders() if o['frame'] <= f][-1]", pt = "lambda o: o['point'] and tuple(round(c, 1) for c in o['point'])"}
+expect = ["[o['frame'] for o in orders() if 150 <= o['frame'] <= 500 and o['kind'] == 'move'] == [191, 461]",
+          "[pt(last(f)) for f in (166, 196, 256, 496)] == [(3850.0, 3400.0), (1859.9, 3201.0), (1859.9, 3201.0), (1859.9, 3201.0)]"]
+mismatch = """\
+sim one move at f153 (bench f191) and none at f461: from f330 it attack-orders the target every 30 frames (point \
+none), so the last points are west / west / west / none (bench east / west / west / west). Enemy lookup timing and the \
+member's destination / ready remain gaps; work/re/e108_aesthetics_gate.md"""
