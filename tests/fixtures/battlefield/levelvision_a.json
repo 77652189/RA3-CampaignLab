@@ -4,7 +4,7 @@
   "t": 13.0,
   "frame": 195,
   "players": {
-    "Player_1": {"money": 0, "sciences": ["playertech_allied", "playertech_generic_rank_1"], "science_points": 1, "upgrades": [], "power": {"made": 0, "used": 0}, "relations": {}},
+    "Player_1": {"money": 10000, "sciences": ["playertech_allied", "playertech_generic_rank_1"], "science_points": 1, "upgrades": [], "power": {"made": 0, "used": 0}, "relations": {}},
     "Soviet_1": {"money": 0, "sciences": ["playertech_generic_rank_1", "playertech_soviet", "playertech_soviet_magneticsatellite_rank_1"], "science_points": 0, "upgrades": [], "power": {"made": 0, "used": 0}, "relations": {}}
   },
   "things": [

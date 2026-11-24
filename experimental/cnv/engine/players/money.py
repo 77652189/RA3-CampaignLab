@@ -9,6 +9,8 @@ import math
 
 from engine.world.handle import CIV
 
+START_CASH = 10000      # every player's money at the start (bench 11-24 engine_area cash: Player_1, Soviet_1..6 each exactly
+                        # 10000 before any script; retail DefaultStartingCash, INFERRED; the neutral's: not read)
 
 class Money:
     def __init__(self):
@@ -16,6 +18,11 @@ class Money:
         self.income = {}                    # player -> (AI income multiplier, fraction carried) (simai: ResourceMultiplierCheat)
         self.sharing = set()                # players sharing income (PLAYER_TOGGLE_RESOURCE_SHARING)
         self.money_cap = {}                 # PLAYER_SET_MONEY_CAP: player -> cap (scripts' money not held to it)
+
+    def start(self, players):
+        """Each of `players` (a map's PLAYERS: key -> name) starts with START_CASH; returns `players`."""
+        self.money.update(dict.fromkeys(players.values(), START_CASH))
+        return players
 
     def deposit(self, owner, amount):
         """R4: a deposit building's amount (engine/modules/deposit.py, through World.pay) to its holder, a player --

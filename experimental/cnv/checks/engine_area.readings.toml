@@ -26,6 +26,12 @@ expect = ["all(v[1] == 5 for v in vals(rows))", "vals(rows)[-1] == [13, 5]"]
 id = "area_alias_another_enemy_starts_with_money"
 scene = {build = "engine_area", check = "als", until = 10}
 bench = "als (CampAreaAls_mcp_1124_031222): 钱 12 before the 3 s set (4 = the alias >= 5000 while Soviet_1 holds 1000)"
-proves = "some other enemy of the human (Soviet_2..6) holds >= 5000 from the start"
-mismatch = "sim 钱 8 before the set: the players no script gives money hold 0 (which one, and its start money: not read)"
+proves = "the other enemies of the human (Soviet_2..6, money no script sets) hold >= 5000 from the start"
 expect = "vals(rows)[0] == [12, 5]"
+
+[[reading]]
+id = "area_every_player_starts_with_ten_thousand"
+scene = {build = "engine_area", check = "cash", until = 6}
+bench = "cash (A349, CampAreaCash_mcp_1124_041836), 钱0..3 every 1 s: s1-s7 128 128 128 8 (8 steps = >= 10000, < 10001)"
+proves = "with no script money Player_1 and Soviet_1..6 each hold exactly 10000 from the start, and keep it (idle)"
+expect = "all(v[:4] == [128, 128, 128, 8] for v in vals(rows))"

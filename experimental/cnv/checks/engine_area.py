@@ -12,6 +12,7 @@ als (A347, l2_scripts1 1: a player argument is a mask): PLAYER_SET_MONEY 1000 fo
   "<1st Human Player's Enemies>" at 3 s (retail 9 times); 钱 = PLAYER_HAS_CREDITS >= 5000 s1 1 / p1 2 / the alias 4,
   p1 >= 1000 8; 有 = SKIRMISH_PLAYER_HAS_UNITS_IN_AREA (retail 10 times with an alias) the enemies at the camp 1 /
   in the field 2, the allies incl self in the field 4, the allies (not self) 8. Predicted: 8 then 13; 有 5.
+cash (A349): every player's start money, no script setting any (measured: 10000 each, simmoney.START_CASH).
 """
 from maps import festival
 from parts import Mission, Script, Test, counted, kindof, square
@@ -78,6 +79,20 @@ def alias(m):
     return t
 
 
+LADDER = (1, 1000, 1500, 1501, 2000, 5000, 5001, 10000, 10001, 20000, 20001, 50000, 50001, 100000)
+
+
+def cash(m):
+    """cash (A349): no script money; a player's count = the steps of LADDER its PLAYER_HAS_CREDITS >= holds; two players
+    a counter (only four lines fit): 钱 = the first's + 15 x the second's (p1 s1 | s2 s3 | s4 s5 | s6)."""
+    t = _test(m)
+    for i, pair in enumerate((('p1', 's1'), ('s2', 's3'), ('s4', 's5'), ('s6',))):
+        s8.total(t, f'CNV_Area_Cash{i}', f'钱{i}', [(15 ** j, ('PLAYER_HAS_CREDITS', m.player(k), 3, n))
+                                                  for j, k in enumerate(pair) for n in LADDER])
+    s8.watch(t, 6, every=1.0)
+    return t
+
+
 # the builds this module makes and their checks (cnv/registry.py)
 MISSION = {'engine_area': mission}
-CHECKS = {'engine_area': {'field': field, 'camp': camp, 'als': alias}}
+CHECKS = {'engine_area': {'field': field, 'camp': camp, 'als': alias, 'cash': cash}}

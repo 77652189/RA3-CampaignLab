@@ -150,11 +150,12 @@ def test_a_file_whose_players_the_host_cannot_take_places_nothing():
     doc['players']['Player_1']['sciences'].append('playertech_nothing')
     doc['players']['Player_1']['money'] = 5000
     host = _host()
+    start = host.money.get('Player_1', 0)
     with pytest.raises(ValueError, match=r"players\.Player_1\.sciences\[2\]: 'playertech_nothing' not a protocol"):
         simbattlefield.place_players(host, doc)
     with pytest.raises(ValueError, match='not a protocol'):
         simbattlefield.place(host, doc)
-    assert (host.money.get('Player_1', 0), list(host.bodies)) == (0, [])
+    assert (host.money.get('Player_1', 0), list(host.bodies)) == (start, [])
     assert sorted(host.books['Player_1'].owned) == ['playertech_allied', 'playertech_generic_rank_1']
 
 
