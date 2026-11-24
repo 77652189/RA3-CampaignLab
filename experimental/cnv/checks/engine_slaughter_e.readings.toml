@@ -25,4 +25,13 @@ bench = "CampSlaughterPP_mcp_1123_221011: f600, OnLate 0, OffLate 0, gate 48 (ho
 proves = """a negative baseline (the third, with E170 a / b): the carrier told NAMED_ATTACK_NAMED at a held SovietAntiAirShip \
 500 off launches nothing, so the container is never reached -- not evidence about SlaughterHordeContain (inventory TODO stays)"""
 expect = ["counter('E170Frame') == 600", "counter('E170Gate') == 48",
-          "counter('E170OnLate') == 0 and counter('E170OffLate') == 0"]
+          "all(r['原版晚段帧'] == 0 and r['删模块晚段帧'] == 0 for r in rows)"]
+
+[[reading]]
+id = "no_carrier_sends_a_drone_even_the_retail_one_at_a_plant"
+scene = {build = "engine_slaughter_q", check = "q", until = 41}
+bench = "CampSlaughterQQ_mcp_1123_223650: f600, 出机位 0, 命中位 0 (retail carrier at a ship, retail at a SovietPowerPlant ashore, the clone at the plant; told NAMED_ATTACK_NAMED at f300, the frames s18-s25 show the carrier still on the water, nothing on its deck or in the air)"
+proves = """a negative baseline (the fourth): not the target (the weapon's RequiredAntiMask defaults to ANTI_GROUND ANTI_WATER \
+ANTI_STRUCTURE and a plant ashore draws nothing either), not the clone (the retail carrier is as dark) -- the scripted \
+attack order does not start this weapon; the container is never reached (inventory TODO stays)"""
+expect = ["counter('E170Frame') == 600", "all(r['出机位'] == 0 and r['命中位'] == 0 for r in rows)"]

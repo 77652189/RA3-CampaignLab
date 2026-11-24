@@ -27,25 +27,30 @@ from maps import infiltrator_batch
 from parts import Mission, Script, Test, Unit, kindof, square
 
 
+def carrier(ident, strip=False):
+    """The retail carrier cloned as `ident`; strip: without its SlaughterHordeContain."""
+    xml = native('AlliedAntiStructureShip', 'Units', ident).xml
+    # The included render states consume local defines too; expand them
+    # before cloning so the two files do not share compiler globals.
+    sage = Path(labpaths.SDK3) / 'SageXML'
+    states = (sage / 'Includes/SpecialModelStates.xml').read_text(encoding='utf-8-sig')
+    states = states[states.index('>') + 1:states.rindex('</SpecialModelStates>')]
+    original = (sage / 'Allied/Units/AlliedAntiStructureShip.xml').read_text(encoding='utf-8-sig')
+    for key, value in re.findall(r'<Define\s+name="([^"]+)"\s+value="([^"]+)"\s*/>', original):
+        states = states.replace('=$' + key, value).replace('$' + key, value)
+    xml, count = re.subn(r'<xi:include\s+href="DATA:Includes/SpecialModelStates.xml".*?/>', states, xml, flags=re.S)
+    assert count == 1
+    if strip:
+        xml, count = re.subn(r'<SlaughterHordeContain\b.*?</SlaughterHordeContain>', '', xml, flags=re.S)
+        assert count == 1
+    return Unit(ident, xml)
+
+
 def mission(name='CampSlaughterE', sides=('p1', 's1')):
     m = Mission(name=name, map=infiltrator_batch, units=[])
     for tag, side, dx in [('On', sides[0], -1800), ('Off', sides[1], 0)]:
         ident = 'CNVE170' + tag
-        xml = native('AlliedAntiStructureShip', 'Units', ident).xml
-        # The included render states consume local defines too; expand them
-        # before cloning so the two files do not share compiler globals.
-        sage = Path(labpaths.SDK3) / 'SageXML'
-        states = (sage / 'Includes/SpecialModelStates.xml').read_text(encoding='utf-8-sig')
-        states = states[states.index('>') + 1:states.rindex('</SpecialModelStates>')]
-        original = (sage / 'Allied/Units/AlliedAntiStructureShip.xml').read_text(encoding='utf-8-sig')
-        for key, value in re.findall(r'<Define\s+name="([^"]+)"\s+value="([^"]+)"\s*/>', original):
-            states = states.replace('=$' + key, value).replace('$' + key, value)
-        xml, count = re.subn(r'<xi:include\s+href="DATA:Includes/SpecialModelStates.xml".*?/>', states, xml, flags=re.S)
-        assert count == 1
-        if tag == 'Off':
-            xml, count = re.subn(r'<SlaughterHordeContain\b.*?</SlaughterHordeContain>', '', xml, flags=re.S)
-            assert count == 1
-        m.units.append(Unit(ident, xml))
+        m.units.append(carrier(ident, tag == 'Off'))
         m.put(ident, 'ship', dx, 0, side=side, role=tag + ' host', name='E170 ' + tag + ' host')
         m.put('SovietAntiAirShip', 'ship', dx, 500, side='s1' if side == 'p1' else 'p1',
               role=tag + ' target', name='E170 ' + tag + ' target')
@@ -129,9 +134,64 @@ def check_p(m):
     return t
 
 
-MISSION = {'engine_slaughter_e': mission, 'engine_slaughter_p': lambda: mission('CampSlaughterP', ('p1', 'p1'))}
+# Build q (after p's three no-sortie runs): does any carrier send a drone when told to? Three p1 arms, 1200 apart,
+# each with its s1 target 500 off: Rs the retail carrier at a SovietAntiAirShip (as p), Rb the retail one at a
+# SovietPowerPlant ashore, Cb p's clone (module kept) at the same plant. The weapon writes no RequiredAntiMask and the
+# schema's default is ANTI_GROUND ANTI_WATER ANTI_STRUCTURE (AssetTypeWeaponTemplate.xsd), so the data predicts all
+# three launch. Rs alone dark: ships are not its targets after all; Cb alone: the clone; all dark: the order. The
+# order comes at f300 (p's at f60 was over before the bench's frames start, about f250), the targets go at f480.
+ARMS_Q = [('Rs', 'AlliedAntiStructureShip', 'SovietAntiAirShip', -2400, 500),
+          ('Rb', 'AlliedAntiStructureShip', 'SovietPowerPlant', -1200, -500),
+          ('Cb', 'CNVE170Cb', 'SovietPowerPlant', 0, -500)]
+
+
+def mission_q():
+    m = Mission(name='CampSlaughterQ', map=infiltrator_batch, units=[carrier('CNVE170Cb')])
+    for tag, host, target, dx, dy in ARMS_Q:
+        m.put(host, 'ship', dx, 0, side='p1', role=tag + ' host', name='E170 ' + tag + ' host')
+        m.put(target, 'ship', dx, dy, side='s1', role=tag + ' target', name='E170 ' + tag + ' target')
+        m.waypoint(tag + ' mid', 'E170 ' + tag + ' mid', 'ship', dx, dy / 2)
+    m.spawns.add('AlliedAttackDrone')
+    return m
+
+
+def check_q(m):
+    """Lines: frame; Out (bits Rs 1 / Rb 2 / Cb 4: a p1 AIRCRAFT in that arm's area f300-f480); Hit (the same bits:
+    the target attacked by an AlliedAttackDrone before f480). Prediction: 600 / 7 / 7."""
+    t = Test()
+    t.counters = [('E170Frame', '完成帧'), ('E170Out', '出机位'), ('E170Hit', '命中位')]
+    t.scripts = [Script('Test - frame', [('COUNTER', 'E170Frame', 0, 600)],
+                        [('INCREMENT_COUNTER', 1, 'E170Frame')], once=False),
+                 Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))])]
+    for (tag, *_), bit in zip(ARMS_Q, (1, 2, 4)):
+        host, victim, area = m.role(tag + ' host').name, m.role(tag + ' target').name, 'E170 ' + tag
+        t.areas[area] = square(*m.point(tag + ' mid'), 550)
+        air = ('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', m.player('p1'), 3, 1, kindof('AIRCRAFT'), area)
+        t.scripts += [
+            Script('Test - quiet ' + tag, [], [
+                ('UNIT_CHANGE_OBJECT_STATUS', host, 'NO_ATTACK', 1),
+                ('UNIT_CHANGE_OBJECT_STATUS', victim, 'NO_ATTACK', 1),
+                ('UNIT_SET_HEALTH', victim, 100)]),
+            Script('Test - heal ' + tag, [('NAMED_NOT_DESTROYED', victim)], [('UNIT_SET_HEALTH', victim, 100)], once=False),
+            Script('Test - attack ' + tag, [('COUNTER', 'E170Frame', 2, 300)], [
+                ('UNIT_CHANGE_OBJECT_STATUS', host, 'NO_ATTACK', 0),
+                ('NAMED_ATTACK_NAMED', host, victim)]),
+            Script('Test - remove victim ' + tag, [('COUNTER', 'E170Frame', 2, 480)], [('NAMED_DELETE', victim)]),
+            Script('Test - hit ' + tag, [('COUNTER', 'E170Frame', 1, 480), ('NAMED_NOT_DESTROYED', victim),
+                   ('NAMED_ATTACKED_BY_OBJECTTYPE', victim, 'AlliedAttackDrone')],
+                   [('INCREMENT_COUNTER', bit, 'E170Hit')]),
+            Script('Test - out ' + tag, [('COUNTER', 'E170Frame', 3, 300), ('COUNTER', 'E170Frame', 1, 480), air],
+                   [('INCREMENT_COUNTER', bit, 'E170Out')])]
+    t.expect = [('完成帧', 0, 'ever==', 600), ('出机位', 0, 'ever==', 7), ('命中位', 0, 'ever==', 7)]
+    t.bench = [('bench_camera', dict(x=2600, y=3000, look=False)),
+               ('bench_watch', dict(seconds=70, every=1, sheet=False, lines=3))]
+    return t
+
+
+MISSION = {'engine_slaughter_e': mission, 'engine_slaughter_p': lambda: mission('CampSlaughterP', ('p1', 'p1')),
+           'engine_slaughter_q': mission_q}
 CHECKS = {'engine_slaughter_e': {'a': check, 'b': lambda m: check(m, corrected=True)},
-          'engine_slaughter_p': {'p': check_p}}
+          'engine_slaughter_p': {'p': check_p}, 'engine_slaughter_q': {'q': check_q}}
 # Each arm's drones are counted by its own player, so the hosts (and targets) swap sides: a confound, held here
 # as the one freedom; both arms read 0 (a negative baseline). Put both on p1 and count by area when E170 reopens.
 CONTROL_ARMS = {'engine_slaughter_e': ('On', 'Off', 'side'), 'engine_slaughter_p': ('On', 'Off')}
