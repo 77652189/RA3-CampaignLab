@@ -1,0 +1,13 @@
+# Bench readings of checks/engine_sovdeploy.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "sovdeploy_a_two_named_mcvs_unpack_at_the_waypoint"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackSovietMCV"
+scene = {build = "engine_sovdeploy", check = "a", until = 32, script = "不打"}
+bench = "a, line C (work/re/c_sovdeploy_report.md), 场位 名字位 原车位 at logic frames: f45..67 0 7 7 | f250..468 3 7 4 (4 + 30 readings)"
+proves = "two named Soviet MCVs ordered to the east waypoint drive there and unpack (yard mask 0 -> 3, both names alive), the untouched third stays home (home mask 7 -> 4). Travel and unfold timing in between is not read (free). Moved from the frame-exact replay (A334)"
+let = {want = "lambda f: [0, 7, 7] if 45 <= f <= 67 else [3, 7, 4] if 250 <= f <= 468 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(0, 7, 7), (3, 7, 4)}",
+]

@@ -1,0 +1,13 @@
+# Bench readings of checks/engine_jpndeploy.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+id = "jpndeploy_a_two_named_mcvs_unpack_at_the_waypoint"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanMCV"
+scene = {build = "engine_jpndeploy", check = "a", until = 34, script = "不打"}
+bench = "a, line C (work/re/c_jpndeploy_report.md), 场位 名字位 原车位 at logic frames: f44..74 0 7 7 | f306..501 3 7 4 (5 + 24 readings)"
+proves = "the same with two named Japanese MCVs (yard mask 0 -> 3, home mask 7 -> 4). Moved from the frame-exact replay (A334)"
+let = {want = "lambda f: [0, 7, 7] if 44 <= f <= 74 else [3, 7, 4] if 306 <= f <= 501 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(0, 7, 7), (3, 7, 4)}",
+]
