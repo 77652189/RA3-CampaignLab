@@ -61,3 +61,21 @@ def test_a_move_drops_the_trip_and_neither_a_thing_without_the_module_nor_the_ne
     b.path = [(150.0, 200.0)]                               # a script's move
     mining.mine_due(s, 30, lambda owner, give: None)
     assert b.find(interfaces.OreMiner).trip() is None and b.mine is None
+
+
+def test_monitor_condition_update_dumps_the_load_once_carrying_and_armed_held_its_pre_delay():
+    """MonitorConditionUpdate (JapanMiner: CARRYING + WEAPONSTATE_ONE, PreDelay 0.5 s, PostDelay 5 s; bench readings
+    engine_mining minejap): the load goes once both held 8 frames on end (INFERRED: a break starts it over)."""
+    s = simsmall.small_world([('m', 'JapanMiner', 'Player_1', 0.0, 0.0)])
+    b = s.bodies['m']
+    mon = next(m for m in b.modules if type(m).__name__ == 'MonitorCondition')
+    gun = next(t for t in b.find(interfaces.Toggle) if 'WEAPONSTATE_ONE' in t.rules()['states'][1]['conditions'])
+    b.find(interfaces.OreMiner).set_trip({'load': 250})
+    assert mon.update(10) == 1                      # carrying, gun off
+    gun.at = 1
+    assert mon.update(11) == 8
+    gun.at = 0
+    assert mon.update(15) == 1                      # broken off: starts over
+    gun.at = 1
+    assert mon.update(16) == 8 and mon.update(23) == 1 and b.mine['load'] == 250
+    assert mon.update(24) == 75 and b.mine['load'] == 0

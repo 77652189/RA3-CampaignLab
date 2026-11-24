@@ -127,3 +127,14 @@ expect = [
     "max(r['资金'] for r in cap) == 394",
     "all(r['资金'] == 0 for r in capz) and capz[-1]['首笔'] > 400",
 ]
+
+[[reading]]
+id = "minejap_a_loaded_miner_armed_dumps_its_load_the_next_comes_on_time"
+item = "物体模块 Behaviors/MonitorConditionUpdate"
+scenes = {j = {build = "minejap", check = "j", until = 41}, e = {build = "minejap", check = "e", until = 41}, k = {build = "minejap", check = "k", until = 41}}
+bench = "离矿 堆 首笔 二笔 (frames): k (never armed) 147 / - / 163 / 314; j (gun on as it leaves the node loaded, off 45 frames later) 147 / - / 314 / 465 -- the first load never paid, the next at k's second; e (armed at 8 for 45 frames, empty) 150 / - / 166 / 317. 堆 never: the DroppedOrePile is not SELECTABLE (bench 2026-11-24 run_queue minejap:j / e / k, work/bench_results/minejap__*.json; sim k 131 / - / 149 / 300, the placed JapanMiner's first leg ~15 short -- not this item)"
+proves = "engine/modules/oreminer.py MonitorCondition: CARRYING (the trip's load) and the toggle state's WEAPONSTATE_ONE held PreDelay frames -> DUMP_ORE empties the load (the trip goes on, paying nothing, and the node's cycle keeps the next on time); the gun on an empty miner's drive costs nothing (OreMinerBehavior's ForbiddenStatus GENERIC_TOGGLE_STATE not seen while driving). PreDelay 0.5 s INFERRED (the pile, the only sign of the moment, no script sees)"
+expect = [
+    "abs(j[-1]['首笔'] - k[-1]['二笔']) <= 3 and abs((j[-1]['二笔'] - j[-1]['首笔']) - (k[-1]['二笔'] - k[-1]['首笔'])) <= 3",
+    "abs(e[-1]['首笔'] - k[-1]['首笔']) <= 3",
+]

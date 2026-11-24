@@ -291,10 +291,52 @@ def away_mission():
     return m
 
 
+# minejap (E219): JapanMiner's MonitorConditionUpdate (CARRYING + WEAPONSTATE_ONE -> DUMP_ORE and OCL_DroppedOrePile,
+# PreDelay 0.5 s, PostDelay 5 s) and its OreMinerBehavior's ForbiddenStatus GENERIC_TOGGLE_STATE. mineturn0's pad, a
+# JapanMiner where b's collector stands (it claims the node, the refinery's own waits). j: its gun pressed on
+# (Command_ToggleDeployWeapon, the second state GENERIC_TOGGLE_STATE + WEAPONSTATE_ONE) as it first leaves c's node
+# square loaded, off 3 s later; e: the same at 0.5 s, empty; k: never. 离矿 frames until it first leaves the square,
+# 堆 until a DroppedOrePile stands, 首笔 / 二笔 as b. [j: 堆 = 离矿 + 8, 首笔 a trip later than k's; e: no 堆, 首笔
+# 3 s later than k's]
+JAP, GUN = 'JapanMiner', 'Command_ToggleDeployWeapon'
+
+
+def jap_mission():
+    m = Mission(name='CampMineJap', map=_turned(0), units=[], facts={})
+    m.put(REFINERY, SITE, role='refinery', name=_n('Refinery'))
+    m.put(JAP, SITE, *PLACED, angle=0.0, role='miner', name=_n('Miner'))
+    m.spawns |= {MINER, JAP, 'DroppedOrePile'}
+    return m
+
+
+def jap_test(m, which):
+    t = Test()
+    p1, press = m.player('p1'), [('NAMED_USE_COMMANDBUTTON_ABILITY', _n('Miner'), GUN)]
+    t.scripts += [Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', p1), ('PLAYER_SET_MONEY', p1, 0)]),
+                  Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', p1, 'CNV_Mine_Money')], once=False),
+                  Script('Test - at node', [('NAMED_INSIDE_AREA', _n('Miner'), 'Test Node')],
+                         [('SET_FLAG', 'Test At Node', 1)])]
+    t.areas['Test Node'], t.areas['Test Field'] = square(*NODE, NODE_R), square(*PAD, 400.0)
+    _until(t, 'CNV_Mine_LeftNode', '离矿', 'Test Left Node', ('NAMED_INSIDE_AREA', _n('Miner'), 'Test Node', 'NOT'),
+           after='Test At Node')
+    _until(t, 'CNV_Mine_Pile', '堆', 'Test Pile', ('PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA', 'Player_1', 3, 1,
+                                                  'DroppedOrePile', 'Test Field'))
+    _below(t, 'CNV_Mine_First', '首笔', 1)
+    _below(t, 'CNV_Mine_Second', '二笔', LOAD + 1)
+    if which != 'k':                            # 武装 (not shown) counts the frames the gun is on, to press it off
+        on = [('FLAG', 'Test Left Node', 1)] if which == 'j' else [('COUNTER', 'CNV_Mine_Second', 3, 8)]
+        t.scripts += [Script('Test - gun on', on, press),
+                      Script('Test - armed', on, [('INCREMENT_COUNTER', 1, 'CNV_Mine_Armed')], once=False),
+                      Script('Test - gun off', [('COUNTER', 'CNV_Mine_Armed', 3, 45)], press)]
+    t.bench = [('bench_watch', dict(every=0.5, sheet=False, lines=len(t.counters), seconds=40.0))]
+    return t
+
+
 MISSION = {'engine_mining': mission, 'mineaway': away_mission, 'mineniag': niagara_mission, 'minefar': far_mission,
-           **{f'mineturn{_tag(k)}': (lambda k=k: turned_mission(k)) for k in TURNS}}
+           'minejap': jap_mission, **{f'mineturn{_tag(k)}': (lambda k=k: turned_mission(k)) for k in TURNS}}
 CHECKS = {'engine_mining': {w: (lambda m, w=w: mining_test(m, w)) for w in 'abcdefgh'},
           'mineaway': {'g': lambda m: mining_test(m, 'g')}, 'mineniag': {'p': turned_test},
           'minefar': {'p': turned_test, 'q': legs_test},
           **{f'mineturn{_tag(k)}': {'p': turned_test, 'q': legs_test} for k in TURNS}}
+CHECKS['minejap'] = {w: (lambda m, w=w: jap_test(m, w)) for w in 'jek'}
 CHECKS['mineturn0'] |= {w: (lambda m, w=w: cap_test(m, w)) for w in CAP}

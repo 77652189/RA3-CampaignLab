@@ -30,6 +30,7 @@ class ToggleData(module.ModuleData):
     @classmethod
     def parse(cls, head, inner):
         states = [dict(status=set((templates.attr(h, 'ObjectStatus') or '').split()),
+                       conditions=set((templates.attr(h, 'ModelConditions') or '').split()),
                        modifier=templates.attr(h, 'AttributeModifier'), disabled=templates.attr(h, 'DisabledType'),
                        locomotor=templates.attr(h, 'LocomotorSet'), armor=templates.attr(h, 'ArmorSet'))
                   for h, _ in templates.blocks(inner, 'ToggleState')]
