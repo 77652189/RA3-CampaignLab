@@ -23,3 +23,12 @@ proves = """\
 simai budget: the build state spends the DEFENSE share only; SLUSH_FUND (account 5) pays no builder (the program: \
 work/re d64 5, no affordability check reads account 5)"""
 expect = "win(60, 61, '炮塔') == [turrets] * 2"
+
+[[reading]]
+id = "a_rich_slush_line_buys_no_third_turret"
+scene = {build = "aislrich", check = "f", until = 150.0}
+bench = """\
+Bench 2026-11-24 aislrich f (aitowerinc10r + SLUSH_FUND 100 %), PASS as predicted (d64 2: the SLUSH line is not \
+read): 塔在基地 1 s29, 2 s49-s158, no third -- as the control (a 100 % share in the line would have bought more)"""
+proves = "simai base defense tower: a SLUSH_FUND line does not count in the defense share"
+expect = "max(r['塔在基地'] for r in rows) == 2 and rows[60]['塔在基地'] == 2"

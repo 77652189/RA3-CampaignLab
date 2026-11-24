@@ -15,6 +15,18 @@ ranks above HIGH and below SCRIPTED (ra3model ai/teams.PRIORITY; CampaignLab wor
 number only, COOP 6)"""
 expect = ["rows[-1]['坦克总数'] == 2", "(max(r['到目标'] for r in rows) >= 1) == released"]
 
+[[reading]]
+id = "defense_high_ranks_between_standard_and_high"
+item = "AI 组队招人/TeamTemplate.Priority=DEFENSE_HIGH"
+scene = {build = "aidefhst", check = "a", until = 69.0}
+each = [{build = "aidefhst", released = true}, {build = "aidefhhi", released = false}]
+bench = """\
+Bench 2026-11-24 (the COOP pair's carrier), PASS both, as predicted: aidefhst (holder STANDARD, recruiter \
+DEFENSE_HIGH) the tanks out s41-42, 到目标 2 s45-65; aidefhhi (holder HIGH, recruiter DEFENSE_HIGH) 坦克在家 2 and \
+到目标 0 to s72. The simulator: out s45, 到目标 s48; kept"""
+proves = "simai teams: DEFENSE_HIGH ranks above STANDARD and below HIGH (ra3model ai/teams.PRIORITY, the number only)"
+expect = ["rows[-1]['坦克总数'] == 2", "(max(r['到目标'] for r in rows) >= 1) == released"]
+
 # D round 148 (bench 11-15; the counter series were tests/fixtures/d_teamfields, now in the bench texts).
 # Each pair differs in one field only (tests/test_ai_team_fields.py::test_pairs_differ_in_one_field_only).
 
