@@ -1,0 +1,38 @@
+# Bench readings of checks/engine_unitban.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The money columns fall about 50 a second while a job pays, and the simulator's rows sit on other logic frames than
+# the bench's: `at` reads a column at a bench frame by linear interpolation between the two rows around it (+-4).
+
+[[reading]]
+id = "unitban_a_queued_engineer_waits_for_enable"
+item = "脚本动作 PLAYER_ENABLE_UNIT_CONSTRUCTION"
+scene = {build = "engine_unitban", check = "a", until = 34, script = "不打"}
+bench = "a, line C (work/re/c_unitban_report.md), 甲资金 乙资金 工程师 at logic frames: 2000 1603 0 f150 | 1843 1500 10 f198 | 1000 1000 33 f484; 工程师 0 to f183, 10 f198-304, 11 f322-365, 33 from f484"
+proves = "a disabled player's queued engineer pays nothing (2000 to f150), resumes paying at the enable without a new press, and both sides end with two engineers each (1000 / 1000 / 33). Moved from the replay test (A336)"
+let = {r = "vals(rows)", at = "lambda f, i: [a[i] + (b[i] - a[i]) * (f - a[3]) / (b[3] - a[3]) for a, b in zip(r, r[1:]) if a[3] <= f <= b[3]][0]", code = "lambda f0, f1, c: (lambda w: bool(w) and all(v[2] == c for v in w))([v for v in r if f0 <= v[3] <= f1])"}
+expect = [
+  "all(abs(at(f, 0) - m1) <= 4 and abs(at(f, 1) - m2) <= 4 for f, m1, m2 in ((150, 2000, 1603), (198, 1843, 1500), (484, 1000, 1000)))",
+  "all(v[0] == 2000 for v in r if v[3] <= 150)",
+  "code(0, 183, 0) and code(198, 304, 10) and code(322, 365, 11) and code(484, 9999, 33)",
+]
+
+[[reading]]
+id = "unitban_a_second_job_pays_ten_frames_late"
+item = "脚本动作 PLAYER_ENABLE_UNIT_CONSTRUCTION"
+scene = {build = "engine_unitban", check = "a", until = 34, script = "不打"}
+bench = "a: 甲资金 1466 at f322; 工程师 31 f379-468 (甲's second engineer out between f468 and f484)"
+proves = "after the first engineer fills, the second queued job starts paying about ten frames later than the simulator's (door / next-job scheduling, INFERRED; a production gap)"
+mismatch = "sim 甲资金 1433 at f322 (bench 1466) and 工程师 33 already at f466 (bench 31 to f468)"
+let = {r = "vals(rows)", at = "lambda f, i: [a[i] + (b[i] - a[i]) * (f - a[3]) / (b[3] - a[3]) for a, b in zip(r, r[1:]) if a[3] <= f <= b[3]][0]", code = "lambda f0, f1, c: (lambda w: bool(w) and all(v[2] == c for v in w))([v for v in r if f0 <= v[3] <= f1])"}
+expect = "abs(at(322, 0) - 1466) <= 4 and code(379, 468, 31)"
+
+[[reading]]
+id = "unitban_b_enable_resumes_partly_paid_engineer"
+item = "脚本动作 PLAYER_ENABLE_UNIT_CONSTRUCTION"
+scene = {build = "engine_unitban", check = "b", until = 20, script = "不打"}
+bench = "b, line C, 甲资金 乙资金 工程师 at logic frames: 1800 1766 0 f101 | 1800 1503 0 f180 | 1753 1500 10 f195 | 1503 1500 10 f270 | 1500 1500 11 f285"
+proves = "disabled mid-job, the 200 already paid stays paid (1800 held f101-f180, no refund, no reset); at the enable it resumes and each side gets one engineer"
+let = {r = "vals(rows)", at = "lambda f, i: [a[i] + (b[i] - a[i]) * (f - a[3]) / (b[3] - a[3]) for a, b in zip(r, r[1:]) if a[3] <= f <= b[3]][0]", code = "lambda f0, f1, c: (lambda w: bool(w) and all(v[2] == c for v in w))([v for v in r if f0 <= v[3] <= f1])"}
+expect = [
+  "all(abs(at(f, 0) - m1) <= 4 and abs(at(f, 1) - m2) <= 4 for f, m1, m2 in ((101, 1800, 1766), (180, 1800, 1503), (195, 1753, 1500), (270, 1503, 1500), (285, 1500, 1500)))",
+  "code(0, 180, 0) and code(195, 270, 10) and code(285, 9999, 11)",
+]
