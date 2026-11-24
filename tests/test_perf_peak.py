@@ -26,8 +26,9 @@ WORST = 0.45            # the slowest 10 s then (the first): the peak, the one u
 MARGIN = 0.75           # one run on a shared machine: red below 75 % of the baseline
 AI_BASELINE = 213.0     # ms a frame of aipeak's minute from AI_FROM at bceb6135 (11c-2: 96 % of it outside the
                         # frame's cells, on the AI's side; lower it as steps speed up)
-AI_SIDE = 30            # each AI side's alive things (buildings and units) at the minute's end, at least (89 / 68
-                        # before 981e1b30; its Peacekeeper taper, both sides Allied: 39 / 70)
+AI_SIDE = 8             # each AI side's alive things (buildings and units) at the minute's end, at least (89 / 68
+                        # before 981e1b30; its Peacekeeper taper, both sides Allied: 39 / 70; the AI's precision
+                        # strike, c4ed9230 / 4448a28d: 12 / 68, without it 51 / 72)
 
 
 @pytest.fixture(scope='module')
