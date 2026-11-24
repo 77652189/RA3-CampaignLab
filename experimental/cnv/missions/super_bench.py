@@ -45,7 +45,10 @@ def _n(part):
     return f'UNIT - CNV Super {part}'
 
 
-def mission(name='CampSuper', crews=False, most=False):
+YARDS = {'syard': ('SovietConstructionYard', (700.0, 300.0)), 'jyard': ('JapanConstructionYard', (700.0, -100.0))}   # east of the base
+
+
+def mission(name='CampSuper', crews=False, most=False, yards=False):
     m = Mission(name=name, map=resources.measured(niagara), units=[], facts={})
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies'}
     m.spawns |= {COLLIDER, CURTAIN, TARGET, TANK, VAC, NANO, PSI}
@@ -91,8 +94,13 @@ def mission(name='CampSuper', crews=False, most=False):
             m.put(TANK, SITE, sx + d * ux, sy + d * uy, angle=0.0, role=f'rtank {d}', name=_n(f'RTank {d}'))
             m.put(TANK, SITE, sx + (d + 150) * ux, sy + (d + 150) * uy, side='s1', angle=0.0, role=f'rfoe {d}',
                   name=_n(f'RFoe {d}'))
+    for role, (template, at) in YARDS.items() if yards else ():     # engine_protofx: the protocols' yards (A342)
+        m.put(template, SITE, *at, angle=0.0, role=role, name=_n(role.title()))
+    if yards:       # on foe 0, so foes 0 / 150 / 200 stand at those distances from it
+        m.waypoint('protocol spot', 'Test Protocol Spot', SITE, CURTAIN_SPOT[0], CURTAIN_SPOT[1] + FOE_AT[0][1])
     return m
 
 
 MISSION = {'engine_super': mission, 'engine_scripts8bs': lambda: mission('CampS8bS', True),   # checks/engine_scripts8b
-           'engine_scripts8bm': lambda: mission('CampS8bM', most=True)}
+           'engine_scripts8bm': lambda: mission('CampS8bM', most=True),
+           'engine_protofx': lambda: mission('CampProFx', yards=True)}
