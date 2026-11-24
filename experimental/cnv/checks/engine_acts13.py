@@ -139,6 +139,7 @@ def wing_mission():
     for row, x in WINGS.items():
         m.put(WING, SEA, x - o.x, 3200.0 - o.y, angle=1.5708, name=_n(row), role=row.lower())
         m.waypoint(f'shore {row}', f'CNV A13 Shore {row}', SEA, x - o.x, 3200.0 + SHORE - o.y)
+        m.waypoint(f'home {row}', f'CNV A13 Home {row}', SEA, x - o.x, 3200.0 - o.y)
     return m
 
 
@@ -160,6 +161,31 @@ def wing(m):
     s8.total(t, 'CNV_A13_Shore', '岸', [(w, ('NAMED_INSIDE_AREA', _n(r), f'Test A13 Shore {r}'))
                                         for r, w in (('WT', 1), ('WB', 10), ('WP', 100))])
     s8.watch(t, 18.0)
+    return t
+
+
+def wing_land(m):
+    """Round 345: up at PRESS, both over the bank to their land points, WT pressed back at 12 s over land (WB not);
+    at 18 s both MOVEd to their start on the water. 态 as wing; 岸 = WT on its land point + 10 x WB's + 100 x WT
+    back at its start (the trench, 100)."""
+    t = Test()
+    s8.at(t, 'hold', 0.1, [('UNIT_CHANGE_OBJECT_STATUS', _n(r), status('NO_ATTACK'), 1) for r in WINGS] +
+          [('MAP_REVEAL_ALL_PERM', m.player('p1'))])
+    s8.at(t, 'press', PRESS, [('NAMED_USE_COMMANDBUTTON_ABILITY', _n(r), 'Command_JAAS_Transform') for r in ('WT', 'WB')])
+    s8.at(t, 'move', PRESS + 1.0, [('MOVE_NAMED_UNIT_TO', _n(r), m.mark(f'shore {r}')) for r in ('WT', 'WB')])
+    s8.at(t, 'back', 12.0, [('NAMED_USE_COMMANDBUTTON_ABILITY', _n('WT'), 'Command_JAAS_Transform')])
+    s8.at(t, 'home', 18.0, [('MOVE_NAMED_UNIT_TO', _n(r), m.mark(f'home {r}')) for r in ('WT', 'WB')])
+    for r in ('WT', 'WB'):
+        t.areas[f'Test A13 Shore {r}'] = square(*m.point(f'shore {r}'), 100.0)
+    t.areas['Test A13 Home WT'] = square(*m.point('home WT'), 100.0)
+    has = lambda r, bit: ('UNIT_HAS_OBJECT_STATUS', _n(r), status(bit))  # noqa: E731
+    s8.total(t, 'CNV_A13_Wing', '态', [(1, has('WT', 'TRANSFORMATION_TOGGLE_STATE')),
+                                       (10, has('WB', 'TRANSFORMATION_TOGGLE_STATE')),
+                                       (100, has('WT', 'AIRBORNE_TARGET')), (1000, has('WB', 'AIRBORNE_TARGET'))])
+    s8.total(t, 'CNV_A13_Shore', '岸', [(1, ('NAMED_INSIDE_AREA', _n('WT'), 'Test A13 Shore WT')),
+                                        (10, ('NAMED_INSIDE_AREA', _n('WB'), 'Test A13 Shore WB')),
+                                        (100, ('NAMED_INSIDE_AREA', _n('WT'), 'Test A13 Home WT'))])
+    s8.watch(t, 30.0)
     return t
 
 
@@ -236,5 +262,5 @@ def hit(m):
 
 MISSION = {'engine_acts_wet': mission, 'engine_acts_wing': wing_mission, 'engine_acts_rkt': partial_mission,
            'engine_acts_ret': hit_mission}
-CHECKS = {'engine_acts_wet': {'all': all_}, 'engine_acts_wing': {'all': wing}, 'engine_acts_rkt': {'p': partial},
+CHECKS = {'engine_acts_wet': {'all': all_}, 'engine_acts_wing': {'all': wing, 'lnd': wing_land}, 'engine_acts_rkt': {'p': partial},
           'engine_acts_ret': {'r': hit}}

@@ -53,6 +53,23 @@ expect = [
 ]
 
 [[reading]]
+id = "acts_wing_pressed_back_over_land_stays_on_land"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_JAAS_Transform"
+scene = {build = "engine_acts_wing", check = "lnd", until = 31}
+bench = """lnd, bench 11-24 `run_queue engine_acts_wing:lnd` (CampActsWingLnd_mcp_1124_021810, round 345; bench row s_k = simulator \
+k + 1): 态 1111 s2-s10, 1010 s11-s31; 岸 100 s1-s5, 0 s6-s8, 11 s9-s11, 1 s12-s14, 11 s15-s16, 1 s17-s31 (WB's hover \
+drifting out of its square s12-s14 not modelled)"""
+proves = """sim engine/objects/toggle.entered: WT up and over the bank to its land point, pressed again there at 12 s, takes the \
+press (no longer TRANSFORMATION_TOGGLE_STATE nor AIRBORNE_TARGET) and stays on its land point -- MOVEd home onto the water \
+at 18 s it never gets there (back on the water locomotor with no way off the land: whether it is stranded or dead is \
+not read, INFERRED stranded); WB, never pressed back, stays up"""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = [
+    "all(at[k][0] == 1111 for k in range(4, 12)) and all(at[k][0] == 1010 for k in range(13, 31))",
+    "all(at[k][1] % 10 == 1 for k in range(10, 31)) and not any(at[k][1] >= 100 for k in range(7, 31))",
+]
+
+[[reading]]
 id = "acts_rkt_the_partial_button_presses_the_first_ceil_of_the_team"
 item = "脚本动作 TEAM_PARTIAL_USE_COMMANDBUTTON"
 scene = {build = "engine_acts_rkt", check = "p", until = 11}

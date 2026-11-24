@@ -54,8 +54,8 @@ def entered(world, b, m, modify):
         surface = locomotor.surface_of(surf, b.kinds) if surf else b.surface
         if b.path and surface != b.surface:
             # review 1121nn P2: a way on the old surface is not taken on the new one -- re-routed to where it was
-            # sent (back on the water short of a land point: no way, it stops; INFERRED, the bench never landed it
-            # mid-flight)
+            # sent (back on the water short of a land point: no way, it stops; INFERRED mid-flight -- pressed standing
+            # over land it stays there, engine_acts_wing lnd)
             locomotor.write(world.world, b, path=world.ground.route(surface, (b.x, b.y), b.dest, closest=True) or [])
         locomotor.write(world.world, b, speed=speed, surface=surface)
     world.used.add('toggle')
