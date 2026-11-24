@@ -61,8 +61,6 @@ PARTS = (ACTION, CONDITION, MODULE, NUGGET, AI)     # AI: engine B's part, its o
 # (part, name) -> 'tests/<file>.py::<test>': the bench comparison that backs the item (the guard checks the test exists).
 # Legacy (ADR 0035 5): only shrinks (tests/guards/test_bench_tests.py); a new one is a reading in the readings data.
 BENCHED_TESTS = {
-    (ACTION, 'TEAM_SET_HEALTH'):
-        'tests/test_teamhp_bench_c.py::test_teamhp_current_mixed_members_and_controls_match_bench',
     (ACTION, 'NAMED_FACE_WAYPOINT'):
         'tests/test_facewp_bench_c.py::test_facewp_named_heading_and_untouched_control_match_bench',
     (ACTION, 'EXIT_SPECIFIC_BUILDING'):
@@ -85,8 +83,6 @@ BENCHED_TESTS = {
         'tests/test_sellall_bench_c.py::test_sellall_owner_refund_and_repeat_match_bench',
     (ACTION, 'TEAM_EXIT_ALL_BUILDINGS'):
         'tests/test_teamexit_bench_c.py::test_teamexit_mixed_building_and_transport_match_bench',
-    (ACTION, 'PLAYER_KILL'):
-        'tests/test_playerkill_bench_c.py::test_playerkill_owned_units_and_buildings_match_bench',
     (ACTION, 'UNIT_SET_MODELCONDITION_FOR_DURATION'):
         'tests/test_modeldur_bench_c.py::test_modeldur_real_bits_expire_after_measured_frames',
     (ACTION, 'PLAYER_ENABLE_UNIT_CONSTRUCTION'):
@@ -272,7 +268,7 @@ BENCHED_TESTS = {
 _NOT_IN_SIM = '已核（11-08）：模拟器没有这个效果'
 NOTES = {
     (ACTION, 'NAMED_ATTACK_AREA'): (TODO, 'C engine_attackarea:a/b原版无畏舰对北/南电厂区域两局：禁自动索敌，b揭图并交换区域；区域段实际HP均100/100、对照血量与原位码3100，18秒点名阳性靶HP100→75→50→25。tests/test_attackarea_bench_c.py按名回放阴性窗口，两完整回放strict xfail；无命中不能证明区域命令无操作，尚缺区域候选/接受拒绝/实际弹着点，禁自动索敌与建筑目标类别仍未区分，单纯揭图不足以解释。原版a02四舰同区域；两局预算耗完，不实现猜测规则、不晋升；见work/re/c_attackarea_report.md'),
-    (ACTION, 'TEAM_SET_HEALTH'): (BENCHED, 'C engine_teamhp:a/b显式目标队守护者/征召兵血量100→25→75及100→75→25，同玩家异队/另一玩家守护者均保持100；四计数器为两成员实际血量百分比、异队血量组合码100100和逻辑帧。tests/test_teamhp_bench_c.py按名字逐实读帧回放；仅当前存活显式队伍成员的百分比设置切片，未来/死亡/缺名成员、AI实例、边界数值和精确派发相位仍gap，其他模板推广INFERRED；见work/re/c_teamhp_report.md'),
+    (ACTION, 'TEAM_SET_HEALTH'): (BENCHED, 'C engine_teamhp:a/b显式目标队守护者/征召兵血量100→25→75及100→75→25，同玩家异队/另一玩家守护者均保持100；四计数器为两成员实际血量百分比、异队血量组合码100100和逻辑帧。读数 checks/engine_teamhp.readings.toml（A331 由逐帧回放测试迁入，每秒一行）；仅当前存活显式队伍成员的百分比设置切片，未来/死亡/缺名成员、AI实例、边界数值和精确派发相位仍gap，其他模板推广INFERRED；见work/re/c_teamhp_report.md'),
     (ACTION, 'NAMED_FACE_WAYPOINT'): (BENCHED, 'C engine_facewp:a及engine_facewpai:b两局；a仅人类玩家存活位7，无team/tstate朝向，b换AI观察宿主，原生hd甲0→180、乙0→117、未操作0，分别朝西/西北路点。tests/test_facewp_bench_c.py按名回放24组原始稳定朝向（全圈1度容差对应hd整数舍入），并断言存活位7；没有用位置不变替代朝向。转身复用既有移动器速率，精确命令/起转相位、移动中打断、缺名/死亡目标和其他模板仍gap或INFERRED；仅存活静止守护者的具名路点朝向切片，见work/re/c_facewp_report.md'),
     (ACTION, 'EXIT_SPECIFIC_BUILDING'): (BENCHED, 'C engine_exitbld:a/b两座公寓各装同玩家两队征召兵，交换具名目标西/东；指定楼两队均退出、另一楼仍驻，重复调用无误伤。进驻位15→12/3、区域码始终22、五兵两楼存活位127；tests/test_exitbld_bench_c.py逐实读逻辑帧按名回放四计数器。区域人数包含楼内人员，探针保留原仅室外预测2/20；仅存活公寓具名退出切片，出门位置沿现有INFERRED近似，精确时序、其他容器/模板、缺名/死亡目标、取消进门仍gap；见work/re/c_exitbld_report.md'),
     (ACTION, 'DISABLE_JOYPAD_COMMANDBAR_BUTTON'): (TODO, 'C engine_joypad:a一局17组读数f40..182，原版buttonopenplayertechstore/buttonaiassaultdirective未操作、禁用、分步恢复的脚本阶段0/1/2/3均出现，未操作电厂始终1，末3/1/182。tests/test_joypad_bench_c.py仅锚定具名原始读数，不冒充完整模型回放或原生输入接受。cnv_result仅脚本阶段/存活/逻辑帧，index仅id/second/note/view，无Joypad元素enabled、输入accepted/rejected字段；台子仅键鼠注入，XInput四槽未连接。PC路径无消费者仅INFERRED，不用鼠标或余额替代阳性，不登记纯表现。一局后缺真实入口/观测而暂停，不耗相同第二局；见work/re/c_joypad_report.md'),
@@ -284,7 +280,7 @@ NOTES = {
     (MODULE, 'AI/AnimalAIUpdate'): (TODO, 'E192 engine_animal_e:a原版女性平民近敌100/仅删模块/远敌700三路，f240四行240/0/7/7，六物体存活但均未离开起点。engine_animalfire_e:a增加敌兵攻击旁电厂，仍240/0/7/7，三路受击前置未成立；两局原逃跑预测FAIL保留。checks/engine_animal_e.readings.toml记实读负基线，开火接受Sim63对台7标mismatch。ra3ext tgt0/inc3/ua0无fleeTrigger/attackAccepted/rejectReason，触发资格未闭合（INFERRED），不实现猜测规则、不登记效果覆盖；同输入暂停，需合法触发或接受证据与新预算，见work/re/e192_animal.md'),
     (ACTION, 'NAMED_SET_SPECIAL_POWER_COUNTDOWN'): (TODO, 'C两局engine_namedcount:a/engine_namedvac:a：三独立玩家宿主，1秒0/2、7秒2/0交换，第三方不操作；铁幕f43..143就绪0、f153..315为7，真空弹f41..148为0、f155..300为3，宿主位均7、零余电位均0。旧零/非零预测被否定；缺真实剩余冷却/READY刷新与宿主初始化同帧字段，秒数与作用域未闭环。两个按名逐31实读帧回放strict xfail，未改模型、未晋升；假设表及字段缺口见work/re/c_namedcount_report.md'),
     (ACTION, 'TEAM_EXIT_ALL_BUILDINGS'): (BENCHED, 'C engine_teamexit:a混装建筑/运输车一局：本队征召兵退出公寓和牛蛙，同容器异队保留；队外成员/两宿主均存活，空队伍与重复调用无误伤。f44..74本队驻/异队驻/存活位3/3/127，f82..287为0/3/127；tests/test_teamexit_bench_c.py按名逐33个实读逻辑帧回放四计数器。仅显式存活队伍普通退出切片；精确出门位置/时序、运输抛射、取消进驻中订单、死/缺队伍及AI实例仍gap，其他模板推广INFERRED；见work/re/c_teamexit_report.md'),
-    (ACTION, 'PLAYER_KILL'): (BENCHED, 'C engine_playerkill:a一局：目标Soviet_4守护者/电厂死亡，Player_1与Soviet_5同类对照保留；空Soviet_6调用和重复调用未误伤。f45/61/75单位位/建筑位/死亡位7/7/0，f83/152/287为5/5/0；tests/test_playerkill_bench_c.py按名逐实读逻辑帧回放四计数器。仅所属普通对象清理切片已对拍；玩家失败/淘汰、保护对象、容器/子体、死亡瞬间和其他模板推广仍gap或INFERRED；见work/re/c_playerkill_report.md'),
+    (ACTION, 'PLAYER_KILL'): (BENCHED, 'C engine_playerkill:a一局：目标Soviet_4守护者/电厂死亡，Player_1与Soviet_5同类对照保留；空Soviet_6调用和重复调用未误伤。f45/61/75单位位/建筑位/死亡位7/7/0，f83/152/287为5/5/0；读数 checks/engine_playerkill.readings.toml（A331 由逐帧回放测试迁入，每秒一行）。仅所属普通对象清理切片已对拍；玩家失败/淘汰、保护对象、容器/子体、死亡瞬间和其他模板推广仍gap或INFERRED；见work/re/c_playerkill_report.md'),
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanEgg'): (BENCHED, 'C engine_eggcmd:a与engine_eggnav:a两局：零售使用的防御/电厂/船厂三种核心，旧通用按钮均留原处；专用防御/船厂按钮到点展开，未下令对照留家。地面f249/393/560建筑位/存活位/原处位4/15/11，水域f247/390/496为2/7/5；读数checks/engine_eggcmd.readings.toml。A290起按类：单位CommandSet里没有的展开/收起按钮都不动（engine_unpack crs：防御蛋按电厂蛋按钮不动），旧通用按钮同此；收起一侧INFERRED；见work/re/c_eggcmd_report.md、work/re/c_eggnav_report.md'),
     (ACTION, 'TEAM_UPGRADE'): (BENCHED, 'C engine_teamup:a真实玩家升级查询+守护者状态位：f150本队/异队/查询0/0/0，f157授予后3/0/3，f248移除一人后2/0/1，f332再授予3/0/3；同玩家异队和敌方异队均无位。读数 checks/engine_teamup.readings.toml（A313 由逐帧回放测试迁入，每秒一行）；仅当前存活显式队伍OBJECT升级派发/消费者切片，j05地图私有升级效果、未来成员、死/缺队伍和AI队伍实例仍gap；其他宿主推广INFERRED；见work/re/c_teamup_report.md'),
     (ACTION, 'UNIT_SET_MODELCONDITION_FOR_DURATION'): (BENCHED, 'C engine_modeldur:a真实UNIT_HAS_MODELCONDITION查询：3/7秒USER_1分别为真46/106逻辑帧，b的1/2秒为真16/31帧，均含到期边界；空白阴性始终无位，永久阳性保持，状态码11→10→8。tests/test_modeldur_bench_c.py按名回放同帧四计数器。仅正持续时间、第四参数1.0、独立USER_1写入/到期切片；其他位推广INFERRED，重复/覆盖、零时长、第四参数其他值及原生生产者均gap；见work/re/c_modeldur_report.md'),

@@ -11,3 +11,27 @@ expect = [
   "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
   "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(100100, 100, 100100), (89097, 50, 100100), (7, 0, 100100)}",
 ]
+
+[[reading]]
+id = "teamhp_a_sets_the_current_members_25_then_75"
+item = "脚本动作 TEAM_SET_HEALTH"
+scene = {build = "engine_teamhp", check = "a", until = 10, script = "不打"}
+bench = "a, line C (work/re/c_teamhp_report.md), 甲血量 乙血量 对照血量码 at logic frames: f44..59 100 100 100100 | f68..120 25 25 100100 | f128..241 75 75 100100 (27 readings)"
+proves = "TEAM_SET_HEALTH sets each living member of the named team to the percentage (a Guardian and a conscript: 25 at 4 s, 75 at 8 s, up as well as down); the same player's other team and another player's Guardian stay 100. Moved from the frame-exact replay (A331)"
+let = {want = "lambda f: [100, 100, 100100] if f <= 59 else [25, 25, 100100] if 68 <= f <= 120 else [75, 75, 100100] if f >= 128 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(100, 100, 100100), (25, 25, 100100), (75, 75, 100100)}",
+]
+
+[[reading]]
+id = "teamhp_b_sets_the_current_members_75_then_25"
+item = "脚本动作 TEAM_SET_HEALTH"
+scene = {build = "engine_teamhp", check = "b", until = 10, script = "不打"}
+bench = "b, line C, 甲血量 乙血量 对照血量码 at logic frames: f45..59 100 100 100100 | f66..120 75 75 100100 | f127..241 25 25 100100 (27 readings)"
+proves = "the same with the values the other way round: 75 at 4 s, 25 at 8 s"
+let = {want = "lambda f: [100, 100, 100100] if f <= 59 else [75, 75, 100100] if 66 <= f <= 120 else [25, 25, 100100] if f >= 127 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(100, 100, 100100), (75, 75, 100100), (25, 25, 100100)}",
+]

@@ -10,3 +10,15 @@ list's nugget REQUIRES_LIVE_PLAYER; counted with the dying, so none was made and
 kills leaves one that lives on. Other ways a player stops being live are not modelled (INFERRED)"""
 expect = ["all(r['s4 维和兵'] == 0 for r in rows)",
           "rows[0]['电厂位'] == 7 and rows[-1]['电厂位'] == 1 and rows[-1]['s5 维和兵'] == 1"]
+
+[[reading]]
+id = "player_kill_kills_only_the_named_players_objects"
+item = "脚本动作 PLAYER_KILL"
+scene = {build = "engine_playerkill", check = "a", until = 10, script = "不打"}
+bench = "a, line C CampPlayerKillA_mcp_1116_062916 (work/re/c_playerkill_report.md), 单位位 建筑位 死亡位 at logic frames: f45 / 61 / 75 7 7 0 | f83 / 152 / 287 5 5 0"
+proves = "PLAYER_KILL at 5 s kills Soviet_4's Guardian and power plant (mask bit 2 off in both); Player_1's and Soviet_5's stay, an empty Soviet_6 at 3 s and a repeat at 9 s hurt nobody. Moved from the frame-exact replay (A331): the frames between two measured ones of a phase held"
+let = {want = "lambda f: [7, 7, 0] if f <= 75 else [5, 5, 0] if f >= 83 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(7, 7, 0), (5, 5, 0)}",
+]
