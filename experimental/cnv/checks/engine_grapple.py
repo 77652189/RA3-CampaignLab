@@ -1,85 +1,65 @@
-"""GrapplingHookNugget1 minimal consumer probe, prediction before bench.
+"""GrapplingHookUpdate -- the Apocalypse's harpoon (SovietAntiVehicleVehicleTech3, 24 of the 27 levels).
 
-Retail SovietAntiVehicleVehicleTech3Harpoon supplies Damage1 CANNON,
-ForbiddenTargetObjectStatus UNDER_RUSH_ATTACK and VEHICLE/STRUCTURE filter.
-Its caster GrapplingHookUpdate has PullRate40, GENERIC_TOGGLE_STATE validation
-and crush/grind weapons. Here independent10UNRES marks a1000HP Hammer;
-synthetic hook Damage0 attempts to isolate dispatch/pull, without crush/grind
-or bounce; whether Damage0 itself prevents dispatch remains unresolved.
-base: module/no nugget; high: module+VEHICLE; order: module+INFANTRY;
-removed: VEHICLE nugget/no module. Synthetic module omits ObjectStatusValidation (V4 toggle selects an empty set).
-At6s open one4/15s firing window, then NO_ATTACK again (known single-shot
-fixture). GUESSED: accepted hook keeps pulling after this stop; at14s target
-enters the150+-100 near area, controls stay450 away. PREDICT1099/11099/1099/1099.
-Packed=10000*everNear+1000*targetAlive+targetHP%. No exact pull frame,
-release rule, blocked collision, building pull, retail damage or grind claim.
-The predicted consumer behavior is a hypothesis, not a replay assertion.
-Initial fixture 1100/1100/1100/1100: toggle selected V4 empty weapon set;
-corrected fixture removes both toggle action and module validation, no other change.
-MEASURED corrected run:1099/1099/1099/1099; all markers hit, high neverNear.
-This rejects the persistence/dispatch prediction, not proof that hooks do nothing.
-Damage0 shortcut vs NO_ATTACK release vs missing host context are unseparated.
-Keep the original prediction below for diagnosis; do not promote this check.
+Retail: Command_ToggleHarpoonSpecialPower steps its ToggleStatusSpecialAbilityUpdate to GENERIC_TOGGLE_STATE; the weapon
+set then forbids the cannon and arms SovietAntiVehicleVehicleTech3Harpoon (300 range, FiringDuration 1 s, clip 1 /
+reload 2 s; GrapplingHookNugget Damage 1 CANNON on VEHICLE / STRUCTURE / TIME_BOMB not AIRCRAFT / bridge). The
+GrapplingHookUpdate (RequiredStatus GENERIC_TOGGLE_STATE) pulls the hooked thing at PullRate 40; at the hooker it
+fires SingleFireWeapon SovietHarpoonCrushWeapon (999999 CRUSH on VEHICLE / TIME_BOMB, 1 s delay) and then
+ContinuousFireWeapon SovietHarpoonGrindWeapon (25 EXPLOSIVE every 0.24 s, 0.25 s after) -- BouncePercentage 5 %.
+
+Two lanes, each a p1 Apocalypse facing north and an s1 Hammer (NO_ATTACK) DIST north of it (260 / 160: two distances
+part the pull's speed from its fixed delays). Both Apocalypses pressed at PRESS, held NO_ATTACK until SHOOT, then
+ordered at their Hammer. Counters: each Hammer's health and its ring -- how many of the squares of half-side 25 .. 225
+(step 25) round its Apocalypse it stands in (9 far .. 0 beyond 225; it walks the line, so a ring is a 25 band).
+Prediction: the ring climbs about 40 a second (1.6 a second), the Hammer dies a second after it is at the tank.
+The older synthetic probe here (a gun with a GrapplingHookNugget, no toggle) never pulled anything (1099 x 4).
 """
 from maps import probe_range
-from parts import Mission, Script, Test, square
-from checks.engine_weaponfx import gun
-from checks.engine_missile import target
+from parts import Mission, Script, Test, counted, square
 
-CASES = ('base', 'high', 'order', 'removed')
+APOC, HAMMER = 'SovietAntiVehicleVehicleTech3', 'SovietAntiVehicleVehicleTech1'
+TOGGLE = 'Command_ToggleHarpoonSpecialPower'
+LANES = {'Far': ('base', 260.0), 'Near': ('high', 160.0)}
+RINGS = range(25, 250, 25)
+PRESS, SHOOT, END = 15 * 16, 15 * 17, 15 * 32      # the counters are read from s15
 
 
 def mission():
-    m = Mission(name='CampGrapple', map=probe_range, units=[], facts={})
-    for lane in CASES:
-        kind = 'INFANTRY' if lane == 'order' else 'VEHICLE'
-        extra = (f'<GrapplingHookNugget Damage="0" DamageType="UNRESISTABLE" '
-                 'ForbiddenTargetObjectStatus="UNDER_RUSH_ATTACK">'
-                 f'<SpecialObjectFilter Rule="ANY" Include="{kind}"/>'
-                 '</GrapplingHookNugget>' if lane != 'base' else '')
-        u = gun('CNV_Grapple' + lane.title(), 10, extra)
-        u.xml = u.xml.replace('DamageType="EXPLOSIVE"', 'DamageType="UNRESISTABLE"')
-        if lane != 'removed':
-            u.xml = u.xml.replace('<Behaviors>', '<Behaviors>'
-                '<GrapplingHookUpdate id="ModuleTag_GrapplingHook" PullRate="40" '
-                'MinBounceDelay="0.5s" MaxBounceDelay="1s" BouncePercentage="0%">'
-                '<KeepAliveObjectFilter Rule="ANY" Include="VEHICLE STRUCTURE TIME_BOMB"/>'
-                '</GrapplingHookUpdate>', 1)
-        v = target('CNV_GrappleVictim' + lane.title(), health=1000)
-        m.units.extend((u, v))
-        m.put(u.id, lane+' gun', side='p1', angle=1.5708, name='Grapple '+lane+' gun')
-        m.put(v.id, lane+' gun', 0, 450, side='s1', angle=4.7124, name='Grapple '+lane+' victim')
-        m.waypoint(lane+' near', 'Grapple near '+lane, lane+' gun', 0, 150)
+    m = Mission(name='CampGrapple', map=probe_range, units=[])
+    for arm, (lane, dist) in LANES.items():
+        m.put(APOC, f'{lane} gun', side='p1', role=f'apoc {arm}', name=f'E226 Apoc {arm}', angle=1.5708)
+        m.put(HAMMER, f'{lane} gun', 0, dist, side='s1', role=f'victim {arm}', name=f'E226 Hammer {arm}', angle=4.7124)
     return m
 
 
 def check(m):
     t = Test()
-    start = [('MAP_REVEAL_ALL_PERM', m.player('p1')),
-             ('SET_MILLISECOND_TIMER', 'Grapple Fire', 6.),
-             ('SET_MILLISECOND_TIMER', 'Grapple Stop', 6+4/15)]
-    fire, stop = [], []
-    for lane in CASES:
-        g, v = 'Grapple '+lane+' gun', 'Grapple '+lane+' victim'
-        c, area = 'CNV_Grapple_'+lane, 'Grapple near '+lane
-        t.areas[area] = square(*m.point(lane+' near'), 100)
-        start.extend(('UNIT_CHANGE_OBJECT_STATUS', n, 'NO_ATTACK', 1) for n in (g, v))
-        fire.extend((('UNIT_CHANGE_OBJECT_STATUS', g, 'NO_ATTACK', 0), ('NAMED_ATTACK_NAMED', g, v)))
-        stop.append(('UNIT_CHANGE_OBJECT_STATUS', g, 'NO_ATTACK', 1))
-        t.counters.append((c, lane+' packed'))
-        t.scripts.extend((
-            Script('Test - hp '+lane, [], [('SET_COUNTER', c, 0),
-                   ('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', v, c),
-                   ('COUNTER_MATH_COUNTER', c, 0, c+'State')], once=False),
-            Script('Test - alive '+lane, [('NAMED_NOT_DESTROYED', v)],
-                   [('INCREMENT_COUNTER', 1000, c)], once=False),
-            Script('Test - near '+lane, [('NAMED_INSIDE_AREA', v, area)],
-                   [('INCREMENT_COUNTER', 10000, c+'State')]) ))
-    t.scripts.insert(0, Script('Test - start', [], start))
-    t.scripts.extend((Script('Test - fire', [('TIMER_EXPIRED', 'Grapple Fire')], fire),
-                      Script('Test - stop', [('TIMER_EXPIRED', 'Grapple Stop')], stop)))
-    t.expect = [(label, 16, '==', n, 18) for (_, label), n in zip(t.counters, (1099, 11099, 1099, 1099))]
-    t.bench = [('bench_watch', dict(seconds=18., every=.5, sheet=False, lines=4))]
+    for arm, (lane, _) in LANES.items():
+        counted(f'E226Hp{arm}', '血' + arm, t, health=m.role(f'victim {arm}').name)
+    for arm, (lane, _) in LANES.items():
+        c, v, (x, y) = f'E226Ring{arm}', m.role(f'victim {arm}').name, m.site(f'{lane} gun', 0, 0)
+        t.counters.append((c, '圈' + arm))
+        t.scripts.append(Script(f'Test - ring {arm} zero', [], [('SET_COUNTER', c, 0)], once=False))
+        for r in RINGS:
+            t.areas[f'E226 {arm} {r}'] = square(x, y, r)
+            t.scripts.append(Script(f'Test - ring {arm} {r}', [('NAMED_INSIDE_AREA', v, f'E226 {arm} {r}')],
+                                    [('INCREMENT_COUNTER', 1, c)], once=False))
+    apocs = [m.role(f'apoc {arm}').name for arm in LANES]
+    t.scripts += [Script('Test - clock', [('COUNTER', 'E226Frame', 0, END)],
+                         [('INCREMENT_COUNTER', 1, 'E226Frame')], once=False),
+                  Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))] +
+                         [('UNIT_CHANGE_OBJECT_STATUS', n, 'NO_ATTACK', 1) for n in apocs] +
+                         [('UNIT_CHANGE_OBJECT_STATUS', m.role(f'victim {arm}').name, 'NO_ATTACK', 1) for arm in LANES]),
+                  Script('Test - press', [('COUNTER', 'E226Frame', 2, PRESS)],
+                         [('NAMED_USE_COMMANDBUTTON_ABILITY', n, TOGGLE) for n in apocs]),
+                  Script('Test - shoot', [('COUNTER', 'E226Frame', 2, SHOOT)],
+                         [a for arm in LANES for a in (('UNIT_CHANGE_OBJECT_STATUS', m.role(f'apoc {arm}').name,
+                                                        'NO_ATTACK', 0),
+                                                       ('NAMED_ATTACK_NAMED', m.role(f'apoc {arm}').name,
+                                                        m.role(f'victim {arm}').name))])]
+    t.expect = [('血Far', 0, '==', 100)]
+    t.bench = [('bench_camera', dict(x=m.site('base gun', 0, 0)[0], y=m.site('base gun', 0, 0)[1], look=False)),
+               ('bench_watch', dict(seconds=END // 15 + 3, every=.5, sheet=False, lines=4))]
     return t
 
 

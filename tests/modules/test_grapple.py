@@ -1,0 +1,27 @@
+"""GrapplingHookUpdate (E226, checks/engine_grapple.readings.toml): with the harpoon toggled on the Apocalypse's hook
+pulls the Hammer in about 40 a second and stops it within the Apocalypse's radius; off, the cannon shoots, no pull."""
+import math
+
+import pytest
+
+import engine.objects.toggle as simtoggle
+import engine.testing.small as simsmall
+from engine.ports.command import Command
+
+
+@pytest.mark.parametrize('on', [True, False])
+def test_the_harpoon_pulls_the_hooked_vehicle_in(on):
+    s = simsmall.small_world([('apoc', 'SovietAntiVehicleVehicleTech3', 'Player_1', 1400.0, 2400.0),
+                              ('hammer', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1400.0, 2560.0)], model=False)
+    s.shot_clock = True
+    a, h = s.bodies['apoc'], s.bodies['hammer']
+    h.status.add('NO_ATTACK')
+    if on:
+        assert simtoggle.press(s, a, 'Command_ToggleHarpoonSpecialPower', lambda owner: False)
+    assert s.commands.do(Command('attack', units=('apoc',), target='hammer')) == (True, '')
+    s.advance(30)                   # 2 s
+    near = math.hypot(h.x - a.x, h.y - a.y)
+    assert (60 < near < 120) if on else near > 150
+    if on:
+        s.advance(30)
+        assert math.hypot(h.x - a.x, h.y - a.y) <= a.radius + 1e-6 and (a.x, a.y) == (1400.0, 2400.0)

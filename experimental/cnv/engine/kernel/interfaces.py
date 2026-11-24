@@ -613,6 +613,14 @@ class Magnet(Interface):
         raise NotImplementedError
 
 
+class Grapple(Interface):
+    """GrapplingHookUpdate: a GrapplingHookNugget hit hooks `target` (hook)."""
+    __slots__ = ()
+
+    def hook(self, target):
+        raise NotImplementedError
+
+
 class Parking(Interface):
     """ParkingPlaceBehavior: how many LIMITED_PRODUCTION_AIRCRAFT the factory keeps (spots); the host's order asks it
     (Production.admits)."""

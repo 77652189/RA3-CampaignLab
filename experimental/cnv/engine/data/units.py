@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v46.json')    # v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v47.json')    # v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -401,10 +401,12 @@ def _weapons(texts, base_table=None):
                                       status=_attr(f, 'StatusBitFlagsExclude', '').split()))
             if lifts:
                 got['lift'] = lifts
-            # Grappling still needs its unresolved caster update.
-            for effect in ('GrapplingHookNugget',):
-                if list(_blocks(bare, effect)):
-                    unsupported.append(effect)
+            grapples = [dict(forbidden=_attr(h, 'ForbiddenTargetObjectStatus', '').split(),
+                             include=_attr(f, 'Include', '').split(), exclude=_attr(f, 'Exclude', '').split())
+                        for h, inner in _blocks(bare, 'GrapplingHookNugget')
+                        for f in [next((fh for fh, _ in _blocks(inner, 'SpecialObjectFilter')), '')]]
+            if grapples:        # the caster's GrapplingHookUpdate pulls (E226)
+                got['grapple'] = grapples
             impacts, delayed_impacts = [], []
             for h, inner in _blocks(bare, 'MetaImpactNugget'):
                 # Retail Omega writes Amount/Radius/Z with spaces around '='.
@@ -789,6 +791,7 @@ def _resolve(w, weapons):
                 special_powers=w.get('special_powers', weapons.get(w.get('warhead'), {}).get('special_powers', [])),
                 attach=w.get('attach', weapons.get(w.get('warhead'), {}).get('attach', [])),
                 lift=w.get('lift', weapons.get(w.get('warhead'), {}).get('lift', [])),
+                **({'grapple': w['grapple']} if w.get('grapple') else {}),
                 inform=w.get('inform', []), weapon_speed=w.get('weapon_speed', 999999.0),
                 weapon_key=w.get('weapon_key'), **({'taper': w['taper']} if w.get('taper') else {}),
                 meta_impacts=w.get('meta_impacts', weapons.get(w.get('warhead'), {}).get('meta_impacts', [])),
@@ -1712,8 +1715,8 @@ def template_weapons(template, own=None):
     guns = []
     for x in (x for d in datas for x in d.counted()):
         w = _resolve(table[x.template], table) if x.template in table else None
-        if w and (w['dps'] > 0 or w.get('ai_parts') or w.get('sdps', 0) > 0 or w.get('dot') or w.get('lift')) \
-                and w['range'] > 0:
+        if w and (w['dps'] > 0 or w.get('ai_parts') or w.get('sdps', 0) > 0 or w.get('dot') or w.get('lift')
+                  or w.get('grapple')) and w['range'] > 0:
             guns.append(w)
     return guns
 

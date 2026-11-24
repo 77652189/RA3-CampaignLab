@@ -18,7 +18,7 @@ import types
 ORDER = (('Projectile', 'launch'), ('DOT', 'hit'), ('DamageContained', 'hit'), ('SecondaryDamage', 'hit'),
          ('Suppression', 'hit'), ('Paralyze', 'hit'), ('Sweep', 'hit'), ('LineDamage', 'aim'), ('Damage', 'victim'),
          ('LeechPercentMaxHealth', 'victim'), ('LeechHealth', 'victim'), ('StripMaxHealthPercent', 'victim'),
-         ('Lift', 'effect'), ('Attach', 'effect'), ('SpecialPower', 'effect'),
+         ('Lift', 'effect'), ('Attach', 'effect'), ('Grapple', 'effect'), ('SpecialPower', 'effect'),
          ('AttributeModifier', 'effect'))
 
 _HANDLERS = {}

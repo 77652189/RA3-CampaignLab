@@ -1,0 +1,23 @@
+# Bench readings of checks/engine_grapple.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E226 (bench 11-24, HEAD 650a724f): the Apocalypse's harpoon. A dead thing's health counter keeps its last value.
+
+[[reading]]
+id = "the_harpoon_pulls_the_vehicle_in_and_grinds_it_dead"
+item = "物体模块 Behaviors/GrapplingHookUpdate"
+scene = {build = "engine_grapple", check = "a", until = 30, shot_clock = true}
+bench = """CampGrappleA_mcp_1124_151504 (血Far 血Near 圈Far 圈Near): s16 99 99 0 3, s17 99 99 1 5, s18 99 99 2 6, \
+s19 99 99 3 7/8, s20 99 90/81/76 5/6 8/0 (Near dead), s21 99 76 7 0, s22 95/81 76 8 0, s23-s58 76 76 0 0"""
+proves = """GrapplingHookUpdate pulls the hooked Hammer straight in at PullRate 40 (Far: ring 2 to ring 7, 125 nearer, \
+in 3 s), to within 50 of the Apocalypse, grinds it (25 a 0.24 s) and crushes it (engine/modules/grapple.py, \
+engine/combat/grapple.py)"""
+expect = ["first('圈Far', lambda v: v >= 7) - first('圈Far', lambda v: v >= 2) == 3",
+          "first('圈Far', lambda v: v >= 8) is not None and first('圈Near', lambda v: v >= 8) is not None",
+          "all(60 <= v <= 95 for v in vals(rows)[-1][:2]) and vals(rows)[-1][2:] == [0, 0]"]
+
+[[reading]]
+id = "the_harpoon_hooks_at_the_press_under_no_attack"
+scene = {build = "engine_grapple", check = "a", until = 30, shot_clock = true}
+bench = "CampGrappleA_mcp_1124_151504: both Hammers 99 at s16 (pressed at s16, ordered at s17), Near ring 5 at s17"
+proves = "the harpoon fires at the press although NO_ATTACK holds until the order a second later"
+mismatch = "sim: the hook waits for the order at s17 (Near ring 3 at s17, 4 at s18), about a second late"
+expect = ["win(17, 17, '圈Near')[0] >= 5"]
