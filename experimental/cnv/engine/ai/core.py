@@ -770,8 +770,10 @@ class Brain:
             self.targets.home = (sum(p[0] for p in us) / len(us), sum(p[1] for p in us) / len(us)) if us else self.home
             # ThreatToWater's samples are the units of mine afloat now (or submerged, INFERRED); with none every
             # water threat is 0 and the first candidate wins (work/re/b1121_water.md; bench aiwaterthreat: near)
+            # ThreatToAir's sample is a unit of mine of KindOf AIRCRAFT (l4_targets_binary 3.1; aiairnone near, aiairsamp far)
             wet = any(t.water or 'SUBMERGED' in t.status for t in units)
-            self.view.own_domains = frozenset({'ground', 'air', 'water'} if wet else {'ground', 'air'})
+            self.view.own_domains = frozenset({'ground'} | ({'water'} if wet else set())
+                                              | ({'air'} if any('AIRCRAFT' in t.kindof for t in units) else set()))
         if self.base is not None:
             self.base.buildings = tuple(t.id for t in things if t.owner == self.player and 'STRUCTURE' in t.kindof)
 

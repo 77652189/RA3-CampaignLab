@@ -10,3 +10,13 @@ proves = "ThreatToWater: with no unit of the AI's afloat (or submerged) to sampl
 item = "AI 目标/AITargetingHeuristic.SortType=ThreatToWater"
 let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
 expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]
+
+[[reading]]
+id = "air_threat_needs_an_aircraft_of_the_ais"
+scene = {build = "aiairnone", check = "a", until = 41}
+each = [{build = "aiairnone", want = [4, 0, 0]}, {build = "aiairsamp", want = [0, 4, 0]}]
+bench = "B 2026-11-24 (run_queue, PASS both), aiwater's two plants with a player IFV (held fire) by the near one: no AI aircraft, ThreatToAir 4/0/0 from s14; an AI Cryocopter (held, not in the LAND team) 0/4/0 from s24."
+proves = "ThreatToAir samples the AI's first unit of KindOf AIRCRAFT: none -> every air threat 0, the first candidate (the near plant) wins; with one, the IFV's plant is the riskier and the far plant is taken; l4_targets_binary 3.1"
+item = "AI 目标/AITargetingHeuristic.SortType=ThreatToAir"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
+expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]

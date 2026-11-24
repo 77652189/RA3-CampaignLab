@@ -10,7 +10,7 @@ def a(m):
     t = Test()
     s1 = m.player('s1')
     t.scripts.append(Script('Test - water reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
-    keep = [m.role(r).name for r in ('plant', 'barracks', 'tank', 'water sample')]
+    keep = [m.role(r).name for r in ('plant', 'barracks', 'tank', 'water sample', 'air sample') if r in m.cast]
     keep += [m.role(f'ai guardian {i}').name for i in range(1, 5)]
     t.scripts.append(Script('Test - water keep', [], [('UNIT_SET_HEALTH', n, 100.0) for n in keep], once=False))
     for role, label in [('plant', '近处'), ('barracks', '远处')]:
@@ -27,4 +27,4 @@ def a(m):
     return t
 
 
-CHECKS = {k: {'a': a} for k in ('aiwaterdist', 'aiwaterthreat', 'aiwaternear', 'aiwaterfar')}
+CHECKS = {k: {'a': a} for k in ('aiwaterdist', 'aiwaterthreat', 'aiwaternear', 'aiwaterfar', 'aiairnone', 'aiairsamp')}
