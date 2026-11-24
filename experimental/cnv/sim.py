@@ -1006,15 +1006,15 @@ class Sim:
     def books_of(self, player):
         return [self.books[n] for n in self.book_players(player)]
 
-    def book_players(self, player):
-        """The side players (with a protocol book) a script's player argument names, slot order (work/re l2_scripts1 1,
-        A344): <X's Enemies / Allies (incl Self)>, X This Player (port.this_player's side; ours: Player_1's list)."""
-        m = re.fullmatch(r"<(.+)'s (Enemies|Allies incl Self|Allies)>", str(player))
+    def book_players(self, player, books=True):
+        """The players (`books`: with a protocol book) a script's player mask names, slot order (l2_scripts1 1, A344,
+        A346): <X's Enemies / Allies (incl Self)>, X This Player (port.this_player's side; ours: Player_1's list)."""
+        m, every = re.fullmatch(r"<(.+)'s (Enemies|Allies incl Self|Allies)>", str(player)), list(dict.fromkeys(self.players.values()))
         x = m and (self.human if m[1] in ('This Player', '1st Human Player') else m[1])
-        return [n for n in ([p for p in self.books if (self.enemy(x, p) if m[2] == 'Enemies' else self.relation(x, p) ==
-                'ALLIES' and (p != x or 'Self' in m[2]))] if m else list(self.books) if player == '<All Players>' else
+        return [n for n in ([p for p in every if (self.enemy(x, p) if m[2] == 'Enemies' else self.relation(x, p) ==
+                'ALLIES' and (p != x or 'Self' in m[2]))] if m else every if player == '<All Players>' else
                 [self.human] if player in ('<All Human Players>', '<1st Human Player>', '<This Player>') else [player])
-                if n in self.books]
+                if n in self.books or not books]
 
     def spellbook_ready(self, player, power):
         """SKIRMISH_SPECIAL_POWER_READY for a PlayerSpellBook power (its RequiredPlayerTech, simtech.power_needs): held,

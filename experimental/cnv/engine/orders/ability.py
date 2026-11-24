@@ -26,8 +26,8 @@ def power_refusal(world, peers, b, power, x, y):
         return 'not a power of his'
     if b.ready_at.get(power, 0) > world.frame_now():
         return 'reloading'
-    if any(peers.powers_off.get((p, power.lower()), 'Available') != 'Available' for p in (b.owner, '<All Players>')):
-        return 'disabled'                   # PLAYER_SPECIAL_POWER_AVAILABILITY (INFERRED)
+    if peers.powers_off.get((b.owner, power.lower()), 'Available') != 'Available':
+        return 'disabled'                   # PLAYER_SPECIAL_POWER_AVAILABILITY, each player its own (INFERRED)
     if 'PATHABLE_ONLY' in rules['flags']:
         g, c = world.ground.grids.get(b.surface, world.ground.grids['ground']), world.ground.cell(x, y)
         if not (0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and g[c]):

@@ -108,7 +108,7 @@ SIM_SURFACE = {
                     'timers unknown unmodeled*2 upgrade_sellers wallet*4 waypoints wfire_press who world',
     'engine.script': '_life*2 _tier_held act*4 active*7 add*5 ai*4 ai_paused*2 ai_priorities ai_switches all_revealed areas*11 '
                      'asked*3 assignments attachment_known_status*2 attacked_by*2 audio_end banned*2 banned_ups*2 '
-                     'base_construction_disabled*2 base_power blasts blocks*2 bodies*12 body*57 book_players*2 books*2 '
+                     'base_construction_disabled*2 base_power blasts blocks*2 bodies*12 body*57 book_players*3 books*2 '
                      'books_of*3 border*4 buildable camera*2 camera_been*2 can_hit casts*5 change*17 cloaked*3 clock*4 '
                      'commands*3 cond_memory*2 countdowns*3 counters*15 dying*3 end*2 enemy engineer_entry flags*4 frame_now*19 '
                      'gap*19 garrison*29 ground*2 handed*2 has_model_condition hidden_home*2 hidden_members hotspots*3 human*9 '

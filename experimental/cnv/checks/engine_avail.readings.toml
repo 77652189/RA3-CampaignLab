@@ -1,0 +1,10 @@
+# Bench readings of checks/engine_avail.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A row is one second; 帧数 is its script frame (15 a second), so the readings place the bench's frames to a row.
+
+[[reading]]
+id = "avail_a_script_press_ignores_the_players_disabled_power"
+scene = {build = "engine_avail", check = "an", until = 17}
+bench = "A346 (bench 11-24 CampAvlAn_mcp_1124_025210): Soviet_1's SpecialPower_ToggleShieldSphere set Disabled at the start, the script presses both Athenas' shields at 5 s: 我方 / 敌方 100 / 100 to f68, 101 / 101 from f77 to f290 (the end) -- Soviet_1's Athena shields as ours does"
+proves = "sim NAMED_USE_COMMANDBUTTON_ABILITY does not ask PLAYER_SPECIAL_POWER_AVAILABILITY (only a player's click does, power_refusal, INFERRED); the availability alias's expansion is the program's (l2_specialpower 4.5), tests/modules/test_specialpower"
+expect = ["all(r['我方'] == r['敌方'] == 100 for r in rows if r['帧数'] <= 68)",
+          "all(r['我方'] == r['敌方'] == 101 for r in rows if 77 <= r['帧数'] <= 290)"]

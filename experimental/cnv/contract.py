@@ -13,7 +13,8 @@ AREA_ARG = 9                            # script argument type of a trigger area
 # the engine's own names of player masks (work/re l2_scripts1.md 1), published players (retail a01's
 # PLAYER_RELATES_PLAYER('Soviet_1', '<All Players>', 'Neutral'))
 PLAYER_MASKS = frozenset({'<All Players>', '<All Human Players>', '<1st Human Player>', "<This Player's Enemies>",
-                          "<This Player's Allies>", "<This Player's Allies incl Self>"})
+                          "<This Player's Allies>", "<This Player's Allies incl Self>"} |
+                         {f"<1st Human Player's {k}>" for k in ('Enemies', 'Allies', 'Allies incl Self')})
 # the other argument types contract() holds against what was published
 TEAM_ARG, WAYPOINT_ARG, PLAYER_ARG, OBJECT_ARG, STRING_ARG, POWER_ARG, TEMPLATE_ARG = 3, 7, 11, 14, 25, 31, 61
 COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUTTON_ABILITY)
@@ -38,6 +39,7 @@ RETAIL_COMMANDS = {'Command_UnPackJapanEgg',          # serialized retail a04/j0
                    'Command_ToggleSpiderHole',          # the Tankbuster digs in (engine_acts_btn SH)
                    'Command_SovietAntiGroundAircraftEvacuate',  # the Twinblade lands its passengers (EVACUATE)
                    'Command_Evacuate',                  # a06's Marine One (AlliedMarine1, engine_marine)
+                   'Command_ToggleShieldSphere',        # the Athena's shield (engine_avail)
                    'Command_ToggleMirageField',         # the Mirage tank's field on / off (AlliedAntiVehicleVehicleTech3CommandSet)
                    'Command_JapanAntiInfantryInfantryBonzai',   # the Imperial Warrior's Bonzai charge (engine_aimicro)
                    'Command_ToggleMolotovCocktailSpecialPower', 'Command_ToggleLeechBeam',     # engine_toggle b / c
@@ -76,7 +78,8 @@ RETAIL_POWERS = {'SpecialPowerIronCurtain', 'SpecialPowerParticleCannon', 'Speci
                  'SpecialPowerNanoSwarmHive', 'SpecialPowerTelekineticProjectorDevice',            # the Soviet superweapon building's (SovietSuperWeapon, OCLSpecialPower)
                  'SpecialPowerCAMPAlliedBomberDrop2',   # the campaign's bomber drop store (j04 fires it by name)
                  'SpecialPower_Roar',   # the bear's roar: engine_acts_wet reads it cast (PLAYER_TRIGGERED_SPECIAL_POWER)
-                 'SpecialPower_MechaKingShockwave', 'SpecialPower_TimeBelt'}    # read cast (engine_cast)
+                 'SpecialPower_MechaKingShockwave', 'SpecialPower_TimeBelt',    # read cast (engine_cast)
+                 'SpecialPower_ToggleShieldSphere'}     # the Athena's shield, set Disabled (engine_avail)
 
 
 def spellbook_powers():

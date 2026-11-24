@@ -66,9 +66,11 @@ def player_grant_special_power(sim, name, a, script):
 
 
 def player_special_power_availability(sim, name, a, script):
-    # (player, power, Available / Disabled / Hidden) INFERRED: the player's click refused unless Available
-    # (power_refusal); a script's cast goes all the same. engine_scripts8 pdis asks the bench
-    sim.powers_off[(a[0], str(a[1]).lower())] = str(a[2])
+    # (player mask, power, Available / Disabled / Hidden): each player of the mask its own word (l2_specialpower 4.5;
+    # A346: an alias too, retail ep01 j03 "<1st Human Player's Enemies>"). INFERRED: the player's click refused unless
+    # Available (power_refusal); a script's cast goes all the same (engine_scripts8b pdis)
+    for p in sim.book_players(a[0], books=False):
+        sim.powers_off[(p, str(a[1]).lower())] = str(a[2])
 
 
 def player_toggle_resource_sharing(sim, name, a, script):

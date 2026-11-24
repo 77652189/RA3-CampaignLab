@@ -233,6 +233,22 @@ def test_a_mask_of_target_players_takes_the_first_in_slot_order_that_has_one():
     assert [c[-1] for c in s.casts] == [(3000.0, 2500.0), (2000.0, 2500.0)]
 
 
+def test_an_availability_mask_sets_each_of_its_players_own_word():
+    # A346 (retail ep01 j03's 64 lines): "<1st Human Player's Enemies>" turns the enemies' power off, not ours; <All
+    # Players> then one player's Available: that player's own word
+    import engine.testing.small as simsmall
+    from engine.orders import ability as simability, order as simorder
+    power = 'SpecialPower_ToggleShieldSphere'
+    s = simsmall.small_world([('ours', 'AlliedAntiStructureVehicle', 'Player_1', 1000.0, 1000.0),
+                              ('theirs', 'AlliedAntiStructureVehicle', 'Soviet_1', 3000.0, 1000.0)], model=False)
+    why = lambda: [simability.power_refusal(s, simorder.Peers(s), s.bodies[n], power, 0.0, 0.0) for n in ('ours', 'theirs')]
+    s.act('PLAYER_SPECIAL_POWER_AVAILABILITY', ["<1st Human Player's Enemies>", power, 'Disabled'], None)
+    assert why() == [None, 'disabled']
+    s.act('PLAYER_SPECIAL_POWER_AVAILABILITY', ['<All Players>', power, 'Disabled'], None)
+    s.act('PLAYER_SPECIAL_POWER_AVAILABILITY', ['Player_1', power, 'Available'], None)
+    assert why() == [None, 'disabled']
+
+
 def test_the_shrink_ray_spares_an_airborne_target_and_a_scripts_own_condition():
     # review 1122yy #2: an airborne target (excluded by AIRBORNE_TARGET) was shrunk, so was one an EMP'd caster
     # pressed at; #3: the shrink's end cleared the SHRINK_EFFECT a script had set for good
