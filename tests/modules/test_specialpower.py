@@ -218,6 +218,21 @@ def test_a_cast_at_the_nearest_needs_the_team_to_be_found():
     assert [c[-1] for c in s.casts] == [(3000.0, 2500.0)] * 2
 
 
+def test_a_mask_of_target_players_takes_the_first_in_slot_order_that_has_one():
+    # A344 (bench engine_scripts8bs nae / nas): <This Player's Enemies> -- Player_1's (ours run in its list) --
+    # Soviet_1's pill though Soviet_4's is nearer; Soviet_1 with none, Soviet_4's
+    import engine.testing.small as simsmall
+    s = simsmall.small_world([('gun', COLLIDER, 'Player_1', 1500.0, 2500.0),
+                              ('far', 'AlliedBaseDefense', 'Soviet_1', 3000.0, 2500.0),
+                              ('near', 'AlliedBaseDefense', 'Soviet_4', 2000.0, 2500.0)], model=False)
+    s.add_team_lookup(lambda t: {'Player_1/X': (True, [s.bodies['gun']])}.get(t))
+    cast = ['Player_1', CANNON, 'AlliedBaseDefense', 'Player_1/X', "<This Player's Enemies>"]
+    s.act('FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER', cast, None)
+    s.bodies['far'].alive = False
+    s.act('FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER', cast, None)
+    assert [c[-1] for c in s.casts] == [(3000.0, 2500.0), (2000.0, 2500.0)]
+
+
 def test_the_shrink_ray_spares_an_airborne_target_and_a_scripts_own_condition():
     # review 1122yy #2: an airborne target (excluded by AIRBORNE_TARGET) was shrunk, so was one an EMP'd caster
     # pressed at; #3: the shrink's end cleared the SHRINK_EFFECT a script had set for good

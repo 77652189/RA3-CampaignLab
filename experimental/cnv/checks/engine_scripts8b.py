@@ -20,6 +20,9 @@ simulator predicted is in brackets; the bench's seconds run ~1 s ahead of the ti
           near = FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER (p1, collider, AlliedBaseDefense, Ft, s1), team =
           FIRE_SPECIAL_POWER_ON_TEAM (p1, collider, Vt). 血<d> = vtarget d's health % [near: 150 hit (0 and 280 with
           it), 350 whole -- s1's nearest the middle, not s4's; team: 0 and 350 hit, 150 / 280 whole -- the middle]
+  nae / nas  near with the target players "<This Player's Enemies>" (our scripts are Player_1's list: Soviet_1..6);
+          nas has s1's 150 / 280 deleted at the start [the first in slot order that has one (work/re a283): nae as
+          near, s1's 150, not s4's nearer 350; nas s4's 350]
 
 读数 (bench 2026-11-09 evening, run_queue pend_scripts8:* -- the names before this file's move):
   status  甲敌 100 to s8, 75 at s9, 50 s11, 25 s13, 12 from s15; 乙敌 87 at s1, down ~6 a second to 12 at s12:
@@ -40,13 +43,14 @@ from parts import Script, Test, status
 import checks.engine_scripts8 as s8
 
 OFF_AT, CAST, LATER = 10.0, 75, 300
-RUN = {'status': 20.0, 'power': 10.0, 'pfire': 20.0, 'pdis': 40.0, 'near': 20.0, 'team': 20.0, 'most': 20.0, 'two': 20.0}
+RUN = {'status': 20.0, 'power': 10.0, 'pfire': 20.0, 'pdis': 40.0, 'near': 20.0, 'nae': 20.0, 'nas': 20.0, 'team': 20.0, 'most': 20.0, 'two': 20.0}
 GE = 3
 LEVELS = (0, 1, 300, 1000, 1001, 1300)
 TEAM_STATUS, BASE_POWER = 'TEAM_CHANGE_OBJECT_STATUS', 'PLAYER_SET_BASE_POWER'
 P_FIRE, P_AVAIL = 'PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT', 'PLAYER_SPECIAL_POWER_AVAILABILITY'
 POWER_P = 'SpecialPowerParticleCannon'      # missions/super_bench.py's collider power (G5: a check asks no mission)
 TARGET, VDIST = 'AlliedBaseDefense', (0, 150, 280, 350)
+VT = ('near', 'team', 'nae', 'nas')                 # the checks on the vacuum-spot targets
 NEAREST, ON_TEAM = 'FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER', 'FIRE_SPECIAL_POWER_ON_TEAM'
 AT_MOST = 'SKIRMISH_FIRE_SPECIAL_POWER_AT_' + 'MOST_COST'
 PDIST = (0, 150, 240, 300)
@@ -87,11 +91,14 @@ def _super(m, which):
     t = Test()
     p1 = m.player('p1')
     AIMS = {'near': lambda: (NEAREST, p1, POWER_P, TARGET, m.teams['Ft'], m.player('s1')),
+            'nae': lambda: (NEAREST, p1, POWER_P, TARGET, m.teams['Ft'], "<This Player's Enemies>"),
             'team': lambda: (ON_TEAM, p1, POWER_P, m.teams['Vt']),
             'most': lambda: (AT_MOST, m.player('s1'), POWER_P)}
-    AIMS['two'], most = AIMS['most'], which in ('most', 'two')
+    AIMS['two'], AIMS['nas'], most = AIMS['most'], AIMS['nae'], which in ('most', 'two')
+    gone = {'vtarget 150', 'vtarget 280'} if which == 'nas' else set()
     power, spot = POWER_P, m.mark('proton spot')
-    hit = [f'vtarget {d}' for d in VDIST] if which in ('near', 'team') else [f'target {d}' for d in PDIST]
+    hit = [f'vtarget {d}' for d in VDIST if f'vtarget {d}' not in gone] if which in VT else \
+        [f'target {d}' for d in PDIST]
     hit = list(TWO) if which == 'two' else hit
     keep = {'collider', 'yard', 'power', 'ft a', 'ft b'} - ({'power'} if most else set()) | {'spower'} | set(hit)
     start = [('MAP_REVEAL_ALL_PERM', p1)]
@@ -105,7 +112,8 @@ def _super(m, which):
                             [AIMS.get(which, lambda: (P_FIRE, p1, power, spot))(), ('SET_FLAG', 'Test S8 Cast', 1)]))
     on = ('FLAG', 'Test S8 Cast', 1)
     if which in AIMS:
-        rows = [(f'target {d}', d) for d in (0, 240, 300)] + [('yard', 'Y')] if which == 'most' else [(f'vtarget {d}', d) for d in VDIST]
+        rows = [(f'target {d}', d) for d in (0, 240, 300)] + [('yard', 'Y')] if which == 'most' else \
+            [(r, r.split()[1]) for r in hit]
         rows = [(r, r[0] + r.split()[1]) for r in TWO[:4]] if which == 'two' else rows     # four lines fit
         for role, d in rows:
             t.counters.append((f'CNV_S8_V{d}', f'血{d}'))
@@ -132,5 +140,5 @@ def _super(m, which):
 
 MISSION = {'engine_scripts8b': mission}     # engine_scripts8bs / 8bm: missions/super_bench.py makes them
 CHECKS = {'engine_scripts8b': {'status': status_, 'power': power},
-          'engine_scripts8bs': {w: (lambda m, w=w: _super(m, w)) for w in ('pfire', 'pdis', 'near', 'team')},
+          'engine_scripts8bs': {w: (lambda m, w=w: _super(m, w)) for w in ('pfire', 'pdis') + VT},
           'engine_scripts8bm': {w: (lambda m, w=w: _super(m, w)) for w in ('most', 'two')}}

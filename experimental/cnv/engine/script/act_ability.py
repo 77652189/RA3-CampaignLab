@@ -368,15 +368,17 @@ def fire_special_power_on_team(sim, name, a, script):
 
 
 def fire_special_power_on_nearest_objecttype_by_player(sim, name, a, script):
-    # (player, power, type, team, target player): as PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT at the target player's
+    # (player, power, type, team, target players): as PLAYER_FIRE_SPECIAL_POWER_AT_WAYPOINT at the target players'
     # living object of that type nearest the middle of the team's members (an empty team: the map's corner,
-    # INFERRED); none of them, or no such team: nothing (work/re a283)
+    # INFERRED), the first player in slot order that has one (a mask, <This Player's Enemies>); none, or no such
+    # team: nothing (work/re a283)
     crew = team_crew(sim, a[3])
     if crew is None:
         return
     x, y, want = *_middle(crew), sim.of_types(a[2])
-    goal = min((o for o in _owned(sim, a[4]) if o.template.lower() in want),
-               key=lambda o: math.hypot(o.x - x, o.y - y), default=None)
+    goal = next((g for g in (min((o for o in _owned(sim, p) if o.template.lower() in want),
+                                 key=lambda o: math.hypot(o.x - x, o.y - y), default=None)
+                             for p in (sim.book_players(a[4]) if a[4].startswith('<') else [a[4]])) if g), None)
     if goal is not None:
         player_fire_special_power_at_waypoint(sim, name, [a[0], a[1], f'@{goal.x},{goal.y}'], script)
 

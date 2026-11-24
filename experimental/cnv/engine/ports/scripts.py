@@ -70,6 +70,8 @@ class Executor:
 
 def this_player(eng, args):
     """'<This Player>' as the game reads it: the player whose script list the script is in (the executor's `_side`;
-    retail maps' lists are per player, ours have one unnamed list and never use it)."""
+    retail maps' lists are per player, ours have one unnamed list and never use it); in `<This Player's Enemies>` and
+    its kin too (`<Soviet_1's Enemies>`, Sim.book_players reads that)."""
     side = getattr(eng, '_side', '')
-    return [side if a == '<This Player>' and side else a for a in args]
+    return [a if not side or not isinstance(a, str) else side if a == '<This Player>' else
+            a.replace("<This Player's ", f"<{side}'s ") for a in args]

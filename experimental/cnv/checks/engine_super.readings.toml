@@ -122,6 +122,22 @@ proves = "sim FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER: the player's p
 expect = "rows[-1]['血150'] == 44 and rows[-1]['血0'] < 50 and rows[-1]['血280'] < 50 and rows[-1]['血350'] == 100"
 
 [[reading]]
+id = "scripts8b_this_players_enemies_take_the_first_in_slot_order_that_has_one"
+item = "脚本动作 FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER"
+scene = {build = "engine_scripts8bs", check = "nae", until = 21}
+bench = "nae (target <This Player's Enemies>), bench 11-23 CampS8bSNae_mcp_1123_235645: 血0 / 血150 / 血280 / 血350 100 to s7, 62 / 44 / 48 / 100 at s8, end 21 / 44 / 2 / 100 -- as near: Soviet_1's 150 hit, Soviet_4's nearer 350 whole (sim end 6 / 44 / 11 / 100; before A344 the alias named nobody: nothing hit)"
+proves = "sim Sim.book_players: <This Player's Enemies> is Player_1's enemies (our scripts are its list), the first in slot order that has the type wins, not the nearest of them all (act_ability)"
+expect = "rows[-1]['血150'] == 44 and rows[-1]['血0'] < 50 and rows[-1]['血350'] == 100"
+
+[[reading]]
+id = "scripts8b_this_players_enemies_skip_a_player_with_none"
+item = "脚本动作 FIRE_SPECIAL_POWER_ON_NEAREST_OBJECTTYPE_BY_PLAYER"
+scene = {build = "engine_scripts8bs", check = "nas", until = 21}
+bench = "nas (nae with Soviet_1's 150 / 280 deleted), bench 11-24 CampS8bSNas_mcp_1124_000100: 血0 / 血350 100 to s7, 100 / 44 from s7 to the end -- Soviet_4's 350 hit (sim the same)"
+proves = "sim Sim.book_players / act_ability: a player of the mask with none of the type is passed over"
+expect = "rows[-1]['血350'] == 44 and rows[-1]['血0'] == 100"
+
+[[reading]]
 id = "scripts8b_the_power_on_a_team_goes_to_its_middle"
 item = "脚本动作 FIRE_SPECIAL_POWER_ON_TEAM"
 scene = {build = "engine_scripts8bs", check = "team", until = 21}

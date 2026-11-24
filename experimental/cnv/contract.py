@@ -10,8 +10,10 @@ import re
 
 
 AREA_ARG = 9                            # script argument type of a trigger area name (script_catalog.json)
-ALL_PLAYERS = '<All Players>'           # the engine's own name for every player, a published player (retail a01's
-                                        # PLAYER_RELATES_PLAYER('Soviet_1', '<All Players>', 'Neutral'))
+# the engine's own names of player masks (work/re l2_scripts1.md 1), published players (retail a01's
+# PLAYER_RELATES_PLAYER('Soviet_1', '<All Players>', 'Neutral'))
+PLAYER_MASKS = frozenset({'<All Players>', '<All Human Players>', '<1st Human Player>', "<This Player's Enemies>",
+                          "<This Player's Allies>", "<This Player's Allies incl Self>"})
 # the other argument types contract() holds against what was published
 TEAM_ARG, WAYPOINT_ARG, PLAYER_ARG, OBJECT_ARG, STRING_ARG, POWER_ARG, TEMPLATE_ARG = 3, 7, 11, 14, 25, 31, 61
 COMMAND_ARG = 34                        # a command button (NAMED_USE_COMMANDBUTTON_ABILITY)
@@ -711,7 +713,7 @@ def contract(mission):
             powers.setdefault(p, []).append(u)
     known = {AREA_ARG: ('area', m.areas), TEAM_ARG: ('team', set(getattr(m.map, 'TEAMS', {}).values()) | set(getattr(m.map, 'AI_TEAMS', {}).values())
                                     | set(m.teams.values())),
-             WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values()) | {ALL_PLAYERS}),
+             WAYPOINT_ARG: ('waypoint', m.waypoints), PLAYER_ARG: ('player', set(getattr(m.map, 'PLAYERS', {}).values()) | PLAYER_MASKS),
              OBJECT_ARG: ('object', set(named) | created), STRING_ARG: ('string', m.strings), POWER_ARG: ('power', set(powers) | RETAIL_POWERS | spellbook_powers()),
              COMMAND_ARG: ('command button', set(powers) | RETAIL_COMMANDS), OBJECTIVE_ARG: ('objective', {g.name for g in m.objectives}),
              TEMPLATE_ARG: ('template', {r.template for r in m.cast.values()} | {u.id for u in m.units} | m.spawns
