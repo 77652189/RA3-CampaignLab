@@ -181,7 +181,7 @@ class City:
         islands = np.zeros((n, n), bool)
         for poly, _ in self._islands:
             islands |= mask_poly(poly, n)
-        water = mask_poly(self._water[0], n) & ~islands
+        water = (mask_poly(self._water[0], n) if self._water else np.zeros((n, n), bool)) & ~islands   # inland: none
         self.land = land = ~water
         self.hillmask = hill = np.zeros((n, n), bool)
         for poly, _ in self._hills:
@@ -212,11 +212,12 @@ class City:
         X, Y = (xx + 0.5) * CELL, (yy + 0.5) * CELL
         for s in self.sites.values():           # a site's ground stays clear: what is built or fought over there
             occ |= (X - s['x']) ** 2 + (Y - s['y']) ** 2 <= ((s['build'] * 0.75 + 30) if s['build'] else min(s['r'], 60)) ** 2
-        blocks = []
+        blocks, block_of = [], {}
         for k in range(1, nl + 1):
             B = labels == k
             if B.sum() < 60:
                 continue
+            block_of[k] = len(blocks)
             jj, ii = np.nonzero(B)
             cx, cy = (ii.mean() + 0.5) * CELL, (jj.mean() + 0.5) * CELL
             d = self.district(cx, cy, bool(hill[int(cy / CELL), int(cx / CELL)]))
@@ -225,8 +226,14 @@ class City:
         kind_of, names = {}, {}
         for pt, kind, name, why, centre in self._specials:
             x, y = (pt[0], pt[1]) if len(pt) == 3 else self.xy(*pt)
-            free_ = [bi for bi in range(len(blocks)) if bi not in kind_of]
-            bi = min(free_, key=lambda k: math.hypot(blocks[k][2] - x, blocks[k][3] - y))   # the nearest block
+            # the block holding the point; else the nearest of the point's own district (never a neighbour's)
+            i, j = min(n - 1, max(0, int(x / CELL))), min(n - 1, max(0, int(y / CELL)))
+            bi = block_of.get(labels[j, i])
+            if bi is None or bi in kind_of:
+                d = self.district(x, y, bool(hill[j, i]))
+                free_ = [b for b in range(len(blocks)) if b not in kind_of and blocks[b][1] == d] or \
+                    [b for b in range(len(blocks)) if b not in kind_of]
+                bi = min(free_, key=lambda k: math.hypot(blocks[k][2] - x, blocks[k][3] - y))
             kind_of[bi], names[bi] = kind, (name, why, centre)
         count = {}
         for bi, (B, d, cx, cy) in enumerate(blocks):
@@ -410,7 +417,7 @@ class City:
             for poly in polys_of(self.megamask[k]):
                 gr.append({'kind': 'poly', 'at': poly, 'texture': tex, 'what': k})
         gr += self._grounds
-        shapes = [{'kind': 'poly', 'at': self._water[0], 'tier': 0, 'what': self._water[1]}]
+        shapes = [{'kind': 'poly', 'at': self._water[0], 'tier': 0, 'what': self._water[1]}] if self._water else []
         shapes += [{'kind': 'poly', 'at': p, 'tier': 1, 'what': w} for p, w in self._islands]
         shapes += [{'kind': 'poly', 'at': p, 'tier': 2, 'what': w} for p, w in self._hills]
         ramps = [{'low': list(map(round, lo)), 'high': list(map(round, hi)), 'width': w, 'what': t}

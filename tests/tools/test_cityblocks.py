@@ -13,7 +13,6 @@ def test_buildings_stand_on_the_kerb_off_the_street():
     setback = 8
     city = cb.City(600, foot, 1, lambda x, y, hill: 'd', {'d': 'test'}, {'d': 'T'},
                    kinds={'test': (['HouseA', 'HouseB'], setback, 6, 0.25, 1, cb.GRASS, 'x')})
-    city.water([[-50, -50], [-10, -50], [-10, -10]], 'none')            # off the map: all land
     city.road([(40, 40), (560, 40), (560, 560), (40, 560), (40, 40)], 80)   # street 0-80 and 520-600 on every side
     city.build()
     houses = [o for o in city.objs if o['template'] in foot]
