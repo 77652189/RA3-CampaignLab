@@ -517,7 +517,7 @@ class Ground:
         self.grids['both'] = (fold(land).all(axis=(1, 3)) | self.grids['water'] |
                               fold(land | water | shallow).all(axis=(1, 3)))
         self.fine = {k: a[:hh * d, :ww * d] for k, a in (('ground', walk), ('water', water), ('both', land | water | shallow))}
-        self.cache = {}
+        self.cache, self.borders = {}, tuple(getattr(mapmod, 'BORDERS', {}).values())    # borders: (x0, y0, x1, y1)
         self.blocked = np.zeros(self.grids['ground'].shape, bool)
         self.placed = self.blocked          # what a new structure's placement sees as taken (set_blocks' place)
         self.version = 0

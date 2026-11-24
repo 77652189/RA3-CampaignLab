@@ -64,7 +64,7 @@ SIM = {
     'wallet': {'money': STATE, 'income': STATE, 'sharing': STATE, 'money_cap': STATE},
     'mining': {'nodes': STATE, 'mined_to': STATE, 'docks': STATE},
     'ground': {'waterline': STATIC, 'water': STATIC, 'b': STATIC, 'd': STATIC, 'e': STATIC, 'zgrid': STATIC,
-               'grids': STATIC, 'fine': STATIC, 'deck': STATIC, 'xy': STATIC,
+               'grids': STATIC, 'fine': STATIC, 'deck': STATIC, 'xy': STATIC, 'borders': STATIC,
                'blocked': STATE, 'placed': STATE, 'version': STATE, 'shapes': STATE, 'cache': CACHE},
     'repairs': {'world': WIRE, 'wallet': WIRE, 'ai_switches': ALIAS, 'blocked': STATE, 'players': STATE},
     'heal': {'passive_area_of': CACHE},

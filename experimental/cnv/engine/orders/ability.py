@@ -30,7 +30,8 @@ def power_refusal(world, peers, b, power, x, y):
     if peers.powers_off.get((b.owner, power.lower()), 'Available') != 'Available':
         return 'disabled'                   # PLAYER_SPECIAL_POWER_AVAILABILITY, each player its own (INFERRED)
     if 'PATHABLE_ONLY' in rules['flags']:
-        g, c = world.ground.grids.get(b.surface, world.ground.grids['ground']), world.ground.cell(x, y)
+        ground = world.ground
+        g, c = ground.grids.get(b.surface, ground.grids['ground']), ground.cell(x, y)
         if not (0 <= c[0] < g.shape[0] and 0 <= c[1] < g.shape[1] and g[c]):
             return 'not pathable'
     if rules['forbidden'] and any(o is not b and not o.speed
@@ -152,7 +153,7 @@ def flee_start(world, peers, b, edge=False):
     if name is None or not b.alive or b.speed <= 0:
         return
     goal = world.waypoints.get(name or 'RunOffMap') or (b.x + 1000.0 * math.cos(b.angle), b.y + 1000.0 * math.sin(b.angle))
-    rect = next(iter(getattr(world.m.map, 'BORDERS', {}).values()), None)
+    rect = next(iter(world.ground.borders), None)
     if edge and rect:
         x0, y0, x1, y1 = rect
         goal = min(((x0 - FLEE_OUT, b.y), (x1 + FLEE_OUT, b.y), (b.x, y0 - FLEE_OUT), (b.x, y1 + FLEE_OUT)),

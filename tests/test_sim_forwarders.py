@@ -94,7 +94,7 @@ SIM_SURFACE = {
                       'guessed*5 human*11 kills*2 label*27 living*12 looks m*2 note*20 own*42 player_ups players*3 point '
                       'reblock*2 relation*6 relations*4 shot_clock t*7 toggles_of topples used*18 weapon_upgrades world*24 '
                       'xml_of*6',   # objects.bridge (A315): the ManagerBody gap / own / blocks_of moved out of Sim.add
-    'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 engineer_entry*2 fight_field fire_spot firing*3 frame_now*9 gap garrison*2 ground*3 hostile hunts*5 in_range label*10 living*6 members mid_aims mm*2 note*8 own*12 point*2 powers_off production reach*5 relation*3 seen seq*7 short_of_power shot_blocked*4 side_sees*4 team_targets*3 toggles_of used*14 wallet waypoints*8 who world*4 xml_of*2',
+    'engine.orders': '_field _fire_obstacles act acting*5 aim areas blocks body*3 can_hit*4 change*5 engineer_entry*2 fight_field fire_spot firing*3 frame_now*9 gap garrison*2 ground*2 hostile hunts*5 in_range label*10 living*6 members mid_aims mm*2 note*8 own*12 point*2 powers_off production reach*5 relation*3 seen seq*7 short_of_power shot_blocked*4 side_sees*4 team_targets*3 toggles_of used*14 wallet waypoints*8 who world*4 xml_of*2',
     'engine.players': '_life add*3 banned blocks bodies*4 build_frames emp_book frame_now*3 label note own*4 '
                       'produce_out reblock relations script_disabled t*3 unit_construction_disabled upgrade_done wallet*2 world',
     'engine.ports': 'act*2 add*2 add_team_lookup advance ai ai_paused ai_priorities ai_switches anchored*3 areas '
