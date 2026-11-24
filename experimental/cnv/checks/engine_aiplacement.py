@@ -25,4 +25,24 @@ def a(m):
     return t
 
 
+def b(m):
+    """aiplb*: the AI's own core; the plant counted in squares round the yard (half-sides 450 / 1000)."""
+    t = Test()
+    s1 = m.player('s1')
+    yard = m.find(m.role('ai yard').name)
+    for key, label, template, half in (('Core', '核心', 'JapanPowerPlantEgg', 0), ('Plant', '电厂', 'JapanPowerPlant', 0),
+                                       ('Near', '近450', 'JapanPowerPlant', 450),
+                                       ('Mid', '近1000', 'JapanPowerPlant', 1000)):
+        area = f'CNV PlB {key}' if half else None
+        if area:
+            t.areas[area] = square(yard.x, yard.y, half)
+        counted('CNV_PlB_' + key, label, t, template=template, player=s1, area=area)
+    near = int(m.facts['placement distance'] < 1000)
+    t.expect += [('核心', 55, '==', 0, 60), ('电厂', 55, '==', 1, 60), ('近450', 55, '==', near, 60),
+                 ('近1000', 55, '==', 1, 60)]
+    t.bench = [('bench_watch', dict(seconds=60, every=1, sheet=False, lines=4))]
+    return t
+
+
 CHECKS = {key: {'a': a} for key in ('aiplace1', 'aiplace200', 'aiplacej200')}
+CHECKS |= {key: {'b': b} for key in ('aiplb600', 'aiplb1500')}
