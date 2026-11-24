@@ -100,3 +100,9 @@ def test_brain_hunt_target_reads_the_hunt_state_by_serial():
     t = foe()
     br._hunt_goals = {1: SimpleNamespace(target=t, state=26)}
     assert br.hunt_target(1) is t and br.hunt_target(2) is None
+
+
+def test_a_weapon_without_an_anti_mask_hits_ground_and_water():
+    """The domains the AI's threat sums read: no RequiredAntiMask = the SDK's ANTI_GROUND ANTI_WATER ANTI_STRUCTURE."""
+    assert simai.simrange.hits([{'range': 10.0}]) == {'ground', 'water'}
+    assert simai.simrange.hits([CANNON]) == {'ground'}

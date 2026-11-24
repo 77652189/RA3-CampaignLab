@@ -24,12 +24,11 @@ def in_range(a, t, w, d=None):
 
 def hits(weapons):
     """The domains a body's weapons hit (ai.targets.Thing.hits) from the simulator's anti masks (R3 13f-2d:
-    moved from simproxy; read by the proxy player and the skirmish AI)."""
+    moved from simproxy; read by the proxy player and the skirmish AI). A weapon that writes no RequiredAntiMask has
+    the SDK's default, ANTI_GROUND ANTI_WATER ANTI_STRUCTURE (AssetTypeWeaponTemplate.xsd)."""
     out = set()
     for w in weapons:
-        anti = w.get('anti') or ()
-        if not anti:
-            out.add('ground')
+        anti = w.get('anti') or ('ANTI_GROUND', 'ANTI_WATER')
         for a in anti:
             if a.startswith('ANTI_AIRBORNE'):
                 out.add('air')
