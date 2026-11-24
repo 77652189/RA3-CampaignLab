@@ -68,3 +68,23 @@ bench = "aiendp PICK_NEW_TARGET: 到电厂 4 to s85 -- the team stands where the
 proves = "simai tactics: EndBehavior PICK_NEW_TARGET leaves the team where its target was"
 let = {r = "rows[74]"}
 expect = "(r['到电厂'], r['到兵营'], r['到坦克'], r['在家']) == (4, 0, 0, 0)"
+
+[[reading]]
+id = "forbidden_airborne_skips_the_kirov_as_on_the_bench"
+item = "AI 目标/AITargetingHeuristic.ForbiddenObjectStatus"
+scene = {build = "aitpairf", check = "a", until = 41.0}
+each = [{build = "aitpairn", got = [3, 0]}, {build = "aitpairf", got = [0, 3]}]
+bench = """\
+aitpairn / aitpairf (B 11-23, CampAITPAirNA_mcp_1123_230526 / AirFA_230534; 到电厂 到坦克 到飞艇 在家): a player Kirov \
+(airborne, HOLD_FIRE) nearer the Guardians than the tank. Empty ForbiddenObjectStatus: 到飞艇 3 s14-s16, 到坦克 0; \
+retail ClosestSurfaceUnitHeuristic's "AIRBORNE_TARGET SUBMERGED": 到坦克 1 @ s13, 4 s16-s29, 到飞艇 0 throughout"""
+proves = "simai targets: ForbiddenObjectStatus AIRBORNE_TARGET skips a thing in the air (the target view's status_now)"
+expect = "[min(max(x['到飞艇'] for x in rows[:20]), 3), min(max(x['到坦克'] for x in rows[:20]), 3)] == got"
+
+[[reading]]
+id = "after_an_unhittable_kirov_rampage_takes_the_plant_as_on_the_bench"
+scene = {build = "aitpairn", check = "a", until = 41.0}
+bench = "aitpairn: the Guardians (no anti-air) leave the Kirov s17, 到电厂 4 from s21 to s55 -- RAMPAGE's nearest structure"
+proves = "simai tactics: a team at a target it cannot hit ends RAMPAGE at the nearest enemy structure"
+expect = "rows[39]['到电厂'] == 4"
+mismatch = "simai: under the Kirov 4 at s15, then out of every area (到电厂 0 at s40) -- what ends the pick is not modelled"

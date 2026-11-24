@@ -59,6 +59,7 @@ def a(m):
     t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
     kill = m.facts.get('kill plant at')
     keep = [m.role(r).name for _, r, _, _ in AREAS if not (kill is not None and r == 'plant')]
+    keep += [m.role('kirov').name] if 'expect kirov' in m.facts else []
     t.scripts.append(Script('Test - targets keep', [], [('UNIT_SET_HEALTH', n, 100.0) for n in keep], once=False))
     if kill is not None:          # EndBehavior variants: the plant dies, where do they stand at the end
         t.scripts += [Script('Test - kill set', [], [('SET_MILLISECOND_TIMER', 'Test Kill Plant', kill)]),
@@ -66,9 +67,12 @@ def a(m):
                              [('NAMED_KILL', m.role('plant').name)])]
     end = END if kill is not None else AT
     (tank,) = m.cnv_units
-    for area, role, counter, label in AREAS:
+    areas = AREAS
+    if 'expect kirov' in m.facts:         # four counter lines fit: the Kirov's in the barracks' place
+        areas = tuple(a for a in AREAS if a[1] != 'barracks') + (('CNV TP Kirov Area', 'kirov', 'CNV_TP_Kirov', '到飞艇'),)
+    for area, role, counter, label in areas:
         o = m.find(m.role(role).name)
-        t.areas[area] = square(o.x, o.y, 340.0)
+        t.areas[area] = square(o.x, o.y, 180.0 if role == 'kirov' else 340.0)    # the Kirov's clear of home
         counted(counter, label, t, template=tank, area=area, player=s1)
         want = m.facts['expect ' + role]
         if kill is not None:
@@ -85,5 +89,5 @@ def a(m):
 
 
 CHECKS = {k: {'a': a} for k in ('aitpnear', 'aitpvk', 'aitpfk', 'aitpunit', 'aitpphi', 'aitpplo', 'aitpmt1',
-                                 'aitpmt2', 'aitpprs', 'aitpprh', 'aitpprp', 'aitpprl',
+                                 'aitpmt2', 'aitpairn', 'aitpairf', 'aitpprs', 'aitpprh', 'aitpprp', 'aitpprl',
                                  'aiendr', 'aiendd', 'aiendh', 'aiendp')}

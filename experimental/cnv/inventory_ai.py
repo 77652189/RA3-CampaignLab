@@ -442,7 +442,9 @@ NOTES = {
         '公开原记录与按名资格/选择回放吻合。s40状态/近/远/家3/0/0/0与2/0/3/0，对应逻辑帧327/363，'
         '原到达预期未改、两strict xfail；截图秒不能直接当模型秒，时钟/到达仍gap，不重跑。'
         'target_picks仍无两位原状态与运行时掩码，why.stat仅拒绝分类，不据此证明一般掩码公式；'
-        '原版技能及AIRBORNE_TARGET/SUBMERGED仍gap，整字段不晋升；'
+        '原版技能仍gap。B 11-23 aitpairn/aitpairf：飞着的基洛夫，原版"AIRBORNE_TARGET SUBMERGED"跳过它去坦克、'
+        '空过滤去基洛夫（读数engine_aitargetpick forbidden_airborne_skips_the_kirov，AI目标快照改用status_now）；'
+        '原版四个位已上台三个，SUBMERGED模拟器无潜艇下潜状态（不是过滤的问题），据此晋升；'
         '见work/re/c_forbidnew_report.md（旧证据见c_forbidframe_report.md及该报告指针）'),
     '目标/AITargetingHeuristic.MaxDistanceToShore': (GUESSED,
         'C按名台子engine_aishore：同一岸边电厂仅上限2000改1，2000组s14目标区4/s25全离家，'

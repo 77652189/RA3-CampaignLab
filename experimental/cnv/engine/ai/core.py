@@ -85,6 +85,7 @@ from engine.ports.command import Command  # noqa: E402
 from engine.ports import ai as ai_port, templates  # noqa: E402
 from engine.ports.observe import Observe  # noqa: E402
 import engine.combat.range as simrange  # noqa: E402
+from engine.kernel.module import status_now  # noqa: E402
 
 # The skirmish AI borrows nothing on its host (the Sim) beyond the world (simworld.WORLD_API) and the ports: its
 # orders, its micro's charge too (`power` via 'micro', B3), through the command port (`commands`, R3 13f-1); the
@@ -753,7 +754,8 @@ class Brain:
                 self.hurt_at[i] = frame
             self.hp[i] = b.hp
             owner = b.owner if b.owner != simworld.CIV else ''
-            things.append(tg.Thing(i, owner, b.template, frozenset(b.kinds), frozenset(b.status), b.x, b.y,
+            # status_now: AIRBORNE_TARGET while in the air (retail ClosestSurfaceUnitHeuristic forbids it; aitpairf)
+            things.append(tg.Thing(i, owner, b.template, frozenset(b.kinds), frozenset(status_now(b)), b.x, b.y,
                                    water=b.surface == 'water', value=float(self.host.cost(b.template)),
                                    hits=simrange.hits(b.weapons) if b.weapons else frozenset(),
                                    under_attack=frame - self.hurt_at.get(i, -10 ** 9) <= 2 * FPS,
@@ -1253,7 +1255,9 @@ class Brain:
                 continue
             # Bounded native-beacon contract: reject unsupported filters rather than
             # treating all enemies as threats. Multi-threat selection remains a gap.
-            root = ET.fromstring(self.world.xml_of(b.template))
+            # a retail GameObject fragment uses xai: undeclared (the Kirov: an AI team facing one crashed here)
+            root = ET.fromstring('<x xmlns:xai="uri:ea.com:eala:asset:instance">'
+                                 + self.world.xml_of(b.template) + '</x>')
             info = next((e for e in root.iter() if e.tag.endswith('}SkirmishAIInformation')
                          or e.tag == 'SkirmishAIInformation'), None)
             if info is None or 'DodgeSafetyDistance' not in info.attrib:

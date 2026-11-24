@@ -19,6 +19,12 @@ Builds (the state's TargetHeuristic list):
   aitpmt1   ClosestStructureHeuristic, MaxTargets 1, 8 Guardians: one team of 4 at the plant, 4 at home
   aitpmt2   the same with MaxTargets 2: the model's reading -- a team per slot, the second slot's unique nearest is
             the barracks: 4 at the plant, 4 at the barracks
+  aitpairn  + a player Kirov (HOLD_FIRE, airborne) at (-150, +650) from the AI's base: ~350 from the Guardians'
+            centre the distance is taken from (the tank ~495; b1121_mindist); CNVHSurface
+            (EnemyUnit, Distance, VitalKindOf empty, ForbiddenObjectStatus empty): the Kirov (bench 11-23: 3 under
+            it s14-s16, then RAMPAGE to the nearest structure, the plant, 4 from s21)
+  aitpairf  the same with retail ClosestSurfaceUnitHeuristic's ForbiddenObjectStatus="AIRBORNE_TARGET SUBMERGED":
+            the tank (the Guardians cannot hit the Kirov either way: TeamTemplate RequireCanAttackTarget default false)
 Facts: wake at, ai tanks, expect plant / barracks / tank / home (the model's guess, Guardians there at the end).
 """
 import resources
@@ -38,7 +44,10 @@ HEURISTICS = {
                         ForbiddenKindOf='FS_POWER ' + WALLS, RequireUniqueTarget='true'),
     'CNVHVehicle': dict(HeuristicType='EnemyUnit', SortType='Distance', VitalKindOf='VEHICLE', ForbiddenKindOf='',
                         RequireUniqueTarget='true'),
+    **{h: dict(HeuristicType='EnemyUnit', SortType='Distance', VitalKindOf='', ForbiddenObjectStatus=f,
+               RequireUniqueTarget='true') for h, f in (('CNVHSurface', ''), ('CNVHSurfaceF', 'AIRBORNE_TARGET SUBMERGED'))},
 }
+KIROV = 'SovietBomberAircraft'
 
 
 def state_xml(sid, targets, max_targets, priority='STANDARD', end='RAMPAGE'):
@@ -87,8 +96,9 @@ def personality_xml(pid, targets, max_targets, priority='STANDARD', second=None,
 
 
 def mission(name, targets, expect, max_targets=1, tanks=4, priority='STANDARD', second=None, end='RAMPAGE',
-            kill_at=None):
-    """expect = (plant, barracks, tank, home): Guardians there at the end, the model's guess."""
+            kill_at=None, kirov=None):
+    """expect = (plant, barracks, tank, home): Guardians there at the end, the model's guess; kirov = the Guardians
+    expected under a player Kirov south of the Guardians (None: no Kirov)."""
     pid = PID + name[-3:]
     plant, barracks, tank, home = expect
     m = Mission(name=name, map=resources.measured(niagara), facts={'wake at': WAKE_AT, 'ai tanks': tanks, 'expect plant': plant,
@@ -96,6 +106,11 @@ def mission(name, targets, expect, max_targets=1, tanks=4, priority='STANDARD', 
                                                'expect home': home})
     if kill_at is not None:
         m.facts['kill plant at'] = kill_at
+    if kirov is not None:
+        m.facts['expect kirov'] = kirov
+        m.spawns |= {KIROV}
+        m.put(KIROV, 'east base', -150.0, 650.0, name='UNIT - CNV TP Kirov', role='kirov')
+        m.scripts.append(Script('CNV TP - Kirov holds fire', [], [('UNIT_SET_STANCE', 'UNIT - CNV TP Kirov', 3)]))
     m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
     m.assets.append((f'{pid}.xml', personality_xml(pid, targets, max_targets, priority, second, end),
                      f'AIPersonalityDefinition:{pid}'))
@@ -132,6 +147,8 @@ MISSION = {
     'aitpplo': lambda: mission('CampAITPPlo', [('CNVHBarracks', 5), (CLOSEST, 10)], (4, 0, 0, 0)),
     'aitpmt1': lambda: mission('CampAITPMt1', [(CLOSEST, None)], (4, 0, 0, 4), tanks=8),
     'aitpmt2': lambda: mission('CampAITPMt2', [(CLOSEST, None)], (4, 4, 0, 0), max_targets=2, tanks=8),
+    'aitpairn': lambda: mission('CampAITPAirN', [('CNVHSurface', None)], (4, 0, 0, 0), kirov=4),
+    'aitpairf': lambda: mission('CampAITPAirF', [('CNVHSurfaceF', None)], (0, 0, 4, 0), kirov=0),
     # round 82: TeamTemplate.Priority -- two always-on states, P (CNVStateTP, the plant, a target from s13) and B
     # (CNVStateTQ, the barracks, from s19), both general-path teams of MaxUnits 4 over the same 4 Guardians.
     # The model guessed (4, 0, 0, 0) for all four (the plant's team first, no taking from another team); the bench
