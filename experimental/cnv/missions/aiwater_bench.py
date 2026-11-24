@@ -41,6 +41,7 @@ def air(name, sample):
     m.facts['expect plant'], m.facts['expect barracks'] = (0, 4) if sample else (4, 0)
     guard = m.find(m.role('tank').name)
     guard.template = 'AlliedAntiAirVehicleTech1'
+    guard.x, guard.y = m.site('east gate', -40, 160)  # water()'s spot stands on an MR_Tree04
     m.cast['tank'] = dataclasses.replace(m.cast['tank'], template=guard.template)
     held = [guard.name]
     if sample:
