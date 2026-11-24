@@ -137,3 +137,39 @@ def test_back_on_the_water_the_sea_wing_drops_its_air_way_onto_the_land():
     m.press(_made(s) + 1)
     s.advance(150)
     assert b.surface == 'water' and s.ground.open('water', b.x, b.y)
+
+
+def test_the_players_tengu_transform_is_the_scripts_press_and_its_reload_and_host_are_checked():
+    """E206: the player's transform (the command port's power via 'transform', simproxy's) does to a Tengu what the
+    script's Command_JAIV_Transform press does, frame by frame on a move (the press is engine_acts10's reading); its
+    15 s reload (XML) and host check are INFERRED for the player's press."""
+    from types import SimpleNamespace
+    from engine.orders import order as simorder
+    from engine.ports.command import Command
+    power = 'SpecialPower_JAIV_Transform'
+
+    def player(s, n):
+        return s.commands.do(Command('power', 'proxy', units=(n,), power=power, args=(('objects', True), ('via', 'transform'))))
+
+    tracks = {}
+    for via in ('player', 'script'):
+        s = simsmall.small_world([('tt', 'JapanAntiInfantryVehicle', 'Player_1', 100.0, 100.0),
+                                  ('tp', 'JapanAntiInfantryVehicle', 'Player_1', 100.0, 200.0),
+                                  ('vt', 'JapanAntiAirVehicleTech1', 'Player_1', 100.0, 300.0)], model=False)
+        tt, tp = s.bodies['tt'], s.bodies['tp']
+        if via == 'player':
+            assert player(s, 'tt') == (True, '') and player(s, 'tt')[0] is False        # reloading
+            assert player(s, 'vt')[0] is False and 'TRANSFORMATION_TOGGLE_STATE' not in s.bodies['vt'].status
+        else:
+            s.executor.action('NAMED_USE_COMMANDBUTTON_ABILITY', ['tt', 'Command_JAIV_Transform'], SimpleNamespace(name='p'))
+        for b in (tt, tp):
+            simorder.order_move(s, simorder.Peers(s), b, f'@1500,{b.y:g}', False)
+        tracks[via] = [(s.advance(15).t, tt.x, 'TRANSFORMATION_TOGGLE_STATE' in tt.status, tp.x) for _ in range(16)]
+    assert tracks['player'] == tracks['script']
+    assert tracks['player'][3][1] > tracks['player'][3][3]                  # the transformed one is the faster
+    s =simsmall.small_world([('tt', 'JapanAntiInfantryVehicle', 'Player_1', 100.0, 100.0),
+                              ('tp', 'JapanAntiInfantryVehicle', 'Player_1', 100.0, 200.0)], model=False)
+    assert player(s, 'tt')[0] is True
+    s.advance(225)
+    assert player(s, 'tt')[0] is True and 'TRANSFORMATION_TOGGLE_STATE' not in s.bodies['tt'].status
+    assert s.bodies['tt'].speed == s.bodies['tp'].speed
