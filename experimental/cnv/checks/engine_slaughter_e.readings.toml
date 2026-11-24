@@ -17,3 +17,12 @@ bench = "the same as a, counted as AIRCRAFT: 600 / 11 / 0 / 0"
 proves = "a negative baseline only (as a)"
 expect = ["counter('E170Frame') == 600", "counter('E170Hosts') == 11",
           "all(r['攻击期数量'] == 0 and r['返航后数量'] == 0 for r in rows)"]
+
+[[reading]]
+id = "neither_carrier_sends_a_drone_at_the_held_ship"
+scene = {build = "engine_slaughter_p", check = "p", until = 41}
+bench = "CampSlaughterPP_mcp_1123_221011: f600, OnLate 0, OffLate 0, gate 48 (hosts alive only: no drone hit the target, no p1 AIRCRAFT in either area f60-f240)"
+proves = """a negative baseline (the third, with E170 a / b): the carrier told NAMED_ATTACK_NAMED at a held SovietAntiAirShip \
+500 off launches nothing, so the container is never reached -- not evidence about SlaughterHordeContain (inventory TODO stays)"""
+expect = ["counter('E170Frame') == 600", "counter('E170Gate') == 48",
+          "counter('E170OnLate') == 0 and counter('E170OffLate') == 0"]

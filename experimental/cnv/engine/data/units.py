@@ -1210,13 +1210,14 @@ def read_fight(text, armors):
                 sets=bool(re.search(r'<WeaponSetUpdate\b', re.sub(r'<!--.*?-->', '', text, flags=re.S))))
 
 
-def frozen_armor(template, own=None):
+def frozen_armor(template, own=None, condition='SECONDARY_DAMAGE'):
     """The armour {type: percent} of a template's ArmorSet with Conditions SECONDARY_DAMAGE, from its own XML else what
     it inherits from (the retail units inherit it from BaseVehicle / BaseInfantry / BaseStructure; INFERRED that a
     unit's own ArmorSet does not drop the base's frozen one: frozen units break at a touch in the game); None where
-    none is found. Its SecondaryDamageTracker is a kernel module (engine/modules/freeze.py, step M11)."""
+    none is found. Its SecondaryDamageTracker is a kernel module (engine/modules/freeze.py, step M11). condition: a
+    ToggleState's ArmorSet (the shielded Peacekeeper's PLAYER_UPGRADE, bench engine_hitreaction_r)."""
     def frozen(xml):
-        m = re.search(r'<ArmorSet\b[^>]*\bArmor="([^"]+)"[^>]*\bConditions="[^"]*SECONDARY_DAMAGE', xml or '')
+        m = re.search(r'<ArmorSet\b[^>]*\bArmor="([^"]+)"[^>]*\bConditions="[^"]*' + condition, xml or '')
         return m.group(1) if m else None
     try:
         a = _inherited(template, own, frozen, None)
@@ -2963,7 +2964,7 @@ def hit_reaction(template, own=None):
 
     Only the retail shielded Peacekeeper condition producer is measured.
     Nonzero thresholds, light/medium reactions, death-type gates and GoIdle
-    are unsupported. Facing is deliberately left to a future measured slice.
+    are unsupported. rotate: RotateToSourceWhenDamaged (engine_hitreaction_r).
     """
     def read(xml):
         for head, inner in _blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'HitReactionBehavior'):
@@ -2978,6 +2979,7 @@ def hit_reaction(template, own=None):
                 return False
             validation = next(_blocks(inner, 'ObjectStatusValidation'), ('', ''))[0]
             return dict(seconds=_secs(_attr(head, 'HeavyDamageHitReactionLifeTimer', '0s')),
+                        rotate=_attr(head, 'RotateToSourceWhenDamaged', 'false') == 'true',
                         required=set(_attr(validation, 'RequiredStatus', '').split()),
                         forbidden=set(_attr(validation, 'ForbiddenStatus', '').split()))
         return None

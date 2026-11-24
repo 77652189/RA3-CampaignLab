@@ -9,3 +9,14 @@ CampHitReactEB_mcp_1116_004505: frozen f180 HUD, s15..80: frame 180, original HP
 (bit 64 is the original's ever-on reaction; no timing / orientation claim)"""
 proves = "HitReactionBehavior: a shielded legal hit costs both arms the same HP; the reaction bit is the only difference"
 expect = "list(rows[-1].values()) == [180, 99, 99, 895]"
+
+[[reading]]
+id = "the_shielded_peacekeeper_turns_to_its_source"
+scene = {build = "engine_hitreaction_r", check = "r", until = 13, shot_clock = true}
+bench = "CampHitReactRR_mcp_1123_220854: s15..65 frame 180, original HP 94, module-removed HP 83, gate 15"
+proves = """RotateToSourceWhenDamaged turns the standing shielded victim to the Conscript behind it after a hit, so the \
+rest come at the riot armour's front (GUN 20 %) not its rear (x5); without the module every shot is a rear one. \
+Also the ToggleState ArmorSet=PLAYER_UPGRADE armour (the off arm's 4 a shot). The Conscript's random clip timing \
+gives a shot more or less (simulator 84 for the bench's 83)"""
+expect = ["counter('E172Frame') == 180", "counter('E172Gate') == 15", "counter('E172OnHP') >= 93",
+          "82 <= counter('E172OffHP') <= 86"]

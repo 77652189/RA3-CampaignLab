@@ -94,10 +94,11 @@ def modify(world, b):
             del b.auras_on[mid]
         else:
             mods.append(simunits.modifier(src, mid))
-    toggle_bits = set()
+    toggle_bits, toggle_armor = set(), None
     for i, tm in enumerate(toggles_of(b)):              # each toggle module's current ToggleState
         st = tm['states'][b.toggle_at.get(i, 0) % len(tm['states'])]
         toggle_bits |= st['status']
+        toggle_armor = st.get('armor') or toggle_armor  # its ArmorSet: the set of those Conditions (INFERRED: the last)
         if st['modifier'] and simunits.modifier(xml, st['modifier']):
             mods.append(simunits.modifier(xml, st['modifier']))
     step = cold_of(b)[0]['steps'][b.cold_step] if b.cold_step >= 0 else None
@@ -109,7 +110,7 @@ def modify(world, b):
     on, off = simunits.status_bits(xml, b.upgrades | player_bits)
     own = b.script_status | b.attachment_status | b.engine_status
     e = simunits.effect(mods, on | own | toggle_bits, off)
-    if not mods and not on and not off and b.base is None:
+    if not mods and not on and not off and not toggle_armor and b.base is None:
         b.status = own | toggle_bits
         if b.slots:
             b.find(interfaces.WeaponSet).hold(simunits.pick_weapons(b.slots, b.status, upgrades_of(b)))
@@ -121,7 +122,8 @@ def modify(world, b):
         st = st | {'IMMOBILE', 'NO_ATTACK', 'UNATTACKABLE'}
     if 'UNDER_FROZEN' in st or (step and step[2]):          # frozen (OnEnterDisable): stopped and silent
         st = st | {'IMMOBILE', 'NO_ATTACK'}
-    b.armor = cold_of(b)[1] if step and step[3] and cold_of(b)[1] else b.base['armor']
+    b.armor = cold_of(b)[1] if step and step[3] and cold_of(b)[1] else \
+        (toggle_armor and simunits.frozen_armor(b.template, world.own, toggle_armor)) or b.base['armor']
     b.status = st
     # Suppression SPEED75%:50->37.5 (bench44->59); retain fractional speed.
     locomotor.write(world.world, b, speed=b.base['speed'] * e['SPEED'])

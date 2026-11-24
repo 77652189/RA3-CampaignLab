@@ -423,7 +423,7 @@ class Damage:
                 continue
             before_hp = t.hp
             t.damage(dmg)
-            self.hit_reaction_damage(world, t, before_hp - t.hp, peers)
+            self.hit_reaction_damage(world, t, before_hp - t.hp, peers, by)
             leech.refund(leech_events.get(t.serial), t, before_hp, gap)
             t.set_last_damage(by.owner, by)
             if t.hp <= 0 and t.alive:
@@ -438,12 +438,14 @@ class Damage:
         registry.Context.mark_cold: SecondaryDamage)."""
         self.cold_on[target.serial] = (target, by)
 
-    def hit_reaction_damage(self, world, target, damage, peers):
-        """E172 gun-hit condition only; rotation/animation are unmodelled.
+    def hit_reaction_damage(self, world, target, damage, peers, by):
+        """E172 gun-hit condition; RotateToSourceWhenDamaged turns a standing target (no way, no live goal) to
+        `by` at its turn rate (engine_hitreaction_r: shielded, a back hit once, then front hits). Animation unmodelled.
 
         INFERRED: start/refresh the SDK lifetime on positive applied damage,
         using the common expiry store. The bench asserts ever-on and final
         clear, not the precise first/last frame or repeated-hit refresh rule.
+        Turning only when the reaction plays, and the idle test, are INFERRED.
         Script health changes, death blasts and other damage paths are gaps.
         """
         if damage <= 0 or target.hp <= 0:
@@ -455,8 +457,10 @@ class Damage:
         if (rule and rule['seconds'] > 0 and rule['required'] <= set(target.status)
                 and not rule['forbidden'] & set(target.status)):
             peers.set_model_condition(target, 'HIT_REACTION', rule['seconds'])
+            if rule['rotate'] and not target.path and not getattr(target.goal, 'alive', False):
+                target.face = math.atan2(by.y - target.y, by.x - target.x)
             world.used.add('hit reaction')
-            world.guessed.add('HitReactionBehavior: exact timing/refresh INFERRED; rotation unmodelled')
+            world.guessed.add('HitReactionBehavior: exact timing/refresh INFERRED')
 
     def chill(self, world, dt, peers):
         """`dt` seconds of the cryo beams aimed this tick (fight's `chilling`) and of melting (ALIGN 'freeze'): the
