@@ -25,7 +25,9 @@ TANK = 'AlliedAntiVehicleVehicleTech1'
 ENGINEER = 'AlliedEngineer'
 CHOKE = 6
 LABEL = {'far': '远绕', 'mid': '中绕', 'near': '近绕', 'shut': '围死', 'team': '同队移动', 'attack team': '同队攻移',
-         'narrow': '窄口', 'wide': '宽口', 'd1400': '绕1400', 'd1800': '绕1800', 'd2600': '绕2600'}
+         'narrow': '窄口', 'wide': '宽口', 'd1400': '绕1400', 'd1800': '绕1800', 'd2600': '绕2600',
+         'sq ifv': '挤口车', 'sq tank': '挤口守', 'sq apoc': '挤口天'}
+SQUEEZE = {'sq ifv': IFV, 'sq tank': TANK, 'sq apoc': 'SovietAntiVehicleVehicleTech3'}    # radius 14 / 23.3 / 30.8
 LIMIT = ('near', 'd1400', 'd1800')   # limit: the way round about 1 100 (control) / 1 400 / 1 800 (2 600: the first run, no)
 
 
@@ -46,6 +48,8 @@ def mission():
         for k in range(CHOKE):
             m.put(TANK, f'{lane} start', -125.0 + 50.0 * k, 0, role=f'{lane} tank {k + 1}',
                   name=f'UNIT - CNV Paths {_key(lane)} Tank {k + 1}')
+    for lane, tpl in SQUEEZE.items():
+        m.put(tpl, f'{lane} start', role=f'{lane} unit', name=f'UNIT - CNV Paths {_key(lane)} Unit', angle=90.0)
     return m
 
 
@@ -187,6 +191,26 @@ def group(m):
     return t
 
 
+def squeeze(m):
+    """Does a unit's size go into its way (A355; A2's crest, work/mappage/a2/notes.md r7)? An IFV, a Guardian and
+    an Apocalypse (radius 14 / 23.3 / 30.8), each in its own box, sent through a wall whose straight gap is 30 across
+    (the IFV fits, the tanks not), a 150 one at the east end. Counters: 1 in the way round, 10 at the goal, 100 at
+    the 30 gap's mouth. Size ignored: all three head for the 30; size in: the tanks go round. Read (测, 11-24):
+    all three straight through the 30 (at the goal s2 / s4 / s7), none round -- engine_paths.readings.toml."""
+    t = Test()
+    order = [('MAP_REVEAL_ALL_PERM', m.player('p1'))]
+    for lane in SQUEEZE:
+        order += _go(m, t, lane, [f'{lane} unit'])
+        u = m.role(f'{lane} unit').name
+        _scored(t, lane, [(u, _area(m, t, f'{lane} round', 75.0), 1), (u, _area(m, t, f'{lane} goal', 100.0), 10),
+                          (u, _area(m, t, f'{lane} mouth', 30.0), 100)])
+    t.scripts.insert(0, Script('Test - go', [], order))
+    t.bench = [('bench_watch', dict(seconds=40, every=1, sheet=False, lines=3))]
+    t.expect = [('挤口车', 0, 'ever==', 10, 40)]
+    return t
+
+
 # the builds this module makes and their checks (cnv/registry.py)
 MISSION = {'engine_paths': mission}
-CHECKS = {'engine_paths': {'detour': detour, 'limit': limit, 'stuck': stuck, 'alive': alive, 'where': where, 'group': group}}
+CHECKS = {'engine_paths': {'detour': detour, 'limit': limit, 'stuck': stuck, 'alive': alive, 'where': where, 'group': group,
+                           'size': squeeze}}

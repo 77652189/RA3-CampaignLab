@@ -35,7 +35,13 @@ BOXES = {
     'd1800': ((300.0, 4150.0, 1477.0, 4950.0), 4550.0, (1277.0, 1477.0)),
     'd2600': ((1700.0, 4150.0, 3285.0, 4950.0), 4550.0, (3085.0, 3285.0)),
     'd1400': ((3400.0, 4150.0, 4371.0, 4950.0), 4550.0, (4171.0, 4371.0)),     # 671 east: about 1 400
+    # west of the team lanes (y 1500..2300), 'squeeze' (A355): the straight gap 30 across (3 cells), a second one 150
+    # at the east end (ROUND; the way round about 750 for 500 straight) -- which unit sizes take the 30
+    'sq ifv': ((300.0, 1500.0, 800.0, 2300.0), 1900.0, (435.0, 465.0)),
+    'sq tank': ((900.0, 1500.0, 1400.0, 2300.0), 1900.0, (1035.0, 1065.0)),
+    'sq apoc': ((1500.0, 1500.0, 2000.0, 2300.0), 1900.0, (1635.0, 1665.0)),
 }
+ROUND = {k: (b[0][2] - 150.0, b[0][2] - 10.0) for k, b in BOXES.items() if k.startswith('sq ')}
 SHUT = (4200.0, 3600.0)            # the closed ring's centre
 GAPS = {k: g for k, (_, _, g) in BOXES.items()}
 # lane: (start, goal)
@@ -51,6 +57,7 @@ LANES = {
     'd1800': ((500.0, 4350.0), (500.0, 4750.0)),
     'd2600': ((1900.0, 4350.0), (1900.0, 4750.0)),
     'd1400': ((3600.0, 4350.0), (3600.0, 4750.0)),
+    **{k: ((BOXES[k][0][0] + 150.0, 1650.0), (BOXES[k][0][0] + 150.0, 2150.0)) for k in ROUND},
 }
 
 SITES = {k: island.SITES[k] for k in ('island', 'start', 'base factory', 'base power', 'west field')}
@@ -59,6 +66,9 @@ for _name, ((_sx, _sy), (_gx, _gy)) in LANES.items():
     SITES[f'{_name} goal'] = Site(_gx, _gy, 60.0, f'where the {_name} lane\'s units are sent')
 for _name, ((_x0, _y0, _x1, _y1), _wy, (_g0, _g1)) in BOXES.items():
     SITES[f'{_name} gap'] = Site((_g0 + _g1) / 2, _wy - 150.0, 60.0, f'the {_name} box\'s gap, on the start side')
+for _name, (_r0, _r1) in ROUND.items():
+    SITES[f'{_name} round'] = Site((_r0 + _r1) / 2, BOXES[_name][1], 60.0, f'the {_name} box: its way round')
+    SITES[f'{_name} mouth'] = Site(sum(BOXES[_name][2]) / 2, BOXES[_name][1] - 45.0, 30.0, 'the 30 gap, start side')
 SITES['shut near'] = Site(SHUT[0], SHUT[1] - FLOOR - RING - 60.0, 50.0, "outside the ring, the start's side")
 SITES['shut far'] = Site(SHUT[0], SHUT[1] + FLOOR + RING + 60.0, 50.0, 'outside the ring, the far side')
 PLAYERS = island.PLAYERS
@@ -80,6 +90,8 @@ def walls(h, w, border):
         on |= rect(x0 - FENCE, y0 - FENCE, x1 + FENCE, y0) | rect(x0 - FENCE, y1, x1 + FENCE, y1 + FENCE)
         on |= rect(x0 - FENCE, y0, x0, y1) | rect(x1, y0, x1 + FENCE, y1)
         on |= rect(x0, wy - FENCE / 2, x1, wy + FENCE / 2) & ~rect(g0, -1e9, g1, 1e9)
+    for k, (r0, r1) in ROUND.items():
+        on &= ~rect(r0, BOXES[k][1] - FENCE, r1, BOXES[k][1] + FENCE)
     d = np.hypot(xs - SHUT[0], ys - SHUT[1])
     on |= (d >= FLOOR) & (d <= FLOOR + RING)
     return on
@@ -95,6 +107,15 @@ def terrain(m):
     for j, i in zip(*np.nonzero(walls(hm.height, hm.width, hm.border))):
         tiles.set_bit(0, int(i), int(j), True)
     tiles.store()
+
+
+from maps.probe_block import SCENERY, ground  # noqa: E402,F401  (level ground: the simulator reads this map too)
+
+
+def impassable():
+    """Field 0's cells as the simulator asks them (sim.Ground)."""
+    w, h, b = platmap.CONTAINER
+    return walls(h, w, b)
 
 
 def like(m, objs, tmpl):

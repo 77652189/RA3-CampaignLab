@@ -41,6 +41,8 @@ class RouteGrid:
     This is derived data, not STATE. Ground owns the cache per map instance and clears it
     on obstacle changes and snapshot restore. Surface is the locomotor's only input to
     this grid: hull size and crush level affect movement elsewhere, not endpoint snapping.
+    No unit size in the way either (bench 11-24 engine_paths size: a Guardian and an
+    Apocalypse went straight through a 30 gap with a 150 one open nearby).
     """
 
     ENDPOINT_LIMIT = 32_768

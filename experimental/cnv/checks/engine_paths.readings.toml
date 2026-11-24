@@ -1,0 +1,14 @@
+# Bench readings of checks/engine_paths.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+# A355 (bench CampPathsSize, 2026-11-24, HEAD 409825a5): an IFV, a Guardian and an Apocalypse (radius 14 / 23.3 /
+# 30.8) each sent through a field-0 wall's 30 gap, a 150 one at the box's east end. Counters per second: IFV s2 at
+# the goal; Guardian s1 at the mouth, s4 at the goal; Apocalypse s3 at the mouth, s7 at the goal; none ever in the
+# way round. The simulator (no model): s2/s4, s3/s6, s4/s9 -- the same ways, each about 2 s behind (setting off,
+# R2's movement family; not asserted here).
+[[reading]]
+id = "size_does_not_go_into_the_way"
+scene = {build = "engine_paths", check = "size", until = 12}
+bench = "挤口车 / 挤口守 / 挤口天: all three straight through the 30 gap to the goal by s7, never by the 150 way round"
+proves = "path.Ground: the routing grid has no unit size -- a Guardian and an Apocalypse plan through a gap narrower than their bodies (A2's 80 crest, work/mappage/a2/notes.md r7)"
+expect = ["all(r[k] % 10 == 0 for r in rows for k in ('挤口车', '挤口守', '挤口天'))",
+          "[rows[-1][k] for k in ('挤口车', '挤口守', '挤口天')] == [10, 10, 10]"]
