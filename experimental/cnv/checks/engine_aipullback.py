@@ -92,7 +92,7 @@ Readings (11-09; 4 Hammers vs 12 Peacekeepers, Crush false; tanks reach the plan
   plan moves foe 1 / 2 50 west of members 3170 / 3171; foe 1 already dead (poke not found), foe 2 placed)
   airevkp1 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-17 4 3 1 | s18-85 4 2 1; f272 both members back up to 135 (R - 10)
            from foe 2 <- ReverseMove, 19 back-up orders in the run = d133's airevk2
-  airevkp0 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-85 4 3 1; the same poke, no back-up order (tests/test_ai_reverse_poke.py)
+  airevkp0 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-85 4 3 1; the same poke, no back-up order (readings: engine_aipullback.readings.toml)
   (11-16, D round 182) airevkh PASS (airevk1, 坦克数 swapped for the foes' health % read BEFORE the frame's keep):
            血1 血2 近敌 敌坦  s2-54 100 100|92 4 2 | s56 4 1 | s60-142 3 1 -- the keep holds (a read before it is 100, or
            92 = one 35 shell); here the near foe lived to s56, yet members 3170 / 3171 joined the team f213 exactly as in

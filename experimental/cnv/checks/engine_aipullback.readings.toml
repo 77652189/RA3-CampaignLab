@@ -71,3 +71,25 @@ airevt1 (UseGatherState off -> state 2, an AlliedBaseDefense as target): 近塔 
 kills them one by one (0 from s47)"""
 proves = "simai gather state: with UseGatherState off and a turret as the target nobody moves"
 expect = "all(r['近塔'] == r['中圈'] == r['坦克数'] for r in rows) and rows[-1]['坦克数'] == 0"
+
+[[reading]]
+id = "a_placed_foe_beside_the_team_starts_as_on_the_bench"
+scene = {build = "airevkp1", check = "a", until = 13.0}
+each = [{build = "airevkp1"}, {build = "airevkp0"}]
+bench = "airevkp1 / airevkp0 (11-14, D round 135b): 坦克数 近敌 敌坦 4 4 2 at s1-12"
+proves = "simai reverse move: the placed-foe probe starts with four tanks near the foes, two foes alive"
+expect = ["win(1, 12, '坦克数') == [4] * 12", "win(1, 12, '近敌') == [4] * 12", "win(1, 12, '敌坦') == [2] * 12"]
+
+[[reading]]
+id = "a_placed_foe_backs_the_team_off_only_with_the_reverse_switch"
+scene = {build = "airevkp1", check = "a", until = 86.0}
+each = [{build = "airevkp1", near = 2, t0 = 18}, {build = "airevkp0", near = 3, t0 = 14}]
+bench = """\
+11-14, D round 135b (PREMISE: the start is placed -- at f250 the CNVCmd host's plan moves foe 2 50 west of member \
+3171; foe 1 already dead): airevkp1 (on) s13 4 4 1, s14-17 4 3 1, s18-85 4 2 1, the host: f272 both members get a back-up \
+order (ReverseMove) to a point 135 = R - 10 from foe 2, 19 in the run; airevkp0 (off) s14-85 4 3 1, no back-up order \
+(fixtures dropped with tests/test_ai_reverse_poke.py; the same conclusion as airevk2 / airevk2o, script-swapped)"""
+proves = "simai reverse move: a member whose own target is within R - 10 backs off to R - 10, only with the switch on"
+expect = "win(t0, 85, '近敌') == [near] * (86 - t0)"
+mismatch = """the simulator keeps 近敌 4 all along on both (敌坦 1 from s15): it carries out no plan poke (t.inject), and its \
+team is late closing in as in airev1's mismatch above"""
