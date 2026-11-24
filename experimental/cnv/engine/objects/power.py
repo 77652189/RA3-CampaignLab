@@ -65,7 +65,10 @@ PROTOCOL_HITS = {
 # f1 / f2 / f3 / fn, two runs each, the same: the tank in the radius loses ~38-48 % at ~75 frames, at every level, a
 # Japanese yard or not -- two crashes of 95 on a chosen target (INFERRED, not the XML's 2 / 3 / 4); a free aircraft
 # crashes at a random point in the radius (the simulator's draw) on whatever is within 20; the guns' strafing (the
-# tanks at 150 / 200 lose 0-15 %) not simulated.
+# tanks at 150 / 200 lose 0-15 %) not simulated. The 75 frames, from the program (work/re a353): the StrafeAreaSquad
+# nugget makes each aircraft 1500 out, its StrafeAreaUpdate fires the self-projectile kamikaze (range 99999, speed 300)
+# from the first frame of its approach: 1500 / 300 = 5 s. The update's sweep fields are never read; the guns are the
+# WeaponSet's own.
 SQUADRON = {'specialpowerfinalsquadron_l1': (5, 50.0), 'specialpowerfinalsquadron_l2': (10, 75.0),
             'specialpowerfinalsquadron_l3': (15, 100.0)}
 CRASH, CRASHES, CRASH_AT = [(0.0, 95.0), (20.0, 95.0)], 2, 75
