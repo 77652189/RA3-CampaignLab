@@ -1,0 +1,17 @@
+# Bench readings of checks/engine_charge_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E213: ChargeWeaponUpdate, the Wave-Force tower as retail against the module taken out, both held 16 s then told to
+# attack. On / Off = the target's health % x 1000 at its first loss + frames from GO to it; End = On x 1000 + Off at END.
+
+[[reading]]
+id = "a_charged_wave_force_tower_fires_at_once_and_harder"
+scene = {build = "engine_charge_e", check = "a", until = 28, shot_clock = true}
+bench = """\
+CampChargeEA_mcp_1124_032616 at 2ec9d0b6, PASS: 390 84010 89048 64068. Off: the first loss 48 frames after the \
+order (PreAttackDelay 45 + the order frame), 437.5 = 350 x EXPLOSIVE 125 % (89 %); On: 10 frames (no pre-attack; \
+likely the turret's turn, hidden under Off's delay), 16 % (1.4 x 437.5 = 612.5 -> 84.7 %)"""
+proves = """ChargeWeaponUpdate is not presentation: a Wave-Force tower idle past ChargeTime + OverChargeTime fires \
+its first shot without the PreAttackDelay and with OverChargePercent more damage. Not measured: a partial charge, \
+the charge after a shot (End: both arms 1-2 % above three plain shots -- the target's, not the module's)"""
+expect = ["counter('E213Frame') == 390", "counter('E213On') == 84010", "counter('E213Off') == 89048"]
+mismatch = """sim 89048 89048 (End 67067): no ChargeWeaponUpdate -- both arms wait the 3 s pre-attack and hit 437.5. \
+Off as the bench; End 1 % lower in both arms (the bench's target gets ~6 health a second back after a hit: not read)"""
