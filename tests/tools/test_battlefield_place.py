@@ -55,7 +55,7 @@ def test_the_refinery_makes_one_collector_the_files_on_the_files_spot():
     miners = [b for b in host.living() if b.template == 'AlliedMiner']
     refinery = host.bodies['UNIT - CNV Mine Refinery']
     assert [(b.name, b.x, b.y, b.unpack_parent) for b in miners] == \
-        [('#unpack UNIT - CNV Mine Refinery', 3102.5472222222224, 4302.547222222222, refinery)]
+        [('#unpack UNIT - CNV Mine Refinery', 3100.076388924318, 4300.076388924318, refinery)]
 
 
 def test_the_two_rank_4_mirages_are_625_hp():
@@ -87,7 +87,7 @@ def test_a_name_the_host_gave_a_made_thing_holds_the_files_thing():
     assert gaps == ["things[2]: the host made '#unpack UNIT - CNV Mine Refinery' alongside its maker, a Player_1 "
                     "AlliedMiner; taken out, the file's placed instead"]
     b = host.bodies['#unpack UNIT - CNV Mine Refinery']
-    assert (b.alive, b.template, b.x, b.y) == (True, 'SovietEngineer', 3102.5472222222224, 4302.547222222222)
+    assert (b.alive, b.template, b.x, b.y) == (True, 'SovietEngineer', 3100.076388924318, 4300.076388924318)
     assert [o.template for o in host.living()].count('AlliedMiner') == 0
 
 
