@@ -23,6 +23,7 @@ import labpaths
 
 
 from checks.engine_modulebatch import native
+from checks import engine_scripts8 as s8
 from maps import infiltrator_batch
 from parts import Mission, Script, Test, Unit, kindof, square
 
@@ -188,10 +189,56 @@ def check_q(m):
     return t
 
 
+# Build r (coordinator 11-23, after q): the order by hand, as HealCrate c. One p1 retail carrier 100 south of the ship
+# pad, an s1 SovietPowerPlant ashore 350 south of it (inside the weapon's 200-1000); the camera goes to their midpoint at
+# s1, the bench boxes the carrier and right-clicks the plant. Lines: frame; gate (a p1 AIRCRAFT near the pair 1, the
+# plant attacked by an AlliedAttackDrone 2, the plant deleted 4 -- 150 frames after that first hit, so the bench's slow
+# steps do not matter); frames since the hit; Late, the frames 60-240 after the deletion with a p1 AIRCRAFT near the
+# pair. Prediction: 1500 / 7 / 400 / small (the last sortie's way home, then taken in). Gate 0: not even by hand.
+def mission_r():
+    m = Mission(name='CampSlaughterR', map=infiltrator_batch, units=[])
+    m.put('AlliedAntiStructureShip', 'ship', 0, -100, side='p1', role='R host', name='E170 R host')
+    m.put('SovietPowerPlant', 'ship', 0, -450, side='s1', role='R target', name='E170 R target')
+    m.spawns.add('AlliedAttackDrone')
+    return m
+
+
+def check_r(m):
+    t = Test()
+    t.counters = [('E170Frame', '完成帧'), ('E170Gate', '前置位'), ('E170Since', '命中后帧'), ('E170Late', '删后有机帧')]
+    victim = m.role('R target').name
+    (x, y), (px, py), (vx, vy) = (m.site('ship', 0, dy) for dy in (-100, -450, -275))
+    t.waypoints['E170 R view'] = (vx, vy)
+    t.areas['E170 R'] = square(vx, vy, 450)
+    air = ('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', m.player('p1'), 3, 1, kindof('AIRCRAFT'), 'E170 R')
+    since = lambda op, n: ('COUNTER', 'E170Since', op, n)
+    t.scripts = [Script('Test - frame', [('COUNTER', 'E170Frame', 0, 1500)], [('INCREMENT_COUNTER', 1, 'E170Frame')],
+                        once=False),
+                 Script('Test - start', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]),
+                 Script('Test - heal', [('NAMED_NOT_DESTROYED', victim)], [('UNIT_SET_HEALTH', victim, 100)], once=False),
+                 Script('Test - out', [air], [('INCREMENT_COUNTER', 1, 'E170Gate')]),
+                 Script('Test - hit', [('NAMED_NOT_DESTROYED', victim),
+                                       ('NAMED_ATTACKED_BY_OBJECTTYPE', victim, 'AlliedAttackDrone')],
+                        [('INCREMENT_COUNTER', 2, 'E170Gate'), ('SET_COUNTER', 'E170Since', 1)]),
+                 Script('Test - since', [since(3, 1), since(0, 400)], [('INCREMENT_COUNTER', 1, 'E170Since')], once=False),
+                 Script('Test - remove victim', [since(2, 150)],
+                        [('NAMED_DELETE', victim), ('INCREMENT_COUNTER', 4, 'E170Gate')]),
+                 Script('Test - late', [since(3, 210), since(1, 390), air], [('INCREMENT_COUNTER', 1, 'E170Late')],
+                        once=False)]
+    s8.at(t, 'view', 1., [('MOVE_CAMERA_TO', 'E170 R view', 0.5, 0.0, 1.0, 1.0)])
+    t.expect = [('完成帧', 0, 'ever==', 1500), ('前置位', 0, 'ever==', 7)]
+    watch = dict(every=1, sheet=False, lines=4)
+    t.bench = [('bench_watch', dict(watch, seconds=2.0)), ('bench_view', dict(x=vx, y=vy, look=True)),
+               ('bench_box', dict(x0=x - 100, y0=y - 50, x1=x + 100, y1=y + 50, look=True)),
+               ('bench_click', dict(x=px, y=py, right=True, look=True)), ('bench_watch', dict(watch, seconds=75.0))]
+    return t
+
+
 MISSION = {'engine_slaughter_e': mission, 'engine_slaughter_p': lambda: mission('CampSlaughterP', ('p1', 'p1')),
-           'engine_slaughter_q': mission_q}
+           'engine_slaughter_q': mission_q, 'engine_slaughter_r': mission_r}
 CHECKS = {'engine_slaughter_e': {'a': check, 'b': lambda m: check(m, corrected=True)},
-          'engine_slaughter_p': {'p': check_p}, 'engine_slaughter_q': {'q': check_q}}
+          'engine_slaughter_p': {'p': check_p}, 'engine_slaughter_q': {'q': check_q},
+          'engine_slaughter_r': {'r': check_r}}
 # Each arm's drones are counted by its own player, so the hosts (and targets) swap sides: a confound, held here
 # as the one freedom; both arms read 0 (a negative baseline). Put both on p1 and count by area when E170 reopens.
 CONTROL_ARMS = {'engine_slaughter_e': ('On', 'Off', 'side'), 'engine_slaughter_p': ('On', 'Off')}

@@ -35,3 +35,11 @@ proves = """a negative baseline (the fourth): not the target (the weapon's Requi
 ANTI_STRUCTURE and a plant ashore draws nothing either), not the clone (the retail carrier is as dark) -- the scripted \
 attack order does not start this weapon; the container is never reached (inventory TODO stays)"""
 expect = ["counter('E170Frame') == 600", "all(r['出机位'] == 0 and r['命中位'] == 0 for r in rows)"]
+
+[[reading]]
+id = "the_retail_carrier_sends_no_drone_even_by_hand"
+scene = {build = "engine_slaughter_r", check = "r", until = 101}
+bench = "CampSlaughterRR_mcp_1123_225828: the bench boxed the carrier (s26, its portrait up) and right-clicked the plant's dome (s40); f1500, gate 0, since-hit 0, late 0 to s123 -- the carrier never moves, nothing leaves its deck"
+proves = """a negative baseline (the fifth): not the scripted order either -- a player's own attack order at a plant 350 off \
+(inside the weapon's 200-1000) draws no sortie; the container is never reached (inventory TODO stays)"""
+expect = ["counter('E170Frame') == 1500", "all(r['前置位'] == 0 and r['删后有机帧'] == 0 for r in rows)"]
