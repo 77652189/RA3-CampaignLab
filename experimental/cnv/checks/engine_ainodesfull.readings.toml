@@ -1,0 +1,18 @@
+# Bench readings of checks/engine_ainodesfull.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# OpenNodeHeuristic (CampaignLab work/re l4_states.md 10, B 11-24: every known node not full, no enemy object but a
+# wall within MinDistanceFromEnemy of it).
+
+[[reading]]
+id = "an_open_node_is_one_no_enemy_stands_within_the_distance_of"
+item = ["AI 启发条件/OpenNodeHeuristic", "AI 启发条件/OpenNodeHeuristic.Exists",
+        "AI 启发条件/OpenNodeHeuristic.MinDistanceFromEnemy"]
+scene = {build = "aiopn1900", check = "a", until = 70.0}
+each = [{build = "aiopn1900", home = 0}, {build = "aiopn2250", home = 4}]
+bench = """\
+Bench 2026-11-24 (CampOpNode1900A_mcp_1124_072530 / 2250A, same queue): woken s10, the control Guardians leave s15 on \
+both; the Peacekeepers (OpenNode Exists=true) leave s15 at 1900 and stay home to s132 at 2250. Of Niagara's 9 ore nodes \
+the farthest from the player's yard and plant stands 2074 from the plant"""
+proves = """\
+simai Brain.open_node: the strategic fact asks every ore node on the map (not only the ones near the base) for an \
+enemy object within MinDistanceFromEnemy of the node itself"""
+expect = "win(60, 69, '满态在家') == [home] * 10 and win(60, 69, '常量在家') == [0] * 10"

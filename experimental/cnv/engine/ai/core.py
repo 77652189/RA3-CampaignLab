@@ -134,6 +134,7 @@ EXPANSION_ROW = 67.0
 # aiskind: the far fields (>= ~1280 from the yard) are beyond 600 + 75 of it -> never wanted.
 SERVED = 300.0
 NODE_REACH = 75.0                   # D138 2 / B208 (read): the constant both terms of that scan add
+NODE_WALLS = {'WALL_PIECE', 'WALL_HUB', 'WALL_SEGMENT'}     # OpenNode's enemy search leaves these out (read)
 NODE_MINERS = 3                     # B210 (bench ainf2 / ainf4 / ainf3: 1 / 2 / 3 own collectors a refinery, its own
                                     # included -> full only at 3): INFERRED the node wrapper's capacity, unread
 ALLY_OVERLAP_OK = True              # B213 allied_ok: an own radius over a friend's lets the spot through (H2, INFERRED:
@@ -808,6 +809,7 @@ class Brain:
                'power advantage': self.power_advantage,
                'tech buildings': self.tech_buildings(),
                'nodes full': not self.open_nodes(miners=True),            # AllNearbyNodesFull (B208 / B210)
+               'open node': self.open_node,                               # OpenNodeHeuristic
                'attacked': self.attacked, 'energy': self.energy,
                # the private AIPlayer.available: no income -> the budget share pays nothing (bench engine_aitower e).
                # A refinery counts: the retail one brings its own miner (SpawnBehavior SpawnOnUnpack), which the
@@ -1760,7 +1762,7 @@ class Brain:
                    ((b, self._build_radius(b.template)) for b in bodies
                     if b.owner == self.player and 'STRUCTURE' in b.kinds) if br > 0)
 
-    def open_nodes(self, reach=None, bodies=None, miners=False):
+    def open_nodes(self, reach=None, bodies=None, miners=False, near=True):
         """The ore nodes the AI could still use (D138 2 / B208, read): not served, and near one of its build-radius
         structures (_near_builder; reach: the scan's constant NODE_REACH, read). Served (INFERRED: the engine skips
         a node whose wrapper's taken count reached its capacity, the wrapper unread): an own refinery within SERVED
@@ -1786,7 +1788,17 @@ class Brain:
         if miners:
             have = sum(b.owner == self.player and 'HARVESTER' in b.kinds for b in bodies)
             served = set(sorted(served)[:have // NODE_MINERS])
-        return [n for n in nodes if n.name not in served and self._near_builder(n, reach, bodies)]
+        return [n for n in nodes if n.name not in served and (not near or self._near_builder(n, reach, bodies))]
+
+    def open_node(self, distance):
+        """facts' 'open node' (OpenNodeHeuristic, B 11-24 read, work/re l4_states.md 10): the same node table as
+        open_nodes, without the near-a-builder test -- any node not full with no enemy object but a wall within
+        `distance` of it (distance <= 0: no search). Bench aiopn1900 / aiopn2250: every node on the map counts, the
+        distance from the node. The search's edge (< or <=) INFERRED."""
+        bodies = self.world.living()
+        foes = [b for b in bodies if b.owner in self.view.enemies and not NODE_WALLS & set(b.kinds)]
+        return any(distance <= 0 or all(math.hypot(f.x - n.x, f.y - n.y) >= distance for f in foes)
+                   for n in self.open_nodes(bodies=bodies, miners=True, near=False))
 
     def allied_ok(self, x, y):
         """CanBuildInAlliedBuildRadii (B212 read, work/re l4_allied_radii.md): unless the personality says true, the
