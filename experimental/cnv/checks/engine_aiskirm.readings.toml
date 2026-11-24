@@ -423,6 +423,9 @@ proves = "simai unit builder: after the opening it lives on its budget share"
 let = {at = "lambda s: next(r for t, r in zip(times, rows) if t >= s)", made = "lambda r: r['警犬总数'] + r['维和总数'] + r['标枪总数']"}
 expect = "made(at(168)) > made(at(127))"
 
+# Holds on seed 1 by the draw, not by a fix: model 929e5a8 (the egg-unpack state starts slotless) moved the draws and
+# seed 1's restart went s164 -> s148. Seeds 1-6 on the simulator: 164/151/153/148/151/151 before, 148/151/162/148/151/186
+# after; bench s134-149.5. The slower-production class (B round 217, engine_aicap aicapmed) is still open.
 [[reading]]
 id = "skirmish_ai_builds_again_as_soon_as_the_opening_is_done"
 scene = {build = "aiskirm", check = "u", until = 300}
@@ -432,10 +435,6 @@ opening's budget ends (~120 s); seeds 1-6 gave 126-141.5 s (bound 145 s = s153)"
 proves = "simai budget: the barracks spends its share of the bank as soon as the opening ends"
 let = {made = "lambda r: r['警犬总数'] + r['维和总数'] + r['标枪总数']", base = "made(next(r for t, r in zip(times, rows) if t >= 127))", again = "next((t for t, r in zip(times, rows) if t > 127 and made(r) > base), None)"}
 expect = "again is not None and again <= 153"
-mismatch = """\
-B round 217: the first barracks unit after the opening at s164 (153.5 s after the simulator's wake; bound s153, \
-bench s133). Red already on e6dfeeb7 (D169) and with model 05d99e0 reverted; the same slower-production class as \
-engine_aicap's specific_unit_cap[aicapmed] (C 05d99e0 / D 1afb989a), its first-bad commit not bisected"""
 
 [[reading]]
 id = "order_account_production_deposit_feeds_the_barracks"
