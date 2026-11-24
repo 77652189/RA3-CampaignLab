@@ -116,10 +116,9 @@ expect = ["any(r['见'] >= 100 for r in rows if 60 <= r['帧'] <= 120)", "all(r[
 id = "acts_drop_age_the_bomber_leaves_soon"
 scene = {build = "engine_acts_drop", check = "age", until = 24}
 bench = "age as above: no AIRCRAFT in Test A12 Whole from frame 135 (about 20 frames after the last passenger)"
-proves = "sim the flight off: gone from the map's square within ~1.5 s of the press + flight + unload"
+proves = """sim the flight off: gone from the map's square within ~1.5 s of the press + flight + unload (ability.flee_start \
+edge: to the nearest border point, 300 north here; was 1000 along the facing, 0 only from ~205)"""
 expect = "all(r['见'] < 100 for r in rows if r['帧'] >= 140)"
-mismatch = """sim 101 at frame 151, 0 from ~205: the flee walks 1000 along the facing at Speed and is removed 3 frames after \
-(engine_runoffmap's ground rule); bench gone from Whole by 135 -- it flies on and leaves the square (acts_drop_agx_far_from_the_edge_the_bomber_stays_longer)"""
 
 [[reading]]
 id = "acts_drop_age_owned_not_counted"
@@ -147,10 +146,46 @@ then 216 to the end -- the bombers in the map's square from f45 to ~f261, agains
 from the north edge (here 3600)"""
 proves = "how long the emptied bomber flies before it leaves the count: it grows with the way to the edge"
 expect = "210 <= rows[-1]['见'] <= 222"
-mismatch = """sim 160 (the flee 1000 along the facing at Speed, removed 3 frames after, as on the ground); fits both benches \
-if the bomber flies on along its facing (north) at ~27-30 a frame (~400-450 a second, not the Speed 150) until past \
-the square's edge (y 5300, 300 off the map): age 600 in ~20 frames, agx 3900 in ~146 -- INFERRED, the unload's end \
-in agx not read; FlyingOffMap not modelled (ability.flee_start)"""
+mismatch = """sim 200: the emptied bomber flies at Speed to the nearest border point (south, y 0; flx below: not along its \
+facing) and goes there; the bench's 16 frames more INFERRED the 180-degree turn (TurnTimeSeconds 2) and the circling \
+over the spot, not modelled (R2's movement)"""
+
+[[reading]]
+id = "acts_drop_fly_ownership_counter_skips_unselectable_and_cloned"
+item = "脚本动作 SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER"
+scene = {build = "engine_acts_drop", check = "fly", until = 24}
+bench = """fly, bench 11-24 `run_queue engine_acts_drop:fly` (round 352): 型 1110 at f45, 1100 from f53 to the end: the \
+-SELECTABLE GI copy never counted, the CLONED conscript at f45 only, the +SUMMONED copy always -- as agx's \
+PLAYER_HAS_OBJECT_COMPARISON (work/re E7-2 / E7-3 the one chain)"""
+proves = "sim act_world.set_player_ownership_of_type_counter: SELECTABLE wanted, CLONED left out (_INCLUDE_DEAD the same, INFERRED)"
+expect = "all(r['型'] == 1100 for r in rows if r['帧'] >= 52)"
+
+[[reading]]
+id = "acts_drop_fly_the_bomber_does_not_fly_on_west"
+scene = {build = "engine_acts_drop", check = "fly", until = 24}
+bench = """fly as above: the store 400 east of the spot, the bombers flying west to it -- 中 (1000-2000 west of the spot) \
+and 外 (west of x 900) 0 every reading to f408: the flight off is not along the facing (l2_runoffmap's facing x 1000)"""
+proves = "sim ability.flee_start edge: not the facing (it went 1000 west into 中 before)"
+expect = "all(r['中'] == 0 and r['外'] == 0 for r in rows)"
+
+[[reading]]
+id = "acts_drop_flx_the_bomber_leaves_by_the_nearest_edge"
+scene = {build = "engine_acts_drop", check = "flx", until = 24}
+bench = """flx, bench 11-24 `run_queue engine_acts_drop:flx` (round 352), fly's press: 兵 23 / 0 / 23 to f83 (the loads \
+riding in and out of the spot's square), 46 from f90; 向 0 to f190, 100 (east of x 4500) f197-f249, 0 from f258 -- \
+never north / south / west: the nearest edge (east, 1100 from the spot) after ~100 frames over the spot"""
+proves = "sim ability.flee_start edge: the emptied bomber to the nearest border point (east here, north in age, south in agx)"
+expect = ["all(r['向'] in (0, 100) for r in rows)", "any(r['向'] == 100 for r in rows)", "rows[-1]['向'] == 0",
+          "all(r['兵'] == 46 for r in rows if r['帧'] >= 90)"]
+
+[[reading]]
+id = "acts_drop_flx_the_bomber_stays_in_the_square_212_frames"
+scene = {build = "engine_acts_drop", check = "flx", until = 24}
+bench = "flx as above: 久 (>= 1 AIRCRAFT in Test A12 Whole) 212 from f258 to the end, from the press's frame (45)"
+proves = "how long the turn and the circling take before the flight to the edge"
+expect = "205 <= rows[-1]['久'] <= 219"
+mismatch = """sim 177: it flies straight to the border (x 5000) once empty; the bench's 35 frames more INFERRED the turn \
+back east and the circling (向 east from f197, sim f166), not modelled (R2's movement)"""
 
 [[reading]]
 id = "acts_drop_one_four_bombers"

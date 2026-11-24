@@ -10,6 +10,7 @@ from engine.objects.power import AI_POWERS, UNPACK_POWER, start_reload
 
 PEERS = frozenset({'act', 'garrison', 'powers_off', 'production', 'short_of_power', 'toggles_of'})
 FLEE_GONE = 3
+FLEE_OUT = 0.0
 
 
 def power_refusal(world, peers, b, power, x, y):
@@ -135,17 +136,25 @@ def order_unpack(world, peers, b, p, button=None, where=None, stand=None, here=F
     return True
 
 
-def flee_start(world, peers, b):
+def flee_start(world, peers, b, edge=False):
     """RunOffMapBehavior (simunits.run_off_map; engine line C round 8, engine_runoffmap a-d, bench 11-06): from the
     order's frame the body walks straight to the waypoint named `RunOffMap` (none: 1000 along its facing), at its
     speed, carrying FLEE_OFF_MAP, and FLEE_GONE frames after it arrives it is removed without a death (not dying).
     The counting scripts' frames give 64064 / 304304 and the 15 frames in the end's area at lag 0, gone 3 (a grid
-    of lag 0-4 x gone 0-5 had that one fit). Not modelled: the path (a straight line), a way that cannot be walked,
-    flying off. A later move or stop takes the run over (stop_flee, engine.orders.order's)."""
+    of lag 0-4 x gone 0-5 had that one fit). Not modelled: the path (a straight line), a way that cannot be walked.
+    A later move or stop takes the run over (stop_flee, engine.orders.order's). edge (an emptied transport's
+    RunOffMapWhenDone, engine_acts_drop age / agx / flx): to the nearest point of the map's border, not its facing --
+    flx's bombers facing west went east (the nearest edge), age's on north, agx's back south; FLEE_OUT past it
+    (INFERRED: the three benches' gone frames fit within ~15 at the speed, the turn and the circling not modelled)."""
     name = simunits.run_off_map(b.template, world.own)
     if name is None or not b.alive or b.speed <= 0:
         return
     goal = world.waypoints.get(name or 'RunOffMap') or (b.x + 1000.0 * math.cos(b.angle), b.y + 1000.0 * math.sin(b.angle))
+    rect = next(iter(getattr(world.m.map, 'BORDERS', {}).values()), None)
+    if edge and rect:
+        x0, y0, x1, y1 = rect
+        goal = min(((x0 - FLEE_OUT, b.y), (x1 + FLEE_OUT, b.y), (b.x, y0 - FLEE_OUT), (b.x, y1 + FLEE_OUT)),
+                   key=lambda p: abs(p[0] - b.x) + abs(p[1] - b.y))
     d = math.hypot(goal[0] - b.x, goal[1] - b.y)
     b.flee = (world.frame_now(), b.x, b.y, goal[0], goal[1], d, b.speed / simunits.LIFE_FPS)
     b.path, b.goal, b.mode, b.aiupdate.move_to = [], None, 'idle', None
@@ -158,7 +167,7 @@ def flee_start(world, peers, b):
 def flee_due(world, peers, frame):
     """One frame of every runner: its place on the straight line, the removal when its time comes."""
     for b in peers.garrison.run_off():          # emptied transports' RunOffMapWhenDone (garrison._throw)
-        flee_start(world, peers, b)
+        flee_start(world, peers, b, edge=True)
     for b in [b for b in world.living() if getattr(b, 'flee', None)]:
         f0, x0, y0, x1, y1, d, step = b.flee
         k = frame - f0

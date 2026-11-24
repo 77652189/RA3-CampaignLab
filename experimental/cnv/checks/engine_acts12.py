@@ -43,7 +43,7 @@ from pathlib import Path
 
 import labpaths
 from maps import probe_border
-from parts import Mission, Test, Unit, kindof, square, status
+from parts import Mission, Script, Test, Unit, kindof, square, status
 import checks.engine_scripts8 as s8
 
 MAN = 'SovietAntiInfantryInfantry'
@@ -299,6 +299,61 @@ def far(m):
     return t
 
 
+def fly(m, ways=False):
+    """agx's flight off told apart (round 352): a store DW (4300, 2500) pressed alone at 3 s at a spot 400 west of it,
+    so the bombers face west (age / agx north); agx's CL conscript (CLONED), no PB. 帧 = frames run, 中 = frames with
+    >= 1 AIRCRAFT in a band 1000-2000 west of the spot (x 1900 .. 2900): 1000 / the flight's speed, 外 = frames with
+    >= 1 AIRCRAFT west of x 900 (to -3300; the level ground ends at -300): removed at x = 900 - 外 x speed, 型 = now:
+    SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER of age's -SELECTABLE GI copy 1 + the CLONED conscript 10 + the +SUMMONED copy
+    100, + 1000 the conscript reads CLONED.
+    [data (l2_runoffmap): the flee goes facing x 1000 = x 2900 and the ground rule removes it 3 frames after (中 a
+    few, 外 0); flying on west: 中 1000 / v, 外 > 0; 型 1100 if E7-2's chain skips as PLAYER_HAS_OBJECT_COMPARISON]"""
+    life(m)
+    m.spawns |= {MAN}
+    m.put('CAMP_PowerStore_AlliedBomberDrop', 'stop row', 4300.0 - O[0], 2500.0 - O[1], name=_n('DW'), role='dw')
+    m.waypoint('spot DW', 'CNV A12 Spot DW', 'stop row', 3900.0 - O[0], 2500.0 - O[1])
+    m.put(MAN, 'stop row', 300.0 - O[0], 2500.0 - O[1], name=_n('CL'), role='cl')
+    t, p1 = Test(), m.player('p1')
+    s8.at(t, 'reveal', 0.1, [('MAP_REVEAL_ALL_PERM', p1), ('UNIT_CHANGE_OBJECT_STATUS', _n('CL'), status('CLONED'), 1),
+                             ('NAMED_SET_SPECIAL_POWER_COUNTDOWN', _n('DW'), 'SpecialPowerCAMPAlliedBomberDrop2', 0)])
+    s8.at(t, 'press', PRESS, [('NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT', _n('DW'), 'Command_CAMPAlliedBomberDrop2',
+                               m.mark('spot DW'))])
+    t.areas['Test A12 Mid'] = [(1900.0, 1300.0), (2900.0, 1300.0), (2900.0, 3700.0), (1900.0, 3700.0)]
+    t.areas['Test A12 Out'] = [(-3300.0, 1300.0), (900.0, 1300.0), (900.0, 3700.0), (-3300.0, 3700.0)]
+    air = lambda area: [('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', p1, 3, 1, kindof('AIRCRAFT'), area)]  # noqa
+    s8.frames(t, 'CNV_A12_Frame', '帧', [])
+    if ways:
+        return _ways(m, t, air)
+    s8.frames(t, 'CNV_A12_Mid', '中', air('Test A12 Mid'))
+    s8.frames(t, 'CNV_A12_Out', '外', air('Test A12 Out'))
+    owns = (('CNV_A12_OwnU', 'CNVA12Uns', 1), ('CNV_A12_OwnC', MAN, 10), ('CNV_A12_OwnS', 'CNVA12Sum', 100))
+    t.scripts += [Script(f'Test - {c} set', [], [('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER', tmpl, p1, c)], once=False)
+                  for c, tmpl, _w in owns]
+    s8.total(t, 'CNV_A12_Own', '型', [(w, ('COUNTER', c, 3, 1)) for c, _t, w in owns] + [(1000, _bit('CL', 'CLONED'))])
+    s8.watch(t, 24.0, every=0.5)
+    return t
+
+
+def _ways(m, t, air):
+    """flx: fly's press, which way the bombers go -- 向 = now: >= 1 AIRCRAFT north of the spot (y > 2900) 1, south
+    (y < 2100) 10, east (x > 4500, to 8300) 100, west (x < 3500) 1000; 兵 = now: DW's GIs round the spot (0-6) + 10 x
+    its Javelins (0-4); 久 = frames with >= 1 AIRCRAFT in Test A12 Whole (the level ground).
+    [the nearest edge to the store (east, 700): 向 100 after the unload; along the facing (fly read no): 1000]"""
+    for side, box in (('N', (-3300, 2900, 8300, 8300)), ('S', (-3300, -3300, 8300, 2100)),
+                      ('E', (4500, -3300, 8300, 8300)), ('W', (-3300, -3300, 3500, 8300))):
+        x0, y0, x1, y1 = map(float, box)
+        t.areas[f'Test A12 Way {side}'] = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    s8.total(t, 'CNV_A12_Way', '向', [(w, air(f'Test A12 Way {s}')[0]) for s, w in (('N', 1), ('S', 10), ('E', 100),
+                                                                                  ('W', 1000))])
+    t.areas['Test A12 Spot DW'] = square(3900.0, 2500.0, 400.0)
+    s8.total(t, 'CNV_A12_DropW', '兵', [(w, _has(m, 'p1', tmpl, k, 'Test A12 Spot DW'))
+                                       for tmpl, w, top in ((GI, 1, 6), (JAV, 10, 4)) for k in range(1, top + 1)])
+    t.areas['Test A12 Whole'] = square(2500.0, 2500.0, 2800.0)
+    s8.frames(t, 'CNV_A12_Long', '久', air('Test A12 Whole'))
+    s8.watch(t, 24.0, every=0.5)
+    return t
+
+
 def one(m):
     """Command_CAMPAlliedBomberDrop1 (j05, 3 uses; its stores Allied04's): DP's (p1) and the AI-handed DA's (s5) at
     PRESS. The store's other OCLSpecialPower, OCL_CAMPAlliedBomberDrop1: four bombers (x / y +-35) to Drop2's two.
@@ -351,6 +406,7 @@ def _presses(m, drops):
 MISSION = {'engine_acts_mix': mission, 'engine_acts_drop': drop_mission,
            'engine_acts_ally': lambda: drop_mission(allied=True), 'engine_acts_edge': lambda: drop_mission(edge=True),
            'engine_acts_dropx': lambda: drop_mission(entry=True)}
-CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own, 'at': when, 'air': air, 'age': life, 'agx': far, 'one': one},
+CHECKS = {'engine_acts_mix': {'all': all_}, 'engine_acts_drop': {'own': own, 'at': when, 'air': air, 'age': life, 'agx': far, 'fly': fly, 'flx': lambda m: fly(m, True),
+                                       'one': one},
           'engine_acts_ally': {'own': own},
           'engine_acts_edge': {'edge': edge}, 'engine_acts_dropx': {'own': own}}

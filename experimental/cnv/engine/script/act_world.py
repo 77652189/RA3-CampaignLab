@@ -10,6 +10,7 @@ import engine.data.units as simunits
 import engine.orders.order as simorder
 import engine.orders.seq as simseq
 import engine.world.handle as simworld
+from engine.kernel import module
 from engine.script.common import LOST, SCENE_FLAG, SHOW_FLAG, WON, team_crew
 
 
@@ -226,12 +227,15 @@ def set_unit_health_percentage_to_counter(sim, name, a, script):
 def set_player_ownership_of_type_counter(sim, name, a, script):
     # a template's EquivalentTo counts under that name too (simunits.equivalent_to; bench engine_aiopen b); an object
     # list's types each. _INCLUDE_DEAD: the same handler without its "not destroyed" test, so the dead still in the
-    # world (lying a SlowDeath's DestructionDelay out, as set_unit_health_percentage_to_counter) count too
+    # world (lying a SlowDeath's DestructionDelay out, as set_unit_health_percentage_to_counter) count too. Not one
+    # without SELECTABLE nor one with CLONED, as PLAYER_HAS_OBJECT_COMPARISON (engine_acts_drop fly 型 1110 f45 -> 1100;
+    # _INCLUDE_DEAD the same, INFERRED)
     want = sim.of_types(a[0])
     pool = sim.bodies.values() if name.endswith('INCLUDE_DEAD') else sim.living()
     sim.counters[a[2]] = sum(1 for b in pool if b.owner == a[1] and (b.alive or not b.deleted and sim.t - b.died_at
                                                                         <= b.lies + 1e-9) and
-                              (b.template.lower() in want or simunits.equivalent_to(b.template, sim.own) in want))
+                              (b.template.lower() in want or simunits.equivalent_to(b.template, sim.own) in want)
+                              and 'SELECTABLE' in b.kinds and 'CLONED' not in module.status_now(b))
 
 
 def set_player_money_to_counter(sim, name, a, script):
