@@ -369,7 +369,7 @@ NOTES = {
         'D152 engine_aipathcheck aipfdef/aipfatk/aipfpath/aipfnone:a（去桥尼亚加拉，SimpleAttack 打对岸玩家基地，'
         '四局只差这个字段）：不写 / QuickDoesAttackPathExist / QuickDoesPathExist 三局 4 个维和从不出门，'
         'CNVTeams 每 90 帧建一支空队、约 75 帧后过期；None 一局 f21 招满 4 人、s6 出门。走不到的单位招人时就不招'
-        '（模型 TeamMaker.reach，缺省按战术类 data.PATH_CHECK）；tests/test_ai_pathcheck.py 按名断言台上读数并回放。'
+        '（模型 TeamMaker.reach，缺省按战术类 data.PATH_CHECK）；读数 checks/engine_aipathcheck.readings.toml（B 由回放测试迁入）。'
         'gap：AttackPath 与 Path 在"岸边射程内"时的区别没测；出门后路断的周期踢人读到没上台；见 work/re/d152_pathcheck.md')
        for v in ('', '=None', '=QuickDoesAttackPathExist')},
     '战略状态/AIStrategicStateDefinition.CannotAttackTargetReaction': (BENCHED,
@@ -596,7 +596,7 @@ NOTES = {
     '微操/AIMicroManagerData.PassiveTargetSearchDistance': (TODO,
         'E104 engine_aipassive_distance aipsdz/aipsdt/aipsds/aipsdl：0/1/200/600均f140状态6选四人旁厂，'
         'f320状态0；中心距350.3、逐兵至少324.3，微操目标不同于战术目标。两轮未出现距离分离；'
-        'tests/test_ai_passive_distance.py按台名回放选择/移动/存活，精确首选时钟strict xfail；'
+        '读数 checks/engine_aipassive_distance.readings.toml（B 由回放测试迁入）：选择/存活对上，精确首选时钟 mismatch；'
         '本入口未显现消费者，零值全局语义/距离基准/其他入口仍gap，暂停、不加猜测消费者、不晋升；'
         '见 work/re/e104_passive_distance.md、work/re/handoff-e.md'),
     '微操/AIMicroManagerData.MinDistanceFromBaseToIgnoreTargets': (TODO,

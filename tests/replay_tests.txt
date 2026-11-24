@@ -32,7 +32,6 @@ test_perf_peak.py  # the peak-load benchmark (B0): 60 s of a 600-unit fight and 
 
 [bench]  # bench-mission replays: a test mission run once in the simulator
 test_ai_dodge.py
-test_ai_passive_distance.py
 test_inventory.py
 test_inventory_contain.py
 test_inventory_levels.py

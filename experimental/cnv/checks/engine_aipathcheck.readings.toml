@@ -1,0 +1,25 @@
+# Bench readings of checks/engine_aipathcheck.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# D round 152, bench 2026-11-14 (CampAIPf*A_mcp_1114_*): Niagara without bridges, a SimpleAttack state aims at the
+# player's yard across the river, four Peacekeepers at home; the four builds differ in PathfindingCheckType only.
+# 步兵总数 / 步兵在家 / 到对岸 once a second; the CNVStateGo team's members off the CNVTeams log (work/re/d152_pathcheck.md).
+
+[[reading]]
+id = "a_unit_with_no_way_to_the_target_is_not_recruited"
+item = ["AI 战略状态/AIStrategicStateDefinition.PathfindingCheckType",
+        "AI 战略状态/AIStrategicStateDefinition.PathfindingCheckType=QuickDoesAttackPathExist"]
+scene = {build = "aipfdef", check = "a", until = 90.0}
+each = [{build = "aipfdef"}, {build = "aipfatk"}, {build = "aipfpath"}]
+bench = """\
+aipfdef (not written) / aipfatk (QuickDoesAttackPathExist) / aipfpath (QuickDoesPathExist): 4 4 0 all along; the \
+team is made empty every ~90 frames (f17, f95, ...) and expires, never a member"""
+proves = "simai teams: TeamMaker.reach drops a ground unit with no way to the target when it recruits"
+expect = "all((r['步兵总数'], r['步兵在家'], r['到对岸']) == (4, 4, 0) for r in rows)"
+
+[[reading]]
+id = "with_no_path_check_the_team_is_recruited_and_leaves"
+item = "AI 战略状态/AIStrategicStateDefinition.PathfindingCheckType=None"
+scene = {build = "aipfnone", check = "a", until = 90.0}
+bench = "aipfnone (None): all four in the team at f21; 4 4 0 at s1-5, 4 0 0 from s6 (out of the base, never across)"
+proves = "simai teams: PathfindingCheckType None recruits without asking for a way"
+expect = ["win(1, 5, '步兵在家') == [4] * 5", "win(6, 89, '步兵在家') == [0] * 84",
+          "all((r['步兵总数'], r['到对岸']) == (4, 0) for r in rows)"]

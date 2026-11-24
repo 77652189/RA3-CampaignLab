@@ -1,0 +1,28 @@
+# Bench readings of checks/engine_aipassive_distance.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E104: the four builds differ in AIMicroManagerData.PassiveTargetSearchDistance only (0 / 1 / 200 / 600). Bench: all
+# four select the side plant in state 6 with four members at f140 (centre 350.3 off, every member >= 324.3 off; the
+# micro target is not the tactic's), state 0 at f320; no distance split in two rounds, so the field's consumer is not
+# shown and the item stays TODO (work/re/e104_passive_distance.md). The team rows are the model's (teams = true).
+
+[[reading]]
+id = "every_passive_distance_picks_the_side_plant_with_four_live_members"
+scene = {build = "aipsdz", check = "r", until = 22.0, teams = true}
+each = [{build = "aipsdz", radius = 0}, {build = "aipsdt", radius = 1}, {build = "aipsds", radius = 200},
+        {build = "aipsdl", radius = 0}]
+let = {p = "next(r for r in teams() if r['state_key'] == 'CNVStateGo' and r['foe'] == 'UNIT - CNV AI Side Plant')"}
+bench = "aipsdz / aipsdt / aipsds / aipsdl: f140 state 6, the side plant, four live members, each >= 324.3 off (> 1, > 200)"
+proves = "simai micro: the passive pick of the side plant, whatever PassiveTargetSearchDistance (0 / 1 / 200 / 600)"
+expect = ["p['state'] == 6 and len(p['members']) == 4 and all(m['alive'] for m in p['members'])",
+          "p['foe_id'] != p['target_id']",
+          "all((m['pos'][0] - 3400) ** 2 + (m['pos'][1] - 2823) ** 2 > radius ** 2 for m in p['members'])"]
+
+[[reading]]
+id = "the_side_plant_is_first_picked_at_frame_140"
+scene = {build = "aipsdz", check = "r", until = 22.0, teams = true}
+each = [{build = "aipsdz"}, {build = "aipsdt"}, {build = "aipsds"}, {build = "aipsdl"}]
+let = {p = "next(r for r in teams() if r['state_key'] == 'CNVStateGo' and r['foe'] is not None)"}
+bench = "all four: the first pick f140, state 6, the side plant, four members"
+proves = "simai micro: the first passive pick's frame"
+expect = "(p['frame'], p['state'], p['foe'], len(p['members'])) == (140, 6, 'UNIT - CNV AI Side Plant', 4)"
+mismatch = """the simulator picks the same side plant in state 6 with four members at f120, 20 frames early (its old late \
+pick at f241 gone); the cause is unconfirmed (work/re/e104_passive_distance.md)"""
