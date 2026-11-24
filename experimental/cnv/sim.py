@@ -662,7 +662,7 @@ class Sim:
         self.relations = dict(getattr(mission, 'relations', {}))   # (a, b) -> Enemy / Neutral / Friend
         self.team_team_rel, self.team_player_rel, self.player_team_rel = {}, {}, {}   # the overrides (hostile)
         self.team_targets = {}                  # body.serial -> the team it was told to attack (TEAM_ATTACK_TEAM)
-        self.players = self.wallet.start(dict(mission.map.PLAYERS))   # each starts with START_CASH
+        self.players = self.wallet.start(dict(mission.map.PLAYERS), getattr(mission, 'sides', {}))   # template money
         self.human = self.players['p1']
         self.foe = self.players.get('s1')
         self.books = simtech.books(mission, self.players, simunits.LIFE_FPS)   # player -> Book: protocols, points

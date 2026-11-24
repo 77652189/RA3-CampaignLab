@@ -33,5 +33,5 @@ expect = "vals(rows)[0] == [12, 5]"
 id = "area_every_player_starts_with_ten_thousand"
 scene = {build = "engine_area", check = "cash", until = 6}
 bench = "cash (A349, CampAreaCash_mcp_1124_041836), 钱0..3 every 1 s: s1-s7 128 128 128 8 (8 steps = >= 10000, < 10001)"
-proves = "with no script money Player_1 and Soviet_1..6 each hold exactly 10000 from the start, and keep it (idle)"
+proves = "with no script money Player_1 and Soviet_1..6 each hold exactly 10000 from the start, and keep it (idle); the bench enters through the campaign menu (nav.STEPS), so this is the campaign start: SageXML System/PlayerTemplates.xml StartingMoney Amount 10000 of Allies / Soviet / Japan (no CampaignOverrides entry), read by Money.start"
 expect = "all(v[:4] == [128, 128, 128, 8] for v in vals(rows))"

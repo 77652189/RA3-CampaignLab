@@ -72,12 +72,14 @@ def ranks():
 
 @functools.lru_cache(maxsize=None)
 def factions():
-    """faction -> {'default', 'pps', 'initial', 'ranks': [rank id ...]} for the playable ones."""
+    """faction -> {'default', 'pps', 'initial', 'cash', 'ranks': [rank id ...]} for the playable ones; cash = the
+    template's StartingMoney (each 10000; no campaign override)."""
     out = {}
     for head, inner in simunits._blocks(_xml('System', 'PlayerTemplates.xml'), 'PlayerTemplate'):
         fid = simunits._attr(head, 'id')
         if fid in PLAYABLE:
-            out[fid] = dict(default=simunits._attr(head, 'DefaultTech'),
+            cash = re.search(r'<StartingMoney\b[^>]*\bAmount="(\d+)"', inner)
+            out[fid] = dict(default=simunits._attr(head, 'DefaultTech'), cash=int(cash.group(1)) if cash else 0,
                             pps=simunits._num(simunits._attr(head, 'TechRankPointsPerSecond'), 0.0),
                             initial=int(simunits._num(simunits._attr(head, 'InitialTechPoints'), 0)),
                             ranks=_texts(inner, 'TechRank'))

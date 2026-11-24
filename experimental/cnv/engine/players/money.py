@@ -7,10 +7,9 @@ these same dicts.
 """
 import math
 
+import engine.players.tech as simtech
 from engine.world.handle import CIV
 
-START_CASH = 10000      # every player's money at the start (bench 11-24 engine_area cash: Player_1, Soviet_1..6 each exactly
-                        # 10000 before any script; retail DefaultStartingCash, INFERRED; the neutral's: not read)
 
 class Money:
     def __init__(self):
@@ -19,9 +18,16 @@ class Money:
         self.sharing = set()                # players sharing income (PLAYER_TOGGLE_RESOURCE_SHARING)
         self.money_cap = {}                 # PLAYER_SET_MONEY_CAP: player -> cap (scripts' money not held to it)
 
-    def start(self, players):
-        """Each of `players` (a map's PLAYERS: key -> name) starts with START_CASH; returns `players`."""
-        self.money.update(dict.fromkeys(players.values(), START_CASH))
+    def start(self, players, sides=None):
+        """Each of `players` (a map's PLAYERS: key -> name) starts with its faction's PlayerTemplate StartingMoney
+        (10000 each; bench 11-24 engine_area cash, entered through the campaign menu: Player_1, Soviet_1..6 exactly
+        10000 before any script; 38 of the 40 retail missions then set it by script). A civilian / neutral template
+        has none: 0 (Generals' Player::init takes the template's money; not read). `sides`: the mission's SidesList
+        props by player (playerFaction). Returns `players`."""
+        sides = sides or {}
+        for slot, p in players.items():
+            f = simtech.faction_of(p, sides.get(p) or sides.get(slot))
+            self.money[p] = simtech.factions()[f]['cash'] if f else 0
         return players
 
     def deposit(self, owner, amount):
