@@ -23,6 +23,8 @@ defender's Priority and the attacker's set here (release: the holder's priority 
   aihotscr   defender SCRIPTED (7), attacker HOTSPOT -> released (only HOTSPOT outranks SCRIPTED)
 TeamTemplate.Priority=COOP (12 uses, 6: the co-op commander's beacon states), the same pair:
   aicoophi   defender HIGH (5), attacker COOP -> released;  aicoopsc   defender SCRIPTED (7), attacker COOP -> kept
+TeamTemplate.Priority=DEFENSE_HIGH (10 uses, 4: the AI's emergency defense), the same pair:
+  aidefhst   defender STANDARD (3), attacker DEFENSE_HIGH -> released;  aidefhhi   defender HIGH (5) -> kept
 Facts: wake at (+ airelease's attack at).
 """
 from missions import ainamed_bench as an
@@ -95,4 +97,6 @@ MISSION = {
     'aihotscr': lambda: hotspot('CampAIHotScr', 'SCRIPTED', 'HOTSPOT'),
     'aicoophi': lambda: hotspot('CampAICoopHi', 'HIGH', 'COOP'),
     'aicoopsc': lambda: hotspot('CampAICoopSc', 'SCRIPTED', 'COOP'),
+    'aidefhst': lambda: hotspot('CampAIDefHiSt', 'STANDARD', 'DEFENSE_HIGH'),
+    'aidefhhi': lambda: hotspot('CampAIDefHiHi', 'HIGH', 'DEFENSE_HIGH'),
 }
