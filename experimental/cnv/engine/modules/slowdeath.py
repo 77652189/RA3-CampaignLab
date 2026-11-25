@@ -3,19 +3,19 @@ by simunits.slow_death, and the crush's `linger = lies`): one module a SlowDeath
 NAMED_DYING, still in the game's name cache where it fell -- its DestructionDelay (bench 11-06 engine_crush: a crushed
 conscript, 8.5 s, lay 127 frames; a plant killed by script was gone the next frame).
 
-What the simulator keeps of it: the delay is that of the first block whose attributes name no DeathTypes /
-DeathFlags (in the merged GameObject's module order, the template data port), 0 without one -- a commented-out block is
-not read (the SDK compiler reads no XML comments; slow_death read 25 templates' commented-out blocks: a behaviour
-change of step B5a); only a crushed body (module.Death's death CRUSHED, locomotion.crush) lies it out -- any other death lies
-LINGER, 0 (bench 2026-10-28: a killed unit is gone from areas at once; INFERRED that the crush is the one death that
-lies). The ToppleUpdate reads the delay for its own (engine/modules/topple.py). SinkDelay, Fade, the DieMux's death
-types and the probability weights are not read.
+What the simulator keeps of it (E228): a death lies the delay of the first block (module order, the template data
+port) whose DieMuxData takes it -- its DeathTypes / DeathTypesForbidden the death type, its RequiredStatus /
+ExemptStatus the thing's status (module.DieMux; a block without the child element: its own attributes) -- and LINGER,
+0, without one, or when a DestroyDie takes it too (gone with the frame, Generals destroyObject; INFERRED: no bench has
+both). Bench: a crushed conscript (CRUSHED), a Peacekeeper the Chronosphere's insta-kill took (engine_teleport b),
+an engineer UNIT_KILL_ALL_IN_AREA killed (engine_sighted, 7.5 s) all lie; a Guardian (10-28 probe death) and a plant,
+DestroyDie alone, do not. A commented-out block is not read (the SDK compiler reads no XML comments). `lies` (the
+body's, read by the ToppleUpdate and the health counter) stays the first block whose attributes name no DeathTypes /
+DeathFlags. SinkDelay, Fade and the probability weights are not read (several blocks taking one death: the first).
 
 Decided in step B5a: a lying body's Destroy modules are told at its death, not when its lie ends (the private
-model's SlowDeath calls destroyObject after the DestructionDelay). INFERRED and kept: in the simulator only a crushed
-body lies, and what it leaves out of the fight -- passengers, slaves -- is let go at its death by the Die modules all
-the same (Contain on_die, Slaved on_die); only a crushed spawner's children would go 127 frames early (none in the
-eleven recorded missions).
+model's SlowDeath calls destroyObject after the DestructionDelay). INFERRED and kept: what it leaves out of the
+fight -- passengers, slaves, a spawner's children -- is let go at its death by the Die / Destroy modules all the same.
 
 The B5 review fix (e #7, the coordinator's ruling 11-19): the lie is set before the Die broadcast (begin, called by
 the host's simbody.Life._out ahead of every Die module, as the old sim.crush_along set `linger` before the kill), so
@@ -24,36 +24,38 @@ SlowDeathBehavior begins in its own onDie, in module order."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
-LINGER = 0.0                    # seconds a death lies that is not a crush: still in the game's name cache where it fell
-                                # (docs/engine/script-semantics.md 4.2) -- the bench (2026-10-28, probe death): out of
-                                # the area from the reading the kill shows in; the guess was 3 s (sim.LINGER till B5a)
-LIES = 'CRUSHED'                # the one death type that lies its delay out
+LINGER = 0.0                    # seconds a death lies that no SlowDeath takes: gone from areas and counts at once
+                                # (bench 2026-10-28, probe death: a Guardian, DestroyDie alone)
 
 
-class SlowDeathData(module.ModuleData):
-    def __init__(self, delay=0.0, plain=True):
-        self.delay = delay          # DestructionDelay, seconds
-        self.plain = plain          # its attributes name no DeathTypes / DeathFlags: the delay the body lies
+class SlowDeathData(module.ModuleData, module.DieMux):
+    def __init__(self, delay=0.0, plain=True, types=frozenset({'ALL'}), forbidden=frozenset(),
+                 required=frozenset(), exempt=frozenset()):
+        self.delay = delay          # DestructionDelay, seconds (0 for a DestroyDie: gone with the frame)
+        self.plain = plain          # its attributes name no DeathTypes / DeathFlags: the body's `lies`
+        self.types, self.forbidden, self.required, self.exempt = types, forbidden, required, exempt
 
     @classmethod
     def parse(cls, head, inner):
+        mux, w = templates.child(inner, 'DieMuxData') or head, templates.words
         return cls(templates.secs(templates.attr(head, 'DestructionDelay')),
-                   'DeathFlags' not in head and 'DeathTypes' not in head)
+                   'DeathFlags' not in head and 'DeathTypes' not in head, w(mux, 'DeathTypes', 'ALL'),
+                   w(mux, 'DeathTypesForbidden'), w(mux, 'RequiredStatus'), w(mux, 'ExemptStatus'))
 
 
 @factory.module('SlowDeath')
 class SlowDeath(module.Module, interfaces.SlowDeath):
     """No update: told of its thing's death before the Die modules (begin), it sets how long this death lies
-    (`linger`, read by the body's forward: Sim.present / dying). The names the body's fields had, so the frame record is unchanged: `lies` and
-    `linger` are the body's forwards, RECORDED none."""
+    (`linger`, None when its DieMux does not take the death; read by the body's forward: Sim.present / dying)."""
     DATA = SlowDeathData
     STATE = ('linger',)
     RECORDED = ()
-    linger = LINGER
+    linger = None
 
     def begin(self, info):
-        if self.data.plain and info.death == LIES:
-            self.linger = self.data.delay
+        d = self.data
+        if d.takes(info.death) and d.holds(module.status_now(self.thing) if info.status is None else info.status):
+            self.linger = d.delay
 
     def lies(self):
         return self.data.delay
@@ -65,7 +67,16 @@ class SlowDeath(module.Module, interfaces.SlowDeath):
         return self.data.plain
 
     def cut(self, lain):
-        self.linger = min(self.linger, lain)
+        if self.linger is not None:
+            self.linger = min(self.linger, lain)
+
+
+@factory.module('DestroyDie')
+class DestroyDie(SlowDeath):
+    """A DestroyDie block: a death its DieMux takes lies 0 -- gone with the frame, whatever a SlowDeath says."""
+
+    def is_plain(self):
+        return False
 
 
 def _plain(mods):
@@ -79,6 +90,7 @@ def lies(mods):
 
 
 def linger(mods):
-    """The body's `linger` (its forward): how long its death lies -- LINGER, the crush its delay."""
-    m = _plain(mods)
-    return m.lie() if m else LINGER
+    """The body's `linger` (its forward): how long its death lies -- 0 when a DestroyDie took it, else the first
+    SlowDeath that did, else LINGER."""
+    took = [m.lie() for m in mods if m.lie() is not None]
+    return 0.0 if 0.0 in took else next(iter(took), LINGER)

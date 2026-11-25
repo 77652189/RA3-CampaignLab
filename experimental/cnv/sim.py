@@ -156,8 +156,8 @@ ALIGN = {**kernel_factory.align(), **simheal.ALIGN,     # the kernel modules' ow
                   'radii) on a free spot (Generals AIGroup::groupMoveToPosition; RA3 not read)',
     'column march': '3+ infantry sent together stop in a block, ceil(sqrt(n)) files 40 apart, rows 40 back from the '
                     'point, turned with the way in (bench 2026-11-17 engine_column; simpath.block)',
-    'death linger': 'a killed unit is gone from areas and counts from the next reading: LINGER 0 (bench 2026-10-28, '
-                    'probe death; the Generals source keeps it while it dies, 源码 4.2)',
+    'death linger': 'a death no SlowDeath takes is gone from areas and counts the next reading, LINGER 0 (2026-10-28 '
+                    'probe death); one its DieMuxData takes lies its DestructionDelay (E228; 源码 4.2)',
     'both endings': '未对齐: won and lost in one frame: Generals runs the frame\'s later scripts and takes the last; '
                     'RA3\'s "Mission Won" / "Mission Lost" flags are its own (源码 4.5)',
     'inverted': 'a NOT condition is read off a flag two every-frame scripts first in the list keep (parts.unnot), so '

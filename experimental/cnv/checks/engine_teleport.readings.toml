@@ -57,8 +57,9 @@ mismatch = "sim 20 and 20 frames in B (no freeze modelled); bench c 48, a 19"
 [[reading]]
 id = "b_the_insta_killed_infantry_lies_dying"
 scene = {build = "engine_teleport_b", check = "b", until = 5}
+item = ["物体模块 Behaviors/SlowDeath"]
 bench = "CampTeleportB_mcp_1106_065257: 41: 40001 (dying 40 frames; gone after 127)"
-proves = "the teleport's insta-kill death lies its DestructionDelay (8.5 s) like a crush"
+proves = """SlowDeath by its DieMuxData (E228): the teleport's insta-kill (no crush) lies the Peacekeeper's \
+DestructionDelay (8.5 s) like a crush"""
 let = {at = "lambda f: next(r for r in rows if r.get('帧数', 0) >= f)"}
 expect = "at(40)['第二行'] // 1000 >= 25"
-mismatch = "sim 0 dying frames (only a crushed body lies: engine/modules/slowdeath.py LIES); bench 40 at frame 41"
