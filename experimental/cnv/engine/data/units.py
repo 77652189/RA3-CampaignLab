@@ -278,7 +278,7 @@ def table():
 
 
 # ---- combat: health, armour, weapons (sim.py's fight model; docs/engine: none of it settled on the bench yet)
-COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v48.json')    # v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
+COMBAT_CACHE = os.path.join(labpaths.WORK, 'sim_combat_v49.json')    # v49: the SPN's StatusBitFlagsExclude (A374); v48: the shotgun's self-centred arc shock (A363); v47: the grapple nugget (E226); v46: the lift's retail filter; v45: the link guns' ally filter; v44: + taper (DamageDealtAtSelfPosition); v43: weapons from the data port (W1), the cache keeps `sets`; v42: the leech nugget's AI-only damage; v41: Rush infantry/status combination; v40: isolated forbidden object-status gate
                                                                     # (Flags ATTACK_NEEDS_LINE_OF_SIGHT)
 ARMOR = os.path.join(SAGEXML, 'GlobalData', 'Armor.xml')
 ARMOR_DEFAULT = 100.0           # a damage type an armour does not name: taken in full (a guess)
@@ -633,13 +633,15 @@ def _weapons(texts, base_table=None):
                 if (rest or len(required) + len(forbidden) > 1 or len(filters) > 1 or any(war)
                         or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'SpecialPowerTemplate'}
                         or (filters and (filters[0][1].strip() or _attr(filters[0][0], 'Rule', 'ANY') != 'ANY'
-                            or set(re.findall(r'(\w+)\s*=', filters[0][0])) - {'Rule', 'Include', 'Exclude'}))):
+                            or set(re.findall(r'(\w+)\s*=', filters[0][0])) - {'Rule', 'Include', 'Exclude',
+                                                                                 'StatusBitFlagsExclude'}))):
                     unsupported.append('SpecialPowerNugget')
                 else:
                     f = filters[0][0] if filters else ''
                     special_powers.append(dict(power=_attr(h, 'SpecialPowerTemplate'),
                                                include=_attr(f, 'Include', '').split(),
                                                exclude=_attr(f, 'Exclude', '').split(),
+                                               status_exclude=_attr(f, 'StatusBitFlagsExclude', '').split(),
                                                required_upgrade=required[0] if required else '',
                                                forbidden_upgrade=forbidden[0] if forbidden else ''))
             if special_powers:
@@ -1728,15 +1730,16 @@ def weapon_sets(template, own=None):
     line is held only while the object (or its player) has X (pick_weapons' upgrades) -- the IFV's passenger guns
     (Uprade_IFV_*, granted by who rides in: Garrisons.secondary) are not an empty IFV's; before, its slots 3-7 (one
     upgrade line each) gave it a 750-dps pistol and the AI's expected efficiency 7.6 for it vs conscripts (B round
-    132). None where no weapon line carries a status or upgrade condition (the unit's weapons are read_fight's,
-    whatever its status). The data port's blocks (engine.modules.weaponset, step W1: slots in the SDK's kind order,
+    132). None where no weapon line carries a status or upgrade condition and no slot has two lines (the unit's
+    weapons are read_fight's, whatever its status; a slot of two unconditioned lines -- Natasha's rifle and bombing
+    call, A374 -- is read here for pick_weapons' other lines). The data port's blocks (engine.modules.weaponset, step W1: slots in the SDK's kind order,
     Hardpoint before Turret -- the Apocalypse's two are never held at once)."""
     from engine.modules import weaponset
     try:
         datas, table = weaponset.read(module_blocks(template, 'WeaponSetUpdate', own)), weapon_table(own)
     except (OSError, ValueError, ET.ParseError):
         return None
-    if not any(d.conditioned() for d in datas):
+    if not any(d.conditioned() or any(len(s.lines) > 1 for s in d.slots) for d in datas):
         return None
     return [[(set(x.need), set(x.forbidden), x.primary, _resolve(table[x.template], table) if x.template in table
               else None) for x in s.lines] for d in datas for s in d.slots]
@@ -1771,7 +1774,7 @@ def pick_weapons(slots, status, upgrades=(), lines=False):
     """The weapons a unit holds under `status` with `upgrades` (the object's and its player's upgrade names): per
     slot the first line (a PRIMARY_WEAPON one before the rest) whose need bits are all set and forbid bits none set;
     one that cannot hurt or reach (the target painter) is no gun. lines: (the guns, per gun the slot's other lines
-    the status allows that are guns) -- the slot fires the first of the gun and these that can take the target
+    the status allows that are guns or call a power -- a SpecialPowerNugget, A374) -- the slot fires the first of the gun and these that can take the target
     (engine.orders.target.picks; A371, engine_liftair a: the crewed turret's PRIMARY ground lift, its SECONDARY air
     lift at a plane; the others in XML order, INFERRED)."""
     from engine.modules import weaponset
@@ -1782,7 +1785,7 @@ def pick_weapons(slots, status, upgrades=(), lines=False):
         ok = [w for need, forbid, prim, w in sorted(s, key=lambda e: not e[2]) if need <= status and not forbid & status]
         if ok and weaponset.armed(ok[0]):
             guns.append(ok[0])
-            others.append(tuple(w for w in ok[1:] if weaponset.armed(w)))
+            others.append(tuple(w for w in ok[1:] if weaponset.armed(w) or w.get('special_powers')))
     return (guns, others) if lines else guns
 
 

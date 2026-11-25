@@ -108,6 +108,14 @@ def test_a_retail_units_weapons_are_read_once_in_the_cache_shape():
     assert all(isinstance(p, list) for w in a['weapons'] for p in w.get('ai_parts') or [])
 
 
+def test_an_unconditioned_slot_keeps_its_power_calling_line():
+    """A374: Natasha's one slot, no status on either line -- the sniper rifle holds, the bombing call (no damage, only
+    a SpecialPowerNugget whose filter writes StatusBitFlagsExclude) is the line the slot fires at a vehicle."""
+    held, others = simunits.pick_weapons(simunits.weapon_sets('SovietCommandoTech1'), set(), lines=True)
+    assert _keys(held) == ['SovietCommandoSniperRifle'] and _keys(others[0]) == ['SovietCommandoCallBombingRun']
+    assert others[0][0]['special_powers'][0]['status_exclude'] == ['AIRBORNE_TARGET', 'SUBMERGED']
+
+
 # --- step W2: the module holds the thing's weapons and slots ------------------------------------------------------
 
 def _world():

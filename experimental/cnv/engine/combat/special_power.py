@@ -27,7 +27,7 @@ class SpecialPower:
                 context.gap('SpecialPowerNugget', '升级门槛未知类型待核')
                 continue
             if not passed or ((effect['include'] and not set(effect['include']) & t.kinds)
-                              or set(effect['exclude']) & t.kinds):
+                              or set(effect['exclude']) & t.kinds or set(effect.get('status_exclude', ())) & t.status):
                 continue
             power = host.self_power(by.template, effect['power'])
             if power is None:      # no matching module on caster: engine_spn order
