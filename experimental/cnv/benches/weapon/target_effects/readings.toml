@@ -24,7 +24,7 @@ expect = [
     "vals(rows)[-1] == expected",
     "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
 ]
-mismatch = "Final simulator 1191052068/40135070/101007068/91135089, bench 1187051068/87135068/101003068/87135089. The miners are HarvesterController's (handed over to the default team): base shields before its hit as on the bench (frames 91/52 vs 87/51, the p1 shells land 4 frames late); order shields after its hit (TrackDamage) at 7, the bench 3: the micro's round is every 8 frames (300, 308; hit 302), the bench's 2 frames after the hit (phase not read); high lands 47 frames early: the AI's LandDefense team takes the s1 gun under NO_ATTACK and walks it nearer, the bench's never moves (why not: not read)."
+mismatch = "Final simulator 1191052068/91135068/101007068/91135089, bench 1187051068/87135068/101003068/87135089. The miners are HarvesterController's (handed over to the default team): base shields before its hit as on the bench (frames 91/52 vs 87/51, the p1 shells land 4 frames late); order shields after its hit (TrackDamage) at 7, the bench 3: the micro's round is every 8 frames (300, 308; hit 302), the bench's 2 frames after the hit (phase not read); high is hit as on the bench but 4 frames late as base: s1 plays the Heidelberg container's AIP_A03_Soviet01BaseMarshall (the game's own data, no standing LandDefense to take the gun), written out in the check."
 
 [[reading]]
 bench_id = "engine_inform_ai"
@@ -60,7 +60,7 @@ expect = [
     "vals(rows)[-1] == expected",
     "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
 ]
-mismatch = "Final simulator 91135068/40135070/101007068/91135089, bench 87135068/87135068/101003068/87135089. As [a]: base and removed as on the bench but 4 frames late; order shields 4 frames late (the micro's round); high lands 47 frames early."
+mismatch = "Final simulator 91135068/91135068/101007068/91135089, bench 87135068/87135068/101003068/87135089. As [a]: base, high and removed as on the bench but 4 frames late; order shields 4 frames late (the micro's round)."
 
 [[reading]]
 bench_id = "engine_inform_expiry"

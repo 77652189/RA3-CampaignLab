@@ -116,6 +116,10 @@ def engine_inform_ai():
                     facts={'wake at': 10.0, 'make at': 11.0, 'order at': 20.0, 'freeze at': 29.0})
         # Use B's proven wake actions; the miner's own toggle evaluator needs no Hunt team.
         m.put('AlliedConstructionYard', 'power 1', side='s1', name='Info AI Yard')
+        # The container's own Soviet_1 (Heidelberg), written out so the simulator plays it too: with 1AlliedBalanced
+        # the bench's LandDefense takes the NO_ATTACK s1 gun at f21 (B, E238 3: CampInfoAIU_mcp_1125_134405)
+        m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Soviet',
+                         'aiPersonality': 'AIPersonalityDefinition:AIP_A03_Soviet01BaseMarshall'}
         m.waypoint('ai base', 'Info AI Base', 'power 1')
         for lane, u in zip(LANES, units):
             m.put(u.id, lane + ' gun', side='s1' if lane == 'high' else 'p1',

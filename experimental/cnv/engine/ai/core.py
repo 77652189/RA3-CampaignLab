@@ -99,7 +99,10 @@ AI_WORLD = frozenset({'bodies', 'blocks', 'enemy', 'frame_now', 'ground', 'human
 
 
 FPS = 15
-EXPANSIONS = {'SimpleExpansion', 'ExactExpansion'}     # the act kinds whose members unpack (Brain.approach)
+# the game's own AI data in SDK form (retailref.py cache-ai-states): the model takes what the SDK lacks from it -- a
+# map container's campaign personality and its states (bench engine_inform_ai, B E238); not there = SDK only
+RETAIL_AI = os.path.join(labpaths.WORK, 'retailref', 'ai_states_sdk.xml')
+EXPANSIONS ={'SimpleExpansion', 'ExactExpansion'}     # the act kinds whose members unpack (Brain.approach)
 # the engine's word for a tactic type in its team names where it is not the type itself (C's team log
 # tests/fixtures/c_release_teams/aiskirm_m.txt: Tactic="Engineer" -> AlliedCaptureTech_MEDIUM_EngineerTactic_0_0)
 TACTIC_NAME_WORDS = {'Engineer': 'EngineerTactic'}
@@ -2298,7 +2301,7 @@ class SimAI:
         self.settings = ai_port.Settings(s)     # and the mission's AI settings (the AI port)
         self.observe = Observe(s)       # and the observation port (R3 13f-2b)
         self.lib = lib if lib is not None or mod is None else mod['xmldata'].Library()
-        self.data = data if data is not None or mod is None else mod['data'].AIData()
+        self.data = data if data is not None or mod is None else mod['data'].AIData(retail=RETAIL_AI)
         self.blocks = tuple(blocks)     # which of A's blocks the brains get (() = opening, states and teams only)
         self.brains = {}                # player -> Brain
         self.done_to = None             # the last frame the AI ran
