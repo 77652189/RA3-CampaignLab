@@ -830,7 +830,8 @@ def lift_module(template, own=None):
     """D50 timing interface, see work/re/d50_lift_release.md.
 
     Only explicit timer fields are supported; no guessed XSD defaults (an absent LiftVelocity /
-    MaxElevationFromGround rises 0). soft: a SoftLandingWeapon is set (LiftTimers' landing). Aircraft remain a gap.
+    MaxElevationFromGround rises 0). soft: a SoftLandingWeapon is set (LiftTimers' landing). crash: the
+    AirplaneCrashWeapon an aircraft hit fires on itself (engine/combat/lift.py), None without one.
     """
     def read(xml):
         modules = list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'LiftObjectUpdate'))
@@ -843,7 +844,7 @@ def lift_module(template, own=None):
                     maximum=int(_secs(_attr(h, 'MaxTimeLifted')) * FPS),
                     rise=_num(_attr(h, 'LiftVelocity') or '0', 0.0),
                     top=_num(_attr(h, 'MaxElevationFromGround') or '0', 0.0),
-                    soft=_attr(h, 'SoftLandingWeapon') is not None)
+                    soft=_attr(h, 'SoftLandingWeapon') is not None, crash=_attr(h, 'AirplaneCrashWeapon'))
     return _chain(template, own, read)
 
 

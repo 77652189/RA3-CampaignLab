@@ -71,6 +71,15 @@ bench_id = "engine_lift"
 id = "native_air_lifts_kill_without_a_latched_bit"
 scene = {build = "engine_liftair", check = "a", until = 19, shot_clock = true}
 bench = "CampLiftAirA_mcp_1116_142206: s15-26 = 0 / 100 / 100 / 10 -- the three retail air targets died and never latched LIFTED, the deleted-nugget control lived"
-proves = "the anti-air Lift weapons on Twinblades: death without a latched lift bit (the crash / death dispatch is a gap)"
-expect = "vals(rows)[-1] == [0, 100, 100, 10]"
-mismatch = "sim 10 / 110 / 110 / 10 (aircraft lift and its death not modelled); bench 0 / 100 / 100 / 10"
+proves = "the anti-air Lift weapons on Twinblades, Yuriko's own and the crewed IFV's (its own hardpoint 2): the plane branch, the caster's AirplaneCrashWeapon fired on the plane -- it dies and never latches LIFTED (engine/combat/lift.py; the death frame INFERRED at the hit); the deleted-nugget control lives"
+item = "武器效果 ActivateLiftObjectNugget"
+expect = "[vals(rows)[-1][i] for i in (0, 1, 3)] == [0, 100, 10]"
+
+[[reading]]
+bench_id = "engine_lift"
+id = "the_crewed_turret_lifts_a_plane_with_its_secondary_line"
+scene = {build = "engine_liftair", check = "a", until = 19, shot_clock = true}
+bench = "CampLiftAirA_mcp_1116_142206: the order lane (crewed AlliedBaseDefense) 100 -- its plane died"
+proves = "the turret's one hardpoint holds the ground crush as PRIMARY and the anti-air one as SECONDARY under the same upgrade: the game takes the SECONDARY line against a plane"
+expect = "vals(rows)[-1][2] == 100"
+mismatch = "sim 110 (pick_weapons holds one line a slot, the PRIMARY ground crush, so the turret never fires at the plane; a slot's weapon choice by target is not modelled); bench 100"

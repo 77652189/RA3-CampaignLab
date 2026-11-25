@@ -14,7 +14,8 @@ def test_lift_timer_truncation_renewal_cap_and_caster_ownership():
     import engine.data.units as simunits
     own = {'Caster': '<GameObject id="Caster"><LiftObjectUpdate TimeIncrement="0.5s" MaxTimeLifted="8s"/></GameObject>'}
     rule = simunits.lift_module('Caster', own)
-    assert rule == dict(increment=7, maximum=120, rise=0.0, top=0.0, soft=False)
+    assert rule == dict(increment=7, maximum=120, rise=0.0, top=0.0, soft=False, crash=None)
+    del rule['crash']           # the aircraft branch's (engine/combat/lift.py), not the ledger's
     timers = simunits.LiftTimers()
     timers.hit('one', 'victim', **rule)
     assert timers.remaining == {('one', 'victim'): 7}
@@ -79,8 +80,8 @@ def test_lift_unsupported_filter_stays_a_gap():
     assert not weapons['Lift'].get('lift')
 
 
-def test_lift_retail_closure_keeps_all_six_consumers_unmeasured():
-    """Synthetic VEHICLE snapshots cover no complete native Lift consumer."""
+def test_lift_retail_closure_counts_all_six_consumers():
+    """The six native Lift weapons are the whole census; the item is benched (engine_liftground / engine_liftair)."""
     import inventory
     import retailmodules as rm
 
@@ -123,4 +124,4 @@ def test_lift_retail_closure_keeps_all_six_consumers_unmeasured():
     rows = [i for i in inventory.apply_registers(inventory.nugget_items())
             if i['name'].split(':')[0] == 'ActivateLiftObjectNugget']
     assert sum(i['uses'] for i in rows) == 6
-    assert all(i['state'] in (inventory.GUESSED, inventory.TODO) for i in rows)
+    assert all(i['state'] == inventory.BENCHED for i in rows)

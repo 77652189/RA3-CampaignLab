@@ -54,10 +54,10 @@ class EffectHost:
     """The host's calls an 'effect' phase handler (engine/combat: Lift, Attach, SpecialPower, AttributeModifier), the Sweep or the MetaImpact makes -- registry.Context.host. The
     game-data reads and their caches stay here (engine/ reads no game data); the peers are read when used."""
     __slots__ = ('damage', 'world', 'peers', 'lift_hit', 'refresh_modifiers', 'fits', 'sweep', 'gap',
-                 'velocity', 'ground_launch', 'trajectory', 'landing_hold')
+                 'velocity', 'ground_launch', 'trajectory', 'landing_hold', 'kill', 'fire_weapon')
     # what a lift still lacks (a gap after each lift; the report is private, so its pointer stays out of engine/)
     LIFT_LANDING = ('计时释放不清状态；SoftLanding 只在举高不超过 28 时落地清位（28 与 40 之间的边界 INFERRED），'
-                    '落地武器的伤害和飞机坠毁未接通')
+                    '落地武器的伤害未接通')
 
     def __init__(self, damage, world, peers):
         self.damage, self.world, self.peers = damage, world, peers
@@ -66,7 +66,10 @@ class EffectHost:
         self.lift_hit, self.refresh_modifiers, self.fits = peers.lift_timers.hit, lambda b: simmodifier.modify(world, b), \
             peers.garrison.fits
         self.sweep = peers.sweeps.fire
-        self.gap = lambda tag, why: world.gap(GAP_WEAPON, tag, why)
+        # the kernel's death and death-weapon fire: kill(body, why), fire_weapon(body, weapon) (World.kill / fire)
+        kernel = world.world
+        self.kill, self.fire_weapon = kernel.kill, kernel.fire
+        self.gap =lambda tag, why: world.gap(GAP_WEAPON, tag, why)
         # MetaImpact's flight physics as simunits reads them (engine/combat/meta_impact)
         self.velocity, self.ground_launch = simunits.meta_impact_velocity, simunits.meta_impact_ground_launch
         self.trajectory, self.landing_hold = simunits.meta_impact_trajectory, simunits.meta_impact_landing_hold

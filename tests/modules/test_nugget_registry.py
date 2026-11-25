@@ -121,7 +121,8 @@ def test_the_power_comes_after_the_attachment_and_only_a_timed_self_armor_one(mo
     seen = []
     monkeypatch.setattr(simdamage.simmodifier, 'modify', lambda w, b: seen.append(b))
     body = types.SimpleNamespace(auras_on={})
-    host = simdamage.EffectHost(None, types.SimpleNamespace(frame_now=lambda: 100), types.SimpleNamespace(
+    host = simdamage.EffectHost(None, types.SimpleNamespace(frame_now=lambda: 100, world=types.SimpleNamespace(
+        kill=None, fire=None)), types.SimpleNamespace(
         lift_timers=types.SimpleNamespace(hit=None), garrison=types.SimpleNamespace(fits=None),
         sweeps=types.SimpleNamespace(fire=None)))
     host.wear(body, 'M', 30, 'xml')
