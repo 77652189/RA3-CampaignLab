@@ -20,8 +20,7 @@ id = "unitban_a_second_job_pays_ten_frames_late"
 item = "脚本动作 PLAYER_ENABLE_UNIT_CONSTRUCTION"
 scene = {build = "engine_unitban", check = "a", until = 34, script = "不打"}
 bench = "a: 甲资金 1466 at f322; 工程师 31 f379-468 (甲's second engineer out between f468 and f484)"
-proves = "after the first engineer fills, the second queued job starts paying about ten frames later than the simulator's (door / next-job scheduling, INFERRED; a production gap)"
-mismatch = "sim 甲资金 1433 at f322 (bench 1466) and 工程师 33 already at f466 (bench 31 to f468)"
+proves = "only the queue's head is built: the second queued job starts paying when the first engineer leaves the door (DoorOpeningTime, 10 frames after full), not when it fills (that read 1433 at f322 and 33 at f466)"
 let = {r = "vals(rows)", at = "lambda f, i: [a[i] + (b[i] - a[i]) * (f - a[3]) / (b[3] - a[3]) for a, b in zip(r, r[1:]) if a[3] <= f <= b[3]][0]", code = "lambda f0, f1, c: (lambda w: bool(w) and all(v[2] == c for v in w))([v for v in r if f0 <= v[3] <= f1])"}
 expect = "abs(at(322, 0) - 1466) <= 4 and code(379, 468, 31)"
 

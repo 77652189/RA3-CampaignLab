@@ -58,8 +58,9 @@ class Production:
     def due(self, frame):
         """Each factory's queue up to `frame`, a frame at a time: the first job not yet full goes on 100 / frames
         (single float, so a 150-frame build fills at the 151st), paying up to ceil(cost x progress / 100) -- a frame
-        the owner cannot pay the difference stands still; the next job starts the frame after one fills; a full one
-        comes out DoorOpeningTime later at the factory's UnitCreatePoint (turned with it), on the factory's team,
+        the owner cannot pay the difference stands still; only the queue's head is built, so the next job starts the
+        frame the one before leaves (an upgrade the frame after it fills, a unit at the door: bench engine_unitban a,
+        the second engineer 10 frames late); a full one comes out DoorOpeningTime later at the factory's UnitCreatePoint (turned with it), on the factory's team,
         and walks to its NaturalRallyPoint (bench 2026-11-05 engine_production a-d: 150 / 151 frames, 54 paid at
         the 16th, a 250 budget stalls at 3 left, out 10 frames after full). A banned unit's job
         (ALLOW_DISALLOW_ONE_BUILDING 0) stands, keeps what it paid and goes on when let go -- not cancelled, not
@@ -87,7 +88,7 @@ class Production:
                         peers.upgrade_done(f, job)
                     else:
                         peers.produce_out(f, job, create, rally)
-                job = next((j for j in q if j['full'] is None), None)
+                job = q[0] if q and q[0]['full'] is None else None   # one at the door holds the line
                 if job is None or self.held(job):
                     continue                # banned: the first job stands, paid so far kept, the queue behind it too
                 step = f32(100.0 / peers.build_frames(job['secs'], job['owner']))

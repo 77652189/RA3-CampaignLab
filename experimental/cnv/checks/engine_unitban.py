@@ -12,8 +12,8 @@ partly paid queue freezes without refund and resumes, while s5 finishes normally
 Scope and evidence: work/re/c_unitban_report.md.
 BENCH 11-16: A f150 2000/1603/0, f198 1843/1500/10, f484 1000/1000/33;
 B f101 1800/1766/0, f180 1800/1503/0, f195 1753/1500/10, f285 1500/1500/11.
-The gate holds queued jobs and retains partial payments. A f322 1466/1129/11
-exposes a separate second-job payment clock gap (strict xfail), not a gate fit.
+The gate holds queued jobs and retains partial payments. A f322 1466/1129/11:
+the second job starts when the first engineer leaves the door, not at full.
 """
 from maps import probe_border
 from parts import Mission, Script, Test
