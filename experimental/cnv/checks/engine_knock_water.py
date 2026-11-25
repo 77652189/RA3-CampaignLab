@@ -51,9 +51,13 @@ Bench 11-11 (ra3ext.log `build ... land=` lines; work/logs/a163_water_*.log):
 """
 from maps import probe_air
 from parts import Mission, Obj, Script, Test
-from checks.engine_clip import ORDER
+from benches.weapon.firing.checks import engine_clip
+ORDER = engine_clip()["shared"].ORDER
 from checks.engine_knock_probe import PROBE_TANK, TANK, probe_tank, rocket_gun
-from checks.engine_suppress_probe import PROBE, probe_man
+from benches.weapon.target_effects.checks import engine_suppress_probe
+suppress_probe = engine_suppress_probe()["shared"]
+PROBE = suppress_probe.PROBE
+probe_man = suppress_probe.probe_man
 
 GUN = 'CNV_KnockShore'
 SHOCK = (200, 250, 8.5)                                       # amount, radius, z mult

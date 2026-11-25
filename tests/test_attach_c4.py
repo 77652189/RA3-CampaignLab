@@ -15,8 +15,10 @@ def test_native_c4_controls_preserve_host_and_only_delete_nugget():
     import re
     import xml.etree.ElementTree as ET
     import build
-    from checks.engine_attachc4 import LANES
-    from checks.engine_missile import SAGE
+    from benches.weapon.impact.checks import engine_attachc4
+    LANES = engine_attachc4()["shared"].LANES
+    from benches.weapon.firing.checks import engine_missile
+    SAGE = engine_missile()["shared"].SAGE
 
     m, _, _ = build.resolve('engine_attachc4', 'a')
     original = ET.parse(Path(SAGE) / 'Allied/Units/AlliedCommandoTech1.xml').getroot()

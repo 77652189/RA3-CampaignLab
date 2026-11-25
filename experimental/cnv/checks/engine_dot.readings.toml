@@ -1,8 +1,0 @@
-# Bench readings of checks/engine_dot.py (format: experimental/cnv/readings.py).
-
-[[reading]]
-id = "dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame"
-scene = {build = "engine_dot", check = "a", until = 16, shot_clock = true}
-bench = "2026-11-10 confirmation bench PASS 2/1088/2/1078."
-proves = "DOTNugget: the script sees damage at frame 2; inclusive expiry at frames 15 and 30 gives six and eleven 20-HP ticks, leaving both targets alive at 88% and 78%."
-expect = "list(rows[-1].values()) == [2, 1088, 2, 1078]"

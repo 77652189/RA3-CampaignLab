@@ -22,7 +22,8 @@ import re
 from pathlib import Path
 
 import labpaths
-from checks.engine_missile import target
+from benches.weapon.firing.checks import engine_missile
+target = engine_missile()["shared"].target
 from maps import probe_range
 from parts import Mission, Script, Test, Unit, status
 

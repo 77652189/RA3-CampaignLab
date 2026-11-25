@@ -14,7 +14,12 @@ import re
 import labpaths
 from maps import probe_range
 from model import Mission, Script, Test, Unit, square
-from checks.engine_suppress_probe import probe_man, PROBE, EVERY, LINES
+from benches.weapon.target_effects.checks import engine_suppress_probe
+suppress_probe = engine_suppress_probe()["shared"]
+probe_man = suppress_probe.probe_man
+PROBE = suppress_probe.PROBE
+EVERY = suppress_probe.EVERY
+LINES = suppress_probe.LINES
 
 STOCK = 'SovietAntiInfantryVehicle'
 LAND = STOCK + 'LandWeapon'

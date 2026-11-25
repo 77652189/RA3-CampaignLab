@@ -87,7 +87,10 @@ def engine_crash_fall():
     import labpaths
     from maps import probe_air
     from parts import Mission, Script, Test, Unit, counted
-    from checks.engine_suppress_probe import EVERY, LINES
+    from benches.weapon.target_effects.checks import engine_suppress_probe
+    suppress_probe = engine_suppress_probe()["shared"]
+    EVERY = suppress_probe.EVERY
+    LINES = suppress_probe.LINES
 
     PLANE, WRECK, OCL = 'AlliedFighterAircraft', 'AlliedFighterAircraft_Dying', 'AUFighterAircraft_Dying_OCL'
     START_X, GOAL_X = 1700.0, 4200.0
@@ -604,7 +607,7 @@ def engine_invuln():
     garrison, aura, stealth and build dependency dropped, MaxHealth HEALTH, with two OBJECT upgrades like the ball's: Dark =
     INVULNERABLE 100% (no Duration), Lit = no modifier. On the range probe map (maps/probe_range.py) each lane's gun is the
     player's and its one target stands neutral until SHOW, when it is handed to the enemy, so every gun meets its target
-    already in the lane's state. Guns: retail's sentry gun (checks/engine_range.gun: GUN damage, 100 % on structures); the
+    already in the lane's state. Guns: retail's sentry gun (benches/weapon/firing engine_range gun: GUN damage, 100 % on structures); the
     two lanes whose target stands 450 out get their gun's High (RANGE x2 and VISION x2) at s0.
 
       base     250  no upgrade                                         (control: hurt)
@@ -638,7 +641,8 @@ def engine_invuln():
     import re
 
     import labpaths
-    from checks import engine_range
+    from benches.weapon.firing.checks import engine_range
+    range_bench = engine_range()["shared"]
     from maps import probe_range
     from parts import Mission, Script, Test, Unit
 
@@ -725,7 +729,7 @@ def engine_invuln():
         name = 'CampInvK' if kinds else 'CampInv' if owner == 'neutral' else 'CampInvE'
         lanes = kinds or {lane: 'plain' for lane in LANES}
         units = [box(f'{BOX}_{k.title()}', kind=k) for k in dict.fromkeys(lanes.values())]
-        m = Mission(name=name, map=probe_range, units=units + [engine_range.gun(GUN, vision=2.0)], facts={})
+        m = Mission(name=name, map=probe_range, units=units + [range_bench.gun(GUN, vision=2.0)], facts={})
         for lane, d in LANES.items():
             m.put(GUN, f'{lane} gun', role=f'{lane} gun', name=f'UNIT - CNV Invuln {_key(lane)} Gun')
             m.put(f'{BOX}_{lanes[lane].title()}', f'{lane} at {d:g}', side=owner, role=f'{lane} target',
@@ -830,8 +834,13 @@ def engine_kill():
     """
     from maps import probe_range
     from parts import Mission, Script, Test
-    from checks.engine_clip import clip_v4
-    from checks.engine_missile import FAR, TARGET_ID, target
+    from benches.weapon.firing.checks import engine_clip
+    clip_v4 = engine_clip()["shared"].clip_v4
+    from benches.weapon.firing.checks import engine_missile
+    missile = engine_missile()["shared"]
+    FAR = missile.FAR
+    TARGET_ID = missile.TARGET_ID
+    target = missile.target
 
     ORDER = 6.0
     KILL = 50000.0                          # more than the target's 10 000 whatever its armour

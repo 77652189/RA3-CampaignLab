@@ -1,0 +1,95 @@
+# Bench readings of benches/weapon/target_effects/checks.py#engine_inform (format: experimental/cnv/readings.py).
+
+[[reading]]
+bench_id = "engine_inform"
+id = "inform_target_does_not_add_damage_to_the_separate_damage_nugget"
+scene = {build = "engine_inform", check = "damage", until = 16, shot_clock = true}
+bench = "Check documents 79/1/79/1 (damage-isolation prediction after the second burst)."
+proves = "InformTargetNugget: both lanes retain 79% HP and survive the marker and two damage hits; target notification adds no HP damage."
+expect = "list(rows[-1].values()) == [79, 1, 79, 1]"
+
+# Bench readings of benches/weapon/target_effects/checks.py#engine_inform_ai.
+# Packed: 1e9 * shield before hit + 1e8 * automatic shield + 1e6 * first hit frame
+# + 1000 * first shield frame + HP percent. Frame 135 is the never-seen sentinel.
+# The runner includes the legacy s36 sample with until=37.
+
+[[reading]]
+bench_id = "engine_inform_ai"
+id = "inform_ai_advance_response_matches_engine_inform_ai_observation[a]"
+scene = {build = "engine_inform_ai", check = "a", until = 37, shot_clock = true}
+bench = "second automatic run: 1187051068/87135068/101003068/87135089 in the frozen automatic window"
+proves = "InformTargetNugget / miner self-defense AI: base shields before its first hit, instant shields after its first hit, player and low controls do not auto-shield"
+let = {expected = "[1187051068, 87135068, 101003068, 87135089]"}
+expect = [
+    "vals(rows)[-1] == expected",
+    "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
+]
+mismatch = "Final base packed counter: simulator 135135100, bench 1187051068. Full script placement, custom projectile flight, miner AI enrollment/history and micro phase remain gaps."
+
+[[reading]]
+bench_id = "engine_inform_ai"
+id = "inform_ai_advance_response_matches_engine_inform_ai_observation[off]"
+scene = {build = "engine_inform_ai", check = "off", until = 37, shot_clock = true}
+bench = "third run, base InformTargetNugget removed: 87135068/87135068/101003068/87135089 in the frozen automatic window"
+proves = "InformTargetNugget / miner self-defense AI: base loses the automatic shield without its launch notification in this recipe"
+let = {expected = "[87135068, 87135068, 101003068, 87135089]"}
+expect = [
+    "vals(rows)[-1] == expected",
+    "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
+]
+mismatch = "Final base packed counter: simulator 135135100, bench 87135068. Full script placement, custom projectile flight, miner AI enrollment/history and micro phase remain gaps."
+
+# Bench readings of benches/weapon/target_effects/checks.py#engine_secondary (format: experimental/cnv/readings.py).
+
+[[reading]]
+bench_id = "engine_secondary"
+id = "secondary_damage_delivers_one_amount_at_hit_without_damaging_health"
+scene = {build = "engine_secondary", check = "single", until = 16, shot_clock = true}
+bench = "Bench PASS 1099/0/1099/1 (packed alive and HP, then frozen, for control and high)."
+proves = "SecondaryDamageNugget: the marker leaves each live Hammer at 99% HP; the high lane's one 2000-point secondary hit keeps it frozen even after dissipation."
+expect = "list(rows[-1].values()) == [1099, 0, 1099, 1]"
+
+# Bench readings of benches/weapon/target_effects/checks.py#engine_shot (format: experimental/cnv/readings.py).
+
+[[reading]]
+bench_id = "engine_shot"
+id = "shot_a_direct_hit_takes_the_victim_s_side_and_rear_scalar_by_where_the_shooter_stands[flank]"
+scene = {build = "engine_shot", check = "flank", until = 9, shot_clock = true}
+bench = "11-05 round 33 flank: 40/40/42/44 percent lost on the first direct hit."
+proves = "ArmorTemplate SideDamageScalar and RearDamageScalar: 4000 EXPLOSIVE against 10000 HP gives 40% front, 42% side and 44% rear at 0/40/90/180 degrees."
+expect = "list(rows[-1].values()) == [40, 40, 42, 44]"
+
+[[reading]]
+bench_id = "engine_shot"
+id = "shot_a_direct_hit_takes_the_victim_s_side_and_rear_scalar_by_where_the_shooter_stands[armor]"
+scene = {build = "engine_shot", check = "armor", until = 9, shot_clock = true}
+bench = "11-05 round 33 armor: 10/5/15/1 percent lost on the first direct hit."
+proves = "ArmorTemplate damage-type scalars: four front hits use 50/25/75/5% of 2000 damage against 10000 HP; the display rounds a loss upward."
+expect = "list(rows[-1].values()) == [10, 5, 15, 1]"
+
+[[reading]]
+bench_id = "engine_shot"
+id = "shot_script_experience_ranks_a_v4_by_the_retail_table[vet]"
+item = ["脚本动作 UNIT_GIVE_EXPERIENCE_POINTS", "脚本动作 TEAM_SET_EXPERIENCE_POINTS"]
+scene = {build = "engine_shot", check = "vet", until = 15, shot_clock = true}
+bench = "11-05 round 33 vet: retail V4s given 0 / 3600 / 7200 / 10800 points by UNIT_GIVE_EXPERIENCE_POINTS lose their targets 5 / 7 / 7 / 7 percent on the first hit."
+proves = "sim UNIT_GIVE_EXPERIENCE_POINTS ranks by the template's ExperienceLevels RequiredExperience (give_xp): ranks 2-4 take the veteran's DAMAGE_MULT 125, rank 1 none. TEAM_SET_EXPERIENCE_POINTS the same on each member (INFERRED, s03's one use)."
+expect = "list(rows[-1].values()) == [5, 7, 7, 7]"
+
+# Bench readings of benches/weapon/target_effects/checks.py#engine_weaponset (format: experimental/cnv/readings.py; runner: tests/conformance).
+# WeaponSetUpdate, bench 2026-11-09 engine_weaponset a / b (docs/engine/weaponset.md): a weapon line's ObjectStatus /
+# ForbiddenObjectStatus choose the gun: GENERIC_TOGGLE_STATE throws Molotovs instead of the AK47; a Guardian under the
+# toggle holds only the target painter (no damage).
+
+[[reading]]
+bench_id = "engine_weaponset"
+id = "test_weapon_set_the_status_picks_the_gun_molotov_under_the_toggle_and_the_painter_does_no_harm"
+scenes = {a = {build = "engine_weaponset", check = "a", until = 42}, b = {build = "engine_weaponset", check = "b", until = 20}}
+bench = "bench 基准血 / 毒瓶血 / 中途血 at s41: 42 / 9 / 21; 涂靶血 100 throughout"
+proves = "WeaponSetUpdate: the status picks the gun (Molotov under the toggle, the target painter does no damage)"
+let = {base = "[r['基准血'] for r in a]", high = "[r['毒瓶血'] for r in a]", order = "[r['中途血'] for r in a]"}
+expect = [
+  "abs(base[-1] - 42) <= 3 and abs(high[-1] - 9) <= 3 and abs(order[-1] - 21) <= 3",
+  "order[8] == base[8] and order[20] < base[20]",
+  "[r['涂靶血'] for r in b] == [100] * len(b)",
+]

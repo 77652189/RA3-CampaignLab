@@ -16,7 +16,11 @@ from pathlib import Path
 import labpaths
 from maps import probe_range
 from parts import Mission, Script, Test, Unit, counted
-from checks.engine_missile import target, TARGET_ID, _sub1
+from benches.weapon.firing.checks import engine_missile
+missile = engine_missile()["shared"]
+target = missile.target
+TARGET_ID = missile.TARGET_ID
+_sub1 = missile._sub1
 
 
 def tower(uid):

@@ -17,7 +17,10 @@ from pathlib import Path
 import labpaths
 from maps import probe_range
 from parts import Mission, Script, Test, Unit, status
-from checks.engine_missile import V4, _sub1
+from benches.weapon.firing.checks import engine_missile
+missile = engine_missile()["shared"]
+V4 = missile.V4
+_sub1 = missile._sub1
 
 PRESS, ORDER, RUN, HEALTH = 2.0, 3.0, 40.0, 10000.0
 V4_SPOTS = ((-100.0, 450.0), (0.0, 460.0), (100.0, 450.0))

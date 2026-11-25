@@ -19,8 +19,12 @@ See work/re/c_spnbomb_report.md for the hypotheses and the native-host run.
 import re
 from pathlib import Path
 from checks.engine_spn import CASES
-from checks.engine_weaponfx import gun
-from checks.engine_missile import SAGE, target
+from benches.weapon.target_effects.checks import engine_weaponfx
+gun = engine_weaponfx()["shared"].gun
+from benches.weapon.firing.checks import engine_missile
+missile = engine_missile()["shared"]
+SAGE = missile.SAGE
+target = missile.target
 from maps import probe_range
 from parts import Mission, Script, Test, Unit
 

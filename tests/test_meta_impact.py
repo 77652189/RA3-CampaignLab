@@ -235,7 +235,8 @@ def test_meta_impact_straight_projectile_dispatches_on_arrival_not_launch(monkey
     import build
     import sim
     from checks.engine_knock_probe import name
-    from checks.engine_shot import SHELL
+    from benches.weapon.target_effects.checks import engine_shot
+    SHELL = engine_shot()["shared"].SHELL
 
     m, t, _ = build.resolve('engine_knock_probe', 'land')
     gun = next(u for u in m.units if u.id == 'CNV_KnockRocket')

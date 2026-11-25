@@ -1,8 +1,0 @@
-# Bench readings of checks/engine_inform.py (format: experimental/cnv/readings.py).
-
-[[reading]]
-id = "inform_target_does_not_add_damage_to_the_separate_damage_nugget"
-scene = {build = "engine_inform", check = "damage", until = 16, shot_clock = true}
-bench = "Check documents 79/1/79/1 (damage-isolation prediction after the second burst)."
-proves = "InformTargetNugget: both lanes retain 79% HP and survive the marker and two damage hits; target notification adds no HP damage."
-expect = "list(rows[-1].values()) == [79, 1, 79, 1]"

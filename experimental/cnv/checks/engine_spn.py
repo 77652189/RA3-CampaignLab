@@ -24,8 +24,10 @@ import re
 
 from maps import probe_range
 from parts import Mission, Script, Test
-from checks.engine_weaponfx import gun
-from checks.engine_missile import target
+from benches.weapon.target_effects.checks import engine_weaponfx
+gun = engine_weaponfx()["shared"].gun
+from benches.weapon.firing.checks import engine_missile
+target = engine_missile()["shared"].target
 
 CASES=('base','high','order','removed')
 

@@ -1,0 +1,430 @@
+# Bench readings of benches/weapon/firing/checks.py#engine_acquire (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench 2026-11-10 engine_acquire with a stance set at birth: an enemy Guardian (weapon 150, VisionRange 200) and the
+# player's NO_ATTACK tank d north. GUARD (idle180 / 220 in test_simbench.py): fires in place at 180, walks in at 220 and
+# back home by s16. Row 0 (the second before the start) is left out of every reading, as the old helper did.
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "test_stance_hold_position_fires_in_reach_and_goes_after_nothing"
+scenes = {near = {build = "acquire_hold180", check = "frames", until = 26}, far = {build = "acquire_hold220", check = "frames", until = 26}}
+bench = "hold180: 原地 1 all along, 坦克血 100 -> 86 s2 ... 3 (as GUARD's idle180). hold220: 原地 1, 近敌 0, 坦克血 100 all 26 s -- where GUARD walks in and fires"
+proves = "StancesBehavior HOLD_POSITION: fires in reach and goes after nothing"
+expect = [
+  "all(r['原地'] == 1 for r in near[1:]) and near[-1]['坦克血'] < 50",
+  "all(r['原地'] == 1 and r['近敌'] == 0 and r['坦克血'] == 100 for r in far[1:])",
+]
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "test_stance_aggressive_walks_in_and_stays"
+scenes = {a220 = {build = "acquire_agg220", check = "frames", until = 26}, a240 = {build = "acquire_agg240", check = "frames", until = 26}, a260 = {build = "acquire_agg260", check = "frames", until = 26}}
+bench = "agg220: 原地 0 and 近敌 1 from s1 to s26, 坦克血 down to 3 by s14 -- it never walks back (GUARD home s16). agg240 / agg260: 原地 1, 坦克血 100 all along: the same reach as GUARD"
+proves = "StancesBehavior AGGRESSIVE: walks in and stays; the same reach as GUARD"
+expect = [
+  "a220[-1]['坦克血'] < 50 and all(r['原地'] == 0 for r in a220[4:]) and a220[-1]['近敌'] == 1",
+  "all(r['原地'] == 1 and r['坦克血'] == 100 for r in a240[1:] + a260[1:])",
+]
+
+# ---- T3 A: the R8 tests moved from tests/test_simbench.py (until is the old run's until + 1; R = the rows of seconds
+# >= 1, as the old helper left row 0 out). Bench 2026-11-07 engine_acquire: an enemy Guardian (weapon 150, VisionRange
+# 200, radius 23.3 like the player's NO_ATTACK tank) idle with the tank d north of it; guard / attack-move beside it.
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "r8_idle_180_fires_where_it_stands"
+scene = {build = "acquire_idle180", check = "frames", until = 27}
+bench = "never out of 15 of its spot (原地 1 all along), the tank hurt from s2 -- 180 centre to centre is within 150 + the radii (bench 2026-11-07 engine_acquire idle180)"
+proves = "sim idle acquire (R8): an idle Guardian fires where it stands at 180 (within weapon range + both radii)"
+let = {R = "[r for t, r in zip(times, rows) if t >= 1]"}
+expect = ["all(r['原地'] == 1 for r in R)", "R[1]['坦克血'] < 100"]
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "r8_idle_within_sight_walks_up_fires_and_comes_back"
+item = "物体模块 AI/AIUpdate"
+scene = {build = "acquire_idle200", check = "frames", until = 27}
+each = [{build = "acquire_idle200"}, {build = "acquire_idle220"}]
+bench = "out of its spot from s1 (it walked up), the tank hurt from s2, back within 15 once the tank is done (bench s16, the tank left at 3; the simulator kills it at s17 and is back by s18) (bench 2026-11-07 engine_acquire idle200 / idle220)"
+proves = "sim idle_chase (R8): an idle Guardian walks up on a target within VisionRange 200 + its radius, fires and goes back to its spot"
+let = {R = "[r for t, r in zip(times, rows) if t >= 1]"}
+expect = ["R[1]['原地'] == 0 and R[1]['坦克血'] < 100", "R[-1]['原地'] == 1 and R[-1]['坦克血'] <= 3"]
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "r8_beyond_sight_nothing"
+scene = {build = "acquire_idle240", check = "frames", until = 27}
+each = [{build = "acquire_idle240"}, {build = "acquire_idle260"}, {build = "acquire_guard260"}]
+bench = "no move, no shot at 240 / 260 (beyond VisionRange 200 + the tank's radius), nor when guarding at 260 (bench 2026-11-07 engine_acquire idle240 / idle260 / guard260)"
+proves = "sim idle_chase (R8): nothing beyond VisionRange + the target's radius, idle or guarding"
+let = {R = "[r for t, r in zip(times, rows) if t >= 1]"}
+expect = "all(r['原地'] == 1 and r['坦克血'] == 100 for r in R)"
+
+[[reading]]
+bench_id = "engine_acquire"
+id = "r8_attack_move_past_does_not_turn_aside"
+scene = {build = "acquire_am260", check = "frames", until = 27}
+each = [{build = "acquire_am260"}, {build = "acquire_am400"}]
+bench = "walks straight to E (终点 from s7), the tank 260 / 400 beside the path untouched (bench 2026-11-07 engine_acquire am260 / am400)"
+proves = "sim attack-move (R8): an attack-moving Guardian walks past a target beside its path without turning aside"
+let = {R = "[r for t, r in zip(times, rows) if t >= 1]"}
+expect = "R[-1]['终点'] == 1 and all(r['坦克血'] == 100 for r in R)"
+
+# Bench readings of benches/weapon/firing/checks.py#engine_bezier_e (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_bezier_e"
+id = "bezier_rocket_lands_and_the_module_less_one_does_not"
+scene = {build = "engine_bezier_e", check = "a", until = 17, shot_clock = true}
+bench = "E168 (bench 11-16, run b frozen at script frame 240): 帧 240, 初始满血 3, 有模块血量 95, 删模块血量 100"
+proves = "物体模块 BezierProjectile: retail V4 rocket flies to its victim and lands its 500 damage; without the module the rocket never reaches it"
+item = "物体模块 Behaviors/BezierProjectile"
+expect = ["counter('E168Frame') == 240", "counter('E168Base') == 3", "counter('E168On') == 95", "counter('E168Off') == 100"]
+
+# Bench readings of benches/weapon/firing/checks.py#engine_charge_e (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E213: ChargeWeaponUpdate, the Wave-Force tower as retail against the module taken out, both held GO (a 16 s, b 4 s,
+# c 6 s) then told to attack. On / Off = the target's health % x 1000 at its first loss + frames from GO to it;
+# End = On x 1000 + Off at END (GO + 150).
+
+[[reading]]
+bench_id = "engine_charge_e"
+id = "a_charged_wave_force_tower_fires_at_once_and_harder"
+scene = {build = "engine_charge_e", check = "a", until = 28, shot_clock = true}
+item = "物体模块 Behaviors/ChargeWeaponUpdate"
+bench = """\
+CampChargeEA_mcp_1124_032616 at 2ec9d0b6, PASS: 390 84010 89048 64068. Off: the first loss 48 frames after the \
+order (PreAttackDelay 45 + the order frame), 437.5 = 350 x EXPLOSIVE 125 % (89 %); On: 10 frames, 16 % \
+(1.4 x 437.5 = 612.5 -> 84.7 %)"""
+proves = """ChargeWeaponUpdate: a Wave-Force tower idle past ChargeTime + OverChargeTime fires its first shot with \
+OverChargePercent more damage, and far sooner than the PreAttackDelay (the frames: the next reading)"""
+expect = ["counter('E213Frame') == 390", "counter('E213On') // 1000 == 84", "counter('E213On') % 1000 < 45",
+          "counter('E213Off') == 89048"]
+
+[[reading]]
+bench_id = "engine_charge_e"
+id = "a_charged_first_shot_frames"
+scene = {build = "engine_charge_e", check = "a", until = 28, shot_clock = true}
+bench = "CampChargeEA_mcp_1124_032616: On 10 frames after the order"
+proves = "a fully charged tower's first shot comes the frame after the order's (c: 3 frames)"
+expect = "counter('E213On') % 1000 == 10"
+mismatch = """sim 3, bench 10: the 7 frames over are the turret's idle scan turning it away (MaxIdleScanAngle 90, \
+TurretTurnRate 180: up to 8 frames back; engine_charge_n a, the scan out, reads 3) -- no turret modelled"""
+
+[[reading]]
+bench_id = "engine_charge_e"
+id = "b_part_charged_tower_cuts_its_pre_attack"
+scene = {build = "engine_charge_e", check = "b", until = 16, shot_clock = true}
+bench = "CampChargeEB_mcp_1124_042600 at 94e4c450, PASS: 210 89021 89048 69068 (4 s idle: On 21 frames, 89 %)"
+proves = """a charge short of ChargeTime still cuts the first shot's pre-attack (21 frames, not Off's 48) and adds no \
+damage"""
+expect = ["counter('E213On') // 1000 == 89", "counter('E213On') % 1000 < 45", "counter('E213Off') == 89048"]
+
+[[reading]]
+bench_id = "engine_charge_e"
+id = "b_part_charge_frames"
+scene = {build = "engine_charge_e", check = "b", until = 16, shot_clock = true}
+bench = "CampChargeEB_mcp_1124_042600: On 21 frames"
+proves = "how much a part charge cuts: the simulator's idle / ChargeTime of the pre-attack (INFERRED)"
+expect = "counter('E213On') == 89021"
+mismatch = """sim 89020 (the charge from 13 frames after the making), bench 89021: the frame over is the turret's \
+idle scan (engine_charge_n b, the scan out: 20) -- no turret modelled"""
+
+[[reading]]
+bench_id = "engine_charge_e"
+id = "c_charged_not_overcharged_tower_fires_at_once_plain"
+scene = {build = "engine_charge_e", check = "c", until = 18, shot_clock = true}
+item = "物体模块 Behaviors/ChargeWeaponUpdate"
+bench = """\
+CampChargeEC_mcp_1124_042443 at 94e4c450, PASS: 240 89003 89049 58068 (6 s idle: On 3 frames, 89 %; Off 49 frames, \
+a frame over a's and b's 48)"""
+proves = """ChargeWeaponUpdate: idle ChargeTime but short of the over-charge, the first shot skips the whole \
+PreAttackDelay and deals no more (1 s of the 2 s over-charge adds nothing: 1.2 x would read 86 %)"""
+expect = ["counter('E213Frame') == 240", "counter('E213On') == 89003", "counter('E213Off') // 1000 == 89"]
+
+# engine_charge_n: the same with the turret's idle scan taken out (MaxIdleScanAngle 0) in both arms.
+[[reading]]
+bench_id = "engine_charge_e"
+id = "n_a_unscanned_charged_tower_fires_the_frame_after_the_order"
+scene = {build = "engine_charge_n", check = "a", until = 28, shot_clock = true}
+item = "物体模块 Behaviors/ChargeWeaponUpdate"
+bench = """\
+CampChargeNA_mcp_1124_051142 at 9887baa8, PASS: 390 84003 89048 53068 (a's 10 frames were the idle scan: 3 without \
+it, as c)"""
+proves = "a fully charged tower's first shot comes 3 frames after the order once the turret is not scanned away"
+expect = ["counter('E213On') == 84003", "counter('E213Off') == 89048"]
+
+[[reading]]
+bench_id = "engine_charge_e"
+id = "n_b_unscanned_part_charge_frames"
+scene = {build = "engine_charge_n", check = "b", until = 16, shot_clock = true}
+bench = "CampChargeNB_mcp_1124_051302 at 9887baa8, PASS: 210 89020 89048 69068 (21 with the scan: 1 frame of it)"
+proves = """how much a part charge (4 s idle) cuts, the scan out of the way: not the scan (21 -> 20 without it); 17 of \
+45 left = 3.1 s of 5 charged in 4 s, in proportion from 13 frames after the making (INFERRED; d below the second point)"""
+item = "物体模块 Behaviors/ChargeWeaponUpdate"
+expect = "counter('E213On') == 89020"
+
+[[reading]]
+bench_id = "engine_charge_e"
+id = "n_d_charge_starts_13_frames_after_the_making"
+scene = {build = "engine_charge_n", check = "d", until = 17, shot_clock = true}
+item = "物体模块 Behaviors/ChargeWeaponUpdate"
+bench = "CampChargeND_mcp_1124_051842 at 9887baa8, PASS: 225 89011 89048 69068 (5 s idle: On 11 frames, 89 %)"
+proves = """predicted from b before the run: a charge from the making would read 3 (5 s = ChargeTime), one 13 frames \
+late 11 -- it reads 11 and no more damage"""
+expect = ["counter('E213On') == 89011", "counter('E213Off') == 89048"]
+
+# Bench readings of benches/weapon/firing/checks.py#engine_cosmetic_e (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E211: AimWeapon / ConvergingLaserState, the retail XML against the module taken out. On / Off = target health % x
+# 1000 + frames from the order to its first loss. Each build three ways: e as written, s the arms trade places, o the
+# control's objects made first.
+
+[[reading]]
+bench_id = "engine_cosmetic_e"
+id = "the_athenas_converging_lasers_only_draw"
+scene = {build = "engine_convlaser_e", check = "a", until = 34, shot_clock = true}
+bench = """\
+CampConvLsrEA_mcp_1124_022146 and a rerun: 230 58041 57041 15; CampConvLsrSA (arms swapped): 58041 57041 15; \
+CampConvLsrOA (the control made first): 57041 58041 15 -- the 1 % follows which arm was made first, not the module"""
+proves = """ConvergingLaserState (four beams, no SweepWeapon in retail) changes neither the Athena's first loss (41 frames) \
+nor its damage; FIRING_OR_PREATTACK_A, its trigger, is on in both arms (gate 15). The simulator's Athena itself is \
+off (43033: 33 frames, 43 % left -- the OCL strike's, C's engine_ocl)"""
+expect = ["counter('E211Frame') == 230", "counter('E211On') % 1000 == counter('E211Off') % 1000",
+          "abs(counter('E211On') // 1000 - counter('E211Off') // 1000) <= 1", "counter('E211Gate') & 12 == 12"]
+
+[[reading]]
+bench_id = "engine_cosmetic_e"
+id = "aimweapon_holds_the_javelins_first_hit_a_frame"
+scene = {build = "engine_aimweapon_e", check = "a", until = 20, shot_clock = true}
+bench = """\
+CampAimWpnEA_mcp_1124_022305 and a rerun: 120 62012 62011 13; CampAimWpnSA (arms swapped) and CampAimWpnOA (the \
+control made first): 62012 62011 13 each -- with the module the Twinblade's first loss is one frame later, wherever \
+and whenever the arm is made; at f120 both 62 %. Gate 13: AIM_HIGH on the module's arm only"""
+proves = "AimWeapon is not presentation only: it holds a Javelin's first shot at a high target one script frame"
+expect = ["counter('E211Frame') == 120", "counter('E211On') // 1000 == counter('E211Off') // 1000",
+          "counter('E211On') % 1000 == counter('E211Off') % 1000 + 1", "counter('E211Gate') & 12 == 12"]
+mismatch = """sim 45003 45003: no AimWeapon, and the Javelin on a Twinblade is off as a whole (first loss 3 frames for \
+the bench's 11, 45 % left at f120 for 62 %: C's launcher / missile flight). What the frame waits for (aim pitch, \
+AimHighThreshold 0.4) is not read: not fitted"""
+
+# Bench readings of benches/weapon/firing/checks.py#engine_discharge_e (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E177: PrematureDischargeSpecialPower on / off (work/re/e177_discharge.md).
+
+[[reading]]
+bench_id = "engine_discharge_e"
+id = "test_discharge_on_named_measured_snapshot"
+scene = {build = "dischargeon_e", check = "a", until = 16}
+bench = "E177 original: frame 210, first target damage at script frame 76, off 0, cast seen once (work/re/e177_discharge.md)"
+proves = "PrematureDischargeSpecialPower: the discharge cast lands the first hit at frame 76 and is seen once"
+expect = "list(rows[-1].values()) == [210, 76, 0, 1]"
+mismatch = "sim [210, 47, 0, 0]: the first hit comes at 47, before the discharge button at 75, and no cast event; bench [210, 76, 0, 1]"
+
+[[reading]]
+bench_id = "engine_discharge_e"
+id = "test_discharge_off_named_measured_snapshot"
+scene = {build = "dischargeoff_e", check = "a", until = 16}
+bench = "E177 removal: frame 210, first damage at 109, no special-power event observed (work/re/e177_discharge.md)"
+proves = "PrematureDischargeSpecialPower: with the module removed the ordinary Waveforce first hit is at 109"
+expect = "list(rows[-1].values()) == [210, 0, 109, 0]"
+mismatch = "sim [210, 0, 47, 0]: the ordinary Waveforce first hit is 47 (PER_SHOT preattack gap); bench [210, 0, 109, 0]"
+
+# Bench readings of benches/weapon/firing/checks.py#engine_dot (format: experimental/cnv/readings.py).
+
+[[reading]]
+bench_id = "engine_dot"
+id = "dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame"
+scene = {build = "engine_dot", check = "a", until = 16, shot_clock = true}
+bench = "2026-11-10 confirmation bench PASS 2/1088/2/1078."
+proves = "DOTNugget: the script sees damage at frame 2; inclusive expiry at frames 15 and 30 gives six and eleven 20-HP ticks, leaving both targets alive at 88% and 78%."
+expect = "list(rows[-1].values()) == [2, 1088, 2, 1078]"
+
+# Bench readings of benches/weapon/firing/checks.py#engine_fwcollide (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E217: FireWeaponCollide WHEN_BEING_CRUSHED, the Flak trooper's crush revenge. 一道 / 二道 = frames from GO lane 1's
+# (armed trooper) / lane 2's (unarmed) Hammer is below 100 % + 1000 x below 70 %; 步兵 = frames lane 1's / lane 2's
+# trooper stands (1 / 1000).
+
+[[reading]]
+bench_id = "engine_fwcollide"
+id = "a_hammer_crushing_an_armed_flak_trooper_takes_its_mine_an_unarmed_one_nothing"
+scene = {build = "engine_fwcollide", check = "a", until = 10}
+item = "物体模块 Behaviors/FireWeaponCollide"
+bench = "CampFWCollA_mcp_1124_073448 at 263ee77b + E217, PASS: s10 148 105105 0 43043 (both crushed at 43, lane 1 hurt from 44)"
+proves = """FireWeaponCollide WHEN_BEING_CRUSHED with RequiredStatus GENERIC_TOGGLE_STATE: the armed trooper's crush \
+fires its CollideWeapon (200 CANNON) on the crusher -- below 100 % and below 70 % the same frame, one hit (550 -> 350 \
+predicted) -- the unarmed trooper's crush fires nothing; both crushed alike"""
+expect = ["rows[-1]['一道'] >= 1000", "rows[-1]['一道'] == rows[-1]['一道'] // 1000 * 1001", "rows[-1]['二道'] == 0",
+          "rows[-1]['步兵'] // 1000 == rows[-1]['步兵'] % 1000 < 100"]
+
+# Bench readings of benches/weapon/firing/checks.py#engine_fwupdate (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E218: FireWeaponUpdate, the Tesla trooper's short circuit. 近车 = frames from the press lane 1's enemy Hammer 30 /
+# Hammer 80 stands home (1 / 1000); 旁人 = the enemy conscript 30 / the own Hammer 30 (1 / 1000); 对照 = lane 2's
+# Hammer 30 by an unpressed trooper (1) + 1000 x frames lane 1's Hammer 30 is hurt.
+
+[[reading]]
+bench_id = "engine_fwupdate"
+id = "a_tesla_trooper_short_circuit_holds_enemy_vehicles_within_50_till_a_second_after_it_dies"
+scene = {build = "engine_fwupdate", check = "a", until = 17, shot_clock = true}
+item = "物体模块 Behaviors/FireWeaponUpdate"
+bench = "CampFWUpdA at abd996d4 + E218 bench file, PASS: s15 228 23108 18014 23"
+proves = """FireWeaponUpdate under RequiredStatus GENERIC_TOGGLE_STATE (the toggle's state counted): the pressed trooper \
+fires its short circuit every 0.13 s, each pulse an EMP of 1.1 s on what its filter takes within 50 -- the enemy \
+Hammer 30 off stands till 1.1 s after the trooper is killed at frame 75 (home 108 frames, the control 23); the \
+Hammer 80 off, the own Hammer (ENEMIES NEUTRAL) and the enemy conscript (the Rule NONE nugget takes nothing, the \
+VEHICLE one no infantry) walk as the control; no damage"""
+let = {near = "rows[-1]['近车']", side = "rows[-1]['旁人']", ctl = "rows[-1]['对照']"}
+expect = [
+    "abs(near % 1000 - 108) <= 3 and abs(near // 1000 - ctl % 1000) <= 2",
+    "side % 1000 <= ctl % 1000 and side // 1000 <= ctl % 1000",
+    "ctl % 1000 <= 26 and ctl // 1000 == 0",
+]
+
+# Bench readings of benches/weapon/firing/checks.py#engine_grapple (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E226 (bench 11-24, HEAD 650a724f): the Apocalypse's harpoon. A dead thing's health counter keeps its last value.
+
+[[reading]]
+bench_id = "engine_grapple"
+id = "the_harpoon_pulls_the_vehicle_in_and_grinds_it_dead"
+item = "物体模块 Behaviors/GrapplingHookUpdate"
+scene = {build = "engine_grapple", check = "a", until = 30, shot_clock = true}
+bench = """CampGrappleA_mcp_1124_151504 (血Far 血Near 圈Far 圈Near): s16 99 99 0 3, s17 99 99 1 5, s18 99 99 2 6, \
+s19 99 99 3 7/8, s20 99 90/81/76 5/6 8/0 (Near dead), s21 99 76 7 0, s22 95/81 76 8 0, s23-s58 76 76 0 0"""
+proves = """GrapplingHookUpdate pulls the hooked Hammer straight in at PullRate 40 (Far: ring 2 to ring 7, 125 nearer, \
+in 3 s), to within 50 of the Apocalypse, grinds it (25 a 0.24 s) and crushes it (engine/modules/grapple.py, \
+engine/combat/grapple.py)"""
+expect = ["first('圈Far', lambda v: v >= 7) - first('圈Far', lambda v: v >= 2) == 3",
+          "first('圈Far', lambda v: v >= 8) is not None and first('圈Near', lambda v: v >= 8) is not None",
+          "all(60 <= v <= 95 for v in vals(rows)[-1][:2]) and vals(rows)[-1][2:] == [0, 0]"]
+
+# A365 (bench 11-25, HEAD e8fb06ba): the old reading "the harpoon hooks at the press under NO_ATTACK" (a: Near ring 5
+# at watch s17, the press at frame 240, the order at 255) compared watch seconds with script frames; b, NO_ATTACK let go
+# at the press, rings 5 at watch s18 -- a second later than a, whose let-go came a second later: the two runs' watch
+# offsets differ by over a second. b's Far lane settles it: NO_ATTACK held, the toggled harpoon never fires.
+[[reading]]
+bench_id = "engine_grapple"
+id = "no_attack_holds_the_toggled_harpoon_and_a_free_one_hooks_unordered"
+item = "武器效果 GrapplingHookNugget"
+scene = {build = "engine_grapple", check = "b", until = 30, shot_clock = true}
+bench = """CampGrappleB_mcp_1125_032920 (血Far 血Near 圈Far 圈Near): s15-s16 100 100 0 3, s17 100 99 0 3, s18 100 99 0 5/6, \
+s19 100 99 0 7/8, s20 100 95/81 0 8, s21-s50 100 76 0 0"""
+proves = """GrapplingHookNugget (engine/combat/grapple.py): with the toggle on, an Apocalypse holding NO_ATTACK never \
+hooks the Hammer 260 off (Far 100, ring 0 all along); one let go at the press acquires it unordered, hooks it and pulls \
+it in to its death (the hit's 1 damage, 99 on the bench, the sim does not show: not read) (sim.Sim.aim / host fires: NO_ATTACK stops the shot)"""
+expect = ["all(v[0] == 100 and v[2] == 0 for v in vals(rows))",
+          "max(v[3] for v in vals(rows)) == 8 and 60 <= vals(rows)[-1][1] <= 95 and vals(rows)[-1][3] == 0"]
+
+# Bench readings of benches/weapon/firing/checks.py#engine_leechhealth (format: experimental/cnv/readings.py).
+
+[[reading]]
+bench_id = "engine_leechhealth"
+id = "leech_health_heals_from_damage_and_respects_the_heal_fraction"
+scene = {build = "engine_leechhealth", check = "a", until = 16, shot_clock = true}
+bench = "Bench PASS 1001095045/1001090050/1001090045/1001090040."
+proves = "LeechHealthDamageNugget: armor and the heal fraction give 50/100/50/0 HP healing from 50/100/100/100 HP damage; all casters and targets survive."
+expect = "list(rows[-1].values()) == [1001095045, 1001090050, 1001090045, 1001090040]"
+
+# Bench readings of benches/weapon/firing/checks.py#engine_leechpct (format: experimental/cnv/readings.py).
+
+[[reading]]
+bench_id = "engine_leechpct"
+id = "leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum"
+scene = {build = "engine_leechpct", check = "a", until = 16, shot_clock = true}
+bench = "Bench PASS 1000025/1000025/1000030/1000020."
+proves = "LeechPercentMaxHealthDamageNugget: half of victim max HP heals the live 10000-HP casters by 500/500/1000/0; all victims die."
+expect = "list(rows[-1].values()) == [1000025, 1000025, 1000030, 1000020]"
+
+# Bench readings of benches/weapon/firing/checks.py#engine_missile (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A lane's counter: frames from the order to its target's first loss + 1000 a percent lost (the module's docstring);
+# the late lanes (removed / switch) run ~8 frames behind the early ones (base / high) every run, whatever the shooter.
+
+[[reading]]
+bench_id = "engine_missile"
+id = "the_v4_lock_hint_does_not_hold_its_first_rocket"
+scene = {build = "engine_missile_lock", check = "lock", until = 13, shot_clock = true}
+bench = "CampMslLLock_mcp_1124_001609: s9-s14 5109 5108 5117 5116 (copy early, no-lock early, no-lock late, copy late)"
+proves = "the V4's WeaponAiHintInfo UseLongLockOnTimeCode is not what holds its launch to 35-40 frames after the order"
+let = {f = "lambda k: rows[-1][k] % 1000"}
+expect = ["abs(f('V4无锁跳不动') - f('复制V4跳不动')) <= 2"]
+
+[[reading]]
+bench_id = "engine_missile"
+id = "the_firing_duration_does_not_hold_the_first_rocket_the_pre_attack_does"
+scene = {build = "engine_missile_time", check = "time", until = 13, shot_clock = true}
+bench = "CampMslTTime_mcp_1124_001921: s10-s13 5109 5108 5116 5130 (copy, FiringDuration 0.1 early; FiringDuration 2, PreAttackDelay 1.5 late); second hits s15 / s14 / s17 / s17"
+proves = "a weapon's first shot waits its PreAttackDelay (1.5 s for 0.5: 14 frames later) and not its FiringDuration (0.1 / 1 / 2 s alike)"
+let = {f = "lambda k: rows[-1][k] % 1000"}
+expect = ["abs(f('射0.1跳不动') - f('复制V4跳不动')) <= 2", "abs(f('射2跳不动') - f('复制V4跳不动')) <= 9",
+          "abs(f('瞄1.5跳不动') - f('射2跳不动') - 14) <= 2"]
+
+[[reading]]
+bench_id = "engine_missile"
+id = "the_v4s_first_rocket_lands_108_frames_after_the_order"
+scene = {build = "engine_missile_time", check = "time", until = 13, shot_clock = true}
+bench = "as above: the copy 109, FiringDuration 0.1 108 (and engine_missile miss 11-05: 108 at 250 and 450)"
+proves = "the V4's first hit: launch 35-40 frames after the order (engine_missile_sweep jumps), ~70 frames' flight"
+let = {f = "lambda k: rows[-1][k] % 1000"}
+expect = "abs(f('复制V4跳不动') - 108) <= 3"
+mismatch = "sim 79: it launches after the 8-frame PreAttackDelay; the bench's ~29 frames more are neither the lock hint nor the FiringDuration (two runs 11-24, work/re/handoff-e.md)"
+
+# Bench readings of benches/weapon/firing/checks.py#engine_oclone (format: experimental/cnv/readings.py).
+
+[[reading]]
+bench_id = "engine_oclone"
+id = "weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates"
+scene = {build = "engine_oclone", check = "a", until = 16, shot_clock = true}
+bench = "Bench PASS 99/1/40/1."
+proves = "WeaponOCLNugget: the control loses 10 of 1000 HP; delayed 20-HP loop shots plus the death shot account for the effect lane's 600 damage, and both targets survive."
+expect = "list(rows[-1].values()) == [99, 1, 40, 1]"
+
+# Bench readings of benches/weapon/firing/checks.py#engine_reorder (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1. Re-ordering: the same attack order given
+# again every frame (sim.Sim.order_attack ignores it). Bench 2026-11-07 engine_reorder: straight on, round a wall line
+# (dt*), and standing in range but turned 90 degrees away (tu*), King or Guardian, every frame or once: all walk and
+# fire alike, the wall hurt from s10 (straight), s16 (dt King), s13 (dt Guardian), s14 (tu King), s13 (tu Guardian).
+# A4's King stalling on the bridge under every-frame orders (level line 06282d5) did not show on the island (no bridge
+# there). Rows are one a second from s0 (row i = s i); the old helper left row 0 out of the 'first hurt' search.
+
+[[reading]]
+bench_id = "engine_reorder"
+id = "reorder_every_frame_is_the_order_once"
+scenes = {a = {build = "reorder_once", check = "frames", until = 26}, b = {build = "reorder_every", check = "frames", until = 26}}
+each = [
+    {a = {build = "reorder_once", until = 26}, b = {build = "reorder_every", until = 26}, bench_s = 10},
+    {a = {build = "reorder_dt1", until = 46}, b = {build = "reorder_dtev", until = 46}, bench_s = 16},
+    {a = {build = "reorder_tu1", until = 36}, b = {build = "reorder_tuev", until = 36}, bench_s = 14},
+]
+bench = "the wall hurt from s10 (straight), s16 (dt King), s14 (tu King); the every-frame order walks and fires like the once one (bench 2026-11-07 engine_reorder)"
+proves = """sim.Sim.order_attack ignores the same order given again every frame: the every-frame variant runs row for row as \
+the once one, and the wall is hurt within 3 s of the bench (the simulator starts ~1-2 s late: no acceleration)."""
+let = {hp = "next(k for k in a[0] if '血' in k)", hurt = "next(i for i, r in enumerate(a) if i >= 1 and r[hp] < 100)"}
+expect = ["a == b", "abs(hurt - bench_s) <= 3"]
+
+[[reading]]
+bench_id = "engine_reorder"
+id = "reorder_every_frame_guardian"
+scene = {build = "reorder_dtevg", check = "frames", until = 51}
+each = [{build = "reorder_dtevg", until = 51, bench_s = 13}, {build = "reorder_tuevg", until = 36, bench_s = 13}]
+bench = "the wall hurt from s13 (dt Guardian) and s13 (tu Guardian) under every-frame orders (bench 2026-11-07 engine_reorder)"
+proves = "sim.Sim.order_attack: a Guardian under every-frame orders walks and fires like one given the order once, the wall hurt within 3 s of the bench"
+let = {hp = "next(k for k in rows[0] if '血' in k)", hurt = "next(i for i, r in enumerate(rows) if i >= 1 and r[hp] < 100)"}
+expect = "abs(hurt - bench_s) <= 3"
+
+# Bench readings of benches/weapon/firing/checks.py#engine_wfire (format: experimental/cnv/readings.py; runner: tests/conformance).
+# WeaponFireSpecialAbilityUpdate: the ability goes off after its unpack and holds the caster through its pack.
+
+[[reading]]
+bench_id = "engine_wfire"
+id = "a_weapon_fire_ability_goes_off_after_its_unpack_and_holds_the_caster_through_its_pack"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_PsyonicBlastSpecialPower"   # s02 presses it on the computer's Yuriko
+scene = {build = "engine_wfire", check = "all", until = 22, shot_clock = true}
+bench = "尤活 走帧 狙 吠 = 310016016 36039 8074031 15160 (bench 11-11 engine_wfire all, PASS)"
+proves = """sim WeaponFireSpecialAbilityUpdate (Sim.wfire_press / wfire_due), frame clock on: Yuriko's blast kills the \
+conscripts 100 / 200 off at frame 16 (the DamageNugget's 1 s delay), not the one 300 off; she and the dog stand \
+PackTime / FreezeAfterTriggerDuration (30) and walk out of the 30 square at 39 / 36 (sim, no acceleration, 37 / 35); \
+Natasha's near Hammer neutral at 31 (UnpackTime 2 s), the far one at 74 (sim 75), she leaves her start at 8; the bark \
+holds the conscript 60 off 160 frames (EMP 10 s), the 150 one walks at 15 (sim 14). The coarse tick moves a unit \
+only every 7-8 frames: why the frame clock."""
+let = {yuri = "rows[-1]['尤活']", stand = "rows[-1]['走帧']", snipe = "rows[-1]['狙']", bark = "rows[-1]['吠']"}
+expect = [
+    "yuri % 1000 == 16 and yuri // 1000 % 1000 == 16 and yuri // 1000000 >= 250",
+    "abs(stand % 1000 - 39) <= 3 and abs(stand // 1000 - 36) <= 2",
+    "snipe % 1000 == 31 and abs(snipe // 1000 % 1000 - 74) <= 2 and snipe // 1000000 == 8",
+    "abs(bark % 1000 - 160) <= 2 and abs(bark // 1000 - 15) <= 2",
+]

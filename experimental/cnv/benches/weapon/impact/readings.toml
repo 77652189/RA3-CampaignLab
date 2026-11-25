@@ -1,0 +1,76 @@
+# Bench readings of benches/weapon/impact/checks.py#engine_attach (format: experimental/cnv/readings.py).
+
+[[reading]]
+bench_id = "engine_attach"
+id = "attach_parent_death_complete_status_reading_matches_bench"
+scene = {build = "engine_attach_parent", check = "a", until = 18, shot_clock = true}
+bench = "2026-11-11 engine_attach_parent a: 958/928/48/32."
+proves = "AttachNugget and AttachUpdate: the packed readings capture pre-kill status and post-kill status and survival for the simple and native providers."
+expect = "list(rows[-1].values()) == [958, 928, 48, 32]"
+
+[[reading]]
+bench_id = "engine_attach"
+id = "attach_status_never_gives_no_collisions"
+scene = {build = "engine_attach_nocoll", check = "n", until = 14, shot_clock = true}
+bench = "2026-11-23 run_queue engine_attach_nocoll n (CampAttachNCN_mcp_1123_135437): 54/36/55/1 -- AttachedObjectStatus 'NO_COLLISIONS NON_AUTOACQUIRABLE' gives only NON_AUTOACQUIRABLE, 'NO_COLLISIONS' alone nothing; a script-set NO_COLLISIONS stays on the attached child as on a free one."
+proves = "AttachUpdate: AttachedObjectStatus never gives NO_COLLISIONS, in either order (engine/modules/attach.py); nothing clears a script-set one while attached."
+expect = "list(rows[-1].values()) == [54, 36, 55, 1]"
+
+# Bench readings of benches/weapon/impact/checks.py#engine_cryo (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The freeze (sim.Sim.chill, SecondaryDamageTracker): bench 2026-11-09 (the bench ran it on probe_range, the simulator
+# on Niagara's west field -- the copter's flight differs, the tracker does not).
+
+[[reading]]
+bench_id = "engine_cryo"
+id = "cryo_a_frozen_tank_melts_334_frames_after_the_beam_whatever_the_beam"
+item = "物体模块 Behaviors/SecondaryDamageTracker"
+scenes = {one = {build = "engine_cryo", check = "one", until = 91}, two = {build = "engine_cryo", check = "two", until = 91}}
+bench = """\
+One cryocopter / two on a Hammer (550), the beam cut by script 34 s after the order. 先冻 / 冻住 / 化冰 = 139 / 705 / \
+334 (one), 79 / 765 / 334 (two): frozen until 844 frames after the order either way, melting 334 frames (= (1100 - 550) \
+/ 25 a second, the 200 % cap) once the beam is gone. The simulator's flight to the target is slower (first frozen \
+189 / 90) (bench 2026-11-09)"""
+proves = "sim chill (SecondaryDamageTracker): frozen to 844 frames after the order, melts 334 frames after the beam, two beams freeze sooner"
+let = {o = "[one[-1][k] for k in ('先冻', '冻住', '化冰')]", t = "[two[-1][k] for k in ('先冻', '冻住', '化冰')]"}
+expect = [
+    "all(abs(f + h - 844) <= 10 and abs(m - 334) <= 6 for f, h, m in (o, t))",
+    "t[0] < o[0]",
+]
+
+# Bench readings of benches/weapon/impact/checks.py#engine_lift and benches/weapon/impact/checks.py#engine_liftretail (format: experimental/cnv/readings.py;
+# runner: tests/conformance). Status snapshots only (LIFTED_INTO_AIR at 7 s / 18 s, or ever latched): the lift's
+# frame timing (D50: trunc(TimeIncrement x 15) a hit, renewal capped at MaxTimeLifted) was never benched frame by
+# frame, so no reading carries 物体模块 Behaviors/LiftObjectUpdate (inventory.py keeps it 推断).
+
+[[reading]]
+bench_id = "engine_lift"
+id = "the_two_lifted_lanes_keep_the_bit_at_7_s_and_18_s"
+scene = {build = "engine_lift", check = "a", until = 22, shot_clock = true}
+bench = "engine_lift a (first bench, the check's docstring): base / high / order / removed packed 1099 / 11001099 / 11001099 / 1099 at 20-22 s (early*1e7 + late*1e6 + alive*1000 + HP%)"
+proves = "ActivateLiftObjectNugget: one 10 UNRESISTABLE hit lifts a VEHICLE only when the caster has LiftObjectUpdate; Lifetime 2 s and 0.2 s alike keep LIFTED_INTO_AIR through 18 s without a SoftLandingWeapon (the timer's release does not clear it)"
+expect = "vals(rows)[-1] == [1099, 11001099, 11001099, 1099]"
+
+[[reading]]
+bench_id = "engine_lift"
+id = "the_soft_landing_clears_the_late_bit"
+scene = {build = "engine_lift", check = "landing", until = 22, shot_clock = true}
+bench = "engine_lift landing (second bench): 1099 / 10001099 / 10001099 / 1099 -- the stock JapanCommandoSoftLanding on the caster's module clears the bit by 18 s, not by 7 s"
+proves = "LiftObjectUpdate SoftLandingWeapon: a 28-high lift's landing takes LIFTED_INTO_AIR off (simunits.LiftTimers: the fall from engine_lift_probe; the 28 / 40 edge INFERRED)"
+expect = "vals(rows)[-1] == [1099, 10001099, 10001099, 1099]"
+
+[[reading]]
+bench_id = "engine_lift"
+id = "native_ground_lifts_latch_on_yuriko_and_both_crewed_hosts"
+scene = {build = "engine_liftground", check = "a", until = 19, shot_clock = true}
+bench = "CampLiftGndA_mcp_1116_142008: s15-26 = 11 / 111 / 111 / 10 (ever LIFTED + alive*10 + crew ENCLOSED*100; the deleted-nugget Yuriko 10), work/re/c_liftretail_report.md"
+proves = "ActivateLiftObjectNugget through the three retail ground hosts' own filters (Rule ANY with Include / Exclude / StatusBitFlagsExclude / ExcludeThing); the crewed IFV / turret swap to the crew's Uprade_IFV_PsyonicCrush guns (the occupied container's CONTAINER_OCCUPIED forbids their default ones)"
+expect = "vals(rows)[-1] == [11, 111, 111, 10]"
+
+[[reading]]
+bench_id = "engine_lift"
+id = "native_air_lifts_kill_without_a_latched_bit"
+scene = {build = "engine_liftair", check = "a", until = 19, shot_clock = true}
+bench = "CampLiftAirA_mcp_1116_142206: s15-26 = 0 / 100 / 100 / 10 -- the three retail air targets died and never latched LIFTED, the deleted-nugget control lived"
+proves = "the anti-air Lift weapons on Twinblades: death without a latched lift bit (the crash / death dispatch is a gap)"
+expect = "vals(rows)[-1] == [0, 100, 100, 10]"
+mismatch = "sim 10 / 110 / 110 / 10 (aircraft lift and its death not modelled); bench 0 / 100 / 100 / 10"

@@ -16,7 +16,8 @@ See work/re/c_spntrans_report.md; exact unpack timing remains a gap.
 import re
 from pathlib import Path
 
-from checks.engine_missile import SAGE
+from benches.weapon.firing.checks import engine_missile
+SAGE = engine_missile()["shared"].SAGE
 from checks.engine_spn import CASES, mission as spn_mission
 from parts import Mission, Script, Test, Unit
 

@@ -1,8 +1,0 @@
-# Bench readings of checks/engine_leechhealth.py (format: experimental/cnv/readings.py).
-
-[[reading]]
-id = "leech_health_heals_from_damage_and_respects_the_heal_fraction"
-scene = {build = "engine_leechhealth", check = "a", until = 16, shot_clock = true}
-bench = "Bench PASS 1001095045/1001090050/1001090045/1001090040."
-proves = "LeechHealthDamageNugget: armor and the heal fraction give 50/100/50/0 HP healing from 50/100/100/100 HP damage; all casters and targets survive."
-expect = "list(rows[-1].values()) == [1001095045, 1001090050, 1001090045, 1001090040]"

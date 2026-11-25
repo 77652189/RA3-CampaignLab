@@ -38,8 +38,17 @@ true rate is only known to be above that).
 """
 from maps import probe_range
 from parts import Mission, Script, Test, status
-from checks.engine_missile import LOST_MAX, TARGET_ID, target
-from checks.engine_shot import FLANK_DAMAGE, DAMAGE, _nuggets, shot_v4
+from benches.weapon.firing.checks import engine_missile
+missile = engine_missile()["shared"]
+LOST_MAX = missile.LOST_MAX
+TARGET_ID = missile.TARGET_ID
+target = missile.target
+from benches.weapon.target_effects.checks import engine_shot
+shot = engine_shot()["shared"]
+FLANK_DAMAGE = shot.FLANK_DAMAGE
+DAMAGE = shot.DAMAGE
+_nuggets = shot._nuggets
+shot_v4 = shot.shot_v4
 from checks import engine_scripts8 as s8
 
 SHOOTER = 'CNV_HullV4'

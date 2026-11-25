@@ -1,8 +1,0 @@
-# Bench readings of checks/engine_secondary.py (format: experimental/cnv/readings.py).
-
-[[reading]]
-id = "secondary_damage_delivers_one_amount_at_hit_without_damaging_health"
-scene = {build = "engine_secondary", check = "single", until = 16, shot_clock = true}
-bench = "Bench PASS 1099/0/1099/1 (packed alive and HP, then frozen, for control and high)."
-proves = "SecondaryDamageNugget: the marker leaves each live Hammer at 99% HP; the high lane's one 2000-point secondary hit keeps it frozen even after dissipation."
-expect = "list(rows[-1].values()) == [1099, 0, 1099, 1]"

@@ -42,8 +42,16 @@ import re
 import labpaths
 from maps import probe_range
 from parts import Mission, Obj, Script, Test, Unit
-from checks.engine_clip import ORDER, clip_v4
-from checks.engine_suppress_probe import EVERY, LINES, PROBE, probe_man
+from benches.weapon.firing.checks import engine_clip
+clip = engine_clip()["shared"]
+ORDER = clip.ORDER
+clip_v4 = clip.clip_v4
+from benches.weapon.target_effects.checks import engine_suppress_probe
+suppress_probe = engine_suppress_probe()["shared"]
+EVERY = suppress_probe.EVERY
+LINES = suppress_probe.LINES
+PROBE = suppress_probe.PROBE
+probe_man = suppress_probe.probe_man
 
 # amount, radius, z mult, neighbour offset; 'tank' (round 24) = 'strong' aimed at a vehicle (hypothesis: RA3 pushes
 # only vehicles), its neighbour a second tank
@@ -126,7 +134,8 @@ def yuri_shock():
 def rocket_gun(uid='CNV_KnockRocket', shock=None):
     """Retail's V4 with its retail rocket (no scatter), the rocket's warhead swapped for <uid>Warhead: the 1.5 hit
     and the strong MetaImpactNugget (or `shock` = (amount, radius, z mult)), retail warhead's collide / affects flags."""
-    from checks.engine_missile import home_v4
+    from benches.weapon.firing.checks import engine_missile
+    home_v4 = engine_missile()["shared"].home_v4
     amount, radius, zmult = shock or LANES['rocket'][:3]
     u = home_v4(uid, adjust=10.0, scatter=False)
     old = 'WarheadTemplate="SovietAntiStructureVehicleV4RocketWarhead"'

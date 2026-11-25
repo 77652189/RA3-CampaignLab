@@ -1,8 +1,0 @@
-# Bench readings of checks/engine_oclone.py (format: experimental/cnv/readings.py).
-
-[[reading]]
-id = "weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates"
-scene = {build = "engine_oclone", check = "a", until = 16, shot_clock = true}
-bench = "Bench PASS 99/1/40/1."
-proves = "WeaponOCLNugget: the control loses 10 of 1000 HP; delayed 20-HP loop shots plus the death shot account for the effect lane's 600 damage, and both targets survive."
-expect = "list(rows[-1].values()) == [99, 1, 40, 1]"

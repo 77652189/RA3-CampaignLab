@@ -123,7 +123,8 @@ def test_inform_expiry_replays_observed_autonomous_table_cleanup(check_name, lan
 def test_inform_ai_has_one_slow_projectile_and_instant_player_low_controls(check_name):
     import build
     from contract import RETAIL_COMMANDS
-    from checks import engine_inform_ai as probe
+    from benches.weapon.target_effects.checks import engine_inform_ai
+    probe = engine_inform_ai()["shared"]
 
     m, t, _ = build.resolve('engine_inform_ai', check_name)
     ns = {'a': 'uri:ea.com:eala:asset'}
@@ -441,7 +442,8 @@ def test_inform_normal_fire_records_launch_and_deletes_on_arrival(check_name, mo
     # As in the MetaImpact wiring test, use the modeled retail straight shell.
     # Sim.own currently omits Unit.files; this is not the original slow flight.
     import re
-    from checks.engine_shot import SHELL
+    from benches.weapon.target_effects.checks import engine_shot
+    SHELL = engine_shot()["shared"].SHELL
     for unit in m.units:
         unit.xml = re.sub(r'ProjectileTemplate="[^"]+"', f'ProjectileTemplate="{SHELL}"', unit.xml)
     e = sim.Sim(m, t)

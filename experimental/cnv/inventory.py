@@ -115,13 +115,13 @@ BENCHED_TESTS = {
     (MODULE, 'Behaviors/SuppressionUpdate'): 'tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings',
     (NUGGET, 'SuppressionNugget'): 'tests/test_simbench_c.py::test_suppression_samples_entry_refresh_and_expiry_at_the_four_probe_readings',
     # engine_dot: direct single hit, immediate first tick and inclusive expiry; stacking/healing/projectiles unbenched.
-    (NUGGET, 'DOTNugget'): 'experimental/cnv/checks/engine_dot.readings.toml::dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame',
+    (NUGGET, 'DOTNugget'): 'experimental/cnv/benches/weapon/firing/readings.toml#engine_dot::dot_counts_interval_ticks_for_two_durations_and_observes_first_damage_frame',
     # engine_contained: NONE KindOf filter, cap1/2; selection order GUESSED, radius/projectiles/death unbenched.
     (NUGGET, 'DamageContainedNugget'): 'tests/test_simbench_c.py::test_damage_contained_limits_eligible_passengers_without_damaging_the_others',
-    (NUGGET, 'LeechHealthDamageNugget'): 'experimental/cnv/checks/engine_leechhealth.readings.toml::leech_health_heals_from_damage_and_respects_the_heal_fraction',
-    (NUGGET, 'LeechPercentMaxHealthDamageNugget'): 'experimental/cnv/checks/engine_leechpct.readings.toml::leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum',
-    (NUGGET, 'SecondaryDamageNugget'): 'experimental/cnv/checks/engine_secondary.readings.toml::secondary_damage_delivers_one_amount_at_hit_without_damaging_health',
-    (NUGGET, 'WeaponOCLNugget'): 'experimental/cnv/checks/engine_oclone.readings.toml::weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates',
+    (NUGGET, 'LeechHealthDamageNugget'): 'experimental/cnv/benches/weapon/firing/readings.toml#engine_leechhealth::leech_health_heals_from_damage_and_respects_the_heal_fraction',
+    (NUGGET, 'LeechPercentMaxHealthDamageNugget'): 'experimental/cnv/benches/weapon/firing/readings.toml#engine_leechpct::leech_percent_uses_victim_maximum_not_current_health_or_caster_maximum',
+    (NUGGET, 'SecondaryDamageNugget'): 'experimental/cnv/benches/weapon/target_effects/readings.toml#engine_secondary::secondary_damage_delivers_one_amount_at_hit_without_damaging_health',
+    (NUGGET, 'WeaponOCLNugget'): 'experimental/cnv/benches/weapon/firing/readings.toml#engine_oclone::weapon_ocl_lifetime_damage_reads_the_fire_delay_before_counting_updates',
     (NUGGET, 'ProjectileNugget'): 'tests/test_simbench_c.py::test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead',
     # Weapon C: replayed bench variants; tests name the actual engine_X build (A line rule).
     (NUGGET, 'AttributeModifierNugget'): 'tests/test_simbench_c.py::test_weaponfx_predictions_and_finite_bursts',
@@ -199,9 +199,9 @@ BENCHED_TESTS = {
         'tests/test_meta_impact.py::test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravity',
     # engine line C round 8: running off the map (Sim.flee_start / flee_due, checks/engine_runoffmap.py, bench 11-06)
     # engine line C round 9: the mirage aura (Sim.cloaked, simunits.invis_broadcast, checks/engine_stealth.py, bench 11-05)
-    # engine line C round 11: weapon choice by ObjectStatus (simunits.weapon_sets, checks/engine_weaponset.py,
+    # engine line C round 11: weapon choice by ObjectStatus (simunits.weapon_sets, benches/weapon/target_effects/checks.py#engine_weaponset,
     # engine_statusbits.py, bench 11-09)
-    # engine line D: the damage line (simsweep, checks/engine_sweep.py engine_sweepoff a / b / c, bench 11-10)
+    # engine line D: the damage line (simsweep, benches/weapon/target_effects/checks.py#engine_sweep engine_sweepoff a / b / c, bench 11-10)
     (MODULE, 'Behaviors/LinearDamageUpdate'):
         'tests/test_simsweep.py::test_sweep_the_line_walks_out_and_a_stop_does_not_cut_it_at_the_bench_frames',
     (NUGGET, 'ActivateLinearDamageNugget'):
@@ -271,7 +271,7 @@ NOTES = {
     (MODULE, 'Behaviors/AssignSlavesTargetObjectSpecialPower'): (GUESSED, 'E181 engine_assignrace:b f360 指定/对照血量70/20模拟器相符；自动维修、f150占用（0对33）、E67秒级时间线三处mismatch，修完再挂item；读数checks/engine_assignslaves.readings.toml'),
     (ACTION, 'REDALERT_DISABLE_THREAT_LEVEL_BONUS'): (TODO, 'C两局engine_threatbonus:a/b：A仅到第三批损失，不能用捕获秒作任务秒；B改逻辑帧闸门并交换禁用方，实测双方均第2893帧升二级（含禁用方），模型均5400。experimental/cnv/benches/economy/construction/readings.toml#engine_threatbonus具名阶段读数回放通过，协议升级读数strict xfail保留。未证明动作关闭协议经验倍率，不写无操作实现；缺同帧玩家threat/等级/倍率及单位经验奖励消费，整项未晋升。见work/re/c_threatbonus_report.md'),
     (MODULE, 'Behaviors/SpiderHoleUpdate'): (TODO, 'E178 spideron_e:a/spideroff_e:a原版反坦克步兵/仅删模块两局PASS，f45合法入洞、f120隔离者出洞；f90/f180具名状态及存活编码两侧均1515/1508，施放事件均3。checks/engine_spider_e.readings.toml状态相符，施放事件标mismatch（Sim为0）。手动切换由ToggleStatus提供，不据相同状态晋升扫描模块；同点载具实际距离/扫描接受与内部阶段未测，自动出洞假设未成立，_Ambush/精确扫描时钟/移动载具/攻击碾压仍gap，不拟合规则、不改分母；见work/re/e178_spider.md'),
-    (MODULE, 'Behaviors/PrematureDischargeSpecialPower'): (TODO, 'E177 dischargeon_e:a/dischargeoff_e:a两局原版波能坦克/仅删模块对照，f45攻击、f75按键；f210冻结原版210/76/0/1、删模块210/0/109/0，首伤提前33脚本帧、施放事件1/0。删模块原施放1预测FAIL保留。checks/engine_discharge_e.readings.toml两条mismatch：Sim两侧首伤47，且原版漏施放；武器PER_SHOT前摇及提前放电派发未闭合，不硬调模型、不登记已对拍。内部充能、伤害缩放、重复/取消、其他宿主与绝对帧均gap；见work/re/e177_discharge.md'),
+    (MODULE, 'Behaviors/PrematureDischargeSpecialPower'): (TODO, 'E177 dischargeon_e:a/dischargeoff_e:a两局原版波能坦克/仅删模块对照，f45攻击、f75按键；f210冻结原版210/76/0/1、删模块210/0/109/0，首伤提前33脚本帧、施放事件1/0。删模块原施放1预测FAIL保留。benches/weapon/firing/readings.toml#engine_discharge_e两条mismatch：Sim两侧首伤47，且原版漏施放；武器PER_SHOT前摇及提前放电派发未闭合，不硬调模型、不登记已对拍。内部充能、伤害缩放、重复/取消、其他宿主与绝对帧均gap；见work/re/e177_discharge.md'),
     (MODULE, 'Behaviors/PowerUpgrade'): (TODO, 'E175 engine_powerupgrade_e:a/b两局：a冻结330/11/10/11，b精确供电始终100/100/500/350，授予期升级持有位均0。高级原版500来自战役覆盖，删模块克隆为SDK350，不能拿基线差归因于模块。TriggeredBy的Upgrade_PowerPlantTurbine在SDK Upgrade.xml无定义；合法授予/接受拒因未闭合，倾向未解析引用（INFERRED），两局后暂停同输入。benches/economy/construction/readings.toml#engine_powerupgrade_e：b普通两座和删模块高级350相符，原版高级500与持有位0标mismatch（Sim 350、授予期持有），不登记已对拍；原预测保留，购买升级、加电/撤销和其他升级门均gap；见work/re/e175_powerupgrade.md'),
     (MODULE, 'Behaviors/SlaughterHordeContain'): (TODO, 'E170+engine_slaughter_p/q四局都没出机（p前置位48；q原版航母打船、原版打岸上电厂、克隆打电厂三臂全0：武器RequiredAntiMask默认含ANTI_WATER，不是目标也不是克隆，是脚本NAMED_ATTACK_NAMED叫不动这把OCL武器，11-23）；E170 engine_slaughter_e:a/b航母原版/仅删模块两局完成f600、宿主存活11，f180攻击期/f600返航后数量编码均0；a误用DRONE分类，b改AIRCRAFT后仍0。checks/engine_slaughter_e.readings.toml记负基线；快照未定位出机/吞入，不能以0判模块无效或借起重机AI撤退晋升。缺同帧命令接受、子机父体/存活轨迹及enterAccepted/停车阶段；同输入暂停，原数量预测FAIL保留，不推猜测模型，不登记已对拍；见work/re/e170_slaughter.md'),
     (MODULE, 'Behaviors/AssistedPlacementBehavior'): (TODO, 'E169 assistpon:a / assistpoff:a原版与删模块两局均资金8000、矿场总数0、提示位数量0、采样完成0；红色预览未落地，原吸附预测保留。当前计数器无放置接受/拒因字段，不能归因于模块；同输入暂停。benches/economy/construction/readings.toml#engine_assistplace_e记零矿场负基线，资金8000一条标mismatch（Sim未消费侧栏排队/放置点击，10000）；吸附、朝向、迷雾资格和精确距离均gap，不登记已对拍；见work/re/e169_assistplace.md；11-23 b 任务脚本定镜头后点击被接受（E169 失败是 bench_camera 偏约100）：同一点击，on 矿场落在提示位20内、转向矿点，off 落在点击处、默认朝向——台上见到吸附；模拟器不回放台子点击，读数都是 mismatch，不登记已对拍'),
@@ -301,8 +301,8 @@ NOTES = {
     (MODULE, 'Behaviors/LevelUpUpgrade'): (BENCHED, '已测范围：engine_levelup a创建升级触发升阶、重复持有不升级；b移除创建升级保留等级，老兵创建升级移除重给可再次升阶，英雄位0/0/0/1→0/0/1/1→0/1/1/1；c独立精英/英雄创建升级各自移除重给两次，首次仍0/0/0/1、第二次0/1/1/1；engine_leveldamage a等级DAMAGE_MULT125保持到精英/英雄，单发血量47/34/34/17；engine_levelhealth a满血升级HEALTH_MULT125保持到英雄，100脚本伤害同帧冻结80/80/84/84；b残血升精英保留血量比例50/80/50/20，再扣100血为30/64/34/4，当前和最大血量均乘1.25，simlevel及test_simbench_c重放；engine_levelrange a原版幻影普通炮125、英雄炮150叠加RANGE125%为187.5，220距离仅英雄命中、260距离均未命中，四路100/10100/100/10100→100/10017/100/10100，离位异常均0；engine_levelrate a幻影普通/直接英雄武器/创建英雄/创建精英三段周期25/25/20/25帧，最终血量84/80/68/80，ROF不增加单发伤害；仅此离散单发炮配置已量，射速分段取整/其他武器仍未对拍；engine_levelshroud a原版幻影基础揭雾500、创建英雄SHROUD_CLEARING125%预测625，580/750距离普通/英雄四路1/1/1/1→1/111/1/101，近点始终可见且无离位；仅此模板配置已量，精确边界未对拍；engine_levelvision a原版幻影普通/创建英雄对小包围体工程师240/310距离ENEMY_SIGHTED四路11/11/11/11→0/0/0/0→0/101/0/100，近点在正式窗口前删除且无离位，支持VISION125按1.25倍率为250的预测；仅脚本范围查询已量，精确边界/自动索敌未对拍；gap：英雄自动索敌、精确射程/揭雾/视野边界、射速分段取整/其他武器、其余模板/等级属性、经验成长、额外上限及Permanent=true未对拍；按总控11-11收尾决定登记模块已对拍，不表示这些gap已验证；这些分支与已测效果共用模板，不能按SPLIT_STILL互斥拆分用量'),
     (NUGGET, 'FireOnObjectsNugget'): (TODO, '未实现：子武器派发条件与空间锚点尚未解释；失败诊断不作为已对拍依据'),
     (NUGGET, 'GrapplingHookNugget'): (BENCHED, '仅原版天启鱼叉钩车辆：开关后 NO_ATTACK 挡着不钩、放开即自己索敌钩住拉死（engine_grapple a / b）；钩建筑 / TIME_BOMB、弹跳、放钩再钩未测，命中那 1 点伤害模拟器不显示（INFERRED）'),
-    (MODULE, 'Behaviors/LiftObjectUpdate'): (GUESSED, '部分：显式TimeIncrement/MaxTimeLifted的开火者举升表；台上只有7s/18s状态快照（checks/engine_lift.readings.toml），逐帧计时来自模块证据、未上台量；垂直运动/死亡/飞机/落地清位仍gap'),
-    (NUGGET, 'ActivateLiftObjectNugget'): (GUESSED, '部分：按模块证据实现开火者举升表，trunc(TimeIncrement×15)逐发累加、续期封顶MaxTimeLifted、逐帧递减释放；Lifetime不参与，释放不清LIFTED；读数在checks/engine_lift.readings.toml：engine_lift a相符，landing（落地清位）、原版地面3/对空3消费者（复杂筛选、飞机未接通）标mismatch；合成VEHICLE组不占原版用量；落地清位INFERRED，垂直运动/死亡/飞机/弹体仍gap；边界见work/re/c_liftclosure_report.md'),
+    (MODULE, 'Behaviors/LiftObjectUpdate'): (GUESSED, '部分：显式TimeIncrement/MaxTimeLifted的开火者举升表；台上只有7s/18s状态快照（benches/weapon/impact/readings.toml#engine_lift），逐帧计时来自模块证据、未上台量；垂直运动/死亡/飞机/落地清位仍gap'),
+    (NUGGET, 'ActivateLiftObjectNugget'): (GUESSED, '部分：按模块证据实现开火者举升表，trunc(TimeIncrement×15)逐发累加、续期封顶MaxTimeLifted、逐帧递减释放；Lifetime不参与，释放不清LIFTED；读数在benches/weapon/impact/readings.toml#engine_lift：engine_lift a相符，landing（落地清位）、原版地面3/对空3消费者（复杂筛选、飞机未接通）标mismatch；合成VEHICLE组不占原版用量；落地清位INFERRED，垂直运动/死亡/飞机/弹体仍gap；边界见work/re/c_liftclosure_report.md'),
     (NUGGET, 'AttachNugget'): (GUESSED, '部分：engine_attach a实测直接单发、父子状态、随父移动及目标状态/类型拒绝；仅零半径简单模块，原版复杂筛选/维修/吸血/解除/弹体未接通；engine_attachc4 a原版谭雅/删Nugget及父EXPLOSIVES_ATTACHED对照为11/10024/10030/10028，正常原版附着后父死子活，禁用父仍有MARCH_OF_DEATH但无ATTACHED；tests/test_attach_c4.py具名回放，原生模块状态/链接/爆破消费strict xfail，见work/re/c_attachc4_report.md；engine_attachmine a原生磁力地雷本体原位创建/删Nugget×普通/SPECIAL_ARMOR_ACTIVE为111/110/111/110，保留者均附着、删除者均不附着；tests/test_attach_mine.py具名回放阴性，b三个禁用位均读到仍附着为111/110/7111/7110，两原生回放strict xfail；上游弹体/OCL、复杂筛选及生命周期仍gap，见work/re/c_attachmine_report.md；不登记整项已对拍'),
     (NUGGET, 'SpecialPowerNugget:变装消费者'): (GUESSED, '2用量：间谍/迅雷直接命中DISGUISED位及INFANTRY/VEHICLE/恐怖机器人排除已测；engine_spndisguise/spnspyx/spnspyex/spntrans/spntrfilter a均1111/1110/1110/1111，tests/test_special_power_nugget.py按名回放；gap：身份/外观/索敌/换目标/取消，迅雷展开时序strict xfail，即时位应用INFERRED；engine_spnrelations a间谍/迅雷各Friend与Neutral四路s6-15全1111，独立命中且无脚本变装位；engine_spncancel a四路真变装保留/空载撤离/删SPN/仅脚本位稳定1101/1101/1110/1111：普通征召兵自动攻击仅伤后两路，空载撤离不取消；engine_spncargo a有载撤离high从111101到101100再101110，实测出舱/清位后才受伤，原截图时间窗预测FAIL不改阈值；两原生消费者回放strict xfail，脚本位不等于真实身份。身份/时序缺口见work/re/c_spnclosure_report.md、c_spncancel_report.md，不登记完整消费者'),
     (NUGGET, 'SpecialPowerNugget:轰炸消费者'): (GUESSED, '1用量，暂停：engine_spnbombnative a原版/删SPN/合成/合成删SPN为1010/1110/1110/1110；OCL活动消费者未实现，具名回放strict xfail；需要原版与合成宿主派发观测，work/re/c_spnbomb_report.md'),
@@ -349,7 +349,7 @@ NOTES = {
     (MODULE, 'Behaviors/ConvergingLaserState'): (NA, '纯表现：LaserState 加四束汇聚，原版两处（雅典娜、锤子坦克吸来的雅典娜炮）'
                                                      '都没填 SweepWeapon / SweepFXList；E211 engine_convlaser_e/s/o '
                                                      '三种摆法原版/删模块首伤同为 41 帧，1% 血差跟着先放的那臂走'
-                                                     '（checks/engine_cosmetic_e.readings.toml）'),
+                                                     '（benches/weapon/firing/readings.toml#engine_cosmetic_e）'),
     (MODULE, 'Behaviors/SweepingLaserState'): (NA, '纯表现：LaserState 加光束末端扫动（Radius / SweepFXList / '
                                                    'SweepFXTimeout），能伤人的只有 SweepWeapon，原版唯一一处（恐怖机器人，'
                                                    'LaserId 0）没填；FX_SOV_ElectroRay 只有声音和粒子。麻痹由同一武器的 '
@@ -362,7 +362,7 @@ NOTES = {
                                                   '读数 mismatch 见 checks/engine_oclmonitor_e'),
     (MODULE, 'Behaviors/AimWeapon'): (TODO, 'E211 不是纯表现：标枪兵打直升机，原版比删模块首伤晚 1 个脚本帧（换位、'
                                             '换放置顺序都一样），f120 血量相同；设 AIM_HIGH（只有绘制模块读）。'
-                                            '晚的这一帧等什么没读到，不拟合；读数 mismatch 见 checks/engine_cosmetic_e'),
+                                            '晚的这一帧等什么没读到，不拟合；读数 mismatch 见 benches/weapon/firing/readings.toml#engine_cosmetic_e'),
     (MODULE, 'Behaviors/LUAEventList'): (NA, '纯表现：EventListName连接原版ScriptEvents.xml与Scripts.lua；RA3声明可达的事件处理函数只调用模型部件显隐（及tostring），含继承；未定义的AlliedInfantryFightingFunctions无可达处理函数；C&C3升级/状态函数不可达。tests/test_inventory_lua.py静态核对游戏包与SDK声明，非上台对拍'),
     # batch 1 (work/re/l2_scripts1.md, checks/engine_scripts1.py, bench 11-08)
     (ACTION, 'TEAM_HUNT'): (GUESSED, '主人 aiTactical 255（人类除外）：攻击移动到最近敌对物体（单位也算），目标死后'

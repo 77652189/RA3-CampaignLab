@@ -14,7 +14,9 @@ _spec = importlib.util.spec_from_file_location(
 _spec.loader.exec_module(importlib.util.module_from_spec(_spec))
 
 import engine.data.units as simunits  # noqa: E402
-from checks import engine_suppression  # noqa: E402
+from benches.weapon.target_effects.checks import engine_suppression  # noqa: E402
+
+suppression_bench = engine_suppression()['shared']
 
 
 def test_suppression_entries_live_ceil_of_their_seconds_in_frames():
@@ -23,6 +25,6 @@ def test_suppression_entries_live_ceil_of_their_seconds_in_frames():
 
 
 def test_the_fraction_lane_is_the_one_that_tells_ceil_from_round():
-    lanes = engine_suppression.cases_for('fraction')
+    lanes = suppression_bench.cases_for('fraction')
     assert lanes['order'][2] == lanes['removed'][2] == 1.95
     assert round(1.95 * 15) == 29 and simunits._frames(1.95) == 30

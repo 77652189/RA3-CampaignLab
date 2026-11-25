@@ -20,7 +20,8 @@ See work/re/c_spndisguise_report.md and c_spndisguise_measured.json.
 import re
 from pathlib import Path
 
-from checks.engine_missile import SAGE
+from benches.weapon.firing.checks import engine_missile
+SAGE = engine_missile()["shared"].SAGE
 from checks.engine_spn import CASES, mission as spn_mission
 from parts import Mission, Script, Test, Unit
 

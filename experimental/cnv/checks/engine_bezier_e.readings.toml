@@ -1,9 +1,0 @@
-# Bench readings of checks/engine_bezier_e.py (format: experimental/cnv/readings.py; runner: tests/conformance).
-
-[[reading]]
-id = "bezier_rocket_lands_and_the_module_less_one_does_not"
-scene = {build = "engine_bezier_e", check = "a", until = 17, shot_clock = true}
-bench = "E168 (bench 11-16, run b frozen at script frame 240): 帧 240, 初始满血 3, 有模块血量 95, 删模块血量 100"
-proves = "物体模块 BezierProjectile: retail V4 rocket flies to its victim and lands its 500 damage; without the module the rocket never reaches it"
-item = "物体模块 Behaviors/BezierProjectile"
-expect = ["counter('E168Frame') == 240", "counter('E168Base') == 3", "counter('E168On') == 95", "counter('E168Off') == 100"]

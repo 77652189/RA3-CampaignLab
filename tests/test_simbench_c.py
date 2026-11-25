@@ -328,7 +328,10 @@ def test_immortal_damage_stops_at_one_hp_kill_is_damage_and_delete_removes():
 def test_suppression_predictions():
     """Guard finite probe inputs and compare the model against the suppression bench."""
     import build
-    from checks import engine_clip, engine_suppression
+    from benches.weapon.firing.checks import engine_clip
+    clip_bench = engine_clip()["shared"]
+    from benches.weapon.target_effects.checks import engine_suppression
+    suppression_bench = engine_suppression()["shared"]
     import sim
     import engine.data.units as simunits
     from parts import contract, merged
@@ -438,7 +441,7 @@ def test_suppression_predictions():
             assert len(pressure) == (0 if u.id.endswith('Armor') else 1)
             k = next(k for k in ('base', 'high', 'order', 'removed', 'low') if u.id.startswith('CNV_Supp' + k.title()))
             if pressure:
-                _, value, duration = engine_suppression.cases_for(lane)[k]
+                _, value, duration = suppression_bench.cases_for(lane)[k]
                 assert pressure[0].attrib == dict(Radius='20', Suppression=str(value), DurationSeconds=f'{duration}s')
         # Main guns belong on the actual named pads, not 350 south of them.
         for k in ('base', 'high', 'order', 'removed', 'low'):
@@ -455,7 +458,7 @@ def test_suppression_predictions():
         # Match clip's hold/release/order/flag sequence and its absolute order time.
         start = next(script for script in t.scripts if script.name == 'Test - start')
         timers = {a[1]: a[2] for a in start.do if a[0] == 'SET_MILLISECOND_TIMER'}
-        fire_at = engine_clip.ORDER + {'phasea': 1 / 3, 'phaseb': 2 / 3}.get(lane, 0)
+        fire_at = clip_bench.ORDER + {'phasea': 1 / 3, 'phaseb': 2 / 3}.get(lane, 0)
         assert {k: v for k, v in timers.items() if not k.startswith('Supp Stop ')} == {'Supp Fire': fire_at, 'Supp Move': 12.0 if lane == 'tail' else 10.0 if lane == 'duration' else 9.0,
                           'Supp Late': 17.0, 'Supp Armor': 11.0}
         fire = next(script for script in t.scripts if script.name == 'Test - fire')
@@ -470,7 +473,7 @@ def test_suppression_predictions():
             uid = 'CNV_Supp' + gun_lane.title() + ('Second' if part == 'second' else '')
             unit = next(u for u in m.units if u.id == uid)
             hits = unit.params['clip']
-            assert unit.params['reload'] == 1.0 < engine_clip.ORDER
+            assert unit.params['reload'] == 1.0 < clip_bench.ORDER
             stop_at = timers['Supp Stop ' + gun_lane + part]
             assert stop_at == fire_at + (2 * hits + 2) / 15
             assert fire_at + 2 * hits / 15 < stop_at < fire_at + (2 * hits + 15) / 15
@@ -500,7 +503,7 @@ def test_suppression_predictions():
         s.run(9)
         assert s.enemy(m.player('p1'), m.player('s1')) and s.enemy(m.player('s1'), m.player('p1'))
         assert 'SUPPRESSED' not in ordinary.status   # model condition is not an object status
-        s.run(engine_suppression.RUN)
+        s.run(suppression_bench.RUN)
         # Exact model/bench matches only where expiry and fractional entry do
         # not intervene. The other expectations record the ENGINE, not Sim.
         if lane in ('armor', 'armored', 'immune', 'fast'):
@@ -660,7 +663,7 @@ def test_weapon_bench_register_points_to_replayed_engine_probes():
     for name,(test,probe) in pairs.items():
         assert inventory.BENCHED_TESTS[inventory.NUGGET,name].endswith('::'+test)
         assert probe in inspect.getsource(globals()[test])
-        assert 'checks/'+probe+'.py' in inventory.tested_probes()
+        assert any(k.startswith('benches/weapon/') and k.endswith('#'+probe) for k in inventory.tested_probes())
     for form, test, probe in (
             ('默认系数目标通知', 'test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe',
              'engine_inform_probe'),
@@ -668,7 +671,7 @@ def test_weapon_bench_register_points_to_replayed_engine_probes():
              'engine_inform_max')):
         assert inventory.BENCHED_TESTS[inventory.NUGGET, 'InformTargetNugget:' + form] == (
             'tests/test_inform_ai.py::' + test)
-        assert 'checks/' + probe + '.py' in inventory.tested_probes()
+        assert any(k.startswith('benches/weapon/') and k.endswith('#' + probe) for k in inventory.tested_probes())
 
 
 def test_projectile_nugget_flight_uses_retail_shell_speed_and_resolved_warhead():
@@ -805,7 +808,8 @@ def test_attach_parent_delete_clears_the_surviving_childs_status():
 def test_attach_probe_rejects_an_unpublished_module_before_building():
     from types import SimpleNamespace
     import pytest
-    from checks.engine_attach import _module_contract
+    from benches.weapon.impact.checks import engine_attach
+    _module_contract = engine_attach()["shared"]._module_contract
     bad=SimpleNamespace(id='bad',xml='<AssetDeclaration><AttachNugget AttachModuleId="Missing"/></AssetDeclaration>')
     with pytest.raises(ValueError,match='unpublished AttachModuleId'):
         _module_contract(bad)

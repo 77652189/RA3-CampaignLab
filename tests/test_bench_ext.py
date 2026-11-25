@@ -193,15 +193,18 @@ def test_the_probe_check_asks_for_ra3ext_and_its_control_does_not():
 
 
 def test_the_sweep_check_carries_one_tagged_linear_damage_and_a_laser():
-    from checks import engine_sweep
-    on, off = engine_sweep.MISSION['engine_sweep'](), engine_sweep.MISSION['engine_sweepoff']()
+    from benches.weapon.target_effects.checks import engine_sweep
+    sweep_bench = engine_sweep()
+    missions = sweep_bench['MISSION']
+    on, off = missions['engine_sweep'](), missions['engine_sweepoff']()
     assert on.ext is True and off.ext is False
     for m in (on, off):
         assert len(m.name) + 1 <= 15 and '_' not in m.name
-        for check in engine_sweep.CHECKS['engine_sweep'].values():
+        for check in sweep_bench['CHECKS']['engine_sweep'].values():
             assert len(check(m).counters) <= 4
+    tag = sweep_bench['shared'].TAG
     for u in on.units[:2]:
-        assert u.xml.count(f'<LinearDamageUpdate id="{engine_sweep.TAG}"') == 1
+        assert u.xml.count(f'<LinearDamageUpdate id="{tag}"') == 1
         assert u.xml.count('<LaserState id=') == 1 and u.xml.count('LaserStateID="1"') == 1
         assert 'ActivateLinearDamageNugget' in u.xml and 'ActivateLaserNugget' in u.xml
 

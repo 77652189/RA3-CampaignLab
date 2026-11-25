@@ -19,8 +19,12 @@ import re
 from pathlib import Path
 
 from checks.engine_spn import CASES
-from checks.engine_weaponfx import gun
-from checks.engine_missile import SAGE, target
+from benches.weapon.target_effects.checks import engine_weaponfx
+gun = engine_weaponfx()["shared"].gun
+from benches.weapon.firing.checks import engine_missile
+missile = engine_missile()["shared"]
+SAGE = missile.SAGE
+target = missile.target
 from maps import probe_range
 from model import status
 from parts import Mission, Script, Test

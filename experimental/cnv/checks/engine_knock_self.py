@@ -25,8 +25,12 @@ import labpaths
 from maps import probe_range
 from parts import Mission, Script, Test, Unit
 from model import square
-from checks.engine_clip import ORDER
-from checks.engine_suppress_probe import PROBE, probe_man
+from benches.weapon.firing.checks import engine_clip
+ORDER = engine_clip()["shared"].ORDER
+from benches.weapon.target_effects.checks import engine_suppress_probe
+suppress_probe = engine_suppress_probe()["shared"]
+PROBE = suppress_probe.PROBE
+probe_man = suppress_probe.probe_man
 
 RETAIL = 'AlliedAntiInfantryInfantryShotgun'
 PLAIN, PLAIN_WEAPON = 'CNV_KnockShot', 'CNV_KnockShotWeapon'

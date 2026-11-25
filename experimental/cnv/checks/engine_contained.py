@@ -24,7 +24,8 @@ a separate ordinary damage marker are benched; passenger priority GUESSED.
 from maps import probe_range
 from model import status
 from parts import Mission,Script,Test
-from checks.engine_weaponfx import gun
+from benches.weapon.target_effects.checks import engine_weaponfx
+gun = engine_weaponfx()["shared"].gun
 HOUSE='AM_Apartments_01'
 MAN='SovietAntiInfantryInfantry'
 CASES=(('base',0,'INFANTRY'),('high',1,'INFANTRY'),('order',2,'INFANTRY'),('removed',2,'VEHICLE'))
