@@ -188,9 +188,9 @@ def test_the_first_picture_of_every_level_shows_no_black(monkeypatch):
     for level in plan.levels():
         m = plan.Compiler(plan.load(level)).compile()
         assert contract.start_camera_inside_the_view(m) == [], level
-    m = plan.Compiler(plan.load('a2')).compile()
-    cut = next(a for s in m.scripts if s.name == 'CNV A2 - Opening camera' for a in s.do if a[0] == 'MOVE_CAMERA_TO')
-    assert cut[1] == 'CNV A2 Cam start 950 1210' and cut[1] in m.views and contract.camera_outside_the_view(m) == []
+    m = plan.Compiler(plan.load('a9')).compile()        # (A2 moved to a map whose start is inside the view, 11-24)
+    cut = next(a for s in m.scripts if s.name == 'CNV A9 - Opening camera' for a in s.do if a[0] == 'MOVE_CAMERA_TO')
+    assert cut[1] == 'CNV A9 Cam start 950 880' and cut[1] in m.views and contract.camera_outside_the_view(m) == []
     monkeypatch.setattr(plan.Compiler, 'opening_camera', lambda self: [])
-    bare = plan.Compiler(plan.load('a2')).compile()
+    bare = plan.Compiler(plan.load('a9')).compile()
     assert 'first picture shows black' in ''.join(contract.start_camera_inside_the_view(bare))

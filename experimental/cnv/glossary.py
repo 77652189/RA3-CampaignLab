@@ -34,6 +34,7 @@ OWN = {
     '镰刀': 'SovietAntiInfantryVehicle', '铁锤坦克': 'SovietAntiVehicleVehicleTech1',
     '磁暴坦克': 'SovietAntiVehicleVehicleTech2', '天启坦克': 'SovietAntiVehicleVehicleTech3',
     'V4 火箭车': 'SovietAntiStructureVehicle', '恐怖机器人': 'SovietScoutVehicle', '牛蛙': 'SovietAntiAirShip',
+    '魟鱼': 'SovietAntiNavyShipTech1',
     '米格战机': 'SovietFighterAircraft', '双刃直升机': 'SovietAntiGroundAircraft', '基洛夫空艇': 'SovietBomberAircraft',
     '哨戒炮': 'SovietBaseDefenseGround', '防空炮': 'SovietBaseDefenseAir', '磁暴线圈': 'SovietBaseDefenseAdvanced',
     # 帝国
