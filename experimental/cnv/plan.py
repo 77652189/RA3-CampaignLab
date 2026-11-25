@@ -651,9 +651,8 @@ class Compiler:
             side = self.m.cast[self.parts(groups[0])[0]].side
             if a.get('齐步') in (True, '是'):
                 return self.pace_placed(a, groups, names, side)
-            if a.get('先到'):
-                self.m.scripts += self.via(a, names, side, f'placed {self.uid()}')
-            return self.orders(a, names, dict(names=[]), side)
+            arm = self.via(a, names, side, f'placed {self.uid()}') if a.get('先到') else []
+            return arm + self.orders(a, names, dict(names=[]), side)
         if '禁造' in a or '准造' in a:              # the player may (not) build it (retail Brighton Beach)
             return self.bans(a['禁造' if '禁造' in a else '准造'], int('准造' in a))
         if '转给我' in a:
@@ -1151,7 +1150,7 @@ class Compiler:
                     acts += [('NAMED_RECEIVE_UPGRADE', up, obj) for obj, up in slowed]
                     acts += self.orders(spec, names, w) + [('INCREMENT_COUNTER', 1, sent)] + warn
                     if spec.get('先到'):
-                        m.scripts += self.via(spec, names, 's1', f'{k} {i}{"+" if bonus else ""} {TAGS[lv]}', levels)
+                        acts += self.via(spec, names, 's1', f'{k} {i}{"+" if bonus else ""} {TAGS[lv]}', levels)
                     if slowed:                  # released as the first of them gets there (one script each: it may fall)
                         free = [('NAMED_REMOVE_UPGRADE', up, obj) for obj, up in slowed]
                         for n, (obj, _) in enumerate(slowed):
@@ -1172,10 +1171,14 @@ class Compiler:
 
     def via(self, spec, names, side, key, levels=ALL):
         """先到 (a wave's or 出动's): there first, then the 打 order for them all once one of them is inside it (one
-        script a unit: it may fall)."""
-        then = self.orders({**spec, '先到': None}, names, {'names': []}, side)
-        return [Script(f'CNV {self.tag} - Via {key} {n + 1}', [('NAMED_INSIDE_AREA', obj, self.area(spec['先到']))],
-                       then, levels=levels) for n, obj in enumerate(names)]
+        script a unit: it may fall). The scripts wait on a flag the send-off raises (the action returned) and the
+        first one in lowers (review 1125 V: troops placed inside it attacked before they were sent)."""
+        flag = f'CNV_{self.tag}_Via_{key}'.replace(' ', '_')
+        then = self.orders({**spec, '先到': None}, names, {'names': []}, side) + [('SET_FLAG', flag, 0)]
+        self.m.scripts += [Script(f'CNV {self.tag} - Via {key} {n + 1}',
+                                  [('FLAG', flag, 1), ('NAMED_INSIDE_AREA', obj, self.area(spec['先到']))],
+                                  then, levels=levels) for n, obj in enumerate(names)]
+        return [('SET_FLAG', flag, 1)]
 
     def pace_placed(self, a, groups, names, side):
         """齐步 for placed troops sent off (出动): every faster one is placed as its paced copy from the start (the bench

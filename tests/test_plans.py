@@ -230,8 +230,24 @@ def test_sent_off_there_first_then_attack():
     sent = named(m, 'CNV ZZ - Rule 1')[0].do
     via = [s for s in m.scripts if ' - Via ' in s.name]
     assert sent[-1][0] == 'MOVE_TEAM_TO' and len(via) == 2
-    assert [s.when[0][:2] for s in via] == [('NAMED_INSIDE_AREA', f'UNIT - CNV ZZ guard {j}') for j in (1, 2)]
-    assert via[0].do[-1][0] == 'ATTACK_MOVE_TEAM_TO' and via[0].do[-1] != sent[-1]
+    assert [s.when[1][:2] for s in via] == [('NAMED_INSIDE_AREA', f'UNIT - CNV ZZ guard {j}') for j in (1, 2)]
+    assert via[0].do[-2][0] == 'ATTACK_MOVE_TEAM_TO' and via[0].do[-2] != sent[-1]
+
+
+def test_sent_off_from_inside_the_first_area_waits_for_the_send_off():
+    """Review 1125 V: placed inside its 先到 area and sent at 0:10 -- idle till then (the via scripts wait on the
+    send-off's flag), then the attack at once; the first one in lowers the flag (the rest fire nothing)."""
+    import sim
+    m = small(开局={'部队': [{'单位': '帝国武士', '在': 'west field', '阵营': '敌', '角色': 'guard'}]},
+              规则=[{'当': '开局 + 0:10', '做': [{'出动': 'guard', '先到': 'west field', '打': 'north base'}]}])
+    s = sim.Sim(m, model=False)
+    b = s.bodies[m.role('guard').name]
+    s.advance(100)
+    assert b.mode == 'idle'
+    s.advance(250)
+    assert b.mode == 'attack'
+    via = [x for x in m.scripts if ' - Via ' in x.name][0]
+    assert via.when[0] == ('FLAG', via.do[-1][1], 1) and via.do[-1][0] == 'SET_FLAG' and via.do[-1][2] == 0
 
 
 def test_an_enemy_ai_of_the_levels_own():
