@@ -9,11 +9,11 @@ import engine.testing.small as simsmall
 from engine.ports.command import Command
 
 
-@pytest.mark.parametrize('on', [True, False])
-def test_the_harpoon_pulls_the_hooked_vehicle_in(on):
+@pytest.mark.parametrize('on, clock', [(True, True), (False, True), (True, False)])   # the default clock: the aim hooks
+def test_the_harpoon_pulls_the_hooked_vehicle_in(on, clock):
     s = simsmall.small_world([('apoc', 'SovietAntiVehicleVehicleTech3', 'Player_1', 1400.0, 2400.0),
                               ('hammer', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1400.0, 2560.0)], model=False)
-    s.shot_clock = True
+    s.shot_clock = clock
     a, h = s.bodies['apoc'], s.bodies['hammer']
     h.status.add('NO_ATTACK')
     if on:

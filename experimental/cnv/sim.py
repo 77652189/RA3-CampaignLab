@@ -65,7 +65,7 @@ sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign'
 import parts  # noqa: E402
 import engine.script.act as simact  # noqa: E402
 import engine.script.cond as simcond  # noqa: E402
-import engine.combat.host as simdamage  # noqa: E402
+import engine.combat.host as simdamage, engine.combat.grapple as simgrapple  # noqa: E402
 import engine.objects.garrison as simgarrison  # noqa: E402
 import engine.objects.heal as simheal  # noqa: E402
 import engine.world.living as simliving  # noqa: E402
@@ -670,8 +670,7 @@ class Sim:
         self.tech_read = False              # a script has read the points or the protocols (pending: a rank to come)
         self.ground = Ground(mission.map)
         self.own = {**parts.compiled_objects(self.mm.units), **{u.id: u.xml for u in self.mm.units}}   # the units, and the GameObjects of the own files their build compiles (engine_bezier_e: its rocket)
-        # Retail objects replaced by linked assets must use the same XML as
-        # the built mod (E167 removes only the factory's Tech2 receiver).
+        # Retail objects replaced by linked assets must use the same XML as the built mod (E167 removes only the factory's Tech2 receiver).
         for _, xml, link in getattr(self.mm, 'assets', ()):    # a retail map (Merged) links none
             if link.startswith('GameObject:'):
                 self.own[link.split(':', 1)[1]] = xml
@@ -1790,15 +1789,16 @@ class Sim:
             for effect in w.get('unmodeled_effects', []):
                 self.gap(GAP_WEAPON, effect, '武器第1轮尚未解释此效果的筛选、几何或时序')
             if not self.shot_clock and (w.get('hit_modifiers') or w.get('line') or w.get('strip_max_health') or w.get('emp_seconds')
-                                       or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('grapple') or w.get('meta_impacts')):
+                                       or w.get('sweep') or w.get('contained') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('meta_impacts')):
                 self.gap(GAP_WEAPON, 'weapon effects', '逐发武器效果仅在离散命中时钟中模拟')
+            if w.get('grapple') and not self.shot_clock:    # no hit events: the aim hooks (review 1125 G)
+                simgrapple.hook(a, pick, w['grapple'])
             self.first_shot(a, w, pick)
             if w['dps'] or w.get('suppression') or (self.shot_clock and (w.get('sdps') or w.get('dot') or w.get('special_powers') or w.get('attach') or w.get('lift') or w.get('grapple') or w.get('meta_impacts'))):
                 if 'sched' in w and self.shot_clock:
                     self.volleys.append((pick, w, a))
                 else:
-                    # Continuous DPS has no individual hit events. Do not run a second
-                    # clip clock just for pressure (A4 guardians falsely suppressed at F1980).
+                    # Continuous DPS has no individual hit events. Do not run a second clip clock just for pressure (A4 guardians falsely suppressed at F1980).
                     if w.get('suppression'):
                         self.gap(GAP_WEAPON, 'SuppressionNugget',
                                  '连续DPS没有逐发命中事件；压制贡献仅在离散命中时钟中模拟')
