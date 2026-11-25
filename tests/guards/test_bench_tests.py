@@ -174,8 +174,14 @@ def bench_tests(root=ROOT, checks=None):
 
 
 def read_baseline(path=BASELINE):
-    return {ln.strip() for ln in path.read_text(encoding='utf-8').splitlines()
-            if ln.strip() and not ln.startswith('#')}
+    current_path = _affected_tests().current_path
+    entries = set()
+    for line in path.read_text(encoding='utf-8').splitlines():
+        line = line.strip()
+        if line and not line.startswith('#'):
+            file, sep, node = line.partition('::')
+            entries.add(current_path(file) + sep + node)
+    return entries
 
 
 def test_no_new_test_names_a_bench():

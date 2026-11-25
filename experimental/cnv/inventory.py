@@ -39,6 +39,7 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -1087,10 +1088,8 @@ def tested_probes(tests=TESTS, checks=CHECKS):
     stems = {f[:-3] for f in os.listdir(checks) if f.startswith('engine_') and f.endswith('.py')}
     info = {}
     out = set()
-    for f in sorted(os.listdir(tests)):
-        if not f.endswith('.py'):
-            continue
-        text = without_tool_tests(open(os.path.join(tests, f), encoding='utf-8').read())
+    for f in sorted(Path(tests).rglob('test_*.py')):
+        text = without_tool_tests(f.read_text(encoding='utf-8'))
         named = {}
         for name in PROBE_NAME.findall(text):
             full = name

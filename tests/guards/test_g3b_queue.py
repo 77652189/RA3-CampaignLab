@@ -35,7 +35,8 @@ print('G3B strip mutation', bool(overlaps))
 def test_g3b_everything_said_comes_from_the_one_queue():
     import sys
     probe = G3B_PROBE.format(cnv=str(ROOT / CNV), root=str(ROOT), until=900.0)
-    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True, text=True)
-    assert r.returncode == 0, r.stderr[-2000:]
+    r = subprocess.run([sys.executable, '-I', '-X', 'utf8', '-c', probe], cwd=ROOT, capture_output=True,
+                       encoding='utf-8', errors='replace')
+    assert r.returncode == 0, r.stderr
     assert 'G3B close []' in r.stdout, r.stdout.strip()
     assert 'G3B strip []' in r.stdout and 'G3B strip mutation True' in r.stdout, r.stdout.strip()

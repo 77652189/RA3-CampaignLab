@@ -412,7 +412,8 @@ class ImportGraph:
     An edge is an import (top level or inside a function: a lazy import counts), or a reference to a .py file:
     a string constant or a repository path split into literals in os.path.join. Bare names resolve
     the way the folders' sys.path edits do: the importer's own folder, then experimental/cnv, experimental/campaign,
-    the repository root, tests/; a name found nowhere is not ours (stdlib, the engine model, numpy)."""
+    the repository root, tests/, then a test's unique module name in any layer; a name found nowhere is not ours
+    (stdlib, the engine model, numpy)."""
 
     def __init__(self, root=None):
         self.root = root or ROOT
@@ -422,6 +423,7 @@ class ImportGraph:
                 dirs[:] = [x for x in dirs if x not in SKIP_DIRS and not x.startswith('.')]
                 rel = os.path.relpath(d, self.root).replace('\\', '/')
                 self.paths.update(rel + '/' + f for f in fs if f.endswith('.py'))
+        self.test_paths = test_index(self.root)
         self.imports, self.strings, self._reach = {}, {}, {}
         self.registries = {}    # {package __init__ that loads its folder: the files it loads that way}
         for p in self.paths:
@@ -440,7 +442,7 @@ class ImportGraph:
             f = self._file(base, dotted)
             if f:
                 return f
-        return None
+        return self.test_paths.get(dotted + '.py')
 
     def packages(self, dotted, frm):
         """import a.b.c runs a/__init__.py and a/b/__init__.py before a/b/c.py: all of them, from the folder a.b.c
@@ -449,7 +451,8 @@ class ImportGraph:
         for base in (os.path.dirname(frm),) + SEARCH:
             if self._file(base, dotted):
                 return {self._file(base, '.'.join(parts[:i])) for i in range(1, len(parts) + 1)}
-        return set()
+        test = self.test_paths.get(dotted + '.py')
+        return {test} if test else set()
 
     def _edges(self, p):
         try:

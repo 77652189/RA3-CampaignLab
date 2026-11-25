@@ -566,8 +566,7 @@ def untested_tags(sources, tests):
 
 
 def test_every_registered_tag_has_a_module_test():
-    tests = {p.stem: p.read_text(encoding='utf-8') for p in (ROOT / 'tests' / 'modules').glob('test_*.py')} \
-        if (ROOT / 'tests' / 'modules').is_dir() else {}
+    tests = {p.stem: p.read_text(encoding='utf-8') for p in (ROOT / 'tests' / 'modules').rglob('test_*.py')}
     assert not untested_tags(module_sources(), tests)
 
 
