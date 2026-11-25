@@ -558,14 +558,19 @@ def engine_ainodesfull():
         if m.facts.get('open node') is not None:
             full = m.facts['open node'] < 2074
         # woken at 10 s: on aiopn* both teams leave s15 (bench 11-24), so the at-home window ends at s13
-        for second, values, until in ((8, (4, 4), 13), (60, (0 if full else 4, 0), 70), (110, (0 if full else 4, 0), 120)):
+        later = (0 if full else 4, 0)
+        if m.facts.get('share'):     # ains*: home (4) iff own / known x 8 players >= the percent, known 2 x (nodes - 1)
+            share = 100 * m.facts['ai refineries'] / (2 * (m.facts['ore nodes'] - 1)) * 8
+            later = tuple(4 * (share >= p) for p in m.facts['share'])
+        for second, values, until in ((8, (4, 4), 13), (60, later, 70), (110, later, 120)):
             for label, value in zip(LABELS, values):
                 t.expect.append((label, second, '==', value, until))
         t.bench = [('bench_watch', dict(seconds=125, every=2, sheet=False, lines=3))]
         return t
 
 
-    CHECKS = {k: {'a': a} for k in ('ainf0', 'ainf1', 'ainf2', 'ainf3', 'ainf4', 'ainf5', 'aiopn1900', 'aiopn2250')}
+    CHECKS = {k: {'a': a} for k in ('ainf0', 'ainf1', 'ainf2', 'ainf3', 'ainf4', 'ainf5', 'aiopn1900', 'aiopn2250',
+                                    'ains1', 'ains2', 'ains2l', 'ains2a', 'ains2b', 'ains2c', 'ains2d', 'ains2n')}
     return dict(CHECKS=CHECKS)
 
 

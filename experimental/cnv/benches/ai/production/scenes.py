@@ -582,6 +582,8 @@ def ainodesfull_bench():
     aiopn1900 / aiopn2250 (B, OpenNodeHeuristic Exists=true, MinDistanceFromEnemy 1900 / 2250, ainf0 otherwise): the
     engine asks every known node (not full) for an enemy object (walls aside) within the distance of it (read). Of the
     map's 9 nodes the one farthest from the player's yard and plant is 2074 from the plant: open at 1900, none at 2250.
+    ains* (B 11-25, ResourceNodeShareHeuristic Above=false on both states, share = their two percents; work/re
+    b1125_nodeshare.md): home iff own / known x 8 players >= the percent; ains2n adds a two-node field in the west.
     """
     import math
 
@@ -591,7 +593,7 @@ def ainodesfull_bench():
     PAD2 = (150.0 * math.sqrt(0.5), 150.0 * math.sqrt(0.5))   # the side node's pad: PAIR_GAP beside the field's pad
 
 
-    def mission(name, refineries, miners=0, open_node=None):
+    def mission(name, refineries, miners=0, open_node=None, share=None, extra=False):
         m = setup.mission(name, near=True)
         filename, xml, asset = m.assets[0]
         states = [setup._state('CNVNodesFull', '', setup.INF, gate='const').replace(
@@ -600,6 +602,9 @@ def ainodesfull_bench():
         if open_node is not None:
             states[0] = states[0].replace('<AllNearbyNodesFullHeuristic/>',
                                           f'<OpenNodeHeuristic Exists="true" MinDistanceFromEnemy="{open_node}"/>')
+        if share is not None:
+            states = [setup._state(sid, '', unit, gate=f'<ResourceNodeShareHeuristic PercentOfFairShare="{p}%" Above="false"/>')
+                      for sid, unit, p in zip(('CNVNodesFull', 'CNVNodesCtl'), (setup.INF, setup.TANK), share)]
         states = [s.replace('ClosestStructureHeuristic', 'CNVNodesTarget') for s in states]
         start = xml.index('  <AIStrategicStateDefinition ')
         end = xml.index('  <AIPersonalityDefinition ')
@@ -623,6 +628,21 @@ def ainodesfull_bench():
         m.facts['ai refineries'] = refineries
         m.facts['ai miners'] = miners
         m.facts['open node'] = open_node
+        m.facts['share'] = share
+        m.facts['ore nodes'] = 11 if extra else 9
+        if extra:                    # ains2n: two more map nodes in the west field
+            import types
+
+            import resources
+            field = resources.Field('extra', 500.0, 1300.0, 45.0, 1)
+            layout = types.ModuleType(m.map.__name__)
+            layout.__dict__.update(vars(m.map))
+            layout.FIELDS = list(m.map.FIELDS) + [field]
+            layout.SITES = {**m.map.SITES, **resources.sites([field])}
+            new = resources.objects([field], [])
+            layout.OBJECTS = list(m.map.OBJECTS) + new
+            layout.SCENERY = [o for o in m.map.SCENERY if all(math.dist((o.x, o.y), (d.x, d.y)) >= 300 for d in new)]
+            m.map = layout
         return m
 
 
@@ -633,7 +653,15 @@ def ainodesfull_bench():
                'ainf4': lambda: mission('CampNodesFull4', 2, miners=1),
                'ainf5': lambda: mission('CampNodesFull5', 1, miners=2),
                'aiopn1900': lambda: mission('CampOpNode1900', 0, open_node=1900),
-               'aiopn2250': lambda: mission('CampOpNode2250', 0, open_node=2250)}
+               'aiopn2250': lambda: mission('CampOpNode2250', 0, open_node=2250),
+               'ains1': lambda: mission('CampNodeShare1', 1, share=(80, 100)),
+               'ains2': lambda: mission('CampNodeShare2', 2, share=(170, 190)),
+               'ains2l': lambda: mission('CampNodeShr2L', 2, share=(10, 60)),
+               'ains2a': lambda: mission('CampNodeShr2A', 2, share=(85, 140)),
+               'ains2b': lambda: mission('CampNodeShr2B', 2, share=(100, 125)),
+               'ains2c': lambda: mission('CampNodeShr2C', 2, share=(104, 118)),
+               'ains2d': lambda: mission('CampNodeShr2D', 2, share=(110, 120)),
+               'ains2n': lambda: mission('CampNodeShr2N', 2, share=(84, 95), extra=True)}
     return dict(MISSION=MISSION)
 
 

@@ -282,6 +282,24 @@ simai Brain.open_node: the strategic fact asks every ore node on the map (not on
 enemy object within MinDistanceFromEnemy of the node itself"""
 expect = "win(60, 69, '满态在家') == [home] * 10 and win(60, 69, '常量在家') == [0] * 10"
 
+[[reading]]
+bench_id = "engine_ainodesfull"
+id = "node_share_is_own_served_nodes_over_twice_the_nodes_less_one_times_the_players"
+item = ["AI 启发条件/ResourceNodeShareHeuristic", "AI 启发条件/ResourceNodeShareHeuristic.PercentOfFairShare",
+        "AI 启发条件/ResourceNodeShareHeuristic.Above"]
+scene = {build = "ains1", check = "a", until = 70.0}
+each = [{build = "ains1", home = [0, 0]}, {build = "ains2", home = [0, 0]}, {build = "ains2l", home = [4, 4]}, {build = "ains2a", home = [4, 0]}, {build = "ains2b", home = [4, 0]}, {build = "ains2c", home = [0, 0]}, {build = "ains2d", home = [0, 0]}, {build = "ains2n", home = [0, 0]}]
+bench = """\
+B 11-25 (CampNodeShare1A / 2A, CampNodeShr2LA / 2AA / 2BA / 2CA / 2DA / 2NA_mcp_1125; work/re/b1125_nodeshare.md): \
+Niagara, 9 ore nodes, 1 or 2 AI refineries on the east field, both states ResourceNodeShareHeuristic Above=false \
+(home = share at or over the percent), 8 players. 1 refinery at 80 / 100 %: 0/0; 2 at 170 / 190: 0/0, 10 / 60: 4/4, \
+85 / 140: 4/0, 100 / 125: 4/0, 104 / 118: 0/0, 110 / 120: 0/0 -- 2 own read 100-104 %; ains2n (11 nodes) at 84 / 95: \
+0/0 -- below 84 %. All eight run again from the merged scenes the same day (run_queue): 8 PASS"""
+proves = """\
+simai Brain.node_share: own = the nodes an own refinery serves, known = 2 x (the map's ore nodes - 1) (INFERRED: the \
+only count fitting both maps), x the tech share's players"""
+expect = "[win(60, 69, k) for k in ('满态在家', '常量在家')] == [[h] * 10 for h in home]"
+
 # Bench readings of checks/engine_aiomove.py (format: experimental/cnv/readings.py; runner: tests/conformance).
 # What an OpeningMove line builds (bench 2026-11-09, rounds 83-90).
 

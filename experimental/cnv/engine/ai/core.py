@@ -847,7 +847,7 @@ class Brain:
                'money': self.money_in,          # one account in the simulator
                'beacons': set(),                                                     # no beacons in the simulator
                'power advantage': self.power_advantage,
-               'tech buildings': self.tech_buildings(),
+               'tech buildings': (tech := self.tech_buildings()), 'nodes': self.node_share(tech[2]),
                'nodes full': not self.open_nodes(miners=True),            # AllNearbyNodesFull (B208 / B210)
                'open node': self.open_node,                               # OpenNodeHeuristic
                'attacked': self.attacked, 'energy': self.energy,
@@ -883,6 +883,15 @@ class Brain:
         is left out is not read, the same with one human)."""
         tech = [b for b in self.living() if {'CAPTUREFLAG', 'NEUTRAL_TECH'} & set(b.kinds)]
         return sum(b.owner == self.player for b in tech), len(tech), len(self.world.players) + 1
+
+    def node_share(self, players):
+        """ctx 'nodes' (ResourceNodeShareHeuristic, work/re/l4_states.md): (own, known, players), players the tech
+        share's. own = the map's nodes an own refinery serves (open_nodes' test; the engine counts its node table's
+        wrappers owned by the AI and taken, the wrapper unread -- INFERRED). known = 2 x (ore nodes - 1): benches
+        ains* (B 11-25, work/re/b1125_nodeshare.md) put 2 served of Niagara's 9 in [100, 104) % (1 below 80) and 2 of
+        11 below 84 -- only 2(n - 1) fits both (which node the -1 drops, and why each counts twice: INFERRED)."""
+        n = sum('orenode' in b.template.lower() for b in self.living())
+        return n - len(self.open_nodes(near=False)), max(0, 2 * (n - 1)), players
 
     def _related(self, owner, relationship):
         # an ObjectFilter's Relationship (D59 2: the ally bit takes the player itself, SAME_PLAYER only it);
