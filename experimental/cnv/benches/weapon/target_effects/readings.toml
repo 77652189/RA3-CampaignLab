@@ -62,6 +62,18 @@ expect = [
 ]
 mismatch = "Final simulator 91135068/40135070/101007068/91135089, bench 87135068/87135068/101003068/87135089. As [a]: base and removed as on the bench but 4 frames late; order shields 4 frames late (the micro's round); high lands 47 frames early."
 
+[[reading]]
+bench_id = "engine_inform_expiry"
+id = "inform_expiry_the_look_ahead_reads_a_row_past_its_deadline"
+scenes = {stale = {build = "engine_inform_expiry", check = "stale", until = 37, shot_clock = true}, off = {build = "engine_inform_ai", check = "off", until = 37, shot_clock = true}}
+bench = "11-25 CampIExpStale_mcp_1125_125805: base 1187003068 (row hit 328 / expiry 303 at launch 302, shield 3 frames after the order, row kept to 336); off (no notice) base 87135068"
+proves = "TrackIncomingWeaponFire: the miner's micro reads the launch notice its table holds -- past the row's expiry too -- and shields before the shell; without the notice it never does"
+item = "物体模块 Behaviors/TrackIncomingWeaponFireBehavior"
+expect = [
+    "vals(stale)[-1][0] // 100000000 == 11",
+    "vals(off)[-1][0] // 100000000 == 0",
+]
+
 # Bench readings of benches/weapon/target_effects/checks.py#engine_secondary (format: experimental/cnv/readings.py).
 
 [[reading]]

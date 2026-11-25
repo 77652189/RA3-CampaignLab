@@ -345,17 +345,18 @@ class Damage:
         """Micro damage callback, seconds -> ceil frames; no facing multiplier.
 
         behind: the TrackDamage history (`track`) of the last min(behind, TimeToTrack) frames; none without one.
-        INFERRED: a hit `behind` frames ago is out (age < window counts). INFERRED query policy: keep entries on expiry, remove strictly after.
-        This is not the engine's autonomous table-cleanup schedule: the
-        engine_inform_expiry probe retains expired rows until later frames.
-        See work/re/c_inform_expiry_report.md; query output is not measured.
+        INFERRED: a hit `behind` frames ago is out (age < window counts).
+        ahead reads the rows still in the table, past their expiry too (engine_inform_expiry stale: a row expired
+        at 303 shields the miner at 304); the rows past expiry go after the read. INFERRED: read-then-drop per query;
+        the bench's table drops them on 8-frame rounds, a shielded miner's later (336; c_inform_expiry_report.md).
         """
         now = world.frame_now() if now is None else now
         rows = self.incoming.get(target.serial, [])
-        rows[:] = [r for r in rows if now <= r[4]]
         window = math.ceil(behind * simunits.LIFE_FPS - 1e-6)
         taken = sum(d for f, d, end in self.tracked.get(target.serial, ()) if now - f < window and now < end)
-        return taken + (sum(r[2] for r in rows if r[3] <= now + math.ceil(ahead * simunits.LIFE_FPS)) if ahead > 0 else 0.0)
+        taken += sum(r[2] for r in rows if r[3] <= now + math.ceil(ahead * simunits.LIFE_FPS)) if ahead > 0 else 0.0
+        rows[:] = [r for r in rows if now <= r[4]]
+        return taken
 
     def rule_of(self, world, cache, template, read):
         """The template's rule by a simunits reader `read(template, own)`, kept in `cache` (hit_reaction_of, track_of)."""

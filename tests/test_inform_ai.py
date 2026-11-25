@@ -197,10 +197,6 @@ def test_inform_ai_response_is_reported_as_a_gap_including_retail_cache():
     rows = engine.run(16).series
     assert tuple(rows[-1][1]) == (79, 1, 79, 1)
     assert (sim.GAP_WEAPON, 'InformTargetNugget') in engine.unmodeled
-    import inventory
-    # Retail target notifications are now registered by field form; the
-    # runtime gap and whole tracking module must still remain explicit.
-    assert inventory.NOTES[(inventory.MODULE, 'Behaviors/TrackIncomingWeaponFireBehavior')][0] == inventory.TODO
 
 
 @pytest.mark.parametrize('check_name, run_name', [
@@ -301,8 +297,8 @@ def test_inform_incoming_table_drives_miner_armor_from_engine_inform_probe(check
         clock[0] = brain.frame = 390
         manager.round(390, brain.micro_team(None, 390, team))
         assert not base.armor_up and 'SPECIAL_ARMOR_ACTIVE' not in base.status
-    clock[0] = 405
-    assert e.expected_damage(bodies['removed'], 0, 2) == 0
+    clock[0] = 405      # past expiry: the read still sees the row (engine_inform_expiry stale), then it goes
+    assert e.expected_damage(bodies['removed'], 0, 2) == 50 and not e.incoming[bodies['removed'].serial]
 
 
 def test_inform_max_changes_only_base_factor_for_engine_inform_max():
@@ -415,6 +411,7 @@ def test_inform_launch_formula_and_matching_hit_lifecycle(monkeypatch):
     assert target.hp == 350
     assert e.expected_damage(target, 0, 2) == 10
     clock[0] = 451
+    assert e.expected_damage(target, 0, 2) == 10
     assert e.expected_damage(target, 0, 2) == 0
     # Retail cache was rebuilt with the new launch fields, preserving whole gap.
     retail = simunits._fight_data()['weapons']['SovietAntiVehicleVehicleTech1CannonWeapon']

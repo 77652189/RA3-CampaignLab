@@ -269,8 +269,27 @@ def engine_inform_expiry():
         return t
 
 
+    def stale(m):
+        """E: does the micro's look-ahead read a row past its deadline? a/b left it in the table 33 frames after.
+
+        Only base's factors change (Min .3 > Max .01; speed, positions, scripts as engine_inform_max): launch302,
+        hit328 inside the 2 s look-ahead of the next micro round, expiry303 before it. Prediction (the query drops
+        an expired row): base never shields, like engine_inform_ai off; the other lanes as a.
+        11-25 FAILED (kept): row 328/303 as predicted, base 1187003068 -- shields 3 frames after the order, the row
+        stays to 336 (as a/b's base). The other lanes PASS.
+        """
+        unit = m.units[inform.LANES.index('base')]
+        assert unit.xml.count('<InformTargetNugget/>') == 1
+        unit.xml = unit.xml.replace('<InformTargetNugget/>', '<InformTargetNugget MinTimeToImpactFudgeFactor=".3" '
+                                    'MaxTimeToImpactFudgeFactor=".01"/>', 1)
+        t = probe._probed(m, inform.check(m))
+        t.expect = [('base info', 31.0, '<', 100000000, 34.0)] + [(r[0], 45, *r[2:]) if r[1] == 43 else r
+                                                                   for r in t.expect[1:]]
+        return t
+
+
     MISSION = {'engine_inform_expiry': mission}
-    CHECKS = {'engine_inform_expiry': {'a': check, 'b': crossed_deadlines}}
+    CHECKS = {'engine_inform_expiry': {'a': check, 'b': crossed_deadlines, 'stale': stale}}
     return dict(MISSION=MISSION, CHECKS=CHECKS)
 
 
