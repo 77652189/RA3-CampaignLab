@@ -1328,12 +1328,14 @@ class Brain:
         # beacon made again under the old one's name got the old one's flight point)
         names = Counter(u.body.name for u in team.members)
         view = lambda b: self.view_name(b, names[b.name] > 1)  # noqa: E731
-        # targeted (work/re/b1125_miner_selfdef.md): an enemy has the member as its target -- ordered, chased or
-        # aimed at this tick (volleys not asked). INFERRED: any enemy the AI sees, not only the team's hostile list; the program's two
-        # other tests on that enemy are not read
+        # targeted (work/re/b1125_miner_selfdef.md): an enemy has the member as its target -- ordered or chased with
+        # one of its weapons reaching it, or aimed at this tick (volleys not asked). INFERRED: any enemy the AI sees,
+        # not only the team's hostile list; the reach is the program's third test read as range (bench airet: a
+        # chaser out of reach raised the Peacekeeper's shield on the way home and one died, the bench's four live)
         foes, thing = self.view.enemies, self.observe.is_thing
         aimed = {t.serial for e in self.living() if e.owner in foes
-                 for t in (e.goal, getattr(e, 'chase', None)) if thing(t)}
+                 for t in (e.goal, getattr(e, 'chase', None))
+                 if thing(t) and any(simrange.in_range(e, t, w) for w in e.weapons)}
         aimed |= {pick.serial for pick, _, a in self.observe.firing() if a.owner in foes}
         for u in team.members:
             b = u.body
@@ -1346,7 +1348,8 @@ class Brain:
                                  target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=str(self.tid(t))),
                                  weapon_range=reach, cost=self.host.cost(b.template),
                                  damage=lambda behind, ahead, b=b: self.observe.expected_damage(b, behind, ahead, now=frame),
-                                 toggles=toggles, toggle_index=at, targeted=b.serial in aimed))
+                                 toggles=toggles, toggle_index=at, targeted=b.serial in aimed,
+                                 target_reached=t is not None and any(simrange.in_range(b, t, w) for w in b.weapons)))
             seen.append((mu, b))
         enemies = [sp.Thing((t.x, t.y), t.kindof, int(t.value), name=str(t.id)) for t in self.view.things
                    if t.owner in self.view.enemies]
