@@ -115,17 +115,20 @@ class Life:
             b.status = b.status | {'NO_COLLISIONS'}
         self._gone(world, b, why, False)
 
-    def fire(self, world, b, weapon, death_blasts, at=None):
+    def fire(self, world, b, weapon, death_blasts, at=None, ups=frozenset()):
         """The kernel's fire (World.fire) for a FireWeaponWhenDead (engine/modules/fireweaponwhendead.py, step B5c;
         bench 11-05 engine_spawn_refill): each DamageNugget of the WeaponTemplate `weapon` (simunits.weapon_blasts)
         queued to go off where b died (or at `at`), its delay after, as b's (simdamage.death_blast_due); each EMP
-        ParalyzeNugget (simunits.special_weapon: a FireWeaponUpdate's short circuit, E218) a pulse there at once."""
+        ParalyzeNugget (simunits.special_weapon: a FireWeaponUpdate's short circuit, E218) a pulse there at once. A
+        nugget's Required / ForbiddenUpgrade read against `ups` (World.upgrades: b's and its player's; review 1125 G:
+        the harpoon's crush leeches with the Crush Puppies power, else kills plain)."""
         (x, y), now = at or (b.x, b.y), world.frame_now()
         blasts, pulses = self._weapon(world, weapon)
-        for dmg, typ, reach, after, affects, ally in blasts:
-            world.used.add('death weapon')
-            death_blasts.append((now + simunits._frames(after), x, y, dmg, typ, reach,
-                                 affects, b.owner, b, ally, False))
+        for dmg, typ, reach, after, affects, ally, (need, ban, leech) in blasts:
+            if need <= ups and not ban & ups:
+                world.used.add('death weapon')
+                death_blasts.append((now + simunits._frames(after), x, y, dmg, typ, reach,
+                                     affects, b.owner, b, ally, False, None, 1.0, None, leech))
         for p in pulses:
             death_blasts.append((now, x, y, 0.0, 'EMP', p['radius'], frozenset(), b.owner, b, 1.0, False, None, 1.0, p))
 
@@ -211,7 +214,7 @@ class Life:
             if abs(ground_z(end[0], end[1]) - ground) > 1e-3:
                 world.gap('Physics', w['template'], '坠机残骸落到不同高度的地面：落点和时刻按起点地面算')
             world.used.add('air crash')
-            for dmg, typ, reach, after, affects, ally in blasts[w['template']]:
+            for dmg, typ, reach, after, affects, ally, _ in blasts[w['template']]:
                 death_blasts.append((world.frame_now() + frames + simunits._frames(after), end[0], end[1], dmg,
                                      typ, reach, affects, b.owner, b, ally, True, (end[0] - b.x, end[1] - b.y)))
 

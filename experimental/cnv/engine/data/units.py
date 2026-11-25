@@ -1900,7 +1900,8 @@ _weapon_blocks = None
 
 
 def weapon_blasts(weapon, own=None):
-    """[(damage, damage type, radius, delay s, affects, allies' scalar)] -- each DamageNugget of the WeaponTemplate
+    """[(damage, damage type, radius, delay s, affects, allies' scalar, (required upgrades, forbidden upgrades, leech))]
+    -- each DamageNugget and LeechPercentMaxHealthDamageNugget (leech: its PercentMaxHealthToTake) of the WeaponTemplate
     `weapon` (the mission's own first, else retail; XML comments not read) as a death weapon fires it (step B5c: a
     FireWeaponWhenDead's DeathWeapon, engine/modules/fireweaponwhendead.py; simbody.Life.fire / wreck_blasts): it goes
     off where the body died, `delay` after (the nugget's DelayTimeSeconds), hurting what of `affects`
@@ -1919,9 +1920,11 @@ def weapon_blasts(weapon, own=None):
             mine[_attr(head, 'id')] = (head, body)
     whead, wbody = mine.get(weapon) or _weapon_blocks.get(weapon, ('', ''))
     affects = frozenset((_attr(whead, 'RadiusDamageAffects') or 'ENEMIES NEUTRALS').split())
+    ups = lambda tag, nb: frozenset(u.lower() for u in re.findall(rf'<{tag}>\s*([^<>\s]+)', nb))
     return [(_num(_attr(nh, 'Damage'), 0.0), _attr(nh, 'DamageType') or '', _num(_attr(nh, 'Radius'), 0.0),
-            _secs(_attr(nh, 'DelayTimeSeconds') or '0s'), affects, _ally_scalar(nb))
-           for nh, nb in _blocks(wbody, 'DamageNugget')]
+             _secs(_attr(nh, 'DelayTimeSeconds') or '0s'), affects, _ally_scalar(nb),
+             (ups('RequiredUpgrade', nb), ups('ForbiddenUpgrade', nb), _pct(_attr(nh, 'PercentMaxHealthToTake') or '0')))
+            for nh, nb in _blocks(wbody, '(?:LeechPercentMaxHealth)?DamageNugget')]
 
 
 def _ally_scalar(nugget):

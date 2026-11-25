@@ -25,3 +25,22 @@ def test_the_harpoon_pulls_the_hooked_vehicle_in(on, clock):
     if on:
         s.advance(30)
         assert math.hypot(h.x - a.x, h.y - a.y) <= a.radius + 1e-6 and (a.x, a.y) == (1400.0, 2400.0)
+
+
+def test_the_crush_leeches_half_the_hammer_only_with_the_crush_puppies():
+    """SovietHarpoonCrushWeapon (review 1125 G): its plain kill is ForbiddenUpgrade Upgrade_SovietCrushPuppiesPower,
+    its LeechPercentMaxHealthDamageNugget (50 %) RequiredUpgrade it -- a dead Hammer of 550 gives 275 back or none."""
+    def crush(upgrade):
+        s = simsmall.small_world([('apoc', 'SovietAntiVehicleVehicleTech3', 'Player_1', 1400.0, 2400.0),
+                                  ('hammer', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1400.0, 2560.0)], model=False)
+        a, h = s.bodies['apoc'], s.bodies['hammer']
+        h.status.add('NO_ATTACK')
+        a.damage(a.max_hp / 2)
+        if upgrade:
+            s.act('NAMED_RECEIVE_UPGRADE', ['Upgrade_SovietCrushPuppiesPower', 'apoc'], None)
+        simtoggle.press(s, a, 'Command_ToggleHarpoonSpecialPower', lambda owner: False)
+        s.commands.do(Command('attack', units=('apoc',), target='hammer'))
+        s.advance(75)
+        assert not h.alive
+        return a.hp
+    assert crush(True) - crush(False) == 550 * 0.5

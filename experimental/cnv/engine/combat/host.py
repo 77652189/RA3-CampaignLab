@@ -251,7 +251,7 @@ def death_blast_due(world, frame, peers):
     for d in [d for d in peers.death_blasts if d[0] <= frame]:
         peers.death_blasts.remove(d)
         _, x, y, dmg, typ, reach, affects, owner, by, *rest = d
-        ally, ground_only, approach, structure, pulse = tuple(rest) + (1.0, False, None, 1.0, None)[len(rest):]
+        ally, ground_only, approach, structure, pulse, take = tuple(rest) + (1.0, False, None, 1.0, None, 0.0)[len(rest):]
         for t in world.living():
             if math.hypot(t.x - x, t.y - y) > reach:
                 continue
@@ -280,6 +280,8 @@ def death_blast_due(world, frame, peers):
                 continue
             t.damage(dmg * armor)
             t.set_last_damage(owner, by)
+            if take and t.hp <= 0 and by.alive:     # a LeechPercentMaxHealthDamageNugget's (simbody.Life.fire): paid
+                by.mend(t.max_hp * take)            # on the kill only, as leech.refund's 'maximum'
             if t.hp <= 0 and t.alive:
                 if world.first_death is None:
                     world.first_death = (world.t, t, by)

@@ -102,7 +102,7 @@ def test_a_death_queues_the_weapon_where_it_died_and_a_deletion_nothing():
     assert s.death_blasts == []
     now = s.frame_now()
     s.world.kill(s.bodies['bomb'], 'test')
-    ((frame, x, y, dmg, typ, reach, affects, owner, by, ally, crash),) = s.death_blasts
+    ((frame, x, y, dmg, typ, reach, affects, owner, by, ally, crash, *_),) = s.death_blasts
     assert (frame - now, x, y, dmg, typ, reach, owner, by.name, ally, crash) == (
         3, 100.0, 50.0, 100.0, 'UNRESISTABLE', 10.0, 'Player_1', 'bomb', 1.0, False)
 

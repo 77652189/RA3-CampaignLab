@@ -599,7 +599,7 @@ class Sim:
                                         create=lambda b, ocl, air, fight: self._life().create(
                                             self, b, ocl, air, self.death_blasts,
                                             lambda x, y: simdamage.impact_ground_z(self, x, y), fight),
-                                        fire=lambda b, weapon, at: self._life().fire(self, b, weapon, self.death_blasts, at),
+                                        fire=lambda b, weapon, at, ups: self._life().fire(self, b, weapon, self.death_blasts, at, ups),
                                         remove=lambda b, why: self._life().delete(self, b, why), modify=lambda b: simmodifier.modify(self, b),
                                         pay=lambda b, amount: self.wallet.deposit(b.owner, amount), upgrades=lambda b: {u.lower() for u in {*b.upgrades, *self.player_ups.get(b.owner, ())}},
                                         toggled=lambda b, m: simtoggle.entered(self, b, m, self.world.modify),
