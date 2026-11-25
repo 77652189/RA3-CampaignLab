@@ -29,7 +29,10 @@ def test_crush_host_dispatch(name, expected):
     this test asserts orders, not the old bench's timing or casualty totals.
     """
     import build
-    from missions import aicrush_bench, airetreat_bench
+    from benches.ai.tactics.scenes import aicrush_bench as aicrush_bench_tables
+    from benches.ai.tactics.scenes import airetreat_bench as airetreat_bench_tables
+    aicrush_bench = aicrush_bench_tables()["shared"]
+    airetreat_bench = airetreat_bench_tables()["shared"]
 
     m, t, _ = build.resolve(name, 'a')
     w = simai.SimAI(sim.Sim(m, t, 'normal'))

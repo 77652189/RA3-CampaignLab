@@ -1,9 +1,0 @@
-# Bench readings of checks/engine_aipowerabove.py (format: experimental/cnv/readings.py; runner: tests/conformance).
-
-[[reading]]
-id = "power_above_named_replay"
-scene = {build = "aipabtrue", check = "a", until = 41}
-each = [{build = "aipabtrue", home = 4}, {build = "aipabfalse", home = 0}]
-bench = "engine s40: tanks home 4 (Above true) / 0 (Above false), own total 4, the player army 8."
-proves = "simai power condition Above: single-parameter control on the team start"
-expect = "(win(40, 40, '坦克在家')[0], win(40, 40, '坦克总数')[0], win(40, 40, '玩家坦克')[0]) == (home, 4, 8)"

@@ -16,7 +16,8 @@ import engine.state.snapshot as simsnap  # noqa: E402
 import snapfile  # noqa: E402
 from engine.kernel import snap  # noqa: E402
 from engine.ports.command import Command  # noqa: E402
-from missions import aipeak_bench  # noqa: E402
+from benches.ai.production.scenes import aipeak_bench as aipeak_bench_tables  # noqa: E402
+aipeak_bench = aipeak_bench_tables()["shared"]
 
 
 @pytest.fixture

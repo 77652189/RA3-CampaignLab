@@ -163,8 +163,10 @@ def test_costly_ext_logs_are_on_only_when_the_mod_names_them(tmp_path):
     # D174: the target log (tgt: lines) is on only for the benches that read it; aiexpb50 runs without it
     package.mark_ext(str(tmp_path), True, ('target',))
     assert harness.ext_logs(args) == {'RA3EXT_TARGET': '1'}
-    from missions.aipoint_bench import point
-    from missions.aiexpansion_bench import mission as expansion
+    from benches.ai.targets.scenes import aipoint_bench
+    point = aipoint_bench()["shared"].point
+    from benches.ai.production.scenes import aiexpansion_bench
+    expansion = aiexpansion_bench()["shared"].mission
     assert 'target' in point('CampPtX', 1).ext_logs and 'target' not in expansion().ext_logs
 
 

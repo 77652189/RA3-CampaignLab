@@ -1,11 +1,7 @@
-"""C: native production with a primary infantry enemy and secondary tank enemy.
-
-Evidence and limits: work/re/c_allbuild_report.md. Only the explicit action
-differs between builds. The secondary player becomes friendly at 70 seconds.
-The action has one player argument; absence is the control, not a reset.
-"""
+"""Construction scene factory shared with the script benches."""
 from missions.aiskirm_bench import mission as base, ARMY_INF, FRIEND, NEW_BARRACKS
-from missions.aiorders_bench import MODULE
+from benches.ai.tactics.scenes import aiorders_bench
+MODULE = aiorders_bench()["shared"].MODULE
 from parts import Script
 
 
@@ -37,6 +33,3 @@ def mission(enabled):
         ('PLAYER_RELATES_PLAYER', ai, secondary, FRIEND),
         ('PLAYER_RELATES_PLAYER', secondary, ai, FRIEND)]))
     return m
-
-
-MISSION = {'aiallbuildon': lambda: mission(True), 'aiallbuildoff': lambda: mission(False)}

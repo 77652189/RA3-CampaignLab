@@ -77,12 +77,13 @@ def test_the_draw_is_the_same_every_time_and_skips_a_zero_weight():
     ('aipwre', 'X'), ('aipwrf', 'Y'),                       # 50/50: the first listed, 7 runs of 7
     ('aipwrg', 'X'), ('aipwrh', 'Y')])                      # X 30% / Y 70% -> X; X 10% / Y 90% -> Y
 def test_the_draw_buys_what_the_bench_bought(variant, bought):
-    from missions import aipower_bench as ab
-    m = ab.MISSION[variant]()
+    from benches.ai.production.scenes import aipower_bench
+    ab = aipower_bench()
+    m = ab["MISSION"][variant]()
     b = simtech.Book('Soviet', 15, 'AIPersonalityDefinition:HuntPersonality')   # no lines of its own
     b.choices = [(p, simtech._weight(w)) for p, w in m.cnv_power]               # the probe personality's
     for f in range(0, 30):
         b.ai_buy(f)
-    names = {'X': ab.X, 'Y': ab.Y}
+    names = {'X': ab["shared"].X, 'Y': ab["shared"].Y}
     assert b.points == (1 if bought is None else 0)
     assert [w for _, w in b.log] == ([] if bought is None else [f'买 {names[bought]}（-1）'])

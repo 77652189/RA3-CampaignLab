@@ -21,7 +21,8 @@ from pathlib import Path
 
 import labpaths
 from maps import probe_range
-from missions import aistate_bench as ab
+from benches.ai.targets.scenes import aistate_bench
+ab = aistate_bench()["shared"]
 from parts import Mission, Script, Unit
 
 PROBE = 'CNV_RepairPlant'

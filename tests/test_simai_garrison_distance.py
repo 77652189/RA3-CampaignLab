@@ -12,7 +12,8 @@ def test_garrison_distance_replays_recorded_near_far_and_disabled(lib, monkeypat
     Restore EAST=40: those readings precede the map's EAST=0 scenery fix.
     Assert ownership counters rather than inferring entry from survival alone.
     """
-    from missions import aigarrison_bench
+    from benches.ai.tactics.scenes import aigarrison_bench as aigarrison_bench_tables
+    aigarrison_bench = aigarrison_bench_tables()["shared"]
 
     monkeypatch.setattr(aigarrison_bench, 'EAST', 40.0)
     for build in ('aigar1', 'aigar0', 'aigarfar'):

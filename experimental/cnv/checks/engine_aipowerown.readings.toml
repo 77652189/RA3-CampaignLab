@@ -1,9 +1,0 @@
-# Bench readings of checks/engine_aipowerown.py (format: experimental/cnv/readings.py; runner: tests/conformance).
-
-[[reading]]
-id = "power_own_defenses_named_replay"
-scene = {build = "aipownoff", check = "a", until = 41}
-each = [{build = "aipownoff", home = 4}, {build = "aipownon", home = 0}]
-bench = "engine s40: tanks home 4 (own defenses off) / 0 (on), totals 4, player tanks 8, one own tower."
-proves = "simai power condition on own defenses: single-parameter control"
-expect = "(win(40, 40, '坦克在家')[0], win(40, 40, '坦克总数')[0], win(40, 40, '玩家坦克')[0], win(40, 40, '己方防御塔')[0]) == (home, 4, 8, 1)"

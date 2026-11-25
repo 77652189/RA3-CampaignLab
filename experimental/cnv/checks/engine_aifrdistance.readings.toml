@@ -1,9 +1,0 @@
-# Bench readings of checks/engine_aifrdistance.py (format: experimental/cnv/readings.py; runner: tests/conformance).
-
-[[reading]]
-id = "friendly_distance_target_counters"
-scene = {build = "aifrnear", check = "a", until = 32}
-each = [{build = "aifrnear"}, {build = "aifrswap"}]
-bench = "engine_aifrdistance a s30: friendly MCVs alive 3, enemy MCV alive 1."
-proves = "simai FriendlyUnit Distance: the scene holds three friendly and one enemy MCV at s30"
-expect = "win(30, 30, '友车存活') == [3] and win(30, 30, '敌车存活') == [1]"

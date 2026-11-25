@@ -7,7 +7,8 @@ from test_simai_bench_b import lib, _probe_run, pytestmark, simai  # noqa: F401
 
 def test_alpha_probe_preserves_the_float_health_script_argument():
     """Integer 70 writes an empty float slot and kills the target on the engine."""
-    from missions.aialphahp_bench import mission
+    from benches.ai.tactics.scenes import aialphahp_bench
+    mission = aialphahp_bench()["shared"].mission
     from mapscript import encode_arg
 
     for high in (False, True):

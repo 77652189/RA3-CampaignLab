@@ -1,9 +1,0 @@
-# Bench readings of checks/engine_aiintervalfrom.py (format: experimental/cnv/readings.py; runner: tests/conformance).
-
-[[reading]]
-id = "interval_countfrom_named_replay"
-scene = {build = "aiintmap", check = "a", until = 43}
-each = [{build = "aiintmap", home32 = 0}, {build = "aiintai", home32 = 4}]
-bench = "engine home/total of tanks: 4/4 at s24, home32/4 at s32 (0 map origin, 4 AI origin), 0/4 at s42."
-proves = "simai CountFrom origins: the interval counts from the map or the AI origin"
-expect = "[(win(s, s, '坦克在家')[0], win(s, s, '坦克总数')[0]) for s in (24, 32, 42)] == [(4, 4), (home32, 4), (0, 4)]"

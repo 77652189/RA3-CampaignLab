@@ -28,7 +28,8 @@ def test_maximum_delay_probe_obeys_sdk_child_sequence(maximum):
 @pytest.mark.parametrize('maximum, second', [(0, 8), (999, 15000)])
 def test_maximum_endpoint_is_consumed_after_first_success(maximum, second):
     """Deterministic upper endpoint, not an assertion about the game's RNG sample."""
-    from missions import aidelay_bench
+    from benches.ai.tactics.scenes import aidelay_bench as aidelay_bench_tables
+    aidelay_bench = aidelay_bench_tables()["shared"]
     mc, sp = simai.model()['micro'], simai.model()['specials']
     m = aidelay_bench.mission(maximum)
     data = mc.load_micro(texts=[a[1] for a in m.assets])['CNVMicroSpow']

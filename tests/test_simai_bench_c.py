@@ -17,7 +17,8 @@ pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai (l
 
 def test_engineer_pair_isolates_tactic_with_named_capture_candidate():
     """The experiment fixes candidates, geometry, micro and the wake clock."""
-    from missions.aiengineer_bench import mission
+    from benches.ai.tactics.scenes import aiengineer_bench
+    mission = aiengineer_bench()["shared"].mission
     engineer, control = mission(True), mission(False)
     assert engineer.assets[0][1].replace('Tactic="Engineer"', 'Tactic="SimpleAttack"') == control.assets[0][1]
     assert engineer.objects == control.objects
@@ -30,7 +31,8 @@ def test_engineer_pair_isolates_tactic_with_named_capture_candidate():
 
 def test_never_release_pair_changes_only_release_type():
     """Fixed candidates, states, target and clock; only release policy changes."""
-    from missions.airelease_bench import mission
+    from benches.ai.tactics.scenes import airelease_bench
+    mission = airelease_bench()["shared"].mission
     never, priority = mission(True), mission(False)
     assert never.assets[0][1].replace('NEVER_RELEASE', 'RELEASE_TO_PRIORITY') == priority.assets[0][1]
     assert never.objects == priority.objects
@@ -39,7 +41,8 @@ def test_never_release_pair_changes_only_release_type():
 
 def test_alpha_close_pair_has_only_one_changed_field():
     """Independent pair: the guard schedule, health hold and units are identical."""
-    from missions.aialphaclose_bench import mission
+    from benches.ai.tactics.scenes import aialphaclose_bench
+    mission = aialphaclose_bench()["shared"].mission
     low, high = mission(False), mission(True)
     assert low.assets[0][1] == high.assets[0][1].replace(
         'AlphaStrikeTargetHealthPct="0.9"', 'AlphaStrikeTargetHealthPct="0.01"')
@@ -52,8 +55,10 @@ def test_alpha_observer_preserves_the_measured_scenario(high):
     """Observe on the existing yard without changing any tactical or combat input."""
     from dataclasses import replace
     import labpaths
-    from missions.aialphaclose_bench import mission
-    from checks.engine_aialphaclose import observe
+    from benches.ai.tactics.scenes import aialphaclose_bench
+    mission = aialphaclose_bench()["shared"].mission
+    from benches.ai.tactics.checks import engine_aialphaclose
+    observe = engine_aialphaclose()["shared"].observe
     stock, observed = mission(high), mission(high, observe=True)
     assert observed.ext and not stock.ext
     assert len(observed.objects) == len(stock.objects)
@@ -122,7 +127,8 @@ def test_alpha_observer_replays_measured_same_frame_state(build):
 
 def test_micro_update_time_pair_changes_only_micro_period():
     """Keep the measured pair independent of tactical clocks and scripted powers."""
-    from missions.aimicro_bench import update_time
+    from benches.ai.tactics.scenes import aimicro_bench
+    update_time = aimicro_bench()["shared"].update_time
     fast, slow = update_time('CampMicUpFast', 0.5), update_time('CampMicUpSlow', 4)
     assert len(fast.assets) == len(slow.assets)
     changed = 0

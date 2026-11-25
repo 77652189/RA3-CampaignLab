@@ -64,4 +64,5 @@ def test_an_item_a_reading_backs_says_so(tmp_path):
 def test_the_real_readings_back_real_probes():
     """Every reading file sits beside a probe, and the data backs at least the AI benches T2 migrated."""
     got = inventory.conformance_probes()
-    assert {'checks/engine_aihome.py', 'checks/engine_aitarget.py', 'checks/engine_aidefense.py'} <= got
+    assert {'benches/ai/tactics/checks.py#engine_aihome', 'benches/ai/targets/checks.py#engine_aitarget',
+            'benches/ai/tactics/checks.py#engine_aidefense'} <= got

@@ -1,0 +1,674 @@
+# Bench readings of checks/engine_aiclosestenemy.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_aiclosestenemy"
+id = "closest_enemy_land_named_bench_replay[lane0]"
+scene = {build = "aiclosest", check = "a", until = 33}
+bench = "aiclosest:a f447-484 = s29.8-32.3 (D158; wall s55-60): 普通数量 reads 4 every second (engine counts [4, 4, 0, 0])."
+proves = "simai ClosestToEnemy sort: the land slice of the named target selection and the team arrival"
+expect = "win(30, 32, '普通数量') == [4] * 3"
+
+[[reading]]
+bench_id = "engine_aiclosestenemy"
+id = "closest_enemy_land_named_bench_replay[lane1]"
+scene = {build = "aiclosest", check = "a", until = 33}
+bench = "aiclosest:a f447-484 = s29.8-32.3 (D158; wall s55-60): 非矿数量 reads 4 every second (engine counts [4, 4, 0, 0])."
+proves = "simai ClosestToEnemy sort: the land slice of the named target selection and the team arrival"
+expect = "win(30, 32, '非矿数量') == [4] * 3"
+
+[[reading]]
+bench_id = "engine_aiclosestenemy"
+id = "closest_enemy_land_named_bench_replay[lane2]"
+scene = {build = "aiclosest", check = "a", until = 33}
+bench = "aiclosest:a f447-484 = s29.8-32.3 (D158; wall s55-60): 非塔数量 reads 0 every second (engine counts [4, 4, 0, 0])."
+proves = "simai ClosestToEnemy sort: the land slice of the named target selection and the team arrival"
+expect = "win(30, 32, '非塔数量') == [0] * 3"
+mismatch = "sim 4 at s30-32; bench 0 (native host reaches the enemy anchor, not the predicted friendly plant)"
+
+[[reading]]
+bench_id = "engine_aiclosestenemy"
+id = "closest_enemy_land_named_bench_replay[lane3]"
+scene = {build = "aiclosest", check = "a", until = 33}
+bench = "aiclosest:a f447-484 = s29.8-32.3 (D158; wall s55-60): 原关数量 reads 0 every second (engine counts [4, 4, 0, 0])."
+proves = "simai ClosestToEnemy sort: the land slice of the named target selection and the team arrival"
+expect = "win(30, 32, '原关数量') == [0] * 3"
+mismatch = "sim 4 at s30-32; bench 0 (native A05 host reaches the enemy anchor, not the predicted friendly plant)"
+
+# Bench readings of checks/engine_aiconyard.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A diagnostic, not acceptance of MinDistanceFromConyardEntrance (inventory_ai NOTES keeps it 未做): the real exit,
+# a candidate's eligibility and the placement point were not read; work/re/c_conyard_report.md.
+
+[[reading]]
+bench_id = "engine_aiconyard"
+id = "conyard_named_gate_replay"
+scene = {build = "aicyard0", check = "a", until = 36}
+each = [{build = "aicyard0"}, {build = "aicyard300"}]
+bench = "C 2026-11 aicyard0 / aicyard300 (exit distance 0 / 300, the 15 s exemption kept): 核心 / 电厂 / 近处电厂 / 宿主 1/0/0/1 at every sample of both runs (s1-80 / s1-55); the team holds no member and no target"
+proves = "simai MinDistanceFromConyardEntrance gate: the plant team is never sent, at either distance"
+expect = ["len(win(1, 35, '宿主')) == 35", "all(tuple(v) == (1, 0, 0, 1) for v in vals(rows))"]
+
+# Bench readings of checks/engine_aienemyfilter.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# EnemyNearbyHeuristic's <EnemyFilter> on the near-miner host (4 guardians, an enemy Ore Collector 350 behind the yard).
+# Moved from tests/test_enemyfilter.py (C's bench 2026-11-12, work/re/c_enemyfilter_report.md; B round 155).
+
+[[reading]]
+bench_id = "engine_aienemyfilter"
+id = "the_enemy_filter_decides_which_near_enemy_wakes_the_state"
+scene = {build = "aiefharv", check = "a", until = 61.0}
+each = [{build = "aiefharv", out = true}, {build = "aiefeng", out = false}, {build = "aiefself", out = false},
+        {build = "aiefall", out = true}, {build = "aiefnone", out = false}]
+bench = """\
+坦克在家 / 坦克出门: aiefharv (ENEMIES, Rule ANY, Include HARVESTER) 4/0 to s13, all gone s15, 0/4 s18-31; \
+aiefeng (Include ENGINEER) and aiefself (HARVESTER, SAME_PLAYER: the AI has no miner) 4/0 s1-65 (C 2026-11-12); \
+with Include ENGINEER, aiefall (Rule ALL) 4/0 to s13, all gone s16, 0/4 s19-31 and aiefnone (Rule NONE) \
+4/0 s1-65 (B 2026-11-24)"""
+proves = """\
+simai states.enemy_near: the filter's Relationship picks the owners and _filter_passes the template -- Include by \
+KindOf, Rule ALL passes every one, NONE reads Include as ANY does"""
+item = ["AI 人格/EnemyFilter.Include", "AI 人格/EnemyFilter.Relationship", "AI 人格/EnemyFilter.Rule"]
+expect = ["rows[19]['坦克在家'] == (0 if out else 4)", "rows[19]['坦克出门'] == (4 if out else 0)",
+          "rows[59]['坦克在家'] == (0 if out else 4)"]
+
+# Bench readings of checks/engine_aifrdistance.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_aifrdistance"
+id = "friendly_distance_target_counters"
+scene = {build = "aifrnear", check = "a", until = 32}
+each = [{build = "aifrnear"}, {build = "aifrswap"}]
+bench = "engine_aifrdistance a s30: friendly MCVs alive 3, enemy MCV alive 1."
+proves = "simai FriendlyUnit Distance: the scene holds three friendly and one enemy MCV at s30"
+expect = "win(30, 30, '友车存活') == [3] and win(30, 30, '敌车存活') == [1]"
+
+# Bench readings of checks/engine_aifriendly.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_aifriendly"
+id = "friendly_unit_target[aifriend]"
+scene = {build = "aifriend", check = "a", until = 41}
+bench = "E85 s40: friendly/enemy arrivals 0/0 with both MCVs alive (1/1)."
+proves = "simai FriendlyUnit: both MCVs survive and the team is absent from both target regions at s40"
+expect = [
+    "win(40, 40, '友车存活') == [1] and win(40, 40, '敌车存活') == [1]",
+    "win(40, 40, '到友车') == [0] and win(40, 40, '到敌车') == [0]",
+]
+mismatch = "E85: engine arrivals are 0 at both MCVs, while the default model sends 4 to the selected MCV. StaticDefense/selection boundary unresolved."
+
+[[reading]]
+bench_id = "engine_aifriendly"
+id = "friendly_unit_target[aienemy]"
+scene = {build = "aienemy", check = "a", until = 41}
+bench = "E85 s40: friendly/enemy arrivals 0/0 with both MCVs alive (1/1)."
+proves = "simai FriendlyUnit: both MCVs survive and the team is absent from both target regions at s40"
+expect = [
+    "win(40, 40, '友车存活') == [1] and win(40, 40, '敌车存活') == [1]",
+    "win(40, 40, '到友车') == [0] and win(40, 40, '到敌车') == [0]",
+]
+mismatch = "E85: engine arrivals are 0 at both MCVs, while the default model sends 4 to the selected MCV. StaticDefense/selection boundary unresolved."
+
+# Bench readings of checks/engine_ailocation.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_ailocation"
+id = "target_location"
+scene = {build = "ailocland", check = "a", until = 41}
+each = [{build = "ailocland", land = 4, water = 0}, {build = "ailocboth", land = 4, water = 0}, {build = "ailocwater", land = 0, water = 4}]
+bench = "E81 s40: Land and Water Land both read 4/0 land/water arrivals, Water reads 0/4."
+proves = "simai AITargetingHeuristic.Location: terrain-backed selection sends the four Twinblades to the matching plant"
+expect = [
+    "win(40, 40, '到陆厂') == [land]",
+    "win(40, 40, '到水厂') == [water]",
+]
+
+# Bench readings of checks/engine_aimindist.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_aimindist"
+id = "tech_building_named_bench_replay[aitechkind]"
+scene = {build = "aitechkind", check = "a", until = 22}
+bench = "aitechkind:a f309-318 = s20.6-21.2 (wall s40-41): counters (to power plant, to barracks, to tank, at home) read 4/0/0/0."
+proves = "simai TechBuilding kind: the registered tech building set draws the team out"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 20.5 <= t <= 21.5]"}
+expect = [
+    "len(sel) > 0",
+    "all(tuple(v) == (4, 0, 0, 0) for v in sel)",
+]
+
+[[reading]]
+bench_id = "engine_aimindist"
+id = "tech_building_named_bench_replay[aitechnon]"
+scene = {build = "aitechnon", check = "a", until = 22}
+bench = "aitechnon:a f312-321 = s20.8-21.4 (wall s40-41): counters read 0/0/0/0 (the native selects the inherited far oil and the team leaves home)."
+proves = "simai TechBuilding kind: the non-tech set"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 20.5 <= t <= 21.5]"}
+expect = [
+    "len(sel) > 0",
+    "all(tuple(v) == (0, 0, 0, 0) for v in sel)",
+]
+mismatch = "sim 0/0/0/4; bench 0/0/0/0"
+
+[[reading]]
+bench_id = "engine_aimindist"
+id = "min_enemy_distance_named_bench_replay"
+scene = {build = "aimind0", check = "a", until = 41}
+each = [{build = "aimind0", want = [4, 0, 0, 0]}, {build = "aimindhi", want = [0, 0, 0, 4]},
+        {build = "aimindctl", want = [4, 0, 0, 0]}]
+bench = "C 2026-11-11, one neutral oil: MinDistanceFromEnemy 0 at the oil from s6, 2000 home s1-55; NamedObject control as 0. Counters (to oil, to barracks, to tank, at home) at s40-41."
+proves = "TechBuilding MinDistanceFromEnemy: an enemy within it rules the candidate out (2000 keeps the team home)"
+item = "AI 目标/AITargetingHeuristic.MinDistanceFromEnemy"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
+expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]
+
+[[reading]]
+bench_id = "engine_aimindist"
+id = "min_enemy_distance_two_candidates"
+scene = {build = "aimindpair0", check = "a", until = 22}
+each = [{build = "aimindpair0", want = [4, 0, 0, 4]}, {build = "aimindpair350", want = [0, 0, 4, 4]},
+        {build = "aimindpairclr", want = [0, 0, 4, 4]}, {build = "aimindpairfar", want = [0, 4, 0, 4]},
+        {build = "aimindpairwal", want = [4, 0, 0, 4]}]
+bench = "Two oils (C 2026-11-13, B 2026-11-21), counters (near oil, far oil, home, total) at f300-320 = s20-21.4 (wall s40-41; 350 from the 11-21 rerun CampMinPair350A_mcp_1121_063756, f301-308): 0 -> 4/0/0/4; 350 -> 0/0/4/4; 350 with the scenery round the far oil cleared -> 0/0/4/4; 350 with SearchRange 3000 -> 0/4/0/4 (from f240 = s16); the same with the enemy plant swapped for an enemy wall piece -> 4/0/0/4 (from f95 = s6.3)."
+proves = "TechBuilding: the near oil (200 from an enemy plant) fails 350, the far one passes it but lies beyond SearchRange 1200 from the AI base centre, the centroid of the AI's units (not its yard); an enemy wall does not count as the enemy within it; work/re/b1121_mindist.md"
+item = "AI 目标/AITargetingHeuristic.MinDistanceFromEnemy"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 20 <= t <= 21]"}
+expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]
+
+# Bench readings of checks/engine_aiminvalue.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_aiminvalue"
+id = "min_enemy_value_retail_named_bench_replay"
+scene = {build = "aiminvalue", check = "a", until = 61}
+each = [{build = "aiminvalue", want = [0, 4, 4]}, {build = "aiminvaluehi", want = [0, 4, 0]}]
+bench = "aiminvalue:a / aiminvaluehi:a s40-s60: the first three counters read 0/4/4 (low value) and 0/4/0 (high value) every second."
+proves = "simai MinEnemyValue: the threshold decides whether the team goes"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 60]"}
+expect = [
+    "len(sel) == 21",
+    "all(tuple(v[:3]) == tuple(want) for v in sel)",
+]
+
+[[reading]]
+bench_id = "engine_aiminvalue"
+id = "min_enemy_value_inverted_retail_named_bench_replay[aiminvalue]"
+scene = {build = "aiminvalue", check = "a", until = 61}
+bench = "aiminvalue:a s40-s60: the inverted group counter reads 1 every second (one member stays home)."
+proves = "simai MinEnemyValue: the inverted low-value group"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 60]"}
+expect = [
+    "len(sel) == 21",
+    "all(v[3] == 1 for v in sel)",
+]
+mismatch = "sim 0; bench 1 (the engine leaves one member home in the low-value inverted group)"
+
+[[reading]]
+bench_id = "engine_aiminvalue"
+id = "min_enemy_value_inverted_retail_named_bench_replay[aiminvaluehi]"
+scene = {build = "aiminvaluehi", check = "a", until = 61}
+bench = "aiminvaluehi:a s40-s60: the inverted group counter reads 4 every second."
+proves = "simai MinEnemyValue: the inverted high-value group"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 60]"}
+expect = [
+    "len(sel) == 21",
+    "all(v[3] == 4 for v in sel)",
+]
+
+# Bench readings of checks/engine_ainamed.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# NamedObject / Waypoint targets (bench 2026-11-08, readings in the check's docstring): where the team goes first,
+# whether it stays. Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i].
+
+[[reading]]
+bench_id = "engine_ainamed"
+id = "named_object_target_goes_to_the_named_plant_not_the_nearest"
+scene = {build = "ainmfar", check = "a", until = 76.0}
+bench = "ainmfar: NamedObject -> the far plant first (到远厂 2 @ s15), the near one only after (RAMPAGE)"
+proves = "simai targets: a NamedObject target is the named plant, not the nearest"
+let = {far = "first('到远厂')", near = "first('到近厂')"}
+expect = "far is not None and near is not None and far < near and not any(r['到路点'] for r in rows)"
+
+[[reading]]
+bench_id = "engine_ainamed"
+id = "waypoint_target_walks_there_and_stays"
+scene = {build = "ainmwp", check = "a", until = 76.0}
+bench = "ainmwp: HeuristicType Waypoint -> all 4 at the waypoint from s8 to s75; never at either plant"
+proves = "simai targets: a Waypoint target walks the team there and it stays"
+expect = ["rows[74]['到路点'] == 4", "not any(r['到近厂'] or r['到远厂'] for r in rows)"]
+
+[[reading]]
+bench_id = "engine_ainamed"
+id = "named_target_filtered_or_missing_sends_nobody"
+scene = {build = "ainmrel", check = "a", until = 76.0}
+each = [{build = "ainmrel"}, {build = "ainmnone"}]
+bench = "ainmrel (Relationship NEUTRAL drops the player's plant) / ainmnone (no such name): 步兵在家 4 all 75 s"
+proves = "simai targets: a NamedObject filtered out or missing sends nobody"
+expect = "all(r['步兵在家'] == 4 for r in rows)"
+
+[[reading]]
+bench_id = "engine_ainamed"
+id = "named_object_team_leaves_when_the_bench_did"
+scene = {build = "ainmfar", check = "a", until = 20.0}
+bench = "ainmfar: the team out of the base by s10 (bench aialobsw: a NamedObject team forms before the wake)"
+proves = "simai teams: a NamedObject team forms before the wake, so it leaves when the bench's did"
+expect = "rows[11]['步兵在家'] < 4"
+
+# Bench readings of checks/engine_aiprio.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY (bench 2026-11-10): the near plant is Soviet_4's, the far one the player's.
+# Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i] (same run, checked row by row).
+
+[[reading]]
+bench_id = "engine_aiprio"
+id = "one_priority_puts_the_top_scored_enemy_first"
+scene = {build = "aiprio1", check = "a", until = 70.0}
+bench = "aiprio1 (Soviet_4 30, Player_1 10, no SET_ALL): 到近厂 2 @ s14, 4 s15-s21, never 到远厂"
+proves = "simai enemy priority: the top-scored enemy is the target first"
+let = {near = "first('到近厂')"}
+expect = "near is not None and abs(near - 14) <= 2 and first('到远厂') is None"
+
+[[reading]]
+bench_id = "engine_aiprio"
+id = "one_priority_alone_leaves_the_unnamed_enemies_out"
+scene = {build = "aipriorm", check = "a", until = 70.0}
+bench = "aipriorm (only Soviet_4 0 at the wake): 步兵在家 4 s1-s75 -- the player was not in the table either"
+proves = "simai enemy priority: a table with one entry leaves the enemies it does not name out"
+expect = "all(r['步兵在家'] == 4 and r['到近厂'] == 0 and r['到远厂'] == 0 for r in rows)"
+
+[[reading]]
+bench_id = "engine_aiprio"
+id = "two_enemies_in_one_tier_go_for_the_far_plant_first"
+scene = {build = "aipriodef", check = "a", until = 70.0}
+bench = "aipriodef (SET_ALL 20): 到远厂 2 @ s25, 4 s26-s44; 到近厂 only from s55 (RAMPAGE after the plant fell)"
+proves = "simai enemy priority: two enemies in one tier -- which the game takes first"
+let = {far = "first('到远厂')", near = "first('到近厂')"}
+expect = "far is not None and (near is None or far < near)"
+mismatch = """\
+bench aipriodef: two enemies in one tier, the game went for the farther plant (the player's, s25); the simulator \
+takes the nearest (Soviet_4's, s14) -- why NOT READ"""
+
+[[reading]]
+bench_id = "engine_aiprio"
+id = "one_priority_zero_takes_that_enemy_out"
+scene = {build = "aiprio0", check = "a", until = 70.0}
+bench = "aiprio0 (SET_ALL 20, then Player_1 0): 到近厂 2 @ s15, never 到远厂"
+proves = "simai enemy priority: a priority 0 after SET_ALL takes that enemy out of the table"
+let = {near = "first('到近厂')"}
+expect = "near is not None and abs(near - 15) <= 2 and first('到远厂') is None"
+
+# Bench readings of checks/engine_aistate.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# SearchRange is only the tech heuristic's -- distance stops no team (bench 2026-11-07).
+
+[[reading]]
+bench_id = "engine_aistate"
+id = "far_structure_does_not_stop_a_team_when_two_are_far"
+scene = {build = "aistatefar2", check = "a", until = 30.0}
+bench = """\
+aistatefar2 (a second far structure: one target per state): both teams out, 步兵在家 and 坦克在家 4 -> 0 @ s14 (the \
+simulator ~3 s later)"""
+proves = "simai team states: SearchRange stops no team -- with two far structures both teams go out"
+expect = "rows[-1]['步兵在家'] == 0 and rows[-1]['坦克在家'] == 0"
+
+[[reading]]
+bench_id = "engine_aistate"
+id = "one_far_structure_goes_to_the_tank_team_alone"
+scene = {build = "aistatefar", check = "a", until = 30.0}
+bench = """\
+aistatefar: the tanks 4 -> 0 @ s14, the infantry 4 all run (one structure only, a target one state holds is not \
+given to another)"""
+proves = "simai team states: one far structure goes to the tank team alone"
+expect = "rows[-1]['坦克在家'] == 0 and rows[-1]['步兵在家'] == 4"
+mismatch = """\
+simai aistatefar: the infantry go (步兵在家 0 @ s17) and the tanks stay home (4); bench: the tanks 4 -> 0 @ s14, the \
+infantry 4 all run (one structure only, a target one state holds is not given to another)"""
+
+# ---- from tests/test_simai.py (T3 B ①, 11-18): the old tests read the units' positions (out of 450 round the base)
+# frame by frame; these read the check's counters (步兵在家 / 坦克在家 inside the base area, 等帧 from the flag).
+# The mission's wake timer is 10 s (missions/aistate_bench.WAKE_AT; the bench clock reads it s9).
+
+[[reading]]
+bench_id = "engine_aistate"
+id = "mission_personality_both_states_go_at_the_wake"
+scene = {build = "aistateconst", check = "a", until = 25.0}
+bench = "aistateconst a (bench 2026-11-06): 步兵在家 4 -> 0 @ s14, 坦克在家 4 -> 0 @ s14-16, the wake s9 on the bench clock (~5 s after it)"
+proves = "simai team states: a state always on sends its team ~5 s after the wake (both teams, the probe's own personality)"
+let = {inf = "times[first('步兵在家', lambda v: v < 4)]", tank = "times[first('坦克在家', lambda v: v < 4)]"}
+expect = ["abs(inf - (10 + 5)) <= 1.5", "abs(tank - (10 + 5)) <= 1.5", "rows[-1]['步兵在家'] == 0 and rows[-1]['坦克在家'] == 0"]
+
+[[reading]]
+bench_id = "engine_aistate"
+id = "slash_flags_switch_the_states_tanks"
+scene = {build = "aistateslash", check = "a", until = 75.0}
+bench = "aistateslash a (bench 2026-11-06): '/CNVAITanks' at 60 s, 坦克在家 4 -> 0 @ s63, 坦克等帧 stops at 77"
+proves = "simai team states: a SET_FLAG '/name' (the empty scope) turns the AI's state on -- its team leaves ~77 frames after"
+expect = ["abs(rows[-1]['坦克等帧'] - 77) <= 14", "rows[-1]['坦克在家'] == 0"]
+
+[[reading]]
+bench_id = "engine_aistate"
+id = "slash_flags_switch_the_states_infantry"
+scene = {build = "aistateslash", check = "a", until = 75.0}
+bench = "aistateslash a (bench 2026-11-06): '/CNVAIInfantry' at 20 s, 步兵在家 4 -> 0 @ s23, 步兵等帧 stops at 74"
+proves = "simai team states: a SET_FLAG '/name' (the empty scope) turns the AI's state on -- its team leaves ~74 frames after"
+expect = ["abs(rows[-1]['步兵等帧'] - 74) <= 7", "rows[-1]['步兵在家'] == 0"]
+mismatch = """\
+simai aistateslash: 步兵等帧 stops at 61 (out at s25), bench 74 (s23 on its clock); the old test read the first \
+Peacekeeper out of a 450 circle at 68 frames (inside its 7-frame slack), the bench's own counter reads 13 early"""
+
+[[reading]]
+bench_id = "engine_aistate"
+id = "bare_flags_are_the_script_players_not_the_ais"
+scene = {build = "aistateplain", check = "a", until = 75.0}
+bench = "aistateplain a (bench 2026-11-06): bare flag names -- nobody left, 步兵在家 / 坦克在家 4 / 4 to s127"
+proves = "simai flags: a bare SET_FLAG name is the script player's scope, not the empty one the AI's state reads"
+expect = "all(r['步兵在家'] == 4 and r['坦克在家'] == 4 for r in rows)"
+
+# ---- co-op command beacons (B 11-24): nobody places one on these benches; the simulator's players have no co-op
+# command (inventory.py PLAYER_ALLOWED_TOBE_COOPAI), so no beacon is the one case either side can show.
+
+[[reading]]
+bench_id = "engine_aistate"
+id = "no_beacon_fails_exists_and_passes_its_negation"
+scene = {build = "aibeaconex", check = "bcn", until = 40.0}
+bench = "aibeaconex bcn (B 2026-11-24, run_queue PASS): 坦克在家 4 -> 3 @ s14, 0 @ s15; 步兵在家 4 s1-s45"
+proves = "BeaconExistsHeuristic with no ally's beacon: Exists=true never turns the infantry's state on, Exists=false turns the tanks' on at the wake (Type=Assault on both)"
+item = ["AI 启发条件/BeaconExistsHeuristic", "AI 启发条件/BeaconExistsHeuristic.Exists", "AI 启发条件/BeaconExistsHeuristic.Type"]
+expect = ["rows[-1]['坦克在家'] == 0", "all(r['步兵在家'] == 4 for r in rows)"]
+
+[[reading]]
+bench_id = "engine_aistate"
+id = "a_beacon_heuristic_finds_nothing_without_a_beacon"
+scene = {build = "aibeacontg", check = "bcn", until = 40.0}
+bench = "aibeacontg bcn (B 2026-11-24, run_queue PASS): 坦克在家 4 -> 3 @ s18, 0 @ s20; 步兵在家 4 s1-s45"
+proves = "AITargetingHeuristic HeuristicType=Beacon (retail BeaconAssaultHeuristic_Land, Beacon=Assault) with no beacon: no target, the always-on infantry state sends no team while the tanks' goes"
+item = ["AI 目标/AITargetingHeuristic.HeuristicType=Beacon", "AI 目标/AITargetingHeuristic.Beacon"]
+expect = ["rows[-1]['坦克在家'] == 0", "all(r['步兵在家'] == 4 for r in rows)"]
+
+# Bench readings of checks/engine_aitarget.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Which structure an attack team goes for first, and how idle times change it (bench 2026-11-06).
+
+[[reading]]
+bench_id = "engine_aitarget"
+id = "threat_to_ground_sends_the_team_to_the_far_plant_first"
+scene = {build = "aitargetsafe", check = "a", until = 76.0}
+each = [{build = "aitargetsafe"}, {build = "aitargetidle5"}, {build = "aitargetidle30"}, {build = "aitargetstill"}]
+bench = """\
+SimpleAttack + SafestToGroundStructure / ThreatToGround (also MaxTeamIdleTime 5 / 30 s, 600 s): 到远厂 3 @ s35 ... \
+4 s36-s60, the near plant only afterwards (RAMPAGE, s69)"""
+proves = "simai team targets: ThreatToGround goes for the far undefended plant first, the near one only afterwards"
+let = {far = "first('到远厂')", near = "first('到近厂')"}
+expect = "far is not None and (near is None or far < near)"
+
+[[reading]]
+bench_id = "engine_aitarget"
+id = "closest_structure_sends_the_team_to_the_near_plant_and_never_the_far_one"
+scene = {build = "aitargetnear", check = "a", until = 76.0}
+bench = """\
+aitargetnear (ClosestStructure, Distance): 到近厂 4 from s14, shot down to 0 by s35; 到远厂 0 all 76 s (green with R8 \
+UNDERSIZE 4-8, 0-3 fail; D162 / A round 251)"""
+proves = "simai team targets: ClosestStructure goes for the near plant and never the far one"
+expect = ["first('到近厂') is not None and all(r['到远厂'] == 0 for r in rows)", "rows[40]['到近厂'] == 0 and rows[-1]['到近厂'] == 0"]
+
+[[reading]]
+bench_id = "engine_aitarget"
+id = "idle_time_5_leaves_home_before_the_default"
+scenes = {safe = {build = "aitargetsafe", check = "a", until = 40.0}, idle5 = {build = "aitargetidle5", check = "a", until = 40.0}}
+bench = "aitargetidle5 vs aitargetsafe: the 5 s team leaves earlier (bench 4 -> 3 @ s17 / @ s28)"
+proves = "simai team idle time: MaxTeamIdleTime 5 s sends the team out before the default"
+expect = "first('步兵在家', lambda v: v < 4, rows=idle5) < first('步兵在家', lambda v: v < 4, rows=safe)"
+
+[[reading]]
+bench_id = "engine_aitarget"
+id = "longer_idle_times_change_nothing"
+scenes = {safe = {build = "aitargetsafe", check = "a", until = 70.0}, got = {build = "aitargetidle30", check = "a", until = 70.0}}
+each = [{got = {build = "aitargetidle30"}}, {got = {build = "aitargetstill"}}]
+bench = """\
+MaxTeamIdleTime 30 s (aitargetidle30): identical to the 15 s default (aitargetsafe), second for second to s70; \
+MaxTeamIdleTime / MaxUnitIdleTime 600 s (aitargetstill): to the frame as 15 s to s70"""
+proves = "simai team idle time: a longer MaxTeamIdleTime / MaxUnitIdleTime changes nothing"
+expect = "got == safe"
+
+[[reading]]
+bench_id = "engine_aitarget"
+id = "flank_attack_reaches_the_far_plant_much_later"
+scenes = {safe = {build = "aitargetsafe", check = "a", until = 76.0}, flank = {build = "aitargetflank", check = "a", until = 76.0}}
+bench = "aitargetflank: far plant 1 @ s58, ~23 s later than the other tactics, near plant 0 all 76 s"
+proves = "simai team targets: a flank attack reaches the far plant much later than the others"
+expect = "first('到远厂', rows=flank) - first('到远厂', rows=safe) >= 15"
+mismatch = """\
+simai aitargetflank = aitargetsafe (far plant first at s26); bench flank: far plant 1 @ s58, ~23 s later than \
+the other tactics, near plant 0 all 76 s"""
+
+# Bench readings of checks/engine_aitargetpick.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Target pick, team priority, EndBehavior (bench 2026-11-09, B rounds 80-87; the readings in the check's docstring).
+# Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i] (same run, checked row by row).
+
+[[reading]]
+bench_id = "engine_aitargetpick"
+id = "target_pick_as_on_the_bench"
+scene = {build = "aitpnear", check = "a", until = 41.0}
+each = [{build = "aitpnear", got = [4, 0, 0, 0]}, {build = "aitpvk", got = [0, 4, 0, 0]},
+        {build = "aitpfk", got = [0, 4, 0, 0]}, {build = "aitpunit", got = [0, 0, 4, 0]},
+        {build = "aitpphi", got = [0, 4, 0, 0]}, {build = "aitpplo", got = [4, 0, 0, 0]},
+        {build = "aitpmt1", got = [4, 0, 0, 4]}, {build = "aitpmt2", got = [4, 4, 0, 0]}]
+bench = """\
+(到电厂, 到兵营, 到坦克 at most, 在家) at s40: VitalKindOf / ForbiddenKindOf / EnemyUnit pick the target, the higher \
+TargetHeuristic Priority is tried first, MaxTargets 2 sends a second team at the next unique target (the tank's \
+count may fall as it shoots back)"""
+proves = "simai targets: the TargetHeuristic kinds, Priority and MaxTargets pick the target"
+let = {r = "rows[39]"}
+expect = "[r['到电厂'], r['到兵营'], max(x['到坦克'] for x in rows), r['在家']] == got"
+
+[[reading]]
+bench_id = "engine_aitargetpick"
+id = "team_priority_higher_plant_team_as_on_the_bench"
+scene = {build = "aitpprp", check = "a", until = 41.0}
+bench = "aitpprp (B round 82): the plant's team HIGH over the barracks' STANDARD -> 到电厂 4 s15-s56, 到兵营 0"
+proves = "simai teams: the higher team priority takes the men"
+expect = "(rows[39]['到电厂'], rows[39]['到兵营'], rows[39]['在家']) == (4, 0, 0)"
+
+[[reading]]
+bench_id = "engine_aitargetpick"
+id = "team_priority_as_on_the_bench"
+scene = {build = "aitpprh", check = "a", until = 41.0}
+each = [{build = "aitpprh"}, {build = "aitpprl"}]
+bench = """\
+aitpprh (P STANDARD / B HIGH) / aitpprl (P LOW / B STANDARD): 在家 4 to s16, 到兵营 4 s23-s55, 到电厂 0 throughout \
+(AI tactic teams are recruitable, l4_recruit.md: the higher team takes them)"""
+proves = "simai teams: the higher team priority takes the men (recruit)"
+expect = "(rows[39]['到电厂'], rows[39]['到兵营'], rows[39]['在家']) == (0, 4, 0)"
+
+[[reading]]
+bench_id = "engine_aitargetpick"
+id = "team_priority_as_on_the_bench_on_a_tie"
+scene = {build = "aitpprs", check = "a", until = 41.0}
+bench = "aitpprs (P STANDARD / B STANDARD): 到兵营 2 @ s21, 4 s23-s55; 到电厂 0 throughout -- the barracks' state on a tie"
+proves = "simai teams: on a team priority tie the men go to the barracks' state"
+expect = "(rows[39]['到电厂'], rows[39]['到兵营'], rows[39]['在家']) == (0, 4, 0)"
+mismatch = """\
+simai sends the plant's team (target first, s13) all 4 (到电厂 4 at s40); the bench gives them to the barracks' \
+state on a tie -- handoff-b 84"""
+
+[[reading]]
+bench_id = "engine_aitargetpick"
+id = "end_behavior_disband_goes_to_the_next_target_as_on_the_bench"
+scene = {build = "aiendd", check = "a", until = 76.0}
+each = [{build = "aiendd"}, {build = "aiendh"}]
+bench = "DISBAND / RETURN_HOME_AND_DISBAND (the plant dies at s35): 到兵营 4 from s41-s42, never home (handoff-b 87)"
+proves = "simai tactics: EndBehavior DISBAND / RETURN_HOME_AND_DISBAND go to the next target"
+let = {r = "rows[74]"}
+expect = "(r['到电厂'], r['到兵营'], r['到坦克'], r['在家']) == (0, 4, 0, 0)"
+
+[[reading]]
+bench_id = "engine_aitargetpick"
+id = "end_behavior_rampage_as_on_the_bench"
+scene = {build = "aiendr", check = "a", until = 76.0}
+bench = "aiendr RAMPAGE: 到兵营 1 @ s38, 4 from s40; 到坦克 0 -- the nearest enemy STRUCTURE (the barracks), never the nearer tank"
+proves = "simai tactics: EndBehavior RAMPAGE goes for the nearest enemy structure (the engine's KindOf filter)"
+let = {r = "rows[74]"}
+expect = "(r['到电厂'], r['到兵营'], r['到坦克'], r['在家']) == (0, 4, 0, 0)"
+
+[[reading]]
+bench_id = "engine_aitargetpick"
+id = "end_behavior_pick_new_target_as_on_the_bench"
+scene = {build = "aiendp", check = "a", until = 76.0}
+bench = "aiendp PICK_NEW_TARGET: 到电厂 4 to s85 -- the team stands where the plant was (the engine just returns)"
+proves = "simai tactics: EndBehavior PICK_NEW_TARGET leaves the team where its target was"
+let = {r = "rows[74]"}
+expect = "(r['到电厂'], r['到兵营'], r['到坦克'], r['在家']) == (4, 0, 0, 0)"
+
+[[reading]]
+bench_id = "engine_aitargetpick"
+id = "forbidden_airborne_skips_the_kirov_as_on_the_bench"
+item = "AI 目标/AITargetingHeuristic.ForbiddenObjectStatus"
+scene = {build = "aitpairf", check = "a", until = 41.0}
+each = [{build = "aitpairn", got = [3, 0]}, {build = "aitpairf", got = [0, 3]}]
+bench = """\
+aitpairn / aitpairf (B 11-23, CampAITPAirNA_mcp_1123_230526 / AirFA_230534; 到电厂 到坦克 到飞艇 在家): a player Kirov \
+(airborne, HOLD_FIRE) nearer the Guardians than the tank. Empty ForbiddenObjectStatus: 到飞艇 3 s14-s16, 到坦克 0; \
+retail ClosestSurfaceUnitHeuristic's "AIRBORNE_TARGET SUBMERGED": 到坦克 1 @ s13, 4 s16-s29, 到飞艇 0 throughout"""
+proves = "simai targets: ForbiddenObjectStatus AIRBORNE_TARGET skips a thing in the air (the target view's status_now)"
+expect = "[min(max(x['到飞艇'] for x in rows[:20]), 3), min(max(x['到坦克'] for x in rows[:20]), 3)] == got"
+
+[[reading]]
+bench_id = "engine_aitargetpick"
+id = "require_can_attack_target_leaves_the_guardians_home_for_a_kirov"
+item = "AI 组队招人/TeamTemplate.RequireCanAttackTarget"
+scene = {build = "aitpairr", check = "a", until = 41.0}
+each = [{build = "aitpairr", got = [0, 4]}, {build = "aitpunr", got = [4, 0]}]
+bench = """\
+aitpairr / aitpunr (B 11-24, run_queue at f69abef2, both PASS): RequireCanAttackTarget="true" on aitpairn's team \
+(the Kirov the target): 在家 4 s1-s55, nobody leaves; on aitpunit's (the tank): 到坦克 3 @ s14, 4 s15-s29"""
+proves = "simai teams: RequireCanAttackTarget takes only units with a weapon for the slot's target object"
+expect = "[max(x['到坦克'] for x in rows[:30]), min(x['在家'] for x in rows[:41])] == got"
+
+[[reading]]
+bench_id = "engine_aitargetpick"
+id = "after_an_unhittable_kirov_rampage_takes_the_plant_as_on_the_bench"
+scene = {build = "aitpairn", check = "a", until = 41.0}
+bench = "aitpairn: the Guardians (no anti-air) leave the Kirov s17, 到电厂 4 from s21 to s55 -- RAMPAGE's nearest structure"
+proves = "simai tactics: a team at a target it cannot hit ends RAMPAGE at the nearest enemy structure"
+expect = "rows[39]['到电厂'] == 4"
+mismatch = "simai: under the Kirov 4 at s15, then out of every area (到电厂 0 at s40) -- what ends the pick is not modelled"
+
+# Bench readings of checks/engine_aitoponly.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# HighestPriorityEnemyPlayersOnly (C 2026-11-12, work/re/c_toponly_report.md; moved from tests/test_top_enemy_only.py).
+
+[[reading]]
+bench_id = "engine_aitoponly"
+id = "top_enemy_only_true_stays_home_false_falls_to_the_lower_tier"
+scene = {build = "aitopon", check = "a", until = 42}
+each = [{build = "aitopon", got = [0, 0, 0, 4]}, {build = "aitopoff", got = [0, 4, 0, 0]},
+        {build = "aitopctl", got = [0, 4, 0, 0]}]
+bench = """\
+(到电厂, 到兵营, 到坦克, 在家) at s40-s41, priorities s4=30 / p1=10 set at the wake, s4 (top) has only a yard, p1 a \
+barracks (2026-11-12, all PASS): aitopon (true) 0/0/0/4 all run; aitopoff (false) 0/4/0/0 from s23; aitopctl (true, \
+the barracks handed to s4) 0/4/0/0 from s23"""
+proves = """\
+simai targets: HighestPriorityEnemyPlayersOnly true -- no candidate in the top enemy tier, the heuristic fails (no \
+fallback to a lower tier); false falls through (one player per tier; ties and changing priorities not benched)"""
+item = "AI 目标/AITargetingHeuristic.HighestPriorityEnemyPlayersOnly"
+expect = "[win(40, 41, k) for k in ('到电厂', '到兵营', '到坦克', '在家')] == [[g, g] for g in got]"
+
+# Bench readings of checks/engine_aivital.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_aivital"
+id = "vital_named_bench_replay[aivitalon lane0]"
+scene = {build = "aivitalon", check = "a", until = 61}
+bench = "aivitalon:a s55-s60: lane 0 (counter lane0) reads 24 every second."
+proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+expect = "[v[0] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [24] * 6"
+mismatch = "sim 114; bench 24"
+
+[[reading]]
+bench_id = "engine_aivital"
+id = "vital_named_bench_replay[aivitalon lane1]"
+scene = {build = "aivitalon", check = "a", until = 61}
+bench = "aivitalon:a s55-s60: lane 1 (counter lane1) reads 4 every second."
+proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+expect = "[v[1] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [4] * 6"
+mismatch = "sim 104; bench 4"
+
+[[reading]]
+bench_id = "engine_aivital"
+id = "vital_named_bench_replay[aivitalon lane2]"
+scene = {build = "aivitalon", check = "a", until = 61}
+bench = "aivitalon:a s55-s60: lane 2 (counter lane2) reads 4 every second."
+proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+expect = "[v[2] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [4] * 6"
+mismatch = "sim 104; bench 4"
+
+[[reading]]
+bench_id = "engine_aivital"
+id = "vital_named_bench_replay[aivitalon lane3]"
+scene = {build = "aivitalon", check = "a", until = 61}
+bench = "aivitalon:a s55-s60: lane 3 (counter lane3) reads 140 every second."
+proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+expect = "[v[3] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [140] * 6"
+
+[[reading]]
+bench_id = "engine_aivital"
+id = "vital_named_bench_replay[aivitaloff lane0]"
+scene = {build = "aivitaloff", check = "a", until = 61}
+bench = "aivitaloff:a s55-s60: lane 0 (counter lane0) reads 24 every second."
+proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+expect = "[v[0] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [24] * 6"
+mismatch = "sim 4; bench 24"
+
+[[reading]]
+bench_id = "engine_aivital"
+id = "vital_named_bench_replay[aivitaloff lane1]"
+scene = {build = "aivitaloff", check = "a", until = 61}
+bench = "aivitaloff:a s55-s60: lane 1 (counter lane1) reads 4 every second."
+proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+expect = "[v[1] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [4] * 6"
+
+[[reading]]
+bench_id = "engine_aivital"
+id = "vital_named_bench_replay[aivitaloff lane2]"
+scene = {build = "aivitaloff", check = "a", until = 61}
+bench = "aivitaloff:a s55-s60: lane 2 (counter lane2) reads 4 every second."
+proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+expect = "[v[2] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [4] * 6"
+
+[[reading]]
+bench_id = "engine_aivital"
+id = "vital_named_bench_replay[aivitaloff lane3]"
+scene = {build = "aivitaloff", check = "a", until = 61}
+bench = "aivitaloff:a s55-s60: lane 3 (counter lane3) reads 4 every second."
+proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
+expect = "[v[3] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [4] * 6"
+
+# Bench readings of checks/engine_aiwake.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_aiwake"
+id = "enemy_targets_wait_for_the_wake"
+scene = {build = "aistateconstw", check = "w", until = 45.0}
+bench = """\
+aistateconstw w (bench 11-13, B round 163): 唤醒前 stops at 450 (f450 = s30); the tanks leave home by the f528 \
+sample (s35.2, 5.2 s after the wake), the infantry by f543 (s36.2, 6.2 s) -- though the states and teams run from the start"""
+proves = "simai targets: an EnemyStructure target is not found before the wake (SKIRMISH_AI_MAKE_BASE), so the teams wait for it"
+let = {wake = "rows[-1]['唤醒前'] / 15", inf = "times[first('步兵在家', lambda v: v < 4)]", tank = "times[first('坦克在家', lambda v: v < 4)]"}
+expect = ["abs(rows[-1]['唤醒前'] - 450) <= 15", "abs(inf - wake - 6.2) <= 1.5", "abs(tank - wake - 5.2) <= 1.5"]
+
+# Bench readings of checks/engine_aiwater.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_aiwater"
+id = "water_threat_named_bench_replay"
+scene = {build = "aiwaterdist", check = "a", until = 41}
+each = [{build = "aiwaterdist", want = [4, 0, 0]}, {build = "aiwaterthreat", want = [4, 0, 0]},
+        {build = "aiwaternear", want = [4, 0, 0]}, {build = "aiwaterfar", want = [0, 4, 0]}]
+bench = "C 2026-11-12, two enemy plants, a Guardian by the near one, the AI's amphibious miner on land; counters (near, far, home): Distance 4/0/0 from s13.8, ThreatToWater 4/0/0 from s14.1, NamedObject near 4/0/0 from s5.2, NamedObject far 0/4/0 from s14.3 (work/re/c_water_measured.json)."
+proves = "ThreatToWater: with no unit of the AI's afloat (or submerged) to sample, every water threat is 0 and the first candidate wins, the Guardian by the near plant notwithstanding; work/re/b1121_water.md"
+item = "AI 目标/AITargetingHeuristic.SortType=ThreatToWater"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
+expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]
+
+[[reading]]
+bench_id = "engine_aiwater"
+id = "air_threat_needs_an_aircraft_of_the_ais"
+scene = {build = "aiairnone", check = "a", until = 41}
+each = [{build = "aiairnone", want = [4, 0, 0]}, {build = "aiairsamp", want = [0, 4, 0]}]
+bench = "B 2026-11-24 (run_queue, PASS both; rerun with the IFV off the MR_Tree04, at east gate -40/160), aiwater's two plants with a player IFV (held fire) by the near one: no AI aircraft, ThreatToAir 4/0/0 from s13; an AI Cryocopter (held, not in the LAND team) 0/4/0 from s23."
+proves = "ThreatToAir samples the AI's first unit of KindOf AIRCRAFT: none -> every air threat 0, the first candidate (the near plant) wins; with one, the IFV's plant is the riskier and the far plant is taken; l4_targets_binary 3.1"
+item = "AI 目标/AITargetingHeuristic.SortType=ThreatToAir"
+let = {sel = "[v for t, v in zip(times, vals(rows)) if 40 <= t <= 41]"}
+expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]

@@ -658,8 +658,10 @@ def test_the_bench_keeps_the_menu_walk_as_half_size_frames(tmp_path):
 # only ids the static streams lack), and the override pass picks BAB's instance by its full name (engine A round 184).
 # Here, not a file of their own: this file already reaches experimental/cnv and experimental/campaign (G4 ratchet).
 import make_campnew7 as c7  # noqa: E402
-from checks import engine_aiskirm as ck  # noqa: E402
-from missions import aiskirm_bench as ab  # noqa: E402
+from benches.ai.production.checks import engine_aiskirm  # noqa: E402
+ck = engine_aiskirm()["shared"]
+from benches.ai.production.scenes import aiskirm_bench  # noqa: E402
+ab = aiskirm_bench()
 
 
 def test_override_names_take_a_full_instance_name_or_a_gameobject_id(monkeypatch):
@@ -668,7 +670,7 @@ def test_override_names_take_a_full_instance_name_or_a_gameobject_id(monkeypatch
 
 
 def test_the_aidata_canary_replaces_retail_aidata_instead_of_linking_a_new_id():
-    m = ab.MISSION['aiskad']()
+    m = ab["MISSION"]['aiskad']()
     spec = package.spec_of(m, ck.a(m))
     assert spec.replaces == ('AIData:AIData',)
     assert b'AIData:AIData' not in spec.extra_own
@@ -680,5 +682,5 @@ def test_the_aidata_canary_replaces_retail_aidata_instead_of_linking_a_new_id():
 
 def test_the_formation_pair_differs_only_in_use_formations():
     on, off = (dict(package.spec_of(m, ck.fm(m)).unit_files)['CNVAIData.xml']
-               for m in (ab.MISSION['aiskfon'](), ab.MISSION['aiskfof']()))
+               for m in (ab["MISSION"]['aiskfon'](), ab["MISSION"]['aiskfof']()))
     assert on.replace('UseFormations="true"', 'UseFormations="false"') == off
