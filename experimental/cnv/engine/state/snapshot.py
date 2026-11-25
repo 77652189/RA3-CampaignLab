@@ -73,7 +73,7 @@ SIM = {
                  'ejecting': STATE, 'flying': STATE, 'leaving': STATE},
     'infiltrators': {'world': WIRE, 'peers': WIRE, 'wallet': WIRE, 'going': STATE, 'off_until': STATE,
                      'observers': STATE, 'unit_observers': STATE, 'paralyzed_until': STATE, 'attack_until': STATE},
-    'lift_timers': {'remaining': STATE},
+    'lift_timers': {'remaining': STATE, 'height': STATE, 'landing': STATE, 'landed': STATE},
     'production': {'world': WIRE, 'peers': WIRE, 'queues': STATE, 'produced_to': STATE, 'placing': STATE,
                    'pack_hold': STATE, 'gifts': STATE},
     'sweeps': {'world': WIRE, 'peers': WIRE, 'lines': STATE},

@@ -14,9 +14,8 @@ expect = "vals(rows)[-1] == [1099, 11001099, 11001099, 1099]"
 id = "the_soft_landing_clears_the_late_bit"
 scene = {build = "engine_lift", check = "landing", until = 22, shot_clock = true}
 bench = "engine_lift landing (second bench): 1099 / 10001099 / 10001099 / 1099 -- the stock JapanCommandoSoftLanding on the caster's module clears the bit by 18 s, not by 7 s"
-proves = "LiftObjectUpdate SoftLandingWeapon: the landing takes LIFTED_INTO_AIR off (the clear boundary, height 28 vs 40 / 60, unresolved: work/re/c_lift_landing_gate_report.md)"
+proves = "LiftObjectUpdate SoftLandingWeapon: a 28-high lift's landing takes LIFTED_INTO_AIR off (simunits.LiftTimers: the fall from engine_lift_probe; the 28 / 40 edge INFERRED)"
 expect = "vals(rows)[-1] == [1099, 10001099, 10001099, 1099]"
-mismatch = "sim 1099 / 11001099 / 11001099 / 1099 (no landing model); bench 1099 / 10001099 / 10001099 / 1099"
 
 [[reading]]
 id = "native_ground_lifts_latch_on_yuriko_and_both_crewed_hosts"

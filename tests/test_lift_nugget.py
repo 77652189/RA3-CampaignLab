@@ -14,7 +14,7 @@ def test_lift_timer_truncation_renewal_cap_and_caster_ownership():
     import engine.data.units as simunits
     own = {'Caster': '<GameObject id="Caster"><LiftObjectUpdate TimeIncrement="0.5s" MaxTimeLifted="8s"/></GameObject>'}
     rule = simunits.lift_module('Caster', own)
-    assert rule == dict(increment=7, maximum=120)
+    assert rule == dict(increment=7, maximum=120, rise=0.0, top=0.0, soft=False)
     timers = simunits.LiftTimers()
     timers.hit('one', 'victim', **rule)
     assert timers.remaining == {('one', 'victim'): 7}
@@ -36,6 +36,20 @@ def test_lift_timer_truncation_renewal_cap_and_caster_ownership():
     assert timers.remaining[('new', 'victim')] == 7
     timers.hit('new', 'victim', 7, 3)
     assert timers.remaining[('new', 'victim')] == 3
+
+
+def test_a_soft_landing_from_28_clears_the_bit_28_frames_after_the_hit_and_one_from_40_never():
+    """engine_lift_probe: 7 frames up at 4 a frame (28), released, 20 frames falling: cleared at hit + 28; 10 frames
+    (40 up) keeps it."""
+    import engine.data.units as simunits
+    timers = simunits.LiftTimers()
+    timers.hit('c', 'low', 7, 120, rise=4.0, top=60.0, soft=True, serial=1)
+    timers.hit('c', 'high', 10, 120, rise=4.0, top=60.0, soft=True, serial=2)
+    landed = {}
+    for frame in range(1, 60):
+        timers.tick(lambda serial, z: 20)               # the probe's spot: 20 frames from 28
+        landed.update({s: frame for s in timers.landed})
+    assert landed == {1: 28}
 
 
 @pytest.mark.parametrize('nugget', [

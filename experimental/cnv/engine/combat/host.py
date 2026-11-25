@@ -56,8 +56,8 @@ class EffectHost:
     __slots__ = ('damage', 'world', 'peers', 'lift_hit', 'refresh_modifiers', 'fits', 'sweep', 'gap',
                  'velocity', 'ground_launch', 'trajectory', 'landing_hold')
     # what a lift still lacks (a gap after each lift; the report is private, so its pointer stays out of engine/)
-    LIFT_LANDING = ('计时释放不清状态；SoftLanding自击及修正器到期清位缺Lift接地事件，垂直运动/落地武器未接通；'
-                    '见work/re/c_lift_landing_gate_report.md')
+    LIFT_LANDING = ('计时释放不清状态；SoftLanding 只在举高不超过 28 时落地清位（28 与 40 之间的边界 INFERRED），'
+                    '落地武器的伤害和飞机坠毁未接通')
 
     def __init__(self, damage, world, peers):
         self.damage, self.world, self.peers = damage, world, peers
@@ -388,7 +388,18 @@ class Damage:
         updates): a script's health top-up (UNIT_SET_HEALTH every frame, the a4 checks' trucks) lands before the
         frame's damage, so only a frame's fire of the whole maximum kills (A4 win: bench 2026-11-07 against the 0.5 s
         tick that killed the trucks at 4:23). Bodies at 0 die, the last hit their killer's."""
-        peers.lift_timers.tick()
+        lifts, kernel = peers.lift_timers, world.world
+        numbered, kill = kernel.numbered, kernel.kill
+        if lifts.remaining or lifts.landing:
+            def fall(serial, z):
+                b = numbered.get(serial)
+                g = impact_ground_z(world, b.x, b.y) if b else 0.0
+                return len(simunits.meta_impact_fall((b.x, b.y, g + z) if b else (0.0, 0.0, z), (0.0, 0.0, 0.0), g)[0])
+            lifts.tick(fall)
+            for b in [numbered.get(s) for s in lifts.landed]:
+                if b is not None:
+                    b.engine_status.discard('LIFTED_INTO_AIR')  # a soft landing (simunits.LiftTimers)
+                    simmodifier.modify(world, b)
         hurt = {}
         leech_events = {}       # the frame's leech claims (engine/combat/leech), paid after the damage
         host = EffectHost(self, world, peers)       # the 'effect' phase's calls (engine/combat)
@@ -450,7 +461,7 @@ class Damage:
             if t.hp <= 0 and t.alive:
                 if world.first_death is None:
                     world.first_death = (world.t, t, by)
-                world.world.kill(t, f'被 {world.label(by)} 打掉')
+                kill(t, f'被 {world.label(by)} 打掉')
         self.chill(world, dt, peers)
         mend(world, dt, fires)
 

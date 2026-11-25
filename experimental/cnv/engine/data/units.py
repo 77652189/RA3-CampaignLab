@@ -815,8 +815,8 @@ def queue_dock(template, own=None):
 def lift_module(template, own=None):
     """D50 timing interface, see work/re/d50_lift_release.md.
 
-    Only explicit timer fields are supported; no guessed XSD defaults.
-    Falling/landing, aircraft and vertical motion remain gaps.
+    Only explicit timer fields are supported; no guessed XSD defaults (an absent LiftVelocity /
+    MaxElevationFromGround rises 0). soft: a SoftLandingWeapon is set (LiftTimers' landing). Aircraft remain a gap.
     """
     def read(xml):
         modules = list(_blocks(re.sub(r'<!--.*?-->', '', xml or '', flags=re.S), 'LiftObjectUpdate'))
@@ -826,32 +826,55 @@ def lift_module(template, own=None):
         if len(modules) != 1 or inner.strip() or any(_attr(h, k) is None for k in ('TimeIncrement', 'MaxTimeLifted')):
             return False
         return dict(increment=int(_secs(_attr(h, 'TimeIncrement')) * FPS),
-                    maximum=int(_secs(_attr(h, 'MaxTimeLifted')) * FPS))
+                    maximum=int(_secs(_attr(h, 'MaxTimeLifted')) * FPS),
+                    rise=_num(_attr(h, 'LiftVelocity') or '0', 0.0),
+                    top=_num(_attr(h, 'MaxElevationFromGround') or '0', 0.0),
+                    soft=_attr(h, 'SoftLandingWeapon') is not None)
     return _chain(template, own, read)
+
+
+SOFT_TOP = 28.0   # the highest lift whose soft landing clears LIFTED: 28 clears, 40 / 60 keep it (INFERRED edge)
 
 
 class LiftTimers:
     """Caster-owned target ledger, D50. Release does not clear object status.
 
-    A positive counter is decremented; a zero counter releases on its next
-    update. New entries use increment directly, only renewal clamps to max.
+    A positive counter is decremented, the target rising `rise` a frame to `top`; a zero counter releases on its
+    next update. New entries use increment directly, only renewal clamps to max. A released lift with a
+    SoftLandingWeapon from no higher than SOFT_TOP falls knock-back's curve (meta_impact_fall: 20 frames from 28)
+    and its LIFTED_INTO_AIR goes the frame after it lands (`landed`, the host clears): bench 11-11
+    engine_lift_probe, 28 up lifted 28 frames from the hit (7 + 20 + 1), 36 for 15 frames capped at 28;
+    40 and 60 up never cleared (D52's 0.1 s modifier on landing; why the higher falls keep it is not read).
     """
     def __init__(self):
-        self.remaining = {}
+        self.remaining, self.height, self.landing, self.landed = {}, {}, {}, []
 
-    def hit(self, caster, target, increment, maximum):
+    def hit(self, caster, target, increment, maximum, rise=0.0, top=0.0, soft=False, serial=None):
         key = (caster, target)
         self.remaining[key] = (min(maximum, self.remaining[key] + increment)
                                if key in self.remaining else increment)
+        self.height.setdefault(key, [0.0, rise, top, soft, serial])
 
-    def tick(self):
-        released = []
+    def tick(self, fall=lambda serial, z: len(meta_impact_fall((0.0, 0.0, z), (0.0, 0.0, 0.0), 0.0)[0])):
+        """fall(target's serial, height): its fall's frames (the host's: the curve from where it is, the 20 grid's
+        snap included -- 20 frames from 28 at the probe's spot, 18 at the origin); `landed`: the serials landed."""
+        released, self.landed = [], []
+        for target, (left, serial) in list(self.landing.items()):
+            if left > 1:
+                self.landing[target] = (left - 1, serial)
+            else:
+                self.landed.append(serial)
+                del self.landing[target]
         for key, left in list(self.remaining.items()):
+            h = self.height[key]
             if left > 0:
                 self.remaining[key] -= 1
+                h[0] = min(h[2], h[0] + h[1])
             else:
                 released.append(key)
-                del self.remaining[key]
+                del self.remaining[key], self.height[key]
+                if h[3] and h[0] <= SOFT_TOP:
+                    self.landing[key[1]] = (fall(h[4], h[0]), h[4])
         return released
 
 

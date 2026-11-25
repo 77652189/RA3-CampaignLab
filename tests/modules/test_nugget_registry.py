@@ -70,7 +70,7 @@ def test_the_effects_lift_then_attach_only_on_a_direct_single_shot():
         by = types.SimpleNamespace(name='drone', serial=1, template='Drone', x=0.0, y=0.0,
                                    attachment_rules={'A': dict(range=50.0, flags=['ONE_ATTACH_PER_PARENT'])})
         host = types.SimpleNamespace(lift_rule=lambda _: dict(increment=3, maximum=15), LIFT_LANDING='',
-                                     lift_hit=lambda *_: done.append('lift'), refresh_modifiers=lambda _: None,
+                                     lift_hit=lambda *_, **__: done.append('lift'), refresh_modifiers=lambda _: None,
                                      attachments=dict(chains), attach=lambda *_: done.append('attach'))
         weapon = dict(w, **extra)
         registry.run('effect', types.SimpleNamespace(effects=registry.effects(weapon), weapon=weapon, by=by,

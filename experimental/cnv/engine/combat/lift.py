@@ -1,6 +1,7 @@
 """ActivateLiftObjectNugget (step N3a): a direct hit lifts a ground target into the air for the caster's
 LiftObjectUpdate time; the countdown is the host's (by caster and target name, dropped the check after it runs out),
-the LIFTED_INTO_AIR bit stays on the target (the landing is not modelled: a gap, the host's text)."""
+the LIFTED_INTO_AIR bit stays on the target unless a soft landing clears it (simunits.LiftTimers; the rest a gap,
+the host's text)."""
 from engine.combat.registry import nugget
 from engine.kernel.module import status_now
 
@@ -27,7 +28,7 @@ class Lift:
             if rule is False or context.weapon.get('projectile') or context.n != 1 or t.surface != 'ground':
                 context.gap('ActivateLiftObjectNugget', '仅直接单发、显式计时字段和地面目标已接通')
                 continue
-            host.lift_hit(by.name, t.name, rule['increment'], rule['maximum'])
+            host.lift_hit(by.name, t.name, serial=t.serial, **rule)
             t.engine_status.add('LIFTED_INTO_AIR')
             host.refresh_modifiers(t)
             context.gap('ActivateLiftObjectNugget', host.LIFT_LANDING)
