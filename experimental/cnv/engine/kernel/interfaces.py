@@ -649,6 +649,29 @@ class Dominate(Interface):
         raise NotImplementedError
 
 
+class Store(Interface):
+    """StoreObjectsSpecialPower, a SpecialPower too: the teleport's first step (store: take the things of its filter
+    within its Radius of a point; link: its TeleportLinkID)."""
+    __slots__ = ()
+
+    def link(self):
+        raise NotImplementedError
+
+    def store(self, point):
+        raise NotImplementedError
+
+
+class Teleport(Interface):
+    """TeleportStoredObjectsUpdate: the power it serves and the second step's cast (begin: the landing point)."""
+    __slots__ = ()
+
+    def power(self):
+        raise NotImplementedError
+
+    def begin(self, point):
+        raise NotImplementedError
+
+
 class Rewind(Interface):
     """StoreCurrentStateUpdate: the states it keeps of its thing; oldest: the (x, y, health) a time belt takes it back
     to, None when none is kept."""

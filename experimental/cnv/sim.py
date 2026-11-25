@@ -606,7 +606,7 @@ class Sim:
                                         suppression_at=lambda b, f: simdamage.suppression_at(
                                             self.suppression_fields, b, f),
                                         spawn=lambda b, m, template: self.spawn_child(b, m, template, self.t),
-                                        vacate=lambda b, delete: self.garrison.died(b, delete))
+                                        vacate=lambda b, delete: self.garrison.died(b, delete), living=self.living)
         self.used = self.world.used         # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count
         self.unmodeled = self.world.gaps    # (kind, name) -> {'n', 't' first met, 'what'}: Sim.gap

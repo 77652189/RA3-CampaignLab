@@ -33,7 +33,8 @@ Bench 11-06 (A round 53; the first row already ~27 frames in; runs CampTeleport{
   d  28: 2026 28 28 | 57: 31026 56 1057 | 148: 122026 56 92148 -> the teleported tank dies at 56, the parked lives
   e  27: 1026 27 0 | 54: 28026 54 0 | 70: 44026 56 0 | 146: 120026 56 0 -> leaves A at 56, never in B, neither
      ever hurt and alive: both die
-Against the model (RA3-EngineModel teleport.py, tests/test_objects_bench.py "teleport"): every row before the tank
+Readings: checks/engine_teleport.readings.toml (E227, engine/modules/teleport.py). Against the model (RA3-EngineModel
+teleport.py, tests/test_objects_bench.py "teleport"): every row before the tank
 drives agrees; one strict xfail, not the teleport's own: the body lasts 128 in the model (ceil of 127.5).
 """
 import os

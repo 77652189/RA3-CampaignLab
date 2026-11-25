@@ -89,7 +89,7 @@ SIM_SURFACE = {
                    'flags frame_movers garrison handed*3 happen heal hunts infiltrators mid_aims mining move*3 off_teams '
                    'production*2 repairs self_power_due seq series shot_clock*2 suppression_tick sweeps t*8 tech_due test*3 '
                    'toggles_of wallet wfire_due world*2',
-    'engine.modules': 'gap*3 pick used*3',
+    'engine.modules': 'gap*5 living*2 pick used*3',     # gap / living +2 each: World's (E227 teleport), not Sim's
     'engine.objects': 'add*2 blocks*4 bodies*9 body change*21 cold_of enemy*2 frame_movers*2 frame_now*32 gap*62 ground*5 '
                       'guessed*5 human*11 kills*2 label*27 living*12 looks m*2 note*20 own*42 player_ups players*3 point '
                       'reblock*2 relation*6 relations*4 shot_clock t*7 toggles_of topples used*18 weapon_upgrades world*24 '

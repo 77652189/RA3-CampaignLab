@@ -1,0 +1,64 @@
+# Bench readings of checks/engine_teleport.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E227 (bench 11-06, A round 53): the Chronosphere's Select at A and Spawn at B the same script frame ('Test Go').
+# Rows count frames from Go: 帧数; 第二行 = Peacekeeper alive + 1000 x dying; 第三行 = tank in A + 1000 x in B;
+# 第四行 = a-c tank in C, d parked alive + 1000 x Guardian destroyed, e parked hurt + 1000 x Guardian hurt.
+
+[[reading]]
+id = "a_insta_kill_after_the_initial_delay_and_landing_after_the_delay"
+scene = {build = "engine_teleport", check = "a", until = 6}
+item = ["物体模块 Behaviors/StoreObjectsSpecialPower", "物体模块 Behaviors/TeleportStoredObjectsSpecialPower",
+        "物体模块 Behaviors/TeleportStoredObjectsUpdate"]
+bench = "CampTeleportA_mcp_1106_065044: 41: 15026 41 | 56: 30026 56 | 71: 45026 15056"
+proves = """TeleportStoredObjectsUpdate: InitialDelayTime 1.7 s (25 frames, cut down) after the second step the stored \
+infantry (InstaKillObjectFilter) dies -- alive the first 26 frames; DelayTime 2 s (30) later the stored tank stands \
+at the landing point -- in A 56 frames, in B from the 57th (StoreObjectsSpecialPower took both within Radius 100)"""
+let = {at = "lambda f: next(r for r in rows if r.get('帧数', 0) >= f)"}
+expect = ["at(30)['第二行'] % 1000 == 26", "at(45)['第三行'] == at(45)['帧数']",
+          "at(60)['第三行'] == 56 + 1000 * (at(60)['帧数'] - 56)"]
+
+[[reading]]
+id = "b_no_delays_kill_the_first_frame_and_land_the_second"
+scene = {build = "engine_teleport_b", check = "b", until = 3}
+item = ["物体模块 Behaviors/TeleportStoredObjectsUpdate"]
+bench = "CampTeleportB_mcp_1106_065257: 28: 27001 19002 (the first row)"
+proves = """TeleportStoredObjectsUpdate with InitialDelayTime and DelayTime 0: the infantry is alive one frame, the \
+tank in A two (the move comes at least a frame after the insta-kill)"""
+let = {at = "lambda f: next(r for r in rows if r.get('帧数', 0) >= f)"}
+expect = ["at(10)['第二行'] % 1000 == 1", "at(10)['第三行'] % 1000 == 2"]
+
+[[reading]]
+id = "d_instant_death_teleporter_only_kills_the_one_moved"
+scene = {build = "engine_teleport_d", check = "d", until = 6}
+item = ["物体模块 Behaviors/TeleportStoredObjectsUpdate"]
+bench = "CampTeleportD_mcp_1106_065659: 57: 2026 56 1057 | 148: 122026 56 92148"
+proves = """Telefrag INSTANT_DEATH_TELEPORTER_ONLY: the tank landing on a parked tank (CollidesWithOnTeleport, within \
+the store's Radius of B, the circles overlapping) dies the landing frame -- never in B, destroyed from frame 57 -- \
+and the parked one lives"""
+let = {at = "lambda f: next(r for r in rows if r.get('帧数', 0) >= f)"}
+expect = ["at(60)['第三行'] == 56", "at(60)['第四行'] == at(60)['帧数'] + 1000 * (at(60)['帧数'] - 56)"]
+
+[[reading]]
+id = "e_health_subtraction_between_two_full_tanks_kills_both"
+scene = {build = "engine_teleport_e", check = "e", until = 8}
+item = ["物体模块 Behaviors/TeleportStoredObjectsUpdate"]
+bench = "CampTeleportE_mcp_1106_065846: 70: 44026 56 0 | 146: 120026 56 0"
+proves = """Telefrag HEALTH_SUBTRACTION: each loses the other's health as it was -- two full Guardians both die at \
+the landing, neither ever seen hurt and alive, the moved one never in B"""
+expect = ["rows[-1]['第三行'] == 56", "all(r.get('第四行', 0) == 0 for r in rows)"]
+
+[[reading]]
+id = "c_fade_in_freezes_the_landed_tank"
+scenes = {a = {build = "engine_teleport", check = "a", until = 9}, c = {build = "engine_teleport_c", check = "c", until = 9}}
+bench = "CampTeleportC_mcp_1106_065444: 116: 90026 48056 against a's 19056 (29 frames longer in B)"
+proves = "FadeInTime 2 s: the landed tank is held 30 frames before it can drive on to C"
+expect = "counter('CNV_Teleport_Row3', 'c') // 1000 - counter('CNV_Teleport_Row3', 'a') // 1000 >= 25"
+mismatch = "sim 20 and 20 frames in B (no freeze modelled); bench c 48, a 19"
+
+[[reading]]
+id = "b_the_insta_killed_infantry_lies_dying"
+scene = {build = "engine_teleport_b", check = "b", until = 5}
+bench = "CampTeleportB_mcp_1106_065257: 41: 40001 (dying 40 frames; gone after 127)"
+proves = "the teleport's insta-kill death lies its DestructionDelay (8.5 s) like a crush"
+let = {at = "lambda f: next(r for r in rows if r.get('帧数', 0) >= f)"}
+expect = "at(40)['第二行'] // 1000 >= 25"
+mismatch = "sim 0 dying frames (only a crushed body lies: engine/modules/slowdeath.py LIES); bench 40 at frame 41"

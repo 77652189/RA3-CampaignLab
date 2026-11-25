@@ -27,20 +27,23 @@ ASSIGN = 'AssignSlavesTargetObjectSpecialPower'     # its own class below (Assig
 RECALL = 'RecallUnitsSpecialPower'                  # its own class below (RecallUnits: whom a cast calls home)
 RETURN = 'ReturnToProducerSpecialPower'             # its own class below (ReturnToProducer: a plane flies home)
 DOMINATE = 'DominateEnemySpecialPower'              # its own class below (DominateEnemy: whom a cast takes)
+STORE = 'StoreObjectsSpecialPower'                  # its own class below (StoreObjects: who the teleport takes)
 
 
 class SpecialPowerData(module.ModuleData):
-    def __init__(self, power=None, at_start=True):
+    def __init__(self, power=None, at_start=True, link=None):
         self.power = power          # SpecialPowerTemplate: the power it serves
         self.at_start = at_start    # AvailableAtStart (XSD default true): ready before any reload was started
+        self.link = link            # TeleportLinkID / StoreObjectsLinkID: the teleport's two steps paired
 
     @classmethod
     def parse(cls, head, inner):
         return cls(templates.attr(head, 'SpecialPowerTemplate'),
-                   (templates.attr(head, 'AvailableAtStart') or 'true').lower() != 'false')
+                   (templates.attr(head, 'AvailableAtStart') or 'true').lower() != 'false',
+                   templates.attr(head, 'TeleportLinkID') or templates.attr(head, 'StoreObjectsLinkID'))
 
 
-@factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN, DOMINATE)))
+@factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN, DOMINATE, STORE)))
 class SpecialPower(module.Module, interfaces.SpecialPower):
     """Data and a reload frame; no update of its own (a reload is over once the frame passes it)."""
     DATA = SpecialPowerData
@@ -141,6 +144,54 @@ class DominateEnemy(SpecialPower, interfaces.Dominate):
         me, d = self.thing, self.data
         return [t for t in things if t.alive and t is not me and stands(me.owner, t.owner, d.rels)
                 and set(d.kinds) & t.kinds and math.hypot(t.x - me.x, t.y - me.y) <= d.radius] if d.keep else []
+
+
+class StoreData(SpecialPowerData):
+    def __init__(self, power=None, link=None, radius=0.0, filter_=None):
+        super().__init__(power, link=link)
+        self.radius, self.filter = radius, filter_      # Radius; CanAffectObjectFilter (its name)
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(templates.attr(head, 'SpecialPowerTemplate'), templates.attr(head, 'TeleportLinkID'),
+                   templates.num(templates.attr(head, 'Radius')), templates.attr(head, 'CanAffectObjectFilter'))
+
+
+# AlliedChronosphereSpecialPowerObjectFilter (Includes/SpecialPowerObjectFilters.xml), the one retail store filter:
+# Include, Exclude kinds, StatusBitFlagsExclude (its IncludeThing time bombs not taken)
+CHRONO = ('AlliedChronosphereSpecialPowerObjectFilter', frozenset({'INFANTRY', 'VEHICLE'}), frozenset({'AIRCRAFT'}),
+          frozenset({'SUBMERGED', 'AIRBORNE_TARGET', 'NOT_IN_WORLD'}))
+
+
+@factory.module(STORE)
+class StoreObjects(SpecialPower, interfaces.Store):
+    """StoreObjectsSpecialPower (E227, checks/engine_teleport.readings.toml): the Chronosphere's first step takes the
+    things of its filter within Radius of the cast's point (the second step, TeleportStoredObjectsUpdate, carries them:
+    engine/modules/teleport.py). A filter other than CHRONO takes no one (a gap; INFERRED as the private model's
+    unfiltered store). Not modelled: the OCL's markers."""
+    DATA = StoreData
+    STATE = ('ready', 'stored_at', 'carried')
+    stored_at = None    # the stored point; None: never stored, or cleared
+    carried = ()        # the stored things
+
+    def link(self):
+        return self.data.link
+
+    def store(self, point):
+        me, d = self.thing, self.data
+        self.stored_at, self.carried = point, ()
+        if d.filter != CHRONO[0]:
+            self.world.gap('StoreObjectsSpecialPower', d.filter or '', '只认原版时空传送的对象过滤器：没带走谁')
+            return
+        self.carried = tuple(t for t in self.world.living() if t is not me and t.alive and t.kinds & CHRONO[1]
+                          and not t.kinds & CHRONO[2] and not module.status_now(t) & CHRONO[3]
+                          and math.hypot(t.x - point[0], t.y - point[1]) <= d.radius)
+
+    def stored(self):
+        return [t for t in self.carried if t.alive]
+
+    def clear(self):
+        self.stored_at, self.carried = None, ()
 
 
 class ReturnData(SpecialPowerData):

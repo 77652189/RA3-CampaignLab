@@ -274,7 +274,7 @@ def script_cast(sim, name, a, unit=None):
                         math.hypot(t.x - q[0], t.y - q[1]) - t.radius <= reach:
                     t.immune_until = sim.frame_now() + lasts
         if b and b.alive and not ((hits or a[1] in CURTAIN) and q is not None) and \
-                not (q is not None and _drop(sim, b, a[1], q)):
+                not (q is not None and (_drop(sim, b, a[1], q) or _teleport(sim, b, a[1], q))):
             sim.gap(GAP_ACTION, refined(name, a), f'{a[1]} 只记进时间线（special power），没有效果')
 
 
@@ -298,6 +298,18 @@ def _drop(sim, b, power, p):
     if drops:
         sim.note('技能', f'{sim.label(b)} 放 {power}：{len(drops)} 架运输机从它那儿飞去')
     return bool(drops)
+
+
+def _teleport(sim, b, power, p):
+    """The Chronosphere's two steps at p (E227, engine/modules/teleport.py): b's StoreObjectsSpecialPower of `power`
+    takes the things round p, its TeleportStoredObjectsUpdate of `power` begins the carry to p. False: neither."""
+    stores = [m for m in b.find(interfaces.Store) if m.power() == power]
+    carries = [m for m in b.find(interfaces.Teleport) if m.power() == power]
+    for m in stores:
+        m.store(p)
+    for m in carries:
+        m.begin(p)
+    return bool(stores or carries)
 
 
 def player_fire_special_power_at_waypoint(sim, name, a, script):
