@@ -5,4 +5,18 @@ id = "native_transport_disguise_unpack_transition_bench_replay"
 scene = {build = "engine_spntrans", check = "a", until = 14, shot_clock = true}
 bench = "MEASURED 2026-11-13: s1-4 all1100; s5 1110/1110/1110/1111; s6-15 1111/1110/1110/1111."
 proves = "SpecialDisguiseUpdate unpack: the native transport's hit latches before its DISGUISED bit, while the script control already has both."
+item = "武器效果 SpecialPowerNugget:变装消费者"
 expect = "any(row == [1110, 1110, 1110, 1111] for row in vals(rows))"
+
+[[reading]]
+id = "native_transport_disguise_settles"
+scene = {build = "engine_spntrans", check = "a", until = 14, shot_clock = true}
+each = [{build = "engine_spntrans"}, {build = "engine_spntrfilter"}]
+bench = "MEASURED 2026-11-13: s6-15 1111/1110/1110/1111 (engine_spntrans: native host / removed SPN / removed handler / script bit; engine_spntrfilter: retail Sickle / Peacekeeper (infantry) / no SPN / script bit -- c_spntrans_report.md, c_spntrans_filter_report.md)."
+proves = "SpecialPowerNugget disguise dispatch: the native transport's hit disguises a VEHICLE, not when the SPN or the SpecialDisguiseUpdate is removed or the target is not a vehicle."
+item = "武器效果 SpecialPowerNugget:变装消费者"
+let = {values = "vals(rows)", measured = "[1111, 1110, 1110, 1111]"}
+expect = [
+    "values[-1] == measured",
+    "all(row == measured for sec, row in zip(times, values) if sec >= 12)",
+]

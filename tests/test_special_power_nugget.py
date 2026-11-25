@@ -121,7 +121,7 @@ def test_special_power_nugget_retail_painter_consumer():
 
 
 def test_special_power_nugget_closure_conserves_retail_consumers():
-    """Six native weapons are counted once; only the closed painter is benched."""
+    """Six native weapons are counted once; the closed painter and the two disguise weapons are benched."""
     import inventory
     import retailmodules
     import xml.etree.ElementTree as ET
@@ -131,9 +131,10 @@ def test_special_power_nugget_closure_conserves_retail_consumers():
     assert len(names) == len(set(names)) == 6
     assert sum(r['uses'] for r in rows) == retailmodules.weapon_census()['SpecialPowerNugget']['weapons']
     done = [r for r in rows if r['state'] == inventory.BENCHED]
-    assert len(done) == 1
+    assert sorted(r['name'] for r in done) == ['SpecialPowerNugget:变装消费者', 'SpecialPowerNugget:涂靶升级门槛']
+    done = [r for r in done if r['name'] == 'SpecialPowerNugget:涂靶升级门槛']
     assert done[0]['weapon_ids'] == ['AlliedAntiVehicleVehicleTech1TargetPainter']
-    assert sorted(r['uses'] for r in rows if r['state'] != inventory.BENCHED) == [1, 1, 1, 2]
+    assert sorted(r['uses'] for r in rows if r['state'] != inventory.BENCHED) == [1, 1, 1]
     forms = [n for n in retailmodules.effective_weapon_forms(done[0]['weapon_ids'][0])
              if retailmodules._tag(n) == 'SpecialPowerNugget']
     assert inventory.nugget_form_slice('SpecialPowerNugget', forms) == ':涂靶升级门槛'
@@ -449,45 +450,6 @@ def test_special_power_nugget_native_bombing_consumer_bench_replay():
     assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
 
 
-def test_special_power_nugget_native_disguise_consumer_bench_replay():
-    """engine_spndisguise a: native consumer, removed SPN/handler, query control.
-
-    The expected values are the independent bench readings, not simulator
-    output. This covers the bit consumer, not identity or enemy acquisition.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_spndisguise', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    result = e.run(14)
-    measured = (1111, 1110, 1110, 1111)
-    assert tuple(result.series[-1][1]) == measured
-    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
-    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
-    assert (sim.GAP_WEAPON, 'SpecialDisguiseUpdate') in e.unmodeled
-
-
-def test_native_spy_scout_exclusion_bench_replay():
-    """engine_spnspyex a: INFANTRY Terror Drone is explicitly excluded.
-
-    All four lanes must hit; DISGUISED distinguishes the infantry positive,
-    excluded drone, removed SPN, and scripted positive control.
-    Evidence: work/re/c_spnspyex_report.md.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_spnspyex', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    result = e.run(14)
-    measured = (1111, 1110, 1110, 1111)
-    assert tuple(result.series[-1][1]) == measured
-    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
-    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
-    assert (sim.GAP_WEAPON, 'SpecialDisguiseUpdate') in e.unmodeled
-
-
 def test_disguise_model_condition_script_interface():
     """Synthetic interface guard; expiry boundary remains INFERRED, not bench evidence."""
     import build
@@ -530,25 +492,6 @@ def test_native_disguise_rejects_unmeasured_configuration(change):
     assert simunits.nugget_self_power(template, power, own) is False
 
 
-def test_special_power_nugget_native_transport_disguise_bench_replay():
-    """engine_spntrans a: native host, removed SPN/handler, query control.
-
-    Only the directly queried DISGUISED bit is claimed, not identity or
-    acquisition. See work/re/c_spntrans_report.md for independent readings.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_spntrans', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    result = e.run(14)
-    measured = (1111, 1110, 1110, 1111)
-    assert tuple(result.series[-1][1]) == measured
-    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
-    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
-    assert (sim.GAP_WEAPON, 'SpecialDisguiseUpdate') in e.unmodeled
-
-
 @pytest.mark.parametrize('change', ['instant', 'unpack', 'local_power'])
 def test_native_transport_disguise_rejects_unmeasured_configuration(change):
     """Do not silently extend settled-bit evidence to other handlers/powers."""
@@ -569,38 +512,3 @@ def test_native_transport_disguise_rejects_unmeasured_configuration(change):
     assert simunits.nugget_self_power(template, power, own) is False
 
 
-def test_native_transport_disguise_vehicle_filter_bench_replay():
-    """engine_spntrfilter a: independent hits distinguish VEHICLE filtering.
-
-    Retail Sickle / Peacekeeper / infantry without SPN / scripted bit.
-    Evidence: work/re/c_spntrans_filter_report.md.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_spntrfilter', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    result = e.run(14)
-    measured = (1111, 1110, 1110, 1111)
-    assert tuple(result.series[-1][1]) == measured
-    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
-    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
-
-
-def test_native_spy_cross_kind_disguise_bench_replay():
-    """engine_spnspyx a: infantry/vehicle hits, removed SPN, script control.
-
-    Independent measurements: work/re/c_spnspyx_report.md.
-    DISGUISED alone does not establish copied identity or enemy acquisition.
-    """
-    import build
-    import sim
-    m, t, _ = build.resolve('engine_spnspyx', 'a')
-    e = sim.Sim(m, t)
-    e.shot_clock = True
-    result = e.run(14)
-    measured = (1111, 1110, 1110, 1111)
-    assert tuple(result.series[-1][1]) == measured
-    assert all(tuple(row) == measured for sec, row in result.series if sec >= 12)
-    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') not in e.unmodeled
-    assert (sim.GAP_WEAPON, 'SpecialDisguiseUpdate') in e.unmodeled

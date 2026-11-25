@@ -5,6 +5,7 @@ id = "native_disguise_friend_neutral_bench_replay"
 scene = {build = "engine_spnrelations", check = "a", until = 14, shot_clock = true}
 bench = "MEASURED 2026-11-13: s1-4 all1100, s5 1111/1111/1110/1110, s6-15 all1111."
 proves = "SpecialPowerNugget disguise dispatch: spy and transport each survive, latch a hit and set DISGUISED against Friend and Neutral."
+item = "武器效果 SpecialPowerNugget:变装消费者"
 let = {values = "vals(rows)", measured = "[1111, 1111, 1111, 1111]"}
 expect = [
     "values[-1] == measured",

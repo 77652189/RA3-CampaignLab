@@ -42,7 +42,7 @@ class SpecialPower:
                 if not set(power['include']) & t.kinds or t.template.lower() in power['exclude_templates']:
                     continue
                 host.disguise(by, t.owner)
-                context.gap('SpecialDisguiseUpdate', '命中、展开、被动索敌已对拍；外观/点名攻击/探测/取消未测')
+                context.gap('SpecialDisguiseUpdate', '命中、展开、被动索敌、出舱取消已对拍；外观/点名攻击/探测未测')
                 continue
             modifier, xml = host.modifier(by.template, power['modifier'])
             if (modifier and modifier['frames'] is not None and not modifier['status']

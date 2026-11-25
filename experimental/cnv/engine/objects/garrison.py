@@ -328,6 +328,8 @@ class Garrisons:
         self.secondary(g)
         if g.alive:
             simmodifier.modify(world, g)
+            for m in g.find(interfaces.Disguise):        # a passenger out takes it off (modules/disguise.py)
+                m.take_off()
         world.change()
         return True
 

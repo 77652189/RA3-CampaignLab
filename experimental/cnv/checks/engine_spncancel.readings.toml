@@ -5,6 +5,7 @@ id = "native_transport_disguise_cancel_acquisition_bench_replay"
 scene = {build = "engine_spncancel", check = "a", until = 24, shot_clock = true}
 bench = "MEASURED empty a: s8-13 1101/1101/1100/1101; s14-33 1101/1101/1110/1111. Empty EVACUATE did not clear the native disguise."
 proves = "SpecialDisguiseUpdate acquisition and empty EVACUATE: both native lanes keep disguise and avoid autonomous enemy damage."
+item = "武器效果 SpecialPowerNugget:变装消费者"
 let = {values = "vals(rows)", measured = "[1101, 1101, 1110, 1111]"}
 expect = [
     "values[-1] == measured",
@@ -16,21 +17,26 @@ id = "native_transport_disguise_script_bit_acquisition_controls_bench_replay"
 scene = {build = "engine_spncancel", check = "a", until = 24, shot_clock = true}
 bench = "MEASURED empty a: s14-33 1101/1101/1110/1111. The removed-SPN and script-bit-only controls are the last two lanes."
 proves = "SpecialDisguiseUpdate acquisition controls: the removed-SPN and script-bit-only lanes both take autonomous enemy damage."
+item = "武器效果 SpecialPowerNugget:变装消费者"
 let = {values = "vals(rows)", measured_controls = "[1110, 1111]"}
 expect = [
     "values[-1][2:] == measured_controls",
     "all(row[2:] == measured_controls for sec, row in zip(times, values) if sec >= 22)",
 ]
 
+# The bench samples every 0.5 s of its slower capture clock and caught one row out-but-unshot (101100); the
+# simulator's half-second tick shoots at the first tick after the exit, so its second rows go 111101 -> 101110.
+# What both say: never shot while the passenger is in, and once it is out the disguise is off for good.
 [[reading]]
 id = "native_transport_loaded_disguise_cancellation_bench_replay"
 scene = {build = "engine_spncargo", check = "a", until = 24, shot_clock = true}
 bench = "MEASURED loaded a: s10-14 1101/111101/1100/1101; s15-24 1101/111101/1110/1111; s25 1101/101100/1110/1111; s26-39 1101/101110/1110/1111."
-proves = "SpecialDisguiseUpdate loaded EVACUATE: the passenger exits and disguise clears before the native transport takes autonomous enemy damage."
-let = {values = "vals(rows)", held = "[i for i, row in enumerate(values) if row[1] == 111101]", cleared = "[i for i, row in enumerate(values) if row[1] == 101100]", damaged = "[i for i, row in enumerate(values) if row[1] == 101110]"}
+proves = "SpecialDisguiseUpdate loaded EVACUATE: the passenger's exit takes the disguise off, and only then does the native transport take autonomous enemy damage."
+item = "武器效果 SpecialPowerNugget:变装消费者"
+let = {values = "vals(rows)", held = "[i for i, row in enumerate(values) if row[1] == 111101]", out = "[i for i, row in enumerate(values) if row[1] in (101100, 101110)]"}
 expect = [
-    "held and cleared and damaged",
-    "held[0] < cleared[0] < damaged[0]",
+    "held and out",
+    "held[-1] < out[0]",
+    "all(row[1] in (101100, 101110) for row in values[out[0]:])",
     "values[-1] == [1101, 101110, 1110, 1111]",
 ]
-mismatch = "Bench high lane 111101 -> 101100 -> 101110; simulator reaches 111101 but has zero samples of either 101100 or 101110. Only the bit is modeled, with native identity, acquisition and cancellation unresolved."

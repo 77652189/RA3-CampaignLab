@@ -4,8 +4,10 @@ transport's hit latched at s5 without the bit, s6 both; the spy, no UnpackTime, 
 While worn its owner passes for that player: a foe of its own owner that is not that player's enemy does not take it
 by itself (engine/orders/target.takes_by_itself; engine_spncancel a: the observer of the hit's owner leaves the
 native lanes alone, shoots the removed-SPN and script-bit lanes). A script's DISGUISED is no disguise.
-Not modelled: the look (OpacityTarget, the hit's template), an order naming it, detectors, what takes it off
-(engine_spncargo: a loaded EVACUATE does -- a mismatch reading; an empty one does not), FaceTarget."""
+A passenger leaving takes it off (garrison.out; engine_spncargo a: the loaded EVACUATE's passenger out and DISGUISED
+gone in one sample, the observer shooting the next; an empty EVACUATE leaves it on -- engine_spncancel a. INFERRED:
+the exit, not the press). Not modelled: the look (OpacityTarget, the hit's template), an order naming it, detectors,
+attacking or loading taking it off, FaceTarget."""
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
 
@@ -30,6 +32,9 @@ class Disguise(module.Module, interfaces.Disguise):
 
     def wear(self, owner):
         self.owner, self.since = owner, self.world.frame + self.data.frames
+
+    def take_off(self):
+        self.owner = self.since = None
 
     def seen_as(self, frame=None):
         frame = self.world.frame if frame is None else frame

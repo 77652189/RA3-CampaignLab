@@ -1,0 +1,14 @@
+# Bench readings of checks/engine_spndisguise.py, with its engine_spnspyx / engine_spnspyex builds.
+
+[[reading]]
+id = "native_spy_disguise_settles"
+scene = {build = "engine_spndisguise", check = "a", until = 14, shot_clock = true}
+each = [{build = "engine_spndisguise"}, {build = "engine_spnspyx"}, {build = "engine_spnspyex"}]
+bench = "MEASURED 2026-11-13: s5-15 1111/1110/1110/1111, every hit marker latched (engine_spndisguise: native spy / removed SPN / removed handler / script bit; engine_spnspyx: conscript / Sickle / Sickle without SPN / script bit; engine_spnspyex: infantry / INFANTRY-kinded Terror Drone excluded / removed SPN / script bit -- c_spnspyx_report.md, c_spnspyex_report.md)."
+proves = "SpecialPowerNugget disguise dispatch: the spy's hit disguises it on an infantry target, not on a vehicle or the excluded Terror Drone, nor with the SPN or its SpecialDisguiseUpdate removed."
+item = "武器效果 SpecialPowerNugget:变装消费者"
+let = {values = "vals(rows)", measured = "[1111, 1110, 1110, 1111]"}
+expect = [
+    "values[-1] == measured",
+    "all(row == measured for sec, row in zip(times, values) if sec >= 12)",
+]

@@ -517,10 +517,13 @@ class ReadyMonitor(Interface):
 
 class Disguise(ReadyMonitor):
     """SpecialDisguiseUpdate, one a thing: wear(owner) -- a SpecialPowerNugget hit on a thing of `owner` now --;
-    seen_as(frame): the player it passes for then (None: not disguised; frame None: now)."""
+    take_off() -- a passenger left it --; seen_as(frame): the player it passes for then (None: not disguised)."""
     __slots__ = ()
 
     def wear(self, owner):
+        raise NotImplementedError
+
+    def take_off(self):
         raise NotImplementedError
 
     def seen_as(self, frame=None):
