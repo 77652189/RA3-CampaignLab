@@ -37,4 +37,19 @@ def repair():
     return m
 
 
-MISSION = {'engine_secondon_e': mission, 'engine_secondoff_e': lambda: mission(False), 'engine_secondrep_e': repair}
+def turret():
+    """E239: the turret's own GarrisonContain (ContainMax 1, own and allied infantry only, KillPassengersOnDeath; the
+    turret GARRISONABLE_UNTIL_DESTROYED). GIs south of four turrets: cap (a 100 off, b 200 off, both walk in), foe (an
+    idle enemy's turret, e walks in), worn (c put in, then the turret hurt and killed), blast (d put in, a hit kills it)."""
+    m = Mission(name='CampTurretGarE', map=probe_range, units=[], facts={})
+    for lane, site, crew in (('cap', 'base gun', 'ab'), ('foe', 'high gun', 'e'), ('worn', 'order gun', 'c'),
+                             ('blast', 'removed gun', 'd')):
+        m.put('AlliedBaseDefense', site, role=lane, side='s4' if lane == 'foe' else 'p1', name='E239 ' + lane)
+        for k, r in enumerate(crew):
+            m.put('AlliedAntiInfantryInfantry', site, 0, -100 * (k + 1), role=r, name='E239 ' + r)
+    m.put('AlliedPowerPlant', 'power 1', role='power')
+    return m
+
+
+MISSION = {'engine_secondon_e': mission, 'engine_secondoff_e': lambda: mission(False), 'engine_secondrep_e': repair,
+           'engine_turretgar_e': turret}

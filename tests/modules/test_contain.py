@@ -190,6 +190,20 @@ def test_at_the_reallydamaged_line_everyone_comes_out():
     assert s.garrison.held(house) == [] and house.owner is None
 
 
+def test_the_multigunner_turret_seats_one_of_its_own_keeps_him_hurt_and_kills_him_with_it():
+    """bench engine_turretgar_e g: one seat, no enemy, still in at 10 % (GARRISONABLE_UNTIL_DESTROYED), dead with it."""
+    s = simsmall.small_world()
+    gun = s.add('gun', 'AlliedBaseDefense', 'Player_1', 300.0, 300.0)
+    a, b = (s.add(n, 'AlliedAntiInfantryInfantry', 'Player_1', 400.0, 300.0) for n in 'ab')
+    foe = s.add('foe', 'AlliedAntiInfantryInfantry', 'Soviet_1', 400.0, 300.0)
+    assert [s.garrison.put(u, gun) for u in (foe, a, b)] == [False, True, False]
+    gun.set_hp(gun.max_hp * .1, tell=False)
+    s.garrison.hurt(gun)
+    assert s.garrison.held(gun) == [a]
+    s.world.kill(gun, 'test')
+    assert not a.alive and b.alive
+
+
 def test_the_bomber_drop_flies_its_load_to_the_spot_before_it_ejects():
     """engine_acts_drop air (round 276): the drop OCL's two bombers carry their InitialPayload; StartAbilityRange 0
     with the spot away: the load stays aboard until the bomber is there (garrison.ARRIVE), then goes out."""

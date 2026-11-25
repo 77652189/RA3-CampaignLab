@@ -17,3 +17,21 @@ proves = "IF_SecondaryObjectListener's Uprade_IFV_Repair holds ABD_RepairWeapon 
 item = "物体模块 Behaviors/SecondaryObjectListenerModule"
 expect = ["all(4 <= b - a <= 9 for a, b in zip(win(3, 7, '血N'), win(4, 8, '血N')))", "win(10, 14, '血N') == [100] * 5",
           "win(3, 14, '血F') == [50] * 12 and win(3, 14, '血C') == [50] * 12"]
+
+[[reading]]
+id = "turret_garrison_seats_one_of_its_own_and_keeps_him_to_the_end"
+scene = {build = "engine_turretgar_e", check = "g", until = 15}
+bench = "CampTurretGarEG_mcp_1125_101705 (驻 敌 死 血, bench seconds ~1 s ahead of the timers): s1-s2 101 100 1111 100 | s3-s5 101 0 1111 10 | s6-s8 101 0 0 0 | s9-s15 0 0 0 0"
+proves = "the multigunner turret's GarrisonContain: of two GIs walking in only the nearer gets the one seat (ContainMax 1) and the turret carries CONTAINER_OCCUPIED; an enemy GI never gets into an enemy's turret (AllowEnemiesInside false); a passenger stays in at 10 % (GARRISONABLE_UNTIL_DESTROYED) and dies with the turret, killed by script or by a hit (KillPassengersOnDeath); told out, the turret is empty"
+item = "物体模块 Behaviors/GarrisonContain"
+expect = ["win(2, 9, '驻') == [101] * 8 and win(10, 14, '驻') == [0] * 5",
+          "win(1, 6, '死') == [1111] * 6 and win(7, 14, '死') == [0] * 8",
+          "win(4, 6, '血') == [10] * 3", "all(v % 100 == 0 for v in win(1, 14, '敌'))"]
+
+[[reading]]
+id = "turret_garrison_enemy_walker_is_shot"
+scene = {build = "engine_turretgar_e", check = "g", until = 15}
+bench = "CampTurretGarEG_mcp_1125_101705: 敌 100 at s1-s2, 0 from s3 (e, sent at 1 s into a powerless enemy's turret, dead about 2 s later, never inside)"
+proves = "who kills the GI walking up to an idle enemy's empty turret (its owner has no power plant: engine_powerdef's Tesla coil of such a player never fires)"
+expect = ["win(3, 14, '敌') == [0] * 12"]
+mismatch = "sim 敌 100 all run (e alive by the unpowered turret); bench 0 from s3. Not the garrison's: e is never in. Next run to tell: the same lane without the walk order (does the turret shoot at all)"

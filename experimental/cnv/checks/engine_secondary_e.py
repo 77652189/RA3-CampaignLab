@@ -59,5 +59,36 @@ def repair(m):
     return t
 
 
+def turret(m):
+    """engine_turretgar_e: at 1 s c, d put in, a, b, e sent in (walking); 4 s worn hurt 900 (10 %); 7 s worn killed,
+    blast hit 5000; 10 s a and b told out. 驻 = a / b ENCLOSED 1 / 10 + cap CONTAINER_OCCUPIED 100; 敌 = e ENCLOSED 1 +
+    foe CONTAINER_OCCUPIED 10 + e alive 100; 死 = c ENCLOSED 1 + c alive 10 + d ENCLOSED 100 + d alive 1000; 血 = worn's
+    health %. From the data: 驻 101 (one seat), 0 after 10 s; 敌 100 (no enemies inside); 死 1111, kept at 10 %
+    (GARRISONABLE_UNTIL_DESTROYED), 0 once both turrets die (KillPassengersOnDeath)."""
+    t = Test()
+    n = {r: m.role(r).name for r in ('cap', 'foe', 'worn', 'blast', 'a', 'b', 'c', 'd', 'e')}
+    put, walk = 'NAMED_GARRISON_SPECIFIC_BUILDING_INSTANTLY', 'NAMED_GARRISON_SPECIFIC_BUILDING'
+    s8.at(t, 'in', 1.0, [(put, n['c'], n['worn']), (put, n['d'], n['blast']), (walk, n['a'], n['cap']),
+                         (walk, n['b'], n['cap']), (walk, n['e'], n['foe']), ('MAP_REVEAL_ALL_PERM', m.player())])
+    s8.at(t, 'hurt', 4.0, [('NAMED_DAMAGE', n['worn'], 900)])
+    s8.at(t, 'kill', 7.0, [('NAMED_KILL', n['worn']), ('NAMED_DAMAGE', n['blast'], 5000)])
+    s8.at(t, 'out', 10.0, [('NAMED_EXIT_BUILDING', n['a']), ('NAMED_EXIT_BUILDING', n['b'])])
+
+    def has(r, bit):
+        return ('UNIT_HAS_OBJECT_STATUS', n[r], bit)
+    s8.total(t, 'E239Cap', '驻', [(1, has('a', 'ENCLOSED')), (10, has('b', 'ENCLOSED')),
+                                  (100, has('cap', 'CONTAINER_OCCUPIED'))])
+    s8.total(t, 'E239Foe', '敌', [(1, has('e', 'ENCLOSED')), (10, has('foe', 'CONTAINER_OCCUPIED')),
+                                  (100, ('NAMED_NOT_DESTROYED', n['e']))])
+    s8.total(t, 'E239Die', '死', [(1, has('c', 'ENCLOSED')), (10, ('NAMED_NOT_DESTROYED', n['c'])),
+                                  (100, has('d', 'ENCLOSED')), (1000, ('NAMED_NOT_DESTROYED', n['d']))])
+    t.counters.append(('E239Hp', '血'))
+    t.scripts.append(Script('Test - E239 hp', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', n['worn'], 'E239Hp')],
+                            once=False))
+    s8.watch(t, 14.0)
+    return t
+
+
 CHECKS = {name: {'a': check} for name in ('engine_secondon_e', 'engine_secondoff_e')}
 CHECKS['engine_secondrep_e'] = {'r': repair}
+CHECKS['engine_turretgar_e'] = {'g': turret}
