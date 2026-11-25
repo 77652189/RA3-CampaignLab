@@ -57,11 +57,12 @@ class Teleport(module.Module, interfaces.Update, interfaces.Teleport):
     """In the frame order's seq cell (right after the scripts'), asleep until a cast: step 0 (the insta-kill), then step 1 (the move)."""
     DATA = TeleportData
     PHASE = 'seq'
-    STATE = ('store', 'end', 'step')
+    STATE = ('store', 'end', 'step', 'due')
     RECORDED = ()
     store = None        # the store module of the cast
     end = None          # the landing point
     step = None         # 0: the insta-kill next, 1: the move next; None: idle
+    due = 0             # the frame step 0 runs: a cast again starts the delays over (review 1125 T, INFERRED)
 
     def power(self):
         return self.data.power
@@ -71,14 +72,16 @@ class Teleport(module.Module, interfaces.Update, interfaces.Teleport):
         link = next((m.data.link for m in b.find(interfaces.SpecialPower) if m.power() == d.power and m.data.link),
                     None)
         self.store = next((m for m in b.find(interfaces.Store) if m.link() == link), None)
-        self.end, self.step = point, 0
-        self.world.wake(self, self.world.frame + d.first + LAG)
+        self.end, self.step, self.due = point, 0, self.world.frame + d.first + LAG
+        self.world.wake(self, self.due)
 
     def update(self, frame):
         d, s = self.data, self.store
         if self.step is None or s is None:
             self.step = None
             return interfaces.SLEEP
+        if frame < self.due:            # an earlier cast's wake
+            return self.due - frame
         if self.step == 0:
             if d.at_store and s.stored_at is not None:
                 s.store(s.stored_at)
