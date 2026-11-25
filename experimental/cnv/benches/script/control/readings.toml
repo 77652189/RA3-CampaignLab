@@ -1,0 +1,1038 @@
+# Bench readings of checks/engine_acts2.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_acts2"
+id = "acts_seq_as_the_bench"
+scene = {build = "engine_acts_seq", check = "seq", until = 41}
+bench = """seq, bench 11-13 `run_queue engine_acts_seq:seq` (CampActsSSeq, round 212): 跑 1 11 111 and no more; a second one given to \
+the same unit waits for the first -- 排 0 then 11 (never 10); UNIT_IDLE_FOR_SECONDS in it holds nothing back -- 等 11 \
+from the first second (the bench is 1-2 s ahead)"""
+proves = """sim UNIT_EXECUTE_SEQUENTIAL_SCRIPT runs the subroutine once, each step after the move before it is done; a second \
+one given to the same unit waits for the first; UNIT_IDLE_FOR_SECONDS 5.0 in it holds nothing back (written as a float: \
+the handler reads the argument's integer slot, 0 -- engine_seqguard:g has the integer wait)."""
+let = {S = "list(zip(times, vals(rows)))[1:]", dedup = "lambda xs: [k for j, k in enumerate(xs) if j == 0 or xs[j - 1] != k]", column = "lambda k: dedup([v[k] for t, v in S])"}
+expect = [
+    "column(0) == [1, 11, 111]",
+    "column(1) == [0, 11]",
+    "column(2)[-1] == 11 and all(v[2] == 11 for t, v in zip(times, vals(rows)) if t >= 2)",
+]
+
+[[reading]]
+bench_id = "engine_acts2"
+id = "acts_more_as_the_bench"
+scene = {build = "engine_acts_more", check = "more", until = 31}
+bench = """more, bench 11-13 `run_queue engine_acts_more:more` (CampActsMMore, round 212; the bench's seconds 1-2 ahead): 驻 767 -> \
+363; 诱血 100 till NAMED_STOP, then falling; 旗 61 125 361 363 107 / 106 (bit 1 kept on the bench)"""
+proves = """sim TEAM_GARRISON_TEAM_INSTANTLY asks no room (G2's six into one five-place Bullfrog) and deals G1's seven out 4 + 3 \
+(the first Bullfrog's kill took 4); the gunner at the ground takes nothing by itself till NAMED_STOP; 旗 61 125 361 \
+(UNIT_KILL_ALL_IN_AREA: the player's tank and plant in K, not the enemy's nor the one outside; the Mover at the post's \
+place at the order, never its second; the area reveal discovers Hide) 363 (the lure hit after the stop) 107 / 106 (the \
+undo). Bit 1 (lure b, dead) and 2 after the lure's death left out: a dying unit's attacked flag outlasts it on the \
+bench (round 210's 11 s)."""
+let = {S = "list(zip(times, vals(rows)))[1:]", held = "lambda xs: [k for k, g in __import__('itertools').groupby(xs) if len(list(g)) >= 2]", dedup = "lambda xs: [k for j, k in enumerate(xs) if j == 0 or xs[j - 1] != k]", flags = "dedup([v[2] & ~1 for t, v in S])"}
+expect = [
+    "dedup(held([v[0] for t, v in S])) == [767, 363]",
+    "all(v[1] == 100 for t, v in S if t < 12.0) and min(v[1] for t, v in S) == 0",
+    "flags[:5] == [60, 124, 360, 362, 106]",
+]
+
+# Bench readings of checks/engine_acts5.py (build engine_acts_v).
+# The runner's until is one second past the old bare Sim.run limit to include its last sample.
+
+[[reading]]
+bench_id = "engine_acts5"
+id = "acts_v_as_the_bench"
+scene = {build = "engine_acts_v", check = "acts", until = 41}
+bench = "CampActsVActs round 215: 状 5 20; 旗 20 then 16 with no ownership transfer; 位 1 2 102 202 200 220; 守 2 12"
+proves = "sim script actions: numbered model conditions, player auto-acquire, team move to the nearest object of a type, and guard from a point"
+let = {changes = "lambda key: [r[key] for i, r in enumerate(rows[1:]) if i == 0 or r[key] != rows[i][key]]"}
+expect = [
+    "changes('状')[-2:] == [5, 20]",
+    "changes('旗')[:2] == [16, 20] and set(changes('旗')) <= {16, 20}",
+    "[v for v in changes('位') if v not in (102, 201, 210)] == [0, 1, 2, 202, 200, 220]",
+    "sum(r['位'] in (201, 210) for r in rows[1:]) <= 2",
+    "changes('守')[-2:] == [2, 12] and rows[-1]['守'] == 12",
+]
+
+[[reading]]
+bench_id = "engine_acts5"
+id = "acts_v_guard_tanks_come_in_a_second_apart"
+scene = {build = "engine_acts_v", check = "acts", until = 41}
+bench = "CampActsVActs round 215: 位 2 -> 102 (s5) -> 202 (s6): one of Gd's two tanks (80 apart) by 'gd from' a second first"
+proves = "sim the guard crew's two tanks reach 'gd from' one after the other"
+expect = "102 in changes('位')"
+let = {changes = "lambda key: [r[key] for i, r in enumerate(rows[1:]) if i == 0 or r[key] != rows[i][key]]"}
+mismatch = """sim 2 -> 202 the same frame: the group move gives each the same way (simpath.formation_spots, from \
+engine_seqteam); what puts one a second ahead on the bench is not known (INFERRED: the orders handed out in turn)"""
+
+[[reading]]
+bench_id = "engine_acts5"
+id = "acts_near_goes_to_the_first_members_nearest"
+item = "脚本动作 ATTACK_MOVE_TEAM_TO_NEAREST_OBJECT_OF_TYPE_OF_PLAYER"
+scene = {build = "engine_acts_near", check = "all", until = 41}
+bench = """all, bench 11-21 `run_queue engine_acts_near:all` (CampActsNearAll_mcp_1121_111645, round 280; bench row s_k = simulator \
+k + 1): 位 0 s1-s9, 10 s10-s15, 11 s16-s18, 20 s19-s41; 打 0 s1, 10 s2-s41"""
+proves = """sim act_order.attack_move_team_to_nearest_object_of_type_of_player: the crew went to Y, the player's plant nearest its \
+first member (m0, made first), not X nearest its middle nor s4's own D nearest of all, and stayed there, no plant attacked; \
+TA went to the engineer's place at the order and stayed, the engineer teleported off a second later not followed nor \
+attacked (the place taken at the order, as ATTACK_MOVE_TEAM_TO_NAMED_OBJECT's). The simulator's tanks come a reading \
+late (start-up, R2's)"""
+let = {at = "dict(zip(times, vals(rows)))", first = "min(t for t in at if at[t][0])"}
+expect = [
+    "abs(first - 11) <= 1 and {at[k][0] for k in at} == {0, 10, 11, 20}",
+    "all(at[k][0] == 20 for k in range(22, 41))",
+    "at[1][1] == 0 and all(at[k][1] == 10 for k in range(5, 41))",
+]
+
+[[reading]]
+bench_id = "engine_acts5"
+id = "acts_tow_goes_to_any_owners_nearest"
+item = "脚本动作 TEAM_ATTACK_MOVE_TOWARDS_NEAREST_OBJECT_TYPE"
+scene = {build = "engine_acts_near", check = "tow", until = 41}
+bench = """tow, bench 11-22 `run_queue engine_acts_near:tow` (CampActsNearTow, 11:12, round 305; bench row s_k = simulator k + 1): \
+位 0 s1-s4, 2000 s5-s41; 打 0 throughout"""
+proves = """sim act_order.attack_move_team_to_nearest_object_of_type_of_player with no player (the program's one handler for both \
+actions; this one's player string empty, no owner filter): both tanks went to D, s4's own plant nearest the first member, \
+not the player's Y (the one with the player filter) nor X / Z, and stayed, nothing attacked. Simulator a reading late \
+(start-up, R2's)"""
+let = {at = "dict(zip(times, vals(rows)))", first = "min(t for t in at if at[t][0])"}
+expect = [
+    "abs(first - 6) <= 1 and {at[k][0] for k in at} == {0, 2000}",
+    "all(at[k][1] == 0 for k in at)",
+]
+
+# Bench readings of checks/engine_acts6.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_acts6"
+id = "acts_w_hunt_as_the_bench"
+item = [
+    "脚本动作 TEAM_HUNT",
+    "脚本动作 NAMED_HUNT",
+]
+scene = {build = "engine_acts_w", check = "hunt", until = 61}
+bench = """hunt, bench 11-14 `run_queue engine_acts_w:hunt` (CampActsWHunt, round 216; the bench's seconds ~1 behind): 家 1122 -> \
+1120 at s7; 到 0 throughout; 打 60 -> 62 at s15 (52 at s31, 42 at s49)"""
+proves = """sim TEAM_HUNT moves Soviet_4's crew (aiTactical 255, not woken), not Soviet_5's (240), and NAMED_HUNT neither lone \
+conscript; not to the nearest structure; the player's tank (the nearest enemy) attacked, then the crew killed by it."""
+let = {F = "list(zip(times, vals(rows)))", first_at = "lambda col, value: next(t for t, v in F if v[col] == value)"}
+expect = [
+    "{v[0] for t, v in F} == {1122, 1120} and 5.0 <= first_at(0, 1120) <= 10.0",
+    "{v[1] for t, v in F} == {0}",
+    "13.0 <= first_at(2, 62) <= 19.0 and 29.0 <= first_at(2, 52) <= 36.0 and 46.0 <= first_at(2, 42) <= 53.0",
+]
+
+# Bench readings of checks/engine_acts7.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_acts7"
+id = "acts_x_own_as_the_bench"
+scene = {build = "engine_acts_x", check = "own", until = 31}
+bench = """own, bench 11-14 `run_queue engine_acts_x:own` (CampActsXOwn, round 217; the bench's seconds ~1-2 behind): 主 1365 -> \
+1369 at s2 -> 1433 at s10; 钱 74 -> 29"""
+proves = """sim PLAYER_TRANSFER_OWNERSHIP_PLAYER moves only the giver's units on no team (Soviet_5's conscript UNIT_AI_TRANSFER took \
+off its crew; Soviet_2's, off their team since the start), not ones on a team (teamSoviet_5's tank, Soviet_6's, a \
+Soviet_2 conscript put on a crew); the giver's money whole to the receiver (Player_1 1000 -> 6000, Soviet_5 0). The \
+12 s money (Soviet_2's start) is not asserted."""
+let = {F = "list(zip(times, vals(rows)))", first_at = "lambda col, value: next(t for t, v in F if v[col] == value)"}
+expect = [
+    "[v[0] for t, v in F if t >= 1.0][:1] == [1365] and vals(rows)[-1][0] == 1433",
+    "{v[0] for t, v in F} == {1365, 1369, 1433}",
+    "2.0 <= first_at(0, 1369) <= 5.0 and 10.0 <= first_at(0, 1433) <= 13.0",
+    "2.0 <= first_at(1, 29) <= 5.0 and {v[1] for t, v in F if 1.0 <= t < 12.0} <= {74, 29}",
+]
+
+# Bench readings of checks/engine_acts8.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_acts8"
+id = "acts_y_hunt_as_the_bench"
+scene = {build = "engine_acts_y", check = "hunt", until = 62}
+bench = """hunt, bench 11-14 `run_queue engine_acts_y:hunt` (CampActsYHunt, round 218; the bench's seconds ~1 behind): 家 11222 -> \
+11200 at s6; 到 20 at s9, 220 at s21, 0 at s39, home again at s49-s59; 家 as the bench's BENCH line (checks/engine_acts8.py): \
+11222 s1-s5, 11200 from s6, 11201 s49-s50, 11202 s51-s58, 11201 s59 (the two men home one after the other)"""
+proves = """sim TEAM_HUNT moves the aiTactical-255 crews (Soviet_4's, Soviet_5's at aiTeamBuilder 240), not Soviet_6's (aiTactical \
+240); NAMED_HUNT not the woken Soviet_3's conscript; 到 20 by the engineer 700 east, not the barracks 1000 west, re-picked \
+by the next engineer; 活's alive bits: e1 dead s15, e2 attacked s26, dead s29; 饵: b5 dead s13, b6 attacked s29. A dead \
+engineer's 'attacked' bit (7 s on the bench) is not asserted. Unexplained two rounds (A 232-234): H4's two men come home \
+1-2 s apart on the bench (leave e1's area s26 / s29, enter it s43 / s45, home s49 / s51); the simulator walks them 6-8 \
+apart all the way."""
+let = {F = "list(zip(times, vals(rows)))", first_at = "lambda col, test: next(t for t, v in F if test(v[col]))"}
+expect = [
+    "{v[0] for t, v in F} == {11222, 11200, 11201, 11202} and 5.0 <= first_at(0, lambda v: v == 11200) <= 9.0",
+    "{v[0] for t, v in F if v[0] < 11210} <= {11200, 11201, 11202}",
+    "8.0 <= first_at(1, lambda v: v == 20) <= 12.0 and 20.0 <= first_at(1, lambda v: v >= 200) <= 24.0",
+    "37.0 <= next(t for t, v in F if t > 30 and v[1] == 0) <= 41.0",
+    "47.0 <= first_at(0, lambda v: v == 11202) - 1.0 <= 53.0",
+    "14.0 <= first_at(2, lambda v: v & 1 == 0) <= 17.0 and 25.0 <= first_at(2, lambda v: v & 16) <= 28.0",
+    "28.0 <= first_at(2, lambda v: v & 2 == 0) <= 31.0",
+    "12.0 <= first_at(3, lambda v: v & 1 == 0) <= 15.0 and 28.0 <= first_at(3, lambda v: v & 8) <= 31.0",
+    "{v[3] & 48 for t, v in F} == {48}",
+]
+mismatch = """sim: 到 goes back to 0 at s48 (bench s39), 家 11201 only s51-s52 (bench s49-s50), 11202 first at s53 (bench s51), \
+11201 s60 / 11200 s61 (bench 11201 s59); the other readings hold"""
+
+# Bench readings of checks/engine_acts9.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_acts9"
+id = "acts_z_all_as_the_bench"
+scene = {build = "engine_acts_z", check = "all", until = 13}
+bench = """all, bench 11-14 `run_queue engine_acts_z:all` (CampActsZ, round 219; the bench's seconds ~1 ahead of the timers): 队5 / \
+队C5 / 队2 / 队6 0 0 0 1 after SKIRMISH_AI_TRANSFER_ALL(Soviet_5, 1) at 2 s, then 4 0 3 2 after (Soviet_5 / 2 / 6, 0) at 6 s"""
+proves = """sim SKIRMISH_AI_TRANSFER_ALL: off every team at the first hand-over, then all back on the default team, not the crew, \
+plus one hidden member each (Soviet_6's too, never handed)."""
+let = {F = "list(zip(times, vals(rows)))", seen = "[v for t, v in F if 2.0 <= t < 6.0]", after = "[v for t, v in F if t >= 6.5]"}
+expect = [
+    "seen and all(v == [0, 0, 0, 1] for v in seen)",
+    "after and all(v == [4, 0, 3, 2] for v in after)",
+]
+
+# A round 294 (11-21): missions/aichange_bench.py, four runs (work/testbench/runs/CampAISw*A_mcp_1121_22*-23*); the
+# switch pressed in the wake script (10 s), right after s1's AI takes over. Program notes: private work/re/a293_changebuilder.md.
+
+[[reading]]
+bench_id = "engine_aichange"
+id = "the_ai_builder_switches_change_nothing_built"
+scenes = {on = {build = "aiubon", check = "a", until = 45}, off = {build = "aiuboff", check = "a", until = 45}, back = {build = "aiubback", check = "a", until = 45}, tb = {build = "aitboff", check = "a", until = 45}}
+bench = "维和/标枪/警犬 by logical frame, all four alike to f603 (~40 s): dogs f344 / f376 (+-1), Javelins f428-431 / f460-463 / f515 / f548 / f601-603, no Peacekeeper; on, back and tb row for row, off missed the f515 sample (3 -> 4 by f576) and ends 0/5/2 at f603 as the others. Again 11-22 with s5's tanks 250 south (off the scenery; CampAISw*A_mcp_1122_0623-0627): all four dogs f343-345 / f374-375, Javelins f428-430 / f460-462 / f514-516 / f548-549 / f600-602"
+proves = "script actions PLAYER_AI_CHANGEUNITBUILDER (0, and 1 again), PLAYER_AI_CHANGETEAMBUILDER 0, PLAYER_AI_CHANGE_ECONOMY_MANAGER 0: no effect on what the AI builds or when (act_player)"
+item = ["脚本动作 PLAYER_AI_CHANGEUNITBUILDER", "脚本动作 PLAYER_AI_CHANGETEAMBUILDER", "脚本动作 PLAYER_AI_CHANGE_ECONOMY_MANAGER"]
+expect = ["off == on and back == on and tb == on", "off[-1]['标枪'] >= 1"]
+
+# Bench readings of checks/engine_aifav.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The enemy table emptied by script (program: work/re a219_skirmish_transfer.md 2, a295_clear_priorities.md), each after aipriodef's
+# SET_ALL 20 -- without the clear Player_1 at 20 stays the top tier and the far plant goes first (aipriodef).
+# The first reading moved from tests/test_simai_favored.py. fav / clr1 set Player_1 30 first: with the action undone the
+# simulator (one tier -> the near plant) goes far (review 1122ss #6, mutation-checked).
+
+[[reading]]
+bench_id = "engine_aifav"
+id = "favored_enemy_alone_in_the_table_goes_for_its_plant"
+scene = {build = "aipriofav", check = "a", until = 70.0}
+bench = "aipriofav (Player_1 set 30 first; CampAIPrioFavA_mcp_1122_061838, 11-22): 到近厂 2 @ s14, 4 s15-s21; 到远厂 0 to s23 (11-14 without the 30: the same)"
+proves = "SET_FAVORED_ENEMY: the table emptied, that enemy alone in it at 10"
+let = {near = "first('到近厂')"}
+expect = "near is not None and abs(near - 14) <= 2 and first('到远厂') is None"
+
+[[reading]]
+bench_id = "engine_aifav"
+id = "clear_all_then_one_enemy_goes_for_its_plant"
+scene = {build = "aiprioclr", check = "a", until = 70.0}
+bench = "aiprioclr (CLEAR_ALL, then Soviet_4 10; CampAIPrioClrA_mcp_1122_003028): 到近厂 4 @ s16, 4 s18-s22; 到远厂 0 to s68"
+proves = "CLEAR_ALL_ENEMY_PLAYERS_PRIORITIES: the table emptied (Player_1 out), the next put alone in it"
+let = {near = "first('到近厂')"}
+expect = "near is not None and abs(near - 15) <= 2 and first('到远厂') is None"
+
+[[reading]]
+bench_id = "engine_aifav"
+id = "clear_one_enemy_leaves_the_other_alone"
+scene = {build = "aiprioclr1", check = "a", until = 70.0}
+bench = "aiprioclr1 (Player_1 set 30, then CLEAR_ENEMY_PLAYER_PRIORITY Player_1; CampAIPrioClr1A_mcp_1122_061719): 到近厂 2 @ s14, 4 s15-s21; 到远厂 0 to s23 (without the 30, 002725: s15)"
+proves = "CLEAR_ENEMY_PLAYER_PRIORITY: that enemy's entry out, the others kept (Soviet_4 alone at 20)"
+let = {near = "first('到近厂')"}
+expect = "near is not None and abs(near - 14) <= 2 and first('到远厂') is None"
+
+# A round 274 (11-17): missions/aiallflip_bench.py, six runs; native picks in work/re/a274_flip_measured.json, the
+# counters in each run's cnv_result.txt (work/testbench/runs/CampAllF*A_mcp_1117_*). s5 (twenty tanks) is s1's friend
+# at the start; on / off / late turn it enemy at 5 s (on: the action at the 10 s wake, late: at 3 s), woff / won at
+# 15 s (won: the action at 20 s), never keeps it a friend.
+
+[[reading]]
+bench_id = "engine_aiflip"
+id = "consider_all_enemies_adds_nothing_to_the_relations"
+scenes = {on = {build = "aiallflipon", check = "a", until = 30}, off = {build = "aiallflipoff", check = "a", until = 30}, late = {build = "aiallfliplate", check = "a", until = 30}, woff = {build = "aiallflipwoff", check = "a", until = 30}, won = {build = "aiallflipwon", check = "a", until = 30}}
+bench = "bpick / border: on, off and late pick alike frame for frame to f374 (the shortest log; scout 1666.833 from f152, orders scout scout jav jav jav jav from f301), won as woff to f428 (woff's scout score 1666.836 to f225, 1666.833 from the first pass after, f229); first unit out: on 标枪 at f438, off f428, woff f436, won f428 -- none 维和"
+proves = "script action SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING: no effect on top of the relations (act_player)"
+item = "脚本动作 SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING"
+expect = ["on == off and late == off", "won == woff"]
+
+[[reading]]
+bench_id = "engine_aiflip"
+id = "the_building_enemies_follow_the_relation"
+scenes = {off = {build = "aiallflipoff", check = "a", until = 30}, never = {build = "aiallflipnever", check = "a", until = 30}}
+bench = "first unit out by f450 (s30): off 标枪 1 维和 0 (f428), never 维和 1 标枪 0 (f433): the pick scores count s5's tanks once it is an enemy (1666.833 vs 1666.836), Javelins against them"
+proves = "simai build scoring: the enemies scored are the relations' as they are now (view.enemies)"
+expect = "off[-1]['标枪'] >= 1 and off[-1]['维和'] == 0 and never[-1]['维和'] >= 1 and never[-1]['标枪'] == 0"
+mismatch = "sim off and never 维和 1 标枪 0 at s27-30: s5 is counted once it turns enemy (off picks Javelins from f391), but the first two orders (f301 / f333) are Peacekeepers -- the bench's are dogs, scored 1666.833 = NEEDED_UNIT 10001 / 6 states, a NEEDED_UNIT list the model keeps empty (B handoff 11-21: the teams' wanted list fits this bench and breaks four engine_aiskirm readings)"
+
+# Bench readings of checks/engine_aistart.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_aistart"
+id = "an_ai_neither_woken_nor_handed_its_yard_never_opens"
+item = "脚本动作 SKIRMISH_AI_START"
+scene = {check = "a"}
+each = [{build = "aistart", until = 78, last = 1154}, {build = "ainowake", until = 50, last = 746}, {build = "aixfer", until = 74, last = 1104}]
+bench = "bench 11-16 (A270), AI钱 建筑数: aistart 50000 1 from the money (f158) to f1154, ainowake to f746, aixfer to f1104"
+proves = "SKIRMISH_AI_START without the yard handed (it stays on teamSoviet_1), MAKE_BASE without a wake, and SKIRMISH_AI_TRANSFER_ALL (the team step, no wake) each leave the AI idle. Moved from the replay test (A335)"
+let = {idle = "[v for v in vals(rows) if 160 <= v[3] <= last]"}
+expect = "idle and all(v[:2] == [50000, 1] for v in idle)"
+
+[[reading]]
+bench_id = "engine_aistart"
+id = "skirmish_ai_start_opens_an_ai_whose_yard_was_handed"
+item = "脚本动作 SKIRMISH_AI_START"
+scene = {build = "aistartx", check = "a", until = 30}
+bench = "aistartx:a, AI钱 建筑数: paying at f169 (49943), 建筑数 2 at f312 (f290 still 1), 3 at f461"
+proves = "UNIT_AI_TRANSFER(the yard) then SKIRMISH_AI_START (retail a07's way) opens the AI as aiskirm's own wake: paying, the second structure about 10 s after"
+let = {opening = "[v for v in vals(rows) if 169 <= v[3] <= 290]", second = "[v for v in vals(rows) if 312 <= v[3] <= 450]"}
+expect = [
+  "opening and all(0 < v[0] < 50000 and v[1] == 1 for v in opening)",
+  "second and all(v[1] == 2 for v in second)",
+]
+
+[[reading]]
+bench_id = "engine_aistart"
+id = "toggle_skirmish_ai_off_freezes_the_ai_and_on_resumes_it"
+item = "脚本动作 PLAYER_TOGGLE_SKIRMISH_AI"
+scene = {build = "aipause", check = "a", until = 92}
+bench = "aipause:a, AI钱 建筑数: paying to 48300 at f457, flat to f1262 with 2 structures; 建筑数 3 at f1280 (finished while paused, placed at the 85 s resume), paying again from f1300"
+proves = "PLAYER_TOGGLE_SKIRMISH_AI off at 25 s freezes the AI (what was paid for finishes, nothing new), on at 85 s resumes it"
+let = {flat = "[v for v in vals(rows) if 500 <= v[3] <= 1260]", placed = "[v for v in vals(rows) if 1300 <= v[3] <= 1350]", paying = "[v for v in vals(rows) if v[3] >= 1350]"}
+expect = [
+  "flat and len({tuple(v[:2]) for v in flat}) == 1 and flat[0][1] == 2",
+  "placed and all(v[1] == 3 for v in placed)",
+  "paying and all(v[0] < flat[0][0] for v in paying)",
+]
+
+# Bench readings of checks/engine_aixfer.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_aixfer"
+id = "aixfer_a_computer_players_units_handed_to_its_ai_leave_their_crew_and_drop_the_move"
+scene = {build = "engine_aixfer", check = "xfer", until = 26}
+bench = "xfer (bench 11-10 engine_aixfer, Soviet_4's AI not woken; order and hand-over in one script, as retail a01): 到 8 = only the player's tank arrives, 队 8 = only the player's crew keeps its member, 默 0 = the handed-over units are not on Soviet_4's default team either"
+proves = "sim Sim SKIRMISH_AI_TRANSFER: handed-over units leave their crew and drop the move (before round 150 the simulator kept both: 到 14, 队 14)"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = ["by[0][1] == 14 and all(v[1] == 8 and v[2] == 0 for s, v in by.items() if s >= 2)", "by[25][0] == 8"]
+
+[[reading]]
+bench_id = "engine_aixfer"
+id = "aixfer_a_move_under_way_stops_at_the_hand_over_and_the_players_crew_is_untouched"
+scene = {build = "engine_aixfer", check = "late", until = 26}
+bench = "late (bench 11-10): the moves at 1 s, the hand-overs at 4 s. 离 6 (A and B had set off), 队 30 -> 24 at the hand-over, 到 24 at the end = the player's C and the never-handed-over control D; A and B never arrive"
+proves = "sim Sim SKIRMISH_AI_TRANSFER: a move under way stops at the hand-over, the player's crew is untouched"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = [
+    "by[2][1] == 30 and all(v[1] == 24 for s, v in by.items() if s >= 5)",
+    "by[25][0] == 24 and by[25][3] == 6 and by[25][2] == 0",
+    "12 <= min(s for s, v in by.items() if v[0] == 24) <= 18",
+]
+
+# Bench readings of checks/engine_basegate.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_basegate"
+id = "aibgate_disabled_ai_builds_nothing_until_enabled"
+item = ["脚本动作 PLAYER_DISABLE_BASE_CONSTRUCTION", "脚本动作 PLAYER_ENABLE_BASE_CONSTRUCTION"]
+scene = {build = "aibgate", check = "a", until = 85}
+bench = "aibgate:a (bench 11-16, A269), AI钱 建筑数 at logic frames: 50000 1 from the wake (f163) to f1054; paying from f1054 (49993), 建筑数 2 at f1208"
+proves = "a base-disabled skirmish AI (s1 AlliedBalanced, woken at 10 s with 50000) orders no structure and spends nothing until PLAYER_ENABLE_BASE_CONSTRUCTION at 70 s, then starts its base as at a wake. Moved from the replay test (A335)"
+let = {held = "[v for v in vals(rows) if 163 <= v[3] <= 1050]", after = "[v for v in vals(rows) if v[3] >= 1250]"}
+expect = [
+  "held and all(v[:2] == [50000, 1] for v in held)",
+  "after and all(v[0] < 50000 and v[1] == 2 for v in after)",
+]
+
+# Bench readings of checks/engine_conds.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Round 208: the retail-campaign conditions, batch 1. The bench's clock runs a second or two ahead of the simulator's
+# here (fire, kills, the scripted seconds), so the readings compare the order of the states each held for two samples
+# or more (one sample: the frame a kill lands in), not the seconds. A scene's until is the old test's seconds + 1.
+# held(xs): the values held two samples or more in a row; column(col, before): one counter's held values, repeats
+# merged (the row of second 0 dropped, as the old helpers did).
+
+[[reading]]
+bench_id = "engine_conds"
+id = "conds_team_as_the_bench"
+scene = {build = "engine_conds", check = "team", until = 32}
+bench = """team, bench 11-13 `run_queue engine_conds:team` (CampCondsTeam, a32ba54b + the 128 bits): 队形 / 状态 s1 4 13 | s2 12 13 | \
+s3-s6 12 15 | s7-s8 5 15 | s9-s10 5 75 | s11-s21 7 75 | s22-s31 128 74; 离开 1, 建队帧 1"""
+proves = """sim TEAM_CREATED one frame after the reinforcement is made, a map team never; a reinforcement team TEAM_KILLed never \
+reads destroyed, a map team does; PARTIALLY with k 1 / 3 / 7 holds for no Guardian; ALL_HAS on an emptied team. The \
+bench's s1 / s2 states hold one sample each: dropped by the same rule."""
+let = {S = "list(zip(times, vals(rows)))[1:]", held = "lambda xs: [k for k, g in __import__('itertools').groupby(xs) if len(list(g)) >= 2]"}
+expect = [
+    "held([tuple(v[:2]) for t, v in S]) == [(12, 15), (5, 15), (5, 75), (7, 75), (128, 74)]",
+    "vals(rows)[-1][2:] == [1, 1]",
+]
+
+[[reading]]
+bench_id = "engine_conds"
+id = "conds_fight_as_the_bench"
+scene = {build = "engine_conds", check = "fight", until = 72}
+bench = """fight, bench 11-13 `run_queue engine_conds:fight` (CampCondsFight, a32ba54b): 被打 / 击杀 s1-s2 0 0 | s3-s15 21 0 | \
+s16-s38 4 43 | s39-s52 53 43 | s53-s71 4 31"""
+proves = """sim TEAM_ATTACKED_BY_PLAYER reads the living members only (off while foe 2 is unhit), the skirmish flag stays, \
+KILLED_TYPE is at least n, NAMED_HAS_KILLED == 1 goes off at 2."""
+let = {S = "list(zip(times, vals(rows)))[1:]", held = "lambda xs: [k for k, g in __import__('itertools').groupby(xs) if len(list(g)) >= 2]"}
+expect = "held([tuple(v[:2]) for t, v in S]) == [(0, 0), (21, 0), (4, 43), (53, 43), (4, 31)]"
+
+[[reading]]
+bench_id = "engine_conds"
+id = "conds_sight_as_the_bench"
+scene = {build = "engine_conds", check = "sight", until = 26}
+bench = """sight, bench 11-13 `run_queue engine_conds:sight` (CampCondsSight, round 210): 视野 / 发现 / 海军 / 热点 s1-s2 4 13 88 1 | \
+s3 4 12 88 1 | s4 4 13 88 1 | s5-s7 4 13 88 0 | s8 4 12 88 0 | s9 13 12 88 0 | s10-s12 13 15 88 0 | s13 5 14 88 0 | \
+s14-s24 5 14 88 2 | s25 4 14 88 2"""
+proves = """sim ENEMY_SIGHTED_BY_TEAM counts the member itself and a Guardian at 180, not at 230 (sight 200 centre to centre); \
+TEAM_DISCOVERED off while the member moves; the Dreadnought (DEEP_WATER only) never for TEAM_INSIDE_AREA k 0, always for \
+k 7; MISSION_HOT_SPOT_ACTIVE only the name as written, only SET_..._ACTIVENESS -- not VISIBILITY, LINK, a name the map \
+lacks; settable after its linked unit died. 视野 compared until the kill: the bench's wreck is seen ~11 s, the \
+simulator's Guardian lies 0 s."""
+let = {S = "list(zip(times, vals(rows)))[1:]", held = "lambda xs: [k for k, g in __import__('itertools').groupby(xs) if len(list(g)) >= 2]", dedup = "lambda xs: [k for j, k in enumerate(xs) if j == 0 or xs[j - 1] != k]", column = "lambda col, before=None: dedup(held([v[col] for t, v in S if before is None or t < before]))"}
+expect = [
+    "column(0, 14.0) == [4, 13]",
+    "column(1) == [13, 12, 15, 14]",
+    "column(2) == [88]",
+    "column(3) == [1, 0, 2]",
+]
+
+[[reading]]
+bench_id = "engine_conds"
+id = "conds_pf_the_pc_game_is_never_360_so_s01s_attack_move_event_never_fires"
+item = "脚本条件 PLAYER_TRIGGERED_SCRIPT_EVENT"
+scene = {build = "engine_conds", check = "pf", until = 6}
+bench = "pf, bench 11-23 run_queue engine_conds:pf (CampCondsPf_mcp_1123_135556, round 329): 平台 16 s1-s7"
+proves = "sim CURRENT_PLATFORM true for 'PC' only ('360' / 'PS3' false: the program, work/re a329), so s01's one PLAYER_TRIGGERED_SCRIPT_EVENT (every clause gated by '360') never holds; with no human order the event alone never either"
+expect = "all(v == [16] for v in vals(rows)[1:])"
+
+# Bench readings of checks/engine_killcount.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_killcount"
+id = "killcount_native_type_and_player_match_bench[a]"
+scene = {build = "engine_killcount", check = "a", until = 25}
+bench = "engine_killcount: the first row reads 0/0/0/255 and the last 2/1/0/240 (kills by type, by player, alive mask)."
+proves = "simai SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER: kill credit by type and by player"
+item = "脚本动作 SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER"
+expect = [
+    "vals(rows)[0] == [0, 0, 0, 255]",
+    "vals(rows)[-1] == [2, 1, 0, 240]",
+]
+
+[[reading]]
+bench_id = "engine_killcount"
+id = "killcount_native_type_and_player_match_bench[b]"
+scene = {build = "engine_killcount", check = "b", until = 25}
+bench = "engine_killcount: the first row reads 0/0/0/255 and the last 2/1/0/240 (kills by type, by player, alive mask)."
+proves = "simai SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER: kill credit by type and by player"
+expect = [
+    "vals(rows)[0] == [0, 0, 0, 255]",
+    "vals(rows)[-1] == [2, 1, 0, 240]",
+]
+
+[[reading]]
+bench_id = "engine_killcount"
+id = "killcount_script_death_drops_the_alive_mask_last"
+scene = {build = "engine_killcount", check = "a", until = 25}
+bench = "engine_killcount: the alive mask steps 255, 254, 252, 248, 240 (a at s4 / s11 / s19 / s25, b at s2 / s7 / s12 / s16). The old a s22 window read 248 only because a's screenshot clock ran behind logic (its 3 / 7 / 11 / 15 s kills show at s4 / s11 / s19 / s25)."
+proves = "simai SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER: the alive mask drops each victim in kill order, the script death last"
+let = {m = "[v[3] for v in vals(rows)]"}
+expect = "[v for j, v in enumerate(m) if j == 0 or v != m[j - 1]] == [255, 254, 252, 248, 240]"
+
+# Bench readings of checks/engine_kind.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_kind"
+id = "kind_all_as_the_bench"
+scene = {build = "engine_kind", check = "all", until = 31}
+bench = """\
+engine_kind all (round 244, bench 11-15 CampKindAll_mcp_1115_045506): 种 11 -> 15 -> 6 -> 22 -- \
+PLAYER_HAS_COMPARISON_UNIT_KIND counts every player's objects of the KindOf; 失 1 / 25 / 29 / 30 / 62 -- \
+PLAYER_LOST_OBJECT_TYPE keeps one count per (player, type string) and a drop is the first reader's only; 毁 0. Only the \
+plateaus are asserted (the bench steps 1-2 s before the timers; eng e dies when Tanya gets there)"""
+proves = "sim kind readers: PLAYER_HAS_COMPARISON_UNIT_KIND counts every player's objects; PLAYER_LOST_OBJECT_TYPE one count per (player, type string)"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = [
+    "[by[s][0] for s in (2, 10, 14, 17, 29)] == [11, 11, 15, 6, 22]",
+    "[by[s][1] for s in (2, 10, 29)] == [0, 1, 62]",
+    "by[13][1] in (25, 29) and by[17][1] == 30",
+    "all(v[2] == 0 for v in by.values())",
+]
+
+[[reading]]
+bench_id = "engine_kind"
+id = "kind_by_as_the_bench"
+scene = {build = "engine_kind", check = "by", until = 31}
+bench = """\
+engine_kind by (round 244, bench 11-15 CampKindBy_mcp_1115_045838): NAMED_DESTROYED_BY_OBJECTTYPE never true (毁 坦 王 \
+add every evaluation, 0 all run) while NAMED_DESTROYED (死) saw eng p, truck w and eng e die (King Oni to Tanya's \
+charge at s20 on the bench: the simulator's Tanya does not kill it, not asserted)"""
+proves = "sim NAMED_DESTROYED_BY_OBJECTTYPE: never true; NAMED_DESTROYED sees the units that die"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = [
+    "all(v[:3] == [0, 0, 0] for v in by.values())",
+    "by[29][3] & 11 == 11",
+]
+
+# Bench readings of checks/engine_razed.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_razed"
+id = "razed_all_as_the_bench"
+scene = {build = "engine_razed", check = "all", until = 33}
+bench = """engine_razed all (round 240, bench 11-15 CampRazedAll_mcp_1115_030516): 摧毁 0 all run (N 0 too, two of Soviet_4's plants \
+razed by the player's tanks, one of the player's by Soviet_4's); 驻军 42 / 50 / 42 / 38 / 33"""
+proves = """sim PLAYER_DESTROYED_N_BUILDINGS_PLAYER false always (Generals' stub); SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED counts \
+the men inside (2, 3, 2, 1, 0 for the player; Soviet_4's man for Soviet_4). The bench drops a man ~3.5 s after \
+NAMED_EXIT_BUILDING (the entry counts at once); the simulator at once: the edges are not asserted."""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = [
+    "all(at[k][0] == 0 for k in range(0, 32))",
+    "all(at[k][2] == want for (lo, hi), want in (((3, 6), 42), ((7, 10), 50), ((11, 14), 42), ((15, 18), 38), ((19, 32), 33)) for k in range(lo, hi))",
+    "at[31][1] == 31",
+]
+
+# Bench readings of checks/engine_scripts1.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Inventory batch 1 (work/re/l2_scripts1.md): bench 2026-11-08 `cnv_check engine_scripts1 <variant>`.
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_scripts1"
+id = "scripts1_conditions_as_the_bench"
+scene = {build = "engine_scripts1", check = "cond", until = 13}
+bench = "cond: 条件位 9 all run (Player_1 Human 1 + a line never played reads done 8; Soviet_1 not Human, before and after its AI is woken; a clip never played not done); 状态 3 -> 1 at the kill -> 0 at the clear"
+proves = "sim Sim conditions: PLAYER_IS_HUMAN, HAS_FINISHED_AUDIO / movie never played, object state counts"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = ["all(v[0] == 9 for v in by.values())", "(by[3][1], by[4][1], by[11][1]) == (3, 1, 0)"]
+
+[[reading]]
+bench_id = "engine_scripts1"
+id = "scripts1_a_team_handed_over_drops_its_move"
+scene = {build = "engine_scripts1", check = "xfer", until = 41}
+bench = "xfer: Soviet_2's from the hand-over, the move it was on dropped (nobody in `far` in 40 s), both off home"
+proves = "sim Sim team hand-over to an AI player: the team's move is dropped"
+expect = "vals(rows)[-1][:3] == [1, 0, 2]"
+
+[[reading]]
+bench_id = "engine_scripts1"
+id = "scripts1_idle_for_seconds_drops_the_move"
+scene = {build = "engine_scripts1", check = "idle", until = 46}
+bench = "idle: the tank without the idle order arrives (bench s7, about 9 game s), the one told UNIT_IDLE_FOR_SECONDS 3 at 3 s never does in 45 s -- the order dropped, not a 3 s pause"
+proves = "sim Sim UNIT_IDLE_FOR_SECONDS: the unit's move is dropped"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = ["7 <= min(s for s, v in by.items() if v[1] == 1) <= 12", "all(v[0] == 0 for v in by.values())"]
+
+[[reading]]
+bench_id = "engine_scripts1"
+id = "scripts1_hunt_without_an_ai_moves_nobody"
+scene = {build = "engine_scripts1", check = "hunt", until = 61}
+bench = "hunt: TEAM_HUNT / NAMED_HUNT on a computer player's units (AI not woken) and TEAM_HUNT on the player's: 60 s where they stood"
+proves = "sim Sim TEAM_HUNT / NAMED_HUNT: nothing moves without an AI"
+expect = "all(v == [0, 0, 0] for v in vals(rows))"
+
+[[reading]]
+bench_id = "engine_scripts1"
+id = "scripts1_team_button_raises_both_shields"
+scene = {build = "engine_scripts1", check = "button", until = 11}
+bench = "button: TEAM_USE_COMMANDBUTTON_ABILITY(Pk, the riot shield) at 2 s: 举盾 2 from then"
+proves = "sim Sim TEAM_USE_COMMANDBUTTON_ABILITY: both team members raise the shield"
+expect = "dict(zip(times, vals(rows)))[10] == [2]"
+
+# Bench readings of checks/engine_scripts2.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Inventory batch 1 (work/re/l2_scripts1.md): bench 11-09, CampScr2One / CampScr2All: counters A血 B血 比较数 类型数.
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_scripts2"
+id = "scripts2_a_relation_is_one_way_and_turns_back"
+scene = {build = "engine_scripts2", check = "one", until = 25}
+bench = "one: Soviet_1 neutral to Player_1 -- its Guardian holds fire (A血 100 to bench s8), shoots again from BACK_AT (10 s); a killed tank leaves the comparison's count at once, as the type counter (3 -> 2) (bench 11-09)"
+proves = "sim Sim relations (PLAYER_RELATES_PLAYER one way, BACK_AT) and PLAYER_HAS_OBJECT_COMPARISON counting living objects"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = [
+    "all(v[0] == 100 for s, v in by.items() if s <= 9)",
+    "by[24][0] < 95",
+    "all(v[2] == v[3] == 2 for s, v in by.items() if s >= 4)",
+]
+
+[[reading]]
+bench_id = "engine_scripts2"
+id = "scripts2_all_players_in_a_relation_changes_nothing"
+scene = {build = "engine_scripts2", check = "all", until = 25}
+bench = "all: PLAYER_RELATES_PLAYER(Soviet_1, '<All Players>', Neutral) -- the Guardian shoots the player's MCV all along (bench A血 98 at s1, 80 at s25)"
+proves = "sim Sim relations: '<All Players>' as the second player changes nothing"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = "by[24][0] < 95 and by[5][0] < 100"
+
+# Bench readings of checks/engine_scripts3.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench 11-09, CampScr3Math / CampScr3Input. A scene's until is the old test's seconds + 1.
+
+[[reading]]
+bench_id = "engine_scripts3"
+id = "scripts3_counter_math_codes_as_the_bench"
+scene = {build = "engine_scripts3", check = "math", until = 11}
+bench = "math: COUNTER_MATH_COUNTER by 4 -- 0 adds, 1 takes away (no floor: -1), 2 multiplies, 3 divides (13 -> 3) (bench 11-09)"
+proves = "sim Sim counter math: the four codes, no floor at 0, integer division"
+expect = "vals(rows)[0] == [3, 3, 3, 13] and vals(rows)[-1] == [7, -1, 12, 3]"
+
+[[reading]]
+bench_id = "engine_scripts3"
+id = "scripts3_a_script_moves_the_player_under_disable_input"
+scene = {build = "engine_scripts3", check = "input", until = 25}
+bench = "input: DISABLE_INPUT at 5 s, the tank's MOVE_NAMED_UNIT_TO at 7 done (走到 1, bench s9); DECREMENT 5 from 2 reads -3; -13 / 4 reads -3 (toward zero) (bench 11-09)"
+proves = "sim Sim DISABLE_INPUT (a script's orders still move the player's unit), DECREMENT_COUNTER, integer division toward zero"
+let = {last = "vals(rows)[-1]"}
+expect = "last[0] == 1 and last[2:] == [-3, -3]"
+
+# Bench readings of checks/engine_scripts4.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench 11-09, CampScr4Border / Team / Clock. A scene's until is the old test's seconds + 1.
+
+[[reading]]
+bench_id = "engine_scripts4"
+id = "scripts4_off_the_border_nobody_fires_or_is_fired_on"
+scene = {build = "engine_scripts4", check = "border", until = 33}
+bench = "border: the west half from the start -- the pair across its edge (X) and the pair outside (Y) hold their fire till the whole map opens at 20 s, the pair inside (Z) fights; Y's Guardian lives on in its area (Y在 1) (bench 11-09)"
+proves = "sim Sim map border (SET_MAP_BORDER / open at 20 s): nobody fires at or from outside it"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = [
+    "by[18][:2] == [100, 100] and by[18][3] == 1 and by[9][2] < 100",
+    "by[30][0] < 100 and by[30][1] < 100",
+]
+
+[[reading]]
+bench_id = "engine_scripts4"
+id = "scripts4_team_stop_and_team_guard_area_as_the_bench"
+scene = {build = "engine_scripts4", check = "team", until = 31}
+bench = "team: TEAM_STOP 3 s into a 1400 move -- both stay in the middle; TEAM_GUARD_AREA -- both in the zone (bench 11-09)"
+proves = "sim Sim TEAM_STOP and TEAM_GUARD_AREA"
+expect = "vals(rows)[-1] == [0, 2, 0, 2]"
+
+[[reading]]
+bench_id = "engine_scripts4"
+id = "scripts4_a_hidden_countdown_runs_on"
+scene = {build = "engine_scripts4", check = "clock", until = 27}
+bench = "clock: the 20 s timer hidden at 8 and shown at 14 expires at 20 all the same (到点 1, bench s19) (bench 11-09)"
+proves = "sim Sim countdown timers: hiding the display does not stop the timer"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = "by[18] == [0] and by[24] == [1]"
+
+# Bench readings of checks/engine_scripts6.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The script machinery, no units (bench 11-09 switch / timers, both PASS).
+
+[[reading]]
+bench_id = "engine_scripts6"
+id = "scripts6_switches_and_subroutines_as_the_bench"
+scene = {build = "engine_scripts6", check = "switch", until = 21}
+bench = """\
+帧 15 a second, held at 151 from the 10 s DISABLE_SCRIPT till the 14 s ENABLE_SCRIPT; 开关 24 -> 26 -> 42 (an [off] \
+script, a once-script cut before / after its turn, a fired one re-armed); 自关 11 (actions after a script's own \
+DISABLE_SCRIPT run, NO_OP); 子程序 11 -> 21 (a once-sub runs once, a repeating sub per call, an [off] sub never) \
+(bench 11-09, PASS)"""
+proves = "sim script machinery: ENABLE / DISABLE_SCRIPT, once-scripts, scripts' own disable, subroutine calls"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = [
+    "by[11][0] == by[13][0] == 151 and by[15][0] == 166",
+    "by[1][1:] == [24, 11, 0] and by[3][1:] == [24, 11, 11] and by[5][1:] == [26, 11, 21]",
+    "by[19][1:] == [42, 11, 21]",
+]
+
+[[reading]]
+bench_id = "engine_scripts6"
+id = "scripts6_else_random_and_timers_as_the_bench"
+scene = {build = "engine_scripts6", check = "timers", until = 21}
+bench = """\
+否则 1 -> 11 -> 21 (a once-script's ELSE closes it; a called sub's ELSE); 随机 14 (SET_RANDOM_COUNTER 1..3 inclusive); \
+计时 1 (SET_TIMER 45 frames) -> 33 (COUNTER_COUNTER) -> 41 (COUNTER_SECONDS <=) -> 43 (SET_RANDOM_MSEC_TIMER 6..6 s) \
+-> 63 (COUNTER_SECONDS <, the 8..10 s timer) (bench 11-09, PASS)"""
+proves = "sim script machinery: ELSE, SET_RANDOM_COUNTER, SET_TIMER / SET_RANDOM_MSEC_TIMER and the timer conditions"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = [
+    "[by[k][0] for k in (1, 3, 19)] == [1, 11, 21]",
+    "by[19][1] == 14",
+    "by[3][2] == 1 and by[5][2] == 41 and by[7][2] == 43 and by[11][2] == 63",
+]
+
+[[reading]]
+bench_id = "engine_scripts6"
+id = "scripts6_a_random_timer_draws_frames_both_ends_in"
+item = "脚本动作 SET_RANDOM_TIMER"
+scene = {build = "engine_scripts6", check = "timers", until = 21}
+bench = "timers, run_queue 11-23 (head 68edbbbf, PASS): 随帧 14 from s1 to s21 (SET_RANDOM_TIMER(t, 1, 3) then STOP_TIMER every 0.5 s; a value v the timer holds adds 2^v once: 1, 2 and 3 seen, 0 and 4 never)"
+proves = "executor SET_RANDOM_TIMER: (timer, lo, hi) in frames, drawn at random with both ends in (seconds would hold 15..45, never 1..3); a stopped timer keeps the drawn value for COUNTER (j07's paradrop chance reads it so)"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = "by[19][3] == 14"   # when all three have come up is the draws' luck (the sim's seeded draws by 5 s)
+
+# Bench readings of checks/engine_scripts7.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Script conditions and actions, bench 2026-11-09.
+
+[[reading]]
+bench_id = "engine_scripts7"
+id = "scripts7_idle_for_frames_drops_the_order_as_the_bench"
+scene = {build = "engine_scripts7", check = "idle", until = 26}
+bench = """\
+idle: UNIT_IDLE_FOR_FRAMECOUNT 15 and 1 on a moving Guardian -- neither got to its goal (25 s), the control did (二到 1 \
+from s14): the order is dropped, as the seconds version's (bench 2026-11-09)"""
+proves = "sim UNIT_IDLE_FOR_FRAMECOUNT: an idle unit's order is dropped, as the seconds version's"
+expect = "vals(rows)[-1] == [0, 1, 0]"
+
+[[reading]]
+bench_id = "engine_scripts7"
+id = "scripts7_attack_move_leaves_a_beaten_enemy_as_the_bench"
+scene = {build = "engine_scripts7", check = "amove", until = 60}
+bench = "amove: the attack-mover leaves its enemy at 12 % and arrives at s38 (bench 2026-11-09)"
+proves = "sim attack-move: the mover leaves a beaten enemy (12 % left) and goes on, arriving at s38"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = "by[59][0] == 1 and by[59][2] > 0"
+mismatch = "sim kills the enemy (甲敌 0 at 28 s), 甲到 1 only from s42; bench: enemy left at 12 %, arrives s38"
+
+[[reading]]
+bench_id = "engine_scripts7"
+id = "scripts7_a_moving_tank_fires_as_it_drives_by_as_the_bench"
+scene = {build = "engine_scripts7", check = "amove", until = 60}
+bench = """\
+amove: MOVE_NAMED_UNIT_TO's tank hurt the enemy beside its lane as it drove by (乙敌 100 -> 60) and arrived (乙到 1 from \
+s23). (The hit sizes are engine line C's: not compared.) (bench 2026-11-09)"""
+proves = "sim MOVE_NAMED_UNIT_TO: a tank on a move order still fires at an enemy beside its lane"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = "by[59][1] == 1 and 0 < by[59][3] < 100"
+
+[[reading]]
+bench_id = "engine_scripts7"
+id = "scripts7_indestructible_stops_no_scripted_damage_as_the_bench"
+scene = {build = "engine_scripts7", check = "panel", until = 13}
+bench = """\
+panel: 甲血 乙血 丁血 58 58 58 after NAMED_DAMAGE 200 at 2 s (the UNIT- and the TEAM-flagged ones as the control), 16 16 \
+after another 200 at 8 s; 活着 15 -> 11 (NAMED_KILL of a flagged one) (bench 2026-11-09; 16 on the bench, 17 here: the \
+percent's rounding)"""
+proves = "sim indestructible flags: scripted damage (not a kill) stops at a flagged unit, the unit- and the team-flag alike"
+let = {by = "dict(zip(times, vals(rows)))", h1 = "by[11][0]", h2 = "by[11][1]", h4 = "by[11][2]", alive = "by[11][3]"}
+expect = [
+    "by[3] == [58, 58, 58, 15] and by[5][3] == 11",
+    "abs(h1 - 16) <= 1 and h2 == 58 and abs(h4 - 16) <= 1 and alive == 11",
+]
+
+[[reading]]
+bench_id = "engine_scripts7"
+id = "scripts7_object_lists_and_the_nearest_refs_as_the_bench"
+scene = {build = "engine_scripts7", check = "list", until = 11}
+bench = """\
+list: 列表 4 (an object list read as a type), 单类 1 (a type added twice counts once); 参考 1 (the named nearest, \
+SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_PLAYER), 无名参考 2 (the UNNAMED one skips it) from s5 (bench 2026-11-09)"""
+proves = "sim object lists and nearest-team refs: a list read as a type, a type added twice counts once, the named / unnamed nearest"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = "by[2][:2] == [4, 1] and by[9][1:] == [1, 1, 2]"
+
+[[reading]]
+bench_id = "engine_scripts7"
+id = "scripts7_a_type_added_to_a_list_later_as_the_bench"
+scene = {build = "engine_scripts7", check = "list", until = 11}
+bench = "list: a type added to an object list at 4 s is not counted (列表 stays 4) (bench 2026-11-09)"
+proves = "sim PLAYER_HAS_OBJECT_COMPARISON keeps its answer till the objects change (cond_object): a type added to its list later, with no object made, removed or killed, is not counted"
+let = {by = "dict(zip(times, vals(rows)))"}
+expect = "by[9][0] == 4"
+
+# Bench readings of checks/engine_scripts8.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Team scripts, bench 2026-11-09. The bench's seconds run 1-2 s ahead of the mission's timers: the simulator's
+# readings, in mission seconds, are asserted at most 2 s later than the bench's.
+
+[[reading]]
+bench_id = "engine_scripts8"
+id = "scripts8_team_delete_and_kill_take_every_member_as_the_bench"
+scene = {build = "engine_scripts8", check = "team", until = 10}
+bench = """\
+team: TEAM_DELETE Del and TEAM_KILL Kil at 2 s -- 活着 48 to the end (both crews gone at once, Liv whole), 甲死帧 1 (the \
+killed one NAMED_DYING a frame). Not held: 乙死帧 (bench 1, the deleted one dying a frame too; the simulator 0)"""
+proves = "sim TEAM_DELETE / TEAM_KILL: every member of the team goes at once"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)"}
+expect = "chg[-1][1]['活着'] == 48 and chg[-1][1]['甲死帧'] == 1 and at('活着', lambda v: v == 48) <= 4"
+
+[[reading]]
+bench_id = "engine_scripts8"
+id = "scripts8_idle_drops_the_move_as_the_bench"
+scene = {build = "engine_scripts8", check = "idle", until = 31}
+bench = """\
+idle: TEAM_IDLE_FOR_SECONDS 3 / _FRAMECOUNT 15 at 3 s drop the 1 s move order -- 到 100 (the control's) at s12, 200 from \
+s13, never 211 (the idled crews never arrive)"""
+proves = "sim TEAM_IDLE_FOR_SECONDS / _FRAMECOUNT: an idle team's move order is dropped, it never arrives"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)"}
+expect = [
+    "[r['到'] for t, r in chg] == [0, 100, 200]",
+    "12 <= at('到', lambda v: v == 100) <= 14 and 13 <= at('到', lambda v: v == 200) <= 15",
+]
+
+[[reading]]
+bench_id = "engine_scripts8"
+id = "scripts8_merge_moves_the_members_as_the_bench"
+scene = {build = "engine_scripts8", check = "merge", until = 31}
+bench = """\
+merge: TEAM_MERGE_INTO_TEAM at 1 s -- 合 1 at s11, 12 from s13 (the source's two took the target's order); 源 0 (an \
+order to the emptied source moves nobody)"""
+proves = "sim TEAM_MERGE_INTO_TEAM: the source's members take the target's order, the emptied source moves nobody"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)"}
+expect = [
+    "chg[-1][1]['合'] == 12 and chg[-1][1]['源'] == 0 and all(r['源'] == 0 for t, r in chg)",
+    "11 <= at('合', lambda v: v == 1) <= 13 and 13 <= at('合', lambda v: v == 12) <= 15",
+]
+
+[[reading]]
+bench_id = "engine_scripts8"
+id = "scripts8_spawn_on_team_at_the_object_as_the_bench"
+scene = {build = "engine_scripts8", check = "spawn", until = 7}
+bench = "spawn: UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION at 1 s -- 生 3 from s1"
+proves = "sim UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION: the team is made at the object's place at once"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)"}
+expect = "chg[-1][1]['生'] == 3 and at('生', lambda v: v == 3) <= 3"
+
+# Bench readings of checks/engine_scripts8b.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Team status and power scripts, bench 2026-11-09. The bench's seconds run 1-2 s ahead of the mission's timers: the
+# simulator's readings, in mission seconds, are asserted at most 2 s later than the bench's.
+
+[[reading]]
+bench_id = "engine_scripts8b"
+id = "scripts8b_team_status_holds_and_frees_the_fire_as_the_bench"
+scene = {build = "engine_scripts8b", check = "status", until = 21}
+bench = """\
+status: TEAM_CHANGE_OBJECT_STATUS NO_ATTACK holds the crew's fire to 10 s (甲敌 100 to s8), then 75 / 50 / 25 at s9 / s11 \
+/ s13 (12.5 a second); the control's enemy (乙敌) 87 at s1, down ~6 a second"""
+proves = "sim TEAM_CHANGE_OBJECT_STATUS: NO_ATTACK holds the crew's fire, freeing it lets the crew fire at its pace"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", at75 = "at('甲敌', lambda v: v <= 75)", at25 = "at('甲敌', lambda v: v <= 25)", down = "[(t, r['乙敌']) for t, r in chg if 0 < r['乙敌'] < 100]"}
+expect = [
+    "all(r['甲敌'] == 100 for t, r in chg if t <= 10)",
+    "10 <= at75 <= 12 and 3 <= at25 - at75 <= 5",
+    "5 <= (down[0][1] - down[-1][1]) / (down[-1][0] - down[0][0]) <= 8",
+]
+
+[[reading]]
+bench_id = "engine_scripts8b"
+id = "scripts8b_base_power_sets_the_supply_as_the_bench"
+scene = {build = "engine_scripts8b", check = "power", until = 11}
+bench = "power: PLAYER_SET_BASE_POWER (1000) at 2 s, (300) at 6 s -- 电级 4 then 3: it sets the supply, it does not add"
+proves = "sim PLAYER_SET_BASE_POWER: it sets the supply, it does not add"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)"}
+expect = [
+    "[r['电级'] for t, r in chg][-2:] == [4, 3]",
+    "at('电级', lambda v: v == 4) <= 4 and 6 <= at('电级', lambda v: v == 3) <= 8",
+]
+
+# Bench readings of checks/engine_scripts9.py (format: experimental/cnv/readings.py).
+
+[[reading]]
+bench_id = "engine_scripts9"
+id = "scripts9_remove_all_overrides_clears_the_teams_own_not_the_players"
+item = "脚本动作 TEAM_REMOVE_ALL_OVERRIDE_RELATIONS"
+scene = {build = "engine_scripts9b", check = "rmv", until = 20}
+bench = "11-23 CampP9bRmv_mcp_1123_113125: 甲 乙 丙 100 to s7; 丙 87 at s9, ~12 a second down, 12 from s20 (as rel's Enemy, same day PASS); 甲 乙 100 to s25; 丁 12 from s13"
+proves = "sim act_world TEAM_REMOVE_ALL_OVERRIDE_RELATIONS: only the team's overrides to teams (C) go; its override to a player (A) and a player's to it (B) stay"
+expect = [
+    "win(1, 8, '甲') == win(1, 8, '乙') == win(1, 8, '丙') == [100] * 8",
+    "rows[-1]['丙'] < 100 and rows[-1]['甲'] == rows[-1]['乙'] == 100",
+]
+
+[[reading]]
+bench_id = "engine_scripts9"
+id = "scripts9_player_overrides_take_no_alias"
+scenes = {ral = {build = "engine_scripts9b", check = "ral", until = 20}, ra1 = {build = "engine_scripts9b", check = "ra1", until = 20}}
+bench = "11-24 ral / ra1 (A348): 甲 乙 87 at s1, 50 at s7, 12 from s12 like 丁; 丙 100 to s8, 87 at s9, 12 at s21 (as rel)"
+proves = """sim act_world: TEAM_SET_OVERRIDE_RELATION_TO_PLAYER / PLAYER_SET_OVERRIDE_RELATION_TO_TEAM with an alias \
+("<1st Human Player's Allies incl Self>", retail s04's docks; "<1st Human Player>") set no override -- the team still \
+fires at the human from the start; the team-to-team one (C) as with a plain name"""
+expect = ["all(min(r['甲'] for r in s[:8]) < 100 and min(r['乙'] for r in s[:8]) < 100 for s in (ral, ra1))",
+          "all(min(r['丙'] for r in s[:8]) == 100 and s[-1]['丙'] < 100 for s in (ral, ra1))"]
+
+# Bench readings of checks/engine_seqstop.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_seqstop"
+id = "seqstop_clears_pending_scripts_keeps_move_and_accepts_fresh_script"
+scene = {build = "engine_seqstop", check = "a", until = 25}
+bench = """engine_seqstop:a (work/re/c_seqstop_report.md), 继续 / 停止 / 到达 / 逻辑帧: f43 1/1/0; f242 both at their goals \
+(3); f252 1/1/3; f282 111/1/3; f308 111/1001/3; f360 111/1001/3 (at(f) = the last row by f)"""
+proves = """sim UNIT_STOP_SEQUENTIAL_SCRIPT drops the unit's running and queued scripts (never +10, never +100) but not the \
+move a step gave (the stopped unit arrives too); a script given after the stop runs (+1000); the control unit's next \
+step waits for its arrival."""
+item = "脚本动作 UNIT_STOP_SEQUENTIAL_SCRIPT"
+let = {at = "lambda f: [v[:3] for v in vals(rows) if v[3] <= f][-1]", arrived = "next(v for v in vals(rows) if v[2] == 3)"}
+expect = [
+    "at(43) == [1, 1, 0]",
+    "arrived[:2] == [1, 1]",
+    "at(282) == [111, 1, 3] and at(308) == [111, 1001, 3] and at(360) == [111, 1001, 3]",
+]
+
+[[reading]]
+bench_id = "engine_seqstop"
+id = "seqteam_steps_wait_for_the_whole_group"
+scene = {build = "engine_seqteam", check = "t", until = 25}
+bench = """engine_seqteam:t, `run_queue` CampSeqTeamT_mcp_1121_194709 (A289), 走 / 停 / 位 / 逻辑帧: 走 1 till w1 is at WF \
+(位 57 at f125), 11 at f140, 1111 at f254 (the queued script right behind); L's +10 by f61 (位 16 -> 48: l1 killed \
+at f45)"""
+proves = """sim TEAM_EXECUTE_SEQUENTIAL_SCRIPT: the record on the team, a step waits till every living member of its \
+group is idle (w2 idle at once did not let +10 through), a member's death takes it out of the group; a second script \
+on the same team runs after the first; <This Team> is the team."""
+item = ["脚本动作 TEAM_EXECUTE_SEQUENTIAL_SCRIPT"]
+let = {walk = "[v for v in vals(rows) if v[0]]", first = "lambda pred: next(v for v in vals(rows) if pred(v))"}
+expect = [
+    "[k for j, k in enumerate(v[0] for v in walk) if j == 0 or walk[j - 1][0] != k] == [1, 11, 1111]",
+    "first(lambda v: v[0] == 11)[2] & 1 and all(v[0] == 1 for v in walk if v[3] < 120)",
+    "first(lambda v: v[2] & 32)[3] <= 75",
+]
+
+[[reading]]
+bench_id = "engine_seqstop"
+id = "seqteam_stop_drops_the_teams_scripts"
+scene = {build = "engine_seqteam", check = "t", until = 25}
+bench = """engine_seqteam:t (as above): 停 1 till 20 s, then 1001 (f304); s1 still reaches SF (位 8 from f125 on)"""
+proves = """sim TEAM_STOP_SEQUENTIAL_SCRIPT drops the team's running and queued scripts (never +10 / +100), not the move a \
+step gave; a script given after it runs."""
+item = ["脚本动作 TEAM_STOP_SEQUENTIAL_SCRIPT"]
+expect = [
+    "sorted({v[1] for v in vals(rows)} - {0}) == [1, 1001]",
+    "all(v[1] == 1 for v in vals(rows) if 30 < v[3] < 290) and vals(rows)[-1][2] & 8",
+]
+
+[[reading]]
+bench_id = "engine_seqstop"
+id = "seqteam_attack_move_keeps_the_teams_spread"
+scene = {build = "engine_seqteam", check = "t", until = 25}
+bench = """engine_seqteam:t (as above): after ATTACK_MOVE_TEAM_TO(<This Team>, W2) neither tank is in the 150 square at \
+W2 (位 56 from f219 on); w1 crossed it (58 at f173-203) and went on: the two kept their 600 spread round W2"""
+proves = """sim team move: the vehicles' spots keep the team's spread round the point (each drives the same ~600), \
+so they arrive together (simpath.formation_spots)"""
+expect = ["vals(rows)[-1][2] & 6 == 0", "245 <= next(v for v in vals(rows) if v[0] == 1111)[3] <= 265"]
+
+[[reading]]
+bench_id = "engine_seqstop"
+id = "seqguard_team_guard_and_idle_hold_the_teams_next_step"
+scene = {build = "engine_seqguard", check = "g", until = 21}
+bench = """engine_seqguard:g, `run_queue` CampSeqGuardG_mcp_1122_073359 (A302; A298's CampSeqGuard_mcp_1122_025013 read the \
+same 90 / 90 / 75 / 31), 守闲帧 = G's wait frames + 1000 x K's / 单帧 / 位: s1 29021 29 0, s5 90082 75 4, s6-s11 90090 75 7, \
+s13-s21 90090 75 31 -- TEAM_GUARD_FOR_SECONDS 6 and TEAM_IDLE_FOR_SECONDS 6 hold the next step 90 frames each, \
+UNIT_IDLE_FOR_SECONDS 5 (an integer) 75; both crews then reach their goals"""
+proves = """sim TEAM_GUARD_FOR_SECONDS is the team idle (A298 read): the team's sequential script waits n x 15 frames, as \
+TEAM_IDLE_FOR_SECONDS and the unit's UNIT_IDLE_FOR_SECONDS do (engine.orders.seq.wait); the move after the wait goes."""
+item = ["脚本动作 TEAM_GUARD_FOR_SECONDS"]
+expect = [
+    "vals(rows)[-1][:2] == [90090, 75]",
+    "vals(rows)[-1][2] == 31 and any(v[2] == 7 for v in vals(rows))",
+]
+
+[[reading]]
+bench_id = "engine_seqstop"
+id = "seqguard_team_face_turns_the_hulls_before_the_next_step"
+scene = {build = "engine_seqguard", check = "g", until = 21, shot_clock = true}
+bench = """engine_seqguard:g, CampSeqGuardG_mcp_1122_073359 (A302): crew G (two IFVs facing east) is given \
+TEAM_FACE_WAYPOINT to a waypoint west of it, crew K not; then both wait 90 and drive 600 east. 守闲帧 s1 29021: G's wait \
+began 8 frames after K's (the half turn, 360 deg/s); 行帧 = G's frames on the move + 1000 x K's, s14-s21 117123: G 123, \
+K 117 -- G turns back east before it drives"""
+proves = """sim TEAM_FACE_WAYPOINT turns each member's hull to the waypoint (act_order.team_face_waypoint: a face order, \
+locomotion.turn), and a sequential script's next step waits for the turn (engine.orders.seq.idle: a facing still to \
+reach is not idle). A face that turned nothing reads lag 1, G - K 0 (1122uu P2). Frame clock: on the coarse tick the 8 \
+frames are a tick's 15"""
+item = ["脚本动作 TEAM_FACE_WAYPOINT"]
+let = {lag = "next(v[0] // 1000 - v[0] % 1000 for v in vals(rows) if v[0] % 1000 and v[0] < 90000)", move = "vals(rows)[-1][3]"}
+expect = ["6 <= lag <= 10", "4 <= move % 1000 - move // 1000 <= 10"]
+
+# Bench readings of checks/engine_statusbits.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_statusbits"
+id = "test_status_bits_upgrade_the_heroic_grant_sets_weapon_upgraded_and_a_removal_clears_it"
+scene = {build = "engine_statusbits", check = "b", until = 20}
+bench = "bench engine_statusbits b s7-s41: 1 1 0 11 (s1-s6: 1 0 1 11)"
+proves = "StatusBitsUpgrade: the HEROIC grant sets WEAPON_UPGRADED_01 / _02 and a removal takes it back"
+expect = [
+  "[rows[-1][k] for k in ('英雄位', '晚位', '去位', '兵守位')] == [1, 1, 0, 11]",
+  "(rows[3]['晚位'], rows[3]['去位']) == (0, 1)",
+]
+
+[[reading]]
+bench_id = "engine_statusbits"
+id = "kingbits_the_three_weapon_bits_change_nothing_on_the_mecha_king"
+scene = {build = "engine_kingbits", check = "k", until = 20}
+bench = "CampKbitsK_mcp_1122_151844: 设血 平血 位 s1-s4 75 75 111 | s4-s6 50 50 111 | s7 50 25 | s7-s9 25 25 | s10 25 0 | s10-s21 0 0 111"
+proves = "WEAPON_UPGRADED_01 / 02 / 03 set on a JapanMechaKing read back (111) and its cuts are the same as an unset King's (no katana slot names a bit); a campaign unit outside the unit table reads its own weapons (units.fight)"
+item = ["脚本动作 UNIT_CHANGE_OBJECT_STATUS:WEAPON_UPGRADED_01", "脚本动作 UNIT_CHANGE_OBJECT_STATUS:WEAPON_UPGRADED_02",
+        "脚本动作 UNIT_CHANGE_OBJECT_STATUS:WEAPON_UPGRADED_03"]
+expect = [
+  "all(r['位'] == 111 for r in rows)",
+  "sorted({r['设血'] for r in rows}) == sorted({r['平血'] for r in rows}) and len({r['设血'] for r in rows}) >= 4",
+  "rows[-1]['设血'] == rows[-1]['平血'] == 0",
+]
+
+[[reading]]
+bench_id = "engine_statusbits"
+id = "kingbits_the_king_cuts_without_the_attack_order"
+scene = {build = "engine_kingbits", check = "k", until = 20}
+bench = "CampKbitsK_mcp_1122_183003 (A313, review xx #6): 设血 平血 令血 s1-s3 75 75 75 | s4 75 50 75 | s4-s6 50 50 50 | s7 50 25 50 | s7-s9 25 | s10 25 0 25 | s10-s21 0 0 0 -- the order lane's King, never told, cuts its NO_ATTACK target as the told ones do, from s1"
+proves = "the Mecha King takes the enemy beside it by itself (the readings above hold with or without the NAMED_ATTACK_NAMED at ORDER: it adds nothing)"
+expect = [
+  "sorted({r['令血'] for r in rows}) == sorted({r['设血'] for r in rows}) and rows[-1]['令血'] == 0",
+  "first('令血', lambda v: v < 100) <= first('设血', lambda v: v < 100)",
+]
+
+[[reading]]
+bench_id = "engine_statusbits"
+id = "kingbits_the_king_cuts_once_in_three_seconds"
+scene = {build = "engine_kingbits", check = "k", until = 20}
+bench = "CampKbitsK_mcp_1122_151844: 设血 75 at s1, 50 at s4, 25 at s7, 0 at s10 (2500 a cut, one cut each 3 s)"
+proves = "the Mecha King's three katana slots give one cut each FiringDuration (3 s), not one a slot"
+expect = "[r['设血'] for t, r in zip(times, rows) if round(t, 1) in (2.0, 5.0, 8.0)] == [75, 50, 25]"
+mismatch = """sim one cut a second (74 49 24 0 at s1-s4): each of the three WeaponSlotHierarchicalTurret katanas fires on \
+its own 3 s cycle; the game cuts with one at a time (INFERRED: the turrets at 0 / 120 / 240 degrees, only the one \
+facing the target swings). For line C (weapons)."""
+
+[[reading]]
+bench_id = "engine_statusbits"
+id = "statusbits_no_auto_acquire_holds_the_fire_till_told"
+item = "脚本动作 UNIT_CHANGE_OBJECT_STATUS:NO_AUTO_ACQUIRE"
+scene = {build = "engine_statusbits", check = "n", until = 15}
+bench = "11-22 A310 run_queue engine_statusbits n (CampSbitsN_mcp_1122_161412): 基准血 不找血 令血 位 s1: 47 100 100 1 | s2-s16: 47 100 47 1 -- the plain Mirage fires at its Tsunami by itself, the one given NO_AUTO_ACQUIRE never does, the one given it and told at 3 s fires then."
+proves = "NO_AUTO_ACQUIRE (a08's Mirage) stops a unit's own take (orders.target.picks and order.idle_chase), not a script's attack order; the bit reads back."
+expect = [
+  "all(r['不找血'] == 100 and r['位'] == 1 for r in rows)",
+  "rows[-1]['基准血'] < 100 and rows[-1]['令血'] < 100",
+  "first('令血', lambda v: v < 100) > first('基准血', lambda v: v < 100)",
+]
+
+[[reading]]
+bench_id = "engine_statusbits"
+id = "statusbits_clearing_can_attack_keeps_the_fire"
+item = "脚本动作 UNIT_CHANGE_OBJECT_STATUS:CAN_ATTACK"
+scene = {build = "engine_statusbits", check = "c", until = 15}
+bench = "A327 CampSbitsC_mcp_1123_125119: 基准血 无攻血 攻位 s1-s16: 47 47 0 -- the Mirage cleared of CAN_ATTACK at s0 fires at its Tsunami by itself as the plain one does; neither reads the bit."
+proves = "a unit does not carry the CAN_ATTACK status and clearing it stops nothing (a06 clears it on a Rushmore head with no weapon: no effect); the simulator only records the bit."
+expect = [
+  "all(r['无攻血'] == r['基准血'] and r['攻位'] == 0 for r in rows)",
+  "rows[-1]['基准血'] < 100",
+]
+
+# Bench readings of checks/engine_timer.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The timers paused and shifted: bench 2026-11-10 (the lines show a timer's frames left). The bench's seconds run 1-2 s
+# ahead of the mission's timers: the simulator's readings are asserted at most 2 s later.
+
+[[reading]]
+bench_id = "engine_timer"
+id = "timer_stop_holds_the_frames_and_a_stopped_timer_is_not_expired"
+scene = {build = "engine_timer", check = "stop", until = 19}
+bench = """\
+stop: 停表帧 120 to s3 (STOP_TIMER at 2 s holds it), 109 94 ... from s4 (RESTART_TIMER at 5 s), -1 and 停表到 1 from s12; \
+过期停 (E out at 2 s, stopped at 4 s) 1 to s2, 0 from s3 -- a stopped timer is no countdown, TIMER_EXPIRED false though \
+its frames are out. The old readout (running timers hidden) read 0 while P ran"""
+proves = "sim timers: STOP_TIMER holds the frames, RESTART_TIMER runs them on, a stopped timer is not expired"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", held = "[r['停表帧'] for t, r in chg if 2 <= t <= 4]", again = "at('停表帧', lambda v: 0 < v < 120)", out = "at('停表到', lambda v: v == 1)", gone = "[t for (t, v), (_, w) in zip(chg[1:], chg) if v['过期停'] == 0 and w['过期停'] == 1]"}
+expect = [
+    "held and all(x == 120 for x in held)",
+    "again is not None and 4 <= again <= 6",
+    "out is not None and 12 <= out <= 14 and rows[-1]['停表帧'] == -1 and rows[-1]['停表到'] == 1",
+    "gone and 3 <= gone[0] <= 5 and rows[-1]['过期停'] == 0",
+]
+
+[[reading]]
+bench_id = "engine_timer"
+id = "timer_sub_from_msec_takes_the_frames_off"
+scene = {build = "engine_timer", check = "shift", until = 13}
+bench = "shift: SUB_FROM_MSEC_TIMER 5 s at 2 s off a 10 s timer -- 减帧 32 17 3 at s1-3, out (-1, 减到 1) from s4"
+proves = "sim timers: SUB_FROM_MSEC_TIMER takes the frames off a running timer"
+let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)", out = "at('减到', lambda v: v == 1)"}
+expect = [
+    "out is not None and 4 <= out <= 6 and rows[-1]['减帧'] == -1 and rows[-1]['减到'] == 1",
+    "any(30 <= r['减帧'] <= 45 for t, r in chg if 2 <= t <= 3)",
+]

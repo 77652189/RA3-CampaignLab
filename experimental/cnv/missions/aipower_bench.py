@@ -10,7 +10,7 @@ Soviet) is a computer player with starting point 1 (InitialTechPoints), its pers
   aipwrg  CNVPowerG: X (30%) first, then Y (70%) -- where the draw falls: X iff draw / sum < 0.3
   aipwrh  CNVPowerH: X (10%) first, then Y (90%) -- X iff draw / sum < 0.1
 """
-from missions import scripts1_bench
+from benches.script.control.scenes import scripts1_mission
 from parts import Mission
 
 X = 'PlayerTech_Soviet_MagneticSatellite_Rank_1'
@@ -34,7 +34,7 @@ def personality_xml(pid, lines):
 
 
 def mission(name, pid=None, lines=()):
-    m = scripts1_bench.mission(name=name)
+    m = scripts1_mission(name=name)
     m.cnv_power = lines
     if pid:
         m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Soviet', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}

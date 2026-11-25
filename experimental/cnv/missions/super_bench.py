@@ -109,6 +109,5 @@ def mission(name='CampSuper', crews=False, most=False, yards=False):
     return m
 
 
-MISSION = {'engine_super': mission, 'engine_scripts8bs': lambda: mission('CampS8bS', True),   # checks/engine_scripts8b
-           'engine_scripts8bm': lambda: mission('CampS8bM', most=True),
+MISSION = {'engine_super': mission,
            'engine_protofx': lambda: mission('CampProFx', yards=True)}

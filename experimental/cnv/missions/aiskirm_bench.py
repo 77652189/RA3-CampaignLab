@@ -715,13 +715,6 @@ def mission(name='CampAISkirm', money=MONEY, jav=False, lib=True, expire=None, u
 
 # the builds this module makes (cnv/registry.py): build name -> mission factory
 MISSION = {'aiskirm': mission, 'aiskirmc': lambda: mission(observe=True),
-           'aibgate': lambda: mission('CampAIBGate'),  # A269: base construction gate on the AI (checks/engine_basegate.py)
-           # A270 (checks/engine_aistart.py): no library; woken by SKIRMISH_AI_START alone / by nothing at all
-           'aistart': lambda: mission('CampAIStart', lib=False, wake='start'),
-           'ainowake': lambda: mission('CampAINoWake', lib=False, wake=None),
-           'aistartx': lambda: mission('CampAIStartX', lib=False, wake='startx'),
-           'aixfer': lambda: mission('CampAIXfer', lib=False, wake='team'),
-           'aipause': lambda: mission('CampAIPause'),   # A270: PLAYER_TOGGLE_SKIRMISH_AI off / on mid-run
            'aiskxn': lambda: mission('CampAISkXN', carrier='name'),   # D 105: the carrier's rename alone
            'aiskxo': lambda: mission('CampAISkXO', carrier='ext'),    # D 105: ra3ext loaded, stock yard, no host
            'aiskirmlow': lambda: mission('CampAISkLow', money=15000),

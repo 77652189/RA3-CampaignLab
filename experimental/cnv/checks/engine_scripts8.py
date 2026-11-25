@@ -1,39 +1,6 @@
-"""Engine probe, inventory batch 3 (docs/engine/inventory.md, the heaviest script actions the simulator lacked):
-TEAM_DELETE / TEAM_KILL, TEAM_IDLE_FOR_SECONDS / TEAM_IDLE_FOR_FRAMECOUNT, TEAM_MERGE_INTO_TEAM,
-UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION. Mission here (build engine_scripts8) on maps/probe_border.py
-(level ground 5000 x 5000; every place absolute, the scenes >= 1000 apart where an enemy is). The rest of the batch
-(the team status, the base power, the player's superweapon cast and its availability) is checks/engine_scripts8b.py
-(the bench crashed at start on 11-09; measured the same evening).
-What the simulator (sim.py) predicts is in brackets.
-
-  team    the player's crews Del, Kil, Liv (two Guardians each, row y 1000); at 2 s TEAM_DELETE Del, TEAM_KILL Kil,
-          Liv the control (the DELETE_LIVING variant is not in script_catalog.json: not asked). 活着 = 1 / 2 Del's, 4 / 8
-          Kil's, 16 / 32 Liv's not destroyed; 甲死帧 / 乙死帧 = frames Kil 1 / Del 1 is NAMED_DYING [63 -> 51 at 2 s
-          -> 48 a frame later (Del's gone a frame after Kil's); 甲死帧 1, 乙死帧 0]
-  idle    crews Idl, Idf, Ctl (two Guardians each, y 2000 / 2200 / 2400) sent 1300 east (MOVE_TEAM_TO) at 1 s; at 3 s
-          TEAM_IDLE_FOR_SECONDS(Idl, 3), TEAM_IDLE_FOR_FRAMECOUNT(Idf, 15). 到 = Idl's at the goal x1 + Idf's x10 +
-          Ctl's x100 [200 from s15: the order dropped, as the unit versions (engine_scripts7 idle)]
-  merge   crews Src (2) and Dst (1); at 1 s TEAM_MERGE_INTO_TEAM(Src, Dst), at 2 s MOVE_TEAM_TO(Dst, goal M). Crews
-          Sr2 (2) and Ds2 (1); at 1 s TEAM_MERGE_INTO_TEAM(Sr2, Ds2), at 2 s MOVE_TEAM_TO(Sr2, goal N). 合 = in goal M:
-          Src's x1 + Dst's x10; 源 = in goal N: Sr2's x1 + Ds2's x10 [合 1 from s13, 12 from s15; 源 0: the source empty]
-  spawn   at 1 s UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION('... Spawned', Guardian, the player's team,
-          the player's Guardian 'anchor' at (3500, 3500)). 生 = 1 the spawned one not destroyed + 2 within 150 of the
-          anchor [3 from s1]
-
-读数 (bench 2026-11-09, run_queue engine_scripts8:*; the bench's seconds run ~1 s ahead of the timers):
-  team    活着 48 from s1 to the end (s9), 甲死帧 1, 乙死帧 1: TEAM_DELETE and TEAM_KILL take every member at once;
-          both the killed and the deleted one are NAMED_DYING for one frame. The first run asked 活着 63 at s1 (FAIL:
-          the bench's clock, not the game). The simulator: Del's gone a frame after Kil's, and a deleted one never
-          dying (乙死帧 0) -- a frame's difference, not fixed.
-  idle    PASS. 到 100 at s12 (the control's first), 200 from s13: TEAM_IDLE_FOR_SECONDS 3 and TEAM_IDLE_FOR_FRAMECOUNT
-          15 drop the move order (not a pause), as the unit versions. The simulator agrees.
-  merge   PASS. 合 1 at s11, 12 from s13; 源 0 all run: TEAM_MERGE_INTO_TEAM moves the source's members to the target
-          (they took the target's order); an order to the source afterwards moves nobody. The simulator agrees.
-  spawn   PASS. 生 3 from s1: UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION makes the named object at the
-          object's place (within 150). The simulator agrees.
-"""
+"""Scene and script helpers shared by the script, UI and other benches."""
 from maps import probe_border
-from parts import Mission, Script, Test, square
+from parts import Mission, Script
 
 TANK = 'AlliedAntiVehicleVehicleTech1'
 O = (1300.0, 4300.0)                            # probe_border's 'stop row': every place below is absolute
@@ -109,67 +76,3 @@ def frames(t, counter, label, cond):
 
 def watch(t, run, every=1.0):
     t.bench = [('bench_watch', dict(seconds=run, every=every, sheet=False, lines=len(t.counters)))]
-
-
-def _goal(t, m, part):
-    area = f'Test S8 {part.title()}'
-    t.areas[area] = square(*m.point(part), 150.0)
-    return area
-
-
-def team(m):
-    t = Test()
-    at(t, 'end', 2.0, [('TEAM_DELETE', m.teams['Del']), ('TEAM_KILL', m.teams['Kil'])])
-    names = [m.role(f'{c} {k}').name for c in TEAM_ROW for k in (1, 2)]
-    total(t, 'CNV_S8_Alive', '活着', [(2 ** k, ('NAMED_NOT_DESTROYED', n)) for k, n in enumerate(names)])
-    frames(t, 'CNV_S8_KDie', '甲死帧', [('NAMED_DYING', m.role('Kil 1').name)])
-    frames(t, 'CNV_S8_DDie', '乙死帧', [('NAMED_DYING', m.role('Del 1').name)])
-    t.expect += [('活着', RUN['team'] - 2, '==', 48)]        # the bench's seconds run ~1 s ahead: s1 already 48
-    watch(t, RUN['team'], 0.5)
-    return t
-
-
-def idle(m):
-    t = Test()
-    at(t, 'go', 1.0, [('MOVE_TEAM_TO', m.teams[c], m.mark(f'idle {c}')) for c in IDLE_ROW])
-    at(t, 'idle', 3.0, [('TEAM_IDLE_FOR_SECONDS', m.teams['Idl'], 3), ('TEAM_IDLE_FOR_FRAMECOUNT', m.teams['Idf'], 15)])
-    parts = []
-    for w, c in ((1, 'Idl'), (10, 'Idf'), (100, 'Ctl')):
-        area = _goal(t, m, f'idle {c}')
-        parts += [(w, ('NAMED_INSIDE_AREA', m.role(f'{c} {k}').name, area)) for k in (1, 2)]
-    total(t, 'CNV_S8_At', '到', parts)
-    t.expect += [('到', RUN['idle'] - 2, '>=', 200)]
-    watch(t, RUN['idle'])
-    return t
-
-
-def merge(m):
-    t = Test()
-    at(t, 'merge', 1.0, [('TEAM_MERGE_INTO_TEAM', m.teams['Src'], m.teams['Dst']),
-                         ('TEAM_MERGE_INTO_TEAM', m.teams['Sr2'], m.teams['Ds2'])])
-    at(t, 'go', 2.0, [('MOVE_TEAM_TO', m.teams['Dst'], m.mark('merge M')),
-                      ('MOVE_TEAM_TO', m.teams['Sr2'], m.mark('merge N'))])
-    for counter, label, goal, src, dst in (('CNV_S8_M', '合', 'merge M', 'Src', 'Dst'),
-                                           ('CNV_S8_N', '源', 'merge N', 'Sr2', 'Ds2')):
-        area = _goal(t, m, goal)
-        total(t, counter, label, [(1, ('NAMED_INSIDE_AREA', m.role(f'{src} {k}').name, area)) for k in (1, 2)]
-              + [(10, ('NAMED_INSIDE_AREA', m.role(f'{dst} 1').name, area))])
-    t.expect += [('合', RUN['merge'] - 2, '==', 12)]
-    watch(t, RUN['merge'])
-    return t
-
-
-def spawn(m):
-    t = Test()
-    at(t, 'spawn', 1.0, [('UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION', SPAWNED, TANK, m.team(),
-                          m.role('anchor').name)])
-    t.areas['Test S8 Anchor'] = square(*ANCHOR, 150.0)
-    total(t, 'CNV_S8_Spawn', '生', [(1, ('NAMED_NOT_DESTROYED', SPAWNED)),
-                                    (2, ('NAMED_INSIDE_AREA', SPAWNED, 'Test S8 Anchor'))])
-    t.expect += [('生', RUN['spawn'] - 2, '==', 3)]
-    watch(t, RUN['spawn'], 0.5)
-    return t
-
-
-MISSION = {'engine_scripts8': mission}
-CHECKS = {'engine_scripts8': {'team': team, 'idle': idle, 'merge': merge, 'spawn': spawn}}
