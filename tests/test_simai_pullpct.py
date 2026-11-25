@@ -1,5 +1,5 @@
 """The pullback facility rules on a built aipullpcthi world (white box). The threshold replays are readings:
-experimental/cnv/checks/engine_aipullpct.readings.toml."""
+experimental/cnv/benches/ai/tactics/readings.toml#engine_aipullpct."""
 from test_simai_bench_b import lib, pytestmark  # noqa: F401
 from test_simai_bench_b import simai_run
 from types import SimpleNamespace

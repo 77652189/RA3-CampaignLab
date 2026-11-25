@@ -163,7 +163,7 @@ def _arrivals(build_name):
 
 
 def test_bench_paceplaced_placed_tanks_and_warriors_sent_off_together_arrive_together():
-    """Bench 11-12 paceplaced (CampPacePlGo_mcp_1112_124725, checks/engine_pace_placed.py): the harbour's Tsunamis
+    """Bench 11-12 paceplaced (CampPacePlGo_mcp_1112_124725, benches/movement/pathing/checks.py#engine_pace_placed): the harbour's Tsunamis
     placed as their 67 % copies and the warriors, sent off at 30 s with 齐步: the last warrior in 5 s after the first
     tank (88 / 93). The simulator has them in within the same few seconds."""
     from benches.movement.pathing.checks import PACE_PLACED_BENCH as BENCH

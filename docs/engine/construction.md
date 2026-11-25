@@ -2,7 +2,7 @@
 
 引擎线第 45 轮（2026-11-05），ADR 0019 第二层。写法照 `script-semantics.md`：**测** = 测试台；**推断，未实测** = 只从资料推出来。
 
-探针 `experimental/cnv/checks/engine_build.py`（`cnv_check engine_build a` 到 `e`）。尼亚加拉图玩家基地摆建造场（+50 电）、电厂（+100）、三座兵营（各 −25），西边空地一辆基地车，旁边一辆敌方锤子坦克（开局禁止开火）。任务第 1 秒每个变体只做一件事，开局用脚本删掉不要的东西。四个计数器都从这一刻起**按帧累加**，所以读数就是帧数，不受测试台时钟影响。运行 `work/testbench/runs/CampBuildA_mcp_1105_214815`、`CampBuildB_mcp_1105_214016`、`CampBuildC_mcp_1105_214217`、`CampBuildD_mcp_1105_214416`、`CampBuildE_mcp_1105_214612`。
+探针 `experimental/cnv/benches/economy/construction/checks.py#engine_build`（`cnv_check engine_build a` 到 `e`）。尼亚加拉图玩家基地摆建造场（+50 电）、电厂（+100）、三座兵营（各 −25），西边空地一辆基地车，旁边一辆敌方锤子坦克（开局禁止开火）。任务第 1 秒每个变体只做一件事，开局用脚本删掉不要的东西。四个计数器都从这一刻起**按帧累加**，所以读数就是帧数，不受测试台时钟影响。运行 `work/testbench/runs/CampBuildA_mcp_1105_214815`、`CampBuildB_mcp_1105_214016`、`CampBuildC_mcp_1105_214217`、`CampBuildD_mcp_1105_214416`、`CampBuildE_mcp_1105_214612`。
 
 | 变体 | 做什么 | 电力 | 读数 |
 | --- | --- | --- | --- |
@@ -34,14 +34,14 @@
 - 建造场**不经过施工中**，一出来就算建好；`NewObjectUnpackTime` 2 秒只是展开动画。
 - 血量按比例继承：半血基地车（2500/5000）→ 半血建造场（2000/4000）。
 - 脚本名字跟着过去：之后用基地车的名字读到的是建造场。
-- 第 57 轮补测（`experimental/cnv/checks/engine_replace.py`）：
+- 第 57 轮补测（`experimental/cnv/benches/economy/construction/checks.py#engine_replace`）：
   - 上面的 6 帧只在"就地展开"时成立。展开点放在基地车东边 100 处（`cnv_check engine_replace f`，运行 `CampReplF_mcp_1106_133128`），基地车先开过去：一共在场 41 帧（不是 6 帧），最后 18 帧才挂"展开中"。所以等待时间来自"开到点上"这一步，不是固定延迟。模型没有移动，这一条是 strict xfail。
   - 基地车复制一份（`engine_replace_copy h`，运行 `CampReplCopyH_mcp_1106_133618`）：读数和原版基地车一样（6 帧）。
   - 新对象建不出来时，程序里旧对象照样删掉。测试台上造不出这种情况：展开目标写成一个不存在的名字（`engine_replace_bad g`），游戏在载入地图时就崩了（0xC0000005）。模型按程序写：记一条说明，旧对象删掉。
 
 ## 3b. 玩家放建筑：盟军造满再放，苏联先放后建边扣钱（测，第 46 轮）
 
-检查 `experimental/cnv/checks/engine_place.py` a～c（盟军发电厂 BuildTime 10 s、800、展开 3 s；苏联发电厂 BuildTime 0、800、展开 10 s）。放置那一下要手点：测试台默认在两次调用之间用 Esc 菜单暂停，那样点地图放不下去；`bench_start(hold=false)` 后点侧栏建筑页签、按钮、再点地图就能放。读数按"放下后第几帧"对，不按时钟。
+检查 `experimental/cnv/benches/economy/construction/checks.py#engine_place` a～c（盟军发电厂 BuildTime 10 s、800、展开 3 s；苏联发电厂 BuildTime 0、800、展开 10 s）。放置那一下要手点：测试台默认在两次调用之间用 Esc 菜单暂停，那样点地图放不下去；`bench_start(hold=false)` 后点侧栏建筑页签、按钮、再点地图就能放。读数按"放下后第几帧"对，不按时钟。
 
 - **盟军**：钱照生产的规则边造边扣，149 帧付清 800；造满后**停在队首**，不出建筑、不再扣钱，直到玩家点地图放下。放下后只挂"展开中"45 帧（3 s × 15），**不挂"施工中"**，一放下脚本就把它算作玩家拥有的建筑。
 - **苏联**：点按钮不扣钱，放下才开始；之后每帧付到 ceil(800 × 已展开帧 / 150)（单精度；展开第 k 帧时脚本读到的钱是付到第 k−1 帧的），展开 150 帧完的那帧正好付清。同样只挂"展开中"、放下即算拥有。

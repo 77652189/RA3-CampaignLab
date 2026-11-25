@@ -1,13 +1,13 @@
 """AIMicroManagerData.UpdateTime: the switch's on / off effect is the micro update period (D rounds 146 / 147).
 
-Bench aimicupft / aimicupst (missions/aimicro_bench.py, engine_aimicro:a; E102 runs CampMicObsFastA_mcp_1112_144315
+Bench aimicupft / aimicupst (benches/ai/tactics/scenes.py#aimicro_bench, engine_aimicro:a; E102 runs CampMicObsFastA_mcp_1112_144315
 / CampMicObsSlowA_mcp_1112_144547) differ only in the micro manager's UpdateTime (0.5 s / 4 s). Fixtures
 tests/fixtures/d_microclock/*_cmds.txt keep the AI's order lines (cmd:) minus the host's own. The micro update
 re-selects each member (0x1f5 by id) before it orders it, so the frames of those selects are the update beats:
 fast 376, 384, 392, 400, ... (all 8 apart or a multiple of 8), slow 405, 466, 527 (61 apart: a float32 sum of 1/15 a
 frame reaches 4.0 on the 61st frame, not round(4 x 15) = 60). The model (tactics.MicroData.update_frames) gives the
 same periods; the phase (bench first beat 376 / 405, model 394 / 391) and the first-charge frame stay INFERRED
-(mismatch readings in experimental/cnv/checks/engine_aimicro.readings.toml).
+(mismatch readings in experimental/cnv/benches/ai/tactics/readings.toml#engine_aimicro).
 """
 import importlib.util
 from pathlib import Path

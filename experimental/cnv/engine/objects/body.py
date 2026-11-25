@@ -174,7 +174,7 @@ class Life:
             world.reblock()
 
     def air_crash(self, world, b, ocl, death_blasts, ground_z, gone=False):
-        """Physics P5 (checks/engine_crash_fall.py): an aircraft killed in the air is gone at once and its airborne
+        """Physics P5 (benches/body_death/state/checks.py#engine_crash_fall): an aircraft killed in the air is gone at once and its airborne
         CreateObjectDie (engine/modules/createobjectdie.py: its list `ocl`, simunits.ocl_wrecks) makes a wreck
         LIKE_EXISTING with its velocity x the OCL's VelocityScale;
         a wreck that falls (KillWhenRestingOnGround) dies where it comes to rest (simunits.crash_frames: the fall's

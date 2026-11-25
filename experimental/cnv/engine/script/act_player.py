@@ -170,7 +170,7 @@ def skirmish_ai_set_enemy_player_priority(sim, name, a, script):
 
 def skirmish_ai_set_favored_enemy(sim, name, a, script):
     # (player, enemy): the enemy table emptied, then that enemy alone at score 10 (program, work/re
-    # a219_skirmish_transfer.md 2; bench checks/engine_aifav.py). (None, 0) = the clear: simai tells the
+    # a219_skirmish_transfer.md 2; bench benches/script/control/checks.py#engine_aifav). (None, 0) = the clear: simai tells the
     # model 'enemy priorities' 0 (asked of engine line B, work/re a220_favored_enemy.md)
     _priority(sim, a[0], (None, 0), (a[1], 10))
 

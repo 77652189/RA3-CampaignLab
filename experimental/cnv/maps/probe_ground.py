@@ -1,4 +1,4 @@
-"""A probe map for the engine line (checks/engine_terrain.py, docs/engine/terrain.md 3): flat ground, and on it four
+"""A probe map for the engine line (benches/movement/pathing/checks.py#engine_terrain, docs/engine/terrain.md 3): flat ground, and on it four
 pens -- a round floor 100 across its radius, a ring 60 wide round it -- that differ only in the ring:
 
   steep, unmarked   the ring is a wall 80 high (ours) rising 40 per cell, BlendTileData field 0 left off

@@ -1,4 +1,4 @@
-"""A probe map for the engine line's pathing tests (checks/engine_paths.py, docs/engine/pathing.md): flat ground
+"""A probe map for the engine line's pathing tests (benches/movement/pathing/checks.py#engine_paths, docs/engine/pathing.md): flat ground
 (tier 1), walls drawn with BlendTileData's field 0 (the one bit the game walks by: docs/engine/terrain.md 3).
 
   row A (y 300..1300)   'far' box: a wall across it with one gap at the far east end -- start and goal sit either

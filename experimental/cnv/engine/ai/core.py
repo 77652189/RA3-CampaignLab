@@ -1128,7 +1128,7 @@ class Brain:
         it stands the first frame it is within `distance` (Tactic.Distance) of the Expansion node, while the team's
         move order walks it on (Sim.order_unpack here=True, send=False); a walk that never brings it that close
         never unpacks. Done once an armed member is no longer armed (unpacked or dead) and none is left armed, or
-        when no member can unpack. Bench D round 156 (missions/aisimpleexp_bench.py aiexpb*): 400 -> unpack f995 at
+        when no member can unpack. Bench D round 156 (benches/ai/production/scenes.py#aisimpleexp_bench aiexpb*): 400 -> unpack f995 at
         397 from the node, 200 -> f1061 at 194, 50 -> the walk ends 98 away, no unpack to f1936. INFERRED: the done
         rule (the team is empty from f1070 on the bench, the miner replaced itself)."""
         if kind not in EXPANSIONS or thing is None:
@@ -2357,7 +2357,7 @@ class SimAI:
 
     def own_personalities(self):
         """The AI personalities the mission writes into its mod (Mission.assets, AIPersonalityDefinition:...) added to
-        the AI's data once, so a probe's own personality (missions/aistate_bench.py) is the one the brain runs."""
+        the AI's data once, so a probe's own personality (benches/ai/targets/scenes.py#aistate_bench) is the one the brain runs."""
         if getattr(self, '_own_done', False):
             return
         self._own_done = True
@@ -2367,9 +2367,9 @@ class SimAI:
                 if 'defense' in self.blocks:
                     self.data_of('tactic attrs').add_text(a[1])
                 if 'AITargetingHeuristic' in a[1] and 'targets' in self.blocks:    # a probe's own heuristic
-                    self.data_of('targets').add_text(a[1])                        # (missions/ainamed_bench.py)
+                    self.data_of('targets').add_text(a[1])                        # (benches/ai/targets/scenes.py#ainamed_bench)
                 if 'AIMicroManagerData' in a[1] and 'targets' in self.blocks:      # a probe's own micro manager
-                    self.data_of('tactics micro').add_text(a[1])                  # (missions/airetreat_bench.py)
+                    self.data_of('tactics micro').add_text(a[1])                  # (benches/ai/tactics/scenes.py#airetreat_bench)
                     self.data_of('micro').update(self.mod['micro'].load_micro(texts=[a[1]]))   # its unit powers'
                     #                                                              rounds too (aimicro_bench _spow_xml)
 

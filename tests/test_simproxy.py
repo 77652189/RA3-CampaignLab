@@ -38,7 +38,7 @@ def _after_scene(w, extra=0.0, demo_holds_fire=False):
 
 
 def test_a4_the_convoy_reaches_the_halt_alive_with_a_report(a4_run):
-    """simpath.HOLD_SPOTS on (the game's, bench 11-09 checks/engine_spots.py): the proxy's army stands apart, beats the
+    """simpath.HOLD_SPOTS on (the game's, bench 11-09 benches/movement/pathing/checks.py#engine_spots): the proxy's army stands apart, beats the
     venue's waves, and all three trucks halt alive (the harbour phase on). Then 北营 wants a base vehicle deployed and
     its command post razed: the proxy has no deploy or build (docs/story/handoff-phase4.md, A4 待办), so the run
     goes to the clock -- judged here is the first leg only.

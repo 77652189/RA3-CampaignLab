@@ -1,7 +1,7 @@
 """L2 path straightening (ADR 0029, docs/engine/sim-layers.md; R3 step X, re-derived on the bench, ADR 0032 item 5):
 a way found over a routing grid's cells (Ground.way / closest / within, below) to the straight legs a unit drives.
 
-The rule, from the bench (2026-11-17 `engine_pull ways`, checks/engine_pull.py; CNVProbe tracks read by
+The rule, from the bench (2026-11-17 `engine_pull ways`, benches/movement/pathing/checks.py#engine_pull; CNVProbe tracks read by
 work/re/scripts/x_pull.py): the shortest chain of straight legs through the way's cells, each leg crossing walkable
 cells only (`clear`) -- a taut string. Readings: on open ground a Guardian and a Peacekeeper sent 800 east, 300 north
 went one straight line (0.1 off it); sent round a field-0 wall's end, each went straight at the end (the tank 6.8 off
@@ -13,7 +13,7 @@ and 3 on the halt area's edges, 2026-11-09). Tests: tests/test_sim_pull.py.
 
 Also the goal's spot (`spot`, R3 step X second part): where on the grid a ground unit sent to a point stops, kept off
 the spots others hold. The rule, from the bench (2026-11-17 `engine_drop lanes`, `engine_dropring tens`,
-checks/engine_drop.py; read by work/re/scripts/x_drop.py), units of one kind sent one after another to one point:
+benches/movement/pathing/checks.py#engine_drop; read by work/re/scripts/x_drop.py), units of one kind sent one after another to one point:
   - the point is snapped to the 20-unit grid by the unit's footprint, n = floor(2 r / 20 + 0.3) cells (a Guardian 2,
     a Peacekeeper 1): an even one to the nearest cell corner, an odd one to the centre of the cell the point is in --
     the first one sent stops there with nobody about (Guardians at (3000, 2000) and (3013, 3007) at (3001, 2001) and
@@ -323,7 +323,7 @@ def block(starts, point):
     """Where each of a group of infantry sent to `point` as one team stands (the R3 step X third part), as unsnapped
     spots in the order of `starts` ((x, y) each); each is then a move's goal like any other (`spot`: snapped by the
     footprint). The rule, from the bench (2026-11-17 `engine_column lanes`, `engine_crowd big`, `engine_colgate two`,
-    checks/engine_column.py; read by work/re/scripts/x_column.py), Peacekeepers sent by one MOVE_TEAM_TO:
+    benches/movement/pathing/checks.py#engine_column; read by work/re/scripts/x_column.py), Peacekeepers sent by one MOVE_TEAM_TO:
       - any group of two or more, however near (two men, side by side or one behind the other, stood side by side 40
         apart; six sent 20 short of the point stood in the same block as six sent from 500);
       - ceil(sqrt(n)) files across (2, 3 -> 2, 6 -> 3, 10 -> 4, 16 -> 4), rows BLOCK back, files BLOCK apart, each row
@@ -386,7 +386,7 @@ SPREAD = 15     # a group member's offset from the middle is cut to this many ra
 
 
 HOLD_SPOTS = True              # every move's goal kept off other units' spots (claims): the game's (bench 11-09,
-                               # a01's two infantry; checks/engine_spots.py, three trucks sent alone to one point)
+                               # a01's two infantry; benches/movement/pathing/checks.py#engine_spots, three trucks sent alone to one point)
 BARS = {'GV_Ring02': {'length': 26.6892, 'thick': 5.32658, 'centres': True}}  # retail props in the way as their SDK box (Sim.blocks;
 # the long axis along the facing, bench 11-22 engine_block gr), not platprops' 40 round; INFERRED for other props
 ORE_PLATE = (60.0, 45.0)        # an ore node's base plate, half-extents (OreNode.xml's last BOX): goal_off_nodes
@@ -395,14 +395,14 @@ ORE_PLATE = (60.0, 45.0)        # an ore node's base plate, half-extents (OreNod
 def claims(world, b, skip=()):
     """The spots other mobile ground units hold (x, y, radius): where they are going, or where they stand; none for
     aircraft in the air or for `skip`; none unless HOLD_SPOTS. free_spot (simpath.spot) keeps a move's goal off
-    them (bench 2026-11-17 checks/engine_drop.py: allies sent one after another to one point stood in the rings'
+    them (bench 2026-11-17 benches/movement/pathing/checks.py#engine_drop: allies sent one after another to one point stood in the rings'
     order, each off every one before it -- all of them there already; that a goal is held while its unit is
     still on its way is from engine_spots 'same' below). Benched 11-09: the rule is the game's (a01, two
     infantry sent alone to one point stood ~22 apart),
     and the game's a4 gets all trucks to the 80-wide halt area (checks/a4.py hold PASS). The simulator's trucks
     2 and 3, their goals moved 30 aside, ran on grid rows 40 off the road's middle the whole way, on the halt
     area's edges, and drove past it: its ways were not pulled straight (Ground.pull since; now 2854,2479 and
-    2794,2521 at the halt at s315, like the switch off). On since bench 11-09 checks/engine_spots.py: three
+    2794,2521 at the halt at s315, like the switch off). On since bench 11-09 benches/movement/pathing/checks.py#engine_spots: three
     trucks on teams of their own sent to one point (at once, or 20 s apart) end one on it, two 10-80 off (the
     simulator 0 / 50 / 44.7). With it the a4 proxy's army stands apart, beats the second wave at x~1950 (off: all
     three trucks shot there at s232-240, lost at s248), the convoy halts alive, and the run goes to the clock:
@@ -414,7 +414,7 @@ def claims(world, b, skip=()):
     Whose spots: an ally's (own units too) goal always; an enemy's or a neutral's only where it stands still and b
     cannot crush it -- a moving enemy's goal and a crushable one's spot are b's to take (INFERRED: no bench sent a
     unit onto an enemy's spot yet; the crush case is aicrush1's, below). Until 11-11 every unit's spot was held:
-    aicrush1's first Crush move (checks/engine_aicrush.py, work/re/c_crush_path_report.md) had its goal, the
+    aicrush1's first Crush move (benches/ai/tactics/checks.py#engine_aicrush, work/re/c_crush_path_report.md) had its goal, the
     guard's own spot, moved 31.6 aside, and the tank drove past the guard it was sent over."""
     if b.surface == 'air' or not HOLD_SPOTS:
         return []
@@ -433,7 +433,7 @@ def claims(world, b, skip=()):
 def goal_off_nodes(world, b, want):
     """A ground move's goal whose footprint touches an ore node's: the nearest goal clear of every node, on the
     pathfinder's GRID cells (D round 176). The footprint is simpath.footprint, floor(2 r / GRID + 0.3) cells, an
-    even one round a cell corner, an odd one round a cell centre (bench 2026-11-17 checks/engine_drop.py: Guardians
+    even one round a cell corner, an odd one round a cell centre (bench 2026-11-17 benches/movement/pathing/checks.py#engine_drop: Guardians
     2 cells, Peacekeepers 1, snapped so); a node's is its base plate (OreNode.xml's 60 x 45 half-extent box, every other shape of it inside),
     turned with the node, and a cell touching it is shut. Bench aiexpb50n (only node 44 by the slot, D175): the
     miner sent to its slot (4215, 3039), 7 off the plate's edge, turned off its straight way 37 short and stood

@@ -320,7 +320,7 @@ def engine_inform_max():
 def engine_inform_probe():
     """Engine line D, round 35 (ADR 0027/0028): C line's InformTarget AI recipe with ra3ext's read-only probe on the miners.
 
-    engine_inform_ai.py (C line's check, not changed here) fires slow single shells with InformTargetNugget at AI miners
+    benches/weapon/target_effects/checks.py#engine_inform_ai (C line's check, not changed here) fires slow single shells with InformTargetNugget at AI miners
     (SovietMiner: TrackIncomingWeaponFireBehavior, self-defence look-ahead 2 s, fraction 0.2) and sees only when the
     armour goes up. This mission is the same one -- its mission() and check() are called as they are -- with two changes:
     the miners the scripts create are a copy CNV_InfoProbeMiner with one more module,
@@ -1011,7 +1011,7 @@ def engine_strip():
 def engine_suppress_probe():
     """Engine line D, round 21 (ADR 0027/0028): C line's suppression closure with ra3ext's read-only probe on the target.
 
-    engine_suppression.py (C line's check, not changed here) times how long a suppressed man takes through a gate; the
+    benches/weapon/target_effects/checks.py#engine_suppression (C line's check, not changed here) times how long a suppressed man takes through a gate; the
     bench shows only the result. This mission is the same one -- its mission() and check() are called as they are --
     with two changes: the ordinary men (AlliedAntiInfantryInfantry, every lane but 'low') are a copy CNV_SuppProbeMan
     with one more module, `<DeletionUpdate id="ModuleTag_CNVProbe" MinFrames=EVERY MaxFrames=LINES/>`, and the mission is

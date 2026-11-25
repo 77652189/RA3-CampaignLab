@@ -1,7 +1,7 @@
 """The conyard diagnostic's private original archive; distance semantics remain unverified.
 
 Measured eligibility gate: work/re/c_conyard_report.md. The simulator replay is a reading
-(checks/engine_aiconyard.readings.toml), not acceptance of the conyard distance or its time exemption.
+(benches/ai/targets/readings.toml#engine_aiconyard), not acceptance of the conyard distance or its time exemption.
 """
 import importlib.util
 import json

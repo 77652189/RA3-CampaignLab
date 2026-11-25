@@ -1,6 +1,6 @@
 """齐步: a force of mixed speeds that arrives together (docs/engine/pathing.md 5, user 2026-11-04 "成群移动按最低速度前进").
 A script cannot start the player's formation move (it only runs for units already in a formation), so the compiler does
-it the way the bench showed to work (checks/engine_pace.py, `pace`: IFV and engineer at the goal in the same second):
+it the way the bench showed to work (benches/movement/pathing/checks.py#engine_pace, `pace`: IFV and engineer at the goal in the same second):
 every faster unit of the force carries an upgrade whose SPEED modifier is slowest / own, granted when it is made and taken
 away when it arrives (plan.py `齐步`; contract.pace_released holds every grant to a release).
 

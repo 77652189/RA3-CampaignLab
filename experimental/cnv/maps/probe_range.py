@@ -1,4 +1,4 @@
-"""A probe map for the engine line's range tests (checks/engine_range.py, docs/engine/upgrades.md): flat open ground
+"""A probe map for the engine line's range tests (benches/weapon/firing/checks.py#engine_range, docs/engine/upgrades.md): flat open ground
 (tier 1), no walls. Six lanes, each a turret's pad and a line of target spots north of it (`<lane> gun`, `<lane> at
 <d>`: d world units from the gun), the lanes 1 500 apart (a gun reaching 600 never sees another lane's targets), and
 a row of power plant pads between the two rows of lanes (base defences are POWERED). The player's start (1250, 2500)
@@ -30,7 +30,7 @@ for _lane, (_x, _y) in LANES.items():
     SITES[f'{_lane} gun'] = Site(_x, _y, 60.0, f'the {_lane} lane\'s turret')
     for _d in DISTANCES[_lane]:
         SITES[f'{_lane} at {_d:g}'] = Site(_x, _y + _d, 20.0, f'a target {_d:g} north of the {_lane} turret')
-# pace lanes (checks/engine_pace.py): open ground west to east between the two rows of guns, 1 500 long, with two
+# pace lanes (benches/movement/pathing/checks.py#engine_pace): open ground west to east between the two rows of guns, 1 500 long, with two
 # leg points on the way (500, 1 000 from the start)
 PACE = {'pace': 1200.0, 'legs': 1500.0, 'guard': 1800.0}
 PACE_X = (500.0, 2000.0)

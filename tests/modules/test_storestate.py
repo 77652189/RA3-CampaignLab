@@ -1,5 +1,5 @@
 """The StoreCurrentStateUpdate module (engine/modules/storestate.py, E223): its thing's place and health every SleepTime,
-the oldest kept MaxTime + SPAN frames back -- where Tanya's time belt takes her. On the bench: checks/engine_storestate_e.py
+the oldest kept MaxTime + SPAN frames back -- where Tanya's time belt takes her. On the bench: benches/body_death/state/checks.py#engine_storestate_e
 (the belt's press itself: its readings, tests/conformance)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import engine.testing.small as simsmall  # noqa: E402

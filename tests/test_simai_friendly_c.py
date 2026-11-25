@@ -18,7 +18,7 @@ pytestmark = pytest.mark.skipif(not simai.available(), reason='no ra3model.ai')
 @pytest.mark.parametrize('build,frame,target', [('aifrnear', 478, 'UNIT - Friendly MCV'),
                                          ('aifrswap', 486, 'UNIT - Friendly second')])
 def test_friendly_distance_target(build, frame, target):
-    """engine_aifrdistance a: replay the observed tactical target at s30 (the MCV counters: checks/engine_aifrdistance.readings.toml)."""
+    """engine_aifrdistance a: replay the observed tactical target at s30 (the MCV counters: benches/ai/targets/readings.toml#engine_aifrdistance)."""
     w = simai_run.run(build, 'a', (frame + 1) / 15, lib=simai.model()['xmldata'].Library())
     targets = {b._name(r.target) for b in w.brains.values()
                for r in b.tactics.runs.values() if r.target is not None}

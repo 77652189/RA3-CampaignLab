@@ -55,4 +55,4 @@
 - 高度加成（VisionBonusPercentPerFoot）原版几乎没人用，没测。
 - 飞机悬在低处上空时，揭雾的高度基准是脚下地面格，还是把飞机自身高度算进去，没测。这和"空军无视地形"的经验可能矛盾，要做空军关卡时再测。
 
-探针 `experimental/cnv/checks/engine_vision.py`（`cnv_check engine_vision height / reshroud / resh0 / resh1 / resh5 / resh10`），运行名写在探针的 docstring 里。
+探针 `experimental/cnv/benches/map/fixtures/checks.py#engine_vision`（`cnv_check engine_vision height / reshroud / resh0 / resh1 / resh5 / resh10`），运行名写在探针的 docstring 里。

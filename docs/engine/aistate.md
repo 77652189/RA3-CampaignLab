@@ -2,7 +2,7 @@
 
 引擎线 B 第 7～8 轮（2026-11-06），ADR 0019 第四层（遭遇战 AI）第二块。写法照 `script-semantics.md`：**测** = 测试台；**推断，未实测** = 只从资料推出来。
 
-探针 `experimental/cnv/checks/engine_aistate.py`（任务 `missions/aistate_bench.py`，各个 build 都跑检查 `a`）用的是尼亚加拉图，敌方是盟军 AI，人格继承 `AlliedCoopBasePersonality`，把继承来的 24 个状态全删掉，只留两个：
+探针 `experimental/cnv/benches/ai/targets/checks.py#engine_aistate`（任务 `benches/ai/targets/scenes.py#aistate_bench`，各个 build 都跑检查 `a`）用的是尼亚加拉图，敌方是盟军 AI，人格继承 `AlliedCoopBasePersonality`，把继承来的 24 个状态全删掉，只留两个：
 - `CNVStateInf`：派 2～4 个维和步兵；
 - `CNVStateTank`：派 2～4 个守护者坦克。
 
@@ -39,7 +39,7 @@
 
 ## 战力优势开关（PowerAdvantageHeuristic）
 
-引擎线 B 第 77 轮（2026-11-09）。探针 `checks/engine_aipoweradv.py`（任务 `missions/aipoweradv_bench.py`）：同上的图和 AI，人格只留一个状态，启发条件 `PowerAdvantageHeuristic Value="1" Above="true"`、两边都不算防御建筑，派 2～8 辆守护者打 750 外的玩家电厂。玩家的坦克停在自家基地不动，两边不交火。
+引擎线 B 第 77 轮（2026-11-09）。探针 `benches/ai/production/checks.py#engine_aipoweradv`（任务 `benches/ai/production/scenes.py#aipoweradv_bench`）：同上的图和 AI，人格只留一个状态，启发条件 `PowerAdvantageHeuristic Value="1" Above="true"`、两边都不算防御建筑，派 2～8 辆守护者打 750 外的玩家电厂。玩家的坦克停在自家基地不动，两边不交火。
 
 程序里的算法（读到）：力量优势 = 敌人杀光我方要的时间 ÷ 我方杀光敌人要的时间，按**模板满血**算，不看现在剩多少血；敌人什么都打不了我（时间封顶）时直接算"占优"。同样的兵，比值 = （我方数 ÷ 敌方数）²。
 
@@ -50,11 +50,11 @@
 | `aipadvh` | 4 | 只有一辆矿车 | 出门（敌人没有能打的单位 → 占优） |
 | `aipadvc` | 4 | 8 辆守护者，状态换成常开 | 出门——对照：`aipadv1` 不动是战力判断挡的，不是别的原因 |
 
-给关卡线：用这个条件的 AI 状态**数的是双方整支军队**（不是附近的），玩家在家里囤兵也会让 AI 不出门；玩家只有矿车等不能打的单位时，AI 一定判自己占优。模拟器 `simai.Brain.power_advantage` 四组都对上（`checks/engine_aipoweradv.readings.toml power_advantage_gates_the_state_as_on_the_bench`）。没测：`Above="false"`、Value 不是 1、算上防御建筑、多个敌人时看哪一个。
+给关卡线：用这个条件的 AI 状态**数的是双方整支军队**（不是附近的），玩家在家里囤兵也会让 AI 不出门；玩家只有矿车等不能打的单位时，AI 一定判自己占优。模拟器 `simai.Brain.power_advantage` 四组都对上（`benches/ai/production/readings.toml#engine_aipoweradv power_advantage_gates_the_state_as_on_the_bench`）。没测：`Above="false"`、Value 不是 1、算上防御建筑、多个敌人时看哪一个。
 
 ## 队伍招谁（TeamTemplate 的筛选）
 
-引擎线 B 第 78 轮（2026-11-09）。探针 `checks/engine_aiteamfilter.py`（任务 `missions/aiteamfilter_bench.py`）：同上的图和 AI，家里 4 辆守护者 + 4 个维和步兵，一个常开状态派一队（MinUnits 1）打 750 外的玩家电厂，每个 build 只换队伍模板的筛选。看第 40 秒谁还在家。
+引擎线 B 第 78 轮（2026-11-09）。探针 `benches/ai/tactics/checks.py#engine_aiteamfilter`（任务 `benches/ai/tactics/scenes.py#aiteamfilter_bench`）：同上的图和 AI，家里 4 辆守护者 + 4 个维和步兵，一个常开状态派一队（MinUnits 1）打 750 外的玩家电厂，每个 build 只换队伍模板的筛选。看第 40 秒谁还在家。
 
 | build | 筛选 | 出门的（测） |
 | --- | --- | --- |
@@ -70,7 +70,7 @@
 - 按种类：`IncludeKindOf` 只收带这个种类的，`ExcludeKindOf` 把带这个种类的排掉。写了几个 IncludeKindOf 时是"有一个就行"还是"都得有"，这次只写一个，没分出来。
 - `MaxUnits` 是一队的人数上限；同一个目标只派一队（`MaxTargets` 1），所以多出来的兵留在家里。
 - 筛选自己的种类（11-23，`aitfoki` / `aitfokt` / `aitfoke` / `aitfokn`）：`Rule="ANY" Include="INFANTRY"` 只派维和；再加 IncludeThing 守护者两种都派（名单先放行，再按种类）；`Rule="ALL" Exclude="INFANTRY"` 只派守护者；`Rule="NONE" Include="INFANTRY"` 也只派维和——NONE 和 ANY 一样（原先按 D61 推断 NONE 什么都不放）。模拟器四组对上（同一读数文件 `the_filters_kinds_take_whom_the_bench_sent`）。
-- 模型原先把 NONE 当"不筛"，台上否了，已改（私有 `ai/teams.py`）；模拟器六组都对上（`checks/engine_aiteamfilter.readings.toml team_filters_take_whom_the_bench_sent`）。
+- 模型原先把 NONE 当"不筛"，台上否了，已改（私有 `ai/teams.py`）；模拟器六组都对上（`benches/ai/tactics/readings.toml#engine_aiteamfilter team_filters_take_whom_the_bench_sent`）。
 
 ### 移动方式和对象集（第 81 轮）
 
@@ -87,11 +87,11 @@
 
 给关卡线（测）：
 - 想让海军队伍也带上两栖单位，要写 `WATER AMPHIBIOUS`（原版就这么写）；只写 WATER 不收两栖的。
-- `RegisteredObjectSet` 也是一道筛选：INFANTRY 只收步兵、VEHICLES 只收车。模型原先没用它，已补（私有 `ai/teams.py`；AIRCRAFT、HARVESTERS 按名字推断，没量）；模拟器六组对上（`checks/engine_aiteamfilter.readings.toml locomotor_types_and_object_sets_take_whom_the_bench_sent`）。"普通作战单位"那组晚 6 秒的原因没查，模拟器没做。
+- `RegisteredObjectSet` 也是一道筛选：INFANTRY 只收步兵、VEHICLES 只收车。模型原先没用它，已补（私有 `ai/teams.py`；AIRCRAFT、HARVESTERS 按名字推断，没量）；模拟器六组对上（`benches/ai/tactics/readings.toml#engine_aiteamfilter locomotor_types_and_object_sets_take_whom_the_bench_sent`）。"普通作战单位"那组晚 6 秒的原因没查，模拟器没做。
 
 ### 两队抢兵和 MinPowerAdvantage（第 82 轮）
 
-两个常开状态抢同一批 4 辆守护者：P 打电厂（ClosestStructure，单独跑时 s13 就有目标）、B 打兵营（单独跑 s19 才有目标）。探针 `missions/aitargetpick_bench.py` aitppr*，读数在 `checks/engine_aitargetpick.py`。
+两个常开状态抢同一批 4 辆守护者：P 打电厂（ClosestStructure，单独跑时 s13 就有目标）、B 打兵营（单独跑 s19 才有目标）。探针 `benches/ai/targets/scenes.py#aitargetpick_bench` aitppr*，读数在 `benches/ai/targets/checks.py#engine_aitargetpick`。
 
 | build | P / B 的队伍 Priority | 去哪（测） |
 | --- | --- | --- |
@@ -100,17 +100,17 @@
 | `aitpprl` | LOW / STANDARD | 同上 |
 | `aitpprp` | HIGH / STANDARD | 4 辆全去电厂（s12 出门） |
 
-队伍 `MinPowerAdvantage`（探针 `missions/aipoweradv_bench.py` aipadm*，状态常开）：8 对 4 写 1.0、4 对 8 写 1.0、8 对 4 写 5.0，**三组都照常出门**——它不拦队伍（模型本来就只解析不用；它管什么没找到）。
+队伍 `MinPowerAdvantage`（探针 `benches/ai/production/scenes.py#aipoweradv_bench` aipadm*，状态常开）：8 对 4 写 1.0、4 对 8 写 1.0、8 对 4 写 5.0，**三组都照常出门**——它不拦队伍（模型本来就只解析不用；它管什么没找到）。
 
 给关卡线（测）：
 - 两个状态抢同一批兵时，**队伍 Priority 高的那队拿走全部**；一样高时归后写的那个状态（B），哪怕它的目标晚找到——不是"先找到目标的先招"。一样高时是按写的顺序还是抽签没分开。
-- 优先级只是个数，程序只比大小（严格大于才抢）：`DEFAULT < DEFENSE < LOW < STANDARD < DEFENSE_HIGH < HIGH < COOP < SCRIPTED < HOTSPOT`。COOP（11-23，`aicoophi` / `aicoopsc`，`checks/engine_aiteamfields.readings.toml`）：从 HIGH 的守队抢得走，从 SCRIPTED 的抢不走；模拟器对上。DEFENSE_HIGH（11-24，`aidefhst` / `aidefhhi`）：从 STANDARD 抢得走，从 HIGH 抢不走；模拟器对上。
+- 优先级只是个数，程序只比大小（严格大于才抢）：`DEFAULT < DEFENSE < LOW < STANDARD < DEFENSE_HIGH < HIGH < COOP < SCRIPTED < HOTSPOT`。COOP（11-23，`aicoophi` / `aicoopsc`，`benches/ai/tactics/readings.toml#engine_aiteamfields`）：从 HIGH 的守队抢得走，从 SCRIPTED 的抢不走；模拟器对上。DEFENSE_HIGH（11-24，`aidefhst` / `aidefhhi`）：从 STANDARD 抢得走，从 HIGH 抢不走；模拟器对上。
 - 想让 AI 留着兵等优势再出门，别靠队伍的 MinPowerAdvantage，用状态的 PowerAdvantageHeuristic（见上"战力优势开关"）。
-- 模拟器：HIGH 对 STANDARD 那组对上；另三组模拟器给"全去电厂"，对不上（AI 战术队可被招走以后 aitpprh / aitpprl 两组也对上，只剩平局 aitpprs 对不上：`checks/engine_aitargetpick.readings.toml team_priority_as_on_the_bench_on_a_tie` 标 mismatch）。
+- 模拟器：HIGH 对 STANDARD 那组对上；另三组模拟器给"全去电厂"，对不上（AI 战术队可被招走以后 aitpprh / aitpprl 两组也对上，只剩平局 aitpprs 对不上：`benches/ai/targets/readings.toml#engine_aitargetpick team_priority_as_on_the_bench_on_a_tie` 标 mismatch）。
 
 ## 启发条件：定时、间隔、敌人在旁、某物存在（第 83 轮）
 
-探针 `missions/aipoweradv_bench.py` aih*（AI 4 辆守护者、玩家没兵，状态门换成一条启发条件），读数在 `checks/engine_aipoweradv.py`。全部 PASS。
+探针 `benches/ai/production/scenes.py#aipoweradv_bench` aih*（AI 4 辆守护者、玩家没兵，状态门换成一条启发条件），读数在 `benches/ai/production/checks.py#engine_aipoweradv`。全部 PASS。
 
 | 条件 | 写法 | 台上 |
 | --- | --- | --- |
@@ -125,11 +125,11 @@
 给关卡线（测）：
 - 定时类全按读法：Timer 从开局或唤醒算、EndTime 是开着的时长；Interval 先等再开。
 - `ObjectOfTypeExists` 看的是 ObjectFilter 的 Relationship（原版用 ENEMIES 看玩家有没有某建筑），ALLIES 包括 AI 自己。
-- 模拟器：前三种对上（`checks/engine_aipoweradv.readings.toml condition_heuristics_gate_the_state_as_on_the_bench`）；ObjectOfTypeExists 按 Relationship 取哪些玩家的东西（SAME_PLAYER 自己、ALLIES 自己 + 盟友、ENEMIES 敌人、NEUTRAL 中立；不写 = 全算，推断，原版没有不写的），五组都对上（`checks/engine_aipoweradv.readings.toml object_of_type_exists_counts_the_relationship_as_on_the_bench`）。
+- 模拟器：前三种对上（`benches/ai/production/readings.toml#engine_aipoweradv condition_heuristics_gate_the_state_as_on_the_bench`）；ObjectOfTypeExists 按 Relationship 取哪些玩家的东西（SAME_PLAYER 自己、ALLIES 自己 + 盟友、ENEMIES 敌人、NEUTRAL 中立；不写 = 全算，推断，原版没有不写的），五组都对上（`benches/ai/production/readings.toml#engine_aipoweradv object_of_type_exists_counts_the_relationship_as_on_the_bench`）。
 
 ## 按难度挂的状态（StrategicState 的 Difficulty）
 
-引擎线 B 第 79 轮（2026-11-09）。探针 `checks/engine_aidiff.py`（任务 `missions/aidiff_bench.py`）：同上的图和 AI，家里 4 辆守护者 + 4 个维和，两个常开状态，一个挂 `Difficulty="MEDIUM"`、一个挂 `Difficulty="EASY HARD BRUTAL"`，各只招一种兵；玩家放两座电厂（一个目标只给一个状态，两队都能走）。另用三条各只开一个难度位的任务脚本把战役难度写进计数器。
+引擎线 B 第 79 轮（2026-11-09）。探针 `benches/ai/tactics/checks.py#engine_aidiff`（任务 `benches/ai/tactics/scenes.py#aidiff_bench`）：同上的图和 AI，家里 4 辆守护者 + 4 个维和，两个常开状态，一个挂 `Difficulty="MEDIUM"`、一个挂 `Difficulty="EASY HARD BRUTAL"`，各只招一种兵；玩家放两座电厂（一个目标只给一个状态，两队都能走）。另用三条各只开一个难度位的任务脚本把战役难度写进计数器。
 
 | build | 守护者那个状态挂 | 维和那个状态挂 | 战役难度 | 出门的（测） |
 | --- | --- | --- | --- | --- |
@@ -139,7 +139,7 @@
 给关卡线（测）：
 - **战役"普通"难度下，地图里的遭遇战 AI 按 MEDIUM 跑**；没挂 MEDIUM 的状态根本不跑。测试台走菜单进的是普通难度。
 - 想让敌人在不同难度下做不同的事，就在人格里给同一个状态挂不同难度的版本（原版 `LandDefense` HARD BRUTAL、`LandDefense_MEDIUM`、`LandDefense_EASY` 就这么写）。
-- 简单、困难两档对应 EASY / HARD 是推断（测试台只走普通）；模拟器（simai 的 DIFFICULTY）按这个对应，两组都对上（`checks/engine_aidiff.readings.toml only_the_states_listed_for_the_difficulty_run`）。
+- 简单、困难两档对应 EASY / HARD 是推断（测试台只走普通）；模拟器（simai 的 DIFFICULTY）按这个对应，两组都对上（`benches/ai/tactics/readings.toml#engine_aidiff only_the_states_listed_for_the_difficulty_run`）。
 
 ## 没测的
 

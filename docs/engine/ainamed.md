@@ -4,7 +4,7 @@
 
 原版战役让 AI 打指定的东西，几乎全靠两类目标启发：`NamedObject`（145 条，143 条是战役的 `AITarget_*`）和 `Waypoint`（94 条，92 条战役）。每条只写 `Name`（物件的脚本名 / 路点名），有时加 `Relationship`、`Location`、`RequireUniqueTarget`。
 
-探针 `experimental/cnv/checks/engine_ainamed.py`（任务 `missions/ainamed_bench.py`，用 `aitarget_bench` 的图：东门有座带两座炮塔的近电厂，AI 基地南边有座不设防的远电厂）：敌方一个常开状态，2～4 个维和步兵，`SimpleAttack`，打完 `RAMPAGE`，目标启发换成本探针自己写的一条。
+探针 `experimental/cnv/benches/ai/targets/checks.py#engine_ainamed`（任务 `benches/ai/targets/scenes.py#ainamed_bench`，用 `aitarget_bench` 的图：东门有座带两座炮塔的近电厂，AI 基地南边有座不设防的远电厂）：敌方一个常开状态，2～4 个维和步兵，`SimpleAttack`，打完 `RAMPAGE`，目标启发换成本探针自己写的一条。
 
 ## 给关卡线的结论
 

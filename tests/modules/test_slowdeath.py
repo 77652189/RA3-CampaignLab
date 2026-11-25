@@ -1,7 +1,7 @@
 """The SlowDeath module (engine/modules/slowdeath.py, step B5a): its delay read from the block, the body's `lies` the
 first block naming no death types, a death its DieMuxData takes lying it out (NAMED_DYING; E228), the port
 a commented-out block not read (the port merges as the SDK compiler, which reads no XML comments) and the body's
-fields in the frame record where they were. On the bench: checks/engine_crush.py (a crushed conscript lay 127 frames)."""
+fields in the frame record where they were. On the bench: benches/body_death/state/checks.py#engine_crush (a crushed conscript lay 127 frames)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simrecord  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402

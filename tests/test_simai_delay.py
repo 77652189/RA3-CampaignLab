@@ -1,5 +1,5 @@
 """MaximumDelay pair: the probe's micro data as the map compiler takes it, and the micro manager's upper endpoint.
-The bench's script counters are readings: experimental/cnv/checks/engine_aidelay.readings.toml."""
+The bench's script counters are readings: experimental/cnv/benches/ai/tactics/readings.toml#engine_aidelay."""
 import xml.etree.ElementTree as ET
 import pytest
 

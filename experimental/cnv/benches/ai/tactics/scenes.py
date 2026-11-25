@@ -95,7 +95,7 @@ def aialphahp_bench():
 
 def aibasedef_bench():
     """Engine probe: the skirmish AI team's EnterBaseDefenses (engine line B, layer 4; read back by
-    checks/engine_aibasedef.py; program: work/re l4_micro_engage.md 1.7 -- the turret-order routine, called in team states 2 / 4 / 5 with
+    benches/ai/tactics/checks.py#engine_aibasedef; program: work/re l4_micro_engage.md 1.7 -- the turret-order routine, called in team states 2 / 4 / 5 with
     the AI player's object list of class 0x2e; state 8 only with EnterBaseDefensesWhenIdle).
 
     Retail data: AlliedBaseDefense (the Multigunner turret; KindOf FS_BASE_DEFENSE GARRISONABLE_UNTIL_DESTROYED) carries a
@@ -372,7 +372,7 @@ def aicreate_bench():
 @cache
 def aicrush_bench():
     """Engine probe: the skirmish AI team's Crush and CrushPreference (engine line B, layer 4; read back by
-    checks/engine_aicrush.py; program: work/re l4_micro_engage.md 1.5 -- the crush routine: Crush on and (seconds to reach the
+    benches/ai/tactics/checks.py#engine_aicrush; program: work/re l4_micro_engage.md 1.5 -- the crush routine: Crush on and (seconds to reach the
     target) < CrushPreference x (...time to kill it by gun) -> drive over it, else shoot).
 
     airetreat_bench's airet0 (12 of the player's Peacekeepers round the far plant, RetreatPowerAdvantage 0) with the AI's
@@ -437,10 +437,10 @@ def aicrush_bench():
 @cache
 def aidefense_bench():
     """Engine probe: the skirmish AI's StaticDefense tactic -- the Distance circle and the pull-back (read back by
-    checks/engine_aidefense.py; engine line B).
+    benches/ai/tactics/checks.py#engine_aidefense; engine line B).
 
     The enemy (s1, Allied) runs a personality of this probe's own: the Allied co-op base with every inherited strategic
-    state removed (as aistate_bench.py) and one state, always on (ConstantHeuristic, MaxTargets 1), whose target is
+    state removed (as benches/ai/targets/scenes.py#aistate_bench) and one state, always on (ConstantHeuristic, MaxTargets 1), whose target is
     FriendlyLandStructureHeuristic (the retail BalancedDefense pick) and whose tactic is
       StaticDefense EndBehavior="DISBAND" Distance=D UpdateTime=U CombatLeashSlack=S UseAestheticsManager="false"
     with a team of 2-4 Peacekeepers. s1 owns one structure, its yard at 'east base' (the thing to defend), and four
@@ -459,7 +459,7 @@ def aidefense_bench():
       aidefslack  D=250, CombatLeashSlack 3.0
     Round 62 (the push must not take the Peacekeepers out of the AI's team, so the mission gives no move): the four start
     START_FAR (700) from the yard toward the gate -- outside every ring but the 900 one -- so the team's own attack-move to
-    the yard is the control (the team formed and defends); at mission second PUSH_AT (55) checks/engine_aidefense.py
+    the yard is the control (the team formed and defends); at mission second PUSH_AT (55) benches/ai/tactics/checks.py#engine_aidefense
     moves them out to FAR itself, with no UNIT_SET_TEAM:
       aidefctl    D=250, U=1 s: UNIT_TELEPORT_TO_WAYPOINT FAR, one by one
       aidefctl4   D=250, U=4 s: the same teleport
@@ -707,7 +707,7 @@ def aidelay_bench():
 
 def aidiff_bench():
     """Engine probe: a personality's <StrategicState Difficulty=...> -- does the AI run only the states listed for its
-    difficulty, and which difficulty does an AI player of a campaign map get (read back by checks/engine_aidiff.py;
+    difficulty, and which difficulty does an AI player of a campaign map get (read back by benches/ai/tactics/checks.py#engine_aidiff;
     private ai/data.py Personality.of / ai/states.py StrategicStates, simai's DIFFICULTY map: campaign normal -> MEDIUM).
 
     aiteamfilter_bench's set-up (Niagara, the enemy s1 Allied with a yard and no money, every inherited strategic state
@@ -909,7 +909,7 @@ def aifallback_bench():
 @cache
 def aigarrison_bench():
     """Engine probe: the skirmish AI team's EnterGarrisons (engine line B, layer 4; read back by
-    checks/engine_aigarrison.py; program: work/re l4_micro_engage.md 1.7 -- the turret-order routine, called in team states 2 / 4 / 5
+    benches/ai/tactics/checks.py#engine_aigarrison; program: work/re l4_micro_engage.md 1.7 -- the turret-order routine, called in team states 2 / 4 / 5
     only; model: RA3-EngineModel ra3model/ai/tactics.py, simai.Brain).
 
     airetreat_bench's airet0 (12 of the player's Peacekeepers round the far plant, RetreatPowerAdvantage 0: the team
@@ -959,7 +959,7 @@ def aigarrison_bench():
 
 def aihome_bench():
     """Engine probe: the personality's DefaultTacticHomeBaseCriteria -- which base a RETURN_HOME_AND_DISBAND team walks
-    home to (read back by checks/engine_aihome.py; engine line B round 201).
+    home to (read back by benches/ai/tactics/checks.py#engine_aihome; engine line B round 201).
 
     Two AI yards, both initial map objects placed one after the other (as C's aibs3 / aibn2 pairs): base A = the first
     at 'east base' (OLDEST_OF_TYPE), base B = the second NORTH north of it (MOST_RECENT_OF_TYPE), both MAIN_BASE.
@@ -973,7 +973,7 @@ def aihome_bench():
       aihmgnw  SortOrder PREFER_NEWEST,  PreferredNotBaseTypes CAPTURED                         -> B (SortOrder)
       aihmgno  SortOrder PREFER_CLOSEST, PreferredNotBaseTypes OLDEST_OF_TYPE                   -> B (PreferredNot)
 
-    aihomecl (bench 2026-11-14, checks/engine_aihome.py): aireactive_bench's ReactiveDefense team (4 Peacekeepers, the
+    aihomecl (bench 2026-11-14, benches/ai/tactics/checks.py#engine_aihome): aireactive_bench's ReactiveDefense team (4 Peacekeepers, the
     foe 1000 south of A, radius 1200) with the second yard -- the tactic has no TargetBaseCriteria; it guards B.
     """
     import resources
@@ -1088,7 +1088,7 @@ def aihome_bench():
 @cache
 def aimicro_bench():
     """Engine probe: when the skirmish AI's micro manager makes Imperial Warriors use their Bonzai charge (RUSH_ATTACK;
-    read back by checks/engine_aimicro.py; engine line B).
+    read back by benches/ai/tactics/checks.py#engine_aimicro; engine line B).
 
     The data (SDK LogicCommand Command_JapanAntiInfantryInfantryBonzai): AISpecialPowerInfo Heuristic RUSH_ATTACK,
     MICRO_MANAGER, TargetObjectInclude INFANTRY, HealthFraction 0.8, Distance 100, UseToCounterGarrison. The charge
@@ -1099,12 +1099,12 @@ def aimicro_bench():
     or the target within weapon range and < 100 away, 2D).
 
     The enemy (s1, Allied faction -- the micro manager reads the unit's command set, not the faction) runs a personality
-    of this probe's own, as aidefense_bench.py: the Allied co-op base with every inherited strategic state removed and one
+    of this probe's own, as benches/ai/tactics/scenes.py#aidefense_bench: the Allied co-op base with every inherited strategic state removed and one
     state, always on, StaticDefense of its yard (Distance 400, UseAestheticsManager false) with a team of exactly the two
     warriors and MicroManager = the build's (StandardMicroManager: UpdateTime 0.5 s, no delays; _MEDIUM: 2 s, team delay
     2..8 s after a fire). Two warriors stand 200 west of the s1 yard, 100 apart north-south, facing west; one player
     engineer (unarmed infantry; the check keeps it at full health) stands D west of each warrior (the other engineer is
-    >= 134 away). Money 0. The AI wakes at WAKE_AT (the retail wake set, as aispecial_bench.py).
+    >= 134 away). Money 0. The AI wakes at WAKE_AT (the retail wake set, as benches/ai/tactics/scenes.py#aispecial_bench).
     The warriors start as the player's (friends of the engineers, nothing fights) and are handed to s1 at HAND_AT, one
     second after the wake: the program registers a unit's AISpecialPowerInfo only when it is made or changes hands while
     the AI brain is not paused (work/re l4_specials.md), and aimicpre -- the warriors s1's from the start, the
@@ -1117,7 +1117,7 @@ def aimicro_bench():
       aimichurt   D = 140, StandardMicroManager, the warriors at 70 % health from the start (health < 0.8: fires)
       aimicmade   D = 90,  StandardMicroManager, no warriors placed: the script creates them on s1's team at HAND_AT
                   (the AI awake) -- does a unit made after the wake charge where the handed-over ones did not?
-      aimichunt   as aimicmade, but the team's tactic is a Targetless Hunt (as aistate_bench.py aihunt) instead of
+      aimichunt   as aimicmade, but the team's tactic is a Targetless Hunt (as benches/ai/targets/scenes.py#aistate_bench aihunt) instead of
                   StaticDefense: does the micro manager run only under some tactics? (no: never recruited, see aitoggle)
       aimicxfer   as aimicmade, the script runs UNIT_AI_TRANSFER_ALL again right after making them (work/re
                   l4_micro_gate.md: the recruiters refuse units on teamSoviet_1; the wake's transfer saw only the units then)
@@ -1125,7 +1125,7 @@ def aimicro_bench():
       aimicbuilt  no warriors placed: the AI builds them itself (round 19) -- s1 owns a Japanese barracks (JapanBarracks)
                   400 south of its yard and a power plant 400 north; an opening move of this probe's own (OPENER: a
                   deposit of 1000 to PRODUCTION, then two warriors; the build state AlliedNeededUnits removed, retail
-                  budgets kept, as aitower_bench.py), money BUILT_MONEY at the wake. The units are unnamed: the check
+                  budgets kept, as benches/ai/production/scenes.py#aitower_bench), money BUILT_MONEY at the wake. The units are unnamed: the check
                   counts them by player (template owned, objects with the charge status). Two player conscripts (kept at
                   full health) stand 400 south of the barracks and attack-move to it once s1 owns two warriors (the
                   warriors get hurt: under 0.8 health the model fires whatever the distance). l4_micro_gate.md: the
@@ -1169,7 +1169,7 @@ def aimicro_bench():
 
 
     def _state(micro, unit=WARRIOR, tactic='StaticDefense'):
-        """tactic 'Hunt' (round 18): the attacking control, as aistate_bench.py _hunt (Targetless, no target heuristic)."""
+        """tactic 'Hunt' (round 18): the attacking control, as benches/ai/targets/scenes.py#aistate_bench _hunt (Targetless, no target heuristic)."""
         head = HUNT_HEAD if tactic == 'Hunt' else DEFEND_HEAD
         return head + (
             f"""      <TeamTemplate MinUnits="2" MaxUnits="2" IncludeKindOf="CAN_ATTACK" ExcludeKindOf="IGNORES_SELECT_ALL HARVESTER"\n"""
@@ -1193,7 +1193,7 @@ def aimicro_bench():
 
 
     def _opener(unit, n=2):
-        # as aitower_bench.py (retail AIOpener_A08_AlliedSpecialForces): a deposit, the builds; the Time order ends it
+        # as benches/ai/production/scenes.py#aitower_bench (retail AIOpener_A08_AlliedSpecialForces): a deposit, the builds; the Time order ends it
         return [f'  <SkirmishOpeningMove id="{OPENER}" Side="PlayerTemplate:Allies">',
                 f'    <Order Time="0s" Account="PRODUCTION" Deposit="{OPENER_DEPOSIT}" />',
                 *[f'    <Order Build="{unit}" />'] * n, '    <Order Time="90s"/>', '  </SkirmishOpeningMove>']
@@ -1332,7 +1332,7 @@ def aimicro_bench():
         them off (the check counts them home round the barracks); no conscripts. foes (default: not Hunt) puts the
         conscripts in (aimicbuiltf: Hunt and conscripts -- recruited, with something to fight). spow (round 113,
         aimicspon / aimicspoff): the team's micro manager is SPOW_ID with UseSpecialPowers = spow; engage (round 115,
-        aimicengoff): its EngageHostileTargets. unit / factory (aidelay_bench.py toggle builds): what the opener builds
+        aimicengoff): its EngageHostileTargets. unit / factory (benches/ai/tactics/scenes.py#aidelay_bench toggle builds): what the opener builds
         and the team takes instead of the warriors, and where from. foe: what stands in for the two conscripts."""
         hunt = tactic == 'Hunt'
         foes = not hunt if foes is None else foes
@@ -1640,7 +1640,7 @@ def aiorders_bench():
     Every frame the module hashes the AI brain's order registry and, when it changed (and every EVERY frames), logs each
     order (vtable, template id, state, kind, whether its id is in the UnitBuilder's vector) to the run folder's
     ra3ext.log. Question (B handoff 148, D 76): is the order that takes CNVNewPK past its SpecificUnitCap of 2 after ~s150
-    a UnitBuilder order? Its check is checks/engine_aiorders.py (aiskcap's y).
+    a UnitBuilder order? Its check is benches/ai/tactics/checks.py#engine_aiorders (aiskcap's y).
     """
     import dataclasses
     import os
@@ -1765,7 +1765,7 @@ def aipassive_distance_bench():
 
 def aipathcheck_bench():
     """Engine line D round 152: AIStrategicStateDefinition.PathfindingCheckType (24 retail uses, 23 of them None; read
-    back by checks/engine_aipathcheck.py; RA3-EngineModel ra3model/ai/tactics.py _path_check).
+    back by benches/ai/tactics/checks.py#engine_aipathcheck; RA3-EngineModel ra3model/ai/tactics.py _path_check).
 
     The program (work/re d62_b_fields.md 1): the tactic's periodic check, once its teams are idle, puts every ground
     member with no way to the target (QuickDoesPathExist) or to a spot in its weapon's reach (QuickDoesAttackPathExist)
@@ -1826,7 +1826,7 @@ def aipathcheck_bench():
 @cache
 def aipullback_bench():
     """Engine probe: the skirmish AI team's PullbackInjured and ReverseMove (engine line B, layer 4; read back by
-    checks/engine_aipullback.py; model: an injured member (health ratio < PullbackInjuredHealthPct, MEDIUM 0.35) leaves the
+    benches/ai/tactics/checks.py#engine_aipullback; model: an injured member (health ratio < PullbackInjuredHealthPct, MEDIUM 0.35) leaves the
     team for the AI's nearest VehicleRepairFacility (ArmyDefAllied: AlliedWarFactory); a member whose distance d to its
     target is 0 < d < longest range - 10 backs up to range - 10 from it, staying in the team).
 
@@ -1952,7 +1952,7 @@ def aipullback_bench():
         'aipull1':lambda: mission('CampAIPull1', factory=True),
         'aipull0': lambda: mission('CampAIPull0', factory=True, PullbackInjured='false'),
         # the first aipull1 run: no tank went home (a tank shot down from 35 % in under one 2 s micro update?) -- so the
-        # check's script sets the tanks to HURT % at HURT_AT, on the road, before the fight (checks/engine_aipullback.py)
+        # check's script sets the tanks to HURT % at HURT_AT, on the road, before the fight (benches/ai/tactics/checks.py#engine_aipullback)
         'aipullh1': lambda: mission('CampAIPullH1', factory=True),
         'aipullh0': lambda: mission('CampAIPullH0', factory=True, PullbackInjured='false'),
         # aipullh1 too: no tank went home -- the same with the AI's own faction's tank (an Allied AI, Soviet Hammers)
@@ -2057,7 +2057,7 @@ def aipullpct_bench():
 @cache
 def aireactive_bench():
     """Engine probe: the skirmish AI's ReactiveDefense tactic and the personality's ReactiveDefenseRadius (read back by
-    checks/engine_aireactive.py; engine line B round 199).
+    benches/ai/tactics/checks.py#engine_aireactive; engine line B round 199).
 
     Same setup as aidefense_bench's non-far builds: s1 (Allied AI) owns its yard at 'east base' and four Peacekeepers
     beside it, the player has only its yard at 'base yard', s1's money is 0, the AI wakes at WAKE_AT (the retail wake
@@ -2217,7 +2217,7 @@ def airelease_bench():
 @cache
 def airetreat_bench():
     """Engine probe: the skirmish AI's team state (work/re/l4_states.md) -- retreat on a lost power advantage and the
-    EngagePassiveTargets switch (engine line B, layer 4; read back by checks/engine_airetreat.py; program: work/re
+    EngagePassiveTargets switch (engine line B, layer 4; read back by benches/ai/tactics/checks.py#engine_airetreat; program: work/re
     l4_micro_retreat.md, l4_micro_engage.md; model: RA3-EngineModel ra3model/ai/tactics.py TacticsBlock._team_state,
     simai.Brain.fight).
 
@@ -2382,9 +2382,9 @@ def aisort_bench():
 
 
 def aispecial_bench():
-    """Engine probe: when the skirmish AI fires its superweapon and at what (read back by checks/engine_aispecial.py).
+    """Engine probe: when the skirmish AI fires its superweapon and at what (read back by benches/ai/tactics/checks.py#engine_aispecial).
 
-    Same Niagara map as aiopen_bench.py. The enemy (s1) is Allied, AlliedBalanced, a construction yard and a power plant
+    Same Niagara map as benches/ai/production/scenes.py#aiopen_bench. The enemy (s1) is Allied, AlliedBalanced, a construction yard and a power plant
     at the east base plus an AlliedSuperWeaponAdvanced (the proton collider, SpecialPowerParticleCannon: PLAYER_AOE_ATTACK
     at STRUCTUREs only, not CONSTRUCTION_YARD / SUPER_WEAPON, MinTargetsHit 4; weapon ParticleCannonWeapon -> 400 damage,
     radius 250, taper 200, on the SDK's ParticleAcceleratorFinalWeapon). No money (0 all along), so the AI builds nothing.
@@ -2483,7 +2483,7 @@ def aispecial_bench():
 def aiswitch_bench():
     """Engine probe: the skirmish AI's script switches our levels send at its wake (plan.py 敌方AI: priorities 20, repairs
     and rebuild 0) -- SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES, SKIRMISH_AI_USE_REPAIRS, SKIRMISH_AI_USE_REBUILD_SYSTEM
-    (engine line B, layer 4; read back by checks/engine_aiswitch.py; program: work/re l4_aiswitches.md; model:
+    (engine line B, layer 4; read back by benches/ai/tactics/checks.py#engine_aiswitch; program: work/re l4_aiswitches.md; model:
     RA3-EngineModel ra3model/ai/player.py set_enemy_priorities / repairs / use_rebuild, simai.Brain.switches).
 
     The map, AI and the player's structures are aitarget_bench's (one always-on state sends 2-4 Peacekeepers by
@@ -2612,7 +2612,7 @@ def aitactical_bench():
 @cache
 def aiteamfields_bench():
     """Engine line D round 148: three team / tactic fields the retail campaign uses and no bench had (work/re
-    d130_untouched_census.md section 2; read back by checks/engine_aiteamfields.py). Each pair differs in that one field;
+    d130_untouched_census.md section 2; read back by benches/ai/tactics/checks.py#engine_aiteamfields). Each pair differs in that one field;
     every build carries a passive CNVTeams host (aiteams_bench.host_unit; airelease's own in aihot*) for the team states and members.
 
     Tactic.GatherWaypoint (SimpleAttack only; 22 retail tactics in 7 levels) -- ainamed_bench's ainmfar (2-4 Peacekeepers
@@ -2721,7 +2721,7 @@ def aiteamfields_bench():
 @cache
 def aiteamfilter_bench():
     """Engine probe: which of the AI's units a team template takes -- ObjectFilter Rule ANY / ALL / NONE with IncludeThing
-    / ExcludeThing, TeamTemplate IncludeKindOf / ExcludeKindOf, MaxUnits (read back by checks/engine_aiteamfilter.py;
+    / ExcludeThing, TeamTemplate IncludeKindOf / ExcludeKindOf, MaxUnits (read back by benches/ai/tactics/checks.py#engine_aiteamfilter;
     private ai/teams.py fits() / Team.full, simai through it).
 
     aipoweradv_bench's set-up (Niagara, the enemy s1 Allied with a yard and no money, every inherited strategic state
@@ -2982,7 +2982,7 @@ def aiteams_bench():
     """Engine line D round 68: aicreate_bench's aicr3 plus one object of the AI's own, a copy of the Allied power plant
     with ra3ext's CNVTeams module (`<DeletionUpdate id="ModuleTag_CNVTeams" .../>`; a structure without CAN_ATTACK, so
     no team takes it), built with ext=True. Every EVERY frames the module logs the host owner's teams to the run folder's
-    ra3ext.log (read by experimental/cnv/teamlog.py). Its check is checks/engine_aiteams.py.
+    ra3ext.log (read by experimental/cnv/teamlog.py). Its check is benches/ai/tactics/checks.py#engine_aiteams.
     """
     import os
 
@@ -3023,7 +3023,7 @@ def aiteams_bench():
 
 def aitoggle_bench():
     """Engine probe: when the skirmish AI's micro manager raises and lowers the Peacekeepers' riot shield (TOGGLE,
-    TOGGLE_DEFENSE_SELF_ONLY; read back by checks/engine_aitoggle.py; engine line B).
+    TOGGLE_DEFENSE_SELF_ONLY; read back by benches/ai/tactics/checks.py#engine_aitoggle; engine line B).
 
     The data (SDK AlliedAntiInfantryInfantry): SpecialPower_ToggleRiotShield, two toggle states, TOGGLE_DEFAULT then
     TOGGLE_DEFENSE_SELF_ONLY with DontUseIfInRange; shield on = ObjectStatus GENERIC_TOGGLE_STATE (the check reads it with
@@ -3031,7 +3031,7 @@ def aitoggle_bench():
     DontUseIfInRange) its own target is not in its range; off on the same test negated, no hysteresis -- off the next micro
     round after nobody targets it. The model: RA3-EngineModel ra3model/ai/micro.py toggle / self_defence.
 
-    The enemy s1 runs the same one-state personality as aimicro_bench.py (StaticDefense of its yard, team of exactly two
+    The enemy s1 runs the same one-state personality as benches/ai/tactics/scenes.py#aimicro_bench (StaticDefense of its yard, team of exactly two
     Peacekeepers, StandardMicroManager: UpdateTime 0.5 s). The Peacekeepers stand 200 west of the s1 yard, 100 apart.
     The attacker is a player Twinblade (SovietAntiGroundAircraft, gun 150): a Peacekeeper's shotgun cannot hit the air
     (AntiMask ANTI_GROUND ...), so it has no target of its own in range and DontUseIfInRange never blocks the shield.
@@ -3040,7 +3040,7 @@ def aitoggle_bench():
     The Peacekeepers must be known to the AI as units with powers (l4_specials.md: registered when made or
     changed hands with the AI awake; yet aimicro's hand-over 1 s after the wake did not make the warriors charge), so
     two builds:
-      aitogglehand  the Peacekeepers start as the player's, handed to s1 at GIVE_AT (as aimicro_bench.py)
+      aitogglehand  the Peacekeepers start as the player's, handed to s1 at GIVE_AT (as benches/ai/tactics/scenes.py#aimicro_bench)
       aitogglemade  none placed: the script creates them on s1's team at GIVE_AT
       aitogglehunt  as aitogglemade, the team's tactic a Targetless Hunt instead of StaticDefense (round 18: does the micro
                     manager run only under some tactics? the Peacekeepers walk off towards the player; the Twinblade follows)
@@ -3088,7 +3088,7 @@ def aitoggle_bench():
         m.waypoint('ai base', base, 'east base')
         give = ([('CREATE_NAMED_ON_TEAM_AT_WAYPOINT', n, PK, m.team('s1'), m.mark(f'peacekeeper {k + 1} spot'))
                  for k, n in enumerate(pks)] if made else [('NAMED_TRANSFER_OWNERSHIP_PLAYER', n, s1) for n in pks])
-        give += [('UNIT_AI_TRANSFER_ALL', s1, 1)] if xfer else []   # round 18: as aimicro_bench.py xfer
+        give += [('UNIT_AI_TRANSFER_ALL', s1, 1)] if xfer else []   # round 18: as benches/ai/tactics/scenes.py#aimicro_bench xfer
         m.scripts += [
             Script('CNV AI - Start', [], [('PLAYER_SET_MONEY', s1, 0), ('SET_MILLISECOND_TIMER', 'CNV AI Wake', WAKE_AT),
                                           ('SET_MILLISECOND_TIMER', 'CNV AI Give', GIVE_AT),
@@ -3112,11 +3112,11 @@ def aitoggle_bench():
 
 
     def built(name, tactic='StaticDefense'):
-        """aitogglebuilt (round 19): the AI builds the two Peacekeepers itself (aimicro_bench.py built_base: an opening
+        """aitogglebuilt (round 19): the AI builds the two Peacekeepers itself (benches/ai/tactics/scenes.py#aimicro_bench built_base: an opening
         move, an Allied barracks 400 south of the yard). The units are unnamed: the check counts by player. Once s1 owns
         two, the barracks is deleted (nothing but the Peacekeepers for the gunship to hit near there); at BUILT_ATTACK_AT
         the gunship is made 300 south of the barracks spot and attack-moves to it; deleted at BUILT_STOP_AT.
-        tactic 'Hunt' (aitogglebltf, round 20, as aimicro_bench.py aimicbuiltf): a Targetless Hunt team recruits them and
+        tactic 'Hunt' (aitogglebltf, round 20, as benches/ai/tactics/scenes.py#aimicro_bench aimicbuiltf): a Targetless Hunt team recruits them and
         walks them off; once s1 owns two, all three of s1's structures are deleted and HUNT_DELAY later the gunship is
         made at the barracks spot and HUNTs (TEAM_HUNT) -- the Peacekeepers are the only thing of s1's left to aim at.
         (Bench 11-07: TEAM_HUNT at s70 never hit them; attack-move at the moment of two owned killed both by s41 with no

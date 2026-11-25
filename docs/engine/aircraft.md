@@ -1,6 +1,6 @@
 # 飞机：飞行、对空、对地
 
-引擎线 A 第 88 轮（2026-11-08），ADR 0022 第 ⑤ 项。**测** = 测试台读数；**推断** = 没上测试台。探针 `cnv_check engine_air <变体>`（任务 `missions/air_bench.py`，探针图 `maps/probe_air.py`：一块平地、一条海沟、一道 115 高的悬崖），读数写在 `experimental/cnv/checks/engine_air.py` 的文档串里。模拟器对拍在 `tests/test_simbench.py` 的 "air" 一段。飞起来的建筑和平台另见 `air.md`。
+引擎线 A 第 88 轮（2026-11-08），ADR 0022 第 ⑤ 项。**测** = 测试台读数；**推断** = 没上测试台。探针 `cnv_check engine_air <变体>`（任务 `benches/movement/pathing/scenes.py#engine_air`，探针图 `maps/probe_air.py`：一块平地、一条海沟、一道 115 高的悬崖），读数写在 `experimental/cnv/benches/movement/pathing/checks.py#engine_air` 的文档串里。模拟器对拍在 `tests/test_simbench.py` 的 "air" 一段。飞起来的建筑和平台另见 `air.md`。
 
 ## 0. 结论：给关卡线抄的
 

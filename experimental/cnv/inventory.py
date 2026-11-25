@@ -130,32 +130,32 @@ BENCHED_TESTS = {
     (NUGGET, 'StripMaxHealthPercentNugget'): 'tests/test_simbench_c.py::test_strip_max_health_percent_uses_maximum_at_full_and_half_health',
     (MODULE, 'Behaviors/OreMinerBehavior'): 'tests/test_simbench.py::test_mining_pays_8_a_frame_and_a_trip_takes_269',
     (MODULE, 'Behaviors/OreNodeBehavior'): 'tests/test_simbench.py::test_mining_a_second_miner_on_one_node_adds_nothing',
-    # batch 1 (work/re/l2_scripts1.md, checks/engine_scripts1.py, bench 11-08)
+    # batch 1 (work/re/l2_scripts1.md, benches/script/control/checks.py#engine_scripts1, bench 11-08)
     (CONDITION, 'HAS_FINISHED_AUDIO'):
         'tests/test_simbench.py::test_audio_a_dubbed_line_is_done_its_length_after_it_is_heard',
     (ACTION, 'ALLOW_DISALLOW_ONE_BUILDING'): 'tests/test_simbench.py::test_a_ban_holds_the_queue_and_does_not_cancel',
     # protocol points (simtech.py, checks/engine_protocol.py, bench 11-08)
-    # engine line A round 208: retail-campaign conditions batch 1 (checks/engine_conds.py team / fight); the
+    # engine line A round 208: retail-campaign conditions batch 1 (benches/script/control/checks.py#engine_conds team / fight); the
     # TEAM_INSIDE_AREA k other than 0 is benched only as "no Guardian passes 1 / 3 / 7" (air / ships INFERRED)
-    # engine line A round 210: batch 2 (checks/engine_conds.py sight): sight / discovery, the hot spot switch
+    # engine line A round 210: batch 2 (benches/script/control/checks.py#engine_conds sight): sight / discovery, the hot spot switch
     # engine line A round 211: retail-campaign actions batch 1 (checks/engine_acts.py flow; NAMED_SET_DISABLED benched
     # for EMP only, the other types INFERRED the same hold)
-    # round 212: batch 2 (checks/engine_acts2.py seq / more; the ground fire's own damage not benched, none simulated)
+    # round 212: batch 2 (benches/script/control/checks.py#engine_acts2 seq / more; the ground fire's own damage not benched, none simulated)
     # round 254: checks/engine_reinfat.py go (on a house, at a moved tank's place now, none at a dead one)
     # round 254: benches/economy/construction/checks.py#engine_mining mineturn0 cap / capz (harvest income held; scripts' money not: acts_tel)
-    # round 264: checks/engine_aiupgrade.py aicupgon:ban (0 holders until the allow; bench rebuys 7 s after the model)
+    # round 264: benches/ai/production/checks.py#engine_aiupgrade aicupgon:ban (0 holders until the allow; bench rebuys 7 s after the model)
     # round 213: batch 3 (checks/engine_acts3.py tel)
     # round 214: batch 4 (checks/engine_acts4.py acts: spellbook powers, the context attack, buildability)
-    # round 215: batch 5 (checks/engine_acts5.py acts; PLAYER_TRANSFER_OWNERSHIP_PLAYER changed nothing on the bench:
+    # round 215: batch 5 (benches/script/control/checks.py#engine_acts5 acts; PLAYER_TRANSFER_OWNERSHIP_PLAYER changed nothing on the bench:
     # not simulated, stays 未做)
     **{(ACTION, n): 'experimental/cnv/benches/script/control/readings.toml#engine_acts5::acts_v_as_the_bench' for n in (
         'UNIT_SET_MODELCONDITION', 'PLAYER_ALLOW_AI_AUTOACQUIRE', 'TEAM_MOVE_TO_NEAREST_OBJECT_OF_TYPE',
         'TEAM_GUARD_AREA_FROM_POSITION')},
-    # round 216: TEAM_HUNT / NAMED_HUNT (checks/engine_acts6.py hunt: an aiTactical-255 owner's crew attack-moves to
+    # round 216: TEAM_HUNT / NAMED_HUNT (benches/script/control/checks.py#engine_acts6 hunt: an aiTactical-255 owner's crew attack-moves to
     # the nearest enemy; the 240 one's, and NAMED_HUNT on an AI not woken: nothing)
-    # round 218 (checks/engine_acts8.py hunt): the gate is aiTactical, the target the nearest hostile object (units
+    # round 218 (benches/script/control/checks.py#engine_acts8 hunt): the gate is aiTactical, the target the nearest hostile object (units
     # too), re-picked after each one dies; NAMED_HUNT moves a woken AI's unit neither
-    # round 219 (checks/engine_acts9.py all): on -- off every team; off -- back onto the map default team, with a
+    # round 219 (benches/script/control/checks.py#engine_acts9 all): on -- off every team; off -- back onto the map default team, with a
     # hidden member (the AI wake UNIT_AI_TRANSFER_ALL adds is not in it: program, not benched)
     # round 223 (checks/engine_acts11.py all): EVACUATE on a ground transport / a civilian block (out at once), the
     # Apocalypse's harpoon, both mirage fields, the Kirov's afterburners (its LoseHealthUpdate while on)
@@ -163,7 +163,7 @@ BENCHED_TESTS = {
     # round 224 (checks/engine_acts12.py all): the shinobi's smoke bomb and the Tsunami's energized armor (a self
     # AttributeModifier for its Duration), the bear's roar (the bark's EMP), the Sickle's leap to a spot
     # round 226 (checks/engine_acts13.py all): the roar _ON_NAMED (the bear walks up to the target, then roars)
-    # round 252 (checks/engine_dam.py all): the dolphin's jump over a dry dam its swimming twin cannot pass (round
+    # round 252 (benches/movement/pathing/checks.py#engine_dam all): the dolphin's jump over a dry dam its swimming twin cannot pass (round
     # 249 had it in NOTES: engine_acts_wet's readout did not tell the jump from swimming)
     # round 222 (benches/economy/construction/checks.py#engine_share all): mining income split among sharing Friends (the earner keeps the rest);
     # NAMED_SELECTED after SELECT_OBJECT (TYPE_SELECTED in NOTES: never true there)
@@ -173,17 +173,17 @@ BENCHED_TESTS = {
     # round 238 (checks/engine_sighted.py all): TYPE_SIGHTED = ENEMY_SIGHTED's query with a type (the viewer itself
     # counts, a script's object list never); NAMED_BUILDING_IS_EMPTY a living garrison with nobody in; BUILT_BY_PLAYER
     # the player owns one, placed ones too (a killed one ~7 s while it lies: not modelled)
-    # round 240 (checks/engine_razed.py all): PLAYER_DESTROYED_N_BUILDINGS_PLAYER false always (Generals' stub, n 0
+    # round 240 (benches/script/control/checks.py#engine_razed all): PLAYER_DESTROYED_N_BUILDINGS_PLAYER false always (Generals' stub, n 0
     # too); SKIRMISH_PLAYER_HAS_COMPARISON_GARRISONED counts the player's men inside garrisons, not the buildings
     # round 242 (checks/engine_cast.py all): a cast waits until the first matching reader takes it; IN_AREA by the
     # cast's point; TEAM_CAN_PATH_TO_WAYPOINT every member to the waypoint itself (no snap)
     # round 245 (checks/engine_enter.py all): TEAM_OUTSIDE_AREA_ENTIRELY = not inside (an absent team outside);
     # TEAM_ENTERED_AREA_PARTIALLY one frame a member comes in (a start inside also on leaving); GARRISONNED by type
     # and owner; COMPLETELY_BUILT the player's own, a script's unpacking one at once
-    # round 244 (checks/engine_kind.py all / by): PLAYER_HAS_COMPARISON_UNIT_KIND counts every player's objects;
+    # round 244 (benches/script/control/checks.py#engine_kind all / by): PLAYER_HAS_COMPARISON_UNIT_KIND counts every player's objects;
     # PLAYER_LOST_OBJECT_TYPE one stored count per (player, type string), the first reader takes a drop;
     # NAMED_DESTROYED_BY_OBJECTTYPE false always (four kills, either case)
-    # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (checks/engine_acts7.py own: the giver's units on no team and its
+    # round 217: PLAYER_TRANSFER_OWNERSHIP_PLAYER (benches/script/control/checks.py#engine_acts7 own: the giver's units on no team and its
     # money go to the receiver; ones on a team stay)
     # engine line C round 1: modules whose retail data the simulator already follows and a bench-reading test cites
     (MODULE, 'Behaviors/ProductionUpdate'):
@@ -197,10 +197,10 @@ BENCHED_TESTS = {
     # engine_knock_water, engine_crash_fall; the whole list in NOTES' Physics line)
     (MODULE, 'Behaviors/Physics'):
         'tests/test_meta_impact.py::test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravity',
-    # engine line C round 8: running off the map (Sim.flee_start / flee_due, checks/engine_runoffmap.py, bench 11-06)
+    # engine line C round 8: running off the map (Sim.flee_start / flee_due, benches/movement/pathing/checks.py#engine_runoffmap, bench 11-06)
     # engine line C round 9: the mirage aura (Sim.cloaked, simunits.invis_broadcast, checks/engine_stealth.py, bench 11-05)
     # engine line C round 11: weapon choice by ObjectStatus (simunits.weapon_sets, benches/weapon/target_effects/checks.py#engine_weaponset,
-    # engine_statusbits.py, bench 11-09)
+    # benches/script/control/checks.py#engine_statusbits, bench 11-09)
     # engine line D: the damage line (simsweep, benches/weapon/target_effects/checks.py#engine_sweep engine_sweepoff a / b / c, bench 11-10)
     (MODULE, 'Behaviors/LinearDamageUpdate'):
         'tests/test_simsweep.py::test_sweep_the_line_walks_out_and_a_stop_does_not_cut_it_at_the_bench_frames',
@@ -364,7 +364,7 @@ NOTES = {
                                             '换放置顺序都一样），f120 血量相同；设 AIM_HIGH（只有绘制模块读）。'
                                             '晚的这一帧等什么没读到，不拟合；读数 mismatch 见 benches/weapon/firing/readings.toml#engine_cosmetic_e'),
     (MODULE, 'Behaviors/LUAEventList'): (NA, '纯表现：EventListName连接原版ScriptEvents.xml与Scripts.lua；RA3声明可达的事件处理函数只调用模型部件显隐（及tostring），含继承；未定义的AlliedInfantryFightingFunctions无可达处理函数；C&C3升级/状态函数不可达。tests/test_inventory_lua.py静态核对游戏包与SDK声明，非上台对拍'),
-    # batch 1 (work/re/l2_scripts1.md, checks/engine_scripts1.py, bench 11-08)
+    # batch 1 (work/re/l2_scripts1.md, benches/script/control/checks.py#engine_scripts1, bench 11-08)
     (ACTION, 'TEAM_HUNT'): (GUESSED, '主人 aiTactical 255（人类除外）：攻击移动到最近敌对物体（单位也算），目标死后'
                                      '3 s 重选（engine_acts_y 台上量过）；240 不动。重选间隔是拟合值（INFERRED）'),
     (MODULE, 'Behaviors/ModelConditionUpgrade'): (NA, '纯表现：只加模型状态（民房/步兵按阵营换画法、支援技能画法），'

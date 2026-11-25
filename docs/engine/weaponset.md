@@ -1,6 +1,6 @@
 # 武器组与状态位（WeaponSetUpdate / StatusBitsUpgrade）
 
-台上读数 2026-11-09（引擎线 C 第 11 轮；探针 `experimental/cnv/checks/engine_weaponset.py`、`engine_statusbits.py`）。模拟器的模板解析与运行时武器归属见 [模块文档 §6](sim-modules.md#6-对外端口)。模块测试见 `tests/modules/test_weaponset.py`，台上对拍由一致性跑器读取 `checks/engine_weaponset.readings.toml` 和 `checks/engine_statusbits.readings.toml`。
+台上读数 2026-11-09（引擎线 C 第 11 轮；探针 `experimental/cnv/benches/weapon/target_effects/checks.py#engine_weaponset`、`benches/script/control/checks.py#engine_statusbits`）。模拟器的模板解析与运行时武器归属见 [模块文档 §6](sim-modules.md#6-对外端口)。模块测试见 `tests/modules/test_weaponset.py`，台上对拍由一致性跑器读取 `benches/weapon/target_effects/readings.toml#engine_weaponset` 和 `benches/script/control/readings.toml#engine_statusbits`。
 
 ## 1. 按状态选武器（engine_weaponset a，台上）
 

@@ -2,7 +2,7 @@
 
 我们的关卡在敌方 AI 醒来时都发这三个动作（`plan.py` 的 `敌方AI`：优先级 20、修理和重建默认"否"=0）。这里写它们在原版里实际管什么，给关卡线和模拟器用。
 
-测试台探针：`experimental/cnv/missions/aiswitch_bench.py` + `checks/engine_aiswitch.py`（地图、AI 和玩家建筑同 `aitarget_bench`）；模拟器对拍在 `tests/test_simai.py` 末尾。
+测试台探针：`experimental/cnv/benches/ai/tactics/scenes.py#aiswitch_bench` + `benches/ai/tactics/checks.py#engine_aiswitch`（地图、AI 和玩家建筑同 `aitarget_bench`）；模拟器对拍在 `tests/test_simai.py` 末尾。
 
 ## 1. SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES（玩家, n）
 
@@ -15,7 +15,7 @@
 ## 1b. SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY（玩家, 敌方玩家, n）（原版 343 次，多是开局一个敌人一行）
 
 - 程序：同一张敌方玩家表，只改点到的那一个：关掉周期重排，先把这个玩家从表里删掉，n > 0 就以分数 n 放回去（不查他是不是"敌人列表"里的人）。表按分数分档，AI 先只在最高档里找目标。n ≤ 0 = 从表里拿掉。
-- **测**（探针 `missions/aiprio_bench.py` + `checks/engine_aiprio.py`，地图同 `aitarget_bench`，近处电厂和两座炮塔改归 Soviet_4，开局脚本设成和 Soviet_1 互敌）：
+- **测**（探针 `benches/ai/targets/scenes.py#aiprio_bench` + `checks/engine_aiprio.py`，地图同 `aitarget_bench`，近处电厂和两座炮塔改归 Soviet_4，开局脚本设成和 Soviet_1 互敌）：
   - aiprio1：Soviet_4 30、玩家 10（不调全体版）→ s14 到 Soviet_4 的近厂，从没去玩家的远厂。分档生效。
   - aiprio0：全体版 20 后再把玩家设 0 → s15 去近厂，从没去远厂。0 = 拿掉。
   - aipriorm：只把 Soviet_4 设 0（不调全体版）→ 75 秒没人出门：醒来时表还是空的，**没点到的敌人（这里是玩家本人）不在表里**。

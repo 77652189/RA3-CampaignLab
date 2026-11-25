@@ -1,4 +1,4 @@
-# Bench readings of checks/engine_aialphaclose.py (format: experimental/cnv/readings.py).
+# Bench readings of benches/ai/tactics/checks.py#engine_aialphaclose (format: experimental/cnv/readings.py).
 
 [[reading]]
 bench_id = "engine_aialphaclose"
@@ -37,7 +37,7 @@ expect = [
     "{(r['步兵在家'], r['步兵数']) for r in plateau} == {(0, 0)}",
 ]
 
-# Bench readings of checks/engine_aibasedef.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aibasedef (format: experimental/cnv/readings.py; runner: tests/conformance).
 # EnterBaseDefenses / EnterBaseDefensesWhenIdle (bench 2026-11-09).
 
 [[reading]]
@@ -164,7 +164,7 @@ proves = "simai CannotAttackTargetReaction=TreatLikeSuccess (EndBehavior RAMPAGE
 let = {held = "(lambda t: t[next(i for i, r in enumerate(t) if len(r['members']) == 2 and r['target'] == 'UNIT - CNV Cannot Air'):])([r for r in teams() if r['state_key'] == 'CNVCannot'])"}
 expect = "any(r['target'] not in (None, 'UNIT - CNV Cannot Air') and r['state'] == 6 for r in held)"
 
-# Bench readings of checks/engine_aicombat.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aicombat (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Capacity one, the first candidate shooting at a player tank in range until s30 (its foe deleted then), the second
 # idle. Bench 2026-11-16 (run_queue, both PASS), 战者在原位 闲者在原位 首离身份 首离帧: aicombat0 s1-10 1 1 0 0,
 # s11-55 1 0 2 184; aicombat1 s1-28 1 1 0 0, s29-55 0 1 1 462 (work/re/b220_recruit_combat.md).
@@ -197,7 +197,7 @@ proves = "simai team attack: a recruited unit keeps the fight it is in before go
 expect = "win(2, 28, '战者在原位') == [1] * 27"
 mismatch = "the simulator sends the taken fighter off with the team at f175 (bench: it leaves f462); as k2gate1's"
 
-# Bench readings of checks/engine_aicreate.py (format: experimental/cnv/readings.py).
+# Bench readings of benches/ai/tactics/checks.py#engine_aicreate (format: experimental/cnv/readings.py).
 
 [[reading]]
 bench_id = "engine_aicreate"
@@ -213,7 +213,7 @@ expect = [
 ]
 mismatch = "Model s70 production is four Guardians versus retail three, with one extra at home in both builds. The production consumer remains a separate gap."
 
-# Bench readings of checks/engine_aicrush.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aicrush (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Crush kills the guards on contact (bench 2026-11-09, readings in the check's docstring).
 
 [[reading]]
@@ -265,7 +265,7 @@ bench = "aicrush1g: 守军数 12 at s3-s14, 0 at s15.13-s21.93, 坦克数 4 (Cam
 proves = "simai player powers + sim death_blasts: the Allied AI casts its precision strike f166 on the plant ringed by the guards (PLAYER_AOE_ATTACK), the bomb kills all 12 at once 46 frames on"
 expect = ["win(3, 14, '守军数') == [12] * 12", "win(15, 20, '守军数') == [0] * 6"]
 
-# Bench readings of checks/engine_aidefense.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aidefense (format: experimental/cnv/readings.py; runner: tests/conformance).
 # StaticDefense, the Distance circle, UpdateTime (bench 2026-11-06).
 
 [[reading]]
@@ -322,7 +322,7 @@ bench = "aidefmv c: 圈100 4 from s57 to the end, 圈175 / 225 / 275 hold 4 thro
 proves = "simai static defense: a script move is called back before the 175 ring"
 expect = "rows[-1] == dict.fromkeys(rows[-1], 4)"
 
-# Bench readings of checks/engine_aidelay.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aidelay (format: experimental/cnv/readings.py; runner: tests/conformance).
 # SpecificSpecialPowerDelay MaximumDelay 0 / 999 on the aimicspon Hunt team (bench 2026-11-11, both PASS);
 # aidelaytype / aidelaymin (bench 2026-11-24, both PASS: two charging from s35, as 0);
 # aidelaytog / aidelaytogdef (TogglePowerSubType, bench 2026-11-24, both PASS);
@@ -441,7 +441,7 @@ later on the other -- its threat on the pair 75 (fight's rate of the flak) beats
 bench keeps the second off. Not settled which test holds it back there: the program's "the lock gun can take e" \
 (a fire-state check, a line / facing one INFERRED) or its damage rates (here Brain.dps); work/re handoff-b"""
 
-# Bench readings of checks/engine_aidiff.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aidiff (format: experimental/cnv/readings.py; runner: tests/conformance).
 # StrategicState Difficulty (bench 2026-11-09, B round 79; the bench walks the campaign at normal).
 # Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i] (same run, checked row by row).
 
@@ -456,7 +456,7 @@ two always-on states, one listed Difficulty MEDIUM, one EASY HARD BRUTAL: aidiff
 proves = "simai states: only the states listed for the campaign's difficulty run"
 expect = "(rows[39]['坦克在家'], rows[39]['步兵在家']) == (tanks, inf)"
 
-# Bench readings of checks/engine_aidistance.py (format: experimental/cnv/readings.py).
+# Bench readings of benches/ai/tactics/checks.py#engine_aidistance (format: experimental/cnv/readings.py).
 
 [[reading]]
 bench_id = "engine_aidistance"
@@ -473,7 +473,7 @@ expect = [
     "(at(65)['圈300'], at(65)['圈900']) == (home, home)",
 ]
 
-# Bench readings of checks/engine_aiengineer.py (format: experimental/cnv/readings.py).
+# Bench readings of benches/ai/tactics/checks.py#engine_aiengineer (format: experimental/cnv/readings.py).
 
 [[reading]]
 bench_id = "engine_aiengineer"
@@ -488,7 +488,7 @@ expect = [
     "{tuple(r[k] for k in ('目标归属', '到目标量', '工程师量', '目标血量')) for r in observed} == {(0, 0, 1, 100)}",
 ]
 
-# Bench readings of checks/engine_aigarrison.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aigarrison (format: experimental/cnv/readings.py; runner: tests/conformance).
 # EnterGarrisons (bench 2026-11-09; counters 步兵在家 到远厂 步兵数 楼归AI, 步兵数 counts the ones inside too).
 
 [[reading]]
@@ -522,7 +522,7 @@ sim 步兵数 4 at s75 (house the AI's from s19), bench 3: since state 2's per-m
 114) the men turn on the defenders on the way and take more fire (18 / 18 / 33 / 101 hp inside) but all four get \
 in -- the sim's fire, not the garrison rule"""
 
-# Bench readings of checks/engine_aihome.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aihome (format: experimental/cnv/readings.py; runner: tests/conformance).
 # DefaultTacticHomeBaseCriteria (bench 2026-11-14).
 
 [[reading]]
@@ -663,7 +663,7 @@ item = "AI 微操/AIMicroManagerData.TimeToKeepTargetMax"
 let = {trail = "{n: [(r['frame'], m['keep']) for r in teams() for m in r['members'] if m['name'] == n and m.get('keep') is not None] for n in {m['name'] for r in teams() for m in r['members']}}", sets = "{n: [p for i, p in enumerate(t) if i == 0 or p[1] != t[i - 1][1]] for n, t in trail.items()}", lens = "[k - f for s in sets.values() for f, k in s]"}
 expect = "len(lens) >= 6 and all(15 <= x <= 60 for x in lens) and max(lens) - min(lens) >= 15 and all(b[0] >= a[1] for s in sets.values() for a, b in zip(s, s[1:]))"
 
-# Bench readings of checks/engine_aimicro.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aimicro (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aimicro"
@@ -809,7 +809,7 @@ expect = [
     "last['冲1'] == 0",
 ]
 
-# Bench readings of checks/engine_aineutralgarr.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aineutralgarr (format: experimental/cnv/readings.py; runner: tests/conformance).
 # aigarrbld b (bench 2026-11-22, CampGarrBldB_mcp_1122_032006; counters 步兵在家 步兵数 排屋归AI 商店归AI):
 #   s2.8-s9.7 2 2 0 0 | s10.1-s10.5 1 2 0 0 | s11.0-s56.2 0 2 0 0 | s56.7-s76.9 0 2 0 1
 # aigarrbld b (bench 2026-11-22, CampGarrBldB_mcp_1122_054620; counters 步兵在家 步兵数 电厂在 商店归AI):
@@ -880,7 +880,7 @@ mismatch = """\
 sim 商店归AI 1 from s55 (bench s56.3): plant to shop now 15 s (bench 15.3, the Peacekeeper fought and the team sent \
 on, model be5d767); the 1.3 s left is the plant falling ~1 s early (the reading above)"""
 
-# Bench readings of checks/engine_aipassive_distance.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aipassive_distance (format: experimental/cnv/readings.py; runner: tests/conformance).
 # E104: the four builds differ in AIMicroManagerData.PassiveTargetSearchDistance only (0 / 1 / 200 / 600). Bench: all
 # four select the side plant in state 6 with four members at f140 (centre 350.3 off, every member >= 324.3 off; the
 # micro target is not the tactic's), state 0 at f320; no distance split in two rounds. B 11-24: no reader of the field
@@ -912,7 +912,7 @@ expect = "(p['frame'], p['state'], p['foe'], len(p['members'])) == (140, 6, 'UNI
 mismatch = """the simulator picks the same side plant in state 6 with four members at f120, 20 frames early (its old late \
 pick at f241 gone); the cause is unconfirmed (work/re/e104_passive_distance.md)"""
 
-# Bench readings of checks/engine_aipathcheck.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aipathcheck (format: experimental/cnv/readings.py; runner: tests/conformance).
 # D round 152, bench 2026-11-14 (CampAIPf*A_mcp_1114_*): Niagara without bridges, a SimpleAttack state aims at the
 # player's yard across the river, four Peacekeepers at home; the four builds differ in PathfindingCheckType only.
 # 步兵总数 / 步兵在家 / 到对岸 once a second; the CNVStateGo team's members off the CNVTeams log (work/re/d152_pathcheck.md).
@@ -940,7 +940,7 @@ proves = "simai teams: PathfindingCheckType None recruits without asking for a w
 expect = ["win(1, 5, '步兵在家') == [4] * 5", "win(6, 89, '步兵在家') == [0] * 84",
           "all((r['步兵总数'], r['到对岸']) == (4, 0) for r in rows)"]
 
-# Bench readings of checks/engine_aipullback.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aipullback (format: experimental/cnv/readings.py; runner: tests/conformance).
 # PullbackInjured / ReverseMove / UseGatherState (bench 2026-11-09).
 
 [[reading]]
@@ -1134,7 +1134,7 @@ hostile list from f30, the bench (by its states) not until f200; the siege rule 
 (work/re l4_micro_retreat.md 1.1) but not modelled: this scene never reaches it on the bench (model try kept in \
 work/re/b_wip/siege_state4_model.diff)"""
 
-# Bench readings of checks/engine_aipullpct.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aipullpct (format: experimental/cnv/readings.py; runner: tests/conformance).
 # PullbackInjuredHealthPct 0.2 / 0.5, the same 30 % Soviet tanks and Crane (bench 2026-11-11).
 
 [[reading]]
@@ -1171,7 +1171,7 @@ simai keeps all four alive s28-39, bench 0 from s28: the Crane arrival event / g
 once, then deletion on actual arrival; entering the home area cannot supply that event). \
 work/re/c_recycle_arrival_gate_report.md, work/re/handoff-c.md"""
 
-# Bench readings of checks/engine_aireactive.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aireactive (format: experimental/cnv/readings.py; runner: tests/conformance).
 # ReactiveDefenseRadius gates the chase (bench 2026-11-14).
 
 [[reading]]
@@ -1185,7 +1185,7 @@ s17-s27, the foe dead by s20 (simulator: out s10, 敌300 4 s18, dead s23)"""
 proves = "simai reactive defense: ReactiveDefenseRadius gates the chase"
 expect = "(first('家300', lambda v: v == 0) <= 12 and first('敌300', lambda v: v == 4) <= 20 and rows[-1]['敌存活'] == 0) if chased else all(r['家300'] == 4 and r['敌300'] == 0 and r['敌存活'] == 1 for r in rows)"
 
-# Bench readings of checks/engine_airelease.py (format: experimental/cnv/readings.py).
+# Bench readings of benches/ai/tactics/checks.py#engine_airelease (format: experimental/cnv/readings.py).
 
 [[reading]]
 bench_id = "engine_airelease"
@@ -1198,7 +1198,7 @@ let = {at = "lambda second: next(r for t, r in zip(times, rows) if second <= t <
 expect = "all(tuple(at(s)[k] for k in ('防御人数', '进攻人数', '坦克总数', '曾防御量')) == (99, 99, 2, 0) for s in (25, 55, 65))"
 mismatch = "Retail defense/attack 99/99, model 0/0. CNVTeams resolves membership while the legacy script counters still have a naming gap."
 
-# Bench readings of checks/engine_airetreat.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_airetreat (format: experimental/cnv/readings.py; runner: tests/conformance).
 # The team state: retreat and EngagePassiveTargets (bench 2026-11-08 / 11-10; l4_micro_retreat.md, l4_micro_engage.md
 # in the private notes). The simulator's team leaves ~8 s later than the bench's (s18 / s10): compared from the leave.
 # Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i] (same run, checked row by row).
@@ -1267,7 +1267,7 @@ proves = "simai team state: EngagePassiveTargets off -- straight to the far plan
 let = {far = "first('到远厂')", hit = "first('旁厂血量', lambda v: v < 100)"}
 expect = "far is not None and hit is not None and far < hit"
 
-# Bench readings of checks/engine_aisort.py (format: experimental/cnv/readings.py).
+# Bench readings of benches/ai/tactics/checks.py#engine_aisort (format: experimental/cnv/readings.py).
 
 [[reading]]
 bench_id = "engine_aisort"
@@ -1284,7 +1284,7 @@ expect = [
     "at(35)['首离帧'] > 0",
 ]
 
-# Bench readings of checks/engine_aiswitch.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aiswitch (format: experimental/cnv/readings.py; runner: tests/conformance).
 # The wake's script switches (bench 2026-11-08; l4_aiswitches.md in the private notes).
 # Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i] (same run, checked row by row).
 
@@ -1323,7 +1323,7 @@ bench = "aisw0near: 步兵在家 4 from s1 to s75, nobody at either plant (the c
 proves = "simai enemy priority: all priorities 0 (no named target) send no team anywhere"
 expect = "all(r['步兵在家'] == 4 and r['到近厂'] == 0 and r['到远厂'] == 0 for r in rows)"
 
-# Bench readings of checks/engine_aiteamfields.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aiteamfields (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aiteamfields"
@@ -1399,7 +1399,7 @@ same; aihotdef (holder STANDARD, recruiter DEFAULT) 2 2 0 to s70. The simulator 
 proves = "simai teams: a HOTSPOT recruiter takes a STANDARD or a SCRIPTED holder's men, a DEFAULT one does not"
 expect = "(max(r['到目标'] for r in rows) >= 1) == released"
 
-# Bench readings of checks/engine_aiteamfilter.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aiteamfilter (format: experimental/cnv/readings.py; runner: tests/conformance).
 # AlwaysRecruit: does a team that has gone out take the tanks the AI builds after it (bench 2026-11-09).
 
 [[reading]]
@@ -1499,7 +1499,7 @@ INFANTRY -- only the Peacekeepers; VEHICLES -- only the Guardians; SKIRMISH_AI_N
 proves = "simai teams: AllowedLocomotorTypes and RegisteredObjectSet pick whom a team takes"
 expect = "tuple(vals(rows)[39]) == (tanks, other)"
 
-# Bench readings of checks/engine_aitransport.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_aitransport (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aitransport"
@@ -1572,7 +1572,7 @@ expect = [
     "win(17, 41, '步兵在家') == [0] * 25",
 ]
 
-# Bench readings of checks/engine_k2gate.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/tactics/checks.py#engine_k2gate (format: experimental/cnv/readings.py; runner: tests/conformance).
 # A Guardian told to attack a live foe 100 off (cannon 150) at s2, its first shot held by a 60 s pre-attack (no hit in
 # the run), beside an idle candidate; the team takes one. Bench 11-20: CampK2Gate0A_mcp_1120_001003 (off) and
 # CampK2Gate1A_mcp_1120_001255 (on), both PASS; the host's f153 join and the evidence in work/re/k2_recruit_gate_1119.md.

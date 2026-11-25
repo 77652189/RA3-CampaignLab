@@ -1,4 +1,4 @@
-"""B208: AllNearbyNodesFullHeuristic -- named replay of the ainf0 / ainf2 bench (checks/engine_ainodesfull.py).
+"""B208: AllNearbyNodesFullHeuristic -- named replay of the ainf0 / ainf2 bench (benches/ai/production/checks.py#engine_ainodesfull).
 
 Bench 2026-11-15 (run_queue, work/logs/b208_bench.log; counters 满态在家 / 常量在家 = the AllNearbyNodesFull state's
 Peacekeepers / the constant state's Guardians at home):

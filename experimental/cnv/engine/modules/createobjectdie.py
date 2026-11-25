@@ -11,7 +11,7 @@ What the simulator keeps of it (INFERRED, the first two kept from the readers it
   * a death in the air (the thing's surface 'air') makes the first module's wrecks fall whose RequiredStatus names
     AIRBORNE_TARGET or nothing and whose RequiredStatus / ExemptStatus hold for the thing's status as it is
     (module.status_now: its status bits, AIRBORNE_TARGET in the air; B5 review e #6) (World.create airborne:
-    Life.air_crash, checks/engine_crash_fall.py) -- the one list simunits.air_wrecks read; the death type is not
+    Life.air_crash, benches/body_death/state/checks.py#engine_crash_fall) -- the one list simunits.air_wrecks read; the death type is not
     read there (it read none);
   * any other death on the ground its block takes (death type, status as the death began) makes the list's infantry
     only, at the middle of the nugget's MinHealth..MaxHealth (World.create fight: Life.leave, simunits.ocl_objects;

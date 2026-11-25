@@ -22,10 +22,10 @@ BUILD_VARIATION = 3.0               # world: BuildSystemSettings.AllowedHeightVa
 # BlendTileData's eight per-cell bit fields, in file order (v27; mapterrain.Tiles.set_bit's field index). Names by the
 # layout other SAGE readers give version 27 and by what is set on retail maps (field 0 on steep dry ground, 4 on ~94 %,
 # 5 on ~2 %): 推断, not read in the game's code. Only field 0 is written by our generators (fill 0, field 4 all on).
-# Field 0 is all the game goes by for ground units (测, checks/engine_terrain.py walk, 2026-11-04): a wall rising 40
+# Field 0 is all the game goes by for ground units (测, benches/movement/pathing/checks.py#engine_terrain walk, 2026-11-04): a wall rising 40
 # per cell with the bit off, a tank and an infantryman walked over; level ground with the bit on, neither crossed. The
 # game does not work cliffs out of the heights, so a writer that moves heights must rewrite field 0 (apply_edit).
-# Field 1 holds the player's units and not the enemy's (测, checks/engine_bits.py bits); fields 0 + 3 still hold
+# Field 1 holds the player's units and not the enemy's (测, benches/movement/pathing/checks.py#engine_bits bits); fields 0 + 3 still hold
 # (field 3 does not reopen field 0); field 6 held neither a helicopter nor a tank, so its name is unconfirmed.
 # The water's logic edge is the map's water height (200 world = 320 ours), not newmap.WATERLINE (测, engine_bits water).
 WATER_WORLD = 200.0                                # our maps' standing water (the template's; retail maps' own vary)

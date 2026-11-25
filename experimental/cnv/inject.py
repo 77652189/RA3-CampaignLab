@@ -16,11 +16,11 @@ where" instead of every reader writing its own log parser.
 Program names: a line carries the raw place in the program it came from; the place -> name table is private
 (work/re/inject_names.json, the red line: no program addresses in public files) and read at run time. A place not in
 the table shows as itself, only on screen. Kinds a map wants recorded are declared by name (KINDS); ra3ext logs them
-whenever the map carries its host (missions/aiteams_bench.py host_unit, Mission.ext).
+whenever the map carries its host (benches/ai/tactics/scenes.py#aiteams_bench host_unit, Mission.ext).
 
 "注入摆" (round 135b): set something at frame N. A mission / check lists plan lines in Part.inject (built with pos());
 the build writes them next to ra3ext.allow (package.mark_plan), the bench copies them into the run folder before the
-start (harness.hand_plan), and the map's CNVCmd host (missions/aiteams_bench.py host_unit(cmd=True)) runs each at its
+start (harness.hand_plan), and the map's CNVCmd host (benches/ai/tactics/scenes.py#aiteams_bench host_unit(cmd=True)) runs each at its
 frame and logs a 'poke:' line, read back here as kind 'poke'. Ops so far: pos (an object by its map script name moved
 to x, y, its height kept). A result that needed a poke rests on a placed start, not the mission's own: say so.
 """

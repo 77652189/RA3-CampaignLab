@@ -1,4 +1,4 @@
-"""GrapplingHookUpdate (E226, bench checks/engine_grapple.readings.toml): the Apocalypse's harpoon. A
+"""GrapplingHookUpdate (E226, bench benches/weapon/firing/readings.toml#engine_grapple): the Apocalypse's harpoon. A
 GrapplingHookNugget hit (engine/combat/grapple.py) hooks the target; while its thing holds the ObjectStatusValidation's
 RequiredStatus (the toggle's GENERIC_TOGGLE_STATE) and the target is of a KeepAliveObjectFilter kind, it pulls the
 target straight at its thing PullRate a second (the bench: 160 and 260 away, both about 40) until it is within its

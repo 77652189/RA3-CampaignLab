@@ -267,7 +267,7 @@ from engine.script.common import BUTTON_ACTIONS, refined  # noqa: E402,F401  (an
 
 from engine.script.common import SHOWN, IGNORED  # noqa: E402,F401  (logged-only / dropped actions, L6)
 # HAS_FINISHED_AUDIO / _VIDEO (work/re/l2_scripts1.md 2.3 / 2.4): the game waits for the clients' end-of-play report,
-# not a time; we place it. A dubbed line, x1 as a player hears it (bench 11-04 checks/engine_dialog.py): heard
+# not a time; we place it. A dubbed line, x1 as a player hears it (bench 11-04 benches/ui/presentation/checks.py#engine_dialog): heard
 # AUDIO_LEAD s after the play, done at its length after that (4.34 s line -> 5.3 s). A radar clip (bench movie.py
 # play): done its own length after the play (CNVTEST01, 95 frames at 23.976 = 3.96 s: 63 game frames, 4.2 s);
 # a full-screen one never reads done. Lengths we cannot read (a retail line, a retail clip) take the guesses below.

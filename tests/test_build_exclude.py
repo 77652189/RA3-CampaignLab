@@ -173,7 +173,7 @@ BENCH_RULE = {'aibxall': (True, 'S'), 'aibxany': (False, 'U'), 'aibxi': (True, '
 @pytest.mark.skipif(not simai.available(), reason='private AI model unavailable')
 @pytest.mark.parametrize('name', sorted(BENCH_RULE))
 def test_count_as_structure_rule_and_include(name):
-    """checks/engine_aibuildexclude.py x on aibxall / aibxany / aibxi: the model's filter and basket as the bench."""
+    """benches/ai/targets/checks.py#engine_aibuildexclude x on aibxall / aibxany / aibxi: the model's filter and basket as the bench."""
     import build
     passed, basket = BENCH_RULE[name]
     mod = simai.model()

@@ -222,7 +222,7 @@ def engine_baseban():
     matching object of the player's script-disabled (type 9, for ever). Prediction: no core either side, money 2000.
     BENCH 11-22 (A311): C, D (the own case, two walkers too), F (D at 0.5 s): every core made, both walkers walk -- as
     with no gate; E (NAMED_SET_DISABLED SCRIPT_DISABLED on the yards and walker 0, EMP walker 1) 2000/2000/0 to s53: the
-    type holds both. So the action reaches no object here (why: not found). Readings: engine_baseban.readings.toml.
+    type holds both. So the action reaches no object here (why: not found). Readings: benches/economy/construction/readings.toml#engine_baseban.
     """
     from maps import probe_border
     from parts import Mission, Script, Test, square
@@ -2209,7 +2209,7 @@ def engine_unpack():
     same SpecialPower_UnpackReplaceSelf, not in its CommandSet). brk / ref / fac = a07 / j08's barracks, refinery and war
     factory eggs at the waypoint, as pwr. Round 322: nvl / jpn = j04's naval MCV and s02's Japanese MCV pressed their
     unpack button untargeted, standing (as pin); jpk = s02's escape, the MCV driving to the waypoint pressed the yard's
-    Command_PackJapanMCV at it 1 s on (not in the MCV's CommandSet). Readings: engine_unpack.readings.toml.
+    Command_PackJapanMCV at it 1 s on (not in the MCV's CommandSet). Readings: benches/economy/construction/readings.toml#engine_unpack.
     """
     import resources
     from maps import niagara

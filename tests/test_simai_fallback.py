@@ -16,7 +16,7 @@ def trips(lib):
 def test_fallback_distance_both_teams_return_alive(trips):
     # B round 230's xfail (aifbshort lost one Peacekeeper on the way home since 65873f7c) passes since structures
     # dead in a fight leave their survivor (E, CreateObjectDie, model da5b198 and be5d767 alike); why not traced
-    """checks/engine_aifallback.py: both reach the far area and return with four."""
+    """benches/ai/tactics/checks.py#engine_aifallback: both reach the far area and return with four."""
     for build in ('aifbshort', 'aifblong'):
         rows = trips[build]
         out = next(i for i, r in enumerate(rows) if r['步兵在家'] == 0)
@@ -36,7 +36,7 @@ def test_fallback_distance_both_teams_return_alive(trips):
     'four home for 18 samples, s35-52. The model never has all four home after leaving, so the return search '
     'raises StopIteration before departure. In the same fixture aifblong now waits 16 samples (34 -> 50).'))
 def test_fallback_distance_first_return_and_departure(trips):
-    """checks/engine_aifallback.py: the measured second-departure ordering."""
+    """benches/ai/tactics/checks.py#engine_aifallback: the measured second-departure ordering."""
     returns, departures = [], []
     for build in ('aifbshort', 'aifblong'):
         rows = trips[build]

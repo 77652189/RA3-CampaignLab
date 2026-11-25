@@ -1,5 +1,5 @@
 """The skirmish AI on the plan simulator (experimental/cnv/engine/ai/core.py): the engine line's layer-4 model plays the enemy
--- its opening against the bench (checks/engine_aiopen.py f1-f3 and m, frames from the wake), and on a small
+-- its opening against the bench (benches/ai/production/checks.py#engine_aiopen f1-f3 and m, frames from the wake), and on a small
 skirmish (missions/aiskirm_bench.py) it builds, makes units, teams them up and attacks the player's base. Skipped
 where ra3model.ai is not on this computer (labpaths.ENGINE_MODEL), as the simulator's engine model is."""
 import importlib.util
@@ -134,7 +134,7 @@ def test_strategic_facts_the_brain_gives(early):
     assert f['attacked'](4) and not f['attacked'](2)                                     # hurt 3 s ago
 
 
-# ---- EnterBaseDefenses / EnterGarrisons (checks/engine_aibasedef.py, engine_aigarrison.py, bench 11-09; public
+# ---- EnterBaseDefenses / EnterGarrisons (benches/ai/tactics/checks.py#engine_aibasedef, benches/ai/tactics/checks.py#engine_aigarrison, bench 11-09; public
 # docs/engine/aiteamstate.md sections 3 / 4). Who goes in, and who stays out, are readings on the checks' counters
 # (engine_aibasedef / engine_aigarrison .readings.toml); left here: the brain's own lists and their order.
 def _ai_hooks(build, lib):
@@ -173,7 +173,7 @@ def test_engage_hostile_same_view_has_same_power_decision(has_target):
     to EngageHostileTargets alone must not disable or postpone its power; with no target
     neither may charge. This is an interface check, not a bench timing replay. The observed
     off-before-on ordering is the reading
-    experimental/cnv/checks/engine_aimicro.readings.toml::engage_hostile_off_charges_before_on (a mismatch).
+    experimental/cnv/benches/ai/tactics/readings.toml#engine_aimicro::engage_hostile_off_charges_before_on (a mismatch).
     """
     import build
 

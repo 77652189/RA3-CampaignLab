@@ -66,7 +66,7 @@ def player_triggered_script_event(sim, name, a):
 
 
 def team_has_units(sim, name, a):
-    # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
+    # retail batch 1 (round 207, benches/script/control/checks.py#engine_conds; d115_script_semantics.md where it says 码)
     # 码: any instance of the team's prototype with a living member that is no STRUCTURE / PROJECTILE /
     # IGNORE_FOR_VICTORY (a dying one is DESTROYED: not counted); no such team: false
     return any(not ({'STRUCTURE', 'PROJECTILE', 'IGNORE_FOR_VICTORY'} & set(b.kinds))
@@ -74,7 +74,7 @@ def team_has_units(sim, name, a):
 
 
 def team_inside_area_partially(sim, name, a):
-    # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
+    # retail batch 1 (round 207, benches/script/control/checks.py#engine_conds; d115_script_semantics.md where it says 码)
     # 码: no such team (common.team_crew): false. The members considered (living, not INERT / MOVE_ONLY; k a
     # bit of the AI module's set);
     # PARTIALLY = one of them inside, ENTIRELY = all and one at least. Bench 11-13 engine_conds team: a
@@ -94,7 +94,7 @@ def team_inside_area_partially(sim, name, a):
 
 
 def team_created(sim, name, a):
-    # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
+    # retail batch 1 (round 207, benches/script/control/checks.py#engine_conds; d115_script_semantics.md where it says 码)
     # bench 11-13 engine_conds team: one frame after a script made it (建队帧 1: Sim.reinforce, which makes the
     # team there too), a map team never (队形&32 off all along); which frame of the two INFERRED -- the one after
     f = next((v for k, v in sim.made_frame.items() if same_team(k, a[0])), None)
@@ -102,7 +102,7 @@ def team_created(sim, name, a):
 
 
 def team_some_have_object_status(sim, name, a):
-    # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
+    # retail batch 1 (round 207, benches/script/control/checks.py#engine_conds; d115_script_semantics.md where it says 码)
     # INFERRED (Generals evaluateTeamHasObjectStatus): the living members' bit; ALL holds on an empty team, not
     # on none (common.team_crew)
     crew, st = team_crew(sim, a[0]), a[1][2] if isinstance(a[1], tuple) else a[1]
@@ -111,7 +111,7 @@ def team_some_have_object_status(sim, name, a):
 
 
 def team_attacked_by_player(sim, name, a):
-    # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
+    # retail batch 1 (round 207, benches/script/control/checks.py#engine_conds; d115_script_semantics.md where it says 码)
     # 码 (the player one): a living member's last damage recorded that player (its owner then, the attacker
     # gone or not); no such team (common.team_crew): false. The object type one INFERRED: the attacker's template
     crew = team_crew(sim, a[0]) or ()
@@ -142,7 +142,7 @@ def team_is_attacked_and_cannot_retaliate_any(sim, name, a):
 
 
 def mission_hot_spot_active(sim, name, a):
-    # retail batch 2 (round 210, checks/engine_conds.py sight; d115_script_semantics.md 4-6)
+    # retail batch 2 (round 210, benches/script/control/checks.py#engine_conds sight; d115_script_semantics.md 4-6)
     # 码: the hot spot's on byte; a name the map lacks: false
     return sim.hotspots.get(str(a[0]), False)
 

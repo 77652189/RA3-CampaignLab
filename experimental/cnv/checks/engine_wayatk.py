@@ -1,7 +1,7 @@
 """Engine probe for the ATTACK versions of the waypoint paths (Sim.order_follow attacking=True: an attack-move each
 leg): mission missions/waypath_bench.py engine_wayatk -- the player's Guardian tanks (weapon 150, vision 200; both
 tanks' bounding circle 23.3: the weapon reaches 196.6 centre to centre, an idle one goes after an enemy within 223.3,
-checks/engine_acquire.py) in the west field, the L of waypoints A (+150, -150) -> B (+450, -150) -> C (+450, +150).
+benches/weapon/firing/checks.py#engine_acquire) in the west field, the L of waypoints A (+150, -150) -> B (+450, -150) -> C (+450, +150).
 Each check writes its own waypoints on A, B, C labelled 'CNVRoad' (checks/engine_waypath.py's _road) and makes, in
 the first frame, an enemy Guardian (s1, NO_ATTACK: it never fires back) at F, d beside the middle of the A -> B leg
 (+300, -150 - d); the orders at 2 s.

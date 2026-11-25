@@ -1,5 +1,5 @@
 """R3 step X, path straightening (sim.Ground.pull / clear) against the bench: `engine_pull ways` 2026-11-17
-(experimental/cnv/checks/engine_pull.py; CNVProbe tracks read by work/re/scripts/x_pull.py), on the blocked-way probe
+(experimental/cnv/benches/movement/pathing/checks.py#engine_pull; CNVProbe tracks read by work/re/scripts/x_pull.py), on the blocked-way probe
 map the simulator reads too (maps/probe_block.py: a field-0 wall x 300..900, y 780..820, the way round at its east
 end)."""
 import importlib.util

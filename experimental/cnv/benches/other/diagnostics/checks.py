@@ -140,7 +140,7 @@ def engine_ext():
 
 
 def engine_kingref():
-    """Level-line probe: does A4's Ghost King shoot a wall it is re-ordered against every frame (missions/kingref_bench.py)?
+    """Level-line probe: does A4's Ghost King shoot a wall it is re-ordered against every frame (benches/other/diagnostics/scenes.py#engine_kingref)?
     Background: checks/a4.py smev (bench 2026-11-07) reproduced the old behaviour on the real map -- the King walks from the
     shore to the bridge either way, but with the attack order re-given every frame the wall's health stays 100; with it given
     once the King fires from the same spot. A's engine_reorder tank fires under every-frame orders, so what differs is the
@@ -196,7 +196,7 @@ def engine_kingref():
 
 
 def probe():
-    """Engine probe (missions/probe_bench.py), read off the counters:
+    """Engine probe (benches/other/diagnostics/scenes.py#probe), read off the counters:
 
     engine: the difficulty counter shows 1, 2 or 3 (exactly one of the three copies ran: the bench starts on whatever
       difficulty the profile has); the money counter shows the money set; the mission runs past the autosave.
@@ -365,7 +365,7 @@ def probe():
 
 
 def render_war():
-    """Render line probe (missions/render_bench.py; docs/research/rendering.md "第 0 步结果"): a battle that keeps going for
+    """Render line probe (benches/other/diagnostics/scenes.py#render_war; docs/research/rendering.md "第 0 步结果"): a battle that keeps going for
     the whole watch, under whatever renderer setup the game copy has (work/render/tools/switch.py).
 
     Every 2 s each side gets one of each of its kinds at its rear while it has fewer than TOP of its main tank, and every
@@ -375,7 +375,7 @@ def render_war():
     from parts import Script, Test, counted
 
     TOP, BIG, RUN = 24, 60, 120.0
-    # the kinds each side gets, the same as missions/render_bench.py places (G5: a check does not import its mission);
+    # the kinds each side gets, the same as benches/other/diagnostics/scenes.py#render_war places (G5: a check does not import its mission);
     # the first is the side's main tank, the one counted
     ALLIED = ('AlliedAntiVehicleVehicleTech1', 'AlliedAntiInfantryVehicle', 'AlliedAntiStructureVehicle',
               'AlliedAntiInfantryInfantry')

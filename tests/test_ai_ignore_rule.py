@@ -1,4 +1,4 @@
-"""The IgnoreTargets.Rule benches differ in the Rule alone; their readings are checks/engine_aiignore_rule.readings.toml."""
+"""The IgnoreTargets.Rule benches differ in the Rule alone; their readings are benches/ai/tactics/readings.toml#engine_aiignore_rule."""
 import importlib.util
 from pathlib import Path
 import xml.etree.ElementTree as ET

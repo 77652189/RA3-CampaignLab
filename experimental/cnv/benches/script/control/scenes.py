@@ -252,7 +252,7 @@ def engine_scripts1():
 
 
 def engine_scripts2():
-    """Engine probe mission (inventory: the inferred script items, checks/engine_scripts2.py): PLAYER_RELATES_PLAYER (one
+    """Engine probe mission (inventory: the inferred script items, benches/script/control/checks.py#engine_scripts2): PLAYER_RELATES_PLAYER (one
     way? '<All Players>'?) and PLAYER_HAS_OBJECT_COMPARISON (are the dying counted?).
 
     Island map (+y is north):
@@ -286,7 +286,7 @@ def engine_scripts2():
 
 
     MISSION = {'engine_scripts2': mission,
-               'engine_scripts3': lambda: mission('CampScr3')}     # checks/engine_scripts3.py: counter math, DISABLE_INPUT
+               'engine_scripts3': lambda: mission('CampScr3')}     # benches/script/control/checks.py#engine_scripts3: counter math, DISABLE_INPUT
     return dict(MISSION=MISSION)
 
 

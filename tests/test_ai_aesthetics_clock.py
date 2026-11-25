@@ -1,7 +1,7 @@
 """E108: the stand's enemy gate replayed on the bench's own D83 calls (aiaeson:a).
 
 The integrated replay's order frames and points are readings now:
-checks/engine_aiaesthetics.readings.toml::aiaeson_stand_moves_at_f191_and_f461 (mismatch).
+benches/ai/production/readings.toml#engine_aiaesthetics::aiaeson_stand_moves_at_f191_and_f461 (mismatch).
 Evidence: work/re/e106_aesthetics_clock.md, work/re/e108_aesthetics_gate.md.
 """
 import importlib.util

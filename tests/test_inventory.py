@@ -134,7 +134,7 @@ def test_every_retail_script_name_is_an_item():
 
 def named_missing(src):
     """What a register's source names that is not there, or None: 'tests/x.py::test_y' -> a def test_y in that file,
-    'experimental/cnv/checks/b.readings.toml::r' -> a reading id r in that file, any other path (a doc#section) -> the
+    'checks/b.readings.toml::r' -> a reading id r in that file, any other path (a doc#section) -> the
     file. A test deleted when its readings moved into data left its name behind (T3 line A); this finds every one."""
     head = src.split('（')[0]
     path, _, name = head.partition('::')
@@ -350,7 +350,7 @@ def test_levelup_closure_registers_measured_effects_without_hiding_shared_templa
     for gap in ('gap：', '自动索敌', '精确射程/揭雾/视野边界', '其他武器', '经验成长', '上限', 'Permanent=true'):
         assert gap in row['why']
     sight = next(i for i in items() if (i['part'], i['name']) == (inventory.CONDITION, 'ENEMY_SIGHTED'))
-    assert sight['state'] == inventory.BENCHED          # round 237: checks/engine_eyes.py all, the relations and owner
+    assert sight['state'] == inventory.BENCHED          # round 237: benches/ui/presentation/checks.py#engine_eyes all, the relations and owner
 
 
 def test_bridge_closure_registers_replays_without_hiding_unmeasured_gaps():

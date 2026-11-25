@@ -1463,7 +1463,7 @@ def engine_levelup():
 
 def engine_life():
     """Engine probe: how many frames an object with a LifetimeUpdate lives, and how long an ice engineer's power takes to
-    leave a wall (missions/life_bench.py; rules R1 and R5 of docs/story/sim-vs-bench-a4.md: the A4 bench read an ice
+    leave a wall (benches/body_death/state/scenes.py#engine_life; rules R1 and R5 of docs/story/sim-vs-bench-a4.md: the A4 bench read an ice
     wall standing ~28 s of its 30, and a wall ~9 s after the order).
 
     Frame 1 a script creates the named wall at A and the ice core at B; at ORDER s the two engineers are told to freeze
@@ -1871,7 +1871,7 @@ def engine_propbody():
 
 
 def engine_rewind():
-    """A8's Liberty rewind (engine line D, user 11-11; missions/rewind_bench.py has the rules, units/rewind.py the
+    """A8's Liberty rewind (engine line D, user 11-11; benches/body_death/state/scenes.py#engine_rewind has the rules, units/rewind.py the
     carrier). Counters: 血 = the carrier's health %, 回溯 = presses of its belt, 原处 = 1 while it is within 150 of
     where it started, 归我 = 1 while it is the player's.
 

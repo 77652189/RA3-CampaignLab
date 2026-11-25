@@ -3,7 +3,7 @@ fortress that a mission's scripts drive along the track; work/story/unit_roster.
 train (RussianTrain: the SUTrain_SKN model, the Sickle's locomotor, no weapon) under our id, armoured to `health`, with
 a Tesla gun on a fixed mount that fires all round and on the move (the Tesla tank's gun, AcceptableAimDelta 360d --
 the train has no turret -- and `reach`; retail's coil gun cannot fire while moving). The track is the mission's: a
-route of waypoints it is sent along one after another (missions/train_bench.py).
+route of waypoints it is sent along one after another (benches/movement/pathing/scenes.py#train).
 
 The player's to aim and to brake, never to steer (docs/story/units.md 6). Cars that come off wait for S2's design.
 

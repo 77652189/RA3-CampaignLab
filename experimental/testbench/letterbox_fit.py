@@ -1,5 +1,5 @@
 r"""What ground a scene's picture shows (letterbox on): fits a homography ground -> screen from the frames of
-checks/engine_letterbox.py ('g': a 7 x 5 grid of guardians, 150 / 125 units apart, teleported in at once while the
+benches/ui/presentation/checks.py#engine_letterbox ('g': a 7 x 5 grid of guardians, 150 / 125 units apart, teleported in at once while the
 scene's camera stands on C), and prints the picture band's ground: the width at its top / middle / bottom row, how far
 it reaches north and south of the camera centre (model.LETTERBOX_BAND, 2026-11-07).
 

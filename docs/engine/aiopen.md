@@ -2,7 +2,7 @@
 
 引擎线 B 第 6 轮（2026-11-06），ADR 0019 第四层（遭遇战 AI）第一块。写法照 `script-semantics.md`：**测** = 测试台；**推断，未实测** = 只从资料推出来。
 
-探针 `experimental/cnv/checks/engine_aiopen.py`（`cnv_check aiopen a` / `b` / `c`，任务 `missions/aiopen_bench.py`）：尼亚加拉图，敌方改成盟军、人格 `1AlliedBalanced`（遭遇战的"平衡"沃伦），东基地只放一个建造厂；第 10 秒照原版关卡的写法唤醒（`UNIT_AI_TRANSFER_ALL`、`SKIRMISH_AI_MAKE_BASE` 等），给 50000 钱，让钱不成为限制。每秒数一次敌方自己的建筑和单位。
+探针 `experimental/cnv/benches/ai/production/checks.py#engine_aiopen`（`cnv_check aiopen a` / `b` / `c`，任务 `benches/ai/production/scenes.py#aiopen_bench`）：尼亚加拉图，敌方改成盟军、人格 `1AlliedBalanced`（遭遇战的"平衡"沃伦），东基地只放一个建造厂；第 10 秒照原版关卡的写法唤醒（`UNIT_AI_TRANSFER_ALL`、`SKIRMISH_AI_MAKE_BASE` 等），给 50000 钱，让钱不成为限制。每秒数一次敌方自己的建筑和单位。
 
 ## 读数（测，唤醒后秒）
 
@@ -49,7 +49,7 @@
 
 ## 陆地开局还是海岛开局（PathToTargetHeuristic）
 
-人格里每条 OpeningMove 带一个"从我方基地到敌方基地有没有路"的判断（`PathExists` true 走陆地开局、false 走海岛开局），用 `ObjectTypeToUseForTest` 那个单位来试。探针 `checks/engine_aiopath.py`（自写人格只留 Standard / Island 两条，台上 2026-11-09）：
+人格里每条 OpeningMove 带一个"从我方基地到敌方基地有没有路"的判断（`PathExists` true 走陆地开局、false 走海岛开局），用 `ObjectTypeToUseForTest` 那个单位来试。探针 `benches/ai/production/checks.py#engine_aiopath`（自写人格只留 Standard / Island 两条，台上 2026-11-09）：
 
 | 变体 | 测路单位 | 结果 |
 | --- | --- | --- |
@@ -61,7 +61,7 @@
 
 ## 开局里的 Time 从什么时候算（Order Time）
 
-引擎线 B 第 79 轮（2026-11-09）。探针 `checks/engine_aiotime.py`（任务 `missions/aiotime_bench.py`）：自定开局"电厂 / `Time 30s` / 电厂 / `Time 20s` / 电厂"，第 10 秒唤醒，钱给够。读数（测）：三座电厂在任务第 19、49、59 秒出现。
+引擎线 B 第 79 轮（2026-11-09）。探针 `benches/ai/production/checks.py#engine_aiotime`（任务 `benches/ai/production/scenes.py#aiotime_bench`）：自定开局"电厂 / `Time 30s` / 电厂 / `Time 20s` / 电厂"，第 10 秒唤醒，钱给够。读数（测）：三座电厂在任务第 19、49、59 秒出现。
 
 给关卡线（测）：
 - **`Time` 是"从唤醒（开局开始）起过了多少秒"的绝对时刻**，不是从上一条 `Time` 起算（那样第三座要到第 70 秒），也不是从任务开始算（那样第二座第 40 秒就有）。
@@ -70,7 +70,7 @@
 
 ## 开局怎么抽、哪些单子会作废（OpeningMove Weight / Difficulty，第 89～90 轮）
 
-引擎线 B 第 89、90 轮（2026-11-09）。探针 `checks/engine_aiomove.py`（任务 `missions/aiomove_bench.py`），第 10 秒唤醒，读数全在检查的 docstring 里。
+引擎线 B 第 89、90 轮（2026-11-09）。探针 `benches/ai/production/checks.py#engine_aiomove`（任务 `benches/ai/production/scenes.py#aiomove_bench`），第 10 秒唤醒，读数全在检查的 docstring 里。
 
 给关卡线（测）：
 - **`Weight="0%"` 的那条开局永远抽不到**，放前面放后面都一样（aiowt / aiowt2）；两条都写 100% 时同权重的抽法见上面"买协议"一节。

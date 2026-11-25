@@ -1,5 +1,5 @@
 """GatherWaypoint, MaxTypesOfUnits, Priority=HOTSPOT (D round 148): each bench pair differs in one field only.
-The pairs' effects are readings: experimental/cnv/checks/engine_aiteamfields.readings.toml."""
+The pairs' effects are readings: experimental/cnv/benches/ai/tactics/readings.toml#engine_aiteamfields."""
 import sys
 from pathlib import Path
 

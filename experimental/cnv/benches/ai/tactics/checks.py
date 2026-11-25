@@ -65,7 +65,7 @@ def engine_aialphahp():
 
     Prediction: the named target's guards cause retreat in the low lane;
     the high lane gives priority to finishing the 70% target. No exact boundary
-    or exact order frame is claimed. See missions/aialphahp_bench.py.
+    or exact order frame is claimed. See benches/ai/tactics/scenes.py#aialphahp_bench.
 
     Bench 2026-11-11, corrected float health script: low PASS / high FAIL.
     Both target HP70 s1-85, far2 s15-16, home4 s26-41, all four live to s85.
@@ -98,7 +98,7 @@ def engine_aialphahp():
 
 
 def engine_aibasedef():
-    """Engine probe: the skirmish AI team's EnterBaseDefenses (missions/aibasedef_bench.py; docs/engine/aiteamstate.md).
+    """Engine probe: the skirmish AI team's EnterBaseDefenses (benches/ai/tactics/scenes.py#aibasedef_bench; docs/engine/aiteamstate.md).
 
       a  进炮塔     s1's objects with status ENCLOSED (someone is inside a turret)
          炮塔数     AlliedBaseDefense s1 owns
@@ -113,7 +113,7 @@ def engine_aibasedef():
       aibdpre   (as aibdwho; turret 1 holds a fifth Peacekeeper from s0) 进炮塔 reaches 2 (the full turret skipped)
 
     aibdidle: <AIMicroManagerData EnterBaseDefensesWhenIdle> true with EnterBaseDefenses false; aibd1 / aibdwho:
-    EnterBaseDefenses true, WhenIdle false (missions/aibasedef_bench.py).
+    EnterBaseDefenses true, WhenIdle false (benches/ai/tactics/scenes.py#aibasedef_bench).
 
     Readings (11-09, all PASS; counters 进炮塔 炮塔数 步兵数 到远厂; the AI's 4 AlliedBaseDefense 200 north of the far plant):
       aibd1     s1-s14 0 4 4 0 | s15-17 到远厂 2,3,4 | s18-s20 0 3 4 4 | s21-s25 1 3 4 4 | s26-s32 1 2 3 3 | s33-s75 1 2 2 2
@@ -202,7 +202,7 @@ def engine_aibasedef():
 
 
 def engine_aicannot():
-    """CannotAttackTargetReaction measured lifecycle, read in engine_aicannot.readings.toml.
+    """CannotAttackTargetReaction measured lifecycle, read in benches/ai/tactics/readings.toml#engine_aicannot.
 
     SDK predicts Ignore continues, Disband releases, TreatLikeSuccess uses RAMPAGE.
     Counters only validate the scene and its game clock. Team lifecycle/aims must
@@ -244,14 +244,14 @@ def engine_aicannot():
 def engine_aicombat():
     """AllowRecruitUnitsInCombat: does a team take a unit that is shooting at an enemy in range?
 
-    missions/aicombat_bench.py: fighter (inserted first, in a held fight until `fight ends`) and idle (out of sight).
+    benches/ai/tactics/scenes.py#aicombat_bench: fighter (inserted first, in a held fight until `fight ends`) and idle (out of sight).
     First departure identity: 0 none, 1 fighter, 2 idle, 3 both in the same frame. 80-unit square per candidate.
     Prediction (recruit gate read rule): off -> idle goes first, the fighter stays even after the fight (the team is
     full at one); on -> the fighter is taken, the idle one stays home throughout.
 
     RESULTS (2026-11-16, run_queue, both PASS): aicombat0 -- s1-s10 1 1 0 0, s11-s55 1 0 2 184 (idle leaves f184, the
     fighter stays). aicombat1 -- s1-s28 1 1 0 0, s29-s55 0 1 1 462: the fighter is taken but shoots on where it stands
-    until its foe is deleted (s30), leaves f462; the idle one never leaves. Readings: engine_aicombat.readings.toml.
+    until its foe is deleted (s30), leaves f462; the idle one never leaves. Readings: benches/ai/tactics/readings.toml#engine_aicombat.
     """
     from model import Script, Test, counted, square
 
@@ -351,7 +351,7 @@ def engine_aicreate():
 
 
 def engine_aicrush():
-    """Engine probe: the skirmish AI team's Crush / CrushPreference (missions/aicrush_bench.py; docs/engine/aiteamstate.md).
+    """Engine probe: the skirmish AI team's Crush / CrushPreference (benches/ai/tactics/scenes.py#aicrush_bench; docs/engine/aiteamstate.md).
 
       a  守军数     Peacekeepers the player (p1) owns (12 at the start; the guards)
          坦克数     Hammers s1 owns
@@ -403,13 +403,13 @@ def engine_aicrush():
 
 
 def engine_aidefense():
-    """Engine probe: the AI's StaticDefense tactic, the Distance circle and the pull-back (missions/aidefense_bench.py).
+    """Engine probe: the AI's StaticDefense tactic, the Distance circle and the pull-back (benches/ai/tactics/scenes.py#aidefense_bench).
 
       a  圈300 / 圈450 / 圈650 / 圈900   Peacekeepers of s1 inside a square of half-width r centred on the AI's yard
                                       (r = 300 / 450 / 650 / 900) -- once a second from the wake to ~65 s after it
 
     The Peacekeepers are ordered (plain MOVE, mission second 30) to FAR, 1150 from the yard (1200, on two trees, for every
-    reading below: see missions/aidefense_bench.py) toward the east gate, almost due west
+    reading below: see benches/ai/tactics/scenes.py#aidefense_bench) toward the east gate, almost due west
     (direction (-0.990, -0.141)), so a square of half-width r is the circle of radius r to within the small sideways
     drift (the yard-to-unit distance is the x-distance times ~1.01). The reading is how low each ring goes after s30 and
     when it is back at 4 (the team dragging them back inside Distance). The expectation is weak (the 900 ring holds >= 1
@@ -532,7 +532,7 @@ def engine_aidelay():
     give Frames - Ever = 362 after wake (24 positive samples per build).
     This is the latched script observation clock, not an internal dispatch frame.
     This single pair does not measure the RNG distribution. Sim.cond now supports
-    the player status count (A round 164); engine_aidelay.readings.toml replays these
+    the player status count (A round 164); benches/ai/tactics/readings.toml#engine_aidelay replays these
     script counters.
     """
     ac = engine_aimicro()["shared"]
@@ -609,7 +609,7 @@ def engine_aidelay():
         """t (aidelaytog*): s1's always-switching Peacekeepers, counted by player every frame, shown each second:
           造出  how many s1 owns          盾  how many have the shield up (GENERIC_TOGGLE_STATE)
           曾落 / 曾双  frames since s1 first had none up again after one was / two up at once
-        Predicted (missions/aidelay_bench.py): the TOGGLE_ALWAYS line -- one up for good, 曾落 and 曾双 never; the
+        Predicted (benches/ai/tactics/scenes.py#aidelay_bench): the TOGGLE_ALWAYS line -- one up for good, 曾落 and 曾双 never; the
         TOGGLE_DEFAULT line -- 曾落 and 曾双 both (the two switch together every round)."""
         t = Test()
         p1, s1, shield = m.player('p1'), m.player('s1'), status('GENERIC_TOGGLE_STATE')
@@ -646,7 +646,7 @@ def engine_aidelay():
 
 
 def engine_aidiff():
-    """Engine probe: StrategicState Difficulty (missions/aidiff_bench.py) -- two always-on states, one listed for MEDIUM,
+    """Engine probe: StrategicState Difficulty (benches/ai/tactics/scenes.py#aidiff_bench) -- two always-on states, one listed for MEDIUM,
     one for EASY HARD BRUTAL, each sending one unit type: which type leaves, and at which campaign difficulty?
 
       a  难度       the campaign difficulty the bench walked into: 1 easy, 2 normal, 3 hard (scripts with one
@@ -663,7 +663,7 @@ def engine_aidiff():
               步兵在家 4 to s55 -- only the state listed MEDIUM sent its team.
       aidiffx a (the lists swapped): 难度 2; 步兵在家 4 -> 1 @ s16, 0 from s17; 坦克在家 4 to s55.
     So campaign normal = AI difficulty MEDIUM (simai's DIFFICULTY map), and a state not listed for it never runs.
-    The simulator gives the same two (checks/engine_aidiff.readings.toml only_the_states_listed_for_the_difficulty_run).
+    The simulator gives the same two (benches/ai/tactics/readings.toml#engine_aidiff only_the_states_listed_for_the_difficulty_run).
     """
     from parts import Test, counted, square, Script
 
@@ -1021,7 +1021,7 @@ def engine_aiengineer():
 
 
 def engine_aifallback():
-    """RetreatMinDistanceToFallback diagnostic (missions/aifallback_bench.py).
+    """RetreatMinDistanceToFallback diagnostic (benches/ai/tactics/scenes.py#aifallback_bench).
 
     Prediction: both leave home and enter the far-plant area alive. A 500-unit
     continuation latch carries the team farther home than 100 once the hostile
@@ -1068,8 +1068,8 @@ def engine_aifallback():
 
 
 def engine_aigarrison():
-    """Engine probe: the skirmish AI team's EnterGarrisons (missions/aigarrison_bench.py; docs/engine/aiteamstate.md; the
-    simulator against these readings: engine_aigarrison.readings.toml).
+    """Engine probe: the skirmish AI team's EnterGarrisons (benches/ai/tactics/scenes.py#aigarrison_bench; docs/engine/aiteamstate.md; the
+    simulator against these readings: benches/ai/tactics/readings.toml#engine_aigarrison).
 
       a  步兵在家 / 到远厂     Peacekeepers of s1 within 450 of the AI's base / 300 of the far power plant
          步兵数               Peacekeepers s1 owns (in the house too)
@@ -1126,7 +1126,7 @@ def engine_aigarrison():
 
 def engine_aihome():
     """Engine probe: DefaultTacticHomeBaseCriteria -- which of two AI bases a RETURN_HOME_AND_DISBAND team walks home to
-    (missions/aihome_bench.py).
+    (benches/ai/tactics/scenes.py#aihome_bench).
 
       a  家A / 家B / 敌存活 (aihomecl) or 到电厂 (aihmg*)   s1 units inside a square around base A (the first yard,
          half-width 450) / around base B (the second yard, 1350 north, half-width 750) / the player's Peacekeepers within
@@ -1161,7 +1161,7 @@ def engine_aihome():
     NEAR_B = 750.0
     NEAR_PLANT = 300.0
     BIG = 2500.0
-    FOE_DIST = 1000.0   # missions/aihome_bench.py
+    FOE_DIST = 1000.0   # benches/ai/tactics/scenes.py#aihome_bench
     HOME = {'aihomecl': 'B', 'aihmgnw': 'B', 'aihmgno': 'B'}      # aihmgcl: neither (bench), asserted on 到电厂
 
 
@@ -1234,7 +1234,7 @@ def engine_aiignore():
     gaps. See work/re/e120_ignore_base.md.
 
     B 11-24: the observer pair's team states are the readings in
-    engine_aiignore.readings.toml (0 keeps the team at 8, 2000 gives state 0 with
+    benches/ai/tactics/readings.toml#engine_aiignore (0 keeps the team at 8, 2000 gives state 0 with
     the engineer as target) -- the field's item hangs there.
     """
     from model import Script, Test, counted
@@ -1267,7 +1267,7 @@ def engine_aiignore():
         """Separate CNVTeams diagnostics; coverage is checked on the game clock.
 
         The rejected damage prediction is kept; the team states these runs read
-        are the coverage (engine_aiignore.readings.toml).
+        are the coverage (benches/ai/tactics/readings.toml#engine_aiignore).
         Evidence: work/re/c_ignore_state_report.md.
         """
         t = probe(m)
@@ -1299,7 +1299,7 @@ def engine_aiignore_rule():
     preconditions pass. Do not change that window to fit this run. Model ALL state
     replays; ANY candidate/Alpha eligibility remains a strict xfail, no promotion.
     aiignrinc (ANY Include ENGINEER) / aiignrexc (ALL Exclude ENGINEER), B 11-24:
-    state 8 / 0 the same way (readings in engine_aiignore_rule.readings.toml).
+    state 8 / 0 the same way (readings in benches/ai/tactics/readings.toml#engine_aiignore_rule).
     """
     from model import Script
     distance_probe = engine_aiignore()["shared"].probe
@@ -1341,7 +1341,7 @@ def engine_aikeep():
 
 @cache
 def engine_aimicro():
-    """Engine probe: when the AI's micro manager fires the Imperial Warriors' Bonzai charge (missions/aimicro_bench.py).
+    """Engine probe: when the AI's micro manager fires the Imperial Warriors' Bonzai charge (benches/ai/tactics/scenes.py#aimicro_bench).
 
     s1's StaticDefense team is the two warriors; an unarmed player engineer stands D west of each (90 or 140), kept at
     full health every frame. The charge is read as the warrior's ObjectStatus WEAPON_UPGRADED_02 (10 s; reload 30 s).
@@ -1396,7 +1396,7 @@ def engine_aimicro():
         unit's power entries along (the team-building routines, work/re/l4_specials.md), so the aimicbuilt silence is the StaticDefense team
         (not taking them, or not running the round there) -- not followed (the layer 4 closing line).
       aimicspon / aimicspoff r PASS both (B, round 113, 2026-11-10; mods CampAIMicSpOnR / CampAIMicSpOffR): aimicbuiltf
-        on this probe's own micro manager (StandardMicroManager flattened, missions/aimicro_bench.py _spow_xml), only
+        on this probe's own micro manager (StandardMicroManager flattened, benches/ai/tactics/scenes.py#aimicro_bench _spow_xml), only
         UseSpecialPowers differing. On: 造出 2 from s21, 冲 2 @ s41, 曾冲 127 @ 帧数 489 (first charge ~362 frames after
         the wake), the warriors alive to the end (造出 3 from s61). Off: 造出 2 s21-s41 -> 0 @ s51 (both died fighting),
         曾冲 0 until the control (冲 1 @ s61, 曾冲 108) -- a scripted press still fires. UseSpecialPowers false = the micro
@@ -1684,7 +1684,7 @@ def engine_aineutralgarr():
 
 def engine_aiorders():
     """Engine line D round 77: aiskcap's check y (new Peacekeepers past their SpecificUnitCap 2 at ~s150) on aiskcapo =
-    aiskcap with the AI yard carrying ra3ext's CNVOrders (missions/aiorders_bench.py). The bench asserts y's counters; the
+    aiskcap with the AI yard carrying ra3ext's CNVOrders (benches/ai/tactics/scenes.py#aiorders_bench). The bench asserts y's counters; the
     orders (which path placed the overrun Peacekeeper) are read off the run folder's ra3ext.log after the run.
 
     Round 79 (H4): yl = y watched to 300 s after the wake (the AI's building orders, AlliedBaseDefense among them, are in
@@ -1748,7 +1748,7 @@ def engine_aipassive_distance():
 
 
 def engine_aipathcheck():
-    """Engine line D round 152: PathfindingCheckType (missions/aipathcheck_bench.py). Three counters, once a second, to
+    """Engine line D round 152: PathfindingCheckType (benches/ai/tactics/scenes.py#aipathcheck_bench). Three counters, once a second, to
     90 s after the wake; the team's members are in the CNVTeams log (the kick = members leaving with no death).
 
       步兵总数 / 步兵在家 / 到对岸   s1's Peacekeepers alive; within 450 of the AI base; within 600 of the player's yard
@@ -1785,7 +1785,7 @@ def engine_aipathcheck():
 
 @cache
 def engine_aipullback():
-    """Engine probe: the skirmish AI team's PullbackInjured / ReverseMove (missions/aipullback_bench.py; docs/engine/aiteamstate.md).
+    """Engine probe: the skirmish AI team's PullbackInjured / ReverseMove (benches/ai/tactics/scenes.py#aipullback_bench; docs/engine/aiteamstate.md).
 
       aipull1 / aipull0   a  守军数 (the player's Peacekeepers), 坦克数 (s1 Hammers), 到远厂 (Hammers within 300 of the far
                              plant), 回家 (Hammers within 300 of the AI's war factory)
@@ -1863,7 +1863,7 @@ def engine_aipullback():
       observations across consecutive frames in states 2/4 with the same valid goal, all positive hull-forward
       displacement dot products (no reverse candidate in those samples). This does not cover every frame or prove
       branch eligibility. Near-plant s19-s22 is zero on both observer builds, unlike the old uninstrumented record.
-      The f263 far-plant aim holds on the simulator (readings: engine_aipullback.readings.toml); work/re/e115_reverse_aim.md.
+      The f263 far-plant aim holds on the simulator (readings: benches/ai/tactics/readings.toml#engine_aipullback); work/re/e115_reverse_aim.md.
       (11-13, D round 132; two of the player's Guardians ~54 off the column, host observed; 坦克数 近敌 敌坦)
       airevk1  PASS, airevk0 PASS -- the same second for second: s1-12 4 4 2 | s13 4 4 1 | s14-85 4 3 1, and the host's
                samples the same frame for frame: only 2 tanks join the team (f213), go state 2 at f242 with aim = the
@@ -1874,12 +1874,12 @@ def engine_aipullback():
       airevk2  PASS: s1-12 4 4 2 | s13 4 4 1 | s14 4 3 1 | s15-30 4 3 4 | s31-48 4 4 4 | s49-85 4 3 4. Host: both members
                aim a spawned foe (f272); f302 member 3171 is stopped and sent to a point 135 (R - 10) from its target,
                along target -> member, and drives there hull-first at the target (reversing); 23 such orders in the run
-      airevk2o PASS: s1-12 4 4 2 | s13 4 4 1 | s14-15 4 3 1 | s16-85 4 3 4; no back-up order (readings: engine_aipullback.readings.toml)
+      airevk2o PASS: s1-12 4 4 2 | s13 4 4 1 | s14-15 4 3 1 | s16-85 4 3 4; no back-up order (readings: benches/ai/tactics/readings.toml#engine_aipullback)
       (11-14, D round 135b, "注入摆" -- PREMISE: THE START IS PLACED (前提是摆出来的), not the mission's own: at f250 the
       plan moves foe 1 / 2 50 west of members 3170 / 3171; foe 1 already dead (poke not found), foe 2 placed)
       airevkp1 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-17 4 3 1 | s18-85 4 2 1; f272 both members back up to 135 (R - 10)
                from foe 2 <- ReverseMove, 19 back-up orders in the run = d133's airevk2
-      airevkp0 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-85 4 3 1; the same poke, no back-up order (readings: engine_aipullback.readings.toml)
+      airevkp0 PASS: s1-12 4 4 2 | s13 4 4 1 | s14-85 4 3 1; the same poke, no back-up order (readings: benches/ai/tactics/readings.toml#engine_aipullback)
       (11-16, D round 182) airevkh PASS (airevk1, 坦克数 swapped for the foes' health % read BEFORE the frame's keep):
                血1 血2 近敌 敌坦  s2-54 100 100|92 4 2 | s56 4 1 | s60-142 3 1 -- the keep holds (a read before it is 100, or
                92 = one 35 shell); here the near foe lived to s56, yet members 3170 / 3171 joined the team f213 exactly as in
@@ -2065,7 +2065,7 @@ def engine_aipullpct():
                alive3 s24-25, 2 s26, 1 s27, 0 from s28 (Crane recycling).
     The simulator's live facility hook now distinguishes the initial return:
     high sends four vehicles home without reaching the far plant; low reaches
-    the far plant first. engine_aipullpct.readings.toml separates the passing return
+    the far plant first. benches/ai/tactics/readings.toml#engine_aipullpct separates the passing return
     from the Crane recycling (a mismatch). Exact seconds, late return and
     recycling are not claimed by the passing threshold tests.
     """
@@ -2090,7 +2090,7 @@ def engine_aipullpct():
 
 
 def engine_aireactive():
-    """Engine probe: the AI's ReactiveDefense tactic and ReactiveDefenseRadius (missions/aireactive_bench.py).
+    """Engine probe: the AI's ReactiveDefense tactic and ReactiveDefenseRadius (benches/ai/tactics/scenes.py#aireactive_bench).
 
       a  家300 / 敌300 / 敌存活   s1 Peacekeepers inside a square of half-width 300 around the AI yard / around the foe spot
                                (1000 straight south of the yard) / the player's Peacekeepers inside a half-width-2500
@@ -2121,7 +2121,7 @@ def engine_aireactive():
     AFTER = 60.0
     NEAR = 300.0
     BIG = 2500.0
-    FOE_DIST = 1000.0   # missions/aireactive_bench.py
+    FOE_DIST = 1000.0   # benches/ai/tactics/scenes.py#aireactive_bench
     CHASED_BY = 30.0
 
 
@@ -2202,11 +2202,11 @@ def engine_airelease():
 
 @cache
 def engine_airetreat():
-    """Engine probe: the skirmish AI team's retreat and its EngagePassiveTargets switch (missions/airetreat_bench.py;
+    """Engine probe: the skirmish AI team's retreat and its EngagePassiveTargets switch (benches/ai/tactics/scenes.py#airetreat_bench;
     docs/engine/aiteamstate.md; the simulator against these readings: tests/test_simai.py).
 
     The probe's micro manager: StandardMicroManager_MEDIUM flattened, RetreatPowerAdvantage 0.2 and
-    <AIMicroManagerData RetreatMinDistanceFromBase> 300 instead of retail 900 (missions/airetreat_bench.py).
+    <AIMicroManagerData RetreatMinDistanceFromBase> 300 instead of retail 900 (benches/ai/tactics/scenes.py#airetreat_bench).
     It reaches the team only through the TeamTemplate's MicroManager="..." naming it: airet / airet0 and aipas1 / aipas0
     differ in one field of that data and nothing else, so the two pairs below are also the bench reading of TeamTemplate
     MicroManager (the team runs the micro data its MicroManager names; B round 110).
@@ -2344,7 +2344,7 @@ def engine_aisort():
 
 
 def engine_aispecial():
-    """Engine probe: when the skirmish AI fires its superweapon and at which pile (missions/aispecial_bench.py).
+    """Engine probe: when the skirmish AI fires its superweapon and at which pile (benches/ai/tactics/scenes.py#aispecial_bench).
 
     s1 (AlliedBalanced, woken at 10 s, money 0) owns a proton collider (SpecialPowerParticleCannon). Piles of the player's
     structures: A 4 barracks (2000), B 3 war factories (6000), C 5 base defenses (4000) -- see the mission. The countdown
@@ -2451,7 +2451,7 @@ def engine_aispecial():
 
 def engine_aiswitch():
     """Engine probe: the skirmish AI's script switches SKIRMISH_AI_SET_ALL_ENEMY_PLAYERS_PRIORITIES, SKIRMISH_AI_USE_REPAIRS,
-    SKIRMISH_AI_USE_REBUILD_SYSTEM (missions/aiswitch_bench.py; docs/engine/aiswitches.md).
+    SKIRMISH_AI_USE_REBUILD_SYSTEM (benches/ai/tactics/scenes.py#aiswitch_bench; docs/engine/aiswitches.md).
 
       a  步兵在家 / 到近厂 / 到远厂   Peacekeepers of s1 within 450 of the AI's base / 300 of the near / far power plant
          电厂血量 (aiswrep*)       the AI's own plant's health in percent (set to 50 at the start)
@@ -2552,7 +2552,7 @@ def engine_aitactical():
 
 
 def engine_aiteamfields():
-    """Engine line D round 148: GatherWaypoint, MaxTypesOfUnits, Priority=HOTSPOT (missions/aiteamfields_bench.py).
+    """Engine line D round 148: GatherWaypoint, MaxTypesOfUnits, Priority=HOTSPOT (benches/ai/tactics/scenes.py#aiteamfields_bench).
     Three counters a build (a fourth reads '?'), once a second; the team states and members are in the CNVTeams log.
 
       aigath*   步兵在家 / 到路点 / 到远厂   Peacekeepers of s1 within 450 of the AI base, within 300 of the gather
@@ -2637,7 +2637,7 @@ def engine_aiteamfields():
 
 
 def engine_aiteamfilter():
-    """Engine probe: which units a team template recruits (missions/aiteamfilter_bench.py) -- ObjectFilter Rule ANY / NONE
+    """Engine probe: which units a team template recruits (benches/ai/tactics/scenes.py#aiteamfilter_bench) -- ObjectFilter Rule ANY / NONE
     / ALL with IncludeThing / ExcludeThing, IncludeKindOf / ExcludeKindOf, MaxUnits: who leaves the AI's base?
 
       a  坦克在家   Guardians of s1 inside the base area (450 around the east base), once a second
@@ -2655,7 +2655,7 @@ def engine_aiteamfilter():
       aitfki   a (IncludeKindOf INFANTRY, no ObjectFilter): 步兵在家 0 @ s15; 坦克在家 4 to s55.
       aitfke   a (IncludeKindOf CAN_ATTACK, ExcludeKindOf INFANTRY): 坦克在家 3 @ s14, 0 @ s15; 步兵在家 4 to s55.
       aitfmax  a (MaxUnits 3, 8 Guardians): 坦克在家 8 -> 6 @ s13, 5 from s14 to s55 -- one team of 3.
-    The simulator (simai) gives the same six (checks/engine_aiteamfilter.readings.toml team_filters_take_whom_the_bench_sent).
+    The simulator (simai) gives the same six (benches/ai/tactics/readings.toml#engine_aiteamfilter team_filters_take_whom_the_bench_sent).
     Bench 2026-11-09 (B round 81, run_queue --jobs 2, all PASS; the second type: Riptide ACVs in the locomotor builds):
       aitfland  AllowedLocomotorTypes LAND: 坦克在家 2 @ s15, 0 from s16; 气垫船在家 4 to s55.
       aitfamph  AMPHIBIOUS: 气垫船在家 2 @ s13, 0 from s14; 坦克在家 4 to s55.
@@ -2665,7 +2665,7 @@ def engine_aiteamfilter():
       aitfosc   SKIRMISH_AI_NORMAL_COMBAT_UNITS: both go, later than the rest: 坦克在家 2 @ s20, 0 @ s21; 步兵在家 1 @
                 s22, 0 from s23 (not modelled: the ~6 s).
     The model had the object set as no filter (private ai/teams.py OBJECT_SET_KIND now); simai gives these six
-    (checks/engine_aiteamfilter.readings.toml locomotor_types_and_object_sets_take_whom_the_bench_sent).
+    (benches/ai/tactics/readings.toml#engine_aiteamfilter locomotor_types_and_object_sets_take_whom_the_bench_sent).
     Bench 2026-11-09 (B round 88): aiar0 / aiar1 / aiar2 (AlwaysRecruit false / true / true MaxUnits 4; 4 Guardians,
     the AI to build 2 more by an opener in an Allied war factory): all three 坦克在家 4 to s13, 3 @ s14, 0 from s15 to
     s75 -- no third tank ever seen at home: the opener most likely built nothing (no owned counter, not told apart).
@@ -2739,7 +2739,7 @@ def engine_aiteamfilter():
 
 def engine_aiteams():
     """Engine line D round 68: read the AI's teams (template name -> team -> member ids) off ra3ext's CNVTeams module, on
-    the C line's aicr3 game (CreateUnits MinUnits 3: engine_aicreate). The mission (missions/aiteams_bench.py) is
+    the C line's aicr3 game (CreateUnits MinUnits 3: engine_aicreate). The mission (benches/ai/tactics/scenes.py#aiteams_bench) is
     aicreate_bench's aicr3 plus one object of the AI's own carrying the CNVTeams module. Every 15 frames the module logs
     the host owner's teams to the run folder's ra3ext.log; experimental/cnv/teamlog.py reads them by name:
 
@@ -2755,7 +2755,7 @@ def engine_aiteams():
 
 
 def engine_aitoggle():
-    """Engine probe: when the AI's micro manager raises / lowers the Peacekeepers' riot shield (missions/aitoggle_bench.py).
+    """Engine probe: when the AI's micro manager raises / lowers the Peacekeepers' riot shield (benches/ai/tactics/scenes.py#aitoggle_bench).
 
     s1's StaticDefense team is two Peacekeepers; a player Twinblade attacks Peacekeeper 1 from ATTACK_AT (20 s) and is
     deleted at STOP_AT (35 s). Shield up = ObjectStatus GENERIC_TOGGLE_STATE. Both Peacekeepers kept at full health.
@@ -2909,7 +2909,7 @@ def engine_aitoggle():
 def engine_aitransport():
     """Tactic UseTransports: does a SimpleAttack team with a transport put its infantry aboard before it goes?
 
-    missions/aitransport_bench.py: Niagara without bridges, four Peacekeepers and a Riptide of s1 on the east bank, the
+    benches/ai/tactics/scenes.py#aitransport_bench: Niagara without bridges, four Peacekeepers and a Riptide of s1 on the east bank, the
     target plant on Goat Island. Three counters, once a second:
       车内步兵   s1's objects carrying ENCLOSED (only the Peacekeepers can be: aboard the Riptide)
       岛上步兵   s1's Peacekeepers inside Goat Island's box
@@ -2941,7 +2941,7 @@ def engine_aitransport():
     an AIR mask always passes (work/re b1121_transports.md): aitranst0 / aitranst1 put a Twinblade in for the Riptide
     (激流在岛 then counts the Twinblade). The flag tells: true -> all four board s24-27, carried off from s32; false ->
     the team takes all five (f153), nobody boards, the Peacekeepers drop out (f248), the Twinblade crosses alone (s49).
-    Readings in engine_aitransport.readings.toml, both a mismatch (the model's recruit does not pair).
+    Readings in benches/ai/tactics/readings.toml#engine_aitransport, both a mismatch (the model's recruit does not pair).
     """
     from parts import Script, Test, counted, square, status
 

@@ -922,7 +922,7 @@ def icewall():
 
 
 def sight():
-    """Low ground looking up (missions/sight_bench.py): latched, whether the player has discovered each pair's target
+    """Low ground looking up (benches/map/fixtures/scenes.py#sight): latched, whether the player has discovered each pair's target
     (NAMED_DISCOVERED), the map left shrouded.
 
     look: the controls hold -- on one level, seen within the viewer's vision, not beyond it. The two 'up' pairs are the

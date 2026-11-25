@@ -1,4 +1,4 @@
-"""Lift timing from D50; the engine_lift / engine_liftground / engine_liftair readings: checks/engine_lift.readings.toml."""
+"""Lift timing from D50; the engine_lift / engine_liftground / engine_liftair readings: benches/weapon/impact/readings.toml#engine_lift."""
 import importlib.util
 from pathlib import Path
 

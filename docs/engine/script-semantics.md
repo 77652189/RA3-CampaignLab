@@ -127,10 +127,10 @@
 
 - `DISPLAY_COUNTER` / `DISPLAY_COUNTDOWN_TIMER`：`SA` 里的 `doDisplayCounter` / `doDisplayCountdownTimer` → `InGameUI::addNamedTimer`（`ZH/Source/GameClient/InGameUI.cpp`）。只是登记一个界面条目，绘制时现读计数器的值。倒计时显示的是 `(int)(剩余帧/30)`，向下取整。对逻辑**没有任何影响**。
 - `HIDE_COUNTER` / `HIDE_COUNTDOWN_TIMER` 调用 `removeNamedTimer`。
-  - 台上测过（11-09，`checks/engine_scripts4.py` clock）：藏起来的倒计时照走，到时 `TIMER_EXPIRED` 照常成立；再显示时读的是剩下的时间（不重置），**排到列表最后**（原来在计数器上面，再显示就跑到计数器下面）；到时后停在 0:00 一直显示，要自己藏。
+  - 台上测过（11-09，`benches/script/control/checks.py#engine_scripts4` clock）：藏起来的倒计时照走，到时 `TIMER_EXPIRED` 照常成立；再显示时读的是剩下的时间（不重置），**排到列表最后**（原来在计数器上面，再显示就跑到计数器下面）；到时后停在 0:00 一直显示，要自己藏。
 - `SHOW_MILITARY_CAPTION`：`SA` 里的 `doMilitaryCaption` → `InGameUI::militarySubtitle`。《将军》的时长参数是 Int 毫秒；红警3的 catalog 里参数类型是 Real（秒），类型变了。
 - 任务目标相关的动作（`SET_MISSION_OBJECTIVE_STATUS`、`LINK_MISSION_OBJECTIVE_TO_*`）《将军》里没有，见第 6 节。
-  - 台上测过（11-09，`checks/engine_scripts5.py` goals，看任务菜单和小地图）：状态 1 = 亮出；2 = 打勾、3 = 打红叉；**写 0 把已亮出的目标藏回去**，列表编号跟着收拢；**没亮过直接写 2/3 也会出现**（带勾/叉）；写 7 不做（还是亮着没勾）。列表按**第一次出现的先后**排，不按任务里目标的声明顺序。奖励目标是单独一组黄色、自己从 1 编号。
+  - 台上测过（11-09，`benches/ui/presentation/checks.py#engine_scripts5` goals，看任务菜单和小地图）：状态 1 = 亮出；2 = 打勾、3 = 打红叉；**写 0 把已亮出的目标藏回去**，列表编号跟着收拢；**没亮过直接写 2/3 也会出现**（带勾/叉）；写 7 不做（还是亮着没勾）。列表按**第一次出现的先后**排，不按任务里目标的声明顺序。奖励目标是单独一组黄色、自己从 1 编号。
   - 标记：`LINK_MISSION_OBJECTIVE_TO_OBJECT` 在小地图上画在单位身上（主目标绿色"!"，两个目标挂同一单位只画一个），`..._TO_WAYPOINT` 画在路点（奖励黄色"!"）。目标完成后单位身上的标记不再画（没区分开：是"完成就不画"，还是"同一单位只一个图标、另一个目标摘链把它带走了"）。
 
 ### 4.4 边界切换、揭图
@@ -138,12 +138,12 @@
 - `MAP_SWITCH_BORDER`：`SA` 里的 `doBorderSwitch` → `TerrainLogic::setActiveBoundary`（`ZH/Source/GameLogic/Map/TerrainLogic.cpp`）。
   - 序号越界、和当前相同、或那条边界宽高为 0 → 什么都不做。
   - 否则立即重建 PartitionManager 并恢复雾和揭开的格子，所有对象重新登记；落在新边界外的对象只是打上 `OFF_MAP` 状态，**不会被删或被杀**（`Object::friend_notifyOfNewMapBoundary`）。
-  - 台上测过（11-09，`checks/engine_scripts4.py` border）：边界外的单位**既不开火也不挨打**——一边在界内一边在界外的一对、两边都在界外的一对，都一枪不放；界内的一对照打；边界放开马上开打。界外单位还活着，区域条件照样看得见。比《将军》"同一边才互打"的过滤更严。模拟器 `Sim.on_map`。
+  - 台上测过（11-09，`benches/script/control/checks.py#engine_scripts4` border）：边界外的单位**既不开火也不挨打**——一边在界内一边在界外的一对、两边都在界外的一对，都一枪不放；界内的一对照打；边界放开马上开打。界外单位还活着，区域条件照样看得见。比《将军》"同一边才互打"的过滤更严。模拟器 `Sim.on_map`。
   - 源码注释说边界切换"和永久揭图配合不好"，所以对观战者会先撤销永久揭图、切换、再重新揭。对普通玩家没有这样处理。推断：切换**之前**做的永久揭图，可能盖不到新扩出来的区域。未实测。
 - `MAP_REVEAL_ALL_PERM` / `MAP_REVEAL_ALL_UNDO_PERM`：`SA` 里的 `doRevealMapEntirePermanently`。玩家参数为空时作用于所有人类玩家。
 - `MAP_REVEAL_ALL`：`SA` 里的 `doRevealMapEntire`，一次性揭开，之后照常回雾。
 - `MAP_REVEAL_AT_WAYPOINT`：`SA` 里的 `doRevealMapAtWaypoint`，`doShroudReveal` 后紧跟 `undoShroudReveal`；撤销进的是回雾队列，所以不是一瞬间：台上测过默认亮 **137 帧（约 9 秒）**，`MAP_SHROUD_SET_RESHROUD_TIME N` 改成 15 × N − 13 帧（`vision.md` 第 2 节）。
-- `MAP_REVEAL_PERMANENTLY_AT_WAYPOINT` / `MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT`：`SA` 里的 `doRevealMapAtWaypointPermanent` → `ScriptEngine::createNamedMapReveal` + `doNamedMapReveal`，按名字登记、按名字撤销。台上测过（11-09，`checks/engine_vision.py` perm / undo）：永久揭开**整局不过期**（30 秒 483 帧一直亮）；按名字撤销后**当帧就回雾**，不走回雾队列的 137 帧延迟。模拟器 `sim.py` 两条都一样。
+- `MAP_REVEAL_PERMANENTLY_AT_WAYPOINT` / `MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT`：`SA` 里的 `doRevealMapAtWaypointPermanent` → `ScriptEngine::createNamedMapReveal` + `doNamedMapReveal`，按名字登记、按名字撤销。台上测过（11-09，`benches/map/fixtures/checks.py#engine_vision` perm / undo）：永久揭开**整局不过期**（30 秒 483 帧一直亮）；按名字撤销后**当帧就回雾**，不走回雾队列的 137 帧延迟。模拟器 `sim.py` 两条都一样。
 
 ### 4.5 胜负
 
@@ -234,7 +234,7 @@
 1. **按种类数区内单位，数的是所有人的**（`engine_area`：`field`、`camp`）。`PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA` 不管条件里写的是哪个玩家都一样：敌方的读数是我方那 3 个；我方在敌营的读数是敌人那 2 个。按模板数（`..._UNIT_TYPE_IN_TRIGGER_AREA`）和 `SKIRMISH_PLAYER_HAS_UNITS_IN_AREA` 只数条件里写的那个玩家。所以"玩家在那里能打的少于 N 个"如果用按种类数来写，会把敌人、中立、盟友站在那里的也算进去。
 2. **"被玩家攻击"只看最后打它的那个单位还在不在**（`engine_attack`：`gone`）。`NAMED_ATTACKED_BY_PLAYER` 在打它的单位还在场时一直成立，两炮之间也成立；打它的单位一被删或被杀，下一帧就变假，哪怕目标还活着、刚被打掉三分之一血。它不是"曾经被这个玩家打过"。如果一击就死的单位（自爆类、被击落的飞机）是唯一打它的，只有被打的那一帧能抓到。
 3. **整队命令只对当时在队里的单位起作用；空队算不算全灭**（`engine_team`：`fresh`）。给一个还没有人的队下 `MOVE_TEAM_TO`，之后再放进队的单位不会去执行。在同一条脚本里先 `UNIT_SET_TEAM` 再下令，这个单位会执行（`Mission.order` 就是这么写的）。一个从来没人进过的队，`TEAM_DESTROYED` 和 `TEAM_HAS_UNITS` 都读假；放进一个人后"有人"读真；这个人被删后"全灭"读真。所以拿"队全灭"当条件时，这个队必须先有过人。
-4. **屏幕上有两种字幕**（`caption`，`checks/engine_caption.py`）：
+4. **屏幕上有两种字幕**（`caption`，`benches/ui/presentation/checks.py#engine_caption`）：
    - 上方青色角框的**军事字幕框**（`SHOW_MILITARY_CAPTION`）。同一时间只显示一条，新的一来就替换旧的，每条按它自己的秒数消失，不会累积。`DISPLAY_TUTORIAL_TEXT` 用的也是这个框，这次两条提示都在 2～3 秒内自己消失了，没有等 `HIDE_TUTORIAL_TEXT`。
    - 下方黄字半透明黑底的**对白字幕面板**。播放带字幕的对白时（`PLAY_SOUND_EFFECT` 加上字符串表里的 `DIALOGEVENT:<事件名>`），字幕自己进这个面板，一句一行往下累积。纯字幕句不进这个面板。我们的配音句如果同时发了军事字幕，同一句会显示两遍。
 5. **对白面板在一句出现后约 5.1～5.6 游戏秒清掉**（`engine_dialog`：`real`、`fast`、`slow`、`pair`）。跟这句多长没关系（量了 3.3 秒、4.3 秒、4.34 秒三句原版对白），跟测试台把游戏开到几倍速也没关系（×1、×2.9、×8）。也不是游戏数据里写的停留 20 秒，不是等音频放完，也不是按真实秒计。按原速、玩家看到的样子：0.9 秒出现，5.3 秒音频放完，5.7～6.0 秒之间面板清掉。所以一句配音的字幕大约停 5.5 秒，不管这句有多长。几句接连播的时候怎么清，见第 7 条。

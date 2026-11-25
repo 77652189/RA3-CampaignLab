@@ -2,7 +2,7 @@
 
 引擎线第 24～30 轮（2026-11-05），ADR 0019 第三层。写法照 `script-semantics.md`：**测** = 测试台；**推断，未实测** = 只从资料推出来。
 
-探针：`experimental/cnv/checks/engine_fire.py`（`timers`、`timers2`、`allI`、`allI0P`、`allI0F`、`allI00`、`shift`、`late` 八个检查跑过）和 `engine_shot.py`（`way`、`splash` 第 30 轮跑，`shells` 第 32 轮，`armor`、`flank`、`vet` 第 33 轮），读数都在各自的文档串里。
+探针：`experimental/cnv/benches/weapon/firing/checks.py#engine_fire`（`timers`、`timers2`、`allI`、`allI0P`、`allI0F`、`allI00`、`shift`、`late` 八个检查跑过）和 `benches/weapon/target_effects/checks.py#engine_shot`（`way`、`splash` 第 30 轮跑，`shells` 第 32 轮，`armor`、`flank`、`vet` 第 33 轮），读数都在各自的文档串里。
 
 ## 0. 结论：给关卡线和单位线抄的
 

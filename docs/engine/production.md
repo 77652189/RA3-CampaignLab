@@ -2,7 +2,7 @@
 
 引擎线第 41 轮（2026-11-05），ADR 0019 第二层。写法照 `script-semantics.md`：**测** = 测试台；**推断，未实测** = 只从资料推出来。
 
-探针 `experimental/cnv/checks/engine_production.py`（`cnv_check engine_production a` / `b` / `c` / `d`）。尼亚加拉图玩家基地摆建造场（+50 电）、电厂（+100）、三座兵营（各 −25）；各变体开局用脚本删掉不要的建筑。下单靠测试台点侧栏的步兵页签和工程师按钮（`AlliedEngineer`：BuildTime 10 秒、造价 500；原版脚本没有让工厂下单的动作）。点击落在任务第几秒不固定（约第 8 秒），所以读数不按时钟比，而按"帧数"：从第一次扣钱起数的逻辑帧数，和资金在同一遍脚本里读。运行 `work/testbench/runs/CampProdA_mcp_1105_191414`、`CampProdB_mcp_1105_192504`、`CampProdC_mcp_1105_192728`、`CampProdD_mcp_1105_193015`。
+探针 `experimental/cnv/benches/economy/construction/checks.py#engine_production`（`cnv_check engine_production a` / `b` / `c` / `d`）。尼亚加拉图玩家基地摆建造场（+50 电）、电厂（+100）、三座兵营（各 −25）；各变体开局用脚本删掉不要的建筑。下单靠测试台点侧栏的步兵页签和工程师按钮（`AlliedEngineer`：BuildTime 10 秒、造价 500；原版脚本没有让工厂下单的动作）。点击落在任务第几秒不固定（约第 8 秒），所以读数不按时钟比，而按"帧数"：从第一次扣钱起数的逻辑帧数，和资金在同一遍脚本里读。运行 `work/testbench/runs/CampProdA_mcp_1105_191414`、`CampProdB_mcp_1105_192504`、`CampProdC_mcp_1105_192728`、`CampProdD_mcp_1105_193015`。
 
 ## 1. 建造时间：秒数 × 15，但缺电的除法在秒上截断（测）
 

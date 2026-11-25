@@ -2,7 +2,7 @@
 
 原版进攻队出门后，每 UpdateTime（常见 2 秒）由微操管理器（AIMicroManagerData）重新判一次"队伍状态"：打、清场、撤退、什么都不做……这里写我们上台确认过的两件：**撤退**（RetreatPowerAdvantage 一族）和**交战开关 EngagePassiveTargets**。给关卡线和模拟器用。
 
-测试台探针：`experimental/cnv/missions/airetreat_bench.py` + `checks/engine_airetreat.py`（地图、AI、远处电厂同 `ainamed_bench` 的 ainmfar：一个常开状态派 4 个维和步兵按名字去打南边约 1010 远的电厂）；读数在检查文件开头；模拟器对拍在 `tests/test_simai.py` 末尾。
+测试台探针：`experimental/cnv/benches/ai/tactics/scenes.py#airetreat_bench` + `benches/ai/tactics/checks.py#engine_airetreat`（地图、AI、远处电厂同 `ainamed_bench` 的 ainmfar：一个常开状态派 4 个维和步兵按名字去打南边约 1010 远的电厂）；读数在检查文件开头；模拟器对拍在 `tests/test_simai.py` 末尾。
 
 ## 1. 撤退
 
@@ -63,6 +63,6 @@
 
 碾压、伤员撤退模拟器还没有：只在私有模型里，模拟器的坦克照旧开枪。
 
-战术目标开关（11-11，`checks/engine_aitactical.py`）：关闭敌对、被动目标派发，仅切换 `EngageTacticalTarget`；四名维和的战术目标是搜索范围内的无武器电厂。开：第 13 秒血量 84%，第 22 秒起 0%；关：到第 48 秒仍 100%；两组始终四人存活。`tests/test_engage_tactical.py` 按名回放两组，断言末段电厂 0% / 100%、步兵 4 / 4，并检查开时有点名攻击令、关时没有。现有消费者已符合本项，无需修改模型；未验证点目标、敌对目标竞争和搜索边界的精确相位。
+战术目标开关（11-11，`benches/ai/tactics/checks.py#engine_aitactical`）：关闭敌对、被动目标派发，仅切换 `EngageTacticalTarget`；四名维和的战术目标是搜索范围内的无武器电厂。开：第 13 秒血量 84%，第 22 秒起 0%；关：到第 48 秒仍 100%；两组始终四人存活。`tests/test_engage_tactical.py` 按名回放两组，断言末段电厂 0% / 100%、步兵 4 / 4，并检查开时有点名攻击令、关时没有。现有消费者已符合本项，无需修改模型；未验证点目标、敌对目标竞争和搜索边界的精确相位。
 
 没测：伤兵后撤。打敌方单位开关的首次冲锋时序仍有差异，见 `tests/test_simai.py` 的已知缺口。

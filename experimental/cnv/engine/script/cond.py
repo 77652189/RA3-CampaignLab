@@ -7,8 +7,8 @@ simcond_object: L2; simcond_vision: L3; simcond_player: L4; simcond_show: the pr
 condition (Sim.unknown, a gap), false -- as the old chain's end had it.
 
 The retail-campaign conditions came in batches, each with its bench (a function's `# retail batch N` comment):
-1 round 207, checks/engine_conds.py (the program read in work/re d115_script_semantics.md where it says 码, the rest
-INFERRED from Generals until the bench); 2 round 210, checks/engine_conds.py sight (d115_script_semantics.md 4-6);
+1 round 207, benches/script/control/checks.py#engine_conds (the program read in work/re d115_script_semantics.md where it says 码, the rest
+INFERRED from Generals until the bench); 2 round 210, benches/script/control/checks.py#engine_conds sight (d115_script_semantics.md 4-6);
 4 round 238, checks/engine_sighted.py all (bench 11-15 CampSightedAll_mcp_1115_001541); 6 round 245,
 checks/engine_enter.py all (bench 11-15 run_queue engine_area:all at bddb0af4, the build since renamed engine_enter).
 """

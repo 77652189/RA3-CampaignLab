@@ -270,7 +270,7 @@ def world_to_screen(x, y):
     return round(u), round(v)
 
 
-# -- terrain under the camera (engine line round 8, checks/engine_camera.py, run CampCameraWhere_mcp_1104_150834) --
+# -- terrain under the camera (engine line round 8, benches/ui/presentation/checks.py#engine_camera, run CampCameraWhere_mcp_1104_150834) --
 # The mapping above is a flat ground plane. The game's camera looks at a height of its own: over flat ground the
 # ground's, but near higher ground it looks higher (A4's back lane V1, a terrace edge 40-60 south: 43 of our units
 # up, the engineer drawn 26 px low); lower ground around does not pull it down. A point HEIGHT_Y world units north

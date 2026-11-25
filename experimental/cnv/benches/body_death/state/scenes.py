@@ -3,7 +3,7 @@
 
 def engine_life():
     """Engine probe mission: how long an object with a LifetimeUpdate lives, and how long an ice engineer's power takes
-    to leave a wall (checks/engine_life.py; the simulator's rules R1 and R5, docs/story/sim-vs-bench-a4.md).
+    to leave a wall (benches/body_death/state/checks.py#engine_life; the simulator's rules R1 and R5, docs/story/sim-vs-bench-a4.md).
 
     Festival's west field. At A a script creates A4's kind of ice wall (a square, lifetime 30 s) by name; at B the ice
     core (seed, lifetime 5.5 s) that, when its life is up, leaves an unnamed wall of the same kind where it stood -- the

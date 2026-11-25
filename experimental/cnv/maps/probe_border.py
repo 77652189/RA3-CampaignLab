@@ -1,4 +1,4 @@
-"""A probe map for the engine line's border / team / countdown tests (checks/engine_scripts4.py): probe_range's flat
+"""A probe map for the engine line's border / team / countdown tests (benches/script/control/checks.py#engine_scripts4): probe_range's flat
 level ground (CampNew18's terrain levelled) with a second border, the west half. The scenes stand clear of
 probe_range's lanes (y 400, 1200-1900, 3300-3750) and of the start (1250, 2500):
 

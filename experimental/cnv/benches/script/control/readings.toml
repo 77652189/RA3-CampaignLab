@@ -1,4 +1,4 @@
-# Bench readings of checks/engine_acts2.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_acts2 (format: experimental/cnv/readings.py; runner: tests/conformance).
 # A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
 
 [[reading]]
@@ -37,7 +37,7 @@ expect = [
     "flags[:5] == [60, 124, 360, 362, 106]",
 ]
 
-# Bench readings of checks/engine_acts5.py (build engine_acts_v).
+# Bench readings of benches/script/control/checks.py#engine_acts5 (build engine_acts_v).
 # The runner's until is one second past the old bare Sim.run limit to include its last sample.
 
 [[reading]]
@@ -102,7 +102,7 @@ expect = [
     "all(at[k][1] == 0 for k in at)",
 ]
 
-# Bench readings of checks/engine_acts6.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_acts6 (format: experimental/cnv/readings.py; runner: tests/conformance).
 # A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
 
 [[reading]]
@@ -124,7 +124,7 @@ expect = [
     "13.0 <= first_at(2, 62) <= 19.0 and 29.0 <= first_at(2, 52) <= 36.0 and 46.0 <= first_at(2, 42) <= 53.0",
 ]
 
-# Bench readings of checks/engine_acts7.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_acts7 (format: experimental/cnv/readings.py; runner: tests/conformance).
 # A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
 
 [[reading]]
@@ -145,7 +145,7 @@ expect = [
     "2.0 <= first_at(1, 29) <= 5.0 and {v[1] for t, v in F if 1.0 <= t < 12.0} <= {74, 29}",
 ]
 
-# Bench readings of checks/engine_acts8.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_acts8 (format: experimental/cnv/readings.py; runner: tests/conformance).
 # A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
 
 [[reading]]
@@ -153,7 +153,7 @@ bench_id = "engine_acts8"
 id = "acts_y_hunt_as_the_bench"
 scene = {build = "engine_acts_y", check = "hunt", until = 62}
 bench = """hunt, bench 11-14 `run_queue engine_acts_y:hunt` (CampActsYHunt, round 218; the bench's seconds ~1 behind): 家 11222 -> \
-11200 at s6; 到 20 at s9, 220 at s21, 0 at s39, home again at s49-s59; 家 as the bench's BENCH line (checks/engine_acts8.py): \
+11200 at s6; 到 20 at s9, 220 at s21, 0 at s39, home again at s49-s59; 家 as the bench's BENCH line (benches/script/control/checks.py#engine_acts8): \
 11222 s1-s5, 11200 from s6, 11201 s49-s50, 11202 s51-s58, 11201 s59 (the two men home one after the other)"""
 proves = """sim TEAM_HUNT moves the aiTactical-255 crews (Soviet_4's, Soviet_5's at aiTeamBuilder 240), not Soviet_6's (aiTactical \
 240); NAMED_HUNT not the woken Soviet_3's conscript; 到 20 by the engineer 700 east, not the barracks 1000 west, re-picked \
@@ -176,7 +176,7 @@ expect = [
 mismatch = """sim: 到 goes back to 0 at s48 (bench s39), 家 11201 only s51-s52 (bench s49-s50), 11202 first at s53 (bench s51), \
 11201 s60 / 11200 s61 (bench 11201 s59); the other readings hold"""
 
-# Bench readings of checks/engine_acts9.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_acts9 (format: experimental/cnv/readings.py; runner: tests/conformance).
 # A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
 
 [[reading]]
@@ -193,7 +193,7 @@ expect = [
     "after and all(v == [4, 0, 3, 2] for v in after)",
 ]
 
-# A round 294 (11-21): missions/aichange_bench.py, four runs (work/testbench/runs/CampAISw*A_mcp_1121_22*-23*); the
+# A round 294 (11-21): benches/script/control/scenes.py#engine_aichange, four runs (work/testbench/runs/CampAISw*A_mcp_1121_22*-23*); the
 # switch pressed in the wake script (10 s), right after s1's AI takes over. Program notes: private work/re/a293_changebuilder.md.
 
 [[reading]]
@@ -205,7 +205,7 @@ proves = "script actions PLAYER_AI_CHANGEUNITBUILDER (0, and 1 again), PLAYER_AI
 item = ["脚本动作 PLAYER_AI_CHANGEUNITBUILDER", "脚本动作 PLAYER_AI_CHANGETEAMBUILDER", "脚本动作 PLAYER_AI_CHANGE_ECONOMY_MANAGER"]
 expect = ["off == on and back == on and tb == on", "off[-1]['标枪'] >= 1"]
 
-# Bench readings of checks/engine_aifav.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_aifav (format: experimental/cnv/readings.py; runner: tests/conformance).
 # The enemy table emptied by script (program: work/re a219_skirmish_transfer.md 2, a295_clear_priorities.md), each after aipriodef's
 # SET_ALL 20 -- without the clear Player_1 at 20 stays the top tier and the far plant goes first (aipriodef).
 # The first reading moved from tests/test_simai_favored.py. fav / clr1 set Player_1 30 first: with the action undone the
@@ -238,7 +238,7 @@ proves = "CLEAR_ENEMY_PLAYER_PRIORITY: that enemy's entry out, the others kept (
 let = {near = "first('到近厂')"}
 expect = "near is not None and abs(near - 14) <= 2 and first('到远厂') is None"
 
-# A round 274 (11-17): missions/aiallflip_bench.py, six runs; native picks in work/re/a274_flip_measured.json, the
+# A round 274 (11-17): benches/script/control/scenes.py#engine_aiflip, six runs; native picks in work/re/a274_flip_measured.json, the
 # counters in each run's cnv_result.txt (work/testbench/runs/CampAllF*A_mcp_1117_*). s5 (twenty tanks) is s1's friend
 # at the start; on / off / late turn it enemy at 5 s (on: the action at the 10 s wake, late: at 3 s), woff / won at
 # 15 s (won: the action at 20 s), never keeps it a friend.
@@ -261,7 +261,7 @@ proves = "simai build scoring: the enemies scored are the relations' as they are
 expect = "off[-1]['标枪'] >= 1 and off[-1]['维和'] == 0 and never[-1]['维和'] >= 1 and never[-1]['标枪'] == 0"
 mismatch = "sim off and never 维和 1 标枪 0 at s27-30: s5 is counted once it turns enemy (off picks Javelins from f391), but the first two orders (f301 / f333) are Peacekeepers -- the bench's are dogs, scored 1666.833 = NEEDED_UNIT 10001 / 6 states, a NEEDED_UNIT list the model keeps empty (B handoff 11-21: the teams' wanted list fits this bench and breaks four engine_aiskirm readings)"
 
-# Bench readings of checks/engine_aistart.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_aistart (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aistart"
@@ -301,7 +301,7 @@ expect = [
   "paying and all(v[0] < flat[0][0] for v in paying)",
 ]
 
-# Bench readings of checks/engine_aixfer.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_aixfer (format: experimental/cnv/readings.py; runner: tests/conformance).
 # A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
 
 [[reading]]
@@ -326,7 +326,7 @@ expect = [
     "12 <= min(s for s, v in by.items() if v[0] == 24) <= 18",
 ]
 
-# Bench readings of checks/engine_basegate.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_basegate (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_basegate"
@@ -341,7 +341,7 @@ expect = [
   "after and all(v[0] < 50000 and v[1] == 2 for v in after)",
 ]
 
-# Bench readings of checks/engine_conds.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_conds (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Round 208: the retail-campaign conditions, batch 1. The bench's clock runs a second or two ahead of the simulator's
 # here (fire, kills, the scripted seconds), so the readings compare the order of the states each held for two samples
 # or more (one sample: the frame a kill lands in), not the seconds. A scene's until is the old test's seconds + 1.
@@ -403,7 +403,7 @@ bench = "pf, bench 11-23 run_queue engine_conds:pf (CampCondsPf_mcp_1123_135556,
 proves = "sim CURRENT_PLATFORM true for 'PC' only ('360' / 'PS3' false: the program, work/re a329), so s01's one PLAYER_TRIGGERED_SCRIPT_EVENT (every clause gated by '360') never holds; with no human order the event alone never either"
 expect = "all(v == [16] for v in vals(rows)[1:])"
 
-# Bench readings of checks/engine_killcount.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_killcount (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_killcount"
@@ -437,7 +437,7 @@ proves = "simai SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER: the alive mask drops each v
 let = {m = "[v[3] for v in vals(rows)]"}
 expect = "[v for j, v in enumerate(m) if j == 0 or v != m[j - 1]] == [255, 254, 252, 248, 240]"
 
-# Bench readings of checks/engine_kind.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_kind (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_kind"
@@ -472,7 +472,7 @@ expect = [
     "by[29][3] & 11 == 11",
 ]
 
-# Bench readings of checks/engine_razed.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_razed (format: experimental/cnv/readings.py; runner: tests/conformance).
 # A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
 
 [[reading]]
@@ -491,7 +491,7 @@ expect = [
     "at[31][1] == 31",
 ]
 
-# Bench readings of checks/engine_scripts1.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_scripts1 (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Inventory batch 1 (work/re/l2_scripts1.md): bench 2026-11-08 `cnv_check engine_scripts1 <variant>`.
 # A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
 
@@ -537,7 +537,7 @@ bench = "button: TEAM_USE_COMMANDBUTTON_ABILITY(Pk, the riot shield) at 2 s: 举
 proves = "sim Sim TEAM_USE_COMMANDBUTTON_ABILITY: both team members raise the shield"
 expect = "dict(zip(times, vals(rows)))[10] == [2]"
 
-# Bench readings of checks/engine_scripts2.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_scripts2 (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Inventory batch 1 (work/re/l2_scripts1.md): bench 11-09, CampScr2One / CampScr2All: counters A血 B血 比较数 类型数.
 # A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
 
@@ -563,7 +563,7 @@ proves = "sim Sim relations: '<All Players>' as the second player changes nothin
 let = {by = "dict(zip(times, vals(rows)))"}
 expect = "by[24][0] < 95 and by[5][0] < 100"
 
-# Bench readings of checks/engine_scripts3.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_scripts3 (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Bench 11-09, CampScr3Math / CampScr3Input. A scene's until is the old test's seconds + 1.
 
 [[reading]]
@@ -583,7 +583,7 @@ proves = "sim Sim DISABLE_INPUT (a script's orders still move the player's unit)
 let = {last = "vals(rows)[-1]"}
 expect = "last[0] == 1 and last[2:] == [-3, -3]"
 
-# Bench readings of checks/engine_scripts4.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_scripts4 (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Bench 11-09, CampScr4Border / Team / Clock. A scene's until is the old test's seconds + 1.
 
 [[reading]]
@@ -615,7 +615,7 @@ proves = "sim Sim countdown timers: hiding the display does not stop the timer"
 let = {by = "dict(zip(times, vals(rows)))"}
 expect = "by[18] == [0] and by[24] == [1]"
 
-# Bench readings of checks/engine_scripts6.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_scripts6 (format: experimental/cnv/readings.py; runner: tests/conformance).
 # The script machinery, no units (bench 11-09 switch / timers, both PASS).
 
 [[reading]]
@@ -661,7 +661,7 @@ proves = "executor SET_RANDOM_TIMER: (timer, lo, hi) in frames, drawn at random 
 let = {by = "dict(zip(times, vals(rows)))"}
 expect = "by[19][3] == 14"   # when all three have come up is the draws' luck (the sim's seeded draws by 5 s)
 
-# Bench readings of checks/engine_scripts7.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_scripts7 (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Script conditions and actions, bench 2026-11-09.
 
 [[reading]]
@@ -782,7 +782,7 @@ proves = "sim UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION: the team
 let = {chg = "[(t, r) for i, (t, r) in enumerate(zip(times, rows)) if i == 0 or r != rows[i - 1]]", at = "lambda k, p: next((t for t, r in chg if p(r[k])), None)"}
 expect = "chg[-1][1]['生'] == 3 and at('生', lambda v: v == 3) <= 3"
 
-# Bench readings of checks/engine_scripts8b.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_scripts8b (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Team status and power scripts, bench 2026-11-09. The bench's seconds run 1-2 s ahead of the mission's timers: the
 # simulator's readings, in mission seconds, are asserted at most 2 s later than the bench's.
 
@@ -813,7 +813,7 @@ expect = [
     "at('电级', lambda v: v == 4) <= 4 and 6 <= at('电级', lambda v: v == 3) <= 8",
 ]
 
-# Bench readings of checks/engine_scripts9.py (format: experimental/cnv/readings.py).
+# Bench readings of benches/script/control/checks.py#engine_scripts9 (format: experimental/cnv/readings.py).
 
 [[reading]]
 bench_id = "engine_scripts9"
@@ -838,7 +838,7 @@ fires at the human from the start; the team-to-team one (C) as with a plain name
 expect = ["all(min(r['甲'] for r in s[:8]) < 100 and min(r['乙'] for r in s[:8]) < 100 for s in (ral, ra1))",
           "all(min(r['丙'] for r in s[:8]) == 100 and s[-1]['丙'] < 100 for s in (ral, ra1))"]
 
-# Bench readings of checks/engine_seqstop.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_seqstop (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_seqstop"
@@ -930,7 +930,7 @@ item = ["脚本动作 TEAM_FACE_WAYPOINT"]
 let = {lag = "next(v[0] // 1000 - v[0] % 1000 for v in vals(rows) if v[0] % 1000 and v[0] < 90000)", move = "vals(rows)[-1][3]"}
 expect = ["6 <= lag <= 10", "4 <= move % 1000 - move // 1000 <= 10"]
 
-# Bench readings of checks/engine_statusbits.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_statusbits (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_statusbits"
@@ -1004,7 +1004,7 @@ expect = [
   "rows[-1]['基准血'] < 100",
 ]
 
-# Bench readings of checks/engine_timer.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/script/control/checks.py#engine_timer (format: experimental/cnv/readings.py; runner: tests/conformance).
 # The timers paused and shifted: bench 2026-11-10 (the lines show a timer's frames left). The bench's seconds run 1-2 s
 # ahead of the mission's timers: the simulator's readings are asserted at most 2 s later.
 

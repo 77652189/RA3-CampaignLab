@@ -55,7 +55,7 @@ for _lane in ('enemy move', 'enemy attack'):
     SITES[f'{_lane} plug'] = Site(_x0 + 200.0, _y0 + H / 2, 30.0, 'the straight gap, where the enemy stands')
 CUT = (3900.0 + 120.0, 3500.0 - 140.0, 3900.0 + 300.0, 3500.0 + 140.0)    # 'seal cut': a closed ring of field-0 ground
 for _k, _y in (('move', 700.0), ('idle', 1400.0), ('idle open', 2100.0), ('spawn', 2800.0), ('cut', 3500.0),
-               ('row', 4200.0)):                                                  # checks/engine_seal.py
+               ('row', 4200.0)):                                                  # benches/movement/pathing/checks.py#engine_seal
     SITES[f'seal {_k}'] = Site(3900.0, _y, 60.0, f'the {_k} seal test: where its units stand (open ground)')
     SITES[f'seal {_k} goal'] = Site(4500.0, _y, 60.0, f'the {_k} seal test: 600 east of its start')
 for _k, _x, _y in (('erow', 2800.0, 1800.0), ('tank', 2800.0, 2600.0), ('arty', 2800.0, 3400.0),

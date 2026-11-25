@@ -80,7 +80,7 @@ class FireWeaponCollideData(module.ModuleData):
 
 @factory.module('FireWeaponCollide')
 class FireWeaponCollide(module.Module, interfaces.Die):
-    """FireWeaponCollide (E217, checks/engine_fwcollide.readings.toml), WHEN_BEING_CRUSHED only: its thing crushed
+    """FireWeaponCollide (E217, benches/weapon/firing/readings.toml#engine_fwcollide), WHEN_BEING_CRUSHED only: its thing crushed
     (death CRUSHED) under its RequiredStatus -- its toggles' ObjectStatus now counted (the Flak trooper's armed mine)
     -- fires its CollideWeapon at the crusher (its last damage's object; World.fire `at`: Generals fires it at the
     other). Bench: a Hammer crushing an armed trooper at frame 43 is below 70 % from 44, one crushing an unarmed
@@ -118,7 +118,7 @@ class FireWeaponUpdateData(module.ModuleData):
 
 @factory.module('FireWeaponUpdate')
 class FireWeaponUpdate(module.Module, interfaces.Update):
-    """FireWeaponUpdate (E218, checks/engine_fwupdate.readings.toml): while its thing holds the RequiredStatus (its
+    """FireWeaponUpdate (E218, benches/weapon/firing/readings.toml#engine_fwupdate): while its thing holds the RequiredStatus (its
     toggles' counted: the Tesla trooper's short circuit), fires each weapon where it stands (World.fire) every
     FireInterval, from the frame the status is first seen. Not modelled: OneShot, ActiveWhenDisabled (the trooper's
     HELD), a dead thing's (no retail AliveOnly false among the 27 missions' templates); the Athena cannon's effect is

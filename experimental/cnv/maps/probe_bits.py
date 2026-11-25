@@ -1,4 +1,4 @@
-"""A probe map for the engine line (checks/engine_bits.py, docs/engine/terrain.md 3): flat ground (tier 1, 340 ours =
+"""A probe map for the engine line (benches/movement/pathing/checks.py#engine_bits, docs/engine/terrain.md 3): flat ground (tier 1, 340 ours =
 212.5 world), and on it two rows of pens -- a round floor 100 across its radius, a ring round it:
 
   row 1 (y 2500), level rings with some of BlendTileData's eight bit fields set on them (terrain_rules.FIELDS):

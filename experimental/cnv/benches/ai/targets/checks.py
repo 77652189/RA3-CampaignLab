@@ -483,7 +483,7 @@ def engine_aiminvalue():
 
 
 def engine_ainamed():
-    """Engine probe: an AI attack team sent to a target named in the data (missions/ainamed_bench.py).
+    """Engine probe: an AI attack team sent to a target named in the data (benches/ai/targets/scenes.py#ainamed_bench).
 
       a  步兵在家 / 到近厂 / 到远厂 / 到路点   Peacekeepers of s1 within 450 of the AI's base, within 300 of the near
                                               power plant, of the far one, of the waypoint -- once a second for 60 s
@@ -573,7 +573,7 @@ def engine_aipoint():
 
 
 def engine_aiprio():
-    """Engine probe: SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY (missions/aiprio_bench.py; program: work/re l4_aiswitches.md;
+    """Engine probe: SKIRMISH_AI_SET_ENEMY_PLAYER_PRIORITY (benches/ai/targets/scenes.py#aiprio_bench; program: work/re l4_aiswitches.md;
     model: RA3-EngineModel ra3model/ai/player.py set_enemy_priority, simai.Brain.switches).
 
       a  步兵在家 / 到近厂 / 到远厂   Peacekeepers of s1 within 450 of the AI's base / 300 of the near (Soviet_4's) / far
@@ -606,7 +606,7 @@ def engine_aiprio():
 
 
 def engine_aisearch():
-    """EnemySearchDistanceVisionMultiplier A/B (missions/aisearch_bench.py), before the far target falls.
+    """EnemySearchDistanceVisionMultiplier A/B (benches/ai/targets/scenes.py#aisearch_bench), before the far target falls.
 
     Prediction, using the already measured aipas geometry: high 1.5 attacks the side plant
     before wake+25 and never reaches the far plant; low 0.25 leaves side HP 100 through that
@@ -656,7 +656,7 @@ def engine_aishore():
 
 @cache
 def engine_aistate():
-    """Engine probe: strategic states switched by map flags (missions/aistate_bench.py) -- which of the AI's units leave
+    """Engine probe: strategic states switched by map flags (benches/ai/targets/scenes.py#aistate_bench) -- which of the AI's units leave
     its base, and how many frames after their state's flag went on.
 
       a  步兵在家 / 坦克在家   Peacekeepers / Guardians of s1 inside the base area (450 around the east base), once a second
@@ -704,7 +704,7 @@ def engine_aistate():
       4 -> 2 @ s13 and 2 to s55; 在家4帧 / 3 stop at 59 / 60, 在家2帧 grows to the end. So a targetless state runs as
       many copies as it may (one team each), all within a few frames of the wake, and MaxRunningCopies caps them.
     aistatefar is the SearchRange test: the enemy structure / unit heuristics measure no distance, only the tech
-    heuristic reads <AITargetingHeuristic SearchRange> (missions/aistate_bench.py); its readings follow.
+    heuristic reads <AITargetingHeuristic SearchRange> (benches/ai/targets/scenes.py#aistate_bench); its readings follow.
     Bench 2026-11-07 aistatefar a (CampAIFarA, Sonnet, one run): both states always on, only the player's yard ~2600
       away -- 坦克在家 4 -> 3 @ s13, -> 0 @ s14 (as aistateconst), 步兵在家 4 all run (FAIL 2 of 3 as expected for the
       tanks, not for the infantry). So 2600 does not stop a team (A round 67's read holds for the tanks). Why the
@@ -728,7 +728,7 @@ def engine_aistate():
         s1 = m.player('s1')
         t.scripts.append(Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]))
         t.areas[AREA] = square(*m.site('east base'), 450.0)
-        inf, tank = m.cnv_units                 # the mission says (missions/aistate_bench.py), the check asks
+        inf, tank = m.cnv_units                 # the mission says (benches/ai/targets/scenes.py#aistate_bench), the check asks
         counted('CNV_AS_InfHome', '步兵在家', t, template=inf, area=AREA, player=s1)
         counted('CNV_AS_TankHome', '坦克在家', t, template=tank, area=AREA, player=s1)
         f_inf, f_tank = m.cnv_flags
@@ -806,7 +806,7 @@ def engine_aistate():
 
 
     def beacon(m):
-        """aibeaconex / aibeacontg (missions/aistate_bench.py; nobody places a co-op command beacon): the tanks' state
+        """aibeaconex / aibeacontg (benches/ai/targets/scenes.py#aistate_bench; nobody places a co-op command beacon): the tanks' state
         sends its team, the infantry's never -- 坦克在家 0, 步兵在家 4 by BEACON_SECONDS (a's counters)."""
         t = a(m)
         t.expect = [('坦克在家', BEACON_SECONDS, '==', 0, BEACON_SECONDS + 1),
@@ -823,7 +823,7 @@ def engine_aistate():
 
 @cache
 def engine_aitarget():
-    """Engine probe: which of the player's structures an AI attack team goes for first (missions/aitarget_bench.py).
+    """Engine probe: which of the player's structures an AI attack team goes for first (benches/ai/targets/scenes.py#aitarget_bench).
 
       a  步兵在家 / 到近厂 / 到远厂   Peacekeepers of s1 within 450 of the AI's base, within 300 of the near (defended)
                                       power plant, within 300 of the far (undefended) one -- once a second for 60 s
@@ -937,7 +937,7 @@ def engine_aitarget():
 
 @cache
 def engine_aitargetpick():
-    """Engine probe: which target a team picks (missions/aitargetpick_bench.py) -- AITargetingHeuristic VitalKindOf /
+    """Engine probe: which target a team picks (benches/ai/targets/scenes.py#aitargetpick_bench) -- AITargetingHeuristic VitalKindOf /
     ForbiddenKindOf / HeuristicType EnemyUnit, the TargetHeuristic Priority order, MaxTargets.
 
       a  到电厂  s1's Guardians within 340 of the player's power plant (FS_POWER), once a second
@@ -961,7 +961,7 @@ def engine_aitargetpick():
       aitpmt2   MaxTargets 2: 到电厂 4 from s13, 到兵营 4 from s26 (the second team left s19-21), 在家 0 -- a team per
                 slot, the second slot's unique nearest = the barracks (the plant is the first slot's).
     (aitpmt1's first run read 在家 2: the home area was then a 300 square that held 6 of the 8 start spots; widened.)
-    The simulator (simai) gives the same eight (checks/engine_aitargetpick.readings.toml target_pick_as_on_the_bench).
+    The simulator (simai) gives the same eight (benches/ai/targets/readings.toml#engine_aitargetpick target_pick_as_on_the_bench).
     Bench 2026-11-09 (B round 82, TeamTemplate.Priority: two always-on states over the same 4 Guardians, P = the plant
     (ClosestStructure), B = the barracks (CNVHBarracks); one run each, run first with the model's guess plant 4 for all):
       aitpprs   P STANDARD / B STANDARD: 在家 4 to s16, 3/2/1/0 s17-s20; 到兵营 2 @ s21, 4 s23-s55; 到电厂 0 throughout.
@@ -971,7 +971,7 @@ def engine_aitargetpick():
                 aitpnear alone.
     Read: the higher team Priority takes the units; on a tie the barracks' state (listed second) wins, though its target
     is found later (s19 in aitpvk) -- nobody went to the plant first. Not split: a tie by list order or by state draw.
-    simai sends all four to the plant (mismatch, checks/engine_aitargetpick.readings.toml team_priority_as_on_the_bench_on_a_tie).
+    simai sends all four to the plant (mismatch, benches/ai/targets/readings.toml#engine_aitargetpick team_priority_as_on_the_bench_on_a_tie).
     Bench 2026-11-09 (B round 85, EndBehavior, the check script kills the plant at s35; one run each; 到电厂 到兵营 到坦克 在家):
       all four: out s13-s14, 到电厂 4 s15-s34 (the Guardians did not kill it by s32 as the simulator has).
       aiendd   DISBAND:                 到电厂 2 @ s37, 0 s38-s39, 到兵营 2 @ s40, 4 from s42 -- PASS (as the model)
@@ -1154,7 +1154,7 @@ def engine_aivital():
 
 
 def engine_aiwake():
-    """Read missions/aiwake_bench.py's aialobsw: when the AI's pre-placed Peacekeepers leave home, against the gated wake.
+    """Read benches/ai/targets/scenes.py#aiwake_bench's aialobsw: when the AI's pre-placed Peacekeepers leave home, against the gated wake.
 
     Prediction (H-a, the cheaper reading, handoff-b section 160): the old wake ran at f0; gated, nothing leaves before
     the wake -- 步兵在家 4 to s29, someone at the far plant after it. A FAIL with 步兵在家 0 by ~s10 is H-b (the side

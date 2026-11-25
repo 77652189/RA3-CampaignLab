@@ -1,4 +1,4 @@
-# Bench readings of checks/engine_aiclosestenemy.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aiclosestenemy (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aiclosestenemy"
@@ -34,7 +34,7 @@ proves = "simai ClosestToEnemy sort: the land slice of the named target selectio
 expect = "win(30, 32, '原关数量') == [0] * 3"
 mismatch = "sim 4 at s30-32; bench 0 (native A05 host reaches the enemy anchor, not the predicted friendly plant)"
 
-# Bench readings of checks/engine_aiconyard.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aiconyard (format: experimental/cnv/readings.py; runner: tests/conformance).
 # A diagnostic, not acceptance of MinDistanceFromConyardEntrance (inventory_ai NOTES keeps it 未做): the real exit,
 # a candidate's eligibility and the placement point were not read; work/re/c_conyard_report.md.
 
@@ -47,7 +47,7 @@ bench = "C 2026-11 aicyard0 / aicyard300 (exit distance 0 / 300, the 15 s exempt
 proves = "simai MinDistanceFromConyardEntrance gate: the plant team is never sent, at either distance"
 expect = ["len(win(1, 35, '宿主')) == 35", "all(tuple(v) == (1, 0, 0, 1) for v in vals(rows))"]
 
-# Bench readings of checks/engine_aienemyfilter.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aienemyfilter (format: experimental/cnv/readings.py; runner: tests/conformance).
 # EnemyNearbyHeuristic's <EnemyFilter> on the near-miner host (4 guardians, an enemy Ore Collector 350 behind the yard).
 # Moved from tests/test_enemyfilter.py (C's bench 2026-11-12, work/re/c_enemyfilter_report.md; B round 155).
 
@@ -69,7 +69,7 @@ item = ["AI 人格/EnemyFilter.Include", "AI 人格/EnemyFilter.Relationship", "
 expect = ["rows[19]['坦克在家'] == (0 if out else 4)", "rows[19]['坦克出门'] == (4 if out else 0)",
           "rows[59]['坦克在家'] == (0 if out else 4)"]
 
-# Bench readings of checks/engine_aifrdistance.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aifrdistance (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aifrdistance"
@@ -80,7 +80,7 @@ bench = "engine_aifrdistance a s30: friendly MCVs alive 3, enemy MCV alive 1."
 proves = "simai FriendlyUnit Distance: the scene holds three friendly and one enemy MCV at s30"
 expect = "win(30, 30, '友车存活') == [3] and win(30, 30, '敌车存活') == [1]"
 
-# Bench readings of checks/engine_aifriendly.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aifriendly (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aifriendly"
@@ -106,7 +106,7 @@ expect = [
 ]
 mismatch = "E85: engine arrivals are 0 at both MCVs, while the default model sends 4 to the selected MCV. StaticDefense/selection boundary unresolved."
 
-# Bench readings of checks/engine_ailocation.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_ailocation (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_ailocation"
@@ -120,7 +120,7 @@ expect = [
     "win(40, 40, '到水厂') == [water]",
 ]
 
-# Bench readings of checks/engine_aimindist.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aimindist (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aimindist"
@@ -172,7 +172,7 @@ item = "AI 目标/AITargetingHeuristic.MinDistanceFromEnemy"
 let = {sel = "[v for t, v in zip(times, vals(rows)) if 20 <= t <= 21]"}
 expect = ["len(sel) > 0", "all(list(v) == want for v in sel)"]
 
-# Bench readings of checks/engine_aiminvalue.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aiminvalue (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aiminvalue"
@@ -212,7 +212,7 @@ expect = [
     "all(v[3] == 4 for v in sel)",
 ]
 
-# Bench readings of checks/engine_ainamed.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_ainamed (format: experimental/cnv/readings.py; runner: tests/conformance).
 # NamedObject / Waypoint targets (bench 2026-11-08, readings in the check's docstring): where the team goes first,
 # whether it stays. Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i].
 
@@ -292,7 +292,7 @@ proves = "simai enemy priority: a priority 0 after SET_ALL takes that enemy out 
 let = {near = "first('到近厂')"}
 expect = "near is not None and abs(near - 15) <= 2 and first('到远厂') is None"
 
-# Bench readings of checks/engine_aistate.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aistate (format: experimental/cnv/readings.py; runner: tests/conformance).
 # SearchRange is only the tech heuristic's -- distance stops no team (bench 2026-11-07).
 
 [[reading]]
@@ -379,7 +379,7 @@ proves = "AITargetingHeuristic HeuristicType=Beacon (retail BeaconAssaultHeurist
 item = ["AI 目标/AITargetingHeuristic.HeuristicType=Beacon", "AI 目标/AITargetingHeuristic.Beacon"]
 expect = ["rows[-1]['坦克在家'] == 0", "all(r['步兵在家'] == 4 for r in rows)"]
 
-# Bench readings of checks/engine_aitarget.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aitarget (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Which structure an attack team goes for first, and how idle times change it (bench 2026-11-06).
 
 [[reading]]
@@ -434,7 +434,7 @@ mismatch = """\
 simai aitargetflank = aitargetsafe (far plant first at s26); bench flank: far plant 1 @ s58, ~23 s later than \
 the other tactics, near plant 0 all 76 s"""
 
-# Bench readings of checks/engine_aitargetpick.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aitargetpick (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Target pick, team priority, EndBehavior (bench 2026-11-09, B rounds 80-87; the readings in the check's docstring).
 # Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i] (same run, checked row by row).
 
@@ -546,7 +546,7 @@ proves = "simai tactics: a team at a target it cannot hit ends RAMPAGE at the ne
 expect = "rows[39]['到电厂'] == 4"
 mismatch = "simai: under the Kirov 4 at s15, then out of every area (到电厂 0 at s40) -- what ends the pick is not modelled"
 
-# Bench readings of checks/engine_aitoponly.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aitoponly (format: experimental/cnv/readings.py; runner: tests/conformance).
 # HighestPriorityEnemyPlayersOnly (C 2026-11-12, work/re/c_toponly_report.md; moved from tests/test_top_enemy_only.py).
 
 [[reading]]
@@ -565,7 +565,7 @@ fallback to a lower tier); false falls through (one player per tier; ties and ch
 item = "AI 目标/AITargetingHeuristic.HighestPriorityEnemyPlayersOnly"
 expect = "[win(40, 41, k) for k in ('到电厂', '到兵营', '到坦克', '在家')] == [[g, g] for g in got]"
 
-# Bench readings of checks/engine_aivital.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aivital (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aivital"
@@ -635,7 +635,7 @@ bench = "aivitaloff:a s55-s60: lane 3 (counter lane3) reads 4 every second."
 proves = "simai native-status filter: the script-controlled ATTACHED slice and the lane counters"
 expect = "[v[3] for t, v in zip(times, vals(rows)) if 55 <= t <= 60] == [4] * 6"
 
-# Bench readings of checks/engine_aiwake.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aiwake (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aiwake"
@@ -648,7 +648,7 @@ proves = "simai targets: an EnemyStructure target is not found before the wake (
 let = {wake = "rows[-1]['唤醒前'] / 15", inf = "times[first('步兵在家', lambda v: v < 4)]", tank = "times[first('坦克在家', lambda v: v < 4)]"}
 expect = ["abs(rows[-1]['唤醒前'] - 450) <= 15", "abs(inf - wake - 6.2) <= 1.5", "abs(tank - wake - 5.2) <= 1.5"]
 
-# Bench readings of checks/engine_aiwater.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/targets/checks.py#engine_aiwater (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aiwater"

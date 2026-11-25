@@ -25,7 +25,7 @@ def reroute_bridges():
 
 
 def engine_air():
-    """Engine probe mission (air rules, checks/engine_air.py): how a Soviet Twinblade (SovietAntiGroundAircraft) flies, and
+    """Engine probe mission (air rules, benches/movement/pathing/checks.py#engine_air): how a Soviet Twinblade (SovietAntiGroundAircraft) flies, and
     what the anti-air weapons reach (SDK SageXML, sdk/RA3ModSDK3):
 
       Twinblade   Locomotor SovietAntiGroundAircraftLocomotor, Speed 150, PreferredHeight 130, Geometry BOX 16 x 11 (bounding
@@ -185,7 +185,7 @@ def fence():
 
 
 def engine_formation_player():
-    """Engine line D 92: the player's formation switches on the bench (checks/engine_formation_player.py `s`).
+    """Engine line D 92: the player's formation switches on the bench (benches/movement/pathing/checks.py#engine_formation_player `s`).
 
     CampFormS = the probe mission CampFormP (two lanes of two Guardian tanks + two Peacekeepers, CNVProbe copies) with both
     switches on every unit (units/formation.py: 同速 / 密集 toggles next to their own buttons) and CNVSync's host for the
@@ -251,7 +251,7 @@ def jammer():
 
 
 def engine_land():
-    """Engine probe mission: which way an amphibious transport takes to a shore point behind a quay (checks/engine_land.py;
+    """Engine probe mission: which way an amphibious transport takes to a shore point behind a quay (benches/movement/pathing/checks.py#engine_land;
     the simulator's rule R7, docs/story/sim-vs-bench-a4.md: the A4 bench landed the Ghost King ~12 s after the horn,
     the simulator ~29 s -- its transport found the quay too high and went round by the southern slip, 2420 long, where
     the straight way is 630).
@@ -415,7 +415,7 @@ def reroute():
 
 
 def engine_spots():
-    """Engine probe for sim.HOLD_SPOTS (checks/engine_spots.py; work/re/handoff.md round 113): three convoy trucks, each
+    """Engine probe for sim.HOLD_SPOTS (benches/movement/pathing/checks.py#engine_spots; work/re/handoff.md round 113): three convoy trucks, each
     on a team of its own (a4's staggered convoy, 分批: devices/convoy.py), sent to one waypoint -- do they stand apart?
 
     Island map, west field (offsets from 'west field'): truck 1-3 (units/convoy.truck, speed 50, the player's) at

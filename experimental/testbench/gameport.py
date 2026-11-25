@@ -188,7 +188,7 @@ class Contract:
         return next((g for g in self.groups if g.name == name), None)
 
 
-# The fixed bench map of the first acceptance: CampFormSS (experimental/cnv/checks/engine_formation_player.py,
+# The fixed bench map of the first acceptance: CampFormSS (experimental/cnv/benches/movement/pathing/checks.py#engine_formation_player,
 # engine_formation_sync `s`, bench D 94). Two groups of the player on the probe map's pace lanes, each two Guardian
 # tanks (roles 0, 1) and two Peacekeepers (2, 3); the bench box-selects each group and right-clicks its goal (a plain
 # move). Its four lines: per lane +1 a tank in the goal square (half 70 round (1000, lane)), +10 a Peacekeeper (22 =
@@ -207,7 +207,7 @@ FORMSS = Contract(
                  for g, t, y in _LANES),
     goals=tuple(Goal(g, 1000.0, y, 70.0, f'CNV_Form_{t}', 22) for g, t, y in _LANES))
 
-# The attack's bench map: CampSeeClick (experimental/cnv/checks/engine_see.py `click`). The player's Athena cannon E
+# The attack's bench map: CampSeeClick (experimental/cnv/benches/map/fixtures/checks.py#engine_see `click`). The player's Athena cannon E
 # stands on the low ground 400 east of Soviet_1's tower E up on the stonehenge ring; Tanya on the ring sees the tower
 # for it. The bench left-clicks the cannon and right-clicks the tower 14 west, 20 north of its ground point (where the
 # ring has it drawn). Lines: 看见 (towers discovered), each tower's health in percent. The lifts: calib.Ground of the

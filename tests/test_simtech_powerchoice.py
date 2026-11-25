@@ -1,6 +1,6 @@
 """A computer player's protocol lottery (experimental/cnv/engine/players/tech.py Book.ai_buy): its personality's PowerChoice
 lines, by weight, among the ones it may buy now; nothing without lines. Read from the program (engine line B round
-60); where the draw falls (simtech.DRAW) from the bench (round 74, checks/engine_aipower.py)."""
+60); where the draw falls (simtech.DRAW) from the bench (round 74, benches/ai/production/checks.py#engine_aipower)."""
 import importlib.util
 from pathlib import Path
 
@@ -71,7 +71,7 @@ def test_the_draw_is_the_same_every_time_and_skips_a_zero_weight():
     assert len(got) == 1 and 'AirPower' in got.pop()        # 0.2 x 4 = 0.8 falls in AirPower's 1
 
 
-# ---- bench 2026-11-09 `cnv_check aipwr<k> a / e`, readings in experimental/cnv/checks/engine_aipower.py
+# ---- bench 2026-11-09 `cnv_check aipwr<k> a / e`, readings in experimental/cnv/benches/ai/production/checks.py#engine_aipower
 @pytest.mark.parametrize('variant,bought', [
     ('aipwra', 'X'), ('aipwrb', 'X'), ('aipwrd', None),     # one line / Y 0% then X 100% / no PowerChoice
     ('aipwre', 'X'), ('aipwrf', 'Y'),                       # 50/50: the first listed, 7 runs of 7

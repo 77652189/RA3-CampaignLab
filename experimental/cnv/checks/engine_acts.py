@@ -1,6 +1,6 @@
 """Retail-campaign actions, batch 1 (round 211; the gaps of `inventory_retail.py --part 脚本动作`, the program read in
 work/re/d115_script_semantics.md 10, 11, 13, 18-20, 23). Mission on maps/probe_border.py (level ground, every place
-absolute, as checks/engine_conds.py); enemy crews on Soviet_4 (a crew on Soviet_1 / 2 / 3 has nobody). Each act on a
+absolute, as benches/script/control/checks.py#engine_conds); enemy crews on Soviet_4 (a crew on Soviet_1 / 2 / 3 has nobody). Each act on a
 slot of its own (SLOT: clear of probe_range's lanes and start, 800 apart -- beyond a Guardian's sight -- the pair's
 second 150 east). What the simulator predicts is in brackets.
 

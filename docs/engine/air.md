@@ -15,7 +15,7 @@
 
 一句话：**会动的就是飞机，建筑感靠外观；建筑部件拆成跟着飞的单位。** 原版没有一个物体既是 STRUCTURE 又是 AIRCRAFT，也没有一座建筑带 Locomotor（`work/re/module_inventory.md` 的盘点）。
 
-## 1. 本轮实测（`checks/engine_float.py`）
+## 1. 本轮实测（`benches/movement/pathing/checks.py#engine_float`）
 
 探针 `cnv_check engine_float float`，平地探针图上三组，相隔 1500，都是敌方（s1）的：
 

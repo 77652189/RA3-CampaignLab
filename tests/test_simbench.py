@@ -288,7 +288,7 @@ def test_super_a_scripts_cast_starts_the_retail_reload():
 
 
 # ---- tech tiers: what lets a factory build a tier-2 unit (sim.Sim.holds_upgrade / can_build / upgrade_sellers)
-# bench 2026-11-07 engine_tech (checks/engine_tech.py): the Guardian (NeededUpgrade Upgrade_AlliedTech2, 950) clicked
+# bench 2026-11-07 engine_tech (benches/economy/construction/checks.py#engine_tech): the Guardian (NeededUpgrade Upgrade_AlliedTech2, 950) clicked
 # at ~s16 -- built only in c (the yard holds Tech2, the factory 300 off); e: the player buys Tech2 on the yard
 # (1500, 15 s, paid frame by frame), then the Guardian builds
 BENCH_TECH = {'a': False, 'b': False, 'c': True, 'd': False, 'g': False, 'h': False}
@@ -360,7 +360,7 @@ def test_production_mutation_no_order_no_engineer():
 
 
 # ---- power: a POWERED structure of a player short of power holds its fire (sim.Sim.unpowered)
-# bench 2026-11-07 engine_powerdef (readings in checks/engine_powerdef.py): s1's Tesla coil (-75) beside six NO_ATTACK
+# bench 2026-11-07 engine_powerdef (readings in benches/economy/construction/checks.py#engine_powerdef): s1's Tesla coil (-75) beside six NO_ATTACK
 # Guardians; on (a plant +100): first loss at 111, then one per ~125 frames; off (no plant): none in 728; cut (the
 # plant deleted ~150): none after; back (a plant made by script ~150): first loss at 475
 def _powerdef(variant, until=50.0):
@@ -397,7 +397,7 @@ def test_shot_clock_the_coil_shoots_every_31_s_one_shot_a_tank(monkeypatch):
     """Engine line C round 2: with Sim.shot_clock the coil (SovietBaseDefenseAdvancedTeslaGun: PreAttack 2.5 +
     Firing 0.5 + Reload 0.1 = 3.1 s, Damage 450 against a 480-health tank) loses a tank every 48 frames (round 6: the weapon's own frames, engine_clip)
     (the clock works): the tanks face north with the coil behind them, 450 x Rear 110 % = 495 (engine line A round
-    186, combat.host.flank_of) -- one tank a shot, as on the bench (checks/engine_powerdef.py). The bench's interval is ~125
+    186, combat.host.flank_of) -- one tank a shot, as on the bench (benches/economy/construction/checks.py#engine_powerdef). The bench's interval is ~125
     (~4.15 s a shot): ~1 s a shot the weapon data does not say, not found -- why the clock stays off by default and
     the xfail above stands. Frames 100-150 when found."""
     import sim
@@ -487,7 +487,7 @@ def _trips(got):
     return [b - a for a, b in zip(starts, starts[1:])]
 
 
-# bench 2026-11-12 checks/engine_mining.py mineturn<k> p (work/bench_results/mineturn*__p.json): the node turned k
+# bench 2026-11-12 benches/economy/construction/checks.py#engine_mining mineturn<k> p (work/bench_results/mineturn*__p.json): the node turned k
 # degrees off facing its refinery -> the period (二笔 - 首笔 = 三笔 - 二笔)
 MINE_TURN_BENCH = {0: (151,), 45: (186,), -45: (187,), 90: (241,), -90: (241,), 180: (323,)}
 
@@ -502,7 +502,7 @@ def test_mining_a_trip_goes_by_how_far_the_node_is_turned_off_its_refinery(turn)
 
 
 def test_mining_niagara_east_ore_trips_in_185_as_the_ai_s_miner_did():
-    """checks/engine_aitower.py aitowerinc5 f (bench 2026-11-11, b138_bench2): the AI's miner on niagara's east pad
+    """benches/ai/production/checks.py#engine_aitower aitowerinc5 f (bench 2026-11-11, b138_bench2): the AI's miner on niagara's east pad
     (the node at angle 0, 45 off facing its refinery) pays 250 every 185 frames (the 落塔帧 clock) -- ~20.3 a second,
     not the 14.7 the 269 trip gave."""
     import build
@@ -671,7 +671,7 @@ def test_nanocore_deploys_at_a_far_waypoint_as_the_bench():
     assert name == frames
 
 
-# checks/engine_rewind.py (engine line D round 45, A8's Liberty rewind)
+# benches/body_death/state/checks.py#engine_rewind (engine line D round 45, A8's Liberty rewind)
 def test_rewind_carrier_wears_the_time_belt():
     """The carrier the A8 rewind bench flies: ImmortalBody (HighlanderBody let NAMED_DAMAGE kill it below full
     health, bench CampRwStill_mcp_1111_161912) and Tanya's two belt modules, 3 s back."""

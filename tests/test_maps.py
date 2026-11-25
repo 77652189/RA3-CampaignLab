@@ -145,7 +145,7 @@ def test_every_refinery_by_its_ore():
     assert platmap.ore_lint(far) and not platmap.ore_lint([far[0], Obj('AlliedRefinery', 180, 0)])
 
 
-# Benched as placed, on scenery: engine B's EnterBaseDefenses probes (missions/aibasedef_bench.py, round 66c) put two
+# Benched as placed, on scenery: engine B's EnterBaseDefenses probes (benches/ai/tactics/scenes.py#aibasedef_bench, round 66c) put two
 # turrets on a fence and a tree; moving them changes which turrets the team reaches (test_simai turret order), and the
 # bench readings were taken there. A new probe goes clear of the scenery instead of joining this list.
 ON_SCENERY_AS_BENCHED = {'aibd0', 'aibd1', 'aibdidle', 'aibdwho', 'aibdpre',

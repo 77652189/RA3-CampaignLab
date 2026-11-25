@@ -17,7 +17,7 @@ Result: {'rev', 'units', 'secs', 'model', 'build', 'wall', 'multiple' (simulated
 real time), 'worst', 'slices' (each slice's multiple), 'bodies', 'alive', 'made', 'cells', 'inside'} printed and
 written to <out>/peak_<rev>.json.
 
---ai runs the aipeak skirmish AI scene (two AIs at war, missions/aipeak_bench.py) and writes peak_ai_<rev>.json
+--ai runs the aipeak skirmish AI scene (two AIs at war, benches/ai/production/scenes.py#aipeak_bench) and writes peak_ai_<rev>.json
 with ms_frame in place of units; with --from SECS (AI_FROM is the busy stretch's) it starts from the scene's snapshot
 SECS in (step S 11c-2, ai_start: kept in work/cache/snaps, taken
 again when none is kept or restore refuses it), on Sim(model=False), the result's 'start' naming the snapshot's sha.

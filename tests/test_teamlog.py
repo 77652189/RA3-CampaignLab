@@ -1,5 +1,5 @@
 """experimental/cnv/teamlog.py reads ra3ext's CNVTeams lines (engine line D round 68). The lines below are copied from
-bench run CampAICrT3A_mcp_1112_015804 (checks/engine_aiteams.py aicr3t:a, PASS): the CreateUnits MinUnits 3 team
+bench run CampAICrT3A_mcp_1112_015804 (benches/ai/tactics/checks.py#engine_aiteams aicr3t:a, PASS): the CreateUnits MinUnits 3 team
 holds 2 Guardians at frame 511 and activates with 3 at frame 646."""
 import os
 import sys

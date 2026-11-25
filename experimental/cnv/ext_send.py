@@ -1,4 +1,4 @@
-"""Send orders to a running bench game from outside it (engine line D round 60; checks/engine_cmd.py).
+"""Send orders to a running bench game from outside it (engine line D round 60; benches/other/diagnostics/checks.py#engine_cmd).
 
 The game side is ra3ext's CNVCmd module: every frame it looks for ra3ext_cmd.txt next to the run's ra3ext.log, runs
 its lines (`set NAME V`, `add NAME V`, `get NAME` on the map's script counters) and deletes the file. This program waits

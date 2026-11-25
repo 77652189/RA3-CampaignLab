@@ -46,9 +46,9 @@ def count_probes():
 
 def engine_kingref():
     """Level-line probe mission: why A4's Ghost King stood on the bridge and did not shoot the ice wall when the script
-    re-gave its attack order every frame (devices/horn.py ghost_scripts before 11-07; checks/engine_kingref.py).
+    re-gave its attack order every frame (devices/horn.py ghost_scripts before 11-07; benches/other/diagnostics/checks.py#engine_kingref).
 
-    A's engine_reorder probe (missions/reorder_bench.py) showed an Athena-type tank walks and fires under every-frame orders;
+    A's engine_reorder probe (benches/weapon/firing/scenes.py#engine_reorder) showed an Athena-type tank walks and fires under every-frame orders;
     A4's King is JapanAntiVehicleVehicleTech3 and its target was a SET_REF pick, so the probe here changes those two things:
     the attacker (King) and the way the wall is named (a name, or a SET_REF reference to an unnamed wall).
 

@@ -4,12 +4,12 @@ from types import SimpleNamespace
 
 
 def ai():
-    """The skirmish AI probe (missions/ai_bench.py), read off the counters (all the enemy's: Soviet_1):
+    """The skirmish AI probe (benches/ai/production/scenes.py#ai_bench), read off the counters (all the enemy's: Soviet_1):
 
     wake: asleep it neither builds nor spends; woken it spends and builds (a power plant); told to attack, its army
       comes over to the player's base.
     asleep: the control, never woken: no power plant, no money spent, nobody at the player's base the whole run.
-    capped: the plan's 敌方AI (missions/ai_plan_bench.py), the standard way -- see there.
+    capped: the plan's 敌方AI (benches/ai/production/scenes.py#ai_plan_bench), the standard way -- see there.
 
     Bench 2026-10-25 (wake): asleep it spent nothing; woken it built a barracks and two power plants and spent the 10000
     in ~80 s; with that personality (Mount Rushmore's president) nothing reached the player's base by 390 s.
@@ -52,7 +52,7 @@ def ai():
 
 
     def capped(m):
-        """The plan's 敌方AI (missions/ai_plan_bench.py): the generated personality in use -- asleep it builds nothing,
+        """The plan's 敌方AI (benches/ai/production/scenes.py#ai_plan_bench): the generated personality in use -- asleep it builds nothing,
         woken it builds, never past its caps -- and its army hurts the player's base: guardians lost (bench 2026-10-25:
         "enemy units by the player's start" was its miner at the player's ore, not an attack). That day's runs: the
         first guardian lost ~60 s after waking, all three and the yard to 2 % by ~175 s -- and the same run without
@@ -91,7 +91,7 @@ def ai():
 
 
 def aistep():
-    """敌方AI 分档 tests (missions/aistep_bench.py). Counted: the AI's IFVs, and latches at 1 if it had a war factory / an
+    """敌方AI 分档 tests (benches/ai/production/scenes.py#aistep_bench). Counted: the AI's IFVs, and latches at 1 if it had a war factory / an
     IFV before its step let them go (the step's flag CNV_AS_AI_Step_1 still 0). Bench 2026-10-27, the step at 90 s after
     waking: its factory came only after; held back guardians it never built, held or not (aistep_free).
 
@@ -536,7 +536,7 @@ def engine_ailastexp():
 def engine_ainodesfull():
     """B208: AllNearbyNodesFullHeuristic -- the Peacekeepers (CNVNodesFull) and Guardians (control) at home.
 
-    Prediction (missions/ainodesfull_bench.py; B210: a node is full at 3 own collectors, the refinery's own included):
+    Prediction (benches/ai/production/scenes.py#ainodesfull_bench; B210: a node is full at 3 own collectors, the refinery's own included):
     Guardians leave on every build; Peacekeepers leave only on ainf3 (two refineries, three collectors each).
     aiopn*: the Peacekeepers (CNVNodesFull with OpenNodeHeuristic) leave only on aiopn1900 (the farthest node 2074 from
     an enemy object).
@@ -575,7 +575,7 @@ def engine_ainodesfull():
 
 
 def engine_aiomove():
-    """Engine probe: which opening is drawn, and OpeningMoveHeuristic (missions/aiomove_bench.py).
+    """Engine probe: which opening is drawn, and OpeningMoveHeuristic (benches/ai/production/scenes.py#aiomove_bench).
 
       a  电厂 / 兵营   power plants / barracks s1 owns, once a second
          坦克在家     (aiohc*) Guardians of s1 inside the base area (450 around the east base)
@@ -673,7 +673,7 @@ def engine_aiomove():
 
 
 def engine_aiopath():
-    """Engine probe: the opening a PathToTargetHeuristic picks (missions/aiopath_bench.py). s1 (Allied, woken at 10 s,
+    """Engine probe: the opening a PathToTargetHeuristic picks (benches/ai/production/scenes.py#aiopath_bench). s1 (Allied, woken at 10 s,
     50000 money) has two openings only, AlliedStandard (PathExists true: barracks, then power plant at +10 s) and
     AlliedIsland (PathExists false: power plant, refinery x2, power plant, naval yard; no barracks), both tested with the
     mission's ObjectTypeToUseForTest. Counted once a second for 90 s after the wake: 兵营 电厂 精炼厂 船坞 (s1's own).
@@ -731,7 +731,7 @@ def engine_aiopathcond():
     Bench 2026-11-12: aiopwater FAIL, aiopair PASS; both have barracks=1,
     power=0 at s22-s24. The failed water prediction below is retained. These
     equal readings do not establish that the condition selects a locomotor.
-    engine_aiopathcond.readings.toml holds the observed counts, not that prediction.
+    benches/ai/production/readings.toml#engine_aiopathcond holds the observed counts, not that prediction.
     Evidence and any mismatch: work/re/e_pathcond_e84.md.
     """
     from parts import Script, Test, counted
@@ -757,7 +757,7 @@ def engine_aiopathcond():
 
 
 def engine_aiopen():
-    """Engine probe: the skirmish AI's opening (missions/aiopen_bench.py) -- when each structure / unit first appears
+    """Engine probe: the skirmish AI's opening (benches/ai/production/scenes.py#aiopen_bench) -- when each structure / unit first appears
     for the enemy (s1, AlliedBalanced, woken at 10 s with 50000 money), counted once a second for 150 s after waking.
 
       a  兵营 / 电厂 / 精炼厂 / 战车工厂   AlliedBarracks, AlliedPowerPlant, AlliedRefinery, AlliedWarFactory
@@ -929,7 +929,7 @@ def engine_aiopenside():
 
 
 def engine_aiotime():
-    """Engine probe: an opening's Time order (missions/aiotime_bench.py) -- power plant / Time 30s / power plant / Time 20s
+    """Engine probe: an opening's Time order (benches/ai/production/scenes.py#aiotime_bench) -- power plant / Time 30s / power plant / Time 20s
     / power plant: when do the three stand?
 
       a  电厂   power plants s1 owns, once a second
@@ -940,7 +940,7 @@ def engine_aiotime():
     读数
     Bench 2026-11-09 (B round 79, one run, PASS 3 of 3): 电厂 0 to s18, 1 s19-s48, 2 s49-s58, 3 from s59 -- Time counts
     from the wake (the opening's start); a Time point already passed holds nothing up. The simulator has the gaps
-    (30 s, 10 s) but every plant 3 s late (engine_aiotime.readings.toml, the absolute times a mismatch mark).
+    (30 s, 10 s) but every plant 3 s late (benches/ai/production/readings.toml#engine_aiotime, the absolute times a mismatch mark).
     """
     from parts import Test, counted, Script
 
@@ -1016,7 +1016,7 @@ def engine_aipathbanks():
 
 
 def engine_aipathx():
-    """Engine line D round 108: checks/engine_aipathbanks.py's check on the ra3ext builds (missions/aipathx_bench.py).
+    """Engine line D round 108: benches/ai/production/checks.py#engine_aipathbanks's check on the ra3ext builds (benches/ai/production/scenes.py#aipathx_bench).
 
     The expectations are C's pre-registered ones (they FAILed on 2026-11-13); this build is for the `ptt:` lines in
     the run's ra3ext.log, read in work/re (handoff-c.md PathToTarget).
@@ -1079,7 +1079,7 @@ def engine_aiplacement():
 
 
 def engine_aipower():
-    """Engine probe: the protocol a computer player buys (missions/aipower_bench.py; simtech.Book.ai_buy). The enemy s1
+    """Engine probe: the protocol a computer player buys (benches/ai/production/scenes.py#aipower_bench; simtech.Book.ai_buy). The enemy s1
     (Soviet, one starting point, AI not woken) with a personality of the probe's (its <PowerChoice PlayerPower Weight>
     lines); X = PlayerTech_Soviet_MagneticSatellite_
     Rank_1, Y = PlayerTech_Soviet_OrbitalRefuse_Rank1 (both 1 point, only PlayerTech_Soviet needed). Counters: 有X, 有Y
@@ -1186,7 +1186,7 @@ def engine_aipowerabove():
 
 @cache
 def engine_aipoweradv():
-    """Engine probe: PowerAdvantageHeuristic switches a strategic state (missions/aipoweradv_bench.py) -- do the AI's
+    """Engine probe: PowerAdvantageHeuristic switches a strategic state (benches/ai/production/scenes.py#aipoweradv_bench) -- do the AI's
     Guardians leave its base when its army out-kills the player's, and stay when it does not?
 
       a  坦克在家   Guardians of s1 inside the base area (450 around the east base), once a second
@@ -1202,13 +1202,13 @@ def engine_aipoweradv():
         (then 0: the plant dead) -- the control, so aipadv1's stay is the heuristic's.
       aipadv2 a (CampAIPAdv2A, 8 against 4): 坦克在家 8 -> 7 @ s13, 5 @ s14, 1 @ s15, 0 @ s16; 坦克出门 8 s21-s26 -- on.
       aipadvh a (CampAIPAdvHA, 4 against an Ore Collector only): 坦克在家 4 -> 3 @ s15, 0 @ s16; 坦克出门 4 s20-s31 -- on.
-    The simulator (simai) gives the same four (checks/engine_aipoweradv.readings.toml power_advantage_gates_the_state_as_on_the_bench).
+    The simulator (simai) gives the same four (benches/ai/production/readings.toml#engine_aipoweradv power_advantage_gates_the_state_as_on_the_bench).
     Bench 2026-11-09 (B round 82, the team's MinPowerAdvantage, the state ConstantHeuristic; one run each):
       aipadm1 (8 v 4, 1.0): 坦克在家 8 -> 0 s13-15; 坦克出门 4 @ s18.
       aipadm0 (4 v 8, 1.0): 坦克在家 4 -> 0 s14-15; 坦克出门 4 s18-31 -- goes (the first guess said stay).
       aipadm5 (8 v 4, 5.0; ratio 4 < 5): 坦克在家 8 -> 0 s13-16; 坦克出门 8 s21-26 -- goes (the guess said stay).
     Read: MinPowerAdvantage holds no team back here (as the model: parsed, not used); what it gates, if anything, not
-    found. simai agrees (it ignores the field): checks/engine_aipoweradv.readings.toml team_min_power_advantage_holds_nobody_back.
+    found. simai agrees (it ignores the field): benches/ai/production/readings.toml#engine_aipoweradv team_min_power_advantage_holds_nobody_back.
     Bench 2026-11-09 (B round 83, the condition heuristics, 4 Guardians against none; one run each, all PASS):
       aihtim  (Timer 30s, MAP_START):         home 4 to s32, 0 @ s34 -- on after 30 s from the mission start.
       aihtima (Timer 25s AI_START, wake s10): home 4 to s37, 0 @ s39 -- from the wake.
@@ -1221,7 +1221,7 @@ def engine_aipoweradv():
       aihoea  (ALLIES, only the player's): home to s65.   aihoes (ALLIES, s1's own collector): out s15-17 -- ALLIES
               includes oneself.
     Read: Timer / Interval / EnemyNearby as the model; ObjectOfTypeExists counts the filter's Relationship (the model
-    looks only at its own templates: checks/engine_aipoweradv.readings.toml object_of_type_exists_counts_the_relationship_as_on_the_bench strict xfail).
+    looks only at its own templates: benches/ai/production/readings.toml#engine_aipoweradv object_of_type_exists_counts_the_relationship_as_on_the_bench strict xfail).
     """
     from parts import Script, Test, counted, square
 
@@ -1358,7 +1358,7 @@ def engine_aipowervalue():
 
 
 def engine_aisimpleexp():
-    """D round 154: SimpleExpansion readings (missions/aisimpleexp_bench.py; aiexpse / aiexpd50 / aiexpd400 differ in
+    """D round 154: SimpleExpansion readings (benches/ai/production/scenes.py#aisimpleexp_bench; aiexpse / aiexpd50 / aiexpd400 differ in
     Tactic.Distance only). Counters (four fit): the AI's outposts on the whole map, its outposts and miners within 150 of the Expansion pick
     (bench aiexpc f151: (4173, 2987)), its Guardians in C's 350 square round the east candidate. The exact unpack point
     and frame come from the CNVTeams host's cmd log (ra3ext.log). Expectations: the simulator's prediction (round 154).
@@ -2973,7 +2973,7 @@ def engine_aitechshare():
 
 @cache
 def engine_aitower():
-    """Engine probe: where a skirmish AI puts its base defence tower (missions/aitower_bench.py; l4_defense2.md section 7,
+    """Engine probe: where a skirmish AI puts its base defence tower (benches/ai/production/scenes.py#aitower_bench; l4_defense2.md section 7,
     items 2-3).
 
       a  塔近 0.5 / 0.75 / 1.0   s1's Multigunner turrets in three bands south of the AI's power plant (the AI building

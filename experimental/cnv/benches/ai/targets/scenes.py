@@ -714,7 +714,7 @@ def aiminvalue_bench():
 @cache
 def ainamed_bench():
     """Engine probe: AI targets named in the data -- HeuristicType NamedObject / Waypoint (engine line B, layer 4;
-    read back by checks/engine_ainamed.py; RA3-EngineModel ra3model/ai/targets.py).
+    read back by benches/ai/targets/checks.py#engine_ainamed; RA3-EngineModel ra3model/ai/targets.py).
 
     The retail campaign drives its AI almost wholly through these: AITargetHeuristicLibrary.xml has 145 NamedObject
     heuristics (143 the campaign's AITarget_*) and 94 Waypoint (92 campaign), each only `Name` (an object's script name /
@@ -914,7 +914,7 @@ def aishore_bench():
 
 @cache
 def aistate_bench():
-    """Engine probe: the skirmish AI's strategic states switched by map flags (read back by checks/engine_aistate.py).
+    """Engine probe: the skirmish AI's strategic states switched by map flags (read back by benches/ai/targets/checks.py#engine_aistate).
 
     docs/design/skirmish-ai.md 五: does a script flag (ScriptedFlagHeuristic) turn an AI state on and off, and does each
     state send only the units its team asks for? The enemy (s1, Allied) runs a personality of this probe's own: the
@@ -922,7 +922,7 @@ def aistate_bench():
       CNVStateInf   on while flag 'CNV AI Infantry' is set: a SimpleAttack team of 2-4 Peacekeepers (AlliedAntiInfantryInfantry)
       CNVStateTank  on while flag 'CNV AI Tanks' is set: a SimpleAttack team of 2-4 Guardians (AlliedAntiVehicleVehicleTech1)
     both aimed at the closest enemy structure (the player's yard on the west bank). The AI has a yard, 4 of each unit
-    and no money (it builds nothing). Woken at WAKE_AT the retail way (as aiopen_bench.py); INF_AT the infantry flag goes
+    and no money (it builds nothing). Woken at WAKE_AT the retail way (as benches/ai/production/scenes.py#aiopen_bench); INF_AT the infantry flag goes
     on, TANK_AT it goes off and the tank flag on.
     aistateoff / aistateoffhome (EndIfStateTurnsOff): the infantry flag also goes off at OFF_AT, while the team is on its
     way (out of the base ~5 s after the flag, ~400 short of the target at OFF_AT); EndBehavior RAMPAGE / RETURN_HOME_AND_DISBAND.
@@ -1113,10 +1113,10 @@ def aistate_bench():
 @cache
 def aitarget_bench():
     """Engine probe: which of the player's structures a skirmish AI attack team goes for first (read back by
-    checks/engine_aitarget.py; engine line A, layer 4 block 4, RA3-EngineModel ra3model/ai/targets.py).
+    benches/ai/targets/checks.py#engine_aitarget; engine line A, layer 4 block 4, RA3-EngineModel ra3model/ai/targets.py).
 
     The enemy (s1, Allied) runs a personality of this probe's own: the Allied co-op base with every inherited strategic
-    state removed (as aistate_bench.py) and one state, always on (ConstantHeuristic), sending a team of 2-4 Peacekeepers.
+    state removed (as benches/ai/targets/scenes.py#aistate_bench) and one state, always on (ConstantHeuristic), sending a team of 2-4 Peacekeepers.
     The player has three structures:
       near  a power plant at the east gate, ~710 from the AI's base centre, two Multigunner turrets 150 north and south
       far   a power plant south of the AI's base (the carrier's spot), ~1010 from the base centre, nothing near it
@@ -1255,7 +1255,7 @@ def aitarget_bench():
 def aitargetpick_bench():
     """Engine probe: which target a strategic state's team picks -- AITargetingHeuristic VitalKindOf / ForbiddenKindOf /
     HeuristicType EnemyUnit, the state's TargetHeuristic Priority, and MaxTargets (read back by
-    checks/engine_aitargetpick.py; private ai/targets.py, simai through it).
+    benches/ai/targets/checks.py#engine_aitargetpick; private ai/targets.py, simai through it).
 
     aiteamfilter_bench's set-up (Niagara, the enemy s1 Allied with a yard and no money, every inherited strategic state
     removed, woken at 10 s), one always-on state CNVStateTP (ConstantHeuristic): a SimpleAttack team, IncludeKindOf
@@ -1668,7 +1668,7 @@ def aivital_bench():
 def aiwake_bench():
     """Engine probe (line B): does a side with an aiPersonality run its teams before the mission wakes it?
 
-    Bench aialobslo (E99 / E101, missions/aialphaclose_bench.py, wake script at 10 s = f150) shows the AI's named team
+    Bench aialobslo (E99 / E101, benches/ai/tactics/scenes.py#aialphaclose_bench, wake script at 10 s = f150) shows the AI's named team
     empty at f17, 4 members at f21 and its first team move at f26 -- long before f150; the simulator only builds the AI
     player at the wake. Two readings fit:
       H-a  the wake already ran at f0: its only condition is TIMER_EXPIRED and a never-set timer counts as expired, so if

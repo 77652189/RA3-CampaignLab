@@ -1,6 +1,6 @@
 """列车: a scripted train (units/train.py: the armoured train, retail's campaign train under our id with a Tesla gun)
 as a plan device. Once a second the mission sends it to the next stop on its route it has not reached (a move
-order of anyone else's -- the player's -- lasts a second at most: missions/train_bench.py, bench 2026-10-22); a
+order of anyone else's -- the player's -- lasts a second at most: benches/movement/pathing/scenes.py#train, bench 2026-10-22); a
 stop's area reached makes the next one the goal. It may wait at each stop (停靠: the enemy's train in S2 stops at
 every station, so the player's can catch it), and be held (停下 / 继续).
 

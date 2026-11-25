@@ -1,5 +1,5 @@
 """R3 step X, an infantry group's ends (simpath.formation_spots -> block) against the bench: `engine_column lanes`,
-`engine_crowd big`, `engine_colgate two` 2026-11-17 (experimental/cnv/checks/engine_column.py; CNVProbe stops read by
+`engine_crowd big`, `engine_colgate two` 2026-11-17 (experimental/cnv/benches/movement/pathing/checks.py#engine_column; CNVProbe stops read by
 work/re/scripts/x_column.py): Peacekeepers sent to one point by one MOVE_TEAM_TO, on the probe map's open ground."""
 import importlib.util
 import math

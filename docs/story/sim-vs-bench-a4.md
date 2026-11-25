@@ -113,7 +113,7 @@ python -m pytest -q tests/test_simbench.py                 # 6 项过 + 3 个变
 
 ## smash 当时鬼王为什么不开火：查清了触发条件（2026-11-07，第三十一个会话，关卡线）
 
-A 给的两条线索都在真地图上排除了。做法：在 `checks/a4.py` 的 smash 上每次只改一处（`smash_probe`），再在 A 的海岛上用 King 补两条（`missions/kingref_bench.py`、`checks/engine_kingref.py`）。读数（测试台 11-07，鬼王位置：1 东岛、2 桥、3 过桥）：
+A 给的两条线索都在真地图上排除了。做法：在 `checks/a4.py` 的 smash 上每次只改一处（`smash_probe`），再在 A 的海岛上用 King 补两条（`benches/other/diagnostics/scenes.py#engine_kingref`、`benches/other/diagnostics/checks.py#engine_kingref`）。读数（测试台 11-07，鬼王位置：1 东岛、2 桥、3 过桥）：
 
 | 检查 | 做法 | 鬼王 | 墙血 |
 | --- | --- | --- | --- |

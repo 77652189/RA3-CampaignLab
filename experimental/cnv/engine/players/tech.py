@@ -27,7 +27,7 @@ A retail mission's own personality (AIP_..., its map's assets, not in the SDK) c
 <Faction>SoloBasePersonality stands in (INFERRED; the bench's AIP_A03_Soviet02BaseMarshall did spend its point).
 Where the draw falls (DRAW): the program takes it from the logic random stream, and a single-player game seeds that
 stream with 0 (Generals InitRandom(0); RA3 INFERRED), so a mission draws the same every run. The simulator cannot
-replay the stream, so it walks a fixed fraction DRAW of the sum. Bench 11-09 (checks/engine_aipower.py e, a Soviet
+replay the stream, so it walks a fixed fraction DRAW of the sum. Bench 11-09 (benches/ai/production/checks.py#engine_aipower e, a Soviet
 computer player, two 1-point lines): 50/50 either order -> the first listed, 7 runs of 7; X 30% first / Y 70% -> X;
 X 10% / Y 90% -> Y. So there draw / sum lies in [0.1, 0.3), not "the heaviest line"; DRAW = 0.2 is that bracket's
 middle (INFERRED for other missions: the stream's position at frame 10 is their own). A mission whose bench run

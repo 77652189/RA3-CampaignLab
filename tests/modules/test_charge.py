@@ -1,4 +1,4 @@
-"""ChargeWeaponUpdate (engine/modules/charge.py; bench checks/engine_charge_e.py a-c): the Wave-Force tower's next
+"""ChargeWeaponUpdate (engine/modules/charge.py; bench benches/weapon/firing/checks.py#engine_charge_e a-c): the Wave-Force tower's next
 attack's first shot skips the part of its 3 s pre-attack it has charged (idle / ChargeTime 5 s); idle OverChargeTime
 2 s more, that shot deals 40 % more. The host asks at a clip clock's fresh start (WeaponSet.start_clip,
 Sim.shots_due)."""

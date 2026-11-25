@@ -1,4 +1,4 @@
-"""Isolated EngageTacticalTarget replay: checks/engine_aitactical.py."""
+"""Isolated EngageTacticalTarget replay: benches/ai/tactics/checks.py#engine_aitactical."""
 import importlib.util
 from pathlib import Path
 

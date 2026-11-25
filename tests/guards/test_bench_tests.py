@@ -6,6 +6,8 @@ Never raise one: write the reading into checks/<bench>.readings.toml instead. An
 (bench_tests_baseline.txt, below)."""
 import ast
 import importlib.util
+import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -266,3 +268,46 @@ def test_a_new_bench_test_in_a_tree_is_caught(tmp_path):
     assert base == {'tests/test_old.py::test_old'}
     (tmp_path / 'tests' / 'content' / 'test_new.py').write_text("def test_new():\n    run('alphamission')\n")
     assert bench_tests(tmp_path, tmp_path / 'checks') - base == {'tests/content/test_new.py::test_new'}
+
+
+def test_no_stale_bench_paths():
+    paths = subprocess.check_output(
+        ['git', 'ls-files', '-z', '--', 'experimental', 'tests', 'docs',
+         ':(exclude)docs/adr', ':(exclude)docs/archive'],
+        cwd=ROOT,
+    ).decode('utf-8').split('\0')[:-1]
+    assert paths, 'no tracked files to scan'
+    cnv = 'experimental/cnv/'
+    pattern = re.compile(
+        rb'(?<![\w-])(?:experimental[/\\]cnv[/\\]checks[/\\](?:[\w-]+[/\\])*[\w-]+(?:\.[\w-]+)+'
+        rb'|missions[/\\][\w-]+_bench\.py)(?![\w/\\-])'
+    )
+    # Existing references in docs outside the sweep's edit scope.
+    # Split the engine stem so the replay guard treats this as path validation.
+    outside_scope = {
+        ('docs/shell/handoff.md', cnv + 'checks/engine_' + 'trial.py'),
+        ('docs/render/handoff.md', cnv + 'checks/render_war.py'),
+        ('docs/render/handoff.md', cnv + 'missions/' + 'render_bench.py'),
+        ('docs/research/rendering.md', cnv + 'missions/' + 'render_bench.py'),
+    }
+    stale = []
+    for name in paths:
+        file = ROOT / name
+        if not file.is_file():
+            continue
+        data = file.read_bytes()
+        if b'\0' in data:
+            continue
+        for match in pattern.finditer(data):
+            target = match[0].decode('ascii').replace('\\', '/')
+            if target.startswith('missions/'):
+                target = cnv + target
+            if (ROOT / target).is_file():
+                continue
+            reference = (name, target)
+            if reference in outside_scope:
+                outside_scope.remove(reference)
+                continue
+            line = data.count(b'\n', 0, match.start()) + 1
+            stale.append(f'{name}:{line}: {target}')
+    assert not stale, 'Stale bench paths:\n' + '\n'.join(stale)

@@ -3,7 +3,7 @@ block of the template data port, and the readers on it (simunits.fight / declare
 template_weapons, simcoverage.declared_picks) answering as before but for what the port does not read: a slot in an
 XML comment, a block the template Removes (the SDK compiler reads neither). Kept on purpose: a unit whose own file
 writes no WeaponSetUpdate holds no weapon (it inherits one: a gap Sim.add notes). Rules: docs/engine/weaponset.md;
-on the bench: checks/engine_weaponset.py. Step W2 (below): the WeaponSet module holds a thing's weapons and slots,
+on the bench: benches/weapon/target_effects/checks.py#engine_weaponset. Step W2 (below): the WeaponSet module holds a thing's weapons and slots,
 armed by Sim.add, written back by the modifier pass, read through the body's forwards and in the frame record."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simcoverage  # noqa: E402

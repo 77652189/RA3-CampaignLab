@@ -42,7 +42,7 @@ def handed_to_ai(map_module):
     return {p for p, names in libraries(map_module).items() if SKIRMISH_SETUP in names}
 # K8 (I4): the ground a camera shows while a scene runs (letterbox on: the picture is a band 1280 x 540 of the 1280 x 720
 # screen, the rest bars). The ground is seen at an angle, so the band is a TRAPEZOID on the map, not a rectangle: wider at
-# its far (north) edge. Measured 2026-11-07 on the bench (checks/engine_letterbox.py 'g': a 7 x 5 grid of guardians
+# its far (north) edge. Measured 2026-11-07 on the bench (benches/ui/presentation/checks.py#engine_letterbox 'g': a 7 x 5 grid of guardians
 # teleported in under a scene camera on A4's flat avenue; experimental/testbench/letterbox_fit.py fits ground -> screen,
 # 11 markers, residual 2.9 px; run CampLbxG_mcp_1107_202615), relative to the ground point the camera is aimed at:
 #   band top row    : 290 north, 1125 wide          band middle row: 12 south, 887 wide

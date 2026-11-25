@@ -1,4 +1,4 @@
-"""GrapplingHookUpdate (E226, checks/engine_grapple.readings.toml): with the harpoon toggled on the Apocalypse's hook
+"""GrapplingHookUpdate (E226, benches/weapon/firing/readings.toml#engine_grapple): with the harpoon toggled on the Apocalypse's hook
 pulls the Hammer in about 40 a second and stops it within the Apocalypse's radius; off, the cannon shoots, no pull."""
 import math
 

@@ -3,8 +3,8 @@
 引擎线 A 第 54～65 轮（2026-11-06），ADR 0019 第四层（遭遇战 AI）的 ④ 目标和战术、⑤ 防守。写法照 `script-semantics.md`：**测** = 测试台；**读到** = 程序里读到、没上测试台；**推断** = 只从资料推出来。
 
 探针两个，都用尼亚加拉图、敌方盟军 AI、人格只留一个常开状态（做法同 `aistate.md`）：
-- `experimental/cnv/checks/engine_aitarget.py`（任务 `missions/aitarget_bench.py`）：玩家有两座电厂，近的带炮塔、远的不设防，看 AI 的 4 个维和步兵先去哪座、几秒出门。
-- `experimental/cnv/checks/engine_aidefense.py`（任务 `missions/aidefense_bench.py`）：AI 用 `StaticDefense` 守自己的建造厂，用脚本把守兵弄走，看它们会不会、多久被拉回来。
+- `experimental/cnv/benches/ai/targets/checks.py#engine_aitarget`（任务 `benches/ai/targets/scenes.py#aitarget_bench`）：玩家有两座电厂，近的带炮塔、远的不设防，看 AI 的 4 个维和步兵先去哪座、几秒出门。
+- `experimental/cnv/benches/ai/tactics/checks.py#engine_aidefense`（任务 `benches/ai/tactics/scenes.py#aidefense_bench`）：AI 用 `StaticDefense` 守自己的建造厂，用脚本把守兵弄走，看它们会不会、多久被拉回来。
 
 ## 给关卡线的结论
 
@@ -68,7 +68,7 @@
 
 ### 目标挑哪个（aitargetpick：VitalKindOf / ForbiddenKindOf / EnemyUnit / Priority / MaxTargets）
 
-探针 `experimental/cnv/missions/aitargetpick_bench.py` + `checks/engine_aitargetpick.py`（11-09，8 组全 PASS，读数在检查 docstring）。AI 家里 4 辆守护者（MaxTargets 两组 8 辆），一个常开状态一队 SimpleAttack、MaxUnits 4；玩家三个保活目标：近电厂（~710）、远兵营（~1010）、一辆坦克（~910）。
+探针 `experimental/cnv/benches/ai/targets/scenes.py#aitargetpick_bench` + `benches/ai/targets/checks.py#engine_aitargetpick`（11-09，8 组全 PASS，读数在检查 docstring）。AI 家里 4 辆守护者（MaxTargets 两组 8 辆），一个常开状态一队 SimpleAttack、MaxUnits 4；玩家三个保活目标：近电厂（~710）、远兵营（~1010）、一辆坦克（~910）。
 
 | 变体 | 状态里的目标启发 | 去哪 |
 | --- | --- | --- |
@@ -81,7 +81,7 @@
 | `aitpmt1` | `MaxTargets` 1，8 辆 | 一队 4 辆去电厂，4 辆留家 |
 | `aitpmt2` | `MaxTargets` 2，8 辆 | 两队：4 辆电厂、4 辆兵营（第二个槽避开第一个槽的目标，挑次近） |
 
-给关卡：一个状态 `MaxTargets` 几就同时出几队、各打一个不同目标；同一状态里写几条目标启发时先用 `Priority` 高的，找不到才往下。模拟器（simai）八组都对上（`checks/engine_aitargetpick.readings.toml target_pick_as_on_the_bench`）。没测：同优先级时随机挑哪条、VitalKindOf 写多个是"全都"还是"任一"、MaxTargets 大于可用兵力时。
+给关卡：一个状态 `MaxTargets` 几就同时出几队、各打一个不同目标；同一状态里写几条目标启发时先用 `Priority` 高的，找不到才往下。模拟器（simai）八组都对上（`benches/ai/targets/readings.toml#engine_aitargetpick target_pick_as_on_the_bench`）。没测：同优先级时随机挑哪条、VitalKindOf 写多个是"全都"还是"任一"、MaxTargets 大于可用兵力时。
 
 ### 目标没了以后（EndBehavior，2026-11-09 各一次）
 

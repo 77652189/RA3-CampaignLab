@@ -151,7 +151,7 @@ def player_has_number_objects_with_object_status(sim, name, a):
 
 
 def named_exited_area(sim, name, a):
-    # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
+    # retail batch 1 (round 207, benches/script/control/checks.py#engine_conds; d115_script_semantics.md where it says 码)
     # INFERRED: inside the frame before, outside now (one frame)
     b = sim.body(a[0])
     now = bool(sim.present(b) and inside(sim.areas[a[1]], b.x, b.y))
@@ -162,14 +162,14 @@ def named_exited_area(sim, name, a):
 
 
 def named_attacked_by_objecttype(sim, name, a):
-    # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
+    # retail batch 1 (round 207, benches/script/control/checks.py#engine_conds; d115_script_semantics.md where it says 码)
     b = sim.body(a[0])
     by = attacker(sim, b) if sim.present(b) and b.last_by is not None else None
     return bool(by is not None and by.template.lower() in sim.of_types(a[1]))
 
 
 def skirmish_player_has_been_attacked_by_player(sim, name, a):
-    # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
+    # retail batch 1 (round 207, benches/script/control/checks.py#engine_conds; d115_script_semantics.md where it says 码)
     # INFERRED (Generals Player::getAttackedBy): set by any hit of the second's on the first's, kept for good
     for b in sim.bodies.values():
         if b.last_by is not None and b.last_hit is not None:
@@ -178,7 +178,7 @@ def skirmish_player_has_been_attacked_by_player(sim, name, a):
 
 
 def player_has_killed_named_unit(sim, name, a):
-    # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
+    # retail batch 1 (round 207, benches/script/control/checks.py#engine_conds; d115_script_semantics.md where it says 码)
     # INFERRED: kills by weapon (self.kills, World.kill); n of a type at least n
     if name == 'PLAYER_HAS_KILLED_NAMED_UNIT':
         return any(k[0] == a[0] and k[3] == a[1] for k in sim.kills)
@@ -191,14 +191,14 @@ def player_has_killed_named_unit(sim, name, a):
 
 
 def named_selected(sim, name, a):
-    # retail batch 2 (round 210, checks/engine_conds.py sight; d115_script_semantics.md 4-6)
+    # retail batch 2 (round 210, benches/script/control/checks.py#engine_conds sight; d115_script_semantics.md 4-6)
     # bench 11-14 engine_share all: the object SELECT_OBJECT picked, while
     b = sim.body(a[0])                 # it lives (the bench: ~3 s more after NAMED_KILL, not modelled)
     return bool(b and b.alive and sim.selected == a[0])
 
 
 def type_selected(sim, name, a):
-    # retail batch 2 (round 210, checks/engine_conds.py sight; d115_script_semantics.md 4-6)
+    # retail batch 2 (round 210, benches/script/control/checks.py#engine_conds sight; d115_script_semantics.md 4-6)
     # the same bench: never true after SELECT_OBJECT of a Guardian, a
     return False                        # refinery, an enemy Hammer; engine_eyes all: nor the player's own click / box
 
@@ -224,7 +224,7 @@ def built_by_player(sim, name, a):
 
 def player_destroyed_n_buildings_player(sim, name, a):
     # retail batch 4 (round 238, checks/engine_sighted.py all)
-    # (player, n, opponent): false, always -- 摧毁 0 all run (round 240, checks/engine_razed.py all, bench 11-15
+    # (player, n, opponent): false, always -- 摧毁 0 all run (round 240, benches/script/control/checks.py#engine_razed all, bench 11-15
     # CampRazedAll_mcp_1115_030516), n 0 too, while the player's tanks razed two of the opponent's plants and
     # the opponent one of the player's. Generals' evaluatePlayerDestroyedNOrMoreBuildings is the same stub
     return False

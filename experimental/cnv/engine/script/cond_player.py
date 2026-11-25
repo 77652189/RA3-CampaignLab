@@ -95,7 +95,7 @@ def player_has_num_units_with_upgrade(sim, name, a):
 
 
 def player_has_credits(sim, name, a):
-    # retail batch 1 (round 207, checks/engine_conds.py; d115_script_semantics.md where it says 码)
+    # retail batch 1 (round 207, benches/script/control/checks.py#engine_conds; d115_script_semantics.md where it says 码)
     # (player, comparison, n)
     return any(CMP[int(a[1])](int(sim.money.get(p, 0)), int(a[2])) for p in players_of(sim, a[0]))    # any (A347)
 

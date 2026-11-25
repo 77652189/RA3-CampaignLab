@@ -1,5 +1,5 @@
 """Engine line D's damage line in the simulator (simsweep.Sweeps: ActivateLinearDamageNugget + LinearDamageUpdate) held
-to the bench: checks/engine_sweep.py engine_sweepoff (plain retail, no ra3ext), bench 2026-11-10 (work/re/handoff-d.md
+to the bench: benches/weapon/target_effects/checks.py#engine_sweep engine_sweepoff (plain retail, no ra3ext), bench 2026-11-10 (work/re/handoff-d.md
 rounds 12 / 16 / 17). Counters: frames from the order to the first hit of the row Hammers 150 / 250 / 350 north of the
 shooter (近 / 中 / 远), and of the aimed one (瞄) or, in c, the base shooters alive (射手). Its own file so these hunks
 share no file with another line's uncommitted ones."""

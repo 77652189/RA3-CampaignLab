@@ -61,7 +61,7 @@ class MonitorData(module.ModuleData):
 
 @factory.module('MonitorConditionUpdate')
 class MonitorCondition(module.Module, interfaces.Update):
-    """MonitorConditionUpdate (E219, checks/engine_mining.readings.toml minejap): its thing holding every flag -- CARRYING
+    """MonitorConditionUpdate (E219, benches/economy/construction/readings.toml#engine_mining minejap): its thing holding every flag -- CARRYING
     while its miner's trip has a load, a toggle's ModelConditions in its state now, a script's -- PreDelay frames on
     (INFERRED: held all along), it does its actions, then sleeps PostDelay. Its OCL is not made: retail's one
     (DroppedOrePile) is a 1 s prop no script counts (not SELECTABLE)."""

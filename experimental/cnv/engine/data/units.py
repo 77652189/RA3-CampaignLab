@@ -1990,7 +1990,7 @@ _wreck_memo = {}
 
 def ocl_wrecks(name, own=None):
     """What an ObjectCreationList makes fall when its CreateObjectDie takes a death in the air (Physics P5,
-    checks/engine_crash_fall.py; the module: engine/modules/createobjectdie.py): (choose_one, [wreck]), None without
+    benches/body_death/state/checks.py#engine_crash_fall; the module: engine/modules/createobjectdie.py): (choose_one, [wreck]), None without
     the list. A wreck: dict(template, scale = the nugget's VelocityScale of the plane's velocity (INHERIT_VELOCITY
     nuggets only), gravity = its own Physics GravityMultiplier (default 1), falls = KillWhenRestingOnGround; its death weapons:
     simbody.Life.wreck_blasts, step B5c). The Apollo's: CHOOSE_ONE of AlliedFighterAircraft_Collapse

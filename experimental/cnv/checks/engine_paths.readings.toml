@@ -1,4 +1,4 @@
-# Bench readings of checks/engine_paths.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/movement/pathing/checks.py#engine_paths (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 # A355 (bench CampPathsSize, 2026-11-24, HEAD 409825a5): an IFV, a Guardian and an Apocalypse (radius 14 / 23.3 /
 # 30.8) each sent through a field-0 wall's 30 gap, a 150 one at the box's east end. Counters per second: IFV s2 at

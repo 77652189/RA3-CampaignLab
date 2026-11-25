@@ -130,7 +130,7 @@ def replay():
 
 
 def test_aicrush1t_model_plant_attack_precedes_crush(replay):
-    # was a strict xfail (the plant goal never came first); the move goals snapped to the grid (checks/engine_drop.py,
+    # was a strict xfail (the plant goal never came first); the move goals snapped to the grid (benches/movement/pathing/checks.py#engine_drop,
     # 2026-11-18) put the members where the game has them, and the plant is attacked before the crush
     brain, = replay.brains.values()
     # The world advances in coarse ticks. Keep both clocks; do not relabel a tactical frame as a world sample.
@@ -158,7 +158,7 @@ def test_aicrush1t_model_first_crush_destinations(replay):
     assert actual == Counter(observed['dest'][i] for i in TANKS)
 
 
-# D round 145: the switch's effect, the check's own expectation (checks/engine_aicrush.py, wake + 25 s), on both sides.
+# D round 145: the switch's effect, the check's own expectation (benches/ai/tactics/checks.py#engine_aicrush, wake + 25 s), on both sides.
 BENCH_CRUSH = {   # engine_aicrush a, 11-09 (docstring): guards / tanks at s27, the model run's last sample
     'aicrush1': (1, 4),     # s26-27 1 guard, s28-s33 0; 4 tanks (model s27: 5 guards, 4 tanks, 18 crush picks)
     'aicrush0': (12, 3),    # s23-s30 12 3 | s31 11 2: shot down, the guards win (model s27: 10, 4, no crush pick)

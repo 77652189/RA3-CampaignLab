@@ -1,4 +1,4 @@
-"""StoreCurrentStateUpdate (E223, checks/engine_storestate_e.readings.toml): its thing's place and health every
+"""StoreCurrentStateUpdate (E223, benches/body_death/state/readings.toml#engine_storestate_e): its thing's place and health every
 SleepTime, kept for MaxTime and SPAN frames more; Tanya's time belt (ReconstituteStateSpecialAbility, act_ability)
 takes her back to the oldest kept, whatever its TimeStepsBack (the bench: 10 s asked, a 5 s store went 85-88 frames
 back, a 2 s one 40-43, a 12 s one past the 187 frames there were). INFERRED: SPAN fitted on those two; her owner and

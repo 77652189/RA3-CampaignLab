@@ -96,7 +96,7 @@ def test_question_1_the_squad_walks_to_the_point(mission):
 
 def test_question_1_the_squad_stands_round_the_point(mission):
     """The squad stops apart, its middle short of the point: an infantry group's block (simpath.formation_spots ->
-    simpath.block). Bench 11-17 checks/engine_a01sq.py squad (run CampA01SqSquad_mcp_1117_223430, read by
+    simpath.block). Bench 11-17 benches/movement/pathing/checks.py#engine_a01sq squad (run CampA01SqSquad_mcp_1117_223430, read by
     work/re/scripts/x_a01sq.py): a01's squad copied with CNVProbe -- 4 Peacekeepers and 2 dogs standing as at the
     hand-over, the point as far and the same way, shifted by whole cells -- sent by one MOVE_TEAM_TO: each man's stop
     off the point below (the same with six Peacekeepers: the dogs change nothing); the closest pair 28.3 (20 * sqrt(2),
@@ -117,7 +117,7 @@ def test_question_1_the_squad_stands_round_the_point(mission):
 
 def test_two_units_sent_alone_to_one_point_stand_apart(mission):
     """Two separate move orders to one point (MOVE_NAMED_UNIT_TO each): the second's goal is moved off the first's.
-    Bench 11-17 checks/engine_drop.py (simpath.spot): infantry (one 20 cell) sent one after another to one point stand
+    Bench 11-17 benches/movement/pathing/checks.py#engine_drop (simpath.spot): infantry (one 20 cell) sent one after another to one point stand
     on the centre of the cell the point is in, then one footprint (20) off it on the rings; bench 11-09
     retail_q1_spots.py (blob centres): a dog and a Peacekeeper stood ~22 apart."""
     s = sim.Sim(mission, script='22.6 走 UNIT - P1 - Peacekeeper 01 去 @505.2,1576.7; '

@@ -34,7 +34,7 @@ def named_discovered(sim, name, a):
 
 
 def enemy_sighted_by_team(sim, name, a):
-    # retail batch 2 (round 210, checks/engine_conds.py sight; d115_script_semantics.md 4-6)
+    # retail batch 2 (round 210, benches/script/control/checks.py#engine_conds sight; d115_script_semantics.md 4-6)
     # 码 (team, relation, player): a member with sight finds an object of the player's, not INERT / MOVE_ONLY,
     # the member's relation to it the one asked, within its sight. A range query: no fog, no stealth. Bench
     # 11-13 engine_conds sight 视野: the member itself counts (&4 all along); a Guardian 230 from the member
@@ -54,7 +54,7 @@ def enemy_sighted_by_team(sim, name, a):
 
 
 def team_discovered(sim, name, a):
-    # retail batch 2 (round 210, checks/engine_conds.py sight; d115_script_semantics.md 4-6)
+    # retail batch 2 (round 210, benches/script/control/checks.py#engine_conds sight; d115_script_semantics.md 4-6)
     # 码 (player, team): a member the player sees (the fog clear or partly so, INFERRED: as Sim.sees / looks) and
     # not hidden from it; the player's own members always. Bench 11-13 engine_conds sight 发现&1: a member on
     # the move is not (near, in plain sight, off the second or two it moved; INFERRED: its fog status is

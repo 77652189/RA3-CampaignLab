@@ -1,4 +1,4 @@
-"""A probe map for the engine line's air tests (checks/engine_air.py, missions/air_bench.py): level ground (tier 1,
+"""A probe map for the engine line's air tests (benches/movement/pathing/checks.py#engine_air, benches/movement/pathing/scenes.py#engine_air): level ground (tier 1,
 340 ours, the water stands at 320), and on it, 1 200 apart west to east at x 1700 -> 2900:
 
   y 1500  'air flat'   nothing: flat ground all the way

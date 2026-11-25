@@ -2,7 +2,7 @@
 
 引擎线第 50 轮（2026-11-06），ADR 0019 第二层。写法照 `script-semantics.md`：**测** = 测试台；**推断，未实测** = 只从资料推出来；**对不上** = 测试台和模型不一致。
 
-探针 `experimental/cnv/checks/engine_stance.py`（`cnv_check engine_stance a` 到 `f`）。节日图西边空地，己方一辆守护者坦克 A，正前方 150 处一辆敌方守护者 T（T 挂 NO_ATTACK，e 除外）。任务第 1 秒（Test Go）起计数，姿态都用脚本动作 `UNIT_SET_STANCE`（第二个参数直接写整数：GUARD 0、AGGRESSIVE 1、HOLD_POSITION 2、HOLD_FIRE 3）。四个计数器从 Go 起**按帧累加**：帧数、T状态（1 × T 满血的帧 + 1000 × 不满血的帧，第一发命中的帧是准的）、T 血量、A 血量（百分比）。守护者一发 12.5%，30 帧一发。运行 `work/testbench/runs/CampStanceA_mcp_1106_025915` 到 `CampStanceF_mcp_1106_030945`。读数每 0.5 秒一行，所以第一发以后的命中只能说"不晚于第几帧"。
+探针 `experimental/cnv/benches/movement/pathing/checks.py#engine_stance`（`cnv_check engine_stance a` 到 `f`）。节日图西边空地，己方一辆守护者坦克 A，正前方 150 处一辆敌方守护者 T（T 挂 NO_ATTACK，e 除外）。任务第 1 秒（Test Go）起计数，姿态都用脚本动作 `UNIT_SET_STANCE`（第二个参数直接写整数：GUARD 0、AGGRESSIVE 1、HOLD_POSITION 2、HOLD_FIRE 3）。四个计数器从 Go 起**按帧累加**：帧数、T状态（1 × T 满血的帧 + 1000 × 不满血的帧，第一发命中的帧是准的）、T 血量、A 血量（百分比）。守护者一发 12.5%，30 帧一发。运行 `work/testbench/runs/CampStanceA_mcp_1106_025915` 到 `CampStanceF_mcp_1106_030945`。读数每 0.5 秒一行，所以第一发以后的命中只能说"不晚于第几帧"。
 
 | 变体 | 做什么 | 结果 |
 | --- | --- | --- |
@@ -34,7 +34,7 @@
 
 ## 3b. 原地（HOLD_POSITION）和进攻（AGGRESSIVE）（测，2026-11-10）
 
-探针 `checks/engine_acquire.py` 加了 hold180 / hold220 / agg220 / agg240 / agg260 五个变体（敌方守护者出生时设姿态，玩家坦克在正北 d 处、NO_ATTACK）。对照 GUARD：180 原地开火，220 走过去打、第 16 秒走回原位，240 以外不动。
+探针 `benches/weapon/firing/checks.py#engine_acquire` 加了 hold180 / hold220 / agg220 / agg240 / agg260 五个变体（敌方守护者出生时设姿态，玩家坦克在正北 d 处、NO_ATTACK）。对照 GUARD：180 原地开火，220 走过去打、第 16 秒走回原位，240 以外不动。
 
 | 变体 | 结果 |
 | --- | --- |

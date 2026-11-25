@@ -2,7 +2,7 @@
 
 引擎线 B 第 5 轮（2026-11-06），ADR 0019 第二层。只答两个问题。写法照 `script-semantics.md`：**测** = 测试台；**推断，未实测** = 只从资料推出来。本项没有写私有模型（只答问题，不对拍）。
 
-探针 `experimental/cnv/checks/engine_crush.py`（`cnv_check engine_crush all`、`cnv_check engine_crush_b two`）。节日图西边草地，三条东西向车道相距 300，我方坦克在敌方目标西边 200，第 1 秒（Test Go）命令坦克开到目标东边 200（正好穿过目标）。**所有单位都设成禁火**，所以目标死了只能是被压死。计数器从 Go 起按帧累加。运行 `work/testbench/runs/CampCrushAll_mcp_1106_042112`、`CampCrushBTwo_mcp_1106_042416`。
+探针 `experimental/cnv/benches/body_death/state/checks.py#engine_crush`（`cnv_check engine_crush all`、`cnv_check engine_crush_b two`）。节日图西边草地，三条东西向车道相距 300，我方坦克在敌方目标西边 200，第 1 秒（Test Go）命令坦克开到目标东边 200（正好穿过目标）。**所有单位都设成禁火**，所以目标死了只能是被压死。计数器从 Go 起按帧累加。运行 `work/testbench/runs/CampCrushAll_mcp_1106_042112`、`CampCrushBTwo_mcp_1106_042416`。
 
 | 车道 | 压的（CrusherLevel） | 被压的（CrushableLevel） | 读数 |
 | --- | --- | --- | --- |
@@ -37,11 +37,11 @@
 
 ## 模拟器对拍（引擎线 C 第 3 轮，2026-11-09）
 
-模拟器现在有碾压和慢死（`engine/objects/locomotion.crush`、`Sim.dying`，数据读 CrusherInfo 模块 `engine/modules/crush.py`（M3 起）/ 慢死模块 `engine/modules/slowdeath.py`（B5a 起）），等级、慢死和建筑死亡的台上读数见 `checks/engine_crush.readings.toml`，由一致性跑器核对。
+模拟器现在有碾压和慢死（`engine/objects/locomotion.crush`、`Sim.dying`，数据读 CrusherInfo 模块 `engine/modules/crush.py`（M3 起）/ 慢死模块 `engine/modules/slowdeath.py`（B5a 起）），等级、慢死和建筑死亡的台上读数见 `benches/body_death/state/readings.toml#engine_crush`，由一致性跑器核对。
 
 - **等级**：CrusherLevel / CrushableLevel 读自 CrusherInfo（子模板自己写的数压过基类的），压的等级严格大于被压的才压死；只压敌人（**推断**：压自己人、中立单位没测）。
 - **何时压死**：压的一方走过被压者**自己半径以内**（拟合两个读数：铁锤压动员兵第 43 帧、天启压守护者第 69 帧；按两个半径之和算会早 12 / 30 帧）。模拟器没有加速，所以坦克比台上早到约 25 帧、压死早几到 15 帧；测试按带宽比。
 - **慢死**：模拟器只让碾压死亡且有普通 SlowDeath 块的物体按首个普通块的 DestructionDelay 停留。普通块没有 DeathFlags 和 DeathTypes。动员兵的 `NAMED_DYING` 和 `NAMED_INSIDE_AREA` 都读到 127 帧。其余死亡默认停留 0 帧，`NAMED_DYING` 至少涵盖死亡帧。步兵战斗死亡的停留仍待实测。
 - **没做**：`CrushKillDelay`（车被压 1.5 s 后才死？数据里有，台上没测）、压过时减速、被压者躲开。
-- **倒伏台上读数（2026-11-09，engine_topple a / b，festival 西边空地，车从道具西 200 走到东 200）**：铁锤一路开到终点（约第 91 帧，不停不绕）；被碾的道具**车过去很久之后才毁**，且**不经过 NAMED_DYING（直接没了）**：灯笼第 162 帧、路灯 118、栏杆 163、树（CS_Tree01）119（车约第 53 帧过道具）。**动员兵（等级 0）碾灯笼：灯笼一直在（读到 710 帧）**；天启（等级 30）碾灯笼：第 170 帧毁（铁锤 162）。所以倒伏是 CrusherLevel 严格大于 0 才会倒，毁灭有延迟（47~110 帧，ToppleUpdate 的倒下动画），不同道具延迟不同。模拟器在逐帧移动命中符合条件的道具时调用 ToppleUpdate，启用倒伏销毁的道具由模块按倒下耗时和延迟排删除。读数见 `checks/engine_topple.readings.toml`。
+- **倒伏台上读数（2026-11-09，engine_topple a / b，festival 西边空地，车从道具西 200 走到东 200）**：铁锤一路开到终点（约第 91 帧，不停不绕）；被碾的道具**车过去很久之后才毁**，且**不经过 NAMED_DYING（直接没了）**：灯笼第 162 帧、路灯 118、栏杆 163、树（CS_Tree01）119（车约第 53 帧过道具）。**动员兵（等级 0）碾灯笼：灯笼一直在（读到 710 帧）**；天启（等级 30）碾灯笼：第 170 帧毁（铁锤 162）。所以倒伏是 CrusherLevel 严格大于 0 才会倒，毁灭有延迟（47~110 帧，ToppleUpdate 的倒下动画），不同道具延迟不同。模拟器在逐帧移动命中符合条件的道具时调用 ToppleUpdate，启用倒伏销毁的道具由模块按倒下耗时和延迟排删除。读数见 `benches/body_death/state/readings.toml#engine_topple`。
 - `UNIT_SET_STANCE` 识别 GUARD、AGGRESSIVE、HOLD_POSITION、HOLD_FIRE 四档。开火和追击规则见 `simorder`。

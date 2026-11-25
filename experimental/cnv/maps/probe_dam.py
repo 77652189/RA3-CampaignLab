@@ -1,4 +1,4 @@
-"""maps/probe_air.py with one change: a dry dam across its sea trench (round 252, checks/engine_dam.py). The dam runs
+"""maps/probe_air.py with one change: a dry dam across its sea trench (round 252, benches/movement/pathing/checks.py#engine_dam). The dam runs
 west to east over the whole trench at y DAM_Y (DAM_HALF either side, back up to the level ground), so the trench is two
 pools -- south y 3050..DAM_Y - DAM_HALF, north DAM_Y + DAM_HALF..3550 -- and nothing that swims gets from one to the
 other: a ship's way across is a jump over the dam. Everything else (lanes, sites, the player's start) as probe_air.

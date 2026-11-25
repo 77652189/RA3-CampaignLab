@@ -2,7 +2,7 @@
 
 引擎线 B 第 14～20 轮（2026-11-06～07），ADR 0019 第四层（遭遇战 AI）第 ⑥ 项后半（单位技能）和第 ⑦ 项（微操）。写法照 `script-semantics.md`：**测** = 测试台；**读** = 读原版程序得出，还没在测试台对过；**推断，未实测** = 只从资料推出来。
 
-探针 `experimental/cnv/checks/engine_aimicro.py`（任务 `missions/aimicro_bench.py`）：自定人格，一队 2 个帝国武士（冲锋 `Command_JapanAntiInfantryInfantryBonzai`：离目标 100 以内、或自己血量低于八成就冲），每个武士西边摆一个玩家工程师当目标。冲没冲，读武士身上的冲锋状态。
+探针 `experimental/cnv/benches/ai/tactics/checks.py#engine_aimicro`（任务 `benches/ai/tactics/scenes.py#aimicro_bench`）：自定人格，一队 2 个帝国武士（冲锋 `Command_JapanAntiInfantryInfantryBonzai`：离目标 100 以内、或自己血量低于八成就冲），每个武士西边摆一个玩家工程师当目标。冲没冲，读武士身上的冲锋状态。
 
 ## 给关卡线的结论
 

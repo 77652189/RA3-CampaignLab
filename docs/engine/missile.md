@@ -2,7 +2,7 @@
 
 引擎线第 21 轮（2026-11-05），ADR 0019 第二层愿望单第二项。计划和分批在本机 `work/re/missile_plan.md`（不进 git）。写法照 `script-semantics.md`：**测** = 测试台；**推断，未实测** = 只从资料推出来。
 
-探针：`experimental/cnv/checks/engine_missile.py`（`miss`、`flight` 两个检查，读数在文档串里）。
+探针：`experimental/cnv/benches/weapon/firing/checks.py#engine_missile`（`miss`、`flight` 两个检查，读数在文档串里）。
 
 ## 0. 结论：给关卡线和单位线抄的
 
@@ -16,7 +16,7 @@
 | 打不着"刚下令就闪开"的目标？ | 打得着：出膛（35～40 帧）之前瞬移，第一发照样命中新位置；出膛之后瞬移就落空（原版 V4 有散布，不追） | 测 |
 | 同一场景各单位开火时刻 | 探针图上有的道固定比别的道晚约 8 帧（removed、switch、order 道 116～117 帧，base、high 道 108～109 帧），每次都一样，和单位种类无关。**第 25 轮改正**：不是道的问题，是首发时刻的单位间抖动（0～15 帧，每个单位确定），见 `weapons.md` 第 1 节 | 测 |
 | 用脚本数空中的导弹 | 不行：`PLAYER_HAS_COMPARISON_UNIT_TYPE_IN_TRIGGER_AREA` 数不到导弹模板（V4 导弹从头到尾是 0） | 测 |
-| 用脚本把单位血量上限调高 | **第 147 轮改正**：11-05 那次把上限写成了实数（10000.0），而这个参数是整数，所以没生效。按整数传：`NAMED_SET_MAX_HEALTH(单位, 上限, 0)` 只改上限、血量点数不变（调低时截到新上限），`(.., 1)` 再加满血（`checks/engine_maxhealth.py`，台上 11-10 全过）。`UNIT_SET_HEALTH` 的数是 0～100 的百分数、实数 | 测 |
+| 用脚本把单位血量上限调高 | **第 147 轮改正**：11-05 那次把上限写成了实数（10000.0），而这个参数是整数，所以没生效。按整数传：`NAMED_SET_MAX_HEALTH(单位, 上限, 0)` 只改上限、血量点数不变（调低时截到新上限），`(.., 1)` 再加满血（`benches/body_death/state/checks.py#engine_maxhealth`，台上 11-10 全过）。`UNIT_SET_HEALTH` 的数是 0～100 的百分数、实数 | 测 |
 
 ## 1. 本轮实测
 
@@ -39,7 +39,7 @@
 
 ## 3. 第二轮实测：出膛时刻和追踪（2026-11-05，引擎线第 23 轮）
 
-探针同上（`engine_missile.py` 的 `engine_missile_sweep`、`engine_missile_ns`、`engine_missile_adj` 三个构建，读数和运行编号在文件里）。四条道都在 450，靶子在下令后第 k 帧瞬移到东边（或开往东边 600），计数器读"首中帧数 + 1000 × 掉的百分比"，第一发落空读到的是第二发（约 210）。
+探针同上（`benches/weapon/firing/checks.py#engine_missile` 的 `engine_missile_sweep`、`engine_missile_ns`、`engine_missile_adj` 三个构建，读数和运行编号在文件里）。四条道都在 450，靶子在下令后第 k 帧瞬移到东边（或开往东边 600），计数器读"首中帧数 + 1000 × 掉的百分比"，第一发落空读到的是第二发（约 210）。
 
 | 射手 | 怎么躲 | 第一发 |
 | --- | --- | --- |

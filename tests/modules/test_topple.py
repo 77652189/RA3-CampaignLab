@@ -1,7 +1,7 @@
 """The ToppleUpdate module (engine/modules/topple.py, step M2): its data read from the block with the SDK defaults, the
 fall worked as the reference source has it, a knock or a kill makes it gone its fall plus its SlowDeath delay later --
 deleted in the expire cell, never dying -- and its fields in the frame record where the body's were. On the bench:
-checks/engine_topple.py, engine_propbody (tests/test_simbench_c.py)."""
+benches/body_death/state/checks.py#engine_topple, engine_propbody (tests/test_simbench_c.py)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simrecord  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402

@@ -11,7 +11,7 @@ stack; RANGE moves the weapon only, the picking follows VISION -- so `high` carr
 checks/a8.py, checks it on the real mission).
 
 Two copies of this retail file in one mod would define its <Define> twice (BinaryAssetBuilder: Critical, the build
-stops): a second tide_gun unit in one mod needs that Define renamed (checks/engine_range.py does).
+stops): a second tide_gun unit in one mod needs that Define renamed (benches/weapon/firing/checks.py#engine_range does).
 """
 import os
 

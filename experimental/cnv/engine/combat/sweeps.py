@@ -1,5 +1,5 @@
 """Damage lines in the simulator: ActivateLinearDamageNugget + LinearDamageUpdate (the dolphin's sonar wave; engine line D's
-vertical sweep, checks/engine_sweep.py, bench 11-10 rounds 12 / 16 / 17, work/re/handoff-d.md). The rules, from the
+vertical sweep, benches/weapon/target_effects/checks.py#engine_sweep, bench 11-10 rounds 12 / 16 / 17, work/re/handoff-d.md). The rules, from the
 assembly (activate, update and total; work/re/handoff-archive.md) and held to the bench:
 
   start        a shot of a weapon with an ActivateLinearDamageNugget (its Lifetime) starts a line on the shooter's

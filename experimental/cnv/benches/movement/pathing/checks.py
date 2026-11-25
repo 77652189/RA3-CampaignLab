@@ -810,7 +810,7 @@ def engine_block():
         row with GATE bars in place of its three structures across the straight way; at OPEN the bars killed (kill) and
         given NO_COLLISIONS (nocoll), then foot's order. Counters as foot's (11 round, 10 through) and the objects
         carrying NO_COLLISIONS (无碰撞). rows: map-placed bars instead (gr one row, a 5.3 line; gd three, 15+ deep).
-        Read (2026-11-22): engine_block.readings.toml; the player's ownership-of-type counter reads 0 for these bars,
+        Read (2026-11-22): benches/movement/pathing/readings.toml#engine_block; the player's ownership-of-type counter reads 0 for these bars,
         standing or not, so it is not one."""
         t = foot(m)
         m.spawns.add(GATE)                             # made by script, nobody casts it
@@ -2339,7 +2339,7 @@ def engine_jet():
 def engine_jet_probe():
     """Engine line D, round 43 (ADR 0027/0028): E line's JetAIUpdate move (engine_jet) with ra3ext's read-only probe.
 
-    engine_jet.py (E line's check, not changed here) flies a retail Vindicator 1200 (a) or 600 (b) east at Go = 1 s and
+    benches/movement/pathing/checks.py#engine_jet (E line's check, not changed here) flies a retail Vindicator 1200 (a) or 600 (b) east at Go = 1 s and
     counts frames from Go to the first entry into the goal square: bench 97 / 47 against a constant-speed 91.67 / 41.67.
     This mission is the same one with one change: the jet is a copy CNV_JetProbe with one more module,
     `<DeletionUpdate id="ModuleTag_CNVProbe" MinFrames=EVERY MaxFrames=LINES/>`, built with ext=True. ra3ext's CNVProbe

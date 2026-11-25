@@ -24,11 +24,11 @@ MINE_RETRY = 15                # no node / refinery found: the miner idles 1 s a
 # A leg (node <-> refinery) takes straight distance / speed + MINE_TURN_EXTRA frames, by how far the node is turned off
 # facing the leg's other end (degrees, either way alike): the miner docks at the node's front, so a node turned away
 # is driven round. Retail stands every node facing its refinery (node angle = refinery's + 180: heidelberg,
-# gibraltar, north sea). Bench 2026-11-12 checks/engine_mining.py mineturn<k> p (probe_range's pad, refinery 180 from
+# gibraltar, north sea). Bench 2026-11-12 benches/economy/construction/checks.py#engine_mining mineturn<k> p (probe_range's pad, refinery 180 from
 # its node, an Allied miner at 50 = 54 frames straight): trips 151 / 186-187 / 241 / 323 at 0 / 45 / 90 / 180, and
 # engine_mining a 269 at 135 (its node at angle 0); a trip = 2 legs + 30 + 30 + 1. Between readings linear (INFERRED);
 # niagara's east pad (45 off) trips 185 on the bench (aitowerinc5 f, an AI's miner): the same rule, 45's 8 set to it.
-# Round 179 (checks/engine_mining.py mineturn0 q, minefar p): at 0 the trip is the node's (151, MINE_REST), not the
+# Round 179 (benches/economy/construction/checks.py#engine_mining mineturn0 q, minefar p): at 0 the trip is the node's (151, MINE_REST), not the
 # drive's -- the first visit, at a node that waits, is in c's node square 73 frames (2 x 36 + 1), the later ones 91;
 # so the leg there is 36 (-18), not the 45 (-9) a drive-bound 151 gave.
 MINE_TURN_EXTRA = ((0.0, -18.0), (45.0, 8.0), (90.0, 36.0), (135.0, 50.0), (180.0, 77.0))
@@ -299,7 +299,7 @@ class Mining:
 
     def _claimed(self, world, n, b, node):
         """Whether another miner than `b` holds node `n` (the thing `node`): it looked for it first and is on its way
-        there, docked or loading (bench round 189, checks/engine_mining.py g / mineaway g: the placed collector works,
+        there, docked or loading (bench round 189, benches/economy/construction/checks.py#engine_mining g / mineaway g: the placed collector works,
         the refinery's own waits for good, whether or not their drives meet). The claim is the miner itself: one
         made under its name since holds nothing."""
         o = held(world, n.get('claim')) if n.get('claim') is not b else None

@@ -1,4 +1,4 @@
-# Bench readings of checks/engine_aiaesthetics.py (format: experimental/cnv/readings.py).
+# Bench readings of benches/ai/production/checks.py#engine_aiaesthetics (format: experimental/cnv/readings.py).
 
 [[reading]]
 bench_id = "engine_aiaesthetics"
@@ -69,7 +69,7 @@ member's destination / ready remain gaps; work/re/e108_aesthetics_gate.md"""
 
 # Bench readings of checks/engine_aiallbuild.py (format: experimental/cnv/readings.py; runner: tests/conformance).
 # missions/aiallbuild_bench.py: s1's Allied AI against p1's conscripts and s5's twenty tanks, on / off the action
-# SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING (the action's own reading: engine_aiflip.readings.toml). Native picks
+# SKIRMISH_AI_CONSIDER_ALL_ENEMIES_WHEN_BUILDING (the action's own reading: benches/script/control/readings.toml#engine_aiflip). Native picks
 # and orders in work/re/c_allbuild_measured.json (on: 31 picks, 307 orders, 7 out; off: 16 / 156 / 6; first six out
 # scout scout jav jav jav jav from f301).
 
@@ -84,7 +84,7 @@ mismatch = "sim on 2 3 20 at f586 / 2 2 20 at f556, off 2 0 20 at f436..451 (ben
 let = {w = "[v[:3] for v in vals(rows) if lo <= v[3] <= hi]"}
 expect = "w[0] == out and all(x == w[0] for x in w)"
 
-# Bench readings of checks/engine_aibuilding.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aibuilding (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aibuilding"
@@ -99,7 +99,7 @@ expect = [
     "win(40, 40, '基地数') == [1]",
 ]
 
-# Bench readings of checks/engine_aibuildkind.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aibuildkind (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aibuildkind"
@@ -174,7 +174,7 @@ expect = [
     "win(40, 40, '基地数') == [1]",
 ]
 
-# Bench readings of checks/engine_aicap.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aicap (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aicap"
@@ -220,7 +220,7 @@ expect = [
 ]
 mismatch = "E80: s70-s99 engine has 3 Peacekeepers and 3 Javelins, model 2 and 1. At s150-s199 engine Peacekeepers rise 5 to 9, model 3 to 5. The MEDIUM cap 2 also no longer binds in the model."
 
-# Bench readings of checks/engine_aiconstweight.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aiconstweight (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aiconstweight"
@@ -231,7 +231,7 @@ bench = "engine s40: infantry home 4 (weight 0) / 0 (weight 1) of 4, the unregis
 proves = "simai ConstantHeuristic.Weight: weight 0 sends nobody away, weight 1 sends the infantry"
 expect = "(win(40, 40, '步兵在家')[0], win(40, 40, '步兵总数')[0], win(40, 40, '坦克在家')[0]) == (home, 4, 4)"
 
-# Bench readings of checks/engine_aiintervalfrom.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aiintervalfrom (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aiintervalfrom"
@@ -242,7 +242,7 @@ bench = "engine home/total of tanks: 4/4 at s24, home32/4 at s32 (0 map origin, 
 proves = "simai CountFrom origins: the interval counts from the map or the AI origin"
 expect = "[(win(s, s, '坦克在家')[0], win(s, s, '坦克总数')[0]) for s in (24, 32, 42)] == [(4, 4), (home32, 4), (0, 4)]"
 
-# Bench readings of checks/engine_ailastexp.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_ailastexp (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_ailastexp"
@@ -262,7 +262,7 @@ item = "AI 启发条件/TimeSinceLastExpansionHeuristic"
 each = [{build = "ailastx200", stay = 220, gone = 226}, {build = "ailastx50", stay = 150, gone = 156}]
 expect = ["set(win(130, stay, '炮在家')) == {2}", "win(gone, gone, '炮在家') == [0]"]
 
-# Bench readings of checks/engine_ainodesfull.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_ainodesfull (format: experimental/cnv/readings.py; runner: tests/conformance).
 # OpenNodeHeuristic (CampaignLab work/re l4_states.md 10, B 11-24: every known node not full, no enemy object but a
 # wall within MinDistanceFromEnemy of it).
 
@@ -300,7 +300,7 @@ simai Brain.node_share: own = the nodes an own refinery serves, known = 2 x (the
 only count fitting both maps), x the tech share's players"""
 expect = "[win(60, 69, k) for k in ('满态在家', '常量在家')] == [[h] * 10 for h in home]"
 
-# Bench readings of checks/engine_aiomove.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aiomove (format: experimental/cnv/readings.py; runner: tests/conformance).
 # What an OpeningMove line builds (bench 2026-11-09, rounds 83-90).
 
 [[reading]]
@@ -335,7 +335,7 @@ mismatch = """\
 simai: aiom14 plant stands at s52, aiohc1 plants s22 / s52 / s62; bench aiom14 plant s49 (ordered at s40, the \
 last order), aiohc1 s19 / s49: ~3 s late"""
 
-# The opening a PathToTargetHeuristic picks (engine_aiopath.py), the brains given no blocks (the opening only).
+# The opening a PathToTargetHeuristic picks (benches/ai/production/checks.py#engine_aiopath), the brains given no blocks (the opening only).
 
 [[reading]]
 bench_id = "engine_aiopath"
@@ -346,7 +346,7 @@ bench = "bench 2026-11-09: aiopath1 兵营 s19 then 电厂 s29 (Standard); aiopa
 proves = "simai Brain.path_to_target: with a tester that has no locomotor the heuristic says a way, PathExists=true holds whichever is listed first; the probe's personality takes"
 expect = "first(picked) is not None and (first(other) is None or first(picked) < first(other))"
 
-# Bench readings of checks/engine_aiopathcond.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aiopathcond (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aiopathcond"
@@ -360,7 +360,7 @@ expect = [
     "win(22, 24, '电厂') == [0] * 3",
 ]
 
-# The skirmish AI's opening against the bench (engine_aiopen.py), the brains given no blocks (simai blocks=():
+# The skirmish AI's opening against the bench (benches/ai/production/checks.py#engine_aiopen), the brains given no blocks (simai blocks=():
 # the opening, states and teams only). The frame checks f1-f3 count frames from the wake while s1 owns fewer than
 # n of a template, so a counter's value at the end is the frame the n-th one first counted.
 
@@ -391,7 +391,7 @@ bench = "aiopenpoor (3000 at the wake), bench m: 兵营 s19, 电厂 s29, money 2
 proves = "simai opening: the opening stalls in order on the order it cannot pay (barracks, power plant, then the refinery never finished)"
 expect = ["rows[-1]['兵营'] == 1 and rows[-1]['电厂'] == 1", "first('兵营') < first('电厂')", "all(r['精炼厂'] == 0 for r in rows)", "rows[-1]['资金'] < 30"]
 
-# Bench readings of checks/engine_aiopenside.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aiopenside (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aiopenside"
@@ -424,7 +424,7 @@ bench = "E82 s19-s28, Allied player with only a Soviet opening: no power plant (
 proves = "simai SkirmishOpeningMove.Side: no candidate of the player's side = the opening counts complete without an order (D66)"
 expect = "win(19, 28, '电厂数') == [0] * 10"
 
-# An opening's Time order (engine_aiotime.py): power plant / Time 30s / plant / Time 20s / plant, woken at s10,
+# An opening's Time order (benches/ai/production/checks.py#engine_aiotime): power plant / Time 30s / plant / Time 20s / plant, woken at s10,
 # the brains given no blocks (the opening only). plants: the mission second each count of 电厂 first shows.
 
 [[reading]]
@@ -446,7 +446,7 @@ let = {plants = "[first('电厂', lambda v, n=n: v >= n) + 1 for n in (1, 2, 3)]
 expect = "all(abs(f - b) <= 1 for f, b in zip(plants, (19, 49, 59)))"
 mismatch = "sim 22 / 52 / 62, bench 19 / 49 / 59: the first plant 3 s late (an opening that starts with a power plant, no barracks: aiopen is on time) -- not found, handoff-b 81"
 
-# Bench readings of checks/engine_aipathbanks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aipathbanks (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aipathbanks"
@@ -466,7 +466,7 @@ bench = "Physical controls read land 1 / amphibious 1 at s40-44 (both survived w
 proves = "simai path condition: the two physical controls stay alive"
 expect = "list(zip(win(40, 44, '陆路'), win(40, 44, '两栖'))) == [(1, 1)] * 5"
 
-# Bench readings of checks/engine_aiplacement.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aiplacement (format: experimental/cnv/readings.py; runner: tests/conformance).
 # UnpackBuildingPlacement's BuildingPlacementDistance (CampaignLab work/re d63_b_fields.md 3, d191_b_eggteam.md).
 
 [[reading]]
@@ -484,7 +484,7 @@ simai ExactExpansion + UnpackBuildingPlacement: the egg joins the team, the team
 (the defence ring's formula) of radius Distance out, and unpacks there"""
 expect = "win(55, 59, '核心') == [0] * 5 and win(55, 59, '近450') == [near] * 5 and win(55, 59, '近1000') == [1] * 5"
 
-# Bench readings of checks/engine_aipowerabove.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aipowerabove (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aipowerabove"
@@ -495,7 +495,7 @@ bench = "engine s40: tanks home 4 (Above true) / 0 (Above false), own total 4, t
 proves = "simai power condition Above: single-parameter control on the team start"
 expect = "(win(40, 40, '坦克在家')[0], win(40, 40, '坦克总数')[0], win(40, 40, '玩家坦克')[0]) == (home, 4, 8)"
 
-# Bench readings of checks/engine_aipoweradv.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aipoweradv (format: experimental/cnv/readings.py; runner: tests/conformance).
 # A state's heuristics gate its team (bench 2026-11-09; B rounds 82-83).
 # Moved from tests/test_simai.py (T3 line B); rows[i] is the old _switch_run's rows[i] (same run, checked row by row).
 
@@ -549,7 +549,7 @@ false, the player has one) home to s65"""
 proves = "simai states: ObjectOfTypeExistsHeuristic counts the filter's Relationship and PassIfExists"
 expect = "(rows[39]['坦克在家'] == 0) == out"
 
-# Bench readings of checks/engine_aipowerenemy.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aipowerenemy (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aipowerenemy"
@@ -560,7 +560,7 @@ bench = "engine s40: tanks home 0 (enemy defenses off) / 8 (on), totals 8, playe
 proves = "simai power condition on enemy defenses: single-parameter control"
 expect = "(win(40, 40, '坦克在家')[0], win(40, 40, '坦克总数')[0], win(40, 40, '玩家坦克')[0], win(40, 40, '玩家防御塔')[0]) == (home, 8, 4, 1)"
 
-# Bench readings of checks/engine_aipowerown.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aipowerown (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aipowerown"
@@ -571,7 +571,7 @@ bench = "engine s40: tanks home 4 (own defenses off) / 0 (on), totals 4, player 
 proves = "simai power condition on own defenses: single-parameter control"
 expect = "(win(40, 40, '坦克在家')[0], win(40, 40, '坦克总数')[0], win(40, 40, '玩家坦克')[0], win(40, 40, '己方防御塔')[0]) == (home, 4, 8, 1)"
 
-# Bench readings of checks/engine_aipowervalue.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aipowervalue (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aipowervalue"
@@ -1302,7 +1302,7 @@ proves = "simai build states: UnitBuilderOverallDefensivePreference 1000% holds 
 expect = "all(r['标枪总数'] == 0 for t, r in zip(times, rows) if t <= 150)"
 mismatch = "sim 标枪 1 s62, 4 s152 (bench 0 to s150, 1 s151): the preference is not only the first pick's ranking (B228)"
 
-# Bench readings of checks/engine_aislush.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aislush (format: experimental/cnv/readings.py; runner: tests/conformance).
 # AccountShare SLUSH_FUND (CampaignLab work/re c_slush_report.md; the program: work/re d64 2-5).
 
 [[reading]]
@@ -1340,7 +1340,7 @@ read): 塔在基地 1 s29, 2 s49-s158, no third -- as the control (a 100 % share
 proves = "simai base defense tower: a SLUSH_FUND line does not count in the defense share"
 expect = "max(r['塔在基地'] for r in rows) == 2 and rows[60]['塔在基地'] == 2"
 
-# Bench readings of checks/engine_aitechshare.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aitechshare (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aitechshare"
@@ -1378,7 +1378,7 @@ bench = "B 11-25 (CampAITechSLA / SHA / SNA_mcp_1125): Island (7 declared player
 proves = "simai Brain.tech_buildings: own / every owner's tech buildings x (declared players + 1)"
 expect = "[win(40, 40, k)[0] for k in ('低阈下', '低阈上', '高阈下')] == want"
 
-# Bench readings of checks/engine_aitower.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aitower (format: experimental/cnv/readings.py; runner: tests/conformance).
 # Where the base defence tower goes, BaseCompactness x ~600, and the budget states (bench 2026-11-07 on).
 
 [[reading]]
@@ -1559,7 +1559,7 @@ proves = "simai budget states: retail budgets switch to Defense while the raid i
 let = {raid = "[i for i, r in enumerate(rows) if r['敌在'] > 0]", tower = "first('塔在基地')"}
 expect = ["raid and raid[0] <= tower <= raid[-1]", "max(r['塔在基地'] for r in rows) == 1"]
 
-# Bench readings of checks/engine_aiupgrade.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench readings of benches/ai/production/checks.py#engine_aiupgrade (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
 bench_id = "engine_aiupgrade"

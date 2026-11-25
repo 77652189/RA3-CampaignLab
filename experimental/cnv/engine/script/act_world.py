@@ -250,14 +250,14 @@ def set_player_kills_of_type_to_counter(sim, name, a, script):
 
 
 def mark_mission_objective_completed(sim, name, a, script):
-    # bench 11-16 checks/engine_markobj.py goals: status 2 / 1 from any status -- a hidden one listed done, a
+    # bench 11-16 benches/ui/presentation/checks.py#engine_markobj goals: status 2 / 1 from any status -- a hidden one listed done, a
     # failed one done, a done one unticked; NOT_COMPLETED never draws the failed mark (j07 'failed bonus 2')
     sim.act('SET_MISSION_OBJECTIVE_STATUS', [a[0], 1 if 'NOT' in name else 2], script)
 
 
 def set_mission_objective_status(sim, name, a, script):
     if a[1] not in (0, 1, 2, 3):                # script-semantics.md 8: only 0..3, any other does nothing
-        return                                  # (inferred; checks/engine_scripts5.py goals O5 asks the bench)
+        return                                  # (inferred; benches/ui/presentation/checks.py#engine_scripts5 goals O5 asks the bench)
     old = sim.objectives.get(a[0], 0)
     sim.objectives[a[0]] = a[1]
     if a[1] != old and a[1]:

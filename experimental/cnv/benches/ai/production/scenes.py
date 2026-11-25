@@ -668,7 +668,7 @@ def ainodesfull_bench():
 @cache
 def aiomove_bench():
     """Engine probe: which opening a personality draws (<OpeningMove> Weight / Difficulty), and OpeningMoveHeuristic
-    Complete gating a strategic state on the opening being done (read back by checks/engine_aiomove.py; private
+    Complete gating a strategic state on the opening being done (read back by benches/ai/production/checks.py#engine_aiomove; private
     ai/opening.py choose(), ai/states.py value 'OpeningMoveHeuristic').
 
     aiotime_bench's set-up (Niagara, s1 Allied with a yard at the east base, woken at 10 s with 50000,
@@ -846,7 +846,7 @@ def aiomove_bench():
 @cache
 def aiopath_bench():
     """Engine probe: PathToTargetHeuristic in the opening pick -- does the AI judge "no way to the enemy" by the unit the
-    heuristic names (checks/engine_aiopath.py; private ai/opening._holds, simai.Brain.path_to_target)?
+    heuristic names (benches/ai/production/checks.py#engine_aiopath; private ai/opening._holds, simai.Brain.path_to_target)?
 
     aiopen_bench as is (Niagara, the enemy s1 Allied with one yard, woken at 10 s with 50000 money), but s1's
     personality is the probe's: inheritFrom AlliedCoopBaseSkirmishPersonality (it and its parents have no OpeningMove),
@@ -985,9 +985,9 @@ def aiopath_bench():
 
 @cache
 def aiopen_bench():
-    """Engine probe: the skirmish AI's opening build order and timing (read back by checks/engine_aiopen.py).
+    """Engine probe: the skirmish AI's opening build order and timing (read back by benches/ai/production/checks.py#engine_aiopen).
 
-    Same Niagara map as ai_bench.py. The enemy (s1) is Allied with the stock AlliedBalanced personality, one construction
+    Same Niagara map as benches/ai/production/scenes.py#ai_bench. The enemy (s1) is Allied with the stock AlliedBalanced personality, one construction
     yard at the east base and nothing else; the player has a yard at home. Asleep until WAKE_AT, then the retail wake set
     (UNIT_AI_TRANSFER_ALL, SKIRMISH_AI_MAKE_BASE, priorities 20, no repairs, no rebuilding) with 50000 money so money is
     no limit (aiopenpoor: 3000, the opening short of money). No attack script.
@@ -1060,7 +1060,7 @@ def aiopenside_bench():
 
 @cache
 def aiotime_bench():
-    """Engine probe: an opening's <Order Time=...> -- from when is the time counted (read back by checks/engine_aiotime.py;
+    """Engine probe: an opening's <Order Time=...> -- from when is the time counted (read back by benches/ai/production/checks.py#engine_aiotime;
     private ai/opening.py Opening.step: "a Time order waits until that many seconds have passed since the opening began").
 
     aiopen_bench's map and wake (Niagara, s1 Allied with one yard at the east base, woken at 10 s with 50000), but the
@@ -1134,7 +1134,7 @@ def aipathx_bench():
     """Engine line D round 108: C's river-bank PathToTarget probe (aiopath_bench.disconnected) with ra3ext on, so the
     run's ra3ext.log carries one `ptt:` line per PathToTargetHeuristic evaluation (condition, locomotor list, both
     base points, path result and code, the branch that decided). Same mission otherwise; read back by
-    checks/engine_aipathx.py (C's check unchanged).
+    benches/ai/production/checks.py#engine_aipathx (C's check unchanged).
     """
     aiopath_scene = aiopath_bench()["shared"]
 
@@ -1293,7 +1293,7 @@ def aiplacement_bench():
 
 @cache
 def aipower_bench():
-    """Engine probe: which protocol a skirmish AI buys with its point (PowerChoice lottery; checks/engine_aipower.py;
+    """Engine probe: which protocol a skirmish AI buys with its point (PowerChoice lottery; benches/ai/production/checks.py#engine_aipower;
     simtech.power_choices / Book.ai_buy). The island map and cast of protocol_bench (no units needed); the enemy (s1,
     Soviet) is a computer player with starting point 1 (InitialTechPoints), its personality the probe's:
       aipwra  CNVPowerA: DefaultPersonality's children with ONE PowerChoice, X (PlayerTech_Soviet_MagneticSatellite_Rank_1,
@@ -1378,7 +1378,7 @@ def aipowerabove_bench():
 @cache
 def aipoweradv_bench():
     """Engine probe: PowerAdvantageHeuristic -- does a strategic state turn on by the two armies' kill times (read back by
-    checks/engine_aipoweradv.py; private ai/states.py PowerAdvantage, simai.Brain.power_advantage)?
+    benches/ai/production/checks.py#engine_aipoweradv; private ai/states.py PowerAdvantage, simai.Brain.power_advantage)?
 
     aistate_bench's set-up (Niagara, the enemy s1 Allied with a yard and no money, every inherited strategic state
     removed, woken at 10 s), one state of the probe's own:
@@ -1621,7 +1621,7 @@ def aipowervalue_bench():
 def aisimpleexp_bench():
     """D round 154: Tactic SimpleExpansion -- the AI's miner unpacks into an outpost at an Expansion target.
 
-    C's aiexpc map (missions/aiexpansion_bench.py: two ore fields, the Expansion heuristic picks the east one, bench
+    C's aiexpc map (benches/ai/production/scenes.py#aiexpansion_bench: two ore fields, the Expansion heuristic picks the east one, bench
     f151 pick 44 at (4173, 2987)) with its state's SimpleAttack swapped for retail AlliedExpansion's tactic
     (SageXML SkirmishAI/States/AlliedBaseStates.xml: Tactic="SimpleExpansion" Distance="200", TeamTemplate MinUnits 1
     MaxUnits 8 ... NEVER_RELEASE, ExpansionMicroManager, CreateUnits AlliedMiner 1 / 1) and one AI-owned AlliedMiner
@@ -1629,7 +1629,7 @@ def aisimpleexp_bench():
     the AI needs no money or refinery. The four AI Guardians stay (the template's general fill: escorts).
 
     Only Distance differs across the three builds (B's Tactic.Distance: what it governs in SimpleExpansion is the
-    question): aiexpse = retail 200, aiexpd50 = 50, aiexpd400 = 400. Checks: checks/engine_aisimpleexp.py.
+    question): aiexpse = retail 200, aiexpd50 = 50, aiexpd400 = 400. Checks: benches/ai/production/checks.py#engine_aisimpleexp.
     """
     import math
     import re
@@ -2017,11 +2017,11 @@ def aitechshare_bench():
 
 @cache
 def aitower_bench():
-    """Engine probe: where a skirmish AI puts a base defence tower (read back by checks/engine_aitower.py; engine line A,
+    """Engine probe: where a skirmish AI puts a base defence tower (read back by benches/ai/production/checks.py#engine_aitower; engine line A,
     layer 4 block 5, RA3-EngineModel ra3model/ai/defense.py tower_site / tower_centre / tower_spots).
 
     The enemy (s1, Allied) runs a personality of this probe's own: the Allied co-op base with every inherited strategic
-    state removed (as aitarget_bench.py), the build state AlliedNeededUnits removed (only AlliedDefenseBuildState is
+    state removed (as benches/ai/targets/scenes.py#aitarget_bench), the build state AlliedNeededUnits removed (only AlliedDefenseBuildState is
     left: Multigunner turrets), the four inherited budget states removed and one of its own, always on (ConstantHeuristic),
     PRODUCTION 50% / DEFENSE 50% (which account pays for a tower is not read -- either share buys one at the wake money).
     Its BaseCompactness is the build's.
@@ -2042,7 +2042,7 @@ def aitower_bench():
     of one empty Time 0s order, own budget kept (does a share fund nothing before an opening is done?). Round 135
     (handoff-b section 137's table): aitowerinc10 -- as aitowerinc, but DEFENSE 10% / PRODUCTION 90% (does the share
     borrow against its income -- a turret soon after the wake -- or wait for 10% of the money to reach 800?). Readings in
-    checks/engine_aitower.py.
+    benches/ai/production/checks.py#engine_aitower.
     Facts: wake at, money.
     """
     import resources
@@ -2170,7 +2170,7 @@ def aitower_bench():
         if wait:
             facts['opening'] = wait             # engine_aitower i: the opening is done this long after the wake
         if watch:
-            facts['watch'] = watch              # how long checks/engine_aitower.py e watches after the wake
+            facts['watch'] = watch              # how long benches/ai/production/checks.py#engine_aitower e watches after the wake
         m = Mission(name=name, map=resources.measured(niagara), facts=facts)
         m.cnv_compactness = compactness         # the check says the model's radius by it
         m.cnv_turret = TURRET                   # what the check counts (checks ask the mission, not this module)

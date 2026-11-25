@@ -2,7 +2,7 @@
 
 引擎线第 49 轮（2026-11-06），ADR 0019 第二层。写法照 `script-semantics.md`：**测** = 测试台；**推断，未实测** = 只从资料推出来；**对不上** = 测试台和模型不一致（本轮没有）。
 
-探针 `experimental/cnv/checks/engine_sell.py`（`cnv_check engine_sell a` 到 `f`）。尼亚加拉图玩家基地摆建造场（+50 电）和一座盟军电厂（造价 800、+100 电、1000 血），开局钱设成 2000。任务第 1 秒（Test Go）起用脚本动作 `SELL_OBJECT` 卖。四个计数器都从 Go 起**按帧累加**：帧数、资金、卖帧（1 × 目标还在的帧 + 1000 × 目标带 SOLD 状态的帧）、第四行（1 × 电厂还算电的帧 + 1000 × 不算电的帧；d 改数维和兵活着的帧和在碉堡里的帧）。运行 `work/testbench/runs/CampSellA_mcp_1106_021303` 到 `CampSellF_mcp_1106_022713`。
+探针 `experimental/cnv/benches/economy/construction/checks.py#engine_sell`（`cnv_check engine_sell a` 到 `f`）。尼亚加拉图玩家基地摆建造场（+50 电）和一座盟军电厂（造价 800、+100 电、1000 血），开局钱设成 2000。任务第 1 秒（Test Go）起用脚本动作 `SELL_OBJECT` 卖。四个计数器都从 Go 起**按帧累加**：帧数、资金、卖帧（1 × 目标还在的帧 + 1000 × 目标带 SOLD 状态的帧）、第四行（1 × 电厂还算电的帧 + 1000 × 不算电的帧；d 改数维和兵活着的帧和在碉堡里的帧）。运行 `work/testbench/runs/CampSellA_mcp_1106_021303` 到 `CampSellF_mcp_1106_022713`。
 
 | 变体 | 做什么 | 资金 | 卖帧 | 第四行 |
 | --- | --- | --- | --- | --- |

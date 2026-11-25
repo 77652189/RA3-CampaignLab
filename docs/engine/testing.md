@@ -18,8 +18,8 @@
 
 ## 加一条台上读数
 
-1. 台子（`checks/engine_X.py`）摆场景、出计数器。
-2. 读数写进这个台子的读数数据 `checks/engine_X.readings.toml`（格式写在 `experimental/cnv/readings.py` 开头，样板 `checks/engine_aicrush.readings.toml`），写明证明哪个模块的哪条规则，以及模拟器对不对得上（预期始终不符用 `mismatch`，仅无私模时预期不符用 `mismatch_nomodel`，都写两边的数）。无私模时需要遭遇战 AI 的组会跳过。
+1. 台子在 `benches/<domain>/<group>/checks.py#engine_X` 摆场景、出计数器。
+2. 读数写进这个台子的读数数据 `benches/<domain>/<group>/readings.toml#engine_X`（格式写在 `experimental/cnv/readings.py` 开头，样板 `benches/ai/tactics/readings.toml#engine_aicrush`），写明证明哪个模块的哪条规则，以及模拟器对不对得上（预期始终不符用 `mismatch`，仅无私模时预期不符用 `mismatch_nomodel`，都写两边的数）。无私模时需要遭遇战 AI 的组会跳过。
 3. 规则写进模块，`tests/modules/` 里加最小世界测试。
 4. 一致性跑器自动核对。点跑一组用 `tests/conformance/test_readings.py` 的 pytest 参数 ID，跨场景及运行选项写法见 `experimental/cnv/readings.py` 文件头。
 
@@ -41,4 +41,4 @@
 
 读数迁进数据以后，原来点名它的手写整局测试在同一次提交里删掉。
 
-旧证据仍可用，手写登记表（如 `BENCHED_TESTS`）受条数上限约束。不许新加点名台子的测试函数。`tests/guards/bench_tests_baseline.txt` 登记尚存的旧测试函数，只减不增。代码里出现 `engine_X`、它的变体或它的构建名都算，注释和文档串里的引用除外。测试函数本身或它用到的模块级辅助函数、常量、fixture 点名都算；新的一条变红，删掉或不再点名的那条要在同一次提交里从名单删掉（`tests/guards/test_bench_tests.py`）。新读数写进 `checks/<台子>.readings.toml`。
+旧证据仍可用，手写登记表（如 `BENCHED_TESTS`）受条数上限约束。不许新加点名台子的测试函数。`tests/guards/bench_tests_baseline.txt` 登记尚存的旧测试函数，只减不增。代码里出现 `engine_X`、它的变体或它的构建名都算，注释和文档串里的引用除外。测试函数本身或它用到的模块级辅助函数、常量、fixture 点名都算；新的一条变红，删掉或不再点名的那条要在同一次提交里从名单删掉（`tests/guards/test_bench_tests.py`）。新读数写进该组的 `readings.toml`，用 `bench_id` 标明台子。

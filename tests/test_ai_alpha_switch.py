@@ -1,6 +1,6 @@
 """AlphaStrikeTargetHealthPct: the switch's on / off effect, bench and model (D round 146).
 
-Bench aialobshi / aialobslo (missions/aialphaclose_bench.py, CNVTeams host on the AI yard; E99 runs, both PASS 5/5)
+Bench aialobshi / aialobslo (benches/ai/tactics/scenes.py#aialphaclose_bench, CNVTeams host on the AI yard; E99 runs, both PASS 5/5)
 differ only in the threshold (0.9 / 0.01). Fixtures tests/fixtures/d_alpha/*_states.txt keep the SimpleAttack team's
 state samples. Bench: high 8 -> 6 f230 -> 0 (alpha strike) f290 -> 8 f575 (team gone); low 8 -> 6 f230 -> 1 (retreat)
 f470 and never 0. The model: high 6 f240 -> 0 f270; low 6 f240 -> 1 f480, never 0. The exact frames and the low side's

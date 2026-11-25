@@ -1,5 +1,5 @@
 """simai.Brain.act for Tactic=Engineer: every living member the target admits is sent to capture it; done once the
-target is the AI's, gone, or no member can take it. The whole-run reading is engine_aiskirm.readings.toml
+target is the AI's, gone, or no member can take it. The whole-run reading is benches/ai/production/readings.toml#engine_aiskirm
 (skirmish_ai_engineer_tactic_captures_the_derrick)."""
 from types import SimpleNamespace as NS
 

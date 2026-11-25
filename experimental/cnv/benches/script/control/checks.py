@@ -382,7 +382,7 @@ def engine_acts5():
 
 def engine_acts6():
     """Retail-campaign actions, batch 6 (round 216): TEAM_HUNT / NAMED_HUNT (203 + 66 uses in the 27 retail missions).
-    Mission on maps/probe_border.py as checks/engine_acts5.py ('stop row' offsets). What the simulator predicts is in
+    Mission on maps/probe_border.py as benches/script/control/checks.py#engine_acts5 ('stop row' offsets). What the simulator predicts is in
     brackets.
 
     Why these sides. Retail a01's second wave (TEAM - Wave 02 - Infantry Invaders 01..08, Soviet_1's) runs
@@ -478,7 +478,7 @@ def engine_acts6():
 
 def engine_acts7():
     """Retail-campaign actions, batch 7 (round 217): PLAYER_TRANSFER_OWNERSHIP_PLAYER (a05 a09 ...). Mission on
-    maps/probe_border.py as checks/engine_acts5.py ('stop row' offsets, engine_acts.SLOT spots). What the simulator
+    maps/probe_border.py as benches/script/control/checks.py#engine_acts5 ('stop row' offsets, engine_acts.SLOT spots). What the simulator
     predicts is in brackets.
 
     Why again. Round 215's bench (engine_acts_v) saw nothing change hands and guessed Soviet_5 / 6 had no team. They do:
@@ -562,7 +562,7 @@ def engine_acts7():
 
 def engine_acts8():
     """Retail-campaign actions, batch 8 (round 218): what TEAM_HUNT goes for, which switch gates it, NAMED_HUNT on a woken
-    AI -- round 216's three hypotheses (engine_acts6 hunt). Mission on maps/probe_border.py as checks/engine_acts6.py
+    AI -- round 216's three hypotheses (engine_acts6 hunt). Mission on maps/probe_border.py as benches/script/control/checks.py#engine_acts6
     ('stop row' offsets). What the simulator predicts is in brackets.
 
     Why. Round 216's crew (Soviet_4, both switches 255) went for the tank ~870 east, not the barracks ~1650 west -- the
@@ -677,7 +677,7 @@ def engine_acts8():
 
 def engine_acts9():
     """Retail-campaign actions, batch 9 (round 219): SKIRMISH_AI_TRANSFER_ALL (a01 a05 ... 35 uses). Mission on
-    maps/probe_border.py as checks/engine_acts7.py ('stop row' offsets, engine_acts.SLOT spots). What the simulator
+    maps/probe_border.py as benches/script/control/checks.py#engine_acts7 ('stop row' offsets, engine_acts.SLOT spots). What the simulator
     predicts is in brackets.
     The program (work/re/a219_skirmish_transfer.md): the handler runs, for each player named, the same step as
     UNIT_AI_TRANSFER_ALL's -- minus the AI wake UNIT_AI_TRANSFER_ALL does after it. That step, switch 1: the members of
@@ -746,7 +746,7 @@ def engine_acts9():
 
 
 def engine_aichange():
-    """A round 294: the AI's subsystem switches (missions/aichange_bench.py) -- s1's units out by kind, by logical frame."""
+    """A round 294: the AI's subsystem switches (benches/script/control/scenes.py#engine_aichange) -- s1's units out by kind, by logical frame."""
     from checks import engine_scripts8 as s8
     from parts import Test, counted
 
@@ -784,7 +784,7 @@ def engine_aifav():
       BENCH 11-14 (round 220, run_queue, CampAIPrioFavA_mcp_1114_035402) PASS: 步兵在家 / 到近厂 / 到远厂 s1-s13 4 0 0 |
         s14 4 2 0 | s15 2 4 0 | s16-s21 0 4 0 | s22-s23 0 3 0 (then fewer: the turrets), 到远厂 0 to s69. The clear holds:
         Soviet_4 alone in the table, at 10 (aipriodef, without it: the far plant s25). Simulator after (sim.py records
-        the clear, simai not yet): Player_1 20 / Soviet_4 10; simai since holds it (engine_aifav.readings.toml).
+        the clear, simai not yet): Player_1 20 / Soviet_4 10; simai since holds it (benches/script/control/readings.toml#engine_aifav).
     A295 (11-22), the same wake and expectations (program, work/re a295_clear_priorities.md: CLEAR_ALL calls the favored
     enemy's clear itself; CLEAR_ONE takes one entry out, re-sort off; AUTO sets the sort, the override off, re-sorts):
       aiprioclr   CLEAR_ALL, then Soviet_4 10 (s07's use)  PASS CampAIPrioClrA_mcp_1122_003028: 到近厂 s16, 到远厂 never
@@ -832,7 +832,7 @@ def engine_aifav():
 
 
 def engine_aiflip():
-    """A round 274: the all-enemies action after s5 turns enemy at 5 s (missions/aiallflip_bench.py).
+    """A round 274: the all-enemies action after s5 turns enemy at 5 s (benches/script/control/scenes.py#engine_aiflip).
 
     The same observation as C's engine_aiallbuild.a (four counters, 150 s watch); the readings that matter are the
     ra3ext bpick / border lines (teamlog.build_picks / build_orders), compared at the same logical frames.
@@ -1125,7 +1125,7 @@ def engine_basegate():
 def engine_conds():
     """Retail-campaign conditions, batch 1 (round 207; the gaps of `inventory_retail.py --part 脚本条件`, the program read in
     work/re/d115_script_semantics.md). Mission on maps/probe_border.py (level ground, every place absolute, as
-    checks/engine_scripts9.py). The enemy crew is on Soviet_4: placed units on a Soviet_1 / 2 / 3 crew are on no team
+    benches/script/control/checks.py#engine_scripts9). The enemy crew is on Soviet_4: placed units on a Soviet_1 / 2 / 3 crew are on no team
     (engine_scripts9 rounds 130-136). What the simulator predicts is in brackets.
 
       team    the player's crew Go (go 1 at (1000, 1000), go 2 at (1000, 1150)), the area Home round them, the area F 700
@@ -1381,7 +1381,7 @@ def engine_conds():
 
 
 def drive():
-    """Can the map's scripts play the player's side? (missions/drive_bench.py; ADR 0010's graybox runs a level unattended
+    """Can the map's scripts play the player's side? (benches/script/control/scenes.py#drive; ADR 0010's graybox runs a level unattended
     under a "playstyle script" and reads the verdict off the counters.)
 
     prod: the player's barracks and 6000 money, a variant waking (or not) whatever might make it build -- read: money
@@ -1892,7 +1892,7 @@ def engine_script():
 
 def engine_scripts1():
     """Engine probe, inventory batch 1 (docs/engine/inventory.md; the program read in work/re/l2_scripts1.md): mission
-    missions/scripts1_bench.py. What the notes predict is in brackets; the readings go below.
+    benches/script/control/scenes.py#engine_scripts1. What the notes predict is in brackets; the readings go below.
 
       cond    条件位 = the sum, every frame, of 1 PLAYER_IS_HUMAN_OR_AI_PERSONALITY(Player_1, Human) [1], 2 (Soviet_1,
               Human) [2: "Human" = the player has no AI] until UNIT_AI_TRANSFER_ALL(Soviet_1, 1) at AI_AT [then 0],
@@ -2029,7 +2029,7 @@ def engine_scripts1():
 
 
 def engine_scripts2():
-    """Engine probe, the inferred script items (docs/engine/inventory-levels-a.md): mission missions/scripts2_bench.py.
+    """Engine probe, the inferred script items (docs/engine/inventory-levels-a.md): mission benches/script/control/scenes.py#engine_scripts2.
     What the simulator predicts is in brackets; the readings go below.
 
     Counters (both checks): A血 = the player's MCV in the west (only the enemy's Guardian can shoot it), B血 = the enemy's
@@ -2110,7 +2110,7 @@ def engine_scripts2():
 
 def engine_scripts3():
     """Engine probe, the inferred script items (docs/engine/inventory-levels-a.md): counter arithmetic and DISABLE_INPUT.
-    Mission: missions/scripts2_bench.py's island scene as build engine_scripts3. What the model / simulator predicts is
+    Mission: benches/script/control/scenes.py#engine_scripts2's island scene as build engine_scripts3. What the model / simulator predicts is
     in brackets; the readings go below.
 
       math   SET_COUNTER at the start, then at OP_AT one COUNTER_MATH_COUNTER(counter, op, 'CNV_S3_Four' = 4) each:
@@ -2709,7 +2709,7 @@ def engine_scripts8():
     TEAM_DELETE / TEAM_KILL, TEAM_IDLE_FOR_SECONDS / TEAM_IDLE_FOR_FRAMECOUNT, TEAM_MERGE_INTO_TEAM,
     UNIT_SPAWN_NAMED_OBJECT_ON_TEAM_AT_NAMED_OBJECT_LOCATION. Mission here (build engine_scripts8) on maps/probe_border.py
     (level ground 5000 x 5000; every place absolute, the scenes >= 1000 apart where an enemy is). The rest of the batch
-    (the team status, the base power, the player's superweapon cast and its availability) is checks/engine_scripts8b.py
+    (the team status, the base power, the player's superweapon cast and its availability) is benches/script/control/checks.py#engine_scripts8b
     (the bench crashed at start on 11-09; measured the same evening).
     What the simulator (sim.py) predicts is in brackets.
 
@@ -3726,7 +3726,7 @@ def engine_team():
 
 
 def team():
-    """K6 team probe (missions/team_bench.py): what the engine does with a map's own team that a script orders as one. The
+    """K6 team probe (benches/script/control/scenes.py#team): what the engine does with a map's own team that a script orders as one. The
     convoy trucks are ordered to `far` by MOVE_TEAM_TO only (never by name); counters read who got there.
 
     Bench 2026-11-04 (K6 go): a placed unit joins the team and the order reaches every member; a member made after the
@@ -3936,7 +3936,7 @@ def team():
 
 def engine_timer():
     """Engine unit test: pausing and shifting the script timers -- STOP_TIMER, RESTART_TIMER, SUB_FROM_MSEC_TIMER --
-    nothing on the map but scripts (as engine_script.py: festival, no facts).
+    nothing on the map but scripts (as benches/script/control/checks.py#engine_script: festival, no facts).
 
     A timer shares the counters' table (engine_script out: a 2 s timer read as a counter shows 30, its frames left), so
     the counter lines show a timer's own frames left; the expired lines are live (cleared at the top of every frame by a

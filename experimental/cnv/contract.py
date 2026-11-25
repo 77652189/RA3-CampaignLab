@@ -766,7 +766,7 @@ def contract(mission):
                         and not ((known[t][0] == 'template' or t == POWER_ARG) and
                                  str(v).lower() in {str(k).lower() for k in known[t][1]}):
                     # a template or power in another case passes: retail a06 / j01 write TYPE_SELECTED's, s03 its
-                    # nanoswarm in lower case (checks/engine_eyes.py all; engine_super x: the game takes the power)
+                    # nanoswarm in lower case (benches/ui/presentation/checks.py#engine_eyes all; engine_super x: the game takes the power)
                     out.append(f'{s.name}: {name} {known[t][0]} {v!r} not published')
                 if t == SOUND_ARG and str(v).startswith('CNV_') and v not in (m.voice.events if m.voice else ()):
                     out.append(f'{s.name}: {name} voice line {v!r} not in the voice pack')

@@ -2,7 +2,7 @@
 DieMux.applies (death types, forbidden, required / exempt status), a death of age making its list where the thing
 stood (only one read off the template: the skirmish AI's late lifetime leaves nothing), any other death nothing, and a
 death in the air making the first airborne module's wrecks fall (World.create airborne). On the bench:
-checks/engine_life.py (the ice core's wall), checks/engine_crash_fall.py (the Apollo's wreck)."""
+benches/body_death/state/checks.py#engine_life (the ice core's wall), benches/body_death/state/checks.py#engine_crash_fall (the Apollo's wreck)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import engine.objects.body as simbody  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402

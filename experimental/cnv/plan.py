@@ -1182,7 +1182,7 @@ class Compiler:
 
     def pace_placed(self, a, groups, names, side):
         """齐步 for placed troops sent off (出动): every faster one is placed as its paced copy from the start (the bench
-        placed the copy and granted the upgrade on it: checks/engine_pace.py `pace`, docs/engine/pathing.md 5b), granted
+        placed the copy and granted the upgrade on it: benches/movement/pathing/checks.py#engine_pace `pace`, docs/engine/pathing.md 5b), granted
         the upgrade as it is sent and released inside the area round where it goes, like a wave's."""
         m = self.m
         parts = [p for g in groups for p in self.parts(g)]

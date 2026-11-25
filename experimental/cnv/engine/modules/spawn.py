@@ -1,5 +1,5 @@
 """SpawnBehavior and SlavedUpdate (bench engine_spawn / engine_spawn_refill / engine_spawn_power, the Allied war
-factory's repair drones; checks/engine_mining.py, the refineries' collector; moved from simunits.spawn_modules /
+factory's repair drones; benches/economy/construction/checks.py#engine_mining, the refineries' collector; moved from simunits.spawn_modules /
 unpack_spawn, Sim.spawn_due and the body's spawned_children / spawn_parent / spawn_module / spawn_refills in step M7,
 ADR 0029, docs/engine/sim-modules.md 4): a thing that makes things of its own, and the thing it made.
 

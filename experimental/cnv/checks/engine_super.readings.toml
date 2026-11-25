@@ -2,7 +2,7 @@
 # Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1. A script's cast at a waypoint
 # (sim.SUPERWEAPON_HITS, Sim.blast_due). Bench 2026-11-07 engine_super p: health % of base defenses (1000) at 0 / 150 /
 # 240 / 300 from the waypoint, ended 44 / 7 / 12 / 100; q: the first loss 56 frames after the cast (+-1).
-# The last reading of the file is the engine_scripts8bs build (checks/engine_scripts8b.py, missions/super_bench.py).
+# The last reading of the file is the engine_scripts8bs build (benches/script/control/checks.py#engine_scripts8b, missions/super_bench.py).
 
 [[reading]]
 id = "super_the_proton_collider_ends_as_the_bench"

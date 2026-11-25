@@ -13,7 +13,7 @@
 ## 已有的能力（不用再查，细节在指到的文件里）
 
 - NOT 条件 `parts.unnot`；模拟器对齐 `sim.py --align`；A4 离线检查 `experimental/cnv/offline.py`。
-- 配音接线：任务带 `voice` 包，`CNV_` 开头的声音名必须在包里（`parts.py` 的契约）；细节见 `experimental/cnv/checks/voice.py` 顶部注释。
+- 配音接线：任务带 `voice` 包，`CNV_` 开头的声音名必须在包里（`parts.py` 的契约）；细节见 `experimental/cnv/benches/ui/presentation/checks.py#voice` 顶部注释。
 - 灰盒（ADR 0011）：`experimental/cnv/graybox.py`、`graybox_cards.py`，结论在 [graybox-cards.md](graybox-cards.md)。新题卡往 `graybox_cards.py` 加函数、往 `graybox-cards.md` 加一节；判断不了的写"留给实机"。
 - 引擎机制最小检查（冰面承重只能脚本做、干扰车对飞机有效、小地图闪点按物体、信息框当字符条）：结果在 [drive-probe.md](../archive/drive-probe.md) 末节和 [../design/flow/mechanics.md](../design/flow/mechanics.md)。
 
@@ -42,7 +42,7 @@
 - **转码**：ffmpeg 不能编 VP6，用 NihAV 的 nihav-encoder（已编好，Rust 在 `~/.cargo`，源码快照在 `work/downloads/nihav/`；`git://` 连不上，用 gitweb 的 https 快照）。一条命令：`python -I -X utf8 experimental/video/to_vp6.py in.mp4 out.vp6 --size radar|full`（小窗 288×288、全屏 1280×720 留黑边、23.976 fps；输入宽高必须是 16 的倍数）。
 - **原版片子格式**：`MVhd` + `MV0K` + `MV0F`，**没有音频块**，声音是脚本另配的对白事件；所以我们的片也无声，声音走语音包。
 - **坑**：①`HAS_FINISHED_VIDEO` 对小窗片成立、对全屏片一直不成立（全屏靠定时器）；②全屏时计数条被盖住，读数读不出；③小窗放片子时小地图被替换，播完恢复；④测试台不出声，没验 Esc 能否跳过全屏片。
-- 接进计划：顶层 `头像: [CNV_A4_…]`（只放玩家不用看地图的句子，不写名单就没有头像，见 `plans/README.md`）；`experimental/cnv/clips.py`：录音旁 `video/<同音频名>.mp4` 存在就转 vp6、同句小窗播；头像画面/嘴型/同步没人看过。代码：`parts.py` 的 `Mission.video`、`missions/movie_bench.py`、`checks/movie.py`、`tests/test_video.py`、`tests/test_clips.py`。
+- 接进计划：顶层 `头像: [CNV_A4_…]`（只放玩家不用看地图的句子，不写名单就没有头像，见 `plans/README.md`）；`experimental/cnv/clips.py`：录音旁 `video/<同音频名>.mp4` 存在就转 vp6、同句小窗播；头像画面/嘴型/同步没人看过。代码：`parts.py` 的 `Mission.video`、`benches/ui/presentation/scenes.py#movie`、`checks/movie.py`、`tests/test_video.py`、`tests/test_clips.py`。
 
 ## 配音叠播的真根因（4、7 叠播的真根因 ②；ADR 0015 第 1 类）
 

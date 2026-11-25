@@ -1,6 +1,6 @@
 """Rule tests of the skirmish AI's build states that a reading cannot hold: a personality written by enemy_ai,
 and an empty IFV's weapons. The bench readings of engine_aiskirm z (aiskvinf / aiskvveh / aiskvd9 / aiskvd0) are
-in experimental/cnv/checks/engine_aiskirm.readings.toml (tests/conformance/test_readings.py)."""
+in experimental/cnv/benches/ai/production/readings.toml#engine_aiskirm (tests/conformance/test_readings.py)."""
 import importlib.util
 from pathlib import Path
 

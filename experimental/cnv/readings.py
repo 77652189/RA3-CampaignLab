@@ -81,7 +81,7 @@ def files(folder=None):
 
 
 def bench_of(path):
-    """checks/engine_aicrush.readings.toml -> engine_aicrush (the check module it sits beside)."""
+    """benches/ai/tactics/readings.toml#engine_aicrush -> engine_aicrush (the check module it sits beside)."""
     return os.path.basename(path)[:-len(SUFFIX)]
 
 

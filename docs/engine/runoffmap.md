@@ -2,7 +2,7 @@
 
 引擎线 B 第 4 轮（2026-11-06），ADR 0019 第二层。写法照 `script-semantics.md`：**测** = 测试台；**推断，未实测** = 只从资料推出来；**对不上** = 测试台和模型不一致（本轮没有）。
 
-探针 `experimental/cnv/checks/engine_runoffmap.py`（`cnv_check engine_runoffmap a` 到 `d`）。尼亚加拉图玩家基地摆建造场，西边草地放一个盟军维和步兵（朝 +x；步兵基类带 RunOffMapBehavior，路点名 `RunOffMap`）。任务第 1 秒（Test Go）对玩家发 `PLAYER_SET_ALL_UNITS_TO_FLEE`。四个计数器都从 Go 起**按帧累加**：帧数、逃帧（1 × 目标还在的帧 + 1000 × 目标带 FLEE_OFF_MAP 状态的帧）、死法（1 × 目标已被销毁的帧 + 1000 × 目标处于"正在死"的帧）、第四行（a、b、d：人在终点周围半边长 40 的区域里的帧；c：1 × 人还在的帧 + 1000 × 人带 FLEE_OFF_MAP 的帧）。运行 `work/testbench/runs/CampRunoffmapA_mcp_1106_035353` 到 `CampRunoffmapD_mcp_1106_040353`。
+探针 `experimental/cnv/benches/movement/pathing/checks.py#engine_runoffmap`（`cnv_check engine_runoffmap a` 到 `d`）。尼亚加拉图玩家基地摆建造场，西边草地放一个盟军维和步兵（朝 +x；步兵基类带 RunOffMapBehavior，路点名 `RunOffMap`）。任务第 1 秒（Test Go）对玩家发 `PLAYER_SET_ALL_UNITS_TO_FLEE`。四个计数器都从 Go 起**按帧累加**：帧数、逃帧（1 × 目标还在的帧 + 1000 × 目标带 FLEE_OFF_MAP 状态的帧）、死法（1 × 目标已被销毁的帧 + 1000 × 目标处于"正在死"的帧）、第四行（a、b、d：人在终点周围半边长 40 的区域里的帧；c：1 × 人还在的帧 + 1000 × 人带 FLEE_OFF_MAP 的帧）。运行 `work/testbench/runs/CampRunoffmapA_mcp_1106_035353` 到 `CampRunoffmapD_mcp_1106_040353`。
 
 | 变体 | 做什么 | 逃帧 | 死法 | 第四行 |
 | --- | --- | --- | --- | --- |

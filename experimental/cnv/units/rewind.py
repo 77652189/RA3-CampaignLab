@@ -4,7 +4,7 @@ MaxTime, ReconstituteStateSpecialAbility puts it back TimeStepsBack ago when its
 
 The belt is a button; nothing in the data fires it on death. Here the body keeps the carrier at 1 hit point
 (HighlanderBody: only UNRESISTABLE damage takes the last one) and the mission presses the button when its health is
-down to 1 % (missions/rewind_bench.py). Engine line D's bench, checks/engine_rewind.py.
+down to 1 % (benches/body_death/state/scenes.py#engine_rewind). Engine line D's bench, benches/body_death/state/checks.py#engine_rewind.
 
 Published: abilities rewind = the belt's command (NAMED_USE_COMMANDBUTTON_ABILITY); params back, reload, body.
 """

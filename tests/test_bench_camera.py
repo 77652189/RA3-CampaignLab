@@ -145,7 +145,7 @@ def _a4_back_lane():
 
 
 def test_the_camera_looks_higher_beside_a_terrace_and_clicks_follow():
-    # bench 2026-11-04 (engine line round 8, checks/engine_camera.py): with the mission's camera on A4's V1
+    # bench 2026-11-04 (engine line round 8, benches/ui/presentation/checks.py#engine_camera): with the mission's camera on A4's V1
     # (1200, 2400), 20-60 units north of a terrace edge, the engineer there was drawn at row 376, not 350; 50 further
     # north, at (1200, 2450), the ground looked at is the lane's own and he was at 352
     s = harness.Session()

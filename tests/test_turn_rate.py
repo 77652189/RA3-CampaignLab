@@ -1,7 +1,7 @@
 """How fast a unit turns, from its Locomotor (simunits.turning), against the bench's per-frame headings.
 
 Bench (A round 227; B round 195 found it): the skirmish AI's form-up orders (airev1t and its variants in
-missions/aipullback_bench.py) logged every member's body heading and place frame by frame (tests/fixtures/a_turn,
+benches/ai/tactics/scenes.py#aipullback_bench) logged every member's body heading and place frame by frame (tests/fixtures/a_turn,
 taken from the runs' ra3ext.log). A turn goes 360 / TurnTimeSeconds degrees a second, i.e. that / 15 a frame, the
 last step whatever is left; a turn over the Locomotor's TurnThresholdHS is done in place -- the unit does not move
 while its heading changes.

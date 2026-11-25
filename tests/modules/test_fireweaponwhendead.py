@@ -2,7 +2,7 @@
 (death types; RequiredStatus / ExemptStatus against the thing's status, AIRBORNE_TARGET in the air) decide whether a
 death fires its DeathWeapon (World.fire -> simbody.Life.fire: the weapon's DamageNuggets queued as death blasts); a
 deletion fires nothing; a falling wreck's weapons come from its template's module data (Life.wreck_blasts). On the
-bench: checks/engine_spawn.py refill (the exploding MiG), checks/engine_crash_fall.py (the Apollo's wreck)."""
+bench: checks/engine_spawn.py refill (the exploding MiG), benches/body_death/state/checks.py#engine_crash_fall (the Apollo's wreck)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import engine.testing.small as simsmall  # noqa: E402
 from engine.kernel import interfaces, module  # noqa: E402
@@ -121,7 +121,7 @@ def test_the_death_s_own_type_decides_a_crush_its_crushed():
 
 
 def test_a_collide_weapon_goes_off_at_the_crusher_on_a_crush_only():
-    """FireWeaponCollide WHEN_BEING_CRUSHED (E217, checks/engine_fwcollide.readings.toml): a crush fires its
+    """FireWeaponCollide WHEN_BEING_CRUSHED (E217, benches/weapon/firing/readings.toml#engine_fwcollide): a crush fires its
     CollideWeapon on the crusher (its last attacker), any other death nothing; a RequiredStatus it lacks holds it."""
     def mine(name, required=''):
         return (f'<GameObject id="{name}" KindOf="INFANTRY"><Body><ActiveBody MaxHealth="100"/></Body><Behaviors>'
@@ -139,7 +139,7 @@ def test_a_collide_weapon_goes_off_at_the_crusher_on_a_crush_only():
 
 
 def test_a_fireweaponupdate_reads_its_weapons_interval_and_status():
-    """FireWeaponUpdate (E218; its run is benched, checks/engine_fwupdate.readings.toml): the interval in whole frames
+    """FireWeaponUpdate (E218; its run is benched, benches/weapon/firing/readings.toml#engine_fwupdate): the interval in whole frames
     rounded up (the Tesla trooper's 0.13 s: 2), the RequiredStatus of its ObjectStatusValidation."""
     d = fw.FireWeaponUpdateData.parse(' FireInterval="0.13s" AliveOnly="true"',
                                       '<FireWeaponNugget WeaponName="W" OneShot="false" />'

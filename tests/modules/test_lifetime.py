@@ -1,7 +1,7 @@
 """The LifetimeUpdate module (engine/modules/lifetime.py, step M1): its data read from the block as the bench says
 (engine_life: a 30 s wall 450 frames, a 5.5 s core 82), the thing killed in the expire cell at its die frame with what
 its death leaves, read only from a mission's own template, set late from outside (the skirmish AI), and its die frame
-in the frame record where the body's field was. On the bench: checks/engine_life.py."""
+in the frame record where the body's field was. On the bench: benches/body_death/state/checks.py#engine_life."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import engine.objects.body as simbody  # noqa: E402
 import simrecord  # noqa: E402

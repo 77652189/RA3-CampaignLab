@@ -1,7 +1,7 @@
 """The CrusherInfo module (engine/modules/crush.py, step M3): its levels read from the block, each inherited one by one
 up the chain (the template data port reads CrusherInfo merged), the body's crusher / crushable forwarded from it with
 the old defaults when it has none, and in the frame record where the body's fields were. On the bench:
-checks/engine_crush.py (tests/test_simbench.py), engine_dynamics (tests/test_simbench_c.py)."""
+benches/body_death/state/checks.py#engine_crush (tests/test_simbench.py), engine_dynamics (tests/test_simbench_c.py)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import simrecord  # noqa: E402
 import engine.testing.small as simsmall  # noqa: E402

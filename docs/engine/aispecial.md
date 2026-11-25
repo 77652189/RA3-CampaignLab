@@ -2,7 +2,7 @@
 
 引擎线 B 第 12～13 轮（2026-11-06），ADR 0019 第四层（遭遇战 AI）第 ⑥ 项。写法照 `script-semantics.md`：**测** = 测试台；**推断，未实测** = 只从资料推出来。
 
-探针 `experimental/cnv/checks/engine_aispecial.py`（任务 `missions/aispecial_bench.py`；`cnv_check aispecial a`～`h`、`cnv_check aispecialhid d`）：尼亚加拉图，敌方盟军、人格 `1AlliedBalanced`，第 10 秒唤醒，有一座质子对撞机（`AlliedSuperWeaponAdvanced`，伤害 400、半径 250），钱为 0。玩家在不同地方摆三堆建筑。超武什么时候好，用 `NAMED_SET_SPECIAL_POWER_COUNTDOWN` 控制。时刻用每帧加一的计数器数，不靠每秒采样。
+探针 `experimental/cnv/benches/ai/tactics/checks.py#engine_aispecial`（任务 `benches/ai/tactics/scenes.py#aispecial_bench`；`cnv_check aispecial a`～`h`、`cnv_check aispecialhid d`）：尼亚加拉图，敌方盟军、人格 `1AlliedBalanced`，第 10 秒唤醒，有一座质子对撞机（`AlliedSuperWeaponAdvanced`，伤害 400、半径 250），钱为 0。玩家在不同地方摆三堆建筑。超武什么时候好，用 `NAMED_SET_SPECIAL_POWER_COUNTDOWN` 控制。时刻用每帧加一的计数器数，不靠每秒采样。
 
 ## 给关卡线的结论
 

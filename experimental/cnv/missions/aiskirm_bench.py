@@ -1,7 +1,7 @@
 """A small skirmish for the skirmish AI in the simulator (simai.py, tests/test_simai.py): the AI builds, makes units,
 teams them up and goes out.
 
-Same Niagara map and wake as aiopen_bench.py: the enemy (s1) is Allied with the stock AlliedBalanced personality, one
+Same Niagara map and wake as benches/ai/production/scenes.py#aiopen_bench: the enemy (s1) is Allied with the stock AlliedBalanced personality, one
 construction yard at the east base, woken at WAKE_AT the retail way with MONEY. Unlike aiopen the player has a base
 worth attacking -- a yard, a war factory and a power plant on the west bank -- so the AI's attack states have
 structures to pick (RequireUniqueTarget heuristics take one each) and its teams somewhere to go. No player units, no
