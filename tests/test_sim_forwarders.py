@@ -89,7 +89,7 @@ SIM_SURFACE = {
                    'flags frame_movers garrison handed*3 happen heal hunts infiltrators mid_aims mining move*3 off_teams '
                    'production*2 repairs self_power_due seq series shot_clock*2 suppression_tick sweeps t*8 tech_due test*3 '
                    'toggles_of wallet wfire_due world*2',
-    'engine.modules': 'gap*5 living*2 pick used*3',     # gap / living +2 each: World's (E227 teleport), not Sim's
+    'engine.modules': 'pick',     # a module's self.world.gap / living / used are the kernel World's (world_names)
     'engine.objects': 'add*2 blocks*4 bodies*9 body change*21 cold_of enemy*2 frame_movers*2 frame_now*32 gap*62 ground*5 '
                       'guessed*5 human*11 kills*2 label*27 living*12 looks m*2 note*20 own*42 player_ups players*3 point '
                       'reblock*2 relation*6 relations*4 shot_clock t*7 toggles_of topples used*18 weapon_upgrades world*24 '
@@ -249,17 +249,35 @@ def _package(module):
     return '.'.join(parts[:2]) if parts[0] == 'engine' and len(parts) > 2 else module
 
 
+def world_names():
+    """The kernel World's own names (its methods and the fields it sets): a module's `self.world` is that World
+    (Module.world), so `self.world.living()` in engine.modules is the World's service, not the Sim's same-named one."""
+    tree = ast.parse(Path(enginefiles.file_of('engine.kernel.world')).read_text(encoding='utf-8'))
+    world = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'World')
+    return {n.name for n in world.body if isinstance(n, ast.FunctionDef)} | {
+        t.attr for n in ast.walk(world) if isinstance(n, ast.Assign) for e in n.targets
+        for t in (e.elts if isinstance(e, ast.Tuple) else [e])
+        if isinstance(t, ast.Attribute) and getattr(t.value, 'id', None) == 'self'}
+
+
+def _module_world(mod, v, kernel):
+    return (mod.startswith('engine.modules.') and isinstance(v, ast.Attribute) and v.attr == 'world'
+            and getattr(v.value, 'id', None) == 'self' and kernel)
+
+
 def sim_surface(names=None, sources=None):
     """package -> Counter of the Sim names its files reach, one per access point (see SIM_SURFACE); `sources`:
-    {module: text} in place of the files."""
+    {module: text} in place of the files. A kernel World name on a module's `self.world` is not counted."""
     names = names if names is not None else set().union(*_layers.sim_members())
     sources = sources if sources is not None else {enginefiles.name_of(p): Path(p).read_text(encoding='utf-8')
                                                    for p in enginefiles.files()}
+    kernel = world_names()
     out = collections.defaultdict(collections.Counter)
     for mod, text in sources.items():
         for n in ast.walk(ast.parse(text)) if mod != 'sim' else ():
             v = getattr(n, 'value', None)
-            if isinstance(n, ast.Attribute) and n.attr in names and getattr(v, 'id', getattr(v, 'attr', None)) in RECEIVERS:
+            if isinstance(n, ast.Attribute) and n.attr in names and getattr(v, 'id', getattr(v, 'attr', None)) in RECEIVERS \
+                    and not _module_world(mod, v, n.attr in kernel):
                 out[_package(mod)][n.attr] += 1
     return out
 
@@ -292,6 +310,11 @@ def test_sim_surface_guard_bites():
                         {'engine.players.x': 'def f(sim, a):\n    sim.t\n    sim.t\n    a.order_move\n',
                          'engine.ports.y': 'class P:\n    def g(self):\n        self._w.order_move\n', 'sim': 'sim.t\n'})
     assert found == {'engine.players': {'t': 2}, 'engine.ports': {'order_move': 1}}
+    # a module's self.world: the World's living / used are not the Sim's; a Sim-only name still is, so is world.living
+    mod = 'class M:\n    def u(self, world):\n        self.world.living()\n        self.world.used\n' \
+          '        self.world.order_move\n        world.living()\n'
+    assert sim_surface({'living', 'used', 'order_move'}, {'engine.modules.m': mod}) == \
+        {'engine.modules': {'order_move': 1, 'living': 1}}
     assert surface_breaks(found, {'engine.players': 't', 'engine.ports': 'order_move'}) == \
         [('engine.players', ['t'], [], 't*2')]
     real = sim_surface()

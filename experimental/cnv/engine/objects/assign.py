@@ -27,8 +27,8 @@ class Assignments:
               '仅显式单目标治疗；自动获取、前三目标占用、换父/换目标/状态清理未测；启动相位INFERRED')
         if module.target() is not None:
             return True  # Retargeting is deliberately not inferred.
-        if any(m.target() is target for b in world.bodies.values() for m in b.find(interfaces.Assign)) or \
-                any(m.repairing() is target for b in world.bodies.values() for m in b.find(interfaces.Attach)):
+        if any(h is target for b in world.bodies.values() for h in
+               [m.target() for m in b.find(interfaces.Assign)] + [m.repairing() for m in b.find(interfaces.Attach)]):
             return True  # Multiple dispatchers, or a drone already on it (one a parent: INFERRED), are unmeasured.
         if not (target and target.alive and target.owner == source.owner
                 and target.template == 'AlliedAntiVehicleVehicleTech1'
