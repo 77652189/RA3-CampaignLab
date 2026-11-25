@@ -251,3 +251,20 @@ def test_a_killed_prop_that_stays_is_counted_until_deleted():
     s.world.remove(cage, 'delete')                                    # the same frame: no longer dying (tt closure P2)
     assert not count(s, 'c', ask) and count(s, 'c', ask[:2] + (0,) + ask[3:]) and not s.dying(cage)
     assert s.holds(('NAMED_DESTROYED', 'cage'))
+
+
+def test_an_object_count_kept_past_its_list_growing_is_asked_again_at_a_death():
+    """engine_scripts7 list: PLAYER_HAS_OBJECT_COMPARISON keeps its answer till the objects change, a type added to
+    the list later unseen; a death (any player's, the body still lying) is a change (review 1125 P2 C)."""
+    import engine.testing.small as simsmall
+    from engine.script.cond_object import player_has_object_comparison as has
+    s = simsmall.small_world([('a', 'AlliedPowerPlant', 'Player_1', 300, 300),
+                              ('b', 'SovietPowerPlant', 'Player_1', 600, 300),
+                              ('gi', 'SovietAntiVehicleInfantry', 'Soviet_1', 900, 300)], model=False)
+    ask = ('Player_1', 2, 1, 'L')
+    s.object_lists['l'] = {'alliedpowerplant'}
+    assert has(s, 'c', ask)
+    s.object_lists['l'].add('sovietpowerplant')
+    assert has(s, 'c', ask)                                           # kept: nothing changed
+    s.world.kill(s.bodies['gi'], 'kill')
+    assert s.dying(s.bodies['gi']) and not has(s, 'c', ask)          # asked again: 2 now
