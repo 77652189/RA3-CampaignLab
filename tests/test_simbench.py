@@ -131,7 +131,7 @@ BENCH_PRODUCTION = {'a': ([(16, 1946), (25, 1916), (31, 1896), (39, 1870), (145,
                     'd': ([(132, 1780), (299, 1501)], 309)}
 
 
-def _production_rows(check, order=True):
+def _production_rows(check, order=True, until=45):
     """The check run in the simulator with the engineer ordered at frame 30 (the bench clicks the sidebar), the
     counters read after every frame's production."""
     import build
@@ -148,7 +148,7 @@ def _production_rows(check, order=True):
     offered = [o[0] for o in s.offers(s.human)]
     if order:
         assert s.order_build(s.human, 'AlliedEngineer')
-    s.advance(45 * 15 - 30)
+    s.advance(until * 15 - 30)
     return s, rows, offered
 
 
@@ -187,14 +187,15 @@ def test_a_ban_holds_the_queue_and_does_not_cancel():
     (ALLOW_DISALLOW_ONE_BUILDING 0), the button pressed at 2 s, 8 s, 19 s; let go at 6 s, banned again at 21 s, let go
     at 30 s. Bench: 2000 until the let-go (the 2 s press was queued and waited), the first engineer at 帧数 160 as a;
     the second job stands at 1286 from s20 to s28 (paid kept, nothing refunded, nothing cancelled), goes on at s29,
-    the second engineer at s35; the third job pays down to 500 by s45. The simulator: the press queues past the ban,
-    a banned job stands (Sim.order_build press, Sim.production.due)."""
-    s, rows, _ = _production_rows('g', order=False)
+    the second engineer at s35; the third job pays down to 500 by s45 -- the watch runs ~1.3 s behind the timers, so
+    ~46.3 s, frame 695 (the third starts when the second has left the door, A360). The simulator: the press queues
+    past the ban, a banned job stands (Sim.order_build press, Sim.production.due)."""
+    s, rows, _ = _production_rows('g', order=False, until=47)
     assert all(rd['资金'] == 2000 for rd in rows[:90])
     assert next(rd['帧数'] for rd in rows if rd['工程师'] >= 1) == 160
     held = [rd['资金'] for rd in rows[330:440]]          # 22 s .. 29 s: banned halfway through the second
     assert len(set(held)) == 1 and 1240 <= held[0] <= 1300 and all(rd['工程师'] == 1 for rd in rows[330:440])
-    assert rows[-1]['工程师'] == 2 and 500 <= rows[-1]['资金'] <= 520
+    assert rows[695]['工程师'] == 2 and 500 <= rows[695]['资金'] <= 520
 
 
 @pytest.mark.parametrize('check, power, factor', [('a', (150, 25), 1.0), ('c', (0, 25), 0.3), ('d', (50, 75), 0.5)])
