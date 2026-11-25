@@ -42,11 +42,22 @@ def named_inside_area(sim, name, a):
 
 def player_has_object_comparison(sim, name, a):
     # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false); a type or an object list; only
-    # status.counted ones (the bench still counted the CLONED one at f45, its first reading: a cached count, INFERRED)
-    want = sim.of_types(a[3])
-    n = sum(1 for b in sim.bodies.values() if b.owner == a[0] and b.template.lower() in want
-            and sim.present(b) and counted(b))
-    return CMP[a[1]](n, a[2])
+    # status.counted ones (the bench still counted the CLONED one at f45, its first reading: a cached count, INFERRED).
+    # The answer is kept until the objects change (the program: a result and a stamp on the condition, the stamp moved
+    # by objects made, removed, dying, changing hands -- work/re a358): a type added to its object list later is not
+    # seen (engine_scripts7 list, 列表 stays 4). The objects' change is read here as the counted (owner, type) multiset
+    # changing, any player's (the program's stamp is global; INFERRED: what else moves it not read)
+    have = {}
+    for b in sim.bodies.values():
+        if sim.present(b) and counted(b):
+            k = (b.owner, b.template.lower())
+            have[k] = have.get(k, 0) + 1
+    key = ('object comparison',) + tuple(map(str, a))
+    kept = sim.cond_memory.setdefault(key, [None, None])
+    if kept[0] != have:
+        want = sim.of_types(a[3])
+        kept[:] = have, CMP[a[1]](sum(c for (o, t), c in have.items() if o == a[0] and t in want), a[2])
+    return kept[1]
 
 
 def player_has_comparison_unit_type_in_trigger_area(sim, name, a):
@@ -144,7 +155,8 @@ def named_exited_area(sim, name, a):
     b = sim.body(a[0])
     now = bool(sim.present(b) and inside(sim.areas[a[1]], b.x, b.y))
     key = ('exited', a[0], a[1])
-    was, sim.cond_memory[key] = sim.cond_memory.get(key, now), now
+    mem = sim.cond_memory
+    was, mem[key] = mem.get(key, now), now
     return was and not now
 
 

@@ -50,7 +50,7 @@ the simulator (sim.py) predicts is in brackets.
           PLAYER and an object list's name as a type were not published -- contract.py knows both now). 列表 4 all
           run (s1-s11): OBJECTLIST_ADDOBJECTTYPE's list counts in PLAYER_HAS_OBJECT_COMPARISON (s1's 4 Guardians, a
           type given lower case); the Peacekeeper added to it at LIST_AT (4 s) NOT counted (still 4 at s11) [the
-          simulator: 5 -- not found why: a list fixed once read? added only in the first frame? strict xfail];
+          condition keeps its answer till objects are made / removed / killed / change hands, A358];
           单类 1 (a type added twice counts once). 参考 1, 无名参考 2 from s5: SET_REF_TO_NEREST_TEAM_OF_TYPE_OWNED_BY_
           PLAYER took the named Guardian nearest the team, the UNNAMED one skipped it for the Peacekeeper -- both with
           an object list for the type. The simulator agrees on the refs.

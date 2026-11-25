@@ -57,7 +57,6 @@ expect = "by[2][:2] == [4, 1] and by[9][1:] == [1, 1, 2]"
 id = "scripts7_a_type_added_to_a_list_later_as_the_bench"
 scene = {build = "engine_scripts7", check = "list", until = 11}
 bench = "list: a type added to an object list at 4 s is not counted (列表 stays 4) (bench 2026-11-09)"
-proves = "sim object lists: a type added to a list after it was made does not count"
+proves = "sim PLAYER_HAS_OBJECT_COMPARISON keeps its answer till the objects change (cond_object): a type added to its list later, with no object made, removed or killed, is not counted"
 let = {by = "dict(zip(times, vals(rows)))"}
 expect = "by[9][0] == 4"
-mismatch = "sim 列表 5 from s4 (the added type is counted); bench 4 -- not found why"
