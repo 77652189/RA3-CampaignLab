@@ -48,7 +48,7 @@ expect = ["max(r['V4 台上'] for r in rows) == 1", "min(r['东段在'] for r in
 [[reading]]
 id = "boats_from_the_river_hit_the_powerhouse_plant_not_the_prop"
 scene = {build = "canyon", check = "foot", until = 90}
-bench = "bench 11-24 r9 canyon foot (the boat ramp to 2700): 厂房血 电厂血 移组 s1 100 100 0 | s6 100 92 | s11 100 60 7 | s16 100 20 | s21-s91 100 4 (移组 7 but 0 at s61)"
+bench = "bench 11-24 r9 canyon foot (the boat ramp to 2700): 厂房血 电厂血 移组 s1 100 100 0 | s6 100 92 | s11 100 60 1 | s16 100 20 | s21-s91 100 4 (the frames re-read 11-25 with the see-through-box fix: 移组 1 from s11, not 7)"
 proves = "boats ordered at the low section's plant shoot it down from the river; the neutral powerhouse prop is never hit"
 expect = ["min(r['电厂血'] for r in rows) <= 10", "min(r['厂房血'] for r in rows) == 100", "max(r['移组 池/台'] for r in rows) >= 1"]
 mismatch = "sim: 移组 1 from s10 but 电厂血 100 all run (the boats never fire on the plant); bench 92 at s6, 4 from s21"

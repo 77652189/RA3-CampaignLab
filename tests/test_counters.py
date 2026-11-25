@@ -72,6 +72,42 @@ def test_sand_as_tall_as_the_line_past_the_value_is_no_digit():
     assert [(s, e) for s, e, _ in counters.glyphs(img, counters.line_box(0))] == [(24, 32)]
 
 
+def desert(ends):
+    """A frame on bright sand (blackcanyon): line k is three label 0s at 10 / 20 / 30, a 9-px space, a value 0 at
+    47, its see-through box (126 over the sand: the strict box shade is 90) running to ends[k]."""
+    a = np.full((720, 1280, 3), 250, np.uint8)
+    for k, end in enumerate(ends):
+        x, y, *_ = counters.line_box(k)
+        a[y:y + counters.HEIGHT, 4:end] = 126
+        for g in (10, 20, 30, 47):              # a hollow 0, 8 wide: the box between its strokes
+            a[y + 1:y + 14, g:g + 8] = TEXT
+            a[y + 3:y + 12, g + 2:g + 6] = 126
+    return a
+
+
+def test_a_see_through_box_on_sand_holds_the_space_before_the_value():
+    """Bench 2026-11-24 (A2 on blackcanyon): the space between the label and the value, the box at 126 over the
+    sand, ended the box -- the value was cut off and the label read as the number, "输了 0" as 407."""
+    img = Image.fromarray(desert([61]))
+    assert [(s, e) for s, e, _ in counters.glyphs(img, counters.line_box(0))] == [(47, 55)]
+
+
+def test_sand_between_the_longer_lines_boxes_is_no_digit():
+    """Bench 2026-11-24 (CampCanyonLast, "V4 台上 0" read 8): past a short line's box, the longer boxes of the lines
+    above and below darken the sand's top and foot row to the box's shade -- not a stroke's box."""
+    a = desert([120, 61, 120])
+    x, y, *_ = counters.line_box(1)
+    a[[y, y + counters.HEIGHT - 1], 61:120] = 126
+    img = Image.fromarray(a)
+    assert [(s, e) for s, e, _ in counters.glyphs(img, counters.line_box(1))] == [(47, 55)]
+    # CampCanyonCamp, "锤0在营 0" read 6: two sand columns a little past the box with the dark edge of the box above
+    # on their top two rows -- dark in one half only, no stroke
+    a = desert([61])
+    x, y, *_ = counters.line_box(0)
+    a[y:y + 2, 64:66] = 40
+    assert [(s, e) for s, e, _ in counters.glyphs(Image.fromarray(a), counters.line_box(0))] == [(47, 55)]
+
+
 def test_a_countdown_under_the_counters_is_skipped(monkeypatch):
     """Bench 2026-10-27 (S5 trap): a countdown shown after the counters stands below them ("援军到达 4:13"); its
     colon (two dots, a gap between) marks it, wherever it stands."""

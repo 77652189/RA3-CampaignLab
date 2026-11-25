@@ -32,6 +32,10 @@ MIN_HEIGHT = 6                                  # text columns shorter than this
                                                 # 1-px sparkle 6 px right of a 0 read as 8, bench 2026-10-21)
 BOX_DARK, BOX_END = 90, 4                       # the counters' backing box: darker than this; ends after so many
                                                 # columns without it
+BOX_SHARE, GROUND = 0.6, 80                     # ... or than this share of the ground (the line's last GROUND
+                                                # columns): the box is see-through, over bright sand 126, and the
+                                                # space before the value read as the box's end, "输了 0" as 407
+                                                # (bench 2026-11-24, A2 on blackcanyon)
 LABEL, MIN_BOX = (8, 40), 0.3                   # a label's columns; at least so many of them are its dark box
 SIZE = (8, 12)                                # a glyph is compared at this size
 CALIBRATION = [1234, 5678, 90]
@@ -53,9 +57,15 @@ def glyphs(img, box):
     # (shadow in spots). The box ends at the first BOX_END columns in a row that are not the box
     # A stroke's column keeps the box's row above and below it dark (a glyph is 13 tall in a 15-px line): sand as
     # tall as the line, with one dark pixel at its top (the box of the line above), is no stroke (bench 2026-10-27,
-    # CampSceneLook: sand right past a short line's value read "0" as 6)
-    rest, deep = ~a, rgb.max(2) < BOX_DARK
-    dark = (deep.mean(0) > 0.15) | ((rest.sum(0) >= 2) & ((rest & deep).sum(0) > 0.5 * rest.sum(0)))
+    # CampSceneLook: sand right past a short line's value read "0" as 6), nor with the box of the line below at its
+    # foot -- dark above and below the stroke, both halves (bench 2026-11-24, CampCanyonLast: "V4 台上 0" read 8)
+    # The see-through box's share of the ground counts for a box column only (between glyphs): over sand the
+    # boxes of the lines above and below, longer, darken a sand column's top and foot to it too
+    rest, top = ~a, rgb.max(2)
+    deep = top < BOX_DARK
+    held, half = rest & deep, len(a) // 2
+    dark = ((top < max(BOX_DARK, BOX_SHARE * np.median(top[:, -GROUND:]))).mean(0) > 0.15) | (
+        (rest.sum(0) >= 2) & (held.sum(0) > 0.5 * rest.sum(0)) & held[:half].any(0) & held[half:].any(0))
     # from the first box column on: the player's rank-up chevrons (bright, over the labels' left, x 15..52) are no
     # box, and cut every value off from s327 on (bench 2026-10-26, A7 east on the redrawn map)
     since = next((x for x in range(START_BY, len(dark)) if dark[x]), START_BY)
