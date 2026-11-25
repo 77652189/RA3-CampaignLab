@@ -34,7 +34,8 @@ def takes_by_itself(a, t, q):
 def picks(a, targets, aimable, tx, ty, q):
     """`a`'s target for each of its weapons where it stands, out of `targets` (tx, ty: their centres; aimable: their
     serials). None: no foe at all (the aim gives up at once); else (the foes' centre distances, their indexes in
-    targets, [a target or None for each weapon]). A weapon takes the order's target when it is in range, can hit it,
+    targets, [a target or None for each weapon], [the line each weapon's slot fires: the first of WeaponSet.lines
+    that takes the target, A371]). A weapon takes the order's target when it is in range, can hit it,
     `a`'s side sees it and the line is clear; else, when `a` takes targets by itself now -- an attack-mover always,
     idle or on a plain move only with AutoAcquireEnemiesWhenIdle YES (Generals' calledDuringIdle: the idle state and
     the turret's scan) -- the nearest foe in range it may take (takes_by_itself), can hit, sees, the line clear;
@@ -48,24 +49,31 @@ def picks(a, targets, aimable, tx, ty, q):
     idx = np.array(ks)
     d = np.hypot(tx[idx] - a.x, ty[idx] - a.y)
     order, pad, g = np.argsort(d, kind='stable'), max(targets[k].radius for k in ks), a.goal
-    out = []
-    for w in a.weapons:
-        if isinstance(g, type(a)) and g.alive and g.serial in aimable and q.in_range(a, g, w) and q.can_hit(w, g) \
-                and q.side_sees(a.owner, g) and not q.shot_blocked(a, g, w):
+    m = a.find(interfaces.WeaponSet) if getattr(a, 'modules', None) else None
+    out, fired = [], []
+    for i, w in enumerate(a.weapons):
+        lines = m.lines(i) if m is not None else (w,)   # a slot fires the first of its lines that takes the target
+        fired.append(w)
+        v = next((v for v in lines if isinstance(g, type(a)) and g.alive and g.serial in aimable and q.in_range(a, g, v)
+                  and q.can_hit(v, g) and q.side_sees(a.owner, g) and not q.shot_blocked(a, g, v)), None)
+        if v is not None:
             out.append(g)
+            fired[-1] = v
             continue
         out.append(None)
         if a.mode != 'attack' and ('YES' not in a.acquire or 'NO_AUTO_ACQUIRE' in a.status):   # A310 statusbits n
             continue
-        if isinstance(g, type(a)) and g.alive and g.serial in aimable and q.can_hit(w, g) \
+        if isinstance(g, type(a)) and g.alive and g.serial in aimable and any(q.can_hit(v, g) for v in lines) \
                 and getattr(a.aiupdate, 'ordered', False):
             continue    # an attack order on a target it can hit: no other (bench aicrush1t ext 11-22, f230-346)
+        reach = max(q.reach_of(v) for v in lines)
         for j in order:
-            if d[j] - a.radius - pad > q.reach_of(w):       # sorted by centre: nobody nearer after this
+            if d[j] - a.radius - pad > reach:               # sorted by centre: nobody nearer after this
                 break
             t = targets[idx[j]]
-            if q.in_range(a, t, w, d[j]) and takes_by_itself(a, t, q) and 'NON_AUTOACQUIRABLE' not in t.status and \
-                    q.can_hit(w, t) and q.side_sees(a.owner, t) and not q.shot_blocked(a, t, w):
-                out[-1] = t
+            v = next((v for v in lines if q.in_range(a, t, v, d[j]) and takes_by_itself(a, t, q) and 'NON_AUTOACQUIRABLE'
+                      not in t.status and q.can_hit(v, t) and q.side_sees(a.owner, t) and not q.shot_blocked(a, t, v)), None)
+            if v is not None:
+                out[-1], fired[-1] = t, v
                 break
-    return d, idx, out
+    return d, idx, out, fired

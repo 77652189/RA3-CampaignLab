@@ -1764,21 +1764,23 @@ def template_weapons(template, own=None):
     return guns
 
 
-def pick_weapons(slots, status, upgrades=()):
+def pick_weapons(slots, status, upgrades=(), lines=False):
     """The weapons a unit holds under `status` with `upgrades` (the object's and its player's upgrade names): per
     slot the first line (a PRIMARY_WEAPON one before the rest) whose need bits are all set and forbid bits none set;
-    one that cannot hurt or reach (the target painter) is no gun."""
+    one that cannot hurt or reach (the target painter) is no gun. lines: (the guns, per gun the slot's other lines
+    the status allows that are guns) -- the slot fires the first of the gun and these that can take the target
+    (engine.orders.target.picks; A371, engine_liftair a: the crewed turret's PRIMARY ground lift, its SECONDARY air
+    lift at a plane; the others in XML order, INFERRED)."""
     from engine.modules import weaponset
     if upgrades:
         status = set(status) | {weaponset.UPGRADE_BIT + u.lower() for u in upgrades}
-    guns = []
+    guns, others = [], []
     for s in slots:
-        for need, forbid, prim, w in sorted(s, key=lambda e: not e[2]):
-            if need <= status and not (forbid & status):
-                if weaponset.armed(w):
-                    guns.append(w)
-                break
-    return guns
+        ok = [w for need, forbid, prim, w in sorted(s, key=lambda e: not e[2]) if need <= status and not forbid & status]
+        if ok and weaponset.armed(ok[0]):
+            guns.append(ok[0])
+            others.append(tuple(w for w in ok[1:] if weaponset.armed(w)))
+    return (guns, others) if lines else guns
 
 
 def fight(template, own=None):

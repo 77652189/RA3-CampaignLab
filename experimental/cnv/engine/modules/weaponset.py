@@ -122,9 +122,11 @@ class WeaponSet(module.Module, interfaces.WeaponSet):
     DATA = WeaponSetUpdateData
     JOINED = True       # review r P2: two blocks (a child adding a set of another id) make one module, armed with what
     #                     the readers read walking every block (INFERRED: how the game fires two sets is unmeasured)
-    STATE =('weapons', 'slots', 'clocks', 'pre_locks', 'fire_gate', 'boosts')
+    STATE =('weapons', 'others', 'slots', 'clocks', 'pre_locks', 'fire_gate', 'boosts')
     RECORDED = ('weapons', 'slots')
     weapons = []        # the held weapons (never changed in place: a new list each write)
+    others = ()         # per held weapon its slot's other lines the status allows (simunits.pick_weapons' lines;
+    #                     engine.orders.target.picks fires the first that takes the target), () : none
     slots = None        # simunits.weapon_sets' slots, None: the weapons are fixed
     clocks = None       # weapon key (a keyless one: its slot) -> [this cycle's start, the last window with a target]
     #                     (Sim.shots_due; made on the first)
@@ -140,11 +142,15 @@ class WeaponSet(module.Module, interfaces.WeaponSet):
     def choices(self):
         return self.slots
 
-    def arm(self, weapons, slots):
-        self.weapons, self.slots = weapons, slots
+    def arm(self, weapons, slots, others=()):
+        self.weapons, self.slots, self.others = weapons, slots, others
 
-    def hold(self, weapons):
-        self.weapons = weapons
+    def hold(self, weapons, others=()):
+        self.weapons, self.others = weapons, others
+
+    def lines(self, i):
+        """Held weapon `i` and its slot's other lines (others), in the order the slot tries them."""
+        return (self.weapons[i],) + (self.others[i] if i < len(self.others) else ())
 
     def clip_clock(self, key):
         return (self.clocks or {}).get(key)
@@ -188,7 +194,7 @@ class WeaponSet(module.Module, interfaces.WeaponSet):
         return (self.fire_gate or {}).get(target.serial, 0.0)
 
 
-def equip(world, thing, weapons, slots, frame=None):
+def equip(world, thing, weapons, slots, frame=None, others=()):
     """Arm `thing` (WeaponSet.arm): its module, one attached (World.attach) when its template has no block and it
     has weapons or slots to hold. -> the module, None for a thing with neither and no block."""
     m = thing.find(interfaces.WeaponSet)
@@ -196,7 +202,7 @@ def equip(world, thing, weapons, slots, frame=None):
         if not weapons and slots is None:
             return None
         m = world.attach(thing, 'WeaponSetUpdate', frame)
-    m.arm(weapons, slots)
+    m.arm(weapons, slots, others)
     return m
 
 

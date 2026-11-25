@@ -787,10 +787,15 @@ class WeaponSet(Interface):
     def choices(self):
         raise NotImplementedError
 
-    def arm(self, weapons, slots):
+    def arm(self, weapons, slots, others=()):
         raise NotImplementedError
 
-    def hold(self, weapons):
+    def hold(self, weapons, others=()):
+        raise NotImplementedError
+
+    def lines(self, i):
+        """Held weapon `i` and the other lines of its slot the status allows: the slot fires the first that takes
+        the target (engine.orders.target.picks)."""
         raise NotImplementedError
 
     def clip_clock(self, key):

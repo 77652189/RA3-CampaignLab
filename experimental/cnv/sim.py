@@ -839,8 +839,8 @@ class Sim:
         for tm in self.toggles_of(b):         # a first ToggleState's bits hold from the start (engine_toggle c / e;
             b.status = set(b.status) | tm['states'][0]['status']      # simmodifier.modify keeps them; retail first states
                                                                       # have no AttributeModifier)
-        if slots:                             # the weapon lines name a status: the held one is chosen from it
-            weapons = simunits.pick_weapons(slots, b.status, self.weapon_upgrades(b))
+        weapons, others = simunits.pick_weapons(slots, b.status, self.weapon_upgrades(b), lines=True) if slots else \
+            (weapons, ())                     # the weapon lines name a status: the held ones are chosen from it
         if not weapons:                       # its XML names guns and none was read: a gap, not a unit without guns
             if template not in self.declared:
                 self.declared[template] = simunits.declared_weapons(template, self.own)
@@ -849,7 +849,7 @@ class Sim:
         b.modules = self.world.build(b, self.clock.frame)     # none: the setter keeps it unset
         rate, first = locomotor.turns(simunits.turning(template, self.own), st['speed'], st['surface'])
         locomotor.write(self.world, b, speed=st['speed'], surface=st['surface'], turn_rate=rate, turn_first=first)
-        kernel_weaponset.equip(self.world, b, weapons, slots, self.clock.frame)
+        kernel_weaponset.equip(self.world, b, weapons, slots, self.clock.frame, others)
         body = b.find(kernel_interfaces.Body) or self.world.attach(b, 'ActiveBody', self.clock.frame)  # no block: one
         b.acquire = frozenset(simunits.acquire(template, self.own)) if weapons or slots else frozenset()  # AIOrderState; slots: armed later (A284 JapanMiner)
         hp = proxy_hp or (body.data.max_health if body.is_immortal() else f['hp'] or body.data.max_health)
@@ -1781,7 +1781,7 @@ class Sim:
         if got is None:
             return None
         fired = False
-        for w, pick in zip(a.weapons, got[2]):
+        for w, pick in zip(got[3], got[2]):         # the line each slot fires at its pick
             if pick is None:
                 continue
             if a.vision and w['range'] > a.vision:

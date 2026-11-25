@@ -113,7 +113,7 @@ def modify(world, b):
     if not mods and not on and not off and not toggle_armor and b.base is None:
         b.status = own | toggle_bits
         if b.slots:
-            b.find(interfaces.WeaponSet).hold(simunits.pick_weapons(b.slots, b.status, upgrades_of(b)))
+            b.find(interfaces.WeaponSet).hold(*simunits.pick_weapons(b.slots, b.status, upgrades_of(b), lines=True))
         return
     if b.base is None:
         b.base = {'speed': b.speed, 'vision': b.vision, 'sight': b.sight, 'weapons': b.weapons, 'armor': b.armor}
@@ -133,11 +133,13 @@ def modify(world, b):
         # Recompute from retail shroud, never from last frame's scaled value.
         shroud = simunits.stats(b.template, world.own)['shroud'] or 0.0
         b.vision = max(b.vision, shroud * level_shroud)
-    held = simunits.pick_weapons(b.slots, st, upgrades_of(b)) if b.slots else b.base['weapons']       # the status picks the guns
+    held, others = simunits.pick_weapons(b.slots, st, upgrades_of(b), lines=True) if b.slots else (b.base['weapons'], ())
     guns = b.find(interfaces.WeaponSet) if b.modules else None     # step W2: its WeaponSet holds them (none:
     if guns is not None:                                            # it has none, held and base are [])
-        guns.hold(held if e['RANGE'] == 1.0 else [dict(w, range=w['range'] * e['RANGE'],
-                                                       undersize=UNDERSIZE * e['RANGE']) for w in held])
+        def scaled(ws):                                             # the status picks the guns
+            return ws if e['RANGE'] == 1.0 else [dict(w, range=w['range'] * e['RANGE'], undersize=UNDERSIZE * e['RANGE'])
+                                                 for w in ws]
+        guns.hold(scaled(held), [tuple(scaled(o)) for o in others])
     b.shielded = e['shielded']
     # Suppression ARMOR75%: EXPLOSIVE40 on150HP reads80%; UNRESISTABLE bypasses it.
     b.taken, b.dealt = e['ARMOR'], e['DAMAGE_MULT'] * e['RATE_OF_FIRE']

@@ -80,9 +80,8 @@ bench_id = "engine_lift"
 id = "the_crewed_turret_lifts_a_plane_with_its_secondary_line"
 scene = {build = "engine_liftair", check = "a", until = 19, shot_clock = true}
 bench = "CampLiftAirA_mcp_1116_142206: the order lane (crewed AlliedBaseDefense) 100 -- its plane died"
-proves = "the turret's one hardpoint holds the ground crush as PRIMARY and the anti-air one as SECONDARY under the same upgrade: the game takes the SECONDARY line against a plane"
+proves = "the turret's one hardpoint holds the ground crush as PRIMARY and the anti-air one as SECONDARY under the same upgrade: the game takes the SECONDARY line against a plane (a slot fires the first of its allowed lines that can take the target: simunits.pick_weapons' lines, engine.orders.target.picks; A371 -- before, one line a slot, sim 110)"
 expect = "vals(rows)[-1][2] == 100"
-mismatch = "sim 110 (pick_weapons holds one line a slot, the PRIMARY ground crush, so the turret never fires at the plane; a slot's weapon choice by target is not modelled); bench 100"
 
 [[reading]]
 bench_id = "engine_attachterror"
