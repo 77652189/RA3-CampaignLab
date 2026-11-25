@@ -1,0 +1,706 @@
+# Bench readings of benches/economy/construction/checks.py#engine_assistplace_e (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E169 (work/re/e169_assistplace.md): the retail refinery and a copy without its placement-hint include; the refinery
+# queued from the sidebar, then a click 30 off the hint pad.
+
+[[reading]]
+bench_id = "engine_assistplace_e"
+id = "no_refinery_stands_with_the_hint"
+scene = {build = "assistpon", check = "a", until = 60}
+bench = "E169 assistpon:a: 采样完成 / 矿场总数 / 提示位数量 0 throughout (to s191); the preview stayed red"
+proves = "a negative baseline only: no refinery was placed -- not evidence for or against snapping (placement acceptance was not established; inventory TODO stays)"
+expect = ["all(r['采样完成'] == 0 and r['矿场总数'] == 0 and r['提示位数量'] == 0 for r in rows)"]
+
+[[reading]]
+bench_id = "engine_assistplace_e"
+id = "no_refinery_stands_without_it_either"
+scene = {build = "assistpoff", check = "a", until = 60}
+bench = "E169 assistpoff:a (only the include removed): the same, 0 / 0 / 0 throughout (to s267)"
+proves = "a negative baseline only (as assistpon)"
+expect = ["all(r['采样完成'] == 0 and r['矿场总数'] == 0 and r['提示位数量'] == 0 for r in rows)"]
+
+[[reading]]
+bench_id = "engine_assistplace_e"
+id = "the_sidebar_queue_pays_the_refinery"
+scene = {build = "assistpon", check = "a", until = 60}
+bench = "E169 assistpon:a: 资金 10000 -> 8000 over about 30 s of the queue (wall s22-s52), then 8000 to the end; assistpoff the same"
+proves = "the bench's sidebar queue clicks are paid -- a UI-input baseline, not an AssistedPlacement rule"
+expect = "min(r['资金'] for r in rows) == 8000"
+mismatch = "sim 10000 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 8000"
+
+[[reading]]
+bench_id = "engine_assistplace_e"
+id = "the_hint_snaps_the_refinery_to_the_pad"
+scene = {build = "assistpon", check = "b", until = 60}
+bench = """assistpon:b, run_queue CampAsstOnB_mcp_1123_082312: 资金 / 矿场总数 / 提示位20内 / 点击处数量 10000 0 0 0 to s20, \
+paid to 8000, then 8000 1 1 0 from s61 (the click 30 east of the pad at 60.9 s) to s193; frame 21: the refinery in the \
+screen's middle (the pad), its dock turned to the node north-east"""
+proves = """AssistedPlacementBehavior (SnappingDistance 50, FACING_TOWARDS): a click 30 off the ore's suggested pad puts the \
+refinery within 20 of the pad (not within 8 of the click), turned to face the node -- against assistpoff:b, same input"""
+expect = ["rows[-1]['矿场总数'] == 1", "rows[-1]['提示位20内'] == 1", "rows[-1]['点击处数量'] == 0"]
+mismatch = "sim 矿场总数 0 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 1 1 0 from s61"
+
+[[reading]]
+bench_id = "engine_assistplace_e"
+id = "without_the_hint_it_stays_by_the_click"
+scene = {build = "assistpoff", check = "b", until = 60}
+bench = """assistpoff:b (only the hint include removed), CampAsstOffB_mcp_1123_081929: 8000 1 0 0 from s62 (the same click at \
+62.5 s) to s206; frame 20: the refinery right of the middle, under the click, in its default facing (not turned to the node)"""
+proves = """the control: with the module gone the same click is not pulled to the pad (0 within 20) -- it stands by the click, \
+though not within 8 of the computed click point (the bench's screen-to-world error)"""
+expect = ["rows[-1]['矿场总数'] == 1", "rows[-1]['提示位20内'] == 0"]
+mismatch = "sim 矿场总数 0 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 1 0 0 from s62"
+
+# Bench readings of benches/economy/construction/checks.py#engine_bankcapture (format: experimental/cnv/readings.py; runner: tests/conformance).
+# 证据 bits are frame-locked samples taken by the check's own scripts (its docstring), the rows only the HUD seconds.
+
+[[reading]]
+bench_id = "engine_bankcapture"
+id = "a_captured_bank_pays_a_bonus_then_five_a_second"
+scene = {build = "engine_bankcapture", check = "a", until = 36}
+bench = "E147 (bench 11-15): 收入 f188=750, f206=755, f223=760, f242=765, f257=770 then 770 to f548; 对照 0 throughout; 证据 1023 from f257"
+proves = "物体模块 AutoDepositUpdate: an engineer's capture of the neutral Swiss bank pays the new owner its 750 bonus at once, then 5 every 15 frames; the bank without the module pays nothing"
+item = "物体模块 Behaviors/AutoDepositUpdate"
+expect = ["win(22, 35, '收入') == [770] * 14",
+          "all(r['对照'] == 0 for r in rows)",
+          "counter('E147Evidence') == 1023"]
+
+# engine_baseban: the human clicks the yard's first core between the measured frames 74 and 488 (the click is not
+# timed: the script's 5 s stands for it); s5's yard is pressed by script at 2 s. 核心 = p1's cores + 10 s5's
+# (+ 100 walker 0 at its end + 1000 walker 1 in d / e / f). A reading a check.
+
+[[reading]]
+bench_id = "engine_baseban"
+id = "baseban_native_core_final_readings_a"
+scene = {build = "engine_baseban", check = "a", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBan 11-16 a (p1 base-disabled): final f488 1200/1200/11 (C, work/re/c_baseban_report.md)"
+proves = "PLAYER_DISABLE_BASE_CONSTRUCTION holds no UNIT_BUILD core order, the click or the press"
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 11]"
+
+[[reading]]
+bench_id = "engine_baseban"
+id = "baseban_native_core_final_readings_b"
+scene = {build = "engine_baseban", check = "b", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBan 11-16 b (s5 base-disabled): final f364 1200/1200/11"
+proves = "the same for the scripted press"
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 11]"
+
+[[reading]]
+bench_id = "engine_baseban"
+id = "baseban_scripted_core_measured_payment_frame"
+scene = {build = "engine_baseban", check = "b", until = 5, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "b at f75 2000/1413/0 (a at f74 2000/1426/0): the core pressed at 2 s still paying"
+proves = "production.due: a core's BuildTime 0 paid as the bench pays it"
+expect = "[rows[4][k] for k in ('乙资金', '核心')] == [1413, 0]"
+mismatch = "the simulator pays the core at once: 1200 and 10 at f75"
+
+[[reading]]
+bench_id = "engine_baseban"
+id = "factories_off_lower_case_touches_no_yard"
+scene = {build = "engine_baseban", check = "c", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBanC_mcp_1122_171350 (j09's 'japanconstructionyard'): 1200/1200/11 s35-s53, as with no gate"
+proves = """PLAYER_DISABLE_FACTORIES disables no yard of the player's (SCRIPT_DISABLED would hold it: e). A negative only \
+(review 1122yy #11): the same readings follow with the action deleted, so c / d / f / g show these hosts unheld, not \
+that the action is dispatched; no host that it holds was found (g: a yard made in play neither)"""
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 11]"
+item = "脚本动作 PLAYER_DISABLE_FACTORIES"
+
+[[reading]]
+bench_id = "engine_baseban"
+id = "factories_off_own_case_touches_no_yard_nor_walker"
+scene = {build = "engine_baseban", check = "d", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBanD_mcp_1122_171801: 1200/1200/1111 s35-s53 -- every core made, both walkers at their ends"
+proves = "PLAYER_DISABLE_FACTORIES at frame 0 disables nothing: a yard or a unit, by a lower-case name or its own"
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 1111]"
+item = "脚本动作 PLAYER_DISABLE_FACTORIES"
+
+[[reading]]
+bench_id = "engine_baseban"
+id = "factories_off_late_touches_no_yard_nor_walker"
+scene = {build = "engine_baseban", check = "f", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBanF_mcp_1122_172408 (d's gate at 0.5 s, as j09 calls it on a timer): 1200/1200/1111 s35-s50"
+proves = "PLAYER_DISABLE_FACTORIES disables nothing mid-game either"
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [1200, 1200, 1111]"
+item = "脚本动作 PLAYER_DISABLE_FACTORIES"
+
+[[reading]]
+bench_id = "engine_baseban"
+id = "factories_off_touches_no_yard_made_in_play"
+scene = {build = "engine_banlate", check = "g", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBanLateG_mcp_1123_012105: 400/400/111111 s36-s54 -- each MCV unpacked at 0.2 s, s5's yards disabled at 3 s, each unpacked yard pressed at 5 s: both make their second core"
+proves = "PLAYER_DISABLE_FACTORIES holds no yard unpacked in play either (j09's yards are the player's own unpacked ones); still a negative only"
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [400, 400, 111111]"
+item = "脚本动作 PLAYER_DISABLE_FACTORIES"
+
+[[reading]]
+bench_id = "engine_baseban"
+id = "script_disabled_holds_production_and_walking"
+scene = {build = "engine_baseban", check = "e", until = 40, script = "不打; 5 生产 JapanPowerPlantEgg 在 yard p1"}
+bench = "CampBaseBanE_mcp_1122_172130: 2000/2000/0 s1-s53 -- nothing paid, no core, neither walker at its end"
+proves = """production.due: a factory NAMED_SET_DISABLED SCRIPT_DISABLED pays and makes nothing (the click and the \
+press); Sim.emp_disabled: SCRIPT_DISABLED holds a unit as EMP does (walker 1 EMP the control)"""
+expect = "[rows[-1][k] for k in ('甲资金', '乙资金', '核心')] == [2000, 2000, 0]"
+
+# Bench readings of benches/economy/construction/checks.py#engine_mining (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1. The full Sim on a mining bench (no miner
+# put by hand): the refinery's own collector (SpawnOnUnpack, sim.Sim.unpack_child) does the work. 首笔 / 二笔 / 三笔 =
+# the frames of the first / second / third deposit.
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_the_refinery_s_own_collector_pays_at_the_bench_s_period"
+scene = {build = "mineturn0", check = "p", until = 76}
+each = [
+    {build = "mineniag", f = 111, s2 = 262, s3 = 413},
+    {build = "mineturn0", f = 111, s2 = 262, s3 = 413},
+    {build = "mineturn180", f = 296, s2 = 619, s3 = 942},
+    {build = "mineturn45", f = 156, s2 = 342, s3 = 528},
+    {build = "mineturn90", f = 214, s2 = 455, s3 = 696},
+    {build = "mineturnm45", f = 157, s2 = 344, s3 = 531},
+    {build = "mineturnm90", f = 214, s2 = 455, s3 = 696},
+]
+bench = "the benches' 首笔 / 二笔 / 三笔 f / s2 / s3 (bench 2026-11-12 benches/economy/construction/checks.py#engine_mining mineturn<k> p / mineniag p: the node turned k degrees off facing its refinery)"
+proves = """sim.Sim.unpack_child (round 177): the placed collector deleted at the start, the refinery the map places gives its \
+own (SpawnOnUnpack) and the money comes at the bench's period (二笔 - 首笔, 三笔 - 二笔 within 2 frames)."""
+expect = "abs((rows[-1]['二笔'] - rows[-1]['首笔']) - (s2 - f)) <= 2 and abs((rows[-1]['三笔'] - rows[-1]['二笔']) - (s3 - s2)) <= 2"
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_the_refinery_s_own_collector_s_first_money_as_the_bench"
+scene = {build = "mineturn45", check = "p", until = 76}
+each = [
+    {build = "mineturn180", f = 296},
+    {build = "mineturn45", f = 156},
+    {build = "mineturn90", f = 214},
+    {build = "mineturnm45", f = 157},
+    {build = "mineturnm90", f = 214},
+]
+bench = "首笔 f of the bench off retail's facing (bench 2026-11-12 mineturn<k> p; sim 294 / 156 / 212 / 156 / 212)"
+proves = "sim.Sim.unpack_child: the first drive, from the refinery's spot (INFERRED), within 2 frames of the bench's 首笔 off retail's facing"
+expect = "abs(rows[-1]['首笔'] - f) <= 2"
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_retail_facing_first_money_as_the_bench"
+scenes = {niag = {build = "mineniag", check = "p", until = 76}, t0 = {build = "mineturn0", check = "p", until = 76}}
+bench = "首笔 111 at retail's facing, mineniag and mineturn0 (bench 2026-11-12 mineniag p / mineturn0 p)"
+proves = """sim.Sim.unpack_child (round 179): at retail's facing the node's own cycle (151) bounds the trip, the drive is \
+shorter (a leg 36), so the first trip, at a node that waits for nobody, pays at 111 (was 122 with a drive-bound leg of 45)."""
+expect = "abs(niag[-1]['首笔'] - 111) <= 2 and abs(t0[-1]['首笔'] - 111) <= 2"
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_retail_facing_legs_as_the_bench"
+scene = {build = "mineturn0", check = "q", until = 31}
+bench = "mineturn0 q: the collector in c's node square at 23 (from where it faded in), out at 96 (73 frames: a node that waits for nobody), back in at 156 (15 after its unloading ends): 首笔 111, 到矿 23, 离矿 96, 二到矿 156 (bench 2026-11-12 mineturn0 q, CampMineT0Q; sim 111 / 22 / 96 / 159)"
+proves = "sim.Sim.unpack_child / mine_due (round 179): the legs of a trip at retail's facing, each within 3 frames"
+let = {legs = "{'首笔': 111, '到矿': 23, '离矿': 96, '二到矿': 156}"}
+expect = "all(abs(rows[-1][k] - v) <= 3 for k, v in legs.items())"
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_retail_facing_drive_bound_once_the_refinery_is_further"
+scenes = {p = {build = "minefar", check = "p", until = 76}, q = {build = "minefar", check = "q", until = 31}}
+bench = "minefar p: 首笔 / 二笔 / 三笔 133 / 288 / 443 (a trip of 155, the refinery 38 further back); q legs 首笔 133, 到矿 34, 离矿 107, 二到矿 190 (bench 2026-11-12 minefar p / q; sim q 133 / 32 / 109 / 190)"
+proves = """sim.Sim.mine_due (round 179, the prediction told apart): the refinery 38 further back at retail's facing, the \
+legs 36 + 11 make the drive bound again -- a trip of 155 (the old drive-bound 45-frame leg said 144 / 317 / 490); the \
+sim's 133 / 288 / 443 to the frame, the legs within 3."""
+let = {far = "{'首笔': 133, '二笔': 288, '三笔': 443}", legs = "{'首笔': 133, '到矿': 34, '离矿': 107, '二到矿': 190}"}
+expect = ["all(p[-1][k] == v for k, v in far.items())", "all(abs(q[-1][k] - v) <= 3 for k, v in legs.items())"]
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_engine_mining_a_with_the_refinery_s_own_collector"
+scene = {build = "engine_mining", check = "a", until = 76}
+bench = "首笔 239, 收满 268, 二笔 508 (bench CampMineA_mcp_1105_201253)"
+proves = "sim.Sim.unpack_child in the full Sim: the refinery's own collector's first money, load full and second money, 240 / 269 / 509: one frame late"
+expect = "(rows[-1]['首笔'] - 239, rows[-1]['收满'] - 268, rows[-1]['二笔'] - 508) == (1, 1, 1)"
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_engine_mining_f_the_placed_collector_comes_as_on_the_bench"
+scene = {build = "engine_mining", check = "f", until = 31}
+bench = "名到矿 107: the placed collector in the node's square (bench 2026-11-12 CampMineF_mcp_1112_095956; sim 102)"
+proves = "sim.Sim.mine_due (round 178): the placed collector comes to the node's square, 102 in the sim (no acceleration), within 6"
+expect = "abs(rows[-1]['名到矿'] - 107) <= 6"
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_engine_mining_f_the_refinery_s_own_is_held_up"
+scene = {build = "engine_mining", check = "f", until = 31}
+bench = "自到矿 121: the refinery's own collector, waiting for good, is first in the node square at 121 / 170 (alone 56, h), after the placed one (107 / 114) (round 189, bench engine_mining g / mineaway g; f 121)"
+proves = "sim.Sim.mine_due: where a waiting miner stands"
+expect = "abs(rows[-1]['自到矿'] - 121) <= 6"
+mismatch = "sim 自到矿 49 (the sim draws the waiting miner to the node), bench 121: where a waiting miner stands is not modelled"
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_the_placed_collector_claims_the_node_whether_or_not_the_drives_meet"
+scenes = {g = {build = "engine_mining", check = "g", until = 31}, away = {build = "mineaway", check = "g", until = 31}, h = {build = "engine_mining", check = "h", until = 31}}
+bench = "bench 2026-11-12 engine_mining g / h, mineaway g: 首笔 290 / 261 / 239; the refinery's own leaves its pad at 19 either way; with the placed one far off any shared way (mineaway) it still comes second and waits (sim 首笔 286 / 275 / 240)"
+proves = """sim.Sim._claimed (round 189): not a collision, the placed one (there before the refinery's own fades in) claims \
+the node when it looks for it: mineaway's first money is the placed one's, past the own one's alone (h). The placed \
+one's first money within 15 (290: its drive round the refinery, not modelled), h's within 2."""
+expect = [
+    "abs(g[-1]['首笔'] - 290) <= 15",
+    "away[-1]['首笔'] - h[-1]['首笔'] >= 15",
+    "abs(h[-1]['首笔'] - 239) <= 2",
+]
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_a_collector_placed_away_drives_to_the_node_in_its_leg"
+scene = {build = "mineaway", check = "g", until = 31}
+bench = "mineaway g: 首笔 261, 名到矿 114 (bench 2026-11-12, round 189)"
+proves = "engine/objects/mine.py: a placed miner's first leg, 370 from a node turned 62 off it"
+expect = "abs(rows[-1]['首笔'] - 261) <= 6"
+mismatch = "sim 275: its leg 111 + 19 (MINE_TURN_EXTRA at 62, linear between 45 and 90, INFERRED) + 9 (MINE_PLACED_EXTRA, read on E207's two and fitting engine_mining b / g and engine_queuedock a); without the 9 it was 266"
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_engine_mining_b_the_refinery_s_own_collector_waits"
+scene = {build = "engine_mining", check = "b", until = 76}
+bench = "b: 首笔 / 二笔 / 三笔 290 / 559 / 828: the placed collector works, the refinery's own waits for good -- one miner's period 269 (sim 277 / 546 / 815)"
+proves = "sim.Sim.mine_due: the refinery's own collector waits for good, one miner's period (269); the first money 13 early (the placed one's drive round the refinery)"
+expect = "(rows[-1]['二笔'] - rows[-1]['首笔'], rows[-1]['三笔'] - rows[-1]['二笔']) == (269, 269) and abs(rows[-1]['首笔'] - 290) <= 15"
+
+[[reading]]
+bench_id = "engine_mining"
+id = "mining_engine_mining_e_the_waiting_one_never_gets_the_node"
+scene = {build = "engine_mining", check = "e", until = 61}
+bench = "the placed one deleted once the first load is in, the money stays 250 to s61 -- the refinery's own, waiting, never docks (bench CampMineE_mcp_1105_203435)"
+proves = "sim.Sim.mine_due: a waiting collector never gets the node"
+expect = "rows[-1]['资金'] == 250"
+
+[[reading]]
+bench_id = "engine_mining"
+id = "money_cap_holds_harvest_income_as_the_bench"
+scenes = {cap = {build = "mineturn0", check = "cap", until = 31}, capz = {build = "mineturn0", check = "capz", until = 31}}
+bench = "资金 首笔 二笔 三笔: cap 400 -- the first load paid (250 from frame 111), the second 8 a frame to 394 (二笔 262 as without a cap), then nothing: a deposit that would pass the cap is not paid, not cut to it; 三笔 counts on to the end. Cap 0 -- no money at all (a07's allies: money 0, cap 0) (bench 11-15 run_queue mineturn0:cap mineturn0:capz, A round 254)"
+proves = "sim.Sim.earn / Sim._pay, PLAYER_SET_MONEY_CAP on income: a deposit that would pass the cap is not paid, cut to nothing"
+expect = [
+    "[cap[-1]['资金'], cap[-1]['首笔'], cap[-1]['二笔']] == [394, 111, 262] and cap[-1]['三笔'] > 400",
+    "max(r['资金'] for r in cap) == 394",
+    "all(r['资金'] == 0 for r in capz) and capz[-1]['首笔'] > 400",
+]
+
+[[reading]]
+bench_id = "engine_mining"
+id = "minejap_a_loaded_miner_armed_dumps_its_load_the_next_comes_on_time"
+item = "物体模块 Behaviors/MonitorConditionUpdate"
+scenes = {j = {build = "minejap", check = "j", until = 41}, e = {build = "minejap", check = "e", until = 41}, k = {build = "minejap", check = "k", until = 41}}
+bench = "离矿 堆 首笔 二笔 (frames): k (never armed) 147 / - / 163 / 314; j (gun on as it leaves the node loaded, off 45 frames later) 147 / - / 314 / 465 -- the first load never paid, the next at k's second; e (armed at 8 for 45 frames, empty) 150 / - / 166 / 317. 堆 never: the DroppedOrePile is not SELECTABLE (bench 2026-11-24 run_queue minejap:j / e / k, work/bench_results/minejap__*.json; sim k 131 / - / 149 / 300, the placed JapanMiner's first leg ~15 short -- not this item)"
+proves = "engine/modules/oreminer.py MonitorCondition: CARRYING (the trip's load) and the toggle state's WEAPONSTATE_ONE held PreDelay frames -> DUMP_ORE empties the load (the trip goes on, paying nothing, and the node's cycle keeps the next on time); the gun on an empty miner's drive costs nothing (OreMinerBehavior's ForbiddenStatus GENERIC_TOGGLE_STATE not seen while driving). PreDelay 0.5 s INFERRED (the pile, the only sign of the moment, no script sees)"
+expect = [
+    "abs(j[-1]['首笔'] - k[-1]['二笔']) <= 3 and abs((j[-1]['二笔'] - j[-1]['首笔']) - (k[-1]['二笔'] - k[-1]['首笔'])) <= 3",
+    "abs(e[-1]['首笔'] - k[-1]['首笔']) <= 3",
+]
+
+# Bench readings of benches/economy/construction/checks.py#engine_pack (format: experimental/cnv/readings.py; runner: tests/conformance).
+# NAMED_USE_COMMANDBUTTON_ABILITY(yard, Command_Pack...MCV), bench 11-11 (round 159): per yard, (last second read,
+# frames out of the 40 square round where it stood, frame it reached the 100 square 400 east) -- CampPackAGo / SGo /
+# JGo, the 走帧 counter's units and 帧数 - thousands.
+
+[[reading]]
+bench_id = "engine_pack"
+id = "a_yard_packs_into_its_mcv_at_once_and_the_mcv_stands_before_it_drives"
+item = ["脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_PackAlliedMCV",
+        "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_PackSovietMCV",
+        "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_PackJapanMCV"]
+scene = {build = "engine_pack_a", check = "go", until = 32}
+each = [
+    {build = "engine_pack_a", until = 32, out = 50, there = 121},
+    {build = "engine_pack_s", until = 32, out = 51, there = 128},
+    {build = "engine_pack_j", until = 47, out = 54, there = 150},
+]
+bench = """\
+engine_pack a / s / j: the player owns the MCV and not the yard from the press frame on (车帧 = 1000 x 帧数), the \
+yard's name passes on (名字帧 = 帧数); the move order given at once is kept, but the MCV stands NewObjectUnpackTime (2 s) \
+and some more before it drives (out of the 40 square at frame 50 / 51 / 54, at the 100 square 400 east at frame 121 / \
+128 / 150) (bench 11-11, round 159). The sim still counts the yard one frame (the press frame's count): held to at most 1; \
+the simulator's MCV walks 50 a second, the bench's ~55, so 'there' runs 7-15 late"""
+proves = "sim pack: the yard becomes the MCV at once, the MCV stands NewObjectUnpackTime and some more (simunits.replace_unpack_frames) before it drives"
+let = {frames = "rows[-1]['帧数']", own = "rows[-1]['车帧']", name = "rows[-1]['名字帧']", walk = "rows[-1]['走帧']"}
+expect = [
+    "own // 1000 >= frames - 1 and own % 1000 <= 1 and name == frames",
+    "abs(walk % 1000 - out) <= 8 and abs(frames - walk // 1000 - there) <= 15",
+]
+
+# Bench readings of benches/economy/construction/checks.py#engine_powerdef (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1. A POWERED structure of a player short of
+# power holds its fire (sim.Sim.unpowered). Bench 2026-11-07 engine_powerdef: s1's Tesla coil (-75) beside six
+# NO_ATTACK Guardians; on (a plant +100): first loss at 111, then one per ~125 frames; off (no plant): none in 728; cut
+# (the plant deleted ~150): none after; back (a plant made by script ~150): first loss at 475.
+
+[[reading]]
+bench_id = "engine_powerdef"
+id = "power_off_the_coil_never_fires"
+scene = {build = "powerdef_off", check = "frames", until = 51}
+bench = "no tank lost in 728 frames (坦克 6 all along) (bench 2026-11-07 engine_powerdef off)"
+proves = "sim.Sim.unpowered: a Tesla coil of a player short of power (no plant) never fires"
+let = {R = "[r for t, r in zip(times, rows) if t >= 1]"}
+expect = "R[-1]['帧数'] >= 728 and all(r['坦克'] == 6 for r in R)"
+
+[[reading]]
+bench_id = "engine_powerdef"
+id = "power_on_the_coil_kills_one_tank_per_125_frames"
+scene = {build = "powerdef_on", check = "frames", until = 51}
+bench = "first loss at 111, then one per ~125 frames (bench 2026-11-07 engine_powerdef on)"
+proves = "sim fight model: the coil's clip rhythm (round 77), a tank lost every ~125 frames"
+let = {R = "[r for t, r in zip(times, rows) if t >= 1]", lost = "[r['帧数'] for i, r in enumerate(R) if i and r['坦克'] < R[i - 1]['坦克']]"}
+expect = "100 <= lost[1] - lost[0] <= 150"
+mismatch = """sim: the coil kills a tank every 45-60 frames (lost at frames 61, 106, 166, 211, ...: damage per second over a \
+continuous cycle), bench one per ~125: the fight model does not shoot by the clip (round 77 "战斗按弹夹的节奏")"""
+
+# Bench readings of benches/economy/construction/checks.py#engine_powerupgrade_e (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E175: a power plant's turbine upgrade (work/re/e175_powerupgrade.md).
+
+[[reading]]
+bench_id = "engine_powerupgrade_e"
+id = "test_powerupgrade_named_bench"
+scene = {build = "engine_powerupgrade_e", check = "a", until = 23}
+bench = "E175 frame 330, base 11, grant 10, remove 11 (original advanced plant has campaign power 500; work/re/e175_powerupgrade.md)"
+proves = "power upgrade: the advanced plant's campaign power, with and without the turbine upgrade"
+expect = "list(rows[-1].values()) == [330, 11, 10, 11]"
+mismatch = "sim [330, 15, 10, 15]: the original advanced plant has campaign power 500, the simulator 350; turbine upgrade possession was never observed"
+
+# b: each line = frame * 100000 + upgrade-holder * 10000 + exact excess power (9999 = no candidate); the clock stops at 330.
+
+[[reading]]
+bench_id = "engine_powerupgrade_e"
+id = "the_plants_without_a_campaign_override_keep_their_power"
+scene = {build = "engine_powerupgrade_e", check = "b", until = 23}
+bench = "E175 b: normalon / normaloff 100 and advancedoff (the SDK clone) 350 in every line, f60 / f182 / f330 alike; the clock froze at 330"
+proves = "excess power of a plant with no consumers: the template's EnergyProduction, unchanged through the f90 grant and f210 removal"
+expect = ["all(r['normalon'] % 10000 == 100 and r['normaloff'] % 10000 == 100 and r['advancedoff'] % 10000 == 350 for r in rows)",
+          "rows[-1]['normalon'] // 100000 == 330"]
+
+[[reading]]
+bench_id = "engine_powerupgrade_e"
+id = "the_retail_advanced_plant_gives_its_campaign_500"
+scene = {build = "engine_powerupgrade_e", check = "b", until = 23}
+bench = "E175 b: advancedon (the retail advanced plant) 500 in every line"
+proves = "the campaign override of the advanced plant's power (500, the SDK file says 350)"
+expect = "all(r['advancedon'] % 10000 == 500 for r in rows)"
+mismatch = "sim 350 in every line; bench 500"
+
+[[reading]]
+bench_id = "engine_powerupgrade_e"
+id = "the_turbine_grant_is_never_held"
+scene = {build = "engine_powerupgrade_e", check = "b", until = 23}
+bench = "E175 b: the upgrade-holder digit 0 in all four lines throughout, the f90..f209 grant window included (f182: 18200100 / 18200100 / 18200500 / 18200350)"
+proves = "NAMED_RECEIVE_UPGRADE of Upgrade_PowerPlantTurbine (no definition in SDK Upgrade.xml) leaves no plant holding it"
+expect = "all(v % 100000 < 10000 for r in rows for v in r.values())"
+mismatch = "sim holds it on all four plants from f90 to f209 (f181: 18110100 ...); bench never"
+
+# Bench readings of benches/economy/construction/checks.py#engine_production (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1.
+# engine_press (round 291): retail j07 / s08 press a factory's build button from a repeating script.
+
+[[reading]]
+bench_id = "engine_production"
+id = "a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench"
+item = "物体模块 Behaviors/QueueProductionExitUpdate"
+scene = {build = "engine_production", check = "i", until = 25}
+bench = "the barracks' engineer (NaturalRallyPoint (40, 18)) stops in x 75-90 / y 24-36: 出口位 1010000 (bench 11-11 engine_production i, CampProdI_mcp_1111_041259)"
+proves = """QueueProductionExitUpdate (sim.RALLY_PUSH, INFERRED fit): a new unit stops 40 beyond the natural rally point on the \
+line from the factory's centre. ExitDelaySeconds (0.07 s) not modelled: a gap no level can see."""
+expect = "rows[-1]['出口位'] == 1010000"
+
+[[reading]]
+bench_id = "engine_production"
+id = "the_engineer_stops_inside_the_far_strip_of_h"
+scene = {build = "engine_production", check = "h", until = 25}
+bench = "出口位 1000 (the engineer in x 65-80, y 3-33) (bench 11-11 engine_production h)"
+proves = "QueueProductionExitUpdate (sim.RALLY_PUSH): the stop at the barracks' far strip of h"
+expect = "rows[-1]['出口位'] == 1000"
+mismatch = """sim 0: the sim stops the engineer at (76.5, 34.4), 1.4 past the strip; bench 1000. The push is fitted to i \
+and the Riptide, the barracks stop is 1-2 units off"""
+
+[[reading]]
+bench_id = "engine_production"
+id = "a_build_button_pressed_every_frame_keeps_the_factory_building"
+scene = {build = "engine_press", check = "a", until = 75}
+bench = """CampPressA_mcp_1121_205551: 按 30 by s3; 矿车 1 (the refinery's own) -> 2 at s21, 3 at s42, 4 at s62; 磁暴 1 at \
+s23, 2 at s46, 3 at s68; 资金 falling all along (the watch's s runs ~1.3 s behind the mission clock)"""
+proves = """NAMED_USE_COMMANDBUTTON_ABILITY on a factory's UNIT_BUILD button from a repeating script: the presses \
+queue jobs that are built one after another at the full build time (JapanMiner 20 s, the Tesla tank 22 s), not one \
+job for the lot; the next starts only when the one before is out of the door (0.67 s more a job: 41 s for miners 2 to \
+4, 45 s for Tesla tanks 1 to 3; 40 / 44 if it started at full -- engine_unitban a's second engineer the same). Only the first 3-4 jobs are seen: that all 30 presses went in (MaxQueueEntries 99 by default) is \
+INFERRED -- a queue capped at 4 reads the same (review 1121qq #4)"""
+expect = ["rows[-1]['按'] == 30", "rows[-1]['矿车'] == 4", "rows[-1]['磁暴'] == 3",
+          "21 <= first('矿车', lambda v: v >= 2) <= 23 and 23 <= first('磁暴', lambda v: v >= 1) <= 25",
+          "first('矿车', lambda v: v >= 4) - first('矿车', lambda v: v >= 2) == 41",
+          "first('磁暴', lambda v: v >= 3) - first('磁暴', lambda v: v >= 1) == 45"]
+item = ["脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ConstructJapanMinerFromRefinery",
+        "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_ConstructSovietAntiVehicleVehicleTech2"]
+
+# Bench readings of benches/economy/construction/checks.py#engine_rally (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1.
+
+[[reading]]
+bench_id = "engine_rally"
+id = "a_new_unit_stops_beyond_the_natural_rally_point_as_the_bench"
+item = "物体模块 Behaviors/QueueProductionExitUpdate"
+scene = {build = "engine_rally", check = "tank", until = 31}
+bench = "the war factory's Riptide (NaturalRallyPoint (80, 20)) stops in x 112-127 / y 25-34: 出口位 1000010, 40 beyond the point on the line from the factory's centre (bench 11-11 engine_rally tank)"
+proves = """QueueProductionExitUpdate (sim.RALLY_PUSH, INFERRED fit): a new unit stops 40 beyond the natural rally point (x 1.9 \
+from the centre would put the Riptide at (152, 38))."""
+expect = "rows[-1]['出口位'] == 1000010"
+
+# Bench readings of benches/economy/construction/checks.py#engine_sell (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Moved from tests/test_simbench.py (T3 A): until is the old run's until + 1. Bench 2026-11-06 engine_sell
+# (docs/engine/sell.md; one run each): money 2000 -> 2400 for a full 800 plant (a), 2200 hurt to half (b), 2250 for a 500
+# bunker (d), 2400 once for two orders (f); 卖帧 31031 = alive 31 frames and SOLD 31 (deleted 30 frames after the order,
+# counted as power till then); killed at frame 5 (e): paid, 5004; sold while unpacking (c): nothing, never SOLD.
+
+[[reading]]
+bench_id = "engine_sell"
+id = "sell_pays_half_the_cost_scaled_by_health_once_and_deletes_after_30_frames"
+item = [
+    "物体模块 Behaviors/BuildingBehavior",
+    "物体模块 Behaviors/StructureSellUpdate",
+    "脚本动作 SELL_OBJECT",
+]
+scenes = {a = {build = "engine_sell", check = "a", until = 9}, b = {build = "engine_sell", check = "b", until = 9}, d = {build = "engine_sell", check = "d", until = 9}, f = {build = "engine_sell", check = "f", until = 9}}
+bench = "资金 2400 / 2200 / 2250 / 2400 for a / b / d / f; 卖帧 31031 in each; the plant counts 31 frames, then not (bench 2026-11-06 engine_sell a b d f)"
+proves = "sim.Sim.sell (NAMED_DAMAGE): half the cost scaled by health, paid once, the building deleted 30 frames after the order and counted as power till then"
+expect = [
+    "(a[-1]['资金'], b[-1]['资金'], d[-1]['资金'], f[-1]['资金']) == (2400, 2200, 2250, 2400)",
+    "a[-1]['卖帧'] == b[-1]['卖帧'] == d[-1]['卖帧'] == f[-1]['卖帧'] == 31031",
+    "a[-1]['第四行'] % 1000 == 31 and a[-1]['第四行'] // 1000 == a[-1]['帧数'] - 31",
+]
+
+[[reading]]
+bench_id = "engine_sell"
+id = "sell_lets_a_bunker_garrison_out_in_the_sale_frame"
+scene = {build = "engine_sell", check = "g", until = 9}
+bench = "s1 frame 27 -> 9042, ENCLOSED 9 frames (0.4 s to the sale at 1.0 s), alive 15 + frames since Go (bench 11-17 engine_sell g, CampSellG_mcp_1117_225033)"
+proves = "sim.Sim.sell: a bunker's garrison gets out in the sale frame (ENCLOSED ends before the sale)"
+expect = [
+    "rows[-1]['资金'] == 2250 and rows[-1]['卖帧'] == 31031",
+    "rows[-1]['第四行'] // 1000 == 9 and rows[-1]['第四行'] % 1000 == 15 + rows[-1]['帧数']",
+]
+
+[[reading]]
+bench_id = "engine_sell"
+id = "sell_a_killed_building_stays_paid_and_a_building_unpacking_is_not_sold"
+scenes = {e = {build = "engine_sell", check = "e", until = 9}, c = {build = "engine_sell", check = "c", until = 9}}
+bench = "e: killed at frame 5, paid (2400), 卖帧 5004, alive 4 frames; c: sold while unpacking: nothing (资金 2000), never SOLD, never gone (bench 2026-11-06 engine_sell e / c)"
+proves = "sim.Sim.sell: a killed building stays paid; a building still unpacking is not sold"
+expect = [
+    "e[-1]['资金'] == 2400 and e[-1]['卖帧'] == 5004 and e[-1]['第四行'] % 1000 == 4",
+    "c[-1]['资金'] == 2000 and c[-1]['卖帧'] == c[-1]['帧数']",
+]
+
+# Bench readings of benches/economy/construction/checks.py#engine_sellall (format: experimental/cnv/readings.py; runner: tests/conformance).
+
+[[reading]]
+bench_id = "engine_sellall"
+id = "sellall_a_sells_the_named_players_plant_once"
+item = "脚本动作 PLAYER_SELL_EVERYTHING"
+scene = {build = "engine_sellall", check = "a", until = 27, script = "不打"}
+bench = "a, line C (work/re/c_sellall_report.md), 资金码 存活位 出售位 at logic frames: f45..72 222000 63 0 | f77..105 226000 63 2 | f111..400 226000 47 0 (66 readings)"
+proves = "PLAYER_SELL_EVERYTHING on Soviet_4 at 5 s: its plant carries SOLD, refunds 400 once (code +4000 = 10 x 400), then is gone (mask 63 -> 47); the Guardians and the other owners' plants stay; the empty player at 3 s and the repeat at 9 s do nothing. Moved from the frame-exact replay (A334)"
+let = {want = "lambda f: None if f < 45 else [222000, 63, 0] if f <= 72 else [226000, 63, 2] if 77 <= f <= 105 else [226000, 47, 0] if f >= 111 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(222000, 63, 0), (226000, 63, 2), (226000, 47, 0)}",
+]
+
+[[reading]]
+bench_id = "engine_sellall"
+id = "sellall_b_sells_the_named_players_plant_once"
+item = "脚本动作 PLAYER_SELL_EVERYTHING"
+scene = {build = "engine_sellall", check = "b", until = 27, script = "不打"}
+bench = "b, line C, 资金码 存活位 出售位 at logic frames: f46..72 222000 63 0 | f78..106 222400 63 1 | f111..403 222400 55 0 (65 readings)"
+proves = "the same with Player_1 named (refund +400, mask 63 -> 55)"
+let = {want = "lambda f: None if f < 46 else [222000, 63, 0] if f <= 72 else [222400, 63, 1] if 78 <= f <= 106 else [222400, 55, 0] if f >= 111 else None"}
+expect = [
+  "all(v[:3] == want(v[3]) for v in vals(rows) if want(v[3]) is not None)",
+  "{tuple(want(v[3])) for v in vals(rows) if want(v[3]) is not None} == {(222000, 63, 0), (222400, 63, 1), (222400, 55, 0)}",
+]
+
+# Bench readings of benches/economy/construction/checks.py#engine_share (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_share"
+id = "share_all_as_the_bench"
+scene = {build = "engine_share", check = "all", until = 67}
+bench = """all, bench 11-14 `run_queue engine_share:all` (CampShareAll, round 222; the bench's seconds 1-2 ahead): 甲 / 乙 / 丙钱 125 \
+125 0 after the first load (Player_1 and Soviet_5 sharing), 249 188 63 after the second (Soviet_6 sharing too), 374 188 \
+188 after the third (Soviet_5 off); 选 1 / 2 / 16 / 1 / 0"""
+proves = """sim money sharing: each sharing Friend takes amount // 3 of every deposit, the earner the rest; SELECT_OBJECT replaces \
+the selection, an enemy's object too; DESELECT changes nothing; TYPE_SELECTED never true; the killed pick ~3 s still \
+selected on the bench (not modelled). The second load's split within 2: the bench unloads 30 deposits of 8 and a last \
+of 10, the simulator 29 and 18 (MINE_DOCK, timing fitted)."""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = [
+    "at[30][:3] == [125, 125, 0]",
+    "all(abs(v - w) <= 2 for k, want in ((45, (249, 188, 63)), (66, (374, 188, 188))) for v, w in zip(at[k][:3], want))",
+    "at[45][0] + at[45][1] + at[45][2] == 500",
+    "all(at[k][3] == sel for k, sel in ((4, 1), (8, 2), (10, 2), (14, 16), (16, 16), (19, 1), (25, 0), (60, 0)))",
+]
+
+# Bench readings of benches/economy/construction/checks.py#engine_structureplace_e (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E183 (work/re/e183_structureplace.md): the retail refinery and a copy without its StructurePlacementBehavior include;
+# a power plant ordered 120 ahead of it, in the reserved box.
+
+[[reading]]
+bench_id = "engine_structureplace_e"
+id = "no_plant_stands_with_the_refinery_module"
+scene = {build = "structpon", check = "a", until = 20}
+bench = "E183 structpon:a: 电厂总数 and 前方电厂 0 throughout; money rose from 10000 by mining (11750 / 12000), never the 9200 payment sentinel"
+proves = "a negative baseline only: no plant was placed in the run -- not evidence that the reserved box refused it (queue / placement acceptance was not established; inventory TODO stays)"
+expect = ["all(r['电厂总数'] == 0 and r['前方电厂'] == 0 for r in rows)"]
+
+[[reading]]
+bench_id = "engine_structureplace_e"
+id = "no_plant_stands_without_it_either"
+scene = {build = "structpoff", check = "a", until = 20}
+bench = "E183 structpoff:a (only the include removed): the same, 0 / 0 throughout"
+proves = "a negative baseline only (as structpon)"
+expect = ["all(r['电厂总数'] == 0 and r['前方电厂'] == 0 for r in rows)"]
+
+[[reading]]
+bench_id = "engine_structureplace_e"
+id = "the_reserved_box_refuses_a_paid_plant"
+scene = {build = "structpon", check = "b", until = 120}
+bench = """structpon:b (the clone CNVE183Ref 380 from the node, the plant clicked 140 ahead), run_queue CampSpOnB_mcp_1123_091402: \
+资金 down to 9450 (the 800 paid: 10000 + a 250 trip - 800), 电厂总数 / 前方电厂 0 from s4 to s148"""
+proves = """StructurePlacementBehavior's RestrictedAreaShape (box 30 x 45, 90 ahead): a paid, ready plant lapping 33 into it, \
+clear of the refinery's base and the node's no-build, is not placed -- against structpoff:b, same input"""
+expect = ["min(r['资金'] for r in rows) <= 9450", "all(r['电厂总数'] == 0 for r in rows)"]
+mismatch = "sim 资金 never paid: the simulator does not replay the bench's sidebar queue / placement clicks; bench paid, no plant"
+
+[[reading]]
+bench_id = "engine_structureplace_e"
+id = "without_it_the_same_click_places"
+scene = {build = "structpoff", check = "b", until = 120}
+bench = """structpoff:b (only the include removed), CampSpOffB_mcp_1123_091605: paid to 9450 the same, 电厂总数 / 前方电厂 \
+1 1 from s88 (f1349) to s133"""
+proves = "the control: with the module gone the same click stands the plant in the front box"
+expect = ["rows[-1]['电厂总数'] == 1", "rows[-1]['前方电厂'] == 1"]
+mismatch = "sim 电厂总数 0 throughout: the simulator does not replay the bench's sidebar queue / placement clicks; bench 1 1 from s88"
+
+# Bench readings of benches/economy/construction/checks.py#engine_threatbonus (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The retail threat-bonus action; evidence in work/re/c_threatbonus_report.md (private).
+
+[[reading]]
+bench_id = "engine_threatbonus"
+id = "threatbonus_scripted_losses_replay_measured_waves"
+scene = {build = "engine_threatbonus", check = "a", until = 150, script = "不打"}
+bench = "A actual samples: 0/0/100/1, then 0/0/80/2, then 0/0/60/3 (bench 11-16)"
+proves = """sim threat bonus, the observed wave states only (capture seconds did not identify logic frames). Does not \
+establish the effect of DISABLE and must not promote its inventory state."""
+expect = "{(0, 0, 100, 1), (0, 0, 80, 2), (0, 0, 60, 3)} <= {tuple(v) for v in vals(rows)}"
+
+[[reading]]
+bench_id = "engine_threatbonus"
+id = "threatbonus_both_actual_rank_frames_as_the_bench"
+scene = {build = "engine_threatbonus", check = "b", until = 380, script = "不打"}
+bench = "B archived 0063: 2893/2893/40/3374; final 0129: 2893/2893/0/5708 (bench 11-16)"
+proves = """sim threat bonus: rank-frame counters latched by once scripts, compared after the measured stage, without \
+converting capture seconds to mission time or replacing the observed 2893 with 5400."""
+let = {row = "vals(rows)[-1]"}
+expect = ["row[2] == 0 and row[3] >= 5700", "row[:2] == [2893, 2893]"]
+mismatch = """sim both rank-2 frames 5400, bench 2893 (including disabled s5): the Sim has no death-threat protocol \
+multiplier; the action reward scope and same-frame player threat / multiplier are unobserved"""
+
+# Bench readings of benches/economy/construction/checks.py#engine_unpack (format: experimental/cnv/readings.py; runner: tests/conformance).
+# NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT, bench 11-10.
+
+[[reading]]
+bench_id = "engine_unpack"
+id = "mcv_deploys_at_a_far_waypoint_as_the_bench"
+scene = {build = "engine_unpack_mcv", check = "go", until = 41}
+bench = """\
+NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT(mcv, Command_UnPackAlliedMCV, 400 east) (bench 11-10 engine_unpack mcv): \
+the MCV drives there and is the yard from frame 121 on (sim 128), the yard on the point, the name passed on (名字帧 = \
+帧数)"""
+proves = "sim unpack at a waypoint: the MCV drives to the point, becomes the yard there, the name passes on"
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = [
+    "115 <= unit % 1000 <= 135 and unit // 1000 > 0",
+    "yard % 1000 == frames - unit % 1000 and yard // 1000 == yard % 1000",
+    "name == frames",
+]
+
+[[reading]]
+bench_id = "engine_unpack"
+id = "an_untargeted_egg_unpack_press_unfolds_nothing_and_stops_it_short"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanBaseDefenseEgg"
+scene = {build = "engine_unpack_pin", check = "go", until = 41}
+each = [{build = "engine_unpack_pin"}, {build = "engine_unpack_mid"}, {build = "engine_unpack_crs"}]
+bench = """\
+NAMED_USE_COMMANDBUTTON_ABILITY(egg, Command_UnPackJapanBaseDefenseEgg) untargeted, standing (pin) or 1 s after the \
+order to unpack 400 east (mid) (bench 11-21 CampUnpackPinGo_mcp_1121_123012 / CampUnpackMidGo_mcp_1121_123227, s41 \
+633 633 0 633 / 632 632 0 632): the egg stays an egg to the end, no defense anywhere, and mid's never comes within \
+100 of the point; crs, the power plant egg's button at the waypoint (CampUnpackCrsGo_mcp_1121_202104, 633 633 0 633): \
+the same, the egg never leaves (sim before A290 drove it there and unfolded the defense, 600 39108 492492 600)"""
+proves = """\
+sim named_buttons: an untargeted unpack press is a stop -- nothing unfolds, an unpack on its way is dropped; an \
+unpack button the egg's CommandSet lacks does nothing though its ReplaceSelf takes the same power"""
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = "frames > 500 and unit == frames and yard == 0 and name == frames"
+
+[[reading]]
+bench_id = "engine_unpack"
+id = "an_untargeted_mcv_unpack_press_unfolds_nothing"
+item = ["脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackAlliedMCV",
+        "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY:Command_UnPackJapanMCV"]
+scene = {build = "engine_unpack_nvl", check = "go", until = 40}
+each = [{build = "engine_unpack_nvl"}, {build = "engine_unpack_jpn"}]
+bench = """\
+NAMED_USE_COMMANDBUTTON_ABILITY(MCV, its unpack button) untargeted, standing: j04's AlliedMCV_Naval and s02's \
+JapanMCV (bench 11-23 CampUnpackNvlGo_mcp_1123_080608 s40 618 618 0 618 / CampUnpackJpnGo_mcp_1123_080739 s41 632 632 \
+0 632): the MCV stays an MCV to the end, no yard within 290 of it, as the egg (pin)"""
+proves = "sim named_buttons: an untargeted MCV unpack press unfolds nothing (the stop of pin)"
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = "frames > 500 and unit == frames and yard == 0 and name == frames"
+
+[[reading]]
+bench_id = "engine_unpack"
+id = "a_driving_mcv_pressed_the_yards_pack_button_at_a_waypoint_drives_on"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_PackJapanMCV"
+scene = {build = "engine_unpack_jpk", check = "go", until = 41}
+bench = """\
+s02's escape: JapanMCV ordered 400 east at 1 s, 1 s on NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT(it, \
+Command_PackJapanMCV, the point) -- a yard's button, not in the MCV's CommandSet (bench 11-23 \
+CampUnpackJpkGo_mcp_1123_081035, s41 630 510630 0 630): the press changes nothing, the MCV drives on, within 100 of \
+the point from frame 120 (sim 114), no yard anywhere, the name kept"""
+proves = "sim named_buttons: a pack button the unit's CommandSet lacks does nothing, a move under way kept"
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = "unit % 1000 == frames and 105 <= frames - unit // 1000 <= 130 and yard == 0 and name == frames"
+
+[[reading]]
+bench_id = "engine_unpack"
+id = "a_power_plant_egg_unfolds_at_a_far_waypoint_as_the_bench"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanPowerPlantEgg"
+scene = {build = "engine_unpack_pwr", check = "go", until = 41}
+bench = """\
+NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT(egg, Command_UnPackJapanPowerPlantEgg, 400 east) (bench 11-21 \
+CampUnpackPwrGo_mcp_1121_123504, s41 632 28105 527 632): the egg drives there and is the plant on the point from frame \
+105 (sim 100), the name passed on; the plant never counted owned (场帧's thousands 0; sim counts it, not asserted)"""
+proves = "sim unpack at a waypoint: j08's power plant egg drives to the point, becomes the plant there, the name passes on"
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = ["95 <= unit % 1000 <= 115 and unit // 1000 > 0", "yard % 1000 == frames - unit % 1000", "name == frames"]
+
+[[reading]]
+bench_id = "engine_unpack"
+id = "barracks_refinery_factory_eggs_unfold_at_a_far_waypoint_as_the_bench"
+item = ["脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanBarracksEgg",
+        "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanRefineryEgg",
+        "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanWarFactoryEgg"]
+scene = {build = "engine_unpack_brk", check = "go", until = 41}
+each = [{build = "engine_unpack_brk"}, {build = "engine_unpack_ref"}, {build = "engine_unpack_fac"}]
+bench = """\
+NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT(egg, its own unpack button, 400 east), a07 / j08 / s07's barracks, \
+refinery and war factory eggs (bench 11-22 CampUnpackBrkGo_mcp_1122_064354 / CampUnpackRefGo_mcp_1122_064622 / \
+CampUnpackFacGo_mcp_1122_064854, s41 633 28105 528 633 / 632 28105 227527 632 / 631 28105 281526 631): as the power \
+plant egg, each drives there and is its building on the point from frame 105 (sim 100), the name passed on; the \
+owned count of the building holds for the refinery from frame ~405 and the war factory from ~350, never for the \
+barracks (sim counts each owned at once, not asserted)"""
+proves = "sim unpack at a waypoint: the barracks / refinery / war factory egg drives to the point, becomes its building there, the name passes on"
+let = {frames = "rows[-1]['帧数']", unit = "rows[-1]['车帧']", yard = "rows[-1]['场帧']", name = "rows[-1]['名字帧']"}
+expect = ["95 <= unit % 1000 <= 115 and unit // 1000 > 0", "yard % 1000 == frames - unit % 1000", "name == frames"]
