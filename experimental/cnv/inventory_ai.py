@@ -484,17 +484,12 @@ NOTES = {
         '友/敌MCV存活3/1。tests/test_simai_friendly_c.py::test_friendly_distance_target按名回放通过。'
         '仅验SAME_PLAYER、MCV、Distance、单槽StaticDefense；其他排序、默认关系、unique多槽仍INFERRED。'
         '旧E85远处双车的站位strict xfail保留，不由新配方解释；见work/re/c_friendly_distance_report.md'),
-    '启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest': (GUESSED,
-        'E84 engine_aiopathcond a：同JapanAntiAirShip仅切NORMAL深水/SUPERSONIC空中；'
-        '两组s22-s24均兵营1/电厂0，水组原始Island预测FAIL、空中PASS。'
-        'experimental/cnv/checks/engine_aiopathcond.readings.toml::path_locomotor_condition 读数核对实际计数，但不能区分条件生效与路径判定边界；'
-        'C复核：旧配方Surface未显式指定，SDK移动器差异不能独立证明实际路径可达性；'
-        'C断桥两组aipcland/aipcamph同模板切NORMAL地面/SUPERSONIC地面+水面：'
-        's22-24仍均兵营1/电厂0，s40-44控制车均存活未到岸，两栖阳性未建立。'
-        'experimental/cnv/checks/engine_aipathbanks.readings.toml独立断言控制读数；'
-        'D108/D175：开局f4抽签时未登记基地，启发early:nobase直接"判不了"、不看测试模板，'
-        'B217模拟器开局同样判不了，建筑选择各局按名回放通过——但这些局都没走到条件/移动器，'
-        '保持gap不晋升；见 work/re/c_pathbanks_report.md、c_pathcond_gate_report.md、d175_gap_b216.md'),
+    '启发条件/PathToTargetHeuristic.LocomotorConditionToUseForTest': (BENCHED,
+        'B 11-25 aipttn / aipttp a（missions/aiupgrade_bench.path_test）：aicupgon 的二级状态只挂一条 PathToTarget，'
+        '测试单位天狗；NORMAL（地面）ptt 行 path=1 res=1.0、s36 起 2 个二级持有；PANIC（天狗没这套）why=noloco res=0、'
+        '一直 0。断桥图上同一启发 NORMAL res=0、SUPERSONIC（空中）res=1（ptt 行），但那张图二级状态恒成立也不买，'
+        '计数器用不了。experimental/cnv/checks/engine_aiupgrade.readings.toml::a_state_s_path_test_asks_the_tester_s_set_for_the_written_condition '
+        '读数核对；模拟器按条件取那套移动方式。gap：开局在 f4 判不了（D108），非空中的其他条件面 INFERRED'),
     **{f'启发条件/{k}': (BENCHED,
         'E83 engine_aibuilding a：STRUCTURE空队列、现成基地1；PassIfBuilding=false时s40到陆厂4/在家0，'
         'true时0/4，两组PASS；experimental/cnv/checks/engine_aibuilding.readings.toml::is_building_idle 读数核对通过。'

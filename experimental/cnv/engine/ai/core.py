@@ -658,7 +658,9 @@ class Brain:
         with one); False when a spot is not found or the template has no locomotor for the condition (read, D175
         why=noloco; bench aiopath1 / aiopathr picked the PathExists="true" opening only because that draw is the
         early one below); else whether the simulator's grid of the template's surface joins the two spots.
-        cond: the simulator knows only NORMAL (INFERRED: same).
+        cond: the tester's LocomotorSet of that Condition (bench aipttn / aipttp, ptt rows: NORMAL the ground set, a
+        condition it has no set for why=noloco res 0; aiptta's SUPERSONIC the AIR set); a set on another surface than
+        AIR keeps NORMAL's (INFERRED).
         The opening draw ('make base', the AI's start not set yet) always gets None: on the bench the engine draws
         it at f4 before any base is registered and the heuristic returns "cannot judge" before it looks at the
         tester (D108 / D175 ptt rows why=early:nobase on aipathx, aipclandy; aiopwater and aiopath1 the same
@@ -677,6 +679,9 @@ class Brain:
             answer = None
         else:
             stats = simunits.stats(template, world.own) if template else {'speed': None}
+            if cond != 'NORMAL' and template:   # benches aipttp / aiptta (B 11-25): the set of the written condition
+                speed, surf = simunits.locomotor_of(template, world.own, cond)
+                stats = dict(stats, speed=speed, surface='air' if 'AIR' in surf else stats['surface'])
             if not stats.get('speed'):
                 answer = False                                   # read (D175 why=noloco): no locomotor -> no way
             else:
