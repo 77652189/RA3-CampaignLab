@@ -214,7 +214,7 @@ def set_unit_health_percentage_to_counter(sim, name, a, script):
         sim.used.add('health of the dead')
         if b.alive:                     # whole percent, rounded down (engine_garrison hp: 200 of 3000 reads 6)
             sim.counters[a[1]] = math.floor(b.health + 1e-6)
-        elif not b.deleted and sim.t - b.died_at <= b.lies + 1e-9:
+        elif not b.deleted and sim.t - b.died_at <= b.linger + 1e-9:     # its death's lie (E228; review 1125 S)
             # still in the world, at 0: killed earlier this frame, or lying its SlowDeath's DestructionDelay out
             # (E161 engine_radardeath: the dish, 8 s, 0 at f374; engine_acts_jmn g: the conscript, 8.5 s, 0 from
             # s4). A NAMED_DELETE leaves the last value (engine_immortal b, bench 11-09, health 1 beside gone 1)
@@ -232,7 +232,7 @@ def set_player_ownership_of_type_counter(sim, name, a, script):
     want = sim.of_types(a[0])
     pool = sim.bodies.values() if name.endswith('INCLUDE_DEAD') else sim.living()
     sim.counters[a[2]] = sum(1 for b in pool if b.owner == a[1] and (b.alive or not b.deleted and sim.t - b.died_at
-                                                                        <= b.lies + 1e-9) and
+                                                                        <= b.linger + 1e-9) and
                               (b.template.lower() in want or simunits.equivalent_to(b.template, sim.own) in want)
                               and counted(b))
 

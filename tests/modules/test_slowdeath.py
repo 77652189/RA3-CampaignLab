@@ -69,6 +69,10 @@ def test_a_death_its_die_mux_takes_lies_the_delay_and_a_destroy_die_ends_it():
     s.world.kill(frozen, 'shattered')
     assert not crushed.alive and crushed.linger == 8.5 and s.dying(crushed) and s.present(crushed)
     assert (killed.linger, burned.linger, frozen.linger) == (8.5, slowdeath.LINGER, 0.0)
+    for b in (crushed, killed, burned, frozen):     # the dead counted by each death's own lie (review 1125 S)
+        b.kinds, b.died_at = b.kinds | {'SELECTABLE'}, s.t - 1.0
+    s.act('SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER_INCLUDE_DEAD', ['CNV_TestGuy', 'Player_1', 'D'], None)
+    assert s.counters['D'] == 2
     crushed.died_at = killed.died_at = frozen.died_at = s.t - 8.6                 # past the lie
     assert not s.dying(crushed) and not s.present(crushed) and not s.present(killed)
     crushed.died_at, frozen.died_at = s.t - 8.4, s.t - 0.1
