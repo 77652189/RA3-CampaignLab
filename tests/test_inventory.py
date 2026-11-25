@@ -146,7 +146,7 @@ def named_missing(src):
         return None
     name = re.match(r'[A-Za-z0-9_]*', name)[0]
     text = open(full, encoding='utf-8').read()
-    pattern = rf'^id = "{re.escape(name)}"$' if path.endswith('.readings.toml') else rf'^def {re.escape(name)}\('
+    pattern = rf'^id = "{re.escape(name)}"$' if path.endswith('readings.toml') else rf'^def {re.escape(name)}\('
     return None if re.search(pattern, text, re.M) else f'no {name} in {path}'
 
 
@@ -184,7 +184,7 @@ def prose_missing(text, root=ROOT):
             continue
         if not name:
             continue
-        found = re.findall(r'^id = "([^"]+)"$' if path.endswith('.readings.toml') else r'^def (\w+)\(',
+        found = re.findall(r'^id = "([^"]+)"$' if path.endswith('readings.toml') else r'^def (\w+)\(',
                            open(full, encoding='utf-8').read(), re.M)
         if not any(f == name or (star and f.startswith(name)) for f in found):
             missing.append(f'no {name} in {path}')
