@@ -25,6 +25,7 @@ TAGS = ('SpecialPower', 'OCLSpecialPower', 'MovementSpecialPower', 'DominateEnem
 FPS = 15                        # the game's logic frames a second (bench 2026-10-28, probe align)
 ASSIGN = 'AssignSlavesTargetObjectSpecialPower'     # its own class below (AssignSlaves: a SpecialPower with a dispatch)
 REPAIR_BITS = frozenset({'TARGETED_FOR_REPAIR', 'UNDERGOING_REPAIR'})   # the repair drone's ParentStatus(Attached)
+SURVEY, PHASE = 20, 2       # the repair drone's pulse, attach.py's SURVEY / PHASE (module files import none other)
 RECALL = 'RecallUnitsSpecialPower'                  # its own class below (RecallUnits: whom a cast calls home)
 RETURN = 'ReturnToProducerSpecialPower'             # its own class below (ReturnToProducer: a plane flies home)
 DOMINATE = 'DominateEnemySpecialPower'              # its own class below (DominateEnemy: whom a cast takes)
@@ -236,18 +237,18 @@ class AssignData(SpecialPowerData):
 @factory.module(ASSIGN)
 class AssignSlaves(SpecialPower, interfaces.Assign, interfaces.Update):
     """AssignSlavesTargetObjectSpecialPower (step M13; E67, moved from simassign.Assignments' store and due): a
-    SpecialPower with a dispatch. The host (simassign.Assignments.press: which press, which target, the rate from the
-    retail repair drone's PassiveAreaEffectBehavior) assigns; then in the assignments cell it mends the target rate / 15
-    a frame until whole, and stops -- a gap noted -- once anything moves: either dies, the owners differ, no drone of
-    its SpawnBehaviors lives, either moves, or the target's health is changed by anything else (a conservative stop,
-    INFERRED). Asleep without a target. Its state was a store's, never in the frame record: RECORDED names none."""
+    SpecialPower with a dispatch. The host's press (simassign.Assignments.press) sends an idle drone of its (E235 c /
+    d: it flies, attach.Attach.send); with all of them busy it assigns here (E181: the fourth from the press on, the
+    three kept busy -- a fourth drone of no flight, INFERRED). Then in the assignments cell it mends the target on the
+    drones' pulse (SURVEY / PHASE: rate x 20 / 15 a pulse) until whole, and stops -- a gap noted -- once anything
+    moves: either dies, the owners differ, no drone of its SpawnBehaviors lives, either moves, or the target's health
+    is changed by anything else (a conservative stop, INFERRED). Asleep without a target. Its state was a store's, never in the frame record: RECORDED names none."""
     DATA = AssignData
     PHASE = 'assignments'
     STATE = ('ready', 'tgt', 'rate', 'last', 'spots')
     RECORDED = ()
-    ALIGN = {'assigned repair': '部分对齐：显式单目标派无人机治疗（E67 原版 AlliedWarFactoryRepairDrone 的 '
-                                'PassiveAreaEffectBehavior 每秒治疗量）；自动获取、前三目标占用、换父/换目标/状态清理未模拟，'
-                                '启动相位与中断即停为 INFERRED'}
+    ALIGN = {'assigned repair': '部分对齐：无人机全忙时显式派发从按下起按无人机脉冲治疗（E181 第四台）；'
+                                '"第四架、不飞"与中断即停为 INFERRED'}
     tgt = None          # the thing it heals; None: none
     rate = 0.0          # its heal a second
     last = 0.0          # the target's health after its last mend (or at the dispatch)
@@ -282,9 +283,10 @@ class AssignSlaves(SpecialPower, interfaces.Assign, interfaces.Update):
                 or abs(t.hp - self.last) > 1e-6):
             self.world.gap(ASSIGN, 'interrupted', '移动、死亡、换主或外部血量变化后的派发边界未测；保守停止为INFERRED')
             return self._stop()
-        t.mend(self.rate / FPS)
-        self.last = t.hp
-        self.world.used.add('assigned repair')
+        if frame % SURVEY == PHASE:
+            t.mend(self.rate * SURVEY / FPS)
+            self.last = t.hp
+            self.world.used.add('assigned repair')
         if t.hp >= t.max_hp:
             return self._stop()
         return 1

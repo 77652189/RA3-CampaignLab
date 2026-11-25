@@ -15,7 +15,7 @@ owner within Range of its slaver that no other drone or AssignSlaves dispatch me
 it TARGETED_FOR_REPAIR, after InitialAttachDelay plus the straight flight at SPEED attaches (the
 parent UNDERGOING_REPAIR, the drone ATTACHED, riding it), mends it its PassiveAreaEffectBehavior's
 HealingPointsPerSecond once a SurveyDelayFrames (20: 26.7 HP a pulse, E235 d) and lets go -- both statuses cleared -- once it is whole, dead, another owner's or out of Range
-of the slaver. The flight (no acceleration), a scan every frame, nearest as the best parent and the owner alone for
+of the slaver. An AssignSlaves press sends an idle one the same way (send). The flight (no acceleration), a scan every frame, nearest as the best parent and the owner alone for
 ALLIES are INFERRED."""
 import math
 import re
@@ -134,6 +134,15 @@ class Attach(module.Module, interfaces.Attach, interfaces.Update):
                 and 'NOT_IN_WORLD' not in p.status
                 and math.hypot(p.x - home.x, p.y - home.y) - p.radius <= self.data.repair['range'])
 
+    def send(self, p):
+        """Fly to and mend `p` (an AssignSlaves press: E235 c / d) as if its scan had found it; False: not an idle
+        repair drone."""
+        if not self.data.repair or self.held is not None or not self.thing.alive:
+            return False
+        self.held, self.on, self.due = p, False, None
+        p.status.add('TARGETED_FOR_REPAIR')
+        return True
+
     def _let_go(self):
         self.held.status.difference_update({'TARGETED_FOR_REPAIR', 'UNDERGOING_REPAIR'})
         self.thing.status.discard('ATTACHED')
@@ -170,10 +179,9 @@ class Attach(module.Module, interfaces.Attach, interfaces.Update):
             p = self._choose(home)
             if p is None:
                 return 1
-            self.held, self.on = p, False
-            p.status.add('TARGETED_FOR_REPAIR')
-            fly = math.hypot(p.x - d.x, p.y - d.y) / SPEED
-            self.due = frame + rule['delay'] + math.ceil(fly * FPS)
+            self.send(p)
+        if self.due is None:
+            self.due = frame + rule['delay'] + math.ceil(math.hypot(p.x - d.x, p.y - d.y) / SPEED * FPS)
         if not self.on:
             if frame < self.due:
                 return 1

@@ -4,7 +4,8 @@
 id = "the_commanded_fourth_heals_and_the_control_stays"
 scene = {build = "engine_assignrace", check = "b", until = 25}
 bench = "E181 (engine_assignrace:b, frozen at script frame 360): 脚本帧 360, 指定目标血量 70, 对照目标血量 20"
-proves = "物体模块 AssignSlavesTargetObjectSpecialPower: the retail repair bay's command sends a drone to the fourth vehicle (480 HP, 20 HP/s from f180); the lane without the module leaves it at 20%"
+proves = "物体模块 AssignSlavesTargetObjectSpecialPower: with the bay's three drones busy, the command heals the fourth vehicle from the press (480 HP, 9 pulses of 26.7 by f360: from f182 at the latest, no flight); the lane without the module leaves it at 20%"
+item = "物体模块 Behaviors/AssignSlavesTargetObjectSpecialPower"
 expect = ["counter('E181Frame') == 360", "counter('E181On') == 70", "counter('E181Off') == 20"]
 
 [[reading]]
@@ -56,11 +57,20 @@ expect = ["win(24, 24, 'on fourth HP')[0] > 20", "win(13, 24, 'off fourth HP') =
 [[reading]]
 id = "frames_from_the_damage_to_the_drone_and_its_heal"
 scene = {build = "engine_assignon", check = "c", until = 30}
+each = [{build = "engine_assignon"}, {build = "engine_assignoff"}]
+item = "物体模块 Behaviors/AssignSlavesTargetObjectSpecialPower"
+bench = "E235 (CampAssignOnC_mcp_1125_042320 / CampAssignOffC_mcp_1125_042158): 血量240 47 / 47, 血量390 92 / 92"
+proves = "AttachUpdate (BaseRepairDrone) and AssignSlaves: the commanded drone flies and mends like the uncommanded one; HP read on script frames, not capture seconds"
+expect = ["counter('E235A') == 47", "counter('E235B') == 92"]
+
+[[reading]]
+id = "frames_from_the_damage_to_the_drone"
+scene = {build = "engine_assignon", check = "c", until = 30}
 each = [{build = "engine_assignon", wait = 16}, {build = "engine_assignoff", wait = 18}]
-bench = "E235 (CampAssignOnC_mcp_1125_042320 / CampAssignOffC_mcp_1125_042158): 等待帧 on 16 / off 18, 血量240 47 / 47, 血量390 92 / 92"
-proves = "AttachUpdate (BaseRepairDrone) and AssignSlaves: the commanded drone flies too; HP read on script frames, not capture seconds"
-expect = ["counter('E235Wait') == wait", "counter('E235A') == 47", "counter('E235B') == 92"]
-mismatch = "sim on 2 / 53 / 95 (the dispatch heals from the press, no flight), off 23 / 47 / 92: the off drone attaches 5 frames late (flight); the heal is pulsed (check d)"
+bench = "E235 (same runs): 等待帧 on 16 / off 18"
+proves = "AttachUpdate (BaseRepairDrone): frames from the damage (and press) until the target reads UNDERGOING_REPAIR"
+expect = "counter('E235Wait') == wait"
+mismatch = "sim on 23 / off 23: the drone attaches 5-7 frames late (hypothesis 3 in handoff-e: InitialAttachDelay or the flight speed)"
 
 [[reading]]
 id = "the_drone_mends_once_a_survey"
@@ -74,5 +84,5 @@ id = "the_commanded_drone_mends_in_the_same_pulses"
 scene = {build = "engine_assignon", check = "d", until = 42}
 bench = "E235 d (CampAssignOnD_mcp_1125_052018): the same 15 steps of 480/18 from f142 (attached f136 after the press at f120), full by f423"
 proves = "AssignSlavesTargetObjectSpecialPower: the commanded target is mended by a drone like the uncommanded one"
+item = "物体模块 Behaviors/AssignSlavesTargetObjectSpecialPower"
 expect = "sorted(set(r['血量'] for r in rows)) == [20, 25, 31, 36, 42, 47, 53, 58, 64, 70, 75, 81, 86, 92, 97, 100]"
-mismatch = "sim: the dispatch mends 20/15 HP every frame from the press (no drone, no pulse): hypothesis 1 in handoff-e"

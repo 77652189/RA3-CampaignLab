@@ -354,7 +354,8 @@ class Slaved(Interface):
 
 class Attach(Interface):
     """AttachUpdate, several a thing (step M7): its module id (module_id) and the rule an AttachNugget naming it
-    sticks by (rule: {flags, range, child, parent}; False, a shape not modelled)."""
+    sticks by (rule: {flags, range, child, parent}; False, a shape not modelled); a repair drone's parent (repairing,
+    send)."""
     __slots__ = ()
 
     def module_id(self):
@@ -365,6 +366,10 @@ class Attach(Interface):
 
     def repairing(self):
         """The parent a repair drone's block flies to or mends; None."""
+        raise NotImplementedError
+
+    def send(self, parent):
+        """A repair drone holding none takes `parent` as its scan would; False: not one."""
         raise NotImplementedError
 
 
@@ -713,9 +718,9 @@ class Repair(Interface):
 
 class Assign(Interface):
     """AssignSlavesTargetObjectSpecialPower (step M13), a SpecialPower too: whether its block is the plain measured
-    shape (plain: no attribute but SpecialPowerTemplate, no inner text), the target it sends its drones to heal
-    (target: None, none), and a dispatch (assign: the target, the heal a second, the frame; held till the target is
-    whole, or anything moves)."""
+    shape (plain: no attribute but SpecialPowerTemplate, no inner text), the target it heals itself when no drone of
+    its is idle (target: None, none), and that dispatch (assign: the target, the heal a second; held till the target
+    is whole, or anything moves)."""
     __slots__ = ()
 
     def plain(self):
@@ -724,7 +729,7 @@ class Assign(Interface):
     def target(self):
         raise NotImplementedError
 
-    def assign(self, target, rate, frame):
+    def assign(self, target, rate):
         raise NotImplementedError
 
 

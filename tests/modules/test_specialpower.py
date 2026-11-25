@@ -147,17 +147,17 @@ def test_assign_reads_the_plain_shape_only():
     assert m in factory.find(interfaces.SpecialPower)
 
 
-def test_assign_mends_rate_a_second_till_whole_then_sleeps():
+def test_assign_mends_on_the_drones_pulse_till_whole_then_sleeps():
     from engine.kernel import interfaces
     w, source, m, target = _things()
     m.assign(target, 20.0)
     assert m.target() is target and w.woken == [m] and target.status == specialpower.REPAIR_BITS   # E66 110
-    for frame in range(15):
+    for frame in range(20):
         assert m.update(frame) == 1
-    assert target.hp == pytest.approx(420.0) and 'assigned repair' in w.used
+    assert target.hp == pytest.approx(400.0 + 20.0 * 20 / 15) and 'assigned repair' in w.used    # one pulse (f2)
     target.hp = 479.0
     m.last = 479.0
-    assert m.update(15) is interfaces.SLEEP and target.hp == 480.0 and m.target() is None and not w.gaps
+    assert m.update(22) is interfaces.SLEEP and target.hp == 480.0 and m.target() is None and not w.gaps
     assert not target.status
 
 
@@ -185,25 +185,31 @@ def test_assign_stops_once_anything_moves(disturb):
     assert w.gaps == [('AssignSlavesTargetObjectSpecialPower', 'interrupted')]
 
 
-def test_assign_press_keeps_its_first_target_and_one_dispatcher_a_target():
-    """The host's press (simassign): a second press of a dispatching factory does not retarget it, and a target
-    already healed by one is not given another (both unmeasured, deliberately not inferred)."""
+def test_the_press_sends_an_idle_drone_and_heals_the_fourth_itself():
+    """The host's press (simassign): E235 c / d, an idle drone of the factory flies to the target (attached later,
+    not at the press); E181, its three drones busy, the module heals the fourth itself. A target a drone already holds
+    is not given another (unmeasured, deliberately not inferred)."""
     import engine.testing.small as simsmall
     from engine.kernel import interfaces
     s = simsmall.small_world()
     one = s.add('one', 'AlliedWarFactory', 'Player_1', 300.0, 300.0)
-    two = s.add('two', 'AlliedWarFactory', 'Player_1', 300.0, 600.0)
-    a = s.add('a', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 350.0, 400.0)
-    b = s.add('b', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 350.0, 450.0)
-    a.set_hp(100.0, tell=False)
-    b.set_hp(100.0, tell=False)
-    assert one.spawned_children and two.spawned_children
-    assert s.assignments.press(one, 'Command_RepairVehicle', a)
+    two = s.add('two', 'AlliedWarFactory', 'Player_1', 300.0, 500.0)
+    hurt = [s.add(f'v{i}', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 350.0, 400.0 + 20 * i) for i in range(4)]
+    for v in hurt:
+        v.set_hp(100.0, tell=False)
     (m,) = one.find(interfaces.Assign)
-    assert m.target() is a
-    assert s.assignments.press(one, 'Command_RepairVehicle', b) and m.target() is a
-    (n,) = two.find(interfaces.Assign)
-    assert s.assignments.press(two, 'Command_RepairVehicle', a) and n.target() is None
+
+    def held(f):
+        return [h.name for d in f.spawned_children for a in d.find(interfaces.Attach) if (h := a.repairing())]
+    for v in hurt[:3]:
+        assert s.assignments.press(one, 'Command_RepairVehicle', v) and m.target() is None
+    assert sorted(held(one)) == ['v0', 'v1', 'v2']
+    assert s.assignments.press(two, 'Command_RepairVehicle', hurt[0]) and not held(two)
+    assert s.assignments.press(one, 'Command_RepairVehicle', hurt[3]) and m.target() is hurt[3]
+    s.advance(5)
+    assert not any('UNDERGOING_REPAIR' in v.status for v in hurt[:3])       # 0.25 s and the flight first
+    s.advance(25)
+    assert all('UNDERGOING_REPAIR' in v.status for v in hurt)
 
 
 def test_a_cast_at_the_nearest_needs_the_team_to_be_found():

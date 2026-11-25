@@ -3,8 +3,9 @@
 No drone parent is selected here. Autonomous acquisition, occupancy, retargeting
 and status cleanup remain gaps; see work/re/e_assign_e67.md.
 L2 heal (ADR 0029): `Assignments` holds the world and reaches it only through simworld.WORLD_API.
-Step M13: the dispatch and its healing are the source's AssignSlavesTargetObjectSpecialPower module's
-(engine/modules/specialpower.py AssignSlaves, the assignments cell); this keeps the press: which press, which target.
+Step M13 / E235: the press sends the source's nearest idle repair drone (engine/modules/attach.py send: it flies);
+with none idle the AssignSlavesTargetObjectSpecialPower module heals it (engine/modules/specialpower.py AssignSlaves,
+the assignments cell); this keeps the press: which press, which target.
 """
 import math
 
@@ -24,7 +25,7 @@ class Assignments:
         if not rate:
             return False
         world.gap('AssignSlavesTargetObjectSpecialPower', source.template,
-              '仅显式单目标治疗；自动获取、前三目标占用、换父/换目标/状态清理未测；启动相位INFERRED')
+              '派最近的空闲无人机、全忙时从按下起治疗（第四架）；换父/换目标/状态清理未测')
         if module.target() is not None:
             return True  # Retargeting is deliberately not inferred.
         if any(h is target for b in world.bodies.values() for h in
@@ -37,5 +38,7 @@ class Assignments:
                 and math.hypot(target.x - source.x, target.y - source.y) <= 200
                 and any(c.alive for c in source.spawned_children)):
             return True
-        module.assign(target, rate)
+        if not any(m.send(target) for c in sorted(source.spawned_children, key=lambda c: math.hypot(
+                c.x - target.x, c.y - target.y)) if c.alive for m in c.find(interfaces.Attach)):
+            module.assign(target, rate)     # E181: all drones busy (nearest idle one first: INFERRED)
         return True
