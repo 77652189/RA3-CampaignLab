@@ -345,7 +345,8 @@ def upgrade_items(inf):
             for st in (simunits._attr(head, 'StatusToSet') or '').split():
                 if st not in simunits.ACTING_BITS:
                     out.append(Item(inf.name, UPGRADE, f'{uid}:状态 {st}', f'StatusBitsUpgrade 设状态位 {st}，模拟器不管这个状态位'))
-        for tag in dict.fromkeys(re.findall(r'<(\w+Upgrade)\b', xml)):
+        # (not inside a comment: the retail power plant's copy carries a commented-out "no worky" block)
+        for tag in dict.fromkeys(re.findall(r'<(\w+Upgrade)\b', re.sub(r'<!--.*?-->', '', xml, flags=re.S))):
             if tag in READ_OR_VISUAL:
                 continue
             out.append(Item(inf.name, UPGRADE, f'{uid}:{tag}', f'升级模块 {tag}：模拟器不读'))

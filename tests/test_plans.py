@@ -222,6 +222,18 @@ def test_unattackable_and_sent_off():
     assert not parts.contract(parts.merged(m))
 
 
+def test_sent_off_there_first_then_attack():
+    """出动 with 先到 (A2's rockets up the overlook): moved there, and once one of them is inside it the 打 order for
+    them all (one script a unit), as a wave's 先到 does."""
+    m = small(开局={'部队': [{'单位': '帝国武士', '数量': 2, '在': 'north base', '阵营': '敌', '角色': 'guard'}]},
+              规则=[{'当': '开局', '做': [{'出动': 'guard', '先到': 'west field', '打': 'north base'}]}])
+    sent = named(m, 'CNV ZZ - Rule 1')[0].do
+    via = [s for s in m.scripts if ' - Via ' in s.name]
+    assert sent[-1][0] == 'MOVE_TEAM_TO' and len(via) == 2
+    assert [s.when[0][:2] for s in via] == [('NAMED_INSIDE_AREA', f'UNIT - CNV ZZ guard {j}') for j in (1, 2)]
+    assert via[0].do[-1][0] == 'ATTACK_MOVE_TEAM_TO' and via[0].do[-1] != sent[-1]
+
+
 def test_an_enemy_ai_of_the_levels_own():
     """敌方AI: a player of its own beside 敌 (the first the plan leaves free), the enemy's faction with a generated
     personality (the co-op skirmish base, the style's moves and states, no taunts), 敌's ally and the player's

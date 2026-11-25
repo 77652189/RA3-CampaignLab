@@ -1,8 +1,8 @@
 """A2 checks (the plan's, docs/story/plans/a2.md; the map maps/blackcanyon.py, its bench questions checks/blackcanyon.py).
 
 win: the whole run at 1/20 of its time (every timer the plan sets is cut to a twentieth: the four phases are 9 s
-  each), the dam kept the last phase's three minutes: the goal completes, the mission is won (ended, and no lost
-  flag). The waves fire at the same fast pace but have the length of their roads to walk (the nearest, the Hammers
+  each), the east mouth's rocket cars razed by test script once the last phase has begun and the dam kept its three
+  minutes: both goals complete, the mission is won (ended, and no lost flag). The waves fire at the same fast pace but have the length of their roads to walk (the nearest, the Hammers
   down US-93, is half a minute off when the win comes); the player's part (what to send against which wave) is the
   live play's.
 lose: two of the dam's three sections razed by test script: the mission ends lost ("the dam fell"), the lost flag
@@ -13,7 +13,8 @@ from parts import Script, Test
 
 SCALE = 20.0
 PHASE = 180.0 / SCALE                      # one phase of the plan: 3:00
-WON_AT = 4 * PHASE                         # the last phase's 3:00 (the bench's seconds start a little after the mission's)
+RAZE_AT = 3 * PHASE + 4.0                  # the last phase has begun (the bench's seconds start a little after the mission's)
+WON_AT = 4 * PHASE                         # the last phase's 3:00
 WIN_BY = WON_AT + 14.0
 FIRST, SECOND = 8.0, 10.0
 LOSE_BY = SECOND + 14.0
@@ -29,6 +30,8 @@ def win(m):
     for s in m.scripts:
         s.do = [(a[0], a[1], a[2] / SCALE) if a[0] == 'SET_MILLISECOND_TIMER' else a for a in s.do]
     t = Test()
+    for k, r in enumerate(m.roles('rocket')):
+        raze(t, r.name, k, RAZE_AT + 0.5 * k)
     lost_counter(t)
     # the counters vanish when the mission ends: the lost flag can only be read before the end
     t.expect += [('输了', 0, '==', 0, WON_AT - 2), ('ENDED', WIN_BY, '', None)]

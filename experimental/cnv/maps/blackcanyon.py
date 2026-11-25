@@ -170,7 +170,7 @@ SHAPES = [
 ]
 RAMPS = [
     Ramp((2560, 2880), (2380, 2840), 120, 'the powerhouse catwalk road down the west wall'),
-    Ramp((2985, 2910), (2775, 2910), 110, 'the boat slip: amphibians climb onto the ledge'),
+    Ramp((2985, 2910), (2700, 2910), 110, 'the boat slip: amphibians climb onto the ledge'),  # (2775 ended in the edge's cliff)
     Ramp((1260, 4100), (860, 4100), 300, 'Boulder Beach: the lake landing behind the camp'),
     Ramp((3640, 2740), (3430, 2790), 120, 'the overlook track (its one way up)'),
     Ramp((4200, 3960), (4640, 3960), 200, 'the station jetty: hovercraft land the raid'),
