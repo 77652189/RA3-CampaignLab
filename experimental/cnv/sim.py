@@ -1961,19 +1961,12 @@ class Sim:
     def attachment_tick(self):
         """engine_attach a: teleport the child and keep it with its moving parent.
 
-        engine_attach_parent a confirms a script-killed simple parent leaves
-        its child alive and clears the link. engine_attach_child a confirms
-        script-killing the simple child clears VEHICLE_ATTACHED on its living
-        parent (ENCLOSED/UNATTACKABLE fixture). engine_attach_child_delete a
-        confirms the same survivor status after NAMED_DELETE of that child.
-        engine_attach_parent_delete a confirms its surviving child clears
-        ATTACHED/ENCLOSED/UNATTACKABLE after NAMED_DELETE of the parent.
-        Other child-status combinations and deletion without a survivor remain gaps;
-        no detach/leech/repair contract is claimed.
-        Extending these script-kill results to other lethal causes is INFERRED;
-        a dead parent's queried status does not reveal its internal bits.
-        AttachedObjectStatus never gives NO_COLLISIONS (engine_attach_nocoll n).
-        Attachment status has its own owner so ordinary
+        engine_attach_parent a: a script-killed simple parent leaves its child alive, the link cleared (the retail
+        Terror Drone's dies with it: engine_attachterror a). engine_attach_child a / _child_delete a: killing or
+        deleting the simple child clears VEHICLE_ATTACHED on its living parent; engine_attach_parent_delete a: the
+        surviving child of a deleted parent clears ATTACHED/ENCLOSED/UNATTACKABLE. Other status combinations,
+        deletion without a survivor, detach/leech/repair are gaps; other lethal causes INFERRED. AttachedObjectStatus
+        never gives NO_COLLISIONS (engine_attach_nocoll n). Attachment status has its own owner so ordinary
         modifier recalculation cannot erase it or pollute script-set bits.
         """
         if not self.attachments and not self._attachment_marked:
@@ -1982,6 +1975,9 @@ class Sim:
         for key, (child, parent, rule) in list(self.attachments.items()):
             if not child.alive or not parent.alive:
                 del self.attachments[key]
+                if (rule.get('die_with_parent') and child.alive and not parent.alive and not parent.deleted
+                        and parent.last_by != child.name):  # engine_attachterror a: NAMED_KILL (cause INFERRED)
+                    self.world.kill(child, '附着的父对象被别人杀死')
                 measured_delete = (rule['child'] == {'ATTACHED', 'ENCLOSED', 'UNATTACKABLE'}
                                    and rule['parent'] == {'VEHICLE_ATTACHED'}
                                    and ((child.deleted and parent.alive)

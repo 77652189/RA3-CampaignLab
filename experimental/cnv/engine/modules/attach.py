@@ -35,24 +35,45 @@ REPAIR = dict(CloseEnoughRange='20.0', InitialAttachDelay='0.25s', ParentStatusT
                   'USE_GEOMETRY DETACH_WHEN_PARENT_HEALED'.split()))
 REPAIR_KIDS = [('ObjectFilter', dict(Rule='ANY', Include='VEHICLE AIRCRAFT HUGE_VEHICLE',
                                      StatusBitFlagsExclude='NOT_IN_WORLD', Relationship='ALLIES'), 0)]
+# the retail Terror Drone's block (SovietScoutVehicle; engine_attachterror a): attaches like the simple shape and its
+# child dies with a parent killed by another (a script's NAMED_KILL). Bounce, unmanned detach, the forbidden-status death
+# and the parent's own INTERNAL_DESTRUCTION are not modelled (the rule's flags keep them; INFERRED / gap)
+TERROR = dict(ParentStatus='VEHICLE_ATTACHED BOOBY_TRAPPED', CloseEnoughRange='5', Range='10',
+              AttachedObjectStatus='IGNORE_AI_COMMAND ENCLOSED NON_AUTOACQUIRABLE UNATTACKABLE',
+              AttachedModelConditions='HIDDEN', Flags=frozenset(
+                  'ONE_ATTACH_PER_PARENT STICK_TO_PARENT ADD_BOUNCE_TO_PARENT DIE_WHEN_PARENT_HAS_FORBIDDEN_STATUS '
+                  'DIE_WHEN_PARENT_DIES_FROM_NOT_ME TELEPORT DETACH_WHEN_PARENT_UNMANNED'.split()),
+              ParentDeathTypeToListenFor='INTERNAL_DESTRUCTION', ParentOwnerAttachmentEvaEvent='UnitInfected',
+              ForbiddenParentStatus='UNDERGOING_REPAIR', IgnoreForbiddenParentStatusStatus='UNDER_IRON_CURTAIN',
+              BounceTimeout='0.5s')
+TERROR_KIDS = [('ObjectFilter', dict(Rule='ANY', Include='VEHICLE', Relationship='ENEMIES ALLIES NEUTRAL'), 0)]
 PARENT_KINDS = frozenset({'VEHICLE', 'AIRCRAFT', 'HUGE_VEHICLE'})
 FPS = 15
 SPEED = 150.0       # BaseRepairDrone's LocomotorSet Speed: REPAIR's only retail user (another drone's: INFERRED)
 
 
-def _repair(head, inner):
-    """The retail repair drone's block: {range, delay (frames)}; None for any other."""
+def _native(head, inner, want, kids, keep=()):
+    """The block's attributes (Flags a set, `keep` popped first) if it is `want` with the children `kids`; else None."""
     try:
         node = ET.fromstring('<AttachUpdate ' + head + '>' + inner + '</AttachUpdate>')
     except ET.ParseError:
         return None
     attrs = dict(node.attrib)
     attrs.pop('id', None)
-    rng = templates.num(attrs.pop('Range', None))
+    kept = {k: attrs.pop(k, None) for k in keep}
     attrs['Flags'] = frozenset(attrs.get('Flags', '').split())
-    if attrs != REPAIR or [(c.tag, dict(c.attrib), len(c)) for c in node] != REPAIR_KIDS:
+    if attrs != want or [(c.tag, dict(c.attrib), len(c)) for c in node] != kids:
         return None
-    return dict(range=rng, delay=math.ceil(templates.secs(REPAIR['InitialAttachDelay']) * FPS - 1e-6))
+    return {**attrs, **kept}
+
+
+def _repair(head, inner):
+    """The retail repair drone's block: {range, delay (frames)}; None for any other."""
+    attrs = _native(head, inner, REPAIR, REPAIR_KIDS, keep=('Range',))
+    if attrs is None:
+        return None
+    return dict(range=templates.num(attrs['Range']),
+                delay=math.ceil(templates.secs(REPAIR['InitialAttachDelay']) * FPS - 1e-6))
 
 
 class AttachData(module.ModuleData):
@@ -66,6 +87,13 @@ class AttachData(module.ModuleData):
         repair = _repair(head, inner)
         if repair:
             return cls(templates.attr(head, 'id'), False, repair)
+        if _native(head, inner, TERROR, TERROR_KIDS):
+            return cls(templates.attr(head, 'id'), dict(
+                # range None: no gate at the hit -- the bench's drone dispatches at its weapon's 25 past the parent's
+                # edge (49 centre to centre) and attaches; whether Range 10 gates a closer hit is unread (INFERRED)
+                flags=set(TERROR['Flags']), range=None, die_with_parent=True,
+                child=set(TERROR['AttachedObjectStatus'].split()) | {'ATTACHED'},
+                parent=set(TERROR['ParentStatus'].split())))
         flags = set(templates.attr(head, 'Flags', 'STICK_TO_PARENT TELEPORT USE_GEOMETRY').split())
         if (inner.strip() or not FLAGS <= flags or flags - FLAGS - MORE_FLAGS
                 or set(re.findall(r'(\w+)\s*=', head)) - ATTRS):

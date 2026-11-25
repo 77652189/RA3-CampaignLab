@@ -226,7 +226,7 @@ def read(blocks):
 
 def armed(weapon):
     """A resolved weapon (simunits._resolve's dict) that can hurt (damage, a second damage, a DOT, a lift or a hook) and
-    reach (range > 0): a gun; the target painter is not one."""
+    reach (range > 0): a gun (an attach too: engine_attachterror a); the target painter is not one."""
     return bool(weapon and (weapon['dps'] > 0 or weapon.get('sdps', 0) > 0 or weapon.get('dot') or weapon.get('lift')
-                            or weapon.get('grapple'))
+                            or weapon.get('grapple') or weapon.get('attach'))
                 and weapon['range'] > 0)

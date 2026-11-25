@@ -647,17 +647,22 @@ def _weapons(texts, base_table=None):
             attachments = []
             for h, inner in _blocks(bare, 'AttachNugget'):
                 filters = list(_blocks(inner, 'SpecialObjectFilter'))
-                if (re.sub(r'<SpecialObjectFilter\b[^>]*/>', '', inner).strip() or len(filters) > 1
+                f, fi = filters[0] if filters else ('', '')
+                rest = re.sub(r'<SpecialObjectFilter\b.*?(?:/>|>.*?</SpecialObjectFilter>)', '', inner, flags=re.S)
+                if (rest.strip() or len(filters) > 1
                         or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'AttachModuleId', 'ForbiddenTargetObjectStatus', 'Radius'}
                         or _num(_attr(h, 'Radius', '0'), float('nan')) != 0
-                        or (filters and (filters[0][1].strip() or _attr(filters[0][0], 'Rule', 'ANY') != 'ANY'
-                            or set(re.findall(r'(\w+)\s*=', filters[0][0])) - {'Rule', 'Include', 'Exclude'}))):
+                        or re.sub(r'<ExcludeThing>\s*[^<>\s]+\s*</ExcludeThing>', '', fi).strip()
+                        or _attr(f, 'Rule', 'ANY') != 'ANY'
+                        or set(re.findall(r'(\w+)\s*=', f)) - {'Rule', 'Include', 'Exclude', 'Relationship'}):
                     unsupported.append('AttachNugget')
-                else:
-                    f = filters[0][0] if filters else ''
+                else:   # Relationship / ExcludeThing: the retail Terror Drone's filter (engine_attachterror a)
                     attachments.append(dict(module=_attr(h, 'AttachModuleId'),
                                             forbidden=_attr(h, 'ForbiddenTargetObjectStatus', '').split(),
-                                            include=_attr(f, 'Include', '').split(), exclude=_attr(f, 'Exclude', '').split()))
+                                            include=_attr(f, 'Include', '').split(), exclude=_attr(f, 'Exclude', '').split(),
+                                            relation=_attr(f, 'Relationship', '').split(),
+                                            things=[t.lower() for t in re.findall(
+                                                r'<ExcludeThing>\s*([^<>\s]+)\s*</ExcludeThing>', fi)]))
             if attachments:
                 got['attach'] = attachments
             contained = []

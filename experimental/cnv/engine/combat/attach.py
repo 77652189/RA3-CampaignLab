@@ -20,9 +20,12 @@ class Attach:
     def apply(self, context, effects):
         t, by, host = context.target, context.by, context.host
         for effect in effects:
+            relation = {r.rstrip('S') for r in effect.get('relation', ())}
             if (set(effect['forbidden']) & t.status
                     or (effect['include'] and not set(effect['include']) & t.kinds)
-                    or set(effect['exclude']) & t.kinds):
+                    or set(effect['exclude']) & t.kinds
+                    or effect.get('things') and t.template.lower() in effect['things']
+                    or relation and context.world.relation(by.owner, t.owner).rstrip('S') not in relation):
                 continue
             rule = by.attachment_rules.get(effect['module'])
             if not rule or context.weapon.get('projectile') or context.n != 1:
@@ -35,7 +38,7 @@ class Attach:
             if by is t or t.serial in chains or by.serial in chains:
                 context.gap('AttachNugget', '重复、换父与嵌套附着未对拍')
                 continue
-            if math.hypot(t.x - by.x, t.y - by.y) > rule['range']:
+            if rule['range'] is not None and math.hypot(t.x - by.x, t.y - by.y) > rule['range']:
                 context.gap('AttachNugget', 'AttachUpdate距离边界未对拍')
                 continue
             if 'ONE_ATTACH_PER_PARENT' in rule['flags'] and any(p is t for _, p, _ in chains.values()):

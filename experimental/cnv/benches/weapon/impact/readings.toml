@@ -83,3 +83,12 @@ bench = "CampLiftAirA_mcp_1116_142206: the order lane (crewed AlliedBaseDefense)
 proves = "the turret's one hardpoint holds the ground crush as PRIMARY and the anti-air one as SECONDARY under the same upgrade: the game takes the SECONDARY line against a plane"
 expect = "vals(rows)[-1][2] == 100"
 mismatch = "sim 110 (pick_weapons holds one line a slot, the PRIMARY ground crush, so the turret never fires at the plane; a slot's weapon choice by target is not modelled); bench 100"
+
+[[reading]]
+bench_id = "engine_attachterror"
+id = "native_terror_attaches_and_dies_with_a_script_killed_parent"
+scene = {build = "engine_attachterror", check = "a", until = 24, shot_clock = true}
+bench = "CampAttTerrorA_mcp_1115_225900: s14-s20 = 127000 / 127000 / 3000 / 3000, s20-s31 = 127007 / 127000 / 3006 / 3002 (work/re/c_attachterror_report.md)"
+proves = "the retail Terror Drone's melee AttachNugget (Relationship / ExcludeThing filter) with its whole retail AttachUpdate block (engine/modules/attach.py TERROR): attached, the child ATTACHED / ENCLOSED / UNATTACKABLE and the parent VEHICLE_ATTACHED / BOOBY_TRAPPED; a script-killed parent takes the child with it (DIE_WHEN_PARENT_DIES_FROM_NOT_ME, Sim.attachment_tick); the deleted-nugget lanes never attach"
+item = "武器效果 AttachNugget:恐怖机器人近战"
+expect = ["any(v == [127000, 127000, 3000, 3000] for t, v in zip(times, vals(rows)) if 14 <= t < 16)", "vals(rows)[-1] == [127007, 127000, 3006, 3002]"]
