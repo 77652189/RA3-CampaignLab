@@ -42,5 +42,5 @@ class ChargeWeapon(module.Module, interfaces.Create, interfaces.Charge):
     def spend(self, t, idle_since):
         idle = t - (self.made if idle_since is None else idle_since)
         d = self.data
-        cut = min(1.0, idle / d.charge) if d.charge > 0 else 1.0
+        cut = min(1.0, max(0.0, idle / d.charge)) if d.charge > 0 else 1.0     # before LATE: none (review 109 #3)
         return cut, 1.0 + d.percent if idle >= d.charge + d.over - 1e-6 else 1.0

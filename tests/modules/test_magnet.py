@@ -20,3 +20,7 @@ def test_the_black_hole_draws_a_shooter_within_its_radius_while_on(on, gap, draw
     assert s.commands.do(Command('attack', units=('hammer',), target='vip')) == (True, '')
     s.advance(1)
     assert (s.bodies['hammer'].goal is s.bodies['ship']) is drawn
+    if on:              # turned off: back on the VIP (review 109 #1)
+        assert simtoggle.press(s, s.bodies['ship'], 'Command_ToggleMagneticArmor', lambda owner: False)
+        s.advance(1)
+        assert s.bodies['hammer'].goal is s.bodies['vip']

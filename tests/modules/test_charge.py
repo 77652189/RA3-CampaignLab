@@ -5,6 +5,7 @@ Sim.shots_due)."""
 from test_plans import small  # noqa: F401,I001  (tests/ is on the path by its conftest; puts experimental/cnv on it)
 import pytest  # noqa: E402
 
+from engine.kernel import interfaces  # noqa: E402
 from engine.modules import weaponset  # noqa: E402
 
 
@@ -23,6 +24,11 @@ def test_an_idle_tower_cuts_its_pre_attack_by_its_charge_and_hits_harder_overcha
     #                                                 starts 13 frames after the making)
     assert weaponset.boost(b, w) == pytest.approx(factor)
     assert weaponset.boost(b, w) == 1.0             # spent by the first volley
+
+
+def test_an_attack_before_the_charge_starts_cuts_nothing():
+    s, b, w = _tower(0.0)       # 13 frames before the first charge: no cut, not a longer wait (review 109 #3)
+    assert b.find(interfaces.Charge).spend(0.0, None) == (0.0, 1.0)
 
 
 def test_the_charge_runs_from_the_last_cycles_end_not_the_making():

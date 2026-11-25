@@ -164,15 +164,16 @@ def armor_scalar(victim, damage_type):
             simunits.percent(victim.armor, damage_type) / 100.0 * victim.taken)
 
 
-def mend(world, dt):
+def mend(world, dt, fires):
     """A HEALING gun (ABD_RepairWeapon, the engineer's in a multigunner turret: Garrisons.secondary) mends the nearest
     hurt friendly ground vehicle in its reach by its rate x the armor's HEALING percent. Bench engine_secondrep_e r: a
     Guardian 40 off from 50 to 100 % in about 7 s (37.5 a second), one 150 off and an empty turret's do not.
-    INFERRED: the nearest first, its AttributeModifier_UnderRepair, REPAIR_ALLIES_WHEN_IDLE (fights before mending?)."""
+    INFERRED: the nearest first, its AttributeModifier_UnderRepair, REPAIR_ALLIES_WHEN_IDLE (fights before mending?).
+    A host that may not fire (`fires`, deal's test: NO_ATTACK, EMP, an infiltrator's block) mends nothing (review 109 #2)."""
     live = world.living()
     for a in live:
         for w in a.weapons:
-            if w.get('type') != 'HEALING':
+            if w.get('type') != 'HEALING' or not fires(a):
                 continue
             hurt = [t for t in live if t is not a and t.hp < t.max_hp and 'VEHICLE' in t.kinds
                     and t.surface != 'air' and world.relation(a.owner, t.owner) == 'ALLIES' and in_range(a, t, w)]
@@ -401,17 +402,16 @@ class Damage:
         # the shooter. Keep its order; expiry lets fight select it again.
         # Existing-order evidence: work/re/d50_scramble_expiry3.md.
         # INFERRED: exact within-tick stop phase; the bench has coarse snapshots.
+        def fires(by):          # the repair gun's too (mend; review 109 #2)
+            return by.alive and 'NO_ATTACK' not in by.status and not peers.emp_disabled(by) and \
+                not peers.infiltrators.attack_blocked(by)
         for t, rate, by in peers.firing:
-            if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not peers.emp_disabled(by)
-                    and not peers.infiltrators.attack_blocked(by)
-                    and world.t >= weaponset.gate(by, t) - 1e-9):
+            if t.alive and fires(by) and world.t >= weaponset.gate(by, t) - 1e-9:
                 h = hurt.setdefault(t.serial, [t, 0.0, by])
                 h[1] += rate * dt
                 h[2] = by
         for t, w, by in peers.volleys:           # engine line C round 2: a shot lands when its clock says (shots_due)
-            if (t.alive and by.alive and 'NO_ATTACK' not in by.status and not peers.emp_disabled(by)
-                    and not peers.infiltrators.attack_blocked(by)
-                    and world.t >= weaponset.gate(by, t) - 1e-9):
+            if t.alive and fires(by) and world.t >= weaponset.gate(by, t) - 1e-9:
                 n = peers.shots_due(by, w, dt)
                 if n:
                     self.inform_launch(world, t, by, w, n)
@@ -452,7 +452,7 @@ class Damage:
                     world.first_death = (world.t, t, by)
                 world.world.kill(t, f'被 {world.label(by)} 打掉')
         self.chill(world, dt, peers)
-        mend(world, dt)
+        mend(world, dt, fires)
 
     def mark_cold(self, target, by):
         """`by` is the one of record for the cold `target` took this frame (cold_on, read by chill;

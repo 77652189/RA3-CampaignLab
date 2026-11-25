@@ -350,10 +350,15 @@ def fight(world, peers):
             else:
                 del peers.team_targets[a.serial]
     magnets = [(b, g) for b in live if b.modules for g in b.find(interfaces.Magnet)]
-    for a in armed if magnets else ():      # a black hole on draws a shooter near it (engine/modules/magnet.py)
+    for a in armed:     # a black hole on draws a shooter near it (engine/modules/magnet.py); its attack order is kept
+        m = a.aiupdate  # aside (`drawn`) and taken up again once nothing draws it (review 109 #1, readings: s42-48)
         pull = next((b for b, g in magnets if g.draws(a, _relation(world, b, a) == 'ENEMIES')), None)
         if pull is not None and a.goal is not pull:
+            m.drawn = a.goal if m.ordered and isinstance(a.goal, type(a)) else None
             order_attack(world, peers, a, pull, force=True)
+        elif pull is None and m.drawn is not None:
+            back, m.drawn = m.drawn, None
+            order_attack(world, peers, a, back, force=True)
     for a in armed:
         m = a.aiupdate
         m.engaged = False

@@ -9,9 +9,10 @@ from engine.kernel import factory, interfaces, module
 class AIOrderState(module.Module, interfaces.AIUpdate):
     RECORDED = ('hold_fire', 'hold_paused', 'stance', 'ai_acquire', 'acquire', 'goal', 'mode', 'ground_fire',
                 'chase', 'home', 'auto_to', 'resume', 'spot', 'engaged', 'follow', 'move_to')
-    STATE = RECORDED + ('ordered',)     # read by order_attack alone: in the snapshot, not the frame record
+    STATE = RECORDED + ('ordered', 'drawn')     # in the snapshot, not the frame record
     hold_fire, hold_paused, stance, ai_acquire, acquire = False, False, 0, False, frozenset()
     ordered = False     # its goal is an attack order's (not the AI's pursuit alone; an attack-move clears it)
+    drawn = None        # the attack order a black hole turned it from (engine.orders.order.fight)
     goal, mode, ground_fire = None, 'idle', None    # goal: a point or a thing; mode: 'move' / 'attack' (stops to fight) ...
     # idle_chase: the enemy it went after by itself, where it stood (walks back to), the way's end that rule gave it;
     chase = home = auto_to = resume = spot = None   # attack_chase: the attack-move's end; (goal id, x, y) of a fire_spot
