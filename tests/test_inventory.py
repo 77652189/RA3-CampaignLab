@@ -304,15 +304,13 @@ def test_weapon_fired_stat_exclusion_keeps_both_empty_retail_forms_without_claim
     assert ocl['state'] == inventory.BENCHED
 
 
-def test_substructure_storage_gate_keeps_unmeasured_weight_and_runtime_gap():
+def test_substructure_storage_is_na_and_keeps_its_weight():
     key = inventory.MODULE, 'Behaviors/SubStructureStorageBehavior'
     rows = [i for i in items() if (i['part'], i['name']) == key]
     assert len(rows) == 1
-    assert (rows[0]['state'], rows[0]['uses'], rows[0]['all']) == (inventory.TODO, 6, 6)
+    assert (rows[0]['state'], rows[0]['uses'], rows[0]['all']) == (inventory.NA, 6, 6)
     assert rows[0]['levels'] == ['a1', 'a4', 'a5', 'a6', 'a7', 'a9']
-    assert key not in inventory.BENCHED_TESTS
-    for boundary in ('空载荷', '不登记已对拍', '不据此排除运行时用途', 'work/re/e182_substorage.md'):
-        assert boundary in rows[0]['why']
+    assert '没人触发' in rows[0]['why'] and 'SubStructureBuild' in rows[0]['why']
 
 
 def test_spawn_closure_preserves_unmeasured_gaps_and_all_three_named_replays():

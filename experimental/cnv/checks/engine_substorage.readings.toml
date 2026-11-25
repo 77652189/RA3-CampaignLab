@@ -1,0 +1,15 @@
+# Bench readings of checks/engine_substorage.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E243: the retail Allied yard packed / deployed twice (orders at 1 / 8 / 16 / 23 s), the MCV as retail (on) and with
+# only its SubStructureStorageBehavior taken out (off). 完成量 = 1 + 2 + 4 + 8 of the stages seen by their sample frame,
+# 存活量 = the named thing alive, 子体量 = the cut children (radar dish 1, yard repair bay 2) p1 has.
+
+[[reading]]
+id = "on_off_the_mcv_storage_changes_nothing_in_two_retail_pack_deploy_cycles"
+scenes = {on = {build = "engine_substorage_on", check = "a", until = 30}, off = {build = "engine_substorage_off", check = "a", until = 30}}
+bench = "CampStoreOnA_mcp_1125_134723 / CampStoreOffA_mcp_1125_134547 at 9271493c + E243: 完成量 1 (f75/78), 3 (f208/204), 7 (f308/314), 15 (f440/443); 存活量 1, 子体量 0 throughout, both"
+proves = """SubStructureStorageBehavior (retail: empty, on the three MCVs): with no SubStructureBuild in retail nothing is \
+stored -- the yard packs to the MCV and deploys back the same twice with the module or without it, keeping its name, \
+and no cut child (radar dish, repair bay) appears"""
+expect = ["on[-1]['完成量'] == off[-1]['完成量'] == 15",
+          "all(r['存活量'] == 1 and r['子体量'] == 0 for r in on + off)",
+          "[r['完成量'] for r in on] == [r['完成量'] for r in off]"]

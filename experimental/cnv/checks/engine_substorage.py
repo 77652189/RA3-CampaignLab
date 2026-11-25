@@ -8,10 +8,9 @@ Four HUD rows expose frame, completed stages, named survival, and child mask;
 none exposes stored child count, parent binding, or save/restore acceptance.
 See work/re/e182_substorage.md. No synthetic child/upgrade is introduced.
 
-On bench 2026-11-16 on/off reached f327/f356, both stage 7, alive 1, child 0.
-The original final-stage-15 expectation is retained: it FAILED because f435
-was not captured. Only the measured prefix is replayed in the public test;
-neither a complete second deploy nor storage coverage follows from it.
+E243 (bench 11-25, watched to f450): on and off both complete the two cycles
+(15 at f440 / f443), alive 1 and child 0 throughout -- the module stores
+nothing in retail (不涉及, inventory.py); readings in engine_substorage.readings.toml.
 """
 import re
 from pathlib import Path
@@ -22,7 +21,9 @@ from model import Mission, Script, Test
 
 NAME = 'E182 yard'
 YARD, MCV = 'AlliedConstructionYard', 'AlliedMCV'
-CHILDREN = ('AlliedCrane', 'AlliedRadarDish', 'AlliedConstructionYardRepairBay')
+# AlliedCrane, the cut SubStructureBuild's third child, is not counted: since spawns compile from the SDK XML (11-17),
+# its FXListBehavior Replace of ModuleTag_DieSound crashes BinaryAssetBuilder (IndexOutOfRange in NodeJoiner)
+CHILDREN = ('AlliedRadarDish', 'AlliedConstructionYardRepairBay')
 
 
 def mission(enabled=True):
@@ -65,8 +66,8 @@ def check(m):
         t.scripts.append(Script(f'Test - E182 child {i}',
             [('PLAYER_HAS_OBJECT_COMPARISON', m.player('p1'), 3, 1, child)],
             [('INCREMENT_COUNTER', 2 ** i, 'E182Child')], once=False))
-    t.expect = [('完成量', 30, '==', 15, 34), ('存活量', 3, '==', 1, 34), ('子体量', 3, '==', 0, 34)]
-    t.bench = [('bench_watch', dict(seconds=34, every=1, sheet=False, lines=4))]
+    t.expect = [('完成量', 29.5, '==', 15, 60), ('存活量', 3, '==', 1, 60), ('子体量', 3, '==', 0, 60)]
+    t.bench = [('bench_watch', dict(seconds=60, every=1, sheet=False, lines=4, until='c1>=450'))]
     return t
 
 

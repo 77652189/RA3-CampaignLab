@@ -331,7 +331,10 @@ NOTES = {
                                          '可能用到下落速度，落地时刻会影响逻辑，未上台；同 id 覆盖是否生效未排除'),
     (MODULE, 'Behaviors/SpawnBehavior'): (BENCHED, '已测范围：engine_spawn:spawn开局3架及母体死亡/删除清随从；engine_spawn_refill:refill两架分别死亡10秒后补回（tests/test_simspawn.py显式预置贴车位置）；engine_spawn_power:power缺电及复电期间总数/厂旁均3；gap：自主维修飞行、子体直接删除、真正禁用/占领、缺电时死亡补充、展开时机及其他完整配置，生成位置和秒内相位INFERRED；按总控11-11三切片收尾决定登记模块已对拍，不表示这些gap已验证，不拆分分母'),
     (MODULE, 'Behaviors/ProductionUpdateInfo'): (NA, '纯界面状态：保存七个生产类别的侧栏子页签编号；读写限于侧栏编号维护、变形时保留编号和存档传递，没有游戏逻辑读者，模拟器不建模；9用量/9模板保留；读者闭包证据见 work/re/e_production_e56.md，非上台对拍'),
-    (MODULE, 'Behaviors/SubStructureStorageBehavior'): (TODO, '6用量/6模板为三国MCV及海军继承型，模块无专用字段；有效配置没有SubStructureBuild；engine_substorage_on/off:a仅测原版空载荷收起/展开对照，不登记已对拍，不据此排除运行时用途；gap：非空载荷、存储数量/父体绑定/保存恢复接受字段未测；普通展开及COPY_UPGRADES不能归因；见 work/re/e182_substorage.md（静态证据work/re/e_substorage_e57.md）'),
+    (MODULE, 'Behaviors/SubStructureStorageBehavior'): (NA, '没人触发：原版只在三国 MCV（及海军继承型）挂一个空的，'
+        'SDK 注释说它存收起的建造厂的子结构升级；能造子结构的 SubStructureBuild 在原版建造厂里整块注释掉'
+        '（有效配置 0 个，test_retailmodules 守着），没东西可存。台上原版 / 只删本模块两臂两次收起展开一样'
+        '（checks/engine_substorage.readings.toml）'),
     (MODULE, 'Behaviors/SubStructureBehavior'): (TODO, 'E189 engine_substructure_e:a一局PASS，独立摆放的原版维修台/仅删模块对照，f59血量100/100、f120脚本伤害后80/80、f240删除无绑定建造场后80/80且场存活位0；experimental/cnv/checks/engine_substructure_e.readings.toml按名字回放最终四行240/80/80/0通过，无模型改动。只测独立摆放基线，不推断父子联动或模块无效；SDK有效XML无SubStructureBuild，现四行缺parentId/bindAccepted/forwardedDamage。父体绑定、伤害传递、清理及其他模板仍gap，同输入暂停，需合法绑定入口及新预算；见work/re/e189_substructure.md'),
     (MODULE, 'Behaviors/WallBuilderBehavior'): (GUESSED, '部分：engine_wallinit:a有/无模块对照10/11/10，仅StartInSecondaryModel默认WALL_SEGMENT初始化；6/6权重保留，建墙/连接/段数上限/生死联动及自定义配置仍gap，未登记完整已对拍；见 work/re/e_wallbuilder_e58.md'),
     (MODULE, 'Behaviors/GateOpenAndCloseBehavior'): (TODO, 'E190原版门/删模块初始化台被SDK Behaviors拒绝该模块且缺模型资源；原生地图摆放同样强制编译失败。改用engine_gate_e:a运行时同动作创建两门与电厂哨兵，一局PASS，f180=180/0/0/1（完成/Romania门/Sanitarium门/哨兵存活）。读数在benches/map/fixtures/readings.toml#engine_gate_e：帧数与哨兵相符，模拟器两门均1对台0记mismatch（两门模板不在SageXML物体索引里）；不登记模块效果覆盖。缺templateResolved/createAccepted/rejectReason，倾向模板在当前运行环境不可用（INFERRED）；开闭/通行/复位均gap，同输入暂停，重开需可创建宿主及合法开关入口，见work/re/e190_gate.md'),
