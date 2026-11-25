@@ -1,0 +1,150 @@
+# Bench readings of engine_area in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Area counts (E1), bench 2026-10-25 / 11-04.
+
+[[reading]]
+bench_id = "engine_area"
+id = "area_counts_whose_units_as_the_bench"
+scenes = {field = {build = "engine_area", check = "field", until = 13}, camp = {build = "engine_area", check = "camp", until = 13}}
+bench = """\
+In the west field, three of the player's Guardians -- the player's kind count 3, the enemy's kind count 3 too (a KindOf \
+count takes every player's), the enemy's template count 0 and SKIRMISH_PLAYER_HAS_UNITS_IN_AREA(enemy) false (those \
+take only the named player's); at the north base the player's kind count 2 (the enemy's warriors), the template count \
+0. The bench measured "has units" only where the named player has none (the half that matters: it does not take \
+another player's) (bench 2026-10-25 / 11-04)"""
+proves = "sim area counts: a KindOf count takes every player's units, a template count and 'has units' only the named player's"
+expect = "vals(field)[-1] == [3, 3, 0, 0] and vals(camp)[-1] == [2, 0]"
+
+[[reading]]
+bench_id = "engine_area"
+id = "area_alias_masks_set_each_enemy_and_count_any"
+scene = {build = "engine_area", check = "als", until = 10}
+bench = "als (A347, CampAreaAls_mcp_1124_031222), 钱 有 every 0.5 s: s1.1-s1.6 12 5 | s2.1-s11.1 13 5"
+proves = """PLAYER_SET_MONEY("<1st Human Player's Enemies>", 7000) sets Soviet_1 (>= 5000 after) and not the human (1000 \
+kept); SKIRMISH_PLAYER_HAS_UNITS_IN_AREA with an alias is any player of the mask: the enemies at the camp yes, in the \
+field (the player's Guardians) no, Allies incl Self yes, Allies (not self) no"""
+expect = ["all(v[1] == 5 for v in vals(rows))", "vals(rows)[-1] == [13, 5]"]
+
+[[reading]]
+bench_id = "engine_area"
+id = "area_alias_another_enemy_starts_with_money"
+scene = {build = "engine_area", check = "als", until = 10}
+bench = "als (CampAreaAls_mcp_1124_031222): 钱 12 before the 3 s set (4 = the alias >= 5000 while Soviet_1 holds 1000)"
+proves = "the other enemies of the human (Soviet_2..6, money no script sets) hold >= 5000 from the start"
+expect = "vals(rows)[0] == [12, 5]"
+
+[[reading]]
+bench_id = "engine_area"
+id = "area_every_player_starts_with_ten_thousand"
+scene = {build = "engine_area", check = "cash", until = 6}
+bench = "cash (A349, CampAreaCash_mcp_1124_041836), 钱0..3 every 1 s: s1-s7 128 128 128 8 (8 steps = >= 10000, < 10001)"
+proves = "with no script money Player_1 and Soviet_1..6 each hold exactly 10000 from the start, and keep it (idle); the bench enters through the campaign menu (nav.STEPS), so this is the campaign start: SageXML System/PlayerTemplates.xml StartingMoney Amount 10000 of Allies / Soviet / Japan (no CampaignOverrides entry), read by Money.start"
+expect = "all(v[:4] == [128, 128, 128, 8] for v in vals(rows))"
+
+# Bench readings of engine_bridgefix in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# The bench's watch second sN is the simulator's mission second N + 1 here: the break (timer 8.0) reads 1 from s7 on
+# the bench, from 8 in the run; the press is timer 14.0.
+
+[[reading]]
+bench_id = "engine_bridgefix"
+id = "an_engineer_mends_a_broken_bridge_at_its_gatehouse"
+item = "脚本动作 NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED:Command_CaptureBuilding"
+scene = {build = "engine_bridgefix", check = "a", until = 40}
+bench = "a, run 2 (CampBridgeFixA_mcp_1122_202537), 门a 态a 态b 门c: s1-s6 100 1110 110 100 | s7-s13 1 1110 110 1 | s14 1 1101 101 1 | s15-s17 1 1111 111 1 | s18-s68 100 1110 111 1"
+proves = "engine/objects/bridge.py + order.capture_due: a named bridge's gatehouses '<start>_GateHouse1' (at the start, within 150) / '2' read their proxy's health (100, 1 once broken); an engineer pressed at a broken bridge's gatehouse walks up, is used up and mends the bridge to 100, the gatehouse keeping its owner; at a whole bridge's gatehouse he stays (b); a broken bridge nobody enters stays at 1 (c). The seconds of the walk (the next reading) left free"
+let = {want = "lambda t: [100, 1110, 110, 100] if 2 <= t <= 7 else [1, 1110, 110, 1] if 8 <= t <= 14 else [1, 1111, 111, 1] if t == 16 else [100, 1110, 111, 1] if t >= 19 else None"}
+expect = [
+  "all(v == want(t) for v, t in zip(vals(rows), times) if want(t) is not None)",
+  "win(15, 18, '门c') == [1] * 4",
+]
+
+[[reading]]
+bench_id = "engine_bridgefix"
+id = "the_engineer_takes_four_seconds_to_the_gatehouse"
+scene = {build = "engine_bridgefix", check = "a", until = 40}
+bench = "a, run 2: 态a s14 1101 (still home), s15-s17 1111 (away), s18 1110 (gone, 门a 100)"
+proves = "order.capture_due: the walk from the press to the entry (travel and the entry's reach INFERRED, CAPTURE_REACH)"
+expect = "win(15, 19, '态a') == [1101, 1111, 1111, 1111, 1110] and win(17, 18, '门a') == [1, 1]"
+mismatch = "sim 态a 1111 1111 1110 1110 1110 at 15-19, 门a 100 from 17: the engineer is off home within the press's second and in 2 s early; bench still home at 15, in at 19"
+
+# Bench readings of engine_gate_e in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E190 bench (work/re/e190_gate.md): one run, a PASS, f180 = 180/0/0/1 (frame / Romania door / Sanitarium door /
+# sentinel); the three creates at f30. No gate effect is read: GateOpenAndCloseBehavior stays unmodelled, no item.
+
+[[reading]]
+bench_id = "engine_gate_e"
+id = "a_retail_building_made_at_f30_lives_to_f180"
+scene = {build = "engine_gate_e", check = "a", until = 13}
+bench = "frame 180, sentinel 1 at f180 (AlliedPowerPlant made by CREATE_NAMED_ON_TEAM_AT_WAYPOINT at f30)"
+proves = "脚本动作 CREATE_NAMED_ON_TEAM_AT_WAYPOINT: the same create the doors use makes a known building (the doors' control)"
+expect = ["rows[-1]['frame'] == 180", "rows[-1]['sentinel'] == 1"]
+
+[[reading]]
+bench_id = "engine_gate_e"
+id = "the_romania_and_sanitarium_doors_are_not_there_at_f180"
+scene = {build = "engine_gate_e", check = "a", until = 13}
+bench = "Romania 0, Sanitarium 0 at f180 (RM_AlliedBlastDoor, SS_Door made by the same create at f30)"
+proves = "脚本动作 CREATE_NAMED_ON_TEAM_AT_WAYPOINT: a map's own door template made from a script on another map"
+expect = ["rows[-1]['Romania'] == 0", "rows[-1]['Sanitarium'] == 0"]
+mismatch = "sim 1 and 1 (the simulator makes any template a script names); bench 0 and 0. Both templates sit under their maps' Civilian/<map>/Destructible_Props and outside the SageXML game-object index: not made off their own map is the leaning, INFERRED (not made, refused, or gone before f180 not told apart)"
+
+# Bench readings of engine_vision in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Bench 11-06 reshroud / resh*, 11-09 perm / undo, 11-10 all / allundo: counters 揭开 帧数 [撤后] at 30 s.
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_vision"
+id = "vision_a_plain_reveal_holds_15n_minus_13_frames[reshroud]"
+scene = {build = "engine_vision", check = "reshroud", until = 31}
+bench = "MAP_REVEAL_AT_WAYPOINT goes back to fog 137 frames after (default): 揭开 137 at 30 s (bench 11-06)"
+proves = "sim Sim map reveal: a waypoint reveal lasts 137 frames by default"
+expect = "vals(rows)[-1][0] == 137"
+
+[[reading]]
+bench_id = "engine_vision"
+id = "vision_a_plain_reveal_holds_15n_minus_13_frames[resh0]"
+scene = {build = "engine_vision", check = "resh0", until = 31}
+bench = "RESHROUD_TIME 0: 揭开 0 at 30 s (bench 11-06)"
+proves = "sim Sim map reveal: 15 x N - 13 frames with RESHROUD_TIME N (N 0: none)"
+expect = "vals(rows)[-1][0] == 0"
+
+[[reading]]
+bench_id = "engine_vision"
+id = "vision_a_plain_reveal_holds_15n_minus_13_frames[resh1]"
+scene = {build = "engine_vision", check = "resh1", until = 31}
+bench = "RESHROUD_TIME 1: 揭开 2 at 30 s (bench 11-06)"
+proves = "sim Sim map reveal: 15 x N - 13 frames with RESHROUD_TIME N"
+expect = "vals(rows)[-1][0] == 2"
+
+[[reading]]
+bench_id = "engine_vision"
+id = "vision_a_plain_reveal_holds_15n_minus_13_frames[resh5]"
+scene = {build = "engine_vision", check = "resh5", until = 31}
+bench = "RESHROUD_TIME 5: 揭开 62 at 30 s (bench 11-06)"
+proves = "sim Sim map reveal: 15 x N - 13 frames with RESHROUD_TIME N"
+expect = "vals(rows)[-1][0] == 62"
+
+[[reading]]
+bench_id = "engine_vision"
+id = "vision_a_plain_reveal_holds_15n_minus_13_frames[resh10]"
+scene = {build = "engine_vision", check = "resh10", until = 31}
+bench = "RESHROUD_TIME 10: 揭开 137 at 30 s (bench 11-06)"
+proves = "sim Sim map reveal: 15 x N - 13 frames with RESHROUD_TIME N"
+expect = "vals(rows)[-1][0] == 137"
+
+[[reading]]
+bench_id = "engine_vision"
+id = "vision_a_permanent_reveal_holds_and_its_undo_shuts_at_once"
+scenes = {perm = {build = "engine_vision", check = "perm", until = 31}, undo = {build = "engine_vision", check = "undo", until = 31}}
+bench = "perm: 揭开 = 帧数 all along; undo at Go + 10 s: 揭开 stays 151, nothing after the undo (撤后 0) (bench 11-09)"
+proves = "sim Sim map reveal: a permanent reveal holds, its undo shuts at once"
+let = {p = "vals(perm)[-1]", u = "vals(undo)[-1]"}
+expect = "p[0] == p[1] > 400 and u[0] == 151 and u[2] == 0"
+
+[[reading]]
+bench_id = "engine_vision"
+id = "vision_reveal_all_lapses_unless_perm_and_its_undo_shuts_at_once"
+scenes = {whole = {build = "engine_vision", check = "all", until = 31}, undo = {build = "engine_vision", check = "allundo", until = 31}}
+bench = "Bench 11-10 (engine line A round 149): all -- MAP_REVEAL_ALL lapses as a waypoint reveal, 揭开 137 then still (CampVisAll_mcp_1110_192524); allundo -- MAP_REVEAL_ALL_PERM, MAP_REVEAL_ALL_UNDO_PERM at Go + 10 s: 揭开 stops at 151, 撤后 0 (CampVisAllundo_mcp_1110_192316)"
+proves = "sim Sim map reveal: MAP_REVEAL_ALL lapses unless permanent, its undo shuts at once (the old model kept it for good: 揭开 436)"
+let = {w = "vals(whole)[-1]", u = "vals(undo)[-1]"}
+expect = "w[0] == 137 < w[1] and u[0] == 151 and u[2] == 0"

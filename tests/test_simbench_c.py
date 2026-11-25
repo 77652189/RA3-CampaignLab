@@ -24,7 +24,7 @@ def test_levelup_heroic_vision_sights_inner_engineer_after_near_controls_are_del
     """engine_levelvision a:11/11/11/11 ->0/0/0/0 ->0/101/0/100 at240/310."""
     import build
     import sim
-    from checks.engine_levelup import SHROUD_LANES
+    from benches.body_death.state.checks import SHROUD_LANES as engine_levelup_lanes
     m, t, _ = build.resolve('engine_levelvision', 'a')
     e = sim.Sim(m, t)
     e.shot_clock = True
@@ -34,7 +34,7 @@ def test_levelup_heroic_vision_sights_inner_engineer_after_near_controls_are_del
                                 (20, 24, (0, 101, 0, 100))):
         readings = [tuple(row) for at, row in rows if first <= at < last]
         assert readings and all(row == values for row in readings), (readings, values)
-    guns = [e.body(m.role(lane).name) for lane in SHROUD_LANES]
+    guns = [e.body(m.role(lane).name) for lane in engine_levelup_lanes]
     assert [b.level_rank for b in guns] == [1, 4, 1, 4]
     assert [b.level_vision for b in guns] == [1, 1.25, 1, 1.25]
     assert [b.sight for b in guns] == [200] * 4  # automatic acquisition remains unmeasured
@@ -43,7 +43,7 @@ def test_levelup_heroic_vision_sights_inner_engineer_after_near_controls_are_del
         e.world.modify(guns[1])
         assert guns[1].sight * guns[1].level_vision == 250
         assert guns[1].vision == 625
-    for lane in SHROUD_LANES:
+    for lane in engine_levelup_lanes:
         gun = e.body(m.role(lane).name)
         target = e.body(m.role(lane + ' target').name)
         assert gun.radius + target.radius < 40
@@ -62,7 +62,7 @@ def test_levelup_heroic_shroud_discovers_inner_target_only_without_changing_sigh
     """engine_levelshroud a:1/1/1/1 ->1/111/1/101; near controls stay visible."""
     import build
     import sim
-    from checks.engine_levelup import SHROUD_LANES
+    from benches.body_death.state.checks import SHROUD_LANES as engine_levelup_lanes
     m, t, _ = build.resolve('engine_levelshroud', 'a')
     e = sim.Sim(m, t)
     e.shot_clock = True
@@ -71,7 +71,7 @@ def test_levelup_heroic_shroud_discovers_inner_target_only_without_changing_sigh
         idx = [label for _, label in t.counters].index(label)
         readings = [row[idx] for at, row in rows if first <= at < last]
         assert readings and all(v == value for v in readings), (label, readings, value)
-    guns = [e.body(m.role(lane).name) for lane in SHROUD_LANES]
+    guns = [e.body(m.role(lane).name) for lane in engine_levelup_lanes]
     assert [b.level_rank for b in guns] == [1, 4, 1, 4]
     assert [b.vision for b in guns] == [500, 625, 500, 625]
     assert [b.sight for b in guns] == [200] * 4
@@ -121,7 +121,7 @@ def test_levelup_heroic_rate_changes_three_intershot_spans_without_scaling_each_
 
 
 def test_levelup_elite_health_persists_at_heroic_and_freezes_before_healing():
-    """engine_levelhealth a: structure only (the 80/80/84/84 readings are in checks/engine_levelup.readings.toml)."""
+    """engine_levelhealth a: structure only (the 80/80/84/84 readings are in benches/body_death/state/readings.toml#engine_levelup)."""
     import build
     import sim
     m, t, _ = build.resolve('engine_levelhealth', 'a')
@@ -137,7 +137,7 @@ def test_levelup_elite_health_persists_at_heroic_and_freezes_before_healing():
 
 def test_levelup_injured_elite_promotion_preserves_fraction_and_scales_current_health():
     """engine_levelhealth b, structure only (the 50/80/50/20 -> 30/64/34/4 readings are in
-    checks/engine_levelup.readings.toml).
+    benches/body_death/state/readings.toml#engine_levelup).
 
     Check absolute HP too: skipping the modifier also preserves percentages.
     No heroic autoheal is present in this probe.
@@ -169,7 +169,7 @@ def test_levelup_creation_grants_reach_heroic_only_after_three_distinct_triggers
     import sim
     m, t, _ = build.resolve('engine_levelup', 'a')
     e = sim.Sim(m, t)
-    e.run(12)                      # the 0/0/1/0 -> 0/1/1/0 readings: checks/engine_levelup.readings.toml
+    e.run(12)                      # the 0/0/1/0 -> 0/1/1/0 readings: benches/body_death/state/readings.toml#engine_levelup
     assert (sim.GAP_UPGRADE, 'LevelUpUpgrade/Unit_Elite') not in e.unmodeled
     assert '创建升级触发' in '\n'.join(e.report())
 
@@ -183,10 +183,10 @@ def test_levelup_creation_remove_keeps_rank_and_regrant_can_trigger_twice():
     """
     import build
     import sim
-    from checks.engine_levelup import CREATION
+    from benches.body_death.state.checks import CREATION
     m, t, _ = build.resolve('engine_levelup', 'b')
     e = sim.Sim(m, t)
-    e.run(28)                      # the stable-window readings: checks/engine_levelup.readings.toml
+    e.run(28)                      # the stable-window readings: benches/body_death/state/readings.toml#engine_levelup
     bodies = [e.body(m.role(lane).name) for lane in ('base', 'high', 'order', 'removed')]
     assert [b.level_rank for b in bodies] == [2, 4, 4, 4]
     assert not (set(CREATION) & bodies[-1].upgrades)
@@ -208,10 +208,10 @@ def test_levelup_elite_and_heroic_creation_regrants_each_need_two_reactivations(
     """
     import build
     import sim
-    from checks.engine_levelup import CREATION
+    from benches.body_death.state.checks import CREATION
     m, t, _ = build.resolve('engine_levelup', 'c')
     e = sim.Sim(m, t)
-    e.run(28)                      # the stable-window readings: checks/engine_levelup.readings.toml
+    e.run(28)                      # the stable-window readings: benches/body_death/state/readings.toml#engine_levelup
     bodies = [e.body(m.role(lane).name) for lane in ('base', 'high', 'order', 'removed')]
     assert [b.level_rank for b in bodies] == [2, 4, 4, 4]
     assert [b.max_hp for b in bodies] == [500, 625, 625, 625]

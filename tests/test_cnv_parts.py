@@ -324,8 +324,7 @@ def test_not_is_read_off_a_flag_the_scripts_keep_first():
 def test_a_voice_line_must_be_in_the_voice_pack():
     """A sound named CNV_* (PLAY_SOUND_EFFECT, HAS_FINISHED_AUDIO) is one of Mission.voice's events; retail's are free."""
     from types import SimpleNamespace
-    from missions import probe_bench
-    m = probe_bench.mission()
+    m, _, _ = build.resolve('probe', '')
     m.scripts += [parts.Script('say', [], [('PLAY_SOUND_EFFECT', 'CNV_A4_007')]),
                   parts.Script('eva', [], [('PLAY_SOUND_EFFECT', 'Aeva_EnemyAircraftDet')])]
     assert [p for p in parts.contract(m) if 'voice' in p] == ["say: PLAY_SOUND_EFFECT voice line 'CNV_A4_007' not in "
@@ -452,7 +451,7 @@ def test_registry_refuses_checks_declared_twice_or_not_callable(monkeypatch):
 
 def test_registry_finds_only_modules_that_declare(monkeypatch):
     mods = registry.modules()
-    assert 'missions.a4' in mods and 'checks.a4' in mods and 'missions.count_probes' in mods
+    assert 'missions.a4' in mods and 'checks.a4' in mods and 'benches.other.diagnostics.scenes' in mods
     assert 'missions.music_bench' not in mods and 'missions.festival_parts' not in mods
 
 

@@ -804,7 +804,7 @@ def test_physics_p5_a_shot_down_wreck_falls_the_knock_curve_under_its_own_gravit
     copy; the wreck's own GravityMultiplier (1 / 30) sets the fall, the logged landing, N 30 / 8 and every probe z."""
     import build
     import engine.data.units as simunits
-    from checks.engine_crash_fall import BENCH, LANES
+    from benches.body_death.state.checks import BENCH, LANES
     m, t, name = build.resolve('engine_crash_fall', 'fall')
     assert name == 'CampCFFall'
     wreck = next(u for u in m.units if u.id == LANES[lane][0] + 'Dying')
@@ -842,7 +842,7 @@ def test_physics_p5_the_apollo_s_air_death_reads_its_crash_from_the_data():
 
 
 def _crash_digits(v):
-    from checks.engine_crash_fall import HIT_STEP
+    from benches.body_death.state.checks import HIT_STEP
     return {k: v // step % 100 if k != 'out' else v // step for k, step in HIT_STEP.items()}
 
 
@@ -853,7 +853,7 @@ def test_physics_p5_a_hovering_apollo_s_crash_hurts_what_is_under_it_as_on_the_b
     plane is where the sim's coarse flight puts it (no acceleration), so only its untouched neighbour is held here."""
     import build
     import sim
-    from checks.engine_crash_fall import HIT_BENCH
+    from benches.body_death.state.checks import HIT_BENCH
     m, t, name = build.resolve('engine_crash_hit', 'hit')
     assert name == 'CampCHHit'
     s = sim.Sim(m, t).run(13.0)                     # the check's RUN: the flying lane's miss counts < 100
@@ -869,8 +869,8 @@ def test_physics_p5_the_flying_apollo_s_wreck_hits_its_last_point_as_on_the_benc
     """The flying lane from the bench's kill (fall's plain start, logged again in CampCHHit): 30 points, the hit on
     the last -- counted 30 frames (crash_frames + 1, as the hovering ones' 37 + 1 = 38)."""
     import engine.data.units as simunits
-    from checks.engine_crash_fall import BENCH, HIT_BENCH
-    start, v, landing, n, _ = BENCH['plain']
+    from benches.body_death.state.checks import BENCH as engine_crash_fall_readings, HIT_BENCH
+    start, v, landing, n, _ = engine_crash_fall_readings['plain']
     frames, end = simunits.crash_frames(start, v, 212.5)
     assert end == landing and frames + 1 == HIT_BENCH['frames']['in'] == n
     assert simunits.crash_frames((3000.0, 2000.0, 387.5), (0.1, 0.0, 0.0), 212.5) == (37, (3000, 2000, 212.5))
@@ -882,7 +882,7 @@ def _face_health():
     import math
     import build
     import sim
-    from checks.engine_crash_fall import FACE_LANES, face_name
+    from benches.body_death.state.checks import FACE_LANES, face_name
     from engine.kernel import interfaces
     m, t, name = build.resolve('engine_crash_face', 'face')
     assert name == 'CampCKFace'
@@ -903,7 +903,7 @@ def test_physics_p5_the_flying_wreck_hits_its_hammer_by_the_side_it_comes_in_fro
     """Bench 11-12 engine_crash_face (CampCKFace_mcp_1112_120614): hit's 70 against the hover's 72 was the armour's
     flank scalar (BaseTankArmor Rear 110 / Side 105; simunits.flank), not a collision or the shock -- the Hammers
     facing east / north under the y < 2048 wrecks take rear / side as from the wreck's way in (west)."""
-    from checks.engine_crash_fall import FACE_BENCH
+    from benches.body_death.state.checks import FACE_BENCH
     got = _face_health()
     assert (got['E'], got['N']) == (FACE_BENCH['E'], FACE_BENCH['N']) == (70, 71), got
 
@@ -913,7 +913,7 @@ def test_physics_p5_the_flying_wreck_hits_its_hammer_by_the_side_it_comes_in_fro
     "wreck's resting hair off the centre north, not west (INFERRED float32 residue over y 2048); the sim takes the "
     'way in (west): front 72 / side 71'))
 def test_physics_p5_the_wreck_s_float_residue_over_y_2048_sets_its_side():
-    from checks.engine_crash_fall import FACE_BENCH
+    from benches.body_death.state.checks import FACE_BENCH
     got = _face_health()
     assert (got['W'], got['S']) == (FACE_BENCH['W'], FACE_BENCH['S']), got
 

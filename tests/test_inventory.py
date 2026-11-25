@@ -341,8 +341,8 @@ def test_levelup_closure_registers_measured_effects_without_hiding_shared_templa
     assert row['levels'] == [f'a{k}' for k in range(1, 10)]
     assert inventory.BENCHED_TESTS[key] in row['why']
     test_source = open(os.path.join(ROOT, 'tests', 'test_simbench_c.py'), encoding='utf-8').read()
-    # All seven build names are registered by checks/engine_levelup.py, rather than seven source files.
-    assert 'checks/engine_levelup.py' in inventory.tested_probes()
+    # All seven build names are registered by benches/body_death/state/checks.py#engine_levelup, rather than seven source files.
+    assert 'benches/body_death/state/checks.py#engine_levelup' in inventory.tested_probes()
     for probe in ('engine_levelup', 'engine_leveldamage', 'engine_levelhealth', 'engine_levelrange',
                   'engine_levelrate', 'engine_levelshroud', 'engine_levelvision'):
         assert probe in row['why']

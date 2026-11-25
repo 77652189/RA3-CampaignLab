@@ -12,9 +12,9 @@
                     Each factory is named for its logical bench and returns the same registry tables.
 
 load() reads the source of each candidate and imports only modules that declare registry tables or BENCHES
-names at module level (a bench scene that pulls in something heavy declares nothing and is reached lazily, see
-missions/music_builds.py). A build made twice, a check for a build nobody makes, a check that is not callable: an
-error here, at import, not a KeyError at the bench.
+at module level. Heavy dependencies can stay inside build factories, as in the music scenes. A build made
+twice, a check for a build nobody makes, a check that is not callable: an error here, at import, not a KeyError
+at the bench.
 """
 import ast
 import importlib

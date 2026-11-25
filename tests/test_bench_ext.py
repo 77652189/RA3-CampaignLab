@@ -181,14 +181,15 @@ def test_ext_summary_counts_the_dll_lines(tmp_path):
 
 
 def test_the_probe_check_asks_for_ra3ext_and_its_control_does_not():
-    from checks import engine_ext
-    on, off = engine_ext.MISSION['engine_ext'](), engine_ext.MISSION['engine_extoff']()
+    from build import resolve
+    on, _, _ = resolve('engine_ext', '')
+    off, check, _ = resolve('engine_extoff', 'a')
     assert on.ext is True and off.ext is False
     for m in (on, off):
         assert len(m.name) + 1 <= 15 and '_' not in m.name      # the build adds the check's letter
     xml = on.units[0].xml
     assert xml.count('<DeletionUpdate id="ModuleTag_CNVLog"') == 1 and 'id="CNVExtProbe"' in xml
-    assert {e[0]: e[3] for e in engine_ext.ext_test(off, False).expect}['探针'] == 0
+    assert {e[0]: e[3] for e in check.expect}['探针'] == 0
 
 
 def test_the_sweep_check_carries_one_tagged_linear_damage_and_a_laser():

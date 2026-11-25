@@ -48,7 +48,6 @@ CHECK_IMPORT_ALLOWED = {
     'experimental/cnv/checks/liberty.py',
     'experimental/cnv/checks/mech.py',
     'experimental/cnv/checks/reroute.py',
-    'experimental/cnv/checks/sight.py',
 }
 
 CNV = 'experimental/cnv'

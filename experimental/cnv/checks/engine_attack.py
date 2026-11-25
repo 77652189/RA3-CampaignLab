@@ -12,7 +12,7 @@ hit by a unit that dies of it (a suicide unit, a plane shot down).
 from maps import festival
 from parts import Mission, Script, Test, counted, square
 import checks.engine_scripts8 as s8
-from checks.engine_area import FOES, FRIENDS, OURS
+from benches.map.fixtures.checks import FOES, FRIENDS, OURS
 
 GUARDIAN = 'AlliedAntiVehicleVehicleTech1'
 GONE, RUN = 6.0, 16.0

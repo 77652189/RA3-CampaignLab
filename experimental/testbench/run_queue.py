@@ -60,14 +60,15 @@ def read_list(path):
 
 def listing(prefix):
     """(mission, check) of every bench with this prefix, in logical bench order (builds and
-    checks as each declares them); a build the module only declares as a pair is (build, '')."""
+    checks as each declares them); a check module pair is (build, ''). Scene-only builds are explicit."""
     # in a child started in experimental/cnv (python -c puts its cwd first on the path; no -I for that reason), so this
     # file needs no sys.path edit of its own (tests/test_architecture.py G4 ratchet)
     code = ('import json, sys\n'
             'import parts  # noqa: F401  (puts experimental/campaign on the path, as build.py does)\n'
             'import registry\n'
             'out = []\n'
-            'entries = [entry for name in registry.modules() if name.startswith(("checks.", "benches."))\n'
+            'entries = [entry for name in registry.modules() if name.startswith("checks.")\n'
+            '           or (name.startswith("benches.") and name.endswith(".checks"))\n'
             '           for entry in registry.entries(name, sys.argv[1])]\n'
             'for _, tables in sorted(entries, key=lambda entry: entry[0]):\n'
             '    out += [(b, c) for b, table in tables.get("CHECKS", {}).items() for c in table]\n'
