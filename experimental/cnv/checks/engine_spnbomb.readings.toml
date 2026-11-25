@@ -1,0 +1,22 @@
+# Bench readings of checks/engine_spnbomb.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# engine_spnbombc (A373): per lane, first frame a bomber (KindOf AIRCRAFT) is seen within 700 of the target x 1000 +
+# most at once x 100 + target alive x 10 + marker latch (1 from s1 on in every lane: the latch condition holds at
+# once, so that digit says nothing). Fire at 6 s, the attack held to 20 s.
+
+[[reading]]
+id = "the_synthetic_host_calls_no_bomber_while_its_monitor_holds_it"
+scene = {build = "engine_spnbombc", check = "a", until = 24}
+bench = """CampSPNBombCA_mcp_1125_111409: s11-s25 153101 11 145201 11. base (the original commando): a bomber from \
+frame 153, one, target dead. high (finite gun + the original OCLSpecialPower and OCLMonitorUpdate): no bomber at all, \
+target alive. order (the same without the monitor): a bomber from frame 145, two at once, target dead. removed (high \
+without SPN): none"""
+proves = """The SPN on the finite gun fires the caster's OCLSpecialPower (order bombs): d56 H1 (the nugget judged out) \
+and H2 (a bomber made but without a target) are both out. With the retail monitor (MASTER \
+RELEASE_WHEN_MASTER_CHANGES_TARGET) the instant-shot host gets no bomber at all; without it every shot calls one (two \
+at once) -- INFERRED: the monitor lets the run go during its 3.5 s delay because an instant shot stops attacking at \
+once, as E222's stopped master (engine_oclmonitor_e)"""
+expect = ["counter('CNV_SPBAir_base') // 1000 >= 140", "counter('CNV_SPBAir_base') % 100 // 10 == 0",
+          "counter('CNV_SPBAir_high') == 11",
+          "counter('CNV_SPBAir_order') // 1000 >= 140", "counter('CNV_SPBAir_order') % 1000 // 100 >= 2",
+          "counter('CNV_SPBAir_order') % 100 // 10 == 0", "counter('CNV_SPBAir_removed') == 11"]
+mismatch = "sim 11 11 11 11: the simulator flies no bombing run (SpecialPowerNugget -> OCLSpecialPower is a gap)"

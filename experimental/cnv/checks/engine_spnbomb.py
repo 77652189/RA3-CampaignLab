@@ -26,7 +26,7 @@ missile = engine_missile()["shared"]
 SAGE = missile.SAGE
 target = missile.target
 from maps import probe_range
-from parts import Mission, Script, Test, Unit
+from parts import Mission, Script, Test, Unit, kindof, square
 
 POWER = 'SpecialPowerBombingRun'
 VALUES = (1000, 1199, 1199, 1199)
@@ -147,5 +147,55 @@ def native_check(m):
     return t
 
 
-MISSION = {'engine_spnbomb': mission, 'engine_spnbombnative': native_mission}
-CHECKS = {'engine_spnbomb': {'a': check}, 'engine_spnbombnative': {'a': native_check}}
+def count_mission():
+    """Third diagnostic (A373): does the synthetic host make a bomber at all? (d56 H1: the SPN is judged out, no
+    bomber; H2: the bomber is made but has no target / is let go.) base: the original commando (control); high: the
+    finite gun with the original host and monitor, as native order; order: the same without the monitor (retail
+    E222 Off: no monitor, the bomber hits even when the master stops); removed: high without SPN.
+    Soviet_BombingRun has no SELECTABLE, so a type count misses it: count KindOf AIRCRAFT in a square of 700 round
+    each lane's target (the lanes 1 500 apart). Per lane: first frame seen x 1000 + most at once (to 4) x 100 +
+    target alive x 10 + marker landed. Prediction: base about 150 frames after the 6 s fire, target dead; H1 -> high
+    0 bombers; H2 -> high bombers with the target alive; order kills if the monitor lets the bomber go."""
+    m = native_mission()
+    m.name = 'CampSPNBombC'
+    host, monitor, nugget = retail_parts()
+    for lane in ('high', 'order', 'removed'):
+        uid = 'CNV_SPBomb'+lane.title()
+        caster = gun(uid, 10, '' if lane == 'removed' else nugget)
+        caster.xml = caster.xml.replace('DamageType="EXPLOSIVE"', 'DamageType="UNRESISTABLE"')
+        caster.xml = caster.xml.replace('<Behaviors>', '<Behaviors>'+host+('' if lane == 'order' else monitor), 1)
+        caster.link += ['SpecialPowerTemplate:'+POWER, 'ObjectCreationList:OCL_SovietBombingRun']
+        m.units = [caster if u.id == uid else u for u in m.units]
+    return m
+
+
+def count_check(m):
+    t = native_check(m)
+    t.counters = []
+    t.scripts.insert(1, Script('Test - clock', [], [('INCREMENT_COUNTER', 1, 'SPB frame')], once=False))
+    for lane in CASES:
+        area, top, first, shown = 'SPB air '+lane, 'SPB top '+lane, 'SPB first '+lane, 'CNV_SPBAir_'+lane
+        t.areas[area] = square(*m.site(lane+' gun', 0, 250), 700)
+        def seen(n):
+            return ('PLAYER_HAS_COMPARISON_UNIT_KIND_IN_TRIGGER_AREA', m.player('p1'), 3, n, kindof('AIRCRAFT'), area)
+        t.scripts.append(Script('Test - first '+lane, [seen(1), ('COUNTER', first, 2, 0)],
+                                [('COUNTER_MATH_COUNTER', first, 0, 'SPB frame')], once=False))
+        t.scripts += [Script(f'Test - top {lane} {n}', [seen(n), ('COUNTER', top, 0, n)], [('SET_COUNTER', top, n)],
+                             once=False) for n in range(1, 5)]
+        t.scripts += [
+            Script('Test - air '+lane, [], [('SET_COUNTER', shown, 0), ('COUNTER_MATH_COUNTER', shown, 0, first),
+                   ('COUNTER_MATH_VALUE', shown, 2, 10), ('COUNTER_MATH_COUNTER', shown, 0, top),
+                   ('COUNTER_MATH_VALUE', shown, 2, 10)], once=False),
+            Script('Test - air alive '+lane, [('NAMED_NOT_DESTROYED', 'SPB '+lane+' victim')],
+                   [('INCREMENT_COUNTER', 1, shown)], once=False),
+            Script('Test - air x '+lane, [], [('COUNTER_MATH_VALUE', shown, 2, 10)], once=False),
+            Script('Test - air marker '+lane, [('COUNTER', 'SPB marker '+lane, 2, 10)],
+                   [('INCREMENT_COUNTER', 1, shown)], once=False)]
+        t.counters.append((shown, lane+' 机'))
+    t.expect = [('base 机', 22, '>', 1000, 24)]
+    return t
+
+
+MISSION = {'engine_spnbomb': mission, 'engine_spnbombnative': native_mission, 'engine_spnbombc': count_mission}
+CHECKS = {'engine_spnbomb': {'a': check}, 'engine_spnbombnative': {'a': native_check},
+          'engine_spnbombc': {'a': count_check}}
