@@ -1,7 +1,7 @@
 """The de-AI polishing pass on a flow script's lines (style.md section 4): write the brief for Gemini, then write the
 rewrites the writer picked back into the script. The answer is a draft; flowcheck runs after.
 
-    python docs/design/flow/flowpolish.py brief a4 FOLDER          # FOLDER/brief.md for experimental/outsource/agy_task.py
+    python docs/design/flow/flowpolish.py brief a4 FOLDER          # writes FOLDER/brief.md
     python docs/design/flow/flowpolish.py brief a4 FOLDER 说明     # only the objective texts
     python docs/design/flow/flowpolish.py apply a4 ANSWER PICKED   # PICKED: the chosen line ids, one per line
 

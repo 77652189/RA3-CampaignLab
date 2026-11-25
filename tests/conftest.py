@@ -57,7 +57,7 @@ def hold_cpu(config):
                                                wait=exclusive or not single))
     except KeyboardInterrupt:
         # pytest drops an interrupt during configure without a word (no summary, exit 2), so the run looks as if it
-        # gave no result at all (R 11-18, family_close's tests step). Say why it stops.
+        # gave no result at all. Say why it stops.
         pytest.exit('cpupool: interrupted while waiting for %d CPU tokens; no test ran' % n, returncode=2)
     if got < n and not exclusive:
         print('cpupool: %d workers, but the run holds %d CPU tokens (the pool is %d): %d workers'

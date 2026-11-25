@@ -1,5 +1,5 @@
-"""Build fingerprint: proof that a refactor leaves the built mods byte-identical (docs/reviews/architecture-2026-11-03.md
-section 4). Builds the three targets into work/fingerprint/<label>/out (CNV_OUT_DIR, parts.assemble: never into the
+"""Build fingerprint: proof that a refactor leaves the built mods byte-identical (ADR 0016).
+Builds the three targets into work/fingerprint/<label>/out (CNV_OUT_DIR, parts.assemble: never into the
 installed Mods) and records, per target, the sha1 of every file inside each .big plus every other file of the mod folder.
     python -I -X utf8 experimental/testbench/fingerprint.py record <label> [--verbose]
     python -I -X utf8 experimental/testbench/fingerprint.py diff <labelA> <labelB> [--verbose]   (exit 0 = identical)

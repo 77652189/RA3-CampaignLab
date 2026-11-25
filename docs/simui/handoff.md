@@ -4,13 +4,13 @@
 
 ## 现状（2026-11-08）
 
-- 启动：`python -I -X utf8 experimental/simui/serve.py a4`，打开 http://127.0.0.1:8724/ （`--open` 自动开浏览器，`--level easy|normal|hard`）。`.claude/launch.json` 里有 `simui`。
+- 启动：`python -I -X utf8 experimental/simui/serve.py a4`，打开 http://127.0.0.1:8724/ （`--open` 自动开浏览器，`--level easy|normal|hard`）。
 - 文件：`experimental/simui/game.py`（后端：`PlaySim` 外挂 + `Session`）、`serve.py`（http.server + JSON）、`index.html`（单文件 canvas）；测试 `tests/test_simui.py`（5 项，约 2.5 分钟）。
 - 对齐做法：玩家的点击变成剧本事件元组（派 / 攻击 / 放 / 占领 / 生产），放到 `Sim.events` 的当前 tick，由 `Sim.happen` 执行，和 `plays/<关>.txt` 走同一条路；`Session.tick` 就是 `Sim.run` 的循环体（去掉"两分钟没变化就停"）。`PlaySim.happened` 记下每个执行过的事件，`game.replay()` 喂回去得到同一局（测试守着）。
 - 已通：A4 从开场打到结局；Esc 跳过场；1/2/4/8/尽快；按阶段跳（阶段 = `CNV_<关>_Phase_N` 旗，用全程脚本打到旗亮，再丢掉脚本剩下的命令交给玩家，A4 跳第 3 阶段约 17 秒）；赢/输画面带用时；字幕框、对白面板、目标、计数/倒计时、黑边、锁操作、过场镜头跟脚本；配音先找录音（`experimental/simui/voice`、`work/voice`、配音仓库 `RA3-ChineseVoice/work/campaign/{zh,en}/<关>/`），找不到用浏览器朗读中文；`Sim.unmodeled` 和覆盖清单列在右栏，涉及的单位画紫色虚线圈；覆盖清单有未登记项时开局弹警告。
 - 16 关都能打开（冒烟：建局、跑 30 秒、出状态）；有全程脚本的是 a1 a3 a4 a6 a7 a8 a9 j7，其余关不能按阶段跳；j4 没有阶段旗。
 
-- 配音一条声道（用户 11-08 报"语音明显重叠"）：归因是界面问题——A4 全程脚本按录音真实时长排开没有一处重叠；旧页面每条一到就播，跳过场/跳阶段/暂停时旧的不停，一次轮询收到几条就同时播，零售播报 `Aeva_*` 没录音时浏览器把英文键名念出来。现在照引擎的规则（`voice_link.Later.length`：对白事件排队，一句播完才下一句）在后端按游戏时间排队（`PlaySim.act`、`Voice`、`voice_waits`），跑到开始时刻才交给页面；页面同时只放一句，新一句来就切掉旧的，晚到的从当前位置起播，暂停跟着暂停，4×以上/跳过场/跳阶段/重开不出声。测试 `test_simui` 加 4 项（含"A4 全程没有一句被排队推迟"，挂了就是关卡的问题，转关卡线）。临时检查用的 `.claude/launch.json` 配置 `simui-check`（端口 8726），不占用户在玩的那个端口。
+- 配音一条声道（用户 11-08 报"语音明显重叠"）：归因是界面问题——A4 全程脚本按录音真实时长排开没有一处重叠；旧页面每条一到就播，跳过场/跳阶段/暂停时旧的不停，一次轮询收到几条就同时播，零售播报 `Aeva_*` 没录音时浏览器把英文键名念出来。现在照引擎的规则（`voice_link.Later.length`：对白事件排队，一句播完才下一句）在后端按游戏时间排队（`PlaySim.act`、`Voice`、`voice_waits`），跑到开始时刻才交给页面；页面同时只放一句，新一句来就切掉旧的，晚到的从当前位置起播，暂停跟着暂停，4×以上/跳过场/跳阶段/重开不出声。测试 `test_simui` 加 4 项（含"A4 全程没有一句被排队推迟"，挂了就是关卡的问题，转关卡线）。临时检查可加 `--port 8726`，让原服务继续运行。
 
 - 地图朝向（用户 11-08 "北基地怎么在南边"）：旧 `W2S`/`S2W` 把世界 y 当屏幕 y，整张图上下镜像。现在朝向只在 `maprender.SCREEN_Y`（= -1，北在上）定义一次，`maprender.north_up` 和页面都用它（`/api/static` 的 `screen_y`）；地形图翻行、边界、拖动平移、方向键、建筑朝向跟着改，框选和缩放走 `S2W` 不用改。已和 `cnv_map CampA4` 的俯视图对过。测试 `test_the_page_draws_north_up_by_the_map_pictures_own_definition`。
 - 配音排队的依据：`docs/story/handoff.md`「配音叠播的真根因」一节"引擎把配音排队播"（在 CampShell 游戏里看到的，`r3_fine*` 逐秒截图；不是测试台计数器量出来的）。关卡线会在游戏里再实测核实；结论变了就改 `PlaySim.act` 的排队。

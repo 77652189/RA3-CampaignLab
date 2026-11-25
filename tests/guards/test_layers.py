@@ -7,7 +7,7 @@ files still at the top level are the ones from before the layers, which only lea
    and a file that moves out cannot come back;
 3. no two test files share a name anywhere under tests/: pytest imports them by name (no __init__.py), and the
    picker finds a file the coverage map recorded before a move by it;
-4. the test paths a tool names (the Codex close's guards) exist, and the picker's guards are the whole guard layer.
+4. the picker's guards are the whole guard layer.
 Each rule has a bite check on a made-up tree."""
 import importlib.util
 import os
@@ -27,7 +27,6 @@ def _load(name, rel):
 
 
 at = _load('affected_tests_for_layers', 'experimental/testbench/affected_tests.py')
-lane_close = _load('lane_close_for_layers', 'experimental/outsource/lane_close.py')
 
 BASE = '488035c07e5373d317b47ede73a9c44ebeb21e4d'   # origin/main when the layers came (11-17): the old top level
 OTHER_FOLDERS = {'fixtures'}                         # data, not tests
@@ -89,11 +88,6 @@ def test_the_top_level_only_loses_test_files():
 
 def test_no_two_test_files_share_a_name():
     assert not name_problems(ROOT), name_problems(ROOT)
-
-
-def test_the_test_paths_tools_name_exist():
-    missing = [g for g in lane_close.GUARDS if not (ROOT / g).is_file()]
-    assert not missing, 'lane_close.GUARDS names test files that are not there (moved?): %s' % missing
 
 
 def test_the_picker_always_takes_the_whole_guard_layer():

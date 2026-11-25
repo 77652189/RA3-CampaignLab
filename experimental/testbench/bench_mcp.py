@@ -1,5 +1,5 @@
 """ra3bench: an MCP server that holds the test-bench game (harness.Session) so an agent plays a test map step by step
-instead of writing a click timeline for run_bench.ps1 (registered in the repository's .mcp.json; Python from
+instead of writing a click timeline for run_bench.ps1 (registered by the MCP client; Python from
 envs/bench_mcp, which has mcp 2.x, Pillow, NumPy, pycaw).
 
 Coordinates are world (map) units by default -- the same numbers the builders place units at -- converted with the

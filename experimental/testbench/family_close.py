@@ -38,6 +38,7 @@ WORKERS = 2          # until the CPU token pool (handoff-r2 T5) says how many
 _cpu_spec = importlib.util.spec_from_file_location('_cpupool_for_family_close', os.path.join(HERE, 'cpupool.py'))
 cpupool = importlib.util.module_from_spec(_cpu_spec)
 _cpu_spec.loader.exec_module(cpupool)
+pytest_run = cpupool._load('pytest_run', os.path.join(HERE, 'pytest_run.py'))
 
 
 def git(root, *args):
@@ -124,18 +125,6 @@ def with_workers(cmd, n):
     return cmd.replace(' -m pytest ', f' -m pytest -n {n} ', 1)
 
 
-def pytest_counts(text):
-    """{'passed': 840, 'failed': 5, ...} from pytest's last summary line, and the failed node ids (-rf)."""
-    counts = {}
-    for line in reversed(text.splitlines()):
-        found = re.findall(r'(\d+) (passed|failed|errors?|skipped|xfailed|xpassed|deselected)', line)
-        if found:
-            counts = {k.rstrip('s') if k.startswith('error') else k: int(v) for v, k in found}
-            break
-    red = sorted(set(re.findall(r'^(?:FAILED|ERROR) (\S+)', text, re.M)))
-    return counts, red
-
-
 def tests_line(counts, red, old_red, why=''):
     """(ok, one line): red tests also red on the base are old (someone else's), the rest are this step's. `why`: how
     a run that gave no summary ended (run_pytest)."""
@@ -148,33 +137,6 @@ def tests_line(counts, red, old_red, why=''):
     if red:
         return True, f'{tally}；红的 {len(red)} 个在底版上也红（旧红，不是本步的）'
     return True, tally
-
-
-def no_result_why(returncode, stderr):
-    """How a pytest run that printed no summary ended: its exit code and its last word on stderr."""
-    last = next((ln.strip() for ln in reversed(stderr.splitlines()) if ln.strip()), '')
-    return f'exit {returncode}' + (f'；{last[:200]}' if last else '')
-
-
-def run_pytest(args, cwd, log_path, run=subprocess.run, tries=2):
-    """pytest with `args` (a list starting at its options) in `cwd`; its counts, red ids and, when it gave no
-    summary, how it ended. A run that gave none (R 11-18: interrupted, or killed, while it waited for CPU tokens) is
-    run again once, as R did by hand; the log keeps both, each with its exit code."""
-    cmd = [sys.executable, '-X', 'utf8', '-m', 'pytest', *args]
-    why = ''
-    for attempt in range(1, tries + 1):
-        r = run(cmd, cwd=cwd, capture_output=True, text=True, encoding='utf-8', errors='replace')
-        counts, red = pytest_counts(r.stdout)
-        with open(log_path, 'a', encoding='utf-8') as f:
-            f.write(f'$ {" ".join(cmd)}\n(in {cwd}; try {attempt}, exit {r.returncode})\n{r.stdout}\n'
-                    f'{r.stderr[-5000:]}\n')
-        if counts or red:
-            return counts, red, ''
-        why = no_result_why(r.returncode, r.stderr)
-        with open(log_path, 'a', encoding='utf-8') as f:
-            f.write(f'family_close: pytest gave no summary ({why})' + ('; running it again\n' if attempt < tries
-                                                                        else '\n'))
-    return {}, [], f'跑了 {tries} 次都没结果，最后一次 {why}'
 
 
 def affected(root, base, n, log_path, golden):
@@ -199,7 +161,7 @@ def changed_tests(root, base):
 
 def judge(args, root, base, n, log_path, golden):
     """pytest with `args` in `root`, its reds rerun on the base: (ok, the line)."""
-    counts, red, why = run_pytest(args, root, log_path)
+    counts, red, why = pytest_run.run_pytest(args, root, log_path)
     old = set()
     if red:   # rerun the reds on the base, in the golden tree (held under golden's lock)
         with golden.Lock(os.path.join(golden.CACHE, 'golden.lock')):
@@ -207,7 +169,7 @@ def judge(args, root, base, n, log_path, golden):
             git(golden.TREE, 'checkout', '--', golden.SIMRECORD_REL)   # the base's own recorder for its tests
             here = [t for t in red if os.path.exists(os.path.join(golden.TREE, t.split('::')[0]))]
             if here:   # --timeout for a base before T7 (since then conftest marks each test with its layer's limit)
-                _, old_red, _ = run_pytest(['-n', str(n), '--timeout', '3000', '-p', 'no:cacheprovider', '-q', '-rf',
+                _, old_red, _ = pytest_run.run_pytest(['-n', str(n), '--timeout', '3000', '-p', 'no:cacheprovider', '-q', '-rf',
                                             *here], golden.TREE, log_path)
                 old = set(old_red)
     return tests_line(counts, red, old, why)

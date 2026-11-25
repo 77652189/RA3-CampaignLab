@@ -42,7 +42,7 @@ The recorders read the world only through the observation port (engine/ports/obs
 into a kernel module changes the port, never this file. Only run_task, the harness, imports the simulator (to make
 the run); tests/guards/test_ports.py holds both. The golden layer copies this file and the port onto its base
 together (testbench/golden.py RECORDER_RELS); the port is imported where it is used, so loading this file by its
-path (golden, family_close) needs no simulator on sys.path."""
+path (golden) needs no simulator on sys.path."""
 import argparse
 from contextlib import nullcontext
 import gzip

@@ -114,6 +114,33 @@ def check_steam():
     add(status, 'Steam ready', f'{log}: {detail}', '' if status == 'OK' else STEAM_HOWTO)
 
 
+def check_mcp():
+    name = 'MCP ra3bench'
+    hint = 'configure the client with the bench_mcp Python and experimental/testbench/bench_mcp.py'
+    try:
+        with open(os.path.join(ROOT, '.mcp.json'), encoding='utf-8') as f:
+            servers = json.load(f).get('mcpServers', {})
+        if not isinstance(servers, dict):
+            raise ValueError('mcpServers must be an object')
+        if 'ra3bench' not in servers:
+            add('WARN', name, 'no local ra3bench registration', hint)
+            return
+        srv = servers['ra3bench']
+        cmd = srv['command']
+        args = srv.get('args', [])
+        if not isinstance(cmd, str) or not cmd or not isinstance(args, list) or not all(isinstance(a, str) for a in args):
+            raise ValueError('ra3bench needs a command path and a list of string arguments')
+        bad = [p for p in [cmd, *(a for a in args if a.lower().endswith('.py'))] if not os.path.isfile(p)]
+        if bad:
+            add('BROKEN', name, ', '.join(bad), hint)
+        else:
+            add('OK', name, cmd)
+    except FileNotFoundError:
+        add('WARN', name, 'no local MCP configuration', hint)
+    except (OSError, AttributeError, KeyError, TypeError, ValueError) as e:
+        add('BROKEN', name, f'{type(e).__name__}: {e}', hint)
+
+
 def main():
     verbose = '--verbose' in sys.argv
 
@@ -157,21 +184,7 @@ def main():
     check_path('voice repo', os.path.join(labpaths.LAB, 'RA3-ChineseVoice'),
                'git clone https://github.com/77652189/RA3-ChineseVoice next to this repository', must_be_dir=True)
 
-    # MCP server command
-    mcp = os.path.join(ROOT, '.mcp.json')
-    try:
-        with open(mcp, encoding='utf-8') as f:
-            srv = json.load(f)['mcpServers']['ra3bench']
-        cmd = srv['command']
-        script = [a for a in srv.get('args', []) if a.lower().endswith('.py')]
-        bad = [p for p in [cmd] + script if not os.path.isfile(p)]
-        if bad:
-            add('MISSING', 'MCP ra3bench (.mcp.json)', ', '.join(bad),
-                'fix the paths in .mcp.json (command = envs/bench_mcp python, script = experimental/testbench/bench_mcp.py)')
-        else:
-            add('OK', 'MCP ra3bench (.mcp.json)', cmd)
-    except (OSError, KeyError, ValueError) as e:
-        add('BROKEN', 'MCP ra3bench (.mcp.json)', f'{type(e).__name__}: {e}', 'restore .mcp.json from git')
+    check_mcp()
 
     # fingerprint baseline (regenerable)
     base = os.path.join(labpaths.WORK, 'fingerprint', 'baseline.json')

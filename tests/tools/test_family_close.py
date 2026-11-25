@@ -101,14 +101,8 @@ ERROR tests/test_c.py::test_z - fixture
 """
 
 
-def test_pytest_counts_and_red_ids():
-    counts, red = fc.pytest_counts(SUMMARY)
-    assert counts == {'failed': 2, 'passed': 840, 'skipped': 3, 'error': 1}
-    assert red == ['tests/test_a.py::test_x', 'tests/test_b.py::test_y', 'tests/test_c.py::test_z']
-
-
 def test_reds_also_red_on_the_base_are_old():
-    counts, red = fc.pytest_counts(SUMMARY)
+    counts, red = fc.pytest_run.pytest_counts(SUMMARY)
     ok, line = fc.tests_line(counts, red, set(red))
     assert ok and '旧红' in line
     ok, line = fc.tests_line(counts, red, {'tests/test_a.py::test_x', 'tests/test_c.py::test_z'})
@@ -117,40 +111,6 @@ def test_reds_also_red_on_the_base_are_old():
 
 def test_no_pytest_summary_is_red():
     assert not fc.tests_line({}, [], set())[0]
-
-
-class FakePytest:
-    """subprocess.run stand-in: hands out the given (returncode, stdout, stderr) one per call."""
-
-    def __init__(self, *results):
-        self.results, self.calls = list(results), 0
-
-    def __call__(self, cmd, **kw):
-        self.calls += 1
-        rc, out, err = self.results.pop(0)
-        return type('R', (), dict(returncode=rc, stdout=out, stderr=err))()
-
-
-WAITED = 'cpupool: pytest -n 2 waits for 2 of 6 CPU tokens (0 free)\n'
-CUT = (2, '', WAITED)       # R 11-18: interrupted in the wait, nothing on stdout
-
-
-def test_a_run_with_no_summary_is_run_again_and_logged(tmp_path):
-    log = tmp_path / 'tests.log'
-    run = FakePytest(CUT, (1, SUMMARY, ''))
-    counts, red, why = fc.run_pytest(['-q'], str(tmp_path), str(log), run=run)
-    assert run.calls == 2 and counts and red and why == ''
-    text = log.read_text(encoding='utf-8')
-    assert 'try 1, exit 2' in text and 'gave no summary (exit 2；cpupool: pytest -n 2 waits' in text
-    assert 'running it again' in text and 'try 2, exit 1' in text
-
-
-def test_two_runs_with_no_summary_say_how_they_ended(tmp_path):
-    run = FakePytest(CUT, (3, '', 'INTERNALERROR> boom\n'))
-    counts, red, why = fc.run_pytest(['-q'], str(tmp_path), str(tmp_path / 'tests.log'), run=run)
-    assert run.calls == 2 and not counts and not red
-    ok, line = fc.tests_line(counts, red, set(), why)
-    assert not ok and 'exit 3' in line and 'INTERNALERROR> boom' in line
 
 
 def test_light_skips_the_affected_tests_and_says_they_are_left_to_the_full_run(tmp_path, monkeypatch, capsys):

@@ -8,7 +8,7 @@
 
 关卡线：`docs/story/`（outline、levels、plans/、map-language、units）、`experimental/cnv/`（单位外观接线除外）、模拟器（sim.py、simstatic.py、simchecks.py、simunits.py）、offline.py、platmap/platprops、terrainref。
 不是我的：`docs/plan.md`（总控）、`docs/design/`（设计线，机制结论可写进 `docs/design/flow/mechanics.md`）、音乐线文件（`experimental/music/*`、`docs/music/handoff.md`、`missions/music_dyn.py`）、`experimental/voice/*`（配音线）。外壳后来拆给外壳线（见 [shell/handoff.md](../shell/handoff.md)）。
-规矩：根目录 `CLAUDE.md`；mod 名 ≤15 字符不带下划线；不 cd 进子目录；交给用户检查的只列真问题。
+规矩：根目录 `AGENTS.md`；mod 名 ≤15 字符不带下划线；不 cd 进子目录；交给用户检查的只列真问题。
 
 ## 已有的能力（不用再查，细节在指到的文件里）
 
@@ -97,7 +97,6 @@ ADR 0015 第 2 类要求编译器拒收没挂镜头/事件的台词（I2，已�
 - 长检查放后台，输出写 `work/logs/`，屏幕只看 `PASS|FAIL|RESULT`。
 - 测试台启动会跳过开场过场，首帧已在任务约 40 秒；Esc 暂停在过场里失败会被当成"任务结束"；读数器会把连续相同数字并成一个（用位值互不相同的闩锁）；`cnv_check` 偶发菜单卡住（`build=false` 重试）；读数条要在黑底上才读得出，标签里别用"一"这种一横的字和全角括号。
 - 测试台一个检查最多 4 行读数（`counters.MAX_LINES`），第 4 行读不准，要紧的放前三行；`cnv_list` 输出几百行，用 Grep 查 `build.py`；`bench_wait(look=false)` 之后 `bench_look` 看到的是旧帧；镜头移动在任务里要 1～7 秒，看有时限的东西要在检查里让它循环出现。
-- 钩子 `guard_inline_edits.py` 拦带反斜杠的 heredoc / `python -c`：改文件用 Edit/Write。
 - Bash 工具里 `cd` 会让工作目录漂，一律用绝对路径；停测试游戏用 PowerShell 按 pid 杀，别碰不是自己起的进程。
 - 配音包会拿 SDK 构建锁，同进程里已重入不再卡死。
 - 检查里需要"脚本才创建的单位"时，基础任务也要有一个放好的对象，否则契约测试 `test_every_build_keeps_the_contract` 失败（做法：远处放一个，检查里杀掉再创建，见 `ghost`）。

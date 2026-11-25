@@ -498,7 +498,7 @@ time.sleep = _interrupt
 
 
 def test_a_pytest_run_interrupted_while_it_waits_says_why(tmp_path):
-    """R 11-18 (T5b): family_close's pytest waited for tokens, then ended with no output at all -- pytest drops an
+    """A pytest run waited for tokens, then ended with no output at all -- pytest drops an
     interrupt during configure without a word (exit 2, empty stdout, only the wait line on stderr). The run must say
     it was interrupted waiting for tokens."""
     (tmp_path / 'interrupt_wait.py').write_text(INTERRUPT_PLUGIN, encoding='utf-8')

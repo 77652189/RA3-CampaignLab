@@ -10,6 +10,9 @@ ROOT = Path(__file__).resolve().parents[2]
 _spec = importlib.util.spec_from_file_location('culprit_under_test', ROOT / 'experimental/testbench/culprit.py')
 culprit = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(culprit)
+_spec = importlib.util.spec_from_file_location('pytest_run_under_test', ROOT / 'experimental/testbench/pytest_run.py')
+pytest_run = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(pytest_run)
 FIRST = 'test_sample.py::test_first'
 SECOND = 'test_sample.py::test_second'
 OLD_RED = 'test_sample.py::test_always_red'
@@ -83,3 +86,50 @@ def test_refuses_a_green_bad_endpoint(repo, capsys):
     lines = capsys.readouterr().out.splitlines()
     assert f'{node}  bad is green (expected red)' in lines
     assert sum(': pytest ' in line for line in lines) == 1
+
+
+SUMMARY = """....F.
+FAILED tests/test_a.py::test_x - assert 1 == 2
+FAILED tests/test_b.py::test_y - boom
+ERROR tests/test_c.py::test_z - fixture
+2 failed, 840 passed, 3 skipped, 1 error in 512.30s (0:08:32)
+"""
+
+
+def test_pytest_counts_and_red_ids():
+    counts, red = pytest_run.pytest_counts(SUMMARY)
+    assert counts == {'failed': 2, 'passed': 840, 'skipped': 3, 'error': 1}
+    assert red == ['tests/test_a.py::test_x', 'tests/test_b.py::test_y', 'tests/test_c.py::test_z']
+
+
+class FakePytest:
+    """subprocess.run stand-in: hands out the given (returncode, stdout, stderr) one per call."""
+
+    def __init__(self, *results):
+        self.results, self.calls = list(results), 0
+
+    def __call__(self, cmd, **kw):
+        self.calls += 1
+        rc, out, err = self.results.pop(0)
+        return type('R', (), dict(returncode=rc, stdout=out, stderr=err))()
+
+
+WAITED = 'cpupool: pytest -n 2 waits for 2 of 6 CPU tokens (0 free)\n'
+CUT = (2, '', WAITED)       # R 11-18: interrupted in the wait, nothing on stdout
+
+
+def test_a_run_with_no_summary_is_run_again_and_logged(tmp_path):
+    log = tmp_path / 'tests.log'
+    run = FakePytest(CUT, (1, SUMMARY, ''))
+    counts, red, why = pytest_run.run_pytest(['-q'], str(tmp_path), str(log), run=run)
+    assert run.calls == 2 and counts and red and why == ''
+    text = log.read_text(encoding='utf-8')
+    assert 'try 1, exit 2' in text and 'gave no summary (exit 2；cpupool: pytest -n 2 waits' in text
+    assert 'running it again' in text and 'try 2, exit 1' in text
+
+
+def test_two_runs_with_no_summary_say_how_they_ended(tmp_path):
+    run = FakePytest(CUT, (3, '', 'INTERNALERROR> boom\n'))
+    counts, red, why = pytest_run.run_pytest(['-q'], str(tmp_path), str(tmp_path / 'tests.log'), run=run)
+    assert run.calls == 2 and not counts and not red
+    assert 'exit 3' in why and 'INTERNALERROR> boom' in why

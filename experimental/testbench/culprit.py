@@ -61,7 +61,7 @@ def checkout(golden, root, tree, rev):
     git(tree, 'checkout', '--detach', '--no-overwrite-ignore', rev)
 
 
-def probe(tree, rev, ids, log, family, cpupool, say):
+def probe(tree, rev, ids, log, pytest_run, cpupool, say):
     results = {}
     pending = []
     for node in ids:
@@ -83,7 +83,7 @@ def probe(tree, rev, ids, log, family, cpupool, say):
             return completed
 
         # --timeout for a commit before T7: since then tests/conftest.py marks each test with its layer's limit
-        family.run_pytest(
+        pytest_run.run_pytest(
             ['-n', '0', '--timeout', '900', '-p', 'no:cacheprovider', '-vv', '-o', 'addopts=',
              '--color=no', '--basetemp', base, '--', *pending],
             tree, log, run=run, tries=1)
@@ -168,14 +168,12 @@ def main(argv=None, root=ROOT):
     if any('::' not in node for node in args.tests):
         parser.error('test IDs must name individual pytest tests')
 
-    # Use family_close's rerunner and the git/pin helpers it uses for the base. Its prepare_tree also prunes
-    # worktrees and copies a different recorder, so keep the dedicated checkout on the tested commit's own code.
-    spec = importlib.util.spec_from_file_location('family_close', HERE / 'family_close.py')
-    family = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(family)
-    golden = family.cpupool._load('culprit_golden', HERE / 'golden.py')
-    cpupool = family.cpupool._load('culprit_cpupool', HERE / 'cpupool.py')
-    model = family.cpupool._load('culprit_modelpin', ROOT / 'experimental/cnv/modelpin.py')
+    spec = importlib.util.spec_from_file_location('culprit_cpupool', HERE / 'cpupool.py')
+    cpupool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cpupool)
+    pytest_run = cpupool._load('culprit_pytest_run', HERE / 'pytest_run.py')
+    golden = cpupool._load('culprit_golden', HERE / 'golden.py')
+    model = cpupool._load('culprit_modelpin', ROOT / 'experimental/cnv/modelpin.py')
     logs = Path(golden.labpaths._work(root=os.fspath(root))) / 'logs'
     logs.mkdir(parents=True, exist_ok=True)
     log = logs / f'culprit_{datetime.datetime.now():%Y%m%d_%H%M%S_%f}.log'
@@ -206,7 +204,7 @@ def main(argv=None, root=ROOT):
                     say(f'{rev[:8]}: unknown (engine model does not match {pin})')
                     return {}
                 checkout(golden, root, tree, rev)
-                results = probe(tree, rev, nodes, log, family, cpupool, say)
+                results = probe(tree, rev, nodes, log, pytest_run, cpupool, say)
                 if pin and model.head(golden.labpaths.ENGINE_MODEL) != pin:
                     say(f'{rev[:8]}: unknown (engine model changed during pytest)')
                     return {}

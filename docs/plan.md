@@ -16,7 +16,7 @@
 | 引擎 B（遭遇战 AI） | AI 部分的清单已生成，按清单推进；几条一开就和测试台对不上的规则仍关着 | 本机 `work/re/handoff-b.md` |
 | 关卡 | 纸面设计只做盟军 9 关，苏联、帝国两条线停着（用户 2026-11-22："先集中精力做盟军线"；Dot 的 J4 / J5 / S7 / S8 研究留在各流程稿末尾待定）。不推新关。A4 对照局收尾（测试台和模拟器的差别已归因到战斗模型，见 [story/sim-vs-bench-a4.md](story/sim-vs-bench-a4.md)）；接着做原版战役关验收题（测试台 mod 任务不写录像，原版关能否存录像还没试）和自动玩家框架 | [story/handoff-phase4.md](story/handoff-phase4.md) 最末一节 |
 | 模拟器界面 | 浏览器里能玩（`experimental/simui/`）；试玩版的快进和跳过场已做成开发热键（`experimental/cnv/playtest.py`）；跳阶段要读的阶段存档点清单格式是草稿，随关卡暂停 | [simui/handoff.md](simui/handoff.md) |
-| 策划 | A4 地图诊断 [story/map-diagnosis-a4.md](story/map-diagnosis-a4.md) 做完，原版实测规律并进 [story/map-language.md](story/map-language.md) 4.3；用户："先不做，先记文档，然后整理一下文档"——**地图先不改**，地图设计 skill 暂停 | [story/planning-handoff.md](story/planning-handoff.md) |
+| 策划 | A4 地图诊断 [story/map-diagnosis-a4.md](story/map-diagnosis-a4.md) 做完，原版实测规律并进 [story/map-language.md](story/map-language.md) 4.3；用户："先不做，先记文档，然后整理一下文档"——**地图先不改**，地图设计 skill 暂停 | [地图内容稿](design/maps/README.md) |
 | 外壳 | 11-06 做完笔记本演示包、I21、I22；能改的地图页、画新地图随关卡暂停 | [shell/handoff.md](shell/handoff.md) |
 | 画面 | DXVK 和帧率解锁能同跑（第 0 步）；按 [ADR 0022](adr/0022-simulator-before-levels.md) 外观放最后，没有在做的事 | [render/handoff.md](render/handoff.md) |
 | 音乐 | A4 第五版配乐等用户试听（随游戏内试玩一起） | [music/handoff.md](music/handoff.md) |
@@ -28,7 +28,6 @@
 - **不停下等用户。** 有分叉就按自己推荐的做，把另一种做法和怎么切换写进交给总控的报告。总控把要用户玩、听、看的东西攒成一张试玩清单，用户一次答完。只有改不回来的事和看口味的事（美术风格、剧情、音色）才等用户。
 - **小步合并。** 一件事做完、自己的检查过了，一天内交总控验收合并。各线负责哪些文件见 [architecture.md](architecture.md)「各线负责的文件」。
 - **反馈按类从源头修**（[ADR 0015](adr/0015-fix-error-classes-at-source.md)），问题一条一个编号记在 [issues.md](issues.md)。
-- **外包给谷歌**（用户 2026-10-26，省 Claude 额度）：读得多、判断少、有明确完成标准的活（批量调研、第二意见审查、初稿、有测试兜底的机械改动）用 [`experimental/outsource/agy_task.py`](../experimental/outsource/agy_task.py)，用法和额度见脚本开头说明。不外包：测试台、提交推送、本文件和 ADR、架构和玩法决定。回答只是草稿，看改动、跑测试之后才算数。
 
 ## 待启动 / 进行中
 

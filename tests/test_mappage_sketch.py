@@ -408,9 +408,3 @@ def test_one_server_lists_every_sketch(many_server):
     assert _call(url + '/api/new', 'POST', {'name': 'gamma'}, origin='https://example.com')[0] == 403
     assert _call(url + '/m/alpha/api/sketch', 'POST', dict(_river(), name='x'))[0] == 200
     assert json.loads((folder / 'alpha' / 'sketch.json').read_text(encoding='utf-8'))['name'] == 'alpha'
-
-
-def test_launch_has_one_sketch_entry():
-    conf = json.loads((ROOT / '.claude' / 'launch.json').read_text(encoding='utf-8'))
-    sketches = [c for c in conf['configurations'] if '--new' in c['runtimeArgs']]
-    assert len(sketches) == 1 and sketches[0]['runtimeArgs'][-3:] == ['--new', '--port', str(sketches[0]['port'])]

@@ -34,7 +34,7 @@
 - **原版内容检查**：`shell.still_retail(sp)`，`KEEP` 保留清单（用不到的 KEEP 也报错）；测试 `tests/test_shell.py` 里 `test_no_retail_picture_label_or_video_...`。
 - **任务摘要页**：9 关一律播 A07 的时间轴（`shell.TEMPLATE`、`apt_textures.patch(.., donor=)`、`shell.retime`、`shell.views`）；目标位置取 `shell_missions*.json` 的 `targets`；地图图片 `work/shell/map_plain.png`（`maprender.py CampShell --plain --px 2 -o ...`，是上次构建的地图画的，地图改了要先重画再构建）。
 - **局势介绍世界地图标记**：`shell.GRID`、`shell.retarget()`、`experimental/campaign/apt_movie.py`；测试 `test_every_slots_world_map_points_at_its_own_place`。
-- **地图页和草图编辑器**（`experimental/mappage/`，ADR 0017）：本地运行 `python -I -X utf8 experimental/mappage/serve.py --new`（`.claude/launch.json` 的 `mapsketch`，8766）；草图在 `work/mappage/<名>/sketch.json`；格式见 [sketch-format.md](sketch-format.md)；命令行 `sketch2map.py <名字> --check --sketch 文件.json`；改了 `sketch2map.py` 要重启服务；`platmap.Layout.brushes` 是关卡线文件上加的可选字段；"看不见的墙"见 [engine/terrain.md](../engine/terrain.md) 第 3 节。测试 `tests/test_mappage*.py`。
+- **地图页和草图编辑器**（`experimental/mappage/`，ADR 0017）：本地运行 `python -I -X utf8 experimental/mappage/serve.py --new --port 8766`；草图在 `work/mappage/<名>/sketch.json`；格式见 [sketch-format.md](sketch-format.md)；命令行 `sketch2map.py <名字> --check --sketch 文件.json`；改了 `sketch2map.py` 要重启服务；`platmap.Layout.brushes` 是关卡线文件上加的可选字段；"看不见的墙"见 [engine/terrain.md](../engine/terrain.md) 第 3 节。测试 `tests/test_mappage*.py`。
 - 重建并装 Mods：先单独查游戏有没有在运行；构建工具有锁，别和关卡线同时建。
 
 ## 验证方式

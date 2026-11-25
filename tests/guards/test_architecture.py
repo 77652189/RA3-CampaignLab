@@ -1,4 +1,4 @@
-"""Architecture guards (ADR 0016, docs/reviews/architecture-2026-11-03.md section 5): ratchets that stop one class of
+"""Architecture guards (ADR 0016): ratchets that stop one class of
 mess from growing back. Every whitelist below is the CURRENT state written out as a literal set and may only SHRINK.
 When a guard fails because something was removed from the code, the fix is to remove it from the set here. Adding to a
 set (or raising a ceiling) needs the coordinator.

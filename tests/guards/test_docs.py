@@ -1,5 +1,4 @@
-"""Doc guards (canon): the doc set is a deliberate list, ADR files match the index, hard constraints stay in the
-handoff, the handoff's state block keeps its fields and allowed values, and plan.md stays the state authority."""
+"""Guard the public document set, ADR index, contribution rules, music constraints and plan authority."""
 import re
 import subprocess
 from pathlib import Path
@@ -8,27 +7,10 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 DOCS = ROOT / 'docs'
 ADR = DOCS / 'adr'
 
-ROOT_DOCS = {'README.md', 'HANDOFF.md', 'CLAUDE.md', 'AGENTS.md'}   # AGENTS.md: the one rule file for every harness (red lines + map, 2026-11-10); CLAUDE.md: imports it + Claude-only mechanics
+ROOT_DOCS = {'README.md', 'AGENTS.md'}
+WORKFLOW_ROOT_DOCS = {'HANDOFF.md', 'CLAUDE.md'}
 ACTIVE_DOCS = {'architecture.md', 'issues.md', 'plan.md', 'requirements.md'}
 
-HARD_CONSTRAINTS = [
-    '需要任何内容直接下载就行，不要停下来，你最多可以用50G硬盘',
-    '只要不乱删文件就行',
-    '可以，限流开始做吧',
-    '游戏运行时不往 Mods 写',
-    '不改 Steam 游戏目录里的文件',
-    '不解密 Corona mod',
-    '回复用通俗中文',
-    '总之让我听不到就可以',
-    '就只在国内发布吧，不上N网',
-    '只用来做mod，研究学习里面的内容，不公开',
-    '我希望尽可能把引擎的算法还原成python代码',
-]
-STATE_FIELDS = {
-    'slice': None,                                              # free text
-    'blocked_on': {'none', 'voice-session', 'user'},
-    'next_gate': {'test-map', 'coordinate-calibration', 'demo', 'playtest'},
-}
 ENGINE_DOCS = {'script-semantics.md', 'know-how.md', 'terrain.md', 'pathing.md', 'upgrades.md', 'spawn.md', 'air.md', 'aircraft.md',
                'missile.md', 'weapons.md', 'garrison.md', 'stealth.md',
                'production.md', 'mining.md', 'construction.md', 'specialpower.md', 'sell.md', 'heal.md', 'stance.md', 'transform.md', 'vision.md', 'runoffmap.md', 'teleport.md', 'crush.md', 'aiopen.md', 'aistate.md', 'aispecial.md', 'aimicro.md', 'aitactics.md', 'ainamed.md', 'aiswitches.md', 'aiteamstate.md', 'uprising-gap.md', 'weaponset.md', 'sim-layers.md', 'sim-modules.md', 'testing.md'}   # reverse-engineering notes stay in work/re/ (repo is public)
@@ -44,7 +26,7 @@ def _md(root):
 
 
 def test_root_docs_are_the_reviewed_set():
-    assert _md(ROOT) == ROOT_DOCS
+    assert _md(ROOT) - WORKFLOW_ROOT_DOCS == ROOT_DOCS
 
 
 def test_docs_folder_is_the_reviewed_set():
@@ -77,26 +59,6 @@ def test_adr_files_match_the_index():
     assert linked == files
 
 
-def test_hard_constraints_present_in_handoff():
-    text = (ROOT / 'HANDOFF.md').read_text(encoding='utf-8')
-    for phrase in HARD_CONSTRAINTS:
-        assert phrase in text, phrase
-
-
-def test_handoff_state_block_fields_and_values():
-    text = (ROOT / 'HANDOFF.md').read_text(encoding='utf-8')
-    block = re.search(r'```yaml\n(.*?)```', text, re.S)
-    assert block, 'no yaml state block'
-    state = {}
-    for line in block.group(1).splitlines():
-        m = re.match(r'(\w+):\s*([^#\s]+)', line)
-        if m:
-            state[m.group(1)] = m.group(2)
-    assert set(state) == set(STATE_FIELDS)
-    for key, allowed in STATE_FIELDS.items():
-        assert allowed is None or state[key] in allowed, (key, state[key])
-
-
 def test_plan_is_the_state_authority():
     assert '进度状态的唯一权威' in (DOCS / 'plan.md').read_text(encoding='utf-8')
 
@@ -126,15 +88,11 @@ def test_local_data_stays_ignored():
 
 
 def test_agents_md_is_rules_and_map_only():
-    """AGENTS.md is the one rule file every harness reads (user 2026-11-10): red lines + map, kept short;
-    CLAUDE.md only imports it and adds Claude-only mechanics; every repo path the map names exists."""
+    """Keep the public contribution rules short and verify their map paths."""
     agents = (ROOT / 'AGENTS.md').read_text(encoding='utf-8')
     assert len(agents.splitlines()) <= 60, 'AGENTS.md over 60 lines: move area know-how into that area\'s file'
     for head in ('## 红线', '## 提交', '## 干活', '## 地图'):
         assert head in agents, head
-    claude = (ROOT / 'CLAUDE.md').read_text(encoding='utf-8').splitlines()
-    assert claude[0].strip() == '@AGENTS.md'
-    assert len(claude) <= 15, 'CLAUDE.md is an adapter; rules go in AGENTS.md'
     paths = re.findall(r'`((?:docs|experimental|tests)/[^`\s<*]+?\.(?:md|py))', agents)
     assert paths, 'AGENTS.md map names no repo paths'
     for p in paths:
