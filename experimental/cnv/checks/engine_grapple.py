@@ -12,6 +12,8 @@ part the pull's speed from its fixed delays). Both Apocalypses pressed at PRESS,
 ordered at their Hammer. Counters: each Hammer's health and its ring -- how many of the squares of half-side 25 .. 225
 (step 25) round its Apocalypse it stands in (9 far .. 0 beyond 225; it walks the line, so a ring is a 25 band).
 Prediction: the ring climbs about 40 a second (1.6 a second), the Hammer dies a second after it is at the tank.
+b (A365): pressed the same, never ordered: Far's Apocalypse keeps NO_ATTACK all along, Near's loses it at the press -- does
+the harpoon fire at the press on its own (a's hook came at the press, a second before the order)?
 The older synthetic probe here (a gun with a GrapplingHookNugget, no toggle) never pulled anything (1099 x 4).
 """
 from maps import probe_range
@@ -32,7 +34,7 @@ def mission():
     return m
 
 
-def check(m):
+def check(m, b=False):
     t = Test()
     for arm, (lane, _) in LANES.items():
         counted(f'E226Hp{arm}', '血' + arm, t, health=m.role(f'victim {arm}').name)
@@ -51,8 +53,9 @@ def check(m):
                          [('UNIT_CHANGE_OBJECT_STATUS', n, 'NO_ATTACK', 1) for n in apocs] +
                          [('UNIT_CHANGE_OBJECT_STATUS', m.role(f'victim {arm}').name, 'NO_ATTACK', 1) for arm in LANES]),
                   Script('Test - press', [('COUNTER', 'E226Frame', 2, PRESS)],
-                         [('NAMED_USE_COMMANDBUTTON_ABILITY', n, TOGGLE) for n in apocs]),
-                  Script('Test - shoot', [('COUNTER', 'E226Frame', 2, SHOOT)],
+                         [('NAMED_USE_COMMANDBUTTON_ABILITY', n, TOGGLE) for n in apocs] +
+                         ([('UNIT_CHANGE_OBJECT_STATUS', apocs[1], 'NO_ATTACK', 0)] if b else []))]
+    t.scripts += [] if b else [Script('Test - shoot', [('COUNTER', 'E226Frame', 2, SHOOT)],
                          [a for arm in LANES for a in (('UNIT_CHANGE_OBJECT_STATUS', m.role(f'apoc {arm}').name,
                                                         'NO_ATTACK', 0),
                                                        ('NAMED_ATTACK_NAMED', m.role(f'apoc {arm}').name,
@@ -64,4 +67,4 @@ def check(m):
 
 
 MISSION = {'engine_grapple': mission}
-CHECKS = {'engine_grapple': {'a': check}}
+CHECKS = {'engine_grapple': {'a': check, 'b': lambda m: check(m, True)}}

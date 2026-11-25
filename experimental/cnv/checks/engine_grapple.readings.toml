@@ -14,10 +14,18 @@ expect = ["first('圈Far', lambda v: v >= 7) - first('圈Far', lambda v: v >= 2)
           "first('圈Far', lambda v: v >= 8) is not None and first('圈Near', lambda v: v >= 8) is not None",
           "all(60 <= v <= 95 for v in vals(rows)[-1][:2]) and vals(rows)[-1][2:] == [0, 0]"]
 
+# A365 (bench 11-25, HEAD e8fb06ba): the old reading "the harpoon hooks at the press under NO_ATTACK" (a: Near ring 5
+# at watch s17, the press at frame 240, the order at 255) compared watch seconds with script frames; b, NO_ATTACK let go
+# at the press, rings 5 at watch s18 -- a second later than a, whose let-go came a second later: the two runs' watch
+# offsets differ by over a second. b's Far lane settles it: NO_ATTACK held, the toggled harpoon never fires.
 [[reading]]
-id = "the_harpoon_hooks_at_the_press_under_no_attack"
-scene = {build = "engine_grapple", check = "a", until = 30, shot_clock = true}
-bench = "CampGrappleA_mcp_1124_151504: both Hammers 99 at s16 (pressed at s16, ordered at s17), Near ring 5 at s17"
-proves = "the harpoon fires at the press although NO_ATTACK holds until the order a second later"
-mismatch = "sim: the hook waits for the order at s17 (Near ring 3 at s17, 4 at s18), about a second late"
-expect = ["win(17, 17, '圈Near')[0] >= 5"]
+id = "no_attack_holds_the_toggled_harpoon_and_a_free_one_hooks_unordered"
+item = "武器效果 GrapplingHookNugget"
+scene = {build = "engine_grapple", check = "b", until = 30, shot_clock = true}
+bench = """CampGrappleB_mcp_1125_032920 (血Far 血Near 圈Far 圈Near): s15-s16 100 100 0 3, s17 100 99 0 3, s18 100 99 0 5/6, \
+s19 100 99 0 7/8, s20 100 95/81 0 8, s21-s50 100 76 0 0"""
+proves = """GrapplingHookNugget (engine/combat/grapple.py): with the toggle on, an Apocalypse holding NO_ATTACK never \
+hooks the Hammer 260 off (Far 100, ring 0 all along); one let go at the press acquires it unordered, hooks it and pulls \
+it in to its death (the hit's 1 damage, 99 on the bench, the sim does not show: not read) (sim.Sim.aim / host fires: NO_ATTACK stops the shot)"""
+expect = ["all(v[0] == 100 and v[2] == 0 for v in vals(rows))",
+          "max(v[3] for v in vals(rows)) == 8 and 60 <= vals(rows)[-1][1] <= 95 and vals(rows)[-1][3] == 0"]
