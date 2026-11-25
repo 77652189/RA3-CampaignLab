@@ -678,9 +678,10 @@ class Brain:
         if mine is None or them is None:
             answer = None
         else:
-            stats = simunits.stats(template, world.own) if template else {'speed': None}
+            own = world.own
+            stats = simunits.stats(template, own) if template else {'speed': None}
             if cond != 'NORMAL' and template:   # benches aipttp / aiptta (B 11-25): the set of the written condition
-                speed, surf = simunits.locomotor_of(template, world.own, cond)
+                speed, surf = simunits.locomotor_of(template, own, cond)
                 stats = dict(stats, speed=speed, surface='air' if 'AIR' in surf else stats['surface'])
             if not stats.get('speed'):
                 answer = False                                   # read (D175 why=noloco): no locomotor -> no way
