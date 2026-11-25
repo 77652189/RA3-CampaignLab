@@ -1,0 +1,10 @@
+# Bench readings of checks/engine_knock_self.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Health only: who the shotgun's MetaImpact shocks (centre = the shooter's feet, the 5d arc about its line) is in
+# the run's ra3ext.log and the check's docstring, not in a counter.
+
+[[reading]]
+id = "the_shotgun_from_its_own_spot_hurts_the_man_in_line_not_the_one_beside"
+scene = {build = "engine_knock_self", check = "a", until = 12, shot_clock = true}
+bench = "CampKSelfA_mcp_1124_225511: retail man / side, plain man / side = 74 / 100 / 74 / 100 from s6.47 to the end (one shot at frame 92)"
+proves = "DamageNugget of a DamageDealtAtSelfPosition shotgun (Radius 155, DamageTaperOff 25, DamageArc 5d): 25 ahead takes 38.3 of 150, 32 off at 39 deg nothing; removing ShockWaveArc changes no damage"
+expect = "vals(rows)[-1] == [74, 100, 74, 100]"

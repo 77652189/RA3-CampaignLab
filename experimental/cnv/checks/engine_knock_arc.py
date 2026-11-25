@@ -10,12 +10,25 @@ Bench 11-11: health99/100/99/100. Plain neighbour moves at frames175..177
 to (2320,3740,212.5); restricted victim AND neighbour remain stationary.
 This establishes a payload difference, not an arc-axis rule. The incoming
 direction/arc dispatch interface remains a gap; do not register filter cover.
+Line A, b (CampKArcB): one field each -- yuri keeps only Arc=5d, rocket
+keeps only the forbidden STUNNED_FLAILING; each lane adds a counterless
+probe man 20 behind the victim along the rocket's way in (+y), read off the
+position log. Prediction: a standing man is not flailing, so rocket moves
+like a's plain lane; yuri stays as a's restricted lane (Arc decides). If
+yuri's behind man alone moves, the arc points along the way in.
+Bench 11-24 CampKArcB_mcp_1124_225031 PASS 99/100/99/100: rocket shocks all three at 174 (centre
+(2300,3750,219), the same flights as a's plain lane); yuri shocks none, the behind man too. Arc decides, and
+not about the way in: retail's entry is the shooter's own position (engine_knock_self).
 """
 import os
 import re
 
 import labpaths
+from model import Obj
 from checks import engine_knock_probe as probe
+
+DROP = {'a': {'yuri': (), 'rocket': ('ShockWaveArc', 'ForbiddenTargetModelCondition')},
+        'b': {'yuri': ('ForbiddenTargetModelCondition',), 'rocket': ('ShockWaveArc',)}}
 
 
 def retail_shock():
@@ -38,13 +51,15 @@ def mission():
     return m
 
 
-def check(m):
+def check(m, which='a'):
     t = probe.check(m, 'retail')
     shock = retail_shock()
     for lane, uid in (('yuri', 'CNV_KnockYuri'), ('rocket', 'CNV_KnockRocket')):
         gun = probe.rocket_gun(uid)
-        payload = shock if lane == 'yuri' else re.sub(
-            r'\s+(?:ShockWaveArc|ForbiddenTargetModelCondition)="[^"]*"', '', shock)
+        payload = shock
+        for field in DROP[which][lane]:
+            payload, n = re.subn(rf'\s+{field}="[^"]*"', '', payload)
+            assert n == 1
         gun.xml, n = re.subn(r'<MetaImpactNugget\b[^>]*/>', lambda _: payload, gun.xml)
         assert n == 1
         m.units = [gun if u.id == uid else u for u in m.units]
@@ -53,8 +68,15 @@ def check(m):
         script.do = [(a[0], a[1], probe.ORDER + 2.0)
                      if a[0] == 'SET_MILLISECOND_TIMER' and a[1] == 'Knock Stop 0' else a
                      for a in script.do]
+    if which == 'b':
+        start = next(s for s in t.scripts if s.name == 'Test - start')
+        for lane in ('yuri', 'rocket'):
+            victim = next(o for o in m.objects if o.name == probe.name(lane, 'man'))
+            t.objects.append(Obj(probe.PROBE, victim.x, victim.y + 20, side=victim.side,
+                                 name=probe.name(lane, 'behind'), site=victim.site))
+            start.do.append(('UNIT_CHANGE_OBJECT_STATUS', probe.name(lane, 'behind'), 'NO_ATTACK', 1))
     return t
 
 
 MISSION = {'engine_knock_arc': mission}
-CHECKS = {'engine_knock_arc': {'a': check}}
+CHECKS = {'engine_knock_arc': {k: (lambda m, k=k: check(m, k)) for k in DROP}}
