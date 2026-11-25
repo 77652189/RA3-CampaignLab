@@ -63,14 +63,14 @@ class Life:
         """SELL_OBJECT (bench 2026-11-06 engine_sell, docs/engine/sell.md): a living structure that is not unpacking
         and not already sold is paid at once -- round(round(cost x 50%) x health share) -- and carries SOLD; 30 frames
         later it is deleted (no death, no ruin); meanwhile it still counts as power and can still be killed (then the
-        money stays paid and it is just dead). Anything else: nothing happens. Not read: a template's RefundValue,
-        NOT_SELLABLE, the factory's queue. Only a template with a StructureSellUpdate sells (up its inheritFrom
+        money stays paid and it is just dead). Anything else: nothing happens. KindOf NOT_SELLABLE is refused. Not read: a
+        template's RefundValue, the factory's queue. Only a template with a StructureSellUpdate sells (up its inheritFrom
         chain, the template data port simunits.module_blocks; in the SDK only BaseStructure.xml has one;
         bench 11-17 engine_garrison del: SELL_OBJECT on a civilian house, which has none, leaves it standing, unsold,
         owned and still manned, no refund). The garrison empties in the sale's frame (simgarrison; bench 11-17
         engine_sell g: a SovietBunker's peacekeeper ENCLOSED 9 frames, out from the sale on)."""
-        if b is None or not b.alive or 'STRUCTURE' not in b.kinds:
-            return
+        if b is None or not b.alive or 'STRUCTURE' not in b.kinds or 'NOT_SELLABLE' in b.kinds:
+            return                              # bench 11-24 blackcanyon lock: the NOT_SELLABLE copy stays
         m = b.find(interfaces.Sell)             # StructureSellUpdate (engine/modules/sell.py, step M10)
         if m is None or m.gone_frame() is not None:
             return

@@ -19,7 +19,7 @@ expect = ["win(8, 15, '存活 留/卖') == [0] * 8", "win(8, 15, '资金') == [2
 [[reading]]
 id = "plain_attack_orders_go_for_the_players_dam_sections_by_road"
 scene = {build = "canyon", check = "roads", until = 200}
-bench = "bench 11-24 canyon roads: 西段血 东段血 动 桥/东 锤 长坡 s16 100 100 0 1 | s31 100 100 1 1 | s41 100 37 | s46 100 5 | s71 82 5 | s91-s210 1 5 1 1"
+bench = "bench 11-24 r9 canyon roads (the sections off the crest, head 26bd9956): 西段血 东段血 动 桥/东 锤 长坡 s16 100 100 0 1 | s36 100 82 1 1 | s41 100 40 | s46-s66 100 2 | s71 84 | s86 7 | s91-s211 1 2 1 1 (r8 on the crest: s41 37, s91 1 5)"
 proves = "a plan wave's TEAM_ATTACK_NAMED on a player's plant: conscripts from the Soviet camp at crest west go over the bridge (never east), Hammers from US-93 at crest east down the long bend; both sections shot down"
 expect = ["rows[-1]['西段血'] <= 10", "rows[-1]['东段血'] <= 10", "max(r['动 桥/东'] for r in rows) == 1", "max(r['锤 长坡'] for r in rows) == 1"]
 
@@ -30,3 +30,25 @@ bench = "bench 11-24 canyon last: 西段血 东段血 V4台上 魟 坝面/湖滩
 proves = "Stingrays from the lake's north end ordered at crest west do not shoot from the water under the dam: they land at Boulder Beach and drive round to it; V4s from US-93 at crest east fire from the road, never on the overlook, and stop at 37"
 expect = ["max(r['魟 坝面/湖滩'] for r in rows) == 10", "rows[-1]['西段血'] <= 10", "max(r['V4 台上'] for r in rows) == 0", "min(r['东段血'] for r in rows) < 90"]
 mismatch = "sim: rays at the face from s20, V4 on the overlook from s32, neither section hit (100 100); bench rays at the beach, west 4, V4 never up there, east 37"
+
+[[reading]]
+id = "an_unsellable_copy_stays_through_a_script_sale"
+scene = {build = "canyon", check = "lock", until = 16}
+bench = "bench 11-24 r9 canyon lock (head 26bd9956): 存活 留/卖 资金 s1 11 2000 | s3 11 2400 | s5-s17 1 2400 (the plain plant sold for 400, the NOT_SELLABLE copy stays)"
+proves = "SELL_OBJECT refuses a structure of KindOf NOT_SELLABLE (units/unsellable.py's copy) and sells a plain one"
+expect = ["win(8, 15, '存活 留/卖') == [1] * 8", "win(8, 15, '资金') == [2400] * 8"]
+
+[[reading]]
+id = "v4s_sent_up_the_overlook_first_take_crest_east_from_there"
+scene = {build = "canyon", check = "perch", until = 120}
+bench = "bench 11-25 r9 canyon perch (the check with 东段在): 东段血 东段在 V4台上 s1-s31 100 1 0 | s36 100 1 1 | s41-s121 100 0 1 (11-24 first run: minimap under-attack s46-s51, the plant gone s56; 东段血 never moves -- it froze at 100, the plant dying inside one 5 s sample)"
+proves = "a 先到 overlook then attack order: the V4s drive up the overlook and kill crest east (262 off, in range 200-500) from there within 5 s"
+expect = ["max(r['V4 台上'] for r in rows) == 1", "min(r['东段在'] for r in rows) == 0"]
+
+[[reading]]
+id = "boats_from_the_river_hit_the_powerhouse_plant_not_the_prop"
+scene = {build = "canyon", check = "foot", until = 90}
+bench = "bench 11-24 r9 canyon foot (the boat ramp to 2700): 厂房血 电厂血 移组 s1 100 100 0 | s6 100 92 | s11 100 60 7 | s16 100 20 | s21-s91 100 4 (移组 7 but 0 at s61)"
+proves = "boats ordered at the low section's plant shoot it down from the river; the neutral powerhouse prop is never hit"
+expect = ["min(r['电厂血'] for r in rows) <= 10", "min(r['厂房血'] for r in rows) == 100", "max(r['移组 池/台'] for r in rows) >= 1"]
+mismatch = "sim: 移组 1 from s10 but 电厂血 100 all run (the boats never fire on the plant); bench 92 at s6, 4 from s21"

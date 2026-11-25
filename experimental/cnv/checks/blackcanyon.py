@@ -256,9 +256,10 @@ def perch(m):
     t = Test()
     e = _plant(t, m, 'st_dam_e', 'East', DAM)
     counted('Test East hp', '东段血', t, health=e)
+    counted('Test East up', '东段在', t, owner=e)   # bench r9: the plant went s51-s56 with 东段血 still 100 (frozen)
     _raid(t, m, [(V4, 'V4', 2, 'sov_east', -120.0, 0.0, e, 'overlook')], {'Test Overlook': square(*m.site('overlook'), 150.0)},
           [('V4 台上', 'V4', ['Test Overlook'])])
-    t.expect += [('V4 台上', 0, 'ever==', 1), ('东段血', 0, 'ever<=', 50)]
+    t.expect += [('V4 台上', 0, 'ever==', 1), ('东段在', 0, 'ever==', 0)]
     t.bench = [('bench_watch', dict(seconds=120.0, every=5, sheet=False, lines=len(t.counters)))]
     return t
 
