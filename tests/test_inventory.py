@@ -661,3 +661,13 @@ def test_the_level_share_counts_only_the_items_our_levels_use():
     text = inventory.render(xs)
     assert '| 已对拍 | `A` | 30 | a1 a2 |' in text and '| 未做 | `C` | 60 |  |' in text
     assert inventory.levels_cell([f'a{k}' for k in range(1, 10)]) == '全部'
+
+
+def test_an_object_a_weapon_filter_excludes_is_not_reached():
+    # 11-25: Tanya's C4 excluding the wall pieces put WallBuilder into our 9 levels' list (and a filter excluding the
+    # balloon bomb, HeightDie); an excluded object is one the weapon never touches
+    import xml.etree.ElementTree as ET
+    words = inventory_levels._words(ET.fromstring(
+        '<WeaponTemplate id="W" ProjectileTemplate="Shell"><SpecialObjectFilter><IncludeThing>Tank</IncludeThing>'
+        '<ExcludeThing>Wall</ExcludeThing></SpecialObjectFilter></WeaponTemplate>'))
+    assert {'w', 'shell', 'tank'} <= words and 'wall' not in words

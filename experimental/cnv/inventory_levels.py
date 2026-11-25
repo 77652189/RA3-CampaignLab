@@ -37,7 +37,7 @@ BENCHED, GUESSED, TODO, NA = '已对拍', '推断', '未做', '不涉及'
 # ---- the object and weapon tables, with the words each one's data holds
 def _words(el):
     return {w.split(':')[-1].lower() for d in el.iter() for v in d.attrib.values() for w in v.split()} | \
-        {w.lower() for d in el.iter() for w in (d.text or '').split()}
+        {w.lower() for d in el.iter() if rm._tag(d) != 'ExcludeThing' for w in (d.text or '').split()}
 
 
 def _read(root, path, objs, weapons, override=False):
