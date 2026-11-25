@@ -1385,6 +1385,21 @@ def aimicro_bench():
         return m
 
 
+    def gather_bonus(name, bonus, keep=60):
+        """The observed 0.5s probe (aimicupft) with GatherTempVisionRangeBonus = bonus and MinTimeToKeep = keep s, and
+        one more conscript of the player's standing at the east gate, ~700-900 off the fight: past the warriors' search
+        (vision 200 x 1.8 = 360), inside it times 3. Prediction: after the team has been in state 5 (gather), a bonus
+        3 lists the far conscript as a hostile (the state stays 5 / 2 when the near two are dead), a bonus 1 never.
+        Bench 11-25: so (bonus 3: 5 at f576 ~800 off it; bonus 1: 8 at f576, 5 at f664 ~400 off)."""
+        m = update_time(name, 0.5, observe=True)
+        m.assets = [(path, text.replace('GatherTempVisionRangeBonus="1.5"', f'GatherTempVisionRangeBonus="{bonus:g}"')
+                     .replace('MinTimeToKeepTempVisionRangeBonus="10s"', f'MinTimeToKeepTempVisionRangeBonus="{keep:g}s"'),
+                     key) for path, text, key in m.assets]
+        m.put(CONSCRIPT, 'east gate', name='UNIT - CNV AM Far Conscript', role='far conscript')
+        m.facts['gather bonus'], m.facts['bonus keep'] = float(bonus), float(keep)
+        return m
+
+
     def engage_clock(name, enabled):
         """Engage pair on the repaired CNVTeams observer clock (MinFrames=15).
 
@@ -1526,6 +1541,8 @@ def aimicro_bench():
                'aimicupslow': lambda: update_time('CampMicUpSlow', 4),
                'aimicupft': lambda: update_time('CampMicObsFast', 0.5, observe=True),
                'aimicupst': lambda: update_time('CampMicObsSlow', 4, observe=True),
+               'aigathb1': lambda: gather_bonus('CampGathBonus1', 1),
+               'aigathb3': lambda: gather_bonus('CampGathBonus3', 3),
                'aiignzero': lambda: ignore_distance('CampAIIgnZero', 0),
                'aiignnear': lambda: ignore_distance('CampAIIgnNear', 2000),
                'aiignzt': lambda: ignore_distance('CampIgnObsZero', 0, observe=True),

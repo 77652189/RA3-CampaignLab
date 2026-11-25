@@ -1613,3 +1613,17 @@ each = [{build = "k2gate0"}, {build = "k2gate1"}]
 bench = "k2gate0 / k2gate1: 目标血量 100 at f72-389 / f70-389 = s4.7-25.9 (wall s3-24; no return fire, no healing: a clean no-hit check)"
 proves = "sim first_shot / the shot clock: a 60 s PreAttackDelay holds the first shot"
 expect = "win(5, 25, '目标血量') == [100] * 21"
+
+[[reading]]
+bench_id = "engine_aimicro"
+id = "gather_bonus_lists_a_hostile_past_the_plain_search"
+scene = {build = "aigathb3", check = "a", until = 50, teams = true}
+each = [{build = "aigathb3", far = true}, {build = "aigathb1", far = false}]
+bench = """\
+ext tstate / 0x22c (bench 11-25, runs CampGathBonus3A / 1A): both f352 5 (move to 3890,2869), f376 2, f424 5, f488 2; \
+the near two dead at f576 -- bonus 3: 5 at once, move to (3758.1,3074.5) = A + 0.2(far conscript at the east gate - A), \
+the team ~800 off it (search 200 x 1.8 = 360); bonus 1: 8, walks west, 5 only at f664 ~400 off (move to 3464.8,3221.5)"""
+proves = "simai micro state: after a round in state 5 the hostile search reaches vision x 1.8 x GatherTempVisionRangeBonus"
+item = "AI 微操/AIMicroManagerData.GatherTempVisionRangeBonus"
+let = {near ="lambda r: min(((m['pos'][0] - 3150.0) ** 2 + (m['pos'][1] - 3300.0) ** 2) ** 0.5 for m in r['members'] if m['alive'])"}
+expect = "any('UNIT - CNV AM Far Conscript' in r['hostiles'] and near(r) > 600 for r in teams() if any(m['alive'] for m in r['members'])) == far"
