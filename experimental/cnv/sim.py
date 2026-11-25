@@ -1219,7 +1219,7 @@ class Sim:
     def power(self, owner):
         """(supply, demand) of the owner: its living objects' EnergyProduction, > 0 summed into the supply, < 0 into
         the demand (RA3 1.13 (work/re/l2_construction.md) leaves out an object under construction or powered down: the simulator has
-        neither -- a building stands built from the frame it appears)."""
+        neither); a disabled producer supplies none (engine_infilpow g: script EMP; other types, weapon EMP INFERRED)."""
         sup, dem = self.base_power.get(owner, 0), 0
         now = self.frame_now()
         for b in self.living():
@@ -1227,7 +1227,7 @@ class Sim:
                 e = self.energies.get(b.template)
                 if e is None:
                     e = self.energies[b.template] = simunits.energy(b.template, self.own)
-                sup, dem = (sup + e, dem) if e > 0 else (sup, dem - e)
+                sup, dem = (sup + e * (not self.emp_disabled(b)), dem) if e > 0 else (sup, dem - e)
         return (0 if self.infiltrators.disabled(owner) else sup), dem
 
     def short_of_power(self, owner):

@@ -64,7 +64,7 @@ def player_excess_power_compare_value(sim, name, a):
 
 
 def player_has_power(sim, name, a):
-    has_power = not sim.infiltrators.disabled(a[0]) and not sim.short_of_power(a[0])
+    has_power = not sim.short_of_power(a[0])
     return has_power if name == 'PLAYER_HAS_POWER' else not has_power
 
 

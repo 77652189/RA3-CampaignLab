@@ -1,8 +1,8 @@
 """InfiltratorContain ENERGY, VISION, PARALYZE, money, crane KILL and vehicle entry.
 
 One retail Allied plant: 20 seconds of zero supply, spy consumed, owner unchanged.
-Travel/entry reach and Amount * eligible energy duration scaling are INFERRED;
-only Amount=.2 and eligible energy=100 have been measured.
+Travel/entry reach is INFERRED; the blackout lasts Amount x the entered plant's EnergyProduction
+seconds (engine_infilpow h / i / j, one plant on the grid).
 engine_infvis:a/b/c measure Allied/Soviet/Japan yards' local vision.
 VISION activation delay of five seconds is INFERRED from second-spaced samples;
 Soviet/Japan first discovery is later; only stable windows replay, exact timing is a gap.
@@ -523,15 +523,9 @@ class Infiltrators:
                 world.world.remove(spy, '进楼渗透')
                 world.change()
                 continue
-            structure = filter_spec(rule.get('StructureFilter', ''))
-            if structure is None:
-                world.gap('InfiltratorContain', target.template, '复杂电力建筑筛选未对拍')
-                continue
-            energy = sum(max(0, simunits.energy(b.template, world.own)) for b in world.living()
-                         if b.owner == target.owner and b.template.lower() in structure[0])
-            duration = float(rule.get('Amount', '0')) * energy
-            if energy != 100 or float(rule.get('Amount', '0')) != .2:
-                world.gap('InfiltratorContain', target.template, '停电时长缩放INFERRED，仅0.2乘100电量已对拍')
+            # Amount x the entered plant's own EnergyProduction (engine_infilpow h / i / j: .2 x 100, .1 x 100 and
+            # .2 x 200, the copies unlisted in its StructureFilter); the filter's part and grids of several plants unmeasured
+            duration = float(rule.get('Amount', '0')) * max(0, simunits.energy(target.template, world.own))
             if self.disabled(target.owner):
                 world.gap('InfiltratorContain', target.template, '重复渗透续期INFERRED，未对拍')
             end = world.frame_now() + round(duration * simunits.LIFE_FPS)
@@ -540,5 +534,10 @@ class Infiltrators:
             world.change()
 
     def disabled(self, owner):
+        """Dark: a spy's blackout (off_until), or the owner holds a living thing with EnergyDisablingBehavior
+        (engine_infilpow e / f: a script-made EnergyDisabler darkens its owner until NAMED_DELETE; read off the retail
+        templates only, a mission's own copy unmodelled)."""
         world = self.world
-        return world.frame_now() < self.off_until.get(owner, 0)
+        return world.frame_now() < self.off_until.get(owner, 0) or any(
+            b.owner == owner and simunits.module_blocks(b.template, 'EnergyDisablingBehavior')
+            for b in world.living())
