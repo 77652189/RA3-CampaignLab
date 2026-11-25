@@ -110,12 +110,25 @@ class EffectHost:
         held = {up.lower() for up in (self.peers.player_ups.get(by.owner, ()) if gate == 'PLAYER' else by.upgrades)}
         return gate, not ((required and required.lower() not in held) or (forbidden and forbidden.lower() in held))
 
-    def self_power(self, template, power):
-        """The caster template's module of `power` (simunits.nugget_self_power, cached in Damage.nugget_powers)."""
-        cache, key = self.damage.nugget_powers, (template, power)
+    def self_power(self, template, power, weapon=None):
+        """The caster template's module of `power` (simunits.nugget_self_power, cached in Damage.nugget_powers); an OCL
+        run's also gives `window`: the calling weapon's FiringDuration + PreAttackDelay frames (A375)."""
+        cache, key = self.damage.nugget_powers, (template, power, weapon)
         if key not in cache:
-            cache[key] = simunits.nugget_self_power(template, power, self.world.own)
+            own = self.world.own
+            got = simunits.nugget_self_power(template, power, own)
+            if got and got.get('curve'):
+                w = simunits.weapon_table(own).get(weapon, {})
+                got = dict(got, window=simunits._frames(w.get('fire', 0.0)) + simunits._frames(w.get('pre', 0.0)))
+            cache[key] = got
         return cache[key]
+
+    def call_run(self, body, power, target, curve, window):
+        """The SpecialPowerNugget's OCL run: body's OCLSpecialPower of `power` calls it at target (modules/specialpower.py
+        OCLRun), the master attacking for `window` frames from now."""
+        for m in body.find(interfaces.OCLRun):
+            if m.power() == power:
+                m.call(target, curve, window)
 
     def disguise(self, body, owner):
         """The SpecialPowerNugget disguise: body's SpecialDisguiseUpdate puts it on as `owner` (modules/disguise.py)."""

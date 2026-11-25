@@ -2381,7 +2381,8 @@ def nugget_self_power(template, power, own=None):
 
     None: no matching module (native no-op). False: present but its handler
     is outside this probe. Only the measured retail disguise bit is consumed;
-    other OCL/disguise/beam configurations must not become buffs.
+    other disguise/beam configurations must not become buffs. A zero-reload
+    OCLSpecialPower of one ParabolicCurve gives its run ({curve, reach}, A375).
     """
     def companion(xml):
         xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
@@ -2389,12 +2390,28 @@ def nugget_self_power(template, power, own=None):
                            for _, behaviors in _blocks(xml, 'Behaviors')
                            for other, attrs in re.findall(r'<(\w+)\b([^<>]*)>', behaviors)) else None
 
+    def curve(ocl):
+        # A375 (engine_oclmonitor_e): an OCL of one ParabolicCurve -> its run (InitialDelay / ApproachTime frames,
+        # TRACK_TARGET_OBJECT, End / StartDistanceFromTarget, the made thing's first weapon's warhead); else False
+        m = re.fullmatch(r'\s*<ParabolicCurve\b([^<>]*?)/>\s*', (_ocl(ocl, own) or ('', ''))[1])
+        guns = m and template_weapons(_attr(m.group(1), 'CreateObject'), own)
+        bomb = guns and weapon_table(own).get(guns[0]['weapon_key'], {}).get('warhead')
+        a = m and m.group(1)
+        return bool(bomb) and dict(
+            delay=_frames(_secs(_attr(a, 'InitialDelay', '0s'))), approach=_frames(_secs(_attr(a, 'ApproachTime', '0s'))),
+            track='TRACK_TARGET_OBJECT' in (_attr(a, 'Options') or '').split(), bomb=bomb,
+            out=float(_attr(a, 'EndDistanceFromTarget', '0')) / (float(_attr(a, 'StartDistanceFromTarget', '0')) or 1))
+
     def read(xml):
         xml = re.sub(r'<!--.*?-->', '', xml or '', flags=re.S)
         for tag in ('SpecialPower', 'ActivateModuleSpecialPower', 'OCLSpecialPower'):
             for h, inner in _blocks(xml, tag):
                 if _attr(h, 'SpecialPowerTemplate') != power:
                     continue
+                if tag == 'OCLSpecialPower':
+                    run = curve(_attr(h, 'OCL'))
+                    rules = power_rules(template, power, own)
+                    return dict(curve=run, reach=rules['reach']) if run and rules and not rules['reload'] else False
                 if power in ('SpecialPower_InfantryDisguise', 'SpecialPower_JapanLightTransportVehicleDisguise'):
                     if (tag != 'SpecialPower' or inner.strip()
                             or _attr(h, 'UpdateModuleStartsAttack') != 'true'

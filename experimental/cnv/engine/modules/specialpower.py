@@ -30,6 +30,8 @@ RECALL = 'RecallUnitsSpecialPower'                  # its own class below (Recal
 RETURN = 'ReturnToProducerSpecialPower'             # its own class below (ReturnToProducer: a plane flies home)
 DOMINATE = 'DominateEnemySpecialPower'              # its own class below (DominateEnemy: whom a cast takes)
 STORE = 'StoreObjectsSpecialPower'                  # its own class below (StoreObjects: who the teleport takes)
+OCL = 'OCLSpecialPower'                             # its own class below (OCLRun: a bombing run's delay and drop)
+FALL = 6    # frames from the bomber over its target to the bomb's hit (A375 INFERRED: engine_oclmon_n 93 / 94 from GO)
 
 
 class SpecialPowerData(module.ModuleData):
@@ -45,7 +47,7 @@ class SpecialPowerData(module.ModuleData):
                    templates.attr(head, 'TeleportLinkID') or templates.attr(head, 'StoreObjectsLinkID'))
 
 
-@factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN, DOMINATE, STORE)))
+@factory.module(*(t for t in TAGS if t not in (ASSIGN, RECALL, RETURN, DOMINATE, STORE, OCL)))
 class SpecialPower(module.Module, interfaces.SpecialPower):
     """Data and a reload frame; no update of its own (a reload is over once the frame passes it)."""
     DATA = SpecialPowerData
@@ -290,3 +292,67 @@ class AssignSlaves(SpecialPower, interfaces.Assign, interfaces.Update):
         if t.hp >= t.max_hp:
             return self._stop()
         return 1
+
+
+class OCLMonitorData(module.ModuleData):
+    def __init__(self, options=frozenset()):
+        self.options = options      # Options: MASTER, RELEASE_WHEN_MASTER_CHANGES_TARGET (the measured ones)
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(templates.words(head, 'Options'))
+
+
+@factory.module('OCLMonitorUpdate')
+class OCLMonitor(module.Module):
+    """OCLMonitorUpdate: its Options, read by its thing's OCLRun (the bomber's own, no options, does nothing)."""
+    DATA = OCLMonitorData
+
+
+@factory.module(OCL)
+class OCLRun(SpecialPower, interfaces.OCLRun, interfaces.Update):
+    """OCLSpecialPower of one ParabolicCurve (A375; checks/engine_oclmonitor_e, engine_spnbomb): a SpecialPowerNugget
+    hit calls a run (curve: simunits.nugget_self_power) -- InitialDelay + ApproachTime frames on the bomber is over the
+    target (TRACK_TARGET_OBJECT: where it stands then, else where it stood), the bomb's warhead hits FALL frames later
+    (World.fire, as the caster's: its DamageNuggets alone); the bomber is gone ApproachTime x End / StartDistance
+    after it was over. With an OCLMonitorUpdate MASTER the master holds one run: a call while it is held does nothing;
+    the run is let go (drops nothing) once the master stops attacking -- no call within the calling weapon's
+    FiringDuration + PreAttackDelay of its last (INFERRED: E222 s, and engine_spnbombc's instant one-shot gun that
+    never gets a bomber) -- or, with RELEASE_WHEN_MASTER_CHANGES_TARGET, calls at another target. Not modelled: the
+    bomber as a thing (engine_spnbombc counts it), its flight and the bomb's other nuggets."""
+    PHASE = 'seq'
+    STATE = ('ready', 'runs', 'firing', 'aim')
+    runs = ()           # (target, its spot at the call, hit frame, gone frame, bomb warhead, tracks the target)
+    firing = 0          # the last frame the master counts as attacking
+    aim = None          # the target of its last call
+
+    def options(self):
+        return frozenset().union(*(m.data.options for m in self.thing.find(OCLMonitor)))
+
+    def let_go(self, run, frame, opts):
+        return 'MASTER' in opts and (frame > self.firing or not self.thing.alive or (
+            'RELEASE_WHEN_MASTER_CHANGES_TARGET' in opts and self.aim is not run[0]))
+
+    def call(self, target, curve, window):
+        now, opts = self.world.frame, self.options()
+        self.firing, self.aim = now + window, target
+        self.runs = tuple(run for run in self.runs if not self.let_go(run, now, opts))
+        if 'MASTER' in opts and self.runs:
+            return
+        over = now + curve['delay'] + curve['approach']
+        self.runs += ((target, (target.x, target.y), over + FALL, over + round(curve['approach'] * curve['out']),
+                       curve['bomb'], curve['track']),)
+        self.world.wake(self, now + 1)
+
+    def update(self, frame):
+        me, opts, kept = self.thing, self.options(), []
+        for run in self.runs:
+            t, spot, hit, gone, bomb, track = run
+            if self.let_go(run, frame, opts):
+                continue
+            if frame == hit:
+                self.world.fire(me, bomb, at=(t.x, t.y) if track and t.alive else spot)
+            if frame < gone:
+                kept.append(run)
+        self.runs = tuple(kept)
+        return 1 if self.runs else interfaces.SLEEP

@@ -697,6 +697,17 @@ class Teleport(Interface):
         raise NotImplementedError
 
 
+class OCLRun(Interface):
+    """OCLSpecialPower's ParabolicCurve run (A375): the power it serves; call: a SpecialPowerNugget's hit asks it."""
+    __slots__ = ()
+
+    def power(self):
+        raise NotImplementedError
+
+    def call(self, target, curve, window):
+        raise NotImplementedError
+
+
 class Rewind(Interface):
     """StoreCurrentStateUpdate: the states it keeps of its thing; oldest: the (x, y, health) a time belt takes it back
     to, None when none is kept."""

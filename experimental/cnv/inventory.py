@@ -302,7 +302,6 @@ NOTES = {
     (MODULE, 'Behaviors/LiftObjectUpdate'): (GUESSED, '部分：显式TimeIncrement/MaxTimeLifted的开火者举升表；台上只有7s/18s状态快照（benches/weapon/impact/readings.toml#engine_lift），逐帧计时来自模块证据、未上台量；垂直运动/死亡/飞机/落地清位仍gap'),
     (NUGGET, 'ActivateLiftObjectNugget'): (BENCHED, '直接单发：开火者举升表 trunc(TimeIncrement×15) 逐发累加、续期封顶 MaxTimeLifted，释放不清 LIFTED，SoftLanding 举高 ≤ 28 落地清位（engine_lift a / landing / probe）；原版地面 3 个宿主的筛选（engine_liftground）；打飞机走坠机分支：开火者的 AirplaneCrashWeapon 由飞机打自己、不置 LIFTED（engine_liftair，死亡帧 INFERRED 取命中帧）。gap：弹体 / 多发、28–40 的清位边界、落地武器伤害；乘员炮塔一个槽里 SECONDARY 对空线不选（选武器归 weaponset，mismatch 读数）'),
     (NUGGET, 'AttachNugget'): (GUESSED, '部分：engine_attach a实测直接单发、父子状态、随父移动及目标状态/类型拒绝；仅零半径简单模块，原版复杂筛选/维修/吸血/解除/弹体未接通；engine_attachc4 a原版谭雅/删Nugget及父EXPLOSIVES_ATTACHED对照为11/10024/10030/10028，正常原版附着后父死子活，禁用父仍有MARCH_OF_DEATH但无ATTACHED；原版写法已切片:谭雅C4（A372），见work/re/c_attachc4_report.md；engine_attachmine a原生磁力地雷本体原位创建/删Nugget×普通/SPECIAL_ARMOR_ACTIVE为111/110/111/110，保留者均附着、删除者均不附着；tests/test_attach_mine.py具名回放阴性，b三个禁用位均读到仍附着为111/110/7111/7110，两原生回放strict xfail；上游弹体/OCL、复杂筛选及生命周期仍gap，见work/re/c_attachmine_report.md；不登记整项已对拍'),
-    (NUGGET, 'SpecialPowerNugget:轰炸消费者'): (GUESSED, '1用量，暂停：engine_spnbombnative a原版/删SPN/合成/合成删SPN为1010/1110/1110/1110；OCL活动消费者未实现，具名回放strict xfail；engine_spnbombc a（A373）数轰炸机：合成宿主去掉OCLMonitor就派发、炸死，带原版监视器一架不造（checks/engine_spnbomb.readings.toml）'),
     (NUGGET, 'SpecialPowerNugget:干扰消费者'): (GUESSED, '1用量，暂停额外SPN消费：engine_spnscr c原版四路删减、受害者真实开火、靶子封闭暴露窗，早HP100/100/90/90、晚HP90/90/80/80，打包301000090/301000090/300999080/300999080实机PASS；tests/test_special_power_nugget.py具名回放。停火差异由AttributeModifier决定，保留/删SPN相等不能证明额外消费者no-op；b仅NAMED_STOP仍续射，原预测strict xfail保留。两局耗完，缺SpecialPower开始/结束及命令消费观测，不晋升完整消费者，见work/re/c_spnscr_active_report.md'),
     (NUGGET, 'SpecialPowerNugget:附着dummy消费者'): (TODO, '1用量，暂停：JapanScoutInfantryAttachWeaponWarhead引用OBJECT dummy模板及原版宿主；缺独立派发/附着读数，不能按Dummy名字推定无操作；需Attach模块观测，work/re/c_spnclosure_report.md'),
     (MODULE, 'Behaviors/OCLSpecialPower'): (BENCHED, '总控第四切片按已测边界收尾：tests/test_simocl.py具名回放engine_oclcurtain/engine_oclnone/engine_oclwrong a，铁幕宿主匹配模块才保护并记事件，删除/改绑模块无保护/事件；engine_oclempty a空声明无保护且事件1；engine_oclcopy a完整原版载荷改名仍保护100/100且事件1；engine_oclzero a仅外层Count=0无保护且事件1。只闭合铁幕派发和零数量不保护边界，未测生成数量/通用生成；其他非零数量/载荷/超武、位置/过滤、按钮/冷却仍gap，继承、等价空声明及格式等价INFERRED，不表示全模块全字段验证；见 work/re/e_ocl_e65.md'),
@@ -351,11 +350,6 @@ NOTES = {
                                                    'LaserId 0）没填；FX_SOV_ElectroRay 只有声音和粒子。麻痹由同一武器的 '
                                                    'ParalyzeNugget + AttributeModifierNugget 给出。同族 LaserState、'
                                                    'ConvergingLaserState 上台都无附加伤害或延迟（engine_laser、E211），未单独上台'),
-    (MODULE, 'Behaviors/OCLMonitorUpdate'): (TODO, 'E222 娜塔莎轰炸台上读到：MASTER 一个主人同时只牵一架轰炸机（还牵着时'
-                                                  '不叫新的）；主人停止攻击就放走，RELEASE_WHEN_MASTER_CHANGES_TARGET '
-                                                  '换目标也放走；放走的不投弹。不换目标时有无模块首伤相同。模拟器不飞'
-                                                  '这条轰炸（SpecialPowerNugget→OCLSpecialPower 缺口，C 的 engine_spnbomb），'
-                                                  '读数 mismatch 见 checks/engine_oclmonitor_e'),
     (MODULE, 'Behaviors/AimWeapon'): (TODO, 'E211 不是纯表现：标枪兵打直升机，原版比删模块首伤晚 1 个脚本帧（换位、'
                                             '换放置顺序都一样），f120 血量相同；设 AIM_HIGH（只有绘制模块读）。'
                                             '晚的这一帧等什么没读到，不拟合；读数 mismatch 见 benches/weapon/firing/readings.toml#engine_cosmetic_e'),

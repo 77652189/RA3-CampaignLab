@@ -38,7 +38,7 @@ def test_a_template_gets_one_module_a_block_and_no_reload_before_a_cast():
     # Compiled AlliedSuperWeaponAdvanced: one OCLSpecialPower ModuleTag_ParticleCannon, zero SpecialPower blocks.
     assert e.world.data_of(COLLIDER, 'SpecialPower') == ()
     assert [d.power for d in e.world.data_of(COLLIDER, 'OCLSpecialPower')] == [CANNON]
-    assert [(type(m).__name__, m.power()) for m in mods] == [('SpecialPower', CANNON)]
+    assert [(type(m).__name__, m.power()) for m in mods] == [('OCLRun', CANNON)]
     assert all(m.ready_at() is None for m in mods)
     assert b.ready_at == {}
     with pytest.raises(AttributeError):
@@ -278,3 +278,33 @@ def test_the_shrink_ray_spares_an_airborne_target_and_a_scripts_own_condition():
     assert ['SHRUNK' in s.bodies[f'm {r}'].status for r in rows] == [True, False, False]
     s.advance(450)
     assert 'SHRUNK' not in s.bodies['m kept'].status and s.has_model_condition(s.bodies['m kept'], 'SHRINK_EFFECT')
+
+
+@pytest.mark.parametrize('options, at_b, dies', [
+    ({'MASTER', 'RELEASE_WHEN_MASTER_CHANGES_TARGET'}, True, (None, 'b own')),  # retail: let go on the switch
+    ({'MASTER'}, True, ('a', 'b late')),     # held: A bombed, B's calls refused till the run is gone
+    ({'MASTER'}, False, (None, None)),       # she stops calling: let go, nothing drops
+    (set(), False, ('a', None))])            # no OCLMonitorUpdate: the run drops all the same
+def test_a_bombing_run_drops_after_its_delay_and_the_monitor_holds_or_lets_it_go(options, at_b, dies):
+    """A375 (checks/engine_oclmonitor_e.readings.toml): OCLSpecialPower's ParabolicCurve run under OCLMonitorUpdate."""
+    import engine.testing.small as simsmall
+    from engine.data import units as simunits
+    from engine.kernel import interfaces
+    power = 'SpecialPowerBombingRun'
+    s = simsmall.small_world([('n', 'SovietCommandoTech1', 'Player_1', 1400.0, 1400.0),
+                              ('a', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 1400.0, 1600.0),
+                              ('b', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 1550.0, 1600.0)], model=False)
+    n, a, b = (s.bodies[k] for k in 'nab')
+    for mon in n.find(specialpower.OCLMonitor):
+        mon.data = specialpower.OCLMonitorData(frozenset(options))
+    run = next(m for m in n.find(interfaces.OCLRun) if m.power() == power)
+    curve = simunits.nugget_self_power('SovietCommandoTech1', power)['curve']
+    died = {}
+    for i in range(32):                 # a step is half a second: a call every 15 frames
+        if i == 0 or (at_b and i % 2 == 0):
+            run.call(a if i == 0 else b, curve, 23)
+        s.advance(1)
+        died.update({k: s.frame_now() for k, t in (('a', a), ('b', b)) if not t.alive and k not in died})
+    # the hit: the call + InitialDelay 53 + ApproachTime 23 + FALL 6 (82), seen at the end of its step
+    want = {'a': 83, 'b own': 15 + 83, 'b late': 120 + 83, None: None}
+    assert (died.get('a'), died.get('b')) == tuple(want[d] for d in dies)

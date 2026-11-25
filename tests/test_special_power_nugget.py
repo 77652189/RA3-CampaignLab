@@ -131,10 +131,11 @@ def test_special_power_nugget_closure_conserves_retail_consumers():
     assert len(names) == len(set(names)) == 6
     assert sum(r['uses'] for r in rows) == retailmodules.weapon_census()['SpecialPowerNugget']['weapons']
     done = [r for r in rows if r['state'] == inventory.BENCHED]
-    assert sorted(r['name'] for r in done) == ['SpecialPowerNugget:变装消费者', 'SpecialPowerNugget:涂靶升级门槛']
+    assert sorted(r['name'] for r in done) == ['SpecialPowerNugget:变装消费者', 'SpecialPowerNugget:涂靶升级门槛',
+                                               'SpecialPowerNugget:轰炸消费者']
     done = [r for r in done if r['name'] == 'SpecialPowerNugget:涂靶升级门槛']
     assert done[0]['weapon_ids'] == ['AlliedAntiVehicleVehicleTech1TargetPainter']
-    assert sorted(r['uses'] for r in rows if r['state'] != inventory.BENCHED) == [1, 1, 1]
+    assert sorted(r['uses'] for r in rows if r['state'] != inventory.BENCHED) == [1, 1]
     forms = [n for n in retailmodules.effective_weapon_forms(done[0]['weapon_ids'][0])
              if retailmodules._tag(n) == 'SpecialPowerNugget']
     assert inventory.nugget_form_slice('SpecialPowerNugget', forms) == ':涂靶升级门槛'
@@ -426,12 +427,9 @@ def test_special_power_nugget_bombing_diagnostic_bench_replay():
     measured = (1199, 1199, 1199, 1199)
     assert tuple(result.series[-1][1]) == measured
     assert all(tuple(row) == measured for sec, row in result.series if sec >= 14)
-    assert (sim.GAP_WEAPON, 'SpecialPowerNugget') in e.unmodeled
+    assert (sim.GAP_WEAPON, 'OCLSpecialPower') in e.unmodeled     # A375: the run is called, its master let it go
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    'Retail SPN bombing OCL consumer is unsupported; native host kills while '
-    'extended synthetic host does not. See work/re/c_spnbomb_report.md and handoff-c.md.'))
 def test_special_power_nugget_native_bombing_consumer_bench_replay():
     """engine_spnbombnative a: measured native kill vs three live controls.
 

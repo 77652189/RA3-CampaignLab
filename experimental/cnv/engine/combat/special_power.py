@@ -29,7 +29,7 @@ class SpecialPower:
             if not passed or ((effect['include'] and not set(effect['include']) & t.kinds)
                               or set(effect['exclude']) & t.kinds or set(effect.get('status_exclude', ())) & t.status):
                 continue
-            power = host.self_power(by.template, effect['power'])
+            power = host.self_power(by.template, effect['power'], context.weapon.get('weapon_key'))
             if power is None:      # no matching module on caster: engine_spn order
                 continue
             if not power or context.weapon.get('projectile') or context.n != 1 or (
@@ -37,6 +37,10 @@ class SpecialPower:
                 context.gap('SpecialPowerNugget', '仅直接单发、零冷却自身修正已对拍；其他技能处理器/弹体/范围待核')
                 continue
             if power.get('noop'):
+                continue
+            if power.get('curve'):      # A375: the OCL's bombing run
+                host.call_run(by, effect['power'], t, power['curve'], power['window'])
+                context.gap('OCLSpecialPower', '轰炸：延迟、投弹、MASTER 监视器已接通；轰炸机本体、飞行、炸弹其他弹头未建')
                 continue
             if power.get('disguise'):
                 if not set(power['include']) & t.kinds or t.template.lower() in power['exclude_templates']:
