@@ -43,3 +43,13 @@ bench = "B 11-25 (CampPTTNormalA_mcp_1124_233556, CampPTTPanicA_mcp_1124_233431)
 proves = "simai Brain.path_to_target: the tester's LocomotorSet for the written condition, none = no way"
 let = {sel = "[r for t, r in zip(times, rows) if 40 <= t <= 100]"}
 expect = ["len(sel) > 0", "all(r['二级持有'] == want for r in sel)"]
+
+[[reading]]
+id = "a_state_s_water_path_test_needs_water_by_both_bases"
+item = "AI 启发条件/PathToTargetHeuristic.Surface"
+scene = {build = "aipttwg", check = "a", until = 102}
+each = [{build = "aipttwg"}, {build = "aipttw"}]
+bench = "B 11-25 (CampPTTWGndA / CampPTTWNavA_mcp_1125): aipttn's state with Surface=Water, tested by the Jet Tengu (aipttwg) or retail's Dolphin pairing (aipttw). Niagara has no water within 900 of either base: ptt rows surf=0 own and enemy points 0:0:0 why=nopt res=0.0, 0 holders to s100 in both (Land, aipttn: a way, 2 holders)"
+proves = "simai Brain.path_to_target: Surface picks the cell type the two spots are looked for on; no spot = no way"
+let = {sel = "[r for t, r in zip(times, rows) if 40 <= t <= 100]"}
+expect = ["len(sel) > 0", "all(r['二级持有'] == 0 for r in sel)"]

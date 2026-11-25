@@ -70,5 +70,5 @@ def ban(m):
     return t
 
 
-CHECKS = {build: {'a': a} for build in ('aicupgon', 'aicupgoff', 'aipttn', 'aipttp')}   # aiptt*: path_test
+CHECKS = {build: {'a': a} for build in ('aicupgon', 'aicupgoff', 'aipttn', 'aipttp', 'aipttw', 'aipttwg')}   # aiptt*: path_test
 CHECKS['aicupgon']['ban'] = ban

@@ -38,19 +38,21 @@ def mission(enabled, name=None, pid='CNVCUpgrade', **kw):
     return m
 
 
-def path_test(condition):
+def path_test(condition, surface='Land', tester='JapanAntiAirVehicleTech1', tag=None):
     """B 11-25, PathToTargetHeuristic.LocomotorConditionToUseForTest where the heuristic is judged with both bases
     known (a build state; the opening is drawn at f4 before them, D108 why=early:nobase): aicupgon's state with its
     heuristic one PathToTarget PathExists="true" tested by the stock Jet Tengu (JapanAntiAirVehicleTech1: NORMAL =
     GROUND, SUPERSONIC = AIR, no PANIC set), ra3ext on (ptt rows). Prediction: NORMAL -- a land way, Tech2 as
     aicupgon; PANIC -- no set for it (why=noloco), no way, none as aicupgoff."""
-    test = ('<PathToTargetHeuristic PathExists="true" ObjectTypeToUseForTest="JapanAntiAirVehicleTech1"'
+    test = (f'<PathToTargetHeuristic Surface="{surface}" PathExists="true" ObjectTypeToUseForTest="{tester}"'
             f' LocomotorConditionToUseForTest="{condition}" />')
-    tag = condition.title()
+    tag = tag or condition.title()
     m = mission(True, name=f'CampPTT{tag}', pid=f'CNVPTT{tag}', heuristic=test)
-    m.facts['upgrade entry'], m.ext = int(condition == 'NORMAL'), True
+    m.facts['upgrade entry'], m.ext = int(condition == 'NORMAL' and surface == 'Land'), True
     return m
 
 
 MISSION = {'aicupgon': lambda: mission(True), 'aicupgoff': lambda: mission(False),
-           'aipttn': lambda: path_test('NORMAL'), 'aipttp': lambda: path_test('PANIC')}
+           'aipttn': lambda: path_test('NORMAL'), 'aipttp': lambda: path_test('PANIC'),
+           'aipttw': lambda: path_test('NORMAL', 'Water', 'AlliedAntiNavalScout', 'WNav'),
+           'aipttwg': lambda: path_test('NORMAL', 'Water', tag='WGnd')}
