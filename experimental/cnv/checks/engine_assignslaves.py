@@ -70,8 +70,38 @@ def check(m):
     return t
 
 
+def frame_heal(m):
+    """E235: check a on script frames (E68: the capture seconds drift). Damage (and, on, the press) at f120.
+
+    Prediction (simulator 11-25: a drone 170 away flies at 150 after 0.25 s, mends 20 HP/s of the 480): frames from
+    f120 until the target reads UNDERGOING_REPAIR on 2 / off 23; HP at f240 on 53 / off 47, at f390 on 95 / off 89.
+    """
+    t = Test()
+    target = m.role('target').name
+    t.counters = [('E235F', '脚本帧'), ('E235Wait', '等待帧'), ('E235A', '血量240'), ('E235B', '血量390')]
+    t.scripts = [Script('Test - frame', [('COUNTER', 'E235F', 0, 400)], [('INCREMENT_COUNTER', 1, 'E235F')], once=False),
+                 Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', m.player('p1'))]),
+                 Script('Test - wait', [('COUNTER', 'E235F', 3, 120), ('COUNTER', 'E235On', 2, 0)],
+                        [('INCREMENT_COUNTER', 1, 'E235Wait')], once=False),
+                 Script('Test - attached', [('COUNTER', 'E235F', 3, 121),
+                                            ('UNIT_HAS_OBJECT_STATUS', target, 'UNDERGOING_REPAIR')],
+                        [('SET_COUNTER', 'E235On', 1)]),
+                 Script('Test - at 240', [('COUNTER', 'E235F', 2, 240)],
+                        [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', target, 'E235A')]),
+                 Script('Test - at 390', [('COUNTER', 'E235F', 2, 390)],
+                        [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', target, 'E235B')])]
+    actions = [('UNIT_SET_HEALTH', target, 20.0)]
+    if m.role('bay').template == 'CNVAssignOn':
+        actions.append(('NAMED_USE_COMMANDBUTTON_ABILITY_ON_NAMED', m.role('bay').name, m.ability('bay', 'repair'),
+                        target))
+    t.scripts.append(Script('Test - damage', [('COUNTER', 'E235F', 2, 120)], actions))
+    t.expect = [('脚本帧', 0, 'ever==', 400)]
+    t.bench = [('bench_watch', dict(seconds=32, every=1, sheet=False, lines=4))]
+    return t
+
+
 MISSION = {'engine_assignon': lambda: mission(True), 'engine_assignoff': lambda: mission(False)}
-CHECKS = {name: {'a': check} for name in MISSION}
+CHECKS = {name: {'a': check, 'c': frame_heal} for name in MISSION}
 
 
 def competition():

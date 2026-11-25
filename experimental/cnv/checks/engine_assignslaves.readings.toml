@@ -11,18 +11,25 @@ expect = ["counter('E181Frame') == 360", "counter('E181On') == 70", "counter('E1
 id = "three_drones_are_busy_before_the_command"
 scene = {build = "engine_assignrace", check = "b", until = 25}
 bench = "E181: 前置占用 33 at f150 (three UNDERGOING_REPAIR targets in each lane)"
-proves = "the drones acquire damaged vehicles on their own (auto-acquisition, not modeled)"
+proves = "AttachUpdate (BaseRepairDrone): each drone takes a hurt vehicle of its own within 200 of the bay, one a parent, the parent UNDERGOING_REPAIR within 30 frames"
 expect = "win(24, 24, '前置占用') == [33]"
-mismatch = "sim 0, bench 33: autonomous acquisition / repair status not modeled"
 
 [[reading]]
-id = "auto_repair_controls"
+id = "auto_repair_status_and_cast"
 scene = {build = "engine_assignon", check = "a", until = 28}
 each = [{build = "engine_assignon"}, {build = "engine_assignoff"}]
-bench = "E66: both lanes heal 20->100, status 10->110->0, cast event on/off 1/0"
-proves = "the drone repairs on its own; only the cast event tells the module lane apart"
-expect = "all(ok for ok, _ in verdicts())"
-mismatch = "sim: status 0 throughout, cast 0 in both lanes, on heals 20->95 by s26 (bench 100), off stays 20 (bench heals to 100): drone auto-acquisition / repair status not modeled"
+bench = "E66: both lanes status 110 s12-s20, cast event on/off 1/0"
+proves = "the drone repairs on its own (TARGETED_FOR_REPAIR + UNDERGOING_REPAIR on the parent); only the cast event tells the module lane apart"
+expect = "all(ok for ok, _ in verdicts()[:3])"
+
+[[reading]]
+id = "auto_repair_done_by_capture_second_26"
+scene = {build = "engine_assignon", check = "a", until = 28}
+each = [{build = "engine_assignon"}, {build = "engine_assignoff"}]
+bench = "E66: both lanes 100 and status 0 at capture s26"
+proves = "the drone lets go of a mended parent (both bits cleared)"
+expect = "all(ok for ok, _ in verdicts()[3:])"
+mismatch = "sim s26 on 95 / off 89, status 110 (bench 100, 0); full at sim s27.2 / s28.6: the capture seconds run ahead of mission time (E68); frames: E235 below"
 
 [[reading]]
 id = "competition_occupancy_and_capture_timing"
@@ -30,7 +37,14 @@ scene = {build = "engine_assignrace", check = "a", until = 28}
 bench = "E67: occupied 3 in both lanes from s8, on fourth HP 25 at s11-12, 86 at s26, 92 at s27; off fourth stays 20"
 proves = "the command heals the fourth with three drones still busy"
 expect = "all(ok for ok, _ in verdicts())"
-mismatch = "sim occupied 0 (bench 3 from s8); on fourth HP 100 at s11 / 74 at s26 (bench 25 / 86, E68: capture seconds not aligned with mission time, rate and duration not fitted)"
+mismatch = "sim occupied 0 at s8-s9 (bench 3), both fourths 100 at s11 (bench on 25 / off 20), on 78 at s26 (bench 86): each about a second behind the capture (E68: capture seconds not aligned with mission time)"
+
+[[reading]]
+id = "three_drones_stay_busy_after_the_command"
+scene = {build = "engine_assignrace", check = "a", until = 28}
+bench = "E67: occupied 3 in both lanes s11-s26"
+proves = "the commanded fourth does not take a busy drone off its parent"
+expect = "all(ok for ok, _ in verdicts()[6:8])"
 
 [[reading]]
 id = "the_command_heals_the_fourth_without_the_control"
@@ -38,3 +52,12 @@ scene = {build = "engine_assignrace", check = "a", until = 25}
 bench = "E67: on fourth HP above 20 by s25, off fourth HP 20 s11-s27"
 proves = "AssignSlavesTargetObjectSpecialPower direction: the commanded target heals, the control does not"
 expect = ["win(24, 24, 'on fourth HP')[0] > 20", "win(13, 24, 'off fourth HP') == [20] * 12"]
+
+[[reading]]
+id = "frames_from_the_damage_to_the_drone_and_its_heal"
+scene = {build = "engine_assignon", check = "c", until = 30}
+each = [{build = "engine_assignon", wait = 16}, {build = "engine_assignoff", wait = 18}]
+bench = "E235 (CampAssignOnC_mcp_1125_042320 / CampAssignOffC_mcp_1125_042158): 等待帧 on 16 / off 18, 血量240 47 / 47, 血量390 92 / 92"
+proves = "AttachUpdate (BaseRepairDrone) and AssignSlaves: the commanded drone flies too; HP read on script frames, not capture seconds"
+expect = ["counter('E235Wait') == wait", "counter('E235A') == 47", "counter('E235B') == 92"]
+mismatch = "sim on 2 / 53 / 95 (the dispatch heals from the press, no flight), off 23 / 47 / 89; f240->f390 bench +45 % (~21.6 HP/s) against 20 HP/s before: a pulsed heal? not fitted"

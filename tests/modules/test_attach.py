@@ -45,3 +45,21 @@ def test_the_body_forwards_its_rules_and_the_known_statuses():
             if rule:
                 assert rule['child'] | rule['parent'] <= e.attachment_known_status
     assert all(b.attachment_rules == {} for b in e.bodies.values() if not b.find(sim.kernel_interfaces.Attach))
+
+
+def test_the_repair_drones_take_one_hurt_vehicle_each_mend_it_and_let_go():
+    """E181 / E235 (checks/engine_assignslaves.py): the war factory's drones, each to its own hurt vehicle within 200."""
+    import engine.testing.small as simsmall
+    e = simsmall.small_world()
+    f = e.add('factory', 'AlliedWarFactory', 'Player_1', 1000.0, 1000.0)
+    near, near2, far = (e.add(n, 'AlliedAntiVehicleVehicleTech1', 'Player_1', 1000.0 + dx, 1100.0)
+                        for n, dx in (('near', 0.0), ('near2', 60.0), ('far', 400.0)))
+    for v in (near, near2, far):
+        v.health = 50.0
+    e.advance(30)
+    held = sorted(m.repairing().name for d in f.spawned_children for m in d.find(attach.interfaces.Attach)
+                  if m.repairing() is not None)
+    assert held == ['near', 'near2'] and 'UNDERGOING_REPAIR' in near.status and not far.status
+    e.advance(15 * 13)
+    assert near.hp == near.max_hp and not near.status & {'TARGETED_FOR_REPAIR', 'UNDERGOING_REPAIR'}
+    assert far.health == 50.0

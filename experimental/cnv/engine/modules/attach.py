@@ -6,11 +6,20 @@ A block is supported when it has no inner XML, its Flags hold STICK_TO_PARENT an
 and ONE_ATTACH_PER_PARENT, and its attributes are no more than id, Flags, Range, CloseEnoughRange, ParentStatus and
 AttachedObjectStatus; anything else is False (unsupported), so recognising a module id cannot silently implement
 leech, death, repair, idle-detach or autonomous scanning. Several inherited groups and the distance boundary are
-unbenched.
+unbenched. Who attaches by a nugget stays outside (the combat family's AttachNugget: simdamage, reading the rules
+through the body's attachment_rules forward; the attachments themselves: Sim.attachments).
 
-Data only: no update, no state. Who attaches stays outside (the combat family's AttachNugget: simdamage, reading the
-rules through the body's attachment_rules forward; the attachments themselves: Sim.attachments)."""
+One more shape, the retail repair drone's (BaseRepairDrone, REPAIR: the whole block compared), is an update of its own
+(E66 / E181, checks/engine_assignslaves.py): a drone holding none takes the nearest hurt vehicle / aircraft of its
+owner within Range of its slaver that no other drone or AssignSlaves dispatch mends (BOOBY_TRAPPED ones first), marks
+it TARGETED_FOR_REPAIR, after InitialAttachDelay plus the straight flight at SPEED attaches (the
+parent UNDERGOING_REPAIR, the drone ATTACHED, riding it), mends it its PassiveAreaEffectBehavior's
+HealingPointsPerSecond and lets go -- both statuses cleared -- once it is whole, dead, another owner's or out of Range
+of the slaver. The flight (no acceleration), a scan every frame, nearest as the best parent and the owner alone for
+ALLIES are INFERRED."""
+import math
 import re
+import xml.etree.ElementTree as ET
 
 from engine.kernel import factory, interfaces, module
 from engine.ports import templates
@@ -18,15 +27,45 @@ from engine.ports import templates
 FLAGS = frozenset({'STICK_TO_PARENT', 'TELEPORT'})
 MORE_FLAGS = frozenset({'ONE_ATTACH_PER_PARENT'})
 ATTRS = frozenset({'id', 'Flags', 'Range', 'CloseEnoughRange', 'ParentStatus', 'AttachedObjectStatus'})
+REPAIR = dict(CloseEnoughRange='20.0', InitialAttachDelay='0.25s', ParentStatusToPrefer='BOOBY_TRAPPED',
+              ParentStatus='TARGETED_FOR_REPAIR', ParentStatusAttached='UNDERGOING_REPAIR',
+              ForbiddenParentStatus='NOT_IN_WORLD', Flags=frozenset(
+                  'STICK_TO_PARENT DETACH_WHEN_PARENT_OUT_OF_SLAVE_RANGE PARENT_MUST_BE_FULL_HEALTH_TO_DETACH '
+                  'SCAN_FOR_NEW_PARENT_WHEN_DETACHED FIND_BEST_PARENT UNCONTAINED_ONLY ONE_ATTACH_PER_PARENT '
+                  'USE_GEOMETRY DETACH_WHEN_PARENT_HEALED'.split()))
+REPAIR_KIDS = [('ObjectFilter', dict(Rule='ANY', Include='VEHICLE AIRCRAFT HUGE_VEHICLE',
+                                     StatusBitFlagsExclude='NOT_IN_WORLD', Relationship='ALLIES'), 0)]
+PARENT_KINDS = frozenset({'VEHICLE', 'AIRCRAFT', 'HUGE_VEHICLE'})
+FPS = 15
+SPEED = 150.0       # BaseRepairDrone's LocomotorSet Speed: REPAIR's only retail user (another drone's: INFERRED)
+
+
+def _repair(head, inner):
+    """The retail repair drone's block: {range, delay (frames)}; None for any other."""
+    try:
+        node = ET.fromstring('<AttachUpdate ' + head + '>' + inner + '</AttachUpdate>')
+    except ET.ParseError:
+        return None
+    attrs = dict(node.attrib)
+    attrs.pop('id', None)
+    rng = templates.num(attrs.pop('Range', None))
+    attrs['Flags'] = frozenset(attrs.get('Flags', '').split())
+    if attrs != REPAIR or [(c.tag, dict(c.attrib), len(c)) for c in node] != REPAIR_KIDS:
+        return None
+    return dict(range=rng, delay=math.ceil(templates.secs(REPAIR['InitialAttachDelay']) * FPS - 1e-6))
 
 
 class AttachData(module.ModuleData):
-    def __init__(self, id=None, rule=False):
+    def __init__(self, id=None, rule=False, repair=None):
         self.id = id                    # its module id (what an AttachNugget names)
         self.rule = rule                # {flags, range, child, parent}, or False: a shape not modelled
+        self.repair = repair            # REPAIR's {range, delay}; None: not the drone's block
 
     @classmethod
     def parse(cls, head, inner):
+        repair = _repair(head, inner)
+        if repair:
+            return cls(templates.attr(head, 'id'), False, repair)
         flags = set(templates.attr(head, 'Flags', 'STICK_TO_PARENT TELEPORT USE_GEOMETRY').split())
         if (inner.strip() or not FLAGS <= flags or flags - FLAGS - MORE_FLAGS
                 or set(re.findall(r'(\w+)\s*=', head)) - ATTRS):
@@ -39,12 +78,80 @@ class AttachData(module.ModuleData):
 
 
 @factory.module('AttachUpdate')
-class Attach(module.Module, interfaces.Attach):
-    """Its module id and rule (the shape simunits.attach_modules gave: {flags, range, child, parent} or False)."""
+class Attach(module.Module, interfaces.Attach, interfaces.Update):
+    """Its module id and rule (the shape simunits.attach_modules gave: {flags, range, child, parent} or False). The
+    repair drone's block runs in the assignments cell (held: the parent it flies to or mends; due: the frame it
+    attaches; on: attached); any other sleeps."""
     DATA = AttachData
+    PHASE = 'assignments'
+    STATE = ('held', 'due', 'on')
+    RECORDED = ()
+    ALIGN = {'drone repair': '部分对齐：原版修理无人机自己找最近的受损己方车辆贴上去修（E66 / E181）；'
+                             '飞行时间、每帧扫描、最近即最佳、ALLIES 只认同一玩家为 INFERRED'}
+    held, due, on = None, 0, False
 
     def module_id(self):
         return self.data.id
 
     def rule(self):
         return self.data.rule
+
+    def repairing(self):
+        return self.held
+
+    def _fits(self, p, home):
+        return (p.alive and not p.deleted and p.owner == self.thing.owner and p.kinds & PARENT_KINDS
+                and 'NOT_IN_WORLD' not in p.status
+                and math.hypot(p.x - home.x, p.y - home.y) - p.radius <= self.data.repair['range'])
+
+    def _let_go(self):
+        self.held.status.difference_update({'TARGETED_FOR_REPAIR', 'UNDERGOING_REPAIR'})
+        self.thing.status.discard('ATTACHED')
+        self.held, self.on = None, False
+
+    def _choose(self, home):
+        living = self.world.living()
+        held = [m.repairing() for t in living for m in t.find(interfaces.Attach)]
+        held += [m.target() for t in living for m in t.find(interfaces.Assign)]
+        taken = {p.serial for p in held if p is not None}
+        d = self.thing
+        return min((p for p in living if p.hp < p.max_hp and p.serial not in taken and self._fits(p, home)),
+                   key=lambda p: ('BOOBY_TRAPPED' not in p.status, math.hypot(p.x - d.x, p.y - d.y)), default=None)
+
+    def _rate(self):
+        """Its PassiveAreaEffectBehavior's HealingPointsPerSecond, the one that AffectAttached."""
+        return next((templates.num(templates.attr(h, 'HealingPointsPerSecond'), 0.0) for h, _ in
+                     self.world.blocks_of(self.thing.template, 'PassiveAreaEffectBehavior')
+                     if templates.attr(h, 'AffectAttached') == 'true'), 0.0)
+
+    def update(self, frame):
+        d, rule = self.thing, self.data.repair
+        slaved = d.find(interfaces.Slaved)
+        home = slaved.slaver() if slaved else None
+        if not rule or not d.alive or home is None or not home.alive:
+            if self.held is not None:
+                self._let_go()
+            return interfaces.SLEEP
+        if self.held is not None and (not self._fits(self.held, home) or self.held.hp >= self.held.max_hp):
+            self._let_go()
+        p = self.held
+        if p is None:
+            p = self._choose(home)
+            if p is None:
+                return 1
+            self.held, self.on = p, False
+            p.status.add('TARGETED_FOR_REPAIR')
+            fly = math.hypot(p.x - d.x, p.y - d.y) / SPEED
+            self.due = frame + rule['delay'] + math.ceil(fly * FPS)
+        if not self.on:
+            if frame < self.due:
+                return 1
+            self.on = True
+            p.status.add('UNDERGOING_REPAIR')
+            d.status.add('ATTACHED')
+        d.x, d.y = p.x, p.y
+        p.mend(self._rate() / FPS)
+        self.world.used.add('drone repair')
+        if p.hp >= p.max_hp:
+            self._let_go()
+        return 1

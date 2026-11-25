@@ -119,7 +119,7 @@ def _things(drones=(True,)):
     class Thing(module.Thing):
         def __init__(self, x, hp, mods=()):
             self.x, self.y, self.alive, self.owner, self.hp, self.max_hp = x, 0.0, True, 'P', hp, 480.0
-            self.modules = mods
+            self.modules, self.status = mods, set()
 
         def mend(self, amount):
             self.hp = min(self.max_hp, self.hp + amount)
@@ -151,13 +151,14 @@ def test_assign_mends_rate_a_second_till_whole_then_sleeps():
     from engine.kernel import interfaces
     w, source, m, target = _things()
     m.assign(target, 20.0)
-    assert m.target() is target and w.woken == [m]
+    assert m.target() is target and w.woken == [m] and target.status == specialpower.REPAIR_BITS   # E66 110
     for frame in range(15):
         assert m.update(frame) == 1
     assert target.hp == pytest.approx(420.0) and 'assigned repair' in w.used
     target.hp = 479.0
     m.last = 479.0
     assert m.update(15) is interfaces.SLEEP and target.hp == 480.0 and m.target() is None and not w.gaps
+    assert not target.status
 
 
 @pytest.mark.parametrize('disturb', ['target moved', 'source moved', 'hp changed', 'target dead', 'owner',

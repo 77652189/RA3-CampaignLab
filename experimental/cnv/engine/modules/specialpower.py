@@ -24,6 +24,7 @@ TAGS = ('SpecialPower', 'OCLSpecialPower', 'MovementSpecialPower', 'DominateEnem
         'PrematureDischargeSpecialPower', 'ReturnToDockSpecialPower')
 FPS = 15                        # the game's logic frames a second (bench 2026-10-28, probe align)
 ASSIGN = 'AssignSlavesTargetObjectSpecialPower'     # its own class below (AssignSlaves: a SpecialPower with a dispatch)
+REPAIR_BITS = frozenset({'TARGETED_FOR_REPAIR', 'UNDERGOING_REPAIR'})   # the repair drone's ParentStatus(Attached)
 RECALL = 'RecallUnitsSpecialPower'                  # its own class below (RecallUnits: whom a cast calls home)
 RETURN = 'ReturnToProducerSpecialPower'             # its own class below (ReturnToProducer: a plane flies home)
 DOMINATE = 'DominateEnemySpecialPower'              # its own class below (DominateEnemy: whom a cast takes)
@@ -262,9 +263,12 @@ class AssignSlaves(SpecialPower, interfaces.Assign, interfaces.Update):
         s = self.thing
         self.tgt, self.rate, self.last = target, rate, target.hp
         self.spots = (s.x, s.y, target.x, target.y)
+        target.status.update(REPAIR_BITS)       # E66: the dispatched target reads 110 like a drone's (from the press: INFERRED)
         self.world.wake(self)
 
     def _stop(self):
+        if self.tgt is not None:
+            self.tgt.status.difference_update(REPAIR_BITS)
         self.tgt = self.spots = None
         return interfaces.SLEEP
 

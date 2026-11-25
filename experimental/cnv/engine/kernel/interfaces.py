@@ -363,6 +363,10 @@ class Attach(Interface):
     def rule(self):
         raise NotImplementedError
 
+    def repairing(self):
+        """The parent a repair drone's block flies to or mends; None."""
+        raise NotImplementedError
+
 
 class Upgrade(Interface):
     """Whether it is in force (the XML's triggers, conflicts and required upgrades) and what it does then. Its data

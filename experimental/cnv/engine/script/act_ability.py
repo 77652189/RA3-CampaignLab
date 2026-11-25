@@ -123,6 +123,7 @@ def named_buttons(sim, name, a, script, unit=None):
             body(a[0]) and body(a[0]).alive and \
             sim.assignments.press(body(a[0]), a[1], sim.body(a[2])):
         sim.note('技能', f'{a[0]} 显式派发维修到 {a[2]}')
+        _seen(sim, body(a[0]).owner, cpower, body(a[0]).serial)    # E66: seen cast once (a refused press too: INFERRED)
     elif name == 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT' and body(a[0]) and body(a[0]).alive and \
             sim.point(a[2]) is not None and simunits.ocl_power(
                 body(a[0]).template, cpower or '', sim.own):
