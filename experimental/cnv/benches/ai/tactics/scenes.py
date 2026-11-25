@@ -1543,6 +1543,7 @@ def aimicro_bench():
                'aimicupst': lambda: update_time('CampMicObsSlow', 4, observe=True),
                'aigathb1': lambda: gather_bonus('CampGathBonus1', 1),
                'aigathb3': lambda: gather_bonus('CampGathBonus3', 3),
+               'aigathk1': lambda: gather_bonus('CampGathKeep1', 3, keep=1),
                'aiignzero': lambda: ignore_distance('CampAIIgnZero', 0),
                'aiignnear': lambda: ignore_distance('CampAIIgnNear', 2000),
                'aiignzt': lambda: ignore_distance('CampIgnObsZero', 0, observe=True),

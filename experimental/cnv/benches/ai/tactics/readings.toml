@@ -1627,3 +1627,16 @@ proves = "simai micro state: after a round in state 5 the hostile search reaches
 item = "AI 微操/AIMicroManagerData.GatherTempVisionRangeBonus"
 let = {near ="lambda r: min(((m['pos'][0] - 3150.0) ** 2 + (m['pos'][1] - 3300.0) ** 2) ** 0.5 for m in r['members'] if m['alive'])"}
 expect = "any('UNIT - CNV AM Far Conscript' in r['hostiles'] and near(r) > 600 for r in teams() if any(m['alive'] for m in r['members'])) == far"
+
+[[reading]]
+bench_id = "engine_aimicro"
+id = "gather_bonus_runs_out_after_its_keep_time"
+scene = {build = "aigathk1", check = "a", until = 50, teams = true}
+bench = """\
+aigathk1 (aigathb3 with MinTimeToKeepTempVisionRangeBonus 1s; bench 11-25, run CampGathKeep1A): f352 5, f376 2, f424 5, \
+f488 2 as aigathb3; the near two dead at f576 -> 8 (aigathb3: 5), 5 only at f664 ~400 off the far conscript, the \
+move to (3464.8,3221.5) -- as aigathb1: the bonus raised in state 5 is gone ~90 frames after the team left 5"""
+proves = "simai micro state: the temporary vision bonus is dropped once MinTimeToKeepTempVisionRangeBonus has passed"
+item = "AI 微操/AIMicroManagerData.MinTimeToKeepTempVisionRangeBonus"
+let = {near = "lambda r: min(((m['pos'][0] - 3150.0) ** 2 + (m['pos'][1] - 3300.0) ** 2) ** 0.5 for m in r['members'] if m['alive'])", live = "[r for r in teams() if r['updated'] and any(m['alive'] for m in r['members'])]", got = "[i for i, r in enumerate(live) if 'UNIT - CNV AM Far Conscript' in r['hostiles'] and near(r) > 600]"}
+expect = ["bool(got)", "any('UNIT - CNV AM Far Conscript' not in r['hostiles'] and near(r) > 600 for r in live[got[0]:])"]

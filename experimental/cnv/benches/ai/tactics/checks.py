@@ -1574,6 +1574,7 @@ def engine_aimicro():
     CHECKS['aimicupst'] = {'a': probe_update_time}
     CHECKS['aigathb1'] = {'a': probe_update_time}
     CHECKS['aigathb3'] = {'a': probe_update_time}
+    CHECKS['aigathk1'] = {'a': probe_update_time}
     CHECKS['aimicbuilt'] = {'r': probe_built}
     CHECKS['aimicbuilth'] = {'r': lambda m: probe_built(m, 'aimicbuilth')}
     CHECKS['aimicbuiltf'] = {'r': lambda m: probe_built(m, 'aimicbuiltf')}
