@@ -719,6 +719,10 @@ def nugget_form_slice(ntype, forms):
                         Include='INFANTRY', StatusBitFlagsExclude='NO_COLLISIONS'))
         if all(measured_filter(n) for n in forms):
             return ':镰刀敌我筛选'
+        if all(not list(n) and set(n.attrib) <= allowed | {'ShockWaveArc', 'ForbiddenTargetModelCondition'}
+               and n.get('ForbiddenTargetModelCondition') == 'STUNNED_FLAILING' and n.get('ShockWaveArc') == '5d'
+               for n in forms):
+            return ':散弹自身弧'
         if all(not list(n) and set(n.attrib) <= allowed
                and {'ShockWaveAmount', 'ShockWaveRadius'} <= set(n.attrib) for n in forms):
             return ':普通无延迟显式Z' if all('ShockWaveZMult' in n.attrib for n in forms) else ':省略Z默认值'
@@ -739,7 +743,8 @@ NUGGET_SCOPES = {
     'SpecialPowerNugget:涂靶升级门槛': '仅原版守护者普通/高科技两种升级门槛与空PaintTarget消费者边界；engine_spnret a保留/删除SPN晚段74/69/74/69%血，增伤来自伴随AttributeModifierNugget。非通用技能执行；原版涂靶开关/持续光束/重复开火未测，其他消费者另列gap',
     'MetaImpactNugget:普通无延迟显式Z': '仅普通弹头碰撞事件→默认Physics轨迹；engine_knock_probe land/late邻人5帧落(2380,3740)、目标99%/邻人100%。到达帧为台上输入，非完整V4曲线弹回放；直击方向/落点网格/选人仍INFERRED',
     'MetaImpactNugget:镰刀敌我筛选': '仅镰刀无延迟筛选写法的发射者敌我关系→默认Physics；engine_knock_relation a健康99/100/99/100，ENEMIES仅敌/ALLIES仅友，逐帧位置回放。碰撞帧/爆心由台上输入；tests/test_meta_nocoll.py具名回放engine_knock_nocoll a/b：99/99/1/0与99/99/0/1，仅无NO_COLLISIONS位邻人收到冲击并三帧落到y3740。仅脚本置位；engine_knock_statusgate a/b均99/99/1/0，b仅删XML状态排除后有位邻人也收shock并三帧落y3740，tests/test_meta_statusgate.py四路具名回放；此切片无独立状态拒绝门，解析/消费按XML声明排除，原生位生命周期仍gap。engine_knock_kind a/b均99/100/99/100：原版步兵邻人收shock、铁锤无，删除Include后空Rule=ANY全无shock；tests/test_meta_kind.py具名回放派发/位置及空ANY拒绝。铁锤阳性未建立，原生位生命周期/倒地状态/非步兵拒绝归因仍gap，Physics状态映射INFERRED。engine_knock_sickle a/b真实跳跃两道均f114接地；a在f115仅敌兵收shock并三帧落y3540，b仅删MetaImpact后无shock、原地不动；tests/test_meta_sickle.py具名落地区域计数/落地事件消费回放已接通。精确到达帧和落点仍strict xfail，落地伤害筛选及衰减gap；仅派发冲击，不覆盖完整跳跃、延迟、Arc',
-    'MetaImpactNugget:省略Z默认值': '仅普通无延迟弹头省略ShockWaveZMult→SDK默认1及默认Physics轨迹；engine_knock_z a高度93邻人14帧落(2420,3740)、目标99%/邻人100%。碰撞时刻/爆心为台上输入；直击噪声方向/网格/选人仍INFERRED，完整曲线弹/坡地/筛选未对拍',
+    'MetaImpactNugget:散弹自身弧': '仅瞬发DamageDealtAtSelfPosition散弹（维和/AAAVT1/ABD）：圆心=射手脚下，Arc沿射手→目标；engine_knock_self a 原样(0,25)(0,38)冲、39°侧邻与60外不冲，只删Arc侧邻也冲，三人初速度与模拟器公式同（tests/modules/test_nugget_meta_impact_self.py）；engine_knock_self b 原位计数读数（原样man离位/侧邻不动，只删Arc两人都离位）。半角arc/2、射手自身不受（自身或敌我未分）、禁FLAILING=飞行中跳过均INFERRED；AAAVT1继承后另加半径100一条（游戏是否两条都冲未量，模拟器只取自己那条）；弹体爆心的Arc轴未量（gap）',
+    'MetaImpactNugget:省略Z默认值':'仅普通无延迟弹头省略ShockWaveZMult→SDK默认1及默认Physics轨迹；engine_knock_z a高度93邻人14帧落(2420,3740)、目标99%/邻人100%。碰撞时刻/爆心为台上输入；直击噪声方向/网格/选人仍INFERRED，完整曲线弹/坡地/筛选未对拍',
     'InformTargetNugget:默认系数目标通知': '仅默认Min=.85/Max=1.15的目标通知→来弹表/矿车预计伤害开甲；engine_inform_probe a/off录入302、hit377、exp404、删除389，347帧入窗。engine_inform_expiry a/b只改预报速度及截止系数：两路截止313/304与303/317，物理清除336/312与336/320；tests/test_inform_ai.py具名入表回放绿，自主清理四strict xfail，不能以到期即时删除或共享周期拟合，见work/re/c_inform_expiry_report.md。另有合成engine_inform_radius a/b具名回放（tests/test_inform_radius.py）：Radius200通知80近邻、不通知320远邻，默认0仅主目标，删除通知全无；近邻复制主目标来弹信息。此合成切片不增加原版用量，边界/高度/异型护甲/复杂筛选仍INFERRED或gap，见work/re/c_inform_radius_report.md。历史/海啸/忍者及完整AI调度不在本登记范围，完整脚本仍xfail',
     'InformTargetNugget:Max1.6目标通知': '仅Min=.85/Max=1.6目标通知→来弹表；engine_inform_max a单变量对照录入302、hit377不变、exp444（默认404）、受伤389删除，矿车提前开甲。自然过期清理边界/半径/历史/海啸/忍者/完整AI调度未对拍，完整脚本仍xfail',
 }

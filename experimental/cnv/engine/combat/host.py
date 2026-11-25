@@ -449,6 +449,8 @@ class Damage:
                         registry.run('victim', ctx)       # its damage, the leech claims, the strip (registry.ORDER)
                         h[2] = by
                     registry.run('effect', ctx)           # the lift, the attachment, the power, the modifier (registry.ORDER)
+                    if w.get('at_self') and w.get('meta_impacts') and not projectile:
+                        meta_impact.fire_at_self(host, w, by, t)      # the shotgun's shocks from its feet (A363)
         self.dots[:] = dot.tick(self.dots, world.frame_now(), hurt, armor_scalar, gap)    # the frame-end DOT ledger
         for t, dmg, by in hurt.values():
             if world.frame_now() < t.immune_until or t.shielded or t.indestructible:

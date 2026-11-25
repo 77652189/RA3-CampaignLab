@@ -15,6 +15,8 @@ feet ((x, 3300, 212.5); dir = the body's feet + 6.5 less the centre). retail: ma
 (+0, 3340) N=6, behind v (0, 3.2856, 0.5620) lands 3340 N=3; side and far none. plain: the same two plus side
 v (2.0407, 2.5509, 0.6632) lands (2320, 3320) N=3; far none. Health man 74 / side 100 in both (behind 113 / far
 115.13 of 150 off the damage log: the 155 damage arc reaches them in line).
+b (A364): the same shot, counting instead whether man / side are still on their spot (a 3 box): CampKSelfB_mcp_1124_231636
+PASS, retail 0 / 1, plain 0 / 0 from s6.47.
 """
 import os
 import re
@@ -22,6 +24,7 @@ import re
 import labpaths
 from maps import probe_range
 from parts import Mission, Script, Test, Unit
+from model import square
 from checks.engine_clip import ORDER
 from checks.engine_suppress_probe import PROBE, probe_man
 
@@ -65,7 +68,7 @@ def mission():
     return m
 
 
-def check(m):
+def check(m, home=False):
     m.units = [probe_man(), plain_shooter()]
     t = Test()
     parts = ('gun',) + tuple(SPOTS)
@@ -81,16 +84,27 @@ def check(m):
         stop += [('UNIT_CHANGE_OBJECT_STATUS', name(k, 'gun'), 'NO_ATTACK', 1)]
     t.scripts.append(Script('Test - fire', [('TIMER_EXPIRED', 'KSelf Fire')], fire))
     t.scripts.append(Script('Test - stop', [('TIMER_EXPIRED', 'KSelf Stop')], stop))
-    for k in SITE:
+    for k in SITE if not home else ():
         for p, op, hp in (('man', '<', 100), ('side', '==', 100)):
             c = f'CNV_KSelf_{k}_{p}'
             t.counters.append((c, f'{k} {p}'))
             t.scripts.append(Script(f'Test - health {k} {p}', [],
                                     [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', name(k, p), c)], once=False))
             t.expect.append((f'{k} {p}', RUN - 2, op, hp, RUN))
+    # b (A364): still on its spot (a 3 box) instead of health -- a lands man 15 on, plain's side 5 back (the 20 grid)
+    for k, site in SITE.items() if home else ():
+        x, y = m.site(site)[:2]
+        for p, moved in (('man', True), ('side', k == 'plain')):
+            c, area = f'CNV_KSelf_{k}_{p}_home', name(k, p + ' home')
+            t.areas[area] = square(x + SPOTS[p][0], y + SPOTS[p][1], 3)
+            t.counters.append((c, f'{k} {p} home'))
+            t.scripts += [Script(f'Test - away {k} {p}', [], [('SET_COUNTER', c, 0)], once=False),
+                          Script(f'Test - home {k} {p}', [('NAMED_INSIDE_AREA', name(k, p), area)],
+                                 [('SET_COUNTER', c, 1)], once=False)]
+            t.expect.append((f'{k} {p} home', RUN - 2, '==', int(not moved), RUN))
     t.bench = [('bench_watch', dict(seconds=RUN, every=.5, sheet=False, lines=len(t.counters)))]
     return t
 
 
 MISSION = {'engine_knock_self': mission}
-CHECKS = {'engine_knock_self': {'a': check}}
+CHECKS = {'engine_knock_self': {'a': check, 'b': lambda m: check(m, home=True)}}

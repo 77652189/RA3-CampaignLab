@@ -58,7 +58,8 @@ def test_retail_nugget_partitions_conserve_uses_and_only_register_measured_forms
                 forms = [n for n in rm.effective_weapon_forms(w) if rm._tag(n) == kind]
                 assert kind + inventory.nugget_form_slice(kind, forms) == i['name']
             if i['state'] == inventory.BENCHED:
-                assert (inventory.NUGGET, i['name']) in inventory.BENCHED_TESTS
+                assert ((inventory.NUGGET, i['name']) in inventory.BENCHED_TESTS
+                        or (inventory.NUGGET, i['name']) in inventory.declared_items())     # readings' item key
                 assert '仅' in i['why'] and 'engine_' in i['why']
                 field = 'inform' if kind == 'InformTargetNugget' else 'meta_impacts'
                 assert all(weapons[w].get(field) for w in i['weapon_ids'])

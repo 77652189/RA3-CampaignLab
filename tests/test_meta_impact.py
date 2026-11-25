@@ -44,8 +44,9 @@ def test_meta_impact_arc_probe_has_one_retail_payload_and_one_unfiltered_control
         if lane == 'rocket':
             assert weapon['meta_impacts'] == [dict(amount=50, radius=40, zmult=1, taper=1)]
         else:
-            # Fail closed: retaining the gap is not successful filter coverage.
-            assert weapon['meta_impacts'] == []
+            # Parsed (A364), but a projectile's arc axis is unmeasured: meta_impact.launch gaps it.
+            assert weapon['meta_impacts'] == [dict(amount=50, radius=40, zmult=1, taper=1, forbid_flailing=True,
+                                                   arc=5.0)]
             assert 'MetaImpactNugget' in weapon['unmodeled_effects']
     stop_timers = [a[2] for script in t.scripts for a in script.do
                    if a[0] == 'SET_MILLISECOND_TIMER' and a[1].startswith('Knock Stop')]
@@ -87,8 +88,9 @@ def test_meta_impact_arc_probe_replays_plain_neighbour_and_retains_filter_gap():
     assert near.serial not in e.impact_flights
     restricted, = e.bodies[name('yuri', 'gun')].weapons
     assert 'MetaImpactNugget' in restricted['unmodeled_effects']
-    assert restricted['meta_impacts'] == []
-    # These match the recorded negative, but are fail-closed parser behaviour.
+    assert restricted['meta_impacts'][0]['arc'] == 5.0
+    assert 'Arc' in e.unmodeled[(sim.GAP_WEAPON, 'MetaImpactNugget')]['what']
+    # These match the recorded negative, but are fail-closed launch behaviour (the arc gap).
     for part, x in (('man',800), ('near',820)):
         b = e.bodies[name('yuri', part)]
         assert b.serial not in e.impact_flights

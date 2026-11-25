@@ -23,14 +23,24 @@ def detonate(host, weapon, target, centre, attacker):
         launch(host, weapon, centre, attacker)
 
 
-def launch(host, weapon, centre, attacker):
+def fire_at_self(host, weapon, attacker, target):
+    """An instant DamageDealtAtSelfPosition shot's shocks (A363, the retail shotgun; bench engine_knock_self): the
+    centre is the shooter's feet, the arc about its line to the target. INFERRED: the shooter itself never takes its
+    own shock (bench: the shooter stood at the centre unshocked; self or relation not told apart)."""
+    centre = (attacker.x, attacker.y, host.ground_z(attacker.x, attacker.y) if attacker.z is None else attacker.z)
+    launch(host, weapon, centre, attacker, axis=(target.x - attacker.x, target.y - attacker.y))
+
+
+def launch(host, weapon, centre, attacker, axis=None):
     """Dispatch ordinary immediate warhead shocks, separately from damage radius.
 
     First slice: default Physics, grounded bodies, landings on level, lower or higher ground (Physics P3: a landing
     moved off the water, a vehicle's drowning: Ground.landing / drowns). Other cases
     stay explicit gaps; no airborne relaunch. After landing the body keeps still landing_hold frames
     (tick: knock_hold, read by move).
-    INFERRED selection: feet-centre sphere. Sickle relation uses the launcher; arc remains a gap.
+    INFERRED selection: feet-centre sphere. Sickle relation uses the launcher. An arc (the shotgun's) keeps the
+    bodies whose bearing from the centre is within arc / 2 of `axis` (INFERRED half; bench 0 deg in, 39 deg out);
+    without an axis (a projectile's detonation: engine_knock_arc b, the axis unmeasured) it is a gap.
     The whole nugget therefore retains its unmodeled registration.
     """
     world, peers, gap = host.world, host.peers, host.gap
@@ -39,12 +49,18 @@ def launch(host, weapon, centre, attacker):
         if effect['radius'] <= 0:
             gap(TAG, '非正冲击半径的选人范围未建模')
             continue
+        arc = effect.get('arc')
+        if arc is not None and axis is None:
+            gap(TAG, 'Arc 只量过射手脚下为圆心的瞬发写法；弹体爆心的弧轴未量')
+            continue
         target_filter = effect.get('target_filter')
         magnetic = target_filter and target_filter.get('magnetic_ground')
         if target_filter and not magnetic and attacker is None:
             gap(TAG, '筛选缺少发射者关系，未派发冲击')
             continue
         for b in world.living():
+            if axis is not None and b is attacker:
+                continue
             # CampKOG a/b: the explicit forbidden object-status field.
             # Only the isolated measured spelling is parsed by simunits.
             if any(flag in b.status for flag in effect.get('forbidden_status', [])):
@@ -82,6 +98,13 @@ def launch(host, weapon, centre, attacker):
                     continue
             position = (b.x, b.y, host.ground_z(b.x, b.y) if b.z is None else b.z)
             if math.dist(position, centre) > effect['radius']:
+                continue
+            if arc is not None:
+                dx, dy = b.x - centre[0], b.y - centre[1]
+                if math.hypot(dx, dy) > 1e-6 and abs(math.degrees(
+                        math.atan2(axis[0]*dy - axis[1]*dx, axis[0]*dx + axis[1]*dy))) > arc / 2:
+                    continue
+            if effect.get('forbid_flailing') and b.serial in flights:   # INFERRED: STUNNED_FLAILING = in flight
                 continue
             height, resistance = host.body_of(b.template)
             if effect['amount'] < resistance:
