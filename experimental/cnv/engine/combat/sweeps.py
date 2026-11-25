@@ -23,6 +23,7 @@ import math
 import re
 
 import engine.data.units as simunits
+from engine.combat.registry import standing
 
 _memo, _weapon_blocks = {}, None
 
@@ -131,8 +132,7 @@ class Sweeps:
         for t in world.living():
             if t is by or frame < t.immune_until or t.shielded or t.indestructible:
                 continue
-            rel = world.relation(by.owner, t.owner)
-            if (rel + 'S' if rel == 'NEUTRAL' else rel) not in d['affects']:
+            if standing(world, by.owner, t) not in d['affects']:
                 continue
             dist = math.hypot(t.x - x, t.y - y)
             for dmg, typ, reach in d['hits']:

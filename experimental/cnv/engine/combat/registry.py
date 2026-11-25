@@ -57,6 +57,13 @@ def run(phase, context):
     return False
 
 
+def standing(world, owner, t):
+    """How t stands to `owner` as RadiusDamageAffects / an ObjectFilter's Relationship spell it: ALLIES, ENEMIES,
+    NEUTRALS (combat's one entry to the host's relation)."""
+    rel = world.relation(owner, t.owner)
+    return rel + 'S' if rel == 'NEUTRAL' else rel
+
+
 def accumulate(hurt, victim, amount, by):
     """Add `amount` to this frame's damage of `victim` (hurt: serial -> [body, damage, attacker], in first-hit order;
     a new entry's attacker is `by`, an old one keeps its own). The entry."""

@@ -82,7 +82,7 @@ SIM_SURFACE = {
     'engine.combat': 'attachment_tick attachments*4 can_hit change*2 cold_of*3 death_blasts*2 emp_disabled*2 firing '
                      'first_death*4 frame_now*17 gap*6 garrison*2 ground*6 guessed has_model_condition hostile infiltrators '
                      'label*5 lift_timers*2 living*6 mark_first_death note own*7 player_ups projectile_detonate*2 '
-                     'queue_projectile_hit relation*5 set_model_condition*2 shots_due suppression_fields*3 sweeps t*4 used*7 '
+                     'queue_projectile_hit relation*2 set_model_condition*2 shots_due suppression_fields*3 sweeps t*4 used*7 '
                      'world*7 xml_of*2',
     'engine.kernel': 'seq*2',
     'engine.loop': '_life aim_due anchored*2 auto_kill_due blast_due clock combat*3 deal death_blast_due ending*4 events*5 '

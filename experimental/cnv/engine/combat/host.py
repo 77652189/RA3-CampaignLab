@@ -179,7 +179,7 @@ def mend(world, dt, fires):
             if w.get('type') != 'HEALING' or not fires(a):
                 continue
             hurt = [t for t in live if t is not a and t.hp < t.max_hp and 'VEHICLE' in t.kinds
-                    and t.surface != 'air' and world.relation(a.owner, t.owner) == 'ALLIES' and in_range(a, t, w)]
+                    and t.surface != 'air' and registry.standing(world, a.owner, t) == 'ALLIES' and in_range(a, t, w)]
             if hurt:
                 t = min(hurt, key=lambda t: math.hypot(t.x - a.x, t.y - a.y))
                 t.mend(w['dps'] * dt * simunits.percent(t.armor, 'HEALING') / 100.0)
@@ -258,7 +258,7 @@ def death_blast_due(world, frame, peers):
         for t in world.living():
             if math.hypot(t.x - x, t.y - y) > reach:
                 continue
-            rel = world.relation(owner, t.owner)
+            rel = registry.standing(world, owner, t)
             if pulse is not None:       # an EMP pulse (simbody.Life.fire): what its filter takes stands still
                 if t is not by and _filter(pulse, rel, t):
                     book = peers.emp_until
@@ -268,7 +268,7 @@ def death_blast_due(world, frame, peers):
                 continue
             if ground_only and t.surface == 'air':
                 continue                    # a crash on the ground; the planes 175 over it are out of its 20
-            if (rel + 'S' if rel == 'NEUTRAL' else rel) not in affects:
+            if rel not in affects:
                 continue
             armor = 1.0 if typ == 'UNRESISTABLE' else simunits.percent(t.armor, typ) / 100.0 * t.taken
             if rel == 'ALLIES':

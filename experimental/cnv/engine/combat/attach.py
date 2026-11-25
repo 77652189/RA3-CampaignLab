@@ -2,7 +2,7 @@
 id); the chain is the host's (child serial -> (child, parent, rule)), which places the child at once."""
 import math
 
-from engine.combat.registry import nugget
+from engine.combat.registry import nugget, standing
 
 
 @nugget('Attach', 'effect')
@@ -25,7 +25,7 @@ class Attach:
                     or (effect['include'] and not set(effect['include']) & t.kinds)
                     or set(effect['exclude']) & t.kinds
                     or effect.get('things') and t.template.lower() in effect['things']
-                    or relation and context.world.relation(by.owner, t.owner).rstrip('S') not in relation):
+                    or relation and standing(context.world, by.owner, t).rstrip('S') not in relation):
                 continue
             rule = by.attachment_rules.get(effect['module'])
             if not rule or context.weapon.get('projectile') or context.n != 1:
