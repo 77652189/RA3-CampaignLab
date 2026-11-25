@@ -10,16 +10,24 @@ expect = "win(1, 40, '油井数') == [own] * 40"
 
 [[reading]]
 id = "tech_share_initial_ownership[aitechlow]"
+item = "AI 启发条件/TechBuildingShareHeuristic.Above"
 scene = {build = "aitechlow", check = "a", until = 41}
 bench = "Engine s40: tech-share gates (low-threshold below, low-threshold above, high-threshold below) read 4/0/4."
-proves = "simai tech-share heuristic: initial gates by the active-owner count"
+proves = "simai tech-share heuristic: Above=true turns the gate (75 % true on, 75 / 125 % false off at 200 / 400 %)"
 expect = "(win(40, 40, '低阈下')[0], win(40, 40, '低阈上')[0], win(40, 40, '高阈下')[0]) == (4, 0, 4)"
-mismatch = "sim 0/4/0; bench 4/0/4"
 
 [[reading]]
 id = "tech_share_initial_ownership[aitechhigh]"
 scene = {build = "aitechhigh", check = "a", until = 41}
 bench = "Engine s40: tech-share gates (low-threshold below, low-threshold above, high-threshold below) read 4/0/4."
-proves = "simai tech-share heuristic: initial gates by the active-owner count"
+proves = "simai tech-share heuristic: Above=true turns the gate (75 % true on, 75 / 125 % false off at 200 / 400 %)"
 expect = "(win(40, 40, '低阈下')[0], win(40, 40, '低阈上')[0], win(40, 40, '高阈下')[0]) == (4, 0, 4)"
-mismatch = "sim 4/0/0; bench 4/0/4"
+
+[[reading]]
+id = "tech_share_is_every_owner_s_over_all_times_the_declared_players_plus_one"
+item = ["AI 启发条件/TechBuildingShareHeuristic", "AI 启发条件/TechBuildingShareHeuristic.PercentOfFairShare"]
+scene = {build = "aitechsl", check = "a", until = 41}
+each = [{build = "aitechsl", want = [4, 0, 0]}, {build = "aitechsh", want = [4, 4, 0]}, {build = "aitechsn", want = [4, 4, 0]}]
+bench = "B 11-25 (CampAITechSLA / SHA / SNA_mcp_1125): Island (7 declared players), 4 derricks, Above=false gates, home counts (on = away). aitechsl own 1 at 180 / 375 / 1000 %: 4/0/0 from s16; aitechsh own 2: 4/4/0 from s14; aitechsn own 1, the other three neutral, at 60 / 180 / 375 %: 4/4/0 from s14 -- share 200 / 400 / 200 %"
+proves = "simai Brain.tech_buildings: own / every owner's tech buildings x (declared players + 1)"
+expect = "[win(40, 40, k)[0] for k in ('低阈下', '低阈上', '高阈下')] == want"

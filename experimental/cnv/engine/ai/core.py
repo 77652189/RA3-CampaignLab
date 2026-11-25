@@ -876,11 +876,13 @@ class Brain:
         own = the player's registered set 0xc, all = the global set 2; by the SetId enum order (SDK xsd
         RegisteredObjectSetId: 0xa STRUCTURES, 0xd UNITS, 0x14 HARVESTERS as read elsewhere) those are
         PLAYER_NEUTRAL_TECH and NEUTRAL_TECH, both KindOf CAPTUREFLAG or NEUTRAL_TECH (GlobalData
-        RegisteredObjectSets.xml; the player's one SAME_PLAYER). players: the game's count is not read: INFERRED the
-        players owning something alive, the civilians not counted (it only matters once the player owns one)."""
+        RegisteredObjectSets.xml; the player's one SAME_PLAYER). all counts every owner's (bench aitechsn: the two
+        others' made neutral, the share stays 200 %). players: the map's declared players + 1 (benches aitechsl /
+        aitechsh / aitechsn, Island's 7 declared: 1 of 4 owned reads 180-375 %, 2 of 4 375-1000 % = x 8; read: the
+        count walks the player list's slots by a type flag -- whether the one extra is the neutral side or the human
+        is left out is not read, the same with one human)."""
         tech = [b for b in self.living() if {'CAPTUREFLAG', 'NEUTRAL_TECH'} & set(b.kinds)]
-        players = {b.owner for b in self.living() if b.owner != simworld.CIV and not b.scenery}
-        return sum(b.owner == self.player for b in tech), len(tech), len(players)
+        return sum(b.owner == self.player for b in tech), len(tech), len(self.world.players) + 1
 
     def _related(self, owner, relationship):
         # an ObjectFilter's Relationship (D59 2: the ally bit takes the player itself, SAME_PLAYER only it);

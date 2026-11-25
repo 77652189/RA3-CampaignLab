@@ -1,11 +1,7 @@
 """Initial OilDerrick ownership: below75 / above75 / below125 home counts.
 
-Pre-run prediction at s40: low 0/4/0 with one owned; high 4/0/0 with two.
-Fair-share denominator remains INFERRED outside this two-player map.
-Measured both FAIL: s40 low=4/0/4/1, high=4/0/4/2. The active-owner
-denominator is unverified even here (five additional idle map players).
-Original expectations retained; named simulator replays are strict xfail.
-See work/re/c_techshare_report.md. Check consumes published mission roles.
+Expectations: the mission's cnv_tech_home (share = owned / 4 x 8 players, B 11-25 after C's two runs read 4/0/4).
+Check consumes published mission roles.
 """
 from parts import Script, Test, counted, square
 
@@ -27,4 +23,4 @@ def check(m):
     return t
 
 
-CHECKS = {name: {'a': check} for name in ('aitechlow', 'aitechhigh')}
+CHECKS = {name: {'a': check} for name in ('aitechlow', 'aitechhigh', 'aitechsl', 'aitechsh', 'aitechsn')}
