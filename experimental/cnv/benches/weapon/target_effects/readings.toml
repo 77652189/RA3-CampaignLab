@@ -24,7 +24,7 @@ expect = [
     "vals(rows)[-1] == expected",
     "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
 ]
-mismatch = "Final base packed counter: simulator 135135100, bench 1187051068. Full script placement, custom projectile flight, miner AI enrollment/history and micro phase remain gaps."
+mismatch = "Final simulator 91135068/40135070/1135068/91135089, bench 1187051068/87135068/101003068/87135089. The p1 guns hit (the IMMOBILE miners stay put); no lane shields: order wants TrackDamage history and the micro's targeted flag, base the InformTarget look-ahead; high (s1 under NO_ATTACK) lands 47 frames early."
 
 [[reading]]
 bench_id = "engine_inform_ai"
@@ -37,7 +37,7 @@ expect = [
     "vals(rows)[-1] == expected",
     "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
 ]
-mismatch = "Final base packed counter: simulator 135135100, bench 87135068. Full script placement, custom projectile flight, miner AI enrollment/history and micro phase remain gaps."
+mismatch = "Final simulator 91135068/40135070/1135068/91135089, bench 87135068/87135068/101003068/87135089. As [a]: the p1 guns hit; order wants TrackDamage history and the micro's targeted flag; high lands 47 frames early."
 
 # Bench readings of benches/weapon/target_effects/checks.py#engine_secondary (format: experimental/cnv/readings.py).
 

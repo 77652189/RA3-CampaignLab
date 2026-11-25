@@ -79,3 +79,15 @@ def test_monitor_condition_update_dumps_the_load_once_carrying_and_armed_held_it
     gun.at = 1
     assert mon.update(16) == 8 and mon.update(23) == 1 and b.mine['load'] == 250
     assert mon.update(24) == 75 and b.mine['load'] == 0
+
+
+def test_an_immobile_miner_stands_on_its_trip():
+    """A script's IMMOBILE holds the miner where it is (engine_inform_ai's miners stay 450 off the guns)."""
+    s = _world()
+    b = s.bodies['miner']
+    b.script_status.add('IMMOBILE')
+    b.status.add('IMMOBILE')
+    mining = simmine.Mining()
+    for frame in range(1, 60):
+        mining.mine_due(s, frame, lambda owner, give: None)
+    assert (b.x, b.y, b.mine) == (150.0, 60.0, None)

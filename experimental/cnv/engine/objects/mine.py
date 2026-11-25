@@ -96,8 +96,10 @@ class Mining:
         self.mined_to = frame
         # a hold over by `start` reads as none (fr < free): dropped, so a refinery gone keeps none (review 1124 P3)
         self.docks = {k: free for k, free in self.docks.items() if free > start}
+        # an IMMOBILE one (a script's status) keeps its trip where it stands, as Sim.move skips it (engine_inform_ai:
+        # the miners made IMMOBILE stay 450 off the guns; INFERRED: the trip's clock held, not read)
         miners = [b for b in world.living() if b.modules and b.find(interfaces.OreMiner) is not None
-                  and b.owner != CIV and b.speed > 0]
+                  and b.owner != CIV and b.speed > 0 and 'IMMOBILE' not in b.status]
         if not miners:
             return
         nodes = [b for b in world.living() if 'orenode' in b.template.lower()]
