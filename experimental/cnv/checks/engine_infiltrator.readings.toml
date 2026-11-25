@@ -1,0 +1,39 @@
+# Bench readings of checks/engine_infiltrator.py#engine_infilpow (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A6 (11-25): s1's lone grid, one AlliedPowerPlant (+100) and a spectrum tower (-75); power 101 = has power with excess
+# 25, 14 = no power (excess < 0); hits = frames the tower hurt the player's Apocalypse (healed back each time; the bench
+# counts about one every 3 s, the simulator one every frame -- not what these readings are about). Bench runs
+# 2026-11-25 run_queue at b70600af (work/bench_results/engine_infilpow__<v>.json, note work/re/a376_a6_power.md).
+
+[[reading]]
+id = "infilpow_a_spy_darkens_the_tower_20_s"
+scene = {build = "engine_infilpow", check = "h", until = 50}
+bench = "the spy enters at 10 s: power 14 s11-s30 (20 s), the tower's hits stand at 4 while dark and climb again from s32"
+proves = "InfiltratorContain ENERGY (engine/objects/infiltrator.py): Amount .2 x 100 = 20 s with nothing else on the grid; the POWERED tower holds fire while dark"
+expect = ["abs(sum(r['power'] == 14 for r in rows) - 20) <= 1", "len(set(r['hits'] for r in rows[14:30])) == 1",
+          "rows[45]['hits'] > rows[31]['hits']"]
+
+[[reading]]
+id = "infilpow_the_blackout_scales_with_amount_and_the_plant_energy"
+scenes = {i = {build = "engine_infilpow", check = "i", until = 50}, j = {build = "engine_infilpow", check = "j", until = 60}}
+bench = "the same with a copy of the plant: Amount .1 -> power 14 s11-s20 (10 s, i); EnergyProduction 200, Amount .2 -> s11-s50 (40 s, j). The EnergyDisabler's LifetimeUpdate 10 s plays no part"
+proves = "InfiltratorContain ENERGY: blackout = Amount x the plant's EnergyProduction seconds (one plant on the grid: the plant's or the grid's sum is unmeasured)"
+let = {dark = "lambda rs: sum(r['power'] == 14 for r in rs)"}
+expect = ["abs(dark(i) - 10) <= 1", "abs(dark(j) - 40) <= 1"]
+mismatch = "sim 0 / 0 dark seconds (the spy does not take the CNV_InfPw copies: its structure filter lists retail plants); bench 10 / 40"
+
+[[reading]]
+id = "infilpow_a_scripted_disabler_darkens_its_owner_until_deleted"
+scenes = {e = {build = "engine_infilpow", check = "e", until = 60}, f = {build = "engine_infilpow", check = "f", until = 70}}
+bench = "CREATE_NAMED EnergyDisabler on s1's team at 10 s: power 14 from s8 to the end (e, s62; it never times out); f deletes it 6 s after each make, every 20 s: dark s9-s14, s28-s33, s48-s53, s68-; the tower's hits stop while dark (e 3 from s7 on)"
+proves = "EnergyDisablingBehavior: a script-made EnergyDisabler cuts its owner's power at once and holds while it lives (LifetimeUpdate WaitForWakeUp: only the infiltration sets its life); NAMED_DELETE ends it"
+expect = ["all(r['power'] == 14 for r in e[12:60])", "all(r['power'] == 14 for r in f[11:14] + f[30:33] + f[50:53])",
+          "all(r['power'] == 101 for r in f[17:26] + f[36:46])"]
+mismatch = "sim power 101 every second of e and f (a script-made EnergyDisabler does nothing); bench 14 from s8 (e), 14 for 6 s every 20 s (f)"
+
+[[reading]]
+id = "infilpow_an_emp_on_the_plant_darkens_the_grid_while_set"
+scene = {build = "engine_infilpow", check = "g", until = 45}
+bench = "NAMED_SET_DISABLED plant EMP 1 at 10 s, 0 at 25 s: power 14 s9-s22 (14 samples), 101 from s23; hits 3 while dark, the tower fires again after"
+proves = "NAMED_SET_DISABLED EMP on the grid's only plant: no power while set, back when cleared; the POWERED tower holds fire"
+expect = ["abs(sum(r['power'] == 14 for r in rows) - 14) <= 1", "all(r['power'] == 101 for r in rows[26:45])"]
+mismatch = "sim power 101 throughout (an EMP-disabled plant still counts its energy); bench 14 for 14 s"
