@@ -9,6 +9,8 @@ WAYPOINT(Player_1, power, spot) 75 frames after Go; every target NO_ATTACK, s1's
            for 30 s, 20 RADIATION a 0.1 s; dn: p1's Soviet yard deleted -- the bombers start from it, maybe no cast]
   f3 / fn  SpecialPowerFinalSquadron_L3 at the same spot, same counters. [~15 s on (3000 at speed 200), each enemy
            non-infantry within 100 up to 4 x 100 EXPLOSIVE; fn: p1's Japanese yard deleted]
+  fl       SpecialPowerFinalSquadron_L1, the foes on the line to the yard (super_bench.LINE): 血400 血800 血1400.
+           [the guns' first hits time the aircraft: born 3000 out toward the yard (work/re a353 A357) or 1500]
 Bench 11-23: engine_protofx.readings.toml (o1 and the desolator as predicted but no yard needed; o3 / f3 / fn random).
 """
 from parts import Script, Test
@@ -22,13 +24,14 @@ YARD = {'o': 'syard', 'd': 'syard', 'f': 'jyard'}          # the yard each proto
 def protofx(m, which):
     t, p1 = Test(), m.player('p1')
     kind, level = which
-    power = POWERS[kind] + ('3' if level in 'nx' else level)
+    power = POWERS[kind] + ('3' if level in 'nx' else '1' if level == 'l' else level)
     if kind == 'o':
         spot, shown = 'Test Psi Spot', [(f'dtarget {d}', f'血{d}') for d in (0, 150, 250, 350)]
     else:
         spot, shown = 'Test Protocol Spot', [(f'foe {d}', f'血{d}') for d in (0, 150, 200)]
+        shown = [(r, '血' + r[5:]) for r in m.cast if r.startswith('lfoe ')] if level == 'l' else shown
         t.counters.append(('CNV_Proto_Frames', '帧数'))
-    keep = {'yard', 'power'} | {r for r, _ in shown} | ({YARD[kind]} if level != 'n' else set())
+    keep = {'yard', 'power', 'foe 0'} | {r for r, _ in shown} | ({YARD[kind]} if level != 'n' else set())
     keep -= {'dtarget 150'} if level == 'x' else set()     # ox: o3 with the defense at 150 gone (does the centre get it?)
     start = [('MAP_REVEAL_ALL_PERM', p1), ('SET_MILLISECOND_TIMER', 'Test Go', 1.0)]
     start += [('UNIT_CHANGE_OBJECT_STATUS', m.role(r).name, 'NO_ATTACK', 1) for r, _ in shown]
@@ -51,4 +54,4 @@ def protofx(m, which):
     return t
 
 
-CHECKS = {'engine_protofx': {w: (lambda m, w=w: protofx(m, w)) for w in ('o1', 'o2', 'o3', 'ox', 'd1', 'd2', 'd3', 'dn', 'f1', 'f2', 'f3', 'fn')}}
+CHECKS = {'engine_protofx': {w: (lambda m, w=w: protofx(m, w)) for w in ('o1', 'o2', 'o3', 'ox', 'd1', 'd2', 'd3', 'dn', 'f1', 'f2', 'f3', 'fn', 'fl')}}

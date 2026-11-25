@@ -8,6 +8,8 @@ SpecialPowerIronCurtain), both at 'west field' on their own pads.
           -x side (so their footprints do not touch).
   iron    two player tanks (AlliedAntiVehicleVehicleTech1) at 0 and 150 (+x) from 'Test Curtain Spot'.
 """
+import math
+
 import resources
 from maps import niagara
 from parts import Mission
@@ -46,6 +48,7 @@ def _n(part):
 
 
 YARDS = {'syard': ('SovietConstructionYard', (700.0, 300.0)), 'jyard': ('JapanConstructionYard', (700.0, -100.0))}   # east of the base
+LINE = (400, 800, 1400)     # engine_protofx fl: foes this far from the protocol spot on its way to jyard (the yard ~1170)
 
 
 def mission(name='CampSuper', crews=False, most=False, yards=False):
@@ -98,6 +101,11 @@ def mission(name='CampSuper', crews=False, most=False, yards=False):
         m.put(template, SITE, *at, angle=0.0, role=role, name=_n(role.title()))
     if yards:       # on foe 0, so foes 0 / 150 / 200 stand at those distances from it
         m.waypoint('protocol spot', 'Test Protocol Spot', SITE, CURTAIN_SPOT[0], CURTAIN_SPOT[1] + FOE_AT[0][1])
+        (sx, sy), (jx, jy) = (CURTAIN_SPOT[0], CURTAIN_SPOT[1] + FOE_AT[0][1]), YARDS['jyard'][1]
+        far = math.hypot(jx - sx, jy - sy)
+        for d in LINE:
+            m.put(TANK, SITE, sx + d * (jx - sx) / far, sy + d * (jy - sy) / far, side='s1', angle=0.0,
+                  role=f'lfoe {d}', name=_n(f'LFoe {d}'))
     return m
 
 
