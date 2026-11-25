@@ -1220,6 +1220,10 @@ def engine_aipoweradv():
       aihoe0  (none): home to s65.   aihoef (PassIfExists false, the player has one): home to s65 -- the model said on.
       aihoea  (ALLIES, only the player's): home to s65.   aihoes (ALLIES, s1's own collector): out s15-17 -- ALLIES
               includes oneself.
+    Bench 2026-11-25 (B, its Location; ENEMIES, the player's yard on land, its power plant at x 2850 on terrain below
+    the water, a Dolphin in the river south of Goat Island; one run each):
+      aihol (Land, Rule ALL) out s14-18; aihow (Water, ALL, no Dolphin) out s14-18 -- the plant counts as afloat;
+      aihoww (Water, ALL, the Dolphin) out s15-19; aihold (Land, ANY IncludeThing the Dolphin) home to s65.
     Read: Timer / Interval / EnemyNearby as the model; ObjectOfTypeExists counts the filter's Relationship (the model
     looks only at its own templates: benches/ai/production/readings.toml#engine_aipoweradv object_of_type_exists_counts_the_relationship_as_on_the_bench strict xfail).
     """
@@ -1256,7 +1260,8 @@ def engine_aipoweradv():
     CHECKS = {k: {'a': a} for k in ('aipadv2', 'aipadv1', 'aipadvh', 'aipadvc', 'aipadm1', 'aipadm0', 'aipadm5',
                                      # round 83: the condition heuristics
                                      'aihtim', 'aihtima', 'aihtimx', 'aihint', 'aihen1', 'aihen0', 'aihenn',
-                                     'aihoe1', 'aihoe0', 'aihoef', 'aihoea', 'aihoes')}
+                                     'aihoe1', 'aihoe0', 'aihoef', 'aihoea', 'aihoes',
+                                     'aihol', 'aihow', 'aihoww', 'aihold')}
     return dict(CHECKS=CHECKS, shared=SimpleNamespace(a=a))
 
 

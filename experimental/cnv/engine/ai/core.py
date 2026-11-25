@@ -842,6 +842,7 @@ class Brain:
                'has ally': {t.template for t in self.view.things
                             if t.owner and t.owner != self.player and t.owner not in self.view.enemies},
                'has neutral': {t.template for t in self.view.things if not t.owner},
+               'located': self.located,                  # and its Location (bench aihol / aihow / aihoww / aihold)
                'kindof': self.host.kinds,                # an ObjectFilter's KindOf Include / Exclude (D61 3)
                'harvesters': sum('HARVESTER' in b.kinds for b in mine),               # INFERRED category 0x14
                'money': self.money_in,          # one account in the simulator
@@ -860,6 +861,16 @@ class Brain:
             out['income'] = (self.income(self.player), self.income(foes[0]))
         if 'targets' in self.host.blocks:
             out['target'], out['free start'] = self.has_target, self.starts_free
+        return out
+
+    def located(self):
+        """ctx 'located': the 'has' / 'has enemy' / 'has ally' / 'has neutral' templates by where each stands (Land /
+        Water: the terrain under it, View.location), for ObjectOfTypeExists' Location (read, work/re/l4_states.md)."""
+        out = {}
+        for t in self.view.things:
+            key = ('has' if t.owner == self.player else 'has neutral' if not t.owner
+                   else 'has enemy' if t.owner in self.view.enemies else 'has ally')
+            out.setdefault(key, {}).setdefault(self.view.location(t), set()).add(t.template)
         return out
 
     def income(self, owner):

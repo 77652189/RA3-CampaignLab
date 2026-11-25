@@ -1404,7 +1404,7 @@ def aipoweradv_bench():
 
     WAKE_AT = 10.0
     PID = 'CNVPowerAdv'
-    TANK, MINER = 'AlliedAntiVehicleVehicleTech1', 'AlliedMiner'
+    TANK, MINER, DOLPHIN = 'AlliedAntiVehicleVehicleTech1', 'AlliedMiner', 'AlliedAntiNavalScout'
 
 
     def personality_xml(pid, gate, min_power=None):
@@ -1448,7 +1448,7 @@ def aipoweradv_bench():
 
 
     def mission(name, ai, player, miner=False, gate='power', expect=1, min_power=None, home_until=None, out_by=None,
-                ai_miner=False):
+                ai_miner=False, dolphin=False):
         pid = PID + name[len('CampAIPAdv'):]
         facts = {'wake at': WAKE_AT, 'ai tanks': ai, 'player tanks': player, 'expect on': expect}
         if home_until is not None:
@@ -1460,7 +1460,7 @@ def aipoweradv_bench():
         m.sides['s1'] = {'playerFaction': 'PlayerTemplate:Allies', 'aiPersonality': f'AIPersonalityDefinition:{pid}'}
         m.assets.append((f'{pid}.xml', personality_xml(pid, gate, min_power), f'AIPersonalityDefinition:{pid}'))
         m.cnv_units = (TANK,)
-        m.spawns |= {TANK, MINER}
+        m.spawns |= {TANK, MINER, DOLPHIN}
         s1 = m.player('s1')
         m.put('AlliedConstructionYard', 'east base', 0, 0, side='s1', name='UNIT - CNV AI Yard', role='ai yard')
         m.put('AlliedConstructionYard', 'base yard', name='UNIT - CNV AI Player Yard', role='player yard')
@@ -1475,6 +1475,8 @@ def aipoweradv_bench():
             m.put(MINER, 'east base', 350.0, 0.0, name='UNIT - CNV Player Miner', role='player miner')
         elif miner:
             m.put(MINER, 'base yard', 300.0, 0.0, name='UNIT - CNV Player Miner', role='player miner')
+        if dolphin:                                  # the river south of Goat Island (the terrain under water)
+            m.put(DOLPHIN, 'goat island', 0.0, -900.0, name='UNIT - CNV Player Dolphin', role='player dolphin')
         if ai_miner:
             m.put(MINER, 'east base', 350.0, 0.0, side='s1', name='UNIT - CNV AI Miner', role='ai miner')
         base = 'CNV AI Base'
@@ -1504,6 +1506,8 @@ def aipoweradv_bench():
     # / the model (private ai/states.py value): 'home until' = all 4 still home that second, 'out by' = fewer by then.
     _OOT = ('<ObjectOfTypeExistsHeuristic PassIfExists="{p}"><ObjectFilter Relationship="{r}" Rule="ANY">'
             '<IncludeThing>AlliedMiner</IncludeThing></ObjectFilter></ObjectOfTypeExistsHeuristic>')
+    _OOL = ('<ObjectOfTypeExistsHeuristic PassIfExists="true" Location="{w}"><ObjectFilter Relationship="ENEMIES" '
+            'Rule="{r}">{t}</ObjectFilter></ObjectOfTypeExistsHeuristic>')
     HEUR = {
         # TimerHeuristic: on after StartTime from CountFrom (MAP_START default; AI_START = the wake), EndTime a length
         'aihtim': ('Tim', dict(gate='<TimerHeuristic StartTime="30s" EndTime="-1s"/>', home_until=29, out_by=42)),
@@ -1523,6 +1527,14 @@ def aipoweradv_bench():
         'aihoef': ('Oef', dict(gate=_OOT.format(p='false', r='ENEMIES'), miner=True, expect=0)),
         'aihoea': ('Oea', dict(gate=_OOT.format(p='true', r='ALLIES'), miner=True, expect=0)),
         'aihoes': ('Oes', dict(gate=_OOT.format(p='true', r='ALLIES'), ai_miner=True)),
+        # its Location (Water / Land; read: the terrain under the object below the water level), as the retail's
+        # land / water unit build states (ENEMIES Rule ALL: any enemy object; the player's yard stands on land and
+        # its target power plant, 'east gate' -300 at the river's east arm, on terrain below the water: aihow goes)
+        'aihol': ('Ol', dict(gate=_OOL.format(w='Land', r='ALL', t=''))),
+        'aihow': ('Ow', dict(gate=_OOL.format(w='Water', r='ALL', t=''))),
+        'aihoww': ('Oww', dict(gate=_OOL.format(w='Water', r='ALL', t=''), dolphin=True)),
+        'aihold': ('Old', dict(gate=_OOL.format(w='Land', r='ANY', t=f'<IncludeThing>{DOLPHIN}</IncludeThing>'),
+                               dolphin=True, expect=0)),
     }
     for _k, (_tail, _kw) in HEUR.items():
         MISSION[_k] = (lambda tail, kw: lambda: mission('CampAIPAdv' + tail, 4, 0, **kw))(_tail, _kw)

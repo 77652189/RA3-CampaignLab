@@ -549,6 +549,20 @@ false, the player has one) home to s65"""
 proves = "simai states: ObjectOfTypeExistsHeuristic counts the filter's Relationship and PassIfExists"
 expect = "(rows[39]['坦克在家'] == 0) == out"
 
+[[reading]]
+bench_id = "engine_aipoweradv"
+id = "object_of_type_exists_counts_only_what_stands_on_its_location"
+item = "AI 启发条件/ObjectOfTypeExistsHeuristic.Location"
+scene = {build = "aihol", check = "a", until = 41.0}
+each = [{build = "aihol", out = true}, {build = "aihow", out = true}, {build = "aihoww", out = true},
+        {build = "aihold", out = false}]
+bench = """\
+B 11-25, ENEMIES: aihol (Land, Rule ALL; the player's yard on land) out s14-18; aihow (Water, ALL; its power plant at \
+x 2850 stands on terrain below the water) out s14-18; aihoww (Water, ALL, + a Dolphin in the river) out s15-19; \
+aihold (Land, ANY IncludeThing the Dolphin, which is afloat) home to s65"""
+proves = "simai states: ObjectOfTypeExistsHeuristic's Location takes only the objects on that terrain"
+expect = "(rows[39]['坦克在家'] == 0) == out"
+
 # Bench readings of benches/ai/production/checks.py#engine_aipowerenemy (format: experimental/cnv/readings.py; runner: tests/conformance).
 
 [[reading]]
