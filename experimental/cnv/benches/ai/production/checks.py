@@ -3312,10 +3312,13 @@ def engine_aitower():
         t.areas[ANY] = square(x, y, 1500.0)
         counted('CNV_AT_Any', '塔在基地', t, template=m.cnv_turret, area=ANY, player=s1)
         wake, end = m.facts['wake at'], m.facts['wake at'] + m.facts.get('watch', LONG)
-        weights = [w for _, w, _ in m.cnv_bsets]
+        # aibsdiff: a line whose Difficulty leaves out the bench's MEDIUM is not weighed (aibsmax's pair -> turrets)
+        weights = [w for _, w, _, *diff in m.cnv_bsets if not diff or 'MEDIUM' in diff[0].split()]
         if 'opening' in weights:                # aibszero
             done = wake + m.facts['opening']
             t.expect += [('塔在基地', wake + 5, '<=', 0, done), ('塔在基地', done, 'ever>=', 1, end)]
+        elif len(weights) == 1:                 # aibsdiff: only DEFENSE is left -> turrets
+            t.expect += [('塔在基地', wake + 5, 'ever>=', 1, end)]
         elif len(weights) < 2:                  # a build without the budget-state pair: readings only
             pass
         elif float(weights[1]) > float(weights[0]):     # aibsmax: the second (PRODUCTION) is larger
@@ -3356,7 +3359,7 @@ def engine_aitower():
     CHECKS = {k: {'a': a, 'b': b, 'c': c, 'd': d, 'e': e, 'f': f, 'g': g, 'h': h, 'i': i}
               for k in ('aitower50', 'aitower75', 'aitower100', 'aitowerstate', 'aitowerfoe',
                        'aitowerdep', 'aitowerinc', 'aitoweropen', 'aitowerinc10', 'aitowerinc5', 'aitowerinc10r',
-                       'aicheat2', 'aicheat1', 'aibsprod', 'aibsmax', 'aibstie', 'aibszero')}
+                       'aicheat2', 'aicheat1', 'aibsprod', 'aibsmax', 'aibstie', 'aibszero', 'aibsdiff')}
     CHECKS['aibsback'] = {'r4': r4}
     return dict(CHECKS=CHECKS, shared=SimpleNamespace(f=f))
 

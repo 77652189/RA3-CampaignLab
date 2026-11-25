@@ -1564,6 +1564,16 @@ expect = "all(r['塔在基地'] == 0 for r in rows[:50]) and max(r['塔在基地
 
 [[reading]]
 bench_id = "engine_aitower"
+id = "a_budget_state_line_for_other_difficulties_is_not_weighed"
+scene = {build = "aibsdiff", check = "i", until = 150.0}
+bench = """aibsdiff: as aibsmax, but PRODUCTION's line is Difficulty EASY HARD BRUTAL; the bench runs MEDIUM: 塔在基地 \
+0 to s28, 1 s30, 5 from s109 (bench 11-25, as aibstie)"""
+proves = "simai budget states: a BudgetState line whose Difficulty leaves out the AI's is skipped"
+item = "AI 经济/BudgetState.Difficulty"
+expect = "max(r['塔在基地'] for r in rows) >= 1"
+
+[[reading]]
+bench_id = "engine_aitower"
 id = "the_retail_budgets_switch_to_defense_while_the_raid_is_near_and_back_after"
 scene = {build = "aibsback", check = "r4", until = 125.0}
 bench = """\

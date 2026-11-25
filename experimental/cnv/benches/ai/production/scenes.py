@@ -2093,7 +2093,9 @@ def aitower_bench():
     BS_DEF, BS_PROD = 'CNVBsDef', 'CNVBsProd'
     BSETS = {'aibsmax': ((BS_DEF, '0.4', 100), (BS_PROD, '0.6', 0)),      # R1: the larger, though second -> 0 turrets
              'aibstie': ((BS_DEF, '0.5', 100), (BS_PROD, '0.5', 0)),      # R2: a tie -> the earlier -> turrets
-             'aibszero': ((BS_DEF, '0', 100), (BS_PROD, 'opening', 0))}   # R3: PROD until the opening ends, then all 0
+             'aibszero': ((BS_DEF, '0', 100), (BS_PROD, 'opening', 0)),   # R3: PROD until the opening ends, then all 0
+             # BudgetState.Difficulty: as aibsmax, the heavier line for every difficulty but the bench's MEDIUM
+             'aibsdiff': ((BS_DEF, '0.4', 100), (BS_PROD, '0.6', 0, 'EASY HARD BRUTAL'))}
     ZERO_OPENING = 40.0                         # aibszero: the opener's one Time order, 40 s after the wake
     # B round 184 (d122 R4): the retail budgets (OpeningMoveBudget, Coop 85/5/10, Defense 80/20 when an enemy worth >= 1000
     # is within 700 of the base, Heavy 65/35 within 400 and >= 2500), an opening done at once, 5000 at the wake: Coop's
@@ -2152,8 +2154,9 @@ def aitower_bench():
             # state (aibsprod): the line's State names another budget definition than the own one (still declared)
             own, budget = [_budget(defense)], [f'    <BudgetState id="{BUDGET_ID}" State="{state}"/>']
             if bsets:
-                own = [_budget(d, b, h) for b, h, d in bsets]
-                budget = [f'    <BudgetState id="{b}" State="{b}"/>' for b, _, _ in bsets]
+                own = [_budget(d, b, h) for b, h, d, *_ in bsets]
+                budget = [f'    <BudgetState id="{b}" State="{b}"' + ''.join(f' Difficulty="{x}"' for x in diff) + '/>'
+                          for b, _, _, *diff in bsets]
         return '\n'.join([
             '<?xml version="1.0" encoding="utf-8"?>',
             '<AssetDeclaration xmlns="uri:ea.com:eala:asset" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -2263,6 +2266,8 @@ def aitower_bench():
                                           bsets=BSETS['aibstie']),
                'aibszero': lambda: mission('CampAIBSZero', 0.5, opener=False, empty=True, refinery=True,
                                            watch=RICH_WATCH, money=RICH, bsets=BSETS['aibszero'], wait=ZERO_OPENING),
+               'aibsdiff': lambda: mission('CampAIBSDiff', 0.5, opener=False, refinery=True, watch=RICH_WATCH,
+                                           money=RICH, bsets=BSETS['aibsdiff']),
                # B round 184 (d122 R4): retail budgets, an opening done at once, a raid within 700 that comes and goes
                'aibsback': lambda: mission('CampAIBSBack', 0.5, opener=True, empty=True, refinery=True,
                                            watch=RAID_WATCH, money=RAID_MONEY, raid=True),
