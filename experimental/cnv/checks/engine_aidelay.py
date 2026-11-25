@@ -121,6 +121,7 @@ def toggled(m):
     return t
 
 
-CHECKS = {key: {'a': check} for key in ('aidelay0', 'aidelay999', 'aidelaytype', 'aidelaymin')}
+CHECKS = {key: {'a': check} for key in ('aidelay0', 'aidelay999', 'aidelaytype', 'aidelaymin', 'aidelayteam',
+                                             'aidelayteammin')}
 CHECKS.update({key: {'t': toggled} for key in ('aidelaytog', 'aidelaytogdef', 'ailock2', 'ailock1', 'ailockm')})
 CHECKS['aidelay0']['p'] = where

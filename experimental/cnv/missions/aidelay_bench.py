@@ -12,6 +12,8 @@ both say TOGGLE_ALWAYS -- the program's TOGGLE heuristic then switches every mic
 (l4_toggle.md) -- built from a copied barracks; the line is TOGGLE 999 s on sub type TOGGLE_ALWAYS / TOGGLE_DEFAULT.
 The program keys a TOGGLE cooldown by the hint of the state being switched to and keeps it per micro manager (the
 team): predicted aidelaytog one shield up for good after the first switch, aidelaytogdef switching on and off.
+aidelayteam / aidelayteammin: the RUSH_ATTACK line 0 s, the micro manager's SpecialPowerDelayMinimum / Maximum
+999 / 999 and 999 / 0 -- the team's delay after any fire, the same draw: predicted no second charge / as zero.
 """
 import dataclasses
 
@@ -34,7 +36,7 @@ def toggle_pk():
     return dataclasses.replace(pk, xml=x, what='维和换 id，盾的两个状态都标 TOGGLE_ALWAYS（AI 每轮都切），血 ×100')
 
 
-def mission(maximum, minimum=0, power='RUSH_ATTACK', name=None, sub=None):
+def mission(maximum, minimum=0, power='RUSH_ATTACK', name=None, sub=None, team=None):
     name = name or ('Long' if maximum else 'Zero')
     toggle = sub is not None
     unit = dict(unit=TOG_PK, factory=TOG_BARRACKS) if toggle else {}
@@ -52,11 +54,15 @@ def mission(maximum, minimum=0, power='RUSH_ATTACK', name=None, sub=None):
     assert xml.count(anchor) == 1
     xml = xml.replace(anchor, '    ' + tag + '\n' + anchor)
     assert tag in xml
+    if team is not None:                    # (minimum, maximum) of the team's delay
+        old = ' UseSpecialPowers='
+        assert xml.count(old) == 1
+        xml = xml.replace(old, f' SpecialPowerDelayMinimum="{team[0]}s" SpecialPowerDelayMaximum="{team[1]}s"{old}')
     m.assets[0] = filename, xml, asset
     m.facts['specific maximum'] = maximum
     # the draw: max when max <= min, else in [min, max]; a TOGGLE line holds only its own sub type
     own = 'TOGGLE' if toggle else 'RUSH_ATTACK'
-    m.facts['delayed'] = power == own and sub in (None, 'TOGGLE_ALWAYS') and maximum > 0
+    m.facts['delayed'] = power == own and sub in (None, 'TOGGLE_ALWAYS') and maximum > 0 or (team or (0, 0))[1] > 0
     return m
 
 
@@ -108,5 +114,7 @@ MISSION = {'ailock2': lambda: lock('2'), 'ailock1': lambda: lock('1'), 'ailockm'
            'aidelay0':lambda: mission(0), 'aidelay999': lambda: mission(999),
            'aidelaytype': lambda: mission(999, power='AOE_ATTACK', name='Type'),
            'aidelaymin': lambda: mission(0, minimum=999, name='Min'),
+           'aidelayteam': lambda: mission(0, name='Team', team=(999, 999)),
+           'aidelayteammin': lambda: mission(0, name='TeamMin', team=(999, 0)),
            'aidelaytog': lambda: mission(999, power='TOGGLE', name='Tog', sub='TOGGLE_ALWAYS'),
            'aidelaytogdef': lambda: mission(999, power='TOGGLE', name='TogDef', sub='TOGGLE_DEFAULT')}
