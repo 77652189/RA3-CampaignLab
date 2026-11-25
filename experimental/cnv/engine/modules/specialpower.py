@@ -318,11 +318,14 @@ class OCLRun(SpecialPower, interfaces.OCLRun, interfaces.Update):
     after it was over. With an OCLMonitorUpdate MASTER the master holds one run: a call while it is held does nothing;
     the run is let go (drops nothing) once the master stops attacking -- no call within the calling weapon's
     FiringDuration + PreAttackDelay of its last (INFERRED: E222 s, and engine_spnbombc's instant one-shot gun that
-    never gets a bomber) -- or, with RELEASE_WHEN_MASTER_CHANGES_TARGET, calls at another target. Not modelled: the
-    bomber as a thing (engine_spnbombc counts it), its flight and the bomb's other nuggets."""
+    never gets a bomber) -- or, with RELEASE_WHEN_MASTER_CHANGES_TARGET, calls at another target. The bomber
+    (CreateObject, its owner's) is a thing from InitialDelay on till gone (engine_spnbombc counts AIRCRAFT: from 53
+    frames after the call), made StartDistance short of the target on the caster's side and left there (INFERRED: the
+    side; its flight not modelled); it holds its own gun (the run's bomb is its drop); a run let go takes it away at
+    once (INFERRED). Not modelled: the bomb's other nuggets."""
     PHASE = 'seq'
     STATE = ('ready', 'runs', 'firing', 'aim')
-    runs = ()           # (target, its spot at the call, hit frame, gone frame, bomb warhead, tracks the target)
+    runs = ()           # (target, its spot at the call, made, hit, gone frame, the curve, the bomber made or None)
     firing = 0          # the last frame the master counts as attacking
     aim = None          # the target of its last call
 
@@ -336,23 +339,37 @@ class OCLRun(SpecialPower, interfaces.OCLRun, interfaces.Update):
     def call(self, target, curve, window):
         now, opts = self.world.frame, self.options()
         self.firing, self.aim = now + window, target
-        self.runs = tuple(run for run in self.runs if not self.let_go(run, now, opts))
+        self.runs = tuple(run for run in self.runs if not self.drop(run, now, opts))
         if 'MASTER' in opts and self.runs:
             return
         over = now + curve['delay'] + curve['approach']
-        self.runs += ((target, (target.x, target.y), over + FALL, over + round(curve['approach'] * curve['out']),
-                       curve['bomb'], curve['track']),)
+        self.runs += ((target, (target.x, target.y), now + curve['delay'], over + FALL,
+                       over + round(curve['approach'] * curve['out']), curve, None),)
         self.world.wake(self, now + 1)
+
+    def drop(self, run, frame, opts):
+        """Whether `run` ends: let go or gone (its bomber, if made, taken away)."""
+        if not (self.let_go(run, frame, opts) or frame >= run[4]):
+            return False
+        if run[6] is not None and run[6].alive:
+            self.world.remove(run[6], '轰炸机飞走')
+        return True
 
     def update(self, frame):
         me, opts, kept = self.thing, self.options(), []
         for run in self.runs:
-            t, spot, hit, gone, bomb, track = run
-            if self.let_go(run, frame, opts):
+            t, spot, made, hit, gone, curve, plane = run
+            if self.drop(run, frame, opts):
                 continue
+            at = (t.x, t.y) if curve['track'] and t.alive else spot
+            if frame == made and curve['plane']:
+                d = math.hypot(me.x - at[0], me.y - at[1]) or 1.0
+                plane = self.world.make(me, curve['plane'], at[0] + (me.x - at[0]) * curve['start'] / d,
+                                        at[1] + (me.y - at[1]) * curve['start'] / d)
+                plane.engine_status.add('NO_ATTACK')
+                plane.status.add('NO_ATTACK')
             if frame == hit:
-                self.world.fire(me, bomb, at=(t.x, t.y) if track and t.alive else spot)
-            if frame < gone:
-                kept.append(run)
+                self.world.fire(me, curve['bomb'], at=at)
+            kept.append((t, spot, made, hit, gone, curve, plane))
         self.runs = tuple(kept)
         return 1 if self.runs else interfaces.SLEEP

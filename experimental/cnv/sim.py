@@ -605,7 +605,7 @@ class Sim:
                                         toggled=lambda b, m: simtoggle.entered(self, b, m, self.world.modify),
                                         suppression_at=lambda b, f: simdamage.suppression_at(
                                             self.suppression_fields, b, f),
-                                        spawn=lambda b, m, template: self.spawn_child(b, m, template, self.t),
+                                        spawn=lambda b, m, template: self.spawn_child(b, m, template, self.t), make=lambda b, tm, x, y: self.add(simworld.free_name(self, '#made', f'of {b.name}'), tm, b.owner, x, y, by=b.name, at=self.t),
                                         vacate=lambda b, delete: self.garrison.died(b, delete), living=self.living, holds=self.emp_book)
         self.used = self.world.used         # ALIGN keys the run leaned on
         self.unknown = {}                   # condition / action names the simulator does not know: count

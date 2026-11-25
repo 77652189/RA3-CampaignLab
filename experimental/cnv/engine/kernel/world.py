@@ -13,7 +13,7 @@ def no_blocks(template, tag):
 class World:
     def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None, pay=None, toggled=None,
                  modify=None, suppression_at=None, spawn=None, vacate=None, create=None, fire=None, upgrades=None,
-                 living=None, holds=None):
+                 living=None, holds=None, make=None):
         """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry;
         kill(thing, why, death, cause): the host's death of a thing (World.kill); create(thing, ocl, airborne): the
         host's making of what a thing's death lists (World.create); fire(thing, weapon): the host's firing of a
@@ -25,11 +25,11 @@ class World:
         spawn(thing, module, template): the host's making of a thing a Spawn module of `thing` makes (World.spawn);
         vacate(thing, delete): the host's emptying of a Contain module's thing that died or was deleted
         (World.vacate); living(): the host's living things (World.living); holds(): the host's book of who stands
-        still till when (World.hold)."""
+        still till when (World.hold); make(thing, template, x, y): the host's making of a thing (World.make)."""
         self.blocks, self.tags, self._kill, self._remove, self._pay = blocks, tags, kill, remove, pay
         self._toggled, self._modify, self._suppression_at = toggled, modify, suppression_at
         self._spawn, self._vacate, self._create, self._fire, self._upgrades = spawn, vacate, create, fire, upgrades
-        self._living, self._holds = living, holds
+        self._living, self._holds, self._make = living, holds, make
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
@@ -185,6 +185,13 @@ class World:
         if self._spawn is None:
             raise RuntimeError(f'World.spawn({thing.name!r}): this world has no host to make with')
         return self._spawn(thing, module, template)
+
+    def make(self, thing, template, x, y):
+        """A module makes a thing of `template` for its thing at (x, y), its owner's (OCLSpecialPower's bomber:
+        engine/modules/specialpower.py OCLRun): the host makes it -- today Sim.add. -> the thing made."""
+        if self._make is None:
+            raise RuntimeError(f'World.make({thing.name!r}): this world has no host to make with')
+        return self._make(thing, template, x, y)
 
     def vacate(self, thing, delete):
         """A Contain module's thing died (delete False: its passengers out alive, or killed with it by

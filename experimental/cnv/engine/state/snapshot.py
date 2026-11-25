@@ -100,7 +100,7 @@ for _f in ('t log box_log panel_log asked up scenes unknown flags objectives mar
 WORLD = {
     'blocks': WIRE, 'tags': STATIC, '_kill': WIRE, '_remove': WIRE, '_pay': WIRE, '_toggled': WIRE,
     '_modify': WIRE, '_suppression_at': WIRE, '_spawn': WIRE, '_vacate': WIRE, '_create': WIRE, '_fire': WIRE,
-    '_upgrades': WIRE, '_living': WIRE, '_holds': WIRE, 'schedule': STATE, 'used': STATE, 'gaps': STATE, 'frame': STATE, 'made': STATE, 'late': STATE,
+    '_upgrades': WIRE, '_living': WIRE, '_holds': WIRE, '_make': WIRE, 'schedule': STATE, 'used': STATE, 'gaps': STATE, 'frame': STATE, 'made': STATE, 'late': STATE,
     'data': CACHE, 'block_lists': CACHE, 'numbered': CACHE, '_living_views': CACHE,
 }
 

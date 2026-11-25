@@ -2400,6 +2400,7 @@ def nugget_self_power(template, power, own=None):
         return bool(bomb) and dict(
             delay=_frames(_secs(_attr(a, 'InitialDelay', '0s'))), approach=_frames(_secs(_attr(a, 'ApproachTime', '0s'))),
             track='TRACK_TARGET_OBJECT' in (_attr(a, 'Options') or '').split(), bomb=bomb,
+            plane=_attr(a, 'CreateObject'), start=float(_attr(a, 'StartDistanceFromTarget', '0')),
             out=float(_attr(a, 'EndDistanceFromTarget', '0')) / (float(_attr(a, 'StartDistanceFromTarget', '0')) or 1))
 
     def read(xml):

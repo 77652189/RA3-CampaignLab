@@ -13,10 +13,12 @@ without SPN): none"""
 proves = """The SPN on the finite gun fires the caster's OCLSpecialPower (order bombs): d56 H1 (the nugget judged out) \
 and H2 (a bomber made but without a target) are both out. With the retail monitor (MASTER \
 RELEASE_WHEN_MASTER_CHANGES_TARGET) the instant-shot host gets no bomber at all; without it every shot calls one (two \
-at once) -- INFERRED: the monitor lets the run go during its 3.5 s delay because an instant shot stops attacking at \
+at once), and the bomber is a thing of AIRCRAFT from 53 frames after the call -- INFERRED: the monitor lets the run go during its 3.5 s delay because an instant shot stops attacking at \
 once, as E222's stopped master (engine_oclmonitor_e)"""
 expect = ["counter('CNV_SPBAir_base') // 1000 >= 140", "counter('CNV_SPBAir_base') % 100 // 10 == 0",
           "counter('CNV_SPBAir_high') == 11",
           "counter('CNV_SPBAir_order') // 1000 >= 140", "counter('CNV_SPBAir_order') % 1000 // 100 >= 2",
           "counter('CNV_SPBAir_order') % 100 // 10 == 0", "counter('CNV_SPBAir_removed') == 11"]
-mismatch = "sim 1 11 1 11 (A375): the runs come and kill, high's is let go, but the bomber is no thing to count"
+item = ["物体模块 Behaviors/OCLMonitorUpdate", "武器效果 SpecialPowerNugget:轰炸消费者"]
+# sim 154101 11 146401 11 (A377: OCLRun makes the bomber at InitialDelay, deletes it when gone): one frame late, and
+# order holds 4 at once against the bench's 2 -- the bomber's flight (its time in the square) is not modelled, unexplained
