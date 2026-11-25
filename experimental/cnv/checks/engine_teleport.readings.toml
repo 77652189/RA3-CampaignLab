@@ -49,10 +49,10 @@ expect = ["rows[-1]['第三行'] == 56", "all(r.get('第四行', 0) == 0 for r i
 [[reading]]
 id = "c_fade_in_freezes_the_landed_tank"
 scenes = {a = {build = "engine_teleport", check = "a", until = 9}, c = {build = "engine_teleport_c", check = "c", until = 9}}
+item = ["物体模块 Behaviors/TeleportStoredObjectsUpdate"]
 bench = "CampTeleportC_mcp_1106_065444: 116: 90026 48056 against a's 19056 (29 frames longer in B)"
-proves = "FadeInTime 2 s: the landed tank is held 30 frames before it can drive on to C"
-expect = "counter('CNV_Teleport_Row3', 'c') // 1000 - counter('CNV_Teleport_Row3', 'a') // 1000 >= 25"
-mismatch = "sim 20 and 20 frames in B (no freeze modelled); bench c 48, a 19"
+proves = "FadeInTime 2 s: the landed tank is held 30 frames before it can drive on to C (sim 50 against 20)"
+expect = "abs(counter('CNV_Teleport_Row3', 'c') // 1000 - counter('CNV_Teleport_Row3', 'a') // 1000 - 29) <= 3"
 
 [[reading]]
 id = "b_the_insta_killed_infantry_lies_dying"

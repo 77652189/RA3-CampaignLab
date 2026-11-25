@@ -6,11 +6,12 @@ TeleportLinkID is that power's StoreObjectsLinkID (StoreObjectsSpecialPower, spe
 - DelayTime frames later (at least one): each one left moves by the landing point less the store's point (the
   formation kept); the things of CollidesWithOnTeleport within the store's Radius of the landing point, taken before
   anyone moves, that it overlaps (the two bounding circles, INFERRED): HEALTH_SUBTRACTION both lose the other's health
-  as it was; INSTANT_DEATH_TELEPORTER_ONLY the one moved dies. The store is cleared.
+  as it was; INSTANT_DEATH_TELEPORTER_ONLY the one moved dies. The store is cleared. Each one moved stands still
+  FadeInTime frames from the landing (World.hold: no move, and no new fire as EMP'd -- the fire INFERRED).
 The bench (a-e): 1.7 s + 2 s kills the infantry seen from frame 26 of the second cast, the tank in B from 56;
 0 s + 0 s seen in frames 1 and 2; INSTANT_DEATH_TELEPORTER_ONLY onto a parked tank kills only the one moved,
-HEALTH_SUBTRACTION both. Not modelled: the freeze between the steps and FadeInTime's after the landing (the bench's
-c: the tank stays 29 frames longer), Telefrag SWAP (a gap), the ground height, the drawing (TargetFX)."""
+HEALTH_SUBTRACTION both; FadeInTime 2 s keeps the landed tank in B 29 frames longer (c against a). Not modelled: the
+freeze between the steps, Telefrag SWAP (a gap), the ground height, the drawing (TargetFX)."""
 import math
 
 from engine.kernel import factory, interfaces, module
@@ -37,8 +38,8 @@ def _takes(f, t):
 
 
 class TeleportData(module.ModuleData):
-    def __init__(self, power=None, first=0, delay=0, telefrag='NONE', at_store=False, kill=None, collide=None):
-        self.power, self.first, self.delay = power, first, delay     # InitialDelayTime, DelayTime: frames
+    def __init__(self, power=None, first=0, delay=0, telefrag='NONE', at_store=False, kill=None, collide=None, fade=0):
+        self.power, self.first, self.delay, self.fade = power, first, delay, fade   # Initial/Delay/FadeInTime: frames
         self.telefrag, self.at_store = telefrag, at_store           # Telefrag, GetObjectsCurrentlyAtStorePosition
         self.kill, self.collide = kill, collide                     # InstaKillObjectFilter, CollidesWithOnTeleport
 
@@ -47,7 +48,8 @@ class TeleportData(module.ModuleData):
         return cls(templates.attr(head, 'SpecialPowerTemplate'), _frames(head, 'InitialDelayTime'),
                    _frames(head, 'DelayTime'), (templates.attr(head, 'Telefrag') or 'NONE').upper(),
                    (templates.attr(head, 'GetObjectsCurrentlyAtStorePosition') or '').lower() == 'true',
-                   _filter(inner, 'InstaKillObjectFilter'), _filter(inner, 'CollidesWithOnTeleport'))
+                   _filter(inner, 'InstaKillObjectFilter'), _filter(inner, 'CollidesWithOnTeleport'),
+                   _frames(head, 'FadeInTime'))
 
 
 @factory.module('TeleportStoredObjectsUpdate')
@@ -85,11 +87,11 @@ class Teleport(module.Module, interfaces.Update, interfaces.Teleport):
                     self.world.kill(t, 'teleport insta-kill')
             self.step = 1
             return max(1, d.delay)
-        self._move(s)
+        self._move(s, frame)
         self.step = self.store = None
         return interfaces.SLEEP
 
-    def _move(self, s):
+    def _move(self, s, frame):
         d, (ex, ey) = self.data, self.end
         sx, sy = s.stored_at if s.stored_at is not None else self.end
         r = s.data.radius
@@ -99,6 +101,8 @@ class Teleport(module.Module, interfaces.Update, interfaces.Teleport):
             near = None
         for m in (s.stored() if near is not None else ()):
             m.x, m.y = m.x - sx + ex, m.y - sy + ey
+            if d.fade:
+                self.world.hold(m, frame + d.fade)
             for t in near:
                 if t is m or 'INERT' in t.kinds or math.hypot(t.x - m.x, t.y - m.y) >= t.radius + m.radius:
                     continue

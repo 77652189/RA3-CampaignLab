@@ -13,7 +13,7 @@ def no_blocks(template, tag):
 class World:
     def __init__(self, blocks=no_blocks, tags=factory.TAGS, kill=None, remove=None, pay=None, toggled=None,
                  modify=None, suppression_at=None, spawn=None, vacate=None, create=None, fire=None, upgrades=None,
-                 living=None):
+                 living=None, holds=None):
         """blocks(template, tag) -> [(head, inner)]: the template data port; tags: the factory's registry;
         kill(thing, why, death, cause): the host's death of a thing (World.kill); create(thing, ocl, airborne): the
         host's making of what a thing's death lists (World.create); fire(thing, weapon): the host's firing of a
@@ -24,11 +24,12 @@ class World:
         suppression_at(thing, frame): the suppression fields covering a thing (World.suppression_at);
         spawn(thing, module, template): the host's making of a thing a Spawn module of `thing` makes (World.spawn);
         vacate(thing, delete): the host's emptying of a Contain module's thing that died or was deleted
-        (World.vacate); living(): the host's living things (World.living)."""
+        (World.vacate); living(): the host's living things (World.living); holds(): the host's book of who stands
+        still till when (World.hold)."""
         self.blocks, self.tags, self._kill, self._remove, self._pay = blocks, tags, kill, remove, pay
         self._toggled, self._modify, self._suppression_at = toggled, modify, suppression_at
         self._spawn, self._vacate, self._create, self._fire, self._upgrades = spawn, vacate, create, fire, upgrades
-        self._living = living
+        self._living, self._holds = living, holds
         self.schedule = schedule.Schedule()
         self.data = {}          # (template, tag, index) -> ModuleData, parsed once a world
         self.block_lists = {}   # (template, tag) -> the port's blocks, asked once a world
@@ -110,6 +111,14 @@ class World:
         """The host's living things (today Sim.living): for a module acting on the things round a point (the
         teleport's store and landing, engine/modules/teleport.py). A world with no host: none."""
         return list(self._living()) if self._living else []
+
+    def hold(self, thing, until):
+        """A module holds its thing still till frame `until` (TeleportStoredObjectsUpdate's FadeInTime): the host's
+        book of who stands still (today Sim.emp_book: no move, no new fire, as EMP'd), a later deadline kept."""
+        if self._holds is None:
+            raise RuntimeError(f'World.hold({thing.name!r}): this world has no host to hold with')
+        book = self._holds()
+        book[thing.serial] = max(book.get(thing.serial, 0), until)
 
     def create(self, thing, ocl, airborne, fight=False):
         """A CreateObjectDie module's thing died and its ObjectCreationList `ocl` is to be made (step B5b): the host
