@@ -22,9 +22,9 @@ expect = [
 ]
 
 [[reading]]
-id = "killcount_original_script_death_window_matches_bench"
-scene = {build = "engine_killcount", check = "a", until = 22}
-bench = "engine_killcount:a at screenshot s22-s23 the alive mask is 248 (script death is first captured at s25; screenshot time is not aligned to logic frames)."
-proves = "simai SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER: the alive mask at the original s22 window"
-expect = "vals(rows)[-1] == [2, 1, 0, 248]"
-mismatch = "sim 2, 1, 0, 240; bench 248"
+id = "killcount_script_death_drops_the_alive_mask_last"
+scene = {build = "engine_killcount", check = "a", until = 25}
+bench = "engine_killcount: the alive mask steps 255, 254, 252, 248, 240 (a at s4 / s11 / s19 / s25, b at s2 / s7 / s12 / s16). The old a s22 window read 248 only because a's screenshot clock ran behind logic (its 3 / 7 / 11 / 15 s kills show at s4 / s11 / s19 / s25)."
+proves = "simai SET_PLAYER_KILLS_OF_TYPE_TO_COUNTER: the alive mask drops each victim in kill order, the script death last"
+let = {m = "[v[3] for v in vals(rows)]"}
+expect = "[v for j, v in enumerate(m) if j == 0 or v != m[j - 1]] == [255, 254, 252, 248, 240]"
