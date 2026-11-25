@@ -335,6 +335,8 @@ NOTES = {
         'SDK 注释说它存收起的建造厂的子结构升级；能造子结构的 SubStructureBuild 在原版建造厂里整块注释掉'
         '（有效配置 0 个，test_retailmodules 守着），没东西可存。台上原版 / 只删本模块两臂两次收起展开一样'
         '（checks/engine_substorage.readings.toml）'),
+    (MODULE, 'Behaviors/SlaveWatcherBehavior'): (GUESSED, 'E244：从属单位死了撤宿主的 RemoveUpgrade（INFERRED，照数据）；'
+        'engine_leechdrone 台上无人机一直没被打下（区域击杀跳过从属单位、牛蛙没打它），撤升级没测到'),
     (MODULE, 'Behaviors/SubStructureBehavior'): (TODO, 'E189 engine_substructure_e:a一局PASS，独立摆放的原版维修台/仅删模块对照，f59血量100/100、f120脚本伤害后80/80、f240删除无绑定建造场后80/80且场存活位0；experimental/cnv/checks/engine_substructure_e.readings.toml按名字回放最终四行240/80/80/0通过，无模型改动。只测独立摆放基线，不推断父子联动或模块无效；SDK有效XML无SubStructureBuild，现四行缺parentId/bindAccepted/forwardedDamage。父体绑定、伤害传递、清理及其他模板仍gap，同输入暂停，需合法绑定入口及新预算；见work/re/e189_substructure.md'),
     (MODULE, 'Behaviors/WallBuilderBehavior'): (GUESSED, '部分：engine_wallinit:a有/无模块对照10/11/10，仅StartInSecondaryModel默认WALL_SEGMENT初始化；6/6权重保留，建墙/连接/段数上限/生死联动及自定义配置仍gap，未登记完整已对拍；见 work/re/e_wallbuilder_e58.md'),
     (MODULE, 'Behaviors/GateOpenAndCloseBehavior'): (TODO, 'E190原版门/删模块初始化台被SDK Behaviors拒绝该模块且缺模型资源；原生地图摆放同样强制编译失败。改用engine_gate_e:a运行时同动作创建两门与电厂哨兵，一局PASS，f180=180/0/0/1（完成/Romania门/Sanitarium门/哨兵存活）。读数在benches/map/fixtures/readings.toml#engine_gate_e：帧数与哨兵相符，模拟器两门均1对台0记mismatch（两门模板不在SageXML物体索引里）；不登记模块效果覆盖。缺templateResolved/createAccepted/rejectReason，倾向模板在当前运行环境不可用（INFERRED）；开闭/通行/复位均gap，同输入暂停，重开需可创建宿主及合法开关入口，见work/re/e190_gate.md'),

@@ -151,3 +151,25 @@ def test_a_child_without_slavedupdate_is_given_one_and_the_record_keeps_the_old_
         assert {'spawned_children', 'spawn_refills', 'spawn_parent', 'spawn_module', 'attachment_rules'} <= set(d)
     assert simrecord.body_state(child)['spawn_parent'] is parent
     assert simrecord.body_state(parent)['spawned_children'] == parent.spawned_children
+
+
+def test_objectcreationupgrade_makes_one_slave_and_slavewatcher_takes_the_upgrade_back_at_its_death():
+    """ObjectCreationUpgrade, E244 (checks/engine_leechdrone.readings.toml): the Hammer's Leech_AircraftCarrier_Upgrade makes one drone, held
+    again makes none; the drone's death takes the upgrade back (SlaveWatcherBehavior, INFERRED), so the next makes one."""
+    from engine.kernel import module as kmodule
+    w, T, made = _world()
+    up, modified = 'Leech_AircraftCarrier_Upgrade', []
+    w._modify = lambda thing: (modified.append(thing.name), thing.upgrades_moved(thing.upgrades))
+    hammer = T('hammer', 'SovietAntiVehicleVehicleTech1')
+    hammer.upgrades, hammer.up_since = set(), {}
+    hammer.modules = w.build(hammer, 0)
+    hammer.upgrades.add(up)
+    hammer.upgrades_moved(hammer.upgrades)
+    hammer.upgrades_moved(hammer.upgrades)
+    assert [c.template for c in made] == ['AlliedAttackDrone_Leeched']
+    made[0].alive = False
+    made[0].find(interfaces.Slaved).on_die(kmodule.Death(40, 'test'))
+    assert hammer.upgrades == set() and modified == ['hammer']
+    hammer.upgrades.add(up)
+    hammer.upgrades_moved(hammer.upgrades)
+    assert len(made) == 2

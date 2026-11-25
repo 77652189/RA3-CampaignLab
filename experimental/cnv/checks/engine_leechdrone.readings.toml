@@ -1,0 +1,14 @@
+# Bench readings of checks/engine_leechdrone.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E244: the retail Hammer given Leech_AircraftCarrier_Upgrade by script at 1 s and again at 7 s (on), with only its
+# ObjectCreationUpgrade taken out (nocreate). 机 = p1's aircraft (the drone), 升 = Hammer has the upgrade 1 + alive 10.
+
+[[reading]]
+id = "on_nocreate_the_upgrade_makes_one_leeched_drone_and_a_second_grant_none"
+item = "物体模块 Behaviors/ObjectCreationUpgrade"
+scenes = {on = {build = "engine_leechdrone_on", check = "a", until = 13}, off = {build = "engine_leechdrone_nocreate", check = "a", until = 13}}
+bench = "CampLeechOnA_mcp_1125_141339 / CampLeechNcA_mcp_1125_141814 at 4e375aca + E244: on 机 1, 升 11 s1-s13; nocreate 机 0, 升 11 s1-s13 (CampLeechNwA_mcp_1125_141600, SlaveWatcherBehavior out: as on)"
+proves = """ObjectCreationUpgrade (retail: the Hammer's ThingToSpawn AlliedAttackDrone_Leeched): the upgrade given makes \
+one drone for the Hammer's owner, and giving it again while held makes no second; without the module none is made"""
+expect = ["on[-1]['机'] == 1 and off[-1]['机'] == 0",
+          "all(r['升'] == 11 for r in on[2:] + off[2:])",
+          "max(r['机'] for r in on) == 1"]

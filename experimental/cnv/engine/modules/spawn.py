@@ -121,6 +121,74 @@ class Spawn(module.Module, interfaces.Update, interfaces.Create, interfaces.Dest
         return min(due for due, _, _ in self.spawn_refills) - frame if self.spawn_refills else interfaces.SLEEP
 
 
+class CreationUpgradeData(module.ModuleData):
+    def __init__(self, id='', spawn='', trigger=module.Trigger()):
+        self.id = id                    # its module id (the made thing's spawn_module)
+        self.spawn = spawn              # ThingToSpawn: the template made ('' -- an UpgradeObject list: a gap)
+        self.trigger = trigger          # TriggeredBy ...
+
+    @classmethod
+    def parse(cls, head, inner):
+        a = templates.attr
+        return cls(a(head, 'id', ''), a(head, 'ThingToSpawn', ''),
+                   module.Trigger(templates.names(head, inner, 'TriggeredBy'),
+                                  templates.names(head, inner, 'ConflictsWith'),
+                                  (a(head, 'RequiresAllTriggers') or '').lower() == 'true'))
+
+
+@factory.module('ObjectCreationUpgrade')
+class CreationUpgrade(module.Module, interfaces.Upgrade):
+    """E244 (checks/engine_leechdrone.readings.toml; retail: the Hammer's leeched carrier drone): its upgrade given,
+    one ThingToSpawn is made at its thing as its slave (World.spawn); taken back, the made thing stays. A slave's death
+    tells its thing's SlaveWatcherBehaviors. The made thing's DieOnMastersDeath is not modelled (INFERRED: unbenched)."""
+    DATA = CreationUpgradeData
+    STATE = ('upgraded',)
+    upgraded = False
+
+    def module_id(self):
+        return self.data.id
+
+    def adopt(self, child):
+        pass
+
+    def child_died(self, template, frame):
+        for m in self.thing.find(SlaveWatcher):
+            m.slave_died()
+
+    def on_upgrade(self):
+        if not self.data.spawn:
+            self.world.gap('ObjectCreationUpgrade', self.thing.template, '仅ThingToSpawn已测；UpgradeObject未建模')
+        elif self.thing.alive:
+            self.world.spawn(self.thing, self, self.data.spawn)
+
+    def on_remove(self):
+        pass
+
+
+class SlaveWatcherData(module.ModuleData):
+    def __init__(self, remove=''):
+        self.remove = remove            # RemoveUpgrade
+
+    @classmethod
+    def parse(cls, head, inner):
+        return cls(templates.attr(head, 'RemoveUpgrade', ''))
+
+
+@factory.module('SlaveWatcherBehavior')
+class SlaveWatcher(module.Module):
+    """E244: a slave its thing's ObjectCreationUpgrade made dies -> its thing loses RemoveUpgrade (re-read at once:
+    World.modify), so the next grant makes another."""
+    DATA = SlaveWatcherData
+    STATE = ()
+
+    def slave_died(self):
+        up, b = self.data.remove, self.thing
+        if up in b.upgrades:
+            b.upgrades.discard(up)
+            b.up_since.pop(up, None)
+            self.world.modify(b)
+
+
 @factory.module('SlavedUpdate')
 class Slaved(module.Module, interfaces.Die, interfaces.Destroy, interfaces.Slaved):
     """Who made its thing (spawn_parent: the thing, None for one no spawner made) and by which of its modules
