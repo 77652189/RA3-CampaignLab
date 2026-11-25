@@ -157,9 +157,10 @@ def bench_names(checks=None):
     (inventory.probe_checks: a bench is not imported, it builds missions, and most are reached lazily, not through
     the registry)."""
     stems, missions = set(), set()
-    for p in sorted(Path(checks or inventory.CHECKS).glob('engine_*.py')):
-        stems.add(p.stem)
-        missions |= inventory.probe_checks(p.read_text(encoding='utf-8'))[0]
+    for name, (_, source) in inventory.probe_sources(checks).items():
+        if name.startswith('engine_'):
+            stems.add(name)
+            missions |= inventory.probe_checks(source)[0]
     return stems, missions
 
 

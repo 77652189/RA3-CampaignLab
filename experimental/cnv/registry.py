@@ -8,7 +8,10 @@
   either folder     CONTROL_ARMS = {build: (original tag, control tag, *free Obj fields)}   the same for two arms of one
                     build on one map (contract.arm_drift)
 
-load() reads the source of every module in the two folders and imports only those that declare one of these
+  benches/<domain>/<group>/{checks,scenes}.py   BENCHES = (bench_factory, ...)
+                    Each factory is named for its logical bench and returns the same registry tables.
+
+load() reads the source of each candidate and imports only modules that declare registry tables or BENCHES
 names at module level (a bench scene that pulls in something heavy declares nothing and is reached lazily, see
 missions/music_builds.py). A build made twice, a check for a build nobody makes, a check that is not callable: an
 error here, at import, not a KeyError at the bench.
@@ -18,10 +21,13 @@ import importlib
 import os
 import pkgutil
 from dataclasses import dataclass
+from pathlib import Path
+from textwrap import dedent
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FOLDERS = ('missions', 'checks')
 NAMES = ('MISSION', 'CHECKS', 'PAIR_BUILDS', 'CONTROLS', 'CONTROL_ARMS')
+BENCH_ROOT = Path(HERE) / 'benches'
 
 
 class RegistryError(Exception):
@@ -58,20 +64,42 @@ def modules():
                 continue
             if declared(os.path.join(HERE, folder, info.name + '.py')) & set(NAMES):
                 out.append(f'{folder}.{info.name}')
+    for path in sorted(BENCH_ROOT.glob('*/*/*.py')):
+        if path.stem in ('checks', 'scenes') and 'BENCHES' in declared(path):
+            out.append('.'.join(path.relative_to(HERE).with_suffix('').parts))
     return out
+
+
+def entries(name, prefix=''):
+    """(logical bench, registry tables) for each contribution in a module."""
+    if name.startswith('benches.'):
+        return [(make.__name__, make()) for make in importlib.import_module(name).BENCHES
+                if make.__name__.startswith(prefix)]
+    stem = name.rsplit('.', 1)[-1]
+    return [(stem, vars(importlib.import_module(name)))] if stem.startswith(prefix) else []
+
+
+def bench_sources(path):
+    """The sources of the registered bench factory bodies, for static evidence and import scans."""
+    lines = path.read_text(encoding='utf-8').splitlines(keepends=True)
+    body = ast.parse(''.join(lines)).body
+    benches = next((n.value.elts for n in body if isinstance(n, ast.Assign)
+                    and any(isinstance(t, ast.Name) and t.id == 'BENCHES' for t in n.targets)), ())
+    functions = {n.name: n for n in body if isinstance(n, ast.FunctionDef)}
+    return {b.id: dedent(''.join(lines[functions[b.id].lineno:functions[b.id].body[-1].lineno - 1]))
+            for b in benches}
 
 
 def load():
     builds, checks, pairs, where, check_where, controls, arms = {}, {}, {}, {}, {}, {}, {}
-    for name in modules():
-        module = importlib.import_module(name)
-        for build, make in getattr(module, 'MISSION', {}).items():
+    for name, tables in ((name, tables) for name in modules() for _, tables in entries(name)):
+        for build, make in tables.get('MISSION', {}).items():
             _claim(where, build, name)
             builds[build] = make
-        for build, make in getattr(module, 'PAIR_BUILDS', {}).items():
+        for build, make in tables.get('PAIR_BUILDS', {}).items():
             _claim(where, build, name)
             pairs[build] = make
-        for build, table in getattr(module, 'CHECKS', {}).items():
+        for build, table in tables.get('CHECKS', {}).items():
             if build in check_where:
                 raise RegistryError(f'checks of build {build!r} declared twice: {check_where[build]} and {name}')
             check_where[build] = name
@@ -79,11 +107,11 @@ def load():
                 if not callable(fn):
                     raise RegistryError(f'{name}: check {build}/{check} is not callable')
             checks[build] = dict(table)
-        for off, on in getattr(module, 'CONTROLS', {}).items():
+        for off, on in tables.get('CONTROLS', {}).items():
             if off in controls:
                 raise RegistryError(f'{name}: control {off!r} declared twice')
             controls[off] = on
-        for build, tags in getattr(module, 'CONTROL_ARMS', {}).items():
+        for build, tags in tables.get('CONTROL_ARMS', {}).items():
             if build in arms:
                 raise RegistryError(f'{name}: arms of {build!r} declared twice')
             arms[build] = tags

@@ -45,6 +45,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path[:0] = [p for p in (HERE, os.path.join(os.path.dirname(HERE), 'campaign')) if p not in sys.path]
 import labpaths  # noqa: E402
+import registry  # noqa: E402
 
 CATALOG = os.path.join(ROOT, 'experimental', 'campaign', 'script_catalog.json')
 RETAIL_SCRIPTS = os.path.join(labpaths.WORK, 'retailref')
@@ -166,7 +167,7 @@ BENCHED_TESTS = {
     # 249 had it in NOTES: engine_acts_wet's readout did not tell the jump from swimming)
     # round 222 (checks/engine_share.py all): mining income split among sharing Friends (the earner keeps the rest);
     # NAMED_SELECTED after SELECT_OBJECT (TYPE_SELECTED in NOTES: never true there)
-    # round 237 (checks/engine_eyes.py all): ENEMY_SIGHTED's player = the sighted object's owner, Friend takes the
+    # round 237 (benches/ui/presentation/checks.py#engine_eyes all): ENEMY_SIGHTED's player = the sighted object's owner, Friend takes the
     # viewer itself; CAMERA_ENTERED_AREA latches (the way there counts); TYPE_SELECTED never, the player's own click
     # and box selection too
     # round 238 (checks/engine_sighted.py all): TYPE_SIGHTED = ENEMY_SIGHTED's query with a type (the viewer itself
@@ -248,8 +249,8 @@ NOTES = {
     (ACTION, 'TEAM_SET_HEALTH'): (BENCHED, 'C engine_teamhp:a/b显式目标队守护者/征召兵血量100→25→75及100→75→25，同玩家异队/另一玩家守护者均保持100；四计数器为两成员实际血量百分比、异队血量组合码100100和逻辑帧。读数 checks/engine_teamhp.readings.toml（A331 由逐帧回放测试迁入，每秒一行）；仅当前存活显式队伍成员的百分比设置切片，未来/死亡/缺名成员、AI实例、边界数值和精确派发相位仍gap，其他模板推广INFERRED；见work/re/c_teamhp_report.md'),
     (ACTION, 'NAMED_FACE_WAYPOINT'): (BENCHED, 'C engine_facewp:a及engine_facewpai:b两局；a仅人类玩家存活位7，无team/tstate朝向，b换AI观察宿主，原生hd甲0→180、乙0→117、未操作0，分别朝西/西北路点。tests/test_facewp_bench_c.py按名回放24组原始稳定朝向（全圈1度容差对应hd整数舍入），并断言存活位7；没有用位置不变替代朝向。转身复用既有移动器速率，精确命令/起转相位、移动中打断、缺名/死亡目标和其他模板仍gap或INFERRED；仅存活静止守护者的具名路点朝向切片，见work/re/c_facewp_report.md'),
     (ACTION, 'EXIT_SPECIFIC_BUILDING'): (BENCHED, 'C engine_exitbld:a/b两座公寓各装同玩家两队征召兵，交换具名目标西/东；指定楼两队均退出、另一楼仍驻，重复调用无误伤。进驻位15→12/3、区域码始终22、五兵两楼存活位127；读数 checks/engine_exitbld.readings.toml（A333 由逐帧回放测试迁入）。区域人数包含楼内人员，探针保留原仅室外预测2/20；仅存活公寓具名退出切片，出门位置沿现有INFERRED近似，精确时序、其他容器/模板、缺名/死亡目标、取消进门仍gap；见work/re/c_exitbld_report.md'),
-    (ACTION, 'DISABLE_JOYPAD_COMMANDBAR_BUTTON'): (TODO, 'C engine_joypad:a一局17组读数f40..182，原版buttonopenplayertechstore/buttonaiassaultdirective未操作、禁用、分步恢复的脚本阶段0/1/2/3均出现，未操作电厂始终1，末3/1/182。读数 checks/engine_joypad.readings.toml 只核脚本阶段与对照存活（A338 由存档测试迁入），不冒充完整模型回放或原生输入接受。cnv_result仅脚本阶段/存活/逻辑帧，index仅id/second/note/view，无Joypad元素enabled、输入accepted/rejected字段；台子仅键鼠注入，XInput四槽未连接。PC路径无消费者仅INFERRED，不用鼠标或余额替代阳性，不登记纯表现。一局后缺真实入口/观测而暂停，不耗相同第二局；见work/re/c_joypad_report.md'),
-    (ACTION, 'DISABLE_MOUSE_HUD_FIXED_ELEMENT'): (TODO, 'C engine_mousehud:a/b两局SellButton禁用/开场禁用后恢复对照：末f356/f414均存活位5、资金2400；脚本出售位2消失、原生点击位1和未操作位4保留。B原生出售阳性预测4/2800未成立；读数 checks/engine_mousehud.readings.toml 两局负基线（A338 由回放测试迁入）不能证明UI门。存档画面A按钮灰/B按钮亮且目标被选中；每次bench_click间Esc可能取消卖出模式（INFERRED）。cnv_result只有点击坐标及三计数器，没有SellButton enabled、卖出模式接受或拒绝字段；其他固定元素未量，不据余额或负基线登记纯表现。两局耗完，保持未做；见work/re/c_mousehud_report.md'),
+    (ACTION, 'DISABLE_JOYPAD_COMMANDBAR_BUTTON'): (TODO, 'C engine_joypad:a一局17组读数f40..182，原版buttonopenplayertechstore/buttonaiassaultdirective未操作、禁用、分步恢复的脚本阶段0/1/2/3均出现，未操作电厂始终1，末3/1/182。读数 benches/ui/presentation/readings.toml#engine_joypad 只核脚本阶段与对照存活（A338 由存档测试迁入），不冒充完整模型回放或原生输入接受。cnv_result仅脚本阶段/存活/逻辑帧，index仅id/second/note/view，无Joypad元素enabled、输入accepted/rejected字段；台子仅键鼠注入，XInput四槽未连接。PC路径无消费者仅INFERRED，不用鼠标或余额替代阳性，不登记纯表现。一局后缺真实入口/观测而暂停，不耗相同第二局；见work/re/c_joypad_report.md'),
+    (ACTION, 'DISABLE_MOUSE_HUD_FIXED_ELEMENT'): (TODO, 'C engine_mousehud:a/b两局SellButton禁用/开场禁用后恢复对照：末f356/f414均存活位5、资金2400；脚本出售位2消失、原生点击位1和未操作位4保留。B原生出售阳性预测4/2800未成立；读数 benches/ui/presentation/readings.toml#engine_mousehud 两局负基线（A338 由回放测试迁入）不能证明UI门。存档画面A按钮灰/B按钮亮且目标被选中；每次bench_click间Esc可能取消卖出模式（INFERRED）。cnv_result只有点击坐标及三计数器，没有SellButton enabled、卖出模式接受或拒绝字段；其他固定元素未量，不据余额或负基线登记纯表现。两局耗完，保持未做；见work/re/c_mousehud_report.md'),
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackJapanMCV'): (BENCHED, 'C engine_jpndeploy:a一局：两辆普通日本MCV到东400路径点展开，未下令第三车留家；f256..501目标区建造场/名称存活/原处MCV位码3/7/4。读数 checks/engine_jpndeploy.readings.toml（A334 由逐帧回放测试迁入：动作前及f300之后稳定窗口）；现有order_unpack匹配，无模型或阈值修改。仅普通活宿主空地切片；精确到达/展开时序、地形阻挡、伤害继承、重复/死亡/缺失宿主仍gap，其他宿主推广INFERRED；见work/re/c_jpndeploy_report.md'),
     (ACTION, 'NAMED_USE_COMMANDBUTTON_ABILITY_AT_WAYPOINT:Command_UnPackSovietMCV'): (BENCHED, 'C engine_sovdeploy:a一局：两辆普通苏联MCV到东400路径点展开，未下令第三车留家；f220..468目标区建造场/名称存活/原处MCV位码3/7/4。读数 checks/engine_sovdeploy.readings.toml（A334 由逐帧回放测试迁入：动作前及稳定窗口）；现有order_unpack即可匹配，未调模型或阈值。仅普通活宿主空地切片；精确到达/展开时序、地形阻挡、伤害继承、重复/死亡/缺失宿主仍gap，其他宿主推广INFERRED；见work/re/c_sovdeploy_report.md'),
     (ACTION, 'TEAM_GARRISON_NEAREST_BUILDING'): (BENCHED, 'C engine_teamgarr:a/b两栋空公寓最近选择：建筑摆放顺序不变，仅步兵东移；本队两名征召兵进最近楼，同玩家异队留外，空队伍/重复调用无误伤。最终进驻位/楼归属/存活位分别3/1/31与3/2/31；读数 checks/engine_teamgarr.readings.toml（A333 由逐帧回放测试迁入：动作前及稳定窗口）。仅显式普通步兵与空楼选择切片；逐成员距离及其他模板推广INFERRED，队伍中心/等距/搜索范围、容量/敌属/损坏楼/AI实例和入门时序仍gap；见work/re/c_teamgarr_report.md'),
@@ -308,7 +309,7 @@ NOTES = {
     (NUGGET, 'SpecialPowerNugget:干扰消费者'): (GUESSED, '1用量，暂停额外SPN消费：engine_spnscr c原版四路删减、受害者真实开火、靶子封闭暴露窗，早HP100/100/90/90、晚HP90/90/80/80，打包301000090/301000090/300999080/300999080实机PASS；tests/test_special_power_nugget.py具名回放。停火差异由AttributeModifier决定，保留/删SPN相等不能证明额外消费者no-op；b仅NAMED_STOP仍续射，原预测strict xfail保留。两局耗完，缺SpecialPower开始/结束及命令消费观测，不晋升完整消费者，见work/re/c_spnscr_active_report.md'),
     (NUGGET, 'SpecialPowerNugget:附着dummy消费者'): (TODO, '1用量，暂停：JapanScoutInfantryAttachWeaponWarhead引用OBJECT dummy模板及原版宿主；缺独立派发/附着读数，不能按Dummy名字推定无操作；需Attach模块观测，work/re/c_spnclosure_report.md'),
     (MODULE, 'Behaviors/OCLSpecialPower'): (BENCHED, '总控第四切片按已测边界收尾：tests/test_simocl.py具名回放engine_oclcurtain/engine_oclnone/engine_oclwrong a，铁幕宿主匹配模块才保护并记事件，删除/改绑模块无保护/事件；engine_oclempty a空声明无保护且事件1；engine_oclcopy a完整原版载荷改名仍保护100/100且事件1；engine_oclzero a仅外层Count=0无保护且事件1。只闭合铁幕派发和零数量不保护边界，未测生成数量/通用生成；其他非零数量/载荷/超武、位置/过滤、按钮/冷却仍gap，继承、等价空声明及格式等价INFERRED，不表示全模块全字段验证；见 work/re/e_ocl_e65.md'),
-    (MODULE, 'Behaviors/RadarBehavior'): (GUESSED, 'E158-E162原版盟军雷达宿主（原生PlayerSpellBook雷达已去掉）：删宿主、只删电厂、两同类宿主先后删、受伤致死、脚本双向换主。台上小地图有无只从HUD截图读，模拟器不模拟雷达也没有计数器能读，所以读数（checks/engine_radar.readings.toml）只核对前提（存活、PLAYER_HAS_POWER、归属）、不挂本项；HUD结果写在读数bench里。精确注销/换主帧、建造中、工程师占领、其他宿主仍gap；见work/re/e158_radar.md等'),
+    (MODULE, 'Behaviors/RadarBehavior'): (GUESSED, 'E158-E162原版盟军雷达宿主（原生PlayerSpellBook雷达已去掉）：删宿主、只删电厂、两同类宿主先后删、受伤致死、脚本双向换主。台上小地图有无只从HUD截图读，模拟器不模拟雷达也没有计数器能读，所以读数（benches/ui/presentation/readings.toml#engine_radar）只核对前提（存活、PLAYER_HAS_POWER、归属）、不挂本项；HUD结果写在读数bench里。精确注销/换主帧、建造中、工程师占领、其他宿主仍gap；见work/re/e158_radar.md等'),
     # review 1121nn: the readings stay (checks/engine_activate / _hitreaction_e), the main behavior not modelled
     (MODULE, 'Behaviors/HitReactionBehavior'): (GUESSED, '维和举盾那条已对拍：E172受击HIT_REACTION位、engine_hitreaction_r受击转向（背后挨打后转身，原版94/删模块83，读数checks/engine_hitreaction_e.readings.toml）；征召兵BITTEN/GoIdle那条和JapanEmperor的没量，idle判定和刷新时序INFERRED'),
     (NUGGET, 'TintObjectsNugget'): (NA, '纯表现：Color及Pre/Sustained/PostColorTime、Frequency/Amplitude仅控制染色动画；engine_tint pair实测2/90/2/90，独立DamageNugget解释全部伤害，test_simbench_c重放；不声称像素已验证'),
@@ -977,13 +978,13 @@ def probe_checks(text):
     return missions, dict(keys)
 
 
-def probe_parts(name, text):
+def probe_parts(name, text, source=None):
     """[(source, text)] of one probe. A probe with one check is one source, 'checks/engine_X.py'. A probe with several
     (engine_aiskirm's thirty) is split: each check's own function (its docstring holds that check's readings) is
     'checks/engine_X.py:<key>', the rest (module docstring, shared helpers, constants) 'checks/engine_X.py'. A word only
     a check's own function names was read by that check: only a test that runs that check makes it 已对拍
     (tested_probes), not one that runs another check of the same probe."""
-    src = f'checks/{name}.py'
+    src = source or f'checks/{name}.py'
     _, keys = probe_checks(text)
     if len(keys) < 2:
         return [(src, text)]
@@ -1011,6 +1012,20 @@ def measured(text):
     return ''.join(x for x in text.splitlines(keepends=True) if not NOT_MEASURED.search(x))
 
 
+def probe_sources(checks=None):
+    """Logical bench -> (citation path, check source), without importing any bench."""
+    sources = {p.stem: (f'checks/{p.name}', p.read_text(encoding='utf-8'))
+               for p in Path(checks or CHECKS).glob('*.py')}
+    if checks is None:
+        for path in sorted(registry.BENCH_ROOT.glob('*/*/checks.py')):
+            rel = path.relative_to(HERE).as_posix()
+            for name, body in registry.bench_sources(path).items():
+                if name in sources:
+                    raise registry.RegistryError(f'{rel}: duplicate check source for {name}')
+                sources[name] = (f'{rel}#{name}', body)
+    return dict(sorted(sources.items()))
+
+
 def bench_sources():
     """[(source, text)] where bench measurements live: the engine probes (checks/engine_*.py, run with cnv_check on the
     bench, their readings in the docstrings; a probe of several checks split by check, probe_parts) and the lines of
@@ -1019,10 +1034,9 @@ def bench_sources():
     need(CHECKS, 'the bench checks')
     need(ENGINE_DOCS, 'the engine docs')
     out = []
-    for f in sorted(os.listdir(CHECKS)):
-        if f.startswith('engine_') and f.endswith('.py'):
-            text = open(os.path.join(CHECKS, f), encoding='utf-8').read()
-            out += [(s, measured(t)) for s, t in probe_parts(f[:-3], text)]
+    for name, (source, body) in probe_sources().items():
+        if name.startswith('engine_'):
+            out += [(s, measured(t)) for s, t in probe_parts(name, body, source)]
     for f in sorted(os.listdir(ENGINE_DOCS)):
         if f.endswith('.md') and f not in PAGES:
             lines = [x for x in open(os.path.join(ENGINE_DOCS, f), encoding='utf-8')
@@ -1073,7 +1087,7 @@ def without_tool_tests(text):
     return ''.join('\n' if i in cut else x for i, x in enumerate(text.splitlines(keepends=True)))
 
 
-def tested_probes(tests=TESTS, checks=CHECKS):
+def tested_probes(tests=TESTS, checks=None):
     """The bench probes a test holds the simulator to: {'checks/engine_X.py'} for each probe a test file names --
     'engine_X', or a variant 'engine_X_<v>' that is not a probe of its own (the longest probe name it starts with).
     Named, not only quoted as a build: tests replay a probe by its build name (_sim_resolve('engine_seal', ..)), by
@@ -1082,7 +1096,7 @@ def tested_probes(tests=TESTS, checks=CHECKS):
     For a probe of several checks (probe_parts) also 'checks/engine_X.py:<key>' for each check the naming test file
     runs (tested_checks); naming the probe alone runs none of its checks' own readings. A test of the inventory tools
     themselves names probes as its data and counts for none (without_tool_tests)."""
-    stems = {f[:-3] for f in os.listdir(checks) if f.startswith('engine_') and f.endswith('.py')}
+    sources = {n: src for n, src in probe_sources(checks).items() if n.startswith('engine_')}
     info = {}
     out = set()
     for f in sorted(Path(tests).rglob('test_*.py')):
@@ -1090,17 +1104,18 @@ def tested_probes(tests=TESTS, checks=CHECKS):
         named = {}
         for name in PROBE_NAME.findall(text):
             full = name
-            while name not in stems and '_' in name[len('engine_'):]:
+            while name not in sources and '_' in name[len('engine_'):]:
                 name = name.rsplit('_', 1)[0]
-            if name in stems:
-                out.add(f'checks/{name}.py')
+            if name in sources:
+                out.add(sources[name][0])
                 named.setdefault(name, set()).add(full)
         for name, variants in named.items():
+            source, body = sources[name]
             if name not in info:
-                info[name] = probe_checks(open(os.path.join(checks, f'{name}.py'), encoding='utf-8').read())
+                info[name] = probe_checks(body)
             missions, keys = info[name]
             if len(keys) >= 2:
-                out |= {f'checks/{name}.py:{k}' for k in tested_checks(text, name, variants, missions, set(keys))}
+                out |= {f'{source}:{k}' for k in tested_checks(text, name, variants, missions, set(keys))}
     return out
 
 
@@ -1134,26 +1149,26 @@ READINGS = CHECKS
 LEGACY, CONFORMS = '测试对拍', '读数数据核对相符'
 
 
-def conformance_probes(folder=None, checks=CHECKS):
+def conformance_probes(folder=None, checks=None):
     """The bench sources the readings data backs (ADR 0035 5, the definition of 已对拍 from now on): for every reading
     of checks/engine_X.readings.toml with no mismatch mark (the conformance runner, tests/conformance/test_readings.py,
     holds it to the simulator), 'checks/engine_X.py', and for a probe of several checks (probe_parts) also
     'checks/engine_X.py:<key>' of each of its scenes' check. A reading marked mismatch backs nothing."""
     import readings
-    folder = READINGS if folder is None else folder
+    sources = probe_sources(checks)
     keys_of, out = {}, set()
     for r in readings.load_all(folder):
         if r['mismatch']:
             continue
         probe = r['bench_file']
+        if probe not in sources:
+            raise SystemExit(f'inventory: no check source for readings of {probe}')
+        source, body = sources[probe]
         if probe not in keys_of:
-            path = os.path.join(checks, f'{probe}.py')
-            if not os.path.exists(path):
-                raise SystemExit(f'inventory: {probe}.readings.toml sits beside no probe {path}')
-            keys_of[probe] = set(probe_checks(open(path, encoding='utf-8').read())[1])
-        out.add(f'checks/{probe}.py')
+            keys_of[probe] = set(probe_checks(body)[1])
+        out.add(source)
         if len(keys_of[probe]) >= 2:
-            out |= {f'checks/{probe}.py:{c}' for _, c, *_ in r['scenes'].values() if c in keys_of[probe]}
+            out |= {f'{source}:{c}' for _, c, *_ in r['scenes'].values() if c in keys_of[probe]}
     return out
 
 
@@ -1163,13 +1178,15 @@ def declared_items(folder=None, held_only=True):
     conformance runner holds them to the simulator) -- what makes an item 已对拍 when the bench's source never names
     it. held_only=False: every declaration (the guard checks each names an item that exists)."""
     import readings
-    folder = READINGS if folder is None else folder
     out = {}
-    for r in readings.load_all(folder):
+    for path, r in readings.located(folder):
         if held_only and r['mismatch']:
             continue
+        p = Path(path)
+        source = (f'{p.relative_to(HERE).as_posix()}#{r["bench_file"]}' if p.name == 'readings.toml'
+                  else f'checks/{p.name}')
         for k in r['items']:
-            out.setdefault(k, f'checks/{r["bench_file"]}{readings.SUFFIX}::{r["id"].split("[")[0]}')
+            out.setdefault(k, f'{source}::{r["id"].split("[")[0]}')
     return out
 
 
@@ -1194,7 +1211,7 @@ def apply_declared(items, declared=None, notes=None):
     return items
 
 
-def backing(tests=TESTS, checks=CHECKS, folder=None):
+def backing(tests=TESTS, checks=None, folder=None):
     """{bench source: how it is matched}: the readings data's (CONFORMS) over the frozen legacy route's (LEGACY, a
     test file naming the probe: tested_probes)."""
     out = dict.fromkeys(tested_probes(tests, checks), LEGACY)

@@ -2,7 +2,7 @@
 
     python -I -X utf8 experimental/testbench/run_queue.py aitfany:a aitfmax:a            checks as mission:check
     python -I -X utf8 experimental/testbench/run_queue.py --file work/queue.txt           one mission:check a line (# comments)
-    python -I -X utf8 experimental/testbench/run_queue.py --prefix engine_ --jobs 2       every check in checks/engine_*.py
+    python -I -X utf8 experimental/testbench/run_queue.py --prefix engine_ --jobs 2       every engine probe check
     ... --resume   skip a check that already has a PASS / FAIL result at the same git HEAD (an ERROR / DROPOUT is run again)
     ... --resume-any  the same, whatever HEAD the result was made at (the other lines commit all day)
     ... --verbose  print every check's whole output as it comes in (default: one line a check)
@@ -59,27 +59,25 @@ def read_list(path):
 
 
 def listing(prefix):
-    """(mission, check) of every check in a checks/<prefix>*.py module, in cnv_list's order (modules by name, builds and
+    """(mission, check) of every bench with this prefix, in logical bench order (builds and
     checks as each declares them); a build the module only declares as a pair is (build, '')."""
     # in a child started in experimental/cnv (python -c puts its cwd first on the path; no -I for that reason), so this
     # file needs no sys.path edit of its own (tests/test_architecture.py G4 ratchet)
-    code = ('import importlib, json, sys\n'
+    code = ('import json, sys\n'
             'import parts  # noqa: F401  (puts experimental/campaign on the path, as build.py does)\n'
             'import registry\n'
             'out = []\n'
-            'for name in registry.modules():\n'
-            '    folder, _, module = name.partition(".")\n'
-            '    if folder != "checks" or not module.startswith(sys.argv[1]):\n'
-            '        continue\n'
-            '    mod = importlib.import_module(name)\n'
-            '    out += [(b, c) for b, table in getattr(mod, "CHECKS", {}).items() for c in table]\n'
-            '    out += [(b, "") for b in getattr(mod, "PAIR_BUILDS", {})]\n'
+            'entries = [entry for name in registry.modules() if name.startswith(("checks.", "benches."))\n'
+            '           for entry in registry.entries(name, sys.argv[1])]\n'
+            'for _, tables in sorted(entries, key=lambda entry: entry[0]):\n'
+            '    out += [(b, c) for b, table in tables.get("CHECKS", {}).items() for c in table]\n'
+            '    out += [(b, "") for b in tables.get("PAIR_BUILDS", {})]\n'
             'print("LISTING " + json.dumps(out))\n')
     run = subprocess.run([sys.executable, '-X', 'utf8', '-c', code, prefix], cwd=os.path.join(ROOT, 'experimental', 'cnv'),
                          capture_output=True, text=True, encoding='utf-8')
     line = next((x for x in run.stdout.splitlines() if x.startswith('LISTING ')), None)
     if run.returncode or line is None:
-        raise RuntimeError(f'listing checks/{prefix}* failed:\n{run.stderr[-2000:]}')
+        raise RuntimeError(f'listing benches with prefix {prefix!r} failed:\n{run.stderr[-2000:]}')
     return [tuple(x) for x in json.loads(line[len('LISTING '):])]
 
 
@@ -250,7 +248,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('checks', nargs='*', metavar='mission:check')
     ap.add_argument('--file', help='a list, one mission:check a line')
-    ap.add_argument('--prefix', help='every check of the checks/<prefix>*.py modules (engine_ ...)')
+    ap.add_argument('--prefix', help='every check of benches whose logical ID starts with this prefix (engine_ ...)')
     ap.add_argument('--jobs', type=int, default=2)
     ap.add_argument('--resume', action='store_true', help='skip a check with a PASS / FAIL result at this git HEAD')
     ap.add_argument('--resume-any', action='store_true', help='like --resume, whatever HEAD the result was made at')

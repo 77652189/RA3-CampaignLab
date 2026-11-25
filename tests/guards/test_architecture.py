@@ -5,6 +5,7 @@ set (or raising a ceiling) needs the coordinator.
 
 Files are enumerated with `git ls-files`, so untracked work files, caches and environments never count."""
 import ast
+import importlib.util
 import subprocess
 from pathlib import Path, PurePosixPath
 
@@ -162,6 +163,21 @@ def test_g5_checks_do_not_reach_into_content_layers():
     hits = {f for f in checks if reach(f)}
     assert hits, 'no check imports a content layer, the guard would pass vacuously'
     assert hits <= CHECK_IMPORT_ALLOWED, f'checks now import content layers: {sorted(hits - CHECK_IMPORT_ALLOWED)}'
+    spec = importlib.util.spec_from_file_location('registry', ROOT / CNV / 'registry.py')
+    registry = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(registry)
+    for f in files:
+        path = PurePosixPath(f)
+        if not path.match(f'{CNV}/benches/*/*/checks.py'):
+            continue
+        sources = registry.bench_sources(ROOT / f)
+        tree = ast.parse(_read(f))
+        tree.body[:] = [n for n in tree.body if not isinstance(n, ast.FunctionDef) or n.name not in sources]
+        assert not _imported_tops(ast.unparse(tree)) & names, f'{f} imports a content layer outside a bench'
+        for name, source in sources.items():
+            forbidden = names - maps if name.startswith('engine_') else names
+            hits = _imported_tops(source) & forbidden
+            assert not hits, f'{f}#{name} imports content layers: {sorted(hits)}'
 
 
 def test_g_units_do_not_import_make_campnew2():

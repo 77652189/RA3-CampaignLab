@@ -338,10 +338,17 @@ def test_an_expression_that_does_not_compile_fails_on_load(tmp_path):
 
 
 def test_the_repository_readings_load_and_sit_beside_their_bench():
+    spec = importlib.util.spec_from_file_location('registry', Path(rd.HERE) / 'registry.py')
+    registry = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(registry)
     for p in rd.files():
         rs = rd.load(p)
         assert rs, p
-        assert (Path(rd.CHECKS) / f'{rd.bench_of(p)}.py').is_file(), p
+        path = Path(p)
+        if path.name == 'readings.toml':
+            assert {r['bench_file'] for r in rs} <= registry.bench_sources(path.with_name('checks.py')).keys(), p
+        else:
+            assert path.with_name(f'{rd.bench_of(p)}.py').is_file(), p
 
 
 def _simai_constant(name):

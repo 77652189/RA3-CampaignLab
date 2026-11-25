@@ -1,0 +1,140 @@
+# Bench readings of engine_eyes in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "engine_eyes"
+id = "eyes_all_as_the_bench"
+scene = {build = "engine_eyes", check = "all", until = 21}
+bench = """all, bench 11-14 (round 237, CampSeeAll_mcp_1114_234139 / _234250; the bench's seconds ~1 ahead): 看见 45 to s8, 47 \
+after; 镜头 129 from s1 to the end, 帧 growing ~15 a second (a state); 选中 1 from s3"""
+proves = """sim ENEMY_SIGHTED's player = the sighted object's owner (Friend takes the viewer itself); CAMERA_ENTERED_AREA latches A \
+and M, M crossed on the way there; the strips never; NAMED_SELECTED, TYPE_SELECTED never -- nor after the player's own \
+click or box on pick / other (by hand: 选中 8 / 1, 帧 never +10000; the player's camera to N2 latched 133, not modelled)."""
+let = {at = "dict(zip(times, vals(rows)))"}
+expect = [
+    "all(at[k][0] == 45 and at[k][1] == 129 for k in range(1, 9))",
+    "all(at[k][0] == 47 and at[k][1] == 129 for k in range(11, 21))",
+    "15 * 15 < at[20][2] < 10000",
+    "all(at[k][3] == 1 for k in range(4, 21))",
+]
+
+# Bench readings of engine_joypad in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# Script markers only: no Joypad element's enabled state or input acceptance is published (the bench has no controller
+# input), so DISABLE_JOYPAD_COMMANDBAR_BUTTON stays 未做 (work/re/c_joypad_report.md).
+
+[[reading]]
+bench_id = "engine_joypad"
+id = "joypad_the_phases_run_and_the_untouched_plant_lives"
+scene = {build = "engine_joypad", check = "a", until = 14}
+bench = "a, line C CampJoypadA_mcp_1116_135234 (work/re/c_joypad_measured.json, NOEXPECT), 脚本阶段 未操作存活 at logic frames: f40..50 0 1 | f63..119 1 1 | f124..174 2 1 | f182 3 1 (17 readings)"
+proves = "the disable at 4 s and the two step restores at 8 / 12 s run on time and hurt nothing (the untouched plant lives). Not the UI gate. Moved from the archive test (A338)"
+let = {want = "lambda f: [0, 1] if 40 <= f <= 50 else [1, 1] if 63 <= f <= 119 else [2, 1] if 124 <= f <= 174 else [3, 1] if f >= 182 else None"}
+expect = [
+  "all(v[:2] == want(v[2]) for v in vals(rows) if want(v[2]) is not None)",
+  "{tuple(want(v[2])) for v in vals(rows) if want(v[2]) is not None} == {(0, 1), (1, 1), (2, 1), (3, 1)}",
+]
+
+# Bench readings of engine_mousehud in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A negative baseline only: the simulator has no bench mouse-event consumer, and the native sale on b (SellButton
+# restored, predicted 4 / 2800) was never seen on the bench (f414 5 / 2400) -- the UI gate stays unmeasured
+# (DISABLE_MOUSE_HUD_FIXED_ELEMENT 未做, work/re/c_mousehud_report.md).
+
+[[reading]]
+bench_id = "engine_mousehud"
+id = "mousehud_a_disabled_sellbutton_click_sells_nothing"
+scene = {build = "engine_mousehud", check = "a", until = 25, script = "不打"}
+bench = "a, line C CampMouseHUDA_mcp_1116_131945 (work/re/c_mousehud_measured.json), 存活 资金 at logic frames: f43..53 7 2400 | f63..356 5 2400 (13 readings; clicks at screen (1126, 222) and (723, 393))"
+proves = "with SellButton disabled the native clicks sell nothing: only the script sale's two plants go, money stays 2400. Moved from the replay test (A338)"
+let = {want = "lambda f: [7, 2400] if 43 <= f <= 53 else [5, 2400] if 63 <= f <= 356 else None"}
+expect = [
+  "all(v[:2] == want(v[2]) for v in vals(rows) if want(v[2]) is not None)",
+  "{tuple(want(v[2])) for v in vals(rows) if want(v[2]) is not None} == {(7, 2400), (5, 2400)}",
+]
+
+[[reading]]
+bench_id = "engine_mousehud"
+id = "mousehud_b_restored_sellbutton_click_sells_nothing_either"
+scene = {build = "engine_mousehud", check = "b", until = 29, script = "不打"}
+bench = "b, line C CampMouseHUDB_mcp_1116_132428, 存活 资金 at logic frames: f45..61 7 2400 | f79..414 5 2400 (13 readings; the clicks only selected the plant)"
+proves = "SellButton disabled then restored: the native clicks still sell nothing (predicted 4 / 2800 not seen; per-call Esc may cancel sale mode, INFERRED), as the simulator, which has no mouse input. Moved from the replay test and its strict xfail (A338)"
+let = {want = "lambda f: [7, 2400] if 45 <= f <= 61 else [5, 2400] if 79 <= f <= 414 else None"}
+expect = [
+  "all(v[:2] == want(v[2]) for v in vals(rows) if want(v[2]) is not None)",
+  "{tuple(want(v[2])) for v in vals(rows) if want(v[2]) is not None} == {(7, 2400), (5, 2400)}",
+]
+
+# Bench readings of engine_radar in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# E158-E162: one retail Allied radar dish, the native PlayerSpellBook radar removed (work/re/e158_radar.md ...).
+# The counters are the scene's prerequisites (dish / support alive, PLAYER_HAS_POWER, owner), NOT the radar: the
+# minimap was read off the saved HUD frames, which the simulator does not model -- so no reading carries
+# 物体模块 Behaviors/RadarBehavior (inventory.py keeps it 推断).
+
+[[reading]]
+bench_id = "engine_radar"
+id = "the_dish_goes_at_12_s_and_its_supports_stay_powered"
+each = [{build = "engine_radar", alive = 151, gone = 303}, {build = "engine_radaroff", alive = 149, gone = 308}]
+scene = {check = "a", until = 22}
+bench = "E158 (bench 11-15): dish / support / power f151 = 1 / 1 / 1, f303 = 0 / 1 / 1 (off build f149 / f308 the same); HUD minimap terrain then the Allied emblem with the module, the emblem both times without it"
+proves = "the RadarBehavior scene's prerequisites: NAMED_DELETE at 12 s takes the dish, the yard and plant stay, PLAYER_HAS_POWER holds (the radar itself is the HUD's, not read here)"
+let = {at = "lambda f: [[r[k] for k in ('宿主量', '前置量', '供电量')] for r in rows if r['帧数'] <= f][-1]"}
+expect = ["at(alive) == [1, 1, 1]", "at(gone) == [0, 1, 1]", "verdicts() and all(ok for ok, _ in verdicts())"]
+
+[[reading]]
+bench_id = "engine_radar"
+id = "the_plant_goes_at_12_s_and_the_power_with_it"
+scene = {build = "engine_radarlow", check = "a", until = 22}
+bench = "E159 (bench 11-15): dish / consumers / power f147 = 1 / 1 / 1, f302 = 1 / 1 / 0 (supply / demand 150 / 75 -> 50 / 75 after the plant's delete); HUD minimap terrain at both frames"
+proves = "the low-power scene's prerequisites: NAMED_DELETE of the only plant at 12 s, PLAYER_HAS_POWER false with 50 supply for 75 demand, the dish and the barracks stay (the dish's radar staying is the HUD's, not read here)"
+let = {at = "lambda f: [[r[k] for k in ('宿主量', '前置量', '供电量')] for r in rows if r['帧数'] <= f][-1]"}
+expect = ["at(147) == [1, 1, 1]", "at(302) == [1, 1, 0]", "verdicts() and all(ok for ok, _ in verdicts())"]
+
+[[reading]]
+bench_id = "engine_radar"
+id = "two_dishes_go_one_at_12_s_one_at_24_s"
+scene = {build = "engine_radartwo", check = "a", until = 27}
+bench = "E160 (bench 11-15): first / second / power-and-supports f114 = 1 / 1 / 1, f197 = 0 / 1 / 1, f386 = 0 / 0 / 1; HUD minimap terrain, terrain, then the Allied emblem (the run was slow: its wall-time expectations failed, these logic-frame readings are what holds)"
+proves = "the two-provider scene's prerequisites: two same-template dishes deleted by name one at 12 s and one at 24 s, the yard, the plant and PLAYER_HAS_POWER throughout (the radar going only with the last one is the HUD's, not read here)"
+let = {at = "lambda f: [[r[k] for k in ('宿主量', '第二宿主', '供电量')] for r in rows if r['帧数'] <= f][-1]"}
+expect = ["at(114) == [1, 1, 1]", "at(197) == [0, 1, 1]", "at(386) == [0, 0, 1]"]
+
+[[reading]]
+bench_id = "engine_radar"
+id = "the_dish_is_hurt_at_6_s_and_killed_at_12_s"
+scene = {build = "engine_radardeath", check = "a", until = 26}
+bench = "E161 (bench 11-15): gone / HP / power-and-supports f87 = 0 / 100 / 1, f95 and f173 = 0 / 50 / 1, f182 / f192 / f374 = 1 / 0 / 1 (500 HP, NAMED_DAMAGE 250 at 6 s, 1000 at 12 s); HUD terrain to f173, the off transition at f182, the emblem after; the check's expectations PASS"
+proves = "the death scene's prerequisites: NAMED_DAMAGE halves the 500 HP dish, the second kills it (NAMED_DESTROYED), the yard, the plant and PLAYER_HAS_POWER stay (the radar going with the death is the HUD's, not read here)"
+let = {at = "lambda f: [[r[k] for k in ('死亡', '血量', '供电前置')] for r in rows if r['帧数'] <= f][-1]"}
+expect = ["at(87) == [0, 100, 1]", "at(173) == [0, 50, 1]", "[r['帧数'] for r in rows if r['死亡']][0] == 196", "at(374)[0::2] == [1, 1]",
+          "verdicts() and all(ok for ok, _ in verdicts())"]
+
+[[reading]]
+bench_id = "engine_radar"
+id = "the_killed_dish_reads_0_health"
+scene = {build = "engine_radardeath", check = "a", until = 26}
+bench = "E161: the health counter (SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER every frame, the script listed before the lethal NAMED_DAMAGE) reads 0 at f182 / f192 / f374"
+proves = "脚本动作 SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER of an object a script's damage killed: 0 the frames after (the dish's SlowDeath keeps it in the world; INFERRED)"
+expect = "[at(f)[1] for f in (196, 374)] == [0, 0]"
+let = {at = "lambda f: [[r[k] for k in ('死亡', '血量', '供电前置')] for r in rows if r['帧数'] <= f][-1]"}
+
+[[reading]]
+bench_id = "engine_radar"
+id = "a_script_hands_the_dish_over_at_12_s"
+each = [{build = "engine_radarout", before = 91, owner_before = 1, after = 312, owner_after = 2},
+        {build = "engine_radarin", before = 87, owner_before = 2, after = 282, owner_after = 1}]
+scene = {check = "a", until = 22}
+bench = "E162 (bench 11-15): owner / alive / both sides powered with four live supports, out f91 = 1 / 1 / 1 -> f312 = 2 / 1 / 1, in f87 = 2 / 1 / 1 -> f282 = 1 / 1 / 1 (NAMED_TRANSFER_OWNERSHIP_PLAYER at 12 s, not an engineer's capture); the local HUD as old owner terrain -> emblem, as new owner emblem -> terrain"
+proves = "the owner-transfer scene's prerequisites: the transfer moves the dish between Player_1 and Soviet_4 both ways, it stays alive, both sides keep their yard, plant and PLAYER_HAS_POWER (the radar following the owner is the HUD's, not read here)"
+let = {at = "lambda f: [[r[k] for k in ('归属量', '存活量', '供电前置')] for r in rows if r['帧数'] <= f][-1]"}
+expect = ["at(before) == [owner_before, 1, 1]", "at(after) == [owner_after, 1, 1]"]
+
+# Bench readings of movie in checks.py (format: experimental/cnv/readings.py; runner: tests/conformance).
+# A scene's until is the old test's seconds + 1 (the old bare Sim.run(u) read the row of second u last).
+
+[[reading]]
+bench_id = "movie"
+id = "video_a_radar_clip_is_done_after_its_length_full_screen_never"
+scene = {build = "movie", check = "play", until = 31}
+bench = "movie play (bench, docs/story/handoff.md 1g): CNVTEST01 (95 frames at 23.976) in the radar window done 63 game frames after its start; the full-screen clip never reads done"
+proves = "sim movie playback: a radar-window clip is done after its length in game frames, a full-screen clip never reads done"
+let = {last = "vals(rows)[-1]"}
+expect = "abs(last[0] - 63) <= 3 and last[1] == 1 and last[3] == 0"

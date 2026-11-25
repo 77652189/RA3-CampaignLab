@@ -1,10 +1,11 @@
-"""Bench readings as data (ADR 0035 2): checks/<bench>.readings.toml beside the bench's check, read by one conformance
+"""Bench readings as data (ADR 0035 2): beside the bench's check, read by one conformance
 runner (tests/conformance/test_readings.py) that runs each scene once and checks every reading of it in that run.
 
-A file is a list of [[reading]] tables:
+A file is a list of [[reading]] tables. In a merged bench directory's readings.toml, each table also has a bench_id
+matching its logical bench in checks.py. A legacy checks/<bench>.readings.toml takes that ID from its filename.
 
     [[reading]]
-    id = "crush_keeps_all_four_tanks_alive"            # unique in the file; the old test's name when migrated
+    id = "crush_keeps_all_four_tanks_alive"            # unique for the logical bench
     scene = {build = "aicrush1", check = "a", until = 35}
     bench = "坦克数 4 at s28-s33 (bench 2026-11-09)"      # what the bench read
     proves = "simai team attack: Crush -- the tanks survive the run-over"   # which module's which rule
@@ -57,6 +58,7 @@ each-entry keys, and the builtins. With scenes, counter / verdicts name the scen
 import collections
 import os
 import tomllib
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHECKS = os.path.join(HERE, 'checks')
@@ -73,8 +75,9 @@ class ReadingError(ValueError):
     pass
 
 
-def files(folder=CHECKS):
-    return sorted(os.path.join(folder, f) for f in os.listdir(folder) if f.endswith(SUFFIX))
+def files(folder=None):
+    old = sorted(os.path.join(folder or CHECKS, f) for f in os.listdir(folder or CHECKS) if f.endswith(SUFFIX))
+    return old if folder is not None else old + sorted(map(str, (Path(HERE) / 'benches').glob('*/*/readings.toml')))
 
 
 def bench_of(path):
@@ -141,11 +144,17 @@ def load(path):
         data = tomllib.load(f)
     if set(data) - {'reading'}:
         raise ReadingError(f'{path}: only [[reading]] tables, got {sorted(set(data) - {"reading"})}')
+    merged = os.path.basename(path) == 'readings.toml'
+    keys = KEYS | {'bench_id'} if merged else KEYS
+    needed = NEEDED | {'bench_id'} if merged else NEEDED
     out, seen = [], set()
     for i, r in enumerate(data.get('reading', [])):
         where = f'{os.path.basename(path)} reading {i + 1} ({r.get("id")})'
-        if set(r) - KEYS or NEEDED - set(r):
-            raise ReadingError(f'{where}: unknown {sorted(set(r) - KEYS)} / missing {sorted(NEEDED - set(r))}')
+        if set(r) - keys or needed - set(r):
+            raise ReadingError(f'{where}: unknown {sorted(set(r) - keys)} / missing {sorted(needed - set(r))}')
+        bench_id = r['bench_id'] if merged else bench_of(path)
+        if merged and (not isinstance(bench_id, str) or not bench_id.isidentifier()):
+            raise ReadingError(f'{where}: invalid bench ID {bench_id!r}')
         if ('scene' in r) == ('scenes' in r):
             raise ReadingError(f'{where}: one of scene / scenes')
         if 'mismatch_nomodel' in r and not (isinstance(r['mismatch_nomodel'], str) and r['mismatch_nomodel'].strip()):
@@ -155,7 +164,7 @@ def load(path):
             compile(e, where, 'eval')
         items = _items(r['item'], where) if 'item' in r else []
         for entry in r.get('each', [None]):
-            one = {'bench_file': bench_of(path), 'expect': expect, 'let': dict(r.get('let', {})), 'vars': {},
+            one = {'bench_file': bench_id, 'expect': expect, 'let': dict(r.get('let', {})), 'vars': {},
                    'items': list(items),
                    'mismatch': r.get('mismatch'), 'mismatch_nomodel': r.get('mismatch_nomodel'),
                    'bench': r['bench'], 'proves': r['proves'], 'id': r['id']}
@@ -179,15 +188,28 @@ def load(path):
                     one['id'] = f'{r["id"]}[{",".join(_tag(scs[k], entry[k]) for k in over)}]'
                 one['scenes'] = {n: _scene(s, where) for n, s in scs.items()}
                 one['single'] = False
-            if one['id'] in seen:
+            key = (bench_id, one['id'])
+            if key in seen:
                 raise ReadingError(f'{where}: id {one["id"]} twice')
-            seen.add(one['id'])
+            seen.add(key)
             out.append(one)
     return out
 
 
-def load_all(folder=CHECKS):
-    return [r for p in files(folder) for r in load(p)]
+def located(folder=None):
+    """(path, reading) in logical bench order, preserving table order within each bench."""
+    found = [(p, r) for p in files(folder) for r in load(p)]
+    seen = set()
+    for p, r in sorted(found, key=lambda pair: pair[1]['bench_file']):
+        key = (r['bench_file'], r['id'])
+        if key in seen:
+            raise ReadingError(f'{p}: duplicate reading {key!r}')
+        seen.add(key)
+        yield p, r
+
+
+def load_all(folder=None):
+    return [r for _, r in located(folder)]
 
 
 def groups(readings):

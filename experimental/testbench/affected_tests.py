@@ -399,6 +399,7 @@ def name_fallback(path, tests_dir_files):
 
 FACADE = 'experimental/cnv/sim.py'      # the Sim facade: importing it does not count as importing the parts it imports
 CNV = 'experimental/cnv'
+BENCH_LEAF = re.compile(rf'{CNV}/benches/[^/]+/[^/]+/(checks\.py|scenes\.py|readings\.toml)$')
 RUN_ENDS = ('sim', 'simproxy')          # simcoverage.RUN_ENDS: the player-style run
 SEARCH = (CNV, 'experimental/campaign', '', 'tests')    # where a bare import is looked for after the importer's folder
 SKIP_DIRS = {'__pycache__', 'archive', 'node_modules'}
@@ -498,6 +499,8 @@ class ImportGraph:
                       ('/' not in f[len(folder):] or f[len(folder):].count('/') == 1 and f.endswith('/__init__.py'))}
             self.registries[p] = loaded
             imp.update(loaded)
+        if p == f'{CNV}/registry.py':
+            imp.update(f for f in self.paths if BENCH_LEAF.fullmatch(f))
         return imp - {None, p}, strs - {None, p}
 
     def edges(self, p):
@@ -848,6 +851,11 @@ def pick(cov, changes, sources, remaps, fallback, graph=None, facade=(None, None
     for key, shown, hunks, deleted in changes:
         if is_test_file(shown):
             add({shown}, 'changed test')
+            continue
+        if BENCH_LEAF.fullmatch(key):
+            add({'tests/conformance/test_readings.py', 'tests/tools/test_readings_format.py'}, 'bench leaf: ' + shown)
+            if graph and key in graph.paths and not deleted:
+                add(graph.importers(key), 'loads bench: ' + shown)
             continue
         if key == FACADE and hunks is not None and graph and not deleted:
             old_parts, new_parts = graph.part_names(facade[0]), graph.part_names(facade[1])
