@@ -148,3 +148,30 @@ proves = "simai team attack: the initial four members, alive, aim the far plant 
 let = {row = "next(r for r in teams() if r['frame'] == 263)"}
 expect = ["[m['alive'] for m in next(r for r in teams() if r['members'])['members']] == [True] * 4",
           "[m['aim'] for m in row['members']] == ['UNIT - CNV AI Far Plant'] * 4"]
+
+[[reading]]
+id = "beside_the_war_bears_the_siege_buffer_makes_no_difference"
+scenes = {a = {build = "airevb1", check = "a", until = 40.0, teams = true}, b = {build = "airevb0", check = "a", until = 40.0, teams = true}}
+bench = """\
+B 11-24 airevb1 (SiegeWeaponBuffer 1.5) / airevb0 (1000), CampAIRevB1A_mcp_1124_214511 / CampAIRevB0A_mcp_1124_215522 \
+ra3ext tstate lines: the attack team's states run frame for frame the same, 8 to f196, 6 (the far plant) from f200, \
+then 0 and 2; never 4 (siege) in either"""
+proves = "simai team states: with only war bears (no hostile fires at a tank) near, the siege buffer changes nothing and no team goes to state 4"
+let = {st = "lambda s: [(r['frame'], r['state']) for r in teams(s) if r['members']]"}
+expect = ["st('a') == st('b')", "4 not in {x for _, x in st('a')}"]
+
+[[reading]]
+id = "beside_the_war_bears_the_team_waits_then_attacks_the_far_plant"
+scene = {build = "airevb1", check = "a", until = 40.0, teams = true}
+bench = """\
+B 11-24 airevb1 (CampAIRevB1A_mcp_1124_214511 tstate lines): the attack team in state 8 to f196, 6 aiming the far \
+plant from f200; no 4 and no 5 to s40"""
+proves = "simai team states: the team stays idle until it attacks the far plant (no gather, no siege)"
+item = "AI 微操/AIMicroManagerData.SiegeWeaponBuffer"
+let = {st = "[(r['frame'], r['state']) for r in teams() if r['members']]"}
+expect = ["{x for f, x in st if f < 196} == {8}", "not {4, 5} & {x for _, x in st}"]
+mismatch = """\
+simai: 5 (gather) at f30, 6 at f60, 0 at f180; the bench waits in 8 to f196 -- the model takes the war bears into the \
+hostile list from f30, the bench (by its states) not until f200; the siege rule (SiegeWeaponBuffer, state 4) is read \
+(work/re l4_micro_retreat.md 1.1) but not modelled: this scene never reaches it on the bench (model try kept in \
+work/re/b_wip/siege_state4_model.diff)"""

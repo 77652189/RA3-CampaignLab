@@ -28,6 +28,8 @@ TURRET_PLANT_AT = (-480.0, 0.0)        # the plant behind it, out of the way
 FOE = 'AlliedAntiVehicleVehicleTech1'  # airevk*: the player's Guardian tanks, a moving unit target (work/re/d131 1)
 FOE_AT = ((-305.0, -60.0), (-305.0, 60.0))   # ~54 centre to centre from each of the column's tanks (-260, -90..90),
                                        # far inside the reverse gate d < R - 10 (cannon AttackRange 150: R 145)
+BEAR = 'SovietScoutInfantry'           # airevb*: war bears, they bite infantry only (no hostile can fire at a tank)
+BEAR_AT = ((-200.0, 320.0), (-320.0, 320.0))   # north of the column (-260, -90..90), 230+ off its nearest tank
 
 
 def mission(mod, factory=False, faction=None, close=False, observe=False, **fields):
@@ -36,15 +38,17 @@ def mission(mod, factory=False, faction=None, close=False, observe=False, **fiel
     close: no guards, and the team's target (the far plant) stands beside the tanks at the start (CLOSE_AT) -- the
     ReverseMove read (work/re/l4_micro_engage.md 1.4): a member 0 < d < range - 10 from its target backs off to range - 10.
     close='turret': a player's turret beside the tanks instead (TURRET_AT), the plant behind it.
-    close='unit': two of the player's Guardian tanks beside the tanks (FOE_AT), the far plant where it was."""
+    close='unit': two of the player's Guardian tanks beside the tanks (FOE_AT), the far plant where it was.
+    close='bear': two of the player's war bears off the tanks' way (BEAR_AT), the far plant where it was."""
     m = ac.mission(mod, observe=observe, Crush='false', **fields)
     if close:
         m.objects = [o for o in m.objects if not o.name.startswith('UNIT - CNV AI Guard')]
         m.cast = {k: r for k, r in m.cast.items() if not k.startswith('guard ')}
-    if close == 'unit':
-        m.spawns |= {FOE}
-        for k, (dx, dy) in enumerate(FOE_AT):
-            m.put(FOE, 'east base', dx, dy, angle=0.0, name=f'UNIT - CNV AI Rev Foe {k + 1}', role=f'rev foe {k + 1}')
+    if close in ('unit', 'bear'):
+        foe, at = (FOE, FOE_AT) if close == 'unit' else (BEAR, BEAR_AT)
+        m.spawns |= {foe}
+        for k, (dx, dy) in enumerate(at):
+            m.put(foe, 'east base', dx, dy, angle=0.0, name=f'UNIT - CNV AI Rev Foe {k + 1}', role=f'rev foe {k + 1}')
     elif close:
         o = m.find(m.role('far plant').name)
         o.x, o.y = m.site('east base', *(TURRET_PLANT_AT if close == 'turret' else CLOSE_AT))[:2]
@@ -194,4 +198,10 @@ MISSION = {
                                 UseGatherState='false'),
     'airevkp0': lambda: mission('CampAIRevKP0', close='unit', observe='cmd', CleanupPowerAdvantage='1000.0',
                                 UseGatherState='false', ReverseMove='false'),
+    # B 11-24 SiegeWeaponBuffer (work/re l4_micro_retreat.md 1.1): airev1t with two war bears for the guards, off the
+    # tanks' way -- 1.5 x a bear's reach is under the Hammer's 150: state 4, each tank attacks the nearest bear;
+    # at 1000 no siege, UseGatherState on: state 5
+    'airevb1': lambda: mission('CampAIRevB1', close='bear', observe=True, CleanupPowerAdvantage='1000.0'),
+    'airevb0': lambda: mission('CampAIRevB0', close='bear', observe=True, CleanupPowerAdvantage='1000.0',
+                               SiegeWeaponBuffer='1000.0'),
 }

@@ -150,7 +150,7 @@ def a(m, build):
         t.counters.append(('CNV_PB_Health', '血量'))
         t.scripts.append(Script('Test - health', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', tanks[0],
                                                        'CNV_PB_Health')], once=False))
-    elif not build.startswith(('airevp', 'airevt', 'airevk')):  # no guards
+    elif not build.startswith(('airevp', 'airevt', 'airevk', 'airevb')):  # no guards
         counted('CNV_PB_Guards', '守军数', t, template=inf, player=p1, most=13)
     if build != 'airevkh':               # airevkh: the foes' two health % instead (four counters at most)
         counted('CNV_PB_Tanks', '坦克数', t, template=tank, player=s1)
@@ -177,6 +177,13 @@ def a(m, build):
             t.expect += [('回家', wake + (5.0 if build in IDLE else LATE), 'ever>=', 1, end)]
         else:
             t.expect += [('回家', wake + LATE, '==', 0, end)]
+    elif build.startswith('airevb'):
+        # B 11-24 SiegeWeaponBuffer: the bears (healed every frame) stay; the result is the host's team states
+        # (readings: never 4, b1 = b0); the tanks die s65-s77 on the bench (the bears or the turret reach them)
+        bears = [m.role(f'rev foe {k}').name for k in (1, 2)]
+        t.scripts.append(Script('Test - keep', [], [('UNIT_SET_HEALTH', n, 100.0) for n in bears], once=False))
+        counted('CNV_PB_Foes', '敌熊', t, template=m.find(bears[0]).template, player=p1)
+        t.expect += [('敌熊', wake, '>=', 2, end)]
     elif build.startswith('airevk'):
         # D round 132: two of the player's Guardians ~54 from the column (missions FOE_AT); both sides healed every
         # frame so the target stays; 近敌 = s1 tanks within NEAR_FOE of the foes' midpoint (start: all 4 inside;
@@ -250,4 +257,5 @@ def a(m, build):
 
 CHECKS = {k: {'a': (lambda m, k=k: a(m, k))} for k in ('aipull1', 'aipull0', 'aipullh1', 'aipullh0', 'aipullga', 'aipulli1', 'aipullr1', 'aipullp1', 'aipullbig', 'aipullsov', 'aipulljp',
                                                            'airev1', 'airev0', 'airev1t', 'airev0t', 'airevidx', 'airevgt', 'airevat', 'airevit', 'airevp1', 'airevp0', 'airevp1t', 'airevt1', 'airevt0',
-                                                           'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0', 'airevkh')}
+                                                           'airevk1', 'airevk0', 'airevkg1', 'airevk2', 'airevk2o', 'airevkp1', 'airevkp0', 'airevkh',
+                                                           'airevb1', 'airevb0')}
