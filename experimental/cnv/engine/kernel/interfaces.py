@@ -507,10 +507,23 @@ class SpecialPower(Interface):
 
 
 class ReadyMonitor(Interface):
-    """MonitorSpecialPowerTimerUpdate: a model condition its thing has while a power of its thing is ready."""
+    """A model condition a module shows on its thing (Sim.has_model_condition asks): MonitorSpecialPowerTimerUpdate's
+    while a power of its thing is ready, SpecialDisguiseUpdate's DISGUISED while worn."""
     __slots__ = ()
 
     def shows(self, condition, frame):
+        raise NotImplementedError
+
+
+class Disguise(ReadyMonitor):
+    """SpecialDisguiseUpdate, one a thing: wear(owner) -- a SpecialPowerNugget hit on a thing of `owner` now --;
+    seen_as(frame): the player it passes for then (None: not disguised; frame None: now)."""
+    __slots__ = ()
+
+    def wear(self, owner):
+        raise NotImplementedError
+
+    def seen_as(self, frame=None):
         raise NotImplementedError
 
 

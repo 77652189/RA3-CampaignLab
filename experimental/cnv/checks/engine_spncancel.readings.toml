@@ -10,7 +10,6 @@ expect = [
     "values[-1] == measured",
     "all(row == measured for sec, row in zip(times, values) if sec >= 22)",
 ]
-mismatch = "Bench 1101/1101/1110/1111; simulator 1111/1111/1110/1111 at the final sample. With only the DISGUISED bit modeled, both native lanes still take autonomous enemy damage."
 
 [[reading]]
 id = "native_transport_disguise_script_bit_acquisition_controls_bench_replay"

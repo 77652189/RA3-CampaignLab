@@ -43,7 +43,7 @@ WRITES = frozenset({'_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims
 PEERS = frozenset({'act', 'engineer_entry', 'garrison', 'hunts', 'powers_off', 'reach', 'send', 'seq', 'short_of_power',
                    'toggles_of', 'wallet', 'production',
                    'aim', 'can_hit', 'fight_field', 'fire_spot', 'in_range', 'members', 'shot_blocked',
-                   'side_sees', 'ai', 'team_targets', 'unshot',
+                   'side_sees', 'ai', 'team_targets', 'unshot', 'relation',
                    '_field', '_fire_obstacles', 'chilling', 'firing', 'mid_aims', 'seen', 'volleys'})
 
 

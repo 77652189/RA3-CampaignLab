@@ -6,4 +6,3 @@ scene = {build = "engine_spntrans", check = "a", until = 14, shot_clock = true}
 bench = "MEASURED 2026-11-13: s1-4 all1100; s5 1110/1110/1110/1111; s6-15 1111/1110/1110/1111."
 proves = "SpecialDisguiseUpdate unpack: the native transport's hit latches before its DISGUISED bit, while the script control already has both."
 expect = "any(row == [1110, 1110, 1110, 1111] for row in vals(rows))"
-mismatch = "Bench has a 1110/1110/1110/1111 sample, simulator has zero such samples because it applies the native DISGUISED bit immediately."

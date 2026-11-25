@@ -2315,9 +2315,8 @@ def passive_area(template, own=None):
 def nugget_disguise_power(template, power, own=None):
     """engine_spndisguise / engine_spntrans: retail direct-hit DISGUISED bit only.
 
-    Identity, rendering, enemy acquisition, retargeting and cancellation remain
-    gaps. Transport unpack timing is also a gap: immediate bit application is
-    INFERRED; engine_spntrans only replays the settled s12-14 state.
+    The consumer is modules/disguise.py (UnpackTime, the identity enemies
+    acquire by); rendering, retargeting and cancellation remain gaps.
     Reject unmeasured handler/power shapes rather than treating them as buffs.
     """
     def handler(xml):

@@ -117,8 +117,10 @@ class EffectHost:
             cache[key] = simunits.nugget_self_power(template, power, self.world.own)
         return cache[key]
 
-    def disguise(self, body):
-        self.peers.set_model_condition(body, 'DISGUISED')
+    def disguise(self, body, owner):
+        """The SpecialPowerNugget disguise: body's SpecialDisguiseUpdate puts it on as `owner` (modules/disguise.py)."""
+        for m in body.find(interfaces.Disguise):
+            m.wear(owner)
 
     def modifier(self, template, mid):
         """(the modifier `mid` as the template's XML reads it -- simunits.modifier, None: none --, that XML)."""

@@ -1,7 +1,9 @@
 """AIUpdate's target rules (command family C1, ADR 0029): whom a shooter takes, no state of their own. The host lends
-its queries as `q` (hostile, in_range, can_hit, side_sees, shot_blocked, reach_of; unshot, ai) and keeps what follows a
+its queries as `q` (hostile, in_range, can_hit, side_sees, shot_blocked, reach_of, relation; unshot, ai) and keeps what follows a
 pick: the fire queues, engaged, the WeaponSet's PER_TARGET lock (Sim.aim, first_shot); chases ask takes_by_itself."""
 import numpy as np
+
+from engine.kernel import interfaces
 
 
 def takes_by_itself(a, t, q):
@@ -17,6 +19,10 @@ def takes_by_itself(a, t, q):
     RA3 drops that exception. An order naming the target (`a.goal`) is not filtered here."""
     if t.template in q.unshot:
         return False
+    for d in (t.find(interfaces.Disguise) if getattr(t, 'modules', None) else ()):   # it passes for that player
+        seen = d.seen_as()                                                           # (modules/disguise.py)
+        if seen is not None and q.relation(a.owner, seen) != 'ENEMIES':
+            return False
     if 'NOT_AUTOACQUIRABLE' in t.kinds and not ('AUTO_ACQUIRABLE_BY_AI' in t.kinds and a.ai_acquire):
         return False
     if 'STRUCTURE' in t.kinds and not a.ai_acquire:
