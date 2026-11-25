@@ -357,8 +357,9 @@ def fight(world, peers):
             m.drawn = a.goal if m.ordered and isinstance(a.goal, type(a)) else None
             order_attack(world, peers, a, pull, force=True)
         elif pull is None and m.drawn is not None:
-            back, m.drawn = m.drawn, None
-            order_attack(world, peers, a, back, force=True)
+            back, m.drawn = m.drawn, None   # not over an order given since (a move, another attack; review 1125 M)
+            if m.ordered and isinstance(a.goal, type(a)) and a.goal.find(interfaces.Magnet):
+                order_attack(world, peers, a, back, force=True)
     for a in armed:
         m = a.aiupdate
         m.engaged = False

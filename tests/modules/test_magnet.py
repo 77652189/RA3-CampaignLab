@@ -7,8 +7,9 @@ import engine.testing.small as simsmall
 from engine.ports.command import Command
 
 
-@pytest.mark.parametrize('on, gap, drawn', [(True, 150.0, True), (False, 150.0, False), (True, 260.0, False)])
-def test_the_black_hole_draws_a_shooter_within_its_radius_while_on(on, gap, drawn):
+@pytest.mark.parametrize('on, gap, drawn, moved', [(True, 150.0, True, False), (False, 150.0, False, False),
+                                                  (True, 260.0, False, False), (True, 150.0, True, True)])
+def test_the_black_hole_draws_a_shooter_within_its_radius_while_on(on, gap, drawn, moved):
     s = simsmall.small_world([('vip', 'AlliedAntiVehicleVehicleTech1', 'Player_1', 1400.0, 2400.0),
                               ('ship', 'AlliedAntiNavyShipTech1', 'Player_1', 1400.0 + gap, 2250.0),
                               ('hammer', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', 1400.0, 2250.0)],
@@ -20,7 +21,10 @@ def test_the_black_hole_draws_a_shooter_within_its_radius_while_on(on, gap, draw
     assert s.commands.do(Command('attack', units=('hammer',), target='vip')) == (True, '')
     s.advance(1)
     assert (s.bodies['hammer'].goal is s.bodies['ship']) is drawn
+    if moved:           # a move given while drawn stands once it is off (review 1125 M)
+        assert s.commands.do(Command('move', units=('hammer',), place='@1300,2250'))[0]
     if on:              # turned off: back on the VIP (review 109 #1)
         assert simtoggle.press(s, s.bodies['ship'], 'Command_ToggleMagneticArmor', lambda owner: False)
         s.advance(1)
-        assert s.bodies['hammer'].goal is s.bodies['vip']
+        assert (s.bodies['hammer'].goal is s.bodies['vip']) is not moved
+        assert s.bodies['hammer'].aiupdate.mode == ('move' if moved else 'attack')
