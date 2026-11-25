@@ -99,18 +99,24 @@ def build_ai():
 
 
 AI_STATES = os.path.join(CACHE, 'ai_states.xml')
+AI_STATES_SDK = os.path.join(CACHE, 'ai_states_sdk.xml')     # the same in full, SDK-spelt (the engine model reads it)
+# the GameObjects (and the rest the AI names by hash): their names for ai_states_sdk.xml
+NAME_STREAM = [('StaticStream.big', 'data\\static.')] + [(f'Core{v}.big', f'data\\static.{v}.')
+                                                         for v in (5, 6, 8, 9, 10, 11, 12)]
 
 
 def build_ai_states(inst=None):
     """work/retailref/ai_states.xml: every compiled AI personality / strategic, build, budget state of the stream read back into SDK-shaped
-    xml (ai_compiled.decode; needs its private layout, else a SystemExit)."""
+    xml (ai_compiled.decode; needs its private layout, else a SystemExit); ai_states_sdk.xml: the same, full mode."""
     import mapxml
     import ai_compiled
     import xml.etree.ElementTree as ET
-    states = ai_compiled.decode_stream(inst if inst is not None else mapxml.layered(AI_STREAM))
-    root = ET.Element('AssetDeclaration')
-    root.extend(states[k] for k in sorted(states))
-    ET.ElementTree(root).write(AI_STATES, encoding='utf-8', xml_declaration=True)
+    inst = inst if inst is not None else mapxml.layered(AI_STREAM)
+    for path, full in ((AI_STATES, False), (AI_STATES_SDK, True)):
+        states = ai_compiled.decode_stream(inst, full, full and mapxml.layered(NAME_STREAM))
+        root = ET.Element('AssetDeclaration')
+        root.extend(states[k] for k in sorted(states))
+        ET.ElementTree(root).write(path, encoding='utf-8', xml_declaration=True)
     print('cached ai_states.xml:', len(states), 'AI assets (personalities, strategic / build / budget states)',
           flush=True)
     return states
