@@ -5,7 +5,7 @@ DamageNugget and its siblings -- contained, secondary/freeze, suppression, EMP, 
 hit modifiers, leech), keeps the incoming-fire notifications (TrackIncomingWeaponFire: `incoming_*`,
 `inform_launch`, `expected_damage`) and the projectile arrivals (`queue_projectile_hit`), dispatches MetaImpact shocks
 and flies the knocked bodies (`projectile_detonate`, `meta_impact_*`), melts and freezes (`chill`) and runs
-HitReaction. The module functions are the stateless rules: the flank scalar, the physics ground height, suppression
+HitReaction and TrackDamage (`track`, read back by `expected_damage`). The module functions are the stateless rules: the flank scalar, the physics ground height, suppression
 sampling and death blasts. All over the world it is given (simworld.WORLD_API only).
 Its host's other parts come in as `peers` (`Peers`, the names in PEERS only, read when used so a swapped-in method
 still answers): the L2 body / modifier / status / locomotion calls (emp_disabled, cold_of, the model
@@ -14,7 +14,7 @@ queue_projectile_hit (a test may intercept an arrival) and the fight state it sh
 garrison, infiltrators, sweeps, attachments, player_ups, lift_timers, suppression_fields, death_blasts, chilling, the
 knock flights and holds, the EMP deadlines). This module never imports them.
 Fields it owns: incoming, projectile_hits, projectile_speeds, impact_body, knock_drowns, dots, cold_on, lift_modules,
-nugget_powers, hit_reaction_of.
+nugget_powers, hit_reaction_of, tracked, track_of.
 """
 import math
 import re
@@ -245,6 +245,13 @@ def _filter(p, rel, t):
     return bool(rule) or t.template.lower() in p['things']
 
 
+def track_rule(template, own=None):
+    """TrackDamage: (frames kept -- TimeToTrack, ceil --, InstantWeaponsOnly); None without one."""
+    heads = simunits.module_blocks(template, 'TrackDamage', own)
+    return (simunits._frames(simunits._secs(simunits._attr(heads[0][0], 'TimeToTrack', '0s'))),
+            simunits._attr(heads[0][0], 'InstantWeaponsOnly') == 'true') if heads else None
+
+
 def death_blast_due(world, frame, peers):
     """A death weapon going off by `frame` (simbody.Life.fire: a FireWeaponWhenDead's): every living object within its
     radius, centre to centre, whose owner stands to the dead one's as the weapon's RadiusDamageAffects takes
@@ -305,6 +312,8 @@ class Damage:
         self.lift_modules = {}           # caster template -> simunits.lift_module
         self.nugget_powers = {}          # (caster template, power) -> simunits.nugget_self_power
         self.hit_reaction_of = {}        # template -> simunits.hit_reaction
+        self.tracked = {}                # body.serial -> [(frame, damage kept by its TrackDamage, kept until)]
+        self.track_of = {}               # template -> track_rule
 
     def incoming_add(self, world, target, source, key, damage, hit, expiry):
         """Record one observed/predicted notification on a tracking target."""
@@ -322,9 +331,8 @@ class Damage:
     def expected_damage(self, world, target, behind, ahead, now=None):
         """Micro damage callback, seconds -> ceil frames; no facing multiplier.
 
-        This slice supplies incoming damage only. History remains a gap; the
-        miner's TrackDamage.InstantWeaponsOnly path is not inferred from HP loss.
-        INFERRED query policy: keep entries on expiry, remove strictly after.
+        behind: the TrackDamage history (`track`) of the last min(behind, TimeToTrack) frames; none without one.
+        INFERRED: a hit `behind` frames ago is out (age < window counts). INFERRED query policy: keep entries on expiry, remove strictly after.
         This is not the engine's autonomous table-cleanup schedule: the
         engine_inform_expiry probe retains expired rows until later frames.
         See work/re/c_inform_expiry_report.md; query output is not measured.
@@ -332,9 +340,28 @@ class Damage:
         now = world.frame_now() if now is None else now
         rows = self.incoming.get(target.serial, [])
         rows[:] = [r for r in rows if now <= r[4]]
-        if behind:
-            world.gap(GAP_WEAPON, 'InformTargetNugget', '历史伤害入口未接；当前只提供来弹预计伤害')
-        return sum(r[2] for r in rows if r[3] <= now + math.ceil(ahead * simunits.LIFE_FPS)) if ahead > 0 else 0.0
+        window = math.ceil(behind * simunits.LIFE_FPS - 1e-6)
+        taken = sum(d for f, d, end in self.tracked.get(target.serial, ()) if now - f < window and now < end)
+        return taken + (sum(r[2] for r in rows if r[3] <= now + math.ceil(ahead * simunits.LIFE_FPS)) if ahead > 0 else 0.0)
+
+    def rule_of(self, world, cache, template, read):
+        """The template's rule by a simunits reader `read(template, own)`, kept in `cache` (hit_reaction_of, track_of)."""
+        if template not in cache:
+            cache[template] = read(template, world.own)
+        return cache[template]
+
+    def track(self, world, target, applied, instant, now):
+        """TrackDamage keeps `applied` (health lost at frame `now`) for TimeToTrack frames; InstantWeaponsOnly keeps
+        only the `instant` share (no projectile: `deal`). INFERRED: the share splits the applied loss pro rata; the
+        coarse clock's continuous fire is never instant, so a miner hit by it keeps nothing."""
+        rule = self.rule_of(world, self.track_of, target.template, track_rule)
+        if rule and applied > 0:
+            frames, only_instant = rule
+            rows = self.tracked.setdefault(target.serial, [])
+            rows[:] = [r for r in rows if now < r[2]]
+            share = instant if only_instant else 1.0
+            if frames and share > 0:
+                rows.append((now, applied * share, now + frames))
 
     def inform_launch(self, world, target, attacker, weapon, count=1):
         """Ordinary launch notification. INFERRED: centre positions, time scale 1.
@@ -407,7 +434,7 @@ class Damage:
                 if b is not None:
                     b.engine_status.discard('LIFTED_INTO_AIR')  # a soft landing (simunits.LiftTimers)
                     simmodifier.modify(world, b)
-        hurt = {}
+        hurt, instant = {}, {}      # instant: the part of hurt from shots with no projectile (TrackDamage)
         leech_events = {}       # the frame's leech claims (engine/combat/leech), paid after the damage
         host = EffectHost(self, world, peers)       # the 'effect' phase's calls (engine/combat)
 
@@ -452,19 +479,23 @@ class Damage:
                     registry.run('aim', ctx)              # a dynamic line picks the victims (LineDamage)
                     for victim in ctx.victims:
                         h = hurt.setdefault(victim.serial, [victim, 0.0, by])
-                        ctx.victim = victim
+                        before, ctx.victim = h[1], victim
                         registry.run('victim', ctx)       # its damage, the leech claims, the strip (registry.ORDER)
                         h[2] = by
+                        if not projectile:
+                            instant[victim.serial] = instant.get(victim.serial, 0.0) + h[1] - before
                     registry.run('effect', ctx)           # the lift, the attachment, the power, the modifier (registry.ORDER)
                     if w.get('at_self') and w.get('meta_impacts') and not projectile:
                         meta_impact.fire_at_self(host, w, by, t)      # the shotgun's shocks from its feet (A363)
         self.dots[:] = dot.tick(self.dots, world.frame_now(), hurt, armor_scalar, gap)    # the frame-end DOT ledger
+        now = world.frame_now()
         for t, dmg, by in hurt.values():
-            if world.frame_now() < t.immune_until or t.shielded or t.indestructible:
+            if now < t.immune_until or t.shielded or t.indestructible:
                 continue
             before_hp = t.hp
             t.damage(dmg)
             self.hit_reaction_damage(world, t, before_hp - t.hp, peers, by)
+            self.track(world, t, before_hp - t.hp, instant.get(t.serial, 0.0) / dmg if dmg > 0 else 0.0, now)
             leech.refund(leech_events.get(t.serial), t, before_hp, gap)
             t.set_last_damage(by.owner, by)
             if t.hp <= 0 and t.alive:
@@ -491,10 +522,7 @@ class Damage:
         """
         if damage <= 0 or target.hp <= 0:
             return
-        cache = self.hit_reaction_of
-        if target.template not in cache:
-            cache[target.template] = simunits.hit_reaction(target.template, world.own)
-        rule = cache[target.template]
+        rule = self.rule_of(world, self.hit_reaction_of, target.template, simunits.hit_reaction)
         if (rule and rule['seconds'] > 0 and rule['required'] <= set(target.status)
                 and not rule['forbidden'] & set(target.status)):
             peers.set_model_condition(target, 'HIT_REACTION', rule['seconds'])

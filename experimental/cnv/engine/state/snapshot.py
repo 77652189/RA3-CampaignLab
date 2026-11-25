@@ -82,7 +82,7 @@ SIM = {
                  'self_bits_due': STATE},
     'harm': {'incoming': STATE, 'projectile_hits': STATE, 'knock_drowns': STATE, 'dots': STATE, 'cold_on': STATE,
              'projectile_speeds': CACHE, 'impact_body': CACHE, 'lift_modules': CACHE, 'nugget_powers': CACHE,
-             'hit_reaction_of': CACHE},
+             'hit_reaction_of': CACHE, 'tracked': STATE, 'track_of': CACHE},
 }
 for _f in ('t log box_log panel_log asked up scenes unknown flags objectives markers banned unit_construction_disabled '
            'base_construction_disabled ai_paused buildable banned_ups border reveal_all reveal_all_until revealed_to '

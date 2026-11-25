@@ -24,7 +24,19 @@ expect = [
     "vals(rows)[-1] == expected",
     "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
 ]
-mismatch = "Final simulator 1191052068/40135070/1135068/91135089, bench 1187051068/87135068/101003068/87135089. The miners are HarvesterController's (handed over to the default team): base shields before its hit as on the bench (frames 91/52 vs 87/51, the p1 shells land 4 frames late); order wants TrackDamage history (the micro passes targeted now); high lands 47 frames early: the AI's LandDefense team takes the s1 gun under NO_ATTACK and walks it nearer, the bench's never moves (why not: not read)."
+mismatch = "Final simulator 1191052068/40135070/101007068/91135089, bench 1187051068/87135068/101003068/87135089. The miners are HarvesterController's (handed over to the default team): base shields before its hit as on the bench (frames 91/52 vs 87/51, the p1 shells land 4 frames late); order shields after its hit (TrackDamage) at 7, the bench 3: the micro's round is every 8 frames (300, 308; hit 302), the bench's 2 frames after the hit (phase not read); high lands 47 frames early: the AI's LandDefense team takes the s1 gun under NO_ATTACK and walks it nearer, the bench's never moves (why not: not read)."
+
+[[reading]]
+bench_id = "engine_inform_ai"
+id = "inform_ai_track_damage_keeps_the_instant_hit_not_the_shell"
+scenes = {a = {build = "engine_inform_ai", check = "a", until = 37, shot_clock = true}, off = {build = "engine_inform_ai", check = "off", until = 37, shot_clock = true}}
+bench = "a: order 101003068 (instant 150 UNRESISTABLE, shield after the hit); off: base 87135068 (the same 30 % by a shell, no launch notice: hit, never shields)"
+proves = "TrackDamage (SovietMiner TimeToTrack 2s, InstantWeaponsOnly): the micro's look-behind counts the instant hit it took, not the shell's"
+item = "物体模块 Behaviors/TrackDamage"
+expect = [
+    "vals(a)[-1][2] // 100000000 == 1",
+    "vals(off)[-1][0] // 100000000 == 0 and vals(off)[-1][0] % 1000 == 68",
+]
 
 [[reading]]
 bench_id = "engine_inform_ai"
@@ -48,7 +60,7 @@ expect = [
     "vals(rows)[-1] == expected",
     "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
 ]
-mismatch = "Final simulator 91135068/40135070/1135068/91135089, bench 87135068/87135068/101003068/87135089. As [a]: base and removed as on the bench but 4 frames late; order wants TrackDamage history; high lands 47 frames early."
+mismatch = "Final simulator 91135068/40135070/101007068/91135089, bench 87135068/87135068/101003068/87135089. As [a]: base and removed as on the bench but 4 frames late; order shields 4 frames late (the micro's round); high lands 47 frames early."
 
 # Bench readings of benches/weapon/target_effects/checks.py#engine_secondary (format: experimental/cnv/readings.py).
 
