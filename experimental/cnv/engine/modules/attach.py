@@ -47,6 +47,15 @@ TERROR = dict(ParentStatus='VEHICLE_ATTACHED BOOBY_TRAPPED', CloseEnoughRange='5
               ForbiddenParentStatus='UNDERGOING_REPAIR', IgnoreForbiddenParentStatusStatus='UNDER_IRON_CURTAIN',
               BounceTimeout='0.5s')
 TERROR_KIDS = [('ObjectFilter', dict(Rule='ANY', Include='VEHICLE', Relationship='ENEMIES ALLIES NEUTRAL'), 0)]
+# the retail Tanya C4 block (AlliedCommandoTech1; engine_attachc4 a / b): ParentStatus goes on the parent at the hit even
+# when ForbiddenParentStatus then refuses the link (a: MARCH_OF_DEATH without ATTACHED; b, the attribute deleted: the
+# link). DETACH_WHEN_IDLE and the detonation's owner modifier are not modelled; the parent's death frees the child
+C4 = dict(CloseEnoughRange='1', Range='5', ParentStatus='MARCH_OF_DEATH',
+          AttachedObjectStatus='IGNORE_AI_COMMAND ENCLOSED NON_AUTOACQUIRABLE UNATTACKABLE',
+          AttachedModelConditions='HIDDEN',
+          Flags=frozenset('ONE_ATTACH_PER_PARENT STICK_TO_PARENT TELEPORT DETACH_WHEN_IDLE'.split()))
+C4_KIDS = [('ObjectFilter', dict(Rule='ANY', Include='STRUCTURE VEHICLE', StatusBitFlagsExclude='AIRBORNE_TARGET',
+                                 Relationship='ENEMIES ALLIES NEUTRAL'), 0)]
 PARENT_KINDS = frozenset({'VEHICLE', 'AIRCRAFT', 'HUGE_VEHICLE'})
 FPS = 15
 SPEED = 150.0       # BaseRepairDrone's LocomotorSet Speed: REPAIR's only retail user (another drone's: INFERRED)
@@ -96,6 +105,11 @@ class AttachData(module.ModuleData):
                 flags=set(TERROR['Flags']), range=None, die_with_parent=True,
                 child=set(TERROR['AttachedObjectStatus'].split()) | {'ATTACHED'},
                 parent=set(TERROR['ParentStatus'].split())))
+        c4 = _native(head, inner, C4, C4_KIDS, keep=('ForbiddenParentStatus',))
+        if c4:      # range None as TERROR's (the gun's AttackRange 1 is edge to edge; Range 5 unread, INFERRED)
+            return cls(templates.attr(head, 'id'), dict(
+                flags=set(C4['Flags']), range=None, forbidden_parent=set((c4['ForbiddenParentStatus'] or '').split()),
+                child=set(C4['AttachedObjectStatus'].split()) | {'ATTACHED'}, parent={'MARCH_OF_DEATH'}))
         flags = set(templates.attr(head, 'Flags', 'STICK_TO_PARENT TELEPORT USE_GEOMETRY').split())
         if (inner.strip() or not FLAGS <= flags or flags - FLAGS - MORE_FLAGS
                 or set(re.findall(r'(\w+)\s*=', head)) - ATTRS):

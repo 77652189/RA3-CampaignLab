@@ -302,7 +302,7 @@ NOTES = {
     (NUGGET, 'GrapplingHookNugget'): (BENCHED, '仅原版天启鱼叉钩车辆：开关后 NO_ATTACK 挡着不钩、放开即自己索敌钩住拉死（engine_grapple a / b）；钩建筑 / TIME_BOMB、弹跳、放钩再钩未测，命中那 1 点伤害模拟器不显示（INFERRED）'),
     (MODULE, 'Behaviors/LiftObjectUpdate'): (GUESSED, '部分：显式TimeIncrement/MaxTimeLifted的开火者举升表；台上只有7s/18s状态快照（benches/weapon/impact/readings.toml#engine_lift），逐帧计时来自模块证据、未上台量；垂直运动/死亡/飞机/落地清位仍gap'),
     (NUGGET, 'ActivateLiftObjectNugget'): (BENCHED, '直接单发：开火者举升表 trunc(TimeIncrement×15) 逐发累加、续期封顶 MaxTimeLifted，释放不清 LIFTED，SoftLanding 举高 ≤ 28 落地清位（engine_lift a / landing / probe）；原版地面 3 个宿主的筛选（engine_liftground）；打飞机走坠机分支：开火者的 AirplaneCrashWeapon 由飞机打自己、不置 LIFTED（engine_liftair，死亡帧 INFERRED 取命中帧）。gap：弹体 / 多发、28–40 的清位边界、落地武器伤害；乘员炮塔一个槽里 SECONDARY 对空线不选（选武器归 weaponset，mismatch 读数）'),
-    (NUGGET, 'AttachNugget'): (GUESSED, '部分：engine_attach a实测直接单发、父子状态、随父移动及目标状态/类型拒绝；仅零半径简单模块，原版复杂筛选/维修/吸血/解除/弹体未接通；engine_attachc4 a原版谭雅/删Nugget及父EXPLOSIVES_ATTACHED对照为11/10024/10030/10028，正常原版附着后父死子活，禁用父仍有MARCH_OF_DEATH但无ATTACHED；tests/test_attach_c4.py具名回放，原生模块状态/链接/爆破消费strict xfail，见work/re/c_attachc4_report.md；engine_attachmine a原生磁力地雷本体原位创建/删Nugget×普通/SPECIAL_ARMOR_ACTIVE为111/110/111/110，保留者均附着、删除者均不附着；tests/test_attach_mine.py具名回放阴性，b三个禁用位均读到仍附着为111/110/7111/7110，两原生回放strict xfail；上游弹体/OCL、复杂筛选及生命周期仍gap，见work/re/c_attachmine_report.md；不登记整项已对拍'),
+    (NUGGET, 'AttachNugget'): (GUESSED, '部分：engine_attach a实测直接单发、父子状态、随父移动及目标状态/类型拒绝；仅零半径简单模块，原版复杂筛选/维修/吸血/解除/弹体未接通；engine_attachc4 a原版谭雅/删Nugget及父EXPLOSIVES_ATTACHED对照为11/10024/10030/10028，正常原版附着后父死子活，禁用父仍有MARCH_OF_DEATH但无ATTACHED；原版写法已切片:谭雅C4（A372），见work/re/c_attachc4_report.md；engine_attachmine a原生磁力地雷本体原位创建/删Nugget×普通/SPECIAL_ARMOR_ACTIVE为111/110/111/110，保留者均附着、删除者均不附着；tests/test_attach_mine.py具名回放阴性，b三个禁用位均读到仍附着为111/110/7111/7110，两原生回放strict xfail；上游弹体/OCL、复杂筛选及生命周期仍gap，见work/re/c_attachmine_report.md；不登记整项已对拍'),
     (NUGGET, 'SpecialPowerNugget:轰炸消费者'): (GUESSED, '1用量，暂停：engine_spnbombnative a原版/删SPN/合成/合成删SPN为1010/1110/1110/1110；OCL活动消费者未实现，具名回放strict xfail；需要原版与合成宿主派发观测，work/re/c_spnbomb_report.md'),
     (NUGGET, 'SpecialPowerNugget:干扰消费者'): (GUESSED, '1用量，暂停额外SPN消费：engine_spnscr c原版四路删减、受害者真实开火、靶子封闭暴露窗，早HP100/100/90/90、晚HP90/90/80/80，打包301000090/301000090/300999080/300999080实机PASS；tests/test_special_power_nugget.py具名回放。停火差异由AttributeModifier决定，保留/删SPN相等不能证明额外消费者no-op；b仅NAMED_STOP仍续射，原预测strict xfail保留。两局耗完，缺SpecialPower开始/结束及命令消费观测，不晋升完整消费者，见work/re/c_spnscr_active_report.md'),
     (NUGGET, 'SpecialPowerNugget:附着dummy消费者'): (TODO, '1用量，暂停：JapanScoutInfantryAttachWeaponWarhead引用OBJECT dummy模板及原版宿主；缺独立派发/附着读数，不能按Dummy名字推定无操作；需Attach模块观测，work/re/c_spnclosure_report.md'),
@@ -724,16 +724,20 @@ def nugget_form_slice(ntype, forms):
                and {'ShockWaveAmount', 'ShockWaveRadius'} <= set(n.attrib) for n in forms):
             return ':普通无延迟显式Z' if all('ShockWaveZMult' in n.attrib for n in forms) else ':省略Z默认值'
     elif ntype == 'AttachNugget':
-        terror = dict(AttachModuleId='ModuleTag_AttachUpdate', ForbiddenTargetObjectStatus=(
-            'AIRBORNE_TARGET VEHICLE_ATTACHED UNDERGOING_REPAIR SPECIAL_ARMOR_ACTIVE UNDER_IRON_CURTAIN NOT_IN_WORLD'))
-        def terror_form(n):
-            f = list(n)
-            return (n.attrib == terror and len(f) == 1 and f[0].tag.rsplit('}', 1)[-1] == 'SpecialObjectFilter'
-                    and f[0].attrib == dict(Rule='ANY', Include='VEHICLE', Exclude='INFANTRY', Relationship='ENEMIES NEUTRAL')
-                    and [(c.tag.rsplit('}', 1)[-1], (c.text or '').strip(), c.attrib, len(c)) for c in f[0]]
-                    == [('ExcludeThing', 'SovietScoutVehicle', {}, 0)])
-        if all(terror_form(n) for n in forms):
-            return ':恐怖机器人近战'
+        for name, head, filt, things in (
+                (':恐怖机器人近战', dict(AttachModuleId='ModuleTag_AttachUpdate', ForbiddenTargetObjectStatus=(
+                    'AIRBORNE_TARGET VEHICLE_ATTACHED UNDERGOING_REPAIR SPECIAL_ARMOR_ACTIVE UNDER_IRON_CURTAIN NOT_IN_WORLD')),
+                 dict(Rule='ANY', Include='VEHICLE', Exclude='INFANTRY', Relationship='ENEMIES NEUTRAL'),
+                 ['SovietScoutVehicle']),
+                (':谭雅C4', dict(id='ModuleTag_AttachNugget', AttachModuleId='ModuleTag_AttachUpdate', Radius='1'),
+                 dict(Rule='ANY', Include='STRUCTURE VEHICLE VALID_TARGET_FOR_C4', Exclude='WALL_PIECE',
+                      StatusBitFlagsExclude='AIRBORNE_TARGET NOT_IN_WORLD UNDER_IRON_CURTAIN'),
+                 ['AlliedWallPiece', 'SovietWallPiece', 'JapanWallPiece'])):
+            if all(n.attrib == head and len(n) == 1 and n[0].tag.rsplit('}', 1)[-1] == 'SpecialObjectFilter'
+                   and n[0].attrib == filt and [(c.tag.rsplit('}', 1)[-1], (c.text or '').strip(), c.attrib, len(c))
+                                                for c in n[0]] == [('ExcludeThing', t, {}, 0) for t in things]
+                   for n in forms):
+                return name
     elif ntype == 'InformTargetNugget':
         allowed = {'id', 'MinTimeToImpactFudgeFactor', 'MaxTimeToImpactFudgeFactor'}
         if all(not list(n) and set(n.attrib) <= allowed
@@ -754,6 +758,7 @@ NUGGET_SCOPES = {
     'MetaImpactNugget:散弹自身弧': '仅瞬发DamageDealtAtSelfPosition散弹（维和/AAAVT1/ABD）：圆心=射手脚下，Arc沿射手→目标；engine_knock_self a 原样(0,25)(0,38)冲、39°侧邻与60外不冲，只删Arc侧邻也冲，三人初速度与模拟器公式同（tests/modules/test_nugget_meta_impact_self.py）；engine_knock_self b 原位计数读数（原样man离位/侧邻不动，只删Arc两人都离位）。半角arc/2、射手自身不受（自身或敌我未分）、禁FLAILING=飞行中跳过均INFERRED；AAAVT1继承后另加半径100一条（游戏是否两条都冲未量，模拟器只取自己那条）；弹体爆心的Arc轴未量（gap）',
     'MetaImpactNugget:省略Z默认值':'仅普通无延迟弹头省略ShockWaveZMult→SDK默认1及默认Physics轨迹；engine_knock_z a高度93邻人14帧落(2420,3740)、目标99%/邻人100%。碰撞时刻/爆心为台上输入；直击噪声方向/网格/选人仍INFERRED，完整曲线弹/坡地/筛选未对拍',
     'AttachNugget:恐怖机器人近战': '仅原版恐怖机器人近战附着武器（AttachNugget筛选含Relationship/ExcludeThing）+原版完整AttachUpdate块（engine/modules/attach.py TERROR整块比对）；engine_attachterror a 14s 127/127/3/3、20s 127007/127000/3006/3002：附着后子ATTACHED/ENCLOSED/UNATTACKABLE、父VEHICLE_ATTACHED/BOOBY_TRAPPED，脚本杀父子随死，删Nugget不附着。派发时Range10不当门槛（台上在武器射程25外沿派发也附着；更近处是否卡未量，INFERRED）；子随父死按"父最后伤害者不是子"判（自己杀死父时不死INFERRED）；弹跳、无人驾驶脱离、父禁用状态致死、修理中拒绝未量（gap）',
+    'AttachNugget:谭雅C4': '仅原版谭雅C4附着武器（Radius 1、StatusBitFlagsExclude并入禁用状态）+原版完整AttachUpdate块（engine/modules/attach.py C4整块比对）；engine_attachc4 a 11/10024/10030/10028、b（删ForbiddenParentStatus）11/10024/15/10028：附着后父MARCH_OF_DEATH、引爆炸死父、子活着脱离；父有EXPLOSIVES_ATTACHED时照样置MARCH_OF_DEATH但不链接；删Nugget不附着。只量了地面车辆父；引爆武器的AttributeModifierNugget（父EXPLOSIVES_ATTACHED、谭雅EXPLOSIVES_DETONATING 20s）不建（台上父命中帧即死，从未读到该位）；Range 5、DETACH_WHEN_IDLE、建筑父、铁幕/空中拒绝未量（gap）',
     'SpecialPowerNugget:变装消费者': '仅原版间谍/迅雷运输车的变装消费者（engine/modules/disguise.py）：命中按目标筛选（间谍INFANTRY、排除恐怖机器人；运输车VEHICLE），删SPN或删SpecialDisguiseUpdate不变装（engine_spndisguise/spnspyx/spnspyex/spntrans/spntrfilter 1111/1110/1110/1111）；Friend/Neutral同样变装（engine_spnrelations）；UnpackTime后才显示DISGUISED（engine_spntrans）；被动索敌按变装身份（engine_spncancel）；有载撤离乘员出舱即清变装、之后才挨打，空载撤离不清（engine_spncargo/spncancel；按出舱而非按键清，INFERRED）。gap：外观（OpacityTarget、显示成命中物模板）、点名攻击、探测器、间谍身份的其他用处、攻击或装载是否清变装',
     'InformTargetNugget:默认系数目标通知':'仅默认Min=.85/Max=1.15的目标通知→来弹表/矿车预计伤害开甲；engine_inform_probe a/off录入302、hit377、exp404、删除389，347帧入窗。engine_inform_expiry a/b只改预报速度及截止系数：两路截止313/304与303/317，物理清除336/312与336/320；tests/test_inform_ai.py具名入表回放绿，自主清理四strict xfail，不能以到期即时删除或共享周期拟合，见work/re/c_inform_expiry_report.md。另有合成engine_inform_radius a/b具名回放（tests/test_inform_radius.py）：Radius200通知80近邻、不通知320远邻，默认0仅主目标，删除通知全无；近邻复制主目标来弹信息。此合成切片不增加原版用量，边界/高度/异型护甲/复杂筛选仍INFERRED或gap，见work/re/c_inform_radius_report.md。历史/海啸/忍者及完整AI调度不在本登记范围，完整脚本仍xfail',
     'InformTargetNugget:Max1.6目标通知': '仅Min=.85/Max=1.6目标通知→来弹表；engine_inform_max a单变量对照录入302、hit377不变、exp444（默认404）、受伤389删除，矿车提前开甲。自然过期清理边界/半径/历史/海啸/忍者/完整AI调度未对拍，完整脚本仍xfail',

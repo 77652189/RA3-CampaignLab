@@ -91,3 +91,21 @@ bench = "CampAttTerrorA_mcp_1115_225900: s14-s20 = 127000 / 127000 / 3000 / 3000
 proves = "the retail Terror Drone's melee AttachNugget (Relationship / ExcludeThing filter) with its whole retail AttachUpdate block (engine/modules/attach.py TERROR): attached, the child ATTACHED / ENCLOSED / UNATTACKABLE and the parent VEHICLE_ATTACHED / BOOBY_TRAPPED; a script-killed parent takes the child with it (DIE_WHEN_PARENT_DIES_FROM_NOT_ME, Sim.attachment_tick); the deleted-nugget lanes never attach"
 item = "武器效果 AttachNugget:恐怖机器人近战"
 expect = ["any(v == [127000, 127000, 3000, 3000] for t, v in zip(times, vals(rows)) if 14 <= t < 16)", "vals(rows)[-1] == [127007, 127000, 3006, 3002]"]
+
+[[reading]]
+bench_id = "engine_attachc4"
+id = "native_c4_attaches_marks_and_a_forbidden_parent_takes_the_mark_alone"
+scene = {build = "engine_attachc4", check = "a", until = 24, shot_clock = true}
+bench = "CampAttC4A_mcp_1116_031232: s8 on 11 / 10024 / 10030 / 10028 (work/re/c_attachc4_report.md)"
+proves = "Tanya's slot takes its C4 line against a vehicle (A371); the retail C4 AttachNugget (Radius 1, StatusBitFlagsExclude) with its whole retail AttachUpdate block (engine/modules/attach.py C4): linked, the parent MARCH_OF_DEATH, the detonation kills it and the child lives; a parent with a script-set EXPLOSIVES_ATTACHED (ForbiddenParentStatus) gets MARCH_OF_DEATH and no link; the deleted-nugget lanes never attach"
+item = "武器效果 AttachNugget:谭雅C4"
+expect = "vals(rows)[-1] == [11, 10024, 10030, 10028]"
+
+[[reading]]
+bench_id = "engine_attachc4"
+id = "native_c4_without_its_parent_gate_links_the_marked_parent_too"
+scene = {build = "engine_attachc4", check = "b", until = 24, shot_clock = true}
+bench = "CampAttC4GateB_mcp_1116_031536: s8-s25 = 11 / 10024 / 15 / 10028 (work/re/c_attachc4_report.md)"
+proves = "only ForbiddenParentStatus deleted from the modules: the EXPLOSIVES_ATTACHED parent is linked and blown up as the normal one (the gate refuses the link, not the attack)"
+item = "武器效果 AttachNugget:谭雅C4"
+expect = "vals(rows)[-1] == [11, 10024, 15, 10028]"

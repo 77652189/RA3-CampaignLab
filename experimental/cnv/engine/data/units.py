@@ -651,14 +651,17 @@ def _weapons(texts, base_table=None):
                 rest = re.sub(r'<SpecialObjectFilter\b.*?(?:/>|>.*?</SpecialObjectFilter>)', '', inner, flags=re.S)
                 if (rest.strip() or len(filters) > 1
                         or set(re.findall(r'(\w+)\s*=', h)) - {'id', 'AttachModuleId', 'ForbiddenTargetObjectStatus', 'Radius'}
-                        or _num(_attr(h, 'Radius', '0'), float('nan')) != 0
+                        or _num(_attr(h, 'Radius', '0'), float('nan')) not in (0, 1)
                         or re.sub(r'<ExcludeThing>\s*[^<>\s]+\s*</ExcludeThing>', '', fi).strip()
                         or _attr(f, 'Rule', 'ANY') != 'ANY'
-                        or set(re.findall(r'(\w+)\s*=', f)) - {'Rule', 'Include', 'Exclude', 'Relationship'}):
+                        or set(re.findall(r'(\w+)\s*=', f)) - {'Rule', 'Include', 'Exclude', 'Relationship',
+                                                               'StatusBitFlagsExclude'}):
                     unsupported.append('AttachNugget')
-                else:   # Relationship / ExcludeThing: the retail Terror Drone's filter (engine_attachterror a)
+                else:   # Relationship / ExcludeThing: the retail Terror Drone's filter (engine_attachterror a); the
+                    # retail C4's Radius 1 and StatusBitFlagsExclude (engine_attachc4): only the hit target (INFERRED)
                     attachments.append(dict(module=_attr(h, 'AttachModuleId'),
-                                            forbidden=_attr(h, 'ForbiddenTargetObjectStatus', '').split(),
+                                            forbidden=(_attr(h, 'ForbiddenTargetObjectStatus', '') + ' '
+                                                       + _attr(f, 'StatusBitFlagsExclude', '')).split(),
                                             include=_attr(f, 'Include', '').split(), exclude=_attr(f, 'Exclude', '').split(),
                                             relation=_attr(f, 'Relationship', '').split(),
                                             things=[t.lower() for t in re.findall(

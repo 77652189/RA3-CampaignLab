@@ -43,4 +43,8 @@ class Attach:
                 continue
             if 'ONE_ATTACH_PER_PARENT' in rule['flags'] and any(p is t for _, p, _ in chains.values()):
                 continue
+            if t.status & rule.get('forbidden_parent', set()):  # engine_attachc4 a: its ParentStatus, then no link
+                t.engine_status.update(rule['parent'])
+                host.refresh_modifiers(t)
+                continue
             host.attach(by, t, rule)

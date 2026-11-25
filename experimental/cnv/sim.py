@@ -861,8 +861,8 @@ class Sim:
             extra = np.float32(np.float32(1.0) - v) * np.float32(unpack.frames())   # trunc((1 - v) F + F), v the
             unpack.set_end(self.frame_now() + int(np.float32(extra + np.float32(unpack.frames()))))  # owner's factor
         for m in b.find(kernel_interfaces.Attach):    # AttachUpdate (engine/modules/attach.py): the statuses its
-            if m.rule():                              # links may set are known ones (simcond_object)
-                self.attachment_known_status.update(m.rule()['child'] | m.rule()['parent'])
+            if r := m.rule():                         # links may set (or C4's gate reads) are known ones (simcond_object)
+                self.attachment_known_status.update(r['child'] | r['parent'] | r.get('forbidden_parent', set()))
         if b.topple:                            # a ToppleUpdate (engine/modules/topple.py)
             import engine.objects.topple as simtopple
             a, c, _, _ = simtopple.shape(template, self.own)
