@@ -673,8 +673,7 @@ class Brain:
             return got[1]
         st, world = self.host.mod['states'], self.world
         mine = self.base_object(self.player)
-        foes = [p for p in world.players.values() if p != self.player and world.enemy(self.player, p)]
-        them = st.target_player(foes, self.base_object)
+        them = st.target_player(self.foes(), self.base_object)
         if mine is None or them is None:
             answer = None
         else:
@@ -772,9 +771,10 @@ class Brain:
         return self.world.living(unspawned=True)
 
     def foes(self):
-        """The players this one takes as enemies now (Sim.enemy)."""
+        """The players this one takes as enemies now (Sim.enemy), in the player list's order (target_player walks it
+        from the back)."""
         w = self.world
-        return frozenset(p for p in w.players.values() if p != self.player and w.enemy(self.player, p))
+        return tuple(p for p in w.players.values() if p != self.player and w.enemy(self.player, p))
 
     def look(self, frame):
         """The view's things (living bodies, including garrisonable scenery, but not other scenery or slaves; the whole map,
