@@ -17,6 +17,12 @@ west of it and the spy pressed again: D the same frame (same script, after the f
 3.66 s pack), R 5 s on (the pack over, the 10 s reload not); C the control, Two teleported before its one press (is
 a teleport seen by a press the same frame?). Four counter lines: One / Two at END = the spots' One / Two p1 owns, D 1
 + P 10 + R 100 + C 1000; W = frames from the second press that Two is still s1's, D's x 1 + P's x 1000.
+Bench 1124: One 1111, Two 0 -- the control too, so a teleport and a press in one script tell nothing: c.
+c: as b with Own (a p1 infantry 40 west of each spy from the start, not an enemy) for Two, handed to s1 by
+NAMED_TRANSFER_OWNERSHIP_PLAYER where b teleports Two (C: is a hand-over seen by a press the same frame?).
+Bench 1124: as b. d tells apart "one press takes one infantry" and "a change the same frame is unseen": LATE below.
+Bench 1124 d: One 1111, Two 1111, W 0 -- the second presses take (no pack / reload gate on a script's press) and b / c
+miss only what the script changed that frame (readings).
 Prediction: a script's cast heeds no reload (read, l2_ability.md): R takes Two; BUSY_DURING_PACK: D and P not.
 """
 from maps import probe_range
@@ -41,6 +47,7 @@ def mission():
         m.put(SPY, lane, 0.0, 0.0, role='spy ' + k, name='E216 spy ' + k)
         for who, dx, dy in (('One', 40.0, 0.0), ('Two', 0.0, 300.0)):
             m.put(VICTIMS[0][1], lane, dx, dy, side='s1', role=who + k, name=f'E216 {who} {k}', angle=0.0)
+        m.put(VICTIMS[0][1], lane, -40.0, 30.0, role='Own' + k, name=f'E216 Own {k}', angle=0.0)
         m.waypoint('beside ' + k, 'Test E216 ' + k, lane, -40.0, 0.0)
     return m
 
@@ -77,36 +84,49 @@ def check(m):
     return t
 
 
-def again(m):
-    """b: a second press while the first one's pack is on (module docstring)."""
-    end = GO + LONG
+def steps(later):
+    """b / c: a lane's [(frame, actions)], 'move' and 'press' named (AGAIN)."""
+    if later is None:
+        return [(GO, ['move', 'press'])]
+    if later == 0:
+        return [(GO, ['press', 'move', 'press'])]
+    return [(GO, ['press']), (GO + later, ['move', 'press'])]
+
+
+# d: Own handed over a while before the press that should take it -- C 1 s before the one press (one press takes two
+# infantry?), P / R 10 frames before the second, D the second once the 10 s reload is over
+LATE = {'D': [(GO, ['press']), (GO + 5, ['move']), (GO + 165, ['press'])],
+        'P': [(GO, ['press']), (GO + 5, ['move']), (GO + 15, ['press'])],
+        'R': [(GO, ['press']), (GO + 65, ['move']), (GO + 75, ['press'])],
+        'C': [(GO - 15, ['move']), (GO, ['press'])]}
+
+
+def again(m, two='Two', plan=None, end=GO + LONG):
+    """b (c: two='Own'; d: plan LATE): a second press while the first one's pack is on (module docstring)."""
     p1, them = m.player('p1'), m.player('s1')
     t = Test()
     t.counters = [('E216Frame', '完成帧'), ('E216One', 'One'), ('E216Two', 'Two'), ('E216W', 'W')]
     t.scripts = [Script('Test - clock', [('COUNTER', 'E216Frame', 0, end)],
                         [('INCREMENT_COUNTER', 1, 'E216Frame')], once=False),
                  Script('Test - reveal', [], [('MAP_REVEAL_ALL_PERM', p1)]),
-                 _quiet(m, [r for r, *_ in VICTIMS] + [w + k for k in AGAIN for w in ('One', 'Two')])]
+                 _quiet(m, [r for r, *_ in VICTIMS] + [w + k for k in AGAIN for w in ('One', 'Two', 'Own')])]
     for i, (k, (_, later)) in enumerate(AGAIN.items()):
-        spy, two = m.role('spy ' + k).name, m.role('Two' + k).name
-        press, move = ('NAMED_USE_COMMANDBUTTON_ABILITY', spy, BUTTON), ('UNIT_TELEPORT_TO_WAYPOINT', two,
-                                                                            m.mark('beside ' + k))
-        second = GO + (later or 0)
-        if later is None:
-            t.scripts.append(Script(f'Test - go {k}', [('COUNTER', 'E216Frame', 2, GO)], [move, press]))
-        elif later == 0:
-            t.scripts.append(Script(f'Test - go {k}', [('COUNTER', 'E216Frame', 2, GO)], [press, move, press]))
-        else:
-            t.scripts += [Script(f'Test - go {k}', [('COUNTER', 'E216Frame', 2, GO)], [press]),
-                          Script(f'Test - again {k}', [('COUNTER', 'E216Frame', 2, second)], [move, press])]
+        spy, name = m.role('spy ' + k).name, m.role(two + k).name
+        press = ('NAMED_USE_COMMANDBUTTON_ABILITY', spy, BUTTON)
+        move = (('UNIT_TELEPORT_TO_WAYPOINT', name, m.mark('beside ' + k)) if two == 'Two' else
+                ('NAMED_TRANSFER_OWNERSHIP_PLAYER', name, them))
+        lane = plan[k] if plan else steps(later)
+        second = max(f for f, acts in lane if 'press' in acts)
+        t.scripts += [Script(f'Test - go {k} {j}', [('COUNTER', 'E216Frame', 2, f)],
+                             [{'move': move, 'press': press}[a] for a in acts]) for j, (f, acts) in enumerate(lane)]
         if k in 'DP':
             t.scripts.append(Script(f'Test - wait {k}', [('COUNTER', 'E216Frame', 3, second),
                                                          ('COUNTER', 'E216Frame', 0, end),
-                                                         ('NAMED_OWNED_BY_PLAYER', them, two)],
+                                                         ('NAMED_OWNED_BY_PLAYER', them, name)],
                                     [('INCREMENT_COUNTER', 1000 ** i, 'E216W')], once=False))
-        for who in ('One', 'Two'):
+        for who, role in (('One', 'One'), ('Two', two)):
             t.scripts.append(Script(f'Test - taken {who} {k}', [('COUNTER', 'E216Frame', 2, end),
-                                                               ('NAMED_OWNED_BY_PLAYER', p1, m.role(who + k).name)],
+                                                               ('NAMED_OWNED_BY_PLAYER', p1, m.role(role + k).name)],
                                     [('INCREMENT_COUNTER', 10 ** i, 'E216' + who)]))
     t.expect = [('完成帧', 0, 'ever==', end)]
     t.bench = [('bench_watch', dict(seconds=end // 15 + 25, every=1, sheet=False, lines=4))]
@@ -114,4 +134,5 @@ def again(m):
 
 
 MISSION = {'engine_dominate_e': mission}
-CHECKS = {'engine_dominate_e': {'a': check, 'b': again}}
+CHECKS = {'engine_dominate_e': {'a': check, 'b': again, 'c': lambda m: again(m, 'Own'),
+                                'd': lambda m: again(m, 'Own', LATE, GO + 180)}}

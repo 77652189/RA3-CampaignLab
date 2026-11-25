@@ -69,3 +69,11 @@ scenes = {f1 = {build = "engine_protofx", check = "f1", until = 20}, f2 = {build
 bench = "帧数 血0 血150 血200 at the end (two runs each, alike): f1 62 96 99, f2 60 86 99, f3 60 85 97, fn (no Japanese yard) 52 100 92; 血0 >= 91 till f60, its big drop at f73-81; 150 / 200 only strafed (0-15 %)"
 proves = "sim SQUADRON: two crashes of 95 at 75 frames (StrafeAreaUpdate fires the self-projectile kamikaze from its first frame, 1500 at speed 300) on the one enemy in the radius, the free aircraft at random points (between two and four crashes on it: the draw), the guns not simulated (150 / 200 whole)"
 expect = ["all(v[1] >= 90 for s in (f1, f2, f3, fn) for v in vals(s) if 0 < v[0] <= 60)", "all(20 <= vals(s)[-1][1] <= 64 for s in (f1, f2, f3, fn))", "all(min(vals(s)[-1][2:]) >= 85 for s in (f1, f2, f3, fn))"]
+
+[[reading]]
+id = "protofx_fl_squadron_guns_graze_800_first_and_never_1400"
+scene = {build = "engine_protofx", check = "fl", until = 20}
+bench = "CampProtofxFl 1124 at 09dd1a3a: 帧数 血400 血800 血1400 -- 100 99 100 from the first row (f6), 400 to 99 at f48, then 99 99 100 to the end (f776): one graze each, 1400 never"
+proves = "SQUADRON's guns (StrafeAreaUpdate, the planes born 3000 out toward the Japanese yard, work/re a353_strafe.md A357): the foes on the target-yard line 800 out grazed by f6, 400 out at f48, 1400 out never -- neither 'born 3000 out' (1400 first) nor 'born 1500 out' (1400 at once) as the planes' flight"
+expect = ["min(v[2] for v in vals(rows) if 0 < v[0] <= 10) == 99", "min(v[1] for v in vals(rows) if 0 < v[0] <= 40) == 100", "min(v[1] for v in vals(rows) if 0 < v[0] <= 60) == 99", "min(v[3] for v in vals(rows)) == 100"]
+mismatch = "sim 100 100 100 throughout (the guns not simulated); bench 800 at 99 by f6, 400 from f48, 1400 100"

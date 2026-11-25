@@ -12,3 +12,24 @@ proves = """DominateEnemySpecialPower: a cast takes for its holder's owner the E
 INFANTRY) within DominateRadius 65 -- the infantry 40 and the vehicle 50 away, not the infantry 90 away nor the \
 structure 50 away -- the press's frame itself (UnpackTime 0: not after the 3.66 s pack)"""
 expect = ["counter('E216Taken') == 11", "rows[-1]['近步兵'] == 0", "rows[-1]['近车'] == 0"]
+
+[[reading]]
+id = "d_bribe_pressed_again_in_its_pack_takes_again"
+scene = {build = "engine_dominate_e", check = "d", until = 15}
+item = "物体模块 Behaviors/DominateEnemySpecialPower"
+bench = "CampDominED 1124 at 1ee4d66d, PASS: One 1111, Two 1111, W 0 (s12-s40)"
+proves = """DominateEnemySpecialPower: a script's press takes again while the first press's 3.66 s pack is on (P, 1 s on) \
+and with the 10 s reload not over (R, 5 s on), the press's frame (W 0) -- no BUSY_DURING_PACK nor reload gate on a \
+script's cast (review 1124 P2); one press takes two infantry (C: no one-per-kind cap)"""
+expect = ["rows[-1]['One'] == 1111", "rows[-1]['Two'] == 1111", "rows[-1]['W'] == 0"]
+
+[[reading]]
+id = "bc_a_press_misses_what_a_script_made_its_foe_that_frame"
+scenes = {b = {build = "engine_dominate_e", check = "b", until = 12}, c = {build = "engine_dominate_e", check = "c", until = 12}}
+item = "物体模块 Behaviors/DominateEnemySpecialPower"
+bench = "CampDominEB / CampDominEC 1124, PASS: One 1111, Two 0, W 105120 both (the control C too)"
+proves = """a thing teleported into the radius (b) or handed to the enemy (c) by an action of the same script just before \
+the press is not taken -- d takes it handed over 10 frames before; INFERRED: the press reads the world as it stood \
+before the frame's script actions (a partition / relation refresh later in the frame), not read in the program"""
+expect = ["b[-1]['Two'] == 0", "c[-1]['Two'] == 0"]
+mismatch = "sim Two 1111, W 0 in b and c (the press sees the script's earlier actions); bench Two 0, W 105120"
