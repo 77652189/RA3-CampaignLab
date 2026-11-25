@@ -100,8 +100,30 @@ def frame_heal(m):
     return t
 
 
+def heal_curve(m):
+    """E235 d: check c's scene, the target's HP % and status code live each frame beside the script frame, so every
+    capture is one (frame, HP, status) sample on mission time (E68) -- the heal's shape, f120 to f600.
+
+    Prediction (simulator 11-25, 20 HP/s of 480 = 4.17 %/s from the attach): a straight line from 20 % at the attach
+    (f122 on / f143 off) to 100 % about 19 s later, status 110 throughout, then 0.
+    """
+    t = frame_heal(m)
+    target = m.role('target').name
+    t.counters = [('E235F', '脚本帧'), ('E235Wait', '等待帧'), ('E235H', '血量'), ('E235S', '状态')]
+    t.scripts = [s for s in t.scripts if not s.name.startswith('Test - at ')]
+    t.scripts[0].when = [('COUNTER', 'E235F', 0, 600)]
+    t.scripts.append(Script('Test - hp', [], [('SET_UNIT_HEALTH_PERCENTAGE_TO_COUNTER', target, 'E235H'),
+                                              ('SET_COUNTER', 'E235S', 0)], once=False))
+    for bit, value in [('TARGETED_FOR_REPAIR', 10), ('UNDERGOING_REPAIR', 100)]:
+        t.scripts.append(Script('Test - status ' + bit, [('UNIT_HAS_OBJECT_STATUS', target, bit)],
+                                [('INCREMENT_COUNTER', value, 'E235S')], once=False))
+    t.expect = [('脚本帧', 0, 'ever==', 600)]
+    t.bench = [('bench_watch', dict(seconds=44, every=1, sheet=False, lines=4))]
+    return t
+
+
 MISSION = {'engine_assignon': lambda: mission(True), 'engine_assignoff': lambda: mission(False)}
-CHECKS = {name: {'a': check, 'c': frame_heal} for name in MISSION}
+CHECKS = {name: {'a': check, 'c': frame_heal, 'd': heal_curve} for name in MISSION}
 
 
 def competition():

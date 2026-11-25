@@ -60,6 +60,8 @@ def test_the_repair_drones_take_one_hurt_vehicle_each_mend_it_and_let_go():
     held = sorted(m.repairing().name for d in f.spawned_children for m in d.find(attach.interfaces.Attach)
                   if m.repairing() is not None)
     assert held == ['near', 'near2'] and 'UNDERGOING_REPAIR' in near.status and not far.status
+    pulses = (near.hp - near.max_hp / 2) / (20.0 * 20 / 15)       # E235 d: 20 HP/s in one pulse a SurveyDelayFrames (20)
+    assert pulses >= 1 and abs(pulses - round(pulses)) < 1e-9
     e.advance(15 * 13)
     assert near.hp == near.max_hp and not near.status & {'TARGETED_FOR_REPAIR', 'UNDERGOING_REPAIR'}
     assert far.health == 50.0

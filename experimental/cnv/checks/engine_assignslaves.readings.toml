@@ -60,4 +60,19 @@ each = [{build = "engine_assignon", wait = 16}, {build = "engine_assignoff", wai
 bench = "E235 (CampAssignOnC_mcp_1125_042320 / CampAssignOffC_mcp_1125_042158): 等待帧 on 16 / off 18, 血量240 47 / 47, 血量390 92 / 92"
 proves = "AttachUpdate (BaseRepairDrone) and AssignSlaves: the commanded drone flies too; HP read on script frames, not capture seconds"
 expect = ["counter('E235Wait') == wait", "counter('E235A') == 47", "counter('E235B') == 92"]
-mismatch = "sim on 2 / 53 / 95 (the dispatch heals from the press, no flight), off 23 / 47 / 89; f240->f390 bench +45 % (~21.6 HP/s) against 20 HP/s before: a pulsed heal? not fitted"
+mismatch = "sim on 2 / 53 / 95 (the dispatch heals from the press, no flight), off 23 / 47 / 92: the off drone attaches 5 frames late (flight); the heal is pulsed (check d)"
+
+[[reading]]
+id = "the_drone_mends_once_a_survey"
+scene = {build = "engine_assignoff", check = "d", until = 42}
+bench = "E235 d (CampAssignOffD_mcp_1125_052303): 血量 by script frame 20 -> 25 31 36 42 47 53 58 64 70 75 81 86 92 97 100, one step of 480/18 every 20 frames from f142 (attached f138), full by f423"
+proves = "AttachUpdate (BaseRepairDrone) + PassiveAreaEffectBehavior: the drone's 20 HP/s lands once a SurveyDelayFrames (schema default 20), 26.7 HP a pulse; the pulses' phase (f142 in both arms whatever the attach frame) is INFERRED as the world clock"
+expect = "sorted(set(r['血量'] for r in rows)) == [20, 25, 31, 36, 42, 47, 53, 58, 64, 70, 75, 81, 86, 92, 97, 100]"
+
+[[reading]]
+id = "the_commanded_drone_mends_in_the_same_pulses"
+scene = {build = "engine_assignon", check = "d", until = 42}
+bench = "E235 d (CampAssignOnD_mcp_1125_052018): the same 15 steps of 480/18 from f142 (attached f136 after the press at f120), full by f423"
+proves = "AssignSlavesTargetObjectSpecialPower: the commanded target is mended by a drone like the uncommanded one"
+expect = "sorted(set(r['血量'] for r in rows)) == [20, 25, 31, 36, 42, 47, 53, 58, 64, 70, 75, 81, 86, 92, 97, 100]"
+mismatch = "sim: the dispatch mends 20/15 HP every frame from the press (no drone, no pulse): hypothesis 1 in handoff-e"

@@ -14,7 +14,7 @@ One more shape, the retail repair drone's (BaseRepairDrone, REPAIR: the whole bl
 owner within Range of its slaver that no other drone or AssignSlaves dispatch mends (BOOBY_TRAPPED ones first), marks
 it TARGETED_FOR_REPAIR, after InitialAttachDelay plus the straight flight at SPEED attaches (the
 parent UNDERGOING_REPAIR, the drone ATTACHED, riding it), mends it its PassiveAreaEffectBehavior's
-HealingPointsPerSecond and lets go -- both statuses cleared -- once it is whole, dead, another owner's or out of Range
+HealingPointsPerSecond once a SurveyDelayFrames (20: 26.7 HP a pulse, E235 d) and lets go -- both statuses cleared -- once it is whole, dead, another owner's or out of Range
 of the slaver. The flight (no acceleration), a scan every frame, nearest as the best parent and the owner alone for
 ALLIES are INFERRED."""
 import math
@@ -50,6 +50,8 @@ TERROR_KIDS = [('ObjectFilter', dict(Rule='ANY', Include='VEHICLE', Relationship
 PARENT_KINDS = frozenset({'VEHICLE', 'AIRCRAFT', 'HUGE_VEHICLE'})
 FPS = 15
 SPEED = 150.0       # BaseRepairDrone's LocomotorSet Speed: REPAIR's only retail user (another drone's: INFERRED)
+SURVEY = 20         # PassiveAreaEffectBehavior's SurveyDelayFrames default (the schema): it heals once a survey
+PHASE = 2           # E235 d: both arms' first pulse at script frame 142 (attached f136 / f138): INFERRED world clock
 
 
 def _native(head, inner, want, kids, keep=()):
@@ -146,11 +148,12 @@ class Attach(module.Module, interfaces.Attach, interfaces.Update):
         return min((p for p in living if p.hp < p.max_hp and p.serial not in taken and self._fits(p, home)),
                    key=lambda p: ('BOOBY_TRAPPED' not in p.status, math.hypot(p.x - d.x, p.y - d.y)), default=None)
 
-    def _rate(self):
-        """Its PassiveAreaEffectBehavior's HealingPointsPerSecond, the one that AffectAttached."""
-        return next((templates.num(templates.attr(h, 'HealingPointsPerSecond'), 0.0) for h, _ in
-                     self.world.blocks_of(self.thing.template, 'PassiveAreaEffectBehavior')
-                     if templates.attr(h, 'AffectAttached') == 'true'), 0.0)
+    def _heal(self):
+        """(HealingPointsPerSecond, SurveyDelayFrames) of its PassiveAreaEffectBehavior that AffectAttached."""
+        return next(((templates.num(templates.attr(h, 'HealingPointsPerSecond'), 0.0),
+                      int(templates.num(templates.attr(h, 'SurveyDelayFrames'), SURVEY)))
+                     for h, _ in self.world.blocks_of(self.thing.template, 'PassiveAreaEffectBehavior')
+                     if templates.attr(h, 'AffectAttached') == 'true'), (0.0, SURVEY))
 
     def update(self, frame):
         d, rule = self.thing, self.data.repair
@@ -178,8 +181,10 @@ class Attach(module.Module, interfaces.Attach, interfaces.Update):
             p.status.add('UNDERGOING_REPAIR')
             d.status.add('ATTACHED')
         d.x, d.y = p.x, p.y
-        p.mend(self._rate() / FPS)
-        self.world.used.add('drone repair')
+        rate, survey = self._heal()
+        if frame % survey == PHASE:
+            p.mend(rate * survey / FPS)
+            self.world.used.add('drone repair')
         if p.hp >= p.max_hp:
             self._let_go()
         return 1
