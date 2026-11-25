@@ -94,6 +94,8 @@ class Mining:
         drawn along it. A harvester given a path (a script's move) drops its trip and starts over once it stands."""
         start = frame if self.mined_to is None else self.mined_to + 1
         self.mined_to = frame
+        # a hold over by `start` reads as none (fr < free): dropped, so a refinery gone keeps none (review 1124 P3)
+        self.docks = {k: free for k, free in self.docks.items() if free > start}
         miners = [b for b in world.living() if b.modules and b.find(interfaces.OreMiner) is not None
                   and b.owner != CIV and b.speed > 0]
         if not miners:

@@ -10,3 +10,10 @@ ACTED_STATUS = frozenset({'SOLD', 'GENERIC_TOGGLE_STATE', 'IMMOBILE', 'NO_ATTACK
 # bits only a woken skirmish AI's own target choice reads (d115 10: its micro-manager), no gap here: the unit's own
 # take, a script's order, the player's are untouched (bench 11-13 engine_acts flow 旗&2: an idle enemy fires on it)
 AI_ONLY_STATUS = frozenset({'SKIRMISH_AI_DO_NOT_ATTACK', 'SKIRMISH_AI_DO_NOT_TAKE'})   # DO_NOT_TAKE: an engineer still takes it (bench 11-13 engine_acts_u)
+
+
+def counted(b):
+    """Whether a player's object count takes b (PLAYER_HAS_OBJECT_COMPARISON, SET_PLAYER_OWNERSHIP_OF_TYPE_COUNTER):
+    SELECTABLE (not the drop bomber) and not CLONED (engine_acts_drop agx 类 1101 / 机 x1x0, fly 型 1110 f45 -> 1100;
+    work/re E7-3's unknown status bit). Alive / dead and the type match stay with the callers."""
+    return 'SELECTABLE' in b.kinds and 'CLONED' not in b.status

@@ -59,6 +59,14 @@ def test_the_front_node_miner_goes_direct_and_one_finding_the_pads_held_queues()
     assert queued == [('m1', 585)] and unloads['m1'][-1] == unloads['m2'][-1] + 30 + 14 + 18 + 22
 
 
+def test_a_hold_over_is_dropped():
+    """Review 1124 P3: a deleted refinery's pad hold left the snapshot never; one over goes, one still on stays."""
+    mining = simmine.Mining()
+    mining.docks = {7: 100, 8: 120}
+    mining.mine_due(_world(), 101, lambda owner, give: None)
+    assert mining.docks == {8: 120}
+
+
 def test_the_cargo_shows_only_when_loading_ends():
     s, seen = _world(), []
     mining = simmine.Mining()

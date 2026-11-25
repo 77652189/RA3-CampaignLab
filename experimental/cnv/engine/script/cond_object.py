@@ -7,7 +7,7 @@ CONDITIONS. None back: not taken (a gap)."""
 import math
 
 from engine.script.common import CMP, players_of
-from engine.objects.status import ACTED_STATUS
+from engine.objects.status import ACTED_STATUS, counted
 from engine.world.handle import GAP_CONDITION, held, inside
 from engine.kernel import interfaces, module
 
@@ -41,12 +41,11 @@ def named_inside_area(sim, name, a):
 
 
 def player_has_object_comparison(sim, name, a):
-    # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false); a type or an object list. Not one
-    # without SELECTABLE (the drop bomber) nor one with CLONED (engine_acts_drop agx 类 1101 / 机 x1x0; work/re E7-3's
-    # unknown status bit; the bench still counted the CLONED one at f45, its first reading: a cached count, INFERRED)
+    # the dying counted too (Team::countObjectsByThingTemplate, ignoreDead false); a type or an object list; only
+    # status.counted ones (the bench still counted the CLONED one at f45, its first reading: a cached count, INFERRED)
     want = sim.of_types(a[3])
     n = sum(1 for b in sim.bodies.values() if b.owner == a[0] and b.template.lower() in want
-            and sim.present(b) and 'SELECTABLE' in b.kinds and 'CLONED' not in module.status_now(b))
+            and sim.present(b) and counted(b))
     return CMP[a[1]](n, a[2])
 
 
