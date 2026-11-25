@@ -30,6 +30,7 @@ from model import counted, square, status
 RAY, V4 = 'SovietAntiNavyShipTech1', 'SovietAntiStructureVehicle'
 HAMMER, TESLA, PLANT = 'SovietAntiVehicleVehicleTech1', 'SovietAntiVehicleVehicleTech2', 'SovietPowerPlant'
 DAM, ATHENA, CONSCRIPT = 'AlliedPowerPlant', 'AlliedAntiStructureVehicle', 'SovietAntiInfantryInfantry'
+NOSELL = 'CNV_NoSell_AlliedPowerPlant'                 # units/unsellable.py, the bench mission carries it
 
 
 def _start(t, m, orders, at=4.0):
@@ -75,7 +76,8 @@ def foot(m):
                                                     (shoot, 'Test Pool'), (shoot, 'Test Ledge')])
     _start(t, m, [('NAMED_ATTACK_NAMED', n, m.map.POWERHOUSE) for n in hit] +
            [('NAMED_ATTACK_NAMED', n, plant) for n in shoot] + [('MOVE_NAMED_UNIT_TO', n, 'Test Pool') for n in go])
-    t.expect += [('移组 池/台', 0, 'ever>=', 1), ('电厂血', 0, 'ever<=', 90), ('厂房血', 0, 'ever<=', 90)]
+    # the powerhouse is a neutral prop again (r9; the low section is the plant): no one's target, as r7 read it
+    t.expect += [('移组 池/台', 0, 'ever>=', 1), ('电厂血', 0, 'ever<=', 90), ('厂房血', 0, '==', 100)]
     t.bench = [('bench_watch', dict(seconds=90.0, every=5, sheet=False, lines=len(t.counters)))]
     return t
 
@@ -179,15 +181,40 @@ def sell(m):
     return t
 
 
+def lock(m):
+    """sell again, the kept one the plant's copy with KindOf +NOT_SELLABLE (units/unsellable.py), no status set."""
+    t = Test()
+    p1 = m.player('p1')
+    kept, sold = _plant(t, m, 'st_dam_w', 'Kept', NOSELL), _plant(t, m, 'st_dam_e', 'Sold', DAM)
+    t.counters += [('Test Alive', '存活 留/卖'), ('Test Money', '资金')]      # a digit each, the kept one the ones
+    t.scripts += [Script('Test - alive zero', [], [('SET_COUNTER', 'Test Alive', 0)], once=False),
+                  Script('Test - money set', [], [('PLAYER_SET_MONEY', p1, 2000)]),
+                  Script('Test - money', [], [('SET_PLAYER_MONEY_TO_COUNTER', p1, 'Test Money')], once=False)]
+    t.scripts += [Script(f'Test - alive {k}', [('NAMED_NOT_DESTROYED', n)], [('INCREMENT_COUNTER', 10 ** k, 'Test Alive')],
+                         once=False) for k, n in enumerate((kept, sold))]
+    _start(t, m, [('SELL_OBJECT', kept), ('SELL_OBJECT', sold)])
+    t.expect += [('存活 留/卖', 1, '==', 11, 3), ('存活 留/卖', 8, '==', 1), ('资金', 8, '==', 2400)]
+    t.bench = [('bench_watch', dict(seconds=16.0, every=2, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 def _raid(t, m, groups, areas, seen):
     """groups: (template, tag, count, site, dx, dy, target) each one team ordered like a plan wave (TEAM_ATTACK_NAMED);
-    seen: (label, tag, [area, ...]) a _seen line."""
+    seen: (label, tag, [area, ...]) a _seen line. via (an eighth item, a site): first moved there, the attack once
+    one of them is inside it (as the plan's 先到)."""
     orders, names = [], {}
-    for tpl, tag, n, site, dx, dy, target in groups:
+    for tpl, tag, n, site, dx, dy, target, *via in groups:
         names[tag] = [f'UNIT - Test {tag} {k}' for k in range(n)]
         t.objects += [Obj(tpl, *m.site(site, dx + 40.0 * (k % 4), dy + 40.0 * (k // 4)), side='s1', name=u, site=site)
                       for k, u in enumerate(names[tag])]
-        orders += m.order('attack', names[tag], target, 's1')
+        if not via:
+            orders += m.order('attack', names[tag], target, 's1')
+            continue
+        t.waypoints[f'Test Via {tag}'] = m.site(via[0])
+        t.areas[f'Test Via {tag}'] = square(*m.site(via[0]), 150.0)
+        orders += m.order('move', names[tag], f'Test Via {tag}', 's1')
+        t.scripts += [Script(f'Test - via {tag} {k}', [('NAMED_INSIDE_AREA', u, f'Test Via {tag}')],
+                             m.order('attack', names[tag], target, 's1')) for k, u in enumerate(names[tag])]
     t.areas.update(areas)
     for label, tag, where in seen:
         _seen(t, f'Test {tag}', label, [(names[tag], a) for a in where])
@@ -224,5 +251,17 @@ def last(m):
     return t
 
 
+def perch(m):
+    """last's V4s as the plan's 先到 sends them: moved to the overlook first, the attack on crest east from there."""
+    t = Test()
+    e = _plant(t, m, 'st_dam_e', 'East', DAM)
+    counted('Test East hp', '东段血', t, health=e)
+    _raid(t, m, [(V4, 'V4', 2, 'sov_east', -120.0, 0.0, e, 'overlook')], {'Test Overlook': square(*m.site('overlook'), 150.0)},
+          [('V4 台上', 'V4', ['Test Overlook'])])
+    t.expect += [('V4 台上', 0, 'ever==', 1), ('东段血', 0, 'ever<=', 50)]
+    t.bench = [('bench_watch', dict(seconds=120.0, every=5, sheet=False, lines=len(t.counters)))]
+    return t
+
+
 CHECKS = {'canyon': {'foot': foot, 'v4': v4, 'camp': camp, 'crest': crest, 'ath': athena, 'sell': sell,
-                     'roads': roads, 'last': last}}
+                     'roads': roads, 'last': last, 'lock': lock, 'perch': perch}}

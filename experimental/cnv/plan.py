@@ -946,6 +946,12 @@ class Compiler:
                 raise PlanError(f'部队 {spec}: 阵营 {who!r} is none of {sorted(self.side)} (more sides: 阵营: 其他)')
             side = self.side[who]
             tmpl = self.unit(spec['单位'], side)
+            if spec.get('不能卖') in (True, '是'):       # the player cannot sell it (units/unsellable.py)
+                from units import unsellable
+                u = unsellable.copy(tmpl)
+                tmpl = u.id
+                if u.id not in {x.id for x in m.units}:
+                    m.units.append(u)
             ns = counts(spec.get('数量', 1))
             n = max(ns)
             dx0, dy0 = spec.get('偏移', (0, 0))
@@ -1142,6 +1148,11 @@ class Compiler:
                         continue
                     acts += [('NAMED_RECEIVE_UPGRADE', up, obj) for obj, up in slowed]
                     acts += self.orders(spec, names, w) + [('INCREMENT_COUNTER', 1, sent)] + warn
+                    if spec.get('先到'):         # there first, then the 打 order once one of them is inside it
+                        then = self.orders({**spec, '先到': None}, names, {'names': []})
+                        m.scripts += [Script(f'CNV {self.tag} - Via {k} {i}{"+" if bonus else ""} {TAGS[lv]} {n + 1}',
+                                             [('NAMED_INSIDE_AREA', obj, self.area(spec['先到']))], then, levels=levels)
+                                      for n, obj in enumerate(names)]
                     if slowed:                  # released as the first of them gets there (one script each: it may fall)
                         free = [('NAMED_REMOVE_UPGRADE', up, obj) for obj, up in slowed]
                         for n, (obj, _) in enumerate(slowed):
@@ -1218,6 +1229,10 @@ class Compiler:
         order = lambda kind, at=None: self.ctx.order(kind, names, at, side)      # (a wave is the enemy's)
         if spec.get('守'):
             return order('guard', self.area(spec['守'])) if names else []    # (the area is made only for someone)
+        if spec.get('先到'):
+            if target in self.devices or spec.get('齐步'):
+                raise PlanError(f'进攻 {spec["名字"]}: 先到 with a device target or 齐步')
+            return order('move', self.mark(spec['先到']))
         if not target or target == '猎杀':
             return order('hunt')
         if target in self.devices:

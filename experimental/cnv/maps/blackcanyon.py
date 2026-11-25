@@ -22,9 +22,10 @@ POWERHOUSE = 'A2 Powerhouse'
 
 SITES = {
     'start': Site(*START, 300, 'the player camp on the west plateau', build=500),
-    'st_dam_w': Site(2660, 3085, 120, 'crest section west'),
-    'st_dam_e': Site(2900, 3085, 120, 'crest section east'),
-    'st_foot': Site(2640, 2930, 80, 'the powerhouse at river level: the low section, boats can hit it'),
+    # the crest sections stand on the banks off its two ends: a building on the crest (walkable 80) cuts it (A355)
+    'st_dam_w': Site(2400, 2985, 120, 'crest section west, on the west bank off the crest end'),
+    'st_dam_e': Site(3150, 2990, 120, 'crest section east, on the east bank off the crest end, by US-93'),
+    'st_foot': Site(2715, 2850, 80, 'the low section on the powerhouse ledge: boats in the pool hit it (bench r7)'),
     'st_bridge': Site(2420, 1700, 120, 'the bridge choke: gas station and motel to garrison'),
     'st_bend': Site(3900, 2480, 200, 'the open bench: where the Falcons kite the heavy tanks'),
     'st_beach': Site(900, 4050, 180, 'the landing beach behind the camp, Boulder City above it'),
@@ -95,7 +96,7 @@ RAW_OBJECTS = [
     Obj('CC_Lighthouse01', 2700, 3270, side='neutral', angle=0, flags=0),
     Obj('CC_Lighthouse01', 2840, 3270, side='neutral', angle=0, flags=0),
     Obj('CC_Lighthouse01', 2940, 3250, side='neutral', angle=0, flags=0),
-    Obj('OD_Warehouse01', 2650, 2930, side='p1', name=POWERHOUSE, angle=0, flags=0),   # the player's: a neutral prop is no one's target (bench r7)
+    Obj('OD_Warehouse01', 2650, 2930, side='neutral', name=POWERHOUSE, angle=0, flags=0),   # a prop: the low section is the player's plant by it
     Obj('OD_Warehouse02', 4200, 780, side='neutral', angle=0, flags=0),
     Obj('OD_Warehouse02', 4450, 1050, side='neutral', angle=0, flags=0),
     Obj('OD_Warehouse02', 4550, 800, side='neutral', angle=0, flags=0),
