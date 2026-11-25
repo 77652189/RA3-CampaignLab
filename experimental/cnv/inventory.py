@@ -1162,7 +1162,7 @@ def conformance_probes(folder=None, checks=None):
             continue
         probe = r['bench_file']
         if probe not in sources:
-            raise SystemExit(f'inventory: no check source for readings of {probe}')
+            raise SystemExit(f'inventory: readings of {probe} sit beside no probe')
         source, body = sources[probe]
         if probe not in keys_of:
             keys_of[probe] = set(probe_checks(body)[1])
