@@ -44,10 +44,8 @@ CHECK_IMPORT_ALLOWED = {
     'experimental/cnv/checks/a4_before.py',
     'experimental/cnv/checks/clone.py',
     'experimental/cnv/checks/combo.py',
-    'experimental/cnv/checks/fence.py',
     'experimental/cnv/checks/liberty.py',
     'experimental/cnv/checks/mech.py',
-    'experimental/cnv/checks/reroute.py',
 }
 
 CNV = 'experimental/cnv'

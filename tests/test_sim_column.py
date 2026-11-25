@@ -15,7 +15,7 @@ _spec.loader.exec_module(simbench)
 import build  # noqa: E402
 import sim  # noqa: E402
 import engine.objects.path as simpath  # noqa: E402
-from checks import engine_column  # noqa: E402
+from benches.movement.pathing.checks import COLUMN_RUN, column_key  # noqa: E402
 
 # the bench's stops, in the order of engine_column.starts (runs CampColsLanes_mcp_1117_214108,
 # CampCrowdBig_mcp_1117_214334, rounded to 0.1)
@@ -52,15 +52,15 @@ NEAR = 1.5          # the bench's men stop up to 0.6 short of a cell centre (the
 @pytest.fixture(scope='module', params=sorted({b for b, _ in BENCH}))
 def run(request):
     name = request.param
-    m, t, _ = build.resolve(name, next(iter(engine_column.CHECKS[name])))
+    m, t, _ = build.resolve(name, next(iter(build.MISSIONS[name][1])))
     s = sim.Sim(m, t)
-    s.run(engine_column.RUN)
+    s.run(COLUMN_RUN)
     return name, s
 
 
 def _stops(s, lane, count):
-    return [(s.bodies[f'UNIT - CNV Col {engine_column.key(lane, k)}'].x,
-             s.bodies[f'UNIT - CNV Col {engine_column.key(lane, k)}'].y) for k in range(count)]
+    return [(s.bodies[f'UNIT - CNV Col {column_key(lane, k)}'].x,
+             s.bodies[f'UNIT - CNV Col {column_key(lane, k)}'].y) for k in range(count)]
 
 
 def test_the_group_stands_in_the_benchs_block(run):

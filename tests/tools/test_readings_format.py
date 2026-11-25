@@ -341,14 +341,16 @@ def test_the_repository_readings_load_and_sit_beside_their_bench():
     spec = importlib.util.spec_from_file_location('registry', Path(rd.HERE) / 'registry.py')
     registry = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(registry)
+    merged = {path: registry.bench_sources(path) for path in registry.BENCH_ROOT.glob('*/*/checks.py')}
     for p in rd.files():
         rs = rd.load(p)
         assert rs, p
         path = Path(p)
         if path.name == 'readings.toml':
-            assert {r['bench_file'] for r in rs} <= registry.bench_sources(path.with_name('checks.py')).keys(), p
+            assert {r['bench_file'] for r in rs} <= merged[path.with_name('checks.py')].keys(), p
         else:
-            assert path.with_name(f'{rd.bench_of(p)}.py').is_file(), p
+            bench = rd.bench_of(p)
+            assert path.with_name(f'{bench}.py').is_file() or any(bench in sources for sources in merged.values()), p
 
 
 def _simai_constant(name):

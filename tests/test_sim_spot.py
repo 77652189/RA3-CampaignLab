@@ -14,7 +14,7 @@ _spec.loader.exec_module(simbench)
 import build  # noqa: E402
 import sim  # noqa: E402
 import engine.objects.path as simpath  # noqa: E402
-from checks import engine_drop  # noqa: E402
+from benches.movement.pathing.checks import drop_key, engine_drop  # noqa: E402
 
 # the bench's stops, in the order sent (runs CampDropLanes_mcp_1117_170137, CampRingTens_mcp_1117_170616)
 BENCH = {
@@ -33,9 +33,9 @@ NEAR = 2.0          # the bench's tanks stand +1 off the grid on both axes (not 
 @pytest.fixture(scope='module', params=['engine_drop', 'engine_dropring'])
 def stops(request):
     name = request.param
-    m, t, _ = build.resolve(name, next(iter(engine_drop.CHECKS[name])))
+    m, t, _ = build.resolve(name, next(iter(build.MISSIONS[name][1])))
     s = sim.Sim(m, t)
-    s.run(engine_drop.run(name))
+    s.run(engine_drop()['run'](name))
     return name, s
 
 
@@ -47,7 +47,7 @@ def test_every_unit_stops_where_the_bench_did(stops):
         if build_name != name:
             continue
         for k, (bx, by) in enumerate(want):
-            b = s.bodies[f'UNIT - CNV Drop {engine_drop.key(lane, k)}']
+            b = s.bodies[f'UNIT - CNV Drop {drop_key(lane, k)}']
             assert abs(b.x - bx) <= NEAR and abs(b.y - by) <= NEAR, (lane, k + 1, (b.x, b.y), (bx, by))
 
 

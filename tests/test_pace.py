@@ -166,7 +166,7 @@ def test_bench_paceplaced_placed_tanks_and_warriors_sent_off_together_arrive_tog
     """Bench 11-12 paceplaced (CampPacePlGo_mcp_1112_124725, checks/engine_pace_placed.py): the harbour's Tsunamis
     placed as their 67 % copies and the warriors, sent off at 30 s with 齐步: the last warrior in 5 s after the first
     tank (88 / 93). The simulator has them in within the same few seconds."""
-    from checks.engine_pace_placed import BENCH
+    from benches.movement.pathing.checks import PACE_PLACED_BENCH as BENCH
     got, bench = _arrivals('paceplaced'), BENCH['paceplaced']
     assert bench['foot'][1] - bench['tank'][0] <= 5
     assert got['foot'][1] - got['tank'][0] <= 5, got
@@ -175,7 +175,7 @@ def test_bench_paceplaced_placed_tanks_and_warriors_sent_off_together_arrive_tog
 def test_bench_paceplacedn_without_pace_the_placed_tanks_come_in_well_ahead():
     """Bench 11-12 paceplacedn (CampPacePlNGo_mcp_1112_125222): the same force sent without 齐步: both tanks in at
     s74, the warriors at s91 / s93 -- 17-19 s. The simulator's gap is within 3 s of it."""
-    from checks.engine_pace_placed import BENCH
+    from benches.movement.pathing.checks import PACE_PLACED_BENCH as BENCH
     got, bench = _arrivals('paceplacedn'), BENCH['paceplacedn']
     gap = lambda r: r['foot'][1] - r['tank'][1]
     assert gap(bench) == 19 and abs(gap(got) - gap(bench)) <= 3, got
