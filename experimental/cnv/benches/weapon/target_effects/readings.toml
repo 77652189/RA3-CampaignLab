@@ -24,7 +24,18 @@ expect = [
     "vals(rows)[-1] == expected",
     "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
 ]
-mismatch = "Final simulator 91135068/40135070/1135068/91135089, bench 1187051068/87135068/101003068/87135089. The p1 guns hit (the IMMOBILE miners stay put); no lane shields: order wants TrackDamage history and the micro's targeted flag, base the InformTarget look-ahead; high (s1 under NO_ATTACK) lands 47 frames early."
+mismatch = "Final simulator 1191052068/40135070/1135068/91135089, bench 1187051068/87135068/101003068/87135089. The miners are HarvesterController's (handed over to the default team): base shields before its hit as on the bench (frames 91/52 vs 87/51, the p1 shells land 4 frames late); order wants TrackDamage history (the micro passes targeted now); high lands 47 frames early: the AI's LandDefense team takes the s1 gun under NO_ATTACK and walks it nearer, the bench's never moves (why not: not read)."
+
+[[reading]]
+bench_id = "engine_inform_ai"
+id = "inform_ai_handed_over_miner_shields_before_an_informed_hit"
+scene = {build = "engine_inform_ai", check = "a", until = 37, shot_clock = true}
+bench = "second automatic run: base 1187051068 (shield seen before damage and automatically), removed 87135089 (none)"
+proves = "a script-made miner handed to the AI by UNIT_AI_TRANSFER_ALL is recruited (retail HarvesterController) and its micro arms the toggle on the look-ahead; the 10 % shell does not"
+expect = [
+    "vals(rows)[-1][0] // 100000000 == 11",
+    "vals(rows)[-1][3] // 100000000 == 0",
+]
 
 [[reading]]
 bench_id = "engine_inform_ai"
@@ -37,7 +48,7 @@ expect = [
     "vals(rows)[-1] == expected",
     "all(v == expected for sec, v in zip(times, vals(rows)) if sec >= 31)",
 ]
-mismatch = "Final simulator 91135068/40135070/1135068/91135089, bench 87135068/87135068/101003068/87135089. As [a]: the p1 guns hit; order wants TrackDamage history and the micro's targeted flag; high lands 47 frames early."
+mismatch = "Final simulator 91135068/40135070/1135068/91135089, bench 87135068/87135068/101003068/87135089. As [a]: base and removed as on the bench but 4 frames late; order wants TrackDamage history; high lands 47 frames early."
 
 # Bench readings of benches/weapon/target_effects/checks.py#engine_secondary (format: experimental/cnv/readings.py).
 

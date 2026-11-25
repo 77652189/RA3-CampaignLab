@@ -243,6 +243,10 @@ class Unit:
         pass
 
     @property
+    def slot_ok(self):                  # a CreateUnits slot never takes a HARVESTER the AI did not make (Brain.units)
+        return 'HARVESTER' not in self.kindof or self.body.name.startswith('#made')
+
+    @property
     def facing(self):                   # radians; the aesthetics form-up faces the lead member's heading
         return getattr(self.body, 'angle', None)
 
@@ -1324,6 +1328,13 @@ class Brain:
         # beacon made again under the old one's name got the old one's flight point)
         names = Counter(u.body.name for u in team.members)
         view = lambda b: self.view_name(b, names[b.name] > 1)  # noqa: E731
+        # targeted (work/re/b1125_miner_selfdef.md): an enemy has the member as its target -- ordered, chased or
+        # aimed at this tick (volleys not asked). INFERRED: any enemy the AI sees, not only the team's hostile list; the program's two
+        # other tests on that enemy are not read
+        foes, thing = self.view.enemies, self.observe.is_thing
+        aimed = {t.serial for e in self.living() if e.owner in foes
+                 for t in (e.goal, getattr(e, 'chase', None)) if thing(t)}
+        aimed |= {pick.serial for pick, _, a in self.observe.firing() if a.owner in foes}
         for u in team.members:
             b = u.body
             reach = max((w.get('range') or 0.0 for w in b.weapons), default=0.0)
@@ -1335,7 +1346,7 @@ class Brain:
                                  target=None if t is None else sp.Thing((t.x, t.y), t.kinds, 0, name=str(self.tid(t))),
                                  weapon_range=reach, cost=self.host.cost(b.template),
                                  damage=lambda behind, ahead, b=b: self.observe.expected_damage(b, behind, ahead, now=frame),
-                                 toggles=toggles, toggle_index=at))
+                                 toggles=toggles, toggle_index=at, targeted=b.serial in aimed))
             seen.append((mu, b))
         enemies = [sp.Thing((t.x, t.y), t.kindof, int(t.value), name=str(t.id)) for t in self.view.things
                    if t.owner in self.view.enemies]
@@ -1615,12 +1626,14 @@ class Brain:
                 continue
             # IGNORES_SELECT_ALL units are offered too: only a CreateUnits slot naming the template takes them
             # (teams.recruit; retail aiskirm_m team log, A round 191)
-            # a HARVESTER only if the AI's own production made it (a factory's '#made' body): bench aiexpb* (D
-            # round 156) -- the opener's AlliedMiner is taken by the SimpleExpansion team (CreateUnits AlliedMiner)
-            # at f465 with its escorts; a placed miner (aiexpse, D154) and a refinery's free miner (aiexph*, D155)
-            # never are, and the team holds its escorts back meanwhile. INFERRED: the rule's mechanism (what marks
-            # the free and placed ones as not the AI's to take) is not read, only these three fit it
-            if 'HARVESTER' in b.kinds and not b.name.startswith('#made'):
+            # a HARVESTER the AI's own production did not make (no factory '#made' body): a CreateUnits slot never
+            # takes it (Unit.slot_ok) -- bench aiexpb* (D156) the opener's AlliedMiner is taken by SimpleExpansion's
+            # slot at f465, a placed miner (aiexpse, D154) and a refinery's free miner (aiexph*, D155) never are;
+            # the general path takes it once it is on the player's default team (b.team '', handed over by
+            # UNIT_AI_TRANSFER_ALL): retail HarvesterController (IncludeKindOf HARVESTER, AlwaysRecruit) holds the
+            # engine_inform_ai miners and its micro arms their toggle (work/re/b1125_miner_selfdef.md). A map
+            # team's never (that team refuses the general path). INFERRED what the slot path checks
+            if 'HARVESTER' in b.kinds and not b.name.startswith('#made') and b.team:
                 continue
             if self.observe.boarding(b) or self.host.pullback.busy(b):
                 continue
