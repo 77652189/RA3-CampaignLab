@@ -137,19 +137,25 @@ class CreationUpgradeData(module.ModuleData):
 
 
 @factory.module('ObjectCreationUpgrade')
-class CreationUpgrade(module.Module, interfaces.Upgrade):
+class CreationUpgrade(module.Module, interfaces.Upgrade, interfaces.Die):
     """E244 (checks/engine_leechdrone.readings.toml; retail: the Hammer's leeched carrier drone): its upgrade given,
     one ThingToSpawn is made at its thing as its slave (World.spawn); taken back, the made thing stays. A slave's death
-    tells its thing's SlaveWatcherBehaviors. The made thing's DieOnMastersDeath is not modelled (INFERRED: unbenched)."""
+    tells its thing's SlaveWatcherBehaviors. Its thing's death kills the made things that live (E247: the drone dies
+    with its Hammer with or without DieOnMastersDeath -- INFERRED: unconditional)."""
     DATA = CreationUpgradeData
-    STATE = ('upgraded',)
-    upgraded = False
+    STATE = ('upgraded', 'made')
+    upgraded, made = False, ()
 
     def module_id(self):
         return self.data.id
 
     def adopt(self, child):
-        pass
+        self.made = self.made + (child,)
+
+    def on_die(self, info):
+        for child in self.made:
+            if child.alive:
+                self.world.kill(child, 'ObjectCreationUpgrade master died')
 
     def child_died(self, template, frame):
         for m in self.thing.find(SlaveWatcher):

@@ -24,3 +24,13 @@ stays and the next grant makes none"""
 expect = ["min(r['升'] for r in on[2:]) == 10 and on[-1]['升'] == 11 and on[-1]['机'] == 1",
           "all((r['机'] == 0) == (r['升'] == 10) for r in on[2:])",
           "all(r['升'] == 11 for r in nw[2:]) and max(r['机'] for r in nw) == 1 and nw[-1]['机'] == 0"]
+
+[[reading]]
+id = "master_nodie_the_drone_dies_with_its_hammer_with_or_without_dieonmastersdeath"
+item = "物体模块 Behaviors/ObjectCreationUpgrade"
+scenes = {on = {build = "engine_leechdrone_on", check = "c", until = 10}, nd = {build = "engine_leechdrone_nodie", check = "c", until = 10}}
+bench = "CampLeechOnC_mcp_1125_220450 / CampLeechNdC_mcp_1125_220612 at 27966610 + E247: both 机 1 升 11 s1-s2, 0 0 s3-s11 (the simulator s5)"
+proves = """ObjectCreationUpgrade: the Hammer killed by script takes its leeched drone with it at once, and the drone's \
+DieOnMastersDeath="true" taken out changes nothing (INFERRED: the made slave dies with its master unconditionally)"""
+expect = ["on[-1]['机'] == 0 and nd[-1]['机'] == 0 and on[-1]['升'] == 0",
+          "all((r['机'] == 0) == (r['升'] == 0) for r in on[2:] + nd[2:])"]

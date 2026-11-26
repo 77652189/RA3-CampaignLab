@@ -27,7 +27,7 @@ from checks import engine_scripts8 as s8
 HAMMER, DRONE, UP = 'SovietAntiVehicleVehicleTech1', 'AlliedAttackDrone_Leeched', 'Leech_AircraftCarrier_Upgrade'
 NAME, FROG = 'UNIT - E244 Hammer', 'UNIT - E244 Frog'
 AA = [f'UNIT - E245 AA{i}' for i in range(4)]       # flak troopers (YES: 25 FLAK at the air, reach 300)
-TAG = {'on': 'On', 'nowatch': 'Nw', 'nocreate': 'Nc'}      # mod names stay within 15 characters
+TAG = {'on': 'On', 'nowatch': 'Nw', 'nocreate': 'Nc', 'nodie': 'Nd'}      # mod names stay within 15 characters
 CUT = {'nowatch': r'<SlaveWatcherBehavior\b[^>]*/>',
        'nocreate': r'<ObjectCreationUpgrade\b.*?</ObjectCreationUpgrade>'}
 
@@ -40,6 +40,12 @@ def mission(arm='on'):
         assert count == 1
     m.assets.append(('E244Hammer.xml', source, f'GameObject:{HAMMER}'))
     m.replaces.append(f'GameObject:{HAMMER}')
+    if arm == 'nodie':          # the drone's SlavedUpdate without DieOnMastersDeath="true" (the schema's default false)
+        drone = (Path(labpaths.SDK3) / f'SageXML/Allied/Units/{DRONE}.xml').read_text(encoding='utf-8-sig')
+        drone, count = re.subn(r'\s+DieOnMastersDeath="true"', '', drone)
+        assert count == 1
+        m.assets.append(('E247Drone.xml', drone, f'GameObject:{DRONE}'))
+        m.replaces.append(f'GameObject:{DRONE}')
     m.spawns |= {HAMMER, DRONE}
     m.put(HAMMER, 'high gun', role='hammer', name=NAME)
     m.put('SovietAntiAirShip', 'order gun', role='frog', side='s2', name=FROG)
@@ -89,6 +95,25 @@ def check_flak(m):
     return t
 
 
-MISSION = {f'engine_leechdrone_{arm}': (lambda arm=arm: mission(arm)) for arm in ('on', 'nowatch', 'nocreate')}
-CHECKS = {name: {'a': check, 'b': check_flak} for name in MISSION}
+def check_master(m):
+    """E247: the upgrade given at 1 s, the Hammer killed by script at 4 s (NAMED_KILL): DieOnMastersDeath (the drone's
+    SlavedUpdate) taken out in nodie (the schema's default false). Bench 11-25 (CampLeechOnC_mcp_1125_220450, NdC
+    220612): both arms 机 1 升 11 s1-s2, 0 0 from s3 -- the drone dies with its Hammer either way (the Hammer's death
+    OCL, a weaponless collapse prop, hits nothing), so this is not the attribute's doing (cause unseparated)."""
+    t = Test()
+    p1 = m.player('p1')
+    t.areas['E244 All'] = square(2500.0, 2500.0, 2700.0)
+    t.scripts.append(Script('Test - E244 hold', [], [('UNIT_SET_STANCE', NAME, 3), ('MAP_REVEAL_ALL_PERM', p1)]))
+    s8.at(t, 'grant', 1.0, [('NAMED_RECEIVE_UPGRADE', UP, NAME)])
+    s8.at(t, 'kill', 4.0, [('NAMED_KILL', NAME)])
+    counted('E244Air', '机', t, kind=kindof('AIRCRAFT'), area='E244 All', player=p1, most=4)
+    s8.total(t, 'E244Up', '升', [(1, ('PLAYER_HAS_NUM_UNITS_WITH_UPGRADE', p1, 1, UP)),
+                                 (10, ('NAMED_NOT_DESTROYED', NAME))])
+    t.expect = [('升', 6, '==', 0), ('机', 6, '==', 0)]
+    s8.watch(t, 10.0)
+    return t
+
+
+MISSION = {f'engine_leechdrone_{arm}': (lambda arm=arm: mission(arm)) for arm in ('on', 'nowatch', 'nocreate', 'nodie')}
+CHECKS = {name: {'a': check, 'b': check_flak, 'c': check_master} for name in MISSION}
 CONTROLS = {'engine_leechdrone_nowatch': 'engine_leechdrone_on', 'engine_leechdrone_nocreate': 'engine_leechdrone_on'}
