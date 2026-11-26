@@ -1,9 +1,11 @@
-"""Injured ground vehicles returning to an enterable repair facility.
+"""Injured vehicles returning to an enterable repair facility.
 
 Finite evidence: engine_aipullpct low .2 / high .5 at 30% health. Tactics
 owns the threshold and nearest-place decision. This adapter supplies live
-health, faction repair places and the return order. Recycling, repair and
-air/naval entry are not implemented. Arrival geometry is INFERRED from the
+health, faction repair places and the return order: the ArmyDefinition's
+VehicleRepairFacility for a ground mover, NavalRepairFacility for a water one,
+both for an amphibian (the game's pull-back, bench aipullsnx / sny; a mission's
+AIDataPack over the SDK's). Recycling, repair and air entry are not implemented. Arrival geometry is INFERRED from the
 existing garrison approach; exact return seconds are not claimed.
 
 L8 (the skirmish AI's tactics adapter: it orders units, it is not an object module). It is given the world
@@ -18,6 +20,9 @@ import engine.data.units as simunits
 from engine.ports.command import Command
 
 PEERS = frozenset({'commands'})
+# the ArmyDefinition repair facilities a mover of this surface looks for (work/re b1126_armydef, the game's pull-back)
+FACILITIES = {'ground': ('VehicleRepairFacility',), 'water': ('NavalRepairFacility',),
+              'both': ('VehicleRepairFacility', 'NavalRepairFacility')}
 
 
 class Peers:
@@ -40,12 +45,21 @@ class Pullbacks:
         # O60 / N05: a unit made again under a dead returner's name, walking the very list, was taken for it)
         self.returning = {}
         self.log = []                   # seconds, unit name, facility name
-        self.armies = {}
-        for path in Path(simunits.SAGEXML, 'SkirmishAI').glob('ArmyDef*.xml'):
-            for el in ET.parse(path).getroot().iter():
-                if el.tag.rsplit('}', 1)[-1] == 'ArmyDefinition':
-                    self.armies[el.get('Side')] = el.get('VehicleRepairFacility')
+        self.armies = None              # Side -> {field: template}, read on the first query
         self.filters = {}
+
+    def _armies(self, settings):
+        """The ArmyDefinitions: the SDK's, a mission's AIDataPack (missions/aiskirm_bench, Mission.statics) over them."""
+        if self.armies is None:
+            texts = [path.read_text(encoding='utf-8-sig')
+                     for path in Path(simunits.SAGEXML, 'SkirmishAI').glob('ArmyDef*.xml')]
+            texts += [p.xml().lstrip('﻿') for p in settings.statics if getattr(p, 'army', None)]
+            self.armies = {}
+            for text in texts:
+                for el in ET.fromstring(text).iter():
+                    if el.tag.rsplit('}', 1)[-1] == 'ArmyDefinition':
+                        self.armies[el.get('Side')] = dict(el.attrib)
+        return self.armies
 
     def _filter(self, template):
         if template not in self.filters:
@@ -60,7 +74,7 @@ class Pullbacks:
 
     def accepts(self, u, g):
         world = self.world
-        if (not u.alive or not g.alive or u.surface != 'ground'
+        if (not u.alive or not g.alive or u.surface not in FACILITIES
                 or 'STRUCTURE' not in g.kinds or world.relation(u.owner, g.owner) != 'ALLIES'):
             return False
         flt = self._filter(g.template)
@@ -90,14 +104,15 @@ class Pullbacks:
     def query(self, brain, member):
         """Tactics' pullback hook: health ratio and reachable, enterable repair places."""
         u, world = member.body, self.world
-        if not u.alive or u.max_hp <= 0 or u.surface != 'ground':
+        if not u.alive or u.max_hp <= 0 or u.surface not in FACILITIES:
             return None
         side = next((side for side, owner in world.players.items() if owner == brain.player), '')
         faction = (brain.settings.sides.get(side) or {}).get('playerFaction')
-        template = self.armies.get(faction)
+        army = self._armies(brain.settings).get(faction) or {}
+        templates = {army.get(k) for k in FACILITIES[u.surface]} - {None}
         places, ground = [], world.ground
         for g in world.living():
-            if g.template != template or not self.accepts(u, g):
+            if g.template not in templates or not self.accepts(u, g):
                 continue
             route = ground.within(ground.walks(u), (u.x, u.y), (g.x, g.y), self.reach(g))
             if route is not None:

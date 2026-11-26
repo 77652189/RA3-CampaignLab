@@ -981,6 +981,29 @@ item = "AI 阵营/ArmyDefinition.VehicleRepairFacility"
 
 [[reading]]
 bench_id = "engine_aipullback"
+id = "a_hurt_amphibian_goes_to_the_naval_repair_facility"
+scene = {build = "aipullsnx", check = "a", until = 40.0}
+bench = """\
+aipullsnx (hurt Stingrays, the Soviet VehicleRepairFacility the barracks, the crane still the naval one; bench 11-26): \
+回家 0 s4-s17, 1 @ s18 .. 3 @ s22, then 坦克数 4 -> 0 by s30 (taken in by the crane)"""
+proves = "simai pullback: an amphibian also looks for the NavalRepairFacility (a mission's ArmyDefinition over the SDK's)"
+expect = "any(r['回家'] >= 1 for r in rows[14:])"
+item = "AI 阵营/ArmyDefinition.NavalRepairFacility"
+
+[[reading]]
+bench_id = "engine_aipullback"
+id = "a_hurt_amphibian_with_no_repair_facility_stays_out"
+scene = {build = "aipullsny", check = "a", until = 40.0}
+each = [{build = "aipullsny"}, {build = "aipullsvx"}]
+bench = """\
+aipullsny (aipullsnx with the naval facility the barracks too; bench 11-26): 回家 0 from s4, 到远厂 up to 3 (s21), \
+all dead s77; aipullsvx (Hammers, the vehicle facility the barracks): 回家 0 from s4, all dead s24"""
+proves = "simai pullback: with no facility of its kind on the map (a mission's ArmyDefinition) a hurt mover does not go home"
+expect = "all(r['回家'] == 0 for r in rows[14:])"
+item = "AI 阵营/ArmyDefinition.NavalRepairFacility"
+
+[[reading]]
+bench_id = "engine_aipullback"
 id = "reverse_move_probe_starts_with_four_live_tanks"
 scene = {build = "airev1", check = "a", until = 11.0}
 each = [{build = "airev1"}, {build = "airev0"}]

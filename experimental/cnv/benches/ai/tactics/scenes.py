@@ -1877,12 +1877,12 @@ def aipullback_bench():
     BEAR_AT = ((-200.0, 320.0), (-320.0, 320.0))   # north of the column (-260, -90..90), 230+ off its nearest tank
 
 
-    def repair_moved(m):
+    def repair_moved(m, army='SovietArmy', **fields):
         """aipullsvx: aipullsov with SovietArmy's VehicleRepairFacility the barracks (the ArmyDefinition spliced into the
         global stream, missions/aiskirm_bench.AIDataPack) -- the positive control of that override: read, the hurt
-        tanks no longer go for the crane."""
+        tanks no longer go for the crane. `fields`: other repair facilities of `army` moved instead."""
         from missions.aiskirm_bench import AIDataPack
-        m.statics = [AIDataPack({}, {'SovietArmy': {'VehicleRepairFacility': 'SovietBarracks'}})]
+        m.statics = [AIDataPack({}, {army: fields or {'VehicleRepairFacility': 'SovietBarracks'}})]
         return m
 
 
@@ -1936,6 +1936,7 @@ def aipullback_bench():
 
 
     APOCALYPSE = 'SovietAntiVehicleVehicleTech3'
+    STINGRAY = 'SovietAntiNavyShipTech1'   # AMPHIBIOUS
     CONSCRIPT = 'SovietAntiInfantryInfantry'
 
 
@@ -2000,6 +2001,12 @@ def aipullback_bench():
         'aipullsov': lambda: mission('CampAIPullSov', factory=True, faction='Soviet'),
         'aipullsvx': lambda: repair_moved(mission('CampAIPullSvX', factory=True, faction='Soviet')),
         'aipulljp': lambda: mission('CampAIPullJp', factory=True, faction='Japan'),
+        # ArmyDefinition 2 (work/re b1126_armydef): the game's pull-back looks for a VehicleRepairFacility for a
+        # ground mover, a NavalRepairFacility for a water one, an AircraftRepairFacility (one it can enter) for a flyer.
+        # snx / sny: aipullsvx with amphibious Stingrays -- the crane still the naval one (snx: home) or not (sny: none)
+        'aipullsnx': lambda: repair_moved(guardians(mission('CampAIPullSnX', factory=True, faction='Soviet'), tank=STINGRAY)),
+        'aipullsny': lambda: repair_moved(guardians(mission('CampAIPullSnY', factory=True, faction='Soviet'), tank=STINGRAY),
+                                          VehicleRepairFacility='SovietBarracks', NavalRepairFacility='SovietBarracks'),
         'airev1': lambda: mission('CampAIRev1'),
         'airev0': lambda: mission('CampAIRev0', ReverseMove='false'),
         # Identical passive carriers on both sides; body heading and goal object are
