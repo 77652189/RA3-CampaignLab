@@ -148,3 +148,11 @@ bench = "Bench 11-10 (engine line A round 149): all -- MAP_REVEAL_ALL lapses as 
 proves = "sim Sim map reveal: MAP_REVEAL_ALL lapses unless permanent, its undo shuts at once (the old model kept it for good: 揭开 436)"
 let = {w = "vals(whole)[-1]", u = "vals(undo)[-1]"}
 expect = "w[0] == 137 < w[1] and u[0] == 151 and u[2] == 0"
+
+[[reading]]
+bench_id = "engine_vision"
+id = "vision_shroud_clearing_height_is_world_units"
+scene = {build = "engine_visclear", check = "a", until = 21}
+bench = "Bench 11-26 (E257, CampVisClrA_mcp_1126_061450): towers 115 of our units (72 world) above the cannons; ShroudClearingHeight 90 discovers the W tower, 65 not the E one, both ENEMY_SIGHTED: 看见 1101 s1-s21"
+proves = "sim Sim.looks / the fog grid: ShroudClearingHeight is world units, set against our heights / 0.625 (comparing it raw read 1100)"
+expect = "vals(rows)[-1][0] == 1101"

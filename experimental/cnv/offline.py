@@ -164,7 +164,7 @@ def spelt():
     """The harness's other half: what the report prints in the simulator's own terms (its m:ss, the high-ground step
     its sight rule uses) -- handed to the reader, as simshow.attach hands the Show its mmss."""
     import sim
-    return sim.mmss, sim.HIGH_STEP
+    return sim.mmss, float(sim.terrain_rules.ours(sim.HIGH_STEP))       # in our heights, as the report's
 
 
 def label(template):

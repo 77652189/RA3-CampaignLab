@@ -126,9 +126,9 @@ RALLY_PUSH = 40.0              # a new unit stops this far beyond its factory's 
                                # h / i (barracks, (40, 18): stops ~(75-80, 24-33)) and engine_rally tank (war
                                # factory, (80, 20): ~(112-127, 25-34); x 1.9 from the centre would be (152, 38))
 from engine.objects.special import WFIRE_LAG, WFIRE_REAIM, NONE_TARGET_LAG  # noqa: E402,F401  (weapon-fire abilities, L2)
-HIGH_STEP = 50.0                # ShroudClearingHeight's default: a viewer does not discover a cell this much above its own
-                                # (bench, docs/engine/vision.md; a unit's own value is Body.clear_height). Cell by cell,
-                                # no line of sight; ENEMY_SIGHTED is a range query and ignores it
+import terrain_rules  # noqa: E402  (ShroudClearingHeight is world units, our heights / 0.625: engine_visclear a)
+HIGH_STEP = 50.0                # ShroudClearingHeight's default, world (80 ours): a viewer does not discover a cell this much above its own (bench,
+                                # docs/engine/vision.md; a unit's own: Body.clear_height). Cell by cell, no line of sight; ENEMY_SIGHTED is a range query
 FIRE_SEEN = 3.0                 # a bombarder (a weapon longer than its own vision) that fired this lately is seen
 LAG = simloop.LAG               # the readings' clock (simloop.LAG)
 
@@ -336,7 +336,7 @@ class Body(kernel_module.Thing):
     team: str = ''
     instance: int = 0                   # which instance of a team template (CREATE_REINFORCEMENT_TEAM: 1, 2, ...)
     guessed: list = dataclasses.field(default_factory=list)    # what of its numbers simunits only guessed
-    clear_height: float = HIGH_STEP                             # its ShroudClearingHeight (simunits: 50 unless written)
+    clear_height: float = HIGH_STEP                             # its ShroudClearingHeight (world; simunits: 50 unless written)
     angle: float = 0.0
     status: set = dataclasses.field(default_factory=set)       # IMMOBILE (stays put), UNATTACKABLE (the player
                                                                 # cannot destroy it) ...
@@ -1506,7 +1506,7 @@ class Sim:
         if not self.high or air or v.surface == 'air':
             return True
         self.used.add('high ground')
-        return self.ground.z(x, y) <= self.ground.z(v.x, v.y) + v.clear_height
+        return self.ground.z(x, y) <= self.ground.z(v.x, v.y) + float(terrain_rules.ours(v.clear_height))
 
     def side_sees(self, side, t):
         """Whether a side (it or a friend of it) sees body t, this tick; the player's reveals count for the player."""
@@ -2246,7 +2246,7 @@ class Sim:
             if b.owner == self.human and b.vision:
                 seen = (x - b.x) ** 2 + (y - b.y) ** 2 <= b.vision ** 2
                 if self.high and b.surface != 'air':
-                    seen &= self.ground.zgrid[:seen.shape[0], :seen.shape[1]] <= self.ground.z(b.x, b.y) + b.clear_height
+                    seen &= self.ground.zgrid[:seen.shape[0], :seen.shape[1]] <= self.ground.z(b.x, b.y) + terrain_rules.ours(b.clear_height)
                 self.known |= seen
         rect = list(getattr(self.m.map, 'BORDERS', {'': (0, 0, 1e9, 1e9)}).values())
         x0, y0, x1, y1 = rect[self.border] if self.border < len(rect) else rect[0]

@@ -566,6 +566,10 @@ def engine_vision():
       allundo   MAP_REVEAL_ALL_PERM p1 at Go, MAP_REVEAL_ALL_UNDO_PERM p1 at Go + 10 (as undo): 揭开 while revealed,
                 撤后 = frames tower W stays discovered after the undo (0 = fog at once, ~137 = the reshroud delay).
 
+    engine_visclear a: the height scoring, its own cast (no 500 probe that a start delete may leave a reveal of): W
+      cannon ShroudClearingHeight 90, E cannon 65, both towers 115 of our units (72 world) above them. A world-unit
+      rule reads 1101 (W discovered), comparing our units 1100, both 1111.
+
     (Check names are short: the mod name, mission + check, may not pass 15 characters.)
 
     Bench 11-06 (counters 看见 / 揭开 + 帧数; ~15 frames per second):
@@ -603,26 +607,29 @@ def engine_vision():
     # role: (template, x, y); W has three cannons (probe, probe2, control), the unused ones are deleted at the start
     CANNONS = {'W': (HI, 880.0, 1350.0), 'W2': (HI2, 880.0, 1450.0), 'W0': (CANNON, 880.0, 1250.0),
                'E': (CANNON, 2820.0, 1250.0)}
+    CLEAR = {'W': ('CNV_VisionC90', 880.0, 1350.0), 'E': ('CNV_VisionC65', 2820.0, 1250.0)}    # engine_visclear
 
 
-    def probe(id, rng=False):
+    def probe(id, rng=False, height=500):
         x = open(os.path.join(labpaths.SDK3, 'SageXML', 'Allied', 'Units', CANNON + '.xml'), encoding='utf-8').read()
         old = 'VisionRange="500"\n\t\t\tShroudClearingRange="=$STANDARD_SHROUD_CLEAR"'
-        new = ('VisionRange="500"\n\t\t\tShroudClearingHeight="500"\n\t\t\tShroudClearingRange="'
+        new = (f'VisionRange="500"\n\t\t\tShroudClearingHeight="{height}"\n\t\t\tShroudClearingRange="'
                + ('500' if rng else '=$STANDARD_SHROUD_CLEAR') + '"')
         for o, n in ((f'id="{CANNON}"', f'id="{id}"'), (f'EditorName="{CANNON}"', f'EditorName="{id}"'), (old, new)):
             assert x.count(o) == 1, (o[:50], x.count(o))
             x = x.replace(o, n, 1)
-        return Unit(id, x, names=dict(unit=id), what='引擎探针：原版雅典娜炮，ShroudClearingHeight 500',
-                    params=dict(height=500, range=rng))
+        return Unit(id, x, names=dict(unit=id), what=f'引擎探针：原版雅典娜炮，ShroudClearingHeight {height}',
+                    params=dict(height=height, range=rng))
 
 
-    def mission():
-        m = Mission(name='CampVis', map=stonehenge, units=[probe(HI), probe(HI2, True)], facts={})
+    def mission(clear=False):
+        units = ([probe(CLEAR['W'][0], height=90), probe(CLEAR['E'][0], height=65)] if clear else
+                 [probe(HI), probe(HI2, True)])
+        m = Mission(name='CampVisClr' if clear else 'CampVis', map=stonehenge, units=units, facts={})
         cx, cy = m.site('start')
         for k, (tx, ty) in TOWERS.items():
             m.put(TOWER, 'start', tx - cx, ty - cy, side='s1', name=f'UNIT - CNV Vis Tower {k}', role=f'tower {k}')
-        for k, (tmpl, ax, ay) in CANNONS.items():
+        for k, (tmpl, ax, ay) in (CLEAR if clear else CANNONS).items():
             m.put(tmpl, 'start', ax - cx, ay - cy, name=f'UNIT - CNV Vis Cannon {k}', role=f'cannon {k}',
                   angle=0.0 if k == 'E' else 3.1416)
         return open_in_view(m, 'Vision')
@@ -631,16 +638,16 @@ def engine_vision():
     def _test(m, which):
         t = Test()
         p1, s1 = m.player('p1'), m.player('s1')
-        keep = {'height': ('W', 'E'), 'height2': ('W2', 'E')}.get(which, ('W0', 'E'))
+        keep = {'height': ('W', 'E'), 'height2': ('W2', 'E'), 'clear': ('W', 'E')}.get(which, ('W0', 'E'))
         start = []
-        for k in CANNONS:
+        for k in (CLEAR if which == 'clear' else CANNONS):
             n = m.role(f'cannon {k}').name
             if k in keep:
                 start += [('UNIT_SET_STANCE', n, 3), ('UNIT_ALLOW_AI_AUTOACQUIRE', n, 0)]
             else:
                 start.append(('NAMED_DELETE', n))
         tw = lambda k: m.role(f'tower {k}').name
-        if which.startswith('height'):
+        if which.startswith('height') or which == 'clear':
             w, e = (m.role(f'cannon {keep[0]}').name, m.role('cannon E').name)
             c = 'Test Vision'
             t.counters.append((c, '看见'))
@@ -652,7 +659,7 @@ def engine_vision():
                 t.scripts.append(Script(f'Test - sighted {step}', [('ENEMY_SIGHTED', n, 'Enemy', s1)],
                                         [('INCREMENT_COUNTER', step, c)]))
             t.expect = [('看见', 0, 'ever>=', 1101)]
-            t.bench = [('bench_watch', dict(seconds=RUN[which], every=1, sheet=False, lines=1))]
+            t.bench = [('bench_watch', dict(seconds=RUN.get(which, 20.0), every=1, sheet=False, lines=1))]
             return t
         if which.startswith('resh') and which != 'reshroud':  # resh<N>: MAP_SHROUD_SET_RESHROUD_TIME N at the start
             start.append(('MAP_SHROUD_SET_RESHROUD_TIME', float(which[4:])))
@@ -683,8 +690,9 @@ def engine_vision():
         return t
 
 
-    MISSION = {'engine_vision': mission}
-    CHECKS = {'engine_vision': {w: (lambda m, w=w: _test(m, w)) for w in RUN}}
+    MISSION = {'engine_vision': mission, 'engine_visclear': lambda: mission(clear=True)}
+    CHECKS = {'engine_vision': {w: (lambda m, w=w: _test(m, w)) for w in RUN},
+              'engine_visclear': {'a': lambda m: _test(m, 'clear')}}
     return dict(MISSION=MISSION, CHECKS=CHECKS)
 
 

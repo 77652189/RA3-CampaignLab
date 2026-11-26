@@ -4,7 +4,7 @@
 
 ## 给关卡线的结论
 
-- **低处单位看不见比它高约 50 以上的地方**。判据是逐格比较：某个迷雾格的地面高度减去单位脚下那格的高度，小于单位的 ShroudClearingHeight（不写就是 50）才揭开。这里**没有视线遮挡**，所以高台挡不住高台后面更低的地方。原版只有少数模板改过这个值。想让某个单位在低处也能看见高台，就给它加大 ShroudClearingHeight。
+- **低处单位看不见比它高约 50 世界单位（我们地图代码的高度 80）以上的地方**。判据是逐格比较：某个迷雾格的地面高度减去单位脚下那格的高度，小于单位的 ShroudClearingHeight（世界单位，不写就是 50）才揭开。画地图时：我们的高度 × 0.625 = 世界单位（`terrain_rules.world`），高台要挡住低处的视野，得比低处高出 80 以上（我们的单位）。这里**没有视线遮挡**，所以高台挡不住高台后面更低的地方。原版只有少数模板改过这个值。想让某个单位在低处也能看见高台，就给它加大 ShroudClearingHeight。
 - **两类条件别混用**：NAMED_DISCOVERED / TEAM_DISCOVERED 看的是迷雾格，带高度判据；ENEMY_SIGHTED（TYPE_SIGHTED 也一样）只按单位的视野半径做距离查询，不看迷雾，也不管高度。所以低处单位面对高台上的敌人时，ENEMY_SIGHTED 为真，NAMED_DISCOVERED 却为假。要写"玩家看见高台上的东西才触发"，用 DISCOVERED 那一类。
 - **脚本揭雾**（MAP_REVEAL_AT_WAYPOINT）不受高度限制。原版默认大约 **9 秒（137 帧）后回到迷雾**；MAP_SHROUD_SET_RESHROUD_TIME N 秒能改这个时长，保持 **15 × N − 13 帧**，设 0 就是完全不揭开。要一直揭开，用 MAP_REVEAL_PERMANENTLY_AT_WAYPOINT（测：整局不过期；MAP_UNDO_REVEAL_PERMANENTLY_AT_WAYPOINT 按名字撤销，当帧回雾，没有那 137 帧延迟；`engine_vision` perm / undo，11-09）。
 - **雷达（小地图）不能拿来当关卡条件**：没有任何脚本条件读它。
@@ -18,6 +18,7 @@
   - 两门炮的 ENEMY_SIGHTED 都为真（+100、+1000）。
 - 这说明"高差小于 ShroudClearingHeight 才揭开"这条规则成立，字段对应也对上了。
 - 模型从第 0 秒起就是 1101。height2 变体（同时把 ShroudClearingRange 改成 500）没有跑，因为西边单凭高度一项已经发现了塔。
+- **单位（11-26 E257，`engine_visclear a`，`CampVisClrA_mcp_1126_061450`）**：上面的 115 是我们的单位，合 72 世界单位，两种算法都分不出。新台子同样的塔和炮，西炮 ShroudClearingHeight 90、东炮 65：读数 1101，90 看见、65 看不见，门槛落在 65～90 之间，跟 72 世界单位对得上；按我们的单位比就该是 1100。所以 ShroudClearingHeight 是世界单位，模拟器（`Sim.looks` 和迷雾格）把它换成我们的单位再比（改前直接比，高差 50～80 的我们单位会多挡视野）。
 
 ## 2. 脚本揭雾保持多久（测，模型逐读一致）
 
