@@ -36,3 +36,15 @@ def test_guard_area_uses_idle_scan_and_stance_after_quarry_dies(stance, returns)
         assert (tank.home, tank.dest, tank.auto_to) == (HOME, HOME, HOME) and tank.path
     else:
         assert tank.home is None and tank.dest == (foe.x, foe.y) and not tank.path
+
+
+def test_idle_scan_counts_a_slots_other_lines():
+    # A387 h_c: Tanya's held pistol cannot hit a tank; her slot's C4 line can, so idle she goes after one in sight
+    s = simsmall.small_world([('tanya', 'AlliedCommandoTech1', 'Player_1', *HOME),
+                              ('foe', 'SovietAntiVehicleVehicleTech1', 'Soviet_1', HOME[0] + 150, HOME[1])])
+    tanya, foe = s.bodies['tanya'], s.bodies['foe']
+    foe.status.add('NO_ATTACK')
+    s.reveal_all = True
+    s.advance(1)
+    s.advance(1)                            # frame 15: the second scan after the opening-frame gate
+    assert tanya.chase is foe and tanya.path

@@ -34,6 +34,12 @@ def takes_by_itself(a, t, q):
     return True
 
 
+def every_line(a):
+    """Every line of a's slots, as picks fires them (A387 h_c: Tanya's pistol cannot hit a tank, her C4 line can)."""
+    m = a.find(interfaces.WeaponSet) if getattr(a, 'modules', None) else None
+    return [v for i, w in enumerate(a.weapons) for v in (m.lines(i) if m is not None else (w,))]
+
+
 def picks(a, targets, aimable, tx, ty, q):
     """`a`'s target for each of its weapons where it stands, out of `targets` (tx, ty: their centres; aimable: their
     serials). None: no foe at all (the aim gives up at once); else (the foes' centre distances, their indexes in

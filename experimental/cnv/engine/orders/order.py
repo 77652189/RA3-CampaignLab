@@ -465,12 +465,13 @@ def attack_chase(world, peers, a, fired, near):
             m.auto_to = a.dest
         return
     m.chase = None
+    lines = simtarget.every_line(a) if near else ()
     for dist, t in near:
         if dist - t.radius > a.sight:
             break                           # sorted by centre
         if not simtarget.takes_by_itself(a, t, peers) or not peers.side_sees(a.owner, t) or 'NON_AUTOACQUIRABLE' in t.status:
             continue
-        if not any(peers.can_hit(w, t) and not peers.shot_blocked(a, t, w) for w in a.weapons):
+        if not any(peers.can_hit(w, t) and not peers.shot_blocked(a, t, w) for w in lines):
             continue
         if m.resume is None:
             m.resume = a.dest
@@ -522,12 +523,13 @@ def idle_chase(world, peers, a, fired, near):
     if 'YES' not in a.acquire or 'NO_AUTO_ACQUIRE' in a.status or world.frame_now() < IDLE_SCAN_FROM:
         near = []                           # AutoAcquireEnemiesWhenIdle NO / none (or a script's NO_AUTO_ACQUIRE:
                                             # A310 statusbits n), or the opening frame: nothing
+    lines = simtarget.every_line(a) if near else ()
     for dist, t in near:
         if dist - t.radius > sight:
             break                           # sorted by centre; a radius over 0 only cuts more
         if not simtarget.takes_by_itself(a, t, peers) or not peers.side_sees(a.owner, t) or 'NON_AUTOACQUIRABLE' in t.status:
             continue
-        if not any(peers.can_hit(w, t) and not peers.shot_blocked(a, t, w) for w in a.weapons):
+        if not any(peers.can_hit(w, t) and not peers.shot_blocked(a, t, w) for w in lines):
             continue                        # bench engine_seal row: a target behind a structure is not gone after
         if m.home is None:
             m.home = (a.x, a.y)

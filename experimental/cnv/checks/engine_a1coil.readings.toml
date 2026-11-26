@@ -52,7 +52,7 @@ id = "h_c_tanya_goes_for_enemies_by_herself_before_the_order"
 scene = {build = "engine_a1gate", check = "h", until = 31, shot_clock = true}
 bench = "CampA1GateH (as h_b): low's tank dead by s2, before the 3 s order; she is back home from s5 (low 0)"
 proves = "an idle Tanya takes an enemy past her C4's reach (1) by herself and walks to it; the order on the dead tank finds nothing and she goes back to where she stood (INFERRED)"
-mismatch = "sim 乙 555 at s4, 777 at s5, 666 from s8: idle she takes nothing past her weapons' reach, so all three go at the 3 s order and stay (low 6)"
+mismatch = "sim 乙 711 at s2, 677 at s5-6, 477 at s7, 66 from s8: idle she now goes for the tank by herself (E263: her slot's C4 line) and comes home, but all three lanes settle 3 s after the bench's s5 (the ordered two as well)"
 expect = "win(5, 30, '乙') == [66] * 26"
 
 [[reading]]
